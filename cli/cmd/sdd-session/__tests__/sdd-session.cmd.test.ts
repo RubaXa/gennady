@@ -68,7 +68,11 @@ describe('SddSessionCommand', () => {
 
   it('open is idempotent — a second open does not overwrite', async () => {
     await mod.run(argv('open', '--intent', 'evolve-scope'), CLOCK);
-    writeFileSync(sessionPath(), readFileSync(sessionPath(), 'utf-8') + '  - custom edit\n', 'utf-8');
+    writeFileSync(
+      sessionPath(),
+      readFileSync(sessionPath(), 'utf-8') + '  - custom edit\n',
+      'utf-8'
+    );
     const before = readFileSync(sessionPath(), 'utf-8');
     const o = await mod.run(argv('open', '--intent', 'project-setup'), CLOCK);
     assert.strictEqual(o.ok, true);
@@ -138,10 +142,7 @@ describe('SddSessionCommand', () => {
     it('log appends a bullet under journal:, not working set:', async () => {
       await mod.run(argv('log', 'loaded sdd-scope directive → produced spec draft'), CLOCK);
       const body = readFileSync(sessionPath(), 'utf-8');
-      assert.match(
-        body,
-        /journal:\n {2}- loaded sdd-scope directive → produced spec draft\nopen:/
-      );
+      assert.match(body, /journal:\n {2}- loaded sdd-scope directive → produced spec draft\nopen:/);
     });
 
     it('workset appends a bullet under working set:, not journal:', async () => {

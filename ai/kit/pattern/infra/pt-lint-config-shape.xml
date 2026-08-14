@@ -100,5 +100,5 @@
         );
         ```
       </Snippet>
-      <Why>Every rule is `'error'` or `'off'` — never `'warn'`. Autofix rules trivially `'error'`. Two non-autofix rules (`await-thenable`, `no-floating-promises`) earn their place via plain-prose comments naming the bug class and channel-coverage gap. Type-aware concerns delegated; stylistic rules universally disabled at the end via `eslint-config-prettier`.</Why>
+      <Why>Every rule is `'error'` or `'off'` — never `'warn'`. Autofix rules trivially `'error'`. Two non-autofix rules (`await-thenable`, `no-floating-promises`) earn their place via plain-text comments naming the bug class and channel-coverage gap. Type-aware concerns delegated; stylistic rules universally disabled at the end via `eslint-config-prettier`.</Why>
     </Pattern>

@@ -61,7 +61,7 @@
     <Axiom id="AX_REVERSE_INVENTORY_GATE">
       A recovered module spec's Entity Inventory MUST be checked against the real code with
       `gennady lint --spec=<module-spec> --inventory-reverse <module-dir>` before the flow closes.
-      This is what separates recovering a spec from paraphrasing the code into prose: an inventory
+      This is what separates recovering a spec from paraphrasing the code into narrative text: an inventory
       entry with no matching export, or an export with no inventory entry, is a finding to fix before
       closing — never a note for later.
     </Axiom>
@@ -74,6 +74,8 @@
   </KernelGrammar>
 
   <ChatProtocol>
+    {{> "contract/process/question-format"}}
+
     {{> "contract/process/halt-format"}}
   </ChatProtocol>
 
@@ -121,7 +123,7 @@
     <Step id="STEP_3_RECOVER">
       <Goal>Write the spec by reusing the existing authoring branches — no bespoke writing logic here.</Goal>
       <Action>
-        Before handing off, run the self-check pass per `AX_ARTIFACT_STYLE_SELF_CHECK` on any prose
+        Before handing off, run the self-check pass per `AX_ARTIFACT_STYLE_SELF_CHECK` on any text
         this flow writes itself (the survey, the proposal); each branch called below carries its own
         copy of the same gate for the artifact it writes. On confirmation, hand off to the branches
         that already know how to write a spec, in dependency order:
@@ -149,5 +151,9 @@
   <ChatOutput>
     Service line — dim, internal, never narrated (`AX_NO_PROCESS_NARRATION`):
     `🧭 RFC_R<N> · path=<path> · scope=<scope-or-new> · step=<id>`.
+
+    {{> "contract/process/message-layout"}}
+
+    {{> "axiom/process/ax-progressive-disclosure"}}
   </ChatOutput>
 </SddRecoverFromCode>

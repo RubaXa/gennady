@@ -9,5 +9,5 @@
       - `decisions` — key facts the next phase or audit needs (e.g. `IdempotencyKey=introduced`, `module-system=esm`).
       - `open` — unresolved questions / risks / deferred sub-tasks (id + one-line). Empty list → `[]`.
 
-      Free-form prose forbidden. Each field is an array (possibly empty).
+      Free-form text forbidden. Each field is an array (possibly empty).
     </Contract>

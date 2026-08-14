@@ -77,7 +77,7 @@
     </Step>
     <Step id="STEP_2C_GOAL_GATE">
       <Goal>Take `GOAL` findings to the goal owner (`AX_GOAL_OWNER_GATE`).</Goal>
-      <Action>No `GOAL` findings → skip to STEP_3. Otherwise batch ALL of the round's `GOAL` findings into ONE question block (`QUESTION_FORMAT`, `Q<N>` with options; when the AskUserQuestion tool is available, ask through it) and WAIT — this precedes any edit to the sections they touch. Operator answers become edit instructions for STEP_3 and flow into the normal re-dispatch cycle. Operator unreachable while `GOAL` findings block → `H_GOAL_BLOCKED`.</Action>
+      <Action>No `GOAL` findings → skip to STEP_3. Otherwise batch ALL of the round's `GOAL` findings into ONE question block per `QUESTION_FORMAT` (explained, then asked via `AskUserQuestion` when available, options in printed order) and WAIT — this precedes any edit to the sections they touch. Operator answers become edit instructions for STEP_3 and flow into the normal re-dispatch cycle. Operator unreachable while `GOAL` findings block → `H_GOAL_BLOCKED`.</Action>
     </Step>
     <Step id="STEP_3_EDIT">
       <Goal>Apply surgical edits.</Goal>

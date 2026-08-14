@@ -39,7 +39,8 @@ function ensureGitignore(root: string): void {
   const already = content.split('\n').some((l) => l.trim() === GITIGNORE_LINE);
   if (already) return;
 
-  const withTrailingNewline = content.length > 0 && !content.endsWith('\n') ? `${content}\n` : content;
+  const withTrailingNewline =
+    content.length > 0 && !content.endsWith('\n') ? `${content}\n` : content;
   writeFileSync(path, `${withTrailingNewline}${GITIGNORE_LINE}\n`, 'utf-8');
 }
 

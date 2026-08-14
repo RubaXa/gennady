@@ -6,7 +6,9 @@
  * @purpose Print CLI help for the sdd-session command.
  */
 export function printHelp(): void {
-  console.info('gennady sdd-session — CLI-owned specs/.sdd-session.md scratch file (SESSION_FILE_FORMAT)');
+  console.info(
+    'gennady sdd-session — CLI-owned specs/.sdd-session.md scratch file (SESSION_FILE_FORMAT)'
+  );
   console.info('');
   console.info('Usage:');
   console.info(
@@ -15,11 +17,15 @@ export function printHelp(): void {
   console.info(
     '  npx gennady sdd-session set <intent|scale|open> "<value>"         # replace a single-line field'
   );
-  console.info('  npx gennady sdd-session log "<line>"                               # append to journal');
+  console.info(
+    '  npx gennady sdd-session log "<line>"                               # append to journal'
+  );
   console.info(
     '  npx gennady sdd-session workset "<line>"                          # append to working set'
   );
-  console.info('  npx gennady sdd-session close                                      # discard the session');
+  console.info(
+    '  npx gennady sdd-session close                                      # discard the session'
+  );
   console.info('');
   console.info('Guarantees:');
   console.info(

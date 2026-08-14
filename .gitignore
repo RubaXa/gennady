@@ -37,3 +37,4 @@ ai/drafts
 e2e/**/test-results/
 playwright-report/
 test-results/
+.sdd-session.md

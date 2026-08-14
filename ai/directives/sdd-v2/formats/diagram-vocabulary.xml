@@ -23,7 +23,7 @@
 
   <BeliefState>
     <Axiom id="AX_INFOGRAPHIC_FIRST">
-      Relational meaning → picture; a single judgement (one entity, one scalar choice) stays prose —
+      Relational meaning → picture; a single judgement (one entity, one scalar choice) stays text —
       a diagram of one node is noise. The rule is not "always draw"; it is "if the thing to
       understand is a relationship among ≥2 elements positioned in space, a picture beats a
       paragraph".
@@ -32,7 +32,7 @@
     <Axiom id="AX_DIAGRAM_DISCIPLINE">
       Every diagram, any medium: ≤7 nodes (split or abstract if more); ONE diagram per idea; a
       one-line caption directly under it (Russian, per `AX_OPERATOR_LANGUAGE` — the caption is
-      operator-facing prose); encode the single thing to notice first with position/size/marker. A
+      operator-facing text); encode the single thing to notice first with position/size/marker. A
       diagram nobody reads in 5 seconds failed — simplify.
     </Axiom>
 

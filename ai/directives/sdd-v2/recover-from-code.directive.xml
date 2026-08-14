@@ -61,7 +61,7 @@
     <Axiom id="AX_REVERSE_INVENTORY_GATE">
       A recovered module spec's Entity Inventory MUST be checked against the real code with
       `gennady lint --spec=<module-spec> --inventory-reverse <module-dir>` before the flow closes.
-      This is what separates recovering a spec from paraphrasing the code into prose: an inventory
+      This is what separates recovering a spec from paraphrasing the code into narrative text: an inventory
       entry with no matching export, or an export with no inventory entry, is a finding to fix before
       closing — never a note for later.
     </Axiom>
@@ -91,6 +91,65 @@
   </KernelGrammar>
 
   <ChatProtocol>
+    <Contract id="QUESTION_FORMAT">
+      Explain, then ask through the tool — a question never fires as bare free-form text. A
+      `### ❓ <о чём решаем>` section header names the decision in plain words (no `Q<N>` numbering, no
+      semantic question IDs); under it, ordinary language explains the question BEFORE any tool call
+      fires — the context, the real options, and a recommendation gated by `AX_DIVERGE_BEFORE_RECOMMEND`
+      (low-stakes: a direct pick is fine; high-stakes / architecture: do not pre-anchor one option — lay
+      out the strongest candidates, a tail one included, or pair the recommendation with its strongest
+      rival and the reason it might win instead). Only once the explanation stands does `AskUserQuestion`
+      fire; its option list mirrors the printed order, short labels only — the argument itself lives in
+      the message, never moved into the tool call.
+
+      Batching rule: one `AskUserQuestion` call may carry several questions ONLY when they are mutually
+      independent — answering one does not change the meaning or the options of another (several facets
+      of one single complex decision qualify as one batched call). Dependent questions, and any interview
+      sequence, go one call at a time: compose the next question only after the previous answer is in.
+
+      Channel: use `AskUserQuestion` whenever the tool is available. When it is not, fall back to plain
+      text carrying the same shape — the explanation, then an explicit list of named options the operator
+      can answer by name — never restore `Q<N>` labels or per-question IDs; that bare-numbered shape
+      without the tool is itself the violation this contract forbids (`H_UNFORMATTED_ASK`).
+
+      Low-stakes — a recommendation is allowed, but only as the result of `AX_DIVERGE_BEFORE_RECOMMEND`
+      (not the first typical answer):
+
+      ### ❓ Формат хранения токенов
+      Нужно решить, где держать design-токены: сгенерированный JSON проще парсить скриптам, а
+      TS-модуль даёт автокомплит в IDE — для одного пакета без внешних потребителей разница небольшая.
+      ✅ **JSON-файл** `[tokens.json]` — проще парсить любым языком, ничего специфичного для TS.
+      Иначе:
+      - **TS-модуль** `[tokens.ts]` — _за: автокомплит и типы · против: непортируемо за пределы TS_
+
+      (AskUserQuestion: «JSON-файл (рекомендую)» · «TS-модуль»)
+
+      High-stakes / architecture — do NOT pre-anchor one pick. List the strongest candidates (include a
+      non-obvious / tail one) with «за / против» and let the operator choose; or give a recommendation
+      only alongside its strongest alternative and the reason it might win:
+
+      ### ❓ Стратегия миграции v1→v2
+      Три пути дают разный профиль риска и времени простоя, и откат стоит по-разному в каждом.
+      - **Big-bang** `[migrate-all]` — _за: один переход, нет промежуточного состояния · против: долгий
+        простой, откат дорогой_
+      - **Постепенная миграция по скоупам** `[migrate-incremental]` — _за: откат дешёвый, риск размазан
+        во времени · против: два формата сосуществуют дольше_
+      - **Parallel-run с shadow-чтением** `[migrate-shadow]` — нетипичный вариант, но снимает риск
+        отката почти полностью ценой временной инфраструктуры
+
+      (AskUserQuestion: «Big-bang» · «Постепенная миграция» · «Parallel-run (нетипичный)»)
+
+      A plain binary question needs no list — recommendation + inline alternative, still explained
+      before the call:
+
+      ### ❓ Нужен ли отдельный interface-скоуп
+      Все текущие потребители — web; про API и будущих клиентов явно не говорили.
+      ✅ **Пока не выделять** — можно добавить позже без миграции. _или сразу выделить, если API уже в
+      планах?_
+
+      (AskUserQuestion: «Пока не выделять (рекомендую)» · «Выделить сразу»)
+    </Contract>
+
     <Contract id="HALT_FORMAT">
       A halt is a plain sentence first (what happened + what to do), with the token as a trailing tag:
 
@@ -142,7 +201,7 @@
     <Step id="STEP_3_RECOVER">
       <Goal>Write the spec by reusing the existing authoring branches — no bespoke writing logic here.</Goal>
       <Action>
-        Before handing off, run the self-check pass per `AX_ARTIFACT_STYLE_SELF_CHECK` on any prose
+        Before handing off, run the self-check pass per `AX_ARTIFACT_STYLE_SELF_CHECK` on any text
         this flow writes itself (the survey, the proposal); each branch called below carries its own
         copy of the same gate for the artifact it writes. On confirmation, hand off to the branches
         that already know how to write a spec, in dependency order:
@@ -170,5 +229,38 @@
   <ChatOutput>
     Service line — dim, internal, never narrated (`AX_NO_PROCESS_NARRATION`):
     `🧭 RFC_R<N> · path=<path> · scope=<scope-or-new> · step=<id>`.
+
+    <Contract id="MESSAGE_LAYOUT">
+      A step-boundary / decision message (the decision card) is sectioned with markdown headers, in
+      this order. Skip any section empty for this step. During free dialogue inside a step the agent
+      does NOT print this layout — it just talks.
+
+      `<dim service line>`        — internal anchor + scope + mode + confidence (supplied by the branch)
+      `<breadcrumb>`              — per `BREADCRUMB_FORMAT`
+
+      ## `<glyph>` `<scope>` — одной фразой, что делаем
+
+      ### 🤔 Как я понял задачу    — per `UNDERSTANDING_BLOCK_FORMAT` (goes at the TOP)
+      ### 🎯 главное решение       — the crux in plain words; add a diagram per `FLOW_DIAGRAM_WHEN` if it is a flow
+      ### ❓ <о чём решаем>         — per `QUESTION_FORMAT`
+      ### ↓ Детали — по желанию    — reasoning, full comparison, change-list (per `AX_PROGRESSIVE_DISCLOSURE`)
+
+      Header glyph `<glyph>` — closed dictionary, keyed by the step's TYPE, never a free pick:
+      - `🏗` — creation / scaffold (new spec, new tickets, new files)
+      - `🔍` — audit / review (fresh-eyes read, no write)
+      - `🔧` — fix / reconcile (spec ⟷ code drift repair)
+      - `⚡` — execute (a task ticket's phases running)
+      - `🗺` — routing / overview (intent classification, project-level map)
+      No other emoji appear in message or section headers — the glyphs above and the four fixed
+      `### <glyph>` markers are the only ones this layout permits.
+    </Contract>
+
+    <Axiom id="AX_PROGRESSIVE_DISCLOSURE" cross-cutting="true">
+      Decision first, reasoning on demand. The must-read top of a message is short: where we are + my
+      read + what to decide. Everything heavy — full option comparison, evidence, the change-list,
+      derivations — goes BELOW a `### ↓ Детали — по желанию` header. Never dump reasoning above the
+      questions. Facts already verified collapse to one line («сверился: …»); uncertainties that need
+      the operator BECOME the questions — never list them twice.
+    </Axiom>
   </ChatOutput>
 </SddRecoverFromCode>

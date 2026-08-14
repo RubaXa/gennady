@@ -1,6 +1,6 @@
 <!-- source: ai/directives/coding/typescript-rules.xml -->
 <Axiom id="AX_COMMENT_VOCABULARY">
-Closed payload vocabulary: one or more of `purpose`, `consumer`, `invariant`, `side effect`, `failure mode`, `non-goal`. Use terse high-signal prose or `key: value` lines. Closed vocabulary makes comments greppable and predictable.
+Closed payload vocabulary: one or more of `purpose`, `consumer`, `invariant`, `side effect`, `failure mode`, `non-goal`. Use terse high-signal text or `key: value` lines. Closed vocabulary makes comments greppable and predictable.
 
 Forbidden: decorative prefixes (`// NOTE:`, `// IMPORTANT:`) — no machine semantics; narrating loops, branches, assignments, obvious names — steals credit from real policy comments; duplicating JSDoc, types, signatures, log messages. NEVER write «temporary workaround» without (a) the cause, (b) the boundary of applicability, (c) what must remain unchanged — workaround without context is a mine for the next refactor.
 </Axiom>

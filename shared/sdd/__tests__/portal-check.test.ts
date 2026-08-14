@@ -82,10 +82,7 @@ describe('renderScopeGraph', () => {
         { from: 'todomvc-app', to: 'infra-base' },
       ]
     );
-    assert.deepStrictEqual(lines, [
-      'todomvc-app ──► infra-base',
-      'web ──► backend ──► infra-base',
-    ]);
+    assert.deepStrictEqual(lines, ['todomvc-app ──► infra-base', 'web ──► backend ──► infra-base']);
   });
 
   it('branches into one line per root-to-leaf path', () => {

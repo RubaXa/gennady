@@ -1,9 +1,9 @@
 <!-- source: all 7 sdd directives (converged to principle; per-directive field lists stay in their directives) -->
 <Axiom id="AX_OPERATOR_LANGUAGE" cross-cutting="true">
-  **Directive prose (axioms, halt names, step procedures, contract identifiers, structural
+  **Directive text (axioms, halt names, step procedures, contract identifiers, structural
   section headings, action/status tokens) — English.**
 
-  **Operator-facing artifact prose and operator-facing messages — Russian.** This covers
+  **Operator-facing artifact text and operator-facing messages — Russian.** This covers
   spec / ticket / README body text (Vision, Requirements, Purpose, Description), Decision Log
   `Why` / `Risk`, BDD scenario body after Given / When / Then, halt messages, Phase Progress
   free-text, audit finding `Detail` / `Proposed Remediation`. Each directive enumerates which

@@ -19,7 +19,7 @@
         # tsc --strict cover floating promises?  No (return type 'void' is legal).
         # testing directive cover it?            No (this is production code shape).
         # code review reliably catches it?       Not at scale.
-        # → Justification: nothing else owns this concern. Comment drafted (plain prose):
+        # → Justification: nothing else owns this concern. Comment drafted (plain text):
         #   "No autofix. Catches floating promises that lose errors and break ordering.
         #    tsc allows void-returning calls, so this gap is unique to the lint layer."
 

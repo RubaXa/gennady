@@ -36,7 +36,7 @@
 
     <Axiom id="AX_READER_WITHOUT_SESSION_CONTEXT" cross-cutting="true">
       Repo artifacts (specs, tickets, Decision Log entries) outlive the session that wrote them and
-      are read by someone with zero memory of it. Before writing artifact prose, apply the reader
+      are read by someone with zero memory of it. Before writing artifact text, apply the reader
       test: would an engineer who never saw this session understand it and act on it? Session-plan
       labels, «оператор попросил» as a justification, «рабочий дифф» meaning this session's working
       set — forbidden in artifacts; they belong to the session log. Introduce every term inline
@@ -84,6 +84,7 @@
     | `H_AMBIGUOUS_INTENT` | Operator intent cannot be classified against state — ask, never guess |
     | `H_WRONG_REPO` | Operator answered the empty-intake entry Ask with «я не в том репозитории» — stop here, no directive loads |
     | `H_ASK_WITHOUT_CARD` | An `AskUserQuestion` / `QUESTION_FORMAT` question fired without the `sdd-state` card having been shown verbatim as its own visible unit first — operator may answer `STOP` and demand the card |
+    | `H_UNFORMATTED_ASK` | A question reached the operator as bare free-form text — no `### ❓ <о чём решаем>` explanation first, no `AskUserQuestion` call, or (text fallback) no explicit named option list — `H_ASK_WITHOUT_CARD` is the special case of this same rule for STEP_0's card: show-then-ask is the general law, the card is just its first instance |
   </HaltConditions>
 
   <ExecutionPlan>
@@ -95,7 +96,7 @@
         portal presence (`specs/README.md`), the Scopes table (id + scope-type + status + description),
         and the in-progress session set (`SESSION_FILE_FORMAT`, `specs/.sdd-session.md`).
 
-        **SHOW-gate (mechanical, not prose — the reader must be able to check it by eye, not by
+        **SHOW-gate (mechanical, not narrative — the reader must be able to check it by eye, not by
         trusting the agent's account of it).** Copy the card — the block from `🏗 SDD ·` through the
         `👉 Следующий шаг:` line, inclusive — byte-for-byte into a fenced code block, as its OWN
         message, BEFORE any classification of intent begins. When the channel genuinely cannot carry
@@ -123,7 +124,11 @@
         Then clear each preflight gate inline via the switch below, sized to the task's blast radius
         (`AX_PREFLIGHT_BLAST_RADIUS_SCOPED`). After any embedded flow (migration / readiness) returns,
         re-run `sdd-state` and re-evaluate on the FRESH snapshot — that flow changed the project, so the
-        first snapshot is stale. Update the session scratch after each loaded branch.
+        first snapshot is stale. Update the session scratch after each loaded branch — through the
+        CLI only: `npx gennady sdd-session log "<step> — <what it produced>"`. Editing
+        `specs/.sdd-session.md` by hand (Write/Edit) or `mkdir`-ing `specs/` yourself is the same
+        named violation as fabricating a log line: the tool owns the file, its directory, and the
+        `.gitignore` entry.
 
         <LogicSwitch on="FLOW_VERSION · READINESS · blast radius">
         - WHEN `FLOW_VERSION=v1` AND the request's blast radius reaches `tasks/` layout or task-ID rewriting     -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/migration-v1-v2.directive.xml")   (live v1→v2 migration; returns when the repo is v2)
@@ -179,7 +184,11 @@
         (`AX_DIALOGUE_DISCIPLINE`), never skipped on high confidence. Use the AskUserQuestion tool
         when available; otherwise `QUESTION_FORMAT`. Message in Russian.
 
-        On confirmation write `intent:` and `scale:` into the session file (`SESSION_FILE_FORMAT`).
+        On confirmation record `intent:` and `scale:` into the session file via the CLI —
+        `npx gennady sdd-session open --intent <intent> [--scale <scale>]` (idempotent; creates
+        `specs/` and the `.gitignore` entry itself); on a later re-classification use
+        `npx gennady sdd-session set intent|scale "<value>"`. Never write the file by hand
+        (`SESSION_FILE_FORMAT` describes the shape the TOOL maintains, not a template to copy).
       </Action>
     </Step>
     <Step id="STEP_2_ROUTE">
@@ -193,6 +202,15 @@
       </Action>
     </Step>
   </ExecutionPlan>
+
+  <ChatOutput>
+    Service line — dim, internal, never narrated (`AX_NO_PROCESS_NARRATION`):
+    `🗺️ ROUTE_R<N> · intent=<classified-or-pending> · scale=<confirmed-or-pending>`.
+
+    {{> "contract/process/message-layout"}}
+
+    {{> "axiom/process/ax-progressive-disclosure"}}
+  </ChatOutput>
 
   <LogicSwitch>
     ```

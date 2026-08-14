@@ -121,7 +121,7 @@
     </Axiom>
 
     <Axiom id="AX_ENRICH_OPERATOR_LANGUAGE">
-      Directive prose, axiom IDs, step IDs, technical tokens — English. ALL content written
+      Directive text, axiom IDs, step IDs, technical tokens — English. ALL content written
       INTO .task.md files (## Контекст, ## Область annotations, entity descriptions) —
       Russian. This matches the lens directives' own operator-facing output language.
     </Axiom>

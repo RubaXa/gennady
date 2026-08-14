@@ -1,3 +1,3 @@
 <Axiom id="AX_HANDOFF_TYPED">
-      End every phase block with a typed Handoff line consumed by the next phase and the orchestrator. Format per `HANDOFF_FORMAT`. Free-form prose forbidden — the next phase reads keys, not narrative.
+      End every phase block with a typed Handoff line consumed by the next phase and the orchestrator. Format per `HANDOFF_FORMAT`. Free-form text forbidden — the next phase reads keys, not narrative.
     </Axiom>

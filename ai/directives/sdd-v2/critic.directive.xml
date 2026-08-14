@@ -14,10 +14,10 @@
 
   <BeliefState>
     <Axiom id="AX_OPERATOR_LANGUAGE" cross-cutting="true">
-      **Directive prose (axioms, halt names, step procedures, contract identifiers, structural
+      **Directive text (axioms, halt names, step procedures, contract identifiers, structural
       section headings, action/status tokens) — English.**
 
-      **Operator-facing artifact prose and operator-facing messages — Russian.** This covers
+      **Operator-facing artifact text and operator-facing messages — Russian.** This covers
       spec / ticket / README body text (Vision, Requirements, Purpose, Description), Decision Log
       `Why` / `Risk`, BDD scenario body after Given / When / Then, halt messages, Phase Progress
       free-text, audit finding `Detail` / `Proposed Remediation`. Each directive enumerates which
@@ -78,7 +78,7 @@
       The dispatched critic runs on a model no stronger than the artifact's author — default the
       worker tier (Sonnet-class), never a step up "to be thorough". The consumers of a spec are workers
       on cheap models; a spec that only a stronger model can parse is not fit for execution
-      (`AX_READER_WITHOUT_SESSION_CONTEXT` carried from prose into tooling). The `understanding` and
+      (`AX_READER_WITHOUT_SESSION_CONTEXT` carried from narrative text into tooling). The `understanding` and
       `implementation-autonomy` lenses ARE the weak model's strength — it surfaces exactly what a
       worker would trip on. Semantic depth beyond that is not the critic's job; it stays with external
       review.
@@ -147,7 +147,7 @@
     </Step>
     <Step id="STEP_2C_GOAL_GATE">
       <Goal>Take `GOAL` findings to the goal owner (`AX_GOAL_OWNER_GATE`).</Goal>
-      <Action>No `GOAL` findings → skip to STEP_3. Otherwise batch ALL of the round's `GOAL` findings into ONE question block (`QUESTION_FORMAT`, `Q<N>` with options; when the AskUserQuestion tool is available, ask through it) and WAIT — this precedes any edit to the sections they touch. Operator answers become edit instructions for STEP_3 and flow into the normal re-dispatch cycle. Operator unreachable while `GOAL` findings block → `H_GOAL_BLOCKED`.</Action>
+      <Action>No `GOAL` findings → skip to STEP_3. Otherwise batch ALL of the round's `GOAL` findings into ONE question block per `QUESTION_FORMAT` (explained, then asked via `AskUserQuestion` when available, options in printed order) and WAIT — this precedes any edit to the sections they touch. Operator answers become edit instructions for STEP_3 and flow into the normal re-dispatch cycle. Operator unreachable while `GOAL` findings block → `H_GOAL_BLOCKED`.</Action>
     </Step>
     <Step id="STEP_3_EDIT">
       <Goal>Apply surgical edits.</Goal>
@@ -165,30 +165,62 @@
 
   <ChatOutput>
     <Contract id="QUESTION_FORMAT">
-      Questions must LOOK like questions and stay readable on any theme. A `### ❓ Вопросы — реши <N>`
-      section header; each question numbered `Q<N>`; options described in words. Never use `+` / `-`
-      signs for pros / cons (they render black and vanish on dark themes). Group obvious sub-questions
-      into one; do not pad the count.
+      Explain, then ask through the tool — a question never fires as bare free-form text. A
+      `### ❓ <о чём решаем>` section header names the decision in plain words (no `Q<N>` numbering, no
+      semantic question IDs); under it, ordinary language explains the question BEFORE any tool call
+      fires — the context, the real options, and a recommendation gated by `AX_DIVERGE_BEFORE_RECOMMEND`
+      (low-stakes: a direct pick is fine; high-stakes / architecture: do not pre-anchor one option — lay
+      out the strongest candidates, a tail one included, or pair the recommendation with its strongest
+      rival and the reason it might win instead). Only once the explanation stands does `AskUserQuestion`
+      fire; its option list mirrors the printed order, short labels only — the argument itself lives in
+      the message, never moved into the tool call.
+
+      Batching rule: one `AskUserQuestion` call may carry several questions ONLY when they are mutually
+      independent — answering one does not change the meaning or the options of another (several facets
+      of one single complex decision qualify as one batched call). Dependent questions, and any interview
+      sequence, go one call at a time: compose the next question only after the previous answer is in.
+
+      Channel: use `AskUserQuestion` whenever the tool is available. When it is not, fall back to plain
+      text carrying the same shape — the explanation, then an explicit list of named options the operator
+      can answer by name — never restore `Q<N>` labels or per-question IDs; that bare-numbered shape
+      without the tool is itself the violation this contract forbids (`H_UNFORMATTED_ASK`).
 
       Low-stakes — a recommendation is allowed, but only as the result of `AX_DIVERGE_BEFORE_RECOMMEND`
       (not the first typical answer):
 
-      ### ❓ Вопросы — реши <N>
-      «годится» = беру все рекомендации, или поправь по номерам.
-
-      **Q1 · <вопрос?>**
-      ✅ **<рекомендованный вариант>** `[code]` — почему подходит именно под эту задачу.
+      ### ❓ Формат хранения токенов
+      Нужно решить, где держать design-токены: сгенерированный JSON проще парсить скриптам, а
+      TS-модуль даёт автокомплит в IDE — для одного пакета без внешних потребителей разница небольшая.
+      ✅ **JSON-файл** `[tokens.json]` — проще парсить любым языком, ничего специфичного для TS.
       Иначе:
-      - **<альтернатива>** `[code]` — _за: <плюс> · против: <минус>_
+      - **TS-модуль** `[tokens.ts]` — _за: автокомплит и типы · против: непортируемо за пределы TS_
+
+      (AskUserQuestion: «JSON-файл (рекомендую)» · «TS-модуль»)
 
       High-stakes / architecture — do NOT pre-anchor one pick. List the strongest candidates (include a
       non-obvious / tail one) with «за / против» and let the operator choose; or give a recommendation
-      only alongside its strongest alternative and the reason it might win.
+      only alongside its strongest alternative and the reason it might win:
 
-      A plain binary question needs no list — recommendation + inline alternative:
+      ### ❓ Стратегия миграции v1→v2
+      Три пути дают разный профиль риска и времени простоя, и откат стоит по-разному в каждом.
+      - **Big-bang** `[migrate-all]` — _за: один переход, нет промежуточного состояния · против: долгий
+        простой, откат дорогой_
+      - **Постепенная миграция по скоупам** `[migrate-incremental]` — _за: откат дешёвый, риск размазан
+        во времени · против: два формата сосуществуют дольше_
+      - **Parallel-run с shadow-чтением** `[migrate-shadow]` — нетипичный вариант, но снимает риск
+        отката почти полностью ценой временной инфраструктуры
 
-      **Q2 · <вопрос?>**
-      ✅ **<рекомендация>** — почему. _или <короткая альтернатива>?_
+      (AskUserQuestion: «Big-bang» · «Постепенная миграция» · «Parallel-run (нетипичный)»)
+
+      A plain binary question needs no list — recommendation + inline alternative, still explained
+      before the call:
+
+      ### ❓ Нужен ли отдельный interface-скоуп
+      Все текущие потребители — web; про API и будущих клиентов явно не говорили.
+      ✅ **Пока не выделять** — можно добавить позже без миграции. _или сразу выделить, если API уже в
+      планах?_
+
+      (AskUserQuestion: «Пока не выделять (рекомендую)» · «Выделить сразу»)
     </Contract>
 
     <Contract id="HALT_FORMAT">

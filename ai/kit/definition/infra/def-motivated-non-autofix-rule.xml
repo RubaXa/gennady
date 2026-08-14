@@ -1,4 +1,4 @@
 <!-- source: infra/eslint-setup.xml -->
 <Definition id="DEF_MOTIVATED_NON_AUTOFIX_RULE">
-      A non-autofix rule kept in the config at severity `'error'` with an inline plain-prose comment immediately above the rule entry. Comment names the class of bugs or invariant the rule catches and why nothing else covers that concern. Format free; specificity required.
+      A non-autofix rule kept in the config at severity `'error'` with an inline plain-text comment immediately above the rule entry. Comment names the class of bugs or invariant the rule catches and why nothing else covers that concern. Format free; specificity required.
     </Definition>

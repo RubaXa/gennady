@@ -3,7 +3,7 @@
       Open ONLY rule files listed under this phase's `Rules:` bullet list. Use the absolute-or-cwd-relative path verbatim. Read end-to-end (Mission + Belief_State + Reward_Criteria + Anti_Patterns + Verification_Hooks).
 
       One legal extension: when a cited rule file itself declares a transitive base — an explicit
-      `InheritedBaseline` block, or prose stating "read `<other-file>` first" — that declared base is
+      `InheritedBaseline` block, or text stating "read `<other-file>` first" — that declared base is
       part of the same rule for scoping purposes and MAY be opened too. It is NOT a discovery: log
       nothing (no `discovery` line), since the manifest's citation already covers it by way of the
       rule file's own declaration. This extension is narrow and self-limited by construction — it only

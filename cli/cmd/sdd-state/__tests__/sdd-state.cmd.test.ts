@@ -85,14 +85,7 @@ describe('SddStateCommand', () => {
     mkdirSync(join(withGraph, 'specs'), { recursive: true });
     writeFileSync(
       join(withGraph, 'specs', 'README.md'),
-      [
-        PORTAL,
-        '',
-        '```mermaid',
-        'graph TD',
-        '  web --> infra-base',
-        '```',
-      ].join('\n'),
+      [PORTAL, '', '```mermaid', 'graph TD', '  web --> infra-base', '```'].join('\n'),
       'utf-8'
     );
 

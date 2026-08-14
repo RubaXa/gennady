@@ -18,10 +18,10 @@
 
   <BeliefState>
     <Axiom id="AX_OPERATOR_LANGUAGE" cross-cutting="true">
-      **Directive prose (axioms, halt names, step procedures, contract identifiers, structural
+      **Directive text (axioms, halt names, step procedures, contract identifiers, structural
       section headings, action/status tokens) — English.**
 
-      **Operator-facing artifact prose and operator-facing messages — Russian.** This covers
+      **Operator-facing artifact text and operator-facing messages — Russian.** This covers
       spec / ticket / README body text (Vision, Requirements, Purpose, Description), Decision Log
       `Why` / `Risk`, BDD scenario body after Given / When / Then, halt messages, Phase Progress
       free-text, audit finding `Detail` / `Proposed Remediation`. Each directive enumerates which
@@ -220,7 +220,7 @@
     </Contract>
 
     <Contract id="AUDIT_SESSION_SUMMARY_FORMAT">
-      **Compact AI-to-AI inline format.** Ephemeral output at session end. One header line + one line per finding + optional applied-changes lines. No markdown tables, no decorative prose. Designed so the next agent (or operator's tooling) parses it in one pass.
+      **Compact AI-to-AI inline format.** Ephemeral output at session end. One header line + one line per finding + optional applied-changes lines. No markdown tables, no decorative text. Designed so the next agent (or operator's tooling) parses it in one pass.
 
       Grammar (one logical record per line, EOL-terminated; fields separated by ` | `):
 
@@ -236,7 +236,7 @@
       - `conf`: `H`=HIGH, `M`=MEDIUM, `L`=LOW.
       - `type`: one of `CLOSED_WORLD_DRIFT` | `COMPLETENESS_GAP` | `RUNTIME_BACKING_VIOLATION` | `RULES_COMPLIANCE_VIOLATION` | `RULES_CASCADE_MISMATCH` | `TASK_ID_DRIFT` | `BDD_COVERAGE_MISMATCH` | `EXECUTION_LOG_INCOMPLETE` | `STALE_AFTER_PIVOT` | `INSIGHT_BACKFLOW`.
       - `route`: one of `spec-edit` | `ticket-reopen` | `ticket-update` | `decision-log` | `code-fix` (per `AX_FINDING_ROUTING`).
-      - `act` text: Russian operator-facing per `AX_OPERATOR_LANGUAGE` (this is operator-facing artifact prose), single line, no pipe character.
+      - `act` text: Russian operator-facing per `AX_OPERATOR_LANGUAGE` (this is operator-facing artifact text), single line, no pipe character.
       - `status` `PASS_RISK` = PASS_WITH_ACKNOWLEDGED_RISKS.
 
       Example:
@@ -250,11 +250,11 @@
       ```
 
       Rules:
-      - First line MUST be the `@audit` header. No prose preamble.
+      - First line MUST be the `@audit` header. No free-text preamble.
       - Findings ordered by descending severity, then by `F-NN`.
       - No empty lines inside the block.
       - If `loc` or `src` is N/A, emit literal `—` (em-dash) — do not omit the field.
-      - `act` is operator-facing prose (Russian per policy); everything else is English tokens.
+      - `act` is operator-facing text (Russian per policy); everything else is English tokens.
     </Contract>
   </OutputContracts>
 </SddCodeReview>

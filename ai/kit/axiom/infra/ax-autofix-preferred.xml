@@ -2,7 +2,7 @@
 <Axiom id="AX_AUTOFIX_PREFERRED">
       **A rule with a working `fix` is the preferred shape; goes in at `'error'` without further justification. A rule WITHOUT working `fix` (or with only `suggest`) goes in at `'error'` ONLY with an inline comment immediately above the rule entry explaining why it is here.**
 
-      The comment names: what class of bugs or invariant it catches, and why nothing else (tsc, review, another directive) covers that concern. Plain prose, free format, but specific enough that the next reader can decide whether the rule still earns its place.
+      The comment names: what class of bugs or invariant it catches, and why nothing else (tsc, review, another directive) covers that concern. Plain text, free format, but specific enough that the next reader can decide whether the rule still earns its place.
 
       Partial-fix rules (auto-fix some findings, not others) are treated as non-autofix and need the same comment; if partial coverage is unintentional, prefer reporting upstream and disabling locally.
 

@@ -21,10 +21,10 @@
 
   <BeliefState>
     <Axiom id="AX_OPERATOR_LANGUAGE" cross-cutting="true">
-      **Directive prose (axioms, halt names, step procedures, contract identifiers, structural
+      **Directive text (axioms, halt names, step procedures, contract identifiers, structural
       section headings, action/status tokens) — English.**
 
-      **Operator-facing artifact prose and operator-facing messages — Russian.** This covers
+      **Operator-facing artifact text and operator-facing messages — Russian.** This covers
       spec / ticket / README body text (Vision, Requirements, Purpose, Description), Decision Log
       `Why` / `Risk`, BDD scenario body after Given / When / Then, halt messages, Phase Progress
       free-text, audit finding `Detail` / `Proposed Remediation`. Each directive enumerates which
@@ -141,7 +141,7 @@
 
     <Axiom id="AX_READER_WITHOUT_SESSION_CONTEXT" cross-cutting="true">
       Repo artifacts (specs, tickets, Decision Log entries) outlive the session that wrote them and
-      are read by someone with zero memory of it. Before writing artifact prose, apply the reader
+      are read by someone with zero memory of it. Before writing artifact text, apply the reader
       test: would an engineer who never saw this session understand it and act on it? Session-plan
       labels, «оператор попросил» as a justification, «рабочий дифф» meaning this session's working
       set — forbidden in artifacts; they belong to the session log. Introduce every term inline
@@ -250,30 +250,62 @@
 
   <ChatProtocol>
     <Contract id="QUESTION_FORMAT">
-      Questions must LOOK like questions and stay readable on any theme. A `### ❓ Вопросы — реши <N>`
-      section header; each question numbered `Q<N>`; options described in words. Never use `+` / `-`
-      signs for pros / cons (they render black and vanish on dark themes). Group obvious sub-questions
-      into one; do not pad the count.
+      Explain, then ask through the tool — a question never fires as bare free-form text. A
+      `### ❓ <о чём решаем>` section header names the decision in plain words (no `Q<N>` numbering, no
+      semantic question IDs); under it, ordinary language explains the question BEFORE any tool call
+      fires — the context, the real options, and a recommendation gated by `AX_DIVERGE_BEFORE_RECOMMEND`
+      (low-stakes: a direct pick is fine; high-stakes / architecture: do not pre-anchor one option — lay
+      out the strongest candidates, a tail one included, or pair the recommendation with its strongest
+      rival and the reason it might win instead). Only once the explanation stands does `AskUserQuestion`
+      fire; its option list mirrors the printed order, short labels only — the argument itself lives in
+      the message, never moved into the tool call.
+
+      Batching rule: one `AskUserQuestion` call may carry several questions ONLY when they are mutually
+      independent — answering one does not change the meaning or the options of another (several facets
+      of one single complex decision qualify as one batched call). Dependent questions, and any interview
+      sequence, go one call at a time: compose the next question only after the previous answer is in.
+
+      Channel: use `AskUserQuestion` whenever the tool is available. When it is not, fall back to plain
+      text carrying the same shape — the explanation, then an explicit list of named options the operator
+      can answer by name — never restore `Q<N>` labels or per-question IDs; that bare-numbered shape
+      without the tool is itself the violation this contract forbids (`H_UNFORMATTED_ASK`).
 
       Low-stakes — a recommendation is allowed, but only as the result of `AX_DIVERGE_BEFORE_RECOMMEND`
       (not the first typical answer):
 
-      ### ❓ Вопросы — реши <N>
-      «годится» = беру все рекомендации, или поправь по номерам.
-
-      **Q1 · <вопрос?>**
-      ✅ **<рекомендованный вариант>** `[code]` — почему подходит именно под эту задачу.
+      ### ❓ Формат хранения токенов
+      Нужно решить, где держать design-токены: сгенерированный JSON проще парсить скриптам, а
+      TS-модуль даёт автокомплит в IDE — для одного пакета без внешних потребителей разница небольшая.
+      ✅ **JSON-файл** `[tokens.json]` — проще парсить любым языком, ничего специфичного для TS.
       Иначе:
-      - **<альтернатива>** `[code]` — _за: <плюс> · против: <минус>_
+      - **TS-модуль** `[tokens.ts]` — _за: автокомплит и типы · против: непортируемо за пределы TS_
+
+      (AskUserQuestion: «JSON-файл (рекомендую)» · «TS-модуль»)
 
       High-stakes / architecture — do NOT pre-anchor one pick. List the strongest candidates (include a
       non-obvious / tail one) with «за / против» and let the operator choose; or give a recommendation
-      only alongside its strongest alternative and the reason it might win.
+      only alongside its strongest alternative and the reason it might win:
 
-      A plain binary question needs no list — recommendation + inline alternative:
+      ### ❓ Стратегия миграции v1→v2
+      Три пути дают разный профиль риска и времени простоя, и откат стоит по-разному в каждом.
+      - **Big-bang** `[migrate-all]` — _за: один переход, нет промежуточного состояния · против: долгий
+        простой, откат дорогой_
+      - **Постепенная миграция по скоупам** `[migrate-incremental]` — _за: откат дешёвый, риск размазан
+        во времени · против: два формата сосуществуют дольше_
+      - **Parallel-run с shadow-чтением** `[migrate-shadow]` — нетипичный вариант, но снимает риск
+        отката почти полностью ценой временной инфраструктуры
 
-      **Q2 · <вопрос?>**
-      ✅ **<рекомендация>** — почему. _или <короткая альтернатива>?_
+      (AskUserQuestion: «Big-bang» · «Постепенная миграция» · «Parallel-run (нетипичный)»)
+
+      A plain binary question needs no list — recommendation + inline alternative, still explained
+      before the call:
+
+      ### ❓ Нужен ли отдельный interface-скоуп
+      Все текущие потребители — web; про API и будущих клиентов явно не говорили.
+      ✅ **Пока не выделять** — можно добавить позже без миграции. _или сразу выделить, если API уже в
+      планах?_
+
+      (AskUserQuestion: «Пока не выделять (рекомендую)» · «Выделить сразу»)
     </Contract>
 
     <Contract id="HALT_FORMAT">
@@ -289,6 +321,7 @@
     | `H_AMBIGUOUS_INTENT` | Operator intent cannot be classified against state — ask, never guess |
     | `H_WRONG_REPO` | Operator answered the empty-intake entry Ask with «я не в том репозитории» — stop here, no directive loads |
     | `H_ASK_WITHOUT_CARD` | An `AskUserQuestion` / `QUESTION_FORMAT` question fired without the `sdd-state` card having been shown verbatim as its own visible unit first — operator may answer `STOP` and demand the card |
+    | `H_UNFORMATTED_ASK` | A question reached the operator as bare free-form text — no `### ❓ <о чём решаем>` explanation first, no `AskUserQuestion` call, or (text fallback) no explicit named option list — `H_ASK_WITHOUT_CARD` is the special case of this same rule for STEP_0's card: show-then-ask is the general law, the card is just its first instance |
   </HaltConditions>
 
   <ExecutionPlan>
@@ -300,7 +333,7 @@
         portal presence (`specs/README.md`), the Scopes table (id + scope-type + status + description),
         and the in-progress session set (`SESSION_FILE_FORMAT`, `specs/.sdd-session.md`).
 
-        **SHOW-gate (mechanical, not prose — the reader must be able to check it by eye, not by
+        **SHOW-gate (mechanical, not narrative — the reader must be able to check it by eye, not by
         trusting the agent's account of it).** Copy the card — the block from `🏗 SDD ·` through the
         `👉 Следующий шаг:` line, inclusive — byte-for-byte into a fenced code block, as its OWN
         message, BEFORE any classification of intent begins. When the channel genuinely cannot carry
@@ -328,7 +361,11 @@
         Then clear each preflight gate inline via the switch below, sized to the task's blast radius
         (`AX_PREFLIGHT_BLAST_RADIUS_SCOPED`). After any embedded flow (migration / readiness) returns,
         re-run `sdd-state` and re-evaluate on the FRESH snapshot — that flow changed the project, so the
-        first snapshot is stale. Update the session scratch after each loaded branch.
+        first snapshot is stale. Update the session scratch after each loaded branch — through the
+        CLI only: `npx gennady sdd-session log "<step> — <what it produced>"`. Editing
+        `specs/.sdd-session.md` by hand (Write/Edit) or `mkdir`-ing `specs/` yourself is the same
+        named violation as fabricating a log line: the tool owns the file, its directory, and the
+        `.gitignore` entry.
 
         <LogicSwitch on="FLOW_VERSION · READINESS · blast radius">
         - WHEN `FLOW_VERSION=v1` AND the request's blast radius reaches `tasks/` layout or task-ID rewriting     -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/migration-v1-v2.directive.xml")   (live v1→v2 migration; returns when the repo is v2)
@@ -384,7 +421,11 @@
         (`AX_DIALOGUE_DISCIPLINE`), never skipped on high confidence. Use the AskUserQuestion tool
         when available; otherwise `QUESTION_FORMAT`. Message in Russian.
 
-        On confirmation write `intent:` and `scale:` into the session file (`SESSION_FILE_FORMAT`).
+        On confirmation record `intent:` and `scale:` into the session file via the CLI —
+        `npx gennady sdd-session open --intent <intent> [--scale <scale>]` (idempotent; creates
+        `specs/` and the `.gitignore` entry itself); on a later re-classification use
+        `npx gennady sdd-session set intent|scale "<value>"`. Never write the file by hand
+        (`SESSION_FILE_FORMAT` describes the shape the TOOL maintains, not a template to copy).
       </Action>
     </Step>
     <Step id="STEP_2_ROUTE">
@@ -398,6 +439,44 @@
       </Action>
     </Step>
   </ExecutionPlan>
+
+  <ChatOutput>
+    Service line — dim, internal, never narrated (`AX_NO_PROCESS_NARRATION`):
+    `🗺️ ROUTE_R<N> · intent=<classified-or-pending> · scale=<confirmed-or-pending>`.
+
+    <Contract id="MESSAGE_LAYOUT">
+      A step-boundary / decision message (the decision card) is sectioned with markdown headers, in
+      this order. Skip any section empty for this step. During free dialogue inside a step the agent
+      does NOT print this layout — it just talks.
+
+      `<dim service line>`        — internal anchor + scope + mode + confidence (supplied by the branch)
+      `<breadcrumb>`              — per `BREADCRUMB_FORMAT`
+
+      ## `<glyph>` `<scope>` — одной фразой, что делаем
+
+      ### 🤔 Как я понял задачу    — per `UNDERSTANDING_BLOCK_FORMAT` (goes at the TOP)
+      ### 🎯 главное решение       — the crux in plain words; add a diagram per `FLOW_DIAGRAM_WHEN` if it is a flow
+      ### ❓ <о чём решаем>         — per `QUESTION_FORMAT`
+      ### ↓ Детали — по желанию    — reasoning, full comparison, change-list (per `AX_PROGRESSIVE_DISCLOSURE`)
+
+      Header glyph `<glyph>` — closed dictionary, keyed by the step's TYPE, never a free pick:
+      - `🏗` — creation / scaffold (new spec, new tickets, new files)
+      - `🔍` — audit / review (fresh-eyes read, no write)
+      - `🔧` — fix / reconcile (spec ⟷ code drift repair)
+      - `⚡` — execute (a task ticket's phases running)
+      - `🗺` — routing / overview (intent classification, project-level map)
+      No other emoji appear in message or section headers — the glyphs above and the four fixed
+      `### <glyph>` markers are the only ones this layout permits.
+    </Contract>
+
+    <Axiom id="AX_PROGRESSIVE_DISCLOSURE" cross-cutting="true">
+      Decision first, reasoning on demand. The must-read top of a message is short: where we are + my
+      read + what to decide. Everything heavy — full option comparison, evidence, the change-list,
+      derivations — goes BELOW a `### ↓ Детали — по желанию` header. Never dump reasoning above the
+      questions. Facts already verified collapse to one line («сверился: …»); uncertainties that need
+      the operator BECOME the questions — never list them twice.
+    </Axiom>
+  </ChatOutput>
 
   <LogicSwitch>
     ```

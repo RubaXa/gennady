@@ -14,7 +14,7 @@
     before anything is written.
 
     Input — a v1 repo + the `sdd-migrate` / `sdd-state` / `sdd-check` tools. Output — a v2 repo
-    (co-located `specs/`, slug Task-IDs, anchored tickets, compressed decisions, flat-Russian prose)
+    (co-located `specs/`, slug Task-IDs, anchored tickets, compressed decisions, flat-Russian text)
     that passes `sdd-state` v2 + `sdd-check` clean. Out of scope: authoring new specs (the scope/module
     branches) — migration only transforms what already exists.
   </Mission>
@@ -215,7 +215,7 @@
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/compression.directive.xml")` (superseded marked
         per `AX_PIVOT_REQUIRES_SUPERSESSION`, never silently dropped; merges propagated to code
         references) — a Decision Log entry's TEXT is changed only through supersession, never edited
-        in place. Rewrite operator prose to flat engineering Russian in the same pass, per
+        in place. Rewrite operator-facing text to flat engineering Russian in the same pass, per
         `AX_MIGRATION_COMPREHENSION_PASS` — decode every empty label and code-only term from the
         actual code, replace every metaphor with the literal mechanism, never guess (code / IDs /
         status tokens / BDD keywords / paths stay English).
@@ -255,7 +255,7 @@
     `specs/<scope>/<module>/<m>.task.<ACR>-<slug>.md` + `*.3-tasks.md` indexes · `TSK-NN` (or
     `<ACR>-NNN`) → `<ACR>-<slug>` · tickets gain `<!--SECTION:-->` anchors · spec sections
     restructured to the v2 order (Overview + diagram, no heading numbers, heavy detail folded) ·
-    operator-prose → flat Russian · redundant decisions collapsed.
+    operator-facing text → flat Russian · redundant decisions collapsed.
 
     **What is NOT touched:** `D-NNN` (decision IDs, spec-local) stay · `FR-NN` / `NFC-NN` and
     scope-prefixed requirement/scenario IDs stay (optional later reformat to BDD `<ACR>-REQ-N`) ·

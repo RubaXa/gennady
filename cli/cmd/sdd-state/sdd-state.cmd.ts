@@ -8,7 +8,12 @@ import { fileURLToPath } from 'node:url';
 import { logger } from '#logger';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
 import { checkReadiness, isRealScript } from '../../../shared/sdd/readiness.ts';
-import { parseScopes, parseScopeGraphEdges, type GraphEdge, type Scope } from '../../../shared/sdd/portal.ts';
+import {
+  parseScopes,
+  parseScopeGraphEdges,
+  type GraphEdge,
+  type Scope,
+} from '../../../shared/sdd/portal.ts';
 import { probeRepo } from '../../../shared/sdd/probe.ts';
 import { detectFlowVersion } from '../../../shared/sdd/flow.ts';
 import { countModuleSpecs } from '../../../shared/sdd/module-specs.ts';
