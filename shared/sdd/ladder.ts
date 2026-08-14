@@ -17,6 +17,8 @@ export type LadderGates = {
  * @invariant `scopesApproved` <= `scopesTotal`; `tasksDone` <= `tasksTotal` whenever both are non-null.
  */
 export type LadderInput = {
+  /** @purpose Running gennady package version, stamped into the card header so stale deploys are visible at a glance. */
+  version: string;
   /** @purpose Project name parsed from the portal's `# ` heading, or null when absent/untitled. */
   projectName: string | null;
   /** @purpose Whether specs/README.md (the portal) exists. */
@@ -101,7 +103,7 @@ export function renderLadder(s: LadderInput): string {
   const pad = (label: string): string => label.padEnd(LABEL_WIDTH);
 
   return [
-    `🏗 SDD · ${name}`,
+    `🏗 SDD v${s.version} · ${name}`,
     '',
     `  ${mark(portalDone)} 1. ${pad('Портал')}${step1}`,
     `  ${mark(scopesDone)} 2. ${pad('Скоупы')}${step2}`,

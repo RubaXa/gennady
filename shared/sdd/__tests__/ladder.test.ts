@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import { renderLadder, type LadderInput } from '../ladder.ts';
 
 const BASE: LadderInput = {
+  version: '1.2.3',
   projectName: null,
   portalPresent: false,
   scopesTotal: 0,
@@ -21,7 +22,7 @@ const BASE: LadderInput = {
 describe('renderLadder', () => {
   it('empty repo: every rung ⬜, next step is /sdd project-setup', () => {
     const text = renderLadder(BASE);
-    assert.match(text, /🏗 SDD · «пустой репозиторий»/);
+    assert.match(text, /🏗 SDD v1\.2\.3 · «пустой репозиторий»/);
     assert.match(text, /⬜ 1\. Портал\s+specs\/README\.md — отсутствует/);
     assert.match(text, /⬜ 2\. Скоупы\s+нет ни одной/);
     assert.match(text, /⬜ 3\. Модули\s+—/);
@@ -37,7 +38,7 @@ describe('renderLadder', () => {
       portalPresent: true,
       scopesTotal: 0,
     });
-    assert.match(text, /🏗 SDD · Acme/);
+    assert.match(text, /🏗 SDD v1\.2\.3 · Acme/);
     assert.match(text, /✅ 1\. Портал\s+specs\/README\.md — скоупов в графе: 0/);
     assert.match(text, /⬜ 2\. Скоупы\s+нет ни одной/);
     assert.match(text, /👉 Следующий шаг: написать и approve скоуп-спеку — \/sdd/);

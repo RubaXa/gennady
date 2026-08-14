@@ -3,7 +3,8 @@
 // @tasks: N/A
 
 import { readFileSync, statSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { logger } from '#logger';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
 import { checkReadiness, isRealScript } from '../../../shared/sdd/readiness.ts';
@@ -21,6 +22,27 @@ import {
   type StateOutcome,
   type StateSnapshot,
 } from './sdd-state.types.ts';
+
+/**
+ * @purpose Version of the running gennady package — walk up from this module to the nearest package.json named "gennady".
+ * @returns The version string, or `0.0.0` when the manifest cannot be found or parsed.
+ */
+function ownVersion(): string {
+  let dir = dirname(fileURLToPath(import.meta.url));
+  for (let i = 0; i < 6; i++) {
+    try {
+      const raw = readFileSync(join(dir, 'package.json'), 'utf-8');
+      const pkg = JSON.parse(raw) as { name?: string; version?: string };
+      if (pkg.name === 'gennady' && pkg.version) return pkg.version;
+    } catch {
+      /* keep climbing */
+    }
+    const parent = dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return '0.0.0';
+}
 
 /**
  * @purpose Parse the project name from the portal's first `# ` heading.
@@ -147,6 +169,7 @@ export async function run(rawArgs: string[]): Promise<StateOutcome> {
   }
 
   const ladder = renderLadder({
+    version: ownVersion(),
     projectName,
     portalPresent,
     scopesTotal: scopes.length,

@@ -249,7 +249,7 @@ describe('SddStateCommand — readiness ladder card', () => {
     const o = await mod2.run(argv(empty));
     assert.strictEqual(o.ok, true);
     if (o.ok) {
-      assert.match(o.text, /🏗 SDD · «пустой репозиторий»/);
+      assert.match(o.text, /🏗 SDD v[^ ]+ · «пустой репозиторий»/);
       assert.match(o.text, /⬜ 1\. Портал/);
       assert.match(o.text, /⬜ 2\. Скоупы/);
       assert.match(o.text, /⬜ 3\. Модули/);
@@ -263,7 +263,7 @@ describe('SddStateCommand — readiness ladder card', () => {
     const o = await mod2.run(argv(portalOnly));
     assert.strictEqual(o.ok, true);
     if (o.ok) {
-      assert.match(o.text, /🏗 SDD · Acme/);
+      assert.match(o.text, /🏗 SDD v[^ ]+ · Acme/);
       assert.match(o.text, /✅ 1\. Портал/);
       assert.match(o.text, /⬜ 2\. Скоупы\s+нет ни одной/);
       assert.match(o.text, /👉 Следующий шаг: написать и approve скоуп-спеку — \/sdd/);

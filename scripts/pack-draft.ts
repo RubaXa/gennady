@@ -193,6 +193,13 @@ function packDraft(): void {
         tgzName,
       });
       run('npm', ['install', '--save-dev', tgzPath], { cwd: target });
+
+      // A fresh install without a re-sync leaves the target's materialized ai/directives and
+      // .claude/skills stale — the doors would then run the OLD flow against the NEW package.
+      logger.info(`[main] [installing → syncing] Re-syncing directives + skills in target`);
+      run('node', [resolve(target, 'node_modules/gennady/dist/gennady.js'), 'sync-skills'], {
+        cwd: target,
+      });
     }
 
     logger.info(`[main] [installing → done] Local draft flow finished`, {
