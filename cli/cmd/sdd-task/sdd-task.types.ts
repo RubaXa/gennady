@@ -42,13 +42,15 @@ function gatesForPhase(detail: PhaseDetail, gates: Gate[]): Gate[] {
  * @param phases Phases Overview rows.
  * @param detailsById Parsed phase bodies keyed by phase id (missing → omitted manifest detail).
  * @param gates All Verification gates.
+ * @param [activeBlockers] Unresolved 🛑 BLOCKED line texts (shared/sdd/check.ts#scanBlockerTrail), oldest first; default empty.
  * @returns The formatted planning-surface text.
  */
 export function formatPlan(
   meta: MetaInfo,
   phases: PhaseOverview[],
   detailsById: Record<string, PhaseDetail | undefined>,
-  gates: Gate[]
+  gates: Gate[],
+  activeBlockers: string[] = []
 ): string {
   const lines: string[] = [];
   lines.push(`[sdd-task] ${meta.taskId ?? '<unknown>'} — ${meta.status ?? '<no status>'}`);
@@ -86,6 +88,7 @@ export function formatPlan(
     const pg = gatesForPhase(d, gates);
     lines.push(`  gates:       ${pg.length ? pg.map((g) => g.command).join(' · ') : '—'}`);
     lines.push(`  inputs:      ${d.inputs ?? 'none'}`);
+    lines.push(`  exit:        ${d.exit ?? '—'}`);
     lines.push(
       '  DO NOT READ: other phase bodies · code outside READ files · specs beyond the anchors above'
     );
@@ -94,6 +97,14 @@ export function formatPlan(
   if (gates.length) {
     lines.push('', 'Gates (all):');
     for (const g of gates) lines.push(`  ${g.command}  ← ${g.requiredBy.join(', ') || '—'}`);
+  }
+
+  lines.push('', '[BLOCKERS]');
+  if (activeBlockers.length === 0) {
+    lines.push('blockers: none');
+  } else {
+    lines.push(`blockers: ACTIVE ${activeBlockers.length}`);
+    for (const b of activeBlockers) lines.push(`- ${b}`);
   }
 
   return lines.join('\n');

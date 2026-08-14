@@ -104,19 +104,26 @@ function sectionOverlaps(content: string): string[] {
 }
 
 /**
+ * @purpose Scan an Execution Log for 🛑 BLOCKED / ✅ RESOLVED pairs (FIFO) — shared by checkTicket and sdd-task's [BLOCKERS], one parser instead of two.
+ * @param logBody The EXECUTION_LOG section body.
+ * @returns Text of each still-unresolved 🛑 BLOCKED line, oldest first; empty when every blocker has a later ✅ RESOLVED.
+ */
+export function scanBlockerTrail(logBody: string): string[] {
+  const active: string[] = [];
+  for (const line of logBody.split('\n')) {
+    if (/🛑|BLOCKED/.test(line)) active.push(line.trim());
+    else if (/✅|RESOLVED/.test(line)) active.shift();
+  }
+  return active;
+}
+
+/**
  * @purpose Detect whether the Execution Log ends in an unresolved BLOCKED state.
  * @param logBody The EXECUTION_LOG section body.
  * @returns True when a 🛑 BLOCKED entry has no later ✅ RESOLVED.
  */
 function hasActiveBlocker(logBody: string): boolean {
-  const lines = logBody.split('\n');
-  let lastBlocked = -1;
-  let lastResolved = -1;
-  lines.forEach((line, i) => {
-    if (/🛑|BLOCKED/.test(line)) lastBlocked = i;
-    if (/✅|RESOLVED/.test(line)) lastResolved = i;
-  });
-  return lastBlocked !== -1 && lastBlocked > lastResolved;
+  return scanBlockerTrail(logBody).length > 0;
 }
 
 /**

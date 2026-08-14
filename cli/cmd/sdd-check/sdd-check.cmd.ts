@@ -3,7 +3,7 @@
 // @tasks: N/A
 
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
-import { join, resolve, dirname, sep } from 'node:path';
+import { join, resolve, relative, dirname, sep } from 'node:path';
 import { logger } from '#logger';
 import { execSyncSafe } from '../../../shared/common/exec.ts';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
@@ -579,6 +579,14 @@ export async function run(rawArgs: string[]): Promise<CheckResult> {
       findings.push(...(await checkSpecMermaid(t.file, t.content)));
     }
     // #endregion END_ALL
+  }
+
+  // --all/--changed walk absolute paths internally (specFlowVersion et al. need the full path to
+  // locate the `specs`/`tasks` segment) — only the reported Finding.file is shortened, relative to
+  // cwd, so hundreds of findings don't each repeat the worktree's absolute prefix. --task keeps the
+  // caller's own path verbatim (its Finding.file is never touched below).
+  if (!taskPath) {
+    for (const f of findings) f.file = relative(process.cwd(), resolve(f.file)) || f.file;
   }
 
   logger.debug(`[SddCheckCommand#run] ${findings.length} finding(s) across ${fileCount} file(s)`);

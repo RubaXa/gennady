@@ -95,6 +95,38 @@ function secs(ms: number): string {
   return `${(ms / 1000).toFixed(1)}s`;
 }
 
+/** @purpose Tail-cap ceiling: at most this many trailing lines are kept from a failed gate's output. */
+const TAIL_CAP_LINES = 120;
+/** @purpose Tail-cap ceiling: at most this many bytes are kept — whichever of the two limits is stricter wins. */
+const TAIL_CAP_BYTES = 16 * 1024;
+
+/**
+ * @purpose Cap a failed gate's output to its last N lines or 16KB, whichever is smaller — a runaway gate must not flood context.
+ * @param output Raw combined stdout+stderr of the failed gate.
+ * @param gateName Gate name, for the truncation note's replay hint.
+ * @returns The output untouched when it already fits both bounds; otherwise the kept tail prefixed with a one-line truncation note.
+ */
+function tailCap(output: string, gateName: string): string {
+  const trimmed = output.trimEnd();
+  let lines = trimmed.split('\n');
+  let truncated = false;
+
+  if (lines.length > TAIL_CAP_LINES) {
+    lines = lines.slice(-TAIL_CAP_LINES);
+    truncated = true;
+  }
+  while (lines.length > 1 && Buffer.byteLength(lines.join('\n'), 'utf-8') > TAIL_CAP_BYTES) {
+    lines = lines.slice(1);
+    truncated = true;
+  }
+
+  if (!truncated) return trimmed;
+  return [
+    `… output truncated to last ${lines.length} lines — full transcript: npm run ${gateName}`,
+    lines.join('\n'),
+  ].join('\n');
+}
+
 /**
  * @purpose Reduce gate results to a verdict — brief on success, detailed only for failed gates.
  * @invariant Passing gates emit one `✅ <name> (<dur>)` line; a failed gate adds its captured output.
@@ -118,7 +150,7 @@ export function verdict(results: GateResult[]): VerifyOutcome {
     [
       `  ❌ ${r.name} — exit ${r.exitCode}`,
       '  --- output ---',
-      r.output.trimEnd(),
+      tailCap(r.output, r.name),
       '  --- end ---',
     ].join('\n')
   );

@@ -14,7 +14,13 @@ import {
   parseVerification,
   type PhaseDetail,
 } from '../../../shared/sdd/ticket.ts';
-import { isTicket, ticketRef, pickableTasks, type TicketRef } from '../../../shared/sdd/check.ts';
+import {
+  isTicket,
+  ticketRef,
+  pickableTasks,
+  scanBlockerTrail,
+  type TicketRef,
+} from '../../../shared/sdd/check.ts';
 import { fileError, formatPlan, notATicket, type TaskOutcome } from './sdd-task.types.ts';
 
 const SKIP_DIRS = new Set([
@@ -111,6 +117,9 @@ export async function run(rawArgs: string[]): Promise<TaskOutcome> {
   const verSec = extractSection(content, 'VERIFICATION');
   const gates = verSec.status === 'ok' ? parseVerification(verSec.content) : [];
 
+  const logSec = extractSection(content, 'EXECUTION_LOG');
+  const activeBlockers = logSec.status === 'ok' ? scanBlockerTrail(logSec.content) : [];
+
   // #region START_PHASE_DETAILS — invariant: extract only each phase's own section, never the whole body
   const detailsById: Record<string, PhaseDetail | undefined> = {};
   for (const p of phases) {
@@ -122,7 +131,7 @@ export async function run(rawArgs: string[]): Promise<TaskOutcome> {
   logger.debug(
     `[SddTaskCommand#run] ${meta.taskId ?? '?'}: ${phases.length} phase(s), ${gates.length} gate(s)`
   );
-  return { ok: true, text: formatPlan(meta, phases, detailsById, gates) };
+  return { ok: true, text: formatPlan(meta, phases, detailsById, gates, activeBlockers) };
 }
 
 // Self-executing for CLI: gennady sdd-task <ticket-path>

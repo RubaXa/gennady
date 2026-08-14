@@ -4,7 +4,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { checkTicket, isTicket } from '../check.ts';
+import { checkTicket, isTicket, scanBlockerTrail } from '../check.ts';
 
 const CLEAN = [
   '<!--SECTION:META-->',
@@ -123,5 +123,30 @@ describe('checkTicket', () => {
     const cs = codes(c);
     assert.ok(cs.includes('SDD_MISSING_TASK_ID'));
     assert.ok(cs.includes('SDD_STATUS_UNPARSEABLE'));
+  });
+});
+
+describe('scanBlockerTrail', () => {
+  it('no blockers → empty', () => {
+    assert.deepStrictEqual(scanBlockerTrail('#### P1\n- did the thing'), []);
+  });
+
+  it('one active blocker → its line text', () => {
+    const log = '#### P1\n- 🛑 BLOCKED waiting on operator';
+    assert.deepStrictEqual(scanBlockerTrail(log), ['- 🛑 BLOCKED waiting on operator']);
+  });
+
+  it('a resolved blocker leaves no active entries', () => {
+    const log = '#### P1\n- 🛑 BLOCKED waiting\n- ✅ RESOLVED operator chose B';
+    assert.deepStrictEqual(scanBlockerTrail(log), []);
+  });
+
+  it('FIFO pairing: two blockers, one resolved → the older stays active', () => {
+    const log = [
+      '- 🛑 BLOCKED first issue',
+      '- 🛑 BLOCKED second issue',
+      '- ✅ RESOLVED fixed first',
+    ].join('\n');
+    assert.deepStrictEqual(scanBlockerTrail(log), ['- 🛑 BLOCKED second issue']);
   });
 });

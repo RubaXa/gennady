@@ -43,6 +43,7 @@ const TICKET = [
   '- **Target Files:**',
   '  - src/foo.ts',
   '- **Inputs:** none',
+  '- **Exit:** foo.ts compiles and exports Foo',
   '<!--/SECTION:PHASE_P1-->',
   '<!--SECTION:PHASE_P2-->',
   '### P2 — test',
@@ -94,7 +95,55 @@ describe('SddTaskCommand', () => {
     assert.match(t, /▸ P1 — impl/);
     assert.match(t, /READ rules:  ai\/directives\/coding\/typescript-rules\.xml/);
     assert.match(t, /READ files:  src\/foo\.ts/);
+    assert.match(t, /exit:        foo\.ts compiles and exports Foo/);
     assert.match(t, /DO NOT READ/);
+  });
+
+  it('no EXECUTION_LOG section → [BLOCKERS] reports blockers: none', async () => {
+    const outcome = await mod.run(argv(ticket));
+    assert.strictEqual(outcome.ok, true);
+    if (!outcome.ok) return;
+    assert.match(outcome.text, /\[BLOCKERS\]\nblockers: none/);
+  });
+
+  it('an unresolved 🛑 BLOCKED entry surfaces as blockers: ACTIVE 1 plus its line text', async () => {
+    const t = join(dir, 'blocked.md');
+    writeFileSync(
+      t,
+      [
+        TICKET,
+        '<!--SECTION:EXECUTION_LOG-->',
+        '#### P1',
+        '- 🛑 BLOCKED waiting on operator decision',
+        '<!--/SECTION:EXECUTION_LOG-->',
+      ].join('\n'),
+      'utf-8'
+    );
+    const outcome = await mod.run(argv(t));
+    assert.strictEqual(outcome.ok, true);
+    if (!outcome.ok) return;
+    assert.match(outcome.text, /\[BLOCKERS\]\nblockers: ACTIVE 1/);
+    assert.match(outcome.text, /- 🛑 BLOCKED waiting on operator decision/);
+  });
+
+  it('a resolved blocker (later ✅ RESOLVED) reports blockers: none', async () => {
+    const t = join(dir, 'resolved.md');
+    writeFileSync(
+      t,
+      [
+        TICKET,
+        '<!--SECTION:EXECUTION_LOG-->',
+        '#### P1',
+        '- 🛑 BLOCKED waiting on operator decision',
+        '- ✅ RESOLVED operator chose B',
+        '<!--/SECTION:EXECUTION_LOG-->',
+      ].join('\n'),
+      'utf-8'
+    );
+    const outcome = await mod.run(argv(t));
+    assert.strictEqual(outcome.ok, true);
+    if (!outcome.ok) return;
+    assert.match(outcome.text, /\[BLOCKERS\]\nblockers: none/);
   });
 
   it('matches gates to a phase by rule-id (Required-by ∩ phase rules)', async () => {

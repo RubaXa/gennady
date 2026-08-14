@@ -73,6 +73,57 @@ describe('verdict', () => {
       assert.doesNotMatch(v.message, /❌ format/);
     }
   });
+
+  it('a runaway failed gate is tail-capped to its last 120 lines with a truncation note', () => {
+    const bigOutput = Array.from({ length: 500 }, (_, i) => `line ${i}`).join('\n');
+    const results: GateResult[] = GATES.map((g) => ({
+      name: g.name,
+      exitCode: g.name === 'test:coverage' ? 1 : 0,
+      output: g.name === 'test:coverage' ? bigOutput : '',
+      durationMs: 100,
+    }));
+    const v = verdict(results);
+    assert.strictEqual(v.ok, false);
+    if (v.ok) return;
+    assert.match(
+      v.message,
+      /… output truncated to last 120 lines — full transcript: npm run test:coverage/
+    );
+    assert.doesNotMatch(v.message, /line 379\b/); // dropped — only the last 120 lines (380..499) survive
+    assert.match(v.message, /line 499/); // the tail is kept
+    assert.doesNotMatch(v.message, /^line 0$/m);
+  });
+
+  it('output that already fits both bounds is left untouched (no truncation note)', () => {
+    const results: GateResult[] = GATES.map((g) => ({
+      name: g.name,
+      exitCode: g.name === 'lint' ? 1 : 0,
+      output: g.name === 'lint' ? 'short failure\ndetail line' : '',
+      durationMs: 100,
+    }));
+    const v = verdict(results);
+    assert.strictEqual(v.ok, false);
+    if (v.ok) return;
+    assert.match(v.message, /short failure/);
+    assert.match(v.message, /detail line/);
+    assert.doesNotMatch(v.message, /truncated/);
+  });
+
+  it('a failed gate whose few lines still exceed 16KB is byte-capped, not just line-capped', () => {
+    const hugeLine = 'x'.repeat(20 * 1024); // 20KB on one line — over the 16KB cap alone
+    const output = ['first line', hugeLine].join('\n');
+    const results: GateResult[] = GATES.map((g) => ({
+      name: g.name,
+      exitCode: g.name === 'yagni' ? 1 : 0,
+      output: g.name === 'yagni' ? output : '',
+      durationMs: 100,
+    }));
+    const v = verdict(results);
+    assert.strictEqual(v.ok, false);
+    if (v.ok) return;
+    assert.match(v.message, /truncated/);
+    assert.doesNotMatch(v.message, /first line/); // dropped to satisfy the 16KB bound
+  });
 });
 
 describe('profiles', () => {

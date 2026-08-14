@@ -5,7 +5,7 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, relative, isAbsolute } from 'node:path';
 import { tmpdir } from 'node:os';
 
 type CheckModule = typeof import('../sdd-check.cmd.ts');
@@ -376,6 +376,33 @@ describe('SddCheckCommand', () => {
     assert.strictEqual(r.exitCode, 1);
     assert.match(r.text, /new-scope[\\/]mod[\\/]mod\.spec\.md[\s\S]*SDD_NO_DIAGRAM_BLOCK/);
     assert.doesNotMatch(r.text, /old-scope[\\/]mod[\\/]mod\.spec\.md/);
+  });
+
+  it('--all reports Finding.file relative to process.cwd(), not the absolute worktree path', async () => {
+    const root = join(dir, 'relpath-proj');
+    const scopeDir = join(root, 'specs', 'cli');
+    mkdirSync(scopeDir, { recursive: true });
+    writeFileSync(
+      join(scopeDir, 'cli.spec.md'),
+      '# cli\n\nSee [core](./core/core.spec.md) for details.\n',
+      'utf-8'
+    );
+
+    const r = await mod.run(argv('--all', root));
+    assert.match(r.text, /SDD_BROKEN_SPEC_LINK/);
+    const expectedRel = relative(process.cwd(), join(scopeDir, 'cli.spec.md'));
+    assert.ok(r.text.includes(expectedRel), `expected relative path ${expectedRel} in:\n${r.text}`);
+    const findingLine = r.text.split('\n').find((l) => l.includes('SDD_BROKEN_SPEC_LINK')) ?? '';
+    const reportedPath = findingLine.split(':')[0] ?? '';
+    assert.ok(!isAbsolute(reportedPath), `expected a relative path, got: ${reportedPath}`);
+  });
+
+  it('--task keeps the caller-supplied path verbatim (not rewritten to relative)', async () => {
+    const t = join(dir, 'fab-path.md');
+    writeFileSync(t, FABRICATED, 'utf-8');
+    const r = await mod.run(argv(`--task=${t}`));
+    assert.ok(isAbsolute(t));
+    assert.ok(r.text.includes(t), `expected verbatim path ${t} in:\n${r.text}`);
   });
 
   it('exits 4 with neither --task nor --all, 1 on missing --task file', async () => {
