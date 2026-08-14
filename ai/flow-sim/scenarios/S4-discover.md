@@ -1,8 +1,9 @@
-# S4 — портала нет, код есть: `root` вызывает `discover-from-code` через `sdd-state --probe`
+# S4 — портала нет, код есть: `root` вызывает `discover-from-code` по probe-фактам `sdd-state`
 
 Проверяет: router `LOGIC_SWITCH` ветку 1 (портал absent → `root.directive.xml`), и внутри `root`
-STEP_0_INTAKE — что именно `sdd-state --probe` (не какой-то ручной осмотр) решает `CODE=present` vs
-`CODE=absent`, и что `discover-from-code` грузится ЧЕРЕЗ `root`, а не напрямую роутером.
+STEP_0_INTAKE — что именно probe-факты из снапшота `sdd-state` (не какой-то ручной осмотр) решают
+`CODE=present` vs `CODE=absent`, и что `discover-from-code` грузится ЧЕРЕЗ `root`, а не напрямую
+роутером.
 
 ## Fixture
 
@@ -86,16 +87,17 @@ export function connect(): Db {
 
 ## Checkpoints
 
-1. `sdd-state` вызван первым (без `--probe`) — репортит портал absent.
+1. `sdd-state` вызван первым — репортит портал absent И содержит секцию `[PROBE]` (`CODE=present`)
+   в том же выводе: probe — часть дефолтного снапшота, отдельного вызова под него нет.
 2. Сработавшая ветка router `LOGIC_SWITCH` — дословно: «WHEN specs/README.md is absent OR intent =
    project-setup ... -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/root.directive.xml")». В трейсе
    `directive: ai/directives/sdd-v2/root.directive.xml loaded` идёт СРАЗУ после router, раньше
    `discover-from-code`.
-3. Внутри `root.directive` STEP_0_INTAKE — `sdd-state --probe` вызван ВТОРЫМ tool-вызовом (после
-   первого `sdd-state` без флага), дословно по директиве: «run `sdd-state --probe` to learn whether
-   the repo is greenfield or already holds code (`AX_TOOL_INVOCATION`; probe only now that it is
-   needed — not at flow start)».
-4. Probe отчитал `CODE=present` (три `.ts`-файла в `src/`) — сработавшая ветка `root` STEP_0_INTAKE:
+3. Внутри `root.directive` STEP_0_INTAKE НЕТ второго вызова `sdd-state` — `CODE` берётся из уже
+   полученного вывода, дословно по директиве: «read `CODE` from the `sdd-state` output already in
+   context — the probe (`CODE`/`INFRA`, code-dirs, configs) is part of the default snapshot; do NOT
+   call `sdd-state` a second time for it». Второй `tool: sdd-state` в трейсе = VIOLATED.
+4. Снапшот отчитал `CODE=present` (три `.ts`-файла в `src/`) — сработавшая ветка `root` STEP_0_INTAKE:
    «`CODE=present` -> **from-code recovery** — do NOT invent a vision over existing code:
    READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/discover-from-code.directive.xml")». `H_NO_CODE`
    (проверяемый внутри `discover-from-code`) не сработал — код был.

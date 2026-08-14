@@ -1,7 +1,7 @@
 <SddDiscoverFromCode keywords="discover, from-code, reverse-engineer, brownfield, recover-specs, general-picture, understanding-block, incremental, lazy, align-code, sdd-discover-from-code" type="directive" ver="2.1">
   <Mission>
     Recover the GENERAL PICTURE of an existing codebase as SDD specs — project-scale, brownfield.
-    Entered from `root` when the portal is absent but `sdd-state --probe` reports `CODE=present`: the
+    Entered from `root` when the portal is absent but the `sdd-state` snapshot reports `CODE=present`: the
     repo already holds code, so we do not invent a vision over it — we read what is there and formalize
     the big picture first. Loaded by `root` (which runs only after the router); the router-core beliefs it
     relies on are declared in `BeliefState deps` (inherited, not repeated).
@@ -39,7 +39,7 @@
   <HaltConditions>
     | 🛑 ID | Trigger |
     |---|---|
-    | `H_NO_CODE` | `sdd-state --probe` reports `CODE=absent` — wrong branch; return to `root` greenfield init |
+    | `H_NO_CODE` | the `sdd-state` snapshot reports `CODE=absent` — wrong branch; return to `root` greenfield init |
     | `H_OPERATOR_REJECT` | Operator rejects the recovered picture outright — stop; nothing is written |
   </HaltConditions>
 
@@ -47,7 +47,7 @@
     <Step id="STEP_0_CARTOGRAPHY">
       <Goal>Read the COARSE picture — cheap, write nothing.</Goal>
       <Action>
-        From `sdd-state --probe` (`code-dirs`, `configs`) + a coarse read — `package.json` (name,
+        From the `sdd-state` probe facts (`code-dirs`, `configs`) + a coarse read — `package.json` (name,
         workspaces, deps), entry points, top-level layout — infer **candidate scopes** (workspace
         packages, else top-level domain dirs) and a rough module list, the toolchain, and a light read of
         conventions + a contract signal. Do NOT deep-read every module; the goal here is the map, not the

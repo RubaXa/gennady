@@ -114,8 +114,10 @@ export async function run(rawArgs: string[]): Promise<StateOutcome> {
   logger.debug(
     `[SddStateCommand#run] flow=${flowVersion} portal=${portalPresent} ready=${readiness.ready} scopes=${scopes.length}`
   );
-  // --probe: opt-in code/infra heuristics; default stays minimal-knowledge (no probe).
-  const probe = args.probe === true ? probeRepo(root) : undefined;
+  // Probe is always on: one sdd-state call must carry everything any router branch may need —
+  // an extra CLI round-trip costs the agent a full model turn, the directory walk costs milliseconds.
+  // `--probe` is still accepted as a no-op for older synced directives.
+  const probe = probeRepo(root);
 
   const snapshot: StateSnapshot = {
     root,

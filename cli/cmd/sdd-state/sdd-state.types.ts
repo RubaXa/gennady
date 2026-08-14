@@ -33,7 +33,7 @@ export type StateSnapshot = {
   readiness: ReadinessResult;
   /** @purpose Raw content of the session scratch (specs/.sdd-session.md), or null when no active session. */
   sessionContent: string | null;
-  /** @purpose Code/infra heuristics — present only when the caller passed `--probe`; omitted by default (minimal-knowledge). */
+  /** @purpose Code/infra heuristics — always gathered: one snapshot carries everything any router branch needs. */
   probe?: RepoProbe;
 };
 

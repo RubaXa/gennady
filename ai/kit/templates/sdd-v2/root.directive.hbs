@@ -9,7 +9,7 @@
     - `specs/README.md` with Vision + Scope Graph + Scopes table.
     - Optional minimal `specs/infra-base/infra-base.spec.md` when the operator declared tooling.
 
-    When the portal is absent, root first probes the repo (`sdd-state --probe`): a greenfield repo (no
+    When the portal is absent, root reads the probe facts already in the `sdd-state` snapshot: a greenfield repo (no
     code) is initialized here; a repo that already holds code is handed to the from-code recovery branch
     (`discover-from-code`) — root never invents a vision over code that already exists.
 
@@ -51,8 +51,9 @@
       <Goal>Determine today's change set from state.</Goal>
       <Action>
         State from the router (`sdd-state`) already reports whether `specs/README.md` exists.
-        - Absent → no portal yet: run `sdd-state --probe` to learn whether the repo is greenfield or
-          already holds code (`AX_TOOL_INVOCATION`; probe only now that it is needed — not at flow start).
+        - Absent → no portal yet: read `CODE` from the `sdd-state` output already in context — the
+          probe (`CODE`/`INFRA`, code-dirs, configs) is part of the default snapshot; do NOT call
+          `sdd-state` a second time for it.
           - `CODE=absent` (empty / only package.json) → **greenfield init**. The operator already saw the
             `sdd-state` card, shown verbatim as its own fenced unit by the router's SHOW-gate, and, for
             empty intake, confirmed «Создать проект» at the router's entry Ask (`AX_DIALOGUE_DISCIPLINE`)

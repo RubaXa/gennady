@@ -154,8 +154,9 @@
         WHEN `specs/README.md` is absent AND the operator's message carries no substantive project
         content (bare `/sdd`, a greeting, no vision / scope-type stated) — empty intake against an empty
         portal — do NOT silently classify `project-setup` by elimination; the operator just saw the state
-        card (SHOW-gate, STEP_0) and is still «в непонятной ситуации» without a concrete next step. Run
-        `sdd-state --probe` (`CODE` presence only) and STOP: ask via the `AskUserQuestion` tool when
+        card (SHOW-gate, STEP_0) and is still «в непонятной ситуации» without a concrete next step. Read
+        `CODE` from the `sdd-state` output already in context — the probe is part of the default
+        snapshot, a second `sdd-state` call is a wasted turn — and STOP: ask via the `AskUserQuestion` tool when
         available, otherwise `QUESTION_FORMAT` (message in Russian) — this Ask is itself subject to the
         SHOW-gate: the card must already stand shown as its own fenced unit, and this Ask's title MUST
         NOT re-summarize it (`H_ASK_WITHOUT_CARD` — a title like «Репозиторий пустой: портал

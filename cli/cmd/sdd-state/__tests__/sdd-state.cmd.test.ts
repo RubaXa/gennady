@@ -125,19 +125,19 @@ describe('SddStateCommand', () => {
     }
   });
 
-  it('omits [PROBE] by default, includes it with --probe (code/infra heuristics)', async () => {
+  it('includes [PROBE] by default; --probe stays accepted as a no-op', async () => {
     const def = await mod.run(argv(ready));
     assert.strictEqual(def.ok, true);
-    if (def.ok) assert.ok(!def.text.includes('[PROBE]'), 'no probe section by default');
+    if (def.ok) {
+      assert.match(def.text, /\[PROBE\]/);
+      assert.match(def.text, /CODE=present/);
+      assert.match(def.text, /INFRA=present/);
+      assert.match(def.text, /code=present/);
+    }
 
     const pr = await mod.run(argv(ready, '--probe'));
     assert.strictEqual(pr.ok, true);
-    if (pr.ok) {
-      assert.match(pr.text, /\[PROBE\]/);
-      assert.match(pr.text, /CODE=present/);
-      assert.match(pr.text, /INFRA=present/);
-      assert.match(pr.text, /code=present/);
-    }
+    if (pr.ok) assert.strictEqual(pr.text, (def as { ok: true; text: string }).text);
   });
 
   it('reports package.json absent when the root has none', async () => {
