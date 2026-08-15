@@ -24,6 +24,8 @@ export type Finding = {
   file: string;
   /** @purpose Description with the issue and a location hint. */
   message: string;
+  /** @purpose 1-based line the finding points at, when a precise location is known. */
+  line?: number;
 };
 
 // Scaffold placeholder: `<` then a letter or ellipsis (e.g. <ts>, <cmd>, <TBD>, <…>) — NOT an HTML
@@ -692,36 +694,91 @@ const CHANCELLERY_PATTERNS: { re: RegExp; say: string }[] = [
 ];
 
 /**
- * @purpose Deterministic language lint for operator-facing prose — flag transliterated anglicisms
- * and chancellery phrasing the language policy bans (flat engineering Russian, no bureaucratic register).
- * @invariant Warn-only pre-filter for unambiguous words; document-level judgment stays the audit's job. One finding per word per file.
- * @param file Artifact path.
- * @param content Full artifact markdown.
- * @returns SDD_LANGUAGE_CALQUE warnings, one per distinct calque or chancellery marker found.
+ * @purpose Locate the 1-based line and enclosing sentence for one regex match, for a targeted `Edit`.
+ * @invariant Never crosses a `\n`; boundary is nearest `.` (kept) / line start-end / table `|`
+ * (dropped). Trims only whitespace off edges — never mid-word.
+ * @param content Full file content the match was found in.
+ * @param start Match start offset (`RegExpMatchArray.index`).
+ * @param end Match end offset (`start + match[0].length`).
+ * @returns 1-based line number and the trimmed sentence text enclosing the match.
  */
-export function checkSpecLanguage(file: string, content: string): Finding[] {
-  const findings: Finding[] = [];
-  for (const { re, say } of CALQUE_PATTERNS) {
-    const matches = [...content.matchAll(re)].map((m) => m[0]);
-    if (matches.length === 0) continue;
-    findings.push({
-      severity: 'warn',
-      code: 'SDD_LANGUAGE_CALQUE',
-      file,
-      message: `«${matches[0]}»${matches.length > 1 ? ` (×${matches.length})` : ''} — англицизм-калька; по-русски: ${say} (AX_OPERATOR_DIALOGUE_STYLE).`,
-    });
+function locateSentence(
+  content: string,
+  start: number,
+  end: number
+): { line: number; sentence: string } {
+  const before = content.slice(0, start);
+  const line = before.split('\n').length;
+  const lineStart = before.lastIndexOf('\n') + 1;
+  const nextNewline = content.indexOf('\n', end);
+  const lineEnd = nextNewline === -1 ? content.length : nextNewline;
+
+  let left = lineStart;
+  for (let i = start - 1; i >= lineStart; i--) {
+    const c = content[i];
+    if (c === '.' || c === '|') {
+      left = i + 1;
+      break;
+    }
   }
-  for (const { re, say } of CHANCELLERY_PATTERNS) {
-    const matches = [...content.matchAll(re)].map((m) => m[0]);
-    if (matches.length === 0) continue;
-    findings.push({
-      severity: 'warn',
-      code: 'SDD_LANGUAGE_CALQUE',
-      file,
-      message: `«${matches[0]}»${matches.length > 1 ? ` (×${matches.length})` : ''} — канцелярит; по-русски: ${say} (AX_OPERATOR_DIALOGUE_STYLE).`,
-    });
+  let right = lineEnd;
+  for (let i = end; i < lineEnd; i++) {
+    const c = content[i];
+    if (c === '.') {
+      right = i + 1;
+      break;
+    }
+    if (c === '|') {
+      right = i;
+      break;
+    }
+  }
+  return { line, sentence: content.slice(left, right).trim() };
+}
+
+/**
+ * @purpose Run one pattern group over `content`, one finding per match — each carries its line and sentence.
+ * @param file Artifact path (copied onto every finding).
+ * @param content Full artifact content.
+ * @param patterns Either CALQUE_PATTERNS or CHANCELLERY_PATTERNS.
+ * @returns One SDD_LANGUAGE_CALQUE warning per match, in document order.
+ */
+function findCalqueMatches(
+  file: string,
+  content: string,
+  patterns: { re: RegExp; say: string }[]
+): Finding[] {
+  const findings: Finding[] = [];
+  for (const { re, say } of patterns) {
+    for (const m of content.matchAll(re)) {
+      const start = m.index ?? 0;
+      const end = start + m[0].length;
+      const { line, sentence } = locateSentence(content, start, end);
+      findings.push({
+        severity: 'warn',
+        code: 'SDD_LANGUAGE_CALQUE',
+        file,
+        line,
+        message: `«${m[0]}» → ${say} | предложение: «${sentence}»`,
+      });
+    }
   }
   return findings;
+}
+
+/**
+ * @purpose Deterministic language lint for operator-facing prose — flag anglicisms and chancellery
+ * phrasing the language policy bans.
+ * @invariant Warn-only pre-filter. One finding per occurrence, each with its own line + sentence quote.
+ * @param file Artifact path.
+ * @param content Full artifact markdown.
+ * @returns SDD_LANGUAGE_CALQUE warnings, one per calque/chancellery occurrence found.
+ */
+export function checkSpecLanguage(file: string, content: string): Finding[] {
+  return [
+    ...findCalqueMatches(file, content, CALQUE_PATTERNS),
+    ...findCalqueMatches(file, content, CHANCELLERY_PATTERNS),
+  ];
 }
 
 // Module size budget — soft signals (warn, never a gate) per AX_HIERARCHICAL_SPECS. Tunable, conservative.

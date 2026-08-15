@@ -28,7 +28,10 @@ export function formatFindings(findings: Finding[], fileCount: number): CheckRes
   if (findings.length === 0) {
     return { text: `[sdd-check] ✅ clean — ${fileCount} file(s) checked`, exitCode: 0 };
   }
-  const lines = findings.map((f) => `${f.file}: ${f.severity}: ${f.code}  ${f.message}`);
+  const lines = findings.map(
+    (f) =>
+      `${f.file}${f.line !== undefined ? `:${f.line}` : ''}: ${f.severity}: ${f.code}  ${f.message}`
+  );
   const errors = findings.filter((f) => f.severity === 'error').length;
   const warns = findings.length - errors;
   const summary = `[sdd-check] ${errors} error(s), ${warns} warning(s) across ${fileCount} file(s)`;

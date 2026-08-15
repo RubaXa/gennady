@@ -12,17 +12,17 @@ describe('checkSpecLanguage', () => {
     assert.deepStrictEqual(checkSpecLanguage('s.md', md), []);
   });
 
-  it('калька ловится: warn с подсказкой, одно finding на слово', () => {
+  it('калька ловится: warn с подсказкой, одно finding на вхождение (не на слово)', () => {
     const md = 'Нужен аппрув оператора. После аппрува можно фиксить и дропнуть старый модуль.';
     const findings = checkSpecLanguage('s.md', md);
     const codes = findings.map((f) => f.code);
     assert.ok(codes.every((c) => c === 'SDD_LANGUAGE_CALQUE'));
-    assert.strictEqual(findings.length, 3); // аппрув(×2 → одно) + фиксить + дропнуть
+    // аппрув × 2 (по одному finding на каждое вхождение) + фиксить + дропнуть
+    assert.strictEqual(findings.length, 4);
     assert.ok(findings.every((f) => f.severity === 'warn'));
-    const first = findings.find((f) => f.message.includes('аппрув'));
-    assert.ok(first);
-    assert.match(first.message, /×2/);
-    assert.match(first.message, /подтверждение/);
+    const approves = findings.filter((f) => /^«аппрув/.test(f.message));
+    assert.strictEqual(approves.length, 2);
+    assert.match(approves[0].message, /подтверждение/);
   });
 
   it('устоявшиеся заимствования-существительные («пайплайн», «джоба») не задеваются', () => {
@@ -61,7 +61,7 @@ describe('checkSpecLanguage', () => {
       );
     }
     // «джоба» перестала быть калькой — устоявшееся заимствование, engineers say it aloud.
-    assert.ok(!findings.some((f) => f.message.toLowerCase().includes('джоб')));
+    assert.ok(!findings.some((f) => /^«[^»]*джоб/i.test(f.message)));
   });
 
   it('прижившиеся англицизмы не задеваются', () => {
@@ -82,7 +82,6 @@ describe('checkSpecLanguage', () => {
     const findings = checkSpecLanguage('s.md', md);
     const codes = findings.map((f) => f.code);
     assert.ok(codes.every((c) => c === 'SDD_LANGUAGE_CALQUE'));
-    assert.ok(findings.every((f) => f.message.includes('канцелярит')));
     const words = ['осуществля', 'посредством', 'производ', 'имеет'];
     for (const w of words) {
       assert.ok(
@@ -100,5 +99,60 @@ describe('checkSpecLanguage', () => {
   it('«производится»-калька не задевает «воспроизводится» (баг воспроизводится стабильно)', () => {
     const md = 'Баг воспроизводится стабильно на втором запуске.';
     assert.deepStrictEqual(checkSpecLanguage('s.md', md), []);
+  });
+
+  describe('location: line + enclosing-sentence quote', () => {
+    it('обычный текст — line указывает на строку вхождения, цитата — на целое предложение', () => {
+      const md = [
+        '## Vision',
+        '',
+        'Модуль стабилен. Нужно дропнуть старый конфиг перед релизом. Дальше всё чисто.',
+      ].join('\n');
+      const findings = checkSpecLanguage('s.md', md);
+      const drop = findings.find((f) => f.message.includes('дроп'));
+      assert.ok(drop);
+      assert.strictEqual(drop.line, 3);
+      assert.match(drop.message, /предложение: «Нужно дропнуть старый конфиг перед релизом\.»/);
+      // соседние предложения на той же строке не просочились в цитату
+      assert.ok(!drop.message.includes('Модуль стабилен'));
+      assert.ok(!drop.message.includes('Дальше всё чисто'));
+    });
+
+    it('таблица — цитата ограничена ячейкой (между `|`), не всей строкой', () => {
+      const md = '| Task-ID | Note |\n|---|---|\n| t-1 | нужно дропнуть старое поле | ok |';
+      const findings = checkSpecLanguage('s.md', md);
+      const drop = findings.find((f) => f.message.includes('дроп'));
+      assert.ok(drop);
+      assert.strictEqual(drop.line, 3);
+      assert.match(drop.message, /предложение: «нужно дропнуть старое поле»/);
+      assert.ok(!drop.message.includes('Task-ID'));
+      assert.ok(!drop.message.includes('ok'));
+    });
+
+    it('многострочный документ — цитата не пересекает границу строки, даже без точки в конце', () => {
+      const md = [
+        'Первая строка без калек тут длинная и без точки в конце',
+        'Нужно зафиксить баг',
+        'Третья строка тоже без калек и без точки',
+      ].join('\n');
+      const findings = checkSpecLanguage('s.md', md);
+      const fix = findings.find((f) => f.message.includes('фиксить'));
+      assert.ok(fix);
+      assert.strictEqual(fix.line, 2);
+      assert.match(fix.message, /предложение: «Нужно зафиксить баг»/);
+      assert.ok(!fix.message.includes('Первая строка'));
+      assert.ok(!fix.message.includes('Третья строка'));
+    });
+
+    it('формат строки находки: file:line: warn: SDD_LANGUAGE_CALQUE «калька» → подсказка | предложение: «цитата»', () => {
+      const md = 'Нужен аппрув оператора.';
+      const findings = checkSpecLanguage('s.md', md);
+      const [f] = findings;
+      const line = `${f.file}:${f.line}: ${f.severity}: ${f.code}  ${f.message}`;
+      assert.strictEqual(
+        line,
+        's.md:1: warn: SDD_LANGUAGE_CALQUE  «аппрув» → подтверждение | предложение: «Нужен аппрув оператора.»'
+      );
+    });
   });
 });

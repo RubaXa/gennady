@@ -177,13 +177,13 @@
       <Action>
         State from the router gives the portal + scope-type (infrastructure). Resolve the scope name;
         stat the spec → `greenfield` or detect the mode per `AX_DIRECTIVE_MODE` /
-        `AX_MODE_AUTO_DETECT_OR_HALT`. Read the rule registry with ONE deterministic `Read
-        ai/directives/knowledge.xml` — it is the sole index (`<Rules>` section) and lists every rule
-        file's exact path (`ai/directives/<category>/<rule>.xml`) with `<Triggers>`; per
-        `AX_SCOPE_RULES_DECLARATION` a category with no matching entry maps to
-        `ai/directives/<category>/<rule>.xml` directly. `ls`/`find` over `ai/directives/**` to
-        "see what knowledge exists" is forbidden here — the registry already answers that in one
-        read; a directory scan is a wasted turn against a known index.
+        `AX_MODE_AUTO_DETECT_OR_HALT`. The registry answers "what knowledge exists" in ONE
+        deterministic `Read ai/directives/knowledge.xml` — it is the sole index (`<Rules>` section)
+        and lists every rule file's exact path (`ai/directives/<category>/<rule>.xml`) with
+        `<Triggers>`; per `AX_SCOPE_RULES_DECLARATION` a category with no matching entry maps to
+        `ai/directives/<category>/<rule>.xml` directly. `ls`/`find` over `ai/directives/**` is not
+        needed — the registry already answers that in one read; a directory scan is a wasted turn
+        against a known index.
       </Action>
     </Step>
     <Step id="STEP_1_CONFIRM">
@@ -275,9 +275,11 @@
         create its skeleton via `sdd-new infrastructure --scope <scope>` — it never overwrites and
         prints the section manifest (which sections are REQUIRED and what to fill); in
         `refine`/`pivot` mode the file already exists, edit it in place, skip `sdd-new`. Editing in
-        place means a targeted `Edit` per changed passage — never a bulk regex/`perl -0pi` pass
-        over the spec text; a calque or wording fix touches exactly the sentence it corrects, not
-        every matching pattern in the file. Content guidance per
+        place means a targeted `Edit` per changed passage — never a bulk regex/`perl -0pi` pass over
+        the spec text. For SDD_LANGUAGE_CALQUE findings, `sdd-check` prints the exact location
+        (`file:line`) and the whole enclosing sentence for each calque — rewrite EVERY such sentence
+        in full with its own targeted `Edit`, preserving meaning; swapping the single flagged word
+        often breaks agreement/case, so rewrite the sentence, not the word. Content guidance per
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/infrastructure-spec-structure.xml")`.
         Before writing, run the self-check pass per
         `AX_ARTIFACT_STYLE_SELF_CHECK`. In `refine` mode update sections in place per
