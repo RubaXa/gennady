@@ -111,9 +111,13 @@
         cross-scope scenarios or an interface scope may be needed. If the change REMOVES or RENAMES a
         scope, first surface what it orphans — its `specs/<scope>/…` spec, tasks, and inbound references
         — and resolve with the operator (move / delete / repoint); never silently leave orphans. Then
-        propose scope-type with rationale and render the Mermaid `graph TD` — edge semantics
-        (A→B = A depends-on B), acyclicity, and scope-type constraints per
-        `AX_SCOPE_GRAPH_DISCIPLINE` (a cycle → `H_CYCLE_IN_GRAPH`). Approval Check. STOP.
+        propose scope-type with rationale — edge semantics (A→B = A depends-on B), acyclicity, and
+        scope-type constraints per `AX_SCOPE_GRAPH_DISCIPLINE` (a cycle → `H_CYCLE_IN_GRAPH`). Show
+        the graph to the operator as the layered ASCII diagram from `[GRAPH]` per
+        `FLOW_DIAGRAM_WHEN`'s scope-graph recipe — the Mermaid `graph TD` belongs to
+        `specs/README.md` alone; printing that fenced Mermaid block into the chat message is a
+        display violation (mermaid belongs to the file, the operator-facing render is the layered
+        ASCII diagram). Approval Check. STOP.
       </Action>
     </Step>
     <Step id="STEP_3_INFRA_BOOTSTRAP">
