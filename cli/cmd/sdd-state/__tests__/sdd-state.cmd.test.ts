@@ -125,7 +125,7 @@ describe('SddStateCommand', () => {
     const o = await mod.run(argv(withGraph));
     assert.strictEqual(o.ok, true);
     if (o.ok) {
-      assert.match(o.text, /\[GRAPH\]\nweb ──► infra-base/);
+      assert.match(o.text, /\[GRAPH\]\nуровень 0 \(фундамент\): infra-base\nуровень 1: web/);
       const scopesIdx = o.text.indexOf('[SCOPES]');
       const graphIdx = o.text.indexOf('[GRAPH]');
       const sessionIdx = o.text.indexOf('[SESSION]');

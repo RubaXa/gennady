@@ -65,27 +65,35 @@ describe('renderScopeGraph', () => {
     assert.deepStrictEqual(renderScopeGraph([scope('web')], []), []);
   });
 
-  it('renders a single direct chain', () => {
+  it('renders a linear chain as one level per node', () => {
     const lines = renderScopeGraph(
       [scope('todomvc-app'), scope('infra-base', 'done')],
       [{ from: 'todomvc-app', to: 'infra-base' }]
     );
-    assert.deepStrictEqual(lines, ['todomvc-app ──► infra-base']);
+    assert.deepStrictEqual(lines, [
+      'уровень 0 (фундамент): infra-base',
+      'уровень 1: todomvc-app',
+      'рёбра: todomvc-app → infra-base',
+    ]);
   });
 
-  it('renders a transitive chain and a direct one, roots sorted by name', () => {
+  it('renders a transitive chain across three levels', () => {
     const lines = renderScopeGraph(
-      [scope('todomvc-app'), scope('web'), scope('backend'), scope('infra-base', 'done')],
+      [scope('web'), scope('backend'), scope('infra-base', 'done')],
       [
         { from: 'web', to: 'backend' },
         { from: 'backend', to: 'infra-base' },
-        { from: 'todomvc-app', to: 'infra-base' },
       ]
     );
-    assert.deepStrictEqual(lines, ['todomvc-app ──► infra-base', 'web ──► backend ──► infra-base']);
+    assert.deepStrictEqual(lines, [
+      'уровень 0 (фундамент): infra-base',
+      'уровень 1: backend',
+      'уровень 2: web',
+      'рёбра: web → backend · backend → infra-base',
+    ]);
   });
 
-  it('branches into one line per root-to-leaf path', () => {
+  it('branches with a common sink: shared deps land on one level, no duplicate chains', () => {
     const lines = renderScopeGraph(
       [scope('cli'), scope('dbc'), scope('infra-base', 'done')],
       [
@@ -94,18 +102,44 @@ describe('renderScopeGraph', () => {
         { from: 'dbc', to: 'infra-base' },
       ]
     );
-    assert.deepStrictEqual(lines, ['cli ──► dbc ──► infra-base', 'cli ──► infra-base']);
+    assert.deepStrictEqual(lines, [
+      'уровень 0 (фундамент): infra-base',
+      'уровень 1: dbc',
+      'уровень 2: cli',
+      'рёбра: cli → dbc, infra-base · dbc → infra-base',
+    ]);
   });
 
-  it('a scope with no edges at all gets its own single-name line', () => {
+  it('a shared downstream node collapses into a single level-0 entry, not one chain per consumer', () => {
+    const lines = renderScopeGraph(
+      [scope('uikit'), scope('tessell-core'), scope('vkt-messenger'), scope('infra-base', 'done')],
+      [
+        { from: 'vkt-messenger', to: 'tessell-core' },
+        { from: 'vkt-messenger', to: 'infra-base' },
+        { from: 'uikit', to: 'infra-base' },
+      ]
+    );
+    assert.deepStrictEqual(lines, [
+      'уровень 0 (фундамент): infra-base, tessell-core',
+      'уровень 1: uikit, vkt-messenger',
+      'рёбра: uikit → infra-base · vkt-messenger → infra-base, tessell-core',
+    ]);
+  });
+
+  it('a scope with no edges at all is reported "вне графа", not on the graph', () => {
     const lines = renderScopeGraph(
       [scope('web'), scope('backend'), scope('lonely')],
       [{ from: 'web', to: 'backend' }]
     );
-    assert.deepStrictEqual(lines, ['web ──► backend', 'lonely']);
+    assert.deepStrictEqual(lines, [
+      'уровень 0 (фундамент): backend',
+      'уровень 1: web',
+      'рёбра: web → backend',
+      'вне графа: lonely',
+    ]);
   });
 
-  it('a cycle with no root (every node has an incoming edge) terminates without hanging', () => {
+  it('a cycle with no root (every node has an incoming edge) is reported and does not hang', () => {
     const lines = renderScopeGraph(
       [],
       [
@@ -113,10 +147,10 @@ describe('renderScopeGraph', () => {
         { from: 'b', to: 'a' },
       ]
     );
-    assert.deepStrictEqual(lines, []);
+    assert.deepStrictEqual(lines, ['⚠ цикл: a, b']);
   });
 
-  it('a rooted cycle (root points into a loop) terminates, closing the chain on the repeat', () => {
+  it('a rooted cycle is reported, then the acyclic remainder is layered on its own', () => {
     const lines = renderScopeGraph(
       [],
       [
@@ -125,7 +159,7 @@ describe('renderScopeGraph', () => {
         { from: 'b', to: 'a' },
       ]
     );
-    assert.deepStrictEqual(lines, ['root ──► a ──► b ──► a']);
+    assert.deepStrictEqual(lines, ['⚠ цикл: a, b', 'уровень 0 (фундамент): root']);
   });
 });
 

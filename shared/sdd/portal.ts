@@ -140,58 +140,163 @@ export function parseScopeGraphEdges(portalContent: string): GraphEdge[] {
 }
 
 /**
- * @purpose Render the Scope Graph as aligned ASCII dependency chains — consumer scopes on top, one line per root-to-leaf path.
- * @invariant Deterministic: adjacency/roots sort by name, independent of source order; an edge-less
- *   scope gets its own single-name line; empty when there are no edges.
- * @param scopes Scopes parsed from the portal table (supplies scope names with no graph edges).
+ * @purpose Find every node on a dependency cycle (self-loop or larger), via Tarjan SCC.
+ * @invariant An SCC of size > 1 is a cycle; a size-1 SCC is a cycle only with a self-loop.
+ * @param nodes Every node id appearing in `outMap` (as source or target).
+ * @param outMap Adjacency: node → its (deduped) dependency targets.
+ * @returns Node ids that participate in some cycle; empty when the graph is a DAG.
+ */
+function findCyclicNodes(nodes: string[], outMap: Map<string, string[]>): Set<string> {
+  let index = 0;
+  const indices = new Map<string, number>();
+  const lowlink = new Map<string, number>();
+  const onStack = new Set<string>();
+  const stack: string[] = [];
+  const sccs: string[][] = [];
+
+  function strongconnect(v: string): void {
+    indices.set(v, index);
+    lowlink.set(v, index);
+    index++;
+    stack.push(v);
+    onStack.add(v);
+
+    for (const w of outMap.get(v) ?? []) {
+      const wIndex = indices.get(w);
+      if (wIndex === undefined) {
+        strongconnect(w);
+        lowlink.set(v, Math.min(lowlink.get(v) ?? index, lowlink.get(w) ?? index));
+      } else if (onStack.has(w)) {
+        lowlink.set(v, Math.min(lowlink.get(v) ?? index, wIndex));
+      }
+    }
+
+    if (lowlink.get(v) === indices.get(v)) {
+      const scc: string[] = [];
+      let w: string | undefined;
+      do {
+        w = stack.pop();
+        if (w === undefined) break;
+        onStack.delete(w);
+        scc.push(w);
+      } while (w !== v);
+      sccs.push(scc);
+    }
+  }
+
+  for (const n of nodes) {
+    if (!indices.has(n)) strongconnect(n);
+  }
+
+  const cyclic = new Set<string>();
+  for (const scc of sccs) {
+    if (scc.length > 1) {
+      for (const n of scc) cyclic.add(n);
+      continue;
+    }
+    const only = scc[0];
+    if (only !== undefined && (outMap.get(only) ?? []).includes(only)) cyclic.add(only);
+  }
+  return cyclic;
+}
+
+/**
+ * @purpose Render the Scope Graph as topological layers + edges: level lines, one edges line, isolated scopes.
+ * @invariant Level 0 has every node with no outgoing edge; else level is `1 + max(dependency levels)`.
+ * @invariant Nodes alphabetical within a level; edge groups ordered by source level descending, name
+ *   ascending; targets alphabetical.
+ * @invariant A cycle (SCC size > 1, or self-loop) gets a leading warning line, then is dropped before
+ *   layering the remainder — never throws.
+ * @param scopes Scopes parsed from the portal table (supplies scope names with no graph edges at all).
  * @param edges Scope-Graph edges parsed via parseScopeGraphEdges.
- * @returns One line per dependency chain, then one line per edge-less scope; empty when `edges` is empty.
+ * @returns Warning line?, level lines, edges line?, out-of-graph line?; empty when `edges` is empty.
  */
 export function renderScopeGraph(scopes: Scope[], edges: GraphEdge[]): string[] {
   if (edges.length === 0) return [];
 
-  // #region START_ADJACENCY — sorted adjacency makes traversal order independent of edge/table order
-  const outMap = new Map<string, string[]>();
-  const hasIncoming = new Set<string>();
+  // #region START_ADJACENCY — dedupe targets per source, in first-seen (document) order
   const edgeNodes = new Set<string>();
+  const outMap = new Map<string, string[]>();
   for (const e of edges) {
-    if (!outMap.has(e.from)) outMap.set(e.from, []);
-    outMap.get(e.from)?.push(e.to);
-    hasIncoming.add(e.to);
     edgeNodes.add(e.from);
     edgeNodes.add(e.to);
+    const list = outMap.get(e.from) ?? [];
+    if (!list.includes(e.to)) list.push(e.to);
+    outMap.set(e.from, list);
   }
-  for (const list of outMap.values()) list.sort();
+  const allNodes = [...edgeNodes];
   // #endregion END_ADJACENCY
 
-  // #region START_PATHS — DFS every root (no incoming edge, has an outgoing edge) to each leaf
-  const roots = [...edgeNodes]
-    .filter((n) => (outMap.get(n)?.length ?? 0) > 0 && !hasIncoming.has(n))
-    .sort();
-
-  const paths: string[][] = [];
-  function dfs(node: string, path: string[]): void {
-    const next = outMap.get(node) ?? [];
-    if (next.length === 0) {
-      paths.push([...path, node]);
-      return;
-    }
-    for (const n of next) {
-      // cycle guard: a repeated node closes the chain instead of looping forever
-      if (path.includes(n) || node === n) {
-        paths.push([...path, node, n]);
-        continue;
-      }
-      dfs(n, [...path, node]);
-    }
+  const cyclic = findCyclicNodes(allNodes, outMap);
+  const lines: string[] = [];
+  if (cyclic.size > 0) {
+    lines.push(`⚠ цикл: ${[...cyclic].sort().join(', ')}`);
   }
-  for (const r of roots) dfs(r, []);
-  // #endregion END_PATHS
 
-  const lines = paths.map((p) => p.join(' ──► '));
+  // #region START_LAYERING — longest-path layering over the acyclic remainder (cyclic nodes dropped)
+  const remainderNodes = allNodes.filter((n) => !cyclic.has(n));
+  const remainderOut = new Map<string, string[]>();
+  for (const n of remainderNodes) {
+    remainderOut.set(
+      n,
+      (outMap.get(n) ?? []).filter((t) => !cyclic.has(t))
+    );
+  }
 
-  const isolated = scopes.map((s) => s.name).filter((n) => !edgeNodes.has(n));
-  lines.push(...isolated.sort());
+  const levelOf = new Map<string, number>();
+  function levelOfNode(n: string): number {
+    const cached = levelOf.get(n);
+    if (cached !== undefined) return cached;
+    const deps = remainderOut.get(n) ?? [];
+    let lvl = 0;
+    for (const d of deps) lvl = Math.max(lvl, 1 + levelOfNode(d));
+    levelOf.set(n, lvl);
+    return lvl;
+  }
+  for (const n of remainderNodes) levelOfNode(n);
+
+  const byLevel = new Map<number, string[]>();
+  for (const n of remainderNodes) {
+    const lvl = levelOf.get(n) ?? 0;
+    const arr = byLevel.get(lvl) ?? [];
+    arr.push(n);
+    byLevel.set(lvl, arr);
+  }
+  const maxLevel = byLevel.size === 0 ? -1 : Math.max(...byLevel.keys());
+  // #endregion END_LAYERING
+
+  for (let lvl = 0; lvl <= maxLevel; lvl++) {
+    const names = (byLevel.get(lvl) ?? []).sort();
+    if (names.length === 0) continue;
+    const label = lvl === 0 ? 'уровень 0 (фундамент)' : `уровень ${lvl}`;
+    lines.push(`${label}: ${names.join(', ')}`);
+  }
+
+  // #region START_EDGES_LINE — grouped by source: level descending, then source name ascending
+  const sources = remainderNodes
+    .filter((n) => (remainderOut.get(n)?.length ?? 0) > 0)
+    .sort((a, b) => {
+      const byLvl = (levelOf.get(b) ?? 0) - (levelOf.get(a) ?? 0);
+      return byLvl !== 0 ? byLvl : a.localeCompare(b);
+    });
+  if (sources.length > 0) {
+    const groups = sources.map((src) => {
+      const targets = [...(remainderOut.get(src) ?? [])].sort();
+      return `${src} → ${targets.join(', ')}`;
+    });
+    lines.push(`рёбра: ${groups.join(' · ')}`);
+  }
+  // #endregion END_EDGES_LINE
+
+  // #region START_OUT_OF_GRAPH — scopes untouched by any edge (source or target), original + cyclic
+  const outOfGraph = scopes
+    .map((s) => s.name)
+    .filter((n) => !edgeNodes.has(n))
+    .sort();
+  if (outOfGraph.length > 0) {
+    lines.push(`вне графа: ${outOfGraph.join(', ')}`);
+  }
+  // #endregion END_OUT_OF_GRAPH
 
   return lines;
 }
