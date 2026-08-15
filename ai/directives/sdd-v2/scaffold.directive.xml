@@ -533,7 +533,7 @@
       - `⚡` — execute (a task ticket's phases running)
       - `🗺` — routing / overview (intent classification, project-level map)
 
-      Breadcrumb-status glyphs (per `BREADCRUMB_FORMAT`): `✅` done · `👨‍💻` active · `◻️` not yet.
+      Breadcrumb-status glyphs (per `BREADCRUMB_FORMAT`): `✅` done · `👷` active · `◻️` not yet.
 
       No other emoji appear in message or section headers — the glyphs enumerated above are the only
       ones this layout permits.
@@ -542,11 +542,11 @@
     <Contract id="BREADCRUMB_FORMAT">
       One line under the service line: this session's milestones, each rendered `<Name> <status>`, with
       a status marker chosen for legibility on BOTH light and dark themes — no half-tone shading
-      characters (`░ ▒ ▓`) anywhere, they vanish depending on theme. Status set: `✅` done · `👨‍💻` active
+      characters (`░ ▒ ▓`) anywhere, they vanish depending on theme. Status set: `✅` done · `👷` active
       (the step running now) · `◻️` not yet reached. Delta only; never re-list everything already
       settled. This is the «where are we», and it replaces a verbose run-on of finished steps.
 
-      `Vision ✅ · Scope Graph 👨‍💻 · Infra ◻️ · Portal ◻️`
+      `Vision ✅ · Scope Graph 👷 · Infra ◻️ · Portal ◻️`
     </Contract>
 
     <Contract id="UNDERSTANDING_BLOCK_FORMAT">

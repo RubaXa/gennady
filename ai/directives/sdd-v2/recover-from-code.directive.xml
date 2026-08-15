@@ -263,7 +263,7 @@
       - `⚡` — execute (a task ticket's phases running)
       - `🗺` — routing / overview (intent classification, project-level map)
 
-      Breadcrumb-status glyphs (per `BREADCRUMB_FORMAT`): `✅` done · `👨‍💻` active · `◻️` not yet.
+      Breadcrumb-status glyphs (per `BREADCRUMB_FORMAT`): `✅` done · `👷` active · `◻️` not yet.
 
       No other emoji appear in message or section headers — the glyphs enumerated above are the only
       ones this layout permits.
