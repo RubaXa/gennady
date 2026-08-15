@@ -503,49 +503,6 @@
               ▲                                  │
               └──── снова есть ──── ПАУЗА ◄───────┘  что-то пропало
       ```
-
-      ## Layered scope-graph diagram (from `[GRAPH]`)
-
-      When the operator-facing decision is the Scope Graph itself, the chat rendering is NOT the
-      Mermaid `graph TD` — that fenced block is file content, it belongs only inside
-      `specs/README.md`. In chat, draw a layered ASCII diagram sourced from the `[GRAPH]` block
-      `sdd-state` already put in context (levels + edges) — never re-derive levels by re-reading the
-      Portal.
-
-      Layout rules:
-      - One horizontal tier per level, stacked top → bottom with the tiers in DESCENDING level order —
-        the highest level (the widest consumers) is the top row, the foundation (level 0) is the
-        bottom row. This is the architecture-diagram convention: what stands on the foundation is
-        drawn resting above it, not below it.
-      - Every node name appears in the diagram EXACTLY ONCE, in its own tier row.
-      - Arrows point DOWN, from a dependent to its dependency, using only `│ ▼ ├ └ ─` — no other glyph
-        is introduced (no `┌ ┬ ┐ ┘ ┤`).
-      - One parent fanning out to several children in the tier below: draw it as a small tree under
-        the parent's name, `├──▼──` for every child but the last, `└──▼──` for the last one.
-      - Several parents converging on the same child (a common dependency, e.g. the foundation scope):
-        the child is still written ONCE — place a `▼` under each parent's column, all pointing at that
-        single line below.
-
-      Compact example — input `[GRAPH]` (4 nodes, one common sink):
-
-      ```
-      [GRAPH]
-      уровень 0 (фундамент): infra-base
-      уровень 1: api, worker
-      уровень 2: app
-      рёбра: app → api, worker · api → infra-base · worker → infra-base
-      ```
-
-      Reference diagram (top = level 2, foundation = level 0, `infra-base` drawn once as the
-      converging common sink):
-
-      ```
-               app
-              ▼   ▼
-            api   worker
-              ▼   ▼
-            infra-base
-      ```
     </Contract>
 
     <Axiom id="AX_PROGRESSIVE_DISCLOSURE" cross-cutting="true">
