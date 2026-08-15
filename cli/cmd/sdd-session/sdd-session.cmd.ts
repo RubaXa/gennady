@@ -12,15 +12,17 @@ import {
   buildSkeleton,
   fileError,
   hasPlaceholder,
+  isValidTermEntry,
   noSession,
   placeholderError,
   setField,
+  setGlossaryTerm,
   SET_FIELDS,
   type SessionOutcome,
   type SetField,
 } from './sdd-session.types.ts';
 
-const MODES = ['open', 'set', 'log', 'workset', 'close'] as const;
+const MODES = ['open', 'set', 'log', 'workset', 'term', 'close'] as const;
 const GITIGNORE_LINE = '.sdd-session.md';
 
 /**
@@ -129,6 +131,26 @@ export async function run(rawArgs: string[], now: Date): Promise<SessionOutcome>
       return fileError(`${sessionPath} (${(err as Error).message})`);
     }
     return { ok: true, text: `[sdd-session] set ${field}: ${value}` };
+  }
+
+  if (mode === 'term') {
+    if (hasPlaceholder(payload)) return placeholderError(payload);
+    if (!isValidTermEntry(payload)) {
+      return badInvocation(`term needs "<term> — <phrasing>" (got "${payload}")`);
+    }
+    let content: string;
+    try {
+      content = readFileSync(sessionPath, 'utf-8');
+    } catch (err) {
+      return fileError(`${sessionPath} (${(err as Error).message})`);
+    }
+    try {
+      writeFileSync(sessionPath, setGlossaryTerm(content, payload), 'utf-8');
+    } catch (err) {
+      return fileError(`${sessionPath} (${(err as Error).message})`);
+    }
+    logger.debug(`[SddSessionCommand#run] set glossary term in ${sessionPath}`);
+    return { ok: true, text: `[sdd-session] glossary term: ${payload}` };
   }
 
   // mode is 'log' or 'workset' — both append a bullet to their section

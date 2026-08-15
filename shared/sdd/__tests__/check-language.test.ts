@@ -101,6 +101,81 @@ describe('checkSpecLanguage', () => {
     assert.deepStrictEqual(checkSpecLanguage('s.md', md), []);
   });
 
+  it('«лочит/лочим/залочить/лочится» ловятся, «оболочка» — нет (нет границы слова перед «лоч»)', () => {
+    const md =
+      'CI лочит версию перед релизом, мы лочим зависимость, нужно залочить схему — она лочится сама.';
+    const findings = checkSpecLanguage('s.md', md);
+    assert.ok(findings.every((f) => f.code === 'SDD_LANGUAGE_CALQUE'));
+    for (const w of ['лочит', 'лочим', 'залочить', 'лочится']) {
+      assert.ok(
+        findings.some((f) => f.message.toLowerCase().includes(w)),
+        `expected a finding mentioning "${w}"`
+      );
+    }
+    assert.deepStrictEqual(
+      checkSpecLanguage('s2.md', 'Модуль спрятан внутри оболочки адаптера.'),
+      []
+    );
+  });
+
+  it('«пиним/пинит/запинить/пин» (в т.ч. exact-пин) ловятся, «пинг»/«пинок» — нет', () => {
+    const md =
+      'Мы пиним версию в lock-файле, CI пинит зависимость, нужно запинить exact-пин пакета, ' +
+      'просто пин без глагола тоже калька.';
+    const findings = checkSpecLanguage('s.md', md);
+    assert.ok(findings.every((f) => f.code === 'SDD_LANGUAGE_CALQUE'));
+    for (const w of ['пиним', 'пинит', 'запинить', 'exact-пин']) {
+      assert.ok(
+        findings.some((f) => f.message.toLowerCase().includes(w.toLowerCase().split('-').pop()!)),
+        `expected a finding mentioning "${w}"`
+      );
+    }
+    assert.deepStrictEqual(
+      checkSpecLanguage(
+        's2.md',
+        'Сервис отвечает на пинг за 20мс, курьер получил пинок от начальства.'
+      ),
+      []
+    );
+  });
+
+  it('«автофиксит/автофиксят/автофиксится» ловится', () => {
+    const md = 'Линтер автофиксит простые нарушения, часть замечаний автофиксятся сами.';
+    const findings = checkSpecLanguage('s.md', md);
+    assert.ok(findings.length >= 2);
+    assert.ok(findings.every((f) => f.code === 'SDD_LANGUAGE_CALQUE'));
+    assert.ok(findings.every((f) => /автофикс/i.test(f.message)));
+  });
+
+  it('«гейтится/гейтим» ловится, голое «гейт» (заимствование-существительное) — нет', () => {
+    const md = 'Мердж гейтится на зелёный CI, релиз гейтим ручным подтверждением.';
+    const findings = checkSpecLanguage('s.md', md);
+    assert.ok(findings.length >= 2);
+    assert.ok(findings.every((f) => f.code === 'SDD_LANGUAGE_CALQUE'));
+    assert.deepStrictEqual(
+      checkSpecLanguage('s2.md', 'Перед мерджем стоит гейт — обязательный ревью.'),
+      []
+    );
+  });
+
+  it('«тулстек» и «тулчейн» ловятся', () => {
+    const md = 'Выбор тулстека зафиксирован в ADR, тулчейн проекта не меняется.';
+    const findings = checkSpecLanguage('s.md', md);
+    assert.ok(findings.some((f) => /тулстек/i.test(f.message)));
+    assert.ok(findings.some((f) => /тулчейн/i.test(f.message)));
+  });
+
+  it('«ресёрш/ресёрч» (кириллица) ловится, английское «research» в англ. тексте — нет', () => {
+    const md = 'Перед решением нужен ресёрч альтернатив, ресёрш ещё не закончен.';
+    const findings = checkSpecLanguage('s.md', md);
+    assert.ok(findings.length >= 2);
+    assert.ok(findings.every((f) => f.code === 'SDD_LANGUAGE_CALQUE'));
+    assert.deepStrictEqual(
+      checkSpecLanguage('s2.md', 'Do the research before picking a tool stack.'),
+      []
+    );
+  });
+
   describe('location: line + enclosing-sentence quote', () => {
     it('обычный текст — line указывает на строку вхождения, цитата — на целое предложение', () => {
       const md = [

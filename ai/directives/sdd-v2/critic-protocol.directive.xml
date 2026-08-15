@@ -25,6 +25,23 @@
       **English regardless of context:** code, JSDoc, intent comments, file paths, tool commands,
       axiom IDs (`AX_*`), Trace anchors, IDs (`D-NNN` / `TSK-NN` / `F-NNN` / `P<N>` / `H_*`),
       severity / status / scope-type tokens, BDD keywords, field labels (`**Status:**`, `**Why:**`).
+
+      **Не спрягать английские глагольные корни по-русски, когда есть готовый русский глагол:**
+      «лочит» → «фиксирует», «пиним» → «фиксируем версию», «автофиксят» → «исправляется
+      автоматически», «гейтится» → «проверяется гейтом». Семейство `tool*`: «тулы / тулинг /
+      тулчейн / тулстек» → «инструменты / инструментарий / Tool Stack» (последнее — только как имя
+      раздела, не переводится).
+
+      **Терминологическая дисциплина.** Доменное понятие фиксируется при ПЕРВОМ введении и дальше
+      переиспользуется ДОСЛОВНО во всех сообщениях и артефактах сессии — не переизобретать синоним
+      на середине прогона. Введя термин: `npx gennady sdd-session term "<термин> — <формулировка>"`
+      (пишет в секцию `glossary:` файла сессии, `SESSION_FILE_FORMAT`); перед тем как назвать уже
+      введённое понятие новым словом — сверься с `glossary:` в снапшоте `sdd-state`.
+
+      **Планка действует на каждое сообщение оператору, не только на артефакты.** Всё выше — кальки,
+      канцелярит, устойчивые термины — применяется к заголовкам Ask, вариантам ответа и объяснениям
+      в чате так же строго, как к спекам и тикетам. Вычистить кальку из спеки и продолжать говорить
+      ей в диалоге — не считается.
     </Axiom>
 
     <Axiom id="AX_OPERATOR_DIALOGUE_STYLE" cross-cutting="true">
@@ -95,6 +112,15 @@
       Judge value in the CONTEXT of the dependent system — read the Vision / Goals of the specs this one depends on (gathered by a tool, `AX_ISOLATION`), never critique a spec in isolation: a design can be internally clean yet wrong for the system it plugs into.
 
       Lead with these. The structural dimensions (boundary, entities, contracts, …) are SUPPORTING, not the point. A finding that only polishes — without touching goal, value, or a real blind spot — does not belong here (`AX_POLISH_MODE`).
+    </Axiom>
+
+    <Axiom id="AX_LANGUAGE_LENS">
+      Language quality is a legitimate finding class — verb-calques (`AX_OPERATOR_LANGUAGE`), канцелярит /
+      broken agreement (`AX_OPERATOR_DIALOGUE_STYLE`), a term drifting from the session `glossary:` — but
+      it is SECONDARY to `AX_PRODUCT_ARCHITECT_LENS`. A language finding rides along at `MINOR`, attached
+      to the round; it never drives the verdict to NEEDS_WORK by itself. Escalate it past `MINOR` only when
+      the wording actually distorts meaning — an ambiguous contract, a requirement two readers would
+      resolve differently — then judge it by ordinary `AX_SEVERITY`, not as language hygiene.
     </Axiom>
 
     <Axiom id="AX_UNCERTAINTY_IS_SIGNAL">"I don't understand X" is valid output. Uncertainty = underspecification.</Axiom>
@@ -193,7 +219,8 @@
         deterministic structural checks to the tool (`AX_MECHANICAL_VIA_SDD_CHECK`) — do not hand-redo them. Ask the uncomfortable
         questions (`AX_UNCOMFORTABLE_QUESTIONS`) — record each one the artifact leaves unanswered as a
         `GOAL` finding. THEN the supporting structural dimensions — `AX_SPEC_DIMENSIONS` (spec) /
-        `AX_TASK_DIMENSIONS` (task) — through a production lens (`AX_PRODUCTION_REALISM`). Per finding
+        `AX_TASK_DIMENSIONS` (task) — through a production lens (`AX_PRODUCTION_REALISM`), plus language
+        quality as a secondary lens (`AX_LANGUAGE_LENS`). Per finding
         under `## Problems found`: `### <dimension> — <summary>` then
         `Location | Finding | Why | Severity | Addressee | Suggested fix` (`AX_SEVERITY`, `AX_FINDING_ADDRESSEE`).
       </Action>

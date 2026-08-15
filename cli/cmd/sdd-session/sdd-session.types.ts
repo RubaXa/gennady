@@ -28,7 +28,7 @@ export const SET_FIELDS = ['intent', 'scale', 'open'] as const;
 export type SetField = (typeof SET_FIELDS)[number];
 
 /** @purpose The `field:` header lines SESSION_FILE_FORMAT defines, used to bound section inserts. */
-const FIELD_HEADER_RE = /^(intent|scale|working set|journal|open):/;
+const FIELD_HEADER_RE = /^(intent|scale|working set|glossary|journal|open):/;
 
 /**
  * @purpose Report whether text still carries an unreplaced placeholder.
@@ -52,6 +52,7 @@ export function buildSkeleton(date: string, intent: string, scale?: string): str
     `intent: ${intent}`,
     `scale: ${scale ?? '—'}`,
     'working set:',
+    'glossary:',
     'journal:',
     'open: —',
     '',
@@ -103,6 +104,70 @@ export function appendToSection(content: string, header: string, line: string): 
   return lines.join('\n');
 }
 
+/** @purpose The `term — phrasing` separator `sdd-session term` expects between the two halves of its payload. */
+const TERM_SEPARATOR = ' — ';
+
+/**
+ * @purpose Report whether a `term` payload has the required `<term> — <phrasing>` shape.
+ * @param entry Raw payload as typed after `sdd-session term`.
+ * @returns True when the em-dash separator is present with content on both sides.
+ */
+export function isValidTermEntry(entry: string): boolean {
+  const idx = entry.indexOf(TERM_SEPARATOR);
+  if (idx === -1) return false;
+  return (
+    entry.slice(0, idx).trim() !== '' && entry.slice(idx + TERM_SEPARATOR.length).trim() !== ''
+  );
+}
+
+/**
+ * @purpose Append one `  - <term> — <phrasing>` glossary entry under `glossary:`; replace the line
+ * in place when that term is already present.
+ * @invariant Creates the `glossary:` section (after `working set:`) when the file predates it.
+ * @param content Full session file content.
+ * @param entry Raw payload — `<term> — <phrasing>`, already validated by `isValidTermEntry`.
+ * @returns Updated content.
+ */
+export function setGlossaryTerm(content: string, entry: string): string {
+  const term = entry.slice(0, entry.indexOf(TERM_SEPARATOR)).trim();
+  const bullet = `  - ${entry}`;
+  const lines = content.split('\n');
+
+  let idx = lines.findIndex((l) => l.trim() === 'glossary:');
+  if (idx === -1) {
+    const wsIdx = lines.findIndex((l) => l.trim() === 'working set:');
+    let insertAt = lines.length;
+    if (wsIdx !== -1) {
+      insertAt = lines.length;
+      for (let i = wsIdx + 1; i < lines.length; i++) {
+        if (FIELD_HEADER_RE.test(lines[i].trim())) {
+          insertAt = i;
+          break;
+        }
+      }
+    }
+    lines.splice(insertAt, 0, 'glossary:');
+    idx = insertAt;
+  }
+
+  let sectionEnd = lines.length;
+  for (let i = idx + 1; i < lines.length; i++) {
+    if (FIELD_HEADER_RE.test(lines[i].trim())) {
+      sectionEnd = i;
+      break;
+    }
+  }
+  for (let i = idx + 1; i < sectionEnd; i++) {
+    const m = lines[i].match(/^\s*-\s*(.+?)\s+—\s+/);
+    if (m && m[1].trim() === term) {
+      lines[i] = bullet;
+      return lines.join('\n');
+    }
+  }
+  lines.splice(sectionEnd, 0, bullet);
+  return lines.join('\n');
+}
+
 /**
  * @purpose Build the bad-invocation diagnostic.
  * @param detail What was wrong.
@@ -117,7 +182,7 @@ export function badInvocation(detail: string): SessionOutcome {
       `[sdd-session] ${ERR_CLI_SDD_SESSION_BAD_INVOCATION}: ${detail}`,
       '  expected: gennady sdd-session open --intent <intent> [--scale <scale>]',
       '        | gennady sdd-session set <intent|scale|open> "<value>"',
-      '        | gennady sdd-session log "<line>" | workset "<line>" | close',
+      '        | gennady sdd-session log "<line>" | workset "<line>" | term "<term> — <phrasing>" | close',
     ].join('\n'),
   };
 }

@@ -26,6 +26,8 @@
 
     {{> "axiom/critic/ax-product-architect-lens"}}
 
+    {{> "axiom/critic/ax-language-lens"}}
+
     {{> "axiom/critic/ax-uncertainty-is-signal"}}
 
     {{> "axiom/critic/ax-uncomfortable-questions"}}
@@ -76,7 +78,8 @@
         deterministic structural checks to the tool (`AX_MECHANICAL_VIA_SDD_CHECK`) — do not hand-redo them. Ask the uncomfortable
         questions (`AX_UNCOMFORTABLE_QUESTIONS`) — record each one the artifact leaves unanswered as a
         `GOAL` finding. THEN the supporting structural dimensions — `AX_SPEC_DIMENSIONS` (spec) /
-        `AX_TASK_DIMENSIONS` (task) — through a production lens (`AX_PRODUCTION_REALISM`). Per finding
+        `AX_TASK_DIMENSIONS` (task) — through a production lens (`AX_PRODUCTION_REALISM`), plus language
+        quality as a secondary lens (`AX_LANGUAGE_LENS`). Per finding
         under `## Problems found`: `### <dimension> — <summary>` then
         `Location | Finding | Why | Severity | Addressee | Suggested fix` (`AX_SEVERITY`, `AX_FINDING_ADDRESSEE`).
       </Action>

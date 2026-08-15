@@ -670,6 +670,23 @@ const CALQUE_PATTERNS: { re: RegExp; say: string }[] = [
   { re: /подня[а-яё]*\s+сервис[а-яё]*/giu, say: 'запустить сервис' },
   { re: /на\s+проводе/giu, say: 'в ответе / запросе сервера' },
   { re: /разв(о|е)д[а-яё]*\s+провод[а-яё]*/giu, say: 'явно связать зависимости' },
+  // «лочит/лочим/залочить/лочится» — hybrid verb from "lock". Lookbehind bars a mid-word hit
+  // («оболочка» has "лоч" as a substring but no word boundary in front of it — stays unflagged).
+  { re: /(?<![а-яё])(за)?лоч[а-яё]*/giu, say: 'фиксирует / фиксируем' },
+  // «пиним/пинит/запинить/пин» (incl. "exact-пин") — hybrid verb/noun from "pin". Bounded suffix
+  // list + lookahead keeps «пинг» (ping) and «пинок» (a kick) — real words that happen to start
+  // the same way — off the list.
+  { re: /(?<![а-яё])(за)?пин(ить|ится|им|ит|ят|у)?(?![а-яё])/giu, say: 'фиксируем версию' },
+  { re: /(?<![а-яё])автофикс[а-яё]*/giu, say: 'исправляется автоматически' },
+  // «гейтится/гейтим» — only the verb hybrid; «гейт» itself (the noun, "gate") stays unflagged,
+  // same as «пайплайн»/«джоба» — an established loanword, not a calque.
+  { re: /гейт(ится|им|ят)[а-яё]*/giu, say: 'проверяется гейтом' },
+  { re: /тулстек[а-яё]*/giu, say: 'инструментарий (Tool Stack)' },
+  { re: /тулчейн[а-яё]*/giu, say: 'инструментарий' },
+  // «ресёрш/ресёрч» — Cyrillic noun only; the English word "research" inside English directive
+  // text is legitimate and untouched (the char class is Cyrillic-only, so a Latin "research"
+  // never matches this regex).
+  { re: /(?<![а-яё])рес[её]р[чш][а-яё]*/giu, say: 'поиск / исследование' },
 ];
 
 // Chancellery (канцелярит) markers — the AX_OPERATOR_DIALOGUE_STYLE ban on a noun standing in for

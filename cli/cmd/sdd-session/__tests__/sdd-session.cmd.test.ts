@@ -56,6 +56,7 @@ describe('SddSessionCommand', () => {
     assert.match(body, /intent: evolve-scope/);
     assert.match(body, /scale: —/);
     assert.match(body, /^working set:$/m);
+    assert.match(body, /^glossary:$/m);
     assert.match(body, /^journal:$/m);
     assert.match(body, /open: —/);
   });
@@ -150,7 +151,7 @@ describe('SddSessionCommand', () => {
       const body = readFileSync(sessionPath(), 'utf-8');
       assert.match(
         body,
-        /working set:\n {2}- specs\/web\/web\.spec\.md — add auth — open\njournal:/
+        /working set:\n {2}- specs\/web\/web\.spec\.md — add auth — open\nglossary:\njournal:/
       );
     });
 
@@ -166,11 +167,76 @@ describe('SddSessionCommand', () => {
       if (!o.ok) assert.strictEqual(o.exitCode, 4);
     });
 
+    it('term appends a glossary entry between working set: and journal:', async () => {
+      await mod.run(argv('term', 'скоуп — единица декомпозиции спек'), CLOCK);
+      const body = readFileSync(sessionPath(), 'utf-8');
+      assert.match(
+        body,
+        /working set:\nglossary:\n {2}- скоуп — единица декомпозиции спек\njournal:/
+      );
+    });
+
+    it('term appends a second entry after the first, still before journal:', async () => {
+      await mod.run(argv('term', 'скоуп — единица декомпозиции спек'), CLOCK);
+      await mod.run(argv('term', 'тикет — единица исполнения'), CLOCK);
+      const body = readFileSync(sessionPath(), 'utf-8');
+      assert.match(
+        body,
+        /glossary:\n {2}- скоуп — единица декомпозиции спек\n {2}- тикет — единица исполнения\njournal:/
+      );
+    });
+
+    it('term replaces the line for a duplicate term instead of appending a second one', async () => {
+      await mod.run(argv('term', 'скоуп — единица декомпозиции спек'), CLOCK);
+      await mod.run(argv('term', 'тикет — единица исполнения'), CLOCK);
+      await mod.run(argv('term', 'скоуп — top-level unit of decomposition'), CLOCK);
+      const body = readFileSync(sessionPath(), 'utf-8');
+      const glossaryLines = body.match(/^ {2}- .+$/gm) ?? [];
+      assert.strictEqual(glossaryLines.filter((l) => l.includes('скоуп')).length, 1);
+      assert.match(body, /- скоуп — top-level unit of decomposition/);
+      assert.ok(!body.includes('единица декомпозиции спек'));
+      assert.match(body, /- тикет — единица исполнения/);
+    });
+
+    it('term rejects a payload missing the " — " separator (exit 4)', async () => {
+      const o = await mod.run(argv('term', 'скоуп без разделителя'), CLOCK);
+      assert.strictEqual(o.ok, false);
+      if (!o.ok) assert.strictEqual(o.exitCode, 4);
+    });
+
+    it('term rejects a placeholder value (exit 2)', async () => {
+      const o = await mod.run(argv('term', '<term> — <phrasing>'), CLOCK);
+      assert.strictEqual(o.ok, false);
+      if (!o.ok) assert.strictEqual(o.exitCode, 2);
+    });
+
+    it('term needs content (exit 4)', async () => {
+      const o = await mod.run(argv('term'), CLOCK);
+      assert.strictEqual(o.ok, false);
+      if (!o.ok) assert.strictEqual(o.exitCode, 4);
+    });
+
     it('close deletes the session file', async () => {
       const o = await mod.run(argv('close'), CLOCK);
       assert.strictEqual(o.ok, true);
       assert.ok(!existsSync(sessionPath()));
     });
+  });
+
+  it('term creates the glossary: section (at the right spot) in a session file that predates it', async () => {
+    await mod.run(argv('open', '--intent', 'evolve-scope'), CLOCK);
+    // Simulate an old-format session file: no glossary: section.
+    const oldBody = readFileSync(sessionPath(), 'utf-8').replace(/^glossary:\n/m, '');
+    writeFileSync(sessionPath(), oldBody, 'utf-8');
+    assert.ok(!oldBody.includes('glossary:'));
+
+    const o = await mod.run(argv('term', 'скоуп — единица декомпозиции спек'), CLOCK);
+    assert.strictEqual(o.ok, true);
+    const body = readFileSync(sessionPath(), 'utf-8');
+    assert.match(
+      body,
+      /working set:\nglossary:\n {2}- скоуп — единица декомпозиции спек\njournal:/
+    );
   });
 
   it('set/log/workset/close exit 2 when there is no open session', async () => {
@@ -185,6 +251,10 @@ describe('SddSessionCommand', () => {
     const workset = await mod.run(argv('workset', 'x'), CLOCK);
     assert.strictEqual(workset.ok, false);
     if (!workset.ok) assert.strictEqual(workset.exitCode, 2);
+
+    const term = await mod.run(argv('term', 'x — y'), CLOCK);
+    assert.strictEqual(term.ok, false);
+    if (!term.ok) assert.strictEqual(term.exitCode, 2);
 
     const close = await mod.run(argv('close'), CLOCK);
     assert.strictEqual(close.ok, false);

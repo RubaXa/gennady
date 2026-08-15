@@ -24,6 +24,9 @@ export function printHelp(): void {
     '  npx gennady sdd-session workset "<line>"                          # append to working set'
   );
   console.info(
+    '  npx gennady sdd-session term "<term> — <phrasing>"                # add/replace a glossary entry'
+  );
+  console.info(
     '  npx gennady sdd-session close                                      # discard the session'
   );
   console.info('');

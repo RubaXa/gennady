@@ -12,12 +12,19 @@
   classification; `scale:` appears once a scope exists to size (root's own STEP_1/STEP_2 approval
   checks bind before any scope-level SCALE is meaningful).
 
+  The `glossary:` section is the session's terminology anchor (`AX_OPERATOR_LANGUAGE`): the first time
+  a domain concept is named, `npx gennady sdd-session term "<term> — <definition>"` appends it here;
+  every later mention of that concept — in chat or in an artifact — reuses the recorded name verbatim.
+  Before introducing a new name for something, check this list in the `sdd-state` snapshot first.
+
   ```markdown
   # SDD session — <YYYY-MM-DD>
   intent: <classified intent>
   scale: <product | library | module | function | fix> — operator-confirmed
   working set:
     - <scope / module spec path> — <why touched> — <status>
+  glossary:
+    - <term> — <definition>
   journal:
     - <step / loaded directive> → <what it produced>
   open: <unresolved decisions / questions>
