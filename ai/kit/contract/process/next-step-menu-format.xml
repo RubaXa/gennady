@@ -1,0 +1,14 @@
+<!-- source: sdd-v2 interview-protocol NEXT_STEP_MENU_FORMAT, extracted for reuse (root's end-of-flow continuity Ask) -->
+<Contract id="NEXT_STEP_MENU_FORMAT">
+  Rendered by the CALLING step's final step, after its artifact is written and verified. Shape:
+
+  1. One ✅ line — what was produced and what was checked
+     (`✅ Спека <path> записана · язык проверен · <N> диаграмм`).
+  2. `**Что дальше?**` + one `AskUserQuestion` call. Options (2–4) come from the caller's own
+     candidate table; the recommended option first with «(рекомендую)»; CHAINED options are
+     first-class («декомпозиция + критик следом», «scaffold + сразу execute») — one pick launches
+     the whole chain, the agent runs it without stopping between links unless a link fails.
+     Always include «Закончить сессию» last.
+  3. On pick: invoke the corresponding skill(s) / directive flow(s) directly — never answer with
+     «запусти /sdd-X сам».
+</Contract>

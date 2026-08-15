@@ -17,12 +17,14 @@
     modules) — that is the scope branch. Root writes only the project-level map.
   </Mission>
 
-  <BeliefState deps="AX_OPERATOR_LANGUAGE, AX_TOOL_INVOCATION, AX_OPERATOR_DIALOGUE_STYLE, AX_DIALOGUE_DISCIPLINE, AX_OPERATOR_SAFEGUARD, AX_NO_PROCESS_NARRATION, AX_STATELESS_ARTIFACT">
+  <BeliefState deps="AX_OPERATOR_LANGUAGE, AX_TOOL_INVOCATION, AX_OPERATOR_DIALOGUE_STYLE, AX_DIALOGUE_DISCIPLINE, AX_OPERATOR_SAFEGUARD, AX_NO_PROCESS_NARRATION, AX_STATELESS_ARTIFACT, AX_READER_WITHOUT_SESSION_CONTEXT">
     {{> "axiom/spec/ax-portal-primary-owner"}}
 
     {{> "axiom/scaffold/ax-idempotent-modes"}}
 
     {{> "axiom/spec/ax-scope-graph-discipline"}}
+
+    {{> "axiom/spec/ax-separation-of-concerns"}}
 
     {{> "axiom/infra/ax-infra-base-bootstrap"}}
 
@@ -82,11 +84,18 @@
         otherwise `QUESTION_FORMAT`: «Что строим? Опиши vision одним предложением.» with an escape option
         «Пока не знаю — предложи сам». Vision is the one field of genuine human intent in this step — the
         agent never fabricates it unasked, because a wrong guess here is an expensive semantic error to
-        unwind later. If the operator picks the escape option, draft a vision candidate from whatever
-        context already exists (project name, intake, README) and present it back for confirm-or-edit — a
-        drafted vision is never treated as locked without that confirmation. On an idempotent update (a
-        Vision already exists), propose an intake-derived revision instead of asking from scratch.
-        Approval Check. STOP.
+        unwind later. Once the operator answers, the agent does NOT compress the answer — it NORMALIZES
+        it: the proposed wording passes the reader test from `AX_READER_WITHOUT_SESSION_CONTEXT` (would a
+        specialist with zero memory of this session understand and act on it?), which means expanding
+        jargon and shorthand into plain terms while keeping every semantic anchor the operator actually
+        said — dropping one is a loss, even if the sentence gets shorter as a side effect. Russian text
+        quality follows `AX_OPERATOR_LANGUAGE` (flat, plain, no calque); the same bar audit checks later
+        under `AX_LANGUAGE_QUALITY_CHECK` applies here at authoring time, not just at review time. The
+        normalized wording is proposed back for confirm-or-edit, same as before — never treated as locked
+        without that confirmation. If the operator picks the escape option, draft a vision candidate from
+        whatever context already exists (project name, intake, README) and present it back the same way.
+        On an idempotent update (a Vision already exists), propose an intake-derived revision instead of
+        asking from scratch. Approval Check. STOP.
       </Action>
     </Step>
     <Step id="STEP_2_SCOPE_GRAPH">
@@ -94,7 +103,8 @@
       <Action>
         On greenfield init (graph still empty), propose scope candidates in ONE multiSelect
         `AskUserQuestion` call (`multiSelect: true`) derived from the just-locked Vision — never asked as
-        free text first: the product-scope (name derived from Vision, kebab-case), then `infra-base`
+        free text first. Draw each candidate's boundary per `AX_SEPARATION_OF_CONCERNS` (data/domain ↔
+        UI/presentation ↔ infrastructure; a shared core only once ≥2 consumers need it): the product-scope (name derived from Vision, kebab-case), then `infra-base`
         tagged «(Recommended)» with description «гейты: type-check/test/lint — обязательна перед
         scaffold/execute», then `interface` / `library` candidates only when the Vision actually implies
         them. The operator clicks checkboxes rather than composing scope names from scratch; the tool's
@@ -142,8 +152,11 @@
       <Goal>Materialize the minimal infra-base spec if tooling was declared.</Goal>
       <Action>
         No tooling declared → skip. Else, per `AX_INFRA_BASE_BOOTSTRAP`,
-        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/infra-base-minimal-spec.xml")`
-        and write `specs/infra-base/infra-base.spec.md` to that format (scope-type infrastructure,
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/infra-base-minimal-spec.xml")`,
+        then scaffold the file via the CLI — `npx gennady sdd-new infrastructure --scope infra-base`
+        (it creates directories itself and prints the section manifest; writing the spec from a blank
+        Write instead of the scaffold is the same violation as hand-writing the portal skeleton) —
+        and fill the skeleton to that format (scope-type infrastructure,
         one-sentence Vision, Tool Stack table, note pointing to `discovery infra-base` for the full
         Decision Log — the bootstrap only locks the tool choice, the full `infra` flow comes later).
         Approval Check. STOP.
@@ -162,7 +175,18 @@
         owner of `specs/README.md` and the only flow that rewrites it (`AX_PORTAL_PRIMARY_OWNER`).
         Write the file. Then run `sdd-check --all .` to verify portal integrity —
         graph acyclicity, graph↔table↔spec coherence, no orphan specs or dangling scope references — and
-        resolve any finding before finishing, per `AX_CLOSE_WITH_INTEGRITY_CHECK`. Approval Check. STOP.
+        resolve any finding before finishing, per `AX_CLOSE_WITH_INTEGRITY_CHECK`. Approval Check.
+
+        The flow never ends on bare text telling the operator to run `/sdd` themselves — close per
+        `NEXT_STEP_MENU_FORMAT`: one ✅ line (portal written, integrity checked), then ONE
+        `AskUserQuestion` with two named options. Option 1, recommended: «Продолжить здесь: discovery
+        `<первый скоуп по графу>`» — the first scope in Scope Graph dependency order (the level-0 /
+        foundation scope, e.g. `infra-base` when present, else the lowest-level scope just added). On
+        this pick, do NOT end the session — hand control to that scope's branch of the router's own
+        `LOGIC_SWITCH` immediately (the `scope` or `infra` case, by that scope's scope-type), in the
+        SAME session, exactly as `LOGIC_SWITCH`'s multi-scope case already chains branches. Option 2:
+        «Закончить сессию» — on this pick, print a short resume instruction instead (`/sdd` + name the
+        scope to design next) and stop; no directive loads. STOP.
       </Action>
     </Step>
   </ExecutionPlan>
@@ -181,6 +205,8 @@
     {{> "contract/process/side-dive-format"}}
 
     {{> "contract/process/flow-diagram-when"}}
+
+    {{> "contract/process/next-step-menu-format"}}
 
     {{> "axiom/process/ax-progressive-disclosure"}}
   </ChatOutput>

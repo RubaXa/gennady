@@ -166,7 +166,7 @@
   <ChatOutput>
     <Contract id="QUESTION_FORMAT">
       Explain, then ask through the tool — a question never fires as bare free-form text. A
-      `### ❓ <о чём решаем>` section header names the decision in plain words (no `Q<N>` numbering, no
+      `### 💡 <О чём решаем>` section header names the decision in plain words (no `Q<N>` numbering, no
       semantic question IDs); under it, ordinary language explains the question BEFORE any tool call
       fires — the context, the real options, and a recommendation gated by `AX_DIVERGE_BEFORE_RECOMMEND`
       (low-stakes: a direct pick is fine; high-stakes / architecture: do not pre-anchor one option — lay
@@ -188,7 +188,7 @@
       Low-stakes — a recommendation is allowed, but only as the result of `AX_DIVERGE_BEFORE_RECOMMEND`
       (not the first typical answer):
 
-      ### ❓ Формат хранения токенов
+      ### 💡 Формат хранения токенов
       Нужно решить, где держать design-токены: сгенерированный JSON проще парсить скриптам, а
       TS-модуль даёт автокомплит в IDE — для одного пакета без внешних потребителей разница небольшая.
       ✅ **JSON-файл** `[tokens.json]` — проще парсить любым языком, ничего специфичного для TS.
@@ -201,7 +201,7 @@
       non-obvious / tail one) with «за / против» and let the operator choose; or give a recommendation
       only alongside its strongest alternative and the reason it might win:
 
-      ### ❓ Стратегия миграции v1→v2
+      ### 💡 Стратегия миграции v1→v2
       Три пути дают разный профиль риска и времени простоя, и откат стоит по-разному в каждом.
       - **Big-bang** `[migrate-all]` — _за: один переход, нет промежуточного состояния · против: долгий
         простой, откат дорогой_
@@ -215,7 +215,7 @@
       A plain binary question needs no list — recommendation + inline alternative, still explained
       before the call:
 
-      ### ❓ Нужен ли отдельный interface-скоуп
+      ### 💡 Нужен ли отдельный interface-скоуп
       Все текущие потребители — web; про API и будущих клиентов явно не говорили.
       ✅ **Пока не выделять** — можно добавить позже без миграции. _или сразу выделить, если API уже в
       планах?_

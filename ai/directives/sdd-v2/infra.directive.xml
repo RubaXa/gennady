@@ -191,11 +191,22 @@
     <Step id="STEP_3_TOOL_CHOICES">
       <Goal>Choose a tool per category.</Goal>
       <Action>
-        Per category, 2–3 candidates with trade-offs per `AX_DIVERGE_BEFORE_RECOMMEND` (reach past the
-        obvious default; judge against THIS project). Operator picks → Mandatory Rationale Pull →
-        Decision Log entry per `AX_DECISION_LOG_REQUIRED` (`DECISION_LOG_ENTRY_FORMAT`); no tool locked
-        without one (`H_TOOL_LOCKED_WITHOUT_DECISION`). Tool Interaction Check (linter vs formatter,
-        runner vs type-check, CI vs package manager). STOP.
+        Research gate before candidates — applies to categories being picked or reconsidered NOW
+        (`greenfield`, or `refine`/`pivot` touching a category not already locked in the spec); skip it
+        for a `fix`/`module`-scale session where the category is already locked in the existing infra
+        spec, per `AX_SCALE_PROPORTIONAL_DEPTH` — no revisit, no research. Where it applies: run 2–3
+        targeted WebSearch queries per category under revision — is each candidate alive and current
+        (not abandoned / superseded), and how it compares on AI-agent friendliness for the current year
+        (text-configurable, autofix, machine-readable diagnostics) — before drafting candidates from
+        memory. Then per category, 2–3 candidates with trade-offs per `AX_DIVERGE_BEFORE_RECOMMEND`
+        (reach past the obvious default; judge against THIS project); for each candidate presented,
+        one line stating why it's here per the research (not recall) plus the source, and a currency /
+        AI-friendliness note. If WebSearch is unavailable in this environment, say so plainly instead of
+        silently falling back — `предлагаю по памяти на <дата обучения модели>, ресёрч недоступен` — a
+        named caveat, not silence. Operator picks → Mandatory Rationale Pull → Decision Log entry per
+        `AX_DECISION_LOG_REQUIRED` (`DECISION_LOG_ENTRY_FORMAT`); no tool locked without one
+        (`H_TOOL_LOCKED_WITHOUT_DECISION`). Tool Interaction Check (linter vs formatter, runner vs
+        type-check, CI vs package manager). STOP.
       </Action>
     </Step>
     <Step id="STEP_4_DEV_WORKFLOW">
@@ -248,7 +259,7 @@
   <ChatProtocol>
     <Contract id="QUESTION_FORMAT">
       Explain, then ask through the tool — a question never fires as bare free-form text. A
-      `### ❓ <о чём решаем>` section header names the decision in plain words (no `Q<N>` numbering, no
+      `### 💡 <О чём решаем>` section header names the decision in plain words (no `Q<N>` numbering, no
       semantic question IDs); under it, ordinary language explains the question BEFORE any tool call
       fires — the context, the real options, and a recommendation gated by `AX_DIVERGE_BEFORE_RECOMMEND`
       (low-stakes: a direct pick is fine; high-stakes / architecture: do not pre-anchor one option — lay
@@ -270,7 +281,7 @@
       Low-stakes — a recommendation is allowed, but only as the result of `AX_DIVERGE_BEFORE_RECOMMEND`
       (not the first typical answer):
 
-      ### ❓ Формат хранения токенов
+      ### 💡 Формат хранения токенов
       Нужно решить, где держать design-токены: сгенерированный JSON проще парсить скриптам, а
       TS-модуль даёт автокомплит в IDE — для одного пакета без внешних потребителей разница небольшая.
       ✅ **JSON-файл** `[tokens.json]` — проще парсить любым языком, ничего специфичного для TS.
@@ -283,7 +294,7 @@
       non-obvious / tail one) with «за / против» and let the operator choose; or give a recommendation
       only alongside its strongest alternative and the reason it might win:
 
-      ### ❓ Стратегия миграции v1→v2
+      ### 💡 Стратегия миграции v1→v2
       Три пути дают разный профиль риска и времени простоя, и откат стоит по-разному в каждом.
       - **Big-bang** `[migrate-all]` — _за: один переход, нет промежуточного состояния · против: долгий
         простой, откат дорогой_
@@ -297,7 +308,7 @@
       A plain binary question needs no list — recommendation + inline alternative, still explained
       before the call:
 
-      ### ❓ Нужен ли отдельный interface-скоуп
+      ### 💡 Нужен ли отдельный interface-скоуп
       Все текущие потребители — web; про API и будущих клиентов явно не говорили.
       ✅ **Пока не выделять** — можно добавить позже без миграции. _или сразу выделить, если API уже в
       планах?_
@@ -322,26 +333,42 @@
       ## `<glyph>` `<scope>` — одной фразой, что делаем
 
       ### 🤔 Как я понял задачу    — per `UNDERSTANDING_BLOCK_FORMAT` (goes at the TOP)
-      ### 🎯 главное решение       — the crux in plain words; add a diagram per `FLOW_DIAGRAM_WHEN` if it is a flow
-      ### ❓ <о чём решаем>         — per `QUESTION_FORMAT`
+      ### 🎯 Главное решение       — the crux in plain words; add a diagram per `FLOW_DIAGRAM_WHEN` if it is a flow
+      ### 💡 <О чём решаем>         — per `QUESTION_FORMAT`
       ### ↓ Детали — по желанию    — reasoning, full comparison, change-list (per `AX_PROGRESSIVE_DISCLOSURE`)
 
-      Header glyph `<glyph>` — closed dictionary, keyed by the step's TYPE, never a free pick:
+      Glyph dictionary — closed inventory, one assigned meaning each, never a free pick. Every glyph
+      here is chosen to read clearly on BOTH a light and a dark terminal/chat theme — half-tone shading
+      characters (`░ ▒ ▓` and similar) are forbidden anywhere in this layout: they render as near-invisible
+      or vanish outright depending on theme.
+
+      Section-header glyphs (fixed, one per header, in the order above):
+      - `🤔` — the agent's own understanding check, at the top of a decision card
+      - `🎯` — the crux decision, in plain words
+      - `💡` — a decision the agent is proposing for the operator to confirm or pick between
+      - `↓` — folded detail, expand on demand
+
+      Step-TYPE glyphs (fixed, keyed by the step's TYPE, used in the service line / breadcrumb, never a free pick):
       - `🏗` — creation / scaffold (new spec, new tickets, new files)
       - `🔍` — audit / review (fresh-eyes read, no write)
       - `🔧` — fix / reconcile (spec ⟷ code drift repair)
       - `⚡` — execute (a task ticket's phases running)
       - `🗺` — routing / overview (intent classification, project-level map)
-      No other emoji appear in message or section headers — the glyphs above and the four fixed
-      `### <glyph>` markers are the only ones this layout permits.
+
+      Breadcrumb-status glyphs (per `BREADCRUMB_FORMAT`): `✅` done · `▶️` active · `◻️` not yet.
+
+      No other emoji appear in message or section headers — the glyphs enumerated above are the only
+      ones this layout permits.
     </Contract>
 
     <Contract id="BREADCRUMB_FORMAT">
-      One line under the service line: this session's milestones, each with a status marker — `✅` done
-      · `▶️` now · `░` not yet. Delta only; never re-list everything already settled. This is the
-      «where are we», and it replaces a verbose run-on of finished steps.
+      One line under the service line: this session's milestones, each rendered `<Name> <status>`, with
+      a status marker chosen for legibility on BOTH light and dark themes — no half-tone shading
+      characters (`░ ▒ ▓`) anywhere, they vanish depending on theme. Status set: `✅` done · `▶️` active
+      (the step running now) · `◻️` not yet reached. Delta only; never re-list everything already
+      settled. This is the «where are we», and it replaces a verbose run-on of finished steps.
 
-      `<Веха>` ✅ · `<Веха>` ✅ · `<Веха>` ▶️ · `<Веха>` ░ · `<Веха>` ░
+      `Vision ✅ · Scope Graph ▶️ · Infra ◻️ · Portal ◻️`
     </Contract>
 
     <Contract id="UNDERSTANDING_BLOCK_FORMAT">

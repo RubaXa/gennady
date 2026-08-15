@@ -31,6 +31,8 @@
 
     {{> "axiom/spec/ax-module-boundary-by-operator"}}
 
+    {{> "axiom/spec/ax-separation-of-concerns"}}
+
     {{> "axiom/spec/ax-hierarchical-specs"}}
 
     {{> "axiom/spec/ax-scope-spec-module-map-ownership"}}
@@ -120,7 +122,9 @@
     <Step id="STEP_1_MODULE_MAP">
       <Goal>Lock module boundaries; update the scope Module Map.</Goal>
       <Action>
-        Propose module boundaries; the operator confirms (`AX_MODULE_BOUNDARY_BY_OPERATOR`). Update
+        Propose module boundaries along `AX_SEPARATION_OF_CONCERNS` (data/domain ↔ UI/presentation ↔
+        infrastructure; a shared core only once ≥2 consumers need it); the operator confirms
+        (`AX_MODULE_BOUNDARY_BY_OPERATOR`). Update
         the scope spec Module Map append-only (`AX_SCOPE_SPEC_MODULE_MAP_OWNERSHIP`) —
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/module-map-update.xml")`. `add-module`
         appends only (`AX_APPEND_ONLY_MODULE_ADD`). On `initial` this is the monolith→index migration

@@ -17,7 +17,7 @@
     modules) — that is the scope branch. Root writes only the project-level map.
   </Mission>
 
-  <BeliefState deps="AX_OPERATOR_LANGUAGE, AX_TOOL_INVOCATION, AX_OPERATOR_DIALOGUE_STYLE, AX_DIALOGUE_DISCIPLINE, AX_OPERATOR_SAFEGUARD, AX_NO_PROCESS_NARRATION, AX_STATELESS_ARTIFACT">
+  <BeliefState deps="AX_OPERATOR_LANGUAGE, AX_TOOL_INVOCATION, AX_OPERATOR_DIALOGUE_STYLE, AX_DIALOGUE_DISCIPLINE, AX_OPERATOR_SAFEGUARD, AX_NO_PROCESS_NARRATION, AX_STATELESS_ARTIFACT, AX_READER_WITHOUT_SESSION_CONTEXT">
     <Axiom id="AX_PORTAL_PRIMARY_OWNER">
       The `root` flow is the primary owner of `specs/README.md`. Other flows MUST NOT rewrite this file. Reads are unrestricted.
 
@@ -42,6 +42,15 @@
       - Cycle in the graph → `H_CYCLE_IN_GRAPH` (abort).
       - scope-type constraints: `infrastructure` and `interface` scopes are typically leaves (depend only on other infra / interface). `product` and `library` scopes depend on infra + interface.
       - The graph is rendered as a Mermaid `graph TD` block inside the Portal.
+    </Axiom>
+
+    <Axiom id="AX_SEPARATION_OF_CONCERNS">
+      When proposing scope or module candidates, draw the boundary along three axes, never mixed into
+      one unit: data / domain (business rules, state, persistence) ↔ UI / presentation (view,
+      rendering, user interaction) ↔ infrastructure (transport, deployment, third-party wiring). A
+      candidate spanning two axes is a signal to split it, not a shortcut to take.
+      A shared core is extracted from these axes only once ≥2 real consumers need it — never
+      speculatively (`AX_YAGNI_OVERENGINEERING_GUARD`); a single consumer stays inline.
     </Axiom>
 
     <Axiom id="AX_INFRA_BASE_BOOTSTRAP">
@@ -69,7 +78,7 @@
   <ChatProtocol>
     <Contract id="QUESTION_FORMAT">
       Explain, then ask through the tool — a question never fires as bare free-form text. A
-      `### ❓ <о чём решаем>` section header names the decision in plain words (no `Q<N>` numbering, no
+      `### 💡 <О чём решаем>` section header names the decision in plain words (no `Q<N>` numbering, no
       semantic question IDs); under it, ordinary language explains the question BEFORE any tool call
       fires — the context, the real options, and a recommendation gated by `AX_DIVERGE_BEFORE_RECOMMEND`
       (low-stakes: a direct pick is fine; high-stakes / architecture: do not pre-anchor one option — lay
@@ -91,7 +100,7 @@
       Low-stakes — a recommendation is allowed, but only as the result of `AX_DIVERGE_BEFORE_RECOMMEND`
       (not the first typical answer):
 
-      ### ❓ Формат хранения токенов
+      ### 💡 Формат хранения токенов
       Нужно решить, где держать design-токены: сгенерированный JSON проще парсить скриптам, а
       TS-модуль даёт автокомплит в IDE — для одного пакета без внешних потребителей разница небольшая.
       ✅ **JSON-файл** `[tokens.json]` — проще парсить любым языком, ничего специфичного для TS.
@@ -104,7 +113,7 @@
       non-obvious / tail one) with «за / против» and let the operator choose; or give a recommendation
       only alongside its strongest alternative and the reason it might win:
 
-      ### ❓ Стратегия миграции v1→v2
+      ### 💡 Стратегия миграции v1→v2
       Три пути дают разный профиль риска и времени простоя, и откат стоит по-разному в каждом.
       - **Big-bang** `[migrate-all]` — _за: один переход, нет промежуточного состояния · против: долгий
         простой, откат дорогой_
@@ -118,7 +127,7 @@
       A plain binary question needs no list — recommendation + inline alternative, still explained
       before the call:
 
-      ### ❓ Нужен ли отдельный interface-скоуп
+      ### 💡 Нужен ли отдельный interface-скоуп
       Все текущие потребители — web; про API и будущих клиентов явно не говорили.
       ✅ **Пока не выделять** — можно добавить позже без миграции. _или сразу выделить, если API уже в
       планах?_
@@ -172,11 +181,18 @@
         otherwise `QUESTION_FORMAT`: «Что строим? Опиши vision одним предложением.» with an escape option
         «Пока не знаю — предложи сам». Vision is the one field of genuine human intent in this step — the
         agent never fabricates it unasked, because a wrong guess here is an expensive semantic error to
-        unwind later. If the operator picks the escape option, draft a vision candidate from whatever
-        context already exists (project name, intake, README) and present it back for confirm-or-edit — a
-        drafted vision is never treated as locked without that confirmation. On an idempotent update (a
-        Vision already exists), propose an intake-derived revision instead of asking from scratch.
-        Approval Check. STOP.
+        unwind later. Once the operator answers, the agent does NOT compress the answer — it NORMALIZES
+        it: the proposed wording passes the reader test from `AX_READER_WITHOUT_SESSION_CONTEXT` (would a
+        specialist with zero memory of this session understand and act on it?), which means expanding
+        jargon and shorthand into plain terms while keeping every semantic anchor the operator actually
+        said — dropping one is a loss, even if the sentence gets shorter as a side effect. Russian text
+        quality follows `AX_OPERATOR_LANGUAGE` (flat, plain, no calque); the same bar audit checks later
+        under `AX_LANGUAGE_QUALITY_CHECK` applies here at authoring time, not just at review time. The
+        normalized wording is proposed back for confirm-or-edit, same as before — never treated as locked
+        without that confirmation. If the operator picks the escape option, draft a vision candidate from
+        whatever context already exists (project name, intake, README) and present it back the same way.
+        On an idempotent update (a Vision already exists), propose an intake-derived revision instead of
+        asking from scratch. Approval Check. STOP.
       </Action>
     </Step>
     <Step id="STEP_2_SCOPE_GRAPH">
@@ -184,7 +200,8 @@
       <Action>
         On greenfield init (graph still empty), propose scope candidates in ONE multiSelect
         `AskUserQuestion` call (`multiSelect: true`) derived from the just-locked Vision — never asked as
-        free text first: the product-scope (name derived from Vision, kebab-case), then `infra-base`
+        free text first. Draw each candidate's boundary per `AX_SEPARATION_OF_CONCERNS` (data/domain ↔
+        UI/presentation ↔ infrastructure; a shared core only once ≥2 consumers need it): the product-scope (name derived from Vision, kebab-case), then `infra-base`
         tagged «(Recommended)» with description «гейты: type-check/test/lint — обязательна перед
         scaffold/execute», then `interface` / `library` candidates only when the Vision actually implies
         them. The operator clicks checkboxes rather than composing scope names from scratch; the tool's
@@ -232,8 +249,11 @@
       <Goal>Materialize the minimal infra-base spec if tooling was declared.</Goal>
       <Action>
         No tooling declared → skip. Else, per `AX_INFRA_BASE_BOOTSTRAP`,
-        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/infra-base-minimal-spec.xml")`
-        and write `specs/infra-base/infra-base.spec.md` to that format (scope-type infrastructure,
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/infra-base-minimal-spec.xml")`,
+        then scaffold the file via the CLI — `npx gennady sdd-new infrastructure --scope infra-base`
+        (it creates directories itself and prints the section manifest; writing the spec from a blank
+        Write instead of the scaffold is the same violation as hand-writing the portal skeleton) —
+        and fill the skeleton to that format (scope-type infrastructure,
         one-sentence Vision, Tool Stack table, note pointing to `discovery infra-base` for the full
         Decision Log — the bootstrap only locks the tool choice, the full `infra` flow comes later).
         Approval Check. STOP.
@@ -252,7 +272,18 @@
         owner of `specs/README.md` and the only flow that rewrites it (`AX_PORTAL_PRIMARY_OWNER`).
         Write the file. Then run `sdd-check --all .` to verify portal integrity —
         graph acyclicity, graph↔table↔spec coherence, no orphan specs or dangling scope references — and
-        resolve any finding before finishing, per `AX_CLOSE_WITH_INTEGRITY_CHECK`. Approval Check. STOP.
+        resolve any finding before finishing, per `AX_CLOSE_WITH_INTEGRITY_CHECK`. Approval Check.
+
+        The flow never ends on bare text telling the operator to run `/sdd` themselves — close per
+        `NEXT_STEP_MENU_FORMAT`: one ✅ line (portal written, integrity checked), then ONE
+        `AskUserQuestion` with two named options. Option 1, recommended: «Продолжить здесь: discovery
+        `<первый скоуп по графу>`» — the first scope in Scope Graph dependency order (the level-0 /
+        foundation scope, e.g. `infra-base` when present, else the lowest-level scope just added). On
+        this pick, do NOT end the session — hand control to that scope's branch of the router's own
+        `LOGIC_SWITCH` immediately (the `scope` or `infra` case, by that scope's scope-type), in the
+        SAME session, exactly as `LOGIC_SWITCH`'s multi-scope case already chains branches. Option 2:
+        «Закончить сессию» — on this pick, print a short resume instruction instead (`/sdd` + name the
+        scope to design next) and stop; no directive loads. STOP.
       </Action>
     </Step>
   </ExecutionPlan>
@@ -273,26 +304,42 @@
       ## `<glyph>` `<scope>` — одной фразой, что делаем
 
       ### 🤔 Как я понял задачу    — per `UNDERSTANDING_BLOCK_FORMAT` (goes at the TOP)
-      ### 🎯 главное решение       — the crux in plain words; add a diagram per `FLOW_DIAGRAM_WHEN` if it is a flow
-      ### ❓ <о чём решаем>         — per `QUESTION_FORMAT`
+      ### 🎯 Главное решение       — the crux in plain words; add a diagram per `FLOW_DIAGRAM_WHEN` if it is a flow
+      ### 💡 <О чём решаем>         — per `QUESTION_FORMAT`
       ### ↓ Детали — по желанию    — reasoning, full comparison, change-list (per `AX_PROGRESSIVE_DISCLOSURE`)
 
-      Header glyph `<glyph>` — closed dictionary, keyed by the step's TYPE, never a free pick:
+      Glyph dictionary — closed inventory, one assigned meaning each, never a free pick. Every glyph
+      here is chosen to read clearly on BOTH a light and a dark terminal/chat theme — half-tone shading
+      characters (`░ ▒ ▓` and similar) are forbidden anywhere in this layout: they render as near-invisible
+      or vanish outright depending on theme.
+
+      Section-header glyphs (fixed, one per header, in the order above):
+      - `🤔` — the agent's own understanding check, at the top of a decision card
+      - `🎯` — the crux decision, in plain words
+      - `💡` — a decision the agent is proposing for the operator to confirm or pick between
+      - `↓` — folded detail, expand on demand
+
+      Step-TYPE glyphs (fixed, keyed by the step's TYPE, used in the service line / breadcrumb, never a free pick):
       - `🏗` — creation / scaffold (new spec, new tickets, new files)
       - `🔍` — audit / review (fresh-eyes read, no write)
       - `🔧` — fix / reconcile (spec ⟷ code drift repair)
       - `⚡` — execute (a task ticket's phases running)
       - `🗺` — routing / overview (intent classification, project-level map)
-      No other emoji appear in message or section headers — the glyphs above and the four fixed
-      `### <glyph>` markers are the only ones this layout permits.
+
+      Breadcrumb-status glyphs (per `BREADCRUMB_FORMAT`): `✅` done · `▶️` active · `◻️` not yet.
+
+      No other emoji appear in message or section headers — the glyphs enumerated above are the only
+      ones this layout permits.
     </Contract>
 
     <Contract id="BREADCRUMB_FORMAT">
-      One line under the service line: this session's milestones, each with a status marker — `✅` done
-      · `▶️` now · `░` not yet. Delta only; never re-list everything already settled. This is the
-      «where are we», and it replaces a verbose run-on of finished steps.
+      One line under the service line: this session's milestones, each rendered `<Name> <status>`, with
+      a status marker chosen for legibility on BOTH light and dark themes — no half-tone shading
+      characters (`░ ▒ ▓`) anywhere, they vanish depending on theme. Status set: `✅` done · `▶️` active
+      (the step running now) · `◻️` not yet reached. Delta only; never re-list everything already
+      settled. This is the «where are we», and it replaces a verbose run-on of finished steps.
 
-      `<Веха>` ✅ · `<Веха>` ✅ · `<Веха>` ▶️ · `<Веха>` ░ · `<Веха>` ░
+      `Vision ✅ · Scope Graph ▶️ · Infra ◻️ · Portal ◻️`
     </Contract>
 
     <Contract id="UNDERSTANDING_BLOCK_FORMAT">
@@ -324,6 +371,20 @@
               ▲                                  │
               └──── снова есть ──── ПАУЗА ◄───────┘  что-то пропало
       ```
+    </Contract>
+
+    <Contract id="NEXT_STEP_MENU_FORMAT">
+      Rendered by the CALLING step's final step, after its artifact is written and verified. Shape:
+
+      1. One ✅ line — what was produced and what was checked
+         (`✅ Спека <path> записана · язык проверен · <N> диаграмм`).
+      2. `**Что дальше?**` + one `AskUserQuestion` call. Options (2–4) come from the caller's own
+         candidate table; the recommended option first with «(рекомендую)»; CHAINED options are
+         first-class («декомпозиция + критик следом», «scaffold + сразу execute») — one pick launches
+         the whole chain, the agent runs it without stopping between links unless a link fails.
+         Always include «Закончить сессию» last.
+      3. On pick: invoke the corresponding skill(s) / directive flow(s) directly — never answer with
+         «запусти /sdd-X сам».
     </Contract>
 
     <Axiom id="AX_PROGRESSIVE_DISCLOSURE" cross-cutting="true">

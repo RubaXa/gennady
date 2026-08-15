@@ -10,16 +10,30 @@
   ## `<glyph>` `<scope>` — одной фразой, что делаем
 
   ### 🤔 Как я понял задачу    — per `UNDERSTANDING_BLOCK_FORMAT` (goes at the TOP)
-  ### 🎯 главное решение       — the crux in plain words; add a diagram per `FLOW_DIAGRAM_WHEN` if it is a flow
-  ### ❓ <о чём решаем>         — per `QUESTION_FORMAT`
+  ### 🎯 Главное решение       — the crux in plain words; add a diagram per `FLOW_DIAGRAM_WHEN` if it is a flow
+  ### 💡 <О чём решаем>         — per `QUESTION_FORMAT`
   ### ↓ Детали — по желанию    — reasoning, full comparison, change-list (per `AX_PROGRESSIVE_DISCLOSURE`)
 
-  Header glyph `<glyph>` — closed dictionary, keyed by the step's TYPE, never a free pick:
+  Glyph dictionary — closed inventory, one assigned meaning each, never a free pick. Every glyph
+  here is chosen to read clearly on BOTH a light and a dark terminal/chat theme — half-tone shading
+  characters (`░ ▒ ▓` and similar) are forbidden anywhere in this layout: they render as near-invisible
+  or vanish outright depending on theme.
+
+  Section-header glyphs (fixed, one per header, in the order above):
+  - `🤔` — the agent's own understanding check, at the top of a decision card
+  - `🎯` — the crux decision, in plain words
+  - `💡` — a decision the agent is proposing for the operator to confirm or pick between
+  - `↓` — folded detail, expand on demand
+
+  Step-TYPE glyphs (fixed, keyed by the step's TYPE, used in the service line / breadcrumb, never a free pick):
   - `🏗` — creation / scaffold (new spec, new tickets, new files)
   - `🔍` — audit / review (fresh-eyes read, no write)
   - `🔧` — fix / reconcile (spec ⟷ code drift repair)
   - `⚡` — execute (a task ticket's phases running)
   - `🗺` — routing / overview (intent classification, project-level map)
-  No other emoji appear in message or section headers — the glyphs above and the four fixed
-  `### <glyph>` markers are the only ones this layout permits.
+
+  Breadcrumb-status glyphs (per `BREADCRUMB_FORMAT`): `✅` done · `▶️` active · `◻️` not yet.
+
+  No other emoji appear in message or section headers — the glyphs enumerated above are the only
+  ones this layout permits.
 </Contract>

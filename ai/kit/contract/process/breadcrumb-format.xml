@@ -1,8 +1,10 @@
 <!-- source: sdd-opt-v1 BREADCRUMB_FORMAT -->
 <Contract id="BREADCRUMB_FORMAT">
-  One line under the service line: this session's milestones, each with a status marker — `✅` done
-  · `▶️` now · `░` not yet. Delta only; never re-list everything already settled. This is the
-  «where are we», and it replaces a verbose run-on of finished steps.
+  One line under the service line: this session's milestones, each rendered `<Name> <status>`, with
+  a status marker chosen for legibility on BOTH light and dark themes — no half-tone shading
+  characters (`░ ▒ ▓`) anywhere, they vanish depending on theme. Status set: `✅` done · `▶️` active
+  (the step running now) · `◻️` not yet reached. Delta only; never re-list everything already
+  settled. This is the «where are we», and it replaces a verbose run-on of finished steps.
 
-  `<Веха>` ✅ · `<Веха>` ✅ · `<Веха>` ▶️ · `<Веха>` ░ · `<Веха>` ░
+  `Vision ✅ · Scope Graph ▶️ · Infra ◻️ · Portal ◻️`
 </Contract>

@@ -101,11 +101,22 @@
     <Step id="STEP_3_TOOL_CHOICES">
       <Goal>Choose a tool per category.</Goal>
       <Action>
-        Per category, 2–3 candidates with trade-offs per `AX_DIVERGE_BEFORE_RECOMMEND` (reach past the
-        obvious default; judge against THIS project). Operator picks → Mandatory Rationale Pull →
-        Decision Log entry per `AX_DECISION_LOG_REQUIRED` (`DECISION_LOG_ENTRY_FORMAT`); no tool locked
-        without one (`H_TOOL_LOCKED_WITHOUT_DECISION`). Tool Interaction Check (linter vs formatter,
-        runner vs type-check, CI vs package manager). STOP.
+        Research gate before candidates — applies to categories being picked or reconsidered NOW
+        (`greenfield`, or `refine`/`pivot` touching a category not already locked in the spec); skip it
+        for a `fix`/`module`-scale session where the category is already locked in the existing infra
+        spec, per `AX_SCALE_PROPORTIONAL_DEPTH` — no revisit, no research. Where it applies: run 2–3
+        targeted WebSearch queries per category under revision — is each candidate alive and current
+        (not abandoned / superseded), and how it compares on AI-agent friendliness for the current year
+        (text-configurable, autofix, machine-readable diagnostics) — before drafting candidates from
+        memory. Then per category, 2–3 candidates with trade-offs per `AX_DIVERGE_BEFORE_RECOMMEND`
+        (reach past the obvious default; judge against THIS project); for each candidate presented,
+        one line stating why it's here per the research (not recall) plus the source, and a currency /
+        AI-friendliness note. If WebSearch is unavailable in this environment, say so plainly instead of
+        silently falling back — `предлагаю по памяти на <дата обучения модели>, ресёрч недоступен` — a
+        named caveat, not silence. Operator picks → Mandatory Rationale Pull → Decision Log entry per
+        `AX_DECISION_LOG_REQUIRED` (`DECISION_LOG_ENTRY_FORMAT`); no tool locked without one
+        (`H_TOOL_LOCKED_WITHOUT_DECISION`). Tool Interaction Check (linter vs formatter, runner vs
+        type-check, CI vs package manager). STOP.
       </Action>
     </Step>
     <Step id="STEP_4_DEV_WORKFLOW">

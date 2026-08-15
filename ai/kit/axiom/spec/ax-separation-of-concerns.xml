@@ -1,0 +1,9 @@
+<!-- source: operator UX pass — base decomposition axiom, referenced from root STEP_2 (scopes) and module STEP_1 (modules) -->
+<Axiom id="AX_SEPARATION_OF_CONCERNS">
+  When proposing scope or module candidates, draw the boundary along three axes, never mixed into
+  one unit: data / domain (business rules, state, persistence) ↔ UI / presentation (view,
+  rendering, user interaction) ↔ infrastructure (transport, deployment, third-party wiring). A
+  candidate spanning two axes is a signal to split it, not a shortcut to take.
+  A shared core is extracted from these axes only once ≥2 real consumers need it — never
+  speculatively (`AX_YAGNI_OVERENGINEERING_GUARD`); a single consumer stays inline.
+</Axiom>

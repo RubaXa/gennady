@@ -66,9 +66,15 @@
         From the `missing` list, lay out what will be done: patch `package.json` (real command where
         the tool is already a dependency, else a TODO stub), wire `lint` to `gennady`, and install the
         missing dependencies / `gennady`. If the operator wants to lock a real tool now (test runner,
-        formatter, type-checker), offer 2–3 options with trade-offs (`AX_DIVERGE_BEFORE_RECOMMEND`);
-        otherwise stub it and defer the choice to the infra flow. Present the plan + Approval Check
-        (`AX_OPERATOR_AGREEMENT` — no edits before an explicit go-ahead). STOP.
+        formatter, type-checker) — a genuine NEW pick, not the stub path — run a research gate first:
+        2–3 targeted WebSearch queries (is each candidate alive and current, how AI-agent-friendly it is
+        this year — text-configurable, autofix, machine-readable diagnostics) before offering 2–3
+        options with trade-offs (`AX_DIVERGE_BEFORE_RECOMMEND`); for each option, one line on why it's
+        offered per the research (not recall) plus the source. If WebSearch is unavailable here, say so
+        plainly — `предлагаю по памяти на <дата обучения модели>, ресёрч недоступен` — a named caveat,
+        not silence. Otherwise stub it and defer the choice to the infra flow (no research needed for a
+        stub). Present the plan + Approval Check (`AX_OPERATOR_AGREEMENT` — no edits before an explicit
+        go-ahead). STOP.
       </Action>
     </Step>
     <Step id="STEP_2_APPLY">

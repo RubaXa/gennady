@@ -84,7 +84,7 @@
     | `H_AMBIGUOUS_INTENT` | Operator intent cannot be classified against state — ask, never guess |
     | `H_WRONG_REPO` | Operator answered the empty-intake entry Ask with «я не в том репозитории» — stop here, no directive loads |
     | `H_ASK_WITHOUT_CARD` | An `AskUserQuestion` / `QUESTION_FORMAT` question fired without the `sdd-state` card having been shown verbatim as its own visible unit first — operator may answer `STOP` and demand the card |
-    | `H_UNFORMATTED_ASK` | A question reached the operator as bare free-form text — no `### ❓ <о чём решаем>` explanation first, no `AskUserQuestion` call, or (text fallback) no explicit named option list — `H_ASK_WITHOUT_CARD` is the special case of this same rule for STEP_0's card: show-then-ask is the general law, the card is just its first instance |
+    | `H_UNFORMATTED_ASK` | A question reached the operator as bare free-form text — no `### 💡 <О чём решаем>` explanation first, no `AskUserQuestion` call, or (text fallback) no explicit named option list — `H_ASK_WITHOUT_CARD` is the special case of this same rule for STEP_0's card: show-then-ask is the general law, the card is just its first instance |
   </HaltConditions>
 
   <ExecutionPlan>
