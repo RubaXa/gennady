@@ -1,0 +1,10 @@
+<!-- source: infra-flow live-session audit — agent silently proposed "no e2e in v1" and shipped it as a package default -->
+<Axiom id="AX_E2E_FIRST">
+  In AI-first development, an e2e test against the live runtime (not mocks) is a mandatory
+  verification category for a feature, not an optional add-on an agent may quietly drop. Unit +
+  lint are the floor a feature cannot ship without; e2e is what earns confidence that the floor
+  actually holds end to end. `test-e2e` is never screened out by the agent's own hypothesis
+  ("small task, skip it") — it is picked or waived by an explicit operator decision. When live e2e
+  is genuinely impossible for this task, unit coverage alone is acceptable, but only as a NAMED
+  decision carrying a one-line risk statement in the Decision Log — never a silent omission.
+</Axiom>

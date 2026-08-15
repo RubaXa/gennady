@@ -21,7 +21,7 @@
 
   <BeliefState deps="AX_OPERATOR_LANGUAGE, AX_OPERATOR_SAFEGUARD, AX_DIALOGUE_DISCIPLINE, AX_DIVERGE_BEFORE_RECOMMEND, AX_NO_PROCESS_NARRATION">
     <Axiom id="AX_COVERAGE_MAP_CLOSURE">
-      The interview ends when the coverage map is closed — every topic `[✔]` or explicitly skipped
+      The interview ends when the coverage map is closed — every topic `✅` or explicitly skipped
       with a recorded reason — never when a question count is reached, and never by a silent Approval
       Check. After every operator answer, re-check the map: an answer that opens a new hole or risk
       adds a topic or reopens a closed one (thread-pulling per `AX_OPERATOR_SAFEGUARD` — that axiom
@@ -136,7 +136,7 @@
   <HaltConditions>
     | 🛑 ID | Trigger |
     |---|---|
-    | `H_HIGH_STAKES_SKIP` | Operator insists on skipping an unclosed high-stakes topic — name the concrete cost (per `AX_OPERATOR_SAFEGUARD`); on a confirmed skip record `[✗ skip: <причина>]` in the map and proceed |
+    | `H_HIGH_STAKES_SKIP` | Operator insists on skipping an unclosed high-stakes topic — name the concrete cost (per `AX_OPERATOR_SAFEGUARD`); on a confirmed skip record `✗ skip: <причина>` in the map and proceed |
   </HaltConditions>
 
   <ExecutionPlan>
@@ -144,7 +144,7 @@
       <Goal>Build and show the coverage map.</Goal>
       <Action>
         Assemble the map: base topics + the scope-type block from `TopicCatalog`, narrowed /
-        extended by the calling step's focus. Mark topics the intake already answers `[✔]` — ask
+        extended by the calling step's focus. Mark topics the intake already answers `✅` — ask
         only what a decision still needs. Render per `COVERAGE_MAP_FORMAT` with a one-line plan
         («что осталось закрыть»); proceed straight to triage.
       </Action>
@@ -164,7 +164,8 @@
       <Goal>Close the map, one topic at a time, in the shape its stakes demand.</Goal>
       <Action>
         Loop until the map is closed (`AX_COVERAGE_MAP_CLOSURE`); each round:
-        1. Show the map per `COVERAGE_MAP_FORMAT`, pick the next open topic, mark it `[▶]`.
+        1. Show the map per `COVERAGE_MAP_FORMAT`, pick the next open topic, mark it `👷` — the
+           active topic ALWAYS carries `👷`, never a bare unmark, per `BREADCRUMB_FORMAT`.
         2. Split by stakes (`AX_STAKES_SPLIT`): a развилка → one message per
            `QUESTION_MESSAGE_FORMAT`, answered before the next question is composed
            (`AX_ONE_QUESTION_SEQUENTIAL`); a default confirmation → collect it and batch up to 4
@@ -182,8 +183,8 @@
     <Step id="STEP_4_CLOSE">
       <Goal>Verify closure and return to the caller.</Goal>
       <Action>
-        Gate per `AX_COVERAGE_MAP_CLOSURE`: every topic `[✔]` or `[✗ skip: <причина>]` — an open
-        or `[▶]` topic sends the flow back to STEP_3. Show the final map + a compact digest of
+        Gate per `AX_COVERAGE_MAP_CLOSURE`: every topic `✅` or `✗ skip: <причина>` — an open
+        (`◻️`) or active (`👷`) topic sends the flow back to STEP_3. Show the final map + a compact digest of
         answers and decisions (Russian), including skips with reasons. Hand the digest to the
         calling step — it owns the Approval Check, artifact writing, and any Decision Log entries.
       </Action>
@@ -197,10 +198,12 @@
 
     <Contract id="COVERAGE_MAP_FORMAT">
       Live coverage map, shown to the operator compactly before every round. Topic labels in Russian;
-      ≤ 72 columns; statuses: `[✔]` closed · `[▶]` in progress · `[ ]` open · `[✗ skip: <причина>]`.
+      ≤ 72 columns; statuses per `BREADCRUMB_FORMAT` — `✅` closed · `👷` in progress (the topic this
+      round is closing) · `◻️` open — plus one map-only extension, `✗ skip: <причина>`, for a topic the
+      operator explicitly waived.
 
-      Покрытие: Цель/не-цель [✔] · Потребители [▶] · Слабые места [ ] · Зависимости [ ]
-      Усиления:  security [▶] · storage [✗ skip: прототип, данных нет]
+      Покрытие: Цель/не-цель ✅ · Потребители 👷 · Слабые места ◻️ · Зависимости ◻️
+      Усиления:  security 👷 · storage ✗ skip: прототип, данных нет
 
       4–6 topics per line; the «Усиления» line appears only when at least one amplification is
       active or skipped. The map is session state for the dialogue — the calling step decides what
@@ -225,7 +228,7 @@
       8. The `AskUserQuestion` call (`AX_ASK_TOOL_BINDING`) — options in printed order.
 
       <Example>
-        Покрытие: Цель/не-цель [✔] · Потребители [✔] · **формат спеки [▶]** · Зависимости [ ] · Слабые места [ ]
+        Покрытие: Цель/не-цель ✅ · Потребители ✅ · **формат спеки 👷** · Зависимости ◻️ · Слабые места ◻️
 
         ## Вопрос 3 из 6 · Куда переезжает разросшаяся ячейка Entity Inventory
 
@@ -273,12 +276,24 @@
       1. One ✅ line — what was produced and what was checked
          (`✅ Спека <path> записана · язык проверен · <N> диаграмм`).
       2. `**Что дальше?**` + one `AskUserQuestion` call. Options (2–4) come from the caller's own
-         candidate table; the recommended option first with «(рекомендую)»; CHAINED options are
-         first-class («декомпозиция + критик следом», «scaffold + сразу execute») — one pick launches
-         the whole chain, the agent runs it without stopping between links unless a link fails.
-         Always include «Закончить сессию» last.
-      3. On pick: invoke the corresponding skill(s) / directive flow(s) directly — never answer with
-         «запусти /sdd-X сам».
+         candidate table; CHAINED options are first-class («декомпозиция + критик следом», «scaffold +
+         сразу execute») — one pick launches the whole chain, the agent runs it without stopping
+         between links unless a link fails. Ordering and content, while ANY scope in the Scope Graph
+         still lacks a spec: the recommended option is ALWAYS «Продолжить спеки: discovery
+         `<следующий скоуп по графу зависимостей>`» (the next unspec'd scope in dependency order),
+         marked «(рекомендую)» — spec authoring stays the priority path while it is incomplete. The
+         scaffold option is included ONLY once no scope remains without a spec, and never marked
+         recommended over an outstanding spec — its description states the rationale plainly:
+         «Разбить готовые спеки на задачи (scaffold) — механическая нарезка утверждённых спек в
+         тикеты DAG; рекомендуется после готовности всех спек». The two are never interleaved as
+         equals: specs demand the operator's sustained attention on judgment calls (vision, scope
+         boundaries, trade-offs); scaffold is mechanical decomposition of what is already approved —
+         surfacing scaffold beside an incomplete spec set invites the operator to jump to the
+         mechanical step before the judgment work is done. «Закончить сессию» is always last; on pick,
+         print a short resume instruction (how to reopen this flow next session — which command/skill,
+         which scope or step to name) and stop; no directive loads.
+      3. On any other pick: invoke the corresponding skill(s) / directive flow(s) directly — never
+         answer with «запусти /sdd-X сам».
     </Contract>
   </ChatOutput>
 </SddInterviewProtocol>

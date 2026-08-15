@@ -116,7 +116,7 @@
   <HaltConditions>
     | 🛑 ID | Trigger |
     |---|---|
-    | `H_HIGH_STAKES_SKIP` | Operator insists on skipping an unclosed high-stakes topic — name the concrete cost (per `AX_OPERATOR_SAFEGUARD`); on a confirmed skip record `[✗ skip: <причина>]` in the map and proceed |
+    | `H_HIGH_STAKES_SKIP` | Operator insists on skipping an unclosed high-stakes topic — name the concrete cost (per `AX_OPERATOR_SAFEGUARD`); on a confirmed skip record `✗ skip: <причина>` in the map and proceed |
   </HaltConditions>
 
   <ExecutionPlan>
@@ -124,7 +124,7 @@
       <Goal>Build and show the coverage map.</Goal>
       <Action>
         Assemble the map: base topics + the scope-type block from `TopicCatalog`, narrowed /
-        extended by the calling step's focus. Mark topics the intake already answers `[✔]` — ask
+        extended by the calling step's focus. Mark topics the intake already answers `✅` — ask
         only what a decision still needs. Render per `COVERAGE_MAP_FORMAT` with a one-line plan
         («что осталось закрыть»); proceed straight to triage.
       </Action>
@@ -144,7 +144,8 @@
       <Goal>Close the map, one topic at a time, in the shape its stakes demand.</Goal>
       <Action>
         Loop until the map is closed (`AX_COVERAGE_MAP_CLOSURE`); each round:
-        1. Show the map per `COVERAGE_MAP_FORMAT`, pick the next open topic, mark it `[▶]`.
+        1. Show the map per `COVERAGE_MAP_FORMAT`, pick the next open topic, mark it `👷` — the
+           active topic ALWAYS carries `👷`, never a bare unmark, per `BREADCRUMB_FORMAT`.
         2. Split by stakes (`AX_STAKES_SPLIT`): a развилка → one message per
            `QUESTION_MESSAGE_FORMAT`, answered before the next question is composed
            (`AX_ONE_QUESTION_SEQUENTIAL`); a default confirmation → collect it and batch up to 4
@@ -162,8 +163,8 @@
     <Step id="STEP_4_CLOSE">
       <Goal>Verify closure and return to the caller.</Goal>
       <Action>
-        Gate per `AX_COVERAGE_MAP_CLOSURE`: every topic `[✔]` or `[✗ skip: <причина>]` — an open
-        or `[▶]` topic sends the flow back to STEP_3. Show the final map + a compact digest of
+        Gate per `AX_COVERAGE_MAP_CLOSURE`: every topic `✅` or `✗ skip: <причина>` — an open
+        (`◻️`) or active (`👷`) topic sends the flow back to STEP_3. Show the final map + a compact digest of
         answers and decisions (Russian), including skips with reasons. Hand the digest to the
         calling step — it owns the Approval Check, artifact writing, and any Decision Log entries.
       </Action>
@@ -195,7 +196,7 @@
       8. The `AskUserQuestion` call (`AX_ASK_TOOL_BINDING`) — options in printed order.
 
       <Example>
-        Покрытие: Цель/не-цель [✔] · Потребители [✔] · **формат спеки [▶]** · Зависимости [ ] · Слабые места [ ]
+        Покрытие: Цель/не-цель ✅ · Потребители ✅ · **формат спеки 👷** · Зависимости ◻️ · Слабые места ◻️
 
         ## Вопрос 3 из 6 · Куда переезжает разросшаяся ячейка Entity Inventory
 

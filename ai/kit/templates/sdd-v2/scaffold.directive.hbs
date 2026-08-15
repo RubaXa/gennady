@@ -51,6 +51,8 @@
 
     {{> "axiom/scaffold/ax-ticket-has-bdd-and-tests"}}
 
+    {{> "axiom/testing/ax-e2e-first"}}
+
     {{> "axiom/scaffold/ax-ticket-deduplication"}}
 
     {{> "axiom/process/ax-task-id-uniqueness"}}
@@ -160,7 +162,10 @@
            `H_VERIFICATION_COMMAND_MISSING`), and write ticket Verification table — one row
            per unique alias, Required-by = comma-separated declaring rule IDs.
         Draft BDD with the mandatory `contract`-level
-        typing scenario per contract (`AX_TICKET_HAS_BDD_AND_TESTS`); pre-fill the Execution Log plan
+        typing scenario per contract (`AX_TICKET_HAS_BDD_AND_TESTS`) and, per `AX_E2E_FIRST`, an
+        `e2e`-level scenario for the ticket's user-facing path by default — dropping it needs a
+        named Decision Log entry with a risk line, not a quiet "unit is enough" call by the phase
+        subagent; pre-fill the Execution Log plan
         (`AX_EXECUTION_LOG_PLAN_VS_FACT`). **BDD coverage pass — dispatch ONE isolated subagent** with a
         clean slice (module spec + contract anchors + requirements + draft BDD) asking «which negative /
         corner / trust-boundary / failure-mode scenarios are missing?»; merge approved ones, log the

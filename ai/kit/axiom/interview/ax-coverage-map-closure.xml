@@ -1,6 +1,6 @@
 <!-- source: new for sdd-v2 interview protocol; map mechanic from ai/skills/prd-interview -->
 <Axiom id="AX_COVERAGE_MAP_CLOSURE">
-  The interview ends when the coverage map is closed — every topic `[✔]` or explicitly skipped
+  The interview ends when the coverage map is closed — every topic `✅` or explicitly skipped
   with a recorded reason — never when a question count is reached, and never by a silent Approval
   Check. After every operator answer, re-check the map: an answer that opens a new hole or risk
   adds a topic or reopens a closed one (thread-pulling per `AX_OPERATOR_SAFEGUARD` — that axiom

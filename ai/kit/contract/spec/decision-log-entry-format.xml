@@ -1,12 +1,16 @@
 <!-- source: sdd/module-decomposition + discovery (converged; session name is directive-specific) -->
 <Contract id="DECISION_LOG_ENTRY_FORMAT">
+  One line per entry — no Status/Recorded fields, no multi-line block. The parenthetical carries
+  only what applies; omit a clause entirely rather than writing it empty.
+
   ```markdown
-  ### D-NNN — <short title>
-  - **Status:** active | superseded | rejected | deferred
-  - **Recorded:** session <DirectiveName>, <scope-name>
-  - **Why:** <operator's own wording>
-  - **Risk accepted:** <if any>
-  - **Rejected alternatives:** <list with brief reasons>
-  - **Supersedes:** D-NNN (when superseding a prior decision)
+  D-NNN <date> — <decision in one phrase> (почему: <compromise/criterion>; отвергнуто: <alternative — why not>; риск: <if accepted>)
   ```
+
+  Superseding a prior decision appends `; supersedes: D-MMM` to the parenthetical instead of a
+  separate field — the entry stays one line. `<date>` is the recording date (`YYYY-MM-DD`); status
+  (active / superseded / rejected / deferred) is implicit from prose and from whether a later entry
+  supersedes this one — a spec has no dangling "rejected" or "deferred" entries sitting as if active,
+  the prose says so directly (e.g. `отвергнуто в пользу X` folded into the same line that would have
+  recorded it, never a standalone rejected entry with its own D-NNN).
 </Contract>

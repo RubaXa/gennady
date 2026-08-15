@@ -88,10 +88,7 @@ Executor'у вручную. Executor НЕ коммитит от себя ни н
 
 ## 3. Decision Log
 
-### D-001 — Один модуль на старте
-
-- **Status:** active
-- **Why:** пока нет причин делить.
+D-001 2024-01-01 — Один модуль на старте (почему: пока нет причин делить)
 
 ## 4. Notes
 
@@ -400,13 +397,14 @@ STEP_4, → `VIOLATED`.
 
 21a. Правка Decision Log только через supersession, никогда in-place — дословно из `STEP_7_RESTRUCTURE`:
 «a Decision Log entry's TEXT is changed only through supersession, never edited in place», per
-`AX_PIVOT_REQUIRES_SUPERSESSION`. Эта фикстура несёт ровно один активный decision (`D-001 — Один
-    модуль на старте`, Status `active`) — легитимная compression-обработка на этом шаге НЕ трогает
-его текст напрямую: если `D-001` остаётся тем же decision (сжатие/сворачивание формата секции —
-легально), `write:`-diff может менять ОБЁРТКУ (fold под `<details>`), но не переписывать `Why`/
-`Status` в том же `D-001` без нового `D-NNN` с `Supersedes: D-001` и `Was → Now`. Правка текста
-`D-001` без появления нового ID + `Supersedes` → `VIOLATED` — независимо от того, что новый текст
-может быть содержательно лучше.
+`AX_PIVOT_REQUIRES_SUPERSESSION`. Эта фикстура несёт ровно один активный decision (одна строка
+`D-001 2024-01-01 — Один модуль на старте (почему: пока нет причин делить)`, по
+`DECISION_LOG_ENTRY_FORMAT`) — легитимная compression-обработка на этом шаге НЕ трогает его текст
+напрямую: если `D-001` остаётся тем же decision (сжатие/сворачивание формата секции — легально),
+`write:`-diff может менять ОБЁРТКУ (fold под `<details>`), но не переписывать саму фразу решения
+или её `(почему: …)`-скобку в той же строке `D-001` без нового `D-NNN`, чей текст явно называет
+`; supersedes: D-001`. Правка текста `D-001` без появления новой строки с новым ID + `supersedes`
+→ `VIOLATED` — независимо от того, что новый текст может быть содержательно лучше.
 
 22. `STEP_7_RESTRUCTURE` — гейт per scope, дословно: «Gate per scope: `sdd-check --all specs/<scope>`
     — strict v2 structure, folds, real mermaid parse, and the language lint

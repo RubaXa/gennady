@@ -73,11 +73,22 @@
       **Dev workflow example is required.** The spec includes a Developer Workflow Example (shell-script shape) before final approval.
     </Axiom>
 
+    <Axiom id="AX_E2E_FIRST">
+      In AI-first development, an e2e test against the live runtime (not mocks) is a mandatory
+      verification category for a feature, not an optional add-on an agent may quietly drop. Unit +
+      lint are the floor a feature cannot ship without; e2e is what earns confidence that the floor
+      actually holds end to end. `test-e2e` is never screened out by the agent's own hypothesis
+      ("small task, skip it") — it is picked or waived by an explicit operator decision. When live e2e
+      is genuinely impossible for this task, unit coverage alone is acceptable, but only as a NAMED
+      decision carrying a one-line risk statement in the Decision Log — never a silent omission.
+    </Axiom>
+
     <Axiom id="AX_DECISION_LOG_REQUIRED">
-      Every non-trivial decision → a Decision Log entry in `DECISION_LOG_ENTRY_FORMAT`
-      (D-NNN, Status, Recorded, Why in the operator's wording, Risk accepted, Rejected
-      alternatives; IDs are stable). Which decisions qualify and which Decision Log receives
-      the entry are specified per directive.
+      Every non-obvious decision → a Decision Log entry in `DECISION_LOG_ENTRY_FORMAT` — one line,
+      the expanded part in parentheses: `D-NNN <date> — <decision> (почему: …; отвергнуто: …;
+      риск: …)`; IDs are stable. Non-obvious only (`AX_DECISION_LOG_NON_OBVIOUS`): a pick already
+      recorded in the spec's own tables is never duplicated as a DL row. Which decisions qualify
+      and which Decision Log receives the entry are specified per directive.
     </Axiom>
 
     <Axiom id="AX_PIVOT_REQUIRES_SUPERSESSION">
@@ -166,13 +177,26 @@
       <Action>
         State from the router gives the portal + scope-type (infrastructure). Resolve the scope name;
         stat the spec → `greenfield` or detect the mode per `AX_DIRECTIVE_MODE` /
-        `AX_MODE_AUTO_DETECT_OR_HALT`. Read the rule registry
-        (per `AX_SCOPE_RULES_DECLARATION`) — it maps tools to rule files.
+        `AX_MODE_AUTO_DETECT_OR_HALT`. Read the rule registry with ONE deterministic `Read
+        ai/directives/knowledge.xml` — it is the sole index (`<Rules>` section) and lists every rule
+        file's exact path (`ai/directives/<category>/<rule>.xml`) with `<Triggers>`; per
+        `AX_SCOPE_RULES_DECLARATION` a category with no matching entry maps to
+        `ai/directives/<category>/<rule>.xml` directly. `ls`/`find` over `ai/directives/**` to
+        "see what knowledge exists" is forbidden here — the registry already answers that in one
+        read; a directory scan is a wasted turn against a known index.
       </Action>
     </Step>
     <Step id="STEP_1_CONFIRM">
-      <Goal>Confirm infrastructure and outline the section set.</Goal>
-      <Action>Confirm scope-type, outline sections. Approval Check. STOP.</Action>
+      <Goal>Confirm scope-type and the operating scale.</Goal>
+      <Action>
+        Confirm scope-type (`infrastructure`) and mode with the operator. The section set is NOT an
+        Ask — it is fixed by `INFRASTRUCTURE_SPEC_STRUCTURE` and materialized by `sdd-new` at
+        STEP_7; naming the skeleton to the operator here would be asking approval for a contract,
+        not a decision they own. State the confirmed default SCALE inline in the plan text instead
+        of a standalone question — `module` for a typical infra scope unless intake signals
+        otherwise (`AX_SCALE_PROPORTIONAL_DEPTH`) — and let the operator correct it here or at the
+        next substantive Ask (STEP_2); it never burns a dedicated round. Approval Check. STOP.
+      </Action>
     </Step>
     <Step id="STEP_2_TOOL_CATEGORIES">
       <Goal>Declare the tool categories.</Goal>
@@ -180,7 +204,10 @@
         Propose a subset from intent per `AX_INFRASTRUCTURE_FLOW`, Facts / Assumptions / Hypotheses
         separated per `AX_EVIDENCE_HYGIENE`. Mandatory categories
         (vcs / package-management / git-hooks) cannot be dropped (`H_MANDATORY_CATEGORY_DROPPED`).
-        Then run the operator interview —
+        `test-e2e` is optional on the category LIST but not on the DECISION — per `AX_E2E_FIRST` the
+        agent proposes it in by default and takes an explicit operator answer to drop it (with the
+        risk line recorded), rather than reasoning "small scope, skip e2e" on its own and folding
+        that into the proposed subset unchallenged. Then run the operator interview —
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/interview-protocol.directive.xml")` — passing
         scope-type `infrastructure` (selects the TopicCatalog block) and the confirmed `scale:`
         from the session file: per `AX_SCALE_PROPORTIONAL_DEPTH` `fix` / `function` → base topics +
@@ -222,8 +249,12 @@
         operator locks the list; Stage B — for `infra/*` rules on the locked list read only
         `Mission`, `Belief_State`, `Reward_Criteria` and walk the axioms: operator Accept (default) /
         Adapt / Override, the latter two → Decision Log. Record matched rule file paths
-        (unresolvable reference → `H_MISSING_RULE_FILE`). Verification Commands table — one row per
-        active tool command. STOP.
+        (unresolvable reference → `H_MISSING_RULE_FILE`). When a formatter is among the chosen
+        tools, default its ignore file (`.prettierignore` / Biome `ignore`) to EXCLUDE `specs/` and
+        `tasks/` — those are agent-authored markdown; formatter churn there breaks table alignment
+        and produces noisy diffs unrelated to the change. Record the exclusion in the spec's own
+        Effective Rules so it is not a silent tool-config fact. Verification Commands table — one
+        row per active tool command. STOP.
       </Action>
     </Step>
     <Step id="STEP_6_EXTERNAL_DEPENDENCIES_AUDIT">
@@ -243,14 +274,35 @@
         In `greenfield`/`rewrite` mode, when `specs/<scope>/<scope>.spec.md` does not exist yet,
         create its skeleton via `sdd-new infrastructure --scope <scope>` — it never overwrites and
         prints the section manifest (which sections are REQUIRED and what to fill); in
-        `refine`/`pivot` mode the file already exists, edit it in place, skip `sdd-new`. Content
-        guidance per
+        `refine`/`pivot` mode the file already exists, edit it in place, skip `sdd-new`. Editing in
+        place means a targeted `Edit` per changed passage — never a bulk regex/`perl -0pi` pass
+        over the spec text; a calque or wording fix touches exactly the sentence it corrects, not
+        every matching pattern in the file. Content guidance per
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/infrastructure-spec-structure.xml")`.
         Before writing, run the self-check pass per
         `AX_ARTIFACT_STYLE_SELF_CHECK`. In `refine` mode update sections in place per
         `AX_LIVING_SPEC`. In `pivot` mode also
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/pivot-formats.xml")`
-        (`AX_PIVOT_REQUIRES_SUPERSESSION`); in `rewrite` mode write fresh — no supersession, no invalidation list. For a brand-new scope, append the `🚧 (awaiting root sync)` placeholder row to the portal Scopes table per `AX_PORTAL_READ_ONLY_WITH_PLACEHOLDER_EXCEPTION` — every other portal edit belongs to the root flow. Write in review-state per `AX_SPEC_LIFECYCLE` — prepend a `CHANGE_MANIFEST` (`READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/change-manifest.xml")`) and mark changed lines `✚`/`~` (greenfield → manifest only, no per-line marks); compress folds it to master downstream after the change ships. Then close with the integrity check per `AX_CLOSE_WITH_INTEGRITY_CHECK`: run `sdd-check --all specs/<scope>` (anchor balance + required sections + links) and resolve any finding. Then `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/review-lifecycle.directive.xml")` — internal critic → publish (MR) → external review → compress + merge on approval. After the spec merges to master, handoff is to scaffold (infra scopes have no modules).
+        (`AX_PIVOT_REQUIRES_SUPERSESSION`); in `rewrite` mode write fresh — no supersession, no invalidation list. For a brand-new scope, append the `🚧 (awaiting root sync)` placeholder row to the portal Scopes table per `AX_PORTAL_READ_ONLY_WITH_PLACEHOLDER_EXCEPTION` — every other portal edit belongs to the root flow. Write in review-state per `AX_SPEC_LIFECYCLE` — prepend a `CHANGE_MANIFEST` (`READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/change-manifest.xml")`) and mark changed lines `✚`/`~` (greenfield → manifest only, no per-line marks); compress folds it to master downstream after the change ships. Then close with the integrity check per `AX_CLOSE_WITH_INTEGRITY_CHECK`: run `sdd-check --all specs/<scope>` (anchor balance + required sections + links) and resolve any finding.
+
+        **Pre-critic checklist** — the critic is not the first line of defense on mechanics; run this
+        self-check before dispatching it, catch here what four MAJOR rounds otherwise catch late:
+        (a) Prerequisites completeness — every chosen tool's own plugins/loaders are named (a parser
+        for `.ts`, a loader for the TS config), not just the tool itself; (b) internal consistency —
+        "gate" and "autofix" language agree across Vision / Dev Workflow / Verification Commands for
+        the same tool, never contradicting; (c) fact currency — versions / LTS lines come from the
+        STEP_3 research gate, never from memory; (d) every declared hook / command in Dev Workflow
+        and Verification Commands has a recorded Decision Log entry — no dangling "we'll figure this
+        out" left implicit.
+
+        Git recon before publish is ONE combined call — `git status --porcelain -uno && git --no-pager diff --stat` —
+        never a sequence of separate `status` / `diff` / `log` invocations for the same check. Then
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/review-lifecycle.directive.xml")` — internal critic → publish (MR) → external review → compress + merge on approval. After the spec merges to master, render the continuity menu per `NEXT_STEP_MENU_FORMAT`:
+        recommended — «Продолжить спеки: discovery `<next scope per the Scope Graph>`»; the
+        scaffold option reads «Разбить готовые спеки на задачи (scaffold) — механическая нарезка
+        УТВЕРЖДЁННЫХ спек в тикеты; рекомендуется после того, как готовы ВСЕ спеки», never
+        «scaffold infra-base = материализовать конфиги» — materializing configs is execute's job
+        (writing code against a ticket), not scaffold's (which only decomposes specs into tickets).
         Approval Check. STOP.
       </Action>
     </Step>
@@ -321,6 +373,8 @@
     Service line — dim, internal, never narrated (per `AX_NO_PROCESS_NARRATION`):
     `🛠️ INF_R<N> · <scope> · <mode> · conf=<LOW|MEDIUM|HIGH>`. Breadcrumb milestones (per
     `BREADCRUMB_FORMAT`): Tool Categories · Tool Choices · Dev Workflow · File Structure · Spec.
+    The step currently running ALWAYS carries `👷` — never a row of bare `◻️` with no active
+    marker; a milestone is `✅` only once its STOP has been passed.
 
     <Contract id="MESSAGE_LAYOUT">
       A step-boundary / decision message (the decision card) is sectioned with markdown headers, in
@@ -402,6 +456,32 @@
       ```
     </Contract>
 
+    <Contract id="NEXT_STEP_MENU_FORMAT">
+      Rendered by the CALLING step's final step, after its artifact is written and verified. Shape:
+
+      1. One ✅ line — what was produced and what was checked
+         (`✅ Спека <path> записана · язык проверен · <N> диаграмм`).
+      2. `**Что дальше?**` + one `AskUserQuestion` call. Options (2–4) come from the caller's own
+         candidate table; CHAINED options are first-class («декомпозиция + критик следом», «scaffold +
+         сразу execute») — one pick launches the whole chain, the agent runs it without stopping
+         between links unless a link fails. Ordering and content, while ANY scope in the Scope Graph
+         still lacks a spec: the recommended option is ALWAYS «Продолжить спеки: discovery
+         `<следующий скоуп по графу зависимостей>`» (the next unspec'd scope in dependency order),
+         marked «(рекомендую)» — spec authoring stays the priority path while it is incomplete. The
+         scaffold option is included ONLY once no scope remains without a spec, and never marked
+         recommended over an outstanding spec — its description states the rationale plainly:
+         «Разбить готовые спеки на задачи (scaffold) — механическая нарезка утверждённых спек в
+         тикеты DAG; рекомендуется после готовности всех спек». The two are never interleaved as
+         equals: specs demand the operator's sustained attention on judgment calls (vision, scope
+         boundaries, trade-offs); scaffold is mechanical decomposition of what is already approved —
+         surfacing scaffold beside an incomplete spec set invites the operator to jump to the
+         mechanical step before the judgment work is done. «Закончить сессию» is always last; on pick,
+         print a short resume instruction (how to reopen this flow next session — which command/skill,
+         which scope or step to name) and stop; no directive loads.
+      3. On any other pick: invoke the corresponding skill(s) / directive flow(s) directly — never
+         answer with «запусти /sdd-X сам».
+    </Contract>
+
     <Axiom id="AX_PROGRESSIVE_DISCLOSURE" cross-cutting="true">
       Decision first, reasoning on demand. The must-read top of a message is short: where we are + my
       read + what to decide. Everything heavy — full option comparison, evidence, the change-list,
@@ -414,15 +494,19 @@
   <ArtifactOutput>
     <!-- spec-structure + pivot formats load lazily at STEP_7 (used only when writing) — see ExecutionPlan. -->
     <Contract id="DECISION_LOG_ENTRY_FORMAT">
+      One line per entry — no Status/Recorded fields, no multi-line block. The parenthetical carries
+      only what applies; omit a clause entirely rather than writing it empty.
+
       ```markdown
-      ### D-NNN — <short title>
-      - **Status:** active | superseded | rejected | deferred
-      - **Recorded:** session <DirectiveName>, <scope-name>
-      - **Why:** <operator's own wording>
-      - **Risk accepted:** <if any>
-      - **Rejected alternatives:** <list with brief reasons>
-      - **Supersedes:** D-NNN (when superseding a prior decision)
+      D-NNN <date> — <decision in one phrase> (почему: <compromise/criterion>; отвергнуто: <alternative — why not>; риск: <if accepted>)
       ```
+
+      Superseding a prior decision appends `; supersedes: D-MMM` to the parenthetical instead of a
+      separate field — the entry stays one line. `<date>` is the recording date (`YYYY-MM-DD`); status
+      (active / superseded / rejected / deferred) is implicit from prose and from whether a later entry
+      supersedes this one — a spec has no dangling "rejected" or "deferred" entries sitting as if active,
+      the prose says so directly (e.g. `отвергнуто в пользу X` folded into the same line that would have
+      recorded it, never a standalone rejected entry with its own D-NNN).
     </Contract>
   </ArtifactOutput>
 </SddInfra>

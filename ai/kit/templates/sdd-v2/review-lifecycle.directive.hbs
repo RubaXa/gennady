@@ -55,9 +55,24 @@
       <Goal>Compress to master and merge.</Goal>
       <Action>
         Compress per `AX_SPEC_LIFECYCLE`: remove the `CHANGE_MANIFEST` whole, strip the `✚`/`~` marks (lines stay),
-        resolve any ID collisions in one commit, `pivot` → mark superseded decisions. `git commit` → `gh pr merge`.
-        Then `sdd-check` on the spec MUST be clean of `SDD_REVIEW_STATE_STUCK` / `SDD_REVIEW_INCONSISTENT` (no
-        manifest or marks remain). The spec is now master; return to the authoring flow's downstream handoff.
+        resolve any ID collisions in one commit, `pivot` → mark superseded decisions.
+
+        Decision Log semantic compression — the «Verdict → compress meaning» step, mandatory, runs over
+        the spec's ENTIRE Decision Log (entries from before this change AND ones this change added, not
+        only the new ones): classify every entry against `AX_DECISION_LOG_NON_OBVIOUS`'s test («could a
+        future agent re-derive this from the spec's own tables/prose alone?»). Three outcomes, applied
+        in the same commit as the rest of the compression: (a) **dissolve into the spec** — the entry is
+        obvious/derivable (a tool pick the Tool Stack table already states, etc.); fold its substance into
+        the section it belongs to if that section doesn't already carry it, then delete the DL entry; (b)
+        **keep as DL** — a genuine compromise, rejected alternative, accepted risk, or rule exception the
+        spec's tables/prose don't otherwise carry; leave it, unchanged; (c) **merge duplicates** — two or
+        more entries reaching the same conclusion collapse into the surviving `D-NNN`, per
+        `AX_PIVOT_REQUIRES_SUPERSESSION` when one supersedes another. Report the tally in the compression
+        summary shown to the operator: `Decision Log: <N> растворено, <M> оставлено, <K> слито`.
+
+        `git commit` → `gh pr merge`. Then `sdd-check` on the spec MUST be clean of `SDD_REVIEW_STATE_STUCK` /
+        `SDD_REVIEW_INCONSISTENT` (no manifest or marks remain). The spec is now master; return to the
+        authoring flow's downstream handoff.
       </Action>
     </Step>
   </ExecutionPlan>

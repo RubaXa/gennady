@@ -49,6 +49,17 @@
       explicit exception to a rule, a deliberately non-optimal choice. Obvious rationale («split for
       readability», «named constant instead of a magic number») is noise that buries the genuine
       entries — fold it into a one-line reason at the entity (e.g. `Usage Waiver`) or drop it.
+
+      A tool/technology pick already recorded in its own table or section of the spec (Tool Stack,
+      Verification Commands, dependency list) is NEVER also a Decision Log entry — the table already
+      is the record, and a DL row that just restates row `X → tool Y` is pure duplication, not insider
+      information. DL is reserved for the pick that needed a real trade-off behind it: a choice that
+      looks wrong until you know the constraint that forced it, a rejected alternative worth naming so
+      nobody re-proposes it, a risk the operator knowingly accepted, or an explicit exception to a
+      standing rule. Test before writing any entry: «could a future agent reading only the spec's own
+      tables and prose re-derive this decision on its own?» — yes → do not write a DL entry, the spec
+      already carries it; no (there is a real compromise, rejection, or risk that only the operator's
+      reasoning explains) → DL entry.
     </Axiom>
 
     {{> "axiom/process/ax-no-process-narration"}}

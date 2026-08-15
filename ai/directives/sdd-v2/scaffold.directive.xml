@@ -220,6 +220,16 @@
       - For every DbC contract in Spec References (Port / Adapter / Value Object): one `contract`-level typing scenario MUST exist — derived from the textual surface (`AX_CONTRACTS_TEXTUAL_AGNOSTIC`): input/output shape, boundary rejection of invalid values, case exhaustiveness. `Deferred Test Ownership` not allowed for typing scenarios — they ship with the types.
     </Axiom>
 
+    <Axiom id="AX_E2E_FIRST">
+      In AI-first development, an e2e test against the live runtime (not mocks) is a mandatory
+      verification category for a feature, not an optional add-on an agent may quietly drop. Unit +
+      lint are the floor a feature cannot ship without; e2e is what earns confidence that the floor
+      actually holds end to end. `test-e2e` is never screened out by the agent's own hypothesis
+      ("small task, skip it") — it is picked or waived by an explicit operator decision. When live e2e
+      is genuinely impossible for this task, unit coverage alone is acceptable, but only as a NAMED
+      decision carrying a one-line risk statement in the Decision Log — never a silent omission.
+    </Axiom>
+
     <Axiom id="AX_TICKET_DEDUPLICATION">
       **Project-wide content lives ONCE in `specs/3-tasks.md`.** Declared there: file-header convention, baseline Completion Rule, Execution Log template, post-task audit hint. Per-scope Cascade Table lives in `specs/<scope>/<scope>.3-tasks.md`. Per ticket: only task-specific Meta, BDD, Test Scenario Coverage, Completion additions (if any), Execution Log instance (initially empty plan).
     </Axiom>
@@ -283,10 +293,11 @@
     </Axiom>
 
     <Axiom id="AX_DECISION_LOG_REQUIRED">
-      Every non-trivial decision → a Decision Log entry in `DECISION_LOG_ENTRY_FORMAT`
-      (D-NNN, Status, Recorded, Why in the operator's wording, Risk accepted, Rejected
-      alternatives; IDs are stable). Which decisions qualify and which Decision Log receives
-      the entry are specified per directive.
+      Every non-obvious decision → a Decision Log entry in `DECISION_LOG_ENTRY_FORMAT` — one line,
+      the expanded part in parentheses: `D-NNN <date> — <decision> (почему: …; отвергнуто: …;
+      риск: …)`; IDs are stable. Non-obvious only (`AX_DECISION_LOG_NON_OBVIOUS`): a pick already
+      recorded in the spec's own tables is never duplicated as a DL row. Which decisions qualify
+      and which Decision Log receives the entry are specified per directive.
     </Axiom>
 
     <Axiom id="AX_TICKET_SECTION_NAMES_NORMATIVE">
@@ -388,7 +399,10 @@
            `H_VERIFICATION_COMMAND_MISSING`), and write ticket Verification table — one row
            per unique alias, Required-by = comma-separated declaring rule IDs.
         Draft BDD with the mandatory `contract`-level
-        typing scenario per contract (`AX_TICKET_HAS_BDD_AND_TESTS`); pre-fill the Execution Log plan
+        typing scenario per contract (`AX_TICKET_HAS_BDD_AND_TESTS`) and, per `AX_E2E_FIRST`, an
+        `e2e`-level scenario for the ticket's user-facing path by default — dropping it needs a
+        named Decision Log entry with a risk line, not a quiet "unit is enough" call by the phase
+        subagent; pre-fill the Execution Log plan
         (`AX_EXECUTION_LOG_PLAN_VS_FACT`). **BDD coverage pass — dispatch ONE isolated subagent** with a
         clean slice (module spec + contract anchors + requirements + draft BDD) asking «which negative /
         corner / trust-boundary / failure-mode scenarios are missing?»; merge approved ones, log the
@@ -592,15 +606,19 @@
   <ArtifactOutput>
     <!-- ticket / module-index / scope+project trackers load lazily at STEP_3 / STEP_5 — see ExecutionPlan. -->
     <Contract id="DECISION_LOG_ENTRY_FORMAT">
+      One line per entry — no Status/Recorded fields, no multi-line block. The parenthetical carries
+      only what applies; omit a clause entirely rather than writing it empty.
+
       ```markdown
-      ### D-NNN — <short title>
-      - **Status:** active | superseded | rejected | deferred
-      - **Recorded:** session <DirectiveName>, <scope-name>
-      - **Why:** <operator's own wording>
-      - **Risk accepted:** <if any>
-      - **Rejected alternatives:** <list with brief reasons>
-      - **Supersedes:** D-NNN (when superseding a prior decision)
+      D-NNN <date> — <decision in one phrase> (почему: <compromise/criterion>; отвергнуто: <alternative — why not>; риск: <if accepted>)
       ```
+
+      Superseding a prior decision appends `; supersedes: D-MMM` to the parenthetical instead of a
+      separate field — the entry stays one line. `<date>` is the recording date (`YYYY-MM-DD`); status
+      (active / superseded / rejected / deferred) is implicit from prose and from whether a later entry
+      supersedes this one — a spec has no dangling "rejected" or "deferred" entries sitting as if active,
+      the prose says so directly (e.g. `отвергнуто в пользу X` folded into the same line that would have
+      recorded it, never a standalone rejected entry with its own D-NNN).
     </Contract>
   </ArtifactOutput>
 </SddScaffold>

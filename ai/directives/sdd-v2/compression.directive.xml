@@ -60,10 +60,11 @@
     </Axiom>
 
     <Axiom id="AX_DECISION_LOG_REQUIRED">
-      Every non-trivial decision → a Decision Log entry in `DECISION_LOG_ENTRY_FORMAT`
-      (D-NNN, Status, Recorded, Why in the operator's wording, Risk accepted, Rejected
-      alternatives; IDs are stable). Which decisions qualify and which Decision Log receives
-      the entry are specified per directive.
+      Every non-obvious decision → a Decision Log entry in `DECISION_LOG_ENTRY_FORMAT` — one line,
+      the expanded part in parentheses: `D-NNN <date> — <decision> (почему: …; отвергнуто: …;
+      риск: …)`; IDs are stable. Non-obvious only (`AX_DECISION_LOG_NON_OBVIOUS`): a pick already
+      recorded in the spec's own tables is never duplicated as a DL row. Which decisions qualify
+      and which Decision Log receives the entry are specified per directive.
     </Axiom>
 
     <Axiom id="AX_PIVOT_REQUIRES_SUPERSESSION">
@@ -193,8 +194,8 @@
       <Action>
         Per flagged cluster, draft one merged current statement that keeps every unique rationale, names
         which IDs collapse into which survivor, and marks the superseded ones. The survivor stays a
-        complete Decision Log entry per `AX_DECISION_LOG_REQUIRED` (`DECISION_LOG_ENTRY_FORMAT`: stable
-        D-NNN, Why in the operator's wording, Risk, Rejected alternatives). Present the full merge set
+        complete Decision Log entry per `AX_DECISION_LOG_REQUIRED` (`DECISION_LOG_ENTRY_FORMAT`: one
+        line, stable D-NNN, the why/rejected/risk part in parentheses). Present the full merge set
         (before → after) + Approval Check. `H_OPERATOR_REJECTS_MERGE` on decline. STOP.
       </Action>
     </Step>

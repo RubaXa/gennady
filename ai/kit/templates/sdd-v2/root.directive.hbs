@@ -179,14 +179,18 @@
 
         The flow never ends on bare text telling the operator to run `/sdd` themselves — close per
         `NEXT_STEP_MENU_FORMAT`: one ✅ line (portal written, integrity checked), then ONE
-        `AskUserQuestion` with two named options. Option 1, recommended: «Продолжить здесь: discovery
-        `<первый скоуп по графу>`» — the first scope in Scope Graph dependency order (the level-0 /
-        foundation scope, e.g. `infra-base` when present, else the lowest-level scope just added). On
-        this pick, do NOT end the session — hand control to that scope's branch of the router's own
-        `LOGIC_SWITCH` immediately (the `scope` or `infra` case, by that scope's scope-type), in the
-        SAME session, exactly as `LOGIC_SWITCH`'s multi-scope case already chains branches. Option 2:
-        «Закончить сессию» — on this pick, print a short resume instruction instead (`/sdd` + name the
-        scope to design next) and stop; no directive loads. STOP.
+        `AskUserQuestion`. Option 1, recommended while any scope still lacks a spec: «Продолжить
+        спеки: discovery `<следующий скоуп по графу зависимостей>`» — the first UNSPEC'D scope in
+        Scope Graph dependency order (the level-0 / foundation scope, e.g. `infra-base` when
+        present, else the lowest-level scope just added). On this pick, do NOT end the session —
+        hand control to that scope's branch of the router's own `LOGIC_SWITCH` immediately (the
+        `scope` or `infra` case, by that scope's scope-type), in the SAME session, exactly as
+        `LOGIC_SWITCH`'s multi-scope case already chains branches. A scaffold option is offered
+        instead ONLY once every scope in the graph already has a spec — per `NEXT_STEP_MENU_FORMAT`
+        it is never recommended over an outstanding spec (specs need the operator's judgment,
+        scaffold is mechanical decomposition of what is already approved). Last option always:
+        «Закончить сессию» — on this pick, print a short resume instruction instead (`/sdd` + name
+        the scope to design next) and stop; no directive loads. STOP.
       </Action>
     </Step>
   </ExecutionPlan>
