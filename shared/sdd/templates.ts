@@ -100,6 +100,15 @@ flowchart TD
 [Commentary-rich: init/setup + happy path + error/degradation path.]
 <!--/SECTION:GOLDEN_DX-->
 
+<!--SECTION:USE_CASES-->
+## Use Cases
+[MANDATORY for scope-type=product (AX_SPEC_MANDATORY_DIAGRAM ladder): actors → scenario
+diagram, harvested from the «Потребители» / «Худший сценарий» topics closed at scope
+STEP_2_INTENT_CAPTURE. Fenced mermaid \`flowchart TD\`: actor nodes → scenario nodes, one-line
+"зачем" per scenario; the worst-case scenario marked distinctly (⚠️). ASCII form shown in
+chat first, per formats/diagram-vocabulary.xml.]
+<!--/SECTION:USE_CASES-->
+
 <!--SECTION:SCOPE_DEPENDENCIES-->
 ## Scope Dependencies
 - **Depends on:** [infra-*, api, design-system-* scopes]
@@ -202,6 +211,13 @@ const PRODUCT_SECTIONS: SectionManifestEntry[] = [
     loadBearing: true,
     fold: false,
     fill: 'Target experience: init/setup + happy path + error/degradation path, commentary-rich.',
+  },
+  {
+    name: 'USE_CASES',
+    required: true,
+    loadBearing: true,
+    fold: false,
+    fill: 'Actors → scenarios diagram, harvested from Потребители/Худший сценарий; MANDATORY for product.',
   },
   {
     name: 'SCOPE_DEPENDENCIES',
@@ -1458,13 +1474,15 @@ export const TEMPLATES: Record<ArtifactKind, ArtifactTemplate> = {
     kind: 'task',
     skeleton: TASK_SKELETON,
     sections: TASK_SECTIONS,
-    pathPattern: 'specs/<scope>/<module>/<module>.task.<ACR>-<slug>.md',
+    pathPattern:
+      'specs/<scope>/<module>/<module>.task.<ACR>-<slug>.md (or, flat, specs/<scope>/<scope>.task.<ACR>-<slug>.md)',
   },
   'module-index': {
     kind: 'module-index',
     skeleton: MODULE_INDEX_SKELETON,
     sections: MODULE_INDEX_SECTIONS,
-    pathPattern: 'specs/<scope>/<module...>/<module>.3-tasks.md',
+    pathPattern:
+      'specs/<scope>/<module...>/<module>.3-tasks.md (or, flat, specs/<scope>/<scope>.3-tasks.md)',
   },
   'scope-index': {
     kind: 'scope-index',

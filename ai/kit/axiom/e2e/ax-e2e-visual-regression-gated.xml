@@ -1,4 +1,6 @@
 <!-- source: ai/directives/testing/playwright-e2e.xml -->
 <Axiom id="AX_E2E_VISUAL_REGRESSION_GATED">
       Visual regression (`toHaveScreenshot()`) is enabled ONLY when the task explicitly requires pixel-level verification. Default contract verification is structural (AX) + behavioural (interaction). Visual regression baselines drift across font rendering, OS chrome, and unrelated CSS, so they belong only on routes that genuinely care about pixels.
+
+      This axiom gates ONE mechanism: pixel-diff baselines under `e2e/__snapshots__/`. It does NOT gate the proof screenshot every user-flow scenario already takes per `AX_E2E_PROOF_SCREENSHOT_ALWAYS` — that capture lives under the separate `e2e/__screenshots__/` directory, asserts nothing about pixels, and is never request-gated.
     </Axiom>

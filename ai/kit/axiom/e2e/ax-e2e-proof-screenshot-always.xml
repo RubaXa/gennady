@@ -1,0 +1,6 @@
+<!-- source: ai/directives/testing/playwright-e2e.xml -->
+<Axiom id="AX_E2E_PROOF_SCREENSHOT_ALWAYS">
+      Every e2e scenario that exercises a user-facing flow captures a screenshot at each key point of that flow — after the route loads, after the primary interaction, and at any error/empty state the scenario reaches. The capture goes through a shared `shot(page, name, testInfo)` helper called directly inside the `test(...)` body, landing at `e2e/__screenshots__/<spec>/<step>.png`.
+
+      This is evidence the flow actually rendered end to end, not a pixel-regression baseline (`AX_E2E_VISUAL_REGRESSION_GATED` covers that separate, request-gated mechanism) — so it is unconditional, never request-gated, and never a follow-up step run after the fact. A scenario without its proof screenshots is not done; add them in the same edit that adds the scenario.
+    </Axiom>

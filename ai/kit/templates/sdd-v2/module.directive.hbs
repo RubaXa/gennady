@@ -50,7 +50,34 @@
     {{> "axiom/boundary/ax-entity-surface-completeness"}}
 
     <Axiom id="AX_SPEC_MANDATORY_DIAGRAM">
-      Every spec carries at least one diagram in an `Overview` section — one glance beats a paragraph. The floor is one (mermaid or ASCII), held by tooling: `sdd-check` fails a missing section (`SDD_NO_DIAGRAM_BLOCK`) or an empty one (`SDD_DIAGRAM_BLOCK_EMPTY`). Beyond the floor the author adds more views — sequence, data-flow, state — wherever a second diagram genuinely helps a reader understand; that is judgment, not a gate. The `Inter-Module Dependencies` graph is machine-parsed and does NOT satisfy the floor.
+      The diagram floor is a fixed ladder by decomposition stage, not one "when useful" Overview
+      picture — the same discipline agent-inbox's `AX_COMPREHENSION_LADDER` applies to a review
+      applies here to a design, at authoring time instead of review time. Four rungs, each
+      answering ONE distinct question — no two rungs answer the same thing; the worked example
+      lives in `ai/directives/sdd-v2/formats/module-diagram-ladder.example.md`:
+      1. **Overview** (module spec) — WHAT this module does, main happy-path flow. Unconditional.
+         Held by tooling: `sdd-check` fails a missing section (`SDD_NO_DIAGRAM_BLOCK`) or an empty
+         one (`SDD_DIAGRAM_BLOCK_EMPTY`). The `Inter-Module Dependencies` graph is machine-parsed
+         and does NOT satisfy this rung.
+      2. **Module Map** (scope spec, `STEP_1_MODULE_MAP`) — WHERE each module sits along the
+         decomposition axes (data/domain ↔ UI ↔ infrastructure, `AX_SEPARATION_OF_CONCERNS`).
+         Unconditional whenever ≥2 modules exist.
+      3. **Entity Inventory** (`STEP_2_ENTITY_INVENTORY`) — HOW entities relate (ER sketch).
+         Conditional: ≥2 entities in one module connected by reference/ownership/composition. A
+         single entity, or a set with no real relation, states that explicitly and skips it.
+      4. **Entity Surface** (`STEP_3_ENTITY_SURFACE`) — the entity's LIFECYCLE, when it is a real
+         state machine (≥3 distinct states/transitions, not just create→terminate). Conditional,
+         per entity.
+      5. **Module Contracts** (`STEP_4_CONTRACTS_DBC`) — the dependency GRAPH among Ports /
+         Adapters / Services. Mandatory whenever the module has ≥1 Port or Adapter; a Service-only
+         module states so explicitly instead of a silently missing graph — floor, never nothing.
+      Each rung is drawn as ASCII in chat at the step that owns it, BEFORE that step's Approval
+      Check — a diagram appearing for the first time in the written spec means the operator never
+      saw the shape they are approving (`AX_CHAT_BEFORE_SPEC`); an Approval Check without it is the
+      same class of violation as `H_ASK_BEFORE_FORMAT` (asked before shown), and the operator may
+      reject and demand it. Beyond these five rungs, the author adds more views (sequence,
+      data-flow, before/after) wherever a further diagram genuinely helps a reader — that part
+      stays judgment, never a gate.
     </Axiom>
 
     <Axiom id="AX_SPEC_PROGRESSIVE_DISCLOSURE">
@@ -126,9 +153,18 @@
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/module-map-update.xml")` first — this
         step's Approval Check asked before that read is `H_ASK_BEFORE_FORMAT`. Propose module
         boundaries along `AX_SEPARATION_OF_CONCERNS` (data/domain ↔ UI/presentation ↔
-        infrastructure; a shared core only once ≥2 consumers need it); the operator confirms
-        (`AX_MODULE_BOUNDARY_BY_OPERATOR`). Update
-        the scope spec Module Map append-only (`AX_SCOPE_SPEC_MODULE_MAP_OWNERSHIP`). `add-module`
+        infrastructure; a shared core only once ≥2 consumers need it) — draw the decomposition as
+        a diagram, not a bullet list of names: one tier per axis (data/domain · UI/presentation ·
+        infrastructure), each candidate module placed under its axis, as an ASCII block in THIS
+        message (rung 2 of `AX_SPEC_MANDATORY_DIAGRAM`; worked shape in
+        `ai/directives/sdd-v2/formats/module-diagram-ladder.example.md`) — this diagram IS what the
+        operator confirms next, not a restatement of it. The operator confirms
+        (`AX_MODULE_BOUNDARY_BY_OPERATOR`). **Diagram shown, this message, before the Approval
+        Check below** — its absence is the same class of violation as `H_ASK_BEFORE_FORMAT` (asked
+        before shown); the operator may reject and demand it. Update
+        the scope spec Module Map append-only (`AX_SCOPE_SPEC_MODULE_MAP_OWNERSHIP`), converting the
+        same shape to the mermaid `flowchart` grouped by axis (`AX_CHAT_BEFORE_SPEC`) — never a
+        diagram invented fresh at write time. `add-module`
         appends only (`AX_APPEND_ONLY_MODULE_ADD`). On `initial` this is the monolith→index migration
         (`AX_SCOPE_STAYS_THIN`): move entity / contract / file-level detail out of the scope spec into
         the new module specs, leaving the scope spec as the thin index (Module Map + composition Golden
@@ -153,7 +189,14 @@
         explicit errors owner, or the inventory carries a module-level `Ошибки: <механизм> →
         <владелец>` line (mechanism = throw / Result / event / …). A downstream BDD ticket cannot
         require behavior on an error whose owner is absent from this inventory — surface the gap
-        here, before approval, not at scaffold time. If a
+        here, before approval, not at scaffold time. Once ≥2 entities are relationally connected
+        (one references, owns, or is composed of another), draw the ER sketch per
+        `ENTITY_INVENTORY_FORMAT` as an ASCII block in THIS message BEFORE the Approval Check (rung
+        3 of `AX_SPEC_MANDATORY_DIAGRAM`; worked shape in
+        `ai/directives/sdd-v2/formats/module-diagram-ladder.example.md`) — a single entity or a set
+        with no real relation states that explicitly instead. **Diagram shown (or explicit
+        skip-reason), this message, before Approval Check** — its absence on a ≥2-related-entity
+        inventory is the same class of violation as `H_ASK_BEFORE_FORMAT`. If a
         module's inventory outgrows cohesion (too many entities / unrelated responsibility clusters),
         PROPOSE sub-module decomposition here per `AX_HIERARCHICAL_SPECS` (diverge-before-recommend;
         the operator decides) — do not silently let one module absorb a sub-system. All module
@@ -173,7 +216,14 @@
         dropped or `deferred`. Show each entity as its own compact block in chat (type / operations /
         errors) BEFORE asking for confirmation — a batched approval across several entities in one
         multiSelect/confirmation is fine, but only after every entity in that batch was shown
-        individually, never as a table skim. This step's Approval Check is its own — merging it with
+        individually, never as a table skim. When an entity's Lifecycle is a real state machine (≥3
+        distinct states/transitions, not just create→terminate), draw it as an ASCII state diagram
+        per `ENTITY_SURFACE_FORMAT` inside that entity's block, BEFORE the confirmation for that
+        entity (rung 4 of `AX_SPEC_MANDATORY_DIAGRAM`; worked shape in
+        `ai/directives/sdd-v2/formats/module-diagram-ladder.example.md`) — a 2-state lifecycle stays
+        the one-line bullet. **Diagram shown (or below-threshold, stated), this message, before
+        that entity's confirmation** — its absence on a ≥3-transition lifecycle is the same class
+        of violation as `H_ASK_BEFORE_FORMAT`. This step's Approval Check is its own — merging it with
         STEP_4's or STEP_5's Ask into one combined question is a violation, not an efficiency gain.
         STOP.
       </Action>
@@ -196,6 +246,16 @@
         Adapter and that choice is recorded in the Decision Log (`AX_DECISION_LOG_REQUIRED`). Each
         abstraction carries its justification (`AX_CONTEXT_TO_CONTRACT`); runtime backing is stated
         per contract (`AX_RUNTIME_BACKING_IN_CONTRACTS`).
+        Draw the Port/Adapter/Service dependency graph per `DBC_DEPENDENCY_GRAPH_FORMAT` as an
+        ASCII block in THIS message BEFORE the Approval Check (rung 5 of
+        `AX_SPEC_MANDATORY_DIAGRAM`; worked shape in
+        `ai/directives/sdd-v2/formats/module-diagram-ladder.example.md`): nodes = every Port /
+        Adapter / Service this module defines, edges = `implements` (Adapter → Port) and `depends
+        on` (Service → Port), arrows toward the more stable side. A Service-only module (no
+        Port/Adapter at all) states that explicitly instead of a silently missing graph — floor,
+        never nothing. **Diagram shown (or explicit Service-only statement), this message, before
+        the Approval Check below** — its absence is the same class of violation as
+        `H_ASK_BEFORE_FORMAT`.
         Close the step with two checks before presenting:
         1. Every module / entity / Port in the contracts carries a confirmed v1 consumer or
            near-term variability (`AX_YAGNI_OVERENGINEERING_GUARD`).

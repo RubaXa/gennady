@@ -19,6 +19,13 @@
       judgment). The mechanical checks verify only PRESENCE/non-emptiness of the Overview diagram
       block; the ≤7-node and one-idea-per-diagram rules are judgment calls made at write time, not
       re-derived by a tool.
+
+      The module flow's diagram FLOOR (not judgment — see `AX_SPEC_MANDATORY_DIAGRAM` in
+      `module.directive.xml`) is beyond a single Overview picture: a fixed ladder of one diagram per
+      decomposition step (Module Map axes, Entity Inventory ER, Entity Surface lifecycle, Module
+      Contracts dependency graph). The full worked example, ASCII + mermaid pair per rung, lives at
+      `ai/directives/sdd-v2/formats/module-diagram-ladder.example.md` — each of `module.directive.xml`'s
+      `STEP_1_MODULE_MAP` … `STEP_4_CONTRACTS_DBC` points to it directly.
   </Mission>
 
   <BeliefState>

@@ -33,7 +33,28 @@
     {{> "axiom/spec/ax-dx-first"}}
 
     <Axiom id="AX_SPEC_MANDATORY_DIAGRAM">
-      Every scope spec carries at least one diagram in an `Overview` section, high up so a reader grasps the scope at a glance — one glance beats a paragraph. The floor is one system-context / high-level view (mermaid or ASCII), held by tooling: `sdd-check` fails a missing section (`SDD_NO_DIAGRAM_BLOCK`) or an empty one (`SDD_DIAGRAM_BLOCK_EMPTY`). Beyond the floor the author adds more views (user flow, data flow) wherever a second diagram genuinely helps; that is judgment, not a gate.
+      The diagram floor for a scope spec is a fixed pair, not one "when useful" picture — the same
+      discipline agent-inbox's `AX_COMPREHENSION_LADDER` applies to a review applies here at design
+      time instead of review time. Two rungs, each answering ONE distinct question:
+      1. **Overview** — WHAT this scope is, system-context / high-level view. Unconditional. Held
+         by tooling: `sdd-check` fails a missing section (`SDD_NO_DIAGRAM_BLOCK`) or an empty one
+         (`SDD_DIAGRAM_BLOCK_EMPTY`).
+      2. **High-Level Architecture** — WHERE this scope sits AMONG its neighbours (C4-style
+         boundary: this scope as a box, confirmed dependencies/consumers as boxes outside it) —
+         distinct from Overview (Overview = the shape at a glance; this = the boundary, decided
+         once Architecture is locked). Unconditional, drawn at `STEP_5_ARCHITECTURE` — see that
+         step's Action for the concrete rule.
+      Both are drawn as ASCII in chat at the step that decides the shape, BEFORE that step's
+      Approval Check — a diagram appearing for the first time in the written spec means the
+      operator never saw the shape they are approving (`AX_CHAT_BEFORE_SPEC`,
+      `formats/diagram-vocabulary.xml`); an Approval Check without it is a show-before-ask
+      violation the operator may reject and demand, the same class as the router's
+      `H_ASK_WITHOUT_CARD`. `product` scope-type additionally carries a **Use Cases** rung — actors
+      → scenario, closed while the interview's «Потребители» / «Худший сценарий» topics are
+      answered at `STEP_2_INTENT_CAPTURE` — drawn in chat today even though the artifact section
+      awaits a spec-skeleton update (see that step's Action for the concrete rule). Beyond this
+      floor the author adds more views (user flow, data flow) wherever a further diagram genuinely
+      helps a reader; that stays judgment, never a gate.
     </Axiom>
 
     {{> "axiom/spec/ax-runtime-backing-explicit"}}
@@ -105,7 +126,19 @@
         `scale:` from the session file: per `AX_SCALE_PROPORTIONAL_DEPTH` the map depth follows
         scale — `fix` / `function` → base topics + the triage minimum; `product` → the full
         scope-type block. The interview IS the substance of the step. Capture the initial Runtime
-        Backing posture per `AX_RUNTIME_BACKING_EXPLICIT`. Approval Check. STOP.
+        Backing posture per `AX_RUNTIME_BACKING_EXPLICIT`.
+
+        For `product` scope-type, once the interview's «Потребители» and «Худший сценарий» topics
+        close, draw the Use Cases diagram (rung 3 of `AX_SPEC_MANDATORY_DIAGRAM`, `use-case` type
+        per `formats/diagram-vocabulary.xml`): actors → scenario nodes, one line «зачем» each, the
+        worst-case scenario marked distinctly (⚠️) — as its own ASCII block in chat, BEFORE this
+        step's Approval Check; a bare bullet list of user types does not satisfy this rung. The
+        product spec skeleton does not yet carry a dedicated `## Use Cases` section — until it
+        does, fold this diagram's content into Target Experience at `STEP_9_FINAL_SPEC` rather than
+        dropping it; do not wait for the skeleton to gain the section before drawing it in chat.
+        **Diagram shown, this message, before the Approval Check below** — on a `product` scope its
+        absence is a show-before-ask violation, the same class as the router's
+        `H_ASK_WITHOUT_CARD`. Approval Check. STOP.
       </Action>
     </Step>
     <Step id="STEP_3_REQUIREMENTS_GATE">
@@ -136,7 +169,19 @@
         Variant count follows the session-file `scale:` per `AX_SCALE_PROPORTIONAL_DEPTH` (Project
         Type refines it per `AX_PRODUCT_LIBRARY_FLOW`): scale `product` → 2–3 variants; scale
         `module` / `function` → 1–2, or a single design with the skip rationale recorded in the
-        Decision Log. Under `LOW` confidence do not lock (`H_LOW_CONFIDENCE`). Approval Check. STOP.
+        Decision Log. Under `LOW` confidence do not lock (`H_LOW_CONFIDENCE`).
+
+        Before the Approval Check, draw the scope-boundary diagram (rung 2 of
+        `AX_SPEC_MANDATORY_DIAGRAM`, C4-style, per `formats/diagram-vocabulary.xml`): THIS scope as
+        a boundary box, its known neighbours as boxes outside it — depends-on (infra-base / other
+        scopes, from the Portal Scope Graph already in state) and provides-to (consumer scopes),
+        plus whatever Scope Dependencies are confirmed so far — ≤7 nodes, as an ASCII block in THIS
+        message. This IS the Overview system-context shape decided now, for THIS scope's place
+        among neighbours; `STEP_9_FINAL_SPEC` converts the same drawing to mermaid inside both
+        `## Overview` and `## High-Level Architecture` (`AX_CHAT_BEFORE_SPEC`) — never invented
+        fresh at write time. **Diagram shown, this message, before the Approval Check below** —
+        its absence is a show-before-ask violation, the same class as the router's
+        `H_ASK_WITHOUT_CARD`; the operator may reject and demand it. Approval Check. STOP.
       </Action>
     </Step>
     <Step id="STEP_6_ARCHITECTURE_CHOICE">

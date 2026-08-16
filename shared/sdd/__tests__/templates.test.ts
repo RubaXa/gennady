@@ -83,6 +83,7 @@ describe('derived lists match check.ts (block L1 parity requirement)', () => {
     product: [
       'VISION',
       'GOLDEN_DX',
+      'USE_CASES',
       'REQUIREMENTS_AND_CONSTRAINTS',
       'ARCHITECTURE',
       'DECISION_LOG',

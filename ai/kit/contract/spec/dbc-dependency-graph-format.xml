@@ -1,0 +1,29 @@
+<!-- source: TSK sdd-v2-readiness — diagram floor for module Module Contracts (STEP_4_CONTRACTS_DBC) -->
+<Contract id="DBC_DEPENDENCY_GRAPH_FORMAT">
+      **Port/Adapter/Service dependency graph — mandatory in `## Module Contracts`**, one level
+      above the per-entity DbC prose: the individual Port/Adapter blocks below answer "what does
+      each contract promise", this graph answers "who depends on whom, in which direction" — a
+      relationship among ≥2 elements, so it is a picture, not a bullet list
+      (`AX_INFOGRAPHIC_FIRST`, `formats/diagram-vocabulary.xml`). Nodes = every Port / Adapter /
+      Service this module defines or consumes from a sibling; edges = `implements` (Adapter →
+      Port) and `depends on` (Service → Port), arrows drawn in the dependency direction — toward
+      the more stable side (Stable Dependencies principle: an Adapter depends on its Port, never
+      the reverse). Placed directly under the one-line human summary, above the folded
+      `<details>` block:
+
+      ```markdown
+      OrderService ──depends on──▶ PaymentGatewayPort ◀──implements── StripeAdapter
+      ```
+
+      **Floor, never nothing:** a module with zero Ports/Adapters (Services only, no confirmed
+      variability) still states that explicitly — `Граф не рисуется: в модуле нет Port/Adapter,
+      только Service <name>` — the reader sees the DECISION (no abstraction layer here) instead of
+      wondering whether the graph was forgotten. A single Port with a single Adapter and no other
+      module depending on it draws the minimal two-node arrow above; it still earns the picture
+      because direction-of-dependency is exactly the fact a reader must not have to infer from
+      prose.
+
+      This ASCII form is shown in chat during STEP_4_CONTRACTS_DBC, at the point Port-vs-Service
+      is decided (`AX_CHAT_BEFORE_SPEC`); the mermaid `flowchart` version under `## Module
+      Contracts` is the same shape converted at write time — never a fresh diagram invented then.
+    </Contract>

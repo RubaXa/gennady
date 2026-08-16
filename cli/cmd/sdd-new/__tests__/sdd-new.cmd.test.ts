@@ -82,6 +82,22 @@ describe('SddNewCommand', () => {
     }
   });
 
+  it('rejects task with --scope but no --module and no --id with exit 4 / BAD_INVOCATION (--id still required, --module NOT)', async () => {
+    const outcome = await mod.run(argv('task', '--scope', 'x'));
+    assert.strictEqual(outcome.ok, false);
+    if (!outcome.ok) {
+      assert.match(outcome.message, /task requires --id/);
+    }
+  });
+
+  it('rejects module with --scope but no --module with exit 4 / BAD_INVOCATION (module always needs --module)', async () => {
+    const outcome = await mod.run(argv('module', '--scope', 'x'));
+    assert.strictEqual(outcome.ok, false);
+    if (!outcome.ok) {
+      assert.match(outcome.message, /--module/);
+    }
+  });
+
   it('creates a product spec at the conventional path via --out and writes the skeleton verbatim', async () => {
     const out = join(tmpDir, 'specs', 'backend', 'backend.spec.md');
     const outcome = await mod.run(argv('product', '--scope', 'backend', '--out', out));
@@ -152,6 +168,16 @@ describe('SddNewCommand', () => {
     assert.strictEqual(path, 'specs/s/foo/bar/bar.3-tasks.md');
   });
 
+  it('resolves a flat task (no --module) at specs/<scope>/<scope>.task.<id>.md — no doubled scope segment', () => {
+    const path = mod.resolvePath('task', { scope: 'infra-base', id: 'INF-tooling' });
+    assert.strictEqual(path, 'specs/infra-base/infra-base.task.INF-tooling.md');
+  });
+
+  it('resolves a flat module-index (no --module) at specs/<scope>/<scope>.3-tasks.md', () => {
+    const path = mod.resolvePath('module-index', { scope: 'infra-base' });
+    assert.strictEqual(path, 'specs/infra-base/infra-base.3-tasks.md');
+  });
+
   it('resolves scope-index: specs/<scope>/<scope>.3-tasks.md', () => {
     const path = mod.resolvePath('scope-index', { scope: 's' });
     assert.strictEqual(path, 'specs/s/s.3-tasks.md');
@@ -184,6 +210,40 @@ describe('SddNewCommand', () => {
     if (!outcome.ok) {
       assert.strictEqual(outcome.exitCode, 4);
       assert.match(outcome.code, /BAD_INVOCATION/);
+    }
+  });
+
+  it('creates a flat task ticket (no --module) at specs/<scope>/<scope>.task.<id>.md', async () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'sdd-new-flat-'));
+    const prevCwd = process.cwd();
+    try {
+      process.chdir(cwd);
+      const outcome = await mod.run(argv('task', '--scope', 'demo', '--id', 'DEM-x'));
+      assert.strictEqual(outcome.ok, true);
+      if (outcome.ok) {
+        assert.strictEqual(outcome.path, 'specs/demo/demo.task.DEM-x.md');
+        assert.ok(existsSync(outcome.path));
+      }
+    } finally {
+      process.chdir(prevCwd);
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  it('creates a flat module-index (no --module) at specs/<scope>/<scope>.3-tasks.md', async () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'sdd-new-flat-idx-'));
+    const prevCwd = process.cwd();
+    try {
+      process.chdir(cwd);
+      const outcome = await mod.run(argv('module-index', '--scope', 'demo'));
+      assert.strictEqual(outcome.ok, true);
+      if (outcome.ok) {
+        assert.strictEqual(outcome.path, 'specs/demo/demo.3-tasks.md');
+        assert.ok(existsSync(outcome.path));
+      }
+    } finally {
+      process.chdir(prevCwd);
+      rmSync(cwd, { recursive: true, force: true });
     }
   });
 

@@ -62,6 +62,7 @@ describe('checkSpecStructure — required sections per scope-type', () => {
   const PRODUCT = [
     'VISION',
     'GOLDEN_DX',
+    'USE_CASES',
     'REQUIREMENTS_AND_CONSTRAINTS',
     'ARCHITECTURE',
     'DECISION_LOG',

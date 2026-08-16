@@ -24,7 +24,13 @@ export function printHelp(): void {
   console.info(
     '  --scope <s>       Scope name. Required for every kind except portal (unless --out is given).'
   );
-  console.info('  --module <m>      Module name. Required for module and task.');
+  console.info(
+    '  --module <m>      Module name. Required for module. Optional for task/module-index — omit'
+  );
+  console.info('                    it for a flat scope (no module subdivision): the path stays');
+  console.info(
+    '                    specs/<scope>/<scope>.task.<id>.md / specs/<scope>/<scope>.3-tasks.md.'
+  );
   console.info('  --id <ACR-slug>   Task-ID slug. Required for task.');
   console.info(
     '  --out <path>      Explicit target path — overrides the computed path convention.'

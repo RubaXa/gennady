@@ -49,6 +49,8 @@ function moduleName(module: string): string {
 /**
  * @purpose Compute the target path for a kind from --scope/--module/--id, honoring an explicit --out.
  * @invariant Pure — no I/O. Callers validate required options are present AND well-formed (validateModulePath) before calling.
+ * @invariant `task`/`module-index` accept an ABSENT --module: path stays flat
+ *   (`specs/<scope>/<scope>.task.<ID>.md` / `.3-tasks.md`), not a doubled scope segment.
  * @param kind Artifact kind.
  * @param opts scope/module/id/out as parsed from argv. `--module` may be any depth (`foo/bar/qux`) per AX_HIERARCHICAL_SPECS.
  * @returns The resolved relative path.
@@ -67,9 +69,13 @@ export function resolvePath(
     case 'module':
       return `specs/${opts.scope}/${opts.module}/${moduleName(opts.module as string)}.spec.md`;
     case 'task':
-      return `specs/${opts.scope}/${opts.module}/${moduleName(opts.module as string)}.task.${opts.id}.md`;
+      return opts.module
+        ? `specs/${opts.scope}/${opts.module}/${moduleName(opts.module as string)}.task.${opts.id}.md`
+        : `specs/${opts.scope}/${opts.scope}.task.${opts.id}.md`;
     case 'module-index':
-      return `specs/${opts.scope}/${opts.module}/${moduleName(opts.module as string)}.3-tasks.md`;
+      return opts.module
+        ? `specs/${opts.scope}/${opts.module}/${moduleName(opts.module as string)}.3-tasks.md`
+        : `specs/${opts.scope}/${opts.scope}.3-tasks.md`;
     case 'scope-index':
       return `specs/${opts.scope}/${opts.scope}.3-tasks.md`;
     case 'project-index':
@@ -81,6 +87,8 @@ export function resolvePath(
 
 /**
  * @purpose Which options are required for a kind, beyond --out (which always short-circuits path computation).
+ * @invariant `task`/`module-index` do NOT require --module — flat scopes get the flat path
+ *   (see `resolvePath`); only `module` always needs one.
  * @param kind Artifact kind.
  * @returns Names of missing required options given what was supplied, empty when satisfied.
  */
@@ -91,8 +99,7 @@ function missingOptions(
   if (opts.out) return [];
   const missing: string[] = [];
   if (kind !== 'portal' && kind !== 'project-index' && !opts.scope) missing.push('--scope');
-  if ((kind === 'module' || kind === 'task' || kind === 'module-index') && !opts.module)
-    missing.push('--module');
+  if (kind === 'module' && !opts.module) missing.push('--module');
   if (kind === 'task' && !opts.id) missing.push('--id');
   return missing;
 }

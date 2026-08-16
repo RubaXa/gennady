@@ -25,4 +25,21 @@
 
   A BDD ticket downstream cannot require behavior on an error whose owner is absent from this
   inventory — that gap is caught here, before approval, not discovered later at scaffold time.
+
+  **ER sketch — mandatory once ≥2 entities are relationally connected** (one references, owns,
+  or is composed of another): the table alone shows WHAT exists, not HOW the entities relate,
+  and a relationship among ≥2 elements is exactly the case a picture beats a paragraph
+  (`AX_INFOGRAPHIC_FIRST`, `formats/diagram-vocabulary.xml`). Add it directly under the table:
+
+  ```markdown
+  Order ──1:N──▶ OrderLine
+    - id (PK)      - id (PK)
+    - customerId   - orderId (FK)
+  ```
+
+  A single-entity inventory (nothing to relate) or a set of genuinely unrelated entities skips
+  the sketch — state which case applies, never leave the reader guessing. This ASCII form is
+  shown in chat during the STEP_2_ENTITY_INVENTORY interview, at the point the entities and
+  their relations are confirmed (`AX_CHAT_BEFORE_SPEC`); the mermaid `erDiagram` version below
+  the table is the same shape, not a fresh diagram invented at write time.
 </Contract>

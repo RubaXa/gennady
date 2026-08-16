@@ -24,4 +24,22 @@
       operator; omit entirely once usage clears the threshold. Public API for a named external
       consumer uses `- **Usage Waiver (external: <named consumer>):** <reason>` — the rule still
       applies, the label is just mandatory rather than optional for that case.
+
+      **Lifecycle state diagram — mandatory once an entity's Lifecycle carries ≥3 distinct
+      states/transitions** (not just create→terminate — a genuine state machine: draft/pending/
+      active/archived and the like). A lifecycle that shape is a relational structure, not a
+      one-line fact, and stays text only below that threshold. Add it directly under the
+      **Lifecycle** bullet:
+
+      ```markdown
+      [draft] ──submit──▶ [pending] ──approve──▶ [active]
+                              │
+                            reject ──▶ [closed]
+      ```
+
+      A 2-state lifecycle (created → terminated, nothing else) stays the one-line bullet — a
+      diagram of one transition is noise, not clarity. This ASCII form is shown in chat during the
+      STEP_3_ENTITY_SURFACE step, at the point that entity's lifecycle is confirmed
+      (`AX_CHAT_BEFORE_SPEC`); the mermaid `stateDiagram-v2` version is the same shape converted at
+      write time, never a fresh diagram invented then.
     </Contract>

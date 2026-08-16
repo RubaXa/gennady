@@ -1,8 +1,10 @@
-<PlaywrightE2ERules keywords="playwright, e2e, aria-snapshot, role-locators, page-objects, fixture, storage-state, network-mock, route, visual-regression, self-verify" type="testing-rules" ver="2.0">
+<PlaywrightE2ERules keywords="playwright, e2e, aria-snapshot, role-locators, page-objects, fixture, storage-state, network-mock, route, visual-regression, proof-screenshot, self-verify" type="testing-rules" ver="2.0">
   <Mission>
     Canonical rules for authoring Playwright E2E tests. Every execution-agent MUST perceive the page through `page.ariaSnapshot()`, locate elements via `getByRole()` only, and codify the observed contract into committed test files backed by fixture-based Page Objects.
 
     **Base axiom:** an e2e test asserts a USER-FACING contract — what a screen-reader-equivalent observer sees and what a role-driven interaction does. Anything in the test that ties to CSS classes, DOM structure, or pixel coordinates is contract leakage and will break on the first refactor that does not affect the contract. So locators come from accessible roles, structural assertions come from `toMatchAriaSnapshot`, and visual regression is reserved for explicitly visual concerns.
+
+    **Proof screenshots are a separate, unconditional mechanism:** every user-flow scenario captures `shot(page, name, testInfo)` at its key points (load / action / error-empty), regardless of whether visual regression is in scope. Pixel-regression baselines (`toHaveScreenshot`) answer "did the pixels change?" and stay request-gated; proof screenshots answer "did this flow actually render?" and are never optional.
 
     Scope: codification — turning exploration observations into committed test files. Companion (exploration before authoring): `ai/directives/testing/playwright-cli.xml`.
   </Mission>
@@ -53,10 +55,18 @@
 
     <Axiom id="AX_E2E_VISUAL_REGRESSION_GATED">
       Visual regression (`toHaveScreenshot()`) is enabled ONLY when the task explicitly requires pixel-level verification. Default contract verification is structural (AX) + behavioural (interaction). Visual regression baselines drift across font rendering, OS chrome, and unrelated CSS, so they belong only on routes that genuinely care about pixels.
+
+      This axiom gates ONE mechanism: pixel-diff baselines under `e2e/__snapshots__/`. It does NOT gate the proof screenshot every user-flow scenario already takes per `AX_E2E_PROOF_SCREENSHOT_ALWAYS` — that capture lives under the separate `e2e/__screenshots__/` directory, asserts nothing about pixels, and is never request-gated.
+    </Axiom>
+
+    <Axiom id="AX_E2E_PROOF_SCREENSHOT_ALWAYS">
+      Every e2e scenario that exercises a user-facing flow captures a screenshot at each key point of that flow — after the route loads, after the primary interaction, and at any error/empty state the scenario reaches. The capture goes through a shared `shot(page, name, testInfo)` helper called directly inside the `test(...)` body, landing at `e2e/__screenshots__/<spec>/<step>.png`.
+
+      This is evidence the flow actually rendered end to end, not a pixel-regression baseline (`AX_E2E_VISUAL_REGRESSION_GATED` covers that separate, request-gated mechanism) — so it is unconditional, never request-gated, and never a follow-up step run after the fact. A scenario without its proof screenshots is not done; add them in the same edit that adds the scenario.
     </Axiom>
 
     <Axiom id="AX_E2E_FILE_LAYOUT">
-      Project-wide layout: tests under `e2e/tests/`, fixtures under `e2e/fixtures/`, auth setup under `e2e/auth/`, snapshot baselines under `e2e/__snapshots__/`. One subject per test file; one domain per fixture file. Mixing layouts forces every reader-agent to grep for the convention instead of trusting it.
+      Project-wide layout: tests under `e2e/tests/`, fixtures under `e2e/fixtures/`, auth setup under `e2e/auth/`, pixel-regression baselines under `e2e/__snapshots__/`, proof screenshots under `e2e/__screenshots__/<spec>/`. One subject per test file; one domain per fixture file. Mixing layouts forces every reader-agent to grep for the convention instead of trusting it.
     </Axiom>
 
     <Axiom id="AX_E2E_FILE_SIZE_BUDGET">
@@ -82,6 +92,9 @@
     </Definition>
     <Definition id="DEF_E2E_AX_CONTRACT">
       The YAML emitted by `ariaSnapshot()` IS the structural contract. Diffs against the committed baseline (`toMatchAriaSnapshot`) signal either a real regression or an intentional UI change requiring an operator-confirmed baseline update.
+    </Definition>
+    <Definition id="DEF_E2E_PROOF_SCREENSHOT">
+      A `page.screenshot()` capture taken from inside the committed test, via the shared `shot(page, name, testInfo)` helper, at one key point of the scenario (post-load / post-action / error-empty state). Written to `e2e/__screenshots__/<spec>/<step>.png`. Proves the flow rendered — it carries no assertion and is never compared against a baseline, unlike a pixel-regression snapshot (`DEF_E2E_AX_CONTRACT`'s sibling mechanism, gated by `AX_E2E_VISUAL_REGRESSION_GATED`).
     </Definition>
   </Definitions>
 
@@ -197,6 +210,49 @@
       </Snippet>
       <Why>`page.route` intercepts at the network layer; component code runs unchanged. Assertion via `getByRole('status')`.</Why>
     </Pattern>
+
+    <Pattern id="PT_E2E_PROOF_SCREENSHOT">
+      <Intent>Capture a proof screenshot at each key point of a user flow — post-load, post-action, error/empty state — from inside the test itself.</Intent>
+      <Snippet language="typescript">
+        ```typescript
+        // e2e/helpers/shot.ts
+        import { basename } from 'node:path';
+        import type { Page, TestInfo } from '@playwright/test';
+
+        /** Proof screenshot for one step of the current test's flow — part of the test, never a side script. */
+        export async function shot(page: Page, name: string, testInfo: TestInfo): Promise<void> {
+          const spec = basename(testInfo.file, '.spec.ts');
+          await page.screenshot({ path: `e2e/__screenshots__/${spec}/${name}.png`, fullPage: true });
+        }
+
+        // e2e/tests/checkout.spec.ts
+        import { expect, test } from '@playwright/test';
+        import { shot } from '../helpers/shot';
+
+        test('should complete checkout happy path', async ({ page }, testInfo) => {
+          await page.goto('/checkout');
+          await shot(page, 'loaded', testInfo);
+
+          await page.getByRole('button', { name: 'Place Order' }).click();
+          await shot(page, 'order-placed', testInfo);
+
+          await expect(page.getByRole('status')).toContainText('Order placed');
+        });
+
+        test('should show validation error on empty submit', async ({ page }, testInfo) => {
+          await page.goto('/checkout');
+          await page.getByRole('button', { name: 'Place Order' }).click();
+          await shot(page, 'validation-error', testInfo);
+
+          await expect(page.getByRole('textbox', { name: 'Email' })).toHaveAttribute(
+            'aria-invalid',
+            'true',
+          );
+        });
+        ```
+      </Snippet>
+      <Why>Both scenarios call `shot()` directly in the test body — no separate capture script. Names mark the key point (`loaded`, `order-placed`, `validation-error`); files land under `e2e/__screenshots__/checkout/`, regenerated on every suite run.</Why>
+    </Pattern>
   </CodePatterns>
 
   <AntiPatterns>
@@ -229,11 +285,17 @@
       <WhyBad>External dependency not mocked (`AX_E2E_NETWORK_MOCK_AT_ROUTE`). The test depends on infrastructure state outside the contract under test; one downstream incident turns the suite red and erodes trust. Worse, it cannot exercise failure paths because the real backend will not produce them on demand.</WhyBad>
       <Good>`await page.route('**/api/orders', route => route.fulfill({ status: 200, body: JSON.stringify(fixture) }));` for the happy path; `route.fulfill({ status: 500 })` for the failure path.</Good>
     </AntiPattern>
+
+    <AntiPattern id="AP_E2E_SCREENSHOT_OUTSIDE_TEST">
+      <Bad>An agent writes and runs a one-off script (`node capture-screenshots.ts`) to produce proof screenshots only after the operator explicitly asks for visual evidence, instead of calling `shot()` inside the committed test.</Bad>
+      <WhyBad>Proof screenshots not sourced from the test (`AX_E2E_PROOF_SCREENSHOT_ALWAYS`). The next CI run produces zero evidence because nothing in the suite calls `shot()` — the capture existed for one manual invocation and vanishes the moment the throwaway script is deleted. It also trains the workflow to treat screenshots as an on-demand chore triggered by operator pressure instead of a standard part of every user-flow scenario.</WhyBad>
+      <Good>Call `shot(page, 'loaded', testInfo)` (and at each subsequent key point) directly inside the `test(...)` body, so every suite run regenerates the same evidence trail under `e2e/__screenshots__/<spec>/` with no separate script.</Good>
+    </AntiPattern>
   </AntiPatterns>
 
   <WorkflowOutline>
     <Step id="WF_E2E_1_EXPLORE">Run the exploration loop in `playwright-cli.xml` to capture AX snapshots and confirmed locators against the running app.</Step>
-    <Step id="WF_E2E_2_CODIFY">Author the fixture file (if a Page Object is needed) and the test file: AX baseline → interaction via role locator → AX delta.</Step>
+    <Step id="WF_E2E_2_CODIFY">Author the fixture file (if a Page Object is needed) and the test file: AX baseline → interaction via role locator → AX delta. Call `shot(page, name, testInfo)` after load, after the primary action, and at any error/empty state (`AX_E2E_PROOF_SCREENSHOT_ALWAYS`) — in the same edit, not a follow-up step.</Step>
     <Step id="WF_E2E_3_MOCK_AND_AUTH">Mock external APIs via `page.route()`; reuse the auth setup project rather than logging in inline.</Step>
     <Step id="WF_E2E_4_SELF_VERIFY">`npx playwright test --project=chromium`; fix failures (component or test); re-run until green.</Step>
     <Step id="WF_E2E_5_FINALIZE">Confirm file under budget; snapshots scoped; no CSS/XPath locators; no inline login; no committed `.only` / `.skip` without deferred-ownership reference.</Step>
@@ -260,6 +322,11 @@
       <Command>find e2e -name '*.spec.ts' -o -name '*.test.ts' 2>/dev/null | while read f; do lines=$(grep -cvE '^\s*(//|/\*|\*|$)' "$f"); [ "$lines" -gt 200 ] &amp;&amp; echo "$lines $f"; done | sort -n</Command>
       <Expected>No file exceeds 300 code-lines. Files over 200 carry a tracked split task or explicit justification.</Expected>
     </Hook>
+    <Hook id="HOOK_E2E_PROOF_SCREENSHOTS_CAPTURED">
+      <Purpose>Every committed user-flow spec calls the `shot()` helper at least once — proof screenshots are part of the test, not a separate script.</Purpose>
+      <Command>find e2e -name '*.spec.ts' 2>/dev/null | xargs -L1 sh -c 'grep -q "shot(" "$1" || echo "$1"' _ || true</Command>
+      <Expected>Empty output. Any listed file is a user-flow spec missing `shot(page, name, testInfo)` calls at its key points.</Expected>
+    </Hook>
     <Hook id="HOOK_E2E_NO_ONLY_OR_SKIP">
       <Purpose>No committed `.only` / `.skip` without a deferred-ownership reference.</Purpose>
       <Command>find e2e -name '*.spec.ts' -o -name '*.test.ts' 2>/dev/null | xargs grep -nE '\b(test|describe)\.(only|skip|fixme)\b' || true</Command>
@@ -274,7 +341,8 @@
     ✅ Auth via `storageState` from a setup project; no inline login per test.
     ✅ External APIs mocked at the network boundary via `page.route()`; project-wide harness reused consistently.
     ✅ Visual regression (`toHaveScreenshot`) used only when the contract is genuinely visual.
-    ✅ Files live under the documented layout (`e2e/tests/`, `e2e/fixtures/`, `e2e/auth/`, `e2e/__snapshots__/`).
+    ✅ Every user-flow scenario calls `shot(page, name, testInfo)` after load, after the primary action, and at any error/empty state — inside the test, unconditionally.
+    ✅ Files live under the documented layout (`e2e/tests/`, `e2e/fixtures/`, `e2e/auth/`, `e2e/__snapshots__/`, `e2e/__screenshots__/<spec>/`).
     ✅ Test files under 200 code-lines (soft) / 300 (hard); past the budget → split by scenario family.
     ✅ Headless execution everywhere; self-verification loop completes before handoff.
 
@@ -284,6 +352,7 @@
     ❌ Standalone Page Object instantiated by the test (`new SomePage(page)`).
     ❌ External APIs left unmocked; component-level `fetch` patching.
     ❌ Visual regression baselines for tests whose contract is structural.
+    ❌ Proof screenshots captured by a script run outside the committed test suite.
     ❌ Test file exceeds the 300-line hard ceiling.
     ❌ Committed `test.only` / `test.skip` / `test.fixme` without deferred-ownership reference.
     ❌ Snapshot baselines updated silently via `--update-snapshots`.

@@ -259,6 +259,11 @@
       ("small task, skip it") — it is picked or waived by an explicit operator decision. When live e2e
       is genuinely impossible for this task, unit coverage alone is acceptable, but only as a NAMED
       decision carrying a one-line risk statement in the Decision Log — never a silent omission.
+
+      An e2e test picked over unit-only carries its own closing bar: it is not DONE until it also
+      captures its proof screenshots at each key point of the flow (`AX_E2E_PROOF_SCREENSHOT_ALWAYS`,
+      `ai/directives/testing/playwright-e2e.xml`) — a live e2e run with no screenshot trail is
+      unverifiable evidence, no better than the "small task, skip it" shortcut this axiom forbids.
     </Axiom>
 
     <Axiom id="AX_TICKET_DEDUPLICATION">
