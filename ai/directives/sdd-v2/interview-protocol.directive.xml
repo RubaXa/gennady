@@ -112,8 +112,8 @@
 
     | scope-type | Topics |
     |---|---|
-    | product | Пользователи (who exactly, how many) · Метрика успеха/провала (both, not only success) · Зачем сейчас (why this, why now) · Worst case (the worst plausible scenario and who pays for it) |
-    | library | Разработчики-потребители (which teams / repos) · DX (how consumption should feel; feeds Golden DX) · Версии (versioning + compatibility promises) |
+    | product | Пользователи (who exactly, how many) · Метрика успеха/провала (both, not only success) · Зачем сейчас (why this, why now) · Худший сценарий (the worst plausible scenario and who pays for it) |
+    | library | Разработчики-потребители (which teams / repos) · DX (how consumption should feel; feeds the Usage Example) · Версии (versioning + compatibility promises) |
     | infrastructure | Окружения (dev / CI / prod parity) · Доставка (how changes reach consumers) |
     | interface | Стороны контракта (producers and consumers, who owns the schema) · Эволюция (how the contract changes without breaking consumers) |
 

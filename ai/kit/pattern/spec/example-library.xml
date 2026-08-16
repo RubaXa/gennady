@@ -3,7 +3,7 @@
       ```markdown
       # logger-core: Library Specification
 
-      ## 2. Approved Golden DX Example
+      ## 2. Approved Usage Example
       ```ts
       // happy path
       const log = createLogger({ name: 'payments', level: 'info' })

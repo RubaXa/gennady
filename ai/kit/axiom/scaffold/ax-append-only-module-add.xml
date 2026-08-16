@@ -3,7 +3,7 @@
       In `add-module` mode existing module specs are NOT touched. Only:
       - new `specs/<scope>/<new-module>/<new-module>.spec.md`;
       - scope spec Module Map: APPEND new module row (append at end). Other rows untouched;
-      - scope spec Golden DX Example: rewritten as composition view per `AX_SCOPE_SPEC_MODULE_MAP_OWNERSHIP` (the ONE exception to «other scope-spec sections untouched»).
+      - scope spec Usage Example (ex-Golden DX): rewritten as composition view per `AX_SCOPE_SPEC_MODULE_MAP_OWNERSHIP` (the ONE exception to «other scope-spec sections untouched»).
 
       Touching another module's spec in `add-module` is forbidden. If sibling changes are needed, run the `module` flow again in `refine-module` mode for that specific module.
     </Axiom>

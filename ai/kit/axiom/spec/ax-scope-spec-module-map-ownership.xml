@@ -3,11 +3,11 @@
   The `module` flow owns TWO sections in the scope spec (`specs/<scope>/<scope>.spec.md`):
 
   - **Module Map** (`Module Map`) — append-only rows per module.
-  - **Golden DX Example** (`Golden DX Example` section — library / product) — composition view. Every `module` flow session (`initial` / `add-module` / `refine-module`) rewrites this section as one user-facing flow over the current module set. Module-level snippets NOT inlined — anchor-link to each module's `Module Usage Example`. Skip rewrite only when scope has zero modules with public surface.
+  - **Approved Usage Example** (`Usage Example` section — library / product) — composition view. Every `module` flow session (`initial` / `add-module` / `refine-module`) rewrites this section as one user-facing flow over the current module set. Module-level snippets NOT inlined — anchor-link to each module's `Module Usage Example`. Skip rewrite only when scope has zero modules with public surface.
 
   **Bidirectional consistency check** before session close — both directions must pass:
-  - (→) every named abstraction in scope-spec Golden DX has a home in some module's `Entity Inventory`;
-  - (←) every module with public surface (≥1 entry in `Entity Surfaces`) either appears in scope-spec Golden DX OR carries `internal-only — not in composition view` in its `Module Decision Log`.
+  - (→) every named abstraction in scope-spec Usage Example has a home in some module's `Entity Inventory`;
+  - (←) every module with public surface (≥1 entry in `Entity Surfaces`) either appears in scope-spec Usage Example OR carries `internal-only — not in composition view` in its `Module Decision Log`.
 
   Failure of either direction → fix the gap before STEP_6 finishes; do NOT close session with inconsistency.
 

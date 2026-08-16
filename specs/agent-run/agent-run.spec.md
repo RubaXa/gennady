@@ -22,7 +22,7 @@ library
 
 <!--SECTION:GOLDEN_DX-->
 
-## 2. Approved Golden DX Example
+## 2. Approved Usage Example
 
 ### Ядро (library)
 

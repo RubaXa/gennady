@@ -14,4 +14,15 @@
   | `PaymentGatewayPort` | Port | Абстракция для списания средств |
   | `StripePaymentAdapter` | Adapter | Реализация PaymentGatewayPort через Stripe |
   ```
+
+  **Errors ownership is first-class**, not an afterthought: either one row above is the explicit
+  errors owner (its `Purpose` says so, e.g. «Владеет обработкой/показом ошибок платежа»), or the
+  inventory carries one extra line right under the table:
+
+  ```markdown
+  Ошибки: <механизм — throw | Result | event | …> → <владелец: EntityName>
+  ```
+
+  A BDD ticket downstream cannot require behavior on an error whose owner is absent from this
+  inventory — that gap is caught here, before approval, not discovered later at scaffold time.
 </Contract>

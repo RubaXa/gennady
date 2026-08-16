@@ -18,6 +18,7 @@ import {
   checkTrackers,
   checkSpecStructure,
   checkSpecLanguage,
+  checkTaskIdGrammar,
   checkReviewState,
   checkModuleGraph,
   checkScopeDeps,
@@ -384,6 +385,17 @@ function specFlowVersion(file: string): FlowVersion {
 }
 
 /**
+ * @purpose True when a ticket is a genuine v2 artifact — under a `specs/` directory AND its scope resolves to v2.
+ * @invariant SDD_TASK_ID_GRAMMAR's gate: with no `specs` segment, `specFlowVersion` defaults to `'v2'`
+ * and wrongly grades ad-hoc test ids — a real `specs` segment fixes that.
+ * @param file Ticket path (absolute or relative).
+ * @returns Whether the grammar check should run against this ticket.
+ */
+function isV2SpecsTicket(file: string): boolean {
+  return resolve(file).split(sep).includes('specs') && specFlowVersion(file) === 'v2';
+}
+
+/**
  * @purpose Flow version governing ONE ticket file — per-scope, from its `tasks/<scope>/` segment.
  * @invariant Unlike `specFlowVersion`, `repoRoot` is caller-supplied (see `findRepoRoot`), not
  *   re-derived from the ticket's path — a ticket has no `specs` segment to anchor on.
@@ -461,6 +473,7 @@ export async function run(rawArgs: string[]): Promise<CheckResult> {
     findings.push(...checkTicketBddCoverage(taskPath, content, repoRoot));
     if (specFlowVersion(resolve(taskPath)) === 'v2')
       findings.push(...checkSpecLanguage(taskPath, content));
+    if (isV2SpecsTicket(taskPath)) findings.push(...checkTaskIdGrammar(taskPath, content));
     fileCount = 1;
   } else if (changed) {
     // #region START_CHANGED — invariant: TASKS_APPEND_ONLY + CONSUMERS_RESOLVABLE run over changed source files, not the full spec/ticket tree
@@ -561,6 +574,7 @@ export async function run(rawArgs: string[]): Promise<CheckResult> {
         findings.push(...checkTicketRulesCascade(file, content, repoRoot));
         findings.push(...checkTicketBddCoverage(file, content, repoRoot));
         if (specFlowVersion(file) === 'v2') findings.push(...checkSpecLanguage(file, content));
+        if (isV2SpecsTicket(file)) findings.push(...checkTaskIdGrammar(file, content));
         ticketRefs.push(ticketRef(file, content, ticketFlowVersion(file, repoRoot)));
         fileCount++;
       } else if (isLegacyTicket(content)) {

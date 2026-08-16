@@ -76,11 +76,11 @@
       The `module` flow owns TWO sections in the scope spec (`specs/<scope>/<scope>.spec.md`):
 
       - **Module Map** (`Module Map`) — append-only rows per module.
-      - **Golden DX Example** (`Golden DX Example` section — library / product) — composition view. Every `module` flow session (`initial` / `add-module` / `refine-module`) rewrites this section as one user-facing flow over the current module set. Module-level snippets NOT inlined — anchor-link to each module's `Module Usage Example`. Skip rewrite only when scope has zero modules with public surface.
+      - **Approved Usage Example** (`Usage Example` section — library / product) — composition view. Every `module` flow session (`initial` / `add-module` / `refine-module`) rewrites this section as one user-facing flow over the current module set. Module-level snippets NOT inlined — anchor-link to each module's `Module Usage Example`. Skip rewrite only when scope has zero modules with public surface.
 
       **Bidirectional consistency check** before session close — both directions must pass:
-      - (→) every named abstraction in scope-spec Golden DX has a home in some module's `Entity Inventory`;
-      - (←) every module with public surface (≥1 entry in `Entity Surfaces`) either appears in scope-spec Golden DX OR carries `internal-only — not in composition view` in its `Module Decision Log`.
+      - (→) every named abstraction in scope-spec Usage Example has a home in some module's `Entity Inventory`;
+      - (←) every module with public surface (≥1 entry in `Entity Surfaces`) either appears in scope-spec Usage Example OR carries `internal-only — not in composition view` in its `Module Decision Log`.
 
       Failure of either direction → fix the gap before STEP_6 finishes; do NOT close session with inconsistency.
 
@@ -90,11 +90,11 @@
     </Axiom>
 
     <Axiom id="AX_SCOPE_STAYS_THIN">
-      A scope spec has a bounded role: Vision, Requirements, Architecture decisions, Decision Log, Module Map, composition Golden DX, Handoff, Bootstrap Requirements. Entity inventory, public surfaces, DbC contracts, and file layout are module-level — they live ONLY in module specs (`AX_HIERARCHICAL_SPECS`), never inline in the scope spec.
+      A scope spec has a bounded role: Vision, Requirements, Architecture decisions, Decision Log, Module Map, composition Usage Example, Handoff, Bootstrap Requirements. Entity inventory, public surfaces, DbC contracts, and file layout are module-level — they live ONLY in module specs (`AX_HIERARCHICAL_SPECS`), never inline in the scope spec.
 
       Two representations:
       - **monolithic** — no modules yet; the scope spec may hold design inline (early / small scope).
-      - **index** — once decomposed, the scope spec is a thin composition over its modules: Module Map + Golden DX linking to each module's usage example; the detail lives in the modules.
+      - **index** — once decomposed, the scope spec is a thin composition over its modules: Module Map + Usage Example linking to each module's usage example; the detail lives in the modules.
 
       Growth is the decomposition signal, not a license to expand. When scope-level design reaches entity / contract / file granularity, that detail moves into a module — it does NOT accumulate in the scope spec. A scope converges to a thin index; it does not grow without bound.
 
@@ -107,7 +107,7 @@
       In `add-module` mode existing module specs are NOT touched. Only:
       - new `specs/<scope>/<new-module>/<new-module>.spec.md`;
       - scope spec Module Map: APPEND new module row (append at end). Other rows untouched;
-      - scope spec Golden DX Example: rewritten as composition view per `AX_SCOPE_SPEC_MODULE_MAP_OWNERSHIP` (the ONE exception to «other scope-spec sections untouched»).
+      - scope spec Usage Example (ex-Golden DX): rewritten as composition view per `AX_SCOPE_SPEC_MODULE_MAP_OWNERSHIP` (the ONE exception to «other scope-spec sections untouched»).
 
       Touching another module's spec in `add-module` is forbidden. If sibling changes are needed, run the `module` flow again in `refine-module` mode for that specific module.
     </Axiom>
@@ -159,7 +159,7 @@
     </Axiom>
 
     <Axiom id="AX_PORTS_AND_ABSTRACTIONS_DISCIPLINE">
-      - Business logic depends on Ports, not Adapters. Preconditions / postconditions / invariants live on Ports. Adapters reference a Port and describe side effects + runtime backing + verification levels.
+      - Business logic depends on Ports, not Adapters, when a Port exists. Port is preferred: preconditions / postconditions / invariants live on the Port, and the Adapter references it and describes side effects + runtime backing + verification levels. When the module consciously forgoes a Port (single implementation, no confirmed variability or test seam), the same DbC contract lives directly on the Service / Adapter instead — the absence of a Port is not the absence of a contract; that choice is recorded in the Decision Log (`AX_DECISION_LOG_REQUIRED`).
       - Port introduced only with confirmed v1 variability (≥2 implementations) or explicit test seam. Single implementation without confirmed split → Service or Entity, not Port.
       - Every proposed abstraction requires justification: which current risk / constraint / consumer it closes.
       - **DbC section shape is flexible.** `Module Contracts (DbC)` carries any subset of subsections drawn from the entity Type vocabulary (Port, Adapter, Service, Pattern, Utility, Module-level invariants, …). Ports/Adapters are AVAILABLE, not mandatory: single-implementation modules legitimately use Service-only or Pattern-only DbC. Subsections are unnumbered `###` headers (e.g. `### Ports`, `### OperationDef Pattern`).
@@ -174,8 +174,8 @@
       invariants and public operations as plain intent-level statements in the shared vocabulary
       (Port, Adapter, Entity, Command, Query, Event) — one testable statement per line, readable,
       free of syntax noise. Concrete signatures and types belong to the execution phase: the coding
-      rules turn the contract into the project's language there. The single exception: Golden DX /
-      usage examples are written in the project's target language — they show consumption, the
+      rules turn the contract into the project's language there. The single exception: the Usage
+      Example / usage examples are written in the project's target language — they show consumption, the
       contract stays textual. A genuinely cross-language contract belongs in an `interface` scope,
       expressed in its own interface language (schema / proto / IDL), not here.
     </Axiom>
@@ -265,6 +265,7 @@
     | `H_REFINE_BREAKING_NO_IMPACT_LIST` | breaking `refine-module` without a Pivot Invalidation List enumerating consumer modules (`AX_REFINE_MODULE_PRESERVES_CONTRACTS`) |
     | `H_MISSING_RULE_FILE` | A module rule reference does not resolve to an existing file (and not `deferred`) |
     | `H_OPERATOR_REJECT` | Operator refused decomposition, inventory, surface, contract, structure, or final hierarchy |
+    | `H_ASK_BEFORE_FORMAT` | A step's Approval Check fires before the step's own format contract (`READ_AND_USE_DIRECTIVE`) was read this turn — operator may reject and demand the step redone read-first |
   </HaltConditions>
 
   <ExecutionPlan>
@@ -284,11 +285,12 @@
     <Step id="STEP_1_MODULE_MAP">
       <Goal>Lock module boundaries; update the scope Module Map.</Goal>
       <Action>
-        Propose module boundaries along `AX_SEPARATION_OF_CONCERNS` (data/domain ↔ UI/presentation ↔
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/module-map-update.xml")` first — this
+        step's Approval Check asked before that read is `H_ASK_BEFORE_FORMAT`. Propose module
+        boundaries along `AX_SEPARATION_OF_CONCERNS` (data/domain ↔ UI/presentation ↔
         infrastructure; a shared core only once ≥2 consumers need it); the operator confirms
         (`AX_MODULE_BOUNDARY_BY_OPERATOR`). Update
-        the scope spec Module Map append-only (`AX_SCOPE_SPEC_MODULE_MAP_OWNERSHIP`) —
-        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/module-map-update.xml")`. `add-module`
+        the scope spec Module Map append-only (`AX_SCOPE_SPEC_MODULE_MAP_OWNERSHIP`). `add-module`
         appends only (`AX_APPEND_ONLY_MODULE_ADD`). On `initial` this is the monolith→index migration
         (`AX_SCOPE_STAYS_THIN`): move entity / contract / file-level detail out of the scope spec into
         the new module specs, leaving the scope spec as the thin index (Module Map + composition Golden
@@ -298,7 +300,9 @@
     <Step id="STEP_2_ENTITY_INVENTORY">
       <Goal>Closed-world inventory per module.</Goal>
       <Action>
-        List every entity of the module — the complete world (`AX_CLOSED_WORLD_INVENTORY`); anything an
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/entity-inventory-format.xml")` first —
+        the Approval Check below asked before that read is `H_ASK_BEFORE_FORMAT`. List every entity
+        of the module — the complete world (`AX_CLOSED_WORLD_INVENTORY`); anything an
         execution agent adds beyond it is drift. Interview the operator via
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/interview-protocol.directive.xml")`, extending
         its coverage map with the decomposition topics: «Пропущенная сущность» (what the inventory
@@ -307,7 +311,11 @@
         (`AX_SCALE_PROPORTIONAL_DEPTH`). Keep evidence separated per `AX_EVIDENCE_HYGIENE`: entities
         named by the scope spec are facts; entities inferred during the interview stay hypotheses
         until the operator confirms them.
-        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/entity-inventory-format.xml")`. If a
+        Errors are first-class inventory, not an afterthought: either one listed entity is the
+        explicit errors owner, or the inventory carries a module-level `Ошибки: <механизм> →
+        <владелец>` line (mechanism = throw / Result / event / …). A downstream BDD ticket cannot
+        require behavior on an error whose owner is absent from this inventory — surface the gap
+        here, before approval, not at scaffold time. If a
         module's inventory outgrows cohesion (too many entities / unrelated responsibility clusters),
         PROPOSE sub-module decomposition here per `AX_HIERARCHICAL_SPECS` (diverge-before-recommend;
         the operator decides) — do not silently let one module absorb a sub-system. All module
@@ -318,29 +326,46 @@
     <Step id="STEP_3_ENTITY_SURFACE">
       <Goal>Public surface per entity.</Goal>
       <Action>
-        Define each entity's public surface (`AX_ENTITY_SURFACE_COMPLETENESS`). No consumer → no entity
-        (`AX_CONSUMER_DRIVEN`): an entity without a confirmed v1 consumer is dropped or `deferred`.
-        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/entity-surface-format.xml")`. STOP.
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/entity-surface-format.xml")` first —
+        the Approval Check below asked before that read is `H_ASK_BEFORE_FORMAT`. Define each
+        entity's public surface (`AX_ENTITY_SURFACE_COMPLETENESS`), including its `Errors &
+        Degradation` field: which errors, by what mechanism (throw / Result / event / …), and who
+        owns handling/display — do not leave it generic once the inventory named an owner. No
+        consumer → no entity (`AX_CONSUMER_DRIVEN`): an entity without a confirmed v1 consumer is
+        dropped or `deferred`. Show each entity as its own compact block in chat (type / operations /
+        errors) BEFORE asking for confirmation — a batched approval across several entities in one
+        multiSelect/confirmation is fine, but only after every entity in that batch was shown
+        individually, never as a table skim. This step's Approval Check is its own — merging it with
+        STEP_4's or STEP_5's Ask into one combined question is a violation, not an efficiency gain.
+        STOP.
       </Action>
     </Step>
     <Step id="STEP_4_CONTRACTS_DBC">
       <Goal>DbC contract per entity.</Goal>
       <Action>
-        Preconditions / postconditions / invariants per entity — written textual and
-        language-agnostic per `AX_CONTRACTS_TEXTUAL_AGNOSTIC` (target-language code appears only in
-        usage examples). A Port is introduced ONLY on confirmed
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/dbc-contracts.xml")` first — the
+        Approval Check below asked before that read is `H_ASK_BEFORE_FORMAT`. Preconditions /
+        postconditions per OPERATION — each operation gets its own pre/post lines, plus a mandatory
+        line for what happens when the precondition is violated (e.g. a non-existent id): observable
+        error behavior, not silence. A general block at entity/service level is for genuine
+        class-level invariants only (what stays true across the whole lifetime, independent of any
+        single operation) — do not use it as a substitute for per-operation contracts. Written
+        textual and language-agnostic per `AX_CONTRACTS_TEXTUAL_AGNOSTIC` (target-language code
+        appears only in usage examples). A Port is introduced ONLY on confirmed
         variability or a test seam (`AX_PORTS_AND_ABSTRACTIONS_DISCIPLINE`) — Port-vs-Service is a
-        design choice, so apply `AX_DIVERGE_BEFORE_RECOMMEND` (do not default to Port). Each abstraction
-        carries its justification (`AX_CONTEXT_TO_CONTRACT`); runtime backing is stated per contract
-        (`AX_RUNTIME_BACKING_IN_CONTRACTS`).
-        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/dbc-contracts.xml")`.
+        design choice, so apply `AX_DIVERGE_BEFORE_RECOMMEND` (do not default to Port); when the
+        module consciously forgoes a Port, the same per-operation DbC lives directly on the Service /
+        Adapter and that choice is recorded in the Decision Log (`AX_DECISION_LOG_REQUIRED`). Each
+        abstraction carries its justification (`AX_CONTEXT_TO_CONTRACT`); runtime backing is stated
+        per contract (`AX_RUNTIME_BACKING_IN_CONTRACTS`).
         Close the step with two checks before presenting:
         1. Every module / entity / Port in the contracts carries a confirmed v1 consumer or
            near-term variability (`AX_YAGNI_OVERENGINEERING_GUARD`).
         2. Every public option / flag / policy the scope spec mentions is bound to a concrete
            Port / Adapter contract or explicitly marked `deferred / not consumed in v1` with a
            pointer to the task or version that activates it (`AX_NO_SILENT_OPTION_DROP`).
-        STOP.
+        This step's Approval Check is its own — merging it with STEP_3's or STEP_5's Ask into one
+        combined question is a violation, not an efficiency gain. STOP.
       </Action>
     </Step>
     <Step id="STEP_5_FILE_STRUCTURE">
@@ -348,7 +373,8 @@
       <Action>
         Repo layout; physically split `ports/` (or `contracts/`) from `adapters/` (or `impl/`). No God
         objects, file size ≤ 1500 lines (`AX_MODULARITY_LIMITS`); single grep namespace
-        (`AX_NAMESPACE_NAMING`). STOP.
+        (`AX_NAMESPACE_NAMING`). This step's Approval Check is its own — merging it with STEP_3's or
+        STEP_4's Ask into one combined question is a violation, not an efficiency gain. STOP.
       </Action>
     </Step>
     <Step id="STEP_6_FINAL_HIERARCHY">
@@ -358,7 +384,14 @@
         `sdd-new module --scope <scope> --module <module>` — it never overwrites and prints the
         section manifest (which sections are REQUIRED and what to fill); on `refine-module` the file
         already exists, edit it in place, skip `sdd-new`. Content guidance per
-        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/module-spec-structure.xml")`. Assemble
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/module-spec-structure.xml")` — read it
+        before assembling the spec; an Approval Check on the assembled hierarchy asked before that
+        read is `H_ASK_BEFORE_FORMAT`. Every mermaid diagram this spec carries must already have been
+        shown to the operator as ASCII in chat at the step where that shape was decided, per
+        `AX_CHAT_BEFORE_SPEC` —
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/diagram-vocabulary.xml")`; a diagram
+        appearing here for the first time means the operator never saw the shape they are being
+        asked to approve. Assemble
         each `specs/<scope>/<module>/<module>.spec.md` to it; link back to `../../<scope>.spec.md`;
         reconcile the scope Module Map. In `pivot` / breaking `refine-module` also
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/pivot-formats.xml")`
@@ -459,7 +492,10 @@
       does NOT print this layout — it just talks.
 
       `<dim service line>`        — internal anchor + scope + mode + confidence (supplied by the branch)
-      `<breadcrumb>`              — per `BREADCRUMB_FORMAT`
+
+      `<breadcrumb>`              — per `BREADCRUMB_FORMAT`, its OWN paragraph (a blank line above it,
+      not just a `\n`) — markdown collapses a single newline into a space, so without the blank line
+      the breadcrumb visually fuses onto the service line
 
       ## `<glyph>` `<scope>` — одной фразой, что делаем
 
@@ -493,11 +529,14 @@
     </Contract>
 
     <Contract id="BREADCRUMB_FORMAT">
-      One line under the service line: this session's milestones, each rendered `<Name> <status>`, with
-      a status marker chosen for legibility on BOTH light and dark themes — no half-tone shading
-      characters (`░ ▒ ▓`) anywhere, they vanish depending on theme. Status set: `✅` done · `👷` active
-      (the step running now) · `◻️` not yet reached. Delta only; never re-list everything already
-      settled. This is the «where are we», and it replaces a verbose run-on of finished steps.
+      One line, its own paragraph below the service line — a blank line separates the two (per
+      `MESSAGE_LAYOUT`); a single `\n` with no blank line is a contract defect, markdown renders it
+      fused onto the service line as one run-on. This session's milestones, each rendered `<Name>
+      <status>`, with a status marker chosen for legibility on BOTH light and dark themes — no
+      half-tone shading characters (`░ ▒ ▓`) anywhere, they vanish depending on theme. Status set: `✅`
+      done · `👷` active (the step running now) · `◻️` not yet reached. Delta only; never re-list
+      everything already settled. This is the «where are we», and it replaces a verbose run-on of
+      finished steps.
 
       `Vision ✅ · Scope Graph 👷 · Infra ◻️ · Portal ◻️`
     </Contract>

@@ -1,5 +1,5 @@
 <Contract id="SCOPE_SPEC_MODULE_MAP_UPDATE">
-  **Module Map — append-only.** Golden DX Example (library / product) is rewritten as composition view per `AX_SCOPE_SPEC_MODULE_MAP_OWNERSHIP`. All other scope-spec sections stay intact.
+  **Module Map — append-only.** Approved Usage Example (library / product) is rewritten as composition view per `AX_SCOPE_SPEC_MODULE_MAP_OWNERSHIP`. All other scope-spec sections stay intact.
 
   ```markdown
   ## Module Map (post-ModuleDecomposition)

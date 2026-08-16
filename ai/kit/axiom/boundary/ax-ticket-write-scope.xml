@@ -1,7 +1,10 @@
 <!-- source: ai/directives/sdd/phase-execution-protocol.xml -->
 <Axiom id="AX_TICKET_WRITE_SCOPE">
-      Phase agent may edit ticket file ONLY in:
-      - this phase's block under `Execution Log` current Round;
+      `npx gennady sdd-log <ticket> line|phase|handoff|blocker` is the sole writer for this phase's
+      block under `Execution Log` current Round — phase header, event lines, `ver` lines, `DONE`,
+      Handoff, blocker; append-only, anti-placeholder, timestamped by the tool. A manual `Edit` on that
+      section is out of scope for the phase agent, the tool covers it end to end. Everything else the
+      phase may touch is a direct `Edit`, scoped to:
       - `Test Scenario Coverage` canonical case names (when test reality differs, phase kind = `test`);
       - `Phases Overview` Status column for THIS phase ID only.
 

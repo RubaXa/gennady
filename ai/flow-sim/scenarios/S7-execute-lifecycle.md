@@ -731,16 +731,19 @@ attempt"` в STEP_6_BRANCH сработал по ветке «-> STEP_7B_CODE_RE
     File этой фазы, и правка скрипта — заявленный Objective, с обязательной `decision`-строкой») не
     применим в этой карте. Любой `write: package.json` в трейсе — находка вне зависимости от того,
     какая роль его сделала.
-28. Handoff-строки (`**Handoff →** ...`) и blocker-строки (`🛑 BLOCKED ...`) пишутся через выделенные
-    режимы `sdd-log` (`sdd-log <ticket> phase ...` / `handoff ...` / `blocker ...` или актуальный
-    эквивалент), а не через универсальный `sdd-log <ticket> line "..."`, если параллельная правка
-    директив к моменту этого прогона уже ввела эти режимы как обязательные для типизированных
-    записей (`AX_HANDOFF_TYPED`, `BLOCKER_FORMAT`). На момент составления этого чекпоинта в
-    `cli/cmd/sdd-log/help.ts` заявлены только `round` / `line` / `close` — если Verifier видит в
-    трейсе `tool: sdd-log <ticket> line "**Handoff →** ..."` (универсальный режим), это ОЖИДАЕМО
-    ровно до тех пор, пока параллельная правка не приземлилась; после приземления — то же самое
-    вызовом `line` вместо `phase`/`handoff`/`blocker` становится находкой (устаревший режим вместо
-    типизированного). <!-- sync with directive wording after batch -->
+28. Phase-заголовок, Handoff-строка (`**Handoff →** ...`) и blocker-блок (`🛑 BLOCKED ...`) пишутся
+    ИСКЛЮЧИТЕЛЬНО через типизированные режимы `sdd-log` — `sdd-log <ticket> phase <P-ID> [...]` /
+    `handoff "<payload>"` / `blocker "<reason>" --axiom <AX> --unblock "<action>"` — никогда через
+    универсальный `sdd-log <ticket> line "..."` и никогда через ручной `Edit` файла тикета
+    (`AX_TICKET_WRITE_SCOPE`: «the tool is the sole writer for this section, never a manual `Edit`» —
+    `phase-execution-protocol.directive.xml` STEP_1/STEP_6; `AX_HANDOFF_TYPED`, `BLOCKER_FORMAT`).
+    `cli/cmd/sdd-log/help.ts` и `cli/cmd/sdd-log/sdd-log.cmd.ts` уже заявляют все шесть режимов —
+    `round` / `line` / `close` / `phase` / `handoff` / `blocker` — значит эта дисциплина действует с
+    первого прогона, без переходного периода. `tool: sdd-log <ticket> line "**Handoff →** ..."`
+    (универсальный режим вместо `handoff`) или `tool: sdd-log <ticket> line "#### P<N>"` (вместо
+    `phase`) — находка (устаревший/неверный режим вместо типизированного); прямой `write:`/`Edit` по
+    `Execution Log` любой ролью — тоже находка, тот же класс нарушения, что и STEP_1/STEP_6 Handoff
+    выше по этому чекпоинту.
 29. Ни в одной роли `worker`/`orchestrator`/`audit-subagent`/`code-review-subagent` не встречается
     мутирующая git-команда (`git stash`, `git commit --amend`, `git commit`, `git add`, `git push`,
     `git rebase`, `git reset`) — `AX_PERMITTED_BASH_COMMANDS` (`phase-execution-protocol.directive.xml`)

@@ -42,4 +42,26 @@ describe('checkTaskGraph', () => {
   it('ignores tickets without a Task-ID for collision/cycle', () => {
     assert.deepStrictEqual(checkTaskGraph([ref('a.md', null), ref('b.md', null)]), []);
   });
+
+  it('flags a prefix conflict between two Task-IDs (gates vs gates-v2)', () => {
+    assert.ok(
+      codes([ref('a.md', 'GAT-gates'), ref('b.md', 'GAT-gates-v2')]).includes(
+        'SDD_TASK_ID_PREFIX_CLASH'
+      )
+    );
+  });
+
+  it('flags the same prefix conflict in the other declaration order', () => {
+    assert.ok(
+      codes([ref('a.md', 'GAT-gates-v2'), ref('b.md', 'GAT-gates')]).includes(
+        'SDD_TASK_ID_PREFIX_CLASH'
+      )
+    );
+  });
+
+  it('does NOT flag a bare numeric-suffix relationship (TSK-1 vs TSK-10)', () => {
+    assert.ok(
+      !codes([ref('a.md', 'TSK-1'), ref('b.md', 'TSK-10')]).includes('SDD_TASK_ID_PREFIX_CLASH')
+    );
+  });
 });

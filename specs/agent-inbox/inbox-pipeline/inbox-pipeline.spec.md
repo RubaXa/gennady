@@ -15,7 +15,7 @@ NFR-005 и NFR-010–013. Семантическое review/cross-review ост�
 работой агента; deterministic validator доказывает полноту и provenance, но не
 объявляет содержание истинным.
 
-Composition flow: [Approved Golden UX](../agent-inbox.spec.md#3-approved-golden-ux-example).
+Composition flow: [Approved UX Flow Example](../agent-inbox.spec.md#3-approved-ux-flow-example).
 
 <!--/SECTION:MODULE_VISION-->
 

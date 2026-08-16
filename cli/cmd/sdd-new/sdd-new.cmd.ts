@@ -8,10 +8,18 @@ import { logger } from '#logger';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
 import { TEMPLATES, ARTIFACT_KINDS, type ArtifactKind } from '../../../shared/sdd/templates.ts';
 import {
+  validateTaskId,
+  collectTaskIds,
+  checkIdConflicts,
+  describeIdConflict,
+  suggestTaskId,
+} from '../../../shared/sdd/task-id.ts';
+import {
   badInvocation,
   unknownKind,
   fileExists,
   writeFailed,
+  badTaskId,
   renderCreated,
   renderManifestReport,
   type NewOutcome,
@@ -170,6 +178,27 @@ export async function run(rawArgs: string[]): Promise<NewOutcome> {
       return badInvocation(reason);
     }
   }
+
+  // #region START_TASK_ID — invariant: a bad --id is refused with a concrete fix, never silently repaired
+  if (kind === 'task' && opts.id) {
+    const grammarReason = validateTaskId(opts.id);
+    if (grammarReason) {
+      const existing = collectTaskIds(process.cwd());
+      logger.warn(`[SddNewCommand#run] bad --id (grammar): ${opts.id}`);
+      return badTaskId(opts.id, grammarReason, suggestTaskId(opts.id, existing));
+    }
+    const existing = collectTaskIds(process.cwd());
+    const conflicts = checkIdConflicts(opts.id, existing);
+    if (conflicts.length > 0) {
+      logger.warn(`[SddNewCommand#run] --id conflict: ${opts.id}`);
+      return badTaskId(
+        opts.id,
+        conflicts.map((c) => describeIdConflict(opts.id as string, c)).join(' '),
+        suggestTaskId(opts.id, existing)
+      );
+    }
+  }
+  // #endregion END_TASK_ID
 
   const path = resolvePath(kind, opts);
   const abs = resolve(path);

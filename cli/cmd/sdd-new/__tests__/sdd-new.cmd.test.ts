@@ -4,7 +4,7 @@
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync, readFileSync, rmSync, existsSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -223,6 +223,110 @@ describe('SddNewCommand', () => {
     if (!outcome.ok) {
       assert.strictEqual(outcome.exitCode, 4);
       assert.match(outcome.code, /UNKNOWN_KIND/);
+    }
+  });
+
+  it('rejects a --id that fails the v2 grammar, with exit 4 / BAD_TASK_ID and a suggestion', async () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'sdd-new-id-'));
+    const prevCwd = process.cwd();
+    try {
+      process.chdir(cwd);
+      const outcome = await mod.run(
+        argv('task', '--scope', 's', '--module', 'm', '--id', 'bad_id')
+      );
+      assert.strictEqual(outcome.ok, false);
+      if (!outcome.ok) {
+        assert.strictEqual(outcome.exitCode, 4);
+        assert.match(outcome.code, /BAD_TASK_ID/);
+        assert.match(outcome.message, /grammar/);
+        assert.match(outcome.message, /try: --id/);
+      }
+      assert.ok(!existsSync(join(cwd, 'specs')), 'must not create anything on rejection');
+    } finally {
+      process.chdir(prevCwd);
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects a --id one char past the slug cap (9 chars), naming the length', async () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'sdd-new-id-'));
+    const prevCwd = process.cwd();
+    try {
+      process.chdir(cwd);
+      const outcome = await mod.run(
+        argv('task', '--scope', 's', '--module', 'm', '--id', 'GAT-abcdefghi')
+      );
+      assert.strictEqual(outcome.ok, false);
+      if (!outcome.ok) assert.match(outcome.message, /9-char/);
+    } finally {
+      process.chdir(prevCwd);
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects a --id that duplicates an existing project Task-ID', async () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'sdd-new-id-'));
+    const prevCwd = process.cwd();
+    try {
+      mkdirSync(join(cwd, 'specs', 's', 'm'), { recursive: true });
+      writeFileSync(
+        join(cwd, 'specs', 's', 'm', 'm.task.GAT-login.md'),
+        '<!--SECTION:META-->\n- **Task-ID:** GAT-login\n<!--/SECTION:META-->\n'
+      );
+      process.chdir(cwd);
+      const outcome = await mod.run(
+        argv('task', '--scope', 's', '--module', 'm', '--id', 'GAT-login')
+      );
+      assert.strictEqual(outcome.ok, false);
+      if (!outcome.ok) {
+        assert.strictEqual(outcome.exitCode, 4);
+        assert.match(outcome.code, /BAD_TASK_ID/);
+        assert.match(outcome.message, /already exists/);
+      }
+    } finally {
+      process.chdir(prevCwd);
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects a --id that prefix-conflicts with an existing Task-ID (gates vs gates-v2)', async () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'sdd-new-id-'));
+    const prevCwd = process.cwd();
+    try {
+      mkdirSync(join(cwd, 'specs', 's', 'm'), { recursive: true });
+      writeFileSync(
+        join(cwd, 'specs', 's', 'm', 'm.task.GAT-gates.md'),
+        '<!--SECTION:META-->\n- **Task-ID:** GAT-gates\n<!--/SECTION:META-->\n'
+      );
+      process.chdir(cwd);
+      const outcome = await mod.run(
+        argv('task', '--scope', 's', '--module', 'm', '--id', 'GAT-gates-v2')
+      );
+      assert.strictEqual(outcome.ok, false);
+      if (!outcome.ok) {
+        assert.strictEqual(outcome.exitCode, 4);
+        assert.match(outcome.message, /prefix conflict/);
+        assert.match(outcome.message, /GAT-gates/);
+      }
+    } finally {
+      process.chdir(prevCwd);
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  it('accepts a valid, conflict-free --id and creates the ticket', async () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'sdd-new-id-'));
+    const prevCwd = process.cwd();
+    try {
+      process.chdir(cwd);
+      const outcome = await mod.run(
+        argv('task', '--scope', 's', '--module', 'm', '--id', 'GAT-login')
+      );
+      assert.strictEqual(outcome.ok, true);
+      if (outcome.ok) assert.ok(existsSync(outcome.path));
+    } finally {
+      process.chdir(prevCwd);
+      rmSync(cwd, { recursive: true, force: true });
     }
   });
 

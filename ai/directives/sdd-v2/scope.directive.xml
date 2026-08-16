@@ -1,7 +1,7 @@
-<SddScope keywords="scope, discovery, vision, golden-dx, design-variants, decision-log, scope-rules, living-spec, product, library, runtime-backing, sdd-scope-discovery" type="directive" ver="2.1">
+<SddScope keywords="scope, discovery, vision, usage-example, design-variants, decision-log, scope-rules, living-spec, product, library, runtime-backing, sdd-scope-discovery" type="directive" ver="2.1">
   <Mission>
     Author or evolve a `product` / `library` scope spec — a self-contained living spec: Vision,
-    Golden DX, Requirements Gate, Architecture (Design Variants for product), Decision Log, Scope
+    Usage Example, Requirements Gate, Architecture (Design Variants for product), Decision Log, Scope
     Rules, Bootstrap Requirements, Handoff to the `module` flow. Loaded lazily by the router;
     inherits the router core (language, dialogue, safeguard, diverge, no-narration, stateless) — not
     repeated here.
@@ -57,7 +57,7 @@
     </Axiom>
 
     <Axiom id="AX_DX_FIRST">
-      For product / library scopes the Golden DX Example precedes Design Variants. DX shape:
+      For product / library scopes the Approved Usage Example precedes Design Variants. DX shape:
       - For library: the public-API DX (init / happy path / error path with commentary).
       - For product app / spa / mobile / desktop: UX-flow DX.
       - For product cli-utility: CLI DX (commands, flags, exit codes, sample sessions).
@@ -86,7 +86,7 @@
 
       **Requirements gate before design.** Architecture variants are forbidden until REQUIREMENTS_GATE is closed. Required: Functional Requirements, Non-Functional Constraints, Out-of-Scope, Project-Wide Rules (Rules).
 
-      **Golden DX example gate.** A Golden DX Example is mandatory before Design Variants. library → Public API DX. product → UX-flow DX or CLI DX depending on Project Type.
+      **Usage Example gate.** An Approved Usage Example is mandatory before Design Variants. library → Public API DX. product → UX-flow DX or CLI DX depending on Project Type.
 
       **Project Type scales depth** (product only):
       - `app` (mobile / desktop / spa): 2–3 architectural variants.
@@ -159,11 +159,11 @@
     </Axiom>
 
     <Axiom id="AX_SCOPE_STAYS_THIN">
-      A scope spec has a bounded role: Vision, Requirements, Architecture decisions, Decision Log, Module Map, composition Golden DX, Handoff, Bootstrap Requirements. Entity inventory, public surfaces, DbC contracts, and file layout are module-level — they live ONLY in module specs (`AX_HIERARCHICAL_SPECS`), never inline in the scope spec.
+      A scope spec has a bounded role: Vision, Requirements, Architecture decisions, Decision Log, Module Map, composition Usage Example, Handoff, Bootstrap Requirements. Entity inventory, public surfaces, DbC contracts, and file layout are module-level — they live ONLY in module specs (`AX_HIERARCHICAL_SPECS`), never inline in the scope spec.
 
       Two representations:
       - **monolithic** — no modules yet; the scope spec may hold design inline (early / small scope).
-      - **index** — once decomposed, the scope spec is a thin composition over its modules: Module Map + Golden DX linking to each module's usage example; the detail lives in the modules.
+      - **index** — once decomposed, the scope spec is a thin composition over its modules: Module Map + Usage Example linking to each module's usage example; the detail lives in the modules.
 
       Growth is the decomposition signal, not a license to expand. When scope-level design reaches entity / contract / file granularity, that detail moves into a module — it does NOT accumulate in the scope spec. A scope converges to a thin index; it does not grow without bound.
 
@@ -198,7 +198,7 @@
     | `H_AMBIGUOUS_PRODUCT_LIBRARY` | Operator intent leaves product vs library unclear after STEP_1_CONFIRM |
     | `H_LOW_CONFIDENCE` | Confidence `LOW` while locking architecture |
     | `H_REQ_NOT_APPROVED` | Design Variants attempted without a closed Requirements Gate |
-    | `H_GOLDEN_NOT_APPROVED` | Design Variants attempted without an approved Golden DX |
+    | `H_GOLDEN_NOT_APPROVED` | Design Variants attempted without an approved Usage Example |
     | `H_MISSING_RULE_FILE` | A rule reference does not resolve to an existing file |
     | `H_PIVOT_NO_INVALIDATION_LIST` | `pivot` mode without a Pivot Invalidation List |
     | `H_REWRITE_WITH_DOWNSTREAM` | `rewrite` mode but the scope already has module specs / tickets — not v0, use `pivot` (`AX_PIVOT_REQUIRES_SUPERSESSION`) |
@@ -246,7 +246,7 @@
       </Action>
     </Step>
     <Step id="STEP_4_GOLDEN_DX">
-      <Goal>Lock the Golden DX example (mandatory before architecture).</Goal>
+      <Goal>Lock the Approved Usage Example (mandatory before architecture).</Goal>
       <Action>
         Per `AX_DX_FIRST`, write a real-code usage example: library → Public API DX; product →
         UX-flow or CLI DX (depth per Project Type). Approval Check (else `H_GOLDEN_NOT_APPROVED`). STOP.
@@ -398,7 +398,7 @@
   <ChatOutput>
     Service line — dim, internal, never narrated (per `AX_NO_PROCESS_NARRATION`):
     `🦾 DSC_R<N> · <scope> · <scope-type> · <mode> · conf=<LOW|MEDIUM|HIGH>`. Breadcrumb milestones
-    (per `BREADCRUMB_FORMAT`): Intent · Requirements · Golden DX · Architecture · Rules · Spec.
+    (per `BREADCRUMB_FORMAT`): Intent · Requirements · Usage Example · Architecture · Rules · Spec.
     Disputes / dives open a nested frame on the main path per `AX_STACK_BASED_FLOW`; render the
     dive per `SIDE_DIVE_FORMAT` and return to the parent frame.
 
@@ -408,7 +408,10 @@
       does NOT print this layout — it just talks.
 
       `<dim service line>`        — internal anchor + scope + mode + confidence (supplied by the branch)
-      `<breadcrumb>`              — per `BREADCRUMB_FORMAT`
+
+      `<breadcrumb>`              — per `BREADCRUMB_FORMAT`, its OWN paragraph (a blank line above it,
+      not just a `\n`) — markdown collapses a single newline into a space, so without the blank line
+      the breadcrumb visually fuses onto the service line
 
       ## `<glyph>` `<scope>` — одной фразой, что делаем
 
@@ -442,11 +445,14 @@
     </Contract>
 
     <Contract id="BREADCRUMB_FORMAT">
-      One line under the service line: this session's milestones, each rendered `<Name> <status>`, with
-      a status marker chosen for legibility on BOTH light and dark themes — no half-tone shading
-      characters (`░ ▒ ▓`) anywhere, they vanish depending on theme. Status set: `✅` done · `👷` active
-      (the step running now) · `◻️` not yet reached. Delta only; never re-list everything already
-      settled. This is the «where are we», and it replaces a verbose run-on of finished steps.
+      One line, its own paragraph below the service line — a blank line separates the two (per
+      `MESSAGE_LAYOUT`); a single `\n` with no blank line is a contract defect, markdown renders it
+      fused onto the service line as one run-on. This session's milestones, each rendered `<Name>
+      <status>`, with a status marker chosen for legibility on BOTH light and dark themes — no
+      half-tone shading characters (`░ ▒ ▓`) anywhere, they vanish depending on theme. Status set: `✅`
+      done · `👷` active (the step running now) · `◻️` not yet reached. Delta only; never re-list
+      everything already settled. This is the «where are we», and it replaces a verbose run-on of
+      finished steps.
 
       `Vision ✅ · Scope Graph 👷 · Infra ◻️ · Portal ◻️`
     </Contract>

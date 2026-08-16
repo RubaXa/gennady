@@ -22,7 +22,7 @@ library
 
 <!--SECTION:GOLDEN_DX-->
 
-## 2. Approved Golden DX Example (Composition View)
+## 2. Approved Usage Example (Composition View)
 
 Навыки потребляются агентом через 3 паттерна. Детали каждого паттерна — в модульных спеках.
 

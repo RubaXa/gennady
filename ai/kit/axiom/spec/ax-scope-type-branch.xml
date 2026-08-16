@@ -6,8 +6,8 @@
       |---|---|---|---|---|
       | infrastructure | Tool Categories + Choices | Dev Workflow Example | File Structure | Effective Rules |
       | interface | Interface Declaration | Versioning Policy | Compatibility Matrix | — |
-      | library | Requirements Gate | Golden DX | Architecture | — |
-      | product | Requirements Gate | Golden DX | Design Variants | Architecture Choice |
+      | library | Requirements Gate | Usage Example | Architecture | — |
+      | product | Requirements Gate | Usage Example | Design Variants | Architecture Choice |
 
       STEP_2 (Intent Capture), STEP_7 (External Dependencies Audit), and STEP_8 (Final Spec) are identical across all types.
     </Axiom>

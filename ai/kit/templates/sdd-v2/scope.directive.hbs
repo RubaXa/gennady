@@ -1,7 +1,7 @@
-<SddScope keywords="scope, discovery, vision, golden-dx, design-variants, decision-log, scope-rules, living-spec, product, library, runtime-backing, sdd-scope-discovery" type="directive" ver="2.1">
+<SddScope keywords="scope, discovery, vision, usage-example, design-variants, decision-log, scope-rules, living-spec, product, library, runtime-backing, sdd-scope-discovery" type="directive" ver="2.1">
   <Mission>
     Author or evolve a `product` / `library` scope spec — a self-contained living spec: Vision,
-    Golden DX, Requirements Gate, Architecture (Design Variants for product), Decision Log, Scope
+    Usage Example, Requirements Gate, Architecture (Design Variants for product), Decision Log, Scope
     Rules, Bootstrap Requirements, Handoff to the `module` flow. Loaded lazily by the router;
     inherits the router core (language, dialogue, safeguard, diverge, no-narration, stateless) — not
     repeated here.
@@ -73,7 +73,7 @@
     | `H_AMBIGUOUS_PRODUCT_LIBRARY` | Operator intent leaves product vs library unclear after STEP_1_CONFIRM |
     | `H_LOW_CONFIDENCE` | Confidence `LOW` while locking architecture |
     | `H_REQ_NOT_APPROVED` | Design Variants attempted without a closed Requirements Gate |
-    | `H_GOLDEN_NOT_APPROVED` | Design Variants attempted without an approved Golden DX |
+    | `H_GOLDEN_NOT_APPROVED` | Design Variants attempted without an approved Usage Example |
     | `H_MISSING_RULE_FILE` | A rule reference does not resolve to an existing file |
     | `H_PIVOT_NO_INVALIDATION_LIST` | `pivot` mode without a Pivot Invalidation List |
     | `H_REWRITE_WITH_DOWNSTREAM` | `rewrite` mode but the scope already has module specs / tickets — not v0, use `pivot` (`AX_PIVOT_REQUIRES_SUPERSESSION`) |
@@ -121,7 +121,7 @@
       </Action>
     </Step>
     <Step id="STEP_4_GOLDEN_DX">
-      <Goal>Lock the Golden DX example (mandatory before architecture).</Goal>
+      <Goal>Lock the Approved Usage Example (mandatory before architecture).</Goal>
       <Action>
         Per `AX_DX_FIRST`, write a real-code usage example: library → Public API DX; product →
         UX-flow or CLI DX (depth per Project Type). Approval Check (else `H_GOLDEN_NOT_APPROVED`). STOP.
@@ -216,7 +216,7 @@
   <ChatOutput>
     Service line — dim, internal, never narrated (per `AX_NO_PROCESS_NARRATION`):
     `🦾 DSC_R<N> · <scope> · <scope-type> · <mode> · conf=<LOW|MEDIUM|HIGH>`. Breadcrumb milestones
-    (per `BREADCRUMB_FORMAT`): Intent · Requirements · Golden DX · Architecture · Rules · Spec.
+    (per `BREADCRUMB_FORMAT`): Intent · Requirements · Usage Example · Architecture · Rules · Spec.
     Disputes / dives open a nested frame on the main path per `AX_STACK_BASED_FLOW`; render the
     dive per `SIDE_DIVE_FORMAT` and return to the parent frame.
 

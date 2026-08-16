@@ -1,1 +1,4 @@
-<Axiom id="AX_RE_DISPATCH">Any edit → re-dispatch mandatory. Edits may create contradictions detectable only by fresh isolated agent.</Axiom>
+<Axiom id="AX_RE_DISPATCH">Any edit → re-dispatch mandatory, no exception of the agent's own making — "the fix is trivial" does
+not waive it; edits may create contradictions detectable only by a fresh isolated agent. The verdict
+handed to the operator MUST be the literal verdict text of the LAST dispatch actually run, shown as a
+direct quote — never a paraphrase, and never the verdict of a dispatch that was skipped.</Axiom>

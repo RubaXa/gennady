@@ -104,9 +104,13 @@
         Per phase: pick the worker model by thinking-load — default by kind (`impl` / `test` → capable;
         `bootstrap` / `config` / `doc` → cheap), escalate to capable on LOW confidence or a reasoning-heavy phase. Dispatch a fresh worker with: read `ai/directives/sdd-v2/phase-execution-protocol.directive.xml`;
         ticket path; phase ID + kind + reason (`initial` / `fix: F-NNN` / `resume`); Inputs = prior
-        Handoff verbatim (`AX_HANDOFF_TYPED`); the phase read-manifest from `sdd-task`; sdd tooling
-        (`sdd-extract` / `sdd-verify` / `sdd-log`). Emit a progress line per transition
-        (`ORCHESTRATOR_PROGRESS_FORMAT`).
+        Handoff verbatim (`AX_HANDOFF_TYPED`); this phase's block from `sdd-task <id>`'s own output —
+        its read-manifest, Rules, Target Files, gates — pasted into the prompt as a FENCED VERBATIM
+        QUOTE of that output, never re-typed as text (a paraphrase has silently dropped read-manifest
+        files before this fix); the only prompt content NOT copied verbatim from that quote is the
+        phase id / kind / reason, the threaded Handoff, and orchestrator knowledge genuinely absent
+        from the manifest; sdd tooling (`sdd-extract` / `sdd-verify` / `sdd-log`). Emit a progress line
+        per transition (`ORCHESTRATOR_PROGRESS_FORMAT`).
 
         <LogicSwitch on="worker Handoff status">
         - WHEN `BLOCKED` / `FAIL` -> stop, no audit; `H_PAUSED_AWAITING_OPERATOR`

@@ -5,7 +5,10 @@
   does NOT print this layout — it just talks.
 
   `<dim service line>`        — internal anchor + scope + mode + confidence (supplied by the branch)
-  `<breadcrumb>`              — per `BREADCRUMB_FORMAT`
+
+  `<breadcrumb>`              — per `BREADCRUMB_FORMAT`, its OWN paragraph (a blank line above it,
+  not just a `\n`) — markdown collapses a single newline into a space, so without the blank line
+  the breadcrumb visually fuses onto the service line
 
   ## `<glyph>` `<scope>` — одной фразой, что делаем
 

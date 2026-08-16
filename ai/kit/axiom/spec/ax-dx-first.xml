@@ -1,6 +1,6 @@
 <!-- source: ai/directives/sdd/discovery.directive.xml -->
 <Axiom id="AX_DX_FIRST">
-      For product / library scopes the Golden DX Example precedes Design Variants. DX shape:
+      For product / library scopes the Approved Usage Example precedes Design Variants. DX shape:
       - For library: the public-API DX (init / happy path / error path with commentary).
       - For product app / spa / mobile / desktop: UX-flow DX.
       - For product cli-utility: CLI DX (commands, flags, exit codes, sample sessions).

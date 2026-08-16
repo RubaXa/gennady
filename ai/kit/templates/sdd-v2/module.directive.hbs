@@ -103,6 +103,7 @@
     | `H_REFINE_BREAKING_NO_IMPACT_LIST` | breaking `refine-module` without a Pivot Invalidation List enumerating consumer modules (`AX_REFINE_MODULE_PRESERVES_CONTRACTS`) |
     | `H_MISSING_RULE_FILE` | A module rule reference does not resolve to an existing file (and not `deferred`) |
     | `H_OPERATOR_REJECT` | Operator refused decomposition, inventory, surface, contract, structure, or final hierarchy |
+    | `H_ASK_BEFORE_FORMAT` | A step's Approval Check fires before the step's own format contract (`READ_AND_USE_DIRECTIVE`) was read this turn — operator may reject and demand the step redone read-first |
   </HaltConditions>
 
   <ExecutionPlan>
@@ -122,11 +123,12 @@
     <Step id="STEP_1_MODULE_MAP">
       <Goal>Lock module boundaries; update the scope Module Map.</Goal>
       <Action>
-        Propose module boundaries along `AX_SEPARATION_OF_CONCERNS` (data/domain ↔ UI/presentation ↔
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/module-map-update.xml")` first — this
+        step's Approval Check asked before that read is `H_ASK_BEFORE_FORMAT`. Propose module
+        boundaries along `AX_SEPARATION_OF_CONCERNS` (data/domain ↔ UI/presentation ↔
         infrastructure; a shared core only once ≥2 consumers need it); the operator confirms
         (`AX_MODULE_BOUNDARY_BY_OPERATOR`). Update
-        the scope spec Module Map append-only (`AX_SCOPE_SPEC_MODULE_MAP_OWNERSHIP`) —
-        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/module-map-update.xml")`. `add-module`
+        the scope spec Module Map append-only (`AX_SCOPE_SPEC_MODULE_MAP_OWNERSHIP`). `add-module`
         appends only (`AX_APPEND_ONLY_MODULE_ADD`). On `initial` this is the monolith→index migration
         (`AX_SCOPE_STAYS_THIN`): move entity / contract / file-level detail out of the scope spec into
         the new module specs, leaving the scope spec as the thin index (Module Map + composition Golden
@@ -136,7 +138,9 @@
     <Step id="STEP_2_ENTITY_INVENTORY">
       <Goal>Closed-world inventory per module.</Goal>
       <Action>
-        List every entity of the module — the complete world (`AX_CLOSED_WORLD_INVENTORY`); anything an
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/entity-inventory-format.xml")` first —
+        the Approval Check below asked before that read is `H_ASK_BEFORE_FORMAT`. List every entity
+        of the module — the complete world (`AX_CLOSED_WORLD_INVENTORY`); anything an
         execution agent adds beyond it is drift. Interview the operator via
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/interview-protocol.directive.xml")`, extending
         its coverage map with the decomposition topics: «Пропущенная сущность» (what the inventory
@@ -145,7 +149,11 @@
         (`AX_SCALE_PROPORTIONAL_DEPTH`). Keep evidence separated per `AX_EVIDENCE_HYGIENE`: entities
         named by the scope spec are facts; entities inferred during the interview stay hypotheses
         until the operator confirms them.
-        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/entity-inventory-format.xml")`. If a
+        Errors are first-class inventory, not an afterthought: either one listed entity is the
+        explicit errors owner, or the inventory carries a module-level `Ошибки: <механизм> →
+        <владелец>` line (mechanism = throw / Result / event / …). A downstream BDD ticket cannot
+        require behavior on an error whose owner is absent from this inventory — surface the gap
+        here, before approval, not at scaffold time. If a
         module's inventory outgrows cohesion (too many entities / unrelated responsibility clusters),
         PROPOSE sub-module decomposition here per `AX_HIERARCHICAL_SPECS` (diverge-before-recommend;
         the operator decides) — do not silently let one module absorb a sub-system. All module
@@ -156,29 +164,46 @@
     <Step id="STEP_3_ENTITY_SURFACE">
       <Goal>Public surface per entity.</Goal>
       <Action>
-        Define each entity's public surface (`AX_ENTITY_SURFACE_COMPLETENESS`). No consumer → no entity
-        (`AX_CONSUMER_DRIVEN`): an entity without a confirmed v1 consumer is dropped or `deferred`.
-        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/entity-surface-format.xml")`. STOP.
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/entity-surface-format.xml")` first —
+        the Approval Check below asked before that read is `H_ASK_BEFORE_FORMAT`. Define each
+        entity's public surface (`AX_ENTITY_SURFACE_COMPLETENESS`), including its `Errors &
+        Degradation` field: which errors, by what mechanism (throw / Result / event / …), and who
+        owns handling/display — do not leave it generic once the inventory named an owner. No
+        consumer → no entity (`AX_CONSUMER_DRIVEN`): an entity without a confirmed v1 consumer is
+        dropped or `deferred`. Show each entity as its own compact block in chat (type / operations /
+        errors) BEFORE asking for confirmation — a batched approval across several entities in one
+        multiSelect/confirmation is fine, but only after every entity in that batch was shown
+        individually, never as a table skim. This step's Approval Check is its own — merging it with
+        STEP_4's or STEP_5's Ask into one combined question is a violation, not an efficiency gain.
+        STOP.
       </Action>
     </Step>
     <Step id="STEP_4_CONTRACTS_DBC">
       <Goal>DbC contract per entity.</Goal>
       <Action>
-        Preconditions / postconditions / invariants per entity — written textual and
-        language-agnostic per `AX_CONTRACTS_TEXTUAL_AGNOSTIC` (target-language code appears only in
-        usage examples). A Port is introduced ONLY on confirmed
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/dbc-contracts.xml")` first — the
+        Approval Check below asked before that read is `H_ASK_BEFORE_FORMAT`. Preconditions /
+        postconditions per OPERATION — each operation gets its own pre/post lines, plus a mandatory
+        line for what happens when the precondition is violated (e.g. a non-existent id): observable
+        error behavior, not silence. A general block at entity/service level is for genuine
+        class-level invariants only (what stays true across the whole lifetime, independent of any
+        single operation) — do not use it as a substitute for per-operation contracts. Written
+        textual and language-agnostic per `AX_CONTRACTS_TEXTUAL_AGNOSTIC` (target-language code
+        appears only in usage examples). A Port is introduced ONLY on confirmed
         variability or a test seam (`AX_PORTS_AND_ABSTRACTIONS_DISCIPLINE`) — Port-vs-Service is a
-        design choice, so apply `AX_DIVERGE_BEFORE_RECOMMEND` (do not default to Port). Each abstraction
-        carries its justification (`AX_CONTEXT_TO_CONTRACT`); runtime backing is stated per contract
-        (`AX_RUNTIME_BACKING_IN_CONTRACTS`).
-        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/dbc-contracts.xml")`.
+        design choice, so apply `AX_DIVERGE_BEFORE_RECOMMEND` (do not default to Port); when the
+        module consciously forgoes a Port, the same per-operation DbC lives directly on the Service /
+        Adapter and that choice is recorded in the Decision Log (`AX_DECISION_LOG_REQUIRED`). Each
+        abstraction carries its justification (`AX_CONTEXT_TO_CONTRACT`); runtime backing is stated
+        per contract (`AX_RUNTIME_BACKING_IN_CONTRACTS`).
         Close the step with two checks before presenting:
         1. Every module / entity / Port in the contracts carries a confirmed v1 consumer or
            near-term variability (`AX_YAGNI_OVERENGINEERING_GUARD`).
         2. Every public option / flag / policy the scope spec mentions is bound to a concrete
            Port / Adapter contract or explicitly marked `deferred / not consumed in v1` with a
            pointer to the task or version that activates it (`AX_NO_SILENT_OPTION_DROP`).
-        STOP.
+        This step's Approval Check is its own — merging it with STEP_3's or STEP_5's Ask into one
+        combined question is a violation, not an efficiency gain. STOP.
       </Action>
     </Step>
     <Step id="STEP_5_FILE_STRUCTURE">
@@ -186,7 +211,8 @@
       <Action>
         Repo layout; physically split `ports/` (or `contracts/`) from `adapters/` (or `impl/`). No God
         objects, file size ≤ 1500 lines (`AX_MODULARITY_LIMITS`); single grep namespace
-        (`AX_NAMESPACE_NAMING`). STOP.
+        (`AX_NAMESPACE_NAMING`). This step's Approval Check is its own — merging it with STEP_3's or
+        STEP_4's Ask into one combined question is a violation, not an efficiency gain. STOP.
       </Action>
     </Step>
     <Step id="STEP_6_FINAL_HIERARCHY">
@@ -196,7 +222,14 @@
         `sdd-new module --scope <scope> --module <module>` — it never overwrites and prints the
         section manifest (which sections are REQUIRED and what to fill); on `refine-module` the file
         already exists, edit it in place, skip `sdd-new`. Content guidance per
-        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/module-spec-structure.xml")`. Assemble
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/module-spec-structure.xml")` — read it
+        before assembling the spec; an Approval Check on the assembled hierarchy asked before that
+        read is `H_ASK_BEFORE_FORMAT`. Every mermaid diagram this spec carries must already have been
+        shown to the operator as ASCII in chat at the step where that shape was decided, per
+        `AX_CHAT_BEFORE_SPEC` —
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/diagram-vocabulary.xml")`; a diagram
+        appearing here for the first time means the operator never saw the shape they are being
+        asked to approve. Assemble
         each `specs/<scope>/<module>/<module>.spec.md` to it; link back to `../../<scope>.spec.md`;
         reconcile the scope Module Map. In `pivot` / breaking `refine-module` also
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/pivot-formats.xml")`

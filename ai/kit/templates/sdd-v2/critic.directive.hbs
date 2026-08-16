@@ -5,8 +5,10 @@
     every introduced entity against the existing surface via `orient` (reuse > extend > justify >
     escalate), surgically edit the artifact, and re-dispatch if edits were applied (cap 5). Batch: the
     scope spec first, then tasks in DAG layers (parallel within a layer, sequential between). On CLEAN:
-    delete the temporary `## Critic Rounds` scratch. I own the artifact and apply `MECHANICAL` edits; `GOAL`
-    findings go to the operator as one batched question block first (`AX_GOAL_OWNER_GATE`). The sensor only reports.
+    delete the temporary `## Critic Rounds` scratch. I own the artifact: apply every `MECHANICAL` edit
+    directly, then ONE round checkpoint batches whatever needs the operator — `GOAL` findings as
+    questions, plus a confirm/correct block for any `CRITICAL` / `MAJOR` fix just applied
+    (`AX_GOAL_OWNER_GATE`). The sensor only reports; only the operator downgrades a `GOAL` tag.
 
     A separate door (`/sdd-critic`). Input — a spec / task / batch target. Output — the cleaned artifact
     + the final verdict.
@@ -34,6 +36,8 @@
     {{> "axiom/critic/ax-finding-addressee"}}
 
     {{> "axiom/critic/ax-goal-owner-gate"}}
+
+    {{> "axiom/audit/ax-severity"}}
 
     {{> "axiom/process/ax-rejection-reason"}}
 
@@ -69,27 +73,39 @@
     </Step>
     <Step id="STEP_2_EVALUATE">
       <Goal>Weigh findings against full project context.</Goal>
-      <Action>Split by addressee (`AX_FINDING_ADDRESSEE`): `MECHANICAL` — accept by default (`AX_DEFAULT_ACCEPT`); `GOAL` — queue for STEP_2C, keep the touched sections intact (`AX_GOAL_OWNER_GATE`). A rejection cites a specific file / section that resolves the concern (`AX_REJECTION_REASON`). Sensor confusion the full context resolves = an artifact bug — clarify by edit (`AX_CONFUSION_BUG`); confusion the project cannot answer = `GOAL`.</Action>
+      <Action>Split by addressee (`AX_FINDING_ADDRESSEE`): `MECHANICAL` — accept by default (`AX_DEFAULT_ACCEPT`); `GOAL` — queue for STEP_3B, keep the touched sections intact (`AX_GOAL_OWNER_GATE`). The sensor's `GOAL` tag is a floor, not a ceiling: downgrading it to `MECHANICAL` is the operator's call alone (`AX_GOAL_OWNER_GATE`) — an orchestrator read that leans mechanical carries into STEP_3B as one more question, never a private reclassification. A rejection cites a specific file / section that resolves the concern (`AX_REJECTION_REASON`). Sensor confusion the full context resolves = an artifact bug — clarify by edit (`AX_CONFUSION_BUG`); confusion the project cannot answer = `GOAL`. Also carry each finding's severity (`AX_SEVERITY`) forward — STEP_3B gates on it.</Action>
     </Step>
     <Step id="STEP_2B_RECONCILE">
       <Goal>Reconcile every introduced entity. (mechanical → tool)</Goal>
       <Action>For each entity a finding would add, run `orient` to check the existing project surface: reuse > extend > justify > escalate (`AX_REUSE_FIRST`). Do not let the critique invent a duplicate of an existing entity.</Action>
     </Step>
-    <Step id="STEP_2C_GOAL_GATE">
-      <Goal>Take `GOAL` findings to the goal owner (`AX_GOAL_OWNER_GATE`).</Goal>
-      <Action>No `GOAL` findings → skip to STEP_3. Otherwise batch ALL of the round's `GOAL` findings into ONE question block per `QUESTION_FORMAT` (explained, then asked via `AskUserQuestion` when available, options in printed order) and WAIT — this precedes any edit to the sections they touch. Operator answers become edit instructions for STEP_3 and flow into the normal re-dispatch cycle. Operator unreachable while `GOAL` findings block → `H_GOAL_BLOCKED`.</Action>
-    </Step>
     <Step id="STEP_3_EDIT">
-      <Goal>Apply surgical edits.</Goal>
-      <Action>Edit only what a finding requires (`AX_SURGICAL`); I apply the edits — the sensor never does (`AX_OWNER`): `MECHANICAL` — directly; `GOAL` — exactly as the operator answered (`AX_GOAL_OWNER_GATE`). Record each in the temporary `## Critic Rounds` scratch (`AX_SCRATCH_LOG`).</Action>
+      <Goal>Apply the round's `MECHANICAL` edits.</Goal>
+      <Action>Edit only what a finding requires (`AX_SURGICAL`); I apply the edits — the sensor never does (`AX_OWNER`). Apply every `MECHANICAL` finding directly, regardless of severity (`AX_DEFAULT_ACCEPT`) — a `CRITICAL` / `MAJOR` mechanical finding gets fixed now, confirmed with the operator next at STEP_3B, not gated before the fix. Leave `GOAL`-tagged sections untouched — their edit waits for the operator's answer at STEP_3B. Record each edit in the temporary `## Critic Rounds` scratch (`AX_SCRATCH_LOG`).</Action>
+    </Step>
+    <Step id="STEP_3B_ROUND_CHECKPOINT">
+      <Goal>One batch Ask per round for every operator-owned item (`AX_GOAL_OWNER_GATE`).</Goal>
+      <Action>
+        Build ONE `AskUserQuestion` batch (`QUESTION_FORMAT` batching rule — independent questions ride
+        together) carrying, when present: (a) every `GOAL` finding from STEP_2 as its own question,
+        including any orchestrator disagreement with a sensor's `GOAL` tag («critic tagged GOAL, I read
+        this as mechanical because …») — the tag stands until this answer says otherwise; (b) IF this
+        round carried any `CRITICAL` / `MAJOR` finding (mechanical or goal), one confirm block: «critic
+        found N problems this round, fixed as follows: <one line per fix> — confirm, or correct?».
+        Neither (a) nor (b) applies (the round was `MINOR` / `INFO` only, or carried zero findings) →
+        skip the Ask, go straight to STEP_4 (`AX_DEFAULT_ACCEPT`). WAIT for the answer
+        before touching any `GOAL`-tagged section. Apply `GOAL` edits exactly as answered, and any
+        correction the operator makes to a confirmed fix, recording each in `## Critic Rounds`
+        (`AX_SCRATCH_LOG`). Operator unreachable while `GOAL` findings block → `H_GOAL_BLOCKED`.
+      </Action>
     </Step>
     <Step id="STEP_4_DECIDE">
       <Goal>Loop or stop.</Goal>
-      <Action>Edits applied → re-dispatch (`AX_RE_DISPATCH`). Zero edits → stop (`AX_STOP_NO_EDITS`). Cap 5 (`AX_CAP_5`) → `H_MAX_ROUNDS`.</Action>
+      <Action>Edits applied this round (STEP_3 or STEP_3B) → re-dispatch (`AX_RE_DISPATCH` — mandatory, no self-made exception for a fix judged trivial). Zero edits → stop (`AX_STOP_NO_EDITS`). Cap 5 (`AX_CAP_5`) → `H_MAX_ROUNDS`.</Action>
     </Step>
     <Step id="STEP_5_FINALIZE">
       <Goal>Finalize.</Goal>
-      <Action>On CLEAN: delete the `## Critic Rounds` scratch; the artifact is clean with improvements integrated. Report the final verdict (CLEAN | NEEDS_WORK | CRITICAL) with a one-line-per-round summary of what changed. A structural problem the critique cannot resolve by a surgical edit → escalate to the operator, do not loop.</Action>
+      <Action>On CLEAN: delete the `## Critic Rounds` scratch; the artifact is clean with improvements integrated. Report the final verdict (CLEAN | NEEDS_WORK | CRITICAL) with a one-line-per-round summary of what changed — the reported verdict MUST be the literal verdict text of the LAST sensor dispatch actually run (`AX_RE_DISPATCH`), shown as a direct quote, never a paraphrase and never an earlier round's verdict presented as current. A structural problem the critique cannot resolve by a surgical edit → escalate to the operator, do not loop.</Action>
     </Step>
   </ExecutionPlan>
 

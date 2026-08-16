@@ -1,7 +1,10 @@
 <!-- source: SDD v2 — critic question channel: GOAL findings need operator sanction -->
 <Axiom id="AX_GOAL_OWNER_GATE">
   The operator owns the goal. A `GOAL` finding is resolved by an operator answer, and the edit follows
-  the answer — `AX_DEFAULT_ACCEPT` covers `MECHANICAL` findings only. Batch the round's `GOAL` findings
-  into ONE question block (`QUESTION_FORMAT`) BEFORE editing the sections they touch. Goal / scope
-  wording stays intact until an operator answer sanctions the change.
+  the answer — `AX_DEFAULT_ACCEPT` covers `MECHANICAL` findings only. The sensor's `GOAL` tag stands
+  until an operator answer says otherwise — downgrading it to `MECHANICAL` is the operator's call
+  alone; an orchestrator that reads a `GOAL`-tagged finding as mechanical carries that disagreement
+  into the SAME question block as one more question, never a private reclassification. Batch the
+  round's `GOAL` findings into ONE question block (`QUESTION_FORMAT`) BEFORE editing the sections they
+  touch. Goal / scope wording stays intact until an operator answer sanctions the change.
 </Axiom>

@@ -7,7 +7,9 @@
   - **Public Operations:** <intent-level list, no language signatures>
   - **Lifecycle:** <who creates, who owns, when terminates>
   - **Events Emitted:** <list or N/A>
-  - **Errors & Degradation:** <error behavior>
+  - **Errors & Degradation:** <which errors, by what mechanism (throw | Result | event | …), and
+    who owns handling/display — e.g. "`ValidationError` via `Result`, surfaced by
+    `OrderController`"; not a generic "handles errors gracefully">
   - **Consumers:**
     - Internal: `<path/to/file.ts>` or `<OtherEntityName>`
     - External: <CLI / External API / Browser / OS Event Bus / ...>

@@ -17,5 +17,5 @@
         }
         ```
       </Snippet>
-      <Why>`"type": "module"` makes ESM explicit. `engines` bounds Node version. `vite` exact-pinned (build tool); `some-lib` uses range (runtime dep).</Why>
+      <Why>`"type": "module"` makes ESM explicit. `engines` bounds Node version. `vite` exact-pinned (жёстко зафиксированная версия; build tool); `some-lib` uses range (runtime dep).</Why>
     </Pattern>

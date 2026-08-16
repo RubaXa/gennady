@@ -12,6 +12,8 @@ export const ERR_CLI_SDD_NEW_UNKNOWN_KIND = 'ERR_CLI_SDD_NEW_UNKNOWN_KIND' as co
 export const ERR_CLI_SDD_NEW_FILE_EXISTS = 'ERR_CLI_SDD_NEW_FILE_EXISTS' as const;
 /** @purpose Writing the skeleton (or creating parent directories) failed. */
 export const ERR_CLI_SDD_NEW_WRITE_FAILED = 'ERR_CLI_SDD_NEW_WRITE_FAILED' as const;
+/** @purpose --id fails the v2 grammar/length cap, or collides (duplicate or prefix) with an existing Task-ID. */
+export const ERR_CLI_SDD_NEW_BAD_TASK_ID = 'ERR_CLI_SDD_NEW_BAD_TASK_ID' as const;
 
 /**
  * @purpose Result of one sdd-new run.
@@ -67,6 +69,29 @@ export function unknownKind(kind: string): NewOutcome {
       `[sdd-new] ${ERR_CLI_SDD_NEW_UNKNOWN_KIND}: "${kind}"`,
       `  Known kinds: ${KNOWN_KINDS.join(', ')}.`,
       '  Run `gennady sdd-new --list` to see every kind with its path pattern.',
+    ].join('\n'),
+  };
+}
+
+/**
+ * @purpose Build the bad-Task-ID diagnostic — grammar/length failure, or a duplicate/prefix collision. Never auto-substitutes; names the broken rule plus a concrete fix.
+ * @param id The rejected --id.
+ * @param reason What was wrong (from validateTaskId or describeIdConflict).
+ * @param suggestion A conflict-free Task-ID (from suggestTaskId), or null when none was found.
+ * @returns Outcome with exit 4.
+ */
+export function badTaskId(id: string, reason: string, suggestion: string | null): NewOutcome {
+  return {
+    ok: false,
+    code: ERR_CLI_SDD_NEW_BAD_TASK_ID,
+    exitCode: 4,
+    message: [
+      `[sdd-new] ${ERR_CLI_SDD_NEW_BAD_TASK_ID}: "${id}"`,
+      `  ${reason}`,
+      suggestion
+        ? `  try: --id ${suggestion}`
+        : '  no automatic suggestion available — pick a different slug yourself.',
+      '  sdd-new never auto-substitutes a Task-ID — fix --id and re-run.',
     ].join('\n'),
   };
 }

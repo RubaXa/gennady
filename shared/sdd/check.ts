@@ -10,6 +10,7 @@ import { parseGraphEdges } from './portal.ts';
 import type { Scope, GraphEdge } from './portal.ts';
 import type { FlowVersion } from './flow.ts';
 import { SCOPE_KINDS, loadBearingSections, foldSections } from './templates.ts';
+import { validateTaskId, findPrefixClashes, describeIdConflict } from './task-id.ts';
 
 /**
  * @purpose One audit finding.
@@ -251,6 +252,23 @@ export function checkTicket(file: string, content: string): Finding[] {
 }
 
 /**
+ * @purpose SDD_TASK_ID_GRAMMAR — validate one anchored ticket's Meta Task-ID against the v2 grammar + slug-length cap (AX_TASK_ID_UNIQUENESS).
+ * @invariant v2-only — the caller decides v1/v2, calling this only under v2. No Task-ID or a live
+ * `<ACRONYM>-<slug>` placeholder is skipped (covered elsewhere).
+ * @param file Ticket file path.
+ * @param content Full ticket markdown.
+ * @returns One SDD_TASK_ID_GRAMMAR error when the Meta Task-ID fails validateTaskId; else empty.
+ */
+export function checkTaskIdGrammar(file: string, content: string): Finding[] {
+  const metaSec = extractSection(content, 'META');
+  if (metaSec.status !== 'ok') return [];
+  const { taskId } = parseMetaInfo(metaSec.content);
+  if (!taskId || taskId.includes('<')) return [];
+  const reason = validateTaskId(taskId);
+  return reason ? [{ severity: 'error', code: 'SDD_TASK_ID_GRAMMAR', file, message: reason }] : [];
+}
+
+/**
  * @purpose Gathered portal facts for the integrity check — the command supplies the fs-derived spec dirs.
  * @invariant `specDirs` are the names of `specs/<dir>` directories that hold a `<dir>.spec.md` (top-level scope specs only).
  */
@@ -477,6 +495,21 @@ export function checkTaskGraph(tickets: TicketRef[]): Finding[] {
         message: `Task-ID ${id} is used by ${files.length} tickets: ${files.join(', ')}.`,
       });
     }
+  }
+
+  // SDD_TASK_ID_PREFIX_CLASH: on top of exact-duplicate collision above, no Task-ID may be a
+  // hyphen-prefix of another — the grep-cleanliness invariant (AX_TASK_ID_UNIQUENESS). Project-wide,
+  // no v1/v2 gating (unlike SDD_TASK_ID_GRAMMAR): a legacy ID clashing with a new one is exactly the
+  // collision this rule exists to catch during migration.
+  for (const [a, b] of findPrefixClashes([...byId.keys()])) {
+    const filesA = byId.get(a) as string[];
+    const filesB = byId.get(b) as string[];
+    findings.push({
+      severity: 'error',
+      code: 'SDD_TASK_ID_PREFIX_CLASH',
+      file: filesA[0] as string,
+      message: `${describeIdConflict(a, { with: b, kind: 'prefix' })} (${a}: ${filesA.join(', ')} — ${b}: ${filesB.join(', ')}).`,
+    });
   }
 
   for (const t of tickets) {

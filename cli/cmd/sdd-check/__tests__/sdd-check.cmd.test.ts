@@ -306,7 +306,13 @@ describe('SddCheckCommand', () => {
     const root = join(dir, 'clean-proj');
     const scopeDir = join(root, 'specs', 'cli');
     mkdirSync(scopeDir, { recursive: true });
-    writeFileSync(join(scopeDir, 'cli.task-foo.md'), CLEAN_TICKET, 'utf-8');
+    // this root has no tasks/ dir at all — a genuine v2 tree — so the ticket's Task-ID must satisfy
+    // the v2 grammar (SDD_TASK_ID_GRAMMAR), unlike the lowercase "cli-foo" fixture used elsewhere.
+    writeFileSync(
+      join(scopeDir, 'cli.task-foo.md'),
+      CLEAN_TICKET.replace('cli-foo', 'CLI-foo'),
+      'utf-8'
+    );
     // a complete tree carries the matching Tracker Index row (else SDD_TRACKER_MISSING_ROW)
     writeFileSync(
       join(scopeDir, 'cli.3-tasks.md'),
@@ -315,7 +321,7 @@ describe('SddCheckCommand', () => {
         '## 1. Tracker Index',
         '| Task-ID | Title | Dependencies | Status | Reopens |',
         '|---------|-------|--------------|--------|---------|',
-        '| cli-foo | Foo | — | [x] DONE | — |',
+        '| CLI-foo | Foo | — | [x] DONE | — |',
       ].join('\n'),
       'utf-8'
     );
@@ -376,6 +382,71 @@ describe('SddCheckCommand', () => {
     assert.strictEqual(r.exitCode, 1);
     assert.match(r.text, /new-scope[\\/]mod[\\/]mod\.spec\.md[\s\S]*SDD_NO_DIAGRAM_BLOCK/);
     assert.doesNotMatch(r.text, /old-scope[\\/]mod[\\/]mod\.spec\.md/);
+  });
+
+  it('--all: SDD_TASK_ID_GRAMMAR fires for a bad Task-ID in a migrated (v2) scope ticket', async () => {
+    const root = join(dir, 'grammar-v2-proj');
+    mkdirSync(join(root, 'specs', 'new-scope', 'mod'), { recursive: true });
+    // migrated marker: tasks/<scope>/ absent + co-located index present (same as the mixed-repo test)
+    writeFileSync(
+      join(root, 'specs', 'new-scope', 'new-scope.3-tasks.md'),
+      '# Tasks: new-scope\n',
+      'utf-8'
+    );
+    writeFileSync(
+      join(root, 'specs', 'new-scope', 'mod', 'mod.task.gat-login.md'),
+      CLEAN_TICKET.replace('cli-foo', 'gat-login'),
+      'utf-8'
+    );
+    const r = await mod.run(argv('--all', root));
+    assert.match(r.text, /SDD_TASK_ID_GRAMMAR/);
+  });
+
+  it('--all: SDD_TASK_ID_GRAMMAR does NOT fire for the same bad id in an un-migrated (v1) scope', async () => {
+    const root = join(dir, 'grammar-v1-proj');
+    mkdirSync(join(root, 'tasks', 'old-scope'), { recursive: true });
+    mkdirSync(join(root, 'specs', 'old-scope', 'mod'), { recursive: true });
+    writeFileSync(
+      join(root, 'specs', 'old-scope', 'mod', 'mod.task.gat-login.md'),
+      CLEAN_TICKET.replace('cli-foo', 'gat-login'),
+      'utf-8'
+    );
+    const r = await mod.run(argv('--all', root));
+    assert.doesNotMatch(r.text, /SDD_TASK_ID_GRAMMAR/);
+  });
+
+  it('--all: SDD_TASK_ID_PREFIX_CLASH fires across two tickets whose ids are a hyphen-prefix of each other', async () => {
+    const root = join(dir, 'prefix-clash-proj');
+    mkdirSync(join(root, 'specs', 'cli'), { recursive: true });
+    writeFileSync(
+      join(root, 'specs', 'cli', 'cli.task-a.md'),
+      CLEAN_TICKET.replace('cli-foo', 'GAT-gates'),
+      'utf-8'
+    );
+    writeFileSync(
+      join(root, 'specs', 'cli', 'cli.task-b.md'),
+      CLEAN_TICKET.replace('cli-foo', 'GAT-gates-v2').replace('[x] DONE', '[ ] TODO'),
+      'utf-8'
+    );
+    const r = await mod.run(argv('--all', root));
+    assert.match(r.text, /SDD_TASK_ID_PREFIX_CLASH/);
+  });
+
+  it('--all: no PREFIX_CLASH for a bare numeric-suffix relationship (TSK-1 vs TSK-10)', async () => {
+    const root = join(dir, 'no-prefix-clash-proj');
+    mkdirSync(join(root, 'specs', 'cli'), { recursive: true });
+    writeFileSync(
+      join(root, 'specs', 'cli', 'cli.task-a.md'),
+      CLEAN_TICKET.replace('cli-foo', 'TSK-1'),
+      'utf-8'
+    );
+    writeFileSync(
+      join(root, 'specs', 'cli', 'cli.task-b.md'),
+      CLEAN_TICKET.replace('cli-foo', 'TSK-10').replace('[x] DONE', '[ ] TODO'),
+      'utf-8'
+    );
+    const r = await mod.run(argv('--all', root));
+    assert.doesNotMatch(r.text, /SDD_TASK_ID_PREFIX_CLASH/);
   });
 
   it('--all reports Finding.file relative to process.cwd(), not the absolute worktree path', async () => {

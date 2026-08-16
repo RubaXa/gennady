@@ -4,7 +4,7 @@
 
       **Requirements gate before design.** Architecture variants are forbidden until REQUIREMENTS_GATE is closed. Required: Functional Requirements, Non-Functional Constraints, Out-of-Scope, Project-Wide Rules (Rules).
 
-      **Golden DX example gate.** A Golden DX Example is mandatory before Design Variants. library → Public API DX. product → UX-flow DX or CLI DX depending on Project Type.
+      **Usage Example gate.** An Approved Usage Example is mandatory before Design Variants. library → Public API DX. product → UX-flow DX or CLI DX depending on Project Type.
 
       **Project Type scales depth** (product only):
       - `app` (mobile / desktop / spa): 2–3 architectural variants.

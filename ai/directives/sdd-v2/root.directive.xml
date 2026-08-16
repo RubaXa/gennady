@@ -303,7 +303,10 @@
       does NOT print this layout — it just talks.
 
       `<dim service line>`        — internal anchor + scope + mode + confidence (supplied by the branch)
-      `<breadcrumb>`              — per `BREADCRUMB_FORMAT`
+
+      `<breadcrumb>`              — per `BREADCRUMB_FORMAT`, its OWN paragraph (a blank line above it,
+      not just a `\n`) — markdown collapses a single newline into a space, so without the blank line
+      the breadcrumb visually fuses onto the service line
 
       ## `<glyph>` `<scope>` — одной фразой, что делаем
 
@@ -337,11 +340,14 @@
     </Contract>
 
     <Contract id="BREADCRUMB_FORMAT">
-      One line under the service line: this session's milestones, each rendered `<Name> <status>`, with
-      a status marker chosen for legibility on BOTH light and dark themes — no half-tone shading
-      characters (`░ ▒ ▓`) anywhere, they vanish depending on theme. Status set: `✅` done · `👷` active
-      (the step running now) · `◻️` not yet reached. Delta only; never re-list everything already
-      settled. This is the «where are we», and it replaces a verbose run-on of finished steps.
+      One line, its own paragraph below the service line — a blank line separates the two (per
+      `MESSAGE_LAYOUT`); a single `\n` with no blank line is a contract defect, markdown renders it
+      fused onto the service line as one run-on. This session's milestones, each rendered `<Name>
+      <status>`, with a status marker chosen for legibility on BOTH light and dark themes — no
+      half-tone shading characters (`░ ▒ ▓`) anywhere, they vanish depending on theme. Status set: `✅`
+      done · `👷` active (the step running now) · `◻️` not yet reached. Delta only; never re-list
+      everything already settled. This is the «where are we», and it replaces a verbose run-on of
+      finished steps.
 
       `Vision ✅ · Scope Graph 👷 · Infra ◻️ · Portal ◻️`
     </Contract>

@@ -40,7 +40,7 @@ Agent Inbox — локальный однопользовательский ас
 
 <!--SECTION:GOLDEN_DX-->
 
-## 3. Approved Golden UX Example
+## 3. Approved UX Flow Example
 
 1. Оператор запускает Agent Inbox; [core](./inbox-core/inbox-core.spec.md#2-module-usage-example)
    восстанавливает локальное состояние, а [VCS](./inbox-vcs/inbox-vcs.spec.md#2-module-usage-example)
@@ -768,7 +768,7 @@ do not own implementation tickets.
 
 ### Acceptance after downstream regeneration
 
-1. Golden UX is completed on a real allowlisted GitLab MR without opening GitLab UI.
+1. The approved UX flow is completed on a real allowlisted GitLab MR without opening GitLab UI.
 2. Two simultaneous MR progress independently and recover after process termination.
 3. Coverage failure prevents approve; verified fix resolves allowed threads and restores
    prior approve only when gates pass.

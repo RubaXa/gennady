@@ -26,7 +26,7 @@ product
 
 <!--SECTION:GOLDEN_DX-->
 
-## 3. Approved Golden DX Example
+## 3. Approved Usage Example
 
 ```bash
 $ gennady mr-stats https://gitlab.corp.mail.ru/mail/messenger/-/merge_requests/1420
@@ -392,7 +392,7 @@ Modules not yet decomposed — run `module-decomposition mr-stats`. Scaffolding 
   - `entity-counter` — tree-sitter сравнение сущностей между base и mr
   - `duplicate-detector` — обёртка над `jscpd`
   - `reporter` — агрегация и вывод JSON
-- **Named abstractions** (Golden DX in §3 is the canonical output contract; types below are internal, serialized to match DX):
+- **Named abstractions** (Usage Example in §3 is the canonical output contract; types below are internal, serialized to match DX):
   - `EntityRef` — ссылка на сущность: `{ file: string, line?: number, symbol: string }`.
   - `EntityDelta` — внутренний результат сравнения: `{ introduced: EntityRef[], modified: EntityRef[], removed: EntityRef[] }`. **Инвариант:** introduced ∩ modified = ∅, introduced ∩ removed = ∅, modified ∩ removed = ∅. Переименование → removed + introduced. **Сериализуется** в `{ introduced: N, modified: N, removed: N }` (количества, не массивы).
   - `LineDiff` — пара added/removed для одного типа строк: `{ added: number, removed: number }`.

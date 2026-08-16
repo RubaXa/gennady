@@ -38,7 +38,12 @@
       «лочит» → «фиксирует», «пиним» → «фиксируем версию», «автофиксят» → «исправляется
       автоматически», «гейтится» → «проверяется гейтом». Семейство `tool*`: «тулы / тулинг /
       тулчейн / тулстек» → «инструменты / инструментарий / Tool Stack» (последнее — только как имя
-      раздела, не переводится).
+      раздела, не переводится). «Usage Example» — тоже имя раздела, не переводится (как Tool Stack).
+
+      **Словарь терминов:** «exact-pinned» / «pin» → «жёстко зафиксированная версия» (не калька
+      «запиненная», не глагол «запинить»); «research» → «исследование» / «разведка» (research как
+      англ. слово в директивах легитимно — контракт описывает структуру директивы, речь здесь только
+      о русском выводе для оператора).
 
       **Терминологическая дисциплина.** Доменное понятие фиксируется при ПЕРВОМ введении и дальше
       переиспользуется ДОСЛОВНО во всех сообщениях и артефактах сессии — не переизобретать синоним
@@ -171,7 +176,10 @@
       Round is complete only after `audit` returns PASS. `sdd-execute` orchestrator dispatches audit-subagent automatically after the last phase of a Round closes — operator does not invoke audit manually. `[x] DONE` on the ticket is mechanical close, not verification. Until audit PASS, dependents are blocked.
     </Axiom>
 
-    <Axiom id="AX_RE_DISPATCH">Any edit → re-dispatch mandatory. Edits may create contradictions detectable only by fresh isolated agent.</Axiom>
+    <Axiom id="AX_RE_DISPATCH">Any edit → re-dispatch mandatory, no exception of the agent's own making — "the fix is trivial" does
+      not waive it; edits may create contradictions detectable only by a fresh isolated agent. The verdict
+      handed to the operator MUST be the literal verdict text of the LAST dispatch actually run, shown as a
+    direct quote — never a paraphrase, and never the verdict of a dispatch that was skipped.</Axiom>
 
     <Axiom id="AX_VERIFY_AND_FINALIZE">
       Finalizing a test = re-checking isolation, naming, anchor pairing, snapshot placement, and the diagnostic quality of failures, then running type-check + tests with coverage. Blocker → declared EXPLICITLY.
@@ -255,9 +263,13 @@
         Per phase: pick the worker model by thinking-load — default by kind (`impl` / `test` → capable;
         `bootstrap` / `config` / `doc` → cheap), escalate to capable on LOW confidence or a reasoning-heavy phase. Dispatch a fresh worker with: read `ai/directives/sdd-v2/phase-execution-protocol.directive.xml`;
         ticket path; phase ID + kind + reason (`initial` / `fix: F-NNN` / `resume`); Inputs = prior
-        Handoff verbatim (`AX_HANDOFF_TYPED`); the phase read-manifest from `sdd-task`; sdd tooling
-        (`sdd-extract` / `sdd-verify` / `sdd-log`). Emit a progress line per transition
-        (`ORCHESTRATOR_PROGRESS_FORMAT`).
+        Handoff verbatim (`AX_HANDOFF_TYPED`); this phase's block from `sdd-task <id>`'s own output —
+        its read-manifest, Rules, Target Files, gates — pasted into the prompt as a FENCED VERBATIM
+        QUOTE of that output, never re-typed as text (a paraphrase has silently dropped read-manifest
+        files before this fix); the only prompt content NOT copied verbatim from that quote is the
+        phase id / kind / reason, the threaded Handoff, and orchestrator knowledge genuinely absent
+        from the manifest; sdd tooling (`sdd-extract` / `sdd-verify` / `sdd-log`). Emit a progress line
+        per transition (`ORCHESTRATOR_PROGRESS_FORMAT`).
 
         <LogicSwitch on="worker Handoff status">
         - WHEN `BLOCKED` / `FAIL` -> stop, no audit; `H_PAUSED_AWAITING_OPERATOR`

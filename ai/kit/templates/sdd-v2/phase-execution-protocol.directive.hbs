@@ -40,8 +40,9 @@
       the whole repo (tests never count; barrel re-exports never count). Every such finding MUST be
       resolved one of two ways: (a) remove the symbol, or (b) genuinely need it — then add
       `- **Usage Waiver:** <reason>` to its contract/surface entry (`DBC_PORT_FORMAT` /
-      `DBC_ADAPTER_FORMAT` / `ENTITY_SURFACE_FORMAT`), AND log `<ts> yagni <EntityName> ← <reason>`
-      in this phase's Execution Log block — the label alone is not sufficient, the log line is the
+      `DBC_ADAPTER_FORMAT` / `ENTITY_SURFACE_FORMAT`), AND log `yagni <EntityName> ← <reason>` via
+      `npx gennady sdd-log <ticket> line "yagni <EntityName> ← <reason>"` (`AX_TICKET_WRITE_SCOPE`) —
+      the label alone is not sufficient, the log line is the
       evidence audit cross-checks against it (`AX_AUDIT_YAGNI_CROSSCHECK`). Cite a `D-NNN` in the
       label only when the reason IS a Decision Log entry — a genuine, non-obvious call, not "split
       for readability"; when cited, the id must resolve to a real Decision Log heading, or
@@ -103,14 +104,17 @@
         Read Meta + Phases Overview + the target phase block. Missing block → `H_PHASE_NOT_FOUND`; Status
         `[x]` without a `fix` reason → `H_PHASE_ALREADY_DONE`. For each Input, locate the prior phase's
         `**Handoff →**` line in the current Round (missing → `H_INPUT_HANDOFF_MISSING`). Append the phase
-        header to the current Round: `#### <PhaseID>` (or `… — re-run: <reason>` for `fix`).
+        header to the current Round via `npx gennady sdd-log <ticket> phase <PhaseID> ["— re-run:
+        <reason>"]` (`AX_TICKET_WRITE_SCOPE`) — the tool is the sole writer for this section, never a
+        manual `Edit`.
       </Action>
     </Step>
     <Step id="STEP_2_NARROW_RECON">
       <Goal>Verify ground truth before writing — log only on divergence.</Goal>
       <Action>
         Per `AX_NARROW_RECON`: log a recon line ONLY on divergence; when state matches the plan, stay
-        silent. On divergence emit a `discovery` line; if it breaks the phase contract → `H_RECON_DIVERGENCE`, else proceed.
+        silent. On divergence emit a `discovery` line via `npx gennady sdd-log <ticket> line "discovery
+        <fact>"` (`AX_TICKET_WRITE_SCOPE`); if it breaks the phase contract → `H_RECON_DIVERGENCE`, else proceed.
       </Action>
     </Step>
     <Step id="STEP_3_LOAD_RULES">
@@ -131,8 +135,8 @@
         4. Local docs minimal → WebFetch homepage from `package.json#homepage` / `repository.url`.
         5. Network blocked AND local docs insufficient → `H_THIRD_PARTY_API_UNVERIFIABLE` — halt rather
            than guess or apply a training-default silently.
-        Then log: `<ts> verified <tool>@<version> <one-line summary>` — audit requires this entry per
-        config artifact.
+        Then log via `npx gennady sdd-log <ticket> line "verified <tool>@<version> <one-line
+        summary>"` (`AX_TICKET_WRITE_SCOPE`) — audit requires this entry per config artifact.
       </Action>
     </Step>
     <Step id="STEP_4_EXECUTE">
@@ -140,9 +144,10 @@
       <Action>
         Apply rules continuously; respect `AX_PHASE_SCOPE_LOCK`, `AX_FILE_HEADER_APPEND_ONLY`,
         `AX_INTRODUCED_DISCIPLINE`. `test` kind honors `AX_BDD_NAME_DISCIPLINE`; `config` kind applies
-        the current-version API verified at STEP_3B (`AX_THIRD_PARTY_TOOL_CURRENT_API`). Append event
-        lines per `AX_LIVE_LOG`; a
-        spec gap goes to an `insight` line and leaves the spec untouched (`AX_SPEC_NEVER_EDITED`).
+        the current-version API verified at STEP_3B (`AX_THIRD_PARTY_TOOL_CURRENT_API`). Append each
+        event line via `npx gennady sdd-log <ticket> line "<content>"` as it happens (`AX_LIVE_LOG`,
+        `AX_TICKET_WRITE_SCOPE` — the tool is the sole writer, never a manual `Edit`); a spec gap goes
+        to an `insight` line the same way and leaves the spec untouched (`AX_SPEC_NEVER_EDITED`).
       </Action>
     </Step>
     <Step id="STEP_5_VERIFY">
@@ -158,7 +163,8 @@
         — closed-world inventory sync (`ERR_CLI_LINT_INVENTORY_UNDECLARED`) + cast safety
         (`ERR_CLI_LINT_UNSAFE_CAST`). An exported entity not in the inventory is drift
         (`AX_CLOSED_WORLD_INVENTORY`): remove it, or — if genuinely needed — log an `intro <name> ← <reason>`
-        line (`AX_INTRODUCED_DISCIPLINE`; the worker leaves the spec to audit, `AX_SPEC_NEVER_EDITED` — the intro
+        line via `npx gennady sdd-log <ticket> line "intro <name> ← <reason>"`
+        (`AX_INTRODUCED_DISCIPLINE`, `AX_TICKET_WRITE_SCOPE`; the worker leaves the spec to audit, `AX_SPEC_NEVER_EDITED` — the intro
         line flags it for inventory backflow at audit). MUST resolve every out-of-inventory export this way. A cast → remove (proper type / guard) or a documented `@ts-expect-error` (`AX_NO_SILENT_ESCAPE_HATCH` — never a silent suppression).
         Then run each ticket §5 command **verbatim** (the Canonical Gate per `AX_VERIFICATION_BEFORE_HANDOFF`),
         exactly as written. **Error ownership scales by write zone, not by age:** for every failure the gate
@@ -166,11 +172,13 @@
         or is a file this phase itself created → fix it here, now, regardless of whether the failure pre-dates
         this phase; "pre-existing" is never grounds to skip a fix that lands inside scope. That file sits outside
         this boundary — `specs/**` (`AX_SPEC_NEVER_EDITED`), a file owned by another phase, a shared config this
-        phase did not create — → the failure is not fixable from here: emit `BLOCKER_FORMAT` with a concrete
-        remediation proposal (which file, what change) and halt `H_BLOCKED`; do not silently label it
+        phase did not create — → the failure is not fixable from here: emit `BLOCKER_FORMAT` via `npx gennady
+        sdd-log <ticket> blocker "<reason>" --axiom <AX_NAME> --unblock "<action>"` (`AX_TICKET_WRITE_SCOPE`)
+        with a concrete remediation proposal (which file, what change) and halt `H_BLOCKED`; do not silently label it
         pre-existing and move on, and do not touch the out-of-zone file to make the gate pass. The test is
         strictly where the fix must be written, never a judgment call on whose bug it is. Fix every in-zone
-        failure, re-run, then log one `ver <exact-cmd> → pass exit=<N>` per command. A fix that
+        failure, re-run, then log one `ver <exact-cmd> → pass exit=<N>` per command via `npx gennady sdd-log
+        <ticket> line "ver <exact-cmd> → pass exit=<N>"`. A fix that
         breaks the phase contract → `H_BLOCKED` (surfaced as PAUSED awaiting the operator, not as failure —
         `AX_HALT_VS_FAIL_DISTINCTION`; the `🛑 BLOCKED` log line opens the resolution trail the
         orchestrator checks, `AX_BLOCKER_RESOLUTION_TRAIL`); missing tooling → `H_VERIFICATION_FAIL`. A `ver` line MUST
@@ -180,10 +188,12 @@
     <Step id="STEP_6_EMIT_HANDOFF">
       <Goal>Close the phase block with a typed Handoff and DONE.</Goal>
       <Action>
-        Append `<ts> DONE`; append the `**Handoff →**` line per `HANDOFF_FORMAT` (typed payload,
-        `AX_HANDOFF_TYPED`); flip this phase's Status
-        in Phases Overview `[ ]` → `[x]`; return the structured summary per `RETURN_SUMMARY_FORMAT` to the
-        orchestrator.
+        Append `<ts> DONE` via `npx gennady sdd-log <ticket> line "DONE"`; append the `**Handoff →**`
+        line via `npx gennady sdd-log <ticket> handoff "<payload>"` per `HANDOFF_FORMAT` (typed payload,
+        `AX_HANDOFF_TYPED`, `AX_TICKET_WRITE_SCOPE` — the tool is the sole writer for both lines, never
+        a manual `Edit`); flip this phase's Status in Phases Overview `[ ]` → `[x]` via a direct `Edit`
+        (outside the Execution Log, `AX_TICKET_WRITE_SCOPE`); return the structured summary per
+        `RETURN_SUMMARY_FORMAT` to the orchestrator.
       </Action>
     </Step>
   </PhaseProcedure>

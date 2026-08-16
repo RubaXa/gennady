@@ -199,7 +199,7 @@
       </Action>
     </Step>
     <Step id="STEP_2_TOOL_CATEGORIES">
-      <Goal>Declare the tool categories.</Goal>
+      <Goal>Declare the tool categories, then route on stack typicality.</Goal>
       <Action>
         Propose a subset from intent per `AX_INFRASTRUCTURE_FLOW`, Facts / Assumptions / Hypotheses
         separated per `AX_EVIDENCE_HYGIENE`. Mandatory categories
@@ -207,18 +207,34 @@
         `test-e2e` is optional on the category LIST but not on the DECISION — per `AX_E2E_FIRST` the
         agent proposes it in by default and takes an explicit operator answer to drop it (with the
         risk line recorded), rather than reasoning "small scope, skip e2e" on its own and folding
-        that into the proposed subset unchallenged. Then run the operator interview —
-        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/interview-protocol.directive.xml")` — passing
-        scope-type `infrastructure` (selects the TopicCatalog block) and the confirmed `scale:`
-        from the session file: per `AX_SCALE_PROPORTIONAL_DEPTH` `fix` / `function` → base topics +
-        the triage minimum; `product` → the full scope-type block. The interview IS the substance
-        of the step. Approval Check. STOP.
+        that into the proposed subset unchallenged.
+
+        <LogicSwitch on="stack typicality">
+        - WHEN every proposed category resolves to an already-known registry rule (`ai/directives/knowledge.xml` names a matching `<Rules>` entry for each — no exotic / novel tool named by the operator, no operator request for a detailed pass) -> EXPRESS branch below replaces the full interview for STEP_2/STEP_3
+        - WHEN a category has no registry match, or the operator asked for "подробно" / a detailed pass, or typicality is genuinely unclear -> run the full operator interview — `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/interview-protocol.directive.xml")` — passing scope-type `infrastructure` (selects the TopicCatalog block) and the confirmed `scale:` from the session file: per `AX_SCALE_PROPORTIONAL_DEPTH` `fix` / `function` → base topics + the triage minimum; `product` → the full scope-type block. The interview IS the substance of the step; STEP_3 then runs in full. Uncertain typicality defaults to THIS branch — never a silent EXPRESS guess.
+        </LogicSwitch>
+
+        EXPRESS branch (typical stack): run the STEP_3 research gate now, for every category at once
+        (2–3 targeted WebSearch queries per category — alive/current, AI-agent friendliness for the
+        current year); then present ONE batch Ask — a single candidates table, one row per category,
+        each row naming the recommended tool + a one-line rationale from the research (not recall) +
+        a currency note, per `AX_DIVERGE_BEFORE_RECOMMEND`. The operator confirms the whole table or
+        names deviations in ONE reply. A SECOND Ask closes the round: confirms any deviation the
+        first reply raised, plus the Tool Interaction Check (linter vs formatter, runner vs
+        type-check, CI vs package manager). Two Asks total replace the per-category STEP_2 / STEP_3
+        interview cycle — Mandatory Rationale Pull → Decision Log entry per `AX_DECISION_LOG_REQUIRED`
+        still applies per tool (`H_TOOL_LOCKED_WITHOUT_DECISION`): the compression is in the NUMBER of
+        operator round-trips, never in the Decision Log discipline. STEP_3 is done once this closes —
+        proceed to STEP_4. Approval Check. STOP.
       </Action>
     </Step>
     <Step id="STEP_3_TOOL_CHOICES">
-      <Goal>Choose a tool per category.</Goal>
+      <Goal>Choose a tool per category (full path only — EXPRESS already closed this step).</Goal>
       <Action>
-        Research gate before candidates — applies to categories being picked or reconsidered NOW
+        Skip entirely when STEP_2 took the EXPRESS branch — its two Asks already produced the
+        candidates table, the operator pick, and the Tool Interaction Check; re-running this step
+        would re-ask what STEP_2 just closed. Otherwise (full path): research gate before candidates —
+        applies to categories being picked or reconsidered NOW
         (`greenfield`, or `refine`/`pivot` touching a category not already locked in the spec); skip it
         for a `fix`/`module`-scale session where the category is already locked in the existing infra
         spec, per `AX_SCALE_PROPORTIONAL_DEPTH` — no revisit, no research. Where it applies: run 2–3
@@ -384,7 +400,10 @@
       does NOT print this layout — it just talks.
 
       `<dim service line>`        — internal anchor + scope + mode + confidence (supplied by the branch)
-      `<breadcrumb>`              — per `BREADCRUMB_FORMAT`
+
+      `<breadcrumb>`              — per `BREADCRUMB_FORMAT`, its OWN paragraph (a blank line above it,
+      not just a `\n`) — markdown collapses a single newline into a space, so without the blank line
+      the breadcrumb visually fuses onto the service line
 
       ## `<glyph>` `<scope>` — одной фразой, что делаем
 
@@ -418,11 +437,14 @@
     </Contract>
 
     <Contract id="BREADCRUMB_FORMAT">
-      One line under the service line: this session's milestones, each rendered `<Name> <status>`, with
-      a status marker chosen for legibility on BOTH light and dark themes — no half-tone shading
-      characters (`░ ▒ ▓`) anywhere, they vanish depending on theme. Status set: `✅` done · `👷` active
-      (the step running now) · `◻️` not yet reached. Delta only; never re-list everything already
-      settled. This is the «where are we», and it replaces a verbose run-on of finished steps.
+      One line, its own paragraph below the service line — a blank line separates the two (per
+      `MESSAGE_LAYOUT`); a single `\n` with no blank line is a contract defect, markdown renders it
+      fused onto the service line as one run-on. This session's milestones, each rendered `<Name>
+      <status>`, with a status marker chosen for legibility on BOTH light and dark themes — no
+      half-tone shading characters (`░ ▒ ▓`) anywhere, they vanish depending on theme. Status set: `✅`
+      done · `👷` active (the step running now) · `◻️` not yet reached. Delta only; never re-list
+      everything already settled. This is the «where are we», and it replaces a verbose run-on of
+      finished steps.
 
       `Vision ✅ · Scope Graph 👷 · Infra ◻️ · Portal ◻️`
     </Contract>
