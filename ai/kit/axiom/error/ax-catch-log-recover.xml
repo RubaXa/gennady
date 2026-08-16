@@ -1,8 +1,8 @@
 <!-- source: ai/directives/coding/typescript-rules.xml -->
 <Axiom id="AX_CATCH_LOG_RECOVER">
 Catch-Log-Recover is the only pattern in business-logic catch blocks. First `logger.error` with Trace-Prefix and context, then recovery in ONE of two forms depending on the surrounding method's contract:
-- throw-style API → `throw new Error("[Trace-Prefix] msg", { cause })`.
-- Result-style API → `return fail(error)` (per project Result conventions; the `error` carries `{ cause }` via its own constructor).
+- throw-style API (canon default — every new public API) → `throw new Error("[Trace-Prefix] msg", { cause })`.
+- Result-style API (narrow exception only, per `AX_RESULT_PUBLIC_BOUNDARY` — an existing Result-typed surface, never the default pick for new code) → `return fail(error)` (per project Result conventions; the `error` carries `{ cause }` via its own constructor).
 
 `logger.error` records the failure with its context at detection time — this is the LDD trace (debug-level escalation lets an agent reconstruct the data path even when stacks are minified or aggregator-truncated). Recovery preserves control flow.
 

@@ -1,4 +1,4 @@
 <!-- source: ai/directives/testing/common.xml -->
 <Axiom id="AX_RESULT_UNWRAP_ON_SUCCESS_PATHS">
-If the SUT returns `Result<T>`, use `unwrap()` / `unwrapSync()` on success paths to collapse «check success + extract value» into one call. The assert then focuses solely on the business shape.
+IF the SUT returns `Result<T>` — the narrow exception per `AX_RESULT_PUBLIC_BOUNDARY`, not the default shape of a new SUT — use `unwrap()` / `unwrapSync()` on success paths to collapse «check success + extract value» into one call. The assert then focuses solely on the business shape. A throw-style SUT (the canon default) has no Result to unwrap: assert its return value directly and its error paths per `AX_FOCUSED_ERROR_ASSERTIONS`.
 </Axiom>

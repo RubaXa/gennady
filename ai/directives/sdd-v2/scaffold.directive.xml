@@ -230,6 +230,15 @@
       - If Bootstrap Requirements is absent from the spec → abort with `H_BOOTSTRAP_REQUIREMENTS_MISSING` (the spec did not pass discovery STEP_7).
     </Axiom>
 
+    <Axiom id="AX_RELEASE_READY_DEFAULT" cross-cutting="true">
+      Unless the operator explicitly said POC / MVP / prototype, the default depth of work targets
+      public release: error handling, edge cases, accessibility, and loading/empty states are part of
+      the work, not "later". Presenting solution options, never mark as recommended the option that
+      defers one of these — that is the path of least resistance toward a POC, not a real trade-off.
+      Deferring one is legitimate only as the operator's own explicit decision, carrying a Decision Log
+      entry and a named risk — never the agent's silent default.
+    </Axiom>
+
     <Axiom id="AX_TICKET_HAS_BDD_AND_TESTS">
       **Ticket carries BDD scenarios mapped to concrete tests.**
 
@@ -429,9 +438,17 @@
         `e2e`-level scenario for the ticket's user-facing path by default — dropping it needs a
         named Decision Log entry with a risk line, not a quiet "unit is enough" call by the phase
         subagent; pre-fill the Execution Log plan
-        (`AX_EXECUTION_LOG_PLAN_VS_FACT`). **BDD coverage pass — dispatch ONE isolated subagent** with a
+        (`AX_EXECUTION_LOG_PLAN_VS_FACT`). Error-path and edge-case scenarios are drafted NOW, at this
+        step, not left for a later pass (`AX_RELEASE_READY_DEFAULT` — release-ready is the default
+        depth unless the operator named POC/MVP); an error scenario asserts against the thrown error
+        class + a stable message fragment (`AX_FOCUSED_ERROR_ASSERTIONS`), never a `Result` shape,
+        since the canon public-API error mechanism is throw + try/catch (`AX_RESULT_PUBLIC_BOUNDARY` —
+        Result is a narrow, contract-scoped exception, not the default). **BDD coverage pass — dispatch
+        ONE isolated subagent** with a
         clean slice (module spec + contract anchors + requirements + draft BDD) asking «which negative /
-        corner / trust-boundary / failure-mode scenarios are missing?»; merge approved ones, log the
+        corner / trust-boundary / failure-mode scenarios are missing?»; merge approved ones — never
+        defer one to "later" without an explicit operator decision and a Decision Log entry naming the
+        risk (`AX_RELEASE_READY_DEFAULT`) — log the
         reviewed checklist in the ticket Decision Log (`AX_DECISION_LOG_REQUIRED`). Validate every contract has its typing scenario
         mapped to a test (else `H_TYPING_SCENARIO_MISSING`). Check each emitted ticket against
         `TASK_TICKET_STRUCTURE`: section anchors match the normative names exactly

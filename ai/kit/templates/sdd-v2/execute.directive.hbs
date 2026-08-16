@@ -38,9 +38,13 @@
 
     {{> "axiom/process/ax-execution-order"}}
 
+    {{> "axiom/process/ax-release-ready-default"}}
+
     {{> "axiom/process/ax-handoff-typed"}}
 
     {{> "axiom/process/ax-blocker-resolution-trail"}}
+
+    {{> "axiom/process/ax-deviation-self-resolve"}}
 
     {{> "axiom/process/ax-audit-hook"}}
 
@@ -114,7 +118,9 @@
 
         <LogicSwitch on="worker Handoff status">
         - WHEN `BLOCKED` / `FAIL` -> stop, no audit; `H_PAUSED_AWAITING_OPERATOR`
-        - WHEN `DONE`             -> record Handoff, thread it into the next phase's Inputs
+        - WHEN `DONE`             -> record Handoff, thread it into the next phase's Inputs; carry
+          forward any `deviations:` entries verbatim (`AX_DEVIATION_SELF_RESOLVE`) — collected for
+          STEP_8, never surfaced mid-run
         </LogicSwitch>
       </Action>
     </Step>
@@ -147,9 +153,12 @@
       </Action>
     </Step>
     <Step id="STEP_7_RESOLVE">
-      <Goal>Resolve audit findings (one retry).</Goal>
+      <Goal>Resolve audit findings (one retry) — the real fix, not the deferring shortcut.</Goal>
       <Action>
-        Path A — `phases_to_fix` non-empty: open a new Round; re-run ONLY those phases as `fix`
+        Resolve findings at release-ready depth (`AX_RELEASE_READY_DEFAULT`): re-running a phase to
+        actually fix error handling / an edge case a finding surfaced is Path A, never a Path B label
+        that defers it without an operator decision and a Decision Log risk entry. Path A —
+        `phases_to_fix` non-empty: open a new Round; re-run ONLY those phases as `fix`
         (sequential), then STEP_3 → STEP_5 (audit R2). Path B — findings are ticket / spec /
         decision-log only (administrative artifact edits: tracker fields, Decision Log entries, a
         contract Usage Waiver label in the spec — never production code): apply them directly under
@@ -174,18 +183,34 @@
       </Action>
     </Step>
     <Step id="STEP_8_SUMMARY">
-      <Goal>Summarize for the operator.</Goal>
-      <Action>Aggregate phase + audit telemetry; present per `EXECUTE_SUMMARY_FORMAT`.</Action>
+      <Goal>Summarize for the operator; report every self-resolved deviation from the whole cycle in one batch.</Goal>
+      <Action>
+        Aggregate phase + audit telemetry; present per `EXECUTE_SUMMARY_FORMAT`. Collect every worker
+        Handoff `deviations:` entry across the ENTIRE cycle just run — one ticket's Round, or every
+        Round of a `batch` loop — plus any spec/ticket gap the orchestrator itself self-resolved
+        directly at STEP_1 / STEP_2 / STEP_6 rather than delegating to a worker
+        (`AX_DEVIATION_SELF_RESOLVE`). Empty set → nothing to ask, summary stands alone. Non-empty →
+        ONE batched `AskUserQuestion` (`QUESTION_FORMAT`) right after the summary, covering every
+        deviation together — never one question per deviation, never mid-run: per deviation, «внести
+        в спеку» / «откатить» / «принять как есть». This is the only point deviations reach the
+        operator; the legal live pauses (`H_PAUSED_AWAITING_OPERATOR`, `H_CODE_REVIEW_BLOCKER`, the
+        STEP_6 risk-accept dialogue) are a separate class — environment/risk, not a spec hole — and
+        keep firing live exactly as today.
+      </Action>
     </Step>
   </ExecutionPlan>
 
   <HardForbidden>
     - Workers read phase bodies / BDD / Verification / specs / rule files / code, each bounded by their manifest; the orchestrator does not.
-    - Workers write code, audit reports, and phase blocks; the orchestrator does not write production code, ever. It has exactly TWO narrow, non-overlapping write channels: (a) `AX_ENV_FIX_CHANNEL` — env/config artifacts only (`package.json` scripts, tool config, lockfiles), never `Target Files` code or `specs/**`, never without prior explicit operator approval of the exact diff; (b) STEP_7_RESOLVE Path B — administrative edits to ticket / Decision Log / spec waiver-labels, applying an audit finding directly per `AX_OWNER`. Neither channel extends to production code under a module's `Target Files`.
+    - Workers write code, audit reports, and phase blocks; the orchestrator does not write production code, ever. It has exactly THREE narrow, non-overlapping write channels: (a) `AX_ENV_FIX_CHANNEL` — env/config artifacts only (`package.json` scripts, tool config, lockfiles), never `Target Files` code or `specs/**`, never without prior explicit operator approval of the exact diff; (b) STEP_7_RESOLVE Path B — administrative edits to ticket / Decision Log / spec waiver-labels, applying an ACCEPTED audit finding directly per `AX_OWNER`; (c) a ticket-local Decision Log append when the orchestrator itself self-resolves a spec/ticket hole it hit directly, not delegated to a worker (`AX_DEVIATION_SELF_RESOLVE`) — distinct from (b), which is gated on an audit finding the operator already accepted, while (c) fires on a gap the orchestrator decides on its own and reports only in the STEP_8 batch. None of the three extends to production code under a module's `Target Files`.
     - Always run audit after all phases DONE, and code-review after the audit passes.
     - Thread only typed Handoff payloads between subagents; keep their contexts separate.
     - Cap audit attempts at 2; re-run only phases in `phases_to_fix`; drive a retry from audit FAIL only (a phase BLOCKED pauses, it does not reopen); run phases of the same task sequentially, one at a time.
   </HardForbidden>
+
+  <ChatProtocol>
+    {{> "contract/process/question-format"}}
+  </ChatProtocol>
 
   <ChatOutput>
     {{> "contract/process/orchestrator-progress-format"}}

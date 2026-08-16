@@ -10,8 +10,11 @@
         "artifacts": ["<path>", ...],
         "decisions": ["<key=value>", ...],
         "open": ["<id: text>", ...],
+        "deviations": ["<id: text>", ...],
         "blocker_reason": "<if BLOCKED>"
       }
       ```
-      `artifacts` / `decisions` / `open` mirror the **Handoff →** line — orchestrator threads them into the next phase's prompt.
+      `artifacts` / `decisions` / `open` / `deviations` mirror the **Handoff →** line — orchestrator
+      threads `artifacts` / `decisions` / `open` into the next phase's prompt, and collects
+      `deviations` across the run for the end-of-cycle batched report (`AX_DEVIATION_SELF_RESOLVE`).
     </Contract>

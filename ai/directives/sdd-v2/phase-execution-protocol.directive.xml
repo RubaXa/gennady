@@ -115,13 +115,24 @@
       section is out of scope for the phase agent, the tool covers it end to end. Everything else the
       phase may touch is a direct `Edit`, scoped to:
       - `Test Scenario Coverage` canonical case names (when test reality differs, phase kind = `test`);
-      - `Phases Overview` Status column for THIS phase ID only.
+      - `Phases Overview` Status column for THIS phase ID only;
+      - `Decision Log` — append-only, new entries only, and only for a self-resolved spec/ticket
+        gap (`AX_DEVIATION_SELF_RESOLVE`); never edits or removes an existing entry.
 
       Anything else (Phases definitions, Rules lists, Target Files, BDD scenarios, Verification table, Dependencies, Meta) → `H_OUT_OF_PHASE_WRITE`. Operator decides via re-planning.
     </Axiom>
 
     <Axiom id="AX_SPEC_NEVER_EDITED">
       Phase agent does NOT modify `specs/**`. Spec wrong / incomplete / stale → record `<ts> insight <observation> → <spec-section>, <what-change>`. Audit picks up these entries and proposes the spec change; operator approves and applies.
+    </Axiom>
+
+    <Axiom id="AX_RELEASE_READY_DEFAULT" cross-cutting="true">
+      Unless the operator explicitly said POC / MVP / prototype, the default depth of work targets
+      public release: error handling, edge cases, accessibility, and loading/empty states are part of
+      the work, not "later". Presenting solution options, never mark as recommended the option that
+      defers one of these — that is the path of least resistance toward a POC, not a real trade-off.
+      Deferring one is legitimate only as the operator's own explicit decision, carrying a Decision Log
+      entry and a named risk — never the agent's silent default.
     </Axiom>
 
     <Axiom id="AX_NARROW_RECON">
@@ -289,6 +300,31 @@
       Mechanics: log `<ts> BLOCKED <one-line cause>` per `BLOCKER_FORMAT`; status of phase → `[!] BLOCKED`; return BLOCKED to orchestrator with proposed unblock. Stop.
     </Axiom>
 
+    <Axiom id="AX_DEVIATION_SELF_RESOLVE" cross-cutting="true">
+      Discovering mid-flight that the spec / ticket is silent on a decision the work needs is NOT a
+      reason to interrupt the operator. Decide it yourself — in the spirit of the artifact and
+      `AX_RELEASE_READY_DEFAULT` — then append a ticket-local Decision Log entry (`<ACRONYM>-D-N ·
+      <statement>` → why ↳ rejected, ADR-compact, direct `Edit` — `AX_TICKET_WRITE_SCOPE` treats this
+      section as writable for exactly this purpose) at the point of decision, not after the fact; then
+      continue. A worker additionally tags its `**Handoff →**` line with `deviations: [<D-id>: <one-line>,
+      ...]` (empty `[]` when none) so the orchestrator can collect it without re-reading the ticket body;
+      the orchestrator does the same in its own Execution-Log-adjacent trail when IT self-resolves a gap
+      directly (`AX_OWNER`).
+
+      Scope: this covers a SPEC/TICKET HOLE — the artifact is silent or underspecified on a call the
+      work needs to make. It does NOT cover an environment/infra blocker (`AX_BLOCKER_ESCALATION`,
+      `H_PAUSED_AWAITING_OPERATOR`) or a risk-acceptance on an open `MAJOR` audit finding (execute
+      STEP_6_BRANCH) — both stay a pause; they are about risk and environment, not a gap in the spec.
+      Test: "can I honor the artifact's stated intent with a sound default?" → self-resolve; "does
+      proceeding need the operator's own risk tolerance, or an environment I cannot fix?" → pause.
+
+      The orchestrator collects every `deviations:` entry across the run just finished — one ticket, or
+      every ticket of a `batch` — and raises them ONCE, at the very end, as a single batched
+      `AskUserQuestion` (`QUESTION_FORMAT`): add to the spec · roll back · accept as-is. Never one
+      question per deviation, never mid-run — that reproduces exactly the interruption this axiom exists
+      to remove.
+    </Axiom>
+
     <Axiom id="AX_HANDOFF_TYPED">
       End every phase block with a typed Handoff line consumed by the next phase and the orchestrator. Format per `HANDOFF_FORMAT`. Free-form text forbidden — the next phase reads keys, not narrative.
     </Axiom>
@@ -366,10 +402,16 @@
       <Action>
         Apply rules continuously; respect `AX_PHASE_SCOPE_LOCK`, `AX_FILE_HEADER_APPEND_ONLY`,
         `AX_INTRODUCED_DISCIPLINE`. `test` kind honors `AX_BDD_NAME_DISCIPLINE`; `config` kind applies
-        the current-version API verified at STEP_3B (`AX_THIRD_PARTY_TOOL_CURRENT_API`). Append each
-        event line via `npx gennady sdd-log <ticket> line "<content>"` as it happens (`AX_LIVE_LOG`,
-        `AX_TICKET_WRITE_SCOPE` — the tool is the sole writer, never a manual `Edit`); a spec gap goes
-        to an `insight` line the same way and leaves the spec untouched (`AX_SPEC_NEVER_EDITED`).
+        the current-version API verified at STEP_3B (`AX_THIRD_PARTY_TOOL_CURRENT_API`). Depth of the
+        work itself is public-release by default, not POC (`AX_RELEASE_READY_DEFAULT`) — error
+        handling, edge cases, empty/loading states are part of THIS phase's Objective unless the
+        ticket itself named POC/MVP. Append each event line via `npx gennady sdd-log <ticket> line
+        "<content>"` as it happens (`AX_LIVE_LOG`, `AX_TICKET_WRITE_SCOPE` — the tool is the sole
+        writer, never a manual `Edit`); a spec gap goes to an `insight` line the same way and leaves
+        the spec untouched (`AX_SPEC_NEVER_EDITED`). A TICKET gap — the phase needs a decision the
+        ticket does not cover — is not a spec gap and not a reason to stop and ask the operator:
+        decide it yourself, append a ticket-local Decision Log entry via a direct `Edit`
+        (`AX_DEVIATION_SELF_RESOLVE`, `AX_TICKET_WRITE_SCOPE`), and continue.
       </Action>
     </Step>
     <Step id="STEP_5_VERIFY">
@@ -413,7 +455,9 @@
         Append `<ts> DONE` via `npx gennady sdd-log <ticket> line "DONE"`; append the `**Handoff →**`
         line via `npx gennady sdd-log <ticket> handoff "<payload>"` per `HANDOFF_FORMAT` (typed payload,
         `AX_HANDOFF_TYPED`, `AX_TICKET_WRITE_SCOPE` — the tool is the sole writer for both lines, never
-        a manual `Edit`); flip this phase's Status in Phases Overview `[ ]` → `[x]` via a direct `Edit`
+        a manual `Edit`) — its `deviations:` field lists the id of every Decision Log entry this phase
+        added while self-resolving a ticket gap (`AX_DEVIATION_SELF_RESOLVE`; empty `[]` when none);
+        flip this phase's Status in Phases Overview `[ ]` → `[x]` via a direct `Edit`
         (outside the Execution Log, `AX_TICKET_WRITE_SCOPE`); return the structured summary per
         `RETURN_SUMMARY_FORMAT` to the orchestrator.
       </Action>
@@ -446,12 +490,15 @@
     <Contract id="HANDOFF_FORMAT">
       Compact, typed, single line at end of phase block:
       ```
-      **Handoff →** artifacts: [path1, path2]; decisions: [key=value, key=value]; open: [id: text, id: text]
+      **Handoff →** artifacts: [path1, path2]; decisions: [key=value, key=value]; open: [id: text, id: text]; deviations: [id: text, id: text]
       ```
       Fields:
       - `artifacts` — files produced or modified by this phase (paths).
       - `decisions` — key facts the next phase or audit needs (e.g. `IdempotencyKey=introduced`, `module-system=esm`).
       - `open` — unresolved questions / risks / deferred sub-tasks (id + one-line). Empty list → `[]`.
+      - `deviations` — spec/ticket holes this phase self-resolved rather than asking the operator
+        (`AX_DEVIATION_SELF_RESOLVE`); each entry cites the ticket-local Decision Log id it produced
+        (e.g. `TSK-58-D-2: chose retry cap 3, spec silent on it`). Empty list → `[]`.
 
       Free-form text forbidden. Each field is an array (possibly empty).
     </Contract>
@@ -476,10 +523,13 @@
         "artifacts": ["<path>", ...],
         "decisions": ["<key=value>", ...],
         "open": ["<id: text>", ...],
+        "deviations": ["<id: text>", ...],
         "blocker_reason": "<if BLOCKED>"
       }
       ```
-      `artifacts` / `decisions` / `open` mirror the **Handoff →** line — orchestrator threads them into the next phase's prompt.
+      `artifacts` / `decisions` / `open` / `deviations` mirror the **Handoff →** line — orchestrator
+      threads `artifacts` / `decisions` / `open` into the next phase's prompt, and collects
+      `deviations` across the run for the end-of-cycle batched report (`AX_DEVIATION_SELF_RESOLVE`).
     </Contract>
   </OutputContracts>
 </SddPhaseExecution>

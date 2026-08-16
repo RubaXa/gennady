@@ -2,12 +2,15 @@
 <Contract id="HANDOFF_FORMAT">
       Compact, typed, single line at end of phase block:
       ```
-      **Handoff →** artifacts: [path1, path2]; decisions: [key=value, key=value]; open: [id: text, id: text]
+      **Handoff →** artifacts: [path1, path2]; decisions: [key=value, key=value]; open: [id: text, id: text]; deviations: [id: text, id: text]
       ```
       Fields:
       - `artifacts` — files produced or modified by this phase (paths).
       - `decisions` — key facts the next phase or audit needs (e.g. `IdempotencyKey=introduced`, `module-system=esm`).
       - `open` — unresolved questions / risks / deferred sub-tasks (id + one-line). Empty list → `[]`.
+      - `deviations` — spec/ticket holes this phase self-resolved rather than asking the operator
+        (`AX_DEVIATION_SELF_RESOLVE`); each entry cites the ticket-local Decision Log id it produced
+        (e.g. `TSK-58-D-2: chose retry cap 3, spec silent on it`). Empty list → `[]`.
 
       Free-form text forbidden. Each field is an array (possibly empty).
     </Contract>

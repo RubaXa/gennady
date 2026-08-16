@@ -1,5 +1,7 @@
 <!-- source: ai/directives/coding/result-conventions.xml -->
 <Axiom id="AX_GUARDED_RESULT_BOUNDARY">
+      Applies only where the narrow `AX_RESULT_PUBLIC_BOUNDARY` exception is in play (an existing
+      Result-typed surface) — not to a canon throw-based public API, which has no `Result` to guard.
       A public Result-returning surface guards thrown errors. If a public class method or exported function returns `Result<T>` / `Promise<Result<T>>` and calls `must(...)`, that call must sit inside a try/catch whose `catch` returns `fail(...)` — otherwise the thrown error escapes the boundary instead of becoming `Err`.
       Detection: explicit return-type annotation `Result`/`Promise<Result>` + a `must` call outside try (no autofix; optional suggestion). ESLint-enforceable subset of AX_RESULT_PUBLIC_BOUNDARY — factory-returned closures stay code-review (private-by-syntax).
     </Axiom>

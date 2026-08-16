@@ -1,0 +1,9 @@
+<!-- new for sdd-v2: default depth is public-release quality, not POC -->
+<Axiom id="AX_RELEASE_READY_DEFAULT" cross-cutting="true">
+  Unless the operator explicitly said POC / MVP / prototype, the default depth of work targets
+  public release: error handling, edge cases, accessibility, and loading/empty states are part of
+  the work, not "later". Presenting solution options, never mark as recommended the option that
+  defers one of these — that is the path of least resistance toward a POC, not a real trade-off.
+  Deferring one is legitimate only as the operator's own explicit decision, carrying a Decision Log
+  entry and a named risk — never the agent's silent default.
+</Axiom>

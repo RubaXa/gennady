@@ -38,17 +38,26 @@
     </Axiom>
 
     <Axiom id="AX_RESULT_PUBLIC_BOUNDARY" enforcement="convention">
-      Result is the transport form of error across the public / port boundary — not an internal control-flow primitive. Public surface (port interface methods, exported factory return types, closures returned from factories) MUST return `Result<T>`. Inside the same class:
+      Canon default for a NEW public surface: throw a typed `Error` subclass (`AX_ERROR_VIA_CLASS`);
+      the caller wraps in mandatory try/catch (`AX_MANDATORY_TRY_CATCH_IN_BUSINESS_LOGIC`). `Result<T>`
+      at the public / port boundary is a NARROW EXCEPTION, not the default — it applies only where the
+      surface already sits on an existing Result-typed contract (an existing `@tessell/core/result`
+      port/adapter this work extends), never as the first choice for a brand-new port. Where the
+      exception applies, it still governs the same boundary as before: public surface (port interface
+      methods, exported factory return types, closures returned from factories) returns `Result<T>`;
+      inside the same class:
       - protected/private async helpers with I/O → throw; the public caller wraps in try/catch and returns `fail(error)` (per AX_CATCH_LOG_RECOVER in typescript-rules).
       - pure helpers (predicates, classifiers) → honest return type (`Error | null`, scalar, enum literal); not Result.
       - Result in protected is permitted only when the helper carries a typed `kind` the public call-site immediately extracts (via `must`) — and even then, throw is usually cleaner because it avoids the `Result → must → throw → catch → re-emit` double-packaging pattern.
 
-      Rationale: mixing Result and null-pattern in helpers of one class produces structural noise (two error-channel styles in one surface) and double-packaging. The convention keeps Result as a boundary artifact, not an internal one.
+      Rationale: mixing Result and null-pattern in helpers of one class produces structural noise (two error-channel styles in one surface) and double-packaging. Practice showed Result as the DEFAULT public-API mechanism produces exactly this noise system-wide; keeping it as a narrow, contract-scoped exception (not the primary mechanism) is what this axiom now enforces.
 
       Not ESLint-enforced. The public/private boundary is not mechanically detectable: closures returned from factories (e.g. `defineDataStorageQuery → (storage, params) => Promise<Result<R>>`) are public-by-intent but private-by-syntax, and methods on factory-returned object literals (e.g. `defineDataOperation`) are not visible as class members. Enforced via code review and this directive.
     </Axiom>
 
     <Axiom id="AX_GUARDED_RESULT_BOUNDARY">
+      Applies only where the narrow `AX_RESULT_PUBLIC_BOUNDARY` exception is in play (an existing
+      Result-typed surface) — not to a canon throw-based public API, which has no `Result` to guard.
       A public Result-returning surface guards thrown errors. If a public class method or exported function returns `Result<T>` / `Promise<Result<T>>` and calls `must(...)`, that call must sit inside a try/catch whose `catch` returns `fail(...)` — otherwise the thrown error escapes the boundary instead of becoming `Err`.
       Detection: explicit return-type annotation `Result`/`Promise<Result>` + a `must` call outside try (no autofix; optional suggestion). ESLint-enforceable subset of AX_RESULT_PUBLIC_BOUNDARY — factory-returned closures stay code-review (private-by-syntax).
     </Axiom>

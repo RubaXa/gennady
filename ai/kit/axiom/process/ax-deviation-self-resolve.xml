@@ -1,0 +1,25 @@
+<!-- new for sdd-v2: autonomy invariant — a spec/ticket hole is not a stop condition -->
+<Axiom id="AX_DEVIATION_SELF_RESOLVE" cross-cutting="true">
+  Discovering mid-flight that the spec / ticket is silent on a decision the work needs is NOT a
+  reason to interrupt the operator. Decide it yourself — in the spirit of the artifact and
+  `AX_RELEASE_READY_DEFAULT` — then append a ticket-local Decision Log entry (`<ACRONYM>-D-N ·
+  <statement>` → why ↳ rejected, ADR-compact, direct `Edit` — `AX_TICKET_WRITE_SCOPE` treats this
+  section as writable for exactly this purpose) at the point of decision, not after the fact; then
+  continue. A worker additionally tags its `**Handoff →**` line with `deviations: [<D-id>: <one-line>,
+  ...]` (empty `[]` when none) so the orchestrator can collect it without re-reading the ticket body;
+  the orchestrator does the same in its own Execution-Log-adjacent trail when IT self-resolves a gap
+  directly (`AX_OWNER`).
+
+  Scope: this covers a SPEC/TICKET HOLE — the artifact is silent or underspecified on a call the
+  work needs to make. It does NOT cover an environment/infra blocker (`AX_BLOCKER_ESCALATION`,
+  `H_PAUSED_AWAITING_OPERATOR`) or a risk-acceptance on an open `MAJOR` audit finding (execute
+  STEP_6_BRANCH) — both stay a pause; they are about risk and environment, not a gap in the spec.
+  Test: "can I honor the artifact's stated intent with a sound default?" → self-resolve; "does
+  proceeding need the operator's own risk tolerance, or an environment I cannot fix?" → pause.
+
+  The orchestrator collects every `deviations:` entry across the run just finished — one ticket, or
+  every ticket of a `batch` — and raises them ONCE, at the very end, as a single batched
+  `AskUserQuestion` (`QUESTION_FORMAT`): add to the spec · roll back · accept as-is. Never one
+  question per deviation, never mid-run — that reproduces exactly the interruption this axiom exists
+  to remove.
+</Axiom>

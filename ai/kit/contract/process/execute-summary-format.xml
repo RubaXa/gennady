@@ -8,4 +8,9 @@
   🔄 Round 2 (if any): `P2 (fix) ✅` · audit R2 `✅`
   📊 Final: `✅ PASS` | `⚠️ PASS_WITH_ACKNOWLEDGED_RISKS` | `❌ FAIL`
   ⏱️ wall total · 📍 files touched · ⚠️ problems encountered
+
+  If the run self-resolved any spec/ticket hole (`AX_DEVIATION_SELF_RESOLVE`), one more line before
+  the batched `AskUserQuestion`:
+  🧭 Deviations: `<ACR>-D-N — <one-line>` · `<ACR>-D-M — <one-line>` · …
+  No deviations → omit the line entirely, no batched question fires.
 </Contract>

@@ -676,6 +676,16 @@ attempt"` в STEP_6_BRANCH сработал по ветке «-> STEP_7B_CODE_RE
 23. STEP_8_SUMMARY показан оператору как `EXECUTE_SUMMARY_FORMAT` — трейс содержит `show:`-строку,
     перечисляющую состав итога (Round-таблица фаз, вердикт audit, вердикт финальный, файлы,
     проблемы) — без неё этот чекпоинт непроверяем.
+    <!-- sync: execute.directive.xml STEP_8_SUMMARY now also collects every worker Handoff
+    `deviations:` entry (+ any the orchestrator self-resolved directly) across the whole cycle,
+    per `AX_DEVIATION_SELF_RESOLVE`, and raises them as ONE batched `AskUserQuestion` after the
+    summary — but only when that set is non-empty. --> Ни P1, ни P2 не самостоятельно решают за
+    оператора вопрос, которого спека/тикет не покрывает (фикстура заранее полная — Meta/Rules/BDD
+    покрывают весь Objective обеих фаз), значит собранный на STEP_8 набор `deviations:` — пустой:
+    ни в одном Handoff (`**Handoff →** ...`) нет непустого поля `deviations:`, и после `show:`-строки
+    итога НЕТ строки `ask:`/`AskUserQuestion` про «внести в спеку / откатить / принять как есть» —
+    появление такого batched-вопроса здесь, при пустом наборе deviations, само по себе находка
+    (спрашивает, когда нечего спрашивать).
 24. Ни разу не спутаны `halt:` и `stop:` — единственный `halt:` в этом прогоне мог быть только
     настоящим `H_*` из `execute.directive`/`phase-execution-protocol` (например
     `H_PAUSED_AWAITING_OPERATOR`), и в штатном (безошибочном) исполнении фикстуры такого `halt:` НЕТ
@@ -703,25 +713,36 @@ attempt"` в STEP_6_BRANCH сработал по ветке «-> STEP_7B_CODE_RE
     trust the worker's logged `ver` lines»), а потому что independent re-run сам вернул зелень.
     Отсутствие хотя бы одного из трёх `tool:`-вызовов re-run перед строкой с вердиктом `PASS` —
     находка (`AX_MECHANICAL_VIA_SDD_CHECK` нарушен, вердикт не обоснован).
-26. <!-- sync: execute.directive.xml now names TWO narrow, non-overlapping orchestrator write
-            channels, not one — (a) `AX_ENV_FIX_CHANNEL` and (b) `STEP_7_RESOLVE` Path B (administrative
-            edits to ticket / Decision Log / spec waiver-labels, applying an accepted audit finding
-            directly). Neither fires in THIS trivial no-blocker fixture (Path B only exists on the
-            FAIL+MAJOR+operator-accepted branch, which checkpoint 19 already establishes does not occur
-            here — audit returns plain `PASS` on attempt 1), so the verdict below is unchanged, but "the
-            ONLY legitimate exception" understates the current directive and would itself read as stale
-            against it. --> Оркестратор ни в одной роли `orchestrator` не пишет код (`Target Files` любой
+26. <!-- sync: execute.directive.xml now names THREE narrow, non-overlapping orchestrator write
+            channels, not two — (a) `AX_ENV_FIX_CHANNEL`, (b) `STEP_7_RESOLVE` Path B (administrative
+            edits to ticket / Decision Log / spec waiver-labels, applying an ACCEPTED audit finding
+            directly), and (c) a ticket-local Decision Log append when the orchestrator itself
+            self-resolves a spec/ticket hole it hit directly, not delegated to a worker
+            (`AX_DEVIATION_SELF_RESOLVE`) — distinct from (b), which is gated on an operator-accepted
+            audit finding, while (c) fires on a gap the orchestrator decided on its own and reports
+            only in the STEP_8 batch. NONE of the three fires in THIS trivial no-blocker fixture: (b)
+            only exists on the FAIL+MAJOR+operator-accepted branch, which checkpoint 19 already
+            establishes does not occur here (audit returns plain `PASS` on attempt 1); (c) only fires
+            on a spec/ticket hole, and this fixture's Meta/Rules/BDD are fully specified for both
+            phases — nothing for P1/P2 to self-resolve (checkpoint 23 already establishes the
+            collected `deviations:` set is empty). So the verdict below is unchanged, but "the ONLY
+            legitimate exception" (singular) or "РОВНО ДВА" (two) would itself read as stale against
+            the current directive. --> Оркестратор ни в одной роли `orchestrator` не пишет код (`Target Files` любой
             фазы) и не правит `specs/**` — «The orchestrator does not write code or specs (`HardForbidden`)».
-            Если в трейсе на роли `role=orchestrator` встречается `write:` строка — легитимны РОВНО ДВА
+            Если в трейсе на роли `role=orchestrator` встречается `write:` строка — легитимны РОВНО ТРИ
             узких, невзаимоперекрывающихся канала: `AX_ENV_FIX_CHANNEL` (точечный фикс `package.json`-скрипта
             / конфига инструмента, никогда production-кода из `Target Files` и никогда `specs/**`, допустим
             ТОЛЬКО после явного `operator:`-одобрения конкретного диффа, за которым следует `<ts> env-fix
-        <file> ← <operator decision ref>`строка в Execution Log) и`STEP_7_RESOLVE`Path B (админ-правки
+        <file> ← <operator decision ref>`строка в Execution Log); `STEP_7_RESOLVE`Path B (админ-правки
     тикета/Decision Log/waiver-меток спеки, применяющие уже принятую находку аудита — легален только
-    на ветке`FAIL`+ только`MAJOR`-находки + оператор принял риск, см. `execute.directive.xml` STEP_6_BRANCH). В штатном (безошибочном) прогоне этой фикстуры НИ ОДИН из двух каналов не должен
-    сработать (фикстура уже исправна — см. чекпоинт 24 — и вердикт аудита`PASS`с первой попытки —
-    см. чекпоинт 19, так что ветка Path B недостижима) — появление`env-fix`или админ-правки
-    тикета/спеки здесь без предшествующего легитимного триггера — находка; появление ЛЮБОГО`write:` на роли`orchestrator` без одного из этих двух каналов — находка (`HardForbidden`).
+    на ветке`FAIL`+ только`MAJOR`-находки + оператор принял риск, см. `execute.directive.xml` STEP_6_BRANCH);
+    и правка (c) — append-only Decision Log тикета при самостоятельном решении оркестратора по дыре
+    спеки/тикета (`AX_DEVIATION_SELF_RESOLVE`), без предшествующего вопроса оператору, но с обязательной
+    записью в собранный на STEP_8 batch. В штатном (безошибочном) прогоне этой фикстуры НИ ОДИН из трёх каналов не должен
+    сработать (фикстура уже исправна — см. чекпоинт 24 — вердикт аудита`PASS`с первой попытки —
+    см. чекпоинт 19, так что ветка Path B недостижима — и фикстура полностью специфицирована, так что
+    канал (c) тоже недостижим, см. чекпоинт 23) — появление`env-fix`, админ-правки
+    тикета/спеки или самостоятельной Decision-Log-записи здесь без предшествующего легитимного триггера — находка; появление ЛЮБОГО`write:` на роли`orchestrator` без одного из этих трёх каналов — находка (`HardForbidden`).
 27. Тела §5-скриптов (`package.json` → `scripts.typecheck`/`test`/`test:coverage`/`lint`/`yagni`/`format`)
     НЕ правятся ни одной ролью по ходу прогона — «Editing what a §5 script actually runs ... while
     logging the unchanged §5 command name as `ver` is the same violation ... under the tag

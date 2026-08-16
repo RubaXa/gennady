@@ -25,6 +25,8 @@
 
     {{> "axiom/boundary/ax-spec-never-edited"}}
 
+    {{> "axiom/process/ax-release-ready-default"}}
+
     {{> "axiom/process/ax-narrow-recon"}}
 
     {{> "axiom/process/ax-read-per-manifest"}}
@@ -68,6 +70,8 @@
     {{> "axiom/process/ax-halt-vs-fail-distinction"}}
 
     {{> "axiom/process/ax-blocker-escalation"}}
+
+    {{> "axiom/process/ax-deviation-self-resolve"}}
 
     {{> "axiom/process/ax-handoff-typed"}}
   </BeliefState>
@@ -144,10 +148,16 @@
       <Action>
         Apply rules continuously; respect `AX_PHASE_SCOPE_LOCK`, `AX_FILE_HEADER_APPEND_ONLY`,
         `AX_INTRODUCED_DISCIPLINE`. `test` kind honors `AX_BDD_NAME_DISCIPLINE`; `config` kind applies
-        the current-version API verified at STEP_3B (`AX_THIRD_PARTY_TOOL_CURRENT_API`). Append each
-        event line via `npx gennady sdd-log <ticket> line "<content>"` as it happens (`AX_LIVE_LOG`,
-        `AX_TICKET_WRITE_SCOPE` — the tool is the sole writer, never a manual `Edit`); a spec gap goes
-        to an `insight` line the same way and leaves the spec untouched (`AX_SPEC_NEVER_EDITED`).
+        the current-version API verified at STEP_3B (`AX_THIRD_PARTY_TOOL_CURRENT_API`). Depth of the
+        work itself is public-release by default, not POC (`AX_RELEASE_READY_DEFAULT`) — error
+        handling, edge cases, empty/loading states are part of THIS phase's Objective unless the
+        ticket itself named POC/MVP. Append each event line via `npx gennady sdd-log <ticket> line
+        "<content>"` as it happens (`AX_LIVE_LOG`, `AX_TICKET_WRITE_SCOPE` — the tool is the sole
+        writer, never a manual `Edit`); a spec gap goes to an `insight` line the same way and leaves
+        the spec untouched (`AX_SPEC_NEVER_EDITED`). A TICKET gap — the phase needs a decision the
+        ticket does not cover — is not a spec gap and not a reason to stop and ask the operator:
+        decide it yourself, append a ticket-local Decision Log entry via a direct `Edit`
+        (`AX_DEVIATION_SELF_RESOLVE`, `AX_TICKET_WRITE_SCOPE`), and continue.
       </Action>
     </Step>
     <Step id="STEP_5_VERIFY">
@@ -191,7 +201,9 @@
         Append `<ts> DONE` via `npx gennady sdd-log <ticket> line "DONE"`; append the `**Handoff →**`
         line via `npx gennady sdd-log <ticket> handoff "<payload>"` per `HANDOFF_FORMAT` (typed payload,
         `AX_HANDOFF_TYPED`, `AX_TICKET_WRITE_SCOPE` — the tool is the sole writer for both lines, never
-        a manual `Edit`); flip this phase's Status in Phases Overview `[ ]` → `[x]` via a direct `Edit`
+        a manual `Edit`) — its `deviations:` field lists the id of every Decision Log entry this phase
+        added while self-resolving a ticket gap (`AX_DEVIATION_SELF_RESOLVE`; empty `[]` when none);
+        flip this phase's Status in Phases Overview `[ ]` → `[x]` via a direct `Edit`
         (outside the Execution Log, `AX_TICKET_WRITE_SCOPE`); return the structured summary per
         `RETURN_SUMMARY_FORMAT` to the orchestrator.
       </Action>

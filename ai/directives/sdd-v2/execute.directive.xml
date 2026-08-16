@@ -158,6 +158,15 @@
       Parallelism, where available, is only across separate tickets whose Target-File sets are disjoint (`AX_DAG_AND_TICKET_BOUNDARIES`) — never within one ticket's own phases.
     </Axiom>
 
+    <Axiom id="AX_RELEASE_READY_DEFAULT" cross-cutting="true">
+      Unless the operator explicitly said POC / MVP / prototype, the default depth of work targets
+      public release: error handling, edge cases, accessibility, and loading/empty states are part of
+      the work, not "later". Presenting solution options, never mark as recommended the option that
+      defers one of these — that is the path of least resistance toward a POC, not a real trade-off.
+      Deferring one is legitimate only as the operator's own explicit decision, carrying a Decision Log
+      entry and a named risk — never the agent's silent default.
+    </Axiom>
+
     <Axiom id="AX_HANDOFF_TYPED">
       End every phase block with a typed Handoff line consumed by the next phase and the orchestrator. Format per `HANDOFF_FORMAT`. Free-form text forbidden — the next phase reads keys, not narrative.
     </Axiom>
@@ -170,6 +179,31 @@
       Resolution authorship: the entry adding `✅ RESOLVED` MUST cite the specific environmental change or decision that resolved the blocker (e.g. "tsconfig moduleResolution fixed", "operator chose option B"). Empty resolution text → audit treats as fabricated and may re-flag.
 
       Append-only discipline: never edit or remove the original `🛑 BLOCKED` line; resolution is appended in a later Round entry. The blocker history is part of the artifact.
+    </Axiom>
+
+    <Axiom id="AX_DEVIATION_SELF_RESOLVE" cross-cutting="true">
+      Discovering mid-flight that the spec / ticket is silent on a decision the work needs is NOT a
+      reason to interrupt the operator. Decide it yourself — in the spirit of the artifact and
+      `AX_RELEASE_READY_DEFAULT` — then append a ticket-local Decision Log entry (`<ACRONYM>-D-N ·
+      <statement>` → why ↳ rejected, ADR-compact, direct `Edit` — `AX_TICKET_WRITE_SCOPE` treats this
+      section as writable for exactly this purpose) at the point of decision, not after the fact; then
+      continue. A worker additionally tags its `**Handoff →**` line with `deviations: [<D-id>: <one-line>,
+      ...]` (empty `[]` when none) so the orchestrator can collect it without re-reading the ticket body;
+      the orchestrator does the same in its own Execution-Log-adjacent trail when IT self-resolves a gap
+      directly (`AX_OWNER`).
+
+      Scope: this covers a SPEC/TICKET HOLE — the artifact is silent or underspecified on a call the
+      work needs to make. It does NOT cover an environment/infra blocker (`AX_BLOCKER_ESCALATION`,
+      `H_PAUSED_AWAITING_OPERATOR`) or a risk-acceptance on an open `MAJOR` audit finding (execute
+      STEP_6_BRANCH) — both stay a pause; they are about risk and environment, not a gap in the spec.
+      Test: "can I honor the artifact's stated intent with a sound default?" → self-resolve; "does
+      proceeding need the operator's own risk tolerance, or an environment I cannot fix?" → pause.
+
+      The orchestrator collects every `deviations:` entry across the run just finished — one ticket, or
+      every ticket of a `batch` — and raises them ONCE, at the very end, as a single batched
+      `AskUserQuestion` (`QUESTION_FORMAT`): add to the spec · roll back · accept as-is. Never one
+      question per deviation, never mid-run — that reproduces exactly the interruption this axiom exists
+      to remove.
     </Axiom>
 
     <Axiom id="AX_AUDIT_HOOK">
@@ -273,7 +307,9 @@
 
         <LogicSwitch on="worker Handoff status">
         - WHEN `BLOCKED` / `FAIL` -> stop, no audit; `H_PAUSED_AWAITING_OPERATOR`
-        - WHEN `DONE`             -> record Handoff, thread it into the next phase's Inputs
+        - WHEN `DONE`             -> record Handoff, thread it into the next phase's Inputs; carry
+          forward any `deviations:` entries verbatim (`AX_DEVIATION_SELF_RESOLVE`) — collected for
+          STEP_8, never surfaced mid-run
         </LogicSwitch>
       </Action>
     </Step>
@@ -306,9 +342,12 @@
       </Action>
     </Step>
     <Step id="STEP_7_RESOLVE">
-      <Goal>Resolve audit findings (one retry).</Goal>
+      <Goal>Resolve audit findings (one retry) — the real fix, not the deferring shortcut.</Goal>
       <Action>
-        Path A — `phases_to_fix` non-empty: open a new Round; re-run ONLY those phases as `fix`
+        Resolve findings at release-ready depth (`AX_RELEASE_READY_DEFAULT`): re-running a phase to
+        actually fix error handling / an edge case a finding surfaced is Path A, never a Path B label
+        that defers it without an operator decision and a Decision Log risk entry. Path A —
+        `phases_to_fix` non-empty: open a new Round; re-run ONLY those phases as `fix`
         (sequential), then STEP_3 → STEP_5 (audit R2). Path B — findings are ticket / spec /
         decision-log only (administrative artifact edits: tracker fields, Decision Log entries, a
         contract Usage Waiver label in the spec — never production code): apply them directly under
@@ -333,18 +372,91 @@
       </Action>
     </Step>
     <Step id="STEP_8_SUMMARY">
-      <Goal>Summarize for the operator.</Goal>
-      <Action>Aggregate phase + audit telemetry; present per `EXECUTE_SUMMARY_FORMAT`.</Action>
+      <Goal>Summarize for the operator; report every self-resolved deviation from the whole cycle in one batch.</Goal>
+      <Action>
+        Aggregate phase + audit telemetry; present per `EXECUTE_SUMMARY_FORMAT`. Collect every worker
+        Handoff `deviations:` entry across the ENTIRE cycle just run — one ticket's Round, or every
+        Round of a `batch` loop — plus any spec/ticket gap the orchestrator itself self-resolved
+        directly at STEP_1 / STEP_2 / STEP_6 rather than delegating to a worker
+        (`AX_DEVIATION_SELF_RESOLVE`). Empty set → nothing to ask, summary stands alone. Non-empty →
+        ONE batched `AskUserQuestion` (`QUESTION_FORMAT`) right after the summary, covering every
+        deviation together — never one question per deviation, never mid-run: per deviation, «внести
+        в спеку» / «откатить» / «принять как есть». This is the only point deviations reach the
+        operator; the legal live pauses (`H_PAUSED_AWAITING_OPERATOR`, `H_CODE_REVIEW_BLOCKER`, the
+        STEP_6 risk-accept dialogue) are a separate class — environment/risk, not a spec hole — and
+        keep firing live exactly as today.
+      </Action>
     </Step>
   </ExecutionPlan>
 
   <HardForbidden>
     - Workers read phase bodies / BDD / Verification / specs / rule files / code, each bounded by their manifest; the orchestrator does not.
-    - Workers write code, audit reports, and phase blocks; the orchestrator does not write production code, ever. It has exactly TWO narrow, non-overlapping write channels: (a) `AX_ENV_FIX_CHANNEL` — env/config artifacts only (`package.json` scripts, tool config, lockfiles), never `Target Files` code or `specs/**`, never without prior explicit operator approval of the exact diff; (b) STEP_7_RESOLVE Path B — administrative edits to ticket / Decision Log / spec waiver-labels, applying an audit finding directly per `AX_OWNER`. Neither channel extends to production code under a module's `Target Files`.
+    - Workers write code, audit reports, and phase blocks; the orchestrator does not write production code, ever. It has exactly THREE narrow, non-overlapping write channels: (a) `AX_ENV_FIX_CHANNEL` — env/config artifacts only (`package.json` scripts, tool config, lockfiles), never `Target Files` code or `specs/**`, never without prior explicit operator approval of the exact diff; (b) STEP_7_RESOLVE Path B — administrative edits to ticket / Decision Log / spec waiver-labels, applying an ACCEPTED audit finding directly per `AX_OWNER`; (c) a ticket-local Decision Log append when the orchestrator itself self-resolves a spec/ticket hole it hit directly, not delegated to a worker (`AX_DEVIATION_SELF_RESOLVE`) — distinct from (b), which is gated on an audit finding the operator already accepted, while (c) fires on a gap the orchestrator decides on its own and reports only in the STEP_8 batch. None of the three extends to production code under a module's `Target Files`.
     - Always run audit after all phases DONE, and code-review after the audit passes.
     - Thread only typed Handoff payloads between subagents; keep their contexts separate.
     - Cap audit attempts at 2; re-run only phases in `phases_to_fix`; drive a retry from audit FAIL only (a phase BLOCKED pauses, it does not reopen); run phases of the same task sequentially, one at a time.
   </HardForbidden>
+
+  <ChatProtocol>
+    <Contract id="QUESTION_FORMAT">
+      Explain, then ask through the tool — a question never fires as bare free-form text. A
+      `### 💡 <О чём решаем>` section header names the decision in plain words (no `Q<N>` numbering, no
+      semantic question IDs); under it, ordinary language explains the question BEFORE any tool call
+      fires — the context, the real options, and a recommendation gated by `AX_DIVERGE_BEFORE_RECOMMEND`
+      (low-stakes: a direct pick is fine; high-stakes / architecture: do not pre-anchor one option — lay
+      out the strongest candidates, a tail one included, or pair the recommendation with its strongest
+      rival and the reason it might win instead). Only once the explanation stands does `AskUserQuestion`
+      fire; its option list mirrors the printed order, short labels only — the argument itself lives in
+      the message, never moved into the tool call.
+
+      Batching rule: one `AskUserQuestion` call may carry several questions ONLY when they are mutually
+      independent — answering one does not change the meaning or the options of another (several facets
+      of one single complex decision qualify as one batched call). Dependent questions, and any interview
+      sequence, go one call at a time: compose the next question only after the previous answer is in.
+
+      Channel: use `AskUserQuestion` whenever the tool is available. When it is not, fall back to plain
+      text carrying the same shape — the explanation, then an explicit list of named options the operator
+      can answer by name — never restore `Q<N>` labels or per-question IDs; that bare-numbered shape
+      without the tool is itself the violation this contract forbids (`H_UNFORMATTED_ASK`).
+
+      Low-stakes — a recommendation is allowed, but only as the result of `AX_DIVERGE_BEFORE_RECOMMEND`
+      (not the first typical answer):
+
+      ### 💡 Формат хранения токенов
+      Нужно решить, где держать design-токены: сгенерированный JSON проще парсить скриптам, а
+      TS-модуль даёт автокомплит в IDE — для одного пакета без внешних потребителей разница небольшая.
+      ✅ **JSON-файл** `[tokens.json]` — проще парсить любым языком, ничего специфичного для TS.
+      Иначе:
+      - **TS-модуль** `[tokens.ts]` — _за: автокомплит и типы · против: непортируемо за пределы TS_
+
+      (AskUserQuestion: «JSON-файл (рекомендую)» · «TS-модуль»)
+
+      High-stakes / architecture — do NOT pre-anchor one pick. List the strongest candidates (include a
+      non-obvious / tail one) with «за / против» and let the operator choose; or give a recommendation
+      only alongside its strongest alternative and the reason it might win:
+
+      ### 💡 Стратегия миграции v1→v2
+      Три пути дают разный профиль риска и времени простоя, и откат стоит по-разному в каждом.
+      - **Big-bang** `[migrate-all]` — _за: один переход, нет промежуточного состояния · против: долгий
+        простой, откат дорогой_
+      - **Постепенная миграция по скоупам** `[migrate-incremental]` — _за: откат дешёвый, риск размазан
+        во времени · против: два формата сосуществуют дольше_
+      - **Parallel-run с shadow-чтением** `[migrate-shadow]` — нетипичный вариант, но снимает риск
+        отката почти полностью ценой временной инфраструктуры
+
+      (AskUserQuestion: «Big-bang» · «Постепенная миграция» · «Parallel-run (нетипичный)»)
+
+      A plain binary question needs no list — recommendation + inline alternative, still explained
+      before the call:
+
+      ### 💡 Нужен ли отдельный interface-скоуп
+      Все текущие потребители — web; про API и будущих клиентов явно не говорили.
+      ✅ **Пока не выделять** — можно добавить позже без миграции. _или сразу выделить, если API уже в
+      планах?_
+
+      (AskUserQuestion: «Пока не выделять (рекомендую)» · «Выделить сразу»)
+    </Contract>
+  </ChatProtocol>
 
   <ChatOutput>
     <Contract id="ORCHESTRATOR_PROGRESS_FORMAT">
@@ -366,6 +478,11 @@
       🔄 Round 2 (if any): `P2 (fix) ✅` · audit R2 `✅`
       📊 Final: `✅ PASS` | `⚠️ PASS_WITH_ACKNOWLEDGED_RISKS` | `❌ FAIL`
       ⏱️ wall total · 📍 files touched · ⚠️ problems encountered
+
+      If the run self-resolved any spec/ticket hole (`AX_DEVIATION_SELF_RESOLVE`), one more line before
+      the batched `AskUserQuestion`:
+      🧭 Deviations: `<ACR>-D-N — <one-line>` · `<ACR>-D-M — <one-line>` · …
+      No deviations → omit the line entirely, no batched question fires.
     </Contract>
   </ChatOutput>
 </SddExecuteOrchestrator>
