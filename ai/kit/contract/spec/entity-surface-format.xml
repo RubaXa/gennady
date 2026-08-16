@@ -2,8 +2,9 @@
 <Contract id="ENTITY_SURFACE_FORMAT">
       ```markdown
       ### `<EntityName>`
-      - **Type:** Port | Adapter | Entity | Value Object | Service | Command | Query | Event
+      - **Type:** Port | Adapter | Entity | Value Object | Service | Component | Command | Query | Event
       - **Purpose:** <1 sentence>
+      - **Presentation-Only:** <omit unless claiming the exemption — see `AX_PORTS_AND_ABSTRACTIONS_DISCIPLINE`> yes — props in, markup out, zero decisions; no Contract section follows
       - **Public Properties:** <list or N/A>
       - **Public Operations:** <intent-level list, no language signatures>
       - **Lifecycle:** <who creates, who owns, when terminates>
@@ -24,6 +25,13 @@
       operator; omit entirely once usage clears the threshold. Public API for a named external
       consumer uses `- **Usage Waiver (external: <named consumer>):** <reason>` — the rule still
       applies, the label is just mandatory rather than optional for that case.
+
+      **Presentation-Only** (`AX_PORTS_AND_ABSTRACTIONS_DISCIPLINE`): the ONLY way an entity skips
+      the Module Contracts DbC block — contract obligation follows behavior, not `Type`, so a
+      `Component` with local state, a lifecycle, error handling, or user interaction still needs one.
+      Present this field ONLY to claim the exemption; an entity with neither this field nor a
+      Contract block downstream is a spec omission, surfaced before the STEP_4 Approval Check, not a
+      silently accepted style choice.
 
       **Lifecycle state diagram — mandatory once an entity's Lifecycle carries ≥3 distinct
       states/transitions** (not just create→terminate — a genuine state machine: draft/pending/

@@ -4,5 +4,7 @@
 
       Growth is the decomposition trigger: a module that outgrows its cohesion splits into sub-modules and becomes a thin index over them, as a scope indexes its modules (`AX_SCOPE_STAYS_THIN`). The size limit is held by tooling, not narrative instruction — `sdd-check` flags an over-budget module spec and the `module` flow offers the operator decomposition (split the world) or compression (tighten the spec).
 
+      Behavior is the second decomposition trigger, independent of size: an entity OWNING BEHAVIOR — own state, a lifecycle with transitions, error handling, or direct user interaction (input / gesture / keyboard) — earns its own spec even inside a module far under the size budget, which becomes a thin index over it exactly as the size trigger does. A purely presentational leaf — props in, markup out, zero decisions — stays a one-line index row, no spec of its own. Marker: a component holding local state or handling a keypress owns behavior; one that only paints the props it is handed does not.
+
       Held by tooling: `sdd-check` flags a decomposed module missing from its parent's links (`SDD_MODULE_NOT_IN_INDEX`).
     </Axiom>

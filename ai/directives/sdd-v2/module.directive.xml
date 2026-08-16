@@ -69,6 +69,8 @@
 
       Growth is the decomposition trigger: a module that outgrows its cohesion splits into sub-modules and becomes a thin index over them, as a scope indexes its modules (`AX_SCOPE_STAYS_THIN`). The size limit is held by tooling, not narrative instruction — `sdd-check` flags an over-budget module spec and the `module` flow offers the operator decomposition (split the world) or compression (tighten the spec).
 
+      Behavior is the second decomposition trigger, independent of size: an entity OWNING BEHAVIOR — own state, a lifecycle with transitions, error handling, or direct user interaction (input / gesture / keyboard) — earns its own spec even inside a module far under the size budget, which becomes a thin index over it exactly as the size trigger does. A purely presentational leaf — props in, markup out, zero decisions — stays a one-line index row, no spec of its own. Marker: a component holding local state or handling a keypress owns behavior; one that only paints the props it is handed does not.
+
       Held by tooling: `sdd-check` flags a decomposed module missing from its parent's links (`SDD_MODULE_NOT_IN_INDEX`).
     </Axiom>
 
@@ -189,7 +191,8 @@
       - Business logic depends on Ports, not Adapters, when a Port exists. Port is preferred: preconditions / postconditions / invariants live on the Port, and the Adapter references it and describes side effects + runtime backing + verification levels. When the module consciously forgoes a Port (single implementation, no confirmed variability or test seam), the same DbC contract lives directly on the Service / Adapter instead — the absence of a Port is not the absence of a contract; that choice is recorded in the Decision Log (`AX_DECISION_LOG_REQUIRED`).
       - Port introduced only with confirmed v1 variability (≥2 implementations) or explicit test seam. Single implementation without confirmed split → Service or Entity, not Port.
       - Every proposed abstraction requires justification: which current risk / constraint / consumer it closes.
-      - **DbC section shape is flexible.** `Module Contracts (DbC)` carries any subset of subsections drawn from the entity Type vocabulary (Port, Adapter, Service, Pattern, Utility, Module-level invariants, …). Ports/Adapters are AVAILABLE, not mandatory: single-implementation modules legitimately use Service-only or Pattern-only DbC. Subsections are unnumbered `###` headers (e.g. `### Ports`, `### OperationDef Pattern`).
+      - **Contract obligation follows BEHAVIOR, not entity type.** Any entity that owns behavior — its own state, a lifecycle, error handling, or direct user interaction — carries a DbC contract (Pre / Post / On-violation per operation, plus loading/empty/error states where they apply), a UI component included; "component" is not a free pass. Only a purely-rendering entity (props in, markup out, zero decisions) is exempt, and the exemption must be an explicit `Presentation-Only` marker on that entity's Entity Surface (`ENTITY_SURFACE_FORMAT`) — an entity with neither a contract nor that marker is a spec omission, not a legitimate style choice.
+      - **DbC section shape is flexible.** `Module Contracts (DbC)` carries any subset of subsections drawn from the entity Type vocabulary (Port, Adapter, Service, Component, Pattern, Utility, Module-level invariants, …). Ports/Adapters are AVAILABLE, not mandatory: single-implementation modules legitimately use Service-only, Component-only, or Pattern-only DbC. Subsections are unnumbered `###` headers (e.g. `### Ports`, `### Components`, `### OperationDef Pattern`).
     </Axiom>
 
     <Axiom id="AX_CONTEXT_TO_CONTRACT">
@@ -330,7 +333,14 @@
         appends only (`AX_APPEND_ONLY_MODULE_ADD`). On `initial` this is the monolith→index migration
         (`AX_SCOPE_STAYS_THIN`): move entity / contract / file-level detail out of the scope spec into
         the new module specs, leaving the scope spec as the thin index (Module Map + composition Golden
-        DX). Approval Check. STOP.
+        DX). Apply BOTH decomposition triggers while drawing any boundary here — size
+        (`AX_HIERARCHICAL_SPECS` budget, held by `sdd-check`) and behavior (an entity owning state, a
+        lifecycle, error handling, or user interaction) — and name explicitly, in this message, which
+        entities earn their own child spec and which stay a one-line index row. The two rules are one
+        seen from two steps: an entity that earns a spec here for owning behavior carries the full
+        per-operation DbC contract there (`AX_PORTS_AND_ABSTRACTIONS_DISCIPLINE`, `STEP_4_CONTRACTS_DBC`)
+        — the index itself holds only links to child specs plus one row per presentation-only leaf,
+        never an inlined contract. Approval Check. STOP.
       </Action>
     </Step>
     <Step id="STEP_2_ENTITY_INVENTORY">
@@ -405,7 +415,11 @@
         variability or a test seam (`AX_PORTS_AND_ABSTRACTIONS_DISCIPLINE`) — Port-vs-Service is a
         design choice, so apply `AX_DIVERGE_BEFORE_RECOMMEND` (do not default to Port); when the
         module consciously forgoes a Port, the same per-operation DbC lives directly on the Service /
-        Adapter and that choice is recorded in the Decision Log (`AX_DECISION_LOG_REQUIRED`). Each
+        Adapter and that choice is recorded in the Decision Log (`AX_DECISION_LOG_REQUIRED`). This is
+        entity-type-agnostic (`AX_PORTS_AND_ABSTRACTIONS_DISCIPLINE`) — a Component that owns state, a
+        lifecycle, error handling, or user interaction gets a `### Components` DbC subsection in the
+        same per-operation shape; only an entity explicitly marked `Presentation-Only` on its Entity
+        Surface skips this block. Each
         abstraction carries its justification (`AX_CONTEXT_TO_CONTRACT`); runtime backing is stated
         per contract (`AX_RUNTIME_BACKING_IN_CONTRACTS`).
         Draw the Port/Adapter/Service dependency graph per `DBC_DEPENDENCY_GRAPH_FORMAT` as an
@@ -424,6 +438,10 @@
         2. Every public option / flag / policy the scope spec mentions is bound to a concrete
            Port / Adapter contract or explicitly marked `deferred / not consumed in v1` with a
            pointer to the task or version that activates it (`AX_NO_SILENT_OPTION_DROP`).
+        3. Every entity from `STEP_2_ENTITY_INVENTORY` resolves one of two ways here: a DbC
+           subsection above, or an explicit `Presentation-Only` marker on its Entity Surface
+           (`AX_PORTS_AND_ABSTRACTIONS_DISCIPLINE`) — neither present is a spec omission, surfaced
+           now, not a silently accepted style choice.
         This step's Approval Check is its own — merging it with STEP_3's or STEP_5's Ask into one
         combined question is a violation, not an efficiency gain. STOP.
       </Action>
