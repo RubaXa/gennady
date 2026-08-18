@@ -27,7 +27,7 @@
     <Axiom id="AX_SCOPE_BEFORE_DEPTH">
       On a brownfield monorepo, `./...` is not a verification strategy — it is a timeout.
 
-      `mailapi` carries `src/`, `maillibs/`, `internal/` and a vendored tree; a full `go build ./...` plus `go test ./...` is a CI-scale job, not a per-phase gate. The golang plugin therefore defaults to **the packages touched by the current change** (diff vs base branch + staged + untracked). Widen deliberately (`--all`) — never by default.
+      a brownfield monorepo we verified against carries hundreds of packages and a vendored tree; a full `go build ./...` plus `go test ./...` is a CI-scale job, not a per-phase gate. The golang plugin therefore defaults to **the packages touched by the current change** (diff vs base branch + staged + untracked). Widen deliberately (`--all`) — never by default.
     </Axiom>
 
     <Axiom id="AX_TOOL_FAILURE_IS_NOT_A_FINDING">
@@ -41,9 +41,9 @@
     <Axiom id="AX_CONFIG_DISCOVERY_IS_EXPLICIT">
       Never rely on `golangci-lint` auto-discovering its config.
 
-      Auto-discovery only finds dot-prefixed names (`.golangci.yml|yaml|toml|json`). Real repositories deviate: `mailapi` keeps its config in **`golangci.yml`** — no leading dot. Run without `-c` there and the linter silently applies its defaults, producing a green result that has nothing to do with the project's policy.
+      Auto-discovery only finds dot-prefixed names (`.golangci.yml|yaml|toml|json`). Real repositories deviate: one brownfield monorepo we verified against keeps its config in a bare **`golangci.yml`** — no leading dot. Run without `-c` there and the linter silently applies its defaults, producing a green result that has nothing to do with the project's policy.
 
-      The plugin searches dot-prefixed and bare names and always passes the find via `-c`. A Makefile referencing a config absent from the checkout (`cloudapi`) is a reportable diagnostic, not something to paper over. An exotic config path is an overrideGates.lint.argv entry in `gennady.yaml`.
+      The plugin searches dot-prefixed and bare names and always passes the find via `-c`. A Makefile referencing a config absent from the checkout is a reportable diagnostic, not something to paper over. An exotic config path is an overrideGates.lint.argv entry in `gennady.yaml`.
     </Axiom>
 
     <Axiom id="AX_VENDOR_AND_WORKSPACE_ARE_EXCLUSIVE">
@@ -51,7 +51,7 @@
     </Axiom>
 
     <Axiom id="AX_DOT_DOT_DOT_STOPS_AT_MODULE_EDGE">
-      `./...` does not cross module boundaries. Nested `go.mod` files (`cloudapi` has them under `scripts/` and `pkg/client/`) are invisible to a root-level run. The plugin reports them as a diagnostic; verify each nested module with `--root=<dir>` or state plainly which modules were not covered.
+      `./...` does not cross module boundaries. Nested `go.mod` files (a service we verified against has two) are invisible to a root-level run. The plugin reports them as a diagnostic; verify each nested module with `--root=<dir>` or state plainly which modules were not covered.
     </Axiom>
 
     <Axiom id="AX_GATE_ORDER_IS_DIAGNOSTIC">
@@ -102,7 +102,7 @@ stack:
     skipGates: [lint]
     overrideGates:
       test: { argv: [make, test], timeout: 15m }
-      build: { env: { GOPROXY: "http://gomods.mail.cloud.devmail.ru:3000/" } }
+      build: { env: { GOPROXY: "https://goproxy.example.com/" } }
     extraGates:
       - { id: tidy-drift, argv: [go, mod, tidy, -diff], timeout: 5m }
       </Snippet>
@@ -145,7 +145,7 @@ gennady verify --root=./pkg/client --all
     </AntiPattern>
 
     <AntiPattern id="ANTI_UNSCOPED_MONOREPO_RUN">
-      <Bad>go test ./...   # on mailapi, per phase</Bad>
+      <Bad>go test ./...   # on an internal monorepo, per phase</Bad>
       <Why>CI-scale work presented as a per-phase gate; the agent times out, then learns to skip verification.</Why>
       <Instead>Changed-package scoping (the default); widen only on explicit request.</Instead>
     </AntiPattern>

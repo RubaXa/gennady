@@ -1,5 +1,5 @@
 // @file: Damerau-Levenshtein distance with adaptive threshold.
-// @consumers: QueryKeyword, QueryConsumer, QueryEntity
+// @consumers: QueryKeyword, QueryConsumer, QueryEntity, stack-config
 // @tasks: TSK-55
 
 /**

@@ -27,6 +27,7 @@ function isWatchLike(name: string, body: string): boolean {
   return [
     /(^|\s)--watch(?:[=\s]|$)/i,
     /(^|\s)--watchall(?:[=\s]|$)/i,
+    /(^|\s)watch(?:\s|$)/i,
     /(^|\s)nodemon(?:\s|$)/i,
   ].some((pattern) => pattern.test(body));
 }

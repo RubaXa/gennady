@@ -159,6 +159,23 @@ describe('planGoGates', () => {
     );
   });
 
+  it('does not classify a panic in code under test as env-fail (review B4)', () => {
+    const test = planGoGates(project(), scope(), defaultOptions).find((gate) => gate.id === 'test');
+
+    assert.equal(
+      test!.envFail!.some((p) => p(1, 'panic: runtime error: index out of range [3]')),
+      false,
+      'a panic in the code under test is a genuine finding'
+    );
+    assert.equal(
+      test!.envFail!.some((p) =>
+        p(1, 'go: example.com/x@v1: Get "https://proxy.example.com/x": Forbidden')
+      ),
+      true,
+      'blocked module fetches stay environmental'
+    );
+  });
+
   it('skips lint with a stated reason when golangci-lint is unavailable', () => {
     const gates = planGoGates(
       project({

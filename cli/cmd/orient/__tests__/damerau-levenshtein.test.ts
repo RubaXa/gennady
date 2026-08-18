@@ -4,7 +4,11 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { damerauLevenshtein, isFuzzyMatch, fuzzyDistance } from '../core/damerau-levenshtein.ts';
+import {
+  damerauLevenshtein,
+  isFuzzyMatch,
+  fuzzyDistance,
+} from '../../../../shared/common/damerau-levenshtein.ts';
 
 describe('damerauLevenshtein', () => {
   it('contract distance type: returns number', () => {

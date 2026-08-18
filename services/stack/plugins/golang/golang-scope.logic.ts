@@ -4,7 +4,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { execFileSync } from 'node:child_process';
+import { execFileTrimSafe } from '../../../../shared/common/exec.ts';
 import type { ScopeRequest } from '../../stack.types.ts';
 import type { GoProject } from './golang-detect.logic.ts';
 
@@ -35,15 +35,7 @@ export type GoScope = {
  * @returns Trimmed stdout, or an empty string when git fails or is unavailable.
  */
 function gitOrEmpty(args: readonly string[], cwd: string): string {
-  try {
-    return execFileSync('git', [...args], {
-      cwd,
-      encoding: 'utf-8',
-      stdio: ['ignore', 'pipe', 'ignore'],
-    }).trim();
-  } catch {
-    return '';
-  }
+  return execFileTrimSafe('git', args, cwd);
 }
 
 /**
@@ -61,6 +53,11 @@ function isExcluded(relativePath: string): boolean {
  * @returns A usable base ref, defaulting to `HEAD` when no known base branch resolves.
  */
 function detectBaseRef(root: string): string {
+  // The remote HEAD is authoritative — a migrated repo may keep a stale origin/master.
+  const remoteHead = gitOrEmpty(['symbolic-ref', '--quiet', 'refs/remotes/origin/HEAD'], root);
+  if (remoteHead.startsWith('refs/remotes/')) {
+    return remoteHead.slice('refs/remotes/'.length);
+  }
   for (const ref of ['origin/master', 'origin/main', 'master', 'main']) {
     if (gitOrEmpty(['rev-parse', '--verify', '--quiet', ref], root).length > 0) {
       return ref;
@@ -79,9 +76,11 @@ function collectChangedGoFiles(root: string, baseRef: string): string[] {
   const merge = gitOrEmpty(['merge-base', baseRef, 'HEAD'], root);
   const diffBase = merge.length > 0 ? merge : baseRef;
 
+  // --relative: git prints paths relative to the git TOPLEVEL by default; with --root
+  // pointing at a subdirectory that resolves to <root>/<root>/… and empties the scope.
   const lines = [
-    gitOrEmpty(['diff', '--name-only', '--diff-filter=ACMR', diffBase], root),
-    gitOrEmpty(['diff', '--name-only', '--diff-filter=ACMR', '--cached'], root),
+    gitOrEmpty(['diff', '--name-only', '--relative', '--diff-filter=ACMR', diffBase], root),
+    gitOrEmpty(['diff', '--name-only', '--relative', '--diff-filter=ACMR', '--cached'], root),
     gitOrEmpty(['ls-files', '--others', '--exclude-standard'], root),
   ].join('\n');
 
@@ -195,12 +194,39 @@ function goBearingTopLevelPaths(root: string): string[] {
       targets.push(entry.name);
       continue;
     }
-    if (entry.isDirectory() && expandTargets(root, [entry.name]).length > 0) {
+    if (entry.isDirectory() && hasGoFile(path.join(root, entry.name))) {
       targets.push(entry.name);
     }
   }
 
   return targets.sort();
+}
+
+/**
+ * @purpose Early-exit probe: does the directory tree contain any .go file?
+ * @param dir Absolute directory to probe.
+ * @returns True on the first .go file found; excluded segments are pruned.
+ */
+function hasGoFile(dir: string): boolean {
+  let entries: fs.Dirent[];
+  try {
+    entries = fs.readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return false;
+  }
+  for (const entry of entries) {
+    if (entry.isFile() && entry.name.endsWith('.go')) {
+      return true;
+    }
+  }
+  for (const entry of entries) {
+    if (entry.isDirectory() && !EXCLUDED_SEGMENTS.has(entry.name) && !entry.name.startsWith('.')) {
+      if (hasGoFile(path.join(dir, entry.name))) {
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 /**

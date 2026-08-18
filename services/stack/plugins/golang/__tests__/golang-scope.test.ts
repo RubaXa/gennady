@@ -5,6 +5,7 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
 import type { GoProject, GoTool, GoToolId } from '../golang-detect.logic.ts';
@@ -103,5 +104,61 @@ describe('resolveGoScope', () => {
 
     assert.deepEqual(scope.packages, []);
     assert.match(scope.note, /0 file/);
+  });
+});
+
+/** @purpose Run git in a fixture dir. */
+function git(dir: string, ...args: string[]): void {
+  execFileSync('git', ['-C', dir, '-c', 'user.email=t@t', '-c', 'user.name=t', ...args], {
+    stdio: 'ignore',
+  });
+}
+
+describe('resolveGoScope — changed mode in a real git repository', () => {
+  it('sees committed changes when root is a subdirectory of the git toplevel (review B1)', () => {
+    const top = fs.mkdtempSync(path.join(os.tmpdir(), 'golang-scope-git-'));
+    try {
+      const sub = path.join(top, 'svc');
+      fs.mkdirSync(sub);
+      fs.writeFileSync(path.join(sub, 'go.mod'), 'module example.com/svc\n\ngo 1.24\n');
+      fs.writeFileSync(path.join(sub, 'a.go'), 'package svc\n');
+      git(top, 'init', '-q', '-b', 'master');
+      git(top, 'add', '-A');
+      git(top, 'commit', '-qm', 'init');
+      // Change a tracked file and stage it — git diff prints 'svc/a.go' relative to toplevel.
+      fs.writeFileSync(path.join(sub, 'a.go'), 'package svc\n\nfunc A() {}\n');
+      git(top, 'add', '-A');
+
+      const subProject: GoProject = { ...project(), root: sub };
+      const scope = resolveGoScope(subProject, { mode: 'changed', targets: [] });
+
+      assert.deepEqual(scope.packages, ['.'], `note: ${scope.note}`);
+    } finally {
+      fs.rmSync(top, { recursive: true, force: true });
+    }
+  });
+
+  it('prefers origin/HEAD over a stale origin/master (review B9)', () => {
+    const top = fs.mkdtempSync(path.join(os.tmpdir(), 'golang-scope-head-'));
+    try {
+      fs.writeFileSync(path.join(top, 'go.mod'), 'module example.com/app\n\ngo 1.24\n');
+      fs.writeFileSync(path.join(top, 'a.go'), 'package app\n');
+      git(top, 'init', '-q', '-b', 'main');
+      git(top, 'add', '-A');
+      git(top, 'commit', '-qm', 'c1');
+      // Stale origin/master at c1; origin/main and origin/HEAD at c2.
+      git(top, 'update-ref', 'refs/remotes/origin/master', 'HEAD');
+      fs.writeFileSync(path.join(top, 'b.go'), 'package app\n');
+      git(top, 'add', '-A');
+      git(top, 'commit', '-qm', 'c2');
+      git(top, 'update-ref', 'refs/remotes/origin/main', 'HEAD');
+      git(top, 'symbolic-ref', 'refs/remotes/origin/HEAD', 'refs/remotes/origin/main');
+
+      const scope = resolveGoScope({ ...project(), root: top }, { mode: 'changed', targets: [] });
+
+      assert.match(scope.note, /vs origin\/main/);
+    } finally {
+      fs.rmSync(top, { recursive: true, force: true });
+    }
   });
 });

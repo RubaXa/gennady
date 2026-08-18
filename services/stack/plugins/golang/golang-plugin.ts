@@ -47,6 +47,8 @@ function summarize(project: GoProject): string[] {
  */
 export const golangPlugin: StackPlugin = {
   id: 'golang',
+  marker: 'go.mod',
+  description: 'go build, go vet, gofmt -l, golangci-lint, go test; changed-package scoping',
 
   detect(root: string): StackDetection | null {
     if (!fs.existsSync(path.join(root, 'go.mod'))) {

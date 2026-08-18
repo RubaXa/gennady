@@ -5,11 +5,14 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { parse as parseYaml } from 'yaml';
-import { GennadyRc } from '../../shared/backend/rc/rc-config.ts';
+import { damerauLevenshtein } from '../../shared/common/damerau-levenshtein.ts';
 import type { Gate, GateSpec, StackConfig, StackId, StackPluginConfig } from './stack.types.ts';
 
 /** Committable project config filename (YAML — comments; config.spec §1.1). */
 export const PROJECT_CONFIG_FILENAME = 'gennady.yaml';
+
+/** Personal config filename (JSON; sections other than `stack` are outside this spec). */
+const RC_FILENAME = '.gennadyrc';
 
 /** Duration string grammar: `<int><s|m|h>` (config.spec §3.4). */
 const DURATION_RE = /^(\d+)(s|m|h)$/;
@@ -82,25 +85,10 @@ export function formatDuration(ms: number): string {
  * @returns The closest candidate, or null when nothing is plausibly close.
  */
 function didYouMean(unknown: string, known: readonly string[]): string | null {
-  const distance = (a: string, b: string): number => {
-    const dp = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
-    for (let j = 1; j <= b.length; j++) dp[0]![j] = j;
-    for (let i = 1; i <= a.length; i++) {
-      for (let j = 1; j <= b.length; j++) {
-        dp[i]![j] = Math.min(
-          dp[i - 1]![j]! + 1,
-          dp[i]![j - 1]! + 1,
-          dp[i - 1]![j - 1]! + (a[i - 1] === b[j - 1] ? 0 : 1)
-        );
-      }
-    }
-    return dp[a.length]![b.length]!;
-  };
-
   let best: string | null = null;
   let bestDistance = Number.POSITIVE_INFINITY;
   for (const candidate of known) {
-    const d = distance(unknown.toLowerCase(), candidate.toLowerCase());
+    const d = damerauLevenshtein(unknown.toLowerCase(), candidate.toLowerCase());
     if (d < bestDistance) {
       best = candidate;
       bestDistance = d;
@@ -148,24 +136,31 @@ type RawSource = {
 };
 
 /**
- * @purpose Read the `stack` section of a JSON .gennadyrc via the existing rc loader.
+ * @purpose Read the `stack` section of a JSON .gennadyrc; only parse errors are fatal —
+ *   foreign sections (`models`) must not brick verify.
  * @param dir Directory holding the rc file.
  * @param name Display name for provenance.
  * @returns Raw source.
  */
 function readRcSource(dir: string, name: string): RawSource {
-  if (!fs.existsSync(path.join(dir, GennadyRc.DEFAULT_FILENAME))) {
+  const filePath = path.join(dir, RC_FILENAME);
+  if (!fs.existsSync(filePath)) {
     return { name, stack: undefined, error: null };
   }
-  const rc = new GennadyRc(dir);
-  if (!rc.isValid()) {
+  try {
+    const doc = JSON.parse(fs.readFileSync(filePath, 'utf-8')) as unknown;
+    if (!isPlainObject(doc)) {
+      // Legacy array form carries only models — no stack section, nothing for us.
+      return { name, stack: undefined, error: null };
+    }
+    return { name, stack: doc['stack'], error: null };
+  } catch (cause) {
     return {
       name,
       stack: undefined,
-      error: { path: name, message: `cannot parse: ${rc.getError()?.message ?? 'unknown error'}` },
+      error: { path: name, message: `cannot parse JSON: ${(cause as Error).message}` },
     };
   }
-  return { name, stack: rc.getStack(), error: null };
 }
 
 /**
@@ -339,7 +334,7 @@ export function validateStackConfig(
       }
     }
 
-    const extraIds = (section.extraGates ?? [])
+    const extraIds = (Array.isArray(section.extraGates) ? section.extraGates : [])
       .map((spec) => (isPlainObject(spec) ? (spec as GateSpec).id : undefined))
       .filter((id): id is string => typeof id === 'string');
 
@@ -409,11 +404,9 @@ export function loadStackConfig(
   const home = process.env['HOME'] ?? '';
   // Lowest priority first: each later source overwrites on merge.
   const ordered: RawSource[] = [
-    ...(home.length > 0 && home !== root
-      ? [readRcSource(home, `~/${GennadyRc.DEFAULT_FILENAME}`)]
-      : []),
+    ...(home.length > 0 && home !== root ? [readRcSource(home, `~/${RC_FILENAME}`)] : []),
     readYamlSource(root),
-    readRcSource(root, GennadyRc.DEFAULT_FILENAME),
+    readRcSource(root, RC_FILENAME),
   ];
 
   const errors: StackConfigError[] = [];
@@ -475,7 +468,7 @@ export function provenanceOf(
     return exact;
   }
   for (const [key, source] of provenance) {
-    if (key.startsWith(`${prefix}.`) || key.startsWith(`${prefix}[`)) {
+    if (key.startsWith(`${prefix}.`)) {
       return source;
     }
   }
@@ -536,38 +529,29 @@ export function applyStackConfig(
     return result;
   });
 
-  (pluginConfig.extraGates ?? []).forEach((spec, index) => {
-    if (skip.has(spec.id!)) {
-      // extraGates can be declared project-wide and skipped personally — same visibility rule.
-      effective.push({
-        id: spec.id!,
-        stack,
-        label: `${spec.argv!.join(' ')}`,
-        argv: [],
-        cwd: root,
-        timeoutMs: EXTRA_GATE_DEFAULT_TIMEOUT_MS,
-        outputMeansFailure: false,
-        skipped: `skipGates (${skipSource})`,
-      });
-      return;
-    }
-    const source =
-      provenanceOf(provenance, `${stack}.extraGates[${index}]`) ??
-      provenanceOf(provenance, `${stack}.extraGates`) ??
-      'config';
-    effective.push({
+  const extraSource = provenanceOf(provenance, `${stack}.extraGates`) ?? 'config';
+  for (const spec of pluginConfig.extraGates ?? []) {
+    // Build the full gate from the spec once, then mark it skipped if needed — so
+    // --plan --json serializes the declared shape even for skipped extras.
+    const gate: Gate = {
       id: spec.id!,
       stack,
-      label: `${spec.argv!.join(' ')} (from ${source})`,
+      label: `${spec.argv!.join(' ')} (from ${extraSource})`,
       argv: spec.argv!,
       cwd: spec.cwd !== undefined ? path.resolve(root, spec.cwd) : root,
       env: spec.env,
       timeoutMs:
-        spec.timeout !== undefined ? parseDuration(spec.timeout)! : EXTRA_GATE_DEFAULT_TIMEOUT_MS,
+        spec.timeout !== undefined
+          ? (parseDuration(spec.timeout) ?? EXTRA_GATE_DEFAULT_TIMEOUT_MS)
+          : EXTRA_GATE_DEFAULT_TIMEOUT_MS,
       outputMeansFailure: spec.outputMeansFailure ?? false,
       skipped: null,
-    });
-  });
+    };
+    // extraGates can be declared project-wide and skipped personally — same visibility rule.
+    effective.push(
+      skip.has(gate.id) ? { ...gate, argv: [], skipped: `skipGates (${skipSource})` } : gate
+    );
+  }
 
   return effective;
 }

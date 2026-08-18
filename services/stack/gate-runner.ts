@@ -12,8 +12,10 @@ import type {
   VerifyReport,
 } from './stack.types.ts';
 
-/** Cap on captured output kept in the human report, in lines. */
-const MAX_OUTPUT_LINES = 60;
+/** Head lines kept when truncating long gate output. */
+const TRUNCATE_HEAD_LINES = 20;
+/** Tail lines kept when truncating — test runners put the failure summary at the end. */
+const TRUNCATE_TAIL_LINES = 40;
 
 // #region START_ENV_FAIL_COMBINATORS — building blocks plugins compose into per-gate predicate sets
 
@@ -35,13 +37,8 @@ export function outputMatches(pattern: RegExp): EnvFailPredicate {
   return (_exitCode, output) => pattern.test(output);
 }
 
-/**
- * @purpose Predicate: the process never ran (spawn failure — ENOENT, EACCES and friends).
- * @returns EnvFailPredicate.
- */
-export function spawnFailed(): EnvFailPredicate {
-  return (exitCode, output) => exitCode === null && /\b(ENOENT|EACCES|spawn)\b/.test(output);
-}
+// Spawn failures (ENOENT and friends) are classified env-fail by the runner itself —
+// the tool never ran, which is environmental for every stack; no combinator needed.
 // #endregion END_ENV_FAIL_COMBINATORS
 
 /**
@@ -125,23 +122,26 @@ export function runVerify(
 }
 
 /**
- * @purpose Keep failure output within an agent's context budget without hiding the head.
+ * @purpose Keep failure output within an agent's context budget: head + tail, middle elided —
+ *   test runners print the failure summary at the end.
  * @param output Combined tool output.
- * @returns The output, truncated with an explicit marker when it exceeds the line cap.
+ * @returns The output, truncated with an explicit marker when it exceeds the line caps.
  */
-function truncateOutput(output: string): string {
+export function truncateOutput(output: string): string {
   if (output.length === 0) {
     return '(no output)';
   }
 
   const lines = output.split('\n');
-  if (lines.length <= MAX_OUTPUT_LINES) {
+  if (lines.length <= TRUNCATE_HEAD_LINES + TRUNCATE_TAIL_LINES + 1) {
     return output;
   }
 
+  const elided = lines.length - TRUNCATE_HEAD_LINES - TRUNCATE_TAIL_LINES;
   return [
-    ...lines.slice(0, MAX_OUTPUT_LINES),
-    `... (${lines.length - MAX_OUTPUT_LINES} more lines truncated — rerun the command above for the full output)`,
+    ...lines.slice(0, TRUNCATE_HEAD_LINES),
+    `... (${elided} middle lines truncated — rerun the command above for the full output)`,
+    ...lines.slice(lines.length - TRUNCATE_TAIL_LINES),
   ].join('\n');
 }
 
@@ -196,7 +196,13 @@ export function formatVerifyReport(report: VerifyReport): string {
   }
   // #endregion END_FAILURE_DETAIL
 
-  if (report.ok) {
+  if (report.total === 0) {
+    // A run that executed nothing must never read as success (review: ZERO_GATES).
+    const skips = report.results.filter((result) => result.status === 'skipped').length;
+    lines.push(
+      `[verify] ZERO_GATES: nothing was executed (${skips} gate(s) skipped) — verified nothing`
+    );
+  } else if (report.ok) {
     const notes = report.runs.map((run) => `${run.detection.stack}: ${run.scope.note}`).join(' · ');
     lines.push(`[verify] ALL_GATES_PASS (${report.passed}/${report.total}) — ${notes}`);
   }

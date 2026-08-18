@@ -268,7 +268,7 @@ stack:
     skipGates: [lint]
     overrideGates:
       test: { argv: [make, test], timeout: 15m }
-      build: { env: { GOPROXY: 'http://gomods.mail.cloud.devmail.ru:3000/' } }
+      build: { env: { GOPROXY: 'https://goproxy.example.com/' } }
     extraGates:
       - { id: tidy-drift, argv: [go, mod, tidy, -diff], timeout: 5m }
 ```

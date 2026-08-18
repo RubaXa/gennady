@@ -17,7 +17,7 @@ const MAX_MODULE_DEPTH = 3;
  * golangci-lint config names in discovery order.
  *
  * The dot-prefixed names are what golangci-lint finds by itself. The bare names
- * are NOT auto-discovered — `mailapi` keeps its config in `golangci.yml`, so
+ * are NOT auto-discovered — real monorepos keep configs in a bare `golangci.yml`, so
  * without an explicit `-c` the linter silently runs with default settings.
  */
 const GOLANGCI_CONFIG_NAMES: readonly string[] = [

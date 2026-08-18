@@ -3,7 +3,7 @@
 // @tasks: TSK-55
 
 import type { ScannedFile, KeywordMatch, FileWordRef } from '../orient.types.ts';
-import { damerauLevenshtein } from './damerau-levenshtein.ts';
+import { damerauLevenshtein } from '../../../../shared/common/damerau-levenshtein.ts';
 
 /**
  * @purpose Search files by keyword with three-level scoring: exact (+10), prefix (+5), fuzzy (+3).

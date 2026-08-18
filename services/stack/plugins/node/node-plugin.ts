@@ -17,6 +17,9 @@ export const NODE_GATE_IDS: readonly NpmScriptClass[] = NPM_SCRIPT_CLASSES;
 /** Default per-gate timeout for npm scripts (spec D-STACK-007). */
 const NPM_GATE_TIMEOUT_MS = 10 * 60_000;
 
+/** Flags that make an npm script rewrite the tree — forbidden in a gate (D-STACK-005). */
+const MUTATING_FLAG_RE = /(^|\s)--(fix|autofix|write)(?:[=\s]|$)/;
+
 /**
  * @purpose Detection payload of the node plugin.
  * @consumer node-plugin (internal)
@@ -28,6 +31,8 @@ type NodeProject = {
   readonly packageName: string;
   /** @purpose Selected npm script per verification class; empty when the manifest is broken. */
   readonly selected: Partial<Record<NpmScriptClass, string>>;
+  /** @purpose Raw scripts map — bodies are screened for mutating flags at planning time. */
+  readonly scripts: Readonly<Record<string, string>>;
 };
 
 /**
@@ -39,6 +44,8 @@ type NodeProject = {
  */
 export const nodePlugin: StackPlugin = {
   id: 'node',
+  marker: 'package.json',
+  description: 'gates from classified npm scripts (typecheck/gennady/lint/test/format)',
 
   detect(root: string): StackDetection | null {
     const manifestPath = path.join(root, 'package.json');
@@ -48,6 +55,7 @@ export const nodePlugin: StackPlugin = {
 
     let packageName = '(unnamed)';
     let selected: Partial<Record<NpmScriptClass, string>> = {};
+    let scripts: Record<string, string> = {};
     const diagnostics: StackDiagnostic[] = [];
 
     try {
@@ -56,7 +64,8 @@ export const nodePlugin: StackPlugin = {
         scripts?: Record<string, string>;
       };
       packageName = pkg.name ?? '(unnamed)';
-      selected = classifyNpmScripts(pkg.scripts ?? {});
+      scripts = pkg.scripts ?? {};
+      selected = classifyNpmScripts(scripts);
       if (Object.keys(selected).length === 0) {
         diagnostics.push({
           code: 'NODE_NO_SCRIPTS',
@@ -72,7 +81,7 @@ export const nodePlugin: StackPlugin = {
       });
     }
 
-    const project: NodeProject = { root, packageName, selected };
+    const project: NodeProject = { root, packageName, selected, scripts };
     const gateList = NODE_GATE_IDS.filter((cls) => selected[cls] !== undefined)
       .map((cls) => `${cls}→${selected[cls]}`)
       .join(', ');
@@ -104,16 +113,24 @@ export const nodePlugin: StackPlugin = {
     planGates(detection, _scope, _options) {
       const project = detection.details as NodeProject;
 
-      return NODE_GATE_IDS.filter((cls) => project.selected[cls] !== undefined).map((cls) => ({
-        id: cls,
-        stack: 'node' as const,
-        label: `npm run ${project.selected[cls]!}`,
-        argv: ['npm', 'run', project.selected[cls]!],
-        cwd: project.root,
-        timeoutMs: NPM_GATE_TIMEOUT_MS,
-        outputMeansFailure: false,
-        skipped: null,
-      }));
+      return NODE_GATE_IDS.filter((cls) => project.selected[cls] !== undefined).map((cls) => {
+        const name = project.selected[cls]!;
+        // A gate must never rewrite the tree (D-STACK-005): mutating scripts become
+        // visible skips; an overrideGates.argv (check-only form) supersedes the skip.
+        const mutating = MUTATING_FLAG_RE.test(project.scripts[name] ?? '');
+        return {
+          id: cls,
+          stack: 'node' as const,
+          label: `npm run ${name}`,
+          argv: mutating ? [] : ['npm', 'run', name],
+          cwd: project.root,
+          timeoutMs: NPM_GATE_TIMEOUT_MS,
+          outputMeansFailure: false,
+          skipped: mutating
+            ? `npm script "${name}" mutates the tree (--fix/--autofix/--write) — provide a check-only argv via overrideGates, or move it to fixers`
+            : null,
+        };
+      });
     },
   },
 };

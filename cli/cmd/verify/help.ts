@@ -2,6 +2,8 @@
 // @consumers: verify.cmd.ts, gennady.ts
 // @tasks: TSK-96
 
+import { BUILTIN_STACK_PLUGINS } from '../../../services/stack/stack-registry.ts';
+
 /**
  * @purpose Print CLI help for the verify command.
  */
@@ -11,13 +13,10 @@ export function printHelp(): void {
   console.info('Usage:');
   console.info('  npx gennady verify [path...] [options]');
   console.info('');
-  console.info('Stacks (auto-detected by root marker file; both can be active in one repo):');
-  console.info(
-    '  node     package.json — gates from classified npm scripts (typecheck/lint/test/format)'
-  );
-  console.info(
-    '  golang   go.mod — build, vet, gofmt -l, golangci-lint, go test; changed-package scoping'
-  );
+  console.info('Stacks (auto-detected by root marker file; all detected stacks run together):');
+  for (const plugin of BUILTIN_STACK_PLUGINS) {
+    console.info(`  ${plugin.id.padEnd(8)} ${plugin.marker} — ${plugin.description}`);
+  }
   console.info('');
   console.info('Scope (default: changes vs the base branch):');
   console.info('  <path...>             Files or directories (golang narrows to their packages)');
@@ -29,6 +28,7 @@ export function printHelp(): void {
     '  --plan, --dry-run     Print detection, diagnostics, config provenance and the plan; run nothing'
   );
   console.info('  --json                Machine-readable detection + plan + results');
+  console.info('  --full-output         Do not truncate gate output in --json results');
   console.info(
     '  --only=<a,b>          Run only these gates: `stack:gate` or bare `gate` (all stacks)'
   );
@@ -49,7 +49,7 @@ export function printHelp(): void {
   console.info('      skipGates: [lint]');
   console.info('      overrideGates:');
   console.info('        test: { argv: [make, test], timeout: 15m }');
-  console.info('        build: { env: { GOPROXY: "http://proxy.corp:3000/" } }');
+  console.info('        build: { env: { GOPROXY: "https://goproxy.example.com/" } }');
   console.info('      extraGates:');
   console.info('        - { id: tidy-drift, argv: [go, mod, tidy, -diff], timeout: 5m }');
   console.info('  Invalid config (unknown key, wrong type, bad duration) stops verify: exit 4.');

@@ -39,11 +39,14 @@ const PANIC_RE = /^panic: /m;
 const MODULE_FETCH_RE =
   /^go: .*(?:Forbidden|403|410 Gone|dial tcp|i\/o timeout|no such host|connection refused|certificate|module lookup disabled|proxy\.golang\.org|unrecognized import path)/m;
 
-/** Predicates shared by every go-toolchain gate. */
+/** Predicates for gates where a panic means the TOOL crashed (build/vet/lint — not test). */
 const GO_TOOL_ENV_FAIL: readonly EnvFailPredicate[] = [
   outputMatches(PANIC_RE),
   outputMatches(MODULE_FETCH_RE),
 ];
+
+/** Predicates for the test gate: a panic there is the code under test failing — a genuine FAIL. */
+const GO_TEST_ENV_FAIL: readonly EnvFailPredicate[] = [outputMatches(MODULE_FETCH_RE)];
 
 /**
  * @purpose Build the shared module-resolution flags so vendored repos never reach the network.
@@ -210,7 +213,7 @@ export function planGoGates(project: GoProject, scope: GoScope, options: GatePla
           cwd: project.root,
           timeoutMs: testTimeoutMs,
           outputMeansFailure: false,
-          envFail: GO_TOOL_ENV_FAIL,
+          envFail: GO_TEST_ENV_FAIL,
           skipped: null,
         });
         break;

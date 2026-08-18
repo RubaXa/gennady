@@ -25,8 +25,13 @@ import {
   formatDuration,
   loadStackConfig,
   pluginConfigOf,
+  provenanceOf,
 } from '../../../services/stack/stack-config.ts';
-import { formatVerifyReport, runVerify } from '../../../services/stack/gate-runner.ts';
+import {
+  formatVerifyReport,
+  runVerify,
+  truncateOutput,
+} from '../../../services/stack/gate-runner.ts';
 import type { Gate, ScopeRequest, StackRun } from '../../../services/stack/stack.types.ts';
 
 /** Exit code: one or more gates failed. */
@@ -77,6 +82,7 @@ export async function run(argv: string[]): Promise<number> {
     skip: { aliases: ['skip'], takesValue: true },
     stack: { aliases: ['stack'], takesValue: true },
     root: { aliases: ['root'], takesValue: true },
+    fullOutput: ['full-output'],
     help: ['help', 'h'],
   });
 
@@ -89,7 +95,9 @@ export async function run(argv: string[]): Promise<number> {
   const only = parseList(args.only);
   const skip = parseList(args.skip);
   const root = path.resolve(typeof args.root === 'string' ? args.root : process.cwd());
-  const positional = (args._ as string[]).filter((arg) => arg !== 'verify');
+  // parse-args pushes the command word as the first positional; drop only that
+  // occurrence — a real target may legitimately be named "verify".
+  const positional = (args._ as string[]).slice((args._ as string[])[0] === 'verify' ? 1 : 0);
 
   // #region START_CONFIG — strict: any config error stops the command before any gate (FR-STACK-12)
   const configLoad = loadStackConfig(root, BUILTIN_GATE_IDS);
@@ -124,7 +132,9 @@ export async function run(argv: string[]): Promise<number> {
 
   if (active.length === 0) {
     console.error(`[verify] NO_STACK_DETECTED: no stack plugin recognized ${root}`);
-    console.error(`  known stacks: node (package.json), golang (go.mod)`);
+    console.error(
+      `  known stacks: ${BUILTIN_STACK_PLUGINS.map((plugin) => `${plugin.id} (${plugin.marker})`).join(', ')}`
+    );
     console.error(
       '  fix: run from a project root, pass --root=<path>, or declare stack.use in gennady.yaml'
     );
@@ -212,14 +222,25 @@ export async function run(argv: string[]): Promise<number> {
     }
     console.info('');
     for (const stackRun of filteredRuns) {
+      const pluginConfig = pluginConfigOf(effectiveConfig, stackRun.detection.stack);
       for (const gate of stackRun.gates) {
         const name = `${gate.stack}:${gate.id}`;
-        // Per-key config provenance: applyStackConfig stamps the winner file into the label.
-        const provenanceNote = /\((overridden by [^)]+|from [^)]+)\)$/.exec(gate.label)?.[0] ?? '';
+        // Per-key provenance read from the structured map, not parsed back from prose.
+        let provenanceNote = '';
+        if (pluginConfig?.overrideGates?.[gate.id] !== undefined) {
+          const source =
+            provenanceOf(configLoad.provenance, `${gate.stack}.overrideGates.${gate.id}`) ??
+            'config';
+          provenanceNote = `  (overridden by ${source})`;
+        } else if (pluginConfig?.extraGates?.some((spec) => spec.id === gate.id) === true) {
+          const source =
+            provenanceOf(configLoad.provenance, `${gate.stack}.extraGates`) ?? 'config';
+          provenanceNote = `  (from ${source})`;
+        }
         console.info(
           gate.skipped !== null
             ? `  ⏭️  ${name.padEnd(16)} skip — ${gate.skipped}`
-            : `  ▶️  ${name.padEnd(16)} [${formatDuration(gate.timeoutMs)}] ${gate.argv.join(' ')}${provenanceNote.length > 0 ? `  ${provenanceNote}` : ''}`
+            : `  ▶️  ${name.padEnd(16)} [${formatDuration(gate.timeoutMs)}] ${gate.argv.join(' ')}${provenanceNote}`
         );
       }
     }
@@ -250,16 +271,17 @@ export async function run(argv: string[]): Promise<number> {
             status: result.status,
             exitCode: result.exitCode,
             durationMs: result.durationMs,
-            output: result.output,
+            output: args.fullOutput === true ? result.output : truncateOutput(result.output),
           })),
         },
         null,
         2
       )
     );
-    return report.ok ? 0 : EXIT_GATES_FAILED;
+    return report.ok && report.total > 0 ? 0 : EXIT_GATES_FAILED;
   }
 
   console.log(formatVerifyReport(report));
-  return report.ok ? 0 : EXIT_GATES_FAILED;
+  // ZERO_GATES: a run that executed nothing verified nothing — never exit 0 (review B2).
+  return report.ok && report.total > 0 ? 0 : EXIT_GATES_FAILED;
 }

@@ -36,8 +36,14 @@ const DETECTOR_ROWS: readonly DetectorRow[] = [
     kind: 'marker',
     relativePath: 'go.mod',
     // `gofmt -l` reports misformatted files; `go fmt` would REWRITE them, which a
-    // verification command must never do. Prefer `gennady verify` for scoped runs.
-    commands: ['go build ./...', 'go vet ./...', 'gofmt -l .', 'go test ./...'],
+    // verification command must never do. The go-list scoping keeps vendor/ and
+    // testdata/ out; the trailing note states the output contract for prompt readers.
+    commands: [
+      'go build ./...',
+      'go vet ./...',
+      "gofmt -l $(go list -f '{{.Dir}}' ./...)  # non-empty output = misformatted files (FAIL)",
+      'go test ./...',
+    ],
   },
   {
     kind: 'npm-package-json',

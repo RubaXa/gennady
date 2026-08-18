@@ -151,6 +151,28 @@ describe('loadStackConfig — discovery and merge', () => {
 });
 
 describe('loadStackConfig — strict validation (fatal errors)', () => {
+  it('ignores a broken foreign `models` section in .gennadyrc (review B5)', () => {
+    withConfigs(
+      { '.gennadyrc': '{"models":{},"stack":{"golang":{"skipGates":["lint"]}}}' },
+      (dir) => {
+        const load = loadStackConfig(dir, GATE_IDS);
+        assert.deepEqual(load.errors, [], JSON.stringify(load.errors));
+        assert.deepEqual(pluginConfigOf(load.config, 'golang')?.skipGates, ['lint']);
+      }
+    );
+  });
+
+  it('reports a non-array extraGates as a config error instead of crashing (review B7)', () => {
+    withConfigs(
+      { 'gennady.yaml': 'stack:\n  golang:\n    extraGates:\n      drift:\n        argv: [x]\n' },
+      (dir) => {
+        const load = loadStackConfig(dir, GATE_IDS);
+        assert.equal(load.errors[0]?.path, 'stack.golang.extraGates');
+        assert.match(load.errors[0]?.message ?? '', /array/);
+      }
+    );
+  });
+
   it('reports a broken YAML file as an error', () => {
     withConfigs({ 'gennady.yaml': 'stack: [unclosed' }, (dir) => {
       const load = loadStackConfig(dir, GATE_IDS);
@@ -326,5 +348,37 @@ describe('applyStackConfig', () => {
     assert.equal(effective[0]?.cwd, path.resolve('/repo', 'sub'));
     assert.equal(effective[0]?.outputMeansFailure, false);
     assert.equal(effective[0]?.timeoutMs, 600_000);
+  });
+});
+
+describe('applyStackConfig — skipped extraGates keep their declared shape (review N3)', () => {
+  it('serializes cwd/env/timeout/contract from the spec even when skipped', () => {
+    const effective = applyStackConfig(
+      [],
+      {
+        skipGates: ['drift'],
+        extraGates: [
+          {
+            id: 'drift',
+            argv: ['make', 'check'],
+            cwd: 'sub',
+            env: { A: '1' },
+            timeout: '90s',
+            outputMeansFailure: true,
+          },
+        ],
+      },
+      'golang',
+      '/repo',
+      new Map([['golang.skipGates', '.gennadyrc']])
+    );
+
+    const drift = effective[0]!;
+    assert.match(drift.skipped ?? '', /skipGates/);
+    assert.deepEqual(drift.argv, []);
+    assert.equal(drift.cwd, path.resolve('/repo', 'sub'));
+    assert.deepEqual(drift.env, { A: '1' });
+    assert.equal(drift.timeoutMs, 90_000);
+    assert.equal(drift.outputMeansFailure, true);
   });
 });

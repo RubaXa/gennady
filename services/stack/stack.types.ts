@@ -233,6 +233,10 @@ export type StackVerifyCapability = {
 export type StackPlugin = {
   /** @purpose Unique plugin identifier. */
   readonly id: StackId;
+  /** @purpose Root marker file the detection checks (e.g. `go.mod`) — rendered in rosters. */
+  readonly marker: string;
+  /** @purpose One-line human description rendered in help and error rosters. */
+  readonly description: string;
   /**
    * @purpose Recognize a repository by its root marker file (spec §3); null when not this stack.
    * @param root Absolute repository root.

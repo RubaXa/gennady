@@ -49,6 +49,11 @@ describe('classifyNpmScripts', () => {
     assert.equal(selected.test, undefined);
   });
 
+  it('excludes bare `watch` in a script body (review B8)', () => {
+    const selected = classifyNpmScripts({ test: 'vitest watch' });
+    assert.equal(selected.test, undefined);
+  });
+
   it('excludes umbrella scripts that chain multiple classes', () => {
     const selected = classifyNpmScripts({ ci: 'tsc --noEmit && eslint . && vitest run' });
     assert.deepEqual(selected, {});
@@ -99,6 +104,22 @@ describe('nodePlugin', () => {
         assert.deepEqual(gates[0]?.argv, ['npm', 'run', 'type-check']);
         assert.ok(gates.every((gate) => gate.stack === 'node' && gate.skipped === null));
         assert.ok(gates.every((gate) => gate.timeoutMs > 0));
+      }
+    );
+  });
+
+  it('plans a mutating script as a visible skip, never an executable gate (review B3)', () => {
+    withPackageJson(
+      { name: 'x', scripts: { 'lint:contracts': 'tsx cli/gennady.ts lint --autofix cli/' } },
+      (dir) => {
+        const detection = nodePlugin.detect(dir)!;
+        const scope = nodePlugin.verify.resolveScope(detection, { mode: 'changed', targets: [] });
+        const gates = nodePlugin.verify.planGates(detection, scope, { pluginConfig: null });
+        const gennady = gates.find((gate) => gate.id === 'gennady');
+
+        assert.notEqual(gennady, undefined);
+        assert.match(gennady?.skipped ?? '', /mutat/i);
+        assert.deepEqual(gennady?.argv, []);
       }
     );
   });

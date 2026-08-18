@@ -132,7 +132,7 @@ describe('verify command', () => {
     );
   });
 
-  it('accepts qualified stack:gate selectors in --skip', async () => {
+  it('accepts qualified stack:gate selectors in --skip; a fully-skipped run is ZERO_GATES, exit 1 (review B2)', async () => {
     await withFixture(
       { 'package.json': '{"name":"x","scripts":{"test":"node -e \\"process.exit(1)\\""}}' },
       async (dir) => {
@@ -140,10 +140,44 @@ describe('verify command', () => {
           run(argv(`--root=${dir}`, '--skip=node:test'))
         );
 
-        // The only gate is skipped: nothing executed, nothing failed.
-        assert.equal(value, 0);
+        // The only gate is skipped: nothing was verified — that is not a pass.
+        assert.equal(value, 1);
         assert.match(log, /SKIP gate: node:test/);
-        assert.match(log, /ALL_GATES_PASS \(0\/0\)/);
+        assert.match(log, /ZERO_GATES/);
+      }
+    );
+  });
+
+  it('keeps a positional target literally named "verify" (review N2)', async () => {
+    await withFixture(
+      { 'package.json': '{"name":"x","scripts":{"test":"node -e 0"}}', 'verify/.keep': '' },
+      async (dir) => {
+        const { value, log } = await captureLog(() =>
+          run(argv(`--root=${dir}`, '--plan', '--json', 'verify'))
+        );
+
+        assert.equal(value, 0);
+        const parsed = JSON.parse(log) as { runs: Array<{ scope: { mode: string } }> };
+        assert.equal(parsed.runs[0]?.scope.mode, 'files');
+      }
+    );
+  });
+
+  it('truncates gate output in --json unless --full-output is passed (review B11)', async () => {
+    await withFixture(
+      {
+        'package.json':
+          '{"name":"x","scripts":{"test":"node -e \\"for(let i=0;i<500;i++)console.log(i);process.exit(1)\\""}}',
+      },
+      async (dir) => {
+        const truncated = await captureLog(() => run(argv(`--root=${dir}`, '--json')));
+        assert.equal(truncated.value, 1);
+        const parsedTruncated = JSON.parse(truncated.log) as { results: Array<{ output: string }> };
+        assert.match(parsedTruncated.results[0]?.output ?? '', /lines truncated/);
+
+        const full = await captureLog(() => run(argv(`--root=${dir}`, '--json', '--full-output')));
+        const parsedFull = JSON.parse(full.log) as { results: Array<{ output: string }> };
+        assert.ok(!(parsedFull.results[0]?.output ?? '').includes('lines truncated'));
       }
     );
   });

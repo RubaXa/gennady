@@ -71,7 +71,7 @@ stack:
     skipGates: [lint] # golangci-lint built with an older Go — restore after the image update
     overrideGates:
       test: { argv: [make, test], timeout: 15m }
-      build: { env: { GOPROXY: "http://gomods.mail.cloud.devmail.ru:3000/" } }
+      build: { env: { GOPROXY: "https://goproxy.example.com/" } }
     extraGates:
       - { id: tidy-drift, argv: [go, mod, tidy, -diff], timeout: 5m }
 ```
@@ -92,7 +92,7 @@ Full reasoning in `ai/directives/infra/golang-setup.xml`; the short form:
 1. **One verb, every stack.** Differences go into `gennady.yaml`, not into new commands.
 2. **Gates never mutate.** `gofmt -l`, never `go fmt`; `go mod tidy -diff`, never `tidy`.
 3. **Scope before depth.** Changed packages by default; `./...` on request only.
-4. **Lint config passed via `-c`** — auto-discovery misses bare `golangci.yml` (mailapi).
+4. **Lint config passed via `-c`** — auto-discovery misses bare `golangci.yml` (seen in a real monorepo).
 5. **`-mod=vendor` when vendored** — offline, reproducible; never together with `go.work`.
 6. **`./...` stops at module boundaries** — nested modules need their own run.
 7. **Bound everything** — mandatory per-gate timeout, rendered into `go test -timeout`; integration tests behind build tags are a separate, explicit scope.

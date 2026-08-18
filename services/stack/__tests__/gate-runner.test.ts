@@ -6,7 +6,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import type { Gate, StackDiagnostic, StackRun } from '../stack.types.ts';
 
-const { runVerify, formatVerifyReport, exitAbove, outputMatches, spawnFailed } =
+const { runVerify, formatVerifyReport, exitAbove, outputMatches } =
   await import('../gate-runner.ts');
 
 /** @purpose Build a gate that runs a shell snippet through `sh -c`. */
@@ -123,11 +123,6 @@ describe('runVerify', () => {
     assert.equal(report.results[0]?.status, 'env-fail');
   });
 
-  it('spawnFailed() matches a never-ran process signature', () => {
-    assert.equal(spawnFailed()(null, 'Error: spawn /x ENOENT'), true);
-    assert.equal(spawnFailed()(1, 'compile error'), false);
-  });
-
   it('kills a gate exceeding its own timeoutMs and reports TIMEOUT', () => {
     const report = runVerify([runOf([shellGate('test', 'sleep 5', { timeoutMs: 300 })])], []);
 
@@ -160,6 +155,26 @@ describe('runVerify', () => {
 });
 
 describe('formatVerifyReport', () => {
+  it('reports ZERO_GATES, not ALL_GATES_PASS, when nothing was executed (review B2)', () => {
+    const skipped: Gate = { ...shellGate('lint', 'exit 1'), argv: [], skipped: 'tool not found' };
+    const report = runVerify([runOf([skipped])], []);
+    const text = formatVerifyReport(report);
+
+    assert.match(text, /ZERO_GATES/);
+    assert.ok(!text.includes('ALL_GATES_PASS'), 'verified-nothing must not read as success');
+  });
+
+  it('keeps the tail of long failure output, where test runners put the summary (review N1)', () => {
+    const report = runVerify([runOf([shellGate('vet', 'seq 1 500; exit 1')])], []);
+    const text = formatVerifyReport(report);
+
+    assert.match(text, /lines truncated/);
+    assert.ok(
+      text.includes('\n499\n'),
+      'the tail (failure summary territory) must survive truncation'
+    );
+  });
+
   it('prints a single summary line and nothing else when all gates pass', () => {
     const report = runVerify([runOf([shellGate('vet', 'echo noise; exit 0')])], []);
     const text = formatVerifyReport(report);
@@ -208,6 +223,6 @@ describe('formatVerifyReport', () => {
     const report = runVerify([runOf([shellGate('vet', 'seq 1 500; exit 1')])], []);
     const text = formatVerifyReport(report);
 
-    assert.match(text, /more lines truncated/);
+    assert.match(text, /lines truncated/);
   });
 });
