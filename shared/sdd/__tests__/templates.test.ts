@@ -31,6 +31,7 @@ describe('templates registry', () => {
         'scope-index',
         'project-index',
         'portal',
+        'research',
       ])
     );
   });
@@ -75,6 +76,28 @@ describe('templates registry', () => {
     assert.match(TEMPLATES['project-index'].skeleton, /## Cross-Scope DAG/);
     assert.match(TEMPLATES['project-index'].skeleton, /## Scope Tracker/);
     assert.match(TEMPLATES['project-index'].skeleton, /## Decision Log/);
+  });
+
+  it('research: MADR-hybrid skeleton, path pattern carries the tool-supplied date + operator slug', () => {
+    const tpl = TEMPLATES.research;
+    assert.strictEqual(tpl.pathPattern, 'specs/<scope>/research/<yyyy-mm-dd>-<slug>.research.md');
+    for (const anchor of [
+      'STATUS',
+      'PROBLEM',
+      'CRITERIA',
+      'OPTIONS',
+      'DECISION',
+      'CONSEQUENCES',
+      'EVIDENCE',
+      'RELATED',
+    ]) {
+      assert.match(tpl.skeleton, new RegExp(`<!--SECTION:${anchor}-->`), `missing ${anchor}`);
+    }
+    const required = new Set(tpl.sections.filter((s) => s.required).map((s) => s.name));
+    assert.deepStrictEqual(
+      required,
+      new Set(['STATUS', 'PROBLEM', 'OPTIONS', 'DECISION', 'EVIDENCE'])
+    );
   });
 });
 

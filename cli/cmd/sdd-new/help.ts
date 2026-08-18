@@ -10,14 +10,14 @@ export function printHelp(): void {
   console.info('');
   console.info('Usage:');
   console.info(
-    '  npx gennady sdd-new <kind> --scope <s> [--module <m>] [--id <ACR-slug>] [--out <path>]'
+    '  npx gennady sdd-new <kind> --scope <s> [--module <m>] [--id <ACR-slug>] [--slug <slug>] [--out <path>]'
   );
   console.info('  npx gennady sdd-new --list');
   console.info('  npx gennady sdd-new <kind> --manifest');
   console.info('');
   console.info('Arguments:');
   console.info(
-    '  <kind>   product | library | infrastructure | interface | module | task | portal'
+    '  <kind>   product | library | infrastructure | interface | module | task | portal | research'
   );
   console.info('');
   console.info('Options:');
@@ -32,6 +32,12 @@ export function printHelp(): void {
     '                    specs/<scope>/<scope>.task.<id>.md / specs/<scope>/<scope>.3-tasks.md.'
   );
   console.info('  --id <ACR-slug>   Task-ID slug. Required for task.');
+  console.info(
+    '  --slug <slug>     Human-readable kebab-case slug. Required for research — the tool fills'
+  );
+  console.info(
+    "                    in today's date; the path becomes specs/<scope>/research/<yyyy-mm-dd>-<slug>.research.md."
+  );
   console.info(
     '  --out <path>      Explicit target path — overrides the computed path convention.'
   );
@@ -69,6 +75,7 @@ export function printHelp(): void {
   console.info('  npx gennady sdd-new product --scope backend');
   console.info('  npx gennady sdd-new module --scope backend --module auth');
   console.info('  npx gennady sdd-new task --scope backend --module auth --id AUTH-login-flow');
+  console.info('  npx gennady sdd-new research --scope backend --slug ai-tooling-stack');
   console.info('  npx gennady sdd-new --list');
   console.info('  npx gennady sdd-new module --manifest');
 }

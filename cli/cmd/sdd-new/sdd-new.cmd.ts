@@ -48,16 +48,19 @@ function moduleName(module: string): string {
 
 /**
  * @purpose Compute the target path for a kind from --scope/--module/--id, honoring an explicit --out.
- * @invariant Pure — no I/O. Callers validate required options are present AND well-formed (validateModulePath) before calling.
+ * @invariant Pure — no I/O or wall-clock read; `research`'s date is caller-supplied via
+ *   `opts.date`, computed once by `run()`.
+ * @invariant Callers validate required options are present AND well-formed (validateModulePath /
+ *   validateSlug) before calling.
  * @invariant `task`/`module-index` accept an ABSENT --module: path stays flat
  *   (`specs/<scope>/<scope>.task.<ID>.md` / `.3-tasks.md`), not a doubled scope segment.
  * @param kind Artifact kind.
- * @param opts scope/module/id/out as parsed from argv. `--module` may be any depth (`foo/bar/qux`) per AX_HIERARCHICAL_SPECS.
+ * @param opts scope/module/id/out/slug/date as parsed from argv (or computed). `--module` may be any depth (`foo/bar/qux`) per AX_HIERARCHICAL_SPECS.
  * @returns The resolved relative path.
  */
 export function resolvePath(
   kind: ArtifactKind,
-  opts: { scope?: string; module?: string; id?: string; out?: string }
+  opts: { scope?: string; module?: string; id?: string; out?: string; slug?: string; date?: string }
 ): string {
   if (opts.out) return opts.out;
   switch (kind) {
@@ -82,25 +85,28 @@ export function resolvePath(
       return 'specs/3-tasks.md';
     case 'portal':
       return 'specs/README.md';
+    case 'research':
+      return `specs/${opts.scope}/research/${opts.date}-${opts.slug}.research.md`;
   }
 }
 
 /**
  * @purpose Which options are required for a kind, beyond --out (which always short-circuits path computation).
- * @invariant `task`/`module-index` do NOT require --module — flat scopes get the flat path
- *   (see `resolvePath`); only `module` always needs one.
+ * @invariant `task`/`module-index` skip --module (flat path via `resolvePath`); `module` always
+ *   needs it. `research` needs --slug (kebab-case) — the tool, never the operator, supplies the date.
  * @param kind Artifact kind.
  * @returns Names of missing required options given what was supplied, empty when satisfied.
  */
 function missingOptions(
   kind: ArtifactKind,
-  opts: { scope?: string; module?: string; id?: string; out?: string }
+  opts: { scope?: string; module?: string; id?: string; out?: string; slug?: string }
 ): string[] {
   if (opts.out) return [];
   const missing: string[] = [];
   if (kind !== 'portal' && kind !== 'project-index' && !opts.scope) missing.push('--scope');
   if (kind === 'module' && !opts.module) missing.push('--module');
   if (kind === 'task' && !opts.id) missing.push('--id');
+  if (kind === 'research' && !opts.slug) missing.push('--slug');
   return missing;
 }
 
@@ -108,6 +114,30 @@ function missingOptions(
 // `--scope` name follows. `--module` may nest to any depth (AX_HIERARCHICAL_SPECS); every segment
 // must satisfy this on its own.
 const SEGMENT_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+
+/**
+ * @purpose Validate a `research` --slug: same grammar as one `--module` segment (kebab-case,
+ *   lowercase letters/digits, hyphen-separated) — no path nesting allowed (a slug is one segment).
+ * @param slug Raw --slug value.
+ * @returns null when valid, else a human-readable reason.
+ */
+export function validateSlug(slug: string): string | null {
+  if (slug.length === 0) return '--slug must not be empty';
+  if (!SEGMENT_RE.test(slug))
+    return `--slug "${slug}" is not kebab-case (lowercase letters/digits, hyphen-separated)`;
+  return null;
+}
+
+/**
+ * @purpose Today's date as `yyyy-mm-dd` — substituted into a `research` doc's path; the operator
+ *   supplies only --slug, never the date.
+ * @param [now] Clock reading; defaults to `new Date()` — overridable so callers/tests stay deterministic.
+ * @returns Zero-padded `yyyy-mm-dd`.
+ */
+export function todayDateStamp(now: Date = new Date()): string {
+  const pad = (n: number): string => String(n).padStart(2, '0');
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+}
 
 /**
  * @purpose Validate a (possibly nested) --module path: no empty/absolute/`..` segments, each segment kebab-case.
@@ -139,6 +169,7 @@ export async function run(rawArgs: string[]): Promise<NewOutcome> {
     module: { aliases: ['module'], takesValue: true },
     id: { aliases: ['id'], takesValue: true },
     out: { aliases: ['out'], takesValue: true },
+    slug: { aliases: ['slug'], takesValue: true },
     list: { aliases: ['list'] },
     manifest: { aliases: ['manifest'] },
   });
@@ -166,11 +197,19 @@ export async function run(rawArgs: string[]): Promise<NewOutcome> {
     return { ok: true, text: renderManifestReport(kind, TEMPLATES[kind].sections), path: '' };
   }
 
-  const opts = {
+  const opts: {
+    scope?: string;
+    module?: string;
+    id?: string;
+    out?: string;
+    slug?: string;
+    date?: string;
+  } = {
     scope: typeof args.scope === 'string' ? args.scope : undefined,
     module: typeof args.module === 'string' ? args.module : undefined,
     id: typeof args.id === 'string' ? args.id : undefined,
     out: typeof args.out === 'string' ? args.out : undefined,
+    slug: typeof args.slug === 'string' ? args.slug : undefined,
   };
 
   const missing = missingOptions(kind, opts);
@@ -185,6 +224,17 @@ export async function run(rawArgs: string[]): Promise<NewOutcome> {
       return badInvocation(reason);
     }
   }
+
+  // #region START_RESEARCH_SLUG — invariant: the tool substitutes today's date; the operator supplies only --slug, never a date
+  if (kind === 'research' && opts.slug) {
+    const reason = validateSlug(opts.slug);
+    if (reason) {
+      logger.warn(`[SddNewCommand#run] bad --slug: ${reason}`);
+      return badInvocation(reason);
+    }
+    opts.date = todayDateStamp();
+  }
+  // #endregion END_RESEARCH_SLUG
 
   // #region START_TASK_ID — invariant: a bad --id is refused with a concrete fix, never silently repaired
   if (kind === 'task' && opts.id) {

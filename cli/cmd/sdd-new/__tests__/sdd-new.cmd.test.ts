@@ -425,4 +425,111 @@ describe('SddNewCommand', () => {
       assert.match(outcome.text, /created project-index skeleton/);
     }
   });
+
+  describe('research kind', () => {
+    it('--list includes research with its date+slug path pattern', async () => {
+      const outcome = await mod.run(argv('--list'));
+      assert.strictEqual(outcome.ok, true);
+      if (outcome.ok) {
+        assert.match(
+          outcome.text,
+          /research\s+specs\/<scope>\/research\/<yyyy-mm-dd>-<slug>\.research\.md/
+        );
+      }
+    });
+
+    it('rejects research with --scope but no --slug, exit 4 / BAD_INVOCATION', async () => {
+      const outcome = await mod.run(argv('research', '--scope', 'demo'));
+      assert.strictEqual(outcome.ok, false);
+      if (!outcome.ok) {
+        assert.strictEqual(outcome.exitCode, 4);
+        assert.match(outcome.code, /BAD_INVOCATION/);
+        assert.match(outcome.message, /--slug/);
+      }
+    });
+
+    it('rejects research with no --scope and no --slug, exit 4 / BAD_INVOCATION', async () => {
+      const outcome = await mod.run(argv('research'));
+      assert.strictEqual(outcome.ok, false);
+      if (!outcome.ok) assert.strictEqual(outcome.exitCode, 4);
+    });
+
+    it('rejects a non-kebab-case --slug before touching the filesystem', async () => {
+      const outcome = await mod.run(argv('research', '--scope', 'demo', '--slug', 'Not_Kebab'));
+      assert.strictEqual(outcome.ok, false);
+      if (!outcome.ok) {
+        assert.strictEqual(outcome.exitCode, 4);
+        assert.match(outcome.message, /kebab-case/);
+      }
+    });
+
+    it('validateSlug accepts a well-formed kebab-case slug and rejects the rest', () => {
+      assert.strictEqual(mod.validateSlug('ai-tooling-stack'), null);
+      assert.match(mod.validateSlug('') ?? '', /empty/);
+      assert.match(mod.validateSlug('Ai_Tooling') ?? '', /kebab-case/);
+    });
+
+    it('todayDateStamp formats yyyy-mm-dd, zero-padded', () => {
+      assert.strictEqual(mod.todayDateStamp(new Date(2026, 0, 5)), '2026-01-05');
+      assert.strictEqual(mod.todayDateStamp(new Date(2026, 11, 31)), '2026-12-31');
+    });
+
+    it('resolvePath: specs/<scope>/research/<date>-<slug>.research.md, date is caller-supplied', () => {
+      const path = mod.resolvePath('research', {
+        scope: 'demo',
+        slug: 'ai-tooling-stack',
+        date: '2026-08-18',
+      });
+      assert.strictEqual(path, 'specs/demo/research/2026-08-18-ai-tooling-stack.research.md');
+    });
+
+    it('--manifest lists STATUS/PROBLEM/OPTIONS/DECISION/EVIDENCE as REQUIRED, without --scope/--slug', async () => {
+      const outcome = await mod.run(argv('research', '--manifest'));
+      assert.strictEqual(outcome.ok, true);
+      if (outcome.ok) {
+        assert.match(outcome.text, /manifest for research/);
+        for (const name of ['STATUS', 'PROBLEM', 'OPTIONS', 'DECISION', 'EVIDENCE']) {
+          assert.match(outcome.text, new RegExp(`${name}\\s+REQUIRED`));
+        }
+      }
+    });
+
+    it('creates a research doc at specs/<scope>/research/<today>-<slug>.research.md and reports the section manifest', async () => {
+      const cwd = mkdtempSync(join(tmpdir(), 'sdd-new-research-'));
+      const prevCwd = process.cwd();
+      try {
+        process.chdir(cwd);
+        const outcome = await mod.run(
+          argv('research', '--scope', 'demo', '--slug', 'ai-tooling-stack')
+        );
+        assert.strictEqual(outcome.ok, true);
+        if (outcome.ok) {
+          const today = mod.todayDateStamp();
+          assert.strictEqual(
+            outcome.path,
+            `specs/demo/research/${today}-ai-tooling-stack.research.md`
+          );
+          assert.ok(existsSync(outcome.path));
+          const written = readFileSync(outcome.path, 'utf-8');
+          assert.match(written, /<!--SECTION:STATUS-->/);
+          assert.match(written, /<!--SECTION:EVIDENCE-->/);
+          assert.match(outcome.text, /created research skeleton/);
+          assert.match(outcome.text, /STATUS\s+REQUIRED/);
+        }
+
+        // Same-day re-run at the same slug never overwrites — ERR_FILE_EXISTS.
+        const again = await mod.run(
+          argv('research', '--scope', 'demo', '--slug', 'ai-tooling-stack')
+        );
+        assert.strictEqual(again.ok, false);
+        if (!again.ok) {
+          assert.strictEqual(again.exitCode, 1);
+          assert.match(again.code, /FILE_EXISTS/);
+        }
+      } finally {
+        process.chdir(prevCwd);
+        rmSync(cwd, { recursive: true, force: true });
+      }
+    });
+  });
 });

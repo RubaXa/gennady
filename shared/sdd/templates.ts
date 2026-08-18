@@ -15,7 +15,8 @@ export type ArtifactKind =
   | 'module-index'
   | 'scope-index'
   | 'project-index'
-  | 'portal';
+  | 'portal'
+  | 'research';
 
 /**
  * @purpose Scope-type kinds — the four `scope-type` values a top-level `<scope>.spec.md` can carry.
@@ -1435,6 +1436,149 @@ const PORTAL_SECTIONS: SectionManifestEntry[] = [
 ];
 // #endregion END_PORTAL
 
+// #region START_RESEARCH — specs/<scope>/research/<yyyy-mm-dd>-<slug>.research.md, MADR-hybrid
+const RESEARCH_SKELETON = `# Research: <topic-title>
+
+<!--SECTION:STATUS-->
+## Status
+- **State:** proposed   <!-- proposed | accepted | superseded-by: <файл> -->
+- **Decided:** <YYYY-MM-DD>   <!-- дата решения; "—" пока state=proposed -->
+<!--/SECTION:STATUS-->
+
+<!--SECTION:PROBLEM-->
+## Problem
+[Обезличенная проблематика: что решаем и почему сейчас. БЕЗ сессионных маркеров — текст должен
+быть понятен читателю без контекста этой сессии (без «мы обсуждали», «как договорились выше» и т.п.).]
+<!--/SECTION:PROBLEM-->
+
+<!--SECTION:CRITERIA-->
+## Criteria
+[Критерии решения (decision drivers). Для выбора инструментов — таблица с обязательной датой
+актуальности данных (инструменты и цены меняются). КАЖДОЕ фактическое утверждение здесь должно
+быть перепроверяемым: либо трассируется к записи в EVIDENCE (URL + дата обращения), либо несёт
+явную пометку происхождения — «вывод агента из <чего>» или «по памяти модели на <дата знаний>,
+источник не найден». Утверждение без источника и без пометки — дефект документа.]
+
+| Критерий | Вес | Комментарий |
+|---|---|---|
+<!-- Данные актуальны на: <YYYY-MM-DD> -->
+<!--/SECTION:CRITERIA-->
+
+<!--SECTION:OPTIONS-->
+## Options
+[Рассмотренные варианты в трёх подгруппах. Для каждого варианта: суть, за, против. КАЖДОЕ
+фактическое утверждение (суть/за/против) — трассируется к EVIDENCE, либо помечено «вывод агента
+из <чего>» / «по памяти модели на <дата знаний>, источник не найден». Без источника и без пометки —
+дефект документа.]
+
+### Академические подходы
+
+- **<Approach>** — суть: […] За: […] Против: […]
+
+### Лидеры рынка
+[Как задачу решают технологические лидеры — с источниками (см. EVIDENCE).]
+
+- **<Company/Product>** — суть: […] За: […] Против: […]
+
+### Готовые инструменты
+
+- **<Tool>** — суть: […] За: […] Против: […]
+<!--/SECTION:OPTIONS-->
+
+<!--SECTION:DECISION-->
+## Decision
+[Формула ниже — не свободное изложение: X/Y/Z/G/T опираются на факты из CRITERIA/OPTIONS, каждый
+из которых уже трассируется к EVIDENCE либо несёт пометку происхождения («вывод агента из <чего>» /
+«по памяти модели на <дата знаний>, источник не найден»). Нового непроверяемого факта здесь не вводить.]
+
+Выбрали <X> и не <Y>/<Z>, чтобы достичь <G>, приняв trade-off <T>.
+<!--/SECTION:DECISION-->
+
+<!--SECTION:CONSEQUENCES-->
+## Consequences
+[Что теряем/принимаем этим выбором — прямое следствие DECISION, не повтор OPTIONS.]
+<!--/SECTION:CONSEQUENCES-->
+
+<!--SECTION:EVIDENCE-->
+## Evidence
+[Источники. Цитируй конкретную страницу/раздел источника, а не домен целиком (например
+«docs.foo.dev/pricing#enterprise-tier», не «foo.dev»); если данные взяты из репозитория/кода —
+путь до файла + коммит/тег вместо URL. Вывод агента помечается отдельно от факта источника — не
+смешивать интерпретацию с тем, что источник буквально утверждает. Сконструированные (придуманные)
+ссылки запрещены.]
+
+- <факт> — <URL конкретной страницы/раздела, или путь-в-репозитории@коммит> (обращение: <YYYY-MM-DD>)
+<!-- [вывод] <интерпретация агента, явно отмеченная как вывод, а не как факт источника> -->
+<!--/SECTION:EVIDENCE-->
+
+<!--SECTION:RELATED-->
+## Related
+- **Scope spec:** [<scope>.spec.md](../<scope>.spec.md)
+- **Decision Log entry:** D-NNN
+- **Superseded by:**   <!-- пусто при создании; заполняется при superseded-by -->
+<!--/SECTION:RELATED-->
+`;
+
+const RESEARCH_SECTIONS: SectionManifestEntry[] = [
+  {
+    name: 'STATUS',
+    required: true,
+    loadBearing: true,
+    fold: false,
+    fill: 'State (proposed | accepted | superseded-by: <файл>) plus the decision date.',
+  },
+  {
+    name: 'PROBLEM',
+    required: true,
+    loadBearing: true,
+    fold: false,
+    fill: 'Depersonalized problem statement — what is being decided and why now. No session markers: must read as self-sufficient to a reader with no context on this session.',
+  },
+  {
+    name: 'CRITERIA',
+    required: false,
+    loadBearing: false,
+    fold: false,
+    fill: 'Decision drivers; for a tool choice, a criterion/weight/comment table with an explicit data-freshness date. Every factual claim traces to EVIDENCE or carries an explicit provenance mark ("вывод агента из <чего>" / "по памяти модели на <дата знаний>, источник не найден") — an unsourced, unmarked claim is a document defect.',
+  },
+  {
+    name: 'OPTIONS',
+    required: true,
+    loadBearing: true,
+    fold: false,
+    fill: 'Options considered, grouped into Академические подходы / Лидеры рынка (with sources) / Готовые инструменты; each with суть/за/против. Same traceability rule as CRITERIA — every factual claim sourced or marked.',
+  },
+  {
+    name: 'DECISION',
+    required: true,
+    loadBearing: true,
+    fold: false,
+    fill: 'The MADR-style formula: chose X over Y/Z to achieve G, accepting trade-off T — built only from already-sourced/marked facts in CRITERIA/OPTIONS, no new unverifiable claim introduced here.',
+  },
+  {
+    name: 'CONSEQUENCES',
+    required: false,
+    loadBearing: false,
+    fold: false,
+    fill: 'What is given up / accepted as a direct result of the Decision.',
+  },
+  {
+    name: 'EVIDENCE',
+    required: true,
+    loadBearing: true,
+    fold: false,
+    fill: 'Sources as `<fact> — <URL of the specific page/section, or repo-path@commit> (обращение: <date>)` — cite the exact page/section, never a bare domain; code/repo facts cite a file path + commit/tag instead of a URL. The agent’s own inference is marked apart from what the source states; no constructed/fabricated links.',
+  },
+  {
+    name: 'RELATED',
+    required: false,
+    loadBearing: false,
+    fold: false,
+    fill: 'Links to the scope spec, the Decision Log entry (D-NNN), and superseded-by (present but empty at creation).',
+  },
+];
+// #endregion END_RESEARCH
+
 /**
  * @purpose The registry: one ArtifactTemplate per kind — single source of truth backing check.ts
  * (derived required/fold lists) and `gennady sdd-new`.
@@ -1501,6 +1645,12 @@ export const TEMPLATES: Record<ArtifactKind, ArtifactTemplate> = {
     skeleton: PORTAL_SKELETON,
     sections: PORTAL_SECTIONS,
     pathPattern: 'specs/README.md',
+  },
+  research: {
+    kind: 'research',
+    skeleton: RESEARCH_SKELETON,
+    sections: RESEARCH_SECTIONS,
+    pathPattern: 'specs/<scope>/research/<yyyy-mm-dd>-<slug>.research.md',
   },
 };
 

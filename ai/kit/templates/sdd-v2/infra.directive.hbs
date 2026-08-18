@@ -47,6 +47,8 @@
 
     {{> "axiom/truth/ax-evidence-hygiene"}}
 
+    {{> "axiom/truth/ax-research-persisted"}}
+
     {{> "axiom/boundary/ax-bootstrap-narrow-read"}}
 
     <Axiom id="AX_SPEC_MANDATORY_DIAGRAM">
@@ -117,14 +119,19 @@
 
         EXPRESS branch (typical stack): run the STEP_3 research gate now, for every category at once
         (2–3 targeted WebSearch queries per category — alive/current, AI-agent friendliness for the
-        current year); then present ONE batch Ask — a single candidates table, one row per category,
-        each row naming the recommended tool + a one-line rationale from the research (not recall) +
-        a currency note, per `AX_DIVERGE_BEFORE_RECOMMEND`. The operator confirms the whole table or
+        current year). Per `AX_RESEARCH_PERSISTED`, before the candidates table below is shown,
+        persist the findings — `npx gennady sdd-new research --scope <scope> --slug <slug>`, filled
+        (STATUS/PROBLEM/CRITERIA/OPTIONS/DECISION/CONSEQUENCES/EVIDENCE/RELATED), one document per
+        category or one covering the batch. Then present ONE batch Ask — a single candidates table,
+        one row per category, each row naming the recommended tool + a one-line rationale from the
+        research (not recall) + a currency note, per `AX_DIVERGE_BEFORE_RECOMMEND`, plus a link to
+        the research document backing it. The operator confirms the whole table or
         names deviations in ONE reply. A SECOND Ask closes the round: confirms any deviation the
         first reply raised, plus the Tool Interaction Check (linter vs formatter, runner vs
         type-check, CI vs package manager). Two Asks total replace the per-category STEP_2 / STEP_3
         interview cycle — Mandatory Rationale Pull → Decision Log entry per `AX_DECISION_LOG_REQUIRED`
-        still applies per tool (`H_TOOL_LOCKED_WITHOUT_DECISION`): the compression is in the NUMBER of
+        still applies per tool (`H_TOOL_LOCKED_WITHOUT_DECISION`), its RELATED citing the research
+        document in parentheses: the compression is in the NUMBER of
         operator round-trips, never in the Decision Log discipline. STEP_3 is done once this closes —
         proceed to STEP_4. Approval Check. STOP.
       </Action>
@@ -142,13 +149,19 @@
         targeted WebSearch queries per category under revision — is each candidate alive and current
         (not abandoned / superseded), and how it compares on AI-agent friendliness for the current year
         (text-configurable, autofix, machine-readable diagnostics) — before drafting candidates from
-        memory. Then per category, 2–3 candidates with trade-offs per `AX_DIVERGE_BEFORE_RECOMMEND`
+        memory. Per `AX_RESEARCH_PERSISTED`, before candidates are presented, persist the findings —
+        `npx gennady sdd-new research --scope <scope> --slug <slug>`, filled
+        (STATUS/PROBLEM/CRITERIA/OPTIONS/DECISION/CONSEQUENCES/EVIDENCE/RELATED). Then per category,
+        2–3 candidates with trade-offs per `AX_DIVERGE_BEFORE_RECOMMEND`
         (reach past the obvious default; judge against THIS project); for each candidate presented,
         one line stating why it's here per the research (not recall) plus the source, and a currency /
-        AI-friendliness note. If WebSearch is unavailable in this environment, say so plainly instead of
+        AI-friendliness note, plus a link to the research document backing the category. If WebSearch
+        is unavailable in this environment, say so plainly instead of
         silently falling back — `предлагаю по памяти на <дата обучения модели>, ресёрч недоступен` — a
-        named caveat, not silence. Operator picks → Mandatory Rationale Pull → Decision Log entry per
-        `AX_DECISION_LOG_REQUIRED` (`DECISION_LOG_ENTRY_FORMAT`); no tool locked without one
+        named caveat, not silence (no research document in that case — nothing was found to persist).
+        Operator picks → Mandatory Rationale Pull → Decision Log entry per
+        `AX_DECISION_LOG_REQUIRED` (`DECISION_LOG_ENTRY_FORMAT`), its RELATED citing the research
+        document in parentheses; no tool locked without one
         (`H_TOOL_LOCKED_WITHOUT_DECISION`). Tool Interaction Check (linter vs formatter, runner vs
         type-check, CI vs package manager). STOP.
       </Action>

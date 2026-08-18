@@ -23,6 +23,8 @@ import {
   checkModuleGraph,
   checkScopeDeps,
   checkSpecHierarchy,
+  checkResearchOrphans,
+  findResearchLinks,
   moduleGraphEdges,
   ticketRef,
   legacyTicketRef,
@@ -107,6 +109,23 @@ function checkSpecLinks(file: string, content: string): Finding[] {
         code: 'SDD_BROKEN_SPEC_LINK',
         file,
         message: `Referenced spec does not resolve on disk: ${target}`,
+      });
+    }
+  }
+  return findings;
+}
+
+/** @purpose Check that every `](…research.md)` link in any spec/ticket/research doc resolves on disk (SDD_RESEARCH_REF_BROKEN) — checkSpecLinks mirror for research-doc references. | @param file File path (spec, ticket, or research doc). | @param content File markdown. | @returns Findings for unresolved research-doc links. */
+function checkResearchRefs(file: string, content: string): Finding[] {
+  const findings: Finding[] = [];
+  const dir = dirname(file);
+  for (const target of findResearchLinks(content)) {
+    if (!existsSync(resolve(dir, target))) {
+      findings.push({
+        severity: 'error',
+        code: 'SDD_RESEARCH_REF_BROKEN',
+        file,
+        message: `Referenced research doc does not resolve on disk: ${target}`,
       });
     }
   }
@@ -468,6 +487,7 @@ export async function run(rawArgs: string[]): Promise<CheckResult> {
     findings.push(...checkTicket(taskPath, content));
     findings.push(...checkRuleLinks(taskPath, content));
     findings.push(...checkSpecRefs(taskPath, content));
+    findings.push(...checkResearchRefs(taskPath, content));
     findings.push(...(await checkSpecMermaid(taskPath, content)));
     findings.push(...checkTicketRulesCascade(taskPath, content, repoRoot));
     findings.push(...checkTicketBddCoverage(taskPath, content, repoRoot));
@@ -521,6 +541,8 @@ export async function run(rawArgs: string[]): Promise<CheckResult> {
     const moduleEdgesByScope = new Map<string, { edges: GraphEdge[]; scopeFile: string }>();
     // Every ```mermaid block is validated through the real parser after the walk (collected here, parsed once mermaid+jsdom load lazily).
     const mermaidTargets: { file: string; content: string }[] = [];
+    const researchFiles: string[] = [];
+    const referencedResearch = new Set<string>();
     for (const file of mdFiles) {
       let content: string;
       try {
@@ -529,7 +551,14 @@ export async function run(rawArgs: string[]): Promise<CheckResult> {
         continue;
       }
       if (content.includes('```mermaid')) mermaidTargets.push({ file, content });
-      if (file === portalFile) {
+      findings.push(...checkResearchRefs(file, content));
+      for (const target of findResearchLinks(content)) {
+        referencedResearch.add(resolve(dirname(file), target));
+      }
+      if (file.endsWith('.research.md')) {
+        researchFiles.push(file);
+        fileCount++;
+      } else if (file === portalFile) {
         findings.push(
           ...checkPortal({
             scopes: parseScopes(content),
@@ -586,6 +615,7 @@ export async function run(rawArgs: string[]): Promise<CheckResult> {
     findings.push(...checkTaskGraph(ticketRefs));
     findings.push(...checkTrackers(ticketRefs, trackerRowRefs));
     findings.push(...checkSpecHierarchy(specEntries));
+    findings.push(...checkResearchOrphans(researchFiles, referencedResearch));
     for (const [scope, { edges, scopeFile }] of moduleEdgesByScope) {
       findings.push(...checkModuleGraph(scope, scopeFile, edges));
     }

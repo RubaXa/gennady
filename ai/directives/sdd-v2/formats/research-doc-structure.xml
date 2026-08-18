@@ -1,0 +1,98 @@
+<Contract id="RESEARCH_DOC_STRUCTURE">
+  Every top-level `##` section is wrapped with `<!--SECTION:UPPER_SNAKE-->…<!--/SECTION:UPPER_SNAKE-->`
+  markers so any agent can pull a single section via the `sdd-extract` CLI
+  (`gennady sdd-extract <file> <NAME>`). Section order is normative: STATUS, PROBLEM, CRITERIA,
+  OPTIONS, DECISION, CONSEQUENCES, EVIDENCE, RELATED. `OPTIONS` carries three named sub-headings
+  in fixed order — Академия (peer-reviewed / academic treatment), Лидеры рынка (how established
+  players solve it in production), Готовые инструменты (off-the-shelf tools/libraries) — each a
+  real candidate, not a placeholder, per `AX_DIVERGE_BEFORE_RECOMMEND`. `EVIDENCE` holds every
+  fact this document relies on, each re-verifiable — traced to a source (page, URL + access
+  date; for code-derived facts, path + commit) or explicitly flagged `agent conclusion` /
+  `from model memory as of <knowledge date>` (`AX_RESEARCH_PERSISTED`); a fact carrying neither
+  is a document defect. `DECISION` states the chosen option and why; `CONSEQUENCES` the
+  accepted trade-offs. `RELATED` links superseded research docs and the spec / ticket / Decision
+  Log entry this research feeds.
+
+  ```markdown
+  # Research: <topic-title>
+
+  <!--SECTION:STATUS-->
+  ## Status
+  - **State:** proposed   <!-- proposed | accepted | superseded-by: <файл> -->
+  - **Decided:** <YYYY-MM-DD>   <!-- дата решения; "—" пока state=proposed -->
+  <!--/SECTION:STATUS-->
+
+  <!--SECTION:PROBLEM-->
+  ## Problem
+  [Обезличенная проблематика: что решаем и почему сейчас. БЕЗ сессионных маркеров — текст должен
+  быть понятен читателю без контекста этой сессии (без «мы обсуждали», «как договорились выше» и т.п.).]
+  <!--/SECTION:PROBLEM-->
+
+  <!--SECTION:CRITERIA-->
+  ## Criteria
+  [Критерии решения (decision drivers). Для выбора инструментов — таблица с обязательной датой
+  актуальности данных (инструменты и цены меняются). КАЖДОЕ фактическое утверждение здесь должно
+  быть перепроверяемым: либо трассируется к записи в EVIDENCE (URL + дата обращения), либо несёт
+  явную пометку происхождения — «вывод агента из <чего>» или «по памяти модели на <дата знаний>,
+  источник не найден». Утверждение без источника и без пометки — дефект документа.]
+
+  | Критерий | Вес | Комментарий |
+  |---|---|---|
+  <!-- Данные актуальны на: <YYYY-MM-DD> -->
+  <!--/SECTION:CRITERIA-->
+
+  <!--SECTION:OPTIONS-->
+  ## Options
+  [Рассмотренные варианты в трёх подгруппах. Для каждого варианта: суть, за, против. КАЖДОЕ
+  фактическое утверждение (суть/за/против) — трассируется к EVIDENCE, либо помечено «вывод агента
+  из <чего>» / «по памяти модели на <дата знаний>, источник не найден». Без источника и без пометки —
+  дефект документа.]
+
+  ### Академические подходы
+
+  - **<Approach>** — суть: […] За: […] Против: […]
+
+  ### Лидеры рынка
+  [Как задачу решают технологические лидеры — с источниками (см. EVIDENCE).]
+
+  - **<Company/Product>** — суть: […] За: […] Против: […]
+
+  ### Готовые инструменты
+
+  - **<Tool>** — суть: […] За: […] Против: […]
+  <!--/SECTION:OPTIONS-->
+
+  <!--SECTION:DECISION-->
+  ## Decision
+  [Формула ниже — не свободное изложение: X/Y/Z/G/T опираются на факты из CRITERIA/OPTIONS, каждый
+  из которых уже трассируется к EVIDENCE либо несёт пометку происхождения («вывод агента из <чего>» /
+  «по памяти модели на <дата знаний>, источник не найден»). Нового непроверяемого факта здесь не вводить.]
+
+  Выбрали <X> и не <Y>/<Z>, чтобы достичь <G>, приняв trade-off <T>.
+  <!--/SECTION:DECISION-->
+
+  <!--SECTION:CONSEQUENCES-->
+  ## Consequences
+  [Что теряем/принимаем этим выбором — прямое следствие DECISION, не повтор OPTIONS.]
+  <!--/SECTION:CONSEQUENCES-->
+
+  <!--SECTION:EVIDENCE-->
+  ## Evidence
+  [Источники. Цитируй конкретную страницу/раздел источника, а не домен целиком (например
+  «docs.foo.dev/pricing#enterprise-tier», не «foo.dev»); если данные взяты из репозитория/кода —
+  путь до файла + коммит/тег вместо URL. Вывод агента помечается отдельно от факта источника — не
+  смешивать интерпретацию с тем, что источник буквально утверждает. Сконструированные (придуманные)
+  ссылки запрещены.]
+
+  - <факт> — <URL конкретной страницы/раздела, или путь-в-репозитории@коммит> (обращение: <YYYY-MM-DD>)
+  <!-- [вывод] <интерпретация агента, явно отмеченная как вывод, а не как факт источника> -->
+  <!--/SECTION:EVIDENCE-->
+
+  <!--SECTION:RELATED-->
+  ## Related
+  - **Scope spec:** [<scope>.spec.md](../<scope>.spec.md)
+  - **Decision Log entry:** D-NNN
+  - **Superseded by:**   <!-- пусто при создании; заполняется при superseded-by -->
+  <!--/SECTION:RELATED-->
+  ```
+</Contract>

@@ -75,6 +75,8 @@
 
     {{> "axiom/truth/ax-evidence-hygiene"}}
 
+    {{> "axiom/truth/ax-research-persisted"}}
+
     {{> "axiom/boundary/ax-bootstrap-narrow-read"}}
 
     {{> "axiom/spec/ax-scope-stays-thin"}}
@@ -163,6 +165,17 @@
     <Step id="STEP_5_ARCHITECTURE">
       <Goal>Lock the architecture.</Goal>
       <Action>
+        Research gate before drafting: at scale `product` / `library` — mandatory, 2–3 targeted
+        WebSearch queries on how market leaders solve THIS scope's requirements and how they
+        architect for them; at scale `module` / `function` — proportional per
+        `AX_SCALE_PROPORTIONAL_DEPTH` (light pass, or skip with a one-line rationale); at scale
+        `fix` — skipped, no research. Where it runs, persist it per `AX_RESEARCH_PERSISTED` before
+        the Design Variants / Architecture below are drafted — `npx gennady sdd-new research
+        --scope <scope> --slug <slug>`, filled
+        (STATUS/PROBLEM/CRITERIA/OPTIONS/DECISION/CONSEQUENCES/EVIDENCE/RELATED) — and link the
+        document in this message and in the Decision Log entry's RELATED (parentheses) once the
+        variant is picked at STEP_6.
+
         library → Architecture: public surface structure, key patterns, briefly-rejected alternatives.
         product → Design Variants per `AX_DIVERGE_BEFORE_RECOMMEND` — reach past the obvious
         option into the tail; judge each against THIS scope, do not collapse to the modal design.

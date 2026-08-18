@@ -1326,3 +1326,37 @@ export function checkReviewState(file: string, content: string): Finding[] {
   }
   return findings;
 }
+
+/**
+ * @purpose Extract every markdown-link target pointing at a `*.research.md` file (optionally
+ *   anchored) — raw text for the research-doc connectivity gates.
+ * @invariant Pure — no filesystem access. A link may appear in any spec/ticket/research doc; the
+ *   caller resolves each target against that file's directory.
+ * @param content File markdown (any spec, ticket, or research doc).
+ * @returns Raw link targets, in appearance order (duplicates kept).
+ */
+export function findResearchLinks(content: string): string[] {
+  return [...content.matchAll(/\]\(([^)`#]+\.research\.md)(?:#[^)]*)?\)/g)].map(
+    (m) => m[1] as string
+  );
+}
+
+/**
+ * @purpose ORPHAN check (SDD_RESEARCH_ORPHAN) — a research file with zero incoming links from
+ *   `specs/**` is unreachable from any spec.
+ * @invariant Pure — the caller resolves every `findResearchLinks` target against its source
+ *   file's directory across the whole walk, building `referenced`.
+ * @param researchFiles Every `*.research.md` file found under `specs/**`.
+ * @param referenced Resolved research-file identifiers with at least one incoming link.
+ * @returns One `SDD_RESEARCH_ORPHAN` (warn) per unreferenced research file.
+ */
+export function checkResearchOrphans(researchFiles: string[], referenced: Set<string>): Finding[] {
+  return researchFiles
+    .filter((f) => !referenced.has(f))
+    .map((f) => ({
+      severity: 'warn' as const,
+      code: 'SDD_RESEARCH_ORPHAN',
+      file: f,
+      message: `Research doc has no incoming reference from anywhere under specs/** — link it from a spec's Decision Log / RELATED section (or a ticket's Spec References), or mark it superseded-by.`,
+    }));
+}

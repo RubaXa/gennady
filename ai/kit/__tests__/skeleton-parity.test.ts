@@ -23,6 +23,9 @@ const FORMAT_HBS: Record<ArtifactKind, string> = {
   'scope-index': 'scope-tasks-index.hbs',
   'project-index': 'project-tasks-index.hbs',
   portal: 'portal-structure.hbs',
+  // research: added ahead of the shared/sdd/templates.ts `research` ArtifactKind (parallel work);
+  // this line only compiles once that half lands — see ai/kit/axiom/truth/ax-research-persisted.xml.
+  research: 'research-doc-structure.hbs',
 };
 
 /** Prefix every non-blank line with one UNIT of indent — how a skeleton sits inside its Contract's markdown fence. */

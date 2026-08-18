@@ -173,6 +173,17 @@
       Conflating the three causes downstream decisions to be made on unvalidated assumptions, producing requirements mismatches that surface only at integration; surface them in distinct lists.
     </Axiom>
 
+    <Axiom id="AX_RESEARCH_PERSISTED">
+      External research (WebSearch/WebFetch) run in this session ALWAYS lands as a research document
+      via `npx gennady sdd-new research --scope <scope> --slug <slug>` — filled in BEFORE the result
+      feeds a proposal to the operator; a chat summary is not storage (session dies, research dies
+      with it). Every factual claim must be re-verifiable: traced to a source (a specific page, URL +
+      access date; for code-derived facts — path + commit) OR explicitly flagged `agent conclusion` /
+      `from model memory as of <knowledge date>`. A fact carrying neither is a document defect, not a
+      style choice. A repeat question checks existing `specs/**/research/` first — supersede, never
+      duplicate.
+    </Axiom>
+
     <Axiom id="AX_BOOTSTRAP_NARROW_READ">
       Discovery is design-blind to repository code (per `AX_SPEC_IS_SOLE_SOURCE`) **except** inside STEP_7 (External Dependencies Audit), where narrow Read is permitted **only for inventory verification** — confirming whether a referenced package, file, scope, or tool physically exists.
       Permitted reads in STEP_7: `package.json` and equivalents, `tsconfig.json` and equivalents, `specs/README.md`, sibling scope manifests, filesystem existence checks.
@@ -288,6 +299,17 @@
     <Step id="STEP_5_ARCHITECTURE">
       <Goal>Lock the architecture.</Goal>
       <Action>
+        Research gate before drafting: at scale `product` / `library` — mandatory, 2–3 targeted
+        WebSearch queries on how market leaders solve THIS scope's requirements and how they
+        architect for them; at scale `module` / `function` — proportional per
+        `AX_SCALE_PROPORTIONAL_DEPTH` (light pass, or skip with a one-line rationale); at scale
+        `fix` — skipped, no research. Where it runs, persist it per `AX_RESEARCH_PERSISTED` before
+        the Design Variants / Architecture below are drafted — `npx gennady sdd-new research
+        --scope <scope> --slug <slug>`, filled
+        (STATUS/PROBLEM/CRITERIA/OPTIONS/DECISION/CONSEQUENCES/EVIDENCE/RELATED) — and link the
+        document in this message and in the Decision Log entry's RELATED (parentheses) once the
+        variant is picked at STEP_6.
+
         library → Architecture: public surface structure, key patterns, briefly-rejected alternatives.
         product → Design Variants per `AX_DIVERGE_BEFORE_RECOMMEND` — reach past the obvious
         option into the tail; judge each against THIS scope, do not collapse to the modal design.

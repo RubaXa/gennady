@@ -482,4 +482,92 @@ describe('SddCheckCommand', () => {
     const missing = await mod.run(argv(`--task=${join(dir, 'nope.md')}`));
     assert.strictEqual(missing.exitCode, 1);
   });
+
+  describe('research connectivity gates (SDD_RESEARCH_REF_BROKEN / SDD_RESEARCH_ORPHAN)', () => {
+    it('--all: a healthy spec ⟷ research pair is clean — no broken ref, no orphan', async () => {
+      const root = join(dir, 'research-healthy-proj');
+      const scopeDir = join(root, 'specs', 'cli');
+      mkdirSync(join(scopeDir, 'research'), { recursive: true });
+      writeFileSync(
+        join(scopeDir, 'cli.task-foo.md'),
+        `${CLEAN_TICKET.replace('cli-foo', 'CLI-foo')}\n\nSee [research](./research/2026-01-01-x.research.md) for rationale.\n`,
+        'utf-8'
+      );
+      writeFileSync(
+        join(scopeDir, 'cli.3-tasks.md'),
+        [
+          '# cli — Tasks',
+          '## 1. Tracker Index',
+          '| Task-ID | Title | Dependencies | Status | Reopens |',
+          '|---------|-------|--------------|--------|---------|',
+          '| CLI-foo | Foo | — | [x] DONE | — |',
+        ].join('\n'),
+        'utf-8'
+      );
+      writeFileSync(
+        join(scopeDir, 'research', '2026-01-01-x.research.md'),
+        '# Research: x\n',
+        'utf-8'
+      );
+
+      const r = await mod.run(argv('--all', root));
+      assert.doesNotMatch(r.text, /SDD_RESEARCH_REF_BROKEN/);
+      assert.doesNotMatch(r.text, /SDD_RESEARCH_ORPHAN/);
+      assert.strictEqual(r.exitCode, 0);
+    });
+
+    it('--all flags a research-doc link that does not resolve on disk (SDD_RESEARCH_REF_BROKEN, error)', async () => {
+      const root = join(dir, 'research-broken-proj');
+      const scopeDir = join(root, 'specs', 'cli');
+      mkdirSync(scopeDir, { recursive: true });
+      writeFileSync(
+        join(scopeDir, 'cli.task-foo.md'),
+        `${CLEAN_TICKET.replace('cli-foo', 'CLI-foo')}\n\nSee [research](./research/2026-01-01-gone.research.md) for rationale.\n`,
+        'utf-8'
+      );
+      writeFileSync(
+        join(scopeDir, 'cli.3-tasks.md'),
+        [
+          '# cli — Tasks',
+          '## 1. Tracker Index',
+          '| Task-ID | Title | Dependencies | Status | Reopens |',
+          '|---------|-------|--------------|--------|---------|',
+          '| CLI-foo | Foo | — | [x] DONE | — |',
+        ].join('\n'),
+        'utf-8'
+      );
+
+      const r = await mod.run(argv('--all', root));
+      assert.strictEqual(r.exitCode, 1);
+      assert.match(r.text, /SDD_RESEARCH_REF_BROKEN/);
+      assert.match(r.text, /gone\.research\.md/);
+    });
+
+    it('--all flags a research doc with zero incoming references (SDD_RESEARCH_ORPHAN, warn, exit 0)', async () => {
+      const root = join(dir, 'research-orphan-proj');
+      const researchDir = join(root, 'specs', 'demo', 'research');
+      mkdirSync(researchDir, { recursive: true });
+      writeFileSync(
+        join(researchDir, '2026-01-01-unlinked.research.md'),
+        '# Research: unlinked\n',
+        'utf-8'
+      );
+
+      const r = await mod.run(argv('--all', root));
+      assert.match(r.text, /SDD_RESEARCH_ORPHAN/);
+      assert.match(r.text, /unlinked\.research\.md/);
+      assert.strictEqual(r.exitCode, 0, 'orphan is warn-only — must not fail the gate');
+    });
+
+    it('--task on a ticket linking a missing research doc also fires SDD_RESEARCH_REF_BROKEN', async () => {
+      const t = join(dir, 'ticket-research-broken.md');
+      writeFileSync(
+        t,
+        `${CLEAN_TICKET}\n\nSee [research](./research/2026-01-01-gone.research.md).\n`,
+        'utf-8'
+      );
+      const r = await mod.run(argv(`--task=${t}`));
+      assert.match(r.text, /SDD_RESEARCH_REF_BROKEN/);
+    });
+  });
 });

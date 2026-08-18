@@ -108,6 +108,8 @@
 
     {{> "axiom/truth/ax-evidence-hygiene"}}
 
+    {{> "axiom/truth/ax-research-persisted"}}
+
     {{> "axiom/process/ax-q-ids"}}
 
     {{> "axiom/scaffold/ax-handoff-to-task-scaffolding"}}
@@ -151,7 +153,13 @@
       <Goal>Lock module boundaries; update the scope Module Map.</Goal>
       <Action>
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/module-map-update.xml")` first — this
-        step's Approval Check asked before that read is `H_ASK_BEFORE_FORMAT`. Propose module
+        step's Approval Check asked before that read is `H_ASK_BEFORE_FORMAT`. Module decomposition
+        does not require external research by default (`AX_SCALE_PROPORTIONAL_DEPTH` — that gate
+        lives in the scope flow's Architecture step); but if a decomposition pattern or approach
+        proposed below WAS informed by a WebSearch / WebFetch pass this session, persist it per
+        `AX_RESEARCH_PERSISTED` — `npx gennady sdd-new research --scope <scope> --slug <slug>`,
+        filled — BEFORE presenting the boundaries, and link the document in this message; research
+        performed and left only in chat is the violation, not the research itself. Propose module
         boundaries along `AX_SEPARATION_OF_CONCERNS` (data/domain ↔ UI/presentation ↔
         infrastructure; a shared core only once ≥2 consumers need it) — draw the decomposition as
         a diagram, not a bullet list of names: one tier per axis (data/domain · UI/presentation ·

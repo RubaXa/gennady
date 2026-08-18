@@ -1,0 +1,11 @@
+<!-- source: operator directive — sdd-new research kind -->
+<Axiom id="AX_RESEARCH_PERSISTED">
+  External research (WebSearch/WebFetch) run in this session ALWAYS lands as a research document
+  via `npx gennady sdd-new research --scope <scope> --slug <slug>` — filled in BEFORE the result
+  feeds a proposal to the operator; a chat summary is not storage (session dies, research dies
+  with it). Every factual claim must be re-verifiable: traced to a source (a specific page, URL +
+  access date; for code-derived facts — path + commit) OR explicitly flagged `agent conclusion` /
+  `from model memory as of <knowledge date>`. A fact carrying neither is a document defect, not a
+  style choice. A repeat question checks existing `specs/**/research/` first — supersede, never
+  duplicate.
+</Axiom>
