@@ -191,6 +191,7 @@ npx gennady testcov src/core --files
 | `orient`            | Навигация по file-header и DBC-контрактам                |
 | `agents-rules`      | Инструкция по orient для AI-агентов                      |
 | `testcov`           | Визуальное дерево покрытия (vitest/jest/node:test)       |
+| `verify`            | Верификационные гейты из gennady.yaml (verify.gates)     |
 
 ---
 
