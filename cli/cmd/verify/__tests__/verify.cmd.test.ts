@@ -202,6 +202,26 @@ describe('verify command', () => {
     );
   });
 
+  it('--only explicitly naming a config-skipped gate runs it (expensive-gate workflow)', async () => {
+    await withFixture(
+      {
+        'package.json': '{"name":"x","scripts":{"test":"node -e 0"}}',
+        // The expensive gate is off by default via skipGates, on demand via --only.
+        'gennady.yaml':
+          'stack:\n  node:\n    skipGates: [e2e]\n    extraGates:\n      - id: e2e\n        argv: [node, -e, "0"]\n        timeout: 90s\n',
+      },
+      async (dir) => {
+        const defaultRun = await captureLog(() => run(argv(`--root=${dir}`)));
+        assert.equal(defaultRun.value, 0);
+        assert.match(defaultRun.log, /SKIP gate: node:e2e/);
+
+        const explicit = await captureLog(() => run(argv(`--root=${dir}`, '--only=node:e2e')));
+        assert.equal(explicit.value, 0, explicit.log);
+        assert.match(explicit.log, /ALL_GATES_PASS \(1\/1\)/);
+      }
+    );
+  });
+
   it('shows config sources and per-gate timeouts in --plan', async () => {
     await withFixture(
       {

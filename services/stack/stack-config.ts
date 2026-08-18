@@ -484,6 +484,7 @@ export function provenanceOf(
  * @param stack Plugin id, used to attribute extra gates and resolve provenance.
  * @param root Absolute repository root.
  * @param provenance Per-key provenance map from loadStackConfig.
+ * @param [unskipIds] Gate ids named by `--only` — config skipGates does not apply to them.
  * @returns The effective gate list.
  */
 export function applyStackConfig(
@@ -491,7 +492,8 @@ export function applyStackConfig(
   pluginConfig: StackPluginConfig | null,
   stack: StackId,
   root: string,
-  provenance: ReadonlyMap<string, string>
+  provenance: ReadonlyMap<string, string>,
+  unskipIds?: readonly string[]
 ): Gate[] {
   if (pluginConfig === null) {
     return [...gates];
@@ -499,6 +501,9 @@ export function applyStackConfig(
 
   const overrides = pluginConfig.overrideGates ?? {};
   const skip = new Set(pluginConfig.skipGates ?? []);
+  for (const id of unskipIds ?? []) {
+    skip.delete(id);
+  }
   const skipSource = provenanceOf(provenance, `${stack}.skipGates`) ?? 'config';
 
   const effective: Gate[] = gates.map((gate) => {

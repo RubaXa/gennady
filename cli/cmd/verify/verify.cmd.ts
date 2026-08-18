@@ -151,7 +151,19 @@ export async function run(argv: string[]): Promise<number> {
     const scope = plugin.verify.resolveScope(detection, request);
     const pluginConfig = pluginConfigOf(effectiveConfig, plugin.id);
     const planned = plugin.verify.planGates(detection, scope, { pluginConfig });
-    const gates = applyStackConfig(planned, pluginConfig, plugin.id, root, configLoad.provenance);
+    // --only naming a gate is an explicit request to run it — it lifts a config
+    // skipGates entry for that gate (CLI --skip still wins if both are given).
+    const unskipIds = only
+      .filter((selector) => !selector.includes(':') || selector.startsWith(`${plugin.id}:`))
+      .map((selector) => (selector.includes(':') ? selector.split(':')[1]! : selector));
+    const gates = applyStackConfig(
+      planned,
+      pluginConfig,
+      plugin.id,
+      root,
+      configLoad.provenance,
+      unskipIds
+    );
     return { detection, scope, gates };
   });
 
@@ -256,6 +268,9 @@ export async function run(argv: string[]): Promise<number> {
           ok: report.ok,
           passed: report.passed,
           total: report.total,
+          // Stable orchestrator contract: env-fail means the ENVIRONMENT broke —
+          // do not "fix" the code in response (spec §8.4).
+          envFailed: report.results.filter((result) => result.status === 'env-fail').length,
           config: { sources: configLoad.sources },
           diagnostics: report.diagnostics,
           runs: report.runs.map((run) => ({
