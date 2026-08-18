@@ -108,14 +108,19 @@
        `AX_CHANGE_MAP` in arch-interrogation): entities/components as nodes coloured by change type
        (🆕/✏️/🗑️/↪︎), files annotated, greyed neighbors, one caption "что произошло". An answer that
        is just a link to the MR, with no visual, is forbidden.
-    2. **Everything in chat must render; a visual is mandatory.** Relational meaning (file map, C4,
-       flows, delta) → a picture, not prose. WHICH diagram fits which intent (and its ASCII/Mermaid
-       syntax) — `INCLUDE_ONCE("ai/directives/agent-inbox/visual-vocabulary.directive.xml")` (not
-       everything is a flowchart). Medium: **if `mcp__visualize__show_widget` is present → render
-       with the widget** (best for visualization — use it); no widget → ASCII+emoji as fallback.
-       Declare the medium as the first line (action 0). Choice/approval — `AskUserQuestion`. Never
-       send Mermaid/SVG to chat (Mermaid is for posting to the VCS, which renders it natively). Do
-       not emit markup the chat cannot render.
+    2. **Everything in chat must render; a visual is mandatory — in EVERY outcome, for EVERY MR.**
+       Relational meaning (file map, C4, flows, delta) → a picture, not prose. WHICH diagram fits
+       which intent (and its ASCII/Mermaid syntax) —
+       `INCLUDE_ONCE("ai/directives/agent-inbox/visual-vocabulary.directive.xml")` (not everything is
+       a flowchart). Medium: **if `mcp__visualize__show_widget` is present → render with the widget**
+       (best for visualization — use it); no widget → ASCII+emoji. The absence of the widget does NOT
+       excuse the absence of the diagrams: one of the two mediums MUST render them. Declare the medium
+       as the first line (action 0). Choice/approval — `AskUserQuestion`. Never send Mermaid/SVG to
+       chat (Mermaid is for posting to the VCS, which renders it natively). Do not emit markup the
+       chat cannot render.
+       **The change map (invariant 1) and the comprehension ladder (change map + C4 + behaviour +
+       scenarios) are DIFFERENT diagrams — all four are emitted in chat as separate blocks. The change
+       map does NOT replace C4/behaviour/scenarios.**
     3. **Operator language — Russian** (`AX_OPERATOR_LANGUAGE`); code/identifiers/paths/CLI/tokens —
        English.
     4. **Co-reviewer, not a secretary.** Come to every thread and candidate with a READY decision and
@@ -566,6 +571,18 @@
     not paste raw md/`mermaid` into chat (chat does not render it). Links — markdown `[…](…)` (invariant
     6). Files — for the VCS/orchestration, chat — for the operator (rule 8).
 
+    **H_CHAT_DIAGRAM_COUNT — hard stop before ending the turn.** Count the mermaid blocks in the
+    README.md sections «Карта изменения» + «## Архитектура» + «## Поведение» + «## Сценарии»
+    (minus any explicit `n/a — <причина>`). The chat reply MUST render that many diagram blocks
+    (ASCII or widget), one per block. Fewer → do NOT end the turn: emit the missing blocks. A link to
+    the README file never replaces a single block.
+
+    **Diagram manifest — mandatory closing line of every chat reply.** The chat reply ends with a
+    literal manifest line listing which of the four diagrams were actually rendered:
+    `Схемы в чате: карта ✓ · C4 ✓ · поведение ✓ · сценарии n/a — <причина>`
+    (`✓` only if the block is truly rendered above in ASCII/widget; `n/a` only for a trivial MR, with
+    a reason). No manifest line → the reply is defective, redo it.
+
     ## STOP-CHECK (before chat output)
     Run the SelfCheck from `RE_READ("arch-interrogation.directive.xml")` (items 0–6), plus:
     | # | Check | ok? |
@@ -577,7 +594,7 @@
     | — | Synthesis (README.md/HISTORY.md) assembled from task files on disk, not from retellings | □ |
     | — | `--validate` (filled) passed: README has the C4 Mermaid + Поведение/Сценарии filled or `n/a — <причина>` | □ |
     | — | Comprehension ladder present (`AX_COMPREHENSION_LADDER`): change map + C4 (always) + behaviour (sequence\|before→after) + use-cases; trivial MR may collapse with n/a+reason | □ |
-    | — | Chat is a projection of the validated README (all ladder diagrams projected to widget/ASCII), not a fresh composition | □ |
+    | — | H_CHAT_DIAGRAM_COUNT: chat rendered ≥ (non-n/a mermaid blocks in README «Карта изменения»+«## Архитектура»+«## Поведение»+«## Сценарии»), each as a real ASCII/widget block; diagram manifest line present | □ |
     | — | Header and footer of chat output — markdown `[ref](webUrl)` (clickable); artifact paths too (invariant 6) | □ |
     | — | Relational rendered by the medium per action 0 — widget if present, ASCII only as fallback (invariant 2) | □ |
     | — | Finalization Ask fired (step 7) — approve / non-blocking comments / my note as checkboxes; NOT a bare "recommend approve" | □ |
