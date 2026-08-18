@@ -80,10 +80,14 @@ export function runGate(gate: VerifyGate): GateResult {
   // #endregion END_CLASSIFY
 
   if (proc.status === 0 && gate.outputMeansFailure && proc.stdout.trim().length > 0) {
+    // Exit 0 + offending stdout is a code finding by definition — patterns never apply here.
     return { gate, status: 'fail', exitCode: 0, durationMs, output };
   }
   if (proc.status === 0) {
     return { gate, status: 'pass', exitCode: 0, durationMs, output: '' };
+  }
+  if (gate.envFailPatterns?.some((pattern) => new RegExp(pattern, 'm').test(output)) === true) {
+    return { gate, status: 'env-fail', exitCode: proc.status, durationMs, output };
   }
   return { gate, status: 'fail', exitCode: proc.status, durationMs, output };
 }

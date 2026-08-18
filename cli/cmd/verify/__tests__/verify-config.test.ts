@@ -104,6 +104,33 @@ describe('loadVerifyConfig', () => {
     assert.match(paths, /gates\[3\]\.timeout/);
   });
 
+  it('accepts envFailPatterns and rejects invalid regexes with exact paths', () => {
+    writeConfig(
+      [
+        'verify:',
+        '  gates:',
+        '    - { id: ok, argv: [x], envFailPatterns: ["Token for Tuist", "^panic: "] }',
+        '    - { id: bad, argv: [y], envFailPatterns: ["[unclosed"] }',
+        '    - { id: wrong, argv: [z], envFailPatterns: [] }',
+      ].join('\n')
+    );
+
+    const load = loadVerifyConfig(root);
+
+    assert.equal(load.gates, null);
+    const paths = load.errors.map((e) => e.path).join(' ');
+    assert.match(paths, /gates\[1\]\.envFailPatterns\[0\]/);
+    assert.match(paths, /gates\[2\]\.envFailPatterns/);
+  });
+
+  it('keeps envFailPatterns on the loaded gate', () => {
+    writeConfig(
+      'verify:\n  gates:\n    - { id: build, argv: [tuist, build], envFailPatterns: ["tuist auth login"] }\n'
+    );
+
+    assert.deepEqual(loadVerifyConfig(root).gates?.[0]?.envFailPatterns, ['tuist auth login']);
+  });
+
   it('treats a non-list gates value as a fatal error, not a crash', () => {
     writeConfig('verify:\n  gates:\n    id: lint\n');
 

@@ -10,7 +10,15 @@ import { parse as parseYaml } from 'yaml';
 export const DEFAULT_GATE_TIMEOUT_MS = 10 * 60_000;
 
 /** Keys allowed on a gate entry — anything else is a strict-validation error. */
-const GATE_KEYS = new Set(['id', 'argv', 'cwd', 'env', 'timeout', 'outputMeansFailure']);
+const GATE_KEYS = new Set([
+  'id',
+  'argv',
+  'cwd',
+  'env',
+  'timeout',
+  'outputMeansFailure',
+  'envFailPatterns',
+]);
 
 /** Gate id shape: short, greppable, CLI-friendly. */
 const GATE_ID_RE = /^[a-z0-9][a-z0-9_-]*$/i;
@@ -32,6 +40,8 @@ export type VerifyGate = {
   readonly timeoutMs: number;
   /** @purpose When true, any stdout on exit 0 means failure (`gofmt -l` contract). */
   readonly outputMeansFailure: boolean;
+  /** @purpose Regexes reclassifying a non-zero exit as ENV_FAIL when the output matches. */
+  readonly envFailPatterns?: readonly string[];
 };
 
 /**
@@ -147,6 +157,30 @@ function validateGate(
   if (raw['outputMeansFailure'] !== undefined && typeof raw['outputMeansFailure'] !== 'boolean') {
     errors.push({ path: `${at}.outputMeansFailure`, message: 'must be a boolean' });
   }
+  const patterns = raw['envFailPatterns'];
+  if (patterns !== undefined) {
+    if (
+      !Array.isArray(patterns) ||
+      patterns.length === 0 ||
+      patterns.some((p) => typeof p !== 'string' || p.length === 0)
+    ) {
+      errors.push({
+        path: `${at}.envFailPatterns`,
+        message: 'must be a non-empty array of regular-expression strings',
+      });
+    } else {
+      patterns.forEach((pattern: string, patternIndex: number) => {
+        try {
+          new RegExp(pattern, 'm');
+        } catch {
+          errors.push({
+            path: `${at}.envFailPatterns[${patternIndex}]`,
+            message: `invalid regular expression: ${pattern}`,
+          });
+        }
+      });
+    }
+  }
 
   // Only this entry's own problems invalidate it — the sink is shared across gates.
   if (errors.length > errorsBefore) {
@@ -159,6 +193,7 @@ function validateGate(
     env: env as Record<string, string> | undefined,
     timeoutMs,
     outputMeansFailure: (raw['outputMeansFailure'] as boolean | undefined) ?? false,
+    envFailPatterns: patterns as string[] | undefined,
   };
 }
 

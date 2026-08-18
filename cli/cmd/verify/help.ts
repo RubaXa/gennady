@@ -22,8 +22,15 @@ export function printHelp(): void {
   console.info('      - { id: test,  argv: [npm, test],       timeout: 10m }');
   console.info('      - { id: fmt,   argv: [gofmt, -l, .],    outputMeansFailure: true }');
   console.info(
-    '  Gate keys: id, argv (no shell), cwd, env, timeout (90s|5m|1h), outputMeansFailure.'
+    '  Gate keys: id, argv (no shell), cwd, env, timeout (90s|5m|1h), outputMeansFailure,'
   );
+  console.info('  envFailPatterns (regexes; a matching non-zero exit reports ENV_FAIL — the');
+  console.info('  environment broke, not the code — so agents do not "fix" healthy sources):');
+  console.info('      - id: build');
+  console.info('        argv: [tuist, build]');
+  console.info('        envFailPatterns: ["Token for Tuist was not found", "tuist install"]');
+  console.info('  For tools that break silently (only an exit code), wrap them: a 3-line script');
+  console.info('  that echoes "ENV_FAIL: <reason>" on tool-level exits, plus a matching pattern.');
   console.info('  Invalid config (unknown key, wrong type, bad duration) stops verify: exit 4.');
   console.info('');
   console.info('Options:');

@@ -76,6 +76,59 @@ describe('runGate', () => {
   });
 });
 
+describe('runGate envFailPatterns', () => {
+  const TUIST_TOKEN =
+    "Token for Tuist was not found. Run 'tuist auth login' to authenticate yourself.";
+
+  it('reclassifies a matching non-zero exit as env-fail (observed live: tuist token)', () => {
+    const result = runGate(
+      nodeGate('build', `console.error(${JSON.stringify(TUIST_TOKEN)}); process.exit(1)`, {
+        envFailPatterns: ['Token for Tuist was not found'],
+      })
+    );
+
+    assert.equal(result.status, 'env-fail');
+    assert.equal(result.exitCode, 1);
+  });
+
+  it('never fires on exit 0 — a passing gate stays a pass', () => {
+    const result = runGate(
+      nodeGate('ok', `console.log(${JSON.stringify(TUIST_TOKEN)})`, {
+        envFailPatterns: ['Token for Tuist was not found'],
+      })
+    );
+
+    assert.equal(result.status, 'pass');
+  });
+
+  it('never reclassifies an outputMeansFailure finding — exit 0 offenders are the code', () => {
+    const result = runGate(
+      nodeGate('fmt', 'console.log("offender.go")', {
+        outputMeansFailure: true,
+        envFailPatterns: ['offender'],
+      })
+    );
+
+    assert.equal(result.status, 'fail');
+  });
+
+  it('leaves a non-matching failure as fail, and supports multiline anchors', () => {
+    const plain = runGate(
+      nodeGate('bad', 'console.error("assertion failed"); process.exit(1)', {
+        envFailPatterns: ['Token for Tuist was not found'],
+      })
+    );
+    const anchored = runGate(
+      nodeGate('panic', 'console.error("ok line\\npanic: boom"); process.exit(2)', {
+        envFailPatterns: ['^panic: '],
+      })
+    );
+
+    assert.equal(plain.status, 'fail');
+    assert.equal(anchored.status, 'env-fail');
+  });
+});
+
 describe('runVerify', () => {
   it('runs every gate — a failure does not short-circuit the rest (RUN-ALL)', () => {
     const report = runVerify([
