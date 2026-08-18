@@ -27,6 +27,10 @@ graph TD
     agent-inbox --> cli
     agent-inbox --> ai-skills
     shared --> infra-base
+    stack --> infra-base
+    stack --> shared
+    cli --> stack
+    ai-skills --> stack
 ```
 
 ## Scopes
@@ -44,3 +48,4 @@ graph TD
 | [`ai-skills`](./ai-skills/ai-skills.spec.md)                         | library        | ✅   | AI-навыки для агентов: SDD-воркфлоу + alt-opinion                                                                                                                                                               |
 | [`agent-run`](./agent-run/agent-run.spec.md)                         | library        | ✅   | Запуск внешнего AI-движка (opencode первым) с заданием и директориями, readonly                                                                                                                                 |
 | [`agent-inbox`](./agent-inbox/agent-inbox.spec.md)                   | product        | 🚧   | Ассистент входящих GitLab MR: actionable-инбокс, стадии, факт-чек, ответ/ревью (research-спайк)                                                                                                                 |
+| [`stack`](./stack/stack.spec.md)                                     | library        | 🚧   | Плагины стеков: StackPlugin (node + golang), команда `verify`, конфиг `gennady.yaml` ([config](./stack/config/config.spec.md)); спека на ревью                                                                  |

@@ -122,6 +122,9 @@ graph TD
     TSK-71[TSK-71: resolveDiscussion port+adapter (vcs)]
     TSK-71 --> TSK-72
     TSK-72[TSK-72: vcs-reply resolve/reopen (cli)]
+    TSK-95[TSK-95: stack library — plugins node+golang (stack)]
+    TSK-96[TSK-96: gennady verify command (stack)]
+    TSK-96 --> TSK-95
 ```
 
 ## Tracker Index
@@ -137,6 +140,7 @@ graph TD
 | agent-mon-cli | product | [README](agent-mon-cli/README.md) | 4 | 0/4 |
 | infra-npm-publish | infrastructure | [README](infra-npm-publish/README.md) | 3 | 3/3 |
 | agent-run | library | [README](agent-run/README.md) | 3 | 3/3 |
+| stack | library | [README](stack/README.md) | 2 | 0/2 |
 
 ## Decision Log
 
