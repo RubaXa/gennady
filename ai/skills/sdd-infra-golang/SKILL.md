@@ -61,7 +61,7 @@ npx gennady verify --stack=golang             # one-shot stack.use
 
 Contract (all stacks): **RUN-ALL** · **SUPPRESS-ON-SUCCESS** · exit `0` all pass, `1` gate failed, `4` bad invocation/config, `5` no stack detected.
 
-Codegen loop: `golang:generate` runs `go generate` in a working-tree replica (sandbox) BEFORE build and fails with the drifted file list; `gennady fix golang:generate` materializes the generated code in the real tree for you to commit. Works whether generated files are committed or gitignored.
+Codegen loop: `golang:generate` runs `go generate` in a working-tree replica (sandbox) BEFORE build and fails with the drifted file list; `gennady fix golang:generate` materializes the generated code in the real tree for you to commit. Works whether generated files are committed or gitignored. Generator binaries must be reachable outside the tree (`go install`, go.mod `tool` directive) — gitignored binaries are not replicated into the sandbox; a missing generator reports ENV_FAIL with an install hint, not a code finding.
 
 ## 4. Encode repo deviations in `gennady.yaml`, not in prose
 

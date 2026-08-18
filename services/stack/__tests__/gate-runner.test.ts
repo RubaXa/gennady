@@ -96,6 +96,22 @@ describe('runVerify', () => {
     assert.equal(report.results[0]?.status, 'env-fail');
   });
 
+  it('appends the matched predicate hint to env-fail output (D-STACK-012)', () => {
+    const report = runVerify(
+      [
+        runOf([
+          shellGate('generate', 'echo "exec: \\"easyjson\\": executable file not found"; exit 1', {
+            envFail: [outputMatches(/executable file not found/, 'install it with `go install`')],
+          }),
+        ]),
+      ],
+      []
+    );
+
+    assert.equal(report.results[0]?.status, 'env-fail');
+    assert.match(report.results[0]?.output ?? '', /hint: install it with `go install`/);
+  });
+
   it('classifies exit codes above the exitAbove threshold as env-fail', () => {
     const report = runVerify(
       [runOf([shellGate('lint', 'exit 3', { envFail: [exitAbove(1)] })])],

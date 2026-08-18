@@ -139,6 +139,15 @@ const GO_TOOL_ENV_FAIL: readonly EnvFailPredicate[] = [
 /** Predicates for the test gate: a panic there is the code under test failing — a genuine FAIL. */
 const GO_TEST_ENV_FAIL: readonly EnvFailPredicate[] = [outputMatches(MODULE_FETCH_RE)];
 
+/** Predicates for the generate gate: a missing generator binary is the environment (D-STACK-012). */
+const GO_GENERATE_ENV_FAIL: readonly EnvFailPredicate[] = [
+  outputMatches(MODULE_FETCH_RE),
+  outputMatches(
+    /executable file not found/,
+    'the generator binary is not in PATH — `go install` it or declare it as a go.mod `tool` directive; gitignored binaries are not replicated into the sandbox (D-STACK-012)'
+  ),
+];
+
 /**
  * @purpose Build the shared module-resolution flags so vendored repos never reach the network.
  * @param project Detected project.
@@ -224,7 +233,7 @@ export function planGoGates(project: GoProject, scope: GoScope, options: GatePla
             timeoutMs: GATE_TIMEOUTS_MS[id],
             outputMeansFailure: false,
             sandbox: true,
-            envFail: GO_TEST_ENV_FAIL,
+            envFail: GO_GENERATE_ENV_FAIL,
             skipped: null,
           });
         }

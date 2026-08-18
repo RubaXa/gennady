@@ -73,4 +73,6 @@
 
 | R4 | 2026-08-18 | PASS | Non-thread review round: rebase onto current main (agent-run data:-URL fix picked up; suite fully green 1262/0); --only lifts config skipGates (expensive-gate workflow); envFailed aggregate in --json. Codegen round per operator decision: sandboxed `golang:generate` drift gate before build (tree replica: worktree + uncommitted + untracked, baseline commit → content-exact drift incl. agent-edited files; symlinked-tmp cwd mapping fixed via realpath), `gennady fix` command + golang `generate` fixer (StackFixCapability). 12 new tests incl. real-go e2e (pass/stale/missing-file, real tree untouched). |
 
+| R5 | 2026-08-18 | PASS | Field-report round (D-STACK-012): generator binaries living in gitignored dirs are not replicated into the sandbox by design (fresh-clone semantics; PATH is inherited, so `go install`/go.mod `tool` binaries work); «executable file not found» on the generate gate reclassified FAIL → ENV_FAIL. EnvFailPredicate grew an optional `hint` the runner appends to the matched gate's output; `outputMatches(re, hint?)`. 3 new red→green tests incl. real-go e2e (missing generator → env-fail + install hint). |
+
 <!--/SECTION:EXECUTION_LOG-->

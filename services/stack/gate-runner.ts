@@ -35,10 +35,13 @@ export function exitAbove(n: number): EnvFailPredicate {
 /**
  * @purpose Predicate: any match of the pattern in the combined output implicates the environment.
  * @param pattern Regular expression tested against the gate output.
+ * @param [hint] Fix-the-environment instruction appended to the output when the predicate matches.
  * @returns EnvFailPredicate.
  */
-export function outputMatches(pattern: RegExp): EnvFailPredicate {
-  return (_exitCode, output) => pattern.test(output);
+export function outputMatches(pattern: RegExp, hint?: string): EnvFailPredicate {
+  return Object.assign((_exitCode: number | null, output: string) => pattern.test(output), {
+    hint,
+  });
 }
 
 // Spawn failures (ENOENT and friends) are classified env-fail by the runner itself —
@@ -151,13 +154,13 @@ function executeGate(gate: Gate, cwd: string, replicaDir: string | null): GateRe
     return { gate, status: 'pass', exitCode: 0, durationMs, output: '' };
   }
 
-  const isEnvFailure = (gate.envFail ?? []).some((predicate) => predicate(proc.status, output));
+  const matched = (gate.envFail ?? []).find((predicate) => predicate(proc.status, output));
   return {
     gate,
-    status: isEnvFailure ? 'env-fail' : 'fail',
+    status: matched !== undefined ? 'env-fail' : 'fail',
     exitCode: proc.status,
     durationMs,
-    output,
+    output: matched?.hint !== undefined ? `${output}\nhint: ${matched.hint}` : output,
   };
 }
 

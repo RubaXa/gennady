@@ -62,10 +62,12 @@ export type StackScope = {
 
 /**
  * @purpose Failure-classification predicate: true = ENV_FAIL (environment), false = the code.
- *   Composed from gate-runner combinators: exitAbove, outputMatches, spawnFailed.
+ *   The runner appends the matched predicate's optional fix-the-environment `hint` to the output.
  * @consumer gate-runner, plugins
  */
-export type EnvFailPredicate = (exitCode: number | null, output: string) => boolean;
+export type EnvFailPredicate = ((exitCode: number | null, output: string) => boolean) & {
+  readonly hint?: string;
+};
 
 /**
  * @purpose A planned verification gate — pure data, executed without a shell by the runner.

@@ -18,12 +18,15 @@ const { runVerify } = await import('../../../gate-runner.ts');
 const GO_AVAILABLE = execFileTrimSafe('go', ['version'], os.tmpdir()).length > 0;
 
 /** @purpose Create a committed go module whose //go:generate writes gen.out. */
-function makeFixture(committedGenOut: string | null): string {
+function makeFixture(
+  committedGenOut: string | null,
+  directive = 'sh -c "printf generated > gen.out"'
+): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'go-generate-e2e-'));
   fs.writeFileSync(path.join(dir, 'go.mod'), 'module example.com/gen\n\ngo 1.21\n');
   fs.writeFileSync(
     path.join(dir, 'main.go'),
-    'package main\n\n//go:generate sh -c "printf generated > gen.out"\n\nfunc main() {}\n'
+    `package main\n\n//go:generate ${directive}\n\nfunc main() {}\n`
   );
   if (committedGenOut !== null) {
     fs.writeFileSync(path.join(dir, 'gen.out'), committedGenOut);
@@ -90,6 +93,20 @@ describe('golang:generate drift gate — real go toolchain', { skip: !GO_AVAILAB
       assert.equal(result.status, 'fail');
       assert.match(result.output, /gen\.out/);
       assert.equal(fs.existsSync(path.join(dir, 'gen.out')), false, 'real tree stays untouched');
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('reports env-fail with an install hint when the generator binary is missing (D-STACK-012)', () => {
+    // The field-reported scenario: the generator lived in a gitignored bin/ — never
+    // replicated into the sandbox, so go generate dies with "executable file not found".
+    const dir = makeFixture(null, 'gennady-e2e-missing-generator gen.out');
+    try {
+      const result = runGenerateGate(dir);
+      assert.equal(result.status, 'env-fail', result.output);
+      assert.match(result.output, /executable file not found/);
+      assert.match(result.output, /go install/);
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }

@@ -91,6 +91,24 @@ describe('planGoGates', () => {
     assert.deepEqual(generate?.argv.slice(1, 2), ['generate']);
   });
 
+  it('classifies a missing generator binary as env-fail with an install hint (D-STACK-012)', () => {
+    const withDirective = scopeWithFiles({
+      'a.go': 'package a\n\n//go:generate easyjson a.go\n',
+    });
+    const generate = planGoGates(project(), withDirective, defaultOptions).find(
+      (gate) => gate.id === 'generate'
+    );
+
+    const matched = generate?.envFail?.find((predicate) =>
+      predicate(
+        1,
+        'a.go:3: running "easyjson": exec: "easyjson": executable file not found in $PATH'
+      )
+    );
+    assert.ok(matched, 'a missing generator implicates the environment, not the code');
+    assert.match(matched?.hint ?? '', /go install/);
+  });
+
   it('skips the generate gate with a reason when no //go:generate directive is in scope', () => {
     const withoutDirective = scopeWithFiles({ 'a.go': 'package a\n' });
     const generate = planGoGates(project(), withoutDirective, defaultOptions).find(
