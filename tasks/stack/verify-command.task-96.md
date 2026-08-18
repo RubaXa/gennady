@@ -75,4 +75,6 @@
 
 | R3 | 2026-08-18 | PASS | Code-review round: ZERO_GATES exits 1; positional target named `verify` preserved; `--full-output` flag (JSON output truncated by default); plan provenance read from the structured map; stack rosters (help + NO_STACK hint) rendered from the registry via new marker/description plugin fields; prompt verify-commands gofmt scoped via go-list with an explicit output contract; company-specific values removed from all PR docs/specs. |
 
+| R4 | 2026-08-18 | PASS | `gennady fix [id…]` command shipped: plugin fixers + config `fixers`, sequential fail-fast in the real tree, exit 0/1/4/5, addressable selection lifts scope-derived skips; registered in dispatcher/help; verify docs describe the generate↔fix loop. |
+
 <!--/SECTION:EXECUTION_LOG-->

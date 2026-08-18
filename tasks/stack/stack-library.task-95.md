@@ -71,4 +71,6 @@
 
 | R3 | 2026-08-18 | PASS | Code-review round: git-relative changed scope (`--relative`) fixing empty scope under subdir `--root`; origin/HEAD preferred over stale origin/master; test-gate panic reclassified as FAIL; npm mutating scripts (--fix/--autofix/--write) planned as visible skips; foreign `models` rc section no longer fatal; non-array extraGates → config error, not crash; bare-`watch` body pattern restored; head+tail output truncation; ZERO_GATES verdict; skipped extraGates keep declared shape; dead provenance grammar removed; damerau-levenshtein moved to shared and reused; exec wrapper promoted to shared/common/exec. 13 new red→green tests; suite 1260 (same 3 pre-existing failures). |
 
+| R4 | 2026-08-18 | PASS | Non-thread review round: rebase onto current main (agent-run data:-URL fix picked up; suite fully green 1262/0); --only lifts config skipGates (expensive-gate workflow); envFailed aggregate in --json. Codegen round per operator decision: sandboxed `golang:generate` drift gate before build (tree replica: worktree + uncommitted + untracked, baseline commit → content-exact drift incl. agent-edited files; symlinked-tmp cwd mapping fixed via realpath), `gennady fix` command + golang `generate` fixer (StackFixCapability). 12 new tests incl. real-go e2e (pass/stale/missing-file, real tree untouched). |
+
 <!--/SECTION:EXECUTION_LOG-->

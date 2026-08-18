@@ -2,7 +2,11 @@
 // @consumers: verify.cmd, plugins (combinators)
 // @tasks: TSK-95
 
+import fs from 'node:fs';
+import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { execFileTrimSafe } from '../../shared/common/exec.ts';
+import { createTreeReplica } from './tree-replica.ts';
 import type {
   EnvFailPredicate,
   Gate,
@@ -52,10 +56,58 @@ function runGate(gate: Gate): GateResult {
     return { gate, status: 'skipped', exitCode: null, durationMs: 0, output: gate.skipped };
   }
 
+  // #region START_SANDBOX — sandboxed gates run in a working-tree replica; drift = FAIL
+  let cwd = gate.cwd;
+  let replicaCleanup: (() => void) | null = null;
+  let replicaDir: string | null = null;
+  if (gate.sandbox === true) {
+    const toplevel = execFileTrimSafe('git', ['rev-parse', '--show-toplevel'], gate.cwd);
+    if (toplevel.length === 0) {
+      return {
+        gate,
+        status: 'env-fail',
+        exitCode: null,
+        durationMs: 0,
+        output: 'sandboxed gate requires a git repository (no toplevel found)',
+      };
+    }
+    const { replica, error } = createTreeReplica(toplevel);
+    if (replica === undefined) {
+      return {
+        gate,
+        status: 'env-fail',
+        exitCode: null,
+        durationMs: 0,
+        output: error ?? 'replica failed',
+      };
+    }
+    replicaDir = replica.dir;
+    replicaCleanup = replica.cleanup;
+    // realpath both sides: git resolves symlinked tmp dirs (/tmp, /var on macOS),
+    // a raw gate.cwd would mis-map the relative path back into the real tree.
+    cwd = path.join(replica.dir, path.relative(toplevel, fs.realpathSync(gate.cwd)));
+  }
+  // #endregion END_SANDBOX
+
+  try {
+    return executeGate(gate, cwd, replicaDir);
+  } finally {
+    replicaCleanup?.();
+  }
+}
+
+/**
+ * @purpose Spawn the gate command in cwd and classify the outcome; sandboxed gates add drift.
+ * @param gate Gate to execute.
+ * @param cwd Effective working directory (replica-mapped for sandboxed gates).
+ * @param replicaDir Replica root for drift detection, or null for plain gates.
+ * @returns Result with status, exit code and captured output.
+ */
+function executeGate(gate: Gate, cwd: string, replicaDir: string | null): GateResult {
   const startedAt = Date.now();
   const [bin, ...args] = gate.argv;
   const proc = spawnSync(bin!, args, {
-    cwd: gate.cwd,
+    cwd,
     encoding: 'utf-8',
     timeout: gate.timeoutMs,
     maxBuffer: 64 * 1024 * 1024,
@@ -83,6 +135,19 @@ function runGate(gate: Gate): GateResult {
   // #endregion END_STDOUT_CONTRACT
 
   if (proc.status === 0) {
+    // Drift check: the replica was baselined, so any status output is the command's doing.
+    if (replicaDir !== null) {
+      const drift = execFileTrimSafe('git', ['status', '--porcelain'], replicaDir);
+      if (drift.length > 0) {
+        return {
+          gate,
+          status: 'fail',
+          exitCode: 0,
+          durationMs,
+          output: `generated code drifted from its sources — files:\n${drift}\nrun \`gennady fix ${gate.stack}:${gate.id}\` to materialize, then commit`,
+        };
+      }
+    }
     return { gate, status: 'pass', exitCode: 0, durationMs, output: '' };
   }
 
@@ -208,4 +273,22 @@ export function formatVerifyReport(report: VerifyReport): string {
   }
 
   return lines.join('\n');
+}
+
+/**
+ * @purpose Execute fixers in the REAL tree: sequential, fail-fast — they mutate one tree (§4.4).
+ * @param fixers Fixers as Gate data; `sandbox` is ignored, mutation is expected.
+ * @returns Results up to and including the first non-pass; skipped entries are reported.
+ * @sideEffect Process: runs mutating commands in the working tree.
+ */
+export function runFix(fixers: readonly Gate[]): GateResult[] {
+  const results: GateResult[] = [];
+  for (const fixer of fixers) {
+    const result = runGate({ ...fixer, sandbox: false });
+    results.push(result);
+    if (result.status !== 'pass' && result.status !== 'skipped') {
+      break;
+    }
+  }
+  return results;
 }

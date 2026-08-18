@@ -7,7 +7,7 @@ import path from 'node:path';
 import type { StackDetection, StackPlugin } from '../../stack.types.ts';
 import { detectGoProject, type GoProject } from './golang-detect.logic.ts';
 import { resolveGoScope, type GoScope } from './golang-scope.logic.ts';
-import { planGoGates } from './golang-plan.logic.ts';
+import { planGoGates, scopeHasGoGenerate, buildGoGenerateArgv } from './golang-plan.logic.ts';
 
 /**
  * @purpose Build the `key: value` summary lines shown by `verify --plan` for a Go project.
@@ -48,7 +48,8 @@ function summarize(project: GoProject): string[] {
 export const golangPlugin: StackPlugin = {
   id: 'golang',
   marker: 'go.mod',
-  description: 'go build, go vet, gofmt -l, golangci-lint, go test; changed-package scoping',
+  description:
+    'go generate (sandboxed drift), go build, go vet, gofmt -l, golangci-lint, go test; changed-package scoping',
 
   detect(root: string): StackDetection | null {
     if (!fs.existsSync(path.join(root, 'go.mod'))) {
@@ -73,6 +74,34 @@ export const golangPlugin: StackPlugin = {
 
     planGates(detection, scope, options) {
       return planGoGates(detection.details as GoProject, scope.details as GoScope, options);
+    },
+  },
+
+  fix: {
+    planFixers(detection, scope) {
+      const project = detection.details as GoProject;
+      const goScope = scope.details as GoScope;
+      const argv = buildGoGenerateArgv(project, goScope);
+      // The fixer counterpart of the sandboxed generate gate: same command, REAL tree.
+      return [
+        {
+          id: 'generate',
+          stack: 'golang',
+          label: 'go generate (materialize into the working tree)',
+          argv: argv ?? [],
+          cwd: project.root,
+          timeoutMs: 5 * 60_000,
+          outputMeansFailure: false,
+          skipped:
+            argv === null
+              ? 'go toolchain not found in PATH'
+              : goScope.packages.length === 0
+                ? `no packages in scope (${goScope.note})`
+                : scopeHasGoGenerate(project, goScope)
+                  ? null
+                  : 'no //go:generate directives in scope',
+        },
+      ];
     },
   },
 };

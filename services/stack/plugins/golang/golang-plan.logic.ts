@@ -2,20 +2,31 @@
 // @consumers: golang-plugin, stack-config (gate id list)
 // @tasks: TSK-95
 
+import fs from 'node:fs';
+import path from 'node:path';
 import type { EnvFailPredicate, Gate, GatePlanOptions } from '../../stack.types.ts';
 import { exitAbove, outputMatches } from '../../gate-runner.ts';
 import { parseDuration } from '../../stack-config.ts';
+import { execFileTrimSafe } from '../../../../shared/common/exec.ts';
 import type { GoProject } from './golang-detect.logic.ts';
 import type { GoScope } from './golang-scope.logic.ts';
 
 /** Identifier of a built-in golang gate. */
-export type GoGateId = 'build' | 'vet' | 'fmt' | 'lint' | 'test';
+export type GoGateId = 'generate' | 'build' | 'vet' | 'fmt' | 'lint' | 'test';
 
-/** Built-in golang gates in run order — cheapest and most diagnostic first. */
-export const GO_GATE_ORDER: readonly GoGateId[] = ['build', 'vet', 'fmt', 'lint', 'test'];
+/** Built-in golang gates in run order — codegen is a build prerequisite, so it goes first. */
+export const GO_GATE_ORDER: readonly GoGateId[] = [
+  'generate',
+  'build',
+  'vet',
+  'fmt',
+  'lint',
+  'test',
+];
 
 /** Human labels for each gate id. */
 const GATE_LABELS: Readonly<Record<GoGateId, string>> = {
+  generate: 'go generate (sandboxed drift check)',
   build: 'go build',
   vet: 'go vet',
   fmt: 'gofmt -l (check only)',
@@ -25,12 +36,92 @@ const GATE_LABELS: Readonly<Record<GoGateId, string>> = {
 
 /** Default per-gate timeouts in ms (spec D-STACK-007). */
 const GATE_TIMEOUTS_MS: Readonly<Record<GoGateId, number>> = {
+  generate: 5 * 60_000,
   build: 5 * 60_000,
   vet: 5 * 60_000,
   fmt: 60_000,
   lint: 5 * 60_000,
   test: 10 * 60_000,
 };
+
+/** Directive that marks a file as carrying code generation instructions. */
+const GO_GENERATE_DIRECTIVE_RE = /^\/\/go:generate /m;
+
+/**
+ * @purpose Detect whether the scope carries any //go:generate directive.
+ * @invariant Scoped modes read only the scope's files; `all` mode asks `git grep` (index-fast)
+ *   and falls back to an early-exit walk for non-git checkouts.
+ * @param project Detected project (root for the all-mode search).
+ * @param scope Resolved scope; `files` is authoritative when non-empty.
+ * @returns True when at least one directive exists in scope.
+ */
+export function scopeHasGoGenerate(project: GoProject, scope: GoScope): boolean {
+  if (scope.files.length > 0) {
+    return scope.files.some((file) => {
+      try {
+        return GO_GENERATE_DIRECTIVE_RE.test(fs.readFileSync(file, 'utf-8'));
+      } catch {
+        return false;
+      }
+    });
+  }
+
+  const hits = execFileTrimSafe(
+    'git',
+    ['grep', '-l', '-E', '^//go:generate ', '--', '*.go'],
+    project.root
+  );
+  if (hits.length > 0) {
+    return true;
+  }
+
+  // Non-git checkout (git grep failed silently) or genuinely no hits: cheap walk, early exit.
+  const walk = (dir: string): boolean => {
+    let entries: fs.Dirent[];
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return false;
+    }
+    for (const entry of entries) {
+      const child = path.join(dir, entry.name);
+      if (entry.isFile() && entry.name.endsWith('.go')) {
+        try {
+          if (GO_GENERATE_DIRECTIVE_RE.test(fs.readFileSync(child, 'utf-8'))) {
+            return true;
+          }
+        } catch {
+          continue;
+        }
+      } else if (
+        entry.isDirectory() &&
+        !entry.name.startsWith('.') &&
+        !['vendor', 'testdata', 'node_modules'].includes(entry.name)
+      ) {
+        if (walk(child)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  };
+  const isGitRepo = execFileTrimSafe('git', ['rev-parse', '--git-dir'], project.root).length > 0;
+  return isGitRepo ? false : walk(project.root);
+}
+
+/**
+ * @purpose Build the `go generate` argv for a scope — shared by the drift gate and the fixer.
+ * @param project Detected project.
+ * @param scope Resolved scope.
+ * @returns argv, or null when the go toolchain is unavailable.
+ */
+export function buildGoGenerateArgv(project: GoProject, scope: GoScope): readonly string[] | null {
+  const go = project.tools.go.bin;
+  if (go === null) {
+    return null;
+  }
+  return [go, 'generate', ...moduleFlags(project), ...scope.packages];
+}
 
 /** A Go panic trace is never a finding — the analyser aborted. */
 const PANIC_RE = /^panic: /m;
@@ -119,6 +210,26 @@ export function planGoGates(project: GoProject, scope: GoScope, options: GatePla
     }
 
     switch (id) {
+      case 'generate':
+        // Sandboxed drift check before build (§4.4, D-STACK-011); fixer: gennady fix golang:generate.
+        if (!scopeHasGoGenerate(project, scope)) {
+          gates.push(skippedGate(id, project.root, 'no //go:generate directives in scope'));
+        } else {
+          gates.push({
+            id,
+            stack: 'golang',
+            label: GATE_LABELS[id],
+            argv: buildGoGenerateArgv(project, scope)!,
+            cwd: project.root,
+            timeoutMs: GATE_TIMEOUTS_MS[id],
+            outputMeansFailure: false,
+            sandbox: true,
+            envFail: GO_TEST_ENV_FAIL,
+            skipped: null,
+          });
+        }
+        break;
+
       case 'build':
         gates.push({
           id,
@@ -191,7 +302,6 @@ export function planGoGates(project: GoProject, scope: GoScope, options: GatePla
             cwd: project.root,
             timeoutMs: GATE_TIMEOUTS_MS[id],
             outputMeansFailure: false,
-            // golangci-lint reserves exit 1 for findings; anything above is the tool breaking.
             envFail: [exitAbove(1), ...GO_TOOL_ENV_FAIL],
             skipped: null,
           });

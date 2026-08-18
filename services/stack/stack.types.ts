@@ -91,6 +91,8 @@ export type Gate = {
   readonly timeoutMs: number;
   /** @purpose When true, any stdout on exit 0 means failure (gofmt -l contract). */
   readonly outputMeansFailure: boolean;
+  /** @purpose Run in an ephemeral working-tree replica; resulting drift = FAIL (spec §2, D-STACK-011). */
+  readonly sandbox?: boolean;
   /** @purpose ENV_FAIL predicates; absent/empty means every failure implicates the code. */
   readonly envFail?: readonly EnvFailPredicate[];
   /** @purpose Populated when the gate cannot run; it is then reported, not executed. */
@@ -225,6 +227,20 @@ export type StackVerifyCapability = {
 };
 
 /**
+ * @purpose The fix facet: mutating operations executed in the REAL tree by `gennady fix` (§4.4).
+ * @consumer fix.cmd, plugins
+ */
+export type StackFixCapability = {
+  /**
+   * @purpose Plan the plugin's built-in fixers for a scope (v1 golang: `generate`).
+   * @param detection Detection previously produced by this plugin.
+   * @param scope Scope previously resolved by this plugin.
+   * @returns Fixers as Gate data; mutation is expected, `sandbox` is never set.
+   */
+  planFixers(detection: StackDetection, scope: StackScope): Gate[];
+};
+
+/**
  * @purpose Common interface every stack implements; `verify` is the only mandatory facet,
  *   optional facets arrive as optional fields (spec §4.3).
  * @invariant No operation mutates the working tree; detect may only run short probe commands.
@@ -245,4 +261,6 @@ export type StackPlugin = {
   detect(root: string): StackDetection | null;
   /** @purpose The mandatory verify facet. */
   readonly verify: StackVerifyCapability;
+  /** @purpose Optional fix facet: built-in mutating fixers for `gennady fix`. */
+  readonly fix?: StackFixCapability;
 };

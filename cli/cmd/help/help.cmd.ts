@@ -48,6 +48,7 @@ console.info(
 console.info(
   '  verify            Stack-agnostic verification gates (node + golang, gennady.yaml overrides)'
 );
+console.info('  fix               Run mutating fixers (codegen, formatters) in the working tree');
 console.info('');
 console.info('Examples:');
 console.info('  npx gennady');

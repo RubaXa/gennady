@@ -2,7 +2,10 @@
 // @consumers: CI
 // @tasks: TSK-95
 
-import { describe, it } from 'node:test';
+import { describe, it, after } from 'node:test';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import assert from 'node:assert/strict';
 import type { GatePlanOptions } from '../../../stack.types.ts';
 import type { GoProject, GoTool, GoToolId } from '../golang-detect.logic.ts';
@@ -50,12 +53,51 @@ function scope(overrides: Partial<GoScope> = {}): GoScope {
 
 const defaultOptions: GatePlanOptions = { pluginConfig: null };
 
+const fixtureDirs: string[] = [];
+after(() => fixtureDirs.forEach((dir) => fs.rmSync(dir, { recursive: true, force: true })));
+
+/** @purpose Materialize scope files on disk so directive detection can read them. */
+function scopeWithFiles(contents: Record<string, string>): GoScope {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'golang-plan-gen-'));
+  fixtureDirs.push(dir);
+  const files = Object.entries(contents).map(([name, content]) => {
+    const file = path.join(dir, name);
+    fs.writeFileSync(file, content);
+    return file;
+  });
+  return scope({ files, fmtTargets: files.map((file) => path.basename(file)) });
+}
+
 describe('planGoGates', () => {
-  it('plans exactly the built-in gates: build, vet, fmt, lint, test — no tidy', () => {
+  it('plans exactly the built-in gates in order: generate, build, vet, fmt, lint, test', () => {
     const ids = planGoGates(project(), scope(), defaultOptions).map((gate) => gate.id);
 
     assert.deepEqual(ids, [...GO_GATE_ORDER]);
+    assert.equal(ids[0], 'generate');
+    assert.ok(ids.indexOf('generate') < ids.indexOf('build'), 'codegen is a build prerequisite');
     assert.ok(!ids.includes('tidy'), 'tidy is an extraGates recipe, not a built-in');
+  });
+
+  it('plans a sandboxed generate gate when the scope carries //go:generate directives', () => {
+    const withDirective = scopeWithFiles({
+      'a.go': 'package a\n\n//go:generate easyjson a.go\n',
+    });
+    const generate = planGoGates(project(), withDirective, defaultOptions).find(
+      (gate) => gate.id === 'generate'
+    );
+
+    assert.equal(generate?.skipped, null);
+    assert.equal(generate?.sandbox, true, 'the generator mutates — it must run in the replica');
+    assert.deepEqual(generate?.argv.slice(1, 2), ['generate']);
+  });
+
+  it('skips the generate gate with a reason when no //go:generate directive is in scope', () => {
+    const withoutDirective = scopeWithFiles({ 'a.go': 'package a\n' });
+    const generate = planGoGates(project(), withoutDirective, defaultOptions).find(
+      (gate) => gate.id === 'generate'
+    );
+
+    assert.match(generate?.skipped ?? '', /go:generate/);
   });
 
   it('never plans the mutating `go fmt`; uses `gofmt -l` with the stdout contract', () => {

@@ -4,6 +4,10 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 import type { Gate, StackDiagnostic, StackRun } from '../stack.types.ts';
 
 const { runVerify, formatVerifyReport, exitAbove, outputMatches } =
@@ -224,5 +228,97 @@ describe('formatVerifyReport', () => {
     const text = formatVerifyReport(report);
 
     assert.match(text, /lines truncated/);
+  });
+});
+
+/** @purpose Run git quietly in a fixture dir. */
+function fixtureGit(dir: string, ...args: string[]): void {
+  execFileSync('git', ['-C', dir, '-c', 'user.email=t@t', '-c', 'user.name=t', ...args], {
+    stdio: 'ignore',
+  });
+}
+
+/** @purpose Create a committed git fixture with one tracked file, run fn, clean up. */
+function withGitFixture<T>(fn: (dir: string) => T): T {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sandbox-gate-'));
+  try {
+    fs.writeFileSync(path.join(dir, 'gen.txt'), 'original\n');
+    fixtureGit(dir, 'init', '-q', '-b', 'main');
+    fixtureGit(dir, 'add', '-A');
+    fixtureGit(dir, 'commit', '-qm', 'init');
+    return fn(dir);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+describe('runVerify — sandboxed gates (spec §2, D-STACK-011)', () => {
+  it('classifies generator drift as FAIL with the file list, leaving the real tree untouched', () => {
+    withGitFixture((dir) => {
+      const gate: Gate = {
+        ...shellGate('generate', 'echo regenerated > gen.txt'),
+        cwd: dir,
+        sandbox: true,
+      };
+      const report = runVerify([runOf([gate])], []);
+
+      assert.equal(report.results[0]?.status, 'fail');
+      assert.match(report.results[0]?.output ?? '', /gen\.txt/);
+      // The real tree is byte-identical: the mutation happened in the replica only.
+      assert.equal(fs.readFileSync(path.join(dir, 'gen.txt'), 'utf-8'), 'original\n');
+    });
+  });
+
+  it('passes a drift-free sandboxed gate', () => {
+    withGitFixture((dir) => {
+      const gate: Gate = { ...shellGate('generate', 'true'), cwd: dir, sandbox: true };
+      const report = runVerify([runOf([gate])], []);
+
+      assert.equal(report.results[0]?.status, 'pass');
+    });
+  });
+
+  it('replicates uncommitted and untracked changes into the sandbox', () => {
+    withGitFixture((dir) => {
+      fs.writeFileSync(path.join(dir, 'gen.txt'), 'agent-edit\n'); // uncommitted tracked edit
+      fs.writeFileSync(path.join(dir, 'new.txt'), 'untracked\n'); // untracked file
+      const gate: Gate = {
+        ...shellGate('generate', 'grep -q agent-edit gen.txt && grep -q untracked new.txt'),
+        cwd: dir,
+        sandbox: true,
+      };
+      const report = runVerify([runOf([gate])], []);
+
+      assert.equal(report.results[0]?.status, 'pass', report.results[0]?.output);
+    });
+  });
+
+  it('catches drift over a file the agent had already edited (content-level baseline)', () => {
+    withGitFixture((dir) => {
+      fs.writeFileSync(path.join(dir, 'gen.txt'), 'agent-edit\n');
+      const gate: Gate = {
+        ...shellGate('generate', 'echo generator-output > gen.txt'),
+        cwd: dir,
+        sandbox: true,
+      };
+      const report = runVerify([runOf([gate])], []);
+
+      assert.equal(report.results[0]?.status, 'fail');
+      // And the agent's uncommitted edit survives in the real tree.
+      assert.equal(fs.readFileSync(path.join(dir, 'gen.txt'), 'utf-8'), 'agent-edit\n');
+    });
+  });
+
+  it('reports env-fail when the replica cannot be created (no commits yet)', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sandbox-nogit-'));
+    try {
+      fixtureGit(dir, 'init', '-q', '-b', 'main'); // repo without a single commit
+      const gate: Gate = { ...shellGate('generate', 'true'), cwd: dir, sandbox: true };
+      const report = runVerify([runOf([gate])], []);
+
+      assert.equal(report.results[0]?.status, 'env-fail');
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
