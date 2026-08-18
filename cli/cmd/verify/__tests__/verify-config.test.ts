@@ -1,4 +1,4 @@
-// @file: Unit tests for verify config loading — strict validation, defaults, error paths.
+// @file: Unit tests for verify config loading — strict validation, tokenization, defaults.
 // @consumers: CI
 // @tasks: SPIKE-yaml-verify
 
@@ -8,7 +8,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-const { loadVerifyConfig, parseDuration, DEFAULT_GATE_TIMEOUT_MS } =
+const { loadVerifyConfig, parseDuration, tokenizeCommand, DEFAULT_GATE_TIMEOUT_MS } =
   await import('../verify-config.logic.ts');
 
 let root: string;
@@ -37,6 +37,26 @@ describe('parseDuration', () => {
   });
 });
 
+describe('tokenizeCommand', () => {
+  it('splits on whitespace and honours quotes', () => {
+    assert.deepEqual(tokenizeCommand('npm run lint'), ['npm', 'run', 'lint']);
+    assert.deepEqual(tokenizeCommand('swiftlint --config "My App/.swiftlint.yml"'), [
+      'swiftlint',
+      '--config',
+      'My App/.swiftlint.yml',
+    ]);
+    assert.deepEqual(tokenizeCommand("sh -c 'gofmt -l . | head'"), [
+      'sh',
+      '-c',
+      'gofmt -l . | head',
+    ]);
+  });
+
+  it('returns null on an unbalanced quote', () => {
+    assert.equal(tokenizeCommand('echo "unclosed'), null);
+  });
+});
+
 describe('loadVerifyConfig', () => {
   it('returns gates: null without errors when no gennady.yaml exists', () => {
     const load = loadVerifyConfig(root);
@@ -54,9 +74,16 @@ describe('loadVerifyConfig', () => {
     assert.equal(load.errors.length, 0);
   });
 
-  it('loads gates in declaration order with defaults applied', () => {
+  it('loads named gates in declaration order; a bare string is cmd shorthand', () => {
     writeConfig(
-      'verify:\n  gates:\n    - { id: lint, argv: [npm, run, lint], timeout: 5m }\n    - { id: test, argv: [npm, test] }\n'
+      [
+        'verify:',
+        '  gates:',
+        '    lint: npm run lint',
+        '    test:',
+        '      cmd: npm test',
+        '      timeout: 5m',
+      ].join('\n')
     );
 
     const load = loadVerifyConfig(root);
@@ -65,15 +92,27 @@ describe('loadVerifyConfig', () => {
       load.gates?.map((g) => g.id),
       ['lint', 'test']
     );
-    assert.equal(load.gates?.[0]?.timeoutMs, 300_000);
-    assert.equal(load.gates?.[1]?.timeoutMs, DEFAULT_GATE_TIMEOUT_MS);
-    assert.equal(load.gates?.[1]?.outputMeansFailure, false);
+    assert.deepEqual(load.gates?.[0]?.argv, ['npm', 'run', 'lint']);
+    assert.equal(load.gates?.[0]?.timeoutMs, DEFAULT_GATE_TIMEOUT_MS);
+    assert.equal(load.gates?.[1]?.timeoutMs, 300_000);
     assert.equal(load.gates?.[0]?.cwd, root);
+  });
+
+  it('tokenizes quoted arguments in cmd without a shell', () => {
+    writeConfig(
+      'verify:\n  gates:\n    lint:\n      cmd: swiftlint --config "My App/.swiftlint.yml"\n'
+    );
+
+    assert.deepEqual(loadVerifyConfig(root).gates?.[0]?.argv, [
+      'swiftlint',
+      '--config',
+      'My App/.swiftlint.yml',
+    ]);
   });
 
   it('resolves cwd against the root and keeps env', () => {
     writeConfig(
-      'verify:\n  gates:\n    - { id: app, argv: [make, check], cwd: app, env: { CI: "1" } }\n'
+      'verify:\n  gates:\n    app:\n      cmd: make check\n      cwd: app\n      env: { CI: "1" }\n'
     );
 
     const gate = loadVerifyConfig(root).gates?.[0];
@@ -82,15 +121,19 @@ describe('loadVerifyConfig', () => {
     assert.deepEqual(gate?.env, { CI: '1' });
   });
 
-  it('rejects unknown keys, bad durations, empty argv and duplicate ids — all at once', () => {
+  it('rejects unknown keys, bad durations, missing cmd and bad names — all at once', () => {
     writeConfig(
       [
         'verify:',
         '  gates:',
-        '    - { id: a, argv: [x], timeot: 5m }',
-        '    - { id: b, argv: [] }',
-        '    - { id: a, argv: [y] }',
-        '    - { id: c, argv: [z], timeout: soon }',
+        '    a:',
+        '      cmd: x',
+        '      timeot: 5m',
+        '    b: {}',
+        '    2fast: y',
+        '    c:',
+        '      cmd: z',
+        '      timeout: soon',
       ].join('\n')
     );
 
@@ -98,10 +141,19 @@ describe('loadVerifyConfig', () => {
 
     assert.equal(load.gates, null);
     const paths = load.errors.map((e) => e.path).join(' ');
-    assert.match(paths, /gates\[0\]\.timeot/);
-    assert.match(paths, /gates\[1\]\.argv/);
-    assert.match(paths, /gates\[2\]\.id/);
-    assert.match(paths, /gates\[3\]\.timeout/);
+    assert.match(paths, /gates\.a\.timeot/);
+    assert.match(paths, /gates\.b\.cmd/);
+    assert.match(paths, /gates\.2fast/);
+    assert.match(paths, /gates\.c\.timeout/);
+  });
+
+  it('rejects an unbalanced quote in cmd', () => {
+    writeConfig('verify:\n  gates:\n    bad: echo "unclosed\n');
+
+    const load = loadVerifyConfig(root);
+
+    assert.equal(load.gates, null);
+    assert.match(load.errors[0]?.message ?? '', /unbalanced quote/);
   });
 
   it('accepts envFailPatterns and rejects invalid regexes with exact paths', () => {
@@ -109,9 +161,15 @@ describe('loadVerifyConfig', () => {
       [
         'verify:',
         '  gates:',
-        '    - { id: ok, argv: [x], envFailPatterns: ["Token for Tuist", "^panic: "] }',
-        '    - { id: bad, argv: [y], envFailPatterns: ["[unclosed"] }',
-        '    - { id: wrong, argv: [z], envFailPatterns: [] }',
+        '    ok:',
+        '      cmd: x',
+        '      envFailPatterns: ["Token for Tuist", "^panic: "]',
+        '    bad:',
+        '      cmd: y',
+        '      envFailPatterns: ["[unclosed"]',
+        '    wrong:',
+        '      cmd: z',
+        '      envFailPatterns: []',
       ].join('\n')
     );
 
@@ -119,25 +177,34 @@ describe('loadVerifyConfig', () => {
 
     assert.equal(load.gates, null);
     const paths = load.errors.map((e) => e.path).join(' ');
-    assert.match(paths, /gates\[1\]\.envFailPatterns\[0\]/);
-    assert.match(paths, /gates\[2\]\.envFailPatterns/);
+    assert.match(paths, /gates\.bad\.envFailPatterns\[0\]/);
+    assert.match(paths, /gates\.wrong\.envFailPatterns/);
   });
 
   it('keeps envFailPatterns on the loaded gate', () => {
     writeConfig(
-      'verify:\n  gates:\n    - { id: build, argv: [tuist, build], envFailPatterns: ["tuist auth login"] }\n'
+      'verify:\n  gates:\n    build:\n      cmd: tuist build\n      envFailPatterns: ["tuist auth login"]\n'
     );
 
     assert.deepEqual(loadVerifyConfig(root).gates?.[0]?.envFailPatterns, ['tuist auth login']);
   });
 
-  it('treats a non-list gates value as a fatal error, not a crash', () => {
-    writeConfig('verify:\n  gates:\n    id: lint\n');
+  it('treats a list-shaped gates value as a fatal error, not a crash', () => {
+    writeConfig('verify:\n  gates:\n    - { id: lint, argv: [x] }\n');
 
     const load = loadVerifyConfig(root);
 
     assert.equal(load.gates, null);
     assert.equal(load.errors[0]?.path, 'verify.gates');
+  });
+
+  it('reports duplicate gate names as unparseable yaml (strict map keys)', () => {
+    writeConfig('verify:\n  gates:\n    lint: a\n    lint: b\n');
+
+    const load = loadVerifyConfig(root);
+
+    assert.equal(load.gates, null);
+    assert.match(load.errors[0]?.message ?? '', /cannot parse/);
   });
 
   it('reports unparseable yaml as a config error', () => {

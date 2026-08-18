@@ -15,15 +15,15 @@ export function printHelp(): void {
   console.info('them without a shell, applies per-gate timeouts, accumulates failures (RUN-ALL)');
   console.info('and reports with head+tail-truncated output.');
   console.info('');
-  console.info('Config — gennady.yaml:');
+  console.info('Config — gennady.yaml (a bare string is shorthand for { cmd: … }):');
   console.info('  verify:');
   console.info('    gates:');
-  console.info('      - { id: lint,  argv: [npm, run, lint],  timeout: 5m }');
-  console.info('      - { id: test,  argv: [npm, test],       timeout: 10m }');
-  console.info('      - { id: fmt,   argv: [gofmt, -l, .],    outputMeansFailure: true }');
-  console.info(
-    '  Gate keys: id, argv (no shell), cwd, env, timeout (90s|5m|1h), outputMeansFailure,'
-  );
+  console.info('      lint: npm run lint');
+  console.info('      test: { cmd: npm test, timeout: 10m }');
+  console.info('      fmt:  { cmd: gofmt -l ., outputMeansFailure: true }');
+  console.info('  cmd is tokenized quote-aware and executed WITHOUT a shell — pipes/globs are');
+  console.info('  plain text; when shell features are needed, say so: cmd: sh -c "a | b".');
+  console.info('  Gate keys: cmd, cwd, env, timeout (90s|5m|1h), outputMeansFailure,');
   console.info('  envFailPatterns (regexes; a matching non-zero exit reports ENV_FAIL — the');
   console.info('  environment broke, not the code — so agents do not "fix" healthy sources):');
   console.info('      - id: build');

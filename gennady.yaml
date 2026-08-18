@@ -1,8 +1,6 @@
 verify:
   gates:
-    - { id: type-check, argv: [npx, tsc, --noEmit], timeout: 5m }
-    - {
-        id: contracts,
-        argv: [npx, tsx, cli/gennady.ts, lint, cli/, shared/, services/],
-        timeout: 5m,
-      }
+    type-check: npx tsc --noEmit
+    contracts:
+      cmd: npx tsx cli/gennady.ts lint cli/ shared/ services/
+      timeout: 5m
