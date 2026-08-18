@@ -27,7 +27,7 @@
 
 ### P1 — impl
 
-- **Objective:** Команда `verify`: parseArgs (`--plan`, `--json`, `--only`, `--skip`, `--stack`, `--root`, `--all`/`--changed`/цели (без глобального `--timeout` — D-STACK-007)), exit-коды 0/1/4/5, `NO_STACK_DETECTED` с actionable-подсказкой. Регистрация в `gennady.ts` + help.
+- **Objective:** Команда `verify`: parseArgs (`--plan`, `--json`, `--only`, `--skip`, `--stack`, `--root`, `--all`/`--changed`/цели (без `--timeout` и `--tidy`; квалифицированные `stack:gate` в `--only`/`--skip` — FR-STACK-11)), exit-коды 0/1/4/5, `NO_STACK_DETECTED` с actionable-подсказкой. Регистрация в `gennady.ts` + help.
 - **Target Files:**
   - `cli/cmd/verify/verify.cmd.ts` (NEW)
   - `cli/cmd/verify/index.ts` (NEW)
@@ -68,8 +68,8 @@
 
 ## 7. Execution Log
 
-| Round | Date       | Status | Notes                                                                                                                                                                                                    |
-| ----- | ---------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| R1    | 2026-08-17 | PARKED | Prototype (command, verify.sh delegation with capability probe, docs, skills) parked on `impl/stack-plugin-system` pending spec review. Global `--timeout` flag to be removed on rebase per D-STACK-007. |
+| Round | Date       | Status | Notes                                                                                                                                                                                                                                                                                                                                                      |
+| ----- | ---------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R1    | 2026-08-17 | PARKED | Prototype (command, verify.sh delegation with capability probe, docs, skills) parked on `impl/stack-plugin-system` pending spec review. On rebase per round-2 spec: remove global `--timeout` and `--tidy` flags; qualified `stack:gate` ids in `--only`/`--skip`; invalid config → exit 4 before any gate runs; `--plan` shows per-key config provenance. |
 
 <!--/SECTION:EXECUTION_LOG-->
