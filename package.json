@@ -71,6 +71,7 @@
     "tsx": "^4.19.1",
     "typescript": "^5.7.2",
     "vite": "^6.0.0",
+    "yaml": "2.9.0",
     "zod": "^4.3.6"
   },
   "dependencies": {

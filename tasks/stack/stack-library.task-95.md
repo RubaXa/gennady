@@ -5,7 +5,7 @@
 ## 1. Meta
 
 - **Task-ID:** TSK-95
-- **Status:** [ ] TODO (spec under review — PR #5)
+- **Status:** [x] DONE
 - **Purpose:** Библиотечный слой плагинной системы стеков: общий интерфейс `StackPlugin`, реестр, конфиг `.gennadyrc#stack`, стек-агностичный раннер гейтов, встроенные плагины `node` и `golang`.
 - **Scope:** `stack`
 - **Module:** `services/stack`
@@ -21,8 +21,8 @@
 
 | ID  | Kind | Deps | Status   |
 | --- | ---- | ---- | -------- |
-| P1  | impl | —    | [ ] TODO |
-| P2  | test | P1   | [ ] TODO |
+| P1  | impl | —    | [x] DONE |
+| P2  | test | P1   | [x] DONE |
 
 ### P1 — impl
 
@@ -64,8 +64,9 @@
 
 ## 7. Execution Log
 
-| Round | Date       | Status | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| ----- | ---------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| R1    | 2026-08-17 | PARKED | Prototype implemented against the pre-review spec and verified live on mailapi (vendored, bare golangci.yml, go-version-skew diagnostic), cloudapi (nested modules, gofmt drift) and gennady itself (node stack); 73 unit tests green. Parked on branch `impl/stack-plugin-system` pending spec review. On approval: rebase + round-2 deltas — renames (`skip`→`skipGates`, `gates`→`overrideGates`), `env`, mandatory per-gate `timeout` (rendered into `go test -timeout`), envFail as predicate functions, root-only detection, deep-merge config with per-key provenance, strict fatal validation, `gennady.yaml` loader, drop plugin-specific keys and the tidy built-in gate. |
+| Round | Date       | Status | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| ----- | ---------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R1    | 2026-08-17 | PARKED | Prototype against the pre-review spec; verified live on mailapi/cloudapi/gennady; parked on `impl/stack-plugin-system` for spec review.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| R2    | 2026-08-18 | PASS   | Rebased onto the approved spec: `skipGates`/`overrideGates` renames; `env`; mandatory per-gate `timeout` rendered into `go test -timeout`; envFail as predicate combinators (exitAbove/outputMatches/spawnFailed); root-marker detection (broken package.json stays detected with NODE_INVALID_MANIFEST); deep-merge of `.gennadyrc` → `gennady.yaml` → `~/.gennadyrc` with per-key provenance; strict fatal validation with did-you-mean; `fixers` key reserved; tidy built-in removed (extraGates recipe); plugin-specific keys removed; `yaml@2.9.0` exact-pinned dev dep. Verification: `npm run type-check` pass; `gennady lint services/stack/ cli/cmd/verify/ shared/backend/rc/` clean; 88 unit tests pass; full suite 1248 with the same 3 pre-existing failures; live runs on gennady (dogfood gennady.yaml), mailapi (4/4 scoped), cloudapi (fmt drift caught). |
 
 <!--/SECTION:EXECUTION_LOG-->

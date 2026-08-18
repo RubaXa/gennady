@@ -1,0 +1,11 @@
+# Stack config (specs/stack/config/config.spec.md).
+stack:
+  node:
+    # `lint` is an umbrella script that runs `prettier --write` — a gate must never
+    # mutate the tree; its parts are covered by the typecheck/gennady/format gates.
+    skipGates: [lint]
+    overrideGates:
+      # lint:contracts runs with --autofix (mutating); the gate runs the same
+      # linter in check-only mode.
+      gennady:
+        argv: [npx, tsx, cli/gennady.ts, lint, cli/, shared/, services/]

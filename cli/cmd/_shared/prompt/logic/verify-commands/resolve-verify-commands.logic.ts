@@ -35,7 +35,9 @@ const DETECTOR_ROWS: readonly DetectorRow[] = [
   {
     kind: 'marker',
     relativePath: 'go.mod',
-    commands: ['go test ./...', 'go vet ./...', 'go fmt ./...'],
+    // `gofmt -l` reports misformatted files; `go fmt` would REWRITE them, which a
+    // verification command must never do. Prefer `gennady verify` for scoped runs.
+    commands: ['go build ./...', 'go vet ./...', 'gofmt -l .', 'go test ./...'],
   },
   {
     kind: 'npm-package-json',

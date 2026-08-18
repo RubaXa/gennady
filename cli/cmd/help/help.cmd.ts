@@ -45,6 +45,9 @@ console.info('  run               Run a task via an AI agent engine (opencode)')
 console.info(
   '  testcov           Visual test coverage tree (vitest/jest/node:test auto-detection)'
 );
+console.info(
+  '  verify            Stack-agnostic verification gates (node + golang, gennady.yaml overrides)'
+);
 console.info('');
 console.info('Examples:');
 console.info('  npx gennady');

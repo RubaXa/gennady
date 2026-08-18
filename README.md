@@ -233,6 +233,52 @@ npx gennady lint ./src --autofix --verbose
 
 ---
 
+### ✅ `verify`
+
+Стек-агностичные верификационные гейты: **одна команда для любого стека**. Плагины: `node` (гейты из npm-скриптов `package.json`) и `golang` (`go build`, `go vet`, `gofmt -l`, `golangci-lint`, `go test`). Стек определяется автоматически; в одном репозитории могут быть активны оба.
+
+```bash
+# План без запуска — начните с этого в незнакомом репозитории
+npx gennady verify --plan
+
+# Гейты по изменениям относительно базовой ветки (по умолчанию)
+npx gennady verify
+
+# Явная цель / весь репозиторий / подмножество гейтов
+npx gennady verify internal/userapi
+npx gennady verify --all
+npx gennady verify --only=build,vet
+npx gennady verify --skip=lint
+```
+
+**Опции:**
+
+- `--plan`, `--dry-run`: показать детекцию, диагностику и план, ничего не запуская
+- `--all` / `--changed`: весь репозиторий / изменённые пакеты (по умолчанию)
+- `--only=<a,b>` / `--skip=<a,b>`: подмножество гейтов — `stack:gate` или короткое `gate` (все активные стеки)
+- `--stack=<id>`: одноразовый `stack.use` (`node` | `golang`)
+- `--root=<path>`, `--json`
+
+**Конфиг репозитория** — секция `stack` в `gennady.yaml` (коммитится; личные `.gennadyrc` deep-merge'атся поверх, per-key провенанс виден в `--plan`): переопределения и расширения встроенных плагинов, чтобы разные репозитории не порождали разные команды:
+
+```yaml
+stack:
+  use: [golang]
+  golang:
+    skipGates: [lint]
+    overrideGates:
+      test: { argv: [make, test], timeout: 15m }
+      build: { env: { GOPROXY: 'http://gomods.mail.cloud.devmail.ru:3000/' } }
+    extraGates:
+      - { id: tidy-drift, argv: [go, mod, tidy, -diff], timeout: 5m }
+```
+
+**Контракт:** RUN-ALL (все гейты выполняются, отказы накапливаются); SUPPRESS-ON-SUCCESS (успешные гейты молчат); гейты **не изменяют** рабочее дерево (`gofmt -l`, а не `go fmt`); отказ инструмента (паника линтера, недоступный module proxy) помечается `ENV_FAIL` — это не findings по коду. Таймаут — обязательный per-gate (дефолты у плагина, override в конфиге); глобального нет. Невалидный конфиг останавливает команду до запуска гейтов. Коды выхода: `0` всё прошло · `1` гейт упал · `4` неверный вызов/конфиг · `5` стек не распознан.
+
+Подробнее: [`specs/stack/stack.spec.md`](specs/stack/stack.spec.md), [`ai/directives/infra/golang-setup.xml`](ai/directives/infra/golang-setup.xml), навык `sdd-infra-golang`.
+
+---
+
 ### 🗯️ `alt-opinion`
 
 Мульти-модельные мнения с опциональным синтезом.

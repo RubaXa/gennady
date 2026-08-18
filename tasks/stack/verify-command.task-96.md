@@ -5,7 +5,7 @@
 ## 1. Meta
 
 - **Task-ID:** TSK-96
-- **Status:** [ ] TODO (spec under review — PR #5)
+- **Status:** [x] DONE
 - **Purpose:** Стек-агностичная CLI-команда `gennady verify` поверх библиотеки stack (TSK-95): детекция → скоуп → план → RUN-ALL прогон → отчёт; `--plan`/`--json`; делегация из `verify.sh`; регистрация и документация.
 - **Scope:** `stack`
 - **Module:** `cli/verify`
@@ -21,9 +21,9 @@
 
 | ID  | Kind | Deps | Status   |
 | --- | ---- | ---- | -------- |
-| P1  | impl | —    | [ ] TODO |
-| P2  | test | P1   | [ ] TODO |
-| P3  | docs | P1   | [ ] TODO |
+| P1  | impl | —    | [x] DONE |
+| P2  | test | P1   | [x] DONE |
+| P3  | docs | P1   | [x] DONE |
 
 ### P1 — impl
 
@@ -68,8 +68,9 @@
 
 ## 7. Execution Log
 
-| Round | Date       | Status | Notes                                                                                                                                                                                                                                                                                                                                                      |
-| ----- | ---------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| R1    | 2026-08-17 | PARKED | Prototype (command, verify.sh delegation with capability probe, docs, skills) parked on `impl/stack-plugin-system` pending spec review. On rebase per round-2 spec: remove global `--timeout` and `--tidy` flags; qualified `stack:gate` ids in `--only`/`--skip`; invalid config → exit 4 before any gate runs; `--plan` shows per-key config provenance. |
+| Round | Date       | Status | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| ----- | ---------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R1    | 2026-08-17 | PARKED | Prototype parked on `impl/stack-plugin-system` pending spec review.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| R2    | 2026-08-18 | PASS   | Command rebuilt per approved spec: fatal CONFIG_ERROR (exit 4, full error list, no gate runs); qualified `stack:gate` selectors in `--only`/`--skip` (bare id = all stacks); `--stack` as one-shot use; global `--timeout` and `--tidy` removed; `--plan` shows config sources, per-gate timeouts and per-key provenance annotations. verify.sh delegation unchanged (capability probe). Docs/skills/directive updated to gennady.yaml naming. Verification: 10 command unit tests pass; e2e suite 0 failures; `bash -n verify.sh` OK; live E2E on gennady/mailapi/cloudapi recorded in TSK-95 R2. |
 
 <!--/SECTION:EXECUTION_LOG-->

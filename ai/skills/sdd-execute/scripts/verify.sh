@@ -1,11 +1,15 @@
 #!/usr/bin/env bash
-# @file: Smart verification gate — auto-discovers npm scripts via heuristic, runs them.
+# @file: Smart verification gate — delegates to `gennady verify` (stack plugins), legacy npm fallback.
 # @consumers: phase agents (STEP_5_VERIFY); orchestrators; CI hooks
 # @contract: AX_BASH_NO_SILENT_EMPTY. All discovered gates MUST pass for exit 0.
 #            RUN-ALL: every gate executes regardless of previous failures.
 #            SUPPRESS-ON-SUCCESS: passing gates produce zero output; only failures are shown.
 #            On all-pass: single line "[verify] ALL_GATES_PASS (N/N)". Exit 0.
 #            On any-fail: each failed gate dumps its command + exit code + captured output. Exit 1.
+#
+#            Preferred path is `gennady verify` — the stack-agnostic plugin system
+#            (node + golang, .gennadyrc overrides). The npm classifier below remains
+#            as a fallback for environments where gennady itself is not runnable.
 #
 # Usage:
 #   verify.sh <file1> [<file2> ...]
@@ -14,7 +18,7 @@
 #   0  — all gates PASS
 #   1  — one or more gates failed
 #   4  — bad invocation
-#   5  — environment failure
+#   5  — environment failure / no stack detected
 
 set -uo pipefail
 
@@ -34,6 +38,43 @@ EOF
   exit 4
 fi
 
+for file in "$@"; do
+  if [[ ! -f "$file" ]]; then
+    echo "[$PROG] FILE_NOT_FOUND: $file"
+    exit 4
+  fi
+done
+
+# -----------------------------------------------------------
+# Step 0: Delegate to `gennady verify` (stack plugin system)
+#
+# Handles node AND golang repos through one interface, honours
+# .gennadyrc stack overrides. File targets are forwarded — the
+# golang plugin narrows to their packages; the node plugin runs
+# its repo-level scripts either way.
+# -----------------------------------------------------------
+
+# Repo root of the gennady checkout: scripts → sdd-execute → skills → ai → root.
+GENNADY_HOME="${GENNADY_HOME:-$SCRIPT_DIR/../../../..}"
+
+# Capability probe: an older installed gennady without `verify` prints its generic
+# help and exits 0, silently swallowing the delegation. Only delegate when the
+# help listing actually advertises the command.
+if command -v gennady &>/dev/null && gennady help 2>/dev/null | grep -qE '^  verify\b'; then
+  exec gennady verify "$@"
+fi
+
+# Checkout path: use the checkout's own tsx — npx would hit the registry, which
+# sandboxed/corp environments block.
+GENNADY_TSX="$GENNADY_HOME/node_modules/.bin/tsx"
+if [[ -x "$GENNADY_TSX" && -f "$GENNADY_HOME/cli/gennady.ts" ]]; then
+  exec "$GENNADY_TSX" "$GENNADY_HOME/cli/gennady.ts" verify "$@"
+fi
+
+# -----------------------------------------------------------
+# Legacy fallback: npm-script heuristic (gennady not runnable)
+# -----------------------------------------------------------
+
 if ! command -v npm &>/dev/null; then
   echo "[$PROG] ENV_MISSING: npm not in PATH"
   exit 5
@@ -43,13 +84,6 @@ if ! command -v node &>/dev/null; then
   echo "[$PROG] ENV_MISSING: node not in PATH"
   exit 5
 fi
-
-for file in "$@"; do
-  if [[ ! -f "$file" ]]; then
-    echo "[$PROG] FILE_NOT_FOUND: $file"
-    exit 4
-  fi
-done
 
 # -----------------------------------------------------------
 # Step 1: Discover scripts via heuristic (silent)

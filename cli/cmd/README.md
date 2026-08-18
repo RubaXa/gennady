@@ -158,6 +158,28 @@ npx gennady testcov --flat --json
 npx gennady testcov src/core --files
 ```
 
+### 12. Верификация проекта (любой стек)
+
+```bash
+# План без запуска: детекция стеков, диагностика, argv каждого гейта
+npx gennady verify --plan
+
+# Гейты по изменениям от базовой ветки (по умолчанию)
+npx gennady verify
+
+# Явная цель (golang сузит до её пакетов)
+npx gennady verify internal/userapi
+
+# Весь репозиторий / подмножество гейтов / один стек
+npx gennady verify --all
+npx gennady verify --only=golang:build,golang:vet
+npx gennady verify --skip=lint
+npx gennady verify --stack=golang
+
+# JSON для CI/агентов
+npx gennady verify --plan --json
+```
+
 ---
 
 ## Все команды
@@ -191,6 +213,7 @@ npx gennady testcov src/core --files
 | `orient`            | Навигация по file-header и DBC-контрактам                |
 | `agents-rules`      | Инструкция по orient для AI-агентов                      |
 | `testcov`           | Визуальное дерево покрытия (vitest/jest/node:test)       |
+| `verify`            | Стек-агностичные гейты (node + golang, gennady.yaml)     |
 
 ---
 

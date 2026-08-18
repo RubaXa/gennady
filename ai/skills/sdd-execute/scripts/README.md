@@ -35,7 +35,7 @@ Or broader:
 | `sdd`                | Command dispatcher (single entry point)                                                                                                                                                                                                                                                                              |
 | `extract-section.sh` | Extract `<!--SECTION:NAME-->...<!--/SECTION:NAME-->` block from markdown                                                                                                                                                                                                                                             |
 | `lint-artifacts.sh`  | Run gennady DBC AST contract lint; parse output reliably                                                                                                                                                                                                                                                             |
-| `verify.sh`          | Three-gate verification: typecheck + gennady DBC lint + forbidden-construct grep                                                                                                                                                                                                                                     |
+| `verify.sh`          | Verification gate. Delegates to `gennady verify` (stack plugins: node + golang, `.gennadyrc` overrides); legacy npm-script heuristic remains as fallback                                                                                                                                                                                                                                     |
 | `check-blockers.sh`  | Detect unresolved BLOCKER entries in ticket Execution Log per `AX_BLOCKER_RESOLUTION_TRAIL`                                                                                                                                                                                                                          |
 | `scan.sh`            | Emit comprehensive project snapshot ([HEADER]/[TASKS]/[TRACKERS]/[SPECS]/[WARNINGS]/[SUMMARY]). Designed so triage skills make ONE call instead of many ad-hoc find/grep. Surfaces suspicious states automatically (DONE+placeholders, DONE+active-blocker, anchor mismatch, unparseable Status, broken spec links). |
 | `check.sh`           | Deterministic mechanical checks — [TASKID] (collisions, orphan `@tasks`), [TRACKER_SYNC] (ticket Meta.Status vs tracker row), [HEADERS] (`--files` mode). Single source of mechanical truth shared by `sdd-check` (whole tree) and `sdd-audit` (scoped via `--task`/`--files`). Exit 0 clean / 3 findings / 2 structural / 4 bad-invocation. |
@@ -82,6 +82,6 @@ These scripts know nothing about any specific project. They expect:
 - A markdown file with anchored sections (for `extract`).
 - A TypeScript file to lint (for `lint`).
 - A ticket file with `## 7. Execution Log` section (for `check-blockers`).
-- A working directory with `npm` and `tsc` available (for `verify`).
+- For `verify`: a runnable `gennady` (on PATH, or a checkout at `$GENNADY_HOME`); fallback needs `npm` + `node`.
 
 If the project doesn't satisfy these expectations, scripts emit actionable diagnostics; they never silently fail.
