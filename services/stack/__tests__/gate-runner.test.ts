@@ -2,7 +2,7 @@
 // @consumers: CI
 // @tasks: TSK-95
 
-import { describe, it } from 'node:test';
+import { after, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -13,6 +13,19 @@ import type { Gate, StackDiagnostic, StackRun } from '../stack.types.ts';
 const { runVerify, formatVerifyReport, exitAbove, outputMatches } =
   await import('../gate-runner.ts');
 
+// Small one-commit repo shared by the plain-gate tests: every gate runs in a run
+// replica (D-STACK-013), so cwd must never be the (large) gennady checkout itself.
+const BASE_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'runner-base-'));
+fs.writeFileSync(path.join(BASE_DIR, 'README.md'), 'fixture\n');
+execFileSync('git', ['-C', BASE_DIR, 'init', '-q', '-b', 'main'], { stdio: 'ignore' });
+execFileSync('git', ['-C', BASE_DIR, 'add', '-A'], { stdio: 'ignore' });
+execFileSync(
+  'git',
+  ['-C', BASE_DIR, '-c', 'user.email=t@t', '-c', 'user.name=t', 'commit', '-qm', 'init'],
+  { stdio: 'ignore' }
+);
+after(() => fs.rmSync(BASE_DIR, { recursive: true, force: true }));
+
 /** @purpose Build a gate that runs a shell snippet through `sh -c`. */
 function shellGate(id: string, script: string, extra: Partial<Gate> = {}): Gate {
   return {
@@ -20,7 +33,7 @@ function shellGate(id: string, script: string, extra: Partial<Gate> = {}): Gate 
     stack: 'golang',
     label: id,
     argv: ['/bin/sh', '-c', script],
-    cwd: process.cwd(),
+    cwd: BASE_DIR,
     timeoutMs: 30_000,
     outputMeansFailure: false,
     skipped: null,
@@ -33,7 +46,7 @@ function runOf(gates: Gate[]): StackRun {
   return {
     detection: {
       stack: 'golang',
-      root: process.cwd(),
+      root: BASE_DIR,
       summary: ['module: example.com/x'],
       diagnostics: [],
       details: null,
@@ -336,5 +349,92 @@ describe('runVerify — sandboxed gates (spec §2, D-STACK-011)', () => {
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }
+  });
+});
+
+describe('runVerify — run replica enforcement (spec §2, D-STACK-013)', () => {
+  it('flags a non-sandbox gate that mutates the tree as VIOLATION and resets the replica', () => {
+    withGitFixture((dir) => {
+      const mutator: Gate = { ...shellGate('bad', 'echo dirt > dirt.txt'), cwd: dir };
+      const checker: Gate = { ...shellGate('probe', 'test ! -f dirt.txt'), cwd: dir };
+      const report = runVerify([runOf([mutator, checker])], []);
+
+      assert.equal(report.results[0]?.status, 'violation');
+      assert.match(report.results[0]?.output ?? '', /dirt\.txt/);
+      assert.match(formatVerifyReport(report), /VIOLATION/);
+      assert.match(formatVerifyReport(report), /fixer/);
+      assert.equal(
+        report.results[1]?.status,
+        'pass',
+        'the replica is reset to baseline between gates'
+      );
+      assert.equal(fs.existsSync(path.join(dir, 'dirt.txt')), false, 'real tree untouched');
+      assert.equal(report.ok, false);
+    });
+  });
+
+  it('rewrites replica paths in gate output back to real-tree paths', () => {
+    withGitFixture((dir) => {
+      const gate: Gate = {
+        ...shellGate('build', 'echo "$PWD/gen.txt:1: broken"; exit 1'),
+        cwd: dir,
+      };
+      const report = runVerify([runOf([gate])], []);
+      const real = fs.realpathSync(dir);
+
+      assert.equal(report.results[0]?.status, 'fail');
+      assert.ok(
+        (report.results[0]?.output ?? '').includes(`${real}/gen.txt:1: broken`),
+        `expected real path ${real}, got: ${report.results[0]?.output}`
+      );
+    });
+  });
+
+  it('maps real-tree absolute paths in argv into the replica (config files, targets)', () => {
+    withGitFixture((dir) => {
+      // The argv references a repo file by real absolute path (like golangci -c <cfg>);
+      // inside the replica it must resolve to the replica copy, or relative paths
+      // computed against it walk out of the sandbox.
+      const gate: Gate = {
+        ...shellGate('cfg', 'test "$(cd "$(dirname "$1")" && pwd -P)" = "$(pwd -P)"'),
+        cwd: dir,
+      };
+      const report = runVerify(
+        [runOf([{ ...gate, argv: [...gate.argv, 'sh', path.join(dir, 'gen.txt')] }])],
+        []
+      );
+
+      assert.equal(report.results[0]?.status, 'pass', report.results[0]?.output);
+    });
+  });
+
+  it('runs gates outside a git repository unsandboxed, with a loud diagnostic', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nogit-run-'));
+    try {
+      const gate: Gate = { ...shellGate('build', 'true'), cwd: dir };
+      const report = runVerify([runOf([gate])], []);
+
+      assert.equal(report.results[0]?.status, 'pass');
+      assert.ok(
+        report.diagnostics.some((diagnostic) => diagnostic.code === 'UNSANDBOXED_RUN'),
+        'the unenforced run must be visible'
+      );
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('symlinks declared sandboxLinks into the replica (environment, not tree state)', () => {
+    withGitFixture((dir) => {
+      fs.writeFileSync(path.join(dir, '.gitignore'), 'node_modules/\n');
+      fixtureGit(dir, 'add', '-A');
+      fixtureGit(dir, 'commit', '-qm', 'ignore');
+      fs.mkdirSync(path.join(dir, 'node_modules'));
+      fs.writeFileSync(path.join(dir, 'node_modules', 'dep.js'), 'x');
+      const gate: Gate = { ...shellGate('lint', 'test -e node_modules/dep.js'), cwd: dir };
+      const report = runVerify([runOf([gate])], [], { sandboxLinks: ['node_modules'] });
+
+      assert.equal(report.results[0]?.status, 'pass', report.results[0]?.output);
+    });
   });
 });

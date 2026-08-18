@@ -109,8 +109,8 @@ export type Gate = {
 export type GateResult = {
   /** @purpose The gate that produced this result. */
   readonly gate: Gate;
-  /** @purpose Verdict of the execution. */
-  readonly status: 'pass' | 'fail' | 'env-fail' | 'skipped' | 'timeout';
+  /** @purpose Verdict of the execution; `violation` = a non-sandbox gate mutated the replica (§2). */
+  readonly status: 'pass' | 'fail' | 'env-fail' | 'skipped' | 'timeout' | 'violation';
   /** @purpose Process exit code, or null when skipped or killed. */
   readonly exitCode: number | null;
   /** @purpose Wall-clock duration in milliseconds. */
@@ -178,6 +178,8 @@ export type GateSpec = {
   readonly timeout?: string;
   /** @purpose Stdout contract; extraGates default: false. */
   readonly outputMeansFailure?: boolean;
+  /** @purpose Drift gate (spec §2): mutation expected, replica drift is the FAIL verdict. Rejected in fixers. */
+  readonly sandbox?: boolean;
 };
 
 /**
@@ -191,7 +193,7 @@ export type StackPluginConfig = {
   readonly overrideGates?: Readonly<Record<string, GateSpec>>;
   /** @purpose Repo-specific gates appended after the built-ins. */
   readonly extraGates?: readonly GateSpec[];
-  /** @purpose Reserved for `gennady fix` (spec §4.4); validated, not executed in v1. */
+  /** @purpose Fixers for `gennady fix` (spec §4.4): real tree, sequential, fail-fast. */
   readonly fixers?: readonly GateSpec[];
 };
 
@@ -261,6 +263,11 @@ export type StackPlugin = {
    * @returns Detection payload, or null.
    */
   detect(root: string): StackDetection | null;
+  /**
+   * @purpose Ignored paths symlinked into the run replica: the stack's execution
+   *   environment, not tree state (node: node_modules). Spec D-STACK-013.
+   */
+  readonly sandboxLinks?: readonly string[];
   /** @purpose The mandatory verify facet. */
   readonly verify: StackVerifyCapability;
   /** @purpose Optional fix facet: built-in mutating fixers for `gennady fix`. */

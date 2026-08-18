@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { execFileTrimSafe } from '../../shared/common/exec.ts';
-import { createTreeReplica } from './tree-replica.ts';
+import { createTreeReplica, type TreeReplica } from './tree-replica.ts';
 import type {
   EnvFailPredicate,
   Gate,
@@ -48,67 +48,162 @@ export function outputMatches(pattern: RegExp, hint?: string): EnvFailPredicate 
 // the tool never ran, which is environmental for every stack; no combinator needed.
 // #endregion END_ENV_FAIL_COMBINATORS
 
+// #region START_REPLICA_POOL — one run replica per git toplevel, shared by every gate (D-STACK-013)
+
 /**
- * @purpose Run one gate to completion, capturing combined output and classifying the outcome.
+ * @purpose Execution slot for one gate: a shared replica, a real-tree fallback, or a failure.
+ * @consumer gate-runner (internal)
+ */
+type ReplicaSlot =
+  | {
+      readonly kind: 'replica';
+      readonly dir: string;
+      readonly toplevel: string;
+      drift(): string;
+      reset(): void;
+    }
+  | { readonly kind: 'unsandboxed' }
+  | { readonly kind: 'error'; readonly message: string };
+
+/**
+ * @purpose Lazily created run replicas, one per git toplevel, living for the whole verify run.
+ * @consumer runVerify (internal)
+ */
+type ReplicaPool = {
+  /** @purpose Resolve the execution slot for a gate cwd. */
+  acquire(cwd: string): ReplicaSlot;
+  /** @purpose True when at least one gate ran in the real tree (no git repo or HEAD). */
+  unsandboxedSeen(): boolean;
+  /** @purpose Remove every replica this run created. */
+  cleanupAll(): void;
+};
+
+/**
+ * @purpose Build the pool; replicas materialize on first acquire per toplevel.
+ * @param links Ignored paths symlinked into each replica (plugin sandboxLinks).
+ * @returns Pool for one verify run.
+ */
+function createReplicaPool(links: readonly string[]): ReplicaPool {
+  const replicas = new Map<string, { replica?: TreeReplica; error?: string }>();
+  let unsandboxed = false;
+
+  return {
+    acquire(cwd) {
+      const toplevel = execFileTrimSafe('git', ['rev-parse', '--show-toplevel'], cwd);
+      if (toplevel.length === 0) {
+        unsandboxed = true;
+        return { kind: 'unsandboxed' };
+      }
+      let entry = replicas.get(toplevel);
+      if (entry === undefined) {
+        entry = createTreeReplica(toplevel, links);
+        replicas.set(toplevel, entry);
+      }
+      const replica = entry.replica;
+      if (replica === undefined) {
+        unsandboxed = true;
+        return { kind: 'error', message: entry.error ?? 'replica failed' };
+      }
+      return {
+        kind: 'replica',
+        dir: replica.dir,
+        toplevel,
+        drift: () => replica.drift(),
+        reset: () => replica.reset(),
+      };
+    },
+    unsandboxedSeen: () => unsandboxed,
+    cleanupAll() {
+      for (const entry of replicas.values()) {
+        entry.replica?.cleanup();
+      }
+      replicas.clear();
+    },
+  };
+}
+
+/** Diagnostic for a run whose gates had to execute in the real tree — enforcement was off. */
+const UNSANDBOXED_RUN_DIAGNOSTIC: StackDiagnostic = {
+  code: 'UNSANDBOXED_RUN',
+  message:
+    'gates ran in the real working tree (no git repository or HEAD) — the observe-only contract was not enforced',
+  fix: 'initialize git and create a first commit so verify can run gates in a tree replica',
+};
+// #endregion END_REPLICA_POOL
+
+/**
+ * @purpose Run one gate to completion and classify the outcome.
  * @param gate Gate to execute; a gate carrying a skip reason is returned untouched.
+ * @param pool Run replica pool, or null to execute in the real tree (fixers).
  * @returns Result with status, exit code and captured output.
  * @sideEffect Process: spawns the gate's external command (no shell); gate.env merged over process.env.
  */
-function runGate(gate: Gate): GateResult {
+function runGate(gate: Gate, pool: ReplicaPool | null): GateResult {
   if (gate.skipped !== null) {
     return { gate, status: 'skipped', exitCode: null, durationMs: 0, output: gate.skipped };
   }
 
-  // #region START_SANDBOX — sandboxed gates run in a working-tree replica; drift = FAIL
-  let cwd = gate.cwd;
-  let replicaCleanup: (() => void) | null = null;
-  let replicaDir: string | null = null;
-  if (gate.sandbox === true) {
-    const toplevel = execFileTrimSafe('git', ['rev-parse', '--show-toplevel'], gate.cwd);
-    if (toplevel.length === 0) {
+  const slot: ReplicaSlot = pool?.acquire(gate.cwd) ?? { kind: 'unsandboxed' };
+  if (slot.kind !== 'replica') {
+    if (gate.sandbox === true) {
+      // Drift cannot be computed without a replica — the environment is short of git/HEAD.
       return {
         gate,
         status: 'env-fail',
         exitCode: null,
         durationMs: 0,
-        output: 'sandboxed gate requires a git repository (no toplevel found)',
+        output:
+          slot.kind === 'error'
+            ? slot.message
+            : 'sandboxed gate requires a git repository (no toplevel found)',
       };
     }
-    const { replica, error } = createTreeReplica(toplevel);
-    if (replica === undefined) {
-      return {
-        gate,
-        status: 'env-fail',
-        exitCode: null,
-        durationMs: 0,
-        output: error ?? 'replica failed',
-      };
-    }
-    replicaDir = replica.dir;
-    replicaCleanup = replica.cleanup;
-    // realpath both sides: git resolves symlinked tmp dirs (/tmp, /var on macOS),
-    // a raw gate.cwd would mis-map the relative path back into the real tree.
-    cwd = path.join(replica.dir, path.relative(toplevel, fs.realpathSync(gate.cwd)));
+    return executeGate(gate, gate.argv, gate.cwd, null);
   }
-  // #endregion END_SANDBOX
 
-  try {
-    return executeGate(gate, cwd, replicaDir);
-  } finally {
-    replicaCleanup?.();
-  }
+  // realpath both sides: git resolves symlinked tmp dirs (/tmp, /var on macOS),
+  // a raw gate.cwd would mis-map the relative path back into the real tree.
+  const realTop = fs.realpathSync(slot.toplevel);
+  const cwd = path.join(slot.dir, path.relative(realTop, fs.realpathSync(gate.cwd)));
+
+  // Real-tree absolute paths in argv (golangci -c <cfg>, script targets) must point
+  // at the replica copy — tools compute relative paths against them otherwise.
+  const argv = gate.argv.map((entry) => {
+    if (!path.isAbsolute(entry)) {
+      return entry;
+    }
+    try {
+      const real = fs.realpathSync(entry);
+      if (real === realTop) {
+        return slot.dir;
+      }
+      if (real.startsWith(realTop + path.sep)) {
+        return path.join(slot.dir, path.relative(realTop, real));
+      }
+    } catch {
+      // Not an existing path (a plain argument that looks absolute) — leave it.
+    }
+    return entry;
+  });
+  return executeGate(gate, argv, cwd, slot);
 }
 
 /**
- * @purpose Spawn the gate command in cwd and classify the outcome; sandboxed gates add drift.
- * @param gate Gate to execute.
- * @param cwd Effective working directory (replica-mapped for sandboxed gates).
- * @param replicaDir Replica root for drift detection, or null for plain gates.
- * @returns Result with status, exit code and captured output.
+ * @purpose Spawn the gate command in cwd; classify via exit code, replica drift and predicates.
+ * @param gate Gate to execute; results reference it with its original, real-tree argv.
+ * @param argv Effective argv (replica-mapped when a slot is given).
+ * @param cwd Effective working directory (replica-mapped when a slot is given).
+ * @param slot Run replica the gate executed in, or null for real-tree execution (fixers, fallback).
+ * @returns Result with status, exit code and captured output; replica paths rewritten to real ones.
  */
-function executeGate(gate: Gate, cwd: string, replicaDir: string | null): GateResult {
+function executeGate(
+  gate: Gate,
+  argv: readonly string[],
+  cwd: string,
+  slot: Extract<ReplicaSlot, { kind: 'replica' }> | null
+): GateResult {
   const startedAt = Date.now();
-  const [bin, ...args] = gate.argv;
+  const [bin, ...args] = argv;
   const proc = spawnSync(bin!, args, {
     cwd,
     encoding: 'utf-8',
@@ -118,8 +213,26 @@ function executeGate(gate: Gate, cwd: string, replicaDir: string | null): GateRe
   });
   const durationMs = Date.now() - startedAt;
 
-  const stdout = proc.stdout ?? '';
-  const output = `${stdout}${proc.stderr ?? ''}`.trim();
+  // Tool output references the replica; the reader acts on the real tree.
+  const rewrite = (text: string): string =>
+    slot === null
+      ? text
+      : text
+          .split(fs.realpathSync(slot.dir))
+          .join(slot.toplevel)
+          .split(slot.dir)
+          .join(slot.toplevel);
+  const stdout = rewrite(proc.stdout ?? '');
+  const output = `${stdout}${rewrite(proc.stderr ?? '')}`.trim();
+
+  // Inspect and restore the replica exactly once, whatever the command's outcome.
+  let drift = '';
+  if (slot !== null) {
+    drift = slot.drift();
+    if (drift.length > 0) {
+      slot.reset();
+    }
+  }
 
   if (proc.error !== undefined && (proc.error as NodeJS.ErrnoException).code === 'ETIMEDOUT') {
     return { gate, status: 'timeout', exitCode: null, durationMs, output };
@@ -129,30 +242,38 @@ function executeGate(gate: Gate, cwd: string, replicaDir: string | null): GateRe
     return { gate, status: 'env-fail', exitCode: null, durationMs, output: String(proc.error) };
   }
 
-  // #region START_STDOUT_CONTRACT — invariant: outputMeansFailure turns exit-0 stdout into FAIL
+  // #region START_VERDICTS — violation > drift > stdout contract > exit code (spec §8.2)
+  if (drift.length > 0 && gate.sandbox !== true) {
+    return {
+      gate,
+      status: 'violation',
+      exitCode: proc.status,
+      durationMs,
+      output: `gate mutated the tree — files:\n${drift}\ndeclare \`sandbox: true\` if drift is this gate's verdict, or move the mutation to \`gennady fix\` fixers (D-STACK-005)${output.length > 0 ? `\n--- command output ---\n${output}` : ''}`,
+    };
+  }
+
+  if (proc.status === 0 && drift.length > 0) {
+    // sandbox: true — the replica was baselined, so any status output is the command's doing.
+    return {
+      gate,
+      status: 'fail',
+      exitCode: 0,
+      durationMs,
+      output: `generated code drifted from its sources — files:\n${drift}\nrun \`gennady fix ${gate.stack}:${gate.id}\` to materialize, then commit`,
+    };
+  }
+
   if (gate.outputMeansFailure && proc.status === 0) {
     return stdout.trim().length > 0
       ? { gate, status: 'fail', exitCode: 0, durationMs, output: stdout.trim() }
       : { gate, status: 'pass', exitCode: 0, durationMs, output: '' };
   }
-  // #endregion END_STDOUT_CONTRACT
 
   if (proc.status === 0) {
-    // Drift check: the replica was baselined, so any status output is the command's doing.
-    if (replicaDir !== null) {
-      const drift = execFileTrimSafe('git', ['status', '--porcelain'], replicaDir);
-      if (drift.length > 0) {
-        return {
-          gate,
-          status: 'fail',
-          exitCode: 0,
-          durationMs,
-          output: `generated code drifted from its sources — files:\n${drift}\nrun \`gennady fix ${gate.stack}:${gate.id}\` to materialize, then commit`,
-        };
-      }
-    }
     return { gate, status: 'pass', exitCode: 0, durationMs, output: '' };
   }
+  // #endregion END_VERDICTS
 
   const matched = (gate.envFail ?? []).find((predicate) => predicate(proc.status, output));
   return {
@@ -165,23 +286,34 @@ function executeGate(gate: Gate, cwd: string, replicaDir: string | null): GateRe
 }
 
 /**
- * @purpose Execute every gate of every run, never short-circuiting on failures (RUN-ALL).
+ * @purpose Execute every gate of every run, never short-circuiting (RUN-ALL), inside the
+ *   run replica (D-STACK-013); the pool is torn down at the end.
  * @param runs Per-stack runs whose gate plans are executed in order.
  * @param diagnostics Detection-level diagnostics carried into the report.
+ * @param [options] sandboxLinks — plugin-declared ignored paths linked into the replica.
  * @returns Report whose `ok` is true only when no executed gate failed or timed out.
- * @sideEffect Process: spawns one external command per executable gate.
+ * @sideEffect Process: spawns one external command per executable gate; IO: temp replicas.
  */
 export function runVerify(
   runs: readonly StackRun[],
-  diagnostics: readonly StackDiagnostic[]
+  diagnostics: readonly StackDiagnostic[],
+  options?: { readonly sandboxLinks?: readonly string[] }
 ): VerifyReport {
-  const results = runs.flatMap((run) => run.gates.map((gate) => runGate(gate)));
+  const pool = createReplicaPool(options?.sandboxLinks ?? []);
+  let results: GateResult[];
+  try {
+    results = runs.flatMap((run) => run.gates.map((gate) => runGate(gate, pool)));
+  } finally {
+    pool.cleanupAll();
+  }
   const executed = results.filter((result) => result.status !== 'skipped');
   const passed = executed.filter((result) => result.status === 'pass').length;
 
   return {
     runs,
-    diagnostics,
+    diagnostics: pool.unsandboxedSeen()
+      ? [...diagnostics, UNSANDBOXED_RUN_DIAGNOSTIC]
+      : diagnostics,
     results,
     passed,
     total: executed.length,
@@ -242,7 +374,13 @@ export function formatVerifyReport(report: VerifyReport): string {
     }
 
     const verdict =
-      result.status === 'timeout' ? 'TIMEOUT' : result.status === 'env-fail' ? 'ENV_FAIL' : 'FAIL';
+      result.status === 'timeout'
+        ? 'TIMEOUT'
+        : result.status === 'env-fail'
+          ? 'ENV_FAIL'
+          : result.status === 'violation'
+            ? 'VIOLATION'
+            : 'FAIL';
 
     lines.push('');
     lines.push(
@@ -253,6 +391,12 @@ export function formatVerifyReport(report: VerifyReport): string {
         '  note:    the tool itself failed to run — this is NOT a finding about the code.'
       );
       lines.push('           Fix the toolchain; do not change source in response to this output.');
+    }
+    if (result.status === 'violation') {
+      lines.push(
+        '  note:    this gate modified files — a gate observes, never mutates (D-STACK-005).'
+      );
+      lines.push('           Declare sandbox: true if drift is its verdict, or move it to fixers.');
     }
     lines.push(`  command: ${result.gate.argv.join(' ')}`);
     lines.push(`  cwd:     ${result.gate.cwd}`);
@@ -287,7 +431,7 @@ export function formatVerifyReport(report: VerifyReport): string {
 export function runFix(fixers: readonly Gate[]): GateResult[] {
   const results: GateResult[] = [];
   for (const fixer of fixers) {
-    const result = runGate({ ...fixer, sandbox: false });
+    const result = runGate({ ...fixer, sandbox: false }, null);
     results.push(result);
     if (result.status !== 'pass' && result.status !== 'skipped') {
       break;

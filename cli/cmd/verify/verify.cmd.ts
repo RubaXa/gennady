@@ -259,7 +259,9 @@ export async function run(argv: string[]): Promise<number> {
     return 0;
   }
 
-  const report = runVerify(filteredRuns, diagnostics);
+  // Environment links for the run replica — union across active plugins (D-STACK-013).
+  const sandboxLinks = [...new Set(active.flatMap(({ plugin }) => plugin.sandboxLinks ?? []))];
+  const report = runVerify(filteredRuns, diagnostics, { sandboxLinks });
 
   if (args.json === true) {
     console.log(

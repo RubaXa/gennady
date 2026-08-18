@@ -14,6 +14,13 @@ import { execFileSync } from 'node:child_process';
 export type TreeReplica = {
   /** @purpose Absolute directory of the replica checkout. */
   readonly dir: string;
+  /**
+   * @purpose Porcelain status vs the baseline; environment links are excluded.
+   * @returns Trimmed porcelain lines; empty when clean.
+   */
+  drift(): string;
+  /** @purpose Restore the replica to its baseline commit (after drift or a violation). */
+  reset(): void;
   /** @purpose Remove the replica worktree and its temp directory. */
   cleanup(): void;
 };
@@ -40,10 +47,15 @@ function git(args: readonly string[], cwd: string, input?: string): string {
  *   files, baselined by a replica-local commit — later `git status` is exactly the drift.
  * @invariant The real tree is never written; the replica's baseline commit exists only there.
  * @param repoRoot Absolute git toplevel of the repository to replicate.
+ * @param [links] Ignored paths symlinked into the replica — stack execution environment,
+ *   not tree state (node_modules); invisible to `git status`, so drift stays content-exact.
  * @returns The replica, or an error message when it cannot be created (e.g. no commits yet).
  * @sideEffect IO/Process: creates a temp worktree; runs git.
  */
-export function createTreeReplica(repoRoot: string): { replica?: TreeReplica; error?: string } {
+export function createTreeReplica(
+  repoRoot: string,
+  links: readonly string[] = []
+): { replica?: TreeReplica; error?: string } {
   try {
     git(['rev-parse', '--verify', '--quiet', 'HEAD'], repoRoot);
   } catch {
@@ -105,7 +117,38 @@ export function createTreeReplica(repoRoot: string): { replica?: TreeReplica; er
       dir
     );
 
-    return { replica: { dir, cleanup } };
+    // Environment links come after the baseline: they are ignored paths, so they
+    // never enter the baseline commit and never appear in the drift status.
+    for (const link of links) {
+      const target = path.join(repoRoot, link);
+      const dest = path.join(dir, link);
+      if (fs.existsSync(target) && !fs.existsSync(dest)) {
+        fs.symlinkSync(target, dest);
+      }
+    }
+
+    // A `dir/`-style ignore pattern does not match a symlink, so the links are
+    // excluded from the drift pathspec explicitly.
+    const drift = (): string => {
+      const exclusions = links.map((link) => `:(exclude)${link}`);
+      return git(['status', '--porcelain', '--', '.', ...exclusions], dir).trim();
+    };
+
+    const reset = (): void => {
+      git(['reset', '--hard', '--quiet'], dir);
+      // -fd (not -fdx): untracked leftovers go, ignored paths survive; links are
+      // re-created if the reset swept them away.
+      git(['clean', '-fdq'], dir);
+      for (const link of links) {
+        const target = path.join(repoRoot, link);
+        const dest = path.join(dir, link);
+        if (fs.existsSync(target) && !fs.existsSync(dest)) {
+          fs.symlinkSync(target, dest);
+        }
+      }
+    };
+
+    return { replica: { dir, drift, reset, cleanup } };
   } catch (cause) {
     cleanup();
     return { error: `cannot create tree replica: ${(cause as Error).message}` };

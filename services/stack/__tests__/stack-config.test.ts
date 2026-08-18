@@ -251,6 +251,34 @@ describe('loadStackConfig — strict validation (fatal errors)', () => {
     );
   });
 
+  it('accepts sandbox: true on extraGates and overrideGates (drift gates, D-STACK-013)', () => {
+    withConfigs(
+      {
+        'gennady.yaml':
+          'stack:\n  golang:\n    overrideGates:\n      build: { sandbox: true }\n    extraGates:\n      - id: canonical-generate\n        argv: [make, generate]\n        sandbox: true\n',
+      },
+      (dir) => {
+        assert.deepEqual(loadStackConfig(dir, GATE_IDS).errors, []);
+      }
+    );
+  });
+
+  it('rejects sandbox inside fixers — a fixer runs in the real tree by definition', () => {
+    withConfigs(
+      {
+        'gennady.yaml':
+          'stack:\n  golang:\n    fixers:\n      - id: gen\n        argv: [make, generate]\n        sandbox: true\n',
+      },
+      (dir) => {
+        const load = loadStackConfig(dir, GATE_IDS);
+        assert.ok(
+          load.errors.some((error) => error.path.endsWith('.sandbox')),
+          `expected a .sandbox error, got: ${JSON.stringify(load.errors)}`
+        );
+      }
+    );
+  });
+
   it('collects ALL errors instead of stopping at the first', () => {
     withConfigs(
       {
@@ -348,6 +376,22 @@ describe('applyStackConfig', () => {
     assert.equal(effective[0]?.cwd, path.resolve('/repo', 'sub'));
     assert.equal(effective[0]?.outputMeansFailure, false);
     assert.equal(effective[0]?.timeoutMs, 600_000);
+  });
+
+  it('plumbs GateSpec.sandbox into the planned gate (extra) and inherits it on override', () => {
+    const effective = applyStackConfig(
+      [gate('build', { sandbox: true })],
+      {
+        overrideGates: { build: { argv: ['make', 'build'] } },
+        extraGates: [{ id: 'canonical-generate', argv: ['make', 'generate'], sandbox: true }],
+      },
+      'golang',
+      '/repo',
+      provenance
+    );
+
+    assert.equal(effective[0]?.sandbox, true, 'override without the field inherits it');
+    assert.equal(effective[1]?.sandbox, true, 'extra gate carries its declared sandbox');
   });
 });
 

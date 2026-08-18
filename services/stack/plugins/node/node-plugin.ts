@@ -46,6 +46,9 @@ export const nodePlugin: StackPlugin = {
   id: 'node',
   marker: 'package.json',
   description: 'gates from classified npm scripts (typecheck/gennady/lint/test/format)',
+  // npm scripts resolve tools from node_modules/.bin — the stack's execution
+  // environment, not tree state; linked into the run replica (D-STACK-013).
+  sandboxLinks: ['node_modules'],
 
   detect(root: string): StackDetection | null {
     const manifestPath = path.join(root, 'package.json');
