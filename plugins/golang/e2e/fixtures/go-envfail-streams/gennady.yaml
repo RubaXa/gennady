@@ -4,7 +4,12 @@ stack:
     skipGates: [generate, build, vet, fmt, lint, test]
     extraGates:
       - id: stderr-only
-        argv: [sh, -c, 'echo "ordinary progress" ; echo "Cannot connect to the Docker daemon" >&2; exit 1']
+        argv:
+          [
+            sh,
+            -c,
+            'echo "ordinary progress" ; echo "Cannot connect to the Docker daemon" >&2; exit 1',
+          ]
         timeout: 1m
         envFail:
           - stderrMatches: 'Cannot connect to the Docker daemon'

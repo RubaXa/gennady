@@ -6,5 +6,6 @@ cli/utils/review-gen/specs
 cli/utils/review-gen/js
 **/__tests__/fixtures/**
 **/__tests__/e2e/fixtures/**
+plugins/*/e2e/fixtures/**
 ai/skills/
 .claude/skills/

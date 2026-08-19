@@ -8,4 +8,4 @@ stack:
       # lint:contracts runs with --autofix (mutating); the gate runs the same
       # linter in check-only mode.
       gennady:
-        argv: [npx, tsx, cli/gennady.ts, lint, cli/, shared/, services/]
+        argv: [npx, tsx, cli/gennady.ts, lint, cli/, shared/, services/, plugins/]

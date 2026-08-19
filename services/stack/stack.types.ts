@@ -321,6 +321,11 @@ export type StackPlugin = {
    */
   detect(root: string): StackDetection | null;
   /**
+   * @purpose Every gate id this plugin can emit — the vocabulary strict config validation
+   *   checks against, readable without detection (plugins.spec §5).
+   */
+  readonly gateIds: readonly string[];
+  /**
    * @purpose Ignored paths symlinked into the run replica: the stack's execution
    *   environment, not tree state (node: node_modules). Spec D-STACK-013.
    */

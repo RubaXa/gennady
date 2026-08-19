@@ -1,0 +1,6 @@
+{
+  "id": "golang",
+  "kind": "stack",
+  "entry": "golang-plugin.ts",
+  "e2eFixtures": "e2e/fixtures"
+}

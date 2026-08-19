@@ -1,5 +1,5 @@
 // @file: Shared stack-e2e suite runner — one implementation for every stack's fixture directory.
-// @consumers: golang.e2e.test.ts, node.e2e.test.ts, config.e2e.test.ts
+// @consumers: plugin-suite.e2e.test.ts, node.e2e.test.ts, config.e2e.test.ts
 // @tasks: TSK-95
 
 import { after, before, describe, it } from 'node:test';
@@ -15,15 +15,14 @@ const STRICT_VARS = ['STACK_E2E_STRICT', 'CONFIG_E2E_STRICT'] as const;
  * @purpose Declare one stack's e2e suite: discover fixtures, probe exactly what they require, run.
  * @invariant Probed toolchains are the union of the fixtures' `requires`, so a declared
  *   requirement can never go un-probed and silently skip every fixture.
- * @param suiteId Suite name; also the fixtures subdirectory.
- * @param fixturesRoot Absolute path of the fixtures parent directory.
+ * @param suiteId Suite name, used in reporting and in the suite's artifact.
+ * @param dir Absolute fixture directory — a plugin's own, or a repo-level one.
  * @sideEffect Registers node:test suites; spawns builds, installs and gate commands.
  */
-export function declareStackSuite(suiteId: string, fixturesRoot: string): void {
+export function declareStackSuite(suiteId: string, dir: string): void {
   const isE2eRun = process.env.STACK_E2E === '1';
   const strict = STRICT_VARS.some((name) => process.env[name] === '1');
   const only = process.env.STACK_E2E_FIXTURE ?? '';
-  const dir = path.join(fixturesRoot, suiteId);
 
   const fixtures = (fs.existsSync(dir) ? fs.readdirSync(dir, { withFileTypes: true }) : [])
     .filter((entry) => entry.isDirectory())

@@ -36,6 +36,7 @@
   "include": [
     "shared/**/*",
     "services/**/*",
+    "plugins/**/*",
     "cli/**/*",
     "scripts/**/*",
     "assistant/**/*",
@@ -47,6 +48,7 @@
     "dist",
     "**/*.test.ts",
     "**/__tests__/fixtures/**",
-    "**/__tests__/e2e/fixtures/**"
+    "**/__tests__/e2e/fixtures/**",
+    "plugins/*/e2e/fixtures/**"
   ]
 }

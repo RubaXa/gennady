@@ -10,8 +10,7 @@ import path from 'node:path';
 import type { Gate } from '../stack.types.ts';
 
 const { GATE_SPEC_KEYS } = await import('../stack-config.ts');
-const { golangPlugin } = await import('../plugins/golang/golang-plugin.ts');
-const { nodePlugin } = await import('../plugins/node/node-plugin.ts');
+const { BUILTIN_PLUGINS } = await import('../../../plugins/index.ts');
 
 /**
  * Fields the runner acts on that config must NOT be able to author:
@@ -42,7 +41,7 @@ function planEveryBuiltinGate(): Gate[] {
   );
   try {
     const gates: Gate[] = [];
-    for (const plugin of [golangPlugin, nodePlugin]) {
+    for (const plugin of BUILTIN_PLUGINS) {
       const detection = plugin.detect(dir);
       assert.notEqual(detection, null, `${plugin.id} must detect the parity fixture`);
       const scope = plugin.verify.resolveScope(detection!, { mode: 'all', targets: [] });

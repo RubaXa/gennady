@@ -8,18 +8,20 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const { resolvePlugins } = await import('../resolve-plugins.ts');
+const { BUILTIN_PLUGINS } = await import('../../../plugins/index.ts');
 
 /** Repository root, three levels above this test file. */
 const REPO_ROOT = path.resolve(import.meta.dirname, '../../..');
 
 /** The single plugin root (plugins.spec §5). */
-const PLUGINS_ROOT = path.join(REPO_ROOT, 'services/stack/plugins');
+const PLUGINS_ROOT = path.join(REPO_ROOT, 'plugins');
 
 /**
  * Built-in ids that must always resolve. Without this floor a resolver that finds
  * nothing turns every derived check below into a vacuous pass (plugins.spec §6.2).
  */
-const FLOOR = ['golang', 'node'] as const;
+// `node` joins once it moves out of services/stack/plugins (plugins.spec §10, step 6).
+const FLOOR = ['golang'] as const;
 
 /** @purpose Every `.ts` file under a directory, recursively. */
 function sourceFiles(dir: string): string[] {
@@ -35,8 +37,11 @@ function sourceFiles(dir: string): string[] {
   return found;
 }
 
-/** Every `from '<specifier>'` in a module, import and re-export alike. */
-const SPECIFIER_RE = /from\s+'([^']+)'/g;
+/**
+ * Every module specifier: static `from '...'` and dynamic `import('...')` alike. Dropping the
+ * dynamic form is how a depth-coupled `await import('../../../gate-runner.ts')` slips through.
+ */
+const SPECIFIER_RE = /(?:from|\bimport)\s*\(?\s*'([^']+)'/g;
 
 describe('plugin locality', () => {
   const { plugins, errors } = resolvePlugins([PLUGINS_ROOT], 'stack');
@@ -51,6 +56,18 @@ describe('plugin locality', () => {
       assert.ok(
         plugins.some((plugin) => plugin.id === id),
         `built-in plugin "${id}" must resolve — see plugins.spec §6.2`
+      );
+    }
+  });
+
+  it('every resolved plugin is registered in the built-in index', () => {
+    // A plugin on disk that the index forgot resolves fine and then never loads: its code
+    // is not in the bundle. The reverse direction holds once node moves (§10, step 6).
+    const registered = BUILTIN_PLUGINS.map((plugin) => plugin.id);
+    for (const plugin of plugins) {
+      assert.ok(
+        registered.includes(plugin.id),
+        `plugins/${plugin.id} resolves but is absent from plugins/index.ts — it would never load`
       );
     }
   });

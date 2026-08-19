@@ -5,4 +5,4 @@
 import path from 'node:path';
 import { declareStackSuite } from './suite.ts';
 
-declareStackSuite('node', path.join(import.meta.dirname, 'fixtures'));
+declareStackSuite('node', path.join(import.meta.dirname, 'fixtures', 'node'));

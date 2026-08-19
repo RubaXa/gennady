@@ -50,6 +50,8 @@ export const nodePlugin: StackPlugin = {
   // environment, not tree state; linked into the run replica (D-STACK-013).
   sandboxLinks: ['node_modules'],
 
+  gateIds: NODE_GATE_IDS,
+
   detect(root: string): StackDetection | null {
     const manifestPath = path.join(root, 'package.json');
     if (!fs.existsSync(manifestPath)) {

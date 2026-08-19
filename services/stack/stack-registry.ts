@@ -3,18 +3,23 @@
 // @tasks: TSK-95
 
 import type { StackConfig, StackDetection, StackId, StackPlugin } from './stack.types.ts';
-import { nodePlugin, NODE_GATE_IDS } from './plugins/node/node-plugin.ts';
-import { golangPlugin } from './plugins/golang/golang-plugin.ts';
-import { GO_GATE_ORDER } from './plugins/golang/golang-plan.logic.ts';
+import { BUILTIN_PLUGINS } from '../../plugins/index.ts';
 
-/** Built-in stack plugins in detection order. External plugins are deferred (spec D-STACK-001). */
-export const BUILTIN_STACK_PLUGINS: readonly StackPlugin[] = [nodePlugin, golangPlugin];
+/**
+ * Built-in stack plugins, ordered by id so reports and plans never depend on the order
+ * a directory happened to be read in (plugins.spec §5). External plugins: D-STACK-001.
+ */
+export const BUILTIN_STACK_PLUGINS: readonly StackPlugin[] = [...BUILTIN_PLUGINS].sort((a, b) =>
+  a.id.localeCompare(b.id)
+);
 
-/** Built-in gate ids per plugin — the vocabulary strict config validation checks against. */
-export const BUILTIN_GATE_IDS: Readonly<Record<StackId, readonly string[]>> = {
-  node: NODE_GATE_IDS,
-  golang: GO_GATE_ORDER,
-};
+/**
+ * Built-in gate ids per plugin — the vocabulary strict config validation checks against.
+ * Derived from the plugins themselves: the registry must not reach into plugin internals.
+ */
+export const BUILTIN_GATE_IDS = Object.fromEntries(
+  BUILTIN_STACK_PLUGINS.map((plugin) => [plugin.id, plugin.gateIds])
+) as Readonly<Record<StackId, readonly string[]>>;
 
 /**
  * @purpose One active plugin paired with its detection.

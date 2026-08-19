@@ -7,7 +7,7 @@ import path from 'node:path';
 import type { StackDetection, StackPlugin } from 'gennady/stack';
 import { detectGoProject, type GoProject } from './golang-detect.logic.ts';
 import { resolveGoScope, type GoScope } from './golang-scope.logic.ts';
-import { planGoGates } from './golang-plan.logic.ts';
+import { GO_GATE_ORDER, planGoGates } from './golang-plan.logic.ts';
 
 /**
  * @purpose Build the `key: value` summary lines shown by `verify --plan` for a Go project.
@@ -50,6 +50,8 @@ export const golangPlugin: StackPlugin = {
   marker: 'go.mod',
   description:
     'go generate (drift check), go build, go vet, gofmt -l, golangci-lint, go test; changed-package scoping',
+
+  gateIds: GO_GATE_ORDER,
 
   detect(root: string): StackDetection | null {
     if (!fs.existsSync(path.join(root, 'go.mod'))) {

@@ -1,5 +1,0 @@
-{
-  "id": "golang",
-  "kind": "stack",
-  "entry": "golang-plugin.ts"
-}
