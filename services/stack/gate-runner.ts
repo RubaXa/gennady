@@ -138,6 +138,11 @@ function runGate(gate: Gate, pool: ReplicaPool | null): GateResult {
     return executeGate(gate, gate.argv, gate.cwd, null);
   }
 
+  const failedPrecondition = firstFailingPrecondition(gate, slot);
+  if (failedPrecondition !== null) {
+    return failedPrecondition;
+  }
+
   // realpath both sides: git resolves symlinked tmp dirs (/tmp, /var on macOS),
   // a raw gate.cwd would mis-map the relative path back into the real tree.
   const realTop = fs.realpathSync(slot.toplevel);
@@ -163,6 +168,57 @@ function runGate(gate: Gate, pool: ReplicaPool | null): GateResult {
     return entry;
   });
   return executeGate(gate, argv, cwd, slot);
+}
+
+/**
+ * @purpose Run the gate's preconditions; the first failure becomes the gate's ENV_FAIL result.
+ * @invariant Returning non-null means the gate command must not run (spec §4.7).
+ * @param gate Gate whose `requires` are executed.
+ * @param slot Replica slot the preconditions execute in, or null for the real tree.
+ * @returns The ENV_FAIL result of the first failing precondition, or null when all hold.
+ * @sideEffect Process: spawns one command per precondition until one fails.
+ */
+function firstFailingPrecondition(
+  gate: Gate,
+  slot: Extract<ReplicaSlot, { kind: 'replica' }> | null
+): GateResult | null {
+  for (const requirement of gate.requires ?? []) {
+    const startedAt = Date.now();
+    const cwd = slot === null ? requirement.cwd : mapIntoReplica(requirement.cwd, slot);
+    const [bin, ...args] = requirement.argv;
+    const proc = spawnSync(bin!, args, {
+      cwd,
+      encoding: 'utf-8',
+      timeout: requirement.timeoutMs,
+      maxBuffer: 8 * 1024 * 1024,
+      env: requirement.env !== undefined ? { ...process.env, ...requirement.env } : process.env,
+    });
+    if (proc.error === undefined && proc.status === 0) {
+      continue;
+    }
+    const detail = `${proc.stdout ?? ''}${proc.stderr ?? ''}`.trim();
+    return {
+      gate,
+      status: 'env-fail',
+      exitCode: proc.status,
+      durationMs: Date.now() - startedAt,
+      output:
+        `precondition failed: ${requirement.argv.join(' ')}\n${detail}` +
+        (requirement.hint !== undefined ? `\nhint: ${requirement.hint}` : ''),
+    };
+  }
+  return null;
+}
+
+/**
+ * @purpose Map a real-tree directory into the run replica.
+ * @param dir Absolute real-tree directory.
+ * @param slot Replica slot.
+ * @returns Corresponding directory inside the replica.
+ */
+function mapIntoReplica(dir: string, slot: Extract<ReplicaSlot, { kind: 'replica' }>): string {
+  const realTop = fs.realpathSync(slot.toplevel);
+  return path.join(slot.dir, path.relative(realTop, fs.realpathSync(dir)));
 }
 
 /**

@@ -100,6 +100,24 @@ export type EnvFailPredicate = ((outcome: GateOutcome) => boolean) & {
 };
 
 /**
+ * @purpose One executable command — the shared shape of a gate command, a `requires`
+ *   precondition and a fixer (spec §4.5.1). Executed without a shell.
+ * @consumer gate-runner, stack-config, plugins
+ */
+export type Cmd = {
+  /** @purpose Command and arguments; no shell, so no interpolation or pipes. */
+  readonly argv: readonly string[];
+  /** @purpose Absolute working directory. */
+  readonly cwd: string;
+  /** @purpose Environment variables merged over process.env. */
+  readonly env?: Readonly<Record<string, string>>;
+  /** @purpose Timeout in milliseconds; exceeding it is a TIMEOUT verdict. */
+  readonly timeoutMs: number;
+  /** @purpose For a precondition: what to do when it does not hold. */
+  readonly hint?: string;
+};
+
+/**
  * @purpose A planned verification gate — pure data, executed without a shell by the runner.
  * @consumer gate-runner, stack-config, verify.cmd
  */
@@ -127,6 +145,11 @@ export type Gate = {
   readonly driftMeansFailure?: boolean;
   /** @purpose ENV_FAIL predicates; absent/empty means every failure implicates the code. */
   readonly envFail?: readonly EnvFailPredicate[];
+  /**
+   * @purpose Environment preconditions run BEFORE the gate command; the first failing one
+   *   is ENV_FAIL with its hint and the gate command never runs (spec §4.7).
+   */
+  readonly requires?: readonly Cmd[];
   /** @purpose Populated when the gate cannot run; it is then reported, not executed. */
   readonly skipped: string | null;
 };
@@ -212,6 +235,8 @@ export type GateSpec = {
   readonly driftMeansFailure?: boolean;
   /** @purpose ENV_FAIL rules (config.spec §3.4): conditions AND within a rule, rules OR. */
   readonly envFail?: readonly Readonly<Record<string, unknown>>[];
+  /** @purpose Environment preconditions as CmdSpec entries (spec §4.7); `hint` is required. */
+  readonly requires?: readonly Readonly<Record<string, unknown>>[];
 };
 
 /**

@@ -1,0 +1,13 @@
+stack:
+  use: [golang]
+  golang:
+    skipGates: [generate, build, vet, fmt, lint, test]
+    extraGates:
+      - id: e2e
+        argv: [sh, -c, 'test -f go.mod']
+        timeout: 30s
+        requires:
+          - argv: [sh, -c, 'exit 0']
+            hint: 'never fires'
+          - argv: [sh, -c, 'test -f main.go']
+            hint: 'the fixture must carry main.go'

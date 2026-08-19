@@ -7,7 +7,14 @@ import path from 'node:path';
 import { parse as parseYaml } from 'yaml';
 import { damerauLevenshtein } from '../../shared/common/damerau-levenshtein.ts';
 import { compileEnvFailRules } from './env-fail.ts';
-import type { Gate, GateSpec, StackConfig, StackId, StackPluginConfig } from './stack.types.ts';
+import type {
+  Cmd,
+  Gate,
+  GateSpec,
+  StackConfig,
+  StackId,
+  StackPluginConfig,
+} from './stack.types.ts';
 
 /** Committable project config filename (YAML — comments; config.spec §1.1). */
 export const PROJECT_CONFIG_FILENAME = 'gennady.yaml';
@@ -17,6 +24,9 @@ const RC_FILENAME = '.gennadyrc';
 
 /** Duration string grammar: `<int><s|m|h>` (config.spec §3.4). */
 const DURATION_RE = /^(\d+)(s|m|h)$/;
+
+/** Default timeout for a precondition: they are probes, so seconds, not minutes. */
+const PRECONDITION_DEFAULT_TIMEOUT_MS = 30_000;
 
 /** Default timeout for extraGates entries that do not state one. */
 const EXTRA_GATE_DEFAULT_TIMEOUT_MS = 10 * 60_000;
@@ -34,6 +44,7 @@ export const GATE_SPEC_KEYS = [
   'outputMeansFailure',
   'driftMeansFailure',
   'envFail',
+  'requires',
 ] as const;
 
 /**
@@ -240,6 +251,81 @@ function mergeInto(
 
 // #region START_VALIDATION — strict: any unknown key, wrong type or bad value is fatal
 
+/** Keys a CmdSpec may carry (config.spec §3.4) — one shape for gate, requires and fixer. */
+const CMD_SPEC_KEYS = ['argv', 'cwd', 'env', 'timeout', 'hint'] as const;
+
+/**
+ * @purpose Build runtime commands from CmdSpec entries: cwd resolved, duration parsed.
+ * @param specs Raw `requires` entries (already validated).
+ * @param root Absolute repository root.
+ * @param fallbackCwd Directory used when an entry states no cwd.
+ * @returns Runtime commands in declaration order.
+ */
+function toCommands(
+  specs: readonly Readonly<Record<string, unknown>>[] | undefined,
+  root: string,
+  fallbackCwd: string
+): Cmd[] {
+  return (specs ?? []).map((spec) => ({
+    argv: spec['argv'] as readonly string[],
+    cwd: typeof spec['cwd'] === 'string' ? path.resolve(root, spec['cwd']) : fallbackCwd,
+    env: spec['env'] as Readonly<Record<string, string>> | undefined,
+    timeoutMs:
+      typeof spec['timeout'] === 'string'
+        ? (parseDuration(spec['timeout']) ?? PRECONDITION_DEFAULT_TIMEOUT_MS)
+        : PRECONDITION_DEFAULT_TIMEOUT_MS,
+    hint: spec['hint'] as string | undefined,
+  }));
+}
+
+/**
+ * @purpose Validate one CmdSpec (a `requires` entry or a fixer) against the closed schema.
+ * @param spec Raw value from config.
+ * @param keyPath Dotted path of the entry.
+ * @param errors Error accumulator (mutated).
+ */
+function validateCmdSpec(spec: unknown, keyPath: string, errors: StackConfigError[]): void {
+  if (!isPlainObject(spec)) {
+    errors.push({ path: keyPath, message: 'must be an object' });
+    return;
+  }
+  for (const key of Object.keys(spec)) {
+    if (!(CMD_SPEC_KEYS as readonly string[]).includes(key)) {
+      errors.push(unknownKeyError(`${keyPath}.${key}`, CMD_SPEC_KEYS));
+    }
+  }
+  const { argv, cwd, env, timeout, hint } = spec as Record<string, unknown>;
+  if (
+    !Array.isArray(argv) ||
+    argv.length === 0 ||
+    argv.some((entry) => typeof entry !== 'string')
+  ) {
+    errors.push({ path: `${keyPath}.argv`, message: 'required non-empty array of strings' });
+  }
+  if (cwd !== undefined && typeof cwd !== 'string') {
+    errors.push({ path: `${keyPath}.cwd`, message: 'must be a string (relative to repo root)' });
+  }
+  if (
+    env !== undefined &&
+    (!isPlainObject(env) || Object.values(env).some((value) => typeof value !== 'string'))
+  ) {
+    errors.push({ path: `${keyPath}.env`, message: 'must be a map of string to string' });
+  }
+  if (timeout !== undefined && (typeof timeout !== 'string' || parseDuration(timeout) === null)) {
+    errors.push({
+      path: `${keyPath}.timeout`,
+      message: 'must be a duration string: <int>(s|m|h), e.g. "90s", "5m"',
+    });
+  }
+  if (typeof hint !== 'string' || hint.length === 0) {
+    errors.push({
+      path: `${keyPath}.hint`,
+      message:
+        'required non-empty string — a precondition without remediation says no more than a timeout',
+    });
+  }
+}
+
 /**
  * @purpose Validate one GateSpec object.
  * @param spec Raw value from config.
@@ -266,7 +352,7 @@ function validateGateSpec(
     }
   }
 
-  const { id, argv, cwd, env, timeout, outputMeansFailure, driftMeansFailure, envFail } =
+  const { id, argv, cwd, env, timeout, outputMeansFailure, driftMeansFailure, envFail, requires } =
     spec as GateSpec;
   if (requireIdArgv && (typeof id !== 'string' || id.length === 0)) {
     errors.push({ path: `${keyPath}.id`, message: 'required non-empty string' });
@@ -300,6 +386,15 @@ function validateGateSpec(
   }
   if (driftMeansFailure !== undefined && typeof driftMeansFailure !== 'boolean') {
     errors.push({ path: `${keyPath}.driftMeansFailure`, message: 'must be a boolean' });
+  }
+  if (requires !== undefined) {
+    if (!Array.isArray(requires)) {
+      errors.push({ path: `${keyPath}.requires`, message: 'must be an array of commands' });
+    } else {
+      requires.forEach((entry, index) =>
+        validateCmdSpec(entry, `${keyPath}.requires[${index}]`, errors)
+      );
+    }
   }
   if (envFail !== undefined) {
     errors.push(...compileEnvFailRules(envFail, `${keyPath}.envFail`).errors);
@@ -560,6 +655,10 @@ export function applyStackConfig(
         // (panic traces, blocked module proxy) stay — they describe the environment.
         // Config rules PREPEND: `find()` returns the first match and plugin predicates often
         // carry no hint, so appending would silently discard the author's remediation.
+        requires:
+          override.requires !== undefined
+            ? toCommands(override.requires, root, gate.cwd)
+            : gate.requires,
         envFail: [
           ...compileEnvFailRules(
             override.envFail ?? [],
@@ -601,6 +700,11 @@ export function applyStackConfig(
       driftMeansFailure: spec.driftMeansFailure,
       envFail: compileEnvFailRules(spec.envFail ?? [], `${stack}.extraGates.${spec.id}.envFail`)
         .predicates,
+      requires: toCommands(
+        spec.requires,
+        root,
+        spec.cwd !== undefined ? path.resolve(root, spec.cwd) : root
+      ),
       skipped: null,
     };
     // extraGates can be declared project-wide and skipped personally — same visibility rule.

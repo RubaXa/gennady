@@ -191,6 +191,65 @@ describe('runVerify', () => {
   });
 });
 
+describe('runVerify — requires preconditions (spec §4.7)', () => {
+  it('reports env-fail with the precondition hint and never runs the gate command', () => {
+    const marker = path.join(BASE_DIR, 'gate-ran.txt');
+    const gate: Gate = {
+      ...shellGate('e2e', `touch ${JSON.stringify(marker)}`),
+      requires: [
+        {
+          argv: ['/bin/sh', '-c', 'exit 0'],
+          cwd: BASE_DIR,
+          timeoutMs: 10_000,
+          hint: 'this one passes',
+        },
+        {
+          argv: ['/bin/sh', '-c', 'echo "cannot reach docker daemon" >&2; exit 1'],
+          cwd: BASE_DIR,
+          timeoutMs: 10_000,
+          hint: 'start docker, then re-run',
+        },
+      ],
+    };
+    const report = runVerify([runOf([gate])], []);
+
+    assert.equal(report.results[0]?.status, 'env-fail');
+    assert.match(report.results[0]?.output ?? '', /start docker, then re-run/);
+    assert.match(report.results[0]?.output ?? '', /cannot reach docker daemon/);
+    assert.equal(fs.existsSync(marker), false, 'the gate command must not run');
+  });
+
+  it('runs the gate normally once every precondition passes', () => {
+    const gate: Gate = {
+      ...shellGate('e2e', 'exit 0'),
+      requires: [
+        { argv: ['/bin/sh', '-c', 'exit 0'], cwd: BASE_DIR, timeoutMs: 10_000, hint: 'ok' },
+      ],
+    };
+    const report = runVerify([runOf([gate])], []);
+
+    assert.equal(report.results[0]?.status, 'pass');
+  });
+
+  it('a failing precondition is env-fail even when the gate would have failed on code', () => {
+    // Otherwise a broken environment reads as a finding about the code.
+    const gate: Gate = {
+      ...shellGate('e2e', 'exit 1'),
+      requires: [
+        {
+          argv: ['/bin/sh', '-c', 'exit 3'],
+          cwd: BASE_DIR,
+          timeoutMs: 10_000,
+          hint: 'fix the env',
+        },
+      ],
+    };
+    const report = runVerify([runOf([gate])], []);
+
+    assert.equal(report.results[0]?.status, 'env-fail');
+  });
+});
+
 describe('formatVerifyReport', () => {
   it('reports ZERO_GATES, not ALL_GATES_PASS, when nothing was executed (review B2)', () => {
     const skipped: Gate = { ...shellGate('lint', 'exit 1'), argv: [], skipped: 'tool not found' };
