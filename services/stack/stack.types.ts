@@ -61,17 +61,42 @@ export type StackScope = {
 };
 
 /**
- * @purpose Failure-classification predicate: true = ENV_FAIL (environment), false = the code.
- *   The runner appends the matched predicate's optional fix-the-environment `hint` to the output.
- * @consumer gate-runner, plugins
+ * @purpose Stream an ENV_FAIL rule matches against; `output` is stdout followed by stderr.
+ * @consumer env-fail combinators, stack-config
  */
-export type EnvFailPredicate = ((exitCode: number | null, output: string) => boolean) & {
+export type EnvFailStream = 'stdout' | 'stderr' | 'output';
+
+/**
+ * @purpose Everything a predicate may inspect about one finished gate execution.
+ * @consumer env-fail combinators, gate-runner
+ */
+export type GateOutcome = {
+  /** @purpose Process exit code, or null when killed or never spawned. */
+  readonly exitCode: number | null;
+  /** @purpose True when the gate exceeded its own timeoutMs. */
+  readonly timedOut: boolean;
+  /** @purpose Standard output, replica paths already rewritten. */
+  readonly stdout: string;
+  /** @purpose Standard error, replica paths already rewritten. */
+  readonly stderr: string;
+  /** @purpose stdout followed by stderr — the stream-agnostic form. */
+  readonly output: string;
+};
+
+/**
+ * @purpose Failure-classification predicate: true = ENV_FAIL (environment), false = the code.
+ *   The runner appends the matched predicate's `hint` to the gate output.
+ * @consumer gate-runner, env-fail combinators, plugins
+ */
+export type EnvFailPredicate = ((outcome: GateOutcome) => boolean) & {
   readonly hint?: string;
   /**
    * @purpose What the predicate inspects: an `exit` predicate describes one binary's
    *   exit-code convention, so an argv override replacing that binary drops it.
    */
   readonly kind?: 'exit' | 'output';
+  /** @purpose Rendered form for `--plan --json`, e.g. `exit > 1` or `stderr ~ /panic/m`. */
+  readonly describe: string;
 };
 
 /**
@@ -185,6 +210,8 @@ export type GateSpec = {
   readonly outputMeansFailure?: boolean;
   /** @purpose Drift gate (spec §2): mutation expected, replica drift is the FAIL verdict. Rejected in fixers. */
   readonly driftMeansFailure?: boolean;
+  /** @purpose ENV_FAIL rules (config.spec §3.4): conditions AND within a rule, rules OR. */
+  readonly envFail?: readonly Readonly<Record<string, unknown>>[];
 };
 
 /**

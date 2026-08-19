@@ -204,7 +204,15 @@ export async function run(argv: string[]): Promise<number> {
               provenance: Object.fromEntries(configLoad.provenance),
             },
             diagnostics,
-            runs: filteredRuns,
+            // Predicates are closures: JSON.stringify turns them into nulls, which told an
+            // agent nothing about how a gate classifies failures. Render them instead.
+            runs: filteredRuns.map((stackRun) => ({
+              ...stackRun,
+              gates: stackRun.gates.map((gate) => ({
+                ...gate,
+                envFail: (gate.envFail ?? []).map((predicate) => predicate.describe),
+              })),
+            })),
           },
           null,
           2

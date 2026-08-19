@@ -5,7 +5,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { EnvFailPredicate, Gate, GatePlanOptions } from '../../stack.types.ts';
-import { exitAbove, outputMatches } from '../../gate-runner.ts';
+import { exitCodeMatches, outputMatches } from '../../env-fail.ts';
 import { parseDuration } from '../../stack-config.ts';
 import { execFileTrimSafe } from '../../../../shared/common/exec.ts';
 import type { GoProject } from './golang-detect.logic.ts';
@@ -311,7 +311,7 @@ export function planGoGates(project: GoProject, scope: GoScope, options: GatePla
             cwd: project.root,
             timeoutMs: GATE_TIMEOUTS_MS[id],
             outputMeansFailure: false,
-            envFail: [exitAbove(1), ...GO_TOOL_ENV_FAIL],
+            envFail: [exitCodeMatches('>1'), ...GO_TOOL_ENV_FAIL],
             skipped: null,
           });
         }

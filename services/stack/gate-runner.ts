@@ -8,8 +8,8 @@ import { spawnSync } from 'node:child_process';
 import { execFileTrimSafe } from '../../shared/common/exec.ts';
 import { createTreeReplica, type TreeReplica } from './tree-replica.ts';
 import type {
-  EnvFailPredicate,
   Gate,
+  GateOutcome,
   GateResult,
   StackDiagnostic,
   StackRun,
@@ -21,35 +21,9 @@ const TRUNCATE_HEAD_LINES = 20;
 /** Tail lines kept when truncating — test runners put the failure summary at the end. */
 const TRUNCATE_TAIL_LINES = 40;
 
-// #region START_ENV_FAIL_COMBINATORS — building blocks plugins compose into per-gate predicate sets
-
-/**
- * @purpose Predicate: exit codes strictly above n implicate the tool (golangci-lint: >1 = broken).
- * @param n Highest exit code that still counts as a genuine finding.
- * @returns EnvFailPredicate.
- */
-export function exitAbove(n: number): EnvFailPredicate {
-  return Object.assign((exitCode: number | null) => exitCode !== null && exitCode > n, {
-    kind: 'exit' as const,
-  });
-}
-
-/**
- * @purpose Predicate: any match of the pattern in the combined output implicates the environment.
- * @param pattern Regular expression tested against the gate output.
- * @param [hint] Fix-the-environment instruction appended to the output when the predicate matches.
- * @returns EnvFailPredicate.
- */
-export function outputMatches(pattern: RegExp, hint?: string): EnvFailPredicate {
-  return Object.assign((_exitCode: number | null, output: string) => pattern.test(output), {
-    hint,
-    kind: 'output' as const,
-  });
-}
-
-// Spawn failures (ENOENT and friends) are classified env-fail by the runner itself —
-// the tool never ran, which is environmental for every stack; no combinator needed.
-// #endregion END_ENV_FAIL_COMBINATORS
+// Combinators live in env-fail.ts so the config loader can compile rules without
+// importing the runner; re-exported here for existing consumers.
+export { exitCodeMatches, outputMatches, streamMatches, allOf } from './env-fail.ts';
 
 // #region START_REPLICA_POOL — one run replica per git toplevel, shared by every gate (D-STACK-013)
 
@@ -278,7 +252,14 @@ function executeGate(
   }
   // #endregion END_VERDICTS
 
-  const matched = (gate.envFail ?? []).find((predicate) => predicate(proc.status, output));
+  const outcome: GateOutcome = {
+    exitCode: proc.status,
+    timedOut: false,
+    stdout,
+    stderr: rewrite(proc.stderr ?? ''),
+    output,
+  };
+  const matched = (gate.envFail ?? []).find((predicate) => predicate(outcome));
   return {
     gate,
     status: matched !== undefined ? 'env-fail' : 'fail',

@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { parse as parseYaml } from 'yaml';
 import { damerauLevenshtein } from '../../shared/common/damerau-levenshtein.ts';
+import { compileEnvFailRules } from './env-fail.ts';
 import type { Gate, GateSpec, StackConfig, StackId, StackPluginConfig } from './stack.types.ts';
 
 /** Committable project config filename (YAML — comments; config.spec §1.1). */
@@ -24,7 +25,7 @@ const EXTRA_GATE_DEFAULT_TIMEOUT_MS = 10 * 60_000;
 const PLUGIN_SECTION_KEYS = ['skipGates', 'overrideGates', 'extraGates', 'fixers'] as const;
 
 /** Known keys of a GateSpec (config.spec §3.4). */
-const GATE_SPEC_KEYS = [
+export const GATE_SPEC_KEYS = [
   'id',
   'argv',
   'cwd',
@@ -32,6 +33,7 @@ const GATE_SPEC_KEYS = [
   'timeout',
   'outputMeansFailure',
   'driftMeansFailure',
+  'envFail',
 ] as const;
 
 /**
@@ -264,7 +266,8 @@ function validateGateSpec(
     }
   }
 
-  const { id, argv, cwd, env, timeout, outputMeansFailure, driftMeansFailure } = spec as GateSpec;
+  const { id, argv, cwd, env, timeout, outputMeansFailure, driftMeansFailure, envFail } =
+    spec as GateSpec;
   if (requireIdArgv && (typeof id !== 'string' || id.length === 0)) {
     errors.push({ path: `${keyPath}.id`, message: 'required non-empty string' });
   }
@@ -297,6 +300,9 @@ function validateGateSpec(
   }
   if (driftMeansFailure !== undefined && typeof driftMeansFailure !== 'boolean') {
     errors.push({ path: `${keyPath}.driftMeansFailure`, message: 'must be a boolean' });
+  }
+  if (envFail !== undefined) {
+    errors.push(...compileEnvFailRules(envFail, `${keyPath}.envFail`).errors);
   }
   if (driftMeansFailure !== undefined && forbidDriftFlag) {
     errors.push({
@@ -552,10 +558,17 @@ export function applyStackConfig(
         // applies: `make lint` returns 2 for any failed recipe, which an inherited
         // exitAbove(1) would report as ENV_FAIL on a GENUINE finding. Output predicates
         // (panic traces, blocked module proxy) stay — they describe the environment.
-        envFail:
-          override.argv !== undefined
+        // Config rules PREPEND: `find()` returns the first match and plugin predicates often
+        // carry no hint, so appending would silently discard the author's remediation.
+        envFail: [
+          ...compileEnvFailRules(
+            override.envFail ?? [],
+            `${stack}.overrideGates.${gate.id}.envFail`
+          ).predicates,
+          ...((override.argv !== undefined
             ? gate.envFail?.filter((predicate) => predicate.kind !== 'exit')
-            : gate.envFail,
+            : gate.envFail) ?? []),
+        ],
         label: `${gate.label} (overridden by ${source})`,
         // An explicit argv override supersedes a planner skip: the config author
         // states the command is runnable in this repo.
@@ -586,6 +599,8 @@ export function applyStackConfig(
           : EXTRA_GATE_DEFAULT_TIMEOUT_MS,
       outputMeansFailure: spec.outputMeansFailure ?? false,
       driftMeansFailure: spec.driftMeansFailure,
+      envFail: compileEnvFailRules(spec.envFail ?? [], `${stack}.extraGates.${spec.id}.envFail`)
+        .predicates,
       skipped: null,
     };
     // extraGates can be declared project-wide and skipped personally — same visibility rule.

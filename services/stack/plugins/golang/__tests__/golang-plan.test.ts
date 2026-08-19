@@ -104,10 +104,13 @@ describe('planGoGates', () => {
     );
 
     const matched = generate?.envFail?.find((predicate) =>
-      predicate(
-        1,
-        'a.go:3: running "easyjson": exec: "easyjson": executable file not found in $PATH'
-      )
+      predicate({
+        exitCode: 1,
+        timedOut: false,
+        stdout: 'a.go:3: running "easyjson": exec: "easyjson": executable file not found in $PATH',
+        stderr: '',
+        output: 'a.go:3: running "easyjson": exec: "easyjson": executable file not found in $PATH',
+      })
     );
     assert.ok(matched, 'a missing generator implicates the environment, not the code');
     assert.match(matched?.hint ?? '', /go install/);
@@ -205,11 +208,27 @@ describe('planGoGates', () => {
 
     assert.ok((lint?.envFail?.length ?? 0) > 0);
     assert.equal(
-      lint!.envFail!.some((p) => p(2, 'some internal error')),
+      lint!.envFail!.some((p) =>
+        p({
+          exitCode: 2,
+          timedOut: false,
+          stdout: 'some internal error',
+          stderr: '',
+          output: 'some internal error',
+        })
+      ),
       true
     );
     assert.equal(
-      lint!.envFail!.some((p) => p(1, 'a.go:1: issue')),
+      lint!.envFail!.some((p) =>
+        p({
+          exitCode: 1,
+          timedOut: false,
+          stdout: 'a.go:1: issue',
+          stderr: '',
+          output: 'a.go:1: issue',
+        })
+      ),
       false
     );
   });
@@ -220,17 +239,39 @@ describe('planGoGates', () => {
     );
 
     assert.equal(
-      build!.envFail!.some((p) => p(1, 'panic: boom\ngoroutine 1')),
-      true
-    );
-    assert.equal(
       build!.envFail!.some((p) =>
-        p(1, 'go: example.com/x@v1: Get "https://proxy.golang.org/x": Forbidden')
+        p({
+          exitCode: 1,
+          timedOut: false,
+          stdout: 'panic: boom\ngoroutine 1',
+          stderr: '',
+          output: 'panic: boom\ngoroutine 1',
+        })
       ),
       true
     );
     assert.equal(
-      build!.envFail!.some((p) => p(1, './x.go:1:1: syntax error')),
+      build!.envFail!.some((p) =>
+        p({
+          exitCode: 1,
+          timedOut: false,
+          stdout: 'go: example.com/x@v1: Get "https://proxy.golang.org/x": Forbidden',
+          stderr: '',
+          output: 'go: example.com/x@v1: Get "https://proxy.golang.org/x": Forbidden',
+        })
+      ),
+      true
+    );
+    assert.equal(
+      build!.envFail!.some((p) =>
+        p({
+          exitCode: 1,
+          timedOut: false,
+          stdout: './x.go:1:1: syntax error',
+          stderr: '',
+          output: './x.go:1:1: syntax error',
+        })
+      ),
       false
     );
   });
@@ -239,13 +280,27 @@ describe('planGoGates', () => {
     const test = planGoGates(project(), scope(), defaultOptions).find((gate) => gate.id === 'test');
 
     assert.equal(
-      test!.envFail!.some((p) => p(1, 'panic: runtime error: index out of range [3]')),
+      test!.envFail!.some((p) =>
+        p({
+          exitCode: 1,
+          timedOut: false,
+          stdout: 'panic: runtime error: index out of range [3]',
+          stderr: '',
+          output: 'panic: runtime error: index out of range [3]',
+        })
+      ),
       false,
       'a panic in the code under test is a genuine finding'
     );
     assert.equal(
       test!.envFail!.some((p) =>
-        p(1, 'go: example.com/x@v1: Get "https://proxy.example.com/x": Forbidden')
+        p({
+          exitCode: 1,
+          timedOut: false,
+          stdout: 'go: example.com/x@v1: Get "https://proxy.example.com/x": Forbidden',
+          stderr: '',
+          output: 'go: example.com/x@v1: Get "https://proxy.example.com/x": Forbidden',
+        })
       ),
       true,
       'blocked module fetches stay environmental'

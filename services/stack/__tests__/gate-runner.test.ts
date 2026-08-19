@@ -10,7 +10,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import type { Gate, StackDiagnostic, StackRun } from '../stack.types.ts';
 
-const { runVerify, formatVerifyReport, exitAbove, outputMatches } =
+const { runVerify, formatVerifyReport, exitCodeMatches, outputMatches } =
   await import('../gate-runner.ts');
 
 // Small one-commit repo shared by the plain-gate tests: every gate runs in a run
@@ -125,18 +125,22 @@ describe('runVerify', () => {
     assert.match(report.results[0]?.output ?? '', /hint: install it with `go install`/);
   });
 
-  it('classifies exit codes above the exitAbove threshold as env-fail', () => {
+  it('classifies exit codes above the exit-code condition as env-fail', () => {
     const report = runVerify(
-      [runOf([shellGate('lint', 'exit 3', { envFail: [exitAbove(1)] })])],
+      [runOf([shellGate('lint', 'exit 3', { envFail: [exitCodeMatches('>1')] })])],
       []
     );
 
     assert.equal(report.results[0]?.status, 'env-fail');
   });
 
-  it('keeps exit codes at or below the exitAbove threshold as genuine findings', () => {
+  it('keeps exit codes at or below the exit-code condition as genuine findings', () => {
     const report = runVerify(
-      [runOf([shellGate('lint', 'echo "a.go:1: issue"; exit 1', { envFail: [exitAbove(1)] })])],
+      [
+        runOf([
+          shellGate('lint', 'echo "a.go:1: issue"; exit 1', { envFail: [exitCodeMatches('>1')] }),
+        ]),
+      ],
       []
     );
 
