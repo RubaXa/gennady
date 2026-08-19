@@ -543,7 +543,7 @@ describe('SddCheckCommand', () => {
       assert.match(r.text, /gone\.research\.md/);
     });
 
-    it('--all flags a research doc with zero incoming references (SDD_RESEARCH_ORPHAN, warn, exit 0)', async () => {
+    it('--all flags a research doc with zero incoming references (SDD_RESEARCH_ORPHAN, error, exit 1)', async () => {
       const root = join(dir, 'research-orphan-proj');
       const researchDir = join(root, 'specs', 'demo', 'research');
       mkdirSync(researchDir, { recursive: true });
@@ -556,7 +556,7 @@ describe('SddCheckCommand', () => {
       const r = await mod.run(argv('--all', root));
       assert.match(r.text, /SDD_RESEARCH_ORPHAN/);
       assert.match(r.text, /unlinked\.research\.md/);
-      assert.strictEqual(r.exitCode, 0, 'orphan is warn-only — must not fail the gate');
+      assert.strictEqual(r.exitCode, 1, 'orphan is an error — lost knowledge fails the check');
     });
 
     it('--task on a ticket linking a missing research doc also fires SDD_RESEARCH_REF_BROKEN', async () => {

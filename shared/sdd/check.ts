@@ -1374,7 +1374,7 @@ function scopeSpecPathFor(file: string): string {
  * @param researchFiles Every `*.research.md` file found under `specs/**`.
  * @param referenced Resolved research-file identifiers with at least one incoming link, from anywhere.
  * @param registered Resolved research-file identifiers with a row in some spec's `## Research` section.
- * @returns One `SDD_RESEARCH_ORPHAN` or `SDD_RESEARCH_UNREGISTERED` (both warn) per affected file.
+ * @returns One `SDD_RESEARCH_ORPHAN` (error) or `SDD_RESEARCH_UNREGISTERED` (warn) per affected file.
  */
 export function checkResearchOrphans(
   researchFiles: string[],
@@ -1385,11 +1385,10 @@ export function checkResearchOrphans(
   for (const f of researchFiles) {
     if (!referenced.has(f)) {
       findings.push({
-        severity: 'warn',
+        severity: 'error',
         code: 'SDD_RESEARCH_ORPHAN',
         file: f,
-        message:
-          'Документ ресёрча не имеет ни одной входящей ссылки из-под specs/** — сошлись на него из Decision Log / RELATED секции спеки (или Spec References тикета), либо отметь superseded-by.',
+        message: `Документ ресёрча не имеет ни одной входящей ссылки из-под specs/** — знание потеряно. Зарегистрируй его строкой в секции \`## Research\` спеки ${scopeSpecPathFor(f)} (создай секцию, если её нет), либо отметь документ superseded-by.`,
       });
     } else if (!registered.has(f)) {
       findings.push({

@@ -79,11 +79,11 @@ describe('checkResearchOrphans', () => {
     assert.deepStrictEqual(findings, []);
   });
 
-  it('an unreferenced research file → one SDD_RESEARCH_ORPHAN warning', () => {
+  it('an unreferenced research file → one SDD_RESEARCH_ORPHAN error', () => {
     const file = '/repo/specs/demo/research/2026-08-18-x.research.md';
     const findings = checkResearchOrphans([file], new Set(), new Set());
     assert.strictEqual(findings.length, 1);
-    assert.strictEqual(findings[0]?.severity, 'warn');
+    assert.strictEqual(findings[0]?.severity, 'error');
     assert.strictEqual(findings[0]?.code, 'SDD_RESEARCH_ORPHAN');
     assert.strictEqual(findings[0]?.file, file);
   });
