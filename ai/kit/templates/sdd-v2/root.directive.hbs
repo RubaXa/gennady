@@ -215,7 +215,19 @@
         owner of `specs/README.md` and the only flow that rewrites it (`AX_PORTAL_PRIMARY_OWNER`).
         Write the file. Then run `sdd-check --all .` to verify portal integrity —
         graph acyclicity, graph↔table↔spec coherence, no orphan specs or dangling scope references — and
-        resolve any finding before finishing, per `AX_CLOSE_WITH_INTEGRITY_CHECK`. Approval Check.
+        resolve any finding before finishing, per `AX_CLOSE_WITH_INTEGRITY_CHECK`.
+
+        Gate on NEW content only, never on a recap: the assembled Portal is not new when it only
+        restates what the operator already approved earlier in THIS session — the Vision confirmed
+        at STEP_1, the Scope Graph confirmed at STEP_2, the Tool Stack confirmed at STEP_3. New means
+        anything the operator has not yet approved this session — a Scopes-table description written
+        during assembly, an editorial rewording of an approved sentence, a Decision Log row filed here
+        that STEP_1 did not already surface. When assembly introduced nothing new, show the written
+        result plus the `sdd-check` output and go straight to the continuity menu below — skip the
+        Approval Check; re-confirming a portal built entirely from already-approved pieces asks the
+        operator to re-approve zero new information. When assembly did introduce something new, do
+        not gate on the whole portal either — surface ONLY the delta («при сборке добавил: `<list>` —
+        ок?») and let the operator confirm that delta alone.
 
         The flow never ends on bare text telling the operator to run `/sdd` themselves — close per
         `NEXT_STEP_MENU_FORMAT`: one ✅ line (portal written, integrity checked), then ONE

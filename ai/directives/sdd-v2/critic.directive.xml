@@ -318,6 +318,15 @@
       планах?_
 
       (AskUserQuestion: «Пока не выделять (рекомендую)» · «Выделить сразу»)
+
+      A counter-question in reply to a gate is a side-dive, not a rejection: (a) answer the counter-question
+      in full, on its own merits, before returning to the gate; (b) bring the gate back exactly once,
+      marked as a repeat pass, enriched with whatever the counter-question surfaced — «повторяю вопрос»
+      plus a fact or option the side-dive added (e.g. operator asked "как ты делаешь ресёрч?" → the repeat
+      pass adds an option «сначала ресёрч, потом решаем»); a verbatim repeat of the first gate carries no
+      delta and is itself the violation. (c) if the operator answers the repeat pass with another
+      counter-question instead of a pick, do not fire a third pass — stop and ask directly what is blocking
+      the decision.
     </Contract>
 
     <Contract id="HALT_FORMAT">
