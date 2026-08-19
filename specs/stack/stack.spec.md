@@ -494,7 +494,7 @@ cli/cmd/fix/
 
 ## 10. Decision Log
 
-### D-STACK-001 — Внешние плагины отложены целиком (TODO)
+### D-STACK-001 — Внешние плагины: дизайн вынесен в scope [`stack-plugins`](../stack-plugins/stack-plugins.spec.md)
 
 - **Status:** active
 - **Recorded:** spec review round 2, PR #5
