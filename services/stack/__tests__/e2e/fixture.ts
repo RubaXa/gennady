@@ -23,6 +23,7 @@ const EXPECT_KEYS = [
   'timeoutMs',
   'homeRc',
   'noCommit',
+  'outputIncludes',
 ] as const;
 
 /** Every key a per-gate expectation may carry. */
@@ -85,6 +86,11 @@ export type FixtureExpectation = {
   readonly homeRc?: string;
   /** @purpose Leave the fixture repo without a commit, to exercise the missing-HEAD path. */
   readonly noCommit: boolean;
+  /**
+   * @purpose Substrings the whole run must print. Needed for `fix`, which has no `--json`,
+   *   so its verdicts can only be asserted through the human report.
+   */
+  readonly outputIncludes: readonly string[];
 };
 
 /**
@@ -210,6 +216,7 @@ export function readExpectation(file: string): FixtureExpectation {
     timeoutMs: raw['timeoutMs'] as number | undefined,
     homeRc: raw['homeRc'] as string | undefined,
     noCommit: (raw['noCommit'] ?? false) as boolean,
+    outputIncludes: (raw['outputIncludes'] ?? []) as readonly string[],
   };
 }
 
@@ -325,6 +332,12 @@ export function assertFixture(run: FixtureRun, expectation: FixtureExpectation):
     }
     if (!run.output.includes(expectation.config.error)) {
       fail(`config error missing substring ${JSON.stringify(expectation.config.error)}`);
+    }
+  }
+
+  for (const needle of expectation.outputIncludes) {
+    if (!run.output.includes(needle)) {
+      fail(`run output missing ${JSON.stringify(needle)}`);
     }
   }
 

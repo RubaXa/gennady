@@ -132,18 +132,32 @@ const PANIC_RE = /^panic: /m;
 const MODULE_FETCH_RE =
   /^go: .*(?:Forbidden|403|410 Gone|dial tcp|i\/o timeout|no such host|connection refused|certificate|module lookup disabled|proxy\.golang\.org|unrecognized import path)/m;
 
+/**
+ * Same environmental causes, but reported on a `file:line:col:` line instead of a `go: ` line —
+ * `go build -mod=mod` does this. Deliberately narrow: only causes that are unambiguously the
+ * environment. `no required module provides package` and `missing go.sum entry` are NOT here,
+ * because an agent fixes those in the repo (`go get` / `go mod tidy` + commit).
+ */
+const MODULE_RESOLVE_RE =
+  /^\S+\.go:\d+:\d+: .*(?:module lookup disabled|dial tcp|i\/o timeout|no such host|connection refused|Forbidden|403)/m;
+
 /** Predicates for gates where a panic means the TOOL crashed (build/vet/lint — not test). */
 const GO_TOOL_ENV_FAIL: readonly EnvFailPredicate[] = [
   outputMatches(PANIC_RE),
   outputMatches(MODULE_FETCH_RE),
+  outputMatches(MODULE_RESOLVE_RE),
 ];
 
 /** Predicates for the test gate: a panic there is the code under test failing — a genuine FAIL. */
-const GO_TEST_ENV_FAIL: readonly EnvFailPredicate[] = [outputMatches(MODULE_FETCH_RE)];
+const GO_TEST_ENV_FAIL: readonly EnvFailPredicate[] = [
+  outputMatches(MODULE_FETCH_RE),
+  outputMatches(MODULE_RESOLVE_RE),
+];
 
 /** Predicates for the generate gate: a missing generator binary is the environment (D-STACK-012). */
 const GO_GENERATE_ENV_FAIL: readonly EnvFailPredicate[] = [
   outputMatches(MODULE_FETCH_RE),
+  outputMatches(MODULE_RESOLVE_RE),
   outputMatches(
     /executable file not found/,
     'the generator binary is not in PATH — `go install` it or declare it as a go.mod `tool` directive; gitignored binaries are not replicated into the sandbox (D-STACK-012)'

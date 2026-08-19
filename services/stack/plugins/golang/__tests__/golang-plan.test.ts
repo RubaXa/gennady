@@ -233,6 +233,46 @@ describe('planGoGates', () => {
     );
   });
 
+  it('classifies a blocked module lookup reported on a source line, not only on a `go:` line', () => {
+    // With -mod=mod, Go reports the environmental cause prefixed by a file position:
+    //   main.go:3:8: cannot find module providing package x: module lookup disabled by GOPROXY=off
+    // A `^go: ` anchor misses it, so a corporate proxy read as a code finding.
+    const build = planGoGates(project(), scope(), defaultOptions).find(
+      (gate) => gate.id === 'build'
+    );
+    const outcome = {
+      exitCode: 1,
+      timedOut: false,
+      stdout: '',
+      stderr:
+        'main.go:3:8: cannot find module providing package golang.org/x/text/language: module lookup disabled by GOPROXY=off',
+      output:
+        'main.go:3:8: cannot find module providing package golang.org/x/text/language: module lookup disabled by GOPROXY=off',
+    };
+    assert.ok(
+      build!.envFail!.some((predicate) => predicate(outcome)),
+      'a blocked lookup is the environment, whatever line prefix Go chose'
+    );
+  });
+
+  it('keeps a missing dependency declaration as a code finding', () => {
+    // `no required module provides package` and `missing go.sum entry` are fixable IN THE REPO
+    // (go get / go mod tidy + commit), so they must stay FAIL — the agent should act.
+    const build = planGoGates(project(), scope(), defaultOptions).find(
+      (gate) => gate.id === 'build'
+    );
+    for (const text of [
+      'main.go:3:8: no required module provides package golang.org/x/text/language; to add it:',
+      'main.go:3:8: missing go.sum entry for module providing package golang.org/x/text/language',
+    ]) {
+      const outcome = { exitCode: 1, timedOut: false, stdout: '', stderr: text, output: text };
+      assert.ok(
+        !build!.envFail!.some((predicate) => predicate(outcome)),
+        `must stay FAIL: ${text.slice(0, 50)}`
+      );
+    }
+  });
+
   it('declares env-fail predicates: build classifies panics and blocked module fetches', () => {
     const build = planGoGates(project(), scope(), defaultOptions).find(
       (gate) => gate.id === 'build'

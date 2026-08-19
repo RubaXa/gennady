@@ -153,7 +153,7 @@ export async function run(argv: string[]): Promise<number> {
       );
     } else {
       failed = true;
-      console.error(`[fix] ❌ ${result.status.toUpperCase()} ${name}`);
+      console.error(`[fix] ❌ ${result.status.toUpperCase().replace('-', '_')} ${name}`);
       console.error(`  command: ${result.gate.argv.join(' ')}`);
       console.error(`  exit:    ${result.exitCode ?? 'killed'}`);
       console.error(truncateOutput(result.output));
