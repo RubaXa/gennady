@@ -34,8 +34,8 @@ E2E-проверка **вердиктов гейтов на настоящих �
 # === обычный локальный запуск ===
 $ npm run test:e2e:stack
 
-[setup] npm run build → npm pack → gennady-0.7.1.tgz
-[setup] install into /tmp/gennady-stack-e2e-a1b2c/runner
+[setup] npm run build:publish → npm pack → gennady-0.7.1.tgz
+[setup] install into /tmp/gennady-stack-e2e-a1b2c/runner (registry: npmjs.org)
 [setup] toolchains: go 1.24.2 ✓ · golangci-lint 1.64 ✓ · npm 10.9 ✓ · docker ✗
 
 ▶ go-fmt-drift          golang:fmt        expect fail        ✓ 0.7s
@@ -203,12 +203,14 @@ _Полный список сущностей модуля. Любая сущн�
 
 - Preconditions: доступны `npm`, `npx`, `git`; `os.tmpdir()` пишется
 - Postconditions:
-  - `.tgz` собран из текущего дерева и установлен в `runnerDir` — проверяется то, что получит пользователь (D-E2E-003)
+  - `.tgz` собран через **`npm run build:publish`** и установлен в `runnerDir` — проверяется то, что получит пользователь (D-E2E-003)
+  - установка выполнена с `--registry` из `STACK_E2E_REGISTRY` (default `https://registry.npmjs.org/`) — корпоративный реестр в `~/.npmrc` отдаёт `403` на части публичных зависимостей
+  - после `npm pack` вызван `scripts/cleanup-publish-artifacts.ts`, и `git status --porcelain` пуст
   - `toolchains` заполнен ровно одним probe на инструмент
   - в env каждого `spawn` проставлены `HOME=<tmpRoot>/home`, `GENNADY_NO_UPDATE_CHECK=1`, `GOPROXY=off`, `GOFLAGS=`, общий `GOCACHE`
 - Invariants:
   - **`HOME` подменён всегда** — иначе личный `$HOME/.gennadyrc` разработчика участвует в deep-merge конфига (config.spec §1.2) и делает прогон невоспроизводимым
-  - реальное дерево репозитория не мутируется ни на одном шаге
+  - ни один **отслеживаемый** файл дерева не изменяется: `build:publish` пишет только в `dist/**`, `npm pack` создаёт `*.tgz`, оба пути в `.gitignore`; уборка publish-артефактов идёт в `finally` и подтверждается пустым `git status --porcelain` (ручной шаг из гайда мейнтейнера становится автоматической инвариантой)
   - `cleanup()` идемпотентен и вызывается при любом исходе, кроме `STACK_E2E_KEEP=1`
 
 ### 5.2 Service: `materializeFixture`
@@ -297,7 +299,7 @@ services/stack/__tests__/e2e/
 **File Mapping:**
 
 - `stack-e2e.test.ts`: перечисляет `fixtures/*`, для каждой — `it(id)` с skip по `requires`; порядок стабилен (лексикографический)
-- `setup.ts`: `setupStackE2e()` — build → pack → install → `probeToolchains()`; подмена `HOME`
+- `setup.ts`: `setupStackE2e()` — `build:publish` → pack → install (`--registry`) → cleanup publish-артефактов → `probeToolchains()`; подмена `HOME`
 - `fixture.ts`: `materializeFixture()` / `runFixture()` / `assertFixture()` + валидация `expect.yaml` (замкнутая схема)
 - `fixtures/<id>/expect.yaml`: единственный обязательный файл фикстуры; `notes` объясняет, что защищается
 - `scripts/stack-e2e.ts`: обёртка запуска для CI/`prepublishOnly` — прокидывает `STACK_E2E_STRICT=1` и печатает сводку по скипам
@@ -324,6 +326,8 @@ services/stack/__tests__/e2e/
 
 - **Status:** active
 - **Why:** `npm pack` + install — канонический артефакт (наследуется D-015 из `cli/e2e`): проверяется то, что получит пользователь, включая `package.json#bin`. Установка дорогая (~5s), поэтому она одна на прогон, а фикстуры — отдельные git-репозитории, адресуемые `--root`. Реплика прогона строится от git-toplevel фикстуры, то есть изоляция фикстур сохраняется.
+- **Обязательно `build:publish`, а не `build`** (гайд мейнтейнера в PR #5): `prepublishOnly` срабатывает только на `npm publish` — при `npm pack` он не запускается, поэтому без ручного `build:publish` в `.tgz` уедет старый или пустой `dist/`, и набор будет проверять не то дерево, что на диске. `npm run build` вдобавок не делает ни `build:types`, ни копирования `ai/**` → `dist/ai/**` из `scripts/prepare-publish-artifacts.ts`, то есть его `.tgz` **не равен** публикуемому.
+- **Risk accepted:** `build:publish` дороже `build` (типы + копирование ассетов) — это плата за то, что e2e проверяет публикуемый артефакт, а не его подмножество.
 - **Rejected alternatives:** установка в каждую фикстуру (×N по 5s); запуск из исходников через `tsx` (быстрее, но мимо упаковки — а именно упаковка ломалась в этом проекте: `dist` падал с `ERR_INVALID_URL_SCHEME`).
 
 ### D-E2E-004 — Фикстуры в репозитории — шаблоны, git-репозиторием становятся в temp
@@ -438,6 +442,7 @@ graph TD
 - **Версии тулчейнов.** `golangci-lint` меняет коды выхода и формулировки между мажорами; фикстуры не должны утверждать текст линтера, только вердикт (`describeIncludes`/`outputIncludes` — только для собственного текста «Геннадии»)
 - **`go-proxy-blocked` и корпоративные окружения.** Закрытый порт — надёжнее сети, но в средах с прозрачным прокси может вернуться иной текст ошибки; фикстура утверждает только `env-fail`
 - **`node-sandbox-links` требует установленного `node_modules` в фикстуре** — то есть локальный `npm install` без сети; решается вендорингом одного крошечного пакета в шаблон (без реестра)
+- **Унаследованная неточность в `cli/e2e`.** Его `setup.ts` запускает только `npm run build`, но комментарий региона и D-015 утверждают, что `.tgz` «идентичен публикуемому». По гайду мейнтейнера это неверно: без `build:publish` в пакете нет `build:types` и `dist/ai/**`. Правка — вне скоупа этого модуля (другой scope), занесена в список находок цикла
 - **Матрица растёт с каждой находкой** — риск «сетка есть, а гоняют её раз в релиз»; смягчается `prepublishOnly` и предложенной CI-джобой (D-E2E-008)
 - **`timeout`-фикстура зависит от таймингов** — 2s-таймаут против 10s-сна даёт запас, но на очень загруженной машине возможна флака; при повторяющейся флаке увеличивается разрыв, а не отключается фикстура
 
