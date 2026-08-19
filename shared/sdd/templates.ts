@@ -1387,7 +1387,13 @@ const PROJECT_INDEX_SECTIONS: SectionManifestEntry[] = [
 const PORTAL_SKELETON = `# <project-name>
 
 ## Vision
-<Одно предложение. Опускается для infrastructure-only проектов.>
+<Целевое состояние проекта одним абзацем — полная картина, без релизных оговорок (границы
+релиза и «пока без …» идут в Decision Log, не сюда). Опускается для infrastructure-only проектов.>
+
+- **Для кого:** <кто получает результат>
+- **Боль:** <что сейчас не работает или чего не хватает>
+- **Успех:** <как поймём, что цель достигнута>
+- **Принципы:** <ценности/ограничения, которыми руководствуемся>
 
 ## Scope Graph
 
@@ -1409,6 +1415,13 @@ graph TD
 | [\`api\`](./api/api.spec.md) | interface | 🚧 | REST API v1 |
 | [\`backend\`](./backend/backend.spec.md) | product | ✅ | Node.js IMAP-сервис |
 | [\`web\`](./web/web.spec.md) | product | 🚧 | React SPA |
+
+## Decision Log
+<Проектные решения, в т.ч. отложенные границы релиза («в v1 без бэкенда» и т.п.) — не вместо
+Vision, а рядом: Vision держит целевое состояние целиком, здесь фиксируется что сознательно
+отложено/отвергнуто и почему.>
+
+- D-001 <date> — v1 без бэкенда (почему: быстрее показать локальный сценарий; отложено до: этап синхронизации; риск: придётся менять модель хранения данных)
 `;
 
 const PORTAL_SECTIONS: SectionManifestEntry[] = [
@@ -1417,7 +1430,7 @@ const PORTAL_SECTIONS: SectionManifestEntry[] = [
     required: false,
     loadBearing: false,
     fold: false,
-    fill: 'One sentence for the whole project; omit for infrastructure-only projects.',
+    fill: 'Target-state paragraph (no release caveats) plus Для кого / Боль / Успех / Принципы sub-bullets; omit the whole section for infrastructure-only projects.',
   },
   {
     name: 'SCOPE_GRAPH',
@@ -1432,6 +1445,13 @@ const PORTAL_SECTIONS: SectionManifestEntry[] = [
     loadBearing: false,
     fold: false,
     fill: 'Scope/Type/Spec-status/Description table — one row per scope, linking to its spec.md.',
+  },
+  {
+    name: 'DECISION_LOG',
+    required: false,
+    loadBearing: false,
+    fold: false,
+    fill: 'Project-level decisions per DECISION_LOG_ENTRY_FORMAT, including deferred release-boundary calls (e.g. "v1 without a backend") that do not belong in Vision.',
   },
 ];
 // #endregion END_PORTAL

@@ -32,6 +32,8 @@
 
     {{> "axiom/spec/ax-vision-only-for-application"}}
 
+    {{> "axiom/spec/ax-decision-log-required"}}
+
     {{> "axiom/process/ax-close-with-integrity-check"}}
   </BeliefState>
 
@@ -77,25 +79,59 @@
       </Action>
     </Step>
     <Step id="STEP_1_VISION">
-      <Goal>Lock the project-level Vision.</Goal>
+      <Goal>Lock the project-level Vision, routing every anchor of the operator's statement to the
+      artifact that owns it.</Goal>
       <Action>
         No product / library scope → skip Vision (`AX_VISION_ONLY_FOR_APPLICATION`). Else, on greenfield
         init (no Vision recorded yet), ask ONE open question through `AskUserQuestion` when available,
-        otherwise `QUESTION_FORMAT`: «Что строим? Опиши vision одним предложением.» with an escape option
-        «Пока не знаю — предложи сам». Vision is the one field of genuine human intent in this step — the
-        agent never fabricates it unasked, because a wrong guess here is an expensive semantic error to
-        unwind later. Once the operator answers, the agent does NOT compress the answer — it NORMALIZES
-        it: the proposed wording passes the reader test from `AX_READER_WITHOUT_SESSION_CONTEXT` (would a
-        specialist with zero memory of this session understand and act on it?), which means expanding
-        jargon and shorthand into plain terms while keeping every semantic anchor the operator actually
-        said — dropping one is a loss, even if the sentence gets shorter as a side effect. Russian text
-        quality follows `AX_OPERATOR_LANGUAGE` (flat, plain, no calque); the same bar audit checks later
-        under `AX_LANGUAGE_QUALITY_CHECK` applies here at authoring time, not just at review time. The
-        normalized wording is proposed back for confirm-or-edit, same as before — never treated as locked
-        without that confirmation. If the operator picks the escape option, draft a vision candidate from
-        whatever context already exists (project name, intake, README) and present it back the same way.
-        On an idempotent update (a Vision already exists), propose an intake-derived revision instead of
-        asking from scratch. Approval Check. STOP.
+        otherwise `QUESTION_FORMAT`: «Что строим? Опиши замысел свободно.» with an escape option «Пока не
+        знаю — предложи сам». Vision is the one field of genuine human intent in this step — the agent
+        never fabricates it unasked, because a wrong guess here is an expensive semantic error to unwind
+        later.
+
+        Once the operator answers, the agent does NOT compress the answer — it NORMALIZES it while
+        ROUTING every semantic anchor to the artifact it actually belongs to; dropping an anchor is a
+        loss, but filing it under the wrong artifact is a second, independent loss (a release boundary
+        misread as the target state, or a target state watered down by a caveat that only applies to v1).
+        Three anchor kinds, three homes:
+        - **Target state** — what the finished thing does, for whom, the full shape of the outcome →
+          Vision, worded as the COMPLETE goal with no release caveat folded in. «Синхронизация между
+          устройствами» stays the target even when v1 ships without it.
+        - **Deferred / release-boundary decision** — «в v1 без бэкенда», «пока без синхронизации», «не
+          сейчас» → a `AX_DECISION_LOG_REQUIRED` entry in `DECISION_LOG_ENTRY_FORMAT`, marked deferred.
+          Example: operator says «v1 строго local-only, без бэкенда» while the goal is full sync → Vision
+          keeps «полная синхронизация между устройствами» as the target, and the Decision Log gets
+          `D-001 <date> — v1 без бэкенда (почему: быстрее показать локальный сценарий; отложено до: этап
+          синхронизации; риск: придётся менять модель хранения данных)`.
+        - **Technical/stack preference** — a named framework, «готовый UIKit», a design-system pick →
+          carried forward as intake for the step that actually owns implementation choices (STEP_2's
+          scope-boundary call, STEP_3's tool-stack lock, or the later `scope`/`infra` session) — it never
+          becomes a Vision sentence; Vision describes outcome, not toolchain.
+
+        Every anchor the operator actually said lands in exactly one of the three homes above — the
+        reader test from `AX_READER_WITHOUT_SESSION_CONTEXT` (would a specialist with zero memory of this
+        session understand and act on it?) applies to each home's own wording.
+
+        With anchors routed, close the remaining gaps in the Vision's own facets — for whom, the pain,
+        the success criterion, the target state itself, guiding principles — through a microinterview
+        that asks ONLY about facets the operator's words left open (`AX_SCALE_PROPORTIONAL_DEPTH`): a
+        facet already covered by a routed anchor is never asked about again. Bundle every open facet into
+        ONE `AskUserQuestion` call as independent questions — options drawn from real product practice
+        plus the tool's own free-text slot for a custom answer, `multiSelect` where a facet genuinely
+        allows more than one true answer. A rich statement closes most facets on its own, leaving 0-1
+        follow-up questions; a thin one-liner leaves several open, and the full round runs.
+
+        Assemble the structured Vision block from the routed target-state anchor plus the microinterview
+        answers: one paragraph carrying the target state (no release caveats), followed by short
+        strong-labelled sub-bullets — **Для кого**, **Боль**, **Успех**, **Принципы** — each filled from
+        what the operator actually said, never fabricated for an unasked facet. Russian text quality
+        follows `AX_OPERATOR_LANGUAGE` (flat, plain, no calque); the same bar audit checks later under
+        `AX_LANGUAGE_QUALITY_CHECK` applies here at authoring time, not just at review time. The assembled
+        block, and any Decision Log entries routed alongside it, are proposed back for confirm-or-edit —
+        never treated as locked without that confirmation. If the operator picks the escape option, draft
+        a Vision candidate from whatever context already exists (project name, intake, README) and
+        present it back the same way. On an idempotent update (a Vision already exists), propose an
+        intake-derived revision instead of asking from scratch. Approval Check. STOP.
       </Action>
     </Step>
     <Step id="STEP_2_SCOPE_GRAPH">
@@ -169,8 +205,12 @@
         it never overwrites and prints the section manifest (which sections are REQUIRED and what to
         fill); when it already exists, edit it in place, skip `sdd-new`. Content guidance per
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/portal-structure.xml")` and assemble the
-        Portal to that format. Scope status (✅ / 🚧) comes from `sdd-state` (presence of
-        `specs/<scope>/<scope>.spec.md`), not a manual stat — rows per `AX_SCOPE_TABLE_FORMAT`.
+        Portal to that format: the structured Vision block confirmed at STEP_1 (target-state paragraph
+        plus Для кого / Боль / Успех / Принципы), and, per `AX_DECISION_LOG_REQUIRED`, a Decision Log row
+        for every deferred or release-boundary decision routed there in the same step — the section is
+        omitted only when STEP_1 routed no such decision. Scope status (✅ / 🚧) comes from `sdd-state`
+        (presence of `specs/<scope>/<scope>.spec.md`), not a manual stat — rows per
+        `AX_SCOPE_TABLE_FORMAT`.
         Reconcile any placeholder rows left by the scope flow into full rows — root is the primary
         owner of `specs/README.md` and the only flow that rewrites it (`AX_PORTAL_PRIMARY_OWNER`).
         Write the file. Then run `sdd-check --all .` to verify portal integrity —
@@ -215,5 +255,8 @@
     {{> "axiom/process/ax-progressive-disclosure"}}
   </ChatOutput>
 
-  <!-- Artifact formats (portal-structure, infra-base-minimal-spec) load lazily at their write step — see ExecutionPlan. -->
+  <ArtifactOutput>
+    <!-- portal-structure / infra-base-minimal-spec formats load lazily at their write step — see ExecutionPlan. -->
+    {{> "contract/spec/decision-log-entry-format"}}
+  </ArtifactOutput>
 </SddRoot>
