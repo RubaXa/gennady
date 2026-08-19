@@ -11,14 +11,10 @@ const projectRoot = path.resolve(import.meta.dirname, '..');
 /** Entry that runs one plugin's own fixtures, selected by STACK_E2E_SUITE. */
 const PLUGIN_SUITE_ENTRY = 'services/stack/__tests__/e2e/plugin-suite.e2e.test.ts';
 
-/**
- * Suites the repository owns rather than any plugin. `node` is still here because it has not
- * moved into plugins/ yet; `config` stays a repo suite for good — it tests the config scope.
- */
+/** Suites the repository owns rather than any plugin: `config` tests the config scope. */
 const REPO_SUITES: Readonly<
   Record<string, { readonly file: string; readonly byDefault: boolean }>
 > = {
-  node: { file: 'services/stack/__tests__/e2e/node.e2e.test.ts', byDefault: true },
   config: { file: 'services/stack/__tests__/e2e/config.e2e.test.ts', byDefault: false },
 };
 
@@ -26,7 +22,7 @@ const REPO_SUITES: Readonly<
  * Plugin suites that must be derived. Without this floor a resolver that finds nothing
  * would report a clean run over zero suites (plugins.spec §6.2).
  */
-const FLOOR = ['golang'] as const;
+const FLOOR = ['golang', 'node'] as const;
 
 const { plugins, errors } = resolvePlugins([path.join(projectRoot, 'plugins')], 'stack');
 if (errors.length > 0) {

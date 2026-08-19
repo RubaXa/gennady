@@ -1,5 +1,0 @@
-{
-  "id": "node",
-  "kind": "stack",
-  "entry": "node-plugin.ts"
-}

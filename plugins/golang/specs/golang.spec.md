@@ -168,7 +168,7 @@ Go сообщает об одной и той же причине то стро�
 ## 8. Inter-Module Dependencies
 
 - **Depends on:** [`stack`](../../../specs/stack/stack.spec.md) (типы, раннер, реестр), `shared/common/exec` (probe-вызовы), git (скоуп и реплика)
-- **Sibling:** [`plugins/node`](../../../specs/stack/plugins/node/node.spec.md) — независимая зона ответственности; общее только в scope-спеке
+- **Sibling:** [`plugins/node`](../../node/specs/node.spec.md) — независимая зона ответственности; общее только в scope-спеке
 - **Verified by:** [`stack/e2e`](../../../specs/stack/e2e/e2e.spec.md) по матрице §7
 - **External:** `go` (обязателен, кроме гейта `fmt`), `gofmt`, `golangci-lint` (опционален — без него `lint` скипается с причиной)
 

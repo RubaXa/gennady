@@ -4,8 +4,7 @@
 
 import type { StackPlugin } from 'gennady/stack';
 import { golangPlugin } from './golang/golang-plugin.ts';
-// node has not moved into plugins/ yet — one line changes when it does (plugins.spec §10, step 6).
-import { nodePlugin } from '../services/stack/plugins/node/node-plugin.ts';
+import { nodePlugin } from './node/node-plugin.ts';
 
 /**
  * Built-in plugins, statically imported so they reach the published bundle: the shipped CLI

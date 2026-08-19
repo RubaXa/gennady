@@ -20,8 +20,7 @@ const PLUGINS_ROOT = path.join(REPO_ROOT, 'plugins');
  * Built-in ids that must always resolve. Without this floor a resolver that finds
  * nothing turns every derived check below into a vacuous pass (plugins.spec §6.2).
  */
-// `node` joins once it moves out of services/stack/plugins (plugins.spec §10, step 6).
-const FLOOR = ['golang'] as const;
+const FLOOR = ['golang', 'node'] as const;
 
 /** @purpose Every `.ts` file under a directory, recursively. */
 function sourceFiles(dir: string): string[] {
@@ -62,14 +61,13 @@ describe('plugin locality', () => {
 
   it('every resolved plugin is registered in the built-in index', () => {
     // A plugin on disk that the index forgot resolves fine and then never loads: its code
-    // is not in the bundle. The reverse direction holds once node moves (§10, step 6).
-    const registered = BUILTIN_PLUGINS.map((plugin) => plugin.id);
-    for (const plugin of plugins) {
-      assert.ok(
-        registered.includes(plugin.id),
-        `plugins/${plugin.id} resolves but is absent from plugins/index.ts — it would never load`
-      );
-    }
+    // is not in the bundle; an indexed plugin missing from disk would not have resolved at all.
+    assert.deepStrictEqual(
+      BUILTIN_PLUGINS.map((plugin) => plugin.id).sort(),
+      plugins.map((plugin) => plugin.id).sort(),
+      'plugins/index.ts and the resolver disagree: a plugin on disk but not indexed never loads, ' +
+        'and one indexed but not on disk breaks the build'
+    );
   });
 
   it('no plugin reaches outside its own directory for host code', () => {

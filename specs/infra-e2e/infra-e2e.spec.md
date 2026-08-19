@@ -38,7 +38,7 @@ infrastructure
 | [`stack/e2e`](../stack/e2e/e2e.spec.md) | Вердикты гейтов на настоящих тулчейнах (механизм фикстур и ожиданий)     | `test:stack-e2e`  | git + по фикстуре | `STACK_E2E_STRICT`  |
 | [`config`](../config/config.spec.md)    | Семантика конфига: discovery, deep-merge, провенанс, фатальная валидация | `test:config-e2e` | git               | `CONFIG_E2E_STRICT` |
 
-Матрицы фикстур **не живут здесь**: они принадлежат владельцам поверхностей — по стекам это спеки плагинов ([`golang`](../../plugins/golang/specs/golang.spec.md), [`node`](../stack/plugins/node/node.spec.md)), по конфигу — `config.spec.md`. Новый набор добавляется строкой в эту таблицу и обязан удовлетворять §3, §5, §7.
+Матрицы фикстур **не живут здесь**: они принадлежат владельцам поверхностей — по стекам это спеки плагинов ([`golang`](../../plugins/golang/specs/golang.spec.md), [`node`](../../plugins/node/specs/node.spec.md)), по конфигу — `config.spec.md`. Новый набор добавляется строкой в эту таблицу и обязан удовлетворять §3, §5, §7.
 
 ## 5. Skip & Strictness Policy
 

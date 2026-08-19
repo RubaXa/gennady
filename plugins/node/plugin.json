@@ -1,0 +1,7 @@
+{
+  "id": "node",
+  "kind": "stack",
+  "entry": "node-plugin.ts",
+  "specs": "specs",
+  "e2eFixtures": "e2e/fixtures"
+}
