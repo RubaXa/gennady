@@ -122,6 +122,18 @@ describe('planGoGates', () => {
     assert.match(generate?.skipped ?? '', /go:generate/);
   });
 
+  it('discards build output so the gate cannot write a binary into the tree', () => {
+    const build = planGoGates(project(), scope(), defaultOptions).find(
+      (gate) => gate.id === 'build'
+    );
+
+    // `go build` writes the executable into cwd when exactly one main package is built,
+    // which the run replica reports as a VIOLATION of the observe-only contract.
+    const flags = build?.argv ?? [];
+    assert.ok(flags.includes('-o'), `build must discard its output, got: ${flags.join(' ')}`);
+    assert.equal(flags[flags.indexOf('-o') + 1], '/dev/null');
+  });
+
   it('never plans the mutating `go fmt`; uses `gofmt -l` with the stdout contract', () => {
     const gates = planGoGates(project(), scope(), defaultOptions);
     const fmt = gates.find((gate) => gate.id === 'fmt');

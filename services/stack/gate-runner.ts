@@ -29,7 +29,9 @@ const TRUNCATE_TAIL_LINES = 40;
  * @returns EnvFailPredicate.
  */
 export function exitAbove(n: number): EnvFailPredicate {
-  return (exitCode) => exitCode !== null && exitCode > n;
+  return Object.assign((exitCode: number | null) => exitCode !== null && exitCode > n, {
+    kind: 'exit' as const,
+  });
 }
 
 /**
@@ -41,6 +43,7 @@ export function exitAbove(n: number): EnvFailPredicate {
 export function outputMatches(pattern: RegExp, hint?: string): EnvFailPredicate {
   return Object.assign((_exitCode: number | null, output: string) => pattern.test(output), {
     hint,
+    kind: 'output' as const,
   });
 }
 

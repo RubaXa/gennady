@@ -364,6 +364,36 @@ describe('applyStackConfig', () => {
     assert.deepEqual(effective[0]?.argv, ['mylint']);
   });
 
+  it('an argv override drops inherited exit-code predicates but keeps output ones', () => {
+    // golang:lint ships exitAbove(1) — true for golangci-lint, false for `make lint`,
+    // which returns 2 for ANY failed recipe and would report genuine findings as ENV_FAIL.
+    const exitPredicate = Object.assign(() => true, { kind: 'exit' as const });
+    const outputPredicate = Object.assign(() => true, { kind: 'output' as const });
+    const lint = gate('lint', { envFail: [exitPredicate, outputPredicate] });
+
+    const wrapped = applyStackConfig(
+      [lint],
+      { overrideGates: { lint: { argv: ['make', 'lint'] } } },
+      'golang',
+      '/repo',
+      provenance
+    );
+    assert.deepEqual(
+      wrapped[0]?.envFail,
+      [outputPredicate],
+      'an exit-code convention describes the replaced binary, not the wrapper'
+    );
+
+    const untouched = applyStackConfig(
+      [lint],
+      { overrideGates: { lint: { timeout: '90s' } } },
+      'golang',
+      '/repo',
+      provenance
+    );
+    assert.equal(untouched[0]?.envFail?.length, 2, 'without an argv override nothing is dropped');
+  });
+
   it('resolves extraGate cwd against the repo root and applies defaults', () => {
     const effective = applyStackConfig(
       [],

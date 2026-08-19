@@ -67,6 +67,11 @@ export type StackScope = {
  */
 export type EnvFailPredicate = ((exitCode: number | null, output: string) => boolean) & {
   readonly hint?: string;
+  /**
+   * @purpose What the predicate inspects: an `exit` predicate describes one binary's
+   *   exit-code convention, so an argv override replacing that binary drops it.
+   */
+  readonly kind?: 'exit' | 'output';
 };
 
 /**

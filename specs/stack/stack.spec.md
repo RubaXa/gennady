@@ -128,6 +128,12 @@ type StackVerifyCapability = {
  */
 type EnvFailPredicate = ((exitCode: number | null, output: string) => boolean) & {
   hint?: string;
+  /**
+   * Что инспектирует предикат. `exit` описывает exit-code-конвенцию ОДНОГО бинаря и
+   * поэтому не наследуется при `overrideGates.<id>.argv` (обёртка возвращает свои коды);
+   * `output` описывает окружение и наследуется всегда.
+   */
+  kind?: 'exit' | 'output';
 };
 
 // Встроенные комбинаторы (services/stack):

@@ -548,6 +548,14 @@ export function applyStackConfig(
         timeoutMs,
         outputMeansFailure: override.outputMeansFailure ?? gate.outputMeansFailure,
         driftMeansFailure: override.driftMeansFailure ?? gate.driftMeansFailure,
+        // An argv override replaces the binary, so its exit-code convention no longer
+        // applies: `make lint` returns 2 for any failed recipe, which an inherited
+        // exitAbove(1) would report as ENV_FAIL on a GENUINE finding. Output predicates
+        // (panic traces, blocked module proxy) stay — they describe the environment.
+        envFail:
+          override.argv !== undefined
+            ? gate.envFail?.filter((predicate) => predicate.kind !== 'exit')
+            : gate.envFail,
         label: `${gate.label} (overridden by ${source})`,
         // An explicit argv override supersedes a planner skip: the config author
         // states the command is runnable in this repo.

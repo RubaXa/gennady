@@ -1,0 +1,11 @@
+notes: >
+  Baseline — a clean Go module passes the FULL unnarrowed verify run, the main user path
+  (infra-e2e §7).
+requires: [go]
+argv: ['--all']
+exitCode: 0
+gates:
+  golang:build: { status: pass }
+  golang:vet: { status: pass }
+  golang:fmt: { status: pass }
+  golang:test: { status: pass }
