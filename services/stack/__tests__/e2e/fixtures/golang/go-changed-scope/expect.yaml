@@ -1,0 +1,13 @@
+notes: >
+  Default `changed` mode narrows to touched packages. pkgb/b.go is committed UNFORMATTED, so an
+  --all run would flag it; the untracked pkga/extra.go is what changed, so only that file may
+  appear. outputExcludes is the actual narrowing proof.
+requires: [go]
+dirty:
+  pkga/extra.go: "package pkga\n\nfunc   Extra()   {}\n"
+exitCode: 1
+gates:
+  golang:fmt:
+    status: fail
+    outputIncludes: ['pkga/extra.go']
+    outputExcludes: ['pkgb/b.go']

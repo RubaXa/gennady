@@ -1,0 +1,12 @@
+notes: >
+  The replica carries uncommitted AND untracked work, so gates verify what the agent actually has —
+  a replica that silently checked HEAD would report green on unverified code, which is worse than no
+  replica at all.
+requires: [go]
+dirty:
+  main.go: "package main\n\n// WIP\nfunc main() {}\n"
+  untracked.txt: 'not committed'
+argv: ['--all']
+exitCode: 0
+gates:
+  golang:sees-work-in-progress: { status: pass }

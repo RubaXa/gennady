@@ -1,0 +1,10 @@
+notes: >
+  --full-output disables the head+tail truncation in --json results, so a middle line survives.
+  Without the flag line 150 is elided; asserting it proves the flag actually changes the payload.
+requires: [go]
+argv: ['--all', '--full-output']
+exitCode: 1
+gates:
+  golang:noisy:
+    status: fail
+    outputIncludes: ['150']

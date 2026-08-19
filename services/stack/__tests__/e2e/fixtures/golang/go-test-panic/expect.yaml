@@ -1,0 +1,11 @@
+notes: >
+  Review B4: a panic under `go test` is the code under test failing, so it is a FAIL. The panic
+  predicate is deliberately absent from the test gate while build/vet/lint carry it — this fixture
+  is what stops someone "unifying" the predicate sets.
+requires: [go]
+argv: ['--all', '--only=golang:test']
+exitCode: 1
+gates:
+  golang:test:
+    status: fail
+    outputIncludes: ['panic']

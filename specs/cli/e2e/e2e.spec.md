@@ -266,7 +266,7 @@ _Это полный список сущностей модуля `e2e`. Люб�
   - `os.tmpdir()` доступен для записи
 - Postconditions:
   - Возвращает `E2eContext` с готовым `{ cwd, spawn, cleanup }`
-  - `dist/` содержит свежий результат `npm run build` (Vite бандл с чанками)
+  - `dist/` содержит свежий результат `npm run build:publish` (Vite-бандл + типы + `dist/ai/**`)
   - `cwd` указывает на temp-директорию с установленным gennady
   - В temp-директории инициализирован git-репозиторий, все fixture-файлы staged
 - Invariants:
@@ -359,7 +359,7 @@ cli/__tests__/e2e/
 
 - **Status:** active
 - **Recorded:** session ModuleDecomposition, cli/e2e
-- **Why:** `npm pack` создаёт `.tgz`, побайтово идентичный публикуемому в npm. `npm install <путь к .tgz>` симулирует полную установку из реестра. Тесты проверяют ТОЧНО то, что получит пользователь.
+- **Why:** `npm pack` создаёт `.tgz`, идентичный публикуемому в npm, **при условии предварительного `npm run build:publish`** — `prepublishOnly` на `npm pack` не срабатывает, а один `npm run build` не делает ни `build:types`, ни копирования `ai/**` → `dist/ai/**` (infra-e2e D-IE2E-002). `npm install <путь к .tgz>` симулирует полную установку из реестра. Тесты проверяют ТОЧНО то, что получит пользователь.
 - **Risk accepted:** `npm pack` + `npm install` добавляет ~5s к времени запуска. Смягчается отдельной командой `npm run test:cli-e2e`.
 - **Rejected alternatives:**
   - `npm link` — создаёт symlink, не проверяет `package.json#files`

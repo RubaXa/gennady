@@ -68,7 +68,9 @@ export function scopeHasGoGenerate(project: GoProject, scope: GoScope): boolean 
 
   const hits = execFileTrimSafe(
     'git',
-    ['grep', '-l', '-E', '^//go:generate ', '--', '*.go'],
+    // --untracked: a newly added generator file is not in the index yet, and skipping the
+    // drift gate for it would hide exactly the codegen a change is introducing.
+    ['grep', '-l', '--untracked', '-E', '^//go:generate ', '--', '*.go'],
     project.root
   );
   if (hits.length > 0) {

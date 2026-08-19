@@ -22,10 +22,17 @@ const EXPECT_KEYS = [
   'treeUnchanged',
   'timeoutMs',
   'homeRc',
+  'noCommit',
 ] as const;
 
 /** Every key a per-gate expectation may carry. */
-const GATE_KEYS = ['status', 'outputIncludes', 'hintIncludes', 'describeIncludes'] as const;
+const GATE_KEYS = [
+  'status',
+  'outputIncludes',
+  'outputExcludes',
+  'hintIncludes',
+  'describeIncludes',
+] as const;
 
 /** Verdicts a gate expectation may name. */
 const STATUSES = ['pass', 'fail', 'env-fail', 'violation', 'timeout', 'skipped'] as const;
@@ -39,6 +46,8 @@ export type GateExpectation = {
   readonly status: (typeof STATUSES)[number];
   /** @purpose Substrings the gate output must contain. */
   readonly outputIncludes?: readonly string[];
+  /** @purpose Substrings the gate output must NOT contain — proves scope narrowing. */
+  readonly outputExcludes?: readonly string[];
   /** @purpose Substring of the matched env-fail hint. */
   readonly hintIncludes?: string;
   /** @purpose Substrings of rendered predicate descriptions in `--plan --json`. */
@@ -74,6 +83,8 @@ export type FixtureExpectation = {
   readonly timeoutMs?: number;
   /** @purpose JSON written to the overridden `$HOME/.gennadyrc` — the third config source. */
   readonly homeRc?: string;
+  /** @purpose Leave the fixture repo without a commit, to exercise the missing-HEAD path. */
+  readonly noCommit: boolean;
 };
 
 /**
@@ -91,7 +102,7 @@ export type FixtureRun = {
   readonly json: VerifyJson | null;
   /** @purpose Raw stdout+stderr, kept for diagnostics. */
   readonly output: string;
-  /** @purpose Porcelain status of the fixture tree after the run. */
+  /** @purpose Tree changes the RUN introduced, excluding the fixture's own `dirty` files. */
   readonly treeStatus: string;
 };
 
@@ -99,9 +110,16 @@ export type FixtureRun = {
  * @purpose Shape of `verify --json` this harness relies on (stack.spec §8.5 stable fields).
  * @consumer assertFixture
  */
+type PlannedGate = {
+  readonly stack: string;
+  readonly id: string;
+  readonly envFail?: readonly string[];
+};
+
 type VerifyJson = {
   readonly diagnostics?: readonly { readonly code: string }[];
   readonly runs?: readonly { readonly gates?: readonly unknown[] }[];
+  /* eslint-disable-next-line */
   readonly results?: readonly {
     readonly stack: string;
     readonly id: string;
@@ -122,6 +140,20 @@ function git(dir: string, ...args: string[]): string {
     ['-C', dir, '-c', 'user.email=e2e@gennady', '-c', 'user.name=gennady-e2e', ...args],
     { encoding: 'utf-8' }
   ).trim();
+}
+
+/**
+ * @purpose Lines a run added to the tree, ignoring what the fixture itself planted.
+ * @param before Porcelain status captured after materialization.
+ * @param after Porcelain status captured after the run.
+ * @returns Entries present only in `after`, newline-joined; empty when the run changed nothing.
+ */
+function diffPorcelain(before: string, after: string): string {
+  const planted = new Set(before.split('\n').filter((line) => line.length > 0));
+  return after
+    .split('\n')
+    .filter((line) => line.length > 0 && !planted.has(line))
+    .join('\n');
 }
 
 /**
@@ -177,6 +209,7 @@ export function readExpectation(file: string): FixtureExpectation {
     treeUnchanged: (raw['treeUnchanged'] ?? true) as boolean,
     timeoutMs: raw['timeoutMs'] as number | undefined,
     homeRc: raw['homeRc'] as string | undefined,
+    noCommit: (raw['noCommit'] ?? false) as boolean,
   };
 }
 
@@ -200,8 +233,10 @@ export function materializeFixture(
   fs.rmSync(path.join(dir, 'expect.yaml'), { force: true });
 
   git(dir, 'init', '-q', '-b', 'main');
-  git(dir, 'add', '-A');
-  git(dir, 'commit', '-q', '--no-verify', '-m', 'fixture baseline');
+  if (!expectation.noCommit) {
+    git(dir, 'add', '-A');
+    git(dir, 'commit', '-q', '--no-verify', '-m', 'fixture baseline');
+  }
 
   if (expectation.homeRc !== undefined) {
     // The harness overrides HOME, so the machine-global source is only reachable from here.
@@ -230,6 +265,7 @@ export function runFixture(
   expectation: FixtureExpectation
 ): FixtureRun {
   const id = path.basename(dir);
+  const before = git(dir, 'status', '--porcelain');
   const steps =
     expectation.command === 'verify,fix,verify'
       ? (['verify', 'fix', 'verify'] as const)
@@ -237,9 +273,10 @@ export function runFixture(
 
   let last = { stdout: '', stderr: '', exitCode: null as number | null };
   for (const step of steps) {
+    const jsonAlreadyRequested = expectation.argv.includes('--json');
     const args =
       step === 'verify'
-        ? ['verify', ...expectation.argv, '--json']
+        ? ['verify', ...expectation.argv, ...(jsonAlreadyRequested ? [] : ['--json'])]
         : ['fix', ...expectation.argv.filter((flag) => !flag.startsWith('--only'))];
     last = ctx.spawn(args, dir, expectation.timeoutMs ?? 120_000);
   }
@@ -260,7 +297,7 @@ export function runFixture(
     exitCode: last.exitCode,
     json,
     output: `${last.stdout}${last.stderr}`,
-    treeStatus: git(dir, 'status', '--porcelain'),
+    treeStatus: diffPorcelain(before, git(dir, 'status', '--porcelain')),
   };
 }
 
@@ -295,7 +332,28 @@ export function assertFixture(run: FixtureRun, expectation: FixtureExpectation):
     fail('expected --json output, got unparseable stdout');
   }
 
+  // `--plan` emits the plan, not results: rendered predicates are asserted there.
+  const planned = (run.json?.runs ?? []).flatMap((stackRun) => stackRun.gates ?? []);
   for (const [name, want] of Object.entries(expectation.gates)) {
+    for (const needle of want.describeIncludes ?? []) {
+      const [stack, id] = name.split(':');
+      const gate = planned.find(
+        (entry) => (entry as PlannedGate).stack === stack && (entry as PlannedGate).id === id
+      ) as PlannedGate | undefined;
+      const rendered = (gate?.envFail ?? []).join(' | ');
+      if (!rendered.includes(needle)) {
+        fail(
+          `gate "${name}": plan renders envFail as ${JSON.stringify(rendered)}, missing ${JSON.stringify(needle)}`
+        );
+      }
+    }
+  }
+
+  // `--plan` executes nothing, so it carries a plan instead of results: verdict assertions do
+  // not apply there, only the rendered plan does.
+  const isPlanRun = run.json !== null && run.json.results === undefined;
+
+  for (const [name, want] of Object.entries(isPlanRun ? {} : expectation.gates)) {
     const [stack, id] = name.split(':');
     const actual = run.json?.results?.find((r) => r.stack === stack && r.id === id);
     if (actual === undefined) {
@@ -310,6 +368,11 @@ export function assertFixture(run: FixtureRun, expectation: FixtureExpectation):
     for (const needle of want.outputIncludes ?? []) {
       if (!(actual.output ?? '').includes(needle)) {
         fail(`gate "${name}": output missing ${JSON.stringify(needle)}`);
+      }
+    }
+    for (const needle of want.outputExcludes ?? []) {
+      if ((actual.output ?? '').includes(needle)) {
+        fail(`gate "${name}": output must not contain ${JSON.stringify(needle)}`);
       }
     }
     if (want.hintIncludes !== undefined && !(actual.output ?? '').includes(want.hintIncludes)) {
