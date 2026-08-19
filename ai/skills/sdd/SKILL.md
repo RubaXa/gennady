@@ -1,6 +1,6 @@
 ---
 name: sdd
-description: Main SDD door. Router — routes to the right flow (project portal / scope / infra / interface / module / recover a spec from an existing path) from project state + operator intent. Use for "new project", "new scope", "design or evolve a spec", "pivot", "module decomposition", "воссоздай спеку для services/foo по коду", "/sdd".
+description: SDD entry point. Router — picks the right flow (project portal / scope / infra / interface / module / recover a spec from an existing path) from project state + operator intent. Use for "new project", "new scope", "design or evolve a spec", "pivot", "module decomposition", "воссоздай спеку для services/foo по коду", "/sdd".
 compatibility: opencode
 ---
 

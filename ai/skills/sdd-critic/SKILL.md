@@ -1,6 +1,6 @@
 ---
 name: sdd-critic
-description: Autonomous multi-round critique of an SDD artifact — scope spec, task ticket, or batch. Dispatches an isolated critic-sensor, evaluates findings against full context, surgically edits the artifact, re-dispatches until clean (cap 5). Use for "покритикуй", "проверь спеку", "проверь таск", "найди слепые пятна", "проревьюй", "шлифуй", "/sdd-critic".
+description: Autonomous multi-round critique of an SDD artifact — scope spec, task ticket, or batch. Dispatches an isolated reviewer subagent, weighs its findings against full project context, surgically edits the artifact, re-runs until clean (cap 5 rounds). Use for "покритикуй", "проверь спеку", "проверь таск", "найди слепые пятна", "проревьюй", "шлифуй", "/sdd-critic".
 compatibility: opencode
 ---
 

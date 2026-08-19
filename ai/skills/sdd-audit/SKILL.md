@@ -1,6 +1,6 @@
 ---
 name: sdd-audit
-description: Fresh-eyes audit of ONE completed SDD task (or epic across many). Read ticket, read spec, git diff, mechanical lint, verify rules. Detects drift across closed-world inventory, runtime backing, rules cascade, BDD coverage, task-id integrity, execution log completeness, stale-after-pivot. Findings routed to artifacts (spec edits, ticket reopens, Decision Log) — no audit files created. Use when operator says "audit TSK-NN" or after execute DONE.
+description: Independent audit of ONE completed SDD task (or an epic across many). Reads ticket, spec, and git diff; verifies the implementation matches the spec and the execution log is honest. Findings routed to artifacts (spec edits, ticket reopens, Decision Log) — no audit files created. Use when operator says "audit TSK-NN" or after execute DONE.
 compatibility: opencode
 ---
 

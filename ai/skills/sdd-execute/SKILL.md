@@ -1,6 +1,6 @@
 ---
 name: sdd-execute
-description: Execute task tickets end-to-end — a LOGIC-SWITCH on intent picks one ticket or a whole batch: plan phases, dispatch one worker per phase, thread typed Handoff, close the Round, fresh-eyes audit + code-review, retry failing phases once. A deterministic execution map (`sdd-task`) drives next/batch. Use for a Task-ID, "next", "pick", "batch"/"all"/"выполни очередь", "выполни задачу", "следующую", "/sdd-execute". Runs isolated.
+description: Execute task tickets end-to-end — one ticket or a whole batch, picked from operator intent: plan phases, dispatch one worker per phase, pass typed handoffs between phases, close the Round, audit + code-review, retry failing phases once. A deterministic execution map (`sdd-task`) drives next/batch. Use for a Task-ID, "next", "pick", "batch"/"all"/"выполни очередь", "выполни задачу", "следующую", "/sdd-execute". Runs isolated.
 compatibility: opencode
 ---
 
