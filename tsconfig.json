@@ -47,6 +47,6 @@
     "dist",
     "**/*.test.ts",
     "**/__tests__/fixtures/**",
-    "cli/__tests__/e2e/fixtures/**"
+    "**/__tests__/e2e/fixtures/**"
   ]
 }

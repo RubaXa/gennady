@@ -1,0 +1,5 @@
+notes: A typo must be actionable, not ignored — unknown key plus a did-you-mean suggestion.
+requires: [npm]
+argv: ['--all']
+exitCode: 4
+config: { error: 'did you mean "skipGates"' }

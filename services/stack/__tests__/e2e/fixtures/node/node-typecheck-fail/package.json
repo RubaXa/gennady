@@ -1,0 +1,1 @@
+{ "name": "tc-fail", "private": true, "scripts": { "type-check": "node -e \"console.error('src/x.ts(1,1): error TS2322: Type mismatch'); process.exit(2)\"" } }

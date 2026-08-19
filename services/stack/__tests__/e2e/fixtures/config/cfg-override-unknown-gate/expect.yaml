@@ -1,0 +1,5 @@
+notes: Overriding a gate the plugin does not have is fatal, listing the built-in ids.
+requires: [npm]
+argv: ['--all']
+exitCode: 4
+config: { error: 'unknown key' }

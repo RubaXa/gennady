@@ -1,0 +1,10 @@
+notes: >
+  A repository can belong to several stacks at once (spec §2): both plugins detect, and gates from
+  both appear in one report. No single plugin spec can own this property.
+requires: [npm, go]
+argv: ['--all']
+exitCode: 0
+gates:
+  node:test: { status: pass }
+  golang:build: { status: pass }
+  golang:vet: { status: pass }

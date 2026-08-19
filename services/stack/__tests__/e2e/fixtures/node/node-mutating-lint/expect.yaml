@@ -1,0 +1,10 @@
+notes: >
+  D-STACK-005 screening: a script whose body carries --write mutates the tree, so it is planned
+  as a VISIBLE skip naming the reason instead of being executed.
+requires: [npm]
+argv: ['--all']
+exitCode: 0
+gates:
+  node:lint:
+    status: skipped
+  node:test: { status: pass }

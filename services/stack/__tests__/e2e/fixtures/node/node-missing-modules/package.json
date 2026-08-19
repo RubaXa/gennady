@@ -1,0 +1,1 @@
+{ "name": "missing-modules", "private": true, "scripts": { "test": "node -e \"require('absent-dep')\"" } }

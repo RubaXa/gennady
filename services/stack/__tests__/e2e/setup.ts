@@ -22,6 +22,9 @@ const NPM_FLAGS = (process.env.STACK_E2E_NPM_FLAGS ?? '--prefer-offline')
   .split(' ')
   .filter((f) => f.length > 0);
 
+/** Toolchain ids a fixture may name in `requires`; anything else is a fixture error. */
+export const KNOWN_TOOLCHAINS = ['go', 'golangci-lint', 'npm', 'docker'] as const;
+
 /** Toolchains a fixture may declare in `requires`. */
 const TOOLCHAIN_PROBES: Readonly<Record<string, readonly string[]>> = {
   go: ['go', 'version'],

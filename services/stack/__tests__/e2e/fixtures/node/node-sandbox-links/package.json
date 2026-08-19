@@ -1,0 +1,1 @@
+{ "name": "sandbox-links", "private": true, "scripts": { "test": "node -e \"require('tiny-dep'); process.exit(0)\"" } }
