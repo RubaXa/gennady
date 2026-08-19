@@ -23,6 +23,6 @@ infrastructure
 
 ### 2.1 Formatter Fixture Exclusion
 
-`.prettierignore` **обязан** содержать `**/__tests__/fixtures/**` — тестовые фикстуры могут содержать намеренно сломанный синтаксис (parse-failed scenarios), и prettier не должен их обрабатывать. `tsconfig.json` также исключает фикстуры из type-check (`"exclude": ["**/__tests__/fixtures/**"]`).
+`.prettierignore` **обязан** содержать `**/__tests__/fixtures/**` и `**/__tests__/e2e/fixtures/**` (второй паттерн не выводится из первого: `**/__tests__/fixtures/**` не матчит `__tests__/e2e/fixtures/` — проверено) — тестовые фикстуры могут содержать намеренно сломанный синтаксис (parse-failed scenarios), и prettier не должен их обрабатывать. `tsconfig.json` также исключает фикстуры из type-check (`"exclude": ["**/__tests__/fixtures/**", "**/__tests__/e2e/fixtures/**"]`). E2E-фикстуры стековых наборов содержат намеренно невалидные `gennady.yaml`/`package.json` — их переформатирование ломает сами сценарии (см. [`infra-e2e`](../infra-e2e/infra-e2e.spec.md)).
 
 > Полный Decision Log (Design Variants, rationale, Effective Rules для cascade) — запусти `discovery infra-base`.

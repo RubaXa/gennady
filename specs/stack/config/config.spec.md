@@ -169,6 +169,28 @@ _Одна схема на оба места употребления — нам�
   - `env` мержится поверх `process.env` (переменная из конфига побеждает).
 - Invariants: загрузка конфига не мутирует дерево и не исполняет команд; duration-строки — `<число><s|m|h>`.
 
+### 4.2 E2E-покрытие
+
+Механизм фикстур и схема `expect.yaml` — [`stack/e2e`](../e2e/e2e.spec.md); доктрина — [`infra-e2e`](../../infra-e2e/infra-e2e.spec.md). Набор конфига проверяет **семантику конфига**, а не реализацию гейтов: фикстуры используют тривиальный гейт (`argv: [true]`), чтобы падение указывало на конфиг, а не на тулчейн. Команда — `test:e2e:config`, тулчейн — только `git`.
+
+| Фикстура                    | Состояние фикстуры                                        | Ожидание                                                             |
+| --------------------------- | --------------------------------------------------------- | -------------------------------------------------------------------- |
+| `cfg-none`                  | ни одного конфиг-файла                                    | чистая авто-детекция, встроенные гейты, exit 0                       |
+| `cfg-yaml-only`             | только `gennady.yaml`                                     | значения применены, провенанс в `--plan` указывает на `gennady.yaml` |
+| `cfg-deep-merge`            | `gennady.yaml` + одноключевой `.gennadyrc`                | остальное дошло из yaml; провенанс **per-key** различает источники   |
+| `cfg-array-replace`         | `skipGates` в обоих файлах                                | массив из приоритетного источника **замещает**, не конкатенируется   |
+| `cfg-empty-array-reenable`  | `skipGates: []` в `.gennadyrc` поверх проектного skip     | гейт снова исполняется (D-CFG-002)                                   |
+| `cfg-home-rc`               | `$HOME/.gennadyrc` (подменённый HOME)                     | учтён с низшим приоритетом; провенанс называет файл                  |
+| `cfg-broken-yaml`           | невалидный YAML                                           | `CONFIG_ERROR`, exit 4, **ни один гейт не исполнен**                 |
+| `cfg-unknown-key`           | опечатка `skipGate`                                       | exit 4 + did-you-mean подсказка                                      |
+| `cfg-unknown-plugin`        | `stack.rust`                                              | exit 4 + список известных плагинов                                   |
+| `cfg-bad-duration`          | `timeout: 5min`                                           | exit 4 + грамматика duration в сообщении                             |
+| `cfg-override-unknown-gate` | `overrideGates.nosuch`                                    | exit 4 + список встроенных гейтов                                    |
+| `cfg-all-errors`            | три независимые ошибки в одном файле                      | все три в выводе (не только первая)                                  |
+| `cfg-foreign-models`        | битая секция `models` рядом с валидным `stack`            | verify работает: чужая секция не фатальна                            |
+| `cfg-use-narrows`           | `use: [golang]` в репозитории с `package.json` и `go.mod` | активен только golang                                                |
+| `cfg-stack-flag-oneshot`    | `--stack=node` поверх `use: [golang]`                     | CLI-флаг действует как одноразовый `use`                             |
+
 <!--/SECTION:MODULE_CONTRACTS-->
 
 <!--SECTION:MODULE_DECISION_LOG-->

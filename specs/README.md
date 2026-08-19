@@ -27,6 +27,8 @@ graph TD
     agent-inbox --> cli
     agent-inbox --> ai-skills
     shared --> infra-base
+    infra-e2e --> infra-base
+    infra-e2e --> infra-npm-publish
     stack --> infra-base
     stack --> shared
     cli --> stack
@@ -48,4 +50,5 @@ graph TD
 | [`ai-skills`](./ai-skills/ai-skills.spec.md)                         | library        | ✅   | AI-навыки для агентов: SDD-воркфлоу + alt-opinion                                                                                                                                                               |
 | [`agent-run`](./agent-run/agent-run.spec.md)                         | library        | ✅   | Запуск внешнего AI-движка (opencode первым) с заданием и директориями, readonly                                                                                                                                 |
 | [`agent-inbox`](./agent-inbox/agent-inbox.spec.md)                   | product        | 🚧   | Ассистент входящих GitLab MR: actionable-инбокс, стадии, факт-чек, ответ/ревью (research-спайк)                                                                                                                 |
+| [`infra-e2e`](./infra-e2e/infra-e2e.spec.md)                         | infrastructure | ✅   | Доктрина E2E-тестирования: артефакт, политика скипов, CI/CD, покрытие флагов; наборы `cli/e2e`, `stack/e2e`, `stack/config`                                                                                     |
 | [`stack`](./stack/stack.spec.md)                                     | library        | ✅   | Плагины стеков: StackPlugin (node + golang), команда `verify`, конфиг `gennady.yaml` ([config](./stack/config/config.spec.md))                                                                                  |

@@ -510,6 +510,8 @@ cli/cmd/fix/
 
 ## 11. Inter-Module Dependencies
 
+**Модули scope'а:** [`config`](./config/config.spec.md) — схема и merge конфига; [`plugins/golang`](./plugins/golang/golang.spec.md) и [`plugins/node`](./plugins/node/node.spec.md) — per-stack возможности, гейты и матрицы use case'ов (зоны ответственности мейнтейнеров стеков); [`e2e`](./e2e/e2e.spec.md) — механизм E2E-проверки вердиктов под доктриной [`infra-e2e`](../infra-e2e/infra-e2e.spec.md).
+
 - **Depends on:** `shared/backend/rc/rc-config.ts` (личный `.gennadyrc`), `shared/common/parse-args.ts`
 - **Provides to:** `cli` (команда `verify`; далее — fix/testcov/lint по §4.3), `ai-skills` (`verify.sh`, skill `sdd-infra-golang`)
 
