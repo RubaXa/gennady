@@ -26,6 +26,7 @@
   },
   "exports": {
     ".": "./services/agent-mon/index.ts",
+    "./stack": "./services/stack/plugin-api.ts",
     "./providers/claude": "./services/agent-mon/providers/claude/index.ts",
     "./providers/opencode": "./services/agent-mon/providers/opencode/index.ts"
   },

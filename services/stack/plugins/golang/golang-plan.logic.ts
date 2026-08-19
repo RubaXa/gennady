@@ -4,10 +4,8 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import type { EnvFailPredicate, Gate, GatePlanOptions } from '../../stack.types.ts';
-import { exitCodeMatches, outputMatches } from '../../env-fail.ts';
-import { parseDuration } from '../../../config/config-loader.ts';
-import { execFileTrimSafe } from '../../../../shared/common/exec.ts';
+import type { EnvFailPredicate, Gate, GatePlanOptions } from 'gennady/stack';
+import { execFileTrimSafe, exitCodeMatches, outputMatches, parseDuration } from 'gennady/stack';
 import type { GoProject } from './golang-detect.logic.ts';
 import type { GoScope } from './golang-scope.logic.ts';
 

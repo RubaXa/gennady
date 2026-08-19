@@ -4,8 +4,8 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { execFileTrimSafe } from '../../../../shared/common/exec.ts';
-import type { ScopeRequest } from '../../stack.types.ts';
+import type { ScopeRequest } from 'gennady/stack';
+import { execFileTrimSafe } from 'gennady/stack';
 import type { GoProject } from './golang-detect.logic.ts';
 
 /** Path segments whose packages are never worth verifying directly. */

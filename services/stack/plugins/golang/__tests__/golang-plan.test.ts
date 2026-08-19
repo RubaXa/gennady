@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import assert from 'node:assert/strict';
-import type { GatePlanOptions } from '../../../stack.types.ts';
+import type { GatePlanOptions } from 'gennady/stack';
 import type { GoProject, GoTool, GoToolId } from '../golang-detect.logic.ts';
 import type { GoScope } from '../golang-scope.logic.ts';
 

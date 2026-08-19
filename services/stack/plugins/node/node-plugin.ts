@@ -4,7 +4,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import type { StackDetection, StackDiagnostic, StackPlugin } from '../../stack.types.ts';
+import type { StackDetection, StackDiagnostic, StackPlugin } from 'gennady/stack';
 import {
   classifyNpmScripts,
   NPM_SCRIPT_CLASSES,

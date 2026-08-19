@@ -5,7 +5,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import type { StackDiagnostic } from '../../stack.types.ts';
+import type { StackDiagnostic } from 'gennady/stack';
 
 /** Directories never worth descending into when hunting for `go.mod`. */
 const SKIP_DIRS = new Set(['vendor', 'testdata', 'node_modules', '.git', '.idea', 'bin', 'dist']);

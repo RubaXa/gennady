@@ -4,7 +4,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import type { StackDetection, StackPlugin } from '../../stack.types.ts';
+import type { StackDetection, StackPlugin } from 'gennady/stack';
 import { detectGoProject, type GoProject } from './golang-detect.logic.ts';
 import { resolveGoScope, type GoScope } from './golang-scope.logic.ts';
 import { planGoGates } from './golang-plan.logic.ts';
