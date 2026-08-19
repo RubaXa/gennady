@@ -1,0 +1,8 @@
+notes: >
+  Panel finding 1: an unexplained hang is TIMEOUT — a distinct verdict that must still tell the
+  agent not to edit code and point at `requires`.
+requires: [go]
+argv: ['--all']
+exitCode: 1
+gates:
+  golang:sleeper: { status: timeout }

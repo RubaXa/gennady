@@ -1,0 +1,10 @@
+notes: >
+  D-STACK-013: a gate that writes without declaring driftMeansFailure is a VIOLATION naming the
+  files, and the real tree is untouched because the write happened in the replica.
+requires: [go]
+argv: ['--all']
+exitCode: 1
+gates:
+  golang:dirty:
+    status: violation
+    outputIncludes: ['junk.txt', 'driftMeansFailure']

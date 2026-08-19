@@ -10,7 +10,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import type { Gate, StackDiagnostic, StackRun } from '../stack.types.ts';
 
-const { runVerify, formatVerifyReport, exitCodeMatches, outputMatches } =
+const { runVerify, formatVerifyReport, exitCodeMatches, outputMatches, streamMatches } =
   await import('../gate-runner.ts');
 
 // Small one-commit repo shared by the plain-gate tests: every gate runs in a run
@@ -188,6 +188,65 @@ describe('runVerify', () => {
     assert.equal(report.results[0]?.status, 'skipped');
     assert.equal(report.total, 0);
     assert.equal(report.ok, true);
+  });
+});
+
+describe('runVerify — verdict precedence (spec §8.2, D-STACK-015)', () => {
+  it('a matching output rule outranks TIMEOUT: the environment is named, not the clock', () => {
+    const report = runVerify(
+      [
+        runOf([
+          shellGate('e2e', 'echo "cannot reach docker daemon" >&2; sleep 5', {
+            timeoutMs: 400,
+            envFail: [streamMatches('stderr', /docker daemon/m, 'start docker')],
+          }),
+        ]),
+      ],
+      []
+    );
+
+    assert.equal(report.results[0]?.status, 'env-fail');
+    assert.match(report.results[0]?.output ?? '', /hint: start docker/);
+  });
+
+  it('an unexplained TIMEOUT still carries the do-not-edit-code note', () => {
+    const report = runVerify([runOf([shellGate('test', 'sleep 5', { timeoutMs: 300 })])], []);
+    const text = formatVerifyReport(report);
+
+    assert.equal(report.results[0]?.status, 'timeout');
+    assert.match(text, /NOT a finding about the code/);
+  });
+
+  it('a rule outranks the stdout contract, so exit-0 diagnostics can be env-fail', () => {
+    // `outputMeansFailure` gates (the gofmt family) previously never consulted rules at all.
+    const report = runVerify(
+      [
+        runOf([
+          shellGate('drift', 'echo "cannot reach docker daemon"; exit 0', {
+            outputMeansFailure: true,
+            envFail: [streamMatches('stdout', /docker daemon/m, 'start docker')],
+          }),
+        ]),
+      ],
+      []
+    );
+
+    assert.equal(report.results[0]?.status, 'env-fail');
+  });
+
+  it('a broken environment outranks VIOLATION, and still lists the debris', () => {
+    withGitFixture((dir) => {
+      const gate: Gate = {
+        ...shellGate('e2e', 'echo "cannot reach docker daemon" >&2; echo junk > junk.txt; exit 1'),
+        cwd: dir,
+        envFail: [streamMatches('stderr', /docker daemon/m, 'start docker')],
+      };
+      const report = runVerify([runOf([gate])], []);
+
+      assert.equal(report.results[0]?.status, 'env-fail');
+      assert.match(report.results[0]?.output ?? '', /junk\.txt/, 'the debris stays visible');
+      assert.equal(fs.existsSync(path.join(dir, 'junk.txt')), false, 'real tree untouched');
+    });
   });
 });
 

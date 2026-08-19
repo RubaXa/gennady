@@ -258,6 +258,9 @@ function executeGate(
   const stdout = rewrite(proc.stdout ?? '');
   const output = `${stdout}${rewrite(proc.stderr ?? '')}`.trim();
 
+  const timedOut =
+    proc.error !== undefined && (proc.error as NodeJS.ErrnoException).code === 'ETIMEDOUT';
+
   // Inspect and restore the replica exactly once, whatever the command's outcome.
   let drift = '';
   if (slot !== null) {
@@ -267,15 +270,35 @@ function executeGate(
     }
   }
 
-  if (proc.error !== undefined && (proc.error as NodeJS.ErrnoException).code === 'ETIMEDOUT') {
-    return { gate, status: 'timeout', exitCode: null, durationMs, output };
-  }
-  if (proc.error !== undefined && proc.status === null) {
+  if (proc.error !== undefined && proc.status === null && !timedOut) {
     // Spawn itself failed — the tool never ran; universally environmental.
     return { gate, status: 'env-fail', exitCode: null, durationMs, output: String(proc.error) };
   }
 
-  // #region START_VERDICTS — violation > drift > stdout contract > exit code (spec §8.2)
+  // #region START_VERDICTS — env-fail first, then timeout, violation, drift, stdout, exit (§8.2)
+  const outcome: GateOutcome = {
+    exitCode: proc.status,
+    timedOut,
+    stdout,
+    stderr: rewrite(proc.stderr ?? ''),
+    output,
+  };
+  const matched = (gate.envFail ?? []).find((predicate) => predicate(outcome));
+  if (matched !== undefined) {
+    const debris = drift.length > 0 ? `\ntree debris left behind:\n${drift}` : '';
+    return {
+      gate,
+      status: 'env-fail',
+      exitCode: proc.status,
+      durationMs,
+      output: `${output}${debris}${matched.hint !== undefined ? `\nhint: ${matched.hint}` : ''}`,
+    };
+  }
+
+  if (timedOut) {
+    return { gate, status: 'timeout', exitCode: null, durationMs, output };
+  }
+
   if (drift.length > 0 && gate.driftMeansFailure !== true) {
     return {
       gate,
@@ -287,7 +310,6 @@ function executeGate(
   }
 
   if (proc.status === 0 && drift.length > 0) {
-    // driftMeansFailure: true — the replica was baselined, so any status output is the command's doing.
     return {
       gate,
       status: 'fail',
@@ -306,23 +328,9 @@ function executeGate(
   if (proc.status === 0) {
     return { gate, status: 'pass', exitCode: 0, durationMs, output: '' };
   }
-  // #endregion END_VERDICTS
 
-  const outcome: GateOutcome = {
-    exitCode: proc.status,
-    timedOut: false,
-    stdout,
-    stderr: rewrite(proc.stderr ?? ''),
-    output,
-  };
-  const matched = (gate.envFail ?? []).find((predicate) => predicate(outcome));
-  return {
-    gate,
-    status: matched !== undefined ? 'env-fail' : 'fail',
-    exitCode: proc.status,
-    durationMs,
-    output: matched?.hint !== undefined ? `${output}\nhint: ${matched.hint}` : output,
-  };
+  return { gate, status: 'fail', exitCode: proc.status, durationMs, output };
+  // #endregion END_VERDICTS
 }
 
 /**
@@ -431,6 +439,12 @@ export function formatVerifyReport(report: VerifyReport): string {
         '  note:    the tool itself failed to run — this is NOT a finding about the code.'
       );
       lines.push('           Fix the toolchain; do not change source in response to this output.');
+    }
+    if (result.status === 'timeout') {
+      lines.push(
+        '  note:    the gate was killed at its timeout — this is NOT a finding about the code.'
+      );
+      lines.push('           Declare `requires` preconditions, or raise the gate timeout.');
     }
     if (result.status === 'violation') {
       lines.push(
