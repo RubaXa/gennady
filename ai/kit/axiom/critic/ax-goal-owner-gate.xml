@@ -7,4 +7,9 @@
   into the SAME question block as one more question, never a private reclassification. Batch the
   round's `GOAL` findings into ONE question block (`QUESTION_FORMAT`) BEFORE editing the sections they
   touch. Goal / scope wording stays intact until an operator answer sanctions the change.
+
+  When the resolved `GOAL` finding weakened or removed a quality gate (`AX_FINDING_ADDRESSEE`), the
+  operator's answer is written as its own Decision Log entry, not folded into the round's edit
+  summary — a gate change is a standing decision that future rounds, and future sessions, must be able
+  to see without replaying this round's dialogue.
 </Axiom>

@@ -6,7 +6,7 @@
 
       Formatter pipeline runs BEFORE `eslint --fix`: `prettier --write .` then `eslint --fix .`. Both must exit 0.
 
-      The full mechanical quality pass is a fixed two-step sequence exposed as ONE script (`npm run lint:fix` or equivalent) so agents and humans run the same command. Pre-commit hook runs the same script on staged files; CI runs the read-only variant (`prettier --check . && eslint .`) and fails on any drift.
+      Formatting + lint is a fixed sequence exposed as ONE script (`npm run lint:fix` or equivalent) so agents and humans run the same command. `pre-commit` runs this script on staged files and additionally chains a whole-project typecheck in the same hook command (`AX_HOOKS_INTEGRATION` — `tsc --noEmit` cannot be staged-scoped, so it composes alongside this script rather than inside it). CI runs the read-only variant (`prettier --check . && eslint .`) and fails on any drift.
 
       Choice of formatter is an architecture decision: Prettier recommended; alternatives (Biome, dprint) acceptable IF the project picks ONE. Two formatters or formatting rules duplicated between ESLint and the formatter = forbidden.
     </Axiom>

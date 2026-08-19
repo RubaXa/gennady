@@ -34,6 +34,8 @@
 
     {{> "axiom/critic/ax-finding-addressee"}}
 
+    {{> "axiom/process/ax-scratch-log"}}
+
     {{> "axiom/truth/ax-production-realism"}}
 
     {{> "axiom/spec/ax-spec-dimensions"}}
@@ -48,7 +50,7 @@
   <ExecutionPlan>
     <Step id="STEP_1_READ">
       <Goal>Read the artifact end-to-end.</Goal>
-      <Action>Read the artifact fully. For a task, read the parent spec slice (entity inventory, contracts, relevant requirements) — nothing else (`AX_ISOLATION`, `AX_READ_ONLY`).</Action>
+      <Action>Read the artifact fully. For a task, read the parent spec slice (entity inventory, contracts, relevant requirements) — nothing else (`AX_ISOLATION`, `AX_READ_ONLY`). The artifact's `## Critic Rounds` block, when present, is the critique's own history, not spec content (`AX_SCRATCH_LOG`) — read it as part of the full read. A finding it shows already rejected with a reason stays rejected: raise it again only on new grounds the entry does not already cover. The block itself is never a finding — do not flag its presence, format, or length as a defect.</Action>
     </Step>
     <Step id="STEP_1B_SYSTEM_CONTEXT">
       <Goal>Understand the system, not one spec in isolation.</Goal>

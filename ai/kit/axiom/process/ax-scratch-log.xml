@@ -1,1 +1,11 @@
-<Axiom id="AX_SCRATCH_LOG">`## Critic Rounds` = temporary working memory for orchestrator between rounds. Deleted on final CLEAN.</Axiom>
+<Axiom id="AX_SCRATCH_LOG">
+  `## Critic Rounds` is memory that lives IN the artifact, not in the orchestrator's own context — it
+  survives a context reset, a crashed session, a fresh sensor dispatch that never saw a prior round.
+  Append-only: each round adds one dated entry (verdict, accepted, rejected-with-reason, reconcile
+  decisions, changes, out-of-cycle deferrals); a prior entry is never rewritten. This is what makes the
+  critique loop converge across rounds AND across sessions — the sensor reads the artifact end-to-end
+  (`AX_ISOLATION`), so it reads its own history for free: a rejected finding stays rejected absent new
+  grounds, an already-applied fix does not get re-proposed, no round re-litigates settled ground.
+  Deleted on final CLEAN — the artifact no longer owes anyone a memory of the path that cleaned it; kept
+  intact on any other verdict, where it is itself documentation of what the artifact still owes.
+</Axiom>

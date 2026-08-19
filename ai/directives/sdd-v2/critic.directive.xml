@@ -120,6 +120,12 @@
       Every finding carries an addressee — who owns its resolution:
       - `MECHANICAL` — style, structure, consistency, a detail the spec already implies. Resolved by an artifact edit.
       - `GOAL` — goal / scope shift ("goal drawn too narrow"), misunderstood intent, a missing requirement, an unanswered uncomfortable question. Resolved ONLY by the goal owner — the operator.
+
+      A finding that removes or weakens an existing quality gate — typecheck, lint, format, or tests run
+      from a hook, script, or CI — or steps back from an infra axiom's stated default, is `GOAL` by
+      definition, never `MECHANICAL`, no matter how small the edit looks. The operator owns the tradeoff
+      between gate strength and friction; the answer is recorded as its own Decision Log entry
+      (`AX_GOAL_OWNER_GATE`).
     </Axiom>
 
     <Axiom id="AX_GOAL_OWNER_GATE">
@@ -130,6 +136,11 @@
       into the SAME question block as one more question, never a private reclassification. Batch the
       round's `GOAL` findings into ONE question block (`QUESTION_FORMAT`) BEFORE editing the sections they
       touch. Goal / scope wording stays intact until an operator answer sanctions the change.
+
+      When the resolved `GOAL` finding weakened or removed a quality gate (`AX_FINDING_ADDRESSEE`), the
+      operator's answer is written as its own Decision Log entry, not folded into the round's edit
+      summary — a gate change is a standing decision that future rounds, and future sessions, must be able
+      to see without replaying this round's dialogue.
     </Axiom>
 
     <Axiom id="AX_SEVERITY">
@@ -150,7 +161,17 @@
 
     <Axiom id="AX_CAP_5">Max 5 rounds. Round 5 + edits + not CLEAN → stop, flag MAX_ROUNDS.</Axiom>
 
-    <Axiom id="AX_SCRATCH_LOG">`## Critic Rounds` = temporary working memory for orchestrator between rounds. Deleted on final CLEAN.</Axiom>
+    <Axiom id="AX_SCRATCH_LOG">
+      `## Critic Rounds` is memory that lives IN the artifact, not in the orchestrator's own context — it
+      survives a context reset, a crashed session, a fresh sensor dispatch that never saw a prior round.
+      Append-only: each round adds one dated entry (verdict, accepted, rejected-with-reason, reconcile
+      decisions, changes, out-of-cycle deferrals); a prior entry is never rewritten. This is what makes the
+      critique loop converge across rounds AND across sessions — the sensor reads the artifact end-to-end
+      (`AX_ISOLATION`), so it reads its own history for free: a rejected finding stays rejected absent new
+      grounds, an already-applied fix does not get re-proposed, no round re-litigates settled ground.
+      Deleted on final CLEAN — the artifact no longer owes anyone a memory of the path that cleaned it; kept
+      intact on any other verdict, where it is itself documentation of what the artifact still owes.
+    </Axiom>
 
     <Axiom id="AX_TASK_PARALLEL">Tasks critiqued in DAG layers. Same layer (no inter-dependencies) → parallel dispatch. Different layers → sequential.</Axiom>
   </BeliefState>
@@ -172,11 +193,13 @@
     </Step>
     <Step id="STEP_1_DISPATCH">
       <Goal>Dispatch the isolated sensor.</Goal>
-      <Action>One fresh subagent, on a worker-tier model — never stronger than the author's model (`AX_CRITIC_MODEL_TIER`): read `ai/directives/sdd-v2/critic-protocol.directive.xml` + the artifact + parent spec only (`AX_ISOLATION_SIGNAL`). Emit a round progress line (`ORCHESTRATOR_PROGRESS_FORMAT`).</Action>
+      <Action>One fresh subagent, on a worker-tier model — never stronger than the author's model (`AX_CRITIC_MODEL_TIER`): read `ai/directives/sdd-v2/critic-protocol.directive.xml` + the artifact + parent spec only (`AX_ISOLATION_SIGNAL`). Tell the sensor which round this is — `Round: <N>` in the dispatch — so it reads the artifact's `## Critic Rounds` history with the right expectation (`AX_SCRATCH_LOG`). Emit a round progress line (`ORCHESTRATOR_PROGRESS_FORMAT`).</Action>
     </Step>
     <Step id="STEP_2_EVALUATE">
       <Goal>Weigh findings against full project context.</Goal>
-      <Action>Split by addressee (`AX_FINDING_ADDRESSEE`): `MECHANICAL` — accept by default (`AX_DEFAULT_ACCEPT`); `GOAL` — queue for STEP_3B, keep the touched sections intact (`AX_GOAL_OWNER_GATE`). The sensor's `GOAL` tag is a floor, not a ceiling: downgrading it to `MECHANICAL` is the operator's call alone (`AX_GOAL_OWNER_GATE`) — an orchestrator read that leans mechanical carries into STEP_3B as one more question, never a private reclassification. A rejection cites a specific file / section that resolves the concern (`AX_REJECTION_REASON`). Sensor confusion the full context resolves = an artifact bug — clarify by edit (`AX_CONFUSION_BUG`); confusion the project cannot answer = `GOAL`. Also carry each finding's severity (`AX_SEVERITY`) forward — STEP_3B gates on it.</Action>
+      <Action>Split by addressee (`AX_FINDING_ADDRESSEE`): `MECHANICAL` — accept by default (`AX_DEFAULT_ACCEPT`); `GOAL` — queue for STEP_3B, keep the touched sections intact (`AX_GOAL_OWNER_GATE`). The sensor's `GOAL` tag is a floor, not a ceiling: downgrading it to `MECHANICAL` is the operator's call alone (`AX_GOAL_OWNER_GATE`) — an orchestrator read that leans mechanical carries into STEP_3B as one more question, never a private reclassification. A rejection cites a specific file / section that resolves the concern (`AX_REJECTION_REASON`). Sensor confusion the full context resolves = an artifact bug — clarify by edit (`AX_CONFUSION_BUG`); confusion the project cannot answer = `GOAL`. Also carry each finding's severity (`AX_SEVERITY`) forward — STEP_3B gates on it. A finding that removes or weakens a quality gate is `GOAL` by definition, never a private `MECHANICAL` call (`AX_FINDING_ADDRESSEE`) — e.g. a sensor surfacing that pre-commit's staged-file `tsc` run cannot also be whole-project: which way to resolve that contradiction is the operator's call, not the orchestrator's, and the answer becomes its own Decision Log entry (`AX_GOAL_OWNER_GATE`).
+
+      Convergence brake from round 3 on: a NEW finding (not already carried in a prior `## Critic Rounds` entry) advances to STEP_3 / STEP_3B only if `CRITICAL`, or a regression — a defect a prior round's own edit introduced. A new `MINOR` / `MAJOR` finding that is neither stays out of this cycle's edit set — record it in this round's entry under `Out of cycle:` and carry it into the STEP_5 report as its own list, never silently dropped (AUTHORING.md §9 — a stop needs a named outlet, not a bare refusal).</Action>
     </Step>
     <Step id="STEP_2B_RECONCILE">
       <Goal>Reconcile every introduced entity. (mechanical → tool)</Goal>
@@ -184,7 +207,7 @@
     </Step>
     <Step id="STEP_3_EDIT">
       <Goal>Apply the round's `MECHANICAL` edits.</Goal>
-      <Action>Edit only what a finding requires (`AX_SURGICAL`); I apply the edits — the sensor never does (`AX_OWNER`). Apply every `MECHANICAL` finding directly, regardless of severity (`AX_DEFAULT_ACCEPT`) — a `CRITICAL` / `MAJOR` mechanical finding gets fixed now, confirmed with the operator next at STEP_3B, not gated before the fix. Leave `GOAL`-tagged sections untouched — their edit waits for the operator's answer at STEP_3B. Record each edit in the temporary `## Critic Rounds` scratch (`AX_SCRATCH_LOG`).</Action>
+      <Action>Edit only what a finding requires (`AX_SURGICAL`); I apply the edits — the sensor never does (`AX_OWNER`). Apply every `MECHANICAL` finding directly, regardless of severity (`AX_DEFAULT_ACCEPT`) — a `CRITICAL` / `MAJOR` mechanical finding gets fixed now, confirmed with the operator next at STEP_3B, not gated before the fix. Leave `GOAL`-tagged sections untouched — their edit waits for the operator's answer at STEP_3B. The round's edits are recorded once, together, at STEP_3C — not here.</Action>
     </Step>
     <Step id="STEP_3B_ROUND_CHECKPOINT">
       <Goal>One batch Ask per round for every operator-owned item (`AX_GOAL_OWNER_GATE`).</Goal>
@@ -196,10 +219,35 @@
         round carried any `CRITICAL` / `MAJOR` finding (mechanical or goal), one confirm block: «critic
         found N problems this round, fixed as follows: <one line per fix> — confirm, or correct?».
         Neither (a) nor (b) applies (the round was `MINOR` / `INFO` only, or carried zero findings) →
-        skip the Ask, go straight to STEP_4 (`AX_DEFAULT_ACCEPT`). WAIT for the answer
+        skip the Ask, go straight to STEP_3C (`AX_DEFAULT_ACCEPT`). WAIT for the answer
         before touching any `GOAL`-tagged section. Apply `GOAL` edits exactly as answered, and any
-        correction the operator makes to a confirmed fix, recording each in `## Critic Rounds`
-        (`AX_SCRATCH_LOG`). Operator unreachable while `GOAL` findings block → `H_GOAL_BLOCKED`.
+        correction the operator makes to a confirmed fix — recorded together at STEP_3C, not here.
+        When the answered `GOAL` finding weakened or removed a quality gate, additionally write the
+        operator's decision as its own Decision Log entry (`AX_GOAL_OWNER_GATE`). Operator unreachable
+        while `GOAL` findings block → `H_GOAL_BLOCKED`.
+      </Action>
+    </Step>
+    <Step id="STEP_3C_RECORD_ROUND">
+      <Goal>Append this round's memory to the artifact (`AX_SCRATCH_LOG`).</Goal>
+      <Action>
+        Append ONE entry to `## Critic Rounds` in the artifact — create the section (at the end of the
+        artifact) the first round that needs it; never rewrite a prior entry, this block is append-only:
+
+        ```
+        ### Round <N> — <YYYY-MM-DD>
+        - Verdict: <CLEAN|NEEDS_WORK|CRITICAL>
+        - Accepted: <count> — <list>
+        - Rejected: <count> — "<finding>" → <reason>
+        - Reconcile: <entity → REUSE <target> | EXTEND <target> | JUSTIFY <rationale> | ESCALATE>
+        - Changes: <list>
+        - Out of cycle: <new MINOR/MAJOR findings the round-3+ brake deferred, or "none">
+        ```
+
+        `Accepted` covers both the `MECHANICAL` edits applied at STEP_3 and the `GOAL` edits applied at
+        STEP_3B after the operator's answer. `Rejected` carries the exact reason per `AX_REJECTION_REASON`
+        — a later round, or a later session picking this up fresh, reads this entry before re-raising the
+        same ground. Even on a `CLEAN` round this entry is appended before STEP_5 deletes the whole block
+        — the verdict line is what STEP_5 quotes.
       </Action>
     </Step>
     <Step id="STEP_4_DECIDE">
@@ -208,7 +256,7 @@
     </Step>
     <Step id="STEP_5_FINALIZE">
       <Goal>Finalize.</Goal>
-      <Action>On CLEAN: delete the `## Critic Rounds` scratch; the artifact is clean with improvements integrated. Report the final verdict (CLEAN | NEEDS_WORK | CRITICAL) with a one-line-per-round summary of what changed — the reported verdict MUST be the literal verdict text of the LAST sensor dispatch actually run (`AX_RE_DISPATCH`), shown as a direct quote, never a paraphrase and never an earlier round's verdict presented as current. A structural problem the critique cannot resolve by a surgical edit → escalate to the operator, do not loop.</Action>
+      <Action>On CLEAN: delete the `## Critic Rounds` scratch; the artifact is clean with improvements integrated. Report the final verdict (CLEAN | NEEDS_WORK | CRITICAL) with a one-line-per-round summary of what changed, plus — when any round recorded an `Out of cycle` list — a merged `Out of cycle` section collecting every deferred finding across rounds, so nothing the brake held back is silently lost. The reported verdict MUST be the literal verdict text of the LAST sensor dispatch actually run (`AX_RE_DISPATCH`), shown as a direct quote, never a paraphrase and never an earlier round's verdict presented as current. A structural problem the critique cannot resolve by a surgical edit → escalate to the operator, do not loop.</Action>
     </Step>
   </ExecutionPlan>
 

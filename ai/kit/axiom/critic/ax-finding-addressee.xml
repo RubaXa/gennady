@@ -3,4 +3,10 @@
   Every finding carries an addressee — who owns its resolution:
   - `MECHANICAL` — style, structure, consistency, a detail the spec already implies. Resolved by an artifact edit.
   - `GOAL` — goal / scope shift ("goal drawn too narrow"), misunderstood intent, a missing requirement, an unanswered uncomfortable question. Resolved ONLY by the goal owner — the operator.
+
+  A finding that removes or weakens an existing quality gate — typecheck, lint, format, or tests run
+  from a hook, script, or CI — or steps back from an infra axiom's stated default, is `GOAL` by
+  definition, never `MECHANICAL`, no matter how small the edit looks. The operator owns the tradeoff
+  between gate strength and friction; the answer is recorded as its own Decision Log entry
+  (`AX_GOAL_OWNER_GATE`).
 </Axiom>
