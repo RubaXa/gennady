@@ -7,6 +7,9 @@ on:
   pull_request:
   push:
     branches: [main]
+  # Manual re-run without an empty commit: useful when a run failed on something
+  # external (registry hiccup) rather than on the diff.
+  workflow_dispatch:
 
 # Runs are long; a superseded commit's queue is not worth paying for.
 concurrency:
