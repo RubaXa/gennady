@@ -97,6 +97,11 @@ export type EnvFailPredicate = ((outcome: GateOutcome) => boolean) & {
   readonly kind?: 'exit' | 'output';
   /** @purpose Rendered form for `--plan --json`, e.g. `exit > 1` or `stderr ~ /panic/m`. */
   readonly describe: string;
+  /**
+   * @purpose Config file the rule came from. Reported at match time so a machine-global
+   *   `$HOME/.gennadyrc` rule is identifiable as personal, not project policy.
+   */
+  readonly source?: string;
 };
 
 /**

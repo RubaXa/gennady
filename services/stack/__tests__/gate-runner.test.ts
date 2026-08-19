@@ -250,6 +250,49 @@ describe('runVerify — verdict precedence (spec §8.2, D-STACK-015)', () => {
   });
 });
 
+describe('runVerify — predicates see a bounded window (spec §8.2)', () => {
+  it('matches in the head and the tail, and fails open when only the middle matches', () => {
+    // A config regex runs in this process against output that can reach tens of megabytes.
+    // Predicates see the same head+tail window the report prints; dropping the middle can only
+    // LOSE a match, so the conservative direction (FAIL, never a false env-fail) is preserved.
+    const head = runVerify(
+      [
+        runOf([
+          shellGate('a', 'echo NEEDLE; seq 1 500; exit 1', {
+            envFail: [streamMatches('stdout', /NEEDLE/m, 'h')],
+          }),
+        ]),
+      ],
+      []
+    );
+    assert.equal(head.results[0]?.status, 'env-fail', 'head is inside the window');
+
+    const tail = runVerify(
+      [
+        runOf([
+          shellGate('b', 'seq 1 500; echo NEEDLE; exit 1', {
+            envFail: [streamMatches('stdout', /NEEDLE/m, 'h')],
+          }),
+        ]),
+      ],
+      []
+    );
+    assert.equal(tail.results[0]?.status, 'env-fail', 'tail is inside the window');
+
+    const middle = runVerify(
+      [
+        runOf([
+          shellGate('c', 'seq 1 200; echo NEEDLE; seq 1 200; exit 1', {
+            envFail: [streamMatches('stdout', /NEEDLE/m, 'h')],
+          }),
+        ]),
+      ],
+      []
+    );
+    assert.equal(middle.results[0]?.status, 'fail', 'an elided middle fails open to FAIL');
+  });
+});
+
 describe('runVerify — requires preconditions (spec §4.7)', () => {
   it('reports env-fail with the precondition hint and never runs the gate command', () => {
     const marker = path.join(BASE_DIR, 'gate-ran.txt');

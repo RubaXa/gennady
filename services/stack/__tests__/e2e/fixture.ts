@@ -21,6 +21,7 @@ const EXPECT_KEYS = [
   'diagnostics',
   'treeUnchanged',
   'timeoutMs',
+  'homeRc',
 ] as const;
 
 /** Every key a per-gate expectation may carry. */
@@ -71,6 +72,8 @@ export type FixtureExpectation = {
   readonly treeUnchanged: boolean;
   /** @purpose Per-fixture timeout override in milliseconds. */
   readonly timeoutMs?: number;
+  /** @purpose JSON written to the overridden `$HOME/.gennadyrc` — the third config source. */
+  readonly homeRc?: string;
 };
 
 /**
@@ -173,6 +176,7 @@ export function readExpectation(file: string): FixtureExpectation {
     diagnostics: (raw['diagnostics'] ?? []) as readonly string[],
     treeUnchanged: (raw['treeUnchanged'] ?? true) as boolean,
     timeoutMs: raw['timeoutMs'] as number | undefined,
+    homeRc: raw['homeRc'] as string | undefined,
   };
 }
 
@@ -198,6 +202,11 @@ export function materializeFixture(
   git(dir, 'init', '-q', '-b', 'main');
   git(dir, 'add', '-A');
   git(dir, 'commit', '-q', '--no-verify', '-m', 'fixture baseline');
+
+  if (expectation.homeRc !== undefined) {
+    // The harness overrides HOME, so the machine-global source is only reachable from here.
+    fs.writeFileSync(path.join(ctx.homeDir, '.gennadyrc'), expectation.homeRc);
+  }
 
   for (const [relative, content] of Object.entries(expectation.dirty)) {
     const target = path.join(dir, relative);

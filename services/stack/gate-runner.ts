@@ -276,12 +276,13 @@ function executeGate(
   }
 
   // #region START_VERDICTS — env-fail first, then timeout, violation, drift, stdout, exit (§8.2)
+  // Predicates see the printed head+tail window, not unbounded output (spec §8.2).
   const outcome: GateOutcome = {
     exitCode: proc.status,
     timedOut,
-    stdout,
-    stderr: rewrite(proc.stderr ?? ''),
-    output,
+    stdout: truncateOutput(stdout),
+    stderr: truncateOutput(rewrite(proc.stderr ?? '')),
+    output: truncateOutput(output),
   };
   const matched = (gate.envFail ?? []).find((predicate) => predicate(outcome));
   if (matched !== undefined) {
@@ -291,7 +292,11 @@ function executeGate(
       status: 'env-fail',
       exitCode: proc.status,
       durationMs,
-      output: `${output}${debris}${matched.hint !== undefined ? `\nhint: ${matched.hint}` : ''}`,
+      output:
+        `${output}${debris}` +
+        `\nmatched env-fail rule: ${matched.describe}` +
+        `${matched.source !== undefined ? ` (from ${matched.source})` : ''}` +
+        `${matched.hint !== undefined ? `\nhint: ${matched.hint}` : ''}`,
     };
   }
 

@@ -262,6 +262,17 @@ export async function run(argv: string[]): Promise<number> {
             ? `  ⏭️  ${name.padEnd(16)} skip — ${gate.skipped}`
             : `  ▶️  ${name.padEnd(16)} [${formatDuration(gate.timeoutMs)}] ${gate.argv.join(' ')}${provenanceNote}`
         );
+        // A plan that hides how failures are classified cannot be reviewed before running.
+        for (const requirement of gate.requires ?? []) {
+          console.info(`        requires:  ${requirement.argv.join(' ')}`);
+        }
+        for (const predicate of gate.envFail ?? []) {
+          const from = predicate.source !== undefined ? ` (from ${predicate.source})` : '';
+          console.info(`        env-fail:  ${predicate.describe}${from}`);
+        }
+        if (gate.fixer !== undefined) {
+          console.info(`        fixer:     ${gate.fixer.argv.join(' ')}`);
+        }
       }
     }
     return 0;

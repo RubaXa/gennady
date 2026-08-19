@@ -676,7 +676,8 @@ export function applyStackConfig(
         envFail: [
           ...compileEnvFailRules(
             override.envFail ?? [],
-            `${stack}.overrideGates.${gate.id}.envFail`
+            `${stack}.overrideGates.${gate.id}.envFail`,
+            provenanceOf(provenance, `${stack}.overrideGates.${gate.id}.envFail`) ?? 'config'
           ).predicates,
           ...((override.argv !== undefined
             ? gate.envFail?.filter((predicate) => predicate.kind !== 'exit')
@@ -712,8 +713,11 @@ export function applyStackConfig(
           : EXTRA_GATE_DEFAULT_TIMEOUT_MS,
       outputMeansFailure: spec.outputMeansFailure ?? false,
       driftMeansFailure: spec.driftMeansFailure,
-      envFail: compileEnvFailRules(spec.envFail ?? [], `${stack}.extraGates.${spec.id}.envFail`)
-        .predicates,
+      envFail: compileEnvFailRules(
+        spec.envFail ?? [],
+        `${stack}.extraGates.${spec.id}.envFail`,
+        provenanceOf(provenance, `${stack}.extraGates`) ?? 'config'
+      ).predicates,
       requires: toCommands(
         spec.requires,
         root,

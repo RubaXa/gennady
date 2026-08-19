@@ -55,6 +55,8 @@ export type StackE2eContext = {
   readonly runnerDir: string;
   /** @purpose Root of this suite's temp tree; fixtures are materialized under it. */
   readonly tmpRoot: string;
+  /** @purpose Overridden HOME; fixtures may plant a machine-global `.gennadyrc` here. */
+  readonly homeDir: string;
   /** @purpose Probe results keyed by toolchain id. */
   readonly toolchains: ReadonlyMap<string, Toolchain>;
   /** @purpose Run the installed gennady binary; returns captured streams and exit code. */
@@ -202,6 +204,7 @@ export function setupStackSuite(suiteId: string, toolchainIds: readonly string[]
   return {
     runnerDir,
     tmpRoot,
+    homeDir,
     toolchains: probeToolchains(toolchainIds),
     spawn(args, cwd, timeoutMs = 120_000) {
       const proc = spawnSync(bin, [...args], {

@@ -140,11 +140,13 @@ export function allOf(parts: readonly EnvFailPredicate[], hint?: string): EnvFai
  * @invariant Every error is returned, never thrown — the loader reports the full list at exit 4.
  * @param rules Raw value of the `envFail` key.
  * @param keyPath Dotted config path used in error messages.
+ * @param [source] Config file the rules came from, reported when a rule matches.
  * @returns Compiled predicates plus any config errors found.
  */
 export function compileEnvFailRules(
   rules: unknown,
-  keyPath: string
+  keyPath: string,
+  source?: string
 ): { predicates: EnvFailPredicate[]; errors: EnvFailRuleError[] } {
   const errors: EnvFailRuleError[] = [];
   const predicates: EnvFailPredicate[] = [];
@@ -240,7 +242,10 @@ export function compileEnvFailRules(
       });
       return;
     }
-    predicates.push(allOf(parts, typeof hint === 'string' ? hint : undefined));
+    const compiled = allOf(parts, typeof hint === 'string' ? hint : undefined);
+    predicates.push(
+      source === undefined ? compiled : Object.assign(compiled.bind(null), { ...compiled, source })
+    );
   });
 
   return { predicates, errors };
