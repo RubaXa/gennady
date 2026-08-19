@@ -483,7 +483,7 @@ describe('SddCheckCommand', () => {
     assert.strictEqual(missing.exitCode, 1);
   });
 
-  describe('research connectivity gates (SDD_RESEARCH_REF_BROKEN / SDD_RESEARCH_ORPHAN)', () => {
+  describe('research connectivity gates (SDD_RESEARCH_REF_BROKEN / SDD_RESEARCH_ORPHAN / SDD_RESEARCH_UNREGISTERED)', () => {
     it('--all: a healthy spec ⟷ research pair is clean — no broken ref, no orphan', async () => {
       const root = join(dir, 'research-healthy-proj');
       const scopeDir = join(root, 'specs', 'cli');
@@ -568,6 +568,73 @@ describe('SddCheckCommand', () => {
       );
       const r = await mod.run(argv(`--task=${t}`));
       assert.match(r.text, /SDD_RESEARCH_REF_BROKEN/);
+    });
+
+    it("--all flags a research doc that is referenced but has no row in any spec's ## Research section (SDD_RESEARCH_UNREGISTERED, warn)", async () => {
+      const root = join(dir, 'research-unregistered-proj');
+      const scopeDir = join(root, 'specs', 'cli');
+      mkdirSync(join(scopeDir, 'research'), { recursive: true });
+      writeFileSync(
+        join(scopeDir, 'cli.task-foo.md'),
+        `${CLEAN_TICKET.replace('cli-foo', 'CLI-foo')}\n\nSee [research](./research/2026-01-01-x.research.md) for rationale.\n`,
+        'utf-8'
+      );
+      writeFileSync(
+        join(scopeDir, 'cli.3-tasks.md'),
+        [
+          '# cli — Tasks',
+          '## 1. Tracker Index',
+          '| Task-ID | Title | Dependencies | Status | Reopens |',
+          '|---------|-------|--------------|--------|---------|',
+          '| CLI-foo | Foo | — | [x] DONE | — |',
+        ].join('\n'),
+        'utf-8'
+      );
+      writeFileSync(
+        join(scopeDir, 'research', '2026-01-01-x.research.md'),
+        '# Research: x\n',
+        'utf-8'
+      );
+
+      const r = await mod.run(argv('--all', root));
+      assert.doesNotMatch(r.text, /SDD_RESEARCH_ORPHAN/);
+      assert.match(r.text, /SDD_RESEARCH_UNREGISTERED/);
+      assert.match(r.text, /cli\.spec\.md/);
+      assert.strictEqual(r.exitCode, 0, 'unregistered is warn-only — must not fail the gate');
+    });
+
+    it("--all does not flag SDD_RESEARCH_UNREGISTERED once the research doc has a row in the scope spec's ## Research section", async () => {
+      const root = join(dir, 'research-registered-proj');
+      const scopeDir = join(root, 'specs', 'demo');
+      mkdirSync(join(scopeDir, 'research'), { recursive: true });
+      writeFileSync(
+        join(scopeDir, 'demo.spec.md'),
+        [
+          '# demo: Scope Specification',
+          '',
+          '<!--SECTION:SCOPE_TYPE-->',
+          '## scope-type',
+          'product',
+          '<!--/SECTION:SCOPE_TYPE-->',
+          '',
+          '<!--SECTION:RESEARCH-->',
+          '## Research',
+          '| Документ | Что ресёрчили | Что дал для спеки |',
+          '|---|---|---|',
+          '| [2026-01-01-x](./research/2026-01-01-x.research.md) | topic | decision |',
+          '<!--/SECTION:RESEARCH-->',
+        ].join('\n'),
+        'utf-8'
+      );
+      writeFileSync(
+        join(scopeDir, 'research', '2026-01-01-x.research.md'),
+        '# Research: x\n',
+        'utf-8'
+      );
+
+      const r = await mod.run(argv('--all', root));
+      assert.doesNotMatch(r.text, /SDD_RESEARCH_ORPHAN/);
+      assert.doesNotMatch(r.text, /SDD_RESEARCH_UNREGISTERED/);
     });
   });
 });

@@ -79,6 +79,16 @@
   `check-command` is **always required** when the runtime setup rule (`nodejs-npm-setup` or equivalent) is active — it is the composed entry point that runs all active phases in `CheckPhaseOrder` order (typecheck → test → lint → format). Composition: chain invocations of each active phase command in that order. Task tickets use `check-command` as their single verification alias.
   <!--/SECTION:VERIFICATION_COMMANDS-->
 
+  <!--SECTION:RESEARCH-->
+  ## Research
+  [Опционально. Реестр ресёрчей, на которые опирается эта спека — по одной строке на документ.
+  Документ без строки здесь считается незарегистрированным (`SDD_RESEARCH_UNREGISTERED`).]
+
+  | Документ | Что ресёрчили | Что дал для спеки |
+  |---|---|---|
+  | [<yyyy-mm-dd>-<slug>](./research/<yyyy-mm-dd>-<slug>.research.md) | <тема одной строкой> | <какое решение/секцию спеки питает> |
+  <!--/SECTION:RESEARCH-->
+
   <!--SECTION:DECISION_LOG-->
   ## Decision Log
   [One-line human summary — how many decisions, what area. Full entries fold per `AX_SPEC_PROGRESSIVE_DISCLOSURE` (checked by `SDD_SECTION_NOT_FOLDED`) — history, never needed to grasp the scope NOW.]

@@ -157,20 +157,37 @@ export function renderManifestTable(sections: SectionManifestEntry[]): string {
 }
 
 /**
- * @purpose Render the success report: created path + section manifest table.
+ * @purpose Render the `next:` block — short, imperative lines telling the agent what to do after
+ * the skeleton + manifest, per `ArtifactTemplate.nextSteps`.
+ * @param nextSteps Resolved next-step lines (see `resolveNextSteps` in templates.ts).
+ * @returns Report text block, empty string when there are no steps.
+ */
+export function renderNextSteps(nextSteps: string[]): string {
+  if (nextSteps.length === 0) return '';
+  return ['next:', ...nextSteps.map((s) => `  ${s}`)].join('\n');
+}
+
+/**
+ * @purpose Render the success report: created path + section manifest table + next-steps block.
  * @param kind Artifact kind created.
  * @param path Path the skeleton was written to.
  * @param sections Section manifest for this kind.
+ * @param nextSteps Resolved next-step lines for this kind (see `resolveNextSteps`).
  * @returns Report text for stdout.
  */
 export function renderCreated(
   kind: ArtifactKind,
   path: string,
-  sections: SectionManifestEntry[]
+  sections: SectionManifestEntry[],
+  nextSteps: string[]
 ): string {
-  return [`[sdd-new] created ${kind} skeleton: ${path}`, '', renderManifestTable(sections)].join(
-    '\n'
-  );
+  return [
+    `[sdd-new] created ${kind} skeleton: ${path}`,
+    '',
+    renderManifestTable(sections),
+    '',
+    renderNextSteps(nextSteps),
+  ].join('\n');
 }
 
 /**

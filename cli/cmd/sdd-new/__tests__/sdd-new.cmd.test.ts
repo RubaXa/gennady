@@ -110,6 +110,8 @@ describe('SddNewCommand', () => {
       assert.match(outcome.text, /created product skeleton/);
       assert.match(outcome.text, /VISION/);
       assert.match(outcome.text, /REQUIRED/);
+      assert.match(outcome.text, /next:/);
+      assert.match(outcome.text, /\/sdd/);
     }
   });
 
@@ -525,6 +527,24 @@ describe('SddNewCommand', () => {
         if (!again.ok) {
           assert.strictEqual(again.exitCode, 1);
           assert.match(again.code, /FILE_EXISTS/);
+        }
+      } finally {
+        process.chdir(prevCwd);
+        rmSync(cwd, { recursive: true, force: true });
+      }
+    });
+
+    it('prints a next: block naming the concrete scope spec to register the doc in (--scope substituted)', async () => {
+      const cwd = mkdtempSync(join(tmpdir(), 'sdd-new-research-next-'));
+      const prevCwd = process.cwd();
+      try {
+        process.chdir(cwd);
+        const outcome = await mod.run(argv('research', '--scope', 'checkout', '--slug', 'x'));
+        assert.strictEqual(outcome.ok, true);
+        if (outcome.ok) {
+          assert.match(outcome.text, /next:/);
+          assert.match(outcome.text, /specs\/checkout\/checkout\.spec\.md/);
+          assert.match(outcome.text, /## Research/);
         }
       } finally {
         process.chdir(prevCwd);

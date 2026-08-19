@@ -6,7 +6,12 @@ import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { logger } from '#logger';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
-import { TEMPLATES, ARTIFACT_KINDS, type ArtifactKind } from '../../../shared/sdd/templates.ts';
+import {
+  TEMPLATES,
+  ARTIFACT_KINDS,
+  resolveNextSteps,
+  type ArtifactKind,
+} from '../../../shared/sdd/templates.ts';
 import {
   validateTaskId,
   collectTaskIds,
@@ -274,7 +279,8 @@ export async function run(rawArgs: string[]): Promise<NewOutcome> {
   }
 
   logger.debug(`[SddNewCommand#run] created ${kind} skeleton at ${path}`);
-  return { ok: true, text: renderCreated(kind, path, TEMPLATES[kind].sections), path };
+  const nextSteps = resolveNextSteps(kind, { path, scope: opts.scope, module: opts.module });
+  return { ok: true, text: renderCreated(kind, path, TEMPLATES[kind].sections, nextSteps), path };
 }
 
 // Self-executing for CLI: gennady sdd-new <kind> --scope <s> [--module <m>] [--id <ACR-slug>] [--out <path>] | gennady sdd-new --list

@@ -10,6 +10,7 @@ import {
   SCOPE_KINDS,
   loadBearingSections,
   foldSections,
+  resolveNextSteps,
 } from '../templates.ts';
 import { REQUIRED_SECTIONS, MODULE_REQUIRED_V2, FOLD_REQUIRED_V2 } from '../check.ts';
 import { extractMermaidBlocks, validateMermaid } from '../../mermaid/mermaid.ts';
@@ -98,6 +99,91 @@ describe('templates registry', () => {
       required,
       new Set(['STATUS', 'PROBLEM', 'OPTIONS', 'DECISION', 'EVIDENCE'])
     );
+  });
+
+  it('every scope-type template + module carries an optional RESEARCH registry section', () => {
+    for (const k of [...SCOPE_KINDS, 'module' as const]) {
+      const tpl = TEMPLATES[k];
+      const entry = tpl.sections.find((s) => s.name === 'RESEARCH');
+      assert.ok(entry, `${k}: missing RESEARCH section manifest entry`);
+      assert.strictEqual(entry?.required, false, `${k}: RESEARCH must be optional`);
+      assert.match(
+        tpl.skeleton,
+        /<!--SECTION:RESEARCH-->/,
+        `${k}: skeleton missing RESEARCH anchor`
+      );
+      assert.match(tpl.skeleton, /## Research/, `${k}: skeleton missing "## Research" heading`);
+    }
+  });
+
+  it("scope-type templates link research relative to the scope spec's own directory (./research/)", () => {
+    for (const k of SCOPE_KINDS) {
+      assert.match(
+        TEMPLATES[k].skeleton,
+        /\]\(\.\/research\//,
+        `${k}: expected a ./research/ link in the RESEARCH section`
+      );
+    }
+  });
+
+  it('module template links research one level above the module (../research/), noting depth honesty', () => {
+    assert.match(TEMPLATES.module.skeleton, /\]\(\.\.\/research\//);
+    assert.match(TEMPLATES.module.skeleton, /глубине/);
+  });
+
+  it('research kinds not carrying a RESEARCH section of their own (task/index/portal/research) are untouched', () => {
+    for (const k of [
+      'task',
+      'module-index',
+      'scope-index',
+      'project-index',
+      'portal',
+      'research',
+    ] as const) {
+      assert.ok(
+        !TEMPLATES[k].sections.some((s) => s.name === 'RESEARCH'),
+        `${k}: unexpectedly carries a RESEARCH manifest entry`
+      );
+    }
+  });
+});
+
+describe('nextSteps — "what happens after this skeleton exists"', () => {
+  it('every kind resolves to at least one non-empty next-step line', () => {
+    for (const kind of ARTIFACT_KINDS) {
+      const steps = resolveNextSteps(kind, { path: 'irrelevant' });
+      assert.ok(steps.length > 0, `${kind}: expected at least one next step`);
+      for (const s of steps) assert.ok(s.trim().length > 0, `${kind}: empty next-step line`);
+    }
+  });
+
+  it('research substitutes the concrete --scope into the scope-spec path it names', () => {
+    const steps = resolveNextSteps('research', { path: 'irrelevant', scope: 'checkout' });
+    assert.ok(
+      steps.some((s) => s.includes('specs/checkout/checkout.spec.md')),
+      `expected a step naming specs/checkout/checkout.spec.md, got: ${JSON.stringify(steps)}`
+    );
+    assert.ok(steps.some((s) => s.includes('## Research')));
+  });
+
+  it('research falls back to a <scope> placeholder when no scope is supplied', () => {
+    const steps = resolveNextSteps('research', { path: 'irrelevant' });
+    assert.ok(steps.some((s) => s.includes('<scope>')));
+  });
+
+  it('scope/infra/module kinds point onward at the /sdd flow', () => {
+    for (const kind of [...SCOPE_KINDS, 'module' as const]) {
+      const steps = resolveNextSteps(kind, { path: 'irrelevant' });
+      assert.ok(
+        steps.some((s) => s.includes('/sdd')),
+        `${kind}: expected a /sdd next step`
+      );
+    }
+  });
+
+  it('task points at sdd-task', () => {
+    const steps = resolveNextSteps('task', { path: 'irrelevant' });
+    assert.ok(steps.some((s) => s.includes('sdd-task')));
   });
 });
 

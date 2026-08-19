@@ -42,7 +42,21 @@ export type SectionManifestEntry = {
 };
 
 /**
- * @purpose One artifact kind's full template: literal skeleton, section manifest, and path convention.
+ * @purpose Facts `sdd-new` knows about the artifact it just created — what a `nextSteps` function
+ *   needs to render a concrete instruction (e.g. `research`'s scope-spec path).
+ */
+export type NextStepsContext = {
+  /** @purpose Path the skeleton was written to. */
+  path: string;
+  /** @purpose `--scope` value, when the kind takes one. */
+  scope?: string;
+  /** @purpose `--module` value, when the kind takes one. */
+  module?: string;
+};
+
+/**
+ * @purpose One artifact kind's full template: literal skeleton, section manifest, path convention,
+ *   and what to do next.
  */
 export type ArtifactTemplate = {
   /** @purpose Which artifact kind this template scaffolds. */
@@ -53,6 +67,11 @@ export type ArtifactTemplate = {
   sections: SectionManifestEntry[];
   /** @purpose Path convention for this artifact kind, with `<scope>`/`<module>`/`<ACR>`/`<slug>` placeholders. */
   pathPattern: string;
+  /**
+   * @purpose Next-step lines `sdd-new` prints after the manifest — static, or a context function
+   * for a step needing a concrete value (e.g. `research`'s scope-spec path).
+   */
+  nextSteps: string[] | ((ctx: NextStepsContext) => string[]);
 };
 
 // #region START_SHARED_SECTIONS — text shared verbatim by every scope-type template
@@ -64,6 +83,32 @@ const OVERVIEW_FILL =
   'MANDATORY (AX_SPEC_MANDATORY_DIAGRAM): at least one fenced mermaid or ASCII diagram giving a reader the shape of this artifact at a glance, up top.';
 const SCOPE_DEPENDENCIES_FILL_PRODUCT =
   'List infra-*/api/design-system-* scopes this scope depends on, and any consumer scopes it provides to.';
+const RESEARCH_REGISTRY_FILL =
+  'Опционально: реестр ресёрчей, питающих эту спеку — по одной строке на документ. Документ без строки здесь считается незарегистрированным (SDD_RESEARCH_UNREGISTERED).';
+const RESEARCH_REGISTRY_FILL_MODULE =
+  'Опционально: реестр ресёрчей, питающих этот модуль — по одной строке на документ (research/ лежит рядом со спекой скоупа, путь считается по глубине --module). Документ без строки здесь считается незарегистрированным (SDD_RESEARCH_UNREGISTERED).';
+const RESEARCH_REGISTRY_SKELETON_SCOPE = `<!--SECTION:RESEARCH-->
+## Research
+[Опционально. Реестр ресёрчей, на которые опирается эта спека — по одной строке на документ.
+Документ без строки здесь считается незарегистрированным (\`SDD_RESEARCH_UNREGISTERED\`).]
+
+| Документ | Что ресёрчили | Что дал для спеки |
+|---|---|---|
+| [<yyyy-mm-dd>-<slug>](./research/<yyyy-mm-dd>-<slug>.research.md) | <тема одной строкой> | <какое решение/секцию спеки питает> |
+<!--/SECTION:RESEARCH-->
+`;
+const RESEARCH_REGISTRY_SKELETON_MODULE = `<!--SECTION:RESEARCH-->
+## Research
+[Опционально. Реестр ресёрчей, на которые опирается этот модуль — по одной строке на документ.
+Документ без строки здесь считается незарегистрированным (\`SDD_RESEARCH_UNREGISTERED\`). \`research/\`
+лежит рядом со спекой скоупа (\`specs/<scope>/research/\`) — посчитай \`../\` честно по глубине
+\`--module\` (один сегмент пути \`--module\` = один \`../\`; ниже — пример для модуля без вложенности).]
+
+| Документ | Что ресёрчили | Что дал для спеки |
+|---|---|---|
+| [<yyyy-mm-dd>-<slug>](../research/<yyyy-mm-dd>-<slug>.research.md) | <тема одной строкой> | <какое решение/секцию спеки питает> |
+<!--/SECTION:RESEARCH-->
+`;
 // #endregion END_SHARED_SECTIONS
 
 // #region START_PRODUCT — specs/<scope>/<scope>.spec.md, scope-type=product
@@ -145,6 +190,7 @@ chat first, per formats/diagram-vocabulary.xml.]
 [Appended by \`module-decomposition\`. Initially: «Modules not yet decomposed — run \`module-decomposition <scope-name>\`».]
 <!--/SECTION:MODULE_MAP-->
 
+${RESEARCH_REGISTRY_SKELETON_SCOPE}
 <!--SECTION:DECISION_LOG-->
 ## Decision Log
 [One-line human summary — how many decisions, what area. Full entries fold per \`AX_SPEC_PROGRESSIVE_DISCLOSURE\` (checked by \`SDD_SECTION_NOT_FOLDED\`) — history, never needed to grasp the scope NOW.]
@@ -248,6 +294,13 @@ const PRODUCT_SECTIONS: SectionManifestEntry[] = [
     fold: false,
     fill: 'Appended by module-decomposition; initially a placeholder pointing at that command.',
   },
+  {
+    name: 'RESEARCH',
+    required: false,
+    loadBearing: false,
+    fold: false,
+    fill: RESEARCH_REGISTRY_FILL,
+  },
   { name: 'DECISION_LOG', required: true, loadBearing: true, fold: true, fill: DECISION_LOG_FILL },
   {
     name: 'BOOTSTRAP_REQUIREMENTS',
@@ -328,6 +381,7 @@ flowchart LR
 [Выбранный design pattern. Кратко — rejected alternatives.]
 <!--/SECTION:ARCHITECTURE-->
 
+${RESEARCH_REGISTRY_SKELETON_SCOPE}
 <!--SECTION:DECISION_LOG-->
 ## Decision Log
 [One-line human summary — how many decisions, what area. Full entries fold per \`AX_SPEC_PROGRESSIVE_DISCLOSURE\` (checked by \`SDD_SECTION_NOT_FOLDED\`) — history, never needed to grasp the scope NOW.]
@@ -415,6 +469,13 @@ const LIBRARY_SECTIONS: SectionManifestEntry[] = [
     loadBearing: false,
     fold: false,
     fill: 'Chosen design pattern, briefly, plus rejected alternatives.',
+  },
+  {
+    name: 'RESEARCH',
+    required: false,
+    loadBearing: false,
+    fold: false,
+    fill: RESEARCH_REGISTRY_FILL,
   },
   { name: 'DECISION_LOG', required: true, loadBearing: true, fold: true, fill: DECISION_LOG_FILL },
   {
@@ -512,6 +573,7 @@ Include only command names for tools present in the chosen stack.
 \`check-command\` is **always required** when the runtime setup rule (\`nodejs-npm-setup\` or equivalent) is active — it is the composed entry point that runs all active phases in \`CheckPhaseOrder\` order (typecheck → test → lint → format). Composition: chain invocations of each active phase command in that order. Task tickets use \`check-command\` as their single verification alias.
 <!--/SECTION:VERIFICATION_COMMANDS-->
 
+${RESEARCH_REGISTRY_SKELETON_SCOPE}
 <!--SECTION:DECISION_LOG-->
 ## Decision Log
 [One-line human summary — how many decisions, what area. Full entries fold per \`AX_SPEC_PROGRESSIVE_DISCLOSURE\` (checked by \`SDD_SECTION_NOT_FOLDED\`) — history, never needed to grasp the scope NOW.]
@@ -610,6 +672,13 @@ const INFRASTRUCTURE_SECTIONS: SectionManifestEntry[] = [
     fold: false,
     fill: 'Mandatory: Command Name/Invocation table for the active phases (typecheck/test/lint/format) plus the composed check-command alias.',
   },
+  {
+    name: 'RESEARCH',
+    required: false,
+    loadBearing: false,
+    fold: false,
+    fill: RESEARCH_REGISTRY_FILL,
+  },
   { name: 'DECISION_LOG', required: true, loadBearing: true, fold: true, fill: DECISION_LOG_FILL },
   {
     name: 'BOOTSTRAP_REQUIREMENTS',
@@ -684,6 +753,7 @@ flowchart LR
 </details>
 <!--/SECTION:COMPATIBILITY_MATRIX-->
 
+${RESEARCH_REGISTRY_SKELETON_SCOPE}
 <!--SECTION:DECISION_LOG-->
 ## Decision Log
 [One-line human summary — how many decisions, what area. Full entries fold per \`AX_SPEC_PROGRESSIVE_DISCLOSURE\` (checked by \`SDD_SECTION_NOT_FOLDED\`) — history, never needed to grasp the scope NOW.]
@@ -761,6 +831,13 @@ const INTERFACE_SECTIONS: SectionManifestEntry[] = [
     loadBearing: true,
     fold: true,
     fill: 'One-line summary of consumer count / pending breaking changes; full Consumer/Min-version/Breaking-change-protocol matrix folds under <details>.',
+  },
+  {
+    name: 'RESEARCH',
+    required: false,
+    loadBearing: false,
+    fold: false,
+    fill: RESEARCH_REGISTRY_FILL,
   },
   { name: 'DECISION_LOG', required: true, loadBearing: true, fold: true, fill: DECISION_LOG_FILL },
   {
@@ -883,6 +960,7 @@ graph TD
 - \`<path>\`: <component>
 <!--/SECTION:FILE_STRUCTURE-->
 
+${RESEARCH_REGISTRY_SKELETON_MODULE}
 <!--SECTION:MODULE_DECISION_LOG-->
 ## Module Decision Log
 [One-line human summary — which decisions are recorded, at a glance. Full entries fold per \`AX_SPEC_PROGRESSIVE_DISCLOSURE\` (checked by \`SDD_SECTION_NOT_FOLDED\`) — a decision log only grows, it is never needed to grasp the module NOW.]
@@ -982,6 +1060,13 @@ const MODULE_SECTIONS: SectionManifestEntry[] = [
     loadBearing: false,
     fold: false,
     fill: 'ASCII tree of the module directory plus a File Mapping list.',
+  },
+  {
+    name: 'RESEARCH',
+    required: false,
+    loadBearing: false,
+    fold: false,
+    fill: RESEARCH_REGISTRY_FILL_MODULE,
   },
   {
     name: 'MODULE_DECISION_LOG',
@@ -1599,6 +1684,52 @@ const RESEARCH_SECTIONS: SectionManifestEntry[] = [
 ];
 // #endregion END_RESEARCH
 
+// #region START_NEXT_STEPS — "what happens after this skeleton exists", per kind (printed by sdd-new)
+// Shared by product/library/infrastructure/interface/module: fill the manifest, then a human decides.
+const SPEC_NEXT_STEPS: string[] = [
+  'Заполни секции по манифесту выше.',
+  'Согласуй спеку с оператором.',
+  'Дальше по флоу — `/sdd`.',
+];
+
+const NEXT_STEPS: Record<ArtifactKind, string[] | ((ctx: NextStepsContext) => string[])> = {
+  product: SPEC_NEXT_STEPS,
+  library: SPEC_NEXT_STEPS,
+  infrastructure: SPEC_NEXT_STEPS,
+  interface: SPEC_NEXT_STEPS,
+  module: SPEC_NEXT_STEPS,
+  task: [
+    'Заполни тикет по манифесту секций выше (Meta, фазы, BDD, Verification, Test Coverage).',
+    'Тикет попадёт в execution map автоматически — смотри `sdd-task` (pickable = TODO + все Dependencies DONE).',
+  ],
+  'module-index': [
+    'Обычно генерируется/дополняется `sdd-scaffold` при декомпозиции модуля на тикеты.',
+    'Если правишь руками — держи Tracker Index и Slug Registry в синхроне с тикетами на диске.',
+  ],
+  'scope-index': [
+    'Обычно генерируется/дополняется `sdd-scaffold` при декомпозиции скоупа.',
+    'Если правишь руками — держи Cascade Table и Tracker в синхроне со скоуп-спекой и модулями.',
+  ],
+  'project-index': [
+    'Обнови Scope Tracker, когда в портале (specs/README.md) появляется новый скоуп.',
+    'Project-Wide Conventions и Cross-Scope DAG правь только после согласования с оператором — это общий контракт для всего дерева.',
+  ],
+  portal: [
+    'Заполни Vision и Scope Graph — это входная точка всего дерева спек.',
+    'Дальше — `gennady sdd-new product|library|infrastructure|interface --scope <s>` на каждый скоуп из Scope Graph.',
+  ],
+  research: (ctx: NextStepsContext): string[] => {
+    const scope = ctx.scope ?? '<scope>';
+    return [
+      'Заполни секции по манифесту выше — каждое фактическое утверждение либо ведёт к EVIDENCE, либо помечено как вывод агента.',
+      'Используй DECISION документа в том решении, ради которого делался этот ресёрч.',
+      `Зарегистрируй документ строкой в секции \`## Research\` спеки скоупа: \`specs/${scope}/${scope}.spec.md\`.`,
+      '`sdd-check` проверит регистрацию (SDD_RESEARCH_UNREGISTERED).',
+    ];
+  },
+};
+// #endregion END_NEXT_STEPS
+
 /**
  * @purpose The registry: one ArtifactTemplate per kind — single source of truth backing check.ts
  * (derived required/fold lists) and `gennady sdd-new`.
@@ -1609,30 +1740,35 @@ export const TEMPLATES: Record<ArtifactKind, ArtifactTemplate> = {
     skeleton: PRODUCT_SKELETON,
     sections: PRODUCT_SECTIONS,
     pathPattern: 'specs/<scope>/<scope>.spec.md',
+    nextSteps: NEXT_STEPS.product,
   },
   library: {
     kind: 'library',
     skeleton: LIBRARY_SKELETON,
     sections: LIBRARY_SECTIONS,
     pathPattern: 'specs/<scope>/<scope>.spec.md',
+    nextSteps: NEXT_STEPS.library,
   },
   infrastructure: {
     kind: 'infrastructure',
     skeleton: INFRASTRUCTURE_SKELETON,
     sections: INFRASTRUCTURE_SECTIONS,
     pathPattern: 'specs/<scope>/<scope>.spec.md',
+    nextSteps: NEXT_STEPS.infrastructure,
   },
   interface: {
     kind: 'interface',
     skeleton: INTERFACE_SKELETON,
     sections: INTERFACE_SECTIONS,
     pathPattern: 'specs/<scope>/<scope>.spec.md',
+    nextSteps: NEXT_STEPS.interface,
   },
   module: {
     kind: 'module',
     skeleton: MODULE_SKELETON,
     sections: MODULE_SECTIONS,
     pathPattern: 'specs/<scope>/<module>/<module>.spec.md',
+    nextSteps: NEXT_STEPS.module,
   },
   task: {
     kind: 'task',
@@ -1640,6 +1776,7 @@ export const TEMPLATES: Record<ArtifactKind, ArtifactTemplate> = {
     sections: TASK_SECTIONS,
     pathPattern:
       'specs/<scope>/<module>/<module>.task.<ACR>-<slug>.md (or, flat, specs/<scope>/<scope>.task.<ACR>-<slug>.md)',
+    nextSteps: NEXT_STEPS.task,
   },
   'module-index': {
     kind: 'module-index',
@@ -1647,30 +1784,35 @@ export const TEMPLATES: Record<ArtifactKind, ArtifactTemplate> = {
     sections: MODULE_INDEX_SECTIONS,
     pathPattern:
       'specs/<scope>/<module...>/<module>.3-tasks.md (or, flat, specs/<scope>/<scope>.3-tasks.md)',
+    nextSteps: NEXT_STEPS['module-index'],
   },
   'scope-index': {
     kind: 'scope-index',
     skeleton: SCOPE_INDEX_SKELETON,
     sections: SCOPE_INDEX_SECTIONS,
     pathPattern: 'specs/<scope>/<scope>.3-tasks.md',
+    nextSteps: NEXT_STEPS['scope-index'],
   },
   'project-index': {
     kind: 'project-index',
     skeleton: PROJECT_INDEX_SKELETON,
     sections: PROJECT_INDEX_SECTIONS,
     pathPattern: 'specs/3-tasks.md',
+    nextSteps: NEXT_STEPS['project-index'],
   },
   portal: {
     kind: 'portal',
     skeleton: PORTAL_SKELETON,
     sections: PORTAL_SECTIONS,
     pathPattern: 'specs/README.md',
+    nextSteps: NEXT_STEPS.portal,
   },
   research: {
     kind: 'research',
     skeleton: RESEARCH_SKELETON,
     sections: RESEARCH_SECTIONS,
     pathPattern: 'specs/<scope>/research/<yyyy-mm-dd>-<slug>.research.md',
+    nextSteps: NEXT_STEPS.research,
   },
 };
 
@@ -1697,4 +1839,16 @@ export function loadBearingSections(kind: ArtifactKind): string[] {
  */
 export function foldSections(kind: ArtifactKind): string[] {
   return TEMPLATES[kind].sections.filter((s) => s.fold).map((s) => s.name);
+}
+
+/**
+ * @purpose Resolve a kind's `nextSteps` to concrete lines — the call site `sdd-new` uses for the
+ * `next:` block.
+ * @param kind Artifact kind just created.
+ * @param ctx Created-artifact context (path/scope/module); only `research` consumes it today.
+ * @returns Next-step lines, in display order.
+ */
+export function resolveNextSteps(kind: ArtifactKind, ctx: NextStepsContext): string[] {
+  const steps = TEMPLATES[kind].nextSteps;
+  return typeof steps === 'function' ? steps(ctx) : steps;
 }

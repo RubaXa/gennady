@@ -106,6 +106,18 @@
   - `<path>`: <component>
   <!--/SECTION:FILE_STRUCTURE-->
 
+  <!--SECTION:RESEARCH-->
+  ## Research
+  [Опционально. Реестр ресёрчей, на которые опирается этот модуль — по одной строке на документ.
+  Документ без строки здесь считается незарегистрированным (`SDD_RESEARCH_UNREGISTERED`). `research/`
+  лежит рядом со спекой скоупа (`specs/<scope>/research/`) — посчитай `../` честно по глубине
+  `--module` (один сегмент пути `--module` = один `../`; ниже — пример для модуля без вложенности).]
+
+  | Документ | Что ресёрчили | Что дал для спеки |
+  |---|---|---|
+  | [<yyyy-mm-dd>-<slug>](../research/<yyyy-mm-dd>-<slug>.research.md) | <тема одной строкой> | <какое решение/секцию спеки питает> |
+  <!--/SECTION:RESEARCH-->
+
   <!--SECTION:MODULE_DECISION_LOG-->
   ## Module Decision Log
   [One-line human summary — which decisions are recorded, at a glance. Full entries fold per `AX_SPEC_PROGRESSIVE_DISCLOSURE` (checked by `SDD_SECTION_NOT_FOLDED`) — a decision log only grows, it is never needed to grasp the module NOW.]

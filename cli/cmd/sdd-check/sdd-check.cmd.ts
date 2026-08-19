@@ -25,6 +25,7 @@ import {
   checkSpecHierarchy,
   checkResearchOrphans,
   findResearchLinks,
+  findRegisteredResearchLinks,
   moduleGraphEdges,
   ticketRef,
   legacyTicketRef,
@@ -543,6 +544,7 @@ export async function run(rawArgs: string[]): Promise<CheckResult> {
     const mermaidTargets: { file: string; content: string }[] = [];
     const researchFiles: string[] = [];
     const referencedResearch = new Set<string>();
+    const registeredResearch = new Set<string>();
     for (const file of mdFiles) {
       let content: string;
       try {
@@ -554,6 +556,9 @@ export async function run(rawArgs: string[]): Promise<CheckResult> {
       findings.push(...checkResearchRefs(file, content));
       for (const target of findResearchLinks(content)) {
         referencedResearch.add(resolve(dirname(file), target));
+      }
+      for (const target of findRegisteredResearchLinks(content)) {
+        registeredResearch.add(resolve(dirname(file), target));
       }
       if (file.endsWith('.research.md')) {
         researchFiles.push(file);
@@ -615,7 +620,7 @@ export async function run(rawArgs: string[]): Promise<CheckResult> {
     findings.push(...checkTaskGraph(ticketRefs));
     findings.push(...checkTrackers(ticketRefs, trackerRowRefs));
     findings.push(...checkSpecHierarchy(specEntries));
-    findings.push(...checkResearchOrphans(researchFiles, referencedResearch));
+    findings.push(...checkResearchOrphans(researchFiles, referencedResearch, registeredResearch));
     for (const [scope, { edges, scopeFile }] of moduleEdgesByScope) {
       findings.push(...checkModuleGraph(scope, scopeFile, edges));
     }

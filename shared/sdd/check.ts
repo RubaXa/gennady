@@ -1342,21 +1342,63 @@ export function findResearchLinks(content: string): string[] {
 }
 
 /**
- * @purpose ORPHAN check (SDD_RESEARCH_ORPHAN) — a research file with zero incoming links from
- *   `specs/**` is unreachable from any spec.
- * @invariant Pure — the caller resolves every `findResearchLinks` target against its source
- *   file's directory across the whole walk, building `referenced`.
- * @param researchFiles Every `*.research.md` file found under `specs/**`.
- * @param referenced Resolved research-file identifiers with at least one incoming link.
- * @returns One `SDD_RESEARCH_ORPHAN` (warn) per unreferenced research file.
+ * @purpose Extract research-doc link targets from a spec's `## Research` registry section only —
+ *   the raw text behind SDD_RESEARCH_UNREGISTERED.
+ * @invariant Pure. Unlike `findResearchLinks` (whole file), a doc is registered only when linked
+ *   inside `RESEARCH` in its scope-spec or a module spec of that scope.
+ * @param content Full spec markdown (scope spec or module spec).
+ * @returns Raw link targets inside the RESEARCH section, in appearance order (empty when absent).
  */
-export function checkResearchOrphans(researchFiles: string[], referenced: Set<string>): Finding[] {
-  return researchFiles
-    .filter((f) => !referenced.has(f))
-    .map((f) => ({
-      severity: 'warn' as const,
-      code: 'SDD_RESEARCH_ORPHAN',
-      file: f,
-      message: `Research doc has no incoming reference from anywhere under specs/** — link it from a spec's Decision Log / RELATED section (or a ticket's Spec References), or mark it superseded-by.`,
-    }));
+export function findRegisteredResearchLinks(content: string): string[] {
+  const sec = extractSection(content, 'RESEARCH');
+  return sec.status === 'ok' ? findResearchLinks(sec.content) : [];
+}
+
+/**
+ * @purpose Derive the canonical scope-spec path suggestion for a research file, from its fixed
+ *   location convention — phrasing only, never resolved against disk.
+ * @param file A `*.research.md` path (`specs/<scope>/research/…` shape).
+ * @returns The scope-spec path a reader should add a `## Research` row to.
+ */
+function scopeSpecPathFor(file: string): string {
+  const scopeDir = dirname(dirname(file)); // specs/<scope>
+  const scope = basename(scopeDir);
+  return join(scopeDir, `${scope}.spec.md`);
+}
+
+/**
+ * @purpose Research-doc connectivity gates — ORPHAN when zero incoming links exist anywhere under
+ *   `specs/**`; UNREGISTERED when linked but absent from every `## Research` registry.
+ * @invariant Pure. Caller resolves every link target against its source file's directory across
+ *   the walk, building `referenced`/`registered`. `registered` is always a subset of `referenced`.
+ * @param researchFiles Every `*.research.md` file found under `specs/**`.
+ * @param referenced Resolved research-file identifiers with at least one incoming link, from anywhere.
+ * @param registered Resolved research-file identifiers with a row in some spec's `## Research` section.
+ * @returns One `SDD_RESEARCH_ORPHAN` or `SDD_RESEARCH_UNREGISTERED` (both warn) per affected file.
+ */
+export function checkResearchOrphans(
+  researchFiles: string[],
+  referenced: Set<string>,
+  registered: Set<string>
+): Finding[] {
+  const findings: Finding[] = [];
+  for (const f of researchFiles) {
+    if (!referenced.has(f)) {
+      findings.push({
+        severity: 'warn',
+        code: 'SDD_RESEARCH_ORPHAN',
+        file: f,
+        message:
+          'Документ ресёрча не имеет ни одной входящей ссылки из-под specs/** — сошлись на него из Decision Log / RELATED секции спеки (или Spec References тикета), либо отметь superseded-by.',
+      });
+    } else if (!registered.has(f)) {
+      findings.push({
+        severity: 'warn',
+        code: 'SDD_RESEARCH_UNREGISTERED',
+        file: f,
+        message: `Документ ресёрча упомянут где-то под specs/**, но не зарегистрирован ни в одной секции \`## Research\` — добавь строку в \`## Research\` спеки ${scopeSpecPathFor(f)} (или модульной спеки этого скоупа).`,
+      });
+    }
+  }
+  return findings;
 }

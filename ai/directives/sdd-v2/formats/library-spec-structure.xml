@@ -61,6 +61,16 @@
   [Выбранный design pattern. Кратко — rejected alternatives.]
   <!--/SECTION:ARCHITECTURE-->
 
+  <!--SECTION:RESEARCH-->
+  ## Research
+  [Опционально. Реестр ресёрчей, на которые опирается эта спека — по одной строке на документ.
+  Документ без строки здесь считается незарегистрированным (`SDD_RESEARCH_UNREGISTERED`).]
+
+  | Документ | Что ресёрчили | Что дал для спеки |
+  |---|---|---|
+  | [<yyyy-mm-dd>-<slug>](./research/<yyyy-mm-dd>-<slug>.research.md) | <тема одной строкой> | <какое решение/секцию спеки питает> |
+  <!--/SECTION:RESEARCH-->
+
   <!--SECTION:DECISION_LOG-->
   ## Decision Log
   [One-line human summary — how many decisions, what area. Full entries fold per `AX_SPEC_PROGRESSIVE_DISCLOSURE` (checked by `SDD_SECTION_NOT_FOLDED`) — history, never needed to grasp the scope NOW.]
