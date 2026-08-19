@@ -79,7 +79,7 @@ npm-скрипты — **репо-уровневые команды**: они н
 ## 8. Handoff to Task Scaffolding
 
 - **Implementation files (существуют):** `node-plugin.ts`, `classify-npm-scripts.ts`
-- **Fixture files to be created:** `services/stack/__tests__/e2e/fixtures/node-*` по §6 (12 фикстур)
+- **Fixture files to be created:** `plugins/node/e2e/fixtures/node-*` по §6 (12 фикстур)
 - **Open risks:**
   - **эвристика классификации** — главный источник ложных срабатываний: незнакомый раннер не распознаётся (гейт молча отсутствует), а нестандартное имя может попасть в чужой класс. Смягчение: `--plan` печатает выбор `класс→скрипт`, диагностика `NODE_NO_SCRIPTS` при пустом наборе, `extraGates` как обходной путь
   - **вендоринг зависимости в фикстуру** для `node-sandbox-links` — требуется крошечный пакет в шаблоне, без обращения к реестру

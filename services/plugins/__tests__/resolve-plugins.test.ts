@@ -101,6 +101,18 @@ describe('resolvePlugins — manifest schema', () => {
     });
   });
 
+  it('treats an empty directory as an uninitialized submodule, not a broken plugin', () => {
+    withRoot(minimal('rust'), (root) => {
+      fs.mkdirSync(path.join(root, 'zig'));
+      const { plugins, errors } = resolvePlugins([root]);
+      assert.deepStrictEqual(errors, [], 'git keeps the mount point of a deinit-ed submodule');
+      assert.deepStrictEqual(
+        plugins.map((plugin) => plugin.id),
+        ['rust']
+      );
+    });
+  });
+
   it('rejects an unknown key with a did-you-mean hint', () => {
     withRoot(
       {

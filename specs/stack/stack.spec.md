@@ -414,7 +414,9 @@ stack:
 | `pluginConfigOf`                               | Function     | Извлечение среза конфига одного плагина                                                                    |
 | `applyStackConfig`                             | Function     | Применение конфига к плану: `overrideGates` → `skipGates` → `extraGates` (FR-STACK-05)                     |
 | `detectStacks`                                 | Function     | Алгоритм §3                                                                                                |
-| `BUILTIN_STACK_PLUGINS`                        | Constant     | `[nodePlugin, golangPlugin]`                                                                               |
+| `BUILTIN_STACK_PLUGINS`                        | Constant     | Built-in плагины из `plugins/index.ts`, отсортированные по `id` (plugins.spec D-SP-009)                    |
+| `BUILTIN_GATE_IDS`                             | Constant     | Словарь id гейтов, собранный из `StackPlugin.gateIds` активных плагинов                                    |
+| `plugin-api`                                   | Module       | Поверхность `gennady/stack`: единственный вход, через который плагин видит хост (plugins.spec D-SP-007)    |
 | `createTreeReplica`                            | Function     | Реплика прогона (§2): worktree + baseline-коммит + `sandboxLinks`; `reset()` — сброс к baseline            |
 | `runVerify`                                    | Function     | RUN-ALL исполнение планов всех стеков без shell; per-gate timeout; классификация статусов                  |
 | `formatVerifyReport`                           | Function     | Отчёт: диагностики + скипы + отказы (усечение вывода) + summary при успехе                                 |
@@ -469,15 +471,9 @@ services/stack/
 ├── stack-config.ts                    # loadStackConfig(): discovery, deep-merge, строгая валидация
 ├── gate-runner.ts                     # runVerify() + formatVerifyReport() + env-fail комбинаторы
 ├── tree-replica.ts                    # createTreeReplica(): git worktree + uncommitted + untracked, baseline-коммит
-└── plugins/
-    ├── node/
-    │   ├── node-plugin.ts
-    │   └── classify-npm-scripts.ts
-    └── golang/
-        ├── golang-plugin.ts
-        ├── golang-detect.logic.ts
-        ├── golang-scope.logic.ts
-        └── golang-plan.logic.ts
+└── plugin-api.ts                      # поверхность `gennady/stack` для плагинов (plugins.spec §4.4)
+
+Сами плагины лежат вне сервиса — по каталогу на плагин, см. [`plugins`](../plugins/plugins.spec.md).
 
 cli/cmd/verify/
 ├── index.ts
@@ -591,7 +587,7 @@ cli/cmd/fix/
 
 ## 11. Inter-Module Dependencies
 
-**Модули scope'а:** [`plugins/golang`](../../plugins/golang/specs/golang.spec.md) и [`plugins/node`](../../plugins/node/specs/node.spec.md) — per-stack возможности, гейты и матрицы use case'ов (зоны ответственности мейнтейнеров стеков); [`e2e`](./e2e/e2e.spec.md) — механизм E2E-проверки вердиктов под доктриной [`infra-e2e`](../infra-e2e/infra-e2e.spec.md).
+**Модули scope'а:** [`e2e`](./e2e/e2e.spec.md) — механизм E2E-проверки вердиктов под доктриной [`infra-e2e`](../infra-e2e/infra-e2e.spec.md). Спеки самих плагинов модулями этого scope'а больше не являются: они живут в своих каталогах ([`golang`](../../plugins/golang/specs/golang.spec.md), [`node`](../../plugins/node/specs/node.spec.md)) и принадлежат мейнтейнерам стеков — см. [`plugins`](../plugins/plugins.spec.md).
 
 - **Depends on:** [`config`](../config/config.spec.md) (обнаружение, merge и провенанс конфига; секция `stack` описана там же), `shared/common/parse-args.ts`
 - **Provides to:** `cli` (команда `verify`; далее — fix/testcov/lint по §4.3), `ai-skills` (`verify.sh`, skill `sdd-infra-golang`)

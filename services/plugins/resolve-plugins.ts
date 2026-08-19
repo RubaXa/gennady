@@ -135,6 +135,11 @@ function readManifest(dir: string): ManifestRead {
   const keyPath = `plugins.${dirName}`;
 
   if (!fs.existsSync(manifestPath)) {
+    // An empty directory is an uninitialized submodule: git keeps the mount point, so the
+    // plugin is absent rather than broken (§5). Files without a manifest are a real mistake.
+    if (fs.readdirSync(dir).length === 0) {
+      return { plugin: null, errors: [] };
+    }
     return {
       plugin: null,
       errors: [{ path: keyPath, message: `missing ${PLUGIN_MANIFEST_FILENAME}` }],

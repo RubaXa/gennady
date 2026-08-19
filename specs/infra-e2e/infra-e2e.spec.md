@@ -136,8 +136,8 @@ graph TD
     infra_e2e -. governs .-> config_e2e[config e2e]
     infra_e2e --> infra_base[infra-base]
     infra_e2e --> infra_npm[infra-npm-publish]
-    stack_e2e -. матрицы фикстур .-> golang_spec[stack/plugins/golang]
-    stack_e2e -. матрицы фикстур .-> node_spec[stack/plugins/node]
+    stack_e2e -. матрицы фикстур .-> golang_spec[plugins/golang]
+    stack_e2e -. матрицы фикстур .-> node_spec[plugins/node]
 ```
 
 ## 10. Handoff to Task Scaffolding
