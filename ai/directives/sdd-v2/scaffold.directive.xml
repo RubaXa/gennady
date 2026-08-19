@@ -454,7 +454,8 @@
         corner / trust-boundary / failure-mode scenarios are missing?»; merge approved ones — never
         defer one to "later" without an explicit operator decision and a Decision Log entry naming the
         risk (`AX_RELEASE_READY_DEFAULT`) — log the
-        reviewed checklist in the ticket Decision Log (`AX_DECISION_LOG_REQUIRED`). Validate every contract has its typing scenario
+        reviewed checklist in the ticket Decision Log (`AX_DECISION_LOG_REQUIRED`,
+        `DECISION_LOG_ENTRY_FORMAT`). Validate every contract has its typing scenario
         mapped to a test (else `H_TYPING_SCENARIO_MISSING`). Check each emitted ticket against
         `TASK_TICKET_STRUCTURE`: section anchors match the normative names exactly
         (`AX_TICKET_SECTION_NAMES_NORMATIVE`), and contract material is linked by spec anchor with zero
@@ -489,8 +490,10 @@
         Then run `sdd-check --all .` (task-DAG: id-collisions · deps resolve · acyclic; tracker↔ticket sync;
         phase graph; exec-log) and resolve or consciously defer every finding per
         `AX_CLOSE_WITH_INTEGRITY_CHECK` — the scaffold mutation is done only once the task graph passes.
-        Emit a created-files summary with traceability links. Hand off to execute (isolated, cheaper
-        model). No operator stop.
+        These trackers and tickets are read by execute with no memory of this scaffolding run —
+        every DAG edge, rule reference, and BDD scenario must already be in the file
+        (`AX_STATELESS_ARTIFACT`). Emit a created-files summary with traceability links. Hand off to
+        execute (isolated, cheaper model). No operator stop.
       </Action>
     </Step>
   </ExecutionPlan>

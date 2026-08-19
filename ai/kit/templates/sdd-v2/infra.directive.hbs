@@ -18,10 +18,12 @@
     bundler, ci, monorepo-tool, docs.
   </Mission>
 
-  <BeliefState deps="AX_OPERATOR_LANGUAGE, AX_OPERATOR_DIALOGUE_STYLE, AX_DIALOGUE_DISCIPLINE, AX_OPERATOR_SAFEGUARD, AX_DIVERGE_BEFORE_RECOMMEND, AX_NO_PROCESS_NARRATION, AX_STATELESS_ARTIFACT, AX_SCALE_PROPORTIONAL_DEPTH">
+  <BeliefState deps="AX_OPERATOR_LANGUAGE, AX_OPERATOR_DIALOGUE_STYLE, AX_DIALOGUE_DISCIPLINE, AX_OPERATOR_SAFEGUARD, AX_NO_PROCESS_NARRATION, AX_STATELESS_ARTIFACT, AX_SCALE_PROPORTIONAL_DEPTH">
     {{> "axiom/scaffold/ax-directive-mode"}}
 
     {{> "axiom/scaffold/ax-mode-auto-detect-or-halt"}}
+
+    {{> "axiom/process/ax-diverge-before-recommend"}}
 
     {{> "axiom/boundary/ax-portal-read-only-with-placeholder-exception"}}
 

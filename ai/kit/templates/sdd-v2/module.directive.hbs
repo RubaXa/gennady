@@ -18,7 +18,7 @@
     Service, not a Port.
   </Mission>
 
-  <BeliefState deps="AX_OPERATOR_LANGUAGE, AX_OPERATOR_DIALOGUE_STYLE, AX_DIALOGUE_DISCIPLINE, AX_OPERATOR_SAFEGUARD, AX_DIVERGE_BEFORE_RECOMMEND, AX_NO_PROCESS_NARRATION, AX_STATELESS_ARTIFACT, AX_SCALE_PROPORTIONAL_DEPTH">
+  <BeliefState deps="AX_OPERATOR_LANGUAGE, AX_OPERATOR_DIALOGUE_STYLE, AX_DIALOGUE_DISCIPLINE, AX_OPERATOR_SAFEGUARD, AX_NO_PROCESS_NARRATION, AX_STATELESS_ARTIFACT, AX_SCALE_PROPORTIONAL_DEPTH">
     {{> "axiom/scaffold/ax-directive-mode"}}
 
     {{> "axiom/scaffold/ax-mode-auto-detect-or-halt"}}
@@ -28,6 +28,8 @@
     {{> "axiom/truth/ax-spec-is-sole-source"}}
 
     {{> "axiom/scaffold/ax-rule-activation"}}
+
+    {{> "axiom/process/ax-diverge-before-recommend"}}
 
     {{> "axiom/spec/ax-module-boundary-by-operator"}}
 
@@ -109,8 +111,6 @@
     {{> "axiom/truth/ax-evidence-hygiene"}}
 
     {{> "axiom/truth/ax-research-persisted"}}
-
-    {{> "axiom/process/ax-q-ids"}}
 
     {{> "axiom/scaffold/ax-handoff-to-task-scaffolding"}}
 
@@ -195,7 +195,9 @@
         execution agent adds beyond it is drift. Interview the operator via
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/interview-protocol.directive.xml")`, extending
         its coverage map with the decomposition topics: «Пропущенная сущность» (what the inventory
-        still misses) and «Бесхозная ответственность» (a responsibility no listed entity owns).
+        still misses) and «Бесхозная ответственность» (a responsibility no listed entity owns). A
+        dispute or tangent raised mid-interview opens a nested frame on the flow's stack — this
+        step's main path never silently stalls on it (`AX_STACK_BASED_FLOW`).
         Size the interview to the confirmed `scale:` from the session file
         (`AX_SCALE_PROPORTIONAL_DEPTH`). Keep evidence separated per `AX_EVIDENCE_HYGIENE`: entities
         named by the scope spec are facts; entities inferred during the interview stay hypotheses
@@ -213,8 +215,9 @@
         skip-reason), this message, before Approval Check** — its absence on a ≥2-related-entity
         inventory is the same class of violation as `H_ASK_BEFORE_FORMAT`. If a
         module's inventory outgrows cohesion (too many entities / unrelated responsibility clusters),
-        PROPOSE sub-module decomposition here per `AX_HIERARCHICAL_SPECS` (diverge-before-recommend;
-        the operator decides) — do not silently let one module absorb a sub-system. All module
+        PROPOSE sub-module decomposition here per `AX_HIERARCHICAL_SPECS` — the split is a result of
+        weighing real alternatives, not the first typical cut (`AX_DIVERGE_BEFORE_RECOMMEND`); the
+        operator decides — do not silently let one module absorb a sub-system. All module
         inventories must be approved before the surface step (else `H_INVENTORY_NOT_APPROVED`).
         Approval Check. STOP.
       </Action>
@@ -258,7 +261,8 @@
         variability or a test seam (`AX_PORTS_AND_ABSTRACTIONS_DISCIPLINE`) — Port-vs-Service is a
         design choice, so apply `AX_DIVERGE_BEFORE_RECOMMEND` (do not default to Port); when the
         module consciously forgoes a Port, the same per-operation DbC lives directly on the Service /
-        Adapter and that choice is recorded in the Decision Log (`AX_DECISION_LOG_REQUIRED`). This is
+        Adapter and that choice is recorded in the Decision Log (`AX_DECISION_LOG_REQUIRED`,
+        `DECISION_LOG_ENTRY_FORMAT`). This is
         entity-type-agnostic (`AX_PORTS_AND_ABSTRACTIONS_DISCIPLINE`) — a Component that owns state, a
         lifecycle, error handling, or user interaction gets a `### Components` DbC subsection in the
         same per-operation shape; only an entity explicitly marked `Presentation-Only` on its Entity
@@ -345,9 +349,8 @@
   <ChatOutput>
     Service line — dim, internal, never narrated (per `AX_NO_PROCESS_NARRATION`):
     `🧩 DM_R<N> · <scope> · <mode> · conf=<LOW|MEDIUM|HIGH>`. Breadcrumb milestones (per
-    `BREADCRUMB_FORMAT`): Module Map · Inventory · Surface · Contracts · Files · Hierarchy. Question
-    IDs are semantic per `AX_Q_IDS` (`Q_MM` / `Q_EI` / `Q_ES` / `Q_DBC` / `Q_FS`). Disputes and
-    side-topics open a nested frame on the flow's stack per `AX_STACK_BASED_FLOW` (rendered per
+    `BREADCRUMB_FORMAT`): Module Map · Inventory · Surface · Contracts · Files · Hierarchy. Disputes
+    and side-topics open a nested frame on the flow's stack per `AX_STACK_BASED_FLOW` (rendered per
     `SIDE_DIVE_FORMAT`); the main path never silently stalls.
 
     {{> "contract/process/message-layout"}}

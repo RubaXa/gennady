@@ -77,6 +77,12 @@ function formatMap(refs: TicketRef[]): string {
     );
     lines.push(`blocked: ${b.taskId} ← ${unmet.join(', ')}`);
   }
+  lines.push(
+    '',
+    pickable.length
+      ? 'next: возьми Task-ID из pickable и вызови `sdd-task <id>` за планом фаз.'
+      : 'next: pickable пуст — разблокируй одну из blocked (закрой её зависимости), затем повтори.'
+  );
   return lines.join('\n');
 }
 

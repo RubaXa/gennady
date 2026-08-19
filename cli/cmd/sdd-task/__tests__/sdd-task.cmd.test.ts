@@ -106,6 +106,13 @@ describe('SddTaskCommand', () => {
     assert.match(outcome.text, /\[BLOCKERS\]\nblockers: none/);
   });
 
+  it('no active blockers → next: hint points at running phases per protocol', async () => {
+    const outcome = await mod.run(argv(ticket));
+    assert.strictEqual(outcome.ok, true);
+    if (!outcome.ok) return;
+    assert.match(outcome.text, /next: открой тикет, исполняй фазы по протоколу/);
+  });
+
   it('an unresolved 🛑 BLOCKED entry surfaces as blockers: ACTIVE 1 plus its line text', async () => {
     const t = join(dir, 'blocked.md');
     writeFileSync(
@@ -124,6 +131,7 @@ describe('SddTaskCommand', () => {
     if (!outcome.ok) return;
     assert.match(outcome.text, /\[BLOCKERS\]\nblockers: ACTIVE 1/);
     assert.match(outcome.text, /- 🛑 BLOCKED waiting on operator decision/);
+    assert.match(outcome.text, /next: сначала разбери активные блокеры с оператором/);
   });
 
   it('a resolved blocker (later ✅ RESOLVED) reports blockers: none', async () => {
@@ -173,5 +181,50 @@ describe('SddTaskCommand', () => {
     const r = await mod.run(argv());
     assert.strictEqual(r.ok, true);
     assert.match(r.text, /execution map/);
+  });
+
+  it('execution map with a pickable ticket → next: hint points at sdd-task <id>', async () => {
+    const origCwd = process.cwd();
+    process.chdir(dir);
+    try {
+      const r = await mod.run(argv());
+      assert.strictEqual(r.ok, true);
+      if (!r.ok) return;
+      assert.match(r.text, /pickable \(ready now\): cli-foo/);
+      assert.match(r.text, /next: возьми Task-ID из pickable и вызови `sdd-task <id>`/);
+    } finally {
+      process.chdir(origCwd);
+    }
+  });
+
+  it('execution map with nothing pickable → next: hint points at unblocking', async () => {
+    const soloDir = mkdtempSync(join(tmpdir(), 'sdd-task-blocked-'));
+    const blockedTicket = [
+      '# Task: cli-bar — Bar',
+      '<!--SECTION:META-->',
+      '## 1. Meta',
+      '- **Task-ID:** cli-bar',
+      '- **Status:** [ ] TODO',
+      '- **Dependencies:** cli-missing',
+      '<!--/SECTION:META-->',
+      '<!--SECTION:PHASES_OVERVIEW-->',
+      '| ID | Kind | Deps | Status |',
+      '|----|------|------|--------|',
+      '| P1 | impl | — | [ ] |',
+      '<!--/SECTION:PHASES_OVERVIEW-->',
+    ].join('\n');
+    writeFileSync(join(soloDir, 'ticket.md'), blockedTicket, 'utf-8');
+    const origCwd = process.cwd();
+    process.chdir(soloDir);
+    try {
+      const r = await mod.run(argv());
+      assert.strictEqual(r.ok, true);
+      if (!r.ok) return;
+      assert.match(r.text, /pickable \(ready now\): — none/);
+      assert.match(r.text, /next: pickable пуст/);
+    } finally {
+      process.chdir(origCwd);
+      rmSync(soloDir, { recursive: true, force: true });
+    }
   });
 });

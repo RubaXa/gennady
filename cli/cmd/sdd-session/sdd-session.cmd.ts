@@ -90,7 +90,14 @@ export async function run(rawArgs: string[], now: Date): Promise<SessionOutcome>
       return fileError(`${sessionPath} (${(err as Error).message})`);
     }
     logger.debug(`[SddSessionCommand#run] opened ${sessionPath}`);
-    return { ok: true, text: `[sdd-session] opened: ${sessionPath}` };
+    return {
+      ok: true,
+      text: [
+        `[sdd-session] opened: ${sessionPath}`,
+        'next: заполни working set по ходу работы (`sdd-session workset`), фиксируй каждый шаг',
+        '  через `sdd-session log`, новые термины — через `sdd-session term`.',
+      ].join('\n'),
+    };
   }
   // #endregion END_OPEN
 
@@ -104,7 +111,14 @@ export async function run(rawArgs: string[], now: Date): Promise<SessionOutcome>
       return fileError(`${sessionPath} (${(err as Error).message})`);
     }
     logger.debug(`[SddSessionCommand#run] closed ${sessionPath}`);
-    return { ok: true, text: `[sdd-session] closed: ${sessionPath}` };
+    return {
+      ok: true,
+      text: [
+        `[sdd-session] closed: ${sessionPath}`,
+        'next: если по ходу сессии остались незакрытые решения — проверь, что каждое уже есть',
+        '  в Decision Log артефакта, а не только в этом журнале.',
+      ].join('\n'),
+    };
   }
 
   const payload = positional.slice(1).join(' ');

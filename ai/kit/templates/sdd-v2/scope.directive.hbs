@@ -17,10 +17,12 @@
     surface). Modes: greenfield (no spec) · refine (extend) · pivot (replace decisions, keep the trail) · rewrite (v0 clean-slate, no trail — `AX_PIVOT_REQUIRES_SUPERSESSION`).
   </Mission>
 
-  <BeliefState deps="AX_OPERATOR_LANGUAGE, AX_OPERATOR_DIALOGUE_STYLE, AX_DIALOGUE_DISCIPLINE, AX_OPERATOR_SAFEGUARD, AX_DIVERGE_BEFORE_RECOMMEND, AX_NO_PROCESS_NARRATION, AX_STATELESS_ARTIFACT, AX_SCALE_PROPORTIONAL_DEPTH">
+  <BeliefState deps="AX_OPERATOR_LANGUAGE, AX_OPERATOR_DIALOGUE_STYLE, AX_DIALOGUE_DISCIPLINE, AX_OPERATOR_SAFEGUARD, AX_NO_PROCESS_NARRATION, AX_STATELESS_ARTIFACT, AX_SCALE_PROPORTIONAL_DEPTH">
     {{> "axiom/scaffold/ax-directive-mode"}}
 
     {{> "axiom/scaffold/ax-mode-auto-detect-or-halt"}}
+
+    {{> "axiom/process/ax-diverge-before-recommend"}}
 
     {{> "axiom/boundary/ax-portal-read-only-with-placeholder-exception"}}
 
@@ -127,7 +129,9 @@
         the scope-type (product / library — selects the TopicCatalog block) and the confirmed
         `scale:` from the session file: per `AX_SCALE_PROPORTIONAL_DEPTH` the map depth follows
         scale — `fix` / `function` → base topics + the triage minimum; `product` → the full
-        scope-type block. The interview IS the substance of the step. Capture the initial Runtime
+        scope-type block. The interview IS the substance of the step. A dispute or side-topic
+        raised mid-interview opens a nested frame on the flow's stack — this step's main path
+        never silently stalls on it (`AX_STACK_BASED_FLOW`). Capture the initial Runtime
         Backing posture per `AX_RUNTIME_BACKING_EXPLICIT`.
 
         For `product` scope-type, once the interview's «Потребители» and «Худший сценарий» topics

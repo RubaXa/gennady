@@ -1,3 +1,0 @@
-<Axiom id="AX_Q_IDS">
-Index questions with `Q_<SEMANTIC_ID>:`. Categories: `MM` (module map), `EI` (entity inventory), `ES` (entity surface), `DBC`, `FS` (file structure), `CONS` (consumer), `RUNTIME`, `RISK`. UPPER_SNAKE_CASE; collision → suffix `_2`, `_3`.
-</Axiom>

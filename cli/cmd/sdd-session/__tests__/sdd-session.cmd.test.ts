@@ -61,6 +61,17 @@ describe('SddSessionCommand', () => {
     assert.match(body, /open: —/);
   });
 
+  it('open carries a next: hint pointing at workset/log/term', async () => {
+    const o = await mod.run(argv('open', '--intent', 'evolve-scope'), CLOCK);
+    assert.strictEqual(o.ok, true);
+    if (o.ok) {
+      assert.match(o.text, /next:/);
+      assert.match(o.text, /sdd-session workset/);
+      assert.match(o.text, /sdd-session log/);
+      assert.match(o.text, /sdd-session term/);
+    }
+  });
+
   it('open accepts --scale', async () => {
     await mod.run(argv('open', '--intent', 'evolve-scope', '--scale', 'module'), CLOCK);
     const body = readFileSync(sessionPath(), 'utf-8');
@@ -220,6 +231,15 @@ describe('SddSessionCommand', () => {
       const o = await mod.run(argv('close'), CLOCK);
       assert.strictEqual(o.ok, true);
       assert.ok(!existsSync(sessionPath()));
+    });
+
+    it('close carries a next: hint about the Decision Log', async () => {
+      const o = await mod.run(argv('close'), CLOCK);
+      assert.strictEqual(o.ok, true);
+      if (o.ok) {
+        assert.match(o.text, /next:/);
+        assert.match(o.text, /Decision Log/);
+      }
     });
   });
 

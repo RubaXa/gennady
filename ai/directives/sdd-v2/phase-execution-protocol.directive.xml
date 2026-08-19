@@ -436,7 +436,8 @@
         or is a file this phase itself created → fix it here, now, regardless of whether the failure pre-dates
         this phase; "pre-existing" is never grounds to skip a fix that lands inside scope. That file sits outside
         this boundary — `specs/**` (`AX_SPEC_NEVER_EDITED`), a file owned by another phase, a shared config this
-        phase did not create — → the failure is not fixable from here: emit `BLOCKER_FORMAT` via `npx gennady
+        phase did not create — → escalate rather than improvise (`AX_BLOCKER_ESCALATION`): the failure is not
+        fixable from here, emit `BLOCKER_FORMAT` via `npx gennady
         sdd-log <ticket> blocker "<reason>" --axiom <AX_NAME> --unblock "<action>"` (`AX_TICKET_WRITE_SCOPE`)
         with a concrete remediation proposal (which file, what change) and halt `H_BLOCKED`; do not silently label it
         pre-existing and move on, and do not touch the out-of-zone file to make the gate pass. The test is

@@ -17,7 +17,7 @@
     surface). Modes: greenfield (no spec) · refine (extend) · pivot (replace decisions, keep the trail) · rewrite (v0 clean-slate, no trail — `AX_PIVOT_REQUIRES_SUPERSESSION`).
   </Mission>
 
-  <BeliefState deps="AX_OPERATOR_LANGUAGE, AX_OPERATOR_DIALOGUE_STYLE, AX_DIALOGUE_DISCIPLINE, AX_OPERATOR_SAFEGUARD, AX_DIVERGE_BEFORE_RECOMMEND, AX_NO_PROCESS_NARRATION, AX_STATELESS_ARTIFACT, AX_SCALE_PROPORTIONAL_DEPTH">
+  <BeliefState deps="AX_OPERATOR_LANGUAGE, AX_OPERATOR_DIALOGUE_STYLE, AX_DIALOGUE_DISCIPLINE, AX_OPERATOR_SAFEGUARD, AX_NO_PROCESS_NARRATION, AX_STATELESS_ARTIFACT, AX_SCALE_PROPORTIONAL_DEPTH">
     <Axiom id="AX_DIRECTIVE_MODE">
       Each directive runs in one of several modes, auto-detected from operator intake. Mode controls
       step branching and which axioms apply. The concrete mode set is directive-specific
@@ -28,6 +28,24 @@
       Mode detection is mechanical and table-driven from intake (artifact presence + operator verb).
       Ambiguous intake never defaults silently → HALT and ask the operator (binary disambiguation
       where possible). The detection table is directive-specific.
+    </Axiom>
+
+    <Axiom id="AX_DIVERGE_BEFORE_RECOMMEND">
+      A recommendation must be the result of a search, not the first typical answer. Aligned models
+      collapse to the modal option; a single quick recommendation usually IS that mode, which is
+      rarely the best fit for a specific task.
+
+      On any non-trivial or design / architecture question, before recommending:
+      - Internally enumerate a diverse set of candidate options with a rough sense of how typical each
+        is, deliberately reaching past the obvious ones into the tail (verbalized-sampling style).
+      - Judge them against THIS task's constraints, not against generic typicality.
+      - Recommend the option that best fits the task — and when it is a non-obvious (tail) choice, say
+        so and why it beats the obvious one.
+
+      Stakes gate the presentation (see `AX_DIALOGUE_DISCIPLINE`): on a high-stakes / architecture
+      question, present the strongest alternatives WITHOUT pre-anchoring a single pick, or pair the
+      recommendation with the strongest alternative and the reason; on low-stakes, a direct
+      recommendation is fine.
     </Axiom>
 
     <Axiom id="AX_PORTAL_READ_ONLY_WITH_PLACEHOLDER_EXCEPTION">
@@ -261,7 +279,9 @@
         the scope-type (product / library — selects the TopicCatalog block) and the confirmed
         `scale:` from the session file: per `AX_SCALE_PROPORTIONAL_DEPTH` the map depth follows
         scale — `fix` / `function` → base topics + the triage minimum; `product` → the full
-        scope-type block. The interview IS the substance of the step. Capture the initial Runtime
+        scope-type block. The interview IS the substance of the step. A dispute or side-topic
+        raised mid-interview opens a nested frame on the flow's stack — this step's main path
+        never silently stalls on it (`AX_STACK_BASED_FLOW`). Capture the initial Runtime
         Backing posture per `AX_RUNTIME_BACKING_EXPLICIT`.
 
         For `product` scope-type, once the interview's «Потребители» and «Худший сценарий» topics

@@ -107,6 +107,16 @@ export function formatPlan(
     for (const b of activeBlockers) lines.push(`- ${b}`);
   }
 
+  // This trailing line is orchestrator guidance, not part of the per-phase read-manifest above —
+  // the orchestrator pastes each `▸ <phase>` block verbatim into a worker's dispatch prompt, never
+  // this whole output, so a line down here never reaches a worker's context.
+  lines.push(
+    '',
+    activeBlockers.length === 0
+      ? 'next: открой тикет, исполняй фазы по протоколу (phase-execution-protocol), по одной, в порядке deps.'
+      : 'next: сначала разбери активные блокеры с оператором — фазы не запускать, пока список не пуст.'
+  );
+
   return lines.join('\n');
 }
 

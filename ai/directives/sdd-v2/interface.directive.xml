@@ -153,8 +153,8 @@
       <Goal>Lock the versioning policy.</Goal>
       <Action>
         Versioning scheme + breaking-change protocol + consumer-notification rule — each locked choice
-        recorded as a Decision Log entry (`AX_DECISION_LOG_REQUIRED`). A breaking change
-        without a protocol → `H_BREAKING_CHANGE_NO_PROTOCOL`. STOP.
+        recorded as a Decision Log entry (`AX_DECISION_LOG_REQUIRED`, `DECISION_LOG_ENTRY_FORMAT`). A
+        breaking change without a protocol → `H_BREAKING_CHANGE_NO_PROTOCOL`. STOP.
       </Action>
     </Step>
     <Step id="STEP_4_COMPATIBILITY_MATRIX">

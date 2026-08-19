@@ -158,7 +158,9 @@
         `sdd-state` (the Scopes table). A change spanning several scopes (cross-platform) is normal
         (`AX_CROSS_SCOPE_CHANGE`): open a working set of the touched specs in the session and route them
         in Scope-Graph dependency order — the shared / cross-cutting scope first, then its dependents —
-        looping the per-scope branches, not a new branch. Ambiguous → ask the operator; classify only when state and message agree.
+        looping the per-scope branches, not a new branch. Ambiguous → ask the operator; classify only
+        when state and message agree — the confirming question weighs the real candidate intents
+        against each other, not just the first plausible one (`AX_DIVERGE_BEFORE_RECOMMEND`).
 
         `recover-from-code` fires when the operator asks to recover / recreate a spec FROM EXISTING
         CODE and names a concrete path (a folder or a file) in the message — e.g. «воссоздай спеку для
@@ -199,7 +201,9 @@
         `npx gennady sdd-session open --intent <intent> [--scale <scale>]` (idempotent; creates
         `specs/` and the `.gitignore` entry itself); on a later re-classification use
         `npx gennady sdd-session set intent|scale "<value>"`. Never write the file by hand
-        (`SESSION_FILE_FORMAT` describes the shape the TOOL maintains, not a template to copy).
+        (`SESSION_FILE_FORMAT` describes the shape the TOOL maintains, not a template to copy) — a
+        later step or a future session reads this file with no memory of this turn, so everything
+        it needs travels through the tool's own format (`AX_STATELESS_ARTIFACT`).
       </Action>
     </Step>
     <Step id="STEP_2_ROUTE">

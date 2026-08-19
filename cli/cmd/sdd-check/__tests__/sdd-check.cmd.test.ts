@@ -84,6 +84,25 @@ describe('SddCheckCommand', () => {
     const r = await mod.run(argv(`--task=${t}`));
     assert.strictEqual(r.exitCode, 1);
     assert.match(r.text, /SDD_FABRICATED_DONE/);
+    assert.match(r.text, /next: структура\/якоря — правь через `\/sdd-reconcile`\./);
+    assert.doesNotMatch(r.text, /next: язык/);
+  });
+
+  it('a clean run carries no next: hint at all', async () => {
+    const t = join(dir, 'clean-next.md');
+    writeFileSync(t, CLEAN_TICKET, 'utf-8');
+    const r = await mod.run(argv(`--task=${t}`));
+    assert.strictEqual(r.exitCode, 0);
+    assert.doesNotMatch(r.text, /next:/);
+  });
+
+  it('a calque-only finding carries the language hint, not the reconcile one', async () => {
+    const t = join(dir, 'calque.md');
+    writeFileSync(t, CLEAN_TICKET.replace('DONE\n', 'DONE — надо аппрувить\n'), 'utf-8');
+    const r = await mod.run(argv(`--task=${t}`));
+    assert.match(r.text, /SDD_LANGUAGE_CALQUE/);
+    assert.match(r.text, /next: язык — калька за калькой/);
+    assert.doesNotMatch(r.text, /next: структура\/якоря/);
   });
 
   it('--task flags a phase rule link that does not resolve (SDD_BROKEN_RULE_LINK)', async () => {

@@ -315,7 +315,12 @@
     </Step>
     <Step id="STEP_3_CLOSE_ROUND">
       <Goal>Close the Round.</Goal>
-      <Action>Append Round close via `sdd-log` (`ROUND_CLOSE_FORMAT`); set Meta Status `[x] DONE`.</Action>
+      <Action>
+        Append Round close via `sdd-log` (`ROUND_CLOSE_FORMAT`); set Meta Status `[x] DONE`. The
+        ticket log outlives this dispatch — audit and any future session read only the file, with
+        no memory of this run, so the close line and every threaded Handoff must already carry
+        everything they need (`AX_STATELESS_ARTIFACT`).
+      </Action>
     </Step>
     <Step id="STEP_4_SYNC">
       <Goal>Sync trackers. (mechanical → tool)</Goal>

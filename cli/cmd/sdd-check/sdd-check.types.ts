@@ -35,7 +35,19 @@ export function formatFindings(findings: Finding[], fileCount: number): CheckRes
   const errors = findings.filter((f) => f.severity === 'error').length;
   const warns = findings.length - errors;
   const summary = `[sdd-check] ${errors} error(s), ${warns} warning(s) across ${fileCount} file(s)`;
-  return { text: [...lines, '', summary].join('\n'), exitCode: errors > 0 ? 1 : 0 };
+
+  // next: two doors only, one per finding family present — the language calque and everything
+  // else (structure / anchors / links / DAG / trackers) fix through different channels.
+  const hasLanguage = findings.some((f) => f.code === 'SDD_LANGUAGE_CALQUE');
+  const hasStructural = findings.some((f) => f.code !== 'SDD_LANGUAGE_CALQUE');
+  const next: string[] = [];
+  if (hasStructural) next.push('next: структура/якоря — правь через `/sdd-reconcile`.');
+  if (hasLanguage)
+    next.push(
+      'next: язык — калька за калькой, по месту (`file:line`) правь всё предложение целиком.'
+    );
+
+  return { text: [...lines, '', summary, ...next].join('\n'), exitCode: errors > 0 ? 1 : 0 };
 }
 
 /**
