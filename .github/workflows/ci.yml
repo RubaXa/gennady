@@ -1,0 +1,120 @@
+# Regression barrier for the repository (specs/infra-e2e/infra-e2e.spec.md §6).
+# Every job runs only NON-MUTATING commands: `npm run lint` and `lint:contracts` rewrite the
+# tree (prettier --write, gennady lint --autofix), so a green run of those would prove nothing.
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Runs are long; a superseded commit's queue is not worth paying for.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: lint (check-only)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: prettier (check, never --write)
+        run: npm run format:check
+      - name: tsc --noEmit
+        run: npm run type-check
+      - name: DbC contracts (check, never --autofix)
+        run: npx tsx cli/gennady.ts lint cli/ shared/ services/
+
+  unit:
+    name: unit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+
+  cli-e2e:
+    name: e2e (cli surface)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # Packs and installs the tarball, so it needs the public registry.
+      - run: npm run test:cli-e2e
+
+  config-e2e:
+    name: e2e (config semantics)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # Needs only git and npm — kept separate so it never queues behind the Go toolchain.
+      - run: npm run test:config-e2e
+        env:
+          CONFIG_E2E_STRICT: '1'
+
+  stack-e2e:
+    name: e2e (gate verdicts)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-go@v5
+        with:
+          # Pinned on purpose: a floating toolchain makes a behaviour change
+          # indistinguishable from a regression in a fixture's expected verdict.
+          go-version: '1.24'
+          # This repo has no go.sum, so setup-go has nothing to key a cache on.
+          cache: false
+      - run: npm ci
+      - name: Restore Go build cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/gennady-stack-e2e-go
+          key: stack-e2e-gocache-${{ runner.os }}-go1.24-${{ hashFiles('services/stack/__tests__/e2e/fixtures/golang/*/go.mod') }}
+          restore-keys: stack-e2e-gocache-${{ runner.os }}-go1.24-
+      # STRICT turns a missing toolchain into a failure: a suite that silently skipped
+      # everything would report success (infra-e2e §5, D-E2E-005).
+      - run: npm run test:stack-e2e
+        env:
+          STACK_E2E_STRICT: '1'
+          STACK_E2E_GOCACHE: ~/.cache/gennady-stack-e2e-go
+
+  dogfood:
+    name: dogfood (gennady verifies gennady)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # verify builds a replica from git history, so it needs a real HEAD.
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx tsx cli/gennady.ts verify --all

@@ -48,7 +48,7 @@
     "test:watch": "tsx --test-loader 'cli/**/*.test.ts' 'shared/**/*.test.ts' 'services/**/*.test.ts'",
     "dev": "tsx cli/gennady.ts",
     "build": "vite build",
-    "prepublishOnly": "npm run lint && npm run test:smoke && CLI_E2E_STRICT=1 npm run test:cli-e2e && CONFIG_E2E_STRICT=1 npm run test:config-e2e && STACK_E2E_STRICT=1 npm run test:stack-e2e && npm run build:publish",
+    "prepublishOnly": "npm run lint && npm run test:smoke && npm run test:cli-e2e && CONFIG_E2E_STRICT=1 npm run test:config-e2e && STACK_E2E_STRICT=1 npm run test:stack-e2e && npm run build:publish",
     "postpublish": "node --import tsx scripts/cleanup-publish-artifacts.ts",
     "publish-next": "node --import tsx scripts/publish-next.ts",
     "format": "prettier --write .",

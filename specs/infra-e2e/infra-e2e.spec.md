@@ -34,7 +34,7 @@ infrastructure
 
 | Набор                                            | Поверхность                                                              | npm-команда       | Тулчейны          | STRICT-переменная   |
 | ------------------------------------------------ | ------------------------------------------------------------------------ | ----------------- | ----------------- | ------------------- |
-| [`cli/e2e`](../cli/e2e/e2e.spec.md)              | Поверхность CLI: bin, упаковка, stdout/exit-коды команд                  | `test:cli-e2e`    | npm, npx, git     | `CLI_E2E_STRICT`    |
+| [`cli/e2e`](../cli/e2e/e2e.spec.md)              | Поверхность CLI: bin, упаковка, stdout/exit-коды команд                  | `test:cli-e2e`    | npm, npx, git     | — (см. ниже)        |
 | [`stack/e2e`](../stack/e2e/e2e.spec.md)          | Вердикты гейтов на настоящих тулчейнах (механизм фикстур и ожиданий)     | `test:stack-e2e`  | git + по фикстуре | `STACK_E2E_STRICT`  |
 | [`stack/config`](../stack/config/config.spec.md) | Семантика конфига: discovery, deep-merge, провенанс, фатальная валидация | `test:config-e2e` | git               | `CONFIG_E2E_STRICT` |
 
@@ -50,84 +50,34 @@ infrastructure
 
 ## 6. CI/CD Strategy
 
-Решение уровня проекта: **CI обязателен**, иначе E2E-наборы устаревают за недели, а STRICT-режим не исполняется никогда, кроме дня публикации. Предлагаемая реализация — GitHub Actions, пять джоб, все на `pull_request` и `push: main`:
+Решение уровня проекта: **CI обязателен**, иначе E2E-наборы устаревают за недели, а STRICT-режим не исполняется никогда, кроме дня публикации. Реализация — [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml); **источник истины — сам файл**, здесь фиксируются требования к нему, чтобы альтернативная реализация (GitLab CI, self-hosted) была проверяема.
 
-| Джоба        | Что делает                                               | Тулчейны                | Обязательна для merge |
-| ------------ | -------------------------------------------------------- | ----------------------- | --------------------- |
-| `lint`       | `npm run type-check` + `lint:contracts` + `format:check` | node                    | да                    |
-| `unit`       | `npm test`                                               | node                    | да                    |
-| `cli-e2e`    | `CLI_E2E_STRICT=1 npm run test:cli-e2e`                  | node                    | да                    |
-| `config-e2e` | `CONFIG_E2E_STRICT=1 npm run test:config-e2e`            | node, git               | да                    |
-| `stack-e2e`  | `STACK_E2E_STRICT=1 npm run test:stack-e2e`              | node, go, golangci-lint | да                    |
+| Джоба        | Что делает                                                        | Внешнее           |
+| ------------ | ----------------------------------------------------------------- | ----------------- |
+| `lint`       | `format:check` + `type-check` + DbC-линтер **в check-only форме** | node              |
+| `unit`       | `npm test`                                                        | node              |
+| `cli-e2e`    | `test:cli-e2e` — поверхность CLI через установленный tgz          | node + **реестр** |
+| `config-e2e` | `test:config-e2e` со `CONFIG_E2E_STRICT=1`                        | node, git         |
+| `stack-e2e`  | `test:stack-e2e` со `STACK_E2E_STRICT=1`                          | node, git, **go** |
+| `dogfood`    | `gennady verify --all` — инструмент проверяет сам себя            | node, git         |
 
-```yaml
-# .github/workflows/ci.yml (предлагается)
-name: ci
-on:
-  pull_request:
-  push:
-    branches: [main]
-concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
-jobs:
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 22, cache: npm }
-      - run: npm ci
-      - run: npm run type-check
-      - run: npm run lint:contracts
-      - run: npm run format:check
-  unit:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 22, cache: npm }
-      - run: npm ci
-      - run: npm test
-  cli-e2e:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 22, cache: npm }
-      - run: npm ci
-      - run: npm run test:cli-e2e
-        env: { CLI_E2E_STRICT: '1' }
-  config-e2e:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 22, cache: npm }
-      - run: npm ci
-      - run: npm run test:config-e2e
-        env: { CONFIG_E2E_STRICT: '1' }
-  stack-e2e:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 22, cache: npm }
-      - uses: actions/setup-go@v5
-        with: { go-version: '1.24', cache: true }
-      - run: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b "$(go env GOPATH)/bin" v1.64.5
-      - run: echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
-      - run: npm ci
-      - run: npm run test:stack-e2e
-        env: { STACK_E2E_STRICT: '1' }
-```
+**Обязательные свойства любой реализации:**
 
-Свойства, которые обязана сохранять любая альтернативная реализация CI:
+1. **Только не-мутирующие команды.** `npm run lint` и `lint:contracts` переписывают дерево (`prettier --write`, `gennady lint --autofix`) — их зелёный прогон ничего не доказывает. В CI идут `format:check`, `type-check` и линтер контрактов **без** `--autofix`.
+2. **STRICT там, где набор зависит от внешних тулчейнов** (§5). Без него набор, у которого не оказалось тулчейна, сообщит success.
+3. **Пиннутые версии тулчейнов.** Плавающая версия делает изменение поведения инструмента неотличимым от регрессии в ожидаемом вердикте фикстуры.
+4. **Наборы — отдельные джобы.** `config-e2e` нужен только git, поэтому он не должен ждать установки Go: это следствие «один артефакт на набор» (D-IE2E-003).
+5. **`fetch-depth: 0` для `dogfood`.** `verify` строит реплику от git-истории, поэтому shallow-клона недостаточно.
+6. **`concurrency.cancel-in-progress`** — прогоны длинные, очередь дешевле отменять.
 
-- STRICT везде, где набор зависит от внешних тулчейнов;
-- `go` и `golangci-lint` — **пиннутые версии**, а не «latest»: коды выхода и формулировки линтера меняются между мажорами, и плавающая версия делает падение неотличимым от регрессии (см. риск в спеке плагина golang);
-- кэш `npm` и `GOCACHE` — иначе `stack-e2e` доминирует по времени на холодном кэше;
-- `concurrency.cancel-in-progress` — прогоны длинные, очередь дешевле отменять.
+**Чего в CI сознательно нет:**
+
+- **`golangci-lint`** — ни одна фикстура его не требует (`requires` фикстур — источник probe-листа, §5). Появится фикстура — STRICT уронит `stack-e2e` с явным `TOOLCHAIN_MISSING`, и тулчейн добавляется тогда же. Спекулятивная установка тулчейна, который никто не просит, только удлиняет прогон.
+- **`docker`** — по той же причине; `requires`-предусловия проверяются фикстурами без поднятия контейнеров.
+
+**Измеренная стоимость (локально, полный тулчейн).** `stack-e2e` — ~36s wall на оба стековых набора. Общий `GOCACHE` (`STACK_E2E_GOCACHE`, кэшируется `actions/cache`) снижает CPU 38s → 26s, но **wall-clock почти не меняет**: время доминирует per-suite сборка артефакта (`build:publish` + `pack` + install), а не компиляция Go. Кэш оставлен как дешёвый (67MB), но ускорения от него ждать не следует.
+
+**Известное ограничение `cli-e2e`.** Его setup ставит tgz из публичного реестра и **не имеет offline-пути**: за корпоративным прокси, который отдаёт `403` на публичные зависимости (`ink`), джоба и локальный `prepublishOnly` не проходят. Стековые наборы это уже обходят (реестр параметризован + `--offline`-ретрай по прогретому кэшу); перенести тот же приём в `cli/e2e` — отдельная правка в его scope, зафиксирована в Handoff.
 
 `prepublishOnly` остаётся вторым барьером и **не заменяется** CI: он ловит публикацию с локальной машины.
 
@@ -189,11 +139,11 @@ graph TD
 
 ## 10. Handoff to Task Scaffolding
 
-- **Files to be created:** `.github/workflows/ci.yml` (§6)
+- **Files created:** `.github/workflows/ci.yml` (§6) — шесть джоб, все команды не-мутирующие
 - **Structural changes:**
   - `package.json`: переименование `test:e2e` → `test:cli-e2e` (единая стратегия `test:<suite>-e2e`), новые `test:stack-e2e` и `test:config-e2e`; STRICT-переменные в `prepublishOnly`
   - `infra-base` §2.1: расширить обязательный паттерн исключения фикстур на `**/__tests__/e2e/fixtures/**` — текущий `**/__tests__/fixtures/**` его не матчит (проверено), а фикстуры намеренно содержат невалидный YAML/JSON
-  - `cli/__tests__/e2e/setup.ts` + `cli/e2e` D-015: привести к D-IE2E-002 (`build:publish`) и убрать неверное утверждение об идентичности артефакта
+  - `cli/__tests__/e2e/setup.ts` + `cli/e2e` D-015: (а) привести к D-IE2E-002 (`build:publish`) и убрать неверное утверждение об идентичности артефакта; (б) параметризовать реестр и добавить `--offline`-ретрай, иначе за корпоративным прокси не работают ни джоба `cli-e2e`, ни `prepublishOnly`; (в) у `cli/e2e` нет тулчейн-зависимых скипов, поэтому STRICT-переменной у него нет — единственный гейт `GENNADY_E2E=1`
   - `specs/README.md`: зарегистрировать scope `infra-e2e` в графе и таблице
 - **Open risks:**
   - CI в репозитории отсутствует; внедрение workflow — решение мейнтейнера. Спека фиксирует требуемые свойства, чтобы любая альтернативная реализация (GitLab CI, self-hosted) была проверяема

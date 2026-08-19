@@ -218,7 +218,9 @@ export function setupStackSuite(suiteId: string, toolchainIds: readonly string[]
           GENNADY_NO_UPDATE_CHECK: '1',
           GOPROXY: 'off',
           GOFLAGS: '',
-          GOCACHE: path.join(tmpRoot, 'gocache'),
+          // Per-run by default (hermetic); CI may point it at a cache it restores, since the
+          // Go build cache is content-addressed and safe to share across fixtures.
+          GOCACHE: process.env.STACK_E2E_GOCACHE ?? path.join(tmpRoot, 'gocache'),
         },
       });
       return {
