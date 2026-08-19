@@ -185,7 +185,8 @@ function skippedGate(id: GoGateId, cwd: string, reason: string): Gate {
  * @purpose Plan the golang gate list for a project and scope.
  * @invariant Gates never mutate: `gofmt -l` never `go fmt`; `build` discards output (`-o /dev/null`).
  * @invariant Emitted gates follow GO_GATE_ORDER; unrunnable gates carry a skip reason.
- * @invariant The test gate renders its effective timeout into `go test -timeout`.
+ * @invariant The test gate renders its effective timeout into `go test -timeout`; `generate`
+ *   carries its fixer — the same work in the real tree (§4.4).
  * @param project Detected Go project.
  * @param scope Resolved scope determining which packages and files gates apply to.
  * @param options Planning options; overrideGates.test.timeout is read so the `-timeout` flag matches.
@@ -234,6 +235,11 @@ export function planGoGates(project: GoProject, scope: GoScope, options: GatePla
             outputMeansFailure: false,
             driftMeansFailure: true,
             envFail: GO_GENERATE_ENV_FAIL,
+            fixer: {
+              argv: buildGoGenerateArgv(project, scope)!,
+              cwd: project.root,
+              timeoutMs: GATE_TIMEOUTS_MS[id],
+            },
             skipped: null,
           });
         }

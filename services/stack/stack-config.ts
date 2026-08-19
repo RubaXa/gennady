@@ -32,7 +32,7 @@ const PRECONDITION_DEFAULT_TIMEOUT_MS = 30_000;
 const EXTRA_GATE_DEFAULT_TIMEOUT_MS = 10 * 60_000;
 
 /** Known keys of a per-plugin config section (config.spec §3.3). */
-const PLUGIN_SECTION_KEYS = ['skipGates', 'overrideGates', 'extraGates', 'fixers'] as const;
+const PLUGIN_SECTION_KEYS = ['skipGates', 'overrideGates', 'extraGates'] as const;
 
 /** Known keys of a GateSpec (config.spec §3.4). */
 export const GATE_SPEC_KEYS = [
@@ -45,6 +45,7 @@ export const GATE_SPEC_KEYS = [
   'driftMeansFailure',
   'envFail',
   'requires',
+  'fixer',
 ] as const;
 
 /**
@@ -284,7 +285,12 @@ function toCommands(
  * @param keyPath Dotted path of the entry.
  * @param errors Error accumulator (mutated).
  */
-function validateCmdSpec(spec: unknown, keyPath: string, errors: StackConfigError[]): void {
+function validateCmdSpec(
+  spec: unknown,
+  keyPath: string,
+  errors: StackConfigError[],
+  requireHint: boolean
+): void {
   if (!isPlainObject(spec)) {
     errors.push({ path: keyPath, message: 'must be an object' });
     return;
@@ -317,11 +323,17 @@ function validateCmdSpec(spec: unknown, keyPath: string, errors: StackConfigErro
       message: 'must be a duration string: <int>(s|m|h), e.g. "90s", "5m"',
     });
   }
-  if (typeof hint !== 'string' || hint.length === 0) {
+  if (requireHint && (typeof hint !== 'string' || hint.length === 0)) {
     errors.push({
       path: `${keyPath}.hint`,
       message:
         'required non-empty string — a precondition without remediation says no more than a timeout',
+    });
+  }
+  if (!requireHint && hint !== undefined) {
+    errors.push({
+      path: `${keyPath}.hint`,
+      message: 'only a `requires` precondition carries a hint',
     });
   }
 }
@@ -330,16 +342,14 @@ function validateCmdSpec(spec: unknown, keyPath: string, errors: StackConfigErro
  * @purpose Validate one GateSpec object.
  * @param spec Raw value from config.
  * @param keyPath Dotted path of the spec.
- * @param requireIdArgv True for extraGates/fixers entries, where id and argv are mandatory.
+ * @param requireIdArgv True for extraGates entries, where id and argv are mandatory.
  * @param errors Error accumulator (mutated).
- * @param [forbidDriftFlag] True for fixers, which run in the real tree by definition (spec §4.4).
  */
 function validateGateSpec(
   spec: unknown,
   keyPath: string,
   requireIdArgv: boolean,
-  errors: StackConfigError[],
-  forbidDriftFlag = false
+  errors: StackConfigError[]
 ): void {
   if (!isPlainObject(spec)) {
     errors.push({ path: keyPath, message: 'must be an object' });
@@ -352,8 +362,18 @@ function validateGateSpec(
     }
   }
 
-  const { id, argv, cwd, env, timeout, outputMeansFailure, driftMeansFailure, envFail, requires } =
-    spec as GateSpec;
+  const {
+    id,
+    argv,
+    cwd,
+    env,
+    timeout,
+    outputMeansFailure,
+    driftMeansFailure,
+    envFail,
+    requires,
+    fixer,
+  } = spec as GateSpec;
   if (requireIdArgv && (typeof id !== 'string' || id.length === 0)) {
     errors.push({ path: `${keyPath}.id`, message: 'required non-empty string' });
   }
@@ -392,19 +412,15 @@ function validateGateSpec(
       errors.push({ path: `${keyPath}.requires`, message: 'must be an array of commands' });
     } else {
       requires.forEach((entry, index) =>
-        validateCmdSpec(entry, `${keyPath}.requires[${index}]`, errors)
+        validateCmdSpec(entry, `${keyPath}.requires[${index}]`, errors, true)
       );
     }
   }
   if (envFail !== undefined) {
     errors.push(...compileEnvFailRules(envFail, `${keyPath}.envFail`).errors);
   }
-  if (driftMeansFailure !== undefined && forbidDriftFlag) {
-    errors.push({
-      path: `${keyPath}.driftMeansFailure`,
-      message:
-        'not allowed on a fixer — a fixer mutates the real tree by design, so drift is not a verdict (spec §4.4)',
-    });
+  if (fixer !== undefined) {
+    validateCmdSpec(fixer, `${keyPath}.fixer`, errors, false);
   }
 }
 
@@ -491,7 +507,7 @@ export function validateStackConfig(
       }
     }
 
-    for (const listKey of ['extraGates', 'fixers'] as const) {
+    for (const listKey of ['extraGates'] as const) {
       const list = section[listKey];
       if (list === undefined) {
         continue;
@@ -501,13 +517,7 @@ export function validateStackConfig(
         continue;
       }
       list.forEach((spec, index) =>
-        validateGateSpec(
-          spec,
-          `stack.${key}.${listKey}[${index}]`,
-          true,
-          errors,
-          listKey === 'fixers'
-        )
+        validateGateSpec(spec, `stack.${key}.${listKey}[${index}]`, true, errors)
       );
     }
   }
@@ -659,6 +669,10 @@ export function applyStackConfig(
           override.requires !== undefined
             ? toCommands(override.requires, root, gate.cwd)
             : gate.requires,
+        fixer:
+          override.fixer !== undefined
+            ? toCommands([override.fixer], root, gate.cwd)[0]
+            : gate.fixer,
         envFail: [
           ...compileEnvFailRules(
             override.envFail ?? [],
@@ -705,6 +719,14 @@ export function applyStackConfig(
         root,
         spec.cwd !== undefined ? path.resolve(root, spec.cwd) : root
       ),
+      fixer:
+        spec.fixer !== undefined
+          ? toCommands(
+              [spec.fixer],
+              root,
+              spec.cwd !== undefined ? path.resolve(root, spec.cwd) : root
+            )[0]
+          : undefined,
       skipped: null,
     };
     // extraGates can be declared project-wide and skipped personally — same visibility rule.

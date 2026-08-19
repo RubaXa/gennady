@@ -239,14 +239,42 @@ describe('loadStackConfig — strict validation (fatal errors)', () => {
     );
   });
 
-  it('accepts the reserved fixers key with valid specs', () => {
+  it('rejects the removed `fixers` section, so an old config fails loudly', () => {
+    // Fixers live on their gate now (spec §4.4); a stale config must not be silently ignored.
     withConfigs(
       {
         'gennady.yaml':
           'stack:\n  golang:\n    fixers:\n      - id: fmt-write\n        argv: [gofmt, -w, .]\n',
       },
       (dir) => {
+        const load = loadStackConfig(dir, GATE_IDS);
+        assert.ok(
+          load.errors.some((error) => error.path === 'stack.golang.fixers'),
+          `expected an unknown-key error, got: ${JSON.stringify(load.errors)}`
+        );
+      }
+    );
+  });
+
+  it('accepts a gate-attached fixer; a hint on it is rejected as requires-only', () => {
+    withConfigs(
+      {
+        'gennady.yaml':
+          'stack:\n  golang:\n    extraGates:\n      - id: codegen\n        argv: [make, gen]\n        fixer:\n          argv: [make, gen]\n',
+      },
+      (dir) => {
         assert.deepEqual(loadStackConfig(dir, GATE_IDS).errors, []);
+      }
+    );
+    withConfigs(
+      {
+        'gennady.yaml':
+          'stack:\n  golang:\n    extraGates:\n      - id: codegen\n        argv: [make, gen]\n        fixer:\n          argv: [make, gen]\n          hint: not allowed here\n',
+      },
+      (dir) => {
+        assert.ok(
+          loadStackConfig(dir, GATE_IDS).errors.some((error) => error.path.endsWith('.fixer.hint'))
+        );
       }
     );
   });
@@ -259,22 +287,6 @@ describe('loadStackConfig — strict validation (fatal errors)', () => {
       },
       (dir) => {
         assert.deepEqual(loadStackConfig(dir, GATE_IDS).errors, []);
-      }
-    );
-  });
-
-  it('rejects driftMeansFailure inside fixers — a fixer mutates the real tree by design', () => {
-    withConfigs(
-      {
-        'gennady.yaml':
-          'stack:\n  golang:\n    fixers:\n      - id: gen\n        argv: [make, generate]\n        driftMeansFailure: true\n',
-      },
-      (dir) => {
-        const load = loadStackConfig(dir, GATE_IDS);
-        assert.ok(
-          load.errors.some((error) => error.path.endsWith('.driftMeansFailure')),
-          `expected a .driftMeansFailure error, got: ${JSON.stringify(load.errors)}`
-        );
       }
     );
   });

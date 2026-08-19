@@ -150,6 +150,11 @@ export type Gate = {
    *   is ENV_FAIL with its hint and the gate command never runs (spec §4.7).
    */
   readonly requires?: readonly Cmd[];
+  /**
+   * @purpose Mutating remedy for THIS gate (spec §4.4): the same work, real tree.
+   *   Run only by `gennady fix <stack>:<id>`, never in a verify plan.
+   */
+  readonly fixer?: Cmd;
   /** @purpose Populated when the gate cannot run; it is then reported, not executed. */
   readonly skipped: string | null;
 };
@@ -237,6 +242,8 @@ export type GateSpec = {
   readonly envFail?: readonly Readonly<Record<string, unknown>>[];
   /** @purpose Environment preconditions as CmdSpec entries (spec §4.7); `hint` is required. */
   readonly requires?: readonly Readonly<Record<string, unknown>>[];
+  /** @purpose Mutating remedy for this gate as a CmdSpec (spec §4.4). */
+  readonly fixer?: Readonly<Record<string, unknown>>;
 };
 
 /**
@@ -250,8 +257,6 @@ export type StackPluginConfig = {
   readonly overrideGates?: Readonly<Record<string, GateSpec>>;
   /** @purpose Repo-specific gates appended after the built-ins. */
   readonly extraGates?: readonly GateSpec[];
-  /** @purpose Fixers for `gennady fix` (spec §4.4): real tree, sequential, fail-fast. */
-  readonly fixers?: readonly GateSpec[];
 };
 
 /**
@@ -291,16 +296,6 @@ export type StackVerifyCapability = {
  * @purpose The fix facet: mutating operations executed in the REAL tree by `gennady fix` (§4.4).
  * @consumer fix.cmd, plugins
  */
-export type StackFixCapability = {
-  /**
-   * @purpose Plan the plugin's built-in fixers for a scope (v1 golang: `generate`).
-   * @param detection Detection previously produced by this plugin.
-   * @param scope Scope previously resolved by this plugin.
-   * @returns Fixers as Gate data; mutation is expected, `driftMeansFailure` is never set.
-   */
-  planFixers(detection: StackDetection, scope: StackScope): Gate[];
-};
-
 /**
  * @purpose Common interface every stack implements; `verify` is the only mandatory facet,
  *   optional facets arrive as optional fields (spec §4.3).
@@ -327,6 +322,4 @@ export type StackPlugin = {
   readonly sandboxLinks?: readonly string[];
   /** @purpose The mandatory verify facet. */
   readonly verify: StackVerifyCapability;
-  /** @purpose Optional fix facet: built-in mutating fixers for `gennady fix`. */
-  readonly fix?: StackFixCapability;
 };

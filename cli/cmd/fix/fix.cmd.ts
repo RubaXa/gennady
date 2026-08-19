@@ -17,7 +17,7 @@ import {
 } from '../../../services/stack/stack-registry.ts';
 import {
   loadStackConfig,
-  parseDuration,
+  applyStackConfig,
   pluginConfigOf,
 } from '../../../services/stack/stack-config.ts';
 import { runFix, truncateOutput } from '../../../services/stack/gate-runner.ts';
@@ -84,22 +84,32 @@ export async function run(argv: string[]): Promise<number> {
 
   const request: ScopeRequest = { mode: args.all === true ? 'all' : 'changed', targets: [] };
 
-  // #region START_FIXER_PLAN — plugin fixers first, config fixers appended (config.spec §3.3)
+  // #region START_FIXER_PLAN — the same plan verify builds; a fixer rides on its gate (§4.4)
   const fixers: Gate[] = [];
   for (const { plugin, detection } of active) {
     const scope = plugin.verify.resolveScope(detection, request);
-    fixers.push(...(plugin.fix?.planFixers(detection, scope) ?? []));
-    for (const spec of pluginConfigOf(configLoad.config, plugin.id)?.fixers ?? []) {
+    const pluginConfig = pluginConfigOf(configLoad.config, plugin.id);
+    const planned = plugin.verify.planGates(detection, scope, { pluginConfig });
+    for (const gate of applyStackConfig(
+      planned,
+      pluginConfig,
+      plugin.id,
+      root,
+      configLoad.provenance
+    )) {
+      if (gate.fixer === undefined) {
+        continue;
+      }
+      // A fixer does its gate's work in the real tree, so it inherits the gate's ENV_FAIL
+      // predicates: a missing generator is a broken environment either way.
       fixers.push({
-        id: spec.id!,
-        stack: plugin.id,
-        label: `${spec.argv!.join(' ')} (from config)`,
-        argv: spec.argv!,
-        cwd: spec.cwd !== undefined ? path.resolve(root, spec.cwd) : root,
-        env: spec.env,
-        timeoutMs: spec.timeout !== undefined ? (parseDuration(spec.timeout) ?? 600_000) : 600_000,
-        outputMeansFailure: false,
-        skipped: null,
+        ...gate,
+        argv: gate.fixer.argv,
+        cwd: gate.fixer.cwd,
+        env: gate.fixer.env ?? gate.env,
+        timeoutMs: gate.fixer.timeoutMs,
+        label: `${gate.label} → fix`,
+        driftMeansFailure: false,
       });
     }
   }

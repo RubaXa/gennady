@@ -1,4 +1,4 @@
-// @file: Unit tests for the fix command — config fixers run in the real tree, selection, errors.
+// @file: Unit tests for the fix command — gate-attached fixers in the real tree, selection, errors.
 // @consumers: CI
 // @tasks: TSK-96
 
@@ -60,7 +60,7 @@ describe('fix command', () => {
       {
         'package.json': '{"name":"x","scripts":{"test":"node -e 0"}}',
         'gennady.yaml':
-          'stack:\n  node:\n    fixers:\n      - id: touch\n        argv: [node, -e, "require(String.fromCharCode(39)+\'fs\'+String.fromCharCode(39))"]\n',
+          'stack:\n  node:\n    extraGates:\n      - id: touch\n        argv: [node, -e, "0"]\n        fixer:\n          argv: [node, touch.cjs]\n',
       },
       async (dir) => {
         // Simpler: rewrite the fixer to create out.txt via a helper script file.
@@ -70,7 +70,7 @@ describe('fix command', () => {
         );
         fs.writeFileSync(
           path.join(dir, 'gennady.yaml'),
-          'stack:\n  node:\n    fixers:\n      - id: touch\n        argv: [node, touch.cjs]\n'
+          'stack:\n  node:\n    extraGates:\n      - id: touch\n        argv: [node, -e, "0"]\n        fixer:\n          argv: [node, touch.cjs]\n'
         );
         const { value, log } = await captureLog(() => run(argv(`--root=${dir}`)));
 
@@ -90,7 +90,7 @@ describe('fix command', () => {
       {
         'package.json': '{"name":"x","scripts":{"test":"node -e 0"}}',
         'gennady.yaml':
-          'stack:\n  node:\n    fixers:\n      - id: touch\n        argv: [node, -e, "0"]\n',
+          'stack:\n  node:\n    extraGates:\n      - id: touch\n        argv: [node, -e, "0"]\n        fixer:\n          argv: [node, -e, "0"]\n',
       },
       async (dir) => {
         const { value, err } = await captureLog(() =>
@@ -109,7 +109,7 @@ describe('fix command', () => {
       {
         'package.json': '{"name":"x","scripts":{"test":"node -e 0"}}',
         'gennady.yaml':
-          'stack:\n  node:\n    fixers:\n      - id: boom\n        argv: [node, -e, "process.exit(3)"]\n      - id: never\n        argv: [node, -e, "0"]\n',
+          'stack:\n  node:\n    extraGates:\n      - id: boom\n        argv: [node, -e, "0"]\n        fixer:\n          argv: [node, -e, "process.exit(3)"]\n      - id: never\n        argv: [node, -e, "0"]\n        fixer:\n          argv: [node, -e, "0"]\n',
       },
       async (dir) => {
         const { value, log, err } = await captureLog(() => run(argv(`--root=${dir}`)));
@@ -127,7 +127,7 @@ describe('fix command', () => {
       async (dir) => {
         const { value, log } = await captureLog(() => run(argv(`--root=${dir}`)));
 
-        // node has no built-in fixers in v1; without config fixers there is nothing to run.
+        // node declares no gate-attached fixer in v1, so there is nothing to run.
         assert.equal(value, 0);
         assert.match(log, /nothing to do/);
       }
