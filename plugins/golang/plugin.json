@@ -2,5 +2,8 @@
   "id": "golang",
   "kind": "stack",
   "entry": "golang-plugin.ts",
+  "specs": "specs",
+  "directives": "directives",
+  "skills": "skills",
   "e2eFixtures": "e2e/fixtures"
 }

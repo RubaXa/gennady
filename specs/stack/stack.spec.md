@@ -591,7 +591,7 @@ cli/cmd/fix/
 
 ## 11. Inter-Module Dependencies
 
-**Модули scope'а:** [`plugins/golang`](./plugins/golang/golang.spec.md) и [`plugins/node`](./plugins/node/node.spec.md) — per-stack возможности, гейты и матрицы use case'ов (зоны ответственности мейнтейнеров стеков); [`e2e`](./e2e/e2e.spec.md) — механизм E2E-проверки вердиктов под доктриной [`infra-e2e`](../infra-e2e/infra-e2e.spec.md).
+**Модули scope'а:** [`plugins/golang`](../../plugins/golang/specs/golang.spec.md) и [`plugins/node`](./plugins/node/node.spec.md) — per-stack возможности, гейты и матрицы use case'ов (зоны ответственности мейнтейнеров стеков); [`e2e`](./e2e/e2e.spec.md) — механизм E2E-проверки вердиктов под доктриной [`infra-e2e`](../infra-e2e/infra-e2e.spec.md).
 
 - **Depends on:** [`config`](../config/config.spec.md) (обнаружение, merge и провенанс конфига; секция `stack` описана там же), `shared/common/parse-args.ts`
 - **Provides to:** `cli` (команда `verify`; далее — fix/testcov/lint по §4.3), `ai-skills` (`verify.sh`, skill `sdd-infra-golang`)

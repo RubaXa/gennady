@@ -45,7 +45,7 @@
     "test:cli-e2e": "GENNADY_E2E=1 node --import tsx --test --experimental-test-module-mocks cli/__tests__/e2e/*.test.ts",
     "test:stack-e2e": "node --import tsx scripts/stack-e2e.ts",
     "test:config-e2e": "node --import tsx scripts/stack-e2e.ts --suite=config",
-    "test:smoke": "GENNADY_SMOKE=1 node --import tsx --test --experimental-test-module-mocks cli/__tests__/e2e/bundle-smoke.e2e.test.ts",
+    "test:smoke": "GENNADY_SMOKE=1 node --import tsx --test --experimental-test-module-mocks cli/__tests__/e2e/bundle-smoke.e2e.test.ts cli/__tests__/e2e/publish-contents.e2e.test.ts",
     "test:watch": "tsx --test-loader 'cli/**/*.test.ts' 'shared/**/*.test.ts' 'services/**/*.test.ts'",
     "dev": "tsx cli/gennady.ts",
     "build": "vite build",

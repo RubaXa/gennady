@@ -8,4 +8,5 @@ cli/utils/review-gen/js
 **/__tests__/e2e/fixtures/**
 plugins/*/e2e/fixtures/**
 ai/skills/
+plugins/*/skills/**
 .claude/skills/

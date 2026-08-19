@@ -50,8 +50,12 @@ export type ResolvedPlugin = {
   readonly specRoot: string | null;
   /** @purpose Every `*.spec.md` under the specs directory, root included. */
   readonly specs: readonly string[];
+  /** @purpose The directives directory itself, or null — consumers reproducing its tree need it. */
+  readonly directivesDir: string | null;
   /** @purpose Every `*.xml` under the directives directory. */
   readonly directives: readonly string[];
+  /** @purpose The skills directory itself, or null. */
+  readonly skillsDir: string | null;
   /** @purpose Every `<name>/SKILL.md` under the skills directory. */
   readonly skills: readonly string[];
   /** @purpose Fixture root of the plugin's E2E suite, or null. */
@@ -233,10 +237,12 @@ function readManifest(dir: string): ManifestRead {
       entry: entry.resolved as string,
       specRoot,
       specs,
+      directivesDir: directivesDir.resolved,
       directives:
         directivesDir.resolved === null
           ? []
           : collectFiles(directivesDir.resolved, (name) => name.endsWith('.xml')),
+      skillsDir: skillsDir.resolved,
       skills:
         skillsDir.resolved === null
           ? []

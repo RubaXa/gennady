@@ -35,7 +35,7 @@ jobs:
       - name: tsc --noEmit
         run: npm run type-check
       - name: DbC contracts (check, never --autofix)
-        run: npx tsx cli/gennady.ts lint cli/ shared/ services/
+        run: npx tsx cli/gennady.ts lint cli/ shared/ services/ plugins/
 
   unit:
     name: unit
@@ -48,6 +48,21 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+
+  packaging:
+    name: packaging (published artifact)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: build the bundle the tarball ships
+        run: npm run build
+      - name: bundle starts and plugin assets reach the tarball
+        run: npm run test:smoke
 
   cli-e2e:
     name: e2e (cli surface)

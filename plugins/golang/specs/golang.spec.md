@@ -2,9 +2,9 @@
 
 ## 1. Module Vision
 
-`StackPlugin` для Go-репозиториев: детекция по `go.mod` в корне, скоуп по изменённым пакетам, гейты `generate → build → vet → fmt → lint → test`, фасет `fix` с материализацией кодогенерации. Термины (Gate, Scope, Capability, ENV_FAIL, VIOLATION, Run replica) — [stack.spec.md §2](../../stack.spec.md).
+`StackPlugin` для Go-репозиториев: детекция по `go.mod` в корне, скоуп по изменённым пакетам, гейты `generate → build → vet → fmt → lint → test`, фасет `fix` с материализацией кодогенерации. Термины (Gate, Scope, Capability, ENV_FAIL, VIOLATION, Run replica) — [stack.spec.md §2](../../../specs/stack/stack.spec.md).
 
-**Parent scope:** [`stack`](../../stack.spec.md) · **E2E-механизм:** [`stack/e2e`](../../e2e/e2e.spec.md) · **Доктрина E2E:** [`infra-e2e`](../../../infra-e2e/infra-e2e.spec.md)
+**Parent scope:** [`stack`](../../../specs/stack/stack.spec.md) · **E2E-механизм:** [`stack/e2e`](../../../specs/stack/e2e/e2e.spec.md) · **Доктрина E2E:** [`infra-e2e`](../../../specs/infra-e2e/infra-e2e.spec.md)
 
 Зачем отдельная спека: знание «что для Go считается находкой по коду, а что поломкой окружения» — предметное и **принадлежит мейнтейнеру стека**. Держать его в scope-спеке рядом с node значит смешивать зоны ответственности: правка про `golangci-lint` не должна проходить ревью у владельца npm-части и наоборот. Здесь же живёт список use case'ов, которые обязаны быть покрыты E2E-фикстурами, — то есть определение «плагин работает».
 
@@ -86,7 +86,7 @@ Go сообщает об одной и той же причине то стро�
 
 ## 7. Use Cases to Test (E2E-матрица)
 
-Механизм фикстур, схема `expect.yaml` и материализация — [`stack/e2e`](../../e2e/e2e.spec.md). Здесь — **что** обязано быть покрыто для Go. Столбец «Флаги» фиксирует покрытие CLI-поверхности (infra-e2e §7).
+Механизм фикстур, схема `expect.yaml` и материализация — [`stack/e2e`](../../../specs/stack/e2e/e2e.spec.md). Здесь — **что** обязано быть покрыто для Go. Столбец «Флаги» фиксирует покрытие CLI-поверхности (infra-e2e §7).
 
 ### 7.1 Базовая линия и находки по коду
 
@@ -167,9 +167,9 @@ Go сообщает об одной и той же причине то стро�
 
 ## 8. Inter-Module Dependencies
 
-- **Depends on:** [`stack`](../../stack.spec.md) (типы, раннер, реестр), `shared/common/exec` (probe-вызовы), git (скоуп и реплика)
-- **Sibling:** [`plugins/node`](../node/node.spec.md) — независимая зона ответственности; общее только в scope-спеке
-- **Verified by:** [`stack/e2e`](../../e2e/e2e.spec.md) по матрице §7
+- **Depends on:** [`stack`](../../../specs/stack/stack.spec.md) (типы, раннер, реестр), `shared/common/exec` (probe-вызовы), git (скоуп и реплика)
+- **Sibling:** [`plugins/node`](../../../specs/stack/plugins/node/node.spec.md) — независимая зона ответственности; общее только в scope-спеке
+- **Verified by:** [`stack/e2e`](../../../specs/stack/e2e/e2e.spec.md) по матрице §7
 - **External:** `go` (обязателен, кроме гейта `fmt`), `gofmt`, `golangci-lint` (опционален — без него `lint` скипается с причиной)
 
 ## 9. Handoff to Task Scaffolding
