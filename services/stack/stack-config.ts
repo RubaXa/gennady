@@ -31,7 +31,7 @@ const GATE_SPEC_KEYS = [
   'env',
   'timeout',
   'outputMeansFailure',
-  'sandbox',
+  'driftMeansFailure',
 ] as const;
 
 /**
@@ -244,14 +244,14 @@ function mergeInto(
  * @param keyPath Dotted path of the spec.
  * @param requireIdArgv True for extraGates/fixers entries, where id and argv are mandatory.
  * @param errors Error accumulator (mutated).
- * @param [forbidSandbox] True for fixers, which run in the real tree by definition (spec §4.4).
+ * @param [forbidDriftFlag] True for fixers, which run in the real tree by definition (spec §4.4).
  */
 function validateGateSpec(
   spec: unknown,
   keyPath: string,
   requireIdArgv: boolean,
   errors: StackConfigError[],
-  forbidSandbox = false
+  forbidDriftFlag = false
 ): void {
   if (!isPlainObject(spec)) {
     errors.push({ path: keyPath, message: 'must be an object' });
@@ -264,7 +264,7 @@ function validateGateSpec(
     }
   }
 
-  const { id, argv, cwd, env, timeout, outputMeansFailure, sandbox } = spec as GateSpec;
+  const { id, argv, cwd, env, timeout, outputMeansFailure, driftMeansFailure } = spec as GateSpec;
   if (requireIdArgv && (typeof id !== 'string' || id.length === 0)) {
     errors.push({ path: `${keyPath}.id`, message: 'required non-empty string' });
   }
@@ -295,13 +295,14 @@ function validateGateSpec(
   if (outputMeansFailure !== undefined && typeof outputMeansFailure !== 'boolean') {
     errors.push({ path: `${keyPath}.outputMeansFailure`, message: 'must be a boolean' });
   }
-  if (sandbox !== undefined && typeof sandbox !== 'boolean') {
-    errors.push({ path: `${keyPath}.sandbox`, message: 'must be a boolean' });
+  if (driftMeansFailure !== undefined && typeof driftMeansFailure !== 'boolean') {
+    errors.push({ path: `${keyPath}.driftMeansFailure`, message: 'must be a boolean' });
   }
-  if (sandbox !== undefined && forbidSandbox) {
+  if (driftMeansFailure !== undefined && forbidDriftFlag) {
     errors.push({
-      path: `${keyPath}.sandbox`,
-      message: 'not allowed on a fixer — fixers run in the real tree by definition (spec §4.4)',
+      path: `${keyPath}.driftMeansFailure`,
+      message:
+        'not allowed on a fixer — a fixer mutates the real tree by design, so drift is not a verdict (spec §4.4)',
     });
   }
 }
@@ -546,7 +547,7 @@ export function applyStackConfig(
         env: override.env ?? gate.env,
         timeoutMs,
         outputMeansFailure: override.outputMeansFailure ?? gate.outputMeansFailure,
-        sandbox: override.sandbox ?? gate.sandbox,
+        driftMeansFailure: override.driftMeansFailure ?? gate.driftMeansFailure,
         label: `${gate.label} (overridden by ${source})`,
         // An explicit argv override supersedes a planner skip: the config author
         // states the command is runnable in this repo.
@@ -576,7 +577,7 @@ export function applyStackConfig(
           ? (parseDuration(spec.timeout) ?? EXTRA_GATE_DEFAULT_TIMEOUT_MS)
           : EXTRA_GATE_DEFAULT_TIMEOUT_MS,
       outputMeansFailure: spec.outputMeansFailure ?? false,
-      sandbox: spec.sandbox,
+      driftMeansFailure: spec.driftMeansFailure,
       skipped: null,
     };
     // extraGates can be declared project-wide and skipped personally — same visibility rule.

@@ -145,7 +145,7 @@ function runGate(gate: Gate, pool: ReplicaPool | null): GateResult {
 
   const slot: ReplicaSlot = pool?.acquire(gate.cwd) ?? { kind: 'unsandboxed' };
   if (slot.kind !== 'replica') {
-    if (gate.sandbox === true) {
+    if (gate.driftMeansFailure === true) {
       // Drift cannot be computed without a replica — the environment is short of git/HEAD.
       return {
         gate,
@@ -155,7 +155,7 @@ function runGate(gate: Gate, pool: ReplicaPool | null): GateResult {
         output:
           slot.kind === 'error'
             ? slot.message
-            : 'sandboxed gate requires a git repository (no toplevel found)',
+            : 'drift gate requires a git repository (no toplevel found)',
       };
     }
     return executeGate(gate, gate.argv, gate.cwd, null);
@@ -243,18 +243,18 @@ function executeGate(
   }
 
   // #region START_VERDICTS — violation > drift > stdout contract > exit code (spec §8.2)
-  if (drift.length > 0 && gate.sandbox !== true) {
+  if (drift.length > 0 && gate.driftMeansFailure !== true) {
     return {
       gate,
       status: 'violation',
       exitCode: proc.status,
       durationMs,
-      output: `gate mutated the tree — files:\n${drift}\ndeclare \`sandbox: true\` if drift is this gate's verdict, or move the mutation to \`gennady fix\` fixers (D-STACK-005)${output.length > 0 ? `\n--- command output ---\n${output}` : ''}`,
+      output: `gate mutated the tree — files:\n${drift}\ndeclare \`driftMeansFailure: true\` if drift is this gate's verdict, or move the mutation to \`gennady fix\` fixers (D-STACK-005)${output.length > 0 ? `\n--- command output ---\n${output}` : ''}`,
     };
   }
 
   if (proc.status === 0 && drift.length > 0) {
-    // sandbox: true — the replica was baselined, so any status output is the command's doing.
+    // driftMeansFailure: true — the replica was baselined, so any status output is the command's doing.
     return {
       gate,
       status: 'fail',
@@ -396,7 +396,9 @@ export function formatVerifyReport(report: VerifyReport): string {
       lines.push(
         '  note:    this gate modified files — a gate observes, never mutates (D-STACK-005).'
       );
-      lines.push('           Declare sandbox: true if drift is its verdict, or move it to fixers.');
+      lines.push(
+        '           Declare driftMeansFailure: true if drift is its verdict, or move it to fixers.'
+      );
     }
     lines.push(`  command: ${result.gate.argv.join(' ')}`);
     lines.push(`  cwd:     ${result.gate.cwd}`);
@@ -424,14 +426,14 @@ export function formatVerifyReport(report: VerifyReport): string {
 
 /**
  * @purpose Execute fixers in the REAL tree: sequential, fail-fast — they mutate one tree (§4.4).
- * @param fixers Fixers as Gate data; `sandbox` is ignored, mutation is expected.
+ * @param fixers Fixers as Gate data; `driftMeansFailure` is ignored, mutation is expected.
  * @returns Results up to and including the first non-pass; skipped entries are reported.
  * @sideEffect Process: runs mutating commands in the working tree.
  */
 export function runFix(fixers: readonly Gate[]): GateResult[] {
   const results: GateResult[] = [];
   for (const fixer of fixers) {
-    const result = runGate({ ...fixer, sandbox: false }, null);
+    const result = runGate({ ...fixer, driftMeansFailure: false }, null);
     results.push(result);
     if (result.status !== 'pass' && result.status !== 'skipped') {
       break;

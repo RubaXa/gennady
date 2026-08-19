@@ -94,7 +94,7 @@ export type Gate = {
   /** @purpose When true, any stdout on exit 0 means failure (gofmt -l contract). */
   readonly outputMeansFailure: boolean;
   /** @purpose Run in an ephemeral working-tree replica; resulting drift = FAIL (spec §2, D-STACK-011). */
-  readonly sandbox?: boolean;
+  readonly driftMeansFailure?: boolean;
   /** @purpose ENV_FAIL predicates; absent/empty means every failure implicates the code. */
   readonly envFail?: readonly EnvFailPredicate[];
   /** @purpose Populated when the gate cannot run; it is then reported, not executed. */
@@ -179,7 +179,7 @@ export type GateSpec = {
   /** @purpose Stdout contract; extraGates default: false. */
   readonly outputMeansFailure?: boolean;
   /** @purpose Drift gate (spec §2): mutation expected, replica drift is the FAIL verdict. Rejected in fixers. */
-  readonly sandbox?: boolean;
+  readonly driftMeansFailure?: boolean;
 };
 
 /**
@@ -239,7 +239,7 @@ export type StackFixCapability = {
    * @purpose Plan the plugin's built-in fixers for a scope (v1 golang: `generate`).
    * @param detection Detection previously produced by this plugin.
    * @param scope Scope previously resolved by this plugin.
-   * @returns Fixers as Gate data; mutation is expected, `sandbox` is never set.
+   * @returns Fixers as Gate data; mutation is expected, `driftMeansFailure` is never set.
    */
   planFixers(detection: StackDetection, scope: StackScope): Gate[];
 };

@@ -49,7 +49,7 @@ export const golangPlugin: StackPlugin = {
   id: 'golang',
   marker: 'go.mod',
   description:
-    'go generate (sandboxed drift), go build, go vet, gofmt -l, golangci-lint, go test; changed-package scoping',
+    'go generate (drift check), go build, go vet, gofmt -l, golangci-lint, go test; changed-package scoping',
 
   detect(root: string): StackDetection | null {
     if (!fs.existsSync(path.join(root, 'go.mod'))) {
@@ -82,7 +82,7 @@ export const golangPlugin: StackPlugin = {
       const project = detection.details as GoProject;
       const goScope = scope.details as GoScope;
       const argv = buildGoGenerateArgv(project, goScope);
-      // The fixer counterpart of the sandboxed generate gate: same command, REAL tree.
+      // The fixer counterpart of the generate drift gate: same command, REAL tree.
       return [
         {
           id: 'generate',

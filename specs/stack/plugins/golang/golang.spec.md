@@ -45,14 +45,14 @@
 
 Порядок фиксирован: **кодогенерация — пререквизит сборки**, поэтому `generate` стоит до `build` (D-STACK-011).
 
-| Гейт       | argv                                       | Таймаут | Контракт вывода            | `envFail`                                       | Особенности                                        |
-| ---------- | ------------------------------------------ | ------- | -------------------------- | ----------------------------------------------- | -------------------------------------------------- |
-| `generate` | `go generate <flags> <packages>`           | 5m      | drift реплики = FAIL       | module-fetch + `executable file not found`↦hint | `sandbox: true`; skip без `//go:generate` в скоупе |
-| `build`    | `go build <flags> <packages>`              | 5m      | exit-код                   | panic + module-fetch                            | —                                                  |
-| `vet`      | `go vet <flags> <packages>`                | 5m      | exit-код                   | panic + module-fetch                            | —                                                  |
-| `fmt`      | `gofmt -l <files>`                         | 1m      | **exit 0 + stdout = FAIL** | —                                               | никогда `go fmt` (мутирует, D-STACK-005)           |
-| `lint`     | `golangci-lint run -c <config> <packages>` | 5m      | exit-код                   | `exit > 1` + panic + module-fetch               | конфиг ищется автоматически, передаётся через `-c` |
-| `test`     | `go test -timeout=<t> <flags> <packages>`  | 10m     | exit-код                   | module-fetch **без** panic-предиката            | `-timeout` рендерится из эффективного `timeoutMs`  |
+| Гейт       | argv                                       | Таймаут | Контракт вывода            | `envFail`                                       | Особенности                                                  |
+| ---------- | ------------------------------------------ | ------- | -------------------------- | ----------------------------------------------- | ------------------------------------------------------------ |
+| `generate` | `go generate <flags> <packages>`           | 5m      | drift реплики = FAIL       | module-fetch + `executable file not found`↦hint | `driftMeansFailure: true`; skip без `//go:generate` в скоупе |
+| `build`    | `go build <flags> <packages>`              | 5m      | exit-код                   | panic + module-fetch                            | —                                                            |
+| `vet`      | `go vet <flags> <packages>`                | 5m      | exit-код                   | panic + module-fetch                            | —                                                            |
+| `fmt`      | `gofmt -l <files>`                         | 1m      | **exit 0 + stdout = FAIL** | —                                               | никогда `go fmt` (мутирует, D-STACK-005)                     |
+| `lint`     | `golangci-lint run -c <config> <packages>` | 5m      | exit-код                   | `exit > 1` + panic + module-fetch               | конфиг ищется автоматически, передаётся через `-c`           |
+| `test`     | `go test -timeout=<t> <flags> <packages>`  | 10m     | exit-код                   | module-fetch **без** panic-предиката            | `-timeout` рендерится из эффективного `timeoutMs`            |
 
 **`-mod=vendor`** добавляется при вендоринге, но **не** при наличии `go.work` — комбинация отвергается тулчейном.
 
@@ -104,13 +104,13 @@
 
 ### 7.4 Контракт «гейт наблюдает» и реплика прогона
 
-| Фикстура           | Гейт              | Состояние                          | Ожидание                               |
-| ------------------ | ----------------- | ---------------------------------- | -------------------------------------- |
-| `go-mutating-gate` | extra             | гейт пишет файл, без `sandbox`     | `violation` + список файлов            |
-| `go-sandbox-drift` | extra             | `sandbox: true`, гейт пишет файл   | `fail` + drift-список                  |
-| `go-dirty-tree`    | весь план         | незакоммиченные правки + untracked | гейты видят правки; дерево не изменено |
-| `go-hang`          | extra             | скрипт спит дольше `timeout: 2s`   | `timeout` + note «не правь код»        |
-| `go-no-commits`    | `golang:generate` | git-репозиторий без коммитов       | `env-fail` (реплике нужен HEAD)        |
+| Фикстура           | Гейт              | Состояние                                  | Ожидание                               |
+| ------------------ | ----------------- | ------------------------------------------ | -------------------------------------- |
+| `go-mutating-gate` | extra             | гейт пишет файл, без `driftMeansFailure`   | `violation` + список файлов            |
+| `go-sandbox-drift` | extra             | `driftMeansFailure: true`, гейт пишет файл | `fail` + drift-список                  |
+| `go-dirty-tree`    | весь план         | незакоммиченные правки + untracked         | гейты видят правки; дерево не изменено |
+| `go-hang`          | extra             | скрипт спит дольше `timeout: 2s`           | `timeout` + note «не правь код»        |
+| `go-no-commits`    | `golang:generate` | git-репозиторий без коммитов               | `env-fail` (реплике нужен HEAD)        |
 
 ### 7.5 Конфиг стека: skip, override, extra, requires, envFail
 

@@ -61,7 +61,7 @@ npx gennady verify --stack=golang             # one-shot stack.use
 
 Contract (all stacks): **RUN-ALL** · **SUPPRESS-ON-SUCCESS** · exit `0` all pass, `1` gate failed, `4` bad invocation/config, `5` no stack detected.
 
-Every gate runs in an ephemeral working-tree replica (one per verify run) — the real tree is physically untouched; a gate that mutates files reports `VIOLATION` (move the mutation to fixers, or mark the gate `sandbox: true` if drift is its verdict).
+Every gate runs in an ephemeral working-tree replica (one per verify run) — the real tree is physically untouched; a gate that mutates files reports `VIOLATION` (move the mutation to fixers, or mark the gate `driftMeansFailure: true` if drift is its verdict).
 
 Codegen loop: `golang:generate` runs `go generate` in that replica BEFORE build and fails with the drifted file list; `gennady fix golang:generate` materializes the generated code in the real tree for you to commit. Works whether generated files are committed or gitignored. Generator binaries must be reachable outside the tree (`go install`, go.mod `tool` directive) — gitignored binaries are not replicated into the sandbox; a missing generator reports ENV_FAIL with an install hint, not a code finding.
 

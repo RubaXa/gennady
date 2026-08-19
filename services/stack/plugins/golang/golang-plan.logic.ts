@@ -232,7 +232,7 @@ export function planGoGates(project: GoProject, scope: GoScope, options: GatePla
             cwd: project.root,
             timeoutMs: GATE_TIMEOUTS_MS[id],
             outputMeansFailure: false,
-            sandbox: true,
+            driftMeansFailure: true,
             envFail: GO_GENERATE_ENV_FAIL,
             skipped: null,
           });

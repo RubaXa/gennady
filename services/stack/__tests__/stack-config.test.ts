@@ -251,11 +251,11 @@ describe('loadStackConfig — strict validation (fatal errors)', () => {
     );
   });
 
-  it('accepts sandbox: true on extraGates and overrideGates (drift gates, D-STACK-013)', () => {
+  it('accepts driftMeansFailure: true on extraGates and overrideGates (drift gates, D-STACK-013)', () => {
     withConfigs(
       {
         'gennady.yaml':
-          'stack:\n  golang:\n    overrideGates:\n      build: { sandbox: true }\n    extraGates:\n      - id: canonical-generate\n        argv: [make, generate]\n        sandbox: true\n',
+          'stack:\n  golang:\n    overrideGates:\n      build: { driftMeansFailure: true }\n    extraGates:\n      - id: canonical-generate\n        argv: [make, generate]\n        driftMeansFailure: true\n',
       },
       (dir) => {
         assert.deepEqual(loadStackConfig(dir, GATE_IDS).errors, []);
@@ -263,17 +263,17 @@ describe('loadStackConfig — strict validation (fatal errors)', () => {
     );
   });
 
-  it('rejects sandbox inside fixers — a fixer runs in the real tree by definition', () => {
+  it('rejects driftMeansFailure inside fixers — a fixer mutates the real tree by design', () => {
     withConfigs(
       {
         'gennady.yaml':
-          'stack:\n  golang:\n    fixers:\n      - id: gen\n        argv: [make, generate]\n        sandbox: true\n',
+          'stack:\n  golang:\n    fixers:\n      - id: gen\n        argv: [make, generate]\n        driftMeansFailure: true\n',
       },
       (dir) => {
         const load = loadStackConfig(dir, GATE_IDS);
         assert.ok(
-          load.errors.some((error) => error.path.endsWith('.sandbox')),
-          `expected a .sandbox error, got: ${JSON.stringify(load.errors)}`
+          load.errors.some((error) => error.path.endsWith('.driftMeansFailure')),
+          `expected a .driftMeansFailure error, got: ${JSON.stringify(load.errors)}`
         );
       }
     );
@@ -378,20 +378,22 @@ describe('applyStackConfig', () => {
     assert.equal(effective[0]?.timeoutMs, 600_000);
   });
 
-  it('plumbs GateSpec.sandbox into the planned gate (extra) and inherits it on override', () => {
+  it('plumbs GateSpec.driftMeansFailure into the planned gate (extra) and inherits it on override', () => {
     const effective = applyStackConfig(
-      [gate('build', { sandbox: true })],
+      [gate('build', { driftMeansFailure: true })],
       {
         overrideGates: { build: { argv: ['make', 'build'] } },
-        extraGates: [{ id: 'canonical-generate', argv: ['make', 'generate'], sandbox: true }],
+        extraGates: [
+          { id: 'canonical-generate', argv: ['make', 'generate'], driftMeansFailure: true },
+        ],
       },
       'golang',
       '/repo',
       provenance
     );
 
-    assert.equal(effective[0]?.sandbox, true, 'override without the field inherits it');
-    assert.equal(effective[1]?.sandbox, true, 'extra gate carries its declared sandbox');
+    assert.equal(effective[0]?.driftMeansFailure, true, 'override without the field inherits it');
+    assert.equal(effective[1]?.driftMeansFailure, true, 'extra gate carries its declared flag');
   });
 });
 

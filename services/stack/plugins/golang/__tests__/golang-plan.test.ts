@@ -78,7 +78,7 @@ describe('planGoGates', () => {
     assert.ok(!ids.includes('tidy'), 'tidy is an extraGates recipe, not a built-in');
   });
 
-  it('plans a sandboxed generate gate when the scope carries //go:generate directives', () => {
+  it('plans a drift generate gate when the scope carries //go:generate directives', () => {
     const withDirective = scopeWithFiles({
       'a.go': 'package a\n\n//go:generate easyjson a.go\n',
     });
@@ -87,7 +87,11 @@ describe('planGoGates', () => {
     );
 
     assert.equal(generate?.skipped, null);
-    assert.equal(generate?.sandbox, true, 'the generator mutates — it must run in the replica');
+    assert.equal(
+      generate?.driftMeansFailure,
+      true,
+      'the generator mutates — its drift is the verdict'
+    );
     assert.deepEqual(generate?.argv.slice(1, 2), ['generate']);
   });
 

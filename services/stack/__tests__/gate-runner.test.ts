@@ -287,7 +287,7 @@ describe('runVerify — sandboxed gates (spec §2, D-STACK-011)', () => {
       const gate: Gate = {
         ...shellGate('generate', 'echo regenerated > gen.txt'),
         cwd: dir,
-        sandbox: true,
+        driftMeansFailure: true,
       };
       const report = runVerify([runOf([gate])], []);
 
@@ -300,7 +300,7 @@ describe('runVerify — sandboxed gates (spec §2, D-STACK-011)', () => {
 
   it('passes a drift-free sandboxed gate', () => {
     withGitFixture((dir) => {
-      const gate: Gate = { ...shellGate('generate', 'true'), cwd: dir, sandbox: true };
+      const gate: Gate = { ...shellGate('generate', 'true'), cwd: dir, driftMeansFailure: true };
       const report = runVerify([runOf([gate])], []);
 
       assert.equal(report.results[0]?.status, 'pass');
@@ -314,7 +314,7 @@ describe('runVerify — sandboxed gates (spec §2, D-STACK-011)', () => {
       const gate: Gate = {
         ...shellGate('generate', 'grep -q agent-edit gen.txt && grep -q untracked new.txt'),
         cwd: dir,
-        sandbox: true,
+        driftMeansFailure: true,
       };
       const report = runVerify([runOf([gate])], []);
 
@@ -328,7 +328,7 @@ describe('runVerify — sandboxed gates (spec §2, D-STACK-011)', () => {
       const gate: Gate = {
         ...shellGate('generate', 'echo generator-output > gen.txt'),
         cwd: dir,
-        sandbox: true,
+        driftMeansFailure: true,
       };
       const report = runVerify([runOf([gate])], []);
 
@@ -342,7 +342,7 @@ describe('runVerify — sandboxed gates (spec §2, D-STACK-011)', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sandbox-nogit-'));
     try {
       fixtureGit(dir, 'init', '-q', '-b', 'main'); // repo without a single commit
-      const gate: Gate = { ...shellGate('generate', 'true'), cwd: dir, sandbox: true };
+      const gate: Gate = { ...shellGate('generate', 'true'), cwd: dir, driftMeansFailure: true };
       const report = runVerify([runOf([gate])], []);
 
       assert.equal(report.results[0]?.status, 'env-fail');

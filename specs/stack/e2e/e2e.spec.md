@@ -36,7 +36,7 @@ product
 
 ```bash
 # === все стековые наборы; у каждого стека свой артефакт (D-SE2E-003) ===
-$ npm run test:e2e:stack
+$ npm run test:stack-e2e
 
 [golang] build:publish → pack → install → /tmp/gennady-e2e-golang-a1b2c/runner
 [golang] toolchains: go 1.24.2 ✓ · golangci-lint 1.64.5 ✓
@@ -61,7 +61,7 @@ $ npm run test:e2e:stack
 Отладка одной фикстуры — временное дерево сохраняется:
 
 ```bash
-$ STACK_E2E_KEEP=1 npm run test:e2e:stack -- --fixture=go-make-lint-exit2
+$ STACK_E2E_KEEP=1 npm run test:stack-e2e -- --fixture=go-make-lint-exit2
 
 ▶ go-make-lint-exit2    golang:lint    expect fail    ✗ got env-fail
   fixture kept: /tmp/gennady-e2e-golang-a1b2c/go-make-lint-exit2
@@ -325,7 +325,7 @@ graph TD
   - `scripts/stack-e2e.ts`
 - **Fixture files:** по матрицам владельцев — `plugins/golang` §7, `plugins/node` §6, `config` §6
 - **Structural changes:**
-  - `package.json`: скрипты `test:e2e:stack`, `test:e2e:config`; STRICT-переменные в `prepublishOnly`
+  - `package.json`: скрипты `test:stack-e2e`, `test:config-e2e`; STRICT-переменные в `prepublishOnly`
   - `infra-base` §2.1: расширить обязательный паттерн исключения фикстур на `**/__tests__/e2e/fixtures/**` — текущий `**/__tests__/fixtures/**` его не матчит (проверено); фикстуры намеренно содержат невалидный YAML/JSON
   - `stack.spec.md` §5: `FR-STACK-15` — правка классификации вердикта сопровождается фикстурой
 - **Open risks:**

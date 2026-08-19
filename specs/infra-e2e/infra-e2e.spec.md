@@ -34,9 +34,9 @@ infrastructure
 
 | Набор                                            | Поверхность                                                              | npm-команда       | Тулчейны          | STRICT-переменная   |
 | ------------------------------------------------ | ------------------------------------------------------------------------ | ----------------- | ----------------- | ------------------- |
-| [`cli/e2e`](../cli/e2e/e2e.spec.md)              | Поверхность CLI: bin, упаковка, stdout/exit-коды команд                  | `test:e2e`        | npm, npx, git     | `CLI_E2E_STRICT`    |
-| [`stack/e2e`](../stack/e2e/e2e.spec.md)          | Вердикты гейтов на настоящих тулчейнах (механизм фикстур и ожиданий)     | `test:e2e:stack`  | git + по фикстуре | `STACK_E2E_STRICT`  |
-| [`stack/config`](../stack/config/config.spec.md) | Семантика конфига: discovery, deep-merge, провенанс, фатальная валидация | `test:e2e:config` | git               | `CONFIG_E2E_STRICT` |
+| [`cli/e2e`](../cli/e2e/e2e.spec.md)              | Поверхность CLI: bin, упаковка, stdout/exit-коды команд                  | `test:cli-e2e`    | npm, npx, git     | `CLI_E2E_STRICT`    |
+| [`stack/e2e`](../stack/e2e/e2e.spec.md)          | Вердикты гейтов на настоящих тулчейнах (механизм фикстур и ожиданий)     | `test:stack-e2e`  | git + по фикстуре | `STACK_E2E_STRICT`  |
+| [`stack/config`](../stack/config/config.spec.md) | Семантика конфига: discovery, deep-merge, провенанс, фатальная валидация | `test:config-e2e` | git               | `CONFIG_E2E_STRICT` |
 
 Матрицы фикстур **не живут здесь**: они принадлежат владельцам поверхностей — по стекам это спеки плагинов ([`golang`](../stack/plugins/golang/golang.spec.md), [`node`](../stack/plugins/node/node.spec.md)), по конфигу — `config.spec.md`. Новый набор добавляется строкой в эту таблицу и обязан удовлетворять §3, §5, §7.
 
@@ -46,18 +46,19 @@ infrastructure
 - `<SUITE>_STRICT=1` → тот же случай становится **отказом** с текстом `TOOLCHAIN_MISSING: <id>` и инструкцией по установке.
 - STRICT обязателен: в CI (§6) и в `prepublishOnly`. Публикация пакета, часть проверок которого молча не исполнялась, недопустима.
 - `git` — не опциональный тулчейн ни для одного набора: без него не работает реплика прогона (stack.spec D-STACK-013) и не создаются фикстуры-репозитории. Его отсутствие — отказ всегда, независимо от STRICT.
-- Наблюдаемое предупреждение: сегодняшний `npm run test:e2e` печатает 18 прошедших из 45 — ровно та тишина, против которой введена политика.
+- Наблюдаемое предупреждение: сегодняшний `npm run test:cli-e2e` печатает 18 прошедших из 45 — ровно та тишина, против которой введена политика.
 
 ## 6. CI/CD Strategy
 
-Решение уровня проекта: **CI обязателен**, иначе E2E-наборы устаревают за недели, а STRICT-режим не исполняется никогда, кроме дня публикации. Предлагаемая реализация — GitHub Actions, четыре джобы, все на `pull_request` и `push: main`:
+Решение уровня проекта: **CI обязателен**, иначе E2E-наборы устаревают за недели, а STRICT-режим не исполняется никогда, кроме дня публикации. Предлагаемая реализация — GitHub Actions, пять джоб, все на `pull_request` и `push: main`:
 
-| Джоба       | Что делает                                                      | Тулчейны                | Обязательна для merge |
-| ----------- | --------------------------------------------------------------- | ----------------------- | --------------------- |
-| `lint`      | `npm run type-check` + `lint:contracts` + `format:check`        | node                    | да                    |
-| `unit`      | `npm test`                                                      | node                    | да                    |
-| `cli-e2e`   | `CLI_E2E_STRICT=1 npm run test:e2e`                             | node                    | да                    |
-| `stack-e2e` | `STACK_E2E_STRICT=1 npm run test:e2e:stack` + `test:e2e:config` | node, go, golangci-lint | да                    |
+| Джоба        | Что делает                                               | Тулчейны                | Обязательна для merge |
+| ------------ | -------------------------------------------------------- | ----------------------- | --------------------- |
+| `lint`       | `npm run type-check` + `lint:contracts` + `format:check` | node                    | да                    |
+| `unit`       | `npm test`                                               | node                    | да                    |
+| `cli-e2e`    | `CLI_E2E_STRICT=1 npm run test:cli-e2e`                  | node                    | да                    |
+| `config-e2e` | `CONFIG_E2E_STRICT=1 npm run test:config-e2e`            | node, git               | да                    |
+| `stack-e2e`  | `STACK_E2E_STRICT=1 npm run test:stack-e2e`              | node, go, golangci-lint | да                    |
 
 ```yaml
 # .github/workflows/ci.yml (предлагается)
@@ -95,8 +96,17 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm }
       - run: npm ci
-      - run: npm run test:e2e
+      - run: npm run test:cli-e2e
         env: { CLI_E2E_STRICT: '1' }
+  config-e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run test:config-e2e
+        env: { CONFIG_E2E_STRICT: '1' }
   stack-e2e:
     runs-on: ubuntu-latest
     steps:
@@ -108,9 +118,7 @@ jobs:
       - run: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b "$(go env GOPATH)/bin" v1.64.5
       - run: echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
       - run: npm ci
-      - run: npm run test:e2e:config
-        env: { CONFIG_E2E_STRICT: '1' }
-      - run: npm run test:e2e:stack
+      - run: npm run test:stack-e2e
         env: { STACK_E2E_STRICT: '1' }
 ```
 
@@ -183,7 +191,7 @@ graph TD
 
 - **Files to be created:** `.github/workflows/ci.yml` (§6)
 - **Structural changes:**
-  - `package.json`: скрипты `test:e2e:stack`, `test:e2e:config`; STRICT-переменные в `prepublishOnly`
+  - `package.json`: переименование `test:e2e` → `test:cli-e2e` (единая стратегия `test:<suite>-e2e`), новые `test:stack-e2e` и `test:config-e2e`; STRICT-переменные в `prepublishOnly`
   - `infra-base` §2.1: расширить обязательный паттерн исключения фикстур на `**/__tests__/e2e/fixtures/**` — текущий `**/__tests__/fixtures/**` его не матчит (проверено), а фикстуры намеренно содержат невалидный YAML/JSON
   - `cli/__tests__/e2e/setup.ts` + `cli/e2e` D-015: привести к D-IE2E-002 (`build:publish`) и убрать неверное утверждение об идентичности артефакта
   - `specs/README.md`: зарегистрировать scope `infra-e2e` в графе и таблице
