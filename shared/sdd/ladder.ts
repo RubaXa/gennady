@@ -81,7 +81,7 @@ export function renderLadder(s: LadderInput): string {
 
   const step5 =
     s.tasksTotal === null
-      ? 'tasks/ отсутствует'
+      ? 'specs/3-tasks.md — отсутствует'
       : `тикетов: ${s.tasksTotal} · done: ${s.tasksDone ?? 0}`;
 
   const name = s.portalPresent && s.projectName ? s.projectName : '«пустой репозиторий»';

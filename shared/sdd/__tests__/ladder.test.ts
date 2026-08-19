@@ -27,7 +27,7 @@ describe('renderLadder', () => {
     assert.match(text, /⬜ 2\. Скоупы\s+нет ни одной/);
     assert.match(text, /⬜ 3\. Модули\s+—/);
     assert.match(text, /⬜ 4\. Инфраструктура\s+не настроена/);
-    assert.match(text, /⬜ 5\. Задачи\s+tasks\/ отсутствует/);
+    assert.match(text, /⬜ 5\. Задачи\s+specs\/3-tasks\.md — отсутствует/);
     assert.match(text, /👉 Следующий шаг: создать проект — \/sdd/);
   });
 
@@ -122,7 +122,7 @@ describe('renderLadder', () => {
     assert.match(text, /👉 Следующий шаг: выполнить следующую задачу — \/sdd-execute/);
   });
 
-  it('everything else closed, tasks/ absent: next step is scaffold', () => {
+  it('everything else closed, no task rollup: next step is scaffold', () => {
     const text = renderLadder({
       projectName: 'Acme',
       portalPresent: true,
@@ -134,7 +134,7 @@ describe('renderLadder', () => {
       tasksTotal: null,
       tasksDone: null,
     });
-    assert.match(text, /⬜ 5\. Задачи\s+tasks\/ отсутствует/);
+    assert.match(text, /⬜ 5\. Задачи\s+specs\/3-tasks\.md — отсутствует/);
     assert.match(text, /👉 Следующий шаг: разбить спеки на задачи — \/sdd-scaffold/);
   });
 
