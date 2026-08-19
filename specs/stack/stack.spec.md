@@ -6,7 +6,7 @@ library
 
 ## 1. Vision & Primary Goal
 
-Плагинная система стеков: **слой per-stack и per-repo знаний для команд «Геннадия»**. Стек (node, golang, дальше — любой) — деталь реализации за общим интерфейсом `StackPlugin`; различия между репозиториями выражаются не разными командами, а конфигом ([config.spec.md](./config/config.spec.md)), который переопределяет и расширяет встроенные плагины.
+Плагинная система стеков: **слой per-stack и per-repo знаний для команд «Геннадия»**. Стек (node, golang, дальше — любой) — деталь реализации за общим интерфейсом `StackPlugin`; различия между репозиториями выражаются не разными командами, а конфигом ([config.spec.md](../config/config.spec.md)), который переопределяет и расширяет встроенные плагины.
 
 Проблема: сегодня каждая команда, которая шеллится наружу, несёт захардкоженные знания об npm (`verify.sh` → `classify-scripts` → `npm run …`; `testcov` → vitest/jest; `resolve-verify-commands` → `package.json`). Каждый новый стек порождал бы новые команды (`go-verify`, `rust-verify`, …) — анти-паттерн «в разных репах разные команды Геннадия».
 
@@ -44,7 +44,7 @@ _Каждый термин ниже используется всеми спек
 | **FAIL**                | Гейт отработал и нашёл проблему **в коде**. Агент правит код.                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | **ENV_FAIL**            | Инструмент гейта не смог отработать (паника, ошибка конфига инструмента, недоступный registry/proxy, version skew). Код не виноват; отчёт запрещает править исходники. Классифицируется предикатами гейта (§4.2).                                                                                                                                                                                                                                                                                                                |
 | **TIMEOUT**             | Гейт превысил свой per-gate `timeout` и был убит. Отдельный статус, не FAIL.                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| **Stack config**        | Секция `stack` конфига «Геннадия» — [config.spec.md](./config/config.spec.md).                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| **Stack config**        | Секция `stack` конфига «Геннадия» — [config.spec.md](../config/config.spec.md).                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 
 ## 3. Detection Algorithm
 
@@ -282,7 +282,7 @@ type Cmd = {
 | FR-STACK-01 | `StackPlugin` — общий интерфейс стека: `id`, `detect`, обязательный фасет `verify`, опциональные фасеты (§4)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | FR-STACK-02 | Реестр встроенных плагинов `node`, `golang`; детекция по маркер-файлу в корне (§3); активны все распознавшие                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | FR-STACK-03 | `gennady verify` — стек-агностичная команда: детекция → скоуп → план → RUN-ALL прогон → отчёт; `--plan` показывает план, диагностику и провенанс конфига без запуска                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| FR-STACK-04 | Конфиг по [config.spec.md](./config/config.spec.md): deep-merge источников с per-key провенансом, `use`, per-plugin `skipGates` / `overrideGates` / `extraGates`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| FR-STACK-04 | Конфиг по [config.spec.md](../config/config.spec.md): deep-merge источников с per-key провенансом, `use`, per-plugin `skipGates` / `overrideGates` / `extraGates`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | FR-STACK-05 | Порядок применения конфига: план плагина → `overrideGates` → `skipGates` → `extraGates`. `overrideGates` и `extraGates` разделяют одну схему `GateSpec`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | FR-STACK-06 | Гейт — чистые данные; исполняется без shell; `env` мержится поверх окружения процесса; раннер один на все стеки                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | FR-STACK-07 | **Per-gate timeout обязателен**; дефолты задаёт плагин per-gate, конфиг переопределяет; глобального таймаута нет — верхняя граница прогона = сумма таймаутов плана (D-STACK-007). Инструмент с собственным флагом таймаута получает то же значение во флаг                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
@@ -366,7 +366,7 @@ $ cd /tmp/empty && gennady verify
 # exit 5
 ```
 
-Пример конфига (`gennady.yaml`; полный справочник полей — [config.spec.md](./config/config.spec.md)):
+Пример конфига (`gennady.yaml`; полный справочник полей — [config.spec.md](../config/config.spec.md)):
 
 ```yaml
 stack:
@@ -409,7 +409,7 @@ stack:
 | `StackRun`                                     | Value Object | Вклад одного стека: `detection`, `scope`, `gates`                                                          |
 | `VerifyReport`                                 | Value Object | `runs`, `diagnostics`, `results`, `passed`, `total`, `ok`                                                  |
 | `GatePlanOptions`                              | Value Object | `pluginConfig` (срез конфига плагина после merge)                                                          |
-| `StackConfig`, `StackPluginConfig`, `GateSpec` | Type         | Схема конфига — [config.spec.md](./config/config.spec.md)                                                  |
+| `StackConfig`, `StackPluginConfig`, `GateSpec` | Type         | Схема конфига — [config.spec.md](../config/config.spec.md)                                                 |
 | `loadStackConfig`                              | Function     | Загрузка + deep-merge + строгая валидация (config.spec §2, §5); ошибки фатальны                            |
 | `pluginConfigOf`                               | Function     | Извлечение среза конфига одного плагина                                                                    |
 | `applyStackConfig`                             | Function     | Применение конфига к плану: `overrideGates` → `skipGates` → `extraGates` (FR-STACK-05)                     |
@@ -451,7 +451,7 @@ stack:
 
 ### 8.3 Stack Config
 
-- Контракты схемы, merge и строгой валидации — [config.spec.md](./config/config.spec.md) §4.1.
+- Контракты схемы, merge и строгой валидации — [config.spec.md](../config/config.spec.md) §4.1.
 
 ### 8.4 Verify Command
 
@@ -504,7 +504,7 @@ cli/cmd/fix/
 
 - **Status:** active
 - **Recorded:** spec review round 2, PR #5
-- **Why:** Полное обоснование и схема — [config.spec.md](./config/config.spec.md) (формат, merge с per-key провенансом, версионирование, строгая валидация).
+- **Why:** Полное обоснование и схема — [config.spec.md](../config/config.spec.md) (формат, merge с per-key провенансом, версионирование, строгая валидация).
 
 ### D-STACK-003 — Гейт — данные, раннер — один
 
@@ -591,9 +591,9 @@ cli/cmd/fix/
 
 ## 11. Inter-Module Dependencies
 
-**Модули scope'а:** [`config`](./config/config.spec.md) — схема и merge конфига; [`plugins/golang`](./plugins/golang/golang.spec.md) и [`plugins/node`](./plugins/node/node.spec.md) — per-stack возможности, гейты и матрицы use case'ов (зоны ответственности мейнтейнеров стеков); [`e2e`](./e2e/e2e.spec.md) — механизм E2E-проверки вердиктов под доктриной [`infra-e2e`](../infra-e2e/infra-e2e.spec.md).
+**Модули scope'а:** [`plugins/golang`](./plugins/golang/golang.spec.md) и [`plugins/node`](./plugins/node/node.spec.md) — per-stack возможности, гейты и матрицы use case'ов (зоны ответственности мейнтейнеров стеков); [`e2e`](./e2e/e2e.spec.md) — механизм E2E-проверки вердиктов под доктриной [`infra-e2e`](../infra-e2e/infra-e2e.spec.md).
 
-- **Depends on:** `shared/backend/rc/rc-config.ts` (личный `.gennadyrc`), `shared/common/parse-args.ts`
+- **Depends on:** [`config`](../config/config.spec.md) (обнаружение, merge и провенанс конфига; секция `stack` описана там же), `shared/common/parse-args.ts`
 - **Provides to:** `cli` (команда `verify`; далее — fix/testcov/lint по §4.3), `ai-skills` (`verify.sh`, skill `sdd-infra-golang`)
 
 ## 12. Handoff to Task Scaffolding

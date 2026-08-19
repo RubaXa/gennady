@@ -20,12 +20,11 @@ import {
   BUILTIN_STACK_PLUGINS,
   detectStacks,
 } from '../../../services/stack/stack-registry.ts';
+import { formatDuration, provenanceOf } from '../../../services/config/config-loader.ts';
 import {
   applyStackConfig,
-  formatDuration,
   loadStackConfig,
   pluginConfigOf,
-  provenanceOf,
 } from '../../../services/stack/stack-config.ts';
 import {
   formatVerifyReport,

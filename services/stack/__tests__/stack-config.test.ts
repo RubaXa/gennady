@@ -9,8 +9,7 @@ import os from 'node:os';
 import path from 'node:path';
 import type { Gate, StackId, StackPluginConfig } from '../stack.types.ts';
 
-const { loadStackConfig, applyStackConfig, pluginConfigOf, parseDuration, formatDuration } =
-  await import('../stack-config.ts');
+const { loadStackConfig, applyStackConfig, pluginConfigOf } = await import('../stack-config.ts');
 
 /** Gate-id vocabulary used by validation in these tests. */
 const GATE_IDS: Readonly<Record<StackId, readonly string[]>> = {
@@ -45,23 +44,6 @@ function withConfigs<T>(files: Record<string, string>, fn: (dir: string) => T): 
     fs.rmSync(dir, { recursive: true, force: true });
   }
 }
-
-describe('parseDuration / formatDuration', () => {
-  it('parses s/m/h and rejects everything else', () => {
-    assert.equal(parseDuration('90s'), 90_000);
-    assert.equal(parseDuration('5m'), 300_000);
-    assert.equal(parseDuration('1h'), 3_600_000);
-    assert.equal(parseDuration('5 m'), null);
-    assert.equal(parseDuration('600000'), null);
-    assert.equal(parseDuration('5min'), null);
-  });
-
-  it('formats back to the shortest exact unit', () => {
-    assert.equal(formatDuration(300_000), '5m');
-    assert.equal(formatDuration(90_000), '90s');
-    assert.equal(formatDuration(3_600_000), '1h');
-  });
-});
 
 describe('loadStackConfig — discovery and merge', () => {
   it('returns null config without errors when no source exists', () => {

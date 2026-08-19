@@ -22,7 +22,7 @@ product
 | ---------------------------------------------- | ------------------------------------------------------- |
 | Go-фикстуры (28)                               | [`plugins/golang` §7](../plugins/golang/golang.spec.md) |
 | npm-фикстуры (12)                              | [`plugins/node` §6](../plugins/node/node.spec.md)       |
-| Конфиг: discovery, merge, провенанс, валидация | [`config` §6](../config/config.spec.md)                 |
+| Конфиг: discovery, merge, провенанс, валидация | [`config` §6](../../config/config.spec.md)              |
 
 **Зачем этот уровень вообще.** Классификация вердикта — композиция плагина, конфига, порядка проверок в раннере и exit-кодов настоящего инструмента. Юнит-тесты проверяют звенья по отдельности и **структурно не способны** поймать ошибку композиции. Доказательство из практики (PR #5): гейт `golang:lint` несёт `exit > 1 ↦ ENV_FAIL`, а `applyStackConfig` наследует предикаты при `overrideGates.lint.argv` — документированном способе обёртки. `make` возвращает 2 на любом упавшем рецепте, поэтому `argv: [make, lint]` превращает **каждую настоящую находку линтера** в `ENV_FAIL` с текстом «это НЕ находка про код, не меняй исходники». Все юнит-тесты при этом зелёные: каждое звено ведёт себя как задумано, ошибочна композиция. Класс дефектов особенно дорог тем, что не ломает сборку, а **тихо разворачивает инструкцию агенту** — агент бросает настоящий баг.
 
@@ -297,7 +297,7 @@ _Общие решения (артефакт `build:publish`, политика �
 ## 8. Inter-Module Dependencies
 
 - **Governed by:** [`infra-e2e`](../../infra-e2e/infra-e2e.spec.md) — ценности, политика скипов, CI, покрытие флагов
-- **Depends on:** [`stack`](../stack.spec.md) (вердикты и раннер — предмет проверки), [`config`](../config/config.spec.md) (`gennady.yaml` фикстур, `CONFIG_ERROR`)
+- **Depends on:** [`stack`](../stack.spec.md) (вердикты и раннер — предмет проверки), [`config`](../../config/config.spec.md) (`gennady.yaml` фикстур, `CONFIG_ERROR`)
 - **Serves:** [`plugins/golang`](../plugins/golang/golang.spec.md), [`plugins/node`](../plugins/node/node.spec.md) — их матрицы исполняются этим механизмом
 - **Scope Reference (cross-scope):** [`cli`](../../cli/cli.spec.md) — `verify`/`fix` вызываются как чёрный ящик; [`cli/e2e`](../../cli/e2e/e2e.spec.md) — родственный набор другой поверхности; [`infra-base`](../../infra-base/infra-base.spec.md) — `node:test`, vite, исключение фикстур
 - **External:** Node.js 22+ (`npm`, `npx`), `git` (обязателен); `go`, `golangci-lint`, `docker` — по `requires`
