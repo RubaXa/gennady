@@ -11,5 +11,5 @@
       ```
 
       Set ticket Meta Status → `[ ] TODO`. Update `Reopens: <new count>`.
-      Sync tracker: `tasks/<scope>/README.md` row → `[ ] TODO`, `tasks/README.md` index → adjust counts.
+      Sync tracker: the owning `*.3-tasks.md` row → `[ ] TODO`; parent rollups (scope and `specs/3-tasks.md`) → adjust counts.
     </Axiom>

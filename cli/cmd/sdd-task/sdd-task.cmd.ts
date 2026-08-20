@@ -3,7 +3,7 @@
 // @tasks: N/A
 
 import { readFileSync, readdirSync } from 'node:fs';
-import { resolve, join } from 'node:path';
+import { resolve, join, relative } from 'node:path';
 import { logger } from '#logger';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
 import { extractSection } from '../../../shared/sdd/section.ts';
@@ -24,11 +24,14 @@ import {
 } from '../../../shared/sdd/check.ts';
 import { checkReadiness, gatherReadinessInput } from '../../../shared/sdd/readiness.ts';
 import { parseScopes } from '../../../shared/sdd/portal.ts';
+import { looksLikeTaskId } from '../../../shared/sdd/task-id.ts';
 import {
   fileError,
   formatPlan,
   formatPhase,
   notATicket,
+  unknownIdError,
+  ambiguousIdError,
   type TaskOutcome,
 } from './sdd-task.types.ts';
 
@@ -96,7 +99,9 @@ function infraGateTicketIds(refs: TicketRef[], root: string): string[] {
     .map((r) => r.taskId as string);
 }
 
-/** @purpose Render the execution map — tickets ready now and those still blocked, by which deps. | @param refs Every ticket's graph ref. | @param root Absolute project root (readiness + portal reads). | @returns A human + agent readable map. */
+/** @purpose Render the execution map — tickets ready now and those still blocked, by which deps.
+ * @invariant Every pickable/blocked line carries the ticket's relative path, so the map is self-sufficient without a follow-up lookup.
+ * @param refs Every ticket's graph ref. | @param root Absolute project root (readiness + portal reads). | @returns A human + agent readable map. */
 function formatMap(refs: TicketRef[], root: string): string {
   const pickable = pickableTasks(refs);
   const pickableIds = new Set(pickable.map((r) => r.taskId));
@@ -106,15 +111,22 @@ function formatMap(refs: TicketRef[], root: string): string {
   const blocked = refs.filter(
     (r) => /\bTODO\b/i.test(r.status ?? '') && !pickableIds.has(r.taskId)
   );
+  const relPath = (file: string): string => relative(root, file) || file;
   const lines = [
     `[sdd-task] execution map — ${pickable.length} pickable, ${blocked.length} blocked`,
+    `root: ${root}`,
   ];
-  lines.push(`pickable (ready now): ${pickable.map((r) => r.taskId).join(', ') || '— none'}`);
+  if (pickable.length === 0) {
+    lines.push('pickable (ready now): — none');
+  } else {
+    lines.push('pickable (ready now):');
+    for (const r of pickable) lines.push(`  ${r.taskId} → ${relPath(r.file)}`);
+  }
   for (const b of blocked) {
     const unmet = b.dependencies.filter(
       (d) => !/^(none|n\/a|[—-])\b/i.test(d.trim()) && !doneIds.has(d)
     );
-    lines.push(`blocked: ${b.taskId} ← ${unmet.join(', ')}`);
+    lines.push(`blocked: ${b.taskId} ← ${unmet.join(', ')}  →  ${relPath(b.file)}`);
   }
   const gateIds = infraGateTicketIds(refs, root);
   if (gateIds.length > 0) {
@@ -131,6 +143,57 @@ function formatMap(refs: TicketRef[], root: string): string {
   return lines.join('\n');
 }
 
+/** @purpose Result of resolving the CLI's ticket argument — loaded content (+ an optional resolution line) or a failure outcome. */
+type ResolvedTicket =
+  | { ok: true; content: string; resolutionLine: string | null }
+  | { ok: false; outcome: TaskOutcome };
+
+// Fixes the tool's own dead-end: the map hands out Task-IDs and its `next:` hint says to call
+// `sdd-task <id>`, but `run()` used to treat every argument as a path — a bare id (e.g. `TDM-boot`)
+// failed as file-not-found with no path to retry.
+/**
+ * @purpose Resolve the ticket argument to file content — a path (unchanged), or, when unreadable and
+ * Task-ID-shaped, a scan-and-match by Meta Task-ID (AX_TASK_RESOLUTION).
+ * @param ticket Raw CLI argument (a ticket path or a bare Task-ID).
+ * @param root Absolute project root — scanned only when the direct path read fails and the argument looks like an id.
+ * @returns Ticket content + a `[sdd-task] <id> → <path>` resolution line to prepend (null when a path was given directly), or a failure outcome.
+ */
+function resolveTicketArg(ticket: string, root: string): ResolvedTicket {
+  const directPath = resolve(ticket);
+  try {
+    return { ok: true, content: readFileSync(directPath, 'utf-8'), resolutionLine: null };
+  } catch {
+    // Not a readable path — fall through to Task-ID resolution below.
+  }
+
+  if (!looksLikeTaskId(ticket)) return { ok: false, outcome: fileError(ticket) };
+
+  const refs: TicketRef[] = [];
+  walkTickets(root, refs);
+  const matches = refs.filter((r) => r.taskId === ticket);
+
+  if (matches.length === 0) return { ok: false, outcome: unknownIdError(ticket, refs) };
+  if (matches.length > 1) return { ok: false, outcome: ambiguousIdError(ticket, matches, root) };
+
+  const match = matches[0] as TicketRef;
+  const matchPath = resolve(match.file);
+  try {
+    return {
+      ok: true,
+      content: readFileSync(matchPath, 'utf-8'),
+      resolutionLine: `[sdd-task] ${ticket} → ${relative(root, matchPath)}`,
+    };
+  } catch {
+    return { ok: false, outcome: fileError(ticket) };
+  }
+}
+
+/** @purpose Prepend the bare-id resolution line to a successful outcome; pass everything else through unchanged. | @param outcome The formatted plan/phase outcome. | @param line The resolution line from `resolveTicketArg`, or null when a path was given directly. */
+function withResolutionLine(outcome: TaskOutcome, line: string | null): TaskOutcome {
+  if (!outcome.ok || !line) return outcome;
+  return { ok: true, text: `${line}\n${outcome.text}` };
+}
+
 /**
  * @purpose Execute gennady sdd-task — read only the planning sections of a ticket and emit the orchestrator's read surface.
  * @param rawArgs Raw command-line arguments (process.argv).
@@ -144,20 +207,17 @@ export async function run(rawArgs: string[]): Promise<TaskOutcome> {
   const phaseId = typeof args.phase === 'string' ? args.phase : null;
 
   const ticket = positional[0];
+  const root = resolve('.');
   if (!ticket) {
     // No Task-ID → emit the execution map (deterministic pickable set from the trackers, not eyeballed).
-    const root = resolve('.');
     const refs: TicketRef[] = [];
     walkTickets(root, refs);
     return { ok: true, text: formatMap(refs, root) };
   }
 
-  let content: string;
-  try {
-    content = readFileSync(resolve(ticket), 'utf-8');
-  } catch {
-    return fileError(ticket);
-  }
+  const resolved = resolveTicketArg(ticket, root);
+  if (!resolved.ok) return resolved.outcome;
+  const { content, resolutionLine } = resolved;
 
   const metaSec = extractSection(content, 'META');
   if (metaSec.status !== 'ok') return notATicket(ticket);
@@ -184,16 +244,22 @@ export async function run(rawArgs: string[]): Promise<TaskOutcome> {
 
   if (phaseId) {
     logger.debug(`[SddTaskCommand#run] ${meta.taskId ?? '?'}: --phase ${phaseId}`);
-    return formatPhase(meta, phases, detailsById, gates, handoffs, phaseId);
+    return withResolutionLine(
+      formatPhase(meta, phases, detailsById, gates, handoffs, phaseId),
+      resolutionLine
+    );
   }
 
   logger.debug(
     `[SddTaskCommand#run] ${meta.taskId ?? '?'}: ${phases.length} phase(s), ${gates.length} gate(s)`
   );
-  return { ok: true, text: formatPlan(meta, phases, detailsById, gates, activeBlockers) };
+  return withResolutionLine(
+    { ok: true, text: formatPlan(meta, phases, detailsById, gates, activeBlockers) },
+    resolutionLine
+  );
 }
 
-// Self-executing for CLI: gennady sdd-task <ticket-path>
+// Self-executing for CLI: gennady sdd-task <ticket-path|Task-ID>
 const outcome = await run(process.argv);
 console.log(outcome.ok ? outcome.text : outcome.message);
 process.exit(outcome.ok ? 0 : outcome.exitCode);

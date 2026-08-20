@@ -2,7 +2,9 @@
 // @consumers: SddTaskCommand
 // @tasks: N/A
 
+import { relative, resolve } from 'node:path';
 import type { MetaInfo, PhaseOverview, PhaseDetail, Gate } from '../../../shared/sdd/ticket.ts';
+import type { TicketRef } from '../../../shared/sdd/check.ts';
 
 /** @purpose No ticket path was passed. */
 export const ERR_CLI_SDD_TASK_BAD_INVOCATION = 'ERR_CLI_SDD_TASK_BAD_INVOCATION' as const;
@@ -12,6 +14,10 @@ export const ERR_CLI_SDD_TASK_FILE = 'ERR_CLI_SDD_TASK_FILE' as const;
 export const ERR_CLI_SDD_TASK_NOT_A_TICKET = 'ERR_CLI_SDD_TASK_NOT_A_TICKET' as const;
 /** @purpose --phase named a phase id with no row in Phases Overview. */
 export const ERR_CLI_SDD_TASK_PHASE_NOT_FOUND = 'ERR_CLI_SDD_TASK_PHASE_NOT_FOUND' as const;
+/** @purpose Argument has Task-ID shape but no ticket in the tree carries that Meta Task-ID. */
+export const ERR_CLI_SDD_TASK_UNKNOWN_ID = 'ERR_CLI_SDD_TASK_UNKNOWN_ID' as const;
+/** @purpose More than one ticket carries the same Meta Task-ID (a project-wide collision). */
+export const ERR_CLI_SDD_TASK_AMBIGUOUS_ID = 'ERR_CLI_SDD_TASK_AMBIGUOUS_ID' as const;
 
 /**
  * @purpose Result of one sdd-task run.
@@ -240,22 +246,68 @@ export function badInvocation(): TaskOutcome {
     exitCode: 4,
     message: [
       `[sdd-task] ${ERR_CLI_SDD_TASK_BAD_INVOCATION}`,
-      '  expected: gennady sdd-task <ticket-path>',
+      '  expected: gennady sdd-task <ticket-path|Task-ID>',
     ].join('\n'),
   };
 }
 
 /**
- * @purpose Build the file-error diagnostic.
- * @param ticket The ticket path.
+ * @purpose Build the file-error diagnostic — tool-teaches: points a path-shaped argument at the map.
+ * @param ticket The ticket path or Task-ID that could not be resolved.
  * @returns Outcome with exit 1.
  */
 export function fileError(ticket: string): TaskOutcome {
+  const looksPathy = /[\\/]/.test(ticket) || /\.md$/i.test(ticket);
+  const hint = looksPathy
+    ? 'Cannot read the ticket at that path — verify it, or run `sdd-task` with no arguments for the execution map (it lists every Task-ID with its path).'
+    : 'Cannot read the ticket — verify the path or Task-ID, or run `sdd-task` with no arguments for the execution map.';
   return {
     ok: false,
     code: ERR_CLI_SDD_TASK_FILE,
     exitCode: 1,
-    message: `[sdd-task] ${ERR_CLI_SDD_TASK_FILE}: ${ticket}\n  Cannot read the ticket — verify the path.`,
+    message: `[sdd-task] ${ERR_CLI_SDD_TASK_FILE}: ${ticket}\n  ${hint}`,
+  };
+}
+
+/**
+ * @purpose Build the unknown-Task-ID diagnostic — the argument has Task-ID shape but scanning the tree
+ * found no ticket carrying that Meta Task-ID.
+ * @param id The requested Task-ID.
+ * @param refs Every ticket's graph ref found while scanning (for the "known Task-IDs" hint).
+ * @returns Outcome with exit 2.
+ */
+export function unknownIdError(id: string, refs: TicketRef[]): TaskOutcome {
+  const known = refs.map((r) => r.taskId).filter((t): t is string => t != null);
+  return {
+    ok: false,
+    code: ERR_CLI_SDD_TASK_UNKNOWN_ID,
+    exitCode: 2,
+    message: [
+      `[sdd-task] ${ERR_CLI_SDD_TASK_UNKNOWN_ID}: ${id}`,
+      known.length
+        ? `  known Task-IDs: ${known.join(', ')}`
+        : '  очередь пуста — тикетов с Task-ID в дереве не найдено.',
+    ].join('\n'),
+  };
+}
+
+/**
+ * @purpose Build the ambiguous-Task-ID diagnostic — two or more tickets share one Meta Task-ID.
+ * @invariant A collision `sdd-check`'s SDD_TASK_ID_COLLISION should also be catching.
+ * @param id The requested Task-ID.
+ * @param matches Every ticket ref whose Task-ID equals `id`.
+ * @param root Absolute project root (candidate paths are printed relative to it).
+ * @returns Outcome with exit 2.
+ */
+export function ambiguousIdError(id: string, matches: TicketRef[], root: string): TaskOutcome {
+  return {
+    ok: false,
+    code: ERR_CLI_SDD_TASK_AMBIGUOUS_ID,
+    exitCode: 2,
+    message: [
+      `[sdd-task] ${ERR_CLI_SDD_TASK_AMBIGUOUS_ID}: ${id} matches ${matches.length} tickets`,
+      ...matches.map((m) => `  - ${relative(root, resolve(m.file))}`),
+    ].join('\n'),
   };
 }
 

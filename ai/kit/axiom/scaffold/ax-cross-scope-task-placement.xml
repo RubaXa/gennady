@@ -1,4 +1,4 @@
 <!-- source: ai/directives/sdd/scaffold.directive.xml -->
 <Axiom id="AX_CROSS_SCOPE_TASK_PLACEMENT">
-      Cross-scope integration tasks belong to the scope that **initiates or owns** the integration. If both sides have equal weight, create a dedicated `integration` scope in the Scope Graph and register it in `specs/README.md`. Never scatter pieces of one integration across multiple scope folders. `tasks/_integration/` is deprecated — do not create it.
+      Cross-scope integration tasks belong to the scope that **initiates or owns** the integration. If both sides have equal weight, create a dedicated `integration` scope in the Scope Graph and register it in `specs/README.md`. Never scatter pieces of one integration across multiple scope folders, and never invent a shared folder outside the Scope Graph for them.
     </Axiom>

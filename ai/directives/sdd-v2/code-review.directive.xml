@@ -266,7 +266,7 @@
       @audit task=TSK-04 round=3 mode=per-task status=FAIL counts=B1·M2·m0·I1
       F-01 | sev=B | type=CLOSED_WORLD_DRIFT | conf=H | loc=src/payments/adapter.ts:42 | src=specs/backend/payments/payments.spec.md#2 | route=spec-edit | act=добавить `IdempotencyKey` в Entity Inventory модуля payments
       F-02 | sev=M | type=RULES_COMPLIANCE_VIOLATION | conf=H | loc=src/payments/adapter.ts:100 | src=ai/directives/coding/typescript-rules.xml#AX_STRICT_NULL | route=ticket-reopen | act=добавить null-guard на response.balanceTransaction
-      F-03 | sev=M | type=BDD_COVERAGE_MISMATCH | conf=H | loc=src/payments/adapter.test.ts:55 | src=tasks/backend/payments/payments.task-04.md#4 | route=ticket-update | act=переименовать тест-кейс в `should reject non-positive amount with InvalidAmountError`
+      F-03 | sev=M | type=BDD_COVERAGE_MISMATCH | conf=H | loc=src/payments/adapter.test.ts:55 | src=specs/backend/payments/payments.task.PAY-adapter.md#4 | route=ticket-update | act=переименовать тест-кейс в `should reject non-positive amount with InvalidAmountError`
       F-04 | sev=I | type=INSIGHT_BACKFLOW | conf=M | loc=src/payments/adapter.ts:88 | src=specs/backend/payments/payments.spec.md#4 | route=spec-edit | act=зафиксировать retry-budget в DbC postcondition
       ~applied | specs/backend/payments/payments.spec.md2 | добавлен `IdempotencyKey` в Entity Inventory
       ```

@@ -19,6 +19,16 @@ const TASK_ID_GRAMMAR = /^[A-Z][A-Z0-9]*-[a-z0-9]+(-[a-z0-9]+)*$/;
 export const SLUG_MAX_LEN = 8;
 
 /**
+ * @purpose True when `id` has the `<ACR>-<slug>` shape (grammar only, no slug-length cap).
+ * @invariant Used by `sdd-task` to decide whether an unreadable CLI argument is Task-ID-shaped.
+ * @param id Candidate string (raw CLI argument).
+ * @returns Whether it matches the v2 Task-ID grammar shape.
+ */
+export function looksLikeTaskId(id: string): boolean {
+  return TASK_ID_GRAMMAR.test(id);
+}
+
+/**
  * @purpose Validate one Task-ID against the v2 grammar + slug-length cap.
  * @invariant Pure. The slug is everything after the FIRST `-` (an ACR never contains one); its length
  * (hyphens included) must be ≤ SLUG_MAX_LEN.

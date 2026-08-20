@@ -3,9 +3,9 @@
   The `FLOW_VERSION=v1` / `READINESS=not-ready` preflight gate protects scope-spanning work — a full
   migration or readiness setup dwarfs a narrow request. Size the gate to the task's own blast radius
   before firing it: when the requested change stays inside the entry point's own scope (a spec
-  paragraph, a single ticket) and never touches `tasks/` layout or a missing gate script, record the
+  paragraph, a single ticket) and never touches the legacy v1 `tasks/` layout or a missing gate script, record the
   state in one line and proceed straight to the entry point's own work — offer migration / readiness
   setup to the operator as a separate next step, not inside this run. A change whose blast radius does
-  reach `tasks/` layout, task-ID rewriting, or a missing gate script fires the gate as before, ahead of
+  reach the legacy v1 `tasks/` layout, task-ID rewriting, or a missing gate script fires the gate as before, ahead of
   the entry point's own work.
 </Axiom>

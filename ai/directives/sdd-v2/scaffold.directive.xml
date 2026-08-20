@@ -126,10 +126,10 @@
       The `FLOW_VERSION=v1` / `READINESS=not-ready` preflight gate protects scope-spanning work — a full
       migration or readiness setup dwarfs a narrow request. Size the gate to the task's own blast radius
       before firing it: when the requested change stays inside the entry point's own scope (a spec
-      paragraph, a single ticket) and never touches `tasks/` layout or a missing gate script, record the
+      paragraph, a single ticket) and never touches the legacy v1 `tasks/` layout or a missing gate script, record the
       state in one line and proceed straight to the entry point's own work — offer migration / readiness
       setup to the operator as a separate next step, not inside this run. A change whose blast radius does
-      reach `tasks/` layout, task-ID rewriting, or a missing gate script fires the gate as before, ahead of
+      reach the legacy v1 `tasks/` layout, task-ID rewriting, or a missing gate script fires the gate as before, ahead of
       the entry point's own work.
     </Axiom>
 
@@ -316,7 +316,7 @@
     </Axiom>
 
     <Axiom id="AX_CROSS_SCOPE_TASK_PLACEMENT">
-      Cross-scope integration tasks belong to the scope that **initiates or owns** the integration. If both sides have equal weight, create a dedicated `integration` scope in the Scope Graph and register it in `specs/README.md`. Never scatter pieces of one integration across multiple scope folders. `tasks/_integration/` is deprecated — do not create it.
+      Cross-scope integration tasks belong to the scope that **initiates or owns** the integration. If both sides have equal weight, create a dedicated `integration` scope in the Scope Graph and register it in `specs/README.md`. Never scatter pieces of one integration across multiple scope folders, and never invent a shared folder outside the Scope Graph for them.
     </Axiom>
 
     <Axiom id="AX_PHASES_DECLARED_IN_HEADER">
@@ -407,7 +407,7 @@
         (`AX_PREFLIGHT_BLAST_RADIUS_SCOPED`).
 
         <LogicSwitch on="FLOW_VERSION · READINESS · blast radius · queue">
-          - WHEN `FLOW_VERSION=v1` AND the request's blast radius reaches `tasks/` layout or task-ID rewriting                                          -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/migration-v1-v2.directive.xml")   (live v1→v2 migration; returns when the repo is v2)
+          - WHEN `FLOW_VERSION=v1` AND the request's blast radius reaches the legacy v1 `tasks/` layout or task-ID rewriting                                          -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/migration-v1-v2.directive.xml")   (live v1→v2 migration; returns when the repo is v2)
           - WHEN `READINESS=not-ready` AND the missing gate scripts are already being built by TODO tickets in the queue (`sdd-task` map names them)     -> normal pre-execution state, continue your own flow; the readiness bootstrap does NOT load
           - WHEN `READINESS=not-ready` AND the request needs a missing gate script                                                                       -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/readiness.directive.xml")        (live setup: forces missing scripts, hands proxy-blocked installs to the operator; returns once ready)
           - WHEN (`FLOW_VERSION=v1` OR `READINESS=not-ready`) AND the request's blast radius stays inside its own scope (`AX_PREFLIGHT_BLAST_RADIUS_SCOPED`) -> record state in one line, continue your own flow; propose migration / readiness setup to the operator as a separate next step

@@ -333,8 +333,8 @@
         `Mission`, `Belief_State`, `Reward_Criteria` and walk the axioms: operator Accept (default) /
         Adapt / Override, the latter two → Decision Log. Record matched rule file paths
         (unresolvable reference → `H_MISSING_RULE_FILE`). When a formatter is among the chosen
-        tools, default its ignore file (`.prettierignore` / Biome `ignore`) to EXCLUDE `specs/` and
-        `tasks/` — those are agent-authored markdown; formatter churn there breaks table alignment
+        tools, default its ignore file (`.prettierignore` / Biome `ignore`) to EXCLUDE `specs/`
+        (and the legacy v1 `tasks/`, when present mid-migration) — agent-authored markdown; formatter churn there breaks table alignment
         and produces noisy diffs unrelated to the change. Record the exclusion in the spec's own
         Effective Rules so it is not a silent tool-config fact. Verification Commands table — one
         row per active tool command. STOP.

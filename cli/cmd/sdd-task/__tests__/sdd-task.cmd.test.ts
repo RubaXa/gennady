@@ -172,9 +172,11 @@ describe('SddTaskCommand', () => {
     if (!outcome.ok) assert.strictEqual(outcome.exitCode, 2);
   });
 
-  it('exits 1 on a missing file', async () => {
+  it('exits 1 on a missing file — the hint points at the map (tool-teaches)', async () => {
     const missing = await mod.run(argv(join(dir, 'nope.md')));
     assert.strictEqual(missing.ok === false && missing.exitCode, 1);
+    if (missing.ok) return;
+    assert.match(missing.message, /run `sdd-task` with no arguments for the execution map/);
   });
 
   it('no Task-ID → emits the execution map (deterministic pickable set)', async () => {
@@ -190,11 +192,181 @@ describe('SddTaskCommand', () => {
       const r = await mod.run(argv());
       assert.strictEqual(r.ok, true);
       if (!r.ok) return;
-      assert.match(r.text, /pickable \(ready now\): cli-foo/);
+      // Sibling files accumulated by earlier tests (blocked.md, resolved.md) also carry Task-ID
+      // cli-foo — assert structure (root line, ≥1 per-line pickable path), not a specific filename.
+      assert.match(r.text, /^root: /m);
+      assert.match(r.text, /pickable \(ready now\):\n(?: {2}cli-foo → \S+\n?)+/);
       assert.match(r.text, /next: возьми Task-ID из pickable и вызови `sdd-task <id>`/);
     } finally {
       process.chdir(origCwd);
     }
+  });
+
+  it('map emits a root line and a per-line `<id> → <path>` for the pickable ticket', async () => {
+    const mapDir = mkdtempSync(join(tmpdir(), 'sdd-task-map-'));
+    writeFileSync(
+      join(mapDir, 'ticket.md'),
+      [TICKET, '<!--SECTION:EXECUTION_LOG-->', '<!--/SECTION:EXECUTION_LOG-->'].join('\n'),
+      'utf-8'
+    );
+    const origCwd = process.cwd();
+    process.chdir(mapDir);
+    try {
+      const r = await mod.run(argv());
+      assert.strictEqual(r.ok, true);
+      if (!r.ok) return;
+      // `resolve('.')` follows symlinks (e.g. macOS /tmp → /private/tmp) so the printed root may not
+      // be byte-identical to `mapDir` — assert it names a real, absolute directory instead.
+      assert.match(r.text, /^root: \/\S*$/m);
+      assert.match(r.text, /pickable \(ready now\):\n {2}cli-foo → ticket\.md$/m);
+    } finally {
+      process.chdir(origCwd);
+      rmSync(mapDir, { recursive: true, force: true });
+    }
+  });
+
+  it('map emits a path on blocked lines too', async () => {
+    const blkDir = mkdtempSync(join(tmpdir(), 'sdd-task-map-blocked-'));
+    const blockedTicket = [
+      '# Task: TSK-blocked — Blocked',
+      '<!--SECTION:META-->',
+      '## 1. Meta',
+      '- **Task-ID:** TSK-blocked',
+      '- **Status:** [ ] TODO',
+      '- **Dependencies:** TSK-missing',
+      '<!--/SECTION:META-->',
+      '<!--SECTION:EXECUTION_LOG-->',
+      '<!--/SECTION:EXECUTION_LOG-->',
+    ].join('\n');
+    writeFileSync(join(blkDir, 'blocked.md'), blockedTicket, 'utf-8');
+    const origCwd = process.cwd();
+    process.chdir(blkDir);
+    try {
+      const r = await mod.run(argv());
+      assert.strictEqual(r.ok, true);
+      if (!r.ok) return;
+      assert.match(r.text, /blocked: TSK-blocked ← TSK-missing\s*→\s*blocked\.md/);
+    } finally {
+      process.chdir(origCwd);
+      rmSync(blkDir, { recursive: true, force: true });
+    }
+  });
+
+  describe('bare Task-ID resolution (AX_TASK_RESOLUTION)', () => {
+    // The shared TICKET fixture's Task-ID ("cli-foo") is lowercase-ACR and does not match the v2
+    // Task-ID grammar (`looksLikeTaskId`) — these tests need a grammar-conforming id, so they build
+    // their own isolated ticket rather than reusing `dir`/`ticket`.
+    const idTicket = (id: string): string =>
+      [TICKET, '<!--SECTION:EXECUTION_LOG-->', '<!--/SECTION:EXECUTION_LOG-->']
+        .join('\n')
+        .split('cli-foo')
+        .join(id);
+
+    it('resolves to its ticket — plan output is prefixed with the resolution line', async () => {
+      const idDir = mkdtempSync(join(tmpdir(), 'sdd-task-id-'));
+      writeFileSync(join(idDir, 'ticket.md'), idTicket('TSK-foo'), 'utf-8');
+      const origCwd = process.cwd();
+      process.chdir(idDir);
+      try {
+        const outcome = await mod.run(argv('TSK-foo'));
+        assert.strictEqual(outcome.ok, true);
+        if (!outcome.ok) return;
+        assert.match(outcome.text, /^\[sdd-task\] TSK-foo → ticket\.md\n/);
+        assert.match(outcome.text, /\[sdd-task\] TSK-foo — \[ \] TODO/);
+      } finally {
+        process.chdir(origCwd);
+        rmSync(idDir, { recursive: true, force: true });
+      }
+    });
+
+    it('resolves for --phase too — resolution line precedes the phase context', async () => {
+      const idDir = mkdtempSync(join(tmpdir(), 'sdd-task-id-'));
+      writeFileSync(join(idDir, 'ticket.md'), idTicket('TSK-foo'), 'utf-8');
+      const origCwd = process.cwd();
+      process.chdir(idDir);
+      try {
+        const outcome = await mod.run(argv('TSK-foo', '--phase', 'P1'));
+        assert.strictEqual(outcome.ok, true);
+        if (!outcome.ok) return;
+        assert.match(outcome.text, /^\[sdd-task\] TSK-foo → ticket\.md\n/);
+        assert.match(outcome.text, /\[sdd-task\] TSK-foo — P1 impl/);
+      } finally {
+        process.chdir(origCwd);
+        rmSync(idDir, { recursive: true, force: true });
+      }
+    });
+
+    it('an unknown but Task-ID-shaped argument → exit 2 listing known Task-IDs', async () => {
+      const idDir = mkdtempSync(join(tmpdir(), 'sdd-task-id-'));
+      writeFileSync(join(idDir, 'ticket.md'), idTicket('TSK-foo'), 'utf-8');
+      const origCwd = process.cwd();
+      process.chdir(idDir);
+      try {
+        const outcome = await mod.run(argv('NOPE-ghost'));
+        assert.strictEqual(outcome.ok, false);
+        if (outcome.ok) return;
+        assert.strictEqual(outcome.exitCode, 2);
+        assert.match(outcome.message, /ERR_CLI_SDD_TASK_UNKNOWN_ID: NOPE-ghost/);
+        assert.match(outcome.message, /known Task-IDs:.*TSK-foo/);
+      } finally {
+        process.chdir(origCwd);
+        rmSync(idDir, { recursive: true, force: true });
+      }
+    });
+
+    it('no tickets in the tree → unknown Task-ID reports the queue is empty', async () => {
+      const emptyDir = mkdtempSync(join(tmpdir(), 'sdd-task-id-empty-'));
+      const origCwd = process.cwd();
+      process.chdir(emptyDir);
+      try {
+        const outcome = await mod.run(argv('NOPE-ghost'));
+        assert.strictEqual(outcome.ok, false);
+        if (outcome.ok) return;
+        assert.match(outcome.message, /очередь пуста/);
+      } finally {
+        process.chdir(origCwd);
+        rmSync(emptyDir, { recursive: true, force: true });
+      }
+    });
+
+    it('a Task-ID matching two tickets → exit 2 listing both candidate paths', async () => {
+      const dupDir = mkdtempSync(join(tmpdir(), 'sdd-task-dup-'));
+      const dup = (name: string): string =>
+        [
+          `# Task: ${name}`,
+          '<!--SECTION:META-->',
+          '## 1. Meta',
+          '- **Task-ID:** TSK-dup',
+          '- **Status:** [ ] TODO',
+          '<!--/SECTION:META-->',
+          '<!--SECTION:EXECUTION_LOG-->',
+          '<!--/SECTION:EXECUTION_LOG-->',
+        ].join('\n');
+      writeFileSync(join(dupDir, 'a.md'), dup('a'), 'utf-8');
+      writeFileSync(join(dupDir, 'b.md'), dup('b'), 'utf-8');
+      const origCwd = process.cwd();
+      process.chdir(dupDir);
+      try {
+        const outcome = await mod.run(argv('TSK-dup'));
+        assert.strictEqual(outcome.ok, false);
+        if (outcome.ok) return;
+        assert.strictEqual(outcome.exitCode, 2);
+        assert.match(outcome.message, /ERR_CLI_SDD_TASK_AMBIGUOUS_ID: TSK-dup matches 2 tickets/);
+        assert.match(outcome.message, /a\.md/);
+        assert.match(outcome.message, /b\.md/);
+      } finally {
+        process.chdir(origCwd);
+        rmSync(dupDir, { recursive: true, force: true });
+      }
+    });
+
+    it('an existing ticket path still works exactly as before (no resolution line)', async () => {
+      const outcome = await mod.run(argv(ticket));
+      assert.strictEqual(outcome.ok, true);
+      if (!outcome.ok) return;
+      assert.doesNotMatch(outcome.text, /^\[sdd-task\] cli-foo → /);
+      assert.match(outcome.text, /^\[sdd-task\] cli-foo — \[ \] TODO/);
+    });
   });
 
   describe('--phase', () => {
