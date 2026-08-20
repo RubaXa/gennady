@@ -280,6 +280,15 @@
       the specific question named — the operator is the channel for what the sandbox cannot see, not a
       last resort after trying anyway.
 
+      **Temp files stay under `.claude/tmp/`, nowhere else.** Any scratch or trial file this role
+      needs — a throwaway script, an intermediate probe output — is created ONLY under `.claude/tmp/`
+      inside the project root: create the directory when it does not yet exist, and remove what was
+      created once it stops being needed (shared, reused across roles and other purposes — not
+      this phase's private space to leave dirty). The system `/tmp`, `$TMPDIR`, and the repository
+      root are closed for this: a root-level scratch file pollutes the diff and gets caught by the
+      same inventory/lint gates meant for real `Target Files`, and `/tmp`/`$TMPDIR` sit outside the
+      checkout this role's recon is scoped to above.
+
       **Forbidden:** `npm run lint` alone (overkill — use `sdd verify` or `tsc --noEmit` for narrower checks); `npm run format`; `prettier` directly; any recursive or project-wide file scan; any command that reads unrelated files for «context».
 
       **Canonical-gate exception:** a ticket §5 command — `npm run format` included — that this phase
@@ -370,6 +379,13 @@
     prior Handoff — STEP_1 gets all of that directly, as the first action of this phase, by calling
     `sdd-task` itself. A tool call made fresh at the start of THIS run cannot go stale between
     dispatch and execution — the concern a pasted-prompt approach had on a retry.
+
+    This activation may land in a session that already ran a prior phase for this same ticket's
+    spec (the orchestrator's `AX_WORKER_SESSION_REUSE`) — continuing a session is a context
+    optimization on the orchestrator's side, never a reason to skip or shortcut STEP_1 below. Run
+    STEP_1 (`sdd-task --phase`) fresh regardless, and do not rely on memory of the previous task —
+    this task's own state lives entirely in what that call returns, not in what an earlier phase in
+    this session remembered.
 
     Per `AX_READ_PER_MANIFEST`: read EXACTLY the manifest the tool hands you, nothing beyond it. Pull
     each cited block by anchor (`sdd-extract <file> <NAME>`, or `sdd-extract <file>#<anchor>` when the
@@ -464,6 +480,18 @@
         4. Local docs minimal → WebFetch homepage from `package.json#homepage` / `repository.url`.
         5. Network blocked AND local docs insufficient → `H_THIRD_PARTY_API_UNVERIFIABLE` — halt rather
            than guess or apply a training-default silently.
+        This four-step read (`package.json` version, CHANGELOG, README, homepage) is the FULL extent
+        of local-package inspection this step performs. Reverse-engineering a tool's internal
+        schema/config-shape files under `node_modules` (a bundled `configuration_schema.json`,
+        minified source, internal type declarations) is not a step in this protocol — the concrete
+        config specifics this phase needs (exact version, config-schema version/URL, a literal
+        config skeleton, known version gotchas) are a decision-time infra-spec responsibility
+        (`AX_RESEARCH_PERSISTED`, `infra.directive` STEP_3_TOOL_CHOICES), sourced from the ticket's
+        Spec Refs or a linked research document, never reconstructed here by archaeology through
+        package internals. When the ticket / spec / research does not already carry what this phase
+        needs to write the config, that gap is `H_THIRD_PARTY_API_UNVERIFIABLE` (surfaced as
+        `H_BLOCKED` to the operator per `AX_BLOCKER_ESCALATION`) — never a cue to keep digging
+        through `node_modules` for it.
         Then log via `npx gennady sdd-log <ticket> line "verified <tool>@<version> <one-line
         summary>"` (`AX_TICKET_WRITE_SCOPE`) — audit requires this entry per config artifact.
       </Action>
@@ -531,7 +559,9 @@
         Append `<ts> DONE` via `npx gennady sdd-log <ticket> line "DONE"`; append the `**Handoff →**`
         line via `npx gennady sdd-log <ticket> handoff "<payload>"` per `HANDOFF_FORMAT` (typed payload,
         `AX_HANDOFF_TYPED`, `AX_TICKET_WRITE_SCOPE` — the tool is the sole writer for both lines, never
-        a manual `Edit`) — its `deviations:` field lists the id of every Decision Log entry this phase
+        a manual `Edit`, and this phase's OWN and ONLY write of them — the orchestrator that dispatched
+        this phase reads this Handoff line back but never re-logs it, per its own logging-zone boundary)
+        — its `deviations:` field lists the id of every Decision Log entry this phase
         added while self-resolving a ticket gap (`AX_DEVIATION_SELF_RESOLVE`; empty `[]` when none);
         flip this phase's Status in Phases Overview `[ ]` → `[x]` via a direct `Edit`
         (outside the Execution Log, `AX_TICKET_WRITE_SCOPE`); return the structured summary per

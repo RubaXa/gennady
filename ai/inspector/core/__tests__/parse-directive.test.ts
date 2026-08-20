@@ -29,6 +29,7 @@ test('top-level sections appear in document order', () => {
     '<Mission>',
     '<BeliefState>',
     '<HaltConditions>',
+    '<ContextExpectation>',
     '<ExecutionPlan>',
     '<HardForbidden>',
     '<ChatProtocol>',
@@ -36,9 +37,9 @@ test('top-level sections appear in document order', () => {
   ]);
 });
 
-test('BeliefState carries 18 axioms with id + summary', () => {
+test('BeliefState carries 19 axioms with id + summary', () => {
   const bs = section('<BeliefState>');
-  assert.equal(bs?.children?.length, 18);
+  assert.equal(bs?.children?.length, 19);
   const tool = bs?.children?.find((a) => a.label === 'AX_TOOL_INVOCATION');
   assert.ok(tool, 'AX_TOOL_INVOCATION present');
   assert.ok((tool?.note?.length ?? 0) > 0, 'axiom has a short summary');

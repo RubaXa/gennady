@@ -54,6 +54,8 @@
 
     {{> "axiom/process/ax-re-dispatch"}}
 
+    {{> "axiom/process/ax-worker-session-reuse"}}
+
     {{> "axiom/process/ax-verify-and-finalize"}}
 
     {{> "axiom/process/ax-env-fix-channel"}}
@@ -68,6 +70,30 @@
     | `H_AUDIT_FAIL_AFTER_RETRY` | Audit still FAIL after 2 attempts — manual intervention |
     | `H_CODE_REVIEW_BLOCKER` | Code-review returned a `BLOCKER` bug — pause for the operator (not an auto-retry) |
   </HaltConditions>
+
+  <ContextExpectation>
+    Everything mechanical this orchestrator needs is one of the tools below, each covered by its
+    own tests — calling `--help` on any of them mid-run is a wasted turn against a known, stable
+    surface; syntax here is verified against the tool's own `--help` output, kept current rather
+    than guessed:
+
+    | Tool | When | Call |
+    |---|---|---|
+    | `sdd-task` (no id) | STEP_0_RESOLVE — the deterministic execution map (pickable set + blockers), computed from the trackers | `npx gennady sdd-task` |
+    | `sdd-task <ticket-path>` | STEP_1_PLAN — Meta + Phases Overview + per-phase read-manifests + gates + `[BLOCKERS]`, the ONLY ticket read this directive itself does | `npx gennady sdd-task specs/app/greeting/greeting.task.APP-greet-greeting.md` |
+    | `sdd-task <ticket> --phase P<N>` | Never called BY this directive — the worker's OWN first action (`phase-execution-protocol` STEP_1_GET_PHASE_CONTEXT). Listed here only so a `--phase` call surfacing in this directive's own trace (as at STEP_1_PLAN) is recognized as a defect, not repeated by habit | worker-only |
+    | `sdd-task --audit-group <id>` | STEP_5_AUDIT — the tool's `due` / `not yet` verdict, never eyeballed | `npx gennady sdd-task --audit-group APP-greet-greeting` |
+    | `sdd-task --group-scope <id>` | Resolved by the DISPATCHED audit / code-review subagent itself, its own STEP_1 — this directive never calls it directly | dispatched-subagent-only |
+    | `sdd-log <ticket> round "<reason>"` | STEP_1_PLAN — open a new Round (auto-numbered, dated) | `npx gennady sdd-log <ticket> round "execute <Task-ID>"` |
+    | `sdd-log <ticket> close` | STEP_3_CLOSE_ROUND — append the Round-close block | `npx gennady sdd-log <ticket> close` |
+    | `sdd-sync <ticket>` | STEP_4_SYNC — propagate ticket Status into every `*.3-tasks.md` from the ticket upward, verify the write | `npx gennady sdd-sync <ticket>` |
+    | `sdd-state [project-root]` | Deterministic FLOW_VERSION / READINESS snapshot — STEP_0B_PREFLIGHT already gets this from the `sdd-task` map's own `гейты:` line; call directly only when nothing else has surfaced it yet | `npx gennady sdd-state` |
+    | `sdd-check --task <ticket>` | A point re-check after a fix — never a substitute for `sdd-task`'s own lifecycle verdict at STEP_1_PLAN (that call there is the wasted-turn case the step's own text already forbids) | `npx gennady sdd-check --task <ticket>` |
+
+    `round` and `close` are this directive's ONLY two `sdd-log` modes — `line` / `phase` / `handoff`
+    / `blocker` belong exclusively to the worker (`phase-execution-protocol`); see the logging-zone
+    rule at STEP_3_CLOSE_ROUND and `HardForbidden` below.
+  </ContextExpectation>
 
   <ExecutionPlan>
     <Step id="STEP_0_RESOLVE">
@@ -127,7 +153,13 @@
         dispatch prompt itself carries NO pasted manifest. Dispatch straight from the path this directive and the
         resolved ticket already name — a read failure at the worker's own STEP_1 already reports a missing or
         broken path with an actionable message; that IS the check, so run it exactly once, where it belongs.
-        Dispatch a fresh worker with exactly this activation:
+
+        Session key = (this spec, this phase's kind) — per `AX_WORKER_SESSION_REUSE`. Look up an open worker
+        session already keyed to this (spec, kind) pair: found AND the environment supports continuing a
+        subagent session → send the activation below into that SAME session; not found, OR the environment
+        cannot continue a session, OR this dispatch is a fix from an audit/code-review finding, OR this ticket's
+        spec/group differs from the one the mapping was built for → raise a fresh worker with the SAME
+        activation. Either path, the message is identical — dispatch it with exactly this activation:
 
         ```
         Прочитай и воплоти: ai/directives/sdd-v2/phase-execution-protocol.directive.xml
@@ -152,7 +184,9 @@
 
         <LogicSwitch on="worker Handoff status">
         - WHEN `BLOCKED` / `FAIL` -> stop, no audit; `H_PAUSED_AWAITING_OPERATOR`
-        - WHEN `DONE`             -> record Handoff, thread it into the next phase's Inputs; carry
+        - WHEN `DONE`             -> record Handoff in working memory (for threading and the STEP_8
+          aggregation — the worker's own STEP_6_EMIT_HANDOFF already wrote it to the Execution Log;
+          this directive never re-logs it), thread it into the next phase's Inputs; carry
           forward any `deviations:` entries verbatim (`AX_DEVIATION_SELF_RESOLVE`) — collected for
           STEP_8, never surfaced mid-run
         </LogicSwitch>
@@ -164,7 +198,14 @@
         Append Round close via `sdd-log` (`ROUND_CLOSE_FORMAT`); set Meta Status `[x] DONE`. The
         ticket log outlives this dispatch — audit and any future session read only the file, with
         no memory of this run, so the close line and every threaded Handoff must already carry
-        everything they need (`AX_STATELESS_ARTIFACT`).
+        everything they need (`AX_STATELESS_ARTIFACT`). **Logging-zone boundary:** `round`
+        (STEP_1_PLAN) and `close` (here) are this directive's ONLY two Execution Log writes for the
+        whole cycle. Every phase header, event line, and Handoff line already exists in the log —
+        the worker wrote each one itself via its own `sdd-log phase` / `line` / `handoff` calls
+        (`phase-execution-protocol` STEP_1B_RESUME_OR_START / STEP_6_EMIT_HANDOFF, `AX_TICKET_WRITE_SCOPE`)
+        before returning DONE. Re-logging a phase heading or a Handoff line from here duplicates the
+        worker's own entry — exactly the class of finding a prior audit round caught — never a
+        safety net.
       </Action>
     </Step>
     <Step id="STEP_4_SYNC">
@@ -197,7 +238,7 @@
       <Action>
         <LogicSwitch on="group audit verdict + attempt">
         - WHEN `PASS` / `PASS_WITH_ACKNOWLEDGED_RISKS`                          -> STEP_7B_CODE_REVIEW (a `PASS_WITH_ACKNOWLEDGED_RISKS` here always already carries a Decision Log entry — audit only confirms a PRIOR acceptance, per `audit.directive`; it never asks live)
-        - WHEN `FAIL` + attempt 1 + every open finding carries a concrete mechanical remediation the orchestrator can apply (via Path B — ticket / Decision Log / waiver-label edits — or via `phases_to_fix` → apply/re-run per STEP_7_RESOLVE, whichever the finding calls for) -> STEP_7_RESOLVE, apply every finding's fix directly (no operator stop — a finding with a concrete mechanical fix is not a risk decision), then re-dispatch audit (R2)
+        - WHEN `FAIL` + attempt 1 + every open finding carries a concrete mechanical remediation the orchestrator can apply (via Path B — ticket / Decision Log / waiver-label edits — or via `phases_to_fix` → apply/re-run per STEP_7_RESOLVE, whichever the finding calls for) -> STEP_7_RESOLVE, apply every finding's fix directly (no operator stop — a finding with a concrete mechanical fix is not a risk decision), then re-dispatch audit (R2); a `phases_to_fix` re-run ALWAYS raises a fresh worker session, never the session that ran the original phase (`AX_WORKER_SESSION_REUSE` — fresh eyes on a fix, no exception)
         - WHEN `FAIL` + only open `MAJOR` findings (no open `BLOCKER`) + attempt 1 + at least one open finding has NO concrete mechanical remediation (it can only be accepted as-is — an open gate-risk, an environment limitation) -> ask the operator, per such finding: accept this risk? ALL accepted -> STEP_7_RESOLVE Path B (append a Decision Log entry per accepted finding — the acceptance record the next audit dispatch will find — no new Round), then re-dispatch audit (R2, which now returns `PASS_WITH_ACKNOWLEDGED_RISKS`); ANY declined -> STEP_7_RESOLVE as an ordinary `FAIL` (Path A/B per the finding's fix, not an acceptance)
         - WHEN `FAIL` (open `BLOCKER`, or a declined risk) + attempt 1          -> STEP_7_RESOLVE (one retry)
         - WHEN `FAIL` + attempt 2                                              -> H_AUDIT_FAIL_AFTER_RETRY, then STEP_8 (`AX_RE_DISPATCH` caps at 2)
@@ -212,8 +253,10 @@
         that defers it without an operator decision and a Decision Log risk entry. Path A —
         `phases_to_fix` non-empty: a group audit's findings may name phases on ANY ticket in the group,
         not only the ticket whose closure triggered this dispatch — open a new Round on each phase's
-        OWNING ticket; re-run ONLY those phases as `fix` (sequential, per owning ticket), then STEP_3 →
-        STEP_5 (re-check `sdd-task --audit-group`, audit R2). Path B — findings are ticket / spec /
+        OWNING ticket; re-run ONLY those phases as `fix` (sequential, per owning ticket) in a FRESH
+        worker session per phase, never the (spec, kind) session that ran the phase originally
+        (`AX_WORKER_SESSION_REUSE` — the agent that wrote the bug is the wrong one to re-look at it),
+        then STEP_3 → STEP_5 (re-check `sdd-task --audit-group`, audit R2). Path B — findings are ticket / spec /
         decision-log only (administrative artifact edits: tracker fields, Decision Log entries, a
         contract Usage Waiver label in the spec — never production code): apply them directly under
         the orchestrator's own artifact-edit channel (the orchestrator owns trackers and may make these
@@ -244,7 +287,11 @@
         Aggregate phase + audit telemetry; present per `EXECUTE_SUMMARY_FORMAT`. When this ticket's cycle
         hit `not yet` at STEP_5 (its group is not fully closed), the summary carries no audit / code-review
         verdict for this cycle — state plainly that review is deferred to the group's close, per
-        `AX_AUDIT_HOOK`, rather than omitting the line silently. Collect every worker
+        `AX_AUDIT_HOOK`, rather than omitting the line silently — the group's per-kind worker
+        sessions stay open in this case, since the group itself has not closed yet. Once the group
+        DOES close this cycle (audit + code-review both ran), every worker session keyed to it
+        closes together with the group (`AX_WORKER_SESSION_REUSE`) — the next spec/group starts with
+        fresh sessions, never carrying this group's context forward. Collect every worker
         Handoff `deviations:` entry across the ENTIRE cycle just run — one ticket's Round, or every
         Round of a `batch` loop — plus any spec/ticket gap the orchestrator itself self-resolved
         directly at STEP_1 / STEP_2 / STEP_6 rather than delegating to a worker
@@ -264,6 +311,7 @@
     - Workers write code, audit reports, and phase blocks; the orchestrator does not write production code, ever. It has exactly THREE narrow, non-overlapping write channels: (a) `AX_ENV_FIX_CHANNEL` — env/config artifacts only (`package.json` scripts, tool config, lockfiles), never `Target Files` code or `specs/**`, never without prior explicit operator approval of the exact diff; (b) STEP_7_RESOLVE Path B — administrative edits to ticket / Decision Log / spec waiver-labels, applying an ACCEPTED audit finding directly per `AX_OWNER`; (c) a ticket-local Decision Log append when the orchestrator itself self-resolves a spec/ticket hole it hit directly, not delegated to a worker (`AX_DEVIATION_SELF_RESOLVE`) — distinct from (b), which is gated on an audit finding the operator already accepted, while (c) fires on a gap the orchestrator decides on its own and reports only in the STEP_8 batch. None of the three extends to production code under a module's `Target Files`.
     - Run the group audit only when `sdd-task --audit-group` reports the group `due` — never per ticket, never on eyeballed "this looks like the last one"; run code-review immediately after that audit passes, on the same trigger, never independently of it.
     - Thread only typed Handoff payloads between subagents; keep their contexts separate.
+    - This directive's own `sdd-log` calls are exactly `round` (STEP_1_PLAN) and `close` (STEP_3_CLOSE_ROUND) — never `phase` / `line` / `handoff` / `blocker`, which are the worker's exclusive writes (`phase-execution-protocol`, `AX_TICKET_WRITE_SCOPE`); this directive never re-logs a phase header or a Handoff line the worker already wrote.
     - Cap audit attempts at 2; re-run only phases in `phases_to_fix`; drive a retry from audit FAIL only (a phase BLOCKED pauses, it does not reopen); run phases of the same task sequentially, one at a time.
   </HardForbidden>
 

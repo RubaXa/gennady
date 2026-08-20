@@ -4,6 +4,7 @@
 
   **Mandatory** (every project):
   - `.claude/settings.local.json` (personal Claude Code overrides; team-shared `.claude/settings.json` IS tracked).
+  - `.claude/tmp/` (shared scratch directory for temp/trial files, `AX_PERMITTED_BASH_COMMANDS` — reused across roles, never a Target File).
   - `.env`, `.env.local`, `.env.*.local` (secrets; only `.env.example` with placeholders is tracked).
   - OS artifacts: `.DS_Store`, `Thumbs.db`, `desktop.ini`.
   - Editor caches: `.idea/`, `*.swp`, `.vscode/` (or selectively).

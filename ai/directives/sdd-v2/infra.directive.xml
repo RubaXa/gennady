@@ -281,7 +281,9 @@
         interview cycle — Mandatory Rationale Pull → Decision Log entry per `AX_DECISION_LOG_REQUIRED`
         still applies per tool (`H_TOOL_LOCKED_WITHOUT_DECISION`), its RELATED citing the research
         document in parentheses: the compression is in the NUMBER of
-        operator round-trips, never in the Decision Log discipline. STEP_3 is done once this closes —
+        operator round-trips, never in the Decision Log discipline. For any locked tool that is a
+        GATE tool, the same Integration Detail concreteness bar as STEP_3 applies — no exemption for
+        having taken the fast path. STEP_3 is done once this closes —
         proceed to STEP_4. Approval Check. STOP.
       </Action>
     </Step>
@@ -312,6 +314,21 @@
         is unavailable in this environment, say so plainly instead of
         silently falling back — `предлагаю по памяти на <дата обучения модели>, ресёрч недоступен` — a
         named caveat, not silence (no research document in that case — nothing was found to persist).
+
+        For a GATE tool — anything the execution phases' own verification gate enforces (linter,
+        formatter, type-checker, test runner, contract-lint): the Integration Detail fields
+        (`Версия/API` · `Нужные методы` · `Эскиз интеграции` · `Ограничения`, already in the Tool
+        Stack skeleton) MUST carry what a phase worker needs to write its config with ZERO further
+        research — the exact locked version, the config schema's version/URL, a literal config
+        skeleton (even minimal), and any known version-specific gotcha (a default that changed
+        between majors, a file type the tool does not handle out of the box). When this concrete
+        detail is not already in evidence, it is exactly what the research gate above exists to
+        produce — persist the schema URL/version and the skeleton in the research document
+        (`AX_RESEARCH_PERSISTED`), never leave it for the execute-phase worker to reverse-engineer
+        from the installed package's internals (`phase-execution-protocol` STEP_3B_TOOL_API already
+        forbids that path on the worker's side — this step is where the gap is meant to close
+        instead).
+
         Operator picks → Mandatory Rationale Pull → Decision Log entry per
         `AX_DECISION_LOG_REQUIRED` (`DECISION_LOG_ENTRY_FORMAT`), its RELATED citing the research
         document in parentheses; no tool locked without one
@@ -336,8 +353,11 @@
         tools, default its ignore file (`.prettierignore` / Biome `ignore`) to EXCLUDE `specs/`
         (and the legacy v1 `tasks/`, when present mid-migration) — agent-authored markdown; formatter churn there breaks table alignment
         and produces noisy diffs unrelated to the change. Record the exclusion in the spec's own
-        Effective Rules so it is not a silent tool-config fact. Verification Commands table — one
-        row per active tool command. STOP.
+        Effective Rules so it is not a silent tool-config fact. `.gitignore` MUST also default to
+        cover `.claude/tmp/` — the shared scratch directory execution workers use for temp/trial
+        files (`AX_PERMITTED_BASH_COMMANDS`), reused across roles and unrelated to any one tool
+        choice — recorded in the same Effective Rules entry, never a silent omission. Verification
+        Commands table — one row per active tool command. STOP.
       </Action>
     </Step>
     <Step id="STEP_6_EXTERNAL_DEPENDENCIES_AUDIT">

@@ -153,7 +153,29 @@
         FIRST resolve the working scope: `sdd-task --group-scope <id>` (`AX_GIT_DIFF_SCAN`) — spec, the
         group's ticket list, the `Target Files` union, the diff over that union (or the no-git-refs
         fallback line), and the Handoff artifacts. This IS the scope for every check below; it is never
-        re-derived by hand. Then run `sdd-check --task <ticket-path>` for EACH ticket in the group (a
+        re-derived by hand.
+
+        **Verification level → gate mapping** (fixed, never inferred from the dispatch prompt's wording):
+
+        | Level | Checked by |
+        |---|---|
+        | Structural / mechanical (anchors, Meta, Execution Log completeness, fabricated-DONE, phase DAG, tracker coherence, RULES_CASCADE_CLOSURE, BDD_COVERAGE, TASKS_APPEND_ONLY, CONSUMERS_RESOLVABLE) | `sdd-check --task <ticket>` (+ `--all`, `--changed`) |
+        | Code (types, format, contract lint, yagni usage) | `sdd-verify --profile full` |
+        | Closed-world inventory sync + cast safety over changed files | `gennady lint --spec=<module-spec> <changed files>` |
+        | Test coverage floor | `gennady testcov --run --min=80` (or the ticket's own §5 threshold) |
+        | Contract semantics, runtime-backing, drift — irreducibly semantic, no command runs this | STEP_2_SEMANTIC, this audit's own judgment |
+
+        A gate's verdict is computed from ITS OWN exit code and the ticket/dependency graph alone —
+        never from anything the dispatching orchestrator's prompt happened to say. A missing gate
+        script is legitimately `ENVIRONMENT_GATE_UNAVAILABLE` for exactly one reason: the ticket
+        graph itself shows a DIFFERENT, still-open ticket in the queue owns creating that script (its
+        Bootstrap Requirements or Target Files name it) — check the graph for that fact, never infer
+        it from a stray adjective like «штатно» ("business as usual") in the dispatch prompt, which
+        carries ZERO verdict weight. Absent that graph fact, a missing/red gate is `FAIL`, exactly as
+        the rule below already states, regardless of how routine the dispatch prompt made the run
+        sound.
+
+        Then run `sdd-check --task <ticket-path>` for EACH ticket in the group (a
         single call for per-task mode) plus one `sdd-check --all` for the whole tree, per `AX_AUDIT_MODES`,
         plus `sdd-check --changed` per `AX_MECHANICAL_VIA_SDD_CHECK` — together they report the deterministic
         findings: structure / anchors / Task-ID + Status, fabricated-DONE, the phase graph,

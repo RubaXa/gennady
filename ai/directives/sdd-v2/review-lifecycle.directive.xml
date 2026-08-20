@@ -46,6 +46,15 @@
       the specific question named — the operator is the channel for what the sandbox cannot see, not a
       last resort after trying anyway.
 
+      **Temp files stay under `.claude/tmp/`, nowhere else.** Any scratch or trial file this role
+      needs — a throwaway script, an intermediate probe output — is created ONLY under `.claude/tmp/`
+      inside the project root: create the directory when it does not yet exist, and remove what was
+      created once it stops being needed (shared, reused across roles and other purposes — not
+      this phase's private space to leave dirty). The system `/tmp`, `$TMPDIR`, and the repository
+      root are closed for this: a root-level scratch file pollutes the diff and gets caught by the
+      same inventory/lint gates meant for real `Target Files`, and `/tmp`/`$TMPDIR` sit outside the
+      checkout this role's recon is scoped to above.
+
       **Forbidden:** `npm run lint` alone (overkill — use `sdd verify` or `tsc --noEmit` for narrower checks); `npm run format`; `prettier` directly; any recursive or project-wide file scan; any command that reads unrelated files for «context».
 
       **Canonical-gate exception:** a ticket §5 command — `npm run format` included — that this phase
