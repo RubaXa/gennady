@@ -10,7 +10,7 @@ import os from 'node:os';
 import path from 'node:path';
 import type { GoProject, GoTool, GoToolId } from '../golang-detect.logic.ts';
 
-const { resolveGoScope } = await import('../golang-scope.logic.ts');
+const { resolveGoScope, isStructuralListError } = await import('../golang-scope.logic.ts');
 
 let root: string;
 
@@ -160,5 +160,45 @@ describe('resolveGoScope — changed mode in a real git repository', () => {
     } finally {
       fs.rmSync(top, { recursive: true, force: true });
     }
+  });
+});
+
+describe('isStructuralListError', () => {
+  // Strings measured against go1.26. Getting this classification wrong in the permissive
+  // direction converts a broken tree into ALL_GATES_PASS, so each class is pinned literally.
+  const NOT_A_PACKAGE = [
+    'build constraints exclude all Go files in /repo/excluded',
+    'no Go files in /repo/docs',
+    'main module (example.com/m) does not contain package example.com/m/nested',
+    'stat /repo/missing: directory not found',
+  ] as const;
+
+  const BROKEN_CODE = [
+    'import cycle not allowed',
+    'found packages one (a.go) and two (b.go) in /repo/pkg',
+  ] as const;
+
+  for (const error of NOT_A_PACKAGE) {
+    it(`drops: ${error.slice(0, 44)}`, () => {
+      assert.strictEqual(isStructuralListError(error), true);
+    });
+  }
+
+  for (const error of BROKEN_CODE) {
+    it(`keeps: ${error.slice(0, 44)}`, () => {
+      assert.strictEqual(
+        isStructuralListError(error),
+        false,
+        'a package the change broke must reach the gates, not vanish from scope'
+      );
+    });
+  }
+
+  it('keeps anything it does not recognize', () => {
+    assert.strictEqual(
+      isStructuralListError('some future go error nobody has seen'),
+      false,
+      'an unfamiliar message may cost a false red, never a false green'
+    );
   });
 });

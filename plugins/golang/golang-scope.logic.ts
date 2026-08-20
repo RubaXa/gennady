@@ -155,6 +155,53 @@ function describeDropped(dropped: readonly string[]): string {
  * @returns Buildable patterns plus the ones dropped, for the scope note.
  * @sideEffect Process: one `go list -e` in the repository root.
  */
+/**
+ * `go list -e` errors that mean "this directory is not a package we can build" — as opposed to
+ * "the code in it is broken". Measured against go1.26; an error outside this list keeps the
+ * package, so an unfamiliar message can only cost a false red, never a false green.
+ */
+const STRUCTURAL_LIST_ERRORS: readonly RegExp[] = [
+  /build constraints exclude all Go files/,
+  /^no Go files in /,
+  /does not contain package/,
+  /: directory not found$/,
+];
+
+/**
+ * @purpose Tell a directory that is not a package from a package whose code is broken.
+ * @invariant Only the listed structural classes are droppable. Compile errors — import cycles,
+ *   conflicting package clauses — must reach the gates (spec §4).
+ * @param error `go list -e` error text for one pattern.
+ * @returns True when the pattern is not a buildable package at all.
+ */
+export function isStructuralListError(error: string): boolean {
+  return STRUCTURAL_LIST_ERRORS.some((pattern) => pattern.test(error));
+}
+
+/**
+ * @purpose Canonicalize a path so a symlinked prefix cannot defeat comparison.
+ * @invariant `go list` prints `/tmp/x` where the plan holds `/private/tmp/x` on macOS; comparing
+ *   raw strings there silently mismatches every package.
+ * @param target Absolute path, existing or not.
+ * @returns The resolved path, or the input when it cannot be resolved.
+ */
+function canonical(target: string): string {
+  try {
+    return fs.realpathSync(target);
+  } catch {
+    return target;
+  }
+}
+
+/**
+ * @purpose Drop patterns that are not packages, keeping every package the gates must judge.
+ * @invariant Fails open twice over: an unusable listing keeps every pattern, and a package whose
+ *   error is not structural is kept so `build` reports it.
+ * @param project Detected project, supplying the toolchain and module flags.
+ * @param patterns `./pkg` patterns derived from changed files.
+ * @returns Buildable patterns plus the ones dropped, for the scope note.
+ * @sideEffect Process: one `go list -e` in the repository root.
+ */
 function dropUnbuildable(
   project: GoProject,
   patterns: readonly string[]
@@ -166,26 +213,46 @@ function dropUnbuildable(
 
   const listed = execFileTrimSafe(
     go,
-    ['list', '-e', '-f', '{{.Dir}}\t{{if .Error}}ERR{{end}}', ...moduleFlags(project), ...patterns],
+    [
+      'list',
+      '-e',
+      '-f',
+      '{{.ImportPath}}\t{{.Dir}}\t{{if .Error}}{{.Error.Err}}{{end}}',
+      ...moduleFlags(project),
+      ...patterns,
+    ],
     project.root
   );
   if (listed.length === 0) {
     return { packages: [...patterns], dropped: [] };
   }
 
-  const buildable = new Set<string>();
+  //#region START_CLASSIFY — invariant: a pattern is dropped only on a structural error
+  // A nested module or a missing directory keeps the pattern itself as ImportPath and reports no
+  // Dir, while a real package resolves both — so both keys are needed to find a pattern's line.
+  const structuralByDir = new Set<string>();
+  const structuralByPath = new Set<string>();
   for (const line of listed.split('\n')) {
-    const [dir, error] = line.split('\t');
-    if (dir !== undefined && dir.length > 0 && (error ?? '').length === 0) {
-      buildable.add(path.resolve(dir));
+    const [importPath, dir, ...rest] = line.split('\t');
+    const error = rest.join('\t');
+    if (error.length === 0 || !isStructuralListError(error)) {
+      continue;
+    }
+    if (dir !== undefined && dir.length > 0) {
+      structuralByDir.add(canonical(path.resolve(dir)));
+    }
+    if (importPath !== undefined && importPath.length > 0) {
+      structuralByPath.add(importPath);
     }
   }
+  //#endregion END_CLASSIFY
 
   const packages: string[] = [];
   const dropped: string[] = [];
   for (const pattern of patterns) {
-    const dir = path.resolve(project.root, pattern);
-    (buildable.has(dir) ? packages : dropped).push(pattern);
+    const dir = canonical(path.resolve(project.root, pattern));
+    const structural = structuralByDir.has(dir) || structuralByPath.has(pattern);
+    (structural ? dropped : packages).push(pattern);
   }
   return { packages, dropped };
 }
