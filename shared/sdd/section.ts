@@ -1,5 +1,5 @@
 // @file: Extract a named <!--SECTION:NAME--> block from an SDD markdown artifact — pure, shared by sdd-extract/sdd-check/sdd-task.
-// @consumers: sdd-extract.cmd
+// @consumers: sdd-extract.cmd, sdd-orient.cmd
 // @tasks: N/A
 
 /**
@@ -63,7 +63,7 @@ export function headingSlug(heading: string): string {
  * @param content Full markdown text.
  * @returns Level (1-6), raw text, and character offsets of the heading line (start) and its end (start of the next line).
  */
-function collectHeadings(
+export function collectHeadings(
   content: string
 ): { level: number; text: string; start: number; lineEnd: number }[] {
   const out: { level: number; text: string; start: number; lineEnd: number }[] = [];

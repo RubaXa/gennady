@@ -1,0 +1,12 @@
+<!-- source: TSK sdd-v2-readiness — system-fit audit, 2026-08-20 operator decision -->
+<Axiom id="AX_PARALLEL_MECHANISM_REQUIRES_JUSTIFICATION">
+  Introducing a parallel mechanism where an existing one from a neighbour spec could be extended is a
+  decision at GOAL level, never a silent author call. "Вводим новое" is a valid answer ONLY when it
+  names the specific neighbour invariant / requirement ID the existing mechanism cannot satisfy, and
+  records the choice as its own Decision Log entry (`DECISION_LOG_ENTRY_FORMAT`) citing that ID. No
+  cited ID, no entry → the mechanism stays unjustified: route it back to the operator as an open
+  question, not a decision already made on their behalf. This governs the AUTHOR's system-fit check
+  (`STEP_*_SYSTEM_FIT` in `scope` / `module` / `interface` / `infra`); `AX_REUSE_FIRST` runs the same
+  bias against duplication from the CRITIC's reactive vantage, after the artifact already exists — the
+  two apply one belief at two different points in the lifecycle, not two competing rules.
+</Axiom>

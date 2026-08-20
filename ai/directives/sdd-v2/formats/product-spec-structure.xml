@@ -21,6 +21,7 @@
     product --> dep1[dependency]
     product --> dep2[dependency]
   ```
+  _Что здесь главное, одной фразой._
   <!--/SECTION:OVERVIEW-->
 
   <!--SECTION:PROJECT_TYPE-->
@@ -33,15 +34,6 @@
   ## Target Experience
   [Commentary-rich: init/setup + happy path + error/degradation path.]
   <!--/SECTION:GOLDEN_DX-->
-
-  <!--SECTION:USE_CASES-->
-  ## Use Cases
-  [MANDATORY for scope-type=product (AX_SPEC_MANDATORY_DIAGRAM ladder): actors → scenario
-  diagram, harvested from the «Потребители» / «Худший сценарий» topics closed at scope
-  STEP_2_INTENT_CAPTURE. Fenced mermaid `flowchart TD`: actor nodes → scenario nodes, one-line
-  "зачем" per scenario; the worst-case scenario marked distinctly (⚠️). ASCII form shown in
-  chat first, per formats/diagram-vocabulary.xml.]
-  <!--/SECTION:USE_CASES-->
 
   <!--SECTION:SCOPE_DEPENDENCIES-->
   ## Scope Dependencies
@@ -74,6 +66,31 @@
   | Rule | Category | Source |
   |---|---|---|
   <!--/SECTION:REQUIREMENTS_AND_CONSTRAINTS-->
+
+  <!--SECTION:USE_CASES-->
+  ## Use Cases
+  [MANDATORY for scope-type=product (AX_SPEC_MANDATORY_DIAGRAM ladder, rung 3) — drawn AFTER
+  Requirements & Constraints closes (2026-08-20 visualization-chain decision): actors → scenario
+  diagram, harvested from the «Потребители» / «Худший сценарий» topics closed at scope
+  STEP_2_INTENT_CAPTURE. Fenced mermaid `flowchart TD`: actor nodes → scenario nodes, one-line
+  "зачем" per scenario; the worst-case scenario marked distinctly (⚠️). ASCII form shown in
+  chat first, per formats/diagram-vocabulary.xml. Caption per DIAGRAM_CAPTION_FORMAT naming the
+  requirement IDs this diagram shows, e.g. `_Сценарии добавления и отмены задачи — TDM-REQ-2,
+  TDM-REQ-5._`]
+  <!--/SECTION:USE_CASES-->
+
+  <!--SECTION:DATA_FLOW-->
+  ## Data Flow
+  [MANDATORY for product/library (AX_SPEC_MANDATORY_DIAGRAM, new rung per the 2026-08-20 visualization-chain decision) — drawn AFTER Requirements & Constraints closes. A `flowchart` built from exactly four node kinds: external entity, process, store, labelled data-flow arrow — NO conditions, NO loops (a data diagram, not a control-flow chart); ≤7 nodes. Caption per DIAGRAM_CAPTION_FORMAT naming the requirement IDs this diagram shows. This rung is mandatory for NEW specs only — an existing spec written before this rung existed is not retroactively broken by its absence.]
+
+  ```mermaid
+  flowchart LR
+    user(user) -->|request data| process[Process]
+    process --> store[(Store)]
+    process -->|response data| user
+  ```
+  _<Что показывает одной фразой> — <ACR>-REQ-<N>[, <ACR>-REQ-<M>]._
+  <!--/SECTION:DATA_FLOW-->
 
   <!--SECTION:ARCHITECTURE-->
   ## High-Level Architecture

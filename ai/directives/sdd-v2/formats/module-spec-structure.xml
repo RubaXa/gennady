@@ -21,6 +21,7 @@
     Port --> Service
     Service -->|result| caller
   ```
+  _Что здесь главное, одной фразой._
   <!--/SECTION:OVERVIEW-->
 
   <!--SECTION:MODULE_USAGE_EXAMPLE-->
@@ -80,7 +81,7 @@
 
   <!--SECTION:MODULE_CONTRACTS-->
   ## Module Contracts
-  [One-line human summary — which Ports / Adapters / Services this module defines. The contract bodies fold per `AX_SPEC_PROGRESSIVE_DISCLOSURE` (checked by `SDD_SECTION_NOT_FOLDED`).]
+  [One-line human summary — which Ports / Adapters / Services this module defines. The contract bodies fold per `AX_SPEC_PROGRESSIVE_DISCLOSURE` (checked by `SDD_SECTION_NOT_FOLDED`). Dependency graph per `DBC_DEPENDENCY_GRAPH_FORMAT` sits directly below this line, above the folded `<details>`. Right after it, MANDATORY whenever this module's inventory lists ≥2 abstractions (AX_SPEC_MANDATORY_DIAGRAM, rung 6, new per the 2026-08-20 visualization-chain decision): the Call Chain — a `sequenceDiagram`, or its table-of-steps equivalent (step / participant / action / data), per `CALL_CHAIN_FORMAT` (`formats/dbc-contracts.xml`) — both forms count equally. On `refine-module`/`pivot`, also the Delta rung per `DELTA_DIAGRAM_FORMAT` (`formats/pivot-formats.xml`): composition graph with the new node marked, plus the ADDED Call Chain steps — the unchanged part is NOT redrawn. Every diagram here carries a caption per `DIAGRAM_CAPTION_FORMAT`, e.g. `_Путь списания за заказ — SHOP-REQ-6, SHOP-REQ-7._` These new rungs are mandatory for NEW module specs only.]
 
   <!-- Subsections: any subset of Ports / Adapters / Services / Patterns / Utilities / Module-level invariants.
        Unnumbered `###` headers (e.g. `### Ports`, `### OperationDef Pattern`). -->

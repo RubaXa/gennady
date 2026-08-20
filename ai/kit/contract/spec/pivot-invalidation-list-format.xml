@@ -3,7 +3,17 @@
       ```markdown
       ### Pivot Invalidation List
       - **Module specs requiring refine:** [list with reasons]
+      - **Neighbour specs requiring work (sideways):** [<path> — было: <…>; стало: <…>; diagram delta: <path#anchor или "н/д">]
       - **Tasks requiring reopen:** [<ACR>-<slug> — reason]
       - **Rules to revisit:** [list]
       ```
+
+      «Module specs requiring refine» stays DOWN the same scope (siblings under this scope's own Module
+      Map). «Neighbour specs requiring work (sideways)» is the other axis — scopes / interfaces outside
+      this one that `STEP_*_SYSTEM_FIT`'s `sdd-orient` walk found needing a change for this pivot to fit
+      the system (`AX_PARALLEL_MECHANISM_REQUIRES_JUSTIFICATION`); each entry names the concrete path,
+      states Was→Now for that neighbour, and points at its own `DELTA_DIAGRAM_FORMAT` composition delta
+      when that neighbour is itself under `refine`/`pivot` for this change — never a bare path with no
+      Was→Now. An empty sideways list needs the explicit reason «нет — sdd-orient не нашёл соседей»,
+      not silent omission.
     </Contract>

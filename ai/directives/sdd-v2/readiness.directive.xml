@@ -62,7 +62,7 @@
       this is rewritten to `npx gennady <cmd> <args>` by the path-normalizer when the directives are
       synced into a project. In every OTHER project, invoke the published package: `npx gennady <cmd>
       <args>`. Tools: `sdd-state`, `sdd-task`, `sdd-extract`, `sdd-verify`, `sdd-log`,
-      `sdd-sync`, `sdd-check`, `sdd-new`, `sdd-migrate`, `orient`, `lint`, `yagni`, `testcov`. The
+      `sdd-sync`, `sdd-check`, `sdd-new`, `sdd-migrate`, `sdd-orient`, `orient`, `lint`, `yagni`, `testcov`. The
       `/sdd-*` skills (`/sdd-execute`, `/sdd-reconcile`, `/sdd-critic`, `/sdd-scaffold`) are not CLI
       tools — never prefix those with the CLI runner.
     </Axiom>

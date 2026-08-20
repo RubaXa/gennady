@@ -82,7 +82,22 @@ const DECISION_LOG_FILL =
 const BOOTSTRAP_REQUIREMENTS_FILL =
   'One-line human summary of outstanding prerequisites; fold the full Requirement/Kind/Owner/Resolution table under <details>. Declare explicitly ("No external bootstrap required.") when the STEP_7 audit found none — do not leave the table silently empty.';
 const OVERVIEW_FILL =
-  'MANDATORY (AX_SPEC_MANDATORY_DIAGRAM): at least one fenced mermaid or ASCII diagram giving a reader the shape of this artifact at a glance, up top.';
+  'MANDATORY (AX_SPEC_MANDATORY_DIAGRAM): at least one fenced mermaid or ASCII diagram giving a reader the shape of this artifact at a glance, up top. Caption directly under the fence per DIAGRAM_CAPTION_FORMAT (formats/diagram-vocabulary.xml) — `_<что показывает одной фразой>[ — <ACR>-REQ-N[, <ACR>-REQ-M]]._`; a whole-scope Overview may drop the ID list but the phrase itself stays mandatory.';
+const DATA_FLOW_FILL =
+  'MANDATORY for product/library (AX_SPEC_MANDATORY_DIAGRAM, new rung per the 2026-08-20 visualization-chain decision) — drawn AFTER Requirements & Constraints closes. A `flowchart` built from exactly four node kinds: external entity, process, store, labelled data-flow arrow — NO conditions, NO loops (a data diagram, not a control-flow chart); ≤7 nodes. Caption per DIAGRAM_CAPTION_FORMAT naming the requirement IDs this diagram shows. This rung is mandatory for NEW specs only — an existing spec written before this rung existed is not retroactively broken by its absence.';
+const DATA_FLOW_SKELETON = `<!--SECTION:DATA_FLOW-->
+## Data Flow
+[${DATA_FLOW_FILL}]
+
+\`\`\`mermaid
+flowchart LR
+  user(user) -->|request data| process[Process]
+  process --> store[(Store)]
+  process -->|response data| user
+\`\`\`
+_<Что показывает одной фразой> — <ACR>-REQ-<N>[, <ACR>-REQ-<M>]._
+<!--/SECTION:DATA_FLOW-->
+`;
 const SCOPE_DEPENDENCIES_FILL_PRODUCT =
   'List infra-*/api/design-system-* scopes this scope depends on, and any consumer scopes it provides to.';
 const RESEARCH_REGISTRY_FILL =
@@ -149,6 +164,7 @@ flowchart TD
   product --> dep1[dependency]
   product --> dep2[dependency]
 \`\`\`
+_Что здесь главное, одной фразой._
 <!--/SECTION:OVERVIEW-->
 
 <!--SECTION:PROJECT_TYPE-->
@@ -161,15 +177,6 @@ flowchart TD
 ## Target Experience
 [Commentary-rich: init/setup + happy path + error/degradation path.]
 <!--/SECTION:GOLDEN_DX-->
-
-<!--SECTION:USE_CASES-->
-## Use Cases
-[MANDATORY for scope-type=product (AX_SPEC_MANDATORY_DIAGRAM ladder): actors → scenario
-diagram, harvested from the «Потребители» / «Худший сценарий» topics closed at scope
-STEP_2_INTENT_CAPTURE. Fenced mermaid \`flowchart TD\`: actor nodes → scenario nodes, one-line
-"зачем" per scenario; the worst-case scenario marked distinctly (⚠️). ASCII form shown in
-chat first, per formats/diagram-vocabulary.xml.]
-<!--/SECTION:USE_CASES-->
 
 <!--SECTION:SCOPE_DEPENDENCIES-->
 ## Scope Dependencies
@@ -192,6 +199,19 @@ ${REQUIREMENTS_LIST_SKELETON}
 |---|---|---|
 <!--/SECTION:REQUIREMENTS_AND_CONSTRAINTS-->
 
+<!--SECTION:USE_CASES-->
+## Use Cases
+[MANDATORY for scope-type=product (AX_SPEC_MANDATORY_DIAGRAM ladder, rung 3) — drawn AFTER
+Requirements & Constraints closes (2026-08-20 visualization-chain decision): actors → scenario
+diagram, harvested from the «Потребители» / «Худший сценарий» topics closed at scope
+STEP_2_INTENT_CAPTURE. Fenced mermaid \`flowchart TD\`: actor nodes → scenario nodes, one-line
+"зачем" per scenario; the worst-case scenario marked distinctly (⚠️). ASCII form shown in
+chat first, per formats/diagram-vocabulary.xml. Caption per DIAGRAM_CAPTION_FORMAT naming the
+requirement IDs this diagram shows, e.g. \`_Сценарии добавления и отмены задачи — TDM-REQ-2,
+TDM-REQ-5._\`]
+<!--/SECTION:USE_CASES-->
+
+${DATA_FLOW_SKELETON}
 <!--SECTION:ARCHITECTURE-->
 ## High-Level Architecture
 [Выбранный вариант. Block diagram. Краткие описания.]
@@ -274,13 +294,6 @@ const PRODUCT_SECTIONS: SectionManifestEntry[] = [
     fill: 'Target experience: init/setup + happy path + error/degradation path, commentary-rich.',
   },
   {
-    name: 'USE_CASES',
-    required: true,
-    loadBearing: true,
-    fold: false,
-    fill: 'Actors → scenarios diagram, harvested from Потребители/Худший сценарий; MANDATORY for product.',
-  },
-  {
     name: 'SCOPE_DEPENDENCIES',
     required: true,
     loadBearing: false,
@@ -293,6 +306,22 @@ const PRODUCT_SECTIONS: SectionManifestEntry[] = [
     loadBearing: true,
     fold: false,
     fill: 'Flat Requirements list per REQUIREMENT_ENTRY_FORMAT (replaces split Functional/Non-Functional for new specs), Out-of-Scope, Runtime & Deferred Scope (AX_RUNTIME_BACKING_EXPLICIT), and the Rules table.',
+  },
+  {
+    name: 'USE_CASES',
+    required: true,
+    loadBearing: true,
+    fold: false,
+    fill: 'Actors → scenarios diagram, harvested from Потребители/Худший сценарий; drawn AFTER Requirements & Constraints closes; MANDATORY for product.',
+  },
+  {
+    // New for product; loadBearing:false (OVERVIEW pattern) — 2026-08-20 visualization-chain
+    // decision's new rung, mandatory for NEW specs only; promote once the corpus migrates.
+    name: 'DATA_FLOW',
+    required: true,
+    loadBearing: false,
+    fold: false,
+    fill: DATA_FLOW_FILL,
   },
   {
     name: 'ARCHITECTURE',
@@ -355,6 +384,7 @@ flowchart LR
   consumer -->|imports| library
   library --> capability
 \`\`\`
+_Что здесь главное, одной фразой._
 <!--/SECTION:OVERVIEW-->
 
 <!--SECTION:GOLDEN_DX-->
@@ -383,6 +413,7 @@ ${REQUIREMENTS_LIST_SKELETON}
 |---|---|---|
 <!--/SECTION:REQUIREMENTS_AND_CONSTRAINTS-->
 
+${DATA_FLOW_SKELETON}
 <!--SECTION:PUBLIC_API_SURFACE-->
 ## Public API Surface
 [Ключевые exported interfaces, types, functions. Intent-level, без impl detail.]
@@ -469,6 +500,15 @@ const LIBRARY_SECTIONS: SectionManifestEntry[] = [
     fill: 'Flat Requirements list per REQUIREMENT_ENTRY_FORMAT (replaces split Functional/Non-Functional for new specs), Out-of-Scope, Runtime & Deferred Scope, and the Rules table.',
   },
   {
+    // New for library; loadBearing:false (OVERVIEW pattern) — 2026-08-20 visualization-chain
+    // decision's new rung, mandatory for NEW specs only; promote once the corpus migrates.
+    name: 'DATA_FLOW',
+    required: true,
+    loadBearing: false,
+    fold: false,
+    fill: DATA_FLOW_FILL,
+  },
+  {
     name: 'PUBLIC_API_SURFACE',
     required: true,
     loadBearing: true,
@@ -527,6 +567,7 @@ infrastructure
 \`\`\`
 edit ──► typecheck ──► lint ──► test ──► pre-commit ──► CI
 \`\`\`
+_Что здесь главное, одной фразой._
 <!--/SECTION:OVERVIEW-->
 
 <!--SECTION:SCOPE_DEPENDENCIES-->
@@ -757,6 +798,7 @@ flowchart LR
   producer -->|implements| Contract
   Contract -->|consumed by| consumer
 \`\`\`
+_Что здесь главное, одной фразой._
 <!--/SECTION:OVERVIEW-->
 
 <!--SECTION:SCOPE_DEPENDENCIES-->
@@ -929,6 +971,7 @@ flowchart LR
   Port --> Service
   Service -->|result| caller
 \`\`\`
+_Что здесь главное, одной фразой._
 <!--/SECTION:OVERVIEW-->
 
 <!--SECTION:MODULE_USAGE_EXAMPLE-->
@@ -977,7 +1020,7 @@ graph TD
 
 <!--SECTION:MODULE_CONTRACTS-->
 ## Module Contracts
-[One-line human summary — which Ports / Adapters / Services this module defines. The contract bodies fold per \`AX_SPEC_PROGRESSIVE_DISCLOSURE\` (checked by \`SDD_SECTION_NOT_FOLDED\`).]
+[One-line human summary — which Ports / Adapters / Services this module defines. The contract bodies fold per \`AX_SPEC_PROGRESSIVE_DISCLOSURE\` (checked by \`SDD_SECTION_NOT_FOLDED\`). Dependency graph per \`DBC_DEPENDENCY_GRAPH_FORMAT\` sits directly below this line, above the folded \`<details>\`. Right after it, MANDATORY whenever this module's inventory lists ≥2 abstractions (AX_SPEC_MANDATORY_DIAGRAM, rung 6, new per the 2026-08-20 visualization-chain decision): the Call Chain — a \`sequenceDiagram\`, or its table-of-steps equivalent (step / participant / action / data), per \`CALL_CHAIN_FORMAT\` (\`formats/dbc-contracts.xml\`) — both forms count equally. On \`refine-module\`/\`pivot\`, also the Delta rung per \`DELTA_DIAGRAM_FORMAT\` (\`formats/pivot-formats.xml\`): composition graph with the new node marked, plus the ADDED Call Chain steps — the unchanged part is NOT redrawn. Every diagram here carries a caption per \`DIAGRAM_CAPTION_FORMAT\`, e.g. \`_Путь списания за заказ — SHOP-REQ-6, SHOP-REQ-7._\` These new rungs are mandatory for NEW module specs only.]
 
 <!-- Subsections: any subset of Ports / Adapters / Services / Patterns / Utilities / Module-level invariants.
      Unnumbered \`###\` headers (e.g. \`### Ports\`, \`### OperationDef Pattern\`). -->

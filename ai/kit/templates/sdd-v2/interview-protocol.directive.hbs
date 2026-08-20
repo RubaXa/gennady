@@ -96,6 +96,15 @@
     | Потребители | who consumes the result and what they expect from it |
     | Слабые места | MANDATORY: holes, contradictions, unstated expectations of the intake — name them to the operator, per `AX_OPERATOR_SAFEGUARD` |
     | Внешние зависимости | what outside this scope must exist / hold for the design to stand |
+    | Встраивание в систему | MANDATORY: which existing mechanism this extends (or the cited neighbour invariant that justifies a new one); which neighbour specs and requirements the change touches — closes ONLY from the calling directive's `STEP_*_SYSTEM_FIT` `sdd-orient` output, never from a guess (`AX_PARALLEL_MECHANISM_REQUIRES_JUSTIFICATION`) |
+
+    «Встраивание в систему» is answered by the tool, not by agent recall: when the calling
+    directive's `STEP_*_SYSTEM_FIT` already ran before this interview instance, this topic opens
+    pre-closed (`✅`) with a one-line pointer to that step's recorded answers; when `STEP_*_SYSTEM_FIT`
+    runs AFTER this interview instance (later in the same directive's flow), the calling step narrows
+    it out of THIS map — per the narrowing rule below — and it closes directly at that later step
+    instead of inside this loop. Either way this topic never closes on the agent's own inference
+    (`AX_COVERAGE_MAP_CLOSURE`).
 
     scope-type block — append per the caller's scope-type:
 

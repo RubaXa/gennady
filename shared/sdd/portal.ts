@@ -1,5 +1,5 @@
 // @file: Parse the Scopes table and Scope-Graph edges out of the SDD project portal (specs/README.md) — pure.
-// @consumers: sdd-state.cmd, sdd-check.cmd
+// @consumers: sdd-state.cmd, sdd-check.cmd, sdd-orient.cmd
 // @tasks: N/A
 
 /** @purpose Lifecycle of a scope as reported by the portal status cell. */

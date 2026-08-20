@@ -79,6 +79,18 @@
       Scope spec declares `depends-on` edges in Scope Dependencies. These edges feed cascade computation in the `scaffold` flow. Cross-scope contracts are sourced from `interface`-type scopes — never described inside a product scope spec.
     </Axiom>
 
+    <Axiom id="AX_PARALLEL_MECHANISM_REQUIRES_JUSTIFICATION">
+      Introducing a parallel mechanism where an existing one from a neighbour spec could be extended is a
+      decision at GOAL level, never a silent author call. "Вводим новое" is a valid answer ONLY when it
+      names the specific neighbour invariant / requirement ID the existing mechanism cannot satisfy, and
+      records the choice as its own Decision Log entry (`DECISION_LOG_ENTRY_FORMAT`) citing that ID. No
+      cited ID, no entry → the mechanism stays unjustified: route it back to the operator as an open
+      question, not a decision already made on their behalf. This governs the AUTHOR's system-fit check
+      (`STEP_*_SYSTEM_FIT` in `scope` / `module` / `interface` / `infra`); `AX_REUSE_FIRST` runs the same
+      bias against duplication from the CRITIC's reactive vantage, after the artifact already exists — the
+      two apply one belief at two different points in the lifecycle, not two competing rules.
+    </Axiom>
+
     <Axiom id="AX_EVIDENCE_HYGIENE">
       Separate Facts / Assumptions / Hypotheses in every intake-style frame.
       - **Facts** — directly observable from input artifacts (spec, sibling specs, rule files, extracted measurements).
@@ -89,9 +101,19 @@
     </Axiom>
 
     <Axiom id="AX_BOOTSTRAP_NARROW_READ">
-      Discovery is design-blind to repository code (per `AX_SPEC_IS_SOLE_SOURCE`) **except** inside STEP_7 (External Dependencies Audit), where narrow Read is permitted **only for inventory verification** — confirming whether a referenced package, file, scope, or tool physically exists.
-      Permitted reads in STEP_7: `package.json` and equivalents, `tsconfig.json` and equivalents, `specs/README.md`, sibling scope manifests, filesystem existence checks.
-      Forbidden in STEP_7: reading application source code to influence design decisions; revisiting Vision / Requirements / Architecture / Contracts based on what was found. If a finding genuinely invalidates a design decision, pop back to the relevant STEP_3–STEP_6 explicitly and treat as `pivot`.
+      Discovery is design-blind to repository code (per `AX_SPEC_IS_SOLE_SOURCE`) **except** inside the
+      External Dependencies Audit step, where narrow Read is permitted **only for inventory
+      verification** — confirming whether a referenced package, file, scope, or tool physically exists.
+      Permitted reads there: `package.json` and equivalents, `tsconfig.json` and equivalents,
+      `specs/README.md`, sibling scope manifests, filesystem existence checks. Forbidden there: reading
+      application source code to influence design decisions — inventory verification answers "does X
+      exist", never "how does X work internally".
+      An existing mechanism this audit turns up — one the spec should extend instead of duplicating —
+      MUST feed back into the design: revising Architecture / Contracts on that finding is the ordinary
+      continuation of THIS session's drafting, not a separate ceremony, as long as the spec has not yet
+      merged to master (`AX_PIVOT_REQUIRES_SUPERSESSION` governs a revision raised after that point).
+      Pop back to the relevant earlier step explicitly, incorporate the finding, then re-run the
+      External Dependencies Audit once more before writing the final spec.
     </Axiom>
 
     <Axiom id="AX_SPEC_MANDATORY_DIAGRAM">
@@ -118,6 +140,7 @@
     | `H_NO_INTAKE` | Empty intake |
     | `H_AMBIGUOUS_MODE` | Spec exists + mode verb absent (per `AX_MODE_AUTO_DETECT_OR_HALT`) |
     | `H_BREAKING_CHANGE_NO_PROTOCOL` | A breaking interface change without a declared breaking-change protocol |
+    | `H_SYSTEM_FIT_NOT_RUN` | `STEP_3_VERSIONING_POLICY` entered before `STEP_2B_SYSTEM_FIT`'s checklist closed, or "вводим новое" recorded without the specific neighbour invariant/requirement ID it fails (`AX_PARALLEL_MECHANISM_REQUIRES_JUSTIFICATION`) |
     | `H_PIVOT_NO_INVALIDATION_LIST` | `pivot` mode without a Pivot Invalidation List |
     | `H_REWRITE_WITH_DOWNSTREAM` | `rewrite` mode but the scope already has tickets — not v0, use `pivot` (`AX_PIVOT_REQUIRES_SUPERSESSION`) |
     | `H_BOOTSTRAP_REQUIREMENTS_MISSING` | External-deps step finished without a Bootstrap Requirements section |
@@ -147,6 +170,33 @@
         the session file: per `AX_SCALE_PROPORTIONAL_DEPTH` `fix` / `function` → base topics + the
         triage minimum; `product` → the full scope-type block. The interview IS the substance of
         the step. Approval Check. STOP.
+      </Action>
+    </Step>
+    <Step id="STEP_2B_SYSTEM_FIT">
+      <Goal>Reconcile with the existing system before the versioning policy locks.</Goal>
+      <Action>
+        FIRST action this step: run `npx gennady sdd-orient specs/<scope>/<scope>.spec.md --scope
+        <scope>` (the path names where THIS interface spec lives even before `sdd-new` materializes
+        it) and read its output in full: the portal line, the one-hop neighbours with their paths,
+        entity/contract NAMES, requirement IDs + titles, the consumers list, and its closing question.
+
+        Then close, in THIS message, the fixed checklist — record every answer in the spec (Decision
+        Log entry when (a)/(b) lands on "new", inline note otherwise):
+        (a) Is this contract / schema shape already an existing kind — does the extract already name
+        it on a neighbour interface or a producer/consumer scope?
+        (b) If not: which existing contract the extract names are we EXTENDING (a new version, a new
+        field) instead of introducing a parallel one?
+        (c) Which neighbour specs (paths, from the extract — producers, consumers) will need work for
+        this to fit the system — each becomes its own «СОСЕДИ» line in the eventual `CHANGE_MANIFEST`
+        / Pivot Invalidation List sideways entry?
+        (d) Which neighbour requirements (IDs, from the extract) conflict with the versioning policy
+        we are about to lock, and how is the conflict resolved?
+        "Вводим новое" answers (a)/(b) ONLY together with the specific neighbour invariant/requirement
+        ID the existing contract cannot satisfy, plus its own Decision Log entry
+        (`AX_PARALLEL_MECHANISM_REQUIRES_JUSTIFICATION`) — else `H_SYSTEM_FIT_NOT_RUN`. On a
+        genuinely greenfield project with no neighbours, `sdd-orient` degenerates to its one-line
+        "соседей нет" — the checklist still runs, (a) still gets an honest answer, (c)/(d) collapse to
+        "н/д"; the step itself is never skipped. STOP.
       </Action>
     </Step>
     <Step id="STEP_3_VERSIONING_POLICY">
@@ -186,7 +236,7 @@
         `AX_ARTIFACT_STYLE_SELF_CHECK`. In `refine` mode update sections in place per
         `AX_LIVING_SPEC`. In `pivot` mode also
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/pivot-formats.xml")`
-        (`AX_PIVOT_REQUIRES_SUPERSESSION`); in `rewrite` mode write fresh — no supersession. For a brand-new scope, append the `🚧 (awaiting root sync)` placeholder row to the portal Scopes table per `AX_PORTAL_READ_ONLY_WITH_PLACEHOLDER_EXCEPTION` — every other portal edit belongs to the root flow. Write in review-state per `AX_SPEC_LIFECYCLE` — prepend a `CHANGE_MANIFEST` (`READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/change-manifest.xml")`) and mark changed lines `✚`/`~` (greenfield → manifest only, no per-line marks); compress folds it to master downstream after the change ships. Then close with the integrity check per `AX_CLOSE_WITH_INTEGRITY_CHECK`: run `sdd-check --all specs/<scope>` (anchor balance + required sections + links) and resolve any finding. Then `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/review-lifecycle.directive.xml")` — internal critic → publish (MR) → external review → compress + merge on approval. After the spec merges to master, handoff is to scaffold (interface scopes have no modules).
+        (`AX_PIVOT_REQUIRES_SUPERSESSION`); in `rewrite` mode write fresh — no supersession. For a brand-new scope, append the `🚧 (awaiting root sync)` placeholder row to the portal Scopes table per `AX_PORTAL_READ_ONLY_WITH_PLACEHOLDER_EXCEPTION` — every other portal edit belongs to the root flow. Write in review-state per `AX_SPEC_LIFECYCLE` — prepend a `CHANGE_MANIFEST` (`READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/change-manifest.xml")`) and mark changed lines `✚`/`~` (greenfield → manifest only, no per-line marks) — its «СОСЕДИ» block carries the (c)/(d) answers `STEP_2B_SYSTEM_FIT` recorded, never left empty by omission; compress folds it to master downstream after the change ships. Then close with the integrity check per `AX_CLOSE_WITH_INTEGRITY_CHECK`: run `sdd-check --all specs/<scope>` (anchor balance + required sections + links) and resolve any finding. Then `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/review-lifecycle.directive.xml")` — internal critic → publish (MR) → external review → compress + merge on approval. After the spec merges to master, handoff is to scaffold (interface scopes have no modules).
         Approval Check. STOP.
       </Action>
     </Step>

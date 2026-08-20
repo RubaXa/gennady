@@ -27,6 +27,53 @@
   Contracts` is the same shape converted at write time — never a fresh diagram invented then.
 </Contract>
 
+<Contract id="CALL_CHAIN_FORMAT">
+  **Call Chain — mandatory in `## Module Contracts`, right after `DBC_DEPENDENCY_GRAPH_FORMAT`,
+  whenever the module's inventory lists ≥2 abstractions** (entities and/or Ports/Adapters/
+  Services combined). The dependency graph above answers "who depends on whom"; this rung
+  answers a distinct question — "who calls whom, IN WHAT ORDER, for the one main scenario" — a
+  relationship among ≥2 elements over time, so it earns its own picture
+  (`AX_INFOGRAPHIC_FIRST`, `formats/diagram-vocabulary.xml`).
+
+  Two equally valid forms — pick whichever reads clearer for THIS scenario, neither is a
+  fallback for the other:
+
+  1. **`sequenceDiagram`** — participants in call order, request/response arrows:
+
+     ```markdown
+     ```mermaid
+     sequenceDiagram
+       OrderService->>PaymentGatewayPort: charge(amount)
+       PaymentGatewayPort->>StripeAdapter: charge(amount)
+       StripeAdapter-->>PaymentGatewayPort: receipt
+       PaymentGatewayPort-->>OrderService: receipt
+     ```
+     ```
+
+  2. **Step table** — an equally valid form for a linear scenario, no diagram penalty for
+     choosing it over the sequence form:
+
+     ```markdown
+     | Step | Participant | Action | Data |
+     |---|---|---|---|
+     | 1 | OrderService | charge(amount) | amount |
+     | 2 | PaymentGatewayPort | charge(amount) | amount |
+     | 3 | StripeAdapter | receipt | receipt |
+     | 4 | PaymentGatewayPort | receipt | receipt |
+     ```
+
+  Caption per `DIAGRAM_CAPTION_FORMAT` (`formats/diagram-vocabulary.xml`), naming the
+  requirement IDs this call chain traces. Shown as ASCII (or the table, already text) in chat
+  during STEP_4_CONTRACTS_DBC, right after the dependency graph, BEFORE that step's Approval
+  Check (`AX_CHAT_BEFORE_SPEC`) — the mermaid version under `## Module Contracts` converts the
+  same shape at write time. A module below the ≥2-abstraction threshold (a single Service, no
+  Port/Adapter) states that explicitly instead of a silently missing rung — floor, never
+  nothing, same discipline as `DBC_DEPENDENCY_GRAPH_FORMAT`. Mandatory for NEW module specs
+  only — a module spec written before this rung existed is not retroactively broken by its
+  absence (2026-08-20 visualization-chain decision,
+  `specs/ai-skills/research/2026-08-20-visualization-chain.research.md`).
+</Contract>
+
 <Contract id="DBC_PORT_FORMAT">
   Conditions are plain-language statements per `AX_CONTRACTS_TEXTUAL_AGNOSTIC` — one testable
   statement per line, shared vocabulary, code syntax stays out (target-language code lives only

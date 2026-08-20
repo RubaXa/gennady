@@ -2631,6 +2631,7 @@ Spec hierarchy is materialized at `specs/cli/`. Module specs are at `specs/cli/<
 - [run](./run/run.spec.md) — Команда `gennady run`: тонкая обёртка над `@services/agent-run` — запуск внешнего AI-движка (opencode) с заданием/директориями/моделью в readonly
 - [help](./help/help.spec.md) — Команда `gennady help`: статическая таблица всех CLI-команд
 - [orient](./orient/orient.spec.md) — Команда `gennady orient`: навигация по file-header и DBC-контрактам (карта, поиск, граф зависимостей)
+- [sdd-orient](./sdd-orient/sdd-orient.spec.md) — Команда `gennady sdd-orient`: навигация по ДИЗАЙНУ (спекам) — окрестность спеки глубиной 1 (портал + соседние модули/сущности/контракты/требования), в отличие от `orient` (навигатор по коду)
 - [sync](./sync/sync.spec.md) — Команда `gennady sync`: синхронизация `ai/directives/` из npm-пакета в текущий проект
 - [sync-skills](./sync-skills/sync-skills.spec.md) — Команда `gennady sync-skills`: синхронизация 13 SDD-скилов из npm-пакета в `.claude/skills/` проекта с orphan-удалением
 - [agents-rules](./agents-rules/agents-rules.spec.md) — Команда `gennady agents-rules`: выводит инструкцию по orient для AI-агентов

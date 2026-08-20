@@ -21,6 +21,7 @@
     producer -->|implements| Contract
     Contract -->|consumed by| consumer
   ```
+  _Что здесь главное, одной фразой._
   <!--/SECTION:OVERVIEW-->
 
   <!--SECTION:SCOPE_DEPENDENCIES-->

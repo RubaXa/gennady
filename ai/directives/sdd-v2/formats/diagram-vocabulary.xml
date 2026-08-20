@@ -23,9 +23,15 @@
       The module flow's diagram FLOOR (not judgment — see `AX_SPEC_MANDATORY_DIAGRAM` in
       `module.directive.xml`) is beyond a single Overview picture: a fixed ladder of one diagram per
       decomposition step (Module Map axes, Entity Inventory ER, Entity Surface lifecycle, Module
-      Contracts dependency graph). The full worked example, ASCII + mermaid pair per rung, lives at
+      Contracts dependency graph, Call Chain sequence — new per the 2026-08-20
+      visualization-chain decision), plus a Delta rung (composition graph with the new node marked,
+      added Call Chain steps) whenever the module is under `refine`/`pivot`. The full worked
+      example, ASCII + mermaid pair per rung, lives at
       `ai/directives/sdd-v2/formats/module-diagram-ladder.example.md` — each of `module.directive.xml`'s
-      `STEP_1_MODULE_MAP` … `STEP_4_CONTRACTS_DBC` points to it directly.
+      `STEP_1_MODULE_MAP` … `STEP_4_CONTRACTS_DBC` / `STEP_6_FINAL_HIERARCHY` points to it directly.
+      The scope flow carries its own analogous floor — Overview, High-Level Architecture, Use
+      Cases (`product` only), Data Flow (`product`/`library`, drawn AFTER requirements close) —
+      see `AX_SPEC_MANDATORY_DIAGRAM` in `scope.directive.xml`.
   </Mission>
 
   <BeliefState>
@@ -39,8 +45,9 @@
     <Axiom id="AX_DIAGRAM_DISCIPLINE">
       Every diagram, any medium: ≤7 nodes (split or abstract if more); ONE diagram per idea; a
       one-line caption directly under it (Russian, per `AX_OPERATOR_LANGUAGE` — the caption is
-      operator-facing text); encode the single thing to notice first with position/size/marker. A
-      diagram nobody reads in 5 seconds failed — simplify.
+      operator-facing text), in the exact shape `DIAGRAM_CAPTION_FORMAT` fixes below; encode the
+      single thing to notice first with position/size/marker. A diagram nobody reads in 5 seconds
+      failed — simplify.
     </Axiom>
 
     <Axiom id="AX_OVERVIEW_DIAGRAM_FLOOR">
@@ -68,11 +75,11 @@
     |---|---|---|---|
     | Scope's place among neighbours / system boundary | C4-style | boxes grouped in a boundary zone | `flowchart` + `subgraph` |
     | Business goals → scenarios (who comes and why) | use-case | actors → scenario nodes, one line each | `flowchart` TD |
-    | Data flow of a key scenario | flowchart | boxes + arrows | `flowchart` LR |
-    | Dependencies / coupling / direction (module Overview) | flowchart | boxes + arrows | `flowchart` LR |
-    | Who calls whom over time (runtime flow) | sequence | participant columns + arrows (≤4 cols) | `sequenceDiagram` |
+    | Where data came from, where it turned into what, where it landed (scope-level Data Flow rung) | DFD | four node kinds only — entity/process/store/labelled arrow, NO branches or loops | `flowchart` (DFD-restricted — see `Syntax` below) |
+    | Dependencies / coupling / direction (module Overview, Module Contracts) | flowchart | boxes + arrows | `flowchart` LR |
+    | Who calls whom over time (module Call Chain rung) | sequence | participant columns + arrows (≤4 cols); table-of-steps is an equally valid form for a linear scenario | `sequenceDiagram` (or a Step/Participant/Action/Data table) |
     | Lifecycle / statuses (state machine in the design) | state | `A -> B` labelled transitions | `stateDiagram-v2` |
-    | Point of a PIVOT (old shape vs new) | before→after | two small labelled box-graphs side by side | two `flowchart` blocks |
+    | Point of a PIVOT / refine (old shape vs new, module Delta rung) | before→after | composition graph with the new node marked `NEW` | `flowchart` with `:::new` on the added node, or a `(добавлено)` suffix |
     | Data schema (entities / tables) | ER | indented entity→fields list | `erDiagram` |
     | File map / hierarchy | tree | indented ASCII tree | (plain fenced text — `## File Structure` already uses this) |
 
@@ -115,7 +122,26 @@
         ```
     </Type>
 
-    <Type name="sequence">
+    <Type name="DFD (scope Data Flow rung — product/library, drawn AFTER requirements close)">
+      Exactly four node kinds, NO conditions, NO loops — this is a data diagram, not a
+      control-flow chart; a branch belongs on a state/flowchart elsewhere, never here.
+      ASCII:
+        (user)  ──submits──▶  [validate & save]  ──row──▶  ((tasks store))
+                                     │
+                                  confirmation
+                                     ▼
+                                  (user)
+      Mermaid — external entity = rounded `(...)`, process = rectangle `[...]`, store = cylinder
+      `[(...)]`, flow = a labelled arrow, nothing else:
+        ```mermaid
+        flowchart LR
+          user(user) -->|submits task| validate[validate & save]
+          validate -->|row| store[(tasks store)]
+          validate -->|confirmation| user
+        ```
+    </Type>
+
+    <Type name="sequence (module Call Chain rung — ≥2 abstractions, one main scenario)">
       ASCII (columns, ≤4 participants):
         Client      API        DB
           │  POST    │          │
@@ -131,6 +157,14 @@
           DB-->>API: rows
           API-->>Client: 201
         ```
+      Table-of-steps — an equally valid form for a linear scenario, no diagram penalty for
+      choosing it (`CALL_CHAIN_FORMAT`, `formats/dbc-contracts.xml`):
+        | Step | Participant | Action | Data |
+        |---|---|---|---|
+        | 1 | Client | POST /orders | order payload |
+        | 2 | API | query DB | order id |
+        | 3 | DB | return rows | order row |
+        | 4 | API | 201 to Client | order id |
     </Type>
 
     <Type name="state">
@@ -160,10 +194,34 @@
   </Syntax>
 
   <Output_Contracts>
+    <Contract id="DIAGRAM_CAPTION_FORMAT">
+      Decided 2026-08-20 (`specs/ai-skills/research/2026-08-20-visualization-chain.research.md`) —
+      fixes the exact caption shape every diagram in a spec carries, mermaid or (chat-only) ASCII;
+      this is what a mechanical grep traces a diagram back to its requirements with, so the shape
+      below is normative and MUST NOT drift. Directly after the closing fence, one line:
+
+      ```markdown
+      ```mermaid
+      ...
+      ```
+      _<Что показывает одной фразой> — <ACR>-REQ-<N>[, <ACR>-REQ-<M>]._
+      ```
+
+      Example: `_Путь данных при добавлении задачи — STOR-REQ-3, STOR-REQ-7._`
+
+      The ID list names the requirements THIS diagram shows — not every requirement in the spec,
+      and never a requirement the diagram does not actually depict. A diagram that illustrates no
+      single requirement (a whole-system Overview, a scope-boundary picture among neighbours)
+      drops the ID list but keeps the phrase — `_Как <scope> сцеплен с соседями._` — the caption
+      itself has no exception, only the ID suffix is conditional. MANDATORY for every diagram in
+      every spec; held mechanically by the check `sdd-check` gates for this shape.
+    </Contract>
+
     <Contract id="OVERVIEW_DIAGRAM_FORMAT">
       The Overview diagram sits directly in `## Overview` — NOT wrapped in `<details>` (it is the
       human-readable floor of the spec's top half). Fenced mermaid (spec) — never ASCII in the final
-      spec text; ASCII is the chat-only intermediate. One-line caption directly under the fence.
+      spec text; ASCII is the chat-only intermediate. Caption directly under the fence per
+      `DIAGRAM_CAPTION_FORMAT` — Overview is whole-scope, so the no-ID form applies by default.
 
       ```markdown
       <!--SECTION:OVERVIEW-->
@@ -175,12 +233,13 @@
         Port --> Service
         Service -->|result| caller
       ```
-      _Подпись одной строкой: что здесь главное._
+      _Что здесь главное, одной фразой._
       <!--/SECTION:OVERVIEW-->
       ```
 
-      Additional diagrams elsewhere in the spec follow the same fenced-mermaid-plus-caption shape;
-      when placed inside a section already required to fold (`FOLD_REQUIRED_V2`,
+      Additional diagrams elsewhere in the spec follow the same fenced-mermaid-plus-caption shape
+      (caption per `DIAGRAM_CAPTION_FORMAT`, ID list included whenever the diagram shows specific
+      requirements); when placed inside a section already required to fold (`FOLD_REQUIRED_V2`,
       `shared/sdd/check.ts`), the diagram rides inside that section's `<details>` like the rest of
       the reference detail.
     </Contract>

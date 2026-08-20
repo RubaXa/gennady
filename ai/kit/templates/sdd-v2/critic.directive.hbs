@@ -29,6 +29,8 @@
 
     {{> "axiom/truth/ax-reuse-first"}}
 
+    {{> "axiom/spec/ax-parallel-mechanism-requires-justification"}}
+
     {{> "axiom/process/ax-surgical"}}
 
     {{> "axiom/critic/ax-default-accept"}}
@@ -92,8 +94,8 @@
       Convergence brake from round 3 on: a NEW finding (not already carried in a prior `## Critic Rounds` entry) advances to STEP_3 / STEP_3B only if `CRITICAL`, or a regression — a defect a prior round's own edit introduced. A new `MINOR` / `MAJOR` finding that is neither stays out of this cycle's edit set — record it in this round's entry under `Out of cycle:` and carry it into the STEP_5 report as its own list, never silently dropped (AUTHORING.md §9 — a stop needs a named outlet, not a bare refusal).</Action>
     </Step>
     <Step id="STEP_2B_RECONCILE">
-      <Goal>Reconcile every introduced entity. (mechanical → tool)</Goal>
-      <Action>For each entity a finding would add, run `orient` to check the existing project surface: reuse > extend > justify > escalate (`AX_REUSE_FIRST`). Do not let the critique invent a duplicate of an existing entity.</Action>
+      <Goal>Walk the graph from the artifact to the portal; reconcile every entity the WHOLE artifact introduces, not only this round's findings. (mechanical → tool)</Goal>
+      <Action>Run `npx gennady sdd-orient <artifact-path> --scope <scope>` ONCE against the critiqued artifact itself — one hop from the artifact to its portal, its declared-dependency neighbours, and its consumers; this is the ORCHESTRATOR's own step, on full project context, not a widening of the sensor's bounded read (`AX_ISOLATION_SIGNAL` still governs STEP_1_DISPATCH — the sensor stays isolated). The sweep is proactive over EVERY entity/contract/mechanism the artifact introduces, never narrowed to only the entities this round's findings happen to name — a duplicate the sensor never flagged is still a duplicate. For each: reuse > extend > justify > escalate (`AX_REUSE_FIRST`); "justify" requires the specific neighbour invariant/requirement ID the existing mechanism could not satisfy (`AX_PARALLEL_MECHANISM_REQUIRES_JUSTIFICATION`). Two outcomes route to `GOAL`, never a silent `MECHANICAL` fix: (1) the artifact duplicates a mechanism the `sdd-orient` extract already names on a neighbour, (2) the artifact's introduced entity conflicts with a neighbour requirement the extract surfaces. Do not let the critique invent a duplicate of an existing entity.</Action>
     </Step>
     <Step id="STEP_3_EDIT">
       <Goal>Apply the round's `MECHANICAL` edits.</Goal>
@@ -103,7 +105,7 @@
       <Goal>One batch Ask per round for every operator-owned item (`AX_GOAL_OWNER_GATE`).</Goal>
       <Action>
         Build ONE `AskUserQuestion` batch (`QUESTION_FORMAT` batching rule — independent questions ride
-        together) carrying, when present: (a) every `GOAL` finding from STEP_2 as its own question,
+        together) carrying, when present: (a) every `GOAL` finding from STEP_2 or STEP_2B as its own question,
         including any orchestrator disagreement with a sensor's `GOAL` tag («critic tagged GOAL, I read
         this as mechanical because …») — the tag stands until this answer says otherwise; (b) IF this
         round carried any `CRITICAL` / `MAJOR` finding (mechanical or goal), one confirm block: «critic

@@ -124,12 +124,31 @@
     </Axiom>
 
     <Axiom id="AX_APPEND_ONLY_MODULE_ADD">
-      In `add-module` mode existing module specs are NOT touched. Only:
+      In `add-module` mode the invariant is that the new module must not break its siblings — not a
+      blanket freeze on every sibling file. Default shape:
       - new `specs/<scope>/<new-module>/<new-module>.spec.md`;
-      - scope spec Module Map: APPEND new module row (append at end). Other rows untouched;
-      - scope spec Usage Example (ex-Golden DX): rewritten as composition view per `AX_SCOPE_SPEC_MODULE_MAP_OWNERSHIP` (the ONE exception to «other scope-spec sections untouched»).
+      - scope spec Module Map: APPEND new module row (append at end). Other rows untouched by default;
+      - scope spec Usage Example (ex-Golden DX): rewritten as composition view per `AX_SCOPE_SPEC_MODULE_MAP_OWNERSHIP` (the ONE exception to «other scope-spec sections untouched by default»).
 
-      Touching another module's spec in `add-module` is forbidden. If sibling changes are needed, run the `module` flow again in `refine-module` mode for that specific module.
+      When the new module's own requirement genuinely needs a sibling module to change to fit it — a
+      contract it must call, a Port it must implement against — updating that sibling spec is ordinary
+      work, not a forbidden act: run the `module` flow again in `refine-module` mode for that specific
+      module, in the SAME round this need surfaced. Reaching instead for a parallel mechanism that
+      avoids touching the sibling is the move that needs justifying, not the sibling edit itself
+      (`AX_PARALLEL_MECHANISM_REQUIRES_JUSTIFICATION`). What stays forbidden is an UNREQUIRED sibling
+      edit — touching another module's spec beyond what THIS module's own requirement demands.
+    </Axiom>
+
+    <Axiom id="AX_PARALLEL_MECHANISM_REQUIRES_JUSTIFICATION">
+      Introducing a parallel mechanism where an existing one from a neighbour spec could be extended is a
+      decision at GOAL level, never a silent author call. "Вводим новое" is a valid answer ONLY when it
+      names the specific neighbour invariant / requirement ID the existing mechanism cannot satisfy, and
+      records the choice as its own Decision Log entry (`DECISION_LOG_ENTRY_FORMAT`) citing that ID. No
+      cited ID, no entry → the mechanism stays unjustified: route it back to the operator as an open
+      question, not a decision already made on their behalf. This governs the AUTHOR's system-fit check
+      (`STEP_*_SYSTEM_FIT` in `scope` / `module` / `interface` / `infra`); `AX_REUSE_FIRST` runs the same
+      bias against duplication from the CRITIC's reactive vantage, after the artifact already exists — the
+      two apply one belief at two different points in the lifecycle, not two competing rules.
     </Axiom>
 
     <Axiom id="AX_REFINE_MODULE_PRESERVES_CONTRACTS">
@@ -165,9 +184,10 @@
     <Axiom id="AX_SPEC_MANDATORY_DIAGRAM">
       The diagram floor is a fixed ladder by decomposition stage, not one "when useful" Overview
       picture — the same discipline agent-inbox's `AX_COMPREHENSION_LADDER` applies to a review
-      applies here to a design, at authoring time instead of review time. Four rungs, each
-      answering ONE distinct question — no two rungs answer the same thing; the worked example
-      lives in `ai/directives/sdd-v2/formats/module-diagram-ladder.example.md`:
+      applies here to a design, at authoring time instead of review time. Six rungs plus a
+      refine/pivot-only Delta rung, each answering ONE distinct question — no two rungs answer the
+      same thing; the worked example lives in
+      `ai/directives/sdd-v2/formats/module-diagram-ladder.example.md`:
       1. **Overview** (module spec) — WHAT this module does, main happy-path flow. Unconditional.
          Held by tooling: `sdd-check` fails a missing section (`SDD_NO_DIAGRAM_BLOCK`) or an empty
          one (`SDD_DIAGRAM_BLOCK_EMPTY`). The `Inter-Module Dependencies` graph is machine-parsed
@@ -184,13 +204,30 @@
       5. **Module Contracts** (`STEP_4_CONTRACTS_DBC`) — the dependency GRAPH among Ports /
          Adapters / Services. Mandatory whenever the module has ≥1 Port or Adapter; a Service-only
          module states so explicitly instead of a silently missing graph — floor, never nothing.
+      6. **Call Chain** (`STEP_4_CONTRACTS_DBC`, right after rung 5 — new per the 2026-08-20
+         visualization-chain decision) — WHO calls WHOM, in what ORDER, for the module's one main
+         scenario: a `sequenceDiagram`, or its table-of-steps equivalent (step / participant /
+         action / data, `CALL_CHAIN_FORMAT` in `formats/dbc-contracts.xml`) — both forms count
+         equally, neither is a fallback for the other. Mandatory whenever the module's inventory
+         lists ≥2 abstractions (entities and/or Ports/Adapters/Services combined); a module below
+         that threshold states so explicitly.
       Each rung is drawn as ASCII in chat at the step that owns it, BEFORE that step's Approval
       Check — a diagram appearing for the first time in the written spec means the operator never
       saw the shape they are approving (`AX_CHAT_BEFORE_SPEC`); an Approval Check without it is the
       same class of violation as `H_ASK_BEFORE_FORMAT` (asked before shown), and the operator may
-      reject and demand it. Beyond these five rungs, the author adds more views (sequence,
-      data-flow, before/after) wherever a further diagram genuinely helps a reader — that part
-      stays judgment, never a gate.
+      reject and demand it. Every diagram carries a caption naming the requirement IDs it shows,
+      per `DIAGRAM_CAPTION_FORMAT` (`formats/diagram-vocabulary.xml`).
+
+      **Delta rung** (`STEP_6_FINAL_HIERARCHY`, `refine-module` / `pivot` only) — the diagram twin
+      of the `CHANGE_MANIFEST` text delta: a composition graph carrying ONLY the changed corner
+      with the new node marked (`:::new` or a `(добавлено)` suffix) plus the ADDED Call Chain
+      steps, per `DELTA_DIAGRAM_FORMAT` (`formats/pivot-formats.xml`) — the unchanged part of the
+      module is NOT redrawn. Mandatory on every `refine-module` / `pivot` round.
+
+      This ladder (rungs 1–6 plus Delta) is the mandatory floor for NEW module specs only — a
+      module spec written before rungs 6 or Delta existed is not retroactively broken by their
+      absence. Beyond this floor, the author adds more views (data-flow, before/after) wherever a
+      further diagram genuinely helps a reader — that part stays judgment, never a gate.
     </Axiom>
 
     <Axiom id="AX_SPEC_PROGRESSIVE_DISCLOSURE">
@@ -316,6 +353,7 @@
     | `H_AMBIGUOUS_MODE` | Module specs exist + mode verb absent + no Pivot Invalidation List |
     | `H_LOW_CONFIDENCE` | Confidence LOW at decomposition lock or final hierarchy |
     | `H_INVENTORY_NOT_APPROVED` | Entered the surface step without all-module inventories approved |
+    | `H_SYSTEM_FIT_NOT_RUN` | `STEP_1_MODULE_MAP` entered before `STEP_0B_SYSTEM_FIT`'s checklist closed, or "вводим новое" recorded without the specific neighbour invariant/requirement ID it fails (`AX_PARALLEL_MECHANISM_REQUIRES_JUSTIFICATION`) |
     | `H_REFINE_BREAKING_CHANGE_NO_LOG` | `refine-module` removes a public entity / weakens a postcondition without a Decision Log entry (`AX_DECISION_LOG_REQUIRED`) |
     | `H_REFINE_BREAKING_NO_IMPACT_LIST` | breaking `refine-module` without a Pivot Invalidation List enumerating consumer modules (`AX_REFINE_MODULE_PRESERVES_CONTRACTS`) |
     | `H_MISSING_RULE_FILE` | A module rule reference does not resolve to an existing file (and not `deferred`) |
@@ -335,6 +373,36 @@
         `refine-module`, run `sdd-check --all specs/<scope>` first — an over-budget module
         (`SDD_MODULE_OVERSIZED` → decompose, `SDD_MODULE_SPEC_VERBOSE` → compress) is surfaced to the
         operator BEFORE new work, per `AX_HIERARCHICAL_SPECS`.
+      </Action>
+    </Step>
+    <Step id="STEP_0B_SYSTEM_FIT">
+      <Goal>Reconcile with the existing system before module boundaries lock.</Goal>
+      <Action>
+        FIRST action this step: run `npx gennady sdd-orient specs/<scope>/<scope>.spec.md --scope
+        <scope>` and read its output in full: the portal line, the one-hop neighbours with their
+        paths, entity/contract NAMES, requirement IDs + titles, the consumers list, and its closing
+        question. The scope spec's own Module Map is part of this extract's one-hop
+        neighbourhood — a decomposition that duplicates a sibling module's already-declared
+        responsibility, or a mechanism a neighbour SCOPE already owns, is exactly what this call
+        surfaces before boundaries lock, not after.
+
+        Then close, in THIS message, the fixed checklist — record every answer in the scope spec's
+        Decision Log when (a)/(b) lands on "new", inline note otherwise:
+        (a) Is the module / entity / mechanism we are about to carve out already an existing kind —
+        does the extract already name it (a sibling module, or a neighbour scope's mechanism)?
+        (b) If not: which existing module / mechanism the extract names are we EXTENDING instead of
+        introducing a new one?
+        (c) Which neighbour specs (paths, from the extract) will need work for this decomposition to
+        fit the system — each becomes its own «СОСЕДИ» line in the eventual `CHANGE_MANIFEST` / Pivot
+        Invalidation List sideways entry?
+        (d) Which neighbour requirements (IDs, from the extract) conflict with the boundaries we are
+        about to lock, and how is the conflict resolved?
+        "Вводим новое" answers (a)/(b) ONLY together with the specific neighbour invariant/requirement
+        ID the existing module/mechanism cannot satisfy, plus its own Decision Log entry
+        (`AX_PARALLEL_MECHANISM_REQUIRES_JUSTIFICATION`) — else `H_SYSTEM_FIT_NOT_RUN`. On a
+        genuinely greenfield project with no neighbours, `sdd-orient` degenerates to its one-line
+        "соседей нет" — the checklist still runs, (a) still gets an honest answer, (c)/(d) collapse to
+        "н/д"; the step itself is never skipped. STOP.
       </Action>
     </Step>
     <Step id="STEP_1_MODULE_MAP">
@@ -467,6 +535,22 @@
         never nothing. **Diagram shown (or explicit Service-only statement), this message, before
         the Approval Check below** — its absence is the same class of violation as
         `H_ASK_BEFORE_FORMAT`.
+
+        Right after the dependency graph, when this module's inventory lists ≥2 abstractions
+        (entities and/or Ports/Adapters/Services combined), draw the Call Chain (rung 6 of
+        `AX_SPEC_MANDATORY_DIAGRAM`, new per the 2026-08-20 visualization-chain decision, per
+        `CALL_CHAIN_FORMAT`): who calls whom, in order, for the module's one main scenario — a
+        `sequenceDiagram` ASCII block, OR its table-of-steps equivalent (step / participant /
+        action / data) when the scenario is linear — both count equally. A module below the
+        ≥2-abstraction threshold states that explicitly instead of a silently missing rung.
+        **Call Chain shown (or explicit below-threshold statement), this message, before the
+        Approval Check below** — its absence is the same class of violation as
+        `H_ASK_BEFORE_FORMAT`.
+
+        On `refine-module` / `pivot`, the Delta rung (composition graph with the new node marked
+        plus the ADDED Call Chain steps, per `DELTA_DIAGRAM_FORMAT` in `formats/pivot-formats.xml`)
+        is drawn later, at `STEP_6_FINAL_HIERARCHY` alongside the `CHANGE_MANIFEST` — not here.
+
         Close the step with two checks before presenting:
         1. Every module / entity / Port in the contracts carries a confirmed v1 consumer or
            near-term variability (`AX_YAGNI_OVERENGINEERING_GUARD`).
@@ -506,7 +590,14 @@
         appearing here for the first time means the operator never saw the shape they are being
         asked to approve. Assemble
         each `specs/<scope>/<module>/<module>.spec.md` to it; link back to `../../<scope>.spec.md`;
-        reconcile the scope Module Map. In `pivot` / breaking `refine-module` also
+        reconcile the scope Module Map. In `pivot` / `refine-module`, draw the Delta rung
+        (`AX_SPEC_MANDATORY_DIAGRAM`, per `DELTA_DIAGRAM_FORMAT` in
+        `ai/directives/sdd-v2/formats/pivot-formats.xml`) alongside the `CHANGE_MANIFEST`: the
+        composition graph carrying ONLY the changed corner with the new node marked, plus the
+        ADDED Call Chain steps — the unchanged part of the module is NOT redrawn. As ASCII in
+        chat BEFORE this step's Approval Check, per `AX_CHAT_BEFORE_SPEC`; its absence on a
+        `refine-module` / `pivot` round is the same class of violation as `H_ASK_BEFORE_FORMAT`.
+        In `pivot` / breaking `refine-module` also
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/pivot-formats.xml")`
         (`AX_REFINE_MODULE_PRESERVES_CONTRACTS`, else `H_REFINE_BREAKING_CHANGE_NO_LOG`). For a breaking
         `refine-module`, derive consumer modules from the reverse edges of the module graph (siblings whose
@@ -518,7 +609,9 @@
         `H_MISSING_RULE_FILE`. Before writing, run the self-check pass per
         `AX_ARTIFACT_STYLE_SELF_CHECK`. Write in review-state per `AX_SPEC_LIFECYCLE` — prepend a
         `CHANGE_MANIFEST` (`READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/change-manifest.xml")`) and
-        mark changed lines `✚`/`~` (greenfield → manifest only, no per-line marks); compress folds it to
+        mark changed lines `✚`/`~` (greenfield → manifest only, no per-line marks) — its «СОСЕДИ» block
+        carries the (c)/(d) answers `STEP_0B_SYSTEM_FIT` recorded, never left empty by omission;
+        compress folds it to
         master downstream after the change ships. Then run
         `sdd-check --all specs/<scope>` (anchor balance + required sections + links + size budget:
         `SDD_MODULE_OVERSIZED` / `SDD_MODULE_SPEC_VERBOSE`) and resolve or consciously defer any finding

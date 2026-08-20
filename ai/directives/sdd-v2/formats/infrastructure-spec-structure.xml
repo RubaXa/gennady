@@ -21,6 +21,7 @@
   ```
   edit ──► typecheck ──► lint ──► test ──► pre-commit ──► CI
   ```
+  _Что здесь главное, одной фразой._
   <!--/SECTION:OVERVIEW-->
 
   <!--SECTION:SCOPE_DEPENDENCIES-->

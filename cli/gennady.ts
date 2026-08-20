@@ -149,6 +149,10 @@ if (restArgs.some((a) => helpFlags.has(a))) {
       await import('./cmd/orient/help.ts').then((m) => m.printHelp());
       helpLoaded = true;
       break;
+    case 'sdd-orient':
+      await import('./cmd/sdd-orient/help.ts').then((m) => m.printHelp());
+      helpLoaded = true;
+      break;
     case 'run':
       await import('./cmd/run/help.ts').then((m) => m.printHelp());
       helpLoaded = true;
@@ -345,6 +349,10 @@ switch (command) {
 
   case 'orient':
     await import('./cmd/orient/index.ts');
+    break;
+
+  case 'sdd-orient':
+    await import('./cmd/sdd-orient/index.ts');
     break;
 
   case 'agents-rules':

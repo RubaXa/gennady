@@ -20,6 +20,9 @@ import {
   describeNumberCollision,
   DL_ID_GRAMMAR,
 } from './requirement-id.ts';
+// Pure text scan only (no jsdom/mermaid load — that lives behind loadMermaidParse, never imported
+// here) — safe to pull into this sync module for the call-chain rung's sequenceDiagram detection.
+import { extractMermaidBlocks } from '../mermaid/mermaid.ts';
 
 /**
  * @purpose One audit finding.
@@ -1751,6 +1754,263 @@ export function checkReviewState(file: string, content: string): Finding[] {
     });
   }
   return findings;
+}
+
+// Visualization-chain rungs beyond the OVERVIEW floor: caption, scope data-flow, module
+// call-chain, delta marking (see 2026-08-20-visualization-chain.research.md). Gate discipline
+// mirrors SDD_REQ_MISSING_UNHAPPY: dormant (or warn) for the pre-migration Requirements format,
+// error only once a spec has adopted REQUIREMENT_ENTRY_FORMAT.
+
+/**
+ * @purpose This spec's requirement-entry headings, empty for a pre-migration spec.
+ * @invariant Thin wrapper over `requirementsBody` + `parseRequirementHeadings` so every
+ * diagram-ladder check reads "new vs old format" the same way.
+ * @param content Full spec markdown.
+ * @returns Parsed headings, in document order (possibly empty).
+ */
+function requirementEntries(content: string): RequirementHeading[] {
+  const body = requirementsBody(content);
+  return body === null ? [] : parseRequirementHeadings(body);
+}
+
+// Sections known to carry a mandated diagram today (AX_SPEC_MANDATORY_DIAGRAM). NOT "every fenced
+// block in the file" — specs/** carries 280 bare ``` fences outside these sections (CLI output,
+// ASCII trees, JSON samples), almost none of them diagrams. A future data-flow/call-chain
+// subsection is still covered by heading TEXT below (DATA_FLOW_HEADING), not by section name.
+const DIAGRAM_BEARING_SECTIONS = [
+  'OVERVIEW',
+  'ARCHITECTURE',
+  'MODULE_MAP',
+  'INTER_MODULE_DEPENDENCIES',
+] as const;
+
+/** @purpose One fenced diagram block found inside a DIAGRAM_BEARING_SECTIONS section. */
+type DiagramBlock = {
+  /** @purpose The section the block lives in (for the finding's location hint). */
+  section: string;
+  /** @purpose The raw line right after the closing fence — the caption slot. Null when the fence is the section's last line. */
+  nextLine: string | null;
+};
+
+/**
+ * @purpose Find every fenced block in this spec's diagram-bearing sections, plus the raw line
+ * right after each closing fence (the caption slot).
+ * @invariant Pure, line-based. A malformed (odd) fence count, caught elsewhere, never throws here
+ * — the section's last line is treated as the close.
+ * @param content Full spec markdown.
+ * @returns One DiagramBlock per fenced block found.
+ */
+function findDiagramBlocks(content: string): DiagramBlock[] {
+  const blocks: DiagramBlock[] = [];
+  for (const section of DIAGRAM_BEARING_SECTIONS) {
+    const sec = extractSection(content, section);
+    if (sec.status !== 'ok') continue;
+    const lines = sec.content.split('\n');
+    let i = 0;
+    while (i < lines.length) {
+      if ((lines[i] ?? '').trim().startsWith('```')) {
+        let j = i + 1;
+        while (j < lines.length && !(lines[j] ?? '').trim().startsWith('```')) j++;
+        const nextRaw = lines[j + 1];
+        blocks.push({ section, nextLine: nextRaw === undefined ? null : nextRaw.trim() });
+        i = j + 1;
+      } else {
+        i++;
+      }
+    }
+  }
+  return blocks;
+}
+
+// A well-formed caption: one line, wholly wrapped in a single `_..._` italic span — the contract
+// fixed by the diagram-vocabulary skeletons: `_<фраза> — <ACR>-REQ-<N>[, <ACR>-REQ-<M>]._`. The
+// trailing ID list is NOT required by this regex — whether a diagram "illustrates concrete
+// requirements" (vs. a general-purpose Overview) is a judgment call, not a mechanical one; only the
+// phrase itself (mandatory always, per DECISION) is gated here.
+const CAPTION_LINE = /^_[^_]*_$/;
+
+/** @purpose The caption text for one DiagramBlock, or null when malformed/absent. | @param block A parsed DiagramBlock. | @returns The raw caption line, or null. */
+function captionOf(block: DiagramBlock): string | null {
+  if (block.nextLine === null) return null;
+  return CAPTION_LINE.test(block.nextLine) ? block.nextLine : null;
+}
+
+// Same core shape as requirement-id.ts's REQ_ID_GRAMMAR (`^([A-Z][A-Z0-9]*)-REQ-([0-9]+)$`), but
+// unanchored + global — a caption embeds the ID inside a longer sentence, so this hunts for the
+// token rather than validating a whole string.
+const REQ_ID_TOKEN = /[A-Z][A-Z0-9]*-REQ-[0-9]+/g;
+
+/**
+ * @purpose Caption rung: every diagram in a mandated section carries a one-line caption, and any
+ * requirement ID it cites must exist in this spec.
+ * @invariant 'warn' while the spec's Requirements still use the pre-migration format (repo-wide
+ * today); 'error' once the spec has adopted REQUIREMENT_ENTRY_FORMAT.
+ * @param file Spec file path; also the source of the derived acronym for the example fix.
+ * @param content Full spec markdown.
+ * @returns SDD_DIAGRAM_CAPTION_MISSING / SDD_DIAGRAM_CAPTION_REQ_UNKNOWN findings; empty when clean.
+ */
+export function checkDiagramCaptions(file: string, content: string): Finding[] {
+  const blocks = findDiagramBlocks(content);
+  if (blocks.length === 0) return [];
+
+  const entries = requirementEntries(content);
+  const isNewFormat = entries.length > 0;
+  const severity: Finding['severity'] = isNewFormat ? 'error' : 'warn';
+  const declaredIds = new Set(entries.map((e) => e.id));
+  const exampleId = entries[0]?.id ?? `${deriveSpecAcronym(file)}-REQ-1`;
+
+  const findings: Finding[] = [];
+  for (const block of blocks) {
+    const caption = captionOf(block);
+    if (caption === null) {
+      findings.push({
+        severity,
+        code: 'SDD_DIAGRAM_CAPTION_MISSING',
+        file,
+        message: `Diagram in section ${block.section} has no caption right after the closing fence (three backticks) — add one line: \`_<что показывает диаграмма> — ${exampleId}._\` (список ID можно опустить только для общесистемного Overview).`,
+      });
+      continue;
+    }
+    for (const m of caption.matchAll(REQ_ID_TOKEN)) {
+      const id = m[0];
+      if (!declaredIds.has(id)) {
+        findings.push({
+          severity,
+          code: 'SDD_DIAGRAM_CAPTION_REQ_UNKNOWN',
+          file,
+          message: `Diagram caption in section ${block.section} ссылается на "${id}", которого нет среди требований этой спеки — используй один из объявленных: ${entries.length ? entries.map((e) => e.id).join(', ') : '(спека пока не объявляет требований в формате <ACR>-REQ-<N>)'}.`,
+        });
+      }
+    }
+  }
+  return findings;
+}
+
+// A subheading or a diagram caption naming the data-flow rung explicitly — RU/EN, case-insensitive.
+// Section preferred over caption-text per DECISION ("выбери устойчивый механический признак (лучше
+// секцию)") — a heading survives a diagram being redrawn or re-typed; a caption does not.
+const DATA_FLOW_HEADING = /^#{2,4}[ \t]+.*(?:поток[ \t]+данных|data[ \t]*flow)/im;
+const DATA_FLOW_CAPTION_START = /^_(?:поток[ \t]+данных|data[ \t]*flow)/i;
+
+/** @purpose True when the spec names its data-flow rung — a subheading, or (fallback) a diagram caption starting with the data-flow phrase. | @param content Full spec markdown. | @returns Whether the data-flow rung is present. */
+function hasDataFlowDiagram(content: string): boolean {
+  if (DATA_FLOW_HEADING.test(content)) return true;
+  return findDiagramBlocks(content).some((b) => {
+    const caption = captionOf(b);
+    return caption !== null && DATA_FLOW_CAPTION_START.test(caption);
+  });
+}
+
+/**
+ * @purpose Scope data-flow rung: a product/library scope in the new Requirements format must show
+ * where its data comes from, transforms, and lands.
+ * @invariant Dormant for the pre-migration format and for infra/interface scopes — no old-format
+ * warn variant here (unlike the caption rung).
+ * @param file Spec file path.
+ * @param content Full spec markdown.
+ * @returns One SDD_SCOPE_NO_DATA_FLOW error when the rung is missing; else empty.
+ */
+export function checkScopeDataFlowDiagram(file: string, content: string): Finding[] {
+  const isModuleSpec = /<!--SECTION:MODULE_VISION-->/.test(content);
+  if (isModuleSpec) return [];
+  const typeSec = extractSection(content, 'SCOPE_TYPE');
+  if (typeSec.status !== 'ok') return [];
+  const kind = Object.keys(REQUIRED_SECTIONS).find((t) =>
+    new RegExp(`\\b${t}\\b`).test(typeSec.content)
+  );
+  if (kind !== 'product' && kind !== 'library') return [];
+  if (requirementEntries(content).length === 0) return [];
+  if (hasDataFlowDiagram(content)) return [];
+  return [
+    {
+      severity: 'error',
+      code: 'SDD_SCOPE_NO_DATA_FLOW',
+      file,
+      message: `${kind}-скоуп написан в новом формате требований, но не показывает поток данных — добавь подраздел «Data Flow» / «Поток данных» с диаграммой (flowchart: откуда данные пришли → где превратились → где легли), подписанной \`_Поток данных для <ACR>-REQ-N._\` (AX_SPEC_MANDATORY_DIAGRAM, рунг «поток данных»).`,
+    },
+  ];
+}
+
+// The call-chain rung's mechanical признак: EITHER a ```mermaid sequenceDiagram block, OR a step
+// table whose header row names all four columns (Step/Participant/Action/Data, RU or EN, any order,
+// any exact wording — substring match on each concept keeps this robust to phrasing).
+const STEP_TABLE_CONCEPTS: RegExp[] = [
+  /шаг|step/i,
+  /участник|актор|actor|participant|компонент|component/i,
+  /действие|вызов|action|call/i,
+  /данн|payload|data/i,
+];
+
+/** @purpose True when some markdown table header row names all four STEP_TABLE_CONCEPTS. | @param content Full spec markdown. | @returns Whether a call-chain step table is present. */
+function hasStepTable(content: string): boolean {
+  for (const raw of content.split('\n')) {
+    const line = raw.trim();
+    if (!line.startsWith('|') || !line.endsWith('|')) continue;
+    if (/^\|[\s:|-]+\|$/.test(line)) continue; // the `|---|---|` separator row, not a header
+    if (STEP_TABLE_CONCEPTS.every((re) => re.test(line))) return true;
+  }
+  return false;
+}
+
+/** @purpose True when the spec carries a ```mermaid sequenceDiagram block. | @param content Full spec markdown. | @returns Whether a sequence diagram is present. */
+function hasSequenceDiagram(content: string): boolean {
+  return extractMermaidBlocks(content).some((b) => /^[ \t]*sequenceDiagram\b/im.test(b));
+}
+
+/**
+ * @purpose Call-chain rung: a module with ≥2 entities must show its main scenario as calls, in
+ * order — a sequence diagram or its table equivalent.
+ * @invariant Severity mirrors the caption rung: 'warn' for the pre-migration Requirements format
+ * (repo-wide today — zero `sequenceDiagram` blocks found), 'error' once adopted.
+ * @param file Spec file path.
+ * @param content Full spec markdown.
+ * @returns One SDD_MODULE_NO_CALL_CHAIN finding when ≥2 entities and no rung; else empty.
+ */
+export function checkModuleCallChain(file: string, content: string): Finding[] {
+  const isModuleSpec = /<!--SECTION:MODULE_VISION-->/.test(content);
+  if (!isModuleSpec) return [];
+  const inv = extractSection(content, 'ENTITY_INVENTORY');
+  const entities = inv.status === 'ok' ? countInventoryRows(inv.content) : 0;
+  if (entities < 2) return [];
+  if (hasSequenceDiagram(content) || hasStepTable(content)) return [];
+  const severity: Finding['severity'] = requirementEntries(content).length > 0 ? 'error' : 'warn';
+  return [
+    {
+      severity,
+      code: 'SDD_MODULE_NO_CALL_CHAIN',
+      file,
+      message: `Module spec has ${entities} entities (≥ 2) but no call-chain rung — add either a \`\`\`mermaid sequenceDiagram for the module's main scenario, or a step table with columns Шаг/Участник/Действие/Данные (AX_SPEC_MANDATORY_DIAGRAM, рунг «цепочка вызовов»).`,
+    },
+  ];
+}
+
+// Marks a NEW node/step inside a diagram — mermaid's own `:::new` class-shorthand, or a prose tag
+// next to an added node. `\bNEW\b` requires word boundaries on BOTH sides so an all-caps identifier
+// merely containing "NEW" (e.g. "NEWTASK") does not false-positive.
+const NEW_NODE_MARK = /:::new\b|\(добавлено\)|\bNEW\b/;
+
+/**
+ * @purpose Delta rung: a spec in review-state with ✚ additions must mark the added node/step in a
+ * diagram; the unchanged system stays undrawn.
+ * @invariant Always warn, no old/new-format split. Silent when CHANGE_MANIFEST is malformed —
+ * checkReviewState already owns that finding.
+ * @param file Spec file path.
+ * @param content Full spec markdown.
+ * @returns One SDD_DELTA_DIAGRAM_MISSING warn when ✚ exists but no diagram marks a new node.
+ */
+export function checkDeltaDiagram(file: string, content: string): Finding[] {
+  if (!CHANGE_MARK.test(content)) return [];
+  const manifest = extractSection(content, 'CHANGE_MANIFEST');
+  if (manifest.status !== 'ok') return [];
+  if (NEW_NODE_MARK.test(content)) return [];
+  return [
+    {
+      severity: 'warn',
+      code: 'SDD_DELTA_DIAGRAM_MISSING',
+      file,
+      message: `Spec is in review-state with ✚ additions in CHANGE_MANIFEST, but no diagram marks a new node — add \`:::new\` (mermaid) or «(добавлено)» next to the added node/step in a diagram; leave the unchanged part unredrawn (AX_SPEC_MANDATORY_DIAGRAM, рунг «дельта»).`,
+    },
+  ];
 }
 
 /**
