@@ -5,7 +5,7 @@
       Grammar (one logical record per line, EOL-terminated; fields separated by ` | `):
 
       ```
-      @audit task=<Task-ID> round=<N> mode=<per-task|epic> status=<PASS|PASS_RISK|FAIL> counts=B<n>·M<n>·m<n>·I<n> phases_to_fix=[<P<N>>,...]
+      @audit task=<Task-ID|spec-path> round=<N|—> mode=<per-task|per-group> status=<PASS|PASS_RISK|FAIL> counts=B<n>·M<n>·m<n>·I<n> phases_to_fix=[<P<N>|Task-ID:P<N>>,...]
       F-<NN> | sev=<B|M|m|I> | type=<TYPETOKEN> | conf=<H|M|L> | loc=<path:line|—> | phase=<P<N>|—> | src=<spec/ticket/rule anchor|—> | route=<spec-edit|ticket-reopen|ticket-update|decision-log|code-fix> | act=<one-line action, no newlines>
       F-<NN> | …
       ~applied | <target> | <one-line description of inline change>   (optional, repeat per applied change)
@@ -18,6 +18,10 @@
       - `route`: one of `spec-edit` | `ticket-reopen` | `ticket-update` | `decision-log` | `code-fix` (per `AX_FINDING_ROUTING`).
       - `act` text: Russian operator-facing per `AX_OPERATOR_LANGUAGE` (this is operator-facing artifact text), single line, no pipe character.
       - `status` `PASS_RISK` = PASS_WITH_ACKNOWLEDGED_RISKS.
+      - `mode=per-group` (default, auto-dispatch, `AX_AUDIT_MODES`): `task` carries the group's spec path,
+        not a single Task-ID; `phases_to_fix` entries carry the owning Task-ID prefix (`Task-ID:P<N>`) since
+        a finding may name a phase on any ticket in the group. `mode=per-task` (operator-manual): `task`
+        carries the single audited Task-ID; `phases_to_fix` entries are bare `P<N>` (that ticket is implicit).
 
       Example:
       ```

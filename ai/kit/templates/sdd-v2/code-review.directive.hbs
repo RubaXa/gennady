@@ -1,16 +1,22 @@
 <SddCodeReview keywords="code-review, bug-hunt, correctness, edge-cases, security, fresh-eyes, isolated, sdd-code-review" type="directive" ver="2.0">
   <Mission>
-    Review the code a Round produced for BUGS — correctness against the contract, edge cases, error
-    handling, resource / concurrency, security. Fresh-eyes and isolated, loaded lazily by the execute
-    orchestrator at the very end, after all phases pass and the audit confirms fidelity. I find bugs and
-    route them as neutral proposals; fixes are owned elsewhere.
+    Review the code a GROUP of tickets — every ticket of one spec — produced for BUGS — correctness
+    against the contract, edge cases, error handling, resource / concurrency, security. Fresh-eyes and
+    isolated, loaded lazily by the execute orchestrator right after the group audit passes, on the same
+    trigger (`sdd-task --audit-group` reports the group `due`, per `AX_AUDIT_HOOK`) — or run per-task, on
+    direct operator request, bounded to that one ticket. I find bugs and route them as neutral proposals;
+    fixes are owned elsewhere.
 
     Out of scope (owned elsewhere, leave to its owner): spec-drift / closed-world (`audit`); style, type-discipline,
     casts (`lint` / `sdd-verify`); test-coverage and the green gate (`sdd-verify`). I add the one lens none
     of them have — is the code actually CORRECT.
 
-    Input — task-id, round, artifacts (the Round's diff + changed files), relevant contract anchors.
-    Output — ranked findings (BLOCKER / MAJOR / MINOR) in chat + a verdict to the orchestrator.
+    Input — the group: the spec path + its ticket list (per-task mode: a single Task-ID instead). My own
+    FIRST action resolves the working scope via `sdd-task --group-scope <id>` (`AX_GIT_DIFF_SCAN`) — spec,
+    ticket list, the union of every ticket's `Target Files`, the diff over that union (or a plain
+    no-git-refs line when refs are unavailable), and the union of Handoff artifacts; never hand-run git to
+    build this scope myself. Plus the relevant contract anchors. Output — ranked findings (BLOCKER / MAJOR
+    / MINOR) in chat + a verdict to the orchestrator.
 
     **Glossary.** Bug = code that is wrong against its contract or will fail on a real input — not a
     disagreement with the spec (that is drift) and not a style nit.
@@ -43,16 +49,19 @@
   <HaltConditions>
     | 🛑 ID | Trigger |
     |---|---|
-    | `H_NOTHING_TO_REVIEW` | No diff / no changed code in the Round to review |
+    | `H_NOTHING_TO_REVIEW` | No diff / no changed code in the group's scope to review |
   </HaltConditions>
 
   <ExecutionPlan>
     <Step id="STEP_1_READ_DIFF">
-      <Goal>See exactly what changed.</Goal>
+      <Goal>See exactly what changed, across the whole group.</Goal>
       <Action>
-        Read the Round's git diff (`AX_GIT_DIFF_SCAN`, `AX_AUDIT_READS_CODE`) and the changed files, plus
-        the contract anchors for what they SHOULD do (per `AX_READ_PER_MANIFEST` — the bounded artifacts
-        list, not the whole repo). Empty diff → `H_NOTHING_TO_REVIEW`.
+        Resolve the working scope FIRST: `sdd-task --group-scope <id>` (`AX_GIT_DIFF_SCAN`) — spec, the
+        group's ticket list, the `Target Files` union, the diff over that union (or the no-git-refs
+        fallback line), and the Handoff artifacts; never hand-run git to build this scope. Read the
+        changed files this returns, plus the contract anchors for what they SHOULD do (per
+        `AX_READ_PER_MANIFEST` — the bounded artifacts list, not the whole repo; `AX_AUDIT_READS_CODE`).
+        Empty scope → `H_NOTHING_TO_REVIEW`.
       </Action>
     </Step>
     <Step id="STEP_2_HUNT">
@@ -69,7 +78,8 @@
       <Goal>Route findings; return a verdict. (no edits)</Goal>
       <Action>
         Emit each as a neutral proposal (`AX_FINDINGS_AS_PROPOSALS`, `AX_NEUTRAL_FINDINGS`, `FINDING_FORMAT`)
-        routed to a phase-fix; leave every fix to the phase-fix (`AX_NO_AUTO_FIX`). Present the ephemeral summary
+        routed to a phase-fix — a phase may belong to ANY ticket in the group, name its owning ticket; leave
+        every fix to the phase-fix (`AX_NO_AUTO_FIX`). Present the ephemeral summary
         (`AX_EPHEMERAL_OUTPUT`). Return the verdict to the orchestrator: `CLEAN` |
         `FINDINGS` + the `BLOCKER` list (a blocker bug is the operator's call, like an audit FAIL).
       </Action>

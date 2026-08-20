@@ -3,10 +3,14 @@
 Проверяет: `execute.directive` целиком — `sdd-task` для плана, открытие Round через `sdd-log`,
 диспетчеризацию фаз через `phase-execution-protocol` (каждая фаза читает строго по манифесту,
 пишет только свой Target Files, гоняет верификацию, закрывается типизированным Handoff), закрытие
-Round, `sdd-sync`, автоматический (не операторский) диспетч `audit.directive`, ветвление по
-вердикту аудита, ленивый `code-review.directive` после PASS, и финальный оператору summary.
-Отдельно проверяет различие `BLOCKED` ≠ `FAIL` (`AX_HALT_VS_FAIL_DISTINCTION`) и что audit
-запускается «automatically», а не по команде оператора (`AX_AUDIT_HOOK`).
+Round, `sdd-sync`, тул-вердикт `sdd-task --audit-group` (`due`/`not yet`) как единственный триггер
+аудита, автоматический (не операторский) диспетч `audit.directive` на ГРУППУ тикетов спеки, ветвление
+по вердикту, ленивый `code-review.directive` — тоже на группу, тем же тул-триггером — после PASS, и
+финальный оператору summary. Отдельно проверяет различие `BLOCKED` ≠ `FAIL`
+(`AX_HALT_VS_FAIL_DISTINCTION`) и что audit + code-review запускаются «automatically» по вердикту
+инструмента, а не по команде оператора и не после каждого тикета в отрыве от его группы
+(`AX_AUDIT_HOOK`). Фикстура S7 — единственный тикет в своей спеке, значит его группа замыкается сразу
+на его же закрытии («due» с первого раунда) — упрощённый, но валидный случай общего механизма.
 
 **Важно для Executor — одна сессия играет обе роли.** В этом прогоне нет отдельных субагентов:
 Executor последовательно ИСПОЛНЯЕТ роль orchestrator (планирование, диспетч, синк, чтение
@@ -14,7 +18,8 @@ Executor последовательно ИСПОЛНЯЕТ роль orchestrator
 затем роль audit-subagent и роль code-review-subagent — та же сессия, тот же контекст, роли не
 изолированы реальной песочницей процесса. Изоляция ИМИТИРУЕТСЯ дисциплиной чтения: находясь в роли
 worker, Executor читает СТРОГО по манифесту фазы (не заглядывает в чужие секции тикета), находясь в
-роли audit — читает `git diff` + Handoff-артефакты, а не весь тикет с нуля. Каждая смена роли — своя
+роли audit (или code-review) — резолвит область через `sdd-task --group-scope <id>` (диффа руками не
+гоняет — `AX_GIT_DIFF_SCAN` запрещает ручную git-археологию), а не читает весь тикет с нуля. Каждая смена роли — своя
 строка трейса: `note: role=orchestrator` / `note: role=worker P1` / `note: role=worker P2` /
 `note: role=audit-subagent` / `note: role=code-review-subagent`, ПЕРЕД первым действием в этой роли.
 
@@ -392,7 +397,8 @@ Project-wide conventions declared once in `specs/3-tasks.md`.
 
 Execution-Log token vocabulary: `intro` / `yagni` / `decision` / `tried` / `discovery` / `insight` /
 `verified` / `ver` / `DONE`. Baseline Completion Rule: `sdd-verify --profile <kind>` + ticket §5
-commands green. Post-task audit hook: mandatory (`AX_AUDIT_HOOK`). File header: `@file` / `@consumers`
+commands green. Audit/code-review hook: per-group, mandatory once the group's last ticket closes
+(`AX_AUDIT_HOOK`). File header: `@file` / `@consumers`
 / `@tasks`.
 ```
 
@@ -550,7 +556,8 @@ were found` — проверено живьём (`exit=2`) на этой сам�
 
 ## Operator Script
 
-`execute` — автономный контур (`AX_AUDIT_HOOK`: «operator does not invoke audit manually»); в
+`execute` — автономный контур (`AX_AUDIT_HOOK`: audit + code-review запускаются по вердикту `sdd-task
+--audit-group` — оператор их не вызывает вручную); в
 штатном прогоне этой фикстуры нет ни одной обязательной остановки к оператору — ни `H_*`, ни
 `## Stop` карты. Скрипт держит ОДИН запасной ответ на случай непредвиденной паузы:
 
@@ -673,14 +680,29 @@ lint` также не входит (P2 — `test`-kind, не покрыт ни �
     `[x] DONE` — обе строки после P2 `DONE`, не раньше.
 15. STEP_4_SYNC: `tool: sdd-sync APP-greet-greeting` — «updates the scope + project trackers and
     verifies the write».
-16. STEP_5_AUDIT — смена роли `note: role=orchestrator` → `note: role=audit-subagent`; диспетч
-    произошёл БЕЗ вопроса оператору (`AX_AUDIT_HOOK`: «`sdd-execute` orchestrator dispatches
-    audit-subagent automatically after the last phase of a Round closes — operator does not invoke
-    audit manually») — в трейсе между Round close и появлением `directive: ai/directives/sdd-v2/audit.directive.xml
-loaded` нет ни одной строки `operator:`/`ask:`. Обе строки — `note: role=audit-subagent` И `directive:
-    ... loaded` — обязательны и раздельны (см. чекпоинт 4); отсутствие любой из них — FAIL сам по
-    себе, это тот же класс пропуска, что исполнитель ранее допускал на этой роли.
-17. Audit STEP_1_MECHANICAL: `sdd-check --task <ticket-path>` взят «as given», ЗАТЕМ независимый
+16. STEP_5_AUDIT — на роли `orchestrator`, СРАЗУ после `sdd-sync` (чекпоинт 15): `tool: sdd-task
+--audit-group APP-greet-greeting` — вердикт инструмента, не догадка исполнителя
+    (`AX_AUDIT_HOOK`: «`sdd-task --audit-group <id>` returns `due` once every ticket in the group is
+    `[x] DONE`»). Эта спека несёт РОВНО один тикет (`specs/app/app.3-tasks.md` Tracker Index — одна
+    строка), значит его закрытие само закрывает группу — ожидаемый вердикт `due` (`1/1` закрыто), НЕ
+    `not yet`. Появление здесь `not yet` при единственном тикете спеки, уже `[x] DONE`, — само по себе
+    находка (инструмент солгал или неверно посчитал группу). Только ПОСЛЕ строки с вердиктом `due`
+    следует смена роли `note: role=orchestrator` → `note: role=audit-subagent`; диспетч произошёл БЕЗ
+    вопроса оператору (`AX_AUDIT_HOOK`: audit — на вердикте инструмента, не на ручном вызове
+    оператора) — в трейсе между вердиктом `due` и появлением `directive:
+ai/directives/sdd-v2/audit.directive.xml loaded` нет ни одной строки `operator:`/`ask:`. Обе строки
+    — `note: role=audit-subagent` И `directive: ... loaded` — обязательны и раздельны (см. чекпоинт 4);
+    отсутствие любой из них — FAIL сам по себе, это тот же класс пропуска, что исполнитель ранее
+    допускал на этой роли. Диспетч-промпт называет ГРУППУ (id `APP-greet-greeting`, mode=per-group), но
+    не пересказывает Target Files/диф/артефакты построчно — та же self-bootstrap дисциплина, что и у
+    диспетча фазы (чекпоинт 4b): их резолвит сам audit-subagent на своей роли (чекпоинт 17).
+17. Первое действие роли `audit-subagent` (`STEP_1_MECHANICAL`, `AX_GIT_DIFF_SCAN`) — `tool: sdd-task
+--group-scope APP-greet-greeting`: возвращает spec, список тикетов группы (один — сам тикет),
+    объединение `Target Files`, git-дифф над этим объединением (либо честную строку об отсутствии
+    git-ссылок), объединение Handoff-артефактов — эта строка ПЕРЕД `sdd-check --task <ticket-path>`, не
+    после и не вместо неё. Ручной `git diff`/`git log` на этой роли ДЛЯ ПОСТРОЕНИЯ ОБЛАСТИ — находка
+    (`AX_GIT_DIFF_SCAN`: «hand-run git archaeology is never the way to build it»); область — только из
+    вывода `--group-scope`. Затем `sdd-check --task <ticket-path>` взят «as given», ЗАТЕМ независимый
     повторный прогон гейта — «INDEPENDENTLY re-run the green gate — `sdd-verify --profile full`,
     `gennady lint --spec=<module-spec>` ..., and `gennady testcov --run --min=80`» — все три вызова
     есть как отдельные `tool:`-строки на audit-роли, а не переиспользование `ver`-строк, логированных
@@ -690,18 +712,21 @@ loaded` нет ни одной строки `operator:`/`ask:`. Обе стро�
     STEP_2: «Run the closed-world inventory sweep FIRST») — сверка `GreeterPort` + `EchoGreeterAdapter`
     против Entity Inventory находит их присутствующими (нет `CLOSED_WORLD_DRIFT`, оба объявлены
     заранее — не через `intro`-строку).
-19. Вердикт аудита `PASS` (или `PASS_WITH_ACKNOWLEDGED_RISKS`) → `LogicSwitch on="audit verdict +
+19. Вердикт аудита `PASS` (или `PASS_WITH_ACKNOWLEDGED_RISKS`) → `LogicSwitch on="group audit verdict +
 attempt"` в STEP_6_BRANCH сработал по ветке «-> STEP_7B_CODE_REVIEW» — НЕ `STEP_7_RESOLVE` (нет
     повторного Round `fix`, нет второго вызова audit R2 в трейсе).
-20. STEP_7B_CODE_REVIEW диспетчится «lazy, after the audit passes» — смена роли
-    `note: role=code-review-subagent` появляется ПОСЛЕ строки с вердиктом audit `PASS`, не до неё;
-    загрузка `ai/directives/sdd-v2/code-review.directive.xml` отражена `directive: ... loaded`. Как и
-    на предыдущих сменах роли (чекпоинты 4, 16) — `note: role=...` и `directive: ... loaded` обе
-    обязательны и раздельны; пропуск любой из двух строк — FAIL.
-21. Code-review читает `git diff` Round'а, а не весь тикет с нуля (`STEP_1_READ_DIFF`: «Read the
-    Round's git diff ... and the changed files, plus the contract anchors») — в трейсе есть `tool:`
-    строка с `git diff` на этой роли (легитимно: `AX_PERMITTED_BASH_COMMANDS` резервирует `git diff`
-    за шагом, которому оно принадлежит, и audit/code-review — тот шаг).
+20. STEP_7B_CODE_REVIEW диспетчится «lazy, same trigger as audit — right after it passes» — на ГРУППУ,
+    тем же id, что и аудит (`AX_AUDIT_HOOK`: «`due` → dispatch the group audit, then, once it passes, the
+    group code-review»); смена роли `note: role=code-review-subagent` появляется ПОСЛЕ строки с
+    вердиктом audit `PASS`, не до неё; загрузка `ai/directives/sdd-v2/code-review.directive.xml`
+    отражена `directive: ... loaded`. Как и на предыдущих сменах роли (чекпоинты 4, 16) — `note:
+role=...` и `directive: ... loaded` обе обязательны и раздельны; пропуск любой из двух строк — FAIL.
+21. Первое действие роли `code-review-subagent` (`STEP_1_READ_DIFF`, `AX_GIT_DIFF_SCAN`) — `tool:
+sdd-task --group-scope APP-greet-greeting`: та же tool-строка, что audit вызвал на своей роли
+    (чекпоинт 17, независимый повторный вызов — каждая роль резолвит область сама, не переиспользует
+    чужой вывод), а не весь тикет с нуля. Ручной `tool: git diff` на этой роли — находка (устаревший,
+    pre-group-scope путь: `AX_GIT_DIFF_SCAN` запрещает hand-run git archaeology, `sdd-task
+--group-scope` — единственный источник диффа и для code-review тоже).
 22. Вердикт code-review `CLEAN` → «`CLEAN` → STEP_8» (не `H_CODE_REVIEW_BLOCKER`, поскольку в
     фикстуре нет умышленного бага) — в трейсе нет строки `halt: H_CODE_REVIEW_BLOCKER`.
 23. STEP_8_SUMMARY показан оператору как `EXECUTE_SUMMARY_FORMAT` — трейс содержит `show:`-строку,

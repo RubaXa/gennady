@@ -8,7 +8,7 @@
       - **(P) Parallel sub-process potential** — N phase-subagents dispatched simultaneously; Target Files disjoint across all phases of each ticket; no Deps edge among the N.
       - **(C) Context budget overflow** — combined cascade Rules + Spec References + Target Files exceed comfortable single-context for one phase-subagent's phase.
 
-      **NOT a reason to split:** audit milestone granularity (audit runs once per ticket regardless of size); logical layering (Port + Adapter ship together); partial shippability (consumer can't pick a half-module); human time-units (hours / days — irrelevant for AI execution bounded by context window).
+      **NOT a reason to split:** audit milestone granularity (audit runs once per GROUP — every ticket of the spec, together, per `AX_AUDIT_HOOK` — regardless of ticket size or count, never once per ticket); logical layering (Port + Adapter ship together); partial shippability (consumer can't pick a half-module); human time-units (hours / days — irrelevant for AI execution bounded by context window).
 
       Sequential split (A → B with hard Deps) without (C) = pure overhead: B's phase-subagent re-reads what A's already loaded; zero wall-clock gain.
 

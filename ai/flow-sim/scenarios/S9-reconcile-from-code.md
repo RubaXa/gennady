@@ -343,7 +343,8 @@ Project-wide conventions declared once in `specs/3-tasks.md`.
 ## Conventions
 Execution-Log token vocabulary: `intro` / `yagni` / `decision` / `tried` / `discovery` / `insight` /
 `verified` / `ver` / `DONE`. Baseline Completion Rule: `sdd-verify --profile <kind>` + ticket §5
-commands green. Post-task audit hook: mandatory (`AX_AUDIT_HOOK`). File header: `@file` / `@consumers`
+commands green. Audit/code-review hook: per-group, mandatory once the group's last ticket closes
+(`AX_AUDIT_HOOK`). File header: `@file` / `@consumers`
 / `@tasks`.
 ````
 

@@ -127,7 +127,7 @@
 
         <LogicSwitch on="fix class — confirmed by the dispatched critic's verdict from STEP_2, never by self-assessment (self-probe is void)">
         - WHEN the class is trivial: a single site, blast radius confirmed empty by the dispatched critic's verdict, contracts / specs untouched -> patch the code TOGETHER WITH a regression test covering the fixed case in the same run (a task-reopen always pairs code-fix with a `test` phase — the trivial branch is not exempt from that pairing just because it skips the Round), back-sync the spec (`sdd-sync`), run the light gate (typecheck + tests of the touched files, including the new regression test).
-          - WHEN the light gate is green -> present `FIX_SUMMARY_FORMAT`. DONE — the full tail (STEP_3–7, epic audit + code-review) stays skipped.
+          - WHEN the light gate is green -> present `FIX_SUMMARY_FORMAT`. DONE — the full tail (STEP_3–7, audit + code-review over the reconciled set) stays skipped.
           - WHEN the light gate is red AND the failure reproduces on the pre-change baseline AND lies outside the blast radius confirmed by the critic -> record it in `FIX_SUMMARY_FORMAT` as pre-existing (not caused by this patch), propose a separate task to the operator for it, and do NOT head the summary with "✅ complete" — the gate is still red. DONE.
           - OTHERWISE (the failure is caused by or overlaps the patch/blast radius) -> `H_VERIFICATION_FAIL`.
         - WHEN triviality is plausible but the probe leaves doubt -> `H_TRIVIALITY_UNCONFIRMED`
@@ -176,10 +176,11 @@
         safe" pass layered on top of an already-closed trivial path.
 
         `sdd-check` + `sdd-verify --profile full` must pass (else `H_VERIFICATION_FAIL`). Then — because
-        per-task audit was skipped in the batch (`AX_DISPATCH_VIA_BATCH`) — restore the safety net ONCE at
-        the reconcile level: dispatch a fresh-eyes epic audit
-        (`READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/audit.directive.xml")`, per-epic — drift code↔spec over
-        the reconciled set) and a code-review
+        the group-audit hook was skipped in the batch (`AX_DISPATCH_VIA_BATCH`) — restore the safety net
+        ONCE at the reconcile level: dispatch a fresh-eyes audit
+        (`READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/audit.directive.xml")`, scoped to every spec + ticket
+        touched by the reconciliation — drift code↔spec over that reconciled set, not the formal
+        `AX_AUDIT_MODES` per-group cycle) and a code-review
         (`READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/code-review.directive.xml")` — bugs in the reconciled
         diff). A `BLOCKER` from either MUST pause and surface to the operator. Present the reconcile summary
         (`FIX_SUMMARY_FORMAT`).

@@ -32,6 +32,23 @@ export function printHelp(): void {
     'It never emits phase bodies, BDD, specs, or code — the phase workers read those, bounded by the manifest.'
   );
   console.info('');
+  console.info('  npx gennady sdd-task --audit-group <ticket-path|Task-ID>');
+  console.info(
+    "  Group the ticket's siblings (same directory as its owning spec — a scope or module .spec.md) and report"
+  );
+  console.info(
+    '  whether the group is due for audit: every ticket DONE, or which ones are still open.'
+  );
+  console.info('');
+  console.info('  npx gennady sdd-task --group-scope <ticket-path|Task-ID>');
+  console.info(
+    "  Emit the group's ready-made review scope for an audit/code-review subagent: union of every"
+  );
+  console.info(
+    '  ticket phase Target Files, git diff vs HEAD (when the repo has one), and Handoff artifacts —'
+  );
+  console.info('  no manual git archaeology needed.');
+  console.info('');
   console.info('Exit codes:');
   console.info(
     '  0 surface emitted   1 file not found   2 not a ticket / unknown --phase   4 bad invocation'

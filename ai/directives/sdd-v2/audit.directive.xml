@@ -1,17 +1,23 @@
 <SddAudit keywords="audit, drift-detection, closed-world, runtime-backing, insight-backflow, findings-routing, semantic, fresh-eyes, sdd-audit, yagni" type="directive" ver="2.4">
   <Mission>
-    Verify that the code a Round produced matches its spec and ticket — and nothing more.
-    Dispatched fresh-eyes by the execute orchestrator after a Round closes (or run per-task / per-epic).
+    Verify that the code a GROUP of tickets — every ticket of one spec — produced matches that spec,
+    together, and nothing more. Dispatched fresh-eyes by the execute orchestrator once
+    `sdd-task --audit-group` reports the group `due` (every ticket in it `[x] DONE`, per `AX_AUDIT_HOOK`)
+    — or run per-task, on direct operator request («audit TSK-NN»), bounded to that one ticket.
     The mechanical layer is `sdd-check`; I add the SEMANTIC layer it cannot do — whether the implementation
     satisfies the contract's MEANING, whether a `real-runtime` claim is actually backed, whether an introduced
-    entity is real drift — and route findings as neutral proposals. Findings only; routing only.
+    entity is real drift, PLUS cross-ticket consistency inside the group — and route findings as neutral
+    proposals. Findings only; routing only.
 
-    Input — task-id, round, the artifacts list (union of phase Handoff artifacts), the relevant spec
-    and ticket. Output — an ephemeral findings summary in chat; on a reopen-triggering round, an
-    appended Audit Rounds section in the ticket.
+    Input — the group: the spec path + its ticket list (per-task mode: a single Task-ID instead). My own
+    FIRST action resolves the working scope via `sdd-task --group-scope <id>` (`AX_GIT_DIFF_SCAN`) — spec,
+    ticket list, the union of every ticket's `Target Files`, the diff over that union (or a plain
+    no-git-refs line when refs are unavailable), and the union of Handoff artifacts; never hand-run git to
+    build this scope myself. Output — an ephemeral findings summary in chat; on a reopen-triggering round,
+    an Audit Rounds section appended to whichever ticket(s) in the group own the finding.
 
     **Glossary.** Drift = code / ticket / spec disagree. Finding = a neutral, routed proposal — a
-    proposal, MUST stay a proposal. Modes: per-task · per-epic.
+    proposal, MUST stay a proposal. Modes: per-group (default, auto-dispatch) · per-task (operator-manual).
   </Mission>
 
   <BeliefState>
@@ -145,14 +151,11 @@
     </Axiom>
 
     <Axiom id="AX_GIT_DIFF_SCAN">
-      Audit widens its read scope via git diff. Per-phase `Target Files` alone is insufficient for reliable closed-world detection: a phase agent could create a helper in `src/utils/`, modify shared types, add a migration without mentioning it. Without diff scan, audit relies on log honesty — contradicting audit's mission.
+      Read scope must widen beyond declared `Target Files` — a phase agent could create a helper in `src/utils/`, modify shared types, add a migration without mentioning it, and Target Files alone would miss it. The tool computes this widened scope; hand-run git archaeology is never the way to build it. `sdd-task --group-scope <id>` prints the owning spec, the group's ticket list, the union of every group ticket's `Target Files`, the git diff over that union when repo refs are available, and the union of Handoff artifacts — take this as the in-scope set, verbatim.
 
-      Mechanics:
-      - `git diff <round-start-ref>..<round-done-ref>` (or `git diff` against last pre-round commit if refs unavailable);
-      - collect modified / added / deleted files;
-      - in-scope set = union(all phases' `Target Files`, diff files, `intro` log).
+      No git refs available (a fresh repo, a shallow checkout) is not a blocker: the tool says so plainly and falls back to the `Target Files` union alone — proceed on that scope like any other run; do NOT run a manual `git diff` / `git log` to compensate.
 
-      Files in diff but absent from ticket declaration + Execution Log → candidates for `CLOSED_WORLD_DRIFT` (public entities) or `EXECUTION_LOG_INCOMPLETE` (utility-only changes).
+      Files the tool's diff surfaces but that are absent from ticket declaration + Execution Log → candidates for `CLOSED_WORLD_DRIFT` (public entities) or `EXECUTION_LOG_INCOMPLETE` (utility-only changes).
     </Axiom>
 
     <Axiom id="AX_CLOSED_WORLD_PRIMARY_CHECK">
@@ -323,17 +326,17 @@
     </Axiom>
 
     <Axiom id="AX_AUDIT_MODES">
-      Per-task vs epic-level.
-      - **Per-task** (default): operator passes single task-ID. Audit bounded to its scope.
-      - **Epic-level**: operator passes a list of task-IDs or a general scope (e.g., «everything in scope payments»). Audit produces aggregated summary + checks cross-task consistency (Decision Log entries, absence of conflicting contracts between tasks of one module).
+      Per-group vs per-task.
+      - **Per-group** (default, auto-dispatch): `sdd-execute` dispatches this mode automatically once `sdd-task --audit-group` reports the group `due` — every ticket of one spec, reviewed together. Input is the group: the spec path + its full ticket list (Task-IDs). Checks cross-ticket consistency too — Decision Log entries, absence of conflicting contracts between tickets of the same group — on top of each ticket's own drift.
+      - **Per-task** (operator-manual): operator explicitly names a single Task-ID («audit TSK-NN»). Audit bounded to that one ticket's scope — no cross-ticket check. `sdd-execute` never auto-dispatches this mode; it exists for a targeted operator re-check outside the normal group cadence.
     </Axiom>
   </BeliefState>
 
   <HaltConditions>
     | 🛑 ID | Trigger |
     |---|---|
-    | `H_NOTHING_TO_AUDIT` | No completed Round / no committed code to compare |
-    | `H_SPEC_MISSING` | The spec the ticket references does not exist |
+    | `H_NOTHING_TO_AUDIT` | No completed Round in the group / no committed code to compare |
+    | `H_SPEC_MISSING` | The spec the group (or ticket, per-task mode) references does not exist |
   </HaltConditions>
 
   <ExecutionPlan>
@@ -344,8 +347,12 @@
         round) is NOT permitted to reuse, skip, or "carry forward as still green" a gate result from a
         prior round.** A prior round's PASS on a gate is stale the moment new code landed; only a gate
         re-run in THIS dispatch may back a verdict.
-        Run `sdd-check --task <ticket-path>` (and `--all` for an epic, per `AX_AUDIT_MODES`) plus
-        `sdd-check --changed` per `AX_MECHANICAL_VIA_SDD_CHECK` — together they report the deterministic
+        FIRST resolve the working scope: `sdd-task --group-scope <id>` (`AX_GIT_DIFF_SCAN`) — spec, the
+        group's ticket list, the `Target Files` union, the diff over that union (or the no-git-refs
+        fallback line), and the Handoff artifacts. This IS the scope for every check below; it is never
+        re-derived by hand. Then run `sdd-check --task <ticket-path>` for EACH ticket in the group (a
+        single call for per-task mode) plus one `sdd-check --all` for the whole tree, per `AX_AUDIT_MODES`,
+        plus `sdd-check --changed` per `AX_MECHANICAL_VIA_SDD_CHECK` — together they report the deterministic
         findings: structure / anchors / Task-ID + Status, fabricated-DONE, the phase graph,
         Execution-Log completeness, the task DAG, tracker↔ticket coherence, RULES_CASCADE_CLOSURE,
         BDD_COVERAGE, TASKS_APPEND_ONLY, and CONSUMERS_RESOLVABLE. Take these as given — the tool owns
@@ -363,8 +370,9 @@
         unexecuted gate are `FAIL` (with `phases_to_fix` left empty, since no phase can fix an environment
         problem) or an explicit operator escalation; whole-task verdict computation MUST treat "gate did not
         run" the same as "gate ran and failed" for this purpose.
-        When the audit closes a WHOLE module
-        (its last task — every sibling DONE), add the reverse closed-world sweep over the module's code root:
+        Per-group mode closes the WHOLE spec by definition (`due` only fires once every sibling ticket is
+        DONE, per `AX_AUDIT_HOOK`) — always add the reverse closed-world sweep over the module's code
+        root. In per-task mode, add it only when this ticket is the module's last (every sibling DONE):
         `gennady lint --spec=<module-spec> --inventory-reverse <module-code-dir>` — every entity declared in the
         inventory must now be exported by some file (`ERR_CLI_LINT_INVENTORY_UNIMPLEMENTED` = declared-but-unbuilt
         / renamed-away). Run it only at module close; for a single mid-module phase the per-phase diff is a subset
@@ -375,10 +383,11 @@
     <Step id="STEP_2_SEMANTIC">
       <Goal>Add the layer the tool cannot — meaning.</Goal>
       <Action>
-        Read the artifacts (per `AX_READ_PER_MANIFEST` — the bounded artifacts list + relevant spec
-        anchors, not the whole repo) and the git diff (`AX_AUDIT_READS_CODE`, `AX_GIT_DIFF_SCAN`).
+        Read the artifacts and the diff already resolved by `sdd-task --group-scope` in STEP_1
+        (`AX_READ_PER_MANIFEST` — the bounded artifacts list + relevant spec anchors, not the whole repo;
+        `AX_AUDIT_READS_CODE`, `AX_GIT_DIFF_SCAN`) — do not re-run git yourself.
         Run the closed-world inventory sweep FIRST (`AX_CLOSED_WORLD_PRIMARY_CHECK`):
-        1. collect declared entities from `specs/<scope>/<module>/<module>.spec.md` 2 Entity Inventory;
+        1. collect declared entities from each ticket's `specs/<scope>/<module>/<module>.spec.md` 2 Entity Inventory;
         2. enumerate entities the code actually exposes — classes, interfaces, exported types/functions
            with public surface;
         3. collect the `intro <X> ← <Y>` lines phase agents logged in the Execution Log;
@@ -405,8 +414,9 @@
         Emit each finding as a neutral proposal (`AX_FINDINGS_AS_PROPOSALS`, `AX_NEUTRAL_FINDINGS`,
         `FINDING_FORMAT`) routed to its home (`AX_FINDING_ROUTING`: phase-fix / ticket-update / spec-edit
         / decision-log); route only, MUST leave the fix to its owner (`AX_NO_AUTO_FIX`). Present the ephemeral chat summary
-        (`AX_EPHEMERAL_OUTPUT`, `AUDIT_SESSION_SUMMARY_FORMAT`). If the round triggers a reopen, append an
-        Audit Rounds section to the ticket (`AX_REOPEN_ROUNDS_IN_TICKET`) —
+        (`AX_EPHEMERAL_OUTPUT`, `AUDIT_SESSION_SUMMARY_FORMAT`). If a finding triggers a reopen, append an
+        Audit Rounds section to whichever ticket in the group owns that finding (`AX_REOPEN_ROUNDS_IN_TICKET`
+        — a group audit may reopen more than one ticket, each gets its own section) —
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/audit-round.xml")` for the format.
 
         **`PASS_WITH_ACKNOWLEDGED_RISKS` (`status=PASS_RISK`) is never this subagent's own
@@ -424,7 +434,8 @@
           `⚠️ operator-acknowledged` `MAJOR` finding backed the pass (only reachable this way — never
           on a first-look finding with no Decision Log entry yet).
         - `FAIL` + `phases_to_fix` — one or more unresolved `BLOCKER` findings (`phases_to_fix` lists
-          the owning phases, non-empty), OR one or more `📂 open` `MAJOR` findings with no matching
+          the owning phases, non-empty — a phase may belong to ANY ticket in the group, not only the one
+          whose closure triggered this dispatch), OR one or more `📂 open` `MAJOR` findings with no matching
           Decision Log acceptance yet (`phases_to_fix` left empty when the fix is administrative,
           per Path B, `STEP_7_RESOLVE`) — the orchestrator is the one with a channel to ask the
           operator; once accepted and logged, R2 re-runs this step and finds the Decision Log entry.
@@ -460,7 +471,7 @@
       Grammar (one logical record per line, EOL-terminated; fields separated by ` | `):
 
       ```
-      @audit task=<Task-ID> round=<N> mode=<per-task|epic> status=<PASS|PASS_RISK|FAIL> counts=B<n>·M<n>·m<n>·I<n> phases_to_fix=[<P<N>>,...]
+      @audit task=<Task-ID|spec-path> round=<N|—> mode=<per-task|per-group> status=<PASS|PASS_RISK|FAIL> counts=B<n>·M<n>·m<n>·I<n> phases_to_fix=[<P<N>|Task-ID:P<N>>,...]
       F-<NN> | sev=<B|M|m|I> | type=<TYPETOKEN> | conf=<H|M|L> | loc=<path:line|—> | phase=<P<N>|—> | src=<spec/ticket/rule anchor|—> | route=<spec-edit|ticket-reopen|ticket-update|decision-log|code-fix> | act=<one-line action, no newlines>
       F-<NN> | …
       ~applied | <target> | <one-line description of inline change>   (optional, repeat per applied change)
@@ -473,6 +484,10 @@
       - `route`: one of `spec-edit` | `ticket-reopen` | `ticket-update` | `decision-log` | `code-fix` (per `AX_FINDING_ROUTING`).
       - `act` text: Russian operator-facing per `AX_OPERATOR_LANGUAGE` (this is operator-facing artifact text), single line, no pipe character.
       - `status` `PASS_RISK` = PASS_WITH_ACKNOWLEDGED_RISKS.
+      - `mode=per-group` (default, auto-dispatch, `AX_AUDIT_MODES`): `task` carries the group's spec path,
+        not a single Task-ID; `phases_to_fix` entries carry the owning Task-ID prefix (`Task-ID:P<N>`) since
+        a finding may name a phase on any ticket in the group. `mode=per-task` (operator-manual): `task`
+        carries the single audited Task-ID; `phases_to_fix` entries are bare `P<N>` (that ticket is implicit).
 
       Example:
       ```

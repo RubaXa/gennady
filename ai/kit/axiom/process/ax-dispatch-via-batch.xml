@@ -2,7 +2,8 @@
       After all reopens are prepared, dispatch the reopened tasks through execute as one BATCH.
       The batch orchestrator will plan layers, run phases, close rounds, sync trackers.
 
-      Audit flag: pass `skip-audit` to the batch — per-task audit is skipped; the reconcile-level
-      safety net (verify + fresh-eyes epic audit + code-review) runs ONCE at STEP_7 instead.
-      (The batch still runs phases but skips the per-task audit dispatch.)
+      Audit flag: pass `skip-audit` to the batch — the group-audit gate (`AX_AUDIT_HOOK`) is skipped for
+      every ticket in the batch; the reconcile-level safety net (verify + one fresh-eyes audit +
+      code-review over the whole reconciled set) runs ONCE at STEP_7 instead. (The batch still runs
+      phases but skips the per-ticket `sdd-task --audit-group` dispatch.)
     </Axiom>

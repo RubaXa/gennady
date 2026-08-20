@@ -1,5 +1,5 @@
 // @file: Pure mechanical SDD artifact checks (anchor balance, structure, status, exec-log integrity) — shared by sdd-check.
-// @consumers: sdd-check.cmd
+// @consumers: sdd-check.cmd, sdd-task.cmd, audit-group
 // @tasks: N/A
 
 import { dirname, basename, join, resolve } from 'node:path';
@@ -186,6 +186,22 @@ export function parsePhaseHandoffs(logBody: string): Record<string, string> {
     }
   }
   return out;
+}
+
+/**
+ * @purpose Extract the `artifacts: [...]` file list from one verbatim Handoff line.
+ * @invariant `none` / `n/a` / `—` inside the brackets means no real artifact — returns empty, same
+ *   placeholder convention as Meta Dependencies.
+ * @param handoffLine One verbatim `**Handoff →**` line (`parsePhaseHandoffs`'s output).
+ * @returns Artifact paths in declared order (possibly empty).
+ */
+export function parseHandoffArtifacts(handoffLine: string): string[] {
+  const inner = /artifacts:\s*\[([^\]]*)\]/.exec(handoffLine)?.[1]?.trim();
+  if (!inner || /^(none|n\/a|[—-])$/i.test(inner)) return [];
+  return inner
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
 }
 
 /**

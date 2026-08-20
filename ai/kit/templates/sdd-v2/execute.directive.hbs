@@ -1,10 +1,12 @@
 <SddExecuteOrchestrator keywords="execute, orchestrator, dispatch, phases, round, audit, fix, model-by-load, isolated, sdd-execute" type="directive" ver="2.1">
   <Mission>
     Orchestrate execution of one ticket — or a BATCH of ready tickets (a LOGIC-SWITCH on the operator's
-    intent decides which): plan phases, dispatch one worker-subagent per phase,
-    thread typed Handoff, close the Round, dispatch a fresh-eyes audit, and on audit FAIL re-run only
-    the failing phases as `fix` (≤ 2 audit attempts). A separate skill (`/sdd-execute`), run isolated.
-    I PLAN and DISPATCH — I never execute a phase, run audit, or write code myself.
+    intent decides which): plan phases, dispatch one worker-subagent per phase, thread typed Handoff,
+    close the Round mechanically on its own phase gates, ask the tool whether the ticket's spec-group is
+    due for review, and when it is, dispatch a fresh-eyes GROUP audit followed by a GROUP code-review —
+    on audit FAIL re-run only the failing phases as `fix` (≤ 2 audit attempts). A separate skill
+    (`/sdd-execute`), run isolated. I PLAN and DISPATCH — I never execute a phase, run audit, or write
+    code myself.
 
     Input — a specific Task-ID, or `next` / `pick`, or `batch` / `all`. I FIRST get the deterministic
     execution map via `sdd-task` with no Task-ID (the pickable set + blockers, computed from the trackers —
@@ -170,17 +172,30 @@
       <Action>`sdd-sync <task-id>` updates the scope + project trackers and verifies the write (`AX_VERIFY_AND_FINALIZE`).</Action>
     </Step>
     <Step id="STEP_5_AUDIT">
-      <Goal>Dispatch fresh-eyes audit (mandatory, `AX_AUDIT_HOOK`).</Goal>
+      <Goal>Ask the tool whether this ticket's group is due for review; dispatch only when it is (`AX_AUDIT_HOOK`).</Goal>
       <Action>
-        Dispatch ONE audit-subagent on a cheap model (audit is mechanical verification): read
-        `ai/directives/sdd-v2/audit.directive.xml`; task-id; round; artifacts = union of phase Handoff
-        artifacts; mode per-task. Wait for the verdict.
+        Run `sdd-task --audit-group <id>` — the tool decides the moment, never eyeballed. It prints the
+        owning spec, the group's full ticket list with statuses, and the verdict.
+
+        <LogicSwitch on="audit-group verdict">
+        - WHEN `not yet` (the tool names tickets still open) -> dispatch NEITHER audit nor code-review
+          this cycle; this ticket's own phase gates and tests already closed it (Meta Status `[x] DONE`
+          stands) — skip straight to STEP_8_SUMMARY for this ticket's cycle, then the next pickable ticket
+          in the queue. A ticket's own dependents INSIDE this same group already unblocked on ITS closure,
+          independent of the group's audit state.
+        - WHEN `due` (every ticket in the group is `[x] DONE`) -> dispatch ONE audit-subagent on a cheap
+          model (audit is mechanical verification): read `ai/directives/sdd-v2/audit.directive.xml`;
+          group = the id `sdd-task --audit-group` just confirmed `due`; mode per-group. Its own STEP_1
+          resolves the full scope itself (`sdd-task --group-scope <id>`) — this dispatch prompt carries no
+          pasted manifest or artifact list, same self-bootstrap pattern as phase dispatch. Wait for the
+          verdict.
+        </LogicSwitch>
       </Action>
     </Step>
     <Step id="STEP_6_BRANCH">
-      <Goal>Branch on the audit verdict.</Goal>
+      <Goal>Branch on the group audit verdict.</Goal>
       <Action>
-        <LogicSwitch on="audit verdict + attempt">
+        <LogicSwitch on="group audit verdict + attempt">
         - WHEN `PASS` / `PASS_WITH_ACKNOWLEDGED_RISKS`                          -> STEP_7B_CODE_REVIEW (a `PASS_WITH_ACKNOWLEDGED_RISKS` here always already carries a Decision Log entry — audit only confirms a PRIOR acceptance, per `audit.directive`; it never asks live)
         - WHEN `FAIL` + attempt 1 + every open finding carries a concrete mechanical remediation the orchestrator can apply (via Path B — ticket / Decision Log / waiver-label edits — or via `phases_to_fix` → apply/re-run per STEP_7_RESOLVE, whichever the finding calls for) -> STEP_7_RESOLVE, apply every finding's fix directly (no operator stop — a finding with a concrete mechanical fix is not a risk decision), then re-dispatch audit (R2)
         - WHEN `FAIL` + only open `MAJOR` findings (no open `BLOCKER`) + attempt 1 + at least one open finding has NO concrete mechanical remediation (it can only be accepted as-is — an open gate-risk, an environment limitation) -> ask the operator, per such finding: accept this risk? ALL accepted -> STEP_7_RESOLVE Path B (append a Decision Log entry per accepted finding — the acceptance record the next audit dispatch will find — no new Round), then re-dispatch audit (R2, which now returns `PASS_WITH_ACKNOWLEDGED_RISKS`); ANY declined -> STEP_7_RESOLVE as an ordinary `FAIL` (Path A/B per the finding's fix, not an acceptance)
@@ -195,8 +210,10 @@
         Resolve findings at release-ready depth (`AX_RELEASE_READY_DEFAULT`): re-running a phase to
         actually fix error handling / an edge case a finding surfaced is Path A, never a Path B label
         that defers it without an operator decision and a Decision Log risk entry. Path A —
-        `phases_to_fix` non-empty: open a new Round; re-run ONLY those phases as `fix`
-        (sequential), then STEP_3 → STEP_5 (audit R2). Path B — findings are ticket / spec /
+        `phases_to_fix` non-empty: a group audit's findings may name phases on ANY ticket in the group,
+        not only the ticket whose closure triggered this dispatch — open a new Round on each phase's
+        OWNING ticket; re-run ONLY those phases as `fix` (sequential, per owning ticket), then STEP_3 →
+        STEP_5 (re-check `sdd-task --audit-group`, audit R2). Path B — findings are ticket / spec /
         decision-log only (administrative artifact edits: tracker fields, Decision Log entries, a
         contract Usage Waiver label in the spec — never production code): apply them directly under
         the orchestrator's own artifact-edit channel (the orchestrator owns trackers and may make these
@@ -210,11 +227,13 @@
       </Action>
     </Step>
     <Step id="STEP_7B_CODE_REVIEW">
-      <Goal>Dispatch fresh-eyes code-review for bugs (lazy, after the audit passes).</Goal>
+      <Goal>Dispatch fresh-eyes code-review for the group (lazy, same trigger as audit — right after it passes).</Goal>
       <Action>
         Dispatch ONE code-review subagent (isolated): read `ai/directives/sdd-v2/code-review.directive.xml`;
-        task-id; round; artifacts = union of phase Handoff artifacts (the Round's diff); the relevant
-        contract anchors. It scopes to bugs only (correctness / edge / error-path / security), leaving drift and style out.
+        group = the same id the group audit just covered; mode per-group. Its own STEP_1 resolves the full
+        scope itself (`sdd-task --group-scope <id>`) — no pasted manifest or artifact list in this dispatch
+        prompt, same self-bootstrap pattern as the audit dispatch above. It scopes to bugs only
+        (correctness / edge / error-path / security), leaving drift and style out.
         Verdict: `CLEAN` → STEP_8; `FINDINGS` with a `BLOCKER` → `H_CODE_REVIEW_BLOCKER` (pause for the
         operator); `FINDINGS` non-blocking → carry into the summary as routed proposals, STEP_8.
       </Action>
@@ -222,7 +241,10 @@
     <Step id="STEP_8_SUMMARY">
       <Goal>Summarize for the operator; report every self-resolved deviation from the whole cycle in one batch.</Goal>
       <Action>
-        Aggregate phase + audit telemetry; present per `EXECUTE_SUMMARY_FORMAT`. Collect every worker
+        Aggregate phase + audit telemetry; present per `EXECUTE_SUMMARY_FORMAT`. When this ticket's cycle
+        hit `not yet` at STEP_5 (its group is not fully closed), the summary carries no audit / code-review
+        verdict for this cycle — state plainly that review is deferred to the group's close, per
+        `AX_AUDIT_HOOK`, rather than omitting the line silently. Collect every worker
         Handoff `deviations:` entry across the ENTIRE cycle just run — one ticket's Round, or every
         Round of a `batch` loop — plus any spec/ticket gap the orchestrator itself self-resolved
         directly at STEP_1 / STEP_2 / STEP_6 rather than delegating to a worker
@@ -240,7 +262,7 @@
   <HardForbidden>
     - Workers read phase bodies / BDD / Verification / specs / rule files / code, each bounded by their manifest; the orchestrator does not.
     - Workers write code, audit reports, and phase blocks; the orchestrator does not write production code, ever. It has exactly THREE narrow, non-overlapping write channels: (a) `AX_ENV_FIX_CHANNEL` — env/config artifacts only (`package.json` scripts, tool config, lockfiles), never `Target Files` code or `specs/**`, never without prior explicit operator approval of the exact diff; (b) STEP_7_RESOLVE Path B — administrative edits to ticket / Decision Log / spec waiver-labels, applying an ACCEPTED audit finding directly per `AX_OWNER`; (c) a ticket-local Decision Log append when the orchestrator itself self-resolves a spec/ticket hole it hit directly, not delegated to a worker (`AX_DEVIATION_SELF_RESOLVE`) — distinct from (b), which is gated on an audit finding the operator already accepted, while (c) fires on a gap the orchestrator decides on its own and reports only in the STEP_8 batch. None of the three extends to production code under a module's `Target Files`.
-    - Always run audit after all phases DONE, and code-review after the audit passes.
+    - Run the group audit only when `sdd-task --audit-group` reports the group `due` — never per ticket, never on eyeballed "this looks like the last one"; run code-review immediately after that audit passes, on the same trigger, never independently of it.
     - Thread only typed Handoff payloads between subagents; keep their contexts separate.
     - Cap audit attempts at 2; re-run only phases in `phases_to_fix`; drive a retry from audit FAIL only (a phase BLOCKED pauses, it does not reopen); run phases of the same task sequentially, one at a time.
   </HardForbidden>

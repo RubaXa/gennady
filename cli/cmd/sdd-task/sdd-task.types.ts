@@ -2,10 +2,37 @@
 // @consumers: SddTaskCommand
 // @tasks: N/A
 
+import { realpathSync } from 'node:fs';
 import { relative, resolve } from 'node:path';
 import type { MetaInfo, PhaseOverview, PhaseDetail, Gate } from '../../../shared/sdd/ticket.ts';
 import type { TicketRef } from '../../../shared/sdd/check.ts';
 import { unreadableTicketHint } from '../../../shared/sdd/ticket-resolve.ts';
+import type { AuditGroupResolution } from '../../../shared/sdd/audit-group.ts';
+
+/**
+ * @purpose Realpath a path when possible — resolves symlinks (macOS `/var` → `/private/var`) so
+ *   differently-spelled paths to the same directory compare equal.
+ * @param p A file or directory path.
+ * @returns The realpath'd absolute path, or the plain resolved one when realpath fails (e.g. missing).
+ */
+function canonical(p: string): string {
+  try {
+    return realpathSync(resolve(p));
+  } catch {
+    return resolve(p);
+  }
+}
+
+/**
+ * @purpose Symlink-safe `relative(root, path)` — group paths derive from the raw ticket argument,
+ *   not from `root`, so a plain string relative() can go wrong.
+ * @param root Absolute project root.
+ * @param p The path to relativize.
+ * @returns The relative path, or `p` itself when it falls outside `root`'s tree (empty result).
+ */
+function groupRelative(root: string, p: string): string {
+  return relative(canonical(root), canonical(p)) || p;
+}
 
 /** @purpose No ticket path was passed. */
 export const ERR_CLI_SDD_TASK_BAD_INVOCATION = 'ERR_CLI_SDD_TASK_BAD_INVOCATION' as const;
@@ -19,6 +46,10 @@ export const ERR_CLI_SDD_TASK_PHASE_NOT_FOUND = 'ERR_CLI_SDD_TASK_PHASE_NOT_FOUN
 export const ERR_CLI_SDD_TASK_UNKNOWN_ID = 'ERR_CLI_SDD_TASK_UNKNOWN_ID' as const;
 /** @purpose More than one ticket carries the same Meta Task-ID (a project-wide collision). */
 export const ERR_CLI_SDD_TASK_AMBIGUOUS_ID = 'ERR_CLI_SDD_TASK_AMBIGUOUS_ID' as const;
+/** @purpose --audit-group/--group-scope argument resolved to a ticket whose filename isn't `<name>.task.<ID>.md` — no owning spec can be derived. */
+export const ERR_CLI_SDD_TASK_NOT_V2_TICKET_NAME = 'ERR_CLI_SDD_TASK_NOT_V2_TICKET_NAME' as const;
+/** @purpose The owning spec derived from the ticket's filename convention does not exist on disk. */
+export const ERR_CLI_SDD_TASK_SPEC_MISSING = 'ERR_CLI_SDD_TASK_SPEC_MISSING' as const;
 
 /**
  * @purpose Result of one sdd-task run.
@@ -52,6 +83,7 @@ function gatesForPhase(detail: PhaseDetail, gates: Gate[]): Gate[] {
  * @param detailsById Parsed phase bodies keyed by phase id (missing → omitted manifest detail).
  * @param gates All Verification gates.
  * @param [activeBlockers] Unresolved 🛑 BLOCKED line texts (shared/sdd/check.ts#scanBlockerTrail), oldest first; default empty.
+ * @param [auditGroupLine] Precomputed `audit-group: <spec path> (<closed>/<total>)` line, or null when the ticket's filename doesn't resolve to an owning spec.
  * @returns The formatted planning-surface text.
  */
 export function formatPlan(
@@ -59,13 +91,15 @@ export function formatPlan(
   phases: PhaseOverview[],
   detailsById: Record<string, PhaseDetail | undefined>,
   gates: Gate[],
-  activeBlockers: string[] = []
+  activeBlockers: string[] = [],
+  auditGroupLine: string | null = null
 ): string {
   const lines: string[] = [];
   lines.push(`[sdd-task] ${meta.taskId ?? '<unknown>'} — ${meta.status ?? '<no status>'}`);
   if (meta.purpose) lines.push(`Purpose: ${meta.purpose}`);
   lines.push(`Scope/Module: ${meta.scope ?? '—'} / ${meta.module ?? '—'}`);
   lines.push(`Dependencies: ${meta.dependencies.length ? meta.dependencies.join(', ') : 'none'}`);
+  if (auditGroupLine) lines.push(auditGroupLine);
   if (meta.specRefs.length) {
     lines.push('Spec References:');
     for (const s of meta.specRefs) {
@@ -320,4 +354,208 @@ export function notATicket(ticket: string): TaskOutcome {
     exitCode: 2,
     message: `[sdd-task] ${ERR_CLI_SDD_TASK_NOT_A_TICKET}: ${ticket}\n  No <!--SECTION:META--> found — this is not a task ticket.`,
   };
+}
+
+/**
+ * @purpose Build the not-a-v2-ticket-name diagnostic — tool-teaches the naming convention the group boundary relies on.
+ * @param ticketPath The resolved ticket path.
+ * @param root Absolute project root (path printed relative to it).
+ * @returns Outcome with exit 2.
+ */
+export function notV2TicketNameError(ticketPath: string, root: string): TaskOutcome {
+  return {
+    ok: false,
+    code: ERR_CLI_SDD_TASK_NOT_V2_TICKET_NAME,
+    exitCode: 2,
+    message: [
+      `[sdd-task] ${ERR_CLI_SDD_TASK_NOT_V2_TICKET_NAME}: ${groupRelative(root, ticketPath)}`,
+      '  expected `<scope-or-module>.task.<Task-ID>.md` — the group boundary is derived from this filename (same dir as `<name>.spec.md`).',
+    ].join('\n'),
+  };
+}
+
+/**
+ * @purpose Build the spec-missing diagnostic — the filename resolved to an owning spec path that does not exist on disk.
+ * @param ticketPath The resolved ticket path.
+ * @param specPath The derived (missing) spec path.
+ * @param root Absolute project root (paths printed relative to it).
+ * @returns Outcome with exit 1.
+ */
+export function specMissingError(ticketPath: string, specPath: string, root: string): TaskOutcome {
+  return {
+    ok: false,
+    code: ERR_CLI_SDD_TASK_SPEC_MISSING,
+    exitCode: 1,
+    message: [
+      `[sdd-task] ${ERR_CLI_SDD_TASK_SPEC_MISSING}: ${groupRelative(root, ticketPath)}`,
+      `  expected owning spec not found on disk: ${groupRelative(root, specPath)} — create it, or move the ticket beside its real spec.`,
+    ].join('\n'),
+  };
+}
+
+/**
+ * @purpose Dispatch a failed `AuditGroupResolution` to its matching diagnostic.
+ * @param resolution The failed resolution (any `ok: false` variant).
+ * @param ticketArg The raw CLI argument, as typed by the operator.
+ * @param root Absolute project root.
+ * @returns The matching TaskOutcome failure.
+ */
+export function auditGroupError(
+  resolution: Extract<AuditGroupResolution, { ok: false }>,
+  ticketArg: string,
+  root: string
+): TaskOutcome {
+  switch (resolution.reason) {
+    case 'unreadable':
+      return fileError(ticketArg);
+    case 'unknown-id':
+      return unknownIdError(ticketArg, resolution.refs);
+    case 'ambiguous-id':
+      return ambiguousIdError(ticketArg, resolution.matches, root);
+    case 'not-v2-ticket-name':
+      return notV2TicketNameError(resolution.ticketPath, root);
+    case 'spec-missing':
+      return specMissingError(resolution.ticketPath, resolution.specPath, root);
+  }
+}
+
+/**
+ * @purpose Build the `audit-group: <spec path> (<closed>/<total>)` line the plain ticket plan embeds, so the orchestrator sees group context without a second call.
+ * @param specPath The owning spec's path.
+ * @param group The group's tickets.
+ * @param root Absolute project root.
+ * @returns The one-line summary.
+ */
+export function buildAuditGroupLine(specPath: string, group: TicketRef[], root: string): string {
+  const closed = group.filter((r) => /\bDONE\b/i.test(r.status ?? '')).length;
+  return `audit-group: ${groupRelative(root, specPath)} (${closed}/${group.length})`;
+}
+
+/** @purpose Render the `spec:` line + one `<Task-ID> <status> → <path>` line per group ticket — shared by `--audit-group` and `--group-scope`. | @param specPath The owning spec's path. | @param group The group's tickets. | @param root Absolute project root (paths printed relative to it). | @returns The header lines (no trailing blank line). */
+function renderGroupHeader(specPath: string, group: TicketRef[], root: string): string[] {
+  const lines = [`spec: ${groupRelative(root, specPath)}`];
+  for (const r of group) {
+    lines.push(
+      `  ${r.taskId ?? '<no-task-id>'} ${r.status ?? '<no-status>'} → ${groupRelative(root, r.file)}`
+    );
+  }
+  return lines;
+}
+
+/** @purpose Unmet (non-DONE, non-placeholder) dependency Task-IDs of one ticket, against the project-wide status map. | @param t The ticket to check. | @param allRefs Every ticket ref in the project. | @returns Unmet dependency ids (empty when none). */
+function unmetDependencies(t: TicketRef, allRefs: TicketRef[]): string[] {
+  const doneIds = new Set(
+    allRefs.filter((r) => /\bDONE\b/i.test(r.status ?? '')).map((r) => r.taskId)
+  );
+  return t.dependencies.filter((d) => !/^(none|n\/a|[—-])\b/i.test(d.trim()) && !doneIds.has(d));
+}
+
+/**
+ * @purpose Format `sdd-task --audit-group` — the group roster plus the due/not-yet verdict the operator/orchestrator asked for instead of eyeballing it.
+ * @invariant The verdict is due only when EVERY group ticket's Status is DONE — partial closure is always `not yet`.
+ * @param specPath The owning spec's path.
+ * @param group The group's tickets (same directory as `specPath`).
+ * @param allRefs Every ticket ref in the project (for the pickable-next-ticket hint).
+ * @param root Absolute project root.
+ * @returns The formatted group report.
+ */
+export function formatAuditGroup(
+  specPath: string,
+  group: TicketRef[],
+  allRefs: TicketRef[],
+  root: string
+): TaskOutcome {
+  const lines = renderGroupHeader(specPath, group, root);
+  const open = group.filter((r) => !/\bDONE\b/i.test(r.status ?? ''));
+
+  lines.push('');
+  if (open.length === 0) {
+    lines.push(`audit: due — все тикеты группы закрыты (${group.length}/${group.length})`);
+    const anyId = group[0]?.taskId ?? groupRelative(root, specPath);
+    lines.push(
+      '',
+      `next: dispatch ONE audit-subagent (ai/directives/sdd-v2/audit.directive.xml) — mode=per-group, task=${groupRelative(root, specPath)}; get its artifacts via \`sdd-task --group-scope ${anyId}\`.`
+    );
+    return { ok: true, text: lines.join('\n') };
+  }
+
+  lines.push(`audit: not yet — открыто: ${open.map((r) => r.taskId ?? '<no-task-id>').join(', ')}`);
+
+  const groupIds = new Set(group.map((r) => r.taskId));
+  const pickableOpen = open.find(
+    (r) => r.taskId != null && groupIds.has(r.taskId) && unmetDependencies(r, allRefs).length === 0
+  );
+  if (pickableOpen) {
+    lines.push(
+      '',
+      `next: возьми ${pickableOpen.taskId} (\`sdd-task ${pickableOpen.taskId}\`), доведи до DONE, затем повтори \`sdd-task --audit-group ${pickableOpen.taskId}\`.`
+    );
+  } else {
+    const first = open[0] as TicketRef;
+    const unmet = unmetDependencies(first, allRefs);
+    lines.push(
+      '',
+      unmet.length
+        ? `next: ${first.taskId ?? '<no-task-id>'} заблокирован зависимостями (${unmet.join(', ')}) — доведи их до DONE первыми.`
+        : `next: возьми ${first.taskId ?? '<no-task-id>'} (\`sdd-task ${first.taskId ?? ''}\`), доведи до DONE, затем повтори \`sdd-task --audit-group ${first.taskId ?? ''}\`.`
+    );
+  }
+  return { ok: true, text: lines.join('\n') };
+}
+
+/** @purpose Result of a git-diff scan for `--group-scope` — always honest about whether HEAD exists (AX_GIT_DIFF_SCAN's own caveat). */
+export type GroupScopeGit = { available: true; files: string[] } | { available: false };
+
+/**
+ * @purpose Format `sdd-task --group-scope` — the ready-made review scope (Target Files ∪ git diff, plus Handoff artifacts) instead of manual git archaeology.
+ * @invariant Never fabricates a git range when HEAD is absent — `git:` states that plainly instead of guessing.
+ * @param specPath The owning spec's path.
+ * @param group The group's tickets.
+ * @param root Absolute project root.
+ * @param targetFiles Union of every group ticket's phase Target Files.
+ * @param handoffArtifacts Union of every group ticket's Handoff `artifacts:` entries.
+ * @param git The git-diff scan result (`available: false` when the repo has no HEAD).
+ * @returns The formatted review-scope report.
+ */
+export function formatGroupScope(
+  specPath: string,
+  group: TicketRef[],
+  root: string,
+  targetFiles: string[],
+  handoffArtifacts: string[],
+  git: GroupScopeGit
+): TaskOutcome {
+  const lines = renderGroupHeader(specPath, group, root);
+
+  const files = new Set(targetFiles);
+  if (git.available) for (const f of git.files) files.add(f);
+
+  lines.push('', 'files:');
+  if (files.size === 0) {
+    lines.push(
+      '  — нет ни одного Target Files в тикетах группы, ни git-диффа — область обзора построить не из чего; заполни Target Files в тикетах.'
+    );
+  } else {
+    for (const f of files) lines.push(`  ${f}`);
+  }
+
+  lines.push(
+    '',
+    git.available
+      ? `git: HEAD vs рабочее дерево (включая untracked) — ${git.files.length} файл(ов)`
+      : 'git: git-ссылок нет — область обзора построена по Target Files тикетов'
+  );
+
+  lines.push('', 'handoff:');
+  if (handoffArtifacts.length === 0) {
+    lines.push('  — ни в одном тикете группы нет Handoff-строки с артефактами.');
+  } else {
+    for (const a of handoffArtifacts) lines.push(`  ${a}`);
+  }
+
+  lines.push(
+    '',
+    'next: передай `files` + `handoff` аудит-/код-ревью-сабагенту как готовую область обзора группы — не выясняй git-диапазон вручную.'
+  );
+  return { ok: true, text: lines.join('\n') };
 }

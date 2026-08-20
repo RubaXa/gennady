@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { execSync } from 'node:child_process';
 
 type TaskModule = typeof import('../sdd-task.cmd.ts');
 
@@ -645,6 +646,226 @@ describe('SddTaskCommand', () => {
       } finally {
         process.chdir(origCwd);
         rmSync(readyDir, { recursive: true, force: true });
+      }
+    });
+  });
+
+  describe('--audit-group / --group-scope', () => {
+    const groupTicket = (id: string, status: string, deps = 'None') =>
+      [
+        `# Task: ${id}`,
+        '<!--SECTION:META-->',
+        '## 1. Meta',
+        `- **Task-ID:** ${id}`,
+        `- **Status:** ${status}`,
+        '- **Scope:** core',
+        `- **Dependencies:** ${deps}`,
+        '<!--/SECTION:META-->',
+        '<!--SECTION:PHASES_OVERVIEW-->',
+        '| ID | Kind | Deps | Status |',
+        '|----|------|------|--------|',
+        '| P1 | impl | — | [x] |',
+        '<!--/SECTION:PHASES_OVERVIEW-->',
+        '<!--SECTION:PHASE_P1-->',
+        '- **Objective:** implement',
+        '- **Target Files:**',
+        `  - src/${id}.ts`,
+        '<!--/SECTION:PHASE_P1-->',
+        '<!--SECTION:EXECUTION_LOG-->',
+        '#### P1',
+        `**Handoff →** artifacts: [src/${id}.ts]; decisions: [none]; open: [none]`,
+        '<!--/SECTION:EXECUTION_LOG-->',
+      ].join('\n');
+
+    function withCwd<T>(dir: string, fn: () => T): T {
+      const orig = process.cwd();
+      process.chdir(dir);
+      try {
+        return fn();
+      } finally {
+        process.chdir(orig);
+      }
+    }
+
+    it('all group tickets DONE → audit due (N/N), next: dispatches the group audit', async () => {
+      const gDir = mkdtempSync(join(tmpdir(), 'sdd-task-audit-due-'));
+      writeFileSync(join(gDir, 'core.spec.md'), '# Core\n', 'utf-8');
+      writeFileSync(join(gDir, 'core.task.TSK-a.md'), groupTicket('TSK-a', '[x] DONE'), 'utf-8');
+      writeFileSync(join(gDir, 'core.task.TSK-b.md'), groupTicket('TSK-b', '[x] DONE'), 'utf-8');
+      try {
+        const r = await withCwd(gDir, () => mod.run(argv('--audit-group', 'TSK-a')));
+        assert.strictEqual(r.ok, true);
+        if (!r.ok) return;
+        assert.match(r.text, /^spec: core\.spec\.md$/m);
+        assert.match(r.text, /^ {2}TSK-a \[x\] DONE → core\.task\.TSK-a\.md$/m);
+        assert.match(r.text, /^ {2}TSK-b \[x\] DONE → core\.task\.TSK-b\.md$/m);
+        assert.match(r.text, /^audit: due — все тикеты группы закрыты \(2\/2\)$/m);
+        assert.match(r.text, /^next: dispatch ONE audit-subagent/m);
+        assert.match(r.text, /mode=per-group, task=core\.spec\.md/);
+        assert.match(r.text, /sdd-task --group-scope TSK-a/);
+      } finally {
+        rmSync(gDir, { recursive: true, force: true });
+      }
+    });
+
+    it('a single-ticket group behaves the same as any other group (due 1/1)', async () => {
+      const gDir = mkdtempSync(join(tmpdir(), 'sdd-task-audit-solo-'));
+      writeFileSync(join(gDir, 'core.spec.md'), '# Core\n', 'utf-8');
+      writeFileSync(
+        join(gDir, 'core.task.TSK-solo.md'),
+        groupTicket('TSK-solo', '[x] DONE'),
+        'utf-8'
+      );
+      try {
+        const r = await withCwd(gDir, () => mod.run(argv('--audit-group', 'TSK-solo')));
+        assert.strictEqual(r.ok, true);
+        if (!r.ok) return;
+        assert.match(r.text, /^audit: due — все тикеты группы закрыты \(1\/1\)$/m);
+      } finally {
+        rmSync(gDir, { recursive: true, force: true });
+      }
+    });
+
+    it('a partially closed group → not yet, lists open ids, next: points at the pickable one', async () => {
+      const gDir = mkdtempSync(join(tmpdir(), 'sdd-task-audit-notyet-'));
+      writeFileSync(join(gDir, 'core.spec.md'), '# Core\n', 'utf-8');
+      writeFileSync(join(gDir, 'core.task.TSK-a.md'), groupTicket('TSK-a', '[x] DONE'), 'utf-8');
+      writeFileSync(join(gDir, 'core.task.TSK-b.md'), groupTicket('TSK-b', '[ ] TODO'), 'utf-8');
+      try {
+        // resolve via the ticket PATH this time (not the bare id)
+        const r = await withCwd(gDir, () => mod.run(argv('--audit-group', 'core.task.TSK-a.md')));
+        assert.strictEqual(r.ok, true);
+        if (!r.ok) return;
+        assert.match(r.text, /^audit: not yet — открыто: TSK-b$/m);
+        assert.match(r.text, /^next: возьми TSK-b \(`sdd-task TSK-b`\)/m);
+      } finally {
+        rmSync(gDir, { recursive: true, force: true });
+      }
+    });
+
+    it('a ticket filename that does not follow the v2 `.task.` convention → actionable error', async () => {
+      const gDir = mkdtempSync(join(tmpdir(), 'sdd-task-audit-badname-'));
+      writeFileSync(join(gDir, 'plain.md'), groupTicket('TSK-plain', '[ ] TODO'), 'utf-8');
+      try {
+        const r = await withCwd(gDir, () => mod.run(argv('--audit-group', join(gDir, 'plain.md'))));
+        assert.strictEqual(r.ok, false);
+        if (r.ok) return;
+        assert.match(r.message, /ERR_CLI_SDD_TASK_NOT_V2_TICKET_NAME/);
+        assert.match(r.message, /<scope-or-module>\.task\.<Task-ID>\.md/);
+      } finally {
+        rmSync(gDir, { recursive: true, force: true });
+      }
+    });
+
+    it('a well-named ticket whose owning spec is missing on disk → actionable error naming the expected spec path', async () => {
+      const gDir = mkdtempSync(join(tmpdir(), 'sdd-task-audit-nospec-'));
+      writeFileSync(join(gDir, 'core.task.TSK-x.md'), groupTicket('TSK-x', '[ ] TODO'), 'utf-8');
+      try {
+        const r = await withCwd(gDir, () => mod.run(argv('--audit-group', 'TSK-x')));
+        assert.strictEqual(r.ok, false);
+        if (r.ok) return;
+        assert.match(r.message, /ERR_CLI_SDD_TASK_SPEC_MISSING/);
+        assert.match(r.message, /core\.spec\.md/);
+      } finally {
+        rmSync(gDir, { recursive: true, force: true });
+      }
+    });
+
+    it("the plain plan (`sdd-task <id>`) embeds an `audit-group:` line with the group's closed/total count", async () => {
+      const gDir = mkdtempSync(join(tmpdir(), 'sdd-task-plan-groupline-'));
+      writeFileSync(join(gDir, 'core.spec.md'), '# Core\n', 'utf-8');
+      writeFileSync(join(gDir, 'core.task.TSK-a.md'), groupTicket('TSK-a', '[ ] TODO'), 'utf-8');
+      writeFileSync(join(gDir, 'core.task.TSK-b.md'), groupTicket('TSK-b', '[x] DONE'), 'utf-8');
+      try {
+        const r = await withCwd(gDir, () => mod.run(argv(join(gDir, 'core.task.TSK-a.md'))));
+        assert.strictEqual(r.ok, true);
+        if (!r.ok) return;
+        assert.match(r.text, /^audit-group: core\.spec\.md \(1\/2\)$/m);
+      } finally {
+        rmSync(gDir, { recursive: true, force: true });
+      }
+    });
+
+    it('the plain plan omits `audit-group:` when the ticket filename has no owning spec (no crash)', async () => {
+      const outcome = await mod.run(argv(ticket));
+      assert.strictEqual(outcome.ok, true);
+      if (!outcome.ok) return;
+      assert.doesNotMatch(outcome.text, /^audit-group:/m);
+    });
+
+    function initGitRepo(dir: string): void {
+      execSync('git init -q', { cwd: dir });
+      execSync('git config user.email test@example.com', { cwd: dir });
+      execSync('git config user.name test', { cwd: dir });
+      execSync('git add -A', { cwd: dir });
+      execSync('git commit -q -m init', { cwd: dir });
+    }
+
+    it('--group-scope with a git HEAD → files: union of Target Files + diff, git: names the comparison', async () => {
+      const gDir = mkdtempSync(join(tmpdir(), 'sdd-task-scope-git-'));
+      writeFileSync(join(gDir, 'core.spec.md'), '# Core\n', 'utf-8');
+      writeFileSync(join(gDir, 'core.task.TSK-a.md'), groupTicket('TSK-a', '[x] DONE'), 'utf-8');
+      writeFileSync(join(gDir, 'core.task.TSK-b.md'), groupTicket('TSK-b', '[x] DONE'), 'utf-8');
+      initGitRepo(gDir);
+      // an untracked source file the diff scan should pick up beyond the tickets' own Target Files
+      writeFileSync(join(gDir, 'extra.ts'), '// untracked\n', 'utf-8');
+      try {
+        const r = await withCwd(gDir, () => mod.run(argv('--group-scope', 'TSK-a')));
+        assert.strictEqual(r.ok, true);
+        if (!r.ok) return;
+        assert.match(r.text, /^files:$/m);
+        assert.match(r.text, /^ {2}src\/TSK-a\.ts$/m);
+        assert.match(r.text, /^ {2}src\/TSK-b\.ts$/m);
+        assert.match(r.text, /^ {2}extra\.ts$/m);
+        assert.match(r.text, /^git: HEAD vs рабочее дерево/m);
+        assert.match(r.text, /^handoff:$/m);
+        assert.match(r.text, /^ {2}src\/TSK-a\.ts$/m);
+      } finally {
+        rmSync(gDir, { recursive: true, force: true });
+      }
+    });
+
+    it('--group-scope with no git HEAD → honest "no git refs" line, files: from Target Files alone', async () => {
+      const gDir = mkdtempSync(join(tmpdir(), 'sdd-task-scope-nogit-'));
+      writeFileSync(join(gDir, 'core.spec.md'), '# Core\n', 'utf-8');
+      writeFileSync(join(gDir, 'core.task.TSK-a.md'), groupTicket('TSK-a', '[x] DONE'), 'utf-8');
+      try {
+        const r = await withCwd(gDir, () => mod.run(argv('--group-scope', 'TSK-a')));
+        assert.strictEqual(r.ok, true);
+        if (!r.ok) return;
+        assert.match(r.text, /^files:$/m);
+        assert.match(r.text, /^ {2}src\/TSK-a\.ts$/m);
+        assert.match(
+          r.text,
+          /^git: git-ссылок нет — область обзора построена по Target Files тикетов$/m
+        );
+      } finally {
+        rmSync(gDir, { recursive: true, force: true });
+      }
+    });
+
+    it('--group-scope with an empty scope (no Target Files, no git) → a clear "nothing to build from" message', async () => {
+      const gDir = mkdtempSync(join(tmpdir(), 'sdd-task-scope-empty-'));
+      writeFileSync(join(gDir, 'core.spec.md'), '# Core\n', 'utf-8');
+      const bare = [
+        '# Task: TSK-bare',
+        '<!--SECTION:META-->',
+        '- **Task-ID:** TSK-bare',
+        '- **Status:** [ ] TODO',
+        '<!--/SECTION:META-->',
+        '<!--SECTION:EXECUTION_LOG-->',
+        '<!--/SECTION:EXECUTION_LOG-->',
+      ].join('\n');
+      writeFileSync(join(gDir, 'core.task.TSK-bare.md'), bare, 'utf-8');
+      try {
+        const r = await withCwd(gDir, () => mod.run(argv('--group-scope', 'TSK-bare')));
+        assert.strictEqual(r.ok, true);
+        if (!r.ok) return;
+        assert.match(r.text, /область обзора построить не из чего/);
+        assert.match(r.text, /^handoff:$/m);
+        assert.match(r.text, /Handoff-строки с артефактами/);
+      } finally {
+        rmSync(gDir, { recursive: true, force: true });
       }
     });
   });

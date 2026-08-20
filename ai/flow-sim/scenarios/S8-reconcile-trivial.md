@@ -4,8 +4,8 @@
 подтверждает тривиальный класс (single site, пустой blast radius, контракты/спеки не затронуты), и
 `LogicSwitch on="fix class"` срабатывает по ПЕРВОЙ ветке — короткое замыкание прямо внутри
 `STEP_2B_CLASSIFY`: патч кода, `sdd-sync`, лёгкий гейт (typecheck + тесты только затронутых файлов),
-`FIX_SUMMARY_FORMAT` — и весь хвост (`STEP_3_PLAN`…`STEP_7_VERIFY`, epic-аудит, code-review, реопен
-тикета) остаётся недостигнутым. Отдельно проверяет, что `STEP_6_SYNC` как отдельный шаг НЕ пройден
+`FIX_SUMMARY_FORMAT` — и весь хвост (`STEP_3_PLAN`…`STEP_7_VERIFY`, аудит + code-review над reconciled
+set, реопен тикета) остаётся недостигнутым. Отдельно проверяет, что `STEP_6_SYNC` как отдельный шаг НЕ пройден
 (тот же инструмент `sdd-sync` вызывается, но как часть действия `STEP_2B_CLASSIFY`, а не как переход
 `step: STEP_6_SYNC`).
 
@@ -336,7 +336,8 @@ Project-wide conventions declared once in `specs/3-tasks.md`.
 ## Conventions
 Execution-Log token vocabulary: `intro` / `yagni` / `decision` / `tried` / `discovery` / `insight` /
 `verified` / `ver` / `DONE`. Baseline Completion Rule: `sdd-verify --profile <kind>` + ticket §5
-commands green. Post-task audit hook: mandatory (`AX_AUDIT_HOOK`). File header: `@file` / `@consumers`
+commands green. Audit/code-review hook: per-group, mandatory once the group's last ticket closes
+(`AX_AUDIT_HOOK`). File header: `@file` / `@consumers`
 / `@tasks`.
 ````
 
@@ -577,8 +578,8 @@ leaves doubt»; эта фикстура по построению такого �
 Сразу после того, как `STEP_2B_CLASSIFY` (ветка `LogicSwitch on="fix class"`: «WHEN the class is
 trivial: a single site, blast radius confirmed empty by the probe, contracts / specs untouched ->
 patch the code, back-sync the spec (`sdd-sync`), run the light gate (typecheck + tests of the
-touched files), present `FIX_SUMMARY_FORMAT`. DONE — the full tail (STEP*3–7, epic audit +
-code-review) stays skipped.») показал `FIX_SUMMARY_FORMAT` оператору. Прогон НЕ уходит дальше —
+touched files), present `FIX_SUMMARY_FORMAT`. DONE — the full tail (STEP*3–7, audit + code-review
+over the reconciled set) stays skipped.») показал `FIX_SUMMARY_FORMAT` оператору. Прогон НЕ уходит дальше —
 `STEP_3_PLAN` и весь хвост недостижимы по определению этой ветки. Трейс заканчивается строкой
 `stop: per-map — <это условие дословно>` (не `halt:` — остановка по карте, не директивный
 `H*\*`-гейт).
@@ -625,7 +626,7 @@ APP-check-quota`) ДО первой строки `branch:` этого шага.
 self-assessment"` — дословно первая ветка: «WHEN the class is trivial: a single site, blast
    radius confirmed empty by the probe, contracts / specs untouched -> patch the code, back-sync the
    spec (`sdd-sync`), run the light gate (typecheck + tests of the touched files), present
-   `FIX_SUMMARY_FORMAT`. DONE — the full tail (STEP_3–7, epic audit + code-review) stays skipped.» —
+   `FIX_SUMMARY_FORMAT`. DONE — the full tail (STEP_3–7, audit + code-review over the reconciled set) stays skipped.» —
    НЕ вторая ветка («WHEN triviality is plausible but the probe leaves doubt ->
    `H_TRIVIALITY_UNCONFIRMED`»), НЕ `DEFAULT -> STEP_3_PLAN`. Классификация «triviality confirmed by
    the blast-radius probe, never by self-assessment» (`AX_FIX_CLASSIFICATION`) опирается на вердикт
@@ -679,11 +680,11 @@ limit` на `used <= limit` (единственная содержательна
     → `[ ] TODO`. Нет строки `tool:`, синкающей `tasks/<scope>/README.md`/`tasks/README.md` под
     новый reopen-count (в v2-раскладке этой фикстуры — `specs/app/app.3-tasks.md` /
     `specs/3-tasks.md` остаются с прежним Progress `1/1`, без изменений).
-13. `STEP_7_VERIFY` не достигнут — нет диспетча epic-аудита
+13. `STEP_7_VERIFY` не достигнут — нет диспетча аудита над reconciled set
     (`directive: ai/directives/sdd-v2/audit.directive.xml loaded` отсутствует) и нет диспетча
     code-review (`directive: ai/directives/sdd-v2/code-review.directive.xml loaded` отсутствует).
-    Это ровно то, что предписывает Action `STEP_2B_CLASSIFY`: «DONE — the full tail (STEP_3–7, epic
-    audit + code-review) stays skipped», и что подтверждает Action `STEP_7_VERIFY` от противного:
+    Это ровно то, что предписывает Action `STEP_2B_CLASSIFY`: «DONE — the full tail (STEP_3–7, audit +
+    code-review over the reconciled set) stays skipped», и что подтверждает Action `STEP_7_VERIFY` от противного:
     «This full tail applies to the DEFAULT (non-trivial) path only — the trivial fix class already
     exited at STEP_2B with its own light gate... Reaching STEP_7 means the path is non-trivial.» —
     этот прогон STEP_7 не достигает.

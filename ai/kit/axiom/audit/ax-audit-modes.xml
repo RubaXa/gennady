@@ -1,6 +1,6 @@
 <!-- source: ai/directives/sdd/audit.directive.xml -->
 <Axiom id="AX_AUDIT_MODES">
-      Per-task vs epic-level.
-      - **Per-task** (default): operator passes single task-ID. Audit bounded to its scope.
-      - **Epic-level**: operator passes a list of task-IDs or a general scope (e.g., «everything in scope payments»). Audit produces aggregated summary + checks cross-task consistency (Decision Log entries, absence of conflicting contracts between tasks of one module).
+      Per-group vs per-task.
+      - **Per-group** (default, auto-dispatch): `sdd-execute` dispatches this mode automatically once `sdd-task --audit-group` reports the group `due` — every ticket of one spec, reviewed together. Input is the group: the spec path + its full ticket list (Task-IDs). Checks cross-ticket consistency too — Decision Log entries, absence of conflicting contracts between tickets of the same group — on top of each ticket's own drift.
+      - **Per-task** (operator-manual): operator explicitly names a single Task-ID («audit TSK-NN»). Audit bounded to that one ticket's scope — no cross-ticket check. `sdd-execute` never auto-dispatches this mode; it exists for a targeted operator re-check outside the normal group cadence.
     </Axiom>

@@ -1,11 +1,8 @@
 <!-- source: ai/directives/sdd/audit.directive.xml -->
 <Axiom id="AX_GIT_DIFF_SCAN">
-      Audit widens its read scope via git diff. Per-phase `Target Files` alone is insufficient for reliable closed-world detection: a phase agent could create a helper in `src/utils/`, modify shared types, add a migration without mentioning it. Without diff scan, audit relies on log honesty — contradicting audit's mission.
+      Read scope must widen beyond declared `Target Files` — a phase agent could create a helper in `src/utils/`, modify shared types, add a migration without mentioning it, and Target Files alone would miss it. The tool computes this widened scope; hand-run git archaeology is never the way to build it. `sdd-task --group-scope <id>` prints the owning spec, the group's ticket list, the union of every group ticket's `Target Files`, the git diff over that union when repo refs are available, and the union of Handoff artifacts — take this as the in-scope set, verbatim.
 
-      Mechanics:
-      - `git diff <round-start-ref>..<round-done-ref>` (or `git diff` against last pre-round commit if refs unavailable);
-      - collect modified / added / deleted files;
-      - in-scope set = union(all phases' `Target Files`, diff files, `intro` log).
+      No git refs available (a fresh repo, a shallow checkout) is not a blocker: the tool says so plainly and falls back to the `Target Files` union alone — proceed on that scope like any other run; do NOT run a manual `git diff` / `git log` to compensate.
 
-      Files in diff but absent from ticket declaration + Execution Log → candidates for `CLOSED_WORLD_DRIFT` (public entities) or `EXECUTION_LOG_INCOMPLETE` (utility-only changes).
+      Files the tool's diff surfaces but that are absent from ticket declaration + Execution Log → candidates for `CLOSED_WORLD_DRIFT` (public entities) or `EXECUTION_LOG_INCOMPLETE` (utility-only changes).
     </Axiom>

@@ -28,13 +28,24 @@ import {
   resolutionLine as buildResolutionLine,
 } from '../../../shared/sdd/ticket-resolve.ts';
 import {
+  resolveAuditGroup,
+  ticketTargetFiles,
+  ticketHandoffArtifacts,
+} from '../../../shared/sdd/audit-group.ts';
+import { hasGitHead, getChangedSourceFiles } from '../../../shared/common/changed-files.ts';
+import {
   fileError,
   formatPlan,
   formatPhase,
   notATicket,
   unknownIdError,
   ambiguousIdError,
+  auditGroupError,
+  formatAuditGroup,
+  formatGroupScope,
+  buildAuditGroupLine,
   type TaskOutcome,
+  type GroupScopeGit,
 } from './sdd-task.types.ts';
 
 /**
@@ -124,14 +135,59 @@ function withResolutionLine(outcome: TaskOutcome, line: string | null): TaskOutc
  * @returns TaskOutcome — the planning surface on success, else an actionable failure.
  */
 export async function run(rawArgs: string[]): Promise<TaskOutcome> {
-  const args = parseArgs(rawArgs, { phase: { aliases: ['phase'], takesValue: true } });
+  const args = parseArgs(rawArgs, {
+    phase: { aliases: ['phase'], takesValue: true },
+    auditGroup: { aliases: ['audit-group'], takesValue: true },
+    groupScope: { aliases: ['group-scope'], takesValue: true },
+  });
   const positional = (args._ as string[]).filter(
     (a: string) => typeof a === 'string' && a !== 'sdd-task'
   );
   const phaseId = typeof args.phase === 'string' ? args.phase : null;
+  const auditGroupArg = typeof args.auditGroup === 'string' ? args.auditGroup : null;
+  const groupScopeArg = typeof args.groupScope === 'string' ? args.groupScope : null;
+
+  const defaultRoot = resolve('.');
+
+  if (auditGroupArg) {
+    const resolution = resolveAuditGroup(auditGroupArg, defaultRoot);
+    if (!resolution.ok) return auditGroupError(resolution, auditGroupArg, defaultRoot);
+    return formatAuditGroup(resolution.specPath, resolution.group, resolution.allRefs, defaultRoot);
+  }
+
+  if (groupScopeArg) {
+    const resolution = resolveAuditGroup(groupScopeArg, defaultRoot);
+    if (!resolution.ok) return auditGroupError(resolution, groupScopeArg, defaultRoot);
+    const targetFiles: string[] = [];
+    const handoffArtifacts: string[] = [];
+    for (const r of resolution.group) {
+      let groupTicketContent: string;
+      try {
+        groupTicketContent = readFileSync(r.file, 'utf-8');
+      } catch {
+        continue;
+      }
+      for (const f of ticketTargetFiles(groupTicketContent)) {
+        if (!targetFiles.includes(f)) targetFiles.push(f);
+      }
+      for (const a of ticketHandoffArtifacts(groupTicketContent)) {
+        if (!handoffArtifacts.includes(a)) handoffArtifacts.push(a);
+      }
+    }
+    const git: GroupScopeGit = hasGitHead(defaultRoot)
+      ? { available: true, files: getChangedSourceFiles(defaultRoot) }
+      : { available: false };
+    return formatGroupScope(
+      resolution.specPath,
+      resolution.group,
+      defaultRoot,
+      targetFiles,
+      handoffArtifacts,
+      git
+    );
+  }
 
   const ticket = positional[0];
-  const defaultRoot = resolve('.');
   if (!ticket) {
     // No Task-ID → emit the execution map (deterministic pickable set from the trackers, not eyeballed).
     return { ok: true, text: formatMap(collectTicketRefs(defaultRoot), defaultRoot) };
@@ -197,8 +253,17 @@ export async function run(rawArgs: string[]): Promise<TaskOutcome> {
   logger.debug(
     `[SddTaskCommand#run] ${meta.taskId ?? '?'}: ${phases.length} phase(s), ${gates.length} gate(s)`
   );
+  // audit-group context — best-effort: a ticket whose filename doesn't follow the v2 `.task.` naming
+  // convention (or whose owning spec is missing) simply omits the line, never fails the plan.
+  const groupRes = resolveAuditGroup(ticket, root);
+  const auditGroupLine = groupRes.ok
+    ? buildAuditGroupLine(groupRes.specPath, groupRes.group, root)
+    : null;
   return withResolutionLine(
-    { ok: true, text: formatPlan(meta, phases, detailsById, gates, activeBlockers) },
+    {
+      ok: true,
+      text: formatPlan(meta, phases, detailsById, gates, activeBlockers, auditGroupLine),
+    },
     resolutionLine
   );
 }
