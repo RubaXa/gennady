@@ -2,10 +2,14 @@
 <Contract id="COVERAGE_MAP_FORMAT">
   Live coverage map, shown to the operator compactly before every round. Topic labels in Russian;
   ≤ 72 columns; statuses per `BREADCRUMB_FORMAT` — `✅` closed · `👷` in progress (the topic this
-  round is closing) · `◻️` open — plus one map-only extension, `✗ skip: <причина>`, for a topic the
-  operator explicitly waived.
+  round is closing) · `◻️` open — plus two map-only extensions: `✗ skip: <причина>` for a topic the
+  operator explicitly waived, and `🟡` partial — the intake text already speaks to this topic, or
+  one sub-category of a multi-part topic (e.g. one of the категории отказов) is addressed and the
+  rest is not. `🟡` is NEVER a closure state: only a confirmed dialogue answer, or an explicit
+  «принято как есть» note recorded in the spec, promotes a topic from `🟡` to `✅`
+  (`AX_COVERAGE_MAP_CLOSURE`).
 
-  Покрытие: Цель/не-цель ✅ · Потребители 👷 · Слабые места ◻️ · Зависимости ◻️
+  Покрытие: Цель/не-цель ✅ · Потребители 👷 · Слабые места ◻️ · Зависимости 🟡 · Категории отказов ◻️
   Усиления:  security 👷 · storage ✗ skip: прототип, данных нет
 
   4–6 topics per line; the «Усиления» line appears only when at least one amplification is

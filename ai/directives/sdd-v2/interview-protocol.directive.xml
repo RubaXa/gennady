@@ -1,4 +1,4 @@
-<SddInterviewProtocol keywords="interview, coverage-map, triage, amplification, rounds, defaults-first, weak-spots, closure, stakes-split, one-question-per-message, ask-tool-binding, sdd-interview-protocol" type="directive" ver="2.1">
+<SddInterviewProtocol keywords="interview, coverage-map, triage, amplification, rounds, defaults-first, weak-spots, closure, stakes-split, one-question-per-message, ask-tool-binding, failure-categories, uncomfortable-questions, sdd-interview-protocol" type="directive" ver="2.2">
   <Mission>
     Run ONE operator interview for an authoring step. Loaded lazily by a branch step (scope
     STEP_2 / STEP_3, infra STEP_2, interface STEP_2, module STEP_2) via `READ_AND_USE_DIRECTIVE`; the calling
@@ -6,9 +6,9 @@
     the router core (language, dialogue, safeguard, diverge, no-narration) — not repeated here.
 
     This protocol equips the interview declared by `AX_OPERATOR_SAFEGUARD` with instruments: a
-    live coverage map, an amplification triage, defaults-first rounds, and a map-based closure
-    criterion. The safeguard axiom stays the source of the interviewing instinct; this directive
-    only gives it structure.
+    live coverage map, a mandatory failure-category block (`AX_UNCOMFORTABLE_QUESTIONS`), an
+    amplification triage, defaults-first rounds, and a map-based closure criterion. The safeguard
+    axiom stays the source of the interviewing instinct; this directive only gives it structure.
 
     Input — scope-type, calling-step focus, intake gathered so far. Output — a closed coverage
     map + the captured answers and decisions, returned to the calling step. This directive writes
@@ -27,6 +27,13 @@
       adds a topic or reopens a closed one (thread-pulling per `AX_OPERATOR_SAFEGUARD` — that axiom
       owns the instinct; this one binds it to the map). A skip on a high-stakes topic goes through
       `H_HIGH_STAKES_SKIP`.
+
+      `🟡` (partial, `COVERAGE_MAP_FORMAT`) is NEVER read as closed — text the operator already
+      brought (intake, a pasted spec draft, a rich prior message) marks a topic `🟡` at most, never
+      `✅` on the strength of that text alone, no matter how detailed it reads. Only one of two things
+      promotes `🟡` to `✅`: a confirmed answer given IN the dialogue, or an explicit «принято как
+      есть» note the agent records in the spec itself. `STEP_4_CLOSE`-style gates treat `🟡` exactly
+      like `◻️`/`👷` — not closed, sends the flow back to closing rounds.
     </Axiom>
 
     <Axiom id="AX_DEFAULTS_FIRST">
@@ -44,6 +51,18 @@
       «усиления не нужны, потому что …» — it is a valid triage outcome, not a silent omission. A
       confirmed amplification becomes a map topic and its directive loads lazily via
       `READ_AND_USE_DIRECTIVE` at the moment its topic opens, never up front.
+    </Axiom>
+
+    <Axiom id="AX_UNCOMFORTABLE_QUESTIONS">
+      Every meaningful frame includes ≥1 uncomfortable question — the kind that exposes hidden
+      assumptions, degradation paths, or trust boundaries. Canonical seeds:
+      - What is the canonical source of truth for this entity / capability?
+      - What happens on dependency unavailability (graceful degradation vs hard failure)?
+      - Where does simulation end and real runtime begin?
+      - Who validates input at this trust boundary?
+      - Which assumption, if wrong, invalidates the design?
+
+      Skipping uncomfortable questions = false consensus.
     </Axiom>
 
     <Axiom id="AX_STAKES_SPLIT">
@@ -126,6 +145,37 @@
 
     The calling step MAY narrow or extend the block for its focus (e.g. scope STEP_3 keeps only
     what the Requirements Gate still misses); «Слабые места» stays on every map.
+
+    **Категории отказов** — mandatory on every map, every scope-type, no narrowing. Closed
+    together as ONE combined round, not one topic at a time (the one exception to
+    `STEP_3_ROUNDS`'s usual one-topic-per-round loop):
+
+    | Topic | Substance |
+    |---|---|
+    | Негативные сценарии | invalid / empty / duplicate input |
+    | Отказ внешней зависимости | graceful degradation vs a hard failure |
+    | Лимиты и нагрузка | a concrete numeric threshold — rate, volume, concurrency ceiling |
+    | Конкурентность и гонки | concurrent access / race conditions |
+    | Границы доверия | who confirms rights here; what happens when an outsider reaches this |
+
+    Rules for this block:
+    - **Budget.** At most 5 questions total across all five categories, spent only on the gaps
+      the intake and prior answers leave open — never one question per category by reflex.
+      More than 5 gaps compete → prioritize by impact × uncertainty and leave the rest `◻️` for a
+      later round, never silently skipped.
+    - **No closure by agent guess.** A category never turns `✅` on the agent's own inference —
+      per `AX_COVERAGE_MAP_CLOSURE`, only a direct operator answer, or an explicit «не применимо,
+      потому что …» the agent records in the spec, closes it. Anything else stays `🟡` at best.
+    - **Delivery form.** ONE `AskUserQuestion` batch of 3–5 independent sub-questions — the five
+      categories are independent of each other, so this is `BATCH_CONFIRM_FORMAT`'s shape, not
+      `QUESTION_MESSAGE_FORMAT`'s one-at-a-time развилка. A second batch is allowed ONLY for a
+      sub-question whose premise depends on an answer just received; cap — two batches for this
+      whole block per spec, never more.
+    - **Closing report.** One line to the operator at the end of this round: what exactly was
+      asked about the off-nominal flow. Criterion per `AX_UNCOMFORTABLE_QUESTIONS`: the happy
+      path is known going into every spec by default — understanding of the actual task shows up
+      in the off-nominal flow instead. No question asked here reads as poor understanding, not
+      as a small scope.
   </TopicCatalog>
 
   <AmplificationCatalog>
@@ -150,10 +200,12 @@
     <Step id="STEP_1_INIT_MAP">
       <Goal>Build and show the coverage map.</Goal>
       <Action>
-        Assemble the map: base topics + the scope-type block from `TopicCatalog`, narrowed /
-        extended by the calling step's focus. Mark topics the intake already answers `✅` — ask
-        only what a decision still needs. Render per `COVERAGE_MAP_FORMAT` with a one-line plan
-        («что осталось закрыть»); proceed straight to triage.
+        Assemble the map: base topics + «Категории отказов» + the scope-type block from
+        `TopicCatalog`, narrowed / extended by the calling step's focus (не narrow «Категории
+        отказов» — it stays whole on every map). Text the operator already brought (intake, a
+        pasted draft) marks a topic `🟡` (partial) AT MOST — never `✅`; rich, detailed intake text
+        earns no exception (`AX_COVERAGE_MAP_CLOSURE`). Render per `COVERAGE_MAP_FORMAT` with a
+        one-line plan («что осталось закрыть»); proceed straight to triage.
       </Action>
     </Step>
     <Step id="STEP_2_TRIAGE">
@@ -184,6 +236,16 @@
            recomposed, not asked as planned — `AX_ONE_QUESTION_SEQUENTIAL`).
         5. An amplification topic opens → `READ_AND_USE_DIRECTIVE` its directive from
            `AmplificationCatalog` and run its questions as this round, split by stakes the same way.
+        6. «Категории отказов» opens as ONE combined round, not one topic per loop-pass (the
+           `TopicCatalog` rules for this block override the usual one-topic-at-a-time shape):
+           batch 3–5 independent sub-questions — one per open category — into a single
+           `AskUserQuestion` per `BATCH_CONFIRM_FORMAT`; a second batch only for a sub-question a
+           received answer now depends on (cap two batches, ever, for this block). Budget ≤5
+           questions total, spent on gaps only; a category with no gap closes `✅` without a
+           question. Per `AX_UNCOMFORTABLE_QUESTIONS`, never let this round pass with zero
+           questions asked when a gap remains — skipping it silently is exactly the false
+           consensus that axiom exists to catch. Close the round with the one-line closing report
+           («что спросили про нештатное»).
         A skip request on a high-stakes topic → `H_HIGH_STAKES_SKIP`.
       </Action>
     </Step>
@@ -191,7 +253,7 @@
       <Goal>Verify closure and return to the caller.</Goal>
       <Action>
         Gate per `AX_COVERAGE_MAP_CLOSURE`: every topic `✅` or `✗ skip: <причина>` — an open
-        (`◻️`) or active (`👷`) topic sends the flow back to STEP_3. Show the final map + a compact digest of
+        (`◻️`), active (`👷`), or partial (`🟡`) topic sends the flow back to STEP_3. Show the final map + a compact digest of
         answers and decisions (Russian), including skips with reasons. Hand the digest to the
         calling step — it owns the Approval Check, artifact writing, and any Decision Log entries.
       </Action>
@@ -206,10 +268,14 @@
     <Contract id="COVERAGE_MAP_FORMAT">
       Live coverage map, shown to the operator compactly before every round. Topic labels in Russian;
       ≤ 72 columns; statuses per `BREADCRUMB_FORMAT` — `✅` closed · `👷` in progress (the topic this
-      round is closing) · `◻️` open — plus one map-only extension, `✗ skip: <причина>`, for a topic the
-      operator explicitly waived.
+      round is closing) · `◻️` open — plus two map-only extensions: `✗ skip: <причина>` for a topic the
+      operator explicitly waived, and `🟡` partial — the intake text already speaks to this topic, or
+      one sub-category of a multi-part topic (e.g. one of the категории отказов) is addressed and the
+      rest is not. `🟡` is NEVER a closure state: only a confirmed dialogue answer, or an explicit
+      «принято как есть» note recorded in the spec, promotes a topic from `🟡` to `✅`
+      (`AX_COVERAGE_MAP_CLOSURE`).
 
-      Покрытие: Цель/не-цель ✅ · Потребители 👷 · Слабые места ◻️ · Зависимости ◻️
+      Покрытие: Цель/не-цель ✅ · Потребители 👷 · Слабые места ◻️ · Зависимости 🟡 · Категории отказов ◻️
       Усиления:  security 👷 · storage ✗ skip: прототип, данных нет
 
       4–6 topics per line; the «Усиления» line appears only when at least one amplification is

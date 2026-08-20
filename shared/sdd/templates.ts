@@ -111,6 +111,20 @@ const RESEARCH_REGISTRY_SKELETON_MODULE = `<!--SECTION:RESEARCH-->
 | [<yyyy-mm-dd>-<slug>](../research/<yyyy-mm-dd>-<slug>.research.md) | <тема одной строкой> | <какое решение/секцию спеки питает> |
 <!--/SECTION:RESEARCH-->
 `;
+
+// DECISION (2026-08-20, ai-skills failure-elicitation research): new specs use ONE flat REQUIREMENT_ENTRY_FORMAT list; specs already in the old split Functional/Non-Functional format stay valid as-is.
+const REQUIREMENTS_LIST_SKELETON = `[Плоский список требований per \`REQUIREMENT_ENTRY_FORMAT\` (contract/spec/requirement-entry-format.xml) — заменяет раздельные Functional Requirements / Non-Functional Constraints для НОВЫХ спек; спеки, уже написанные в старом раздельном формате, остаются валидными как есть. Пример — обычное требование и требование класса «нештатная»:]
+
+### <ACR>-REQ-1 [должен]
+**Когда** пользователь отправляет форму с пустым обязательным полем, **сервис должен** вернуть ошибку валидации с именем поля.
+
+> Пустое поле — самый частый пользовательский ввод; без явной ошибки пользователь не понимает, что делать дальше.
+
+### <ACR>-REQ-2 [должен · нештатная]
+**Если** запись в журнал аудита не удалась, **то сервис должен** отклонить операцию и вернуть 503.
+
+> Аудит — комплаенс-требование; без записи операция не легитимна, откат обязателен.
+`;
 // #endregion END_SHARED_SECTIONS
 
 // #region START_PRODUCT — specs/<scope>/<scope>.spec.md, scope-type=product
@@ -166,10 +180,8 @@ chat first, per formats/diagram-vocabulary.xml.]
 <!--SECTION:REQUIREMENTS_AND_CONSTRAINTS-->
 ## Requirements & Constraints
 
-### Functional Requirements
-
-### Non-Functional Constraints
-
+### Requirements
+${REQUIREMENTS_LIST_SKELETON}
 ### Out-of-Scope
 
 ### Runtime & Deferred Scope
@@ -280,7 +292,7 @@ const PRODUCT_SECTIONS: SectionManifestEntry[] = [
     required: true,
     loadBearing: true,
     fold: false,
-    fill: 'Functional Requirements, Non-Functional Constraints, Out-of-Scope, Runtime & Deferred Scope (AX_RUNTIME_BACKING_EXPLICIT), and the Rules table.',
+    fill: 'Flat Requirements list per REQUIREMENT_ENTRY_FORMAT (replaces split Functional/Non-Functional for new specs), Out-of-Scope, Runtime & Deferred Scope (AX_RUNTIME_BACKING_EXPLICIT), and the Rules table.',
   },
   {
     name: 'ARCHITECTURE',
@@ -359,10 +371,8 @@ flowchart LR
 <!--SECTION:REQUIREMENTS_AND_CONSTRAINTS-->
 ## Requirements & Constraints
 
-### Functional Requirements
-
-### Non-Functional Constraints
-
+### Requirements
+${REQUIREMENTS_LIST_SKELETON}
 ### Out-of-Scope
 
 ### Runtime & Deferred Scope
@@ -456,7 +466,7 @@ const LIBRARY_SECTIONS: SectionManifestEntry[] = [
     required: true,
     loadBearing: true,
     fold: false,
-    fill: 'Functional Requirements, Non-Functional Constraints, Out-of-Scope, Runtime & Deferred Scope, and the Rules table.',
+    fill: 'Flat Requirements list per REQUIREMENT_ENTRY_FORMAT (replaces split Functional/Non-Functional for new specs), Out-of-Scope, Runtime & Deferred Scope, and the Rules table.',
   },
   {
     name: 'PUBLIC_API_SURFACE',
@@ -524,6 +534,13 @@ edit ──► typecheck ──► lint ──► test ──► pre-commit ─�
 - **Depends on:** None (infrastructure scopes are typically leaves)
 - **Provides rules to:** [list of product/library scopes that depend on this]
 <!--/SECTION:SCOPE_DEPENDENCIES-->
+
+<!--SECTION:REQUIREMENTS_AND_CONSTRAINTS-->
+## Requirements & Constraints
+
+### Requirements
+${REQUIREMENTS_LIST_SKELETON}
+<!--/SECTION:REQUIREMENTS_AND_CONSTRAINTS-->
 
 <!--SECTION:TOOL_STACK-->
 ## Tool Stack
@@ -650,6 +667,15 @@ const INFRASTRUCTURE_SECTIONS: SectionManifestEntry[] = [
     fill: 'Depends-on (usually None — infra scopes are leaves) and the product/library scopes this provides rules to.',
   },
   {
+    // New for infra (this scope-type never had a requirements section before); safe to gate
+    // immediately — no v2 infrastructure spec exists in the corpus yet to break.
+    name: 'REQUIREMENTS_AND_CONSTRAINTS',
+    required: true,
+    loadBearing: true,
+    fold: false,
+    fill: 'Flat Requirements list per REQUIREMENT_ENTRY_FORMAT — infra-specific behavior and failure-mode requirements (tool unavailable, quota exceeded, etc).',
+  },
+  {
     name: 'TOOL_STACK',
     required: true,
     loadBearing: true,
@@ -739,6 +765,13 @@ flowchart LR
 - **Provides interface to:** [product/library scopes]
 <!--/SECTION:SCOPE_DEPENDENCIES-->
 
+<!--SECTION:REQUIREMENTS_AND_CONSTRAINTS-->
+## Requirements & Constraints
+
+### Requirements
+${REQUIREMENTS_LIST_SKELETON}
+<!--/SECTION:REQUIREMENTS_AND_CONSTRAINTS-->
+
 <!--SECTION:INTERFACE_DECLARATION-->
 ## Interface Declaration
 - **Schema format:** OpenAPI 3.x | gRPC proto3 | JSON Schema | GraphQL SDL
@@ -824,6 +857,15 @@ const INTERFACE_SECTIONS: SectionManifestEntry[] = [
     fill: 'Infra scopes depended on (if any), and the product/library scopes this interface is provided to.',
   },
   {
+    // New for interface (this scope-type never had a requirements section before); safe to gate
+    // immediately — no v2 interface spec exists in the corpus yet to break.
+    name: 'REQUIREMENTS_AND_CONSTRAINTS',
+    required: true,
+    loadBearing: true,
+    fold: false,
+    fill: 'Flat Requirements list per REQUIREMENT_ENTRY_FORMAT — contract-level behavior and failure-mode requirements (malformed payload, version mismatch, etc).',
+  },
+  {
     name: 'INTERFACE_DECLARATION',
     required: true,
     loadBearing: true,
@@ -893,6 +935,13 @@ flowchart LR
 ## Module Usage Example
 [MANDATORY. Self-sufficient happy-path snippet — как потребитель использует этот модуль в изоляции. Пишется на таргет-языке проекта — единственное место для кода per \`AX_CONTRACTS_TEXTUAL_AGNOSTIC\`. Показывает публичную поверхность через реальный сценарий вызова: init / happy path / минимальный error path. Composition с соседними модулями — НЕ здесь, это уровень scope spec (link, не дублировать).]
 <!--/SECTION:MODULE_USAGE_EXAMPLE-->
+
+<!--SECTION:MODULE_REQUIREMENTS-->
+## Requirements
+
+### Requirements
+${REQUIREMENTS_LIST_SKELETON}
+<!--/SECTION:MODULE_REQUIREMENTS-->
 
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->
 ## Inter-Module Dependencies
@@ -1030,6 +1079,14 @@ const MODULE_SECTIONS: SectionManifestEntry[] = [
     loadBearing: true,
     fold: false,
     fill: 'MANDATORY: self-sufficient happy-path snippet in the target language showing how a consumer uses this module in isolation (init/happy-path/minimal error path). No cross-module composition here.',
+  },
+  {
+    // New for module; loadBearing:false (OVERVIEW pattern) — ~25 existing v2 module specs predate this section, promote once the corpus migrates.
+    name: 'MODULE_REQUIREMENTS',
+    required: true,
+    loadBearing: false,
+    fold: false,
+    fill: 'Flat Requirements list per REQUIREMENT_ENTRY_FORMAT — module-level behavior and failure-mode requirements, distinct from the pre/post-condition contracts in Module Contracts.',
   },
   {
     name: 'INTER_MODULE_DEPENDENCIES',

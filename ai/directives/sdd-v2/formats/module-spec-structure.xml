@@ -28,6 +28,24 @@
   [MANDATORY. Self-sufficient happy-path snippet — как потребитель использует этот модуль в изоляции. Пишется на таргет-языке проекта — единственное место для кода per `AX_CONTRACTS_TEXTUAL_AGNOSTIC`. Показывает публичную поверхность через реальный сценарий вызова: init / happy path / минимальный error path. Composition с соседними модулями — НЕ здесь, это уровень scope spec (link, не дублировать).]
   <!--/SECTION:MODULE_USAGE_EXAMPLE-->
 
+  <!--SECTION:MODULE_REQUIREMENTS-->
+  ## Requirements
+
+  ### Requirements
+  [Плоский список требований per `REQUIREMENT_ENTRY_FORMAT` (contract/spec/requirement-entry-format.xml) — заменяет раздельные Functional Requirements / Non-Functional Constraints для НОВЫХ спек; спеки, уже написанные в старом раздельном формате, остаются валидными как есть. Пример — обычное требование и требование класса «нештатная»:]
+
+  ### <ACR>-REQ-1 [должен]
+  **Когда** пользователь отправляет форму с пустым обязательным полем, **сервис должен** вернуть ошибку валидации с именем поля.
+
+  > Пустое поле — самый частый пользовательский ввод; без явной ошибки пользователь не понимает, что делать дальше.
+
+  ### <ACR>-REQ-2 [должен · нештатная]
+  **Если** запись в журнал аудита не удалась, **то сервис должен** отклонить операцию и вернуть 503.
+
+  > Аудит — комплаенс-требование; без записи операция не легитимна, откат обязателен.
+
+  <!--/SECTION:MODULE_REQUIREMENTS-->
+
   <!--SECTION:INTER_MODULE_DEPENDENCIES-->
   ## Inter-Module Dependencies
   - **Depends on:** <list of modules within this scope with links>

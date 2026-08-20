@@ -1,16 +1,22 @@
-<!-- source: sdd/module-decomposition + discovery (converged; session name is directive-specific) -->
+<!-- source: sdd/module-decomposition + discovery (converged); ID grammar per 2026-08-20-failure-elicitation.research.md DECISION 4 -->
 <Contract id="DECISION_LOG_ENTRY_FORMAT">
   One line per entry — no Status/Recorded fields, no multi-line block. The parenthetical carries
   only what applies; omit a clause entirely rather than writing it empty.
 
   ```markdown
-  D-NNN <date> — <decision in one phrase> (почему: <compromise/criterion>; отвергнуто: <alternative — why not>; риск: <if accepted>)
+  <ACR>-DL-N <date> — <decision in one phrase> (почему: <compromise/criterion>; отвергнуто: <alternative — why not>; риск: <if accepted>)
   ```
 
-  Superseding a prior decision appends `; supersedes: D-MMM` to the parenthetical instead of a
+  **ID.** `<ACR>-DL-<N>` — spec acronym first, exactly like a Task-ID and like `<ACR>-REQ-<N>`
+  (`REQUIREMENT_ENTRY_FORMAT`); `<N>` is sequential within THIS spec only — the acronym gives global
+  uniqueness, not the number. Replaces the old file-local `D-NNN` (unique only inside one file);
+  conflicts (a duplicate number inside one spec) are caught mechanically, the same way as for
+  `<ACR>-REQ-<N>`.
+
+  Superseding a prior decision appends `; supersedes: <ACR>-DL-M` to the parenthetical instead of a
   separate field — the entry stays one line. `<date>` is the recording date (`YYYY-MM-DD`); status
   (active / superseded / rejected / deferred) is implicit from prose and from whether a later entry
   supersedes this one — a spec has no dangling "rejected" or "deferred" entries sitting as if active,
   the prose says so directly (e.g. `отвергнуто в пользу X` folded into the same line that would have
-  recorded it, never a standalone rejected entry with its own D-NNN).
+  recorded it, never a standalone rejected entry with its own `<ACR>-DL-N`).
 </Contract>

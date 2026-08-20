@@ -218,9 +218,16 @@ describe('derived lists match check.ts (block L1 parity requirement)', () => {
       'PUBLIC_API_SURFACE',
       'DECISION_LOG',
     ],
-    infrastructure: ['VISION', 'TOOL_STACK', 'VERIFICATION_COMMANDS', 'DECISION_LOG'],
+    infrastructure: [
+      'VISION',
+      'REQUIREMENTS_AND_CONSTRAINTS',
+      'TOOL_STACK',
+      'VERIFICATION_COMMANDS',
+      'DECISION_LOG',
+    ],
     interface: [
       'VISION',
+      'REQUIREMENTS_AND_CONSTRAINTS',
       'INTERFACE_DECLARATION',
       'VERSIONING_POLICY',
       'COMPATIBILITY_MATRIX',

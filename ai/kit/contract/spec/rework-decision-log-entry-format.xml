@@ -3,10 +3,10 @@
       Used in `pivot` mode for each replaced decision. Self-contained: a future reader of the spec at this git ref must understand the rework without external context.
 
       ```markdown
-      ### D-NNN — <short title> (rework)
+      ### <ACR>-DL-N — <short title> (rework)
       - **Status:** active
       - **Recorded:** session Discovery, <scope-name>, pivot
-      - **Supersedes:** D-MMM
+      - **Supersedes:** <ACR>-DL-M
       - **Pre-rework state:** git ref `<sha-or-tag>` (snapshot of spec immediately before this pivot)
       - **Was:** <one-sentence summary of the prior decision>
       - **Now:** <one-sentence summary of the replacement>
