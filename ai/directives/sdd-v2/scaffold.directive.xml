@@ -496,7 +496,7 @@
         `../greeting/greeting.spec.md#MODULE_CONTRACTS` when that section carries an explicit anchor.
         An anchor that is neither — a bare prose reference, a heading paraphrase, a line number — fails
         `sdd-task --phase`'s downstream read at execution time; a link a worker or auditor cannot
-        resolve with `sdd-extract <file> <anchor>` verbatim is not a valid Spec Reference. No operator
+        resolve with `sdd-extract <file>#<anchor>` verbatim is not a valid Spec Reference. No operator
         stop — automated.
       </Action>
     </Step>

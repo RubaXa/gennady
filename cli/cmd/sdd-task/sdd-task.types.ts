@@ -5,6 +5,7 @@
 import { relative, resolve } from 'node:path';
 import type { MetaInfo, PhaseOverview, PhaseDetail, Gate } from '../../../shared/sdd/ticket.ts';
 import type { TicketRef } from '../../../shared/sdd/check.ts';
+import { unreadableTicketHint } from '../../../shared/sdd/ticket-resolve.ts';
 
 /** @purpose No ticket path was passed. */
 export const ERR_CLI_SDD_TASK_BAD_INVOCATION = 'ERR_CLI_SDD_TASK_BAD_INVOCATION' as const;
@@ -257,15 +258,11 @@ export function badInvocation(): TaskOutcome {
  * @returns Outcome with exit 1.
  */
 export function fileError(ticket: string): TaskOutcome {
-  const looksPathy = /[\\/]/.test(ticket) || /\.md$/i.test(ticket);
-  const hint = looksPathy
-    ? 'Cannot read the ticket at that path — verify it, or run `sdd-task` with no arguments for the execution map (it lists every Task-ID with its path).'
-    : 'Cannot read the ticket — verify the path or Task-ID, or run `sdd-task` with no arguments for the execution map.';
   return {
     ok: false,
     code: ERR_CLI_SDD_TASK_FILE,
     exitCode: 1,
-    message: `[sdd-task] ${ERR_CLI_SDD_TASK_FILE}: ${ticket}\n  ${hint}`,
+    message: `[sdd-task] ${ERR_CLI_SDD_TASK_FILE}: ${ticket}\n  ${unreadableTicketHint(ticket)}`,
   };
 }
 

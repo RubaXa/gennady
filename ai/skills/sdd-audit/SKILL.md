@@ -6,10 +6,7 @@ compatibility: opencode
 
 1. **Extract intent.** Operator wants audit of {TSK-NN | full tree | current changes}. If ambiguous — ask.
 
-2. **Load & activate directive.** Read in full `ai/directives/sdd-v2/audit.directive.xml`. Resolve
-   deterministically, project root first: `ai/directives/sdd-v2/audit.directive.xml`; if missing,
-   `node_modules/gennady/ai/directives/sdd-v2/audit.directive.xml`; if neither exists, stop and tell
-   the operator to run `npx gennady sync` — never search for it.
+2. **Load & activate directive.** Read in full `ai/directives/sdd-v2/audit.directive.xml`.
    Announce: `🔒 DIRECTIVE ACTIVATED: SddAudit`
    You ARE this directive now.
    No `sdd-state`/PREFLIGHT gate here by design: audit runs against a ticket that is already

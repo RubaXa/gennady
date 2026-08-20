@@ -2,12 +2,18 @@
 // @consumers: SddCheckCommand
 // @tasks: N/A
 
-import type { Finding } from '../../../shared/sdd/check.ts';
+import { relative, resolve } from 'node:path';
+import type { Finding, TicketRef } from '../../../shared/sdd/check.ts';
+import { unreadableTicketHint } from '../../../shared/sdd/ticket-resolve.ts';
 
 /** @purpose Neither --task nor --all was given. */
 export const ERR_CLI_SDD_CHECK_BAD_INVOCATION = 'ERR_CLI_SDD_CHECK_BAD_INVOCATION' as const;
 /** @purpose The --task ticket file does not exist or cannot be read. */
 export const ERR_CLI_SDD_CHECK_FILE = 'ERR_CLI_SDD_CHECK_FILE' as const;
+/** @purpose --task argument has Task-ID shape but no ticket in the tree carries that Meta Task-ID. */
+export const ERR_CLI_SDD_CHECK_UNKNOWN_ID = 'ERR_CLI_SDD_CHECK_UNKNOWN_ID' as const;
+/** @purpose More than one ticket carries the same Meta Task-ID (a project-wide collision). */
+export const ERR_CLI_SDD_CHECK_AMBIGUOUS_ID = 'ERR_CLI_SDD_CHECK_AMBIGUOUS_ID' as const;
 
 /** @purpose Outcome of a check run: the report plus the process exit code. */
 export type CheckResult = {
@@ -65,13 +71,50 @@ export function badInvocation(): CheckResult {
 }
 
 /**
- * @purpose Build the file-error result.
- * @param ticket The ticket path.
+ * @purpose Build the file-error result — tool-teaches: points a path-shaped argument at the map.
+ * @param ticket The ticket path or Task-ID that could not be resolved.
  * @returns Result with exit 1.
  */
 export function fileError(ticket: string): CheckResult {
   return {
-    text: `[sdd-check] ${ERR_CLI_SDD_CHECK_FILE}: ${ticket}\n  Cannot read the ticket — verify the path.`,
+    text: `[sdd-check] ${ERR_CLI_SDD_CHECK_FILE}: ${ticket}\n  ${unreadableTicketHint(ticket)}`,
     exitCode: 1,
+  };
+}
+
+/**
+ * @purpose Build the unknown-Task-ID result — the --task argument has Task-ID shape but scanning the
+ * tree found no ticket carrying that Meta Task-ID.
+ * @param id The requested Task-ID.
+ * @param refs Every ticket's graph ref found while scanning (for the "known Task-IDs" hint).
+ * @returns Result with exit 2.
+ */
+export function unknownIdError(id: string, refs: TicketRef[]): CheckResult {
+  const known = refs.map((r) => r.taskId).filter((t): t is string => t != null);
+  return {
+    text: [
+      `[sdd-check] ${ERR_CLI_SDD_CHECK_UNKNOWN_ID}: ${id}`,
+      known.length
+        ? `  known Task-IDs: ${known.join(', ')}`
+        : '  очередь пуста — тикетов с Task-ID в дереве не найдено.',
+    ].join('\n'),
+    exitCode: 2,
+  };
+}
+
+/**
+ * @purpose Build the ambiguous-Task-ID result — two or more tickets share one Meta Task-ID.
+ * @param id The requested Task-ID.
+ * @param matches Every ticket ref whose Task-ID equals `id`.
+ * @param root Absolute project root (candidate paths are printed relative to it).
+ * @returns Result with exit 2.
+ */
+export function ambiguousIdError(id: string, matches: TicketRef[], root: string): CheckResult {
+  return {
+    text: [
+      `[sdd-check] ${ERR_CLI_SDD_CHECK_AMBIGUOUS_ID}: ${id} matches ${matches.length} tickets`,
+      ...matches.map((m) => `  - ${relative(root, resolve(m.file))}`),
+    ].join('\n'),
+    exitCode: 2,
   };
 }

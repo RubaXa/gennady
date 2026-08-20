@@ -326,7 +326,10 @@
         `bootstrap` / `config` / `doc` → cheap), escalate to capable on LOW confidence or a reasoning-heavy phase.
         The worker's OWN first action is `sdd-task <ticket> --phase P<N>` (`phase-execution-protocol.directive.xml`
         STEP_1) — it fetches its own read-manifest, gates, and prior Handoff fresh, at the moment it starts, so the
-        dispatch prompt itself carries NO pasted manifest. Dispatch a fresh worker with exactly this activation:
+        dispatch prompt itself carries NO pasted manifest. Dispatch straight from the path this directive and the
+        resolved ticket already name — a read failure at the worker's own STEP_1 already reports a missing or
+        broken path with an actionable message; that IS the check, so run it exactly once, where it belongs.
+        Dispatch a fresh worker with exactly this activation:
 
         ```
         Прочитай и воплоти: ai/directives/sdd-v2/phase-execution-protocol.directive.xml

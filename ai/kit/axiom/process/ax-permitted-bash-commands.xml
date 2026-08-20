@@ -17,6 +17,13 @@
       ~100-300ms per call for zero value, and full project recon / repository mutation belong to the
       orchestrator or authoring flow, not this role.
 
+      All recon stays inside the project root. A fact that genuinely lives outside it — a global
+      `~/.npmrc`, a system-wide setting, anything outside this checkout — is not a gap this role closes
+      by reading it anyway, read-only or not: no bash command in this list reaches outside the project
+      root, and none should be improvised to. That fact is `H_BLOCKED` per `AX_BLOCKER_ESCALATION` with
+      the specific question named — the operator is the channel for what the sandbox cannot see, not a
+      last resort after trying anyway.
+
       **Forbidden:** `npm run lint` alone (overkill — use `sdd verify` or `tsc --noEmit` for narrower checks); `npm run format`; `prettier` directly; any recursive or project-wide file scan; any command that reads unrelated files for «context».
 
       **Canonical-gate exception:** a ticket §5 command — `npm run format` included — that this phase

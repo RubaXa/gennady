@@ -195,4 +195,90 @@ describe('SddLogCommand', () => {
     assert.strictEqual(handoff.ok, false);
     if (!handoff.ok) assert.strictEqual(handoff.exitCode, 2);
   });
+
+  it('unreadable, non-Task-ID-shaped path → tool-teaches hint points at `sdd-task`', async () => {
+    const outcome = await mod.run(argv(join(dir, 'nope.md'), 'line', 'DONE'), CLOCK);
+    assert.strictEqual(outcome.ok, false);
+    if (outcome.ok) return;
+    assert.strictEqual(outcome.exitCode, 1);
+    assert.match(outcome.message, /run `sdd-task` with no arguments for the execution map/);
+  });
+
+  describe('bare Task-ID resolution (AX_TASK_RESOLUTION)', () => {
+    // "cli-foo" (the shared BASE fixture) is lowercase-ACR and does not match the v2 Task-ID
+    // grammar — these tests build their own grammar-conforming ticket, isolated per test dir.
+    const idTicket = (id: string): string => BASE.split('cli-foo').join(id);
+
+    it('resolves to its ticket — output is prefixed with the `[sdd-log] <id> → <path>` banner', async () => {
+      const idDir = mkdtempSync(join(tmpdir(), 'sdd-log-id-'));
+      writeFileSync(join(idDir, 'ticket.md'), idTicket('TSK-foo'), 'utf-8');
+      const origCwd = process.cwd();
+      process.chdir(idDir);
+      try {
+        const outcome = await mod.run(argv('TSK-foo', 'line', 'DONE'), CLOCK);
+        assert.strictEqual(outcome.ok, true);
+        if (!outcome.ok) return;
+        assert.match(outcome.text, /^\[sdd-log\] TSK-foo → ticket\.md\n/);
+        const body = readFileSync(join(idDir, 'ticket.md'), 'utf-8');
+        assert.match(body, /- \[x\] `.*` DONE/);
+      } finally {
+        process.chdir(origCwd);
+        rmSync(idDir, { recursive: true, force: true });
+      }
+    });
+
+    it('an unknown but Task-ID-shaped argument → exit 2 listing known Task-IDs', async () => {
+      const idDir = mkdtempSync(join(tmpdir(), 'sdd-log-id-'));
+      writeFileSync(join(idDir, 'ticket.md'), idTicket('TSK-foo'), 'utf-8');
+      const origCwd = process.cwd();
+      process.chdir(idDir);
+      try {
+        const outcome = await mod.run(argv('NOPE-ghost', 'line', 'DONE'), CLOCK);
+        assert.strictEqual(outcome.ok, false);
+        if (outcome.ok) return;
+        assert.strictEqual(outcome.exitCode, 2);
+        assert.match(outcome.message, /ERR_CLI_SDD_LOG_UNKNOWN_ID: NOPE-ghost/);
+        assert.match(outcome.message, /known Task-IDs:.*TSK-foo/);
+      } finally {
+        process.chdir(origCwd);
+        rmSync(idDir, { recursive: true, force: true });
+      }
+    });
+
+    it('a Task-ID matching two tickets → exit 2 listing both candidate paths', async () => {
+      const dupDir = mkdtempSync(join(tmpdir(), 'sdd-log-dup-'));
+      const dup = (name: string): string =>
+        [
+          `# ${name}`,
+          '<!--SECTION:META-->',
+          '- **Task-ID:** TSK-dup',
+          '<!--/SECTION:META-->',
+          '<!--SECTION:EXECUTION_LOG-->',
+          '<!--/SECTION:EXECUTION_LOG-->',
+        ].join('\n');
+      writeFileSync(join(dupDir, 'a.md'), dup('a'), 'utf-8');
+      writeFileSync(join(dupDir, 'b.md'), dup('b'), 'utf-8');
+      const origCwd = process.cwd();
+      process.chdir(dupDir);
+      try {
+        const outcome = await mod.run(argv('TSK-dup', 'line', 'DONE'), CLOCK);
+        assert.strictEqual(outcome.ok, false);
+        if (outcome.ok) return;
+        assert.strictEqual(outcome.exitCode, 2);
+        assert.match(outcome.message, /ERR_CLI_SDD_LOG_AMBIGUOUS_ID: TSK-dup matches 2 tickets/);
+        assert.match(outcome.message, /a\.md/);
+        assert.match(outcome.message, /b\.md/);
+      } finally {
+        process.chdir(origCwd);
+        rmSync(dupDir, { recursive: true, force: true });
+      }
+    });
+
+    it('an existing ticket path still works exactly as before (no resolution banner)', async () => {
+      const outcome = await mod.run(argv(ticket, 'line', 'DONE'), CLOCK);
+      assert.strictEqual(outcome.ok, true);
+      if (!outcome.ok) return;
+      assert.doesNotMatch(outcome.text, /^\[sdd-log\] cli-foo → /);
+    });
+  });
 });

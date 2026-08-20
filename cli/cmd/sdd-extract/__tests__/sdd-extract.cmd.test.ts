@@ -140,6 +140,44 @@ describe('SddExtractCommand', () => {
     });
   });
 
+  describe('the forms a read-manifest actually prints (AX_EXTRACT_ANCHOR_FORMS)', () => {
+    it('combined `<file>#<NAME>` as one argument resolves the SECTION anchor', async () => {
+      const outcome = await mod.run(argv(`${ticket}#META`));
+      assert.strictEqual(outcome.ok, true);
+      if (outcome.ok) {
+        assert.match(outcome.content, /Task-ID/);
+        assert.doesNotMatch(outcome.content, /SECTION:META/);
+      }
+    });
+
+    it('combined `<file>#<NAME>` matches the two-argument form byte-for-byte', async () => {
+      const combined = await mod.run(argv(`${ticket}#META`));
+      const twoArg = await mod.run(argv(ticket, 'META'));
+      assert.deepStrictEqual(combined, twoArg);
+    });
+
+    it('a bare `#ANCHOR` second argument (leading `#`, no combined form) resolves the SECTION anchor', async () => {
+      const outcome = await mod.run(argv(ticket, '#META'));
+      assert.strictEqual(outcome.ok, true);
+      if (outcome.ok) assert.match(outcome.content, /Task-ID/);
+    });
+
+    it('combined form also resolves a heading anchor', async () => {
+      const outcome = await mod.run(argv(`${ticket}#cli-foo-task-ticket`));
+      assert.strictEqual(outcome.ok, true);
+      if (outcome.ok) assert.match(outcome.content, /Task-ID/);
+    });
+
+    it('an invalid name after stripping the leading `#` still reports INVALID_NAME (exit 4)', async () => {
+      const outcome = await mod.run(argv(ticket, '#Meta_Weird!'));
+      assert.strictEqual(outcome.ok, false);
+      if (!outcome.ok) {
+        assert.strictEqual(outcome.exitCode, 4);
+        assert.match(outcome.code, /INVALID_NAME/);
+      }
+    });
+  });
+
   it('rejects wrong argument count with exit 4 / BAD_INVOCATION', async () => {
     const outcome = await mod.run(argv(ticket));
     assert.strictEqual(outcome.ok, false);

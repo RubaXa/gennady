@@ -218,4 +218,87 @@ describe('SddSyncCommand', () => {
     const meta = await mod.run(argv(noMeta));
     assert.strictEqual(meta.ok === false && meta.exitCode, 2);
   });
+
+  it('unreadable, non-Task-ID-shaped path → tool-teaches hint points at `sdd-task`', async () => {
+    const missing = await mod.run(argv(join(dir, 'nope.md')));
+    assert.strictEqual(missing.ok, false);
+    if (missing.ok) return;
+    assert.match(missing.message, /run `sdd-task` with no arguments for the execution map/);
+  });
+
+  describe('bare Task-ID resolution (AX_TASK_RESOLUTION)', () => {
+    // "cli-foo" (the shared TICKET fixture) is lowercase-ACR, not v2-Task-ID-shaped, and lacks
+    // EXECUTION_LOG (isTicket requires both markers) — these tests build a grammar-conforming,
+    // full ticket in an isolated, chdir'd directory instead.
+    const idTicket = (id: string): string =>
+      [TICKET, '<!--SECTION:EXECUTION_LOG-->', '<!--/SECTION:EXECUTION_LOG-->']
+        .join('\n')
+        .replace('cli-foo', id);
+
+    it('resolves to its ticket — output is prefixed with the `[sdd-sync] <id> → <path>` banner', async () => {
+      const idDir = mkdtempSync(join(tmpdir(), 'sdd-sync-id-'));
+      writeFileSync(join(idDir, 'ticket.md'), idTicket('TSK-foo'), 'utf-8');
+      const origCwd = process.cwd();
+      process.chdir(idDir);
+      try {
+        const outcome = await mod.run(argv('TSK-foo'));
+        assert.strictEqual(outcome.ok, true);
+        if (!outcome.ok) return;
+        assert.match(outcome.text, /^\[sdd-sync\] TSK-foo → ticket\.md\n/);
+        assert.match(outcome.text, /TSK-foo → \[x\] DONE/);
+      } finally {
+        process.chdir(origCwd);
+        rmSync(idDir, { recursive: true, force: true });
+      }
+    });
+
+    it('an unknown but Task-ID-shaped argument → exit 2 listing known Task-IDs', async () => {
+      const idDir = mkdtempSync(join(tmpdir(), 'sdd-sync-id-'));
+      writeFileSync(join(idDir, 'ticket.md'), idTicket('TSK-foo'), 'utf-8');
+      const origCwd = process.cwd();
+      process.chdir(idDir);
+      try {
+        const outcome = await mod.run(argv('NOPE-ghost'));
+        assert.strictEqual(outcome.ok, false);
+        if (outcome.ok) return;
+        assert.strictEqual(outcome.exitCode, 2);
+        assert.match(outcome.message, /ERR_CLI_SDD_SYNC_UNKNOWN_ID: NOPE-ghost/);
+        assert.match(outcome.message, /known Task-IDs:.*TSK-foo/);
+      } finally {
+        process.chdir(origCwd);
+        rmSync(idDir, { recursive: true, force: true });
+      }
+    });
+
+    it('a Task-ID matching two tickets → exit 2 listing both candidate paths', async () => {
+      const dupDir = mkdtempSync(join(tmpdir(), 'sdd-sync-dup-'));
+      writeFileSync(join(dupDir, 'a.md'), idTicket('TSK-dup'), 'utf-8');
+      writeFileSync(join(dupDir, 'b.md'), idTicket('TSK-dup'), 'utf-8');
+      const origCwd = process.cwd();
+      process.chdir(dupDir);
+      try {
+        const outcome = await mod.run(argv('TSK-dup'));
+        assert.strictEqual(outcome.ok, false);
+        if (outcome.ok) return;
+        assert.strictEqual(outcome.exitCode, 2);
+        assert.match(outcome.message, /ERR_CLI_SDD_SYNC_AMBIGUOUS_ID: TSK-dup matches 2 tickets/);
+        assert.match(outcome.message, /a\.md/);
+        assert.match(outcome.message, /b\.md/);
+      } finally {
+        process.chdir(origCwd);
+        rmSync(dupDir, { recursive: true, force: true });
+      }
+    });
+
+    it('an existing ticket path still works exactly as before (no resolution banner)', async () => {
+      const t = join(dir, 'no-banner.md');
+      writeFileSync(t, TICKET, 'utf-8');
+      const outcome = await mod.run(argv(t));
+      assert.strictEqual(outcome.ok, true);
+      if (!outcome.ok) return;
+      // The `[sdd-sync] <id> → <status>` header is always first; a path-arg carries no extra
+      // `[sdd-sync] <id> → <path>` resolution banner line ahead of it.
+      assert.match(outcome.text, /^\[sdd-sync\] cli-foo → \[x\] DONE\n/);
+    });
+  });
 });

@@ -16,10 +16,7 @@ compatibility: opencode
 
   <ExecutionPlan>
     <Step id="GATHER">
-      Read in full `ai/directives/sdd-v2/code-review.directive.xml`. Resolve deterministically,
-      project root first: `ai/directives/sdd-v2/code-review.directive.xml`; if missing,
-      `node_modules/gennady/ai/directives/sdd-v2/code-review.directive.xml`; if neither exists,
-      stop and tell the operator to run `npx gennady sync` — never search for it.
+      Read in full `ai/directives/sdd-v2/code-review.directive.xml`.
     </Step>
     <Step id="EMBODY">
       You ARE the code-review now. Input — a Task-ID (or the dispatch payload from the execute orchestrator):

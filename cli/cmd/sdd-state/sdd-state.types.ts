@@ -11,6 +11,26 @@ import type { RepoProbe } from '../../../shared/sdd/probe.ts';
 export const ERR_CLI_SDD_STATE_BAD_INVOCATION = 'ERR_CLI_SDD_STATE_BAD_INVOCATION' as const;
 /** @purpose The given project root is not an existing directory. */
 export const ERR_CLI_SDD_STATE_BAD_ROOT = 'ERR_CLI_SDD_STATE_BAD_ROOT' as const;
+/** @purpose ai/directives/sdd-v2/ is missing (or incomplete) at both checked locations. */
+export const ERR_CLI_SDD_STATE_DIRECTIVES_MISSING = 'ERR_CLI_SDD_STATE_DIRECTIVES_MISSING' as const;
+
+/** @purpose The sdd-v2 directives subdirectory, checked at the project root and under node_modules/gennady/. */
+export const SDD_V2_SUBDIR = 'ai/directives/sdd-v2';
+
+/** @purpose Key directive files standing in for "the sdd-v2 directive set is installed" — every skill/directive routes through these. */
+export const KEY_DIRECTIVE_FILES = [
+  'router.directive.xml',
+  'execute.directive.xml',
+  'phase-execution-protocol.directive.xml',
+] as const;
+
+/** @purpose Presence check of the key directive files at one candidate directory. */
+export type DirectivesLocationStatus = {
+  /** @purpose Whether the candidate directory itself exists. */
+  dirExists: boolean;
+  /** @purpose Key files from KEY_DIRECTIVE_FILES not found in this directory (all of them when dirExists is false). */
+  missing: readonly string[];
+};
 
 /** @purpose SDD flow version detected from the on-disk layout. */
 export type FlowVersion = 'v1' | 'v2';
@@ -42,11 +62,24 @@ export type StateSnapshot = {
 
 /**
  * @purpose Result of one sdd-state run — formatted snapshot (exit 0) or an actionable failure.
- * @invariant On failure `message` is never empty; `exitCode` is 2 (bad root) or 4 (bad invocation).
+ * @invariant On failure `message` is never empty; `exitCode` is 2 (bad root), 3 (directives missing), or 4 (bad invocation).
  */
 export type StateOutcome =
   | { ok: true; text: string }
-  | { ok: false; code: string; exitCode: 2 | 4; message: string };
+  | { ok: false; code: string; exitCode: 2 | 3 | 4; message: string };
+
+/**
+ * @purpose Resolve a scope's portal-relative spec link into a repo-root-relative path — every printed path must open as-is from the repo root.
+ * @param rawPath The raw link target parsed from the portal Scopes table.
+ * @param portalPath The portal's own repo-root-relative path (e.g. `specs/README.md`).
+ * @returns The repo-root-relative spec path.
+ */
+function repoRelativeSpecPath(rawPath: string, portalPath: string): string {
+  const slash = portalPath.lastIndexOf('/');
+  const dir = slash === -1 ? '' : portalPath.slice(0, slash);
+  const stripped = rawPath.replace(/^\.\//, '');
+  return dir ? `${dir}/${stripped}` : stripped;
+}
 
 /**
  * @purpose Render a StateSnapshot into the bracketed, machine-readable form the router consumes.
@@ -80,9 +113,8 @@ export function formatSnapshot(s: StateSnapshot): string {
     lines.push('# (portal present, no scopes listed yet)');
   } else {
     for (const sc of s.scopes) {
-      lines.push(
-        `${sc.name}\t${sc.type}\t${sc.status}\t${sc.description || '—'}\t${sc.specPath ?? '-'}`
-      );
+      const spec = sc.specPath ? repoRelativeSpecPath(sc.specPath, s.portalPath) : '-';
+      lines.push(`${sc.name}\t${sc.type}\t${sc.status}\t${sc.description || '—'}\t${spec}`);
     }
   }
 
@@ -155,6 +187,47 @@ export function badRoot(root: string): StateOutcome {
     message: [
       `[sdd-state] ${ERR_CLI_SDD_STATE_BAD_ROOT}: ${root}`,
       '  Pass an existing project root, or run with no argument from inside the project.',
+    ].join('\n'),
+  };
+}
+
+/**
+ * @purpose Render one location's directive-presence status for the failure message.
+ * @param status The location's DirectivesLocationStatus.
+ * @returns `absent` when the directory itself is missing, else the specific missing key files.
+ */
+function describeDirectivesStatus(status: DirectivesLocationStatus): string {
+  if (!status.dirExists) return 'absent';
+  return `missing: ${status.missing.join(', ')}`;
+}
+
+/**
+ * @purpose Build the directives-missing diagnostic — sdd-state's install-preflight gate, the one place allowed to know about install/sync.
+ * @invariant Either checked location alone being complete is sufficient — called only when BOTH are incomplete.
+ * @param packageInstalled Whether node_modules/gennady/ itself exists (the npm package is present).
+ * @param rootStatus Directive-presence status at `<root>/ai/directives/sdd-v2/`.
+ * @param nodeModulesStatus Directive-presence status under node_modules/gennady/.
+ * @returns Outcome with exit 3 — never prints the snapshot.
+ */
+export function directivesMissing(
+  packageInstalled: boolean,
+  rootStatus: DirectivesLocationStatus,
+  nodeModulesStatus: DirectivesLocationStatus
+): StateOutcome {
+  const next = packageInstalled ? 'npx gennady sync' : 'npm i -D gennady && npx gennady sync';
+  const why = packageInstalled
+    ? 'gennady is installed but its sdd-v2 directives were never synced into this project — skills read them from the project root, not from node_modules.'
+    : 'gennady is not installed here — skills assume the directives are already in place, and sdd-state is the only command that checks for that.';
+  return {
+    ok: false,
+    code: ERR_CLI_SDD_STATE_DIRECTIVES_MISSING,
+    exitCode: 3,
+    message: [
+      `[sdd-state] ${ERR_CLI_SDD_STATE_DIRECTIVES_MISSING}`,
+      `  ${SDD_V2_SUBDIR}/ (project root): ${describeDirectivesStatus(rootStatus)}`,
+      `  node_modules/gennady/${SDD_V2_SUBDIR}/: ${describeDirectivesStatus(nodeModulesStatus)}`,
+      `  next: ${next}`,
+      `  why: ${why}`,
     ].join('\n'),
   };
 }

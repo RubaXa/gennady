@@ -2,7 +2,7 @@
 // @consumers: gennady.ts
 // @tasks: N/A
 
-import { readFileSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { logger } from '#logger';
@@ -22,11 +22,26 @@ import { renderLadder } from '../../../shared/sdd/ladder.ts';
 import {
   badInvocation,
   badRoot,
+  directivesMissing,
   formatSnapshot,
+  KEY_DIRECTIVE_FILES,
+  SDD_V2_SUBDIR,
+  type DirectivesLocationStatus,
   type FlowVersion,
   type StateOutcome,
   type StateSnapshot,
 } from './sdd-state.types.ts';
+
+/**
+ * @purpose Check one candidate directory for the sdd-v2 directive install — key files present.
+ * @param dir Absolute candidate directory (e.g. `<root>/ai/directives/sdd-v2`).
+ * @returns Whether the directory exists and which key files (if any) it is missing.
+ */
+function checkDirectivesLocation(dir: string): DirectivesLocationStatus {
+  const dirExists = existsSync(dir);
+  if (!dirExists) return { dirExists: false, missing: KEY_DIRECTIVE_FILES };
+  return { dirExists: true, missing: KEY_DIRECTIVE_FILES.filter((f) => !existsSync(join(dir, f))) };
+}
 
 /**
  * @purpose Version of the running gennady package — walk up from this module to the nearest package.json named "gennady".
@@ -78,6 +93,26 @@ export async function run(rawArgs: string[]): Promise<StateOutcome> {
   } catch {
     return badRoot(root);
   }
+
+  // #region START_DIRECTIVES_GATE — invariant: sdd-state is the ONLY command that checks the install is
+  // intact; skills/directives themselves carry no install/sync knowledge. Either location alone being
+  // complete is sufficient (self-hosting gennady keeps directives at the project root directly; a
+  // consumer project may have them only under node_modules/gennady/ before its first `sync`).
+  const nodeModulesPkgDir = join(root, 'node_modules', 'gennady');
+  const rootDirectivesStatus = checkDirectivesLocation(join(root, SDD_V2_SUBDIR));
+  if (rootDirectivesStatus.missing.length > 0) {
+    const nodeModulesDirectivesStatus = checkDirectivesLocation(
+      join(nodeModulesPkgDir, SDD_V2_SUBDIR)
+    );
+    if (nodeModulesDirectivesStatus.missing.length > 0) {
+      return directivesMissing(
+        existsSync(nodeModulesPkgDir),
+        rootDirectivesStatus,
+        nodeModulesDirectivesStatus
+      );
+    }
+  }
+  // #endregion END_DIRECTIVES_GATE
 
   const flowVersion: FlowVersion = detectFlowVersion(root);
 

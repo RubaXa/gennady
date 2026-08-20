@@ -69,7 +69,15 @@ import {
   parseTestCoverage,
   resolveTestFileMatches,
 } from '../../../shared/sdd/bdd-coverage.ts';
-import { badInvocation, fileError, formatFindings, type CheckResult } from './sdd-check.types.ts';
+import { resolveTicketArg, resolutionLine } from '../../../shared/sdd/ticket-resolve.ts';
+import {
+  ambiguousIdError,
+  badInvocation,
+  fileError,
+  formatFindings,
+  unknownIdError,
+  type CheckResult,
+} from './sdd-check.types.ts';
 
 const SKIP_DIRS = new Set([
   'node_modules',
@@ -483,25 +491,37 @@ export async function run(rawArgs: string[]): Promise<CheckResult> {
 
   const findings: Finding[] = [];
   let fileCount = 0;
+  let taskBanner: string | null = null;
 
   if (taskPath) {
-    let content: string;
-    try {
-      content = readFileSync(resolve(taskPath), 'utf-8');
-    } catch {
-      return fileError(taskPath);
-    }
     const repoRoot = process.cwd();
-    findings.push(...checkTicket(taskPath, content));
-    findings.push(...checkRuleLinks(taskPath, content));
-    findings.push(...checkSpecRefs(taskPath, content));
-    findings.push(...checkResearchRefs(taskPath, content));
-    findings.push(...(await checkSpecMermaid(taskPath, content)));
-    findings.push(...checkTicketRulesCascade(taskPath, content, repoRoot));
-    findings.push(...checkTicketBddCoverage(taskPath, content, repoRoot));
-    if (specFlowVersion(resolve(taskPath)) === 'v2')
-      findings.push(...checkSpecLanguage(taskPath, content));
-    if (isV2SpecsTicket(taskPath)) findings.push(...checkTaskIdGrammar(taskPath, content));
+    const resolved = resolveTicketArg(taskPath, repoRoot);
+    if (!resolved.ok) {
+      if (resolved.reason === 'unreadable') return fileError(taskPath);
+      if (resolved.reason === 'unknown-id') return unknownIdError(taskPath, resolved.refs);
+      return ambiguousIdError(taskPath, resolved.matches, repoRoot);
+    }
+    const { content } = resolved;
+    // Path-arg findings keep the caller's own path verbatim; an id-arg resolves to the ticket's
+    // real, repo-root-relative path — a copy-pasteable file reference either way.
+    const effectivePath =
+      resolved.resolvedFrom === 'id'
+        ? relative(repoRoot, resolved.path) || resolved.path
+        : taskPath;
+    if (resolved.resolvedFrom === 'id') {
+      taskBanner = resolutionLine('sdd-check', resolved.id, resolved.path, repoRoot);
+    }
+    findings.push(...checkTicket(effectivePath, content));
+    findings.push(...checkRuleLinks(effectivePath, content));
+    findings.push(...checkSpecRefs(effectivePath, content));
+    findings.push(...checkResearchRefs(effectivePath, content));
+    findings.push(...(await checkSpecMermaid(effectivePath, content)));
+    findings.push(...checkTicketRulesCascade(effectivePath, content, repoRoot));
+    findings.push(...checkTicketBddCoverage(effectivePath, content, repoRoot));
+    if (specFlowVersion(resolve(effectivePath)) === 'v2')
+      findings.push(...checkSpecLanguage(effectivePath, content));
+    if (isV2SpecsTicket(effectivePath))
+      findings.push(...checkTaskIdGrammar(effectivePath, content));
     fileCount = 1;
   } else if (changed) {
     // #region START_CHANGED — invariant: TASKS_APPEND_ONLY + CONSUMERS_RESOLVABLE run over changed source files, not the full spec/ticket tree
@@ -646,7 +666,8 @@ export async function run(rawArgs: string[]): Promise<CheckResult> {
   }
 
   logger.debug(`[SddCheckCommand#run] ${findings.length} finding(s) across ${fileCount} file(s)`);
-  return formatFindings(findings, fileCount);
+  const result = formatFindings(findings, fileCount);
+  return taskBanner ? { text: `${taskBanner}\n${result.text}`, exitCode: result.exitCode } : result;
 }
 
 // Self-executing for CLI: gennady sdd-check (--task <ticket> | --all [root])

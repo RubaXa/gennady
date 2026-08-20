@@ -50,6 +50,18 @@ function argv(...rest: string[]): string[] {
   return ['node', 'gennady', 'sdd-state', ...rest];
 }
 
+const KEY_DIRECTIVE_FILES = [
+  'router.directive.xml',
+  'execute.directive.xml',
+  'phase-execution-protocol.directive.xml',
+];
+
+/** @purpose Test fixture helper: install the key sdd-v2 directive files under `<root>/ai/directives/sdd-v2/` (or a caller-chosen `at`), satisfying the sdd-state install-preflight gate. */
+function installDirectives(root: string, at = join(root, 'ai', 'directives', 'sdd-v2')): void {
+  mkdirSync(at, { recursive: true });
+  for (const f of KEY_DIRECTIVE_FILES) writeFileSync(join(at, f), '<directive/>\n', 'utf-8');
+}
+
 describe('SddStateCommand', () => {
   before(async () => {
     origExit = process.exit;
@@ -67,6 +79,7 @@ describe('SddStateCommand', () => {
     mkdirSync(join(ready, 'src'), { recursive: true });
     writeFileSync(join(ready, 'src', 'app.ts'), 'export const app = 1;\n', 'utf-8');
     writeFileSync(join(ready, 'tsconfig.json'), '{}\n', 'utf-8');
+    installDirectives(ready);
 
     noPortal = mkdtempSync(join(tmpdir(), 'sdd-state-none-'));
     writeFileSync(
@@ -74,12 +87,15 @@ describe('SddStateCommand', () => {
       JSON.stringify({ scripts: { test: 'node --test' } }),
       'utf-8'
     );
+    installDirectives(noPortal);
 
     bare = mkdtempSync(join(tmpdir(), 'sdd-state-bare-'));
+    installDirectives(bare);
 
     v1Repo = mkdtempSync(join(tmpdir(), 'sdd-state-v1-'));
     mkdirSync(join(v1Repo, 'tasks'), { recursive: true });
     writeFileSync(join(v1Repo, 'package.json'), READY_PKG, 'utf-8');
+    installDirectives(v1Repo);
 
     withGraph = mkdtempSync(join(tmpdir(), 'sdd-state-graph-'));
     mkdirSync(join(withGraph, 'specs'), { recursive: true });
@@ -88,6 +104,7 @@ describe('SddStateCommand', () => {
       [PORTAL, '', '```mermaid', 'graph TD', '  web --> infra-base', '```'].join('\n'),
       'utf-8'
     );
+    installDirectives(withGraph);
 
     mod = await import('../sdd-state.cmd.ts');
   });
@@ -113,8 +130,13 @@ describe('SddStateCommand', () => {
       assert.match(o.text, /test:coverage\t✔/);
       assert.match(o.text, /lint→gennady\t✔/);
       assert.match(o.text, /gennady-installed\t✔/);
-      assert.match(o.text, /infra-base\tinfrastructure\tdone\tTS toolchain/);
-      assert.match(o.text, /web\tproduct\twip\tReact SPA/);
+      // repo-root-relative spec path, not relative to specs/ (the portal link `./infra-base/infra-base.spec.md`
+      // is only valid relative to specs/README.md itself — the printed path must open as-is from repo root).
+      assert.match(
+        o.text,
+        /infra-base\tinfrastructure\tdone\tTS toolchain\tspecs\/infra-base\/infra-base\.spec\.md/
+      );
+      assert.match(o.text, /web\tproduct\twip\tReact SPA\tspecs\/web\/web\.spec\.md/);
       assert.match(o.text, /intent: evolve-scope/);
       assert.match(o.text, /readiness=ready/);
       assert.doesNotMatch(o.text, /\[GRAPH\]/);
@@ -200,10 +222,12 @@ describe('SddStateCommand — readiness ladder card', () => {
     process.argv = ['node', 'gennady', 'sdd-state'];
 
     empty = mkdtempSync(join(tmpdir(), 'sdd-state-ladder-empty-'));
+    installDirectives(empty);
 
     portalOnly = mkdtempSync(join(tmpdir(), 'sdd-state-ladder-portal-'));
     mkdirSync(join(portalOnly, 'specs'), { recursive: true });
     writeFileSync(join(portalOnly, 'specs', 'README.md'), '# Acme\n\n## Scopes\n', 'utf-8');
+    installDirectives(portalOnly);
 
     scopesNoInfra = mkdtempSync(join(tmpdir(), 'sdd-state-ladder-scopes-'));
     mkdirSync(join(scopesNoInfra, 'specs', 'backend', 'api'), { recursive: true });
@@ -223,6 +247,7 @@ describe('SddStateCommand — readiness ladder card', () => {
       '<!--SECTION:MODULE_VISION-->\nvision\n<!--/SECTION:MODULE_VISION-->\n',
       'utf-8'
     );
+    installDirectives(scopesNoInfra);
 
     allClosed = mkdtempSync(join(tmpdir(), 'sdd-state-ladder-closed-'));
     mkdirSync(join(allClosed, 'specs', 'backend', 'api'), { recursive: true });
@@ -255,6 +280,7 @@ describe('SddStateCommand — readiness ladder card', () => {
     );
     writeFileSync(join(allClosed, 'package.json'), READY_PKG, 'utf-8');
     writeFileSync(join(allClosed, 'node_modules', '.bin', 'gennady'), '#!/bin/sh\n', 'utf-8');
+    installDirectives(allClosed);
 
     mod2 = await import('../sdd-state.cmd.ts');
   });
@@ -315,5 +341,84 @@ describe('SddStateCommand — readiness ladder card', () => {
       assert.match(o.text, /✅ 5\. Задачи\s+тикетов: 4 · done: 4/);
       assert.match(o.text, /👉 Следующий шаг: всё закрыто — следующий цикл \/sdd-execute/);
     }
+  });
+});
+
+describe('SddStateCommand — install-preflight gate (AX no install/sync knowledge outside sdd-state)', () => {
+  let mod3: SddStateModule;
+  let neither: string;
+  let nodeModulesOnly: string;
+  let rootIncomplete: string;
+
+  before(async () => {
+    origExit = process.exit;
+    origArgv = process.argv;
+    process.exit = ((_code?: number) => undefined) as typeof process.exit;
+    process.argv = ['node', 'gennady', 'sdd-state'];
+
+    // Neither location has any directives at all — package not installed.
+    neither = mkdtempSync(join(tmpdir(), 'sdd-state-gate-neither-'));
+
+    // node_modules/gennady/ai/directives/sdd-v2/ is complete; project root has never been synced.
+    nodeModulesOnly = mkdtempSync(join(tmpdir(), 'sdd-state-gate-nm-'));
+    installDirectives(
+      nodeModulesOnly,
+      join(nodeModulesOnly, 'node_modules', 'gennady', 'ai', 'directives', 'sdd-v2')
+    );
+
+    // Root has the directory but a key file is missing (corrupted/partial); node_modules/gennady
+    // is present as a package but its own sdd-v2 copy is missing too.
+    rootIncomplete = mkdtempSync(join(tmpdir(), 'sdd-state-gate-root-incomplete-'));
+    mkdirSync(join(rootIncomplete, 'ai', 'directives', 'sdd-v2'), { recursive: true });
+    writeFileSync(
+      join(rootIncomplete, 'ai', 'directives', 'sdd-v2', 'router.directive.xml'),
+      '<directive/>\n',
+      'utf-8'
+    );
+    mkdirSync(join(rootIncomplete, 'node_modules', 'gennady'), { recursive: true });
+
+    mod3 = await import('../sdd-state.cmd.ts');
+  });
+
+  after(() => {
+    process.exit = origExit;
+    process.argv = origArgv;
+    rmSync(neither, { recursive: true, force: true });
+    rmSync(nodeModulesOnly, { recursive: true, force: true });
+    rmSync(rootIncomplete, { recursive: true, force: true });
+  });
+
+  it('neither location has directives → exit ≠ 0, never prints a snapshot, names npm-install-then-sync', async () => {
+    const o = await mod3.run(argv(neither));
+    assert.strictEqual(o.ok, false);
+    if (o.ok) return;
+    assert.notStrictEqual(o.exitCode, 0);
+    assert.match(o.message, /ERR_CLI_SDD_STATE_DIRECTIVES_MISSING/);
+    assert.match(o.message, /ai\/directives\/sdd-v2\/ \(project root\): absent/);
+    assert.match(o.message, /node_modules\/gennady\/ai\/directives\/sdd-v2\/: absent/);
+    assert.match(o.message, /next: npm i -D gennady && npx gennady sync/);
+    assert.doesNotMatch(o.message, /\[READINESS\]/);
+  });
+
+  it('directives present only under node_modules/gennady/ → still a valid install, snapshot prints', async () => {
+    const o = await mod3.run(argv(nodeModulesOnly));
+    assert.strictEqual(o.ok, true);
+    if (!o.ok) return;
+    assert.match(o.text, /# sdd-state v1/);
+  });
+
+  it('root copy incomplete + node_modules copy absent → exit ≠ 0, names the missing file, next is `sync`', async () => {
+    const o = await mod3.run(argv(rootIncomplete));
+    assert.strictEqual(o.ok, false);
+    if (o.ok) return;
+    assert.notStrictEqual(o.exitCode, 0);
+    assert.match(
+      o.message,
+      /ai\/directives\/sdd-v2\/ \(project root\): missing: execute\.directive\.xml, phase-execution-protocol\.directive\.xml/
+    );
+    // node_modules/gennady/ exists as a package but its own sdd-v2 copy is absent — "installed, not synced".
+    assert.match(o.message, /node_modules\/gennady\/ai\/directives\/sdd-v2\/: absent/);
+    assert.match(o.message, /next: npx gennady sync/);
+    assert.doesNotMatch(o.message, /npm i -D gennady/);
   });
 });

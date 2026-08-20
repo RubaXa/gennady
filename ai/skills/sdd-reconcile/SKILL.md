@@ -18,9 +18,6 @@ compatibility: opencode
     <Step id="GATHER">
       One parallel batch (do NOT serialize): run `npx gennady sdd-state`
       AND read in full `ai/directives/sdd-v2/reconcile.directive.xml`.
-      Resolve every `ai/directives/sdd-v2/<file>` below deterministically, project root first: if
-      missing, `node_modules/gennady/ai/directives/sdd-v2/<file>`; if neither exists, stop and tell
-      the operator to run `npx gennady sync` — never search for it.
     </Step>
     <Step id="PREFLIGHT">
       State is already gathered (GATHER, above). The directive's own `STEP_0B_PREFLIGHT` interprets

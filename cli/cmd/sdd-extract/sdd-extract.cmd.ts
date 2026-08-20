@@ -50,19 +50,33 @@ export async function run(rawArgs: string[]): Promise<ExtractOutcome> {
     (a: string) => typeof a === 'string' && a !== 'sdd-extract'
   );
 
-  if (positional.length !== 2) {
+  // Two forms: `<file> <NAME>` (unchanged), and `<file>#<ANCHOR>` combined into the sole positional —
+  // the shape a read-manifest actually prints (e.g. `./infra-base.spec.md#BOOTSTRAP_REQUIREMENTS`).
+  let file: string;
+  let rawName: string;
+  if (positional.length === 2) {
+    [file, rawName] = positional as [string, string];
+  } else if (positional.length === 1 && (positional[0] as string).includes('#')) {
+    const combined = positional[0] as string;
+    const hashAt = combined.lastIndexOf('#');
+    file = combined.slice(0, hashAt);
+    rawName = combined.slice(hashAt + 1);
+  } else {
     logger.warn(
-      `[SddExtractCommand#run] bad invocation — ${positional.length} positional arg(s), expected 2`
+      `[SddExtractCommand#run] bad invocation — ${positional.length} positional arg(s), expected 2 (or 1 combined "<file>#<NAME>")`
     );
     return badInvocation();
   }
 
-  const [file, name] = positional as [string, string];
+  // A leading `#` on the anchor argument (either combined-form remainder, or a bare `#ANCHOR` second
+  // argument) is just the manifest's own anchor-link syntax — strip it before grammar-matching either
+  // the canonical <!--SECTION:NAME--> form or a markdown heading slug.
+  const name = rawName.startsWith('#') ? rawName.slice(1) : rawName;
   const isHeading = isHeadingAnchor(name);
 
   if (!isValidSectionName(name) && !isHeading) {
-    logger.warn(`[SddExtractCommand#run] invalid section name: ${name}`);
-    return invalidName(name);
+    logger.warn(`[SddExtractCommand#run] invalid section name: ${rawName}`);
+    return invalidName(rawName);
   }
 
   // #region START_READ — invariant: distinguish ENOENT (not found) from other read failures

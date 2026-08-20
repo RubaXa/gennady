@@ -2,8 +2,8 @@
 // @consumers: gennady.ts
 // @tasks: N/A
 
-import { readFileSync, readdirSync } from 'node:fs';
-import { resolve, join, relative } from 'node:path';
+import { readFileSync, statSync } from 'node:fs';
+import { resolve, relative, join } from 'node:path';
 import { logger } from '#logger';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
 import { extractSection } from '../../../shared/sdd/section.ts';
@@ -15,8 +15,6 @@ import {
   type PhaseDetail,
 } from '../../../shared/sdd/ticket.ts';
 import {
-  isTicket,
-  ticketRef,
   pickableTasks,
   scanBlockerTrail,
   parsePhaseHandoffs,
@@ -24,7 +22,11 @@ import {
 } from '../../../shared/sdd/check.ts';
 import { checkReadiness, gatherReadinessInput } from '../../../shared/sdd/readiness.ts';
 import { parseScopes } from '../../../shared/sdd/portal.ts';
-import { looksLikeTaskId } from '../../../shared/sdd/task-id.ts';
+import {
+  collectTicketRefs,
+  resolveTicketArg,
+  resolutionLine as buildResolutionLine,
+} from '../../../shared/sdd/ticket-resolve.ts';
 import {
   fileError,
   formatPlan,
@@ -34,40 +36,6 @@ import {
   ambiguousIdError,
   type TaskOutcome,
 } from './sdd-task.types.ts';
-
-const SKIP_DIRS = new Set([
-  'node_modules',
-  '.git',
-  'dist',
-  'build',
-  'out',
-  'coverage',
-  '__tests__',
-]);
-
-/** @purpose Recursively collect every ticket's graph ref under a directory (the execution map's raw input). | @param dir Directory to walk. | @param acc TicketRef accumulator. */
-function walkTickets(dir: string, acc: TicketRef[]): void {
-  let entries;
-  try {
-    entries = readdirSync(dir, { withFileTypes: true });
-  } catch {
-    return;
-  }
-  for (const e of entries) {
-    if (e.name.startsWith('.') || SKIP_DIRS.has(e.name) || e.isSymbolicLink()) continue;
-    const full = join(dir, e.name);
-    if (e.isDirectory()) walkTickets(full, acc);
-    else if (e.isFile() && e.name.endsWith('.md')) {
-      let c: string;
-      try {
-        c = readFileSync(full, 'utf-8');
-      } catch {
-        continue;
-      }
-      if (isTicket(c)) acc.push(ticketRef(full, c));
-    }
-  }
-}
 
 /**
  * @purpose Named infra-scope TODO tickets already building the missing gate scripts — the preflight gate's queue-exception signal.
@@ -143,51 +111,6 @@ function formatMap(refs: TicketRef[], root: string): string {
   return lines.join('\n');
 }
 
-/** @purpose Result of resolving the CLI's ticket argument — loaded content (+ an optional resolution line) or a failure outcome. */
-type ResolvedTicket =
-  | { ok: true; content: string; resolutionLine: string | null }
-  | { ok: false; outcome: TaskOutcome };
-
-// Fixes the tool's own dead-end: the map hands out Task-IDs and its `next:` hint says to call
-// `sdd-task <id>`, but `run()` used to treat every argument as a path — a bare id (e.g. `TDM-boot`)
-// failed as file-not-found with no path to retry.
-/**
- * @purpose Resolve the ticket argument to file content — a path (unchanged), or, when unreadable and
- * Task-ID-shaped, a scan-and-match by Meta Task-ID (AX_TASK_RESOLUTION).
- * @param ticket Raw CLI argument (a ticket path or a bare Task-ID).
- * @param root Absolute project root — scanned only when the direct path read fails and the argument looks like an id.
- * @returns Ticket content + a `[sdd-task] <id> → <path>` resolution line to prepend (null when a path was given directly), or a failure outcome.
- */
-function resolveTicketArg(ticket: string, root: string): ResolvedTicket {
-  const directPath = resolve(ticket);
-  try {
-    return { ok: true, content: readFileSync(directPath, 'utf-8'), resolutionLine: null };
-  } catch {
-    // Not a readable path — fall through to Task-ID resolution below.
-  }
-
-  if (!looksLikeTaskId(ticket)) return { ok: false, outcome: fileError(ticket) };
-
-  const refs: TicketRef[] = [];
-  walkTickets(root, refs);
-  const matches = refs.filter((r) => r.taskId === ticket);
-
-  if (matches.length === 0) return { ok: false, outcome: unknownIdError(ticket, refs) };
-  if (matches.length > 1) return { ok: false, outcome: ambiguousIdError(ticket, matches, root) };
-
-  const match = matches[0] as TicketRef;
-  const matchPath = resolve(match.file);
-  try {
-    return {
-      ok: true,
-      content: readFileSync(matchPath, 'utf-8'),
-      resolutionLine: `[sdd-task] ${ticket} → ${relative(root, matchPath)}`,
-    };
-  } catch {
-    return { ok: false, outcome: fileError(ticket) };
-  }
-}
-
 /** @purpose Prepend the bare-id resolution line to a successful outcome; pass everything else through unchanged. | @param outcome The formatted plan/phase outcome. | @param line The resolution line from `resolveTicketArg`, or null when a path was given directly. */
 function withResolutionLine(outcome: TaskOutcome, line: string | null): TaskOutcome {
   if (!outcome.ok || !line) return outcome;
@@ -196,6 +119,7 @@ function withResolutionLine(outcome: TaskOutcome, line: string | null): TaskOutc
 
 /**
  * @purpose Execute gennady sdd-task — read only the planning sections of a ticket and emit the orchestrator's read surface.
+ * @invariant A sole positional naming an existing directory is the map's project root, not a ticket — a ticket never resolves to a directory.
  * @param rawArgs Raw command-line arguments (process.argv).
  * @returns TaskOutcome — the planning surface on success, else an actionable failure.
  */
@@ -207,17 +131,37 @@ export async function run(rawArgs: string[]): Promise<TaskOutcome> {
   const phaseId = typeof args.phase === 'string' ? args.phase : null;
 
   const ticket = positional[0];
-  const root = resolve('.');
+  const defaultRoot = resolve('.');
   if (!ticket) {
     // No Task-ID → emit the execution map (deterministic pickable set from the trackers, not eyeballed).
-    const refs: TicketRef[] = [];
-    walkTickets(root, refs);
-    return { ok: true, text: formatMap(refs, root) };
+    return { ok: true, text: formatMap(collectTicketRefs(defaultRoot), defaultRoot) };
   }
 
+  // A bare positional naming an existing directory is a map-mode project root, not a ticket —
+  // gives `sdd-task [project-root]` the same shape as `sdd-state [project-root]`.
+  let ticketArgIsDir = false;
+  try {
+    ticketArgIsDir = statSync(resolve(ticket)).isDirectory();
+  } catch {
+    // not a directory (or doesn't exist) — fall through to ticket resolution below
+  }
+  if (ticketArgIsDir) {
+    const altRoot = resolve(ticket);
+    return { ok: true, text: formatMap(collectTicketRefs(altRoot), altRoot) };
+  }
+
+  const root = defaultRoot;
   const resolved = resolveTicketArg(ticket, root);
-  if (!resolved.ok) return resolved.outcome;
-  const { content, resolutionLine } = resolved;
+  if (!resolved.ok) {
+    if (resolved.reason === 'unreadable') return fileError(ticket);
+    if (resolved.reason === 'unknown-id') return unknownIdError(ticket, resolved.refs);
+    return ambiguousIdError(ticket, resolved.matches, root);
+  }
+  const { content } = resolved;
+  const resolutionLine =
+    resolved.resolvedFrom === 'id'
+      ? buildResolutionLine('sdd-task', resolved.id, resolved.path, root)
+      : null;
 
   const metaSec = extractSection(content, 'META');
   if (metaSec.status !== 'ok') return notATicket(ticket);

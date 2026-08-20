@@ -527,6 +527,66 @@ describe('SddCheckCommand', () => {
     assert.strictEqual(missing.exitCode, 1);
   });
 
+  it('--task: unreadable, non-Task-ID-shaped path → tool-teaches hint points at `sdd-task`', async () => {
+    const missing = await mod.run(argv(`--task=${join(dir, 'nope.md')}`));
+    assert.match(missing.text, /run `sdd-task` with no arguments for the execution map/);
+  });
+
+  describe('--task bare Task-ID resolution (AX_TASK_RESOLUTION)', () => {
+    // "cli-foo" (the shared fixtures) is lowercase-ACR, not v2-Task-ID-shaped — these tests build
+    // their own grammar-conforming ticket in an isolated, chdir'd directory.
+    const idClean = (id: string): string => CLEAN_TICKET.replace('cli-foo', id);
+
+    it('resolves to its ticket — banner precedes the report, findings key off the real path', async () => {
+      const idDir = mkdtempSync(join(tmpdir(), 'sdd-check-id-'));
+      writeFileSync(join(idDir, 'ticket.md'), idClean('TSK-foo'), 'utf-8');
+      const origCwd = process.cwd();
+      process.chdir(idDir);
+      try {
+        const r = await mod.run(argv('--task', 'TSK-foo'));
+        assert.match(r.text, /^\[sdd-check\] TSK-foo → ticket\.md\n/);
+        assert.strictEqual(r.exitCode, 0);
+      } finally {
+        process.chdir(origCwd);
+        rmSync(idDir, { recursive: true, force: true });
+      }
+    });
+
+    it('an unknown but Task-ID-shaped argument → exit 2 listing known Task-IDs', async () => {
+      const idDir = mkdtempSync(join(tmpdir(), 'sdd-check-id-'));
+      writeFileSync(join(idDir, 'ticket.md'), idClean('TSK-foo'), 'utf-8');
+      const origCwd = process.cwd();
+      process.chdir(idDir);
+      try {
+        const r = await mod.run(argv('--task', 'NOPE-ghost'));
+        assert.strictEqual(r.exitCode, 2);
+        assert.match(r.text, /ERR_CLI_SDD_CHECK_UNKNOWN_ID: NOPE-ghost/);
+        assert.match(r.text, /known Task-IDs:.*TSK-foo/);
+      } finally {
+        process.chdir(origCwd);
+        rmSync(idDir, { recursive: true, force: true });
+      }
+    });
+
+    it('a Task-ID matching two tickets → exit 2 listing both candidate paths', async () => {
+      const dupDir = mkdtempSync(join(tmpdir(), 'sdd-check-dup-'));
+      writeFileSync(join(dupDir, 'a.md'), idClean('TSK-dup'), 'utf-8');
+      writeFileSync(join(dupDir, 'b.md'), idClean('TSK-dup'), 'utf-8');
+      const origCwd = process.cwd();
+      process.chdir(dupDir);
+      try {
+        const r = await mod.run(argv('--task', 'TSK-dup'));
+        assert.strictEqual(r.exitCode, 2);
+        assert.match(r.text, /ERR_CLI_SDD_CHECK_AMBIGUOUS_ID: TSK-dup matches 2 tickets/);
+        assert.match(r.text, /a\.md/);
+        assert.match(r.text, /b\.md/);
+      } finally {
+        process.chdir(origCwd);
+        rmSync(dupDir, { recursive: true, force: true });
+      }
+    });
+  });
+
   describe('research connectivity gates (SDD_RESEARCH_REF_BROKEN / SDD_RESEARCH_ORPHAN / SDD_RESEARCH_UNREGISTERED)', () => {
     it('--all: a healthy spec ⟷ research pair is clean — no broken ref, no orphan', async () => {
       const root = join(dir, 'research-healthy-proj');

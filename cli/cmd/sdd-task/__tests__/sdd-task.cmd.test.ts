@@ -225,6 +225,24 @@ describe('SddTaskCommand', () => {
     }
   });
 
+  it("a positional project root (no chdir needed) shows that root's map — symmetric with `sdd-state [project-root]`", async () => {
+    const mapDir = mkdtempSync(join(tmpdir(), 'sdd-task-map-root-'));
+    writeFileSync(
+      join(mapDir, 'ticket.md'),
+      [TICKET, '<!--SECTION:EXECUTION_LOG-->', '<!--/SECTION:EXECUTION_LOG-->'].join('\n'),
+      'utf-8'
+    );
+    try {
+      const r = await mod.run(argv(mapDir));
+      assert.strictEqual(r.ok, true);
+      if (!r.ok) return;
+      assert.match(r.text, /^\[sdd-task\] execution map/);
+      assert.match(r.text, /pickable \(ready now\):\n {2}cli-foo → ticket\.md$/m);
+    } finally {
+      rmSync(mapDir, { recursive: true, force: true });
+    }
+  });
+
   it('map emits a path on blocked lines too', async () => {
     const blkDir = mkdtempSync(join(tmpdir(), 'sdd-task-map-blocked-'));
     const blockedTicket = [

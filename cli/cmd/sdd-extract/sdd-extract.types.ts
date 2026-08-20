@@ -67,7 +67,8 @@ export function badInvocation(): ExtractOutcome {
     exitCode: 4,
     message: [
       `[sdd-extract] ${ERR_CLI_SDD_EXTRACT_BAD_INVOCATION}`,
-      '  expected: gennady sdd-extract <file> <NAME>',
+      '  expected: gennady sdd-extract <file> <NAME>   (or one combined argument: gennady sdd-extract <file>#<NAME>)',
+      '  NAME may carry a leading `#` (the anchor-link syntax a read-manifest prints) — it is stripped before matching.',
       `  NAME must match ${SECTION_NAME_REGEX} — e.g. META, PHASES_OVERVIEW, PHASE_P1, BDD, EXECUTION_LOG.`,
     ].join('\n'),
   };
@@ -85,8 +86,9 @@ export function invalidName(name: string): ExtractOutcome {
     exitCode: 4,
     message: [
       `[sdd-extract] ${ERR_CLI_SDD_EXTRACT_INVALID_NAME}: "${name}"`,
-      '  Use uppercase letters, digits, and underscores, starting with a letter (a <!--SECTION--> anchor),',
-      '  or a lowercase GitHub-style heading slug, hyphen-separated, optionally prefixed with `#` (a markdown heading anchor).',
+      '  A leading `#` is stripped automatically — this failed after that. Use uppercase letters,',
+      '  digits, and underscores, starting with a letter (a <!--SECTION--> anchor), or a lowercase',
+      '  GitHub-style heading slug, hyphen-separated (a markdown heading anchor).',
       '  Put attributes (kind, rules) inside the section body, not in the anchor name.',
       `  Canonical sections: ${CANONICAL}.`,
     ].join('\n'),

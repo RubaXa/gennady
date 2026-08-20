@@ -13,10 +13,13 @@ import {
   recomputeRollupProgress,
   updateTrackerStatus,
 } from '../../../shared/sdd/tracker.ts';
+import { resolveTicketArg, resolutionLine } from '../../../shared/sdd/ticket-resolve.ts';
 import {
+  ambiguousIdError,
   badInvocation,
   fileError,
   metaError,
+  unknownIdError,
   ERR_CLI_SDD_SYNC_VERIFY,
   type SyncOutcome,
 } from './sdd-sync.types.ts';
@@ -92,12 +95,19 @@ export async function run(rawArgs: string[]): Promise<SyncOutcome> {
   const ticket = positional[0];
   if (!ticket) return badInvocation('missing <ticket>');
 
-  let ticketContent: string;
-  try {
-    ticketContent = readFileSync(resolve(ticket), 'utf-8');
-  } catch {
-    return fileError(ticket);
+  const root = resolve('.');
+  const resolved = resolveTicketArg(ticket, root);
+  if (!resolved.ok) {
+    if (resolved.reason === 'unreadable') return fileError(ticket);
+    if (resolved.reason === 'unknown-id') return unknownIdError(ticket, resolved.refs);
+    return ambiguousIdError(ticket, resolved.matches, root);
   }
+  const ticketPath = resolved.path;
+  const ticketContent = resolved.content;
+  const idBanner =
+    resolved.resolvedFrom === 'id'
+      ? resolutionLine('sdd-sync', resolved.id, ticketPath, root)
+      : null;
 
   const metaRes = extractSection(ticketContent, 'META');
   if (metaRes.status !== 'ok') return metaError(ticket);
@@ -105,7 +115,9 @@ export async function run(rawArgs: string[]): Promise<SyncOutcome> {
   if (!taskId || !status) return metaError(ticket);
 
   const indexes =
-    positional.length > 1 ? positional.slice(1).map((p) => resolve(p)) : discoverIndexes(ticket);
+    positional.length > 1
+      ? positional.slice(1).map((p) => resolve(p))
+      : discoverIndexes(ticketPath);
   logger.debug(`[SddSyncCommand#run] ${taskId} → ${status}; ${indexes.length} index file(s)`);
 
   // #region START_SYNC — invariant: update each index; verify the write took before reporting updated
@@ -146,7 +158,7 @@ export async function run(rawArgs: string[]): Promise<SyncOutcome> {
 
   const header = `[sdd-sync] ${taskId} → ${status}`;
   const body = indexes.length === 0 ? '  (no *.3-tasks.md index files found)' : report.join('\n');
-  const text = `${header}\n${body}`;
+  const text = idBanner ? `${idBanner}\n${header}\n${body}` : `${header}\n${body}`;
 
   if (verifyFailed) {
     return { ok: false, code: ERR_CLI_SDD_SYNC_VERIFY, exitCode: 1, message: text };

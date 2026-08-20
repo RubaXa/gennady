@@ -111,7 +111,8 @@
     dispatch and execution — the concern a pasted-prompt approach had on a retry.
 
     Per `AX_READ_PER_MANIFEST`: read EXACTLY the manifest the tool hands you, nothing beyond it. Pull
-    each cited block by anchor (`sdd-extract <file> <ANCHOR>`), not whole files. Something needed but
+    each cited block by anchor (`sdd-extract <file> <NAME>`, or `sdd-extract <file>#<anchor>` when the
+    manifest already prints the combined form), not whole files. Something needed but
     absent from the manifest → emit a `discovery` line and surface it; keep the read within the
     manifest.
 
@@ -121,8 +122,8 @@
     | Tool | When | Call |
     |---|---|---|
     | `sdd-task <ticket> --phase P<N>` | FIRST action, every phase, every retry — objective, gates + satisfy-hints, exit, phase-scoped read-manifest, prior Handoff | `npx gennady sdd-task <ticket> --phase P2` |
-    | `sdd-extract <file> <ANCHOR>` | Pull ONE cited block instead of a whole file — `ANCHOR` is a `SECTION_NAME` (`PHASE_P1`, `BDD`, `VERIFICATION`, …) or a `#lower-dashed` markdown heading slug | `npx gennady sdd-extract <ticket> PHASE_P1` · `npx gennady sdd-extract specs/app/greeting/greeting.spec.md#module-contracts` |
-    | `sdd-log <ticket> phase\|line\|handoff\|blocker ...` | Every Execution Log write for this phase — header, event line, Handoff, blocker; the tool appends, timestamps, and rejects fabricated `DONE` | `npx gennady sdd-log <ticket> line "intro Foo ← reason"` |
+    | `sdd-extract <file> <NAME>` · `sdd-extract <file>#<anchor>` | Pull ONE cited block instead of a whole file — `<NAME>` is a `SECTION_NAME` (`PHASE_P1`, `BDD`, `VERIFICATION`, …), two args; a markdown heading anchor is the combined `path#lower-dashed-slug` form, exactly as the read-manifest prints it | `npx gennady sdd-extract <ticket> PHASE_P1` · `npx gennady sdd-extract specs/app/greeting/greeting.spec.md#module-contracts` |
+    | `sdd-log <ticket-path\|Task-ID> phase\|line\|handoff\|blocker ...` | Every Execution Log write for this phase — header, event line, Handoff, blocker; the tool appends, timestamps, and rejects fabricated `DONE`; the ticket argument takes either the ticket path or its bare Task-ID | `npx gennady sdd-log <ticket-path\|Task-ID> line "intro Foo ← reason"` |
     | `sdd-check --task <ticket>` | A point re-check when you need the mechanical verdict again after a fix, without re-deriving it by hand | `npx gennady sdd-check --task <ticket>` |
     | `sdd-verify --profile code\|test\|full` | The gate at STEP_5 — profile fixed by phase kind, order is mutating-first | `npx gennady sdd-verify --profile code` |
     | `gennady lint --spec=<module-spec> <Target Files>` | Closed-world inventory sync + cast safety on this phase's own files | `npx gennady lint --spec=specs/app/greeting/greeting.spec.md src/app/greeting/*.ts` |

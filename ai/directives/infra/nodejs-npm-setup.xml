@@ -52,31 +52,50 @@
     </Axiom>
 
     <Axiom id="AX_NPM_AGENT_SANDBOX_REGISTRY">
-      **Sandboxed agents force npm to use the public registry via inline POSIX env-prefix on every invocation. This bypasses any corporate `~/.npmrc` config that the sandbox cannot reach.**
+      **The lock file decides the registry. A committed `package-lock.json` already records which
+      registry every dependency resolved from — install with that registry, unchanged. Force the public
+      registry only when no lock file exists yet.**
 
-      The problem: operator's `~/.npmrc` typically points at a corporate registry/proxy reachable only from inside corp network. A sandboxed agent doesn't have access → `npm install` hangs on `ENOTFOUND` / `EAI_AGAIN` or fails.
+      **Lock file present → install as-is, no registry override:**
+      ```bash
+      npm ci
+      npm install
+      ```
+      Changing the registry a lock resolved from means re-resolving that lock — a decision at
+      infrastructure-scope-discovery scope, never something this role decides per invocation. `npm
+      ci`/`npm install` read the registry the lock (and any committed `.npmrc`) already declares; do not
+      prefix them with a different `npm_config_registry`.
 
-      **Solution — force public registry per command:**
+      **No lock file yet (fresh install, first dependency) → force the public registry:**
       ```bash
       npm_config_registry=https://registry.npmjs.org/ npm install
       npm_config_registry=https://registry.npmjs.org/ npm view <pkg>
-      npm_config_registry=https://registry.npmjs.org/ npm ci
       ```
+      The problem this solves: operator's `~/.npmrc` typically points at a corporate registry/proxy
+      reachable only from inside corp network; a sandboxed agent doesn't have access → `npm install`
+      hangs on `ENOTFOUND` / `EAI_AGAIN` or fails. Forcing `registry.npmjs.org` inline — not by editing
+      `~/.npmrc` — resolves the first lock against a registry the sandbox can actually reach.
 
-      Why inline prefix:
-      - Bypasses corp `~/.npmrc` without modifying it (operator's local setup intact).
-      - No persistent state in shell env — nothing leaks between commands.
-      - Self-documenting in logs — operator sees exactly which registry was used.
-      - Sandbox-friendly — no dependency on inherited env from launch context.
+      Why inline prefix, not a config edit: bypasses corp `~/.npmrc` without modifying it (operator's
+      local setup stays intact); no persistent state in shell env — nothing leaks between commands;
+      self-documenting in logs — operator sees exactly which registry produced the lock; sandbox-friendly
+      — no dependency on inherited env from launch context. Mechanism: npm config priority — CLI flags >
+      `npm_config_*` env vars > project `.npmrc` > `~/.npmrc` > `/etc/npmrc` > defaults. POSIX
+      `VAR=value command` makes the variable visible to the spawned process only.
 
-      Mechanism: npm config priority — CLI flags > `npm_config_*` env vars > project `.npmrc` > `~/.npmrc` > `/etc/npmrc` > defaults. POSIX `VAR=value command` makes the variable visible to the spawned process only.
+      **Incompatibility — the project genuinely needs a private corp package, and the public registry
+      403s on it:** this is not a registry choice to negotiate from inside the sandbox. Both directions
+      are closed to the worker — corp registry is unreachable, public registry lacks the package — so
+      there is no per-invocation flag that resolves it. Halt `H_BLOCKED` per `AX_BLOCKER_ESCALATION` with
+      the facts (package name, both registries' response, whether a lock already exists) for the
+      operator to decide: resolve the lock in a full-network shell, or grant the sandbox explicit network
+      access. Do not search for a registry, mirror, or proxy that might work around the 403 — that is
+      exactly the improvisation `AX_BLOCKER_ESCALATION` exists to stop.
 
-      **When corp registry IS required** (project legitimately depends on private corp packages):
-      - Explicit deviation, declared at infrastructure scope discovery time, recorded in Decision Log.
-      - Agent halts with `[!] BLOCKED` per `AX_BLOCKER_ESCALATION`; operator handles install in their full-network shell, OR explicit network-access grant for the sandbox.
-      - Auth for corp registry is out of scope — environment concern, not agent's responsibility.
-
-      **Forbidden:** `npm install` without env-prefix in sandbox (routes through corp `~/.npmrc`, hangs); modifying operator's `~/.npmrc` (breaks operator's other work); committing project `.npmrc` with corp registry URL; silent failure / partial install when registry unreachable (operator must see explicit error).
+      **Forbidden:** overriding the registry on a command that already has a lock to read (`npm ci`/`npm
+      install` against an existing `package-lock.json`); modifying operator's `~/.npmrc` (breaks
+      operator's other work); committing project `.npmrc` with a corp registry URL; silent failure /
+      partial install when a registry is unreachable (operator must see the explicit error).
     </Axiom>
 
     <Axiom id="AX_PROJECT_LAYOUT">
@@ -145,7 +164,11 @@
       Ensure `.gitignore` contains: `node_modules/` and `dist/`. Without this `package-lock.json` becomes the only lock-file guarantee — `node_modules/` committed bloats the repo with platform binaries.
     </Step>
     <Step id="STEP_5_INSTALL_DEPENDENCIES">
-      Install dependencies. In a sandboxed agent environment prefix every `npm` invocation with inline env-prefix: `npm_config_registry=https://registry.npmjs.org/ npm install`. Dev tools that affect build output: `--save-exact`. Runtime deps: range acceptable. See AX_NPM_AGENT_SANDBOX_REGISTRY for full sandboxing rationale.
+      Install dependencies. No `package-lock.json` yet → in a sandboxed agent environment prefix the
+      invocation with inline env-prefix: `npm_config_registry=https://registry.npmjs.org/ npm install`.
+      A `package-lock.json` already exists → install as-is (`npm ci` / `npm install`), no registry
+      override — the lock already fixes the registry. Dev tools that affect build output: `--save-exact`.
+      Runtime deps: range acceptable. See AX_NPM_AGENT_SANDBOX_REGISTRY for full rationale.
     </Step>
     <Step id="STEP_6_DECLARE_NPM_SCRIPTS">
       Add primary scripts to `package.json`. Rules: (a) only add a script if the tool is in `devDependencies`; (b) every primary script MUST be one-shot — exits with code, no watch mode (see AX_AI_FIRST_SCRIPTS_ONE_SHOT). Watch variants live in separate `:watch`/`:dev` scripts. Conventional names: `build`, `test`, `lint`, `format`, `type-check`, `clean`.
@@ -335,8 +358,10 @@
     ✅ npm scripts call only tools in `devDependencies`. Primary scripts (`test`, `lint`, `build`, `type-check`) one-shot.
     ✅ `check` script exists in `package.json`. Composed of all active rule phases in `CheckPhaseOrder` (typecheck → test → lint → format). `check-command` declared in infra-spec §Verification Commands.
     ✅ Before adding a package: `engines` and module-system compatibility verified.
-    ✅ Sandboxed agent forces public registry via inline env-prefix on every npm invocation.
-    ✅ Corp registry required → agent halts `[!] BLOCKED`, defers to operator's full-network shell.
+    ✅ Lock file present → install reads its registry as-is, no override. No lock yet → sandboxed agent
+       forces the public registry via inline env-prefix.
+    ✅ Registry incompatible with a required corp package on both sides → agent halts `[!] BLOCKED` with
+       the facts, defers to the operator.
 
     ❌ `.nvmrc` missing / contains range / alias / multiple lines.
     ❌ `package.json#engines` absent or incompatible with `.nvmrc`.
@@ -349,6 +374,8 @@
     ❌ `check` script missing from `package.json` when coding or testing rules are active in scope.
     ❌ `check` script omits a phase covered by an active rule (e.g., lint active but not in `check`).
     ❌ Any phase sub-command in `check` defaults to watch / persistent mode — agent invocations hang indefinitely.
-    ❌ `npm install` without env-prefix in sandbox; modifying operator's `~/.npmrc`; committing project `.npmrc` with corp registry URL.
+    ❌ `npm install`/`npm ci` without env-prefix in sandbox when no lock file exists yet; overriding the
+       registry on a command that already has a lock to read; modifying operator's `~/.npmrc`;
+       committing project `.npmrc` with corp registry URL.
   </RewardCriteria>
 </NodeJSNpmSetup>
