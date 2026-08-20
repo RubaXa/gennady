@@ -24,6 +24,9 @@ import {
   checkScopeDeps,
   checkSpecHierarchy,
   checkResearchOrphans,
+  checkRequirementIds,
+  checkDecisionLogIds,
+  checkRequirementUnhappyPath,
   findResearchLinks,
   findRegisteredResearchLinks,
   moduleGraphEdges,
@@ -606,6 +609,9 @@ export async function run(rawArgs: string[]): Promise<CheckResult> {
         if (specFlow === 'v2') findings.push(...checkSpecLanguage(file, content));
         findings.push(...checkReviewState(file, content));
         findings.push(...checkScopeDeps(file, content, portalEdges));
+        findings.push(...checkRequirementIds(file, content));
+        findings.push(...checkDecisionLogIds(file, content));
+        findings.push(...checkRequirementUnhappyPath(file, content));
         specEntries.push({ file, content, flowVersion: specFlow });
         // Module spec path .../specs/<scope>/<module>/.../<mod>.spec.md; group inter-module edges by scope for a per-scope cycle check (base-independent).
         const parts = file.split(sep);

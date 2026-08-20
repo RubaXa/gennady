@@ -11,6 +11,15 @@ import type { Scope, GraphEdge } from './portal.ts';
 import type { FlowVersion } from './flow.ts';
 import { SCOPE_KINDS, loadBearingSections, foldSections } from './templates.ts';
 import { validateTaskId, findPrefixClashes, describeIdConflict } from './task-id.ts';
+import {
+  deriveSpecAcronym,
+  validateSpecEntryId,
+  specEntryAcronym,
+  specEntryNumber,
+  describeAcronymMismatch,
+  describeNumberCollision,
+  DL_ID_GRAMMAR,
+} from './requirement-id.ts';
 
 /**
  * @purpose One audit finding.
@@ -204,6 +213,87 @@ export function parseHandoffArtifacts(handoffLine: string): string[] {
     .filter(Boolean);
 }
 
+// #region START_BDD_NEGATIVE_HELPERS — invariant: BDD carries ≥1 negative/failure scenario
+// Mechanical, bilingual failure/invalidity marker list — same cheap, imperfect, low-false-positive
+// trade-off as CALQUE_PATTERNS above. A scenario block matching any of these counts as negative.
+/** @purpose Bilingual failure/invalidity markers a negative scenario is expected to mention. */
+const NEGATIVE_SCENARIO_MARKERS: RegExp[] = [
+  /невалид/iu,
+  /недопустим/iu,
+  /отказ/iu,
+  /ошибк/iu,
+  /исключ[её]н/iu,
+  /конфликт/iu,
+  /не\s+найден/iu,
+  /недоступ/iu,
+  /просроч/iu,
+  /поврежд/iu,
+  /бит(ый|ая|ое|ых)\b/iu,
+  /отсутств/iu,
+  /крах/iu,
+  /превыш/iu,
+  /некоррект/iu,
+  /запрещ/iu,
+  /invalid/i,
+  /\berror\b/i,
+  /\bfail(s|ed|ure)?\b/i,
+  /reject/i,
+  /unauthorized/i,
+  /forbidden/i,
+  /not\s+found/i,
+  /timeout/i,
+  /\bconflict\b/i,
+  /exceed/i,
+  /corrupt/i,
+  /denied/i,
+  /crash/i,
+  /exit\s*(code)?\s*[=:]?\s*[1-9]/i,
+];
+
+/**
+ * @purpose Split a BDD section body into per-scenario blocks.
+ * @invariant Intro prose before the first `**Scenario:**` (the `**Feature:**` line) is dropped.
+ * @param body BDD section body.
+ * @returns One block per scenario, in document order (empty when no scenario heading exists).
+ */
+function splitBddScenarios(body: string): string[] {
+  return body.split(/(?=^\*\*Scenario:\*\*)/m).filter((b) => /^\*\*Scenario:\*\*/.test(b.trim()));
+}
+
+/**
+ * @purpose Flag a ticket's Acceptance Criteria (BDD) when it has only happy-path scenarios.
+ * @invariant Pure. Mechanical marker match per scenario block (NEGATIVE_SCENARIO_MARKERS).
+ * @invariant Severity mirrors checkBddCoverage's DONE-gates-existence shape: warn pre-DONE, error once DONE.
+ * @param file Ticket file path.
+ * @param bddBody Extracted BDD section body (caller skips the call when BDD is absent).
+ * @param isDone Whether the ticket's Meta Status is DONE.
+ * @returns One SDD_BDD_MISSING_NEGATIVE finding when no scenario matches a negative marker; else empty.
+ */
+export function checkBddNegativeScenario(
+  file: string,
+  bddBody: string,
+  isDone: boolean
+): Finding[] {
+  const scenarios = splitBddScenarios(bddBody);
+  const hasNegative = scenarios.some((s) => NEGATIVE_SCENARIO_MARKERS.some((re) => re.test(s)));
+  if (hasNegative) return [];
+
+  return [
+    {
+      severity: isDone ? 'error' : 'warn',
+      code: 'SDD_BDD_MISSING_NEGATIVE',
+      file,
+      message:
+        'Acceptance Criteria (BDD) описывает только happy path — нет ни одного негативного/отказного сценария. Добавь сценарий вида:\n' +
+        '**Scenario:** отклоняет невалидный ввод [`unit`] `[<ACR>-REQ-N]`\n' +
+        '- **Given** <невалидное состояние/вход>\n' +
+        '- **When** <команда/запрос>\n' +
+        '- **Then** <система должна отклонить/вернуть ошибку — конкретный код/сообщение>',
+    },
+  ];
+}
+// #endregion END_BDD_NEGATIVE_HELPERS
+
 /**
  * @purpose Run the mechanical checks against one ticket's content.
  * @invariant Pure — no I/O; cross-file checks (spec-link resolution, walking) live in the command.
@@ -256,6 +346,13 @@ export function checkTicket(file: string, content: string): Finding[] {
     isDone = meta.status?.includes('[x]') ?? false;
   }
   // #endregion END_META
+
+  // #region START_BDD_NEGATIVE — invariant: the BDD section carries ≥1 negative/failure scenario
+  const bddSec = extractSection(content, 'BDD');
+  if (bddSec.status === 'ok') {
+    findings.push(...checkBddNegativeScenario(file, bddSec.content, isDone));
+  }
+  // #endregion END_BDD_NEGATIVE
 
   // #region START_EXEC_LOG — invariant: no fabricated DONE; DONE implies no active blocker
   if (logSec.status === 'ok') {
@@ -354,6 +451,244 @@ export function checkTaskIdGrammar(file: string, content: string): Finding[] {
   const reason = validateTaskId(taskId);
   return reason ? [{ severity: 'error', code: 'SDD_TASK_ID_GRAMMAR', file, message: reason }] : [];
 }
+
+// #region START_REQ_DL_IDS — REQUIREMENT_ENTRY_FORMAT / DECISION_LOG_ENTRY_FORMAT ID grammar + uniqueness (AX_REQ_DL_ID_GRAMMAR)
+
+/** @purpose Extract the flat Requirements body — REQUIREMENTS_AND_CONSTRAINTS (scope specs) or MODULE_REQUIREMENTS (module specs), whichever the spec carries. | @param content Full spec markdown. | @returns The section body, or null when neither section is present. */
+function requirementsBody(content: string): string | null {
+  const rac = extractSection(content, 'REQUIREMENTS_AND_CONSTRAINTS');
+  if (rac.status === 'ok') return rac.content;
+  const mod = extractSection(content, 'MODULE_REQUIREMENTS');
+  if (mod.status === 'ok') return mod.content;
+  return null;
+}
+
+/**
+ * @purpose One `### <ID> [<class>]` requirement-entry heading, parsed.
+ * @invariant `classTag` is the raw bracket text (modality plus an optional unwanted-behaviour tag).
+ */
+type RequirementHeading = {
+  /** @purpose The heading's ID token (before the bracket) — may be grammar-invalid. */
+  id: string;
+  /** @purpose The bracket content, trimmed. */
+  classTag: string;
+};
+
+/**
+ * @purpose Match a requirement-entry heading: `### <token> [<bracket>]`.
+ * @invariant The only heading shape here with a trailing bracket — other headings (Out-of-Scope, Rules, …) are bare `### <title>`.
+ * @invariant Permissive on purpose: a malformed ID surfaces as a grammar-violation finding, never silently skipped.
+ */
+const REQUIREMENT_HEADING = /^###[ \t]+(\S+)[ \t]*\[([^\]]*)\][ \t]*$/gm;
+
+/** @purpose Parse every requirement-entry heading out of a Requirements section body. | @param body Section body (requirementsBody's return). | @returns One RequirementHeading per matched heading, in document order. */
+function parseRequirementHeadings(body: string): RequirementHeading[] {
+  return [...body.matchAll(REQUIREMENT_HEADING)].map((m) => ({
+    id: m[1] as string,
+    classTag: (m[2] as string).trim(),
+  }));
+}
+
+/**
+ * @purpose Validate every requirement-entry ID in a spec's Requirements section.
+ * @invariant Pure. Runs only when ≥1 heading is shaped like a requirement entry.
+ * @invariant An old split Functional/Non-Functional spec carries no such heading, so it stays silent.
+ * @param file Spec file path; also the source of the derived spec acronym (deriveSpecAcronym).
+ * @param content Full spec markdown.
+ * @returns SDD_REQ_ID_GRAMMAR / SDD_REQ_ID_COLLISION / SDD_REQ_ACRONYM_MISMATCH findings; all errors.
+ */
+export function checkRequirementIds(file: string, content: string): Finding[] {
+  const body = requirementsBody(content);
+  if (body === null) return [];
+  const entries = parseRequirementHeadings(body);
+  if (entries.length === 0) return [];
+
+  const findings: Finding[] = [];
+  const expectedAcr = deriveSpecAcronym(file);
+  const byNumber = new Map<string, string[]>();
+
+  for (const e of entries) {
+    const reason = validateSpecEntryId(e.id, 'REQ', expectedAcr);
+    if (reason) {
+      findings.push({ severity: 'error', code: 'SDD_REQ_ID_GRAMMAR', file, message: reason });
+      continue;
+    }
+    const acr = specEntryAcronym(e.id, 'REQ') as string;
+    const n = specEntryNumber(e.id, 'REQ') as string;
+    if (acr !== expectedAcr) {
+      findings.push({
+        severity: 'error',
+        code: 'SDD_REQ_ACRONYM_MISMATCH',
+        file,
+        message: describeAcronymMismatch(e.id, 'REQ', acr, expectedAcr, n),
+      });
+    }
+    const key = String(Number(n));
+    const seen = byNumber.get(key);
+    if (seen) seen.push(e.id);
+    else byNumber.set(key, [e.id]);
+  }
+
+  for (const [n, ids] of byNumber) {
+    if (ids.length > 1) {
+      findings.push({
+        severity: 'error',
+        code: 'SDD_REQ_ID_COLLISION',
+        file,
+        message: describeNumberCollision('REQ', n, ids),
+      });
+    }
+  }
+  return findings;
+}
+
+// Happy-path trigger keywords (Когда/Пока/При) per REQUIREMENT_ENTRY_FORMAT — a requirement using
+// one of these describes a normal-flow condition, distinct from the Если…то unwanted-behaviour class.
+const REQ_HAPPY_TRIGGERS = /\*\*Когда\*\*|\*\*Пока\*\*|\*\*При\*\*/;
+
+/**
+ * @purpose Flag a Requirements section that describes only happy-path triggers.
+ * @invariant Runs only in the new flat format (≥1 requirement-entry heading present).
+ * @invariant An old split Functional/Non-Functional spec has none, so it stays silent.
+ * @param file Spec file path.
+ * @param content Full spec markdown.
+ * @returns One SDD_REQ_MISSING_UNHAPPY error when a trigger exists with no unwanted-behaviour entry; else empty.
+ */
+export function checkRequirementUnhappyPath(file: string, content: string): Finding[] {
+  const body = requirementsBody(content);
+  if (body === null) return [];
+  const entries = parseRequirementHeadings(body);
+  if (entries.length === 0) return [];
+
+  const hasHappyTrigger = REQ_HAPPY_TRIGGERS.test(body);
+  const hasUnhappy = entries.some((e) => /нештатная/.test(e.classTag));
+  if (!hasHappyTrigger || hasUnhappy) return [];
+
+  return [
+    {
+      severity: 'error',
+      code: 'SDD_REQ_MISSING_UNHAPPY',
+      file,
+      message:
+        'Requirements описывает happy path (Когда/Пока/При), но не описывает нештатное поведение — добавь требование класса «нештатная» вида: `### <ACR>-REQ-N [должен · нештатная]` / `**Если** <условие>, **то <субъект> должен** <реакция>.` (REQUIREMENT_ENTRY_FORMAT).',
+    },
+  ];
+}
+
+/**
+ * @purpose One Decision Log entry, however written.
+ * @invariant `new` = well-formed `<ACR>-DL-N` one-liner; `new-invalid` = same shape, bad grammar.
+ * @invariant `legacy` = pre-migration file-local `D-<NNN>` (heading or table row) — never an error.
+ */
+type DecisionLogEntry = {
+  id: string;
+  kind: 'new' | 'new-invalid' | 'legacy';
+};
+
+const DL_LEGACY_HEADING = /^###[ \t]+(D-[0-9]+)\b/;
+const DL_LEGACY_TABLE_ROW = /^\|[ \t]*(D-[0-9]+)[ \t]*\|/;
+const DL_FIRST_TOKEN = /^(\S+)/;
+
+/**
+ * @purpose Parse every Decision Log entry out of a section body — new, new-invalid, or legacy.
+ * @invariant A new-format entry is a line whose first token carries `-DL-` (case-insensitive
+ * candidate match, so a lowercase `acr-dl-3` still surfaces as a grammar violation).
+ * @param body DECISION_LOG section body.
+ * @returns One DecisionLogEntry per recognized line, in document order.
+ */
+function parseDecisionLogEntries(body: string): DecisionLogEntry[] {
+  const out: DecisionLogEntry[] = [];
+  for (const raw of body.split('\n')) {
+    const line = raw.trim();
+    if (!line) continue;
+
+    const headM = DL_LEGACY_HEADING.exec(line);
+    if (headM) {
+      out.push({ id: headM[1] as string, kind: 'legacy' });
+      continue;
+    }
+    const rowM = DL_LEGACY_TABLE_ROW.exec(line);
+    if (rowM) {
+      out.push({ id: rowM[1] as string, kind: 'legacy' });
+      continue;
+    }
+
+    // Candidate detection is case-insensitive; the strict grammar test right below decides new vs new-invalid.
+    const token = DL_FIRST_TOKEN.exec(line)?.[1] ?? '';
+    if (!/-DL-/i.test(token)) continue;
+    out.push({ id: token, kind: DL_ID_GRAMMAR.test(token) ? 'new' : 'new-invalid' });
+  }
+  return out;
+}
+
+/**
+ * @purpose Validate every Decision Log entry ID in a spec.
+ * @invariant Pure. The legacy `D-<NNN>` shape is never an error — one SDD_DL_LEGACY_ID warn per file.
+ * @param file Spec file path; also the source of the derived spec acronym (deriveSpecAcronym).
+ * @param content Full spec markdown.
+ * @returns SDD_DL_ID_GRAMMAR / _COLLISION / _ACRONYM_MISMATCH (error) and SDD_DL_LEGACY_ID (warn) findings.
+ */
+export function checkDecisionLogIds(file: string, content: string): Finding[] {
+  const sec = extractSection(content, 'DECISION_LOG');
+  if (sec.status !== 'ok') return [];
+  const entries = parseDecisionLogEntries(sec.content);
+  if (entries.length === 0) return [];
+
+  const findings: Finding[] = [];
+  const expectedAcr = deriveSpecAcronym(file);
+
+  const legacyCount = entries.filter((e) => e.kind === 'legacy').length;
+  if (legacyCount > 0) {
+    findings.push({
+      severity: 'warn',
+      code: 'SDD_DL_LEGACY_ID',
+      file,
+      message: `Decision Log содержит ${legacyCount} запись(ей) в устаревшем файл-локальном формате \`D-N\` — DECISION_LOG_ENTRY_FORMAT определяет новый формат \`<ACR>-DL-N\`. Существующие записи мигрировать не обязательно; для НОВЫХ записей используй новый формат, например: \`${expectedAcr}-DL-1 2026-08-20 — <решение одной фразой> (почему: <критерий>)\`.`,
+    });
+  }
+
+  const byNumber = new Map<string, string[]>();
+  for (const e of entries) {
+    if (e.kind === 'legacy') continue;
+    if (e.kind === 'new-invalid') {
+      findings.push({
+        severity: 'error',
+        code: 'SDD_DL_ID_GRAMMAR',
+        file,
+        message: validateSpecEntryId(e.id, 'DL', expectedAcr) as string,
+      });
+      continue;
+    }
+    const acr = specEntryAcronym(e.id, 'DL') as string;
+    const n = specEntryNumber(e.id, 'DL') as string;
+    if (acr !== expectedAcr) {
+      findings.push({
+        severity: 'error',
+        code: 'SDD_DL_ACRONYM_MISMATCH',
+        file,
+        message: describeAcronymMismatch(e.id, 'DL', acr, expectedAcr, n),
+      });
+    }
+    const key = String(Number(n));
+    const seen = byNumber.get(key);
+    if (seen) seen.push(e.id);
+    else byNumber.set(key, [e.id]);
+  }
+
+  for (const [n, ids] of byNumber) {
+    if (ids.length > 1) {
+      findings.push({
+        severity: 'error',
+        code: 'SDD_DL_ID_COLLISION',
+        file,
+        message: describeNumberCollision('DL', n, ids),
+      });
+    }
+  }
+  return findings;
+}
+
+// #endregion END_REQ_DL_IDS
 
 /**
  * @purpose Gathered portal facts for the integrity check — the command supplies the fs-derived spec dirs.
