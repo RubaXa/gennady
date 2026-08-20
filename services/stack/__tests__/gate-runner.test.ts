@@ -10,7 +10,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import type { Gate, StackDiagnostic, StackRun } from '../stack.types.ts';
 
-const { runVerify, formatVerifyReport, exitCodeMatches, outputMatches, streamMatches } =
+const { runVerify, runFix, formatVerifyReport, exitCodeMatches, outputMatches, streamMatches } =
   await import('../gate-runner.ts');
 
 // Small one-commit repo shared by the plain-gate tests: every gate runs in a run
@@ -293,7 +293,49 @@ describe('runVerify — predicates see a bounded window (spec §8.2)', () => {
   });
 });
 
+describe('runVerify — timeout enforcement (review #6)', () => {
+  it('kills a gate that ignores SIGTERM and classifies it as a timeout', () => {
+    const gate: Gate = {
+      ...shellGate('stubborn', 'trap "" TERM; sleep 30'),
+      timeoutMs: 700,
+    };
+    const startedAt = Date.now();
+    const report = runVerify([runOf([gate])], []);
+    const elapsed = Date.now() - startedAt;
+
+    assert.equal(report.results[0]?.status, 'timeout', report.results[0]?.output);
+    assert.ok(elapsed < 10_000, `runner waited ${elapsed}ms for a 700ms timeout`);
+  });
+
+  it('refuses a non-positive timeout rather than treating it as unlimited', () => {
+    const gate: Gate = { ...shellGate('zero', 'exit 0'), timeoutMs: 0 };
+    assert.throws(() => runVerify([runOf([gate])], []), /non-positive timeout/);
+  });
+});
+
 describe('runVerify — requires preconditions (spec §4.7)', () => {
+  it('runs preconditions on the unsandboxed path too (review #12)', () => {
+    const marker = path.join(BASE_DIR, 'unsandboxed-gate-ran.txt');
+    fs.rmSync(marker, { force: true });
+    const gate: Gate = {
+      ...shellGate('deploy', `touch ${JSON.stringify(marker)}`),
+      requires: [
+        {
+          argv: ['/bin/sh', '-c', 'echo "no cluster credentials" >&2; exit 1'],
+          cwd: BASE_DIR,
+          timeoutMs: 10_000,
+          hint: 'run `kubectl login` first',
+        },
+      ],
+    };
+    // runFix passes no pool — the same unsandboxed path a non-git repository takes.
+    const results = runFix([gate]);
+
+    assert.equal(results[0]?.status, 'env-fail');
+    assert.match(results[0]?.output ?? '', /run `kubectl login` first/);
+    assert.equal(fs.existsSync(marker), false, 'the gate command must not have run');
+  });
+
   it('reports env-fail with the precondition hint and never runs the gate command', () => {
     const marker = path.join(BASE_DIR, 'gate-ran.txt');
     const gate: Gate = {

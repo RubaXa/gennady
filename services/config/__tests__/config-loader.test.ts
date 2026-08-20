@@ -87,3 +87,44 @@ describe('loadConfigSection', () => {
     });
   });
 });
+
+describe('loadConfigSection — prototype-polluting keys (review #2)', () => {
+  it('reports __proto__ as an error instead of letting it vanish into the prototype', () => {
+    withConfigs({ '.gennadyrc': '{"stack":{"__proto__":{"use":["golang"]}}}' }, (dir) => {
+      const load = loadConfigSection(dir, 'stack');
+      assert.ok(
+        load.errors.some(
+          (error) => /__proto__/.test(error.path) || /__proto__/.test(error.message)
+        ),
+        'a __proto__ key must be reported, not silently applied to the prototype chain'
+      );
+      assert.strictEqual(
+        (load.section as Record<string, unknown> | null)?.['use'],
+        undefined,
+        'nothing may leak in through the prototype chain'
+      );
+    });
+  });
+
+  it('reports constructor and prototype keys too', () => {
+    withConfigs({ '.gennadyrc': '{"stack":{"constructor":1,"prototype":2}}' }, (dir) => {
+      const load = loadConfigSection(dir, 'stack');
+      const paths = load.errors.map((error) => error.path).join(' ');
+      assert.match(paths, /constructor/);
+      assert.match(paths, /prototype/);
+    });
+  });
+});
+
+describe('parseDuration — a mandatory timeout cannot be zeroed (review #9)', () => {
+  it('rejects zero durations', () => {
+    for (const value of ['0s', '0m', '0h', '00s']) {
+      assert.strictEqual(parseDuration(value), null, `${value} must not parse`);
+    }
+  });
+
+  it('still accepts positive durations', () => {
+    assert.strictEqual(parseDuration('1s'), 1_000);
+    assert.strictEqual(parseDuration('10m'), 600_000);
+  });
+});

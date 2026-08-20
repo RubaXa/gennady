@@ -13,8 +13,16 @@ export const PROJECT_CONFIG_FILENAME = 'gennady.yaml';
 /** Personal config filename (JSON), used both in the repo and in $HOME. */
 const RC_FILENAME = '.gennadyrc';
 
-/** Duration string grammar: `<int><s|m|h>` (config.spec §2.3). */
-const DURATION_RE = /^(\d+)(s|m|h)$/;
+/**
+ * Keys that must never be merged. Assigning `__proto__` walks the prototype setter instead of
+ * creating a property, so the key disappears from `Object.keys` and strict validation never
+ * sees it, while lookups still resolve through the injected prototype.
+ */
+const FORBIDDEN_KEYS: readonly string[] = ['__proto__', 'constructor', 'prototype'];
+
+/** Duration grammar: `<positive-int><s|m|h>`. Zero is rejected — a mandatory timeout
+ * that can be set to `0s` is not mandatory (config.spec §2.3). */
+const DURATION_RE = /^([1-9]\d*)(s|m|h)$/;
 
 /**
  * @purpose One fatal config problem; any error stops the command before it acts (FR-CFG-04).
@@ -200,18 +208,41 @@ function mergeInto(
   source: Record<string, unknown>,
   sourceName: string,
   keyPath: string,
-  provenance: Map<string, string>
+  provenance: Map<string, string>,
+  errors: ConfigError[]
 ): void {
   for (const [key, value] of Object.entries(source)) {
     const childPath = keyPath.length > 0 ? `${keyPath}.${key}` : key;
+    if (FORBIDDEN_KEYS.includes(key)) {
+      // Reported, not skipped silently: a dropped key is a config the user believes is applied.
+      errors.push({
+        path: childPath,
+        message: `forbidden key "${key}" — it would mutate the prototype chain instead of the config`,
+      });
+      continue;
+    }
     if (isPlainObject(value) && isPlainObject(target[key])) {
-      mergeInto(target[key] as Record<string, unknown>, value, sourceName, childPath, provenance);
+      mergeInto(
+        target[key] as Record<string, unknown>,
+        value,
+        sourceName,
+        childPath,
+        provenance,
+        errors
+      );
     } else {
       target[key] = value;
       provenance.set(childPath, sourceName);
       if (isPlainObject(value)) {
         // A subtree introduced wholesale: tag its leaves too, so lookups at any depth resolve.
-        mergeInto(target[key] as Record<string, unknown>, value, sourceName, childPath, provenance);
+        mergeInto(
+          target[key] as Record<string, unknown>,
+          value,
+          sourceName,
+          childPath,
+          provenance,
+          errors
+        );
       }
     }
   }
@@ -272,7 +303,7 @@ export function loadConfigSection(root: string, sectionName: string): ConfigSect
       continue;
     }
     seen = true;
-    mergeInto(merged, source.stack as Record<string, unknown>, source.name, '', provenance);
+    mergeInto(merged, source.stack as Record<string, unknown>, source.name, '', provenance, errors);
   }
 
   return {

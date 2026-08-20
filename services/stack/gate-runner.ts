@@ -121,7 +121,14 @@ function runGate(gate: Gate, pool: ReplicaPool | null): GateResult {
   }
 
   const slot: ReplicaSlot = pool?.acquire(gate.cwd) ?? { kind: 'unsandboxed' };
+
   if (slot.kind !== 'replica') {
+    // Preconditions gate both paths: a fixer or a non-git repository must not skip them
+    // just because there is no replica to run them in.
+    const failedOutsideReplica = firstFailingPrecondition(gate, null);
+    if (failedOutsideReplica !== null) {
+      return failedOutsideReplica;
+    }
     if (gate.driftMeansFailure === true) {
       // Drift cannot be computed without a replica — the environment is short of git/HEAD.
       return {
@@ -237,10 +244,20 @@ function executeGate(
 ): GateResult {
   const startedAt = Date.now();
   const [bin, ...args] = argv;
+  if (!Number.isFinite(gate.timeoutMs) || gate.timeoutMs <= 0) {
+    // A mandatory timeout that is zero or absent is not mandatory; spawnSync reads 0 as "never".
+    throw new Error(
+      `[executeGate] gate ${gate.stack}:${gate.id} has a non-positive timeout (${gate.timeoutMs}ms)`
+    );
+  }
   const proc = spawnSync(bin!, args, {
     cwd,
     encoding: 'utf-8',
     timeout: gate.timeoutMs,
+    // SIGTERM is ignorable, and a gate that ignores it runs to completion while the runner
+    // waits: measured 4s against a 600ms timeout, reported as SIGPIPE rather than a timeout.
+    // SIGKILL cannot be trapped, and `error.code` stays ETIMEDOUT so classification holds.
+    killSignal: 'SIGKILL',
     maxBuffer: 64 * 1024 * 1024,
     env: gate.env !== undefined ? { ...process.env, ...gate.env } : process.env,
   });

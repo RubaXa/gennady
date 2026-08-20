@@ -119,7 +119,7 @@ jobs:
       - name: Restore Go build cache
         uses: actions/cache@v4
         with:
-          path: ~/.cache/gennady-stack-e2e-go
+          path: ${{ runner.temp }}/gennady-stack-e2e-go
           key: stack-e2e-gocache-${{ runner.os }}-go1.24-${{ hashFiles('services/stack/__tests__/e2e/fixtures/golang/*/go.mod') }}
           restore-keys: stack-e2e-gocache-${{ runner.os }}-go1.24-
       # STRICT turns a missing toolchain into a failure: a suite that silently skipped
@@ -127,7 +127,7 @@ jobs:
       - run: npm run test:stack-e2e
         env:
           STACK_E2E_STRICT: '1'
-          STACK_E2E_GOCACHE: ~/.cache/gennady-stack-e2e-go
+          STACK_E2E_GOCACHE: ${{ runner.temp }}/gennady-stack-e2e-go
 
   dogfood:
     name: dogfood (gennady verifies gennady)
