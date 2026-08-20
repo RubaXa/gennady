@@ -42,7 +42,7 @@ function summarize(project: GoProject): string[] {
  * @purpose StackPlugin for Go repositories. Detection: `<root>/go.mod` exists (spec §3) —
  *   deeper scanning only feeds informational diagnostics, never the detection decision.
  * @implements {StackPlugin} in specs/stack/stack.spec.md
- * @invariant detect() runs no processes beyond the golangci-lint version probe.
+ * @invariant detect() runs no processes: `verify --plan` must never execute repo-supplied code.
  * @consumer stack-registry
  */
 export const golangPlugin: StackPlugin = {
@@ -51,6 +51,9 @@ export const golangPlugin: StackPlugin = {
   description:
     'go generate (drift check), go build, go vet, gofmt -l, golangci-lint, go test; changed-package scoping',
 
+  // A repo-pinned ./bin/<tool> is the toolchain, not tree state: it is usually gitignored, so
+  // the replica would not have it and every gate using it would ENOENT (D-STACK-013, review #5).
+  sandboxLinks: ['bin'],
   gateIds: GO_GATE_ORDER,
 
   detect(root: string): StackDetection | null {

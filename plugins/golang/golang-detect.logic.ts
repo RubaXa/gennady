@@ -4,7 +4,6 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
 import type { StackDiagnostic } from 'gennady/stack';
 
 /** Directories never worth descending into when hunting for `go.mod`. */
@@ -56,7 +55,6 @@ export type GoTool = {
   /** @purpose Where the binary came from — `repo-bin` wins over `path` so pinned versions are honoured. */
   readonly origin: 'repo-bin' | 'path' | 'missing';
   /** @purpose Go toolchain version the binary was built with, when the tool reports it. */
-  readonly builtWithGo: string | null;
 };
 
 /**
@@ -252,23 +250,6 @@ function findMakeTargets(makefile: string | null): string[] {
 }
 
 /**
- * @purpose Read the Go toolchain version a linter binary was compiled against.
- * @param id Tool identifier; only golangci-lint reports this.
- * @param bin Absolute path to the executable.
- * @returns Dotted Go version such as `1.25.5`, or null when unavailable.
- * @sideEffect Process: runs `<bin> version` with a short timeout (detect-time probe).
- */
-function readBuiltWithGo(id: GoToolId, bin: string): string | null {
-  if (id !== 'golangci-lint') {
-    return null;
-  }
-
-  const proc = spawnSync(bin, ['version'], { encoding: 'utf-8', timeout: 10_000 });
-  const text = `${proc.stdout ?? ''}${proc.stderr ?? ''}`;
-  return /built with go(\d[\w.]*)/.exec(text)?.[1] ?? null;
-}
-
-/**
  * @purpose Resolve an executable, preferring a repo-pinned binary over whatever PATH offers.
  * @param id Tool identifier used for both the binary name and the report.
  * @param root Absolute repository root, searched for a pinned `bin/<id>`.
@@ -279,7 +260,7 @@ function resolveTool(id: GoToolId, root: string): GoTool {
   const pinned = path.join(root, 'bin', id);
   try {
     fs.accessSync(pinned, fs.constants.X_OK);
-    return { id, bin: pinned, origin: 'repo-bin', builtWithGo: readBuiltWithGo(id, pinned) };
+    return { id, bin: pinned, origin: 'repo-bin' };
   } catch {
     // Fall through to PATH lookup.
   }
@@ -290,62 +271,41 @@ function resolveTool(id: GoToolId, root: string): GoTool {
     const candidate = path.join(entry, id);
     try {
       fs.accessSync(candidate, fs.constants.X_OK);
-      return { id, bin: candidate, origin: 'path', builtWithGo: readBuiltWithGo(id, candidate) };
+      return { id, bin: candidate, origin: 'path' };
     } catch {
       continue;
     }
   }
 
-  return { id, bin: null, origin: 'missing', builtWithGo: null };
-}
-
-/**
- * @purpose Compare two dotted version strings numerically, segment by segment.
- * @param left First version.
- * @param right Second version.
- * @returns Negative when left is older, positive when newer, zero when equal.
- */
-function compareVersions(left: string, right: string): number {
-  const leftParts = left.split('.').map((part) => Number.parseInt(part, 10) || 0);
-  const rightParts = right.split('.').map((part) => Number.parseInt(part, 10) || 0);
-
-  for (let i = 0; i < Math.max(leftParts.length, rightParts.length); i++) {
-    const diff = (leftParts[i] ?? 0) - (rightParts[i] ?? 0);
-    if (diff !== 0) {
-      return diff;
-    }
-  }
-  return 0;
+  return { id, bin: null, origin: 'missing' };
 }
 
 /**
  * @purpose Flag environment problems that would make gate output misleading if left unexplained.
- * @param modules Discovered modules, whose first entry supplies the required language version.
- * @param golangci Resolved golangci-lint tool.
+ * @param modules Discovered modules.
+ * @param go Resolved `go` tool; a missing binary blocks the whole run.
  * @param missingConfigs Config paths the Makefile expects but that are absent.
  * @returns Diagnostics describing each problem and how to resolve it.
  */
 function collectDiagnostics(
   modules: readonly GoModule[],
-  golangci: GoTool,
+  go: GoTool,
   missingConfigs: readonly string[]
 ): StackDiagnostic[] {
   const diagnostics: StackDiagnostic[] = [];
-  const required = modules[0]?.goVersion ?? '';
 
-  // #region START_LINTER_GO_SKEW — golangci-lint panics outright on packages newer than its own Go
-  if (required.length > 0 && golangci.builtWithGo !== null) {
-    if (compareVersions(golangci.builtWithGo, required) < 0) {
-      diagnostics.push({
-        code: 'GOLANGCI_GO_TOO_OLD',
-        message:
-          `golangci-lint was built with go${golangci.builtWithGo} but this module requires go${required} — ` +
-          'the linter will panic instead of reporting issues.',
-        fix: `Install a golangci-lint built with go${required}+, or skip via gennady.yaml: stack.golang.skipGates: [lint].`,
-      });
-    }
+  // #region START_TOOLCHAIN_MISSING — invariant: no toolchain means no verdict, never a pass
+  // Without `go` every gate but gofmt is planned as skipped. Skips do not fail a run, so a
+  // repository whose toolchain is absent would report ALL_GATES_PASS on gofmt alone.
+  if (go.bin === null) {
+    diagnostics.push({
+      code: 'TOOLCHAIN_MISSING',
+      message: 'go was not found in PATH — build, vet, lint, test and generate cannot run.',
+      fix: 'Install Go (or add it to PATH); to verify a repository without it, scope the run to other stacks.',
+      blocking: true,
+    });
   }
-  // #endregion END_LINTER_GO_SKEW
+  // #endregion END_TOOLCHAIN_MISSING
 
   if (missingConfigs.length > 0) {
     diagnostics.push({

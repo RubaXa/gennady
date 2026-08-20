@@ -167,7 +167,11 @@ function runGate(gate: Gate, pool: ReplicaPool | null): GateResult {
         return slot.dir;
       }
       if (real.startsWith(realTop + path.sep)) {
-        return path.join(slot.dir, path.relative(realTop, real));
+        const mapped = path.join(slot.dir, path.relative(realTop, real));
+        // An ignored path is not replicated, so its mapped form may not exist. Spawning it would
+        // be a guaranteed ENOENT reported as a broken tool; the real one still works (a plugin
+        // that needs the path inside the replica declares it in sandboxLinks).
+        return fs.existsSync(mapped) ? mapped : entry;
       }
     } catch {
       // Not an existing path (a plain argument that looks absolute) — leave it.
@@ -387,7 +391,12 @@ export function runVerify(
     results,
     passed,
     total: executed.length,
-    ok: executed.every((result) => result.status === 'pass'),
+    // A blocking diagnostic means gates could not be planned, so there was nothing left to
+    // fail. Keyed on the diagnostic, not on "zero gates executed": a stack that is legitimately
+    // out of scope executes nothing and must stay green.
+    ok:
+      executed.every((result) => result.status === 'pass') &&
+      !diagnostics.some((diagnostic) => diagnostic.blocking === true),
   };
 }
 
@@ -491,6 +500,15 @@ export function formatVerifyReport(report: VerifyReport): string {
     const skips = report.results.filter((result) => result.status === 'skipped').length;
     lines.push(
       `[verify] ZERO_GATES: nothing was executed (${skips} gate(s) skipped) — verified nothing`
+    );
+  } else if (report.diagnostics.some((diagnostic) => diagnostic.blocking === true)) {
+    // Without this line an ok:false run with no failing gate would end with no verdict at all.
+    const codes = report.diagnostics
+      .filter((diagnostic) => diagnostic.blocking === true)
+      .map((diagnostic) => diagnostic.code)
+      .join(', ');
+    lines.push(
+      `[verify] BLOCKED: ${codes} — the gates that matter could not run, so nothing was verified`
     );
   } else if (report.ok) {
     const notes = report.runs.map((run) => `${run.detection.stack}: ${run.scope.note}`).join(' · ');

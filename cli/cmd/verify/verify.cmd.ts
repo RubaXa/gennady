@@ -23,6 +23,8 @@ import {
 import { formatDuration, provenanceOf } from '../../../services/config/config-loader.ts';
 import {
   applyStackConfig,
+  unmatchedGateOverrides,
+  type StackConfigError,
   loadStackConfig,
   pluginConfigOf,
 } from '../../../services/stack/stack-config.ts';
@@ -145,6 +147,10 @@ export async function run(argv: string[]): Promise<number> {
     targets: positional,
   };
 
+  // An override that cannot take effect is an invalid config, same as an unknown key: the user
+  // wrote a command they believe now runs (review #10).
+  const overrideErrors: StackConfigError[] = [];
+
   // #region START_PLAN — plugin plans built-ins, config overrides/extends, CLI only/skip filters last
   const runs: StackRun[] = active.map(({ plugin, detection }) => {
     const scope = plugin.verify.resolveScope(detection, request);
@@ -163,8 +169,17 @@ export async function run(argv: string[]): Promise<number> {
       configLoad.provenance,
       unskipIds
     );
+    overrideErrors.push(...unmatchedGateOverrides(gates, pluginConfig, plugin.id));
     return { detection, scope, gates };
   });
+
+  if (overrideErrors.length > 0) {
+    console.error('[verify] CONFIG_ERROR: stack config is invalid — refusing to run');
+    for (const error of overrideErrors) {
+      console.error(`  ${error.path}: ${error.message}`);
+    }
+    return EXIT_BAD_INVOCATION;
+  }
 
   const allGates = runs.flatMap((run) => run.gates);
   const unknown = [...only, ...skip].filter(

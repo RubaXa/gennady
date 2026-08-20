@@ -385,6 +385,33 @@ export function pluginConfigOf(
 }
 
 /**
+ * @purpose Overrides naming a gate the plugin never planned — valid id, no effect.
+ * @invariant Load-time validation knows only the id vocabulary; which gates exist is known
+ *   after planning, so the silent-drop case is caught here.
+ * @param gates Planned gates of one stack.
+ * @param pluginConfig That stack's config slice, or null.
+ * @param stack Stack id, for the error path.
+ * @returns One error per override that matched nothing.
+ */
+export function unmatchedGateOverrides(
+  gates: readonly Gate[],
+  pluginConfig: StackPluginConfig | null,
+  stack: StackId
+): ConfigError[] {
+  const overrides = pluginConfig?.overrideGates ?? {};
+  const planned = new Set(gates.map((gate) => gate.id));
+
+  return Object.keys(overrides)
+    .filter((id) => !planned.has(id))
+    .map((id) => ({
+      path: `${stack}.overrideGates.${id}`,
+      message:
+        `no ${stack} gate "${id}" in this repository, so the override cannot take effect — ` +
+        `planned gates: ${[...planned].join(', ') || 'none'}`,
+    }));
+}
+
+/**
  * @purpose Apply a plugin's config slice to its planned gates per FR-STACK-05.
  * @invariant Order: overrideGates → skipGates → extraGates. Config-skipped gates stay visible
  *   as skip entries carrying their source file — never silently dropped.

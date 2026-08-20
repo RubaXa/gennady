@@ -23,7 +23,7 @@ function write(relativePath: string, content = 'package x\n'): void {
 
 /** @purpose Build a resolved tool stub. */
 function tool(id: GoToolId): GoTool {
-  return { id, bin: `/usr/bin/${id}`, origin: 'path', builtWithGo: null };
+  return { id, bin: `/usr/bin/${id}`, origin: 'path' };
 }
 
 /** @purpose Build a minimal project fixture rooted at the temporary directory. */

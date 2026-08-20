@@ -19,7 +19,6 @@ function tool(id: GoToolId, available = true): GoTool {
     id,
     bin: available ? `/usr/bin/${id}` : null,
     origin: available ? 'path' : 'missing',
-    builtWithGo: null,
   };
 }
 

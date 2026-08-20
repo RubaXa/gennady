@@ -293,6 +293,36 @@ describe('runVerify — predicates see a bounded window (spec §8.2)', () => {
   });
 });
 
+describe('runVerify — blocking diagnostics (review #1)', () => {
+  it('a blocking diagnostic cannot report a pass, even when every executed gate passed', () => {
+    const report = runVerify(
+      [runOf([shellGate('fmt', 'exit 0')])],
+      [
+        {
+          code: 'TOOLCHAIN_MISSING',
+          message: 'go was not found in PATH',
+          fix: 'install Go',
+          blocking: true,
+        },
+      ]
+    );
+
+    assert.equal(report.results[0]?.status, 'pass');
+    assert.equal(report.ok, false, 'gates that could not be planned leave nothing to fail');
+    assert.match(formatVerifyReport(report), /BLOCKED: TOOLCHAIN_MISSING/);
+  });
+
+  it('an ordinary diagnostic is advisory and leaves a clean run green', () => {
+    const report = runVerify(
+      [runOf([shellGate('fmt', 'exit 0')])],
+      [{ code: 'NESTED_MODULES', message: 'nested module found', fix: 'verify it separately' }]
+    );
+
+    assert.equal(report.ok, true);
+    assert.match(formatVerifyReport(report), /ALL_GATES_PASS/);
+  });
+});
+
 describe('runVerify — timeout enforcement (review #6)', () => {
   it('kills a gate that ignores SIGTERM and classifies it as a timeout', () => {
     const gate: Gate = {

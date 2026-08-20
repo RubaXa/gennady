@@ -16,6 +16,11 @@ export type StackDiagnostic = {
   readonly message: string;
   /** @purpose Concrete action that resolves it. */
   readonly fix: string;
+  /**
+   * @purpose True when the problem invalidates the run: unplanned gates leave nothing to fail,
+   *   so the report must not read as a pass.
+   */
+  readonly blocking?: boolean;
 };
 
 /**

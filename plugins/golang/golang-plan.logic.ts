@@ -139,6 +139,14 @@ const MODULE_FETCH_RE =
 const MODULE_RESOLVE_RE =
   /^\S+\.go:\d+:\d+: .*(?:module lookup disabled|dial tcp|i\/o timeout|no such host|connection refused|Forbidden|403)/m;
 
+/**
+ * golangci-lint built with an older Go than the module requires aborts instead of linting. The
+ * plugin used to warn about this at plan time by running `golangci-lint version`, which meant
+ * `verify --plan` executed a repo-supplied binary; the check now lives here, where the tool has
+ * already spoken for itself (review #8).
+ */
+const LINTER_GO_SKEW_RE = /requires newer Go version|compile.*version .*go\d/m;
+
 /** Predicates for gates where a panic means the TOOL crashed (build/vet/lint — not test). */
 const GO_TOOL_ENV_FAIL: readonly EnvFailPredicate[] = [
   outputMatches(PANIC_RE),
@@ -331,7 +339,15 @@ export function planGoGates(project: GoProject, scope: GoScope, options: GatePla
             cwd: project.root,
             timeoutMs: GATE_TIMEOUTS_MS[id],
             outputMeansFailure: false,
-            envFail: [exitCodeMatches('>1'), ...GO_TOOL_ENV_FAIL],
+            envFail: [
+              exitCodeMatches('>1'),
+              outputMatches(
+                LINTER_GO_SKEW_RE,
+                'golangci-lint predates the Go version this module requires — install a newer one, ' +
+                  'or skip it via gennady.yaml: stack.golang.skipGates: [lint].'
+              ),
+              ...GO_TOOL_ENV_FAIL,
+            ],
             skipped: null,
           });
         }
