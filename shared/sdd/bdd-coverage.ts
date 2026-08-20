@@ -155,7 +155,7 @@ export function checkBddCoverage(
           severity: 'error',
           code: 'SDD_BDD_DEFERRED_TO_SELF',
           file,
-          message: `Scenario "${e.scenario}" defers test ownership to this ticket's own Task-ID (${selfTaskId}) — that hides missing coverage instead of delegating it to another ticket.`,
+          message: `Scenario "${e.scenario}" defers test ownership to this ticket's own Task-ID (${selfTaskId}) — that hides missing coverage instead of delegating it to another ticket. Fix: either write the test now and delete this "Deferred Test Ownership" row, or change the Task-ID to the other ticket that will actually own the test.`,
         });
       }
       continue;

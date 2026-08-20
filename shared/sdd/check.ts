@@ -214,15 +214,27 @@ export function checkTicket(file: string, content: string): Finding[] {
   // #region START_STRUCTURE — a ticket carries META and EXECUTION_LOG
   const metaSec = extractSection(content, 'META');
   const logSec = extractSection(content, 'EXECUTION_LOG');
-  if (metaSec.status !== 'ok') err('SDD_MISSING_META', 'No usable META section.');
-  if (logSec.status !== 'ok') err('SDD_MISSING_EXECUTION_LOG', 'No usable EXECUTION_LOG section.');
+  if (metaSec.status !== 'ok')
+    err(
+      'SDD_MISSING_META',
+      'No usable META section. Add `<!--SECTION:META--> … <!--/SECTION:META-->` with at least `**Task-ID:** <ACR>-<slug>` and `**Status:** [ ] TODO`.'
+    );
+  if (logSec.status !== 'ok')
+    err(
+      'SDD_MISSING_EXECUTION_LOG',
+      'No usable EXECUTION_LOG section. Add `<!--SECTION:EXECUTION_LOG--> … <!--/SECTION:EXECUTION_LOG-->` — every phase logs its Handoff line there.'
+    );
   // #endregion END_STRUCTURE
 
   // #region START_META — Task-ID present; Status parseable
   let isDone = false;
   if (metaSec.status === 'ok') {
     const meta = parseMetaInfo(metaSec.content);
-    if (!meta.taskId) warn('SDD_MISSING_TASK_ID', 'Meta has no parseable Task-ID.');
+    if (!meta.taskId)
+      warn(
+        'SDD_MISSING_TASK_ID',
+        'Meta has no parseable Task-ID. Add a `**Task-ID:** <ACR>-<slug>` line (e.g. `**Task-ID:** TSK-login`).'
+      );
     if (!meta.status)
       warn('SDD_STATUS_UNPARSEABLE', 'Meta Status is missing or not in `[x] STATE` form.');
     isDone = meta.status?.includes('[x]') ?? false;

@@ -23,7 +23,8 @@ export function check(content: string, filePath: string): LintError[] {
       col: 1,
       severity: 'error',
       code: ERR_CLI_LINT_MISSING_FILE,
-      message: '[FileHeaderCheck#check] Missing // @file: directive',
+      message:
+        '[FileHeaderCheck#check] Missing // @file: directive. Fix: add `// @file: <one-line purpose>` as the first line, before any import.',
     });
     errors.push({
       file: filePath,
@@ -31,7 +32,8 @@ export function check(content: string, filePath: string): LintError[] {
       col: 1,
       severity: 'error',
       code: ERR_CLI_LINT_MISSING_CONSUMERS,
-      message: '[FileHeaderCheck#check] Missing // @consumers: directive',
+      message:
+        '[FileHeaderCheck#check] Missing // @consumers: directive. Fix: add `// @consumers: <caller1>, <caller2>` (or `N/A`) before any import.',
     });
     return errors;
   }
@@ -66,7 +68,8 @@ export function check(content: string, filePath: string): LintError[] {
       col: 1,
       severity: 'error',
       code: ERR_CLI_LINT_MISSING_FILE,
-      message: '[FileHeaderCheck#check] Missing // @file: directive',
+      message:
+        '[FileHeaderCheck#check] Missing // @file: directive. Fix: add `// @file: <one-line purpose>` as the first line, before any import.',
     });
   }
 
@@ -77,7 +80,8 @@ export function check(content: string, filePath: string): LintError[] {
       col: 1,
       severity: 'error',
       code: ERR_CLI_LINT_MISSING_CONSUMERS,
-      message: '[FileHeaderCheck#check] Missing // @consumers: directive',
+      message:
+        '[FileHeaderCheck#check] Missing // @consumers: directive. Fix: add `// @consumers: <caller1>, <caller2>` (or `N/A`) before any import.',
     });
   }
 

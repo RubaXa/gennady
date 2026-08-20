@@ -109,7 +109,7 @@ function checkSpecLinks(file: string, content: string): Finding[] {
         severity: 'error',
         code: 'SDD_BROKEN_SPEC_LINK',
         file,
-        message: `Referenced spec does not resolve on disk: ${target}`,
+        message: `Referenced spec does not resolve on disk: ${target}. Fix: create the spec at that path, or correct the link target.`,
       });
     }
   }
@@ -126,7 +126,7 @@ function checkResearchRefs(file: string, content: string): Finding[] {
         severity: 'error',
         code: 'SDD_RESEARCH_REF_BROKEN',
         file,
-        message: `Referenced research doc does not resolve on disk: ${target}`,
+        message: `Referenced research doc does not resolve on disk: ${target}. Fix: create the research doc at that path, or correct the link target.`,
       });
     }
   }
@@ -145,7 +145,7 @@ function checkRuleLinks(file: string, content: string): Finding[] {
         severity: 'error',
         code: 'SDD_BROKEN_RULE_LINK',
         file,
-        message: `Referenced rule file does not resolve on disk: ${target}`,
+        message: `Referenced rule file does not resolve on disk: ${target}. Fix: correct the link to the real rule file under ai/directives/, or drop it from Rules: if it does not apply.`,
       });
     }
   }

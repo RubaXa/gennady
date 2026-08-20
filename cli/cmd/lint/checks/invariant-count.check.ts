@@ -135,7 +135,7 @@ export function check(content: string, filePath: string, maxInvariants: number):
               col: currentEntity.nameCol,
               severity: 'error',
               code: ERR_CLI_LINT_TOO_MANY_INVARIANTS,
-              message: `Entity "${currentEntity.name}" has ${currentEntity.jsdocCount} JSDoc @invariant tags (max ${maxInvariants}) — consider reviewing the contract; too many invariants suggest the entity is overloaded`,
+              message: `Entity "${currentEntity.name}" has ${currentEntity.jsdocCount} JSDoc @invariant tags (max ${maxInvariants}) — overloaded contract. Fix: split "${currentEntity.name}" into smaller entities, or move related invariants into a separate helper's own contract.`,
             });
           }
           if (currentEntity.regionCount > maxInvariants) {
@@ -145,7 +145,7 @@ export function check(content: string, filePath: string, maxInvariants: number):
               col: currentEntity.nameCol,
               severity: 'error',
               code: ERR_CLI_LINT_TOO_MANY_INVARIANTS,
-              message: `Entity "${currentEntity.name}" has ${currentEntity.regionCount} region invariants (max ${maxInvariants}) — consider reviewing the contract; too many region invariants suggest the entity is overloaded`,
+              message: `Entity "${currentEntity.name}" has ${currentEntity.regionCount} region invariants (max ${maxInvariants}) — overloaded contract. Fix: split "${currentEntity.name}" into smaller entities, or consolidate related region invariants into one.`,
             });
           }
           entityStack.pop();
@@ -170,7 +170,7 @@ export function check(content: string, filePath: string, maxInvariants: number):
         col: entity.nameCol,
         severity: 'error',
         code: ERR_CLI_LINT_TOO_MANY_INVARIANTS,
-        message: `Entity "${entity.name}" has ${entity.jsdocCount} JSDoc @invariant tags (max ${maxInvariants}) — consider reviewing the contract; too many invariants suggest the entity is overloaded`,
+        message: `Entity "${entity.name}" has ${entity.jsdocCount} JSDoc @invariant tags (max ${maxInvariants}) — overloaded contract. Fix: split "${entity.name}" into smaller entities, or move related invariants into a separate helper's own contract.`,
       });
     }
     if (entity.regionCount > maxInvariants) {
@@ -180,7 +180,7 @@ export function check(content: string, filePath: string, maxInvariants: number):
         col: entity.nameCol,
         severity: 'error',
         code: ERR_CLI_LINT_TOO_MANY_INVARIANTS,
-        message: `Entity "${entity.name}" has ${entity.regionCount} region invariants (max ${maxInvariants}) — consider reviewing the contract; too many region invariants suggest the entity is overloaded`,
+        message: `Entity "${entity.name}" has ${entity.regionCount} region invariants (max ${maxInvariants}) — overloaded contract. Fix: split "${entity.name}" into smaller entities, or consolidate related region invariants into one.`,
       });
     }
   }
