@@ -134,14 +134,17 @@ export function checkTestFileAmbiguity(
  * @param caseNamesByFile Test-file basename → its extracted `it`/`test` case names (adapter-read).
  * @param [flowVersion] The ticket's own flow version — `'v1'` default, the conservative choice.
  * @param [selfTaskId] This ticket's own Task-ID (from its META), or null when unknown/unparseable.
- * @returns One `SDD_BDD_SCENARIO_UNTESTED` per claimed case name not found, plus one `SDD_BDD_DEFERRED_TO_SELF` per row deferred to `selfTaskId`; empty when clean.
+ * @param [checkExistence] Whether to check case names against `caseNamesByFile` — false pre-DONE
+ *   (the test file may not exist yet); self-deferral is still checked regardless.
+ * @returns One `SDD_BDD_SCENARIO_UNTESTED` per claimed case name not found (only when `checkExistence`), plus one `SDD_BDD_DEFERRED_TO_SELF` per row deferred to `selfTaskId`; empty when clean.
  */
 export function checkBddCoverage(
   file: string,
   entries: CoverageEntry[],
   caseNamesByFile: Map<string, string[]>,
   flowVersion: FlowVersion = 'v1',
-  selfTaskId: string | null = null
+  selfTaskId: string | null = null,
+  checkExistence = true
 ): Finding[] {
   const findings: Finding[] = [];
   const severity = flowVersion === 'v2' ? 'error' : 'warn';
@@ -157,6 +160,7 @@ export function checkBddCoverage(
       }
       continue;
     }
+    if (!checkExistence) continue;
     const names = caseNamesByFile.get(e.testFile) ?? [];
     for (const c of e.caseNames) {
       if (!names.includes(c)) {

@@ -3,6 +3,7 @@
 // @tasks: N/A
 
 import { spawnSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { logger } from '#logger';
 import {
   gatesFor,
@@ -13,6 +14,28 @@ import {
   type Profile,
   type VerifyOutcome,
 } from './sdd-verify.types.ts';
+
+/**
+ * @purpose Resolve the actual npm script to run for a gate with an accepted alternate spelling
+ * — today, only `type-check` (canonical) / `typecheck` (accepted).
+ * @invariant Reporting always keeps the canonical `gate.name` — this only changes what runs.
+ * @param gateName The gate's canonical name (e.g. `type-check`).
+ * @returns The script to invoke — canonical, unless only the alias is declared.
+ */
+function resolveScriptName(gateName: string): string {
+  if (gateName !== 'type-check') return gateName;
+  try {
+    const pkg = JSON.parse(readFileSync('package.json', 'utf-8')) as {
+      scripts?: Record<string, string>;
+    };
+    const scripts = pkg.scripts ?? {};
+    if (scripts['type-check']) return 'type-check';
+    if (scripts['typecheck']) return 'typecheck';
+  } catch {
+    // fall through to the canonical name — npm's own "missing script" error is diagnostic enough
+  }
+  return gateName;
+}
 
 /**
  * @purpose Default gate runner — spawn `command args` without a shell, capturing exit code and combined output.
@@ -39,7 +62,7 @@ export async function run(runner: GateRunner, profile: Profile = 'full'): Promis
     const r =
       gate.via === 'gennady'
         ? runner('npx', ['gennady', gate.name])
-        : runner('npm', ['run', gate.name]);
+        : runner('npm', ['run', resolveScriptName(gate.name)]);
     const durationMs = Date.now() - start;
     logger.debug(`[SddVerifyCommand#run] ${gate.name} → exit ${r.exitCode} (${durationMs}ms)`);
     results.push({ name: gate.name, exitCode: r.exitCode, output: r.output, durationMs });

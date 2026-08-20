@@ -60,6 +60,30 @@ describe('checkTicket', () => {
     assert.ok(!codes(c).includes('SDD_FABRICATED_DONE'));
   });
 
+  it('does NOT flag a real type signature quoted in backticks (`Promise<TodoStore>`) on a checked line', () => {
+    const c = CLEAN.replace(
+      '- [x] `2026-06-21T10:00:00Z` ver `npm run check` → pass exit=0',
+      '- [x] `2026-06-21T10:00:00Z` returns `Promise<TodoStore>` → pass exit=0'
+    );
+    assert.ok(!codes(c).includes('SDD_FABRICATED_DONE'));
+  });
+
+  it('still flags a bare unbackticked placeholder (`<cmd>`) on a checked line', () => {
+    const c = CLEAN.replace(
+      '- [x] `2026-06-21T10:00:00Z` ver `npm run check` → pass exit=0',
+      '- [x] `2026-06-21T10:00:00Z` ver <cmd> → pass exit=0'
+    );
+    assert.ok(codes(c).includes('SDD_FABRICATED_DONE'));
+  });
+
+  it('still flags a whole-span backticked placeholder (`` `<ts>` ``) on a checked line', () => {
+    const c = CLEAN.replace(
+      '- [x] `2026-06-21T10:00:00Z` ver `npm run check` → pass exit=0',
+      '- [x] `<ts>` ver `npm run check` → pass exit=0'
+    );
+    assert.ok(codes(c).includes('SDD_FABRICATED_DONE'));
+  });
+
   it('flags an unbalanced anchor', () => {
     const c = CLEAN.replace('<!--/SECTION:META-->', '');
     assert.ok(codes(c).includes('SDD_ANCHOR_UNBALANCED'));
@@ -109,6 +133,14 @@ describe('checkTicket', () => {
   it('warns on DONE with leftover placeholders', () => {
     const c = CLEAN.replace('- **Task-ID:** cli-foo', '- **Task-ID:** cli-foo\n- **Note:** <TBD>');
     assert.ok(codes(c).includes('SDD_DONE_WITH_PLACEHOLDERS'));
+  });
+
+  it('does NOT warn on DONE when the only angle brackets are a backticked type signature', () => {
+    const c = CLEAN.replace(
+      '- **Task-ID:** cli-foo',
+      '- **Task-ID:** cli-foo\n- **Returns:** `Promise<TodoStore>`'
+    );
+    assert.ok(!codes(c).includes('SDD_DONE_WITH_PLACEHOLDERS'));
   });
 
   it('warns on missing Task-ID and unparseable status', () => {

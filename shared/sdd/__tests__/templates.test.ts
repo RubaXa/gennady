@@ -185,6 +185,19 @@ describe('nextSteps — "what happens after this skeleton exists"', () => {
     const steps = resolveNextSteps('task', { path: 'irrelevant' });
     assert.ok(steps.some((s) => s.includes('sdd-task')));
   });
+
+  it('task echoes the created --id, telling the agent to use exactly that ID going forward', () => {
+    const steps = resolveNextSteps('task', { path: 'irrelevant', id: 'cli-foo' });
+    assert.ok(
+      steps.some((s) => s.includes('Task-ID: cli-foo')),
+      `expected a step naming Task-ID: cli-foo, got: ${JSON.stringify(steps)}`
+    );
+  });
+
+  it('task falls back to a placeholder when no --id is supplied (e.g. --out was used instead)', () => {
+    const steps = resolveNextSteps('task', { path: 'irrelevant' });
+    assert.ok(steps.some((s) => s.includes('Task-ID: <id>')));
+  });
 });
 
 describe('derived lists match check.ts (block L1 parity requirement)', () => {

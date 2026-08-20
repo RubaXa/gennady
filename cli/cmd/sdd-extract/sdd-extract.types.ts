@@ -2,7 +2,12 @@
 // @consumers: SddExtractCommand
 // @tasks: N/A
 
-import { SECTION_NAME_REGEX, type SectionResult } from '../../../shared/sdd/section.ts';
+import {
+  SECTION_NAME_REGEX,
+  type SectionResult,
+  type HeadingSectionResult,
+} from '../../../shared/sdd/section.ts';
+import { damerauLevenshtein } from '../orient/core/damerau-levenshtein.ts';
 
 /** @purpose Bad invocation — wrong number of positional arguments. */
 export const ERR_CLI_SDD_EXTRACT_BAD_INVOCATION = 'ERR_CLI_SDD_EXTRACT_BAD_INVOCATION' as const;
@@ -26,6 +31,22 @@ export const ERR_CLI_SDD_EXTRACT_ANCHOR_DUPLICATED =
 
 const CANONICAL =
   'META, PHASES_OVERVIEW, PHASE_P<N>, PHASE_P<N>_FIX, BDD, VERIFICATION, TEST_COVERAGE, EXECUTION_LOG';
+
+/**
+ * @purpose Rank candidate anchors by edit distance to the requested name, nearest first.
+ * @param name The anchor that was not found.
+ * @param candidates Every section-name / heading-slug present in the file (unsorted, may repeat).
+ * @param [limit] Max candidates to keep; default 3.
+ * @returns Up to `limit` unique candidates, nearest-first.
+ */
+export function nearestCandidates(name: string, candidates: string[], limit = 3): string[] {
+  const unique = [...new Set(candidates)];
+  return unique
+    .map((c) => ({ c, d: damerauLevenshtein(name.toLowerCase(), c.toLowerCase()) }))
+    .sort((a, b) => a.d - b.d)
+    .slice(0, limit)
+    .map((x) => x.c);
+}
 
 /**
  * @purpose Result of one extraction run — either the section content (exit 0) or an actionable failure.
@@ -64,9 +85,10 @@ export function invalidName(name: string): ExtractOutcome {
     exitCode: 4,
     message: [
       `[sdd-extract] ${ERR_CLI_SDD_EXTRACT_INVALID_NAME}: "${name}"`,
-      '  Use uppercase letters, digits, and underscores, starting with a letter.',
+      '  Use uppercase letters, digits, and underscores, starting with a letter (a <!--SECTION--> anchor),',
+      '  or a lowercase GitHub-style heading slug, hyphen-separated, optionally prefixed with `#` (a markdown heading anchor).',
       '  Put attributes (kind, rules) inside the section body, not in the anchor name.',
-      `  Canonical: ${CANONICAL}.`,
+      `  Canonical sections: ${CANONICAL}.`,
     ].join('\n'),
   };
 }
@@ -110,9 +132,15 @@ export function fileNotReadable(file: string): ExtractOutcome {
  * @param file Path the section was read from.
  * @param name Section name requested.
  * @param result Outcome of the pure extractor.
+ * @param [candidates] Nearest existing anchors (section names / heading slugs) to suggest on not_found.
  * @returns Content outcome for `ok`, else the matching actionable failure.
  */
-export function toOutcome(file: string, name: string, result: SectionResult): ExtractOutcome {
+export function toOutcome(
+  file: string,
+  name: string,
+  result: SectionResult,
+  candidates: string[] = []
+): ExtractOutcome {
   const start = `<!--SECTION:${name}-->`;
   const end = `<!--/SECTION:${name}-->`;
   switch (result.status) {
@@ -120,7 +148,8 @@ export function toOutcome(file: string, name: string, result: SectionResult): Ex
       return { ok: true, content: result.content };
     case 'invalid_name':
       return invalidName(name);
-    case 'not_found':
+    case 'not_found': {
+      const nearest = nearestCandidates(name, candidates);
       return {
         ok: false,
         code: ERR_CLI_SDD_EXTRACT_ANCHOR_NOT_FOUND,
@@ -128,10 +157,14 @@ export function toOutcome(file: string, name: string, result: SectionResult): Ex
         message: [
           `[sdd-extract] ${ERR_CLI_SDD_EXTRACT_ANCHOR_NOT_FOUND}: section ${name} in ${file}`,
           `  searched: ${start} / ${end}`,
+          nearest.length
+            ? `  nearest candidates in this file: ${nearest.join(', ')}`
+            : '  no section or heading anchor in this file resembles it.',
           '  Read the file: if the section exists as a header, retrofit anchors; if absent, the ticket needs (re)scaffolding.',
           '  Do not dispatch a phase agent until anchors are in place.',
         ].join('\n'),
       };
+    }
     case 'empty':
       return {
         ok: false,
@@ -164,4 +197,33 @@ export function toOutcome(file: string, name: string, result: SectionResult): Ex
         ].join('\n'),
       };
   }
+}
+
+/**
+ * @purpose Map a HeadingSectionResult (markdown heading anchor) to an ExtractOutcome.
+ * @param file Path the heading was read from.
+ * @param anchor The heading anchor requested (`#lower-dashed` or bare).
+ * @param result Outcome of `extractHeadingSection`.
+ * @returns Content outcome for `ok`, else an ANCHOR_NOT_FOUND failure naming the nearest heading slugs.
+ */
+export function toHeadingOutcome(
+  file: string,
+  anchor: string,
+  result: HeadingSectionResult
+): ExtractOutcome {
+  if (result.status === 'ok') return { ok: true, content: result.content };
+  const nearest = nearestCandidates(anchor.replace(/^#/, ''), result.candidates);
+  return {
+    ok: false,
+    code: ERR_CLI_SDD_EXTRACT_ANCHOR_NOT_FOUND,
+    exitCode: 2,
+    message: [
+      `[sdd-extract] ${ERR_CLI_SDD_EXTRACT_ANCHOR_NOT_FOUND}: heading #${anchor.replace(/^#/, '')} in ${file}`,
+      nearest.length
+        ? `  nearest candidates in this file: ${nearest.join(', ')}`
+        : '  no heading in this file resembles it.',
+      '  Read the file: if the heading exists under a different slug, retry with that slug; if absent, the doc needs the section written.',
+      '  Do not dispatch a phase agent until anchors are in place.',
+    ].join('\n'),
+  };
 }

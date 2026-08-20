@@ -197,6 +197,154 @@ describe('SddTaskCommand', () => {
     }
   });
 
+  describe('--phase', () => {
+    const PHASED_TICKET = [
+      '# Task: cli-foo — Foo',
+      '<!--SECTION:META-->',
+      '## 1. Meta',
+      '- **Task-ID:** cli-foo',
+      '- **Status:** [~] IN_PROGRESS',
+      '- **Purpose:** Build the foo',
+      '- **Scope:** cli',
+      '- **Module:** core',
+      '- **Dependencies:** None',
+      '- **Spec References:**',
+      '  - Contract: [FooPort](specs/cli/core/core.spec.md#fooport)',
+      '  - Adapter: [FooAdapter](specs/cli/core/core.spec.md#fooadapter)',
+      '<!--/SECTION:META-->',
+      '<!--SECTION:PHASES_OVERVIEW-->',
+      '| ID | Kind | Deps | Status |',
+      '|----|------|------|--------|',
+      '| P1 | impl | — | [x] |',
+      '| P2 | test | P1 | [ ] |',
+      '<!--/SECTION:PHASES_OVERVIEW-->',
+      '<!--SECTION:PHASE_P1-->',
+      '### P1 — impl',
+      '- **Objective:** implement foo',
+      '- **Rules:**',
+      '  - [typescript-rules](ai/directives/coding/typescript-rules.xml)',
+      '- **Spec Refs:**',
+      '  - [FooPort](specs/cli/core/core.spec.md#fooport)',
+      '- **Target Files:**',
+      '  - src/foo.ts',
+      '- **Inputs:** none',
+      '- **Exit:** foo.ts compiles and exports Foo',
+      '<!--/SECTION:PHASE_P1-->',
+      '<!--SECTION:PHASE_P2-->',
+      '### P2 — test',
+      '- **Objective:** test foo',
+      '- **Rules:**',
+      '  - [node-test](ai/directives/testing/node-test.xml)',
+      '- **Target Files:**',
+      '  - src/foo.test.ts',
+      '- **Inputs:** P1 handoff',
+      '- **Exit:** all scenarios pass',
+      '<!--/SECTION:PHASE_P2-->',
+      '<!--SECTION:VERIFICATION-->',
+      '| Command | Required by |',
+      '|---------|-------------|',
+      '| npm run type-check | typescript-rules |',
+      '| npm run test | node-test |',
+      '<!--/SECTION:VERIFICATION-->',
+      '<!--SECTION:EXECUTION_LOG-->',
+      '### Round 1 — 2026-06-21, initial',
+      '#### P1',
+      '- [x] `2026-06-21T10:00:00Z` ver `npm run type-check` → pass exit=0',
+      '- [x] `2026-06-21T10:00:00Z` DONE',
+      '**Handoff →** artifacts: [src/foo.ts]; decisions: [none]; open: [none]',
+      '<!--/SECTION:EXECUTION_LOG-->',
+    ].join('\n');
+
+    it('emits a compact single-phase context: objective, gates+hint, exit, filtered read-manifest', async () => {
+      const t = join(dir, 'phased.md');
+      writeFileSync(t, PHASED_TICKET, 'utf-8');
+      const outcome = await mod.run(argv(t, '--phase', 'P2'));
+      assert.strictEqual(outcome.ok, true);
+      if (!outcome.ok) return;
+      const text = outcome.text;
+      assert.match(text, /\[sdd-task\] cli-foo — P2 test  status=\[ \]/);
+      assert.match(text, /objective:   test foo/);
+      assert.match(text, /gates:\n {2}npm run test — /);
+      assert.doesNotMatch(text, /npm run type-check/);
+      assert.match(text, /exit:        all scenarios pass/);
+      assert.match(text, /READ rules:  ai\/directives\/testing\/node-test\.xml/);
+      assert.match(text, /READ files:  src\/foo\.test\.ts/);
+      assert.match(text, /DO NOT READ/);
+    });
+
+    it('READ specs falls back to the full Meta Spec References when the phase declares no Spec Refs', async () => {
+      const t = join(dir, 'phased.md');
+      writeFileSync(t, PHASED_TICKET, 'utf-8');
+      const outcome = await mod.run(argv(t, '--phase', 'P2'));
+      assert.strictEqual(outcome.ok, true);
+      if (!outcome.ok) return;
+      assert.match(
+        outcome.text,
+        /READ specs:  specs\/cli\/core\/core\.spec\.md#fooport, specs\/cli\/core\/core\.spec\.md#fooadapter/
+      );
+    });
+
+    it("READ specs uses the phase's own Spec Refs when declared — not the whole Meta list", async () => {
+      const t = join(dir, 'phased.md');
+      writeFileSync(t, PHASED_TICKET, 'utf-8');
+      const outcome = await mod.run(argv(t, '--phase', 'P1'));
+      assert.strictEqual(outcome.ok, true);
+      if (!outcome.ok) return;
+      assert.match(outcome.text, /READ specs:  specs\/cli\/core\/core\.spec\.md#fooport$/m);
+      assert.doesNotMatch(outcome.text, /fooadapter/);
+    });
+
+    it('includes the verbatim Handoff line of the completed prior phase, prefixed Handoff ←P1', async () => {
+      const t = join(dir, 'phased.md');
+      writeFileSync(t, PHASED_TICKET, 'utf-8');
+      const outcome = await mod.run(argv(t, '--phase', 'P2'));
+      assert.strictEqual(outcome.ok, true);
+      if (!outcome.ok) return;
+      assert.match(
+        outcome.text,
+        /Handoff ←P1: \*\*Handoff →\*\* artifacts: \[src\/foo\.ts\]; decisions: \[none\]; open: \[none\]/
+      );
+    });
+
+    it('omits the [HANDOFF] block for the first phase', async () => {
+      const t = join(dir, 'phased.md');
+      writeFileSync(t, PHASED_TICKET, 'utf-8');
+      const outcome = await mod.run(argv(t, '--phase', 'P1'));
+      assert.strictEqual(outcome.ok, true);
+      if (!outcome.ok) return;
+      assert.doesNotMatch(outcome.text, /\[HANDOFF\]/);
+    });
+
+    it('ends with the next: protocol + sdd-log + Handoff-line instruction', async () => {
+      const t = join(dir, 'phased.md');
+      writeFileSync(t, PHASED_TICKET, 'utf-8');
+      const outcome = await mod.run(argv(t, '--phase', 'P2'));
+      assert.strictEqual(outcome.ok, true);
+      if (!outcome.ok) return;
+      assert.match(
+        outcome.text,
+        /next: прочитай перечисленное, исполняй фазу по протоколу, по завершении sdd-log \+ Handoff-строка\./
+      );
+    });
+
+    it('unknown --phase → exit 2 naming the known phases', async () => {
+      const t = join(dir, 'phased.md');
+      writeFileSync(t, PHASED_TICKET, 'utf-8');
+      const outcome = await mod.run(argv(t, '--phase', 'P9'));
+      assert.strictEqual(outcome.ok, false);
+      if (outcome.ok) return;
+      assert.strictEqual(outcome.exitCode, 2);
+      assert.match(outcome.message, /P1, P2/);
+    });
+
+    it('without --phase, existing full-plan behavior is unchanged', async () => {
+      const outcome = await mod.run(argv(ticket));
+      assert.strictEqual(outcome.ok, true);
+      if (!outcome.ok) return;
+      assert.match(outcome.text, /Per-phase read-manifest/);
+    });
+  });
+
   it('execution map with nothing pickable → next: hint points at unblocking', async () => {
     const soloDir = mkdtempSync(join(tmpdir(), 'sdd-task-blocked-'));
     const blockedTicket = [

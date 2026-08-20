@@ -51,6 +51,8 @@
   - **Objective:** <one-line>
   - **Rules:**   <!-- links only, resolved from the cascade; rule content is never inlined -->
     - [ai/directives/<category>/<rule>.xml](<relative-path>)
+  - **Spec Refs:**   <!-- optional — subset of Meta Spec References THIS phase actually reads; omit the whole field to fall back to the full Meta set (sdd-task --phase filters to this list when present) -->
+    - [<PortName>](<spec anchor>)
   - **Target Files:**
     - <path>
   - **Inputs:** none   <!-- or "P1 handoff" -->
@@ -62,6 +64,8 @@
   - **Objective:** <one-line>
   - **Rules:**
     - [ai/directives/<category>/<rule>.xml](<relative-path>)
+  - **Spec Refs:**   <!-- optional, see P1 -->
+    - [<PortName>](<spec anchor>)
   - **Target Files:**
     - <path>
   - **Inputs:** P1 handoff

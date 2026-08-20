@@ -24,6 +24,19 @@ export function getChangedSourceFiles(root: string): string[] {
 }
 
 /**
+ * @purpose Whether `root` has a git HEAD (≥1 commit) — else a naive caller mistakes every
+ *   untracked file for "changed".
+ * @param root Repository root.
+ * @returns True when `git rev-parse --verify HEAD` succeeds.
+ */
+export function hasGitHead(root: string): boolean {
+  const out = execSyncSafe(`git -C ${JSON.stringify(root)} rev-parse --verify HEAD 2>/dev/null`, {
+    expectedExitCodes: [128, 1],
+  });
+  return out.trim().length > 0;
+}
+
+/**
  * @purpose Read a file's content at HEAD, or null when it has no HEAD version (new file).
  * @invariant Exit 128 (no HEAD version — new/untracked file) is expected, not an error — suppressed.
  * @param root Repository root.

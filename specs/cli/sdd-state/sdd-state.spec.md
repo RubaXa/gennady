@@ -11,7 +11,7 @@
 **Key properties:**
 
 - Deterministic — чистые ядра `shared/sdd/portal.ts` (таблица Scopes + Description) + `shared/sdd/readiness.ts` (точная проверка required-скриптов)
-- Exact readiness — есть `package.json`, `typecheck · test · test:coverage · lint(+gennady в цепочке) · format` по ТОЧНОМУ имени, и `gennady` установлен (`node_modules/.bin/gennady`); без угадываний
+- Exact readiness — есть `package.json`, `type-check (алиас typecheck) · test · test:coverage · lint(+gennady в цепочке) · format` по ТОЧНОМУ имени, и `gennady` установлен (`node_modules/.bin/gennady`); без угадываний
 - Absence-is-data — нет портала → `PORTAL=absent` (project-setup); нет сессии → `(no active session)` — exit 0, не ошибка
 - Minimal-knowledge default — код/инфру (`[PROBE]`) зондирует ТОЛЬКО по `--probe`; дефолт молчит, чтобы не искажать картину на старте флоу
 
@@ -36,7 +36,7 @@ PORTAL=present	specs/README.md
 [READINESS]
 package.json	✔
 # required-script	declared
-typecheck	✔
+type-check	✔
 test	✔
 test:coverage	✘
 lint	✔
@@ -122,7 +122,7 @@ flow=v2 · portal=present · readiness=not-ready · scopes=1 · session=absent
 | `[project-root]` | string | `.`     | Корень проекта для инспекции                                                           |
 | `--probe`        | flag   | off     | Включить эвристики кода/инфры (`[PROBE]`); по умолчанию выключено (минимальное знание) |
 
-Required-набор (точные имена): `typecheck`, `test`, `test:coverage`, `lint` (+`gennady` в цепочке), `format` (фиксирующий). Плюс: присутствует `package.json` и установлен `gennady` (`node_modules/.bin/gennady`).
+Required-набор (точные имена): `type-check` (алиас: `typecheck`), `test`, `test:coverage`, `lint` (+`gennady` в цепочке), `format` (фиксирующий). Плюс: присутствует `package.json` и установлен `gennady` (`node_modules/.bin/gennady`).
 
 <!--/SECTION:PUBLIC_OPTIONS-->
 
@@ -159,7 +159,7 @@ shared/sdd/         portal.ts (parseScopes +description) · readiness.ts (checkR
 
 ### D-ST004 — Точное совпадение имён, без классификатора
 
-- **Status:** active · **Why:** оператор требует детерминизма; fuzzy-классификатор (`type-?check` и т.п.) убран. Стандарт v2 требует точные имена `typecheck/test/test:coverage/lint/format`; неконформное имя (`type-check`) → not-ready (это правильно). **Risk:** проекты обязаны привести имена — покрыто setup-гайдом.
+- **Status:** active · **Why:** оператор требует детерминизма; fuzzy-классификатор (`type-?check` и т.п.) убран. Стандарт v2 требует точные имена `type-check/test/test:coverage/lint/format`; неконформное имя → not-ready. **Обновление:** `type-check` — единственное required-имя с закрытым алиасом (`typecheck`), т.к. gennady сам объявляет `type-check`, а живые проекты в дикой природе — `typecheck`; это тоже точное совпадение (проверка по фиксированному множеству из двух имён), не угадывание по паттерну. Канон в выводе — всегда `type-check`. **Risk:** проекты с третьим написанием (`type_check` и т.п.) всё ещё обязаны привести имя — покрыто setup-гайдом.
 
 ### D-ST005 — `FLOW_VERSION` по `tasks/`-каталогу
 

@@ -32,12 +32,46 @@ export type Finding = {
 // Scaffold placeholder: `<` then a letter or ellipsis (e.g. <ts>, <cmd>, <TBD>, <…>) — NOT an HTML
 // comment/marker (`<!--…-->`) or closing tag (`</…>`), which start with `!` or `/`.
 const PLACEHOLDER = /<[A-Za-z…][^>\s]*>/;
+// Same shape, anchored — matches only when the ENTIRE (trimmed) string is the placeholder, no
+// surrounding text. Used to tell a bare scaffold token backticked on its own (`` `<ts>` ``) apart
+// from a real type signature that merely contains angle brackets (`` `Promise<TodoStore>` ``).
+const WHOLE_PLACEHOLDER = /^<[A-Za-z…][^>\s]*>$/;
 
 // Inline-code span (`` `…` ``) — stripped before testing for a literal `[x]` checkbox so a prose
 // hint like "A `` `[x]` `` line…" (TASK_SKELETON's own Execution Log note) never reads as a checked
-// line. The placeholder test still runs against the original line — a real checked line's own
-// placeholder (e.g. `` `<ts>` ``) is conventionally backticked too, and must still be caught.
+// line.
 const CODE_SPAN = /`[^`]*`/g;
+
+/**
+ * @purpose True when `line` carries a scaffold placeholder needing replacement — a bare `<cmd>`,
+ * or a code span whose ENTIRE content is one.
+ * @invariant A placeholder-shaped substring inside a longer span (e.g. `` `Promise<TodoStore>` ``)
+ * is real code, not a placeholder — the fix for SDD_FABRICATED_DONE's false positive.
+ * @param line One raw line (markers, backticks, and all).
+ * @returns Whether the line still needs a placeholder filled in.
+ */
+function lineHasPlaceholder(line: string): boolean {
+  let outsideCode = '';
+  let lastIndex = 0;
+  let spanIsPlaceholder = false;
+  for (const m of line.matchAll(/`([^`]*)`/g)) {
+    outsideCode += line.slice(lastIndex, m.index);
+    if (WHOLE_PLACEHOLDER.test((m[1] ?? '').trim())) spanIsPlaceholder = true;
+    lastIndex = (m.index ?? 0) + m[0].length;
+  }
+  outsideCode += line.slice(lastIndex);
+  return spanIsPlaceholder || PLACEHOLDER.test(outsideCode);
+}
+
+/**
+ * @purpose Multi-line `lineHasPlaceholder` — true when any line of `text` carries an unreplaced
+ * scaffold placeholder (see `lineHasPlaceholder` for the inline-code exclusion rule).
+ * @param text Full markdown text (or a section body) to scan.
+ * @returns Whether any line still needs a placeholder filled in.
+ */
+function hasPlaceholder(text: string): boolean {
+  return text.split('\n').some(lineHasPlaceholder);
+}
 
 /**
  * @purpose True when a file looks like a ticket (carries both META and EXECUTION_LOG sections).
@@ -130,6 +164,31 @@ function hasActiveBlocker(logBody: string): boolean {
 }
 
 /**
+ * @purpose Parse each phase's verbatim Handoff line from the Execution Log — the compact context
+ * `sdd-task --phase` hands a worker.
+ * @invariant One line per phase — the FIRST Handoff line under that phase's block; a phase may
+ *   reopen, but later phases planned against the first.
+ * @param logBody The EXECUTION_LOG section body.
+ * @returns Phase id → its verbatim Handoff line text (trimmed), for every phase that has one.
+ */
+export function parsePhaseHandoffs(logBody: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  let current: string | null = null;
+  for (const rawLine of logBody.split('\n')) {
+    const line = rawLine.trim();
+    const heading = /^#{2,6}\s+(P[0-9]+)\b/.exec(line);
+    if (heading) {
+      current = heading[1] as string;
+      continue;
+    }
+    if (current && !(current in out) && /^\*\*Handoff\s*→\*\*/.test(line)) {
+      out[current] = line;
+    }
+  }
+  return out;
+}
+
+/**
  * @purpose Run the mechanical checks against one ticket's content.
  * @invariant Pure — no I/O; cross-file checks (spec-link resolution, walking) live in the command.
  * @param file Path used in finding locations.
@@ -175,7 +234,7 @@ export function checkTicket(file: string, content: string): Finding[] {
     const logLines = logSec.content.split('\n');
     for (const line of logLines) {
       const withoutCodeSpans = line.replace(CODE_SPAN, '');
-      if (/\[x\]/.test(withoutCodeSpans) && PLACEHOLDER.test(line)) {
+      if (/\[x\]/.test(withoutCodeSpans) && lineHasPlaceholder(line)) {
         err(
           'SDD_FABRICATED_DONE',
           `Checked [x] line with an unreplaced placeholder: "${line.trim()}"`
@@ -199,7 +258,7 @@ export function checkTicket(file: string, content: string): Finding[] {
   // #endregion END_EXEC_LOG
 
   // #region START_DONE_PLACEHOLDERS — a DONE ticket has no scaffold placeholders left
-  if (isDone && PLACEHOLDER.test(content)) {
+  if (isDone && hasPlaceholder(content)) {
     warn(
       'SDD_DONE_WITH_PLACEHOLDERS',
       'Status is DONE but unreplaced <…> scaffold placeholders remain.'

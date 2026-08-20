@@ -50,6 +50,8 @@ export type PhaseDetail = {
   rules: string[];
   /** @purpose Target file paths the phase may write. */
   targetFiles: string[];
+  /** @purpose Optional per-phase spec-anchor subset (`Spec Refs:` bullets) — when empty, callers fall back to the ticket's whole Meta Spec References. */
+  specRefs: string[];
   /** @purpose Inputs line (e.g. `none`, `P1 handoff`), or null. */
   inputs: string | null;
   /** @purpose Exit criterion, or null. */
@@ -187,6 +189,9 @@ export function parsePhaseDetail(phaseBody: string): PhaseDetail {
     objective: inlineField(phaseBody, 'Objective'),
     rules: bulletsUnder(phaseBody, 'Rules').map((b) => parseLink(b).anchor || parseLink(b).name),
     targetFiles: bulletsUnder(phaseBody, 'Target Files').map((b) => b.replace(/[`*]/g, '').trim()),
+    specRefs: bulletsUnder(phaseBody, 'Spec Refs').map(
+      (b) => parseLink(b).anchor || parseLink(b).name
+    ),
     inputs: inlineField(phaseBody, 'Inputs'),
     exit: inlineField(phaseBody, 'Exit'),
   };

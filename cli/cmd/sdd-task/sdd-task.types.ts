@@ -10,6 +10,8 @@ export const ERR_CLI_SDD_TASK_BAD_INVOCATION = 'ERR_CLI_SDD_TASK_BAD_INVOCATION'
 export const ERR_CLI_SDD_TASK_FILE = 'ERR_CLI_SDD_TASK_FILE' as const;
 /** @purpose File has no META section — not a ticket. */
 export const ERR_CLI_SDD_TASK_NOT_A_TICKET = 'ERR_CLI_SDD_TASK_NOT_A_TICKET' as const;
+/** @purpose --phase named a phase id with no row in Phases Overview. */
+export const ERR_CLI_SDD_TASK_PHASE_NOT_FOUND = 'ERR_CLI_SDD_TASK_PHASE_NOT_FOUND' as const;
 
 /**
  * @purpose Result of one sdd-task run.
@@ -118,6 +120,113 @@ export function formatPlan(
   );
 
   return lines.join('\n');
+}
+
+/**
+ * @purpose One-line "how to satisfy" hint for a gate command, matched by keyword.
+ * @param command The resolved gate command (e.g. `npm run type-check`).
+ * @returns A short imperative hint — never the empty string.
+ */
+export function gateHint(command: string): string {
+  if (/\byagni\b/.test(command))
+    return 'run it; a single-use symbol needs a Usage Waiver or removal';
+  if (/type-?check|\btsc\b/.test(command)) return 'run it; fix every reported type error';
+  if (/\blint\b/.test(command)) return 'run it; fix every reported lint finding';
+  if (/test:coverage|\btest\b/.test(command)) return 'run it; make every failing/missing test pass';
+  if (/\bformat\b/.test(command)) return 'run it; commit the auto-formatted result';
+  if (/sdd-check/.test(command)) return 'run it; fix every reported finding';
+  return 'run it; it must exit 0';
+}
+
+/**
+ * @purpose Format the compact single-phase context — objective, gates with a satisfy-hint, exit,
+ * a phase-scoped read-manifest, and prior phases' verbatim Handoff lines.
+ * @invariant `READ specs` uses the phase's own `Spec Refs` when declared, else the whole Meta Spec References.
+ * @invariant The Handoff block appears only when an earlier, `[x]`-checked phase has a captured Handoff line — never for the first phase.
+ * @param meta Parsed Meta planning fields.
+ * @param phases Phases Overview rows.
+ * @param detailsById Parsed phase bodies keyed by phase id.
+ * @param gates All Verification gates.
+ * @param handoffs Phase id → its verbatim `**Handoff →**` line (`parsePhaseHandoffs`).
+ * @param phaseId The requested phase id (e.g. `P2`).
+ * @returns The compact phase context, or a not-found failure when `phaseId` has no Phases Overview row.
+ */
+export function formatPhase(
+  meta: MetaInfo,
+  phases: PhaseOverview[],
+  detailsById: Record<string, PhaseDetail | undefined>,
+  gates: Gate[],
+  handoffs: Record<string, string>,
+  phaseId: string
+): TaskOutcome {
+  const idx = phases.findIndex((p) => p.id === phaseId);
+  if (idx === -1) return phaseNotFound(phaseId, phases);
+  const p = phases[idx] as PhaseOverview;
+  const d = detailsById[phaseId];
+
+  const lines: string[] = [
+    `[sdd-task] ${meta.taskId ?? '<unknown>'} — ${p.id} ${p.kind}  status=${p.status}`,
+  ];
+
+  if (!d) {
+    lines.push('(phase section missing — scaffold/repair before dispatch)');
+    return { ok: true, text: lines.join('\n') };
+  }
+
+  if (d.objective) lines.push(`objective:   ${d.objective}`);
+
+  const pg = gatesForPhase(d, gates);
+  lines.push('', 'gates:');
+  if (pg.length === 0) lines.push("  — (none required by this phase's rules)");
+  for (const g of pg) lines.push(`  ${g.command} — ${gateHint(g.command)}`);
+
+  lines.push('', `exit:        ${d.exit ?? '—'}`);
+
+  const specAnchors = d.specRefs.length
+    ? d.specRefs
+    : meta.specRefs.map((s) => s.anchor || s.name).filter(Boolean);
+  lines.push('', 'read-manifest (AX_READ_PER_MANIFEST):');
+  lines.push(`  READ rules:  ${d.rules.length ? d.rules.join(', ') : '—'}`);
+  lines.push(`  READ specs:  ${specAnchors.length ? specAnchors.join(', ') : '—'}`);
+  lines.push(`  READ ticket: PHASE_${p.id}, BDD, VERIFICATION`);
+  lines.push(`  READ files:  ${d.targetFiles.length ? d.targetFiles.join(', ') : '—'}`);
+  lines.push(
+    '  DO NOT READ: other phase bodies · code outside READ files · specs beyond the anchors above'
+  );
+
+  const priorHandoffs = phases
+    .slice(0, idx)
+    .filter((prev) => prev.status.includes('[x]'))
+    .map((prev) => ({ id: prev.id, line: handoffs[prev.id] }))
+    .filter((h): h is { id: string; line: string } => typeof h.line === 'string');
+  if (priorHandoffs.length > 0) {
+    lines.push('', '[HANDOFF]');
+    for (const h of priorHandoffs) lines.push(`Handoff ←${h.id}: ${h.line}`);
+  }
+
+  lines.push(
+    '',
+    'next: прочитай перечисленное, исполняй фазу по протоколу, по завершении sdd-log + Handoff-строка.'
+  );
+  return { ok: true, text: lines.join('\n') };
+}
+
+/**
+ * @purpose Build the phase-not-found diagnostic.
+ * @param phaseId The requested phase id.
+ * @param phases Phases Overview rows (for the "known phases" hint).
+ * @returns Outcome with exit 2.
+ */
+export function phaseNotFound(phaseId: string, phases: PhaseOverview[]): TaskOutcome {
+  return {
+    ok: false,
+    code: ERR_CLI_SDD_TASK_PHASE_NOT_FOUND,
+    exitCode: 2,
+    message: [
+      `[sdd-task] ${ERR_CLI_SDD_TASK_PHASE_NOT_FOUND}: ${phaseId}`,
+      `  known phases: ${phases.map((ph) => ph.id).join(', ') || '(none — Phases Overview is empty)'}`,
+    ].join('\n'),
+  };
 }
 
 /**

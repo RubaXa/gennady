@@ -7,7 +7,11 @@ import { join, resolve, relative } from 'node:path';
 import { logger } from '#logger';
 import { execSyncSafe } from '../../../shared/common/exec.ts';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
-import { getChangedSourceFiles, getHeadContent } from '../../../shared/common/changed-files.ts';
+import {
+  getChangedSourceFiles,
+  getHeadContent,
+  hasGitHead,
+} from '../../../shared/common/changed-files.ts';
 import { isTestFile } from '../../../shared/common/files.ts';
 import {
   checkYagniUsage,
@@ -173,8 +177,26 @@ function decisionLive(specsRoot: string, decisionId: string): boolean {
 export async function run(rawArgs: string[]): Promise<YagniReport> {
   const args = parseArgs(rawArgs, {});
   const positional = (args._ as string[]).filter((a) => typeof a === 'string' && a !== 'yagni');
+  const explicitRoot = typeof positional[0] === 'string';
   const root = resolve(positional[0] ?? '.');
   const specsRoot = join(root, 'specs');
+
+  // #region START_NO_HEAD — invariant: an unscoped run on a repo with zero commits must not silently
+  // treat every untracked file as "the diff" — that scans unrelated in-progress work and misreports
+  // its single-use symbols as YAGNI violations. Honest no-op instead; an explicit root is a real scope,
+  // not the whole repo, so it proceeds as normal.
+  if (!explicitRoot && !hasGitHead(root)) {
+    return {
+      text: [
+        'yagni: repo has no git HEAD (0 commits) — `git diff --name-only HEAD` yields nothing, so an',
+        "unscoped run would fall back to every untracked file in the tree, not just today's work,",
+        'and misreport single-use symbols scattered across unrelated in-progress modules.',
+        'Nothing scanned. Pass an explicit path to scope the run: `gennady yagni <path>`.',
+      ].join('\n'),
+      exitCode: 0,
+    };
+  }
+  // #endregion END_NO_HEAD
 
   const adapters: Adapters = {
     exact: new TsSymbolIndexAdapter(),

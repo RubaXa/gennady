@@ -7,7 +7,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { logger } from '#logger';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
-import { checkReadiness, isRealScript } from '../../../shared/sdd/readiness.ts';
+import { checkReadiness } from '../../../shared/sdd/readiness.ts';
 import {
   parseScopes,
   parseScopeGraphEdges,
@@ -176,6 +176,9 @@ export async function run(rawArgs: string[]): Promise<StateOutcome> {
     tasksDone = null;
   }
 
+  // Reuse checkReadiness's own presence verdict (accepts both `type-check`/`typecheck` spellings)
+  // instead of a second, narrower exact-name read here — one source of truth for "is it declared".
+  const requiredPresence = new Map(readiness.required.map((r) => [r.name, r.present]));
   const ladder = renderLadder({
     version: ownVersion(),
     projectName,
@@ -185,9 +188,9 @@ export async function run(rawArgs: string[]): Promise<StateOutcome> {
     moduleSpecCount,
     packageJsonPresent,
     gates: {
-      typecheck: isRealScript(scripts['typecheck']),
-      test: isRealScript(scripts['test']),
-      lint: isRealScript(scripts['lint']),
+      typecheck: requiredPresence.get('type-check') ?? false,
+      test: requiredPresence.get('test') ?? false,
+      lint: requiredPresence.get('lint') ?? false,
     },
     tasksTotal,
     tasksDone,

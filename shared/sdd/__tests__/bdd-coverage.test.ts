@@ -128,6 +128,21 @@ describe('checkBddCoverage', () => {
     assert.deepStrictEqual(checkBddCoverage('t.md', entries, new Map(), 'v1', 'TSK-1'), []);
   });
 
+  it('checkExistence=false → не проверяет существование кейса, даже если карта пуста', () => {
+    const entries = parseTestCoverage('- scenario → `f.test.ts` :: `missing case`');
+    const findings = checkBddCoverage('t.md', entries, new Map(), 'v2', null, false);
+    assert.deepStrictEqual(findings, []);
+  });
+
+  it('checkExistence=false всё равно ловит deferred-на-себя (self-deferral не зависит от existence)', () => {
+    const rows = parseTestCoverage(
+      '- Deferred Test Ownership: TSK-1 scenario → `future.test.ts` :: `not yet`'
+    );
+    const findings = checkBddCoverage('t.md', rows, new Map(), 'v1', 'TSK-1', false);
+    assert.strictEqual(findings.length, 1);
+    assert.strictEqual(findings[0]?.code, 'SDD_BDD_DEFERRED_TO_SELF');
+  });
+
   it('deferred на собственный Task-ID → SDD_BDD_DEFERRED_TO_SELF (error), независимо от flowVersion', () => {
     const rows = parseTestCoverage(
       '- Deferred Test Ownership: TSK-1 scenario → `future.test.ts` :: `not yet`'

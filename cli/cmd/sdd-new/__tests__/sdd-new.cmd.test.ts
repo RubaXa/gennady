@@ -225,6 +225,10 @@ describe('SddNewCommand', () => {
       if (outcome.ok) {
         assert.strictEqual(outcome.path, 'specs/demo/demo.task.DEM-x.md');
         assert.ok(existsSync(outcome.path));
+        assert.match(
+          outcome.text,
+          /Task-ID: DEM-x — во всех дальнейших ссылках используй ровно этот ID\./
+        );
       }
     } finally {
       process.chdir(prevCwd);

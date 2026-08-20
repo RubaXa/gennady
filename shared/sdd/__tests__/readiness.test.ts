@@ -16,7 +16,7 @@ function check(scripts: Record<string, string>, opts?: { pkg?: boolean; gennady?
 }
 
 const FULL = {
-  typecheck: 'tsc --noEmit',
+  'type-check': 'tsc --noEmit',
   test: 'node --test',
   'test:coverage': 'c8 node --test',
   lint: 'npm run format && npm run lint:contracts',
@@ -25,10 +25,10 @@ const FULL = {
 };
 
 describe('REQUIRED_SCRIPTS', () => {
-  it('is the exact v2 set', () => {
+  it("is the exact v2 set — canonical `type-check` (gennady's own convention)", () => {
     assert.deepStrictEqual(
       [...REQUIRED_SCRIPTS],
-      ['typecheck', 'test', 'test:coverage', 'lint', 'format']
+      ['type-check', 'test', 'test:coverage', 'lint', 'format']
     );
   });
 });
@@ -56,14 +56,14 @@ describe('checkReadiness', () => {
   });
 
   it('not ready when test:coverage is missing', () => {
-    const r = check({ typecheck: 'x', test: 'x', lint: 'gennady lint', format: 'x' });
+    const r = check({ 'type-check': 'x', test: 'x', lint: 'gennady lint', format: 'x' });
     assert.strictEqual(r.ready, false);
     assert.ok(r.missing.includes('test:coverage'));
   });
 
   it('flags lint→gennady when lint exists but no gennady in its chain', () => {
     const r = check({
-      typecheck: 'x',
+      'type-check': 'x',
       test: 'x',
       'test:coverage': 'x',
       lint: 'eslint .',
@@ -74,15 +74,22 @@ describe('checkReadiness', () => {
     assert.strictEqual(r.ready, false);
   });
 
-  it('exact names only — `type-check` (hyphen) does NOT satisfy `typecheck`', () => {
+  it('accepts the `typecheck` spelling as an alias for the required `type-check` script', () => {
     const r = check({
-      'type-check': 'tsc --noEmit',
+      typecheck: 'tsc --noEmit',
       test: 'x',
       'test:coverage': 'x',
       lint: 'gennady',
       format: 'x',
     });
-    assert.ok(r.missing.includes('typecheck'));
+    assert.ok(!r.missing.includes('type-check'));
+    assert.strictEqual(r.required.find((s) => s.name === 'type-check')?.present, true);
+  });
+
+  it('neither spelling present → missing lists the canonical `type-check` name', () => {
+    const r = check({ test: 'x', 'test:coverage': 'x', lint: 'gennady', format: 'x' });
+    assert.ok(r.missing.includes('type-check'));
+    assert.ok(!r.missing.includes('typecheck'));
   });
 
   it('detects gennady directly in the lint body', () => {

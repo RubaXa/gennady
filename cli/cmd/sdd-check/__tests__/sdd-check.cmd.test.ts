@@ -151,11 +151,11 @@ describe('SddCheckCommand', () => {
     assert.match((await mod.run(argv(`--task=${bad}`))).text, /SDD_BROKEN_SPEC_ANCHOR/);
   });
 
-  const ticketWithCoverage = (taskId: string, coverageBody: string): string =>
+  const ticketWithCoverage = (taskId: string, coverageBody: string, status = '[ ] TODO'): string =>
     [
       '<!--SECTION:META-->',
       `- **Task-ID:** ${taskId}`,
-      '- **Status:** [ ] TODO',
+      `- **Status:** ${status}`,
       '<!--/SECTION:META-->',
       '<!--SECTION:TEST_COVERAGE-->',
       '## Test Scenario Coverage',
@@ -234,7 +234,32 @@ describe('SddCheckCommand', () => {
       const t = join(cwd, 'ticket.md');
       writeFileSync(
         t,
-        ticketWithCoverage('cli-foo', '- scenario → `src/app/x.test.ts` :: `does the thing`'),
+        ticketWithCoverage(
+          'cli-foo',
+          '- scenario → `src/app/x.test.ts` :: `does the thing`',
+          '[x] DONE'
+        ),
+        'utf-8'
+      );
+      const r = await mod.run(argv(`--task=${t}`));
+      assert.doesNotMatch(r.text, /SDD_BDD_SCENARIO_UNTESTED/);
+    } finally {
+      process.chdir(prevCwd);
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  it('--task skips the SDD_BDD_SCENARIO_UNTESTED existence check before Status is DONE — mid-implementation, the test file legitimately does not exist yet', async () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'sdd-check-cwd-'));
+    const prevCwd = process.cwd();
+    try {
+      writeFileSync(join(cwd, 'package.json'), '{}', 'utf-8');
+      process.chdir(cwd);
+      const t = join(cwd, 'ticket.md');
+      // no test file on disk at all, Status TODO — existence check must not run
+      writeFileSync(
+        t,
+        ticketWithCoverage('cli-foo', '- scenario → `never-written.test.ts` :: `does the thing`'),
         'utf-8'
       );
       const r = await mod.run(argv(`--task=${t}`));
@@ -260,7 +285,7 @@ describe('SddCheckCommand', () => {
       const t = join(cwd, 'ticket.md');
       writeFileSync(
         t,
-        ticketWithCoverage('cli-foo', '- scenario → `x.test.ts` :: `does the thing`'),
+        ticketWithCoverage('cli-foo', '- scenario → `x.test.ts` :: `does the thing`', '[x] DONE'),
         'utf-8'
       );
       const r = await mod.run(argv(`--task=${t}`));
@@ -292,7 +317,7 @@ describe('SddCheckCommand', () => {
       const t = join(cwd, 'ticket.md');
       writeFileSync(
         t,
-        ticketWithCoverage('cli-foo', '- scenario → `x.test.ts` :: `does the thing`'),
+        ticketWithCoverage('cli-foo', '- scenario → `x.test.ts` :: `does the thing`', '[x] DONE'),
         'utf-8'
       );
       const r = await mod.run(argv(`--task=${t}`));

@@ -30,6 +30,91 @@ export function isValidSectionName(name: string): boolean {
 }
 
 /**
+ * @purpose Canonical markdown heading-anchor grammar — an optional leading `#` then a GitHub-style
+ * lower-dashed slug (lowercase letters/digits, hyphen-separated words).
+ * @invariant Disjoint from SECTION_NAME_REGEX (that one is upper-only) — a name matches at most one grammar.
+ */
+export const HEADING_ANCHOR_REGEX = /^#?[a-z0-9]+(-[a-z0-9]+)*$/;
+
+/**
+ * @purpose Report whether a name matches the markdown heading-anchor grammar (`#lower-dashed` or bare `lower-dashed`).
+ * @param name Candidate anchor.
+ * @returns True when `name` matches HEADING_ANCHOR_REGEX.
+ */
+export function isHeadingAnchor(name: string): boolean {
+  return HEADING_ANCHOR_REGEX.test(name);
+}
+
+/**
+ * @purpose GitHub-style heading slug: lowercase, strip punctuation (keep spaces/hyphens), spaces → hyphens.
+ * @param heading Raw heading text (without the leading `#`s).
+ * @returns The normalized anchor slug.
+ */
+export function headingSlug(heading: string): string {
+  return heading
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-');
+}
+
+/**
+ * @purpose Every markdown heading in `content`, in document order.
+ * @param content Full markdown text.
+ * @returns Level (1-6), raw text, and character offsets of the heading line (start) and its end (start of the next line).
+ */
+function collectHeadings(
+  content: string
+): { level: number; text: string; start: number; lineEnd: number }[] {
+  const out: { level: number; text: string; start: number; lineEnd: number }[] = [];
+  const re = /^(#{1,6})[ \t]+(.+?)[ \t]*$/gm;
+  for (const m of content.matchAll(re)) {
+    const start = m.index ?? 0;
+    out.push({
+      level: (m[1] as string).length,
+      text: (m[2] as string).trim(),
+      start,
+      lineEnd: start + m[0].length,
+    });
+  }
+  return out;
+}
+
+/**
+ * @purpose Outcome of a heading-anchor extraction.
+ * @invariant `ok` carries `content`; `not_found` carries every heading's slug as a candidate list (for a nearest-match suggestion).
+ */
+export type HeadingSectionResult =
+  | { status: 'ok'; content: string }
+  | { status: 'not_found'; candidates: string[] };
+
+/**
+ * @purpose Extract one markdown heading's body — from after the heading line to the next
+ * same-or-higher-level heading, exclusive.
+ * @invariant Slug-matched via `headingSlug` (GitHub-style normalization), not literal text compare.
+ * @param content Full markdown text of the artifact.
+ * @param anchor Heading anchor — `#lower-dashed-heading` or bare `lower-dashed-heading`.
+ * @returns `ok` with the trimmed body, or `not_found` with every heading's slug as a candidate.
+ */
+export function extractHeadingSection(content: string, anchor: string): HeadingSectionResult {
+  const target = anchor.replace(/^#/, '');
+  const headings = collectHeadings(content);
+  const idx = headings.findIndex((h) => headingSlug(h.text) === target);
+  if (idx === -1)
+    return { status: 'not_found', candidates: headings.map((h) => headingSlug(h.text)) };
+  const h = headings[idx] as { level: number; text: string; start: number; lineEnd: number };
+  let end = content.length;
+  for (let i = idx + 1; i < headings.length; i++) {
+    const next = headings[i] as { level: number; start: number };
+    if (next.level <= h.level) {
+      end = next.start;
+      break;
+    }
+  }
+  return { status: 'ok', content: content.slice(h.lineEnd, end).trim() };
+}
+
+/**
  * @purpose Extract the content between `<!--SECTION:NAME-->` and `<!--/SECTION:NAME-->`, excluding the marker lines.
  * @invariant Markers are matched by a whitespace-trimmed full-line compare, so leading indentation is tolerated.
  * @invariant A single balanced pair is required; zero, mismatched, or duplicate markers each map to a distinct status.

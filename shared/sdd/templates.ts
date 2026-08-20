@@ -52,6 +52,8 @@ export type NextStepsContext = {
   scope?: string;
   /** @purpose `--module` value, when the kind takes one. */
   module?: string;
+  /** @purpose `--id` value (the created Task-ID), when the kind takes one — `task` only. */
+  id?: string;
 };
 
 /**
@@ -533,6 +535,16 @@ edit ──► typecheck ──► lint ──► test ──► pre-commit ─�
 | Category | Tool | Rationale |
 |---|---|---|
 | <category> | <tool> | D-NNN |
+
+### Integration Detail
+[Для каждого выбранного инструмента — поля интеграции ниже. Заполняются на стадии решения; если
+на момент написания неизвестно — ресёрчем (\`gennady sdd-new research\`), не угадыванием.]
+
+- **<tool>**
+  - Версия/API: [<версия пакета / API version>]
+  - Нужные методы: [<конкретные методы/эндпоинты, которые реально вызываем>]
+  - Эскиз интеграции: [<как подключается — конфиг/адаптер/CLI-вызов, в двух-трёх словах>]
+  - Ограничения: [<лимиты, quota, версийные требования, licensing>]
 <!--/SECTION:TOOL_STACK-->
 
 <!--SECTION:WORKFLOW_EXAMPLE-->
@@ -642,7 +654,7 @@ const INFRASTRUCTURE_SECTIONS: SectionManifestEntry[] = [
     required: true,
     loadBearing: true,
     fold: false,
-    fill: 'Categories covered plus rationale for exclusions, and the Category/Tool/Rationale (D-NNN) choices table.',
+    fill: 'Categories covered plus rationale for exclusions, the Category/Tool/Rationale (D-NNN) choices table, and per-tool Integration Detail (Version/API, needed methods, integration sketch, constraints — research if unknown at write time).',
   },
   {
     name: 'WORKFLOW_EXAMPLE',
@@ -1131,6 +1143,8 @@ const TASK_SKELETON = `# Task: <ACRONYM>-<slug> — <Task Title>
 - **Objective:** <one-line>
 - **Rules:**   <!-- links only, resolved from the cascade; rule content is never inlined -->
   - [ai/directives/<category>/<rule>.xml](<relative-path>)
+- **Spec Refs:**   <!-- optional — subset of Meta Spec References THIS phase actually reads; omit the whole field to fall back to the full Meta set (sdd-task --phase filters to this list when present) -->
+  - [<PortName>](<spec anchor>)
 - **Target Files:**
   - <path>
 - **Inputs:** none   <!-- or "P1 handoff" -->
@@ -1142,6 +1156,8 @@ const TASK_SKELETON = `# Task: <ACRONYM>-<slug> — <Task Title>
 - **Objective:** <one-line>
 - **Rules:**
   - [ai/directives/<category>/<rule>.xml](<relative-path>)
+- **Spec Refs:**   <!-- optional, see P1 -->
+  - [<PortName>](<spec anchor>)
 - **Target Files:**
   - <path>
 - **Inputs:** P1 handoff
@@ -1223,7 +1239,7 @@ const TASK_SECTIONS: SectionManifestEntry[] = [
     required: true,
     loadBearing: false,
     fold: false,
-    fill: 'One anchored PHASE_P<N> section per row in Phases Overview: Objective, Rules (links only), Target Files, Inputs, Exit criterion.',
+    fill: 'One anchored PHASE_P<N> section per row in Phases Overview: Objective, Rules (links only), optional Spec Refs (per-phase subset of Meta Spec References; omit to fall back to the full set), Target Files, Inputs, Exit criterion.',
   },
   {
     name: 'BDD',
@@ -1597,6 +1613,11 @@ const RESEARCH_SKELETON = `# Research: <topic-title>
 «по памяти модели на <дата знаний>, источник не найден»). Нового непроверяемого факта здесь не вводить.]
 
 Выбрали <X> и не <Y>/<Z>, чтобы достичь <G>, приняв trade-off <T>.
+
+- Версия/API: [<версия пакета / API version выбранного X>]
+- Нужные методы: [<конкретные методы/эндпоинты, которые реально вызываем>]
+- Эскиз интеграции: [<как подключается — конфиг/адаптер/CLI-вызов, в двух-трёх словах>]
+- Ограничения: [<лимиты, quota, версийные требования, licensing>]
 <!--/SECTION:DECISION-->
 
 <!--SECTION:CONSEQUENCES-->
@@ -1658,7 +1679,7 @@ const RESEARCH_SECTIONS: SectionManifestEntry[] = [
     required: true,
     loadBearing: true,
     fold: false,
-    fill: 'The MADR-style formula: chose X over Y/Z to achieve G, accepting trade-off T — built only from already-sourced/marked facts in CRITERIA/OPTIONS, no new unverifiable claim introduced here.',
+    fill: "The MADR-style formula: chose X over Y/Z to achieve G, accepting trade-off T — built only from already-sourced/marked facts in CRITERIA/OPTIONS, no new unverifiable claim introduced here. Followed by the chosen X's integration fields: Version/API, needed methods, integration sketch, constraints.",
   },
   {
     name: 'CONSEQUENCES',
@@ -1698,9 +1719,10 @@ const NEXT_STEPS: Record<ArtifactKind, string[] | ((ctx: NextStepsContext) => st
   infrastructure: SPEC_NEXT_STEPS,
   interface: SPEC_NEXT_STEPS,
   module: SPEC_NEXT_STEPS,
-  task: [
+  task: (ctx: NextStepsContext): string[] => [
     'Заполни тикет по манифесту секций выше (Meta, фазы, BDD, Verification, Test Coverage).',
     'Тикет попадёт в execution map автоматически — смотри `sdd-task` (pickable = TODO + все Dependencies DONE).',
+    `Task-ID: ${ctx.id ?? '<id>'} — во всех дальнейших ссылках используй ровно этот ID.`,
   ],
   'module-index': [
     'Обычно генерируется/дополняется `sdd-scaffold` при декомпозиции модуля на тикеты.',

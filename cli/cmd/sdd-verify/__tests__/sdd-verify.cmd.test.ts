@@ -30,7 +30,7 @@ describe('GATES', () => {
   it('is the fixed mutating-first exact sequence', () => {
     assert.deepStrictEqual(
       GATES.map((g) => g.name),
-      ['format', 'lint', 'typecheck', 'test:coverage', 'yagni']
+      ['format', 'lint', 'type-check', 'test:coverage', 'yagni']
     );
     assert.deepStrictEqual(
       GATES.filter((g) => g.mutates).map((g) => g.name),
@@ -59,15 +59,15 @@ describe('verdict', () => {
   it('a failure → exit 1; only the failed gate dumps output', () => {
     const results: GateResult[] = GATES.map((g) => ({
       name: g.name,
-      exitCode: g.name === 'typecheck' ? 1 : 0,
-      output: g.name === 'typecheck' ? 'TS2345 ...' : '',
+      exitCode: g.name === 'type-check' ? 1 : 0,
+      output: g.name === 'type-check' ? 'TS2345 ...' : '',
       durationMs: 100,
     }));
     const v = verdict(results);
     assert.strictEqual(v.ok, false);
     if (!v.ok) {
       assert.strictEqual(v.exitCode, 1);
-      assert.match(v.message, /❌ typecheck — exit 1/);
+      assert.match(v.message, /❌ type-check — exit 1/);
       assert.match(v.message, /TS2345/);
       assert.match(v.message, /✅ format/);
       assert.doesNotMatch(v.message, /❌ format/);
@@ -130,15 +130,15 @@ describe('profiles', () => {
   it('gatesFor subsets GATES in canonical order per profile', () => {
     assert.deepStrictEqual(
       gatesFor('code').map((g) => g.name),
-      ['format', 'lint', 'typecheck', 'yagni']
+      ['format', 'lint', 'type-check', 'yagni']
     );
     assert.deepStrictEqual(
       gatesFor('test').map((g) => g.name),
-      ['format', 'typecheck', 'test:coverage']
+      ['format', 'type-check', 'test:coverage']
     );
     assert.deepStrictEqual(
       gatesFor('full').map((g) => g.name),
-      ['format', 'lint', 'typecheck', 'test:coverage', 'yagni']
+      ['format', 'lint', 'type-check', 'test:coverage', 'yagni']
     );
   });
 
@@ -153,7 +153,7 @@ describe('profiles', () => {
     assert.deepStrictEqual(code.calls, [
       'npm run format',
       'npm run lint',
-      'npm run typecheck',
+      'npm run type-check',
       'npx gennady yagni',
     ]);
 
@@ -161,7 +161,7 @@ describe('profiles', () => {
     await run(test.runner, 'test');
     assert.deepStrictEqual(test.calls, [
       'npm run format',
-      'npm run typecheck',
+      'npm run type-check',
       'npm run test:coverage',
     ]);
   });
@@ -175,7 +175,7 @@ describe('run', () => {
     assert.deepStrictEqual(calls, [
       'npm run format',
       'npm run lint',
-      'npm run typecheck',
+      'npm run type-check',
       'npm run test:coverage',
       'npx gennady yagni',
     ]);

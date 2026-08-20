@@ -163,7 +163,15 @@ export function checkYagniUsage(
         code: ERR_CLI_YAGNI_UNDERUSED,
         file: sym.file,
         symbol: sym.name,
-        message: `\`${sym.name}\` (${sym.kind}) has ${count} usage(s) in production code (< 2) — YAGNI suspect. Fix: remove it, or — if genuinely needed — add \`- **Usage Waiver:** <reason>\` to its contract/surface entry (cite \`D-NNN — <reason>\` instead only when a Decision Log entry actually backs the reason, and then it must exist; for a public API named to an external consumer use the \`(external: <consumer>)\` variant) and log \`yagni ${sym.name} ← <reason>\` in the Execution Log.`,
+        message: [
+          `\`${sym.name}\` (${sym.kind}) has ${count} usage(s) in production code (< 2) — YAGNI suspect.`,
+          `Fix: remove it — or, if genuinely needed, paste this under \`${sym.name}\`'s entity heading`,
+          'in MODULE_CONTRACTS / ENTITY_SURFACES / PUBLIC_API_SURFACE (never Decision Log):',
+          `  - **Usage Waiver:** <reason — почему \`${sym.name}\` нужен несмотря на < 2 использований>`,
+          '(cite `D-NNN — <reason>` only when a Decision Log entry backs it — and it must then exist;',
+          'for a public API named to one external consumer, use the `(external: <consumer>)` variant instead.)',
+          `Then log in the ticket's Execution Log: yagni ${sym.name} ← <reason>`,
+        ].join('\n'),
       });
       continue;
     }

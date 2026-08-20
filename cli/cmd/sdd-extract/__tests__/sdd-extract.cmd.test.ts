@@ -106,13 +106,38 @@ describe('SddExtractCommand', () => {
     }
   });
 
-  it('rejects a non-canonical name with exit 4 / INVALID_NAME before reading', async () => {
-    const outcome = await mod.run(argv(ticket, 'meta'));
+  it('rejects a name matching neither the SECTION nor the heading-slug grammar with exit 4 / INVALID_NAME before reading', async () => {
+    const outcome = await mod.run(argv(ticket, 'Meta_Weird!'));
     assert.strictEqual(outcome.ok, false);
     if (!outcome.ok) {
       assert.strictEqual(outcome.exitCode, 4);
       assert.match(outcome.code, /INVALID_NAME/);
     }
+  });
+
+  describe('markdown heading anchors', () => {
+    it('resolves a lower-dashed heading slug to the body up to the next same/higher-level heading', async () => {
+      const outcome = await mod.run(argv(ticket, 'cli-foo-task-ticket'));
+      assert.strictEqual(outcome.ok, true);
+      if (outcome.ok) assert.match(outcome.content, /Task-ID/);
+    });
+
+    it('accepts the `#`-prefixed spelling identically to the bare slug', async () => {
+      const bare = await mod.run(argv(ticket, 'cli-foo-task-ticket'));
+      const hashed = await mod.run(argv(ticket, '#cli-foo-task-ticket'));
+      assert.deepStrictEqual(bare, hashed);
+    });
+
+    it('a heading slug with no match → exit 2 / ANCHOR_NOT_FOUND naming nearest candidates', async () => {
+      const outcome = await mod.run(argv(ticket, 'cli-foo-task-tickett'));
+      assert.strictEqual(outcome.ok, false);
+      if (!outcome.ok) {
+        assert.strictEqual(outcome.exitCode, 2);
+        assert.match(outcome.code, /ANCHOR_NOT_FOUND/);
+        assert.match(outcome.message, /nearest candidates/);
+        assert.match(outcome.message, /cli-foo-task-ticket/);
+      }
+    });
   });
 
   it('rejects wrong argument count with exit 4 / BAD_INVOCATION', async () => {

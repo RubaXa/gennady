@@ -263,33 +263,40 @@ function getTestCaseNames(absPath: string): string[] {
   return names;
 }
 
-/** @purpose BDD_COVERAGE for one ticket — canonical case names in Test Scenario Coverage vs real it()/test() names, self-deferral, and unparsed rows. | @param file Ticket path. | @param content Ticket markdown. | @param repoRoot Repository root (anchors the test-file basename search + flow-version detection). | @returns SDD_BDD_SCENARIO_UNTESTED (severity by the ticket's own flow version), SDD_BDD_DEFERRED_TO_SELF, and SDD_BDD_COVERAGE_ROW_UNPARSED findings, if any. */
+/** @purpose BDD_COVERAGE for one ticket — canonical case names in Test Scenario Coverage vs real it()/test() names, self-deferral, and unparsed rows. | @invariant Existence checks (SCENARIO_UNTESTED, TESTFILE_AMBIGUOUS) run only once Status is DONE — the test file may not exist yet mid-implementation. Format checks run regardless. | @param file Ticket path. | @param content Ticket markdown. | @param repoRoot Repository root (anchors the test-file basename search + flow-version detection). | @returns SDD_BDD_SCENARIO_UNTESTED (severity by the ticket's own flow version), SDD_BDD_TESTFILE_AMBIGUOUS, SDD_BDD_DEFERRED_TO_SELF, and SDD_BDD_COVERAGE_ROW_UNPARSED findings, if any. */
 function checkTicketBddCoverage(file: string, content: string, repoRoot: string): Finding[] {
   const sec = extractSection(content, 'TEST_COVERAGE');
   if (sec.status !== 'ok') return [];
   const findings = checkUnparsedCoverageRows(file, sec.content);
   const entries = parseTestCoverage(sec.content);
   if (entries.length === 0) return findings;
-  const idx = getTestFileIndex(repoRoot);
-  const caseNamesByFile = new Map<string, string[]>();
-  for (const e of entries) {
-    if (e.deferred !== null || caseNamesByFile.has(e.testFile)) continue;
-    const matches = resolveTestFileMatches(idx, e.testFile);
-    findings.push(...checkTestFileAmbiguity(file, e.testFile, matches));
-    caseNamesByFile.set(
-      e.testFile,
-      matches.flatMap((m) => getTestCaseNames(m))
-    );
-  }
+
   const metaSec = extractSection(content, 'META');
-  const selfTaskId = metaSec.status === 'ok' ? parseMetaInfo(metaSec.content).taskId : null;
+  const meta = metaSec.status === 'ok' ? parseMetaInfo(metaSec.content) : null;
+  const selfTaskId = meta?.taskId ?? null;
+  const isDone = /\bDONE\b/i.test(meta?.status ?? '');
+
+  const caseNamesByFile = new Map<string, string[]>();
+  if (isDone) {
+    const idx = getTestFileIndex(repoRoot);
+    for (const e of entries) {
+      if (e.deferred !== null || caseNamesByFile.has(e.testFile)) continue;
+      const matches = resolveTestFileMatches(idx, e.testFile);
+      findings.push(...checkTestFileAmbiguity(file, e.testFile, matches));
+      caseNamesByFile.set(
+        e.testFile,
+        matches.flatMap((m) => getTestCaseNames(m))
+      );
+    }
+  }
   findings.push(
     ...checkBddCoverage(
       file,
       entries,
       caseNamesByFile,
       ticketFlowVersion(file, repoRoot),
-      selfTaskId
+      selfTaskId,
+      isDone
     )
   );
   return findings;

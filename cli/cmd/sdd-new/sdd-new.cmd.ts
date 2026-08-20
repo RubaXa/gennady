@@ -279,7 +279,12 @@ export async function run(rawArgs: string[]): Promise<NewOutcome> {
   }
 
   logger.debug(`[SddNewCommand#run] created ${kind} skeleton at ${path}`);
-  const nextSteps = resolveNextSteps(kind, { path, scope: opts.scope, module: opts.module });
+  const nextSteps = resolveNextSteps(kind, {
+    path,
+    scope: opts.scope,
+    module: opts.module,
+    id: opts.id,
+  });
   return { ok: true, text: renderCreated(kind, path, TEMPLATES[kind].sections, nextSteps), path };
 }
 

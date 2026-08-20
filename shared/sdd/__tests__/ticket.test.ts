@@ -102,6 +102,21 @@ describe('parsePhaseDetail', () => {
     assert.strictEqual(d.inputs, 'none');
     assert.strictEqual(d.exit, 'compiles clean');
   });
+
+  it('specRefs is empty when the phase declares no Spec Refs bullets', () => {
+    assert.deepStrictEqual(parsePhaseDetail(PHASE).specRefs, []);
+  });
+
+  it('parses an explicit per-phase Spec Refs subset (link anchors)', () => {
+    const withRefs = [
+      PHASE,
+      '- **Spec Refs:**',
+      '  - [FooPort](specs/cli/core/core.spec.md#fooport)',
+    ].join('\n');
+    assert.deepStrictEqual(parsePhaseDetail(withRefs).specRefs, [
+      'specs/cli/core/core.spec.md#fooport',
+    ]);
+  });
 });
 
 describe('parseVerification', () => {

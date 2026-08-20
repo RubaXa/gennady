@@ -6,15 +6,38 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { logger } from '#logger';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
-import { extractSection, isValidSectionName } from '../../../shared/sdd/section.ts';
+import {
+  extractSection,
+  extractHeadingSection,
+  isValidSectionName,
+  isHeadingAnchor,
+  headingSlug,
+} from '../../../shared/sdd/section.ts';
 import {
   badInvocation,
   fileNotFound,
   fileNotReadable,
   invalidName,
   toOutcome,
+  toHeadingOutcome,
   type ExtractOutcome,
 } from './sdd-extract.types.ts';
+
+/**
+ * @purpose Every `<!--SECTION:X-->` name plus every heading's slug present in `content` — candidate
+ * anchors for a not_found suggestion.
+ * @param content Full file markdown.
+ * @returns Section names and heading slugs, in document order (may repeat).
+ */
+function listAnchors(content: string): string[] {
+  const sections = [...content.matchAll(/<!--SECTION:([A-Z][A-Z0-9_]*)-->/g)].map(
+    (m) => m[1] as string
+  );
+  const headings = [...content.matchAll(/^#{1,6}[ \t]+(.+?)[ \t]*$/gm)].map((m) =>
+    headingSlug(m[1] as string)
+  );
+  return [...sections, ...headings];
+}
 
 /**
  * @purpose Execute gennady sdd-extract — resolve <file> <NAME>, read the file, return the named section or an actionable failure.
@@ -35,8 +58,9 @@ export async function run(rawArgs: string[]): Promise<ExtractOutcome> {
   }
 
   const [file, name] = positional as [string, string];
+  const isHeading = isHeadingAnchor(name);
 
-  if (!isValidSectionName(name)) {
+  if (!isValidSectionName(name) && !isHeading) {
     logger.warn(`[SddExtractCommand#run] invalid section name: ${name}`);
     return invalidName(name);
   }
@@ -53,7 +77,19 @@ export async function run(rawArgs: string[]): Promise<ExtractOutcome> {
   }
   // #endregion END_READ
 
+  // A markdown heading anchor (`#lower-dashed` or bare) is tried only when the canonical
+  // `<!--SECTION--> grammar doesn't match — the two grammars are disjoint (upper vs lower).
+  if (isHeading && !isValidSectionName(name)) {
+    const result = extractHeadingSection(content, name);
+    logger.debug(`[SddExtractCommand#run] [reading → ${result.status}] heading ${name}`);
+    return toHeadingOutcome(file, name, result);
+  }
+
   const result = extractSection(content, name);
+  if (result.status === 'not_found') {
+    logger.debug(`[SddExtractCommand#run] [reading → not_found] section ${name}`);
+    return toOutcome(file, name, result, listAnchors(content));
+  }
   logger.debug(`[SddExtractCommand#run] [reading → ${result.status}] section ${name}`);
   return toOutcome(file, name, result);
 }

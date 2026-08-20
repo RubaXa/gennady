@@ -234,6 +234,19 @@ describe('checkYagniUsage', () => {
     assert.strictEqual(findings[0]?.severity, 'error');
   });
 
+  it('ERR_CLI_YAGNI_UNDERUSED message carries a ready-to-paste Usage Waiver block, not just the symbol name', () => {
+    const findings = checkYagniUsage(
+      [sym('orphan')],
+      new Map([['orphan', 0]]),
+      new Map(),
+      new Set()
+    );
+    const msg = findings[0]?.message ?? '';
+    assert.match(msg, /- \*\*Usage Waiver:\*\* <reason/);
+    assert.match(msg, /MODULE_CONTRACTS.*ENTITY_SURFACES.*PUBLIC_API_SURFACE/s);
+    assert.match(msg, /yagni orphan ← <reason>/);
+  });
+
   it('< 2 usages, waiver present, D-NNN live → gated, no finding', () => {
     const waiver: UsageWaiver = { decision: 'D-042', reason: 'kept for the plugin API' };
     const findings = checkYagniUsage(

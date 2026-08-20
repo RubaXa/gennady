@@ -24,7 +24,7 @@ export type Gate = {
 export const GATES: readonly Gate[] = [
   { name: 'format', mutates: true },
   { name: 'lint', mutates: true },
-  { name: 'typecheck', mutates: false },
+  { name: 'type-check', mutates: false },
   { name: 'test:coverage', mutates: false },
   { name: 'yagni', mutates: false, via: 'gennady' },
 ];
@@ -35,9 +35,9 @@ export type Profile = 'code' | 'test' | 'full';
 // Gate names per profile: code skips tests (may not exist yet) but still runs yagni (a code-diff
 // concern, not a test concern); test skips lint + yagni (no production code changed); full runs everything.
 const PROFILE_GATES: Record<Profile, readonly string[]> = {
-  code: ['format', 'lint', 'typecheck', 'yagni'],
-  test: ['format', 'typecheck', 'test:coverage'],
-  full: ['format', 'lint', 'typecheck', 'test:coverage', 'yagni'],
+  code: ['format', 'lint', 'type-check', 'yagni'],
+  test: ['format', 'type-check', 'test:coverage'],
+  full: ['format', 'lint', 'type-check', 'test:coverage', 'yagni'],
 };
 
 /**

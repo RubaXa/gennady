@@ -4,9 +4,18 @@
 
 /**
  * @purpose The exact npm script names a v2-ready Node project must declare.
- * @invariant Matched by exact name only — no classifier, no fuzzy `type-?check` guessing.
+ * @invariant Matched by exact name only — no fuzzy guessing. `type-check` also accepts `typecheck`
+ * via SCRIPT_ALIASES — still exact-match against a closed set.
  */
-export const REQUIRED_SCRIPTS = ['typecheck', 'test', 'test:coverage', 'lint', 'format'] as const;
+export const REQUIRED_SCRIPTS = ['type-check', 'test', 'test:coverage', 'lint', 'format'] as const;
+
+/**
+ * @purpose Alternate spellings accepted for one required script; every other name has exactly one.
+ * Canonical/displayed name stays `type-check`, even if the project spells it `typecheck`.
+ */
+const SCRIPT_ALIASES: Partial<Record<(typeof REQUIRED_SCRIPTS)[number], readonly string[]>> = {
+  'type-check': ['type-check', 'typecheck'],
+};
 
 /** @purpose One required script and whether it is declared. */
 export type RequiredScript = {
@@ -95,7 +104,7 @@ export function checkReadiness(input: ReadinessInput): ReadinessResult {
 
   const required: RequiredScript[] = REQUIRED_SCRIPTS.map((name) => ({
     name,
-    present: isRealScript(scripts[name]),
+    present: (SCRIPT_ALIASES[name] ?? [name]).some((n) => isRealScript(scripts[n])),
   }));
 
   const lintHasGennady = lintReachesGennady(scripts);

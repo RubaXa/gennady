@@ -19,9 +19,16 @@ import {
   ticketRef,
   pickableTasks,
   scanBlockerTrail,
+  parsePhaseHandoffs,
   type TicketRef,
 } from '../../../shared/sdd/check.ts';
-import { fileError, formatPlan, notATicket, type TaskOutcome } from './sdd-task.types.ts';
+import {
+  fileError,
+  formatPlan,
+  formatPhase,
+  notATicket,
+  type TaskOutcome,
+} from './sdd-task.types.ts';
 
 const SKIP_DIRS = new Set([
   'node_modules',
@@ -92,10 +99,11 @@ function formatMap(refs: TicketRef[]): string {
  * @returns TaskOutcome — the planning surface on success, else an actionable failure.
  */
 export async function run(rawArgs: string[]): Promise<TaskOutcome> {
-  const args = parseArgs(rawArgs, {});
+  const args = parseArgs(rawArgs, { phase: { aliases: ['phase'], takesValue: true } });
   const positional = (args._ as string[]).filter(
     (a: string) => typeof a === 'string' && a !== 'sdd-task'
   );
+  const phaseId = typeof args.phase === 'string' ? args.phase : null;
 
   const ticket = positional[0];
   if (!ticket) {
@@ -125,6 +133,7 @@ export async function run(rawArgs: string[]): Promise<TaskOutcome> {
 
   const logSec = extractSection(content, 'EXECUTION_LOG');
   const activeBlockers = logSec.status === 'ok' ? scanBlockerTrail(logSec.content) : [];
+  const handoffs = logSec.status === 'ok' ? parsePhaseHandoffs(logSec.content) : {};
 
   // #region START_PHASE_DETAILS — invariant: extract only each phase's own section, never the whole body
   const detailsById: Record<string, PhaseDetail | undefined> = {};
@@ -133,6 +142,11 @@ export async function run(rawArgs: string[]): Promise<TaskOutcome> {
     if (sec.status === 'ok') detailsById[p.id] = parsePhaseDetail(sec.content);
   }
   // #endregion END_PHASE_DETAILS
+
+  if (phaseId) {
+    logger.debug(`[SddTaskCommand#run] ${meta.taskId ?? '?'}: --phase ${phaseId}`);
+    return formatPhase(meta, phases, detailsById, gates, handoffs, phaseId);
+  }
 
   logger.debug(
     `[SddTaskCommand#run] ${meta.taskId ?? '?'}: ${phases.length} phase(s), ${gates.length} gate(s)`

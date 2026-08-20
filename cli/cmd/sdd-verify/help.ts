@@ -13,10 +13,10 @@ export function printHelp(): void {
   console.info('');
   console.info('Profiles (fixed gate sets, chosen by explicit flag — no detection):');
   console.info(
-    '  code  → format · lint · typecheck · yagni            (code phases; no tests yet)'
+    '  code  → format · lint · type-check · yagni            (code phases; no tests yet)'
   );
-  console.info('  test  → format · typecheck · test:coverage           (test phase)');
-  console.info('  full  → format · lint · typecheck · test:coverage · yagni  (final / default)');
+  console.info('  test  → format · type-check · test:coverage           (test phase)');
+  console.info('  full  → format · lint · type-check · test:coverage · yagni  (final / default)');
   console.info('');
   console.info('Order is normative (mutating gates first so autofix never races a reader).');
   console.info('');

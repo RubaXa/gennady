@@ -109,7 +109,7 @@ describe('SddStateCommand', () => {
       assert.match(o.text, /FLOW_VERSION=v2/);
       assert.match(o.text, /READINESS=ready/);
       assert.match(o.text, /package\.json\t✔/);
-      assert.match(o.text, /typecheck\t✔/);
+      assert.match(o.text, /type-check\t✔/);
       assert.match(o.text, /test:coverage\t✔/);
       assert.match(o.text, /lint→gennady\t✔/);
       assert.match(o.text, /gennady-installed\t✔/);
@@ -138,7 +138,7 @@ describe('SddStateCommand', () => {
     assert.strictEqual(o.ok, true);
     if (o.ok) {
       assert.match(o.text, /READINESS=not-ready/);
-      assert.match(o.text, /missing:[^)]*typecheck/);
+      assert.match(o.text, /missing:[^)]*type-check/);
       assert.match(o.text, /missing:[^)]*format/);
       assert.match(o.text, /missing:[^)]*gennady/);
       assert.match(o.text, /package\.json\t✔/);
