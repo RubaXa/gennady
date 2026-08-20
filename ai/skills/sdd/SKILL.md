@@ -4,14 +4,14 @@ description: SDD entry point. Router — picks the right flow (project portal / 
 compatibility: opencode
 ---
 
-<SddDoor door="router">
+<SddSkill id="router">
   <Mission>Route the operator to exactly one SDD flow: gather state, embody the router directive, hand off.</Mission>
 
   <Priming>
-    SDD doors are thin directive-loaders. Files under `ai/directives/sdd-v2/` are PROMPT directives, not
+    SDD skills are thin directive-loaders. Files under `ai/directives/sdd-v2/` are PROMPT directives, not
     data: the XML-ish tags only mark sections — `<Mission>` goal, `<BeliefState>` axioms, `<ExecutionPlan>`
     steps, `<HaltConditions>` stop-rules. The body is markdown read as instruction — you EMBODY the
-    directive, you do not parse it. A door gathers context fast, then hands control to its directive.
+    directive, you do not parse it. A skill gathers context fast, then hands control to its directive.
   </Priming>
 
   <ExecutionPlan>
@@ -29,4 +29,4 @@ compatibility: opencode
       exactly one branch (root / recover-from-code / scope / infra / interface / module). Ambiguous → ask, never guess.
     </Step>
   </ExecutionPlan>
-</SddDoor>
+</SddSkill>

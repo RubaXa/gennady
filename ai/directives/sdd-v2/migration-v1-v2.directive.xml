@@ -2,7 +2,7 @@
   <Mission>
     Migrate a repo from the SDD v1 layout to v2 — interactively, plan-first, under git (baseline first —
     every step is revertible). Entered when
-    `sdd-state` reports `FLOW_VERSION=v1` (a `tasks/` directory), from the router preflight or any door.
+    `sdd-state` reports `FLOW_VERSION=v1` (a `tasks/` directory), from the router preflight or any skill.
     This is a SPECIFIC v1→v2 directive; a later `v2→v3` is its own sibling. Self-sufficient: it may run
     without the router core, so it repeats the operator-facing axioms it needs.
 

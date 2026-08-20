@@ -167,7 +167,7 @@ export function validateInput(input: unknown): boolean {
 
 ## Entry
 
-Скилл: `/sdd`. Директива входит «from the router preflight or any door» (`Mission`) — тот же
+Скилл: `/sdd`. Директива входит «from the router preflight or any skill» (`Mission`) — тот же
 router-preflight маршрут, что в S2 (`FLOW_VERSION=v1` + запрос бьёт по `tasks/` layout целиком).
 Первая реплика оператора:
 
@@ -199,7 +199,7 @@ ids --from-plan` DRY-RUN report «нечего делать» · каждый ю
 
 1. Единственная загрузка директивы — `directive: ai/directives/sdd-v2/migration-v1-v2.directive.xml
 loaded`, обоснованная её собственным `Mission`: «Entered when `sdd-state` reports
-   `FLOW_VERSION=v1` (a `tasks/` directory), from the router preflight or any door.»
+   `FLOW_VERSION=v1` (a `tasks/` directory), from the router preflight or any skill.»
 
 2. `STEP_0_SCAN` — гейт `H_NOT_V1` не сработал: `sdd-state` вызван первым и подтвердил
    `FLOW_VERSION=v1` ДО остального шага — дословно Action: «Confirm `FLOW_VERSION=v1` via `sdd-state`

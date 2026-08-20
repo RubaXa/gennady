@@ -2,7 +2,7 @@
   <Mission>
     The whole working process of the agent-inbox skill: session invariants, intents, inbox
     presentation, hard rules, VCS tools, action map, the single-MR review pipeline (scaffold →
-    enrich → validate → dispatch → synthesize), and finalization. The door `agent-inbox/SKILL.md`
+    enrich → validate → dispatch → synthesize), and finalization. The skill `agent-inbox/SKILL.md`
     reads this directive at GATHER and EMBODIES it — this is a PROMPT, not data. Posting to the VCS
     is governed by `posting-rules.directive.xml` (loaded at the posting step).
 

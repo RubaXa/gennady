@@ -8,7 +8,7 @@ class"` в `STEP_2B_CLASSIFY` НЕ уходит в тривиальную вет
 specs untouched» ложно), показывает план (`PLAN_TABLE_FORMAT`) и берёт явное согласие оператора
 (`AX_OPERATOR_AGREEMENT`) ДО любого редактирования, затем применяет только spec-edit (`STEP_5_APPLY`)
 — без `AX_REOPEN_FORMAT`, без `AX_DISPATCH_VIA_BATCH` (ownership map пуста, код уже правильный, спека
-не инвалидирует код). Точка входа — отдельная дверь `/sdd-reconcile` (per Mission: «A separate door»),
+не инвалидирует код). Точка входа — отдельный скилл `/sdd-reconcile` (per Mission: «A separate skill»),
 не роутер `/sdd`.
 
 **Границы этой карты.** `STEP_6_SYNC` (`sdd-sync`) и `STEP_7_VERIFY` (эпик-аудит + code-review) —

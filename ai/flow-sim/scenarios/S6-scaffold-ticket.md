@@ -4,8 +4,8 @@
 файла с нуля), проходит оба гейта (DAG-approval, test-plan-approval), и закрывается финальным
 `sdd-check --all .` без новых error-находок.
 
-Точка входа — отдельная дверь `/sdd-scaffold`, не роутер `/sdd` (per Mission `scaffold.directive`:
-«A separate door (`/sdd-scaffold`), run in its own process»).
+Точка входа — отдельный скилл `/sdd-scaffold`, не роутер `/sdd` (per Mission `scaffold.directive`:
+«A separate skill (`/sdd-scaffold`), run in its own process»).
 
 ## Fixture
 

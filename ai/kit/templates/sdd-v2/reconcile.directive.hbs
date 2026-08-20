@@ -1,6 +1,6 @@
 <SddReconcile keywords="reconcile, fix, sync-from-code, drift, spec-probe, bug-vs-spec-defect, problem-class, blast-radius, back-sync, sdd-reconcile" type="directive" ver="2.1">
   <Mission>
-    Restore the spec ⟷ code ⟷ task triangle after it desynced, then verify. A separate door
+    Restore the spec ⟷ code ⟷ task triangle after it desynced, then verify. A separate skill
     (`/sdd-reconcile`). Two auto-detected modes converge on the same tail:
     - **fix** — a finding / bug / review drove it: the spec is (presumed) right, the code is wrong.
     - **from-code** — freeform code ran ahead of the spec: the code is the new reality, the spec is stale.
@@ -23,6 +23,8 @@
     {{> "axiom/process/ax-dialogue-discipline"}}
 
     {{> "axiom/process/ax-operator-safeguard"}}
+
+    {{> "axiom/process/ax-preflight-blast-radius-scoped"}}
 
     {{> "axiom/process/ax-problem-probes-spec"}}
 
@@ -71,6 +73,18 @@
       <Action>
         Findings / bug / review present → `fix`. Code already changed / "formalize what I coded" / drift
         → `from-code` (`AX_MODE_AUTO_DETECT_OR_HALT`; ambiguous → `H_AMBIGUOUS_MODE`).
+      </Action>
+    </Step>
+    <Step id="STEP_0B_PREFLIGHT">
+      <Goal>Clear the FLOW_VERSION/READINESS preflight gate before mapping the affected area.</Goal>
+      <Action>
+        `sdd-state` already reports `FLOW_VERSION` / `READINESS`. When `READINESS=not-ready`, run
+        `sdd-task` (no Task-ID) for the map — its `гейты:` line, when present, names the queued
+        TODO tickets already building the missing gate scripts; that is the fact the switch below
+        checks, never a guess. Size the gate to this request's own blast radius
+        (`AX_PREFLIGHT_BLAST_RADIUS_SCOPED`).
+
+        {{> "contract/process/readiness-preflight-gate"}}
       </Action>
     </Step>
     <Step id="STEP_1_PICTURE">

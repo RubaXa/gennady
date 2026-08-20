@@ -11,7 +11,7 @@ compatibility: opencode
     honest fact-check → infographic of WHAT changed → a ready answer / line-comments → post ONLY
     after the operator approves. Role — reviewer / mentioned; my own MR/PR — self-review summary.
     One skill: it detects the intent and loads the rules it needs. VCS-neutral — GitLab and GitHub
-    (provider auto-detected from host); this door never hardcodes one provider.
+    (provider auto-detected from host); this skill never hardcodes one provider.
   </Mission>
 
   <Priming>

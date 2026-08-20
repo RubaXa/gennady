@@ -42,10 +42,13 @@ test('GATHER reads the main directive and runs sdd-state', () => {
   );
 });
 
-test('PREFLIGHT references the migration + readiness directives', () => {
+test('PREFLIGHT no longer re-derives the FLOW_VERSION/READINESS interpretation — that moved into the directive itself (STEP_0B_PREFLIGHT), read via GATHER', () => {
   const refs = refsOf(stepById(skill, 'PREFLIGHT'));
-  assert.ok(refs.some((r) => r.includes('migration-v1-v2.directive.xml')));
-  assert.ok(refs.some((r) => r.includes('readiness.directive.xml')));
+  assert.deepEqual(
+    refs,
+    [],
+    'PREFLIGHT should carry no directive refs of its own — see ai/kit/__tests__/readiness-preflight-gate.test.ts for the project-wide guard'
+  );
 });
 
 test('resolveTree expands a run node into the referenced directive tree', () => {

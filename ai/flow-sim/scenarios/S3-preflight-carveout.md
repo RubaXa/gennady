@@ -126,8 +126,8 @@ evolve-scope», «mode=refine» и т.п.) — это была бы process-narr
    propose migration / readiness setup to the operator as a separate next step».
 3. `AX_PREFLIGHT_BLAST_RADIUS_SCOPED` процитирован/применён по смыслу: правка одного абзаца Vision в
    уже существующей спеке — «a spec paragraph» — прямой пример из самой аксиомы («when the requested
-   change stays inside the door's own scope (a spec paragraph, a single ticket)... record the state
-   in one line and proceed straight to the door's own work»).
+   change stays inside the entry point's own scope (a spec paragraph, a single ticket)... record the
+   state in one line and proceed straight to the entry point's own work»).
 4. В трейсе НЕТ строки `directive: ai/directives/sdd-v2/migration-v1-v2.directive.xml loaded` и НЕТ
    ни одного `tool: sdd-migrate ...` вызова — миграция не грузится и не запускается.
 5. `H_NOT_V1` не фигурирует (не тот путь — миграция не входила).

@@ -7,7 +7,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { logger } from '#logger';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
-import { checkReadiness } from '../../../shared/sdd/readiness.ts';
+import { checkReadiness, gatherReadinessInput } from '../../../shared/sdd/readiness.ts';
 import {
   parseScopes,
   parseScopeGraphEdges,
@@ -60,20 +60,6 @@ function parseProjectName(portalContent: string): string | null {
 }
 
 /**
- * @purpose Detect whether the gennady CLI is installed for the project.
- * @param root Absolute project root.
- * @returns True when `<root>/node_modules/.bin/gennady` resolves to an existing entry.
- */
-function detectGennady(root: string): boolean {
-  try {
-    statSync(join(root, 'node_modules', '.bin', 'gennady'));
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/**
  * @purpose Execute gennady sdd-state — report flow version, readiness, portal scopes, and the session set.
  * @param rawArgs Raw command-line arguments (process.argv).
  * @returns StateOutcome — the formatted snapshot on success, else an actionable failure.
@@ -113,22 +99,9 @@ export async function run(rawArgs: string[]): Promise<StateOutcome> {
   // #endregion END_PORTAL
 
   // #region START_READINESS — exact-match required scripts; missing/broken package.json reads as not-ready
-  let scripts: Record<string, string> = {};
-  let packageJsonPresent = false;
-  try {
-    const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf-8')) as {
-      scripts?: Record<string, string>;
-    };
-    packageJsonPresent = true;
-    scripts = pkg.scripts ?? {};
-  } catch {
-    packageJsonPresent = false;
-  }
-  const readiness = checkReadiness({
-    packageJsonPresent,
-    scripts,
-    gennadyAvailable: detectGennady(root),
-  });
+  const readinessInput = gatherReadinessInput(root);
+  const { packageJsonPresent } = readinessInput;
+  const readiness = checkReadiness(readinessInput);
   // #endregion END_READINESS
 
   // #region START_SESSION — the session scratch is optional flow-state; absent is normal

@@ -1,6 +1,10 @@
-// @file: Exact-match readiness check for the required v2 npm scripts — pure, no name-guessing.
-// @consumers: sdd-state.cmd
+// @file: Exact-match readiness check for the required v2 npm scripts — pure check, plus the one
+// disk-gathering helper every caller needs to build its input (no name-guessing).
+// @consumers: sdd-state.cmd, sdd-task.cmd
 // @tasks: N/A
+
+import { readFileSync, statSync } from 'node:fs';
+import { join } from 'node:path';
 
 /**
  * @purpose The exact npm script names a v2-ready Node project must declare.
@@ -119,4 +123,40 @@ export function checkReadiness(input: ReadinessInput): ReadinessResult {
     packageJsonPresent && required.every((r) => r.present) && lintHasGennady && gennadyAvailable;
 
   return { packageJsonPresent, required, lintHasGennady, gennadyAvailable, ready, missing };
+}
+
+/**
+ * @purpose Detect whether the gennady CLI is installed for the project.
+ * @param root Absolute project root.
+ * @returns True when `<root>/node_modules/.bin/gennady` resolves to an existing entry.
+ */
+function detectGennady(root: string): boolean {
+  try {
+    statSync(join(root, 'node_modules', '.bin', 'gennady'));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * @purpose Gather the on-disk facts `checkReadiness` needs, from a project root — the one shared
+ * disk-read every caller (sdd-state, sdd-task) otherwise re-implements.
+ * @param root Absolute project root.
+ * @returns A ReadinessInput: package.json presence + its `scripts` map (empty when absent), and
+ * gennady install state.
+ */
+export function gatherReadinessInput(root: string): ReadinessInput {
+  let scripts: Record<string, string> = {};
+  let packageJsonPresent = false;
+  try {
+    const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf-8')) as {
+      scripts?: Record<string, string>;
+    };
+    packageJsonPresent = true;
+    scripts = pkg.scripts ?? {};
+  } catch {
+    packageJsonPresent = false;
+  }
+  return { packageJsonPresent, scripts, gennadyAvailable: detectGennady(root) };
 }

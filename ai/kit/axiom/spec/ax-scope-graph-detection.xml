@@ -1,7 +1,7 @@
 <!-- source: ai/directives/sdd/scaffold.directive.xml -->
 <Axiom id="AX_SCOPE_GRAPH_DETECTION">
       Scope names, types, and statuses are read from the `sdd-state` snapshot already in context
-      (its `[SCOPES]` section) — the calling door already ran it; do not re-derive them by
+      (its `[SCOPES]` section) — the calling skill already ran it; do not re-derive them by
       re-reading `specs/README.md`. Portal absent → no specs → HALT.
 
       `specs/README.md` itself is read for the one thing that snapshot does not carry: the

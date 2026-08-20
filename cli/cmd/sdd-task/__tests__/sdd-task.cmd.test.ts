@@ -4,7 +4,7 @@
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -374,5 +374,88 @@ describe('SddTaskCommand', () => {
       process.chdir(origCwd);
       rmSync(soloDir, { recursive: true, force: true });
     }
+  });
+
+  describe('gate line — гейты: отсутствуют · их строят тикеты очереди', () => {
+    const infraTicket = (taskId: string) =>
+      [
+        `# Task: ${taskId} — Bootstrap`,
+        '<!--SECTION:META-->',
+        '## 1. Meta',
+        `- **Task-ID:** ${taskId}`,
+        '- **Status:** [ ] TODO',
+        '- **Scope:** infra-core',
+        '- **Dependencies:** None',
+        '<!--/SECTION:META-->',
+        '<!--SECTION:EXECUTION_LOG-->',
+        '<!--/SECTION:EXECUTION_LOG-->',
+      ].join('\n');
+
+    const portalWithInfraScope = [
+      '# Demo Project',
+      '',
+      '## Scopes',
+      '',
+      '| Scope | Type | Status | Description |',
+      '|---|---|---|---|',
+      '| [`infra-core`](./infra-core/infra-core.spec.md) | infrastructure | ✅ | bootstrap tooling |',
+      '',
+    ].join('\n');
+
+    it('missing gate scripts + a queued infra TODO ticket → gate line names it', async () => {
+      const gateDir = mkdtempSync(join(tmpdir(), 'sdd-task-gate-'));
+      mkdirSync(join(gateDir, 'specs'), { recursive: true });
+      writeFileSync(join(gateDir, 'specs', 'README.md'), portalWithInfraScope, 'utf-8');
+      writeFileSync(join(gateDir, 'ticket.md'), infraTicket('infra-1'), 'utf-8');
+      // No package.json at all → readiness is not-ready.
+      const origCwd = process.cwd();
+      process.chdir(gateDir);
+      try {
+        const r = await mod.run(argv());
+        assert.strictEqual(r.ok, true);
+        if (!r.ok) return;
+        assert.match(
+          r.text,
+          /гейты: отсутствуют · их строят тикеты очереди \(infra-1\) — для исполнения это штатно, начинай с них/
+        );
+      } finally {
+        process.chdir(origCwd);
+        rmSync(gateDir, { recursive: true, force: true });
+      }
+    });
+
+    it('gate scripts present → no gate line, even with an infra TODO ticket queued', async () => {
+      const readyDir = mkdtempSync(join(tmpdir(), 'sdd-task-ready-'));
+      mkdirSync(join(readyDir, 'specs'), { recursive: true });
+      mkdirSync(join(readyDir, 'node_modules', '.bin'), { recursive: true });
+      writeFileSync(join(readyDir, 'node_modules', '.bin', 'gennady'), '', 'utf-8');
+      writeFileSync(join(readyDir, 'specs', 'README.md'), portalWithInfraScope, 'utf-8');
+      writeFileSync(join(readyDir, 'ticket.md'), infraTicket('infra-2'), 'utf-8');
+      writeFileSync(
+        join(readyDir, 'package.json'),
+        JSON.stringify({
+          name: 'demo',
+          scripts: {
+            'type-check': 'tsc --noEmit',
+            test: 'node --test',
+            'test:coverage': 'node --test --coverage',
+            lint: 'gennady lint --all .',
+            format: 'prettier --check .',
+          },
+        }),
+        'utf-8'
+      );
+      const origCwd = process.cwd();
+      process.chdir(readyDir);
+      try {
+        const r = await mod.run(argv());
+        assert.strictEqual(r.ok, true);
+        if (!r.ok) return;
+        assert.doesNotMatch(r.text, /гейты:/);
+      } finally {
+        process.chdir(origCwd);
+        rmSync(readyDir, { recursive: true, force: true });
+      }
+    });
   });
 });

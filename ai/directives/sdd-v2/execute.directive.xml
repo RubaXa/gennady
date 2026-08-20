@@ -3,7 +3,7 @@
     Orchestrate execution of one ticket — or a BATCH of ready tickets (a LOGIC-SWITCH on the operator's
     intent decides which): plan phases, dispatch one worker-subagent per phase,
     thread typed Handoff, close the Round, dispatch a fresh-eyes audit, and on audit FAIL re-run only
-    the failing phases as `fix` (≤ 2 audit attempts). A separate door (`/sdd-execute`), run isolated.
+    the failing phases as `fix` (≤ 2 audit attempts). A separate skill (`/sdd-execute`), run isolated.
     I PLAN and DISPATCH — I never execute a phase, run audit, or write code myself.
 
     Input — a specific Task-ID, or `next` / `pick`, or `batch` / `all`. I FIRST get the deterministic
@@ -116,6 +116,17 @@
       bold, lists, blockquotes, tables. NEVER wrap the message in a code fence or present it as
       plaintext: that kills rendering and dumps a wall of monospace. Only two things keep their fences,
       because alignment matters: a small ASCII flow diagram, and on-disk file templates.
+    </Axiom>
+
+    <Axiom id="AX_PREFLIGHT_BLAST_RADIUS_SCOPED">
+      The `FLOW_VERSION=v1` / `READINESS=not-ready` preflight gate protects scope-spanning work — a full
+      migration or readiness setup dwarfs a narrow request. Size the gate to the task's own blast radius
+      before firing it: when the requested change stays inside the entry point's own scope (a spec
+      paragraph, a single ticket) and never touches `tasks/` layout or a missing gate script, record the
+      state in one line and proceed straight to the entry point's own work — offer migration / readiness
+      setup to the operator as a separate next step, not inside this run. A change whose blast radius does
+      reach `tasks/` layout, task-ID rewriting, or a missing gate script fires the gate as before, ahead of
+      the entry point's own work.
     </Axiom>
 
     <Axiom id="AX_STATELESS_ARTIFACT" cross-cutting="true">
@@ -274,6 +285,23 @@
         The single-ticket flow (STEP_1–8) runs per selected ticket; in `batch` it loops, re-fetching the
         map after each ticket (statuses change as tickets finish), until the map is empty or a ticket
         pauses (`H_PAUSED_AWAITING_OPERATOR`).
+      </Action>
+    </Step>
+    <Step id="STEP_0B_PREFLIGHT">
+      <Goal>Clear the FLOW_VERSION/READINESS preflight gate before dispatching any phase.</Goal>
+      <Action>
+        `sdd-state` already reports `FLOW_VERSION` / `READINESS`; the `sdd-task` map just fetched
+        above already carries its `гейты:` line when gate scripts are missing, naming the queued
+        TODO tickets that build them — that is the fact the switch below checks, never a guess.
+        Size the gate to this request's own blast radius (`AX_PREFLIGHT_BLAST_RADIUS_SCOPED`).
+
+        <LogicSwitch on="FLOW_VERSION · READINESS · blast radius · queue">
+          - WHEN `FLOW_VERSION=v1` AND the request's blast radius reaches `tasks/` layout or task-ID rewriting                                          -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/migration-v1-v2.directive.xml")   (live v1→v2 migration; returns when the repo is v2)
+          - WHEN `READINESS=not-ready` AND the missing gate scripts are already being built by TODO tickets in the queue (`sdd-task` map names them)     -> normal pre-execution state, continue your own flow; the readiness bootstrap does NOT load
+          - WHEN `READINESS=not-ready` AND the request needs a missing gate script                                                                       -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/readiness.directive.xml")        (live setup: forces missing scripts, hands proxy-blocked installs to the operator; returns once ready)
+          - WHEN (`FLOW_VERSION=v1` OR `READINESS=not-ready`) AND the request's blast radius stays inside its own scope (`AX_PREFLIGHT_BLAST_RADIUS_SCOPED`) -> record state in one line, continue your own flow; propose migration / readiness setup to the operator as a separate next step
+          - DEFAULT                                                                                                                                       -> repo is `v2` + ready — continue your own flow
+        </LogicSwitch>
       </Action>
     </Step>
     <Step id="STEP_1_PLAN">

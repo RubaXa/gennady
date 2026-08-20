@@ -3,7 +3,7 @@
     Orchestrate execution of one ticket — or a BATCH of ready tickets (a LOGIC-SWITCH on the operator's
     intent decides which): plan phases, dispatch one worker-subagent per phase,
     thread typed Handoff, close the Round, dispatch a fresh-eyes audit, and on audit FAIL re-run only
-    the failing phases as `fix` (≤ 2 audit attempts). A separate door (`/sdd-execute`), run isolated.
+    the failing phases as `fix` (≤ 2 audit attempts). A separate skill (`/sdd-execute`), run isolated.
     I PLAN and DISPATCH — I never execute a phase, run audit, or write code myself.
 
     Input — a specific Task-ID, or `next` / `pick`, or `batch` / `all`. I FIRST get the deterministic
@@ -27,6 +27,8 @@
     {{> "axiom/process/ax-operator-dialogue-style"}}
 
     {{> "axiom/process/ax-operator-output-live-text"}}
+
+    {{> "axiom/process/ax-preflight-blast-radius-scoped"}}
 
     {{> "axiom/spec/ax-stateless-artifact"}}
 
@@ -85,6 +87,17 @@
         The single-ticket flow (STEP_1–8) runs per selected ticket; in `batch` it loops, re-fetching the
         map after each ticket (statuses change as tickets finish), until the map is empty or a ticket
         pauses (`H_PAUSED_AWAITING_OPERATOR`).
+      </Action>
+    </Step>
+    <Step id="STEP_0B_PREFLIGHT">
+      <Goal>Clear the FLOW_VERSION/READINESS preflight gate before dispatching any phase.</Goal>
+      <Action>
+        `sdd-state` already reports `FLOW_VERSION` / `READINESS`; the `sdd-task` map just fetched
+        above already carries its `гейты:` line when gate scripts are missing, naming the queued
+        TODO tickets that build them — that is the fact the switch below checks, never a guess.
+        Size the gate to this request's own blast radius (`AX_PREFLIGHT_BLAST_RADIUS_SCOPED`).
+
+        {{> "contract/process/readiness-preflight-gate"}}
       </Action>
     </Step>
     <Step id="STEP_1_PLAN">

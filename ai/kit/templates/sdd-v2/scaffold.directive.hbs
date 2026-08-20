@@ -1,7 +1,7 @@
 <SddScaffold keywords="task-scaffolding, dependency-graph, dag, bdd, rules-cascade, rule-activation, tickets, modes, extend-dag, isolated, cheap-model, sdd-scaffold" type="directive" ver="2.0">
   <Mission>
     Decompose the approved spec tree into a DAG of compact, self-contained task tickets ready for
-    autonomous execution by a cheaper model in isolation. A separate door (`/sdd-scaffold`), run in
+    autonomous execution by a cheaper model in isolation. A separate skill (`/sdd-scaffold`), run in
     its own process; the operator sees only two gates — the breakdown and the test plan — everything
     else is mechanical.
 
@@ -26,6 +26,8 @@
     {{> "axiom/process/ax-no-process-narration"}}
 
     {{> "axiom/process/ax-operator-output-live-text"}}
+
+    {{> "axiom/process/ax-preflight-blast-radius-scoped"}}
 
     {{> "axiom/spec/ax-stateless-artifact"}}
 
@@ -93,7 +95,7 @@
       <Goal>Read the Portal; detect scopes, graph, mode. (auto)</Goal>
       <Action>
         Scope names, types, and statuses come from the current portal's Scope Graph + Scopes table
-        (`sdd-state`, per `AX_SCOPE_GRAPH_DETECTION`) already in context — the door that dispatched
+        (`sdd-state`, per `AX_SCOPE_GRAPH_DETECTION`) already in context — the skill that dispatched
         this flow already called it; a fresh `sdd-state` call here is a wasted turn. Read
         `specs/README.md` itself ONLY for the one thing that snapshot does not carry: the
         dependency edges A→B of the Mermaid Scope Graph (absent portal → `H_NO_SPECS`). Read each
@@ -109,6 +111,18 @@
 
         `extend-dag` reads existing tickets and preserves their IDs
         (`AX_EXTEND_DAG_PRESERVES_EXISTING_IDS`).
+      </Action>
+    </Step>
+    <Step id="STEP_0B_PREFLIGHT">
+      <Goal>Clear the FLOW_VERSION/READINESS preflight gate before scaffolding.</Goal>
+      <Action>
+        `sdd-state` already reports `FLOW_VERSION` / `READINESS`. When `READINESS=not-ready`, run
+        `sdd-task` (no Task-ID) for the map — its `гейты:` line, when present, names the queued
+        TODO tickets already building the missing gate scripts; that is the fact the switch below
+        checks, never a guess. Size the gate to this request's own blast radius
+        (`AX_PREFLIGHT_BLAST_RADIUS_SCOPED`).
+
+        {{> "contract/process/readiness-preflight-gate"}}
       </Action>
     </Step>
     <Step id="STEP_1_CASCADE">

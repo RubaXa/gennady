@@ -22,6 +22,8 @@ import {
   parsePhaseHandoffs,
   type TicketRef,
 } from '../../../shared/sdd/check.ts';
+import { checkReadiness, gatherReadinessInput } from '../../../shared/sdd/readiness.ts';
+import { parseScopes } from '../../../shared/sdd/portal.ts';
 import {
   fileError,
   formatPlan,
@@ -64,8 +66,38 @@ function walkTickets(dir: string, acc: TicketRef[]): void {
   }
 }
 
-/** @purpose Render the execution map — tickets ready now and those still blocked, by which deps. | @param refs Every ticket's graph ref. | @returns A human + agent readable map. */
-function formatMap(refs: TicketRef[]): string {
+/**
+ * @purpose Named infra-scope TODO tickets already building the missing gate scripts — the preflight gate's queue-exception signal.
+ * @param refs Every ticket's graph ref (Task-ID, status, owning scope).
+ * @param root Absolute project root — reads `package.json` and `specs/README.md`.
+ * @returns Queued infra TODO Task-IDs when readiness is missing and the queue covers it; empty otherwise.
+ */
+function infraGateTicketIds(refs: TicketRef[], root: string): string[] {
+  const readiness = checkReadiness(gatherReadinessInput(root));
+  if (readiness.ready) return [];
+
+  let portalContent: string;
+  try {
+    portalContent = readFileSync(join(root, 'specs', 'README.md'), 'utf-8');
+  } catch {
+    return [];
+  }
+  const infraScopeNames = new Set(
+    parseScopes(portalContent)
+      .filter((s) => s.type === 'infrastructure')
+      .map((s) => s.name)
+  );
+  if (infraScopeNames.size === 0) return [];
+
+  return refs
+    .filter(
+      (r) => r.taskId && /\bTODO\b/i.test(r.status ?? '') && r.scope && infraScopeNames.has(r.scope)
+    )
+    .map((r) => r.taskId as string);
+}
+
+/** @purpose Render the execution map — tickets ready now and those still blocked, by which deps. | @param refs Every ticket's graph ref. | @param root Absolute project root (readiness + portal reads). | @returns A human + agent readable map. */
+function formatMap(refs: TicketRef[], root: string): string {
   const pickable = pickableTasks(refs);
   const pickableIds = new Set(pickable.map((r) => r.taskId));
   const doneIds = new Set(
@@ -83,6 +115,12 @@ function formatMap(refs: TicketRef[]): string {
       (d) => !/^(none|n\/a|[—-])\b/i.test(d.trim()) && !doneIds.has(d)
     );
     lines.push(`blocked: ${b.taskId} ← ${unmet.join(', ')}`);
+  }
+  const gateIds = infraGateTicketIds(refs, root);
+  if (gateIds.length > 0) {
+    lines.push(
+      `гейты: отсутствуют · их строят тикеты очереди (${gateIds.join(', ')}) — для исполнения это штатно, начинай с них`
+    );
   }
   lines.push(
     '',
@@ -108,9 +146,10 @@ export async function run(rawArgs: string[]): Promise<TaskOutcome> {
   const ticket = positional[0];
   if (!ticket) {
     // No Task-ID → emit the execution map (deterministic pickable set from the trackers, not eyeballed).
+    const root = resolve('.');
     const refs: TicketRef[] = [];
-    walkTickets(resolve('.'), refs);
-    return { ok: true, text: formatMap(refs) };
+    walkTickets(root, refs);
+    return { ok: true, text: formatMap(refs, root) };
   }
 
   let content: string;

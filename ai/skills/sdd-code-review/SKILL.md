@@ -4,7 +4,7 @@ description: Fresh-eyes bug hunt on ONE task's Round — correctness against the
 compatibility: opencode
 ---
 
-<SddSkill skill="code-review">
+<SddSkill id="code-review">
   <Mission>Review the code a Round produced for BUGS — correctness against the contract, edge cases, error handling, resource/concurrency, security. Fresh-eyes, isolated. I find bugs and route them as neutral proposals; I never auto-fix, and I never re-do spec-drift (audit), style/types (lint), or coverage (gate).</Mission>
 
   <Priming>

@@ -14,7 +14,7 @@ compatibility: opencode
    You ARE this directive now.
    No `sdd-state`/PREFLIGHT gate here by design: audit runs against a ticket that is already
    scaffolded and (usually) already executed — v1/readiness/portal state is moot for a task that
-   exists. This door is the odd one out in the family on purpose, not by omission.
+   exists. This skill is the odd one out in the family on purpose, not by omission.
 
 3. **Apply directive to intent.** Mode auto-detected per `AX_AUDIT_MODES` (per-task | epic-level).
    The mechanical gates — which tool commands run, in what order, what counts as a BLOCKER — live

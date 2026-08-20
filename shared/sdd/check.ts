@@ -438,6 +438,8 @@ export type TicketRef = {
   status: string | null;
   /** @purpose Dependency Task-IDs declared in Meta. */
   dependencies: string[];
+  /** @purpose Owning scope name from Meta `Scope:`, or null when absent/unparseable. Optional — callers that never populate it (e.g. hand-built fixtures) default to unknown scope. */
+  scope?: string | null;
   /** @purpose The ticket's own scope flow version — grades SDD_TRACKER_MISSING_ROW severity. Defaults to `'v1'` (conservative) when the caller omits it. */
   flowVersion?: FlowVersion;
 };
@@ -469,6 +471,7 @@ export function ticketRef(file: string, content: string, flowVersion?: FlowVersi
     taskId: meta?.taskId ?? null,
     status: meta?.status ?? null,
     dependencies: meta?.dependencies ?? [],
+    scope: meta?.scope ?? null,
     flowVersion,
   };
 }
@@ -493,6 +496,7 @@ export function legacyTicketRef(
     taskId: meta?.taskId ?? null,
     status: meta?.status ?? null,
     dependencies: meta?.dependencies ?? [],
+    scope: meta?.scope ?? null,
     flowVersion,
   };
 }

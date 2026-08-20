@@ -5,7 +5,7 @@
     `lint` (reaching `gennady`) · `format` — gennady is installed, and `READINESS` flips to `ready`.
     This is the minimal mechanical bootstrap, NOT the tooling design: a real command where a tool is
     already installed, else a visible TODO stub that points at the infra flow. Entered when
-    `sdd-state` reports `READINESS=not-ready` — from the router preflight or from any door's preflight.
+    `sdd-state` reports `READINESS=not-ready` — from the router preflight or from any skill's own preflight.
     Self-sufficient: it may run without the router core in context, so it repeats the operator-facing
     axioms it needs.
 
@@ -309,7 +309,7 @@
         STEP_2's own closing `sdd-state` re-run directly; it is already the fresh post-apply
         snapshot, and a second call here would just re-confirm it — a wasted turn. Either way:
         `READINESS=ready` → setup is done; return control to the caller (the router's classify/route
-        step, or the door's own flow). Still `not-ready` → state the remaining gap and resume at
+        step, or the skill's own flow). Still `not-ready` → state the remaining gap and resume at
         `STEP_1` for the leftover items only — a fresh assessment, never a blind re-run of a command
         that already failed.
       </Action>
