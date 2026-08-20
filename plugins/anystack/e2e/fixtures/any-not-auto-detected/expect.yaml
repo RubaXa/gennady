@@ -1,0 +1,6 @@
+notes: >
+  A placeholder that matches anything must never match by itself: without stack.use naming it a
+  repository belonging to no stack keeps exiting 5, so a missing plugin is still reported.
+argv: ['--all']
+exitCode: 5
+outputIncludes: ['NO_STACK_DETECTED']

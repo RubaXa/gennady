@@ -22,7 +22,7 @@ const REPO_SUITES: Readonly<
  * Plugin suites that must be derived. Without this floor a resolver that finds nothing
  * would report a clean run over zero suites (plugins.spec §6.2).
  */
-const FLOOR = ['golang', 'node'] as const;
+const FLOOR = ['anystack', 'golang', 'node'] as const;
 
 const { plugins, errors } = resolvePlugins([path.join(projectRoot, 'plugins')], 'stack');
 if (errors.length > 0) {

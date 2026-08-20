@@ -24,6 +24,7 @@ const EXPECT_KEYS = [
   'homeRc',
   'noCommit',
   'outputIncludes',
+  'noGatesRan',
 ] as const;
 
 /** Every key a per-gate expectation may carry. */
@@ -91,6 +92,11 @@ export type FixtureExpectation = {
    *   so its verdicts can only be asserted through the human report.
    */
   readonly outputIncludes: readonly string[];
+  /**
+   * @purpose Assert the run executed no gate at all — the ZERO_GATES outcome. `gates: {}` cannot
+   *   express it: only declared gates are checked, so an empty map asserts nothing.
+   */
+  readonly noGatesRan: boolean;
 };
 
 /**
@@ -217,6 +223,7 @@ export function readExpectation(file: string): FixtureExpectation {
     homeRc: raw['homeRc'] as string | undefined,
     noCommit: (raw['noCommit'] ?? false) as boolean,
     outputIncludes: (raw['outputIncludes'] ?? []) as readonly string[],
+    noGatesRan: (raw['noGatesRan'] ?? false) as boolean,
   };
 }
 
@@ -343,6 +350,15 @@ export function assertFixture(run: FixtureRun, expectation: FixtureExpectation):
 
   if (Object.keys(expectation.gates).length > 0 && run.json === null) {
     fail('expected --json output, got unparseable stdout');
+  }
+
+  if (expectation.noGatesRan) {
+    const ran = (run.json?.results ?? []).map((result) => `${result.stack}:${result.id}`);
+    if (run.json === null) {
+      fail('noGatesRan expects --json output, got unparseable stdout');
+    } else if (ran.length > 0) {
+      fail(`expected no gate to run, but these did: ${ran.join(', ')}`);
+    }
   }
 
   // `--plan` emits the plan, not results: rendered predicates are asserted there.

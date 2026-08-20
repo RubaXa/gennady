@@ -3,7 +3,7 @@
 // @tasks: TSK-95
 
 /** Identifier of a built-in stack plugin. */
-export type StackId = 'node' | 'golang';
+export type StackId = 'node' | 'golang' | 'anystack';
 
 /**
  * @purpose An environment problem surfaced before any gate runs — actionable, never silent.
@@ -330,6 +330,10 @@ export type StackPlugin = {
    *   checks against, readable without detection (plugins.spec §5).
    */
   readonly gateIds: readonly string[];
+  /**
+   * @purpose Never auto-detected; active only when `stack.use` names it (spec §3).
+   */
+  readonly optIn?: boolean;
   /**
    * @purpose Ignored paths symlinked into the run replica: the stack's execution
    *   environment, not tree state (node: node_modules). Spec D-STACK-013.

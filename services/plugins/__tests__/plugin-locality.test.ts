@@ -20,7 +20,7 @@ const PLUGINS_ROOT = path.join(REPO_ROOT, 'plugins');
  * Built-in ids that must always resolve. Without this floor a resolver that finds
  * nothing turns every derived check below into a vacuous pass (plugins.spec §6.2).
  */
-const FLOOR = ['golang', 'node'] as const;
+const FLOOR = ['anystack', 'golang', 'node'] as const;
 
 /** @purpose Every `.ts` file under a directory, recursively. */
 function sourceFiles(dir: string): string[] {

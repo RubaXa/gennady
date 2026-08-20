@@ -1,0 +1,5 @@
+{
+  "id": "anystack",
+  "kind": "stack",
+  "entry": "anystack-plugin.ts"
+}

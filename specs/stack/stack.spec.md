@@ -66,8 +66,14 @@ _Каждый термин ниже используется всеми спек
 
 ```ts
 type StackPlugin = {
-  /** Уникальный id плагина: 'node' | 'golang'. */
+  /** Уникальный id плагина: 'node' | 'golang' | 'anystack'. */
   readonly id: StackId;
+
+  /**
+   * Плагин вне автодетекции: кандидатом становится только когда `stack.use` называет его явно.
+   * Нужен заглушке `anystack`, которая совпадает с любым репозиторием (§3).
+   */
+  readonly optIn?: boolean;
 
   /** Маркер-файл детекции (например `go.mod`) — все ростеры (help, ошибки) рендерятся из реестра. */
   readonly marker: string;
@@ -416,6 +422,7 @@ stack:
 | `applyStackConfig`                             | Function     | Применение конфига к плану: `overrideGates` → `skipGates` → `extraGates` (FR-STACK-05)                     |
 | `detectStacks`                                 | Function     | Алгоритм §3                                                                                                |
 | `BUILTIN_STACK_PLUGINS`                        | Constant     | Built-in плагины из `plugins/index.ts`, отсортированные по `id` (plugins.spec D-SP-009)                    |
+| `anystackPlugin`                               | Service      | Заглушка без гейтов: `optIn`, совпадает с любым корнем, гейты приходят из `extraGates`                     |
 | `BUILTIN_GATE_IDS`                             | Constant     | Словарь id гейтов, собранный из `StackPlugin.gateIds` активных плагинов                                    |
 | `plugin-api`                                   | Module       | Поверхность `gennady/stack`: единственный вход, через который плагин видит хост (plugins.spec D-SP-007)    |
 | `createTreeReplica`                            | Function     | Реплика прогона (§2): worktree + baseline-коммит + `sandboxLinks`; `reset()` — сброс к baseline            |
@@ -596,7 +603,7 @@ cli/cmd/fix/
 
 ## 11. Inter-Module Dependencies
 
-**Модули scope'а:** [`e2e`](./e2e/e2e.spec.md) — механизм E2E-проверки вердиктов под доктриной [`infra-e2e`](../infra-e2e/infra-e2e.spec.md). Спеки самих плагинов модулями этого scope'а больше не являются: они живут в своих каталогах ([`golang`](../../plugins/golang/specs/golang.spec.md), [`node`](../../plugins/node/specs/node.spec.md)) и принадлежат мейнтейнерам стеков — см. [`plugins`](../plugins/plugins.spec.md).
+**Модули scope'а:** [`e2e`](./e2e/e2e.spec.md) — механизм E2E-проверки вердиктов под доктриной [`infra-e2e`](../infra-e2e/infra-e2e.spec.md). Спеки самих плагинов модулями этого scope'а больше не являются: они живут в своих каталогах ([`golang`](../../plugins/golang/specs/golang.spec.md), [`node`](../../plugins/node/specs/node.spec.md), [`anystack`](../../plugins/anystack/specs/anystack.spec.md)) и принадлежат мейнтейнерам стеков — см. [`plugins`](../plugins/plugins.spec.md).
 
 - **Depends on:** [`config`](../config/config.spec.md) (обнаружение, merge и провенанс конфига; секция `stack` описана там же), `shared/common/parse-args.ts`
 - **Provides to:** `cli` (команда `verify`; далее — fix/testcov/lint по §4.3), `ai-skills` (`verify.sh`, skill `sdd-infra-golang`)
