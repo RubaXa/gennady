@@ -1,11 +1,32 @@
 // @file: SddOrientCommand — CLI entry for gennady sdd-orient: cheap depth-1 design-graph neighbourhood for one spec (module or scope), by path or by scope name.
 // @consumers: gennady.ts
 
+import { existsSync } from 'node:fs';
+import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
 import { resolveOrientTarget, type OrientResolution } from './core/resolve-target.ts';
 import { buildNeighbourhood } from './core/build-neighbourhood.ts';
 import { renderNeighbourhood } from './render/render-neighbourhood.ts';
 import type { SddOrientOutcome } from './sdd-orient.types.ts';
+
+/**
+ * @purpose Find the project root that owns a spec path — the nearest ancestor holding `specs/README.md`.
+ * @invariant Falls back to `fallback` when the argument is not an existing path or no ancestor carries a portal.
+ * @param arg Raw positional argument (a spec path, possibly absolute or outside the cwd).
+ * @param fallback Root to use when the walk finds nothing.
+ * @returns Absolute project root to read the portal and neighbours from.
+ */
+function projectRootFor(arg: string, fallback: string): string {
+  const abs = isAbsolute(arg) ? arg : resolve(fallback, arg);
+  if (!existsSync(abs)) return fallback;
+  let dir = dirname(abs);
+  for (;;) {
+    if (existsSync(join(dir, 'specs', 'README.md'))) return dir;
+    const parent = dirname(dir);
+    if (parent === dir) return fallback;
+    dir = parent;
+  }
+}
 
 /**
  * @purpose Render the tool-teaches message for a failed target resolution.
@@ -66,10 +87,13 @@ export async function run(
   }
 
   const arg = scopeFlag ?? (positional[0] as string);
-  const resolution = resolveOrientTarget(arg, root);
+  // A spec path may point outside the cwd (another checkout, an absolute path): the project root
+  // that owns `specs/README.md` is the one to read the portal from, not whatever cwd happens to be.
+  const effectiveRoot = scopeFlag === undefined ? projectRootFor(arg, root) : root;
+  const resolution = resolveOrientTarget(arg, effectiveRoot);
   if (!resolution.ok) return { ok: false, exitCode: 4, message: resolutionError(resolution, arg) };
 
-  const neighbourhood = buildNeighbourhood(root, resolution.path, resolution.content);
+  const neighbourhood = buildNeighbourhood(effectiveRoot, resolution.path, resolution.content);
   return { ok: true, text: renderNeighbourhood(neighbourhood) };
 }
 
