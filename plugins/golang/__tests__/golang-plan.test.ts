@@ -156,10 +156,12 @@ describe('planGoGates', () => {
     }
   });
 
-  it('renders the test gate timeout into go test -timeout', () => {
+  it('renders go test -timeout just below the gate deadline, so Go can dump first', () => {
     const test = planGoGates(project(), scope(), defaultOptions).find((gate) => gate.id === 'test');
 
-    assert.ok(test?.argv.includes('-timeout=600s'), `got: ${test?.argv.join(' ')}`);
+    // 90% of the gate deadline: at parity the runner's kill races Go's own timeout and the
+    // goroutine dump — the only useful artefact of a hung test — never gets printed.
+    assert.ok(test?.argv.includes('-timeout=540s'), `got: ${test?.argv.join(' ')}`);
     assert.equal(test?.timeoutMs, 600_000);
   });
 
@@ -169,7 +171,7 @@ describe('planGoGates', () => {
     });
     const test = gates.find((gate) => gate.id === 'test');
 
-    assert.ok(test?.argv.includes('-timeout=90s'));
+    assert.ok(test?.argv.includes('-timeout=81s'), `got: ${test?.argv.join(' ')}`);
     assert.equal(test?.timeoutMs, 90_000);
   });
 

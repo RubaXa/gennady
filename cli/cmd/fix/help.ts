@@ -28,5 +28,6 @@ export function printHelp(): void {
   console.info('The verify↔fix loop for code generation (spec §4.4):');
   console.info('  gennady verify        → golang:generate FAILs with the drifted file list');
   console.info('  gennady fix golang:generate   → materializes generated code in your tree');
+  console.info('  (naming a fixer runs it repo-wide — an explicit request ignores changed scope)');
   console.info('  git add / commit      → gennady verify is green again');
 }

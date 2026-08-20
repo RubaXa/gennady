@@ -264,32 +264,52 @@ function expandTargets(root: string, targets: readonly string[]): string[] {
 }
 
 /**
- * @purpose List the root-level paths that hold Go sources, so whole-repo formatting stays off vendor.
+ * @purpose Go-bearing paths for `gofmt`, with `vendor`/`testdata`/`node_modules` pruned at any depth.
+ * @invariant A directory is handed over whole only when nothing excluded lives below it;
+ *   otherwise the walk descends.
  * @param root Absolute repository root.
- * @returns Root-relative directory names plus any top-level `.go` files, sorted.
+ * @returns Repo-relative files and directories, sorted.
  */
 function goBearingTopLevelPaths(root: string): string[] {
-  let entries: fs.Dirent[];
-  try {
-    entries = fs.readdirSync(root, { withFileTypes: true });
-  } catch {
-    return [];
-  }
-
   const targets: string[] = [];
-  for (const entry of entries) {
-    if (entry.name.startsWith('.') || EXCLUDED_SEGMENTS.has(entry.name)) {
-      continue;
-    }
-    if (entry.isFile() && entry.name.endsWith('.go')) {
-      targets.push(entry.name);
-      continue;
-    }
-    if (entry.isDirectory() && hasGoFile(path.join(root, entry.name))) {
-      targets.push(entry.name);
-    }
-  }
 
+  const walk = (dir: string, relative: string): void => {
+    let entries: fs.Dirent[];
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+
+    const children = entries.filter(
+      (entry) => entry.isDirectory() && !entry.name.startsWith('.') && !entry.isSymbolicLink()
+    );
+    const excludedInside = children.some((entry) => EXCLUDED_SEGMENTS.has(entry.name));
+
+    if (relative.length > 0 && !excludedInside && hasGoFile(dir)) {
+      // Nothing excluded below this point, so the whole subtree can be handed to gofmt at once.
+      targets.push(relative);
+      return;
+    }
+
+    for (const entry of entries) {
+      if (entry.name.startsWith('.') || EXCLUDED_SEGMENTS.has(entry.name)) {
+        continue;
+      }
+      const childRelative = relative.length > 0 ? path.join(relative, entry.name) : entry.name;
+      if (entry.isFile() && entry.name.endsWith('.go')) {
+        targets.push(childRelative);
+      } else if (
+        entry.isDirectory() &&
+        !entry.isSymbolicLink() &&
+        hasGoFile(path.join(dir, entry.name))
+      ) {
+        walk(path.join(dir, entry.name), childRelative);
+      }
+    }
+  };
+
+  walk(root, '');
   return targets.sort();
 }
 

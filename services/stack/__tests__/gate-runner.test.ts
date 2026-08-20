@@ -293,6 +293,26 @@ describe('runVerify — predicates see a bounded window (spec §8.2)', () => {
   });
 });
 
+describe('runVerify — output that overruns the capture limit (review)', () => {
+  it("is the gate's own verdict, not a broken environment", () => {
+    // Genuinely overruns the 64MB capture cap, so spawnSync reports ENOBUFS with a null exit
+    // code — the shape that used to be excused as env-fail. Costs about 50ms.
+    const gate: Gate = shellGate(
+      'flood',
+      'yes xxxxxxxxxxxxxxxxxxxxxxxxxxxx | head -c 70000000; exit 3'
+    );
+    const report = runVerify([runOf([gate])], []);
+
+    assert.notEqual(
+      report.results[0]?.status,
+      'env-fail',
+      'the tool ran to a verdict — excusing it as environmental hides a real failure'
+    );
+    assert.equal(report.results[0]?.status, 'fail');
+    assert.match(report.results[0]?.output ?? '', /exceeded the capture limit/);
+  });
+});
+
 describe('runVerify — blocking diagnostics (review #1)', () => {
   it('a blocking diagnostic cannot report a pass, even when every executed gate passed', () => {
     const report = runVerify(
@@ -344,6 +364,24 @@ describe('runVerify — timeout enforcement (review #6)', () => {
 });
 
 describe('runVerify — requires preconditions (spec §4.7)', () => {
+  it('reports a precondition whose cwd is missing as env-fail, not a crash', () => {
+    const gate: Gate = {
+      ...shellGate('deploy', 'exit 0'),
+      requires: [
+        {
+          argv: ['/bin/sh', '-c', 'exit 0'],
+          cwd: path.join(BASE_DIR, 'no-such-directory'),
+          timeoutMs: 10_000,
+          hint: 'create the workspace directory first',
+        },
+      ],
+    };
+    const report = runVerify([runOf([gate])], []);
+
+    assert.equal(report.results[0]?.status, 'env-fail');
+    assert.match(report.results[0]?.output ?? '', /create the workspace directory first/);
+  });
+
   it('runs preconditions on the unsandboxed path too (review #12)', () => {
     const marker = path.join(BASE_DIR, 'unsandboxed-gate-ran.txt');
     fs.rmSync(marker, { force: true });

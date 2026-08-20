@@ -1,7 +1,11 @@
 notes: >
   A test-timeout override must be rendered into `go test -timeout` as well as the gate's own
   timeout, or the tool would be killed before it could print its diagnosis. --plan --json shows the
-  effective argv.
+  effective argv, and this fixture asserts it: the gate carries the 90s override while `go test`
+  is rendered at 81s (90%), so Go prints its own goroutine dump before the runner kills it.
 requires: [go]
 argv: ['--all', '--plan', '--json']
 exitCode: 0
+outputIncludes:
+  - '-timeout=81s'
+  - '"timeoutMs": 90000'

@@ -195,12 +195,27 @@ function firstFailingPrecondition(
 ): GateResult | null {
   for (const requirement of gate.requires ?? []) {
     const startedAt = Date.now();
-    const cwd = slot === null ? requirement.cwd : mapIntoReplica(requirement.cwd, slot);
+    const hint = requirement.hint !== undefined ? `\nhint: ${requirement.hint}` : '';
+    let cwd: string;
+    try {
+      cwd = slot === null ? requirement.cwd : mapIntoReplica(requirement.cwd, slot);
+    } catch {
+      // A precondition pointing at a directory that does not exist is itself an environment
+      // problem; resolving it threw and took the whole run down with a stack trace.
+      return {
+        gate,
+        status: 'env-fail',
+        exitCode: null,
+        durationMs: Date.now() - startedAt,
+        output: `precondition cwd does not exist: ${requirement.cwd}${hint}`,
+      };
+    }
     const [bin, ...args] = requirement.argv;
     const proc = spawnSync(bin!, args, {
       cwd,
       encoding: 'utf-8',
       timeout: requirement.timeoutMs,
+      killSignal: 'SIGKILL',
       maxBuffer: 8 * 1024 * 1024,
       env: requirement.env !== undefined ? { ...process.env, ...requirement.env } : process.env,
     });
@@ -213,9 +228,7 @@ function firstFailingPrecondition(
       status: 'env-fail',
       exitCode: proc.status,
       durationMs: Date.now() - startedAt,
-      output:
-        `precondition failed: ${requirement.argv.join(' ')}\n${detail}` +
-        (requirement.hint !== undefined ? `\nhint: ${requirement.hint}` : ''),
+      output: `precondition failed: ${requirement.argv.join(' ')}\n${detail}${hint}`,
     };
   }
   return null;
@@ -277,10 +290,16 @@ function executeGate(
           .split(slot.dir)
           .join(slot.toplevel);
   const stdout = rewrite(proc.stdout ?? '');
-  const output = `${stdout}${rewrite(proc.stderr ?? '')}`.trim();
+  const captured = `${stdout}${rewrite(proc.stderr ?? '')}`.trim();
 
   const timedOut =
     proc.error !== undefined && (proc.error as NodeJS.ErrnoException).code === 'ETIMEDOUT';
+
+  // maxBuffer overrun kills the child, so there is no exit code — but the tool DID run, which is
+  // the opposite of a spawn failure. Calling it env-fail told the reader "do not touch the code"
+  // about a gate that may have failed legitimately, so it falls through to the verdict ladder.
+  const outputTruncated =
+    proc.error !== undefined && (proc.error as NodeJS.ErrnoException).code === 'ENOBUFS';
 
   // Inspect and restore the replica exactly once, whatever the command's outcome.
   let drift = '';
@@ -291,13 +310,17 @@ function executeGate(
     }
   }
 
-  if (proc.error !== undefined && proc.status === null && !timedOut) {
+  if (proc.error !== undefined && proc.status === null && !timedOut && !outputTruncated) {
     // Spawn itself failed — the tool never ran; universally environmental.
     return { gate, status: 'env-fail', exitCode: null, durationMs, output: String(proc.error) };
   }
 
   // #region START_VERDICTS — env-fail first, then timeout, violation, drift, stdout, exit (§8.2)
   // Predicates see the printed head+tail window, not unbounded output (spec §8.2).
+  const output = outputTruncated
+    ? `${captured}\n[output exceeded the capture limit and was cut here; the gate ran, so this is its verdict, not a broken environment]`
+    : captured;
+
   const outcome: GateOutcome = {
     exitCode: proc.status,
     timedOut,

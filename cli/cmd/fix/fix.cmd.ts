@@ -4,7 +4,7 @@
 
 /**
  * npx gennady fix                      run every planned fixer (changed scope)
- * npx gennady fix golang:generate      run one fixer addressably (stack:id or bare id)
+ * npx gennady fix golang:generate      run one fixer addressably, repo-wide (stack:id or bare id)
  * npx gennady fix --all                widen the scope to the whole repository
  */
 
@@ -82,7 +82,13 @@ export async function run(argv: string[]): Promise<number> {
     return EXIT_NO_STACK;
   }
 
-  const request: ScopeRequest = { mode: args.all === true ? 'all' : 'changed', targets: [] };
+  // Naming a fixer is an explicit request, so it is scope-independent: `verify` prints
+  // `gennady fix <stack>:<id>` without the scope flags it happened to run under, and that hint
+  // has to work as printed.
+  const request: ScopeRequest = {
+    mode: args.all === true || requested.length > 0 ? 'all' : 'changed',
+    targets: [],
+  };
 
   // #region START_FIXER_PLAN — the same plan verify builds; a fixer rides on its gate (§4.4)
   const fixers: Gate[] = [];

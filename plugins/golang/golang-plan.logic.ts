@@ -124,6 +124,17 @@ export function buildGoGenerateArgv(project: GoProject, scope: GoScope): readonl
   return [go, 'generate', ...moduleFlags(project), ...scope.packages];
 }
 
+/**
+ * @purpose Render `go test -timeout` just inside the gate deadline.
+ * @invariant Strictly below the gate timeout, so Go's goroutine dump — the only useful
+ *   artefact of a hung test — lands before the runner's kill.
+ * @param gateTimeoutMs The gate's timeout.
+ * @returns Whole seconds, at least one.
+ */
+function goTestTimeoutSeconds(gateTimeoutMs: number): number {
+  return Math.max(1, Math.floor((gateTimeoutMs * 0.9) / 1000));
+}
+
 /** A Go panic trace is never a finding — the analyser aborted. */
 const PANIC_RE = /^panic: /m;
 
@@ -349,7 +360,7 @@ export function planGoGates(project: GoProject, scope: GoScope, options: GatePla
           argv: [
             go!,
             'test',
-            `-timeout=${Math.floor(testTimeoutMs / 1000)}s`,
+            `-timeout=${goTestTimeoutSeconds(testTimeoutMs)}s`,
             ...flags,
             ...scope.packages,
           ],
