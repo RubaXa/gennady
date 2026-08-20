@@ -459,7 +459,16 @@
         mapped to a test (else `H_TYPING_SCENARIO_MISSING`). Check each emitted ticket against
         `TASK_TICKET_STRUCTURE`: section anchors match the normative names exactly
         (`AX_TICKET_SECTION_NAMES_NORMATIVE`), and contract material is linked by spec anchor with zero
-        copied contract text (`AX_SSOT_TRACEABILITY`). No operator stop — automated.
+        copied contract text (`AX_SSOT_TRACEABILITY`) — write every Meta `Spec References:` entry and
+        every phase `Spec Refs:` entry in the RESOLVABLE form `<path>#<anchor>`, where `<anchor>` is
+        either a `SECTION_NAME` the spec file wraps in `<!--SECTION:NAME-->` markers, or the
+        GitHub-style heading slug (lowercase, hyphen-separated) `sdd-extract` resolves directly — e.g.
+        `../greeting/greeting.spec.md#module-contracts` for the `## Module Contracts` heading, or
+        `../greeting/greeting.spec.md#MODULE_CONTRACTS` when that section carries an explicit anchor.
+        An anchor that is neither — a bare prose reference, a heading paraphrase, a line number — fails
+        `sdd-task --phase`'s downstream read at execution time; a link a worker or auditor cannot
+        resolve with `sdd-extract <file> <anchor>` verbatim is not a valid Spec Reference. No operator
+        stop — automated.
       </Action>
     </Step>
     <Step id="STEP_4_TEST_PLAN_REVIEW">
@@ -490,6 +499,14 @@
         Then run `sdd-check --all .` (task-DAG: id-collisions · deps resolve · acyclic; tracker↔ticket sync;
         phase graph; exec-log) and resolve or consciously defer every finding per
         `AX_CLOSE_WITH_INTEGRITY_CHECK` — the scaffold mutation is done only once the task graph passes.
+        `BDD_COVERAGE` (canonical case names exist in the declared test file) gates on the ticket's
+        own Meta Status — the existence check runs only once that ticket is `[x] DONE`, never for a
+        freshly-scaffolded `[ ] TODO` ticket (whose test files do not exist yet by design), so a clean
+        `sdd-check --all .` right after this step is expected, not a sign the check is silently
+        skipped. Fix only structural findings at this step (id collisions, unresolved deps, cycles,
+        tracker drift, broken `](…spec.md)` links) — a BDD/test-existence finding here would mean a
+        ticket was mis-marked DONE before its tests exist, a scaffold defect worth fixing on its own,
+        not phase noise to suppress.
         These trackers and tickets are read by execute with no memory of this scaffolding run —
         every DAG edge, rule reference, and BDD scenario must already be in the file
         (`AX_STATELESS_ARTIFACT`). Emit a created-files summary with traceability links. Hand off to

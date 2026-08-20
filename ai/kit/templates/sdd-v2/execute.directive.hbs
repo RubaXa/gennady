@@ -106,15 +106,26 @@
       <Goal>Dispatch workers, one phase at a time (sequential by `Deps`, `AX_EXECUTION_ORDER`).</Goal>
       <Action>
         Per phase: pick the worker model by thinking-load — default by kind (`impl` / `test` → capable;
-        `bootstrap` / `config` / `doc` → cheap), escalate to capable on LOW confidence or a reasoning-heavy phase. Dispatch a fresh worker with: read `ai/directives/sdd-v2/phase-execution-protocol.directive.xml`;
-        ticket path; phase ID + kind + reason (`initial` / `fix: F-NNN` / `resume`); Inputs = prior
-        Handoff verbatim (`AX_HANDOFF_TYPED`); this phase's block from `sdd-task <id>`'s own output —
-        its read-manifest, Rules, Target Files, gates — pasted into the prompt as a FENCED VERBATIM
-        QUOTE of that output, never re-typed as text (a paraphrase has silently dropped read-manifest
-        files before this fix); the only prompt content NOT copied verbatim from that quote is the
-        phase id / kind / reason, the threaded Handoff, and orchestrator knowledge genuinely absent
-        from the manifest; sdd tooling (`sdd-extract` / `sdd-verify` / `sdd-log`). Emit a progress line
-        per transition (`ORCHESTRATOR_PROGRESS_FORMAT`).
+        `bootstrap` / `config` / `doc` → cheap), escalate to capable on LOW confidence or a reasoning-heavy phase.
+        The worker's OWN first action is `sdd-task <ticket> --phase P<N>` (`phase-execution-protocol.directive.xml`
+        STEP_1) — it fetches its own read-manifest, gates, and prior Handoff fresh, at the moment it starts, so the
+        dispatch prompt itself carries NO pasted manifest. Dispatch a fresh worker with exactly this activation:
+
+        ```
+        Прочитай и воплоти: ai/directives/sdd-v2/phase-execution-protocol.directive.xml
+        Задание: тикет <path> · фаза P<N>
+        Первым шагом выполни: npx gennady sdd-task <path> --phase P<N> — и следуй его выводу.
+        [опционально 1-3 строки контекста от оркестратора — только то, чего нет в тикете]
+        ```
+
+        The optional trailing lines are the only orchestrator-authored content in the prompt — reserved for
+        the phase kind + reason (`initial` / `fix: F-NNN` / `resume`) when it is not already inferable, and
+        for any orchestrator knowledge genuinely absent from the ticket the tool will surface; never a
+        restatement of read-manifest files, Rules, Target Files, or gates — the worker's own tool call
+        already supplies those, verbatim and current. Require the report back regardless: DONE / BLOCKED /
+        FAIL plus the worker's typed `**Handoff →**` line verbatim (`RETURN_SUMMARY_FORMAT`,
+        `AX_HANDOFF_TYPED`) — thread exactly that into the next phase's Inputs, never a paraphrase. Emit a
+        progress line per transition (`ORCHESTRATOR_PROGRESS_FORMAT`).
 
         <LogicSwitch on="worker Handoff status">
         - WHEN `BLOCKED` / `FAIL` -> stop, no audit; `H_PAUSED_AWAITING_OPERATOR`

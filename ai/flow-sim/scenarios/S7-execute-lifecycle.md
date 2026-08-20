@@ -576,14 +576,24 @@ APP-greet-greeting`.
 2.  `LogicSwitch on="intent"` в STEP_0_RESOLVE сработал по ветке «WHEN intent is a specific Task-ID /
     ticket path -> run that ticket (STEP_1–8)» — оператор назвал конкретный Task-ID, значит НЕ
     ветка `next`/`pick`, НЕ `batch`/`all`/`queue`.
-3.  STEP_1_PLAN: единственное чтение тикета — `sdd-task APP-greet-greeting` («one tool call, no
-    broad ticket read»), возвращающее Meta + Phases Overview + per-phase read-manifests + gates +
-    `[BLOCKERS]`; preflight blocker scan читается прямо из секции `[BLOCKERS]` этого же вызова
-    (`blockers: none` → clear, `AX_BLOCKER_RESOLUTION_TRAIL`) — БЕЗ отдельного вызова
-    `sdd-check --task` на этом шаге (явно запрещён директивой как потраченный ход); Round открыт
-    через `sdd-log` — есть ровно ОДНА `tool:`-строка с `sdd-task APP-greet-greeting` ДО диспетча P1,
-    и НЕТ отдельной `tool: sdd-check --task ...` строки между ней и диспетчем P1. Состояние по
-    Phases Overview — все `[ ]` → «fresh (all phases by `Deps`)», не resume/audit-only/pause.
+3.  STEP_1_PLAN: единственное чтение тикета НА РОЛИ `orchestrator` до диспетча P1 — `sdd-task
+APP-greet-greeting` без `--phase` («one tool call, no broad ticket read»), возвращающее Meta +
+    Phases Overview + per-phase read-manifests + gates + `[BLOCKERS]`; preflight blocker scan
+    читается прямо из секции `[BLOCKERS]` этого же вызова (`blockers: none` → clear,
+    `AX_BLOCKER_RESOLUTION_TRAIL`) — БЕЗ отдельного вызова `sdd-check --task` на этом шаге (явно
+    запрещён директивой как потраченный ход); Round открыт через `sdd-log` — есть ровно ОДНА
+    `tool:`-строка с `sdd-task APP-greet-greeting` (без `--phase`) ДО диспетча P1, и НЕТ отдельной
+    `tool: sdd-check --task ...` строки между ней и диспетчем P1. Состояние по Phases Overview — все
+    `[ ]` → «fresh (all phases by `Deps`)», не resume/audit-only/pause.
+    <!-- sync: execute.directive.xml STEP_2_DISPATCH no longer pastes the phase's read-manifest into
+    the worker prompt — the dispatch activation is now the fixed 3-line template (directive path ·
+    ticket+phase · "run `sdd-task --phase` and follow its output"), and the worker itself calls
+    `sdd-task APP-greet-greeting --phase P1` as ITS OWN first action, on the `worker P1` role, AFTER
+    this checkpoint's orchestrator-role call. That later call (checkpoint 4b) is a SEPARATE,
+    expected `tool:` line on a different role — it does not violate "ровно ОДНА" above, which scopes
+    strictly to calls made under `role=orchestrator` before dispatch. --> A `tool: sdd-task
+    APP-greet-greeting --phase P1`line appearing on`role=orchestrator`here (instead of on`role=worker P1`at checkpoint 4b) — the orchestrator itself running the phase-scoped call — is
+    itself a finding: STEP_1_PLAN's own call never takes`--phase`.
 4.  Смена роли на worker перед P1 зафиксирована строкой `note: role=worker P1` (или аналогичной,
     дословно называющей роль и фазу), и загрузка `ai/directives/sdd-v2/phase-execution-protocol.directive.xml`
     отражена строкой `directive: ... loaded` — per Mission phase-execution-protocol: «A worker
@@ -591,11 +601,27 @@ APP-greet-greeting`.
 role=...` без последующей `directive: ... loaded` для той же роли, или наоборот, — сам по себе FAIL
     этого чекпоинта, независимо от того, читал ли исполнитель директиву по существу (это был
     повторяющийся провал исполнителя в предыдущих прогонах — Verifier проверяет присутствие СТРОКИ, а
-    не намерение).
-5.  Worker P1 читает СТРОГО по манифесту фазы (`AX_READ_PER_MANIFEST`: «read EXACTLY that, nothing
-    beyond it») — в трейсе нет чтения секций тикета за пределами Meta/Phases Overview/P1-блока/gates
-    до момента, когда P1 обращается к ним по манифесту; нет чтения `PHASE_P2` до его собственного
-    диспетча.
+    не намерение). Диспетч-промпт, который читает эта роль, — ТОЛЬКО фиксированный 3-строчный шаблон
+    STEP_2_DISPATCH (путь к директиве · тикет+фаза · «выполни `sdd-task --phase` и следуй выводу»),
+    без пересказанного read-манифеста, Rules, Target Files или gates от оркестратора — их пересказ
+    здесь (`tool:`-цитата, вставленная в промпт диспетча, а не сделанная воркером самостоятельно на
+    его роли) — находка (устаревший, wave-1 путь диспетча).
+    4b. Первое действие роли `worker P1` ПОСЛЕ `directive: ... loaded` (чекпоинт 4) — `tool: sdd-task
+    APP-greet-greeting --phase P1` (`phase-execution-protocol.directive.xml` STEP_1_GET_PHASE_CONTEXT:
+    «Run `npx gennady sdd-task <ticket> --phase <PhaseID>`... FIRST action»). Его вывод — objective ·
+    gates (с satisfy-hint) · exit · phase-scoped read-manifest · `[HANDOFF]` (пусто для P1, первая
+    фаза) — и есть весь контекст P1; отсутствие этого вызова, или чтение Meta/Phases Overview/другого
+    вместо него как первого действия — FAIL. Затем — STEP_1B_RESUME_OR_START: `tool: sdd-extract
+    APP-greet-greeting EXECUTION_LOG` для проверки, нет ли уже открытого (без `DONE`+Handoff) блока
+    `#### P1` в текущем Round от прерванной попытки; в этом (первом, безошибочном) прогоне блока нет
+    → «fresh start» → `tool: sdd-log APP-greet-greeting phase P1` пишет заголовок фазы. Появление
+    ветки resume (пропуск повторного `sdd-log phase P1`, продолжение с места обрыва) здесь было бы
+    находкой — эта фикстура не создаёт прерванных попыток.
+5.  Worker P1 читает СТРОГО по манифесту фазы, полученному ИЗ ЕГО СОБСТВЕННОГО вызова `sdd-task
+APP-greet-greeting --phase P1` (чекпоинт 4b), не из чужой цитаты в промпте диспетча
+    (`AX_READ_PER_MANIFEST`: «read EXACTLY that, nothing beyond it») — в трейсе нет чтения секций
+    тикета за пределами того, что этот вызов вернул (P1-объектив/gates/exit/manifest) до момента,
+    когда P1 обращается к ним по манифесту; нет чтения `PHASE_P2` до его собственного диспетча.
 6.  STEP_2_NARROW_RECON (P1): recon-строка появляется в трейсе ТОЛЬКО если есть расхождение
     (`AX_NARROW_RECON`: «log a recon line ONLY on divergence; when state matches the plan, stay
     silent») — поскольку `src/app/greeting/` пуст и это ожидаемо (Target Files ещё не существуют,
@@ -625,6 +651,11 @@ role=...` без последующей `directive: ... loaded` для той ж
     Handoff, thread it into the next phase's Inputs» — P2 диспетчится ТОЛЬКО после появления P1
     Handoff в текущем Round (`AX_EXECUTION_ORDER`: «a phase starts only after every phase it depends
     on reaches `[x] DONE`»; `H_INPUT_HANDOFF_MISSING` не сработал), Inputs P2 = P1 Handoff verbatim.
+    Диспетч-промпт P2 остаётся тем же фиксированным 3-строчным шаблоном (чекпоинт 4) — P1 Handoff НЕ
+    пересказывается туда оркестратором построчно; воркер P2 получает его сам, verbatim, в блоке
+    `[HANDOFF]` собственного вызова `tool: sdd-task APP-greet-greeting --phase P2` (первое действие
+    роли `worker P2`, тот же чекпоинт 4b, применённый к P2) — отсутствие `[HANDOFF]` там при наличии
+    P1 `DONE` было бы `H_INPUT_HANDOFF_MISSING`.
 13. P2 STEP_5_VERIFY: сначала `sdd-verify --profile test` (STEP_5: «`test` → `test` (format ·
     typecheck · test:coverage)») — это внутренний авто-профиль `sdd-verify`, отдельный от §5 и не
     логируется построчно как `ver <cmd>`. Затем §5-команды **verbatim**, но НЕ все пять и не «четыре

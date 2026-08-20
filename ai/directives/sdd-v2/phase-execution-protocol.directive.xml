@@ -1,9 +1,19 @@
-<SddPhaseExecution keywords="phase-execution, single-phase, scope-lock, narrow-recon, verify-gate, live-log, handoff, worker, isolated" type="directive" ver="2.4">
+<SddPhaseExecution keywords="phase-execution, single-phase, scope-lock, narrow-recon, verify-gate, live-log, handoff, worker, isolated, sdd-task, resume" type="directive" ver="2.5">
   <Mission>
-    Execute ONE phase of ONE task ticket, dispatched by the execute orchestrator. Read only what this
-    phase needs; write only this phase's Target Files; run the verification gate; emit a typed Handoff.
-    A worker directive — runs in isolation on a cheaper model, returns to the orchestrator, stays silent
-    to the operator (no decision cards here).
+    Execute ONE phase of ONE task ticket, on a minimal activation from the execute orchestrator —
+    this directive's path, the ticket path, the phase ID, and a reason. This directive plus the
+    output of `gennady sdd-task <ticket> --phase P<N>` (STEP_1, the FIRST action of every phase) are
+    the WHOLE working context: no other phase, no other phase's code, no spec beyond the anchors
+    the tool names. Knowledge of how any `sdd-*` tool works internally is never needed and is not
+    available — `node_modules/gennady` is minified and reversing it is not a valid step in this
+    protocol; the tool's own output already says what to do (a gate finding names its fix,
+    `sdd-extract`'s not-found message suggests real anchors). An error you cannot map to a row in
+    `HaltConditions` from the tool's own message is `H_BLOCKED` — log it and stop, never go digging
+    for an explanation.
+
+    Read only what this phase needs; write only this phase's Target Files; run the verification gate;
+    emit a typed Handoff. A worker directive — runs in isolation on a cheaper model, returns to the
+    orchestrator, stays silent to the operator (no decision cards here).
 
     The orchestrator owns all of: selecting the next phase · running audit · re-running prior phases ·
     syncing the project trackers.
@@ -193,7 +203,9 @@
       for readability"; when cited, the id must resolve to a real Decision Log heading, or
       `gennady yagni` re-reports the finding as `ERR_CLI_YAGNI_WAIVER_DECISION_MISSING`. Public API
       for a named external consumer uses the `(external: <consumer>)` waiver variant — the rule
-      still applies, the label just becomes mandatory rather than optional.
+      still applies, the label just becomes mandatory rather than optional. `gennady yagni` prints
+      the exact `- **Usage Waiver:**` block ready to paste when it flags a finding — copy it
+      verbatim rather than composing the line from memory.
     </Axiom>
 
     <Axiom id="AX_NO_SILENT_ESCAPE_HATCH">
@@ -333,38 +345,88 @@
   <HaltConditions>
     | 🛑 ID | Trigger |
     |---|---|
-    | `H_PHASE_NOT_FOUND` | Phase ID from the orchestrator matches no block under `Phases` |
-    | `H_PHASE_ALREADY_DONE` | Phase Status is `[x]` and no `fix` reason was passed |
+    | `H_PHASE_NOT_FOUND` | `sdd-task --phase` returns `ERR_CLI_SDD_TASK_PHASE_NOT_FOUND` — the phase ID from the orchestrator matches no row in Phases Overview |
+    | `H_PHASE_ALREADY_DONE` | The `status=` field in `sdd-task --phase`'s header line is `[x]` and no `fix` reason was passed |
     | `H_RECON_DIVERGENCE` | Recon shows Target Files inconsistent with the phase plan |
-    | `H_MISSING_RULE_FILE` | A rule cited in the phase Rules list does not resolve |
-    | `H_INPUT_HANDOFF_MISSING` | A phase Input cites a prior phase whose Handoff is absent in the current Round |
+    | `H_MISSING_RULE_FILE` | A rule cited in the phase's `READ rules:` line does not resolve |
+    | `H_INPUT_HANDOFF_MISSING` | A phase Input cites a prior phase whose Handoff is absent from `sdd-task --phase`'s `[HANDOFF]` block in the current Round |
     | `H_OUT_OF_PHASE_WRITE` | A write is required outside Target Files or outside `AX_TICKET_WRITE_SCOPE` |
     | `H_THIRD_PARTY_API_UNVERIFIABLE` | `config` kind: network blocked AND local docs insufficient to verify a tool's current API |
     | `H_VERIFICATION_FAIL` | The verification gate fails after fix attempts (or tooling is missing) |
-    | `H_BLOCKED` | Generic blocker per `AX_BLOCKER_ESCALATION` |
+    | `H_BLOCKED` | Generic blocker per `AX_BLOCKER_ESCALATION` — includes any tool/infrastructure error that does not map to one of the rows above |
   </HaltConditions>
 
   <ContextExpectation>
-    The orchestrator's dispatch prompt provides: the path to this directive; the ticket path; the target
-    phase ID; a `fix` reason if this is a re-run; prior-phase Handoff payloads (current Round); and the
-    **read-manifest** for this phase from `sdd-task` — the exact set to read (rule anchors, spec anchors,
-    ticket sections, Target Files) plus a "do not read" boundary and a rough line budget.
+    The orchestrator's dispatch prompt is short, by design: this directive's path, the ticket path,
+    the phase ID, kind + reason (`initial` / `fix: F-NNN` / `resume`), and at most 1-3 lines of
+    context the ticket genuinely does not carry. It does NOT paste the read-manifest, the gates, or
+    prior Handoff — STEP_1 gets all of that directly, as the first action of this phase, by calling
+    `sdd-task` itself. A tool call made fresh at the start of THIS run cannot go stale between
+    dispatch and execution — the concern a pasted-prompt approach had on a retry.
 
-    Per `AX_READ_PER_MANIFEST`: read EXACTLY the manifest, nothing beyond it. Pull each cited block by
-    anchor (`sdd-extract <file> <ANCHOR>`), not whole files. Something needed but absent from the
-    manifest → emit a `discovery` line and surface it; keep the read within the manifest.
+    Per `AX_READ_PER_MANIFEST`: read EXACTLY the manifest the tool hands you, nothing beyond it. Pull
+    each cited block by anchor (`sdd-extract <file> <ANCHOR>`), not whole files. Something needed but
+    absent from the manifest → emit a `discovery` line and surface it; keep the read within the
+    manifest.
+
+    **Tool reference** — everything mechanical this phase needs is one of these, each covered by its
+    own tests; nothing else about their internals is load-bearing:
+
+    | Tool | When | Call |
+    |---|---|---|
+    | `sdd-task <ticket> --phase P<N>` | FIRST action, every phase, every retry — objective, gates + satisfy-hints, exit, phase-scoped read-manifest, prior Handoff | `npx gennady sdd-task <ticket> --phase P2` |
+    | `sdd-extract <file> <ANCHOR>` | Pull ONE cited block instead of a whole file — `ANCHOR` is a `SECTION_NAME` (`PHASE_P1`, `BDD`, `VERIFICATION`, …) or a `#lower-dashed` markdown heading slug | `npx gennady sdd-extract <ticket> PHASE_P1` · `npx gennady sdd-extract specs/app/greeting/greeting.spec.md#module-contracts` |
+    | `sdd-log <ticket> phase\|line\|handoff\|blocker ...` | Every Execution Log write for this phase — header, event line, Handoff, blocker; the tool appends, timestamps, and rejects fabricated `DONE` | `npx gennady sdd-log <ticket> line "intro Foo ← reason"` |
+    | `sdd-check --task <ticket>` | A point re-check when you need the mechanical verdict again after a fix, without re-deriving it by hand | `npx gennady sdd-check --task <ticket>` |
+    | `sdd-verify --profile code\|test\|full` | The gate at STEP_5 — profile fixed by phase kind, order is mutating-first | `npx gennady sdd-verify --profile code` |
+    | `gennady lint --spec=<module-spec> <Target Files>` | Closed-world inventory sync + cast safety on this phase's own files | `npx gennady lint --spec=specs/app/greeting/greeting.spec.md src/app/greeting/*.ts` |
+    | `gennady yagni` | Runs INSIDE `sdd-verify` (`code`/`full` profiles); on `ERR_CLI_YAGNI_UNDERUSED` it prints a ready-to-paste `- **Usage Waiver:** <reason>` block — paste it verbatim, then log it (`AX_USAGE_WAIVER_DISCIPLINE`) | standalone only for a quick iteration: `npx gennady yagni .` |
+    | `gennady testcov` | Only when the ticket's own §5 command names it (e.g. `test:coverage`) — the §5 command string is canon, never a substitute | `npx gennady testcov --run --min=80` |
+
+    A gate or tool failure always tells you the next action in its own message — an
+    `ERR_CLI_YAGNI_UNDERUSED`, an `ANCHOR_NOT_FOUND` with nearest candidates, a failed `sdd-verify`
+    gate dump. Follow that message. A message you cannot act on this way is an infrastructure
+    problem, not a puzzle to solve by reading the tool's source — `H_BLOCKED` per
+    `AX_BLOCKER_ESCALATION`, surfaced as PAUSED (`AX_HALT_VS_FAIL_DISTINCTION`), not a reason to keep
+    digging.
   </ContextExpectation>
 
   <PhaseProcedure>
-    <Step id="STEP_1_PARSE_PHASE_INPUT">
-      <Goal>Resolve the phase, validate prerequisites, record the reason for this run.</Goal>
+    <Step id="STEP_1_GET_PHASE_CONTEXT">
+      <Goal>First action, every phase, every retry: get the manifest from the tool, not from a pasted prompt.</Goal>
       <Action>
-        Read Meta + Phases Overview + the target phase block. Missing block → `H_PHASE_NOT_FOUND`; Status
-        `[x]` without a `fix` reason → `H_PHASE_ALREADY_DONE`. For each Input, locate the prior phase's
-        `**Handoff →**` line in the current Round (missing → `H_INPUT_HANDOFF_MISSING`). Append the phase
-        header to the current Round via `npx gennady sdd-log <ticket> phase <PhaseID> ["— re-run:
-        <reason>"]` (`AX_TICKET_WRITE_SCOPE`) — the tool is the sole writer for this section, never a
-        manual `Edit`.
+        Run `npx gennady sdd-task <ticket> --phase <PhaseID>`. Its output IS the phase's working
+        context — objective, gates with a satisfy-hint, exit criterion, the phase-scoped
+        read-manifest, and a `[HANDOFF]` block quoting every completed prior phase's verbatim
+        `**Handoff →**` line (absent → this is the first phase). Follow this output for the rest of
+        the phase; do not separately open Meta, Phases Overview, or another phase's body — the tool
+        already filtered all of that. `ERR_CLI_SDD_TASK_PHASE_NOT_FOUND` → `H_PHASE_NOT_FOUND`; the
+        header line's `status=[x]` with no `fix` reason from the dispatch → `H_PHASE_ALREADY_DONE`;
+        an Input that should cite a prior phase but has no matching `[HANDOFF]` entry →
+        `H_INPUT_HANDOFF_MISSING`.
+      </Action>
+    </Step>
+    <Step id="STEP_1B_RESUME_OR_START">
+      <Goal>Detect a prior aborted attempt at THIS phase before writing or logging anything.</Goal>
+      <Action>
+        `sdd-task --phase` shows prior PHASES' Handoff, never this phase's OWN Execution Log entries
+        — check those separately: `npx gennady sdd-extract <ticket> EXECUTION_LOG` and look for this
+        phase's heading in the current Round.
+
+        <LogicSwitch on="this phase's own Execution Log entries, current Round">
+        - WHEN a `#### <PhaseID>` block already exists WITHOUT a closing `DONE` + Handoff -> a prior
+          attempt at this exact phase was interrupted (crash, context limit, killed process — not a
+          formal `fix` re-run, which always closes with `DONE`). Read its logged lines in order;
+          every already-logged `intro` / `decision` / `verified` / `ver → pass` line is done work —
+          do not redo it or re-log it, and do not re-open files it already reports created unless
+          STEP_2 recon finds them missing or STEP_5 finds the gate stale. Do NOT call `sdd-log
+          <ticket> phase <PhaseID>` again — the header already exists; resume by appending the next
+          event line into that same block, continuing from where the log stopped.
+        - WHEN no such open block exists (fresh phase, or the only block present is a prior Round's
+          closed `— re-run: <reason>` attempt that already ends in `DONE` + Handoff) -> fresh start:
+          append the phase header via `npx gennady sdd-log <ticket> phase <PhaseID> ["— re-run:
+          <reason>"]` (`AX_TICKET_WRITE_SCOPE` — the tool is the sole writer, never a manual `Edit`).
+        </LogicSwitch>
       </Action>
     </Step>
     <Step id="STEP_2_NARROW_RECON">
@@ -378,9 +440,10 @@
     <Step id="STEP_3_LOAD_RULES">
       <Goal>Internalize the rules governing this phase. No log line.</Goal>
       <Action>
-        Read the rule anchors in the manifest (`AX_RULES_LOAD_FROM_PHASE_BLOCK` + `AX_READ_PER_MANIFEST`) —
-        the bounded set already filtered by phase kind + Target Files, by anchor not whole file. A cited
-        anchor that fails to resolve → `H_MISSING_RULE_FILE`. Skip the `rules` log line — the manifest declares them.
+        Read the rule files named on STEP_1's `READ rules:` line (`AX_RULES_LOAD_FROM_PHASE_BLOCK` +
+        `AX_READ_PER_MANIFEST`) — the bounded set already filtered by phase kind + Target Files. A
+        cited file that fails to resolve → `H_MISSING_RULE_FILE`. Skip the `rules` log line — the
+        manifest already declares them.
       </Action>
     </Step>
     <Step id="STEP_3B_TOOL_API">
@@ -410,8 +473,12 @@
         writer, never a manual `Edit`); a spec gap goes to an `insight` line the same way and leaves
         the spec untouched (`AX_SPEC_NEVER_EDITED`). A TICKET gap — the phase needs a decision the
         ticket does not cover — is not a spec gap and not a reason to stop and ask the operator:
-        decide it yourself, append a ticket-local Decision Log entry via a direct `Edit`
-        (`AX_DEVIATION_SELF_RESOLVE`, `AX_TICKET_WRITE_SCOPE`), and continue.
+        decide it yourself, then append a ticket-local Decision Log entry via a direct `Edit`
+        (`AX_DEVIATION_SELF_RESOLVE`, `AX_TICKET_WRITE_SCOPE`) — one line, id `<ACRONYM>-D-N`
+        (ticket-local, per `AX_DEVIATION_SELF_RESOLVE`), body shaped per `DECISION_LOG_ENTRY_FORMAT`:
+        `<ACRONYM>-D-N <date> — <decision in one phrase> (почему: <compromise/criterion>; отвергнуто:
+        <alternative — why not>; риск: <if accepted>)` — omit a clause entirely rather than writing it
+        empty — and continue.
       </Action>
     </Step>
     <Step id="STEP_5_VERIFY">
@@ -531,6 +598,22 @@
       `artifacts` / `decisions` / `open` / `deviations` mirror the **Handoff →** line — orchestrator
       threads `artifacts` / `decisions` / `open` into the next phase's prompt, and collects
       `deviations` across the run for the end-of-cycle batched report (`AX_DEVIATION_SELF_RESOLVE`).
+    </Contract>
+
+    <Contract id="DECISION_LOG_ENTRY_FORMAT">
+      One line per entry — no Status/Recorded fields, no multi-line block. The parenthetical carries
+      only what applies; omit a clause entirely rather than writing it empty.
+
+      ```markdown
+      D-NNN <date> — <decision in one phrase> (почему: <compromise/criterion>; отвергнуто: <alternative — why not>; риск: <if accepted>)
+      ```
+
+      Superseding a prior decision appends `; supersedes: D-MMM` to the parenthetical instead of a
+      separate field — the entry stays one line. `<date>` is the recording date (`YYYY-MM-DD`); status
+      (active / superseded / rejected / deferred) is implicit from prose and from whether a later entry
+      supersedes this one — a spec has no dangling "rejected" or "deferred" entries sitting as if active,
+      the prose says so directly (e.g. `отвергнуто в пользу X` folded into the same line that would have
+      recorded it, never a standalone rejected entry with its own D-NNN).
     </Contract>
   </OutputContracts>
 </SddPhaseExecution>
