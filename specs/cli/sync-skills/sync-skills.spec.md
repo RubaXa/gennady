@@ -2,7 +2,7 @@
 
 ## 1. Module Vision
 
-Команда `gennady sync-skills` в `cli/cmd/sync-skills/`: синхронизирует SDD-скилы из `ai/skills/` npm-пакета gennady в `<cwd>/.claude/skills/`. 13 скилов: alt-opinion, sdd-audit, sdd-check, sdd-continue, sdd-critic, sdd-discover, sdd-execute (с scripts/), sdd-execute-batch, sdd-fix, sdd-infra, sdd-module-decomposition, sdd-scaffold, sdd-setup. Каждый скил — директория с `SKILL.md` и ресурсами (scripts, prompts). Полная синхронизация с orphan-удалением (rsync --delete). Файлы сравниваются побайтово (`Buffer.compare`). **При копировании применяется нормализация путей: dev-пути (`~/Developer/gennady/...`) заменяются на продуктовые эквиваленты (`npx gennady`, `.claude/skills/...`, `ai/directives/...`).** Вывод: `+` (added), `~` (updated), `-` (deleted), `=` (unchanged). Zero runtime dependencies (только Node.js built-in). Shared core с `sync`: `resolvePackageDir`, `compareBytes`, `PathNormalizer`, `SyncFormatter`, `SyncCmdDeps` вынесены в `shared/common/sync/`. Поддержка `--dry-run`.
+Команда `gennady sync-skills` в `cli/cmd/sync-skills/`: синхронизирует SDD-скилы из `ai/skills/` npm-пакета gennady в `<cwd>/.claude/skills/`. 13 скилов: alt-opinion, sdd-audit, sdd-check, sdd-continue, sdd-critic, sdd-discover, sdd-execute (с scripts/), sdd-execute-batch, sdd-fix, sdd-infra, sdd-module-decomposition, sdd-scaffold, sdd-setup. Каждый скил — директория с `SKILL.md` и ресурсами (scripts, prompts). Полная синхронизация с orphan-удалением (rsync --delete). Файлы сравниваются побайтово (`Buffer.compare`). **Корень пакета ищется вверх по `package.json`, а не отрезанием `/dist/`:** опубликованная установка резолвится внутрь `dist/`, а склонированная или `npm link`-нутая — прямо в исходник, и отрезание `dist` для второй давало путь к файлу и отказ «gennady package not found». **Источников скиллов несколько:** базовый `ai/skills/**` плюс `plugin.skills` каждого плагина (в пакете каталоги плагинов лежат рядом, в чекауте — тоже), фильтр по именам применяется к объединению, а пустой каталог никогда не перекрывает реальные файлы. **При копировании применяется нормализация путей: dev-пути (`~/Developer/gennady/...`) заменяются на продуктовые эквиваленты (`npx gennady`, `.claude/skills/...`, `ai/directives/...`).** Вывод: `+` (added), `~` (updated), `-` (deleted), `=` (unchanged). Zero runtime dependencies (только Node.js built-in). Shared core с `sync`: `resolvePackageDir`, `compareBytes`, `PathNormalizer`, `SyncFormatter`, `SyncCmdDeps` вынесены в `shared/common/sync/`. Поддержка `--dry-run`.
 
 → Parent scope: [`../cli.spec.md`](../cli.spec.md) (раздел 5.7 sync-skills).
 
@@ -151,6 +151,7 @@ _Это полный список сущностей модуля. Любое в
   6. `/Users/k.lebedev/Developer/gennady/ai/` → `ai/` (абсолютные dev-пути → относительные)
   7. `/Users/k.lebedev/Developer/gennady/cli/gennady.ts` → `npx gennady` (абсолютный путь к CLI)
   8. `$HOME/Developer/gennady/cli/gennady.ts` → `~/Developer/gennady/cli/gennady.ts` (нормализация `$HOME` в тильду, `RULE_CLI_HOME`)
+  9. `plugins/<id>/directives/` → `ai/directives/` (`RULE_PLUGIN_DIRECTIVES`): директиву в чекауте держит плагин, а потребитель получает её под `ai/` — тот же dev/prod дуализм, что у остальных путей
 - **Lifecycle:** Константа в `sync-skills-core.ts`. Передаётся в `PathNormalizer.normalize()`
 - **Consumers:** `SyncSkillsCore.collectAndCompareSkills`
 

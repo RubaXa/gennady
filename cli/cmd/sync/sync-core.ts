@@ -67,6 +67,56 @@ export function resolvePackageDir(cwd: string, subdir = 'ai/directives'): string
 }
 
 /**
+ * @purpose Map every directive path to the root that provides it, so plugin-owned directives sync.
+ * @invariant A requested subdir must exist in at least one root, not in every root; the base
+ *   root wins a path collision.
+ * @param roots Directive roots, base first.
+ * @param [subdirs] Optional subdirectory filter, checked against the union.
+ * @throws If a requested subdir exists in none of the roots.
+ * @returns Relative path → absolute source path, sorted by relative path.
+ */
+export function scanSourceRoots(roots: readonly string[], subdirs?: string[]): Map<string, string> {
+  const found = new Map<string, string>();
+  const seenSubdirs = new Set<string>();
+
+  for (const root of roots) {
+    let available: string[] = [];
+    try {
+      available = readdirSync(root).filter(
+        (name) => !EXCLUDED_ENTRIES.has(name) && statSync(join(root, name)).isDirectory()
+      );
+    } catch {
+      continue;
+    }
+    for (const name of available) {
+      seenSubdirs.add(name);
+    }
+
+    const wanted = subdirs === undefined ? undefined : subdirs.filter((s) => available.includes(s));
+    if (subdirs !== undefined && wanted!.length === 0) {
+      continue;
+    }
+    for (const relativePath of scanDirectives(root, wanted)) {
+      if (!found.has(relativePath)) {
+        found.set(relativePath, join(root, relativePath));
+      }
+    }
+  }
+
+  for (const subdir of subdirs ?? []) {
+    if (!seenSubdirs.has(subdir)) {
+      const error = new Error(
+        `[scanSourceRoots] ai/directives/${subdir}/ not found in package.\nAvailable: ${[...seenSubdirs].sort().join(', ')}`
+      );
+      (error as Error & { code: string }).code = ERR_SYNC_SUBDIR_NOT_FOUND;
+      throw error;
+    }
+  }
+
+  return new Map([...found].sort(([a], [b]) => a.localeCompare(b)));
+}
+
+/**
  * @purpose Recursively collect a list of files in sourceDir with filter and exclusion support.
  * @param sourceDir Source directory to scan.
  * @param [subdirs] Optional list of subdirectories to scan.
@@ -141,11 +191,10 @@ export function collectAndCompare(deps: SyncCoreDeps, opts: SyncOptions): SyncRe
     throw error;
   }
 
-  const relativePaths = scanDirectives(opts.sourceDir, opts.subdirs);
+  const sources = scanSourceRoots([opts.sourceDir, ...(opts.extraSourceDirs ?? [])], opts.subdirs);
   const entries: SyncFileEntry[] = [];
 
-  for (const relativePath of relativePaths) {
-    const sourcePath = join(opts.sourceDir, relativePath);
+  for (const [relativePath, sourcePath] of sources) {
     const targetPath = join(opts.targetDir, relativePath);
     const sourceData = deps.readFile(sourcePath);
     const normalizedContent = normalize(sourceData.toString('utf-8'), SYNC_PATH_RULES);

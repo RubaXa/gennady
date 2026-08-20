@@ -35,7 +35,11 @@
     "README.md",
     "ai/**/*",
     "cli/cmd/orient/README.md",
-    "services/agent-run/engines/opencode/readonly.config.json"
+    "services/agent-run/engines/opencode/readonly.config.json",
+    "plugins/*/plugin.json",
+    "plugins/*/*.ts",
+    "plugins/*/directives/**/*",
+    "plugins/*/skills/**/*"
   ],
   "scripts": {
     "type-check": "tsc --noEmit",

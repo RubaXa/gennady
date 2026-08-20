@@ -6,11 +6,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { resolvePlugins } from './resolve-plugins.ts';
 
-/** One file to stage, as source plus its path inside the package. */
+/** One file a plugin contributes to the published package. */
 export type StagedAsset = {
   /** @purpose Absolute path inside the plugin directory. */
   readonly source: string;
-  /** @purpose Package-relative destination, e.g. `ai/directives/infra/golang-setup.xml`. */
+  /** @purpose Package-relative path, identical to the source's place in the repository. */
   readonly target: string;
 };
 
@@ -33,11 +33,32 @@ function walk(dir: string): string[] {
 }
 
 /**
+ * @purpose Source directories plugins contribute to a sync surface.
+ * @invariant Same in both installs: the package ships the plugin directories, so a checkout and
+ *   an installed copy resolve identically.
+ * @param pluginsRoot The package's `plugins/` directory, or null when absent.
+ * @param surface Which surface to collect.
+ * @returns Absolute directories, in resolver order.
+ */
+export function pluginSurfaceDirs(
+  pluginsRoot: string | null,
+  surface: 'directives' | 'skills'
+): string[] {
+  if (pluginsRoot === null) {
+    return [];
+  }
+  const { plugins } = resolvePlugins([pluginsRoot], 'stack');
+  return plugins
+    .map((plugin) => (surface === 'directives' ? plugin.directivesDir : plugin.skillsDir))
+    .filter((dir): dir is string => dir !== null);
+}
+
+/**
  * @purpose List the plugin files the published package must carry, derived from the manifests.
  * @invariant Derived from resolved manifests, never a `plugins/**` glob: a .gitignore inside a
  *   plugin directory subtracts silently from `npm pack` (plugins.spec D-SP-008).
- * @invariant A plugin's directives/skills subtree is mirrored, so `gennady sync infra` keeps
- *   finding a directive the golang plugin owns.
+ * @invariant Paths are where the repository keeps them: the package ships the plugin
+ *   directories, so nothing is copied into the tracked tree.
  * @param repoRoot Repository root holding `plugins/`.
  * @returns Every staged asset, sorted by target.
  */
@@ -51,17 +72,14 @@ export function pluginPublishAssets(repoRoot: string): readonly StagedAsset[] {
 
   const assets: StagedAsset[] = [];
   for (const plugin of plugins) {
-    for (const [dir, prefix] of [
-      [plugin.directivesDir, 'ai/directives'],
-      [plugin.skillsDir, 'ai/skills'],
-    ] as const) {
+    for (const dir of [plugin.directivesDir, plugin.skillsDir]) {
       if (dir === null) {
         continue;
       }
-      // The whole declared subtree, not just the files the resolver indexes: a skill may ship
-      // helper files next to its SKILL.md, and shipping half of one is worse than shipping none.
+      // The whole declared subtree: a skill may ship helpers beside its SKILL.md, and shipping
+      // half of one is worse than shipping none.
       for (const file of walk(dir)) {
-        assets.push({ source: file, target: path.join(prefix, path.relative(dir, file)) });
+        assets.push({ source: file, target: path.relative(repoRoot, file) });
       }
     }
   }

@@ -72,10 +72,15 @@ describe('resolvePackageDir', () => {
   });
   // #endregion
 
-  // #region TEST_CASE_2: local not found, returns null
-  it('returns null when package not found', () => {
+  // #region TEST_CASE_2: no local install falls back to the resolvable package
+  it('falls back to the package this process runs from', () => {
+    // Previously null, because the package root was derived by stripping `/dist/` and a checkout
+    // resolves to a source file. That bug is what broke `npm link` installs: the package is
+    // genuinely reachable here, so a path is the correct answer.
     const result = resolvePackageDir(_tmpDir);
-    assert.equal(result, null);
+
+    assert.notEqual(result, null, 'gennady resolves from its own checkout');
+    assert.match(result ?? '', /ai[\\/]directives$/);
   });
   // #endregion
 });

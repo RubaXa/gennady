@@ -16,6 +16,7 @@ import { fileURLToPath } from 'node:url';
 import { logger } from '#logger';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
 import { resolvePackageDir } from '../../../shared/common/sync/sync-core.shared.ts';
+import { pluginSurfaceDirs } from '../../../services/plugins/plugin-assets.ts';
 import type { SyncCmdDeps } from '../../../shared/common/sync/sync-deps.type.ts';
 import { collectAndCompareSkills } from './sync-skills-core.ts';
 import { format } from './sync-skills-formatter.ts';
@@ -97,6 +98,7 @@ export function run(rawArgs: string[], deps?: SyncCmdDeps): number {
 
   const opts: SyncSkillsOptions = {
     sourceDir: packageDir,
+    extraSourceDirs: pluginSurfaceDirs(_resolvePackageDir(cwd, 'plugins'), 'skills'),
     targetDir,
     skillNames: positional.length > 0 ? positional : undefined,
     dryRun,

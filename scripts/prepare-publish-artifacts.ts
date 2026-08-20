@@ -2,7 +2,6 @@ import { cpSync, existsSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { logger } from '../shared/common/logger.ts';
-import { pluginPublishAssets } from '../services/plugins/plugin-assets.ts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, '..');
@@ -51,18 +50,6 @@ const copyPairs: PublishArtifactCopyPair[] = [
 function preparePublishArtifacts(): void {
   logger.info(`[preparePublishArtifacts] [idle → copying] Copy publish runtime assets`, {
     pairs: copyPairs.length,
-  });
-
-  // Plugin assets land in ai/ before it is copied into dist/: `gennady sync` resolves them
-  // from the package root, and a plugin owning a directive must not lose it on publish.
-  const staged = pluginPublishAssets(projectRoot);
-  for (const { source, target } of staged) {
-    const destination = path.join(projectRoot, target);
-    mkdirSync(path.dirname(destination), { recursive: true });
-    cpSync(source, destination, { recursive: true });
-  }
-  logger.info(`[preparePublishArtifacts] [copying → copying] Staged plugin assets`, {
-    assets: staged.length,
   });
 
   for (const { source, target } of copyPairs) {

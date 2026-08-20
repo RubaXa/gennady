@@ -9,7 +9,7 @@ compatibility: opencode
 
 Go specialisation of `sdd-infra`. Scope-type is fixed: `infrastructure`; language is fixed: `go`.
 
-The deterministic half of this skill is the stack plugin system — **one verb for every stack**: `gennady verify`. The golang plugin carries the Go knowledge; the repo's deviations live in `gennady.yaml` (section `stack`; personal `.gennadyrc` files deep-merge on top), never in ad-hoc per-repo commands. Read `ai/directives/infra/golang-setup.xml` for the reasoning behind every rule below.
+The deterministic half of this skill is the stack plugin system — **one verb for every stack**: `gennady verify`. The golang plugin carries the Go knowledge; the repo's deviations live in `gennady.yaml` (section `stack`; personal `.gennadyrc` files deep-merge on top), never in ad-hoc per-repo commands. Read `plugins/golang/directives/infra/golang-setup.xml` for the reasoning behind every rule below.
 
 ## 1. Orient before designing
 
@@ -91,7 +91,7 @@ An agent that "fixes" code in response to `ENV_FAIL` produces confident, wrong d
 
 ## 6. Rules that survive contact with real repositories
 
-Full reasoning in `ai/directives/infra/golang-setup.xml`; the short form:
+Full reasoning in `plugins/golang/directives/infra/golang-setup.xml`; the short form:
 
 1. **One verb, every stack.** Differences go into `gennady.yaml`, not into new commands.
 2. **Gates never mutate.** `gofmt -l`, never `go fmt`; `go mod tidy -diff`, never `tidy`.
@@ -106,7 +106,7 @@ Full reasoning in `ai/directives/infra/golang-setup.xml`; the short form:
 When the operator wants tooling *designed* rather than merely run:
 
 1. **Extract intent.** Confirm scope-type=`infrastructure`, language=`go`. Resolve the scope name (e.g. `infra-golang`).
-2. **Load & activate.** Read in full: `~/Developer/gennady/ai/directives/sdd/discovery.directive.xml`, then `~/Developer/gennady/ai/directives/infra/golang-setup.xml`.
+2. **Load & activate.** Read in full: `~/Developer/gennady/ai/directives/sdd/discovery.directive.xml`, then `~/Developer/gennady/plugins/golang/directives/infra/golang-setup.xml`.
    Announce: `🔒 DIRECTIVE ACTIVATED: SddDiscovery | infrastructure | golang`
 3. **Ground every requirement in observed state** — the `--plan --json` output above, not assumptions about how Go projects usually look.
 4. **Apply.** Follow the discovery Execution_Plan end-to-end. Every proposed gate must be expressible as a `gennady verify` invocation or a `gennady.yaml` entry — or justified as to why it is not.
