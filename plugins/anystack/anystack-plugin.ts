@@ -11,8 +11,8 @@ export const ANYSTACK_GATE_IDS: readonly string[] = [];
  * @purpose Placeholder plugin: recognizes any repository once selected, and contributes no gates
  *   of its own so an exotic stack can be verified entirely through `extraGates`.
  * @implements {StackPlugin} in plugins/anystack/specs/anystack.spec.md
- * @invariant `optIn` keeps it out of auto-detection: a repository belonging to no stack must
- *   still exit 5, not silently match this plugin.
+ * @invariant Matches every repository, so it coexists with a real stack rather than replacing
+ *   it: `anystack` + `golang` is a normal multi-stack run (spec §3).
  * @consumer stack-registry
  */
 export const anystackPlugin: StackPlugin = {
@@ -20,16 +20,14 @@ export const anystackPlugin: StackPlugin = {
   marker: 'any repository',
   description: 'no stack detection; every gate comes from stack.anystack.extraGates',
   gateIds: ANYSTACK_GATE_IDS,
-  optIn: true,
 
   detect(root: string): StackDetection | null {
     return {
       stack: 'anystack',
       root,
-      summary: [
-        'stack:     none — selected explicitly via stack.use',
-        'gates:     from gennady.yaml (stack.anystack.extraGates)',
-      ],
+      // Active in every repository, so it must stay silent unless it has gates: a stack that
+      // planned nothing is dropped from the report entirely (stack.spec §8).
+      summary: ['gates:     from gennady.yaml (stack.anystack.extraGates)'],
       diagnostics: [],
       details: null,
     };
@@ -41,7 +39,7 @@ export const anystackPlugin: StackPlugin = {
       // so only its own command decides what it reads.
       return {
         mode: request.mode,
-        note: 'config-authored gates — scope flags do not narrow them',
+        note: 'config-authored gates',
         details: null,
       };
     },

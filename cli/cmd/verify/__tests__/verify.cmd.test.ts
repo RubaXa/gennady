@@ -55,9 +55,19 @@ async function captureLog<T>(
 }
 
 describe('verify command', () => {
-  it('exits 5 when no stack plugin recognizes the repository', async () => {
+  it('exits 1, not 5, on an unrecognized repository: anystack matches everything', async () => {
+    // anystack is active in every repository, so the active set is never empty by itself. The
+    // repository is still not verified — ZERO_GATES — but the verdict is a failed run, not a
+    // missing plugin, and the message carries the guidance exit 5 used to give.
     await withFixture({ 'README.md': 'nothing here' }, async (dir) => {
       const { value } = await captureLog(() => run(argv(`--root=${dir}`)));
+      assert.equal(value, 1);
+    });
+  });
+
+  it('exits 5 when the named stack does not recognize the repository', async () => {
+    await withFixture({ 'README.md': 'nothing here' }, async (dir) => {
+      const { value } = await captureLog(() => run(argv(`--root=${dir}`, '--stack=golang')));
       assert.equal(value, 5);
     });
   });

@@ -1,72 +1,61 @@
-// @file: Unit tests for the registry — detection order and opt-in plugins.
+// @file: Unit tests for the registry — detection order, multi-stack activation, gate vocabulary.
 // @consumers: CI
 // @tasks: TSK-96
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import type { StackDetection, StackPlugin } from '../stack.types.ts';
+import type { StackDetection, StackId, StackPlugin } from '../stack.types.ts';
 
 const { detectStacks, BUILTIN_STACK_PLUGINS, BUILTIN_GATE_IDS } =
   await import('../stack-registry.ts');
 
-/** @purpose A plugin that recognizes everything, optionally opt-in. */
-function alwaysMatches(id: string, optIn: boolean): StackPlugin {
+/** @purpose A plugin recognizing either everything or nothing. */
+function plugin(id: string, matches: boolean): StackPlugin {
   return {
-    id: id as StackPlugin['id'],
+    id: id as StackId,
     marker: 'any',
     description: id,
     gateIds: [],
-    ...(optIn ? { optIn: true } : {}),
-    detect: (root: string): StackDetection => ({
-      stack: id as StackDetection['stack'],
-      root,
-      summary: [],
-      diagnostics: [],
-      details: null,
-    }),
+    detect: (root: string): StackDetection | null =>
+      matches ? { stack: id as StackId, root, summary: [], diagnostics: [], details: null } : null,
     verify: {
-      resolveScope: (_d, request) => ({ mode: request.mode, note: '', details: null }),
+      resolveScope: (_detection, request) => ({ mode: request.mode, note: '', details: null }),
       planGates: () => [],
     },
   };
 }
 
-describe('detectStacks — opt-in plugins', () => {
-  it('never auto-detects an opt-in plugin, even though it matches everything', () => {
-    const registry = [alwaysMatches('anystack', true)];
+describe('detectStacks', () => {
+  it('activates every plugin that recognizes the repository, not just the first', () => {
+    const registry = [plugin('anystack', true), plugin('node', true), plugin('golang', false)];
     assert.deepStrictEqual(
-      detectStacks('/repo', null, registry),
-      [],
-      'a placeholder that matched by itself would delete NO_STACK_DETECTED as a class of error'
+      detectStacks('/repo', null, registry).map(({ plugin: p }) => p.id),
+      ['anystack', 'node'],
+      'anystack + a real stack is a normal multi-stack run'
     );
   });
 
-  it('activates it when stack.use names it', () => {
-    const registry = [alwaysMatches('anystack', true)];
-    const active = detectStacks('/repo', { use: ['anystack'] }, registry);
+  it('restricts candidates to stack.use, so a placeholder can be selected alone', () => {
+    const registry = [plugin('anystack', true), plugin('node', true)];
     assert.deepStrictEqual(
-      active.map(({ plugin }) => plugin.id),
+      detectStacks('/repo', { use: ['anystack'] }, registry).map(({ plugin: p }) => p.id),
       ['anystack']
     );
   });
 
-  it('still auto-detects a plugin that is not opt-in', () => {
-    const registry = [alwaysMatches('always', false)];
-    assert.strictEqual(detectStacks('/repo', null, registry).length, 1);
-  });
-
-  it('keeps opt-in out of the way of a real stack', () => {
-    const registry = [alwaysMatches('anystack', true), alwaysMatches('real', false)];
+  it('keeps NO_STACK_DETECTED reachable when use names a stack that does not match', () => {
+    const registry = [plugin('anystack', true), plugin('golang', false)];
     assert.deepStrictEqual(
-      detectStacks('/repo', null, registry).map(({ plugin }) => plugin.id),
-      ['real']
+      detectStacks('/repo', { use: ['golang'] }, registry),
+      [],
+      'an empty active set is what verify turns into exit 5'
     );
   });
 });
 
 describe('registry composition', () => {
   it('orders built-ins by id and derives the gate vocabulary from the plugins', () => {
-    const ids = BUILTIN_STACK_PLUGINS.map((plugin) => plugin.id);
+    const ids = BUILTIN_STACK_PLUGINS.map((p) => p.id);
     assert.deepStrictEqual(ids, [...ids].sort(), 'report order must not depend on readdir order');
     assert.deepStrictEqual(Object.keys(BUILTIN_GATE_IDS).sort(), [...ids].sort());
     assert.deepStrictEqual(
@@ -74,5 +63,11 @@ describe('registry composition', () => {
       [],
       'the placeholder declares no gates; extraGates supply them all'
     );
+  });
+
+  it('anystack recognizes any directory, so it is always available', () => {
+    const anystack = BUILTIN_STACK_PLUGINS.find((p) => p.id === 'anystack');
+    assert.ok(anystack, 'anystack must be a built-in');
+    assert.notStrictEqual(anystack.detect('/nowhere/at/all'), null);
   });
 });

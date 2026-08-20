@@ -331,10 +331,6 @@ export type StackPlugin = {
    */
   readonly gateIds: readonly string[];
   /**
-   * @purpose Never auto-detected; active only when `stack.use` names it (spec §3).
-   */
-  readonly optIn?: boolean;
-  /**
    * @purpose Ignored paths symlinked into the run replica: the stack's execution
    *   environment, not tree state (node: node_modules). Spec D-STACK-013.
    */

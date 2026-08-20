@@ -207,6 +207,10 @@ export async function run(argv: string[]): Promise<number> {
   }));
   // #endregion END_PLAN
 
+  // A stack that planned no gate is not part of this run: it is omitted from the plan, the
+  // report and the JSON alike, so every surface tells the same story (spec §8).
+  const plannedRuns = filteredRuns.filter((stackRun) => stackRun.gates.length > 0);
+
   if (args.plan === true) {
     if (args.json === true) {
       console.log(
@@ -220,7 +224,7 @@ export async function run(argv: string[]): Promise<number> {
             diagnostics,
             // Predicates are closures: JSON.stringify turns them into nulls, which told an
             // agent nothing about how a gate classifies failures. Render them instead.
-            runs: filteredRuns.map((stackRun) => ({
+            runs: plannedRuns.map((stackRun) => ({
               ...stackRun,
               gates: stackRun.gates.map((gate) => ({
                 ...gate,
@@ -236,14 +240,14 @@ export async function run(argv: string[]): Promise<number> {
     }
 
     console.info(
-      `[verify] plan for ${root} (stacks: ${filteredRuns.map((run) => run.detection.stack).join(', ')})`
+      `[verify] plan for ${root} (stacks: ${plannedRuns.map((run) => run.detection.stack).join(', ')})`
     );
     if (configLoad.sources.length > 0) {
       console.info(
         `  config:    ${configLoad.sources.join(' + ')} (per-key winner in gate labels)`
       );
     }
-    for (const stackRun of filteredRuns) {
+    for (const stackRun of plannedRuns) {
       for (const line of stackRun.detection.summary) {
         console.info(`  ${line}`);
       }
@@ -308,11 +312,13 @@ export async function run(argv: string[]): Promise<number> {
           envFailed: report.results.filter((result) => result.status === 'env-fail').length,
           config: { sources: configLoad.sources },
           diagnostics: report.diagnostics,
-          runs: report.runs.map((run) => ({
-            stack: run.detection.stack,
-            summary: run.detection.summary,
-            scope: { mode: run.scope.mode, note: run.scope.note },
-          })),
+          runs: report.runs
+            .filter((run) => run.gates.length > 0)
+            .map((run) => ({
+              stack: run.detection.stack,
+              summary: run.detection.summary,
+              scope: { mode: run.scope.mode, note: run.scope.note },
+            })),
           results: report.results.map((result) => ({
             stack: result.gate.stack,
             id: result.gate.id,

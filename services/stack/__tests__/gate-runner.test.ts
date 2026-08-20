@@ -472,6 +472,27 @@ describe('formatVerifyReport', () => {
     assert.ok(!text.includes('ALL_GATES_PASS'), 'verified-nothing must not read as success');
   });
 
+  it('tells an unconfigured repository what to do when nothing was even planned', () => {
+    // anystack matches every repository, so this is the terminal message where
+    // NO_STACK_DETECTED used to be: the verdict alone would leave the reader stuck.
+    const text = formatVerifyReport(runVerify([runOf([])], []));
+
+    assert.match(text, /ZERO_GATES/);
+    assert.match(text, /stack\.<id>\.extraGates/);
+  });
+
+  it('omits a stack that planned nothing from the verdict line', () => {
+    const report = runVerify([runOf([shellGate('build', 'true')]), runOf([])], []);
+    const text = formatVerifyReport(report);
+
+    assert.match(text, /ALL_GATES_PASS/);
+    assert.strictEqual(
+      text.split('·').length,
+      1,
+      'a stack with no gates must not add a note to the verdict line'
+    );
+  });
+
   it('keeps the tail of long failure output, where test runners put the summary (review N1)', () => {
     const report = runVerify([runOf([shellGate('vet', 'seq 1 500; exit 1')])], []);
     const text = formatVerifyReport(report);

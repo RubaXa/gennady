@@ -34,8 +34,8 @@ export type ActiveStack = {
 
 /**
  * @purpose Detect which stacks a repository belongs to, honouring the config's `use` restriction.
- * @invariant `use` restricts the candidate set; detection still decides (spec §3). Opt-in
- *   plugins are candidates only when `use` names them.
+ * @invariant `use` restricts the candidate set; detection still decides (spec §3). Unknown ids
+ *   in `use` are rejected earlier by strict config validation.
  * @param root Absolute repository root.
  * @param config Merged stack config, or null for pure auto-detection.
  * @param [registry] Registry to detect against; defaults to the built-ins.
@@ -48,11 +48,9 @@ export function detectStacks(
 ): ActiveStack[] {
   const plugins = registry ?? BUILTIN_STACK_PLUGINS;
   const use = config?.use;
-  // An opt-in plugin matches anything, so auto-detection must never consider it: a repository
-  // belonging to no stack has to keep failing loudly instead of silently matching a placeholder.
   const candidates = Array.isArray(use)
     ? plugins.filter((plugin) => use.includes(plugin.id))
-    : plugins.filter((plugin) => plugin.optIn !== true);
+    : plugins;
 
   const active: ActiveStack[] = [];
   for (const plugin of candidates) {

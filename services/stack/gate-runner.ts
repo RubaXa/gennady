@@ -524,6 +524,13 @@ export function formatVerifyReport(report: VerifyReport): string {
     lines.push(
       `[verify] ZERO_GATES: nothing was executed (${skips} gate(s) skipped) — verified nothing`
     );
+    if (skips === 0) {
+      // Nothing was even planned. With anystack matching every repository this is the terminal
+      // message for an unconfigured one, so it carries the guidance NO_STACK_DETECTED used to.
+      lines.push(
+        '  fix: declare gates under stack.<id>.extraGates in gennady.yaml, or run from a directory a stack plugin recognizes'
+      );
+    }
   } else if (report.diagnostics.some((diagnostic) => diagnostic.blocking === true)) {
     // Without this line an ok:false run with no failing gate would end with no verdict at all.
     const codes = report.diagnostics
@@ -534,7 +541,10 @@ export function formatVerifyReport(report: VerifyReport): string {
       `[verify] BLOCKED: ${codes} — the gates that matter could not run, so nothing was verified`
     );
   } else if (report.ok) {
-    const notes = report.runs.map((run) => `${run.detection.stack}: ${run.scope.note}`).join(' · ');
+    const notes = report.runs
+      .filter((run) => run.gates.length > 0)
+      .map((run) => `${run.detection.stack}: ${run.scope.note}`)
+      .join(' · ');
     lines.push(`[verify] ALL_GATES_PASS (${report.passed}/${report.total}) — ${notes}`);
   }
 
