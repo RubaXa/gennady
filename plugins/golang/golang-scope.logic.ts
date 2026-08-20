@@ -67,12 +67,13 @@ function detectBaseRef(root: string): string {
 }
 
 /**
- * @purpose List Go files changed against a base ref, including uncommitted and untracked work.
+ * @purpose Every path changed against the base ref, staged or untracked, as repo-relative strings.
  * @param root Absolute repository root.
- * @param baseRef Ref to diff against.
- * @returns Absolute paths of changed `.go` files that still exist on disk.
+ * @param baseRef Ref the comparison is made against.
+ * @returns Repo-relative paths, deduplicated.
+ * @sideEffect Process: three `git` invocations in the repository root.
  */
-function collectChangedGoFiles(root: string, baseRef: string): string[] {
+function collectChangedPaths(root: string, baseRef: string): string[] {
   const merge = gitOrEmpty(['merge-base', baseRef, 'HEAD'], root);
   const diffBase = merge.length > 0 ? merge : baseRef;
 
@@ -84,9 +85,25 @@ function collectChangedGoFiles(root: string, baseRef: string): string[] {
     gitOrEmpty(['ls-files', '--others', '--exclude-standard'], root),
   ].join('\n');
 
+  return [
+    ...new Set(
+      lines
+        .split('\n')
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0)
+    ),
+  ];
+}
+
+/**
+ * @purpose Keep the Go source files out of a changed-path list, as absolute existing paths.
+ * @param root Absolute repository root.
+ * @param changed Repo-relative changed paths.
+ * @returns Sorted absolute paths of Go files that exist on disk.
+ */
+function goFilesOf(root: string, changed: readonly string[]): string[] {
   const files = new Set<string>();
-  for (const line of lines.split('\n')) {
-    const relativePath = line.trim();
+  for (const relativePath of changed) {
     if (!relativePath.endsWith('.go') || isExcluded(relativePath)) {
       continue;
     }
@@ -95,8 +112,82 @@ function collectChangedGoFiles(root: string, baseRef: string): string[] {
       files.add(absolute);
     }
   }
-
   return [...files].sort();
+}
+
+/**
+ * Files whose change invalidates package-level narrowing: the module graph or the linter's own
+ * rules moved, so packages that did not change can still break (review #3).
+ */
+const WIDENING_RE =
+  /^(?:go\.mod|go\.sum|go\.work|go\.work\.sum|\.golangci\.(?:yml|yaml|toml|json)|vendor\/)/;
+
+/**
+ * @purpose Build the shared module-resolution flags so vendored repos never reach the network.
+ * @param project Detected project.
+ * @returns `-mod=vendor` when the repo vendors its dependencies, otherwise no flags.
+ */
+export function moduleFlags(project: GoProject): string[] {
+  // A go.work file takes precedence over vendoring and rejects -mod=vendor outright.
+  if (project.workspace !== null) {
+    return [];
+  }
+  return project.vendored ? ['-mod=vendor'] : [];
+}
+
+/**
+ * @purpose Render dropped patterns for the scope note — a silent drop reads as full coverage.
+ * @param dropped Patterns the toolchain refused.
+ * @returns Note suffix, empty when nothing was dropped.
+ */
+function describeDropped(dropped: readonly string[]): string {
+  return dropped.length === 0
+    ? ''
+    : `; ${dropped.length} unbuildable dropped (${dropped.join(', ')})`;
+}
+
+/**
+ * @purpose Drop package patterns the Go toolchain cannot build, so the plan carries no false reds.
+ * @invariant Fails open: dropped only when `go list` named a problem for that pattern; an
+ *   unusable listing keeps every pattern.
+ * @param project Detected project, supplying the toolchain and module flags.
+ * @param patterns `./pkg` patterns derived from changed files.
+ * @returns Buildable patterns plus the ones dropped, for the scope note.
+ * @sideEffect Process: one `go list -e` in the repository root.
+ */
+function dropUnbuildable(
+  project: GoProject,
+  patterns: readonly string[]
+): { readonly packages: string[]; readonly dropped: string[] } {
+  const go = project.tools.go.bin;
+  if (go === null || patterns.length === 0) {
+    return { packages: [...patterns], dropped: [] };
+  }
+
+  const listed = execFileTrimSafe(
+    go,
+    ['list', '-e', '-f', '{{.Dir}}\t{{if .Error}}ERR{{end}}', ...moduleFlags(project), ...patterns],
+    project.root
+  );
+  if (listed.length === 0) {
+    return { packages: [...patterns], dropped: [] };
+  }
+
+  const buildable = new Set<string>();
+  for (const line of listed.split('\n')) {
+    const [dir, error] = line.split('\t');
+    if (dir !== undefined && dir.length > 0 && (error ?? '').length === 0) {
+      buildable.add(path.resolve(dir));
+    }
+  }
+
+  const packages: string[] = [];
+  const dropped: string[] = [];
+  for (const pattern of patterns) {
+    const dir = path.resolve(project.root, pattern);
+    (buildable.has(dir) ? packages : dropped).push(pattern);
+  }
+  return { packages, dropped };
 }
 
 /**
@@ -260,22 +351,39 @@ export function resolveGoScope(project: GoProject, request: ScopeRequest): GoSco
 
   if (request.mode === 'files') {
     const files = expandTargets(root, request.targets);
+    const filtered = dropUnbuildable(project, filesToPackages(root, files));
     return {
       mode: 'files',
-      packages: filesToPackages(root, files),
+      packages: filtered.packages,
       files,
       fmtTargets: toRelative(root, files),
-      note: `${files.length} file(s) from ${request.targets.length} target(s)`,
+      note: `${files.length} file(s) from ${request.targets.length} target(s)${describeDropped(filtered.dropped)}`,
     };
   }
 
   const baseRef = detectBaseRef(root);
-  const files = collectChangedGoFiles(root, baseRef);
+  const changed = collectChangedPaths(root, baseRef);
+  const files = goFilesOf(root, changed);
+
+  const widening = changed.filter((entry) => WIDENING_RE.test(entry));
+  if (widening.length > 0) {
+    // Narrowing to touched packages is only sound while the module graph and lint rules hold
+    // still. When they move, an untouched package is exactly what breaks.
+    return {
+      mode: 'changed',
+      packages: ['./...'],
+      files,
+      fmtTargets: goBearingTopLevelPaths(root),
+      note: `widened to ./... — ${widening.join(', ')} changed`,
+    };
+  }
+
+  const filtered = dropUnbuildable(project, filesToPackages(root, files));
   return {
     mode: 'changed',
-    packages: filesToPackages(root, files),
+    packages: filtered.packages,
     files,
     fmtTargets: toRelative(root, files),
-    note: `${files.length} Go file(s) changed vs ${baseRef}`,
+    note: `${files.length} Go file(s) changed vs ${baseRef}${describeDropped(filtered.dropped)}`,
   };
 }

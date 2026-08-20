@@ -8,6 +8,7 @@ import type { EnvFailPredicate, Gate, GatePlanOptions } from 'gennady/stack';
 import { execFileTrimSafe, exitCodeMatches, outputMatches, parseDuration } from 'gennady/stack';
 import type { GoProject } from './golang-detect.logic.ts';
 import type { GoScope } from './golang-scope.logic.ts';
+import { moduleFlags } from './golang-scope.logic.ts';
 
 /** Identifier of a built-in golang gate. */
 export type GoGateId = 'generate' | 'build' | 'vet' | 'fmt' | 'lint' | 'test';
@@ -169,19 +170,6 @@ const GO_GENERATE_ENV_FAIL: readonly EnvFailPredicate[] = [
     'the generator binary is not in PATH — `go install` it or declare it as a go.mod `tool` directive; gitignored binaries are not replicated into the sandbox (D-STACK-012)'
   ),
 ];
-
-/**
- * @purpose Build the shared module-resolution flags so vendored repos never reach the network.
- * @param project Detected project.
- * @returns `-mod=vendor` when the repo vendors its dependencies, otherwise no flags.
- */
-function moduleFlags(project: GoProject): string[] {
-  // A go.work file takes precedence over vendoring and rejects -mod=vendor outright.
-  if (project.workspace !== null) {
-    return [];
-  }
-  return project.vendored ? ['-mod=vendor'] : [];
-}
 
 /**
  * @purpose Create a gate that is reported but never executed, with the reason recorded.

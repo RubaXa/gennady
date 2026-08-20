@@ -1,0 +1,15 @@
+notes: >
+  A file changed inside a nested module used to enter the ROOT module's package list, so
+  `go build ./nested` ran from a module that does not contain that package and failed with
+  "main module does not contain package" — a red that says nothing about the code (review #4).
+  One `go list -e` pass before planning drops it and the scope note says so.
+requires: [go]
+dirty:
+  nested/extra.go: "package nested\n\nfunc Extra() int { return 3 }\n"
+  good/extra.go: "package good\n\nfunc Extra() int { return 4 }\n"
+exitCode: 0
+diagnostics: ['NESTED_MODULES']
+gates:
+  golang:build: { status: pass }
+  golang:vet: { status: pass }
+outputIncludes: ['unbuildable dropped', './nested']

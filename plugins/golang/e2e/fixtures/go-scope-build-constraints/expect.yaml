@@ -1,0 +1,13 @@
+notes: >
+  A directory whose Go files are all excluded by build constraints is not a buildable package:
+  `go build ./constrained` fails with "build constraints exclude all Go files", again a red about
+  the environment rather than the code (review #11). The same `go list -e` pass drops it.
+requires: [go]
+dirty:
+  constrained/extra.go: "//go:build never\n\npackage constrained\n\nfunc Extra() int { return 5 }\n"
+  good/extra.go: "package good\n\nfunc Extra() int { return 4 }\n"
+exitCode: 0
+gates:
+  golang:build: { status: pass }
+  golang:vet: { status: pass }
+outputIncludes: ['unbuildable dropped', './constrained']
