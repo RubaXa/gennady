@@ -6,3 +6,6 @@ notes: >
 argv: ['--all']
 exitCode: 1
 noGatesRan: true
+# The JSON verdict must agree with the exit code: ok:true here told an orchestrator that a run
+# which executed nothing was all green.
+ok: false

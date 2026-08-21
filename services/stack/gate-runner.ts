@@ -110,13 +110,13 @@ const UNSANDBOXED_RUN_DIAGNOSTIC: StackDiagnostic = {
 
 /**
  * Diagnostic for a run that executed zero gates. The human report renders it as the terminal
- * ZERO_GATES verdict; carrying it in `diagnostics` makes the condition visible to `--json`
- * consumers too — `ok` alone reads true on an empty run (§8.2) while the exit code is 1.
+ * ZERO_GATES verdict; carrying it in `diagnostics` names the reason for `--json` consumers,
+ * while `ok` carries the verdict itself — both false on an empty run, matching the exit code.
  */
 const ZERO_GATES_DIAGNOSTIC: StackDiagnostic = {
   code: 'ZERO_GATES',
   message: 'no gate was executed — the run verified nothing',
-  fix: 'declare gates under stack.<id>.extraGates in gennady.yaml, or loosen --skip/--only filters',
+  fix: 'declare gates under stack.<id>.extraGates in gennady.yaml, run from a directory a stack plugin recognizes, or loosen --skip/--only filters',
 };
 
 /**
@@ -543,10 +543,9 @@ export function formatVerifyReport(report: VerifyReport): string {
     );
     if (skips === 0) {
       // Nothing was even planned. With anystack matching every repository this is the terminal
-      // message for an unconfigured one, so it carries the guidance NO_STACK_DETECTED used to.
-      lines.push(
-        '  fix: declare gates under stack.<id>.extraGates in gennady.yaml, or run from a directory a stack plugin recognizes'
-      );
+      // message for an unconfigured one, so it carries the guidance NO_STACK_DETECTED used to —
+      // reusing the diagnostic's own text, so the human report and `--json` cannot drift apart.
+      lines.push(`  fix: ${ZERO_GATES_DIAGNOSTIC.fix}`);
     }
   } else if (report.diagnostics.some((diagnostic) => diagnostic.blocking === true)) {
     // Without this line an ok:false run with no failing gate would end with no verdict at all.

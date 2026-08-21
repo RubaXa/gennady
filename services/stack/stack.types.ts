@@ -267,6 +267,11 @@ export type StackPluginConfig = {
   readonly overrideGates?: Readonly<Record<string, GateSpec>>;
   /** @purpose Repo-specific gates appended after the built-ins. */
   readonly extraGates?: readonly GateSpec[];
+  /**
+   * @purpose Extra ignored paths symlinked into the run replica, added to what the plugin
+   *   declares. Each one is a deliberate hole in observe-only (config.spec §3).
+   */
+  readonly sandboxLinks?: readonly string[];
 };
 
 /**

@@ -452,3 +452,26 @@ describe('applyStackConfig — skipped extraGates keep their declared shape (rev
     assert.equal(drift.outputMeansFailure, true);
   });
 });
+
+describe('sandboxLinks validation', () => {
+  const load = (links: string): ReturnType<typeof loadStackConfig> =>
+    withConfigs({ 'gennady.yaml': `stack:\n  golang:\n    sandboxLinks: ${links}\n` }, (dir) =>
+      loadStackConfig(dir, GATE_IDS)
+    );
+
+  it('accepts repo-relative paths', () => {
+    assert.deepStrictEqual(load('[bin, vendor/deps]').errors, []);
+  });
+
+  for (const escape of ['[/etc]', '[../secrets]', '[vendor/../../etc]']) {
+    it(`rejects ${escape}, which would hand a gate the disk outside the repo`, () => {
+      const { errors } = load(escape);
+      assert.strictEqual(errors.length, 1, JSON.stringify(errors));
+      assert.match(errors[0]!.message, /stays inside the repository/);
+    });
+  }
+
+  it('rejects a non-array', () => {
+    assert.match(load('bin').errors[0]?.message ?? '', /array of repo-relative paths/);
+  });
+});

@@ -138,3 +138,50 @@ describe('detectGoProject', () => {
     }
   });
 });
+
+describe('TOOLCHAIN_MISSING guard', () => {
+  /** @purpose A repo plus a PATH holding only the named fake executables. */
+  function withTools<T>(tools: readonly string[], fn: (root: string) => T): T {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'go-toolchain-'));
+    const bin = path.join(dir, 'fakebin');
+    const root = path.join(dir, 'repo');
+    fs.mkdirSync(bin);
+    fs.mkdirSync(root);
+    fs.writeFileSync(path.join(root, 'go.mod'), 'module example.com/t\n\ngo 1.21\n');
+    for (const tool of tools) {
+      const file = path.join(bin, tool);
+      fs.writeFileSync(file, '');
+      fs.chmodSync(file, 0o755);
+    }
+    const previous = process.env['PATH'];
+    process.env['PATH'] = bin;
+    try {
+      return fn(root);
+    } finally {
+      process.env['PATH'] = previous;
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  }
+
+  const codesFor = (tools: readonly string[]): string[] =>
+    withTools(tools, (root) => detectGoProject(root).diagnostics.map((d) => d.code));
+
+  it('fires when go is missing, whatever else is installed', () => {
+    // The guard was wired to golangci-lint, so this repo produced no diagnostic at all and a run
+    // could report ALL_GATES_PASS on gofmt alone — the exact false green it exists to prevent.
+    assert.ok(
+      codesFor(['golangci-lint', 'gofmt']).includes('TOOLCHAIN_MISSING'),
+      'no go means no verdict about Go code'
+    );
+  });
+
+  it('stays quiet when go is present but golangci-lint is not', () => {
+    // The common case: the linter is heavy and not installed everywhere. Claiming "go was not
+    // found" here blocked the whole run while build, vet and test could have passed.
+    assert.deepStrictEqual(codesFor(['go']), []);
+  });
+
+  it('stays quiet when both are present', () => {
+    assert.deepStrictEqual(codesFor(['go', 'golangci-lint']), []);
+  });
+});

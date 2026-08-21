@@ -1,0 +1,12 @@
+notes: >
+  anystack is the placeholder for unique repositories, so it declares no links of its own — which
+  left a config-authored gate unable to reach an ignored path it needs (a shared cache, or a
+  submodule the replica cannot materialize). stack.<id>.sandboxLinks opts into exactly one path;
+  each link is a deliberate hole in observe-only, so it is config, never a default.
+dirty:
+  cache/data.txt: "warm\n"
+argv: ['--all']
+exitCode: 0
+ok: true
+gates:
+  anystack:needs-cache: { status: pass }

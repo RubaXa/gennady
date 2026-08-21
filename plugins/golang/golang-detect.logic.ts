@@ -353,6 +353,6 @@ export function detectGoProject(root: string): GoProject {
     missingGolangciConfigs,
     makeTargets: findMakeTargets(makefile),
     tools,
-    diagnostics: collectDiagnostics(modules, tools['golangci-lint'], missingGolangciConfigs),
+    diagnostics: collectDiagnostics(modules, tools['go'], missingGolangciConfigs),
   };
 }

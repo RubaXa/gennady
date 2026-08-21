@@ -297,14 +297,25 @@ export async function run(argv: string[]): Promise<number> {
   }
 
   // Environment links for the run replica — union across active plugins (D-STACK-013).
-  const sandboxLinks = [...new Set(active.flatMap(({ plugin }) => plugin.sandboxLinks ?? []))];
+  // Plugin defaults stay minimal (read-only inputs); anything a repo-specific gate needs — a
+  // shared cache, a submodule the replica cannot materialize — is opted into from config.
+  const sandboxLinks = [
+    ...new Set(
+      active.flatMap(({ plugin }) => [
+        ...(plugin.sandboxLinks ?? []),
+        ...(pluginConfigOf(effectiveConfig, plugin.id)?.sandboxLinks ?? []),
+      ])
+    ),
+  ];
   const report = runVerify(filteredRuns, diagnostics, { sandboxLinks });
 
   if (args.json === true) {
     console.log(
       JSON.stringify(
         {
-          ok: report.ok,
+          // Same expression as the exit code below: a run that executed nothing exits 1, so
+          // reporting ok:true here told a JSON orchestrator "all green" about exactly that run.
+          ok: report.ok && report.total > 0,
           passed: report.passed,
           total: report.total,
           // Stable orchestrator contract: env-fail means the ENVIRONMENT broke —

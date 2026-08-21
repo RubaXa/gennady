@@ -25,6 +25,7 @@ const EXPECT_KEYS = [
   'noCommit',
   'outputIncludes',
   'noGatesRan',
+  'ok',
 ] as const;
 
 /** Every key a per-gate expectation may carry. */
@@ -97,6 +98,11 @@ export type FixtureExpectation = {
    *   express it: only declared gates are checked, so an empty map asserts nothing.
    */
   readonly noGatesRan: boolean;
+  /**
+   * @purpose Expected `ok` in `--json`. Pinned separately from `exitCode` because the two were
+   *   once computed from different expressions, so a run could exit 1 while reporting ok:true.
+   */
+  readonly ok?: boolean;
 };
 
 /**
@@ -129,6 +135,7 @@ type PlannedGate = {
 };
 
 type VerifyJson = {
+  readonly ok?: boolean;
   readonly diagnostics?: readonly { readonly code: string }[];
   readonly runs?: readonly { readonly gates?: readonly unknown[] }[];
   /* eslint-disable-next-line */
@@ -224,6 +231,7 @@ export function readExpectation(file: string): FixtureExpectation {
     noCommit: (raw['noCommit'] ?? false) as boolean,
     outputIncludes: (raw['outputIncludes'] ?? []) as readonly string[],
     noGatesRan: (raw['noGatesRan'] ?? false) as boolean,
+    ...(raw['ok'] === undefined ? {} : { ok: raw['ok'] as boolean }),
   };
 }
 
@@ -350,6 +358,14 @@ export function assertFixture(run: FixtureRun, expectation: FixtureExpectation):
 
   if (Object.keys(expectation.gates).length > 0 && run.json === null) {
     fail('expected --json output, got unparseable stdout');
+  }
+
+  if (expectation.ok !== undefined) {
+    if (run.json === null) {
+      fail('ok expects --json output, got unparseable stdout');
+    } else if (run.json.ok !== expectation.ok) {
+      fail(`expected json ok=${expectation.ok}, got ${String(run.json.ok)}`);
+    }
   }
 
   if (expectation.noGatesRan) {

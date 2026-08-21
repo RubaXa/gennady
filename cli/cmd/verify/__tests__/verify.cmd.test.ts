@@ -158,7 +158,7 @@ describe('verify command', () => {
     );
   });
 
-  it('surfaces ZERO_GATES in --json diagnostics — `ok` alone reads true on an empty run (review B2)', async () => {
+  it('reports ok:false AND a ZERO_GATES diagnostic on an empty run (review B2)', async () => {
     await withFixture(
       { 'package.json': '{"name":"x","scripts":{"test":"node -e \\"process.exit(1)\\""}}' },
       async (dir) => {
@@ -172,9 +172,10 @@ describe('verify command', () => {
           total: number;
           diagnostics: Array<{ code: string }>;
         };
-        // §8.2: ok means "every executed gate passed" — vacuously true here by contract.
-        // The machine-readable marker for "verified nothing" is the diagnostic.
-        assert.equal(parsed.ok, true);
+        // `ok` uses the same expression as the exit code, so it cannot say "all green" about a
+        // run that exited 1; the diagnostic names WHY nothing ran. Both are needed: the verdict
+        // for the headline check, the code for the reason.
+        assert.equal(parsed.ok, false);
         assert.equal(parsed.total, 0);
         assert.ok(parsed.diagnostics.some((diagnostic) => diagnostic.code === 'ZERO_GATES'));
       }
