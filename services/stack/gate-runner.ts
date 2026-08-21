@@ -140,6 +140,18 @@ function runGate(gate: Gate, pool: ReplicaPool | null): GateResult {
     if (failedOutsideReplica !== null) {
       return failedOutsideReplica;
     }
+    if (slot.kind === 'error') {
+      // A replica that FAILED is not the same as a repository that cannot have one. Running in
+      // the real tree here would silently drop observe-only for every gate — the guarantee the
+      // replica exists to provide — so this is an environment failure, not a gate verdict.
+      return {
+        gate,
+        status: 'env-fail',
+        exitCode: null,
+        durationMs: 0,
+        output: `run replica unavailable, refusing to execute in the real tree: ${slot.message}`,
+      };
+    }
     if (gate.driftMeansFailure === true) {
       // Drift cannot be computed without a replica — the environment is short of git/HEAD.
       return {
@@ -147,10 +159,7 @@ function runGate(gate: Gate, pool: ReplicaPool | null): GateResult {
         status: 'env-fail',
         exitCode: null,
         durationMs: 0,
-        output:
-          slot.kind === 'error'
-            ? slot.message
-            : 'drift gate requires a git repository (no toplevel found)',
+        output: 'drift gate requires a git repository (no toplevel found)',
       };
     }
     return executeGate(gate, gate.argv, gate.cwd, null);

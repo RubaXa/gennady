@@ -50,7 +50,11 @@ export function classifyNpmScript(name: string, body: string): NpmScriptClass[] 
   const hasTest = /\b(jest|vitest|playwright test|mocha)\b/.test(body) || /--test\b/.test(body);
   const hasFormat = /\b(prettier|biome format)\b/.test(body);
   const hasGennady = /\bgennady\b/.test(body) || /lint:contracts/.test(name);
-  const hasChain = body.includes('&&');
+  // Every shell separator, not just `&&`: `tsc & eslint . & wait` and `tsc; eslint .` are
+  // umbrellas too, and screening only `&&` let them through as a single gate. Redirections are
+  // stripped first, because `2>&1` and `>&2` contain an ampersand without chaining anything.
+  const chainable = body.replace(/\d?>&\d?|&>/g, ' ');
+  const hasChain = /&&|\|\||;|(^|\s)&(\s|$)|\bwait\b/.test(chainable);
 
   // invariant: multi-class chained scripts are umbrellas, not gates
   const classCount = [hasTsc, hasLint, hasTest].filter(Boolean).length;

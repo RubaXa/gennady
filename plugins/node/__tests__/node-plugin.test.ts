@@ -152,3 +152,31 @@ describe('nodePlugin', () => {
     });
   });
 });
+
+describe('umbrella screening across shell separators', () => {
+  // Screening only `&&` let a parallel umbrella through as one gate, so a multi-tool script ran
+  // as a single verdict and the per-class mapping was lost.
+  for (const body of [
+    'tsc --noEmit & eslint . & wait',
+    'tsc --noEmit; eslint .',
+    'tsc --noEmit || eslint .',
+    'tsc --noEmit && eslint .',
+  ]) {
+    it(`screens out ${JSON.stringify(body)}`, () => {
+      assert.deepEqual(classifyNpmScripts({ ci: body }), {});
+    });
+  }
+
+  // A redirection carries an ampersand without chaining anything, so it must still classify.
+  it('keeps single commands that merely redirect', () => {
+    const selected = classifyNpmScripts({
+      test: 'vitest run 2>&1',
+      lint: 'eslint . >&2',
+      'type-check': 'tsc --noEmit',
+    });
+
+    assert.equal(selected.test, 'test');
+    assert.equal(selected.lint, 'lint');
+    assert.equal(selected.typecheck, 'type-check');
+  });
+});

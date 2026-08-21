@@ -494,7 +494,17 @@ describe('sandboxLinks validation', () => {
     it(`rejects ${escape}, which would hand a gate the disk outside the repo`, () => {
       const { errors } = load(escape);
       assert.strictEqual(errors.length, 1, JSON.stringify(errors));
-      assert.match(errors[0]!.message, /stays inside the repository/);
+      assert.match(errors[0]!.message, /inside the repository/);
+    });
+  }
+
+  // `.` passed the escape check and became `:(exclude).` in the drift pathspec, which made every
+  // mutation invisible: a gate that rewrote the tree reported pass instead of violation.
+  for (const root of ["['.']", "['./']", "['']"]) {
+    it(`rejects ${root}, which would blind drift detection entirely`, () => {
+      const { errors } = load(root);
+      assert.strictEqual(errors.length, 1, JSON.stringify(errors));
+      assert.match(errors[0]!.message, /not the root itself/);
     });
   }
 

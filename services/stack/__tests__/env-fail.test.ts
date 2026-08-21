@@ -122,3 +122,27 @@ describe('compileEnvFailRules', () => {
     assert.ok(errors.some((error) => error.message.includes('needs at least one condition')));
   });
 });
+
+describe('catch-all guard is whitespace-insensitive', () => {
+  // The grammar accepts `> 0`, and the guard compared raw strings, so a rule matching EVERY
+  // failure slipped through and the gate could never report FAIL again.
+  for (const condition of ['> 0', '>= 1', '!= 0', ' >0 ']) {
+    it(`rejects ${JSON.stringify(condition)} as a catch-all`, () => {
+      const { errors } = compileEnvFailRules(
+        [{ exitCodeMatches: condition, hint: 'h' }],
+        'stack.x.envFail'
+      );
+      assert.strictEqual(errors.length, 1, JSON.stringify(errors));
+      assert.match(errors[0]!.message, /never report FAIL/);
+    });
+  }
+
+  it('still accepts a discriminating condition written with spaces', () => {
+    const { errors, predicates } = compileEnvFailRules(
+      [{ exitCodeMatches: '>= 127', hint: 'h' }],
+      'stack.x.envFail'
+    );
+    assert.deepStrictEqual(errors, []);
+    assert.strictEqual(predicates.length, 1);
+  });
+});

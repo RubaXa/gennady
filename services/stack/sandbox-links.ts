@@ -35,10 +35,10 @@ function segmentMatcher(segment: string): (name: string) => boolean {
 }
 
 /**
- * @purpose Expand config sandboxLinks against the real tree: literal entries pass through when
- *   they exist; `*` expands within one path segment (`**` is rejected at validation).
- * @invariant Plugin-declared links do NOT go through here — they are best-effort defaults; a
- *   config entry is author intent, so matching nothing is reported, never silently dropped.
+ * @purpose Expand config sandboxLinks against the real tree; `*` expands within one path
+ *   segment (`**` is rejected at validation).
+ * @invariant Plugin links skip this path as best-effort defaults; a config entry is author
+ *   intent, so matching nothing is reported, never dropped.
  * @param root Absolute repository root.
  * @param patterns Repo-relative entries from `stack.<id>.sandboxLinks`, validated already.
  * @returns Existing matches plus the entries that resolved to nothing.

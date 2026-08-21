@@ -186,8 +186,11 @@ export function compileEnvFailRules(
     const rawExit = entries['exitCodeMatches'];
     if (rawExit !== undefined) {
       const list = (Array.isArray(rawExit) ? rawExit : [rawExit]) as readonly (string | number)[];
+      // Inner whitespace is stripped too, not just the ends: the grammar accepts `> 0`, and
+      // comparing that raw string against the catch-all list let a rule matching EVERY failure
+      // past the guard — the gate could then never report FAIL again.
       const normalized = list.map((entry) =>
-        typeof entry === 'number' ? `==${entry}` : String(entry).trim()
+        typeof entry === 'number' ? `==${entry}` : String(entry).replace(/\s+/g, '')
       );
       const invalid = normalized.filter((entry) => CONDITION_RE.exec(entry) === null);
       if (invalid.length > 0) {

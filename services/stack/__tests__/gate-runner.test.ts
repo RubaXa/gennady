@@ -741,3 +741,40 @@ describe('runVerify — run replica enforcement (spec §2, D-STACK-013)', () => 
     });
   });
 });
+
+describe('replica failures never reach the real tree', () => {
+  it('reports env-fail instead of executing where a mutation would be permanent', () => {
+    // A replica that FAILED is not a repository that cannot have one: falling back to the real
+    // tree silently dropped observe-only for every gate in the run.
+    const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'replica-fail-'));
+    execFileSync('git', ['init', '-q', '-b', 'main', repo]);
+    fs.writeFileSync(path.join(repo, 'a.txt'), 'x\n');
+    execFileSync('git', ['-C', repo, 'add', '-A']);
+    execFileSync('git', [
+      '-C',
+      repo,
+      '-c',
+      'user.email=e@e',
+      '-c',
+      'user.name=e',
+      'commit',
+      '-qm',
+      'i',
+    ]);
+    fs.chmodSync(path.join(repo, '.git'), 0o500);
+
+    try {
+      const gate: Gate = { ...shellGate('touch', 'echo hi'), cwd: repo };
+      const report = runVerify(
+        [{ ...runOf([gate]), detection: { ...runOf([gate]).detection, root: repo } }],
+        []
+      );
+
+      assert.strictEqual(report.results[0]?.status, 'env-fail');
+      assert.match(report.results[0]?.output ?? '', /refusing to execute in the real tree/);
+    } finally {
+      fs.chmodSync(path.join(repo, '.git'), 0o700);
+      fs.rmSync(repo, { recursive: true, force: true });
+    }
+  });
+});

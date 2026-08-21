@@ -39,9 +39,9 @@ export function printHelp(): void {
   console.info('  --root=<path>         Repository root (default: cwd)');
   console.info('  --help, -h            Show this help');
   console.info('');
-  console.info('Timeouts: every gate carries a mandatory per-gate timeout (plugin defaults;');
-  console.info('  override per gate in config). There is no global timeout — the run upper');
-  console.info('  bound is the sum of the plan; timeouts are shown in --plan.');
+  console.info('Timeouts: every gate runs under a per-gate timeout — a plugin default, 10m for');
+  console.info('  a config gate that omits one, or the `timeout` you set. No global timeout — the');
+  console.info('  run upper bound is the sum of the plan; timeouts are shown in --plan.');
   console.info('');
   console.info('Repo config — gennady.yaml (committable) deep-merged with personal .gennadyrc');
   console.info('(repo, then $HOME); per-key winner shown in --plan. Section "stack":');

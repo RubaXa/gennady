@@ -119,13 +119,7 @@ export function createTreeReplica(
 
     // Environment links come after the baseline: they are ignored paths, so they
     // never enter the baseline commit and never appear in the drift status.
-    for (const link of links) {
-      const target = path.join(repoRoot, link);
-      const dest = path.join(dir, link);
-      if (fs.existsSync(target) && !fs.existsSync(dest)) {
-        fs.symlinkSync(target, dest);
-      }
-    }
+    materializeLinks(repoRoot, dir, links);
 
     // A `dir/`-style ignore pattern does not match a symlink, so the links are
     // excluded from the drift pathspec explicitly.
@@ -139,18 +133,50 @@ export function createTreeReplica(
       // -fd (not -fdx): untracked leftovers go, ignored paths survive; links are
       // re-created if the reset swept them away.
       git(['clean', '-fdq'], dir);
-      for (const link of links) {
-        const target = path.join(repoRoot, link);
-        const dest = path.join(dir, link);
-        if (fs.existsSync(target) && !fs.existsSync(dest)) {
-          fs.symlinkSync(target, dest);
-        }
-      }
+      materializeLinks(repoRoot, dir, links);
     };
 
     return { replica: { dir, drift, reset, cleanup } };
   } catch (cause) {
     cleanup();
     return { error: `cannot create tree replica: ${(cause as Error).message}` };
+  }
+}
+
+/**
+ * @purpose Symlink each declared path into the replica.
+ * @invariant A nested link needs its parent created first: an ignored parent is absent from the
+ *   replica, and the raw ENOENT aborted the whole replica.
+ * @invariant One unusable link never aborts the replica: aborting dropped every gate into the
+ *   real tree, losing observe-only for the whole run.
+ * @param repoRoot Real repository root the links point at.
+ * @param dir Replica directory.
+ * @param links Repo-relative paths to link.
+ * @sideEffect Filesystem: creates directories and symlinks inside the replica.
+ */
+function materializeLinks(repoRoot: string, dir: string, links: readonly string[]): void {
+  for (const link of links) {
+    const target = path.join(repoRoot, link);
+    const dest = path.join(dir, link);
+    if (!fs.existsSync(target) || fs.existsSync(dest)) {
+      continue;
+    }
+    // Containment is checked here, not at config load: only here does the target exist, so a
+    // path that is itself a symlink out of the repository can be resolved and refused.
+    try {
+      const realTarget = fs.realpathSync(target);
+      const realRoot = fs.realpathSync(repoRoot);
+      if (realTarget !== realRoot && !realTarget.startsWith(realRoot + path.sep)) {
+        continue;
+      }
+    } catch {
+      continue;
+    }
+    try {
+      fs.mkdirSync(path.dirname(dest), { recursive: true });
+      fs.symlinkSync(target, dest);
+    } catch {
+      // Surfaced by whichever gate misses the path, not by killing the replica for every gate.
+    }
   }
 }

@@ -14,7 +14,8 @@ export function printHelp(): void {
   console.info('  npx gennady fix [stack:id | id ...] [options]');
   console.info('');
   console.info(
-    'Fixers come from plugin fix facets (golang: `generate`) and the `fixers` config key.'
+    'Fixers are declared as the `fixer` field of their own gate — in a plugin, or on an\n' +
+      '  `overrideGates`/`extraGates` entry in gennady.yaml. There is no `fixers` section.'
   );
   console.info('They run sequentially and stop on the first failure — they mutate one tree.');
   console.info('');

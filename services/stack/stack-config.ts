@@ -78,8 +78,7 @@ function toCommands(
   specs: readonly Readonly<Record<string, unknown>>[] | undefined,
   root: string,
   fallbackCwd: string,
-  // Preconditions are probes, so seconds; a fixer does gate-sized work and must
-  // pass the owning gate's timeout instead — 30s would kill `make generate` mid-run.
+  // Probes get seconds; a fixer inherits its gate's timeout (30s would kill `make generate`).
   defaultTimeoutMs: number = PRECONDITION_DEFAULT_TIMEOUT_MS
 ): Cmd[] {
   return (specs ?? []).map((spec) => ({
@@ -301,16 +300,23 @@ export function validateStackConfig(
         });
       } else {
         for (const link of section.sandboxLinks) {
-          // A link shares a real path with the replica, so one pointing outside the repository
-          // would hand a gate write access to arbitrary disk under an observe-only promise.
-          if (path.isAbsolute(link) || link.split(/[/\\]/).includes('..')) {
+          // A link shares a real path, so one outside the repo hands a gate arbitrary disk.
+          const normalized = path.normalize(link).replace(/[/\\]+$/, '');
+          if (
+            path.isAbsolute(link) ||
+            link.split(/[/\\]/).includes('..') ||
+            normalized === '.' ||
+            normalized === '' ||
+            link.trim().length === 0
+          ) {
             errors.push({
               path: `stack.${key}.sandboxLinks.${link}`,
-              message: 'must be a repo-relative path that stays inside the repository',
+              message:
+                'must be a repo-relative path inside the repository, and not the root itself ' +
+                '(`.` in the drift pathspec makes every mutation invisible)',
             });
           } else if (link.includes('**')) {
-            // `*` expands within one path segment only; a recursive `**` would silently
-            // behave like `*`, so it is rejected instead of surprising the author.
+            // `*` covers one segment; `**` would silently act like `*`, so it is rejected.
             errors.push({
               path: `stack.${key}.sandboxLinks.${link}`,
               message: 'recursive ** is not supported — use single-segment * wildcards (a/*/b)',
