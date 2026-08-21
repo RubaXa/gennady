@@ -6,7 +6,7 @@ compatibility: opencode
 
 1. **Extract intent.** Operator wants to bootstrap or evolve infrastructure scope. Scope-type is fixed: `infrastructure`. Resolve scope name from intake.
 
-2. **Route by language.** If the scope is a Go service or library — `go.mod` present, or the operator named Go — hand off to `sdd-infra-golang` instead of continuing here. It carries the stack plugin gate model (`gennady verify`), `.gennadyrc` overrides and `ai/directives/infra/golang-setup.xml`. Do not improvise Go tooling from this generic path.
+2. **Route by language.** If the scope is a Go service or library — `go.mod` present, or the operator named Go — hand off to `sdd-infra-golang` instead of continuing here. It carries the stack plugin gate model (`gennady verify`), `.gennadyrc` overrides and `plugins/golang/directives/infra/golang-setup.xml`. Do not improvise Go tooling from this generic path.
 
 3. **Load & activate directive.** Read in full: `~/Developer/gennady/ai/directives/sdd/discovery.directive.xml`
    Announce: `🔒 DIRECTIVE ACTIVATED: SddDiscovery | infrastructure`

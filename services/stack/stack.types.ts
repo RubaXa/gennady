@@ -111,7 +111,7 @@ export type EnvFailPredicate = ((outcome: GateOutcome) => boolean) & {
 
 /**
  * @purpose One executable command — the shared shape of a gate command, a `requires`
- *   precondition and a fixer (spec §4.5.1). Executed without a shell.
+ *   precondition and a fixer (spec §4.5). Executed without a shell.
  * @consumer gate-runner, stack-config, plugins
  */
 export type Cmd = {

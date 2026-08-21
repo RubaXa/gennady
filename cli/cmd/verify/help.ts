@@ -35,7 +35,7 @@ export function printHelp(): void {
     '  --only=<a,b>          Run only these gates: `stack:gate` or bare `gate` (all stacks)'
   );
   console.info('  --skip=<a,b>          Drop these gates from the plan (same notation)');
-  console.info('  --stack=<id>          One-shot stack.use (node | golang)');
+  console.info('  --stack=<id>          One-shot stack.use (anystack | golang | node)');
   console.info('  --root=<path>         Repository root (default: cwd)');
   console.info('  --help, -h            Show this help');
   console.info('');
@@ -60,7 +60,7 @@ export function printHelp(): void {
   console.info('  RUN-ALL             every gate runs; failures accumulate in one report');
   console.info('  SUPPRESS-ON-SUCCESS passing gates print nothing');
   console.info(
-    '  gates never mutate  gofmt -l / prettier --check; mutating ops belong to `gennady fix` (planned)'
+    '  gates never mutate  gofmt -l / prettier --check; mutating ops belong to `gennady fix`'
   );
   console.info('  FAIL vs ENV_FAIL    a broken tool (panic, blocked proxy) is not a code finding');
   console.info('  exit 0 all pass · 1 gate failed · 4 bad invocation/config · 5 no stack detected');

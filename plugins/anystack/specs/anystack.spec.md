@@ -58,22 +58,30 @@ stack:
 
 ## 6. Use Cases to Test (E2E-матрица)
 
-| #   | Случай                                    | Ожидание                                                |
-| --- | ----------------------------------------- | ------------------------------------------------------- |
-| 1   | Только `extraGates`, стек не определяется | гейты исполняются, `exit 0` (`any-extra-gates-only`)    |
-| 2   | Конфига нет вовсе                         | `NO_STACK_DETECTED`, `exit 5` (`any-not-auto-detected`) |
-| 3   | Выбран, `extraGates` пуст                 | `ZERO_GATES`, `exit 1` (`any-no-gates-configured`)      |
-| 4   | `envFail`-правило на гейте из конфига     | `env-fail` + `hint` (`any-env-fail-rule`)               |
+| #   | Случай                                        | Ожидание                                                                                                  |
+| --- | --------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| 1   | Только `extraGates`, других стеков нет        | гейты исполняются, `exit 0` (`any-extra-gates-only`)                                                      |
+| 2   | Конфига нет вовсе                             | плагин активен, но гейтов нет: `ZERO_GATES`, `exit 1`, в `--json` `ok: false` (`any-detected-everywhere`) |
+| 3   | Выбран, `extraGates` пуст                     | `ZERO_GATES`, `exit 1` (`any-no-gates-configured`)                                                        |
+| 4   | `envFail`-правило на гейте из конфига         | `env-fail` + `hint` (`any-env-fail-rule`)                                                                 |
+| 5   | `stack.anystack.sandboxLinks` даёт путь гейту | с ключом — `pass`, гейт видит ignored-путь в реплике; без ключа гейт краснел бы (§5, `any-sandbox-links`) |
+| 6   | Сосуществование с реальным стеком             | npm-репозиторий: гейты `anystack` и `node` исполняются в одном прогоне, `exit 0` (`any-with-node-stack`)  |
 
 ## 7. Inter-Module Dependencies
 
 - **Depends on:** [`stack`](../../../specs/stack/stack.spec.md) (`StackPlugin`, реестр, раннер), [`config`](../../../specs/config/config.spec.md) (`extraGates` и их валидация)
 - **Sibling:** [`plugins/golang`](../../golang/specs/golang.spec.md), [`plugins/node`](../../node/specs/node.spec.md) — независимые зоны ответственности
-- **Amends:** `stack.spec` §3 — вводит `optIn` как признак плагина вне автодетекции
+- **Amends:** ничего — поведение «anystack распознаёт всё» уже вписано в `stack.spec` §3 (exit 5 недостижим без `use`/`--stack`) и §8.4 (`ZERO_GATES` несёт подсказку). Никакого признака `optIn` нет: плагин определяется всегда, opt-out — через `stack.use`
 
 ## 8. Handoff to Task Scaffolding
 
 **Structural changes:** `StackId` пополняется `'anystack'`; `plugins/index.ts` регистрирует плагин; отчёт опускает стек без гейтов; `ZERO_GATES` получает подсказку.
+
+**Поведение на границах** (как реализовано в `verify.cmd.ts` / `stack-registry.ts`):
+
+- **`--stack=anystack` в репозитории без единого маркера** — работает: флаг действует как разовый `stack.use`, а `anystack` детектится в любом корне, поэтому exit 5 с ним недостижим. Без `extraGates` это `ZERO_GATES` и exit 1, с гейтами — обычный прогон.
+- **`--only anystack:test` в мультистековом репозитории** — `--only` фильтрует гейты плана: гейты остальных стеков выпадают, а стек, у которого не осталось ни одного гейта, опускается из плана, отчёта и JSON. Селектор, не совпавший ни с одним гейтом плана, — `BAD_INVOCATION`, exit 4.
+- **`use: [golang]` без `go.mod`** — валидно для строгой валидации конфига (FR-STACK-12 ловит только id, неизвестные реестру), но `detect` у `golang` вернёт null, активных плагинов не останется, и это `NO_STACK_DETECTED`, exit 5 (см. §3). `anystack` в такой `use`-список не входит, поэтому не спасает.
 
 **Open risks:**
 

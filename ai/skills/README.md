@@ -1,6 +1,6 @@
 # ai/skills — AI-навыки для агентов
 
-15 навыков (13 SDD + alt-opinion + workspace-permission-setup) для Specification-Driven Development, мульти-модельного анализа и настройки автономной среды.
+Навыки для Specification-Driven Development, мульти-модельного анализа и настройки автономной среды: SDD-семейство (`sdd-*`) плюс agent-inbox, alt-opinion, prd-interview и workspace-permission-setup. Стековые специализации (например, `sdd-infra-golang`) живут в `plugins/<stack>/skills/` и синхронизируются тем же `sync-skills`.
 
 > `sdd-hooks-install` (хуки live-прогресса для `sdd-execute`) и `workspace-permission-setup` мигрированы в хранилище из `~/.claude/skills` — теперь под git и деплоятся через `sync-skills`.
 

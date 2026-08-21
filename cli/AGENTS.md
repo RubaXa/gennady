@@ -23,6 +23,7 @@
 | vcs-job-log       | [cmd/vcs-job-log/](cmd/vcs-job-log/)             | Сырой/фильтрованный лог джобы пайплайна                                             |
 | vcs-worktree      | [cmd/vcs-worktree/](cmd/vcs-worktree/)           | Подготовка read-only git worktree для MR review                                     |
 | inbox             | [cmd/inbox/](cmd/inbox/)                         | Интерактивный разбор входящих GitLab MR                                             |
+| inbox-context     | [cmd/inbox-context/](cmd/inbox-context/)         | Атомарный сбор контекста MR (worktree+changeset+threads)                            |
 | review-verify     | [cmd/review-verify/](cmd/review-verify/)         | Верификация по MR (общий core: [cmd/review/](cmd/review/))                          |
 | review-issues     | [cmd/review-issues/](cmd/review-issues/)         | XML-артефакт issues по MR (общий core: [cmd/review/](cmd/review/))                  |
 | resolve-conflicts | [cmd/resolve-conflicts/](cmd/resolve-conflicts/) | Генерация prompt для confidence-aware разрешения merge-конфликтов                   |
@@ -36,6 +37,8 @@
 | agents-rules      | [cmd/agents-rules/](cmd/agents-rules/)           | Вывод инструкции по orient для AI-агентов                                           |
 | run               | [cmd/run/](cmd/run/)                             | Запуск задания через AI-движок (opencode) — тонкая обёртка над agent-run            |
 | testcov           | [cmd/testcov/](cmd/testcov/)                     | Визуальное дерево покрытия тестами с авто-детекцией раннера (vitest/jest/node:test) |
+| verify            | [cmd/verify/](cmd/verify/)                       | Стек-агностичные верификационные гейты (node + golang, конфиг в gennady.yaml)       |
+| fix               | [cmd/fix/](cmd/fix/)                             | Мутирующие fixer'ы (кодоген, форматтеры) в рабочем дереве                           |
 
 **cli/utils/**: commit-gen, review-gen, cat-gen, prompts, ai-legacy, review-verifier (README.arch). Импорты из `shared/`, `services/`.
 

@@ -45,7 +45,7 @@ export const anystackPlugin: StackPlugin = {
     },
 
     planGates(): [] {
-      // Every gate arrives from config; applyStackConfig appends them (stack.spec §4.5).
+      // Every gate arrives from config; applyStackConfig appends them (stack.spec §4.6, FR-STACK-05).
       return [];
     },
   },

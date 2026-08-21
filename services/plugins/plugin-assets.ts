@@ -1,5 +1,5 @@
-// @file: Plugin publish assets — which plugin files are staged into the package's ai/ tree.
-// @consumers: prepare-publish-artifacts, cleanup-publish-artifacts, publish-contents test
+// @file: Plugin publish assets — which plugin files the published package must carry, in place (D-SP-008).
+// @consumers: sync.cmd, sync-skills.cmd, publish-contents test
 // @tasks: TSK-96
 
 import fs from 'node:fs';

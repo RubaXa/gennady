@@ -2,7 +2,7 @@
 
 ## 1. Module Vision
 
-`StackPlugin` для Go-репозиториев: детекция по `go.mod` в корне, скоуп по изменённым пакетам, гейты `generate → build → vet → fmt → lint → test`, фасет `fix` с материализацией кодогенерации. Термины (Gate, Scope, Capability, ENV_FAIL, VIOLATION, Run replica) — [stack.spec.md §2](../../../specs/stack/stack.spec.md).
+`StackPlugin` для Go-репозиториев: детекция по `go.mod` в корне, скоуп по изменённым пакетам, гейты `generate → build → vet → fmt → lint → test`, fixer `generate` (материализация кодогенерации через `gennady fix`). Термины (Gate, Scope, Capability, ENV_FAIL, VIOLATION, Run replica) — [stack.spec.md §2](../../../specs/stack/stack.spec.md).
 
 **Parent scope:** [`stack`](../../../specs/stack/stack.spec.md) · **E2E-механизм:** [`stack/e2e`](../../../specs/stack/e2e/e2e.spec.md) · **Доктрина E2E:** [`infra-e2e`](../../../specs/infra-e2e/infra-e2e.spec.md)
 
@@ -10,14 +10,14 @@
 
 ## 2. Capability Support
 
-| Фасет          | Статус          | Комментарий                                                                                                                                                                 |
-| -------------- | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `verify`       | ✅ обязательный | `resolveScope` + `planGates`; §5, §6                                                                                                                                        |
-| `fix`          | ✅ реализован   | один fixer `generate` — материализация кодогенерации в реальном дереве (§7)                                                                                                 |
-| `sandboxLinks` | ✅ `bin`        | Repo-pinned `./bin/<tool>` — среда исполнения, не состояние дерева: путь обычно gitignored, в реплику не копируется (D-STACK-012) и без линка каждый гейт получил бы ENOENT |
-| `testcov`      | ⛔ post-v1      | покрытие: `go test -coverprofile`; дизайн отложен (stack.spec §4.3)                                                                                                         |
-| `dbc-lint`     | ⛔ post-v1      | собственный DbC-линтер «Геннадии» сегодня умеет только `.ts`/`.tsx`                                                                                                         |
-| `directives`   | ⛔ post-v1      | per-stack директивы для агента (stack.spec §4.5)                                                                                                                            |
+| Фасет          | Статус                | Комментарий                                                                                                                                                                 |
+| -------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `verify`       | ✅ обязательный       | `resolveScope` + `planGates`; §5, §6                                                                                                                                        |
+| `fix`          | ✅ через `gate.fixer` | отдельного фасета на плагине нет — fixer живёт полем гейта (stack.spec §4.4); гейт `generate` несёт fixer: материализация кодогенерации в реальном дереве (§6)              |
+| `sandboxLinks` | ✅ `bin`              | Repo-pinned `./bin/<tool>` — среда исполнения, не состояние дерева: путь обычно gitignored, в реплику не копируется (D-STACK-012) и без линка каждый гейт получил бы ENOENT |
+| `testcov`      | ⛔ post-v1            | покрытие: `go test -coverprofile`; дизайн отложен (stack.spec §4.3)                                                                                                         |
+| `dbc-lint`     | ⛔ post-v1            | собственный DbC-линтер «Геннадии» сегодня умеет только `.ts`/`.tsx`                                                                                                         |
+| `directives`   | ⛔ post-v1            | per-stack директивы для агента (stack.spec §4.5)                                                                                                                            |
 
 ## 3. Detection
 
@@ -25,11 +25,11 @@
 
 Собираемое: список модулей (корневой + вложенные), `go.work`, факт вендоринга (`vendor/modules.txt`), путь конфига golangci (dot- и non-dot-имена), цели `Makefile`, разрешённые бинари `go` / `gofmt` / `golangci-lint`. **Процессов на этапе детекции нет вообще**: `verify --plan` не имеет права исполнять код из репозитория, а `resolveTool` предпочитает repo-pinned `./bin/<tool>` — то есть ровно его. Version-skew golangci-lint классифицируется на прогоне гейта `lint` правилом `envFail` с адресным хинтом, а не угадывается заранее.
 
-| Диагностика               | Когда                                                                       |
-| ------------------------- | --------------------------------------------------------------------------- |
-| `GOLANGCI_GO_TOO_OLD`     | `golangci-lint` собран более старым Go, чем требует модуль — version skew   |
-| `GOLANGCI_CONFIG_MISSING` | в `Makefile` упомянут конфиг линтера, которого нет в чекауте                |
-| `NESTED_MODULES`          | найдены вложенные `go.mod` — прогон покрывает корневой модуль (D-STACK-010) |
+| Диагностика               | Когда                                                                                                     |
+| ------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `TOOLCHAIN_MISSING`       | `go` не найден (ни repo-pinned `./bin/go`, ни PATH) — **blocking**: без тулчейна прогон не имеет вердикта |
+| `GOLANGCI_CONFIG_MISSING` | в `Makefile` упомянут конфиг линтера, которого нет в чекауте                                              |
+| `NESTED_MODULES`          | найдены вложенные `go.mod` — прогон покрывает корневой модуль (D-STACK-010)                               |
 
 ## 4. Scope Resolution
 
@@ -168,16 +168,20 @@ Go сообщает об одной и той же причине то стро�
 
 Замкнутый мир §7 включает и то, что появилось по ходу реализации:
 
-| Фикстура                                                        | Что закрывает                                                                                              |
-| --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `go-envfail-rules`, `-streams`, `-catchall`, `-hint-precedence` | Правила ENV_FAIL в конфиге: срабатывание, разделение потоков, catch-all → exit 4, приоритет hint'а конфига |
-| `go-hang`, `go-hang-envfail`, `go-violation-envfail`            | Порядок вердиктов D-STACK-015: TIMEOUT с note, правило старше таймаута, окружение старше VIOLATION         |
-| `go-extra-requires-missing`, `-ok`, `go-requires-config-error`  | `requires`-предусловия (§4.7) и обязательность их `hint`                                                   |
-| `go-gate-fixer`, `go-generate-fix-loop`                         | `fixer` как поле гейта: цикл verify → fix → verify в реальном дереве                                       |
-| `go-skip-flag`, `go-full-output`, `go-changed-scope`            | Покрытие флагов `--skip`, `--full-output` и режима `changed` по умолчанию                                  |
-| `go-generate-untracked`                                         | §7.1.1 — untracked-файл с директивой                                                                       |
+| Фикстура                                                        | Что закрывает                                                                                                                         |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `go-envfail-rules`, `-streams`, `-catchall`, `-hint-precedence` | Правила ENV_FAIL в конфиге: срабатывание, разделение потоков, catch-all → exit 4, приоритет hint'а конфига                            |
+| `go-hang`, `go-hang-envfail`, `go-violation-envfail`            | Порядок вердиктов D-STACK-015: TIMEOUT с note, правило старше таймаута, окружение старше VIOLATION                                    |
+| `go-extra-requires-missing`, `-ok`, `go-requires-config-error`  | `requires`-предусловия (§4.7) и обязательность их `hint`                                                                              |
+| `go-gate-fixer`, `go-generate-fix-loop`                         | `fixer` как поле гейта: цикл verify → fix → verify в реальном дереве                                                                  |
+| `go-skip-flag`, `go-full-output`, `go-changed-scope`            | Покрытие флагов `--skip`, `--full-output` и режима `changed` по умолчанию                                                             |
+| `go-generate-untracked`                                         | §7.1.1 — untracked-файл с директивой                                                                                                  |
+| `go-scope-nested-module`, `go-scope-build-constraints`          | Фильтр собираемости §4: вложенный модуль и build-констрейнты отбрасываются, причина попадает в `note`                                 |
+| `go-broken-package-not-dropped`                                 | Фильтр §4 fails open: пакет, сломанный самим изменением, остаётся в скоупе — иначе прогон был бы зелёным при красном `go build ./...` |
+| `go-scope-widen-on-gomod`                                       | Расширение скоупа §4: правка одного `go.mod` расширяет план до `./...` с причиной в `note`                                            |
+| `go-fmt-excludes-nested-testdata`                               | §5, гейт `fmt`: `vendor`/`testdata`/`node_modules` отсекаются на любой глубине, а не только на верхнем уровне                         |
 
-## 7.1 Feature Requests
+## 8. Feature Requests
 
 ### FR-GO-01 — обратное замыкание по зависимостям для `test` в режиме `changed`
 
@@ -187,18 +191,18 @@ Go сообщает об одной и той же причине то стро�
 - **Why deferred:** и то и другое меняет стоимость каждого прогона, а измерять её надо на большом брownfield-монорепозитории (порядок: тысячи пакетов), которого в этом репозитории нет. Ставить регрессию по времени вслепую хуже, чем оставить известную границу задокументированной.
 - **Acceptance:** фикстура, где изменён только пакет `A`, а сломан тест в зависящем от него `B`: `verify` (без `--all`) обязан краснеть.
 
-## 8. Inter-Module Dependencies
+## 9. Inter-Module Dependencies
 
 - **Depends on:** [`stack`](../../../specs/stack/stack.spec.md) (типы, раннер, реестр), `shared/common/exec` (probe-вызовы), git (скоуп и реплика)
 - **Sibling:** [`plugins/node`](../../node/specs/node.spec.md) — независимая зона ответственности; общее только в scope-спеке
 - **Verified by:** [`stack/e2e`](../../../specs/stack/e2e/e2e.spec.md) по матрице §7
 - **External:** `go` (обязателен, кроме гейта `fmt`), `gofmt`, `golangci-lint` (опционален — без него `lint` скипается с причиной)
 
-## 9. Handoff to Task Scaffolding
+## 10. Handoff to Task Scaffolding
 
 - **Implementation files (существуют):** `golang-plugin.ts`, `golang-detect.logic.ts`, `golang-scope.logic.ts`, `golang-plan.logic.ts`
 - **Изменения по находкам ревью (цикл реализации):** субтрактивная форма `envFail` и неунаследование exit-code-предикатов при `override.argv` (§5); `envFail` у fixer'а `generate` (§6); `requires` на гейте; `fixer` как поле гейта
-- **Fixture files to be created:** `services/stack/__tests__/e2e/fixtures/go-*` по §7 (28 фикстур)
+- **Fixtures (существуют):** `plugins/golang/e2e/fixtures/go-*` по §7 — 49 фикстур; матрица §7 замкнута, каждая фикстура на диске описана в §7.1–§7.6
 - **Open risks:**
   - **версия `golangci-lint`** меняет коды выхода и формулировки между мажорами — фикстуры утверждают вердикт, но не текст линтера; версия в CI пиннится (infra-e2e §6)
   - **`go-proxy-blocked`** в средах с прозрачным прокси может вернуть иной текст — фикстура утверждает только `env-fail`
