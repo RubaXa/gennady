@@ -1,0 +1,14 @@
+notes: >
+  A sandboxLinks entry that matches nothing (typo, or a list gone stale after a module moved) was
+  silently skipped, and the gate's missing input surfaced as FAIL — a phantom finding about the
+  code. The gate still fails (its input genuinely is not there), but the run now carries the
+  UNRESOLVED_SANDBOX_LINK diagnostic in the report and in --json, naming the dead entry. Not a
+  CONFIG_ERROR by design: on a fresh clone the generated path legitimately does not exist yet.
+dirty:
+  cache/data.txt: "warm\n"
+argv: ['--all']
+exitCode: 1
+ok: false
+diagnostics: [UNRESOLVED_SANDBOX_LINK]
+gates:
+  anystack:needs-cache: { status: fail }

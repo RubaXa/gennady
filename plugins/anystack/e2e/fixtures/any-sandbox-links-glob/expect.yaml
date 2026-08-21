@@ -1,0 +1,14 @@
+notes: >
+  Generated-output repos (Tuist/Xcode: a project per module, all gitignored) need one glob, not a
+  195-entry literal list that goes stale on every added module. `*` expands within one path
+  segment against the real tree; both ignored Derived dirs resolve into replica links, so the
+  gate sees them. Red before glob support: the pattern matched nothing, the link was silently
+  skipped and the gate FAILed as if the code were broken.
+dirty:
+  External/AuthKit/Derived/gen.txt: "generated\n"
+  External/CloudKit/Derived/gen.txt: "generated\n"
+argv: ['--all']
+exitCode: 0
+ok: true
+gates:
+  anystack:needs-derived: { status: pass }

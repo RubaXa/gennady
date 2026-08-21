@@ -501,4 +501,9 @@ describe('sandboxLinks validation', () => {
   it('rejects a non-array', () => {
     assert.match(load('bin').errors[0]?.message ?? '', /array of repo-relative paths/);
   });
+
+  it('accepts single-segment * wildcards but rejects recursive **', () => {
+    assert.deepStrictEqual(load("['External/*/Derived', '*.xcodeproj']").errors, []);
+    assert.match(load("['External/**/Derived']").errors[0]?.message ?? '', /\*\* is not supported/);
+  });
 });

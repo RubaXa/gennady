@@ -308,6 +308,13 @@ export function validateStackConfig(
               path: `stack.${key}.sandboxLinks.${link}`,
               message: 'must be a repo-relative path that stays inside the repository',
             });
+          } else if (link.includes('**')) {
+            // `*` expands within one path segment only; a recursive `**` would silently
+            // behave like `*`, so it is rejected instead of surprising the author.
+            errors.push({
+              path: `stack.${key}.sandboxLinks.${link}`,
+              message: 'recursive ** is not supported — use single-segment * wildcards (a/*/b)',
+            });
           }
         }
       }

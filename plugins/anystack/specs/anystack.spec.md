@@ -52,20 +52,22 @@ stack:
 
 **Ссылки в реплику.** Плагин не объявляет `sandboxLinks`: что в уникальном репозитории является средой, а что состоянием дерева, знает только автор гейта. Поэтому нужный путь объявляется в конфиге — `stack.anystack.sandboxLinks: [cache]` — и это единственный способ дать гейту доступ к ignored-пути или к сабмодулю, который реплика не материализует (stack.spec §2). Фикстура `any-sandbox-links` проверяет и то, что ключ работает, и то, что без него гейт краснеет.
 
-Собственных гейтов нет — `planGates` возвращает `[]`. Всё остальное приходит из `applyStackConfig` (stack.spec §4.5) и получает полный паритет с built-in-гейтами (FR-STACK-15): `timeout`, `env`, `cwd`, `requires`, `fixer`, `envFail`, `outputMeansFailure`, `driftMeansFailure`.
+Собственных гейтов нет — `planGates` возвращает `[]`. Всё остальное приходит из `applyStackConfig` (stack.spec §4.6, FR-STACK-05) и получает полный паритет с built-in-гейтами (FR-STACK-15): `timeout`, `env`, `cwd`, `requires`, `fixer`, `envFail`, `outputMeansFailure`, `driftMeansFailure`.
 
 **Выбран, но гейтов нет.** Прогон завершается `ZERO_GATES` и кодом 1: прогон, который ничего не исполнил, не является успехом. Синтетического «гейта-заглушки» здесь нет намеренно — гейт означает проверку, а отсутствие конфигурации проверкой не является.
 
 ## 6. Use Cases to Test (E2E-матрица)
 
-| #   | Случай                                        | Ожидание                                                                                                  |
-| --- | --------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| 1   | Только `extraGates`, других стеков нет        | гейты исполняются, `exit 0` (`any-extra-gates-only`)                                                      |
-| 2   | Конфига нет вовсе                             | плагин активен, но гейтов нет: `ZERO_GATES`, `exit 1`, в `--json` `ok: false` (`any-detected-everywhere`) |
-| 3   | Выбран, `extraGates` пуст                     | `ZERO_GATES`, `exit 1` (`any-no-gates-configured`)                                                        |
-| 4   | `envFail`-правило на гейте из конфига         | `env-fail` + `hint` (`any-env-fail-rule`)                                                                 |
-| 5   | `stack.anystack.sandboxLinks` даёт путь гейту | с ключом — `pass`, гейт видит ignored-путь в реплике; без ключа гейт краснел бы (§5, `any-sandbox-links`) |
-| 6   | Сосуществование с реальным стеком             | npm-репозиторий: гейты `anystack` и `node` исполняются в одном прогоне, `exit 0` (`any-with-node-stack`)  |
+| #   | Случай                                        | Ожидание                                                                                                                         |
+| --- | --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Только `extraGates`, других стеков нет        | гейты исполняются, `exit 0` (`any-extra-gates-only`)                                                                             |
+| 2   | Конфига нет вовсе                             | плагин активен, но гейтов нет: `ZERO_GATES`, `exit 1`, в `--json` `ok: false` (`any-detected-everywhere`)                        |
+| 3   | Выбран, `extraGates` пуст                     | `ZERO_GATES`, `exit 1` (`any-no-gates-configured`)                                                                               |
+| 4   | `envFail`-правило на гейте из конфига         | `env-fail` + `hint` (`any-env-fail-rule`)                                                                                        |
+| 5   | `stack.anystack.sandboxLinks` даёт путь гейту | с ключом — `pass`, гейт видит ignored-путь в реплике; без ключа гейт краснел бы (§5, `any-sandbox-links`)                        |
+| 6   | Сосуществование с реальным стеком             | npm-репозиторий: гейты `anystack` и `node` исполняются в одном прогоне, `exit 0` (`any-with-node-stack`)                         |
+| 7   | `sandboxLinks` с `*`-глобом                   | паттерн раскрывается против реального дерева, все совпавшие ignored-пути видны гейту, `pass` (`any-sandbox-links-glob`)          |
+| 8   | Запись `sandboxLinks` ни с чем не совпала     | гейт падает по-настоящему, но прогон несёт диагноз `UNRESOLVED_SANDBOX_LINK` в отчёте и `--json` (`any-sandbox-link-unresolved`) |
 
 ## 7. Inter-Module Dependencies
 
