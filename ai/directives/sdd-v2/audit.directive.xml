@@ -363,14 +363,25 @@
         | Contract semantics, runtime-backing, drift — irreducibly semantic, no command runs this | STEP_2_SEMANTIC, this audit's own judgment |
 
         A gate's verdict is computed from ITS OWN exit code and the ticket/dependency graph alone —
-        never from anything the dispatching orchestrator's prompt happened to say. A missing gate
-        script is legitimately `ENVIRONMENT_GATE_UNAVAILABLE` for exactly one reason: the ticket
-        graph itself shows a DIFFERENT, still-open ticket in the queue owns creating that script (its
-        Bootstrap Requirements or Target Files name it) — check the graph for that fact, never infer
-        it from a stray adjective like «штатно» ("business as usual") in the dispatch prompt, which
-        carries ZERO verdict weight. Absent that graph fact, a missing/red gate is `FAIL`, exactly as
-        the rule below already states, regardless of how routine the dispatch prompt made the run
-        sound.
+        never from anything the dispatching orchestrator's prompt happened to say. Two shapes of
+        "gate didn't produce a verdict" exist and they route to OPPOSITE defaults — keep them apart
+        rather than folding one into the other:
+
+        **(a) The gate SCRIPT itself is missing** (`package.json` has no such script at all). This is
+        legitimately `ENVIRONMENT_GATE_UNAVAILABLE` for exactly one reason: the ticket graph itself
+        shows a DIFFERENT, still-open ticket in the queue owns creating that script (its Bootstrap
+        Requirements or Target Files name it) — check the graph for that fact, never infer it from a
+        stray adjective like «штатно» ("business as usual") in the dispatch prompt, which carries ZERO
+        verdict weight. Absent that graph fact, a missing script is `FAIL`, exactly as the rule below
+        already states, regardless of how routine the dispatch prompt made the run sound. This "exactly
+        one reason" carve-out is scoped to case (a) only — it does not extend to case (b) below.
+
+        **(b) The script EXISTS but the environment refuses to run it to completion** — no test
+        runner installed, no network reachable, the process crashes before emitting a pass/fail. This
+        is `ENVIRONMENT_GATE_UNAVAILABLE` UNCONDITIONALLY, with no graph check: "no network" cannot,
+        even in principle, satisfy a ticket-ownership condition, so gating it on one would leave every
+        real network outage misclassified as `FAIL`. Route per `AX_FINDING_ROUTING` — operator
+        escalation, never a phase fix and never something audit or the worker repairs itself.
 
         Then run `sdd-check --task <ticket-path>` for EACH ticket in the group (a
         single call for per-task mode) plus one `sdd-check --all` for the whole tree, per `AX_AUDIT_MODES`,
@@ -381,16 +392,24 @@
         them. Then INDEPENDENTLY re-run the green gate — `sdd-verify --profile full`,
         `gennady lint --spec=<module-spec>` (cast + closed-world inventory over the changed files), and
         `gennady testcov --run --min=80` (coverage gate — project line coverage ≥ 80% at task completion):
-        Always re-derive the gate yourself rather than trust the worker's logged `ver` lines; a gate that fails
+        run these gates SEQUENTIALLY, one at a time, never in parallel — `sdd-verify --profile full` and
+        `gennady testcov --run` both write into `coverage/`, and any two commands sharing an output path
+        race when parallelized: whichever finishes last overwrites or half-writes the other's artifact,
+        producing a false red that has nothing to do with the code. Parallelizing is fine only for
+        commands that write no shared artifact; a gate is disqualified from that the moment its output
+        directory overlaps another gate's. Always re-derive the gate yourself rather than trust the worker's logged `ver` lines; a gate that fails
         here, a `ver` logged for a command that does not actually pass, or coverage below the gate, is a `BLOCKER`.
-        A gate command that does not execute at all — no runner, missing script, no network, crashes before
-        producing a pass/fail — is a DIFFERENT case from a gate that runs and reports red: it is neither PASS
-        nor a failure to diagnose. Do NOT patch the environment yourself to make it run (that is the worker's
+        A gate command that does not execute at all is a DIFFERENT case from a gate that runs and reports
+        red: it is neither PASS nor a failure to diagnose. Split it exactly as above: a missing gate SCRIPT
+        is case (a) — `FAIL` unless the graph names a different open ticket that owns building it — while
+        no runner / no network / a crash before pass-fail is case (b) — `ENVIRONMENT_GATE_UNAVAILABLE`
+        unconditionally. Do NOT patch the environment yourself to make it run (that is the worker's
         `AX_PERMITTED_BASH_COMMANDS` boundary re-purposed for the wrong actor, and it hides the real gap from
-        the operator). Record it as `ENVIRONMENT_GATE_UNAVAILABLE` and let STEP_3 route it. **PASS is never the
-        verdict when any gate is red OR any gate did not execute** — the only outcomes for a task with an
-        unexecuted gate are `FAIL` (with `phases_to_fix` left empty, since no phase can fix an environment
-        problem) or an explicit operator escalation; whole-task verdict computation MUST treat "gate did not
+        the operator). Record case (b) as `ENVIRONMENT_GATE_UNAVAILABLE` and let STEP_3 route it (operator
+        escalation, per `AX_FINDING_ROUTING`). **PASS is never the verdict when any gate is red OR any gate
+        did not execute** — the only outcomes for a task with an unexecuted gate are `FAIL` (case (a) without
+        the graph fact, `phases_to_fix` left empty since no phase can fix an environment problem) or an
+        explicit operator escalation (case (b)); whole-task verdict computation MUST treat "gate did not
         run" the same as "gate ran and failed" for this purpose.
         Per-group mode closes the WHOLE spec by definition (`due` only fires once every sibling ticket is
         DONE, per `AX_AUDIT_HOOK`) — always add the reverse closed-world sweep over the module's code

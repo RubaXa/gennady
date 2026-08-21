@@ -1867,7 +1867,7 @@ export function checkDiagramCaptions(file: string, content: string): Finding[] {
         severity,
         code: 'SDD_DIAGRAM_CAPTION_MISSING',
         file,
-        message: `Diagram in section ${block.section} has no caption right after the closing fence (three backticks) — add one line: \`_<что показывает диаграмма> — ${exampleId}._\` (список ID можно опустить только для общесистемного Overview).`,
+        message: `Diagram in section ${block.section} has no caption right after the closing fence (three backticks) — add one line: \`_<что показывает диаграмма> — ${exampleId}._\` (сама фраза-подпись обязательна всегда; список ID требований необязателен — добавляй его, когда диаграмма иллюстрирует конкретные требования).`,
       });
       continue;
     }

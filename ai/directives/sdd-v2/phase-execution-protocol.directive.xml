@@ -234,6 +234,21 @@
       `stale-tool-api-not-verified`.
     </Axiom>
 
+    <Axiom id="AX_DEPENDENCY_ADDITION_CHECKLIST">
+      Before adding any dependency, verify four things:
+      1. **Node compatibility:** `npm view <pkg> engines` — supports version in `.nvmrc`?
+      2. **Module system compatibility:** package ESM-only / CJS-only / dual? Matches project's `"type"`?
+      3. **Pinning discipline:** dev tool → `--save-exact`; runtime dep → range acceptable.
+      4. **Release channel:** the `latest` dist-tag is not guaranteed stable — it can point at a
+         pre-release (`rc` / `beta` / `alpha`). Before pinning, compare `npm view <pkg> version` (what
+         `latest` actually resolves to) against `npm view <pkg> dist-tags` (the full tag → version map)
+         and pin the newest version that reads as stable (no `-rc`/`-beta`/`-alpha` suffix), not whatever
+         `latest` happens to name at that moment. Installing a pre-release is permitted only as an
+         explicit, spec-recorded decision — never a side effect of trusting `latest` by default.
+
+      Skipping these introduces incompatibilities that surface as cryptic runtime errors, not install errors.
+    </Axiom>
+
     <Axiom id="AX_VERIFICATION_BEFORE_HANDOFF">
       Phase cannot emit Handoff without Verification commands relevant to this phase passing. Each command from ticket §5 Verification whose `Required by` rules overlap with this phase's `Rules` MUST execute **verbatim — exactly as listed in ticket §5**; result + exit code recorded as `<ts> ver <cmd> → pass|fail exit=<N>` where `<cmd>` is the literal string from §5. Any failing command keeps phase `[~] IN_PROGRESS` until resolved or escalated.
 
@@ -394,13 +409,18 @@
     manifest.
 
     **Tool reference** — everything mechanical this phase needs is one of these, each covered by its
-    own tests; nothing else about their internals is load-bearing:
+    own tests; nothing else about their internals is load-bearing. Calling `--help` on any of them
+    mid-run is a wasted turn against a known, stable surface — this table, with a worked example per
+    row, IS the reference:
 
     | Tool | When | Call |
     |---|---|---|
     | `sdd-task <ticket> --phase P<N>` | FIRST action, every phase, every retry — objective, gates + satisfy-hints, exit, phase-scoped read-manifest, prior Handoff | `npx gennady sdd-task <ticket> --phase P2` |
     | `sdd-extract <file> <NAME>` · `sdd-extract <file>#<anchor>` | Pull ONE cited block instead of a whole file — `<NAME>` is a `SECTION_NAME` (`PHASE_P1`, `BDD`, `VERIFICATION`, …), two args; a markdown heading anchor is the combined `path#lower-dashed-slug` form, exactly as the read-manifest prints it | `npx gennady sdd-extract <ticket> PHASE_P1` · `npx gennady sdd-extract specs/app/greeting/greeting.spec.md#module-contracts` |
-    | `sdd-log <ticket-path\|Task-ID> phase\|line\|handoff\|blocker ...` | Every Execution Log write for this phase — header, event line, Handoff, blocker; the tool appends, timestamps, and rejects fabricated `DONE`; the ticket argument takes either the ticket path or its bare Task-ID | `npx gennady sdd-log <ticket-path\|Task-ID> line "intro Foo ← reason"` |
+    | `sdd-log <ticket-path\|Task-ID> line "<content>"` | An Execution Log event line — `discovery` / `intro` / `verified` / `ver` / `yagni` / `DONE`; the ticket argument takes either the ticket path or its bare Task-ID | `npx gennady sdd-log <ticket-path\|Task-ID> line "intro Foo ← reason"` |
+    | `sdd-log <ticket> phase <PhaseID> ["— re-run: <reason>"]` | STEP_1B — open this phase's header block; the `— re-run:` suffix only on a `fix` re-run, never on a fresh phase | `npx gennady sdd-log <ticket> phase P2 "— re-run: fix F-012"` |
+    | `sdd-log <ticket> handoff "<payload>"` | STEP_6 — the typed `**Handoff →**` line, exactly the `HANDOFF_FORMAT` shape (`artifacts` / `decisions` / `open` / `deviations`, each an array) | `npx gennady sdd-log <ticket> handoff "artifacts: [src/app/greeting/greeting.ts]; decisions: [module-system=esm]; open: []; deviations: []"` |
+    | `sdd-log <ticket> blocker "<reason>" --axiom <AX_NAME> --unblock "<action>"` | STEP_5 — an out-of-zone failure this phase cannot fix itself; opens the resolution trail the orchestrator checks (`AX_BLOCKER_RESOLUTION_TRAIL`) | `npx gennady sdd-log <ticket> blocker "vitest binary missing" --axiom AX_ENV_FIX_CHANNEL --unblock "npm i -D vitest"` |
     | `sdd-check --task <ticket>` | A point re-check when you need the mechanical verdict again after a fix, without re-deriving it by hand | `npx gennady sdd-check --task <ticket>` |
     | `sdd-verify --profile code\|test\|full` | The gate at STEP_5 — profile fixed by phase kind, order is mutating-first | `npx gennady sdd-verify --profile code` |
     | `gennady lint --spec=<module-spec> <Target Files>` | Closed-world inventory sync + cast safety on this phase's own files | `npx gennady lint --spec=specs/app/greeting/greeting.spec.md src/app/greeting/*.ts` |
@@ -501,7 +521,11 @@
       <Action>
         Apply rules continuously; respect `AX_PHASE_SCOPE_LOCK`, `AX_FILE_HEADER_APPEND_ONLY`,
         `AX_INTRODUCED_DISCIPLINE`. `test` kind honors `AX_BDD_NAME_DISCIPLINE`; `config` kind applies
-        the current-version API verified at STEP_3B (`AX_THIRD_PARTY_TOOL_CURRENT_API`). Depth of the
+        the current-version API verified at STEP_3B (`AX_THIRD_PARTY_TOOL_CURRENT_API`). `bootstrap`
+        kind, before running any `npm install`/`npm add`, works the `AX_DEPENDENCY_ADDITION_CHECKLIST`
+        per package — Node/module-system compatibility, pinning discipline, AND the release channel
+        (`latest` can resolve to a pre-release; pin the newest stable version unless the spec
+        explicitly calls for a pre-release). Depth of the
         work itself is public-release by default, not POC (`AX_RELEASE_READY_DEFAULT`) — error
         handling, edge cases, empty/loading states are part of THIS phase's Objective unless the
         ticket itself named POC/MVP. Append each event line via `npx gennady sdd-log <ticket> line
@@ -533,7 +557,11 @@
         line via `npx gennady sdd-log <ticket> line "intro <name> ← <reason>"`
         (`AX_INTRODUCED_DISCIPLINE`, `AX_TICKET_WRITE_SCOPE`; the worker leaves the spec to audit, `AX_SPEC_NEVER_EDITED` — the intro
         line flags it for inventory backflow at audit). MUST resolve every out-of-inventory export this way. A cast → remove (proper type / guard) or a documented `@ts-expect-error` (`AX_NO_SILENT_ESCAPE_HATCH` — never a silent suppression).
-        Then run each ticket §5 command **verbatim** (the Canonical Gate per `AX_VERIFICATION_BEFORE_HANDOFF`),
+        Run `sdd-verify`, `gennady lint`, and every ticket §5 command SEQUENTIALLY, one at a time, never
+        in parallel: gates that write into a shared output path (`sdd-verify --profile full` and
+        `gennady testcov --run` both write `coverage/`) race when run together — whichever finishes
+        last overwrites or half-writes the other's artifact, producing a false red unrelated to the
+        code. Then run each ticket §5 command **verbatim** (the Canonical Gate per `AX_VERIFICATION_BEFORE_HANDOFF`),
         exactly as written. **Error ownership scales by write zone, not by age:** for every failure the gate
         surfaces, locate the file the fix must be written into. That file is inside this phase's Target Files,
         or is a file this phase itself created → fix it here, now, regardless of whether the failure pre-dates

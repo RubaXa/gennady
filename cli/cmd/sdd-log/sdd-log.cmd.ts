@@ -23,6 +23,7 @@ import {
   nextRoundNumber,
   noLogSection,
   placeholderError,
+  setMetaStatus,
   unknownIdError,
   type LogOutcome,
 } from './sdd-log.types.ts';
@@ -127,8 +128,28 @@ export async function run(rawArgs: string[], now: Date): Promise<LogOutcome> {
   }
   // #endregion END_BUILD
 
+  // #region START_META_STATUS — invariant: round/close also drive Meta Status; tolerant of old
+  // tickets with no META/Status line (setMetaStatus leaves content untouched, changed: false).
+  // Rewriting in place never changes the line count, so `bounds` (computed above) stays valid.
+  let workingContent = content;
+  let metaStatusNote = '';
+  if (mode === 'round') {
+    const result = setMetaStatus(workingContent, '[~] IN_PROGRESS');
+    workingContent = result.content;
+    metaStatusNote = result.changed
+      ? '\n[sdd-log] status → IN_PROGRESS'
+      : '\n[sdd-log] META/Status не найден — статус не обновлён.';
+  } else if (mode === 'close') {
+    const result = setMetaStatus(workingContent, '[x] DONE');
+    workingContent = result.content;
+    metaStatusNote = result.changed
+      ? '\n[sdd-log] status → DONE'
+      : '\n[sdd-log] META/Status не найден — статус не обновлён.';
+  }
+  // #endregion END_META_STATUS
+
   // #region START_APPEND — invariant: insert strictly before the close marker (append-only)
-  const lines = content.split('\n');
+  const lines = workingContent.split('\n');
   lines.splice(bounds.closeLine, 0, ...insertText.split('\n'));
   try {
     writeFileSync(abs, lines.join('\n'), 'utf-8');
@@ -138,7 +159,7 @@ export async function run(rawArgs: string[], now: Date): Promise<LogOutcome> {
   // #endregion END_APPEND
 
   logger.debug(`[SddLogCommand#run] appended ${mode} to ${LOG_SECTION} of ${ticket}`);
-  const body = `[sdd-log] appended to ${LOG_SECTION}:\n${insertText.trim()}`;
+  const body = `[sdd-log] appended to ${LOG_SECTION}:\n${insertText.trim()}${metaStatusNote}`;
   return { ok: true, text: idBanner ? `${idBanner}\n${body}` : body };
 }
 

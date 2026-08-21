@@ -4,6 +4,7 @@
 
 import { relative, resolve } from 'node:path';
 import type { TicketRef } from '../../../shared/sdd/check.ts';
+import { findSectionBounds } from '../../../shared/sdd/section.ts';
 import { unreadableTicketHint } from '../../../shared/sdd/ticket-resolve.ts';
 
 /** @purpose No ticket path, or not exactly one of --round / --line / --close. */
@@ -120,6 +121,48 @@ export function buildBlockerBlock(
     `  - 🔗 axiom: ${axiom}`,
     `  - 💬 unblock: ${unblock}`,
   ].join('\n');
+}
+
+// The Status line per TASK_SKELETON (templates.ts) — `- **Status:** [ ] TODO   <!-- hint -->`.
+// Captures the label prefix (group 1) and any trailing hint comment (group 2) so a rewrite touches
+// only the checkbox+token, byte-identical otherwise.
+const META_STATUS_LINE = /^(\s*-\s*\*\*Status:\*\*\s*)\[.\]\s*[A-Z_]+(.*)$/;
+
+/**
+ * @purpose Outcome of a META Status rewrite attempt.
+ * @invariant `changed` is false and `content` untouched whenever META or its Status line is absent
+ *   (old tickets) — tolerance, not a failure.
+ */
+export type MetaStatusResult = {
+  /** @purpose Ticket content with the Status line rewritten (untouched when `changed` is false). */
+  content: string;
+  /** @purpose Whether a Status line was actually found and rewritten. */
+  changed: boolean;
+};
+
+/**
+ * @purpose Rewrite the META section's `**Status:**` checkbox+token in place, preserving the trailing
+ *   hint comment and every other line byte-identical.
+ * @invariant Line count never changes — any line-index bounds computed from the original content
+ *   (e.g. EXECUTION_LOG's `findSectionBounds`) stay valid after this call.
+ * @param content Full ticket markdown.
+ * @param token New checkbox+token to write (e.g. `[~] IN_PROGRESS`, `[x] DONE`).
+ * @returns MetaStatusResult — rewritten content when a Status line existed, else the input untouched.
+ */
+export function setMetaStatus(content: string, token: string): MetaStatusResult {
+  const bounds = findSectionBounds(content, 'META');
+  if (!bounds) return { content, changed: false };
+
+  const lines = content.split('\n');
+  for (let i = bounds.openLine + 1; i < bounds.closeLine; i++) {
+    const line = lines[i] ?? '';
+    const m = line.match(META_STATUS_LINE);
+    if (m) {
+      lines[i] = `${m[1]}${token}${m[2]}`;
+      return { content: lines.join('\n'), changed: true };
+    }
+  }
+  return { content, changed: false };
 }
 
 /**

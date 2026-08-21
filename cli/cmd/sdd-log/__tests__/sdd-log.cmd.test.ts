@@ -87,6 +87,67 @@ describe('SddLogCommand', () => {
     );
   });
 
+  describe('META Status (round/close drive it; tolerant when Status line is absent)', () => {
+    const withStatus = [
+      '# t',
+      '<!--SECTION:META-->',
+      '- **Task-ID:** cli-foo',
+      '- **Status:** [ ] TODO   <!-- [ ] TODO | [~] IN_PROGRESS | [x] DONE | [!] BLOCKED -->',
+      '<!--/SECTION:META-->',
+      '',
+      '<!--SECTION:EXECUTION_LOG-->',
+      '## 7. Execution Log',
+      '<!--/SECTION:EXECUTION_LOG-->',
+    ].join('\n');
+
+    it('round sets Meta Status to IN_PROGRESS, keeping the hint comment', async () => {
+      writeFileSync(ticket, withStatus, 'utf-8');
+      const outcome = await mod.run(argv(ticket, 'round', 'initial'), CLOCK);
+      assert.strictEqual(outcome.ok, true);
+      if (outcome.ok) assert.match(outcome.text, /status → IN_PROGRESS/);
+      const body = readFileSync(ticket, 'utf-8');
+      assert.match(
+        body,
+        /- \*\*Status:\*\* \[~\] IN_PROGRESS   <!-- \[ \] TODO \| \[~\] IN_PROGRESS \| \[x\] DONE \| \[!\] BLOCKED -->/
+      );
+    });
+
+    it('close sets Meta Status to DONE, keeping the hint comment', async () => {
+      writeFileSync(ticket, withStatus, 'utf-8');
+      const outcome = await mod.run(argv(ticket, 'close'), CLOCK);
+      assert.strictEqual(outcome.ok, true);
+      if (outcome.ok) assert.match(outcome.text, /status → DONE/);
+      const body = readFileSync(ticket, 'utf-8');
+      assert.match(
+        body,
+        /- \*\*Status:\*\* \[x\] DONE   <!-- \[ \] TODO \| \[~\] IN_PROGRESS \| \[x\] DONE \| \[!\] BLOCKED -->/
+      );
+    });
+
+    it('round/close on a ticket with no Status line (old ticket) — tolerant, no crash, honest note', async () => {
+      // BASE (the shared fixture) has META but no Status line.
+      const roundOutcome = await mod.run(argv(ticket, 'round', 'initial'), CLOCK);
+      assert.strictEqual(roundOutcome.ok, true);
+      if (roundOutcome.ok) {
+        assert.match(roundOutcome.text, /META\/Status не найден — статус не обновлён/);
+      }
+      const closeOutcome = await mod.run(argv(ticket, 'close'), CLOCK);
+      assert.strictEqual(closeOutcome.ok, true);
+      if (closeOutcome.ok) {
+        assert.match(closeOutcome.text, /META\/Status не найден — статус не обновлён/);
+      }
+      const body = readFileSync(ticket, 'utf-8');
+      assert.doesNotMatch(body, /\*\*Status:\*\*/);
+    });
+
+    it('line/phase/handoff/blocker modes never touch Meta Status', async () => {
+      writeFileSync(ticket, withStatus, 'utf-8');
+      await mod.run(argv(ticket, 'line', 'DONE'), CLOCK);
+      const body = readFileSync(ticket, 'utf-8');
+      assert.match(body, /- \*\*Status:\*\* \[ \] TODO   <!--/);
+    });
+  });
+
   it('is append-only — prior sections are untouched', async () => {
     await mod.run(argv(ticket, 'line', 'DONE'), CLOCK);
     const body = readFileSync(ticket, 'utf-8');

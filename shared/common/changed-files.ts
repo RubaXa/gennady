@@ -24,6 +24,23 @@ export function getChangedSourceFiles(root: string): string[] {
 }
 
 /**
+ * @purpose Every changed file (vs HEAD, plus untracked) under `root` — no extension filter, unlike
+ *   `getChangedSourceFiles`; only `node_modules/` is excluded.
+ * @param root Repository root.
+ * @returns Repo-root-relative paths.
+ */
+export function getChangedFiles(root: string): string[] {
+  const diffOut = execSyncSafe(`git -C ${JSON.stringify(root)} diff --name-only HEAD 2>/dev/null`);
+  const untrackedOut = execSyncSafe(
+    `git -C ${JSON.stringify(root)} ls-files --others --exclude-standard 2>/dev/null`
+  );
+  const all = new Set(
+    [...diffOut.split('\n'), ...untrackedOut.split('\n')].map((l) => l.trim()).filter(Boolean)
+  );
+  return [...all].filter((p) => !p.includes('node_modules/'));
+}
+
+/**
  * @purpose Whether `root` has a git HEAD (≥1 commit) — else a naive caller mistakes every
  *   untracked file for "changed".
  * @param root Repository root.

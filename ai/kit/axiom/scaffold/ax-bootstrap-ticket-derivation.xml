@@ -4,6 +4,19 @@
       - Rows with Owner=`external-prereq-scope` → cross-scope dependency edge, not a ticket here.
       - Rows with Owner=`operator-action` → noted in tracker index as a blocking external prerequisite, not a ticket.
       - Bootstrap tickets must be DONE before any non-bootstrap ticket of the same scope (e.g. `install package` precedes `wire config that uses package`).
-      - Bootstrap tickets carry Verification populated from the Resolution column (e.g. `npm ls <pkg>` exit 0).
+      - Bootstrap tickets carry Verification populated from the Resolution column (e.g. `npm ls <pkg>` exit 0)
+        — ONE `npm ls <pkg>` call PER package, never a single `npm ls pkg1 pkg2 ...` covering several:
+        a multi-package call can exit 0 as soon as one of the named packages resolves, silently masking
+        an absent one among the rest (observed with a missing optional-peer package, e.g.
+        `@vitest/coverage-v8`, riding alongside a resolved `vitest` in the same call) — the gate passes
+        while a real dependency is missing. One call per package makes that package's own absence
+        surface as that call's own non-zero exit, with nowhere to hide behind a sibling that did resolve.
+      - **Every shared infra file — `package.json` scripts, `.nvmrc`, a tool config a bootstrap ticket
+        creates or edits — gets EXACTLY ONE ticket-owner: the bootstrap ticket whose Target Files list
+        it.** Any OTHER ticket whose phase reads or extends that same file (adds a script, bumps the
+        pinned tool version) does not re-derive ownership by grepping neighboring tickets — its phase
+        text carries an explicit line naming the owner, `владелец — <ticket>` (or `owner — <ticket>`),
+        written at scaffold time, so the worker executing that phase already knows whose ticket to
+        defer to / coordinate with without a search.
       - If Bootstrap Requirements is absent from the spec → abort with `H_BOOTSTRAP_REQUIREMENTS_MISSING` (the spec did not pass discovery STEP_7).
     </Axiom>

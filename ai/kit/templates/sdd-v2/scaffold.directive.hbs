@@ -173,6 +173,11 @@
            `<DependsOn>` at runtime;
         4. write the phase `Rules:` bullet list — one `[<rule-id>](<rule-file-path>)` per rule, direct
            + transitive, all explicit;
+        4b. per `AX_BOOTSTRAP_TICKET_DERIVATION`'s shared-infra-file ownership rule: when this phase
+            reads or extends a shared infra file (`package.json` scripts, `.nvmrc`, a tool config)
+            owned by a DIFFERENT bootstrap ticket, write an explicit `владелец — <ticket>` line into
+            this phase's text naming that owner — never leave it for the worker to reconstruct by
+            grepping sibling tickets;
         5. after all phases: union `<RequiresVerification>` aliases across the ticket's phases, group
            rules by alias, resolve each unique alias from infra-spec Verification Commands (absent →
            `H_VERIFICATION_COMMAND_MISSING`), and write ticket Verification table — one row

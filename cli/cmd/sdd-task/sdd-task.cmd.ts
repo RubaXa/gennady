@@ -6,7 +6,7 @@ import { readFileSync, statSync } from 'node:fs';
 import { resolve, relative, join } from 'node:path';
 import { logger } from '#logger';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
-import { extractSection } from '../../../shared/sdd/section.ts';
+import { extractSection, extractHeadingSection } from '../../../shared/sdd/section.ts';
 import {
   parseMetaInfo,
   parsePhasesOverview,
@@ -32,7 +32,7 @@ import {
   ticketTargetFiles,
   ticketHandoffArtifacts,
 } from '../../../shared/sdd/audit-group.ts';
-import { hasGitHead, getChangedSourceFiles } from '../../../shared/common/changed-files.ts';
+import { hasGitHead, getChangedFiles } from '../../../shared/common/changed-files.ts';
 import {
   fileError,
   formatPlan,
@@ -175,7 +175,7 @@ export async function run(rawArgs: string[]): Promise<TaskOutcome> {
       }
     }
     const git: GroupScopeGit = hasGitHead(defaultRoot)
-      ? { available: true, files: getChangedSourceFiles(defaultRoot) }
+      ? { available: true, files: getChangedFiles(defaultRoot) }
       : { available: false };
     return formatGroupScope(
       resolution.specPath,
@@ -244,8 +244,13 @@ export async function run(rawArgs: string[]): Promise<TaskOutcome> {
 
   if (phaseId) {
     logger.debug(`[SddTaskCommand#run] ${meta.taskId ?? '?'}: --phase ${phaseId}`);
+    // `## Audit Rounds` is a plain heading section (TICKET_AUDIT_ROUND_FORMAT), not a
+    // <!--SECTION:...--> anchor — the fix-worker needs its findings' bodies, not just the `fix:
+    // F-NNN` tag, so it stops grepping the repo for what the audit actually found.
+    const auditSec = extractHeadingSection(content, 'audit-rounds');
+    const auditRounds = auditSec.status === 'ok' ? auditSec.content : null;
     return withResolutionLine(
-      formatPhase(meta, phases, detailsById, gates, handoffs, phaseId),
+      formatPhase(meta, phases, detailsById, gates, handoffs, phaseId, auditRounds),
       resolutionLine
     );
   }

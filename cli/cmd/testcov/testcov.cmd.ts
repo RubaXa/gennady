@@ -288,16 +288,27 @@ function runDiagnostics(): Diagnostic[] {
 }
 
 function collectVitestDiags(diags: Diagnostic[]): void {
-  const cfgCandidates = ['vitest.config.ts', 'vitest.config.js', 'vitest.config.mts'];
+  // Vitest is legitimately configured either in its own vitest.config.* or in a `test:` block
+  // inside vite.config.* (https://vitest.dev/config/#configuring-vitest) — vite.config.* candidates
+  // come after so a dedicated vitest.config.* still wins when both exist.
+  const cfgCandidates = [
+    'vitest.config.ts',
+    'vitest.config.js',
+    'vitest.config.mts',
+    'vite.config.ts',
+    'vite.config.js',
+    'vite.config.mts',
+  ];
   const cfgFile = cfgCandidates.find((f) => existsSync(join(ROOT, f)));
 
   if (!cfgFile) {
     diags.push({
       level: 'warning',
       code: 'NO_RUNNER_CONFIG',
-      message: 'No vitest config file found',
+      message:
+        'No vitest config found (checked vitest.config.* and vite.config.* for a test block)',
       expect:
-        'vitest.config.ts at project root with coverage.reporter and coverage.reportOnFailure',
+        'vitest.config.ts at project root (or a `test:` block in vite.config.ts) with coverage.reporter and coverage.reportOnFailure',
       fix: 'Create vitest.config.ts — see: https://vitest.dev/config/#coverage',
     });
     return;

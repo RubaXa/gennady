@@ -82,7 +82,7 @@ const DECISION_LOG_FILL =
 const BOOTSTRAP_REQUIREMENTS_FILL =
   'One-line human summary of outstanding prerequisites; fold the full Requirement/Kind/Owner/Resolution table under <details>. Declare explicitly ("No external bootstrap required.") when the STEP_7 audit found none — do not leave the table silently empty.';
 const OVERVIEW_FILL =
-  'MANDATORY (AX_SPEC_MANDATORY_DIAGRAM): at least one fenced mermaid or ASCII diagram giving a reader the shape of this artifact at a glance, up top. Caption directly under the fence per DIAGRAM_CAPTION_FORMAT (formats/diagram-vocabulary.xml) — `_<что показывает одной фразой>[ — <ACR>-REQ-N[, <ACR>-REQ-M]]._`; a whole-scope Overview may drop the ID list but the phrase itself stays mandatory.';
+  'MANDATORY (AX_SPEC_MANDATORY_DIAGRAM): at least one fenced mermaid or ASCII diagram giving a reader the shape of this artifact at a glance, up top. Caption directly under the fence per DIAGRAM_CAPTION_FORMAT (formats/diagram-vocabulary.xml) — `_<что показывает одной фразой>[ — <ACR>-REQ-N[, <ACR>-REQ-M]]._`; the phrase itself stays mandatory always — the ID list is optional, add it when the diagram illustrates concrete requirements.';
 const DATA_FLOW_FILL =
   'MANDATORY for product/library (AX_SPEC_MANDATORY_DIAGRAM, new rung per the 2026-08-20 visualization-chain decision) — drawn AFTER Requirements & Constraints closes. A `flowchart` built from exactly four node kinds: external entity, process, store, labelled data-flow arrow — NO conditions, NO loops (a data diagram, not a control-flow chart); ≤7 nodes. Caption per DIAGRAM_CAPTION_FORMAT naming the requirement IDs this diagram shows. This rung is mandatory for NEW specs only — an existing spec written before this rung existed is not retroactively broken by its absence.';
 const DATA_FLOW_SKELETON = `<!--SECTION:DATA_FLOW-->
@@ -635,12 +635,20 @@ ${REQUIREMENTS_LIST_SKELETON}
 | Command Name      | Invocation          |
 | typecheck-command | <actual invocation> |
 | test-command      | <actual invocation> |
+| coverage-command  | <actual invocation — name the coverage provider too, e.g. \`@vitest/coverage-v8\`> |
 | lint-command      | <actual invocation> |
 | format-command    | <actual invocation> |
 | check-command     | <actual invocation> |
 
-Include only command names for tools present in the chosen stack.
+Include only command names for tools present in the chosen stack. \`coverage-command\` is **required**
+whenever the project declares a coverage threshold gate — a threshold with no declared provider is a
+gate nobody can run.
 \`check-command\` is **always required** when the runtime setup rule (\`nodejs-npm-setup\` or equivalent) is active — it is the composed entry point that runs all active phases in \`CheckPhaseOrder\` order (typecheck → test → lint → format). Composition: chain invocations of each active phase command in that order. Task tickets use \`check-command\` as their single verification alias.
+
+[Инвариант: команды образуют конвейер, а не список — артефакты одной команды не должны ронять
+другую (типичный случай: \`coverage/\`, \`dist/\` попадают под lint/format и генерируют ложные findings).
+Сгенерированные каталоги исключи из lint/format явно (ignore-файл/флаг инструмента) и зафиксируй это
+исключение как требование в Requirements & Constraints — не только как настройку тула.]
 <!--/SECTION:VERIFICATION_COMMANDS-->
 
 ${RESEARCH_REGISTRY_SKELETON_SCOPE}
@@ -668,6 +676,8 @@ ${RESEARCH_REGISTRY_SKELETON_SCOPE}
 <!-- Kind ∈ package | workspace-link | tool | file | external-type | env | service | structural -->
 <!-- Owner ∈ this-scope-task | external-prereq-scope | operator-action -->
 <!-- Empty list allowed only when STEP_7 audit produced zero external assumptions — declare it explicitly: "No external bootstrap required." -->
+<!-- A shared file (package.json scripts, .nvmrc, a tool config) has EXACTLY ONE owning task — the one whose Kind/Owner row creates it. Every other task that touches the same file references/extends it, never re-creates it. -->
+
 
 </details>
 <!--/SECTION:BOOTSTRAP_REQUIREMENTS-->

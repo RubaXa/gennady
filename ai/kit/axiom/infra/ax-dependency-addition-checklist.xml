@@ -1,9 +1,15 @@
 <!-- source: ai/directives/infra/nodejs-npm-setup.xml -->
 <Axiom id="AX_DEPENDENCY_ADDITION_CHECKLIST">
-  Before adding any dependency, verify three things:
+  Before adding any dependency, verify four things:
   1. **Node compatibility:** `npm view <pkg> engines` — supports version in `.nvmrc`?
   2. **Module system compatibility:** package ESM-only / CJS-only / dual? Matches project's `"type"`?
   3. **Pinning discipline:** dev tool → `--save-exact`; runtime dep → range acceptable.
+  4. **Release channel:** the `latest` dist-tag is not guaranteed stable — it can point at a
+     pre-release (`rc` / `beta` / `alpha`). Before pinning, compare `npm view <pkg> version` (what
+     `latest` actually resolves to) against `npm view <pkg> dist-tags` (the full tag → version map)
+     and pin the newest version that reads as stable (no `-rc`/`-beta`/`-alpha` suffix), not whatever
+     `latest` happens to name at that moment. Installing a pre-release is permitted only as an
+     explicit, spec-recorded decision — never a side effect of trusting `latest` by default.
 
   Skipping these introduces incompatibilities that surface as cryptic runtime errors, not install errors.
 </Axiom>

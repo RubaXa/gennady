@@ -87,12 +87,15 @@
     | `sdd-log <ticket> round "<reason>"` | STEP_1_PLAN — open a new Round (auto-numbered, dated) | `npx gennady sdd-log <ticket> round "execute <Task-ID>"` |
     | `sdd-log <ticket> close` | STEP_3_CLOSE_ROUND — append the Round-close block | `npx gennady sdd-log <ticket> close` |
     | `sdd-sync <ticket>` | STEP_4_SYNC — propagate ticket Status into every `*.3-tasks.md` from the ticket upward, verify the write | `npx gennady sdd-sync <ticket>` |
+    | `sdd-log <ticket> line "env-fix <file> ← <operator decision ref>"` | The ONE sanctioned `line` form for this orchestrator — only after explicit operator approval of the exact diff, per `AX_ENV_FIX_CHANNEL` | `npx gennady sdd-log <ticket> line "env-fix <file> ← <operator decision ref>"` |
     | `sdd-state [project-root]` | Deterministic FLOW_VERSION / READINESS snapshot — STEP_0B_PREFLIGHT already gets this from the `sdd-task` map's own `гейты:` line; call directly only when nothing else has surfaced it yet | `npx gennady sdd-state` |
     | `sdd-check --task <ticket>` | A point re-check after a fix — never a substitute for `sdd-task`'s own lifecycle verdict at STEP_1_PLAN (that call there is the wasted-turn case the step's own text already forbids) | `npx gennady sdd-check --task <ticket>` |
 
-    `round` and `close` are this directive's ONLY two `sdd-log` modes — `line` / `phase` / `handoff`
-    / `blocker` belong exclusively to the worker (`phase-execution-protocol`); see the logging-zone
-    rule at STEP_3_CLOSE_ROUND and `HardForbidden` below.
+    `round` and `close` are this directive's ONLY two unconditional `sdd-log` modes; `phase` /
+    `handoff` / `blocker` belong exclusively to the worker (`phase-execution-protocol`) with no
+    exception. `line` is likewise off-limits EXCEPT the single env-fix form in the table above —
+    the `AX_ENV_FIX_CHANNEL` write, sanctioned only after explicit prior operator approval of the
+    exact diff; see the logging-zone rule at STEP_3_CLOSE_ROUND and `HardForbidden` below.
   </ContextExpectation>
 
   <ExecutionPlan>
@@ -311,7 +314,7 @@
     - Workers write code, audit reports, and phase blocks; the orchestrator does not write production code, ever. It has exactly THREE narrow, non-overlapping write channels: (a) `AX_ENV_FIX_CHANNEL` — env/config artifacts only (`package.json` scripts, tool config, lockfiles), never `Target Files` code or `specs/**`, never without prior explicit operator approval of the exact diff; (b) STEP_7_RESOLVE Path B — administrative edits to ticket / Decision Log / spec waiver-labels, applying an ACCEPTED audit finding directly per `AX_OWNER`; (c) a ticket-local Decision Log append when the orchestrator itself self-resolves a spec/ticket hole it hit directly, not delegated to a worker (`AX_DEVIATION_SELF_RESOLVE`) — distinct from (b), which is gated on an audit finding the operator already accepted, while (c) fires on a gap the orchestrator decides on its own and reports only in the STEP_8 batch. None of the three extends to production code under a module's `Target Files`.
     - Run the group audit only when `sdd-task --audit-group` reports the group `due` — never per ticket, never on eyeballed "this looks like the last one"; run code-review immediately after that audit passes, on the same trigger, never independently of it.
     - Thread only typed Handoff payloads between subagents; keep their contexts separate.
-    - This directive's own `sdd-log` calls are exactly `round` (STEP_1_PLAN) and `close` (STEP_3_CLOSE_ROUND) — never `phase` / `line` / `handoff` / `blocker`, which are the worker's exclusive writes (`phase-execution-protocol`, `AX_TICKET_WRITE_SCOPE`); this directive never re-logs a phase header or a Handoff line the worker already wrote.
+    - This directive's own `sdd-log` calls are `round` (STEP_1_PLAN) and `close` (STEP_3_CLOSE_ROUND), unconditionally — `phase` / `handoff` / `blocker` are forbidden with no exception, the worker's exclusive writes (`phase-execution-protocol`, `AX_TICKET_WRITE_SCOPE`); this directive never re-logs a phase header or a Handoff line the worker already wrote. `line` is forbidden EXCEPT the single sanctioned form `sdd-log <ticket> line "env-fix <file> ← <operator decision ref>"`, and only after explicit operator approval of the exact diff (`AX_ENV_FIX_CHANNEL`) — every other `line` call remains off-limits.
     - Cap audit attempts at 2; re-run only phases in `phases_to_fix`; drive a retry from audit FAIL only (a phase BLOCKED pauses, it does not reopen); run phases of the same task sequentially, one at a time.
   </HardForbidden>
 

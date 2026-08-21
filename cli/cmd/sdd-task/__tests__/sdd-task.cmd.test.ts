@@ -528,6 +528,45 @@ describe('SddTaskCommand', () => {
       assert.match(outcome.message, /P1, P2/);
     });
 
+    it('no ## Audit Rounds section → no Audit Rounds block at all', async () => {
+      const t = join(dir, 'phased.md');
+      writeFileSync(t, PHASED_TICKET, 'utf-8');
+      const outcome = await mod.run(argv(t, '--phase', 'P2'));
+      assert.strictEqual(outcome.ok, true);
+      if (!outcome.ok) return;
+      assert.doesNotMatch(outcome.text, /Audit Rounds/);
+    });
+
+    it('## Audit Rounds section present → rendered verbatim after the Handoff block', async () => {
+      const t = join(dir, 'phased-audited.md');
+      const AUDIT_BLOCK = [
+        '',
+        '## Audit Rounds',
+        '',
+        '### Audit Round 1 — 2026-06-22, after Execution Round 1',
+        '',
+        '```',
+        '@audit task=cli-foo round=1 after-exec-round=1 triggered-reopen=Round-2 status=FAIL counts=B0·M1·m0·I0',
+        'F-01 | sev=M | type=RULES_COMPLIANCE_VIOLATION | conf=H | loc=src/foo.ts:10 | src=ai/directives/coding/typescript-rules.xml#AX_STRICT_NULL | route=ticket-reopen | act=fix: F-01 добавить null-guard',
+        '```',
+        '',
+      ].join('\n');
+      writeFileSync(t, PHASED_TICKET + AUDIT_BLOCK, 'utf-8');
+      const outcome = await mod.run(argv(t, '--phase', 'P2'));
+      assert.strictEqual(outcome.ok, true);
+      if (!outcome.ok) return;
+      assert.match(
+        outcome.text,
+        /Audit Rounds \(открытые находки — почини то, что адресовано твоей фазе\):/
+      );
+      assert.match(outcome.text, /### Audit Round 1 — 2026-06-22, after Execution Round 1/);
+      assert.match(outcome.text, /F-01 \| sev=M \| type=RULES_COMPLIANCE_VIOLATION/);
+      // verbatim, and after the Handoff block
+      const handoffIdx = outcome.text.indexOf('[HANDOFF]');
+      const auditIdx = outcome.text.indexOf('Audit Rounds (');
+      assert.ok(handoffIdx !== -1 && auditIdx > handoffIdx);
+    });
+
     it('without --phase, existing full-plan behavior is unchanged', async () => {
       const outcome = await mod.run(argv(ticket));
       assert.strictEqual(outcome.ok, true);
@@ -809,6 +848,8 @@ describe('SddTaskCommand', () => {
       initGitRepo(gDir);
       // an untracked source file the diff scan should pick up beyond the tickets' own Target Files
       writeFileSync(join(gDir, 'extra.ts'), '// untracked\n', 'utf-8');
+      // a non-source file — must also surface now that the scan carries no extension filter
+      writeFileSync(join(gDir, 'notes.md'), '# untracked notes\n', 'utf-8');
       try {
         const r = await withCwd(gDir, () => mod.run(argv('--group-scope', 'TSK-a')));
         assert.strictEqual(r.ok, true);
@@ -817,7 +858,11 @@ describe('SddTaskCommand', () => {
         assert.match(r.text, /^ {2}src\/TSK-a\.ts$/m);
         assert.match(r.text, /^ {2}src\/TSK-b\.ts$/m);
         assert.match(r.text, /^ {2}extra\.ts$/m);
-        assert.match(r.text, /^git: HEAD vs рабочее дерево/m);
+        assert.match(r.text, /^ {2}notes\.md$/m);
+        assert.match(
+          r.text,
+          /^git: HEAD vs рабочее дерево \(включая untracked, все типы файлов кроме node_modules\) — \d+ файл\(ов\)$/m
+        );
         assert.match(r.text, /^handoff:$/m);
         assert.match(r.text, /^ {2}src\/TSK-a\.ts$/m);
       } finally {

@@ -190,6 +190,8 @@ export function gateHint(command: string): string {
  * @param gates All Verification gates.
  * @param handoffs Phase id → its verbatim `**Handoff →**` line (`parsePhaseHandoffs`).
  * @param phaseId The requested phase id (e.g. `P2`).
+ * @param [auditRounds] The ticket's `## Audit Rounds` section body, verbatim, or null when absent
+ *   (never audited, or every audit passed clean).
  * @returns The compact phase context, or a not-found failure when `phaseId` has no Phases Overview row.
  */
 export function formatPhase(
@@ -198,7 +200,8 @@ export function formatPhase(
   detailsById: Record<string, PhaseDetail | undefined>,
   gates: Gate[],
   handoffs: Record<string, string>,
-  phaseId: string
+  phaseId: string,
+  auditRounds: string | null = null
 ): TaskOutcome {
   const idx = phases.findIndex((p) => p.id === phaseId);
   if (idx === -1) return phaseNotFound(phaseId, phases);
@@ -243,6 +246,14 @@ export function formatPhase(
   if (priorHandoffs.length > 0) {
     lines.push('', '[HANDOFF]');
     for (const h of priorHandoffs) lines.push(`Handoff ←${h.id}: ${h.line}`);
+  }
+
+  if (auditRounds) {
+    lines.push(
+      '',
+      'Audit Rounds (открытые находки — почини то, что адресовано твоей фазе):',
+      auditRounds
+    );
   }
 
   lines.push(
@@ -542,7 +553,7 @@ export function formatGroupScope(
   lines.push(
     '',
     git.available
-      ? `git: HEAD vs рабочее дерево (включая untracked) — ${git.files.length} файл(ов)`
+      ? `git: HEAD vs рабочее дерево (включая untracked, все типы файлов кроме node_modules) — ${git.files.length} файл(ов)`
       : 'git: git-ссылок нет — область обзора построена по Target Files тикетов'
   );
 

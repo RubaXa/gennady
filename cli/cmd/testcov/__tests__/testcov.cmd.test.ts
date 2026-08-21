@@ -6,7 +6,7 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync, rmSync, symlinkSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, rmSync, symlinkSync, unlinkSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -86,5 +86,52 @@ describe('testcov --check', () => {
     const { stdout } = runCheck(dir);
     const parsed = JSON.parse(stdout) as { runner: string | null };
     assert.strictEqual(parsed.runner, 'node:test');
+  });
+
+  describe('vitest config lookup also checks vite.config.* for a `test:` block', () => {
+    it('a vite.config.ts carrying test.coverage is recognized — no NO_RUNNER_CONFIG, no reporter/reportOnFailure warnings', () => {
+      writeFileSync(
+        join(dir, 'package.json'),
+        JSON.stringify({ name: 'fixture', devDependencies: { vitest: '^2.0.0' } }),
+        'utf-8'
+      );
+      writeFileSync(
+        join(dir, 'vite.config.ts'),
+        [
+          'export default {',
+          '  test: {',
+          "    coverage: { reporter: ['json', 'text'], reportOnFailure: true },",
+          '  },',
+          '};',
+        ].join('\n'),
+        'utf-8'
+      );
+      try {
+        const { stdout } = runCheck(dir);
+        const parsed = JSON.parse(stdout) as { diagnostics: Array<{ code: string }> };
+        assert.ok(!parsed.diagnostics.some((d) => d.code === 'NO_RUNNER_CONFIG'));
+        assert.ok(!parsed.diagnostics.some((d) => d.code === 'MISSING_JSON_REPORTER'));
+        assert.ok(!parsed.diagnostics.some((d) => d.code === 'MISSING_REPORT_ON_FAILURE'));
+        assert.ok(!parsed.diagnostics.some((d) => d.code === 'REPORT_ON_FAILURE_DISABLED'));
+      } finally {
+        unlinkSync(join(dir, 'vite.config.ts'));
+      }
+    });
+
+    it('no vitest.config.* and no vite.config.* at all → the prior NO_RUNNER_CONFIG warning, wording naming both', () => {
+      writeFileSync(
+        join(dir, 'package.json'),
+        JSON.stringify({ name: 'fixture', devDependencies: { vitest: '^2.0.0' } }),
+        'utf-8'
+      );
+      const { stdout } = runCheck(dir);
+      const parsed = JSON.parse(stdout) as {
+        diagnostics: Array<{ code: string; message: string }>;
+      };
+      const diag = parsed.diagnostics.find((d) => d.code === 'NO_RUNNER_CONFIG');
+      assert.ok(diag, `expected NO_RUNNER_CONFIG, got: ${JSON.stringify(parsed.diagnostics)}`);
+      assert.match(diag!.message, /vitest\.config\.\*/);
+      assert.match(diag!.message, /vite\.config\.\*/);
+    });
   });
 });
