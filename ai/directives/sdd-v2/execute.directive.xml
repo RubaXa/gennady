@@ -292,6 +292,7 @@
     | `H_PAUSED_AWAITING_OPERATOR` | Unresolved blocker in the log, or a phase returned BLOCKED / FAIL — pause (NOT a failure); operator resolves, then re-runs. An infrastructure-shaped blocker MAY instead be resolved via the narrow `AX_ENV_FIX_CHANNEL` (operator-approved point fix to env/config, never code or specs) |
     | `H_AUDIT_FAIL_AFTER_RETRY` | Audit still FAIL after 2 attempts — manual intervention |
     | `H_CODE_REVIEW_BLOCKER` | Code-review returned a `BLOCKER` bug — pause for the operator (not an auto-retry) |
+    | `H_WORKER_INTERRUPTED` | Same phase's dispatch came back with no typed Handoff twice in a row (cancelled / timed out / crashed, not a verdict) — operator checks the environment, then re-runs |
   </HaltConditions>
 
   <ContextExpectation>
@@ -414,13 +415,22 @@
         `AX_HANDOFF_TYPED`) — thread exactly that into the next phase's Inputs, never a paraphrase. Emit a
         progress line per transition (`ORCHESTRATOR_PROGRESS_FORMAT`).
 
-        <LogicSwitch on="worker Handoff status">
+        <LogicSwitch on="worker dispatch outcome">
         - WHEN `BLOCKED` / `FAIL` -> stop, no audit; `H_PAUSED_AWAITING_OPERATOR`
         - WHEN `DONE`             -> record Handoff in working memory (for threading and the STEP_8
           aggregation — the worker's own STEP_6_EMIT_HANDOFF already wrote it to the Execution Log;
           this directive never re-logs it), thread it into the next phase's Inputs; carry
           forward any `deviations:` entries verbatim (`AX_DEVIATION_SELF_RESOLVE`) — collected for
           STEP_8, never surfaced mid-run
+        - WHEN the dispatch returns with no typed Handoff at all (operator-cancelled, timed out, the
+          subagent or its environment crashed) -> this is an external interruption, not a phase verdict:
+          not DONE, not BLOCKED, not FAIL — nobody decided anything, so log nothing as this phase's
+          result. The work behind it may be unstarted, half-done, or fully done with the Handoff lost in
+          transit; guessing which is unneeded. First interruption of this phase this cycle -> re-dispatch
+          it exactly ONCE, same phase, the identical 3-line activation above — the worker's own
+          `STEP_1B_RESUME_OR_START` finds any block it already opened for this phase and continues from
+          there, so resuming never redoes or duplicates logged work. Same phase interrupted again on that
+          retry -> stop, no audit; `H_WORKER_INTERRUPTED`
         </LogicSwitch>
       </Action>
     </Step>

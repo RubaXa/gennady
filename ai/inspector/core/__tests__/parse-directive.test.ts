@@ -46,7 +46,7 @@ test('BeliefState carries 19 axioms with id + summary', () => {
   assert.ok((tool?.detail?.length ?? 0) > (tool?.note?.length ?? 0), 'axiom keeps full body');
 });
 
-test('HaltConditions carries the 5 halts', () => {
+test('HaltConditions carries the 6 halts', () => {
   const h = section('<HaltConditions>');
   const ids = (h?.children ?? []).map((c) => c.label).sort();
   assert.deepEqual(ids, [
@@ -55,6 +55,7 @@ test('HaltConditions carries the 5 halts', () => {
     'H_CODE_REVIEW_BLOCKER',
     'H_NO_TASKS',
     'H_PAUSED_AWAITING_OPERATOR',
+    'H_WORKER_INTERRUPTED',
   ]);
 });
 
