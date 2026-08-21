@@ -158,3 +158,64 @@ test('a preflight step embeds a structured <LogicSwitch> (WHEN gates), not prose
   const run = sw?.children?.[0]?.children?.find((c) => c.kind === 'run');
   assert.match(run?.ref ?? '', /migration-v1-v2/);
 });
+
+// --- fallback branch (sections with no dedicated parser) must expand nested <Contract>/<Axiom> ---
+// Regression: previously `note: firstSentence(el.inner), detail: clean(el.inner)` ran on the WHOLE
+// section body including nested tag markup, with no `children` at all — a <ChatProtocol> holding only
+// <Contract> elements rendered as an empty leaf (note "(пусто)"), and a section mixing its own text
+// with a nested tag either showed a raw XML fragment or silently dropped the nested content.
+
+test('a section with ONLY nested <Contract> elements and no own text expands them as children', () => {
+  const chatProtocol = router.children?.find((c) => c.label === '<ChatProtocol>');
+  assert.ok(chatProtocol, '<ChatProtocol> section present');
+  assert.equal(
+    chatProtocol?.children?.length,
+    2,
+    'both nested <Contract> elements became children'
+  );
+  const ids = (chatProtocol?.children ?? []).map((c) => c.label);
+  assert.deepEqual(ids, ['QUESTION_RULE_SLIM', 'HALT_FORMAT']);
+  for (const child of chatProtocol?.children ?? []) {
+    assert.ok((child.note?.length ?? 0) > 0, `${child.label} has a non-empty note`);
+    assert.ok(
+      (child.detail?.length ?? 0) >= (child.note?.length ?? 0),
+      `${child.label} keeps its full body as detail`
+    );
+    assert.doesNotMatch(child.detail ?? '', /<Contract\b/, 'no raw tag markup leaks into detail');
+  }
+  // no own text between the two <Contract> tags → a meaningful count note, never a blank "(пусто)"
+  assert.match(chatProtocol?.note ?? '', /вложенн/);
+});
+
+test('a section with its OWN text plus a nested <Contract> and <Axiom> keeps both', () => {
+  const chatOutput = router.children?.find((c) => c.label === '<ChatOutput>');
+  assert.ok(chatOutput, '<ChatOutput> section present');
+  // the section's own prose (before the first nested tag) survives as its note/detail
+  assert.match(chatOutput?.note ?? '', /Service line/);
+  assert.doesNotMatch(
+    chatOutput?.detail ?? '',
+    /<Contract\b|<Axiom\b/,
+    'own detail excludes nested tag markup'
+  );
+  const labels = (chatOutput?.children ?? []).map((c) => ({ label: c.label, kind: c.kind }));
+  assert.deepEqual(labels, [
+    { label: 'MESSAGE_LAYOUT', kind: 'text' },
+    { label: 'AX_PROGRESSIVE_DISCLOSURE', kind: 'axiom' },
+  ]);
+  const contract = chatOutput?.children?.find((c) => c.label === 'MESSAGE_LAYOUT');
+  assert.match(contract?.detail ?? '', /decision card/);
+});
+
+test('placeholder tokens inside `code spans` (e.g. `P<N>`, `` `<Task-ID>` ``) are not mistaken for nested tags', () => {
+  // execute.directive.xml's <ContextExpectation> has no dedicated parser and its markdown table is
+  // full of backticked placeholders shaped like a tag (<N>, <ticket>, <id>) — none of these may turn
+  // into a bogus child node, and the section's own text must stay intact.
+  const ctx = tree.children?.find((c) => c.label === '<ContextExpectation>');
+  assert.ok(ctx, '<ContextExpectation> section present');
+  assert.equal(
+    ctx?.children,
+    undefined,
+    'no nested tags in a plain markdown table — no bogus children'
+  );
+  assert.match(ctx?.detail ?? '', /sdd-task/);
+});

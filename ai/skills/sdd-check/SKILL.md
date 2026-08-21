@@ -5,12 +5,12 @@ compatibility: opencode
 ---
 
 <SddSkill id="check">
-  <Mission>Run the deterministic mechanical audit and report. This skill has NO directive to embody — it is a thin reporter over the `sdd-check` tool. Read-only: it never edits artifacts (routing fixes to `/sdd-reconcile` is the operator's call).</Mission>
-
   <Priming>
     Unlike the other skills, `check` does not load a directive — the logic lives entirely in the `sdd-check`
     tool (`shared/sdd/check.ts`). The skill runs the tool and surfaces its ESLint-style findings.
   </Priming>
+
+  <Mission>Run the deterministic mechanical audit and report. This skill has NO directive to embody — it is a thin reporter over the `sdd-check` tool. Read-only: it never edits artifacts (routing fixes to `/sdd-reconcile` is the operator's call).</Mission>
 
   <ExecutionPlan>
     <Step id="RUN">

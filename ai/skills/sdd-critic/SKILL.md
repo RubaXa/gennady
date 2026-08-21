@@ -5,14 +5,14 @@ compatibility: opencode
 ---
 
 <SddSkill id="critic">
-  <Mission>Run an autonomous critique loop on an SDD artifact: per round dispatch one isolated critic-sensor, weigh its findings against full project context, reconcile every introduced entity against the existing surface (reuse > extend > justify > escalate), surgically edit, re-dispatch if edited (cap 5). I own the artifact and apply edits; the sensor only reports.</Mission>
-
   <Priming>
     SDD skills are thin directive-loaders. Files under `ai/directives/sdd-v2/` are PROMPT directives, not
     data: the XML-ish tags only mark sections — `<Mission>` goal, `<BeliefState>` axioms, `<ExecutionPlan>`
     steps, `<HaltConditions>` stop-rules. The body is markdown read as instruction — you EMBODY the
     directive, you do not parse it.
   </Priming>
+
+  <Mission>Run an autonomous critique loop on an SDD artifact: per round dispatch one isolated critic-sensor, weigh its findings against full project context, reconcile every introduced entity against the existing surface (reuse > extend > justify > escalate), surgically edit, re-dispatch if edited (cap 5). I own the artifact and apply edits; the sensor only reports.</Mission>
 
   <ExecutionPlan>
     <Step id="GATHER">

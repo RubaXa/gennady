@@ -8,6 +8,7 @@ import {
   parseAttrs,
   scanRefsAndTools,
   topLevelElements,
+  type RawEl,
 } from './scan.ts';
 
 /** BeliefState → узлы-аксиомы (id + первое предложение + полное тело). */
@@ -19,6 +20,88 @@ function parseAxioms(inner: string): TraceNode[] {
     out.push({ kind: 'axiom', label: attrs.id ?? 'AX_?', note: firstSentence(body), detail: body });
   }
   return out;
+}
+
+/** Теги, разбираемые как лист «id + первое предложение + полное тело» (в стиле parseAxioms), а не
+ *  как под-секция для дальнейшего разворота. */
+const LEAF_TAGS: Record<string, TraceNode['kind']> = { Axiom: 'axiom', Contract: 'text' };
+
+/** Предел рекурсии для генерик-секций без спец-разборщика — реальная вложенность в директивах мала
+ *  (Section → Contract/Axiom, изредка ещё один уровень), предел просто страхует от патологического XML. */
+const GENERIC_DEPTH_LIMIT = 8;
+
+/** «N вложенных элементов» с верным русским согласованием числительного (1/2-4/5+). */
+function nestedCountNote(n: number): string {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return `${n} вложенный элемент`;
+  if (mod10 >= 2 && mod10 <= 4 && !(mod100 >= 12 && mod100 <= 14)) return `${n} вложенных элемента`;
+  return `${n} вложенных элементов`;
+}
+
+/** Замаскировать `code`-спаны (той же длины, символы `<`/`>` внутри не выживают) — секции без
+ *  спец-разборщика — это свободная markdown-проза, и плейсхолдеры вида `` `P<N>` ``, `` `<Task-ID>` ``
+ *  иначе ложно матчатся как псевдо-тег PascalCase-сканером (см. PASCAL_OPEN в scan.ts: одна заглавная
+ *  буква — валидное имя тега). Длина сохраняется, чтобы смещения совпадали с оригиналом. */
+function maskCodeSpans(s: string): string {
+  return s.replace(/`[^`]*`/g, (m) => ' '.repeat(m.length));
+}
+
+/** Top-level элементы секции, игнорируя псевдо-теги внутри `code`-спанов: находим границы на
+ *  замаскированной копии (те же смещения), затем перечитываем реальный тег из оригинала на найденном
+ *  старте — на этой позиции маска гарантированно не тронула текст, иначе тег там не нашёлся бы. */
+function nestedElements(inner: string): RawEl[] {
+  const masked = maskCodeSpans(inner);
+  const out: RawEl[] = [];
+  let cursor = 0;
+  while (cursor < masked.length) {
+    const probe = nextElement(masked, cursor);
+    if (!probe) break;
+    const real = nextElement(inner, probe.end - probe.raw.length);
+    if (real) out.push(real);
+    cursor = probe.end;
+  }
+  return out;
+}
+
+/**
+ * Разбор секции без спец-разборщика (ChatProtocol, ChatOutput, Mission, ...): вложенные top-level
+ * элементы становятся детьми (Contract/Axiom — лист с id/телом, прочий PascalCase-тег — под-секция,
+ * рекурсивно той же логикой), а собственный текст секции (то, что осталось после вычитания тел
+ * вложенных элементов) — note/detail самой секции. Пустой собственный текст при непустых детях даёт
+ * осмысленный note («N вложенных контрактов»), а не пропадает в пустоту.
+ */
+function parseGenericSection(
+  inner: string,
+  depth = 0
+): { note?: string; detail?: string; children?: TraceNode[] } {
+  const nested = depth < GENERIC_DEPTH_LIMIT ? nestedElements(inner) : [];
+  if (!nested.length) {
+    const text = clean(inner);
+    return text ? { note: firstSentence(text), detail: text } : {};
+  }
+  let outsideText = inner;
+  const children: TraceNode[] = [];
+  for (const el of nested) {
+    outsideText = outsideText.replace(el.raw, '\n');
+    const leafKind = LEAF_TAGS[el.name];
+    if (leafKind) {
+      const attrs = parseAttrs(el.attrsRaw);
+      const body = clean(el.inner);
+      children.push({
+        kind: leafKind,
+        label: attrs.id ?? `<${el.name}>`,
+        note: firstSentence(body),
+        detail: body,
+      });
+    } else {
+      const sub = parseGenericSection(el.inner, depth + 1);
+      children.push({ kind: 'section', label: `<${el.name}>`, ...sub });
+    }
+  }
+  const text = clean(outsideText);
+  const note = text ? firstSentence(text) : nestedCountNote(children.length);
+  return { note, detail: text || undefined, children };
 }
 
 /** HaltConditions → узлы-halt с триггером из таблицы (| `H_X` | trigger |), fallback на голые токены. */
@@ -159,12 +242,7 @@ export function parseDirective(path: string, xml: string): TraceNode {
       });
     else if (el.name === 'LogicSwitch') sections.push(parseLogicSwitch(el.inner, el.attrs.on));
     else
-      sections.push({
-        kind: 'section',
-        label: `<${el.name}>`,
-        note: firstSentence(el.inner),
-        detail: clean(el.inner),
-      });
+      sections.push({ kind: 'section', label: `<${el.name}>`, ...parseGenericSection(el.inner) });
   }
   // A format/contract file (<Contract>) has no PascalCase structural children — its whole body IS the
   // content (a markdown template). Capture it as detail so descending into it shows something, not a blank leaf.

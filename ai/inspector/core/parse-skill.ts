@@ -48,7 +48,7 @@ function parseSkillSteps(inner: string): TraceNode[] {
 }
 
 /**
- * Разобрать SKILL.md в дерево: skill-узел → секции SddSkill по порядку (Mission, Priming, ExecutionPlan→steps).
+ * Разобрать SKILL.md в дерево: skill-узел → секции SddSkill по порядку (Priming, Mission, ExecutionPlan→steps).
  * @param path Путь к SKILL.md (становится ref).
  * @param md Содержимое файла.
  */

@@ -5,14 +5,14 @@ compatibility: opencode
 ---
 
 <SddSkill id="scaffold">
-  <Mission>Converge the approved specs into a DAG of self-contained task tickets + the task-index hierarchy. Gather state, embody the scaffold directive, hand off. No interview, no code — that is `/sdd` and execute.</Mission>
-
   <Priming>
     SDD skills are thin directive-loaders. Files under `ai/directives/sdd-v2/` are PROMPT directives, not
     data: the XML-ish tags only mark sections — `<Mission>` goal, `<BeliefState>` axioms, `<ExecutionPlan>`
     steps, `<HaltConditions>` stop-rules. The body is markdown read as instruction — you EMBODY the
     directive, you do not parse it.
   </Priming>
+
+  <Mission>Converge the approved specs into a DAG of self-contained task tickets + the task-index hierarchy. Gather state, embody the scaffold directive, hand off. No interview, no code — that is `/sdd` and execute.</Mission>
 
   <ExecutionPlan>
     <Step id="GATHER">

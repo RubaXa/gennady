@@ -6,17 +6,6 @@ compatibility: opencode
 ---
 
 <Skill name="opencode-get-session">
-  <Mission>
-    Extract opencode session content from the local SQLite DB (`~/.local/share/opencode/opencode.db`).
-    Two modes:
-    1. DISCOVERY — fuzzy search by title, pick session, dump full transcript.
-    2. TARGETED — session ID is already known from a prior call: skip search,
-       extract instantly. Optionally filter by content keyword (e.g. "найди про T3",
-       "покажи только решения 📌").
-    Repeat calls with session ID must be instant — zero discovery overhead.
-    Read-only; no INSERT/UPDATE/DELETE.
-  </Mission>
-
   <Priming>
     DB schema:
     - `session(id, title, time_created, time_updated)` — epoch ms
@@ -27,6 +16,17 @@ compatibility: opencode
     If DB not found: `find ~ -name "opencode.db" -maxdepth 5 2>/dev/null`.
     Use ONLY sqlite3 CLI — never Read/Glob the DB file.
   </Priming>
+
+  <Mission>
+    Extract opencode session content from the local SQLite DB (`~/.local/share/opencode/opencode.db`).
+    Two modes:
+    1. DISCOVERY — fuzzy search by title, pick session, dump full transcript.
+    2. TARGETED — session ID is already known from a prior call: skip search,
+       extract instantly. Optionally filter by content keyword (e.g. "найди про T3",
+       "покажи только решения 📌").
+    Repeat calls with session ID must be instant — zero discovery overhead.
+    Read-only; no INSERT/UPDATE/DELETE.
+  </Mission>
 
   <IntakeParsing>
     From the operator message, extract:

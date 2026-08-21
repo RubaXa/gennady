@@ -6,14 +6,6 @@ compatibility: opencode
 ---
 
 <Skill name="agent-inbox">
-  <Mission>
-    Drive review of incoming merge/pull requests as a co-reviewer: bring the change into context →
-    honest fact-check → infographic of WHAT changed → a ready answer / line-comments → post ONLY
-    after the operator approves. Role — reviewer / mentioned; my own MR/PR — self-review summary.
-    One skill: it detects the intent and loads the rules it needs. VCS-neutral — GitLab and GitHub
-    (provider auto-detected from host); this skill never hardcodes one provider.
-  </Mission>
-
   <Priming>
     Files under `ai/directives/agent-inbox/` are PROMPT directives, not data: the tags mark sections
     (`Mission`, `AX_*`, `ExecutionPlan`, `HaltConditions`); the body is instruction you EMBODY, not
@@ -23,6 +15,14 @@ compatibility: opencode
     `RE_READ("path")` = read it again NOW even if already read (for rules that must be refreshed
     before each MR/PR).
   </Priming>
+
+  <Mission>
+    Drive review of incoming merge/pull requests as a co-reviewer: bring the change into context →
+    honest fact-check → infographic of WHAT changed → a ready answer / line-comments → post ONLY
+    after the operator approves. Role — reviewer / mentioned; my own MR/PR — self-review summary.
+    One skill: it detects the intent and loads the rules it needs. VCS-neutral — GitLab and GitHub
+    (provider auto-detected from host); this skill never hardcodes one provider.
+  </Mission>
 
   <ExecutionPlan>
     <Step id="GATHER">

@@ -5,14 +5,14 @@ compatibility: opencode
 ---
 
 <SddSkill id="execute">
-  <Mission>Orchestrate execution of one task ticket: plan phases, dispatch one worker-subagent per phase, close the Round, dispatch audit, retry only failing phases on audit FAIL. I PLAN and DISPATCH — I never write code, run a phase, or run audit myself.</Mission>
-
   <Priming>
     SDD skills are thin directive-loaders. Files under `ai/directives/sdd-v2/` are PROMPT directives, not
     data: the XML-ish tags only mark sections — `<Mission>` goal, `<BeliefState>` axioms, `<ExecutionPlan>`
     steps, `<HardForbidden>`, `<HaltConditions>` stop-rules. The body is markdown read as instruction —
     you EMBODY the directive, you do not parse it.
   </Priming>
+
+  <Mission>Orchestrate execution of one task ticket: plan phases, dispatch one worker-subagent per phase, close the Round, dispatch audit, retry only failing phases on audit FAIL. I PLAN and DISPATCH — I never write code, run a phase, or run audit myself.</Mission>
 
   <ExecutionPlan>
     <Step id="GATHER">

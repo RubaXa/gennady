@@ -5,14 +5,14 @@ compatibility: opencode
 ---
 
 <SddSkill id="router">
-  <Mission>Route the operator to exactly one SDD flow: gather state, embody the router directive, hand off.</Mission>
-
   <Priming>
     SDD skills are thin directive-loaders. Files under `ai/directives/sdd-v2/` are PROMPT directives, not
     data: the XML-ish tags only mark sections — `<Mission>` goal, `<BeliefState>` axioms, `<ExecutionPlan>`
     steps, `<HaltConditions>` stop-rules. The body is markdown read as instruction — you EMBODY the
     directive, you do not parse it. A skill gathers context fast, then hands control to its directive.
   </Priming>
+
+  <Mission>Route the operator to exactly one SDD flow: gather state, embody the router directive, hand off.</Mission>
 
   <ExecutionPlan>
     <Step id="GATHER">

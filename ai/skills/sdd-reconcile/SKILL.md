@@ -5,14 +5,14 @@ compatibility: opencode
 ---
 
 <SddSkill id="reconcile">
-  <Mission>Restore the spec ⟷ code ⟷ task triangle, then verify. The heart is the probe — bug vs spec-defect, the problem's class, the blast radius — not the single symptom. Both modes end with the same tail: back-sync specs/tasks, then verify.</Mission>
-
   <Priming>
     SDD skills are thin directive-loaders. Files under `ai/directives/sdd-v2/` are PROMPT directives, not
     data: the XML-ish tags only mark sections — `<Mission>` goal, `<BeliefState>` axioms, `<ExecutionPlan>`
     steps, `<HaltConditions>` stop-rules. The body is markdown read as instruction — you EMBODY the
     directive, you do not parse it.
   </Priming>
+
+  <Mission>Restore the spec ⟷ code ⟷ task triangle, then verify. The heart is the probe — bug vs spec-defect, the problem's class, the blast radius — not the single symptom. Both modes end with the same tail: back-sync specs/tasks, then verify.</Mission>
 
   <ExecutionPlan>
     <Step id="GATHER">

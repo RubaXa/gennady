@@ -25,6 +25,41 @@ test('skill node carries name + description', () => {
   assert.ok((skill.note?.length ?? 0) > 0);
 });
 
+test('top-level sections reflect the real file order — Priming before Mission', () => {
+  const labels = (skill.children ?? []).map((c) => c.label);
+  const primingIdx = labels.indexOf('<Priming>');
+  const missionIdx = labels.indexOf('<Mission>');
+  assert.ok(primingIdx >= 0 && missionIdx >= 0, 'both sections present');
+  assert.ok(primingIdx < missionIdx, 'Priming precedes Mission');
+});
+
+test('parseSkill is order-agnostic — it walks sections in whatever document order they appear', () => {
+  const bodyPrimingFirst = [
+    '<SddSkill id="x">',
+    '  <Priming>prime.</Priming>',
+    '  <Mission>go.</Mission>',
+    '  <ExecutionPlan></ExecutionPlan>',
+    '</SddSkill>',
+  ].join('\n');
+  const bodyMissionFirst = [
+    '<SddSkill id="x">',
+    '  <Mission>go.</Mission>',
+    '  <Priming>prime.</Priming>',
+    '  <ExecutionPlan></ExecutionPlan>',
+    '</SddSkill>',
+  ].join('\n');
+  const a = parseSkill('a.md', bodyPrimingFirst);
+  const b = parseSkill('b.md', bodyMissionFirst);
+  assert.deepEqual(
+    (a.children ?? []).map((c) => c.label),
+    ['<Priming>', '<Mission>', '<ExecutionPlan>']
+  );
+  assert.deepEqual(
+    (b.children ?? []).map((c) => c.label),
+    ['<Mission>', '<Priming>', '<ExecutionPlan>']
+  );
+});
+
 test('ExecutionPlan exposes GATHER / PREFLIGHT / EMBODY in order', () => {
   const ids = (plan(skill)?.children ?? []).map((s) => s.attrs?.id);
   assert.deepEqual(ids, ['GATHER', 'PREFLIGHT', 'EMBODY']);

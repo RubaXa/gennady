@@ -57,6 +57,9 @@ export interface RawEl {
   attrsRaw: string;
   inner: string;
   end: number;
+  /** Полный исходный текст элемента (открывающий тег…закрывающий тег включительно) — для удаления
+   *  вложенного элемента из текста родителя без дублирования (см. parse-directive.ts fallback-ветка). */
+  raw: string;
 }
 
 /** Следующий PascalCase-элемент от позиции `from`; закрытие — первый `</name>` (без вложенности тех же имён). */
@@ -65,28 +68,45 @@ export function nextElement(s: string, from: number): RawEl | null {
   const m = PASCAL_OPEN.exec(sub);
   if (!m) return null;
   const name = m[1] as string;
-  const openEnd = from + m.index + m[0].length;
-  if (m[3] === '/') return { name, attrsRaw: m[2] as string, inner: '', end: openEnd };
+  const start = from + m.index;
+  const openEnd = start + m[0].length;
+  if (m[3] === '/')
+    return {
+      name,
+      attrsRaw: m[2] as string,
+      inner: '',
+      end: openEnd,
+      raw: s.slice(start, openEnd),
+    };
   const cm = new RegExp('</' + name + '>').exec(s.slice(openEnd));
-  if (!cm) return { name, attrsRaw: m[2] as string, inner: s.slice(openEnd), end: s.length };
+  if (!cm)
+    return {
+      name,
+      attrsRaw: m[2] as string,
+      inner: s.slice(openEnd),
+      end: s.length,
+      raw: s.slice(start),
+    };
+  const end = openEnd + cm.index + cm[0].length;
   return {
     name,
     attrsRaw: m[2] as string,
     inner: s.slice(openEnd, openEnd + cm.index),
-    end: openEnd + cm.index + cm[0].length,
+    end,
+    raw: s.slice(start, end),
   };
 }
 
 /** Все элементы верхнего уровня строки в порядке появления. */
 export function topLevelElements(
   inner: string
-): { name: string; attrs: Record<string, string>; inner: string }[] {
-  const out: { name: string; attrs: Record<string, string>; inner: string }[] = [];
+): { name: string; attrs: Record<string, string>; inner: string; raw: string }[] {
+  const out: { name: string; attrs: Record<string, string>; inner: string; raw: string }[] = [];
   let cursor = 0;
   while (cursor < inner.length) {
     const el = nextElement(inner, cursor);
     if (!el) break;
-    out.push({ name: el.name, attrs: parseAttrs(el.attrsRaw), inner: el.inner });
+    out.push({ name: el.name, attrs: parseAttrs(el.attrsRaw), inner: el.inner, raw: el.raw });
     cursor = el.end;
   }
   return out;
