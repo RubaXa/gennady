@@ -470,6 +470,13 @@ describe('formatVerifyReport', () => {
 
     assert.match(text, /ZERO_GATES/);
     assert.ok(!text.includes('ALL_GATES_PASS'), 'verified-nothing must not read as success');
+    // Machine consumers read diagnostics, not the human verdict line (review B2 follow-up).
+    assert.ok(
+      report.diagnostics.some((diagnostic) => diagnostic.code === 'ZERO_GATES'),
+      'a zero-gate run must carry a ZERO_GATES diagnostic for --json consumers'
+    );
+    // The diagnostic feeds the verdict block only — it must not also print as a ⚠️ warning.
+    assert.equal(text.match(/ZERO_GATES/g)?.length, 1);
   });
 
   it('tells an unconfigured repository what to do when nothing was even planned', () => {

@@ -58,7 +58,9 @@ function detectBaseRef(root: string): string {
   if (remoteHead.startsWith('refs/remotes/')) {
     return remoteHead.slice('refs/remotes/'.length);
   }
-  for (const ref of ['origin/master', 'origin/main', 'master', 'main']) {
+  // Fallback prefers main: repos that carry both branches migrated master→main, so a
+  // leftover origin/master is the stale one (review B9 follow-up).
+  for (const ref of ['origin/main', 'origin/master', 'main', 'master']) {
     if (gitOrEmpty(['rev-parse', '--verify', '--quiet', ref], root).length > 0) {
       return ref;
     }

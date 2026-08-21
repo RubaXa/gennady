@@ -109,6 +109,17 @@ const UNSANDBOXED_RUN_DIAGNOSTIC: StackDiagnostic = {
 // #endregion END_REPLICA_POOL
 
 /**
+ * Diagnostic for a run that executed zero gates. The human report renders it as the terminal
+ * ZERO_GATES verdict; carrying it in `diagnostics` makes the condition visible to `--json`
+ * consumers too — `ok` alone reads true on an empty run (§8.2) while the exit code is 1.
+ */
+const ZERO_GATES_DIAGNOSTIC: StackDiagnostic = {
+  code: 'ZERO_GATES',
+  message: 'no gate was executed — the run verified nothing',
+  fix: 'declare gates under stack.<id>.extraGates in gennady.yaml, or loosen --skip/--only filters',
+};
+
+/**
  * @purpose Run one gate to completion and classify the outcome.
  * @param gate Gate to execute; a gate carrying a skip reason is returned untouched.
  * @param pool Run replica pool, or null to execute in the real tree (fixers).
@@ -408,9 +419,11 @@ export function runVerify(
 
   return {
     runs,
-    diagnostics: pool.unsandboxedSeen()
-      ? [...diagnostics, UNSANDBOXED_RUN_DIAGNOSTIC]
-      : diagnostics,
+    diagnostics: [
+      ...diagnostics,
+      ...(pool.unsandboxedSeen() ? [UNSANDBOXED_RUN_DIAGNOSTIC] : []),
+      ...(executed.length === 0 ? [ZERO_GATES_DIAGNOSTIC] : []),
+    ],
     results,
     passed,
     total: executed.length,
@@ -457,6 +470,10 @@ export function formatVerifyReport(report: VerifyReport): string {
   const lines: string[] = [];
 
   for (const diagnostic of report.diagnostics) {
+    if (diagnostic.code === ZERO_GATES_DIAGNOSTIC.code) {
+      // Rendered as the terminal verdict block below, not as a leading warning.
+      continue;
+    }
     lines.push(`[verify] ⚠️  ${diagnostic.code}: ${diagnostic.message}`);
     lines.push(`         fix: ${diagnostic.fix}`);
   }

@@ -21,7 +21,9 @@ export function printHelp(): void {
   console.info('Scope (default: changes vs the base branch):');
   console.info('  <path...>             Files or directories (golang narrows to their packages)');
   console.info('  --all                 Whole repository — slow on monorepos');
-  console.info('  --changed             Changed vs origin/master|main (default)');
+  console.info(
+    '  --changed             Changed vs origin/HEAD, falling back to main|master (default)'
+  );
   console.info('');
   console.info('Options:');
   console.info(

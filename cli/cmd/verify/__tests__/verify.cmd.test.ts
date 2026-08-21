@@ -158,6 +158,29 @@ describe('verify command', () => {
     );
   });
 
+  it('surfaces ZERO_GATES in --json diagnostics — `ok` alone reads true on an empty run (review B2)', async () => {
+    await withFixture(
+      { 'package.json': '{"name":"x","scripts":{"test":"node -e \\"process.exit(1)\\""}}' },
+      async (dir) => {
+        const { value, log } = await captureLog(() =>
+          run(argv(`--root=${dir}`, '--skip=node:test', '--json'))
+        );
+
+        assert.equal(value, 1);
+        const parsed = JSON.parse(log) as {
+          ok: boolean;
+          total: number;
+          diagnostics: Array<{ code: string }>;
+        };
+        // §8.2: ok means "every executed gate passed" — vacuously true here by contract.
+        // The machine-readable marker for "verified nothing" is the diagnostic.
+        assert.equal(parsed.ok, true);
+        assert.equal(parsed.total, 0);
+        assert.ok(parsed.diagnostics.some((diagnostic) => diagnostic.code === 'ZERO_GATES'));
+      }
+    );
+  });
+
   it('keeps a positional target literally named "verify" (review N2)', async () => {
     await withFixture(
       { 'package.json': '{"name":"x","scripts":{"test":"node -e 0"}}', 'verify/.keep': '' },

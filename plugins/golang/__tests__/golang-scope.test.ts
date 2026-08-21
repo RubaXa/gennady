@@ -161,6 +161,30 @@ describe('resolveGoScope — changed mode in a real git repository', () => {
       fs.rmSync(top, { recursive: true, force: true });
     }
   });
+
+  it('falls back to origin/main over a stale origin/master when origin/HEAD is unset (review B9)', () => {
+    const top = fs.mkdtempSync(path.join(os.tmpdir(), 'golang-scope-fallback-'));
+    try {
+      fs.writeFileSync(path.join(top, 'go.mod'), 'module example.com/app\n\ngo 1.24\n');
+      fs.writeFileSync(path.join(top, 'a.go'), 'package app\n');
+      git(top, 'init', '-q', '-b', 'main');
+      git(top, 'add', '-A');
+      git(top, 'commit', '-qm', 'c1');
+      // Migration leftover: origin/master frozen at c1, origin/main current, no origin/HEAD —
+      // the state after `git remote add` + `fetch` without `set-head`.
+      git(top, 'update-ref', 'refs/remotes/origin/master', 'HEAD');
+      fs.writeFileSync(path.join(top, 'b.go'), 'package app\n');
+      git(top, 'add', '-A');
+      git(top, 'commit', '-qm', 'c2');
+      git(top, 'update-ref', 'refs/remotes/origin/main', 'HEAD');
+
+      const scope = resolveGoScope({ ...project(), root: top }, { mode: 'changed', targets: [] });
+
+      assert.match(scope.note, /vs origin\/main/);
+    } finally {
+      fs.rmSync(top, { recursive: true, force: true });
+    }
+  });
 });
 
 describe('isStructuralListError', () => {
