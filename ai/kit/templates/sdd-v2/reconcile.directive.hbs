@@ -151,7 +151,7 @@
     </Step>
     <Step id="STEP_4_AGREE">
       <Goal>Operator agreement (`AX_OPERATOR_AGREEMENT`).</Goal>
-      <Action>Ask via `QUESTION_FORMAT`; warn about the class / blast the operator may not have seen (`AX_OPERATOR_SAFEGUARD`). Rejected → `H_OPERATOR_REJECT`. STOP.</Action>
+      <Action>Ask via `QUESTION_RULE_SLIM`; warn about the class / blast the operator may not have seen (`AX_OPERATOR_SAFEGUARD`). Rejected → `H_OPERATOR_REJECT`. STOP.</Action>
     </Step>
     <Step id="STEP_5_APPLY">
       <Goal>Apply the changes.</Goal>
@@ -191,7 +191,7 @@
   <ChatOutput>
     {{> "contract/process/message-layout"}}
 
-    {{> "contract/process/question-format"}}
+    {{> "contract/process/question-rule-slim"}}
 
     {{> "contract/process/plan-table-format"}}
 

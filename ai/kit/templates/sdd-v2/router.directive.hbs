@@ -84,7 +84,7 @@
   </SessionState>
 
   <ChatProtocol>
-    {{> "contract/process/question-format"}}
+    {{> "contract/process/question-rule-slim"}}
 
     {{> "contract/process/halt-format"}}
   </ChatProtocol>
@@ -94,7 +94,7 @@
     |---|---|
     | `H_AMBIGUOUS_INTENT` | Operator intent cannot be classified against state — ask, never guess |
     | `H_WRONG_REPO` | Operator answered the empty-intake entry Ask with «я не в том репозитории» — stop here, no directive loads |
-    | `H_ASK_WITHOUT_CARD` | An `AskUserQuestion` / `QUESTION_FORMAT` question fired without the `sdd-state` card having been shown verbatim as its own visible unit first — operator may answer `STOP` and demand the card |
+    | `H_ASK_WITHOUT_CARD` | An `AskUserQuestion` / `QUESTION_RULE_SLIM` question fired without the `sdd-state` card having been shown verbatim as its own visible unit first — operator may answer `STOP` and demand the card |
     | `H_UNFORMATTED_ASK` | A question reached the operator as bare free-form text — no `### 💡 <О чём решаем>` explanation first, no `AskUserQuestion` call, or (text fallback) no explicit named option list — `H_ASK_WITHOUT_CARD` is the special case of this same rule for STEP_0's card: show-then-ask is the general law, the card is just its first instance |
   </HaltConditions>
 
@@ -120,7 +120,7 @@
         display, which is a required observable artifact, not narration.
 
         **AskUserQuestion is void without the shown card.** Any `AskUserQuestion` call (or
-        `QUESTION_FORMAT` question) fired anywhere downstream of STEP_0 — including STEP_1_CLASSIFY's
+        `QUESTION_RULE_SLIM` question) fired anywhere downstream of STEP_0 — including STEP_1_CLASSIFY's
         empty-intake Ask below — is INVALID unless the fenced card above already appeared, verbatim,
         as its own visible unit earlier in this turn. Collapsing the card's content into the
         question's title or description (e.g. «Репозиторий пустой: портал отсутствует, скоупов нет,
@@ -179,7 +179,7 @@
         card (SHOW-gate, STEP_0) and is still «в непонятной ситуации» without a concrete next step. Read
         `CODE` from the `sdd-state` output already in context — the probe is part of the default
         snapshot, a second `sdd-state` call is a wasted turn — and STOP: ask via the `AskUserQuestion` tool when
-        available, otherwise `QUESTION_FORMAT` (message in Russian) — this Ask is itself subject to the
+        available, otherwise `QUESTION_RULE_SLIM` (message in Russian) — this Ask is itself subject to the
         SHOW-gate: the card must already stand shown as its own fenced unit, and this Ask's title MUST
         NOT re-summarize it (`H_ASK_WITHOUT_CARD` — a title like «Репозиторий пустой: портал
         отсутствует...» is the forbidden summary-as-card, not a legal short title) — «Создать проект» (рекомендую) · «Воссоздать спеки из
@@ -201,7 +201,7 @@
         never a second one. This exchange is mandatory even when the intent is unambiguous from
         state and the scale does not change the route — it is a named hard stop
         (`AX_DIALOGUE_DISCIPLINE`), never skipped on high confidence. Use the AskUserQuestion tool
-        when available; otherwise `QUESTION_FORMAT`. Message in Russian.
+        when available; otherwise `QUESTION_RULE_SLIM`. Message in Russian.
 
         On confirmation record `intent:` and `scale:` into the session file via the CLI —
         `npx gennady sdd-session open --intent <intent> [--scale <scale>]` (idempotent; creates

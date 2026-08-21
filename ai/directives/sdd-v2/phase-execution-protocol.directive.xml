@@ -363,7 +363,7 @@
 
       The orchestrator collects every `deviations:` entry across the run just finished — one ticket, or
       every ticket of a `batch` — and raises them ONCE, at the very end, as a single batched
-      `AskUserQuestion` (`QUESTION_FORMAT`): add to the spec · roll back · accept as-is. Never one
+      `AskUserQuestion` (`QUESTION_RULE_SLIM`): add to the spec · roll back · accept as-is. Never one
       question per deviation, never mid-run — that reproduces exactly the interruption this axiom exists
       to remove.
     </Axiom>

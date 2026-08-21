@@ -94,8 +94,8 @@
         ASK label — printed order and recommended-first then agree.
       - «Other» is supplied by the tool automatically; never add a manual equivalent.
       - Tool unavailable → drop only the ASK call; the развилка message still follows
-        `QUESTION_MESSAGE_FORMAT` and the answer arrives as free text, otherwise falling back to the
-        caller's plain-text `QUESTION_FORMAT` when one applies. Batched default confirmations use one
+        `QUESTION_MESSAGE_FORMAT` and the answer arrives as free text, otherwise falling back to
+        `QUESTION_FORMAT`'s plain-text fallback when one applies. Batched default confirmations use one
         ASK call covering 2–4 questions.
     </Axiom>
 
@@ -193,10 +193,10 @@
 
     | Amplification | Directive | Triage trigger |
     |---|---|---|
-    | security | `ai/directives/sdd-v2/amplify-security.directive.xml` | external users, or data crossing a trust boundary |
-    | nfr | `ai/directives/sdd-v2/amplify-nfr.directive.xml` | load / latency / volume significant enough to shape the design |
-    | storage | `ai/directives/sdd-v2/amplify-storage.directive.xml` | state persisted beyond a single run |
-    | observability | `ai/directives/sdd-v2/amplify-observability.directive.xml` | someone must diagnose this in production |
+    | security | `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/amplify-security.directive.xml")` | external users, or data crossing a trust boundary |
+    | nfr | `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/amplify-nfr.directive.xml")` | load / latency / volume significant enough to shape the design |
+    | storage | `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/amplify-storage.directive.xml")` | state persisted beyond a single run |
+    | observability | `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/amplify-observability.directive.xml")` | someone must diagnose this in production |
   </AmplificationCatalog>
 
   <HaltConditions>
@@ -270,6 +270,89 @@
   </ExecutionPlan>
 
   <ChatOutput>
+    <Contract id="QUESTION_FORMAT">
+      Explain, then ask through the tool — a question never fires as bare free-form text. A
+      `### 💡 <О чём решаем>` section header names the decision in plain words, without numbering and
+      without semantic question IDs; under it, ordinary language explains the question BEFORE any tool
+      call fires — the context, the real options, and a recommendation gated by
+      `AX_DIVERGE_BEFORE_RECOMMEND` (low-stakes: a direct pick is fine; high-stakes / architecture: do
+      not pre-anchor one option — lay out the strongest candidates, a tail one included, or pair the
+      recommendation with its strongest rival and the reason it might win instead). Only once the
+      explanation stands does `AskUserQuestion` fire; its option list mirrors the printed order, short
+      labels only — the argument itself lives in the message, never moved into the tool call.
+
+      Batching rule: one `AskUserQuestion` call may carry several questions ONLY when they are mutually
+      independent — answering one does not change the meaning or the options of another (several facets
+      of one single complex decision qualify as one batched call). Dependent questions, and any interview
+      sequence, go one call at a time: compose the next question only after the previous answer is in.
+
+      Channel: use `AskUserQuestion` whenever the tool is available. When it is not, fall back to plain
+      text carrying the same shape — the explanation, then an explicit list of named options the operator
+      can answer by name; skipping the explanation and firing a bare list of options is itself the
+      violation this contract forbids (`H_UNFORMATTED_ASK`).
+
+      Low-stakes — a recommendation is allowed, but only as the result of `AX_DIVERGE_BEFORE_RECOMMEND`
+      (not the first typical answer):
+
+      Пример — иллюстрация формата, не задание:
+
+      ### 💡 Куда положить ресёрч-документ
+      Документ можно держать рядом со спекой — виден в контексте скоупа, проще найти, пока читаешь
+      её — или в общем каталоге ресёрчей, если он пригодится за пределами одного скоупа; для разового
+      ресёрча под конкретную спеку разница небольшая.
+      ✅ **Рядом со спекой** `[specs/<scope>/research/]` — виден в контексте скоупа, не потеряется.
+      Иначе:
+      - **Общий каталог** `[docs/research/]` — _за: виден без привязки к одному скоупу · против:
+        сложнее понять, к какой спеке относится_
+
+      (AskUserQuestion: «Рядом со спекой (рекомендую)» · «Общий каталог»)
+
+      High-stakes / architecture — do NOT pre-anchor one pick. List the strongest candidates (include a
+      non-obvious / tail one) with «за / против» and let the operator choose; or give a recommendation
+      only alongside its strongest alternative and the reason it might win:
+
+      Пример — иллюстрация формата, не задание:
+
+      ### 💡 Граница нового скоупа
+      Функциональность можно оформить отдельным скоупом или модулем внутри существующего — от этого
+      зависит, где заводить спеку и как считать её границы; пре-анкоринг здесь дороже, чем в
+      низкоставочном случае.
+      - **Отдельный скоуп** `[new-scope]` — _за: чистая граница, не тащит чужие инварианты · против:
+        больше координации между скоупами_
+      - **Модуль внутри существующего скоупа** `[module-in-scope]` — _за: меньше накладных расходов,
+        общий контекст уже есть · против: граница скоупа расползается со временем_
+      - **Отложить решение до следующей итерации** `[defer]` — нетипичный вариант, но снимает риск
+        закрепить границу раньше, чем видно реальное использование
+
+      (AskUserQuestion: «Отдельный скоуп» · «Модуль внутри существующего» · «Отложить (нетипичный)»)
+
+      A plain binary question needs no list — recommendation + inline alternative, still explained
+      before the call:
+
+      Пример — иллюстрация формата, не задание:
+
+      ### 💡 Нужен ли отдельный interface-скоуп
+      Все текущие потребители — web; про API и будущих клиентов явно не говорили.
+      ✅ **Пока не выделять** — можно добавить позже без миграции. _или сразу выделить, если API уже в
+      планах?_
+
+      (AskUserQuestion: «Пока не выделять (рекомендую)» · «Выделить сразу»)
+
+      A counter-question in reply to a gate is a side-dive, not a rejection: (a) answer the counter-question
+      in full, on its own merits, before returning to the gate; (b) bring the gate back exactly once,
+      marked as a repeat pass, enriched with whatever the counter-question surfaced — «повторяю вопрос»
+      plus a fact or option the side-dive added (e.g. operator asked "как ты делаешь ресёрч?" → the repeat
+      pass adds an option «сначала ресёрч, потом решаем»); a verbatim repeat of the first gate carries no
+      delta and is itself the violation. (c) if the operator answers the repeat pass with another
+      counter-question instead of a pick, do not fire a third pass — stop and ask directly what is blocking
+      the decision.
+    </Contract>
+
+    `QUESTION_FORMAT` is the base explain-then-ask discipline and its plain-text fallback; inside
+    this protocol `AX_STAKES_SPLIT` specializes its batching rule into the развилка /
+    default-confirmation split, and `QUESTION_MESSAGE_FORMAT` / `BATCH_CONFIRM_FORMAT` below
+    specialize its message shape — neither contradicts it, both narrow it for the interview loop.
+
     The map per `COVERAGE_MAP_FORMAT` opens every round — it is the operator's progress view, so
     keep it current and compact (per `AX_NO_PROCESS_NARRATION`, the map replaces narration about
     what the interview is doing).

@@ -290,72 +290,15 @@
   </SessionState>
 
   <ChatProtocol>
-    <Contract id="QUESTION_FORMAT">
-      Explain, then ask through the tool — a question never fires as bare free-form text. A
-      `### 💡 <О чём решаем>` section header names the decision in plain words (no `Q<N>` numbering, no
-      semantic question IDs); under it, ordinary language explains the question BEFORE any tool call
-      fires — the context, the real options, and a recommendation gated by `AX_DIVERGE_BEFORE_RECOMMEND`
-      (low-stakes: a direct pick is fine; high-stakes / architecture: do not pre-anchor one option — lay
-      out the strongest candidates, a tail one included, or pair the recommendation with its strongest
-      rival and the reason it might win instead). Only once the explanation stands does `AskUserQuestion`
-      fire; its option list mirrors the printed order, short labels only — the argument itself lives in
-      the message, never moved into the tool call.
+    <Contract id="QUESTION_RULE_SLIM">
+      A question to the operator fires only through `AskUserQuestion` — or, when the tool is
+      unavailable, a plain-text fallback carrying the same context plus an explicit list of named
+      options — and always after the context is explained in the same message, never as bare
+      free-form text. Batch mutually independent sub-questions into one call; dependent questions go
+      one call at a time, composed only after the previous answer is in. No numbering, no semantic
+      question IDs.
 
-      Batching rule: one `AskUserQuestion` call may carry several questions ONLY when they are mutually
-      independent — answering one does not change the meaning or the options of another (several facets
-      of one single complex decision qualify as one batched call). Dependent questions, and any interview
-      sequence, go one call at a time: compose the next question only after the previous answer is in.
-
-      Channel: use `AskUserQuestion` whenever the tool is available. When it is not, fall back to plain
-      text carrying the same shape — the explanation, then an explicit list of named options the operator
-      can answer by name — never restore `Q<N>` labels or per-question IDs; that bare-numbered shape
-      without the tool is itself the violation this contract forbids (`H_UNFORMATTED_ASK`).
-
-      Low-stakes — a recommendation is allowed, but only as the result of `AX_DIVERGE_BEFORE_RECOMMEND`
-      (not the first typical answer):
-
-      ### 💡 Формат хранения токенов
-      Нужно решить, где держать design-токены: сгенерированный JSON проще парсить скриптам, а
-      TS-модуль даёт автокомплит в IDE — для одного пакета без внешних потребителей разница небольшая.
-      ✅ **JSON-файл** `[tokens.json]` — проще парсить любым языком, ничего специфичного для TS.
-      Иначе:
-      - **TS-модуль** `[tokens.ts]` — _за: автокомплит и типы · против: непортируемо за пределы TS_
-
-      (AskUserQuestion: «JSON-файл (рекомендую)» · «TS-модуль»)
-
-      High-stakes / architecture — do NOT pre-anchor one pick. List the strongest candidates (include a
-      non-obvious / tail one) with «за / против» and let the operator choose; or give a recommendation
-      only alongside its strongest alternative and the reason it might win:
-
-      ### 💡 Стратегия миграции v1→v2
-      Три пути дают разный профиль риска и времени простоя, и откат стоит по-разному в каждом.
-      - **Big-bang** `[migrate-all]` — _за: один переход, нет промежуточного состояния · против: долгий
-        простой, откат дорогой_
-      - **Постепенная миграция по скоупам** `[migrate-incremental]` — _за: откат дешёвый, риск размазан
-        во времени · против: два формата сосуществуют дольше_
-      - **Parallel-run с shadow-чтением** `[migrate-shadow]` — нетипичный вариант, но снимает риск
-        отката почти полностью ценой временной инфраструктуры
-
-      (AskUserQuestion: «Big-bang» · «Постепенная миграция» · «Parallel-run (нетипичный)»)
-
-      A plain binary question needs no list — recommendation + inline alternative, still explained
-      before the call:
-
-      ### 💡 Нужен ли отдельный interface-скоуп
-      Все текущие потребители — web; про API и будущих клиентов явно не говорили.
-      ✅ **Пока не выделять** — можно добавить позже без миграции. _или сразу выделить, если API уже в
-      планах?_
-
-      (AskUserQuestion: «Пока не выделять (рекомендую)» · «Выделить сразу»)
-
-      A counter-question in reply to a gate is a side-dive, not a rejection: (a) answer the counter-question
-      in full, on its own merits, before returning to the gate; (b) bring the gate back exactly once,
-      marked as a repeat pass, enriched with whatever the counter-question surfaced — «повторяю вопрос»
-      plus a fact or option the side-dive added (e.g. operator asked "как ты делаешь ресёрч?" → the repeat
-      pass adds an option «сначала ресёрч, потом решаем»); a verbatim repeat of the first gate carries no
-      delta and is itself the violation. (c) if the operator answers the repeat pass with another
-      counter-question instead of a pick, do not fire a third pass — stop and ask directly what is blocking
-      the decision.
+      Full format, with worked examples — `QUESTION_FORMAT` in the interview / vision directives.
     </Contract>
 
     <Contract id="HALT_FORMAT">
@@ -370,7 +313,7 @@
     |---|---|
     | `H_AMBIGUOUS_INTENT` | Operator intent cannot be classified against state — ask, never guess |
     | `H_WRONG_REPO` | Operator answered the empty-intake entry Ask with «я не в том репозитории» — stop here, no directive loads |
-    | `H_ASK_WITHOUT_CARD` | An `AskUserQuestion` / `QUESTION_FORMAT` question fired without the `sdd-state` card having been shown verbatim as its own visible unit first — operator may answer `STOP` and demand the card |
+    | `H_ASK_WITHOUT_CARD` | An `AskUserQuestion` / `QUESTION_RULE_SLIM` question fired without the `sdd-state` card having been shown verbatim as its own visible unit first — operator may answer `STOP` and demand the card |
     | `H_UNFORMATTED_ASK` | A question reached the operator as bare free-form text — no `### 💡 <О чём решаем>` explanation first, no `AskUserQuestion` call, or (text fallback) no explicit named option list — `H_ASK_WITHOUT_CARD` is the special case of this same rule for STEP_0's card: show-then-ask is the general law, the card is just its first instance |
   </HaltConditions>
 
@@ -396,7 +339,7 @@
         display, which is a required observable artifact, not narration.
 
         **AskUserQuestion is void without the shown card.** Any `AskUserQuestion` call (or
-        `QUESTION_FORMAT` question) fired anywhere downstream of STEP_0 — including STEP_1_CLASSIFY's
+        `QUESTION_RULE_SLIM` question) fired anywhere downstream of STEP_0 — including STEP_1_CLASSIFY's
         empty-intake Ask below — is INVALID unless the fenced card above already appeared, verbatim,
         as its own visible unit earlier in this turn. Collapsing the card's content into the
         question's title or description (e.g. «Репозиторий пустой: портал отсутствует, скоупов нет,
@@ -461,7 +404,7 @@
         card (SHOW-gate, STEP_0) and is still «в непонятной ситуации» without a concrete next step. Read
         `CODE` from the `sdd-state` output already in context — the probe is part of the default
         snapshot, a second `sdd-state` call is a wasted turn — and STOP: ask via the `AskUserQuestion` tool when
-        available, otherwise `QUESTION_FORMAT` (message in Russian) — this Ask is itself subject to the
+        available, otherwise `QUESTION_RULE_SLIM` (message in Russian) — this Ask is itself subject to the
         SHOW-gate: the card must already stand shown as its own fenced unit, and this Ask's title MUST
         NOT re-summarize it (`H_ASK_WITHOUT_CARD` — a title like «Репозиторий пустой: портал
         отсутствует...» is the forbidden summary-as-card, not a legal short title) — «Создать проект» (рекомендую) · «Воссоздать спеки из
@@ -483,7 +426,7 @@
         never a second one. This exchange is mandatory even when the intent is unambiguous from
         state and the scale does not change the route — it is a named hard stop
         (`AX_DIALOGUE_DISCIPLINE`), never skipped on high confidence. Use the AskUserQuestion tool
-        when available; otherwise `QUESTION_FORMAT`. Message in Russian.
+        when available; otherwise `QUESTION_RULE_SLIM`. Message in Russian.
 
         On confirmation record `intent:` and `scale:` into the session file via the CLI —
         `npx gennady sdd-session open --intent <intent> [--scale <scale>]` (idempotent; creates

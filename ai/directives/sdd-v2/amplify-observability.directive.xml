@@ -12,6 +12,8 @@
   </Mission>
 
   <BeliefState deps="AX_OPERATOR_LANGUAGE, AX_OPERATOR_SAFEGUARD, AX_NO_PROCESS_NARRATION">
+    Inherited from the loading directive (already in context): QUESTION_FORMAT
+
     <Axiom id="AX_AMPLIFY_DEFAULTS_FIRST">
       An amplification opens with a ready answer, not a questionnaire. FIRST assemble a complete
       defaults package — the decisions live products of this class actually ship with (run a short

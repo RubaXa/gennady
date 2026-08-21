@@ -18,6 +18,8 @@
   </Mission>
 
   <BeliefState deps="AX_OPERATOR_LANGUAGE, AX_TOOL_INVOCATION, AX_OPERATOR_DIALOGUE_STYLE, AX_DIALOGUE_DISCIPLINE, AX_OPERATOR_SAFEGUARD, AX_NO_PROCESS_NARRATION, AX_STATELESS_ARTIFACT, AX_READER_WITHOUT_SESSION_CONTEXT">
+    Inherited from the loading directive (already in context): AX_PROGRESSIVE_DISCLOSURE, MESSAGE_LAYOUT
+
     <Axiom id="AX_PORTAL_PRIMARY_OWNER">
       The `root` flow is the primary owner of `specs/README.md`. Other flows MUST NOT rewrite this file. Reads are unrestricted.
 
@@ -86,14 +88,14 @@
   <ChatProtocol>
     <Contract id="QUESTION_FORMAT">
       Explain, then ask through the tool — a question never fires as bare free-form text. A
-      `### 💡 <О чём решаем>` section header names the decision in plain words (no `Q<N>` numbering, no
-      semantic question IDs); under it, ordinary language explains the question BEFORE any tool call
-      fires — the context, the real options, and a recommendation gated by `AX_DIVERGE_BEFORE_RECOMMEND`
-      (low-stakes: a direct pick is fine; high-stakes / architecture: do not pre-anchor one option — lay
-      out the strongest candidates, a tail one included, or pair the recommendation with its strongest
-      rival and the reason it might win instead). Only once the explanation stands does `AskUserQuestion`
-      fire; its option list mirrors the printed order, short labels only — the argument itself lives in
-      the message, never moved into the tool call.
+      `### 💡 <О чём решаем>` section header names the decision in plain words, without numbering and
+      without semantic question IDs; under it, ordinary language explains the question BEFORE any tool
+      call fires — the context, the real options, and a recommendation gated by
+      `AX_DIVERGE_BEFORE_RECOMMEND` (low-stakes: a direct pick is fine; high-stakes / architecture: do
+      not pre-anchor one option — lay out the strongest candidates, a tail one included, or pair the
+      recommendation with its strongest rival and the reason it might win instead). Only once the
+      explanation stands does `AskUserQuestion` fire; its option list mirrors the printed order, short
+      labels only — the argument itself lives in the message, never moved into the tool call.
 
       Batching rule: one `AskUserQuestion` call may carry several questions ONLY when they are mutually
       independent — answering one does not change the meaning or the options of another (several facets
@@ -102,38 +104,48 @@
 
       Channel: use `AskUserQuestion` whenever the tool is available. When it is not, fall back to plain
       text carrying the same shape — the explanation, then an explicit list of named options the operator
-      can answer by name — never restore `Q<N>` labels or per-question IDs; that bare-numbered shape
-      without the tool is itself the violation this contract forbids (`H_UNFORMATTED_ASK`).
+      can answer by name; skipping the explanation and firing a bare list of options is itself the
+      violation this contract forbids (`H_UNFORMATTED_ASK`).
 
       Low-stakes — a recommendation is allowed, but only as the result of `AX_DIVERGE_BEFORE_RECOMMEND`
       (not the first typical answer):
 
-      ### 💡 Формат хранения токенов
-      Нужно решить, где держать design-токены: сгенерированный JSON проще парсить скриптам, а
-      TS-модуль даёт автокомплит в IDE — для одного пакета без внешних потребителей разница небольшая.
-      ✅ **JSON-файл** `[tokens.json]` — проще парсить любым языком, ничего специфичного для TS.
-      Иначе:
-      - **TS-модуль** `[tokens.ts]` — _за: автокомплит и типы · против: непортируемо за пределы TS_
+      Пример — иллюстрация формата, не задание:
 
-      (AskUserQuestion: «JSON-файл (рекомендую)» · «TS-модуль»)
+      ### 💡 Куда положить ресёрч-документ
+      Документ можно держать рядом со спекой — виден в контексте скоупа, проще найти, пока читаешь
+      её — или в общем каталоге ресёрчей, если он пригодится за пределами одного скоупа; для разового
+      ресёрча под конкретную спеку разница небольшая.
+      ✅ **Рядом со спекой** `[specs/<scope>/research/]` — виден в контексте скоупа, не потеряется.
+      Иначе:
+      - **Общий каталог** `[docs/research/]` — _за: виден без привязки к одному скоупу · против:
+        сложнее понять, к какой спеке относится_
+
+      (AskUserQuestion: «Рядом со спекой (рекомендую)» · «Общий каталог»)
 
       High-stakes / architecture — do NOT pre-anchor one pick. List the strongest candidates (include a
       non-obvious / tail one) with «за / против» and let the operator choose; or give a recommendation
       only alongside its strongest alternative and the reason it might win:
 
-      ### 💡 Стратегия миграции v1→v2
-      Три пути дают разный профиль риска и времени простоя, и откат стоит по-разному в каждом.
-      - **Big-bang** `[migrate-all]` — _за: один переход, нет промежуточного состояния · против: долгий
-        простой, откат дорогой_
-      - **Постепенная миграция по скоупам** `[migrate-incremental]` — _за: откат дешёвый, риск размазан
-        во времени · против: два формата сосуществуют дольше_
-      - **Parallel-run с shadow-чтением** `[migrate-shadow]` — нетипичный вариант, но снимает риск
-        отката почти полностью ценой временной инфраструктуры
+      Пример — иллюстрация формата, не задание:
 
-      (AskUserQuestion: «Big-bang» · «Постепенная миграция» · «Parallel-run (нетипичный)»)
+      ### 💡 Граница нового скоупа
+      Функциональность можно оформить отдельным скоупом или модулем внутри существующего — от этого
+      зависит, где заводить спеку и как считать её границы; пре-анкоринг здесь дороже, чем в
+      низкоставочном случае.
+      - **Отдельный скоуп** `[new-scope]` — _за: чистая граница, не тащит чужие инварианты · против:
+        больше координации между скоупами_
+      - **Модуль внутри существующего скоупа** `[module-in-scope]` — _за: меньше накладных расходов,
+        общий контекст уже есть · против: граница скоупа расползается со временем_
+      - **Отложить решение до следующей итерации** `[defer]` — нетипичный вариант, но снимает риск
+        закрепить границу раньше, чем видно реальное использование
+
+      (AskUserQuestion: «Отдельный скоуп» · «Модуль внутри существующего» · «Отложить (нетипичный)»)
 
       A plain binary question needs no list — recommendation + inline alternative, still explained
       before the call:
+
+      Пример — иллюстрация формата, не задание:
 
       ### 💡 Нужен ли отдельный interface-скоуп
       Все текущие потребители — web; про API и будущих клиентов явно не говорили.
@@ -364,48 +376,6 @@
     `🗺️ ROOT_R<N> · <project> · <mode> · conf=<LOW|MEDIUM|HIGH>`. Breadcrumb milestones for this
     flow (per `BREADCRUMB_FORMAT`): Vision · Scope Graph · Infra · Portal.
 
-    <Contract id="MESSAGE_LAYOUT">
-      A step-boundary / decision message (the decision card) is sectioned with markdown headers, in
-      this order. Skip any section empty for this step. During free dialogue inside a step the agent
-      does NOT print this layout — it just talks.
-
-      `<dim service line>`        — internal anchor + scope + mode + confidence (supplied by the branch)
-
-      `<breadcrumb>`              — per `BREADCRUMB_FORMAT`, its OWN paragraph (a blank line above it,
-      not just a `\n`) — markdown collapses a single newline into a space, so without the blank line
-      the breadcrumb visually fuses onto the service line
-
-      ## `<glyph>` `<scope>` — одной фразой, что делаем
-
-      ### 🤔 Как я понял задачу    — per `UNDERSTANDING_BLOCK_FORMAT` (goes at the TOP)
-      ### 🎯 Главное решение       — the crux in plain words; add a diagram per `FLOW_DIAGRAM_WHEN` if it is a flow
-      ### 💡 <О чём решаем>         — per `QUESTION_FORMAT`
-      ### ↓ Детали — по желанию    — reasoning, full comparison, change-list (per `AX_PROGRESSIVE_DISCLOSURE`)
-
-      Glyph dictionary — closed inventory, one assigned meaning each, never a free pick. Every glyph
-      here is chosen to read clearly on BOTH a light and a dark terminal/chat theme — half-tone shading
-      characters (`░ ▒ ▓` and similar) are forbidden anywhere in this layout: they render as near-invisible
-      or vanish outright depending on theme.
-
-      Section-header glyphs (fixed, one per header, in the order above):
-      - `🤔` — the agent's own understanding check, at the top of a decision card
-      - `🎯` — the crux decision, in plain words
-      - `💡` — a decision the agent is proposing for the operator to confirm or pick between
-      - `↓` — folded detail, expand on demand
-
-      Step-TYPE glyphs (fixed, keyed by the step's TYPE, used in the service line / breadcrumb, never a free pick):
-      - `🏗` — creation / scaffold (new spec, new tickets, new files)
-      - `🔍` — audit / review (fresh-eyes read, no write)
-      - `🔧` — fix / reconcile (spec ⟷ code drift repair)
-      - `⚡` — execute (a task ticket's phases running)
-      - `🗺` — routing / overview (intent classification, project-level map)
-
-      Breadcrumb-status glyphs (per `BREADCRUMB_FORMAT`): `✅` done · `👷` active · `◻️` not yet.
-
-      No other emoji appear in message or section headers — the glyphs enumerated above are the only
-      ones this layout permits.
-    </Contract>
-
     <Contract id="BREADCRUMB_FORMAT">
       One line, its own paragraph below the service line — a blank line separates the two (per
       `MESSAGE_LAYOUT`); a single `\n` with no blank line is a contract defect, markdown renders it
@@ -479,13 +449,6 @@
          between branches.
     </Contract>
 
-    <Axiom id="AX_PROGRESSIVE_DISCLOSURE" cross-cutting="true">
-      Decision first, reasoning on demand. The must-read top of a message is short: where we are + my
-      read + what to decide. Everything heavy — full option comparison, evidence, the change-list,
-      derivations — goes BELOW a `### ↓ Детали — по желанию` header. Never dump reasoning above the
-      questions. Facts already verified collapse to one line («сверился: …»); uncertainties that need
-      the operator BECOME the questions — never list them twice.
-    </Axiom>
   </ChatOutput>
 
   <ArtifactOutput>

@@ -23,6 +23,8 @@
   </Mission>
 
   <BeliefState deps="AX_OPERATOR_LANGUAGE, AX_TOOL_INVOCATION, AX_OPERATOR_DIALOGUE_STYLE, AX_DIALOGUE_DISCIPLINE, AX_OPERATOR_SAFEGUARD, AX_NO_PROCESS_NARRATION, AX_OPERATOR_OUTPUT_LIVE_TEXT, AX_READER_WITHOUT_SESSION_CONTEXT">
+    Inherited from the loading directive (already in context): AX_PROGRESSIVE_DISCLOSURE, HALT_FORMAT, MESSAGE_LAYOUT, QUESTION_RULE_SLIM, UNDERSTANDING_BLOCK_FORMAT
+
     <Axiom id="AX_EVIDENCE_HYGIENE">
       Separate Facts / Assumptions / Hypotheses in every intake-style frame.
       - **Facts** — directly observable from input artifacts (spec, sibling specs, rule files, extracted measurements).
@@ -57,79 +59,6 @@
   </KernelGrammar>
 
   <ChatProtocol>
-    <Contract id="QUESTION_FORMAT">
-      Explain, then ask through the tool — a question never fires as bare free-form text. A
-      `### 💡 <О чём решаем>` section header names the decision in plain words (no `Q<N>` numbering, no
-      semantic question IDs); under it, ordinary language explains the question BEFORE any tool call
-      fires — the context, the real options, and a recommendation gated by `AX_DIVERGE_BEFORE_RECOMMEND`
-      (low-stakes: a direct pick is fine; high-stakes / architecture: do not pre-anchor one option — lay
-      out the strongest candidates, a tail one included, or pair the recommendation with its strongest
-      rival and the reason it might win instead). Only once the explanation stands does `AskUserQuestion`
-      fire; its option list mirrors the printed order, short labels only — the argument itself lives in
-      the message, never moved into the tool call.
-
-      Batching rule: one `AskUserQuestion` call may carry several questions ONLY when they are mutually
-      independent — answering one does not change the meaning or the options of another (several facets
-      of one single complex decision qualify as one batched call). Dependent questions, and any interview
-      sequence, go one call at a time: compose the next question only after the previous answer is in.
-
-      Channel: use `AskUserQuestion` whenever the tool is available. When it is not, fall back to plain
-      text carrying the same shape — the explanation, then an explicit list of named options the operator
-      can answer by name — never restore `Q<N>` labels or per-question IDs; that bare-numbered shape
-      without the tool is itself the violation this contract forbids (`H_UNFORMATTED_ASK`).
-
-      Low-stakes — a recommendation is allowed, but only as the result of `AX_DIVERGE_BEFORE_RECOMMEND`
-      (not the first typical answer):
-
-      ### 💡 Формат хранения токенов
-      Нужно решить, где держать design-токены: сгенерированный JSON проще парсить скриптам, а
-      TS-модуль даёт автокомплит в IDE — для одного пакета без внешних потребителей разница небольшая.
-      ✅ **JSON-файл** `[tokens.json]` — проще парсить любым языком, ничего специфичного для TS.
-      Иначе:
-      - **TS-модуль** `[tokens.ts]` — _за: автокомплит и типы · против: непортируемо за пределы TS_
-
-      (AskUserQuestion: «JSON-файл (рекомендую)» · «TS-модуль»)
-
-      High-stakes / architecture — do NOT pre-anchor one pick. List the strongest candidates (include a
-      non-obvious / tail one) with «за / против» and let the operator choose; or give a recommendation
-      only alongside its strongest alternative and the reason it might win:
-
-      ### 💡 Стратегия миграции v1→v2
-      Три пути дают разный профиль риска и времени простоя, и откат стоит по-разному в каждом.
-      - **Big-bang** `[migrate-all]` — _за: один переход, нет промежуточного состояния · против: долгий
-        простой, откат дорогой_
-      - **Постепенная миграция по скоупам** `[migrate-incremental]` — _за: откат дешёвый, риск размазан
-        во времени · против: два формата сосуществуют дольше_
-      - **Parallel-run с shadow-чтением** `[migrate-shadow]` — нетипичный вариант, но снимает риск
-        отката почти полностью ценой временной инфраструктуры
-
-      (AskUserQuestion: «Big-bang» · «Постепенная миграция» · «Parallel-run (нетипичный)»)
-
-      A plain binary question needs no list — recommendation + inline alternative, still explained
-      before the call:
-
-      ### 💡 Нужен ли отдельный interface-скоуп
-      Все текущие потребители — web; про API и будущих клиентов явно не говорили.
-      ✅ **Пока не выделять** — можно добавить позже без миграции. _или сразу выделить, если API уже в
-      планах?_
-
-      (AskUserQuestion: «Пока не выделять (рекомендую)» · «Выделить сразу»)
-
-      A counter-question in reply to a gate is a side-dive, not a rejection: (a) answer the counter-question
-      in full, on its own merits, before returning to the gate; (b) bring the gate back exactly once,
-      marked as a repeat pass, enriched with whatever the counter-question surfaced — «повторяю вопрос»
-      plus a fact or option the side-dive added (e.g. operator asked "как ты делаешь ресёрч?" → the repeat
-      pass adds an option «сначала ресёрч, потом решаем»); a verbatim repeat of the first gate carries no
-      delta and is itself the violation. (c) if the operator answers the repeat pass with another
-      counter-question instead of a pick, do not fire a third pass — stop and ask directly what is blocking
-      the decision.
-    </Contract>
-
-    <Contract id="HALT_FORMAT">
-      A halt is a plain sentence first (what happened + what to do), with the token as a trailing tag:
-
-      🛑 <что случилось по-человечески> — <что сделать оператору>   `[H_*]`
-    </Contract>
   </ChatProtocol>
 
   <HaltConditions>
@@ -202,66 +131,5 @@
     Service line — dim, internal, never narrated (`AX_NO_PROCESS_NARRATION`):
     `🧭 DFC_R<N> · scopes=<n> · deepened=<n> · step=<id>`.
 
-    <Contract id="UNDERSTANDING_BLOCK_FORMAT">
-      The agent's compressed read of the task — its own confirmation of blind spots so the operator can
-      catch a misread. A `### 🤔 Как я понял задачу` section near the TOP, then an italic blockquote,
-      2–3 sentences: the essence + the single riskiest assumption, with the assumption linked to the
-      question that resolves it BY WORDING — there are no question numbers or IDs left to point at, so
-      name the question itself. Never a restate of settled content.
-
-      ### 🤔 Как я понял задачу
-      > квинтэссенция — что считаю главным.
-      > **Где могу ошибаться:** самое хрупкое допущение — это вопрос «<формулировка вопроса>».
-    </Contract>
-
-    <Contract id="MESSAGE_LAYOUT">
-      A step-boundary / decision message (the decision card) is sectioned with markdown headers, in
-      this order. Skip any section empty for this step. During free dialogue inside a step the agent
-      does NOT print this layout — it just talks.
-
-      `<dim service line>`        — internal anchor + scope + mode + confidence (supplied by the branch)
-
-      `<breadcrumb>`              — per `BREADCRUMB_FORMAT`, its OWN paragraph (a blank line above it,
-      not just a `\n`) — markdown collapses a single newline into a space, so without the blank line
-      the breadcrumb visually fuses onto the service line
-
-      ## `<glyph>` `<scope>` — одной фразой, что делаем
-
-      ### 🤔 Как я понял задачу    — per `UNDERSTANDING_BLOCK_FORMAT` (goes at the TOP)
-      ### 🎯 Главное решение       — the crux in plain words; add a diagram per `FLOW_DIAGRAM_WHEN` if it is a flow
-      ### 💡 <О чём решаем>         — per `QUESTION_FORMAT`
-      ### ↓ Детали — по желанию    — reasoning, full comparison, change-list (per `AX_PROGRESSIVE_DISCLOSURE`)
-
-      Glyph dictionary — closed inventory, one assigned meaning each, never a free pick. Every glyph
-      here is chosen to read clearly on BOTH a light and a dark terminal/chat theme — half-tone shading
-      characters (`░ ▒ ▓` and similar) are forbidden anywhere in this layout: they render as near-invisible
-      or vanish outright depending on theme.
-
-      Section-header glyphs (fixed, one per header, in the order above):
-      - `🤔` — the agent's own understanding check, at the top of a decision card
-      - `🎯` — the crux decision, in plain words
-      - `💡` — a decision the agent is proposing for the operator to confirm or pick between
-      - `↓` — folded detail, expand on demand
-
-      Step-TYPE glyphs (fixed, keyed by the step's TYPE, used in the service line / breadcrumb, never a free pick):
-      - `🏗` — creation / scaffold (new spec, new tickets, new files)
-      - `🔍` — audit / review (fresh-eyes read, no write)
-      - `🔧` — fix / reconcile (spec ⟷ code drift repair)
-      - `⚡` — execute (a task ticket's phases running)
-      - `🗺` — routing / overview (intent classification, project-level map)
-
-      Breadcrumb-status glyphs (per `BREADCRUMB_FORMAT`): `✅` done · `👷` active · `◻️` not yet.
-
-      No other emoji appear in message or section headers — the glyphs enumerated above are the only
-      ones this layout permits.
-    </Contract>
-
-    <Axiom id="AX_PROGRESSIVE_DISCLOSURE" cross-cutting="true">
-      Decision first, reasoning on demand. The must-read top of a message is short: where we are + my
-      read + what to decide. Everything heavy — full option comparison, evidence, the change-list,
-      derivations — goes BELOW a `### ↓ Детали — по желанию` header. Never dump reasoning above the
-      questions. Facts already verified collapse to one line («сверился: …»); uncertainties that need
-      the operator BECOME the questions — never list them twice.
-    </Axiom>
   </ChatOutput>
 </SddDiscoverFromCode>

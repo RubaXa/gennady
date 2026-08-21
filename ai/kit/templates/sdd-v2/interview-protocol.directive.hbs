@@ -57,8 +57,8 @@
         ASK label — printed order and recommended-first then agree.
       - «Other» is supplied by the tool automatically; never add a manual equivalent.
       - Tool unavailable → drop only the ASK call; the развилка message still follows
-        `QUESTION_MESSAGE_FORMAT` and the answer arrives as free text, otherwise falling back to the
-        caller's plain-text `QUESTION_FORMAT` when one applies. Batched default confirmations use one
+        `QUESTION_MESSAGE_FORMAT` and the answer arrives as free text, otherwise falling back to
+        `QUESTION_FORMAT`'s plain-text fallback when one applies. Batched default confirmations use one
         ASK call covering 2–4 questions.
     </Axiom>
 
@@ -156,10 +156,10 @@
 
     | Amplification | Directive | Triage trigger |
     |---|---|---|
-    | security | `ai/directives/sdd-v2/amplify-security.directive.xml` | external users, or data crossing a trust boundary |
-    | nfr | `ai/directives/sdd-v2/amplify-nfr.directive.xml` | load / latency / volume significant enough to shape the design |
-    | storage | `ai/directives/sdd-v2/amplify-storage.directive.xml` | state persisted beyond a single run |
-    | observability | `ai/directives/sdd-v2/amplify-observability.directive.xml` | someone must diagnose this in production |
+    | security | `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/amplify-security.directive.xml")` | external users, or data crossing a trust boundary |
+    | nfr | `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/amplify-nfr.directive.xml")` | load / latency / volume significant enough to shape the design |
+    | storage | `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/amplify-storage.directive.xml")` | state persisted beyond a single run |
+    | observability | `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/amplify-observability.directive.xml")` | someone must diagnose this in production |
   </AmplificationCatalog>
 
   <HaltConditions>
@@ -233,6 +233,13 @@
   </ExecutionPlan>
 
   <ChatOutput>
+    {{> "contract/process/question-format"}}
+
+    `QUESTION_FORMAT` is the base explain-then-ask discipline and its plain-text fallback; inside
+    this protocol `AX_STAKES_SPLIT` specializes its batching rule into the развилка /
+    default-confirmation split, and `QUESTION_MESSAGE_FORMAT` / `BATCH_CONFIRM_FORMAT` below
+    specialize its message shape — neither contradicts it, both narrow it for the interview loop.
+
     The map per `COVERAGE_MAP_FORMAT` opens every round — it is the operator's progress view, so
     keep it current and compact (per `AX_NO_PROCESS_NARRATION`, the map replaces narration about
     what the interview is doing).
