@@ -77,7 +77,10 @@ const CMD_SPEC_KEYS = ['argv', 'cwd', 'env', 'timeout', 'hint'] as const;
 function toCommands(
   specs: readonly Readonly<Record<string, unknown>>[] | undefined,
   root: string,
-  fallbackCwd: string
+  fallbackCwd: string,
+  // Preconditions are probes, so seconds; a fixer does gate-sized work and must
+  // pass the owning gate's timeout instead — 30s would kill `make generate` mid-run.
+  defaultTimeoutMs: number = PRECONDITION_DEFAULT_TIMEOUT_MS
 ): Cmd[] {
   return (specs ?? []).map((spec) => ({
     argv: spec['argv'] as readonly string[],
@@ -85,8 +88,8 @@ function toCommands(
     env: spec['env'] as Readonly<Record<string, string>> | undefined,
     timeoutMs:
       typeof spec['timeout'] === 'string'
-        ? (parseDuration(spec['timeout']) ?? PRECONDITION_DEFAULT_TIMEOUT_MS)
-        : PRECONDITION_DEFAULT_TIMEOUT_MS,
+        ? (parseDuration(spec['timeout']) ?? defaultTimeoutMs)
+        : defaultTimeoutMs,
     hint: spec['hint'] as string | undefined,
   }));
 }
@@ -493,7 +496,7 @@ export function applyStackConfig(
             : gate.requires,
         fixer:
           override.fixer !== undefined
-            ? toCommands([override.fixer], root, gate.cwd)[0]
+            ? toCommands([override.fixer], root, gate.cwd, timeoutMs)[0]
             : gate.fixer,
         envFail: [
           ...compileEnvFailRules(
@@ -522,6 +525,10 @@ export function applyStackConfig(
   for (const spec of pluginConfig.extraGates ?? []) {
     // Build the full gate from the spec once, then mark it skipped if needed — so
     // --plan --json serializes the declared shape even for skipped extras.
+    const extraTimeoutMs =
+      spec.timeout !== undefined
+        ? (parseDuration(spec.timeout) ?? EXTRA_GATE_DEFAULT_TIMEOUT_MS)
+        : EXTRA_GATE_DEFAULT_TIMEOUT_MS;
     const gate: Gate = {
       id: spec.id!,
       stack,
@@ -529,10 +536,7 @@ export function applyStackConfig(
       argv: spec.argv!,
       cwd: spec.cwd !== undefined ? path.resolve(root, spec.cwd) : root,
       env: spec.env,
-      timeoutMs:
-        spec.timeout !== undefined
-          ? (parseDuration(spec.timeout) ?? EXTRA_GATE_DEFAULT_TIMEOUT_MS)
-          : EXTRA_GATE_DEFAULT_TIMEOUT_MS,
+      timeoutMs: extraTimeoutMs,
       outputMeansFailure: spec.outputMeansFailure ?? false,
       driftMeansFailure: spec.driftMeansFailure,
       envFail: compileEnvFailRules(
@@ -550,7 +554,8 @@ export function applyStackConfig(
           ? toCommands(
               [spec.fixer],
               root,
-              spec.cwd !== undefined ? path.resolve(root, spec.cwd) : root
+              spec.cwd !== undefined ? path.resolve(root, spec.cwd) : root,
+              extraTimeoutMs
             )[0]
           : undefined,
       skipped: null,

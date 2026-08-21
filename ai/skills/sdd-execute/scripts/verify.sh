@@ -58,10 +58,17 @@ done
 GENNADY_HOME="${GENNADY_HOME:-$SCRIPT_DIR/../../../..}"
 
 # Capability probe: an older installed gennady without `verify` prints its generic
-# help and exits 0, silently swallowing the delegation. Only delegate when the
-# help listing actually advertises the command.
-if command -v gennady &>/dev/null && gennady help 2>/dev/null | grep -qE '^  verify\b'; then
-  exec gennady verify "$@"
+# help and exits 0, silently swallowing the delegation. Probe the machine surface,
+# not the human help table: `verify --plan --json` either emits JSON (the command
+# exists and planned) or exits non-zero (it exists and rejected the config or the
+# repository) — a gennady without the command does neither. Delegating on non-zero
+# is deliberate: the real run then fails loudly instead of silently falling back.
+if command -v gennady &>/dev/null; then
+  probe_out="$(gennady verify --plan --json 2>/dev/null)"
+  probe_exit=$?
+  if [[ $probe_exit -ne 0 || "${probe_out:0:1}" == "{" ]]; then
+    exec gennady verify "$@"
+  fi
 fi
 
 # Checkout path: use the checkout's own tsx — npx would hit the registry, which

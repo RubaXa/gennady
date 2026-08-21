@@ -330,6 +330,33 @@ describe('applyStackConfig', () => {
     assert.match(effective[3]?.label ?? '', /from gennady\.yaml/);
   });
 
+  it('defaults a fixer without `timeout` to the owning gate timeout, not the 30s probe default', () => {
+    // A fixer does gate-sized work (`make generate`); the 30s precondition default
+    // would kill it mid-run. Preconditions keep 30s — they are probes.
+    const effective = applyStackConfig(
+      [gate('build', { timeoutMs: 300_000 })],
+      {
+        overrideGates: { build: { fixer: { argv: ['make', 'generate'] } } },
+        extraGates: [
+          {
+            id: 'codegen',
+            argv: ['make', 'check-gen'],
+            timeout: '4m',
+            fixer: { argv: ['make', 'gen'] },
+            requires: [{ argv: ['docker', 'info'], hint: 'start docker' }],
+          },
+        ],
+      },
+      'golang',
+      '/repo',
+      provenance
+    );
+
+    assert.equal(effective[0]?.fixer?.timeoutMs, 300_000);
+    assert.equal(effective[1]?.fixer?.timeoutMs, 240_000);
+    assert.equal(effective[1]?.requires?.[0]?.timeoutMs, 30_000);
+  });
+
   it('inherits unset override fields from the original gate', () => {
     const original = gate('fmt', { outputMeansFailure: true, timeoutMs: 60_000 });
     const effective = applyStackConfig(

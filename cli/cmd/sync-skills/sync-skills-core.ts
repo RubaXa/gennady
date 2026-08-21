@@ -24,10 +24,12 @@ const EXCLUDED_NAMES = new Set(['.DS_Store']);
 /**
  * @purpose Scan several skill roots into one map, so plugin-owned skills sync like any other.
  * @invariant The name filter applies to the union, not per root; an empty directory never
- *   shadows a root that has real files.
- * @param roots Skill roots, base first.
+ *   shadows a root that has real files. An unreadable root fails the sync: a swallowed
+ *   EACCES here empties `merged`, and the orphan pass then deletes every synced skill.
+ * @param roots Skill roots, base first; plugin roots may be absent, the base must be readable.
  * @param [skillNames] Optional filter, checked against the union.
- * @throws If a requested skill exists in none of the roots.
+ * @throws If a requested skill exists in none of the roots, if any root is unreadable,
+ *   or if a plugin root exists but cannot be scanned.
  * @returns Map of skill names to their file contents.
  */
 export function scanSkillRoots(
@@ -35,12 +37,18 @@ export function scanSkillRoots(
   skillNames?: string[]
 ): Map<string, Map<string, Buffer>> {
   const merged = new Map<string, Map<string, Buffer>>();
-  for (const root of roots) {
+  for (const [index, root] of roots.entries()) {
     let scanned: Map<string, Map<string, Buffer>>;
     try {
       scanned = scanSkills(root);
-    } catch {
-      continue;
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      // Only a MISSING plugin root is normal (a plugin without skills). The base root, and
+      // any other failure (EACCES, EIO), must stay fatal — matching the pre-plugin behavior.
+      if (index > 0 && (code === 'ENOENT' || code === 'ENOTDIR')) {
+        continue;
+      }
+      throw error;
     }
     for (const [name, files] of scanned) {
       // An empty directory must never shadow a real skill: a leftover mount point or a
