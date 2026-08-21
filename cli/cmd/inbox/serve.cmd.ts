@@ -29,7 +29,12 @@ import { VcsInboxMock } from '../../../services/agent-inbox/modules/inbox-core/v
 import { VcsInboxReal } from '../../../services/agent-inbox/modules/inbox-core/vcs-inbox.real.ts';
 import type { VcsInboxPort } from '../../../services/agent-inbox/modules/inbox-core/vcs-inbox.port.ts';
 import { OpenCodeMock } from '../../../services/agent-inbox/modules/inbox-opencode/opencode.mock.ts';
+import { OpenCodeDynamicMock } from '../../../services/agent-inbox/modules/inbox-opencode/opencode.dynamic-mock.ts';
 import type { OpenCodePort } from '../../../services/agent-inbox/modules/inbox-opencode/opencode.port.ts';
+import {
+  DEFAULT_AGENT_INBOX_MODEL,
+  parseOpenCodeModel,
+} from '../../../services/agent-inbox/modules/inbox-opencode/model-selection.ts';
 import { fetchDiffRefsLive } from '../../../services/agent-inbox/modules/inbox-roles/context-builder.ts';
 
 /**
@@ -37,8 +42,25 @@ import { fetchDiffRefsLive } from '../../../services/agent-inbox/modules/inbox-r
  * @param argv Remaining CLI arguments (argv.slice(3)).
  * @returns Parsed options: mocks flag and optional port.
  */
-function parseOptions(argv: string[]): { mocks: boolean; port?: number } {
+function parseOptions(argv: string[]): {
+  mocks: boolean;
+  mockOpencode: boolean;
+  port?: number;
+  autoReview: boolean;
+  autoReviewQuietMinutes?: number;
+  opencodeModel: string;
+} {
   const mocks = argv.includes('--mocks');
+  const mockOpencode = argv.includes('--mock-opencode');
+  const autoReview = !argv.includes('--no-auto-review');
+  const quietArg = argv.find(
+    (arg): arg is string =>
+      typeof arg === 'string' && arg.startsWith('--auto-review-quiet-minutes=')
+  );
+  const autoReviewQuietMinutes = quietArg
+    ? Number(quietArg.slice('--auto-review-quiet-minutes='.length))
+    : undefined;
+  const opencodeModel = parseValue(argv, '--opencode-model') ?? DEFAULT_AGENT_INBOX_MODEL;
   // Some embedded runners preserve a sparse argv slot after the nested `inbox serve` command;
   // CLI parsing must ignore it instead of failing before the real HTTP process starts.
   const portArg = argv.find(
@@ -50,8 +72,22 @@ function parseOptions(argv: string[]): { mocks: boolean; port?: number } {
     console.error(style.redBright.bold('✖ Ошибка:'), `Некорректный порт: ${portArg}`);
     process.exit(1);
   }
+  if (
+    autoReviewQuietMinutes !== undefined &&
+    (!Number.isFinite(autoReviewQuietMinutes) || autoReviewQuietMinutes <= 0)
+  ) {
+    console.error(style.redBright.bold('✖ Ошибка:'), `Некорректный quiet window: ${quietArg}`);
+    process.exit(1);
+  }
+  if (!parseOpenCodeModel(opencodeModel)) {
+    console.error(
+      style.redBright.bold('✖ Ошибка:'),
+      `Некорректная OpenCode-модель: ${opencodeModel}. Ожидается provider/model`
+    );
+    process.exit(1);
+  }
 
-  return { mocks, port };
+  return { mocks, mockOpencode, port, autoReview, autoReviewQuietMinutes, opencodeModel };
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -190,6 +226,7 @@ async function runRunModeCli(
     const seedValue = parseValue(argv, '--seed');
     const seedState = seedValue ? await resolveSeedState(seedValue) : undefined;
     const dryRun = parseValue(argv, '--dry-run') !== 'false';
+    const mockOpencode = argv.includes('--mock-opencode');
 
     console.info(style.bold('gennady inbox serve --mrs (run-mode, dry-run)'));
     console.info('');
@@ -219,8 +256,8 @@ async function runRunModeCli(
     const opencodePort = opencodePortArg ? Number(opencodePortArg) : undefined;
     let managedOpenCode: ManagedRunModeOpenCode | undefined;
     let opencode: OpenCodePort;
-    if (mocks) {
-      opencode = new OpenCodeMock();
+    if (mocks || mockOpencode) {
+      opencode = mockOpencode ? new OpenCodeDynamicMock() : new OpenCodeMock();
     } else {
       const discoveredBaseUrl = await resolveRunModeOpencodeBaseUrl(
         store.getStateDir(),
@@ -278,7 +315,8 @@ async function runRunModeCli(
 async function run(): Promise<number> {
   try {
     const argv = process.argv.slice(3);
-    const { mocks, port } = parseOptions(argv);
+    const { mocks, mockOpencode, port, autoReview, autoReviewQuietMinutes, opencodeModel } =
+      parseOptions(argv);
 
     // #region START_RUN_MODE_DISPATCH — invariant: --mrs bypasses the HTTP server entirely, it is
     // a one-shot batch pass (TSK-121), never the interactive foreground server below
@@ -351,7 +389,14 @@ async function run(): Promise<number> {
       }
     }
 
-    const result = await bootstrap({ mocks, port });
+    const result = await bootstrap({
+      mocks,
+      mockOpencode,
+      port,
+      autoReview,
+      autoReviewQuietMinutes,
+      opencodeModel,
+    });
 
     // #endregion END_BOOTSTRAP
 
@@ -377,13 +422,16 @@ async function run(): Promise<number> {
     console.info(
       `${style.green('✓')} Server started on ${style.bold(`http://localhost:${result.port}`)}`
     );
-    console.info(`  OpenCode:     ${style.cyan(result.opencodeStatus)}`);
+    console.info(`  OpenCode RPC: ${style.cyan(result.opencodeStatus)}`);
+    console.info(`  AI model:     ${style.cyan(result.opencodeModel)}`);
     console.info(`  Polling:      every ${Math.round(result.pollingInterval / 1000)}s`);
     console.info(`  Roles:        ${result.roles.map((r) => style.cyan(r)).join(', ')}`);
     if (result.degraded) {
       console.info(
         `  ${style.yellow('⚠')} AI engine degraded — dashboard available, AI steps disabled`
       );
+    } else {
+      console.info('  AI provider:  checked on the first review request');
     }
     console.info('');
     console.info(style.dim('Press Ctrl+C to stop'));

@@ -234,6 +234,17 @@ export class FeedProjection {
           line: this._number(item.line),
           summary: this._string(item.summary, ''),
           state: this._string(item.state, 'open'),
+          diff: this._array(item.diff).flatMap((line) => {
+            if (!this._isRecord(line)) return [];
+            return [
+              {
+                type: this._string(line.type, 'context'),
+                num: typeof line.num === 'number' ? line.num : undefined,
+                text: this._string(line.text, ''),
+              },
+            ];
+          }),
+          factcheck: this._string(item.factcheck, 'pending'),
         },
       ];
     });

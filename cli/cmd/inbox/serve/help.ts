@@ -17,6 +17,16 @@ export function printHelp(): void {
   console.info('');
   console.info('Options:');
   console.info('  --mocks              Use mock VCS + mock OpenCode (dev/e2e mode)');
+  console.info(
+    '  --mock-opencode      Keep real GitLab/worktrees but substitute only OpenCode (explicit test mode)'
+  );
+  console.info('  --no-auto-review      Serve real state without dispatching discovered reviews');
+  console.info(
+    '  --auto-review-quiet-minutes=<N>  Override the post-commit auto-review delay (default: 15)'
+  );
+  console.info(
+    '  --opencode-model=<provider/model>  Pin the review model (default: llm-proxy/deepseek-v4-pro)'
+  );
   console.info('  --port=<N>           HTTP port (default: 4174)');
   console.info('');
   console.info('Examples:');

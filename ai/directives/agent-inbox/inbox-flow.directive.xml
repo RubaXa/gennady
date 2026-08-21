@@ -214,7 +214,7 @@
     | **MR context** | `npx tsx ~/Developer/gennady/cli/gennady.ts inbox-context --url <webUrl> --json-file [--skip-worktree] [--skip-threads]` | ONE call, compact stdout. `--json-file` writes the full context to `<reportsDir>/context.json` and prints a compact summary (`{"file","ref","title","webUrl","myRole","stage","author","headChanged","changeset","reviewPlanRequired"}`) — avoids pipe buffer truncation. Read the file with `Read(offset, limit)` when deeper fields are needed (worktree, newCommits, changeset.files). `--json` (no file, full dump to stdout) is available but deprecated for agent use. `reviewPlanRequired: true` → `inbox-review-plan` needed. |
     | **Review plan** | `npx tsx ~/Developer/gennady/cli/gennady.ts inbox-review-plan --path <worktree.path> --base <sha> [--scaffold --ref <ref>] [--validate <dir> [--stage enriched\|filled]]` | Whenever `reviewPlanRequired == true`. No flags — `ReviewPlan { mode, tracks[] }` (dispatch plan). `--scaffold` materializes task files → orchestrator enriches Context → subagents fill → `--validate` (document pipeline; details below, "Review pipeline"). The agent does not think, it executes. |
     | Working copy | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-worktree --url <webUrl>` · `--cleanup <path>` (manual, not in flow) | read-only code + `diff_refs`. Reused across sessions, auto-GC by TTL (7 days from last `inbox-context`). The agent NEVER removes a worktree explicitly. |
-    | Threads | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-discussions --url <webUrl> --all` · `--draft` | what was already written / my drafts |
+    | Threads | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-discussions --url <webUrl> --all --json-file` · `--json` · `--my --with-drafts` | `--json-file` = PREFERRED: writes full threads to `<reportsDir>/discussions.json` AND prints a compact summary `{file, total, summary[]}` (each `summary[]` row = `shortId`/`resolved`/`author`/`body`/`file`/`line`/`mine`) — read the file with `Read`, never parse stdout. `--my` filters to my threads; `--my --with-drafts` adds my drafts |
     | CI | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-pipeline --url <webUrl> [--all] [--logs] [--json] [--status <s>]` · `vcs-job ... --action status\|play\|cancel\|retry` · `vcs-job-log ... [--raw]` | `--all --logs` = passed+failed+failed logs; `--status failed` default; jobs — restart/cancel; `--raw` — raw log |
     | Posting | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-reply --url <webUrl>` (JSON array on stdin) | replies/comments/threads/resolve/edit/suggestion |
     | React | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-react --url <webUrl> --comment <noteId> --emoji <name>` | emoji reaction on a note (👍 `thumbsup` · 🚀 `rocket` · ❤️ `heart` · 🎉 `hooray` · 👀 `eyes`). This is the ONLY way to react — never type an emoji into a comment body. `noteId` = `vcs-discussions --json` → `notes[].id` (a NOTE id, not `discussionId`) |
@@ -329,11 +329,17 @@
          own code-review skills over `base..HEAD` (bugs/correctness) — findings into the shared report.
        The review battery ALWAYS runs in a subagent — never in this session (`AX_INDEPENDENT_ANALYSIS`);
        `inline` = one subagent, `fan_out` = one per track. Each review subagent gets this remit:
-       > ⚠️ **REMIT:** before any output on the MR `RE_READ("arch-interrogation.directive.xml")` in
-       > full, ignoring prior knowledge. Follow `OutputFormat` literally (all sections, order,
-       > separators), run `SelfCheck`, compare against `RE_READ("golden-chat-output.example.md")`. The
-       > entire `BeliefState` (`AX_*`), `InterrogationBattery`, `PackageExtractionGate`, `VerdictModel`,
-       > `HaltConditions` — mandatory in full, not a subset.
+        > ⚠️ **REMIT:** before any output on the MR `RE_READ("arch-interrogation.directive.xml")` in
+        > full, ignoring prior knowledge. Follow `OutputFormat` literally (all sections, order,
+        > separators), run `SelfCheck`, compare against `RE_READ("golden-chat-output.example.md")`. The
+        > entire `BeliefState` (`AX_*`), `InterrogationBattery`, `PackageExtractionGate`, `VerdictModel`,
+        > `HaltConditions` — mandatory in full, not a subset.
+        > **Output contract (the orchestrator's `--validate` enforces it — return nothing that fails it):**
+        > fill `## Находки`, `## Кандидаты`, `## Вердикт`; drop every `<!-- FILL -->` marker; `Ось` ∈
+        > `A`–`G` or a probe code (`NAT`/`IDIOM`/`LIT`/`DEP`/`GLOBAL`/`TEST`/`SEC`/`BIZ`/`TYPO`), `Вид` ∈
+        > `new-line-comment`/`reply-to-thread`/`correction-reply`/`awaiting-my-reply`/`suggestion`;
+        > Russian prose with no banned words (`фикса`, `гейт`, `блокер`, `medium`, calques…); no
+        > unescaped `|` inside a table cell.
 
        Subagent input — ONE path to its task file (document pipeline, "Review pipeline" Step 3):
        `ref`/`webUrl`/`diff_refs`/`path`/`base`/`prior_threads`/`my_drafts`/`my_login` are already in
@@ -464,13 +470,13 @@
 
     ## Step 0a — Drafts and discussion context (BEFORE review)
     Drafts are a temporary investigation tool, not a permanent artifact; removed after review.
-    1. Load drafts and my threads: `vcs-discussions --url <webUrl> --my --with-drafts --json` →
+    1. Load drafts and my threads: `vcs-discussions --url <webUrl> --my --with-drafts --json-file` →
        `my_drafts` = investigation vector; `my_threads` = what I already wrote (dedup).
     2. Pass to subagents via the task file's Context (not separate fields): `prior_threads` +
        `my_drafts` + `my_login` are folded into `## Контекст` at Step 2, with `worktree.path`,
        `diff_refs`, `base`, `ref`, `webUrl` — the subagent gets ONE file path, everything else inside.
     3. AFTER review, BEFORE posting (Step 4): `vcs-draft-note --delete-all` (drafts served their
-       purpose) then `vcs-discussions --url <webUrl> --all --json`. Reconcile duplicates
+       purpose) then `vcs-discussions --url <webUrl> --all --json-file`. Reconcile duplicates
        (`AX_POSTING_NO_DUPLICATES`); apply `<ThreadModel>` + `ReactionMatrix` to peer threads
        (peer-said-same → 👍 WITHOUT resolve, owner closes; my duplicate of a peer → resolve MINE;
        peer-said-different → reply).
@@ -478,7 +484,7 @@
     ## Step 1 — Scout
     Role fork:
     - `myRole=author` → load `arch-interrogation` in `<AuthorMode>`. Load ALL reviewer comments first —
-      `vcs-discussions --url <webUrl> --all --json` (not `--my`) — they are the main input. Priority:
+      `vcs-discussions --url <webUrl> --all --json-file` (not `--my`) — they are the main input. Priority:
       `role=author` + `headChanged != none` → `update-review` first, then `AuthorMode`. `headChanged ==
       none` → straight to `AuthorMode`.
     - `myRole=reviewer` → standard adversarial review via `arch-interrogation`.

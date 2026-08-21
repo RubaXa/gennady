@@ -91,9 +91,8 @@ export function findStopWords(text: string): StopWordHit[] {
 
   for (let i = 0; i < lines.length; i++) {
     const raw = lines[i];
-    const trimmed = raw.trim();
 
-    if (trimmed.startsWith('```')) {
+    if (raw.startsWith('```')) {
       inFence = !inFence;
       continue;
     }

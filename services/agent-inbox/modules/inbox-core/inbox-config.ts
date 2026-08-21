@@ -28,6 +28,8 @@ export type ConfigConfigured = {
   reposBase: string;
   /** @purpose VCS hostname without scheme */
   vcsHost: string;
+  /** @purpose Optional persisted automatic-review quiet window in minutes. */
+  autoReviewQuietMinutes?: number;
 };
 
 /** @purpose Unified config load result — either fully configured or a structured signal with missing keys. */
@@ -105,6 +107,7 @@ export class InboxConfig {
       configured: true,
       reposBase: raw.reposBase!,
       vcsHost: raw.vcsHost!,
+      autoReviewQuietMinutes: raw.autoReviewQuietMinutes,
     };
     // #endregion END_VALIDATE_AND_SIGNAL
   }
@@ -117,7 +120,9 @@ export class InboxConfig {
    * @sideEffect Atomic write to disk via tmp + rename.
    */
   async save(
-    partial: Partial<Pick<InboxConfigRaw, 'reposBase' | 'vcsHost' | 'dryRun'>>
+    partial: Partial<
+      Pick<InboxConfigRaw, 'reposBase' | 'vcsHost' | 'dryRun' | 'autoReviewQuietMinutes'>
+    >
   ): Promise<void> {
     logger.debug('[InboxConfig#save] [idle → saving]', { keys: Object.keys(partial) });
 
@@ -139,6 +144,7 @@ export class InboxConfig {
       reposBase: partial.reposBase ?? base.reposBase,
       vcsHost: partial.vcsHost ?? base.vcsHost,
       dryRun: partial.dryRun ?? base.dryRun,
+      autoReviewQuietMinutes: partial.autoReviewQuietMinutes ?? base.autoReviewQuietMinutes,
     };
 
     try {
@@ -194,6 +200,7 @@ export class InboxConfig {
       reposBase: key === 'reposBase' ? undefined : this._rawConfig.reposBase,
       vcsHost: key === 'vcsHost' ? undefined : this._rawConfig.vcsHost,
       dryRun: this._rawConfig.dryRun,
+      autoReviewQuietMinutes: this._rawConfig.autoReviewQuietMinutes,
     };
 
     try {

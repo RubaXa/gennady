@@ -242,6 +242,11 @@ describe('PipelineRuntime', () => {
         existsSync(`${report}/tasks/track_logic.result.json`),
         'fan-out must create result'
       );
+      assert.match(
+        readFileSync(`${report}/tasks/track_logic.md`, 'utf8'),
+        /track logic/i,
+        'every worker session must create a readable Markdown report'
+      );
       const workerResult = JSON.parse(
         readFileSync(`${report}/tasks/track_logic.opencode-track_logic.result.json`, 'utf8')
       ) as { findings: unknown[] };
@@ -256,6 +261,11 @@ describe('PipelineRuntime', () => {
         'synthesis must consume the persisted worker results'
       );
       assert.ok(review.findings.some((finding) => finding.summary === 'track_logic evidence'));
+      assert.match(
+        readFileSync(`${report}/REVIEW.md`, 'utf8'),
+        /Итог ревью[\s\S]+Результаты дорожек/u,
+        'synthesis must create the primary readable review document'
+      );
       assert.ok(existsSync(`${report}/tail_reviewer.json`), 'role tail must write durable result');
     } finally {
       cleanupTestTmp(stateDir);

@@ -18,7 +18,7 @@ import { TaskRouter } from './routers/task.router.ts';
 import { DecisionRouter } from './routers/decision.router.ts';
 import { StreamRouter } from './routers/stream.router.ts';
 import { SseHub } from './sse-hub.ts';
-import { BoardProjection } from './projections/board-projection.ts';
+import { BoardProjection, type BoardAutoReviewPolicy } from './projections/board-projection.ts';
 import type { DiskCardSeed } from './board-provider.disk.ts';
 import { FeedProjection } from './projections/feed-projection.ts';
 import { setDryRunBroadcaster } from '../inbox-core/dry-run.ts';
@@ -118,6 +118,8 @@ export type HttpServerInboxApiConfig = {
    * @returns Disk-sourced card seeds for every reviewed MR on disk.
    */
   diskCards?: () => DiskCardSeed[];
+  /** @purpose Runtime policy rendered as an observable per-card auto-review timer. */
+  autoReviewPolicy?: BoardAutoReviewPolicy;
 };
 
 /**
@@ -300,7 +302,8 @@ export class HttpServer {
         config.inboxApi.registry,
         hub,
         config.inboxApi.loadSnapshots,
-        config.inboxApi.diskCards
+        config.inboxApi.diskCards,
+        config.inboxApi.autoReviewPolicy
       );
       const feedProjection = new FeedProjection(config.inboxApi.journal, config.inboxApi.registry);
 

@@ -29,6 +29,8 @@ coverage
 ai/drafts
 .claude/
 .codex-agent-status/
+.codex-artifacts/
+.playwright-cli/
 *.tgz
 # agent-inbox runtime state (registry, drafts, worktrees)
 .gennady/

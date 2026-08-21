@@ -13,6 +13,7 @@ import { logger } from '#logger';
 import { isOpencodePid, terminateOrphanedOpencode } from './pid-utils.ts';
 import { StateStore } from '../modules/inbox-core/state-store.ts';
 import { VcsGitlabPort } from '../modules/inbox-vcs/vcs-gitlab.port.ts';
+import { VcsInboxReal } from '../modules/inbox-core/vcs-inbox.real.ts';
 import type { VcsEffectPort, VcsPort } from '../modules/inbox-vcs/vcs-port.ts';
 import { selectVcsRuntime } from '../modules/inbox-vcs/vcs-runtime.ts';
 import { SyncService } from '../modules/inbox-vcs/sync.ts';
@@ -32,6 +33,7 @@ import { SessionRouter } from '../modules/inbox-queue/session-router.ts';
 import { PipelineRuntime } from '../modules/inbox-pipeline/pipeline-runtime.ts';
 import { VcsGitlabClient } from '../../vcs-client/gitlab/vcs-gitlab-client.ts';
 import { OpenCodeMock } from '../modules/inbox-opencode/opencode.mock.ts';
+import { OpenCodeDynamicMock } from '../modules/inbox-opencode/opencode.dynamic-mock.ts';
 import { OpenCodeReal } from '../modules/inbox-opencode/opencode.real.ts';
 import {
   OpenCodePort,
@@ -42,6 +44,10 @@ import {
   type OpenCodeMessage,
 } from '../modules/inbox-opencode/opencode.port.ts';
 import { composeError, type OpenCodeCallResult } from '../modules/inbox-opencode/errors.ts';
+import {
+  DEFAULT_AGENT_INBOX_MODEL,
+  parseOpenCodeModel,
+} from '../modules/inbox-opencode/model-selection.ts';
 import { SessionPool } from '../modules/inbox-opencode/session-pool.ts';
 import { SessionRegistry } from '../modules/inbox-opencode/session-registry.ts';
 import { SessionLifecycle } from '../modules/inbox-opencode/session-lifecycle.ts';
@@ -61,6 +67,7 @@ import {
 import type { ReviewRuntimeProfileSpec } from '../modules/inbox-core/types/review-runtime-profile-spec.type.ts';
 import type { ReviewRuntimeRoots } from '../modules/inbox-core/types/review-runtime-roots.type.ts';
 import type { ReviewRuntimeBinding } from '../modules/inbox-core/types/review-runtime-binding.type.ts';
+import { runMrsOnce } from './run-mode.ts';
 
 // ═══════════════════════════════════════════════════════════════
 // Degraded OpenCode adapter — returns SESSION_ERROR for all prompts.
@@ -197,7 +204,11 @@ async function retryOpencodeConnect(
   const url = `http://localhost:${port}/`;
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    logger.debug(`[bootstrap] opencode health check attempt ${attempt}/${maxRetries}`);
+    logger.debug('[retryOpencodeConnect] [idle → probing]', {
+      port,
+      attempt,
+      maxRetries,
+    });
 
     try {
       const controller = new AbortController();
@@ -208,13 +219,20 @@ async function retryOpencodeConnect(
       if (response.status > 0) {
         // opencode requires auth on all endpoints (returns 401) — any HTTP
         // response proves the server is alive and listening
-        logger.info('[bootstrap] opencode server is reachable');
+        logger.info('[retryOpencodeConnect] [probing → connected]', {
+          port,
+          attempt,
+          statusCode: response.status,
+        });
         return true;
       }
     } catch (cause) {
-      logger.debug('[bootstrap] opencode health check failed', {
+      const error = cause instanceof Error ? cause : new Error(String(cause));
+      logger.debug('[retryOpencodeConnect] [probing → retrying]', {
+        port,
         attempt,
-        error: (cause as Error).message,
+        maxRetries,
+        error,
       });
     }
 
@@ -223,7 +241,7 @@ async function retryOpencodeConnect(
     }
   }
 
-  logger.warn('[bootstrap] opencode server unreachable after all retries');
+  logger.warn('[retryOpencodeConnect] [probing → unreachable]', { port, maxRetries });
   return false;
 }
 
@@ -263,9 +281,7 @@ async function spawnOpencode(
   }
 
   for (let attempt = 1; attempt <= maxSpawnRetries; attempt++) {
-    logger.info(
-      `[bootstrap] spawning opencode serve on port ${port} (attempt ${attempt}/${maxSpawnRetries})`
-    );
+    logger.info('[spawnOpencode] [idle → spawning]', { port, attempt, maxSpawnRetries });
 
     let proc: ChildProcess;
     try {
@@ -278,18 +294,20 @@ async function spawnOpencode(
 
       // Forward opencode stdout/stderr to logger for diagnostics
       proc.stdout?.on('data', (data: Buffer) => {
-        logger.debug(`[opencode:stdout] ${data.toString().trim()}`);
+        logger.debug('[spawnOpencode] [running → stdout]', { line: data.toString().trim() });
       });
       proc.stderr?.on('data', (data: Buffer) => {
-        logger.debug(`[opencode:stderr] ${data.toString().trim()}`);
+        logger.debug('[spawnOpencode] [running → stderr]', { line: data.toString().trim() });
       });
       proc.on('error', (err: Error) => {
-        logger.warn('[bootstrap] opencode child process error', { error: err.message });
+        logger.warn('[spawnOpencode] [running → child_error]', { port, error: err });
       });
     } catch (cause) {
-      logger.warn('[bootstrap] failed to spawn opencode', {
+      const error = cause instanceof Error ? cause : new Error(String(cause));
+      logger.warn('[spawnOpencode] [spawning → failed]', {
+        port,
         attempt,
-        error: (cause as Error).message,
+        error,
       });
       continue;
     }
@@ -301,7 +319,8 @@ async function spawnOpencode(
 
       // Check if process exited prematurely
       if (proc.exitCode !== null) {
-        logger.warn('[bootstrap] opencode process exited early', {
+        logger.warn('[spawnOpencode] [starting → exited]', {
+          port,
           exitCode: proc.exitCode,
           attempt,
         });
@@ -317,11 +336,22 @@ async function spawnOpencode(
         if (response.status > 0) {
           // opencode requires auth on all endpoints — any response proves it is alive
           healthy = true;
-          logger.info('[bootstrap] opencode serve is reachable (spawned)');
+          logger.info('[spawnOpencode] [starting → connected]', {
+            port,
+            attempt,
+            statusCode: response.status,
+          });
           break;
         }
-      } catch {
-        logger.debug(`[bootstrap] opencode health check ${hc}/${maxHealthChecks}`);
+      } catch (cause) {
+        const error = cause instanceof Error ? cause : new Error(String(cause));
+        logger.debug('[spawnOpencode] [starting → probing]', {
+          port,
+          attempt,
+          healthCheck: hc,
+          maxHealthChecks,
+          error,
+        });
       }
     }
 
@@ -330,7 +360,7 @@ async function spawnOpencode(
     }
 
     // Spawn failed — kill the process and retry
-    logger.warn('[bootstrap] opencode spawn attempt failed, killing process');
+    logger.warn('[spawnOpencode] [starting → terminating]', { port, attempt });
     try {
       proc.kill('SIGTERM');
     } catch {
@@ -338,7 +368,7 @@ async function spawnOpencode(
     }
   }
 
-  logger.warn('[bootstrap] opencode spawn failed after all retries');
+  logger.warn('[spawnOpencode] [spawning → exhausted]', { port, maxSpawnRetries });
   return null;
 }
 
@@ -419,8 +449,16 @@ export async function ensureRunModeOpenCode(
 export type BootstrapConfig = {
   /** @purpose Whether to use mock adapters (dev/e2e) or real (production). */
   mocks: boolean;
+  /** @purpose Keep real VCS/state while replacing only the OpenCode network adapter. */
+  mockOpencode?: boolean;
   /** @purpose Port to listen on (default: 4174). */
   port?: number;
+  /** @purpose Disable discovery-triggered reviews while retaining real VCS/dashboard reads. */
+  autoReview?: boolean;
+  /** @purpose CLI override for the post-commit quiet window before auto-review dispatch. */
+  autoReviewQuietMinutes?: number;
+  /** @purpose Explicit OpenCode provider/model; defaults to the Agent Inbox production policy. */
+  opencodeModel?: string;
   /** @purpose Root state directory (default: ~/.gennady). */
   stateDir?: string;
   /** @purpose Explicit runtime capability binding; omitted value derives from legacy mocks mode. */
@@ -461,6 +499,8 @@ export type BootstrapResult = {
   degraded: boolean;
   /** @purpose Human-readable opencode status for the startup bar. */
   opencodeStatus: string;
+  /** @purpose Exact provider/model pinned for control-plane review turns. */
+  opencodeModel: string;
   /** @purpose Polling interval in ms. */
   pollingInterval: number;
   /** @purpose Registered role names — empty after journal-first migration; kept for CLI backward compat. */
@@ -517,6 +557,12 @@ export { BootstrapSafetyError };
 export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResult> {
   const port = config.port ?? 4174;
   const pollingInterval = 300_000; // 5 minutes
+  const opencodeModel = config.opencodeModel ?? DEFAULT_AGENT_INBOX_MODEL;
+  if (!parseOpenCodeModel(opencodeModel)) {
+    throw new Error(
+      `[bootstrap] Invalid OpenCode model "${opencodeModel}"; expected provider/model`
+    );
+  }
   const bootReadiness = new BootReadiness();
   // D-305: the diagnostics surface must be observable before configuration and every external
   // phase. It is rebound to the complete runtime only after those dependencies are assembled.
@@ -592,6 +638,7 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
 
   // #region START_CHECK_CONFIG
   let configVcsHost: string | undefined;
+  let configuredAutoReviewQuietMinutes: number | undefined;
   let configLoaded = false;
   let configFailure = false;
 
@@ -600,6 +647,7 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
       const result = await stateStore.loadConfig();
       if (result.configured) {
         configVcsHost = result.vcsHost;
+        configuredAutoReviewQuietMinutes = result.autoReviewQuietMinutes;
         configLoaded = true;
       } else {
         bootReadiness.setConfigStatus(false, result.missing);
@@ -617,11 +665,18 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
       configFailure = true;
     } else {
       configVcsHost = result.vcsHost;
+      configuredAutoReviewQuietMinutes = result.autoReviewQuietMinutes;
       configLoaded = true;
     }
   }
   if (configLoaded) bootReadiness.setConfigStatus(true);
   const useMocks = config.mocks || configFailure;
+  const autoReviewQuietMinutes =
+    config.autoReviewQuietMinutes ?? configuredAutoReviewQuietMinutes ?? 15;
+  if (!Number.isFinite(autoReviewQuietMinutes) || autoReviewQuietMinutes <= 0) {
+    throw new Error('[bootstrap] autoReviewQuietMinutes must be finite and positive');
+  }
+  const autoReviewQuietMs = autoReviewQuietMinutes * 60_000;
   // #endregion END_CHECK_CONFIG
 
   // A failed production config still starts a read-only failed boot surface; external adapters
@@ -639,6 +694,10 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
   let backgroundVerifier: BackgroundVerifier | null = null;
   let vcsJournal: EventJournal | null = null;
   let vcsRegistry: InboxRegistryAccess | null = null;
+  let initialSyncSnapshots = [] as Awaited<ReturnType<SyncService['twoTierSync']>>;
+  let dispatchDiscoveredReviews: (
+    snapshots: Awaited<ReturnType<SyncService['twoTierSync']>>
+  ) => void = () => undefined;
   // Single-flight slot for the heavy twoTierSync (a real 155-MR sync takes minutes): the
   // initial bootstrap sync and any board-triggered refresh must share one in-flight promise
   // instead of competing for GitLab.
@@ -654,8 +713,6 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
     }
     return inflightSync;
   };
-  let initialSyncSnapshots = [] as Awaited<ReturnType<SyncService['twoTierSync']>>;
-
   if (useMocks) {
     opencode = new OpenCodeMock();
     opencodeStatus = 'mock (dev/e2e)';
@@ -681,6 +738,12 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
         clock: new SystemClock(),
       },
       syncCoordinator: new VcsSyncCoordinator(vcsTruth, canonicalJournal),
+      onSnapshotsReady: (snapshots) => {
+        initialSyncSnapshots = snapshots;
+        server.updateInboxSnapshots(snapshots);
+        dispatchDiscoveredReviews(snapshots);
+        logger.info('[bootstrap] [poll-detail → board-ready]', { snapshots: snapshots.length });
+      },
     });
     backgroundVerifier = new BackgroundVerifier(vcsTruth, vcsJournal);
     // First real poll is deliberate: production truth port goes live; active snapshots pre-register the minute verifier.
@@ -718,9 +781,10 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
         },
         (cause: unknown) => {
           syncSettled = true;
+          const error = cause instanceof Error ? cause : new Error(String(cause));
           logger.warn('[bootstrap] [twoTierSync → failed]', {
             durationMs: Date.now() - syncStartedAt,
-            error: cause instanceof Error ? cause.message : String(cause),
+            error,
           });
           return null;
         }
@@ -757,134 +821,139 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
     await advanceBoot('reconcile');
     // #endregion END_CREATE_VCS
 
-    // #region START_CHECK_OPENCODE_PATH
-    if (!checkOpencodePath()) {
-      throw new Error(
-        'opencode not found in PATH. Install @opencode-ai/sdk or run with --mocks for dev mode.'
-      );
-    }
-    // #endregion END_CHECK_OPENCODE_PATH
-
-    // TSK-123 P2: OPENCODE_PORT means reuse an already-running opencode serve.
-    // Falls through to the spawn path when unset.
-    // D-138: pid file scoped by port; orphan check at start + cleanup before spawn.
-    // #region START_CONNECT_OPENCODE
-    const stateDir = stateStore.getStateDir();
-    const pidFile = join(stateDir, 'agent-inbox', `opencode-${port}.pid`);
-    opencodePort = 4096;
-    opencodePidFile = null;
-
-    if (existsSync(pidFile)) {
-      try {
-        const { pid: orphanPid } = JSON.parse(await readFile(pidFile, 'utf-8')) as {
-          pid: number;
-          port: number;
-        };
-        if (await isOpencodePid(orphanPid)) {
-          // Distinguish orphan opencode (serve dead) from legitimate running serve
-          let httpAlive = false;
-          try {
-            const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 2000);
-            const response = await fetch(`http://localhost:${port}/api/board`, {
-              signal: controller.signal,
-            });
-            clearTimeout(timeout);
-            httpAlive = response.ok;
-          } catch {
-            /* HTTP not responding — orphan */
-          }
-
-          if (httpAlive) {
-            throw new Error(
-              `Already running on port ${port}. Stop the existing instance first or use a different --port.`
-            );
-          }
-
-          logger.warn('[bootstrap] [starting → orphan_found]', {
-            port,
-            pid: orphanPid,
-            reason: `pid file for inbox-serve port ${port} still points at a live opencode process — a previous instance on this port exited without cleanup`,
-          });
-          await terminateOrphanedOpencode(
-            orphanPid,
-            `starting a fresh gennady inbox serve on port ${port}`
-          );
-          try {
-            await unlink(pidFile);
-          } catch {
-            /* ignore */
-          }
-        }
-      } catch (e) {
-        if (e instanceof Error && e.message.includes('Already running')) {
-          throw e;
-        }
-        /* stale/corrupt pid file — overwritten below regardless */
-      }
-    }
-
-    // Shared across all OpenCodeReal instances this process creates — see `OpenCodeRealOpts.dispatcher`.
-    const opencodeDispatcher = new UndiciAgent({ headersTimeout: 0, bodyTimeout: 0 });
-
-    const reusePort = process.env.OPENCODE_PORT ? Number(process.env.OPENCODE_PORT) : null;
-    if (reusePort && Number.isFinite(reusePort)) {
-      const connected = await retryOpencodeConnect(reusePort, 3, 1000);
-      if (connected) {
-        opencode = new OpenCodeReal({
-          directory: stateDir,
-          baseUrl: `http://localhost:${reusePort}`,
-          dispatcher: opencodeDispatcher,
-        });
-        opencodeStatus = `connected (reused port ${reusePort})`;
-        opencodePort = reusePort;
-      } else {
-        degraded = true;
-        opencode = new DegradedOpencode();
-        opencodeStatus = 'degraded (OPENCODE_PORT set but unreachable)';
-        opencodePort = reusePort;
-      }
+    if (config.mockOpencode) {
+      opencode = new OpenCodeDynamicMock();
+      opencodeStatus = 'dynamic mock (real GitLab/state)';
     } else {
-      try {
-        opencodePort = await findFreePort();
-      } catch {
-        throw new Error('No free port available in range 4096–4106 for opencode');
+      // #region START_CHECK_OPENCODE_PATH
+      if (!checkOpencodePath()) {
+        throw new Error(
+          'opencode not found in PATH. Install @opencode-ai/sdk or run with --mocks for dev mode.'
+        );
+      }
+      // #endregion END_CHECK_OPENCODE_PATH
+
+      // TSK-123 P2: OPENCODE_PORT means reuse an already-running opencode serve.
+      // Falls through to the spawn path when unset.
+      // D-138: pid file scoped by port; orphan check at start + cleanup before spawn.
+      // #region START_CONNECT_OPENCODE
+      const stateDir = stateStore.getStateDir();
+      const pidFile = join(stateDir, 'agent-inbox', `opencode-${port}.pid`);
+      opencodePort = 4096;
+      opencodePidFile = null;
+
+      if (existsSync(pidFile)) {
+        try {
+          const { pid: orphanPid } = JSON.parse(await readFile(pidFile, 'utf-8')) as {
+            pid: number;
+            port: number;
+          };
+          if (await isOpencodePid(orphanPid)) {
+            // Distinguish orphan opencode (serve dead) from legitimate running serve
+            let httpAlive = false;
+            try {
+              const controller = new AbortController();
+              const timeout = setTimeout(() => controller.abort(), 2000);
+              const response = await fetch(`http://localhost:${port}/api/board`, {
+                signal: controller.signal,
+              });
+              clearTimeout(timeout);
+              httpAlive = response.ok;
+            } catch {
+              /* HTTP not responding — orphan */
+            }
+
+            if (httpAlive) {
+              throw new Error(
+                `Already running on port ${port}. Stop the existing instance first or use a different --port.`
+              );
+            }
+
+            logger.warn('[bootstrap] [starting → orphan_found]', {
+              port,
+              pid: orphanPid,
+              reason: `pid file for inbox-serve port ${port} still points at a live opencode process — a previous instance on this port exited without cleanup`,
+            });
+            await terminateOrphanedOpencode(
+              orphanPid,
+              `starting a fresh gennady inbox serve on port ${port}`
+            );
+            try {
+              await unlink(pidFile);
+            } catch {
+              /* ignore */
+            }
+          }
+        } catch (e) {
+          if (e instanceof Error && e.message.includes('Already running')) {
+            throw e;
+          }
+          /* stale/corrupt pid file — overwritten below regardless */
+        }
       }
 
-      const proc = await spawnOpencode(stateDir, opencodePort);
-      if (proc && proc.pid) {
-        await mkdir(join(stateDir, 'agent-inbox'), { recursive: true });
-        await writeFile(
-          pidFile,
-          JSON.stringify({ pid: proc.pid, port: opencodePort }) + '\n',
-          'utf-8'
-        );
-        opencodePidFile = pidFile;
-        opencode = new OpenCodeReal({
-          directory: stateDir,
-          baseUrl: `http://localhost:${opencodePort}`,
-          dispatcher: opencodeDispatcher,
-        });
-        opencodeStatus = `connected (port ${opencodePort})`;
-        opencodeProcess = proc;
-      } else {
-        // Spawn failed — try polling an already-running instance
-        const connected = await retryOpencodeConnect(opencodePort, 3, 2000);
+      // Shared across all OpenCodeReal instances this process creates — see `OpenCodeRealOpts.dispatcher`.
+      const opencodeDispatcher = new UndiciAgent({ headersTimeout: 0, bodyTimeout: 0 });
+
+      const reusePort = process.env.OPENCODE_PORT ? Number(process.env.OPENCODE_PORT) : null;
+      if (reusePort && Number.isFinite(reusePort)) {
+        const connected = await retryOpencodeConnect(reusePort, 3, 1000);
         if (connected) {
+          opencode = new OpenCodeReal({
+            directory: stateDir,
+            baseUrl: `http://localhost:${reusePort}`,
+            dispatcher: opencodeDispatcher,
+          });
+          opencodeStatus = `connected (reused port ${reusePort})`;
+          opencodePort = reusePort;
+        } else {
+          degraded = true;
+          opencode = new DegradedOpencode();
+          opencodeStatus = 'degraded (OPENCODE_PORT set but unreachable)';
+          opencodePort = reusePort;
+        }
+      } else {
+        try {
+          opencodePort = await findFreePort();
+        } catch {
+          throw new Error('No free port available in range 4096–4106 for opencode');
+        }
+
+        const proc = await spawnOpencode(stateDir, opencodePort);
+        if (proc && proc.pid) {
+          await mkdir(join(stateDir, 'agent-inbox'), { recursive: true });
+          await writeFile(
+            pidFile,
+            JSON.stringify({ pid: proc.pid, port: opencodePort }) + '\n',
+            'utf-8'
+          );
+          opencodePidFile = pidFile;
           opencode = new OpenCodeReal({
             directory: stateDir,
             baseUrl: `http://localhost:${opencodePort}`,
             dispatcher: opencodeDispatcher,
           });
           opencodeStatus = `connected (port ${opencodePort})`;
+          opencodeProcess = proc;
         } else {
-          degraded = true;
-          opencode = new DegradedOpencode();
-          opencodeStatus = 'degraded (opencode not responding)';
+          // Spawn failed — try polling an already-running instance
+          const connected = await retryOpencodeConnect(opencodePort, 3, 2000);
+          if (connected) {
+            opencode = new OpenCodeReal({
+              directory: stateDir,
+              baseUrl: `http://localhost:${opencodePort}`,
+              dispatcher: opencodeDispatcher,
+            });
+            opencodeStatus = `connected (port ${opencodePort})`;
+          } else {
+            degraded = true;
+            opencode = new DegradedOpencode();
+            opencodeStatus = 'degraded (opencode not responding)';
+          }
         }
       }
+      // #endregion END_CONNECT_OPENCODE
     }
-    // #endregion END_CONNECT_OPENCODE
   }
 
   const lifecycleJournal =
@@ -986,6 +1055,7 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
       journal: controlPlaneJournal,
       receiptRoot: join(stateStore.getStateDir(), 'agent-inbox', 'control-plane-receipts'),
       runtimeNamespace: runtimeBinding.profile.stateNamespace,
+      model: opencodeModel,
       vcs: vcsTruth ?? undefined,
     }
   );
@@ -993,6 +1063,103 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
   if (!controlPlaneTrace)
     throw new Error('[bootstrap] Pipeline control-plane construction trace is unavailable');
   pipeline.start();
+  if (!useMocks && vcsTruth) {
+    const reviewVcs = new VcsInboxReal({ host: configVcsHost, truth: vcsTruth });
+    const settledRevision = new Map<string, string>();
+    const inFlight = new Set<string>();
+    const scheduled = new Map<string, { revision: string; timer: ReturnType<typeof setTimeout> }>();
+    let dispatchChain = Promise.resolve();
+    const enqueueReview = (
+      snapshot: Awaited<ReturnType<SyncService['twoTierSync']>>[number]
+    ): void => {
+      const mr = snapshot.mr.webUrl;
+      const revision = snapshot.headSha || snapshot.updatedAt;
+      if (!mr || !revision || settledRevision.get(mr) === revision || inFlight.has(mr)) return;
+      inFlight.add(mr);
+      dispatchChain = dispatchChain.then(async () => {
+        try {
+          const result = await runMrsOnce({
+            mrs: [mr],
+            dryRun: true,
+            deps: { pipeline, store: stateStore, vcs: reviewVcs },
+          });
+          const state = result.results[0]?.state;
+          if (state === 'completed' || state === 'blocked') settledRevision.set(mr, revision);
+          const reviewError = result.results[0]?.error;
+          if (state === 'failed') {
+            logger.error('[bootstrap] [auto-review → failed]', {
+              mr,
+              revision,
+              model: opencodeModel,
+              error: reviewError ?? 'Review failed without a diagnostic',
+            });
+          } else {
+            logger.info('[bootstrap] [auto-review → settled]', {
+              mr,
+              revision,
+              state,
+              model: opencodeModel,
+            });
+          }
+        } finally {
+          inFlight.delete(mr);
+        }
+      });
+      void dispatchChain.catch((cause) => {
+        const error =
+          cause instanceof Error
+            ? cause
+            : new Error('[bootstrap] Unknown auto-review dispatch failure', { cause });
+        logger.error('[bootstrap] [auto-review → failed]', { model: opencodeModel, error });
+      });
+    };
+    dispatchDiscoveredReviews = (snapshots) => {
+      for (const snapshot of snapshots) {
+        const mr = snapshot.mr.webUrl;
+        const revision = snapshot.headSha || snapshot.updatedAt;
+        if (!mr || !revision || settledRevision.get(mr) === revision) continue;
+        const existing = scheduled.get(mr);
+        if (existing?.revision === revision || inFlight.has(mr)) continue;
+        if (existing) clearTimeout(existing.timer);
+        if (config.autoReview === false) {
+          scheduled.delete(mr);
+          continue;
+        }
+        const committedAt = snapshot.headCommittedAt
+          ? Date.parse(snapshot.headCommittedAt)
+          : Number.NaN;
+        if (!Number.isFinite(committedAt)) {
+          scheduled.delete(mr);
+          logger.warn('[bootstrap] [auto-review → unscheduled] Head commit time is unavailable', {
+            mr,
+            revision,
+          });
+          continue;
+        }
+        const dueAt = committedAt + autoReviewQuietMs;
+        const delayMs = Math.max(0, dueAt - Date.now());
+        if (delayMs === 0) {
+          scheduled.delete(mr);
+          enqueueReview(snapshot);
+          continue;
+        }
+        const timer = setTimeout(() => {
+          const current = scheduled.get(mr);
+          if (current?.revision !== revision) return;
+          scheduled.delete(mr);
+          enqueueReview(snapshot);
+        }, delayMs);
+        timer.unref();
+        scheduled.set(mr, { revision, timer });
+        logger.info('[bootstrap] [auto-review → scheduled]', {
+          mr,
+          revision,
+          dueAt: new Date(dueAt).toISOString(),
+        });
+      }
+    };
+    dispatchDiscoveredReviews(initialSyncSnapshots);
+  }
   // #endregion END_COMPOSE_PIPELINE
 
   // The readiness owner advances exactly once through the public D-305 sequence. The HTTP
@@ -1040,6 +1207,7 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
         registry: mockRegistry,
         snapshots: mockSnapshots,
         loadSnapshots: loadMockSnapshots,
+        autoReviewPolicy: { enabled: config.autoReview !== false, quietMs: autoReviewQuietMs },
       },
       bootReadiness,
     });
@@ -1051,6 +1219,7 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
       port,
       roles: [],
       opencodeStatus,
+      opencodeModel,
       degraded,
     });
 
@@ -1060,6 +1229,7 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
       opencode,
       degraded,
       opencodeStatus,
+      opencodeModel,
       pollingInterval,
       roles: [],
       port,
@@ -1118,6 +1288,7 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
       snapshots: initialSyncSnapshots,
       loadSnapshots: () => runSyncShared(syncServiceForBoard),
       diskCards: () => scanDiskCardSeeds(stateDirForDiskCards),
+      autoReviewPolicy: { enabled: config.autoReview !== false, quietMs: autoReviewQuietMs },
     },
     bootReadiness,
   });
@@ -1129,6 +1300,7 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
     port,
     roles: [],
     opencodeStatus,
+    opencodeModel,
     degraded,
   });
 
@@ -1138,6 +1310,7 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
     opencode,
     degraded,
     opencodeStatus,
+    opencodeModel,
     pollingInterval,
     roles: [],
     port,

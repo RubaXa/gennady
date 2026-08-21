@@ -191,11 +191,40 @@ describe('MrWorkspace / ReviewFeed', () => {
     assert.match(html, /v2-handoff-control/, 'handoff control absent');
     assert.match(html, /Передать задачу/, 'handoff label absent');
 
-    // package widget renders in loading state (useEffect not called in SSR) — section present
-    assert.match(html, /v2-package/, 'package section absent');
+    // unavailable package is omitted so the workspace never exposes a raw placeholder row
+    assert.doesNotMatch(html, /v2-package/, 'unavailable package must stay hidden');
 
     // feed section renders (empty state since state=null)
     assert.match(html, /v2-feed/, 'feed section absent');
     // #endregion END_VIEWPORT_ASSERT_STRUCTURE
+  });
+
+  it('report route owns a stable artifact workspace without MR loading chrome', () => {
+    const html = renderToStaticMarkup(
+      <MrWorkspace
+        mrRef="group/project!1"
+        state={null}
+        artifactPath="REVIEW.md"
+        onBack={() => undefined}
+        onAction={() => undefined}
+        pending={null}
+        onSelectAnchor={() => undefined}
+        chatAnchor={null}
+        transcript={[]}
+        streamingText=""
+        pendingQuestion={null}
+        undoSnapshotId={null}
+        disconnected={false}
+        onDecision={async () => undefined}
+        onUndo={async () => undefined}
+        onChatSubmit={async () => undefined}
+      />
+    );
+
+    assert.match(html, /Центр артефактов ревью/);
+    assert.match(html, /Артефакты ревью/);
+    assert.match(html, /aria-label="Чат"/);
+    assert.doesNotMatch(html, /Загрузка MR/);
+    assert.doesNotMatch(html, /Управление ревью/);
   });
 });

@@ -35,6 +35,13 @@ describe('findStopWords', () => {
     assert.deepEqual(findStopWords(text), []);
   });
 
+  it('indented ``` (diff context line) inside ```diff does not close the fence', () => {
+    const text = ['```diff', ' контекст', ' ```', ' гейт после вложенного забора', '```'].join(
+      '\n'
+    );
+    assert.deepEqual(findStopWords(text), []);
+  });
+
   it('mention inside an HTML comment is skipped (guidance, not output)', () => {
     assert.deepEqual(findStopWords('<!-- не проза, а диаграмма -->'), []);
   });

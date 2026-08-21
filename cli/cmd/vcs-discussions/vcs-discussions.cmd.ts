@@ -3,6 +3,8 @@
 // @consumers: gennady.ts
 // @tasks: TSK-93, TSK-96
 
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import {
   resolveVcsContext,
   VcsResolveError,
@@ -12,6 +14,7 @@ import {
 import { createVcsClient } from '../_shared/create-vcs-client.ts';
 import { VcsGitlabClient } from '../../../services/vcs-client/gitlab/vcs-gitlab-client.ts';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
+import { resolveStateDir, mrReportsDir } from '../inbox/_core/logic/state-paths.logic.ts';
 import { logger } from '#logger';
 
 type Deps = {
@@ -47,6 +50,7 @@ export async function run(rawArgs: string[], deps: Deps = defaultDeps()): Promis
     url: { aliases: ['url'], takesValue: true },
     all: ['all'],
     json: ['json'],
+    'json-file': ['json-file'],
     my: ['my'],
     'with-drafts': ['with-drafts', 'drafts'],
     'dry-run': ['dry-run', 'dry'],
@@ -57,6 +61,7 @@ export async function run(rawArgs: string[], deps: Deps = defaultDeps()): Promis
   const iidRaw = args.iid as string | undefined;
   const showAll = !!args.all;
   const json = !!args.json;
+  const jsonFile = !!args['json-file'];
   const dryRun = !!args['dry-run'];
   const host = args.host as string | undefined;
   const urlArg = args.url as string | undefined;
@@ -188,6 +193,56 @@ export async function run(rawArgs: string[], deps: Deps = defaultDeps()): Promis
         }
         // #endregion END_LOAD_DRAFT_NOTES
       }
+    }
+
+    if (jsonFile) {
+      // #region START_JSON_FILE — write clean JSON (no banner) to <reportsDir>/discussions.json + compact summary.
+      const fullRef = `${context.project}!${resolvedIid}`;
+      const reportsDir = mrReportsDir(resolveStateDir(rawArgs), fullRef);
+      mkdirSync(reportsDir, { recursive: true });
+      const filePath = join(reportsDir, 'discussions.json');
+      writeFileSync(filePath, JSON.stringify(resultDiscussions.map(mapToJson), null, 2), 'utf-8');
+
+      let myLogin: string | undefined;
+      try {
+        const me = await (client as VcsGitlabClient).getCurrentUser();
+        myLogin = me.login;
+      } catch {
+        myLogin = undefined;
+      }
+
+      const summary = resultDiscussions.map((d) => {
+        const shortId = String(d.id ?? '').slice(0, 8);
+        const notes = (d.notes as Array<Record<string, unknown>> | undefined) ?? [];
+        const firstNote = notes[0];
+        const author = firstNote?.author as { name?: string; username?: string } | undefined;
+        const authorName = author?.name ?? author?.username ?? 'unknown';
+        const resolved = firstNote?.resolved === true;
+        const position = firstNote?.position as Record<string, unknown> | undefined;
+        const file = position?.new_path as string | undefined;
+        const line = position?.new_line as number | undefined;
+        const body = String(firstNote?.body ?? '')
+          .split('\n')[0]
+          .slice(0, 100);
+        const mine = myLogin
+          ? notes.some((n) => (n.author as { username?: string } | undefined)?.username === myLogin)
+          : false;
+        return {
+          shortId,
+          resolved,
+          author: authorName,
+          body: body || '(no text)',
+          file,
+          line,
+          mine,
+        };
+      });
+
+      deps.stdout.write(
+        JSON.stringify({ file: filePath, total: resultDiscussions.length, summary }, null, 2) + '\n'
+      );
+      deps.exit(0);
+      // #endregion END_JSON_FILE
     }
 
     if (json) {

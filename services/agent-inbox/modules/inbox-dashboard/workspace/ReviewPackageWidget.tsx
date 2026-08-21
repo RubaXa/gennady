@@ -12,8 +12,8 @@ import type { ReviewPackage, ReviewPackageAction } from '../v2-types.ts';
  * @invariant Apply is immediate for non-fatal GitLab writes; each action outcome updates independently.
  * @param props Active MR reference.
  */
-export function ReviewPackageWidget(props: { mrRef: string }) {
-  const { mrRef } = props;
+export function ReviewPackageWidget(props: { mrRef: string; available: boolean }) {
+  const { mrRef, available } = props;
   const [pkg, setPkg] = useState<ReviewPackage | null>(null);
   const [selections, setSelections] = useState<Record<string, boolean>>({});
   const [applying, setApplying] = useState(false);
@@ -21,6 +21,10 @@ export function ReviewPackageWidget(props: { mrRef: string }) {
   const [outcomes, setOutcomes] = useState<Record<string, 'success' | 'error'>>({});
 
   useEffect(() => {
+    if (!available) {
+      setPkg(null);
+      return;
+    }
     // #region START_PACKAGE_FETCH — failure mode: stays null, shows error inline
     dashboardV2Api
       .package(mrRef)
@@ -34,7 +38,7 @@ export function ReviewPackageWidget(props: { mrRef: string }) {
       })
       .catch(() => setPkg(null));
     // #endregion END_PACKAGE_FETCH
-  }, [mrRef]);
+  }, [available, mrRef]);
 
   const toggleAction = (actionId: string): void => {
     if (pkg?.stale) return;
@@ -73,6 +77,8 @@ export function ReviewPackageWidget(props: { mrRef: string }) {
     if (action.outcome === 'skipped') return '—';
     return '';
   };
+
+  if (!available) return null;
 
   if (!pkg) {
     return (

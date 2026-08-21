@@ -132,6 +132,7 @@ describe('bootstrap — mock mode', () => {
     assert.ok(result.opencode, 'opencode should exist');
     assert.strictEqual(result.degraded, false);
     assert.ok(result.opencodeStatus.includes('mock'), 'opencodeStatus should mention mock');
+    assert.strictEqual(result.opencodeModel, 'llm-proxy/deepseek-v4-pro');
     assert.deepStrictEqual(result.roles, [], 'roles is empty after journal-first migration');
     assert.strictEqual(result.port, 0);
     assert.ok(result.pollingInterval > 0, 'pollingInterval should be positive');

@@ -4,8 +4,8 @@
 // @consumers: bootstrap.ts (real-mode wiring), inbox-api routers, projections/board-projection.ts (disk-scan seed)
 // @tasks: TSK-190
 
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { join, relative } from 'node:path';
 import { logger } from '#logger';
 import { BoardProviderPort } from './board-provider.port.ts';
 import type {
@@ -20,9 +20,6 @@ import type {
 import { parseVcsUrl } from '../../../vcs-client/parse-vcs-url.ts';
 import { isSafeArtifactPath } from './routers/artifact.router.ts';
 import { mrsRoot, mrReportsDir } from '../../../../cli/cmd/inbox/_core/logic/state-paths.logic.ts';
-
-/** @purpose Known review-document filenames materialized directly under `report/` (mirrors BoardProviderReal). */
-const KNOWN_REPORT_FILES = ['REPORT.md', 'README.md', 'PLAN.md', 'HISTORY.md'];
 
 /** @purpose Fields read from `report/context.json` — real shape observed on disk (ref/title/webUrl/author/reviewers/description/branches/updatedAt); every field is optional because older reports may lack it. */
 type DiskContext = {
@@ -56,7 +53,25 @@ export type DiskCardSeed = {
   webUrl: string;
   /** @purpose VCS author login, from disk context when available, else empty. */
   author: string;
+  /** @purpose Materialization time of the canonical completed review. */
+  reviewedAt: string;
+  /** @purpose Findings stored in the canonical completed review. */
+  findings: number;
 };
+
+/**
+ * @purpose Count findings in one canonical review without making board projection depend on report DTOs.
+ * @param reviewFile Absolute path to `review.json`.
+ * @returns Findings count, degrading to zero for unreadable or malformed content.
+ */
+function readDiskFindingCount(reviewFile: string): number {
+  try {
+    const parsed = JSON.parse(readFileSync(reviewFile, 'utf-8')) as { findings?: unknown };
+    return Array.isArray(parsed.findings) ? parsed.findings.length : 0;
+  } catch {
+    return 0;
+  }
+}
 
 /**
  * @purpose Render-hint from a report file's extension (mirrors BoardProviderReal#deriveArtifactKind).
@@ -119,6 +134,16 @@ function readDiskContext(stateDir: string, ref: string): DiskContext | null {
   }
 }
 
+/** @purpose Convert legacy host-prefixed refs to the same `project!iid` identity as live sync. */
+function canonicalDiskRef(ref: string, context: DiskContext | null): string {
+  const parsed = context?.webUrl ? parseVcsUrl(context.webUrl) : null;
+  if (parsed) return `${parsed.repository}!${parsed.iid}`;
+  const [project, iid] = ref.split('!');
+  const segments = project.split('/');
+  if (segments.length > 1 && segments[0].includes('.')) segments.shift();
+  return `${segments.join('/')}!${iid}`;
+}
+
 /**
  * @purpose List every `project!iid` ref under `mrsRoot` with a materialized `report/review.json` —
  *   the closed-world set of already-reviewed MRs the viewer may show.
@@ -149,12 +174,15 @@ function listReviewedRefs(stateDir: string): string[] {
 export function scanDiskCardSeeds(stateDir: string): DiskCardSeed[] {
   return listReviewedRefs(stateDir).map((ref) => {
     const context = readDiskContext(stateDir, ref);
+    const reviewFile = join(mrReportsDir(stateDir, ref), 'review.json');
     return {
-      ref,
+      ref: canonicalDiskRef(ref, context),
       title: context?.title ?? ref,
       description: context?.description ?? '',
       webUrl: context?.webUrl ?? '',
       author: context?.author ?? '',
+      reviewedAt: statSync(reviewFile).mtime.toISOString(),
+      findings: readDiskFindingCount(reviewFile),
     };
   });
 }
@@ -189,6 +217,20 @@ export class BoardProviderDisk extends BoardProviderPort {
   }
 
   /**
+   * @purpose Resolve canonical refs to either their current directory or a legacy host-prefixed directory.
+   * @param ref Canonical MR ref to resolve against disk layout.
+   * @returns Stored ref matching `ref` — `ref` itself or a legacy host-prefixed directory name.
+   */
+  protected _storedRef(ref: string): string {
+    if (existsSync(mrReportsDir(this._stateDir, ref))) return ref;
+    for (const storedRef of listReviewedRefs(this._stateDir)) {
+      const context = readDiskContext(this._stateDir, storedRef);
+      if (canonicalDiskRef(storedRef, context) === ref) return storedRef;
+    }
+    return ref;
+  }
+
+  /**
    * @purpose Read the structured review (`review.json`) materialized under `report/`.
    * @invariant `revision` defaults to `0` when absent — matches BoardProviderReal's disk read (D-99).
    * @param ref MR `project!iid` composite key.
@@ -201,7 +243,7 @@ export class BoardProviderDisk extends BoardProviderPort {
     role: MrCard['role'];
   } | null {
     try {
-      const file = join(mrReportsDir(this._stateDir, ref), 'review.json');
+      const file = join(mrReportsDir(this._stateDir, this._storedRef(ref)), 'review.json');
       if (!existsSync(file)) return null;
       const parsed = JSON.parse(readFileSync(file, 'utf-8')) as {
         verdict?: unknown;
@@ -360,32 +402,34 @@ export class BoardProviderDisk extends BoardProviderPort {
    */
   listArtifacts(mrId: string): ArtifactRef[] {
     const ref = this._normalizeRef(mrId);
-    const dir = mrReportsDir(this._stateDir, ref);
+    const dir = mrReportsDir(this._stateDir, this._storedRef(ref));
     if (!existsSync(dir)) return [];
 
     const refs: ArtifactRef[] = [];
-    for (const name of KNOWN_REPORT_FILES) {
-      if (existsSync(join(dir, name)))
-        refs.push({ name, path: name, kind: deriveArtifactKind(name) });
-    }
-
-    const tasksDir = join(dir, 'tasks');
-    if (existsSync(tasksDir)) {
-      try {
-        for (const name of readdirSync(tasksDir)
-          .filter((f) => f.endsWith('.task.md'))
-          .sort()) {
-          refs.push({ name, path: join('tasks', name), kind: deriveArtifactKind(name) });
+    const walk = (current: string): void => {
+      for (const entry of readdirSync(current, { withFileTypes: true })) {
+        const absolute = join(current, entry.name);
+        if (entry.isDirectory()) {
+          walk(absolute);
+          continue;
         }
-      } catch (cause) {
-        logger.warn('[BoardProviderDisk#listArtifacts] [reading-tasks-dir → degraded]', {
-          mrId,
-          error: String(cause),
-        });
+        const path = relative(dir, absolute);
+        if (!isSafeArtifactPath(path)) continue;
+        if (path.startsWith('control-plane/sources/')) continue;
+        if (path.includes('.opencode-') || path === 'tool-trace.json') continue;
+        refs.push({ name: path, path, kind: deriveArtifactKind(path) });
       }
+    };
+    try {
+      walk(dir);
+      return refs.sort((left, right) => left.path.localeCompare(right.path));
+    } catch (cause) {
+      logger.warn('[BoardProviderDisk#listArtifacts] [reading-report-tree → degraded]', {
+        mrId,
+        error: String(cause),
+      });
+      return refs;
     }
-
-    return refs;
   }
 
   /**
@@ -398,7 +442,7 @@ export class BoardProviderDisk extends BoardProviderPort {
     if (!isSafeArtifactPath(path)) return null;
 
     const ref = this._normalizeRef(mrId);
-    const filePath = join(mrReportsDir(this._stateDir, ref), path);
+    const filePath = join(mrReportsDir(this._stateDir, this._storedRef(ref)), path);
     if (!existsSync(filePath)) return null;
 
     try {

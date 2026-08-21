@@ -123,8 +123,8 @@ export type SessionPolicy = {
   tools?: boolean;
   /**
    * @purpose Per-phase model selector, e.g. `llm-proxy/deepseek-v4-pro` | `llm-proxy/deepseek-v4-flash`.
-   * @invariant Absent → adapter omits the model field; the opencode server's own configured
-   *   default applies (today: `llm-proxy/deepseek-v4-pro`).
+   * @invariant Absent → the caller's session/runtime policy applies; production bootstrap pins
+   *   the Agent Inbox default independently of the operator's global OpenCode preference.
    * @invariant Single string today (one model per phase) — the seam for a future multi-model
    *   fan-out is `ParallelNode.sessions`, not a change to this field's shape.
    */

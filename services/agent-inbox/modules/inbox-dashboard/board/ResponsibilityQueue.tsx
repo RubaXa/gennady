@@ -1,7 +1,15 @@
-// @file: ResponsibilityQueue — two-queue responsibility board: Review and Mine/Assigned.
+// @file: ResponsibilityQueue — two responsibility queues: Review and Mine / Assigned.
 // @consumers: App
 // @tasks: TSK-182
 
+import {
+  Clock3,
+  GitCommitHorizontal,
+  GitCompareArrows,
+  MessageSquareReply,
+  Snowflake,
+  TriangleAlert,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { Attention, AttentionPriority, MrCardV2 } from '../v2-types.ts';
 
@@ -38,18 +46,14 @@ function sortByPriority(cards: MrCardV2[]): MrCardV2[] {
   });
 }
 
-/**
- * @purpose Derive queue column from operator role: reviewer → 'review'; author/mentioned/null → 'mine'.
- * @param myRole Operator role on the MR.
- * @returns Queue column assignment.
- */
+/** @purpose Assign each MR to exactly one responsibility queue; attention stays inside the card. */
 function resolveQueueColumn(myRole: string | null): 'review' | 'mine' {
   return myRole === 'reviewer' ? 'review' : 'mine';
 }
 
 // #region START_WORK_LABEL — invariant: closed set, every WorkState maps to a non-empty string
 const WORK_LABEL: Record<MrCardV2['work']['state'], string> = {
-  idle: '○ Нет работы',
+  idle: '○ Ревью не запускалось',
   queued: '⏳ В очереди',
   running: '🔍 Ревью',
   waiting_dep: '⏸ Ждёт зависимости',
@@ -92,6 +96,74 @@ function useLiveTimer(startedAt: string | null, isLive: boolean): string | null 
   return `${String(Math.floor(elapsed / 60)).padStart(2, '0')}:${String(elapsed % 60).padStart(2, '0')}`;
 }
 
+/** @purpose Render the server-owned auto-review deadline as a live compact card label. */
+function useAutoReviewLabel(autoReview: MrCardV2['autoReview']): string | null {
+  const [now, setNow] = useState(Date.now());
+  const ticking = autoReview?.state === 'scheduled' && autoReview.dueAt !== null;
+  useEffect(() => {
+    if (!ticking) return;
+    const interval = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, [ticking]);
+  if (!autoReview || autoReview.state === 'complete') return null;
+  if (autoReview.state === 'frozen') return 'Автозапуск выключен · таймер заморожен';
+  if (autoReview.state === 'running') return 'Автоматическое ревью запущено';
+  if (autoReview.state === 'unknown_commit_time') return 'Ожидаем время последнего коммита';
+  if (autoReview.state === 'due' || !autoReview.dueAt) return 'Автоматическое ревью запускается…';
+  const seconds = Math.max(0, Math.ceil((Date.parse(autoReview.dueAt) - now) / 1000));
+  if (seconds === 0) return 'Автоматическое ревью запускается…';
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const rest = seconds % 60;
+  const countdown =
+    hours > 0
+      ? `${hours}:${String(minutes).padStart(2, '0')}:${String(rest).padStart(2, '0')}`
+      : `${minutes}:${String(rest).padStart(2, '0')}`;
+  return `Автозапуск через ${countdown}`;
+}
+
+/**
+ * @purpose Resolve the immediate human-facing card status independently from agent work details.
+ * @invariant A review delta outranks replies because it can invalidate every earlier conclusion.
+ * @param card Canonical board card.
+ * @returns One concise next-state label without a redundant prefix.
+ */
+function resolveCardStatus(card: MrCardV2): string {
+  const review = card.review ?? {
+    approvedByMe: false,
+    commentedByMe: false,
+    approvalReset: false,
+    selfReviewCompleted: card.work.state === 'done',
+  };
+
+  if (card.myRole === 'reviewer') {
+    if (review.approvalReset) return 'Approve слетел · проверить изменения';
+    if (card.counters.newCommits > 0) return 'Проверить новые изменения';
+    if (!review.approvedByMe && !review.commentedByMe) return 'От вас ждут ревью';
+    if (card.counters.awaitingMe > 0) return `Ответить в тредах · ${card.counters.awaitingMe}`;
+    if (review.approvedByMe) return 'Вы поставили approve';
+    return 'Ревью завершено · ждём автора';
+  }
+
+  if (card.myRole === 'author') {
+    const setupActions: string[] = [];
+    if (card.counters.reviewers.length === 0) setupActions.push('Назначить ревьюеров');
+    if (!review.selfReviewCompleted) setupActions.push('Self-review не пройдено');
+    if (setupActions.length > 0) return setupActions.join(' · ');
+    if (card.counters.awaitingMe > 0) return `Ответить в тредах · ${card.counters.awaitingMe}`;
+    if ((card.counters.findings ?? 0) > 0) return `Исправить находки · ${card.counters.findings}`;
+    if (card.attention === '✅') return 'Готово к merge';
+    return 'Ждём ревьюеров';
+  }
+
+  if (card.work.state === 'failed') return 'Ревью завершилось с ошибкой';
+  if (card.counters.newCommits > 0) return 'Проверить новые изменения';
+  if (card.counters.awaitingMe > 0) return `Ответить в тредах · ${card.counters.awaitingMe}`;
+  if (card.work.state === 'idle') return 'Запустить ревью';
+  if (card.work.state === 'done') return 'Ревью завершено';
+  return card.work.label;
+}
+
 /**
  * @purpose Compact chip showing the primary attention or work state — one simultaneous reason for action.
  * @invariant Non-colour status cue: label is always visible regardless of colour rendering.
@@ -119,21 +191,38 @@ export function ReviewStateChip(props: {
 /**
  * @purpose Unique compact MR card with lifecycle controls and state chip.
  * @invariant MR appears in exactly one queue; deduplication is server-side.
- * @invariant Complete visible only for merged or closed lifecycle; Update description always visible.
+ * @invariant The only card-level mutation is an explicitly available delta review; all other mutations live in the MR workspace.
  * @invariant Non-colour status cues: all counter labels include text, not only icons.
  * @param props Card data, navigation callback, and lifecycle control callbacks.
  */
 export function ReviewMrCard(props: {
   card: MrCardV2;
   onOpen: (ref: string) => void;
+  onReviewDelta?: (ref: string) => Promise<void>;
   onComplete?: (ref: string) => Promise<void>;
   onUpdateDescription?: (ref: string) => Promise<void>;
 }) {
   const { card, onOpen } = props;
+  const [deltaPending, setDeltaPending] = useState(false);
   const isLive = card.work.state === 'running' || card.work.state === 'queued';
   const timerText = useLiveTimer(card.work.startedAt, isLive);
+  const autoReviewLabel = useAutoReviewLabel(card.autoReview);
   const lifecycle = card.lifecycle ?? 'open';
   const showComplete = lifecycle === 'merged' || lifecycle === 'closed';
+  const hasDelta = card.counters.newCommits > 0;
+  const newActivityCount = card.counters.unread || card.counters.newCommits;
+  const hasNewActivity = newActivityCount > 0;
+  const cardStatus = resolveCardStatus(card);
+
+  const reviewDelta = async (): Promise<void> => {
+    if (!hasDelta || deltaPending || !props.onReviewDelta) return;
+    setDeltaPending(true);
+    try {
+      await props.onReviewDelta(card.ref);
+    } finally {
+      setDeltaPending(false);
+    }
+  };
 
   return (
     <article className="v2-card" aria-label={`MR ${card.ref}: ${card.title}`}>
@@ -143,21 +232,21 @@ export function ReviewMrCard(props: {
         aria-label={`Открыть ${card.ref}`}
       >
         <span className={ACCENT_STYLE[card.attention]} aria-hidden="true" />
-        <span className="v2-card-row">
-          <ReviewStateChip
-            attention={card.attention}
-            workState={card.work.state}
-            workLabel={card.work.label}
-          />
-          <b aria-label={`MR: ${card.ref}`}>{card.ref}</b>
-          {card.counters.newCommits > 0 && (
-            <em aria-label={`${card.counters.newCommits} новых коммитов`}>
-              🔀 {card.counters.newCommits}
-            </em>
-          )}
-          <span aria-label={`${card.counters.unread} непрочитанных`}>
-            📬 {card.counters.unread}
+        <span className="v2-card-heading-row">
+          <span className="v2-card-row">
+            <ReviewStateChip
+              attention={card.attention}
+              workState={card.work.state}
+              workLabel={card.work.label}
+            />
+            <b aria-label={`MR: ${card.ref}`}>{card.ref}</b>
           </span>
+          {hasNewActivity && (
+            <span className="v2-card-new" aria-label={`${newActivityCount} новых событий`}>
+              <i aria-hidden="true" />
+              {newActivityCount}
+            </span>
+          )}
         </span>
         <strong className="v2-card-title">{card.title}</strong>
         <span className="v2-card-row v2-card-counters">
@@ -177,13 +266,10 @@ export function ReviewMrCard(props: {
           </span>
           {' · '}
           <span aria-label={`Треды: ${card.counters.threads}`}>💬 {card.counters.threads}</span>
-          {' · '}
-          <span aria-label={`Ждут меня: ${card.counters.awaitingMe}`}>
-            ⏳ {card.counters.awaitingMe} мне
-          </span>
         </span>
-        <span className="v2-work" aria-label={`Работа: ${WORK_LABEL[card.work.state]}`}>
-          {WORK_LABEL[card.work.state]} · {card.work.label}
+        <span className="v2-agent-state" aria-label={`Работа: ${WORK_LABEL[card.work.state]}`}>
+          <span>Агент: {card.work.label}</span>
+          <b>{WORK_LABEL[card.work.state]}</b>
           {card.work.taskId ? ` ${card.work.taskId}` : ''}
           {timerText != null && (
             <span className="v2-timer" aria-label={`Прошло: ${timerText}`}>
@@ -193,7 +279,60 @@ export function ReviewMrCard(props: {
           )}
         </span>
       </button>
-
+      {autoReviewLabel && (
+        <div
+          className={`v2-auto-review v2-auto-review-${card.autoReview?.state ?? 'unknown'}`}
+          aria-live="polite"
+          title={
+            card.autoReview?.dueAt
+              ? `Запланировано на ${new Date(card.autoReview.dueAt).toLocaleString()}`
+              : autoReviewLabel
+          }
+        >
+          {card.autoReview?.state === 'frozen' ? (
+            <Snowflake aria-hidden="true" />
+          ) : (
+            <Clock3 aria-hidden="true" />
+          )}
+          <span>{autoReviewLabel}</span>
+        </div>
+      )}
+      <div className="v2-card-status-rail" aria-label="Состояния MR">
+        <span
+          className={card.counters.newCommits === 0 ? 'is-zero' : undefined}
+          aria-label={`Новые коммиты: ${card.counters.newCommits}`}
+          title="Новые коммиты"
+        >
+          <GitCommitHorizontal aria-hidden="true" />
+          <b>{card.counters.newCommits}</b>
+        </span>
+        <span
+          className={card.counters.awaitingMe === 0 ? 'is-zero' : undefined}
+          aria-label={`Треды, где мне нужно ответить: ${card.counters.awaitingMe}`}
+          title="Треды ждут ответа"
+        >
+          <MessageSquareReply aria-hidden="true" />
+          <b>{card.counters.awaitingMe}</b>
+        </span>
+        <span
+          className={(card.counters.findings ?? 0) === 0 ? 'is-zero' : undefined}
+          aria-label={`Находки ревью: ${card.counters.findings ?? 0}`}
+          title="Находки ревью"
+        >
+          <TriangleAlert aria-hidden="true" />
+          <b>{card.counters.findings ?? 0}</b>
+        </span>
+        <button
+          className="v2-card-delta-action"
+          disabled={!hasDelta || deltaPending || !props.onReviewDelta}
+          onClick={() => void reviewDelta()}
+          aria-label={hasDelta ? `Проверить дельту ${card.ref}` : `Для ${card.ref} нет дельты`}
+          title={hasDelta ? 'Проверить дельту' : 'Новых коммитов нет'}
+        >
+          <GitCompareArrows aria-hidden="true" />
+        </button>
+      </div>
+      <div className="v2-card-status">{cardStatus}</div>
       <div className="v2-card-controls">
         <button
           className="v2-card-control"
@@ -219,8 +358,8 @@ export function ReviewMrCard(props: {
 }
 
 /**
- * @purpose Two-queue responsibility board: Review and Mine/Assigned, each sorted by attention priority.
- * @invariant Each MR appears in exactly one queue; deduplication is server-side (queue-split by role client-side).
+ * @purpose Two responsibility queues; cards are sorted by attention inside their owning queue.
+ * @invariant Each MR appears exactly once; attention never creates a second card or a new column.
  * @param props Board cards, sync state, last-update timestamp, and navigation/action callbacks.
  */
 export function ResponsibilityQueue(props: {
@@ -228,6 +367,7 @@ export function ResponsibilityQueue(props: {
   syncState: 'ok' | 'degraded' | 'syncing';
   lastUpdated?: number | null;
   onOpen: (ref: string) => void;
+  onReviewDelta?: (ref: string) => Promise<void>;
   onComplete?: (ref: string) => Promise<void>;
   onUpdateDescription?: (ref: string) => Promise<void>;
 }) {
@@ -237,14 +377,23 @@ export function ResponsibilityQueue(props: {
   const mineCards = sortByPriority(
     props.cards.filter((card) => resolveQueueColumn(card.myRole) === 'mine')
   );
+  const queues = [
+    { key: 'review', title: 'Ревью', description: 'Я — ревьюер', cards: reviewCards },
+    {
+      key: 'mine',
+      title: 'Мои / назначенные',
+      description: 'Я — автор или назначенный участник',
+      cards: mineCards,
+    },
+  ];
 
   return (
     <main className="v2-board">
       <header className="v2-board-header">
         <span className="v2-board-title">
-          Agent Inbox
-          <span className="v2-sync-dot" data-sync={props.syncState} aria-hidden="true" />
-          <small aria-live="polite">
+          <b>Agent Inbox v2</b>
+          <small className="v2-sync-badge" aria-live="polite">
+            <span className="v2-sync-dot" data-sync={props.syncState} aria-hidden="true" />
             {props.syncState === 'syncing'
               ? 'синхронизация…'
               : props.syncState === 'ok'
@@ -255,6 +404,11 @@ export function ResponsibilityQueue(props: {
               : ''}
           </small>
         </span>
+        <nav className="v2-board-nav" aria-label="Основная навигация">
+          <b>▦ Board</b>
+          <span>⌁ Active MR</span>
+          <span>▣ Queue</span>
+        </nav>
       </header>
 
       {props.syncState === 'degraded' && (
@@ -270,55 +424,37 @@ export function ResponsibilityQueue(props: {
       )}
 
       <div className="v2-queues">
-        <section className="v2-queue" aria-label="Ревью">
-          <h2 className="v2-queue-heading">
-            Ревью{' '}
-            <span className="v2-queue-count" aria-label={`${reviewCards.length} MR`}>
-              {reviewCards.length}
-            </span>
-          </h2>
-          {reviewCards.length === 0 ? (
-            <div className="v2-lane-empty" aria-label="Очередь пуста">
-              <span>done_all</span>
-              <span>пусто</span>
+        {queues.map((queue) => (
+          <section className="v2-queue" aria-label={queue.title} key={queue.key}>
+            <header className="v2-responsibility-heading">
+              <div>
+                <span>RESPONSIBILITY QUEUE</span>
+                <h2>{queue.title}</h2>
+                <p>{queue.description}</p>
+              </div>
+              <b aria-label={`${queue.cards.length} MR`}>{queue.cards.length}</b>
+            </header>
+            <div className="v2-queue-cards">
+              {queue.cards.length === 0 ? (
+                <div className="v2-lane-empty" aria-label="Очередь пуста">
+                  <span>✓</span>
+                  <span>В этой очереди нет MR</span>
+                </div>
+              ) : (
+                queue.cards.map((card) => (
+                  <ReviewMrCard
+                    key={card.ref}
+                    card={card}
+                    onOpen={props.onOpen}
+                    onReviewDelta={props.onReviewDelta}
+                    onComplete={props.onComplete}
+                    onUpdateDescription={props.onUpdateDescription}
+                  />
+                ))
+              )}
             </div>
-          ) : (
-            reviewCards.map((card) => (
-              <ReviewMrCard
-                key={card.ref}
-                card={card}
-                onOpen={props.onOpen}
-                onComplete={props.onComplete}
-                onUpdateDescription={props.onUpdateDescription}
-              />
-            ))
-          )}
-        </section>
-
-        <section className="v2-queue" aria-label="Мои / назначенные">
-          <h2 className="v2-queue-heading">
-            Мои / назначенные{' '}
-            <span className="v2-queue-count" aria-label={`${mineCards.length} MR`}>
-              {mineCards.length}
-            </span>
-          </h2>
-          {mineCards.length === 0 ? (
-            <div className="v2-lane-empty" aria-label="Очередь пуста">
-              <span>done_all</span>
-              <span>пусто</span>
-            </div>
-          ) : (
-            mineCards.map((card) => (
-              <ReviewMrCard
-                key={card.ref}
-                card={card}
-                onOpen={props.onOpen}
-                onComplete={props.onComplete}
-                onUpdateDescription={props.onUpdateDescription}
-              />
-            ))
-          )}
-        </section>
+          </section>
+        ))}
       </div>
     </main>
   );

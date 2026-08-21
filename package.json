@@ -54,6 +54,7 @@
     "inspector:gen": "tsx ai/inspector/generate.ts",
     "inspector:serve": "tsx ai/inspector/serve.ts",
     "inspector:test": "node --import tsx --test ai/inspector/core/__tests__/*.test.ts ai/inspector/web/__tests__/*.test.ts",
+    "inbox": "npm run inbox-serve:build && tsx cli/gennady.ts inbox serve --auto-review-quiet-minutes=15",
     "inbox-serve:dev": "vite --config services/agent-inbox/modules/inbox-dashboard/vite.config.ts",
     "inbox-serve:build": "vite build --config services/agent-inbox/modules/inbox-dashboard/vite.config.ts",
     "inspector:e2e": "playwright test --config=ai/inspector/playwright.config.ts",

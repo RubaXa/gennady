@@ -44,6 +44,26 @@ import {
   type Track,
 } from '../../../services/ai-kit/selector.ts';
 import type { MrShape } from '../../../services/agent-inbox/modules/inbox-core/context-builder.ts';
+import { logger } from '#logger';
+
+const DISCUSSION_READ_CONCURRENCY = 4;
+
+/** @purpose Run expensive GitLab detail reads with a fixed concurrency ceiling. */
+async function forEachBounded<T>(
+  items: readonly T[],
+  concurrency: number,
+  visit: (item: T) => Promise<void>
+): Promise<void> {
+  let cursor = 0;
+  const worker = async (): Promise<void> => {
+    while (cursor < items.length) {
+      const index = cursor;
+      cursor += 1;
+      await visit(items[index]);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, () => worker()));
+}
 
 function parseOptions(argv: string[]): InboxOptions {
   const has = (flag: string) => argv.includes(flag);
@@ -330,35 +350,43 @@ async function run(): Promise<number> {
     const stages = new Map<string, MrStage>();
     const details = new Map<string, { openQuestions: number; lastAuthor: string }>();
     const changeReasons = new Map<string, MrActivityEvent[]>();
-    await Promise.all(
-      [...visibleUrls].map(async (url) => {
-        const mr = itemByUrl.get(url);
-        if (!mr) return;
-        if (deltas.get(url) === 'idle') {
-          stages.set(url, (registry.entries[url]?.stage as MrStage) ?? 'idle');
-          return;
-        }
-        const rawDiscussions = await client.MergeDiscussions.getAll({
+    await forEachBounded([...visibleUrls], DISCUSSION_READ_CONCURRENCY, async (url) => {
+      const mr = itemByUrl.get(url);
+      if (!mr) return;
+      if (deltas.get(url) === 'idle') {
+        stages.set(url, (registry.entries[url]?.stage as MrStage) ?? 'idle');
+        return;
+      }
+      let rawDiscussions;
+      try {
+        rawDiscussions = await client.MergeDiscussions.getAll({
           project: mr.project,
           iid: mr.iid,
         });
-        const notes = flattenNotes(rawDiscussions);
-        stages.set(url, classifyMrStage(notes, me.login, mr.role));
-        details.set(url, {
-          openQuestions: buildWorkPacket(notes, me.login, mr.role).openNotes.length,
-          lastAuthor: lastNoteAuthor(notes),
+      } catch (cause) {
+        logger.warn('[inbox#run] [discussion_read → degraded]', {
+          mr: `${mr.project}!${mr.iid}`,
+          cause,
         });
-        const entry = registry.entries[url];
-        changeReasons.set(
-          url,
-          parseMrActivity(notes, entry?.lastClassifiedAt ?? '', {
-            current:
-              (rawDiscussions as Array<{ notes?: Array<{ commit_id?: string }> }>)[0]?.notes?.[0]
-                ?.commit_id ?? '',
-          })
-        );
-      })
-    );
+        stages.set(url, (registry.entries[url]?.stage as MrStage) ?? 'idle');
+        return;
+      }
+      const notes = flattenNotes(rawDiscussions);
+      stages.set(url, classifyMrStage(notes, me.login, mr.role));
+      details.set(url, {
+        openQuestions: buildWorkPacket(notes, me.login, mr.role).openNotes.length,
+        lastAuthor: lastNoteAuthor(notes),
+      });
+      const entry = registry.entries[url];
+      changeReasons.set(
+        url,
+        parseMrActivity(notes, entry?.lastClassifiedAt ?? '', {
+          current:
+            (rawDiscussions as Array<{ notes?: Array<{ commit_id?: string }> }>)[0]?.notes?.[0]
+              ?.commit_id ?? '',
+        })
+      );
+    });
     for (const [url, stage] of stages) {
       if (next.entries[url]) next.entries[url].stage = stage;
     }

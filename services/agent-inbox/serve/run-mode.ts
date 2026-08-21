@@ -20,6 +20,7 @@ import type { ReviewChangeShapeCode } from '../modules/inbox-pipeline/types/revi
 import { readFile, stat } from 'node:fs/promises';
 import { applySeedState, type SeedState } from './state-seed.ts';
 import { resolveVcsContext } from '../../../cli/cmd/_shared/vcs-context-resolver.ts';
+import { DEFAULT_AGENT_INBOX_MODEL } from '../modules/inbox-opencode/model-selection.ts';
 
 /**
  * @purpose Services `runMrsOnce` drives the graph with — real adapters in production,
@@ -59,7 +60,7 @@ export function composeRunModePipeline(
   store: StateStore,
   opencode: OpenCodePort,
   runtimeNamespace = 'one-shot',
-  controlPlaneModel?: string
+  controlPlaneModel = DEFAULT_AGENT_INBOX_MODEL
 ): PipelineRuntime {
   const stateDir = store.getStateDir();
   const registry = new TaskRegistry();
@@ -137,9 +138,10 @@ export async function resolveRunModeVcsHost(
       const context = await resolveVcsContext({ url: firstMr });
       return context.host;
     } catch (cause) {
+      const error = cause instanceof Error ? cause : new Error(String(cause));
       logger.debug('[resolveRunModeVcsHost] [resolving-from-url → failed]', {
         mr: firstMr,
-        error: String(cause),
+        error,
       });
     }
   }
@@ -209,9 +211,18 @@ async function _runOneMr(mrUrl: string, deps: RunModeDeps): Promise<MrRunResult>
       ? await deps.captureReviewInput(mrUrl, diffRefs.headSha)
       : await _captureLiveReviewInput(mrUrl, diffRefs.headSha, deps);
     _assertExhaustiveRunModeCapture(capture);
+    const pipelineChangeset = capture.inputs
+      .filter((input) => input.kind === 'file')
+      .map((input) => ({
+        path: input.canonicalIdentity,
+        // Manifest v0 preserves immutable file identity/content but not the git status.
+        // Planning rules classify by path; modified is the conservative non-deletion action.
+        action: 'modified' as const,
+      }));
     const taskIds = await deps.pipeline.startReview(mrUrl, {
       role: pipelineRole,
       tracks: [],
+      changeset: pipelineChangeset,
       controlPlaneInput: {
         intent: {
           kind: 'full',
@@ -234,7 +245,10 @@ async function _runOneMr(mrUrl: string, deps: RunModeDeps): Promise<MrRunResult>
       error: completion.error,
     };
   } catch (cause) {
-    const error = new Error(`[runMrsOnce#_runOneMr] MR processing failed: ${mrUrl}`, { cause });
+    const error =
+      cause instanceof Error
+        ? cause
+        : new Error(`[runMrsOnce#_runOneMr] Unknown MR processing failure`, { cause });
     logger.error('[runMrsOnce#_runOneMr] [processing → failed]', { mr: mrUrl, error });
     return {
       mr: mrUrl,
@@ -243,7 +257,7 @@ async function _runOneMr(mrUrl: string, deps: RunModeDeps): Promise<MrRunResult>
       board: null,
       artifacts: null,
       runtimeIdentity: deps.pipeline.identity,
-      error: (cause as Error).message,
+      error: error.message,
     };
   }
 }

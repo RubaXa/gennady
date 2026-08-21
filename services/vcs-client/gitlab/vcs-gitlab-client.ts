@@ -17,6 +17,55 @@ type RequestFn = (path: string, init?: RequestInit) => Promise<unknown>;
 /** @purpose Error enriched with the server-directed retry delay for a 429 response. */
 type GitlabRequestError = Error & { retryAfter?: number };
 
+const READ_RETRY_DELAYS_MS = [150, 500, 1_500, 3_000] as const;
+
+/** @purpose Keep transport diagnostics while making bounded read retries observable. */
+function describeCause(cause: unknown): string {
+  if (cause instanceof AggregateError) {
+    return cause.errors.map((entry: unknown) => describeCause(entry)).join('; ');
+  }
+  if (!(cause instanceof Error)) return String(cause);
+  const nested = (cause as Error & { cause?: unknown }).cause;
+  return nested instanceof Error ? `${cause.message}: ${nested.message}` : cause.message;
+}
+
+/** @purpose Retry idempotent GitLab reads after transient transport/server failures. */
+async function fetchReadWithRetry(
+  input: string,
+  init: RequestInit,
+  operation: string
+): Promise<Response> {
+  let lastCause: unknown;
+  for (let attempt = 0; attempt <= READ_RETRY_DELAYS_MS.length; attempt += 1) {
+    try {
+      const response = await fetch(input, init);
+      if (
+        ![429, 502, 503, 504].includes(response.status) ||
+        attempt === READ_RETRY_DELAYS_MS.length
+      ) {
+        return response;
+      }
+      lastCause = new Error(`GitLab transient response: ${response.status}`);
+    } catch (cause) {
+      lastCause = cause;
+      if (attempt === READ_RETRY_DELAYS_MS.length) break;
+    }
+
+    const delayMs = READ_RETRY_DELAYS_MS[attempt];
+    logger.warn('[VcsGitlabClient#fetchReadWithRetry] [failed → retrying]', {
+      operation,
+      attempt: attempt + 1,
+      delayMs,
+      cause: describeCause(lastCause),
+    });
+    await new Promise<void>((resolve) => setTimeout(resolve, delayMs));
+  }
+
+  throw new Error(`GitLab ${operation} failed after bounded retries: ${describeCause(lastCause)}`, {
+    cause: lastCause,
+  });
+}
+
 /** @purpose Preserve GitLab's Retry-After header at the caller-owned retry boundary. */
 function createGitlabRequestError(response: Response, message: string): GitlabRequestError {
   const error = new Error(message) as GitlabRequestError;
@@ -59,7 +108,8 @@ type GitlabCommitComparison = {
 /**
  * @purpose GitLab client for working with REST API.
  * @invariant Error Policy: Any non-2xx response is converted to an Error with status details.
- * @invariant Retry Policy: No retries; retry responsibility lies with the caller.
+ * @invariant Retry Policy: bounded retries apply only to idempotent REST GETs and GraphQL queries;
+ *   mutations are never retried blindly.
  * @consumer cli/review-verify
  */
 export class VcsGitlabClient extends VcsClient {
@@ -95,7 +145,7 @@ export class VcsGitlabClient extends VcsClient {
 
     const request = async (path: string, init: RequestInit = {}): Promise<unknown> => {
       const { responseType, ...fetchInit } = init as RequestInit & { responseType?: string };
-      const response = await fetch(`${options.baseUrl}${path}`, {
+      const requestInit = {
         ...fetchInit,
         // Match the GraphQL 15s ceiling — default fetch has no timeout, so a stalled REST
         // connection would otherwise hang the caller (e.g. twoTierSync) forever.
@@ -104,7 +154,12 @@ export class VcsGitlabClient extends VcsClient {
           'PRIVATE-TOKEN': options.token,
           ...(fetchInit.headers ?? {}),
         },
-      });
+      } satisfies RequestInit;
+      const method = (requestInit.method ?? 'GET').toUpperCase();
+      const response =
+        method === 'GET'
+          ? await fetchReadWithRetry(`${options.baseUrl}${path}`, requestInit, `GET ${path}`)
+          : await fetch(`${options.baseUrl}${path}`, requestInit);
       if (!response.ok) {
         const text = await response.text().catch(() => '');
         throw createGitlabRequestError(
@@ -124,7 +179,7 @@ export class VcsGitlabClient extends VcsClient {
       query: string,
       variables?: Record<string, unknown>
     ): Promise<unknown> => {
-      const response = await fetch(graphqlUrl, {
+      const requestInit = {
         method: 'POST',
         headers: {
           'PRIVATE-TOKEN': options.token,
@@ -132,7 +187,11 @@ export class VcsGitlabClient extends VcsClient {
         },
         body: JSON.stringify({ query, variables }),
         signal: AbortSignal.timeout(15_000),
-      });
+      } satisfies RequestInit;
+      const isQuery = !/^\s*mutation\b/i.test(query);
+      const response = isQuery
+        ? await fetchReadWithRetry(graphqlUrl, requestInit, 'GraphQL query')
+        : await fetch(graphqlUrl, requestInit);
       if (!response.ok) {
         const text = await response.text().catch(() => '');
         throw createGitlabRequestError(

@@ -313,7 +313,18 @@ function GenericWidget(props: {
 
   const items = Array.isArray(widget.payload.items)
     ? (widget.payload.items as Record<string, unknown>[])
-    : [];
+    : Array.isArray(widget.payload.events)
+      ? (widget.payload.events as Record<string, unknown>[])
+      : [];
+
+  const describeItem = (item: Record<string, unknown>): string => {
+    if (item.kind === 'task_created')
+      return `Создана задача ${String(item.type ?? item.taskId ?? '')}`;
+    if (item.kind === 'task_status') {
+      return `${String(item.type ?? item.taskId ?? 'Задача')} → ${String(item.status ?? 'обновлена')}`;
+    }
+    return String(item.summary ?? item.quote ?? item.event ?? JSON.stringify(item));
+  };
 
   const handleMouseUp = (event: React.MouseEvent): void => {
     const quote = window.getSelection()?.toString().trim();
@@ -341,7 +352,7 @@ function GenericWidget(props: {
               key={String(item.id ?? item.threadId ?? index)}
               data-anchor-id={String(item.id ?? item.threadId ?? '')}
             >
-              {String(item.summary ?? item.quote ?? item.event ?? JSON.stringify(item))}
+              {describeItem(item)}
               {widget.type === 'threads' && (
                 <button
                   disabled={String(item.author) !== 'operator' && String(item.author) !== 'bot'}
@@ -413,6 +424,60 @@ export function ReviewWidget(props: {
   );
 }
 
+/** @purpose Collapse the task journal into one readable attempt summary instead of dozens of event cards. */
+function ProgressDigest(props: { widgets: FeedWidget[] }) {
+  const [expanded, setExpanded] = useState(false);
+  const labels = new Map<string, string>();
+  const latest = new Map<string, string>();
+  const transitions: string[] = [];
+  for (const widget of props.widgets) {
+    const events = Array.isArray(widget.payload.events)
+      ? (widget.payload.events as Record<string, unknown>[])
+      : [];
+    for (const event of events) {
+      const taskId = String(event.taskId ?? '');
+      if (event.kind === 'task_created') labels.set(taskId, String(event.type ?? taskId));
+      if (event.kind === 'task_status') {
+        const status = String(event.status ?? 'updated');
+        latest.set(taskId, status);
+        transitions.push(`${labels.get(taskId) ?? taskId} → ${status}`);
+      }
+    }
+  }
+  const statuses = [...latest.values()];
+  const done = statuses.filter((status) => status === 'done').length;
+  const failed = statuses.filter((status) => status === 'failed').length;
+  const running = statuses.filter((status) => status === 'running' || status === 'queued').length;
+  const visible = expanded ? transitions : transitions.slice(-6);
+  return (
+    <article className="v2-widget v2-progress-digest" data-widget-type="progress">
+      <header>
+        <div>
+          <span>PIPELINE HISTORY</span>
+          <h3>🔧 Прогресс · последняя journal-попытка</h3>
+        </div>
+        <time>{new Date(props.widgets.at(-1)?.lastActivity ?? '').toLocaleTimeString()}</time>
+      </header>
+      <div className="v2-progress-stats">
+        <span className="done">✓ {done} завершено</span>
+        <span className={failed > 0 ? 'failed' : ''}>× {failed} ошибок</span>
+        <span>↻ {running} выполняется</span>
+        <span>{latest.size} задач</span>
+      </div>
+      <div className="v2-progress-list">
+        {visible.map((transition, index) => (
+          <code key={`${transition}:${index}`}>{transition}</code>
+        ))}
+      </div>
+      {transitions.length > 6 && (
+        <button onClick={() => setExpanded((value) => !value)}>
+          {expanded ? 'Свернуть историю' : `Показать все ${transitions.length} переходов`}
+        </button>
+      )}
+    </article>
+  );
+}
+
 /**
  * @purpose Chronological smart-widget stream: seven widget kinds, new-since-last-read boundary.
  * @invariant Resolved one-shot action widgets are hidden from the active feed.
@@ -426,27 +491,35 @@ export function ReviewFeed(props: {
 }) {
   const widgets = useMemo(() => props.state?.widgets ?? [], [props.state]);
   const unreadIndex = widgets.findIndex((widget) => widget.unread);
+  const progressWidgets = widgets.filter((widget) => widget.type === 'progress');
+  const smartWidgets = widgets.filter((widget) => widget.type !== 'progress');
 
   return (
     <section className="v2-feed" aria-label="Лента MR">
       {widgets.length === 0 ? (
-        <p className="v2-empty">лента пуста</p>
+        <div className="v2-feed-empty">
+          <b>Событий пока нет</b>
+          <span>Артефакты ревью доступны выше; новые GitLab-события появятся здесь.</span>
+        </div>
       ) : (
-        widgets.map((widget, index) => (
-          <div key={widget.widgetId}>
-            {index === unreadIndex && (
-              <p className="v2-divider" aria-label="Новые с прошлого визита">
-                Новое с прошлого визита
-              </p>
-            )}
-            <ReviewWidget
-              widget={widget}
-              onAction={props.onAction}
-              pending={props.pending}
-              onSelectAnchor={props.onSelectAnchor ?? (() => undefined)}
-            />
-          </div>
-        ))
+        <>
+          {progressWidgets.length > 0 && <ProgressDigest widgets={progressWidgets} />}
+          {smartWidgets.map((widget, index) => (
+            <div key={widget.widgetId}>
+              {index === unreadIndex && (
+                <p className="v2-divider" aria-label="Новые с прошлого визита">
+                  Новое с прошлого визита
+                </p>
+              )}
+              <ReviewWidget
+                widget={widget}
+                onAction={props.onAction}
+                pending={props.pending}
+                onSelectAnchor={props.onSelectAnchor ?? (() => undefined)}
+              />
+            </div>
+          ))}
+        </>
       )}
     </section>
   );

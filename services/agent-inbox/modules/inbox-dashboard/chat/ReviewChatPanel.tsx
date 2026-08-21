@@ -43,7 +43,10 @@ export function ReviewChatPanel(props: {
   return (
     <aside className="v2-chat" aria-label="Чат">
       <header>
-        <b>💬 Чат</b>
+        <div>
+          <span>OPERATOR SESSION</span>
+          <b>🤖 Agent Terminal</b>
+        </div>
         <small>{props.mrRef ?? 'контекст доски'}</small>
       </header>
 
@@ -90,8 +93,9 @@ export function ReviewChatPanel(props: {
       </div>
 
       <div className="v2-chips">
-        <button onClick={() => setText('Спросить про ')}>Спросить</button>
-        <button onClick={() => setText('Объясни ')}>Объяснить</button>
+        <button onClick={() => setText('Объясни сводку ревью')}>Объяснить сводку</button>
+        <button onClick={() => setText('Покажи риски в изменениях')}>Показать риски</button>
+        <button onClick={() => setText('Проверь тесты и покрытие')}>Проверить тесты</button>
       </div>
 
       <form

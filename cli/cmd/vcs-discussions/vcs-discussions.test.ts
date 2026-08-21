@@ -4,6 +4,9 @@
 
 import { describe, it, mock, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 // ── Mock state (module-level; assigned per test) ───────────────────────────────
 
@@ -379,5 +382,46 @@ describe('vcs-discussions run', () => {
     assert.strictEqual(parsed.discussions.length, 2);
     assert.strictEqual(parsed.drafts.length, 0);
     assert.match(result.stderr, /Не удалось загрузить черновики/);
+  });
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // vcs-discussions --url <URL> --all --json-file → writes discussions.json + summary with mine markers
+  // ────────────────────────────────────────────────────────────────────────────
+
+  it('vcs-discussions --json-file → пишет discussions.json + компактную сводку с mine', async () => {
+    // #region START_JSON_FILE_SETUP_MOCKS
+    mockGetAllImpl = async () => [...DISCUSSIONS_FIXTURE];
+    mockGetCurrentUserImpl = async () => ({ ...ME });
+
+    const stateDir = mkdtempSync(join(tmpdir(), 'gennady-disc-test-'));
+
+    const result = await captureRun(
+      [
+        ...BASE_ARGS,
+        '--url',
+        'https://gitlab.company.com/group/repo/-/merge_requests/42',
+        '--all',
+        '--json-file',
+        '--state-dir',
+        stateDir,
+      ],
+      () => DEFAULT_CONTEXT
+    );
+    // #endregion END_JSON_FILE_SETUP_MOCKS
+
+    const parsed = JSON.parse(result.stdout);
+    assert.strictEqual(result.exitCode, 0);
+    assert.strictEqual(parsed.total, 3);
+    assert.ok(parsed.file.endsWith('report/discussions.json'), 'file path points to reportsDir');
+    assert.strictEqual(parsed.summary.length, 3);
+    assert.strictEqual(parsed.summary[0].mine, true, 'disc 101 authored by me');
+    assert.strictEqual(parsed.summary[1].mine, false, 'disc 102 authored by peer');
+    assert.strictEqual(parsed.summary[2].mine, true, 'disc 103 has my reply');
+
+    const onDisk = JSON.parse(readFileSync(parsed.file, 'utf-8'));
+    assert.strictEqual(onDisk.length, 3, 'full discussions written to disk');
+    assert.strictEqual(onDisk[0].notes[0].id, 1, 'note ids preserved for vcs-react');
+
+    rmSync(stateDir, { recursive: true, force: true });
   });
 });

@@ -16,6 +16,24 @@ export type RawFinding = {
   summary: string;
   /** @purpose Severity */
   severity: 'error' | 'warning' | 'info';
+  /** @purpose Bounded changed-line context shown by the dashboard diff-note. */
+  diff?: Array<{ type: 'context' | 'add' | 'remove'; num?: number; text: string }>;
+  /** @purpose Verification state for the concrete evidence behind this finding. */
+  factcheck?: 'verified' | 'pending' | 'debunked';
+};
+
+/** @purpose One operator-facing diagram in the fixed four-rung comprehension ladder. */
+export type ReviewDiagram = {
+  /** @purpose Ladder rung the diagram belongs to (one of the four). */
+  kind: 'change-map' | 'c4' | 'behaviour' | 'use-cases';
+  /** @purpose Diagram title shown to the operator. */
+  title: string;
+  /** @purpose One-line caption explaining what the diagram proves. */
+  caption: string;
+  /** @purpose Graph nodes rendered in the diagram. */
+  nodes: Array<{ id: string; label: string; detail?: string; tone?: string }>;
+  /** @purpose Graph edges connecting the diagram nodes. */
+  edges: Array<{ from: string; to: string; label?: string }>;
 };
 
 /** @purpose A single model's result for a track */
@@ -28,6 +46,10 @@ export type ModelResult = {
   runId: string;
   /** @purpose Findings from this model */
   findings: RawFinding[];
+  /** @purpose Human-readable Markdown report produced by the worker session. */
+  report?: string;
+  /** @purpose Structured analysis diagrams produced from the worker's grounded source reads. */
+  diagrams?: ReviewDiagram[];
 };
 
 /** @purpose Cluster key for dedup — normalized (file, line range, summary) */
@@ -183,6 +205,8 @@ export class Synthesize {
           runId: modelResults.find((r) => r.model === model)?.runId ?? 'unknown',
         })),
         mark,
+        diff: primary.diff,
+        factcheck: primary.factcheck,
       };
 
       const id = await this._journal.append(entry);
@@ -207,9 +231,19 @@ export class Synthesize {
   /**
    * @purpose Build review.json from synthesized findings.
    * @param findings Synthesized finding entries with marks.
+   * @param [modelResults] Model results whose diagrams seed the review diagrams.
    * @returns Review JSON structure.
    */
-  buildReviewJson(findings: FindingEntry[]): Record<string, unknown> {
+  buildReviewJson(
+    findings: FindingEntry[],
+    modelResults: ModelResult[] = []
+  ): Record<string, unknown> {
+    const diagrams = new Map<ReviewDiagram['kind'], ReviewDiagram>();
+    for (const result of modelResults) {
+      for (const diagram of result.diagrams ?? []) {
+        if (!diagrams.has(diagram.kind)) diagrams.set(diagram.kind, diagram);
+      }
+    }
     return {
       verdict: '',
       revision: 1,
@@ -222,7 +256,10 @@ export class Synthesize {
         source: f.source,
         mark: f.mark,
         state: 'new',
+        diff: f.diff,
+        factcheck: f.factcheck,
       })),
+      diagrams: [...diagrams.values()],
     };
   }
 }

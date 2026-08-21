@@ -9,11 +9,7 @@ import { describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import {
-  BoardProviderDisk,
-  decodeMrKey,
-  scanDiskCardSeeds,
-} from '../board-provider.disk.ts';
+import { BoardProviderDisk, decodeMrKey, scanDiskCardSeeds } from '../board-provider.disk.ts';
 import { BoardProjection } from '../projections/board-projection.ts';
 import { mrKey, mrReportsDir } from '../../../../../cli/cmd/inbox/_core/logic/state-paths.logic.ts';
 import { makeTestTmpDir, cleanupTestTmp } from '../../inbox-core/test-support/test-tmp.ts';
@@ -52,6 +48,18 @@ function seedReviewedMr(stateDir: string): void {
   );
 }
 
+function seedLegacyHostPrefixedReviewedMr(stateDir: string): void {
+  const legacyRef = 'gitlab.example.com/group/project!42';
+  const dir = mrReportsDir(stateDir, legacyRef);
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, 'review.json'), JSON.stringify({ verdict: 'COMMENT', revision: 2 }));
+  writeFileSync(join(dir, 'README.md'), '# Legacy report');
+  writeFileSync(
+    join(dir, 'context.json'),
+    JSON.stringify({ title: 'Legacy reviewed MR', webUrl: FIXTURE_WEB_URL, author: 'alice' })
+  );
+}
+
 function makeMockJournal() {
   const sinceFn = mock.fn((_cursor: number) => ({ entries: [], nextCursor: 0 }));
   return { since: sinceFn } as unknown as EventJournal;
@@ -85,6 +93,23 @@ describe('decodeMrKey', () => {
 });
 
 describe('BoardProviderDisk', () => {
+  it('opens legacy host-prefixed report directories through the canonical live ref', () => {
+    const stateDir = makeTestTmpDir('board-provider-disk-legacy-ref-');
+    try {
+      seedLegacyHostPrefixedReviewedMr(stateDir);
+      const provider = new BoardProviderDisk({ stateDir });
+
+      assert.strictEqual(scanDiskCardSeeds(stateDir)[0]?.ref, FIXTURE_REF);
+      assert.strictEqual(provider.getReport(FIXTURE_REF)?.revision, 2);
+      assert.strictEqual(
+        provider.readArtifact(FIXTURE_REF, 'README.md')?.content,
+        '# Legacy report'
+      );
+    } finally {
+      cleanupTestTmp(stateDir);
+    }
+  });
+
   it('getReport reads verdict/findings/revision straight from review.json', () => {
     const stateDir = makeTestTmpDir('board-provider-disk-report-');
     try {
@@ -224,13 +249,8 @@ describe('BoardProjection disk-merge', () => {
       seedReviewedMr(stateDir);
       const journal = makeMockJournal();
       const registry = makeMockRegistry();
-      const proj = new BoardProjection(
-        [],
-        journal,
-        registry,
-        undefined,
-        undefined,
-        () => scanDiskCardSeeds(stateDir)
+      const proj = new BoardProjection([], journal, registry, undefined, undefined, () =>
+        scanDiskCardSeeds(stateDir)
       );
 
       const result = proj.project();
@@ -296,6 +316,7 @@ describe('BoardProjection disk-merge', () => {
 
       assert.strictEqual(result.cards.length, 1);
       assert.strictEqual(result.cards[0].title, 'Live title wins');
+      assert.strictEqual(result.cards[0].work.state, 'done');
     } finally {
       cleanupTestTmp(stateDir);
     }

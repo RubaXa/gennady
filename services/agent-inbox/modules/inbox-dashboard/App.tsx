@@ -33,8 +33,20 @@ export function App() {
     return () => window.removeEventListener('hashchange', handler);
   }, []);
 
-  const mrMatch = hash.match(/^\/mr\/(.+)$/);
+  const diagramMatch = hash.match(
+    /^\/mr\/([^/]+)\/report\/diagram\/(change-map|c4|behaviour|use-cases)$/
+  );
+  const artifactMatch = diagramMatch ? null : hash.match(/^\/mr\/([^/]+)\/artifact\/(.+)$/);
+  const mrMatch = diagramMatch ?? artifactMatch ?? hash.match(/^\/mr\/(.+)$/);
   const mrId = mrMatch ? decodeURIComponent(mrMatch[1]!) : null;
+  const artifactPath = diagramMatch
+    ? 'review.json'
+    : artifactMatch
+      ? decodeURIComponent(artifactMatch[2]!)
+      : null;
+  const diagramKind = diagramMatch
+    ? (diagramMatch[2] as 'change-map' | 'c4' | 'behaviour' | 'use-cases')
+    : null;
 
   const refreshBoard = useCallback(async (): Promise<void> => {
     const next = await dashboardV2Api.board();
@@ -177,6 +189,11 @@ export function App() {
     await refreshBoard();
   };
 
+  const handleReviewDelta = async (ref: string): Promise<void> => {
+    await dashboardV2Api.task(ref, 'delta_review', { mr: ref });
+    await refreshBoard();
+  };
+
   const handleUpdateDescription = async (ref: string): Promise<void> => {
     await dashboardV2Api.updateDescription(ref);
     await refreshState();
@@ -202,6 +219,20 @@ export function App() {
             window.location.hash = '#/';
           }}
           onAction={(type) => void runAction(type)}
+          onUpdateDescription={() => void handleUpdateDescription(mrId)}
+          artifactPath={artifactPath}
+          diagramKind={diagramKind}
+          onOpenArtifact={(path) => {
+            window.location.hash = `#/mr/${encodeURIComponent(mrId)}/artifact/${encodeURIComponent(path)}`;
+          }}
+          onCloseArtifact={() => {
+            window.location.hash = `#/mr/${encodeURIComponent(mrId)}`;
+          }}
+          onOpenDiagram={(kind) => {
+            window.location.hash = kind
+              ? `#/mr/${encodeURIComponent(mrId)}/report/diagram/${kind}`
+              : `#/mr/${encodeURIComponent(mrId)}/artifact/${encodeURIComponent('review.json')}`;
+          }}
           pending={pending}
           onSelectAnchor={setChatAnchor}
           chatAnchor={chatAnchor}
@@ -225,6 +256,7 @@ export function App() {
         syncState={board?.syncState ?? 'ok'}
         lastUpdated={boardLastUpdated}
         onOpen={openMr}
+        onReviewDelta={handleReviewDelta}
         onComplete={handleComplete}
         onUpdateDescription={handleUpdateDescription}
       />

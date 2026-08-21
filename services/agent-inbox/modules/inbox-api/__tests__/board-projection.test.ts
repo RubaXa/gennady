@@ -85,6 +85,7 @@ function makeSnapshot(overrides?: Partial<SyncSnapshot>): SyncSnapshot {
     threads: { open: 2, total: 5, awaitingMe: 1 },
     headSha: 'abc123',
     lastReviewedHeadSha: null,
+    headCommittedAt: FIXED_TS,
     updatedAt: FIXED_TS,
     estimated: false,
     ...overrides,
@@ -154,6 +155,24 @@ describe('BoardProjection', () => {
       assert.strictEqual(result.cards.length, 1);
     });
 
+    it('syncState is degraded when live truth refresh fails but cached cards remain visible', async () => {
+      const proj = new BoardProjection(
+        [makeSnapshot()],
+        makeMockJournal(),
+        makeMockRegistry(),
+        undefined,
+        async () => {
+          throw new Error('live GitLab unavailable');
+        }
+      );
+
+      await assert.rejects(proj.refreshFromTruth(), /VCS truth refresh failed/);
+
+      const result = proj.project();
+      assert.strictEqual(result.syncState, 'degraded');
+      assert.strictEqual(result.cards.length, 1);
+    });
+
     it('MrCard carries the canonical API contract fields', () => {
       const snap = makeSnapshot();
       const journal = makeMockJournal();
@@ -184,6 +203,42 @@ describe('BoardProjection', () => {
         label: 'Нет активной задачи',
         startedAt: null,
       });
+    });
+
+    it('projects a scheduled auto-review deadline from the latest commit time', () => {
+      const headCommittedAt = new Date(Date.now() + 60_000).toISOString();
+      const proj = new BoardProjection(
+        [makeSnapshot({ headCommittedAt })],
+        makeMockJournal(),
+        makeMockRegistry(),
+        undefined,
+        undefined,
+        undefined,
+        { enabled: true, quietMs: 15 * 60_000 }
+      );
+
+      assert.deepStrictEqual(proj.project().cards[0]?.autoReview, {
+        state: 'scheduled',
+        enabled: true,
+        quietMs: 15 * 60_000,
+        lastCommitAt: headCommittedAt,
+        dueAt: new Date(Date.parse(headCommittedAt) + 15 * 60_000).toISOString(),
+      });
+    });
+
+    it('projects a frozen timer when automatic review is disabled', () => {
+      const proj = new BoardProjection(
+        [makeSnapshot()],
+        makeMockJournal(),
+        makeMockRegistry(),
+        undefined,
+        undefined,
+        undefined,
+        { enabled: false, quietMs: 15 * 60_000 }
+      );
+
+      assert.strictEqual(proj.project().cards[0]?.autoReview?.state, 'frozen');
+      assert.strictEqual(proj.project().cards[0]?.autoReview?.enabled, false);
     });
 
     it('derives running work from the MR task journal without queue or VCS calls', () => {

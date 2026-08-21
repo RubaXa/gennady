@@ -39,6 +39,16 @@ function assertError(
   assert.strictEqual(result.error.class, expectedClass);
 }
 
+class DiagnosticOpenCodeReal extends OpenCodeReal {
+  injectPromptClient(client: unknown): void {
+    this._client = client as never;
+  }
+
+  bindModel(sid: string, model: string): void {
+    this._sessionModels.set(sid, model);
+  }
+}
+
 // ── tests ──
 
 describe('OpenCodeReal — UNAVAILABLE (no server running)', () => {
@@ -47,11 +57,18 @@ describe('OpenCodeReal — UNAVAILABLE (no server running)', () => {
 
     await assert.rejects(
       async () => {
-        await real.createSession({ title: 'test', directory: '/tmp/test' });
+        await real.createSession({
+          title: 'test',
+          directory: '/tmp/test',
+          model: 'llm-proxy/deepseek-v4-pro',
+        });
       },
       (err: unknown) => {
         const message = err instanceof Error ? err.message : String(err);
-        return /ECONNREFUSED|fetch failed|unavailable|connect/i.test(message);
+        return (
+          message.includes('llm-proxy/deepseek-v4-pro') &&
+          /ECONNREFUSED|fetch failed|unavailable|connect/i.test(message)
+        );
       },
       'Expected connection error when opencode is not running'
     );
@@ -108,6 +125,48 @@ describe('OpenCodeReal — UNAVAILABLE (no server running)', () => {
 });
 
 describe('OpenCodeReal — prompt with structured output (mocked client)', () => {
+  it('preserves provider, model, HTTP status and provider message on assistant failure', async () => {
+    const sid = 'provider-failure-sid';
+    const real = new DiagnosticOpenCodeReal({ baseUrl: 'http://localhost:4096' });
+    real.bindModel(sid, 'llm-proxy/deepseek-v4-pro');
+    real.injectPromptClient({
+      session: {
+        prompt: async () => ({
+          data: {
+            info: {
+              error: {
+                name: 'APIError',
+                data: {
+                  statusCode: 402,
+                  isRetryable: false,
+                  message: 'Payment Required: Insufficient balance',
+                },
+              },
+            },
+            parts: [],
+          },
+        }),
+      },
+    });
+
+    const result = await real.prompt(sid, { text: 'review' });
+
+    assertError(result, 'SESSION_ERROR');
+    assert.match(
+      result.error.signal ?? '',
+      /llm-proxy\/deepseek-v4-pro: HTTP 402 Payment Required: Insufficient balance/
+    );
+    assert.deepStrictEqual(result.error.details, {
+      model: 'llm-proxy/deepseek-v4-pro',
+      providerID: 'llm-proxy',
+      modelID: 'deepseek-v4-pro',
+      statusCode: 402,
+      retryable: false,
+      providerError: 'APIError',
+      providerMessage: 'Payment Required: Insufficient balance',
+    });
+  });
+
   it('GIVEN mock client returns text WHEN prompt without format THEN returns text output', async () => {
     const real = new OpenCodeReal({ baseUrl: 'http://localhost:4096' });
 

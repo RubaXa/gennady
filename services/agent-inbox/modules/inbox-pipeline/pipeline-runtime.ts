@@ -731,6 +731,38 @@ export class PipelineRuntime {
           },
         },
       });
+      if (!result.ok && result.error.details?.retryable === false) {
+        await this._opencode!.close(session.sid);
+        const error = new Error(
+          `[PipelineRuntime#_executeControlPlaneReview] Non-retryable ${result.error.class} for ${this._controlPlaneModel ?? 'server-default'}: ${result.error.signal ?? 'No provider diagnostic'}`,
+          { cause: result.error }
+        );
+        logger.error('[PipelineRuntime#_executeControlPlaneReview] [executing → provider_failed]', {
+          mr: input.intent.manifestKey.mr,
+          slotId,
+          sourceId: source.inputId,
+          sessionId: session.sid,
+          model: this._controlPlaneModel ?? 'server-default',
+          provider: result.error.details?.providerID,
+          modelID: result.error.details?.modelID,
+          statusCode: result.error.details?.statusCode,
+          retryable: result.error.details?.retryable,
+          error,
+        });
+        throw error;
+      }
+      if (!result.ok) {
+        logger.warn('[PipelineRuntime#_executeControlPlaneReview] [executing → slot_failed]', {
+          mr: input.intent.manifestKey.mr,
+          slotId,
+          sourceId: source.inputId,
+          sessionId: session.sid,
+          model: this._controlPlaneModel ?? 'server-default',
+          outcome: result.error.class,
+          signal: result.error.signal,
+          retryable: result.error.details?.retryable,
+        });
+      }
       const calls = await this._opencode!.toolCalls(session.sid);
       const trace = await this._opencode!.toolCallTrace(session.sid);
       await this._opencode!.close(session.sid);
@@ -978,9 +1010,12 @@ export class PipelineRuntime {
   ): Promise<string[]> {
     const role = options.role ?? 'reviewer';
     const plan = new PlanTemplate(new TriggerRegistry()).generate(mr, options.changeset ?? []);
+    const plannedTracks = options.tracks?.length
+      ? options.tracks
+      : plan.tracks.map((track) => track.id);
     const tracks = options.controlPlaneInput
-      ? ['control']
-      : (options.tracks ?? plan.tracks.map((track) => track.id));
+      ? [...new Set([...plannedTracks, 'control'])]
+      : plannedTracks;
     const pipelineParams = {
       mr,
       createdBy: 'pipeline',
@@ -1180,9 +1215,15 @@ export class PipelineRuntime {
           status: files.length > 0 ? 'reviewed' : 'no_applicable_files',
           files,
           findings: modelResult.findings,
+          diagrams: modelResult.diagrams ?? [],
           model: modelResult.model,
           runId: modelResult.runId,
         });
+        await this._writeArtifactBytes(
+          reportDir,
+          `tasks/${task.type}.md`,
+          modelResult.report ?? this._renderWorkerReport(task.type, files, modelResult.findings)
+        );
         await this._writeArtifact(
           tasksDir,
           `${task.type}.${modelResult.model}.result.json`,
@@ -1205,10 +1246,21 @@ export class PipelineRuntime {
           modelResults.length > 0 ? modelResults : seededResults
         );
         const review: ReviewJson = {
-          ...(synthesize.buildReviewJson(synthesized) as ReviewJson),
+          ...(synthesize.buildReviewJson(
+            synthesized,
+            modelResults.length > 0 ? modelResults : seededResults
+          ) as ReviewJson),
           verdict: 'COMMENT',
         };
         await this._writeArtifact(reportDir, 'review.json', review);
+        await this._writeArtifactBytes(
+          reportDir,
+          'REVIEW.md',
+          this._renderSynthesisReport(
+            review,
+            modelResults.length > 0 ? modelResults : seededResults
+          )
+        );
         // Публикуем итог ревью в ленту: без widget_bump feed состоит из одних progress-записей,
         // и оператор не видит, что ревью вообще состоялось (live-дефект приёмки S3).
         await this._journal.append({
@@ -1226,6 +1278,8 @@ export class PipelineRuntime {
               line: finding.line ?? 0,
               summary: finding.summary ?? '',
               state: 'open',
+              diff: finding.diff ?? [],
+              factcheck: finding.factcheck ?? 'pending',
             })),
           },
         });
@@ -1343,14 +1397,14 @@ export class PipelineRuntime {
     try {
       const result = await this._opencode.prompt(session.sid, {
         system:
-          'Review the assigned MR scope. Return ONLY one ```json fenced code block matching the schema — no prose before or after. Empty result is {"findings": []}.',
+          'Review the assigned MR scope. Return ONLY one ```json fenced code block matching the schema — no prose before or after. The report field must contain the complete human-readable Markdown result of this worker session: scope, reasoning summary, findings with evidence, and conclusion. When the scope provides evidence for them, diagrams must carry operator-facing change-map, C4, behaviour/data-flow, or use-case views of the MR itself — never a map of agent tracks. When no issue is found, explain what was checked and why the scope is clear.',
         text: `Worker ${task.type}; MR ${String(task.params.mr)}; files: ${files.join(', ') || '(no changed files)'} — read sources under ./worktree/ (repo checkout), prior-step artifacts under ./report/`,
         format: {
           type: 'json_schema',
           schema: {
             title,
             type: 'object',
-            required: ['findings'],
+            required: ['findings', 'report'],
             properties: {
               findings: {
                 type: 'array',
@@ -1362,6 +1416,57 @@ export class PipelineRuntime {
                     line: { type: 'number' },
                     summary: { type: 'string' },
                     severity: { enum: ['error', 'warning', 'info'] },
+                    diff: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        required: ['type', 'text'],
+                        properties: {
+                          type: { enum: ['context', 'add', 'remove'] },
+                          num: { type: 'number' },
+                          text: { type: 'string' },
+                        },
+                      },
+                    },
+                    factcheck: { enum: ['verified', 'pending', 'debunked'] },
+                  },
+                },
+              },
+              report: { type: 'string' },
+              diagrams: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  required: ['kind', 'title', 'caption', 'nodes', 'edges'],
+                  properties: {
+                    kind: { enum: ['change-map', 'c4', 'behaviour', 'use-cases'] },
+                    title: { type: 'string' },
+                    caption: { type: 'string' },
+                    nodes: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        required: ['id', 'label'],
+                        properties: {
+                          id: { type: 'string' },
+                          label: { type: 'string' },
+                          detail: { type: 'string' },
+                          tone: { type: 'string' },
+                        },
+                      },
+                    },
+                    edges: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        required: ['from', 'to'],
+                        properties: {
+                          from: { type: 'string' },
+                          to: { type: 'string' },
+                          label: { type: 'string' },
+                        },
+                      },
+                    },
                   },
                 },
               },
@@ -1374,13 +1479,24 @@ export class PipelineRuntime {
           `[PipelineRuntime#_runWorker] ${result.error.class}: ${result.error.signal ?? ''}`
         );
       const findings = this._parseFindings(result.output.findings, task.type);
+      const diagrams = this._parseDiagrams(result.output.diagrams, task.type);
+      const sessionReport =
+        typeof result.output.report === 'string' ? result.output.report.trim() : '';
+      const report = sessionReport || this._renderWorkerReport(task.type, files, findings);
       const calls = await this._opencode.toolCalls(session.sid);
       await this._appendToolTrace(reportDir, calls);
       this._rememberWorkerSession(String(task.params.mr), {
         sid: session.sid,
         taskType: task.type,
       });
-      return { track: task.type, model: `opencode-${task.type}`, runId: session.sid, findings };
+      return {
+        track: task.type,
+        model: `opencode-${task.type}`,
+        runId: session.sid,
+        findings,
+        report,
+        diagrams,
+      };
     } catch (cause) {
       await this._opencode.close(session.sid);
       throw cause;
@@ -1531,9 +1647,120 @@ export class PipelineRuntime {
         line: number;
         summary: string;
         severity: 'error' | 'warning' | 'info';
+        diff?: Array<{ type: 'context' | 'add' | 'remove'; num?: number; text: string }>;
+        factcheck?: 'verified' | 'pending' | 'debunked';
       };
-      return finding;
+      const diff = Array.isArray(finding.diff)
+        ? finding.diff.filter(
+            (line) =>
+              !!line &&
+              ['context', 'add', 'remove'].includes(line.type) &&
+              typeof line.text === 'string'
+          )
+        : undefined;
+      const factcheck = ['verified', 'pending', 'debunked'].includes(String(finding.factcheck))
+        ? finding.factcheck
+        : undefined;
+      return { ...finding, diff, factcheck };
     });
+  }
+
+  /**
+   * @purpose Validate optional structured diagram projections before durable synthesis.
+   * @param value Raw structured output field from the worker.
+   * @param taskType Concrete worker type used in failure context.
+   * @returns Valid diagram projections, or an empty array when absent.
+   */
+  protected _parseDiagrams(value: unknown, taskType: string): ModelResult['diagrams'] {
+    if (value === undefined) return [];
+    if (!Array.isArray(value))
+      throw new Error(`[PipelineRuntime#_parseDiagrams] ${taskType} returned invalid diagrams`);
+    return value.map((candidate) => {
+      if (!candidate || typeof candidate !== 'object')
+        throw new Error(`[PipelineRuntime#_parseDiagrams] ${taskType} returned invalid diagram`);
+      const diagram = candidate as NonNullable<ModelResult['diagrams']>[number];
+      if (
+        !['change-map', 'c4', 'behaviour', 'use-cases'].includes(diagram.kind) ||
+        typeof diagram.title !== 'string' ||
+        typeof diagram.caption !== 'string' ||
+        !Array.isArray(diagram.nodes) ||
+        !Array.isArray(diagram.edges) ||
+        diagram.nodes.some(
+          (node) => !node || typeof node.id !== 'string' || typeof node.label !== 'string'
+        ) ||
+        diagram.edges.some(
+          (edge) => !edge || typeof edge.from !== 'string' || typeof edge.to !== 'string'
+        )
+      )
+        throw new Error(`[PipelineRuntime#_parseDiagrams] ${taskType} returned invalid diagram`);
+      return diagram;
+    });
+  }
+
+  /**
+   * @purpose Render a durable readable fallback for seeded/legacy workers without prose output.
+   * @param taskType Concrete worker type for the fallback header.
+   * @param files Files implicated by the findings.
+   * @param findings Findings to render as markdown lines.
+   * @returns Readable markdown report.
+   */
+  protected _renderWorkerReport(
+    taskType: string,
+    files: string[],
+    findings: ModelResult['findings']
+  ): string {
+    const findingLines = findings.length
+      ? findings.map(
+          (finding) =>
+            `- **${finding.severity.toUpperCase()}** \`${finding.file}:${finding.line}\` — ${finding.summary}`
+        )
+      : ['- Замечаний, требующих публикации, не найдено.'];
+    return [
+      `# ${taskType.replaceAll('_', ' ')}`,
+      '',
+      '## Проверенный scope',
+      '',
+      ...(files.length ? files.map((file) => `- \`${file}\``) : ['- Нет применимых файлов']),
+      '',
+      '## Находки',
+      '',
+      ...findingLines,
+      '',
+    ].join('\n');
+  }
+
+  /**
+   * @purpose Materialize the final synthesized review as the primary human-readable artifact.
+   * @param review Final synthesized review JSON.
+   * @param modelResults Model results whose report is being rendered.
+   * @returns Human-readable markdown artifact body.
+   */
+  protected _renderSynthesisReport(review: ReviewJson, modelResults: ModelResult[]): string {
+    const findings = Array.isArray(review.findings) ? review.findings : [];
+    const findingLines = findings.length
+      ? findings.map((finding, index) => {
+          const item = finding as unknown as Record<string, unknown>;
+          const location = [item.file, item.line].filter((value) => value !== undefined).join(':');
+          return `${index + 1}. **${String(item.severity ?? 'info').toUpperCase()}**${location ? ` \`${location}\`` : ''} — ${String(item.summary ?? 'Без описания')}`;
+        })
+      : ['Замечаний, требующих публикации, не найдено.'];
+    return [
+      '# Итог ревью',
+      '',
+      `> Вердикт: **${String(review.verdict ?? 'COMMENT')}** · ревизия ${String(review.revision ?? 1)}`,
+      '',
+      '## Синтезированные находки',
+      '',
+      ...findingLines,
+      '',
+      '## Результаты дорожек',
+      '',
+      ...modelResults.map(
+        (result) =>
+          `- [${result.track.replaceAll('_', ' ')}](tasks/${result.track}.md) — ${result.findings.length} находок · сессия \`${result.runId}\``
+      ),
+      '',
+    ].join('\n');
   }
 
   /**
@@ -1613,7 +1840,12 @@ export class PipelineRuntime {
    * @returns Canonical report path identity.
    */
   protected _reportRef(mr: string): string {
-    if (mr.includes('!')) return mr;
+    if (mr.includes('!')) {
+      const [project, iid] = mr.split('!');
+      const segments = project.replace(/^https?:\/\//, '').split('/');
+      if (segments.length > 1 && segments[0].includes('.')) segments.shift();
+      return `${segments.join('/')}!${iid}`;
+    }
     const match = /\/([^/]+(?:\/[^/]+)*)\/-\/merge_requests\/(\d+)$/.exec(mr);
     return match ? `${match[1]}!${match[2]}` : mr;
   }

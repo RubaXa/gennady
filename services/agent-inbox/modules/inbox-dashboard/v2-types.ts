@@ -33,6 +33,21 @@ export type MrCardV2 = {
   myRole: string | null;
   /** @purpose Server-computed attention lane. */
   attention: Attention;
+  /** @purpose Authenticated operator's own review state, kept separate from aggregate counters. */
+  review?: {
+    approvedByMe: boolean;
+    commentedByMe: boolean;
+    approvalReset: boolean;
+    selfReviewCompleted: boolean;
+  };
+  /** @purpose Server-owned auto-review countdown; the browser only renders its deadline. */
+  autoReview?: {
+    state: 'scheduled' | 'due' | 'running' | 'complete' | 'frozen' | 'unknown_commit_time';
+    enabled: boolean;
+    quietMs: number;
+    lastCommitAt: string | null;
+    dueAt: string | null;
+  };
   /** @purpose Server counters rendered as the card's canonical badge row. */
   counters: {
     /** @purpose Approval progress text. */
@@ -47,6 +62,8 @@ export type MrCardV2 = {
     awaitingMe: number;
     /** @purpose New commit count since the last review. */
     newCommits: number;
+    /** @purpose Findings in the latest materialized review, absent before disk enrichment. */
+    findings?: number;
     /** @purpose Unread feed-event count. */
     unread: number;
   };

@@ -20,6 +20,7 @@ type GraphqlRequestFn = (query: string, variables?: Record<string, unknown>) => 
  */
 const MR_FIELDS = `iid title webUrl updatedAt draft state
   description diffHeadSha approvalsRequired conflicts
+  commits(last: 1) { nodes { committedDate } }
   author { username }
   reviewers(first: 100) { nodes { username } }
   approvedBy(first: 100) { nodes { username } }
@@ -148,6 +149,7 @@ type MrNode = {
   state?: string;
   description?: string;
   diffHeadSha?: string;
+  commits?: { nodes?: ({ committedDate?: string } | null)[] | null } | null;
   approvalsRequired?: number;
   conflicts?: boolean;
   author?: { username?: string } | null;
@@ -188,6 +190,7 @@ type Accumulator = {
     | 'reviewers'
     | 'approvedBy'
     | 'headSha'
+    | 'headCommittedAt'
     | 'pipelineStatus'
     | 'approvalsRequired'
   >;
@@ -237,9 +240,13 @@ export class VcsGitlabInbox extends VcsClientInbox {
           ...(filter?.includeTodos ? [TODOS_QUERY] : []),
         ];
 
-    const payloads = (await Promise.all(
-      queries.map((query) => this._graphql(query))
-    )) as ActionableData[];
+    // Corporate GitLab/VPN routes can reject a same-origin TLS burst even though every
+    // query succeeds alone. There are at most four discovery sources, so preserve the
+    // provider order and avoid turning startup into a connection storm.
+    const payloads: ActionableData[] = [];
+    for (const query of queries) {
+      payloads.push((await this._graphql(query)) as ActionableData);
+    }
     const users = payloads.flatMap((payload) =>
       payload?.currentUser ? [payload.currentUser] : []
     );
@@ -268,6 +275,7 @@ export class VcsGitlabInbox extends VcsClientInbox {
             reviewers: usernames(node.reviewers),
             approvedBy: usernames(node.approvedBy),
             headSha: node.diffHeadSha,
+            headCommittedAt: node.commits?.nodes?.at(-1)?.committedDate,
             pipelineStatus: node.headPipeline?.status,
             approvalsRequired: node.approvalsRequired,
           },
