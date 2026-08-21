@@ -7,19 +7,78 @@ import {
   nextElement,
   parseAttrs,
   scanRefsAndTools,
-  topLevelElements,
   type RawEl,
 } from './scan.ts';
 
-/** BeliefState → узлы-аксиомы (id + первое предложение + полное тело). */
-function parseAxioms(inner: string): TraceNode[] {
-  const out: TraceNode[] = [];
-  for (const m of inner.matchAll(/<Axiom\b([^>]*)>([\s\S]*?)<\/Axiom>/g)) {
-    const attrs = parseAttrs(m[1] as string);
-    const body = (m[2] as string).trim();
-    out.push({ kind: 'axiom', label: attrs.id ?? 'AX_?', note: firstSentence(body), detail: body });
+/**
+ * Top-level `<Axiom>` элементы в `inner`, закрытие — БАЛАНСНОЕ (считает вложенные open/close той же
+ * пары, в духе nextElement/topLevelElements), а не первое `</Axiom>` — легитимная форма вложенности:
+ * `<Axiom id="AX_NO_DUPLICATION">…<Axiom id="AX_TICKET_DEDUPLICATION">…</Axiom>…</Axiom>`
+ * (agent-inbox/{code-lens,security-lens,synthesize,track-review}.directive.xml — внешняя аксиома
+ * дословно цитирует внутреннюю вместо дублирования текста). Ленивый `/<Axiom\b...>...<\/Axiom>/`
+ * останавливался на ПЕРВОМ `</Axiom>`, то есть на закрытии ВНУТРЕННЕЙ: внешняя обрезалась на середине
+ * (хвост после вложенной терялся), а внутренняя не становилась узлом дерева вовсе.
+ */
+function axiomElements(
+  inner: string
+): { attrs: Record<string, string>; body: string; raw: string }[] {
+  const out: { attrs: Record<string, string>; body: string; raw: string }[] = [];
+  const openRe = /<Axiom\b([^>]*)>/g;
+  let cursor = 0;
+  while (cursor < inner.length) {
+    openRe.lastIndex = cursor;
+    const om = openRe.exec(inner);
+    if (!om) break;
+    const attrs = parseAttrs(om[1] as string);
+    const start = om.index;
+    const bodyStart = om.index + om[0].length;
+    const pairRe = /<Axiom\b[^>]*>|<\/Axiom>/g;
+    pairRe.lastIndex = bodyStart;
+    let depth = 1;
+    let bodyEnd = inner.length;
+    let closeEnd = inner.length;
+    let m: RegExpExecArray | null;
+    while ((m = pairRe.exec(inner))) {
+      if (m[0] === '</Axiom>') {
+        depth--;
+        if (depth === 0) {
+          bodyEnd = m.index;
+          closeEnd = m.index + m[0].length;
+          break;
+        }
+      } else depth++;
+    }
+    out.push({ attrs, body: inner.slice(bodyStart, bodyEnd), raw: inner.slice(start, closeEnd) });
+    cursor = closeEnd;
   }
   return out;
+}
+
+/**
+ * BeliefState → узлы-аксиомы (id + первое предложение + полное тело), рекурсивно. Вложенная аксиома —
+ * РЕБЁНОК внешней (не поднятый sibling): рендер (ai/inspector/web/app.js renderNode) полностью
+ * рекурсивен по `children` независимо от `kind`, так что ребёнком дерево честно отражает исходную
+ * вложенность разметки; поднятой в sibling вложенная аксиома не соответствовала бы исходной структуре
+ * и потеряла бы, что она процитирована ВНУТРИ текста внешней, а не идёт после неё.
+ */
+function parseAxioms(inner: string): TraceNode[] {
+  return axiomElements(inner).map(({ attrs, body: rawBody }) => {
+    const children = parseAxioms(rawBody); // вложенные <Axiom> внутри тела — детьми, рекурсивно
+    // Внешний note/detail — только СОБСТВЕННЫЙ текст (без raw-разметки вложенных <Axiom>): без этого
+    // вырезания вложенная аксиома дублировалась бы дословно и как raw XML внутри текста родителя, и как
+    // отдельный узел-ребёнок (см. тест «no raw tag markup leaks into detail» для того же паттерна у
+    // ChatProtocol/generic-секций).
+    let ownText = rawBody;
+    for (const nested of axiomElements(rawBody)) ownText = ownText.replace(nested.raw, '\n');
+    const body = ownText.trim();
+    return {
+      kind: 'axiom' as const,
+      label: attrs.id ?? 'AX_?',
+      note: firstSentence(body),
+      detail: body,
+      children: children.length ? children : undefined,
+    };
+  });
 }
 
 /** Теги, разбираемые как лист «id + первое предложение + полное тело» (в стиле parseAxioms), а не
@@ -42,9 +101,18 @@ function nestedCountNote(n: number): string {
 /** Замаскировать `code`-спаны (той же длины, символы `<`/`>` внутри не выживают) — секции без
  *  спец-разборщика — это свободная markdown-проза, и плейсхолдеры вида `` `P<N>` ``, `` `<Task-ID>` ``
  *  иначе ложно матчатся как псевдо-тег PascalCase-сканером (см. PASCAL_OPEN в scan.ts: одна заглавная
- *  буква — валидное имя тега). Длина сохраняется, чтобы смещения совпадали с оригиналом. */
+ *  буква — валидное имя тега). Длина сохраняется, чтобы смещения совпадали с оригиналом.
+ *
+ *  Спан не пересекает границу строки (`[^`\n]`, не просто `[^`]`): markdown-проза нередко несёт
+ *  непарный/тройной backtick внутри одной строки (пример: `code-lens.directive.xml` `<Probes>` —
+ *  таблица с ячейкой «...fenced-блоком ```suggestion:-0+0, новый текст...» — тройной backtick как
+ *  литеральный пример синтаксиса, не открытие настоящего fenced-блока). Без ограничения строкой один
+ *  такой нечётный backtick сдвигает четность на весь ОСТАТОК документа: следующая «пара» находится
+ *  где угодно дальше, включая случай, когда в маску попадает настоящий закрывающий тег секции
+ *  (`</Probes>`) — тогда секция для сканера как бы не заканчивается, и всё, что после неё, отрезается
+ *  от дерева. Ограничение строкой держит ущерб непарного backtick в пределах одной строки. */
 function maskCodeSpans(s: string): string {
-  return s.replace(/`[^`]*`/g, (m) => ' '.repeat(m.length));
+  return s.replace(/`[^`\n]*`/g, (m) => ' '.repeat(m.length));
 }
 
 /** Top-level элементы секции, игнорируя псевдо-теги внутри `code`-спанов: находим границы на
@@ -218,7 +286,14 @@ export function parseDirective(path: string, xml: string): TraceNode {
   const root = nextElement(xml, 0);
   if (!root) return { kind: 'directive', label: path, note: 'не найден корневой тег' };
   const sections: TraceNode[] = [];
-  for (const el of topLevelElements(root.inner)) {
+  // nestedElements (not the raw topLevelElements) — same `code`-span masking parseGenericSection uses
+  // one level down. A format/contract file's body (e.g. formats/research-doc-structure.xml) is free
+  // markdown FULL of bare placeholders shaped like a tag (`<NAME>`, `<X>`, `<YYYY-MM-DD>` — one capital
+  // letter is a valid PASCAL_OPEN tag name) with no real closing counterpart anywhere in the document;
+  // masking keeps a backtick-wrapped placeholder from ever reaching the tag scanner, and nextElement's
+  // own pairing requirement (scan.ts) skips over any unmasked bare one that still has no real `</Name>`.
+  for (const el of nestedElements(root.inner)) {
+    const attrs = parseAttrs(el.attrsRaw);
     if (el.name === 'BeliefState')
       sections.push({
         kind: 'section',
@@ -240,7 +315,7 @@ export function parseDirective(path: string, xml: string): TraceNode {
         note: 'шаги исполнения',
         children: parseSteps(el.inner),
       });
-    else if (el.name === 'LogicSwitch') sections.push(parseLogicSwitch(el.inner, el.attrs.on));
+    else if (el.name === 'LogicSwitch') sections.push(parseLogicSwitch(el.inner, attrs.on));
     else
       sections.push({ kind: 'section', label: `<${el.name}>`, ...parseGenericSection(el.inner) });
   }

@@ -62,39 +62,51 @@ export interface RawEl {
   raw: string;
 }
 
-/** Следующий PascalCase-элемент от позиции `from`; закрытие — первый `</name>` (без вложенности тех же имён). */
+/**
+ * Следующий PascalCase-элемент от позиции `from`; закрытие — первый `</name>` (без вложенности тех же
+ * имён — см. отдельный балансный разбор для легитимной вложенности одноимённых тегов, напр. `<Axiom>`
+ * в `<Axiom>`, в parse-directive.ts).
+ *
+ * Кандидат без пары (self-close ИЛИ настоящий `</name>` где-то дальше в строке) — НЕ элемент, а голый
+ * псевдо-тег вида `<NAME>`, `<X>`, `<YYYY-MM-DD>`: markdown-прототипы (`research-doc-structure.xml` и
+ * т.п.) пишут плейсхолдеры именно в этой форме, и PASCAL_OPEN (одна заглавная буква — валидное имя
+ * тега) иначе матчит их как реальные теги. Раньше отсутствие закрывающего тега трактовалось как
+ * «до конца строки» — единственный такой плейсхолдер молча проглатывал ВЕСЬ остаток документа как своё
+ * тело. Теперь непарный кандидат просто пропускается — сканирование продолжается с символа после его
+ * `<`, ища следующий валидный (само-закрытый или парный) тег дальше в тексте.
+ */
 export function nextElement(s: string, from: number): RawEl | null {
-  const sub = s.slice(from);
-  const m = PASCAL_OPEN.exec(sub);
-  if (!m) return null;
-  const name = m[1] as string;
-  const start = from + m.index;
-  const openEnd = start + m[0].length;
-  if (m[3] === '/')
+  let searchFrom = from;
+  while (searchFrom < s.length) {
+    const sub = s.slice(searchFrom);
+    const m = PASCAL_OPEN.exec(sub);
+    if (!m) return null;
+    const name = m[1] as string;
+    const start = searchFrom + m.index;
+    const openEnd = start + m[0].length;
+    if (m[3] === '/')
+      return {
+        name,
+        attrsRaw: m[2] as string,
+        inner: '',
+        end: openEnd,
+        raw: s.slice(start, openEnd),
+      };
+    const cm = new RegExp('</' + name + '>').exec(s.slice(openEnd));
+    if (!cm) {
+      searchFrom = start + 1; // непарный псевдо-тег — не элемент, продолжаем поиск дальше
+      continue;
+    }
+    const end = openEnd + cm.index + cm[0].length;
     return {
       name,
       attrsRaw: m[2] as string,
-      inner: '',
-      end: openEnd,
-      raw: s.slice(start, openEnd),
+      inner: s.slice(openEnd, openEnd + cm.index),
+      end,
+      raw: s.slice(start, end),
     };
-  const cm = new RegExp('</' + name + '>').exec(s.slice(openEnd));
-  if (!cm)
-    return {
-      name,
-      attrsRaw: m[2] as string,
-      inner: s.slice(openEnd),
-      end: s.length,
-      raw: s.slice(start),
-    };
-  const end = openEnd + cm.index + cm[0].length;
-  return {
-    name,
-    attrsRaw: m[2] as string,
-    inner: s.slice(openEnd, openEnd + cm.index),
-    end,
-    raw: s.slice(start, end),
-  };
+  }
+  return null;
 }
 
 /** Все элементы верхнего уровня строки в порядке появления. */

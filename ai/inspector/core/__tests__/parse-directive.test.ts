@@ -219,3 +219,78 @@ test('placeholder tokens inside `code spans` (e.g. `P<N>`, `` `<Task-ID>` ``) ar
   );
   assert.match(ctx?.detail ?? '', /sdd-task/);
 });
+
+// --- regression: root-level scan swallowed by an unclosed placeholder tag (<NAME>, <X>, <YYYY-MM-DD>) ---
+// A format/contract file's root (<Contract id="...">) has no PascalCase structural children — the
+// WHOLE body is markdown content, captured via `rootDetail` when `topLevelElements` finds nothing.
+// PASCAL_OPEN treats a single capital letter as a valid tag name, so bare markdown placeholders like
+// `<NAME>`, `<X>`, `<YYYY-MM-DD>` used to be mistaken for real tags. Since none of these placeholders
+// have a matching `</NAME>` anywhere in the document, the OLD nextElement() fallback (no closer found
+// → inner runs to end of string) made the first one it hit swallow the entire rest of the file as its
+// own (bogus) body: tree.children became `[{label:'<NAME>', ...}]` and the real detail/content of the
+// contract was lost — not just misfiled, GONE (no fallback path captures it once children.length > 0).
+
+const researchDocXml = readFileSync(
+  join(repoRoot, 'ai/directives/sdd-v2/formats/research-doc-structure.xml'),
+  'utf8'
+);
+const researchDoc = parseDirective(
+  'ai/directives/sdd-v2/formats/research-doc-structure.xml',
+  researchDocXml
+);
+
+test('a bare unclosed placeholder tag in prose (<NAME>, <X>/<Y>/<Z>/<G>/<T>, <YYYY-MM-DD>) does not swallow the rest of the document', () => {
+  assert.equal(researchDoc.label, '<Contract>');
+  assert.deepEqual(researchDoc.children, [], 'no bogus placeholder children');
+  assert.ok((researchDoc.detail?.length ?? 0) > 4000, 'full markdown body preserved as detail');
+  assert.match(researchDoc.detail ?? '', /sdd-extract/);
+  assert.match(
+    researchDoc.detail ?? '',
+    /Выбрали/,
+    'DECISION section prose (with bare <X>/<Y>/<Z>) survives'
+  );
+  assert.match(
+    researchDoc.detail ?? '',
+    /Related/,
+    'tail section after every placeholder still present'
+  );
+});
+
+// --- regression: nested <Axiom> inside <Axiom> truncated the outer and dropped the inner entirely ---
+// agent-inbox/{code-lens,security-lens,synthesize,track-review}.directive.xml quote one axiom verbatim
+// inside another instead of duplicating text: <Axiom id="AX_NO_DUPLICATION">...<Axiom
+// id="AX_TICKET_DEDUPLICATION">...</Axiom>...</Axiom>. The OLD lazy regex
+// `/<Axiom\b([^>]*)>([\s\S]*?)<\/Axiom>/g` stopped at the FIRST `</Axiom>` — the inner one's — so the
+// outer's body was cut off mid-sentence (everything after the nested axiom silently dropped) and the
+// inner axiom never became a node at all.
+
+const codeLensXml = readFileSync(
+  join(repoRoot, 'ai/directives/sdd-v2/agent-inbox/code-lens.directive.xml'),
+  'utf8'
+);
+const codeLens = parseDirective(
+  'ai/directives/sdd-v2/agent-inbox/code-lens.directive.xml',
+  codeLensXml
+);
+
+test('a nested <Axiom> inside <Axiom> becomes a child, not a truncation of the outer', () => {
+  const beliefState = codeLens.children?.find((c) => c.label === '<BeliefState>');
+  assert.ok(beliefState, '<BeliefState> present');
+  const outer = beliefState?.children?.find((a) => a.label === 'AX_NO_DUPLICATION');
+  assert.ok(outer, 'AX_NO_DUPLICATION present');
+  const inner = outer?.children?.find((a) => a.label === 'AX_TICKET_DEDUPLICATION');
+  assert.ok(inner, 'AX_TICKET_DEDUPLICATION is a child of AX_NO_DUPLICATION, not lost');
+  assert.match(inner?.detail ?? '', /specs\/3-tasks\.md/);
+  // the outer's own detail keeps its FULL text — including what came after the nested axiom in the
+  // source — without leaking the nested element's raw XML markup into it
+  assert.match(
+    outer?.detail ?? '',
+    /same principle\s*\n?\s*is read verbatim below/,
+    "outer body is not truncated at the nested axiom's close"
+  );
+  assert.doesNotMatch(
+    outer?.detail ?? '',
+    /<Axiom\b/,
+    'no raw nested-tag markup leaks into outer detail'
+  );
+});
