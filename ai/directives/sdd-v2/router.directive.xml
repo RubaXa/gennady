@@ -434,8 +434,8 @@
       <Goal>Classify operator intent, scope-type and SCALE against state; confirm with the operator.</Goal>
       <Action>
         From state + operator message derive intent: project-setup · new-scope · evolve-scope ·
-        module-decomposition · multi-scope · recover-from-code. When the intent concerns a scope, also
-        resolve its scope-type — for a new scope from the operator, for an existing one from
+        module-decomposition · multi-scope · recover-from-code · execute. When the intent concerns a
+        scope, also resolve its scope-type — for a new scope from the operator, for an existing one from
         `sdd-state` (the Scopes table). A change spanning several scopes (cross-platform) is normal
         (`AX_CROSS_SCOPE_CHANGE`): open a working set of the touched specs in the session and route them
         in Scope-Graph dependency order — the shared / cross-cutting scope first, then its dependents —
@@ -449,6 +449,11 @@
         request against an absent portal is `project-setup` instead (the whole-project recovery lives
         inside the `root` branch, not this switch). A path-bearing request against an absent portal is
         still ambiguous between the two — ask the operator which they mean before routing.
+
+        `execute` fires when the operator names a concrete Task-ID, or says `next` / `pick` / `batch` /
+        `all`, or asks in Russian to run a task or the queue («выполни задачу», «выполни очередь»,
+        «прогони батч») — it runs already-scaffolded tickets, never a spec, so it carries no scope-type
+        and no SCALE: skip both resolutions below for this intent and record `intent: execute` alone.
 
         WHEN `specs/README.md` is absent AND the operator's message carries no substantive project
         content (bare `/sdd`, a greeting, no vision / scope-type stated) — empty intake against an empty
@@ -467,7 +472,9 @@
         skipped entirely — classify `project-setup` directly and fold its confirmation into the ordinary
         SCALE exchange below; one stop, not two.
 
-        Alongside intent, assess SCALE ∈ {product, library, module, function, fix} from context:
+        This SCALE exchange does not apply to `execute` (already carved out above — it dispatches a
+        deterministic execution map, not an interview / design-alternatives depth). For every other
+        intent, assess SCALE ∈ {product, library, module, function, fix} from context:
         the intent itself, the portal state (an empty portal leans product; a mature scope leans
         module / function), and the size of the request. Per `AX_SCALE_PROPORTIONAL_DEPTH` the
         assessment binds only after operator confirmation — defaults-first: present the proposed
@@ -576,6 +583,9 @@
              (the shared / cross-cutting scope first, then its dependents); for EACH scope in that order run
              its own ordinary route (branches 3–6 of this same LOGIC_SWITCH) to completion, one scope at a
              time, with a brief check-in with the operator between scopes
+      - WHEN intent = execute (a concrete Task-ID, or `next` / `pick` / `batch` / `all`, or an operator
+          request to run a task or the queue)
+          -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/execute.directive.xml")
       - DEFAULT
           -> ask the operator which intent applies (message in Russian); route only on a confirmed intent
     ```

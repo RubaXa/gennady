@@ -6,11 +6,11 @@
 
 ## 1. Module Vision
 
-8 SDD-навыков: полный воркфлоу Specification-Driven Development — от создания спеки до верификации. Большинство навыков — тонкие клиенты над директивами из `ai/directives/sdd-v2/`. `sdd-execute` — единственный оркестратор, диспатчит subagent'ов с typed Handoff (включая batch-режим — та же дверь, LOGIC_SWITCH на intent). `sdd-check` — read-only репортер над CLI-инструментом (без директивы).
+8 SDD-навыков: полный воркфлоу Specification-Driven Development — от создания спеки до верификации. Большинство навыков — тонкие клиенты над директивами из `ai/directives/sdd-v2/`. `sdd-execute` — единственный оркестратор, диспатчит subagent'ов с typed Handoff (включая batch-режим — тот же навык, LOGIC_SWITCH на intent). `sdd-check` — read-only репортер над CLI-инструментом (без директивы).
 
 Навыки в модуле:
 
-- **Router (единая дверь):** `sdd` — маршрутизирует к portal / scope / infra / interface / module / recover-from-code
+- **Router (единая точка входа):** `sdd` — маршрутизирует к portal / scope / infra / interface / module / recover-from-code / execute (внутренний переход router → execute идёт той же веткой LOGIC_SWITCH, `READ_AND_USE_DIRECTIVE` на `execute.directive.xml`, без остановки на операторе)
 - **Planning:** `sdd-scaffold`
 - **Execution:** `sdd-execute` (single ticket или batch — интент внутри одного навыка)
 - **Verification:** `sdd-audit`, `sdd-check`, `sdd-code-review`
@@ -37,7 +37,7 @@
 Агент активирует `sdd-execute` (single ticket или batch — один и тот же навык):
 
 ```
-<SddDoor door="execute">
+<SddSkill id="execute">
 1. GATHER: sdd-state + читает ai/directives/sdd-v2/execute.directive.xml
 2. EMBODY: You ARE the execute orchestrator now. Task-ID = TSK-01 (или "batch").
 3. Plan: P1 (impl) → P2 (test) → audit
@@ -47,7 +47,7 @@
    → DONE
 6. Close round → dispatch audit
    → PASS ✅
-</SddDoor>
+</SddSkill>
 ```
 
 <!--/SECTION:MODULE_USAGE_EXAMPLE-->
@@ -150,7 +150,7 @@ _Это полный список сущностей модуля. Любое в
 - **Type:** Enumeration
 - **Purpose:** Классификация навыка по фазе SDD-воркфлоу
 - **Values:**
-  - `route` — sdd (единая дверь-роутер: portal / scope / infra / interface / module / recover-from-code)
+  - `route` — sdd (единая точка входа-роутер: portal / scope / infra / interface / module / recover-from-code / execute)
   - `plan` — sdd-scaffold
   - `execute` — sdd-execute (single ticket и batch)
   - `verify` — sdd-audit, sdd-check, sdd-code-review
@@ -209,7 +209,7 @@ _Это полный список сущностей модуля. Любое в
 
 ```
 ai/skills/
-├── sdd/SKILL.md                    # единая дверь-роутер
+├── sdd/SKILL.md                    # единая точка входа-роутер
 ├── sdd-scaffold/SKILL.md
 ├── sdd-execute/
 │   └── SKILL.md                    # single ticket и batch — LOGIC_SWITCH на intent; tooling = gennady CLI (sdd-extract/sdd-verify/sdd-log/sdd-check), не bash-скрипты

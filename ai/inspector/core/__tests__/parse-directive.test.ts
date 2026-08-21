@@ -106,9 +106,9 @@ test('the structured <LogicSwitch> is parsed into a switch node', () => {
   assert.match(routerSwitch?.note ?? '', /sdd-state|intent/);
 });
 
-test('LogicSwitch yields one branch per WHEN/DEFAULT (8 total, incl. DEFAULT)', () => {
+test('LogicSwitch yields one branch per WHEN/DEFAULT (9 total, incl. DEFAULT)', () => {
   const branches = routerSwitch?.children ?? [];
-  assert.equal(branches.length, 8);
+  assert.equal(branches.length, 9);
   assert.equal(branches.at(-1)?.label, 'DEFAULT');
 });
 

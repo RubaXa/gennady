@@ -557,7 +557,10 @@
         These trackers and tickets are read by execute with no memory of this scaffolding run —
         every DAG edge, rule reference, and BDD scenario must already be in the file
         (`AX_STATELESS_ARTIFACT`). Emit a created-files summary with traceability links. Hand off to
-        execute (isolated, cheaper model). No operator stop.
+        execute in the SAME session —
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/execute.directive.xml")` — no operator stop;
+        isolation lives one level down, at the phase-worker subagent execute dispatches per phase, not
+        at this handoff.
       </Action>
     </Step>
   </ExecutionPlan>

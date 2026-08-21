@@ -375,7 +375,10 @@
          print a short resume instruction (how to reopen this flow next session — which command/skill,
          which scope or step to name) and stop; no directive loads.
       3. On any other pick: invoke the corresponding skill(s) / directive flow(s) directly — never
-         answer with «запусти /sdd-X сам».
+         answer with «запусти /sdd-X сам». An internal transition between branches loads its directive in
+         the CURRENT session via `READ_AND_USE_DIRECTIVE` (`DEF_READ_AND_USE_DIRECTIVE`); the skill
+         wrapper (`/sdd-X`) is the operator's own entry point, not the mechanism this step uses to move
+         between branches.
     </Contract>
   </ChatOutput>
 </SddInterviewProtocol>
