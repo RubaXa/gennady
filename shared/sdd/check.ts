@@ -1811,7 +1811,12 @@ function findDiagramBlocks(content: string): DiagramBlock[] {
       if ((lines[i] ?? '').trim().startsWith('```')) {
         let j = i + 1;
         while (j < lines.length && !(lines[j] ?? '').trim().startsWith('```')) j++;
-        const nextRaw = lines[j + 1];
+        // The caption is the first NON-EMPTY line after the fence: prettier (pre-commit format)
+        // inserts a blank line between a fenced block and the following text, so demanding the
+        // very next line would make our own formatter fail our own gate.
+        let k = j + 1;
+        while (k < lines.length && (lines[k] ?? '').trim() === '') k++;
+        const nextRaw = lines[k];
         blocks.push({ section, nextLine: nextRaw === undefined ? null : nextRaw.trim() });
         i = j + 1;
       } else {
@@ -1867,7 +1872,7 @@ export function checkDiagramCaptions(file: string, content: string): Finding[] {
         severity,
         code: 'SDD_DIAGRAM_CAPTION_MISSING',
         file,
-        message: `Diagram in section ${block.section} has no caption right after the closing fence (three backticks) — add one line: \`_<что показывает диаграмма> — ${exampleId}._\` (сама фраза-подпись обязательна всегда; список ID требований необязателен — добавляй его, когда диаграмма иллюстрирует конкретные требования).`,
+        message: `Diagram in section ${block.section} has no caption after the closing fence (first non-empty line; blank line allowed) — add one line: \`_<что показывает диаграмма> — ${exampleId}._\` (сама фраза-подпись обязательна всегда; список ID требований необязателен — добавляй его, когда диаграмма иллюстрирует конкретные требования).`,
       });
       continue;
     }

@@ -58,11 +58,18 @@ describe('checkDiagramCaptions', () => {
     assert.deepStrictEqual(checkDiagramCaptions(SPEC_FILE, content), []);
   });
 
-  it('caption with a blank line before it (not "right after") → still counts as missing', () => {
+  it('caption separated by a blank line (prettier inserts one after a fence) → still a caption', () => {
     const content = overview(
       ['```mermaid', 'flowchart LR', '  A --> B', '```', '', '_Общая композиция сервиса._'].join(
         '\n'
       )
+    );
+    assert.deepStrictEqual(checkDiagramCaptions(SPEC_FILE, content), []);
+  });
+
+  it('non-caption text after blank lines (no italic span anywhere next) → missing', () => {
+    const content = overview(
+      ['```mermaid', 'flowchart LR', '  A --> B', '```', '', 'Просто абзац без подписи.'].join('\n')
     );
     const findings = checkDiagramCaptions(SPEC_FILE, content);
     assert.strictEqual(findings[0]?.code, 'SDD_DIAGRAM_CAPTION_MISSING');
