@@ -385,7 +385,7 @@ use-case → `[DA-REQ-N]` → vision chain the operator reviews at scaffold.
 - **When** `classify` runs
 - **Then** it returns `cross-cutting`
 
-**Scenario:** an axiom mentioned in zero Steps stays cross-cutting and is flagged [`unit`] `[DA-REQ-9]`
+**Scenario:** an axiom mentioned in zero Steps stays cross-cutting and is flagged [`contract`] `[DA-REQ-9]`
 
 - **Given** an axiom whose id occurs nowhere in the directive's rendered text
 - **When** `classify` runs
@@ -421,7 +421,7 @@ use-case → `[DA-REQ-N]` → vision chain the operator reviews at scaffold.
 
 **Feature:** Mechanical budgets
 
-**Scenario:** a within-budget skeleton and packages produce no findings [`unit`] `[DA-REQ-6]`
+**Scenario:** a within-budget skeleton and packages produce no findings [`contract`] `[DA-REQ-6]`
 
 - **Given** a skeleton under 8000 tokens and packages each under 8000 chars with every line under
   2000 chars
