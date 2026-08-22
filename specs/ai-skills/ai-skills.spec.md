@@ -327,6 +327,7 @@ Spec hierarchy is materialized at `specs/ai-skills/`. Module specs are at `specs
 ### 8.1 Modules
 - [`skill-contract`](./skill-contract/skill-contract.spec.md) — Контракт навыка: frontmatter, naming, паттерны активации, файловая структура
 - [`sdd-skills`](./sdd-skills/sdd-skills.spec.md) — 8 SDD-навыков: полный воркфлоу Specification-Driven Development
+- [`directive-assembly`](./directive-assembly/directive-assembly.spec.md) — Ленивая сборка SDD-директив: скелет + пакеты шагов, доставляемые путём+Read (CLI-инструмент `sdd-step`, scope `cli`, — отложенный инструмент, DEFERRED_DECISION), рядом с существующей monolith-сборкой
 
 `alt-opinion` (CLI-delegation модуль) удалён — см. D-006.
 
@@ -337,6 +338,8 @@ graph TD
     sdd-skills --> skill-contract
     sdd-skills -. Runtime .-> cli
     sdd-skills -. Runtime .-> infra-base
+    directive-assembly --> sdd-skills
+    sdd-step["sdd-step (scope cli, DEFERRED)"] -. Scope Reference .-> directive-assembly
 ```
 
 ### 8.3 Stack Dependencies
