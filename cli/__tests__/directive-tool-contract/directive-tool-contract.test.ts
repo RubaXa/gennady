@@ -1,0 +1,464 @@
+// @file: Tool-table contract test — every documented `npx gennady <cmd> ...` call in the sdd-v2
+//   execute / phase-execution-protocol / audit directives must (a) name a command gennady's own
+//   dispatcher recognizes, (b) return the documented CLASS of result against a real fixture repo
+//   (exit 0 for a call the directive presents as routine, the tool's own documented error code for
+//   one it presents as an error path), and (c) for the handful of fixed-shape forms, produce output
+//   matching that shape. This is the class of bug that costs an executing agent real panic: a tool
+//   reference table that promises a flag, a Task-ID banner, or a status side-effect the CLI does not
+//   actually have.
+// @consumers: N/A
+// @tasks: N/A
+
+import { describe, it, before, after } from 'node:test';
+import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import { readFileSync, rmSync } from 'node:fs';
+import { join, resolve } from 'node:path';
+import { extractDocumentedCalls, type DocumentedCall } from './parse-tool-calls.ts';
+import { buildFixture, type Fixture } from './fixture.ts';
+
+const REPO_ROOT = resolve(import.meta.dirname, '..', '..', '..');
+const GENNADY_ENTRY = join(REPO_ROOT, 'cli', 'gennady.ts');
+const GENNADY_TS = join(REPO_ROOT, 'cli', 'gennady.ts');
+// Absolute loader path, not the bare `tsx` specifier: `--import tsx` resolves the bare specifier
+// from the CHILD PROCESS's cwd (the fixture dir, which has no node_modules/tsx of its own), not
+// from this repo — exactly the failure AX_TOOL_INVOCATION's "npx tsx <repo-root>/cli/gennady.ts"
+// form is written to avoid by naming the repo root explicitly.
+const TSX_LOADER = join(REPO_ROOT, 'node_modules', 'tsx', 'dist', 'loader.mjs');
+
+const DIRECTIVE_PATHS = {
+  execute: join(REPO_ROOT, 'ai', 'directives', 'sdd-v2', 'execute.directive.xml'),
+  phase: join(REPO_ROOT, 'ai', 'directives', 'sdd-v2', 'phase-execution-protocol.directive.xml'),
+  audit: join(REPO_ROOT, 'ai', 'directives', 'sdd-v2', 'audit.directive.xml'),
+} as const;
+
+type DirectiveKey = keyof typeof DIRECTIVE_PATHS;
+
+const directiveText = new Map<DirectiveKey, string>();
+const directiveCalls = new Map<DirectiveKey, DocumentedCall[]>();
+for (const [key, path] of Object.entries(DIRECTIVE_PATHS) as [DirectiveKey, string][]) {
+  const text = readFileSync(path, 'utf-8');
+  directiveText.set(key, text);
+  directiveCalls.set(key, extractDocumentedCalls(text));
+}
+
+/**
+ * @purpose Every documented command name recognized by gennady's own CLI dispatcher — the source
+ *   of truth for property (a), "the directive names a command that exists".
+ * @returns Set of case-label strings from cli/gennady.ts's `switch (command)` blocks.
+ */
+function knownCommands(): Set<string> {
+  const src = readFileSync(GENNADY_TS, 'utf-8');
+  const set = new Set<string>();
+  const re = /case '([a-zA-Z0-9-]+)':/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(src)) !== null) set.add(m[1]);
+  return set;
+}
+
+type CliResult = { stdout: string; stderr: string; exitCode: number };
+
+/** @purpose Run the real repo-relative CLI (`npx tsx cli/gennady.ts <args>`, per AX_TOOL_INVOCATION) against a fixture. */
+function runCli(args: string[], cwd: string): CliResult {
+  const res = spawnSync(process.execPath, ['--import', TSX_LOADER, GENNADY_ENTRY, ...args], {
+    cwd,
+    encoding: 'utf-8',
+    env: { ...process.env, GENNADY_NO_UPDATE_CHECK: '1' },
+    timeout: 30_000,
+  });
+  return {
+    stdout: res.stdout ?? '',
+    stderr: res.stderr ?? '',
+    exitCode: res.status ?? (res.error ? 1 : 0),
+  };
+}
+
+/** @purpose Assert `raw` is one of the calls the parser actually extracted from `directive` — the drift guard: if the directive's own worked example changes, this fails loudly instead of silently testing a stale string. */
+function assertDocumented(directive: DirectiveKey, raw: string): void {
+  const calls = directiveCalls.get(directive) ?? [];
+  assert.ok(
+    calls.some((c) => c.raw === raw),
+    `expected "${raw}" among the ${calls.length} call(s) extracted from ${directive}.directive.xml — ` +
+      `the worked example may have changed; update the fixture case to match`
+  );
+}
+
+// #region START_COMPLETENESS_GATE — floors are the ACTUAL counts observed against the current
+// directive text (see report); a silent parser regression (markup change swallowing every match)
+// would drop these to 0, not shrink them gradually, so a floor well below the observed count still
+// catches it without making the test flaky on cosmetic directive edits.
+describe('documented-call extraction — completeness gate', () => {
+  it('execute.directive.xml yields at least 20 documented calls', () => {
+    assert.ok((directiveCalls.get('execute') ?? []).length >= 20);
+  });
+
+  it('phase-execution-protocol.directive.xml yields at least 35 documented calls', () => {
+    assert.ok((directiveCalls.get('phase') ?? []).length >= 35);
+  });
+
+  it('audit.directive.xml yields at least 15 documented calls', () => {
+    assert.ok((directiveCalls.get('audit') ?? []).length >= 15);
+  });
+});
+// #endregion END_COMPLETENESS_GATE
+
+// #region START_FIXTURES — one shared read-only fixture; mutating cases (sdd-log, sdd-sync) build
+// their own fresh copy so they never interfere with a read-only assertion running before/after them.
+let ro: Fixture;
+const scratchDirs: string[] = [];
+
+before(() => {
+  ro = buildFixture();
+  scratchDirs.push(ro.root);
+});
+
+after(() => {
+  for (const d of scratchDirs) rmSync(d, { recursive: true, force: true });
+});
+
+function freshFixture(): Fixture {
+  const fx = buildFixture();
+  scratchDirs.push(fx.root);
+  return fx;
+}
+// #endregion END_FIXTURES
+
+type FixtureCase = {
+  id: string;
+  directive: DirectiveKey;
+  /** @purpose The exact worked-example string this case is exercising (drift guard). */
+  raw: string;
+  cmd: string;
+  args: (fx: Fixture) => string[];
+  cwd?: (fx: Fixture) => string;
+  fresh?: boolean;
+  check: (result: CliResult, fx: Fixture) => void;
+};
+
+const CASES: FixtureCase[] = [
+  {
+    id: 'sdd-task (no id) — execution map',
+    directive: 'execute',
+    raw: 'npx gennady sdd-task',
+    cmd: 'sdd-task',
+    args: () => [],
+    check: (r) => {
+      assert.strictEqual(r.exitCode, 0, r.stdout + r.stderr);
+      assert.match(r.stdout, /execution map/);
+    },
+  },
+  {
+    id: 'sdd-task <ticket-path> — plan',
+    directive: 'execute',
+    raw: 'npx gennady sdd-task specs/app/greeting/greeting.task.APP-greet-greeting.md',
+    cmd: 'sdd-task',
+    args: (fx) => [fx.ticketPath],
+    check: (r, fx) => {
+      assert.strictEqual(r.exitCode, 0, r.stdout + r.stderr);
+      assert.match(r.stdout, new RegExp(`^\\[sdd-task\\] ${fx.taskId} — `));
+      assert.match(r.stdout, /Per-phase read-manifest/);
+    },
+  },
+  {
+    id: 'sdd-task --audit-group <id>',
+    directive: 'execute',
+    raw: 'npx gennady sdd-task --audit-group APP-greet-greeting',
+    cmd: 'sdd-task',
+    args: (fx) => ['--audit-group', fx.taskId],
+    check: (r) => {
+      assert.strictEqual(r.exitCode, 0, r.stdout + r.stderr);
+      assert.match(r.stdout, /^audit: /m);
+    },
+  },
+  {
+    id: 'sdd-task <ticket> --phase P<N>',
+    directive: 'phase',
+    raw: 'npx gennady sdd-task <ticket> --phase P2',
+    cmd: 'sdd-task',
+    args: (fx) => [fx.ticketPath, '--phase', 'P1'],
+    check: (r, fx) => {
+      assert.strictEqual(r.exitCode, 0, r.stdout + r.stderr);
+      assert.match(r.stdout, new RegExp(`\\[sdd-task\\] ${fx.taskId} — P1 impl`));
+    },
+  },
+  {
+    id: 'sdd-task --group-scope <id>',
+    directive: 'audit',
+    raw: 'sdd-task --group-scope <id>',
+    cmd: 'sdd-task',
+    args: (fx) => ['--group-scope', fx.taskId],
+    check: (r) => {
+      assert.strictEqual(r.exitCode, 0, r.stdout + r.stderr);
+      assert.match(r.stdout, /^files:$/m);
+      assert.match(r.stdout, /^git: /m);
+    },
+  },
+  {
+    id: 'sdd-log <ticket> round "<reason>"',
+    directive: 'execute',
+    raw: 'npx gennady sdd-log <ticket> round "execute <Task-ID>"',
+    cmd: 'sdd-log',
+    fresh: true,
+    args: (fx) => [fx.ticketPath, 'round', `execute ${fx.taskId}`],
+    check: (r) => {
+      assert.strictEqual(r.exitCode, 0, r.stdout + r.stderr);
+      assert.match(r.stdout, /Round 1 —/);
+    },
+  },
+  {
+    id: 'sdd-log <ticket> close',
+    directive: 'execute',
+    raw: 'npx gennady sdd-log <ticket> close',
+    cmd: 'sdd-log',
+    fresh: true,
+    args: (fx) => [fx.ticketPath, 'close'],
+    check: (r, fx) => {
+      assert.strictEqual(r.exitCode, 0, r.stdout + r.stderr);
+      const body = readFileSync(join(fx.root, fx.ticketPath), 'utf-8');
+      assert.match(body, /#### Round close\n- \[x\] `[^`]+` DONE/);
+    },
+  },
+  {
+    id: 'sdd-log <ticket> line "env-fix ..."',
+    directive: 'execute',
+    raw: 'npx gennady sdd-log <ticket> line "env-fix <file> ← <operator decision ref>"',
+    cmd: 'sdd-log',
+    fresh: true,
+    args: (fx) => [
+      fx.ticketPath,
+      'line',
+      'env-fix package.json ← operator approved narrower type-check script',
+    ],
+    check: (r, fx) => {
+      assert.strictEqual(r.exitCode, 0, r.stdout + r.stderr);
+      const body = readFileSync(join(fx.root, fx.ticketPath), 'utf-8');
+      assert.match(
+        body,
+        /- \[x\] `[^`]+` env-fix package\.json ← operator approved narrower type-check script/
+      );
+    },
+  },
+  {
+    id: 'sdd-log <ticket> phase <PhaseID>',
+    directive: 'phase',
+    raw: 'npx gennady sdd-log <ticket> phase P2 "— re-run: fix F-012"',
+    cmd: 'sdd-log',
+    fresh: true,
+    args: (fx) => [fx.ticketPath, 'phase', 'P1'],
+    check: (r, fx) => {
+      assert.strictEqual(r.exitCode, 0, r.stdout + r.stderr);
+      const body = readFileSync(join(fx.root, fx.ticketPath), 'utf-8');
+      assert.match(body, /\n#### P1\n/);
+    },
+  },
+  {
+    id: 'sdd-log <ticket> handoff "<payload>"',
+    directive: 'phase',
+    raw: 'npx gennady sdd-log <ticket> handoff "artifacts: [src/app/greeting/greeting.ts]; decisions: [module-system=esm]; open: []; deviations: []"',
+    cmd: 'sdd-log',
+    fresh: true,
+    args: (fx) => [
+      fx.ticketPath,
+      'handoff',
+      'artifacts: [src/greeter.ts]; decisions: [module-system=esm]; open: []; deviations: []',
+    ],
+    check: (r, fx) => {
+      assert.strictEqual(r.exitCode, 0, r.stdout + r.stderr);
+      const body = readFileSync(join(fx.root, fx.ticketPath), 'utf-8');
+      assert.ok(
+        body.includes(
+          '**Handoff →** artifacts: [src/greeter.ts]; decisions: [module-system=esm]; open: []; deviations: []'
+        )
+      );
+    },
+  },
+  {
+    id: 'sdd-log <ticket> blocker "<reason>" --axiom <AX> --unblock "<action>"',
+    directive: 'phase',
+    raw: 'npx gennady sdd-log <ticket> blocker "vitest binary missing" --axiom AX_ENV_FIX_CHANNEL --unblock "npm i -D vitest"',
+    cmd: 'sdd-log',
+    fresh: true,
+    args: (fx) => [
+      fx.ticketPath,
+      'blocker',
+      'test runner missing',
+      '--axiom',
+      'AX_ENV_FIX_CHANNEL',
+      '--unblock',
+      'npm i -D vitest',
+    ],
+    check: (r, fx) => {
+      assert.strictEqual(r.exitCode, 0, r.stdout + r.stderr);
+      const body = readFileSync(join(fx.root, fx.ticketPath), 'utf-8');
+      assert.match(body, /- 🛑 `[^`]+` BLOCKED: test runner missing/);
+      assert.match(body, /- 🔗 axiom: AX_ENV_FIX_CHANNEL/);
+      assert.match(body, /- 💬 unblock: npm i -D vitest/);
+    },
+  },
+  {
+    id: 'sdd-sync <ticket>',
+    directive: 'execute',
+    raw: 'npx gennady sdd-sync <ticket>',
+    cmd: 'sdd-sync',
+    fresh: true,
+    args: (fx) => [fx.ticketPath],
+    check: (r, fx) => {
+      assert.strictEqual(r.exitCode, 0, r.stdout + r.stderr);
+      assert.match(r.stdout, new RegExp(`^\\[sdd-sync\\] ${fx.taskId} → `));
+    },
+  },
+  {
+    id: 'sdd-state [project-root]',
+    directive: 'execute',
+    raw: 'npx gennady sdd-state',
+    cmd: 'sdd-state',
+    args: () => [],
+    check: (r) => {
+      assert.strictEqual(r.exitCode, 0, r.stdout + r.stderr);
+      assert.match(r.stdout, /FLOW_VERSION=v2/);
+    },
+  },
+  {
+    id: 'sdd-check --task <ticket>',
+    directive: 'execute',
+    raw: 'npx gennady sdd-check --task <ticket>',
+    cmd: 'sdd-check',
+    args: (fx) => ['--task', fx.ticketPath],
+    check: (r) => {
+      assert.strictEqual(r.exitCode, 0, r.stdout + r.stderr);
+      assert.match(r.stdout, /^\[sdd-check\]/);
+    },
+  },
+  {
+    id: 'sdd-check --all [root]',
+    directive: 'audit',
+    raw: 'sdd-check --all [root]',
+    cmd: 'sdd-check',
+    args: () => ['--all'],
+    check: (r) => {
+      assert.strictEqual(r.exitCode, 0, r.stdout + r.stderr);
+      assert.match(r.stdout, /^\[sdd-check\]/);
+    },
+  },
+  {
+    id: 'sdd-check --changed [root]',
+    directive: 'audit',
+    raw: 'sdd-check --changed [root]',
+    cmd: 'sdd-check',
+    args: () => ['--changed'],
+    check: (r) => {
+      assert.strictEqual(r.exitCode, 0, r.stdout + r.stderr);
+      assert.match(r.stdout, /^\[sdd-check\]/);
+    },
+  },
+  {
+    id: 'sdd-extract <file> <NAME>',
+    directive: 'phase',
+    raw: 'npx gennady sdd-extract <ticket> PHASE_P1',
+    cmd: 'sdd-extract',
+    args: (fx) => [fx.ticketPath, 'PHASE_P1'],
+    check: (r) => {
+      assert.strictEqual(r.exitCode, 0, r.stdout + r.stderr);
+      assert.match(r.stdout, /### P1 — impl/);
+    },
+  },
+  {
+    id: 'sdd-extract <file>#<anchor>',
+    directive: 'phase',
+    raw: 'npx gennady sdd-extract specs/app/greeting/greeting.spec.md#module-contracts',
+    cmd: 'sdd-extract',
+    args: (fx) => [`${fx.specPath}#module-contracts`],
+    check: (r) => {
+      assert.strictEqual(r.exitCode, 0, r.stdout + r.stderr);
+      assert.match(r.stdout, /Greeter/);
+    },
+  },
+  {
+    id: 'sdd-verify --profile <code|test|full>',
+    directive: 'phase',
+    raw: 'npx gennady sdd-verify --profile code',
+    cmd: 'sdd-verify',
+    // Substituting `test` for the worked example's `code`: same documented form
+    // (`--profile code|test|full`), but `code`/`full` include the `yagni` gate, which sdd-verify
+    // shells out to via `npx gennady yagni` — outside this fixture's control and, with no local
+    // gennady install, a real npx-registry resolution attempt. `test` (format + type-check +
+    // test:coverage only) stays entirely inside the fixture's own no-op npm scripts. See report.
+    args: () => ['--profile', 'test'],
+    check: (r) => {
+      assert.strictEqual(r.exitCode, 0, r.stdout + r.stderr);
+      assert.match(r.stdout, /ALL PASS/);
+    },
+  },
+  {
+    id: 'lint --spec=<module-spec> <Target Files>',
+    directive: 'phase',
+    raw: 'npx gennady lint --spec=specs/app/greeting/greeting.spec.md src/app/greeting/*.ts',
+    cmd: 'lint',
+    args: (fx) => [`--spec=${fx.specPath}`, 'src/greeter.ts'],
+    check: (r) => {
+      assert.strictEqual(r.exitCode, 0, r.stdout + r.stderr);
+      assert.match(r.stdout, /clean|no errors/);
+    },
+  },
+  {
+    id: 'lint --spec=<module-spec> --inventory-reverse <module-code-dir>',
+    directive: 'audit',
+    raw: 'gennady lint --spec=<module-spec> --inventory-reverse <module-code-dir>',
+    cmd: 'lint',
+    args: (fx) => [`--spec=${fx.specPath}`, '--inventory-reverse', 'src'],
+    check: (r) => {
+      assert.strictEqual(r.exitCode, 0, r.stdout + r.stderr);
+      assert.match(r.stdout, /clean|no errors/);
+    },
+  },
+  {
+    id: 'yagni .',
+    directive: 'phase',
+    raw: 'npx gennady yagni .',
+    cmd: 'yagni',
+    args: () => ['.'],
+    check: (r) => {
+      assert.strictEqual(r.exitCode, 0, r.stdout + r.stderr);
+    },
+  },
+  {
+    id: 'testcov --run --min=80',
+    directive: 'phase',
+    raw: 'npx gennady testcov --run --min=80',
+    cmd: 'testcov',
+    args: () => ['--run', '--min=80'],
+    check: (r) => {
+      // Fixture declares no vitest/jest/c8 devDependency, so `--run` finds no runner to drive —
+      // testcov's own documented "no runner detected" diagnostic path (exit 1), not a crash.
+      assert.strictEqual(r.exitCode, 1, r.stdout + r.stderr);
+    },
+  },
+];
+
+describe('command existence — every documented command is a real gennady dispatch case', () => {
+  const known = knownCommands();
+  for (const c of CASES) {
+    it(`${c.cmd} (case: ${c.id})`, () => {
+      assert.ok(known.has(c.cmd), `"${c.cmd}" is not a case in cli/gennady.ts's dispatch switch`);
+    });
+  }
+});
+
+describe('documented call still present verbatim in its directive (drift guard)', () => {
+  for (const c of CASES) {
+    it(c.id, () => {
+      assertDocumented(c.directive, c.raw);
+    });
+  }
+});
+
+describe('documented result class against a real fixture repo', () => {
+  for (const c of CASES) {
+    it(c.id, () => {
+      const fx = c.fresh ? freshFixture() : ro;
+      const cwd = c.cwd ? c.cwd(fx) : fx.root;
+      const result = runCli([c.cmd, ...c.args(fx)], cwd);
+      c.check(result, fx);
+    });
+  }
+});

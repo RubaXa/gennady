@@ -128,7 +128,10 @@
         follows `AX_OPERATOR_LANGUAGE` (flat, plain, no calque); the same bar audit checks later under
         `AX_LANGUAGE_QUALITY_CHECK` applies here at authoring time, not just at review time. The assembled
         block, and any Decision Log entries routed alongside it, are proposed back for confirm-or-edit —
-        never treated as locked without that confirmation. If the operator picks the escape option, draft
+        never treated as locked without that confirmation, opening with the recap per
+        `UNDERSTANDING_BLOCK_FORMAT`: the routing above is exactly the misread risk that format exists to
+        surface (a caveat filed as the target, an anchor sent to the wrong home) — name the riskiest routing
+        call, tied to this confirm-or-edit. If the operator picks the escape option, draft
         a Vision candidate from whatever context already exists (project name, intake, README) and
         present it back the same way. On an idempotent update (a Vision already exists), propose an
         intake-derived revision instead of asking from scratch. Approval Check. STOP.
@@ -159,8 +162,10 @@
         — and resolve with the operator (move / delete / repoint); never silently leave orphans. Then
         propose scope-type with rationale — edge semantics (A→B = A depends-on B), acyclicity, and
         scope-type constraints per `AX_SCOPE_GRAPH_DISCIPLINE` (a cycle → `H_CYCLE_IN_GRAPH`). Show
-        the graph to the operator as a layered ASCII diagram sourced from the `[GRAPH]` block
-        `sdd-state` already put in context (levels + edges) — never re-derive levels by re-reading
+        the graph to the operator as a layered ASCII diagram — the dependency structure this renders is
+        exactly the case `FLOW_DIAGRAM_WHEN` grants the one fenced block allowed inside an operator
+        message for — sourced from the `[GRAPH]` block `sdd-state` already put in context (levels +
+        edges) — never re-derive levels by re-reading
         the Portal, and never print the Mermaid `graph TD` into the chat message: that fenced block
         is file content, it belongs only inside `specs/README.md` (mermaid belongs to the file,
         printing it in chat is a display violation). Layout: one horizontal tier per level, stacked
@@ -257,8 +262,6 @@
     {{> "contract/process/breadcrumb-format"}}
 
     {{> "contract/process/understanding-block-format"}}
-
-    {{> "contract/process/side-dive-format"}}
 
     {{> "contract/process/flow-diagram-when"}}
 

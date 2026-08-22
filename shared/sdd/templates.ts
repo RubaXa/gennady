@@ -673,6 +673,7 @@ ${RESEARCH_REGISTRY_SKELETON_SCOPE}
 
 | Requirement | Kind | Owner | Resolution |
 |---|---|---|---|
+
 <!-- Kind ∈ package | workspace-link | tool | file | external-type | env | service | structural -->
 <!-- Owner ∈ this-scope-task | external-prereq-scope | operator-action -->
 <!-- Empty list allowed only when STEP_7 audit produced zero external assumptions — declare it explicitly: "No external bootstrap required." -->

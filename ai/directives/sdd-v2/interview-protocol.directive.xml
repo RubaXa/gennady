@@ -434,34 +434,5 @@
       «Что известно» blocks, no diagrams. An item that provokes discussion is promoted to a развилка
       in the next message, not resolved inside the batch.
     </Contract>
-
-    <Contract id="NEXT_STEP_MENU_FORMAT">
-      Rendered by the CALLING step's final step, after its artifact is written and verified. Shape:
-
-      1. One ✅ line — what was produced and what was checked
-         (`✅ Спека <path> записана · язык проверен · <N> диаграмм`).
-      2. `**Что дальше?**` + one `AskUserQuestion` call. Options (2–4) come from the caller's own
-         candidate table; CHAINED options are first-class («декомпозиция + критик следом», «scaffold +
-         сразу execute») — one pick launches the whole chain, the agent runs it without stopping
-         between links unless a link fails. Ordering and content, while ANY scope in the Scope Graph
-         still lacks a spec: the recommended option is ALWAYS «Продолжить спеки: discovery
-         `<следующий скоуп по графу зависимостей>`» (the next unspec'd scope in dependency order),
-         marked «(рекомендую)» — spec authoring stays the priority path while it is incomplete. The
-         scaffold option is included ONLY once no scope remains without a spec, and never marked
-         recommended over an outstanding spec — its description states the rationale plainly:
-         «Разбить готовые спеки на задачи (scaffold) — механическая нарезка утверждённых спек в
-         тикеты DAG; рекомендуется после готовности всех спек». The two are never interleaved as
-         equals: specs demand the operator's sustained attention on judgment calls (vision, scope
-         boundaries, trade-offs); scaffold is mechanical decomposition of what is already approved —
-         surfacing scaffold beside an incomplete spec set invites the operator to jump to the
-         mechanical step before the judgment work is done. «Закончить сессию» is always last; on pick,
-         print a short resume instruction (how to reopen this flow next session — which command/skill,
-         which scope or step to name) and stop; no directive loads.
-      3. On any other pick: invoke the corresponding skill(s) / directive flow(s) directly — never
-         answer with «запусти /sdd-X сам». An internal transition between branches loads its directive in
-         the CURRENT session via `READ_AND_USE_DIRECTIVE` (`DEF_READ_AND_USE_DIRECTIVE`); the skill
-         wrapper (`/sdd-X`) is the operator's own entry point, not the mechanism this step uses to move
-         between branches.
-    </Contract>
   </ChatOutput>
 </SddInterviewProtocol>

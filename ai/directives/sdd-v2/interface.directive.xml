@@ -265,37 +265,6 @@
       `Vision ✅ · Scope Graph 👷 · Infra ◻️ · Portal ◻️`
     </Contract>
 
-    <Contract id="UNDERSTANDING_BLOCK_FORMAT">
-      The agent's compressed read of the task — its own confirmation of blind spots so the operator can
-      catch a misread. A `### 🤔 Как я понял задачу` section near the TOP, then an italic blockquote,
-      2–3 sentences: the essence + the single riskiest assumption, with the assumption linked to the
-      question that resolves it BY WORDING — there are no question numbers or IDs left to point at, so
-      name the question itself. Never a restate of settled content.
-
-      ### 🤔 Как я понял задачу
-      > квинтэссенция — что считаю главным.
-      > **Где могу ошибаться:** самое хрупкое допущение — это вопрос «<формулировка вопроса>».
-    </Contract>
-
-    <Contract id="SIDE_DIVE_FORMAT">
-      A sub-topic dive inside a step collapses to two lines, not a five-field Return Summary:
-
-      → ушли в `<тема>`
-      ← `<итог одной фразой>`
-    </Contract>
-
-    <Contract id="FLOW_DIAGRAM_WHEN">
-      When a decision is about a flow — data moving, state transitions, start / stop conditions — draw
-      a tiny ASCII diagram; one glance beats a paragraph. This is the one place a fenced block is
-      allowed inside an operator message (alignment matters). Keep it small.
-
-      ```
-      [сеть] [auth] [конфиг]  ──всё есть──►  ОПРОС идёт
-              ▲                                  │
-              └──── снова есть ──── ПАУЗА ◄───────┘  что-то пропало
-      ```
-    </Contract>
-
   </ChatOutput>
 
   <ArtifactOutput>
