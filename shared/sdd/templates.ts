@@ -991,8 +991,6 @@ _Что здесь главное, одной фразой._
 
 <!--SECTION:MODULE_REQUIREMENTS-->
 ## Requirements
-
-### Requirements
 ${REQUIREMENTS_LIST_SKELETON}
 <!--/SECTION:MODULE_REQUIREMENTS-->
 

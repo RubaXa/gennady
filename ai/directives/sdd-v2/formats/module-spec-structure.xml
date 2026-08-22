@@ -31,8 +31,6 @@
 
   <!--SECTION:MODULE_REQUIREMENTS-->
   ## Requirements
-
-  ### Requirements
   [Плоский список требований per `REQUIREMENT_ENTRY_FORMAT` (contract/spec/requirement-entry-format.xml) — заменяет раздельные Functional Requirements / Non-Functional Constraints для НОВЫХ спек; спеки, уже написанные в старом раздельном формате, остаются валидными как есть. Пример — обычное требование и требование класса «нештатная»:]
 
   ### <ACR>-REQ-1 [должен]

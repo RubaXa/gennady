@@ -105,8 +105,6 @@ table).
 
 ## Requirements
 
-### Requirements
-
 ### SO-REQ-1 [должен]
 
 **Когда** оператор вызывает `sdd-orient <spec-path>` с путём к существующей `.spec.md`, **команда

@@ -50,6 +50,7 @@ flowchart LR
   verify -->|совпал| stdout[[пакет + баннер + терминальная строка]]
   verify -->|не совпал| err[[честная ошибка + next-команда]]
 ```
+
 _Команда шага → резолв путей → чтение → сверка версии → выдача или честная ошибка — SS-REQ-1, SS-REQ-4._
 
 <!--/SECTION:OVERVIEW-->
@@ -140,8 +141,6 @@ $ npx gennady sdd-step ../../etc STEP_1_GET_PHASE_CONTEXT --version 00000000
 <!--SECTION:MODULE_REQUIREMENTS-->
 
 ## Requirements
-
-### Requirements
 
 ### SS-REQ-1 [должен]
 
@@ -241,7 +240,7 @@ DA-REQ-14), не эта команда.
 
 ### SS-REQ-10 [должен]
 
-**Exit-коды `sdd-step` должны** следовать той же шкале, что соседние sdd-*-инструменты
+**Exit-коды `sdd-step` должны** следовать той же шкале, что соседние sdd-\*-инструменты
 (`sdd-extract`, `sdd-task`, `sdd-orient`): `0` успех · `1` скелет/пакет не найден на диске (файловый
 класс) · `2` неизвестный шаг (семантический класс) · `3` рассинхрон версии (структурный класс —
 несовпадение двух артефактов, которые обязаны совпадать) · `4` некорректный вызов.
@@ -277,6 +276,7 @@ DA-REQ-14), не эта команда.
 graph TD
   sdd-step["sdd-step"] -. Scope Reference .-> directive-assembly["directive-assembly (scope ai-skills)"]
 ```
+
 _Чей формат `sdd-step` читает — SS-REQ-2._
 
 <!--/SECTION:INTER_MODULE_DEPENDENCIES-->
@@ -287,18 +287,18 @@ _Чей формат `sdd-step` читает — SS-REQ-2._
 
 _Это полный список сущностей модуля. Любое введение сущности execution-агентом помимо этого списка считается drift'ом и требует обновления spec._
 
-| Name                            | Type         | Purpose                                                                                    |
-| -------------------------------- | ------------ | ------------------------------------------------------------------------------------------- |
-| `SddStepCommand`                 | Function     | Точка входа CLI: парсинг argv, резолв путей, чтение пакета, сверка версии, печать          |
-| `SddStepOptions`                 | Type         | Опции: `directive`, `stepId` (позиционные), `--version`                                    |
-| `resolveDirectiveSkeletonPath`   | Function     | `<directive>` → путь скелета                                                               |
-| `resolveStepPackagePath`         | Function     | `<directive>, <step-id>` → путь файла пакета                                               |
-| `listDeclaredSteps`              | Function     | Парсит СКЕЛЕТ директивы, возвращает объявленный список `<step-id>` — источник истины для unknown_step (не файлы на диске) |
-| `extractPackageFingerprint`      | Function     | Читает отпечаток версии, записанный в файле пакета                                         |
-| `StepPackageSource`               | Port         | Абстракция чтения файла пакета/скелета по пути                                             |
-| `FsStepPackageSource`            | Adapter      | Реализация `StepPackageSource` через `node:fs`                                             |
-| `StepPackageOutcome`             | Type         | Дискриминированный union: `ok` \| `directive_not_found` \| `unknown_step` \| `package_missing` \| `version_mismatch` \| `bad_invocation` |
-| `ERR_CLI_SDD_STEP_*`             | Value Object | 5 кодов ошибок (directive-not-found, package-missing, unknown-step, version-mismatch, bad-invocation) |
+| Name                           | Type         | Purpose                                                                                                                                  |
+| ------------------------------ | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `SddStepCommand`               | Function     | Точка входа CLI: парсинг argv, резолв путей, чтение пакета, сверка версии, печать                                                        |
+| `SddStepOptions`               | Type         | Опции: `directive`, `stepId` (позиционные), `--version`                                                                                  |
+| `resolveDirectiveSkeletonPath` | Function     | `<directive>` → путь скелета                                                                                                             |
+| `resolveStepPackagePath`       | Function     | `<directive>, <step-id>` → путь файла пакета                                                                                             |
+| `listDeclaredSteps`            | Function     | Парсит СКЕЛЕТ директивы, возвращает объявленный список `<step-id>` — источник истины для unknown_step (не файлы на диске)                |
+| `extractPackageFingerprint`    | Function     | Читает отпечаток версии, записанный в файле пакета                                                                                       |
+| `StepPackageSource`            | Port         | Абстракция чтения файла пакета/скелета по пути                                                                                           |
+| `FsStepPackageSource`          | Adapter      | Реализация `StepPackageSource` через `node:fs`                                                                                           |
+| `StepPackageOutcome`           | Type         | Дискриминированный union: `ok` \| `directive_not_found` \| `unknown_step` \| `package_missing` \| `version_mismatch` \| `bad_invocation` |
+| `ERR_CLI_SDD_STEP_*`           | Value Object | 5 кодов ошибок (directive-not-found, package-missing, unknown-step, version-mismatch, bad-invocation)                                    |
 
 <!--/SECTION:ENTITY_INVENTORY-->
 
@@ -418,14 +418,14 @@ graph TD
 
 _Кто от кого зависит внутри `sdd-step` — SS-REQ-1, SS-REQ-2._
 
-| Step | Participant | Action | Data |
-|---|---|---|---|
-| 1 | Agent | `sdd-step <directive> <step-id> --version <fp>` | directive, step-id, fingerprint |
-| 2 | `SddStepCommand` | резолвит путь скелета (`resolveDirectiveSkeletonPath`), читает его через `StepPackageSource` — не найден → `directive_not_found` | путь + содержимое скелета или `null` |
-| 3 | `SddStepCommand` | парсит объявленный список шагов (`listDeclaredSteps(skeletonContent)`), сверяет `step-id` — не входит → `unknown_step` | объявленный список шагов |
-| 4 | `SddStepCommand` | резолвит путь пакета (`resolveStepPackagePath`), читает его через `StepPackageSource` — файла нет → `package_missing` | путь + содержимое пакета или `null` |
-| 5 | `SddStepCommand` | сверяет `extractPackageFingerprint(content)` с запрошенным `fp` — не совпало → `version_mismatch` | совпадение/несовпадение |
-| 6 | `SddStepCommand` | печатает баннер + тело + терминальную строку, либо честную ошибку | stdout, exit code |
+| Step | Participant      | Action                                                                                                                           | Data                                 |
+| ---- | ---------------- | -------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| 1    | Agent            | `sdd-step <directive> <step-id> --version <fp>`                                                                                  | directive, step-id, fingerprint      |
+| 2    | `SddStepCommand` | резолвит путь скелета (`resolveDirectiveSkeletonPath`), читает его через `StepPackageSource` — не найден → `directive_not_found` | путь + содержимое скелета или `null` |
+| 3    | `SddStepCommand` | парсит объявленный список шагов (`listDeclaredSteps(skeletonContent)`), сверяет `step-id` — не входит → `unknown_step`           | объявленный список шагов             |
+| 4    | `SddStepCommand` | резолвит путь пакета (`resolveStepPackagePath`), читает его через `StepPackageSource` — файла нет → `package_missing`            | путь + содержимое пакета или `null`  |
+| 5    | `SddStepCommand` | сверяет `extractPackageFingerprint(content)` с запрошенным `fp` — не совпало → `version_mismatch`                                | совпадение/несовпадение              |
+| 6    | `SddStepCommand` | печатает баннер + тело + терминальную строку, либо честную ошибку                                                                | stdout, exit code                    |
 
 _Главный сценарий — выдача пакета шага с проверкой версии, в фиксированном порядке проверки веток
 (bad_invocation → directive_not_found → unknown_step → package_missing → version_mismatch) —
@@ -490,7 +490,7 @@ sdd-step/
 <details>
 <summary>Полные записи Decision Log</summary>
 
-### SS-DL-1 2026-08-22 — новая команда `sdd-step`, не расширение `sdd-extract`, не режим `sdd-task --step` (почему: рассмотрены три кандидата — (1) `sdd-extract <package-file> STEP_N` — контракт `sdd-extract` про безусловное извлечение анонимной секции по имени из ОДНОГО файла, без понятия версии; добавление версийной сверки и tool-teaches про «шаг не существует»/«пакет не собран» смешало бы в него чужой домен; (2) `sdd-task --step`, по образцу уже существующего `sdd-task --phase` — отклонено, `sdd-task` резолвит Task-ID/путь ТИКЕТА, а пакет принадлежит ДИРЕКТИВЕ, не тикету, — это смешение доменов, а не переиспользование механики; (3) новая узкая команда `sdd-step` — выбрана: сохраняет каждый sdd-*-инструмент однозначным по предметной области (sdd-orient — спеки, sdd-log — Execution Log, sdd-sync — трекеры), а не по случайно похожей механике «выдать кусок текста по идентификатору»; отвергнуто: варианты (1) и (2) выше)
+### SS-DL-1 2026-08-22 — новая команда `sdd-step`, не расширение `sdd-extract`, не режим `sdd-task --step` (почему: рассмотрены три кандидата — (1) `sdd-extract <package-file> STEP_N` — контракт `sdd-extract` про безусловное извлечение анонимной секции по имени из ОДНОГО файла, без понятия версии; добавление версийной сверки и tool-teaches про «шаг не существует»/«пакет не собран» смешало бы в него чужой домен; (2) `sdd-task --step`, по образцу уже существующего `sdd-task --phase` — отклонено, `sdd-task` резолвит Task-ID/путь ТИКЕТА, а пакет принадлежит ДИРЕКТИВЕ, не тикету, — это смешение доменов, а не переиспользование механики; (3) новая узкая команда `sdd-step` — выбрана: сохраняет каждый sdd-\*-инструмент однозначным по предметной области (sdd-orient — спеки, sdd-log — Execution Log, sdd-sync — трекеры), а не по случайно похожей механике «выдать кусок текста по идентификатору»; отвергнуто: варианты (1) и (2) выше)
 
 ### SS-DL-2 2026-08-22 — акроним `SS` по `deriveSpecAcronym('sdd-step')` (2 слова → инициалы `S`+`S`) (почему: механическая, не авторская генерация — тот же путь, что дал `SO` для `sdd-orient`; отвергнуто: ручной акроним `STEP`/`SDDSTEP` — не соответствует грамматике `REQUIREMENT_ENTRY_FORMAT`/`deriveSpecAcronym`, вносит несогласованность с соседними спеками)
 
@@ -520,8 +520,8 @@ sdd-step/
     точного места, куда `directive-assembly`/`LazyDirectiveAssembler` его штампует — обе спеки
     должны реализовываться и тестироваться на общей фикстуре, не раздельно
   - Живой прогон внутри Claude Code и opencode (реальный вызов `sdd-step` из-под каждого хоста на
-    пакете, близком к хардлимиту 8000 символов) не выполнен — сделать до того, как `StepBudgetGate`
-    станет блокирующим гейтом CI
+  пакете, близком к хардлимиту 8000 символов) не выполнен — сделать до того, как `StepBudgetGate`
+  станет блокирующим гейтом CI
   <!--/SECTION:HANDOFF-->
 
 ## Critic Rounds
@@ -541,12 +541,12 @@ sdd-step/
      `<directive>`/`<step-id>` с `/`, `\` или `..` отклоняются как `bad_invocation` до резолва путей.
   4. Форма баннера была только в примере — зафиксирована требованием SS-REQ-9 рядом с терминальной
      строкой (`[sdd-step] <directive> · <step-id> · build <fp>` / `[sdd-step] end <step-id> — build
-     <fp>`).
+<fp>`).
   5. Сообщение для пустого объявленного списка шагов не имело формулировки — зафиксирована в
      SS-REQ-3: «шагов не объявлено — скелет пуст либо директива не собрана в lazy».
   6. Module Usage Example использовал позиционные/несогласованные id (`STEP_2`, `P2_IMPLEMENT`,
      `audit STEP_4`) — переведён на дословные id реальных шагов (`STEP_2_NARROW_RECON`, `audit
-     STEP_3_ROUTE` и т.п.), согласованно с правкой 5 `directive-assembly.spec.md`.
+STEP_3_ROUTE` и т.п.), согласованно с правкой 5 `directive-assembly.spec.md`.
 - **Rejected:** нет
 - **Out of cycle:** наблюдение сенсора про Vision-абзац `cli.spec.md` — вне артефакта этого цикла
   (не `directive-assembly`/`sdd-step`), передано оператору без правки здесь.
