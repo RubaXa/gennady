@@ -145,9 +145,12 @@
 
   <ChatOutput>
     Service line — dim, internal, never narrated (`AX_NO_PROCESS_NARRATION`):
-    `🧰 SETUP_R<N> · package.json=<created|patched|present> · ready=<yes|no>`.
+    `🧰 SETUP_R<N> · package.json=<created|patched|present> · ready=<yes|no>`. Breadcrumb milestones
+    (per `BREADCRUMB_FORMAT`): Assess · Plan · Apply · Ready.
 
     {{> "contract/process/message-layout"}}
+
+    {{> "contract/process/breadcrumb-format"}}
 
     {{> "axiom/process/ax-progressive-disclosure"}}
   </ChatOutput>

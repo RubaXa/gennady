@@ -9,7 +9,10 @@
  * partials GUARANTEED already present no matter which of its callers loaded it, so
  * build-directives.ts can subtract exactly that set on its second render pass.
  *
- * Node classes (see AUTHORING.md and the sdd-v2-readiness spec for the full rationale):
+ * Node classes (see AUTHORING.md §11 for the short version, and
+ * specs/ai-skills/directive-assembly/directive-assembly.spec.md — the formalization of assembly,
+ * DA-DL-8 for why lazy partial-splitting runs AFTER delta subtraction, over the `partials_ORIGINAL
+ * − ctx` remainder rather than independently of it):
  * - Class 1 — direct entry points (named in some `ai/skills/*​/SKILL.md`). May be entered with
  *   no loading directive at all, so ctx = ∅. Always rendered FULL.
  * - Class 3 — subagent worlds (`CLASS_3_DIRECTIVES` below). A dispatched worker/critic reads

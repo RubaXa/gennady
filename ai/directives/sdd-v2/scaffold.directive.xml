@@ -597,9 +597,14 @@
 
       ## `<glyph>` `<scope>` — одной фразой, что делаем
 
-      ### 🤔 Как я понял задачу    — per `UNDERSTANDING_BLOCK_FORMAT` (goes at the TOP)
-      ### 🎯 Главное решение       — the crux in plain words; add a diagram per `FLOW_DIAGRAM_WHEN` if it is a flow
-      ### 💡 <О чём решаем>         — per `QUESTION_FORMAT`
+      ### 🤔 Как я понял задачу    — a short retelling of the task in the agent's own words: the essence
+      plus the single riskiest assumption, linked by wording to the question that resolves it (goes at
+      the TOP)
+      ### 🎯 Главное решение       — the crux in plain words; if the decision is a flow (data moving,
+      state transitions, start/stop conditions), add a small ASCII diagram — the one place a fenced
+      block is allowed in this message, at most one per message
+      ### 💡 <О чём решаем>         — per `QUESTION_RULE_SLIM` (full format with worked examples lives in
+      `QUESTION_FORMAT`, in the interview / vision directives)
       ### ↓ Детали — по желанию    — reasoning, full comparison, change-list (per `AX_PROGRESSIVE_DISCLOSURE`)
 
       Glyph dictionary — closed inventory, one assigned meaning each, never a free pick. Every glyph

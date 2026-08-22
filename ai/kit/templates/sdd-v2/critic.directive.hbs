@@ -31,6 +31,8 @@
 
     {{> "axiom/spec/ax-parallel-mechanism-requires-justification"}}
 
+    {{> "axiom/spec/ax-decision-log-required"}}
+
     {{> "axiom/process/ax-surgical"}}
 
     {{> "axiom/critic/ax-default-accept"}}
@@ -95,7 +97,7 @@
     </Step>
     <Step id="STEP_2B_RECONCILE">
       <Goal>Walk the graph from the artifact to the portal; reconcile every entity the WHOLE artifact introduces, not only this round's findings. (mechanical → tool)</Goal>
-      <Action>Run `npx gennady sdd-orient <artifact-path> --scope <scope>` ONCE against the critiqued artifact itself — one hop from the artifact to its portal, its declared-dependency neighbours, and its consumers; this is the ORCHESTRATOR's own step, on full project context, not a widening of the sensor's bounded read (`AX_ISOLATION_SIGNAL` still governs STEP_1_DISPATCH — the sensor stays isolated). The sweep is proactive over EVERY entity/contract/mechanism the artifact introduces, never narrowed to only the entities this round's findings happen to name — a duplicate the sensor never flagged is still a duplicate. For each: reuse > extend > justify > escalate (`AX_REUSE_FIRST`); "justify" requires the specific neighbour invariant/requirement ID the existing mechanism could not satisfy (`AX_PARALLEL_MECHANISM_REQUIRES_JUSTIFICATION`). Two outcomes route to `GOAL`, never a silent `MECHANICAL` fix: (1) the artifact duplicates a mechanism the `sdd-orient` extract already names on a neighbour, (2) the artifact's introduced entity conflicts with a neighbour requirement the extract surfaces. Do not let the critique invent a duplicate of an existing entity.</Action>
+      <Action>Run `npx gennady sdd-orient <artifact-path> --scope <scope>` ONCE against the critiqued artifact itself — one hop from the artifact to its portal, its declared-dependency neighbours, and its consumers; this is the ORCHESTRATOR's own step, on full project context, not a widening of the sensor's bounded read (`AX_ISOLATION_SIGNAL` still governs STEP_1_DISPATCH — the sensor stays isolated). The sweep is proactive over EVERY entity/contract/mechanism the artifact introduces, never narrowed to only the entities this round's findings happen to name — a duplicate the sensor never flagged is still a duplicate. For each: reuse > extend > justify > escalate (`AX_REUSE_FIRST`); "justify" requires the specific neighbour invariant/requirement ID the existing mechanism could not satisfy, recorded as its own Decision Log entry (`AX_PARALLEL_MECHANISM_REQUIRES_JUSTIFICATION`, `AX_DECISION_LOG_REQUIRED`). Two outcomes route to `GOAL`, never a silent `MECHANICAL` fix: (1) the artifact duplicates a mechanism the `sdd-orient` extract already names on a neighbour, (2) the artifact's introduced entity conflicts with a neighbour requirement the extract surfaces. Do not let the critique invent a duplicate of an existing entity.</Action>
     </Step>
     <Step id="STEP_3_EDIT">
       <Goal>Apply the round's `MECHANICAL` edits.</Goal>
