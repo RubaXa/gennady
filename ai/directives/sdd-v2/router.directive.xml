@@ -466,9 +466,10 @@
 
       ## `<glyph>` `<scope>` — одной фразой, что делаем
 
-      ### 🤔 Как я понял задачу    — a short retelling of the task in the agent's own words: the essence
-      plus the single riskiest assumption, linked by wording to the question that resolves it (goes at
-      the TOP)
+      ### 🤔 Как я понял задачу    — an italic blockquote (`> _…_`), 2–3 sentences max: the task retold
+      in the agent's own words plus the single riskiest assumption, linked by wording to the question
+      that resolves it; never a restate of already-settled content — only what is NEW or could be
+      misread (goes at the TOP)
       ### 🎯 Главное решение       — the crux in plain words; if the decision is a flow (data moving,
       state transitions, start/stop conditions), add a small ASCII diagram — the one place a fenced
       block is allowed in this message, at most one per message
