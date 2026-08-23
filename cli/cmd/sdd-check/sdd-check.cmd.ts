@@ -549,15 +549,17 @@ export async function run(rawArgs: string[]): Promise<CheckResult> {
   } else {
     // Strict v2 spec rules (mandatory diagram, module floor, folded detail, language lint) apply
     // per scope: a migrated scope (tasks/<scope>/ removed) is checked strictly while v1 neighbours stay lenient.
-    // v1 sibling layout has tickets in tasks/, not specs/ — scan both when present; a scoped root
-    // with neither (`--all specs/<scope>`, `--all tasks`) falls back to scanning `root` itself.
-    // #region START_ALL — invariant: scan specs/ AND tasks/ when both exist at `root`, else `root`
+    // v1 sibling layout has tickets in tasks/, not specs/ — scan both when present; an explicitly
+    // scoped root with neither (`--all specs/<scope>`, `--all tasks`) falls back to scanning itself.
+    // The implicit repository root stays empty before `/sdd` creates specs/; scanning it would lint
+    // bundled examples and unrelated Markdown as if they were the product specification.
+    // #region START_ALL — invariant: scan specs/ AND tasks/ when present, or an explicit scoped root
     const root = resolve(positional[0] ?? '.');
     const repoRoot = findRepoRoot(root);
     const specsRoot = join(root, 'specs');
     const tasksRoot = join(root, 'tasks');
     const bases = [specsRoot, tasksRoot].filter((d) => existsSync(d));
-    if (bases.length === 0) bases.push(root);
+    if (bases.length === 0 && positional[0]) bases.push(root);
     const portalFile = join(specsRoot, 'README.md');
     const mdFiles: string[] = [];
     for (const b of bases) walkMd(b, mdFiles);

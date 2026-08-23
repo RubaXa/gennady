@@ -373,6 +373,25 @@ describe('SddCheckCommand', () => {
     assert.strictEqual(r.exitCode, 0);
   });
 
+  it('--all before authoring ignores unrelated Markdown when specs/ and tasks/ are absent', async () => {
+    const root = join(dir, 'empty-pre-authoring-proj');
+    mkdirSync(join(root, 'ai', 'directives'), { recursive: true });
+    writeFileSync(
+      join(root, 'ai', 'directives', 'bundled-example.md'),
+      '# Not a product spec\n\n```mermaid\nthis is intentionally invalid\n```\n',
+      'utf-8'
+    );
+    const previousCwd = process.cwd();
+    try {
+      process.chdir(root);
+      const r = await mod.run(argv('--all'));
+      assert.strictEqual(r.exitCode, 0);
+      assert.match(r.text, /0 file\(s\) checked/);
+    } finally {
+      process.chdir(previousCwd);
+    }
+  });
+
   it('--all: a legacy tracker embedded in tasks/<scope>/README.md (no *.3-tasks.md file) is still cross-checked — the TSK-58 gap: tracker says DONE, ticket itself is still TODO', async () => {
     const root = join(dir, 'legacy-tracker-proj');
     const scopeDir = join(root, 'tasks', 'cli');
