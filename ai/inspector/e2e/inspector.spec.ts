@@ -47,9 +47,9 @@ test('lists skills and descends the sdd-execute trace', async ({ page }) => {
   );
 
   // sdd-state is a bash command: opening it shows its captured --help
-  await page.locator('.structure .lab .tag', { hasText: 'sdd-state' }).first().click();
+  await page.locator('.structure .row:visible .tag', { hasText: 'sdd-state' }).first().click();
   await expect(
-    page.locator('.structure .detail', { hasText: 'npx gennady sdd-state' }).first()
+    page.locator('.structure .detail:visible', { hasText: 'npx gennady sdd-state' }).first()
   ).toBeVisible();
 
   await page.screenshot({ path: join(shotDir, 'screen-execute.png'), fullPage: true });
@@ -64,7 +64,7 @@ test('the /sdd router LOGIC_SWITCH descends into branch directives', async ({ pa
   await page.locator('.structure .lab .tag', { hasText: 'router.directive.xml' }).first().click();
   await page.locator('.structure .lab .tag', { hasText: '<SddRouter>' }).click();
   // the top-level routing switch is the last <LogicSwitch> in the tree (STEP_0 also embeds one now)
-  const sw = page.locator('.structure .lab .tag', { hasText: '<LogicSwitch>' }).last();
+  const sw = page.locator('.structure .row:visible .tag', { hasText: '<LogicSwitch>' }).last();
   await expect(sw).toBeVisible();
 
   // open the switch, then its first branch — which carries a run node into another directive
@@ -114,4 +114,30 @@ test('a non-XML skill is listed but marked unsupported (no tree/debugger)', asyn
   // no structure tree / debugger for unsupported skills
   await expect(page.locator('.structure')).toHaveCount(0);
   await expect(page.locator('.dbg')).toHaveCount(0);
+});
+
+test('a lazy step shows its READ_AND_USE package and the loaded body', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: '/sdd-scaffold', exact: true }).click();
+
+  const visibleTag = (text: string) =>
+    page.locator('.structure .row:visible .tag', { hasText: text }).first();
+  await visibleTag('<Step GATHER>').click();
+  await visibleTag('scaffold.directive.xml').click();
+  await visibleTag('<SddScaffold>').click();
+  await page.locator('.structure .row:visible .tag', { hasText: '<ExecutionPlan>' }).last().click();
+
+  const dag = visibleTag('<Step STEP_2_DAG>');
+  await expect(dag).toBeVisible();
+  await dag.click();
+  await expect(
+    page.locator('.structure .row:visible').filter({
+      hasText: 'READ_AND_USE — загрузить тело шага',
+    })
+  ).toContainText('scaffold/steps/STEP_2_DAG.xml');
+  await expect(
+    page.locator('.structure .row:visible', { hasText: '<Goal>' }).first()
+  ).toContainText('Build the acyclic task DAG');
+
+  await page.screenshot({ path: join(shotDir, 'screen-lazy-step-read.png'), fullPage: true });
 });

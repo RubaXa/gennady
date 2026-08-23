@@ -72,6 +72,7 @@ function tokenFor(node: TraceNode): string | null {
  *  ai/inspector/core/parse-directive.ts#parseLazySteps) — тело шага там, не в скелете родителя. */
 function physicalSourceRef(node: TraceNode): string | undefined {
   if ((node.kind === 'directive' || node.kind === 'skill') && node.ref) return node.ref;
+  if (node.kind === 'read' && node.ref) return node.ref;
   if (node.kind === 'step' && node.attrs?.source) return node.attrs.source;
   return undefined;
 }
@@ -91,6 +92,7 @@ function attachLoc(node: TraceNode, file: string, content: string): void {
   }
   const ln = lineOf(c, tokenFor(node));
   if (ln) node.loc = { file: f, line: ln };
+  else if (node.kind === 'read' && sourceRef) node.loc = { file: f, line: 1 };
   (node.children ?? []).forEach((ch) => attachLoc(ch, f, c));
 }
 

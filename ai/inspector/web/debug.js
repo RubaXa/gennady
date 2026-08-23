@@ -20,6 +20,7 @@ export function gather(node, kind) {
   return out;
 }
 export const toolsOf = (unit) => gather(unit, 'tool');
+export const readsOf = (unit) => gather(unit, 'read');
 
 /** Runs the step loads UNCONDITIONALLY (directly in the Action) — excludes runs inside a switch/branch,
  *  which are conditional and shown in the switch block, not as "loaded here". */

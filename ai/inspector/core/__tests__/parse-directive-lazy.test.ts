@@ -72,6 +72,18 @@ test('audit: a lazy step exposes its real body (Goal/Action), not just the skele
   );
 });
 
+test('audit: every lazy step exposes the runtime READ_AND_USE edge to its package', () => {
+  const step = findStep(auditPlan, 'STEP_2_SEMANTIC');
+  const readNode = step?.children?.find((c) => c.kind === 'read');
+  assert.ok(readNode, 'step package load is visible as a read node');
+  assert.equal(
+    readNode?.ref,
+    'ai/directives/sdd-v2/audit/steps/STEP_2_SEMANTIC.xml',
+    'read edge targets the exact package named by the skeleton'
+  );
+  assert.match(readNode?.note ?? '', /READ_AND_USE/);
+});
+
 test('audit: single-step axioms physically relocated into the package are surfaced as children of the step', () => {
   const step = findStep(auditPlan, 'STEP_2_SEMANTIC');
   const axiomIds = (step?.children ?? []).filter((c) => c.kind === 'axiom').map((c) => c.label);

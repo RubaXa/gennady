@@ -351,9 +351,15 @@ function parseLazySteps(inner: string, read: FileReader | undefined): TraceNode[
       continue;
     }
     const stepNode = buildStepNode(stepMatch[1] as string, stepMatch[2] as string);
+    const packageRead: TraceNode = {
+      kind: 'read',
+      label: packagePath,
+      ref: packagePath,
+      note: 'READ_AND_USE — загрузить тело шага',
+    };
     const extras = content.slice((stepMatch.index ?? 0) + stepMatch[0].length);
     const extraNodes = parsePackageExtras(extras);
-    if (extraNodes.length) stepNode.children = [...(stepNode.children ?? []), ...extraNodes];
+    stepNode.children = [packageRead, ...(stepNode.children ?? []), ...extraNodes];
     // честная пометка источника: тело шага читается в дереве этой директивы, но физически лежит
     // в отдельном файле пакета — attrs.source даёт точный путь, note — то же самое видно сразу,
     // без разворота узла.

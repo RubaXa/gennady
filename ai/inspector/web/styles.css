@@ -435,6 +435,12 @@ body {
   color: var(--muted);
   font-size: 11.5px;
 }
+.dbg-read {
+  color: var(--c-read-fg);
+  font-family: var(--mono);
+  font-size: 11.5px;
+  margin-top: 7px;
+}
 .dbg-card {
   border: 1px solid var(--c-step-fg);
   border-radius: 8px;

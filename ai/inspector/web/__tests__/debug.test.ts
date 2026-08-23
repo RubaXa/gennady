@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url';
 import { parseSkill } from '../../core/parse-skill.ts';
 import { resolveTree, type DirectiveReader } from '../../core/resolve.ts';
 // the module under test — the pure, DOM-free debugger model the UI draws from
-import { simulate, unitsOf, mainDirective, transitionsFor, base } from '../debug.js';
+import { simulate, unitsOf, mainDirective, transitionsFor, readsOf, base } from '../debug.js';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..');
 const read: DirectiveReader = (ref) => {
@@ -91,6 +91,17 @@ test('/sdd skill exposes the GATHER / EMBODY / ROUTE loader steps and embodies t
   assert.ok(main, 'embodies a main directive');
   assert.equal(base(main.run.ref), 'router.directive.xml');
   assert.equal(main.dir.label, '<SddRouter>');
+});
+
+test('a lazy directive step carries the package READ_AND_USE into the debugger model', () => {
+  const scaffold = loadSkill('sdd-scaffold');
+  const main = mainDirective(scaffold);
+  assert.ok(main, 'scaffold directive is resolved');
+  const dag = unitsOf(main.dir).find((u: any) => u.attrs?.id === 'STEP_2_DAG');
+  assert.ok(dag, 'lazy STEP_2_DAG is an executable unit');
+  const reads = readsOf(dag);
+  assert.equal(reads.length, 1);
+  assert.equal(reads[0].ref, 'ai/directives/sdd-v2/scaffold/steps/STEP_2_DAG.xml');
 });
 
 test('scenario: advancing past GATHER auto-enters the router at EMBODY (stack /sdd › <SddRouter>)', () => {

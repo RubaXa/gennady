@@ -6,6 +6,7 @@ import {
   dirOf,
   gather,
   toolsOf,
+  readsOf,
   runsOutsideSwitch,
   stepMd,
   unitsOf,
@@ -142,6 +143,10 @@ function renderDebug(container, skill) {
         .map((t) => t.label)
         .join(', ');
       if (tools) extra.push('тулы: ' + tools);
+      const reads = readsOf(e.step)
+        .map((r) => r.label)
+        .join(', ');
+      if (reads) extra.push('READ_AND_USE: ' + reads);
       if (e.into) extra.push('вошли в ' + base(e.into));
       if (e.branch) extra.push('ветка: ' + e.branch);
       if (extra.length) b.appendChild(el('span', 'dbg-mut', ' — ' + extra.join(' · ')));
@@ -178,6 +183,11 @@ function renderDebug(container, skill) {
         if (tools.length)
           card.appendChild(
             el('div', 'dbg-mut', 'выполняет: ' + tools.map((t) => t.label).join(', '))
+          );
+        const reads = readsOf(unit);
+        if (reads.length)
+          card.appendChild(
+            el('div', 'dbg-read', 'READ_AND_USE: ' + reads.map((r) => r.label).join(', '))
           );
         gather(unit, 'unparsed').forEach((u) =>
           card.appendChild(el('div', 'dbg-mut', '⚠ ' + u.label + (u.note ? ' — ' + u.note : '')))
