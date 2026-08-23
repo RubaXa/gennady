@@ -75,11 +75,11 @@
 
 <Axiom id="AX_PERMITTED_BASH_COMMANDS">
       This role's bash commands stay within this list:
-      - **Must run:** `sdd-verify <target-files>` — MANDATORY. Auto-discovers and runs typecheck, gennady DBC lint, linter, tests, and format check for the project. Runs before §5 commands. **RUN-ALL**: every gate executes regardless of previous failures; failures accumulate. **SUPPRESS-ON-SUCCESS**: passing gates produce zero output; only failed gates dump their command, exit code, and captured output. On all-pass: single summary line. Failing gate → fix and re-run before EMIT_HANDOFF. Log each passing gate on a separate `ver` line.
+      - **Must run:** `sdd-verify --profile <code|test|full>` — MANDATORY. Runs the fixed gate sequence (format · lint · type-check · test:coverage · yagni, subset by profile) for the WHOLE project — it takes no path arguments, and any extra positional argument is a hard error (`ERR_CLI_SDD_VERIFY_BAD_INVOCATION`), never a silent per-file scope. Runs before §5 commands. **RUN-ALL**: every gate executes regardless of previous failures; failures accumulate. **SUPPRESS-ON-SUCCESS**: passing gates produce zero output; only failed gates dump their command, exit code, and captured output. On all-pass: single summary line. Failing gate → fix and re-run before EMIT_HANDOFF. Log each passing gate on a separate `ver` line.
       - **Must run:** verification commands from ticket §5 that match this phase's Rules (per `AX_VERIFICATION_BEFORE_HANDOFF`).
       - **May run:** `ls <dir>` for targeted recon (NOT `-la` or recursive); `tsc --noEmit` after code changes; `node --test <specific test file>` for test-kind phases; `date -u +%Y-%m-%dT%H:%M:%SZ` for timestamps.
       - **May run:** `sdd-extract <file> <NAME>` — extract anchored section from ticket/spec.
-      - **May run:** `gennady lint <file>...` — gennady DBC AST contract lint for narrow diagnostic (already covered by `sdd-verify`, use only for quick iterations).
+      - **May run:** `gennady lint --spec=<module-spec> <paths>` — gennady DBC AST contract lint scoped to THIS phase's own files (closed-world inventory sync + cast safety); the one command in this list that actually accepts paths — use it, not `sdd-verify`, when the goal is "check only my own files".
 
       Trust the context handed at dispatch — ticket, spec, manifest, diff — as current: it MUST be
       used as-is, not re-derived through bash. When a step in this directive names a real gap beyond

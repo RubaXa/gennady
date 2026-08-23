@@ -112,6 +112,15 @@ describe('SddSessionCommand', () => {
     assert.ok(!existsSync(sessionPath()));
   });
 
+  it('open rejects a bare backticked placeholder but accepts angle brackets inside longer code', async () => {
+    const rejected = await mod.run(argv('open', '--intent', '`<intent>`'), CLOCK);
+    assert.strictEqual(rejected.ok, false);
+    if (!rejected.ok) assert.strictEqual(rejected.exitCode, 2);
+
+    const accepted = await mod.run(argv('open', '--intent', '`Promise<TodoStore>`'), CLOCK);
+    assert.strictEqual(accepted.ok, true);
+  });
+
   it('open exits 4 with no --intent', async () => {
     const o = await mod.run(argv('open'), CLOCK);
     assert.strictEqual(o.ok, false);
@@ -170,6 +179,11 @@ describe('SddSessionCommand', () => {
       const o = await mod.run(argv('log', 'step → <output>'), CLOCK);
       assert.strictEqual(o.ok, false);
       if (!o.ok) assert.strictEqual(o.exitCode, 2);
+    });
+
+    it('log accepts a complete inline-code path containing placeholder-shaped segments', async () => {
+      const o = await mod.run(argv('log', 'loaded `steps/<step-id>.xml`'), CLOCK);
+      assert.strictEqual(o.ok, true);
     });
 
     it('log/workset need content (exit 4)', async () => {

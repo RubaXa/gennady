@@ -342,6 +342,28 @@ describe('SddLogCommand', () => {
       assert.strictEqual(outcome.ok, false);
       if (!outcome.ok) assert.strictEqual(outcome.exitCode, 2);
     });
+
+    it('rejects a bare backticked placeholder but accepts angle brackets inside longer code', async () => {
+      await mod.run(argv(ticket, 'phase', 'P1'), CLOCK);
+      const rejected = await mod.run(argv(ticket, 'line', '`<cmd>`', '--phase', 'P1'), CLOCK);
+      assert.strictEqual(rejected.ok, false);
+      if (!rejected.ok) assert.strictEqual(rejected.exitCode, 2);
+
+      const accepted = await mod.run(
+        argv(ticket, 'line', 'returns `Promise<TodoStore>`', '--phase', 'P1'),
+        CLOCK
+      );
+      assert.strictEqual(accepted.ok, true);
+    });
+
+    it('accepts an inline-code path containing placeholder-shaped segments', async () => {
+      await mod.run(argv(ticket, 'phase', 'P1'), CLOCK);
+      const outcome = await mod.run(
+        argv(ticket, 'line', 'loaded `steps/<step-id>.xml`', '--phase', 'P1'),
+        CLOCK
+      );
+      assert.strictEqual(outcome.ok, true);
+    });
   });
 
   it('handoff mode writes the **Handoff →** line verbatim, no timestamp', async () => {

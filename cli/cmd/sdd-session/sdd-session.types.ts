@@ -21,6 +21,8 @@ export type SessionOutcome =
 
 /** @purpose Matches an unreplaced scaffold placeholder like `<intent>`, `<scale>` (no inner whitespace). */
 export const PLACEHOLDER_RE = /<[^>\s]+>/;
+/** @purpose Same shape, anchored — distinguishes a bare backticked placeholder from angle brackets inside a longer code value. */
+const WHOLE_PLACEHOLDER_RE = /^<[^>\s]+>$/;
 
 /** @purpose Fields `set` may replace — the single-line fields of SESSION_FILE_FORMAT. */
 export const SET_FIELDS = ['intent', 'scale', 'open'] as const;
@@ -31,12 +33,23 @@ export type SetField = (typeof SET_FIELDS)[number];
 const FIELD_HEADER_RE = /^(intent|scale|working set|glossary|journal|open):/;
 
 /**
- * @purpose Report whether text still carries an unreplaced placeholder.
+ * @purpose Report whether text still carries an unreplaced placeholder — including a bare
+ * backticked `<…>`, while allowing angle brackets inside a longer inline-code value.
+ * @invariant Scans one CLI argument without cross-line or HTML-like markup semantics.
+ * @invariant A bare `<intent>` remains a placeholder; longer inline-code values are complete.
  * @param text Candidate value.
  * @returns True when a `<…>`-style placeholder remains.
  */
 export function hasPlaceholder(text: string): boolean {
-  return PLACEHOLDER_RE.test(text);
+  let outsideCode = '';
+  let lastIndex = 0;
+  for (const match of text.matchAll(/`([^`]*)`/g)) {
+    outsideCode += text.slice(lastIndex, match.index);
+    if (WHOLE_PLACEHOLDER_RE.test((match[1] ?? '').trim())) return true;
+    lastIndex = (match.index ?? 0) + match[0].length;
+  }
+  outsideCode += text.slice(lastIndex);
+  return PLACEHOLDER_RE.test(outsideCode);
 }
 
 /**

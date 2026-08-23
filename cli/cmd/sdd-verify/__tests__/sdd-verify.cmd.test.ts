@@ -9,6 +9,8 @@ import {
   gatesFor,
   isProfile,
   verdict,
+  parseInvocation,
+  ERR_CLI_SDD_VERIFY_BAD_INVOCATION,
   type GateRunner,
   type GateResult,
 } from '../sdd-verify.types.ts';
@@ -208,6 +210,83 @@ describe('profiles', () => {
       'npm run type-check',
       'npm run test:coverage',
     ]);
+  });
+});
+
+describe('parseInvocation', () => {
+  // parseArgs (shared/common/parse-args.ts) keeps process.argv[2] — the command token itself —
+  // inside `_`, so every case below prefixes argv with the real `node script sdd-verify` shape.
+  const argv = (...rest: string[]): string[] => ['node', 'gennady.ts', 'sdd-verify', ...rest];
+
+  it('no flags → defaults to the full profile', () => {
+    const r = parseInvocation(argv());
+    assert.deepStrictEqual(r, { ok: true, profile: 'full' });
+  });
+
+  it('--profile <value> and --profile=<value> both resolve the profile', () => {
+    assert.deepStrictEqual(parseInvocation(argv('--profile', 'code')), {
+      ok: true,
+      profile: 'code',
+    });
+    assert.deepStrictEqual(parseInvocation(argv('--profile=test')), {
+      ok: true,
+      profile: 'test',
+    });
+  });
+
+  it('a bare path — the exact real-world defect (a worker appending a target file) — is a hard error, not a silently ignored no-op', () => {
+    const r = parseInvocation(argv('--profile', 'code', 'ai/kit/lazy-assembly.ts'));
+    assert.strictEqual(r.ok, false);
+    if (r.ok) return;
+    assert.match(r.message, new RegExp(ERR_CLI_SDD_VERIFY_BAD_INVOCATION));
+    assert.match(r.message, /unexpected path argument\(s\): ai\/kit\/lazy-assembly\.ts/);
+    assert.match(r.message, /whole project/i);
+    assert.match(r.message, /npx gennady lint --spec=<module-spec> <paths>/);
+  });
+
+  it('multiple stray paths are all named in the error', () => {
+    const r = parseInvocation(argv('foo.ts', 'bar.ts'));
+    assert.strictEqual(r.ok, false);
+    if (r.ok) return;
+    assert.match(r.message, /unexpected path argument\(s\): foo\.ts bar\.ts/);
+  });
+
+  it('does not discard a positional argument merely because it equals the command token', () => {
+    const r = parseInvocation(argv('sdd-verify'));
+    assert.strictEqual(r.ok, false);
+    if (r.ok) return;
+    assert.match(r.message, /unexpected path argument\(s\): sdd-verify/);
+  });
+
+  it('an unrelated unknown flag (--scope) is rejected, not silently dropped', () => {
+    const r = parseInvocation(argv('--scope', 'src'));
+    assert.strictEqual(r.ok, false);
+    if (r.ok) return;
+    assert.match(r.message, new RegExp(ERR_CLI_SDD_VERIFY_BAD_INVOCATION));
+    assert.match(r.message, /scope/);
+  });
+
+  it('a misspelled flag (--profil, missing the trailing e) is rejected, not silently dropped', () => {
+    const r = parseInvocation(argv('--profil', 'code'));
+    assert.strictEqual(r.ok, false);
+    if (r.ok) return;
+    assert.match(r.message, new RegExp(ERR_CLI_SDD_VERIFY_BAD_INVOCATION));
+    assert.match(r.message, /profil/);
+  });
+
+  it('an unknown --profile value is a bad invocation naming the accepted set', () => {
+    const r = parseInvocation(argv('--profile', 'bogus'));
+    assert.strictEqual(r.ok, false);
+    if (r.ok) return;
+    assert.match(r.message, new RegExp(ERR_CLI_SDD_VERIFY_BAD_INVOCATION));
+    assert.match(r.message, /unknown --profile 'bogus'/);
+  });
+
+  it('bad-invocation message always carries the usage line', () => {
+    const r = parseInvocation(argv('stray.ts'));
+    assert.strictEqual(r.ok, false);
+    if (r.ok) return;
+    assert.match(r.message, /usage: npx gennady sdd-verify \[--profile <code\|test\|full>]/);
   });
 });
 

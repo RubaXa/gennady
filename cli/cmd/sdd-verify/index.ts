@@ -3,20 +3,14 @@
 // @tasks: N/A
 
 import { run, defaultRunner } from './sdd-verify.cmd.ts';
-import { isProfile } from './sdd-verify.types.ts';
+import { parseInvocation } from './sdd-verify.types.ts';
 
-const argv = process.argv.slice(2);
-const flagIdx = argv.indexOf('--profile');
-const rawProfile =
-  flagIdx >= 0
-    ? argv[flagIdx + 1]
-    : argv.find((a) => a.startsWith('--profile='))?.slice('--profile='.length);
-const profile = rawProfile ?? 'full';
-if (!isProfile(profile)) {
-  console.error(`[verify] unknown --profile '${profile}' (expected: code | test | full)`);
+const invocation = parseInvocation(process.argv);
+if (!invocation.ok) {
+  console.error(invocation.message);
   process.exit(4);
 }
 
-const outcome = await run(defaultRunner, profile);
+const outcome = await run(defaultRunner, invocation.profile);
 console.log(outcome.ok ? outcome.text : outcome.message);
 process.exit(outcome.ok ? 0 : outcome.exitCode);

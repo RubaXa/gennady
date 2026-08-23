@@ -143,6 +143,51 @@ describe('checkTicket', () => {
     assert.ok(!codes(c).includes('SDD_DONE_WITH_PLACEHOLDERS'));
   });
 
+  it('does NOT warn when a formatter wraps an inline-code path across one line break', () => {
+    const c = CLEAN.replace(
+      '- **Task-ID:** cli-foo',
+      '- **Task-ID:** cli-foo\n- **Path:** `ai/directives/sdd-v2/<name>/\nsteps/<step-id>.xml`'
+    );
+    assert.ok(!codes(c).includes('SDD_DONE_WITH_PLACEHOLDERS'));
+  });
+
+  it('does NOT warn when PascalCase angle brackets name an HTML-like directive tag', () => {
+    const c = CLEAN.replace(
+      '- **Task-ID:** cli-foo',
+      '- **Task-ID:** cli-foo\n- **Markup:** existing generic in a <Snippet>'
+    );
+    assert.ok(!codes(c).includes('SDD_DONE_WITH_PLACEHOLDERS'));
+  });
+
+  it('does NOT warn on an array generic containing square brackets', () => {
+    const c = CLEAN.replace(
+      '- **Task-ID:** cli-foo',
+      '- **Task-ID:** cli-foo\n- **Returns:** Promise<string[]>'
+    );
+    assert.ok(!codes(c).includes('SDD_DONE_WITH_PLACEHOLDERS'));
+  });
+
+  it('still warns when a bare backticked scaffold token remains', () => {
+    const c = CLEAN.replace('- [x] `2026-06-21T10:00:00Z` DONE', '- [x] `<ts>` DONE');
+    assert.ok(codes(c).includes('SDD_DONE_WITH_PLACEHOLDERS'));
+  });
+
+  it('still warns on bare lowercase metanotation outside inline code', () => {
+    const c = CLEAN.replace(
+      '- **Task-ID:** cli-foo',
+      '- **Task-ID:** cli-foo\n- **Rule:** <contract>'
+    );
+    assert.ok(codes(c).includes('SDD_DONE_WITH_PLACEHOLDERS'));
+  });
+
+  it('an unmatched backtick does not mask a placeholder later in the document', () => {
+    const c = CLEAN.replace(
+      '- **Task-ID:** cli-foo',
+      '- **Task-ID:** cli-foo\n- **Note:** `unclosed inline code\n- **Later:** <TBD>'
+    );
+    assert.ok(codes(c).includes('SDD_DONE_WITH_PLACEHOLDERS'));
+  });
+
   it('warns on missing Task-ID and unparseable status', () => {
     const c = [
       '<!--SECTION:META-->',

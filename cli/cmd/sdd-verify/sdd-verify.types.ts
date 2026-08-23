@@ -2,6 +2,11 @@
 // @consumers: SddVerifyCommand
 // @tasks: N/A
 
+import { parseArgs } from '../../../shared/common/parse-args.ts';
+
+/** @purpose CLI invocation carried an extra positional path, or a flag other than `--profile` — sdd-verify never silently narrows or ignores. */
+export const ERR_CLI_SDD_VERIFY_BAD_INVOCATION = 'ERR_CLI_SDD_VERIFY_BAD_INVOCATION' as const;
+
 /**
  * @purpose A verification gate — an exact project npm script, or a gennady-native check called directly.
  * @invariant `via: 'gennady'` gates never require a matching project npm script — `readiness.ts`
@@ -57,6 +62,67 @@ export function gatesFor(profile: Profile): readonly Gate[] {
  */
 export function isProfile(v: string): v is Profile {
   return v === 'code' || v === 'test' || v === 'full';
+}
+
+/**
+ * @purpose Build the bad-invocation diagnostic — tool-teaches: names the problem and the exact
+ *   alternative for "check only my own files".
+ * @param detail What was wrong with the invocation.
+ * @returns The full multi-line message, ready to print (exit code 4).
+ */
+function badInvocationMessage(detail: string): string {
+  return [
+    `[verify] ${ERR_CLI_SDD_VERIFY_BAD_INVOCATION}: ${detail}`,
+    '  sdd-verify always runs its fixed gate profile over the WHOLE project — it takes no path',
+    '  arguments, and no flag besides --profile. A path here does not narrow the run; it is rejected,',
+    '  never silently ignored.',
+    '  To check only your own files, run: npx gennady lint --spec=<module-spec> <paths>',
+    '  usage: npx gennady sdd-verify [--profile <code|test|full>]',
+  ].join('\n');
+}
+
+/** @purpose Outcome of parsing sdd-verify's CLI invocation. */
+export type InvocationResult = { ok: true; profile: Profile } | { ok: false; message: string };
+
+/**
+ * @purpose Parse sdd-verify's CLI invocation strictly: only `--profile <code|test|full>` is
+ *   accepted, no positional argument. An extra path or bad flag is a hard, teaching error.
+ * @param argv Full `process.argv` — the shape `parseArgs` expects.
+ * @returns The resolved profile, or a ready-to-print bad-invocation message (exit code 4).
+ */
+export function parseInvocation(argv: string[]): InvocationResult {
+  let parsed: Record<string, unknown> & { _: string[] };
+  try {
+    parsed = parseArgs(
+      argv,
+      { profile: { aliases: ['profile'], takesValue: true } },
+      { strict: true }
+    );
+  } catch (cause) {
+    const detail = cause instanceof Error ? cause.message : String(cause);
+    return { ok: false, message: badInvocationMessage(detail) };
+  }
+
+  // parseArgs keeps the command token itself (argv[2], e.g. "sdd-verify") in `_` alongside any
+  // real positional — drop it before judging whether the caller passed an actual extra argument.
+  const positional = parsed._.slice(1);
+  if (positional.length > 0) {
+    return {
+      ok: false,
+      message: badInvocationMessage(`unexpected path argument(s): ${positional.join(' ')}`),
+    };
+  }
+
+  const rawProfile = typeof parsed.profile === 'string' ? parsed.profile : 'full';
+  if (!isProfile(rawProfile)) {
+    return {
+      ok: false,
+      message: badInvocationMessage(
+        `unknown --profile '${rawProfile}' (expected: code | test | full)`
+      ),
+    };
+  }
+  return { ok: true, profile: rawProfile };
 }
 
 /** @purpose Outcome of running one command — exit code + combined output. */

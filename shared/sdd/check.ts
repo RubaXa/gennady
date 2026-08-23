@@ -42,17 +42,38 @@ export type Finding = {
 };
 
 // Scaffold placeholder: `<` then a letter or ellipsis (e.g. <ts>, <cmd>, <TBD>, <…>) — NOT an HTML
-// comment/marker (`<!--…-->`) or closing tag (`</…>`), which start with `!` or `/`.
-const PLACEHOLDER = /<[A-Za-z…][^>\s]*>/;
+// comment/marker (`<!--…-->`) or closing tag (`</…>`), which start with `!` or `/`; NOT a markup tag
+// name either (`<Step>`, `<Axiom>`, `<Contract>`, `<Snippet>`, `<Mission>`, `<PhaseProcedure>`) — our
+// tags are PascalCase (uppercase letter then a lowercase one), scaffold placeholders never are (they
+// stay lowercase/kebab, or a bare all-caps token like `<TBD>` — never upper-then-lower). The
+// `(?![A-Z][a-z])` lookahead excludes the tag shape generically rather than naming each tag, so a
+// tag added later stays excluded too. `[^>\s[\]]*` also excludes `[` / `]` inside the token — a real
+// generic type written in prose without backticks (`Promise<string[]>`) must not read as a
+// placeholder (false positive fixed in tasks/agent-run/agent-run.task-64.md).
+const PLACEHOLDER = /<(?![A-Z][a-z])[A-Za-z…][^>\s[\]]*>/;
 // Same shape, anchored — matches only when the ENTIRE (trimmed) string is the placeholder, no
 // surrounding text. Used to tell a bare scaffold token backticked on its own (`` `<ts>` ``) apart
 // from a real type signature that merely contains angle brackets (`` `Promise<TodoStore>` ``).
-const WHOLE_PLACEHOLDER = /^<[A-Za-z…][^>\s]*>$/;
+const WHOLE_PLACEHOLDER = /^<(?![A-Z][a-z])[A-Za-z…][^>\s[\]]*>$/;
 
 // Inline-code span (`` `…` ``) — stripped before testing for a literal `[x]` checkbox so a prose
 // hint like "A `` `[x]` `` line…" (TASK_SKELETON's own Execution Log note) never reads as a checked
 // line.
 const CODE_SPAN = /`[^`]*`/g;
+
+// Same idea as CODE_SPAN, but allowed to cross AT MOST one line break — a markdown formatter can
+// hard-wrap a long inline-code span (a path, an identifier) onto the next line, leaving the closing
+// backtick there (live example: specs/ai-skills/directive-assembly/directive-assembly.task.DA-lazy-
+// asm.md:173-174, `` `ai/directives/sdd-v2/<name>/\nsteps/<step-id>.xml` `` — the placeholders inside
+// were read as bare prose and false-flagged). The crossing is capped at one line deliberately: an
+// actually-unpaired backtick (prose that never closes it) must not swallow the rest of the document
+// as "code" — the same runaway-mask failure mode ai/inspector/core/parse-directive.ts and
+// ai/kit/lazy-assembly.ts avoid by staying single-line entirely (see their `maskCodeSpans` comments).
+// Crossing exactly one line break is the minimum bound that fixes the live break without reopening
+// that hazard: pairing backticks that are more than one line apart would require the content to
+// contain more than one `\n`, which this pattern's `(?:\n[^`\n]*)?` (at most one, non-repeating) never
+// allows — so a stray backtick can only ever "eat" the rest of its own line plus one more.
+const CODE_SPAN_ML = /`([^`\n]*(?:\n[^`\n]*)?)`/g;
 
 /**
  * @purpose True when `line` carries a scaffold placeholder needing replacement — a bare `<cmd>`,
@@ -76,13 +97,22 @@ function lineHasPlaceholder(line: string): boolean {
 }
 
 /**
- * @purpose Multi-line `lineHasPlaceholder` — true when any line of `text` carries an unreplaced
- * scaffold placeholder (see `lineHasPlaceholder` for the inline-code exclusion rule).
+ * @purpose Detect unreplaced scaffold placeholders across an optional single-line inline-code wrap.
+ * @invariant Placeholder substrings inside longer code spans are complete values; whole-span placeholders are not.
+ * @invariant Document-wide scanning preserves a formatter-wrapped code span that per-line scanning would split.
  * @param text Full markdown text (or a section body) to scan.
- * @returns Whether any line still needs a placeholder filled in.
+ * @returns Whether any placeholder-shaped substring remains outside, or whole-matching, inline code.
  */
 function hasPlaceholder(text: string): boolean {
-  return text.split('\n').some(lineHasPlaceholder);
+  let outsideCode = '';
+  let lastIndex = 0;
+  for (const m of text.matchAll(CODE_SPAN_ML)) {
+    outsideCode += text.slice(lastIndex, m.index);
+    if (WHOLE_PLACEHOLDER.test((m[1] ?? '').trim())) return true;
+    lastIndex = (m.index ?? 0) + m[0].length;
+  }
+  outsideCode += text.slice(lastIndex);
+  return PLACEHOLDER.test(outsideCode);
 }
 
 /**

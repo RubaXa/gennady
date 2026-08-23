@@ -34,14 +34,26 @@ export type LogOutcome =
 
 /** @purpose Matches an unreplaced scaffold placeholder like `<ts>`, `<cmd>`, `<pass|fail>`, `<…>` (no inner whitespace). */
 export const PLACEHOLDER_RE = /<[^>\s]+>/;
+/** @purpose Match an entire scaffold placeholder inside inline code. */
+const WHOLE_PLACEHOLDER_RE = /^<[^>\s]+>$/;
 
 /**
- * @purpose Report whether text still carries an unreplaced placeholder.
+ * @purpose Detect bare placeholders while allowing angle brackets inside longer inline-code values.
+ * @invariant Scans one CLI argument; cross-line markdown and PascalCase markup exclusions belong only to shared/sdd/check.ts.
+ * @invariant A bare `<PhaseID>` remains a placeholder.
  * @param text Candidate log content.
  * @returns True when a `<…>`-style placeholder remains.
  */
 export function hasPlaceholder(text: string): boolean {
-  return PLACEHOLDER_RE.test(text);
+  let outsideCode = '';
+  let lastIndex = 0;
+  for (const m of text.matchAll(/`([^`]*)`/g)) {
+    outsideCode += text.slice(lastIndex, m.index);
+    if (WHOLE_PLACEHOLDER_RE.test((m[1] ?? '').trim())) return true;
+    lastIndex = (m.index ?? 0) + m[0].length;
+  }
+  outsideCode += text.slice(lastIndex);
+  return PLACEHOLDER_RE.test(outsideCode);
 }
 
 /**
