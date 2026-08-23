@@ -43,7 +43,8 @@ mock.module('node:fs', {
 
 // ── Import SUT after the mock is registered ─────────────────────────────────
 
-const { run, isSelfHosting } = await import('../sdd-verify.cmd.ts');
+const { run, isSelfHosting, defaultRunner, runWithMaxBuffer, GATE_MAX_BUFFER_BYTES } =
+  await import('../sdd-verify.cmd.ts');
 
 beforeEach(() => {
   currentPkgJson = JSON.stringify({ name: 'gennady', scripts: { 'type-check': 'tsc' } });
@@ -280,6 +281,33 @@ describe('run — via: gennady gate dispatch', () => {
     await run(runner, 'full');
     assert.ok(!calls.includes('npm run yagni'));
     assert.ok(calls.some((c) => c.endsWith(' yagni')));
+  });
+});
+
+describe('defaultRunner — real spawnSync maxBuffer behavior', () => {
+  it('GATE_MAX_BUFFER_BYTES is generously above the default 1MB (real TAP output measured ~1.08MB)', () => {
+    assert.strictEqual(GATE_MAX_BUFFER_BYTES, 64 * 1024 * 1024);
+    assert.ok(GATE_MAX_BUFFER_BYTES > 1024 * 1024);
+  });
+
+  it('captures output well past the old 1MB default without ENOBUFS', () => {
+    // node's default spawnSync maxBuffer is 1MB; write 2MB so this only passes if
+    // defaultRunner's own maxBuffer override is actually in effect.
+    const r = defaultRunner('node', ['-e', "process.stdout.write('x'.repeat(2 * 1024 * 1024))"]);
+    assert.strictEqual(r.exitCode, 0);
+    assert.strictEqual(r.output.length, 2 * 1024 * 1024);
+  });
+
+  it('a real overflow past maxBuffer is reported honestly (spawn error, exit 127) — never a silently truncated verdict', () => {
+    const r = runWithMaxBuffer(
+      'node',
+      ['-e', "process.stdout.write('x'.repeat(10_000))"],
+      100 // tiny on purpose — forces a real spawnSync maxBuffer overflow
+    );
+    assert.strictEqual(r.exitCode, 127);
+    assert.match(r.output, /node:/); // command name prefix
+    assert.ok(r.output.length < 1000); // an honest short error, not a clipped 100-byte fragment of stdout
+    assert.doesNotMatch(r.output, /^x+$/); // never a silent partial-output truncation
   });
 });
 

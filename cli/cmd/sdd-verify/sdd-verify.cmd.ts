@@ -37,6 +37,35 @@ function resolveScriptName(gateName: string): string {
   return gateName;
 }
 
+// Node's spawnSync defaults maxBuffer to 1MB — this project's own `test:coverage` TAP output
+// (3505 tests, per-test diagnostics) already measures ~1.08MB, so the default clips it and
+// spawnSync surfaces that as ENOBUFS, not a real test/coverage failure (observed live: DA-lazy-asm
+// P4/P5, both independently). 64MB gives ~60x headroom over today's measured size — generous
+// enough to absorb suite growth for a long while without raising the ceiling again, while still
+// bounded (an actually runaway gate does not grow the process's memory without limit).
+/** @purpose Generous stdout+stderr capture ceiling for a spawned gate — see rationale above. */
+export const GATE_MAX_BUFFER_BYTES = 64 * 1024 * 1024;
+
+/**
+ * @purpose Spawn `command args` under an explicit `maxBuffer`, capturing exit code and output —
+ * the mechanism `defaultRunner` fixes, exposed for a fast small-buffer test.
+ * @invariant A real overflow past `maxBuffer` is reported honestly as a spawn error (exit 127 +
+ *   Node's own message) — never a silently truncated verdict.
+ * @param command Executable to spawn.
+ * @param args Arguments for the executable.
+ * @param maxBuffer Maximum combined stdout+stderr size, in bytes.
+ * @returns Exit code (127 when the command cannot be spawned, including on buffer overflow) and combined stdout/stderr.
+ */
+export function runWithMaxBuffer(
+  command: string,
+  args: string[],
+  maxBuffer: number
+): GateRunResult {
+  const r = spawnSync(command, args, { encoding: 'utf-8', maxBuffer });
+  if (r.error) return { exitCode: 127, output: `${command}: ${r.error.message}` };
+  return { exitCode: r.status ?? 1, output: `${r.stdout ?? ''}${r.stderr ?? ''}` };
+}
+
 /**
  * @purpose Default gate runner — spawn `command args` without a shell, capturing exit code and combined output.
  * @param command Executable to spawn.
@@ -44,9 +73,7 @@ function resolveScriptName(gateName: string): string {
  * @returns Exit code (127 when the command cannot be spawned) and combined stdout/stderr.
  */
 export function defaultRunner(command: string, args: string[]): GateRunResult {
-  const r = spawnSync(command, args, { encoding: 'utf-8' });
-  if (r.error) return { exitCode: 127, output: `${command}: ${r.error.message}` };
-  return { exitCode: r.status ?? 1, output: `${r.stdout ?? ''}${r.stderr ?? ''}` };
+  return runWithMaxBuffer(command, args, GATE_MAX_BUFFER_BYTES);
 }
 
 // Read the project's own package.json `name` honestly — never infer self-hosting from the

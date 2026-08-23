@@ -4,7 +4,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { checkTicket, isTicket, scanBlockerTrail } from '../check.ts';
+import { checkTicket, isTicket, scanBlockerTrail, parsePhaseHandoffs } from '../check.ts';
 
 const CLEAN = [
   '<!--SECTION:META-->',
@@ -180,5 +180,60 @@ describe('scanBlockerTrail', () => {
       '- ✅ RESOLVED fixed first',
     ].join('\n');
     assert.deepStrictEqual(scanBlockerTrail(log), ['- 🛑 BLOCKED second issue']);
+  });
+});
+
+describe('parsePhaseHandoffs', () => {
+  it('a real Handoff line is captured verbatim, keyed by phase id', () => {
+    const log = [
+      '#### P1',
+      '- [x] `2026-06-21T10:00:00Z` DONE',
+      '**Handoff →** artifacts: [src/foo.ts]; decisions: [none]; open: [none]',
+    ].join('\n');
+    assert.deepStrictEqual(parsePhaseHandoffs(log), {
+      P1: '**Handoff →** artifacts: [src/foo.ts]; decisions: [none]; open: [none]',
+    });
+  });
+
+  it('skips the Round-1 skeleton placeholder (artifacts/decisions/open all `[...]`) and picks up the later real close', () => {
+    const log = [
+      '### Round 1 — 2026-06-21, initial',
+      '#### P1',
+      '- [ ] `<ts>` DONE',
+      '**Handoff →** artifacts: [...]; decisions: [...]; open: [...]',
+      '### Round 2 — 2026-06-22, execute',
+      '#### P1',
+      '- [x] `2026-06-22T10:00:00Z` DONE',
+      '**Handoff →** artifacts: [src/foo.ts]; decisions: [none]; open: [none]',
+    ].join('\n');
+    assert.deepStrictEqual(parsePhaseHandoffs(log), {
+      P1: '**Handoff →** artifacts: [src/foo.ts]; decisions: [none]; open: [none]',
+    });
+  });
+
+  it('a phase with only the skeleton placeholder — never actually closed — carries no entry at all', () => {
+    const log = [
+      '### Round 1 — 2026-06-21, initial',
+      '#### P1',
+      '- [ ] `<ts>` DONE',
+      '**Handoff →** artifacts: [...]; decisions: [...]; open: [...]',
+    ].join('\n');
+    assert.deepStrictEqual(parsePhaseHandoffs(log), {});
+  });
+
+  it('a fix-repeat of the same phase in a later round overrides the earlier real close', () => {
+    const log = [
+      '### Round 1 — 2026-06-21, initial',
+      '#### P1',
+      '- [x] `2026-06-21T10:00:00Z` DONE',
+      '**Handoff →** artifacts: [src/old.ts]; decisions: [none]; open: [none]',
+      '### Round 2 — 2026-06-22, fix F-01',
+      '#### P1',
+      '- [x] `2026-06-22T10:00:00Z` DONE',
+      '**Handoff →** artifacts: [src/new.ts]; decisions: [none]; open: [none]',
+    ].join('\n');
+    assert.deepStrictEqual(parsePhaseHandoffs(log), {
+      P1: '**Handoff →** artifacts: [src/new.ts]; decisions: [none]; open: [none]',
+    });
   });
 });

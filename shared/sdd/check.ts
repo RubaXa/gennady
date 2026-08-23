@@ -176,12 +176,21 @@ function hasActiveBlocker(logBody: string): boolean {
 }
 
 /**
+ * @purpose Matches the skeleton's unfilled Handoff line (`templates.ts`'s Round 1 block) — every
+ *   field still holds the literal placeholder ellipsis, never real content.
+ * @invariant A real Handoff line never contains a bracketed `...` — empty fields use `none`/`n/a`/
+ *   `—` instead, so this can't misfire on genuine empty fields.
+ */
+const HANDOFF_PLACEHOLDER_RE = /\[\.\.\.\]/;
+
+/**
  * @purpose Parse each phase's verbatim Handoff line from the Execution Log — the compact context
  * `sdd-task --phase` hands a worker.
- * @invariant One line per phase — the FIRST Handoff line under that phase's block; a phase may
- *   reopen, but later phases planned against the first.
+ * @invariant One line per phase — the LAST non-placeholder Handoff, so a later Round overrides an
+ *   earlier skeleton placeholder or a fix-repeat's earlier close.
  * @param logBody The EXECUTION_LOG section body.
- * @returns Phase id → its verbatim Handoff line text (trimmed), for every phase that has one.
+ * @returns Phase id → its verbatim Handoff line (trimmed), for every phase with a real
+ *   (non-placeholder) Handoff recorded; a never-closed phase carries no entry.
  */
 export function parsePhaseHandoffs(logBody: string): Record<string, string> {
   const out: Record<string, string> = {};
@@ -193,7 +202,7 @@ export function parsePhaseHandoffs(logBody: string): Record<string, string> {
       current = heading[1] as string;
       continue;
     }
-    if (current && !(current in out) && /^\*\*Handoff\s*→\*\*/.test(line)) {
+    if (current && /^\*\*Handoff\s*→\*\*/.test(line) && !HANDOFF_PLACEHOLDER_RE.test(line)) {
       out[current] = line;
     }
   }

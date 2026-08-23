@@ -506,6 +506,47 @@ describe('SddTaskCommand', () => {
       assert.doesNotMatch(outcome.text, /\[HANDOFF\]/);
     });
 
+    it('picks the real closed Handoff from a later Round over the Round-1 skeleton placeholder', async () => {
+      const ROUND2_TICKET = PHASED_TICKET.replace(
+        '**Handoff →** artifacts: [src/foo.ts]; decisions: [none]; open: [none]',
+        [
+          '**Handoff →** artifacts: [...]; decisions: [...]; open: [...]',
+          '',
+          '### Round 2 — 2026-06-22, execute',
+          '#### P1',
+          '- [x] `2026-06-22T10:00:00Z` DONE',
+          '**Handoff →** artifacts: [src/real.ts]; decisions: [real-decision]; open: [none]',
+        ].join('\n')
+      );
+      const t = join(dir, 'phased-round2.md');
+      writeFileSync(t, ROUND2_TICKET, 'utf-8');
+      const outcome = await mod.run(argv(t, '--phase', 'P2'));
+      assert.strictEqual(outcome.ok, true);
+      if (!outcome.ok) return;
+      assert.match(
+        outcome.text,
+        /Handoff ←P1: \*\*Handoff →\*\* artifacts: \[src\/real\.ts\]; decisions: \[real-decision\]; open: \[none\]/
+      );
+      assert.doesNotMatch(outcome.text, /\[\.\.\.\]/);
+    });
+
+    it('a completed prior phase with no captured Handoff says so honestly, never a blank omission or the skeleton placeholder', async () => {
+      const NO_HANDOFF_TICKET = PHASED_TICKET.replace(
+        '**Handoff →** artifacts: [src/foo.ts]; decisions: [none]; open: [none]',
+        ''
+      );
+      const t = join(dir, 'phased-no-handoff.md');
+      writeFileSync(t, NO_HANDOFF_TICKET, 'utf-8');
+      const outcome = await mod.run(argv(t, '--phase', 'P2'));
+      assert.strictEqual(outcome.ok, true);
+      if (!outcome.ok) return;
+      assert.match(outcome.text, /\[HANDOFF\]/);
+      assert.match(
+        outcome.text,
+        /Handoff ←P1: \(отсутствует — фаза ещё не закрывалась \/ Handoff не записан\)/
+      );
+    });
+
     it('ends with the next: protocol + sdd-log + Handoff-line instruction', async () => {
       const t = join(dir, 'phased.md');
       writeFileSync(t, PHASED_TICKET, 'utf-8');

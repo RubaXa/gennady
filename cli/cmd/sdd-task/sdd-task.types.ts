@@ -183,7 +183,8 @@ export function gateHint(command: string): string {
  * @purpose Format the compact single-phase context — objective, gates with a satisfy-hint, exit,
  * a phase-scoped read-manifest, and prior phases' verbatim Handoff lines.
  * @invariant `READ specs` uses the phase's own `Spec Refs` when declared, else the whole Meta Spec References.
- * @invariant The Handoff block appears only when an earlier, `[x]`-checked phase has a captured Handoff line — never for the first phase.
+ * @invariant Shown only for earlier `[x]`-checked phases; one with no captured Handoff says so,
+ *   never a silent omission.
  * @param meta Parsed Meta planning fields.
  * @param phases Phases Overview rows.
  * @param detailsById Parsed phase bodies keyed by phase id.
@@ -241,11 +242,14 @@ export function formatPhase(
   const priorHandoffs = phases
     .slice(0, idx)
     .filter((prev) => prev.status.includes('[x]'))
-    .map((prev) => ({ id: prev.id, line: handoffs[prev.id] }))
-    .filter((h): h is { id: string; line: string } => typeof h.line === 'string');
+    .map((prev) => ({ id: prev.id, line: handoffs[prev.id] ?? null }));
   if (priorHandoffs.length > 0) {
     lines.push('', '[HANDOFF]');
-    for (const h of priorHandoffs) lines.push(`Handoff ←${h.id}: ${h.line}`);
+    for (const h of priorHandoffs) {
+      lines.push(
+        `Handoff ←${h.id}: ${h.line ?? '(отсутствует — фаза ещё не закрывалась / Handoff не записан)'}`
+      );
+    }
   }
 
   if (auditRounds) {
