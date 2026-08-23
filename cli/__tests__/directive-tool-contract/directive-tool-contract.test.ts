@@ -13,9 +13,10 @@ import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { readFileSync, rmSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { join, resolve, basename } from 'node:path';
 import { extractDocumentedCalls, type DocumentedCall } from './parse-tool-calls.ts';
 import { buildFixture, type Fixture } from './fixture.ts';
+import { resolveAssemblyMode } from '../../../ai/kit/lazy-assembly.ts';
 
 const REPO_ROOT = resolve(import.meta.dirname, '..', '..', '..');
 const GENNADY_ENTRY = join(REPO_ROOT, 'cli', 'gennady.ts');
@@ -34,12 +35,44 @@ const DIRECTIVE_PATHS = {
 
 type DirectiveKey = keyof typeof DIRECTIVE_PATHS;
 
-const directiveText = new Map<DirectiveKey, string>();
+/**
+ * @purpose Every documented call reachable from one directive, spanning its lazy skeleton + step
+ *   packages when the directive resolves `lazy` (ai/kit/lazy-assembly.ts) — the worked CLI
+ *   examples this test extracts can live inside a package's own body instead of the skeleton.
+ *   Extraction runs on EACH fragment separately and the per-fragment results are merged (dedup by
+ *   verbatim raw span, first fragment wins), rather than on one joined string: a fenced code block
+ *   (```…```) can leave a backtick unpaired within its own file (harmless there, `extractDocumentedCalls`
+ *   simply never matches it), but naively joining raw text lets that unpaired backtick re-pair
+ *   with the next file's own backticks, swallowing real content into one bogus cross-file span —
+ *   confirmed against this exact directive: joined-text extraction silently dropped 13 of 42
+ *   documented calls that per-fragment extraction preserves.
+ */
+function extractDocumentedCallsAcrossAssembly(path: string): DocumentedCall[] {
+  const skeletonText = readFileSync(path, 'utf-8');
+  const manifestKey = `sdd-v2/${basename(path)}`;
+  const fragments = [skeletonText];
+  if (resolveAssemblyMode(manifestKey) === 'lazy') {
+    const packagePaths = [...skeletonText.matchAll(/Full step text: `([^`]+)`/g)].map((m) => m[1]!);
+    for (const packagePath of packagePaths) {
+      fragments.push(readFileSync(join(REPO_ROOT, packagePath), 'utf-8'));
+    }
+  }
+
+  const seen = new Set<string>();
+  const merged: DocumentedCall[] = [];
+  for (const fragment of fragments) {
+    for (const call of extractDocumentedCalls(fragment)) {
+      if (seen.has(call.raw)) continue;
+      seen.add(call.raw);
+      merged.push(call);
+    }
+  }
+  return merged;
+}
+
 const directiveCalls = new Map<DirectiveKey, DocumentedCall[]>();
 for (const [key, path] of Object.entries(DIRECTIVE_PATHS) as [DirectiveKey, string][]) {
-  const text = readFileSync(path, 'utf-8');
-  directiveText.set(key, text);
-  directiveCalls.set(key, extractDocumentedCalls(text));
+  directiveCalls.set(key, extractDocumentedCallsAcrossAssembly(path));
 }
 
 /**

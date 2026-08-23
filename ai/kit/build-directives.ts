@@ -8,7 +8,17 @@
  *   --out=<dir>          write rendered files under <dir> instead of ai/directives
  *   --assembly=<mode>    'monolith' or 'lazy' — applies only to a directive with no per-directive
  *                        override in ai/kit/assembly-manifest.json; priority is manifest override >
- *                        this flag > manifest defaultMode > built-in 'monolith' (DA-REQ-1)
+ *                        this flag > manifest defaultMode > built-in 'monolith' (DA-REQ-1). A
+ *                        directive with zero <Step> blocks is never ELIGIBLE for lazy through this
+ *                        flag or the manifest defaultMode alone — LazyDirectiveAssembler.assemble
+ *                        requires at least one Step (DA-REQ-3), and a blanket flag meant to run
+ *                        safely over the WHOLE template set must not throw on every Step-less
+ *                        directive it happens to sweep in; such a directive silently stays
+ *                        monolith and is named in a skip summary at the end of the run instead. An
+ *                        EXPLICIT per-directive manifest override of 'lazy' on a Step-less
+ *                        directive is a different signal — a deliberate choice about that one
+ *                        directive, not a blanket default — and is left to fail the build loudly,
+ *                        naming the directive, exactly as DA-REQ-3 requires.
  *
  * Two passes (delta-assembly — see ai/kit/delta-assembly.ts for the algorithm):
  *   1. Render every template as-is, in memory. This is also the source the READ_AND_USE_DIRECTIVE
@@ -88,6 +98,7 @@ const plan = buildDeltaPlan(planNodes, SKILLS_ROOT);
 // (formats/*, agent-inbox/*) is not part of the delta graph and keeps its pass-1 render.
 const rendered: RenderedDirective[] = [];
 const buildFailures: string[] = [];
+const skippedLazyNoSteps: string[] = [];
 for (const e of pass1) {
   const id = 'ai/directives/' + e.rel;
   const isDirective = e.rel.endsWith('.directive.xml');
@@ -95,8 +106,21 @@ for (const e of pass1) {
   const out = excluded.length === 0 ? e.renderedFull : render(applyDelta(e.hbsSource, excluded).source);
   rendered.push({ file: e.rel, text: out });
 
-  const mode: AssemblyMode = isDirective ? resolveAssemblyMode(e.rel, assemblyFlag) : 'monolith';
+  const resolvedMode: AssemblyMode = isDirective ? resolveAssemblyMode(e.rel, assemblyFlag) : 'monolith';
   const deltaSuffix = excluded.length ? ` (delta: -${excluded.length})` : '';
+
+  // #region START_GATE_LAZY_BY_STEP_ELIGIBILITY — invariant (DA-REQ-3, DA-lazy-asm-D-8): a flag-
+  // or defaultMode-driven 'lazy' (never an explicit per-directive override) downgrades to
+  // 'monolith' for a Step-less directive instead of reaching assemble's own zero-Step throw.
+  let mode: AssemblyMode = resolvedMode;
+  if (mode === 'lazy' && isDirective) {
+    const isExplicitOverride = resolveAssemblyMode(e.rel, 'monolith') === 'lazy';
+    if (!isExplicitOverride && !/<Step[\s>]/.test(out)) {
+      mode = 'monolith';
+      skippedLazyNoSteps.push(e.rel);
+    }
+  }
+  // #endregion END_GATE_LAZY_BY_STEP_ELIGIBILITY
 
   if (mode === 'lazy') {
     writeLazyDirective(e.rel, out, deltaSuffix, buildFailures);
@@ -111,6 +135,12 @@ for (const e of pass1) {
   console.log(`${checkOnly ? '·' : '✓'} ${e.rel}${deltaSuffix}`);
 }
 console.log(`\n${checkOnly ? 'Checked' : 'Generated'} ${rendered.length} directive(s).`);
+
+if (skippedLazyNoSteps.length > 0) {
+  console.log(
+    `${skippedLazyNoSteps.length} directive(s) skipped --assembly=lazy (zero <Step> blocks, stayed monolith): ${skippedLazyNoSteps.join(', ')}`
+  );
+}
 
 const report = formatDanglingReport(lintDanglingAxioms(rendered));
 if (report) console.warn(`\n${report}`);
@@ -168,18 +198,25 @@ function writeLazyDirective(rel: string, deltaReducedText: string, deltaSuffix: 
   );
   if (checkOnly) return;
 
-  const dest = join(outRoot, rel);
-  mkdirSync(dirname(dest), { recursive: true });
-  writeFileSync(dest, skeleton.text);
-
-  // #region START_VERIFY_PACKAGE_PATHS_ON_DISK — invariant: every path the skeleton just printed must resolve on disk before this build reports success (DA-REQ-12)
+  // #region START_WRITE_PACKAGES_BEFORE_SKELETON — invariant (DA-REQ-12, DA-lazy-asm-D-9): the
+  // skeleton promises every package path it prints, so every package is written and confirmed
+  // FIRST — an interruption can then only ever leave the skeleton un-written, never dangling.
+  const packageFailures: string[] = [];
   for (const pkg of packages) {
     const packageDest = join(outRoot, pkg.relativePath.slice(ASSEMBLY_XML_ROOT_PREFIX.length));
     mkdirSync(dirname(packageDest), { recursive: true });
     writeFileSync(packageDest, pkg.text);
     if (!existsSync(packageDest)) {
-      failures.push(`${rel} (step ${pkg.stepId}): package file missing after write — ${packageDest}`);
+      packageFailures.push(`${rel} (step ${pkg.stepId}): package file missing after write — ${packageDest}`);
     }
   }
-  // #endregion END_VERIFY_PACKAGE_PATHS_ON_DISK
+  if (packageFailures.length > 0) {
+    failures.push(...packageFailures);
+    return; // never write a skeleton unless every path it would print was already confirmed present
+  }
+
+  const dest = join(outRoot, rel);
+  mkdirSync(dirname(dest), { recursive: true });
+  writeFileSync(dest, skeleton.text);
+  // #endregion END_WRITE_PACKAGES_BEFORE_SKELETON
 }

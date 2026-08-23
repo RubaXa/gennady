@@ -26,8 +26,10 @@ import { countTokens } from '../../shared/common/tokens.ts';
 
 /** @purpose Hard token ceiling for one assembled lazy skeleton (DA-REQ-6). */
 export const SKELETON_TOKEN_LIMIT = 8000;
-/** @purpose Hard character ceiling for one generated step package (DA-REQ-6). */
-export const PACKAGE_CHAR_LIMIT = 8000;
+// 20 000 comes from the Read delivery channel, not from Bash: opencode's read caps at 50 000
+// characters, so this keeps a 2.5x margin while fitting the worst measured package (15 568).
+/** @purpose Hard character ceiling for one generated step package (DA-REQ-6, DA-DL-16). */
+export const PACKAGE_CHAR_LIMIT = 20_000;
 /** @purpose Hard character ceiling for one line inside a step package (DA-REQ-6). */
 export const PACKAGE_LINE_CHAR_LIMIT = 2000;
 

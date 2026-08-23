@@ -1,3 +1,6 @@
+0.8.4
+<!-- Step packages regenerate via: npm run build:directives -- --assembly=lazy. A missing file at a path below means the build or sync is stale — rebuild rather than guess. -->
+
 <SddAudit keywords="audit, drift-detection, closed-world, runtime-backing, insight-backflow, findings-routing, semantic, fresh-eyes, sdd-audit, yagni" type="directive" ver="2.4">
   <Mission>
     Verify that the code a GROUP of tickets — every ticket of one spec — produced matches that spec,
@@ -112,43 +115,11 @@
         валидация») with subject+strong verb; drops the calque («утилизация» for «использование»).
     </Axiom>
 
-    <Axiom id="AX_READ_PER_MANIFEST">
-      When a tool hands a read-manifest for the current step — the exact rule anchors, spec anchors,
-      ticket sections, and Target Files to read — read EXACTLY that, nothing beyond it. The manifest's
-      "do not read" list and line budget are binding.
+    
 
-      - Pull single blocks by anchor (`sdd-extract <file> <ANCHOR>`), not whole files: reading a fat file
-        end-to-end for one section clogs context and degrades a cheaper model on long input.
-      - Need something the manifest does not list? That signals the ticket or manifest is wrong — log a
-        `discovery` line and surface it; never silently widen the read.
-    </Axiom>
+    
 
-    <Axiom id="AX_MECHANICAL_VIA_SDD_CHECK">
-      Deterministic mechanical checks are NOT hand-coded in this directive — they live in one tool, `sdd-check`, which the whole-tree reporter and this directive both consume. Single source of mechanical truth → no drift between the SDD reviewers. Take its findings as given; do NOT hand-redo them.
-
-      - `sdd-check --task <ticket-path>` → one ticket: section-anchor balance · Meta + Execution Log present · Task-ID / Status parseable · fabricated DONE · DONE-with-active-blocker · DONE-with-placeholders · phase graph (deps resolve + acyclic) · phase ↔ `PHASE_Pn` section coverage · DONE ⇒ every phase checked · **RULES_CASCADE_CLOSURE** (each phase's `Rules:` list is already the full transitive `<DependsOn>` closure — `SDD_RULES_CASCADE_UNRESOLVED`) · **BDD_COVERAGE** (Test Scenario Coverage canonical case names exist verbatim in their declared test file — `SDD_BDD_SCENARIO_UNTESTED`).
-      - `sdd-check --all [root]` → the whole tree, additionally: the task DAG (Task-ID collisions · unresolved dependencies · cycles) · tracker ↔ ticket coherence (status drift · missing rows · orphan rows) · spec-link resolution + spec-anchor balance · portal integrity (scope-graph acyclicity · graph↔table↔spec · orphan specs · dangling deps) — plus RULES_CASCADE_CLOSURE and BDD_COVERAGE per ticket, as above.
-      - `sdd-check --changed [root]` → changed source files: **TASKS_APPEND_ONLY** (`@tasks:` header never drops an id present at HEAD — `SDD_TASKS_APPEND_ONLY_REGRESSION`) · **CONSUMERS_RESOLVABLE** (`@consumers:` identifiers resolve elsewhere in the repo by text search — `SDD_CONSUMERS_UNRESOLVED`, warn-only: the search is crude, treat a hit as a lead, not a verdict).
-
-      `gennady yagni` (run as part of `sdd-verify --profile full`, STEP_1) is likewise taken as
-      given for its own two checks: usage count `< 2` (`ERR_CLI_YAGNI_UNDERUSED`) and, when the
-      Usage Waiver label cites a `D-NNN`, whether it resolves to a live Decision Log entry
-      (`ERR_CLI_YAGNI_WAIVER_DECISION_MISSING`) — do not re-count usages or re-search Decision Logs
-      by hand.
-
-      Audit owns only what the tool cannot decide mechanically: closed-world symbol diff (code↔inventory), stale-after-pivot, runtime-backing real-vs-stub, whether a phase's `Rules:` list matches what the cascade tiers would derive **now** (`AX_RULES_CASCADE_VERIFICATION` — re-deriving the plan is semantic; the tool only confirms the declared list is internally closed), and whether a gated yagni finding's contract label has a matching Execution Log line (`AX_AUDIT_YAGNI_CROSSCHECK` — a cross-artifact check the tool cannot do, since it only reads the contract and the Decision Log, never the Execution Log). File-header presence (`@file`/`@consumers`/`@tasks`) is checked by `sdd-verify`, not here.
-    </Axiom>
-
-    <Axiom id="AX_AUDIT_READS_CODE">
-      Audit is the only SDD directive allowed to read code. Reading scope is bounded:
-      - all files listed in per-phase `Target Files` under ticket Phases;
-      - artifacts list passed by orchestrator (union of phase Handoffs);
-      - related ports/adapters/services in `Spec References`;
-      - files flagged in Execution Log `intro <X> ← <Y>` lines;
-      - **all files modified during ticket execution** (see `AX_GIT_DIFF_SCAN`).
-
-      Reading unrelated parts of the project is forbidden — derails focus, consumes context.
-    </Axiom>
+    
 
     <Axiom id="AX_GIT_DIFF_SCAN">
       Read scope must widen beyond declared `Target Files` — a phase agent could create a helper in `src/utils/`, modify shared types, add a migration without mentioning it, and Target Files alone would miss it. The tool computes this widened scope; hand-run git archaeology is never the way to build it. `sdd-task --group-scope <id>` prints the owning spec, the group's ticket list, the union of every group ticket's `Target Files`, the git diff over that union when repo refs are available, and the union of Handoff artifacts — take this as the in-scope set, verbatim.
@@ -158,26 +129,9 @@
       Files the tool's diff surfaces but that are absent from ticket declaration + Execution Log → candidates for `CLOSED_WORLD_DRIFT` (public entities) or `EXECUTION_LOG_INCOMPLETE` (utility-only changes).
     </Axiom>
 
-    <Axiom id="AX_CLOSED_WORLD_PRIMARY_CHECK">
-      Closed-world drift is the priority check — the main pain audit prevents. The entity world is closed by exactly two sources: the module spec Entity Inventory, and the `intro <X> ← <Y>` lines phase agents logged in the Execution Log. Drift = (public entities in code) ∖ (inventory ∪ logged-introductions); every element of that set is a `CLOSED_WORLD_DRIFT` finding (`BLOCKER`).
-    </Axiom>
+    
 
-    <Axiom id="AX_RULES_CASCADE_VERIFICATION">
-      For each phase block in Phases: that phase's `Rules:` list must equal what scaffolder would derive now from cascade × THAT PHASE's `Target Files` + `kind` — this re-derivation is irreducibly semantic (it needs the current cascade tiers, not just the declared list), so it stays audit's job.
-
-      Cascade tiers (sources of truth):
-
-      | Tier | Source |
-      |---|---|
-      | traversed-scopes | Cascade Table in `specs/<scope>/<scope>.3-tasks.md` traversed-scope rows |
-      | target-scope | `specs/<scope>/<scope>.3-tasks.md` target-scope row + scope spec Architecture/Rules |
-      | module | `specs/<scope>/<scope>.3-tasks.md` module row + module spec Module Rules Additions |
-      | task | additions appearing as extra entries in a phase's `Rules:` bullet list |
-
-      The transitive `<DependsOn>` closure of the *declared* list is `sdd-check`'s RULES_CASCADE_CLOSURE (`SDD_RULES_CASCADE_UNRESOLVED`, per `AX_MECHANICAL_VIA_SDD_CHECK`) — take that finding as given, do NOT open rule files and walk `<DependsOn>` by hand.
-
-      Plan rows ≠ derived from the cascade tiers → `RULES_CASCADE_MISMATCH` (`MAJOR`, HIGH).
-    </Axiom>
+    
 
     <Axiom id="AX_AUDIT_YAGNI_CROSSCHECK">
       Every symbol `gennady yagni` reports as gated (a Usage Waiver present, per
@@ -191,90 +145,17 @@
       stale/copy-pasted label never actually decided during this round.
     </Axiom>
 
-    <Axiom id="AX_RUNTIME_BACKING_VERIFICATION">
-      Runtime Backing and Verification Levels must match reality.
-      - Ticket declared `real-runtime` → look for real runtime hooks (event listeners, lifecycle subscribers, OS bridge calls). Only manual publish / test seams → `RUNTIME_BACKING_VIOLATION`.
-      - `simulation` allowed only with explicit `Deferred Runtime Scope` either in ticket or in updated spec.
-      - `not-implemented` implies real implementation is still ahead (separate task); confirm only contract artifacts exist; no production logic snuck in.
-      - For each declared `Verification Level`, corresponding test artifact must exist. Mismatch → `RUNTIME_BACKING_VIOLATION`.
-    </Axiom>
+    
 
-    <Axiom id="AX_INSIGHT_BACKFLOW_CAPTURE">
-      Insights flow back into the spec. If Execution Log or code analysis shows:
-      - real complexity of contract turned out higher or lower than spec;
-      - new edge cases discovered, not in Requirements & Constraints;
-      - spec assumptions turned out incorrect;
-      - new dependency emerged, not in Inter-Module Dependencies,
+    
 
-      → `INSIGHT_BACKFLOW` finding with proposed spec-update diff.
-    </Axiom>
+    
 
-    <Axiom id="AX_LANGUAGE_QUALITY_CHECK">
-      Operator-facing text of the audited artifacts (spec Vision / Requirements / Decision Log
-      bodies, ticket Purpose / Description, README text) must read as a technical document in flat
-      engineering Russian — clear to any engineer on the project, junior developer to architect to
-      security engineer. Two layers:
-      - **Deterministic pre-filter:** `sdd-check` already flags transliterated anglicisms
-        (`SDD_LANGUAGE_CALQUE`, warn) — treat every such warning as a finding to route, do not
-        re-judge the word list by hand.
-      - **Semantic judgment (this audit)** — style AND comprehension, two different failure modes:
-        - *Style:* literary or ornate register, English idioms translated word-for-word, sentences a
-          busy colleague would stumble on.
-        - *Comprehension* (deeper than style — a sentence can be flawless Russian and still be a
-          cipher): an **empty label** — an adjective+noun term with no stated opposite («тонкая
-          строка» — thin relative to what? is there a «толстая»?) — is unexplained jargon, not a
-          description; a **metaphor stated as fact** («у разговора есть дом») instead of the literal
-          mechanism («тред хранится как обычная строка ChatEntity») is rare but dangerous, since it
-          passes every other filter; a **term whose meaning lives only in code** must be decoded from
-          that code and restated in the sentence, never guessed and never left opaque.
-        Test both: read it aloud as a mid-level developer (style); then strip the term from your head
-        and ask whether you could still act on the sentence (comprehension) — either failure routes.
+    
 
-      → `LANGUAGE_QUALITY` finding with the concrete sentence and a plain-Russian rewrite proposal.
-      Canonical tokens (code, IDs, status tokens, BDD keywords, paths) stay English per
-      `AX_OPERATOR_LANGUAGE` and are never flagged.
-    </Axiom>
+    
 
-    <Axiom id="AX_DRIFT_TAXONOMY">
-      Findings are classified by type. Every finding has exactly one:
-
-      | Type | Meaning |
-      |---|---|
-      | `CLOSED_WORLD_DRIFT` | entity present in code but absent from module spec Entity Inventory AND no `intro` log line |
-      | `COMPLETENESS_GAP` | entity / contract / scenario promised in spec but not implemented |
-      | `RUNTIME_BACKING_VIOLATION` | declared `real-runtime` actually backed by simulation seam without deferred marker; OR declared `Verification Level` not achievable in test setup |
-      | `RULES_COMPLIANCE_VIOLATION` | code violates rules listed in a phase's `Rules:` (any category); OR diff has artefact whose category is unhandled by any active phase |
-      | `RULES_CASCADE_MISMATCH` | a phase's `Rules:` list ≠ what scaffolder would derive now from cascade × that phase's `Target Files` + kind |
-      | `TASK_ID_DRIFT` | `@tasks` field references non-existent ticket ID (orphan); OR Task-ID duplicated across ticket files (collision); OR `@tasks` field lost prior IDs (regression of append-only) |
-      | `BDD_COVERAGE_MISMATCH` | canonical case names in ticket Test Scenario Coverage ≠ real test cases |
-      | `EXECUTION_LOG_INCOMPLETE` | mandatory closing lines missing (`ver` / `DONE` per phase, `DONE` at Round close); OR `intro` line absent for an entity that appears in code but not in module Inventory; OR a previous round was edited (round log is append-only); OR `[x]` line with unreplaced `<…>` placeholder (fabricated done) |
-      | `INSIGHT_BACKFLOW` | Phase agent discovered something that changes contract / requirement understanding; should flow back into spec |
-      | `STALE_AFTER_PIVOT` | scope spec was reworked in `pivot` mode (Pivot Invalidation List exists) but downstream artifacts named in the list have not been refined / reopened / updated |
-      | `RULE_FILE_INCOMPLETE` | activated rule file lacks one of the universal checkable sections (`<BeliefState>` / `<AntiPatterns>` / `<VerificationHooks>` / `<RewardCriteria>`) per `AX_RULES_COMPLIANCE_AGAINST_ACTIVATED_RULES`; audit can partially proceed but the gap blocks full coverage |
-      | `LANGUAGE_QUALITY` | operator-facing text fails `AX_LANGUAGE_QUALITY_CHECK` — calques (from the `SDD_LANGUAGE_CALQUE` pre-filter) or literary/ornate style the deterministic lint cannot catch |
-      | `YAGNI_WAIVER_INCOMPLETE` | a contract `Usage Waiver` label exists for a symbol, but the round's Execution Log has no matching `yagni <name> ← <reason>` line (`AX_AUDIT_YAGNI_CROSSCHECK`) |
-      | `ENVIRONMENT_GATE_UNAVAILABLE` | a required gate command (`sdd-verify`, `gennady lint`, `gennady testcov`, or a ticket §5 command) could not execute at all — missing runner, missing script, no network, crashed before producing a pass/fail — as opposed to executing and reporting a red result |
-    </Axiom>
-
-    <Axiom id="AX_SEVERITY_TAGGING">
-      Every finding carries a severity:
-
-      | Severity | Meaning |
-      |---|---|
-      | `BLOCKER` | task cannot be considered complete; merge forbidden |
-      | `MAJOR` | protocol violation; requires fix; allows merge only with explicit operator acceptance + Decision Log entry |
-      | `MINOR` | stylistic or secondary discrepancy |
-      | `INFO` | observation without mandatory action (often `INSIGHT_BACKFLOW`) |
-
-      Severity does not depend on agent's mood. Closed-world drift = `BLOCKER` by default; coding-rules violation = `MAJOR`; stylistic deviation = `MINOR`.
-    </Axiom>
-
-    <Axiom id="AX_FINDINGS_AS_PROPOSALS">
-      Every finding contains a proposed remediation. Agent does not modify code. Three remediation types:
-      - `code-fix` — concrete change in code (with location).
-      - `spec-update` — concrete spec update (module or scope) with proposed diff.
-      - `ticket-update` — ticket update (canonical case names, deferred scope, etc.).
-    </Axiom>
+    
 
     <Axiom id="AX_FINDING_ROUTING">
       Every finding is routed to the artifact that owns the remediation:
@@ -299,37 +180,15 @@
       The audit agent proposes a concrete edit (diff or instruction). The operator decides and applies. The audit agent does not modify code autonomously (per `AX_NO_AUTO_FIX`).
     </Axiom>
 
-    <Axiom id="AX_NEUTRAL_FINDINGS">
-      Findings are objective, free of value judgments. No «bad», «should be better», «ugly». Use «X is missing from Y», «Z contradicts W», «case name `foo` in ticket does not match `bar` in test». Criticism appeals to an axiom or rule: «violates `AX_CLOSED_WORLD_INVENTORY` of module spec».
-    </Axiom>
+    
 
-    <Axiom id="AX_NO_AUTO_FIX">
-      Audit does not modify code or specs autonomously. Any remediation is a proposal per `AX_FINDING_ROUTING`. If operator approves inline changes during the session, audit agent may apply them to spec/ticket files (not code). Creating commits or editing code files independently is forbidden.
-    </Axiom>
+    
 
-    <Axiom id="AX_EPHEMERAL_OUTPUT">
-      The audit summary itself does not create files in `audits/`. Output is an ephemeral session-summary emitted in chat per `AUDIT_SESSION_SUMMARY_FORMAT`: counts by severity + findings table + proposed changes per `AX_FINDING_ROUTING`.
+    
 
-      Reopen-history of a ticket is persisted *inside the ticket file* — see `AX_REOPEN_ROUNDS_IN_TICKET`. Long-term audit history = git history of the affected spec and ticket files.
+    
 
-      Epic-level audit: cross-task findings (e.g., two modules with conflicting contracts) → Decision Log entry in the relevant scope spec.
-    </Axiom>
-
-    <Axiom id="AX_REOPEN_ROUNDS_IN_TICKET">
-      When an audit round triggers a ticket reopen, the round's audit summary is appended to the ticket file under a new `## Audit Rounds` section so the reopen history lives next to the Execution Log rounds it caused. Format per `TICKET_AUDIT_ROUND_FORMAT`. Append-only: prior audit rounds in the ticket are immutable.
-
-      Rationale: full ephemeral output loses reopen-causation between rounds; `audits/<task-id>.audit.md` separate-tree was overkill. Co-locating the audit round with the Execution Log it caused keeps history reviewable in one file.
-
-      Per-task audits that PASS without triggering a reopen do not write to the ticket — they remain ephemeral.
-
-      Epic-level audits never touch ticket files; their consolidated output is ephemeral OR routed to a scope-spec Decision Log entry.
-    </Axiom>
-
-    <Axiom id="AX_AUDIT_MODES">
-      Per-group vs per-task.
-      - **Per-group** (default, auto-dispatch): `sdd-execute` dispatches this mode automatically once `sdd-task --audit-group` reports the group `due` — every ticket of one spec, reviewed together. Input is the group: the spec path + its full ticket list (Task-IDs). Checks cross-ticket consistency too — Decision Log entries, absence of conflicting contracts between tickets of the same group — on top of each ticket's own drift.
-      - **Per-task** (operator-manual): operator explicitly names a single Task-ID («audit TSK-NN»). Audit bounded to that one ticket's scope — no cross-ticket check. `sdd-execute` never auto-dispatches this mode; it exists for a targeted operator re-check outside the normal group cadence.
-    </Axiom>
+    
   </BeliefState>
 
   <HaltConditions>
@@ -340,212 +199,14 @@
   </HaltConditions>
 
   <ExecutionPlan>
-    <Step id="STEP_1_MECHANICAL">
-      <Goal>Get the mechanical findings from the tool. Take them as given.</Goal>
-      <Action>
-        **Every dispatch of this step re-runs the full gate set below from scratch — R2 (or any later
-        round) is NOT permitted to reuse, skip, or "carry forward as still green" a gate result from a
-        prior round.** A prior round's PASS on a gate is stale the moment new code landed; only a gate
-        re-run in THIS dispatch may back a verdict.
-        FIRST resolve the working scope: `sdd-task --group-scope <id>` (`AX_GIT_DIFF_SCAN`) — spec, the
-        group's ticket list, the `Target Files` union, the diff over that union (or the no-git-refs
-        fallback line), and the Handoff artifacts. This IS the scope for every check below; it is never
-        re-derived by hand.
-
-        **Verification level → gate mapping** (fixed, never inferred from the dispatch prompt's wording):
-
-        | Level | Checked by |
-        |---|---|
-        | Structural / mechanical (anchors, Meta, Execution Log completeness, fabricated-DONE, phase DAG, tracker coherence, RULES_CASCADE_CLOSURE, BDD_COVERAGE, TASKS_APPEND_ONLY, CONSUMERS_RESOLVABLE) | `sdd-check --task <ticket>` (+ `--all`, `--changed`) |
-        | Code (types, format, contract lint, yagni usage) | `sdd-verify --profile full` |
-        | Closed-world inventory sync + cast safety over changed files | `gennady lint --spec=<module-spec> <changed files>` |
-        | Test coverage floor | `gennady testcov --run --min=80` (or the ticket's own §5 threshold) |
-        | Contract semantics, runtime-backing, drift — irreducibly semantic, no command runs this | STEP_2_SEMANTIC, this audit's own judgment |
-
-        A gate's verdict is computed from ITS OWN exit code and the ticket/dependency graph alone —
-        never from anything the dispatching orchestrator's prompt happened to say. Two shapes of
-        "gate didn't produce a verdict" exist and they route to OPPOSITE defaults — keep them apart
-        rather than folding one into the other:
-
-        **(a) The gate SCRIPT itself is missing** (`package.json` has no such script at all). This is
-        legitimately `ENVIRONMENT_GATE_UNAVAILABLE` for exactly one reason: the ticket graph itself
-        shows a DIFFERENT, still-open ticket in the queue owns creating that script (its Bootstrap
-        Requirements or Target Files name it) — check the graph for that fact, never infer it from a
-        stray adjective like «штатно» ("business as usual") in the dispatch prompt, which carries ZERO
-        verdict weight. Absent that graph fact, a missing script is `FAIL`, exactly as the rule below
-        already states, regardless of how routine the dispatch prompt made the run sound. This "exactly
-        one reason" carve-out is scoped to case (a) only — it does not extend to case (b) below.
-
-        **(b) The script EXISTS but the environment refuses to run it to completion** — no test
-        runner installed, no network reachable, the process crashes before emitting a pass/fail. This
-        is `ENVIRONMENT_GATE_UNAVAILABLE` UNCONDITIONALLY, with no graph check: "no network" cannot,
-        even in principle, satisfy a ticket-ownership condition, so gating it on one would leave every
-        real network outage misclassified as `FAIL`. Route per `AX_FINDING_ROUTING` — operator
-        escalation, never a phase fix and never something audit or the worker repairs itself.
-
-        Then run `sdd-check --task <ticket-path>` for EACH ticket in the group (a
-        single call for per-task mode) plus one `sdd-check --all` for the whole tree, per `AX_AUDIT_MODES`,
-        plus `sdd-check --changed` per `AX_MECHANICAL_VIA_SDD_CHECK` — together they report the deterministic
-        findings: structure / anchors / Task-ID + Status, fabricated-DONE, the phase graph,
-        Execution-Log completeness, the task DAG, tracker↔ticket coherence, RULES_CASCADE_CLOSURE,
-        BDD_COVERAGE, TASKS_APPEND_ONLY, and CONSUMERS_RESOLVABLE. Take these as given — the tool owns
-        them. Then INDEPENDENTLY re-run the green gate — `sdd-verify --profile full`,
-        `gennady lint --spec=<module-spec>` (cast + closed-world inventory over the changed files), and
-        `gennady testcov --run --min=80` (coverage gate — project line coverage ≥ 80% at task completion):
-        run these gates SEQUENTIALLY, one at a time, never in parallel — `sdd-verify --profile full` and
-        `gennady testcov --run` both write into `coverage/`, and any two commands sharing an output path
-        race when parallelized: whichever finishes last overwrites or half-writes the other's artifact,
-        producing a false red that has nothing to do with the code. Parallelizing is fine only for
-        commands that write no shared artifact; a gate is disqualified from that the moment its output
-        directory overlaps another gate's. Always re-derive the gate yourself rather than trust the worker's logged `ver` lines; a gate that fails
-        here, a `ver` logged for a command that does not actually pass, or coverage below the gate, is a `BLOCKER`.
-        A gate command that does not execute at all is a DIFFERENT case from a gate that runs and reports
-        red: it is neither PASS nor a failure to diagnose. Split it exactly as above: a missing gate SCRIPT
-        is case (a) — `FAIL` unless the graph names a different open ticket that owns building it — while
-        no runner / no network / a crash before pass-fail is case (b) — `ENVIRONMENT_GATE_UNAVAILABLE`
-        unconditionally. Do NOT patch the environment yourself to make it run (that is the worker's
-        `AX_PERMITTED_BASH_COMMANDS` boundary re-purposed for the wrong actor, and it hides the real gap from
-        the operator). Record case (b) as `ENVIRONMENT_GATE_UNAVAILABLE` and let STEP_3 route it (operator
-        escalation, per `AX_FINDING_ROUTING`). **PASS is never the verdict when any gate is red OR any gate
-        did not execute** — the only outcomes for a task with an unexecuted gate are `FAIL` (case (a) without
-        the graph fact, `phases_to_fix` left empty since no phase can fix an environment problem) or an
-        explicit operator escalation (case (b)); whole-task verdict computation MUST treat "gate did not
-        run" the same as "gate ran and failed" for this purpose.
-        Per-group mode closes the WHOLE spec by definition (`due` only fires once every sibling ticket is
-        DONE, per `AX_AUDIT_HOOK`) — always add the reverse closed-world sweep over the module's code
-        root. In per-task mode, add it only when this ticket is the module's last (every sibling DONE):
-        `gennady lint --spec=<module-spec> --inventory-reverse <module-code-dir>` — every entity declared in the
-        inventory must now be exported by some file (`ERR_CLI_LINT_INVENTORY_UNIMPLEMENTED` = declared-but-unbuilt
-        / renamed-away). Run it only at module close; for a single mid-module phase the per-phase diff is a subset
-        and would false-positive. Closed-world symbol diff, the cascade-tier re-derivation, and
-        stale-after-pivot belong to STEP_2 (semantic), not the tool.
-      </Action>
-    </Step>
-    <Step id="STEP_2_SEMANTIC">
-      <Goal>Add the layer the tool cannot — meaning.</Goal>
-      <Action>
-        Read the artifacts and the diff already resolved by `sdd-task --group-scope` in STEP_1
-        (`AX_READ_PER_MANIFEST` — the bounded artifacts list + relevant spec anchors, not the whole repo;
-        `AX_AUDIT_READS_CODE`, `AX_GIT_DIFF_SCAN`) — do not re-run git yourself.
-        Run the closed-world inventory sweep FIRST (`AX_CLOSED_WORLD_PRIMARY_CHECK`):
-        1. collect declared entities from each ticket's `specs/<scope>/<module>/<module>.spec.md` 2 Entity Inventory;
-        2. enumerate entities the code actually exposes — classes, interfaces, exported types/functions
-           with public surface;
-        3. collect the `intro <X> ← <Y>` lines phase agents logged in the Execution Log;
-        4. flag every code entity outside inventory ∪ logged-introductions as `CLOSED_WORLD_DRIFT`
-           (`BLOCKER`).
-        Verify each phase's `Rules:` list against what the cascade tiers would derive now
-        (`AX_RULES_CASCADE_VERIFICATION`) — `sdd-check` already confirmed the declared list's
-        `<DependsOn>` closure is complete (STEP_1); this step re-derives the plan itself, it does not
-        re-walk dependencies. Then judge
-        what is irreducibly semantic: does the implementation satisfy the contract's postconditions /
-        invariants in substance; is a `real-runtime` claim actually backed or a stub
-        (`AX_RUNTIME_BACKING_VERIFICATION`); cross-check every gated `gennady yagni` finding's
-        contract label against the round's Execution Log for a matching `yagni <name> ← <reason>`
-        line (`AX_AUDIT_YAGNI_CROSSCHECK` — the tool already confirmed the label text and the
-        Decision Log liveness in STEP_1, this step only checks the third leg); capture spec gaps as
-        insights (`AX_INSIGHT_BACKFLOW_CAPTURE`); judge the operator-facing text as a document
-        (`AX_LANGUAGE_QUALITY_CHECK` — flat technical Russian, readable by any engineer level).
-        Classify each per `AX_DRIFT_TAXONOMY`, severity per `AX_SEVERITY_TAGGING`.
-      </Action>
-    </Step>
-    <Step id="STEP_3_ROUTE">
-      <Goal>Route findings; summarize. Route only — leave the fix to its owner.</Goal>
-      <Action>
-        Emit each finding as a neutral proposal (`AX_FINDINGS_AS_PROPOSALS`, `AX_NEUTRAL_FINDINGS`,
-        `FINDING_FORMAT`) routed to its home (`AX_FINDING_ROUTING`: phase-fix / ticket-update / spec-edit
-        / decision-log); route only, MUST leave the fix to its owner (`AX_NO_AUTO_FIX`). Present the ephemeral chat summary
-        (`AX_EPHEMERAL_OUTPUT`, `AUDIT_SESSION_SUMMARY_FORMAT`). If a finding triggers a reopen, append an
-        Audit Rounds section to whichever ticket in the group owns that finding (`AX_REOPEN_ROUNDS_IN_TICKET`
-        — a group audit may reopen more than one ticket, each gets its own section) —
-        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/audit-round.xml")` for the format.
-
-        **`PASS_WITH_ACKNOWLEDGED_RISKS` (`status=PASS_RISK`) is never this subagent's own
-        judgment call — it is a fact-check against a PRIOR operator acceptance, never a live request
-        for one** (this isolated subagent has no channel to ask the operator anything). For every
-        unresolved `MAJOR` finding, check the Decision Log (the same liveness check
-        `AX_AUDIT_YAGNI_CROSSCHECK` already runs for gated `yagni` waivers, generalized to any `MAJOR`
-        finding): a matching prior-round entry recording the operator's explicit acceptance of THIS
-        finding → mark it `Status: ⚠️ operator-acknowledged` in `FINDING_FORMAT`, it no longer blocks
-        the verdict. No matching entry → it stays `Status: 📂 open` and blocks the verdict exactly like
-        any other unresolved `MAJOR`. Compute and return:
-        - `PASS` — zero unresolved `BLOCKER` findings AND zero `📂 open` `MAJOR` findings (regardless
-          of `⚠️ operator-acknowledged` ones).
-        - `status=PASS_RISK` (`PASS_WITH_ACKNOWLEDGED_RISKS`) — same as `PASS` above, but at least one
-          `⚠️ operator-acknowledged` `MAJOR` finding backed the pass (only reachable this way — never
-          on a first-look finding with no Decision Log entry yet).
-        - `FAIL` + `phases_to_fix` — one or more unresolved `BLOCKER` findings (`phases_to_fix` lists
-          the owning phases, non-empty — a phase may belong to ANY ticket in the group, not only the one
-          whose closure triggered this dispatch), OR one or more `📂 open` `MAJOR` findings with no matching
-          Decision Log acceptance yet (`phases_to_fix` left empty when the fix is administrative,
-          per Path B, `STEP_7_RESOLVE`) — the orchestrator is the one with a channel to ask the
-          operator; once accepted and logged, R2 re-runs this step and finds the Decision Log entry.
-        Return this verdict to the orchestrator.
-      </Action>
-    </Step>
+    - **STEP_1_MECHANICAL** — Get the mechanical findings from the tool. Take them as given. Full step text: `ai/directives/sdd-v2/audit/steps/STEP_1_MECHANICAL.xml` (Read tool — no CLI command, no version argument).
+    - **STEP_2_SEMANTIC** — Add the layer the tool cannot — meaning. Full step text: `ai/directives/sdd-v2/audit/steps/STEP_2_SEMANTIC.xml` (Read tool — no CLI command, no version argument).
+    - **STEP_3_ROUTE** — Route findings; summarize. Route only — leave the fix to its owner. Full step text: `ai/directives/sdd-v2/audit/steps/STEP_3_ROUTE.xml` (Read tool — no CLI command, no version argument).
   </ExecutionPlan>
 
   <OutputContracts>
-    <Contract id="FINDING_FORMAT">
-      ```markdown
-      ### <🔴|🟠|🟡|🔵> F-NNN — <short title>
-      - **Type:** CLOSED_WORLD_DRIFT | COMPLETENESS_GAP | RUNTIME_BACKING_VIOLATION | RULES_COMPLIANCE_VIOLATION | RULES_CASCADE_MISMATCH | TASK_ID_DRIFT | BDD_COVERAGE_MISMATCH | EXECUTION_LOG_INCOMPLETE | STALE_AFTER_PIVOT | INSIGHT_BACKFLOW
-      - **Severity:** 🔴 BLOCKER | 🟠 MAJOR | 🟡 MINOR | 🔵 INFO
-      - **Confidence:** HIGH | MEDIUM | LOW
-      - **Status:** 📂 open | ⚠️ operator-acknowledged | ✅ resolved
-      - 📍 **Location:** `<path>:<line>` if applicable
-      - 💬 **Detail:** <factual description, no value words>
-      - 🔗 **Source-of-truth:** link to spec section / ticket section / rule axiom
-      - 📝 **Proposed Remediation:**
-        - Type: `code-fix` | `spec-update` | `ticket-update`
-        - Action: <concrete proposal, with diff if possible>
-        - Routing: <per AX_FINDING_ROUTING — where this change goes>
-      ```
-      F-NNN IDs unique per audit session; do not reuse.
+    
 
-      Usage: this verbose form is for in-session discussion / deep dive only. The canonical machine-readable record at session end is the compact `AUDIT_SESSION_SUMMARY_FORMAT`. Do NOT emit `FINDING_FORMAT` blocks in the final summary.
-    </Contract>
-
-    <Contract id="AUDIT_SESSION_SUMMARY_FORMAT">
-      **Compact AI-to-AI inline format.** Ephemeral output at session end. One header line + one line per finding + optional applied-changes lines. No markdown tables, no decorative text. Designed so the next agent (or operator's tooling) parses it in one pass.
-
-      Grammar (one logical record per line, EOL-terminated; fields separated by ` | `):
-
-      ```
-      @audit task=<Task-ID|spec-path> round=<N|—> mode=<per-task|per-group> status=<PASS|PASS_RISK|FAIL> counts=B<n>·M<n>·m<n>·I<n> phases_to_fix=[<P<N>|Task-ID:P<N>>,...]
-      F-<NN> | sev=<B|M|m|I> | type=<TYPETOKEN> | conf=<H|M|L> | loc=<path:line|—> | phase=<P<N>|—> | src=<spec/ticket/rule anchor|—> | route=<spec-edit|ticket-reopen|ticket-update|decision-log|code-fix> | act=<one-line action, no newlines>
-      F-<NN> | …
-      ~applied | <target> | <one-line description of inline change>   (optional, repeat per applied change)
-      ```
-
-      Token vocabulary:
-      - `sev`: `B`=BLOCKER, `M`=MAJOR, `m`=MINOR, `I`=INFO.
-      - `conf`: `H`=HIGH, `M`=MEDIUM, `L`=LOW.
-      - `type`: one of `CLOSED_WORLD_DRIFT` | `COMPLETENESS_GAP` | `RUNTIME_BACKING_VIOLATION` | `RULES_COMPLIANCE_VIOLATION` | `RULES_CASCADE_MISMATCH` | `TASK_ID_DRIFT` | `BDD_COVERAGE_MISMATCH` | `EXECUTION_LOG_INCOMPLETE` | `STALE_AFTER_PIVOT` | `INSIGHT_BACKFLOW`.
-      - `route`: one of `spec-edit` | `ticket-reopen` | `ticket-update` | `decision-log` | `code-fix` (per `AX_FINDING_ROUTING`).
-      - `act` text: Russian operator-facing per `AX_OPERATOR_LANGUAGE` (this is operator-facing artifact text), single line, no pipe character.
-      - `status` `PASS_RISK` = PASS_WITH_ACKNOWLEDGED_RISKS.
-      - `mode=per-group` (default, auto-dispatch, `AX_AUDIT_MODES`): `task` carries the group's spec path,
-        not a single Task-ID; `phases_to_fix` entries carry the owning Task-ID prefix (`Task-ID:P<N>`) since
-        a finding may name a phase on any ticket in the group. `mode=per-task` (operator-manual): `task`
-        carries the single audited Task-ID; `phases_to_fix` entries are bare `P<N>` (that ticket is implicit).
-
-      Example:
-      ```
-      @audit task=TSK-04 round=3 mode=per-task status=FAIL counts=B1·M2·m0·I1
-      F-01 | sev=B | type=CLOSED_WORLD_DRIFT | conf=H | loc=src/payments/adapter.ts:42 | src=specs/backend/payments/payments.spec.md#2 | route=spec-edit | act=добавить `IdempotencyKey` в Entity Inventory модуля payments
-      F-02 | sev=M | type=RULES_COMPLIANCE_VIOLATION | conf=H | loc=src/payments/adapter.ts:100 | src=ai/directives/coding/typescript-rules.xml#AX_STRICT_NULL | route=ticket-reopen | act=добавить null-guard на response.balanceTransaction
-      F-03 | sev=M | type=BDD_COVERAGE_MISMATCH | conf=H | loc=src/payments/adapter.test.ts:55 | src=specs/backend/payments/payments.task.PAY-adapter.md#4 | route=ticket-update | act=переименовать тест-кейс в `should reject non-positive amount with InvalidAmountError`
-      F-04 | sev=I | type=INSIGHT_BACKFLOW | conf=M | loc=src/payments/adapter.ts:88 | src=specs/backend/payments/payments.spec.md#4 | route=spec-edit | act=зафиксировать retry-budget в DbC postcondition
-      ~applied | specs/backend/payments/payments.spec.md2 | добавлен `IdempotencyKey` в Entity Inventory
-      ```
-
-      Rules:
-      - First line MUST be the `@audit` header. No free-text preamble.
-      - Findings ordered by descending severity, then by `F-NN`.
-      - No empty lines inside the block.
-      - If `loc` or `src` is N/A, emit literal `—` (em-dash) — do not omit the field.
-      - `act` is operator-facing text (Russian per policy); everything else is English tokens.
-    </Contract>
+    
   </OutputContracts>
 </SddAudit>

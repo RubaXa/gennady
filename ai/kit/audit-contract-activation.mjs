@@ -106,19 +106,59 @@
  * Scanned set: every `*.directive.xml` under `ai/directives/sdd-v2/**` (recursive — includes
  * `agent-inbox/`; excludes `formats/*.xml` fragments, which are not top-level directives).
  *
+ * PART 2 reads each scanned file's FULL text, not just the on-disk skeleton. A lazy-assembled
+ * directive (`ai/kit/lazy-assembly.ts`, `ai/kit/build-directives.ts`) writes only a slim skeleton
+ * at its normal path — a `<Contract id="...">` a bare mention needs to resolve against can live
+ * inside one of that skeleton's step packages instead (`ai/directives/sdd-v2/<name>/steps/*.xml`).
+ * `readAssembledFragments` below reads skeleton + every package the skeleton's own step list
+ * names (via `resolveAssemblyMode`, the same manifest-driven check `build-directives.ts` itself
+ * uses) and hands every downstream check the fragments SEPARATELY, never joined into one string:
+ * a fenced code example can leave one backtick unpaired within its own file (harmless there —
+ * the regexes below simply never match it), but concatenating raw text before scanning lets that
+ * unpaired backtick re-pair with the next fragment's own backtick and swallow real content between
+ * them into one bogus cross-fragment span. This is the exact class of gap already fixed for 3
+ * other lazy-directive consumers this same task (`ai/kit/__tests__/delta-assembly.test.ts`,
+ * `ai/kit/__tests__/readiness-preflight-gate.test.ts`,
+ * `cli/__tests__/directive-tool-contract/directive-tool-contract.test.ts`) — this script is a 4th
+ * consumer of the same class, fixed the same way: per-fragment scan, merged results.
+ *
  * Run: node ai/kit/audit-contract-activation.mjs
  * Exit 1 and prints every violation (either part) when any contract/* partial lacks activation
  * or any bare mention resolves to nothing.
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
-import { join, dirname, relative } from 'node:path';
+import { join, dirname, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { resolveAssemblyMode } from './lazy-assembly.ts';
 
 const KIT_DIR = dirname(fileURLToPath(import.meta.url)); // ai/kit
 const REPO_ROOT = join(KIT_DIR, '..', '..');
 const TEMPLATES_DIR = join(KIT_DIR, 'templates', 'sdd-v2');
 const CONTRACT_DIR = join(KIT_DIR, 'contract');
 const DIRECTIVES_DIR = join(REPO_ROOT, 'ai', 'directives', 'sdd-v2');
+const STEP_PACKAGE_LINE_RE = /Full step text: `([^`]+)`/g;
+
+/** `assembly-manifest.json` override key for a file under `DIRECTIVES_DIR` (mirrors `build-directives.ts`'s own `e.rel`). */
+function manifestKeyFor(absPath) {
+  return `sdd-v2/${relative(DIRECTIVES_DIR, absPath).split(sep).join('/')}`;
+}
+
+/**
+ * Every fragment of one assembled directive that actually carries text an agent can eventually
+ * read: the skeleton alone for a monolith build, or the skeleton PLUS every step package it
+ * points at for a lazy build. Fragments are returned as a plain array, deliberately never joined
+ * — see the header comment above for why joining before a regex scan is unsafe.
+ */
+function readAssembledFragments(absPath) {
+  const skeletonText = readFileSync(absPath, 'utf8');
+  const fragments = [skeletonText];
+  if (resolveAssemblyMode(manifestKeyFor(absPath)) === 'lazy') {
+    for (const m of skeletonText.matchAll(STEP_PACKAGE_LINE_RE)) {
+      fragments.push(readFileSync(join(REPO_ROOT, m[1]), 'utf8'));
+    }
+  }
+  return fragments;
+}
 
 // === PART 1 — "included → activated" ========================================================
 
@@ -359,13 +399,20 @@ function nearbyMatch(text, pos, id) {
 }
 
 const lazyIdCache = new Map();
-/** Contract ids defined ANYWHERE in the file at repo-root-relative `relPath` (or `{}` if unreadable). */
+/**
+ * Contract ids defined ANYWHERE in the file at repo-root-relative `relPath` (or `{}` if
+ * unreadable) — spans the target's step packages too when the target itself is lazy-assembled
+ * (e.g. `reconcile.directive.xml`'s `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/audit.directive.xml")`
+ * points at a lazy pilot; a `<Contract id="...">` living only in one of `audit`'s step packages
+ * must still count as reachable through this mechanism).
+ */
 function idsDefinedAt(relPath) {
   if (lazyIdCache.has(relPath)) return lazyIdCache.get(relPath);
   let ids = new Set();
   try {
-    const text = readFileSync(join(REPO_ROOT, relPath), 'utf8');
-    for (const m of text.matchAll(CONTRACT_OPEN_RE)) ids.add(m[1]);
+    for (const fragment of readAssembledFragments(join(REPO_ROOT, relPath))) {
+      for (const m of fragment.matchAll(CONTRACT_OPEN_RE)) ids.add(m[1]);
+    }
   } catch {
     // target missing — this file's own freshness/link checks catch that separately.
   }
@@ -376,33 +423,50 @@ function idsDefinedAt(relPath) {
 const ALL_CONTRACT_IDS = allContractIds();
 
 function auditAssembledFile(file) {
-  const text = readFileSync(file, 'utf8');
+  const fragments = readAssembledFragments(file);
   const rel = relative(REPO_ROOT, file);
   const base = rel.split('/').pop();
 
-  const included = new Set([...text.matchAll(CONTRACT_OPEN_RE)].map((m) => m[1]));
-  const inherited = new Set(
-    [...text.matchAll(INHERITED_LINE_RE)].flatMap((m) => m[1].split(',').map((s) => s.trim()))
-  );
+  // Availability is unioned across every fragment: a Contract defined in one step package is
+  // reachable through this same directive, same as one defined right in the skeleton.
+  const included = new Set();
+  const inherited = new Set();
   const lazy = new Set();
-  for (const m of text.matchAll(READ_AND_USE_RE)) for (const id of idsDefinedAt(m[1])) lazy.add(id);
+  for (const text of fragments) {
+    for (const m of text.matchAll(CONTRACT_OPEN_RE)) included.add(m[1]);
+    for (const m of text.matchAll(INHERITED_LINE_RE)) {
+      for (const id of m[1].split(',').map((s) => s.trim())) inherited.add(id);
+    }
+    for (const m of text.matchAll(READ_AND_USE_RE)) for (const id of idsDefinedAt(m[1])) lazy.add(id);
+  }
   const available = new Set([...included, ...inherited, ...lazy]);
 
-  const blocks = findBlocks(text);
+  // Blocks (for enclosingId) and mention positions are computed and consumed PER FRAGMENT — a
+  // position from one fragment is never checked against another fragment's block spans or text
+  // window (see the header comment: no cross-fragment offsets, ever).
+  const fragmentBlocks = fragments.map((text) => findBlocks(text));
+
   const violations = [];
   for (const id of ALL_CONTRACT_IDS) {
     if (available.has(id)) continue;
     const idRe = new RegExp(`\\b${id}\\b`, 'g');
-    const positions = [...text.matchAll(idRe)].map((m) => m.index);
-    if (positions.length === 0) continue;
-    const unresolved = positions.filter((pos) => {
-      const from = enclosingId(blocks, pos);
-      if (from && ALLOWLIST_PAIRS.has(`${from}->${id}`)) return false;
-      if (ALLOWLIST_FILE_IDS.has(`${base}::${id}`)) return false;
-      if (nearbyMatch(text, pos, id)) return false;
-      return true;
-    });
-    if (unresolved.length > 0) {
+    let mentioned = false;
+    let hasUnresolved = false;
+    for (let i = 0; i < fragments.length && !hasUnresolved; i++) {
+      const text = fragments[i];
+      const positions = [...text.matchAll(idRe)].map((m) => m.index);
+      if (positions.length === 0) continue;
+      mentioned = true;
+      const blocks = fragmentBlocks[i];
+      hasUnresolved = positions.some((pos) => {
+        const from = enclosingId(blocks, pos);
+        if (from && ALLOWLIST_PAIRS.has(`${from}->${id}`)) return false;
+        if (ALLOWLIST_FILE_IDS.has(`${base}::${id}`)) return false;
+        if (nearbyMatch(text, pos, id)) return false;
+        return true;
+      });
+    }
+    if (mentioned && hasUnresolved) {
       violations.push({ file: rel, id, reason: 'mentioned but not included/inherited/lazy-loaded/allowlisted' });
     }
   }

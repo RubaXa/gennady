@@ -385,6 +385,59 @@ describe('SddLogCommand', () => {
     if (!noUnblock.ok) assert.strictEqual(noUnblock.exitCode, 4);
   });
 
+  describe('resolved mode — paired close for blocker', () => {
+    it('writes the canonical ✅ RESOLVED line, checked and timestamped', async () => {
+      const outcome = await mod.run(
+        argv(ticket, 'resolved', 'maxBuffer added to sdd-verify.cmd.ts (02f1b35f)'),
+        CLOCK
+      );
+      assert.strictEqual(outcome.ok, true);
+      const body = readFileSync(ticket, 'utf-8');
+      assert.match(
+        body,
+        /- \[x\] `2026-06-21T10:00:00\.000Z` ✅ RESOLVED: maxBuffer added to sdd-verify\.cmd\.ts \(02f1b35f\)/
+      );
+    });
+
+    it('requires justification text — exits 4 with no content', async () => {
+      const outcome = await mod.run(argv(ticket, 'resolved'), CLOCK);
+      assert.strictEqual(outcome.ok, false);
+      if (!outcome.ok) assert.strictEqual(outcome.exitCode, 4);
+    });
+
+    it('rejects an unreplaced placeholder in the justification text (exit 2)', async () => {
+      const outcome = await mod.run(argv(ticket, 'resolved', 'fixed via <commit>'), CLOCK);
+      assert.strictEqual(outcome.ok, false);
+      if (!outcome.ok) assert.strictEqual(outcome.exitCode, 2);
+    });
+
+    it('honors --phase the same way blocker/handoff do', async () => {
+      await mod.run(argv(ticket, 'phase', 'P2'), CLOCK);
+      await mod.run(argv(ticket, 'phase', 'P1'), CLOCK);
+      const outcome = await mod.run(
+        argv(ticket, 'resolved', 'p2 blocker fixed', '--phase', 'P2'),
+        CLOCK
+      );
+      assert.strictEqual(outcome.ok, true);
+      const body = readFileSync(ticket, 'utf-8');
+      const p2At = body.indexOf('#### P2');
+      const p1At = body.indexOf('#### P1');
+      const resolvedAt = body.indexOf('RESOLVED: p2 blocker fixed');
+      assert.ok(p2At < resolvedAt && resolvedAt < p1At, body);
+    });
+
+    it('never touches Meta Status', async () => {
+      const withStatus = BASE.replace(
+        '<!--/SECTION:META-->',
+        '- **Status:** [ ] TODO   <!-- [ ] TODO | [~] IN_PROGRESS | [x] DONE | [!] BLOCKED -->\n<!--/SECTION:META-->'
+      );
+      writeFileSync(ticket, withStatus, 'utf-8');
+      await mod.run(argv(ticket, 'resolved', 'fixed'), CLOCK);
+      const body = readFileSync(ticket, 'utf-8');
+      assert.match(body, /- \*\*Status:\*\* \[ \] TODO   <!--/);
+    });
+  });
+
   it('rejects a placeholder in phase/handoff/blocker content (exit 2)', async () => {
     const phase = await mod.run(argv(ticket, 'phase', '<PhaseID>'), CLOCK);
     assert.strictEqual(phase.ok, false);

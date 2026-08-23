@@ -181,6 +181,52 @@ describe('scanBlockerTrail', () => {
     ].join('\n');
     assert.deepStrictEqual(scanBlockerTrail(log), ['- 🛑 BLOCKED second issue']);
   });
+
+  it('pairs per phase block, not globally FIFO: a later phase resolution never closes an older, unrelated phase blocker', () => {
+    // Defect repro: P1 opens a blocker; P3 opens its OWN blocker; P3's own resolution (logged in
+    // its re-run block) must close P3's blocker, not P1's older, unrelated one. The old global-FIFO
+    // scan shifted the OLDEST push regardless of phase, so P1's blocker read as resolved and P3's
+    // own (the one actually fixed) stayed active — backwards.
+    const log = [
+      '#### P1',
+      '- 🛑 BLOCKED P1 issue',
+      '#### P3',
+      '- 🛑 BLOCKED P3 issue',
+      '#### P3 — re-run: fix',
+      '- ✅ RESOLVED P3 fixed',
+    ].join('\n');
+    assert.deepStrictEqual(scanBlockerTrail(log), ['- 🛑 BLOCKED P1 issue']);
+  });
+
+  it('a re-run block of the SAME phase shares its pool with the original block (P5/P3/P7 live-ticket shape)', () => {
+    const log = [
+      '#### P5',
+      '- 🛑 BLOCKED P5 issue',
+      '#### P5 — re-run: fix F-x',
+      '- [x] `<ts>` ✅ RESOLVED: P5 issue fixed',
+    ].join('\n');
+    assert.deepStrictEqual(scanBlockerTrail(log), []);
+  });
+
+  it('a bare mention of the word BLOCKED (no 🛑 marker) is never counted as a blocker', () => {
+    // Defect repro: a discovery/annotation line ABOUT a blocker (no 🛑 emoji) used to match the
+    // old `/🛑|BLOCKED/` OR-regex on the bare word alone.
+    const log = [
+      '#### P2',
+      '- [x] `<ts>` discovery second BLOCKED (00:21) was an unrelated lint issue, already fixed',
+    ].join('\n');
+    assert.deepStrictEqual(scanBlockerTrail(log), []);
+  });
+
+  it('a bare mention of the word RESOLVED (no ✅ marker) never closes a real blocker', () => {
+    const log = [
+      '#### P1',
+      '- 🛑 BLOCKED real issue',
+      '#### P1 — re-run: fix',
+      '- [x] `<ts>` env-fix note ← the issue above is not actually RESOLVED yet, still investigating',
+    ].join('\n');
+    assert.deepStrictEqual(scanBlockerTrail(log), ['- 🛑 BLOCKED real issue']);
+  });
 });
 
 describe('parsePhaseHandoffs', () => {

@@ -1,0 +1,31 @@
+0.8.4
+
+<Step id="STEP_0B_PREFLIGHT">
+      <Goal>Clear the FLOW_VERSION/READINESS preflight gate before scaffolding.</Goal>
+      <Action>
+        `sdd-state` already reports `FLOW_VERSION` / `READINESS`. When `READINESS=not-ready`, run
+        `sdd-task` (no Task-ID) for the map — its `гейты:` line, when present, names the queued
+        TODO tickets already building the missing gate scripts; that is the fact the switch below
+        checks, never a guess. Size the gate to this request's own blast radius
+        (`AX_PREFLIGHT_BLAST_RADIUS_SCOPED`).
+
+        <LogicSwitch on="FLOW_VERSION · READINESS · blast radius · queue">
+          - WHEN `FLOW_VERSION=v1` AND the request's blast radius reaches the legacy v1 `tasks/` layout or task-ID rewriting                                          -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/migration-v1-v2.directive.xml")   (live v1→v2 migration; returns when the repo is v2)
+          - WHEN `READINESS=not-ready` AND the missing gate scripts are already being built by TODO tickets in the queue (`sdd-task` map names them)     -> normal pre-execution state, continue your own flow; the readiness bootstrap does NOT load
+          - WHEN `READINESS=not-ready` AND the request needs a missing gate script                                                                       -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/readiness.directive.xml")        (live setup: forces missing scripts, hands proxy-blocked installs to the operator; returns once ready)
+          - WHEN (`FLOW_VERSION=v1` OR `READINESS=not-ready`) AND the request's blast radius stays inside its own scope (`AX_PREFLIGHT_BLAST_RADIUS_SCOPED`) -> record state in one line, continue your own flow; propose migration / readiness setup to the operator as a separate next step
+          - DEFAULT                                                                                                                                       -> repo is `v2` + ready — continue your own flow
+        </LogicSwitch>
+      </Action>
+    </Step>
+
+<Axiom id="AX_PREFLIGHT_BLAST_RADIUS_SCOPED">
+      The `FLOW_VERSION=v1` / `READINESS=not-ready` preflight gate protects scope-spanning work — a full
+      migration or readiness setup dwarfs a narrow request. Size the gate to the task's own blast radius
+      before firing it: when the requested change stays inside the entry point's own scope (a spec
+      paragraph, a single ticket) and never touches the legacy v1 `tasks/` layout or a missing gate script, record the
+      state in one line and proceed straight to the entry point's own work — offer migration / readiness
+      setup to the operator as a separate next step, not inside this run. A change whose blast radius does
+      reach the legacy v1 `tasks/` layout, task-ID rewriting, or a missing gate script fires the gate as before, ahead of
+      the entry point's own work.
+    </Axiom>

@@ -153,17 +153,43 @@ function sectionOverlaps(content: string): string[] {
 }
 
 /**
- * @purpose Scan an Execution Log for 🛑 BLOCKED / ✅ RESOLVED pairs (FIFO) — shared by checkTicket and sdd-task's [BLOCKERS], one parser instead of two.
+ * @purpose A phase-heading line (`#### P<N>`, optional `— re-run:` suffix); group 1 is the bare id.
+ */
+const PHASE_HEADING_RE = /^#{2,6}\s+(P[0-9]+)\b/;
+
+/**
+ * @purpose Scan an Execution Log for 🛑 BLOCKED / ✅ RESOLVED pairs, paired per phase — shared by
+ *   checkTicket and sdd-task's [BLOCKERS].
+ * @invariant FIFO within one phase's own pool — a `— re-run:` block shares it; only 🛑/✅ counts,
+ *   not the bare word.
  * @param logBody The EXECUTION_LOG section body.
- * @returns Text of each still-unresolved 🛑 BLOCKED line, oldest first; empty when every blocker has a later ✅ RESOLVED.
+ * @returns Unresolved 🛑 BLOCKED lines, oldest first across every phase's pool; empty when each has
+ *   a later ✅ RESOLVED in its own pool.
  */
 export function scanBlockerTrail(logBody: string): string[] {
-  const active: string[] = [];
-  for (const line of logBody.split('\n')) {
-    if (/🛑|BLOCKED/.test(line)) active.push(line.trim());
-    else if (/✅|RESOLVED/.test(line)) active.shift();
+  // One pool per phase id, keyed by PHASE_HEADING_RE's capture — a `— re-run:` heading shares the
+  // SAME key as the phase's earlier block, so a resolution logged there still closes an earlier
+  // blocker. Pools never mix: a resolution can only shift its own phase's pool, never an older,
+  // unrelated phase's — the fix for the old global-FIFO scan's cross-phase mispairing.
+  const pools = new Map<string, { line: string; pos: number }[]>();
+  let phase = '';
+  const lines = logBody.split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    const line = (lines[i] ?? '').trim();
+    const heading = PHASE_HEADING_RE.exec(line);
+    if (heading) phase = heading[1] as string;
+    if (line.includes('🛑')) {
+      const pool = pools.get(phase) ?? [];
+      pool.push({ line, pos: i });
+      pools.set(phase, pool);
+    } else if (line.includes('✅')) {
+      pools.get(phase)?.shift();
+    }
   }
-  return active;
+  return [...pools.values()]
+    .flat()
+    .sort((a, b) => a.pos - b.pos)
+    .map((entry) => entry.line);
 }
 
 /**
@@ -197,7 +223,7 @@ export function parsePhaseHandoffs(logBody: string): Record<string, string> {
   let current: string | null = null;
   for (const rawLine of logBody.split('\n')) {
     const line = rawLine.trim();
-    const heading = /^#{2,6}\s+(P[0-9]+)\b/.exec(line);
+    const heading = PHASE_HEADING_RE.exec(line);
     if (heading) {
       current = heading[1] as string;
       continue;

@@ -34,7 +34,8 @@ type RawAssemblyManifest = { defaultMode?: unknown; overrides?: Record<string, u
  * @param directiveManifestKey The directive's key as written under `overrides` (e.g. 'sdd-v2/audit.directive.xml').
  * @param [cliFlag] The `--assembly=<mode>` value from the current build invocation.
  * @param [manifestPath] Project-root-relative manifest path; defaults to the real one.
- * @throws {Error} The manifest file exists but is not valid JSON — never falls back to monolith silently.
+ * @throws {Error} Malformed manifest JSON, or an `overrides` value outside `'monolith'`/`'lazy'` —
+ *   never a silent monolith fallback.
  * @returns The mode this directive's build must use.
  */
 export function resolveAssemblyMode(
@@ -53,18 +54,48 @@ function readAssemblyManifest(manifestPath: string): AssemblyManifest {
   }
 
   // #region START_PARSE_MANIFEST_JSON — invariant: malformed JSON must fail the build explicitly, never fall back to monolith silently
+  let raw: RawAssemblyManifest;
   try {
-    const raw = JSON.parse(readFileSync(manifestPath, 'utf-8')) as RawAssemblyManifest;
-    return {
-      defaultMode: raw.defaultMode === 'lazy' ? 'lazy' : BUILTIN_DEFAULT_MODE,
-      overrides: (raw.overrides ?? {}) as Record<string, AssemblyMode>,
-    };
+    raw = JSON.parse(readFileSync(manifestPath, 'utf-8')) as RawAssemblyManifest;
   } catch (cause) {
     const error = new Error(`[readAssemblyManifest] Malformed assembly manifest JSON: ${manifestPath}`, { cause });
     logger.error(`[readAssemblyManifest] [reading → failed] ${manifestPath}`, { error });
     throw error;
   }
   // #endregion END_PARSE_MANIFEST_JSON
+
+  return {
+    defaultMode: raw.defaultMode === 'lazy' ? 'lazy' : BUILTIN_DEFAULT_MODE,
+    overrides: validateOverrides(raw.overrides, manifestPath),
+  };
+}
+
+/**
+ * @purpose Narrow every raw override value to the AssemblyMode union, rejecting anything else
+ *   before it can silently defeat downstream strict-equality mode checks.
+ * @param rawOverrides Unvalidated JSON-parsed override map, keyed by directive manifest key.
+ * @param manifestPath Manifest file path, echoed into the thrown error for operator triage.
+ * @throws {Error} An override value is neither `'monolith'` nor `'lazy'`.
+ * @returns The same keys, every value narrowed to `AssemblyMode`.
+ */
+function validateOverrides(
+  rawOverrides: Record<string, unknown> | undefined,
+  manifestPath: string
+): Record<string, AssemblyMode> {
+  const overrides: Record<string, AssemblyMode> = {};
+  for (const [key, value] of Object.entries(rawOverrides ?? {})) {
+    // #region START_REJECT_INVALID_OVERRIDE_MODE — invariant: an override outside the AssemblyMode union must fail the build explicitly, never degrade to monolith by falling through the strict downstream comparison
+    if (value !== 'monolith' && value !== 'lazy') {
+      const error = new Error(
+        `[readAssemblyManifest] Invalid assembly mode override in ${manifestPath}: overrides["${key}"] = ${JSON.stringify(value)} — expected "monolith" or "lazy"`
+      );
+      logger.error(`[readAssemblyManifest] [validating overrides → failed] ${manifestPath}`, { error });
+      throw error;
+    }
+    // #endregion END_REJECT_INVALID_OVERRIDE_MODE
+    overrides[key] = value;
+  }
+  return overrides;
 }
 
 /* ---------- Version fingerprint (DA-REQ-7, DA-REQ-8) ---------- */
@@ -409,9 +440,20 @@ function isWithinAnyRange(position: number, ranges: readonly Array<{ start: numb
 type TagBlock = { id: string | null; body: string; fullMatch: string; start: number; end: number };
 
 /**
+ * @purpose Neutralize single-line backtick code spans so a quoted pseudo-tag example never
+ *   perturbs real same-name tag-boundary scanning (DA-lazy-asm F-05, precedent: `parse-directive.ts`).
+ * @invariant Output length matches `source` exactly — masked offsets stay valid for slicing `source`.
+ */
+function maskCodeSpans(source: string): string {
+  return source.replace(/`[^`\n]*`/g, (match) => ' '.repeat(match.length));
+}
+
+/**
  * @purpose Extract every `<TagName>...</TagName>` block from `source`, tracking same-name
  *   nesting depth so a nested block never closes its ancestor early.
  * @invariant Self-closing `<TagName ... />` blocks yield an empty body.
+ * @invariant Tag boundaries are located on a `maskCodeSpans`-masked copy of `source` so a quoted
+ *   pseudo-tag never counts as real markup; slicing still reads unmasked `source`.
  * @param source Directive text to scan.
  * @param tagName Exact tag name to match (e.g. 'Step', 'Axiom', 'Contract').
  * @throws {Error} An opening tag with no matching close — the source is not well-formed for this tag name.
@@ -421,16 +463,17 @@ function extractTopLevelTagBlocks(source: string, tagName: string): TagBlock[] {
   const openTagPattern = new RegExp(`<${tagName}(\\s[^>]*)?>`, 'g');
   const closeTagPattern = new RegExp(`</${tagName}>`, 'g');
   const blocks: TagBlock[] = [];
+  const masked = maskCodeSpans(source);
 
   let scanFrom = 0;
   // #region START_SCAN_BALANCED_BLOCKS — invariant: same-name nesting is tracked by depth so a nested block never closes its ancestor early
   while (scanFrom < source.length) {
     openTagPattern.lastIndex = scanFrom;
-    const opening = openTagPattern.exec(source);
+    const opening = openTagPattern.exec(masked);
     if (!opening) break;
 
-    const openText = opening[0];
     const openStart = opening.index;
+    const openText = source.slice(openStart, openStart + opening[0].length);
     if (openText.endsWith('/>')) {
       blocks.push({
         id: extractIdAttribute(openText),
@@ -447,14 +490,25 @@ function extractTopLevelTagBlocks(source: string, tagName: string): TagBlock[] {
     let cursor = openStart + openText.length;
     let closeStart = -1;
     while (depth > 0) {
-      openTagPattern.lastIndex = cursor;
       closeTagPattern.lastIndex = cursor;
-      const nextOpen = openTagPattern.exec(source);
-      const nextClose = closeTagPattern.exec(source);
+      const nextClose = closeTagPattern.exec(masked);
       if (!nextClose) {
         throw new Error(`[extractTopLevelTagBlocks] Unbalanced <${tagName}> opened at index ${openStart} — no matching close tag`);
       }
-      const nextOpenIsNested = nextOpen !== null && nextOpen.index < nextClose.index && !nextOpen[0].endsWith('/>');
+
+      // #region START_SKIP_SELFCLOSING_OPENS — invariant: a self-closing sibling never nests and never
+      // closes the ancestor either; advance past every one of them before deciding whether a genuinely
+      // nested open (non-self-closing) still precedes nextClose — otherwise the nearest self-closing
+      // sibling is mistaken for real content and the ancestor is closed early (DA-lazy-asm F-01)
+      openTagPattern.lastIndex = cursor;
+      let nextOpen = openTagPattern.exec(masked);
+      while (nextOpen !== null && nextOpen.index < nextClose.index && nextOpen[0].endsWith('/>')) {
+        openTagPattern.lastIndex = nextOpen.index + nextOpen[0].length;
+        nextOpen = openTagPattern.exec(masked);
+      }
+      // #endregion END_SKIP_SELFCLOSING_OPENS
+
+      const nextOpenIsNested = nextOpen !== null && nextOpen.index < nextClose.index;
       if (nextOpenIsNested) {
         depth += 1;
         cursor = nextOpen.index + nextOpen[0].length;

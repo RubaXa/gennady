@@ -103,6 +103,26 @@ describe('resolveAssemblyMode', () => {
       }
     );
   });
+
+  it('throws an explicit config error naming the manifest, key, and value when an override is not "monolith" or "lazy" (F-02)', () => {
+    // A wrong-case override ("LAZY") must fail loudly here — the strict `mode === 'lazy'` comparison
+    // downstream (build-directives.ts) never matches it, so an unvalidated override degrades to a
+    // silent monolith build instead of the lazy build the operator configured.
+    writeFileSync(
+      ctx.manifestPath,
+      JSON.stringify({ defaultMode: 'monolith', overrides: { 'sdd-v2/foo.directive.xml': 'LAZY' } })
+    );
+    assert.throws(
+      () => resolveAssemblyMode('sdd-v2/foo.directive.xml', undefined, ctx.manifestPath),
+      (error: unknown) => {
+        assert.ok(error instanceof Error);
+        assert.match(error.message, /Invalid assembly mode override/);
+        assert.match(error.message, /sdd-v2\/foo\.directive\.xml/);
+        assert.match(error.message, /LAZY/);
+        return true;
+      }
+    );
+  });
 });
 
 describe('stampFingerprint', () => {
@@ -214,6 +234,141 @@ describe('LazyDirectiveAssembler#assemble', () => {
   it('carries one recovery-hint line naming the rebuild command for a failed package read', () => {
     const result = LazyDirectiveAssembler.assemble(createDirectiveFixture());
     assert.match(result.skeleton.text, /npm run build:directives -- --assembly=lazy/);
+  });
+
+  it('preserves the full tail of a top-level tag whose body has a self-closing sibling before a nested same-name tag (F-01)', () => {
+    // AX_OUTER is single-step (referenced only inside STEP_ONE) so assemble() must excise its
+    // FULL span from the skeleton and relocate the FULL span into STEP_ONE's package — including
+    // everything after the self-closing AX_SELFCLOSE and the genuinely nested AX_INNER.
+    const sourceText = [
+      '<FixtureDirective ver="0.1.0">',
+      '  <BeliefState>',
+      '    <Axiom id="AX_OUTER">head <Axiom id="AX_SELFCLOSE" /> middle <Axiom id="AX_INNER">inner body</Axiom> tail</Axiom>',
+      '  </BeliefState>',
+      '  <PhaseProcedure>',
+      '    <Step id="STEP_ONE">',
+      '      <Goal>Apply AX_OUTER.</Goal>',
+      '      <Action>References AX_OUTER here.</Action>',
+      '    </Step>',
+      '    <Step id="STEP_TWO">',
+      '      <Goal>Unrelated.</Goal>',
+      '    </Step>',
+      '  </PhaseProcedure>',
+      '</FixtureDirective>',
+    ].join('\n');
+
+    const result = LazyDirectiveAssembler.assemble(
+      createDirectiveFixture({ directiveName: 'selfclose-before-nested', sourceText })
+    );
+    const stepOne = result.packages.find((pkg) => pkg.stepId === 'STEP_ONE')!;
+
+    assert.doesNotMatch(result.skeleton.text, /tail<\/Axiom>/);
+    assert.match(stepOne.text, /AX_INNER">inner body<\/Axiom> tail<\/Axiom>/);
+  });
+
+  it('keeps standard nesting intact when the self-closing sibling appears after the nested same-name tag', () => {
+    // Regression guard: this ordering already worked before F-01's fix — locking it in so the fix
+    // for the "self-close BEFORE nested" case never regresses the "AFTER" case.
+    const sourceText = [
+      '<FixtureDirective ver="0.1.0">',
+      '  <BeliefState>',
+      '    <Axiom id="AX_OUTER2">head <Axiom id="AX_INNER2">inner2 body</Axiom> middle <Axiom id="AX_SELFCLOSE2" /> tail2</Axiom>',
+      '  </BeliefState>',
+      '  <PhaseProcedure>',
+      '    <Step id="STEP_ONE">',
+      '      <Goal>Apply AX_OUTER2.</Goal>',
+      '      <Action>References AX_OUTER2 here.</Action>',
+      '    </Step>',
+      '    <Step id="STEP_TWO">',
+      '      <Goal>Unrelated.</Goal>',
+      '    </Step>',
+      '  </PhaseProcedure>',
+      '</FixtureDirective>',
+    ].join('\n');
+
+    const result = LazyDirectiveAssembler.assemble(
+      createDirectiveFixture({ directiveName: 'selfclose-after-nested', sourceText })
+    );
+    const stepOne = result.packages.find((pkg) => pkg.stepId === 'STEP_ONE')!;
+
+    assert.doesNotMatch(result.skeleton.text, /tail2<\/Axiom>/);
+    assert.match(stepOne.text, /AX_INNER2">inner2 body<\/Axiom> middle <Axiom id="AX_SELFCLOSE2" \/> tail2<\/Axiom>/);
+  });
+
+  it('skips past several self-closing siblings in a row to find the one genuinely nested same-name tag', () => {
+    const sourceText = [
+      '<FixtureDirective ver="0.1.0">',
+      '  <BeliefState>',
+      '    <Axiom id="AX_OUTER3">segA <Axiom id="S1" /> segB <Axiom id="S2" /> segC <Axiom id="AX_INNER3">inner3 body</Axiom> segD <Axiom id="S3" /> segE tail3</Axiom>',
+      '  </BeliefState>',
+      '  <PhaseProcedure>',
+      '    <Step id="STEP_ONE">',
+      '      <Goal>Apply AX_OUTER3.</Goal>',
+      '      <Action>References AX_OUTER3 here.</Action>',
+      '    </Step>',
+      '    <Step id="STEP_TWO">',
+      '      <Goal>Unrelated.</Goal>',
+      '    </Step>',
+      '  </PhaseProcedure>',
+      '</FixtureDirective>',
+    ].join('\n');
+
+    const result = LazyDirectiveAssembler.assemble(
+      createDirectiveFixture({ directiveName: 'multiple-selfclose-then-nested', sourceText })
+    );
+    const stepOne = result.packages.find((pkg) => pkg.stepId === 'STEP_ONE')!;
+
+    assert.doesNotMatch(result.skeleton.text, /segE tail3<\/Axiom>/);
+    assert.match(stepOne.text, /AX_INNER3">inner3 body<\/Axiom> segD <Axiom id="S3" \/> segE tail3<\/Axiom>/);
+  });
+
+  it('never lets a backtick-quoted pseudo-tag inside prose corrupt the real tag boundary (F-05)', () => {
+    // The body backtick-quotes a lone, unmatched literal '</Axiom>' as a documentation example —
+    // never real markup. Without masking, the tag scanner would read that quoted close as the
+    // real end of AX_DOC_EXAMPLE and truncate everything after it.
+    const sourceText = [
+      '<FixtureDirective ver="0.1.0">',
+      '  <BeliefState>',
+      '    <Axiom id="AX_DOC_EXAMPLE">A step package ends with a literal `</Axiom>` closing tag in the raw text, as documented here. This sentence continues after the quoted example.</Axiom>',
+      '  </BeliefState>',
+      '  <PhaseProcedure>',
+      '    <Step id="STEP_ONE">',
+      '      <Goal>Apply AX_DOC_EXAMPLE.</Goal>',
+      '      <Action>References AX_DOC_EXAMPLE here.</Action>',
+      '    </Step>',
+      '    <Step id="STEP_TWO">',
+      '      <Goal>Unrelated.</Goal>',
+      '    </Step>',
+      '  </PhaseProcedure>',
+      '</FixtureDirective>',
+    ].join('\n');
+
+    const result = LazyDirectiveAssembler.assemble(
+      createDirectiveFixture({ directiveName: 'backtick-quoted-pseudo-tag', sourceText })
+    );
+    const stepOne = result.packages.find((pkg) => pkg.stepId === 'STEP_ONE')!;
+
+    assert.doesNotMatch(result.skeleton.text, /continues after the quoted example/);
+    assert.match(stepOne.text, /continues after the quoted example\.<\/Axiom>/);
+  });
+
+  it('throws naming the unbalanced tag and its index when a top-level Axiom never closes', () => {
+    const sourceText = [
+      '<FixtureDirective ver="0.1.0">',
+      '  <BeliefState>',
+      '    <Axiom id="AX_UNBALANCED">this axiom never closes',
+      '  </BeliefState>',
+      '  <PhaseProcedure>',
+      '    <Step id="STEP_ONE"><Goal>Unrelated.</Goal></Step>',
+      '  </PhaseProcedure>',
+      '</FixtureDirective>',
+    ].join('\n');
+
+    assert.throws(
+      () =>
+        LazyDirectiveAssembler.assemble(createDirectiveFixture({ directiveName: 'unbalanced-fixture', sourceText })),
+      /Unbalanced <Axiom> opened at index \d+ — no matching close tag/
+    );
   });
 });
 

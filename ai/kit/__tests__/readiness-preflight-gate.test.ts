@@ -13,9 +13,27 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { OUT_ROOT } from '../render.ts';
+import { resolveAssemblyMode } from '../lazy-assembly.ts';
 
 const SDD_V2 = join(OUT_ROOT, 'sdd-v2');
 const SKILLS_ROOT = join(OUT_ROOT, '..', 'skills');
+// ai/directives -> <repo root> — project-root-relative package paths (DA-REQ-4) resolve off this.
+const PROJECT_ROOT = join(OUT_ROOT, '..', '..');
+
+/**
+ * Full text a search over this directive must cover. A directive resolved `lazy` (manifest
+ * override) writes only a slim skeleton at its normal path — the shared partial's text can live
+ * inside one of its step packages instead of the skeleton itself (ai/kit/lazy-assembly.ts), so the
+ * search must span skeleton + every package the skeleton's step list prints, not the skeleton
+ * alone.
+ */
+function readFullDirectiveText(file: string): string {
+  const skeletonText = readFileSync(join(SDD_V2, file), 'utf-8');
+  if (resolveAssemblyMode(`sdd-v2/${file}`) !== 'lazy') return skeletonText;
+  const packagePaths = [...skeletonText.matchAll(/Full step text: `([^`]+)`/g)].map((m) => m[1]!);
+  const packageTexts = packagePaths.map((p) => readFileSync(join(PROJECT_ROOT, p), 'utf-8'));
+  return [skeletonText, ...packageTexts].join('\n');
+}
 
 /** Marker phrase unique to the shared partial — proves the generated directive embeds it, not a hand-typed paraphrase. */
 const PARTIAL_MARKER = 'already being built by TODO tickets in the queue';
@@ -33,7 +51,7 @@ const GATED_SKILLS = ['sdd-execute', 'sdd-scaffold', 'sdd-critic', 'sdd-reconcil
 describe('readiness preflight gate — single source, no hand-copied interpretation', () => {
   for (const file of GATED_DIRECTIVES) {
     it(`${file}: embeds the shared readiness-preflight-gate partial`, () => {
-      const text = readFileSync(join(SDD_V2, file), 'utf-8');
+      const text = readFullDirectiveText(file);
       assert.ok(
         text.includes(PARTIAL_MARKER),
         `${file} is missing the shared preflight-gate partial text (${PARTIAL_MARKER})`

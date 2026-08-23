@@ -1,0 +1,38 @@
+0.8.4
+
+<Step id="STEP_1_CASCADE">
+      <Goal>Resolve the rules cascade. (auto)</Goal>
+      <Action>
+        Read the rule registry — `ai/directives/knowledge.xml`, `<Rules>` section. Per scope, resolve
+        the effective rule-set per `AX_RULES_CASCADE_RESOLUTION`:
+        1. collect the traversed-scopes tier — union of Effective Rules from every scope reachable via
+           `depends-on` from the target scope (transitive closure);
+        2. overlay the target-scope tier (scope spec Effective Rules for infra; Rules for
+           product/library), then each `module:<name>` tier (module spec Handoff Module Rules
+           Additions), then task-tier rules the operator supplied — later tier wins on collision;
+        3. resolve every rule ref to an existing file (`AX_RULES_RESOLUTION_HARD_FAIL`, else
+           `H_MISSING_RULE_FILE`);
+        4. build the per-scope Cascade Table (Scope × Categories) destined for
+           `specs/<scope>/<scope>.3-tasks.md`.
+        No operator stop — mechanical.
+      </Action>
+    </Step>
+
+<Axiom id="AX_RULES_RESOLUTION_HARD_FAIL">
+      **All rule references must resolve; missing rule = abort.** Sources: scope spec (Effective Rules for infra; Rules for product/library), module spec (Handoff Module Rules Additions), task (operator-supplied at STEP_4). Each ref must exist as `ai/directives/<category>/<rule>.xml`. On miss: abort with explicit list. A placeholder rule reference (TBD, `<rule>`, "to be authored", any unresolved name) = abort, never write a ticket against it.
+    </Axiom>
+
+<Axiom id="AX_RULES_CASCADE_RESOLUTION">
+      **Effective rule-set per task = union of 4 tiers; later tier overrides earlier on collision.**
+
+      Tier order (low → high):
+      1. **traversed-scopes** — union of Effective Rules from all scopes reachable via `depends-on` from target scope (transitive closure).
+      2. **target-scope** — scope spec Effective Rules (infra) or Rules (product/library).
+      3. **module:<name>** — module spec Handoff Module Rules Additions (when modules exist).
+      4. **task** — operator-supplied during ticket generation.
+
+      Invariants of the materialized cascade:
+      - **Cascade Table** (Scope × Categories) lives in `specs/<scope>/<scope>.3-tasks.md` per scope, NOT in `specs/3-tasks.md`.
+      - Rules are declared **per phase only** — a `Rules:` bullet list inside each phase block of the ticket's Phases; a ticket-level rule list is a structure violation.
+      - Auditor recomputes the effective set per-phase from these sources and compares with each phase block.
+    </Axiom>

@@ -27,13 +27,16 @@ export function printHelp(): void {
   console.info(
     '  npx gennady sdd-log <ticket> blocker "<reason>" --axiom <AX> --unblock "<action>" [--phase P<N>]   # BLOCKER_FORMAT block'
   );
+  console.info(
+    '  npx gennady sdd-log <ticket> resolved "<what removed it>" [--phase P<N>]   # paired close for blocker — ✅ RESOLVED marker'
+  );
   console.info('');
   console.info('Guarantees:');
   console.info(
     '  - Append-only — content is inserted before the section close marker; prior lines are never touched.'
   );
   console.info(
-    "  - --phase P<N> (line | handoff | blocker only) — insert at the end of THAT phase's own"
+    "  - --phase P<N> (line | handoff | blocker | resolved only) — insert at the end of THAT phase's own"
   );
   console.info(
     '    #### <PhaseID> block instead of the end of EXECUTION_LOG. Needed when phases run in'

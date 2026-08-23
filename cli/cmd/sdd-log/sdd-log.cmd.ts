@@ -1,4 +1,4 @@
-// @file: SddLogCommand — CLI entry for gennady sdd-log: append-only round/line/close/phase/handoff/blocker into EXECUTION_LOG.
+// @file: SddLogCommand — CLI entry for gennady sdd-log: append-only round/line/close/phase/handoff/blocker/resolved into EXECUTION_LOG.
 // @consumers: gennady.ts
 // @tasks: N/A
 
@@ -16,6 +16,7 @@ import {
   buildEventLine,
   buildHandoffLine,
   buildPhaseHeader,
+  buildResolvedLine,
   buildRoundHeader,
   fileError,
   findPhaseBlockBounds,
@@ -31,11 +32,11 @@ import {
 } from './sdd-log.types.ts';
 
 const LOG_SECTION = 'EXECUTION_LOG';
-const MODES = ['round', 'line', 'close', 'phase', 'handoff', 'blocker'] as const;
+const MODES = ['round', 'line', 'close', 'phase', 'handoff', 'blocker', 'resolved'] as const;
 
 /**
- * @purpose Execute gennady sdd-log — append a round header, event/handoff line, phase header, blocker block,
- *   or close block into EXECUTION_LOG, append-only.
+ * @purpose Execute gennady sdd-log — append a round header, event/handoff line, phase header,
+ *   blocker block, its paired resolved line, or close block into EXECUTION_LOG, append-only.
  * @param rawArgs Raw command-line arguments (process.argv).
  * @param now Clock injected for deterministic timestamps (the CLI tail passes the real now).
  * @returns LogOutcome — echo of the appended lines on success, else an actionable failure.
@@ -63,7 +64,8 @@ export async function run(rawArgs: string[], now: Date): Promise<LogOutcome> {
       mode === 'line' ||
       mode === 'phase' ||
       mode === 'handoff' ||
-      mode === 'blocker') &&
+      mode === 'blocker' ||
+      mode === 'resolved') &&
     payload.trim() === ''
   ) {
     return badInvocation(`mode "${mode}" needs content`);
@@ -79,8 +81,10 @@ export async function run(rawArgs: string[], now: Date): Promise<LogOutcome> {
   // the phase id as its own positional.
   const phaseFlag = typeof args.phase === 'string' ? args.phase : undefined;
   if (phaseFlag !== undefined) {
-    if (mode !== 'line' && mode !== 'handoff' && mode !== 'blocker') {
-      return badInvocation(`--phase only applies to line | handoff | blocker (not "${mode}")`);
+    if (mode !== 'line' && mode !== 'handoff' && mode !== 'blocker' && mode !== 'resolved') {
+      return badInvocation(
+        `--phase only applies to line | handoff | blocker | resolved (not "${mode}")`
+      );
     }
     if (hasPlaceholder(phaseFlag)) return placeholderError(phaseFlag);
   }
@@ -123,7 +127,7 @@ export async function run(rawArgs: string[], now: Date): Promise<LogOutcome> {
   const date = ts.slice(0, 10);
 
   // #region START_BUILD — invariant: content carrying <ts>/reason must carry no unreplaced placeholder;
-  //   verbatim modes (phase/handoff/blocker) pass content through byte-exact — no escaping, no encoding.
+  //   verbatim modes (phase/handoff/blocker/resolved) pass content through byte-exact — no escaping, no encoding.
   let insertText: string;
   if (mode === 'round') {
     if (hasPlaceholder(payload)) return placeholderError(payload);
@@ -148,6 +152,9 @@ export async function run(rawArgs: string[], now: Date): Promise<LogOutcome> {
       return placeholderError(payload);
     }
     insertText = buildBlockerBlock(payload, axiom, unblock, ts);
+  } else if (mode === 'resolved') {
+    if (hasPlaceholder(payload)) return placeholderError(payload);
+    insertText = buildResolvedLine(payload, ts);
   } else {
     insertText = buildCloseBlock(ts);
   }

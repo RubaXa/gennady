@@ -1,0 +1,50 @@
+0.8.4
+
+<Step id="STEP_2_DAG">
+      <Goal>Build the acyclic task DAG. — GATE 1: operator approves the BREAKDOWN.</Goal>
+      <Action>
+        Bootstrap Requirements of the target scope's spec → Phase-0 bootstrap tickets
+        (`AX_BOOTSTRAP_TICKET_DERIVATION`); missing section on the target scope →
+        `H_BOOTSTRAP_REQUIREMENTS_MISSING` (checked only for the scope in intake, not for other
+        ✅ scopes reachable via the graph). Form tickets per
+        `AX_DAG_AND_TICKET_BOUNDARIES` (one per coherent spec unit; subdivide only for parallelism or
+        context overflow); cross-scope placement per `AX_CROSS_SCOPE_TASK_PLACEMENT`; assign slugs
+        (`AX_TASK_ID_UNIQUENESS`). Acyclic. **Present the DAG (the breakdown) as a decision card and
+        get operator approval — this is the one gate on structure.** STOP.
+      </Action>
+    </Step>
+
+<Axiom id="AX_DAG_AND_TICKET_BOUNDARIES">
+      **Topological order, no cycles. Default: minimum tickets — one per coherent spec unit.** Product / library scope → one ticket per module-spec. Infrastructure / interface scope → one ticket per discrete capability.
+
+      DAG edges derive from real file-level dependencies, Bootstrap → consumers, and cross-scope `depends-on`. No «logical layer» phases — Ports → Adapters → Integrations is an analysis aid in discovery, NOT a ticket-multiplication rule. A Port and its single confirmed-v1 Adapter co-edit and live in one ticket.
+
+      **Split one ticket into N only when BOTH conditions hold:**
+      - **(P) Parallel sub-process potential** — N phase-subagents dispatched simultaneously; Target Files disjoint across all phases of each ticket; no Deps edge among the N.
+      - **(C) Context budget overflow** — combined cascade Rules + Spec References + Target Files exceed comfortable single-context for one phase-subagent's phase.
+
+      **NOT a reason to split:** audit milestone granularity (audit runs once per GROUP — every ticket of the spec, together, per `AX_AUDIT_HOOK` — regardless of ticket size or count, never once per ticket); logical layering (Port + Adapter ship together); partial shippability (consumer can't pick a half-module); human time-units (hours / days — irrelevant for AI execution bounded by context window).
+
+      Sequential split (A → B with hard Deps) without (C) = pure overhead: B's phase-subagent re-reads what A's already loaded; zero wall-clock gain.
+
+      Cross-scope: scope B DONE before A's tasks consuming B's outputs. Bootstrap tickets DONE before non-bootstrap of the same scope.
+    </Axiom>
+
+<Axiom id="AX_TASK_ID_UNIQUENESS">
+      **Task-ID `<ACR>-<slug>` is unique, semantic, and immutable.** The slug names the feature in
+      1-2 words, ≤ 8 characters — not a sequence number, not a paragraph.
+
+      - `sdd-new` generates and validates the ID — grammar, slug length, project-wide uniqueness (duplicate
+        or prefix-conflict against every existing Task-ID). Never hand-roll the format: run `sdd-new task
+        --id <ACR>-<slug>` and let it refuse with a concrete fix if the id is bad.
+      - Uniqueness is enforced by the **Slug Registry** in each `<module>.3-tasks.md`: the same slug in two
+        branches collides on merge there, surfacing «same feature» instead of hiding it. Append-only.
+      - The ID never changes — even if the ticket file moves between scopes.
+      - Code references via file headers (`@tasks:`) point to IDs, not paths.
+      - `sdd-check` cross-checks integrity (SDD_TASK_ID_GRAMMAR, SDD_TASK_ID_PREFIX_CLASH,
+        SDD_TASK_ID_COLLISION); a genuine collision → abort, operator resolves.
+    </Axiom>
+
+<Axiom id="AX_CROSS_SCOPE_TASK_PLACEMENT">
+      Cross-scope integration tasks belong to the scope that **initiates or owns** the integration. If both sides have equal weight, create a dedicated `integration` scope in the Scope Graph and register it in `specs/README.md`. Never scatter pieces of one integration across multiple scope folders, and never invent a shared folder outside the Scope Graph for them.
+    </Axiom>

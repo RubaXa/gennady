@@ -1,0 +1,95 @@
+0.8.4
+
+<Step id="STEP_4_EXECUTE">
+      <Goal>Produce the artifacts the phase Objective demands, within Target Files.</Goal>
+      <Action>
+        Apply rules continuously; respect `AX_PHASE_SCOPE_LOCK`, `AX_FILE_HEADER_APPEND_ONLY`,
+        `AX_INTRODUCED_DISCIPLINE`. `test` kind honors `AX_BDD_NAME_DISCIPLINE`; `config` kind applies
+        the current-version API verified at STEP_3B (`AX_THIRD_PARTY_TOOL_CURRENT_API`). `bootstrap`
+        kind, before running any `npm install`/`npm add`, works the `AX_DEPENDENCY_ADDITION_CHECKLIST`
+        per package — Node/module-system compatibility, pinning discipline, AND the release channel
+        (`latest` can resolve to a pre-release; pin the newest stable version unless the spec
+        explicitly calls for a pre-release). Depth of the
+        work itself is public-release by default, not POC (`AX_RELEASE_READY_DEFAULT`) — error
+        handling, edge cases, empty/loading states are part of THIS phase's Objective unless the
+        ticket itself named POC/MVP. Append each event line via `npx gennady sdd-log <ticket> line
+        "<content>" --phase <PhaseID>` as it happens (`AX_LIVE_LOG`, `AX_TICKET_WRITE_SCOPE` — the tool
+        is the sole writer, never a manual `Edit`); a spec gap goes to an `insight` line the same way and leaves
+        the spec untouched (`AX_SPEC_NEVER_EDITED`). A TICKET gap — the phase needs a decision the
+        ticket does not cover — is not a spec gap and not a reason to stop and ask the operator:
+        decide it yourself, then append a ticket-local Decision Log entry via a direct `Edit`
+        (`AX_DEVIATION_SELF_RESOLVE`, `AX_TICKET_WRITE_SCOPE`) — one line, id `<ACRONYM>-D-N`
+        (ticket-local, per `AX_DEVIATION_SELF_RESOLVE`), body shaped per `DECISION_LOG_ENTRY_FORMAT`:
+        `<ACRONYM>-D-N <date> — <decision in one phrase> (почему: <compromise/criterion>; отвергнуто:
+        <alternative — why not>; риск: <if accepted>)` — omit a clause entirely rather than writing it
+        empty — and continue.
+      </Action>
+    </Step>
+
+<Axiom id="AX_PHASE_SCOPE_LOCK">
+      Touch only this phase's `Target Files`. Reading other files (specs, sibling-phase code, rule files cited in this phase's Rules list) is allowed and expected. Writing anywhere outside this phase's Target Files → `H_OUT_OF_PHASE_WRITE`. Operator decides via re-planning or new task.
+    </Axiom>
+
+<Axiom id="AX_RELEASE_READY_DEFAULT" cross-cutting="true">
+      Unless the operator explicitly said POC / MVP / prototype, the default depth of work targets
+      public release: error handling, edge cases, accessibility, and loading/empty states are part of
+      the work, not "later". Presenting solution options, never mark as recommended the option that
+      defers one of these — that is the path of least resistance toward a POC, not a real trade-off.
+      Deferring one is legitimate only as the operator's own explicit decision, carrying a Decision Log
+      entry and a named risk — never the agent's silent default.
+    </Axiom>
+
+<Axiom id="AX_FILE_HEADER_APPEND_ONLY">
+      Touching a file → ensure file-level header satisfies the execution contract; append your Task-ID to `@tasks`; never remove existing IDs.
+
+      - Required fields: `@file:`, `@consumers:`, `@tasks:`.
+      - New file: create header with all three; populate from ticket context. `@consumers:` derives from spec, never a file path.
+      - Existing file with header: preserve `@file:` and `@consumers:`; append Task-ID to `@tasks:`.
+      - Existing file without header: do NOT add unless this phase explicitly requires header migration.
+      - Re-running same task (e.g., `fix` phase): do NOT add duplicate ID.
+    </Axiom>
+
+<Axiom id="AX_BDD_NAME_DISCIPLINE">
+      Triggers when phase kind = `test`. Canonical case names in ticket Test Scenario Coverage are normative. Tests use names verbatim. Impractical name (typo, framework constraint, conflict) → update ticket Test Scenario Coverage in this phase. Silent mismatch is forbidden.
+    </Axiom>
+
+<Axiom id="AX_DEPENDENCY_ADDITION_CHECKLIST">
+      Before adding any dependency, verify four things:
+      1. **Node compatibility:** `npm view <pkg> engines` — supports version in `.nvmrc`?
+      2. **Module system compatibility:** package ESM-only / CJS-only / dual? Matches project's `"type"`?
+      3. **Pinning discipline:** dev tool → `--save-exact`; runtime dep → range acceptable.
+      4. **Release channel:** the `latest` dist-tag is not guaranteed stable — it can point at a
+         pre-release (`rc` / `beta` / `alpha`). Before pinning, compare `npm view <pkg> version` (what
+         `latest` actually resolves to) against `npm view <pkg> dist-tags` (the full tag → version map)
+         and pin the newest version that reads as stable (no `-rc`/`-beta`/`-alpha` suffix), not whatever
+         `latest` happens to name at that moment. Installing a pre-release is permitted only as an
+         explicit, spec-recorded decision — never a side effect of trusting `latest` by default.
+
+      Skipping these introduces incompatibilities that surface as cryptic runtime errors, not install errors.
+    </Axiom>
+
+<Axiom id="AX_LIVE_LOG">
+      **Fill the Execution Log line-by-line as actions happen, not in batch at the end.** Each meaningful action (file created, command run, scenario verified, entity introduced) gets its own timestamped line in the current round. Batched logs at the end lose causality and become unreliable evidence for audit.
+    </Axiom>
+
+<Contract id="DECISION_LOG_ENTRY_FORMAT">
+      One line per entry — no Status/Recorded fields, no multi-line block. The parenthetical carries
+      only what applies; omit a clause entirely rather than writing it empty.
+
+      ```markdown
+      <ACR>-DL-N <date> — <decision in one phrase> (почему: <compromise/criterion>; отвергнуто: <alternative — why not>; риск: <if accepted>)
+      ```
+
+      **ID.** `<ACR>-DL-<N>` — spec acronym first, exactly like a Task-ID and like `<ACR>-REQ-<N>`
+      (`REQUIREMENT_ENTRY_FORMAT`); `<N>` is sequential within THIS spec only — the acronym gives global
+      uniqueness, not the number. Replaces the old file-local `D-NNN` (unique only inside one file);
+      conflicts (a duplicate number inside one spec) are caught mechanically, the same way as for
+      `<ACR>-REQ-<N>`.
+
+      Superseding a prior decision appends `; supersedes: <ACR>-DL-M` to the parenthetical instead of a
+      separate field — the entry stays one line. `<date>` is the recording date (`YYYY-MM-DD`); status
+      (active / superseded / rejected / deferred) is implicit from prose and from whether a later entry
+      supersedes this one — a spec has no dangling "rejected" or "deferred" entries sitting as if active,
+      the prose says so directly (e.g. `отвергнуто в пользу X` folded into the same line that would have
+      recorded it, never a standalone rejected entry with its own `<ACR>-DL-N`).
+    </Contract>

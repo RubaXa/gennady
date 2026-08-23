@@ -1,1 +1,9 @@
-{ "defaultMode": "monolith", "overrides": {} }
+{
+  "defaultMode": "monolith",
+  "overrides": {
+    "sdd-v2/audit.directive.xml": "lazy",
+    "sdd-v2/scaffold.directive.xml": "lazy",
+    "sdd-v2/phase-execution-protocol.directive.xml": "lazy"
+  }
+}
+

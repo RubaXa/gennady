@@ -380,17 +380,41 @@ _Кто расширяет чей генератор — DA-REQ-4; `sdd-step` о
 
 _Это полный список сущностей модуля. Любое введение сущности execution-агентом помимо этого списка считается drift'ом и требует обновления spec._
 
-| Name                          | Type         | Purpose                                                                                                                                                  |
-| ----------------------------- | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `AssemblyMode`                | Value Object | `'monolith' \| 'lazy'` — режим сборки одной директивы                                                                                                    |
-| `AssemblyManifest`            | Value Object | Глобальный `defaultMode` + per-directive `overrides` (`ai/kit/assembly-manifest.json`)                                                                   |
-| `DirectiveSkeleton`           | Value Object | Собранный скелет: Mission+HaltConditions+сквозные аксиомы+список шагов+контракт вывода+отпечаток+подсказка восстановления (DA-REQ-13)                    |
-| `StepPackage`                 | Value Object | Полный текст одного шага + его одношаговые аксиомы + форматы — отдельный файл                                                                            |
-| `BuildFingerprint`            | Value Object | Версия сборки директивы — человекочитаемая npm-версия (не хеш), штампуется в шапку скелета и первую строку каждого пакета (DA-DL-13, supersedes DA-DL-6) |
-| `AxiomActivationClassifier`   | Service      | Классифицирует аксиому: сквозная (≥2 шага/вне шагов) против одношаговой                                                                                  |
-| `LazyDirectiveAssembler`      | Service      | Оркестрирует lazy-разбиение партиалов после дельта-вычитания, генерирует скелет+пакеты                                                                   |
-| `StepBudgetGate`              | Service      | Механический CI-гейт бюджетов скелета/пакета (DA-REQ-6, DA-REQ-14)                                                                                       |
-| `SkeletonPackageBindingGuard` | Service      | Guard-тест связки скелет↔пакеты↔вывод инструмента (DA-REQ-15)                                                                                            |
+| Name                             | Type         | Purpose                                                                                                                                                                                                                                                            |
+| -------------------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `AssemblyMode`                   | Value Object | `'monolith' \| 'lazy'` — режим сборки одной директивы                                                                                                                                                                                                              |
+| `AssemblyManifest`               | Value Object | Глобальный `defaultMode` + per-directive `overrides` (`ai/kit/assembly-manifest.json`)                                                                                                                                                                             |
+| `DEFAULT_ASSEMBLY_MANIFEST_PATH` | Constant     | Project-root-relative путь к манифесту по умолчанию (`ai/kit/assembly-manifest.json`), подставляется `resolveAssemblyMode`, когда вызывающий код не передал свой `manifestPath`                                                                                    |
+| `resolveAssemblyMode`            | Function     | Резолвит режим сборки одной директивы по приоритету override → `--assembly` флаг → `defaultMode` манифеста → встроенный `monolith` (DA-REQ-1)                                                                                                                      |
+| `DirectiveSkeleton`              | Value Object | Собранный скелет: Mission+HaltConditions+сквозные аксиомы+список шагов+контракт вывода+отпечаток+подсказка восстановления (DA-REQ-13)                                                                                                                              |
+| `StepPackage`                    | Value Object | Полный текст одного шага + его одношаговые аксиомы + форматы — отдельный файл                                                                                                                                                                                      |
+| `LazyAssemblyInput`              | Value Object | Вход `assemble`/`LazyDirectiveAssembler.assemble`: имя директивы, delta-вычтенный текст (`partials_ORIGINAL − ctx`), отпечаток сборки                                                                                                                              |
+| `LazyAssemblyResult`             | Value Object | Выход `assemble`: один `DirectiveSkeleton` + массив `StepPackage`, один на каждый `<Step>`                                                                                                                                                                         |
+| `BuildFingerprint`               | Value Object | Версия сборки директивы — человекочитаемая npm-версия (не хеш), штампуется в шапку скелета и первую строку каждого пакета (DA-DL-13, supersedes DA-DL-6)                                                                                                           |
+| `stampFingerprint`               | Function     | Валидирует человекочитаемую версию сборки и штампует её как `BuildFingerprint`; отклоняет пустую строку и hex-хеш-подобный вход (DA-REQ-7)                                                                                                                         |
+| `VersionMismatch`                | Value Object | Одна пара скелет/пакет с расходящимся отпечатком — материал пост-фактум находки (DA-REQ-8)                                                                                                                                                                         |
+| `findVersionMismatches`          | Function     | Пост-фактум сверка отпечатка в шапке скелета против первой строки каждого пакета (DA-REQ-8)                                                                                                                                                                        |
+| `AxiomActivation`                | Value Object | `'cross-cutting' \| 'single-step'` — вердикт размещения одной аксиомы/контракта                                                                                                                                                                                    |
+| `StepBodyEntry`                  | Value Object | `id` + полный текст одного `<Step>` — вход `classify`/`AxiomActivationClassifier.classify`                                                                                                                                                                         |
+| `AxiomActivationClassifier`      | Service      | Классифицирует аксиому: сквозная (≥2 шага/вне шагов) против одношаговой                                                                                                                                                                                            |
+| `classify`                       | Function     | Бэрное-имя alias для `AxiomActivationClassifier.classify`                                                                                                                                                                                                          |
+| `LazyCandidacyMetrics`           | Value Object | Измеренный размер `BeliefState` (токены) + доля одношаговых аксиом — вход `isLazyCandidate` (DA-REQ-16)                                                                                                                                                            |
+| `isLazyCandidate`                | Function     | Решает кандидатство директивы на lazy-override по порогам DA-REQ-16 (`BeliefState` > 6000 токенов ИЛИ доля одношаговых аксиом > 50%)                                                                                                                               |
+| `LazyDirectiveAssembler`         | Service      | Оркестрирует lazy-разбиение партиалов после дельта-вычитания, генерирует скелет+пакеты                                                                                                                                                                             |
+| `assemble`                       | Function     | Бэрное-имя alias для `LazyDirectiveAssembler.assemble`                                                                                                                                                                                                             |
+| `StepBudgetGate`                 | Module       | Механический CI-гейт бюджетов скелета/пакета (DA-REQ-6, DA-REQ-14) — по факту кода плоский набор экспортов (`check` + три лимит-константы + два входных типа), без объекта-неймспейса в отличие от `AxiomActivationClassifier`/`LazyDirectiveAssembler` (DA-DL-17) |
+| `SKELETON_TOKEN_LIMIT`           | Constant     | Жёсткий потолок токенов скелета = 8000 (DA-REQ-6)                                                                                                                                                                                                                  |
+| `PACKAGE_CHAR_LIMIT`             | Constant     | Жёсткий потолок символов пакета = 20 000 (DA-REQ-6; величина поднята с 8000 DA-DL-16)                                                                                                                                                                              |
+| `PACKAGE_LINE_CHAR_LIMIT`        | Constant     | Жёсткий потолок символов на строку пакета = 2000 (DA-REQ-6)                                                                                                                                                                                                        |
+| `StepPackageInput`               | Value Object | Вход `check`: `stepId` + полный рендеренный текст пакета                                                                                                                                                                                                           |
+| `StepBudgetFinding`              | Value Object | Одно превышение бюджета: артефакт, вид лимита, лимит, величина превышения                                                                                                                                                                                          |
+| `check`                          | Function     | Измеряет `DirectiveSkeleton`/`StepPackage[]` против трёх бюджетов, возвращает список находок (пустой при отсутствии превышений)                                                                                                                                    |
+
+`SkeletonPackageBindingGuard` не входит в эту таблицу: по факту кода это не экспортируемая
+сущность (ни один `.ts`-файл не экспортирует символ с этим именем) — только
+`describe('SkeletonPackageBindingGuard', ...)`, тест-сюит в
+`ai/kit/__tests__/skeleton-package-binding.guard.test.ts` (см. File Structure). Полная поверхность
+документирована в Entity Surfaces ниже с явной пометкой «guard-тест», не Service (DA-DL-17).
 
 Ошибки: throw при некорректном манифесте (структурная ошибка конфигурации сборки, не
 runtime-ошибка выдачи) → владелец: `LazyDirectiveAssembler`. При механизме А (путь+Read) отдельного
@@ -405,8 +429,13 @@ runtime-ошибка выдачи) → владелец: `LazyDirectiveAssembler
 ## Entity Surfaces
 
 Основная поверхность — `LazyDirectiveAssembler` (оркестратор разбиения) и
-`AxiomActivationClassifier` (правило скелет/пакет); `BuildFingerprint`, `StepBudgetGate`,
-`SkeletonPackageBindingGuard` — поддерживающие сервисы вокруг него.
+`AxiomActivationClassifier` (правило скелет/пакет); `BuildFingerprint` и `StepBudgetGate` —
+поддерживающие сущности вокруг них (`StepBudgetGate` — плоский модуль функций/констант, не
+объект-неймспейс, см. его блок ниже). Вспомогательные типы и чистые функции, введённые вокруг этих
+четырёх (резолюция режима, штамп/сверка версии, тип вердикта активации, кандидатство на lazy),
+документированы отдельными компактными блоками ниже — для закрытого мира модуля, не потому что
+каждый из них несёт собственный контракт. `SkeletonPackageBindingGuard` — не Service и не
+production-сущность вовсе: guard-тест уровня модуля; см. его блок с явной пометкой.
 
 <details>
 <summary>Полные поверхности сущностей</summary>
@@ -418,6 +447,10 @@ runtime-ошибка выдачи) → владелец: `LazyDirectiveAssembler
 - **Public Properties:** `defaultMode: AssemblyMode`; `overrides: Record<string, AssemblyMode>` (ключ — id директивы, `sdd-v2/<name>.directive.xml`)
 - **Lifecycle:** Читается один раз на запуск сборки из `ai/kit/assembly-manifest.json`; не мутируется во время сборки
 - **Errors & Degradation:** Файл отсутствует → эффективный `defaultMode = 'monolith'`, `overrides = {}` (поведение до этой спеки, без изменений); файл присутствует, но не парсится как JSON → сборка должна упасть явной ошибкой конфигурации, не тихим фолбэком
+- **Usage Waiver:** Экспортирован по Exit-критерию фазы P1, до появления собственных потребителей —
+  интеграция в `build-directives.ts` шла фазой P3, юнит-тесты фазами P4/P5; на момент проверки
+  `yagni` в P1 обе фазы ещё не были выполнены, что и вызвало yagni-находку по всей этой группе
+  экспортов (Execution Log P1, `2026-08-22T23:56:42.379Z`).
 - **Consumers:**
   - Internal: `build-directives.ts`, `LazyDirectiveAssembler`
   - External: N/A
@@ -428,6 +461,10 @@ runtime-ошибка выдачи) → владелец: `LazyDirectiveAssembler
 - **Purpose:** Для каждой аксиомы директивы определяет, сквозная она (эагерная) или одношаговая (в пакет).
 - **Public Operations:** классифицировать аксиому по множеству шагов, в теле которых она активируется
 - **Errors & Degradation:** Аксиома, активируемая в 0 шагах (мёртвая) — не решение этой сущности; передаётся как отдельная находка в `sdd-critic`/`yagni`, не блокирует сборку
+- **Usage Waiver:** Экспортирован по Exit-критерию фазы P1, до появления собственных потребителей —
+  интеграция в `build-directives.ts` шла фазой P3, юнит-тесты фазами P4/P5; на момент проверки
+  `yagni` в P1 обе фазы ещё не были выполнены, что и вызвало yagni-находку по всей этой группе
+  экспортов (Execution Log P1, `2026-08-22T23:56:42.379Z`).
 - **Consumers:**
   - Internal: `LazyDirectiveAssembler`
   - External: N/A
@@ -438,33 +475,82 @@ runtime-ошибка выдачи) → владелец: `LazyDirectiveAssembler
 - **Purpose:** Оркестрирует lazy-сборку одной директивы: делит `partials_ORIGINAL − ctx` на скелет и пакеты, штампует отпечаток, пишет файлы.
 - **Public Operations:** собрать `DirectiveSkeleton` + `StepPackage[]` из рендеренного текста директивы и результата `AxiomActivationClassifier`
 - **Errors & Degradation:** Директива без ни одного `<Step>` — lazy-сборка для неё не имеет смысла (нечего выносить в пакеты); генератор должен отклонить `lazy`-override для такой директивы явной ошибкой конфигурации, а не тихо выдать пустой список шагов
+- **Usage Waiver:** Экспортирован по Exit-критерию фазы P1, до появления собственных потребителей —
+  интеграция в `build-directives.ts` шла фазой P3, юнит-тесты фазами P4/P5; на момент проверки
+  `yagni` в P1 обе фазы ещё не были выполнены, что и вызвало yagni-находку по всей этой группе
+  экспортов (Execution Log P1, `2026-08-22T23:56:42.379Z`).
 - **Consumers:**
   - Internal: `build-directives.ts`
   - External: N/A
 
+### Вспомогательные экспорты `lazy-assembly.ts` (типы и чистые функции вокруг основных сущностей)
+
+- **Members:** `DEFAULT_ASSEMBLY_MANIFEST_PATH`, `resolveAssemblyMode`, `stampFingerprint`,
+  `VersionMismatch`, `findVersionMismatches`, `AxiomActivation`, `LazyCandidacyMetrics`,
+  `isLazyCandidate`, `LazyAssemblyResult`
+- **Type:** Constant / Function / Value Object — см. Entity Inventory для точного типа каждого
+- **Purpose:** Резолюция режима сборки директивы (`resolveAssemblyMode` + свой дефолт-путь
+  `DEFAULT_ASSEMBLY_MANIFEST_PATH`, DA-REQ-1); штамп и пост-фактум сверка версии
+  (`stampFingerprint`, `findVersionMismatches`, `VersionMismatch`, DA-REQ-7/8); тип вердикта
+  активации аксиомы/контракта (`AxiomActivation`, DA-REQ-9); кандидатство директивы на
+  lazy-override (`isLazyCandidate`, `LazyCandidacyMetrics`, DA-REQ-16); тип результата
+  `LazyDirectiveAssembler.assemble` (`LazyAssemblyResult`)
+- **Errors & Degradation:** См. соответствующие требования (DA-REQ-1, DA-REQ-7, DA-REQ-8,
+  DA-REQ-16) — каждая функция описана там при первом упоминании; сюда сведены только сигнатуры
+  ради закрытого мира, не отдельные контракты
+- **Usage Waiver:** Все девять экспортированы по Exit-критерию фазы P1 раньше своих потребителей —
+  интеграция в `build-directives.ts` шла фазой P3, юнит-тесты фазами P4/P5; на момент проверки
+  `yagni` в P1 обе фазы ещё не были выполнены, что и вызвало yagni-находку по всем 16 именам этой
+  группы, включая поля `VersionMismatch`/`LazyCandidacyMetrics` (Execution Log P1,
+  `2026-08-22T23:56:42.379Z`).
+- **Consumers:**
+  - Internal: `build-directives.ts` (частично: `resolveAssemblyMode`, `stampFingerprint`),
+    `ai/kit/__tests__/lazy-assembly.test.ts`
+  - External: N/A
+
+### Прочие бэрные экспорты `lazy-assembly.ts`
+
+- **Members:** `StepBodyEntry`, `LazyAssemblyInput`, `classify`, `assemble`
+- **Type:** Value Object (`StepBodyEntry`, `LazyAssemblyInput`) / Function alias (`classify`, `assemble`)
+- **Purpose:** `StepBodyEntry` и `LazyAssemblyInput` — входные типы `classify`/`assemble`
+  соответственно; `classify` и `assemble` — бэрные-имя алиасы для
+  `AxiomActivationClassifier.classify` и `LazyDirectiveAssembler.assemble`, чтобы вызывающий код
+  мог импортировать глагол напрямую, без обращения через объект сервиса
+- **Consumers:**
+  - Internal: определение алиасов — `AxiomActivationClassifier`, `LazyDirectiveAssembler`; тесты
+  - External: N/A
+
 ### `StepBudgetGate`
 
-- **Type:** Service
+- **Type:** Module (плоский набор экспортов — функция + именованные лимит-константы + входные
+  типы; без объекта-неймспейса, в отличие от `AxiomActivationClassifier`/`LazyDirectiveAssembler`
+  — см. Decision Log DA-DL-17)
 - **Purpose:** Механически проверяет размер скелета и каждого пакета против бюджетов DA-REQ-6/DA-REQ-14.
-- **Public Operations:** измерить `DirectiveSkeleton`/`StepPackage` в токенах/байтах, вернуть список превышений
+- **Public Operations:** `check(skeletonText, packages)` — измеряет и возвращает список
+  превышений; лимит-константы `SKELETON_TOKEN_LIMIT` (8000 токенов), `PACKAGE_CHAR_LIMIT`
+  (20 000 символов, DA-DL-16), `PACKAGE_LINE_CHAR_LIMIT` (2000 символов); входные типы
+  `StepPackageInput`, `StepBudgetFinding`
 - **Errors & Degradation:** Превышение → непустой список находок, сборка (или отдельный CI-шаг) завершается ошибкой; список пуст → тихий успех
 - **Consumers:**
-  - Internal: CI-пайплайн (`npm run build:directives` или отдельный `npm run check:directive-budgets`)
+  - Internal: `build-directives.ts` (`check`, через импорт `check as checkStepBudgets`), CI-пайплайн (`npm run check:directive-budgets`)
   - External: N/A
 
 ### `SkeletonPackageBindingGuard`
 
-- **Type:** Service
+- **Type:** Guard Test — НЕ Service, НЕ production-сущность. По факту кода ни один `.ts`-файл не
+  экспортирует символ с этим именем: он существует только как `describe('SkeletonPackageBindingGuard',
+...)` в `ai/kit/__tests__/skeleton-package-binding.guard.test.ts` (DA-DL-17). Оставлен здесь как
+  полная поверхность конкретно этого guard-теста, а не как элемент закрытого мира продакшн-кода.
 - **Purpose:** Guard-тест уровня модуля: правка директивы не должна молча разваливать связку
   скелет↔пакеты, и monolith↔lazy разбиение не должно терять/дублировать аксиомы. Работает по
   файлам на диске и плану сборки (`LazyDirectiveAssembler`), без вызова стороннего бинаря
   `sdd-step` — `directive-assembly` не зависит от `cli`-пакета на этапе этого теста. Отдельный,
   сквозной интеграционный тест, вызывающий реальный `sdd-step`, — вне этой сущности (см.
   Inter-Module Dependencies).
-- **Public Operations:** для фикстуры lazy-директивы — пересобрать, прочитать скелет и файлы
-  пакетов напрямую, сверить, что отпечаток версии и покрытие шагов согласованы с планом сборки; для
-  каждой из трёх пилотных директив — собрать в режимах `monolith` и `lazy` и сверить эквивалентность
-  «без потерь» (DA-REQ-15)
+- **Public Operations (тест-кейсы, не API):** для фикстуры lazy-директивы — пересобрать, прочитать
+  скелет и файлы пакетов напрямую, сверить, что отпечаток версии и покрытие шагов согласованы с
+  планом сборки; для каждой из трёх пилотных директив — собрать в режимах `monolith` и `lazy` и
+  сверить эквивалентность «без потерь» (DA-REQ-15)
 - **Errors & Degradation:** Разрыв связки или расхождение monolith/lazy → тест красный с указанием,
   какой шаг/файл/аксиома рассинхронизированы
 - **Consumers:**
@@ -478,10 +564,12 @@ runtime-ошибка выдачи) → владелец: `LazyDirectiveAssembler
 
 ## Module Contracts
 
-Четыре Service без Port: реализация расширяет уже существующий `ai/kit/build-directives.ts`, который
-читает партиалы через `node:fs` напрямую, без абстракции источника — единственный источник здесь
-файлы на диске, как и до этой спеки, подтверждённой вариативности (тестовая фикстура vs реальный
-диск) для ЭТОГО модуля не заведено (`AX_PORTS_AND_ABSTRACTIONS_DISCIPLINE`). Граф зависимостей:
+Две Service-сущности (`LazyDirectiveAssembler`, `AxiomActivationClassifier`) и один Module
+(`StepBudgetGate` — плоский набор функций/констант, не объект-неймспейс, DA-DL-17) без Port:
+реализация расширяет уже существующий `ai/kit/build-directives.ts`, который читает партиалы через
+`node:fs` напрямую, без абстракции источника — единственный источник здесь файлы на диске, как и до
+этой спеки, подтверждённой вариативности (тестовая фикстура vs реальный диск) для ЭТОГО модуля не
+заведено (`AX_PORTS_AND_ABSTRACTIONS_DISCIPLINE`). Граф зависимостей:
 
 ```mermaid
 flowchart LR
@@ -491,11 +579,12 @@ flowchart LR
   LazyDirectiveAssembler -->|пишет| StepPackage
   StepBudgetGate -->|измеряет| DirectiveSkeleton
   StepBudgetGate -->|измеряет| StepPackage
-  SkeletonPackageBindingGuard -->|проверяет| DirectiveSkeleton
-  SkeletonPackageBindingGuard -->|проверяет| StepPackage
 ```
 
-_Кто зависит от кого при lazy-сборке — DA-REQ-3, DA-REQ-4, DA-REQ-6._
+_Кто зависит от кого при lazy-сборке — DA-REQ-3, DA-REQ-4, DA-REQ-6. `SkeletonPackageBindingGuard`
+не входит в этот граф — это guard-тест, не Service/Module (см. его блок в Entity Surfaces); он
+проверяет `DirectiveSkeleton`/`StepPackage` по факту файлов на диске, не как зависимость времени
+выполнения._
 
 | Step | Participant              | Action                                                                     | Data                             |
 | ---- | ------------------------ | -------------------------------------------------------------------------- | -------------------------------- |
@@ -511,7 +600,7 @@ _Сборка lazy-директивы от партиалов до файлов 
 <details>
 <summary>Контракты DbC</summary>
 
-### Services
+### Services & Modules
 
 #### Service: `LazyDirectiveAssembler`
 
@@ -552,6 +641,9 @@ _Сборка lazy-директивы от партиалов до файлов 
 
 #### Service: `StepBudgetGate`
 
+- **Note:** заголовок сохраняет слово «Service» ради стабильности якоря, на который ссылается
+  тикет (`#service-stepbudgetgate`); по факту кода и по Entity Inventory это Module — плоский
+  набор экспортов (`check` + лимит-константы + входные типы), не объект-неймспейс (DA-DL-17).
 - **Purpose:** Проваливает сборку/CI при превышении бюджетов скелета или пакета.
 - **Consumers:**
   - Internal: CI-пайплайн
@@ -629,10 +721,10 @@ ai/directives/sdd-v2/
 
 **File Mapping:**
 
-- `ai/kit/lazy-assembly.ts`: `LazyDirectiveAssembler`, `AxiomActivationClassifier`, `BuildFingerprint`
+- `ai/kit/lazy-assembly.ts`: `LazyDirectiveAssembler`, `AxiomActivationClassifier`, `BuildFingerprint`, plus every supporting export in Entity Inventory (`resolveAssemblyMode`, `stampFingerprint`, `findVersionMismatches`, `isLazyCandidate`, `classify`, `assemble`, and their constant/type companions)
 - `ai/kit/assembly-manifest.json`: `AssemblyManifest`
-- `ai/kit/step-budget-gate.ts`: `StepBudgetGate`
-- `ai/kit/__tests__/skeleton-package-binding.guard.test.ts`: `SkeletonPackageBindingGuard`
+- `ai/kit/step-budget-gate.ts`: `StepBudgetGate` (Module: `check`, `SKELETON_TOKEN_LIMIT`, `PACKAGE_CHAR_LIMIT`, `PACKAGE_LINE_CHAR_LIMIT`, `StepPackageInput`, `StepBudgetFinding`)
+- `ai/kit/__tests__/skeleton-package-binding.guard.test.ts`: `SkeletonPackageBindingGuard` (guard-тест, не экспортируемая сущность — DA-DL-17)
 <!--/SECTION:FILE_STRUCTURE-->
 
 <!--SECTION:RESEARCH-->
@@ -652,13 +744,15 @@ ai/directives/sdd-v2/
 
 ## Module Decision Log
 
-Шестнадцать записей: режимы сборки и приоритет, форма скелета/пакета, CLI-выдача и честная ошибка
+Семнадцать записей: режимы сборки и приоритет, форма скелета/пакета, CLI-выдача и честная ошибка
 версии (обе позднее суперсидированы), эагерность аксиом, порядок с дельта-сборкой, отказ от
 телеграфа, пилотные директивы, guard-тесты; плюс четыре записи после факт-чека
 `2026-08-22-truncation-and-fingerprints.research.md`: доставка путём+Read, пост-фактум сверка
 версии, обновлённое обоснование лимитов, DEFERRED_DECISION про `sdd-step`; плюс одна запись после
 живого исполнения спеки на реальном контенте: величина бюджета пакета шага пересчитана под
-Read-канал (8000 → 20 000 символов).
+Read-канал (8000 → 20 000 символов); плюс одна запись после независимого аудита: `StepBudgetGate`
+зафиксирован как Module (не Service), `SkeletonPackageBindingGuard` — как guard-тест, а не
+production-сущность.
 
 <details>
 <summary>Полные записи Decision Log</summary>
@@ -695,6 +789,8 @@ Read-канал (8000 → 20 000 символов).
 
 ### DA-DL-16 2026-08-23 — supersedes величину DA-DL-5/DA-DL-14: хардлимит пакета шага поднят с 8000 до 20 000 символов; построчный лимит ≤2000 символов не меняется (почему: живое исполнение спеки на реальном контенте показало, что бюджет 8000 невыполним — измеренные худшие пакеты (тело шага + его одношаговые аксиомы) составили audit/STEP_1_MECHANICAL 13 440 символов, scaffold/STEP_3_TASK_GENERATION 15 568, phase-execution-protocol/STEP_5_VERIFY 15 422, при телах самих шагов ≤7 166 символов — превышение даёт именно состав пакета (тело + аксиомы), не раздутость самого шага; обоснование DA-DL-5 стояло на хардлимите Bash-вывода Claude Code (30 000 символов, серединное усечение), потому что тогда пакет выдавала CLI-команда — после DA-DL-12 канал доставки сменился на путь+Read, и Bash-лимит перестал быть релевантным ограничением для этого механизма; строгий предел актуального канала (Read) по факт-чеку (`2026-08-22-truncation-and-fingerprints.research.md`) — 50 КБ/50 000 символов у opencode (нижний из двух хостов, у Claude Code Read governed токен-лимитом того же порядка); 20 000 символов даёт 2.5× запас под этим пределом и вмещает худший измеренный пакет (15 568) с запасом ~28% на дальнейший рост контента директив; построчный лимит ≤2000 символов не пересматривается — он реален для обоих хостов независимо от общего объёма и не был затронут пивотом канала; отдельно: корень ошибки — при пивоте канала (DA-DL-12) величина бюджета осталась унаследованной от прежнего канала (Bash) и не была пересчитана вместе с ним — решение пережило своё собственное основание, и этот класс дрифта не виден на этапе спеки/ревью, ловится только реальным прогоном на реальном контенте; отвергнуто: оставить 8000 без изменений — отклонено, факт живого исполнения (не гипотеза) показывает недостижимость на реальном контенте всех трёх пилотных директив; отвергнуто: поднять лимит вплотную к пределу канала (например 45 000–48 000) — отклонено, не оставляет запаса на рост контента и воспроизводит тот же паттерн «бюджет на грани хардлимита канала», который уже подвёл однажды)
 
+### DA-DL-17 2026-08-23 — независимый аудит группы: `StepBudgetGate` документируется как Module (плоский набор экспортов `check`+три лимит-константы+два входных типа), не Service; `SkeletonPackageBindingGuard` вынесен из Entity Inventory — это guard-тест (`describe('SkeletonPackageBindingGuard', ...)` в `ai/kit/__tests__/skeleton-package-binding.guard.test.ts`), не экспортируемая production-сущность (почему: `gennady lint --inventory-reverse` не находил ни одного экспорта этих двух имён — P2 реализовал `step-budget-gate.ts` как чистую функцию `check` плюс три именованные константы плюс два типа, без объекта-неймспейса по образцу `AxiomActivationClassifier`/`LazyDirectiveAssembler` (ни одного второго вызова, оправдывающего обёртку, — единственный вызов `check` идёт из `build-directives.ts`, конструкция-обёртка добавила бы уровень индирекции без потребителя, тот же принцип `AX_NO_PREMATURE_ABSTRACTIONS`, что уже применён внутри `step-budget-gate.ts` к его инлайновому CLI-блоку); `SkeletonPackageBindingGuard` никогда не существовал как код — только как имя тест-сюита, введённое P7 по образцу `ai/kit/__tests__/delta-assembly.test.ts`, где сам образец тоже не заводит отдельно экспортируемую сущность под именем guard'а; отвергнуто: задним числом обернуть `step-budget-gate.ts` в объект `StepBudgetGate = { check, ... }` — отклонено, это код-изменение, а зона этой правки — только спека/тикет/трекер, реализация уже прошла свои fix-прогоны; отвергнуто: удалить `StepBudgetGate`/`SkeletonPackageBindingGuard` из спеки полностью — отклонено, оба имени остаются осмысленными концептуальными якорями (Requirements, тикет, тесты уже ссылаются на них), спека должна честно описывать их реальную форму, а не вычёркивать)
+
 </details>
 <!--/SECTION:MODULE_DECISION_LOG-->
 
@@ -725,5 +821,14 @@ Read-канал (8000 → 20 000 символов).
     сквозной + помечается YAGNI-находкой» не проверено на реальном корпусе аксиом трёх пилотных
     директив
   - Формат `ai/kit/assembly-manifest.json` — новый файл конфигурации; нет предшествующего примера
-  в репозитории для схемы валидации при парсинге
+    в репозитории для схемы валидации при парсинге
+  - Отпечаток (DA-REQ-7) — голая `version` из `package.json` (например `0.8.4`, без draft/build
+  суффикса), что буквально удовлетворяет DA-REQ-7, но ослабляет рационале DA-DL-13 (пост-фактум
+  сверка ловит рассинхрон скелета и пакета): сверка работает только если версия менялась между
+  прогонами сборки. Два прогона сборки подряд без бампа `package.json` (например, прерванная и
+  затем повторённая пересборка в рамках одной версии пакета) штампуют одинаковый отпечаток везде
+  — `findVersionMismatches` вернёт пустой список даже если один из прогонов был частичным, и
+  рассинхрон в этом случае не детектируется никак. Это не дефект кода (реализация делает ровно то,
+  что требует DA-REQ-7) — известная граница механизма пост-фактум сверки при текущей схеме
+  версионирования, а не гарантия обнаружения любого рассинхрона.
   <!--/SECTION:HANDOFF-->

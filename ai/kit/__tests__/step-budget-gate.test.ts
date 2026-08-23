@@ -21,6 +21,19 @@ import {
 const ROOT = join(import.meta.dirname, '..', '..', '..');
 const CLI_ENTRY = join(ROOT, 'ai/kit/step-budget-gate.ts');
 
+/**
+ * Builds package text that lands exactly `overBy` characters past `PACKAGE_CHAR_LIMIT`, while
+ * keeping every individual line far under `PACKAGE_LINE_CHAR_LIMIT` — isolates the package-chars
+ * finding from the package-line-chars finding regardless of where either limit is currently set.
+ */
+function buildOversizedPackageText(overBy: number): string {
+  const lineWidth = 100; // stays well under PACKAGE_LINE_CHAR_LIMIT
+  const targetLength = PACKAGE_CHAR_LIMIT + overBy;
+  const blockCount = Math.ceil(targetLength / (lineWidth + 1)) + 1;
+  const pattern = ('x'.repeat(lineWidth) + '\n').repeat(blockCount);
+  return pattern.slice(0, targetLength);
+}
+
 describe('StepBudgetGate', () => {
   describe('check', () => {
     it('returns an empty finding list when the skeleton and every package are within budget', () => {
@@ -42,11 +55,11 @@ describe('StepBudgetGate', () => {
       ]);
     });
 
-    it('finds a step package exceeding 8000 characters and names the directive, the step, and the overage', () => {
+    it('finds a step package exceeding the package character cap and names the directive, the step, and the overage', () => {
       // #region START_PACKAGE_OVER_CHAR_CAP_SETUP_FIXTURE
-      // 90 lines of 90 chars each stay well under the 2000-char line cap while pushing the whole
-      // package past the 8000-char cap — isolates the package-chars finding from package-line-chars.
-      const text = Array.from({ length: 90 }, () => 'x'.repeat(90)).join('\n');
+      // Built one past PACKAGE_CHAR_LIMIT, in short lines well under the line cap — isolates the
+      // package-chars finding from package-line-chars regardless of where either limit is set.
+      const text = buildOversizedPackageText(1);
       const packages: StepPackageInput[] = [{ stepId: 'STEP_LONG', text }];
       // #endregion END_PACKAGE_OVER_CHAR_CAP_SETUP_FIXTURE
 
@@ -89,7 +102,7 @@ describe('StepBudgetGate', () => {
       const stepsDir = join(fixture, 'foo', 'steps');
       mkdirSync(stepsDir, { recursive: true });
       writeFileSync(join(fixture, 'foo.directive.xml'), 'skeleton within budget');
-      const packageText = Array.from({ length: 90 }, () => 'x'.repeat(90)).join('\n');
+      const packageText = buildOversizedPackageText(1);
       writeFileSync(join(stepsDir, 'STEP_BIG.xml'), packageText);
       // #endregion END_CLI_OVER_BUDGET_SETUP_FIXTURE_TREE
 

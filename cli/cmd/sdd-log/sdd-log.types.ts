@@ -125,6 +125,17 @@ export function buildBlockerBlock(
   ].join('\n');
 }
 
+/**
+ * @purpose Build the paired close for BLOCKER_FORMAT — the `✅ RESOLVED` marker
+ *   `AX_BLOCKER_RESOLUTION_TRAIL` and `scanBlockerTrail` (check.ts) key off, per-phase.
+ * @param reason The concrete environmental change or decision that removed the blocker (verbatim).
+ * @param ts Timestamp string.
+ * @returns A `- [x] \`<ts>\` ✅ RESOLVED: <reason>` line.
+ */
+export function buildResolvedLine(reason: string, ts: string): string {
+  return `- [x] \`${ts}\` ✅ RESOLVED: ${reason}`;
+}
+
 /** @purpose A phase-heading line inside EXECUTION_LOG — `#### P<N>` (optionally with a re-run suffix), same shape `parsePhaseHandoffs` (check.ts) keys off. */
 const PHASE_HEADING_RE = /^#{2,6}\s+(P[0-9]+)\b/;
 /** @purpose Any markdown heading line — the boundary of a phase's block within EXECUTION_LOG (next phase/round header). */
@@ -264,9 +275,10 @@ export function badInvocation(detail: string): LogOutcome {
       '  expected: gennady sdd-log <ticket> <mode> [content]',
       '  modes: round "<reason>" | line "<content>" [--phase P<N>] | close |',
       '         phase <P-ID> ["— re-run: <reason>"] | handoff "<payload>" [--phase P<N>] |',
-      '         blocker "<reason>" --axiom <AX_NAME> --unblock "<action>" [--phase P<N>]',
-      '  --phase P<N> is only valid on line | handoff | blocker — it inserts at the end of that',
-      "  phase's own block instead of the end of EXECUTION_LOG (needed when phases run in parallel).",
+      '         blocker "<reason>" --axiom <AX_NAME> --unblock "<action>" [--phase P<N>] |',
+      '         resolved "<what removed it>" [--phase P<N>]   # paired close for blocker',
+      '  --phase P<N> is only valid on line | handoff | blocker | resolved — it inserts at the end',
+      "  of that phase's own block instead of the end of EXECUTION_LOG (needed when phases run in parallel).",
       '  content must carry no <…> placeholder.',
     ].join('\n'),
   };

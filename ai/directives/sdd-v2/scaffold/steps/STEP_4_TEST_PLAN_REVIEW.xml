@@ -1,0 +1,12 @@
+0.8.4
+
+<Step id="STEP_4_TEST_PLAN_REVIEW">
+      <Goal>GATE 2: operator approves the TEST PLAN.</Goal>
+      <Action>
+        Present the test plan as a decision card: each BDD scenario as a use-case, tagged
+        `[<ACRONYM>-REQ-N]`, traced up to the scope Vision / goal it protects, plus coverage (every
+        contract has a typing scenario, every scenario maps to a test). The operator approves **what is
+        tested, which use-cases are covered, and that this guarantees the vision** — the one gate on
+        substance. Out-of-scope proposals the subagent surfaced are raised here. STOP.
+      </Action>
+    </Step>

@@ -1,0 +1,105 @@
+0.8.4
+
+<Step id="STEP_1_MECHANICAL">
+      <Goal>Get the mechanical findings from the tool. Take them as given.</Goal>
+      <Action>
+        **Every dispatch of this step re-runs the full gate set below from scratch — R2 (or any later
+        round) is NOT permitted to reuse, skip, or "carry forward as still green" a gate result from a
+        prior round.** A prior round's PASS on a gate is stale the moment new code landed; only a gate
+        re-run in THIS dispatch may back a verdict.
+        FIRST resolve the working scope: `sdd-task --group-scope <id>` (`AX_GIT_DIFF_SCAN`) — spec, the
+        group's ticket list, the `Target Files` union, the diff over that union (or the no-git-refs
+        fallback line), and the Handoff artifacts. This IS the scope for every check below; it is never
+        re-derived by hand.
+
+        **Verification level → gate mapping** (fixed, never inferred from the dispatch prompt's wording):
+
+        | Level | Checked by |
+        |---|---|
+        | Structural / mechanical (anchors, Meta, Execution Log completeness, fabricated-DONE, phase DAG, tracker coherence, RULES_CASCADE_CLOSURE, BDD_COVERAGE, TASKS_APPEND_ONLY, CONSUMERS_RESOLVABLE) | `sdd-check --task <ticket>` (+ `--all`, `--changed`) |
+        | Code (types, format, contract lint, yagni usage) | `sdd-verify --profile full` |
+        | Closed-world inventory sync + cast safety over changed files | `gennady lint --spec=<module-spec> <changed files>` |
+        | Test coverage floor | `gennady testcov --run --min=80` (or the ticket's own §5 threshold) |
+        | Contract semantics, runtime-backing, drift — irreducibly semantic, no command runs this | STEP_2_SEMANTIC, this audit's own judgment |
+
+        A gate's verdict is computed from ITS OWN exit code and the ticket/dependency graph alone —
+        never from anything the dispatching orchestrator's prompt happened to say. Two shapes of
+        "gate didn't produce a verdict" exist and they route to OPPOSITE defaults — keep them apart
+        rather than folding one into the other:
+
+        **(a) The gate SCRIPT itself is missing** (`package.json` has no such script at all). This is
+        legitimately `ENVIRONMENT_GATE_UNAVAILABLE` for exactly one reason: the ticket graph itself
+        shows a DIFFERENT, still-open ticket in the queue owns creating that script (its Bootstrap
+        Requirements or Target Files name it) — check the graph for that fact, never infer it from a
+        stray adjective like «штатно» ("business as usual") in the dispatch prompt, which carries ZERO
+        verdict weight. Absent that graph fact, a missing script is `FAIL`, exactly as the rule below
+        already states, regardless of how routine the dispatch prompt made the run sound. This "exactly
+        one reason" carve-out is scoped to case (a) only — it does not extend to case (b) below.
+
+        **(b) The script EXISTS but the environment refuses to run it to completion** — no test
+        runner installed, no network reachable, the process crashes before emitting a pass/fail. This
+        is `ENVIRONMENT_GATE_UNAVAILABLE` UNCONDITIONALLY, with no graph check: "no network" cannot,
+        even in principle, satisfy a ticket-ownership condition, so gating it on one would leave every
+        real network outage misclassified as `FAIL`. Route per `AX_FINDING_ROUTING` — operator
+        escalation, never a phase fix and never something audit or the worker repairs itself.
+
+        Then run `sdd-check --task <ticket-path>` for EACH ticket in the group (a
+        single call for per-task mode) plus one `sdd-check --all` for the whole tree, per `AX_AUDIT_MODES`,
+        plus `sdd-check --changed` per `AX_MECHANICAL_VIA_SDD_CHECK` — together they report the deterministic
+        findings: structure / anchors / Task-ID + Status, fabricated-DONE, the phase graph,
+        Execution-Log completeness, the task DAG, tracker↔ticket coherence, RULES_CASCADE_CLOSURE,
+        BDD_COVERAGE, TASKS_APPEND_ONLY, and CONSUMERS_RESOLVABLE. Take these as given — the tool owns
+        them. Then INDEPENDENTLY re-run the green gate — `sdd-verify --profile full`,
+        `gennady lint --spec=<module-spec>` (cast + closed-world inventory over the changed files), and
+        `gennady testcov --run --min=80` (coverage gate — project line coverage ≥ 80% at task completion):
+        run these gates SEQUENTIALLY, one at a time, never in parallel — `sdd-verify --profile full` and
+        `gennady testcov --run` both write into `coverage/`, and any two commands sharing an output path
+        race when parallelized: whichever finishes last overwrites or half-writes the other's artifact,
+        producing a false red that has nothing to do with the code. Parallelizing is fine only for
+        commands that write no shared artifact; a gate is disqualified from that the moment its output
+        directory overlaps another gate's. Always re-derive the gate yourself rather than trust the worker's logged `ver` lines; a gate that fails
+        here, a `ver` logged for a command that does not actually pass, or coverage below the gate, is a `BLOCKER`.
+        A gate command that does not execute at all is a DIFFERENT case from a gate that runs and reports
+        red: it is neither PASS nor a failure to diagnose. Split it exactly as above: a missing gate SCRIPT
+        is case (a) — `FAIL` unless the graph names a different open ticket that owns building it — while
+        no runner / no network / a crash before pass-fail is case (b) — `ENVIRONMENT_GATE_UNAVAILABLE`
+        unconditionally. Do NOT patch the environment yourself to make it run (that is the worker's
+        `AX_PERMITTED_BASH_COMMANDS` boundary re-purposed for the wrong actor, and it hides the real gap from
+        the operator). Record case (b) as `ENVIRONMENT_GATE_UNAVAILABLE` and let STEP_3 route it (operator
+        escalation, per `AX_FINDING_ROUTING`). **PASS is never the verdict when any gate is red OR any gate
+        did not execute** — the only outcomes for a task with an unexecuted gate are `FAIL` (case (a) without
+        the graph fact, `phases_to_fix` left empty since no phase can fix an environment problem) or an
+        explicit operator escalation (case (b)); whole-task verdict computation MUST treat "gate did not
+        run" the same as "gate ran and failed" for this purpose.
+        Per-group mode closes the WHOLE spec by definition (`due` only fires once every sibling ticket is
+        DONE, per `AX_AUDIT_HOOK`) — always add the reverse closed-world sweep over the module's code
+        root. In per-task mode, add it only when this ticket is the module's last (every sibling DONE):
+        `gennady lint --spec=<module-spec> --inventory-reverse <module-code-dir>` — every entity declared in the
+        inventory must now be exported by some file (`ERR_CLI_LINT_INVENTORY_UNIMPLEMENTED` = declared-but-unbuilt
+        / renamed-away). Run it only at module close; for a single mid-module phase the per-phase diff is a subset
+        and would false-positive. Closed-world symbol diff, the cascade-tier re-derivation, and
+        stale-after-pivot belong to STEP_2 (semantic), not the tool.
+      </Action>
+    </Step>
+
+<Axiom id="AX_MECHANICAL_VIA_SDD_CHECK">
+      Deterministic mechanical checks are NOT hand-coded in this directive — they live in one tool, `sdd-check`, which the whole-tree reporter and this directive both consume. Single source of mechanical truth → no drift between the SDD reviewers. Take its findings as given; do NOT hand-redo them.
+
+      - `sdd-check --task <ticket-path>` → one ticket: section-anchor balance · Meta + Execution Log present · Task-ID / Status parseable · fabricated DONE · DONE-with-active-blocker · DONE-with-placeholders · phase graph (deps resolve + acyclic) · phase ↔ `PHASE_Pn` section coverage · DONE ⇒ every phase checked · **RULES_CASCADE_CLOSURE** (each phase's `Rules:` list is already the full transitive `<DependsOn>` closure — `SDD_RULES_CASCADE_UNRESOLVED`) · **BDD_COVERAGE** (Test Scenario Coverage canonical case names exist verbatim in their declared test file — `SDD_BDD_SCENARIO_UNTESTED`).
+      - `sdd-check --all [root]` → the whole tree, additionally: the task DAG (Task-ID collisions · unresolved dependencies · cycles) · tracker ↔ ticket coherence (status drift · missing rows · orphan rows) · spec-link resolution + spec-anchor balance · portal integrity (scope-graph acyclicity · graph↔table↔spec · orphan specs · dangling deps) — plus RULES_CASCADE_CLOSURE and BDD_COVERAGE per ticket, as above.
+      - `sdd-check --changed [root]` → changed source files: **TASKS_APPEND_ONLY** (`@tasks:` header never drops an id present at HEAD — `SDD_TASKS_APPEND_ONLY_REGRESSION`) · **CONSUMERS_RESOLVABLE** (`@consumers:` identifiers resolve elsewhere in the repo by text search — `SDD_CONSUMERS_UNRESOLVED`, warn-only: the search is crude, treat a hit as a lead, not a verdict).
+
+      `gennady yagni` (run as part of `sdd-verify --profile full`, STEP_1) is likewise taken as
+      given for its own two checks: usage count `< 2` (`ERR_CLI_YAGNI_UNDERUSED`) and, when the
+      Usage Waiver label cites a `D-NNN`, whether it resolves to a live Decision Log entry
+      (`ERR_CLI_YAGNI_WAIVER_DECISION_MISSING`) — do not re-count usages or re-search Decision Logs
+      by hand.
+
+      Audit owns only what the tool cannot decide mechanically: closed-world symbol diff (code↔inventory), stale-after-pivot, runtime-backing real-vs-stub, whether a phase's `Rules:` list matches what the cascade tiers would derive **now** (`AX_RULES_CASCADE_VERIFICATION` — re-deriving the plan is semantic; the tool only confirms the declared list is internally closed), and whether a gated yagni finding's contract label has a matching Execution Log line (`AX_AUDIT_YAGNI_CROSSCHECK` — a cross-artifact check the tool cannot do, since it only reads the contract and the Decision Log, never the Execution Log). File-header presence (`@file`/`@consumers`/`@tasks`) is checked by `sdd-verify`, not here.
+    </Axiom>
+
+<Axiom id="AX_AUDIT_MODES">
+      Per-group vs per-task.
+      - **Per-group** (default, auto-dispatch): `sdd-execute` dispatches this mode automatically once `sdd-task --audit-group` reports the group `due` — every ticket of one spec, reviewed together. Input is the group: the spec path + its full ticket list (Task-IDs). Checks cross-ticket consistency too — Decision Log entries, absence of conflicting contracts between tickets of the same group — on top of each ticket's own drift.
+      - **Per-task** (operator-manual): operator explicitly names a single Task-ID («audit TSK-NN»). Audit bounded to that one ticket's scope — no cross-ticket check. `sdd-execute` never auto-dispatches this mode; it exists for a targeted operator re-check outside the normal group cadence.
+    </Axiom>

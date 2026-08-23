@@ -6,7 +6,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { join, relative, sep } from 'node:path';
+import { join, relative, sep, basename } from 'node:path';
 import { createRenderer, walk, TEMPLATES, OUT_ROOT, KIT } from '../render.ts';
 import {
   buildDeltaPlan,
@@ -15,8 +15,11 @@ import {
   CLASS_3_DIRECTIVES,
   type PlanNodeInput,
 } from '../delta-assembly.ts';
+import { resolveAssemblyMode, stampFingerprint, LazyDirectiveAssembler } from '../lazy-assembly.ts';
 
 const SKILLS_ROOT = join(KIT, '..', 'skills');
+// ai/kit -> ai -> <repo root> — matches OUT_ROOT's own "ai/directives" shape one level up.
+const PROJECT_ROOT = join(KIT, '..', '..');
 
 interface Pass1Entry {
   rel: string; // e.g. "sdd-v2/router.directive.xml" (posix)
@@ -189,10 +192,41 @@ describe('delta-assembly — determinism', () => {
 describe('delta-assembly — generated ai/directives/sdd-v2 matches the plan', () => {
   it('every generated directive file equals the plan-driven render (build is not stale)', () => {
     const { plan, pass1 } = buildPlan();
+    const fingerprint = stampFingerprint(
+      (JSON.parse(readFileSync(join(PROJECT_ROOT, 'package.json'), 'utf8')) as { version: string }).version
+    );
     for (const e of pass1) {
       const id = 'ai/directives/' + e.rel;
       const excluded = excludedPartialsFor(plan, id);
       const expected = deltaRenderOf(e, excluded);
+
+      // A directive resolved lazy (manifest override) writes only a slim skeleton at its normal
+      // path plus one package per Step (ai/kit/lazy-assembly.ts) — the plan-driven reference for
+      // "build is not stale" is the assembled skeleton+packages split of the same delta-reduced
+      // `expected` text, not `expected` itself.
+      if (resolveAssemblyMode(e.rel) === 'lazy') {
+        const { skeleton, packages } = LazyDirectiveAssembler.assemble({
+          directiveName: basename(e.rel, '.directive.xml'),
+          sourceText: expected,
+          fingerprint,
+        });
+        const actualSkeleton = readFileSync(join(OUT_ROOT, e.rel), 'utf8');
+        assert.equal(
+          actualSkeleton,
+          skeleton.text,
+          `${e.rel}: generated skeleton is stale — rerun ai/kit/build-directives.ts -- --assembly=lazy`
+        );
+        for (const pkg of packages) {
+          const actualPackage = readFileSync(join(PROJECT_ROOT, pkg.relativePath), 'utf8');
+          assert.equal(
+            actualPackage,
+            pkg.text,
+            `${e.rel} (step ${pkg.stepId}): generated package is stale — rerun ai/kit/build-directives.ts -- --assembly=lazy`
+          );
+        }
+        continue;
+      }
+
       const actual = readFileSync(join(OUT_ROOT, e.rel), 'utf8');
       assert.equal(actual, expected, `${e.rel}: generated file is stale — rerun ai/kit/build-directives.ts`);
     }
