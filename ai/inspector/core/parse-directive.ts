@@ -1,14 +1,16 @@
 // @file: ai/inspector — parse a rendered SDD v2 directive XML into a TraceNode tree.
 
-import type { TraceNode } from './model.ts';
+import type { FileReader, TraceNode } from './model.ts';
 import {
   clean,
   firstSentence,
   nextElement,
   parseAttrs,
   scanRefsAndTools,
+  topLevelElements,
   type RawEl,
 } from './scan.ts';
+import { resolveAssemblyMode } from '../../kit/lazy-assembly.ts';
 
 /**
  * Top-level `<Axiom>` элементы в `inner`, закрытие — БАЛАНСНОЕ (считает вложенные open/close той же
@@ -245,44 +247,154 @@ function parseLogicSwitch(inner: string, onAttr?: string): TraceNode {
   };
 }
 
-/** ExecutionPlan → шаги; внутри — Goal/Action (+ их содержимое). */
-function parseSteps(inner: string): TraceNode[] {
+/** Один `<Step id="...">...</Step>` → узел «шаг» с Goal/Action (+ их содержимое) детьми. Общая
+ *  форма для монолитного шага (тело — прямо в скелете) и для шага, прочитанного из файла пакета
+ *  lazy-директивы (тело идентично, только физически лежит в другом файле — см. parseLazySteps). */
+function buildStepNode(attrsRaw: string, body: string): TraceNode {
+  const attrs = parseAttrs(attrsRaw);
+  const children: TraceNode[] = [];
+  const goal = /<Goal>([\s\S]*?)<\/Goal>/.exec(body);
+  if (goal)
+    children.push({
+      kind: 'text',
+      label: '<Goal>',
+      note: firstSentence(goal[1] as string),
+      detail: clean(goal[1] as string),
+    });
+  const action = /<Action>([\s\S]*?)<\/Action>/.exec(body);
+  if (action) {
+    const ai = action[1] as string;
+    const prose = ai.replace(/<LogicSwitch\b[^>]*>[\s\S]*?<\/LogicSwitch>/g, ' '); // switch shown as branches, not raw in detail
+    children.push({
+      kind: 'text',
+      label: '<Action>',
+      note: firstSentence(prose),
+      detail: clean(prose),
+      children: parseAction(ai),
+    });
+  }
+  return { kind: 'step', label: `<Step ${attrs.id ?? ''}>`, attrs, children };
+}
+
+/** ExecutionPlan/PhaseProcedure (монолит) → шаги; `<Step>` живёт прямо в теле секции. */
+function parseMonolithSteps(inner: string): TraceNode[] {
   const steps: TraceNode[] = [];
   for (const m of inner.matchAll(/<Step\b([^>]*)>([\s\S]*?)<\/Step>/g)) {
-    const attrs = parseAttrs(m[1] as string);
-    const body = m[2] as string;
-    const children: TraceNode[] = [];
-    const goal = /<Goal>([\s\S]*?)<\/Goal>/.exec(body);
-    if (goal)
-      children.push({
-        kind: 'text',
-        label: '<Goal>',
-        note: firstSentence(goal[1] as string),
-        detail: clean(goal[1] as string),
-      });
-    const action = /<Action>([\s\S]*?)<\/Action>/.exec(body);
-    if (action) {
-      const ai = action[1] as string;
-      const prose = ai.replace(/<LogicSwitch\b[^>]*>[\s\S]*?<\/LogicSwitch>/g, ' '); // switch shown as branches, not raw in detail
-      children.push({
-        kind: 'text',
-        label: '<Action>',
-        note: firstSentence(prose),
-        detail: clean(prose),
-        children: parseAction(ai),
-      });
-    }
-    steps.push({ kind: 'step', label: `<Step ${attrs.id ?? ''}>`, attrs, children });
+    steps.push(buildStepNode(m[1] as string, m[2] as string));
   }
   return steps;
 }
 
+/** Одна bullet-строка списка шагов lazy-скелета:
+ *  `- **STEP_ID** — gist. Full step text: \`ai/directives/sdd-v2/<name>/steps/<id>.xml\` (...).`
+ *  (форма — buildStepListEntry в ai/kit/lazy-assembly.ts). Захватываем id + путь к пакету; gist —
+ *  только как честный fallback-текст, если пакет физически не прочитался. */
+const LAZY_STEP_BULLET_RE =
+  /-\s*\*\*([A-Za-z0-9_]+)\*\*\s*[—-]\s*([^\n]*?)\s*Full step text:\s*`([^`]+)`[^\n]*/g;
+
+/** Top-level `<Axiom>`/`<Contract>` блоки, физически перенесённые lazy-сборкой в файл пакета шага
+ *  (DA-REQ-9: аксиома/контракт, активирующийся только в ОДНОМ шаге, живёт только там — его больше
+ *  НЕТ в скелетном BeliefState/OutputContracts). Без этого разворота они пропали бы из трейса
+ *  вовсе: у секции-скелета их нет, а к пакету никто больше не заглядывает. */
+function parsePackageExtras(extras: string): TraceNode[] {
+  const nodes: TraceNode[] = parseAxioms(extras);
+  for (const el of topLevelElements(extras)) {
+    if (el.name !== 'Contract') continue;
+    const body = clean(el.inner);
+    nodes.push({
+      kind: 'text',
+      label: el.attrs.id ?? '<Contract>',
+      note: firstSentence(body),
+      detail: body,
+    });
+  }
+  return nodes;
+}
+
+/**
+ * ExecutionPlan/PhaseProcedure (lazy) → шаги, физически внешние: скелет несёт только bullet-список
+ * `id + путь к пакету` (DA-REQ-4), само тело шага — в `ai/directives/sdd-v2/<name>/steps/<id>.xml`.
+ * Каждый файл пакета читается и разбирается ОТДЕЛЬНО, никогда не склеивается с соседним перед
+ * разбором: непарный backtick одного файла (например, markdown-пример в `<Contract>` теле) иначе
+ * сцепляется с backtick-ом следующего пакета и глотает всё содержимое между ними (см. предупреждение
+ * задачи — тот же класс бага, что уже фиксили в audit-contract-activation.mjs и delta-assembly).
+ * Порядок шагов — как в bullet-списке скелета (уже в порядке скелета, не алфавитный).
+ */
+function parseLazySteps(inner: string, read: FileReader | undefined): TraceNode[] {
+  const steps: TraceNode[] = [];
+  for (const m of inner.matchAll(LAZY_STEP_BULLET_RE)) {
+    const id = m[1] as string;
+    const gist = clean(m[2] as string);
+    const packagePath = m[3] as string;
+    const content = read ? read(packagePath) : null;
+    if (content == null) {
+      steps.push({
+        kind: 'step',
+        label: `<Step ${id}>`,
+        attrs: { id, source: packagePath },
+        note: 'пакет шага не прочитан — сборка устарела или файл отсутствует',
+        detail: gist || undefined,
+        children: [{ kind: 'unparsed', label: 'файл пакета не найден', note: packagePath }],
+      });
+      continue;
+    }
+    const stepMatch = /<Step\b([^>]*)>([\s\S]*?)<\/Step>/.exec(content);
+    if (!stepMatch) {
+      steps.push({
+        kind: 'step',
+        label: `<Step ${id}>`,
+        attrs: { id, source: packagePath },
+        note: 'в файле пакета не нашли <Step> — сборка устарела',
+        detail: gist || undefined,
+        children: [{ kind: 'unparsed', label: 'пакет без <Step>', note: packagePath }],
+      });
+      continue;
+    }
+    const stepNode = buildStepNode(stepMatch[1] as string, stepMatch[2] as string);
+    const extras = content.slice((stepMatch.index ?? 0) + stepMatch[0].length);
+    const extraNodes = parsePackageExtras(extras);
+    if (extraNodes.length) stepNode.children = [...(stepNode.children ?? []), ...extraNodes];
+    // честная пометка источника: тело шага читается в дереве этой директивы, но физически лежит
+    // в отдельном файле пакета — attrs.source даёт точный путь, note — то же самое видно сразу,
+    // без разворота узла.
+    stepNode.attrs = { ...stepNode.attrs, source: packagePath };
+    stepNode.note = `физически в пакете: ${packagePath}`;
+    steps.push(stepNode);
+  }
+  return steps;
+}
+
+/** Ключ директивы в `ai/kit/assembly-manifest.json` — то же преобразование, что
+ *  `manifestKeyFor` в ai/kit/audit-contract-activation.mjs: репо-относительный путь без префикса
+ *  `ai/directives/` (у наших путей он совпадает с `sdd-v2/<file>` ровно потому, что все директивы
+ *  сегодня лежат под `ai/directives/sdd-v2/`). */
+function manifestKeyFor(directivePath: string): string {
+  const marker = 'ai/directives/';
+  const i = directivePath.indexOf(marker);
+  return i >= 0 ? directivePath.slice(i + marker.length) : directivePath;
+}
+
+/** ExecutionPlan/PhaseProcedure → шаги, режим определяем через `resolveAssemblyMode` (одна и та же
+ *  функция, что использует боевая сборка/аудитор — сюда, ни в коем случае, логика режима не
+ *  дублируется). Lazy без инжектированного `read` — деградация: пакеты помечаются «не прочитан»
+ *  честно, а не тихой пустотой. */
+function parseSteps(
+  inner: string,
+  directivePath: string,
+  read: FileReader | undefined
+): TraceNode[] {
+  const mode = resolveAssemblyMode(manifestKeyFor(directivePath));
+  return mode === 'lazy' ? parseLazySteps(inner, read) : parseMonolithSteps(inner);
+}
+
 /**
  * Разобрать XML директивы в дерево: корневой тег → дочерние секции в порядке появления.
- * @param path Путь к файлу директивы (становится ref корня).
+ * @param path Путь к файлу директивы (становится ref корня; также ключ режима сборки — lazy/monolith).
  * @param xml Содержимое директивы.
+ * @param read Читатель файлов пакетов шагов lazy-директивы (тот же контракт, что у resolve.ts'а
+ *   READ_AND_USE-резолвера) — без него lazy-шаги честно помечаются «не прочитан», а не падают.
  */
-export function parseDirective(path: string, xml: string): TraceNode {
+export function parseDirective(path: string, xml: string, read?: FileReader): TraceNode {
   const root = nextElement(xml, 0);
   if (!root) return { kind: 'directive', label: path, note: 'не найден корневой тег' };
   const sections: TraceNode[] = [];
@@ -313,7 +425,16 @@ export function parseDirective(path: string, xml: string): TraceNode {
         kind: 'section',
         label: '<ExecutionPlan>',
         note: 'шаги исполнения',
-        children: parseSteps(el.inner),
+        children: parseSteps(el.inner, path, read),
+      });
+    // PhaseProcedure (phase-execution-protocol.directive.xml) — same shape as ExecutionPlan: a
+    // list of <Step> blocks, monolith or lazy-split the same way.
+    else if (el.name === 'PhaseProcedure')
+      sections.push({
+        kind: 'section',
+        label: '<PhaseProcedure>',
+        note: 'процедура фазы',
+        children: parseSteps(el.inner, path, read),
       });
     else if (el.name === 'LogicSwitch') sections.push(parseLogicSwitch(el.inner, attrs.on));
     else

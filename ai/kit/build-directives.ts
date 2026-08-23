@@ -183,10 +183,21 @@ function writeLazyDirective(rel: string, deltaReducedText: string, deltaSuffix: 
     skeleton.text,
     packages.map((pkg) => ({ stepId: pkg.stepId, text: pkg.text }))
   );
-  if (budgetFindings.length > 0) {
-    for (const finding of budgetFindings) {
+  // A 'warning' finding is the soft skeleton-token target (DA-REQ-6, DA-DL-18): reported, never
+  // blocks the write. Only an 'error' finding (any of the three hard ceilings) stops the build —
+  // same distinction the check:directive-budgets CLI in step-budget-gate.ts already makes.
+  const budgetErrors = budgetFindings.filter((finding) => finding.severity === 'error');
+  for (const finding of budgetFindings) {
+    if (finding.severity === 'warning') {
+      console.warn(
+        `⚠ ${rel} (${finding.artifact}): ${finding.limitKind} = ${finding.actual} exceeds ${finding.limit} by ${finding.overage} — soft target, build continues`
+      );
+    }
+  }
+  if (budgetErrors.length > 0) {
+    for (const finding of budgetErrors) {
       failures.push(
-        `${rel} (${finding.artifact}): ${finding.limitKind} exceeds ${finding.limit} by ${finding.overage}`
+        `${rel} (${finding.artifact}): ${finding.limitKind} = ${finding.actual} exceeds ${finding.limit} by ${finding.overage}`
       );
     }
     console.log(`${checkOnly ? '·' : '✗'} ${rel}${deltaSuffix} (lazy: over budget, not written)`);

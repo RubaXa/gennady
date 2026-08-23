@@ -67,14 +67,25 @@ function tokenFor(node: TraceNode): string | null {
   }
 }
 
-/** Проставить loc {file,line} каждому узлу. Файл переключается при входе в директиву/скил (по ref). */
+/** Физический источник узла, если он ушёл в отдельный файл, отличный от родителя: директива/скил
+ *  переключаются по `ref` (READ_AND_USE), lazy-шаг — по `attrs.source` (файл пакета шага,
+ *  ai/inspector/core/parse-directive.ts#parseLazySteps) — тело шага там, не в скелете родителя. */
+function physicalSourceRef(node: TraceNode): string | undefined {
+  if ((node.kind === 'directive' || node.kind === 'skill') && node.ref) return node.ref;
+  if (node.kind === 'step' && node.attrs?.source) return node.attrs.source;
+  return undefined;
+}
+
+/** Проставить loc {file,line} каждому узлу. Файл переключается при входе в директиву/скил (по ref)
+ *  или в lazy-шаг, физически живущий в файле своего пакета (по attrs.source). */
 function attachLoc(node: TraceNode, file: string, content: string): void {
   let f = file;
   let c = content;
-  if ((node.kind === 'directive' || node.kind === 'skill') && node.ref) {
-    const got = read(node.ref);
+  const sourceRef = physicalSourceRef(node);
+  if (sourceRef) {
+    const got = read(sourceRef);
     if (got != null) {
-      f = node.ref;
+      f = sourceRef;
       c = got;
     }
   }

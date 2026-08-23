@@ -1,5 +1,11 @@
 // @file: ai/inspector — trace model: the node tree the parser emits and the UI renders.
 
+/** Читатель файла по репо-относительному пути → содержимое или null, если файла нет. Общий тип
+ *  для resolve.ts (READ_AND_USE-переходы между директивами) и parse-directive.ts (чтение пакетов
+ *  шагов lazy-директивы) — один и тот же контракт: инъекция, а не прямой fs, чтобы парсер/резолвер
+ *  оставались чистыми и тестируемыми без реального диска. */
+export type FileReader = (ref: string) => string | null;
+
 /** Тип узла дерева трейса. Управляет цветом/иконкой в UI и смыслом узла. */
 export type NodeKind =
   | 'skill' // активация скила (корень)

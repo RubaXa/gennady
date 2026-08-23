@@ -12,6 +12,7 @@ import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import {
   check,
+  SKELETON_TOKEN_TARGET,
   SKELETON_TOKEN_LIMIT,
   PACKAGE_CHAR_LIMIT,
   PACKAGE_LINE_CHAR_LIMIT,
@@ -51,8 +52,51 @@ describe('StepBudgetGate', () => {
       // #endregion END_SKELETON_OVER_CAP_SETUP_FIXTURE
 
       assert.deepStrictEqual(check(skeletonText, []), [
-        { artifact: 'skeleton', limitKind: 'skeleton-tokens', limit: SKELETON_TOKEN_LIMIT, overage: 50 },
+        {
+          artifact: 'skeleton',
+          limitKind: 'skeleton-tokens',
+          severity: 'error',
+          limit: SKELETON_TOKEN_LIMIT,
+          actual: tokenCount,
+          overage: 50,
+        },
       ]);
+    });
+
+    it('finds a skeleton exceeding the 6000-token soft target (but under the hard cap) and reports it as a warning, not an error', () => {
+      // #region START_SKELETON_OVER_TARGET_UNDER_CAP_SETUP_FIXTURE
+      // Pushed 9 tokens past the target (mirrors the real phase-execution-protocol overage the
+      // review found: 6009 measured against a declared ≤6000 target) while staying far under the
+      // 8000-token hard cap, so only the target finding — never the hard-limit one — can fire.
+      const tokenCount = SKELETON_TOKEN_TARGET + 9;
+      const skeletonText = Array(tokenCount).fill('w').join(' ');
+      // #endregion END_SKELETON_OVER_TARGET_UNDER_CAP_SETUP_FIXTURE
+
+      assert.deepStrictEqual(check(skeletonText, []), [
+        {
+          artifact: 'skeleton',
+          limitKind: 'skeleton-tokens-target',
+          severity: 'warning',
+          limit: SKELETON_TOKEN_TARGET,
+          actual: tokenCount,
+          overage: 9,
+        },
+      ]);
+    });
+
+    it('reports only the hard-limit error, not the soft-target warning, when a skeleton exceeds both', () => {
+      // #region START_SKELETON_OVER_BOTH_SETUP_FIXTURE
+      // Exceeds SKELETON_TOKEN_LIMIT (which is itself above SKELETON_TOKEN_TARGET) — the two
+      // branches in check() are mutually exclusive by construction, so this asserts there is no
+      // double-reporting of the same skeleton under both severities.
+      const tokenCount = SKELETON_TOKEN_LIMIT + 50;
+      const skeletonText = Array(tokenCount).fill('w').join(' ');
+      // #endregion END_SKELETON_OVER_BOTH_SETUP_FIXTURE
+
+      const findings = check(skeletonText, []);
+      assert.equal(findings.length, 1);
+      assert.equal(findings[0].limitKind, 'skeleton-tokens');
+      assert.equal(findings[0].severity, 'error');
     });
 
     it('finds a step package exceeding the package character cap and names the directive, the step, and the overage', () => {
@@ -67,7 +111,9 @@ describe('StepBudgetGate', () => {
         {
           artifact: 'STEP_LONG',
           limitKind: 'package-chars',
+          severity: 'error',
           limit: PACKAGE_CHAR_LIMIT,
+          actual: text.length,
           overage: text.length - PACKAGE_CHAR_LIMIT,
         },
       ]);
@@ -85,7 +131,9 @@ describe('StepBudgetGate', () => {
         {
           artifact: 'STEP_WIDE',
           limitKind: 'package-line-chars',
+          severity: 'error',
           limit: PACKAGE_LINE_CHAR_LIMIT,
+          actual: text.length,
           overage: text.length - PACKAGE_LINE_CHAR_LIMIT,
         },
       ]);
@@ -118,10 +166,45 @@ describe('StepBudgetGate', () => {
         assert.match(
           result.stderr,
           new RegExp(
-            `foo \\(step STEP_BIG\\): package-chars exceeds ${PACKAGE_CHAR_LIMIT} by ${packageText.length - PACKAGE_CHAR_LIMIT}`,
+            `✗ foo \\(step STEP_BIG\\): package chars \\(hard limit\\) = ${packageText.length} exceeds ${PACKAGE_CHAR_LIMIT} by ${packageText.length - PACKAGE_CHAR_LIMIT} — build fails`,
           ),
         );
         // #endregion END_CLI_OVER_BUDGET_ASSERT_EXIT_AND_MESSAGE
+      } finally {
+        rmSync(fixture, { recursive: true, force: true });
+      }
+    });
+
+    it('exits 0 and prints a warning (not an error) when a skeleton exceeds only the soft token target', () => {
+      // #region START_CLI_OVER_TARGET_UNDER_CAP_SETUP_FIXTURE_TREE
+      // Same fixture shape as the error case above, but the skeleton is sized to clear the soft
+      // 6000-token target while staying under the 8000-token hard cap — the build must still
+      // succeed (exit 0), with the overage surfaced only as a warning.
+      const fixture = mkdtempSync(join(tmpdir(), 'gennady-budget-fixture-'));
+      const stepsDir = join(fixture, 'bar', 'steps');
+      mkdirSync(stepsDir, { recursive: true });
+      const tokenCount = SKELETON_TOKEN_TARGET + 9;
+      writeFileSync(join(fixture, 'bar.directive.xml'), Array(tokenCount).fill('w').join(' '));
+      writeFileSync(join(stepsDir, 'STEP_ONE.xml'), 'short package text');
+      // #endregion END_CLI_OVER_TARGET_UNDER_CAP_SETUP_FIXTURE_TREE
+
+      try {
+        const result = spawnSync(
+          process.execPath,
+          ['--experimental-strip-types', CLI_ENTRY, `--dir=${fixture}`],
+          { encoding: 'utf8' },
+        );
+
+        // #region START_CLI_OVER_TARGET_ASSERT_EXIT_AND_MESSAGE
+        assert.equal(result.status, 0);
+        assert.match(
+          result.stderr,
+          new RegExp(
+            `⚠ bar \\(skeleton\\): skeleton tokens \\(soft target\\) = ${tokenCount} exceeds ${SKELETON_TOKEN_TARGET} by 9 — soft target, build still succeeds`,
+          ),
+        );
+        assert.match(result.stdout, /within its hard limit \(see soft-target warning\(s\) above\)/);
+        // #endregion END_CLI_OVER_TARGET_ASSERT_EXIT_AND_MESSAGE
       } finally {
         rmSync(fixture, { recursive: true, force: true });
       }

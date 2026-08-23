@@ -2,13 +2,15 @@
 // Cycle-guarded (a directive that references an ancestor on the current path is marked, not followed) and
 // depth-capped. The file reader is injected so the resolver stays pure and testable.
 
-import type { TraceNode } from './model.ts';
+import type { FileReader, TraceNode } from './model.ts';
 import { parseDirective } from './parse-directive.ts';
 
 const MAX_DEPTH = 12;
 
-/** Чтение содержимого директивы по ref; null — файла нет. */
-export type DirectiveReader = (ref: string) => string | null;
+/** Чтение содержимого директивы по ref; null — файла нет. Alias kept for existing callers/tests —
+ *  same contract as the shared `FileReader` (model.ts), now also used by parse-directive.ts to read
+ *  a lazy directive's step packages. */
+export type DirectiveReader = FileReader;
 
 /**
  * Развернуть дерево на месте: каждый run-узел со ссылкой на *.xml (директиву ИЛИ formats/*-контракт)
@@ -41,7 +43,7 @@ export function resolveTree(
       node.children = [{ kind: 'unparsed', label: 'файл директивы не найден', note: node.ref }];
       return node;
     }
-    const sub = parseDirective(node.ref, content);
+    const sub = parseDirective(node.ref, content, read);
     const nextSeen = new Set(seen);
     nextSeen.add(node.ref);
     resolveTree(sub, read, nextSeen, depth + 1);
