@@ -18,10 +18,12 @@ import {
   buildPhaseHeader,
   buildRoundHeader,
   fileError,
+  findPhaseBlockBounds,
   hasPlaceholder,
   missingFlag,
   nextRoundNumber,
   noLogSection,
+  phaseNotOpenError,
   placeholderError,
   setMetaStatus,
   unknownIdError,
@@ -42,6 +44,7 @@ export async function run(rawArgs: string[], now: Date): Promise<LogOutcome> {
   const args = parseArgs(rawArgs, {
     axiom: { aliases: ['axiom'], takesValue: true },
     unblock: { aliases: ['unblock'], takesValue: true },
+    phase: { aliases: ['phase'], takesValue: true },
   });
   const positional = (args._ as string[]).filter(
     (a: string) => typeof a === 'string' && a !== 'sdd-log'
@@ -71,6 +74,17 @@ export async function run(rawArgs: string[], now: Date): Promise<LogOutcome> {
     if (!axiom) return missingFlag('missing --axiom <AX_NAME>');
     if (!unblock) return missingFlag('missing --unblock "<action>"');
   }
+  // #region START_PHASE_FLAG — invariant: --phase only makes sense on a mode that logs INTO an
+  // already-open phase block; round/close are ticket-wide events, and `phase` mode already takes
+  // the phase id as its own positional.
+  const phaseFlag = typeof args.phase === 'string' ? args.phase : undefined;
+  if (phaseFlag !== undefined) {
+    if (mode !== 'line' && mode !== 'handoff' && mode !== 'blocker') {
+      return badInvocation(`--phase only applies to line | handoff | blocker (not "${mode}")`);
+    }
+    if (hasPlaceholder(phaseFlag)) return placeholderError(phaseFlag);
+  }
+  // #endregion END_PHASE_FLAG
 
   // #region START_READ — invariant: path or Task-ID (AX_TASK_RESOLUTION) → resolved path + content
   const root = resolve('.');
@@ -93,6 +107,17 @@ export async function run(rawArgs: string[], now: Date): Promise<LogOutcome> {
 
   const bounds = findSectionBounds(content, LOG_SECTION);
   if (!bounds) return noLogSection(displayPath);
+
+  // #region START_PHASE_INSERT_POINT — invariant: --phase redirects the append target from
+  // "end of EXECUTION_LOG" to "end of that phase's own #### <PhaseID> block" — the fix for parallel
+  // phases whose lines otherwise land under whichever phase header happens to be open last.
+  let insertLine = bounds.closeLine;
+  if (phaseFlag !== undefined) {
+    const lookup = findPhaseBlockBounds(content, bounds, phaseFlag);
+    if (!lookup.found) return phaseNotOpenError(displayPath, phaseFlag, lookup.openPhases);
+    insertLine = lookup.insertLine;
+  }
+  // #endregion END_PHASE_INSERT_POINT
 
   const ts = now.toISOString();
   const date = ts.slice(0, 10);
@@ -148,9 +173,10 @@ export async function run(rawArgs: string[], now: Date): Promise<LogOutcome> {
   }
   // #endregion END_META_STATUS
 
-  // #region START_APPEND — invariant: insert strictly before the close marker (append-only)
+  // #region START_APPEND — invariant: insert strictly before the close marker (append-only), or
+  // before the requested phase's own next heading when --phase redirected the target (insertLine).
   const lines = workingContent.split('\n');
-  lines.splice(bounds.closeLine, 0, ...insertText.split('\n'));
+  lines.splice(insertLine, 0, ...insertText.split('\n'));
   try {
     writeFileSync(abs, lines.join('\n'), 'utf-8');
   } catch {

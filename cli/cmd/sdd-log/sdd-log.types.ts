@@ -21,6 +21,8 @@ export const ERR_CLI_SDD_LOG_NO_LOG_SECTION = 'ERR_CLI_SDD_LOG_NO_LOG_SECTION' a
 export const ERR_CLI_SDD_LOG_PLACEHOLDER = 'ERR_CLI_SDD_LOG_PLACEHOLDER' as const;
 /** @purpose `blocker` mode invoked without required `--axiom` and/or `--unblock`. */
 export const ERR_CLI_SDD_LOG_MISSING_FLAG = 'ERR_CLI_SDD_LOG_MISSING_FLAG' as const;
+/** @purpose `--phase <PhaseID>` names a phase with no open `#### <PhaseID>` block in EXECUTION_LOG. */
+export const ERR_CLI_SDD_LOG_PHASE_NOT_OPEN = 'ERR_CLI_SDD_LOG_PHASE_NOT_OPEN' as const;
 
 /**
  * @purpose Result of one sdd-log run.
@@ -123,6 +125,71 @@ export function buildBlockerBlock(
   ].join('\n');
 }
 
+/** @purpose A phase-heading line inside EXECUTION_LOG — `#### P<N>` (optionally with a re-run suffix), same shape `parsePhaseHandoffs` (check.ts) keys off. */
+const PHASE_HEADING_RE = /^#{2,6}\s+(P[0-9]+)\b/;
+/** @purpose Any markdown heading line — the boundary of a phase's block within EXECUTION_LOG (next phase/round header). */
+const ANY_HEADING_RE = /^#{1,6}\s+\S/;
+
+/**
+ * @purpose Outcome of locating one phase's block inside EXECUTION_LOG.
+ * @invariant `found: false` carries every phase id that DOES have an open block — the teaching hint
+ *   for the caller's error message.
+ */
+export type PhaseBlockLookup =
+  | { found: true; insertLine: number }
+  | { found: false; openPhases: string[] };
+
+/**
+ * @purpose Locate the append point inside ONE phase's own EXECUTION_LOG block — fixes parallel-phase
+ * writes landing under whichever phase header happened to open last.
+ * @invariant Keys off the LAST `#### <phaseId>` heading, not the first — a `fix` re-run reopens the
+ * same id in a later Round.
+ * @param content Full ticket markdown.
+ * @param logBounds EXECUTION_LOG's marker line indices (`findSectionBounds`'s result).
+ * @param phaseId The phase pointer from `--phase` (e.g. `P2`).
+ * @returns The line index to splice new content before, or (not found) every phase id with an open block.
+ */
+export function findPhaseBlockBounds(
+  content: string,
+  logBounds: { openLine: number; closeLine: number },
+  phaseId: string
+): PhaseBlockLookup {
+  const lines = content.split('\n');
+  const escaped = phaseId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const targetRe = new RegExp(`^#{2,6}\\s+${escaped}\\b`);
+
+  const openPhases: string[] = [];
+  let phaseHeadLine = -1;
+  for (let i = logBounds.openLine + 1; i < logBounds.closeLine; i++) {
+    const line = (lines[i] ?? '').trim();
+    const m = PHASE_HEADING_RE.exec(line);
+    if (m && !openPhases.includes(m[1] as string)) openPhases.push(m[1] as string);
+    if (targetRe.test(line)) phaseHeadLine = i;
+  }
+  if (phaseHeadLine === -1) return { found: false, openPhases };
+
+  let insertLine = logBounds.closeLine;
+  let foundNextHeading = false;
+  for (let i = phaseHeadLine + 1; i < logBounds.closeLine; i++) {
+    if (ANY_HEADING_RE.test((lines[i] ?? '').trim())) {
+      insertLine = i;
+      foundNextHeading = true;
+      break;
+    }
+  }
+  // A real NEXT heading (another phase/round opened after this one) pads itself with a leading
+  // blank line — back up before that blank run so the new content lands after this block's own
+  // last line, not swallowed between the blank and the following heading. The end-of-section
+  // fallback (no next heading) is left as-is — that already matches the no-`--phase` append point
+  // every other mode uses, so behavior there is unchanged.
+  if (foundNextHeading) {
+    while (insertLine > phaseHeadLine + 1 && (lines[insertLine - 1] ?? '').trim() === '') {
+      insertLine--;
+    }
+  }
+  return { found: true, insertLine };
+}
+
 // The Status line per TASK_SKELETON (templates.ts) — `- **Status:** [ ] TODO   <!-- hint -->`.
 // Captures the label prefix (group 1) and any trailing hint comment (group 2) so a rewrite touches
 // only the checkbox+token, byte-identical otherwise.
@@ -195,8 +262,11 @@ export function badInvocation(detail: string): LogOutcome {
     message: [
       `[sdd-log] ${ERR_CLI_SDD_LOG_BAD_INVOCATION}: ${detail}`,
       '  expected: gennady sdd-log <ticket> <mode> [content]',
-      '  modes: round "<reason>" | line "<content>" | close | phase <P-ID> ["— re-run: <reason>"] |',
-      '         handoff "<payload>" | blocker "<reason>" --axiom <AX_NAME> --unblock "<action>"',
+      '  modes: round "<reason>" | line "<content>" [--phase P<N>] | close |',
+      '         phase <P-ID> ["— re-run: <reason>"] | handoff "<payload>" [--phase P<N>] |',
+      '         blocker "<reason>" --axiom <AX_NAME> --unblock "<action>" [--phase P<N>]',
+      '  --phase P<N> is only valid on line | handoff | blocker — it inserts at the end of that',
+      "  phase's own block instead of the end of EXECUTION_LOG (needed when phases run in parallel).",
       '  content must carry no <…> placeholder.',
     ].join('\n'),
   };
@@ -271,6 +341,34 @@ export function ambiguousIdError(id: string, matches: TicketRef[], root: string)
     message: [
       `[sdd-log] ${ERR_CLI_SDD_LOG_AMBIGUOUS_ID}: ${id} matches ${matches.length} tickets`,
       ...matches.map((m) => `  - ${relative(root, resolve(m.file))}`),
+    ].join('\n'),
+  };
+}
+
+/**
+ * @purpose Build the phase-not-open diagnostic — `--phase <PhaseID>` names a phase with no open
+ * `#### <PhaseID>` block in EXECUTION_LOG to append into.
+ * @param ticket The ticket path (display form).
+ * @param phaseId The requested phase pointer.
+ * @param openPhases Every phase id whose block is currently open in the log, in document order.
+ * @returns Outcome with exit 2.
+ */
+export function phaseNotOpenError(
+  ticket: string,
+  phaseId: string,
+  openPhases: string[]
+): LogOutcome {
+  return {
+    ok: false,
+    code: ERR_CLI_SDD_LOG_PHASE_NOT_OPEN,
+    exitCode: 2,
+    message: [
+      `[sdd-log] ${ERR_CLI_SDD_LOG_PHASE_NOT_OPEN}: ${phaseId}`,
+      `  No open "#### ${phaseId}" block in ${ticket}'s EXECUTION_LOG.`,
+      openPhases.length
+        ? `  phases with an open block: ${openPhases.join(', ')}`
+        : '  no phase block is open yet.',
+      `  Open it first: npx gennady sdd-log ${ticket} phase ${phaseId}`,
     ].join('\n'),
   };
 }

@@ -207,6 +207,143 @@ describe('SddLogCommand', () => {
     assert.match(body, /\n#### P2 — re-run: F-003\n/);
   });
 
+  describe('--phase (per-phase-block insertion — parallel-phase attribution)', () => {
+    it('without --phase, a line always lands under whichever phase header opened LAST — the bug this flag fixes', async () => {
+      // P2 opens first (parallel dispatch order is not phase-number order), P1 opens after it —
+      // demonstrates why a bare `line` (no pointer) is unsafe once phases run in parallel.
+      await mod.run(argv(ticket, 'phase', 'P2'), CLOCK);
+      await mod.run(argv(ticket, 'phase', 'P1'), CLOCK);
+      const outcome = await mod.run(argv(ticket, 'line', 'p2 discovery'), CLOCK);
+      assert.strictEqual(outcome.ok, true);
+      const body = readFileSync(ticket, 'utf-8');
+      // Misattributed: the line meant for P2 lands after P1's header, i.e. under P1's block.
+      assert.ok(body.indexOf('#### P1') < body.indexOf('p2 discovery'));
+    });
+
+    it("with --phase, a line is inserted at the end of THAT phase's own block, regardless of open order", async () => {
+      await mod.run(argv(ticket, 'phase', 'P2'), CLOCK);
+      await mod.run(argv(ticket, 'phase', 'P1'), CLOCK);
+      const outcome = await mod.run(argv(ticket, 'line', 'p2 discovery', '--phase', 'P2'), CLOCK);
+      assert.strictEqual(outcome.ok, true);
+      const body = readFileSync(ticket, 'utf-8');
+      // Correctly attributed: the P2 line sits between the P2 and P1 headers, not after P1's.
+      const p2At = body.indexOf('#### P2');
+      const p1At = body.indexOf('#### P1');
+      const lineAt = body.indexOf('p2 discovery');
+      assert.ok(p2At < lineAt && lineAt < p1At, body);
+    });
+
+    it('handoff mode honors --phase the same way', async () => {
+      await mod.run(argv(ticket, 'phase', 'P2'), CLOCK);
+      await mod.run(argv(ticket, 'phase', 'P1'), CLOCK);
+      const payload = 'artifacts: [a.ts]; decisions: []; open: []';
+      const outcome = await mod.run(argv(ticket, 'handoff', payload, '--phase', 'P2'), CLOCK);
+      assert.strictEqual(outcome.ok, true);
+      const body = readFileSync(ticket, 'utf-8');
+      const p2At = body.indexOf('#### P2');
+      const p1At = body.indexOf('#### P1');
+      const handoffAt = body.indexOf('**Handoff →**');
+      assert.ok(p2At < handoffAt && handoffAt < p1At, body);
+    });
+
+    it('blocker mode honors --phase the same way', async () => {
+      await mod.run(argv(ticket, 'phase', 'P2'), CLOCK);
+      await mod.run(argv(ticket, 'phase', 'P1'), CLOCK);
+      const outcome = await mod.run(
+        argv(
+          ticket,
+          'blocker',
+          'p2 blocked',
+          '--axiom',
+          'AX_X',
+          '--unblock',
+          'do y',
+          '--phase',
+          'P2'
+        ),
+        CLOCK
+      );
+      assert.strictEqual(outcome.ok, true);
+      const body = readFileSync(ticket, 'utf-8');
+      const p2At = body.indexOf('#### P2');
+      const p1At = body.indexOf('#### P1');
+      const blockedAt = body.indexOf('BLOCKED: p2 blocked');
+      assert.ok(p2At < blockedAt && blockedAt < p1At, body);
+    });
+
+    it('a later line, still --phase P2, appends after the earlier P2 line, not swallowed by the P1 header pad', async () => {
+      await mod.run(argv(ticket, 'phase', 'P2'), CLOCK);
+      await mod.run(argv(ticket, 'phase', 'P1'), CLOCK);
+      await mod.run(argv(ticket, 'line', 'p2 first', '--phase', 'P2'), CLOCK);
+      await mod.run(argv(ticket, 'line', 'p2 second', '--phase', 'P2'), CLOCK);
+      const body = readFileSync(ticket, 'utf-8');
+      const firstAt = body.indexOf('p2 first');
+      const secondAt = body.indexOf('p2 second');
+      const p1At = body.indexOf('#### P1');
+      assert.ok(firstAt < secondAt && secondAt < p1At, body);
+    });
+
+    it('re-run reopens the SAME phase id in a later block — --phase targets the LAST (current) one', async () => {
+      await mod.run(argv(ticket, 'phase', 'P1'), CLOCK);
+      await mod.run(argv(ticket, 'line', 'old attempt', '--phase', 'P1'), CLOCK);
+      await mod.run(argv(ticket, 'close'), CLOCK);
+      await mod.run(argv(ticket, 'round', 'fix: F-001'), CLOCK);
+      await mod.run(argv(ticket, 'phase', 'P1', '— re-run: F-001'), CLOCK);
+      const outcome = await mod.run(argv(ticket, 'line', 'new attempt', '--phase', 'P1'), CLOCK);
+      assert.strictEqual(outcome.ok, true);
+      const body = readFileSync(ticket, 'utf-8');
+      // "new attempt" belongs to the SECOND (re-run) P1 block, after the Round 2 header, not the
+      // first Round's closed P1 block.
+      const round2At = body.indexOf('Round 2');
+      const newAttemptAt = body.indexOf('new attempt');
+      assert.ok(round2At < newAttemptAt, body);
+    });
+
+    it('exits 2, listing open phase blocks, when --phase names a phase with no open block', async () => {
+      await mod.run(argv(ticket, 'phase', 'P1'), CLOCK);
+      const outcome = await mod.run(argv(ticket, 'line', 'discovery', '--phase', 'P9'), CLOCK);
+      assert.strictEqual(outcome.ok, false);
+      if (outcome.ok) return;
+      assert.strictEqual(outcome.exitCode, 2);
+      assert.match(outcome.code, /PHASE_NOT_OPEN/);
+      assert.match(outcome.message, /P9/);
+      assert.match(outcome.message, /phases with an open block: P1/);
+      assert.match(outcome.message, /sdd-log .* phase P9/);
+    });
+
+    it('exits 2 naming no open blocks when EXECUTION_LOG has no phase headers at all', async () => {
+      const outcome = await mod.run(argv(ticket, 'line', 'discovery', '--phase', 'P1'), CLOCK);
+      assert.strictEqual(outcome.ok, false);
+      if (outcome.ok) return;
+      assert.strictEqual(outcome.exitCode, 2);
+      assert.match(outcome.message, /no phase block is open yet/);
+    });
+
+    it('exits 4 when --phase is combined with round, close, or phase mode', async () => {
+      const r = await mod.run(argv(ticket, 'round', 'initial', '--phase', 'P1'), CLOCK);
+      assert.strictEqual(r.ok, false);
+      if (!r.ok) assert.strictEqual(r.exitCode, 4);
+
+      const c = await mod.run(argv(ticket, 'close', '--phase', 'P1'), CLOCK);
+      assert.strictEqual(c.ok, false);
+      if (!c.ok) assert.strictEqual(c.exitCode, 4);
+
+      const p = await mod.run(argv(ticket, 'phase', 'P1', '--phase', 'P1'), CLOCK);
+      assert.strictEqual(p.ok, false);
+      if (!p.ok) assert.strictEqual(p.exitCode, 4);
+    });
+
+    it('rejects a placeholder in --phase itself (exit 2)', async () => {
+      await mod.run(argv(ticket, 'phase', 'P1'), CLOCK);
+      const outcome = await mod.run(
+        argv(ticket, 'line', 'discovery', '--phase', '<PhaseID>'),
+        CLOCK
+      );
+      assert.strictEqual(outcome.ok, false);
+      if (!outcome.ok) assert.strictEqual(outcome.exitCode, 2);
+    });
+  });
+
   it('handoff mode writes the **Handoff →** line verbatim, no timestamp', async () => {
     const payload = 'artifacts: [a.ts, b.ts]; decisions: [x=1]; open: []';
     const outcome = await mod.run(argv(ticket, 'handoff', payload), CLOCK);

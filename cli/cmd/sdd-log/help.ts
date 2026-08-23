@@ -13,7 +13,7 @@ export function printHelp(): void {
     '  npx gennady sdd-log <ticket> round "<reason>"     # open a new Round (auto-numbered, dated)'
   );
   console.info(
-    '  npx gennady sdd-log <ticket> line "<content>"     # append a timestamped event line'
+    '  npx gennady sdd-log <ticket> line "<content>" [--phase P<N>]     # append a timestamped event line'
   );
   console.info(
     '  npx gennady sdd-log <ticket> close                # append the Round-close block'
@@ -22,16 +22,26 @@ export function printHelp(): void {
     '  npx gennady sdd-log <ticket> phase <P-ID> ["— re-run: <reason>"]   # phase heading (#### <P-ID>)'
   );
   console.info(
-    '  npx gennady sdd-log <ticket> handoff "<payload>"  # typed **Handoff →** line, payload verbatim'
+    '  npx gennady sdd-log <ticket> handoff "<payload>" [--phase P<N>]  # typed **Handoff →** line, payload verbatim'
   );
   console.info(
-    '  npx gennady sdd-log <ticket> blocker "<reason>" --axiom <AX> --unblock "<action>"   # BLOCKER_FORMAT block'
+    '  npx gennady sdd-log <ticket> blocker "<reason>" --axiom <AX> --unblock "<action>" [--phase P<N>]   # BLOCKER_FORMAT block'
   );
   console.info('');
   console.info('Guarantees:');
   console.info(
     '  - Append-only — content is inserted before the section close marker; prior lines are never touched.'
   );
+  console.info(
+    "  - --phase P<N> (line | handoff | blocker only) — insert at the end of THAT phase's own"
+  );
+  console.info(
+    '    #### <PhaseID> block instead of the end of EXECUTION_LOG. Needed when phases run in'
+  );
+  console.info(
+    '    parallel: without it, a line always lands under whichever phase header opened LAST,'
+  );
+  console.info('    not necessarily the phase that logged it.');
   console.info('  - Timestamped — the real time is stamped into each line / round date.');
   console.info(
     '  - No fabricated DONE — content with an unreplaced <…> placeholder is rejected (exit 2).'

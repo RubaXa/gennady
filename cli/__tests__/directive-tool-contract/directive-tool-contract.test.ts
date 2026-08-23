@@ -132,6 +132,8 @@ type FixtureCase = {
   args: (fx: Fixture) => string[];
   cwd?: (fx: Fixture) => string;
   fresh?: boolean;
+  /** @purpose Extra CLI calls to run against the fixture before the documented call itself — e.g. opening the phase block a `--phase` pointer needs to already exist. */
+  setup?: (fx: Fixture) => void;
   check: (result: CliResult, fx: Fixture) => void;
 };
 
@@ -252,15 +254,22 @@ const CASES: FixtureCase[] = [
     },
   },
   {
-    id: 'sdd-log <ticket> handoff "<payload>"',
+    id: 'sdd-log <ticket> handoff "<payload>" --phase <PhaseID>',
     directive: 'phase',
-    raw: 'npx gennady sdd-log <ticket> handoff "artifacts: [src/app/greeting/greeting.ts]; decisions: [module-system=esm]; open: []; deviations: []"',
+    raw: 'npx gennady sdd-log <ticket> handoff "artifacts: [src/app/greeting/greeting.ts]; decisions: [module-system=esm]; open: []; deviations: []" --phase P2',
     cmd: 'sdd-log',
     fresh: true,
+    // --phase requires that phase's block already open — same STEP_1B precondition a real worker
+    // always satisfies before STEP_6 runs.
+    setup: (fx) => {
+      runCli(['sdd-log', fx.ticketPath, 'phase', 'P2'], fx.root);
+    },
     args: (fx) => [
       fx.ticketPath,
       'handoff',
       'artifacts: [src/greeter.ts]; decisions: [module-system=esm]; open: []; deviations: []',
+      '--phase',
+      'P2',
     ],
     check: (r, fx) => {
       assert.strictEqual(r.exitCode, 0, r.stdout + r.stderr);
@@ -273,11 +282,14 @@ const CASES: FixtureCase[] = [
     },
   },
   {
-    id: 'sdd-log <ticket> blocker "<reason>" --axiom <AX> --unblock "<action>"',
+    id: 'sdd-log <ticket> blocker "<reason>" --axiom <AX> --unblock "<action>" --phase <PhaseID>',
     directive: 'phase',
-    raw: 'npx gennady sdd-log <ticket> blocker "vitest binary missing" --axiom AX_ENV_FIX_CHANNEL --unblock "npm i -D vitest"',
+    raw: 'npx gennady sdd-log <ticket> blocker "vitest binary missing" --axiom AX_ENV_FIX_CHANNEL --unblock "npm i -D vitest" --phase P2',
     cmd: 'sdd-log',
     fresh: true,
+    setup: (fx) => {
+      runCli(['sdd-log', fx.ticketPath, 'phase', 'P2'], fx.root);
+    },
     args: (fx) => [
       fx.ticketPath,
       'blocker',
@@ -286,6 +298,8 @@ const CASES: FixtureCase[] = [
       'AX_ENV_FIX_CHANNEL',
       '--unblock',
       'npm i -D vitest',
+      '--phase',
+      'P2',
     ],
     check: (r, fx) => {
       assert.strictEqual(r.exitCode, 0, r.stdout + r.stderr);
@@ -457,6 +471,7 @@ describe('documented result class against a real fixture repo', () => {
     it(c.id, () => {
       const fx = c.fresh ? freshFixture() : ro;
       const cwd = c.cwd ? c.cwd(fx) : fx.root;
+      c.setup?.(fx);
       const result = runCli([c.cmd, ...c.args(fx)], cwd);
       c.check(result, fx);
     });
