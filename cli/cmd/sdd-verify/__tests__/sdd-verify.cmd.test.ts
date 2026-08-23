@@ -2,9 +2,8 @@
 // @consumers: gennady.ts
 // @tasks: N/A
 
-import { describe, it } from 'node:test';
+import { describe, it, mock, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { run } from '../sdd-verify.cmd.ts';
 import {
   GATES,
   gatesFor,
@@ -26,6 +25,30 @@ function fakeRunner(failNames: string[] = []): { runner: GateRunner; calls: stri
   return { runner, calls };
 }
 
+// ── Mock node:fs so `isSelfHosting`/`resolveScriptName` read a controlled
+// package.json instead of this repo's real one — otherwise tests would be at
+// the mercy of running inside gennady's own checkout (which they legitimately
+// are today, but a consumer-mode test must still be exercisable). ──────────
+
+let currentPkgJson = JSON.stringify({ name: 'gennady', scripts: { 'type-check': 'tsc' } });
+
+const mockReadFileSync = mock.fn((path: string) => {
+  if (String(path).endsWith('package.json')) return currentPkgJson;
+  throw new Error(`unexpected readFileSync path in test: ${path}`);
+});
+
+mock.module('node:fs', {
+  namedExports: { readFileSync: mockReadFileSync },
+});
+
+// ── Import SUT after the mock is registered ─────────────────────────────────
+
+const { run, isSelfHosting } = await import('../sdd-verify.cmd.ts');
+
+beforeEach(() => {
+  currentPkgJson = JSON.stringify({ name: 'gennady', scripts: { 'type-check': 'tsc' } });
+});
+
 describe('GATES', () => {
   it('is the fixed mutating-first exact sequence', () => {
     assert.deepStrictEqual(
@@ -39,14 +62,20 @@ describe('GATES', () => {
   });
 });
 
+/** Builds a GateResult[] for all GATES, with a plausible `ranCommand` per gate name. */
+function baseResults(): GateResult[] {
+  return GATES.map((g) => ({
+    name: g.name,
+    exitCode: 0,
+    output: '',
+    durationMs: 100,
+    ranCommand: g.via === 'gennady' ? `npx gennady ${g.name}` : `npm run ${g.name}`,
+  }));
+}
+
 describe('verdict', () => {
   it('all pass → brief ✅ ALL PASS with a line per gate', () => {
-    const results: GateResult[] = GATES.map((g) => ({
-      name: g.name,
-      exitCode: 0,
-      output: '',
-      durationMs: 100,
-    }));
+    const results = baseResults();
     const v = verdict(results);
     assert.strictEqual(v.ok, true);
     if (v.ok) {
@@ -56,18 +85,17 @@ describe('verdict', () => {
     }
   });
 
-  it('a failure → exit 1; only the failed gate dumps output', () => {
-    const results: GateResult[] = GATES.map((g) => ({
-      name: g.name,
-      exitCode: g.name === 'type-check' ? 1 : 0,
-      output: g.name === 'type-check' ? 'TS2345 ...' : '',
-      durationMs: 100,
+  it('a failure → exit 1; only the failed gate dumps output, and names the command it ran', () => {
+    const results = baseResults().map((r) => ({
+      ...r,
+      exitCode: r.name === 'type-check' ? 1 : 0,
+      output: r.name === 'type-check' ? 'TS2345 ...' : '',
     }));
     const v = verdict(results);
     assert.strictEqual(v.ok, false);
     if (!v.ok) {
       assert.strictEqual(v.exitCode, 1);
-      assert.match(v.message, /❌ type-check — exit 1/);
+      assert.match(v.message, /❌ type-check — exit 1 \(ran: npm run type-check\)/);
       assert.match(v.message, /TS2345/);
       assert.match(v.message, /✅ format/);
       assert.doesNotMatch(v.message, /❌ format/);
@@ -76,11 +104,10 @@ describe('verdict', () => {
 
   it('a runaway failed gate is tail-capped to its last 120 lines with a truncation note', () => {
     const bigOutput = Array.from({ length: 500 }, (_, i) => `line ${i}`).join('\n');
-    const results: GateResult[] = GATES.map((g) => ({
-      name: g.name,
-      exitCode: g.name === 'test:coverage' ? 1 : 0,
-      output: g.name === 'test:coverage' ? bigOutput : '',
-      durationMs: 100,
+    const results = baseResults().map((r) => ({
+      ...r,
+      exitCode: r.name === 'test:coverage' ? 1 : 0,
+      output: r.name === 'test:coverage' ? bigOutput : '',
     }));
     const v = verdict(results);
     assert.strictEqual(v.ok, false);
@@ -95,11 +122,10 @@ describe('verdict', () => {
   });
 
   it('output that already fits both bounds is left untouched (no truncation note)', () => {
-    const results: GateResult[] = GATES.map((g) => ({
-      name: g.name,
-      exitCode: g.name === 'lint' ? 1 : 0,
-      output: g.name === 'lint' ? 'short failure\ndetail line' : '',
-      durationMs: 100,
+    const results = baseResults().map((r) => ({
+      ...r,
+      exitCode: r.name === 'lint' ? 1 : 0,
+      output: r.name === 'lint' ? 'short failure\ndetail line' : '',
     }));
     const v = verdict(results);
     assert.strictEqual(v.ok, false);
@@ -112,17 +138,34 @@ describe('verdict', () => {
   it('a failed gate whose few lines still exceed 16KB is byte-capped, not just line-capped', () => {
     const hugeLine = 'x'.repeat(20 * 1024); // 20KB on one line — over the 16KB cap alone
     const output = ['first line', hugeLine].join('\n');
-    const results: GateResult[] = GATES.map((g) => ({
-      name: g.name,
-      exitCode: g.name === 'yagni' ? 1 : 0,
-      output: g.name === 'yagni' ? output : '',
-      durationMs: 100,
+    const results = baseResults().map((r) => ({
+      ...r,
+      exitCode: r.name === 'yagni' ? 1 : 0,
+      output: r.name === 'yagni' ? output : '',
     }));
     const v = verdict(results);
     assert.strictEqual(v.ok, false);
     if (v.ok) return;
     assert.match(v.message, /truncated/);
     assert.doesNotMatch(v.message, /first line/); // dropped to satisfy the 16KB bound
+  });
+
+  it('the truncation note names the actual ranCommand, not a hardcoded npm form', () => {
+    const bigOutput = Array.from({ length: 500 }, (_, i) => `line ${i}`).join('\n');
+    const results = baseResults().map((r) => ({
+      ...r,
+      exitCode: r.name === 'yagni' ? 1 : 0,
+      output: r.name === 'yagni' ? bigOutput : '',
+      ranCommand: r.name === 'yagni' ? 'npx tsx cli/gennady.ts yagni' : r.ranCommand,
+    }));
+    const v = verdict(results);
+    assert.strictEqual(v.ok, false);
+    if (v.ok) return;
+    assert.match(v.message, /❌ yagni — exit 1 \(ran: npx tsx cli\/gennady\.ts yagni\)/);
+    assert.match(
+      v.message,
+      /… output truncated to last 120 lines — full transcript: npx tsx cli\/gennady\.ts yagni/
+    );
   });
 });
 
@@ -154,7 +197,7 @@ describe('profiles', () => {
       'npm run format',
       'npm run lint',
       'npm run type-check',
-      'npx gennady yagni',
+      'npx tsx cli/gennady.ts yagni', // self-hosting (mocked package.json name: gennady)
     ]);
 
     const test = fakeRunner();
@@ -167,8 +210,43 @@ describe('profiles', () => {
   });
 });
 
-describe('run', () => {
-  it('defaults to the full 5-gate sequence — npm scripts as `npm run <name>`, yagni direct as `npx gennady yagni`', async () => {
+describe('isSelfHosting', () => {
+  it('true when the project package.json name is exactly "gennady"', () => {
+    currentPkgJson = JSON.stringify({ name: 'gennady' });
+    assert.strictEqual(isSelfHosting(), true);
+  });
+
+  it('false for a consumer project — detected by package name, never by directory/path', () => {
+    currentPkgJson = JSON.stringify({ name: 'some-consumer-app' });
+    assert.strictEqual(isSelfHosting(), false);
+  });
+
+  it('false when package.json is missing or unparsable — fails closed to consumer behavior', () => {
+    currentPkgJson = 'not json';
+    assert.strictEqual(isSelfHosting(), false);
+  });
+});
+
+describe('run — via: gennady gate dispatch', () => {
+  it('self-hosting (package.json name: gennady) → calls the local source through tsx', async () => {
+    currentPkgJson = JSON.stringify({ name: 'gennady', scripts: { 'type-check': 'tsc' } });
+    const { runner, calls } = fakeRunner();
+    const o = await run(runner);
+    assert.strictEqual(o.ok, true);
+    assert.deepStrictEqual(calls, [
+      'npm run format',
+      'npm run lint',
+      'npm run type-check',
+      'npm run test:coverage',
+      'npx tsx cli/gennady.ts yagni',
+    ]);
+  });
+
+  it('consumer project (package.json name ≠ gennady) → calls npx gennady <gate> unchanged', async () => {
+    currentPkgJson = JSON.stringify({
+      name: 'some-consumer-app',
+      scripts: { 'type-check': 'tsc' },
+    });
     const { runner, calls } = fakeRunner();
     const o = await run(runner);
     assert.strictEqual(o.ok, true);
@@ -181,17 +259,48 @@ describe('run', () => {
     ]);
   });
 
-  it('RUN-ALL: keeps running after a failure and exits 1', async () => {
-    const { runner, calls } = fakeRunner(['format']);
-    const o = await run(runner);
-    assert.strictEqual(o.ok === false && o.exitCode, 1);
-    assert.strictEqual(calls.length, 5);
+  it('a failing gennady gate names the actual command it ran, in both modes', async () => {
+    currentPkgJson = JSON.stringify({ name: 'gennady' });
+    const selfHosted = await run(fakeRunner(['yagni']).runner, 'code');
+    assert.strictEqual(selfHosted.ok, false);
+    if (!selfHosted.ok) {
+      assert.match(selfHosted.message, /❌ yagni — exit 1 \(ran: npx tsx cli\/gennady\.ts yagni\)/);
+    }
+
+    currentPkgJson = JSON.stringify({ name: 'some-consumer-app' });
+    const consumer = await run(fakeRunner(['yagni']).runner, 'code');
+    assert.strictEqual(consumer.ok, false);
+    if (!consumer.ok) {
+      assert.match(consumer.message, /❌ yagni — exit 1 \(ran: npx gennady yagni\)/);
+    }
   });
 
   it('yagni gate is never proxied through a project npm script — the project need not declare one', async () => {
     const { runner, calls } = fakeRunner();
     await run(runner, 'full');
     assert.ok(!calls.includes('npm run yagni'));
-    assert.ok(calls.includes('npx gennady yagni'));
+    assert.ok(calls.some((c) => c.endsWith(' yagni')));
+  });
+});
+
+describe('run', () => {
+  it('defaults to the full 5-gate sequence — npm scripts as `npm run <name>`, yagni direct', async () => {
+    const { runner, calls } = fakeRunner();
+    const o = await run(runner);
+    assert.strictEqual(o.ok, true);
+    assert.deepStrictEqual(calls, [
+      'npm run format',
+      'npm run lint',
+      'npm run type-check',
+      'npm run test:coverage',
+      'npx tsx cli/gennady.ts yagni', // self-hosting default set in beforeEach
+    ]);
+  });
+
+  it('RUN-ALL: keeps running after a failure and exits 1', async () => {
+    const { runner, calls } = fakeRunner(['format']);
+    const o = await run(runner);
+    assert.strictEqual(o.ok === false && o.exitCode, 1);
+    assert.strictEqual(calls.length, 5);
   });
 });

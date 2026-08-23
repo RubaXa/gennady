@@ -80,6 +80,8 @@ export type GateResult = {
   output: string;
   /** @purpose Wall-clock duration in milliseconds. */
   durationMs: number;
+  /** @purpose The command actually run — surfaced on failure so nothing has to be guessed. */
+  ranCommand: string;
 };
 
 /**
@@ -103,10 +105,10 @@ const TAIL_CAP_BYTES = 16 * 1024;
 /**
  * @purpose Cap a failed gate's output to its last N lines or 16KB, whichever is smaller — a runaway gate must not flood context.
  * @param output Raw combined stdout+stderr of the failed gate.
- * @param gateName Gate name, for the truncation note's replay hint.
+ * @param ranCommand The command actually run, for the truncation note's replay hint.
  * @returns The output untouched when it already fits both bounds; otherwise the kept tail prefixed with a one-line truncation note.
  */
-function tailCap(output: string, gateName: string): string {
+function tailCap(output: string, ranCommand: string): string {
   const trimmed = output.trimEnd();
   let lines = trimmed.split('\n');
   let truncated = false;
@@ -122,7 +124,7 @@ function tailCap(output: string, gateName: string): string {
 
   if (!truncated) return trimmed;
   return [
-    `… output truncated to last ${lines.length} lines — full transcript: npm run ${gateName}`,
+    `… output truncated to last ${lines.length} lines — full transcript: ${ranCommand}`,
     lines.join('\n'),
   ].join('\n');
 }
@@ -148,9 +150,9 @@ export function verdict(results: GateResult[]): VerifyOutcome {
 
   const failBlocks = failed.map((r) =>
     [
-      `  ❌ ${r.name} — exit ${r.exitCode}`,
+      `  ❌ ${r.name} — exit ${r.exitCode} (ran: ${r.ranCommand})`,
       '  --- output ---',
-      tailCap(r.output, r.name),
+      tailCap(r.output, r.ranCommand),
       '  --- end ---',
     ].join('\n')
   );
