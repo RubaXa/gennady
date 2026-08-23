@@ -31,7 +31,7 @@ graph TD
 
 | Task-ID     | Title                                             | Module             | Dependencies | Status   | Reopens |
 | ----------- | ------------------------------------------------- | ------------------ | ------------ | -------- | ------- |
-| DA-lazy-asm | Lazy directive assembly: skeleton + step packages | directive-assembly | —            | [ ] TODO | —       |
+| DA-lazy-asm | Lazy directive assembly: skeleton + step packages | directive-assembly | —            | [x] DONE | —       |
 
 ## Decision Log (scope task level)
 

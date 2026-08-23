@@ -4,7 +4,7 @@
 
 /**
  * DA-REQ-6/14: an assembled lazy skeleton must stay within a hard 8000-token ceiling, and every
- * generated step package within 8000 characters with no single line over 2000 characters — the
+ * generated step package within 20 000 characters with no single line over 2000 characters — the
  * budgets this module measures mechanically instead of leaving them a manual-review convention
  * (DA-DL-5, DA-DL-14: line length is the real truncation risk on either host, not overall file
  * size).
@@ -13,9 +13,9 @@
  * only the skeleton text and its packages. The CLI entry point below (modeled on
  * `ai/kit/check-directives-fresh.ts`) is what walks the real `ai/directives/sdd-v2/**` tree and
  * attaches directive identity to each finding it reports. A directive counts as lazily assembled
- * only when its sibling `<name>/steps/` directory exists (DA-REQ-4) — no lazy directive exists yet
- * in this tree, so the CLI gate is trivially clean until `build:directives -- --assembly=lazy`
- * starts producing that layout for a pilot.
+ * only when its sibling `<name>/steps/` directory exists (DA-REQ-4) — the three pilots
+ * (audit, scaffold, phase-execution-protocol) carry that layout today; every other directive stays
+ * monolithic and is skipped by the scan.
  *
  * Run: npm run check:directive-budgets
  */
