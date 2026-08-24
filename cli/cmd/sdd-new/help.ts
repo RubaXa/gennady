@@ -17,12 +17,12 @@ export function printHelp(): void {
   console.info('');
   console.info('Arguments:');
   console.info(
-    '  <kind>   product | library | infrastructure | interface | module | task | portal | research'
+    '  <kind>   product | library | infrastructure | interface | module | task | portal | research | module-index | scope-index | project-index'
   );
   console.info('');
   console.info('Options:');
   console.info(
-    '  --scope <s>       Scope name. Required for every kind except portal (unless --out is given).'
+    '  --scope <s>       Scope name. Required except for portal/project-index (unless --out is given).'
   );
   console.info(
     '  --module <m>      Module name. Required for module. Optional for task/module-index — omit'
@@ -76,6 +76,9 @@ export function printHelp(): void {
   console.info('  npx gennady sdd-new module --scope backend --module auth');
   console.info('  npx gennady sdd-new task --scope backend --module auth --id AUTH-login-flow');
   console.info('  npx gennady sdd-new research --scope backend --slug ai-tooling-stack');
+  console.info('  npx gennady sdd-new module-index --scope backend --module auth');
+  console.info('  npx gennady sdd-new scope-index --scope backend');
+  console.info('  npx gennady sdd-new project-index');
   console.info('  npx gennady sdd-new --list');
   console.info('  npx gennady sdd-new module --manifest');
 }

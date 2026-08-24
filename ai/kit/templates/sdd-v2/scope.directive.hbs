@@ -201,8 +201,8 @@
     <Step id="STEP_4B_SYSTEM_FIT">
       <Goal>Reconcile with the existing system before architecture locks.</Goal>
       <Action>
-        FIRST action this step: run `npx gennady sdd-orient specs/<scope>/<scope>.spec.md --scope
-        <scope>` (the path names where THIS spec lives even before `sdd-new` materializes it — a
+        FIRST action this step: run `npx gennady sdd-orient --scope <scope>` (this works even before
+        `sdd-new` materializes the spec — a
         greenfield scope-type is not a reason to skip the call). Read its output in full: the portal
         line, the one-hop neighbours with their paths, entity/contract NAMES, requirement IDs + titles,
         the consumers list, and its closing question — the tool's bounded extract is the evidence, not

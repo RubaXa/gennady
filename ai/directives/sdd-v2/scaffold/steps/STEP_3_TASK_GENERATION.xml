@@ -4,7 +4,7 @@
       <Goal>Generate tickets + test plan. (auto)</Goal>
       <Action>
         Create each new ticket's skeleton via
-        `sdd-new task --scope <scope> --module <module> --id <ACR>-<slug>` — it never overwrites and
+        `npx gennady sdd-new task --scope <scope> --module <module> --id <ACR>-<slug>` — it never overwrites and
         prints the section manifest (which sections are REQUIRED and what to fill). Content guidance
         per `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/task-ticket-structure.xml")`. Per
         ticket: decompose into phases (`AX_PHASES_DECLARED_IN_HEADER`; impl and test always separate). Activate

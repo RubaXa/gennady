@@ -3,13 +3,13 @@
 <Step id="STEP_5_VERIFY">
       <Goal>Run the verification gate, then the ticket §5 commands. Log only final results.</Goal>
       <Action>
-        Run `sdd-verify --profile <by kind>` (commands stay within `AX_PERMITTED_BASH_COMMANDS`; the deterministic gate, exact `npm run` scripts, mutating
+        Run `npx gennady sdd-verify --profile <by kind>` (commands stay within `AX_PERMITTED_BASH_COMMANDS`; the deterministic gate, exact `npm run` scripts, mutating
         first, run-all, brief on pass, details on fail). Profile by phase kind: `impl` / `refactor` /
         `config` / `doc` / `bootstrap` → `code` (format · lint · typecheck · yagni — a code phase skips
         tests, but still runs the yagni gate since it is a code-diff check, not a test run); `test` →
         `test` (format · typecheck · test:coverage — no lint/yagni); a `fix` phase takes the profile of
         the kind it repairs. The full set (`full`) runs once at the end (orchestrator close, not here). For
-        `impl` / `refactor` / `test` phases also run `gennady lint --spec=<this module's spec> <Target Files>`
+        `impl` / `refactor` / `test` phases also run `npx gennady lint --spec=<this module's spec> <Target Files>`
         — closed-world inventory sync (`ERR_CLI_LINT_INVENTORY_UNDECLARED`) + cast safety
         (`ERR_CLI_LINT_UNSAFE_CAST`). An exported entity not in the inventory is drift
         (`AX_CLOSED_WORLD_INVENTORY`): remove it, or — if genuinely needed — log an `intro <name> ← <reason>`

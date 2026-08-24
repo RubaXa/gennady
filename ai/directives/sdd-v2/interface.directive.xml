@@ -177,9 +177,9 @@
     <Step id="STEP_2B_SYSTEM_FIT">
       <Goal>Reconcile with the existing system before the versioning policy locks.</Goal>
       <Action>
-        FIRST action this step: run `npx gennady sdd-orient specs/<scope>/<scope>.spec.md --scope
-        <scope>` (the path names where THIS interface spec lives even before `sdd-new` materializes
-        it) and read its output in full: the portal line, the one-hop neighbours with their paths,
+        FIRST action this step: run `npx gennady sdd-orient --scope <scope>` (this works even before
+        `sdd-new` materializes the interface spec) and read its output in full: the portal line, the
+        one-hop neighbours with their paths,
         entity/contract NAMES, requirement IDs + titles, the consumers list, and its closing question.
 
         Then close, in THIS message, the fixed checklist — record every answer in the spec (Decision

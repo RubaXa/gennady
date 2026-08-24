@@ -362,8 +362,8 @@
     <Step id="STEP_0B_SYSTEM_FIT">
       <Goal>Reconcile with the existing system before module boundaries lock.</Goal>
       <Action>
-        FIRST action this step: run `npx gennady sdd-orient specs/<scope>/<scope>.spec.md --scope
-        <scope>` and read its output in full: the portal line, the one-hop neighbours with their
+        FIRST action this step: run `npx gennady sdd-orient --scope <scope>` and read its output in
+        full: the portal line, the one-hop neighbours with their
         paths, entity/contract NAMES, requirement IDs + titles, the consumers list, and its closing
         question. The scope spec's own Module Map is part of this extract's one-hop
         neighbourhood — a decomposition that duplicates a sibling module's already-declared

@@ -499,6 +499,30 @@ describe('documented call still present verbatim in its directive (drift guard)'
   }
 });
 
+describe('sdd-orient documented invocation contract', () => {
+  const authoring = ['infra', 'scope', 'module', 'interface'];
+
+  for (const name of authoring) {
+    it(`${name} uses the pre-materialization --scope form without a positional path`, () => {
+      const text = readFileSync(
+        join(REPO_ROOT, 'ai', 'directives', 'sdd-v2', `${name}.directive.xml`),
+        'utf-8'
+      );
+      assert.match(text, /npx gennady sdd-orient --scope <scope>/);
+      assert.doesNotMatch(text, /sdd-orient [^`\n]+ --scope <scope>/);
+    });
+  }
+
+  it('critic uses the existing-artifact positional form without --scope', () => {
+    const text = readFileSync(
+      join(REPO_ROOT, 'ai', 'directives', 'sdd-v2', 'critic.directive.xml'),
+      'utf-8'
+    );
+    assert.match(text, /npx gennady sdd-orient <artifact-path>`/);
+    assert.doesNotMatch(text, /sdd-orient <artifact-path> --scope/);
+  });
+});
+
 describe('documented result class against a real fixture repo', () => {
   for (const c of CASES) {
     it(c.id, () => {

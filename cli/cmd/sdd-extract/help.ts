@@ -10,10 +10,12 @@ export function printHelp(): void {
   console.info('');
   console.info('Usage:');
   console.info('  npx gennady sdd-extract <file> <NAME>');
+  console.info('  npx gennady sdd-extract <file>#<heading-anchor>');
   console.info('');
   console.info('Arguments:');
   console.info('  <file>   Path to the SDD ticket / spec markdown file.');
   console.info('  <NAME>   Section anchor name, matching /^[A-Z][A-Z0-9_]*$/.');
+  console.info('  <heading-anchor>   Lowercase Markdown heading slug, e.g. audit-rounds.');
   console.info('');
   console.info('Canonical section names:');
   console.info('  META  PHASES_OVERVIEW  PHASE_P<N>  PHASE_P<N>_FIX');
@@ -30,4 +32,5 @@ export function printHelp(): void {
   console.info('Examples:');
   console.info('  npx gennady sdd-extract specs/cli/lint/lint.task-foo.md META');
   console.info('  npx gennady sdd-extract specs/cli/lint/lint.task-foo.md PHASE_P1');
+  console.info('  npx gennady sdd-extract specs/cli/lint/lint.task-foo.md#audit-rounds');
 }

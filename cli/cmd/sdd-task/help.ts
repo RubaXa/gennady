@@ -9,7 +9,13 @@ export function printHelp(): void {
   console.info('gennady sdd-task — Emit a ticket planning surface for the execute orchestrator');
   console.info('');
   console.info('Usage:');
+  console.info('  npx gennady sdd-task [project-root]');
   console.info('  npx gennady sdd-task <ticket-path> [--phase <P<N>>]');
+  console.info('');
+  console.info(
+    'Without a ticket, emits the deterministic execution map for project-root (default: .).'
+  );
+  console.info('Pass one listed Task-ID or ticket path to get its planning surface.');
   console.info('');
   console.info('Without --phase, emits (the ONLY ticket read the orchestrator needs):');
   console.info('  - Meta: Task-ID, Status, Purpose, Scope/Module, Dependencies, Spec References');
