@@ -530,9 +530,9 @@ export type GroupScopeGit = { available: true; files: string[] } | { available: 
  * @param targetFiles Union of every group ticket's phase Target Files.
  * @param handoffArtifacts Union of every group ticket's Handoff `artifacts:` entries.
  * @param git The git-diff scan result (`available: false` when the repo has no HEAD).
- * @param contractAnchors Project-relative spec anchors declared by the selected tickets.
- * @param lintFiles Source files ready to pass to `gennady lint` without extension guessing.
- * @param codeRoots Minimal non-nested roots ready for reverse-inventory checks.
+ * @param [contractAnchors] Project-relative spec anchors declared by the selected tickets.
+ * @param [lintFiles] Source files ready to pass to `gennady lint` without extension guessing.
+ * @param [codeRoots] Minimal non-nested roots ready for reverse-inventory checks.
  * @returns The formatted review-scope report.
  */
 export function formatGroupScope(
