@@ -24,6 +24,7 @@ import {
   checkScopeDeps,
   checkSpecHierarchy,
   checkResearchOrphans,
+  checkResearchLifecycle,
   checkRequirementIds,
   checkDecisionLogIds,
   checkRequirementUnhappyPath,
@@ -598,6 +599,7 @@ export async function run(rawArgs: string[]): Promise<CheckResult> {
       }
       if (file.endsWith('.research.md')) {
         researchFiles.push(file);
+        findings.push(...checkResearchLifecycle(file, content));
         fileCount++;
       } else if (file === portalFile) {
         findings.push(

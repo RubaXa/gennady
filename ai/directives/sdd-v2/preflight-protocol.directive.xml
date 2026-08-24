@@ -1,0 +1,25 @@
+<SddPreflightProtocol keywords="preflight, adversarial, domain-checklist, lazy, extensible, failure-modes" type="directive" ver="2.0">
+  <Mission>
+    Before internal critic, close design consequences predictable from selected domain capabilities.
+    Input — accepted decisions, coverage map, active amplifications, and drafted spec. Output — no
+    delta, or one consolidated decision packet. The core stays platform-neutral.
+  </Mission>
+  <BeliefState>
+    <Axiom id="AX_PREFLIGHT_LAZY">Load only checklist modules whose trigger is present. An inactive domain costs no read, no question, and no placeholder output.</Axiom>
+    <Axiom id="AX_PREFLIGHT_EXTENSIBLE">Each checklist owns one domain and declares Trigger, ProbeSet, and ClosureEvidence. New languages and platforms add checklist directives without changing this algorithm.</Axiom>
+    <Axiom id="AX_PREFLIGHT_ONE_PACKET">Reuse accepted answers. Collect every genuinely open product fork across active checklists and ask once. Fix mechanical omissions without Ask.</Axiom>
+  </BeliefState>
+  <ChecklistCatalog>
+    | Domain | Directive | Trigger |
+    |---|---|---|
+    | storage | `ai/directives/sdd-v2/amplify-storage.directive.xml` | persisted state, cache, database, files, synchronization |
+    | security | `ai/directives/sdd-v2/amplify-security.directive.xml` | trust boundary, credentials, external input, authorization |
+    | nfr | `ai/directives/sdd-v2/amplify-nfr.directive.xml` | latency, throughput, scale, availability, resource budget |
+    | observability | `ai/directives/sdd-v2/amplify-observability.directive.xml` | production diagnosis, telemetry, alerts, operational recovery |
+  </ChecklistCatalog>
+  <ExecutionPlan>
+    <Step id="STEP_1_SELECT"><Goal>Select without loading bodies.</Goal><Action>Match catalog triggers against accepted decisions and the draft. No match → return CLEAN (`AX_PREFLIGHT_LAZY`).</Action></Step>
+    <Step id="STEP_2_PROBE"><Goal>Probe active domains only.</Goal><Action>For each match, `READ_AND_USE_DIRECTIVE` that one directive and reuse its already-answered coverage as a checklist, not a replayed interview. Probe boundary conditions, ordering/concurrency, failure/recovery, deletion/retention, compatibility/migration, and operator visibility only where meaningful. Platform checklists extend the catalog through the Trigger/ProbeSet/ClosureEvidence contract (`AX_PREFLIGHT_EXTENSIBLE`).</Action></Step>
+    <Step id="STEP_3_CLOSE"><Goal>Return one delta packet.</Goal><Action>Fix mechanical omissions directly. If product forks remain, return one grouped Ask with the new consequence that opened each fork; cite accepted decisions instead of re-confirming them (`AX_PREFLIGHT_ONE_PACKET`). Record answers in the Decision Log. No fork → return CLEAN without Ask.</Action></Step>
+  </ExecutionPlan>
+</SddPreflightProtocol>

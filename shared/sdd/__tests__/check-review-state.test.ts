@@ -15,13 +15,9 @@ describe('checkReviewState', () => {
     assert.deepStrictEqual(checkReviewState('s.spec.md', '## 1. Vision\nclean spec'), []);
   });
 
-  it('valid review-state (manifest + ТИП) → one STUCK warning, no error', () => {
+  it('valid review-state (manifest + ТИП) → no finding during the normal review phase', () => {
     const fs = checkReviewState('s.spec.md', manifest('ТИП ИЗМЕНЕНИЯ: refine · add X'));
-    assert.deepStrictEqual(
-      fs.map((f) => f.code),
-      ['SDD_REVIEW_STATE_STUCK']
-    );
-    assert.strictEqual(fs[0]?.severity, 'warn');
+    assert.deepStrictEqual(fs, []);
   });
 
   it('✚/~ marks without a manifest → INCONSISTENT error', () => {

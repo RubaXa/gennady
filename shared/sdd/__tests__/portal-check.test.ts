@@ -112,17 +112,17 @@ describe('renderScopeGraph', () => {
 
   it('a shared downstream node collapses into a single level-0 entry, not one chain per consumer', () => {
     const lines = renderScopeGraph(
-      [scope('uikit'), scope('tessell-core'), scope('vkt-messenger'), scope('infra-base', 'done')],
+      [scope('uikit'), scope('shared-core'), scope('vkt-messenger'), scope('infra-base', 'done')],
       [
-        { from: 'vkt-messenger', to: 'tessell-core' },
+        { from: 'vkt-messenger', to: 'shared-core' },
         { from: 'vkt-messenger', to: 'infra-base' },
         { from: 'uikit', to: 'infra-base' },
       ]
     );
     assert.deepStrictEqual(lines, [
-      'уровень 0 (фундамент): infra-base, tessell-core',
+      'уровень 0 (фундамент): infra-base, shared-core',
       'уровень 1: uikit, vkt-messenger',
-      'рёбра: uikit → infra-base · vkt-messenger → infra-base, tessell-core',
+      'рёбра: uikit → infra-base · vkt-messenger → infra-base, shared-core',
     ]);
   });
 

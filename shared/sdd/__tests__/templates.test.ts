@@ -88,6 +88,7 @@ describe('templates registry', () => {
       'CRITERIA',
       'OPTIONS',
       'DECISION',
+      'FINAL_DISPOSITION',
       'CONSEQUENCES',
       'EVIDENCE',
       'RELATED',
@@ -97,7 +98,7 @@ describe('templates registry', () => {
     const required = new Set(tpl.sections.filter((s) => s.required).map((s) => s.name));
     assert.deepStrictEqual(
       required,
-      new Set(['STATUS', 'PROBLEM', 'OPTIONS', 'DECISION', 'EVIDENCE'])
+      new Set(['STATUS', 'PROBLEM', 'OPTIONS', 'DECISION', 'FINAL_DISPOSITION', 'EVIDENCE'])
     );
   });
 

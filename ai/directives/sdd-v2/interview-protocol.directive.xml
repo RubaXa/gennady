@@ -53,6 +53,13 @@
       `READ_AND_USE_DIRECTIVE` at the moment its topic opens, never up front.
     </Axiom>
 
+    <Axiom id="AX_DELTA_ONLY_ASK">
+      Ask only for a decision that is still open. Intake, portal/state output, and an earlier
+      operator answer are binding evidence: carry them forward by reference and never ask the
+      operator to confirm the same value again. A contradiction or genuinely new consequence
+      reopens only the affected decision, with the delta named explicitly.
+    </Axiom>
+
     <Axiom id="AX_UNCOMFORTABLE_QUESTIONS">
       Every meaningful frame includes ≥1 uncomfortable question — the kind that exposes hidden
       assumptions, degradation paths, or trust boundaries. Canonical seeds:
@@ -220,12 +227,12 @@
     <Step id="STEP_2_TRIAGE">
       <Goal>Decide which amplifications this task deserves.</Goal>
       <Action>
-        One compact block of 3–5 closed questions (yes / no / short pick), mandatory even when the
-        task looks small: external users or external data? load significant? state persisted?
-        must this be diagnosable in production? — plus at most one triage question specific to the
-        intake. From the answers, propose an amplification set per `AmplificationCatalog` with the
-        small-task default «none active» (`AX_AMPLIFICATION_OPT_IN`); operator confirms. Confirmed
-        amplifications become map topics on the «Усиления» line. STOP.
+        Evaluate the `AmplificationCatalog` triggers from already-known intake first. Ask one compact
+        closed batch only for triggers whose answer remains unknown; zero unknown triggers means
+        zero Ask. Propose the resulting amplification set with the small-task default «none active»
+        (`AX_AMPLIFICATION_OPT_IN`). A set fully implied by accepted answers is carried forward
+        without a second confirmation (`AX_DELTA_ONLY_ASK`). Confirmed amplifications become map
+        topics on the «Усиления» line.
       </Action>
     </Step>
     <Step id="STEP_3_ROUNDS">
@@ -238,7 +245,7 @@
            `QUESTION_MESSAGE_FORMAT`, answered before the next question is composed
            (`AX_ONE_QUESTION_SEQUENTIAL`); a default confirmation → collect it and batch up to 4
            per `BATCH_CONFIRM_FORMAT`.
-        3. Shape each question per `AX_DEFAULTS_FIRST` — a concrete default to confirm or correct —
+        3. Shape each question per `AX_DEFAULTS_FIRST` and `AX_DELTA_ONLY_ASK` — a concrete default to confirm or correct —
            and bind its chat message to the `AskUserQuestion` call per `AX_ASK_TOOL_BINDING`.
         4. After each answer, update the map and pull the thread per `AX_COVERAGE_MAP_CLOSURE`
            (new hole → new / reopened topic; a развилка whose premise the answer invalidated is
@@ -264,7 +271,8 @@
         Gate per `AX_COVERAGE_MAP_CLOSURE`: every topic `✅` or `✗ skip: <причина>` — an open
         (`◻️`), active (`👷`), or partial (`🟡`) topic sends the flow back to STEP_3. Show the final map + a compact digest of
         answers and decisions (Russian), including skips with reasons. Hand the digest to the
-        calling step — it owns the Approval Check, artifact writing, and any Decision Log entries.
+        calling step. The digest is evidence, not a new approval surface: the caller asks again only
+        for a newly introduced delta (`AX_DELTA_ONLY_ASK`).
       </Action>
     </Step>
   </ExecutionPlan>

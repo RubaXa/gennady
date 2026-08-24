@@ -411,7 +411,8 @@
         `sdd-check --all specs/<scope>` (anchor balance + required sections + links + size budget:
         `SDD_MODULE_OVERSIZED` / `SDD_MODULE_SPEC_VERBOSE`) and resolve or consciously defer any finding
         per `AX_CLOSE_WITH_INTEGRITY_CHECK`. Then
-        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/review-lifecycle.directive.xml")` — internal critic →
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/preflight-protocol.directive.xml")` and run
+        its lazy active-domain checklist. Then `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/review-lifecycle.directive.xml")` — internal critic →
         publish (MR) → external review → compress + merge on approval. Only after the spec merges to master,
         hand off to scaffold (`AX_HANDOFF_TO_TASK_SCAFFOLDING`). Approval Check. STOP.
       </Action>

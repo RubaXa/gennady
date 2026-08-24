@@ -103,7 +103,8 @@
         not a decision they own. State the confirmed default SCALE inline in the plan text instead
         of a standalone question — `module` for a typical infra scope unless intake signals
         otherwise (`AX_SCALE_PROPORTIONAL_DEPTH`) — and let the operator correct it here or at the
-        next substantive Ask (STEP_2); it never burns a dedicated round. Approval Check. STOP.
+        next substantive Ask (STEP_2); it never burns a dedicated round. If state already resolves
+        every field, proceed without Ask.
       </Action>
     </Step>
     <Step id="STEP_1B_SYSTEM_FIT">
@@ -175,17 +176,17 @@
         a row — it already had its reference line above), each row naming the recommended tool + a
         one-line rationale from the research (not recall) + a currency note, per
         `AX_DIVERGE_BEFORE_RECOMMEND`, plus a link to the research document backing it. The operator
-        confirms the whole table or names deviations in ONE reply. A SECOND Ask closes the round:
-        confirms any deviation the
-        first reply raised, plus the Tool Interaction Check (linter vs formatter, runner vs
-        type-check, CI vs package manager). Two Asks total replace the per-category STEP_2 / STEP_3
+        confirms the whole table or names deviations in ONE reply. Include the Tool Interaction
+        Check (linter vs formatter, runner vs type-check, CI vs package manager) in this first batch.
+        A deviation opens a follow-up only when its consequences create a new unresolved interaction;
+        otherwise apply it directly. One Ask normally replaces the per-category STEP_2 / STEP_3
         interview cycle — Mandatory Rationale Pull → Decision Log entry per `AX_DECISION_LOG_REQUIRED`
         still applies per tool (`H_TOOL_LOCKED_WITHOUT_DECISION`), its RELATED citing the research
         document in parentheses: the compression is in the NUMBER of
         operator round-trips, never in the Decision Log discipline. For any locked tool that is a
         GATE tool, the same Integration Detail concreteness bar as STEP_3 applies — no exemption for
         having taken the fast path. STEP_3 is done once this closes —
-        proceed to STEP_4. Approval Check. STOP.
+        proceed to STEP_4. STOP only when that Ask was needed.
       </Action>
     </Step>
     <Step id="STEP_3_TOOL_CHOICES">
@@ -289,9 +290,11 @@
         `AX_ARTIFACT_STYLE_SELF_CHECK`. In `refine` mode update sections in place per
         `AX_LIVING_SPEC`. In `pivot` mode also
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/pivot-formats.xml")`
-        (`AX_PIVOT_REQUIRES_SUPERSESSION`); in `rewrite` mode write fresh — no supersession, no invalidation list. For a brand-new scope, append the `🚧 (awaiting root sync)` placeholder row to the portal Scopes table per `AX_PORTAL_READ_ONLY_WITH_PLACEHOLDER_EXCEPTION` — every other portal edit belongs to the root flow. Write in review-state per `AX_SPEC_LIFECYCLE` — prepend a `CHANGE_MANIFEST` (`READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/change-manifest.xml")`) and mark changed lines `✚`/`~` (greenfield → manifest only, no per-line marks) — its «СОСЕДИ» block carries the (c)/(d) answers `STEP_1B_SYSTEM_FIT` recorded, never left empty by omission; compress folds it to master downstream after the change ships. Then close with the integrity check per `AX_CLOSE_WITH_INTEGRITY_CHECK`: run `sdd-check --all specs/<scope>` (anchor balance + required sections + links) and resolve any finding.
+        (`AX_PIVOT_REQUIRES_SUPERSESSION`); in `rewrite` mode write fresh — no supersession, no invalidation list. For a brand-new scope, append the `🚧 (awaiting root sync)` placeholder row to the portal Scopes table per `AX_PORTAL_READ_ONLY_WITH_PLACEHOLDER_EXCEPTION` — every other portal edit belongs to the root flow. Write in review-state per `AX_SPEC_LIFECYCLE` — prepend a `CHANGE_MANIFEST` (`READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/change-manifest.xml")`) and mark changed lines `✚`/`~` (greenfield → manifest only, no per-line marks) — its «СОСЕДИ» block carries the (c)/(d) answers `STEP_1B_SYSTEM_FIT` recorded, never left empty by omission; compress folds it to master downstream after the change ships. During authoring run the exact `fix-command` recorded in §Verification Commands once; its output becomes the input tree for the read-only gate. Then run `npx gennady sdd-check --all specs/<scope>` and use its returned findings as the single remaining fix list; rerun only when findings existed (`AX_CLOSE_WITH_INTEGRITY_CHECK`). CI and approval never invoke `fix-command`.
 
-        **Pre-critic checklist** — the critic is not the first line of defense on mechanics; run this
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/preflight-protocol.directive.xml")` and run
+        only the domain checklists whose triggers match the chosen stack. The critic is not the first
+        line of defense on mechanics; then run this
         self-check before dispatching it, catch here what four MAJOR rounds otherwise catch late:
         (a) Prerequisites completeness — every chosen tool's own plugins/loaders are named (a parser
         for `.ts`, a loader for the TS config), not just the tool itself; (b) internal consistency —

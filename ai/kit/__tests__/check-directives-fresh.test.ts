@@ -5,7 +5,7 @@
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, writeFileSync, readFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync, readFileSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -68,6 +68,7 @@ describe('checkDirectivesFresh', () => {
 
   it('ignores a hand-authored file that sits next to generated ones but is never templated', () => {
     const strayFile = join(fixture, 'coding', 'README.md');
+    mkdirSync(join(fixture, 'coding'), { recursive: true });
     writeFileSync(strayFile, '# not a build output — hand-maintained companion doc\n');
     const result = checkDirectivesFresh(ROOT, fixture);
     assert.equal(result.fresh, true, result.diff);

@@ -104,8 +104,12 @@
     <Step id="STEP_3B_ROUND_CHECKPOINT">
       <Goal>One batch Ask per round for every operator-owned item (`AX_GOAL_OWNER_GATE`).</Goal>
       <Action>
-        Build ONE `AskUserQuestion` batch (`QUESTION_FORMAT` batching rule — independent questions ride
-        together) carrying, when present: (a) every `GOAL` finding from STEP_2 or STEP_2B as its own question,
+        Resolve every `GOAL` finding against accepted operator decisions and the Decision Log first.
+        An established answer is applied with its source cited; a low-risk default that preserves
+        product intent is recorded and applied without Ask. Only a genuinely new product fork enters
+        the batch, and its question names the new consequence that reopened it. Build ONE
+        `AskUserQuestion` batch (`QUESTION_FORMAT` batching rule — independent questions ride
+        together) carrying, when present: (a) every remaining new `GOAL` fork from STEP_2 or STEP_2B as its own question,
         including any orchestrator disagreement with a sensor's `GOAL` tag («critic tagged GOAL, I read
         this as mechanical because …») — the tag stands until this answer says otherwise; (b) IF this
         round carried any `CRITICAL` / `MAJOR` finding (mechanical or goal), one confirm block: «critic

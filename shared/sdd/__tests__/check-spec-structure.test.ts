@@ -270,6 +270,10 @@ describe('checkTableCells — table is an index, not text (F2, mechanical)', () 
     const md = `| Name | Purpose |\n| --- | --- |\n| Foo | ${long} |`;
     const codes = checkTableCells('s.spec.md', md).map((f) => f.code);
     assert.ok(codes.includes('SDD_TABLE_CELL_TOO_LONG'));
+    const finding = checkTableCells('s.spec.md', md).find(
+      (f) => f.code === 'SDD_TABLE_CELL_TOO_LONG'
+    );
+    assert.equal(finding?.severity, 'warn');
   });
 
   it('a cell with two sentences (short, under the length cap) → SDD_TABLE_CELL_MULTI_SENTENCE', () => {

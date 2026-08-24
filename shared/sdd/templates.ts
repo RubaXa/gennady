@@ -128,7 +128,7 @@ const RESEARCH_REGISTRY_SKELETON_MODULE = `<!--SECTION:RESEARCH-->
 `;
 
 // DECISION (2026-08-20, ai-skills failure-elicitation research): new specs use ONE flat REQUIREMENT_ENTRY_FORMAT list; specs already in the old split Functional/Non-Functional format stay valid as-is.
-const REQUIREMENTS_LIST_SKELETON = `[Плоский список требований per \`REQUIREMENT_ENTRY_FORMAT\` (contract/spec/requirement-entry-format.xml) — заменяет раздельные Functional Requirements / Non-Functional Constraints для НОВЫХ спек; спеки, уже написанные в старом раздельном формате, остаются валидными как есть. Пример — обычное требование и требование класса «нештатная»:]
+const REQUIREMENTS_LIST_SKELETON = `[Плоский список требований: \`READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/requirement-entry-format.xml")\`. Формат заменяет раздельные Functional Requirements / Non-Functional Constraints для НОВЫХ спек; спеки, уже написанные в старом раздельном формате, остаются валидными как есть. Пример — обычное требование и требование класса «нештатная»:]
 
 ### <ACR>-REQ-1 [должен]
 **Когда** пользователь отправляет форму с пустым обязательным полем, **сервис должен** вернуть ошибку валидации с именем поля.
@@ -1733,6 +1733,13 @@ const RESEARCH_SKELETON = `# Research: <topic-title>
 - Ограничения: [<лимиты, quota, версийные требования, licensing>]
 <!--/SECTION:DECISION-->
 
+<!--SECTION:FINAL_DISPOSITION-->
+## Final disposition
+- **Outcome:** pending   <!-- pending | accepted | rejected | superseded -->
+- **Spec decision:** [После операторского выбора: фактическое решение спеки и ссылка на Decision Log. Исходный анализ выше не переписывать.]
+- **Delta from recommendation:** [совпало | чем и почему отличается]
+<!--/SECTION:FINAL_DISPOSITION-->
+
 <!--SECTION:CONSEQUENCES-->
 ## Consequences
 [Что теряем/принимаем этим выбором — прямое следствие DECISION, не повтор OPTIONS.]
@@ -1793,6 +1800,13 @@ const RESEARCH_SECTIONS: SectionManifestEntry[] = [
     loadBearing: true,
     fold: false,
     fill: "The MADR-style formula: chose X over Y/Z to achieve G, accepting trade-off T — built only from already-sourced/marked facts in CRITERIA/OPTIONS, no new unverifiable claim introduced here. Followed by the chosen X's integration fields: Version/API, needed methods, integration sketch, constraints.",
+  },
+  {
+    name: 'FINAL_DISPOSITION',
+    required: true,
+    loadBearing: true,
+    fold: false,
+    fill: 'Immutable-analysis bridge: pending while proposed; after operator choice, actual outcome + spec/Decision Log link + delta from the research recommendation.',
   },
   {
     name: 'CONSEQUENCES',
@@ -1858,6 +1872,7 @@ const NEXT_STEPS: Record<ArtifactKind, string[] | ((ctx: NextStepsContext) => st
     return [
       'Заполни секции по манифесту выше — каждое фактическое утверждение либо ведёт к EVIDENCE, либо помечено как вывод агента.',
       'Используй DECISION документа в том решении, ради которого делался этот ресёрч.',
+      'После решения не переписывай исходный анализ: заполни FINAL_DISPOSITION фактическим выбором и ссылкой на Decision Log.',
       `Зарегистрируй документ строкой в секции \`## Research\` спеки скоупа: \`specs/${scope}/${scope}.spec.md\`.`,
       '`sdd-check` проверит регистрацию (SDD_RESEARCH_UNREGISTERED).',
     ];

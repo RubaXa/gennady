@@ -174,7 +174,12 @@
       Add primary scripts to `package.json`. Rules: (a) only add a script if the tool is in `devDependencies`; (b) every primary script MUST be one-shot — exits with code, no watch mode (see AX_AI_FIRST_SCRIPTS_ONE_SHOT). Watch variants live in separate `:watch`/`:dev` scripts. Conventional names: `build`, `test`, `lint`, `format`, `type-check`, `clean`.
     </Step>
     <Step id="STEP_7_COMPOSE_CHECK_SCRIPT">
-      Add `check` script to `package.json` — the single quality entry point called by all task tickets. Compose it from the `<CheckPhase>` values of every active rule in this scope, ordered by `CheckPhaseOrder` from `ai/directives/knowledge.xml` (typecheck → test → lint → format). Include only phases with at least one active rule. All sub-commands must be one-shot. Declare `check-command → npm run check` in infra-spec §Verification Commands.
+      Add two explicit entry points. `check` is read-only and is called by task tickets, CI, and
+      approval gates; compose it from read-only `<CheckPhase>` commands, ordered by
+      `CheckPhaseOrder` (typecheck → test → lint → format). `fix` is the authoring repair entry point:
+      format write → lint autofix → `check`. Include only active phases; all commands are one-shot.
+      Declare `fix-command → npm run fix` and `check-command → npm run check` in infra-spec
+      §Verification Commands. An agent authors with `fix`, then trusts only `check` as the verdict.
     </Step>
     <Step id="STEP_8_VERIFY_REPRODUCIBILITY_TRIAD">
       Confirm three files committed: `.nvmrc`, `package.json`, `package-lock.json` (`npm ci` reads all three). Run HOOK_NVMRC_EXACT and HOOK_NPMRC_REGISTRY. Run each primary script — must exit within 2 minutes; hang = watch-mode violation.

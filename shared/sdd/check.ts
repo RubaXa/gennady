@@ -1141,9 +1141,8 @@ const SECTION_LINE_HARD_LIMIT_V2 = 120;
 // TABLE_CELL_MAX_CHARS=120 — calibrated against every table cell in specs/**/*.spec.md (n=7078,
 // fence-aware): median 15, P75 42, P90 74, P95 101, P99 201. 120 flags 3.2% of cells (229/7078);
 // manual inspection of the flagged cells showed uniformly genuine paragraph-in-cell prose (e.g.
-// cli/cli.spec.md, mr-stats.spec.md, dbc/lint.spec.md — the same class of pain as messenger's
-// tessell-data FR table), not legitimate long single tokens (paths, commands). Both messenger pain
-// examples sit far above this (tessell-data P90=197, host P90=190) — the threshold catches the
+// cli/cli.spec.md, mr-stats.spec.md, dbc/lint.spec.md), not legitimate long single tokens (paths,
+// commands). The known pain examples sit far above this — the threshold catches the
 // examples that motivated this rule without touching this repo's already-short label/purpose cells.
 const TABLE_CELL_MAX_CHARS = 120;
 
@@ -1582,7 +1581,7 @@ export function checkTableCells(file: string, content: string): Finding[] {
       }
       if (cell.length > TABLE_CELL_MAX_CHARS) {
         findings.push({
-          severity: 'error',
+          severity: 'warn',
           code: 'SDD_TABLE_CELL_TOO_LONG',
           file,
           message: `Table cell is ${cell.length} chars (> ${TABLE_CELL_MAX_CHARS}) — a cell is one short line; move the detail into a subsection below the table (AX_SPEC_TABLE_IS_INDEX): "${cell.slice(0, 60)}..."`,
@@ -1786,7 +1785,7 @@ const CHANGE_MARK = /^[ \t]*✚ /m;
  * @invariant master = no CHANGE_MANIFEST and no ✚/~ marks; review-state = manifest (marks optional for greenfield). Mismatches surfaced per AX_SPEC_LIFECYCLE.
  * @param file Spec file path.
  * @param content Full spec markdown.
- * @returns Findings: SDD_REVIEW_INCONSISTENT (error) for a malformed review-state; SDD_REVIEW_STATE_STUCK (warn) for a lingering manifest.
+ * @returns SDD_REVIEW_INCONSISTENT errors for a malformed review-state. A valid manifest is normal during review and is silent.
  */
 export function checkReviewState(file: string, content: string): Finding[] {
   const findings: Finding[] = [];
@@ -1811,12 +1810,6 @@ export function checkReviewState(file: string, content: string): Finding[] {
         message: `CHANGE_MANIFEST is missing the «ТИП ИЗМЕНЕНИЯ» field — the manifest is incomplete and cannot be reviewed or compressed. Fill the required fields (CHANGE_MANIFEST_FORMAT). AX_SPEC_LIFECYCLE.`,
       });
     }
-    findings.push({
-      severity: 'warn',
-      code: 'SDD_REVIEW_STATE_STUCK',
-      file,
-      message: `Spec is in review-state (CHANGE_MANIFEST present). Finalize it: once external review approves («no comments»), run compress — remove the manifest + ✚/~ marks; if the change was abandoned, remove the manifest. A spec must not linger in review-state. AX_SPEC_LIFECYCLE.`,
-    });
   }
   return findings;
 }
@@ -2072,6 +2065,7 @@ export function checkDeltaDiagram(file: string, content: string): Finding[] {
   if (!CHANGE_MARK.test(content)) return [];
   const manifest = extractSection(content, 'CHANGE_MANIFEST');
   if (manifest.status !== 'ok') return [];
+  if (/ТИП ИЗМЕНЕНИЯ:\s*greenfield\b/i.test(manifest.content)) return [];
   if (NEW_NODE_MARK.test(content)) return [];
   return [
     {
@@ -2108,6 +2102,50 @@ export function findResearchLinks(content: string): string[] {
 export function findRegisteredResearchLinks(content: string): string[] {
   const sec = extractSection(content, 'RESEARCH');
   return sec.status === 'ok' ? findResearchLinks(sec.content) : [];
+}
+
+/**
+ * @purpose Enforce the hybrid research lifecycle: immutable candidate analysis plus an explicit final disposition linked to the accepted spec decision.
+ * @param file Research document path.
+ * @param content Full research markdown.
+ * @returns Lifecycle errors when accepted/superseded research still looks pending or lacks decision traceability.
+ */
+export function checkResearchLifecycle(file: string, content: string): Finding[] {
+  const status = extractSection(content, 'STATUS');
+  if (status.status !== 'ok') return [];
+  const state = /\*\*State:\*\*\s*([^\n]+)/i.exec(status.content)?.[1]?.trim() ?? '';
+  if (/^proposed\b/i.test(state)) return [];
+
+  const disposition = extractSection(content, 'FINAL_DISPOSITION');
+  if (disposition.status !== 'ok') {
+    return [
+      {
+        severity: 'error',
+        code: 'SDD_RESEARCH_DISPOSITION_MISSING',
+        file,
+        message:
+          'Research is no longer proposed but has no FINAL_DISPOSITION linking the immutable analysis to the actual spec decision.',
+      },
+    ];
+  }
+  const pending = /\*\*Outcome:\*\*\s*pending\b/i.test(disposition.content);
+  const traced = /(?:\.spec\.md|Decision Log|-[A-Z]*DL-\d+)/i.test(disposition.content);
+  const findings: Finding[] = [];
+  if (pending)
+    findings.push({
+      severity: 'error',
+      code: 'SDD_RESEARCH_DISPOSITION_PENDING',
+      file,
+      message: 'Research is accepted/superseded but FINAL_DISPOSITION is still pending.',
+    });
+  if (!traced)
+    findings.push({
+      severity: 'error',
+      code: 'SDD_RESEARCH_DECISION_UNTRACED',
+      file,
+      message: 'FINAL_DISPOSITION must link the actual spec or name its Decision Log entry.',
+    });
+  return findings;
 }
 
 /**

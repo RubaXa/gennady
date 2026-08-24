@@ -33,6 +33,14 @@ describe('checkDeltaDiagram', () => {
     assert.strictEqual(findings[0]?.severity, 'warn');
   });
 
+  it('greenfield review-state never requires a delta diagram', () => {
+    const content = manifest('✚ IC-REQ-3 — new requirement').replace(
+      'ТИП ИЗМЕНЕНИЯ: refine',
+      'ТИП ИЗМЕНЕНИЯ: greenfield'
+    );
+    assert.deepStrictEqual(checkDeltaDiagram(SPEC_FILE, content), []);
+  });
+
   it('a diagram marks the new node with `:::new` → no findings', () => {
     const content =
       manifest('✚ IC-REQ-3 — new requirement') +
