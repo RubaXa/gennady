@@ -450,7 +450,7 @@ const CASES: FixtureCase[] = [
   {
     id: 'lint --spec=<module-spec> --inventory-reverse <module-code-dir>',
     directive: 'audit',
-    raw: 'gennady lint --spec=<module-spec> --inventory-reverse <module-code-dir>',
+    raw: 'npx gennady lint --spec=<spec path from AuditContext> --inventory-reverse <code-root>',
     cmd: 'lint',
     args: (fx) => [`--spec=${fx.specPath}`, '--inventory-reverse', 'src'],
     check: (r) => {
@@ -504,10 +504,16 @@ describe('sdd-orient documented invocation contract', () => {
 
   for (const name of authoring) {
     it(`${name} uses the pre-materialization --scope form without a positional path`, () => {
-      const text = readFileSync(
+      let text = readFileSync(
         join(REPO_ROOT, 'ai', 'directives', 'sdd-v2', `${name}.directive.xml`),
         'utf-8'
       );
+      if (name === 'audit') {
+        text += readFileSync(
+          join(REPO_ROOT, 'ai', 'directives', 'sdd-v2', 'audit', 'steps', 'STEP_2_SEMANTIC.xml'),
+          'utf-8'
+        );
+      }
       assert.match(text, /npx gennady sdd-orient --scope <scope>/);
       assert.doesNotMatch(text, /sdd-orient [^`\n]+ --scope <scope>/);
     });
@@ -520,6 +526,79 @@ describe('sdd-orient documented invocation contract', () => {
     );
     assert.match(text, /npx gennady sdd-orient <artifact-path>`/);
     assert.doesNotMatch(text, /sdd-orient <artifact-path> --scope/);
+  });
+});
+
+describe('historical SDD agent-confusion regressions', () => {
+  it('audit and code-review define both modes once and pass named context forward', () => {
+    for (const name of ['audit', 'code-review']) {
+      let text = readFileSync(
+        join(REPO_ROOT, 'ai', 'directives', 'sdd-v2', `${name}.directive.xml`),
+        'utf-8'
+      );
+      if (name === 'audit') {
+        text += readFileSync(
+          join(REPO_ROOT, 'ai', 'directives', 'sdd-v2', 'audit', 'steps', 'STEP_2_SEMANTIC.xml'),
+          'utf-8'
+        );
+      }
+      const context = name === 'audit' ? 'AuditContext' : 'ReviewContext';
+      assert.match(text, /per-group → `npx gennady sdd-task --group-scope <id>`/);
+      assert.match(text, /per-task → `npx gennady sdd-task --task-scope <Task-ID>`/);
+      assert.match(text, new RegExp(`Consume .*${context}`, 's'));
+      assert.match(text, /STEP_1/);
+      assert.doesNotMatch(
+        text,
+        /FIRST action resolves the working scope via `sdd-task --group-scope/
+      );
+    }
+  });
+
+  it('audit preserves exact lint files and forbids shell reconstruction', () => {
+    const text = readFileSync(DIRECTIVE_PATHS.audit, 'utf-8');
+    const step = readFileSync(
+      join(REPO_ROOT, 'ai', 'directives', 'sdd-v2', 'audit', 'steps', 'STEP_1_MECHANICAL.xml'),
+      'utf-8'
+    );
+    assert.match(step, /AuditContext lint-files/);
+    assert.match(step, /separate\s+tool calls, never a shell loop/);
+    assert.doesNotMatch(step, /`gennady lint --spec=<module-spec>`/);
+    assert.doesNotMatch(
+      text,
+      /FIRST action resolves the working scope via `sdd-task --group-scope/
+    );
+  });
+
+  it('scaffold gives exact module-owned and scope-owned ticket calls', () => {
+    const step = readFileSync(
+      join(
+        REPO_ROOT,
+        'ai',
+        'directives',
+        'sdd-v2',
+        'scaffold',
+        'steps',
+        'STEP_3_TASK_GENERATION.xml'
+      ),
+      'utf-8'
+    );
+    assert.match(step, /--scope <scope> --module <module> --id <ACR>-<slug>/);
+    assert.match(step, /--scope <scope> --id <ACR>-<slug>/);
+    assert.match(step, /omit `--module`, never invent one/);
+  });
+
+  it('skills advertise only implemented audit/review modes', () => {
+    const auditSkill = readFileSync(
+      join(REPO_ROOT, 'ai', 'skills', 'sdd-audit', 'SKILL.md'),
+      'utf-8'
+    );
+    const reviewSkill = readFileSync(
+      join(REPO_ROOT, 'ai', 'skills', 'sdd-code-review', 'SKILL.md'),
+      'utf-8'
+    );
+    assert.doesNotMatch(auditSkill, /\{TSK-NN \| full tree \| current changes\}/);
+    assert.match(reviewSkill, /ReviewContext/);
+    assert.match(reviewSkill, /per-task|one-task/);
   });
 });
 

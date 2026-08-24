@@ -6,13 +6,9 @@
     Execute ONE phase of ONE task ticket, on a minimal activation from the execute orchestrator —
     this directive's path, the ticket path, the phase ID, and a reason. This directive plus the
     output of `gennady sdd-task <ticket> --phase P<N>` (STEP_1, the FIRST action of every phase) are
-    the WHOLE working context: no other phase, no other phase's code, no spec beyond the anchors
-    the tool names. Knowledge of how any `sdd-*` tool works internally is never needed and is not
-    available — `node_modules/gennady` is minified and reversing it is not a valid step in this
-    protocol; the tool's own output already says what to do (a gate finding names its fix,
-    `sdd-extract`'s not-found message suggests real anchors). An error you cannot map to a row in
-    `HaltConditions` from the tool's own message is `H_BLOCKED` — log it and stop, never go digging
-    for an explanation.
+    the WHOLE working context: no other phase, code, or spec beyond the anchors the tool names.
+    Never inspect CLI internals. Follow actionable tool output; an error it does not explain and
+    that cannot map to `HaltConditions` is `H_BLOCKED` — log it and stop.
 
     Read only what this phase needs; write only this phase's Target Files; run the verification gate;
     emit a typed Handoff. A worker directive — runs in isolation on a cheaper model, returns to the
@@ -65,15 +61,16 @@
 
     <Axiom id="AX_TOOL_INVOCATION">
       The SDD mechanical tools are `gennady` CLI commands. When working IN the gennady repo itself
-      (including any of its worktrees), invoke them repo-relative from the working tree's own root —
-      `npx tsx <repo-root>/cli/gennady.ts <cmd> <args>` — never a hardcoded path to a different checkout;
-      this is rewritten to `npx gennady <cmd> <args>` by the path-normalizer when the directives are
-      synced into a project. In every OTHER project, invoke the published package: `npx gennady <cmd>
-      <args>`. Tools: `sdd-state`, `sdd-task`, `sdd-extract`, `sdd-verify`, `sdd-log`,
+      (including any worktree), the runner is `npx tsx <repo-root>/cli/gennady.ts`; in every other
+      project it is `npx gennady`. Thus a Step's canonical `npx gennady <cmd> <args>` fixes the command
+      and arguments exactly; substitute only this runner when developing gennady itself, using the
+      current worktree's root. Tools: `sdd-state`, `sdd-task`, `sdd-extract`, `sdd-verify`, `sdd-log`,
       `sdd-sync`, `sdd-check`, `sdd-new`, `sdd-migrate`, `sdd-orient`, `sdd-session`, `orient`, `lint`, `yagni`, `testcov`. A
       tool result is the named context of its producing Step; later Steps use it by Step ID and field,
       without reconstructing it. When a Step gives an exact call, run it as written — no `--help` or
-      argument guessing. The
+      argument guessing. Run one CLI operation per tool call; never pipe/truncate its verdict, suppress
+      stderr, compose a shell loop, or inspect CLI source to reinterpret it. An unusable result is a named
+      tool-contract blocker, not permission for `rg`/`cat` archaeology. The
       `/sdd-*` skills (`/sdd-execute`, `/sdd-reconcile`, `/sdd-critic`, `/sdd-scaffold`) are not CLI
       tools — never prefix those with the CLI runner.
     </Axiom>
@@ -271,16 +268,14 @@
     absent from the manifest → emit a `discovery` line and surface it; keep the read within the
     manifest.
 
-    **Tool reference** — everything mechanical this phase needs is one of these, each covered by its
-    own tests; nothing else about their internals is load-bearing. Calling `--help` on any of them
-    mid-run is a wasted turn against a known, stable surface — this table, with a worked example per
-    row, IS the reference:
+    **Tool reference** — this tested table is the complete mechanical surface for the phase. Do not
+    call `--help`; each row gives the exact grammar and an example:
 
     | Tool | When | Call |
     |---|---|---|
     | `sdd-task <ticket> --phase P<N>` | FIRST action, every phase, every retry — objective, gates + satisfy-hints, exit, phase-scoped read-manifest, prior Handoff | `npx gennady sdd-task <ticket> --phase P2` |
     | `sdd-extract <file> <NAME>` · `sdd-extract <file>#<anchor>` | Pull ONE cited block instead of a whole file — `<NAME>` is a `SECTION_NAME` (`PHASE_P1`, `BDD`, `VERIFICATION`, …), two args; a markdown heading anchor is the combined `path#lower-dashed-slug` form, exactly as the read-manifest prints it | `npx gennady sdd-extract <ticket> PHASE_P1` · `npx gennady sdd-extract specs/app/greeting/greeting.spec.md#module-contracts` |
-    | `sdd-log <ticket-path\|Task-ID> line "<content>" --phase <PhaseID>` | An Execution Log event line — `discovery` / `intro` / `verified` / `ver` / `yagni` / `DONE`; the ticket argument takes either the ticket path or its bare Task-ID; `--phase` inserts at the end of THIS phase's own block, never wherever the log currently ends — load-bearing once phases run in parallel | `npx gennady sdd-log <ticket-path\|Task-ID> line "intro Foo ← reason" --phase P2` |
+    | `sdd-log <ticket-path\|Task-ID> line "<content>" --phase <PhaseID>` | An Execution Log event line — `discovery` / `intro` / `verified` / `ver` / `yagni` / `DONE`; the ticket argument takes either the ticket path or its bare Task-ID; `--phase` inserts at the end of THIS phase's own block, never wherever the log currently ends | `npx gennady sdd-log <ticket-path\|Task-ID> line "intro Foo ← reason" --phase P2` |
     | `sdd-log <ticket> phase <PhaseID> ["— re-run: <reason>"]` | STEP_1B — open this phase's header block; the `— re-run:` suffix only on a `fix` re-run, never on a fresh phase | `npx gennady sdd-log <ticket> phase P2 "— re-run: fix F-012"` |
     | `sdd-log <ticket> handoff "<payload>" --phase <PhaseID>` | STEP_6 — the typed `**Handoff →**` line, exactly the `HANDOFF_FORMAT` shape (`artifacts` / `decisions` / `open` / `deviations`, each an array); `--phase` keeps it inside THIS phase's own block | `npx gennady sdd-log <ticket> handoff "artifacts: [src/app/greeting/greeting.ts]; decisions: [module-system=esm]; open: []; deviations: []" --phase P2` |
     | `sdd-log <ticket> blocker "<reason>" --axiom <AX_NAME> --unblock "<action>" --phase <PhaseID>` | STEP_5 — an out-of-zone failure this phase cannot fix itself; opens the resolution trail the orchestrator checks (`AX_BLOCKER_RESOLUTION_TRAIL`); `--phase` keeps it inside THIS phase's own block | `npx gennady sdd-log <ticket> blocker "vitest binary missing" --axiom AX_ENV_FIX_CHANNEL --unblock "npm i -D vitest" --phase P2` |
@@ -291,12 +286,9 @@
     | `gennady yagni` | Runs INSIDE `sdd-verify` (`code`/`full` profiles); on `ERR_CLI_YAGNI_UNDERUSED` it prints a ready-to-paste `- **Usage Waiver:** <reason>` block — paste it verbatim, then log it (`AX_USAGE_WAIVER_DISCIPLINE`) | standalone only for a quick iteration: `npx gennady yagni .` |
     | `gennady testcov` | Only when the ticket's own §5 command names it (e.g. `test:coverage`) — the §5 command string is canon, never a substitute | `npx gennady testcov --run --min=80` |
 
-    A gate or tool failure always tells you the next action in its own message — an
-    `ERR_CLI_YAGNI_UNDERUSED`, an `ANCHOR_NOT_FOUND` with nearest candidates, a failed `sdd-verify`
-    gate dump. Follow that message. A message you cannot act on this way is an infrastructure
-    problem, not a puzzle to solve by reading the tool's source — `H_BLOCKED` per
-    `AX_BLOCKER_ESCALATION`, surfaced as PAUSED (`AX_HALT_VS_FAIL_DISTINCTION`), not a reason to keep
-    digging.
+    Follow the next action printed by a failed gate/tool. If none is actionable, emit `H_BLOCKED`
+    per `AX_BLOCKER_ESCALATION`, surfaced as PAUSED (`AX_HALT_VS_FAIL_DISTINCTION`); do not inspect
+    its source.
   </ContextExpectation>
 
   <PhaseProcedure>

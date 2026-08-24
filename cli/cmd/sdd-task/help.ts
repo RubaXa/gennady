@@ -47,6 +47,7 @@ export function printHelp(): void {
   );
   console.info('');
   console.info('  npx gennady sdd-task --group-scope <ticket-path|Task-ID>');
+  console.info('  npx gennady sdd-task --task-scope <ticket-path|Task-ID>');
   console.info(
     "  Emit the group's ready-made review scope for an audit/code-review subagent: union of every"
   );

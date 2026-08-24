@@ -530,6 +530,9 @@ export type GroupScopeGit = { available: true; files: string[] } | { available: 
  * @param targetFiles Union of every group ticket's phase Target Files.
  * @param handoffArtifacts Union of every group ticket's Handoff `artifacts:` entries.
  * @param git The git-diff scan result (`available: false` when the repo has no HEAD).
+ * @param contractAnchors Project-relative spec anchors declared by the selected tickets.
+ * @param lintFiles Source files ready to pass to `gennady lint` without extension guessing.
+ * @param codeRoots Minimal non-nested roots ready for reverse-inventory checks.
  * @returns The formatted review-scope report.
  */
 export function formatGroupScope(
@@ -538,7 +541,10 @@ export function formatGroupScope(
   root: string,
   targetFiles: string[],
   handoffArtifacts: string[],
-  git: GroupScopeGit
+  git: GroupScopeGit,
+  contractAnchors: string[] = [],
+  lintFiles: string[] = [],
+  codeRoots: string[] = []
 ): TaskOutcome {
   const lines = renderGroupHeader(specPath, group, root);
 
@@ -560,6 +566,12 @@ export function formatGroupScope(
       ? `git: HEAD vs рабочее дерево (включая untracked, все типы файлов кроме node_modules) — ${git.files.length} файл(ов)`
       : 'git: git-ссылок нет — область обзора построена по Target Files тикетов'
   );
+
+  lines.push('', `contract-anchors: ${contractAnchors.length ? contractAnchors.join(', ') : '—'}`);
+  lines.push('', 'lint-files:');
+  if (lintFiles.length === 0) lines.push('  —');
+  else for (const file of lintFiles) lines.push(`  ${file}`);
+  lines.push('', `code-roots: ${codeRoots.length ? codeRoots.join(', ') : '—'}`);
 
   lines.push('', 'handoff:');
   if (handoffArtifacts.length === 0) {

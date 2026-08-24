@@ -8,6 +8,10 @@
 
 Планировочная поверхность тикета для оркестратора `execute`. `sdd-task <ticket-path|Task-ID>` извлекает ТОЛЬКО планировочные секции (Meta + Phases Overview + тело каждой фазы + Verification) и собирает per-phase read-manifest (`AX_READ_PER_MANIFEST`): что фаза читает (rules / specs / ticket-секции / target-файлы / gates) и **что НЕ читает**. Аргумент — путь ИЛИ голый Task-ID (резолвится сканом по Meta, `AX_TASK_RESOLUTION`, D-TK006). Оркестратор читает этот вывод вместо всего тикета и не лезет в тела фаз, BDD, спеки, код. **Без Task-ID** `sdd-task` отдаёт **карту исполнения** — детерминированный pickable-набор (готовые сейчас, каждый со своим путём) + заблокированные (чем, тоже с путём) + строка `root:`, посчитанный из трекеров (`pickableTasks`, D-TK004); это карта для LOGIC_SWITCH в `execute` (next / specific / batch). Парсеры тикета вынесены в `shared/sdd/ticket.ts` (переиспользует `sdd-check`).
 
+`--group-scope <Task-ID>` выдаёт готовый review-context всей sibling-группы, а
+`--task-scope <Task-ID>` — те же поля для одного тикета: `spec`, tickets, bounded `files`,
+`contract-anchors`, source-only `lint-files`, `code-roots`, git provenance и Handoff artifacts.
+
 **Key properties:**
 
 - Planning-only — Meta, Phases Overview, gates, и per-phase manifest; никогда не тела фаз/код

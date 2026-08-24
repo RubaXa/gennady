@@ -3,7 +3,7 @@
 // @tasks: N/A
 
 import { readFileSync, statSync } from 'node:fs';
-import { resolve, relative, join } from 'node:path';
+import { resolve, relative, join, dirname, extname } from 'node:path';
 import { logger } from '#logger';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
 import { extractSection, extractHeadingSection } from '../../../shared/sdd/section.ts';
@@ -139,6 +139,7 @@ export async function run(rawArgs: string[]): Promise<TaskOutcome> {
     phase: { aliases: ['phase'], takesValue: true },
     auditGroup: { aliases: ['audit-group'], takesValue: true },
     groupScope: { aliases: ['group-scope'], takesValue: true },
+    taskScope: { aliases: ['task-scope'], takesValue: true },
   });
   const positional = (args._ as string[]).filter(
     (a: string) => typeof a === 'string' && a !== 'sdd-task'
@@ -146,6 +147,7 @@ export async function run(rawArgs: string[]): Promise<TaskOutcome> {
   const phaseId = typeof args.phase === 'string' ? args.phase : null;
   const auditGroupArg = typeof args.auditGroup === 'string' ? args.auditGroup : null;
   const groupScopeArg = typeof args.groupScope === 'string' ? args.groupScope : null;
+  const taskScopeArg = typeof args.taskScope === 'string' ? args.taskScope : null;
 
   const defaultRoot = resolve('.');
 
@@ -155,12 +157,19 @@ export async function run(rawArgs: string[]): Promise<TaskOutcome> {
     return formatAuditGroup(resolution.specPath, resolution.group, resolution.allRefs, defaultRoot);
   }
 
-  if (groupScopeArg) {
-    const resolution = resolveAuditGroup(groupScopeArg, defaultRoot);
-    if (!resolution.ok) return auditGroupError(resolution, groupScopeArg, defaultRoot);
+  if (groupScopeArg || taskScopeArg) {
+    const scopeArg = groupScopeArg ?? (taskScopeArg as string);
+    const resolution = resolveAuditGroup(scopeArg, defaultRoot);
+    if (!resolution.ok) return auditGroupError(resolution, scopeArg, defaultRoot);
+    const singleTicket = taskScopeArg ? resolveTicketArg(taskScopeArg, defaultRoot) : null;
+    const selectedGroup =
+      singleTicket?.ok === true
+        ? resolution.group.filter((ticket) => resolve(ticket.file) === resolve(singleTicket.path))
+        : resolution.group;
     const targetFiles: string[] = [];
     const handoffArtifacts: string[] = [];
-    for (const r of resolution.group) {
+    const contractAnchors: string[] = [];
+    for (const r of selectedGroup) {
       let groupTicketContent: string;
       try {
         groupTicketContent = readFileSync(r.file, 'utf-8');
@@ -173,17 +182,50 @@ export async function run(rawArgs: string[]): Promise<TaskOutcome> {
       for (const a of ticketHandoffArtifacts(groupTicketContent)) {
         if (!handoffArtifacts.includes(a)) handoffArtifacts.push(a);
       }
+      const metaSection = extractSection(groupTicketContent, 'META');
+      if (metaSection.status === 'ok') {
+        for (const ref of parseMetaInfo(metaSection.content).specRefs) {
+          const rawAnchor = ref.anchor || ref.name;
+          const [rawPath, fragment] = rawAnchor.split('#', 2);
+          const anchor = rawPath?.endsWith('.md')
+            ? `${relative(defaultRoot, rawPath.startsWith('specs/') ? resolve(defaultRoot, rawPath) : resolve(dirname(r.file), rawPath))}${fragment ? `#${fragment}` : ''}`
+            : rawAnchor;
+          if (anchor && !contractAnchors.includes(anchor)) contractAnchors.push(anchor);
+        }
+      }
     }
+    const targetRoots = new Set(targetFiles.map((file) => dirname(file)));
+    const changedFiles = hasGitHead(defaultRoot)
+      ? getChangedFiles(defaultRoot).filter(
+          (file) =>
+            !taskScopeArg ||
+            [...targetRoots].some((root) => file === root || file.startsWith(`${root}/`))
+        )
+      : [];
     const git: GroupScopeGit = hasGitHead(defaultRoot)
-      ? { available: true, files: getChangedFiles(defaultRoot) }
+      ? { available: true, files: changedFiles }
       : { available: false };
+    const allFiles = [...new Set([...targetFiles, ...changedFiles])];
+    const lintFiles = allFiles.filter((file) =>
+      ['.ts', '.tsx', '.js', '.jsx'].includes(extname(file))
+    );
+    const candidateRoots = [...new Set(lintFiles.map((file) => dirname(file)))].sort(
+      (left, right) => left.length - right.length
+    );
+    const codeRoots = candidateRoots.filter(
+      (root, index) =>
+        !candidateRoots.slice(0, index).some((parent) => root.startsWith(`${parent}/`))
+    );
     return formatGroupScope(
       resolution.specPath,
-      resolution.group,
+      selectedGroup,
       defaultRoot,
       targetFiles,
       handoffArtifacts,
-      git
+      git,
+      contractAnchors,
+      lintFiles,
+      codeRoots
     );
   }
 

@@ -158,8 +158,10 @@
     <Step id="STEP_3_TASK_GENERATION">
       <Goal>Generate tickets + test plan. (auto)</Goal>
       <Action>
-        Create each new ticket's skeleton via
-        `npx gennady sdd-new task --scope <scope> --module <module> --id <ACR>-<slug>` — it never overwrites and
+        Create each new ticket from its STEP_2 DAG owner: module-owned →
+        `npx gennady sdd-new task --scope <scope> --module <module> --id <ACR>-<slug>`; scope-owned →
+        `npx gennady sdd-new task --scope <scope> --id <ACR>-<slug>` (omit `--module`, never invent one).
+        Scope/module/ID come verbatim from that DAG node. The command never overwrites and
         prints the section manifest (which sections are REQUIRED and what to fill). Content guidance
         per `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/task-ticket-structure.xml")`. Per
         ticket: decompose into phases (`AX_PHASES_DECLARED_IN_HEADER`; impl and test always separate). Activate

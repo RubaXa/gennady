@@ -4,7 +4,8 @@ description: Independent audit of a GROUP of tickets in one spec (default — ev
 compatibility: opencode
 ---
 
-1. **Extract intent.** Operator wants audit of {TSK-NN | full tree | current changes}. If ambiguous — ask.
+1. **Extract intent.** Operator wants audit of one Task-ID (`per-task`) or the complete sibling group
+   owning that Task-ID (`per-group`, the execute default). No full-tree/current-changes/epic mode exists.
 
 2. **Load & activate directive.** Read in full `ai/directives/sdd-v2/audit.directive.xml`.
    Announce: `🔒 DIRECTIVE ACTIVATED: SddAudit`
@@ -13,7 +14,8 @@ compatibility: opencode
    scaffolded and (usually) already executed — v1/readiness/portal state is moot for a task that
    exists. This skill is the odd one out in the family on purpose, not by omission.
 
-3. **Apply directive to intent.** Mode auto-detected per `AX_AUDIT_MODES` (per-group | per-task).
+3. **Apply directive to intent.** Mode is explicit: execute dispatch → `per-group`; direct operator
+   request naming one task → `per-task`. Pass that mode and Task-ID unchanged to the directive.
    The mechanical gates — which tool commands run, in what order, what counts as a BLOCKER — live
    entirely in `STEP_1_MECHANICAL` of the directive; do not restate or re-derive that list here, it
    drifts from the source of truth the moment it's duplicated. Follow the Execution_Plan end-to-end

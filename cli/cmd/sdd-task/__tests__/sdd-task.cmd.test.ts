@@ -740,6 +740,8 @@ describe('SddTaskCommand', () => {
         `- **Status:** ${status}`,
         '- **Scope:** core',
         `- **Dependencies:** ${deps}`,
+        '- **Spec References:**',
+        '  - Contract: [CoreContract](core.spec.md#core-contract)',
         '<!--/SECTION:META-->',
         '<!--SECTION:PHASES_OVERVIEW-->',
         '| ID | Kind | Deps | Status |',
@@ -921,10 +923,58 @@ describe('SddTaskCommand', () => {
         if (!r.ok) return;
         assert.match(r.text, /^files:$/m);
         assert.match(r.text, /^ {2}src\/TSK-a\.ts$/m);
+        assert.match(r.text, /^contract-anchors: core\.spec\.md#core-contract$/m);
+        assert.match(r.text, /^lint-files:\n {2}src\/TSK-a\.ts$/m);
+        assert.match(r.text, /^code-roots: src$/m);
         assert.match(
           r.text,
           /^git: git-ссылок нет — область обзора построена по Target Files тикетов$/m
         );
+      } finally {
+        rmSync(gDir, { recursive: true, force: true });
+      }
+    });
+
+    it('--task-scope limits tickets and same-directory git files to one ready-made context', async () => {
+      const gDir = mkdtempSync(join(tmpdir(), 'sdd-task-scope-single-'));
+      writeFileSync(join(gDir, 'core.spec.md'), '# Core\n', 'utf-8');
+      writeFileSync(join(gDir, 'core.task.TSK-a.md'), groupTicket('TSK-a', '[x] DONE'), 'utf-8');
+      writeFileSync(join(gDir, 'core.task.TSK-b.md'), groupTicket('TSK-b', '[x] DONE'), 'utf-8');
+      mkdirSync(join(gDir, 'src'), { recursive: true });
+      writeFileSync(join(gDir, 'src', 'TSK-a.ts'), '// a\n', 'utf-8');
+      writeFileSync(join(gDir, 'src', 'TSK-b.ts'), '// b\n', 'utf-8');
+      initGitRepo(gDir);
+      writeFileSync(join(gDir, 'src', 'helper.ts'), '// helper\n', 'utf-8');
+      try {
+        const r = await withCwd(gDir, () => mod.run(argv('--task-scope', 'TSK-a')));
+        assert.strictEqual(r.ok, true);
+        if (!r.ok) return;
+        assert.match(r.text, /^ {2}TSK-a /m);
+        assert.doesNotMatch(r.text, /^ {2}TSK-b /m);
+        assert.match(r.text, /^ {2}src\/helper\.ts$/m);
+        assert.match(r.text, /^contract-anchors: core\.spec\.md#core-contract$/m);
+      } finally {
+        rmSync(gDir, { recursive: true, force: true });
+      }
+    });
+
+    it('normalizes ticket-relative anchors and collapses nested code roots', async () => {
+      const gDir = mkdtempSync(join(tmpdir(), 'sdd-task-scope-normalized-'));
+      const ticketDir = join(gDir, 'tasks', 'core');
+      mkdirSync(ticketDir, { recursive: true });
+      mkdirSync(join(gDir, 'tasks', 'src', 'sub'), { recursive: true });
+      writeFileSync(join(ticketDir, 'core.spec.md'), '# Core\n', 'utf-8');
+      const content = groupTicket('TSK-a', '[x] DONE')
+        .replace('core.spec.md#core-contract', './core.spec.md#core-contract')
+        .replace('  - src/TSK-a.ts', '  - tasks/src/a.ts\n  - tasks/src/sub/b.ts');
+      writeFileSync(join(ticketDir, 'core.task.TSK-a.md'), content, 'utf-8');
+      try {
+        const r = await withCwd(gDir, () => mod.run(argv('--group-scope', 'TSK-a')));
+        assert.strictEqual(r.ok, true);
+        if (!r.ok) return;
+        assert.match(r.text, /^contract-anchors: tasks\/core\/core\.spec\.md#core-contract$/m);
+        assert.match(r.text, /^code-roots: tasks\/src$/m);
+        assert.doesNotMatch(r.text, /^code-roots: .*tasks\/src\/sub/m);
       } finally {
         rmSync(gDir, { recursive: true, force: true });
       }

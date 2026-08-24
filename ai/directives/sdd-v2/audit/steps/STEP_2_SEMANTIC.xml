@@ -3,9 +3,9 @@
 <Step id="STEP_2_SEMANTIC">
       <Goal>Add the layer the tool cannot — meaning.</Goal>
       <Action>
-        Read the artifacts and the diff already resolved by `sdd-task --group-scope` in STEP_1
+        Consume the artifacts, files, tickets, spec and anchors from `AuditContext` produced by STEP_1
         (`AX_READ_PER_MANIFEST` — the bounded artifacts list + relevant spec anchors, not the whole repo;
-        `AX_AUDIT_READS_CODE`, `AX_GIT_DIFF_SCAN`) — do not re-run git yourself.
+        `AX_AUDIT_READS_CODE`, `AX_GIT_DIFF_SCAN`) — do not re-run its producer or git yourself.
         Run the closed-world inventory sweep FIRST (`AX_CLOSED_WORLD_PRIMARY_CHECK`):
         1. collect declared entities from each ticket's `specs/<scope>/<module>/<module>.spec.md` 2 Entity Inventory;
         2. enumerate entities the code actually exposes — classes, interfaces, exported types/functions

@@ -11,11 +11,10 @@
     casts (`lint` / `sdd-verify`); test-coverage and the green gate (`sdd-verify`). I add the one lens none
     of them have — is the code actually CORRECT.
 
-    Input — the group: the spec path + its ticket list (per-task mode: a single Task-ID instead). My own
-    FIRST action resolves the working scope via `sdd-task --group-scope <id>` (`AX_GIT_DIFF_SCAN`) — spec,
-    ticket list, the union of every ticket's `Target Files`, the diff over that union (or a plain
-    no-git-refs line when refs are unavailable), and the union of Handoff artifacts; never hand-run git to
-    build this scope myself. Plus the relevant contract anchors. Output — ranked findings (BLOCKER / MAJOR
+    Input — one Task-ID plus explicit mode. My own FIRST action resolves `ReviewContext`:
+    per-group → `npx gennady sdd-task --group-scope <id>`; per-task → `npx gennady sdd-task --task-scope <Task-ID>`.
+    The result owns the spec/ticket list, bounded files, Handoff artifacts, and contract anchors; never
+    hand-run git or inspect tool source to rebuild it. Output — ranked findings (BLOCKER / MAJOR
     / MINOR) in chat + a verdict to the orchestrator.
 
     **Glossary.** Bug = code that is wrong against its contract or will fail on a real input — not a
@@ -56,10 +55,9 @@
     <Step id="STEP_1_READ_DIFF">
       <Goal>See exactly what changed, across the whole group.</Goal>
       <Action>
-        Resolve the working scope FIRST: `sdd-task --group-scope <id>` (`AX_GIT_DIFF_SCAN`) — spec, the
-        group's ticket list, the `Target Files` union, the diff over that union (or the no-git-refs
-        fallback line), and the Handoff artifacts; never hand-run git to build this scope. Read the
-        changed files this returns, plus the contract anchors for what they SHOULD do (per
+        Resolve `ReviewContext` FIRST: per-group → `npx gennady sdd-task --group-scope <id>`
+        (`AX_GIT_DIFF_SCAN`); per-task → `npx gennady sdd-task --task-scope <Task-ID>`. Read only the files and
+        contract anchors this result returns (per
         `AX_READ_PER_MANIFEST` — the bounded artifacts list, not the whole repo; `AX_AUDIT_READS_CODE`).
         Empty scope → `H_NOTHING_TO_REVIEW`.
       </Action>
@@ -67,6 +65,7 @@
     <Step id="STEP_2_HUNT">
       <Goal>Hunt bugs against the contract and real inputs.</Goal>
       <Action>
+        Consume `ReviewContext` from STEP_1; do not re-run its producer or reconstruct its fields.
         Judge correctness, not conformance: do the postconditions / invariants actually hold on real
         inputs; what breaks at the edges (empty / null / boundary / overflow); are error and exception
         paths handled or swallowed; resource / concurrency hazards; security (unsafe input, injection,

@@ -21,8 +21,9 @@ compatibility: opencode
     <Step id="EMBODY">
       You ARE the code-review now. Input — the group (spec path + ticket list), or a single Task-ID on
       direct operator request, or the dispatch payload from the execute orchestrator. My own first action
-      resolves the working scope via `sdd-task --group-scope <id>` — Target-Files union, diff, Handoff
-      artifacts — and the relevant contract anchors. Stay within that scope; hunt bugs, rank them, route
+      resolves `ReviewContext`: group dispatch → `npx gennady sdd-task --group-scope <id>`; direct
+      one-task request → `npx gennady sdd-task --task-scope <Task-ID>`. Use only the paths and contract anchors it
+      returns; no pasted manifest and no manual git/repo discovery. Hunt bugs, rank them, route
       them as proposals, naming the owning ticket for each. Never edit code, specs, or tickets.
     </Step>
   </ExecutionPlan>

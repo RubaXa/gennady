@@ -43,15 +43,19 @@
         real network outage misclassified as `FAIL`. Route per `AX_FINDING_ROUTING` — operator
         escalation, never a phase fix and never something audit or the worker repairs itself.
 
-        Then run `sdd-check --task <ticket-path>` for EACH ticket in the group (a
-        single call for per-task mode) plus one `sdd-check --all` for the whole tree, per `AX_AUDIT_MODES`,
-        plus `sdd-check --changed` per `AX_MECHANICAL_VIA_SDD_CHECK` — together they report the deterministic
+        Then iterate `AuditContext.tickets` in its printed order and run exactly one
+        `npx gennady sdd-check --task <ticket-path>` per item (one item in per-task mode) — separate
+        tool calls, never a shell loop — then `npx gennady sdd-check --all .` and
+        `npx gennady sdd-check --changed .` per `AX_AUDIT_MODES` / `AX_MECHANICAL_VIA_SDD_CHECK`.
+        Together they report the deterministic
         findings: structure / anchors / Task-ID + Status, fabricated-DONE, the phase graph,
         Execution-Log completeness, the task DAG, tracker↔ticket coherence, RULES_CASCADE_CLOSURE,
         BDD_COVERAGE, TASKS_APPEND_ONLY, and CONSUMERS_RESOLVABLE. Take these as given — the tool owns
-        them. Then INDEPENDENTLY re-run the green gate — `sdd-verify --profile full`,
-        `gennady lint --spec=<module-spec>` (cast + closed-world inventory over the changed files), and
-        `gennady testcov --run --min=80` (coverage gate — project line coverage ≥ 80% at task completion):
+        them. Then INDEPENDENTLY re-run the green gate — `npx gennady sdd-verify --profile full`,
+        `npx gennady lint --spec=<spec path from AuditContext's spec/audit-group line> <every file from
+        AuditContext lint-files>` (one argv item per printed file; zero files → skip lint and
+        report `H_NOTHING_TO_AUDIT`, never broaden scope), and
+        `npx gennady testcov --run --min=80` (coverage gate — project line coverage ≥ 80% at task completion):
         run these gates SEQUENTIALLY, one at a time, never in parallel — `sdd-verify --profile full` and
         `gennady testcov --run` both write into `coverage/`, and any two commands sharing an output path
         race when parallelized: whichever finishes last overwrites or half-writes the other's artifact,
@@ -74,7 +78,8 @@
         Per-group mode closes the WHOLE spec by definition (`due` only fires once every sibling ticket is
         DONE, per `AX_AUDIT_HOOK`) — always add the reverse closed-world sweep over the module's code
         root. In per-task mode, add it only when this ticket is the module's last (every sibling DONE):
-        `gennady lint --spec=<module-spec> --inventory-reverse <module-code-dir>` — every entity declared in the
+        Run once for each printed `AuditContext.code-roots` item:
+        `npx gennady lint --spec=<spec path from AuditContext> --inventory-reverse <code-root>` — every entity declared in the
         inventory must now be exported by some file (`ERR_CLI_LINT_INVENTORY_UNIMPLEMENTED` = declared-but-unbuilt
         / renamed-away). Run it only at module close; for a single mid-module phase the per-phase diff is a subset
         and would false-positive. Closed-world symbol diff, the cascade-tier re-derivation, and

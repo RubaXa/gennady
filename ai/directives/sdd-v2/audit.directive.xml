@@ -12,11 +12,10 @@
     entity is real drift, PLUS cross-ticket consistency inside the group — and route findings as neutral
     proposals. Findings only; routing only.
 
-    Input — the group: the spec path + its ticket list (per-task mode: a single Task-ID instead). My own
-    FIRST action resolves the working scope via `sdd-task --group-scope <id>` (`AX_GIT_DIFF_SCAN`) — spec,
-    ticket list, the union of every ticket's `Target Files`, the diff over that union (or a plain
-    no-git-refs line when refs are unavailable), and the union of Handoff artifacts; never hand-run git to
-    build this scope myself. Output — an ephemeral findings summary in chat; on a reopen-triggering round,
+    Input — one Task-ID plus explicit mode. My own FIRST action resolves `AuditContext`:
+    per-group → `npx gennady sdd-task --group-scope <id>`; per-task → `npx gennady sdd-task --task-scope <Task-ID>`.
+    The result owns tickets, bounded files, lint-files, code-roots, Handoff artifacts, spec and anchors; never hand-run git
+    or inspect tool source to rebuild it. Output — an ephemeral findings summary in chat; on a reopen-triggering round,
     an Audit Rounds section appended to whichever ticket(s) in the group own the finding.
 
     **Glossary.** Drift = code / ticket / spec disagree. Finding = a neutral, routed proposal — a
@@ -63,15 +62,16 @@
 
     <Axiom id="AX_TOOL_INVOCATION">
       The SDD mechanical tools are `gennady` CLI commands. When working IN the gennady repo itself
-      (including any of its worktrees), invoke them repo-relative from the working tree's own root —
-      `npx tsx <repo-root>/cli/gennady.ts <cmd> <args>` — never a hardcoded path to a different checkout;
-      this is rewritten to `npx gennady <cmd> <args>` by the path-normalizer when the directives are
-      synced into a project. In every OTHER project, invoke the published package: `npx gennady <cmd>
-      <args>`. Tools: `sdd-state`, `sdd-task`, `sdd-extract`, `sdd-verify`, `sdd-log`,
+      (including any worktree), the runner is `npx tsx <repo-root>/cli/gennady.ts`; in every other
+      project it is `npx gennady`. Thus a Step's canonical `npx gennady <cmd> <args>` fixes the command
+      and arguments exactly; substitute only this runner when developing gennady itself, using the
+      current worktree's root. Tools: `sdd-state`, `sdd-task`, `sdd-extract`, `sdd-verify`, `sdd-log`,
       `sdd-sync`, `sdd-check`, `sdd-new`, `sdd-migrate`, `sdd-orient`, `sdd-session`, `orient`, `lint`, `yagni`, `testcov`. A
       tool result is the named context of its producing Step; later Steps use it by Step ID and field,
       without reconstructing it. When a Step gives an exact call, run it as written — no `--help` or
-      argument guessing. The
+      argument guessing. Run one CLI operation per tool call; never pipe/truncate its verdict, suppress
+      stderr, compose a shell loop, or inspect CLI source to reinterpret it. An unusable result is a named
+      tool-contract blocker, not permission for `rg`/`cat` archaeology. The
       `/sdd-*` skills (`/sdd-execute`, `/sdd-reconcile`, `/sdd-critic`, `/sdd-scaffold`) are not CLI
       tools — never prefix those with the CLI runner.
     </Axiom>
