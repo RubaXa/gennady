@@ -22,6 +22,7 @@ import {
 } from '../../../shared/sdd/check.ts';
 import { checkReadiness, gatherReadinessInput } from '../../../shared/sdd/readiness.ts';
 import { parseScopes } from '../../../shared/sdd/portal.ts';
+import { queuedInfraGateTicketIds } from '../../../shared/sdd/gate-queue.ts';
 import {
   collectTicketRefs,
   resolveTicketArg,
@@ -54,28 +55,18 @@ import {
  * @param root Absolute project root — reads `package.json` and `specs/README.md`.
  * @returns Queued infra TODO Task-IDs when readiness is missing and the queue covers it; empty otherwise.
  */
-function infraGateTicketIds(refs: TicketRef[], root: string): string[] {
-  const readiness = checkReadiness(gatherReadinessInput(root));
-  if (readiness.ready) return [];
-
+function infraGateTicketIds(
+  refs: TicketRef[],
+  root: string,
+  readiness: ReturnType<typeof checkReadiness>
+): string[] {
   let portalContent: string;
   try {
     portalContent = readFileSync(join(root, 'specs', 'README.md'), 'utf-8');
   } catch {
     return [];
   }
-  const infraScopeNames = new Set(
-    parseScopes(portalContent)
-      .filter((s) => s.type === 'infrastructure')
-      .map((s) => s.name)
-  );
-  if (infraScopeNames.size === 0) return [];
-
-  return refs
-    .filter(
-      (r) => r.taskId && /\bTODO\b/i.test(r.status ?? '') && r.scope && infraScopeNames.has(r.scope)
-    )
-    .map((r) => r.taskId as string);
+  return queuedInfraGateTicketIds(refs, parseScopes(portalContent), readiness);
 }
 
 /** @purpose Render the execution map — tickets ready now and those still blocked, by which deps.
@@ -107,11 +98,15 @@ function formatMap(refs: TicketRef[], root: string): string {
     );
     lines.push(`blocked: ${b.taskId} ← ${unmet.join(', ')}  →  ${relPath(b.file)}`);
   }
-  const gateIds = infraGateTicketIds(refs, root);
+  const readiness = checkReadiness(gatherReadinessInput(root));
+  const gateIds = infraGateTicketIds(refs, root, readiness);
+  lines.push(`READINESS=${readiness.ready ? 'ready' : 'not-ready'}`);
   if (gateIds.length > 0) {
     lines.push(
-      `гейты: отсутствуют · их строят тикеты очереди (${gateIds.join(', ')}) — для исполнения это штатно, начинай с них`
+      `GATE_QUEUE=${gateIds.join(',')} · гейты отсутствуют, их строят эти тикеты — для исполнения это штатно, начинай с них`
     );
+  } else {
+    lines.push('GATE_QUEUE=none');
   }
   lines.push(
     '',

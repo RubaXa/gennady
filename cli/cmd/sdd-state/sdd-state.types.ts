@@ -54,6 +54,8 @@ export type StateSnapshot = {
   graphEdges: GraphEdge[];
   /** @purpose Exact-match readiness of the required npm scripts. */
   readiness: ReadinessResult;
+  /** @purpose TODO infrastructure tickets that make missing readiness gates an expected queue state. */
+  queuedGateTicketIds: string[];
   /** @purpose Raw content of the session scratch (specs/.sdd-session.md), or null when no active session. */
   sessionContent: string | null;
   /** @purpose Code/infra heuristics — always gathered: one snapshot carries everything any router branch needs. */
@@ -105,6 +107,9 @@ export function formatSnapshot(s: StateSnapshot): string {
       ? 'READINESS=ready'
       : `READINESS=not-ready (missing: ${s.readiness.missing.join(', ')})`
   );
+  lines.push(
+    `GATE_QUEUE=${s.queuedGateTicketIds.length > 0 ? s.queuedGateTicketIds.join(',') : 'none'}`
+  );
 
   lines.push('', '[SCOPES]', '# name\ttype\tstatus\tdescription\tspec');
   if (!s.portalPresent) {
@@ -144,6 +149,7 @@ export function formatSnapshot(s: StateSnapshot): string {
     `flow=${s.flowVersion}`,
     `portal=${s.portalPresent ? 'present' : 'absent'}`,
     `readiness=${s.readiness.ready ? 'ready' : 'not-ready'}`,
+    `gate-queue=${s.queuedGateTicketIds.length > 0 ? s.queuedGateTicketIds.join(',') : 'none'}`,
     `scopes=${s.scopes.length}`,
     `session=${s.sessionContent ? 'present' : 'absent'}`
   );

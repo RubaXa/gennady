@@ -647,7 +647,7 @@ describe('SddTaskCommand', () => {
     }
   });
 
-  describe('gate line — гейты: отсутствуют · их строят тикеты очереди', () => {
+  describe('READINESS / GATE_QUEUE preflight fields', () => {
     const infraTicket = (taskId: string) =>
       [
         `# Task: ${taskId} — Bootstrap`,
@@ -687,7 +687,7 @@ describe('SddTaskCommand', () => {
         if (!r.ok) return;
         assert.match(
           r.text,
-          /гейты: отсутствуют · их строят тикеты очереди \(infra-1\) — для исполнения это штатно, начинай с них/
+          /READINESS=not-ready\nGATE_QUEUE=infra-1 · гейты отсутствуют, их строят эти тикеты/
         );
       } finally {
         process.chdir(origCwd);
@@ -722,7 +722,7 @@ describe('SddTaskCommand', () => {
         const r = await mod.run(argv());
         assert.strictEqual(r.ok, true);
         if (!r.ok) return;
-        assert.doesNotMatch(r.text, /гейты:/);
+        assert.match(r.text, /READINESS=ready\nGATE_QUEUE=none/);
       } finally {
         process.chdir(origCwd);
         rmSync(readyDir, { recursive: true, force: true });

@@ -1,7 +1,7 @@
 <!-- source: sdd-v2 router LogicSwitch — the FLOW_VERSION/READINESS preflight gate, one definition every entry point clears identically -->
-<LogicSwitch on="FLOW_VERSION · READINESS · blast radius · queue">
+<LogicSwitch on="FLOW_VERSION · READINESS · GATE_QUEUE · blast radius">
 - WHEN `FLOW_VERSION=v1` AND the request's blast radius reaches the legacy v1 `tasks/` layout or task-ID rewriting                                          -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/migration-v1-v2.directive.xml")   (live v1→v2 migration; returns when the repo is v2)
-- WHEN `READINESS=not-ready` AND the missing gate scripts are already being built by TODO tickets in the queue (`sdd-task` map names them)     -> normal pre-execution state, continue your own flow; the readiness bootstrap does NOT load
+- WHEN `READINESS=not-ready` AND the already-fetched preflight input reports `GATE_QUEUE=<Task-ID,...>`                                    -> normal pre-execution state, continue your own flow; the readiness bootstrap does NOT load
 - WHEN `READINESS=not-ready` AND the request needs a missing gate script                                                                       -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/readiness.directive.xml")        (live setup: forces missing scripts, hands proxy-blocked installs to the operator; returns once ready)
 - WHEN (`FLOW_VERSION=v1` OR `READINESS=not-ready`) AND the request's blast radius stays inside its own scope (`AX_PREFLIGHT_BLAST_RADIUS_SCOPED`) -> record state in one line, continue your own flow; propose migration / readiness setup to the operator as a separate next step
 - DEFAULT                                                                                                                                       -> repo is `v2` + ready — continue your own flow

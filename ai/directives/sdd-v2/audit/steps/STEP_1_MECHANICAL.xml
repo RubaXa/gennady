@@ -7,10 +7,12 @@
         round) is NOT permitted to reuse, skip, or "carry forward as still green" a gate result from a
         prior round.** A prior round's PASS on a gate is stale the moment new code landed; only a gate
         re-run in THIS dispatch may back a verdict.
-        FIRST resolve `AuditContext` (`AX_GIT_DIFF_SCAN`): per-group → `npx gennady sdd-task --group-scope <id>` (spec,
-        tickets, `Target Files` union, diff, Handoff artifacts); per-task → `npx gennady sdd-task
-        <ticket-path>` (that ticket's bounded plan). Use this result for every check below and pass its
-        fields forward by this Step ID; never re-derive the scope by hand.
+        FIRST resolve `AuditContext` (`AX_GIT_DIFF_SCAN`): per-group →
+        `npx gennady sdd-task --group-scope <id>`; per-task →
+        `npx gennady sdd-task --task-scope <Task-ID>`. Both forms return the same named fields —
+        tickets, bounded files, lint-files, code-roots, Handoff artifacts, spec and anchors. Use this
+        result for every check below and pass its fields forward by this Step ID; never re-derive the
+        scope by hand.
 
         **Verification level → gate mapping** (fixed, never inferred from the dispatch prompt's wording):
 

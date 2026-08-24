@@ -80,6 +80,11 @@ export async function run(rawArgs: string[], now: Date): Promise<LogOutcome> {
   // already-open phase block; round/close are ticket-wide events, and `phase` mode already takes
   // the phase id as its own positional.
   const phaseFlag = typeof args.phase === 'string' ? args.phase : undefined;
+  if ((mode === 'blocker' || mode === 'resolved') && phaseFlag === undefined) {
+    return missingFlag(
+      `mode "${mode}" requires --phase <PhaseID> so the blocker lifecycle stays phase-owned`
+    );
+  }
   if (phaseFlag !== undefined) {
     if (mode !== 'line' && mode !== 'handoff' && mode !== 'blocker' && mode !== 'resolved') {
       return badInvocation(
@@ -113,8 +118,8 @@ export async function run(rawArgs: string[], now: Date): Promise<LogOutcome> {
   if (!bounds) return noLogSection(displayPath);
 
   // #region START_PHASE_INSERT_POINT — invariant: --phase redirects the append target from
-  // "end of EXECUTION_LOG" to "end of that phase's own #### <PhaseID> block" — the fix for parallel
-  // phases whose lines otherwise land under whichever phase header happens to be open last.
+  // "end of EXECUTION_LOG" to "end of that phase's own #### <PhaseID> block". Phase attribution is
+  // explicit even though phases execute sequentially: re-runs can leave several historical blocks.
   let insertLine = bounds.closeLine;
   if (phaseFlag !== undefined) {
     const lookup = findPhaseBlockBounds(content, bounds, phaseFlag);

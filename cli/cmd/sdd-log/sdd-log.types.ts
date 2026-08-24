@@ -163,8 +163,8 @@ export type PhaseBlockLookup =
   | { found: false; openPhases: string[] };
 
 /**
- * @purpose Locate the append point inside ONE phase's own EXECUTION_LOG block — fixes parallel-phase
- * writes landing under whichever phase header happened to open last.
+ * @purpose Locate the append point inside ONE phase's own EXECUTION_LOG block — keeps ownership
+ * explicit across historical blocks and later re-runs of the same phase.
  * @invariant Keys off the LAST `#### <phaseId>` heading, not the first — a `fix` re-run reopens the
  * same id in a later Round.
  * @param content Full ticket markdown.
@@ -287,10 +287,10 @@ export function badInvocation(detail: string): LogOutcome {
       '  expected: gennady sdd-log <ticket> <mode> [content]',
       '  modes: round "<reason>" | line "<content>" [--phase P<N>] | close |',
       '         phase <P-ID> ["— re-run: <reason>"] | handoff "<payload>" [--phase P<N>] |',
-      '         blocker "<reason>" --axiom <AX_NAME> --unblock "<action>" [--phase P<N>] |',
-      '         resolved "<what removed it>" [--phase P<N>]   # paired close for blocker',
+      '         blocker "<reason>" --axiom <AX_NAME> --unblock "<action>" --phase P<N> |',
+      '         resolved "<what removed it>" --phase P<N>   # paired close for blocker',
       '  --phase P<N> is only valid on line | handoff | blocker | resolved — it inserts at the end',
-      "  of that phase's own block instead of the end of EXECUTION_LOG (needed when phases run in parallel).",
+      "  of that phase's own block instead of the end of EXECUTION_LOG (phases execute sequentially).",
       '  content must carry no <…> placeholder.',
     ].join('\n'),
   };

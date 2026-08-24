@@ -21,10 +21,9 @@ compatibility: opencode
     </Step>
     <Step id="PREFLIGHT">
       State is already gathered (GATHER, above). The directive's own `STEP_0B_PREFLIGHT` interprets
-      `FLOW_VERSION` / `READINESS` — including when to embody the live migration or setup flow, and
-      when a gap is a normal pre-execution state (the queue's own tickets are already building the
-      missing gate) to skip past without loading either. Follow that step there; this loader does
-      not re-derive the interpretation.
+      the snapshot's `FLOW_VERSION` / `READINESS` without another CLI call, including when to embody
+      the live migration or setup flow. Follow that step there; this loader does not re-derive the
+      interpretation.
     </Step>
     <Step id="EMBODY">
       You ARE the reconcile directive now. Input — findings / a bug / a review, OR "I changed code, formalize it";

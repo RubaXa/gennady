@@ -29,7 +29,7 @@ export function printHelp(): void {
   console.info('Order is normative (mutating gates first so autofix never races a reader).');
   console.info('');
   console.info('Output:');
-  console.info('  success → [verify] ✅ ALL PASS (N/N), then ✅ <gate> (<duration>) per gate');
+  console.info('  success → [sdd-verify] ✅ ALL PASS (N/N), then ✅ <gate> (<duration>) per gate');
   console.info(
     '  failure → only failed gates dump exit code + captured output; passed gates stay ✅'
   );

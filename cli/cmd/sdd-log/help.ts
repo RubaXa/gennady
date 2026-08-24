@@ -25,10 +25,10 @@ export function printHelp(): void {
     '  npx gennady sdd-log <ticket> handoff "<payload>" [--phase P<N>]  # typed **Handoff →** line, payload verbatim'
   );
   console.info(
-    '  npx gennady sdd-log <ticket> blocker "<reason>" --axiom <AX> --unblock "<action>" [--phase P<N>]   # BLOCKER_FORMAT block'
+    '  npx gennady sdd-log <ticket> blocker "<reason>" --axiom <AX> --unblock "<action>" --phase P<N>   # BLOCKER_FORMAT block'
   );
   console.info(
-    '  npx gennady sdd-log <ticket> resolved "<what removed it>" [--phase P<N>]   # paired close for blocker — ✅ RESOLVED marker'
+    '  npx gennady sdd-log <ticket> resolved "<what removed it>" --phase P<N>   # paired close for blocker — ✅ RESOLVED marker'
   );
   console.info('');
   console.info('Guarantees:');
@@ -39,12 +39,11 @@ export function printHelp(): void {
     "  - --phase P<N> (line | handoff | blocker | resolved only) — insert at the end of THAT phase's own"
   );
   console.info(
-    '    #### <PhaseID> block instead of the end of EXECUTION_LOG. Needed when phases run in'
+    '    #### <PhaseID> block instead of the end of EXECUTION_LOG. Required for blocker/resolved'
   );
   console.info(
-    '    parallel: without it, a line always lands under whichever phase header opened LAST,'
+    '    so both lifecycle events stay in one phase; phases themselves execute sequentially.'
   );
-  console.info('    not necessarily the phase that logged it.');
   console.info('  - Timestamped — the real time is stamped into each line / round date.');
   console.info(
     '  - No fabricated DONE — content with an unreplaced <…> placeholder is rejected (exit 2).'

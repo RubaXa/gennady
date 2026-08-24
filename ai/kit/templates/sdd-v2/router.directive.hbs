@@ -132,9 +132,8 @@
         Once the card has been shown, the Ask's own title MAY be short — brevity there is legal
         precisely because the card already carried the full picture.
 
-        When `READINESS=not-ready`, run `sdd-task` (no Task-ID) for the map before clearing the
-        gate — its `гейты:` line, when present, names the queued TODO tickets already building the
-        missing scripts; that is the fact the switch below checks, never a guess. Then clear each
+        When `READINESS=not-ready`, use `GATE_QUEUE` from that same `sdd-state` snapshot; do not call
+        a task-lifecycle command before intent classification. Then clear each
         preflight gate inline via the switch below, sized to the request's own blast radius
         (`AX_PREFLIGHT_BLAST_RADIUS_SCOPED`) — "continue your own flow" = proceed to
         STEP_1_CLASSIFY. After any embedded flow (migration / readiness) returns, re-run

@@ -83,6 +83,7 @@ describe('verdict', () => {
     assert.strictEqual(v.ok, true);
     if (v.ok) {
       assert.match(v.text, /✅ ALL PASS \(5\/5\)/);
+      assert.match(v.text, /^\[sdd-verify\]/);
       assert.match(v.text, /✅ test:coverage/);
       assert.match(v.text, /✅ yagni/);
     }
@@ -99,6 +100,7 @@ describe('verdict', () => {
     if (!v.ok) {
       assert.strictEqual(v.exitCode, 1);
       assert.match(v.message, /❌ type-check — exit 1 \(ran: npm run type-check\)/);
+      assert.match(v.message, /^\[sdd-verify\]/);
       assert.match(v.message, /TS2345/);
       assert.match(v.message, /✅ format/);
       assert.doesNotMatch(v.message, /❌ format/);

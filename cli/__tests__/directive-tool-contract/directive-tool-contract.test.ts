@@ -229,6 +229,19 @@ const CASES: FixtureCase[] = [
     },
   },
   {
+    id: 'sdd-task --task-scope <Task-ID>',
+    directive: 'audit',
+    raw: 'npx gennady sdd-task --task-scope <Task-ID>',
+    cmd: 'sdd-task',
+    args: (fx) => ['--task-scope', fx.taskId],
+    check: (r, fx) => {
+      assert.strictEqual(r.exitCode, 0, r.stdout + r.stderr);
+      assert.match(r.stdout, new RegExp(`^  ${fx.taskId} \\[ \\] TODO → ${fx.ticketPath}$`, 'm'));
+      assert.match(r.stdout, /^lint-files:$/m);
+      assert.match(r.stdout, /^code-roots: .+$/m);
+    },
+  },
+  {
     id: 'sdd-log <ticket> round "<reason>"',
     directive: 'execute',
     raw: 'npx gennady sdd-log <ticket> round "execute <Task-ID>"',
@@ -561,6 +574,8 @@ describe('historical SDD agent-confusion regressions', () => {
       'utf-8'
     );
     assert.match(step, /AuditContext lint-files/);
+    assert.match(step, /per-task →\s*`npx gennady sdd-task --task-scope <Task-ID>`/);
+    assert.doesNotMatch(step, /per-task →\s*`npx gennady sdd-task\s*<ticket-path>`/);
     assert.match(step, /separate\s+tool calls, never a shell loop/);
     assert.doesNotMatch(step, /`gennady lint --spec=<module-spec>`/);
     assert.doesNotMatch(
@@ -585,6 +600,8 @@ describe('historical SDD agent-confusion regressions', () => {
     assert.match(step, /--scope <scope> --module <module> --id <ACR>-<slug>/);
     assert.match(step, /--scope <scope> --id <ACR>-<slug>/);
     assert.match(step, /omit `--module`, never invent one/);
+    assert.match(step, /one\s+separate `sdd-new task` tool call/);
+    assert.match(step, /never compose the iteration as a shell loop or pipeline/);
   });
 
   it('skills advertise only implemented audit/review modes', () => {

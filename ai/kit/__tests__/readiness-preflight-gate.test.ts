@@ -36,14 +36,12 @@ function readFullDirectiveText(file: string): string {
 }
 
 /** Marker phrase unique to the shared partial — proves the generated directive embeds it, not a hand-typed paraphrase. */
-const PARTIAL_MARKER = 'already being built by TODO tickets in the queue';
+const PARTIAL_MARKER = 'preflight input reports `GATE_QUEUE=<Task-ID,...>`';
 
 const GATED_DIRECTIVES = [
   'router.directive.xml',
   'execute.directive.xml',
-  'scaffold.directive.xml',
   'critic.directive.xml',
-  'reconcile.directive.xml',
 ];
 
 const GATED_SKILLS = ['sdd-execute', 'sdd-scaffold', 'sdd-critic', 'sdd-reconcile'];
@@ -59,6 +57,23 @@ describe('readiness preflight gate — single source, no hand-copied interpretat
     });
   }
 
+  it('keeps scaffold and reconcile preflight free of the no-id sdd-task execution map', () => {
+    const execute = readFullDirectiveText('execute.directive.xml');
+    assert.match(execute, /sdd-task` \(no id\)/);
+
+    for (const file of ['scaffold.directive.xml', 'reconcile.directive.xml']) {
+      const text = readFullDirectiveText(file);
+      assert.doesNotMatch(text, /run\s+`?sdd-task`? \(no Task-ID\)/i, `${file} invokes the task map before task lifecycle`);
+    }
+  });
+
+  it('keeps router and critic preflight outside task lifecycle', () => {
+    for (const file of ['router.directive.xml', 'critic.directive.xml']) {
+      const text = readFullDirectiveText(file);
+      assert.doesNotMatch(text, /run\s+`sdd-task` \(no Task-ID\)/i);
+    }
+  });
+
   for (const skill of GATED_SKILLS) {
     it(`${skill}/SKILL.md: does not re-derive the READINESS interpretation`, () => {
       const text = readFileSync(join(SKILLS_ROOT, skill, 'SKILL.md'), 'utf-8');
@@ -72,6 +87,15 @@ describe('readiness preflight gate — single source, no hand-copied interpretat
         /readiness\.directive/,
         'SKILL.md names readiness.directive directly — loading it is the directive\'s own STEP_0B_PREFLIGHT call, not the loader\'s'
       );
+    });
+  }
+
+  for (const file of ['scaffold.directive.xml', 'reconcile.directive.xml']) {
+    it(`${file}: consumes the gathered sdd-state snapshot without an early sdd-task map`, () => {
+      const text = readFullDirectiveText(file);
+      assert.match(text, /snapshot already produced by\s+the skill's GATHER step/);
+      assert.match(text, /do not call `sdd-state` or `sdd-task` again here/);
+      assert.doesNotMatch(text, /When `READINESS=not-ready`, run\s+`sdd-task`/);
     });
   }
 });

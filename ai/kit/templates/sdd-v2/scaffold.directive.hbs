@@ -116,13 +116,13 @@
     <Step id="STEP_0B_PREFLIGHT">
       <Goal>Clear the FLOW_VERSION/READINESS preflight gate before scaffolding.</Goal>
       <Action>
-        `sdd-state` already reports `FLOW_VERSION` / `READINESS`. When `READINESS=not-ready`, run
-        `sdd-task` (no Task-ID) for the map — its `гейты:` line, when present, names the queued
-        TODO tickets already building the missing gate scripts; that is the fact the switch below
-        checks, never a guess. Size the gate to this request's own blast radius
-        (`AX_PREFLIGHT_BLAST_RADIUS_SCOPED`).
-
-        {{> "contract/process/readiness-preflight-gate"}}
+        Use the `FLOW_VERSION` / `READINESS` fields from the `sdd-state` snapshot already produced by
+        the skill's GATHER step; do not call `sdd-state` or `sdd-task` again here. Size the gate to this
+        request's own blast radius (`AX_PREFLIGHT_BLAST_RADIUS_SCOPED`): v1 intersecting legacy task
+        layout → `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/migration-v1-v2.directive.xml")`;
+        not-ready and this scaffold needs a missing gate →
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/readiness.directive.xml")`;
+        otherwise record the out-of-scope state in one line and continue.
       </Action>
     </Step>
     <Step id="STEP_1_CASCADE">
@@ -158,7 +158,9 @@
     <Step id="STEP_3_TASK_GENERATION">
       <Goal>Generate tickets + test plan. (auto)</Goal>
       <Action>
-        Create each new ticket from its STEP_2 DAG owner: module-owned →
+        Iterate the approved STEP_2 DAG nodes in their displayed order. For each node, make one
+        separate `sdd-new task` tool call — never compose the iteration as a shell loop or pipeline.
+        Create the ticket from that node's owner: module-owned →
         `npx gennady sdd-new task --scope <scope> --module <module> --id <ACR>-<slug>`; scope-owned →
         `npx gennady sdd-new task --scope <scope> --id <ACR>-<slug>` (omit `--module`, never invent one).
         Scope/module/ID come verbatim from that DAG node. The command never overwrites and

@@ -207,10 +207,10 @@ describe('SddLogCommand', () => {
     assert.match(body, /\n#### P2 — re-run: F-003\n/);
   });
 
-  describe('--phase (per-phase-block insertion — parallel-phase attribution)', () => {
-    it('without --phase, a line always lands under whichever phase header opened LAST — the bug this flag fixes', async () => {
-      // P2 opens first (parallel dispatch order is not phase-number order), P1 opens after it —
-      // demonstrates why a bare `line` (no pointer) is unsafe once phases run in parallel.
+  describe('--phase (explicit ownership across historical and re-run phase blocks)', () => {
+    it('without --phase, a line always lands under whichever phase header opened LAST', async () => {
+      // A malformed/historical ticket can contain phase blocks out of order. A bare `line` has no
+      // ownership pointer and therefore follows the last heading; lifecycle modes reject this shape.
       await mod.run(argv(ticket, 'phase', 'P2'), CLOCK);
       await mod.run(argv(ticket, 'phase', 'P1'), CLOCK);
       const outcome = await mod.run(argv(ticket, 'line', 'p2 discovery'), CLOCK);
@@ -379,6 +379,7 @@ describe('SddLogCommand', () => {
   });
 
   it('blocker mode writes the full BLOCKER_FORMAT block with axiom + unblock', async () => {
+    await mod.run(argv(ticket, 'phase', 'P1'), CLOCK);
     const outcome = await mod.run(
       argv(
         ticket,
@@ -387,7 +388,9 @@ describe('SddLogCommand', () => {
         '--axiom',
         'AX_BLOCKER_ESCALATION',
         '--unblock',
-        'grant network access'
+        'grant network access',
+        '--phase',
+        'P1'
       ),
       CLOCK
     );
@@ -399,18 +402,31 @@ describe('SddLogCommand', () => {
   });
 
   it('blocker mode exits 4 when --axiom or --unblock is missing', async () => {
-    const noAxiom = await mod.run(argv(ticket, 'blocker', 'reason', '--unblock', 'do x'), CLOCK);
+    const noAxiom = await mod.run(
+      argv(ticket, 'blocker', 'reason', '--unblock', 'do x', '--phase', 'P1'),
+      CLOCK
+    );
     assert.strictEqual(noAxiom.ok, false);
     if (!noAxiom.ok) assert.strictEqual(noAxiom.exitCode, 4);
-    const noUnblock = await mod.run(argv(ticket, 'blocker', 'reason', '--axiom', 'AX_X'), CLOCK);
+    const noUnblock = await mod.run(
+      argv(ticket, 'blocker', 'reason', '--axiom', 'AX_X', '--phase', 'P1'),
+      CLOCK
+    );
     assert.strictEqual(noUnblock.ok, false);
     if (!noUnblock.ok) assert.strictEqual(noUnblock.exitCode, 4);
   });
 
   describe('resolved mode — paired close for blocker', () => {
     it('writes the canonical ✅ RESOLVED line, checked and timestamped', async () => {
+      await mod.run(argv(ticket, 'phase', 'P1'), CLOCK);
       const outcome = await mod.run(
-        argv(ticket, 'resolved', 'maxBuffer added to sdd-verify.cmd.ts (02f1b35f)'),
+        argv(
+          ticket,
+          'resolved',
+          'maxBuffer added to sdd-verify.cmd.ts (02f1b35f)',
+          '--phase',
+          'P1'
+        ),
         CLOCK
       );
       assert.strictEqual(outcome.ok, true);
@@ -428,7 +444,11 @@ describe('SddLogCommand', () => {
     });
 
     it('rejects an unreplaced placeholder in the justification text (exit 2)', async () => {
-      const outcome = await mod.run(argv(ticket, 'resolved', 'fixed via <commit>'), CLOCK);
+      await mod.run(argv(ticket, 'phase', 'P1'), CLOCK);
+      const outcome = await mod.run(
+        argv(ticket, 'resolved', 'fixed via <commit>', '--phase', 'P1'),
+        CLOCK
+      );
       assert.strictEqual(outcome.ok, false);
       if (!outcome.ok) assert.strictEqual(outcome.exitCode, 2);
     });
@@ -454,9 +474,23 @@ describe('SddLogCommand', () => {
         '- **Status:** [ ] TODO   <!-- [ ] TODO | [~] IN_PROGRESS | [x] DONE | [!] BLOCKED -->\n<!--/SECTION:META-->'
       );
       writeFileSync(ticket, withStatus, 'utf-8');
-      await mod.run(argv(ticket, 'resolved', 'fixed'), CLOCK);
+      await mod.run(argv(ticket, 'phase', 'P1'), CLOCK);
+      await mod.run(argv(ticket, 'resolved', 'fixed', '--phase', 'P1'), CLOCK);
       const body = readFileSync(ticket, 'utf-8');
       assert.match(body, /- \*\*Status:\*\* \[ \] TODO   <!--/);
+    });
+
+    it('requires --phase on both blocker lifecycle transitions', async () => {
+      const opened = await mod.run(
+        argv(ticket, 'blocker', 'reason', '--axiom', 'AX_X', '--unblock', 'do x'),
+        CLOCK
+      );
+      assert.strictEqual(opened.ok, false);
+      if (!opened.ok) assert.match(opened.message, /requires --phase <PhaseID>/);
+
+      const closed = await mod.run(argv(ticket, 'resolved', 'fixed'), CLOCK);
+      assert.strictEqual(closed.ok, false);
+      if (!closed.ok) assert.match(closed.message, /requires --phase <PhaseID>/);
     });
   });
 

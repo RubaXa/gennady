@@ -120,7 +120,7 @@
     
 
     <Axiom id="AX_TICKET_WRITE_SCOPE">
-      `npx gennady sdd-log <ticket> line|phase|handoff|blocker` is the sole writer for this phase's
+      `npx gennady sdd-log <ticket> line|phase|handoff|blocker|resolved` is the sole writer for this phase's
       block under `Execution Log` current Round — phase header, event lines, `ver` lines, `DONE`,
       Handoff, blocker; append-only, anti-placeholder, timestamped by the tool. A manual `Edit` on that
       section is out of scope for the phase agent, the tool covers it end to end. Everything else the

@@ -19,6 +19,8 @@ import { detectFlowVersion } from '../../../shared/sdd/flow.ts';
 import { countModuleSpecs } from '../../../shared/sdd/module-specs.ts';
 import { sumRollupProgress } from '../../../shared/sdd/tracker.ts';
 import { renderLadder } from '../../../shared/sdd/ladder.ts';
+import { collectTicketRefs } from '../../../shared/sdd/ticket-resolve.ts';
+import { queuedInfraGateTicketIds } from '../../../shared/sdd/gate-queue.ts';
 import {
   badInvocation,
   badRoot,
@@ -164,6 +166,7 @@ export async function run(rawArgs: string[]): Promise<StateOutcome> {
     scopes,
     graphEdges,
     readiness,
+    queuedGateTicketIds: queuedInfraGateTicketIds(collectTicketRefs(root), scopes, readiness),
     sessionContent,
     probe,
   };

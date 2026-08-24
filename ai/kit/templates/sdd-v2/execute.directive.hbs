@@ -124,9 +124,8 @@
     <Step id="STEP_0B_PREFLIGHT">
       <Goal>Clear the FLOW_VERSION/READINESS preflight gate before dispatching any phase.</Goal>
       <Action>
-        `sdd-state` already reports `FLOW_VERSION` / `READINESS`; the `sdd-task` map just fetched
-        above already carries its `гейты:` line when gate scripts are missing, naming the queued
-        TODO tickets that build them — that is the fact the switch below checks, never a guess.
+        Use `READINESS` and `GATE_QUEUE` from the `sdd-task` map just fetched above; do not issue a
+        second preflight call. `GATE_QUEUE` names the queued TODO tickets that build missing gates.
         Size the gate to this request's own blast radius (`AX_PREFLIGHT_BLAST_RADIUS_SCOPED`).
 
         {{> "contract/process/readiness-preflight-gate"}}

@@ -72,7 +72,7 @@ export function isProfile(v: string): v is Profile {
  */
 function badInvocationMessage(detail: string): string {
   return [
-    `[verify] ${ERR_CLI_SDD_VERIFY_BAD_INVOCATION}: ${detail}`,
+    `[sdd-verify] ${ERR_CLI_SDD_VERIFY_BAD_INVOCATION}: ${detail}`,
     '  sdd-verify always runs its fixed gate profile over the WHOLE project — it takes no path',
     '  arguments, and no flag besides --profile. A path here does not narrow the run; it is rejected,',
     '  never silently ignored.',
@@ -210,7 +210,9 @@ export function verdict(results: GateResult[]): VerifyOutcome {
   if (failed.length === 0) {
     return {
       ok: true,
-      text: [`[verify] ✅ ALL PASS (${results.length}/${results.length})`, ...passLines].join('\n'),
+      text: [`[sdd-verify] ✅ ALL PASS (${results.length}/${results.length})`, ...passLines].join(
+        '\n'
+      ),
     };
   }
 
@@ -227,7 +229,7 @@ export function verdict(results: GateResult[]): VerifyOutcome {
     code: 'ERR_CLI_SDD_VERIFY_GATE_FAILED',
     exitCode: 1,
     message: [
-      `[verify] ${results.length - failed.length}/${results.length} passed — ${failed.length} FAILED`,
+      `[sdd-verify] ${results.length - failed.length}/${results.length} passed — ${failed.length} FAILED`,
       ...passLines,
       ...failBlocks,
     ].join('\n'),

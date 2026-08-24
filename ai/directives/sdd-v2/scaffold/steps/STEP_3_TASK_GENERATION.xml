@@ -3,7 +3,9 @@
 <Step id="STEP_3_TASK_GENERATION">
       <Goal>Generate tickets + test plan. (auto)</Goal>
       <Action>
-        Create each new ticket from its STEP_2 DAG owner: module-owned →
+        Iterate the approved STEP_2 DAG nodes in their displayed order. For each node, make one
+        separate `sdd-new task` tool call — never compose the iteration as a shell loop or pipeline.
+        Create the ticket from that node's owner: module-owned →
         `npx gennady sdd-new task --scope <scope> --module <module> --id <ACR>-<slug>`; scope-owned →
         `npx gennady sdd-new task --scope <scope> --id <ACR>-<slug>` (omit `--module`, never invent one).
         Scope/module/ID come verbatim from that DAG node. The command never overwrites and

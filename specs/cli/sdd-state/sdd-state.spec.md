@@ -6,7 +6,7 @@
 
 ## 1. Module Vision
 
-Детерминированный preflight-снимок проекта для роутера, одним вызовом. Без LLM. Закрывает четыре вопроса роутера сразу: на каком флоу репо (`FLOW_VERSION`), готов ли он (`READINESS`), какие scope есть (с описанием — для intent), и есть ли незакрытая сессия. По флагу `--probe` — ещё один вопрос: есть ли в репо код/инфра (для ветвления root: greenfield vs восстановление-из-кода); по умолчанию НЕ зондирует — минимальное знание окружения на старте (D-ST007). Реверс-спека частично — `scan.sh`; классификатор скриптов СОЗНАТЕЛЬНО не используется (см. D-ST004).
+Детерминированный preflight-снимок проекта для роутера, одним вызовом. Без LLM. Вместе с `FLOW_VERSION`, `READINESS`, scopes, session и code/infra probe он сообщает `GATE_QUEUE`: TODO-тикеты infrastructure scope, которые уже строят отсутствующие гейты. Поэтому роутеру не нужен ранний вызов task-lifecycle команды `sdd-task`.
 
 **Key properties:**
 
@@ -44,6 +44,7 @@ format	✔
 lint→gennady	✔
 gennady-installed	✔
 READINESS=not-ready (missing: test:coverage)
+GATE_QUEUE=none
 
 [SCOPES]
 # name	type	status	description	spec
@@ -67,23 +68,23 @@ flow=v2 · portal=present · readiness=not-ready · scopes=1 · session=absent
 
 ## 3. Entity Inventory (Closed-World)
 
-| Name                        | Type         | Purpose                                                                                                        |
-| --------------------------- | ------------ | -------------------------------------------------------------------------------------------------------------- |
-| `run`                       | Command      | Точка входа CLI: резолв корня, flow/portal/readiness/session → снимок                                          |
-| `isV1Layout`                | Utility      | Маркер v1 — `<root>/tasks/` это каталог                                                                        |
-| `detectGennady`             | Utility      | gennady установлен — `<root>/node_modules/.bin/gennady` существует                                             |
-| `probeRepo`                 | Utility      | (`shared/sdd/probe`) эвристики кода/инфры за `--probe` (find `*.js/jsx/ts/tsx` без node_modules + конфиги)     |
-| `checkReadiness`            | Utility      | (`shared/sdd/readiness`) точная проверка: package.json + required-скрипты + lint→gennady + gennady-install     |
-| `parseScopes`               | Utility      | (`shared/sdd/portal`) таблица Scopes → `Scope[]` (incl. description)                                           |
-| `formatSnapshot`            | Utility      | Рендер `StateSnapshot` в bracketed-формат                                                                      |
-| `badInvocation` / `badRoot` | Utility      | Билдеры диагностик                                                                                             |
-| `StateSnapshot`             | Value Object | root · flowVersion · portalPresent · portalPath · scopes · readiness · sessionContent · probe?                 |
-| `FlowVersion`               | Type         | `v1` / `v2`                                                                                                    |
-| `ReadinessResult`           | Value Object | packageJsonPresent · required[] · lintHasGennady · gennadyAvailable · ready · missing (`shared/sdd/readiness`) |
-| `ReadinessInput`            | Value Object | packageJsonPresent · scripts · gennadyAvailable — вход `checkReadiness` (`shared/sdd/readiness`)               |
-| `RepoProbe`                 | Value Object | codePresent · codeFileCount · codeDirs · infraPresent · configFiles (`shared/sdd/probe`)                       |
-| `Scope`                     | Value Object | name · type · status · description · specPath (`shared/sdd/portal`)                                            |
-| `StateOutcome`              | Type         | `{ok:true,text}` либо `{ok:false,code,exitCode,message}`                                                       |
+| Name                        | Type         | Purpose                                                                                                              |
+| --------------------------- | ------------ | -------------------------------------------------------------------------------------------------------------------- |
+| `run`                       | Command      | Точка входа CLI: резолв корня, flow/portal/readiness/session → снимок                                                |
+| `isV1Layout`                | Utility      | Маркер v1 — `<root>/tasks/` это каталог                                                                              |
+| `detectGennady`             | Utility      | gennady установлен — `<root>/node_modules/.bin/gennady` существует                                                   |
+| `probeRepo`                 | Utility      | (`shared/sdd/probe`) эвристики кода/инфры за `--probe` (find `*.js/jsx/ts/tsx` без node_modules + конфиги)           |
+| `checkReadiness`            | Utility      | (`shared/sdd/readiness`) точная проверка: package.json + required-скрипты + lint→gennady + gennady-install           |
+| `parseScopes`               | Utility      | (`shared/sdd/portal`) таблица Scopes → `Scope[]` (incl. description)                                                 |
+| `formatSnapshot`            | Utility      | Рендер `StateSnapshot` в bracketed-формат                                                                            |
+| `badInvocation` / `badRoot` | Utility      | Билдеры диагностик                                                                                                   |
+| `StateSnapshot`             | Value Object | root · flowVersion · portalPresent · portalPath · scopes · readiness · queuedGateTicketIds · sessionContent · probe? |
+| `FlowVersion`               | Type         | `v1` / `v2`                                                                                                          |
+| `ReadinessResult`           | Value Object | packageJsonPresent · required[] · lintHasGennady · gennadyAvailable · ready · missing (`shared/sdd/readiness`)       |
+| `ReadinessInput`            | Value Object | packageJsonPresent · scripts · gennadyAvailable — вход `checkReadiness` (`shared/sdd/readiness`)                     |
+| `RepoProbe`                 | Value Object | codePresent · codeFileCount · codeDirs · infraPresent · configFiles (`shared/sdd/probe`)                             |
+| `Scope`                     | Value Object | name · type · status · description · specPath (`shared/sdd/portal`)                                                  |
+| `StateOutcome`              | Type         | `{ok:true,text}` либо `{ok:false,code,exitCode,message}`                                                             |
 
 <!--/SECTION:ENTITY_INVENTORY-->
 
@@ -102,7 +103,7 @@ flow=v2 · portal=present · readiness=not-ready · scopes=1 · session=absent
   - 0 или 1 позиционный аргумент (корень; по умолчанию cwd), существующая директория (иначе exit 2)
 - Postconditions:
   - `FLOW_VERSION=v1` при наличии `<root>/tasks/`, иначе `v2`
-  - `[READINESS]` — `package.json` `✔/✘`, каждый required-скрипт по ТОЧНОМУ имени `✔/✘`, `lint→gennady`, `gennady-installed`; `READINESS=ready` только при package.json + полном наборе скриптов + lint→gennady + установленном gennady; иначе `not-ready (missing: …)`
+  - `[READINESS]` — `package.json` `✔/✘`, каждый required-скрипт по ТОЧНОМУ имени `✔/✘`, `lint→gennady`, `gennady-installed`; `READINESS=ready` только при package.json + полном наборе скриптов + lint→gennady + установленном gennady; `GATE_QUEUE=<ids>` называет queued infrastructure TODO, иначе `none`
   - `[SCOPES]` — name/type/status/**description**/spec из таблицы портала; absent → метка project-setup
   - `[SESSION]` — содержимое `specs/.sdd-session.md` или `(no active session)`
   - `[PROBE]` — ТОЛЬКО при `--probe`: `CODE`/`INFRA` present/absent + счётчик файлов / dirs / configs; без флага секции нет
