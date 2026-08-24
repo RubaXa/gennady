@@ -182,6 +182,33 @@ describe('verify command', () => {
     );
   });
 
+  it('refuses to run gates on a dirty tree — DIRTY_TREE, exit 4 (D-STACK-017)', async () => {
+    await withFixture(
+      { 'package.json': '{"name":"x","scripts":{"test":"node -e 0"}}' },
+      async (dir) => {
+        const { execFileSync } = await import('node:child_process');
+        const git = (...args: string[]): void => {
+          execFileSync('git', ['-C', dir, '-c', 'user.email=t@t', '-c', 'user.name=t', ...args], {
+            stdio: 'ignore',
+          });
+        };
+        git('init', '-q', '-b', 'main');
+        git('add', '-A');
+        git('commit', '-qm', 'init');
+        fs.writeFileSync(path.join(dir, 'wip.txt'), 'uncommitted');
+
+        const { value, err } = await captureLog(() => run(argv(`--root=${dir}`)));
+
+        assert.equal(value, 4);
+        assert.match(err, /DIRTY_TREE/);
+        assert.match(err, /commit/);
+        // --plan stays available on a dirty tree: it runs nothing.
+        const plan = await captureLog(() => run(argv(`--root=${dir}`, '--plan')));
+        assert.equal(plan.value, 0);
+      }
+    );
+  });
+
   it('keeps a positional target literally named "verify" (review N2)', async () => {
     await withFixture(
       { 'package.json': '{"name":"x","scripts":{"test":"node -e 0"}}', 'verify/.keep': '' },

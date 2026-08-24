@@ -267,11 +267,6 @@ export type StackPluginConfig = {
   readonly overrideGates?: Readonly<Record<string, GateSpec>>;
   /** @purpose Repo-specific gates appended after the built-ins. */
   readonly extraGates?: readonly GateSpec[];
-  /**
-   * @purpose Extra ignored paths symlinked into the run replica, added to what the plugin
-   *   declares. Each one is a deliberate hole in observe-only (config.spec §3).
-   */
-  readonly sandboxLinks?: readonly string[];
 };
 
 /**
@@ -335,11 +330,6 @@ export type StackPlugin = {
    *   checks against, readable without detection (plugins.spec §5).
    */
   readonly gateIds: readonly string[];
-  /**
-   * @purpose Ignored paths symlinked into the run replica: the stack's execution
-   *   environment, not tree state (node: node_modules). Spec D-STACK-013.
-   */
-  readonly sandboxLinks?: readonly string[];
   /** @purpose The mandatory verify facet. */
   readonly verify: StackVerifyCapability;
 };

@@ -3,7 +3,7 @@ notes: >
   --all run would flag it; the untracked pkga/extra.go is what changed, so only that file may
   appear. outputExcludes is the actual narrowing proof.
 requires: [go]
-dirty:
+commit:
   pkga/extra.go: "package pkga\n\nfunc   Extra()   {}\n"
 exitCode: 1
 gates:

@@ -1,6 +1,0 @@
-stack:
-  anystack:
-    sandboxLinks: [cache]
-    extraGates:
-      - id: needs-cache
-        argv: [sh, -c, 'test -f cache/data.txt']

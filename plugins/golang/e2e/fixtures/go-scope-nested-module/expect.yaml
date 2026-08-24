@@ -4,7 +4,7 @@ notes: >
   "main module does not contain package" — a red that says nothing about the code (review #4).
   One `go list -e` pass before planning drops it and the scope note says so.
 requires: [go]
-dirty:
+commit:
   nested/extra.go: "package nested\n\nfunc Extra() int { return 3 }\n"
   good/extra.go: "package good\n\nfunc Extra() int { return 4 }\n"
 exitCode: 0

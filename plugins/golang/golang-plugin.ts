@@ -51,9 +51,6 @@ export const golangPlugin: StackPlugin = {
   description:
     'go generate (drift check), go build, go vet, gofmt -l, golangci-lint, go test; changed-package scoping',
 
-  // A repo-pinned ./bin/<tool> is the toolchain, not tree state: it is usually gitignored, so
-  // the replica would not have it and every gate using it would ENOENT (D-STACK-013, review #5).
-  sandboxLinks: ['bin'],
   gateIds: GO_GATE_ORDER,
 
   detect(root: string): StackDetection | null {

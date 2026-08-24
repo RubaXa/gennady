@@ -1,0 +1,9 @@
+notes: >
+  The clean-tree precondition holds for every stack, anystack included: uncommitted changes mean
+  there is no known state to roll a gate mutation back to, so verify refuses with DIRTY_TREE and
+  exit 4 before any gate runs — and the WIP file is left byte-identical.
+dirty:
+  wip.txt: "uncommitted work\n"
+argv: ['--all']
+exitCode: 4
+outputIncludes: ['DIRTY_TREE', 'commit']

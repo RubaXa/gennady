@@ -61,7 +61,6 @@ npm-скрипты — **репо-уровневые команды**: они н
 | `node-mutating-overridden` | `node:lint`      | то же + `overrideGates.lint.argv` (check-only)    | исполняется, skip снят                                   | `--plan --json`  |
 | `node-invalid-manifest`    | —                | битый `package.json`                              | стек **детектится**, `NODE_INVALID_MANIFEST`, гейтов нет | `--plan`         |
 | `node-no-scripts`          | —                | валидный манифест без верификационных скриптов    | `NODE_NO_SCRIPTS`, `ZERO_GATES`, exit 1                  | без флагов       |
-| `node-sandbox-links`       | `node:test`      | тест требует пакет из `node_modules`              | `pass` — `node_modules` симлинкован в реплику            | без флагов       |
 | `node-missing-modules`     | `node:test`      | `node_modules` отсутствует                        | `fail` (не `violation`): скрипт не пишет в дерево        | без флагов       |
 | `node-script-mutates`      | extra            | npm-скрипт пишет файл в дерево                    | `violation` + список файлов                              | без флагов       |
 | `node-repo-wide`           | `node:test`      | позиционная цель передана                         | скоуп репо-уровневый, `note` это сообщает                | позиционная цель |
@@ -82,5 +81,4 @@ npm-скрипты — **репо-уровневые команды**: они н
 - **Fixture files to be created:** `plugins/node/e2e/fixtures/node-*` по §6 (12 фикстур)
 - **Open risks:**
   - **эвристика классификации** — главный источник ложных срабатываний: незнакомый раннер не распознаётся (гейт молча отсутствует), а нестандартное имя может попасть в чужой класс. Смягчение: `--plan` печатает выбор `класс→скрипт`, диагностика `NODE_NO_SCRIPTS` при пустом наборе, `extraGates` как обходной путь
-  - **вендоринг зависимости в фикстуру** для `node-sandbox-links` — требуется крошечный пакет в шаблоне, без обращения к реестру
   - `node-missing-modules` зависит от текста ошибки npm — фикстура утверждает только вердикт
