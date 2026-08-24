@@ -97,22 +97,19 @@ export async function run(rawArgs: string[]): Promise<StateOutcome> {
   }
 
   // #region START_DIRECTIVES_GATE — invariant: sdd-state is the ONLY command that checks the install is
-  // intact; skills/directives themselves carry no install/sync knowledge. Either location alone being
-  // complete is sufficient (self-hosting gennady keeps directives at the project root directly; a
-  // consumer project may have them only under node_modules/gennady/ before its first `sync`).
+  // intact. The project-root copy is the one skills actually read, so a complete package under
+  // node_modules must never mask a stale or absent materialized flow. Install, then `sync-skills`.
   const nodeModulesPkgDir = join(root, 'node_modules', 'gennady');
   const rootDirectivesStatus = checkDirectivesLocation(join(root, SDD_V2_SUBDIR));
   if (rootDirectivesStatus.missing.length > 0) {
     const nodeModulesDirectivesStatus = checkDirectivesLocation(
       join(nodeModulesPkgDir, SDD_V2_SUBDIR)
     );
-    if (nodeModulesDirectivesStatus.missing.length > 0) {
-      return directivesMissing(
-        existsSync(nodeModulesPkgDir),
-        rootDirectivesStatus,
-        nodeModulesDirectivesStatus
-      );
-    }
+    return directivesMissing(
+      existsSync(nodeModulesPkgDir),
+      rootDirectivesStatus,
+      nodeModulesDirectivesStatus
+    );
   }
   // #endregion END_DIRECTIVES_GATE
 

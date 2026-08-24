@@ -8,38 +8,39 @@ import { parseArgs } from '../../../shared/common/parse-args.ts';
 export const ERR_CLI_SDD_VERIFY_BAD_INVOCATION = 'ERR_CLI_SDD_VERIFY_BAD_INVOCATION' as const;
 
 /**
- * @purpose A verification gate — an exact project npm script, or a gennady-native check called directly.
+ * @purpose A read-only verification gate — an exact project npm script, or a gennady-native check called directly.
  * @invariant `via: 'gennady'` gates never require a matching project npm script — `readiness.ts`
  *   REQUIRED_SCRIPTS omits `yagni` for this reason.
  */
 export type Gate = {
   /** @purpose Exact npm script name (`via: 'npm'`) or gennady subcommand name (`via: 'gennady'`). */
   name: string;
-  /** @purpose True when the gate rewrites files (format / lint autofix) — keeps it ahead of read-only gates. */
+  /** @purpose True only for a legacy mutating gate; current verification profiles are read-only. */
   mutates: boolean;
   /** @purpose `'npm'` runs `npm run <name>` (default); `'gennady'` runs `npx gennady <name>` directly. */
   via?: 'npm' | 'gennady';
 };
 
 /**
- * @purpose The canonical verification sequence — mutating gates first (they rewrite files), then read-only. Profiles subset this list, preserving order.
- * @invariant Order normative: format → lint → typecheck → test:coverage → yagni; autofix never
- *   races a reader. `yagni` is `via: 'gennady'` (D-SV008).
+ * @purpose The canonical read-only verification sequence. Profiles subset this list, preserving order.
+ * @invariant Order: format check → lint check → typecheck → test:coverage → yagni. Repairs use project
+ *   `fix`; `yagni` uses gennady directly (D-SV008).
  */
 export const GATES: readonly Gate[] = [
-  { name: 'format', mutates: true },
-  { name: 'lint', mutates: true },
+  { name: 'format', mutates: false },
+  { name: 'lint', mutates: false },
   { name: 'type-check', mutates: false },
   { name: 'test:coverage', mutates: false },
   { name: 'yagni', mutates: false, via: 'gennady' },
 ];
 
 /** @purpose Gate profile by phase kind — fixed sets chosen by an explicit flag (not detection); `full` is the safe default. */
-export type Profile = 'code' | 'test' | 'full';
+export type Profile = 'setup' | 'code' | 'test' | 'full';
 
 // Gate names per profile: code skips tests (may not exist yet) but still runs yagni (a code-diff
 // concern, not a test concern); test skips lint + yagni (no production code changed); full runs everything.
 const PROFILE_GATES: Record<Profile, readonly string[]> = {
+  setup: ['format', 'lint', 'type-check'],
   code: ['format', 'lint', 'type-check', 'yagni'],
   test: ['format', 'type-check', 'test:coverage'],
   full: ['format', 'lint', 'type-check', 'test:coverage', 'yagni'],
@@ -61,7 +62,7 @@ export function gatesFor(profile: Profile): readonly Gate[] {
  * @returns True when v is a known profile.
  */
 export function isProfile(v: string): v is Profile {
-  return v === 'code' || v === 'test' || v === 'full';
+  return v === 'setup' || v === 'code' || v === 'test' || v === 'full';
 }
 
 /**
@@ -77,7 +78,7 @@ function badInvocationMessage(detail: string): string {
     '  arguments, and no flag besides --profile. A path here does not narrow the run; it is rejected,',
     '  never silently ignored.',
     '  To check only your own files, run: npx gennady lint --spec=<module-spec> <paths>',
-    '  usage: npx gennady sdd-verify [--profile <code|test|full>]',
+    '  usage: npx gennady sdd-verify [--profile <setup|code|test|full>]',
   ].join('\n');
 }
 
@@ -118,7 +119,7 @@ export function parseInvocation(argv: string[]): InvocationResult {
     return {
       ok: false,
       message: badInvocationMessage(
-        `unknown --profile '${rawProfile}' (expected: code | test | full)`
+        `unknown --profile '${rawProfile}' (expected: setup | code | test | full)`
       ),
     };
   }

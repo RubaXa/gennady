@@ -27,6 +27,12 @@
             owned by a DIFFERENT bootstrap ticket, write an explicit `владелец — <ticket>` line into
             this phase's text naming that owner — never leave it for the worker to reconstruct by
             grepping sibling tickets;
+        4c. when the phase invokes a generator/scaffolder, record its expected output manifest in
+            `Target Files` before execution: every created or modified file, its owning spec/module,
+            and whether it is production, test, tool-config, or vendor-generated. A known generated
+            helper (for example shadcn's `src/lib/utils.ts`) is architecture, not a runtime surprise;
+            missing or version-uncertain output → research/verify now, never let the worker expand the
+            module boundary through an execution-time deviation;
         5. after all phases: union `<RequiresVerification>` aliases across the ticket's phases, group
            rules by alias, resolve each unique alias from infra-spec Verification Commands (absent →
            `H_VERIFICATION_COMMAND_MISSING`), and write ticket Verification table — one row

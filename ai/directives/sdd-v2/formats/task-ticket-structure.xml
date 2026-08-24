@@ -106,7 +106,7 @@
 
   <!--SECTION:EXECUTION_LOG-->
   ## Execution Log
-  *(Round = one execute-then-audit attempt; per-phase blocks within a Round. Skeleton is minimal — event lines appear only when the event happens. Token vocabulary lives in `<module>.3-tasks.md`. A `[x]` line with an unreplaced `<…>` placeholder is a fabricated DONE — forbidden.)*
+  *(Round = one execute-then-audit attempt; per-phase blocks within a Round. Skeleton is minimal — event lines appear only when the event happens. Token vocabulary lives in `<module>.3-tasks.md`. A `[x]` line still carrying an unreplaced angle-bracket token is a fabricated DONE — forbidden.)*
 
   ### Round 1 — <YYYY-MM-DD>, initial
 

@@ -3,6 +3,10 @@
 <Step id="STEP_4_EXECUTE">
       <Goal>Produce the artifacts the phase Objective demands, within Target Files.</Goal>
       <Action>
+        Before any probe that needs scratch state, use the already-defined project-local directory
+        `.claude/tmp/<task-id>-<phase-id>/`; create only that directory, consume its result, then
+        remove it before handoff. This path is supplied here so the worker never has to discover or
+        request `/tmp`, `$TMPDIR`, a home-directory cache, or another permission boundary.
         Apply rules continuously; respect `AX_PHASE_SCOPE_LOCK`, `AX_FILE_HEADER_APPEND_ONLY`,
         `AX_INTRODUCED_DISCIPLINE`. `test` kind honors `AX_BDD_NAME_DISCIPLINE`; `config` kind applies
         the current-version API verified at STEP_3B (`AX_THIRD_PARTY_TOOL_CURRENT_API`). `bootstrap`

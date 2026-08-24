@@ -221,6 +221,7 @@
     - **STEP_1_CASCADE** — Resolve the rules cascade. (auto) Full step text: `ai/directives/sdd-v2/scaffold/steps/STEP_1_CASCADE.xml` (Read tool — no CLI command, no version argument).
     - **STEP_2_DAG** — Build the acyclic task DAG. — GATE 1: operator approves the BREAKDOWN. Full step text: `ai/directives/sdd-v2/scaffold/steps/STEP_2_DAG.xml` (Read tool — no CLI command, no version argument).
     - **STEP_3_TASK_GENERATION** — Generate tickets + test plan. (auto) Full step text: `ai/directives/sdd-v2/scaffold/steps/STEP_3_TASK_GENERATION.xml` (Read tool — no CLI command, no version argument).
+    - **STEP_3B_FEASIBILITY_CRITIC** — Reject structurally valid but operationally impossible tickets before execute. (auto) Full step text: `ai/directives/sdd-v2/scaffold/steps/STEP_3B_FEASIBILITY_CRITIC.xml` (Read tool — no CLI command, no version argument).
     - **STEP_4_TEST_PLAN_REVIEW** — GATE 2: operator approves the TEST PLAN. Full step text: `ai/directives/sdd-v2/scaffold/steps/STEP_4_TEST_PLAN_REVIEW.xml` (Read tool — no CLI command, no version argument).
     - **STEP_5_FINALIZE** — Write the index hierarchy; hand off. (auto) Full step text: `ai/directives/sdd-v2/scaffold/steps/STEP_5_FINALIZE.xml` (Read tool — no CLI command, no version argument).
   </ExecutionPlan>

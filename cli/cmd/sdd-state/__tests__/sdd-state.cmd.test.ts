@@ -5,7 +5,7 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 
 type SddStateModule = typeof import('../sdd-state.cmd.ts');
@@ -35,7 +35,11 @@ const READY_PKG = JSON.stringify({
     'test:coverage': 'c8 node --test',
     lint: 'npm run lint:contracts',
     'lint:contracts': 'gennady lint .',
-    format: 'prettier --write .',
+    format: 'prettier --check .',
+    check: 'npm run typecheck && npm test && npm run lint && npm run format',
+    fix: 'npm run format:fix && npm run lint:fix && npm run check',
+    'format:fix': 'prettier --write .',
+    'lint:fix': 'eslint --fix .',
   },
 });
 
@@ -54,12 +58,18 @@ const KEY_DIRECTIVE_FILES = [
   'router.directive.xml',
   'execute.directive.xml',
   'phase-execution-protocol.directive.xml',
+  'preflight-protocol.directive.xml',
+  'formats/requirement-entry-format.xml',
 ];
 
 /** @purpose Test fixture helper: install the key sdd-v2 directive files under `<root>/ai/directives/sdd-v2/` (or a caller-chosen `at`), satisfying the sdd-state install-preflight gate. */
 function installDirectives(root: string, at = join(root, 'ai', 'directives', 'sdd-v2')): void {
   mkdirSync(at, { recursive: true });
-  for (const f of KEY_DIRECTIVE_FILES) writeFileSync(join(at, f), '<directive/>\n', 'utf-8');
+  for (const f of KEY_DIRECTIVE_FILES) {
+    const target = join(at, f);
+    mkdirSync(dirname(target), { recursive: true });
+    writeFileSync(target, '<directive/>\n', 'utf-8');
+  }
 }
 
 describe('SddStateCommand', () => {
@@ -396,15 +406,15 @@ describe('SddStateCommand — install-preflight gate (AX no install/sync knowled
     assert.match(o.message, /ERR_CLI_SDD_STATE_DIRECTIVES_MISSING/);
     assert.match(o.message, /ai\/directives\/sdd-v2\/ \(project root\): absent/);
     assert.match(o.message, /node_modules\/gennady\/ai\/directives\/sdd-v2\/: absent/);
-    assert.match(o.message, /next: npm i -D gennady && npx gennady sync/);
+    assert.match(o.message, /next: npm i -D gennady && npx gennady sync-skills/);
     assert.doesNotMatch(o.message, /\[READINESS\]/);
   });
 
-  it('directives present only under node_modules/gennady/ → still a valid install, snapshot prints', async () => {
+  it('directives present only under node_modules/gennady/ → blocks until project copy is synced', async () => {
     const o = await mod3.run(argv(nodeModulesOnly));
-    assert.strictEqual(o.ok, true);
-    if (!o.ok) return;
-    assert.match(o.text, /# sdd-state v1/);
+    assert.strictEqual(o.ok, false);
+    if (o.ok) return;
+    assert.match(o.message, /sync/);
   });
 
   it('root copy incomplete + node_modules copy absent → exit ≠ 0, names the missing file, next is `sync`', async () => {
@@ -412,10 +422,7 @@ describe('SddStateCommand — install-preflight gate (AX no install/sync knowled
     assert.strictEqual(o.ok, false);
     if (o.ok) return;
     assert.notStrictEqual(o.exitCode, 0);
-    assert.match(
-      o.message,
-      /ai\/directives\/sdd-v2\/ \(project root\): missing: execute\.directive\.xml, phase-execution-protocol\.directive\.xml/
-    );
+    assert.match(o.message, /ai\/directives\/sdd-v2\/ \(project root\): missing:/);
     // node_modules/gennady/ exists as a package but its own sdd-v2 copy is absent — "installed, not synced".
     assert.match(o.message, /node_modules\/gennady\/ai\/directives\/sdd-v2\/: absent/);
     assert.match(o.message, /next: npx gennady sync/);

@@ -9,7 +9,7 @@ import {
   statSync,
   readdirSync,
   unlinkSync,
-  rmdirSync,
+  rmSync,
 } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -93,6 +93,7 @@ function syncDirectivesFirst(
     mkdir: deps.mkdir! as (p: string, opts?: { recursive: boolean }) => void,
     stat: (p: string) => deps.stat!(p),
     readdir: deps.readdir!,
+    unlink: deps.unlink,
     cwd,
   };
 
@@ -129,7 +130,7 @@ export function run(rawArgs: string[], deps?: SyncCmdDeps): number {
   const _stat = deps?.stat ?? statSync;
   const _readdir = deps?.readdir ?? readdirSync;
   const _unlink = deps?.unlink ?? unlinkSync;
-  const _rmdir = deps?.rmdir ?? rmdirSync;
+  const _rmdir = deps?.rmdir ?? ((path: string) => rmSync(path, { recursive: true, force: true }));
   const _resolvePackageDir = deps?.resolvePackageDir ?? resolvePackageDir;
   const _stdout = deps?.stdout ?? process.stdout;
   const _stderr = deps?.stderr ?? process.stderr;
@@ -154,6 +155,7 @@ export function run(rawArgs: string[], deps?: SyncCmdDeps): number {
       mkdir: _mkdir,
       stat: _stat,
       readdir: _readdir,
+      unlink: _unlink,
       resolvePackageDir: _resolvePackageDir,
     },
     cwd,

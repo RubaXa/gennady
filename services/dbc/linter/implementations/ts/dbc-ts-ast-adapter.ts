@@ -187,6 +187,18 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
       return undefined;
     }
 
+    // `export default <expr>` is a module wiring statement, not a named contract surface. There is
+    // no stable entity identity to attach DbC/inventory/YAGNI semantics to. Named default function
+    // and class declarations remain ordinary exported entities and are checked below.
+    if (
+      isDefault &&
+      declaration.type !== 'function_declaration' &&
+      declaration.type !== 'generator_function_declaration' &&
+      declaration.type !== 'class_declaration'
+    ) {
+      return undefined;
+    }
+
     const kind = this._mapKind(declaration.type, isDefault);
     const name = this._extractName(declaration, source, isDefault);
     const signature = this._extractSignature(declaration, source);

@@ -53,14 +53,14 @@ beforeEach(() => {
 });
 
 describe('GATES', () => {
-  it('is the fixed mutating-first exact sequence', () => {
+  it('is the fixed read-only exact sequence', () => {
     assert.deepStrictEqual(
       GATES.map((g) => g.name),
       ['format', 'lint', 'type-check', 'test:coverage', 'yagni']
     );
     assert.deepStrictEqual(
       GATES.filter((g) => g.mutates).map((g) => g.name),
-      ['format', 'lint']
+      []
     );
   });
 });
@@ -288,7 +288,7 @@ describe('parseInvocation', () => {
     const r = parseInvocation(argv('stray.ts'));
     assert.strictEqual(r.ok, false);
     if (r.ok) return;
-    assert.match(r.message, /usage: npx gennady sdd-verify \[--profile <code\|test\|full>]/);
+    assert.match(r.message, /usage: npx gennady sdd-verify \[--profile <setup\|code\|test\|full>]/);
   });
 });
 

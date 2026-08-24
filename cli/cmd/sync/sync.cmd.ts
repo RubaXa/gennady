@@ -2,7 +2,7 @@
 // @consumers: gennady.ts
 // @tasks: TSK-53, TSK-54, TSK-56
 
-import { readFileSync, writeFileSync, mkdirSync, statSync, readdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, statSync, readdirSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { logger } from '#logger';
@@ -56,6 +56,7 @@ export function run(rawArgs: string[], deps?: SyncCmdDeps): number {
   const _mkdir = deps?.mkdir ?? mkdirSync;
   const _stat = deps?.stat ?? statSync;
   const _readdir = deps?.readdir ?? readdirSync;
+  const _unlink = deps?.unlink ?? unlinkSync;
   const _resolvePackageDir = deps?.resolvePackageDir ?? resolvePackageDir;
   const _stdout = deps?.stdout ?? process.stdout;
   const _stderr = deps?.stderr ?? process.stderr;
@@ -100,6 +101,7 @@ export function run(rawArgs: string[], deps?: SyncCmdDeps): number {
       mkdir: _mkdir as (p: string, opts?: { recursive: boolean }) => void,
       stat: (p: string) => _stat(p),
       readdir: _readdir,
+      unlink: _unlink,
       cwd,
     };
 

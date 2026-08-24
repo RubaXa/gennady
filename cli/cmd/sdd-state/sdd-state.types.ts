@@ -22,6 +22,8 @@ export const KEY_DIRECTIVE_FILES = [
   'router.directive.xml',
   'execute.directive.xml',
   'phase-execution-protocol.directive.xml',
+  'preflight-protocol.directive.xml',
+  'formats/requirement-entry-format.xml',
 ] as const;
 
 /** @purpose Presence check of the key directive files at one candidate directory. */
@@ -101,6 +103,7 @@ export function formatSnapshot(s: StateSnapshot): string {
   ];
   for (const r of s.readiness.required) lines.push(`${r.name}\t${r.present ? '✔' : '✘'}`);
   lines.push(`lint→gennady\t${s.readiness.lintHasGennady ? '✔' : '✘'}`);
+  lines.push(`check→read-only\t${s.readiness.checkReadOnly ? '✔' : '✘'}`);
   lines.push(`gennady-installed\t${s.readiness.gennadyAvailable ? '✔' : '✘'}`);
   lines.push(
     s.readiness.ready
@@ -209,7 +212,7 @@ function describeDirectivesStatus(status: DirectivesLocationStatus): string {
 
 /**
  * @purpose Build the directives-missing diagnostic — sdd-state's install-preflight gate, the one place allowed to know about install/sync.
- * @invariant Either checked location alone being complete is sufficient — called only when BOTH are incomplete.
+ * @invariant The project-root copy must be complete because that is what skills execute; node_modules is diagnostic only.
  * @param packageInstalled Whether node_modules/gennady/ itself exists (the npm package is present).
  * @param rootStatus Directive-presence status at `<root>/ai/directives/sdd-v2/`.
  * @param nodeModulesStatus Directive-presence status under node_modules/gennady/.
@@ -220,7 +223,9 @@ export function directivesMissing(
   rootStatus: DirectivesLocationStatus,
   nodeModulesStatus: DirectivesLocationStatus
 ): StateOutcome {
-  const next = packageInstalled ? 'npx gennady sync' : 'npm i -D gennady && npx gennady sync';
+  const next = packageInstalled
+    ? 'npx gennady sync-skills'
+    : 'npm i -D gennady && npx gennady sync-skills';
   const why = packageInstalled
     ? 'gennady is installed but its sdd-v2 directives were never synced into this project — skills read them from the project root, not from node_modules.'
     : 'gennady is not installed here — skills assume the directives are already in place, and sdd-state is the only command that checks for that.';

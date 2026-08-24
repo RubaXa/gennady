@@ -13,6 +13,7 @@ const notReady: ReadinessResult = {
   packageJsonPresent: false,
   required: [],
   lintHasGennady: false,
+  checkReadOnly: false,
   gennadyAvailable: false,
   ready: false,
   missing: ['package.json'],

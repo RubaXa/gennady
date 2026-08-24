@@ -47,6 +47,11 @@ export interface SyncCoreDeps {
    * @returns File names.
    */
   readdir: (path: string) => string[];
+  /**
+   * @purpose Delete one stale target file during full mirror sync.
+   * @param path Absolute stale target file path.
+   */
+  unlink?: (path: string) => void;
   /** @purpose Current working directory. */
   cwd: string;
 }
@@ -138,6 +143,23 @@ export function collectAndCompare(deps: SyncCoreDeps, opts: SyncOptions): SyncRe
 
   const relativePaths = scanDirectives(opts.sourceDir, opts.subdirs);
   const entries: SyncFileEntry[] = [];
+  const sourcePaths = new Set(relativePaths);
+
+  // Sync is a package-owned mirror, not an additive copy. A removed directive must disappear from
+  // the target too, otherwise an update can keep executing stale flow logic indefinitely.
+  const targetPaths = scanDirectives(opts.targetDir, opts.subdirs);
+  for (const relativePath of targetPaths) {
+    if (sourcePaths.has(relativePath)) continue;
+    entries.push({ relativePath, status: 'deleted' });
+    if (!opts.dryRun) {
+      if (!deps.unlink) {
+        throw new Error(
+          `[collectAndCompare] unlink dependency missing for stale file: ${relativePath}`
+        );
+      }
+      deps.unlink(join(opts.targetDir, relativePath));
+    }
+  }
 
   for (const relativePath of relativePaths) {
     const sourcePath = join(opts.sourceDir, relativePath);

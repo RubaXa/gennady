@@ -21,15 +21,26 @@ const FULL = {
   'test:coverage': 'c8 node --test',
   lint: 'npm run format && npm run lint:contracts',
   'lint:contracts': 'gennady lint .',
-  format: 'prettier --write .',
+  format: 'prettier --check .',
+  check: 'npm run type-check && npm test && npm run lint && npm run format',
+  fix: 'npm run format:fix && npm run lint:fix && npm run check',
+  'format:fix': 'prettier --write .',
+  'lint:fix': 'eslint --fix .',
 };
 
 describe('REQUIRED_SCRIPTS', () => {
   it("is the exact v2 set — canonical `type-check` (gennady's own convention)", () => {
     assert.deepStrictEqual(
       [...REQUIRED_SCRIPTS],
-      ['type-check', 'test', 'test:coverage', 'lint', 'format']
+      ['type-check', 'test', 'test:coverage', 'lint', 'format', 'check', 'fix']
     );
+  });
+
+  it('rejects a check script that reaches formatter or ESLint write mode', () => {
+    const r = check({ ...FULL, check: 'npm run lint:fix && npm run type-check' });
+    assert.strictEqual(r.checkReadOnly, false);
+    assert.ok(r.missing.includes('check(read-only)'));
+    assert.strictEqual(r.ready, false);
   });
 });
 

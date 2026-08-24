@@ -9,7 +9,7 @@ export function printHelp(): void {
   console.info('gennady sdd-verify — Run the project verification gates (strict, exact scripts)');
   console.info('');
   console.info('Usage:');
-  console.info('  npx gennady sdd-verify [--profile <code|test|full>]');
+  console.info('  npx gennady sdd-verify [--profile <setup|code|test|full>]');
   console.info('');
   console.info(
     '  Always checks the WHOLE project — no path arguments, no flag besides --profile. An extra'

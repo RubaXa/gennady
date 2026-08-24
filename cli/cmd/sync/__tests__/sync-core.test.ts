@@ -13,6 +13,7 @@ import {
   readFileSync,
   statSync,
   readdirSync,
+  unlinkSync,
 } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -48,6 +49,7 @@ function createDeps(cwd: string, overrides?: Partial<SyncCoreDeps>): SyncCoreDep
     mkdir: _mkdir,
     stat: _stat,
     readdir: readdirSync,
+    unlink: unlinkSync,
     cwd,
     ...overrides,
   };
@@ -211,6 +213,21 @@ describe('collectAndCompare', () => {
     assert.equal(result.entries[0].status, 'updated');
     assert.equal(result.updated.length, 1);
     assert.equal(_writeCalls.length, 1);
+  });
+
+  it('deletes target directives removed from the installed package', () => {
+    writeFileSync(join(_sourceDir, 'current.xml'), '<current/>', 'utf-8');
+    writeFileSync(join(_targetDir, 'current.xml'), '<old/>', 'utf-8');
+    writeFileSync(join(_targetDir, 'stale.xml'), '<stale/>', 'utf-8');
+
+    const result = collectAndCompare(createDeps(_tmpDir), {
+      sourceDir: _sourceDir,
+      targetDir: _targetDir,
+    });
+
+    assert.equal(result.deleted.length, 1);
+    assert.equal(result.deleted[0].relativePath, 'stale.xml');
+    assert.equal(existsSync(join(_targetDir, 'stale.xml')), false);
   });
 
   it('dryRun skips writeFile for added files', () => {

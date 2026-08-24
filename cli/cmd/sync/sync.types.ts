@@ -3,7 +3,7 @@
 // @tasks: TSK-53, TSK-54
 
 /** @purpose Discriminated status of a synced file: new, changed, or identical. */
-export type SyncFileStatus = 'added' | 'updated' | 'unchanged';
+export type SyncFileStatus = 'added' | 'updated' | 'deleted' | 'unchanged';
 
 /** @purpose Options for the sync command. */
 export interface SyncOptions {
@@ -57,12 +57,18 @@ export class SyncResult {
     return this.entries.filter((e) => e.status === 'unchanged');
   }
 
+  /** @purpose Stale target files removed because the installed package no longer owns them. | @returns Array of deleted entries. */
+  get deleted(): SyncFileEntry[] {
+    return this.entries.filter((e) => e.status === 'deleted');
+  }
+
   /** @purpose Human-readable summary of added/updated/unchanged counts. | @returns Summary string. */
   get summary(): string {
     const a = this.added.length;
     const u = this.updated.length;
     const s = this.unchanged.length;
-    return `Synced: ${a} added, ${u} updated, ${s} skipped (unchanged)`;
+    const d = this.deleted.length;
+    return `Synced: ${a} added, ${u} updated, ${s} skipped (unchanged), ${d} deleted`;
   }
 
   /** @purpose Dry-run summary message. | @returns Dry-run message. */

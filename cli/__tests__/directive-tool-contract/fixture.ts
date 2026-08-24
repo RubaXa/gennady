@@ -219,8 +219,12 @@ export function buildFixture(): Fixture {
     'router.directive.xml',
     'execute.directive.xml',
     'phase-execution-protocol.directive.xml',
+    'preflight-protocol.directive.xml',
+    'formats/requirement-entry-format.xml',
   ]) {
-    writeFileSync(join(root, 'ai', 'directives', 'sdd-v2', f), '<Stub/>\n', 'utf-8');
+    const target = join(root, 'ai', 'directives', 'sdd-v2', f);
+    mkdirSync(join(target, '..'), { recursive: true });
+    writeFileSync(target, '<Stub/>\n', 'utf-8');
   }
 
   execSync('git init -q', { cwd: root });

@@ -11,7 +11,15 @@ import { join } from 'node:path';
  * @invariant Matched by exact name only — no fuzzy guessing. `type-check` also accepts `typecheck`
  * via SCRIPT_ALIASES — still exact-match against a closed set.
  */
-export const REQUIRED_SCRIPTS = ['type-check', 'test', 'test:coverage', 'lint', 'format'] as const;
+export const REQUIRED_SCRIPTS = [
+  'type-check',
+  'test',
+  'test:coverage',
+  'lint',
+  'format',
+  'check',
+  'fix',
+] as const;
 
 /**
  * @purpose Alternate spellings accepted for one required script; every other name has exactly one.
@@ -53,6 +61,8 @@ export type ReadinessResult = {
   required: RequiredScript[];
   /** @purpose Whether the `lint` script (or a script it chains via `npm run`) invokes gennady. */
   lintHasGennady: boolean;
+  /** @purpose Whether `check` and every npm script it reaches are free of known write/autofix commands. */
+  checkReadOnly: boolean;
   /** @purpose Whether the gennady CLI is installed for the project. */
   gennadyAvailable: boolean;
   /** @purpose True when the project is ready (package.json + all required present + gennady in lint + gennady installed). */
@@ -87,6 +97,37 @@ function lintReachesGennady(scripts: Record<string, string>): boolean {
   return false;
 }
 
+/** @purpose Resolve a script's transitive npm-run bodies once, including the entry body. */
+function reachableScriptBodies(scripts: Record<string, string>, entry: string): string[] {
+  const first = scripts[entry];
+  if (first === undefined) return [];
+  const bodies: string[] = [];
+  const seen = new Set<string>([entry]);
+  const queue = [first];
+  while (queue.length > 0) {
+    const body = queue.shift();
+    if (body === undefined) continue;
+    bodies.push(body);
+    for (const match of body.matchAll(/npm run ([A-Za-z0-9:_-]+)/g)) {
+      const name = match[1];
+      if (name && !seen.has(name) && scripts[name] !== undefined) {
+        seen.add(name);
+        queue.push(scripts[name]);
+      }
+    }
+  }
+  return bodies;
+}
+
+/** @purpose Detect the known formatter/linter write switches forbidden in the read-only `check` graph. */
+function isCheckReadOnly(scripts: Record<string, string>): boolean {
+  const bodies = reachableScriptBodies(scripts, 'check');
+  if (bodies.length === 0) return false;
+  return bodies.every(
+    (body) => !/(?:eslint\b[^&|;\n]*\s--fix\b|prettier\b[^&|;\n]*\s--write\b)/.test(body)
+  );
+}
+
 /**
  * @purpose True when a script body is real — present, non-empty, and not the npm-init placeholder.
  * @param body The script body from package.json `scripts`, or undefined when absent.
@@ -112,17 +153,31 @@ export function checkReadiness(input: ReadinessInput): ReadinessResult {
   }));
 
   const lintHasGennady = lintReachesGennady(scripts);
+  const checkReadOnly = isCheckReadOnly(scripts);
 
   const missing: string[] = [];
   if (!packageJsonPresent) missing.push('package.json');
   missing.push(...required.filter((r) => !r.present).map((r) => r.name));
   if (scripts['lint'] !== undefined && !lintHasGennady) missing.push('lint→gennady');
+  if (scripts['check'] !== undefined && !checkReadOnly) missing.push('check(read-only)');
   if (!gennadyAvailable) missing.push('gennady (not installed)');
 
   const ready =
-    packageJsonPresent && required.every((r) => r.present) && lintHasGennady && gennadyAvailable;
+    packageJsonPresent &&
+    required.every((r) => r.present) &&
+    lintHasGennady &&
+    checkReadOnly &&
+    gennadyAvailable;
 
-  return { packageJsonPresent, required, lintHasGennady, gennadyAvailable, ready, missing };
+  return {
+    packageJsonPresent,
+    required,
+    lintHasGennady,
+    checkReadOnly,
+    gennadyAvailable,
+    ready,
+    missing,
+  };
 }
 
 /**

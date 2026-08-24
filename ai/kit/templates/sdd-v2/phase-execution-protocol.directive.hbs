@@ -134,7 +134,7 @@
     | `sdd-log <ticket> blocker "<reason>" --axiom <AX_NAME> --unblock "<action>" --phase <PhaseID>` | STEP_5 — an out-of-zone failure this phase cannot fix itself; opens the resolution trail the orchestrator checks (`AX_BLOCKER_RESOLUTION_TRAIL`); `--phase` keeps it inside THIS phase's own block | `npx gennady sdd-log <ticket> blocker "vitest binary missing" --axiom AX_ENV_FIX_CHANNEL --unblock "npm i -D vitest" --phase P2` |
     | `sdd-log <ticket> resolved "<what removed it>" --phase <PhaseID>` | The paired close for `blocker` — once the cause is actually gone, whoever resumes the ticket logs this into THAT SAME phase's block (`AX_BLOCKER_RESOLUTION_TRAIL`); never edit or remove the original 🛑 line | `npx gennady sdd-log <ticket> resolved "vitest installed (npm i -D vitest)" --phase P2` |
     | `sdd-check --task <ticket>` | A point re-check when you need the mechanical verdict again after a fix, without re-deriving it by hand | `npx gennady sdd-check --task <ticket>` |
-    | `sdd-verify --profile code\|test\|full` | The gate at STEP_5 — profile fixed by phase kind, order is mutating-first | `npx gennady sdd-verify --profile code` |
+    | `sdd-verify --profile setup\|code\|test\|full` | The read-only verdict at STEP_5 — `setup` validates bootstrap/config without inventing product code | `npx gennady sdd-verify --profile setup` |
     | `gennady lint --spec=<module-spec> <Target Files>` | Closed-world inventory sync + cast safety on this phase's own files | `npx gennady lint --spec=specs/app/greeting/greeting.spec.md src/app/greeting/*.ts` |
     | `gennady yagni` | Runs INSIDE `sdd-verify` (`code`/`full` profiles); on `ERR_CLI_YAGNI_UNDERUSED` it prints a ready-to-paste `- **Usage Waiver:** <reason>` block — paste it verbatim, then log it (`AX_USAGE_WAIVER_DISCIPLINE`) | standalone only for a quick iteration: `npx gennady yagni .` |
     | `gennady testcov` | Only when the ticket's own §5 command names it (e.g. `test:coverage`) — the §5 command string is canon, never a substitute | `npx gennady testcov --run --min=80` |
@@ -228,6 +228,10 @@
     <Step id="STEP_4_EXECUTE">
       <Goal>Produce the artifacts the phase Objective demands, within Target Files.</Goal>
       <Action>
+        Before any probe that needs scratch state, use the already-defined project-local directory
+        `.claude/tmp/<task-id>-<phase-id>/`; create only that directory, consume its result, then
+        remove it before handoff. This path is supplied here so the worker never has to discover or
+        request `/tmp`, `$TMPDIR`, a home-directory cache, or another permission boundary.
         Apply rules continuously; respect `AX_PHASE_SCOPE_LOCK`, `AX_FILE_HEADER_APPEND_ONLY`,
         `AX_INTRODUCED_DISCIPLINE`. `test` kind honors `AX_BDD_NAME_DISCIPLINE`; `config` kind applies
         the current-version API verified at STEP_3B (`AX_THIRD_PARTY_TOOL_CURRENT_API`). `bootstrap`
@@ -253,13 +257,18 @@
     <Step id="STEP_5_VERIFY">
       <Goal>Run the verification gate, then the ticket §5 commands. Log only final results.</Goal>
       <Action>
-        Run `npx gennady sdd-verify --profile <by kind>` (commands stay within `AX_PERMITTED_BASH_COMMANDS`; the deterministic gate, exact `npm run` scripts, mutating
-        first, run-all, brief on pass, details on fail). Profile by phase kind: `impl` / `refactor` /
-        `config` / `doc` / `bootstrap` → `code` (format · lint · typecheck · yagni — a code phase skips
-        tests, but still runs the yagni gate since it is a code-diff check, not a test run); `test` →
+        Run the infra-spec's exact `fix-command` once for files authored by this phase, then treat its
+        output tree as input to the verdict. Run `npx gennady sdd-verify --profile <by kind>`
+        (commands stay within `AX_PERMITTED_BASH_COMMANDS`; read-only, run-all, brief on pass, details
+        on fail). Profile by phase kind: `bootstrap` / `config` / `doc` → `setup` (format check · lint
+        check · typecheck; no tests, YAGNI, or invented smoke exports); `impl` / `refactor` → `code`
+        (format check · lint check · typecheck · yagni); `test` →
         `test` (format · typecheck · test:coverage — no lint/yagni); a `fix` phase takes the profile of
-        the kind it repairs. The full set (`full`) runs once at the end (orchestrator close, not here). For
-        `impl` / `refactor` / `test` phases also run `npx gennady lint --spec=<this module's spec> <Target Files>`
+        the kind it repairs. The full set (`full`) runs once at the end (orchestrator close, not here).
+        If this phase authored production `.ts`/`.tsx`, regardless of phase kind, also run
+        `npx gennady lint --spec=<owning module spec> <exact production Target Files>`
+        immediately after authoring and again here. Do not pass tool-config or vendor-generated files;
+        `export default <expr>` is module wiring and is not a DbC entity.
         — closed-world inventory sync (`ERR_CLI_LINT_INVENTORY_UNDECLARED`) + cast safety
         (`ERR_CLI_LINT_UNSAFE_CAST`). An exported entity not in the inventory is drift
         (`AX_CLOSED_WORLD_INVENTORY`): remove it, or — if genuinely needed — log an `intro <name> ← <reason>`
