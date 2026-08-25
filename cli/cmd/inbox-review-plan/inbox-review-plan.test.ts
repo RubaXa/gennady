@@ -40,8 +40,10 @@ function runValidate(dir: string, stage?: string) {
 // #region START_SCAFFOLD_TEST_HELPERS — tiny git-repo fixture builders for --scaffold tests
 
 function makeGitRepo(prefix: string): string {
-  const dir = join(process.cwd(), `.tmp-review-plan-${prefix}-${Date.now()}`);
-  mkdirSync(dir, { recursive: true });
+  // os.tmpdir + mkdtemp (unique, atomic) — NEVER process.cwd(): a `.tmp-*` git repo written into the
+  // working tree is committed by accident AND, appearing/vanishing mid-run, corrupts any parallel
+  // test that walks the tree (e.g. lint's collectTicketRefs) under c8's concurrent runner.
+  const dir = mkdtempSync(join(tmpdir(), `review-plan-${prefix}-`));
   execFileSync('git', ['-C', dir, 'init'], { stdio: 'ignore' });
   execFileSync('git', ['-C', dir, 'config', 'user.email', 'test@test.com'], { stdio: 'ignore' });
   execFileSync('git', ['-C', dir, 'config', 'user.name', 'Test'], { stdio: 'ignore' });
@@ -248,10 +250,10 @@ describe('inbox-review-plan', () => {
   });
 
   it('security file path detected in classification', () => {
-    // Create a temp git repo with a security-named file and verify classification
-    const tmpDir = join(process.cwd(), '.tmp-review-plan-test-' + Date.now());
+    // Create a temp git repo with a security-named file and verify classification.
+    // os.tmpdir, not process.cwd() — see makeGitRepo's note on why a tree-local `.tmp-*` repo breaks.
+    const tmpDir = mkdtempSync(join(tmpdir(), 'review-plan-test-'));
     try {
-      mkdirSync(tmpDir, { recursive: true });
       execFileSync('git', ['-C', tmpDir, 'init'], { stdio: 'ignore' });
       execFileSync('git', ['-C', tmpDir, 'config', 'user.email', 'test@test.com'], {
         stdio: 'ignore',
