@@ -75,7 +75,6 @@ Commands:
   vcs-worktree   Prepare read-only git worktree for code review
   vcs-reply      Post replies to GitLab MR discussions
   vcs-approve    Approve GitLab MR via API
-  alt-opinion    Get alternative opinions from AI models
   agents-rules   Print agent instructions for orient command
 
 Examples:

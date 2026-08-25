@@ -298,7 +298,7 @@ ai/skills/<name>/
 - **Status:** active
 - **Recorded:** operator request, полное удаление скилла-обёртки `alt-opinion`
 - **Was:** 14 навыков, включая `alt-opinion` (CLI-delegation модуль, обёртка над `npx gennady alt-opinion`).
-- **Now:** 13 навыков. `ai/skills/alt-opinion/` и деплой-копия `.claude/skills/alt-opinion/` удалены; модульная спека `specs/ai-skills/alt-opinion/` удалена. CLI-команда `gennady alt-opinion` (`cli/cmd/alt-opinion/`) НЕ затронута — она вне скоупа этой спеки (принадлежит скоупу `cli`) и продолжает существовать как самостоятельная команда.
+- **Now:** 13 навыков. `ai/skills/alt-opinion/` и деплой-копия `.claude/skills/alt-opinion/` удалены; модульная спека `specs/ai-skills/alt-opinion/` удалена. На момент этого решения CLI-команда `gennady alt-opinion` (`cli/cmd/alt-opinion/`) не затрагивалась (вне скоупа этой спеки). **Обновление:** позднее сама CLI-команда тоже удалена целиком — см. D-021 в [`specs/cli/cli.spec.md`](../cli/cli.spec.md); команды `gennady alt-opinion` больше нет.
 - **Why:** Скилл-обёртка признана избыточной по решению оператора; CLI-команда остаётся доступной напрямую через `npx gennady alt-opinion` без навыка-посредника.
 - **Risk accepted:** Отсутствует — паттерн CLI-delegation остаётся представлен `sdd-check`, четвёртый паттерн не требуется.
 

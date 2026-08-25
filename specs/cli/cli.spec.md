@@ -93,96 +93,6 @@ $ gennady lint --max-words 15 --max-region-comments 3 --max-invariants 5
 
 Файл читается один раз, контент передаётся во все три проверки. Сообщения об ошибках содержат: что сломано → указание на место → конкретное действие по исправлению. При передаче директорий — рекурсивный обход с фильтрацией по поддерживаемым расширениям (`.ts`, `.tsx`). Ошибки резолвинга целей (ENOENT, EACCES) выводятся в stderr и не прерывают линтинг остальных файлов.
 
-### alt-opinion DX
-
-```bash
-# --- без синтеза: stdin, 2 модели → все мнения ---
-$ cat specs/cli/cli.spec.md | gennady alt-opinion \
-    --model="openrouter/anthropic/claude-3.5-sonnet" \
-    --model="llmproxy/deepseek-v4-pro"
-
-<!--START_ALT_OPINION_openrouter-claude-3.5-sonnet-->
-### Мнение Claude 3.5 Sonnet
-...
-<!--END_ALT_OPINION_openrouter-claude-3.5-sonnet-->
-
-<!--START_ALT_OPINION_llmproxy-deepseek-v4-pro-->
-### Мнение DeepSeek V4 Pro
-...
-<!--END_ALT_OPINION_llmproxy-deepseek-v4-pro-->
-
-# exit 0
-
-# --- с синтезом: ТОЛЬКО синтез ---
-$ gennady alt-opinion --file=task.md \
-    --model="llmproxy/deepseek-v4-pro" \
-    --model="openrouter/anthropic/claude-3.5-sonnet" \
-    --synthModel="llmproxy/deepseek-v4-pro"
-
-<!--START_ALT_OPINION_SYNTH-->
-### Синтез
-...
-<!--END_ALT_OPINION_SYNTH-->
-
-# exit 0
-
-# --- одна модель (минимальный вызов) ---
-$ gennady alt-opinion --file=task.md --model="llmproxy/deepseek-v4-pro"
-
-# exit 0
-
-# --- custom prompts ---
-$ gennady alt-opinion --file=task.md \
-    --model="openrouter/anthropic/claude-3.5-sonnet" \
-    --model="llmproxy/deepseek-v4-pro" \
-    --modelPrompt="./prompts/critic.prompt.md"
-
-# exit 0
-
-# --- per-model prompt override ---
-$ gennady alt-opinion --file=task.md \
-    --model="openrouter/anthropic/claude-3.5-sonnet::./prompts/architect.prompt.md" \
-    --model="llmproxy/deepseek-v4-pro::./prompts/sec-auditor.prompt.md"
-
-# exit 0
-
-# --- degradation: модель недоступна ---
-$ gennady alt-opinion --file=task.md \
-    --model="llmproxy/deepseek-v4-pro" \
-    --model="openrouter/nonexistent-model"
-
-<!--START_ALT_OPINION_llmproxy-deepseek-v4-pro-->
-...
-<!--END_ALT_OPINION_llmproxy-deepseek-v4-pro-->
-
-<!--START_ALT_OPINION_openrouter-nonexistent-model-->
-Model error: timeout after 5m
-<!--END_ALT_OPINION_openrouter-nonexistent-model-->
-
-# exit 0 (одна модель ответила успешно, без --strict)
-
-# --- strict mode: любая ошибка → exit 1 ---
-$ gennady alt-opinion --file=task.md --strict \
-    --model="llmproxy/deepseek-v4-pro" \
-    --model="openrouter/nonexistent-model"
-
-# exit 1
-
-# --- ошибка: нет API-ключа ---
-$ gennady alt-opinion --file=task.md --model="llmproxy/deepseek-v4-pro"
-Error: GENNADY_LLM_PROXY_API_KEY is not set
-
-# exit 1
-
-# --- ошибка: и stdin, и --file ---
-$ cat task.md | gennady alt-opinion --file=task.md --model="llmproxy/dsv4"
-Error: --file and stdin are mutually exclusive
-
-# exit 1
-```
-
-Модели опрашиваются параллельно (`Promise.allSettled`). При отказе модели — описание ошибки в её блоке, остальные продолжаются. `--synthModel` → вывод только синтеза (без индивидуальных мнений).
-
 ### 3.1 Update Check DX
 
 ```bash
@@ -1130,38 +1040,6 @@ $ gennady vcs-approve                                          # merge conflict
 | FR-12               | ESLint-формат: `file:line:col: severity: code: message`. Каждое сообщение: описание проблемы + конкретное действие                               |
 | FR-13               | Exit code 0 при отсутствии ошибок, 1 при наличии                                                                                                 |
 
-### 4.1.2 alt-opinion Functional Requirements
-
-| ID             | Требование                                                                                                                                           |
-| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Вход**       |                                                                                                                                                      |
-| FR-ALT-01      | Принимать stdin ИЛИ `--file=<path>`. Если передано и то и другое — ошибка                                                                            |
-| FR-ALT-02      | Если stdin — терминал (TTY) и `--file` не указан — ошибка с подсказкой                                                                               |
-| **Модели**     |                                                                                                                                                      |
-| FR-ALT-03      | `--model="{provider}/{model}"` — повторяемый, минимум 1. Провайдер обязателен: `llmproxy` или `openrouter`                                           |
-| FR-ALT-04      | `--synthModel="{provider}/{model}"` — опционально. Если не указан — вывод всех мнений; если указан — вывод только синтеза                            |
-| FR-ALT-05      | При отсутствии API-ключа для провайдера — ошибка с указанием имени env-переменной: `GENNADY_LLM_PROXY_API_KEY`, `GENNADY_OPENROUTER_API_KEY`         |
-| **Промпты**    |                                                                                                                                                      |
-| FR-ALT-06      | `--modelPrompt=<path>` — общий промпт для всех моделей (читается из файла). `--synthPrompt=<path>` — промпт для синтеза                              |
-| FR-ALT-07      | Per-model override: `--model="{provider}/{model}::{path}"` — индивидуальный промпт для конкретной модели                                             |
-| FR-ALT-08      | Если промпт не указан — используется дефолтный из `cli/cmd/alt-opinion/prompts/`                                                                     |
-| FR-ALT-09      | Дефолтный промпт мнения: «Ты — эксперт... Верни независимое, критическое мнение...»                                                                  |
-| FR-ALT-10      | Дефолтный промпт синтеза: «Ниже — несколько независимых мнений... Синтезируй их в одно консолидированное мнение...»                                  |
-| **Выполнение** |                                                                                                                                                      |
-| FR-ALT-11      | Модели опрашиваются параллельно через `Promise.allSettled`; синтез — после сбора всех мнений                                                         |
-| FR-ALT-12      | Таймаут на вызов модели — 5 минут (через `AbortController`). При таймауте / ошибке — описание в блоке модели, остальные продолжаются                 |
-| FR-ALT-13      | Шаблон запроса к модели: `# GOAL:\n<prompt>\n\n# CONTEXT:\n<контент>`                                                                                |
-| FR-ALT-14      | `--strict` флаг: exit 1 при любой ошибке модели. Без `--strict`: exit 1 только если все модели упали                                                 |
-| **Вывод**      |                                                                                                                                                      |
-| FR-ALT-15      | Markdown с блоками `<!--START_ALT_OPINION_{PROVIDER}-{MODEL}-->...<!--END_ALT_OPINION_{PROVIDER}-{MODEL}-->`                                         |
-| FR-ALT-16      | При синтезе — блок `<!--START_ALT_OPINION_SYNTH-->...<!--END_ALT_OPINION_SYNTH-->` (без индивидуальных мнений)                                       |
-| FR-ALT-17      | Порядок блоков в выводе соответствует порядку `--model` в CLI                                                                                        |
-| **Телеметрия** |                                                                                                                                                      |
-| FR-ALT-18      | Каждый opinion-блок (включая синтез) завершается строкой `<!--TELEMETRY wall=<N>ms tokens=<prompt>/<completion> reason=<finishReason>-->`            |
-| FR-ALT-19      | `AltOpinionModelPort.generate()` возвращает `{ content: string; usage?: { promptTokens: number; completionTokens: number }; finishReason?: string }` |
-| FR-ALT-20      | Если порт не вернул `usage` — строка телеметрии содержит только `wall` и `reason`                                                                    |
-| FR-ALT-21      | `wall` — реальное время вызова модели в ms (через `performance.now()` до/после `port.generate()`)                                                    |
-
 ### 4.1.3 Update Check Functional Requirements
 
 | ID               | Требование                                                                                                                                |
@@ -1549,12 +1427,8 @@ $ gennady vcs-approve                                          # merge conflict
 - **NFC-01**: Файл читается один раз, контент передаётся во все три проверки
 - **NFC-02**: Anchor-парсер — чистая функция `(content: string) → LintError[]`, без внешних зависимостей
 - **NFC-03**: Коды ошибок — стабильные строковые константы c префиксом `ERR_CLI_LINT_`
-- **NFC-04**: Node.js 22+, TypeScript strict mode. `lint` и большинство команд — zero runtime dependencies. `alt-opinion` использует AI SDK (`ai` + `@ai-sdk/openai`) — бандлится Vite
+- **NFC-04**: Node.js 22+, TypeScript strict mode. `lint` и большинство команд — zero runtime dependencies
 - **NFC-05**: Каждое сообщение об ошибке содержит: что сломано → указание на место → конкретное действие. Формат: `<description>. <imperative action>.`
-- **NFC-06 (alt-opinion)**: AI-вызовы абстрагированы за DI-портом `AltOpinionModelPort` — позволяет мокать SDK в тестах без monkey-patching
-- **NFC-07 (alt-opinion)**: `run(rawArgs, deps)` отделён от self-executing блока — поддержка инжекции stdin/stdout в тестах
-- **NFC-08 (alt-opinion)**: Санитизация входного контента — экранирование `# CONTEXT:` и anchor-маркеров для предотвращения prompt injection
-- **NFC-09 (alt-opinion)**: Телеметрия опциональна — если `port.generate()` не вернул `usage`, блок содержит только `wall` и `reason`. Отсутствие телеметрии у одной модели не ломает вывод остальных
 - **NFC-10 (update-check)**: Zero runtime dependencies — только Node.js built-in модули (`child_process`, `https`, `fs`, `os`, `path`)
 - **NFC-11 (update-check)**: Проверка реестра — чистый HTTPS-запрос без npm CLI (не зависит от наличия `npm` в системе)
 - **NFC-12 (update-check)**: Кеш хранится в платформо-зависимой директории: `~/Library/Preferences/gennady/` (macOS), `~/.config/gennady/` (Linux), `%APPDATA%/gennady/` (Windows)
@@ -1587,17 +1461,6 @@ $ gennady vcs-approve                                          # merge conflict
 - Diff-стратегия (только full-file в v1)
 - `--watch` режим
 - Валидация содержимого `@file:` / `@consumers:` (только наличие)
-
-**alt-opinion (v2):**
-
-- Streaming (потоковый вывод)
-- `--dry-run` / `--prompt-only` (показать промпт без вызова)
-- `--out=<path>` / `--append` (запись в файл)
-- `--temperature`, `--max-tokens`, `--seed` (параметры генерации)
-- Кеширование ответов
-- История / лог запросов
-- Автоматический retry / fallback на другую модель
-- Concurrency limit (всегда параллельно)
 
 **update-check (v1):**
 
@@ -1645,7 +1508,6 @@ $ gennady vcs-approve                                          # merge conflict
 
 **e2e (v1):**
 
-- E2E для `alt-opinion` — требует API-ключей (`GENNADY_LLM_PROXY_API_KEY`), сетевое взаимодействие, нестабильное время ответа
 - E2E для `cat` — требует vcs-client (GitLab/GitHub), сетевое взаимодействие
 - E2E для `agents-rules` — команда проверяет наличие `README.md` в пакете, покрывается e2e-тестом (exit 0 + stdout содержит `npx gennady orient`)
 - E2E для `update-check` — требует сетевого доступа к npm registry
@@ -1690,16 +1552,6 @@ $ gennady vcs-approve                                          # merge conflict
 | Autofix (dbc)                   | `real-runtime`               |
 | Autofix (anchor, header)        | `not-implemented` (deferred) |
 | Поддержка других языков         | `not-implemented` (deferred) |
-
-**alt-opinion:**
-
-| Capability                 | Posture                      |
-| -------------------------- | ---------------------------- |
-| Чтение stdin / файлов (FS) | `real-runtime`               |
-| HTTP-вызовы к AI API       | `real-runtime`               |
-| Streaming вывод            | `not-implemented` (deferred) |
-| Кеширование ответов        | `not-implemented` (deferred) |
-| `--dry-run` / `--verbose`  | `not-implemented` (deferred) |
 
 **update-check:**
 
@@ -1835,36 +1687,6 @@ cli/cmd/lint/
 2. Адаптер к dbc: `dbc-contract.check` создаёт `DbcTsLinter` и вызывает `lint()` / `lintAndFix()`.
 3. Формат ошибок: единый `LintError` — все 3 проверки возвращают один тип.
 4. Git-интеграция: сбор списка файлов через `git diff --staged --name-only` и `git ls-files --others --exclude-standard`.
-
-### 5.2 alt-opinion
-
-```
-
-cli/cmd/alt-opinion/
-├── index.ts # import './alt-opinion.cmd.ts'
-├── alt-opinion.cmd.ts # CLI-обвязка: парсинг args, чтение stdin/--file, вызов runner, вывод
-├── alt-opinion.types.ts # AltOpinionModel, AltOpinionResult, AltOpinionReport
-├── alt-opinion-runner.ts # Ядро: параллельный опрос моделей + опциональный синтез (Promise.allSettled)
-├── alt-opinion-parser.ts # Свой парсер аргументов (:: синтаксис не поддерживается parseArgs)
-├── prompts/
-│ ├── default-opinion.prompt.md # Дефолтный промпт мнения
-│ └── default-synth.prompt.md # Дефолтный промпт синтеза
-└── **tests**/
-├── alt-opinion-parser.test.ts # Unit: парсер (12+ кейсов)
-├── alt-opinion-runner.test.ts # Unit: runner с моками AI SDK через DI-порт
-└── alt-opinion.cmd.test.ts # Integration: CLI-обвязка
-
-```
-
-**Ключевые решения:**
-
-1. **Свой парсер** (`alt-opinion-parser.ts`): `--model="{provider}/{model}::{path}"` не влезает в `parseArgs` — специализированный парсер только для этой команды.
-2. **AI SDK напрямую**: используется `ai` + `@ai-sdk/openai` (через `createOpenAI` с custom baseURL для llmproxy/OpenRouter). Не через легаси `services/ai-client`.
-3. **DI-порт `AltOpinionModelPort`**: абстракция для AI-вызовов, инжектится в `runner`. Позволяет мокать SDK в тестах без monkey-patching.
-4. **`run(rawArgs, deps)` отделён от `process.exit`**: self-executing блок только при прямом запуске (`import.meta.url`). В тестах вызывается `run()` с инжектированными stdin/stdout.
-5. **`Promise.allSettled`**: модели опрашиваются параллельно, ошибка одной не прерывает остальные.
-6. **Логирование через `#logger`**: старт, прогресс (модель → ответ), ошибки, таймауты. Уровни: `info` для нормального флоу, `warn` для деградации, `error` для провала.
-7. **Регистрация в `cli/gennady.ts`**: добавить `case 'alt-opinion'` в switch + обновить help и таблицу в `cli/AGENTS.md`.
 
 ### 5.3 Rejected Alternatives
 
@@ -2023,9 +1845,8 @@ cli/cmd/sync-skills/ # новый модуль
 ├── sync-skills-formatter.test.ts
 └── sync-skills.cmd.test.ts
 
-ai/skills/ # 14 скилов (физические артефакты)
+ai/skills/ # 13 скилов (физические артефакты)
 ├── agent-inbox/SKILL.md
-├── alt-opinion/ # SKILL.md + opinion.prompt.md + synth.prompt.md
 ├── opencode-get-session/SKILL.md
 ├── prd-interview/ # SKILL.md + PRD_TEMPLATE.md
 ├── sdd/SKILL.md # единая дверь-роутер
@@ -2436,8 +2257,8 @@ cli/cmd/review/
 - **Status:** active · **Supersedes:** D-003 (архитектура alt-opinion), FR-ALT-\*, NFC-06/07/08/09, §5.2 (file structure)
 - **Recorded:** operator request — тотальная чистка v2, «только необходимое»
 - **Why:** `alt-opinion` (мульти-модельные мнения от AI-моделей с синтезом) признана нерабочей/незадействованной конструкцией и удалена целиком. Снято: код `cli/cmd/alt-opinion/` (runner, cmd, types, parser, prompts, tests), модульная спека `specs/cli/alt-opinion/`, регистрация в `cli/gennady.ts` (help + dispatch), строки в `cli/cmd/help/help.cmd.ts`, `cli/AGENTS.md`, `cli/cmd/README.md`, портал (`specs/README.md`), live-упоминания в этой спеке (список команд, sub-module pointer, module graph). Побочно устранён нестабильный `wallMs >= delay` тест, флейкавший главный гейт под c8.
-- **Оставлено как история (append-only):** D-003 и task-таблицы §6, где alt-opinion фигурирует как построечная запись — они фиксируют, что было сделано, и не переписываются. Мёртвые FR-ALT-\* / NFC-06..09 / §5.2 помечены superseded здесь; их окончательная вычистка из тела спеки — задача `sdd-reconcile` (from-code), чтобы не рвать requirement-id консистентность вручную.
-- **Risk accepted:** До прогона `sdd-reconcile` тело спеки временно содержит описания удалённой команды под явной пометкой superseded — дрейф зафиксирован, не молчаливый.
+- **Оставлено как история (append-only):** D-003, D-016 и task-таблицы §6, где alt-opinion фигурирует как построечная запись — они фиксируют, что было сделано, и не переписываются. То же для строк-примеров паттерна («Pattern C — как alt-opinion»): они документируют происхождение паттерна, а не живую команду.
+- **Update (RC-доводка):** мёртвые live-описания тела вычищены вручную — §4.1 alt-opinion DX, §4.1.2 FR-ALT-\*, §5.2 (file structure), NFC-06..09, capability-таблица и Out-of-Scope блоки alt-opinion, строка вывода `help`, README-секция. Requirement-id консистентность сохранена (удалены целые superseded-блоки, не отдельные строки внутри живых требований).
 
 ### 5.16 vcs-context-resolver (shared)
 

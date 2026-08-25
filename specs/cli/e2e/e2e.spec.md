@@ -18,7 +18,7 @@ E2E-тестирование CLI-команд через локальный ар
 
 Внутренний модуль — не экспортирует публичное API. Единственная точка входа — `npm run test:e2e`.
 
-**Out-of-Scope (v1):** E2E для `alt-opinion` (API-ключи), `cat` (сеть), `update-check` (сеть), `sync-skills` orphan-удаление (deferred). CI-интеграция, параллельное выполнение.
+**Out-of-Scope (v1):** E2E для `cat` (сеть), `update-check` (сеть), `sync-skills` orphan-удаление (deferred). CI-интеграция, параллельное выполнение.
 
 <!--/SECTION:MODULE_VISION-->
 
