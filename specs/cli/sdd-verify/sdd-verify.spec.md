@@ -118,23 +118,23 @@ $ npx gennady sdd-verify
 
 ## 3. Entity Inventory (Closed-World)
 
-| Name                   | Type         | Purpose                                                                                                                                    |
-| ---------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `run`                  | Command      | Прогон gate текущего профиля в каноническом порядке лестницы (RUN-ALL с halt на основании), тайминг, вердикт                               |
-| `defaultRunner`        | Utility      | Раннер по умолчанию через `spawnSync` (без shell), exit + output                                                                           |
-| `verdict`              | Utility      | Свёртка результатов: кратко на успехе, детали упавших, halt-строка при остановке лестницы, дайджест обрезанных «not ok»-строк              |
-| `GATES`                | Value Object | Фикс-последовательность (каноническая лестница): type-check · test · test:coverage · format:fix · lint:fix · lint · format · yagni         |
-| `Gate`                 | Value Object | name + mutates + `haltsOnFailure` (только type-check/test/test:coverage) + `via?` (`'npm'` default \| `'gennady'` — только yagni, D-SV008) |
-| `GateRunResult`        | Value Object | exitCode + output                                                                                                                          |
-| `GateResult`           | Value Object | name · exitCode · output · durationMs · `status: 'pass' \| 'fail' \| 'skipped' \| 'missing'` · mutates · ranCommand                        |
-| `REQUIRED_PROFILE_GATES` | Value Object | Ступени, которые профиль отказывается пропускать: `setup` — ни одной; `code` — type-check+test; `test`/`full` — type-check+test:coverage  |
-| `GateRunner`           | Type         | `(command, args) => GateRunResult` — инъектируемый                                                                                         |
-| `VerifyOutcome`        | Type         | `{ok:true,text}` либо `{ok:false,code,exitCode,message}`                                                                                   |
-| `Profile`              | Type         | Профиль гейтов: `setup` \| `code` \| `test` \| `full` (D-SV006)                                                                            |
-| `gatesFor`             | Utility      | Гейты профиля в каноническом порядке GATES (подмножество)                                                                                  |
-| `isProfile`            | Utility      | Type-guard токена профиля из CLI-ввода                                                                                                     |
-| `resolveNpmScriptName` | Utility      | Резолв имени npm-скрипта для gate; не найден → gate `skipped` (для `type-check` — alias `typecheck`, D-SV009)                              |
-| `tailCap`              | Utility      | Обрезка output упавшего gate по лимиту строк (120) и байт (16KB); восстанавливает до 10 потерянных «not ok»-строк в отдельный дайджест     |
+| Name                     | Type         | Purpose                                                                                                                                    |
+| ------------------------ | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `run`                    | Command      | Прогон gate текущего профиля в каноническом порядке лестницы (RUN-ALL с halt на основании), тайминг, вердикт                               |
+| `defaultRunner`          | Utility      | Раннер по умолчанию через `spawnSync` (без shell), exit + output                                                                           |
+| `verdict`                | Utility      | Свёртка результатов: кратко на успехе, детали упавших, halt-строка при остановке лестницы, дайджест обрезанных «not ok»-строк              |
+| `GATES`                  | Value Object | Фикс-последовательность (каноническая лестница): type-check · test · test:coverage · format:fix · lint:fix · lint · format · yagni         |
+| `Gate`                   | Value Object | name + mutates + `haltsOnFailure` (только type-check/test/test:coverage) + `via?` (`'npm'` default \| `'gennady'` — только yagni, D-SV008) |
+| `GateRunResult`          | Value Object | exitCode + output                                                                                                                          |
+| `GateResult`             | Value Object | name · exitCode · output · durationMs · `status: 'pass' \| 'fail' \| 'skipped' \| 'missing'` · mutates · ranCommand                        |
+| `REQUIRED_PROFILE_GATES` | Value Object | Ступени, которые профиль отказывается пропускать: `setup` — ни одной; `code` — type-check+test; `test`/`full` — type-check+test:coverage   |
+| `GateRunner`             | Type         | `(command, args) => GateRunResult` — инъектируемый                                                                                         |
+| `VerifyOutcome`          | Type         | `{ok:true,text}` либо `{ok:false,code,exitCode,message}`                                                                                   |
+| `Profile`                | Type         | Профиль гейтов: `setup` \| `code` \| `test` \| `full` (D-SV006)                                                                            |
+| `gatesFor`               | Utility      | Гейты профиля в каноническом порядке GATES (подмножество)                                                                                  |
+| `isProfile`              | Utility      | Type-guard токена профиля из CLI-ввода                                                                                                     |
+| `resolveNpmScriptName`   | Utility      | Резолв имени npm-скрипта для gate; не найден → gate `skipped` (для `type-check` — alias `typecheck`, D-SV009)                              |
+| `tailCap`                | Utility      | Обрезка output упавшего gate по лимиту строк (120) и байт (16KB); восстанавливает до 10 потерянных «not ok»-строк в отдельный дайджест     |
 
 <!--/SECTION:ENTITY_INVENTORY-->
 
@@ -177,7 +177,7 @@ $ npx gennady sdd-verify
 Профили — фикс-наборы в каноническом порядке лестницы, выбор по ЯВНОМУ флагу (не обнаружение):
 
 - `setup` — `type-check · test · format:fix · lint:fix · lint · format` (первичная настройка проекта; тот же состав, что `code`)
-- `code` — `type-check · test · format:fix · lint:fix · lint · format` (фазы кода: impl/refactor/config/doc; плоский `test` вместо `test:coverage`; `format:fix`/`lint:fix` чинят перед read-only `lint`/`format`; `yagni` НЕ входит — вызывается отдельно оркестратором на закрытии группы)
+- `code` — `type-check · test · format:fix · lint:fix · lint · format` (фазы кода: impl/refactor — `config`/`doc` идут по `setup`, как и `bootstrap`, см. STEP_5 фазового протокола; плоский `test` вместо `test:coverage`; `format:fix`/`lint:fix` чинят перед read-only `lint`/`format`; `yagni` НЕ входит — вызывается отдельно оркестратором на закрытии группы)
 - `test` — `type-check · test:coverage · format:fix · format` (фаза тестов; покрытие ИЗМЕРЯЕТСЯ, порог здесь не проверяется — это забота `testcov --min`/audit; `lint`/`lint:fix`/`yagni` не гоняются — фаза тестов не трогает прод-код)
 - `full` — `type-check · test:coverage · lint · format · yagni` (финал/group-close, все фазы закрыты; **default**; единственный профиль без мутирующих ступеней — исходники не переписываются, финальный вердикт не трогает то, что судит. Отчёт покрытия в `coverage/` при этом пишется — «без мутаций» здесь про исходный код, не про артефакты)
 

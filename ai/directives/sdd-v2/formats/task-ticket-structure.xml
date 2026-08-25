@@ -90,11 +90,13 @@
 
   <!--SECTION:VERIFICATION-->
   ## Verification
+  Гейт фазы — `npx gennady sdd-verify --profile <profile>` — выполняется на STEP_5; в таблицу не дублируется.
+
   | Command | Required by |
   |---------|-------------|
   | <resolved invocation> | <rule-id>, <rule-id> |
 
-  <!-- First row: this ticket's own ladder line, npx gennady sdd-verify --profile <phase kind>. Further rows: one per additional infra alias (e.g. coverage-command). Phase-subagent runs only rows whose Required-by overlaps its phase Rules. -->
+  <!-- NO sdd-verify row: STEP_5 runs the ladder itself, so a row here would run it twice. Rows: one per additional infra alias (e.g. coverage-command); none → a single | — | — | row. Phase-subagent runs only rows whose Required-by overlaps its phase Rules. -->
 
   - **Task-specific Completion additions:** <list or "none beyond project baseline">
   <!--/SECTION:VERIFICATION-->

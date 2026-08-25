@@ -112,9 +112,10 @@
   `check-command` and `fix-command` are wrappers for humans, CI, and the pre-commit hook — with the
   runtime setup rule (`nodejs-npm-setup` or equivalent) active they resolve to
   `npx gennady sdd-verify --profile full` and `npm run format:fix && npm run lint:fix`. Task tickets
-  do NOT cite them: a ticket's §Verification first row is its own phase ladder line,
-  `npx gennady sdd-verify --profile <phase kind>`; further rows come from additional aliases here
-  (e.g. `coverage-command`).
+  do NOT cite them, and they do NOT put the phase ladder line in §Verification either: STEP_5 of the
+  phase protocol already runs `npx gennady sdd-verify --profile <phase kind>` itself, so a row for it
+  would make every phase run the whole ladder twice. §Verification carries ONLY the extra commands
+  beyond that gate — one row per additional alias here (e.g. `coverage-command`).
 
   [Инвариант: команды образуют конвейер, а не список — артефакты одной команды не должны ронять
   другую (типичный случай: `coverage/`, `dist/` попадают под lint/format и генерируют ложные findings).

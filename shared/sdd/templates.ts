@@ -647,9 +647,10 @@ gate nobody can run.
 \`check-command\` and \`fix-command\` are wrappers for humans, CI, and the pre-commit hook — with the
 runtime setup rule (\`nodejs-npm-setup\` or equivalent) active they resolve to
 \`npx gennady sdd-verify --profile full\` and \`npm run format:fix && npm run lint:fix\`. Task tickets
-do NOT cite them: a ticket's §Verification first row is its own phase ladder line,
-\`npx gennady sdd-verify --profile <phase kind>\`; further rows come from additional aliases here
-(e.g. \`coverage-command\`).
+do NOT cite them, and they do NOT put the phase ladder line in §Verification either: STEP_5 of the
+phase protocol already runs \`npx gennady sdd-verify --profile <phase kind>\` itself, so a row for it
+would make every phase run the whole ladder twice. §Verification carries ONLY the extra commands
+beyond that gate — one row per additional alias here (e.g. \`coverage-command\`).
 
 [Инвариант: команды образуют конвейер, а не список — артефакты одной команды не должны ронять
 другую (типичный случай: \`coverage/\`, \`dist/\` попадают под lint/format и генерируют ложные findings).
@@ -1297,11 +1298,13 @@ use-case → \`[<ACRONYM>-REQ-N]\` → vision chain the operator reviews at scaf
 
 <!--SECTION:VERIFICATION-->
 ## Verification
+Гейт фазы — \`npx gennady sdd-verify --profile <profile>\` — выполняется на STEP_5; в таблицу не дублируется.
+
 | Command | Required by |
 |---------|-------------|
 | <resolved invocation> | <rule-id>, <rule-id> |
 
-<!-- First row: this ticket's own ladder line, npx gennady sdd-verify --profile <phase kind>. Further rows: one per additional infra alias (e.g. coverage-command). Phase-subagent runs only rows whose Required-by overlaps its phase Rules. -->
+<!-- NO sdd-verify row: STEP_5 runs the ladder itself, so a row here would run it twice. Rows: one per additional infra alias (e.g. coverage-command); none → a single | — | — | row. Phase-subagent runs only rows whose Required-by overlaps its phase Rules. -->
 
 - **Task-specific Completion additions:** <list or "none beyond project baseline">
 <!--/SECTION:VERIFICATION-->
@@ -1368,7 +1371,7 @@ const TASK_SECTIONS: SectionManifestEntry[] = [
     required: true,
     loadBearing: false,
     fold: false,
-    fill: 'Command/Required-by table — first row the phase ladder line (sdd-verify --profile <kind>), then one row per extra infra alias — plus task-specific completion additions.',
+    fill: 'Command/Required-by table — the EXTRA commands beyond the phase gate only (one row per infra alias), never an sdd-verify row (STEP_5 runs the ladder itself); the gate is named in a line above the table — plus task-specific completion additions.',
   },
   {
     name: 'TEST_COVERAGE',
