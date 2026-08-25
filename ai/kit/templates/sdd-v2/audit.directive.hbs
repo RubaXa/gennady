@@ -199,14 +199,16 @@
         `npx gennady lint --spec=<spec path from AuditContext's spec/audit-group line> <every file from
         AuditContext lint-files>` (one argv item per printed file; zero files → skip lint and
         report `H_NOTHING_TO_AUDIT`, never broaden scope), and
-        `npx gennady testcov --min=<threshold> <production files from AuditContext lint-files, minus
-        `*.test.*`>` (coverage gate, SCOPED to the group's own code — threshold is the ticket's own §5
-        / `coverage-command` value; use 80 only when §5 names no threshold at all — never override a
-        threshold §5 DOES name). NOTE: no `--run` — `sdd-verify --profile full` above is the SINGLE
-        owner of the coverage run; it already wrote a FRESH `coverage/`, and this `testcov` only READS
-        that report to check the scoped threshold, so the suite is never run twice and nothing races
-        for `coverage/`. Run the gates SEQUENTIALLY all the same (deterministic output, one failure at
-        a time). Always re-derive the gate yourself rather than trust the worker's logged `ver` lines;
+        the coverage gate, run PER TICKET (not once for the whole group): for EACH ticket in the group
+        run `npx gennady testcov --min=<THAT ticket's threshold> <THAT ticket's own production Target
+        Files, minus `*.test.*`>`. Threshold and files come from the SAME ticket — its §5 /
+        `coverage-command` value (80 only when that ticket names none). This resolves the
+        different-thresholds-in-one-group case: never a single blended number over the whole group,
+        always each ticket's own bar over its own files. NOTE: no `--run` — `sdd-verify --profile full`
+        above is the SINGLE owner of the coverage run; it already wrote a FRESH `coverage/`, and every
+        `testcov` only READS that report, so the suite is never run twice and nothing races for
+        `coverage/`. Run the gates SEQUENTIALLY all the same (deterministic output, one failure at a
+        time). Always re-derive the gate yourself rather than trust the worker's logged `ver` lines;
         a gate that fails here, a `ver` logged for a command that does not actually pass, or coverage
         below the gate, is a `BLOCKER`.
         A gate command that does not execute at all is a DIFFERENT case from a gate that runs and reports
