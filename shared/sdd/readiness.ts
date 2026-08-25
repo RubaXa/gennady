@@ -7,7 +7,8 @@ import { readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
 /**
- * @purpose The exact npm script names a v2-ready Node project must declare.
+ * @purpose The exact npm script names a v2-ready project must declare — sdd-verify's seven bricks.
+ * check/fix are wrappers, not required.
  * @invariant Matched by exact name only — no fuzzy guessing. `type-check` also accepts `typecheck`
  * via SCRIPT_ALIASES — still exact-match against a closed set.
  */
@@ -15,10 +16,10 @@ export const REQUIRED_SCRIPTS = [
   'type-check',
   'test',
   'test:coverage',
-  'lint',
   'format',
-  'check',
-  'fix',
+  'format:fix',
+  'lint',
+  'lint:fix',
 ] as const;
 
 /**
@@ -52,8 +53,8 @@ export type ReadinessInput = {
 
 /**
  * @purpose Verdict of the readiness check.
- * @invariant `ready` is true only when package.json is present, every required script is declared,
- * `lint` reaches gennady, `format`/`lint`/`check` are all read-only, AND gennady is installed.
+ * @invariant `ready` requires package.json present, all required scripts declared, `lint` reaching
+ * gennady, `format`/`lint` read-only, `format:fix`/`lint:fix` mutating, and gennady installed.
  */
 export type ReadinessResult = {
   /** @purpose Whether a parseable package.json exists at the project root. */
@@ -66,8 +67,12 @@ export type ReadinessResult = {
   formatReadOnly: boolean;
   /** @purpose Whether `lint` and every npm script it reaches are free of known write/autofix commands. */
   lintReadOnly: boolean;
-  /** @purpose Whether `check` and every npm script it reaches are free of known write/autofix commands. */
+  /** @purpose Whether `check`, if present, and everything it reaches stay write-free — checked to catch a homemade mutating `check`, though `check` is optional. */
   checkReadOnly: boolean;
+  /** @purpose Whether `format:fix`, if present, or a script it reaches carries a mutating switch. */
+  formatFixMutates: boolean;
+  /** @purpose Whether `lint:fix`, if present, or a script it reaches carries a mutating switch. */
+  lintFixMutates: boolean;
   /** @purpose Whether the gennady CLI is installed for the project. */
   gennadyAvailable: boolean;
   /** @purpose True when the project is ready (package.json + all required present + gennady in lint + gennady installed). */
@@ -143,6 +148,22 @@ function isScriptReadOnly(scripts: Record<string, string>, entry: string): boole
   return bodies.every((body) => !WRITE_SWITCH_PATTERN.test(body));
 }
 
+/** @purpose Any of the three mutating switches a fixer script (`format:fix`, `lint:fix`) must carry. */
+const MUTATING_SWITCH_PATTERN = /\s--(?:write|fix|autofix)\b/;
+
+/**
+ * @purpose Detect whether `entry` or a script it transitively reaches mutates — a fixer with no
+ * --write/--fix/--autofix is a configuration error.
+ * @param scripts The package.json scripts map.
+ * @param entry The fixer script name (`format:fix` or `lint:fix`).
+ * @returns False when `entry` is absent, or when no reachable body carries a mutating switch.
+ */
+function isScriptMutating(scripts: Record<string, string>, entry: string): boolean {
+  const bodies = reachableScriptBodies(scripts, entry);
+  if (bodies.length === 0) return false;
+  return bodies.some((body) => MUTATING_SWITCH_PATTERN.test(body));
+}
+
 /**
  * @purpose True when a script body is real — present, non-empty, and not the npm-init placeholder.
  * @param body The script body from package.json `scripts`, or undefined when absent.
@@ -155,8 +176,8 @@ export function isRealScript(body: string | undefined): boolean {
 
 /**
  * @purpose Check the gathered tooling facts against the exact v2 readiness requirements.
- * @invariant Exact-name script match only; `lint` must reach gennady; `format`/`lint`/`check` must
- * be read-only (write variants live only in `*:fix`); gennady installed; package.json present.
+ * @invariant Exact-name match only; `lint` reaches gennady; `format`/`lint` read-only; `check`, if
+ * present, read-only too; `format:fix`/`lint:fix` mutate; gennady installed; package.json present.
  * @param input The gathered facts: package.json presence, the `scripts` map, and gennady install state.
  * @returns A ReadinessResult: presence flags, per-script presence, overall readiness, and the missing list.
  */
@@ -172,6 +193,8 @@ export function checkReadiness(input: ReadinessInput): ReadinessResult {
   const formatReadOnly = isScriptReadOnly(scripts, 'format');
   const lintReadOnly = isScriptReadOnly(scripts, 'lint');
   const checkReadOnly = isScriptReadOnly(scripts, 'check');
+  const formatFixMutates = isScriptMutating(scripts, 'format:fix');
+  const lintFixMutates = isScriptMutating(scripts, 'lint:fix');
 
   const missing: string[] = [];
   if (!packageJsonPresent) missing.push('package.json');
@@ -180,6 +203,10 @@ export function checkReadiness(input: ReadinessInput): ReadinessResult {
   if (scripts['format'] !== undefined && !formatReadOnly) missing.push('format(read-only)');
   if (scripts['lint'] !== undefined && !lintReadOnly) missing.push('lint(read-only)');
   if (scripts['check'] !== undefined && !checkReadOnly) missing.push('check(read-only)');
+  if (scripts['format:fix'] !== undefined && !formatFixMutates)
+    missing.push('format:fix(no --write/--fix/--autofix — a fixer that never mutates)');
+  if (scripts['lint:fix'] !== undefined && !lintFixMutates)
+    missing.push('lint:fix(no --write/--fix/--autofix — a fixer that never mutates)');
   if (!gennadyAvailable) missing.push('gennady (not installed)');
 
   const ready =
@@ -188,7 +215,9 @@ export function checkReadiness(input: ReadinessInput): ReadinessResult {
     lintHasGennady &&
     formatReadOnly &&
     lintReadOnly &&
-    checkReadOnly &&
+    (scripts['check'] === undefined || checkReadOnly) &&
+    formatFixMutates &&
+    lintFixMutates &&
     gennadyAvailable;
 
   return {
@@ -198,6 +227,8 @@ export function checkReadiness(input: ReadinessInput): ReadinessResult {
     formatReadOnly,
     lintReadOnly,
     checkReadOnly,
+    formatFixMutates,
+    lintFixMutates,
     gennadyAvailable,
     ready,
     missing,

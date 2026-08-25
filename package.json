@@ -72,8 +72,8 @@
     "format:fix": "prettier --write .",
     "lint": "npm run lint:contracts",
     "lint:fix": "tsx cli/gennady.ts lint --autofix cli/ shared/ services/",
-    "check": "npm run type-check && npm run test && npm run lint && npm run format",
-    "fix": "npm run format:fix && npm run lint:fix && npm run check",
+    "check": "tsx cli/gennady.ts sdd-verify --profile full",
+    "fix": "npm run format:fix && npm run lint:fix",
     "release": "release-it",
     "lint:contracts": "tsx cli/gennady.ts lint cli/ shared/ services/",
     "yagni": "tsx cli/gennady.ts yagni"

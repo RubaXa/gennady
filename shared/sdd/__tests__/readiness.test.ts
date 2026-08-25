@@ -29,18 +29,13 @@ const FULL = {
 };
 
 describe('REQUIRED_SCRIPTS', () => {
-  it("is the exact v2 set — canonical `type-check` (gennady's own convention)", () => {
+  it('is the exact v2 set — seven bricks sdd-verify composes; `check`/`fix` are wrappers, not bricks', () => {
     assert.deepStrictEqual(
       [...REQUIRED_SCRIPTS],
-      ['type-check', 'test', 'test:coverage', 'lint', 'format', 'check', 'fix']
+      ['type-check', 'test', 'test:coverage', 'format', 'format:fix', 'lint', 'lint:fix']
     );
-  });
-
-  it('rejects a check script that reaches formatter or ESLint write mode', () => {
-    const r = check({ ...FULL, check: 'npm run lint:fix && npm run type-check' });
-    assert.strictEqual(r.checkReadOnly, false);
-    assert.ok(r.missing.includes('check(read-only)'));
-    assert.strictEqual(r.ready, false);
+    assert.ok(!REQUIRED_SCRIPTS.includes('check' as (typeof REQUIRED_SCRIPTS)[number]));
+    assert.ok(!REQUIRED_SCRIPTS.includes('fix' as (typeof REQUIRED_SCRIPTS)[number]));
   });
 
   it('rejects a format script that itself writes (prettier --write)', () => {
@@ -63,6 +58,60 @@ describe('REQUIRED_SCRIPTS', () => {
     assert.ok(r.missing.includes('lint(read-only)'));
     assert.strictEqual(r.ready, false);
   });
+
+  it('still applies the read-only check to a homemade `check` script even though it is no longer required', () => {
+    const r = check({ ...FULL, check: 'npm run lint:fix && npm run type-check' });
+    assert.strictEqual(r.checkReadOnly, false);
+    assert.ok(r.missing.includes('check(read-only)'));
+    assert.strictEqual(r.ready, false);
+  });
+
+  it('stays ready with `check`/`fix` entirely absent — they are wrappers, not required bricks', () => {
+    const withoutWrappers = Object.fromEntries(
+      Object.entries(FULL).filter(([name]) => name !== 'check' && name !== 'fix')
+    );
+    const r = checkReadiness({
+      packageJsonPresent: true,
+      scripts: withoutWrappers,
+      gennadyAvailable: true,
+    });
+    assert.strictEqual(r.ready, true);
+    assert.deepStrictEqual(r.missing, []);
+  });
+
+  it('rejects a format:fix that never mutates (missing --write/--fix/--autofix)', () => {
+    const r = check({ ...FULL, 'format:fix': 'prettier --check .' });
+    assert.strictEqual(r.formatFixMutates, false);
+    assert.ok(
+      r.missing.includes('format:fix(no --write/--fix/--autofix — a fixer that never mutates)')
+    );
+    assert.strictEqual(r.ready, false);
+  });
+
+  it('rejects a lint:fix that never mutates (missing --write/--fix/--autofix)', () => {
+    const r = check({ ...FULL, 'lint:fix': 'eslint .' });
+    assert.strictEqual(r.lintFixMutates, false);
+    assert.ok(
+      r.missing.includes('lint:fix(no --write/--fix/--autofix — a fixer that never mutates)')
+    );
+    assert.strictEqual(r.ready, false);
+  });
+
+  it("accepts gennady's own `--autofix` as the mutating switch for lint:fix", () => {
+    const r = check({ ...FULL, 'lint:fix': 'gennady lint --autofix .' });
+    assert.strictEqual(r.lintFixMutates, true);
+    assert.strictEqual(r.ready, true);
+  });
+
+  it('a lint:fix that only reaches its mutating sibling transitively still counts as mutating', () => {
+    const r = check({
+      ...FULL,
+      'lint:fix': 'npm run lint:fix:inner',
+      'lint:fix:inner': 'eslint --fix .',
+    });
+    assert.strictEqual(r.lintFixMutates, true);
+    assert.strictEqual(r.ready, true);
+  });
 });
 
 describe('checkReadiness', () => {
@@ -74,6 +123,8 @@ describe('checkReadiness', () => {
     assert.strictEqual(r.formatReadOnly, true);
     assert.strictEqual(r.lintReadOnly, true);
     assert.strictEqual(r.checkReadOnly, true);
+    assert.strictEqual(r.formatFixMutates, true);
+    assert.strictEqual(r.lintFixMutates, true);
     assert.strictEqual(r.packageJsonPresent, true);
     assert.strictEqual(r.gennadyAvailable, true);
   });
