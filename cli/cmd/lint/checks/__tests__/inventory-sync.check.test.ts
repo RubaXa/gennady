@@ -115,19 +115,21 @@ describe('checkDeferral', () => {
     { taskId: 'TSK-17', status: '[ ] TODO', scope: null },
   ];
 
-  it('valid when the ticket exists, is open (TODO), and owns the spec scope', () => {
+  it('valid when the ticket exists, is ACTIVE (TODO), and owns the spec scope', () => {
     assert.deepStrictEqual(checkDeferral('TSK-10', tickets, 'cli'), {
       taskId: 'TSK-10',
       valid: true,
     });
   });
 
-  it('valid for an IN_PROGRESS owner — an active ticket can still build the entity', () => {
+  it('valid for an IN_PROGRESS owner — an active ticket is building the entity', () => {
     assert.strictEqual(checkDeferral('TSK-13', tickets, 'cli').valid, true);
   });
 
-  it('valid for a BLOCKED owner — blocked is open (the promise is deferred, not dead)', () => {
-    assert.strictEqual(checkDeferral('TSK-14', tickets, 'cli').valid, true);
+  it('invalid for a BLOCKED owner — stalled, not actively building (strict: only TODO/IN_PROGRESS)', () => {
+    const r = checkDeferral('TSK-14', tickets, 'cli');
+    assert.strictEqual(r.valid, false);
+    assert.match(r.reason ?? '', /не в активном статусе/);
   });
 
   it('invalid when the ticket does not exist', () => {
@@ -139,16 +141,16 @@ describe('checkDeferral', () => {
   it('invalid when the ticket is DONE — a completed ticket cannot build a future entity', () => {
     const r = checkDeferral('TSK-11', tickets, 'cli');
     assert.strictEqual(r.valid, false);
-    assert.match(r.reason ?? '', /терминальн/);
+    assert.match(r.reason ?? '', /не в активном статусе/);
   });
 
   it('invalid when the ticket is CANCELLED — it will never build the entity', () => {
     const r = checkDeferral('TSK-15', tickets, 'cli');
     assert.strictEqual(r.valid, false);
-    assert.match(r.reason ?? '', /терминальн/);
+    assert.match(r.reason ?? '', /не в активном статусе/);
   });
 
-  it('invalid when the status is unrecognized/empty — cannot confirm the ticket is open', () => {
+  it('invalid when the status is unrecognized/empty — cannot confirm the ticket is active', () => {
     const r = checkDeferral('TSK-16', tickets, 'cli');
     assert.strictEqual(r.valid, false);
     assert.match(r.reason ?? '', /не распознан статус/);

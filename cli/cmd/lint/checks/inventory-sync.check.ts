@@ -83,22 +83,23 @@ export type DeferredInventoryEntity = {
 export type DeferralCheck = {
   /** @purpose The cited Task-ID. */
   taskId: string;
-  /** @purpose True only when a real, OPEN, same-scope ticket owns the deferral (see `checkDeferral`). */
+  /** @purpose True only when a real, ACTIVE (TODO/IN_PROGRESS), same-scope ticket owns the deferral. */
   valid: boolean;
   /** @purpose Why the deferral is invalid (only when `valid` is false). */
   reason?: string;
 };
 
-/** @purpose Terminal Meta-Status tokens — a ticket in one of these can never build a future entity. */
-const TERMINAL_STATUS = /\b(?:DONE|CANCELL?ED|ABANDONED|WON'?T[\s-]?DO|OBSOLETE)\b/i;
+/** @purpose ACTIVE Meta-Status tokens — the only statuses whose ticket is actively going to build the entity. */
+const ACTIVE_STATUS = /\b(?:TODO|IN[\s_-]?PROGRESS|WIP|DOING)\b/i;
 
-// A deferral is a promise that a LATER ticket will build the entity, so the owner must be able to
-// keep it: it must exist, carry a recognized non-terminal status (DONE/CANCELLED etc. can never
-// build it; a missing status can't be confirmed open), and — when the spec's scope is known —
-// actually belong to that scope (a missing or foreign scope is drift).
+// A deferral is a promise that a LATER ticket will actively build the entity, so the owner must be
+// able to keep it: it must exist, be ACTIVE (only TODO / IN_PROGRESS — DONE is already past,
+// CANCELLED never will, BLOCKED is stalled with no promised date; a missing status can't be
+// confirmed active), and — when the spec's scope is known — belong to that scope (a missing or
+// foreign scope is drift).
 /**
  * @purpose Resolve a `Deferred Implementation` marker against the ticket graph — valid only for a
- *   real, OPEN, same-scope owner (rule in the note above).
+ *   real, ACTIVE, same-scope owner (rule in the note above).
  * @invariant `tickets` is read for only three fields (Task-ID, status, scope) — a `TicketRef` subset,
  *   so `collectTicketRefs()` output passes through unchanged.
  * @param taskId The cited Task-ID.
@@ -124,14 +125,14 @@ export function checkDeferral(
     return {
       taskId,
       valid: false,
-      reason: `у тикета ${taskId} не распознан статус — нельзя подтвердить, что он открыт и построит сущность`,
+      reason: `у тикета ${taskId} не распознан статус — нельзя подтвердить, что он активен и построит сущность`,
     };
   }
-  if (TERMINAL_STATUS.test(status)) {
+  if (!ACTIVE_STATUS.test(status)) {
     return {
       taskId,
       valid: false,
-      reason: `тикет ${taskId} в терминальном статусе (${status}) — завершённый/отменённый тикет не может построить отложенную сущность`,
+      reason: `тикет ${taskId} не в активном статусе (${status}) — только TODO/IN_PROGRESS активно строит отложенную сущность (DONE/CANCELLED/BLOCKED — нет)`,
     };
   }
   if (specScope) {
