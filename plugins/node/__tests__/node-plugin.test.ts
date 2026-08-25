@@ -75,13 +75,6 @@ describe('nodePlugin', () => {
     });
   });
 
-  it('declares node_modules as an environment link for the run replica (D-STACK-013)', () => {
-    assert.ok(
-      nodePlugin.sandboxLinks?.includes('node_modules'),
-      'npm scripts resolve from node_modules/.bin — without the link no gate can run in the replica'
-    );
-  });
-
   it('detects a broken package.json — with a diagnostic, not an un-detect (spec §3)', () => {
     withPackageJson('{broken', (dir) => {
       const detection = nodePlugin.detect(dir);

@@ -585,7 +585,7 @@ function withGitFixture<T>(fn: (dir: string) => T): T {
 }
 
 describe('runVerify — sandboxed gates (spec §2, D-STACK-011)', () => {
-  it('classifies generator drift as FAIL with the file list, leaving the real tree untouched', () => {
+  it('classifies generator drift as FAIL with the file list, and rolls the tree back to HEAD', () => {
     withGitFixture((dir) => {
       const gate: Gate = {
         ...shellGate('generate', 'echo regenerated > gen.txt'),
@@ -596,7 +596,7 @@ describe('runVerify — sandboxed gates (spec §2, D-STACK-011)', () => {
 
       assert.equal(report.results[0]?.status, 'fail');
       assert.match(report.results[0]?.output ?? '', /gen\.txt/);
-      // The real tree is byte-identical: the mutation happened in the replica only.
+      // The mutation happened in the real tree and was reset — exactly to HEAD (D-STACK-017).
       assert.equal(fs.readFileSync(path.join(dir, 'gen.txt'), 'utf-8'), 'original\n');
     });
   });
@@ -610,38 +610,22 @@ describe('runVerify — sandboxed gates (spec §2, D-STACK-011)', () => {
     });
   });
 
-  it('replicates uncommitted and untracked changes into the sandbox', () => {
+  it('refuses a dirty tree — uncommitted work is never verified and never touched', () => {
     withGitFixture((dir) => {
       fs.writeFileSync(path.join(dir, 'gen.txt'), 'agent-edit\n'); // uncommitted tracked edit
       fs.writeFileSync(path.join(dir, 'new.txt'), 'untracked\n'); // untracked file
-      const gate: Gate = {
-        ...shellGate('generate', 'grep -q agent-edit gen.txt && grep -q untracked new.txt'),
-        cwd: dir,
-        driftMeansFailure: true,
-      };
+      const gate: Gate = { ...shellGate('build', 'true'), cwd: dir };
       const report = runVerify([runOf([gate])], []);
 
-      assert.equal(report.results[0]?.status, 'pass', report.results[0]?.output);
-    });
-  });
-
-  it('catches drift over a file the agent had already edited (content-level baseline)', () => {
-    withGitFixture((dir) => {
-      fs.writeFileSync(path.join(dir, 'gen.txt'), 'agent-edit\n');
-      const gate: Gate = {
-        ...shellGate('generate', 'echo generator-output > gen.txt'),
-        cwd: dir,
-        driftMeansFailure: true,
-      };
-      const report = runVerify([runOf([gate])], []);
-
-      assert.equal(report.results[0]?.status, 'fail');
-      // And the agent's uncommitted edit survives in the real tree.
+      assert.equal(report.results[0]?.status, 'env-fail');
+      assert.match(report.results[0]?.output ?? '', /DIRTY_TREE/);
+      // The refusal must not touch the user's work.
       assert.equal(fs.readFileSync(path.join(dir, 'gen.txt'), 'utf-8'), 'agent-edit\n');
+      assert.equal(fs.readFileSync(path.join(dir, 'new.txt'), 'utf-8'), 'untracked\n');
     });
   });
 
-  it('reports env-fail when the replica cannot be created (no commits yet)', () => {
+  it('reports env-fail for a drift gate when there is no HEAD to guard against', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sandbox-nogit-'));
     try {
       fixtureGit(dir, 'init', '-q', '-b', 'main'); // repo without a single commit
@@ -655,8 +639,8 @@ describe('runVerify — sandboxed gates (spec §2, D-STACK-011)', () => {
   });
 });
 
-describe('runVerify — run replica enforcement (spec §2, D-STACK-013)', () => {
-  it('flags a non-sandbox gate that mutates the tree as VIOLATION and resets the replica', () => {
+describe('runVerify — clean-tree guard enforcement (spec §2, D-STACK-017)', () => {
+  it('flags a mutating gate as VIOLATION and resets the tree before the next gate', () => {
     withGitFixture((dir) => {
       const mutator: Gate = { ...shellGate('bad', 'echo dirt > dirt.txt'), cwd: dir };
       const checker: Gate = { ...shellGate('probe', 'test ! -f dirt.txt'), cwd: dir };
@@ -666,48 +650,25 @@ describe('runVerify — run replica enforcement (spec §2, D-STACK-013)', () => 
       assert.match(report.results[0]?.output ?? '', /dirt\.txt/);
       assert.match(formatVerifyReport(report), /VIOLATION/);
       assert.match(formatVerifyReport(report), /fixer/);
-      assert.equal(
-        report.results[1]?.status,
-        'pass',
-        'the replica is reset to baseline between gates'
-      );
-      assert.equal(fs.existsSync(path.join(dir, 'dirt.txt')), false, 'real tree untouched');
+      assert.equal(report.results[1]?.status, 'pass', 'the tree is reset to HEAD between gates');
+      assert.equal(fs.existsSync(path.join(dir, 'dirt.txt')), false, 'mutation rolled back');
       assert.equal(report.ok, false);
     });
   });
 
-  it('rewrites replica paths in gate output back to real-tree paths', () => {
+  it('gate output carries real-tree paths natively — nothing is rewritten', () => {
     withGitFixture((dir) => {
       const gate: Gate = {
         ...shellGate('build', 'echo "$PWD/gen.txt:1: broken"; exit 1'),
         cwd: dir,
       };
       const report = runVerify([runOf([gate])], []);
-      const real = fs.realpathSync(dir);
 
       assert.equal(report.results[0]?.status, 'fail');
       assert.ok(
-        (report.results[0]?.output ?? '').includes(`${real}/gen.txt:1: broken`),
-        `expected real path ${real}, got: ${report.results[0]?.output}`
+        (report.results[0]?.output ?? '').includes(`${dir}/gen.txt:1: broken`),
+        `expected real path ${dir}, got: ${report.results[0]?.output}`
       );
-    });
-  });
-
-  it('maps real-tree absolute paths in argv into the replica (config files, targets)', () => {
-    withGitFixture((dir) => {
-      // The argv references a repo file by real absolute path (like golangci -c <cfg>);
-      // inside the replica it must resolve to the replica copy, or relative paths
-      // computed against it walk out of the sandbox.
-      const gate: Gate = {
-        ...shellGate('cfg', 'test "$(cd "$(dirname "$1")" && pwd -P)" = "$(pwd -P)"'),
-        cwd: dir,
-      };
-      const report = runVerify(
-        [runOf([{ ...gate, argv: [...gate.argv, 'sh', path.join(dir, 'gen.txt')] }])],
-        []
-      );
-
-      assert.equal(report.results[0]?.status, 'pass', report.results[0]?.output);
     });
   });
 
@@ -727,25 +688,36 @@ describe('runVerify — run replica enforcement (spec §2, D-STACK-013)', () => 
     }
   });
 
-  it('symlinks declared sandboxLinks into the replica (environment, not tree state)', () => {
+  it('gitignored paths are legal gate workspace: readable, writable, never reset', () => {
     withGitFixture((dir) => {
-      fs.writeFileSync(path.join(dir, '.gitignore'), 'node_modules/\n');
+      fs.writeFileSync(path.join(dir, '.gitignore'), 'node_modules/\ncache/\n');
       fixtureGit(dir, 'add', '-A');
       fixtureGit(dir, 'commit', '-qm', 'ignore');
       fs.mkdirSync(path.join(dir, 'node_modules'));
       fs.writeFileSync(path.join(dir, 'node_modules', 'dep.js'), 'x');
-      const gate: Gate = { ...shellGate('lint', 'test -e node_modules/dep.js'), cwd: dir };
-      const report = runVerify([runOf([gate])], [], { sandboxLinks: ['node_modules'] });
+      const reader: Gate = { ...shellGate('lint', 'test -e node_modules/dep.js'), cwd: dir };
+      // A gate writing into an ignored path is a cache write, not a violation (D-STACK-017).
+      const cacheWriter: Gate = {
+        ...shellGate('build', 'mkdir -p cache && echo warm > cache/x'),
+        cwd: dir,
+      };
+      const report = runVerify([runOf([reader, cacheWriter])], []);
 
       assert.equal(report.results[0]?.status, 'pass', report.results[0]?.output);
+      assert.equal(report.results[1]?.status, 'pass', report.results[1]?.output);
+      assert.equal(
+        fs.readFileSync(path.join(dir, 'cache', 'x'), 'utf-8'),
+        'warm\n',
+        'the ignored cache survives the run'
+      );
     });
   });
 });
 
-describe('replica failures never reach the real tree', () => {
-  it('reports env-fail instead of executing where a mutation would be permanent', () => {
-    // A replica that FAILED is not a repository that cannot have one: falling back to the real
-    // tree silently dropped observe-only for every gate in the run.
+describe('guard failures never execute gates', () => {
+  it('reports env-fail instead of executing where the guard cannot arm', () => {
+    // An unguardable tree (here: unwritable gitdir, so no lock) is not a repository that
+    // cannot have a guard: executing anyway silently drops observe-only for the whole run.
     const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'replica-fail-'));
     execFileSync('git', ['init', '-q', '-b', 'main', repo]);
     fs.writeFileSync(path.join(repo, 'a.txt'), 'x\n');
@@ -771,7 +743,7 @@ describe('replica failures never reach the real tree', () => {
       );
 
       assert.strictEqual(report.results[0]?.status, 'env-fail');
-      assert.match(report.results[0]?.output ?? '', /refusing to execute in the real tree/);
+      assert.match(report.results[0]?.output ?? '', /refusing to execute/);
     } finally {
       fs.chmodSync(path.join(repo, '.git'), 0o700);
       fs.rmSync(repo, { recursive: true, force: true });

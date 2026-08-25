@@ -28,7 +28,7 @@ const PRECONDITION_DEFAULT_TIMEOUT_MS = 30_000;
 const EXTRA_GATE_DEFAULT_TIMEOUT_MS = 10 * 60_000;
 
 /** Known keys of a per-plugin config section (config.spec §3.3). */
-const PLUGIN_SECTION_KEYS = ['skipGates', 'overrideGates', 'extraGates', 'sandboxLinks'] as const;
+const PLUGIN_SECTION_KEYS = ['skipGates', 'overrideGates', 'extraGates'] as const;
 
 /** Known keys of a GateSpec (config.spec §3.4). */
 export const GATE_SPEC_KEYS = [
@@ -288,43 +288,6 @@ export function validateStackConfig(
     const extraIds = (Array.isArray(section.extraGates) ? section.extraGates : [])
       .map((spec) => (isPlainObject(spec) ? (spec as GateSpec).id : undefined))
       .filter((id): id is string => typeof id === 'string');
-
-    if (section.sandboxLinks !== undefined) {
-      if (
-        !Array.isArray(section.sandboxLinks) ||
-        section.sandboxLinks.some((v) => typeof v !== 'string')
-      ) {
-        errors.push({
-          path: `stack.${key}.sandboxLinks`,
-          message: 'must be an array of repo-relative paths',
-        });
-      } else {
-        for (const link of section.sandboxLinks) {
-          // A link shares a real path, so one outside the repo hands a gate arbitrary disk.
-          const normalized = path.normalize(link).replace(/[/\\]+$/, '');
-          if (
-            path.isAbsolute(link) ||
-            link.split(/[/\\]/).includes('..') ||
-            normalized === '.' ||
-            normalized === '' ||
-            link.trim().length === 0
-          ) {
-            errors.push({
-              path: `stack.${key}.sandboxLinks.${link}`,
-              message:
-                'must be a repo-relative path inside the repository, and not the root itself ' +
-                '(`.` in the drift pathspec makes every mutation invisible)',
-            });
-          } else if (link.includes('**')) {
-            // `*` covers one segment; `**` would silently act like `*`, so it is rejected.
-            errors.push({
-              path: `stack.${key}.sandboxLinks.${link}`,
-              message: 'recursive ** is not supported — use single-segment * wildcards (a/*/b)',
-            });
-          }
-        }
-      }
-    }
 
     if (section.skipGates !== undefined) {
       if (

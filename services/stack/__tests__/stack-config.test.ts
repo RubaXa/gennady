@@ -480,40 +480,14 @@ describe('applyStackConfig — skipped extraGates keep their declared shape (rev
   });
 });
 
-describe('sandboxLinks validation', () => {
-  const load = (links: string): ReturnType<typeof loadStackConfig> =>
-    withConfigs({ 'gennady.yaml': `stack:\n  golang:\n    sandboxLinks: ${links}\n` }, (dir) =>
-      loadStackConfig(dir, GATE_IDS)
-    );
-
-  it('accepts repo-relative paths', () => {
-    assert.deepStrictEqual(load('[bin, vendor/deps]').errors, []);
-  });
-
-  for (const escape of ['[/etc]', '[../secrets]', '[vendor/../../etc]']) {
-    it(`rejects ${escape}, which would hand a gate the disk outside the repo`, () => {
-      const { errors } = load(escape);
-      assert.strictEqual(errors.length, 1, JSON.stringify(errors));
-      assert.match(errors[0]!.message, /inside the repository/);
+describe('sandboxLinks removal (D-STACK-017)', () => {
+  it('rejects the removed key as unknown, so an old config fails loudly', () => {
+    withConfigs({ 'gennady.yaml': 'stack:\n  golang:\n    sandboxLinks: [cache]\n' }, (dir) => {
+      const load = loadStackConfig(dir, GATE_IDS);
+      assert.ok(
+        load.errors.some((error) => error.path === 'stack.golang.sandboxLinks'),
+        JSON.stringify(load.errors)
+      );
     });
-  }
-
-  // `.` passed the escape check and became `:(exclude).` in the drift pathspec, which made every
-  // mutation invisible: a gate that rewrote the tree reported pass instead of violation.
-  for (const root of ["['.']", "['./']", "['']"]) {
-    it(`rejects ${root}, which would blind drift detection entirely`, () => {
-      const { errors } = load(root);
-      assert.strictEqual(errors.length, 1, JSON.stringify(errors));
-      assert.match(errors[0]!.message, /not the root itself/);
-    });
-  }
-
-  it('rejects a non-array', () => {
-    assert.match(load('bin').errors[0]?.message ?? '', /array of repo-relative paths/);
-  });
-
-  it('accepts single-segment * wildcards but rejects recursive **', () => {
-    assert.deepStrictEqual(load("['External/*/Derived', '*.xcodeproj']").errors, []);
-    assert.match(load("['External/**/Derived']").errors[0]?.message ?? '', /\*\* is not supported/);
   });
 });

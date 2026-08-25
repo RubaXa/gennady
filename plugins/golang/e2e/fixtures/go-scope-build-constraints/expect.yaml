@@ -3,7 +3,7 @@ notes: >
   `go build ./constrained` fails with "build constraints exclude all Go files", again a red about
   the environment rather than the code (review #11). The same `go list -e` pass drops it.
 requires: [go]
-dirty:
+commit:
   constrained/extra.go: "//go:build never\n\npackage constrained\n\nfunc Extra() int { return 5 }\n"
   good/extra.go: "package good\n\nfunc Extra() int { return 4 }\n"
 exitCode: 0

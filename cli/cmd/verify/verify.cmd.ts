@@ -33,7 +33,8 @@ import {
   runVerify,
   truncateOutput,
 } from '../../../services/stack/gate-runner.ts';
-import { expandSandboxLinks } from '../../../services/stack/sandbox-links.ts';
+import { treeStatus } from '../../../services/stack/tree-guard.ts';
+import { execFileTrimSafe } from '../../../shared/common/exec.ts';
 import type { Gate, ScopeRequest, StackRun } from '../../../services/stack/stack.types.ts';
 
 /** Exit code: one or more gates failed. */
@@ -131,32 +132,7 @@ export async function run(argv: string[]): Promise<number> {
 
   const active = detectStacks(root, effectiveConfig);
 
-  // Environment links for the run replica — union across active plugins (D-STACK-013).
-  // Plugin defaults stay minimal, best-effort and silent (node_modules may simply not be
-  // installed yet); config links are author intent, so `*` patterns expand against the real
-  // tree here and an entry that matches nothing becomes a loud diagnostic — a silent skip
-  // surfaces later as a phantom FAIL about the code (review: UNRESOLVED_SANDBOX_LINK).
-  const pluginLinks = active.flatMap(({ plugin }) => plugin.sandboxLinks ?? []);
-  const configLinkPatterns = [
-    ...new Set(
-      active.flatMap(({ plugin }) => pluginConfigOf(effectiveConfig, plugin.id)?.sandboxLinks ?? [])
-    ),
-  ];
-  const linkExpansion = expandSandboxLinks(root, configLinkPatterns);
-  const sandboxLinks = [...new Set([...pluginLinks, ...linkExpansion.links])];
-
-  const diagnostics = [
-    ...active.flatMap((entry) => entry.detection.diagnostics),
-    ...(linkExpansion.unresolved.length > 0
-      ? [
-          {
-            code: 'UNRESOLVED_SANDBOX_LINK',
-            message: `sandboxLinks matched nothing: ${linkExpansion.unresolved.join(', ')} — gates run without these links (fresh clone? typo? stale list?)`,
-            fix: 'fix the path or pattern in stack.<id>.sandboxLinks, or build once so the generated path exists',
-          },
-        ]
-      : []),
-  ];
+  const diagnostics = active.flatMap((entry) => entry.detection.diagnostics);
 
   if (active.length === 0) {
     console.error(`[verify] NO_STACK_DETECTED: no stack plugin recognized ${root}`);
@@ -323,7 +299,29 @@ export async function run(argv: string[]): Promise<number> {
     return 0;
   }
 
-  const report = runVerify(filteredRuns, diagnostics, { sandboxLinks });
+  // D-STACK-017: verify runs only on a clean tree — refuse before the first gate. A run
+  // started on uncommitted work has no known state to roll a gate mutation back to.
+  const rootToplevel = execFileTrimSafe('git', ['rev-parse', '--show-toplevel'], root);
+  if (
+    rootToplevel.length > 0 &&
+    execFileTrimSafe('git', ['rev-parse', '--verify', '--quiet', 'HEAD'], rootToplevel).length > 0
+  ) {
+    const status = treeStatus(rootToplevel);
+    if (status.length > 0) {
+      console.error('[verify] DIRTY_TREE: uncommitted changes — verify runs only on a clean tree');
+      console.error(
+        status
+          .split('\n')
+          .slice(0, 20)
+          .map((line) => `  ${line}`)
+          .join('\n')
+      );
+      console.error('  fix: commit your work (gennady commit) or stash it, then rerun verify');
+      return EXIT_BAD_INVOCATION;
+    }
+  }
+
+  const report = runVerify(filteredRuns, diagnostics);
 
   if (args.json === true) {
     console.log(

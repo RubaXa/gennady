@@ -52,10 +52,10 @@ $ npm run test:stack-e2e
 [node] build:publish → pack → install → /tmp/gennady-e2e-node-d4e5f/runner
 ▶ node-clean-full          весь план          expect pass        ✓ 2.2s
 ▶ node-mutating-lint       node:lint          expect skipped     ✓ 0.4s
-⏭ node-sandbox-links       node:test          SKIP — vendored dep missing in template
+⏭ node-missing-modules     node:test          SKIP — vendored dep missing in template
 
 ✓ 39 passed · 1 skipped (78.4s)
-  skipped: node-sandbox-links
+  skipped: node-missing-modules
   → STACK_E2E_STRICT=1 turns skips into failures (infra-e2e §5)
 ```
 

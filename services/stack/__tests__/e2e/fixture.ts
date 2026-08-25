@@ -15,6 +15,7 @@ const EXPECT_KEYS = [
   'command',
   'argv',
   'dirty',
+  'commit',
   'exitCode',
   'config',
   'gates',
@@ -70,8 +71,12 @@ export type FixtureExpectation = {
   readonly command: 'verify' | 'fix' | 'verify,fix,verify';
   /** @purpose CLI flags passed verbatim; empty means the full unnarrowed run. */
   readonly argv: readonly string[];
-  /** @purpose Files written after the baseline commit, as uncommitted changes. */
+  /** @purpose Files written after the baseline commit, as uncommitted changes — the tree is
+   *   then DIRTY, so verify refuses it (D-STACK-017); use for refusal fixtures. */
   readonly dirty: Readonly<Record<string, string>>;
+  /** @purpose Files committed on a `work` branch off the baseline — the committed-changes
+   *   shape the `changed` scope sees under the clean-tree precondition. */
+  readonly commit: Readonly<Record<string, string>>;
   /** @purpose Expected process exit code of the last invocation, when asserted. */
   readonly exitCode?: number;
   /** @purpose Expected config-error substring for invalid-config fixtures. */
@@ -221,6 +226,7 @@ export function readExpectation(file: string): FixtureExpectation {
     command: (raw['command'] ?? 'verify') as FixtureExpectation['command'],
     argv: (raw['argv'] ?? []) as readonly string[],
     dirty: (raw['dirty'] ?? {}) as Readonly<Record<string, string>>,
+    commit: (raw['commit'] ?? {}) as Readonly<Record<string, string>>,
     exitCode: raw['exitCode'] as number | undefined,
     config: raw['config'] as { error: string } | undefined,
     gates,
@@ -265,6 +271,19 @@ export function materializeFixture(
     fs.writeFileSync(path.join(ctx.homeDir, '.gennadyrc'), expectation.homeRc);
   }
 
+  if (Object.keys(expectation.commit).length > 0) {
+    // Committed changes on a work branch: the shape `changed` scope verifies under the
+    // clean-tree precondition — the baseline branch stays behind as the base ref.
+    git(dir, 'checkout', '-qb', 'work');
+    for (const [relative, content] of Object.entries(expectation.commit)) {
+      const target = path.join(dir, relative);
+      fs.mkdirSync(path.dirname(target), { recursive: true });
+      fs.writeFileSync(target, content);
+    }
+    git(dir, 'add', '-A');
+    git(dir, 'commit', '-q', '--no-verify', '-m', 'fixture work');
+  }
+
   for (const [relative, content] of Object.entries(expectation.dirty)) {
     const target = path.join(dir, relative);
     fs.mkdirSync(path.dirname(target), { recursive: true });
@@ -301,6 +320,12 @@ export function runFixture(
         ? ['verify', ...expectation.argv, ...(jsonAlreadyRequested ? [] : ['--json'])]
         : ['fix', ...expectation.argv.filter((flag) => !flag.startsWith('--only'))];
     last = ctx.spawn(args, dir, expectation.timeoutMs ?? 120_000);
+    if (step === 'fix') {
+      // The modeled loop is fix → commit → re-verify: under the clean-tree precondition
+      // (D-STACK-017) a follow-up verify refuses uncommitted fixer output.
+      git(dir, 'add', '-A');
+      git(dir, 'commit', '-q', '--no-verify', '--allow-empty', '-m', 'apply fixers');
+    }
   }
 
   let json: VerifyJson | null = null;

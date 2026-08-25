@@ -1,6 +1,0 @@
-stack:
-  anystack:
-    sandboxLinks: ['External/*/Derived']
-    extraGates:
-      - id: needs-derived
-        argv: [sh, -c, 'test -f External/AuthKit/Derived/gen.txt && test -f External/CloudKit/Derived/gen.txt']
