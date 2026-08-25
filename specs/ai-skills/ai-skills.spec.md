@@ -16,7 +16,7 @@ library
 
 Навыки разрабатываются в `ai/skills/`, деплоятся в проекты через `npx gennady sync-skills` в `.claude/skills/`. Директивы — в `ai/directives/`, переиспользуются между навыками.
 
-17 навыков в `ai/skills/`: 13 SDD (sdd-setup, sdd-discover, sdd-module-decomposition, sdd-scaffold, sdd-execute, sdd-execute-batch, sdd-audit, sdd-check, sdd-continue, sdd-critic, sdd-fix, sdd-infra, sdd-hooks-install) + 4 non-SDD (alt-opinion, agent-inbox, prd-interview, workspace-permission-setup). `agent-inbox` — продуктовый навык-оркестратор над командами `inbox`/`vcs-worktree`/`vcs-reply`; принадлежит scope [`agent-inbox`](../agent-inbox/agent-inbox.spec.md), здесь учтён как навык. Стековые специализации (например, `sdd-infra-golang`) живут в `plugins/<stack>/skills/` и деплоятся тем же `sync-skills`.
+16 навыков в `ai/skills/`: 12 SDD (sdd-setup, sdd-discover, sdd-module-decomposition, sdd-scaffold, sdd-execute, sdd-execute-batch, sdd-audit, sdd-check, sdd-continue, sdd-critic, sdd-fix, sdd-infra) + 4 non-SDD (alt-opinion, agent-inbox, prd-interview, workspace-permission-setup). `agent-inbox` — продуктовый навык-оркестратор над командами `inbox`/`vcs-worktree`/`vcs-reply`; принадлежит scope [`agent-inbox`](../agent-inbox/agent-inbox.spec.md), здесь учтён как навык. Стековые специализации (например, `sdd-infra-golang`) живут в `plugins/<stack>/skills/` и деплоятся тем же `sync-skills`.
 
 <!--/SECTION:VISION-->
 
@@ -280,8 +280,8 @@ ai/skills/<name>/
 
 - **Status:** active
 - **Recorded:** session ModuleDecomposition, ai-skills
-- **Why:** Выбрана декомпозиция по execution-паттерну: `skill-contract` (формат и контракты), `sdd-skills` (все 13 SDD), `alt-opinion` (CLI-delegation). Минимально достаточно для разделения контракта и реализации, не overengineered.
-- **Risk accepted:** `sdd-skills` содержит 13 навыков — при росте может потребоваться дальнейшая декомпозиция.
+- **Why:** Выбрана декомпозиция по execution-паттерну: `skill-contract` (формат и контракты), `sdd-skills` (все 12 SDD), `alt-opinion` (CLI-delegation). Минимально достаточно для разделения контракта и реализации, не overengineered.
+- **Risk accepted:** `sdd-skills` содержит 12 навыков — при росте может потребоваться дальнейшая декомпозиция.
 - **Rejected alternatives:**
   - По фазам SDD (6 модулей) — overengineered: большинство модулей содержат 1-2 навыка
   - Монолитный (1 модуль) — нет разделения контракта и реализации
@@ -301,7 +301,7 @@ Spec hierarchy is materialized at `specs/ai-skills/`. Module specs are at `specs
 
 ### 8.1 Modules
 - [`skill-contract`](./skill-contract/skill-contract.spec.md) — Контракт навыка: frontmatter, naming, паттерны активации, файловая структура
-- [`sdd-skills`](./sdd-skills/sdd-skills.spec.md) — 13 SDD-навыков: полный воркфлоу Specification-Driven Development
+- [`sdd-skills`](./sdd-skills/sdd-skills.spec.md) — 12 SDD-навыков: полный воркфлоу Specification-Driven Development
 - [`alt-opinion`](./alt-opinion/alt-opinion.spec.md) — Мульти-модельный анализ через CLI (CLI-delegation паттерн)
 
 ### 8.2 Inter-Module Dependency Map

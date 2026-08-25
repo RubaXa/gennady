@@ -28,7 +28,7 @@ setup ──► discovery ──► module-decomposition? ──► scaffold ─
 ```
 
 Параллельно основному потоку: `sdd-critic` (критика спек/тасков до исполнения), `sdd-check`
-(read-only верификация дерева), `sdd-continue`/`sdd-fix` (итерация), `sdd-hooks-install` (live-прогресс).
+(read-only верификация дерева), `sdd-continue`/`sdd-fix` (итерация).
 
 ## Директивы
 

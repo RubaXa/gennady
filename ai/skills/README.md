@@ -5,7 +5,7 @@
 
 Навыки для Specification-Driven Development, мульти-модельного анализа и настройки автономной среды: SDD-семейство (`sdd-*`) плюс agent-inbox, alt-opinion, prd-interview и workspace-permission-setup. Стековые специализации (например, `sdd-infra-golang`) живут в `plugins/<stack>/skills/` и синхронизируются тем же `sync-skills`.
 
-> `sdd-hooks-install` (хуки live-прогресса для `sdd-execute`) и `workspace-permission-setup` мигрированы в хранилище из `~/.claude/skills` — теперь под git и деплоятся через `sync-skills`.
+> `workspace-permission-setup` мигрирован в хранилище из `~/.claude/skills` — теперь под git и деплоится через `sync-skills`.
 
 ---
 

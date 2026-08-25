@@ -280,7 +280,7 @@ shared/common/sync/                    # shared с командой sync
 ├── path-normalizer.ts                # PathNormalizer: замена dev-путей на продуктовые (~30 lines)
 └── sync-deps.type.ts                 # SyncCmdDeps (порт) — расширен unlink, rmdir (~15 lines)
 
-ai/skills/                            # скилы — физические артефакты в репозитории (17 на момент записи)
+ai/skills/                            # скилы — физические артефакты в репозитории (16 на момент записи)
 ├── agent-inbox/SKILL.md
 ├── alt-opinion/                       # SKILL.md + opinion.prompt.md + synth.prompt.md
 ├── prd-interview/                     # SKILL.md + PRD_TEMPLATE.md
@@ -292,7 +292,6 @@ ai/skills/                            # скилы — физические ар
 ├── sdd-execute/                       # SKILL.md + scripts/
 ├── sdd-execute-batch/SKILL.md
 ├── sdd-fix/SKILL.md
-├── sdd-hooks-install/SKILL.md
 ├── sdd-infra/SKILL.md
 ├── sdd-module-decomposition/SKILL.md
 ├── sdd-scaffold/SKILL.md

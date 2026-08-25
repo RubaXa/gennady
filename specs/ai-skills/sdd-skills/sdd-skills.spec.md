@@ -6,12 +6,11 @@
 
 ## 1. Module Vision
 
-13 SDD-навыков: полный воркфлоу Specification-Driven Development — от создания спеки до верификации. Все навыки — тонкие клиенты над директивами из `ai/directives/sdd/`. Оркестраторы (sdd-execute, sdd-execute-batch) диспатчат subagent'ов с typed Handoff. sdd-check — read-only верификатор целостности артефактов.
+12 SDD-навыков: полный воркфлоу Specification-Driven Development — от создания спеки до верификации. Все навыки — тонкие клиенты над директивами из `ai/directives/sdd/`. Оркестраторы (sdd-execute, sdd-execute-batch) диспатчат subagent'ов с typed Handoff. sdd-check — read-only верификатор целостности артефактов.
 
 Навыки в модуле:
 
 - **Discovery & Setup:** sdd-setup, sdd-discover, sdd-infra
-- **Bootstrap:** sdd-hooks-install (live-прогресс хуки, конфиг-бутстрап, без директивы)
 - **Design:** sdd-module-decomposition, sdd-critic
 - **Planning:** sdd-scaffold
 - **Execution:** sdd-execute, sdd-execute-batch
@@ -272,8 +271,7 @@ ai/skills/
 ├── sdd-audit/SKILL.md
 ├── sdd-check/SKILL.md
 ├── sdd-continue/SKILL.md
-├── sdd-fix/SKILL.md
-└── sdd-hooks-install/SKILL.md
+└── sdd-fix/SKILL.md
 ```
 
 **File Mapping:**
@@ -289,15 +287,15 @@ ai/skills/
 
 ## 8. Module Decision Log
 
-### D-M002 — 13 SDD-навыков в одном модуле
+### D-M002 — 12 SDD-навыков в одном модуле
 
 - **Status:** active
 - **Recorded:** session ModuleDecomposition, ai-skills, sdd-skills
-- **Why:** Все SDD-навыки объединены в один модуль по общему execution-паттерну (активация директив) и общей SDD-воркфлоу-семантике. Разделение на подмодули по фазам — overengineered для текущих 13 навыков.
+- **Why:** Все SDD-навыки объединены в один модуль по общему execution-паттерну (активация директив) и общей SDD-воркфлоу-семантике. Разделение на подмодули по фазам — overengineered для текущих 12 навыков.
 - **Risk accepted:** При росте количества навыков модуль может потребовать дальнейшей декомпозиции.
 - **Rejected alternatives:**
   - 5 подмодулей по фазам — overengineered: некоторые содержали бы 1-2 навыка
-  - Навыки как отдельные модули — 13 модулей, overhead управления
+  - Навыки как отдельные модули — 12 модулей, overhead управления
   <!--/SECTION:MODULE_DECISION_LOG-->
 
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->
@@ -330,7 +328,7 @@ graph TD
 
 ## 10. Handoff to Task Scaffolding
 
-- **Implementation files to be created:** Все 13 навыков уже существуют в `ai/skills/`. Реализация завершена: dev-пути (`~/Developer/gennady/...`) в телах SKILL.md нормализуются в продуктовые при `sync-skills`.
+- **Implementation files to be created:** Все 12 навыков уже существуют в `ai/skills/`. Реализация завершена: dev-пути (`~/Developer/gennady/...`) в телах SKILL.md нормализуются в продуктовые при `sync-skills`.
 - **Test files to be created:** Интеграционные тесты для скриптов (sdd verify, sdd extract, sdd check-blockers)
 - **Stack dependencies:**
   - Language: TypeScript (для classify-scripts.ts)
