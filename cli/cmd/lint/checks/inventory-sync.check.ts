@@ -83,20 +83,27 @@ export type DeferredInventoryEntity = {
 export type DeferralCheck = {
   /** @purpose The cited Task-ID. */
   taskId: string;
-  /** @purpose True only when the ticket exists, is not DONE, and belongs to the spec's own scope. */
+  /** @purpose True only when a real, OPEN, same-scope ticket owns the deferral (see `checkDeferral`). */
   valid: boolean;
   /** @purpose Why the deferral is invalid (only when `valid` is false). */
   reason?: string;
 };
 
+/** @purpose Terminal Meta-Status tokens — a ticket in one of these can never build a future entity. */
+const TERMINAL_STATUS = /\b(?:DONE|CANCELL?ED|ABANDONED|WON'?T[\s-]?DO|OBSOLETE)\b/i;
+
+// A deferral is a promise that a LATER ticket will build the entity, so the owner must be able to
+// keep it: it must exist, carry a recognized non-terminal status (DONE/CANCELLED etc. can never
+// build it; a missing status can't be confirmed open), and — when the spec's scope is known —
+// actually belong to that scope (a missing or foreign scope is drift).
 /**
- * @purpose Resolve a `Deferred Implementation` marker against the ticket graph — honored only when
- *   the ticket exists, is not DONE, and owns the spec's scope.
- * @invariant `tickets` is read for only three fields (Task-ID, status, scope) — structurally a
- *   `TicketRef` subset, so `collectTicketRefs()` output passes through unchanged.
+ * @purpose Resolve a `Deferred Implementation` marker against the ticket graph — valid only for a
+ *   real, OPEN, same-scope owner (rule in the note above).
+ * @invariant `tickets` is read for only three fields (Task-ID, status, scope) — a `TicketRef` subset,
+ *   so `collectTicketRefs()` output passes through unchanged.
  * @param taskId The cited Task-ID.
  * @param tickets The project's ticket refs (Task-ID, status, and owning scope).
- * @param specScope The spec's own scope (derived from its path).
+ * @param specScope The spec's own scope (derived from its path); '' when the path carries none.
  * @returns The check verdict; `valid: false` carries a `reason`.
  */
 export function checkDeferral(
@@ -112,19 +119,36 @@ export function checkDeferral(
   if (!ref) {
     return { taskId, valid: false, reason: `тикет ${taskId} не найден в дереве` };
   }
-  if (/\bDONE\b/i.test(ref.status ?? '')) {
+  const status = (ref.status ?? '').trim();
+  if (status === '') {
     return {
       taskId,
       valid: false,
-      reason: `тикет ${taskId} уже DONE — завершённый тикет не может владеть отложенной сущностью`,
+      reason: `у тикета ${taskId} не распознан статус — нельзя подтвердить, что он открыт и построит сущность`,
     };
   }
-  if (specScope && ref.scope && ref.scope !== specScope) {
+  if (TERMINAL_STATUS.test(status)) {
     return {
       taskId,
       valid: false,
-      reason: `тикет ${taskId} принадлежит скоупу '${ref.scope}', а не скоупу спеки '${specScope}'`,
+      reason: `тикет ${taskId} в терминальном статусе (${status}) — завершённый/отменённый тикет не может построить отложенную сущность`,
     };
+  }
+  if (specScope) {
+    if (!ref.scope) {
+      return {
+        taskId,
+        valid: false,
+        reason: `у тикета ${taskId} не указан скоуп — нельзя подтвердить принадлежность скоупу спеки '${specScope}'`,
+      };
+    }
+    if (ref.scope !== specScope) {
+      return {
+        taskId,
+        valid: false,
+        reason: `тикет ${taskId} принадлежит скоупу '${ref.scope}', а не скоупу спеки '${specScope}'`,
+      };
+    }
   }
   return { taskId, valid: true };
 }
