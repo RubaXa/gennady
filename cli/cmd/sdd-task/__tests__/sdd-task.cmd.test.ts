@@ -1202,6 +1202,47 @@ describe('SddTaskCommand', () => {
       }
     });
 
+    it('the exemption survives the orchestrator opening the Round — an IN_PROGRESS ticket is still in the queue', async () => {
+      const gateDir = mkdtempSync(join(tmpdir(), 'sdd-task-gate-'));
+      mkdirSync(join(gateDir, 'specs'), { recursive: true });
+      writeFileSync(
+        join(gateDir, 'specs', 'README.md'),
+        [
+          '# Demo Project',
+          '',
+          '## Scopes',
+          '',
+          '| Scope | Type | Status | Description |',
+          '|---|---|---|---|',
+          '| [`infra-core`](./infra-core/infra-core.spec.md) | infrastructure | ✅ | bootstrap tooling |',
+          '',
+        ].join('\n'),
+        'utf-8'
+      );
+      // Exactly the state the flow is really in at the first phase dispatch: the orchestrator has
+      // already flipped Status to IN_PROGRESS via `sdd-log round`.
+      writeFileSync(
+        join(gateDir, 'ticket.md'),
+        [
+          TICKET.replace('- **Scope:** cli', '- **Scope:** infra-core').replace(
+            '- **Status:** [ ] TODO',
+            '- **Status:** [~] IN_PROGRESS'
+          ),
+          '<!--SECTION:EXECUTION_LOG-->',
+          '<!--/SECTION:EXECUTION_LOG-->',
+        ].join('\n'),
+        'utf-8'
+      );
+      try {
+        const r = await withCwd(gateDir, () => mod.run(argv('ticket.md', '--phase', 'P1')));
+        assert.strictEqual(r.ok, true, r.ok ? '' : r.message);
+        if (!r.ok) return;
+        assert.match(r.text, /INFRA_QUEUE_EXEMPTION/);
+      } finally {
+        rmSync(gateDir, { recursive: true, force: true });
+      }
+    });
+
     it('a NON-queued ticket gets no exemption — the escape hatch is only for the tickets building the gates', async () => {
       const gateDir = mkdtempSync(join(tmpdir(), 'sdd-task-gate-'));
       mkdirSync(join(gateDir, 'specs'), { recursive: true });

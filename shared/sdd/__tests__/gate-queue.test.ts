@@ -65,6 +65,28 @@ describe('queuedInfraGateTicketIds', () => {
     assert.deepEqual(result.diagnostics, []);
   });
 
+  // The orchestrator flips Meta Status to `[~] IN_PROGRESS` when it opens the Round — BEFORE the
+  // first phase runs. A TODO-only queue emptied itself exactly when work started, withdrawing the
+  // infra-queue exemption from the ticket that was already executing and deadlocking it.
+  it('an IN_PROGRESS infra ticket stays in the queue — the gates are not built until it is DONE', () => {
+    assert.deepEqual(
+      queuedInfraGateTicketIds(
+        [ref('infra-1', '[~] IN_PROGRESS', 'infra-core')],
+        [infraScope],
+        notReady
+      ).ticketIds,
+      ['infra-1']
+    );
+  });
+
+  it('a DONE infra ticket leaves the queue — it already built what it owed', () => {
+    assert.deepEqual(
+      queuedInfraGateTicketIds([ref('infra-1', '[x] DONE', 'infra-core')], [infraScope], notReady)
+        .ticketIds,
+      []
+    );
+  });
+
   it('provisional readiness (stubs) still surfaces the queue — those tickets are what replace the stubs', () => {
     const result = queuedInfraGateTicketIds(
       [ref('infra-1', '[ ] TODO', 'infra-core')],

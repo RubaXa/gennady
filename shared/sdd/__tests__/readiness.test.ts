@@ -259,6 +259,10 @@ describe('isStubScript', () => {
       false
     );
   });
+
+  it('a multi-line body is not one command — a banner line above a real tool is not a stub', () => {
+    assert.strictEqual(isStubScript({ test: 'echo "running tests"\nnode --test' }, 'test'), false);
+  });
 });
 
 describe('silencesExitCode', () => {
@@ -306,6 +310,26 @@ describe('silencesExitCode', () => {
 
   it('`real && true` is honest — the tail never runs when the real command fails', () => {
     assert.strictEqual(silencesExitCode({ test: 'tsc --noEmit && true' }, 'test'), false);
+  });
+
+  // An `&&` tail is skipped when the command before it fails, so the failure still propagates.
+  // Fanning a gate out to a sibling script, or echoing a success banner, is the most ordinary npm
+  // idiom there is — flagging it would pin an honest project at `provisional` with no override.
+  it('an && chain into a sibling script or a success banner is honest, not silenced', () => {
+    for (const body of [
+      'tsc --noEmit -p tsconfig.json && npm run type-check:test',
+      'vitest run && npm run test:e2e',
+      'gennady lint src/ && echo "✓ lint clean"',
+      'prettier --check . && npm run format:md',
+      'eslint src/ --fix && npm run lint:fix:styles',
+      'vitest run --coverage && npm run coverage:report',
+    ]) {
+      assert.strictEqual(
+        silencesExitCode({ test: body }, 'test'),
+        false,
+        `expected honest (&& chain): ${body}`
+      );
+    }
   });
 
   it('a silencer reached through an npm-run hop still counts', () => {

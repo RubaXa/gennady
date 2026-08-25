@@ -32,8 +32,8 @@ export type GateQueueResult = {
 };
 
 /**
- * @purpose Find TODO tickets in infra scopes expected to build missing gates, plus advisory queue diagnostics.
- * @invariant An execution-ready project, a portal without infrastructure scopes, or a queue without matching TODO tickets returns an empty ticket list.
+ * @purpose Find unfinished tickets in infra scopes expected to build missing gates, plus advisory queue diagnostics.
+ * @invariant An execution-ready project, a portal without infrastructure scopes, or a queue without matching unfinished tickets returns an empty ticket list.
  * @invariant Diagnostics never change `ticketIds`, and are computed only while not execution-ready
  *   — a provisional project still surfaces the queue replacing its stubs.
  * @param refs Every discovered task ticket.
@@ -51,6 +51,10 @@ export function queuedInfraGateTicketIds(
   const infraScopes = scopes.filter((scope) => scope.type === 'infrastructure');
   const infraScopeNames = new Set(infraScopes.map((scope) => scope.name));
 
+  // NOT-DONE, never TODO-only: the orchestrator flips Meta Status to `[~] IN_PROGRESS` when it
+  // opens the Round — before the first phase runs. A TODO-only filter therefore emptied the queue
+  // exactly when work started, which silently withdrew the infra-queue exemption from the ticket
+  // that was already executing. The gates are not built until the ticket is DONE.
   const ticketIds =
     infraScopeNames.size === 0
       ? []
@@ -58,7 +62,7 @@ export function queuedInfraGateTicketIds(
           .filter(
             (ref) =>
               ref.taskId &&
-              /\bTODO\b/i.test(ref.status ?? '') &&
+              !/\bDONE\b/i.test(ref.status ?? '') &&
               ref.scope &&
               infraScopeNames.has(ref.scope)
           )

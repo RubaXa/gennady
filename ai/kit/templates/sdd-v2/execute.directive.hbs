@@ -251,9 +251,11 @@
           worker session per `AX_WORKER_SESSION_REUSE`); a `yagni` finding specifically routes to a
           waiver decision per `AX_USAGE_WAIVER_DISCIPLINE`, logged into the ticket that owns the
           flagged entity. Re-run `sdd-verify --profile full` until GREEN — EXCEPT one verdict no
-          worker can fix: a `⛔ <ступень> — обязательная ступень профиля …` line (the project's own
-          verification scripts are missing or stubbed; the gate name sits between the marker and the
-          text, so match the `⛔` marker, not one contiguous phrase). That is infrastructure, not code: no fix-flow dispatch can turn it
+          worker can fix: a line carrying BOTH the `⛔` marker AND the words
+          `обязательная ступень профиля` — the gate name sits between them, so neither half alone is
+          the signal (`⛔` also opens the ordinary `лестница остановлена на «type-check»` halt line,
+          which IS an ordinary fixable failure and must go through the fix-flow as usual). The
+          two-part match means: the project's own verification scripts are missing or stubbed. That is infrastructure, not code: no fix-flow dispatch can turn it
           green, so looping on it never terminates. Surface it to the operator instead — name the
           missing/stubbed scripts and the infra tickets that own them (`sdd-task` → `GATE_QUEUE`),
           leave the group open, and stop; the audit does not dispatch on an unverified group. Only THEN dispatch ONE

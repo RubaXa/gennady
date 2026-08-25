@@ -182,22 +182,20 @@ function isScriptMutating(scripts: Record<string, string>, entry: string): boole
 const NO_OP_SEGMENT =
   /^(?:echo\b|true$|:$|exit\s+0$|node\s+-e\s+(['"])\s*\1$|npm run [A-Za-z0-9:_-]+$)/;
 
-/** @purpose A bare success terminator — the classic `|| true` tail. Narrower than NO_OP_SEGMENT: `echo x` is a no-op but not a terminator. */
-const TERMINATOR_SEGMENT = /^(?:true|:|exit\s+0)$/;
-
 /**
  * @purpose Split a script body into its top-level command segments and the separators between them.
- * @invariant `|` is a separator too — `echo v | xargs tsc` is a real check, not an echo.
+ * @invariant `|` and newlines separate commands too — `echo v | xargs tsc` is a real check, and a
+ *   multi-line body is not one `echo`.
  * @param body One `package.json` script body.
  * @returns Trimmed non-empty segments, and the separator that preceded each (`''` for the first).
  */
 function commandSegments(body: string): { cmd: string; sep: string }[] {
-  const parts = body.split(/(&&|\|\||\||;)/);
+  const parts = body.split(/(&&|\|\||\||;|\n)/);
   const out: { cmd: string; sep: string }[] = [];
   let sep = '';
   for (const part of parts) {
-    if (part === '&&' || part === '||' || part === '|' || part === ';') {
-      sep = part;
+    if (part === '&&' || part === '||' || part === '|' || part === ';' || part === '\n') {
+      sep = part === '\n' ? ';' : part;
       continue;
     }
     const cmd = part.trim();
@@ -220,13 +218,15 @@ export function isStubScript(scripts: Record<string, string>, entry: string): bo
   return bodies.every((body) => commandSegments(body).every(({ cmd }) => NO_OP_SEGMENT.test(cmd)));
 }
 
-// The shell reports the LAST command's status, so only a no-op in final position can mask a real
-// failure. `rm -rf dist || true && tsc --noEmit` is an honest check with a guarded prep step — the
-// exit code npm sees is tsc's. Flagging that would block a healthy project on a mainstream idiom,
-// which is a worse failure than missing an exotic fake.
+// Masking requires a FALLBACK that runs BECAUSE the real command failed, with nothing real left to
+// fail afterwards — `tsc || true`, `tsc; true`, `tsc || true && echo done`. An `&&` tail is never a
+// mask: it is skipped when the command before it fails, so the failure still propagates
+// (`tsc && npm run type-check:test`, `gennady lint && echo ok` are ordinary honest chains). And a
+// real command AFTER the fallback re-exposes failure (`rm -rf dist || true && tsc --noEmit`).
+// Getting this wrong in the permissive direction misses an exotic fake; getting it wrong in the
+// strict direction pins an honest project at `provisional` forever, with no override anywhere.
 /**
- * @purpose Detect an exit-code silencer — a real command whose failure the script's final position
- * swallows (`tsc || true`).
+ * @purpose Detect an exit-code silencer — a real command whose failure a no-op fallback swallows.
  * @invariant Worse than a stub: it looks like a real tool and can never report red.
  * @param scripts The package.json scripts map.
  * @param entry The script name to check.
@@ -235,12 +235,13 @@ export function isStubScript(scripts: Record<string, string>, entry: string): bo
 export function silencesExitCode(scripts: Record<string, string>, entry: string): boolean {
   return reachableScriptBodies(scripts, entry).some((body) => {
     const segments = commandSegments(body);
-    const last = segments.at(-1);
-    if (!last || !NO_OP_SEGMENT.test(last.cmd)) return false;
-    // `real && true` still propagates the real command's failure — the tail never runs.
-    if (last.sep === '&&' && TERMINATOR_SEGMENT.test(last.cmd)) return false;
-    // Nothing real precedes it → this is a stub, not a silencer; `isStubScript` owns that case.
-    return segments.slice(0, -1).some(({ cmd }) => !NO_OP_SEGMENT.test(cmd));
+    return segments.some((seg, i) => {
+      const isFallback = seg.sep === '||' || seg.sep === ';' || seg.sep === '|';
+      if (!isFallback || !NO_OP_SEGMENT.test(seg.cmd)) return false;
+      const someRealBefore = segments.slice(0, i).some(({ cmd }) => !NO_OP_SEGMENT.test(cmd));
+      const someRealAfter = segments.slice(i + 1).some(({ cmd }) => !NO_OP_SEGMENT.test(cmd));
+      return someRealBefore && !someRealAfter;
+    });
   });
 }
 
