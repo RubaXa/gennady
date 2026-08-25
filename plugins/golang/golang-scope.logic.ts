@@ -350,12 +350,10 @@ function goBearingTopLevelPaths(root: string): string[] {
       return;
     }
 
-    const children = entries.filter(
-      (entry) => entry.isDirectory() && !entry.name.startsWith('.') && !entry.isSymbolicLink()
-    );
-    const excludedInside = children.some((entry) => EXCLUDED_SEGMENTS.has(entry.name));
-
-    if (relative.length > 0 && !excludedInside && hasGoFile(dir)) {
+    // "Handed over whole only when nothing excluded lives below it" — at ANY depth, not just
+    // direct children: a `testdata`/`vendor` nested two levels down was swallowed by the whole
+    // subtree and fed to `gofmt`, which (unlike `go ./...`) does not skip it (review P2).
+    if (relative.length > 0 && !hasExcludedSegmentBelow(dir) && hasGoFile(dir)) {
       // Nothing excluded below this point, so the whole subtree can be handed to gofmt at once.
       targets.push(relative);
       return;
@@ -380,6 +378,33 @@ function goBearingTopLevelPaths(root: string): string[] {
 
   walk(root, '');
   return targets.sort();
+}
+
+/**
+ * @purpose Probe: does an excluded segment (`vendor`/`testdata`/`node_modules`) live anywhere
+ *   below `dir`? Guards handing a whole subtree to `gofmt`, which recurses into `testdata`.
+ * @param dir Absolute directory to probe.
+ * @returns True on the first excluded segment found below `dir`.
+ */
+function hasExcludedSegmentBelow(dir: string): boolean {
+  let entries: fs.Dirent[];
+  try {
+    entries = fs.readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return false;
+  }
+  for (const entry of entries) {
+    if (!entry.isDirectory() || entry.isSymbolicLink() || entry.name.startsWith('.')) {
+      continue;
+    }
+    if (EXCLUDED_SEGMENTS.has(entry.name)) {
+      return true;
+    }
+    if (hasExcludedSegmentBelow(path.join(dir, entry.name))) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /**

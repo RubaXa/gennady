@@ -316,10 +316,12 @@ function executeGate(gate: Gate, guard: TreeGuard | null): GateResult {
     };
   }
 
-  if (gate.outputMeansFailure && proc.status === 0) {
+  if (gate.outputMeansFailure) {
+    // Output-driven, not exit-code-driven: `gofmt -l` exits 0 with output; `grep`-style gates
+    // exit 1 on the clean no-match case. env-fail/timeout already handled above (review P2).
     return stdout.trim().length > 0
-      ? { gate, status: 'fail', exitCode: 0, durationMs, output: stdout.trim() }
-      : { gate, status: 'pass', exitCode: 0, durationMs, output: '' };
+      ? { gate, status: 'fail', exitCode: proc.status, durationMs, output: stdout.trim() }
+      : { gate, status: 'pass', exitCode: proc.status, durationMs, output: '' };
   }
 
   if (proc.status === 0) {

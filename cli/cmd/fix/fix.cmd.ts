@@ -19,6 +19,8 @@ import {
   loadStackConfig,
   applyStackConfig,
   pluginConfigOf,
+  unmatchedGateOverrides,
+  type StackConfigError,
 } from '../../../services/stack/stack-config.ts';
 import { runFix, truncateOutput } from '../../../services/stack/gate-runner.ts';
 import type { Gate, ScopeRequest } from '../../../services/stack/stack.types.ts';
@@ -50,6 +52,7 @@ export async function run(argv: string[]): Promise<number> {
   const args = parseArgs(argv, {
     all: ['all'],
     changed: ['changed'],
+    plan: ['plan', 'dry-run'],
     root: { aliases: ['root'], takesValue: true },
     help: ['help', 'h'],
   });
@@ -92,22 +95,26 @@ export async function run(argv: string[]): Promise<number> {
 
   // #region START_FIXER_PLAN — the same plan verify builds; a fixer rides on its gate (§4.4)
   const fixers: Gate[] = [];
+  const overrideErrors: StackConfigError[] = [];
   for (const { plugin, detection } of active) {
     const scope = plugin.verify.resolveScope(detection, request);
     const pluginConfig = pluginConfigOf(configLoad.config, plugin.id);
     const planned = plugin.verify.planGates(detection, scope, { pluginConfig });
-    for (const gate of applyStackConfig(
+    const configured = applyStackConfig(
       planned,
       pluginConfig,
       plugin.id,
       root,
       configLoad.provenance
-    )) {
+    );
+    // Reject an override naming no built-in gate here too — `fix` must not run a config `verify` refuses.
+    overrideErrors.push(...unmatchedGateOverrides(configured, pluginConfig, plugin.id));
+    for (const gate of configured) {
       if (gate.fixer === undefined) {
         continue;
       }
-      // A fixer does its gate's work in the real tree, so it inherits the gate's ENV_FAIL
-      // predicates: a missing generator is a broken environment either way.
+      // Inherits the gate's ENV_FAIL predicates (a missing generator is a broken env either way) but
+      // NOT `outputMeansFailure`: a fixer that rewrites and exits 0 with output is success, not a finding.
       fixers.push({
         ...gate,
         argv: gate.fixer.argv,
@@ -115,9 +122,18 @@ export async function run(argv: string[]): Promise<number> {
         env: gate.fixer.env ?? gate.env,
         timeoutMs: gate.fixer.timeoutMs,
         label: `${gate.label} → fix`,
+        outputMeansFailure: false,
         driftMeansFailure: false,
       });
     }
+  }
+
+  if (overrideErrors.length > 0) {
+    console.error('[fix] CONFIG_ERROR: stack config is invalid — refusing to run');
+    for (const error of overrideErrors) {
+      console.error(`  ${error.path}: ${error.message}`);
+    }
+    return EXIT_BAD_INVOCATION;
   }
   // #endregion END_FIXER_PLAN
 
@@ -144,6 +160,21 @@ export async function run(argv: string[]): Promise<number> {
 
   if (selected.length === 0) {
     console.info('[fix] no fixers declared — nothing to do');
+    return 0;
+  }
+
+  // `fix --plan`/`--dry-run` shows what WOULD run and mutates nothing — fixers execute in the
+  // real tree, so a dry run must be honoured, not silently swallowed into a real mutation.
+  if (args.plan === true) {
+    console.info(`[fix] plan for ${root} (dry run — nothing is executed)`);
+    for (const fixer of selected) {
+      const name = `${fixer.stack}:${fixer.id}`;
+      console.info(
+        fixer.skipped !== null
+          ? `  ⏭️  ${name.padEnd(20)} skip — ${fixer.skipped}`
+          : `  ▶️  ${name.padEnd(20)} ${fixer.argv.join(' ')}  (cwd: ${fixer.cwd})`
+      );
+    }
     return 0;
   }
 

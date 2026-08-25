@@ -452,27 +452,30 @@ export function applyStackConfig(
       const source = provenanceOf(provenance, `${stack}.overrideGates.${gate.id}`) ?? 'config';
       const timeoutMs =
         override.timeout !== undefined ? parseDuration(override.timeout)! : gate.timeoutMs;
+      // requires/fixer must run in the OVERRIDDEN cwd, not the gate's original one (review P3).
+      const overriddenCwd =
+        override.cwd !== undefined ? path.resolve(root, override.cwd) : gate.cwd;
       result = {
         ...gate,
         argv: override.argv ?? gate.argv,
-        cwd: override.cwd !== undefined ? path.resolve(root, override.cwd) : gate.cwd,
+        cwd: overriddenCwd,
         env: override.env ?? gate.env,
         timeoutMs,
         outputMeansFailure: override.outputMeansFailure ?? gate.outputMeansFailure,
         driftMeansFailure: override.driftMeansFailure ?? gate.driftMeansFailure,
         // An argv override replaces the binary, so its exit-code convention no longer
         // applies: `make lint` returns 2 for any failed recipe, which an inherited
-        // exitAbove(1) would report as ENV_FAIL on a GENUINE finding. Output predicates
+        // exit-code predicate would report as ENV_FAIL on a GENUINE finding. Output predicates
         // (panic traces, blocked module proxy) stay — they describe the environment.
         // Config rules PREPEND: `find()` returns the first match and plugin predicates often
         // carry no hint, so appending would silently discard the author's remediation.
         requires:
           override.requires !== undefined
-            ? toCommands(override.requires, root, gate.cwd)
+            ? toCommands(override.requires, root, overriddenCwd)
             : gate.requires,
         fixer:
           override.fixer !== undefined
-            ? toCommands([override.fixer], root, gate.cwd, timeoutMs)[0]
+            ? toCommands([override.fixer], root, overriddenCwd, timeoutMs)[0]
             : gate.fixer,
         envFail: [
           ...compileEnvFailRules(

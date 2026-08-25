@@ -46,7 +46,7 @@ console.info(
   '  testcov           Visual test coverage tree (vitest/jest/node:test auto-detection)'
 );
 console.info(
-  '  verify            Stack-agnostic verification gates (node + golang, gennady.yaml overrides)'
+  '  verify            Stack-agnostic verification gates (node + golang + anystack, gennady.yaml overrides)'
 );
 console.info('  fix               Run mutating fixers (codegen, formatters) in the working tree');
 console.info('');

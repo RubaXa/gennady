@@ -120,7 +120,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ runner.temp }}/gennady-stack-e2e-go
-          key: stack-e2e-gocache-${{ runner.os }}-go1.24-${{ hashFiles('services/stack/__tests__/e2e/fixtures/golang/*/go.mod') }}
+          key: stack-e2e-gocache-${{ runner.os }}-go1.24-${{ hashFiles('plugins/golang/e2e/fixtures/*/go.mod') }}
           restore-keys: stack-e2e-gocache-${{ runner.os }}-go1.24-
       # STRICT turns a missing toolchain into a failure: a suite that silently skipped
       # everything would report success (infra-e2e §5, D-E2E-005).

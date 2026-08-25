@@ -118,14 +118,6 @@ export class GennadyRc {
   }
 
   /**
-   * @purpose Get the raw stack section from loaded rc; shape validation is the caller's job.
-   * @returns Unvalidated stack section, or undefined when absent.
-   */
-  getStack(): unknown {
-    return this._data.stack;
-  }
-
-  /**
    * @purpose Get load/parse error if one occurred.
    * @returns Error or null on successful load.
    */

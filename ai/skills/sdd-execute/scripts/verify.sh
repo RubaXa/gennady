@@ -59,14 +59,25 @@ GENNADY_HOME="${GENNADY_HOME:-$SCRIPT_DIR/../../../..}"
 
 # Capability probe: an older installed gennady without `verify` prints its generic
 # help and exits 0, silently swallowing the delegation. Probe the machine surface,
-# not the human help table: `verify --plan --json` either emits JSON (the command
-# exists and planned) or exits non-zero (it exists and rejected the config or the
-# repository) — a gennady without the command does neither. Delegating on non-zero
-# is deliberate: the real run then fails loudly instead of silently falling back.
+# not the human help table: `verify --plan --json` emits JSON (command exists, planned,
+# exit 0), or exits 4/5 (command exists and ran: bad config / no stack). A gennady that
+# is BROKEN (clipped deps, too-old Node, wrong arch) exits 1/126/127 with no JSON —
+# delegating to it would `exec` the same broken binary and hide the working checkout and
+# npm fallback below. So delegate ONLY on a positive capability signal, never on a bare
+# non-zero. A `timeout` guards a hung binary from blocking verify forever.
+run_probe() {
+  if command -v timeout &>/dev/null; then
+    timeout 10 gennady verify --plan --json 2>/dev/null
+  elif command -v gtimeout &>/dev/null; then
+    gtimeout 10 gennady verify --plan --json 2>/dev/null
+  else
+    gennady verify --plan --json 2>/dev/null
+  fi
+}
 if command -v gennady &>/dev/null; then
-  probe_out="$(gennady verify --plan --json 2>/dev/null)"
+  probe_out="$(run_probe)"
   probe_exit=$?
-  if [[ $probe_exit -ne 0 || "${probe_out:0:1}" == "{" ]]; then
+  if [[ "${probe_out:0:1}" == "{" || $probe_exit -eq 4 || $probe_exit -eq 5 ]]; then
     exec gennady verify "$@"
   fi
 fi
@@ -120,8 +131,11 @@ for cls in ['typecheck','gennady','lint','test','format']:
 " 2>/dev/null)
 
 if [[ -z "$discovered" ]]; then
-  echo "[$PROG] NO_SCRIPTS_DISCOVERED"
-  exit 0
+  # Zero discovered gates verifies nothing — it must not read as success, exactly as the
+  # delegated `gennady verify` reports ZERO_GATES with exit 1 (this file's own contract:
+  # "All discovered gates MUST pass for exit 0"; an empty set satisfies that vacuously).
+  echo "[$PROG] NO_SCRIPTS_DISCOVERED: nothing to verify — declare gates in gennady.yaml or add npm scripts"
+  exit 1
 fi
 
 # -----------------------------------------------------------

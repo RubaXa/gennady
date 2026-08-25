@@ -213,7 +213,7 @@ npx gennady verify --plan --json
 | `orient`            | Навигация по file-header и DBC-контрактам                 |
 | `agents-rules`      | Инструкция по orient для AI-агентов                       |
 | `testcov`           | Визуальное дерево покрытия (vitest/jest/node:test)        |
-| `verify`            | Стек-агностичные гейты (node + golang, gennady.yaml)      |
+| `verify`            | Стек-агностичные гейты (node + golang + anystack, gennady.yaml) |
 | `fix`               | Мутирующие fixer'ы (кодоген, форматтеры) в рабочем дереве |
 
 ---

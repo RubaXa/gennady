@@ -94,6 +94,18 @@ describe('runVerify', () => {
     assert.equal(report.ok, true);
   });
 
+  it('passes an outputMeansFailure gate that exits non-zero with no output (grep clean case)', () => {
+    // `grep`/`rg` "no forbidden pattern" gates exit 1 when they find nothing — the clean case.
+    // Output, not the exit code, drives the verdict (review P2: it used to invert to FAIL).
+    const report = runVerify(
+      [runOf([shellGate('no-todos', 'exit 1', { outputMeansFailure: true })])],
+      []
+    );
+
+    assert.equal(report.results[0]?.status, 'pass');
+    assert.equal(report.ok, true);
+  });
+
   it('classifies a failure as env-fail when an outputMatches predicate fires', () => {
     const report = runVerify(
       [

@@ -82,9 +82,18 @@ export function scanSourceRoots(roots: readonly string[], subdirs?: string[]): M
   for (const root of roots) {
     let available: string[] = [];
     try {
-      available = readdirSync(root).filter(
-        (name) => !EXCLUDED_ENTRIES.has(name) && statSync(join(root, name)).isDirectory()
-      );
+      available = readdirSync(root).filter((name) => {
+        if (EXCLUDED_ENTRIES.has(name)) {
+          return false;
+        }
+        // A single throwing statSync (a broken symlink, a racing delete) must not take out the
+        // whole root — it would silently drop every directive under it (review P2).
+        try {
+          return statSync(join(root, name)).isDirectory();
+        } catch {
+          return false;
+        }
+      });
     } catch {
       continue;
     }
@@ -125,9 +134,17 @@ export function scanSourceRoots(roots: readonly string[], subdirs?: string[]): M
  */
 export function scanDirectives(sourceDir: string, subdirs?: string[]): string[] {
   if (subdirs && subdirs.length > 0) {
-    const available = readdirSync(sourceDir).filter(
-      (name) => !EXCLUDED_ENTRIES.has(name) && statSync(join(sourceDir, name)).isDirectory()
-    );
+    const available = readdirSync(sourceDir).filter((name) => {
+      if (EXCLUDED_ENTRIES.has(name)) {
+        return false;
+      }
+      // A single throwing statSync must not abort the whole subdir scan (review P2).
+      try {
+        return statSync(join(sourceDir, name)).isDirectory();
+      } catch {
+        return false;
+      }
+    });
 
     for (const subdir of subdirs) {
       if (!available.includes(subdir)) {

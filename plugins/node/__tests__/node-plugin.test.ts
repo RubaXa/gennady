@@ -66,6 +66,16 @@ describe('classifyNpmScripts', () => {
     });
     assert.equal(selected.format, 'format:check');
   });
+
+  it('falls back to a lower-priority check-only script over a higher-priority mutating one', () => {
+    // `lint: eslint --fix` outranks `lint:ci` by name priority but mutates; screening mutating
+    // candidates BEFORE the priority sort keeps the class instead of dropping it (review P2).
+    const selected = classifyNpmScripts({
+      lint: 'eslint . --fix',
+      'lint:ci': 'eslint .',
+    });
+    assert.equal(selected.lint, 'lint:ci');
+  });
 });
 
 describe('nodePlugin', () => {

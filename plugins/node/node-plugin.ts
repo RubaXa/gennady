@@ -7,6 +7,7 @@ import path from 'node:path';
 import type { StackDetection, StackDiagnostic, StackPlugin } from 'gennady/stack';
 import {
   classifyNpmScripts,
+  MUTATING_FLAG_RE,
   NPM_SCRIPT_CLASSES,
   type NpmScriptClass,
 } from './classify-npm-scripts.ts';
@@ -16,9 +17,6 @@ export const NODE_GATE_IDS: readonly NpmScriptClass[] = NPM_SCRIPT_CLASSES;
 
 /** Default per-gate timeout for npm scripts (spec D-STACK-007). */
 const NPM_GATE_TIMEOUT_MS = 10 * 60_000;
-
-/** Flags that make an npm script rewrite the tree — forbidden in a gate (D-STACK-005). */
-const MUTATING_FLAG_RE = /(^|\s)--(fix|autofix|write)(?:[=\s]|$)/;
 
 /**
  * @purpose Detection payload of the node plugin.

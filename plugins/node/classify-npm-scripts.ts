@@ -14,6 +14,9 @@ export const NPM_SCRIPT_CLASSES: readonly NpmScriptClass[] = [
   'format',
 ];
 
+/** Flags that make an npm script rewrite the tree — a gate must never mutate (D-STACK-005). */
+export const MUTATING_FLAG_RE = /(^|\s)--(fix|autofix|write)(?:[=\s]|$)/;
+
 /**
  * @purpose Test whether a script is watch-like and therefore unusable as a one-shot gate.
  * @param name Script name.
@@ -119,6 +122,10 @@ export function classifyNpmScripts(
   const entries = Object.entries(scripts).map(([name, body]) => ({
     name,
     classes: classifyNpmScript(name, body),
+    // Mutating-ness is a property of the CANDIDATE, screened BEFORE priority: otherwise a
+    // higher-priority `lint: eslint --fix` wins and is later dropped as mutating, losing the
+    // class entirely instead of falling back to a check-only `lint:ci: eslint .` (review P2).
+    mutating: MUTATING_FLAG_RE.test(body),
   }));
 
   const selected: Partial<Record<NpmScriptClass, string>> = {};
@@ -127,8 +134,12 @@ export function classifyNpmScripts(
     if (candidates.length === 0) {
       continue;
     }
-    candidates.sort((a, b) => (priority[cls][b.name] ?? 1) - (priority[cls][a.name] ?? 1));
-    selected[cls] = candidates[0]!.name;
+    // Prefer non-mutating candidates; fall back to a mutating one only when it is the sole
+    // option (the node plugin then renders it as a visible skip).
+    const usable = candidates.filter((entry) => !entry.mutating);
+    const pool = usable.length > 0 ? usable : candidates;
+    pool.sort((a, b) => (priority[cls][b.name] ?? 1) - (priority[cls][a.name] ?? 1));
+    selected[cls] = pool[0]!.name;
   }
 
   return selected;
