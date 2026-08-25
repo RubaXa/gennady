@@ -72,6 +72,7 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
       {
         autofix: ['autofix'],
         staged: ['staged'],
+        includeAll: ['include-all'],
         verbose: ['verbose', 'v'],
         maxInvariants: { aliases: ['max-invariants'], takesValue: true },
         exclude: { aliases: ['exclude'], takesValue: true },
@@ -103,6 +104,7 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
 
   const autofix = args.autofix === true || args.autofix === 'true';
   const staged = args.staged === true || args.staged === 'true';
+  const includeAll = args.includeAll === true || args.includeAll === 'true';
   const verbose = args.verbose === true || args.verbose === 'true';
   const maxInvariants =
     typeof args.maxInvariants === 'string' ? parseInt(args.maxInvariants, 10) : 3;
@@ -164,17 +166,25 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
     positional.push(inventoryReverseDir);
   }
 
-  // Default exclude patterns — always active
-  const DEFAULT_EXCLUDES = [
+  // Build-system dirs — no source of ours, always excluded (even under --include-all).
+  const SYSTEM_EXCLUDES = [
     '**/node_modules/**',
-    '**/__tests__/**',
-    '**/fixtures/**',
-    '**/__tests__/fixtures/**',
     '**/dist/**',
     '**/coverage/**',
     '**/build/**',
     '**/out/**',
   ];
+  // Configs, fixtures, mocks, and test dirs carry no DbC contracts by design — a config or a
+  // fixture is data, not a contracted entity, so the linter must never demand @purpose of them.
+  // Excluded by default; `--include-all` opts them back in for the rare deliberate audit.
+  const CONTENT_EXCLUDES = [
+    '**/__tests__/**',
+    '**/fixtures/**',
+    '**/*fixture*',
+    '**/*.mock.*',
+    '**/*.config.*',
+  ];
+  const DEFAULT_EXCLUDES = includeAll ? SYSTEM_EXCLUDES : [...SYSTEM_EXCLUDES, ...CONTENT_EXCLUDES];
 
   // Collect --exclude values (parseArgs packs multiples into array)
   const rawExclude = args.exclude;

@@ -21,15 +21,20 @@ export function printHelp(): void {
   console.info('  --max-region-comments <n>  Max comment lines per #region block (default: 3)');
   console.info('  --exclude <glob>      Exclude files matching glob pattern (repeatable)');
   console.info(
+    '  --include-all         Lint configs/fixtures/mocks/__tests__ too (off by default)'
+  );
+  console.info(
     '  --spec=<module-spec>  Check exports against a module spec Entity Inventory (undeclared exports)'
   );
   console.info(
     '  --inventory-reverse <dir>  With --spec: also flag inventory entities exported by no file under <dir>'
   );
   console.info('');
-  console.info('  Default exclude patterns (always active):');
-  console.info('    **/node_modules/**  **/__tests__/**  **/fixtures/**');
-  console.info('    **/dist/**          **/coverage/**   **/build/**  **/out/**');
+  console.info('  Default exclude patterns:');
+  console.info('    always:            **/node_modules/**  **/dist/**  **/coverage/**');
+  console.info('                       **/build/**  **/out/**');
+  console.info('    unless --include-all: **/__tests__/**  **/fixtures/**  **/*fixture*');
+  console.info('                       **/*.mock.*  **/*.config.*');
   console.info('');
   console.info('  When no paths or --staged are provided, lints nothing.');
   console.info('');

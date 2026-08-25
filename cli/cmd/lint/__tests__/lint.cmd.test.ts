@@ -424,4 +424,26 @@ describe('LintCommand', () => {
     assert.strictEqual(report.exitCode, 0, JSON.stringify(report.errors));
     assert.strictEqual(report.errors.length, 0, JSON.stringify(report.errors));
   });
+
+  it('excludes configs/mocks/fixtures by default; --include-all opts them back in (Problem 2)', async () => {
+    const dir = join(tmpDir, 'excludes-mod');
+    mkdirSync(dir, { recursive: true });
+    // Each of these would violate DbC contracts (uncontracted export, no @file header) —
+    // but as config / mock / fixture data they must never reach the linter by default.
+    const dirty = ['export const wired = { a: 1 };', ''].join('\n');
+    for (const name of ['app.config.ts', 'db.mock.ts', 'user.fixture.ts']) {
+      writeFileSync(join(dir, name), dirty, 'utf-8');
+    }
+
+    const clean = await mod.run(['node', 'gennady', 'lint', dir]);
+    assert.strictEqual(clean.exitCode, 0, JSON.stringify(clean.errors));
+    assert.strictEqual(clean.errors.length, 0, JSON.stringify(clean.errors));
+
+    const audited = await mod.run(['node', 'gennady', 'lint', '--include-all', dir]);
+    assert.strictEqual(audited.exitCode, 1);
+    assert.ok(
+      audited.errors.length >= 3,
+      `--include-all must surface the config/mock/fixture violations, got ${JSON.stringify(audited.errors)}`
+    );
+  });
 });
