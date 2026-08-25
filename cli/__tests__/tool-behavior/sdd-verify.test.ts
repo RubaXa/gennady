@@ -130,19 +130,20 @@ describe('sdd-verify — live gate ladder', () => {
     }
   });
 
-  it('required script with its exit code silenced (--profile code): the tool looks real and can never fail — refused', () => {
+  it('a deliberately masked exit code (`|| true`, --profile code) is OUT OF SCOPE — it runs and passes, not refused', () => {
+    // Readiness catches classic bootstrap stubs (echo/`:`), NOT hand-crafted exit-code masks: we are
+    // not in a hostile environment, and the net for genuine fictitiousness is the audit +
+    // real-toolchain e2e. So a `|| true` script is treated as a real tool that happens to exit 0.
     const { root } = buildRepoFixture({
       scripts: {
         'type-check': noop(0),
-        // A real command whose failure is swallowed: it RUNS, it just cannot ever report red.
         test: `${noop(1)} || true`,
       },
     });
     try {
       const r = runCli(['sdd-verify', '--profile', 'code'], root);
-      assert.notStrictEqual(r.exitCode, 0, r.stdout + r.stderr);
-      assert.match(r.stdout, /⛔ test — обязательная ступень профиля «code»/);
-      assert.match(r.stdout, /заглушён exit code/);
+      assert.match(r.stdout, /✅ test\b/);
+      assert.doesNotMatch(r.stdout, /⛔ test — обязательная ступень профиля «code»/);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

@@ -107,8 +107,27 @@ function stripShellComments(body: string): string {
     .join('\n');
 }
 
-/** @purpose Script-runner hops the graph follows transitively — npm plus the common drop-in alternates. */
-const RUN_HOP = /(?:npm|pnpm|yarn) run ([A-Za-z0-9:_-]+)/g;
+/**
+ * @purpose The script this segment hops to — `npm run <name>` (or pnpm/yarn) IN COMMAND POSITION,
+ *   after peeling `VAR=val` assignments.
+ * @invariant A `npm run` inside quotes or an `echo` argument is not a hop — a placeholder naming
+ *   another script stays a stub.
+ * @param cmd One command segment.
+ * @returns The hopped-to script name, or null when the segment is not a run-hop.
+ */
+function scriptHopTarget(cmd: string): string | null {
+  const toks = cmd.trim().split(/\s+/);
+  while (toks.length > 0 && /^[A-Za-z_][A-Za-z0-9_]*=/.test(toks[0] as string)) toks.shift();
+  if (
+    toks.length >= 3 &&
+    /^(?:npm|pnpm|yarn)$/.test(toks[0] ?? '') &&
+    toks[1] === 'run' &&
+    /^[A-Za-z0-9:_-]+$/.test(toks[2] ?? '')
+  ) {
+    return toks[2] as string;
+  }
+  return null;
+}
 
 /** @purpose Runner wrappers whose first argument is the real command — peeled to find the head. */
 const RUNNER_TOKEN = /^(?:npx|pnpm|yarn|bunx|tsx|ts-node|node)$/;
@@ -145,8 +164,8 @@ function lintReachesGennady(scripts: Record<string, string>): boolean {
     if (raw === undefined) continue;
     const body = stripShellComments(raw);
     if (commandSegments(body).some((s) => invokesGennady(s.cmd))) return true;
-    for (const m of body.matchAll(RUN_HOP)) {
-      const ref = m[1];
+    for (const seg of commandSegments(body)) {
+      const ref = scriptHopTarget(seg.cmd);
       if (ref && !seen.has(ref) && scripts[ref] !== undefined) {
         seen.add(ref);
         queue.push(scripts[ref] as string);
@@ -173,8 +192,8 @@ function reachableScriptBodies(scripts: Record<string, string>, entry: string): 
     if (raw === undefined) continue;
     const body = stripShellComments(raw);
     bodies.push(body);
-    for (const match of body.matchAll(RUN_HOP)) {
-      const name = match[1];
+    for (const seg of commandSegments(body)) {
+      const name = scriptHopTarget(seg.cmd);
       if (name && !seen.has(name) && scripts[name] !== undefined) {
         seen.add(name);
         queue.push(scripts[name]);
@@ -310,57 +329,22 @@ export function isStubScript(scripts: Record<string, string>, entry: string): bo
   return bodies.every((body) => commandSegments(body).every(({ cmd }) => isNoOp(cmd)));
 }
 
-// Two ways a real command's failure gets swallowed:
-//  (1) a no-op FALLBACK that runs BECAUSE the real command failed, with nothing real after it —
-//      `tsc || true`, `tsc; true`, `tsc || (echo fail && true)`. An `&&` tail is NOT a mask (it is
-//      skipped when the preceding command fails, so the failure propagates: `tsc && npm run x`,
-//      `gennady lint && echo ok` are honest). A real command AFTER the fallback re-exposes it
-//      (`rm -rf dist || true && tsc`). `set -e` neutralizes a `;`-fallback (the abort beats it).
-//  (2) a real command in a non-final PIPE stage — a pipeline's exit is its LAST stage's, so
-//      `tsc | cat` / `tsc | tee log` report cat/tee's 0, not tsc's failure. `set -o pipefail`
-//      re-exposes it; `echo x | xargs tsc` is honest (the real tool IS the last stage).
-// Wrong in the permissive direction misses an exotic fake; wrong in the strict direction pins an
-// honest project at `provisional` forever with no override — the worse failure, so the rules above
-// stay conservative.
 /**
- * @purpose Detect an exit-code silencer — a real command whose failure a no-op fallback or a pipe swallows.
- * @invariant Worse than a stub: it looks like a real tool and can never report red.
+// Scope is DELIBERATELY narrow — the echo-stubs the readiness directive prescribes at bootstrap, NOT
+// adversarially-crafted exit-code masks (`tsc || true`, `tsc | cat`). We are not in a hostile
+// environment; a deliberately silenced exit code is the author's own choice, and the real net for
+// genuine fictitiousness is the audit + real-toolchain e2e (observed behaviour), never a shell
+// heuristic. Best-effort: a green here means "not an obvious stub", not "the gate is proven real".
+/**
+ * @purpose Whether a green result from `entry` proves nothing — a classic bootstrap placeholder
+ *   (echo/`:`/`true`/empty) standing in for a real tool.
+ * @invariant Narrow by design — bootstrap echo-stubs only, not crafted exit-code masks (see above).
  * @param scripts The package.json scripts map.
  * @param entry The script name to check.
- * @returns True when `entry` or a script it reaches masks a real command's non-zero exit.
- */
-export function silencesExitCode(scripts: Record<string, string>, entry: string): boolean {
-  return reachableScriptBodies(scripts, entry).some((body) => {
-    const segments = commandSegments(body);
-    const errexitAt = segments.findIndex((s) => /^set\s+(?:-o\s+errexit\b|-[a-z]*e)/.test(s.cmd));
-    const hasPipefail = segments.some((s) => /\bset\b[^\n;]*\bpipefail\b/.test(s.cmd));
-
-    const fallbackMask = segments.some((seg, i) => {
-      if (!isNoOp(seg.cmd)) return false;
-      const errexitGuards = errexitAt !== -1 && errexitAt < i;
-      const isFallback = seg.sep === '||' || (!errexitGuards && seg.sep === ';');
-      if (!isFallback) return false;
-      const realBefore = segments.slice(0, i).some(({ cmd }) => !isNoOp(cmd));
-      const realAfter = segments.slice(i + 1).some(({ cmd }) => !isNoOp(cmd));
-      return realBefore && !realAfter;
-    });
-
-    const pipeMask =
-      !hasPipefail && segments.some((seg, i) => segments[i + 1]?.sep === '|' && !isNoOp(seg.cmd));
-
-    return fallbackMask || pipeMask;
-  });
-}
-
-/**
- * @purpose Whether a declared script can never report a real failure — a no-op stub, or a real
- * command with its exit code silenced.
- * @param scripts The package.json scripts map.
- * @param entry The script name to check.
- * @returns True when a green result from `entry` proves nothing.
+ * @returns True when `entry` is a no-op-only stub all the way down.
  */
 export function isVacuousScript(scripts: Record<string, string>, entry: string): boolean {
-  return isStubScript(scripts, entry) || silencesExitCode(scripts, entry);
+  return isStubScript(scripts, entry);
 }
 
 /**

@@ -4,13 +4,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  checkReadiness,
-  isStubScript,
-  isVacuousScript,
-  silencesExitCode,
-  REQUIRED_SCRIPTS,
-} from '../readiness.ts';
+import { checkReadiness, isStubScript, isVacuousScript, REQUIRED_SCRIPTS } from '../readiness.ts';
 
 /** Check `scripts` with package.json present and gennady installed unless overridden. */
 function check(scripts: Record<string, string>, opts?: { pkg?: boolean; gennady?: boolean }) {
@@ -265,129 +259,43 @@ describe('isStubScript', () => {
   });
 });
 
-describe('silencesExitCode', () => {
-  it('a real command with its failure swallowed is caught in every common spelling', () => {
-    for (const body of [
-      'tsc --noEmit || true',
-      'node --test || :',
-      'vitest run || exit 0',
-      'tsc --noEmit; true',
-      'eslint . || true && echo done',
-    ]) {
-      assert.strictEqual(
-        silencesExitCode({ test: body }, 'test'),
-        true,
-        `expected silenced: ${body}`
-      );
-    }
-  });
-
-  it('an honest command that can fail is not flagged', () => {
-    for (const body of ['tsc --noEmit', 'npm run a && npm run b', 'node --test || exit 1']) {
-      assert.strictEqual(
-        silencesExitCode({ test: body }, 'test'),
-        false,
-        `expected honest: ${body}`
-      );
-    }
-  });
-
-  // False positives are the dangerous direction here: they block an honest project while asserting
-  // something untrue about its scripts, and nothing in the flow offers an override.
-  it('a GUARDED PREP STEP followed by a real check is honest — the shell reports the real check', () => {
-    for (const body of [
-      'rm -rf dist || true && tsc --noEmit',
-      'mkdir -p coverage || true; c8 node --test',
-      'git rev-parse HEAD > .rev || true && vitest run',
-    ]) {
-      assert.strictEqual(
-        silencesExitCode({ test: body }, 'test'),
-        false,
-        `expected honest (prep step guarded, real check last): ${body}`
-      );
-    }
-  });
-
-  it('`real && true` is honest — the tail never runs when the real command fails', () => {
-    assert.strictEqual(silencesExitCode({ test: 'tsc --noEmit && true' }, 'test'), false);
-  });
-
-  // An `&&` tail is skipped when the command before it fails, so the failure still propagates.
-  // Fanning a gate out to a sibling script, or echoing a success banner, is the most ordinary npm
-  // idiom there is — flagging it would pin an honest project at `provisional` with no override.
-  it('`set -e` makes a `;`-separated tail honest — a failed real command aborts before the no-op runs', () => {
-    for (const body of [
-      'set -e; tsc --noEmit; echo ok',
-      'set -euo pipefail; vitest run; echo done',
-      'set -o errexit; tsc --noEmit; :',
-    ]) {
-      assert.strictEqual(
-        silencesExitCode({ test: body }, 'test'),
-        false,
-        `expected honest under set -e: ${body}`
-      );
-    }
-  });
-
-  it('`set -e` does NOT rescue an explicit `|| true` catch — that still masks', () => {
-    assert.strictEqual(silencesExitCode({ test: 'set -e; tsc --noEmit || true' }, 'test'), true);
-  });
-
-  it('without `set -e`, a `;`-separated trailing no-op genuinely masks — npm sees the no-op exit code', () => {
-    assert.strictEqual(silencesExitCode({ test: 'tsc --noEmit; echo done' }, 'test'), true);
-  });
-
-  it('an && chain into a sibling script or a success banner is honest, not silenced', () => {
-    for (const body of [
-      'tsc --noEmit -p tsconfig.json && npm run type-check:test',
-      'vitest run && npm run test:e2e',
-      'gennady lint src/ && echo "✓ lint clean"',
-      'prettier --check . && npm run format:md',
-      'eslint src/ --fix && npm run lint:fix:styles',
-      'vitest run --coverage && npm run coverage:report',
-    ]) {
-      assert.strictEqual(
-        silencesExitCode({ test: body }, 'test'),
-        false,
-        `expected honest (&& chain): ${body}`
-      );
-    }
-  });
-
-  it('a silencer reached through an npm-run hop still counts', () => {
+describe('isStubScript — bootstrap-stub scope, not adversarial masking', () => {
+  // A placeholder that merely NAMES another script inside an echo string never runs it — it must not
+  // borrow that script's realness. This was the `echo "npm run real"` false-green: the hop scanner
+  // matched `npm run` inside the quoted text and pulled the real body in.
+  it('an echo placeholder that names another script in a string stays a stub', () => {
     assert.strictEqual(
-      silencesExitCode({ test: 'npm run test:inner', 'test:inner': 'tsc || true' }, 'test'),
+      isStubScript(
+        { test: 'echo "TODO: настроить через npm run build"', build: 'tsc --noEmit' },
+        'test'
+      ),
       true
     );
   });
 
-  // Round-4 false-negatives: a real check whose failure is swallowed by a pipe or a subshell.
-  it('a real command piped into a passthrough is silenced — the pipeline reports the last stage', () => {
-    for (const body of ['tsc --noEmit | cat', 'tsc --noEmit | tee log', 'vitest run | cat']) {
+  it('a REAL command-position hop to a real script is not a stub', () => {
+    assert.strictEqual(
+      isStubScript({ test: 'npm run build', build: 'tsc --noEmit' }, 'test'),
+      false
+    );
+  });
+
+  it('a command-position hop to a STUB script is still a stub', () => {
+    assert.strictEqual(isStubScript({ test: 'npm run build', build: 'echo TODO' }, 'test'), true);
+  });
+
+  // Deliberately OUT OF SCOPE: we are not in a hostile environment. A hand-crafted exit-code mask
+  // (`|| true`, a passthrough pipe) is the author's own choice; the safety net for genuine
+  // fictitiousness is the audit + the real-toolchain e2e, never a shell-parsing heuristic. So these
+  // read as real, not as stubs.
+  it('adversarial exit-code masks are out of scope — treated as real, not stubs', () => {
+    for (const body of ['tsc --noEmit || true', 'tsc --noEmit | cat', 'tsc --noEmit; echo done']) {
       assert.strictEqual(
-        silencesExitCode({ test: body }, 'test'),
-        true,
-        `expected silenced: ${body}`
+        isStubScript({ test: body }, 'test'),
+        false,
+        `out of scope, not a stub: ${body}`
       );
     }
-  });
-
-  it('`set -o pipefail` re-exposes a piped failure — then it is honest', () => {
-    assert.strictEqual(silencesExitCode({ test: 'set -o pipefail; tsc | tee log' }, 'test'), false);
-  });
-
-  it('an echo piped INTO a real tool is honest — the real tool is the last stage', () => {
-    assert.strictEqual(silencesExitCode({ test: 'echo x | xargs tsc --noEmit' }, 'test'), false);
-  });
-
-  it('a no-op subshell / brace-group fallback masks, a failing one does not', () => {
-    assert.strictEqual(silencesExitCode({ test: 'tsc || (echo x && true)' }, 'test'), true);
-    assert.strictEqual(silencesExitCode({ test: 'tsc || { echo x; true; }' }, 'test'), true);
-    assert.strictEqual(silencesExitCode({ test: 'tsc || (eslint . && exit 1)' }, 'test'), false);
-  });
-
-  it('an operator inside quotes is not a split point', () => {
-    assert.strictEqual(silencesExitCode({ test: 'echo "a; b" && tsc --noEmit' }, 'test'), false);
   });
 });
 
@@ -477,10 +385,11 @@ describe('shape-check comment & flag holes (round 4)', () => {
 });
 
 describe('isVacuousScript', () => {
-  it('covers both forms — a no-op stub and a silenced real command', () => {
+  it('a no-op stub is vacuous; a real tool is not; an adversarial mask is out of scope (real)', () => {
     assert.strictEqual(isVacuousScript({ test: 'echo TODO' }, 'test'), true);
-    assert.strictEqual(isVacuousScript({ test: 'tsc --noEmit || true' }, 'test'), true);
     assert.strictEqual(isVacuousScript({ test: 'tsc --noEmit' }, 'test'), false);
+    // Deliberate exit-code masking is not a bootstrap stub — out of scope, treated as real.
+    assert.strictEqual(isVacuousScript({ test: 'tsc --noEmit || true' }, 'test'), false);
   });
 });
 
@@ -521,16 +430,17 @@ describe('readiness levels (not-ready / provisional / ready)', () => {
     assert.strictEqual(r.executionReady, false);
   });
 
-  it('a project whose real tools all swallow their exit codes is provisional, not ready — the shape is perfect, the guarantee is nil', () => {
+  it('an adversarial exit-code mask (`|| true`) is out of scope — it does NOT drop to provisional', () => {
+    // We are not in a hostile environment; deliberate masking is the author's own choice, not
+    // something readiness pretends to statically catch. The real net for genuine fictitiousness is
+    // the audit + the real-toolchain e2e (observed behaviour).
     const r = check({
       ...FULL,
       'type-check': 'tsc --noEmit || true',
       test: 'node --test || true',
-      'test:coverage': 'c8 node --test || true',
     });
-    assert.strictEqual(r.ready, true, r.missing.join(', '));
-    assert.strictEqual(r.level, 'provisional');
-    assert.strictEqual(r.executionReady, false);
-    assert.deepStrictEqual(r.stubbed, ['type-check', 'test', 'test:coverage']);
+    assert.strictEqual(r.level, 'ready');
+    assert.strictEqual(r.executionReady, true);
+    assert.deepStrictEqual(r.stubbed, []);
   });
 });

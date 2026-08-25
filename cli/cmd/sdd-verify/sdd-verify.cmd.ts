@@ -6,7 +6,7 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { logger } from '#logger';
-import { isVacuousScript, silencesExitCode } from '../../../shared/sdd/readiness.ts';
+import { isVacuousScript } from '../../../shared/sdd/readiness.ts';
 import {
   gatesFor,
   verdict,
@@ -249,9 +249,7 @@ export async function run(runner: GateRunner, profile: Profile = 'full'): Promis
       if ((isMissing || isVacuous) && required.has(gate.name)) {
         const reason = isMissing
           ? `скрипта нет в package.json — verify нечем`
-          : silencesExitCode(scripts, scriptName as string)
-            ? `у скрипта заглушён exit code (\`|| true\` и подобное) — он не может сообщить о падении, зелёный вердикт был бы фикцией`
-            : `скрипт — заглушка (no-op), он выходит с кодом 0, ничего не проверяя — зелёный вердикт был бы фикцией`;
+          : `скрипт — заглушка (no-op), он выходит с кодом 0, ничего не проверяя — зелёный вердикт был бы фикцией`;
         results.push({
           name: gate.name,
           status: 'missing',

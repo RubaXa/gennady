@@ -549,7 +549,10 @@ describe('run — required rungs refuse to skip (code/test/full)', () => {
     assert.match(o.message, /заглушка \(no-op\)/);
   });
 
-  it('a required script whose exit code is silenced (`|| true`) is refused, and the reason says so', async () => {
+  it('a deliberately masked exit code (`|| true`) is OUT OF SCOPE — the gate runs, it is not refused', async () => {
+    // Readiness catches classic bootstrap stubs (echo/`:`), NOT hand-crafted exit-code masks: we are
+    // not in a hostile environment, and the net for genuine fictitiousness is the audit +
+    // real-toolchain e2e. So the masked script is treated as a real tool and actually executes.
     currentPkgJson = JSON.stringify({
       name: 'gennady',
       scripts: {
@@ -560,11 +563,9 @@ describe('run — required rungs refuse to skip (code/test/full)', () => {
     });
     const { runner, calls } = fakeRunner();
     const o = await run(runner, 'code');
-    assert.strictEqual(o.ok, false);
-    assert.ok(!calls.includes('npm run test'));
-    if (o.ok) return;
-    assert.match(o.message, /⛔ test — обязательная ступень профиля «code»/);
-    assert.match(o.message, /заглушён exit code/);
+    assert.ok(calls.includes('npm run test'), 'the masked script is treated as real and runs');
+    const text = o.ok ? o.text : o.message;
+    assert.doesNotMatch(text, /⛔ test — обязательная ступень профиля «code»/);
   });
 
   it('setup profile green verdict states its own weight — a bootstrap verdict is not a code-phase verdict', async () => {
