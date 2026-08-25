@@ -62,6 +62,9 @@ _(Обновляется по мере развития проекта; аген
 
 | Задача агента                                                    | Читать                                                                                                                                     |
 | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| SDD-воркфлоу: как использовать скиллы, в какой последовательности | [docs/sdd-flow.md](docs/sdd-flow.md)                                                                                                       |
+| Справочник SDD-скиллов (`@sdd-*`)                                | [ai/skills/README.md](ai/skills/README.md)                                                                                                 |
+| Справочник SDD-директив                                           | [ai/directives/sdd/README.md](ai/directives/sdd/README.md)                                                                                 |
 | Логирование в коде (console, logger)                             | [ai/flow/code/logging.md](ai/flow/code/logging.md)                                                                                         |
 | Ошибки: throw, rethrow, формат Error                             | [ai/flow/code/errors.md](ai/flow/code/errors.md)                                                                                           |
 | TypeScript: enum, private, конструктор                           | [ai/flow/code/typescript.md](ai/flow/code/typescript.md)                                                                                   |

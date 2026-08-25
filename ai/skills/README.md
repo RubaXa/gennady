@@ -1,5 +1,8 @@
 # ai/skills — AI-навыки для агентов
 
+> 🧭 **Единый гайд по SDD-воркфлоу (сценарии по шагам, диаграммы): [docs/sdd-flow.md](../../docs/sdd-flow.md).**
+> Здесь — справочник навыков: типовые сценарии вызова и паттерны исполнения.
+
 Навыки для Specification-Driven Development, мульти-модельного анализа и настройки автономной среды: SDD-семейство (`sdd-*`) плюс agent-inbox, alt-opinion, prd-interview и workspace-permission-setup. Стековые специализации (например, `sdd-infra-golang`) живут в `plugins/<stack>/skills/` и синхронизируются тем же `sync-skills`.
 
 > `sdd-hooks-install` (хуки live-прогресса для `sdd-execute`) и `workspace-permission-setup` мигрированы в хранилище из `~/.claude/skills` — теперь под git и деплоятся через `sync-skills`.
@@ -11,7 +14,8 @@
 ### 1. Спроектировать новый модуль с нуля
 
 ```bash
-npx gennady sync-skills
+npx gennady sync          # директивы (обязательно первым)
+npx gennady sync-skills   # навыки
 ```
 
 Затем в агенте: «@sdd-setup создай проект» → «@sdd-discover спроектируй scope vcs-client» → «@sdd-module-decomposition разбей на модули» → «@sdd-scaffold сгенерируй таски» → «@sdd-critic проверь таски» → «@sdd-execute TSK-01»
@@ -127,8 +131,15 @@ ai/skills/<name>/
 
 ## Синхронизация в проекты
 
+> ⚠️ **Порядок важен:** сначала директивы, потом навыки. Скиллы — тонкие клиенты над директивами из
+> `ai/directives/`, поэтому `npx gennady sync-skills` без предварительного `npx gennady sync` развернёт
+> навыки, которым нечего загружать.
+
 ```bash
-# Синхронизировать все навыки
+# 1. Директивы: ai/directives/ (из npm-пакета в проект)
+npx gennady sync
+
+# 2. Навыки: ai/skills/ → .claude/skills/ проекта
 npx gennady sync-skills
 
 # Предпросмотр

@@ -50,7 +50,7 @@
   - `cli/cmd/_shared/prompt/logic/verify-commands/resolve-verify-commands.logic.ts` (MOD)
   - `ai/skills/sdd-infra-golang/SKILL.md` (NEW)
   - `ai/skills/sdd-infra/SKILL.md` (MOD)
-  - `ai/directives/infra/golang-setup.xml` (NEW)
+  - `plugins/golang/directives/infra/golang-setup.xml` (NEW)
   - `ai/directives/infra/README.md` (MOD)
   - `README.md`, `cli/cmd/README.md` (MOD)
   <!--/SECTION:PHASES_OVERVIEW-->

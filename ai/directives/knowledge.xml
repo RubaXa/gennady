@@ -23,7 +23,7 @@
         <Preconditions>specs/[scope]/[scope].spec.md with scope-type=product or library</Preconditions>
       </SddModuleDecomposition>
       <SddTaskScaffolding>
-        <File>ai/directives/sdd/task-scaffolding.directive.xml</File>
+        <File>ai/directives/sdd/scaffold.directive.xml</File>
         <Purpose>Builds DAG of compact task tickets from scope graph. Each ticket includes BDD, Effective Rules, Verification, Execution Log template.</Purpose>
         <Triggers>all scope specs ready · break into tasks · build DAG · produce execution plan · scaffold tickets</Triggers>
         <SkipWhen>module specs lack contracts · discovery or module-decomp not closed · tasks already generated</SkipWhen>
