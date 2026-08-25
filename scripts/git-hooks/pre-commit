@@ -55,6 +55,19 @@ EOF
   exit 1
 }
 
+# INDEX-AWARE GUARD. The gate below runs over the WORKING TREE, but `git commit` records the INDEX.
+# For a file staged AND then further modified in the working tree (partial staging), those differ —
+# the gate would verify working-tree bytes while the commit captures the index bytes. `git status
+# --porcelain` marks such a file with BOTH columns non-blank (e.g. `MM`, `AM`). Refuse, so the gate
+# always verifies exactly what will be committed. (A fully-staged file — `M ` — has working tree ==
+# index, so the gate is honest; an unstaged-only file — ` M` — is not in the commit.)
+partial=$(git status --porcelain 2>/dev/null | awk '{ x=substr($0,1,1); y=substr($0,2,1); if (x != " " && x != "?" && y != " " && y != "?") print substr($0,4) }')
+if [ -n "$partial" ]; then
+  printf 'Частично застейдженные файлы (индекс ≠ рабочее дерево):\n%s\n' "$partial" >&2
+  fail "partial staging — гейт проверяет рабочее дерево, но commit запишет ИНДЕКС, и для этих файлов они разные. Сделай 'git add -u' (застейджи текущие байты) или убери лишние изменения, затем commit заново. Иначе зелёный гейт встанет над другими байтами, чем уйдут в коммит."
+fi
+
+
 npm run check || fail "check (npm run check) — sdd-verify --profile full: types, tests, lint, format, yagni. Если красное — format/lint: npm run fix && git add -u, затем commit заново"
 npm run check:directives-fresh || fail "directives-fresh (npm run check:directives-fresh) — ai/directives/** must match a fresh rebuild; see the message above for what to do"
 npm run audit:axioms || fail "audit:axioms (npm run audit:axioms) — see AUTHORING.md §10"
