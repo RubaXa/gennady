@@ -273,6 +273,33 @@ describe('run (integration)', () => {
   });
   // #endregion
 
+  // #region TEST_CASE_CMD_9B: custom target subdirectory is preserved, with a warning
+  it('preserves an unowned target subdirectory and warns instead of deleting it', () => {
+    // purpose: target has a project-added subdir the package never shipped (e.g. ai/directives/my-custom/)
+    // contract: exit 0, files inside it untouched, stdout carries a "Warning:" line naming it
+
+    writeFileSync(join(_sourceDir, 'knowledge.xml'), '<k/>', 'utf-8');
+    mkdirSync(join(_targetDir, 'my-custom'), { recursive: true });
+    writeFileSync(join(_targetDir, 'my-custom', 'notes.xml'), '<notes/>', 'utf-8');
+
+    const stdout = captureStream();
+    const deps = makeDeps(_sourceDir, _targetDir);
+    deps.stdout = stdout as unknown as NodeJS.WriteStream;
+
+    const exitCode = run(['node', 'sync'], deps);
+
+    assert.equal(exitCode, 0);
+    const output = stdout._chunks.join('');
+    assert.ok(existsSync(join(_targetDir, 'my-custom', 'notes.xml')));
+    assert.ok(
+      output.includes(
+        'Warning: unknown subdirectory in target (not owned by package, left untouched): my-custom'
+      )
+    );
+    assert.ok(!output.includes('my-custom/notes.xml'));
+  });
+  // #endregion
+
   // #region TEST_CASE_CMD_9: --dry-run with positional args combined
   it('handles --dry-run with positional subdir filter', () => {
     // purpose: both dryRun and subdir filter work together

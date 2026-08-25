@@ -33,13 +33,17 @@ export interface SyncFileEntry {
 export class SyncResult {
   /** @purpose List of all synced file entries. */
   readonly entries: SyncFileEntry[];
+  /** @purpose Non-fatal warnings, e.g. a target subdirectory not owned by the package left untouched. */
+  readonly warnings: string[];
 
   /**
    * @purpose Construct a SyncResult from a list of entries.
    * @param entries File entries.
+   * @param [warnings] Non-fatal warnings to surface alongside the result.
    */
-  constructor(entries: SyncFileEntry[]) {
+  constructor(entries: SyncFileEntry[], warnings: string[] = []) {
     this.entries = entries;
+    this.warnings = warnings;
   }
 
   /** @purpose Files with status "added". | @returns Array of added entries. */

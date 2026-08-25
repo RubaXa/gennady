@@ -107,6 +107,9 @@ export function run(rawArgs: string[], deps?: SyncCmdDeps): number {
 
     const result = collectAndCompare(coreDeps, opts);
     formatAndWrite(result.entries, dryRun, _stdout, cwd, version);
+    for (const warning of result.warnings) {
+      _stdout.write(`Warning: ${warning}\n`);
+    }
     return 0;
   } catch (err) {
     const error = err as Error & { code?: string };

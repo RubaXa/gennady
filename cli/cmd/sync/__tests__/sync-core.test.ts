@@ -230,6 +230,45 @@ describe('collectAndCompare', () => {
     assert.equal(existsSync(join(_targetDir, 'stale.xml')), false);
   });
 
+  it('filtered sync succeeds when the subdirectory does not exist in target yet', () => {
+    mkdirSync(join(_sourceDir, 'sdd'), { recursive: true });
+    writeFileSync(join(_sourceDir, 'sdd', 'd.xml'), '<d/>', 'utf-8');
+    // _targetDir exists but has no 'sdd' subdirectory at all — first sync into a fresh project.
+
+    const result = collectAndCompare(createDeps(_tmpDir), {
+      sourceDir: _sourceDir,
+      targetDir: _targetDir,
+      subdirs: ['sdd'],
+    });
+
+    assert.equal(result.entries.length, 1);
+    assert.equal(result.entries[0].status, 'added');
+    assert.equal(result.entries[0].relativePath, 'sdd/d.xml');
+    assert.equal(existsSync(join(_targetDir, 'sdd', 'd.xml')), true);
+  });
+
+  it('leaves a target subdirectory the package does not own untouched, with a warning', () => {
+    writeFileSync(join(_sourceDir, 'knowledge.xml'), '<k/>', 'utf-8');
+    mkdirSync(join(_sourceDir, 'sdd'), { recursive: true });
+    writeFileSync(join(_sourceDir, 'sdd', 'd.xml'), '<d/>', 'utf-8');
+
+    mkdirSync(join(_targetDir, 'my-custom'), { recursive: true });
+    writeFileSync(join(_targetDir, 'my-custom', 'notes.xml'), '<notes/>', 'utf-8');
+
+    const result = collectAndCompare(createDeps(_tmpDir), {
+      sourceDir: _sourceDir,
+      targetDir: _targetDir,
+    });
+
+    assert.equal(result.deleted.length, 0);
+    assert.equal(existsSync(join(_targetDir, 'my-custom', 'notes.xml')), true);
+    assert.equal(result.warnings.length, 1);
+    assert.match(
+      result.warnings[0],
+      /unknown subdirectory in target \(not owned by package, left untouched\): my-custom/
+    );
+  });
+
   it('dryRun skips writeFile for added files', () => {
     writeFileSync(join(_sourceDir, 'new.xml'), '<n/>', 'utf-8');
 

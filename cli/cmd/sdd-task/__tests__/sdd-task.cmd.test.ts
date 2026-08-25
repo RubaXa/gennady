@@ -712,6 +712,10 @@ describe('SddTaskCommand', () => {
             'test:coverage': 'node --test --coverage',
             lint: 'gennady lint --all .',
             format: 'prettier --check .',
+            check: 'npm run type-check && npm test && npm run lint && npm run format',
+            fix: 'npm run format:fix && npm run lint:fix && npm run check',
+            'format:fix': 'prettier --write .',
+            'lint:fix': 'eslint --fix .',
           },
         }),
         'utf-8'
