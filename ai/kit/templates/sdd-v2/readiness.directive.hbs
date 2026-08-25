@@ -1,8 +1,10 @@
 <SddReadiness keywords="readiness, setup, bootstrap, tooling, package-json, npm-scripts, gennady, stub, not-ready, proxy-handoff, sdd-readiness" type="directive" ver="2.0">
   <Mission>
     Bring a not-ready repo to the point where the SDD flow can run: a `package.json` exists and
-    declares the five exact scripts `sdd-state` checks — `typecheck` · `test` · `test:coverage` ·
-    `lint` (reaching `gennady`) · `format` — gennady is installed, and `READINESS` flips to `ready`.
+    declares the seven exact scripts `sdd-state` checks — `type-check` · `test` · `test:coverage` ·
+    `lint` (reaching `gennady`, read-only) · `format` (read-only) · `check` (read-only composite:
+    `type-check` → `test` → `lint` → `format`) · `fix` (the one script allowed to write:
+    `format:fix` → `lint:fix` → `check`) — gennady is installed, and `READINESS` flips to `ready`.
     This is the minimal mechanical bootstrap, NOT the tooling design: a real command where a tool is
     already installed, else a visible TODO stub that points at the infra flow. Entered when
     `sdd-state` reports `READINESS=not-ready` — from the router preflight or from any skill's own preflight.
@@ -54,7 +56,9 @@
       <Goal>State the honest readiness gap, straight from sdd-state.</Goal>
       <Action>
         Take everything from `sdd-state`'s `[READINESS]` block — `package.json` present/absent, each
-        required script declared/not, `lint→gennady`, `gennady-installed` — plus the `missing` list.
+        required script declared/not, `lint→gennady`, `check→read-only`, `gennady-installed` — plus the
+        `missing` list (which now names `format(read-only)` and `lint(read-only)` separately from
+        `check(read-only)` when a formatter/linter write switch leaks into that script's own chain).
         That tool is the single source of state (`AX_TOOL_INVOCATION`); do not re-derive it by hand.
         Tell the operator, in plain Russian (`AX_OPERATOR_LANGUAGE`), exactly what is present and what is
         missing. No narration, just the gap. Flow into the plan (no STOP).
@@ -64,8 +68,10 @@
       <Goal>Lay out the fix and get a go-ahead.</Goal>
       <Action>
         From the `missing` list, lay out what will be done: patch `package.json` (real command where
-        the tool is already a dependency, else a TODO stub), wire `lint` to `gennady`, and install the
-        missing dependencies / `gennady`. If the operator wants to lock a real tool now (test runner,
+        the tool is already a dependency, else a TODO stub), wire `lint` to `gennady`, keep `format` /
+        `lint` / `check` read-only (any formatter/linter write switch moves to `format:fix` / `lint:fix`,
+        called only from `fix`), and install the missing dependencies / `gennady`. If the operator wants
+        to lock a real tool now (test runner,
         formatter, type-checker) — a genuine NEW pick, not the stub path — run a research gate first:
         2–3 targeted WebSearch queries (is each candidate alive and current, how AI-agent-friendly it is
         this year — text-configurable, autofix, machine-readable diagnostics) before offering 2–3
@@ -80,11 +86,12 @@
     <Step id="STEP_2_APPLY">
       <Goal>Do everything the agent can — edits and installs.</Goal>
       <Action>
-        With approval: create `package.json` if absent (name + `scripts`); add the five exact scripts —
+        With approval: create `package.json` if absent (name + `scripts`); add the seven exact scripts —
         real command where the tool exists, else the TODO stub (see Reference Data); `lint` always
-        reaches `gennady`; AND run the dependency installs the project needs (`npm i -D …`, gennady) —
-        try them — the corporate proxy often blocks installs, but not always. Re-run `sdd-state`.
-        Anything that failed goes to STEP_3.
+        reaches `gennady`; `format` / `lint` / `check` stay read-only — any write switch (`--fix`,
+        `--write`) goes only in `format:fix` / `lint:fix`, which `fix` chains into `check`; AND run the
+        dependency installs the project needs (`npm i -D …`, gennady) — try them — the corporate proxy
+        often blocks installs, but not always. Re-run `sdd-state`. Anything that failed goes to STEP_3.
       </Action>
     </Step>
     <Step id="STEP_3_REPORT_FAILURES">
@@ -114,33 +121,47 @@
   </ExecutionPlan>
 
   <ReferenceData>
-    The five exact script names `sdd-state` checks (exact match — no `type-check` / `tsc` aliasing):
+    The seven exact script names `sdd-state` checks (exact match — `type-check` also accepts the
+    `typecheck` spelling, every other name has exactly one):
 
     | script | purpose | stubbable until infra flow? |
     |---|---|---|
-    | `typecheck` | type-check, no emit | yes |
+    | `type-check` | type-check, no emit | yes |
     | `test` | run tests | yes |
     | `test:coverage` | tests with coverage | yes |
-    | `lint` | lint chain that reaches `gennady` (DbC) | **no — must wire gennady** |
-    | `format` | formatter that fixes, not just checks | yes |
+    | `lint` | lint chain that reaches `gennady` (DbC), read-only | **no — must wire gennady** |
+    | `format` | formatter in check-only mode — read-only | yes |
+    | `check` | read-only composite: `type-check` → `test` → `lint` → `format` | no — wire the chain |
+    | `fix` | the one script allowed to write: `format:fix` → `lint:fix` → `check` | no — wire the chain |
+
+    `format`, `lint`, and `check` — and every script any of them reaches via `npm run <x>` — must stay
+    free of known write switches (`eslint … --fix`, `prettier … --write`); a leaked write switch fails
+    that script's own read-only check (`format(read-only)` / `lint(read-only)` / `check(read-only)` in
+    `missing`), even if every script name is present. Those write switches belong in `format:fix` /
+    `lint:fix` — two small helper scripts, not in the required seven, that only `fix` is allowed to call.
 
     A minimal `package.json` that reads as `ready` once gennady is installed — real `lint`, the rest
     stubbed until the infra flow locks real tools (point `lint` at the project's own source dirs):
     ```json
     {
       "scripts": {
-        "typecheck": "echo 'TODO: настроить инфраструктуру (typecheck — tsc --noEmit)' >&2",
+        "type-check": "echo 'TODO: настроить инфраструктуру (type-check — tsc --noEmit)' >&2",
         "test": "echo 'TODO: настроить инфраструктуру (test runner)' >&2",
         "test:coverage": "echo 'TODO: настроить инфраструктуру (coverage)' >&2",
         "lint": "gennady lint src/",
-        "format": "echo 'TODO: настроить инфраструктуру (formatter)' >&2"
+        "format": "echo 'TODO: настроить инфраструктуру (formatter, read-only check)' >&2",
+        "format:fix": "echo 'TODO: настроить инфраструктуру (formatter, write mode)' >&2",
+        "lint:fix": "echo 'TODO: настроить инфраструктуру (linter autofix)' >&2",
+        "check": "npm run type-check && npm test && npm run lint && npm run format",
+        "fix": "npm run format:fix && npm run lint:fix && npm run check"
       }
     }
     ```
     `lint` may reach `gennady` directly or through an `npm run <x>` chain — either satisfies the
-    `lint→gennady` check. The stubs print a warning to stderr but **exit 0 — by design they pass**, so
-    the gate stays green while the warning keeps the gap visible until the infra flow replaces them with
-    real commands.
+    `lint→gennady` check. The leaf stubs print a warning to stderr but **exit 0 — by design they pass**,
+    and chaining them through `check`/`fix` stays read-only-clean since a stub has no `--fix` / `--write`
+    switch to leak — so the gate stays green while the warning keeps the gap visible until the infra
+    flow replaces the stubs with real commands.
   </ReferenceData>
 
   <ChatOutput>

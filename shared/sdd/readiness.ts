@@ -52,7 +52,8 @@ export type ReadinessInput = {
 
 /**
  * @purpose Verdict of the readiness check.
- * @invariant `ready` is true only when package.json is present, every required script is declared, `lint` reaches gennady, AND gennady is installed.
+ * @invariant `ready` is true only when package.json is present, every required script is declared,
+ * `lint` reaches gennady, `format`/`lint`/`check` are all read-only, AND gennady is installed.
  */
 export type ReadinessResult = {
   /** @purpose Whether a parseable package.json exists at the project root. */
@@ -61,6 +62,10 @@ export type ReadinessResult = {
   required: RequiredScript[];
   /** @purpose Whether the `lint` script (or a script it chains via `npm run`) invokes gennady. */
   lintHasGennady: boolean;
+  /** @purpose Whether `format` and every npm script it reaches are free of known write/autofix commands. */
+  formatReadOnly: boolean;
+  /** @purpose Whether `lint` and every npm script it reaches are free of known write/autofix commands. */
+  lintReadOnly: boolean;
   /** @purpose Whether `check` and every npm script it reaches are free of known write/autofix commands. */
   checkReadOnly: boolean;
   /** @purpose Whether the gennady CLI is installed for the project. */
@@ -119,13 +124,22 @@ function reachableScriptBodies(scripts: Record<string, string>, entry: string): 
   return bodies;
 }
 
-/** @purpose Detect the known formatter/linter write switches forbidden in the read-only `check` graph. */
-function isCheckReadOnly(scripts: Record<string, string>): boolean {
-  const bodies = reachableScriptBodies(scripts, 'check');
+/** @purpose The known formatter/linter write switches forbidden in a read-only script graph. */
+const WRITE_SWITCH_PATTERN = /(?:eslint\b[^&|;\n]*\s--fix\b|prettier\b[^&|;\n]*\s--write\b)/;
+
+/**
+ * @purpose Detect whether `entry` and every npm script it transitively `npm run`s are free of the
+ * known write/autofix switches.
+ * @invariant Write variants belong in `*:fix` siblings, invoked only from `fix` — which this check
+ * deliberately never runs on.
+ * @param scripts The package.json scripts map.
+ * @param entry The script name to check (e.g. `format`, `lint`, `check`).
+ * @returns False when `entry` is absent, or when any reachable body contains a write switch.
+ */
+function isScriptReadOnly(scripts: Record<string, string>, entry: string): boolean {
+  const bodies = reachableScriptBodies(scripts, entry);
   if (bodies.length === 0) return false;
-  return bodies.every(
-    (body) => !/(?:eslint\b[^&|;\n]*\s--fix\b|prettier\b[^&|;\n]*\s--write\b)/.test(body)
-  );
+  return bodies.every((body) => !WRITE_SWITCH_PATTERN.test(body));
 }
 
 /**
@@ -140,7 +154,8 @@ export function isRealScript(body: string | undefined): boolean {
 
 /**
  * @purpose Check the gathered tooling facts against the exact v2 readiness requirements.
- * @invariant Exact-name script match only; `lint` must reach gennady; gennady must be installed; package.json must exist.
+ * @invariant Exact-name script match only; `lint` must reach gennady; `format`/`lint`/`check` must
+ * be read-only (write variants live only in `*:fix`); gennady installed; package.json present.
  * @param input The gathered facts: package.json presence, the `scripts` map, and gennady install state.
  * @returns A ReadinessResult: presence flags, per-script presence, overall readiness, and the missing list.
  */
@@ -153,12 +168,16 @@ export function checkReadiness(input: ReadinessInput): ReadinessResult {
   }));
 
   const lintHasGennady = lintReachesGennady(scripts);
-  const checkReadOnly = isCheckReadOnly(scripts);
+  const formatReadOnly = isScriptReadOnly(scripts, 'format');
+  const lintReadOnly = isScriptReadOnly(scripts, 'lint');
+  const checkReadOnly = isScriptReadOnly(scripts, 'check');
 
   const missing: string[] = [];
   if (!packageJsonPresent) missing.push('package.json');
   missing.push(...required.filter((r) => !r.present).map((r) => r.name));
   if (scripts['lint'] !== undefined && !lintHasGennady) missing.push('lint→gennady');
+  if (scripts['format'] !== undefined && !formatReadOnly) missing.push('format(read-only)');
+  if (scripts['lint'] !== undefined && !lintReadOnly) missing.push('lint(read-only)');
   if (scripts['check'] !== undefined && !checkReadOnly) missing.push('check(read-only)');
   if (!gennadyAvailable) missing.push('gennady (not installed)');
 
@@ -166,6 +185,8 @@ export function checkReadiness(input: ReadinessInput): ReadinessResult {
     packageJsonPresent &&
     required.every((r) => r.present) &&
     lintHasGennady &&
+    formatReadOnly &&
+    lintReadOnly &&
     checkReadOnly &&
     gennadyAvailable;
 
@@ -173,6 +194,8 @@ export function checkReadiness(input: ReadinessInput): ReadinessResult {
     packageJsonPresent,
     required,
     lintHasGennady,
+    formatReadOnly,
+    lintReadOnly,
     checkReadOnly,
     gennadyAvailable,
     ready,

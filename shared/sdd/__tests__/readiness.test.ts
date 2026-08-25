@@ -42,6 +42,20 @@ describe('REQUIRED_SCRIPTS', () => {
     assert.ok(r.missing.includes('check(read-only)'));
     assert.strictEqual(r.ready, false);
   });
+
+  it('rejects a format script that itself writes (prettier --write)', () => {
+    const r = check({ ...FULL, format: 'prettier --write .' });
+    assert.strictEqual(r.formatReadOnly, false);
+    assert.ok(r.missing.includes('format(read-only)'));
+    assert.strictEqual(r.ready, false);
+  });
+
+  it('rejects a lint script that transitively reaches a write-mode sibling (format:fix)', () => {
+    const r = check({ ...FULL, lint: 'npm run format:fix && npm run lint:contracts' });
+    assert.strictEqual(r.lintReadOnly, false);
+    assert.ok(r.missing.includes('lint(read-only)'));
+    assert.strictEqual(r.ready, false);
+  });
 });
 
 describe('checkReadiness', () => {
@@ -50,6 +64,9 @@ describe('checkReadiness', () => {
     assert.strictEqual(r.ready, true);
     assert.deepStrictEqual(r.missing, []);
     assert.strictEqual(r.lintHasGennady, true);
+    assert.strictEqual(r.formatReadOnly, true);
+    assert.strictEqual(r.lintReadOnly, true);
+    assert.strictEqual(r.checkReadOnly, true);
     assert.strictEqual(r.packageJsonPresent, true);
     assert.strictEqual(r.gennadyAvailable, true);
   });
