@@ -49,6 +49,7 @@ npm run fix || fail "fix (npm run fix)"
 npm run check:directives-fresh || fail "directives-fresh (npm run check:directives-fresh) — ai/directives/** must match a fresh rebuild; see the message above for what to do"
 npm run audit:axioms || fail "audit:axioms (npm run audit:axioms) — see AUTHORING.md §10"
 npm run audit:contracts || fail "audit:contracts (npm run audit:contracts) — see the header of ai/kit/audit-contract-activation.mjs"
+npm run audit:halts || fail "audit:halts (npm run audit:halts) — see the header of ai/kit/audit-halt-activation.mjs"
 npm run check:directive-budgets || fail "directive-budgets (npm run check:directive-budgets) — a lazy skeleton/step package exceeds the 8000-token skeleton / 20000-char package / 2000-char-line budget; see the finding above for which directive, which artifact, and by how much"
 
 echo "✅ Pre-commit passed"

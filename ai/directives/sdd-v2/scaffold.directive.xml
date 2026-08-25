@@ -212,6 +212,7 @@
     | `H_BOOTSTRAP_REQUIREMENTS_MISSING` | The target scope being scaffolded (the intake target) lacks a Bootstrap Requirements section — checked ONLY for that scope, not for every ✅ scope in the Portal (did not pass the scope flow) |
     | `H_ID_COLLISION` | A generated Task-ID / slug collides with an existing one |
     | `H_TYPING_SCENARIO_MISSING` | A DbC contract in Spec References has no `contract`-level typing scenario mapped to a test |
+    | `H_SCAFFOLD_NOT_EXECUTABLE` | STEP_3B feasibility critic returned findings — a ticket is structurally valid but operationally impossible; tickets fixed and rechecked once, still no CLEAN verdict |
     | `H_OPERATOR_REJECT` | Operator rejected the breakdown or the test plan |
   </HaltConditions>
 
