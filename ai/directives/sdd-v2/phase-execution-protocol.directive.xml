@@ -156,20 +156,20 @@
 
     <Axiom id="AX_USAGE_WAIVER_DISCIPLINE">
       `gennady yagni` flags an added/changed symbol with fewer than 2 production-code usages across
-      the whole repo (tests never count; barrel re-exports never count). Every such finding MUST be
-      resolved one of two ways: (a) remove the symbol, or (b) genuinely need it — then add
-      `- **Usage Waiver:** <reason>` to its contract/surface entry (`DBC_PORT_FORMAT` /
-      `DBC_ADAPTER_FORMAT` / `ENTITY_SURFACE_FORMAT`), AND log `yagni <EntityName> ← <reason>` via
-      `npx gennady sdd-log <ticket> line "yagni <EntityName> ← <reason>" --phase <PhaseID>`
-      (`AX_TICKET_WRITE_SCOPE`) — the label alone is not sufficient, the log line is the
-      evidence audit cross-checks against it (`AX_AUDIT_YAGNI_CROSSCHECK`). Cite a `D-NNN` in the
-      label only when the reason IS a Decision Log entry — a genuine, non-obvious call, not "split
-      for readability"; when cited, the id must resolve to a real Decision Log heading, or
-      `gennady yagni` re-reports the finding as `ERR_CLI_YAGNI_WAIVER_DECISION_MISSING`. Public API
-      for a named external consumer uses the `(external: <consumer>)` waiver variant — the rule
-      still applies, the label just becomes mandatory rather than optional. `gennady yagni` prints
-      the exact `- **Usage Waiver:**` block ready to paste when it flags a finding — copy it
-      verbatim rather than composing the line from memory.
+      the whole repo (tests and barrel re-exports never count) — a spec-level diff gate run once per
+      group, inside the orchestrator's pre-audit `npx gennady sdd-verify --profile full` at group
+      close, never inside a phase's own `setup`/`code`/`test` gate. A finding routes to a `fix`
+      dispatch on the ticket that OWNS the flagged entity. That worker either (a) removes the
+      symbol, or (b) genuinely needs it — then adds `- **Usage Waiver:** <reason>` to its
+      contract/surface entry (`DBC_PORT_FORMAT` / `DBC_ADAPTER_FORMAT` / `ENTITY_SURFACE_FORMAT`)
+      AND logs `yagni <EntityName> ← <reason>` via
+      `npx gennady sdd-log <owning-ticket> line "yagni <EntityName> ← <reason>" --phase <PhaseID>` —
+      the label alone is not sufficient, the log line is what audit cross-checks
+      (`AX_AUDIT_YAGNI_CROSSCHECK`). Cite a `D-NNN` only when the reason IS a real Decision Log
+      heading, else `gennady yagni` re-reports as `ERR_CLI_YAGNI_WAIVER_DECISION_MISSING`. Public
+      API for a named external consumer uses the `(external: <consumer>)` variant — mandatory label,
+      same rule. On a finding the tool prints the exact `- **Usage Waiver:**` block — paste it
+      verbatim, never compose it from memory.
     </Axiom>
 
     
@@ -286,7 +286,7 @@
     | `sdd-check --task <ticket>` | A point re-check when you need the mechanical verdict again after a fix, without re-deriving it by hand | `npx gennady sdd-check --task <ticket>` |
     | `sdd-verify --profile setup\|code\|test\|full` | The read-only verdict at STEP_5 — `setup` validates bootstrap/config without inventing product code | `npx gennady sdd-verify --profile setup` |
     | `gennady lint --spec=<module-spec> <Target Files>` | Closed-world inventory sync + cast safety on this phase's own files | `npx gennady lint --spec=specs/app/greeting/greeting.spec.md src/app/greeting/*.ts` |
-    | `gennady yagni` | Runs INSIDE `sdd-verify` (`code`/`full` profiles); on `ERR_CLI_YAGNI_UNDERUSED` it prints a ready-to-paste `- **Usage Waiver:** <reason>` block — paste it verbatim, then log it (`AX_USAGE_WAIVER_DISCIPLINE`) | standalone only for a quick iteration: `npx gennady yagni .` |
+    | `gennady yagni` | Runs INSIDE `sdd-verify --profile full` only (once per group, at group close); on `ERR_CLI_YAGNI_UNDERUSED` it prints a ready-to-paste `- **Usage Waiver:** <reason>` block — paste verbatim, then log it (`AX_USAGE_WAIVER_DISCIPLINE`) | standalone only for a quick iteration: `npx gennady yagni .` |
     | `gennady testcov` | Only when the ticket's own §5 command names it (e.g. `test:coverage`) — the §5 command string is canon, never a substitute | `npx gennady testcov --run --min=80` |
 
     Follow the next action printed by a failed gate/tool. If none is actionable, emit `H_BLOCKED`

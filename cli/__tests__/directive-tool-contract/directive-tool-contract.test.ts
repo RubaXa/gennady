@@ -439,10 +439,11 @@ const CASES: FixtureCase[] = [
     raw: 'npx gennady sdd-verify --profile setup',
     cmd: 'sdd-verify',
     // Substituting `test` for the worked example's `code`: same documented form
-    // (`--profile setup|code|test|full`), but `code`/`full` include the `yagni` gate, which sdd-verify
-    // shells out to via `npx gennady yagni` — outside this fixture's control and, with no local
-    // gennady install, a real npx-registry resolution attempt. `test` (format + type-check +
-    // test:coverage only) stays entirely inside the fixture's own no-op npm scripts. See report.
+    // (`--profile setup|code|test|full`), but `full` includes the `yagni` gate (a spec-level diff
+    // gate that runs once per group, inside `full`, never inside `code`), which sdd-verify shells
+    // out to via `npx gennady yagni` — outside this fixture's control and, with no local gennady
+    // install, a real npx-registry resolution attempt. `test` (format + type-check + test:coverage
+    // only) stays entirely inside the fixture's own no-op npm scripts. See report.
     args: () => ['--profile', 'test'],
     check: (r) => {
       assert.strictEqual(r.exitCode, 0, r.stdout + r.stderr);

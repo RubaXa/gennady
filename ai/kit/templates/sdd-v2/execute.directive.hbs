@@ -84,6 +84,7 @@
     | `sdd-task <ticket-path>` | STEP_1_PLAN — Meta + Phases Overview + per-phase read-manifests + gates + `[BLOCKERS]`, the ONLY ticket read this directive itself does | `npx gennady sdd-task specs/app/greeting/greeting.task.APP-greet-greeting.md` |
     | `sdd-task <ticket> --phase P<N>` | Never called BY this directive — the worker's OWN first action (`phase-execution-protocol` STEP_1_GET_PHASE_CONTEXT). Listed here only so a `--phase` call surfacing in this directive's own trace (as at STEP_1_PLAN) is recognized as a defect, not repeated by habit | worker-only |
     | `sdd-task --audit-group <id>` | STEP_5_AUDIT — the tool's `due` / `not yet` verdict, never eyeballed | `npx gennady sdd-task --audit-group APP-greet-greeting` |
+    | `sdd-verify --profile full` | STEP_5_AUDIT, on `due` — the mechanical pre-audit gate over the group's own working-tree diff, run BEFORE dispatching the group audit | `npx gennady sdd-verify --profile full` |
     | `sdd-task --group-scope <id>` | Resolved by the DISPATCHED audit / code-review subagent itself, its own STEP_1 — this directive never calls it directly | dispatched-subagent-only |
     | `sdd-log <ticket> round "<reason>"` | STEP_1_PLAN — open a new Round (auto-numbered, dated) | `npx gennady sdd-log <ticket> round "execute <Task-ID>"` |
     | `sdd-log <ticket> close` | STEP_3_CLOSE_ROUND — append the Round-close block | `npx gennady sdd-log <ticket> close` |
@@ -183,7 +184,12 @@
         already supplies those, verbatim and current. Require the report back regardless: DONE / BLOCKED /
         FAIL plus the worker's typed `**Handoff →**` line verbatim (`RETURN_SUMMARY_FORMAT`,
         `AX_HANDOFF_TYPED`) — thread exactly that into the next phase's Inputs, never a paraphrase. Emit a
-        progress line per transition (`ORCHESTRATOR_PROGRESS_FORMAT`).
+        progress line per transition (`ORCHESTRATOR_PROGRESS_FORMAT`); the dispatch-stage line for
+        THIS phase MUST also carry a session clause naming which path `AX_WORKER_SESSION_REUSE` just
+        took — `session: reused <kind>@<spec>` when redispatched into an open session, or `session:
+        fresh (<reason: first|kind-switch|fix-fresh-eyes|spec-switch|mapping-lost|env-no-continuation>)`
+        when a fresh worker was raised instead — one line, always present, so a live run makes
+        whether reuse is actually happening observable rather than assumed.
 
         <LogicSwitch on="worker dispatch outcome">
         - WHEN `BLOCKED` / `FAIL` -> stop, no audit; `H_PAUSED_AWAITING_OPERATOR`
@@ -236,12 +242,20 @@
           stands) — skip straight to STEP_8_SUMMARY for this ticket's cycle, then the next pickable ticket
           in the queue. A ticket's own dependents INSIDE this same group already unblocked on ITS closure,
           independent of the group's audit state.
-        - WHEN `due` (every ticket in the group is `[x] DONE`) -> dispatch ONE audit-subagent on a cheap
-          model (audit is mechanical verification): read `ai/directives/sdd-v2/audit.directive.xml`;
-          group = the id `sdd-task --audit-group` just confirmed `due`; mode per-group. Its own STEP_1
-          resolves the full scope itself (`sdd-task --group-scope <id>`) — this dispatch prompt carries no
-          pasted manifest or artifact list, same self-bootstrap pattern as phase dispatch. Wait for the
-          verdict.
+        - WHEN `due` (every ticket in the group is `[x] DONE`) -> BEFORE dispatching the audit, run
+          `npx gennady sdd-verify --profile full` over the group: mechanical cleanliness precedes
+          semantic review. `yagni` diffs against HEAD, and this execute flow never commits mid-run —
+          by the time a group closes, the working tree still carries the diff of the WHOLE spec's
+          changes, exactly the base `yagni` needs; this is deliberate, not a gap to "optimize" by
+          inserting an interim commit. RED -> dispatch the fix through the ordinary fix-flow (fresh
+          worker session per `AX_WORKER_SESSION_REUSE`); a `yagni` finding specifically routes to a
+          waiver decision per `AX_USAGE_WAIVER_DISCIPLINE`, logged into the ticket that owns the
+          flagged entity. Re-run `sdd-verify --profile full` until GREEN. Only THEN dispatch ONE
+          audit-subagent on a cheap model (audit is mechanical verification): read
+          `ai/directives/sdd-v2/audit.directive.xml`; group = the id `sdd-task --audit-group` just
+          confirmed `due`; mode per-group. Its own STEP_1 resolves the full scope itself
+          (`sdd-task --group-scope <id>`) — this dispatch prompt carries no pasted manifest or
+          artifact list, same self-bootstrap pattern as phase dispatch. Wait for the verdict.
         </LogicSwitch>
       </Action>
     </Step>

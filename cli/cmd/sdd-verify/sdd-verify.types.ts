@@ -37,11 +37,12 @@ export const GATES: readonly Gate[] = [
 /** @purpose Gate profile by phase kind — fixed sets chosen by an explicit flag (not detection); `full` is the safe default. */
 export type Profile = 'setup' | 'code' | 'test' | 'full';
 
-// Gate names per profile: code skips tests (may not exist yet) but still runs yagni (a code-diff
-// concern, not a test concern); test skips lint + yagni (no production code changed); full runs everything.
+// Gate names per profile: code skips tests (may not exist yet) AND yagni — yagni is a spec-level
+// diff gate, run once when a task group closes, as part of full, never per phase; test skips
+// lint + yagni (no production code changed); full runs everything, including yagni.
 const PROFILE_GATES: Record<Profile, readonly string[]> = {
   setup: ['format', 'lint', 'type-check'],
-  code: ['format', 'lint', 'type-check', 'yagni'],
+  code: ['format', 'lint', 'type-check'],
   test: ['format', 'type-check', 'test:coverage'],
   full: ['format', 'lint', 'type-check', 'test:coverage', 'yagni'],
 };

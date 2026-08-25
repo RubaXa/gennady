@@ -178,7 +178,7 @@ describe('profiles', () => {
   it('gatesFor subsets GATES in canonical order per profile', () => {
     assert.deepStrictEqual(
       gatesFor('code').map((g) => g.name),
-      ['format', 'lint', 'type-check', 'yagni']
+      ['format', 'lint', 'type-check']
     );
     assert.deepStrictEqual(
       gatesFor('test').map((g) => g.name),
@@ -195,15 +195,10 @@ describe('profiles', () => {
     assert.ok(!isProfile('all') && !isProfile(''));
   });
 
-  it('code profile runs no tests but still runs yagni; test profile runs no lint/yagni', async () => {
+  it('code profile runs no tests and no yagni; test profile runs no lint/yagni', async () => {
     const code = fakeRunner();
     await run(code.runner, 'code');
-    assert.deepStrictEqual(code.calls, [
-      'npm run format',
-      'npm run lint',
-      'npm run type-check',
-      'npx tsx cli/gennady.ts yagni', // self-hosting (mocked package.json name: gennady)
-    ]);
+    assert.deepStrictEqual(code.calls, ['npm run format', 'npm run lint', 'npm run type-check']);
 
     const test = fakeRunner();
     await run(test.runner, 'test');
@@ -343,14 +338,14 @@ describe('run — via: gennady gate dispatch', () => {
 
   it('a failing gennady gate names the actual command it ran, in both modes', async () => {
     currentPkgJson = JSON.stringify({ name: 'gennady' });
-    const selfHosted = await run(fakeRunner(['yagni']).runner, 'code');
+    const selfHosted = await run(fakeRunner(['yagni']).runner, 'full');
     assert.strictEqual(selfHosted.ok, false);
     if (!selfHosted.ok) {
       assert.match(selfHosted.message, /❌ yagni — exit 1 \(ran: npx tsx cli\/gennady\.ts yagni\)/);
     }
 
     currentPkgJson = JSON.stringify({ name: 'some-consumer-app' });
-    const consumer = await run(fakeRunner(['yagni']).runner, 'code');
+    const consumer = await run(fakeRunner(['yagni']).runner, 'full');
     assert.strictEqual(consumer.ok, false);
     if (!consumer.ok) {
       assert.match(consumer.message, /❌ yagni — exit 1 \(ran: npx gennady yagni\)/);

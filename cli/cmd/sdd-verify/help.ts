@@ -21,10 +21,15 @@ export function printHelp(): void {
   console.info('');
   console.info('Profiles (fixed gate sets, chosen by explicit flag — no detection):');
   console.info(
-    '  code  → format · lint · type-check · yagni            (code phases; no tests yet)'
+    '  code  → format · lint · type-check                    (code phases; no tests, no yagni)'
   );
   console.info('  test  → format · type-check · test:coverage           (test phase)');
-  console.info('  full  → format · lint · type-check · test:coverage · yagni  (final / default)');
+  console.info(
+    '  full  → format · lint · type-check · test:coverage · yagni  (group close / default)'
+  );
+  console.info(
+    '  yagni is a spec-level diff gate: it runs once per task group, inside full, never per phase'
+  );
   console.info('');
   console.info('Order is normative (mutating gates first so autofix never races a reader).');
   console.info('');
