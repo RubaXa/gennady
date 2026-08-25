@@ -235,9 +235,16 @@ export function isStubScript(scripts: Record<string, string>, entry: string): bo
 export function silencesExitCode(scripts: Record<string, string>, entry: string): boolean {
   return reachableScriptBodies(scripts, entry).some((body) => {
     const segments = commandSegments(body);
+    // `set -e` / `set -o errexit` aborts the script on an unguarded failure, so a `;`-separated no-op
+    // after it never runs when the real command fails — only an explicit `||` catch still masks.
+    // (`set -e` does NOT catch a pipe's non-final failure, so `|` masking is left as-is.)
+    const errexitAt = segments.findIndex((s) => /^set\s+(?:-o\s+errexit\b|-[a-z]*e)/.test(s.cmd));
     return segments.some((seg, i) => {
-      const isFallback = seg.sep === '||' || seg.sep === ';' || seg.sep === '|';
-      if (!isFallback || !NO_OP_SEGMENT.test(seg.cmd)) return false;
+      if (!NO_OP_SEGMENT.test(seg.cmd)) return false;
+      const errexitGuards = errexitAt !== -1 && errexitAt < i;
+      const isFallback =
+        seg.sep === '||' || (!errexitGuards && (seg.sep === ';' || seg.sep === '|'));
+      if (!isFallback) return false;
       const someRealBefore = segments.slice(0, i).some(({ cmd }) => !NO_OP_SEGMENT.test(cmd));
       const someRealAfter = segments.slice(i + 1).some(({ cmd }) => !NO_OP_SEGMENT.test(cmd));
       return someRealBefore && !someRealAfter;

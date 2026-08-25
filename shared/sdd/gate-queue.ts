@@ -55,6 +55,10 @@ export function queuedInfraGateTicketIds(
   // opens the Round — before the first phase runs. A TODO-only filter therefore emptied the queue
   // exactly when work started, which silently withdrew the infra-queue exemption from the ticket
   // that was already executing. The gates are not built until the ticket is DONE.
+  // Deliberately broad: `!DONE` also admits BLOCKED / cancelled / empty / non-standard statuses.
+  // That over-inclusion is benign — this whole computation only runs while the project is not
+  // execution-ready (guard above), and only infra-scope tickets qualify, so at worst a stuck infra
+  // ticket keeps its exemption until it is finished or the scope is fixed.
   const ticketIds =
     infraScopeNames.size === 0
       ? []

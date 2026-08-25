@@ -315,6 +315,28 @@ describe('silencesExitCode', () => {
   // An `&&` tail is skipped when the command before it fails, so the failure still propagates.
   // Fanning a gate out to a sibling script, or echoing a success banner, is the most ordinary npm
   // idiom there is — flagging it would pin an honest project at `provisional` with no override.
+  it('`set -e` makes a `;`-separated tail honest — a failed real command aborts before the no-op runs', () => {
+    for (const body of [
+      'set -e; tsc --noEmit; echo ok',
+      'set -euo pipefail; vitest run; echo done',
+      'set -o errexit; tsc --noEmit; :',
+    ]) {
+      assert.strictEqual(
+        silencesExitCode({ test: body }, 'test'),
+        false,
+        `expected honest under set -e: ${body}`
+      );
+    }
+  });
+
+  it('`set -e` does NOT rescue an explicit `|| true` catch — that still masks', () => {
+    assert.strictEqual(silencesExitCode({ test: 'set -e; tsc --noEmit || true' }, 'test'), true);
+  });
+
+  it('without `set -e`, a `;`-separated trailing no-op genuinely masks — npm sees the no-op exit code', () => {
+    assert.strictEqual(silencesExitCode({ test: 'tsc --noEmit; echo done' }, 'test'), true);
+  });
+
   it('an && chain into a sibling script or a success banner is honest, not silenced', () => {
     for (const body of [
       'tsc --noEmit -p tsconfig.json && npm run type-check:test',
