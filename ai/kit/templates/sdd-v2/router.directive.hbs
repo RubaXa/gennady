@@ -103,7 +103,7 @@
       <Goal>Obtain project state, show it to the operator, then clear the preflight gates before any routing.</Goal>
       <Action>
         Call `sdd-state` (deterministic) — one call returns everything routing needs: `FLOW_VERSION`,
-        `READINESS` (exact required scripts: typecheck / test / test:coverage / lint+gennady / format),
+        `READINESS` (exact required scripts: type-check / test / test:coverage / lint+gennady / format / check / fix — format, lint, and check read-only; write switches only in `*:fix`),
         portal presence (`specs/README.md`), the Scopes table (id + scope-type + status + description),
         and the in-progress session set (`SESSION_FILE_FORMAT`, `specs/.sdd-session.md`).
 

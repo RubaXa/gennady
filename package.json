@@ -70,10 +70,11 @@
     "format": "prettier --check .",
     "format:fix": "prettier --write .",
     "lint": "npm run lint:contracts",
+    "lint:fix": "tsx cli/gennady.ts lint --autofix cli/ shared/ services/",
     "check": "npm run type-check && npm run test && npm run lint && npm run format",
-    "fix": "npm run format:fix && npm run check",
+    "fix": "npm run format:fix && npm run lint:fix && npm run check",
     "release": "release-it",
-    "lint:contracts": "tsx cli/gennady.ts lint --autofix cli/ shared/ services/",
+    "lint:contracts": "tsx cli/gennady.ts lint cli/ shared/ services/",
     "yagni": "tsx cli/gennady.ts yagni"
   },
   "devDependencies": {

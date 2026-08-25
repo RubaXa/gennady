@@ -125,7 +125,8 @@ function reachableScriptBodies(scripts: Record<string, string>, entry: string): 
 }
 
 /** @purpose The known formatter/linter write switches forbidden in a read-only script graph. */
-const WRITE_SWITCH_PATTERN = /(?:eslint\b[^&|;\n]*\s--fix\b|prettier\b[^&|;\n]*\s--write\b)/;
+const WRITE_SWITCH_PATTERN =
+  /(?:eslint\b[^&|;\n]*\s--fix\b|prettier\b[^&|;\n]*\s--write\b|\s--autofix\b)/;
 
 /**
  * @purpose Detect whether `entry` and every npm script it transitively `npm run`s are free of the

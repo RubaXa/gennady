@@ -56,6 +56,13 @@ describe('REQUIRED_SCRIPTS', () => {
     assert.ok(r.missing.includes('lint(read-only)'));
     assert.strictEqual(r.ready, false);
   });
+
+  it("rejects gennady's own write switch: lint reaching `--autofix` is not read-only", () => {
+    const r = check({ ...FULL, lint: 'gennady lint --autofix .' });
+    assert.strictEqual(r.lintReadOnly, false);
+    assert.ok(r.missing.includes('lint(read-only)'));
+    assert.strictEqual(r.ready, false);
+  });
 });
 
 describe('checkReadiness', () => {
