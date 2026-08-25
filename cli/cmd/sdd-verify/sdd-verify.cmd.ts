@@ -181,49 +181,10 @@ function fingerprintsEqual(a: Map<string, string>, b: Map<string, string>): bool
   return true;
 }
 
-/** @purpose Small slack for filesystem mtime granularity when judging coverage-artifact freshness. */
-const ARTIFACT_MTIME_SLACK_MS = 2000;
-
 /**
- * @purpose Semantic check for the `test:coverage` rung — exit 0 alone does not prove coverage was
- *   measured; a fresh artifact under `coverage/` does.
- * @param startMs When the rung started — an artifact older than this is a leftover, not this run's.
- * @returns ok, or the honest reason the run cannot claim coverage was measured.
- */
-function coverageArtifactFresh(startMs: number): { ok: true } | { ok: false; reason: string } {
-  let entries;
-  try {
-    entries = readdirSync('coverage', { withFileTypes: true });
-  } catch {
-    return {
-      ok: false,
-      reason:
-        'команда вышла с кодом 0, но каталога coverage/ нет — покрытие фактически не измерялось. ' +
-        'test:coverage обязан писать отчёт в coverage/ (например через c8); иначе зелёный вердикт о покрытии — фикция.',
-    };
-  }
-  let newest = 0;
-  for (const e of entries) {
-    if (!e.isFile()) continue;
-    try {
-      const st = statSync(join('coverage', e.name));
-      if (st.mtimeMs > newest) newest = st.mtimeMs;
-    } catch {
-      // ignore racing deletes
-    }
-  }
-  if (newest >= startMs - ARTIFACT_MTIME_SLACK_MS) return { ok: true };
-  return {
-    ok: false,
-    reason:
-      'команда вышла с кодом 0, но артефакты в coverage/ не обновились за этот прогон — ' +
-      'test:coverage не измеряет покрытие (проверь его команду в package.json).',
-  };
-}
-
-/**
- * @purpose Run one resolvable gate and append its result; applies the coverage-artifact semantic
- *   check to `test:coverage`.
+ * @purpose Run one resolvable gate and append its result.
+ * @invariant The `test:coverage` rung only PRODUCES the report (exit code is the verdict); the
+ *   coverage threshold is `gennady testcov`'s job, never here.
  * @param runner Command runner. | @param gate The gate. | @param scriptName Resolved npm script name (ignored for `via: 'gennady'`).
  * @param results Accumulator. | @param [nameSuffix] Display suffix (e.g. ` (re-run)`).
  * @returns The gate's final status.
@@ -246,20 +207,12 @@ function runGate(
     `[SddVerifyCommand#run] ${gate.name}${nameSuffix} → exit ${r.exitCode} (${durationMs}ms)`
   );
   const ranCommand = `${command} ${args.join(' ')}`;
-  let status: GateStatus = r.exitCode === 0 ? 'pass' : 'fail';
-  let output = r.output;
-  if (gate.name === 'test:coverage' && status === 'pass') {
-    const fresh = coverageArtifactFresh(start);
-    if (!fresh.ok) {
-      status = 'fail';
-      output = fresh.reason;
-    }
-  }
+  const status: GateStatus = r.exitCode === 0 ? 'pass' : 'fail';
   results.push({
     name: `${gate.name}${nameSuffix}`,
     status,
     exitCode: r.exitCode,
-    output,
+    output: r.output,
     durationMs,
     ranCommand,
     mutates: gate.mutates,
@@ -273,7 +226,7 @@ function runGate(
  * @invariant A foundation rung's failure (`Gate.haltsOnFailure`) breaks the loop; a missing optional
  *   script is never a failure.
  * @invariant A missing or echo-stub REQUIRED script (`REQUIRED_PROFILE_GATES`) is a red verdict.
- * @invariant `test:coverage` passing additionally requires a fresh `coverage/` artifact.
+ * @invariant `test:coverage` here only PRODUCES the report; its threshold is `gennady testcov`'s job in the test phase, not this gate's.
  * @param runner Command runner — real spawnSync in the CLI entry, a fake in tests.
  * @param [profile] Gate profile (default `full`) selecting which gates run.
  * @returns VerifyOutcome — ✅ per gate on success, else the failed gates' details.

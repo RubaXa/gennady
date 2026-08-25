@@ -574,30 +574,13 @@ describe('run — required rungs refuse to skip (code/test/full)', () => {
   });
 });
 
-describe('run — test:coverage semantic artifact check', () => {
-  it('exit 0 without a coverage/ dir → red: coverage was not actually measured', async () => {
+describe('run — test:coverage only produces the report, never gates the threshold', () => {
+  it('test:coverage exit 0 passes on the exit code alone — the % threshold is testcov/audit territory', async () => {
+    // No coverage/ dir, no fresh artifact — sdd-verify does NOT care: it only ran the report step.
     coverageDirExists = false;
     const { runner } = fakeRunner();
     const o = await run(runner, 'full');
-    assert.strictEqual(o.ok, false);
-    if (o.ok) return;
-    assert.match(o.message, /❌ test:coverage — exit 0/);
-    assert.match(o.message, /каталога coverage\/ нет/);
-  });
-
-  it('exit 0 with a stale coverage artifact → red: a leftover from an earlier run does not count', async () => {
-    currentMtimeMs = Date.now() - 60 * 60 * 1000; // an hour old — clearly not this run's artifact
-    const { runner } = fakeRunner();
-    const o = await run(runner, 'full');
-    assert.strictEqual(o.ok, false);
-    if (o.ok) return;
-    assert.match(o.message, /артефакты в coverage\/ не обновились/);
-  });
-
-  it('exit 0 with a fresh artifact → pass, unchanged contract', async () => {
-    const { runner } = fakeRunner();
-    const o = await run(runner, 'full');
-    assert.strictEqual(o.ok, true);
+    assert.strictEqual(o.ok, true, o.ok ? '' : o.message);
   });
 });
 

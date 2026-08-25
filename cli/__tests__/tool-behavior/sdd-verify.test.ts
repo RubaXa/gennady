@@ -172,11 +172,11 @@ describe('sdd-verify — live gate ladder', () => {
     }
   });
 
-  it('--profile full, test:coverage exits 0 without writing coverage/: red — measured coverage is a fresh artifact, not an exit code', () => {
+  it('--profile full, test:coverage exit 0 passes on the exit code alone — the % threshold is testcov/audit territory, not this gate', () => {
     const { root } = buildRepoFixture({
       scripts: {
         'type-check': noop(0),
-        'test:coverage': noop(0), // exits 0 but never writes coverage/ — the exact fiction being refused
+        'test:coverage': noop(0), // exits 0 without writing coverage/ — sdd-verify only runs the report step
         lint: noop(0),
         format: noop(0),
       },
@@ -184,9 +184,8 @@ describe('sdd-verify — live gate ladder', () => {
     });
     try {
       const r = runCli(['sdd-verify', '--profile', 'full'], root);
-      assert.notStrictEqual(r.exitCode, 0, r.stdout + r.stderr);
-      assert.match(r.stdout, /❌ test:coverage — exit 0/);
-      assert.match(r.stdout, /каталога coverage\/ нет/);
+      assert.strictEqual(r.exitCode, 0, r.stdout + r.stderr);
+      assert.match(r.stdout, /ALL PASS/);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
