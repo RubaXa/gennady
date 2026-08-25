@@ -1,0 +1,243 @@
+<SddInterviewProtocol keywords="interview, coverage-map, sequential-questions, one-question-per-message, ask-tool, defaults-first, thread-pulling, stakes-split, next-step-menu, sdd-interview-protocol" type="directive" ver="1.0">
+  <DirectiveContext>
+    <Mission>
+      Run ONE operator interview for an authoring step, and render the end-of-step handoff menu.
+      Loaded lazily by a calling directive (discovery STEP_2–STEP_6, module-decomposition STEP_1–STEP_5,
+      future authoring steps); the caller supplies the scope-type + its focus and stays the owner of
+      what gets written. The protocol owns HOW questions reach the operator: the coverage map, the
+      round loop, the one-question-per-message format, the AskUserQuestion binding, and the
+      «что дальше» menu format. The caller's BeliefState keeps the beliefs (operator safeguard,
+      dialogue discipline, diverge-before-recommend, language/style axioms) — this file inherits
+      them and MUST NOT restate them.
+
+      Input — scope-type, calling-step focus, intake gathered so far. Output — a closed coverage
+      map + captured answers and decisions, returned to the calling step. This directive writes no
+      artifact; control returns to the caller at CLOSE.
+    </Mission>
+  </DirectiveContext>
+
+  <BeliefState deps="AX_OPERATOR_LANGUAGE, AX_OPERATOR_DIALOGUE_STYLE, AX_OPERATOR_SAFEGUARD, AX_DIALOGUE_DISCIPLINE, AX_DIVERGE_BEFORE_RECOMMEND, AX_NO_PROCESS_NARRATION, AX_OPERATOR_OUTPUT_LIVE_TEXT">
+    <Axiom id="AX_COVERAGE_MAP_CLOSURE">
+      The interview runs on a prepared channel — the coverage map: topics assembled BEFORE the first
+      question from the caller's focus + `TopicCatalog`, each `✔` closed · `▶` in progress ·
+      `␣` open · `✗ skip: <причина>` (notation per `COVERAGE_MAP_FORMAT`). The interview ends when the map is closed — never when a
+      question count is reached. After EVERY operator answer re-check the map: an answer that opens
+      a new hole or risk ADDS a topic or reopens a closed one (thread-pulling per the caller's
+      `AX_OPERATOR_SAFEGUARD`); the question total the operator sees grows honestly with it. A skip
+      on a high-stakes topic goes through `H_HIGH_STAKES_SKIP`.
+    </Axiom>
+
+    <Axiom id="AX_STAKES_SPLIT">
+      The stakes of a question pick its delivery form (stakes defined by the caller's
+      `AX_DIALOGUE_DISCIPLINE`):
+      - **Развилка** (design, architecture, delivery boundary, trust boundary, irreversible or
+        hard-to-undo choice) → ONE question per message, full form per `QUESTION_MESSAGE_FORMAT`,
+        answered via ASK before the next question is composed.
+      - **Default confirmation** (naming, a low-risk default, a yes/no with an obvious answer) →
+        batched: up to 4 in one `AskUserQuestion` call, or a one-line «годится?» tail on a card.
+      Unsure which it is → treat as развилка. Never bury a genuine fork inside a batch.
+    </Axiom>
+
+    <Axiom id="AX_ONE_QUESTION_SEQUENTIAL">
+      Развилки go strictly one at a time: compose Q(n+1) ONLY after the answer to Q(n) is in.
+      Each next question MUST account for all previous answers — a question whose premises an
+      earlier answer already invalidated is a protocol defect, not a style issue. The «Вопрос X из Y»
+      counter is owned HERE (the format contract just renders it): X = порядковый номер вопроса в
+      этом интервью, Y = вопросы уже заданные + развилки, ещё запланированные из открытых тем карты;
+      when thread-pulling adds a topic, Y grows and the change is visible in the map line — never
+      silently.
+    </Axiom>
+
+    <Axiom id="AX_DEFAULTS_FIRST">
+      Where a defensible default exists, lead with it: «🎯 Куда клонюсь» names one concrete option
+      and why it fits THIS task. The default MUST be the result of the caller's
+      `AX_DIVERGE_BEFORE_RECOMMEND` search — never the first typical answer. Reserve open questions
+      for decisions that are genuinely operator-owned (business goals, risk acceptance, priorities).
+      On high-stakes questions the lean is stated but variants are presented without pre-anchoring —
+      the operator picks.
+    </Axiom>
+
+    <Axiom id="AX_ASK_TOOL_BINDING">
+      Every развилка ends in an `AskUserQuestion` call. Binding rules:
+      - The chat message carries the full material (per `QUESTION_MESSAGE_FORMAT`); the ASK carries
+        only short labels + one-line descriptions. Never move the argument into the ASK.
+      - Options appear in the ASK in the SAME order they were printed in the chat message.
+      - When a recommendation exists, print it FIRST in the chat message too (letter A) with
+        «(рекомендую)» in its ASK label — printed order and recommended-first then coincide.
+      - «Other» is provided by the tool automatically — never add your own.
+      - Tool unavailable → drop ONLY the ASK call: a развилка message keeps
+        `QUESTION_MESSAGE_FORMAT` and the answer arrives as free text; low-stakes batches fall back
+        to the caller's plain-text question format when it defines one (e.g. discovery
+        `QUESTION_FORMAT`), otherwise a compact numbered list.
+      Batched default-confirmations use one ASK call with 2–4 questions.
+    </Axiom>
+
+    <Axiom id="AX_VISUAL_WHEN_RELATIONAL">
+      When the subject of a question is relational — a flow, a boundary, a structure, a lifecycle,
+      variants that differ in shape — draw a compact ASCII picture BEFORE the variants, per
+      `ai/directives/sdd/visual-vocabulary.xml` (chat forms; ≤7 nodes; one diagram — one idea).
+      A question about a single scalar choice stays text. The same relations later land in the
+      spec's «Diagrams» section as mermaid — the chat ASCII is the operator's preview of them.
+    </Axiom>
+
+    <Axiom id="AX_SCANNABLE_TEXT">
+      The operator surfs the message, they do not wade through it. Bold marks the load-bearing
+      words inside bullets (the thing to notice, not whole sentences); each block opens with its
+      emoji anchor (📌 ⚖️ 🎯); paragraphs stay ≤3 lines; no monolithic text walls. Emotion is
+      seasoning, not paint — anchors and an occasional marker, never emoji on every line. The word
+      «фактура» is banned in operator-facing text — say «что известно» / «данные».
+    </Axiom>
+  </BeliefState>
+
+  <TopicCatalog>
+    Base topics — every interview starts with these (map labels in Russian):
+
+    | Topic | Substance |
+    |---|---|
+    | Цель и не-цель | what this step delivers; what it explicitly refuses to do in this iteration |
+    | Потребители | who consumes the result and what they expect from it |
+    | Слабые места | MANDATORY: holes, contradictions, unstated expectations of the intake — name them, per caller's `AX_OPERATOR_SAFEGUARD` |
+    | Внешние зависимости | what outside this scope must exist / hold for the design to stand |
+    | Глубокие блоки | closed triage: external users/data? load that shapes design? persisted state? must be diagnosable in production? — a «yes» opens a dedicated topic in the map (security / нагрузка / хранение / наблюдаемость), dug within normal rounds |
+
+    scope-type block — append per the caller's scope-type:
+
+    | scope-type | Topics |
+    |---|---|
+    | product | Пользователи (who exactly) · Метрика успеха/провала (both) · Зачем сейчас · Worst case (who pays for it) |
+    | library | Разработчики-потребители (which teams / repos) · DX (how consumption should feel; feeds Golden DX) · Версии (compatibility promises) |
+    | infrastructure | Окружения (dev / CI / prod parity) · Доставка (how changes reach consumers) |
+    | contracts | Стороны контракта (producers and consumers, who owns the schema) · Эволюция (changing without breaking consumers) |
+
+    The calling step MAY narrow or extend the block for its focus (e.g. discovery STEP_3 keeps only
+    what the Requirements Gate still misses); «Слабые места» stays on every map.
+  </TopicCatalog>
+
+  <HaltConditions>
+    | 🛑 ID | Trigger |
+    |---|---|
+    | `H_HIGH_STAKES_SKIP` | Operator insists on skipping an unclosed high-stakes topic — name the concrete cost; on a confirmed skip record `✗ skip: <причина>` in the map and proceed |
+  </HaltConditions>
+
+  <ExecutionPlan>
+    <Step id="STEP_1_INIT_MAP">
+      <Goal>Build the coverage map — the prepared channel.</Goal>
+      <Action>
+        Assemble the map: base topics + the scope-type block from `TopicCatalog`, narrowed /
+        extended by the calling step's focus. Mark topics the intake already answers `✔` — ask
+        only what a decision still needs. Plan the first round (3–5 развилки max) from the open
+        topics. The map line opens every question message (per `COVERAGE_MAP_FORMAT`); no separate
+        «here is my plan» narration.
+      </Action>
+    </Step>
+    <Step id="STEP_2_ROUNDS">
+      <Goal>Close the map, one question at a time.</Goal>
+      <Action>
+        Loop until the map is closed (`AX_COVERAGE_MAP_CLOSURE`); per question:
+        1. Pick the next open topic; mark `▶`.
+        2. Split by stakes (`AX_STAKES_SPLIT`): развилка → one message per
+           `QUESTION_MESSAGE_FORMAT` + one `AskUserQuestion`; default confirmations → collect and
+           batch (2–4 per ASK call).
+        3. After each answer: update the map, pull the thread (`AX_COVERAGE_MAP_CLOSURE`) — a new
+           hole becomes a new topic and Y grows; compose the NEXT question in the light of ALL
+           answers so far (`AX_ONE_QUESTION_SEQUENTIAL`).
+        4. A skip request on a high-stakes topic → `H_HIGH_STAKES_SKIP`.
+      </Action>
+    </Step>
+    <Step id="STEP_3_CLOSE">
+      <Goal>Verify closure and return to the caller.</Goal>
+      <Action>
+        Gate per `AX_COVERAGE_MAP_CLOSURE`: every topic `✔` or `✗ skip: <причина>`. Show the
+        final map + a compact digest of answers and decisions (Russian), including skips with
+        reasons. Hand the digest to the calling step — it owns the Approval Check, artifact
+        writing, and Decision Log entries. The caller's FINAL step (artifact written) renders the
+        handoff menu per `NEXT_STEP_MENU_FORMAT`.
+      </Action>
+    </Step>
+  </ExecutionPlan>
+
+  <OutputContracts>
+    <Contract id="COVERAGE_MAP_FORMAT">
+      One line, opens every question message. Topic labels in Russian; ≤72 columns; statuses:
+      `✔` closed · `▶` in progress · `␣` open · `✗ skip: <причина>`.
+
+      Карта: цель ✔ · потребители ✔ · **офлайн ▶** · зависимости ␣ · слабые места ␣
+
+      The topic in progress is bold. The map is session state for the dialogue — it never lands in
+      the spec.
+    </Contract>
+
+    <Contract id="QUESTION_MESSAGE_FORMAT">
+      The развилка message — «журнал с якорями». Live markdown, never fenced. Blocks in order;
+      skip a block only when genuinely empty:
+
+      1. Coverage map line (per `COVERAGE_MAP_FORMAT`).
+      2. `## Вопрос <X> из <Y> · <тема без вопросительного знака>` — X/Y per `AX_ONE_QUESTION_SEQUENTIAL`.
+      3. `**Решаем одной строкой:** <the fork, one sentence>`.
+      4. ASCII diagram — only when the subject is relational (`AX_VISUAL_WHEN_RELATIONAL`).
+      5. `**📌 Что известно**` — 2–5 bullets; load-bearing words bold; facts specific to THIS
+         question, not a restate of the session.
+      6. `**⚖️ Варианты**` — each variant:
+         `**<Letter>. <название>**` then `✅ <плюсы через · >` / `⚠️ <минусы через · >`.
+         3+ variants with comparable criteria → a criteria×variant table INSTEAD of the lists
+         (rows = criteria, columns = variants; the killer cell bold).
+      7. `**🎯 Куда клонюсь:** <letter> — <why, one sentence>` — omit on high-stakes questions
+         where pre-anchoring is wrong (`AX_DEFAULTS_FIRST`).
+      8. The `AskUserQuestion` call (`AX_ASK_TOOL_BINDING`) — options in printed order.
+
+      <Example>
+        Карта: цель ✔ · потребители ✔ · **офлайн ▶** · зависимости ␣ · слабые места ␣
+
+        ## Вопрос 3 из 5 · Что происходит с сообщением, отправленным без сети
+
+        **Решаем одной строкой:** куда девается исходящее сообщение, пока сети нет — и что видит пользователь.
+
+        ```
+        [набрал текст] ──отправить──► ??? ──сеть вернулась──► [доставлено]
+                                       │
+                              что здесь: очередь? блок? потеря?
+        ```
+
+        **📌 Что известно**
+        - Пользователь **не отличает** «нет сети» от «медленно» — Telegram и Slack кладут сообщение в ленту сразу, с часиками.
+        - У нас уже есть outbox — очередь с **ретраями на реконнекте**.
+        - Потеря набранного текста — **худший исход**: хуже, чем дубль.
+
+        **⚖️ Варианты**
+
+        **A. Сразу в ленту, отправка фоном через outbox**
+        ✅ привычно по Telegram/Slack · текст не теряется · outbox уже есть
+        ⚠️ нужна честная пометка статуса, иначе «отправилось?» — тикеты в поддержку
+
+        **B. Блокировать отправку, пока нет сети**
+        ✅ никакой двусмысленности статуса
+        ⚠️ текст в заложниках у сети · ни один живой мессенджер так не делает
+
+        **🎯 Куда клонюсь:** A — очередь уже есть, остаётся статус в UI.
+
+        (AskUserQuestion: «A. В ленту + фон (рекомендую)» · «B. Блокировать отправку»)
+      </Example>
+    </Contract>
+
+    <Contract id="BATCH_CONFIRM_FORMAT">
+      Default confirmations — one compact block, then ONE `AskUserQuestion` call with 2–4
+      questions. Per item: one bold line (the default) + one plain line (the alternative and when
+      it wins). No «Что известно» blocks, no diagrams. A batch item that provokes discussion is
+      promoted to a развилка next message.
+    </Contract>
+
+    <Contract id="NEXT_STEP_MENU_FORMAT">
+      Rendered by the CALLER's final step, after its artifact is written and verified. Shape:
+
+      1. One ✅ line — what was produced and what was checked
+         (`✅ Спека <path> записана · язык проверен · <N> диаграмм`).
+      2. `**Что дальше?**` + one `AskUserQuestion` call. Options (2–4) come from the caller's own
+         candidate table; the recommended option first with «(рекомендую)»; CHAINED options are
+         first-class («декомпозиция + критик следом», «scaffold + критик», «сразу execute») — one
+         pick launches the whole chain, the agent runs it без промежуточных остановок between
+         chain links unless a link fails. Always include «Закончить сессию» last.
+      3. On pick: invoke the corresponding skill(s) / directive flow(s) directly — never answer
+         with «запусти /sdd-X сам».
+    </Contract>
+  </OutputContracts>
+</SddInterviewProtocol>

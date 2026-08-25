@@ -1,0 +1,8 @@
+stack:
+  use: [anystack]
+  anystack:
+    extraGates:
+      - id: syntax
+        argv: [sh, -c, 'test -f src/main.exotic']
+      - id: style
+        argv: [sh, -c, 'grep -q print src/main.exotic']

@@ -1,0 +1,12 @@
+notes: >
+  Uncommitted work is refused, never silently ignored: a verify that quietly checked HEAD while
+  the tree differs would report green on unverified code. D-STACK-017 keeps that invariant by
+  refusal — DIRTY_TREE, exit 4, zero gates run, and the user's WIP is untouched. The verdict of
+  a passing run therefore always binds to a commit SHA.
+requires: [go]
+dirty:
+  main.go: "package main\n\n// WIP\nfunc main() {}\n"
+  untracked.txt: 'not committed'
+argv: ['--all']
+exitCode: 4
+outputIncludes: ['DIRTY_TREE', 'commit']

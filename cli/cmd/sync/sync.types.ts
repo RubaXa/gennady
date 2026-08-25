@@ -13,6 +13,8 @@ export interface SyncOptions {
   targetDir: string;
   /** @purpose Optional filter: subdirectory names inside ai/directives/. */
   subdirs?: string[];
+  /** @purpose Extra directive roots contributed by plugins; the base root wins on collision. */
+  extraSourceDirs?: readonly string[];
   /** @purpose Preview without writing. */
   dryRun?: boolean;
 }

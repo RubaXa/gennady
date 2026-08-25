@@ -1,0 +1,8 @@
+stack:
+  use: [golang]
+  golang:
+    skipGates: [generate, build, vet, fmt, lint, test]
+    extraGates:
+      - id: sees-work-in-progress
+        argv: [sh, -c, 'grep -q WIP main.go && test -f untracked.txt']
+        timeout: 1m

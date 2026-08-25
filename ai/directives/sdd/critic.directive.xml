@@ -1,24 +1,65 @@
-<SddCritic keywords="critic, spec-review, task-review, bdd-audit, blind-spot, autonomous-polish, multi-round, pre-execute, orchestration" type="directive" ver="2.0">
+<SddCritic keywords="critic, spec-review, task-review, bdd-audit, blind-spot, autonomous-polish, multi-round, pre-execute, orchestration, language-register, next-step-menu" type="directive" ver="2.1">
   <DirectiveContext>
     <Mission>
-      Autonomous critique loop for SDD artifacts — spec, task, or batch (spec + all tasks). You are the ORCHESTRATOR in the root session. Per round: dispatch one isolated critic subagent, evaluate feedback against full project context, reconcile every introduced entity against existing project surface (reuse > extend > justify > escalate), surgically edit artifact, re-dispatch if edits applied (max 5 rounds). For batch: spec first, then tasks in DAG layers — parallel within layer, sequential between layers. On CLEAN: delete `## Critic Rounds` (temporary scaffolding). Artifact is clean, improvements integrated.
+      Autonomous critique loop for SDD artifacts — spec, task, or batch (spec + all tasks). By default the critic surfaces only production-threatening defects (logic/correctness, unhandled failures, security, observability, design-evident resource leaks, broken contracts, spec drift), not mechanical polish (AX_POLISH_MODE). You are the ORCHESTRATOR in the root session. Per round: dispatch one isolated critic subagent, evaluate its findings against full project context, reconcile every introduced entity against existing surface (reuse > extend > justify > escalate), surgically edit the artifact, re-dispatch if edits applied (max 5 rounds). Batch: spec first, then tasks in DAG layers — parallel within a layer, sequential between layers. On CLEAN: delete `## Critic Rounds` (temporary scaffolding). Minimum 3 rounds before CLEAN is terminal — earlier CLEAN triggers one additional polish-pass.
     </Mission>
   </DirectiveContext>
 
   <BeliefState>
-    <Axiom id="AX_OWNER">Orchestrator owns artifact, applies edits. Critic is sensor — reports only, never edits.</Axiom>
+    <Axiom id="AX_OWNER">Orchestrator owns artifact, applies edits. The critic only reports, never edits.</Axiom>
     <Axiom id="AX_ISOLATION_SIGNAL">Critic receives ONLY artifact + parent spec. Confusion = underspecification. Fix the artifact.</Axiom>
-    <Axiom id="AX_RE_DISPATCH">Any edit → re-dispatch mandatory. Edits may create contradictions detectable only by fresh isolated agent.</Axiom>
+    <Axiom id="AX_RE_DISPATCH">SUBSTANTIVE edit on a non-CLEAN verdict → re-dispatch mandatory: an edit can create contradictions only a fresh isolated agent will catch. Edits on a post-round-3 CLEAN verdict do NOT re-dispatch (AX_CLEAN_TERMINAL). Before round 3, CLEAN triggers ONE additional polish-pass round. Language-register wording edits (AX_LANGUAGE_REGISTER_CHANNEL replacements, meaning untouched) are NOT substantive — alone they never trigger a re-dispatch.</Axiom>
+    <Axiom id="AX_CLEAN_TERMINAL">After round 3: CLEAN is terminal — no more findings, conclude immediately. Before round 3: CLEAN → one additional polish-pass round (MINOR polish only, risk-free on a converged artifact), then conclude regardless of that round's verdict. Never spend more than one polish-pass re-validating an already-clean artifact. A polish-pass round does NOT restart the round counter for CLEAN termination.</Axiom>
+    <Axiom id="AX_MIN_ROUNDS">Minimum 3 rounds of dispatch + edit. The critic must exercise the full loop at least 3 times — a single-pass or two-pass critique misses contradictions introduced by intermediate edits. Round 1: baseline. Round 2: re-critique after first edits. Round 3: convergence check. After round 3, CLEAN is truly terminal.</Axiom>
     <Axiom id="AX_STOP_NO_EDITS">Zero edits → stop. Unchanged input → unchanged verdict → infinite loop.</Axiom>
     <Axiom id="AX_CAP_5">Max 5 rounds. Round 5 + edits + not CLEAN → stop, flag MAX_ROUNDS.</Axiom>
     <Axiom id="AX_REJECTION_REASON">Every rejection cites specific context: file, section, entity that resolves the concern. No vague "more context."</Axiom>
-    <Axiom id="AX_DEFAULT_ACCEPT">Uncertain → ACCEPT. Cost of rejecting real finding > cost of accepting marginal one.</Axiom>
+    <Axiom id="AX_DEFAULT_ACCEPT">Uncertain → ACCEPT. Cost of rejecting real finding > cost of accepting marginal one. Applies to CLARIFYING findings (close a gap, fix a ref, fill a placeholder). For ADDITIVE findings it inverts — see AX_NECESSITY_FIRST.</Axiom>
+    <Axiom id="AX_NECESSITY_FIRST">Additive finding = one demanding NEW surface to guard a failure (entity, type, error-kind, Result wrapper, parameter, dependency, decision, observability hook). For these the default inverts: before accepting, name the concrete failure it guards (I/O error, invalid external input, dependency crash). Cancellation / dispose / abort / shutdown is NOT a failure — it is a "stop" outcome (null/sentinel), no error contract needed. No nameable failure → REJECT; do not grow the surface. (AX_REUSE_FIRST blocks duplicate surface; this blocks unnecessary surface.)</Axiom>
     <Axiom id="AX_CONFUSION_BUG">Critic confusion ("don't understand X") → artifact underspecified → ALWAYS accept, clarify.</Axiom>
     <Axiom id="AX_SURGICAL">Close the gap only. No restructure, rewrite, restyle. Structural overhaul → suggest re-scaffold, stop.</Axiom>
-    <Axiom id="AX_REUSE_FIRST">Orchestrator holds full project context — the ONLY actor able to detect duplication against existing code/specs (the isolated critic cannot). For every entity/type/method/contract the artifact introduces, reconcile before accepting it: REUSE existing (adapt artifact to it) > EXTEND existing > JUSTIFY new (record one-line rationale in artifact: why existing surface is insufficient) > ESCALATE to operator. Unjustified new surface is a finding to resolve, not to wave through. Bias toward consolidation — do not let the system grow a duplicate entity each round.</Axiom>
+    <Axiom id="AX_REUSE_FIRST">Only the orchestrator holds full project context, so only it can detect duplication against existing code/specs (the isolated critic cannot). For every entity/type/method/contract the artifact introduces, reconcile before accepting: REUSE existing (adapt artifact to it) > EXTEND existing > JUSTIFY new (one-line rationale in artifact: why existing surface is insufficient) > ESCALATE to operator. Unjustified new surface is a finding to resolve, not wave through. Bias toward consolidation — don't add a duplicate entity each round.</Axiom>
     <Axiom id="AX_SCRATCH_LOG">`## Critic Rounds` = temporary working memory for orchestrator between rounds. Deleted on final CLEAN.</Axiom>
     <Axiom id="AX_TASK_PARALLEL">Tasks critiqued in DAG layers. Same layer (no inter-dependencies) → parallel dispatch. Different layers → sequential.</Axiom>
-    <Axiom id="AX_LANG">Directive: English. Artifact prose (Critic Rounds, summary): Russian.</Axiom>
+    <Axiom id="AX_POLISH_MODE">Default dispatch is `Polish: off` → report only CRITICAL/MAJOR (production-threatening logic, failure, security, observability, design-evident leak, contract, alignment defects). Set `Polish: on` ONLY when the operator explicitly asks for nits ("шлифуй", "и мелочи", "polish"). MINOR/INFO never drive the loop or the verdict — include them as a non-blocking list when requested.</Axiom>
+    <Axiom id="AX_OPERATOR_LANGUAGE">
+      **Directive text (axioms, halt names, step procedures, contract identifiers, structural
+      section headings, action/status tokens) — English.**
+
+      **Operator-facing artifact text and operator-facing messages — Russian.** Russian applies to:
+      - `## Critic Rounds` body text (verdict notes, accepted/rejected/reconcile/changes text).
+      - The operator-facing round summary (`🔍 sdd-critic`): the `Принято:` / `Отклонено:` / changes / reuse / unresolved text.
+
+      **English regardless of context:** code, JSDoc, intent comments, file paths, tool commands,
+      axiom IDs (`AX_*`), Trace anchors, IDs (`D-NNN` / `<ACR>-<slug>` / `F-NNN` / `P<N>` / `H_*`),
+      severity / status / scope-type tokens, BDD keywords, field labels (`**Why:**`, `**Recorded:**`).
+    </Axiom>
+
+    <Axiom id="AX_OPERATOR_DIALOGUE_STYLE">
+      The document's language is a few-shot for the agent's own speech. Operator-facing Russian reads
+      like a senior engineer to a colleague — plain, direct, concrete. Don't sound smart — that's the
+      failure mode. These directives are dense English for agent-to-agent precision; that density MUST
+      NOT leak into the Russian.
+
+      Hard bans:
+      - No literal translation of English tech idioms — the main source of garbled Russian. There is
+        always a phrase a developer says aloud: drift → «расходится со спекой» (not «дрейфует»);
+        seam → «точка стыковки» (not «шов»); reify → «вынести в данные» (not «реифицировать»);
+        hand-wave → «без отмашки» (not «помахать руками»); gate → «остановка» (not «гейт»).
+      - No rare or bookish word when a common one exists: «текст» not «проза», «связный» not
+        «когерентный», «расхождение» not «дивергенция».
+      - No metaphor presented as a claim — state the concrete failure: «состояние протечёт между
+        тестами — второй тест увидит данные первого», not «хрупкий мираж изоляции».
+      - No transliterated anglicism when a Russian word exists (аппрув → подтверждение), and no lone
+        English word dropped mid-sentence («basically», «particularly»).
+      - No ornamental adjectives, no aphorisms.
+
+      Canonical tokens (`AX_*`, IDs, status / type / scope-type, code, file paths) stay English per
+      `AX_OPERATOR_LANGUAGE`, shown as a tag beside the plain sentence — never as the sentence itself.
+
+      Test before sending: read it as a busy mid-level developer. Stumbled on a word, or it sounds
+      like a blog showing off? Rewrite plainer.
+    </Axiom>
   </BeliefState>
 
   <HaltConditions>
@@ -32,12 +73,15 @@
 
   <AntiPatterns>
     <Pattern id="AP_SELF_CRITIQUE">Critiquing artifact yourself. Dispatch isolated critic.</Pattern>
+    <Pattern id="AP_DELEGATE_LOOP">Letting the dispatched critic run the rounds, reconcile entities, or edit the artifact. The critic is read-only single-pass (critic-protocol AX_READ_ONLY); the ROOT session owns the round loop, reuse-reconciliation (STEP_2B), accept/reject, and ALL edits. If a critic returns applied edits or a multi-round report, treat it as overreach: keep only its findings, discard the rest, run STEP_2→5 yourself.</Pattern>
     <Pattern id="AP_NO_RE_DISPATCH">Edits without re-dispatch. Edit invalidates prior verdict.</Pattern>
     <Pattern id="AP_SPIN">Re-dispatch with zero edits. Same input → same verdict.</Pattern>
+    <Pattern id="AP_POLISH_SPIN">Re-dispatching after a post-round-3 CLEAN verdict to re-validate optional MINOR polish. CLEAN is terminal after round 3 (AX_CLEAN_TERMINAL).</Pattern>
     <Pattern id="AP_OVEREDIT">Rewriting sections. Close the gap, don't redecorate.</Pattern>
     <Pattern id="AP_DISMISS_CONFUSION">Ignoring "I don't understand X". Always fix.</Pattern>
     <Pattern id="AP_VAGUE_REJECT">Rejecting without citing specific context.</Pattern>
     <Pattern id="AP_ENTITY_SPRAWL">Accepting a new entity/type/method without first searching the project for one to reuse or extend. New surface every round = sprawl.</Pattern>
+    <Pattern id="AP_PHANTOM_ACCEPT">Accepting an additive finding (new error-kind, Result wrapper, param, dependency) without naming the real failure it guards. Cancellation/dispose/abort is not a failure (AX_NECESSITY_FIRST).</Pattern>
   </AntiPatterns>
 
   <ExecutionPlan>
@@ -50,18 +94,24 @@
         - scope name / tasks/<scope>/ → all tasks in scope.
         Build queue: spec-first if included, then tasks in DAG layers.
         For each task: read §1 Meta → resolve parent spec. Missing → H_PARENT_SPEC_MISSING.
+        Determine polish-mode (AX_POLISH_MODE): operator asked to "шлифуй" / "и мелочи" / "polish" / "nits" → ON; otherwise OFF (default — CRITICAL/MAJOR only).
       </Action>
     </Step>
 
     <Step id="1_DISPATCH">
       <Goal>Dispatch one isolated critic subagent.</Goal>
       <Action>
-        Dispatch subagent, fresh context:
+        Dispatch subagent (`subagent_type: general-purpose`, **`model: "sonnet"`** — the critic reasons about impact (logic/correctness, race/ordering, security, observability, design-evident leaks), not mechanical fact-checking like audit; haiku-class is too weak here), fresh context:
         ```
         Step 1 — Read directive: ai/directives/sdd/critic-protocol.xml
         Step 2 — Activate. Announce: "🔒 SddCriticProtocol"
-        Step 3 — Apply. Artifact: <path>, Parent spec: <path|N/A>, Round: <N>.
-        Follow Execution_Plan. Do not deviate.
+        Step 3 — Apply. Artifact: <path>, Parent spec: <path|N/A>, Round: <N>, Polish: <on|off>.
+        Follow ExecutionPlan. Do not deviate.
+
+        HARD CONSTRAINTS — override any contrary impulse:
+        - READ-ONLY. Do NOT edit/create/delete ANY file (not the artifact, not specs, nothing). The root orchestrator owns every edit.
+        - SINGLE PASS. Run the protocol ONCE for THIS round only. Do NOT run multiple rounds, do NOT re-dispatch, do NOT "helpfully" apply or implement fixes.
+        - OUTPUT = the four report sections + Verdict, then STOP. Returning edits or a multi-round report is a protocol violation, not helpfulness.
         ```
         Fail → retry once. Fail again → H_DISPATCH_FAILED.
       </Action>
@@ -72,7 +122,9 @@
       <Action>
         ACCEPT: genuine gap, misunderstanding reveals ambiguity, would break downstream agent, or uncertain (AX_DEFAULT_ACCEPT).
         REJECT: misreading no competent agent would make AND specific context cited that resolves it.
+        ADDITIVE finding (demands new surface) → apply AX_NECESSITY_FIRST: accept ONLY if you can name the concrete failure it guards; cancellation/dispose/abort is not a failure → REJECT and keep the surface minimal.
         Confusion points → ALWAYS accept (AX_CONFUSION_BUG).
+        `## Язык (не блокирует)` hits (AX_LANGUAGE_REGISTER_CHANNEL in critic-protocol) → apply as surgical wording edits by default (quote → replacement, meaning untouched); they never count toward the verdict and never justify a re-dispatch on their own.
         Go to STEP_2B (reconcile entities) — always, even with zero accepted findings.
       </Action>
     </Step>
@@ -116,7 +168,8 @@
     <Step id="5_DECIDE">
       <Goal>Re-dispatch or conclude.</Goal>
       <Action>
-        Edits applied AND round < 5 → round++, go to STEP_1.
+        Verdict CLEAN AND round ≥ 3 → conclude (go to STEP_6). CLEAN before round 3 → one additional polish-pass round, then conclude regardless (AX_CLEAN_TERMINAL, AX_MIN_ROUNDS).
+        Else: SUBSTANTIVE edits applied AND round < 5 → round++, go to STEP_1 (language-register wording edits alone do not count — per AX_RE_DISPATCH).
         No edits → conclude (go to STEP_6).
         Round 5 → conclude, flag MAX_ROUNDS if not CLEAN.
       </Action>
@@ -161,6 +214,12 @@
 
         📍 Artifact: <path> — <CLEAN | NEEDS_WORK | CRITICAL>
         ```
+
+        Then the handoff menu per `NEXT_STEP_MENU_FORMAT` (`ai/directives/sdd/interview-protocol.xml`) — one AskUserQuestion, never text «запусти /sdd-X». Candidates by artifact kind:
+        - scope spec (product/library) → «Декомпозиция на модули (рекомендую)» · «Scaffold + критик» · «Закончить сессию»;
+        - scope spec (infrastructure/contracts) or module specs → «Scaffold + критик (рекомендую)» · «Сразу scaffold» · «Закончить сессию»;
+        - task ticket(s) → «Выполнить (sdd-execute) (рекомендую)» · «Выполнить всю очередь (sdd-execute-batch)» · «Закончить сессию».
+        Not CLEAN → prepend «Показать нерешённые находки и решить вручную (рекомендую)» and demote the pipeline options.
       </Action>
     </Step>
   </ExecutionPlan>
@@ -168,6 +227,7 @@
   <HardForbidden>
     - Self-critique. Dispatch critic.
     - Re-dispatch with zero edits.
+    - Re-dispatch after a post-round-3 CLEAN verdict (AX_CLEAN_TERMINAL) — CLEAN concludes the loop.
     - >5 rounds.
     - Rewrite artifact.
     - Share full context with critic.
@@ -175,6 +235,8 @@
     - ACCEPT without edit.
     - REJECT without specific context.
     - Accept a new entity without reuse-first reconciliation (AX_REUSE_FIRST).
+    - Accept an additive finding without naming the concrete failure it guards (AX_NECESSITY_FIRST).
     - Structurally merge/remove entities yourself — ESCALATE instead.
+    - Stop before 3 rounds when edits exist and verdict is not CLEAN (AX_MIN_ROUNDS).
   </HardForbidden>
 </SddCritic>

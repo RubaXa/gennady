@@ -9,3 +9,5 @@
 | `git-setup.xml`        | Настройка git: .gitignore, ветки, коммиты, хуки, secrets            |
 | `nodejs-npm-setup.xml` | Node.js runtime: .nvmrc, engines, один package manager              |
 | `storybook-setup.xml`  | Storybook + MCP server: агентная установка, манифесты, Vitest addon |
+
+> Go-тулчейн вынесен в стек-плагин: [`plugins/golang/directives/infra/golang-setup.xml`](../../../plugins/golang/directives/infra/golang-setup.xml) — stack-плагин, немутирующие гейты, скоуп, `.gennadyrc`.

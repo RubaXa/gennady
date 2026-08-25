@@ -19,12 +19,14 @@ export type RcModel = {
 };
 
 /**
- * @purpose Root configuration data structure for Gennady RC (model list).
+ * @purpose Root configuration data structure for Gennady RC (model list + stack section).
  * @consumer GennadyRc
  */
 export type GennadyRcData = {
   /** @purpose List of configured AI models. */
   models: RcModel[];
+  /** @purpose Stack plugin configuration section; validated by services/stack/stack-config. */
+  stack?: unknown;
 };
 
 /**
@@ -69,15 +71,22 @@ export class GennadyRc {
 
         if (Array.isArray(data)) {
           this._data.models = data as RcModel[];
-        } else if (
-          data &&
-          typeof data === 'object' &&
-          Array.isArray((data as GennadyRcData).models)
-        ) {
-          this._data = {
-            ...this._data,
-            ...(data as GennadyRcData),
-          };
+        } else if (data && typeof data === 'object' && !Array.isArray(data)) {
+          // Sections are independent: `models` may be absent when only `stack`
+          // (or another section) is configured. A present `models` must be an array.
+          const candidate = data as Partial<GennadyRcData>;
+          if (candidate.models !== undefined && !Array.isArray(candidate.models)) {
+            this._error = new Error(
+              `[GENNADY_RC_ERROR_CONFIG] Invalid "models" in "${this._filename}" config`,
+              { cause: data }
+            );
+          } else {
+            this._data = {
+              ...this._data,
+              ...candidate,
+              models: candidate.models ?? this._data.models,
+            };
+          }
         } else {
           this._error = new Error(
             `[GENNADY_RC_ERROR_CONFIG] Invalid "${this._filename}" config data`,

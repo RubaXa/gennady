@@ -101,6 +101,9 @@ inbox-serve:build`), если тестируется через `gennady inbox s
 
 | Задача агента                                                    | Читать                                                                                                                                     |
 | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| SDD-воркфлоу и последовательность скиллов                        | [docs/sdd-flow.md](docs/sdd-flow.md)                                                                                                       |
+| Справочник SDD-скиллов (`@sdd-*`)                                | [ai/skills/README.md](ai/skills/README.md)                                                                                                 |
+| Справочник SDD-директив                                          | [ai/directives/sdd/README.md](ai/directives/sdd/README.md)                                                                                 |
 | Логирование в коде (console, logger)                             | [ai/flow/code/logging.md](ai/flow/code/logging.md)                                                                                         |
 | Ошибки: throw, rethrow, формат Error                             | [ai/flow/code/errors.md](ai/flow/code/errors.md)                                                                                           |
 | TypeScript: enum, private, конструктор                           | [ai/flow/code/typescript.md](ai/flow/code/typescript.md)                                                                                   |

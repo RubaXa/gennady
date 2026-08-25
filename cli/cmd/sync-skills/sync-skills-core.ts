@@ -22,6 +22,60 @@ import type {
 const EXCLUDED_NAMES = new Set(['.DS_Store']);
 
 /**
+ * @purpose Scan several skill roots into one map, so plugin-owned skills sync like any other.
+ * @invariant The name filter applies to the union, not per root; an empty directory never
+ *   shadows a root with real files.
+ * @invariant An unreadable root is fatal: swallowing EACCES empties `merged`, and the orphan
+ *   pass then deletes every synced skill.
+ * @param roots Skill roots, base first; plugin roots may be absent, the base must be readable.
+ * @param [skillNames] Optional filter, checked against the union.
+ * @throws If a requested skill is in no root, or a root exists but cannot be read.
+ * @returns Map of skill names to their file contents.
+ */
+export function scanSkillRoots(
+  roots: readonly string[],
+  skillNames?: string[]
+): Map<string, Map<string, Buffer>> {
+  const merged = new Map<string, Map<string, Buffer>>();
+  for (const [index, root] of roots.entries()) {
+    let scanned: Map<string, Map<string, Buffer>>;
+    try {
+      scanned = scanSkills(root);
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      // Only a MISSING plugin root is normal (a plugin without skills). The base root, and
+      // any other failure (EACCES, EIO), must stay fatal — matching the pre-plugin behavior.
+      if (index > 0 && (code === 'ENOENT' || code === 'ENOTDIR')) {
+        continue;
+      }
+      throw error;
+    }
+    for (const [name, files] of scanned) {
+      // An empty directory must never shadow a real skill: a leftover mount point or a
+      // half-cleaned staging run would silently drop the skill from every sync.
+      const existing = merged.get(name);
+      if (existing === undefined || (existing.size === 0 && files.size > 0)) {
+        merged.set(name, files);
+      }
+    }
+  }
+
+  if (skillNames === undefined || skillNames.length === 0) {
+    return merged;
+  }
+
+  const missing = skillNames.filter((name) => !merged.has(name));
+  if (missing.length > 0) {
+    const error = new Error(
+      `[scanSkillRoots] skill(s) not found in source: ${missing.join(', ')}\nAvailable: ${[...merged.keys()].sort().join(', ')}`
+    );
+    (error as Error & { code: string }).code = ERR_SKILLS_SKILL_NOT_FOUND;
+    throw error;
+  }
+  return new Map([...merged].filter(([name]) => skillNames.includes(name)));
+}
+
+/**
  * @purpose Recursively scan sourceDir for skill directories and return a map of skillName → {relativePath → Buffer}.
  * @param sourceDir Source directory (ai/skills/).
  * @param [skillNames] Optional filter: only scan these skill names.
@@ -329,7 +383,10 @@ export function collectAndCompareSkills(
   const _mkdir = deps.mkdir!;
 
   // #region START_SCAN_SKILLS — invariants: scan source returns skill→files map; list target skills for orphan detection
-  const sourceSkills = scanSkills(opts.sourceDir, opts.skillNames);
+  const sourceSkills = scanSkillRoots(
+    [opts.sourceDir, ...(opts.extraSourceDirs ?? [])],
+    opts.skillNames
+  );
 
   let targetSkillNames: string[] = [];
   try {

@@ -13,6 +13,8 @@ export type SyncSkillsOptions = {
   targetDir: string;
   /** @purpose Optional filter: skill directory names. */
   skillNames?: string[];
+  /** @purpose Extra skill roots contributed by plugins; base names win on collision. */
+  extraSourceDirs?: readonly string[];
   /** @purpose Preview without writing. */
   dryRun?: boolean;
 };

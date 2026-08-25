@@ -17,7 +17,7 @@ describe('VcsGithubClient', () => {
     globalThis.fetch = originalFetch;
   });
 
-  it('has defined MergeDiscussions (optional port)', () => {
+  it('has MergeDiscussions port', () => {
     globalThis.fetch = mock.fn(
       async () => new Response('[]', { status: 200 })
     ) as unknown as typeof fetch;

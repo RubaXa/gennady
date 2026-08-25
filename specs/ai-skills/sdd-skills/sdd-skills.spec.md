@@ -328,7 +328,7 @@ graph TD
 
 ## 10. Handoff to Task Scaffolding
 
-- **Implementation files to be created:** Все 12 навыков уже существуют в `ai/skills/`. Требуется только релативизация абсолютных путей в телах SKILL.md.
+- **Implementation files to be created:** Все 12 навыков уже существуют в `ai/skills/`. Реализация завершена: dev-пути (`~/Developer/gennady/...`) в телах SKILL.md нормализуются в продуктовые при `sync-skills`.
 - **Test files to be created:** Интеграционные тесты для скриптов (sdd verify, sdd extract, sdd check-blockers)
 - **Stack dependencies:**
   - Language: TypeScript (для classify-scripts.ts)
@@ -340,7 +340,7 @@ graph TD
 | —    | —        | —      |
 
 - **Open risks & validation needs:**
-  - Абсолютные пути `/Users/k.lebedev/Developer/gennady/` в телах SKILL.md требуют замены на относительные (`ai/directives/...`)
+  - dev-пути `~/Developer/gennady/` в телах SKILL.md — осознанная конвенция: нормализуются в продуктовые при `sync-skills`
   - `${SKILL_DIR}` — переменная, предоставляемая агентом-хостером; поведение при отсутствии требует проверки
   - Скрипты завязаны на macOS/bash 3.2+ — не кроссплатформенны
   - classify-scripts.js и classify-scripts.ts — дублирование, требует консолидации

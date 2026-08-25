@@ -1,6 +1,6 @@
 {
   "name": "gennady",
-  "version": "0.8.4",
+  "version": "0.8.4-next.3",
   "author": "Konstantin Lebedev <ibnrubaxa@gmail.com>",
   "description": "Gennady — General Extensible Neural Network Adaptive Data Yntelligence",
   "keywords": [
@@ -27,15 +27,21 @@
   },
   "exports": {
     ".": "./services/agent-mon/index.ts",
+    "./stack": "./services/stack/plugin-api.ts",
     "./providers/claude": "./services/agent-mon/providers/claude/index.ts",
     "./providers/opencode": "./services/agent-mon/providers/opencode/index.ts"
   },
   "files": [
     "dist/**/*",
     "README.md",
+    "docs/**/*",
     "ai/**/*",
     "cli/cmd/orient/README.md",
-    "services/agent-run/engines/opencode/readonly.config.json"
+    "services/agent-run/engines/opencode/readonly.config.json",
+    "plugins/*/plugin.json",
+    "plugins/*/*.ts",
+    "plugins/*/directives/**/*",
+    "plugins/*/skills/**/*"
   ],
   "scripts": {
     "slides": "node ai/drafts/slides/360/build-slides.js",
@@ -45,8 +51,12 @@
     "type-check": "tsc --noEmit",
     "build:types": "tsc -p tsconfig.types.json && node --import tsx scripts/normalize-dts-imports.ts",
     "build:publish": "npm run build && npm run build:types && node --import tsx scripts/prepare-publish-artifacts.ts",
-    "test": "node --import tsx --test --experimental-test-module-mocks $(find ai cli shared services -name '*.test.ts' -not -path '*/serve/__tests__/*' -not -name '*.integration.test.ts' -not -name '*.real-integration.test.ts' -not -name 'http-server.test.ts' -not -name 'eval-driver.test.ts' -not -name 'reviewer.e2e.test.ts' -not -name 'full-flow.blackbox.test.ts' -not -name 'run-mode.test.ts')",
+    "test": "node --import tsx --test --experimental-test-module-mocks",
     "test:e2e": "GENNADY_E2E=1 node --import tsx --test --experimental-test-module-mocks cli/__tests__/e2e/*.test.ts",
+    "test:cli-e2e": "GENNADY_E2E=1 node --import tsx --test --experimental-test-module-mocks cli/__tests__/e2e/*.test.ts",
+    "test:stack-e2e": "node --import tsx scripts/stack-e2e.ts",
+    "test:config-e2e": "node --import tsx scripts/stack-e2e.ts --suite=config",
+    "test:smoke": "GENNADY_SMOKE=1 node --import tsx --test --experimental-test-module-mocks cli/__tests__/e2e/bundle-smoke.e2e.test.ts cli/__tests__/e2e/publish-contents.e2e.test.ts",
     "test:integration": "node --import tsx --test --experimental-test-module-mocks --test-concurrency=2 services/agent-inbox/serve/__tests__/*.test.ts services/agent-inbox/modules/*/__tests__/*.integration.test.ts services/agent-inbox/modules/inbox-api/__tests__/http-server.test.ts services/agent-inbox/modules/inbox-roles/__tests__/reviewer.e2e.test.ts services/agent-inbox/modules/inbox-eval/__tests__/eval-driver.test.ts services/mr-stats/__tests__/*.integration.test.ts",
     "test:watch": "tsx --test-loader 'cli/**/*.test.ts' 'shared/**/*.test.ts' 'services/**/*.test.ts'",
     "dev": "tsx cli/gennady.ts",
@@ -61,14 +71,14 @@
     "test:e2e:review-flow": "playwright test --config=e2e/inbox-serve/playwright.review-flow.config.ts",
     "test:e2e:prod": "playwright test --config=e2e/inbox-serve/playwright.prod.config.ts",
     "build": "vite build",
-    "prepublishOnly": "npm run lint && npm run test:e2e && npm run build:publish",
+    "prepublishOnly": "npm run lint && npm run test:smoke && npm run test:cli-e2e && CONFIG_E2E_STRICT=1 npm run test:config-e2e && STACK_E2E_STRICT=1 npm run test:stack-e2e && npm run build:publish",
     "postpublish": "node --import tsx scripts/cleanup-publish-artifacts.ts",
     "publish-next": "node --import tsx scripts/publish-next.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "npm run format && npm run type-check && npm run lint:contracts",
     "release": "release-it",
-    "lint:contracts": "tsx cli/gennady.ts lint --autofix cli/ shared/ services/"
+    "lint:contracts": "tsx cli/gennady.ts lint --autofix cli/ shared/ services/ plugins/"
   },
   "devDependencies": {
     "@ai-sdk/openai": "^3.0.41",
@@ -105,6 +115,7 @@
     "tsx": "^4.19.1",
     "typescript": "^5.7.2",
     "vite": "^6.0.0",
+    "yaml": "2.9.0",
     "zod": "^4.3.6"
   },
   "dependencies": {

@@ -1,0 +1,6 @@
+notes: Committed generated output that matches its sources produces no drift — the gate passes.
+requires: [go]
+argv: ['--all']
+exitCode: 0
+gates:
+  golang:generate: { status: pass }

@@ -1,0 +1,7 @@
+notes: >
+  A broken package.json must NOT un-detect the stack (spec §3): the plugin stays active and
+  surfaces NODE_INVALID_MANIFEST, so the breakage is visible instead of reading as "no stack".
+requires: [npm]
+argv: ['--all']
+exitCode: 1
+diagnostics: ['NODE_INVALID_MANIFEST']

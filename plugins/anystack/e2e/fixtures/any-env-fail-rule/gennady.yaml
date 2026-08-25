@@ -1,0 +1,9 @@
+stack:
+  use: [anystack]
+  anystack:
+    extraGates:
+      - id: build
+        argv: [sh, -c, 'echo "exotic: command not found" >&2; exit 127']
+        envFail:
+          - stderrMatches: 'command not found'
+            hint: 'install the exotic compiler and re-run'

@@ -19,7 +19,8 @@ import {
 import { writeFileSync as _writeFileReal, mkdirSync as _mkdirReal } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { scanSkills, collectAndCompareSkills } from '../sync-skills-core.ts';
+import { chmodSync } from 'node:fs';
+import { scanSkills, scanSkillRoots, collectAndCompareSkills } from '../sync-skills-core.ts';
 import {
   SyncSkillsResult,
   ERR_SKILLS_SOURCE_NOT_FOUND,
@@ -164,6 +165,71 @@ describe('scanSkills', () => {
     const result = scanSkills(_sourceDir);
 
     assert.equal(result.size, 0);
+  });
+});
+
+// #endregion
+
+// #region scanSkillRoots — root-failure semantics
+
+describe('scanSkillRoots', () => {
+  let _baseDir: string;
+
+  beforeEach(() => {
+    _tmpDir = mkdtempSync(join(tmpdir(), 'sync-skills-roots-'));
+    _baseDir = join(_tmpDir, 'ai', 'skills');
+    mkdirSync(_baseDir, { recursive: true });
+  });
+
+  afterEach(() => {
+    if (existsSync(_tmpDir)) rmSync(_tmpDir, { recursive: true, force: true });
+  });
+
+  it('tolerates a missing plugin root — a plugin without skills is normal', () => {
+    createFile(join(_baseDir, 'sdd-audit'), 'SKILL.md', '# Audit');
+
+    const result = scanSkillRoots([_baseDir, join(_tmpDir, 'plugins', 'none', 'skills')]);
+
+    assert.equal(result.size, 1);
+    assert.ok(result.has('sdd-audit'));
+  });
+
+  it('throws on an unreadable base root instead of emptying the union (review P1)', (t) => {
+    // A swallowed EACCES on the base root leaves only plugin skills in the union,
+    // and the orphan pass then deletes every previously synced skill with exit 0.
+    if (typeof process.getuid === 'function' && process.getuid() === 0) {
+      t.skip('running as root — permission bits are not enforced');
+      return;
+    }
+    createFile(join(_baseDir, 'sdd-audit'), 'SKILL.md', '# Audit');
+    chmodSync(_baseDir, 0o000);
+    try {
+      assert.throws(
+        () => scanSkillRoots([_baseDir]),
+        (err: NodeJS.ErrnoException) => err.code === 'EACCES'
+      );
+    } finally {
+      chmodSync(_baseDir, 0o755);
+    }
+  });
+
+  it('throws when a plugin root exists but is unreadable — only a missing root is normal', (t) => {
+    if (typeof process.getuid === 'function' && process.getuid() === 0) {
+      t.skip('running as root — permission bits are not enforced');
+      return;
+    }
+    createFile(join(_baseDir, 'sdd-audit'), 'SKILL.md', '# Audit');
+    const pluginRoot = join(_tmpDir, 'plugins', 'x', 'skills');
+    mkdirSync(pluginRoot, { recursive: true });
+    chmodSync(pluginRoot, 0o000);
+    try {
+      assert.throws(
+        () => scanSkillRoots([_baseDir, pluginRoot]),
+        (err: NodeJS.ErrnoException) => err.code === 'EACCES'
+      );
+    } finally {
+      chmodSync(pluginRoot, 0o755);
+    }
   });
 });
 

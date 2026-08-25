@@ -1,0 +1,6 @@
+notes: 'When --only and --skip name the same gate, CLI --skip wins — the narrower intent.'
+requires: [go]
+argv: ['--all', '--only=golang:vet', '--skip=golang:vet']
+exitCode: 1
+gates:
+  golang:vet: { status: skipped }

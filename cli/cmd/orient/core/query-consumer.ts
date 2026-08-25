@@ -3,7 +3,7 @@
 // @tasks: TSK-55
 
 import type { ScannedFile, ConsumerQueryResult } from '../orient.types.ts';
-import { damerauLevenshtein } from './damerau-levenshtein.ts';
+import { damerauLevenshtein } from '../../../../shared/common/damerau-levenshtein.ts';
 
 /**
  * @purpose Find all files whose @consumers: header contains the given consumer name.

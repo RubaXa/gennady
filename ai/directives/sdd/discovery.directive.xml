@@ -1,4 +1,4 @@
-<SddDiscovery keywords="discovery, scope, vision, golden-dx, design-variants, decision-log, scope-rules, scope-type, infrastructure, contracts, library, product, living-spec, frame-stack, evidence-hygiene, runtime-backing, sdd-scope-discovery" type="directive" ver="3.1">
+<SddDiscovery keywords="discovery, scope, vision, golden-dx, design-variants, decision-log, scope-rules, scope-type, infrastructure, contracts, library, product, living-spec, frame-stack, evidence-hygiene, runtime-backing, dialogue-style, operator-safeguard, decision-card, recap-boundaries, interview-protocol, spec-diagrams, lang-pass, next-step-menu, sdd-scope-discovery" type="directive" ver="4.0">
   <DirectiveContext>
     <Mission>
       Turn the operator's intent for a scope into an approved scope spec at `specs/<scope-name>/<scope-name>.spec.md`.
@@ -10,11 +10,11 @@
       - `library` → Vision, Golden DX, Public API Surface, DbC contracts, Architecture, Decision Log, Handoff.
       - `product` → Vision, Project Type, Golden DX, Requirements Gate, Architecture variants, Decision Log, Handoff to `module-decomposition`.
 
-      Living spec: no frozen sections. Any section may be updated via `refine` without a full pivot ritual. `pivot` remains reserved for breaking / incompatible changes.
+      Living spec: no frozen sections. Any section may be updated via `refine` without a full pivot ritual. `pivot` is reserved for breaking / incompatible changes.
 
       Out of scope: module decomposition, entity inventory, DbC — those belong to `module-decomposition` for library / product scopes.
 
-      **Glossary.** Scope = architecturally cohesive unit (own runtime / stack / deployment target / UX surface). scope-type ∈ {infrastructure, contracts, library, product}.
+      **Glossary.** Scope = self-contained unit (own runtime / stack / deployment target / UX surface). scope-type ∈ {infrastructure, contracts, library, product}.
     </Mission>
   </DirectiveContext>
 
@@ -23,7 +23,7 @@
       **Three modes, auto-detected:**
       - `greenfield` — scope spec does not exist.
       - `refine` — extension or tightening of an existing spec (new requirements, new tools, new contracts) without replacing architecture.
-      - `pivot` — replacement of foundational decisions (architecture swap, scope-type swap, tool stack swap). Triggers supersession in the Decision Log.
+      - `pivot` — replacement of foundational decisions (architecture swap, scope-type swap, tool stack swap). Marks the old decision superseded in the Decision Log.
 
       Discriminator: if the old decision remains valid in parallel with the new one → `refine`. If the old decision is replaced by an incompatible one → `pivot`.
     </Axiom>
@@ -39,6 +39,8 @@
       | product | Requirements Gate | Golden DX | Design Variants | Architecture Choice |
 
       STEP_2 (Intent Capture), STEP_7 (External Dependencies Audit), and STEP_8 (Final Spec) are identical across all types.
+
+      **Operator-facing grouping (per `AX_RECAP_AT_BOUNDARIES`):** STEP_3 and STEP_4 are drafted together and shown in ONE card / one stop. For product, STEP_5 and STEP_6 are shown in one card (variants + the pick). This reduces stops without changing the internal gate ordering below. The combined card is the APPROVAL, not the interview — развилки met while drafting these steps still go one at a time per `AX_INTERVIEW_VIA_PROTOCOL`.
     </Axiom>
 
     <Axiom id="AX_MODE_AUTO_DETECT_OR_HALT">
@@ -47,7 +49,7 @@
       | No | — | greenfield |
       | Yes | refine / extend / add / расширь / добавь / уточни | refine |
       | Yes | pivot / replace / заменим / поменяем архитектуру | pivot |
-      | Yes | none of the above | HALT `H_AMBIGUOUS_MODE` — ask binary: refine or pivot? |
+      | Yes | none of the above | HALT `H_AMBIGUOUS_MODE` — ask binary: начать заново или дополнить? |
     </Axiom>
 
     <Axiom id="AX_PORTAL_READ_ONLY_WITH_PLACEHOLDER_EXCEPTION">
@@ -57,7 +59,7 @@
     <Axiom id="AX_LIVING_SPEC">
       The scope spec is a living document. In `refine` mode any section may be updated in place. There is no frozen 7 Handoff — the Handoff section evolves as modules are added.
 
-      `pivot` uses Decision Log supersession: the old entry → `status: superseded`, body preserved; the new entry carries `Supersedes: D-NNN` and `Was → Now`. The spec body is rewritten in place; git history is the full predecessor.
+      `pivot` uses Decision Log supersession: the old entry's title gets `(superseded by D-NNN)`, body preserved; the new entry carries `Supersedes: D-NNN` and `Was → Now`. The spec body is rewritten in place; git history is the full predecessor.
     </Axiom>
 
     <Axiom id="AX_SPEC_IS_SOLE_SOURCE">
@@ -69,17 +71,17 @@
     <Axiom id="AX_INFRASTRUCTURE_FLOW">
       For scope-type=infrastructure:
 
-      **Tool categories — two classes.** Mandatory: vcs, package-management, git-hooks. Optional: type-check, linting, formatting, test-unit, test-e2e, test-ui, bundler, ci, monorepo-tool, docs. The agent proposes a subset from intent. Mandatory categories cannot be dropped.
+      **Tool categories — two classes.** Mandatory: vcs, package-management, git-hooks. Optional: type-check, linting, formatting, test-unit, test-e2e, test-ui, bundler, ci, monorepo-tool, docs. Mandatory categories cannot be dropped; vcs always resolves to `ai/directives/infra/git-setup.xml`.
 
-      **vcs is always mandatory.** Resolves to `ai/directives/infra/git-setup.xml`.
+      **Whole stack in one table — not one negotiation per category.** Propose the full stack at once: `category · recommended tool · one-line why · alternatives`. The operator edits any row or accepts the rest as-is. Dive into a single category only when the operator disputes it (per `SIDE_DIVE_FORMAT`).
 
-      **Per tool category: 2–3 candidates with trade-offs.** Operator picks → Mandatory Rationale Pull → Decision Log entry. No tool may be locked without a Decision Log entry.
+      **Decision Log in batch.** Every locked tool needs a Decision Log entry (Mandatory Rationale Pull) — recorded once the stack is accepted, not one stop per tool.
 
-      **Tool interaction check.** After every tool is chosen, verify compatibility (linter vs formatter, test runner vs type-check, CI vs package manager).
+      **Tool interaction check** after the stack is accepted (linter vs formatter, test runner vs type-check, CI vs package manager).
 
-      **Effective rules derived from tools.** After tool stack is finalized, look up each chosen tool in `ai/directives/knowledge.xml` `<Rules>` section: find every rule whose `<Triggers>` match the tool name or its config artefacts. Record matched rule `<File>` paths in spec section 5 Effective Rules. Missing-rule handling: governed by `AX_SCOPE_RULES_DECLARATION` (in-session operator pick — skip / research-and-author / defer).
+      **Effective rules** derived from the final stack via `ai/directives/knowledge.xml` `<Rules>` (match tool names / config artefacts); record matched `<File>` paths in spec section 5. Missing-rule handling per `AX_SCOPE_RULES_DECLARATION` (batched).
 
-      **Dev workflow example is required.** The spec includes a Developer Workflow Example (shell-script shape) before final approval.
+      **Developer Workflow Example** required before final approval.
     </Axiom>
 
     <Axiom id="AX_PRODUCT_LIBRARY_FLOW">
@@ -95,6 +97,8 @@
       - `cli-utility`: 1–2 variants (minimal depth).
 
       **YAGNI guard.** Only abstractions needed for v1. Future-proof extensions without a confirmed consumer are forbidden.
+
+      Note: requirements (STEP_3) and Golden DX (STEP_4) are shown to the operator together in one card; the gate ordering (both approved before variants) still holds.
     </Axiom>
 
     <Axiom id="AX_CONTRACTS_FLOW">
@@ -110,19 +114,14 @@
       - Deferred scope: parts whose real runtime is intentionally not delivered in v1, with reason.
       - Trust boundaries that require a real runtime hook (auth, payments, persistence) are listed explicitly.
 
-      Establishing posture early prevents `module-decomposition` and `task-scaffolding` from misclassifying simulation seams as real implementations.
+      Establishing posture early prevents `module-decomposition` and `task-scaffolding` from treating simulated stubs as real implementations.
     </Axiom>
 
     <Axiom id="AX_SCOPE_RULES_DECLARATION">
-      Scope-wide rules are declared in spec Rules. Categories with directory mapping:
-      - coding → `ai/directives/coding/<rule>.xml`
-      - testing → `ai/directives/testing/<rule>.xml`
-      - architecture → `ai/directives/architecture/<rule>.xml`
-      - infra → `ai/directives/infra/<rule>.xml`
+      Scope-wide rules are declared in spec Rules. Category → directory: coding→`ai/directives/coding/`, testing→`ai/directives/testing/`, architecture→`ai/directives/architecture/`, infra→`ai/directives/infra/`.
 
-      Every rule reference must resolve to an existing file. Missing → operator picks resolution IN-SESSION (never a halt, never an autonomous task):
-      - **skip** — tool's own defaults are the discipline; record in Decision Log.
-      - **research-and-author** — agent WebFetches authoritative docs (official source from `package.json#homepage` or operator-supplied URL), drafts rule file, operator approves before write to `ai/directives/<category>/<name>.xml`. Drafts capture TIMELESS engineering practice only — discipline, trade-offs, anti-pattern categories, binary invariants. NOT captured: version numbers, CLI flags, config-syntax snippets, plugin lists (those churn between releases; they live in `package.json` / config files).
+      Every rule reference must resolve to an existing file. **Collect ALL missing rule files and resolve them in ONE batch** (at the end of the relevant step), not mid-flow per tool. Default per missing rule = **skip** (the tool's own defaults are the discipline; recorded in Decision Log). The operator opts a rule up to:
+      - **research-and-author** — agent WebFetches authoritative docs (official source from `package.json#homepage` or operator-supplied URL), drafts the rule file, operator approves before write to `ai/directives/<category>/<name>.xml`. Drafts capture TIMELESS engineering practice only — discipline, trade-offs, anti-pattern categories, binary invariants. NOT captured: version numbers, CLI flags, config-syntax snippets, plugin lists (those churn; they live in `package.json` / config files).
       - **defer** — record as Open Risk in Handoff with `Owner: operator-action`; proceed.
 
       Operator refuses to choose → `H_MISSING_RULE_FILE`. Otherwise no halt.
@@ -130,18 +129,22 @@
 
     <Axiom id="AX_RULE_ACTIVATION">
       Two stages:
-      - Stage A — relevance per category (recommend activate / recommend skip + rationale). Operator locks the list.
-      - Stage B — per-rule axiom walkthrough (infra/* and architecture/* rules only). Read `Mission` + `Belief_State` + `Reward_Criteria`. Operator decides Accept / Adapt / Override → Decision Log.
+      - Stage A — relevance per category (recommend activate / skip + rationale). Present the whole list at once; default = accept the recommendation. Operator locks the list.
+      - Stage B — per-rule axiom walkthrough (infra/* and architecture/* rules only). Read `Mission` + `Belief_State` + `Reward_Criteria`. **Default = Accept all.** Surface only rules that conflict or genuinely need an operator call; the operator overrides just those (Accept / Adapt / Override → Decision Log). Don't walk every rule aloud one by one.
 
-      Defaults: infra/*, architecture/* → walk through now. coding/*, testing/* → deferred — phase-subagent loads them at phase entry per `phase-execution-protocol`.
+      coding/*, testing/* → deferred — phase-subagent loads them at phase entry per `phase-execution-protocol`.
     </Axiom>
 
     <Axiom id="AX_DECISION_LOG_REQUIRED">
-      Every non-trivial decision → Decision Log entry. Format: D-NNN, Status, Recorded, Why (operator's wording), Risk accepted, Rejected alternatives. IDs are stable.
+      Every non-trivial decision → Decision Log entry. Format: D-NNN, Recorded, Why (operator's wording), Risk accepted, Rejected alternatives. IDs are stable.
+    </Axiom>
+
+    <Axiom id="AX_NO_DECORATIVE_FIELD">
+      Don't manufacture a field whose value is constant across ~all instances and consumed by no process — it carries zero information (measured: a `Status` field on Decision Log entries was `active` in 94% of ~400 entries repo-wide, checked by no tooling; the rare non-default cases restated the real fact in prose right next to the enum anyway). If a fact matters, say it once in prose or the title — don't wrap it in a label that's almost always boilerplate. This does not apply to fields with real variance AND consumers (e.g. task-ticket Phase Status `[ ]`/`[~]`/`[x]`/`[!]` — read by the execution orchestrator to decide what runs next).
     </Axiom>
 
     <Axiom id="AX_PIVOT_REQUIRES_SUPERSESSION">
-      In `pivot` mode every replaced decision: the old D-NNN → `status: superseded`. The new D-NNN carries `Was → Now` + `Supersedes: D-NNN` + a git ref pointing to the pre-rework state. Pivot Invalidation List (Pivot Invalidation List) enumerates downstream artifacts requiring `refine-module` / reopen — consumed by `audit` via `AX_STALE_AFTER_PIVOT_VERIFICATION`.
+      In `pivot` mode every replaced decision: the old D-NNN's title gets a trailing `(superseded by D-NNN)` — no dedicated Status field (`AX_NO_DECORATIVE_FIELD`). The new D-NNN carries `Was → Now` + `Supersedes: D-NNN` + a git ref pointing to the pre-rework state. Pivot Invalidation List enumerates downstream artifacts requiring `refine-module` / reopen — consumed by `audit` via `AX_STALE_AFTER_PIVOT_VERIFICATION`.
     </Axiom>
 
     <Axiom id="AX_HANDOFF_TO_MODULE_DECOMPOSITION">
@@ -153,23 +156,22 @@
     </Axiom>
 
     <Axiom id="AX_EVIDENCE_HYGIENE">
-      Separate Facts / Assumptions / Hypotheses in every intake-style frame.
+      Keep facts, assumptions and hypotheses distinct — conflating them is the main road to false confidence.
       - **Facts** — directly observable from input artifacts (Portal, sibling specs, rule files).
-      - **Assumptions** — working assumptions awaiting confirmation; mark explicitly.
+      - **Assumptions** — awaiting confirmation; mark explicitly.
       - **Hypotheses** — conjectures requiring operator validation before they harden into requirements.
 
-      Conflating the three is the most common path to false confidence; surface them in distinct lists.
+      **Show the full three-way split once, at STEP_2 (Intent)** — where the confusion is most dangerous. After that do NOT re-list the tables; flag only a NEW assumption or hypothesis inline, in one line, where it appears.
     </Axiom>
 
-    <Axiom id="AX_UNCOMFORTABLE_QUESTIONS">
-      Every meaningful frame includes ≥1 uncomfortable question — the kind that exposes hidden assumptions, degradation paths, or trust boundaries. Canonical seeds:
-      - What is the canonical source of truth for this entity / capability?
-      - What happens on dependency unavailability (graceful degradation vs hard failure)?
-      - Where does simulation end and real runtime begin?
-      - Who validates input at this trust boundary?
-      - Which assumption, if wrong, invalidates the design?
+    <Axiom id="AX_OPERATOR_SAFEGUARD">
+      The agent's job is to protect the operator from their own blind spots and lead them to a sound decision — even a junior operator.
+      - Warn, don't only ask: name the risk that will hurt later, the requirement likely missing, the thing probably forgotten, the trust boundary (auth, payments, persistence) that needs a real runtime.
+      - Pull the thread, don't fill a quota: after each answer, check whether it opened a new gap or risk; if so, follow it until the gap is actually closed — not until a question count is hit.
+      - Ask developing questions — ones that deepen the topic and check what should and should NOT exist — not merely uncomfortable ones. Never announce a question; just ask it plainly.
+      - Neutral and critical: if the operator wants to skip something risky, surface the cost and ask for a reason; never silently agree.
 
-      Skipping uncomfortable questions = false consensus.
+      Blind-spot instincts (not a checklist to recite): canonical source of truth? behavior on dependency failure? where simulation ends and real runtime begins? who validates input here? which assumption, if wrong, kills the design?
     </Axiom>
 
     <Axiom id="AX_DX_FIRST">
@@ -179,29 +181,21 @@
       - For product cli-utility: CLI DX (commands, flags, exit codes, sample sessions).
       - For product service-module-sdk: API DX at the transport boundary.
 
-      DX is the empathic anchor for downstream design; without it Design Variants drift into solution-space gymnastics.
+      DX is the reference point for downstream design; without it Design Variants lose grounding and over-explore options.
 
       For product / library — this is the initial draft; ownership transfers post-first-`add-module` per `AX_SCOPE_SPEC_MODULE_MAP_OWNERSHIP` in module-decomposition.
     </Axiom>
 
     <Axiom id="AX_STACK_BASED_FLOW">
-      Discovery dialogue runs on an explicit frame stack. Main path: `INTAKE → SCOPE_TYPE_CONFIRM → INTENT_CAPTURE → TYPE_SPECIFIC_A → TYPE_SPECIFIC_B → TYPE_SPECIFIC_C → (TYPE_SPECIFIC_D) → FINAL_SPEC`. Disputes / dives / sub-topics open a nested frame; the stack is visible in TRACE_HEADER's `STACK` field. A sub-topic never silently stalls the parent frame.
+      Discovery runs on internal step-tracking, so the agent doesn't lose its place. Main path: `INTAKE → SCOPE_TYPE_CONFIRM → INTENT_CAPTURE → TYPE_SPECIFIC_A → TYPE_SPECIFIC_B → TYPE_SPECIFIC_C → (TYPE_SPECIFIC_D) → EXTERNAL_AUDIT → FINAL_SPEC`. The stack is **internal**: it appears in the service line / log, not narrated to the operator (per `AX_RECAP_AT_BOUNDARIES`). A sub-topic never silently stalls its parent frame.
     </Axiom>
 
     <Axiom id="AX_FRAME_EXIT_DISCIPLINE">
-      Every frame carries an exit condition. Status vocabulary: `OPEN` | `BLOCKED` | `READY_TO_RETURN` | `READY_TO_ADVANCE` | `DEFERRED`. Indefinite drilling without local resolution is forbidden. A sub-topic that does not block the current phase → status `DEFERRED`, return to parent with a Return Summary (per `RETURN_SUMMARY_FORMAT`).
+      Every frame carries an exit condition. Internal status vocabulary: `OPEN` | `BLOCKED` | `READY_TO_RETURN` | `READY_TO_ADVANCE` | `DEFERRED`. No indefinite drilling. A non-blocking sub-topic → `DEFERRED`, return to parent. For the operator a dive collapses to one line in / one line out (per `SIDE_DIVE_FORMAT`); the five-field status stays internal.
     </Axiom>
 
     <Axiom id="AX_TRACE_ANCHORS">
-      Global: `DSC_R001`, `DSC_R002`, …. Frame: `F_INTENT_R01`, `F_REQ_R01`, `F_DV_R01`, etc. Stack rendered as `ROOT__<FRAME>__<SUBFRAME>` in the header.
-    </Axiom>
-
-    <Axiom id="AX_DIALOGUE_DISCIPLINE">
-      Phase agreement: agent signals `READY_TO_ADVANCE`; operator confirms. Neutral + critical: no auto-agree. Confidence explicit (`LOW` / `MEDIUM` / `HIGH`). No repeat questions. Context budget: compact on long dialogues.
-    </Axiom>
-
-    <Axiom id="AX_STATELESS_ARTIFACT">
-      The spec is self-contained. `module-decomposition` and `task-scaffolding` start without history of this conversation.
+      Internal. Global: `DSC_R001`, `DSC_R002`, …. Frame: `F_INTENT_R01`, `F_REQ_R01`, `F_DV_R01`, etc. Stack rendered as `ROOT__<FRAME>__<SUBFRAME>` — in the service line / log only, not in the operator's reading.
     </Axiom>
 
     <Axiom id="AX_BOOTSTRAP_NARROW_READ">
@@ -211,17 +205,159 @@
     </Axiom>
 
     <Axiom id="AX_OPERATOR_LANGUAGE">
-      **Directive prose (axioms, halt names, step procedures, contract identifiers, structural section headings) — English.**
-      **Operator-facing artifact prose and operator-facing messages — Russian.** Russian applies to:
-      - Spec body text (Vision sentence, Requirement statements, Decision Log `Why` / `Risk` content, Golden DX commentary).
-      - Halt messages emitted to the operator.
-      - Phase Progress free-text content.
+      **Directive text (axioms, halt names, step procedures, contract identifiers, structural
+      section headings, action/status tokens) — English.**
 
-      English regardless of context: file paths, axiom IDs (`AX_*`), Trace anchors (`DSC_R<N>`), `F-NNN` / `D-NNN` / `H_*` IDs, status / scope-type tokens, BDD keywords, field labels (`**Status:**`, `**Why:**`).
+      **Operator-facing artifact text and operator-facing messages — Russian.** Russian applies to:
+      - Spec body text (Vision sentence, Requirement statements, Decision Log `Why` / `Risk` content, Golden DX commentary).
+      - Operator-facing messages: decision cards, understanding blocks, side-dive lines, step recaps, halt sentences.
+
+      **English regardless of context:** code, JSDoc, intent comments, file paths, tool commands,
+      axiom IDs (`AX_*`), Trace anchors (`DSC_R<N>`), IDs (`D-NNN` / `<ACR>-<slug>` / `F-NNN` / `P<N>` / `H_*`),
+      severity / status / scope-type tokens, BDD keywords, field labels (`**Why:**`, `**Recorded:**`).
+    </Axiom>
+
+    <Axiom id="AX_OPERATOR_DIALOGUE_STYLE">
+      The document's language is a few-shot for the agent's own speech: operator-facing Russian must
+      read like a senior engineer talking to a colleague — plain, direct, concrete. Sounding smart or
+      sharp is the failure mode, not the goal. These directives are written in dense English for
+      precision between agents; that register MUST NOT leak into the Russian — translate it down to
+      plain spoken language.
+
+      Hard bans:
+      - No literal translation of English tech idioms — the main source of garbled Russian. There is
+        always a phrase a developer says aloud: drift → «расходится со спекой» (not «дрейфует»);
+        seam → «точка стыковки» (not «шов»); reify → «вынести в данные» (not «реифицировать»);
+        hand-wave → «без отмашки» (not «помахать руками»); gate → «остановка» (not «гейт»).
+      - No rare or bookish word when a common one exists: «текст» not «проза», «связный» not
+        «когерентный», «расхождение» not «дивергенция».
+      - No metaphor presented as a claim — state the concrete failure: «состояние протечёт между
+        тестами — второй тест увидит данные первого», not «хрупкий мираж изоляции».
+      - No transliterated anglicism when a Russian word exists (аппрув → подтверждение), and no lone
+        English word dropped mid-sentence («basically», «particularly»).
+      - No ornamental adjectives, no aphorisms.
+
+      Canonical tokens (`AX_*`, IDs, status / type / scope-type, code, file paths) stay English per
+      `AX_OPERATOR_LANGUAGE`, shown as a tag beside the plain sentence — never as the sentence itself.
+
+      Test before sending: read it as a busy mid-level developer. Stumbled on a word, or it sounds
+      like a blog showing off? Rewrite plainer.
+    </Axiom>
+
+    <Axiom id="AX_RECAP_AT_BOUNDARIES">
+      Recap is anchored to major step boundaries — never to rounds or frames.
+      - Inside a step the agent just talks: asks, proposes. It does NOT reprint state every round.
+      - At a step boundary: the status line shows progress markers (per `BREADCRUMB_FORMAT`) — milestones with ✅/▶️/░ markers, delta only, never a re-listing of everything already settled.
+      - A sub-topic dive inside a step collapses to one line in / one line out (per `SIDE_DIVE_FORMAT`), not a five-field Return Summary.
+      - Internal step-tracking, so the agent doesn't lose its place — `DSC_R<N>`, confidence — is the agent's own. It lives in the service line and the log, not narrated to the operator each round.
+      - At a boundary the agent MAY emit one Understanding Block (per `UNDERSTANDING_BLOCK_FORMAT`): a short, italic, explicitly-optional «here's my read» that surfaces the riskiest assumption so the operator can catch a misread.
+    </Axiom>
+
+    <Axiom id="AX_DIVERGE_BEFORE_RECOMMEND">
+      A recommendation must be the result of a search, not the first typical answer. Aligned models
+      collapse to the modal option; a single quick recommendation usually IS that mode — rarely the
+      best fit for a specific task.
+
+      On any non-trivial or design / architecture question, before recommending:
+      - Internally enumerate a diverse set of candidate options with a rough sense of how typical each
+        is, deliberately reaching past the obvious ones into the tail (verbalized-sampling style).
+      - Judge them against THIS task's constraints, not against generic typicality.
+      - Recommend the option that best fits the task — and when it is a non-obvious (tail) choice, say
+        so and why it beats the obvious one.
+
+      Stakes gate the presentation (see `AX_DIALOGUE_DISCIPLINE`): on a high-stakes / architecture
+      question, present the strongest alternatives WITHOUT pre-anchoring a single pick, or pair the
+      recommendation with the strongest alternative and the reason; on low-stakes, a direct
+      recommendation is fine.
+    </Axiom>
+
+    <Axiom id="AX_NO_PROCESS_NARRATION">
+      The operator never sees the agent's machinery. No «DIRECTIVE ACTIVATED», no mode-detection
+      narration, no «grounding collected», no «перехожу к STEP_2», no frame-stack talk. Detection,
+      reading, and step transitions happen silently. Mode / scope / confidence live in the dim service
+      line and the log, nowhere else.
+    </Axiom>
+
+    <Axiom id="AX_OPERATOR_OUTPUT_LIVE_TEXT">
+      Everything the operator reads is a normal chat message with live-rendered markdown — headers,
+      bold, lists, blockquotes, tables. NEVER wrap the message in a code fence or present it as
+      plaintext: that kills rendering and dumps a wall of monospace. Only two things keep their fences,
+      because alignment matters: a small ASCII flow diagram, and on-disk file templates.
+    </Axiom>
+
+    <Axiom id="AX_PROGRESSIVE_DISCLOSURE">
+      Decision first, reasoning on demand. The must-read top of a message is short: where we are + my
+      read + what to decide. Everything heavy — full option comparison, evidence, the change-list,
+      derivations — goes BELOW a `### ↓ Детали — по желанию` header. Never dump reasoning above the
+      questions. Facts already verified collapse to one line («сверился: …»); uncertainties that need
+      the operator BECOME the questions — never list them twice.
+    </Axiom>
+
+    <Axiom id="AX_INTERVIEW_VIA_PROTOCOL">
+      HOW questions reach the operator is owned by `ai/directives/sdd/interview-protocol.xml` —
+      loaded lazily at STEP_2 entry (READ in full) and in force through STEP_6. It carries the
+      coverage map (the prepared channel), the stakes split (развилка → one question per message,
+      «Вопрос X из Y», full material, `AskUserQuestion`; default confirmations → batched), the
+      thread-pulling loop, and the end-of-step menu format. This directive keeps only WHAT to ask
+      (step focus, gates, spec content); it MUST NOT restate delivery mechanics. `QUESTION_FORMAT`
+      below remains ONLY for low-stakes batches when the ASK tool is unavailable.
+    </Axiom>
+
+    <Axiom id="AX_SPEC_DIAGRAMS_REQUIRED">
+      Every scope spec carries an UNNUMBERED `## Diagrams` section immediately after Vision —
+      mermaid, each diagram in `<details>`, per `SPEC_DIAGRAMS_SECTION_FORMAT` in
+      `ai/directives/sdd/visual-vocabulary.xml` (read it before drafting diagrams). Mandatory
+      minimum by scope-type is defined there (`AX_SPEC_DIAGRAMS_SECTION`): product — контекст +
+      сценарии + поток данных; library — архитектура + sequence главного вызова; contracts — ER или
+      sequence; infrastructure — поток dev-workflow. The shapes are agreed DURING the interview as
+      chat ASCII at the step where each decision lands (`AX_CHAT_BEFORE_SPEC`) — write-time only
+      converts them to mermaid. A spec without the section or its minimum does not pass STEP_8.
+      If the minimum is not covered AND no chat ASCII exists from the interview for the missing
+      shape (`AX_CHAT_BEFORE_SPEC`), surface the gap to the operator for manual resolution —
+      never generate diagrams unilaterally at write-time.
+    </Axiom>
+
+    <Axiom id="AX_LANG_PASS_ON_WRITE">
+      A spec is not «written» until its language is checked. After assembling the spec file and
+      BEFORE the final decision card, run the lang-lint pass on it: read
+      `ai/directives/language/examples.md` (calibration) + `ai/directives/language/lang-lint.directive.xml`,
+      apply its Execution_Plan to the just-written spec (comprehension first, then calques /
+      bookish words), fix in place. Report as one line in the final card («язык проверен: N правок»).
+      Never skipped, never offered as an option.
+    </Axiom>
+
+    <Axiom id="AX_NEXT_STEP_MENU">
+      The session never ends with «предлагаю запустить /sdd-X» as prose. After the final card is
+      approved, render the handoff menu per `NEXT_STEP_MENU_FORMAT` (interview-protocol) — one
+      `AskUserQuestion`. Discovery's candidate table:
+      - product / library → «Критик по спеке (рекомендую)» · «Декомпозиция + критик следом» ·
+        «Сразу декомпозиция» · «Закончить сессию».
+      - infrastructure / contracts → «Критик по спеке (рекомендую)» · «Scaffold + критик» ·
+        «Сразу scaffold» · «Закончить сессию».
+      On pick — run the chain directly (skills `sdd-critic` / `sdd-module-decomposition` /
+      `sdd-scaffold`), stopping between links only on failure.
+    </Axiom>
+
+    <Axiom id="AX_DIALOGUE_DISCIPLINE">
+      Phase agreement: the agent never closes a step autonomously — it signals readiness and the operator confirms. Move forward unless stopped — gated by confidence and stakes:
+      - HIGH confidence + low-stakes step → show the result and proceed; the operator can object at any moment.
+      - LOW confidence, OR a high-stakes step (architecture, pivot, a trust boundary, an irreversible choice) → hard stop, wait for the operator.
+
+      Neutral + critical: no auto-agree. Every operator proposal — check vs scope spec + locked constraints; identify risks/trade-offs; demand justification on contradiction or risk acceptance; record only with explicit operator rationale.
+
+      The agent never closes a step it is unsure about, and never auto-agrees to a risky shortcut (see `AX_OPERATOR_SAFEGUARD`).
+
+      Keep the dialogue compact: no repeat questions; group obvious questions into one; on long dialogues show the delta, not a full restate. Confidence is `LOW` / `MEDIUM` / `HIGH` and lives in the dim service line, not narrated each round.
+    </Axiom>
+
+    <Axiom id="AX_STATELESS_ARTIFACT">
+      The spec is self-contained. `module-decomposition` and `task-scaffolding` start without history of this conversation.
     </Axiom>
   </BeliefState>
 
   <HaltConditions>
+    Emit halts via `HALT_FORMAT`: a plain Russian sentence (what happened + what to do) first, the `H_*` token as a trailing tag.
+
     | 🛑 ID | Trigger |
     |---|---|
     | `H_NO_INTAKE` | Empty intake |
@@ -231,67 +367,71 @@
     | `H_REQ_NOT_APPROVED` | Attempting Design Variants without a closed REQUIREMENTS_GATE (product / library) |
     | `H_GOLDEN_NOT_APPROVED` | Attempting Design Variants without an approved Golden DX (product / library) |
     | `H_MISSING_RULE_FILE` | Rule reference does not resolve to an existing file |
-    <!-- H_TOOL_RULE_MISSING removed — replaced by `AX_MISSING_RULE_RESEARCH_SUBFLOW` (interactive research+approval, never a halt) -->
     | `H_PIVOT_NO_INVALIDATION_LIST` | `pivot` mode without Pivot Invalidation List |
     | `H_BOOTSTRAP_REQUIREMENTS_MISSING` | STEP_7 finished without a Bootstrap Requirements section (even empty must be declared explicitly) |
     | `H_OPERATOR_REJECT` | Operator rejected the spec |
   </HaltConditions>
 
   <ExecutionPlan>
+    Operator-facing emissions follow the contracts in `OutputContracts`: a decision card only when a decision is needed or a step closes; an optional understanding block at boundaries; side-dives as one-liners; recap as delta. Inside a step the agent just talks — no per-round headers.
+
     <Step id="STEP_0_INTAKE">
       <Goal>Resolve scope name, scope-type, mode. Read Portal and rule registry for context.</Goal>
       <Action>
         1. Read `specs/README.md` if present (for project vision + graph context).
-        2. **Read `ai/directives/knowledge.xml` in full.** This is the canonical rule registry — it tells you what rule files exist, their `<Triggers>`, `<SkipWhen>`, `<ActivationHint>`, and `<RequiresVerification>`. You will use it throughout this session: to know which rules are available when selecting tools (infrastructure), to populate Project-Wide Rules (product/library), and to derive Effective Rules in the spec. Read it now — do not defer.
+        2. **Read `ai/directives/knowledge.xml` in full.** This is the canonical rule registry — it tells you what rule files exist, their `<Triggers>`, `<SkipWhen>`, `<ActivationHint>`, `<RequiresVerification>`. Used to select tools, populate Project-Wide Rules, and derive Effective Rules. Read it now — don't defer.
         3. Resolve scope name from intake (or ask).
         4. Stat `specs/<scope-name>/<scope-name>.spec.md`:
            - Absent → `greenfield`.
            - Present → apply `AX_MODE_AUTO_DETECT_OR_HALT`.
         5. Resolve / confirm scope-type from intake or naming convention (`infra-*` → infrastructure hint).
-        6. Proceed to STEP_1.
+        6. Silent step — no card. Proceed to STEP_1.
       </Action>
     </Step>
 
     <Step id="STEP_1_SCOPE_TYPE_CONFIRM">
       <Goal>Lock scope-type and outline which sections the spec will carry.</Goal>
       <Action>
-        1. Propose scope-type with rationale.
-        2. Outline the section set per `AX_SCOPE_TYPE_BRANCH`.
-        3. Approval Check. STOP.
-        Confirmed → STEP_2.
+        1. Name the scope-type with a one-line why; outline the section set per `AX_SCOPE_TYPE_BRANCH`.
+        2. **Confidence-gated (per `AX_DIALOGUE_DISCIPLINE`):** HIGH confidence → state it and move into STEP_2 (the operator can object); the type confirmation rides along in STEP_2's card. Genuinely ambiguous → decision card + hard stop here.
       </Action>
     </Step>
 
     <Step id="STEP_2_INTENT_CAPTURE">
-      <Goal>Lock the scope's goal and primary constraints.</Goal>
+      <Goal>Lock the scope's goal and primary constraints. First real stop.</Goal>
       <Action>
-        1. Intent Candidate: 1–3 bullets.
-        2. Evidence Hygiene per `AX_EVIDENCE_HYGIENE`: Facts / Assumptions / Hypotheses, separated.
-        3. Questions: 2–5; ≥1 uncomfortable per `AX_UNCOMFORTABLE_QUESTIONS`.
-        4. For product / library: capture initial Runtime Backing posture per `AX_RUNTIME_BACKING_EXPLICIT`.
-        5. Phase Progress + Approval Check. STOP.
+        1. **Load `ai/directives/sdd/interview-protocol.xml` (READ in full)** — per
+           `AX_INTERVIEW_VIA_PROTOCOL` it governs every operator question from here through STEP_6:
+           build the coverage map from this step's focus, then ask through its round loop.
+        2. Intent Candidate: 1–3 bullets.
+        3. **Full Facts / Assumptions / Hypotheses split — here and only here** (per `AX_EVIDENCE_HYGIENE`).
+        4. Questions per the protocol: развилки one at a time («Вопрос X из Y» + ASK), default
+           confirmations batched; pull the thread on risky answers (`AX_OPERATOR_SAFEGUARD`).
+        5. For product / library: capture initial Runtime Backing posture per `AX_RUNTIME_BACKING_EXPLICIT`.
+        6. Emit one Understanding Block (optional, italic). Decision card + STOP.
       </Action>
     </Step>
 
     <Step id="STEP_3_TYPE_SPECIFIC_A">
-      <Goal>First type-specific step.</Goal>
+      <Goal>First type-specific step. Drafted; shown together with STEP_4 in one card.</Goal>
       <Action>
-        Per `AX_SCOPE_TYPE_BRANCH`:
-        - infrastructure → Tool Categories Declaration. Approval Check. STOP.
-        - contracts → Interface Declaration (schema format, versioning scheme, namespacing). Approval Check. STOP.
-        - library → Requirements Gate (Functional, Non-Functional, Out-of-Scope, Rules). Approval Check. STOP.
-        - product → Requirements Gate (Functional, Non-Functional, Out-of-Scope, Runtime Backing per `AX_RUNTIME_BACKING_EXPLICIT`, Project-Wide Rules). Approval Check. STOP.
+        Per `AX_SCOPE_TYPE_BRANCH` — draft, don't stop yet (the stop is at STEP_4's combined card):
+        - infrastructure → Tool Categories Declaration.
+        - contracts → Interface Declaration (schema format, versioning scheme, namespacing).
+        - library → Requirements Gate (Functional, Non-Functional, Out-of-Scope, Rules).
+        - product → Requirements Gate (Functional, Non-Functional, Out-of-Scope, Runtime Backing per `AX_RUNTIME_BACKING_EXPLICIT`, Project-Wide Rules).
       </Action>
     </Step>
 
     <Step id="STEP_4_TYPE_SPECIFIC_B">
-      <Goal>Second type-specific step.</Goal>
+      <Goal>Second type-specific step. Shown with STEP_3 as ONE combined card / one stop.</Goal>
       <Action>
         Per `AX_SCOPE_TYPE_BRANCH`:
-        - infrastructure → Tool Choices (2–3 candidates per category; Mandatory Rationale Pull; Decision Log entry per tool). Tool Interaction Check. STOP.
-        - contracts → Versioning Policy (semver / date-based; breaking-change protocol; consumer notification). STOP.
-        - library → Golden DX (Public API DX per `AX_DX_FIRST`). STOP.
-        - product → Golden DX per `AX_DX_FIRST`. STOP.
+        - infrastructure → Tool Choices as the WHOLE stack table (per `AX_INFRASTRUCTURE_FLOW`): `category · tool · why · alternatives`. Operator edits a row or accepts the rest; dive only into a disputed category. Decision Log + Tool Interaction Check in batch after acceptance.
+        - contracts → Versioning Policy (semver / date-based; breaking-change protocol; consumer notification).
+        - library → Golden DX (Public API DX per `AX_DX_FIRST`).
+        - product → Golden DX per `AX_DX_FIRST`.
+        Combined card (STEP_3 + STEP_4) + optional Understanding Block + STOP. For product / library this closes REQUIREMENTS_GATE and the Golden DX gate together.
       </Action>
     </Step>
 
@@ -299,10 +439,11 @@
       <Goal>Third type-specific step.</Goal>
       <Action>
         Per `AX_SCOPE_TYPE_BRANCH`:
-        - infrastructure → Developer Workflow Example. STOP.
-        - contracts → Compatibility Matrix (backward-compat guarantees; consumers list). STOP.
-        - library → Architecture (Public Surface structure, key design patterns, brief rejected alternatives). Approval Check. STOP.
-        - product → Design Variants 2–3 (depth per Project Type). Approval Check. STOP.
+        - infrastructure → Developer Workflow Example. Low-stakes → show and proceed; stop only if disputed.
+        - contracts → Compatibility Matrix (backward-compat guarantees; consumers list). Show and proceed unless disputed.
+        - library → Architecture (Public Surface structure, key design patterns, brief rejected alternatives). High-stakes → decision card + STOP.
+        - product → Design Variants 2–3 (depth per Project Type), shown together with STEP_6's pick in one card.
+        Variants whose difference is structural are shown as chat ASCII (per `AX_SPEC_DIAGRAMS_REQUIRED` / visual-vocabulary chat forms) — the operator judges shapes, not paragraphs; the approved shape later becomes the spec's mermaid.
       </Action>
     </Step>
 
@@ -310,163 +451,157 @@
       <Goal>Fourth type-specific step (only some types).</Goal>
       <Action>
         Per `AX_SCOPE_TYPE_BRANCH`:
-        - infrastructure → File Structure (repo root layout; config file mapping). Then Effective Rules table. Then Verification Commands table (mandatory — one row per active tool command). STOP.
+        - infrastructure → File Structure (repo root layout; config file mapping), then Effective Rules table, then Verification Commands table (mandatory — one row per active tool command). Low-stakes → show and proceed; stop only if disputed.
         - contracts → skip, proceed to STEP_7.
         - library → skip, proceed to STEP_7.
-        - product → Architecture Choice (operator picks variant; Mandatory Rationale Pull; Decision Log entry). STOP.
+        - product → Architecture Choice. Present 2–3 variants WITH a recommended one (from STEP_5) in one card; operator picks; Mandatory Rationale Pull; Decision Log entry. High-stakes → STOP. `LOW` confidence here → `H_LOW_CONFIDENCE`.
       </Action>
     </Step>
 
     <Step id="STEP_7_EXTERNAL_DEPENDENCIES_AUDIT">
-      <Goal>Reconcile the drafted spec with repository reality. Surface every external assumption the spec makes, classify each as exists / missing / unknown, resolve unknowns with the operator, and materialize Bootstrap Requirements.</Goal>
+      <Goal>Reconcile the drafted spec with repository reality. Surface every external assumption, classify each as exists / missing / unknown, resolve unknowns with the operator, materialize Bootstrap Requirements.</Goal>
       <Action>
-        1. **Walk the drafted spec end-to-end** (all sections produced by STEP_3–STEP_6). Extract every external assumption — anything the spec references that must exist before functional tasks can run. Cover all of:
-           - Third-party packages (npm / pip / cargo / etc.) — name + intended version constraint.
+        1. **Walk the drafted spec end-to-end** (all sections from STEP_3–STEP_6). Extract every external assumption — anything that must exist before functional tasks can run:
+           - Third-party packages (npm / pip / cargo / …) — name + intended version constraint.
            - Workspace links / monorepo packages — internal scope this scope depends on.
            - Runtime tools (CLIs, binaries, language runtimes).
-           - Files and paths the spec assumes pre-exist (`package.json`, config files, fixtures).
+           - Files / paths the spec assumes pre-exist (`package.json`, config files, fixtures).
            - Types / modules / contracts sourced from other scopes (resolve via Scope Dependencies).
            - Environment variables, secrets, external services (DBs, queues, APIs).
            - Repo-level structural prerequisites (a package boundary, a workspace entry, a folder).
-        2. **Classify each assumption** as `exists` | `missing` | `unknown`:
-           - For verification, narrow Read is permitted **only for inventory** (`package.json`, `tsconfig.json`, `specs/README.md`, scope manifests, filesystem checks). Reading application source code for inspiration is forbidden — `AX_SPEC_IS_SOLE_SOURCE` still holds for design content.
+        2. **Classify each** as `exists` | `missing` | `unknown`:
+           - Narrow Read permitted **only for inventory** (`package.json`, `tsconfig.json`, `specs/README.md`, scope manifests, filesystem checks). Reading application source for inspiration is forbidden — `AX_SPEC_IS_SOLE_SOURCE` still holds for design content.
            - `exists` → record actual location / version / scope ref.
-           - `missing` → assumption is real and known to be absent.
+           - `missing` → real and known absent.
            - `unknown` → cannot be determined from repo alone.
-        3. **Resolve every `missing` and `unknown` with the operator.** For each, ask explicitly:
-           - source (which registry / which scope / which operator action),
-           - version / shape constraint,
-           - owner (this scope's bootstrap task vs external prerequisite vs operator-side action outside SDD).
-           Record each resolution as a Decision Log entry.
+        3. **Resolve all `missing` and `unknown` in ONE pass** (per `AX_RECAP_AT_BOUNDARIES`): present them as a single table, with a safe default proposed per row where possible; the operator confirms or edits the batch. For each, settle source / version / owner. Record resolutions as Decision Log entries.
         4. **Materialize Bootstrap Requirements** in the spec. Ordered list — each item:
            | Requirement | Kind | Owner | Resolution |
            Kind ∈ `package` | `workspace-link` | `tool` | `file` | `external-type` | `env` | `service` | `structural`.
            Owner ∈ `this-scope-task` | `external-prereq-scope` | `operator-action`.
            Resolution ∈ verbatim outcome from step 3 (e.g. `install valibot@^0.42 via npm`, `link @org/contracts via workspace`, `operator provisions DATABASE_URL`).
 
-           Note: missing rule files (under `ai/directives/**`) are NOT bootstrap rows — they are knowledge artifacts handled inline in STEP_3–6 per `AX_SCOPE_RULES_DECLARATION`, not external assumptions to install.
-        5. **Gate.** Discovery cannot proceed to STEP_8 until Bootstrap Requirements exists. Empty list is acceptable only when steps 1–3 produced zero external assumptions — an explicit «nothing to bootstrap», not an omission. Otherwise → `H_BOOTSTRAP_REQUIREMENTS_MISSING`.
+           Missing rule files (under `ai/directives/**`) are NOT bootstrap rows — handled inline in STEP_3–6 per `AX_SCOPE_RULES_DECLARATION`.
+        5. **Gate.** Cannot proceed to STEP_8 until Bootstrap Requirements exists. Empty list acceptable only when steps 1–3 produced zero external assumptions — an explicit «нечего бутстрапить», not an omission. Otherwise → `H_BOOTSTRAP_REQUIREMENTS_MISSING`.
 
-        **Scope of this step:** verification of physical/external prerequisites only. This step does NOT revisit functional design — Vision, Requirements, Architecture, Contracts are immutable here. If a bootstrap finding invalidates a design decision, pop back to the relevant STEP_3–STEP_6 explicitly and treat as `pivot` per `AX_PIVOT_REQUIRES_SUPERSESSION`.
+        **Pivot turn must be loud.** This step verifies physical prerequisites only — Vision / Requirements / Architecture / Contracts are immutable here. If a finding invalidates a design decision, say so explicitly in a decision card («сверка вскрыла, что решение X больше не держится — это возврат в дизайн, режим pivot. Согласен?»), then pop back to the relevant STEP_3–STEP_6 and treat as `pivot` per `AX_PIVOT_REQUIRES_SUPERSESSION`. Never reopen design silently.
       </Action>
     </Step>
 
     <Step id="STEP_8_FINAL_SPEC">
-      <Goal>Emit the scope spec.</Goal>
+      <Goal>Emit the scope spec, checked for language and diagrams; hand off interactively.</Goal>
       <Action>
-        1. Assemble `specs/<scope-name>/<scope-name>.spec.md` per the corresponding SPEC_CONTRACT. The Bootstrap Requirements section produced in STEP_7 is part of every spec regardless of scope-type.
-        2. In `pivot` mode: include Pivot Invalidation List (per `AX_PIVOT_REQUIRES_SUPERSESSION`); emit rework-flavored Decision Log entries per `REWORK_DECISION_LOG_ENTRY_FORMAT`.
-        3. Output for review. Approval Check. STOP.
+        1. Assemble `specs/<scope-name>/<scope-name>.spec.md` per the corresponding SPEC_CONTRACT. The Bootstrap Requirements section from STEP_7 is part of every spec regardless of scope-type.
+        2. Verify the `## Diagrams` section: present right after Vision, scope-type minimum covered (per `AX_SPEC_DIAGRAMS_REQUIRED`); each diagram is a mermaid conversion of a shape already shown in chat.
+        3. **Language pass** per `AX_LANG_PASS_ON_WRITE` — fix in place before showing.
+        4. In `pivot` mode: include Pivot Invalidation List (per `AX_PIVOT_REQUIRES_SUPERSESSION`); emit rework-flavored Decision Log entries per `REWORK_DECISION_LOG_ENTRY_FORMAT`.
+        5. Decision card (final) + STOP.
+        6. On approval: handoff menu per `AX_NEXT_STEP_MENU` — one AskUserQuestion, chains are first-class, never prose «запусти /sdd-X».
       </Action>
     </Step>
   </ExecutionPlan>
 
   <FrameRules>
-    <Rule id="FRAME_PUSH_WHEN">Push a frame on: dispute about scope-type; alternative tool / architecture proposal; sub-topic that cannot close in one sentence; uncomfortable-question dive; pivot rationale clarification.</Rule>
+    <Rule id="FRAME_PUSH_WHEN">Push a frame on: dispute about scope-type; alternative tool / architecture proposal; sub-topic that cannot close in one sentence; a blind-spot dive; pivot rationale clarification.</Rule>
     <Rule id="FRAME_POP_WHEN">Pop on: confirmed local conclusion; deferred non-blocking topic; topic requires a separate supporting artifact while main flow continues.</Rule>
-    <Rule id="FRAME_STATUS_VALUES">OPEN | BLOCKED | READY_TO_RETURN | READY_TO_ADVANCE | DEFERRED.</Rule>
-    <Rule id="RETURN_SUMMARY_FORMAT">On pop, emit a Return Summary with: Confirmed / Changed / New Constraints / Open / Parent Next.</Rule>
+    <Rule id="FRAME_STATUS_VALUES">Internal: OPEN | BLOCKED | READY_TO_RETURN | READY_TO_ADVANCE | DEFERRED.</Rule>
+    <Rule id="RETURN_SUMMARY_INTERNAL">On pop, the agent records Confirmed / Changed / New Constraints / Open / Parent Next for itself (log only). The operator sees just the two-line `SIDE_DIVE_FORMAT`. Full five-field summaries are never dumped on the operator.</Rule>
   </FrameRules>
 
-  <ExamplePatterns>
-    Discovery deliberately avoids one monolithic Golden Example — scope-spec shape varies too much across scope-types. Below are intentionally compact, freeform sketches; treat them as orientation, not templates. The normative shapes live in the SPEC_STRUCTURE contracts.
-
-    <Pattern id="EXAMPLE_INFRASTRUCTURE">
-      ```markdown
-      # infra-base: Infrastructure Specification
-
-      ## 1. Vision
-      Минимальный TS-стек: быстрый CI, deterministic install, zero-config formatter.
-
-      ## 2. Tool Stack
-      | Category | Tool | Rationale |
-      |---|---|---|
-      | package-management | pnpm | D-001 (lockfile determinism vs npm) |
-      | type-check | tsc | D-002 (no transpiler — esbuild на bundler-этапе) |
-      | linting+formatting | biome | D-003 (один tool вместо eslint+prettier) |
-
-      ## 3. Dev Workflow Example
-      ```bash
-      pnpm install
-      pnpm typecheck && pnpm test && pnpm lint
-      ```
-
-      ## 5. Effective Rules (cascade)
-      | Rule | Category | File | Source |
-      |---|---|---|---|
-      | <rule-id> | coding | ai/directives/coding/<rule>.xml | infra (D-NNN) |
-      | <rule-id> | infra | ai/directives/infra/<rule>.xml | infra (D-NNN) |
-      ```
-    </Pattern>
-
-    <Pattern id="EXAMPLE_CONTRACTS">
-      ```markdown
-      # api-contracts: Contracts Specification
-
-      ## 2. Interface Declaration
-      - Schema format: OpenAPI 3.1
-      - Versioning: date-based (`/v2026-05-01/...`)
-      - Namespace: `api.example.com`
-
-      ## 3. Versioning Policy
-      Breaking changes требуют новой date-версии + 6 мес deprecation окна; non-breaking — same version, additive only.
-
-      ## 4. Compatibility Matrix
-      | Consumer | Min version | Breaking protocol |
-      |---|---|---|
-      | backend | 2026-05-01 | dual-publish on transition |
-      | web | 2026-05-01 | client codegen via openapi-typescript |
-      ```
-    </Pattern>
-
-    <Pattern id="EXAMPLE_LIBRARY">
-      ```markdown
-      # logger-core: Library Specification
-
-      ## 2. Approved Golden DX Example
-      ```ts
-      // happy path
-      const log = createLogger({ name: 'payments', level: 'info' })
-      log.info({ orderId }, 'charge succeeded')
-
-      // degradation: transport unavailable
-      log.transport.on('error', (err) => log.warn({ err }, 'fallback to stdout'))
-      ```
-
-      ## 4. Public API Surface
-      - `createLogger(config) → Logger`
-      - `Logger.{ trace, debug, info, warn, error, fatal }(payload, message)`
-      - `Logger.child(bindings) → Logger`
-      ```
-    </Pattern>
-
-    <Pattern id="EXAMPLE_PRODUCT">
-      ```markdown
-      # backend: Scope Specification
-
-      ## 2. Project Type
-      - Type: service-module-sdk
-      - Why: IMAP backend, без UI; transport — long-lived TCP + outbound HTTP.
-
-      ## 3. Approved Golden DX Example (UX-flow)
-      Сценарий «новое письмо»: IMAP IDLE keep-alive ловит EXISTS → forward to consumer → ack;
-      degradation: server reset → exponential backoff + restore по UIDVALIDITY.
-
-      ## 4.4 Runtime Backing & Deferred Scope
-      - IMAP IDLE: `real-runtime` (production-critical).
-      - OAuth refresh: `real-runtime`.
-      - Webhook dispatcher: `simulation` в v1 (deferred → TSK-stub до реальной integration).
-      ```
-    </Pattern>
-  </ExamplePatterns>
-
   <OutputContracts>
-    <Contract id="TRACE_HEADER_FORMAT">
-      ```text
-      🦾 DSC_R<N> | SCOPE: <scope-name> | TYPE: <scope-type> | MODE: <greenfield|refine|pivot> | STACK: ROOT__<FRAME>__<SUBFRAME> | FRAME: F_<KEY>_R<N> | <STATUS> | CONF: <LOW|MEDIUM|HIGH>
-      🎯 GOAL: <local goal>
-      ⏭️ EXIT: <exit condition>
+
+    <Rule id="OPERATOR_OUTPUT_IS_LIVE_TEXT">
+      Everything the operator reads is a normal chat message with markdown rendered live — headers, bold, lists, blockquote, tables. NEVER wrap the message in a code fence and never present it as code / plaintext: that kills rendering and dumps a wall of monospace. The shapes below are written WITHOUT fences on purpose — emit them that way. Only two things keep their fences because alignment matters: (1) a small ASCII flow diagram (per `FLOW_DIAGRAM_WHEN`); (2) the on-disk file templates (`*_SPEC_STRUCTURE`).
+    </Rule>
+
+    <Rule id="NO_PROCESS_NARRATION">
+      The operator never sees the agent's internal process. No «DIRECTIVE ACTIVATED», no mode-detection narration, no «grounding collected», no «перехожу к STEP_2», no talk of internal step-tracking. Detection, reading, step transitions all happen silently. The mode / scope / confidence live in the dim service line and nowhere else.
+    </Rule>
+
+    <Rule id="PROGRESSIVE_DISCLOSURE">
+      Decision first, reasoning on demand. The must-read top of a message is short: where we are + my read + what to decide. Everything heavy — full option comparison, evidence, the change-list, derivations — goes BELOW a `### ↓ Детали — по желанию` header. Never dump reasoning above the questions. Facts the agent already verified collapse to one line («сверился: …»); uncertainties that need the operator BECOME the questions — never list them twice (once as «допущения», again as questions).
+    </Rule>
+
+    <Contract id="MESSAGE_LAYOUT">
+      A step-boundary / decision message (the decision card) is sectioned with markdown headers, in this order. Skip any section empty for this step.
+
+      service line — dim:  DSC_R<N> · <scope-name> · <mode> · conf=<low|med|high>
+      breadcrumb:          per `BREADCRUMB_FORMAT`
+
+      ## 🦾 <scope-name> — <одной фразой, что делаем>
+
+      ### 🤔 Как я понял задачу        (per `UNDERSTANDING_BLOCK_FORMAT` — goes at the TOP)
+      ### <главное решение>            (the crux in plain words; add a diagram per `FLOW_DIAGRAM_WHEN` if it is a flow)
+      ### ❓ Вопросы — реши <N>         (per `QUESTION_FORMAT` — fallback/low-stakes only; развилки → interview-protocol)
+      ### 📎 Что значат ссылки          (per `FOOTNOTES_FORMAT`, only if anchors were used)
+      ### ↓ Детали — по желанию         (reasoning, full comparison, change-list — per `PROGRESSIVE_DISCLOSURE`)
+
+      During free dialogue inside a step the agent does NOT print this layout; it just talks.
+    </Contract>
+
+    <Contract id="BREADCRUMB_FORMAT">
+      One line under the service line: the milestones of this session, each with a status marker. Markers: ✅ done · ▶️ now · ░ not yet. This is the progress line — it replaces the verbose «Готово ▸ …» run-on.
+
+      <Веха> ✅ · <Веха> ✅ · <Веха> ▶️ · <Веха> ░ · <Веха> ░
+    </Contract>
+
+    <Contract id="UNDERSTANDING_BLOCK_FORMAT">
+      The agent's compressed read of the task — its own confirmation of blind spots so the operator can catch a misread. A `### 🤔 Как я понял задачу` section near the TOP, then an italic blockquote, explicitly optional, 2–3 sentences: the essence + the single riskiest assumption, with the assumption linked to the question it maps to. Never a restate of settled content.
+
+      ### 🤔 Как я понял задачу
+      > _Можно не читать, если доверяешь._
+      > <квинтэссенция — что считаю главным>.
+      > **Где могу ошибаться:** <самое хрупкое допущение> — это вопрос Q<N>.
+    </Contract>
+
+    <Contract id="QUESTION_FORMAT">
+      **Scope (per `AX_INTERVIEW_VIA_PROTOCOL`):** this shape is the FALLBACK for low-stakes batches when the AskUserQuestion tool is unavailable. Развилки always go through interview-protocol's `QUESTION_MESSAGE_FORMAT` (one question per message + ASK); low-stakes batches with the tool available go through its `BATCH_CONFIRM_FORMAT`.
+
+      Questions must LOOK like questions: a ❓ section header, each one numbered `Q<N>`, the recommended option on top, alternatives below with «за / против» in WORDS. Don't use `+`/`-` signs (they render black and vanish on dark themes) and don't color-code the base form.
+
+      ### ❓ Вопросы — реши <N>
+      «годится» = беру все рекомендации, или поправь по номерам.
+
+      ❓ **Q1 · <вопрос?>**
+      ✅ **<рекомендованный вариант>** `[code]` — рекомендую: <почему / что делает>.
+      Иначе:
+      - **<альтернатива>** `[code]` — _за: <плюс> · против: <минус>_
+      - **<альтернатива>** `[code]` — _за: <плюс> · против: <минус>_
+
+      A plain binary question needs no option list — just the recommendation + the alternative inline:
+      ❓ **Q2 · <вопрос?>**
+      ✅ **<рекомендация>** — <почему>. _или <короткая альтернатива>?_
+    </Contract>
+
+    <Contract id="FOOTNOTES_FORMAT">
+      Canonical anchors (`D-NNN`, method / endpoint names, rule IDs) are correct to use — but the operator is not a robot and does not hold them in memory. Mark each inline with a trailing `↓`, then decode them all in one section, in plain words.
+
+      ### 📎 Что значат ссылки
+      - `D-008`↓ — <что это решение значит, словами>
+      - `<methodName>`↓ — <что это, словами>
+    </Contract>
+
+    <Rule id="FLOW_DIAGRAM_WHEN">
+      When a decision is about a flow — data moving, state transitions, start / stop conditions — draw a tiny ASCII diagram; one glance beats a paragraph. This is the one place a fenced block is allowed inside the message (alignment). Keep it small. Example:
+
       ```
+      [сеть] [auth] [конфиг]  ──всё есть──►  ОПРОС идёт
+              ▲                                  │
+              └──── снова есть ──── ПАУЗА ◄───────┘  что-то пропало
+      ```
+    </Rule>
+
+    <Contract id="SIDE_DIVE_FORMAT">
+      A sub-topic dive inside a step — two lines, not a summary. Live text:
+
+      → ушли в <тема>
+      ← <итог одной фразой>
+    </Contract>
+
+    <Contract id="HALT_FORMAT">
+      Plain sentence first (what happened + what to do), token as a trailing tag. Live text:
+
+      🛑 <что случилось по-человечески> — <что сделать оператору>   [H_*]
     </Contract>
 
     <Contract id="INFRASTRUCTURE_SPEC_STRUCTURE">
@@ -484,6 +619,11 @@
       ## 1. Vision
       [Что включает dev/ops experience.]
       <!--/SECTION:VISION-->
+
+      <!--SECTION:DIAGRAMS-->
+      ## Diagrams
+      [Per `SPEC_DIAGRAMS_SECTION_FORMAT` (visual-vocabulary). Минимум для infrastructure: поток dev-workflow. Каждая диаграмма в `<details>`, mermaid + подпись.]
+      <!--/SECTION:DIAGRAMS-->
 
       <!--SECTION:TOOL_STACK-->
       ## 2. Tool Stack
@@ -575,6 +715,11 @@
       [Что контракт определяет и для кого.]
       <!--/SECTION:VISION-->
 
+      <!--SECTION:DIAGRAMS-->
+      ## Diagrams
+      [Per `SPEC_DIAGRAMS_SECTION_FORMAT` (visual-vocabulary). Минимум для contracts: ER схемы данных или sequence контракта. Каждая диаграмма в `<details>`, mermaid + подпись.]
+      <!--/SECTION:DIAGRAMS-->
+
       <!--SECTION:INTERFACE_DECLARATION-->
       ## 2. Interface Declaration
       - **Schema format:** OpenAPI 3.x | gRPC proto3 | JSON Schema | GraphQL SDL
@@ -634,6 +779,11 @@
       ## 1. Vision & Primary Goal
       [Что library делает; главная проблема, которую решает.]
       <!--/SECTION:VISION-->
+
+      <!--SECTION:DIAGRAMS-->
+      ## Diagrams
+      [Per `SPEC_DIAGRAMS_SECTION_FORMAT` (visual-vocabulary). Минимум для library: архитектура (слои + направление зависимостей) + sequence главного вызова публичного API. Каждая диаграмма в `<details>`, mermaid + подпись.]
+      <!--/SECTION:DIAGRAMS-->
 
       <!--SECTION:GOLDEN_DX-->
       ## 2. Approved Golden DX Example
@@ -710,6 +860,11 @@
       ## 1. Vision & Primary Goal
       <!--/SECTION:VISION-->
 
+      <!--SECTION:DIAGRAMS-->
+      ## Diagrams
+      [Per `SPEC_DIAGRAMS_SECTION_FORMAT` (visual-vocabulary). Минимум для product: контекст (место скоупа среди соседей) + сценарии (кто и зачем приходит) + поток данных ключевого сценария. Каждая диаграмма в `<details>`, mermaid + подпись.]
+      <!--/SECTION:DIAGRAMS-->
+
       <!--SECTION:PROJECT_TYPE-->
       ## 2. Project Type
       - **Type:** app[mobile|desktop|spa] | service-module-sdk | cli-utility
@@ -782,14 +937,15 @@
     </Contract>
 
     <Contract id="DECISION_LOG_ENTRY_FORMAT">
+      No `Status` field (`AX_NO_DECORATIVE_FIELD`) — a decision is presumed current unless the title says otherwise; see `Supersedes` below for the one case that needs marking.
+
       ```markdown
       ### D-NNN — <short title>
-      - **Status:** active | superseded | rejected | deferred
       - **Recorded:** session Discovery, <scope-name>
       - **Why:** <operator's own wording>
       - **Risk accepted:** <if any>
       - **Rejected alternatives:** <list>
-      - **Supersedes:** D-NNN (when superseding)
+      - **Supersedes:** D-NNN (when superseding — the OLD entry's title gets a trailing `(superseded by D-NNN)`, not a Status field)
       ```
     </Contract>
 
@@ -798,7 +954,6 @@
 
       ```markdown
       ### D-NNN — <short title> (rework)
-      - **Status:** active
       - **Recorded:** session Discovery, <scope-name>, pivot
       - **Supersedes:** D-MMM
       - **Pre-rework state:** git ref `<sha-or-tag>` (snapshot of spec immediately before this pivot)
@@ -821,4 +976,146 @@
       ```
     </Contract>
   </OutputContracts>
+
+  <ExamplePatterns>
+    Discovery deliberately avoids one monolithic Golden Example — scope-spec shape varies too much across scope-types. Below are intentionally compact, freeform sketches; treat them as orientation, not templates. The normative shapes live in the SPEC_STRUCTURE contracts.
+
+    <Pattern id="EXAMPLE_INTENT_STOP">
+      **FALLBACK SHAPE — AskUserQuestion tool unavailable.** With the tool available, each of the two развилки below goes through interview-protocol's `QUESTION_MESSAGE_FORMAT` — one per message, with its own ASK. This pattern shows the STEP_2 (intent) boundary layout itself: breadcrumb, understanding block at the top, questions, footnotes. Live message text, NOT a code block.
+
+      DSC_R2 · backend · greenfield · conf=med
+      Намерение ▶️ · Требования ░ · Golden DX ░ · Архитектура ░ · Спека ░
+
+      ## 🦾 backend — IMAP-сервис: тянет письма и отдаёт потребителю
+
+      ### 🤔 Как я понял задачу
+      > _Можно не читать, если доверяешь._
+      > Сервис без UI: держит длинное IMAP-соединение, ловит новые письма и пересылает потребителю. Своего хранилища писем нет — только пересылка.
+      > **Где могу ошибаться:** считаю, что при обрыве связи мы продолжаем с места по `UIDVALIDITY`↓, а не читаем заново — это вопрос Q2.
+
+      ### ❓ Вопросы — реши 2
+      «годится» = беру рекомендации, или поправь по номерам.
+
+      ❓ **Q1 · Сколько аккаунтов на один запуск?**
+      ✅ **Один аккаунт** — рекомендую: проще, покрывает v1.
+      Иначе:
+      - **Несколько** — _за: гибче · против: нужен пул соединений и изоляция, дороже к v1_
+
+      ❓ **Q2 · Что делаем при обрыве связи?**
+      ✅ **Продолжаем с места** по `UIDVALIDITY`↓ — рекомендую: не теряем письма.
+      Иначе:
+      - **Читаем с нуля** — _за: проще · против: дубли и потери на больших ящиках_
+
+      ### 📎 Что значат ссылки
+      - `UIDVALIDITY`↓ — метка IMAP-папки; по ней понятно, можно ли продолжить с сохранённого места или папку пересобрали
+    </Pattern>
+
+    <Pattern id="EXAMPLE_INFRA_STACK_STOP">
+      A STEP_3+4 boundary for infrastructure: the whole stack at once instead of one negotiation per category. Live message text; the table renders as a real table.
+
+      DSC_R4 · infra-base · greenfield · conf=high
+      Намерение ✅ · Стек ▶️ · Workflow ░ · Спека ░
+
+      ## 🏗️ infra-base — минимальный TS-стек
+
+      ### Предлагаю весь набор сразу
+      | категория | беру | почему | замена |
+      |---|---|---|---|
+      | пакеты | pnpm | быстрый, честный lock | npm · yarn |
+      | типы | tsc | без сборщика на старте | — |
+      | линт+формат | biome | один вместо двух | eslint+prettier |
+      | тесты | vitest | родной для vite | jest |
+      | git-хуки | lefthook | быстрый, без зависимостей | husky |
+
+      🙋 Правь любую строку или скажи «годится» — остальное беру как есть.
+    </Pattern>
+
+    <Pattern id="EXAMPLE_INFRASTRUCTURE_SPEC">
+      ```markdown
+      # infra-base: Infrastructure Specification
+
+      ## 1. Vision
+      Минимальный TS-стек: быстрый CI, deterministic install, zero-config formatter.
+
+      ## 2. Tool Stack
+      | Category | Tool | Rationale |
+      |---|---|---|
+      | package-management | pnpm | D-001 (lockfile determinism vs npm) |
+      | type-check | tsc | D-002 (no transpiler — esbuild на bundler-этапе) |
+      | linting+formatting | biome | D-003 (один tool вместо eslint+prettier) |
+
+      ## 3. Dev Workflow Example
+      ```bash
+      pnpm install
+      pnpm typecheck && pnpm test && pnpm lint
+      ```
+
+      ## 5. Effective Rules (cascade)
+      | Rule | Category | File | Source |
+      |---|---|---|---|
+      | <rule-id> | coding | ai/directives/coding/<rule>.xml | infra (D-NNN) |
+      | <rule-id> | infra | ai/directives/infra/<rule>.xml | infra (D-NNN) |
+      ```
+    </Pattern>
+
+    <Pattern id="EXAMPLE_CONTRACTS_SPEC">
+      ```markdown
+      # api-contracts: Contracts Specification
+
+      ## 2. Interface Declaration
+      - Schema format: OpenAPI 3.1
+      - Versioning: date-based (`/v2026-05-01/...`)
+      - Namespace: `api.example.com`
+
+      ## 3. Versioning Policy
+      Breaking changes требуют новой date-версии + 6 мес deprecation окна; non-breaking — same version, additive only.
+
+      ## 4. Compatibility Matrix
+      | Consumer | Min version | Breaking protocol |
+      |---|---|---|
+      | backend | 2026-05-01 | dual-publish on transition |
+      | web | 2026-05-01 | client codegen via openapi-typescript |
+      ```
+    </Pattern>
+
+    <Pattern id="EXAMPLE_LIBRARY_SPEC">
+      ```markdown
+      # logger-core: Library Specification
+
+      ## 2. Approved Golden DX Example
+      ```ts
+      // happy path
+      const log = createLogger({ name: 'payments', level: 'info' })
+      log.info({ orderId }, 'charge succeeded')
+
+      // degradation: transport unavailable
+      log.transport.on('error', (err) => log.warn({ err }, 'fallback to stdout'))
+      ```
+
+      ## 4. Public API Surface
+      - `createLogger(config) → Logger`
+      - `Logger.{ trace, debug, info, warn, error, fatal }(payload, message)`
+      - `Logger.child(bindings) → Logger`
+      ```
+    </Pattern>
+
+    <Pattern id="EXAMPLE_PRODUCT_SPEC">
+      ```markdown
+      # backend: Scope Specification
+
+      ## 2. Project Type
+      - Type: service-module-sdk
+      - Why: IMAP backend, без UI; transport — long-lived TCP + outbound HTTP.
+
+      ## 3. Approved Golden DX Example (UX-flow)
+      Сценарий «новое письмо»: IMAP IDLE keep-alive ловит EXISTS → forward to consumer → ack;
+      degradation: server reset → exponential backoff + restore по UIDVALIDITY.
+
+      ## 4.4 Runtime Backing & Deferred Scope
+      - IMAP IDLE: `real-runtime` (production-critical).
+      - OAuth refresh: `real-runtime`.
+      - Webhook dispatcher: `simulation` в v1 (deferred → TSK-stub до реальной integration).
+      ```
+    </Pattern>
+  </ExamplePatterns>
 </SddDiscovery>

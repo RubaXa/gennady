@@ -57,6 +57,8 @@
 
     <Axiom id="AX_INTRODUCED_DISCIPLINE">
       Every entity introduced beyond the module Entity Inventory MUST be logged: `<ts> intro <EntityName> ← <reason>`. Includes new classes, exported functions, exported types, value objects with explicit identity, anything crossing a public surface. Without an `intro` line, the entity is closed-world drift and audit blocks the task.
+
+      Before introducing a new exported function/utility, apply `critic.directive.xml` `AX_REUSE_FIRST` (REUSE > EXTEND > JUSTIFY > ESCALATE) against the Entity Inventory of every module spec already in this ticket's Spec References; if `Target Files` touch a `*/shared/`-style directory, also check that directory's own module spec (`<dir>/<dir-name>.spec.md`) if one exists. No new bash command required — this reads specs already available to the phase. REUSE/EXTEND → no new entity, no `intro` line. JUSTIFY → the `intro` line's `<reason>` states why the existing surface is insufficient.
     </Axiom>
 
     <Axiom id="AX_VERIFICATION_BEFORE_HANDOFF">
@@ -90,7 +92,7 @@
       - If the **last** marker (by line position) is `✅` AND resolved count ≥ blocker count → all blockers resolved → CLEAR to dispatch.
       - Otherwise → at least one ACTIVE blocker → halt as PAUSED awaiting operator (NOT failed, see `AX_HALT_VS_FAIL_DISTINCTION`).
 
-      Resolution authorship: the entry adding `✅ RESOLVED` MUST cite the specific environmental change or decision that resolved the blocker (e.g. "tsconfig moduleResolution fixed", "operator chose option B"). Empty resolution prose → audit treats as fabricated and may re-flag.
+      Resolution authorship: the entry adding `✅ RESOLVED` MUST cite the specific environmental change or decision that resolved the blocker (e.g. "tsconfig moduleResolution fixed", "operator chose option B"). Empty resolution text → audit treats as fabricated and may re-flag.
 
       Append-only discipline: never edit or remove the original `🛑 BLOCKED` line; resolution is appended in a later Round entry. The blocker history is part of the artifact.
     </Axiom>
@@ -160,16 +162,52 @@
     </Axiom>
 
     <Axiom id="AX_HANDOFF_TYPED">
-      End every phase block with a typed Handoff line consumed by the next phase and the orchestrator. Format per `HANDOFF_FORMAT`. Free-form prose forbidden — the next phase reads keys, not narrative.
+      End every phase block with a typed Handoff line consumed by the next phase and the orchestrator. Format per `HANDOFF_FORMAT`. Free-form text forbidden — the next phase reads keys, not narrative.
     </Axiom>
 
     <Axiom id="AX_OPERATOR_LANGUAGE">
-      **Directive prose, axiom IDs, halt names, contract identifiers, structural section headings, action tokens — English.**
-      **Operator-facing artifact prose — Russian.** Russian applies to:
+      **Directive text (axioms, halt names, step procedures, contract identifiers, structural
+      section headings, action/status tokens) — English.**
+
+      **Operator-facing artifact text and operator-facing messages — Russian.** Russian applies to:
       - Execution Log free-text fields (Round header `<reason>`, `insight` text, `intro ... ← <reason>` reason, blocker `<one-line cause>` / `<proposed unblock>`);
       - operator-facing return summaries.
 
-      English regardless of context: code (impl + tests), JSDoc, intent comments, file paths, tool commands, axiom IDs (`AX_*`), IDs (`TSK-NN` / `P<N>` / `F-NNN` / `H_*`), severity / status tokens (`DONE` / `BLOCKED` / `PASS` / `FAIL`), BDD keywords, action tokens (`intro` / `decision` / `tried` / `discovery` / `insight` / `verified` / `ver` / `BLOCKED` / `DONE`).
+      **English regardless of context:** code (impl + tests), JSDoc, intent comments, file paths, tool commands, axiom IDs (`AX_*`), IDs (`TSK-NN` / `P<N>` / `F-NNN` / `H_*`), severity / status tokens (`DONE` / `BLOCKED` / `PASS` / `FAIL`), BDD keywords, action tokens (`intro` / `decision` / `tried` / `discovery` / `insight` / `verified` / `ver` / `BLOCKED` / `DONE`).
+    </Axiom>
+
+    <Axiom id="AX_OPERATOR_DIALOGUE_STYLE">
+      The document's language is a few-shot for the agent's own speech: operator-facing Russian must
+      read like a senior engineer talking to a colleague — plain, direct, concrete. Sounding smart or
+      sharp is the failure mode, not the goal. These directives are written in dense English for
+      precision between agents; that register MUST NOT leak into the Russian — translate it down to
+      plain spoken language.
+
+      Hard bans:
+      - No literal translation of English tech idioms — the main source of garbled Russian. There is
+        always a phrase a developer says aloud: drift → «расходится со спекой» (not «дрейфует»);
+        seam → «точка стыковки» (not «шов»); reify → «вынести в данные» (not «реифицировать»);
+        hand-wave → «без отмашки» (not «помахать руками»); gate → «остановка» (not «гейт»).
+      - No rare or bookish word when a common one exists: «текст» not «проза», «связный» not
+        «когерентный», «расхождение» not «дивергенция».
+      - No metaphor presented as a claim — state the concrete failure: «состояние протечёт между
+        тестами — второй тест увидит данные первого», not «хрупкий мираж изоляции».
+      - No transliterated anglicism when a Russian word exists (аппрув → подтверждение), and no lone
+        English word dropped mid-sentence («basically», «particularly»).
+      - No ornamental adjectives, no aphorisms.
+
+      Canonical tokens (`AX_*`, IDs, status / type / scope-type, code, file paths) stay English per
+      `AX_OPERATOR_LANGUAGE`, shown as a tag beside the plain sentence — never as the sentence itself.
+
+      Test before sending: read it as a busy mid-level developer. Stumbled on a word, or it sounds
+      like a blog showing off? Rewrite plainer.
+    </Axiom>
+
+    <Axiom id="AX_NO_PROCESS_NARRATION">
+      The operator never sees the agent's machinery. No «DIRECTIVE ACTIVATED», no mode-detection
+      narration, no «grounding collected», no «перехожу к STEP_2», no frame-stack talk. Detection,
+      reading, and step transitions happen silently. Mode / scope / confidence live in the dim service
+      line and the log, nowhere else.
     </Axiom>
   </BeliefState>
 
@@ -301,7 +339,7 @@
       - `decisions` — key facts the next phase or audit needs (e.g. `IdempotencyKey=introduced`, `module-system=esm`).
       - `open` — unresolved questions / risks / deferred sub-tasks (id + one-line). Empty list → `[]`.
 
-      Free-form prose forbidden. Each field is an array (possibly empty).
+      Free-form text forbidden. Each field is an array (possibly empty).
     </Contract>
 
     <Contract id="ROUND_CLOSE_FORMAT">

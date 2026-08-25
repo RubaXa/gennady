@@ -1,0 +1,22 @@
+stack:
+  use: [golang]
+  golang:
+    skipGates: [generate, build, vet, fmt, lint, test]
+    extraGates:
+      - id: stderr-only
+        argv:
+          [
+            sh,
+            -c,
+            'echo "ordinary progress" ; echo "Cannot connect to the Docker daemon" >&2; exit 1',
+          ]
+        timeout: 1m
+        envFail:
+          - stderrMatches: 'Cannot connect to the Docker daemon'
+            hint: 'start docker (colima start / Docker Desktop)'
+      - id: wrong-stream
+        argv: [sh, -c, 'echo "Cannot connect to the Docker daemon" >&2; exit 1']
+        timeout: 1m
+        envFail:
+          - stdoutMatches: 'Cannot connect to the Docker daemon'
+            hint: 'never matches — the tool writes to stderr'

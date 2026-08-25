@@ -1,0 +1,9 @@
+notes: >
+  --root points detection at a subdirectory while the git toplevel stays the fixture root. This is
+  the case that regressed once already: scope paths must be git-`--relative`, or the changed-file
+  scope comes back empty under a subdir root.
+requires: [go]
+argv: ['--all', '--root=sub']
+exitCode: 0
+gates:
+  golang:build: { status: pass }

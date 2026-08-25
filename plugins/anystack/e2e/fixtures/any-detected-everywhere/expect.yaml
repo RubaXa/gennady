@@ -1,0 +1,11 @@
+notes: >
+  The placeholder matches every repository, so an unconfigured one is no longer NO_STACK_DETECTED:
+  anystack is active with nothing to run, which is ZERO_GATES and exit 1. A run that executed
+  nothing is still not a success, and the message carries the guidance exit 5 used to give (asserted in the runner unit tests --
+  the fixture runs with --json, where the human report is not printed).
+argv: ['--all']
+exitCode: 1
+noGatesRan: true
+# The JSON verdict must agree with the exit code: ok:true here told an orchestrator that a run
+# which executed nothing was all green.
+ok: false

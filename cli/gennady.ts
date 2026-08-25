@@ -161,6 +161,14 @@ if (restArgs.some((a) => helpFlags.has(a))) {
       await import('./cmd/testcov/help.ts').then((m) => m.printHelp());
       helpLoaded = true;
       break;
+    case 'verify':
+      await import('./cmd/verify/help.ts').then((m) => m.printHelp());
+      helpLoaded = true;
+      break;
+    case 'fix':
+      await import('./cmd/fix/help.ts').then((m) => m.printHelp());
+      helpLoaded = true;
+      break;
     case 'vcs-diff':
       await import('./cmd/vcs-diff/help.ts').then((m) => m.printHelp());
       helpLoaded = true;
@@ -348,6 +356,14 @@ switch (command) {
 
   case 'testcov':
     await import('./cmd/testcov/index.ts');
+    break;
+
+  case 'verify':
+    await import('./cmd/verify/index.ts');
+    break;
+
+  case 'fix':
+    await import('./cmd/fix/index.ts');
     break;
 
   case 'vcs-diff':

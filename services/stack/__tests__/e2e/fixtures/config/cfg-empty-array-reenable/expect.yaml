@@ -1,0 +1,7 @@
+notes: >
+  The replace rule is what makes `skipGates: []` a re-enable — the documented reason arrays do not
+  concatenate (D-CFG-002 risk-accepted note).
+requires: [npm]
+argv: ['--all']
+exitCode: 0
+gates: { node:test: { status: pass } }

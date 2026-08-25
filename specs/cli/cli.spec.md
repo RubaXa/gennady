@@ -2646,7 +2646,7 @@ Spec hierarchy is materialized at `specs/cli/`. Module specs are at `specs/cli/<
 - [help](./help/help.spec.md) — Команда `gennady help`: статическая таблица всех CLI-команд
 - [orient](./orient/orient.spec.md) — Команда `gennady orient`: навигация по file-header и DBC-контрактам (карта, поиск, граф зависимостей)
 - [sync](./sync/sync.spec.md) — Команда `gennady sync`: синхронизация `ai/directives/` из npm-пакета в текущий проект
-- [sync-skills](./sync-skills/sync-skills.spec.md) — Команда `gennady sync-skills`: синхронизация 13 SDD-скилов из npm-пакета в `.claude/skills/` проекта с orphan-удалением
+- [sync-skills](./sync-skills/sync-skills.spec.md) — Команда `gennady sync-skills`: синхронизация SDD-скилов из npm-пакета в `.claude/skills/` проекта с orphan-удалением
 - [agents-rules](./agents-rules/agents-rules.spec.md) — Команда `gennady agents-rules`: выводит инструкцию по orient для AI-агентов
 - [update-check](./update-check/update-check.spec.md) — Shared-модуль: неблокирующий детект обновлений через npm-реестр на старте CLI
 - [e2e](./e2e/e2e.spec.md) — E2E-тесты CLI-команд: `npm pack` → установка в fixture-проект → spawn реальных команд (lint, sync, orient, sync-skills)

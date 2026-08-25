@@ -1,11 +1,15 @@
 #!/usr/bin/env bash
-# @file: Smart verification gate — auto-discovers npm scripts via heuristic, runs them.
+# @file: Smart verification gate — delegates to `gennady verify` (stack plugins), legacy npm fallback.
 # @consumers: phase agents (STEP_5_VERIFY); orchestrators; CI hooks
 # @contract: AX_BASH_NO_SILENT_EMPTY. All discovered gates MUST pass for exit 0.
 #            RUN-ALL: every gate executes regardless of previous failures.
 #            SUPPRESS-ON-SUCCESS: passing gates produce zero output; only failures are shown.
 #            On all-pass: single line "[verify] ALL_GATES_PASS (N/N)". Exit 0.
 #            On any-fail: each failed gate dumps its command + exit code + captured output. Exit 1.
+#
+#            Preferred path is `gennady verify` — the stack-agnostic plugin system
+#            (node + golang, .gennadyrc overrides). The npm classifier below remains
+#            as a fallback for environments where gennady itself is not runnable.
 #
 # Usage:
 #   verify.sh <file1> [<file2> ...]
@@ -14,7 +18,7 @@
 #   0  — all gates PASS
 #   1  — one or more gates failed
 #   4  — bad invocation
-#   5  — environment failure
+#   5  — environment failure / no stack detected
 
 set -uo pipefail
 
@@ -34,6 +38,61 @@ EOF
   exit 4
 fi
 
+for file in "$@"; do
+  if [[ ! -f "$file" ]]; then
+    echo "[$PROG] FILE_NOT_FOUND: $file"
+    exit 4
+  fi
+done
+
+# -----------------------------------------------------------
+# Step 0: Delegate to `gennady verify` (stack plugin system)
+#
+# Handles node AND golang repos through one interface, honours
+# .gennadyrc stack overrides. File targets are forwarded — the
+# golang plugin narrows to their packages; the node plugin runs
+# its repo-level scripts either way.
+# -----------------------------------------------------------
+
+# Repo root of the gennady checkout: scripts → sdd-execute → skills → ai → root.
+GENNADY_HOME="${GENNADY_HOME:-$SCRIPT_DIR/../../../..}"
+
+# Capability probe: an older installed gennady without `verify` prints its generic
+# help and exits 0, silently swallowing the delegation. Probe the machine surface,
+# not the human help table: `verify --plan --json` emits JSON (command exists, planned,
+# exit 0), or exits 4/5 (command exists and ran: bad config / no stack). A gennady that
+# is BROKEN (clipped deps, too-old Node, wrong arch) exits 1/126/127 with no JSON —
+# delegating to it would `exec` the same broken binary and hide the working checkout and
+# npm fallback below. So delegate ONLY on a positive capability signal, never on a bare
+# non-zero. A `timeout` guards a hung binary from blocking verify forever.
+run_probe() {
+  if command -v timeout &>/dev/null; then
+    timeout 10 gennady verify --plan --json 2>/dev/null
+  elif command -v gtimeout &>/dev/null; then
+    gtimeout 10 gennady verify --plan --json 2>/dev/null
+  else
+    gennady verify --plan --json 2>/dev/null
+  fi
+}
+if command -v gennady &>/dev/null; then
+  probe_out="$(run_probe)"
+  probe_exit=$?
+  if [[ "${probe_out:0:1}" == "{" || $probe_exit -eq 4 || $probe_exit -eq 5 ]]; then
+    exec gennady verify "$@"
+  fi
+fi
+
+# Checkout path: use the checkout's own tsx — npx would hit the registry, which
+# sandboxed/corp environments block.
+GENNADY_TSX="$GENNADY_HOME/node_modules/.bin/tsx"
+if [[ -x "$GENNADY_TSX" && -f "$GENNADY_HOME/cli/gennady.ts" ]]; then
+  exec "$GENNADY_TSX" "$GENNADY_HOME/cli/gennady.ts" verify "$@"
+fi
+
+# -----------------------------------------------------------
+# Legacy fallback: npm-script heuristic (gennady not runnable)
+# -----------------------------------------------------------
+
 if ! command -v npm &>/dev/null; then
   echo "[$PROG] ENV_MISSING: npm not in PATH"
   exit 5
@@ -43,13 +102,6 @@ if ! command -v node &>/dev/null; then
   echo "[$PROG] ENV_MISSING: node not in PATH"
   exit 5
 fi
-
-for file in "$@"; do
-  if [[ ! -f "$file" ]]; then
-    echo "[$PROG] FILE_NOT_FOUND: $file"
-    exit 4
-  fi
-done
 
 # -----------------------------------------------------------
 # Step 1: Discover scripts via heuristic (silent)
@@ -79,8 +131,11 @@ for cls in ['typecheck','gennady','lint','test','format']:
 " 2>/dev/null)
 
 if [[ -z "$discovered" ]]; then
-  echo "[$PROG] NO_SCRIPTS_DISCOVERED"
-  exit 0
+  # Zero discovered gates verifies nothing — it must not read as success, exactly as the
+  # delegated `gennady verify` reports ZERO_GATES with exit 1 (this file's own contract:
+  # "All discovered gates MUST pass for exit 0"; an empty set satisfies that vacuously).
+  echo "[$PROG] NO_SCRIPTS_DISCOVERED: nothing to verify — declare gates in gennady.yaml or add npm scripts"
+  exit 1
 fi
 
 # -----------------------------------------------------------

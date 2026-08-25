@@ -13,7 +13,15 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-type ScriptClass = 'typecheck' | 'gennady' | 'lint' | 'test' | 'format' | 'umbrella' | 'unknown';
+type ScriptClass =
+  | 'typecheck'
+  | 'gennady'
+  | 'lint'
+  | 'test'
+  | 'format'
+  | 'umbrella'
+  | 'mutating'
+  | 'unknown';
 
 interface ScriptEntry {
   name: string;
@@ -36,7 +44,13 @@ function hasCategory(body: string, category: string): boolean {
   return patterns[category]?.test(body) ?? false;
 }
 
+// Same screen the node stack plugin applies (plugins/node/node-plugin.ts): a script
+// that rewrites the tree is a fixer, never a verification gate (D-STACK-005).
+const MUTATING_FLAG_RE = /(^|\s)--(fix|autofix|write)(?:[=\s]|$)/;
+
 function classify(name: string, body: string): ScriptClass[] {
+  if (MUTATING_FLAG_RE.test(body)) return ['mutating'];
+
   const isUmbrellaName = /^(check|ci-check|check:all|verify)$/.test(name);
   if (isUmbrellaName && body.length > 0) return ['umbrella'];
 

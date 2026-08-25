@@ -2,9 +2,40 @@
 // @consumers: sync.cmd.ts, sync-skills.cmd.ts
 // @tasks: TSK-56
 
-import { existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+/**
+ * @purpose Walk up from a resolved entry point to the directory owning its package.json.
+ * @invariant Layout-agnostic: published installs resolve inside `dist/`, clones to a source
+ *   file; stripping `dist` only worked for the first.
+ * @param entryPath Absolute path of a file inside the package.
+ * @returns The package root, or null when no package.json sits above it.
+ */
+function packageRootOf(entryPath: string): string | null {
+  let dir = dirname(entryPath);
+  for (;;) {
+    const manifest = join(dir, 'package.json');
+    if (existsSync(manifest)) {
+      // Must be gennady itself: an unrelated parent manifest would point the sync at a tree
+      // that has no ai/ at all, and the caller would report a confusing absence.
+      try {
+        const name = (JSON.parse(readFileSync(manifest, 'utf-8')) as { name?: string }).name;
+        if (name === 'gennady') {
+          return dir;
+        }
+      } catch {
+        // Unreadable manifest — keep walking.
+      }
+    }
+    const parent = dirname(dir);
+    if (parent === dir) {
+      return null;
+    }
+    dir = parent;
+  }
+}
 
 /**
  * @purpose Locate a subdirectory inside the installed gennady npm package.
@@ -21,11 +52,11 @@ export function resolvePackageDir(projectRoot: string, subdir: string): string |
   }
 
   try {
-    const resolved = import.meta.resolve('gennady');
-    const pkgFile = fileURLToPath(resolved);
-    const pkgRoot = pkgFile.replace(/[/\\]dist[/\\].*$/, '');
-    const dirPath = join(pkgRoot, subdir);
-    if (existsSync(dirPath)) return dirPath;
+    const pkgRoot = packageRootOf(fileURLToPath(import.meta.resolve('gennady')));
+    if (pkgRoot !== null) {
+      const dirPath = join(pkgRoot, subdir);
+      if (existsSync(dirPath)) return dirPath;
+    }
   } catch {
     // import.meta.resolve may fail
   }

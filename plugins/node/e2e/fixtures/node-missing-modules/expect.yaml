@@ -1,0 +1,8 @@
+notes: >
+  A missing dependency fails the gate but writes nothing, so it must be FAIL — not VIOLATION.
+  Guards the boundary between "the command failed" and "the command mutated the tree".
+requires: [npm]
+argv: ['--all']
+exitCode: 1
+gates:
+  node:test: { status: fail }

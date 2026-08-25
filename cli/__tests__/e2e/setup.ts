@@ -61,7 +61,7 @@ export function setContext(ctx: E2eContext): void {
 }
 
 /**
- * @purpose Full e2e setup: build → pack → temp dir → fixture copy → git init → npm install → E2eContext.
+ * @purpose Full e2e setup: build:publish → pack → temp dir → fixture copy → git init → install.
  * @invariant On failure at any step, temp dir is cleaned up and the error is rethrown with cause.
  * @returns Ready-to-use E2eContext.
  * @throws {Error} When build, pack, fixture copy, temp dir creation, or npm install fails.
@@ -100,16 +100,16 @@ export async function runSetupWithDeps(deps: SetupE2eDeps): Promise<E2eContext> 
 // Internal
 
 async function _setupE2e(deps: SetupE2eDeps): Promise<E2eContext> {
-  // #region START_BUILD — invariant: npm run build must succeed before pack
+  // #region START_BUILD — build:publish, not build: `npm pack` never triggers prepublishOnly
   try {
-    deps.execSync('npm run build', { cwd: PROJECT_ROOT, stdio: 'pipe' });
+    deps.execSync('npm run build:publish', { cwd: PROJECT_ROOT, stdio: 'pipe' });
   } catch (cause) {
     logger.error('[setupE2e] [build → failed]', { error: cause });
     throw new Error('[setupE2e] build failed', { cause });
   }
   // #endregion END_BUILD
 
-  // #region START_PACK — invariant: npm pack creates gennady-X.Y.Z.tgz identical to published artifact
+  // #region START_PACK — the tarball now equals the published package (build:publish above)
   let tgzName: string;
   try {
     tgzName = deps.execSync('npm pack', { cwd: PROJECT_ROOT, encoding: 'utf-8' }).trim();
@@ -154,12 +154,29 @@ async function _setupE2e(deps: SetupE2eDeps): Promise<E2eContext> {
     const srcTgz = resolve(PROJECT_ROOT, tgzName);
     const destTgz = join(tmpDir, tgzName);
     deps.cpSync(srcTgz, destTgz);
+    const registry = process.env.GENNADY_E2E_REGISTRY ?? 'https://registry.npmjs.org/';
     try {
-      deps.execSync(`npm install ./${tgzName}`, { cwd: tmpDir, stdio: 'pipe' });
+      deps.execSync(`npm install --registry=${registry} ./${tgzName}`, {
+        cwd: tmpDir,
+        stdio: 'pipe',
+      });
     } catch (cause) {
-      const err = cause as { stderr?: string };
-      logger.error('[setupE2e] [install → failed]', { error: cause });
-      throw new Error(`npm install failed: ${err.stderr ?? 'unknown error'}`, { cause });
+      // A corporate registry/proxy answers 403 for public transitive deps (`ink`), which
+      // otherwise makes both this suite and `prepublishOnly` impossible behind the perimeter.
+      // A warm npm cache carries the run; CI with real network never reaches this branch.
+      try {
+        deps.execSync(`npm install --offline ./${tgzName}`, { cwd: tmpDir, stdio: 'pipe' });
+        logger.info('[setupE2e] [install → offline fallback]', { registry });
+        return createContext(deps, tmpDir);
+      } catch {
+        const err = cause as { stderr?: string };
+        logger.error('[setupE2e] [install → failed]', { error: cause });
+        throw new Error(
+          `npm install failed: ${err.stderr ?? 'unknown error'}\n` +
+            '  hint: set GENNADY_E2E_REGISTRY, or warm the cache with `npm ci` so --offline can proceed',
+          { cause }
+        );
+      }
     }
     // #endregion END_INSTALL
 

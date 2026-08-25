@@ -1,0 +1,206 @@
+<SddVisualVocabulary keywords="diagram selection, mermaid, ascii, spec diagrams, vision, use cases, data flow, architecture, c4, sequence, state, er, quadrant, sdd-visual-vocabulary" type="directive" ver="1.0">
+  <DirectiveContext>
+    <Mission>
+      Diagram-selection cheat sheet for SDD authoring. The biggest risk in spec authoring is NOT a
+      typo — it is a requirement the agent silently «filled in» with its most-probable guess. The
+      operator cannot catch that in walls of text; they catch it with a bird's-eye picture that
+      shows the shape of the decision in seconds. So: whenever meaning is relational (structure,
+      flow, boundaries, lifecycle, dependencies, goals-to-scenarios), SHOW it, do not describe it.
+
+      Two destinations, one vocabulary:
+      - **Chat** (interview, decision cards): ASCII / emoji only — mermaid does NOT render in chat.
+        Drawn BEFORE the decision is made, so the operator judges the shape, not the wording.
+      - **Spec** (`## Diagrams` section + inline where a section needs one): mermaid, each diagram
+        wrapped in `<details>` — the reader opens only what they need.
+
+      Loaded by `interview-protocol.xml` (chat forms) and by `discovery` / `module-decomposition`
+      (spec section + authoring gates that enforce the minimum). The isolated critic subagent
+      checks only PRESENCE/non-emptiness of the section (its protocol is self-contained — it never
+      reads this file); the per-scope-type minimum is verified by the authoring flows and may be
+      cross-checked by the critic ORCHESTRATOR / audit, which do hold project context.
+    </Mission>
+  </DirectiveContext>
+
+  <BeliefState>
+    <Axiom id="AX_INFOGRAPHIC_FIRST">
+      Relational meaning → picture; a single judgement (one entity, one scalar choice) stays text —
+      a diagram of one node is noise. The rule is not «always draw»; it is «if the thing to
+      understand is a relationship among ≥2 elements positioned in space, a picture beats a
+      paragraph».
+    </Axiom>
+
+    <Axiom id="AX_DIAGRAM_DISCIPLINE">
+      Every diagram, any medium: ≤7 nodes (split or abstract if more); ONE diagram per idea; a
+      one-line caption in Russian directly under it; encode the single thing to notice first with
+      position/size/marker. A diagram nobody reads in 5 seconds failed — simplify.
+    </Axiom>
+
+    <Axiom id="AX_SPEC_DIAGRAMS_SECTION">
+      Scope and module specs carry a `## Diagrams` section IMMEDIATELY after the Vision section.
+      Format per `SPEC_DIAGRAMS_SECTION_FORMAT`. Mandatory minimum by artifact:
+
+      | Artifact | Minimum diagrams |
+      |---|---|
+      | product scope spec | контекст (место скоупа среди соседей, C4-style) · сценарии (актёры → зачем приходят) · поток данных ключевого сценария |
+      | library scope spec | архитектура (слои/модули + направление зависимостей) · sequence главного вызова публичного API |
+      | contracts scope spec | ER схемы данных ИЛИ sequence контракта (что уместнее) |
+      | infrastructure scope spec | поток dev-workflow (setup → daily → commit → CI); дерево File Structure уже покрывает структуру |
+      | module spec | границы модуля (что внутри / что снаружи, direction of deps) · sequence главного вызова |
+
+      Beyond the minimum — add by the `DiagramSelection` table when the spec's meaning needs it
+      (state machines, pivots as before→after, risk quadrants). The minimum is checkable: the
+      authoring gates (discovery STEP_8, module-decomposition STEP_6) verify it; the isolated
+      critic flags a missing/empty section (presence check, self-contained in its protocol); the
+      critic orchestrator and audit may verify the minimum against this table.
+    </Axiom>
+
+    <Axiom id="AX_CHAT_BEFORE_SPEC">
+      The spec's diagrams are not born at write-time: during the interview the same relations are
+      shown in chat as ASCII at the step boundary where the decision is made (per
+      interview-protocol `AX_VISUAL_WHEN_RELATIONAL`). Write-time only converts the already-agreed
+      shapes to mermaid — a diagram appearing for the first time in the final spec means the
+      operator never saw the shape they approved.
+    </Axiom>
+  </BeliefState>
+
+  <DiagramSelection>
+    Pick the row by INTENT (left). All core types have a clean ASCII form for chat AND a mermaid
+    form for the spec.
+
+    | Intent — what you show | Diagram | Chat form (ASCII) | Spec form (mermaid) |
+    |---|---|---|---|
+    | Scope's place among neighbours / system boundary | C4-style | boxes grouped in a boundary zone | `flowchart` + `subgraph` |
+    | Business goals → scenarios («кто и зачем приходит») | use-case | actors → scenario nodes, one line each | `flowchart` TD |
+    | Data flow of a key scenario | flowchart | boxes + arrows | `flowchart` LR |
+    | Dependencies / coupling / direction | flowchart | boxes + arrows | `flowchart` |
+    | Who calls whom over time (runtime flow) | sequence | participant columns + arrows (≤4 cols) | `sequenceDiagram` |
+    | Lifecycle / statuses (state machine in the design) | state | `A → B` labelled transitions | `stateDiagram-v2` |
+    | Point of a PIVOT (old shape vs new) | before→after | two small labelled box-graphs side by side | two `flowchart` blocks |
+    | Risk / priority matrix | quadrant 2×2 | 2×2 ASCII grid | `quadrantChart` |
+    | Data schema (entities / tables) | ER | indented entity→fields list | `erDiagram` |
+    | File map / hierarchy | tree | indented ASCII tree | (plain fenced text) |
+
+    Niche mermaid types (pie, gantt, timeline, journey, mindmap, gitGraph, …) — skip: no clean
+    ASCII twin, rarely earn their place in a spec.
+  </DiagramSelection>
+
+  <Syntax>
+    Minimal skeletons; keep ≤7 nodes. ASCII = chat, mermaid = spec.
+
+    <Type name="C4-style / flowchart">
+      ASCII:
+        ┌─ Boundary: Session ──────────────────┐
+        │  [Middleware] ──▶ [Store iface]       │
+        │                      │                │
+        │          ┌───────────┴──────┐         │
+        │          ▼                  ▼         │
+        │  [MemoryStore]      [RedisStore 🆕]   │
+        └───────────────────────────────────────┘
+      Mermaid:
+        ```mermaid
+        flowchart TD
+          subgraph Session
+            MW[Middleware] --> IF[Store iface]
+            IF --> MEM[MemoryStore]
+            IF --> RDS[RedisStore]
+          end
+        ```
+    </Type>
+
+    <Type name="use-case (goals → scenarios)">
+      ASCII:
+        (Оператор) ──► [пишет сообщение офлайн] ──► цель: текст не теряется
+        (Оператор) ──► [возвращается в чат]     ──► цель: лента без дыр
+      Mermaid: flowchart TD, actors as rounded nodes, scenarios as rects, goals as notes.
+    </Type>
+
+    <Type name="sequence">
+      ASCII (columns, ≤4 participants):
+        Client      API        DB
+          │  POST    │          │
+          │─────────▶│  query   │
+          │          │─────────▶│
+          │          │◀─────────│
+          │◀─────────│          │
+      Mermaid:
+        ```mermaid
+        sequenceDiagram
+          Client->>API: POST
+          API->>DB: query
+          DB-->>API: rows
+          API-->>Client: 201
+        ```
+    </Type>
+
+    <Type name="state">
+      ASCII:  [draft] ──open──▶ [review] ──approve──▶ [merged]
+                                   │
+                                 reject ──▶ [closed]
+      Mermaid:
+        ```mermaid
+        stateDiagram-v2
+          draft --> review: open
+          review --> merged: approve
+          review --> closed: reject
+        ```
+    </Type>
+
+    <Type name="ER">
+      ASCII:
+        User ──1:N──▶ Session
+          - id (PK)      - id (PK)
+          - email        - user_id (FK)
+      Mermaid:
+        ```mermaid
+        erDiagram
+          USER ||--o{ SESSION : has
+        ```
+    </Type>
+
+    <Type name="quadrant 2×2">
+      ASCII:
+                 высокий impact
+                     │
+        [R1]         │      [R3]
+        ─────────────┼─────────────
+        [R2]         │      [R4]
+                     │
+        (ось X: низкая→высокая вероятность)
+      Mermaid: `quadrantChart` with the same axes.
+    </Type>
+  </Syntax>
+
+  <OutputContracts>
+    <Contract id="SPEC_DIAGRAMS_SECTION_FORMAT">
+      Placed IMMEDIATELY after the Vision section, wrapped in SECTION anchors like every top-level
+      section. One `<details>` per diagram; `<summary>` = emoji + short Russian name + a dash +
+      what the reader gets. Каждая диаграмма: mermaid block + one-line caption.
+
+      ```markdown
+      <!--SECTION:DIAGRAMS-->
+      ## Diagrams
+
+      <details><summary>🗺️ Контекст — место скоупа среди соседей</summary>
+
+      ```mermaid
+      flowchart TD
+        ...
+      ```
+      _Подпись одной строкой: что здесь главное._
+      </details>
+
+      <details><summary>🎯 Сценарии — кто и зачем приходит</summary>
+      ...
+      </details>
+
+      <details><summary>🔄 Поток данных — ключевой сценарий</summary>
+      ...
+      </details>
+      <!--/SECTION:DIAGRAMS-->
+      ```
+
+      The section is deliberately UNNUMBERED (like `## scope-type`) — inserting it must not
+      renumber existing `## N.` sections or break cross-directive references to them.
+    </Contract>
+  </OutputContracts>
+</SddVisualVocabulary>

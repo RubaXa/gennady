@@ -3,7 +3,7 @@
 // @tasks: TSK-55
 
 import type { ScannedFile, EntityMatch } from '../orient.types.ts';
-import { damerauLevenshtein } from './damerau-levenshtein.ts';
+import { damerauLevenshtein } from '../../../../shared/common/damerau-levenshtein.ts';
 
 /**
  * @purpose Find exported entities by name — exact match or fuzzy via DL distance.
