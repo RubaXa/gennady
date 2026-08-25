@@ -650,17 +650,35 @@ export function checkRequirementUnhappyPath(file: string, content: string): Find
  */
 type DecisionLogEntry = {
   id: string;
-  kind: 'new' | 'new-invalid' | 'legacy';
+  kind: 'new' | 'new-invalid' | 'legacy' | 'placeholder';
 };
 
-const DL_LEGACY_HEADING = /^###[ \t]+(D-[0-9]+)\b/;
-const DL_LEGACY_TABLE_ROW = /^\|[ \t]*(D-[0-9]+)[ \t]*\|/;
+/** @purpose Capture the id token of a Decision Log heading (`### <id> — …`). */
+const DL_HEADING_ID = /^###[ \t]+(\S+)/;
+/** @purpose Capture the first cell of a Decision Log table row (`| <id> | … |`). */
+const DL_ROW_ID = /^\|[ \t]*([^|\t ]+)[ \t]*\|/;
+/** @purpose Capture the first token of a plain line — new-format entries are written `<ACR>-DL-N <date> — …`. */
 const DL_FIRST_TOKEN = /^(\S+)/;
+/** @purpose A never-filled template stand-in in the number slot — invalid in EVERY format. */
+const DL_PLACEHOLDER = /<[^>]*>|X{2,}|N{2,}|ACRONYM|-[A-Za-z]+$/i;
 
 /**
- * @purpose Parse every Decision Log entry out of a section body — new, new-invalid, or legacy.
- * @invariant A new-format entry is a line whose first token carries `-DL-` (case-insensitive
- * candidate match, so a lowercase `acr-dl-3` still surfaces as a grammar violation).
+ * @purpose Classify one id token as a Decision Log entry — placeholder checked FIRST so `D-XXX` is
+ *   a hard error, not a legacy warn.
+ * @param id The candidate id token.
+ * @returns Entry kind, or null when not decision-log-shaped; a plain `D-…` non-placeholder is legacy.
+ */
+function classifyDlId(id: string): DecisionLogEntry['kind'] | null {
+  const isCandidate = /^D-/.test(id) || /-DL-/i.test(id);
+  if (!isCandidate) return null;
+  if (DL_PLACEHOLDER.test(id)) return 'placeholder';
+  if (/-DL-/i.test(id)) return DL_ID_GRAMMAR.test(id) ? 'new' : 'new-invalid';
+  return 'legacy';
+}
+
+/**
+ * @purpose Parse every Decision Log entry out of a section body — new, new-invalid, legacy, or placeholder.
+ * @invariant Placeholder ids (`D-XXX`, `<ACR>-DL-N`) are recognized and surfaced, never silently skipped.
  * @param body DECISION_LOG section body.
  * @returns One DecisionLogEntry per recognized line, in document order.
  */
@@ -669,22 +687,11 @@ function parseDecisionLogEntries(body: string): DecisionLogEntry[] {
   for (const raw of body.split('\n')) {
     const line = raw.trim();
     if (!line) continue;
-
-    const headM = DL_LEGACY_HEADING.exec(line);
-    if (headM) {
-      out.push({ id: headM[1] as string, kind: 'legacy' });
-      continue;
-    }
-    const rowM = DL_LEGACY_TABLE_ROW.exec(line);
-    if (rowM) {
-      out.push({ id: rowM[1] as string, kind: 'legacy' });
-      continue;
-    }
-
-    // Candidate detection is case-insensitive; the strict grammar test right below decides new vs new-invalid.
-    const token = DL_FIRST_TOKEN.exec(line)?.[1] ?? '';
-    if (!/-DL-/i.test(token)) continue;
-    out.push({ id: token, kind: DL_ID_GRAMMAR.test(token) ? 'new' : 'new-invalid' });
+    const id =
+      DL_HEADING_ID.exec(line)?.[1] ?? DL_ROW_ID.exec(line)?.[1] ?? DL_FIRST_TOKEN.exec(line)?.[1];
+    if (!id) continue;
+    const kind = classifyDlId(id);
+    if (kind) out.push({ id, kind });
   }
   return out;
 }
@@ -705,6 +712,16 @@ export function checkDecisionLogIds(file: string, content: string): Finding[] {
   const findings: Finding[] = [];
   const expectedAcr = deriveSpecAcronym(file);
 
+  // A placeholder id is a hard error in every format — `D-XXX` must never slip through as a warn.
+  for (const e of entries.filter((x) => x.kind === 'placeholder')) {
+    findings.push({
+      severity: 'error',
+      code: 'SDD_DL_ID_PLACEHOLDER',
+      file,
+      message: `Decision Log ID \`${e.id}\` — незаполненный плейсхолдер/шаблон. Замени на настоящий ID формата \`<ACR>-DL-<N>\` (например \`${expectedAcr}-DL-1\`) с уникальным номером; шаблонные XXX/NNN/<N>/<ACR> в коммит не уходят.`,
+    });
+  }
+
   const legacyCount = entries.filter((e) => e.kind === 'legacy').length;
   if (legacyCount > 0) {
     findings.push({
@@ -717,7 +734,7 @@ export function checkDecisionLogIds(file: string, content: string): Finding[] {
 
   const byNumber = new Map<string, string[]>();
   for (const e of entries) {
-    if (e.kind === 'legacy') continue;
+    if (e.kind === 'legacy' || e.kind === 'placeholder') continue;
     if (e.kind === 'new-invalid') {
       findings.push({
         severity: 'error',
