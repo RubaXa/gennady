@@ -93,7 +93,44 @@ export type ReadinessResult = {
 };
 
 /**
- * @purpose Resolve whether `lint` reaches a gennady invocation, following `npm run <x>` chains deterministically.
+ * @purpose Strip shell line-comments so a switch hidden in one is not taken for a real one —
+ *   `prettier --check . # --write` is read-only.
+ * @invariant Only an unquoted ` #` (or a `#` at line start) opens a comment; a `#` glued to a token
+ *   (`a#b`) is left alone.
+ * @param body One package.json script body.
+ * @returns The body with comments removed, line structure preserved.
+ */
+function stripShellComments(body: string): string {
+  return body
+    .split('\n')
+    .map((line) => line.replace(/(^|\s)#.*$/, '$1').trimEnd())
+    .join('\n');
+}
+
+/** @purpose Script-runner hops the graph follows transitively — npm plus the common drop-in alternates. */
+const RUN_HOP = /(?:npm|pnpm|yarn) run ([A-Za-z0-9:_-]+)/g;
+
+/** @purpose Runner wrappers whose first argument is the real command — peeled to find the head. */
+const RUNNER_TOKEN = /^(?:npx|pnpm|yarn|bunx|tsx|ts-node|node)$/;
+
+/**
+ * @purpose True when a segment INVOKES gennady in COMMAND position — after peeling `VAR=val` and
+ *   runner wrappers, the head is `gennady` or a `…/gennady.ts|.js` path.
+ * @invariant `echo gennady` / `: gennady` (gennady as an argument) do NOT count; `tsx cli/gennady.ts`
+ *   and `npx gennady` do.
+ * @param cmd One command segment.
+ * @returns Whether the segment runs gennady.
+ */
+function invokesGennady(cmd: string): boolean {
+  const toks = cmd.trim().split(/\s+/);
+  while (toks.length > 0 && /^[A-Za-z_][A-Za-z0-9_]*=/.test(toks[0] as string)) toks.shift();
+  while (toks.length > 1 && RUNNER_TOKEN.test(toks[0] as string)) toks.shift();
+  return /(?:^|\/)gennady(?:\.[jt]s)?$/.test(toks[0] ?? '');
+}
+
+/**
+ * @purpose Resolve whether `lint` reaches a real gennady invocation, following run-hops deterministically.
+ * @invariant Judged on comment-stripped, command-position tokens — a `# gennady` comment or an `echo gennady` argument does not count.
  * @param scripts The package.json scripts map.
  * @returns True when gennady is reachable from the `lint` script.
  */
@@ -104,10 +141,11 @@ function lintReachesGennady(scripts: Record<string, string>): boolean {
   const seen = new Set<string>();
   const queue: string[] = [lint];
   while (queue.length > 0) {
-    const body = queue.shift();
-    if (body === undefined) continue;
-    if (/\bgennady\b/.test(body)) return true;
-    for (const m of body.matchAll(/npm run ([A-Za-z0-9:_-]+)/g)) {
+    const raw = queue.shift();
+    if (raw === undefined) continue;
+    const body = stripShellComments(raw);
+    if (commandSegments(body).some((s) => invokesGennady(s.cmd))) return true;
+    for (const m of body.matchAll(RUN_HOP)) {
       const ref = m[1];
       if (ref && !seen.has(ref) && scripts[ref] !== undefined) {
         seen.add(ref);
@@ -118,7 +156,12 @@ function lintReachesGennady(scripts: Record<string, string>): boolean {
   return false;
 }
 
-/** @purpose Resolve a script's transitive npm-run bodies once, including the entry body. */
+/**
+ * @purpose Resolve a script's transitive run-hop bodies once, including the entry body, each
+ *   comment-stripped so no downstream check sees a switch hidden in a comment.
+ * @param scripts The package.json scripts map. | @param entry The script name.
+ * @returns Comment-stripped bodies reachable from `entry`.
+ */
 function reachableScriptBodies(scripts: Record<string, string>, entry: string): string[] {
   const first = scripts[entry];
   if (first === undefined) return [];
@@ -126,10 +169,11 @@ function reachableScriptBodies(scripts: Record<string, string>, entry: string): 
   const seen = new Set<string>([entry]);
   const queue = [first];
   while (queue.length > 0) {
-    const body = queue.shift();
-    if (body === undefined) continue;
+    const raw = queue.shift();
+    if (raw === undefined) continue;
+    const body = stripShellComments(raw);
     bodies.push(body);
-    for (const match of body.matchAll(/npm run ([A-Za-z0-9:_-]+)/g)) {
+    for (const match of body.matchAll(RUN_HOP)) {
       const name = match[1];
       if (name && !seen.has(name) && scripts[name] !== undefined) {
         seen.add(name);
@@ -140,9 +184,11 @@ function reachableScriptBodies(scripts: Record<string, string>, entry: string): 
   return bodies;
 }
 
+// `(?![\w-])` ends the flag exactly — so `--fix-dry-run` / `--writeable` are NOT the mutating flag,
+// while `--fix`, `--fix `, `--fix=…` are. `--fix-dry-run` reads and reports, never mutates.
 /** @purpose The known formatter/linter write switches forbidden in a read-only script graph. */
 const WRITE_SWITCH_PATTERN =
-  /(?:eslint\b[^&|;\n]*\s--fix\b|prettier\b[^&|;\n]*\s--write\b|\s--autofix\b)/;
+  /(?:eslint\b[^&|;\n]*\s--fix(?![\w-])|prettier\b[^&|;\n]*\s--write(?![\w-])|\s--autofix(?![\w-]))/;
 
 /**
  * @purpose Detect whether `entry` and every npm script it transitively `npm run`s are free of the
@@ -159,8 +205,8 @@ function isScriptReadOnly(scripts: Record<string, string>, entry: string): boole
   return bodies.every((body) => !WRITE_SWITCH_PATTERN.test(body));
 }
 
-/** @purpose Any of the three mutating switches a fixer script (`format:fix`, `lint:fix`) must carry. */
-const MUTATING_SWITCH_PATTERN = /\s--(?:write|fix|autofix)\b/;
+/** @purpose Any of the three mutating switches a fixer script must carry — exact flag, so `--fix-dry-run` (a read-only dry run) does NOT qualify. */
+const MUTATING_SWITCH_PATTERN = /\s--(?:write|fix|autofix)(?![\w-])/;
 
 /**
  * @purpose Detect whether `entry` or a script it transitively reaches mutates — a fixer with no
@@ -183,25 +229,71 @@ const NO_OP_SEGMENT =
   /^(?:echo\b|true$|:$|exit\s+0$|node\s+-e\s+(['"])\s*\1$|npm run [A-Za-z0-9:_-]+$)/;
 
 /**
- * @purpose Split a script body into its top-level command segments and the separators between them.
- * @invariant `|` and newlines separate commands too — `echo v | xargs tsc` is a real check, and a
- *   multi-line body is not one `echo`.
+ * @purpose Split a body into TOP-LEVEL segments + separators, quote- and `(...)`/`{...}`-aware so an
+ *   operator inside a subshell or quote is not a split point.
+ * @invariant `|`, `;` and newlines separate too; `tsc || (echo x && true)` keeps the subshell as
+ *   ONE segment.
  * @param body One `package.json` script body.
- * @returns Trimmed non-empty segments, and the separator that preceded each (`''` for the first).
+ * @returns Trimmed non-empty segments, and the operator that preceded each (`''` for the first; `\n`
+ *   is normalized to `;`).
  */
 function commandSegments(body: string): { cmd: string; sep: string }[] {
-  const parts = body.split(/(&&|\|\||\||;|\n)/);
   const out: { cmd: string; sep: string }[] = [];
+  let depth = 0;
+  let quote = '';
+  let cur = '';
   let sep = '';
-  for (const part of parts) {
-    if (part === '&&' || part === '||' || part === '|' || part === ';' || part === '\n') {
-      sep = part === '\n' ? ';' : part;
+  const push = (): void => {
+    const cmd = cur.trim();
+    if (cmd !== '') out.push({ cmd, sep });
+    cur = '';
+  };
+  for (let i = 0; i < body.length; i++) {
+    const c = body[i] as string;
+    if (quote) {
+      cur += c;
+      if (c === quote) quote = '';
       continue;
     }
-    const cmd = part.trim();
-    if (cmd !== '') out.push({ cmd, sep });
+    if (c === '"' || c === "'" || c === '`') {
+      quote = c;
+      cur += c;
+      continue;
+    }
+    if (c === '(' || c === '{') depth++;
+    else if (c === ')' || c === '}') depth = Math.max(0, depth - 1);
+    if (depth === 0) {
+      const two = body.slice(i, i + 2);
+      if (two === '&&' || two === '||') {
+        push();
+        sep = two;
+        i++;
+        continue;
+      }
+      if (c === '|' || c === ';' || c === '\n') {
+        push();
+        sep = c === '\n' ? ';' : c;
+        continue;
+      }
+    }
+    cur += c;
   }
+  push();
   return out;
+}
+
+/**
+ * @purpose Whether a segment is a no-op — a bare no-op token, or a subshell/brace-group whose inner
+ *   commands are all no-ops (`(echo x && true)`).
+ * @param cmd One command segment.
+ * @returns True when the segment cannot fail and checks nothing.
+ */
+function isNoOp(cmd: string): boolean {
+  const group = cmd.match(/^[({]\s*([\s\S]*?)\s*[)}]$/);
+  if (group && group[1] !== undefined) {
+    return commandSegments(group[1]).every((s) => isNoOp(s.cmd));
+  }
+  return NO_OP_SEGMENT.test(cmd);
 }
 
 /**
@@ -215,18 +307,23 @@ function commandSegments(body: string): { cmd: string; sep: string }[] {
 export function isStubScript(scripts: Record<string, string>, entry: string): boolean {
   const bodies = reachableScriptBodies(scripts, entry);
   if (bodies.length === 0) return false;
-  return bodies.every((body) => commandSegments(body).every(({ cmd }) => NO_OP_SEGMENT.test(cmd)));
+  return bodies.every((body) => commandSegments(body).every(({ cmd }) => isNoOp(cmd)));
 }
 
-// Masking requires a FALLBACK that runs BECAUSE the real command failed, with nothing real left to
-// fail afterwards — `tsc || true`, `tsc; true`, `tsc || true && echo done`. An `&&` tail is never a
-// mask: it is skipped when the command before it fails, so the failure still propagates
-// (`tsc && npm run type-check:test`, `gennady lint && echo ok` are ordinary honest chains). And a
-// real command AFTER the fallback re-exposes failure (`rm -rf dist || true && tsc --noEmit`).
-// Getting this wrong in the permissive direction misses an exotic fake; getting it wrong in the
-// strict direction pins an honest project at `provisional` forever, with no override anywhere.
+// Two ways a real command's failure gets swallowed:
+//  (1) a no-op FALLBACK that runs BECAUSE the real command failed, with nothing real after it —
+//      `tsc || true`, `tsc; true`, `tsc || (echo fail && true)`. An `&&` tail is NOT a mask (it is
+//      skipped when the preceding command fails, so the failure propagates: `tsc && npm run x`,
+//      `gennady lint && echo ok` are honest). A real command AFTER the fallback re-exposes it
+//      (`rm -rf dist || true && tsc`). `set -e` neutralizes a `;`-fallback (the abort beats it).
+//  (2) a real command in a non-final PIPE stage — a pipeline's exit is its LAST stage's, so
+//      `tsc | cat` / `tsc | tee log` report cat/tee's 0, not tsc's failure. `set -o pipefail`
+//      re-exposes it; `echo x | xargs tsc` is honest (the real tool IS the last stage).
+// Wrong in the permissive direction misses an exotic fake; wrong in the strict direction pins an
+// honest project at `provisional` forever with no override — the worse failure, so the rules above
+// stay conservative.
 /**
- * @purpose Detect an exit-code silencer — a real command whose failure a no-op fallback swallows.
+ * @purpose Detect an exit-code silencer — a real command whose failure a no-op fallback or a pipe swallows.
  * @invariant Worse than a stub: it looks like a real tool and can never report red.
  * @param scripts The package.json scripts map.
  * @param entry The script name to check.
@@ -235,20 +332,23 @@ export function isStubScript(scripts: Record<string, string>, entry: string): bo
 export function silencesExitCode(scripts: Record<string, string>, entry: string): boolean {
   return reachableScriptBodies(scripts, entry).some((body) => {
     const segments = commandSegments(body);
-    // `set -e` / `set -o errexit` aborts the script on an unguarded failure, so a `;`-separated no-op
-    // after it never runs when the real command fails — only an explicit `||` catch still masks.
-    // (`set -e` does NOT catch a pipe's non-final failure, so `|` masking is left as-is.)
     const errexitAt = segments.findIndex((s) => /^set\s+(?:-o\s+errexit\b|-[a-z]*e)/.test(s.cmd));
-    return segments.some((seg, i) => {
-      if (!NO_OP_SEGMENT.test(seg.cmd)) return false;
+    const hasPipefail = segments.some((s) => /\bset\b[^\n;]*\bpipefail\b/.test(s.cmd));
+
+    const fallbackMask = segments.some((seg, i) => {
+      if (!isNoOp(seg.cmd)) return false;
       const errexitGuards = errexitAt !== -1 && errexitAt < i;
-      const isFallback =
-        seg.sep === '||' || (!errexitGuards && (seg.sep === ';' || seg.sep === '|'));
+      const isFallback = seg.sep === '||' || (!errexitGuards && seg.sep === ';');
       if (!isFallback) return false;
-      const someRealBefore = segments.slice(0, i).some(({ cmd }) => !NO_OP_SEGMENT.test(cmd));
-      const someRealAfter = segments.slice(i + 1).some(({ cmd }) => !NO_OP_SEGMENT.test(cmd));
-      return someRealBefore && !someRealAfter;
+      const realBefore = segments.slice(0, i).some(({ cmd }) => !isNoOp(cmd));
+      const realAfter = segments.slice(i + 1).some(({ cmd }) => !isNoOp(cmd));
+      return realBefore && !realAfter;
     });
+
+    const pipeMask =
+      !hasPipefail && segments.some((seg, i) => segments[i + 1]?.sep === '|' && !isNoOp(seg.cmd));
+
+    return fallbackMask || pipeMask;
   });
 }
 

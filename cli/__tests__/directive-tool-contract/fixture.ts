@@ -173,9 +173,9 @@ function packageJson(): string {
         'test:coverage':
           "node -e \"require('fs').mkdirSync('coverage',{recursive:true});require('fs').writeFileSync('coverage/coverage-final.json','{}');process.exit(0)\"",
         lint: 'gennady lint src/',
-        'lint:fix': 'node -e "process.exit(0)" # --fix',
+        'lint:fix': 'node -e "process.exit(0)" -- --fix',
         format: 'node -e "process.exit(0)"',
-        'format:fix': 'node -e "process.exit(0)" # --write',
+        'format:fix': 'node -e "process.exit(0)" -- --write',
       },
     },
     null,

@@ -360,6 +360,120 @@ describe('silencesExitCode', () => {
       true
     );
   });
+
+  // Round-4 false-negatives: a real check whose failure is swallowed by a pipe or a subshell.
+  it('a real command piped into a passthrough is silenced — the pipeline reports the last stage', () => {
+    for (const body of ['tsc --noEmit | cat', 'tsc --noEmit | tee log', 'vitest run | cat']) {
+      assert.strictEqual(
+        silencesExitCode({ test: body }, 'test'),
+        true,
+        `expected silenced: ${body}`
+      );
+    }
+  });
+
+  it('`set -o pipefail` re-exposes a piped failure — then it is honest', () => {
+    assert.strictEqual(silencesExitCode({ test: 'set -o pipefail; tsc | tee log' }, 'test'), false);
+  });
+
+  it('an echo piped INTO a real tool is honest — the real tool is the last stage', () => {
+    assert.strictEqual(silencesExitCode({ test: 'echo x | xargs tsc --noEmit' }, 'test'), false);
+  });
+
+  it('a no-op subshell / brace-group fallback masks, a failing one does not', () => {
+    assert.strictEqual(silencesExitCode({ test: 'tsc || (echo x && true)' }, 'test'), true);
+    assert.strictEqual(silencesExitCode({ test: 'tsc || { echo x; true; }' }, 'test'), true);
+    assert.strictEqual(silencesExitCode({ test: 'tsc || (eslint . && exit 1)' }, 'test'), false);
+  });
+
+  it('an operator inside quotes is not a split point', () => {
+    assert.strictEqual(silencesExitCode({ test: 'echo "a; b" && tsc --noEmit' }, 'test'), false);
+  });
+});
+
+describe('shape-check comment & flag holes (round 4)', () => {
+  const base = {
+    'type-check': 'tsc',
+    test: 'node --test',
+    'test:coverage': 'c8 node --test',
+    format: 'prettier --check .',
+  };
+  const withGennady = (extra: Record<string, string>) =>
+    checkReadiness({
+      packageJsonPresent: true,
+      gennadyAvailable: true,
+      scripts: {
+        ...base,
+        lint: 'gennady lint .',
+        'format:fix': 'prettier --write .',
+        'lint:fix': 'eslint --fix .',
+        ...extra,
+      },
+    });
+
+  it('a switch hidden in a `# comment` does not count as a real one — the fixer does not actually mutate', () => {
+    const r = checkReadiness({
+      packageJsonPresent: true,
+      gennadyAvailable: true,
+      scripts: {
+        ...base,
+        lint: 'eslint . # gennady',
+        'format:fix': 'prettier --check . # --write',
+        'lint:fix': 'eslint . # --fix',
+      },
+    });
+    assert.strictEqual(r.formatFixMutates, false);
+    assert.strictEqual(r.lintFixMutates, false);
+    assert.strictEqual(r.lintHasGennady, false);
+    assert.strictEqual(r.ready, false);
+  });
+
+  it('`--fix-dry-run` is not the mutating flag — a fixer built on it does not mutate', () => {
+    assert.strictEqual(withGennady({ 'lint:fix': 'eslint --fix-dry-run .' }).lintFixMutates, false);
+  });
+
+  it('`gennady` in a comment or as an echo argument is not a gennady invocation', () => {
+    assert.strictEqual(
+      checkReadiness({
+        packageJsonPresent: true,
+        gennadyAvailable: true,
+        scripts: {
+          ...base,
+          lint: 'echo gennady && eslint .',
+          'format:fix': 'prettier --write .',
+          'lint:fix': 'eslint --fix .',
+        },
+      }).lintHasGennady,
+      false
+    );
+  });
+
+  it('a genuine gennady invocation counts in every real shape, including how gennady runs its own CLI', () => {
+    for (const lint of [
+      'gennady lint .',
+      'npx gennady lint .',
+      'npx tsx cli/gennady.ts lint .',
+      'tsx cli/gennady.ts lint cli/ shared/', // gennady's own package.json shape — the round-4 regression
+      'node dist/gennady.js lint .',
+      'FORCE_COLOR=0 gennady lint .',
+    ]) {
+      assert.strictEqual(withGennady({ lint }).lintHasGennady, true, `expected gennady: ${lint}`);
+    }
+  });
+
+  it('gennady reached through an npm-run chain to a tsx invocation still counts (real self-hosting shape)', () => {
+    assert.strictEqual(
+      withGennady({
+        lint: 'npm run lint:contracts',
+        'lint:contracts': 'tsx cli/gennady.ts lint cli/',
+      }).lintHasGennady,
+      true
+    );
+  });
+
+  it('an all-real project is still ready — no false positive from the tightened checks', () => {
+    assert.strictEqual(withGennady({}).ready, true);
+  });
 });
 
 describe('isVacuousScript', () => {

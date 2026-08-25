@@ -23,10 +23,10 @@ describe('sdd-state — live readiness snapshot', () => {
         format: 'prettier --check .',
         // mutating: carries --write.
         'format:fix': 'prettier --write .',
-        // read-only, and reaches gennady (literal word match, no execution involved).
-        lint: 'node -e "process.exit(0)" && : gennady',
-        // mutating: carries --fix.
-        'lint:fix': 'node -e "process.exit(0)" && : gennady --fix',
+        // read-only, and invokes gennady in command position (no execution involved).
+        lint: 'gennady lint src/',
+        // mutating: gennady's own autofix switch.
+        'lint:fix': 'gennady lint --autofix src/',
       },
     });
     try {

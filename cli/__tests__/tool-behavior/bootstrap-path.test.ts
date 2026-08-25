@@ -30,9 +30,11 @@ const REAL_SCRIPTS: Record<string, string> = {
   test: noop(0),
   'test:coverage': coverageScript(0),
   format: noop(0),
-  'format:fix': `${noop(0)} # --write`,
+  // Carry the write switch as a REAL script arg (`--` ends node's own options), not a `# comment` —
+  // the detector now correctly rejects a switch hidden in a comment.
+  'format:fix': `${noop(0)} -- --write`,
   lint: 'gennady lint src/',
-  'lint:fix': `${noop(0)} # --fix`,
+  'lint:fix': `${noop(0)} -- --fix`,
 };
 
 const PORTAL = [
