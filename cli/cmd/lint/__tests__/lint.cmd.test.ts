@@ -446,4 +446,38 @@ describe('LintCommand', () => {
       `--include-all must surface the config/mock/fixture violations, got ${JSON.stringify(audited.errors)}`
     );
   });
+
+  it('the fixture mask is *.fixture.*, not *fixture* — a production `fixture-service.ts` IS linted', async () => {
+    const dir = join(tmpDir, 'fixture-name-mod');
+    mkdirSync(dir, { recursive: true });
+    // A real production file that merely has "fixture" in its name must NOT be excluded.
+    writeFileSync(join(dir, 'fixture-service.ts'), 'export const wired = { a: 1 };\n', 'utf-8');
+    const report = await mod.run(['node', 'gennady', 'lint', dir]);
+    assert.strictEqual(report.exitCode, 1, JSON.stringify(report.errors));
+    assert.ok(
+      report.errors.some((e) => e.file.endsWith('fixture-service.ts')),
+      `fixture-service.ts is production and must be linted, got ${JSON.stringify(report.errors)}`
+    );
+  });
+
+  it('--include-all walks into __tests__ dirs (not just the glob tier) when a directory is given', async () => {
+    const dir = join(tmpDir, 'include-tests-mod');
+    mkdirSync(join(dir, '__tests__'), { recursive: true });
+    writeFileSync(
+      join(dir, '__tests__', 'broken.test.ts'),
+      'export const wired = { a: 1 };\n',
+      'utf-8'
+    );
+
+    // Default: __tests__ is skipped by the directory walk → clean.
+    const def = await mod.run(['node', 'gennady', 'lint', dir]);
+    assert.strictEqual(def.errors.length, 0, JSON.stringify(def.errors));
+
+    // --include-all: the walk descends into __tests__ and the violation surfaces.
+    const all = await mod.run(['node', 'gennady', 'lint', '--include-all', dir]);
+    assert.ok(
+      all.errors.some((e) => e.file.endsWith('broken.test.ts')),
+      `--include-all must reach __tests__ files, got ${JSON.stringify(all.errors)}`
+    );
+  });
 });

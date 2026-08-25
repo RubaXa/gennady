@@ -177,10 +177,13 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
   // Configs, fixtures, mocks, and test dirs carry no DbC contracts by design — a config or a
   // fixture is data, not a contracted entity, so the linter must never demand @purpose of them.
   // Excluded by default; `--include-all` opts them back in for the rare deliberate audit.
+  // `*.fixture.*` and the `fixtures`/`__fixtures__` dirs — NOT a bare `*fixture*`, which would also
+  // eat a legitimate production file like `fixture-service.ts`.
   const CONTENT_EXCLUDES = [
     '**/__tests__/**',
     '**/fixtures/**',
-    '**/*fixture*',
+    '**/__fixtures__/**',
+    '**/*.fixture.*',
     '**/*.mock.*',
     '**/*.config.*',
   ];
@@ -234,7 +237,7 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
     }
   } else if (positional.length > 0) {
     logger.debug(`[LintCommand#run] [idle → resolving] ${positional.length} target(s)`);
-    const result = resolveTargets(positional);
+    const result = resolveTargets(positional, includeAll);
     files = result.files;
     resolutionErrors.push(...result.errors);
     for (const re of result.errors) {
@@ -369,14 +372,20 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
 
 // #region START_RESOLVE_TARGETS — invariant: recursive dir walk, filter .ts/.tsx, dedup, sort, exclude system dirs, skip symlinks
 const SUPPORTED_EXTENSIONS = ['.ts', '.tsx'];
-const EXCLUDED_DIRS = new Set(['node_modules', 'dist', 'coverage', 'build', 'out', '__tests__']);
+// SYSTEM_DIRS: build output, skipped always. TEST_DIRS: `__tests__`, skipped unless --include-all.
+const SYSTEM_DIRS = new Set(['node_modules', 'dist', 'coverage', 'build', 'out']);
+const TEST_DIRS = new Set(['__tests__']);
 
 /**
  * @purpose Resolve user-provided target paths to a flat list of .ts/.tsx files.
  * @param targets Paths or glob patterns from CLI arguments.
+ * @param [includeAll] When true, walk into `__tests__` dirs too (system dirs stay excluded).
  * @returns Resolved file list and any resolution errors.
  */
-export function resolveTargets(targets: string[]): { files: string[]; errors: LintError[] } {
+export function resolveTargets(
+  targets: string[],
+  includeAll = false
+): { files: string[]; errors: LintError[] } {
   logger.debug(`[resolveTargets] [idle → resolving] ${targets.length} target(s)`);
   const fileSet = new Set<string>();
   const errors: LintError[] = [];
@@ -411,7 +420,7 @@ export function resolveTargets(targets: string[]): { files: string[]; errors: Li
     const absTarget = resolve(target);
 
     if (stat.isDirectory()) {
-      walkDir(absTarget, fileSet);
+      walkDir(absTarget, fileSet, includeAll);
     } else if (stat.isFile()) {
       const ext = extname(target).toLowerCase();
       if (SUPPORTED_EXTENSIONS.includes(ext)) {
@@ -428,7 +437,7 @@ export function resolveTargets(targets: string[]): { files: string[]; errors: Li
 }
 
 // #region START_WALK_DIR — invariant: recursive, lstat, skip hidden/system dirs, filter by SUPPORTED_EXTENSIONS
-function walkDir(dir: string, fileSet: Set<string>): void {
+function walkDir(dir: string, fileSet: Set<string>, includeAll = false): void {
   let entries;
   try {
     entries = readdirSync(dir, { withFileTypes: true });
@@ -442,7 +451,11 @@ function walkDir(dir: string, fileSet: Set<string>): void {
     if (entry.name.startsWith('.')) {
       continue;
     }
-    if (EXCLUDED_DIRS.has(entry.name)) {
+    if (SYSTEM_DIRS.has(entry.name)) {
+      continue;
+    }
+    // `__tests__` is a content-exclude: walked into only under --include-all.
+    if (!includeAll && TEST_DIRS.has(entry.name)) {
       continue;
     }
 

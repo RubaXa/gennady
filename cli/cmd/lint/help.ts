@@ -33,8 +33,8 @@ export function printHelp(): void {
   console.info('  Default exclude patterns:');
   console.info('    always:            **/node_modules/**  **/dist/**  **/coverage/**');
   console.info('                       **/build/**  **/out/**');
-  console.info('    unless --include-all: **/__tests__/**  **/fixtures/**  **/*fixture*');
-  console.info('                       **/*.mock.*  **/*.config.*');
+  console.info('    unless --include-all: **/__tests__/**  **/fixtures/**  **/__fixtures__/**');
+  console.info('                       **/*.fixture.*  **/*.mock.*  **/*.config.*');
   console.info('');
   console.info('  When no paths or --staged are provided, lints nothing.');
   console.info('');
