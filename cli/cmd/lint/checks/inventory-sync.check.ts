@@ -79,6 +79,56 @@ export type DeferredInventoryEntity = {
   taskId: string;
 };
 
+/** @purpose A `Deferred Implementation: <taskId>` marker resolved against the ticket graph — valid only when the ticket really owns the deferral. */
+export type DeferralCheck = {
+  /** @purpose The cited Task-ID. */
+  taskId: string;
+  /** @purpose True only when the ticket exists, is not DONE, and belongs to the spec's own scope. */
+  valid: boolean;
+  /** @purpose Why the deferral is invalid (only when `valid` is false). */
+  reason?: string;
+};
+
+/**
+ * @purpose Resolve a `Deferred Implementation` marker against the ticket graph — honored only when
+ *   the ticket exists, is not DONE, and owns the spec's scope.
+ * @invariant `tickets` is read for only three fields (Task-ID, status, scope) — structurally a
+ *   `TicketRef` subset, so `collectTicketRefs()` output passes through unchanged.
+ * @param taskId The cited Task-ID.
+ * @param tickets The project's ticket refs (Task-ID, status, and owning scope).
+ * @param specScope The spec's own scope (derived from its path).
+ * @returns The check verdict; `valid: false` carries a `reason`.
+ */
+export function checkDeferral(
+  taskId: string,
+  tickets: ReadonlyArray<{
+    taskId?: string | null;
+    status?: string | null;
+    scope?: string | null;
+  }>,
+  specScope: string
+): DeferralCheck {
+  const ref = tickets.find((t) => t.taskId === taskId);
+  if (!ref) {
+    return { taskId, valid: false, reason: `тикет ${taskId} не найден в дереве` };
+  }
+  if (/\bDONE\b/i.test(ref.status ?? '')) {
+    return {
+      taskId,
+      valid: false,
+      reason: `тикет ${taskId} уже DONE — завершённый тикет не может владеть отложенной сущностью`,
+    };
+  }
+  if (specScope && ref.scope && ref.scope !== specScope) {
+    return {
+      taskId,
+      valid: false,
+      reason: `тикет ${taskId} принадлежит скоупу '${ref.scope}', а не скоупу спеки '${specScope}'`,
+    };
+  }
+  return { taskId, valid: true };
+}
+
 /** @purpose Reverse-sweep outcome: unimplemented-entity errors, plus entities the spec explicitly defers to a later ticket. */
 export type ReverseSweepResult = {
   /** @purpose One ERR_CLI_LINT_INVENTORY_UNIMPLEMENTED per non-deferred, unimplemented entity. */
@@ -94,14 +144,14 @@ export type ReverseSweepResult = {
  * @param declared Entity names from the module spec inventory.
  * @param implemented Union of exported names across every scanned file.
  * @param specPath Module spec path — error location for the operator.
- * @param [deferredEntities] Entity name → deferring Task-ID, from `parseDeferredEntities`; defaults to none deferred.
- * @returns Errors for non-deferred unimplemented entities, plus the deferred entities found; both empty when all are implemented.
+ * @param [deferredEntities] Entity name → resolved `DeferralCheck` (from `checkDeferral`); defaults to none deferred. An INVALID deferral is drift, not an exemption.
+ * @returns Errors for non-deferred unimplemented entities AND for invalid deferrals, plus the validly-deferred entities; all empty when everything is implemented.
  */
 export function reverseUnimplemented(
   declared: string[],
   implemented: Set<string>,
   specPath: string,
-  deferredEntities: Map<string, string> = new Map()
+  deferredEntities: Map<string, DeferralCheck> = new Map()
 ): ReverseSweepResult {
   const errors: LintError[] = [];
   const deferred: DeferredInventoryEntity[] = [];
@@ -109,9 +159,20 @@ export function reverseUnimplemented(
   for (const name of declared) {
     if (implemented.has(name)) continue;
 
-    const taskId = deferredEntities.get(name);
-    if (taskId) {
-      deferred.push({ name, taskId });
+    const deferral = deferredEntities.get(name);
+    if (deferral) {
+      if (deferral.valid) {
+        deferred.push({ name, taskId: deferral.taskId });
+        continue;
+      }
+      errors.push({
+        file: specPath,
+        line: 1,
+        col: 1,
+        severity: 'error' as const,
+        code: ERR_CLI_LINT_INVENTORY_UNIMPLEMENTED,
+        message: `Inventory entity \`${name}\` is marked \`Deferred Implementation: ${deferral.taskId}\`, but that deferral is not valid: ${deferral.reason}. A deferral only excuses a missing entity when a real, open, same-scope ticket owns it — otherwise the entity is undelivered drift. Fix: point the marker at a valid open ticket in this scope, implement the entity, or remove the inventory row.`,
+      });
       continue;
     }
 

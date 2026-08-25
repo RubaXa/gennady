@@ -4,7 +4,15 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseDeferredEntities, reverseUnimplemented } from '../inventory-sync.check.ts';
+import {
+  parseDeferredEntities,
+  reverseUnimplemented,
+  checkDeferral,
+  type DeferralCheck,
+} from '../inventory-sync.check.ts';
+
+/** A valid deferral to `TSK-42`, for the reverse-sweep tests that don't exercise validation. */
+const validDeferral = (taskId: string): DeferralCheck => ({ taskId, valid: true });
 
 const spec = (rows: string): string =>
   `<!--SECTION:ENTITY_INVENTORY-->\n## 3. Entity Inventory\n\n| Name | Type | Purpose |\n| --- | --- | --- |\n${rows}\n<!--/SECTION:ENTITY_INVENTORY-->`;
@@ -56,15 +64,26 @@ describe('reverseUnimplemented', () => {
     assert.deepStrictEqual(result.deferred, []);
   });
 
-  it('reports a deferred-but-unimplemented entity as informational, not an error', () => {
-    const deferredEntities = new Map([['Later', 'TSK-42']]);
+  it('reports a VALIDLY deferred-but-unimplemented entity as informational, not an error', () => {
+    const deferredEntities = new Map([['Later', validDeferral('TSK-42')]]);
     const result = reverseUnimplemented(['Later'], new Set(), 'spec.md', deferredEntities);
     assert.deepStrictEqual(result.errors, []);
     assert.deepStrictEqual(result.deferred, [{ name: 'Later', taskId: 'TSK-42' }]);
   });
 
+  it('an INVALID deferral is drift, not an exemption — errors with the reason, never reported deferred', () => {
+    const deferredEntities = new Map([
+      ['Later', { taskId: 'TSK-99', valid: false, reason: 'тикет TSK-99 не найден в дереве' }],
+    ]);
+    const result = reverseUnimplemented(['Later'], new Set(), 'spec.md', deferredEntities);
+    assert.strictEqual(result.errors.length, 1);
+    assert.match(result.errors[0]?.message ?? '', /не валиден|not valid/i);
+    assert.match(result.errors[0]?.message ?? '', /TSK-99/);
+    assert.deepStrictEqual(result.deferred, []);
+  });
+
   it('an implemented entity with a deferred marker is neither an error nor reported deferred', () => {
-    const deferredEntities = new Map([['AlreadyBuilt', 'TSK-1']]);
+    const deferredEntities = new Map([['AlreadyBuilt', validDeferral('TSK-1')]]);
     const result = reverseUnimplemented(
       ['AlreadyBuilt'],
       new Set(['AlreadyBuilt']),
@@ -75,11 +94,44 @@ describe('reverseUnimplemented', () => {
     assert.deepStrictEqual(result.deferred, []);
   });
 
-  it('mixes a deferred entity and a genuinely missing one correctly', () => {
-    const deferredEntities = new Map([['Later', 'TSK-42']]);
+  it('mixes a valid deferral and a genuinely missing one correctly', () => {
+    const deferredEntities = new Map([['Later', validDeferral('TSK-42')]]);
     const result = reverseUnimplemented(['Later', 'Ghost'], new Set(), 'spec.md', deferredEntities);
     assert.strictEqual(result.errors.length, 1);
     assert.ok(result.errors[0]?.message.includes('Ghost'));
     assert.deepStrictEqual(result.deferred, [{ name: 'Later', taskId: 'TSK-42' }]);
+  });
+});
+
+describe('checkDeferral', () => {
+  const tickets = [
+    { taskId: 'TSK-10', status: '[ ] TODO', scope: 'cli' },
+    { taskId: 'TSK-11', status: '[x] DONE', scope: 'cli' },
+    { taskId: 'TSK-12', status: '[ ] TODO', scope: 'other' },
+  ];
+
+  it('valid when the ticket exists, is not DONE, and owns the spec scope', () => {
+    assert.deepStrictEqual(checkDeferral('TSK-10', tickets, 'cli'), {
+      taskId: 'TSK-10',
+      valid: true,
+    });
+  });
+
+  it('invalid when the ticket does not exist', () => {
+    const r = checkDeferral('TSK-99', tickets, 'cli');
+    assert.strictEqual(r.valid, false);
+    assert.match(r.reason ?? '', /не найден/);
+  });
+
+  it('invalid when the ticket is already DONE — a completed ticket cannot own a deferral', () => {
+    const r = checkDeferral('TSK-11', tickets, 'cli');
+    assert.strictEqual(r.valid, false);
+    assert.match(r.reason ?? '', /DONE/);
+  });
+
+  it('invalid when the ticket belongs to a different scope', () => {
+    const r = checkDeferral('TSK-12', tickets, 'cli');
+    assert.strictEqual(r.valid, false);
+    assert.match(r.reason ?? '', /скоуп/);
   });
 });

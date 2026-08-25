@@ -22,8 +22,11 @@ import {
   collectExports,
   reverseUnimplemented,
   parseDeferredEntities,
+  checkDeferral,
+  type DeferralCheck,
   type ReverseSweepResult,
 } from './checks/inventory-sync.check.ts';
+import { collectTicketRefs } from '../../../shared/sdd/ticket-resolve.ts';
 import { parseEntityInventory } from '../../../shared/sdd/inventory.ts';
 import { LintReport } from './lint.types.ts';
 import {
@@ -43,6 +46,17 @@ import {
   resolveReferencesForTasks,
 } from './utils/resolve-references.fn.ts';
 import { globToRegex } from './checks/utils/glob-match.ts';
+
+/**
+ * @purpose Derive a spec's owning scope from its path — the segment right after `specs/`.
+ * @param specPath Spec file path (relative or absolute).
+ * @returns The scope name, or '' when the path has no `specs/<scope>` segment.
+ */
+function specScopeFromPath(specPath: string): string {
+  const parts = specPath.split('/');
+  const i = parts.lastIndexOf('specs');
+  return i >= 0 && i + 1 < parts.length ? (parts[i + 1] ?? '') : '';
+}
 
 /**
  * @purpose Execute the gennady lint command — collect files, run configured checks, output ESLint-format report.
@@ -298,7 +312,19 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
 
   // #region START_INVENTORY_REVERSE — invariant: declared-but-unimplemented sweep over the whole scanned dir; vacuous inventory skips the sweep
   if (inventoryReverseDir && declaredInventory !== null && specPath && !inventoryVacuous) {
-    const deferredEntities = specRawContent ? parseDeferredEntities(specRawContent) : new Map();
+    // Resolve every `Deferred Implementation: <taskId>` marker against the v2 ticket graph — a
+    // deferral is honored only when a real, open, same-scope ticket owns it (else it is drift).
+    const rawDeferred = specRawContent
+      ? parseDeferredEntities(specRawContent)
+      : new Map<string, string>();
+    const deferredEntities = new Map<string, DeferralCheck>();
+    if (rawDeferred.size > 0) {
+      const tickets = collectTicketRefs(projectRoot);
+      const specScope = specScopeFromPath(specPath);
+      for (const [name, taskId] of rawDeferred) {
+        deferredEntities.set(name, checkDeferral(taskId, tickets, specScope));
+      }
+    }
     const reverseResult: ReverseSweepResult = reverseUnimplemented(
       declaredInventory,
       implementedUnion,

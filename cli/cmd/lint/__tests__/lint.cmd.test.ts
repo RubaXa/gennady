@@ -300,7 +300,7 @@ describe('LintCommand', () => {
     );
   });
 
-  it('--spec --inventory-reverse: a Deferred Implementation entity is not drift, an unmarked missing one still is', async () => {
+  it('--spec --inventory-reverse: a Deferred Implementation to a NON-EXISTENT ticket is drift, not an exemption (B9)', async () => {
     const revDir = join(tmpDir, 'deferred-rev-mod');
     mkdirSync(revDir, { recursive: true });
     const specPath = join(revDir, 'mod.spec.md');
@@ -340,10 +340,14 @@ describe('LintCommand', () => {
     ]);
 
     assert.ok(
-      !report.errors.some(
-        (e) => e.code === 'ERR_CLI_LINT_INVENTORY_UNIMPLEMENTED' && e.message.includes('Later')
+      report.errors.some(
+        (e) =>
+          e.code === 'ERR_CLI_LINT_INVENTORY_UNIMPLEMENTED' &&
+          e.message.includes('Later') &&
+          e.message.includes('TSK-42') &&
+          /not valid/i.test(e.message)
       ),
-      'Later is deferred to TSK-42 — must not be flagged as drift'
+      'Later defers to TSK-42, which owns no ticket in this graph — an invalid deferral is drift, not an exemption'
     );
     assert.ok(
       report.errors.some(
