@@ -6,7 +6,8 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { rmSync } from 'node:fs';
+import { rmSync, utimesSync, statSync } from 'node:fs';
+import { join } from 'node:path';
 import { buildRepoFixture } from './fixture.ts';
 import { runCli } from './run-cli.ts';
 
@@ -87,6 +88,50 @@ describe('testcov — live --min coverage gate', () => {
       const r = runCli(['testcov', '--min=80', 'src/good.ts', 'src/good.ts'], root);
       assert.strictEqual(r.exitCode, 0, r.stdout + r.stderr);
       assert.match(r.stdout, /100\.0% .* required ≥80% ✅/);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  // #3: the gate demands EXACT paths — a missing Target File is red, never silently dropped because
+  // a sibling with the same basename was found elsewhere.
+  it('a missing path among several is red — no basename fallback, no silent drop', () => {
+    const { root } = buildFixture();
+    try {
+      const r = runCli(['testcov', '--min=80', 'src/good.ts', 'src/nope.ts'], root);
+      assert.strictEqual(r.exitCode, 1, r.stdout + r.stderr);
+      assert.match(r.stderr + r.stdout, /не найдены|nope\.ts/);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  // #2: a report OLDER than the code it gates is stale — the single-producer contract is only real
+  // if the report is fresh. A source touched after the report must go red, not pass on stale data.
+  it('a stale coverage report (source newer than the report) is red', () => {
+    const { root } = buildFixture();
+    try {
+      // Make good.ts newer than coverage-final.json (simulate code changed after the last run).
+      const cov = join(root, 'coverage', 'coverage-final.json');
+      const covMtime = statSync(cov).mtimeMs / 1000;
+      const newer = new Date((covMtime + 5) * 1000);
+      utimesSync(join(root, 'src', 'good.ts'), newer, newer);
+
+      const r = runCli(['testcov', '--min=80', 'src/good.ts'], root);
+      assert.strictEqual(r.exitCode, 1, r.stdout + r.stderr);
+      assert.match(r.stderr + r.stdout, /устарел|изменены ПОСЛЕ/);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('a fresh report (report newer than sources) passes the freshness check', () => {
+    const { root } = buildFixture();
+    try {
+      // coverage-final.json is written last by buildRepoFixture, so it is already the newest.
+      const r = runCli(['testcov', '--min=80', 'src/good.ts'], root);
+      assert.strictEqual(r.exitCode, 0, r.stdout + r.stderr);
+      assert.match(r.stdout, /required ≥80% ✅/);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

@@ -19,7 +19,7 @@
  */
 
 import { execSync } from 'node:child_process';
-import { existsSync, readFileSync, readdirSync, lstatSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, lstatSync, statSync } from 'node:fs';
 import { join, extname, resolve, basename, relative } from 'node:path';
 import type { Dirent } from 'node:fs';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
@@ -656,16 +656,6 @@ function findFiles(target: string): string[] {
   return results;
 }
 
-/**
- * @purpose Union of findFiles over every target, de-duplicated and sorted — so `--min a.ts b.ts`
- *   gates all paths, not just the first.
- * @param targets Positional target paths.
- * @returns Every resolved file, each once.
- */
-function findFilesMulti(targets: string[]): string[] {
-  return [...new Set(targets.flatMap((t) => findFiles(t)))].sort();
-}
-
 function icon(p: number | null): string {
   if (p === null) return '⚫';
   if (p >= 75) return '✅';
@@ -1175,12 +1165,37 @@ function printFlat(entries: FlatEntry[]): void {
 if (MIN_COVERAGE !== undefined) {
   let buckets: FileCovRaw[];
   if (TARGETS.length > 0) {
-    const files = findFilesMulti(TARGETS);
-    if (files.length === 0) {
-      console.error(`File not found: ${TARGETS.join(', ')}`);
+    // The gate demands EXACT paths — NO basename fallback (which could resolve `src/a/x.ts` to
+    // `src/b/x.ts`, or let a whole missing Target File silently vanish because a sibling was found).
+    // Every path must exist exactly as given, or the verdict is red.
+    const missing = TARGETS.filter((t) => !existsSync(resolve(ROOT, t)));
+    if (missing.length > 0) {
+      console.error(
+        `testcov: путь(и) не найдены по указанному пути: ${missing.join(', ')}. ` +
+          `Для гейта каждый Target File обязан существовать точно (basename-поиск не применяется) — иначе красный вердикт.`
+      );
       process.exit(1);
     }
-    buckets = files.map((fp) =>
+    const resolved = TARGETS.map((t) => resolve(ROOT, t));
+
+    // Freshness: the report must be NEWER than the files it is gating. `sdd-verify --profile test`
+    // is only the single producer if the report it wrote is actually fresh — otherwise `--min` would
+    // pass on a stale `coverage-final.json` left by an earlier run (a test:coverage that ran but wrote
+    // no coverage, or code changed since). A source file newer than the report = stale = red.
+    const covMtime = statSync(COVERAGE_FILE).mtimeMs;
+    const stale = resolved.filter(
+      (p) => !lstatSync(p).isDirectory() && statSync(p).mtimeMs > covMtime
+    );
+    if (stale.length > 0) {
+      console.error(
+        `testcov: coverage/coverage-final.json устарел — эти файлы изменены ПОСЛЕ прогона покрытия: ` +
+          `${stale.map((p) => relative(ROOT, p)).join(', ')}. ` +
+          `Перегони покрытие (sdd-verify --profile test / testcov --run) перед проверкой порога.`
+      );
+      process.exit(1);
+    }
+
+    buckets = resolved.map((fp) =>
       lstatSync(fp).isDirectory()
         ? getDirStats(fp)
         : (getCovRaw(fp) ?? { sT: 0, sH: 0, bT: 0, bH: 0, fT: 0, fH: 0 })

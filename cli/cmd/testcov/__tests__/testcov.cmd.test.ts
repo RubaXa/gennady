@@ -222,9 +222,15 @@ describe('testcov --min', () => {
     assert.strictEqual(status, 1);
   });
 
-  it('несуществующий позиционный путь → "File not found", exit 1 (не молча агрегирует весь проект)', () => {
+  it('несуществующий позиционный путь → красный, exit 1 (exact-разрешение, не молча агрегирует весь проект)', () => {
     const { stderr, status } = runMin(['--min=60', 'no-such-dir']);
-    assert.match(stderr, /File not found: no-such-dir/);
+    assert.match(stderr, /не найдены по указанному пути: no-such-dir/);
+    assert.strictEqual(status, 1);
+  });
+
+  it('несуществующий путь СРЕДИ существующих → красный (не теряется молча) — exact-разрешение', () => {
+    const { stderr, status } = runMin(['--min=60', 'good', 'no-such-dir']);
+    assert.match(stderr, /не найдены по указанному пути: no-such-dir/);
     assert.strictEqual(status, 1);
   });
 });
