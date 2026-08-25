@@ -1,25 +1,38 @@
 0.8.4
 
 <Step id="STEP_5_VERIFY">
-      <Goal>Run the verification gate, then the ticket §5 commands. Log only final results.</Goal>
+      <Goal>Run the verification gate, then any extra ticket §5 commands. Log only final results.</Goal>
       <Action>
         Run `npx gennady sdd-verify --profile <by kind>` (`AX_PERMITTED_BASH_COMMANDS`) — the ONE
         command this step calls; it fixes what it can and verifies the rest INSIDE itself, so never
-        call `npm run fix` / `format:fix` / `lint:fix` yourself first. It walks a fixed ladder,
+        call `npm run fix` / `format:fix` / `lint:fix` yourself first, and never run it a second time
+        because the ticket's §5 mentions it (it must not — the table carries only the EXTRA commands
+        beyond this gate; a `sdd-verify` row there is a scaffold defect: run the ladder once, log one
+        `ver` line for it, and note the duplicate row as a `discovery` line). It walks a fixed ladder,
         cheapest-and-most-important first: `type-check` → `test`/`test:coverage` (**foundation** —
         a failure here HALTS the ladder, nothing later runs: no point polishing code that does not
         build or breaks tests) → `format:fix` → `lint:fix` (mutating repair, marker `🔧` — a failure
         here is a FINDING, never a halt) → `lint` → `format` (read-only, accumulate) → `yagni` (`full`
-        only). Profile by phase kind: `bootstrap` / `config` / `doc` → `setup`; `impl` / `refactor` →
+        only). When the repair rungs actually rewrote files, the foundation (`type-check`, `test`)
+        re-runs ONCE over the repaired tree — reported as `(re-run после мутаций)` — so the verdict
+        always describes the code you are handing off, never its pre-repair state. Profile by phase
+        kind: `bootstrap` / `config` / `doc` → `setup`; `impl` / `refactor` →
         `code` (same ladder as `setup` — type-check · test · format:fix · lint:fix · lint · format;
         tests included since fresh code may have broken existing ones); `test` → `test` (type-check ·
         test:coverage · format:fix · format — no lint/lint:fix, no production code in a test-only
         phase; coverage is measured, its threshold is audit's job, not this gate's); a `fix` phase
         takes the profile of the kind it repairs. `full` (type-check · test:coverage · lint · format ·
-        yagni — read-only, no repair rungs: a final verdict must never mutate what it is judging) runs
+        yagni — the only profile with no repair rungs: a final verdict must never mutate the sources
+        it judges; `test:coverage` still writes its report into `coverage/`) runs
         once at the end (orchestrator close, right before the group audit dispatch — `AX_AUDIT_HOOK` —
         never here per phase). A gate whose npm script is not declared in `package.json` is skipped
-        with an honest `⏭` line, never an error.
+        with an honest `⏭` line — EXCEPT the foundation rungs of `code`/`test`/`full`
+        (`type-check` + `test`/`test:coverage`): those are required, and an absent or `echo`-stub
+        script there is a red `⛔` verdict, not a skip — a phase must never pass on zero real checks.
+        That verdict is not fixable from inside the phase: emit `BLOCKER_FORMAT` naming the missing
+        infrastructure and halt `H_BLOCKED`; the infra tickets that build those scripts
+        (`sdd-task` → `GATE_QUEUE`) run first. Likewise `test:coverage` passing means a FRESH report
+        appeared under `coverage/` — a command that exits 0 measuring nothing is reported red.
         If this phase authored production `.ts`/`.tsx`, regardless of phase kind, also run
         `npx gennady lint --spec=<owning module spec> <exact production Target Files>`
         immediately after authoring and again here. Do not pass tool-config or vendor-generated files;
@@ -31,11 +44,13 @@
         (`AX_INTRODUCED_DISCIPLINE`, `AX_TICKET_WRITE_SCOPE`; the worker leaves the spec to audit, `AX_SPEC_NEVER_EDITED` — the intro
         line flags it for inventory backflow at audit). MUST resolve every out-of-inventory export this way. A cast → remove (proper type / guard) or a documented `@ts-expect-error` (`AX_NO_SILENT_ESCAPE_HATCH` — never a silent suppression).
         Run `sdd-verify`, `gennady lint`, and every ticket §5 command SEQUENTIALLY, one at a time, never
-        in parallel: gates that write into a shared output path (`sdd-verify --profile full` and
-        `gennady testcov --run` both write `coverage/`) race when run together — whichever finishes
-        last overwrites or half-writes the other's artifact, producing a false red unrelated to the
-        code. Then run each ticket §5 command **verbatim** (the Canonical Gate per `AX_VERIFICATION_BEFORE_HANDOFF`),
-        exactly as written. **Error ownership scales by write zone, not by age:** for every failure the gate
+        in parallel: every profile that runs `test:coverage` writes `coverage/`, as does
+        `gennady testcov --run`, so two of them at once race — whichever finishes last overwrites or
+        half-writes the other's report, producing a false red unrelated to the code. (Repair rungs
+        rewrite source files besides; a parallel gate would be judging a tree changing under it.)
+        Then run each ticket §5 command **verbatim** (the Canonical Gate per `AX_VERIFICATION_BEFORE_HANDOFF`),
+        exactly as written — the §5 table holds only the EXTRA commands beyond the phase gate, so
+        nothing there repeats `sdd-verify`. **Error ownership scales by write zone, not by age:** for every failure the gate
         surfaces, locate the file the fix must be written into. That file is inside this phase's Target Files,
         or is a file this phase itself created → fix it here, now, regardless of whether the failure pre-dates
         this phase; "pre-existing" is never grounds to skip a fix that lands inside scope. That file sits outside

@@ -6,7 +6,7 @@
 
 ## 1. Module Vision
 
-Детерминированная gate-«лестница» верификации фазы. Прогоняет ФИКСИРОВАННЫЙ, канонически упорядоченный набор gate: `type-check → test/test:coverage → format:fix → lint:fix → lint → format → yagni`. Основание лестницы (`type-check`, `test`/`test:coverage`) — halting: падение останавливает лестницу, дальше ничего не выполняется (нет смысла чинить или линтить код, который не собирается или ломает тесты). После основания — мутирующая починка (`format:fix`, `lint:fix`, маркер 🔧): переписывает файлы, падение — находка, не остановка, лестница идёт дальше. Затем read-only проверки (`lint`, `format`) — только накопление находок. `yagni` завершает лестницу и вызывается напрямую как gennady-нативный гейт (`npx gennady yagni` / `npx tsx cli/gennady.ts yagni` в self-hosting режиме), НЕ через npm-скрипт проекта (D-SV008) — включён только в профиль `full`. Отсутствующий npm-скрипт у gate — честный пропуск (`⏭`), не ошибка и не halt. Вывод краткий: на успехе строка на gate; у упавших — захваченный output, обрезанный по лимиту строк/байт с отдельным сводным блоком «not ok»-строк, которые обрезка иначе бы потеряла.
+Детерминированная gate-«лестница» верификации фазы. Прогоняет ФИКСИРОВАННЫЙ, канонически упорядоченный набор gate: `type-check → test/test:coverage → format:fix → lint:fix → lint → format → yagni`. Основание лестницы (`type-check`, `test`/`test:coverage`) — halting: падение останавливает лестницу, дальше ничего не выполняется (нет смысла чинить или линтить код, который не собирается или ломает тесты). После основания — мутирующая починка (`format:fix`, `lint:fix`, маркер 🔧): переписывает файлы, падение — находка, не остановка, лестница идёт дальше. Затем read-only проверки (`lint`, `format`) — только накопление находок. `yagni` завершает лестницу и вызывается напрямую как gennady-нативный гейт (`npx gennady yagni` / `npx tsx cli/gennady.ts yagni` в self-hosting режиме), НЕ через npm-скрипт проекта (D-SV008) — включён только в профиль `full`. Отсутствующий npm-скрипт у НЕобязательного gate — честный пропуск (`⏭`), не ошибка и не halt. Но у профилей, которые верифицируют код (`code`/`test`/`full`), основание — обязательное (`REQUIRED_PROFILE_GATES`): отсутствующий или `echo`-заглушечный скрипт там даёт красный `⛔` вердикт (`status: 'missing'`), а не пропуск — фаза не может пройти на нуле реальных проверок. `setup` требований не имеет: он идёт до появления инфраструктуры, и пропуски там — законное состояние. `test:coverage` признаётся пройденным, только если после его прогона в `coverage/` появился СВЕЖИЙ отчёт: exit 0 без артефакта — фикция и красный вердикт. Мутирующие ступени, реально переписавшие дерево (сверка fingerprint до/после), запускают ОДНУ повторную проверку основания над исправленным состоянием — вердикт всегда описывает тот код, который уходит в handoff. Вывод краткий: на успехе строка на gate; у упавших — захваченный output, обрезанный по лимиту строк/байт с отдельным сводным блоком «not ok»-строк, которые обрезка иначе бы потеряла.
 
 **Key properties:**
 
@@ -14,7 +14,9 @@
 - Halting foundation — `type-check`/`test`/`test:coverage` (`haltsOnFailure: true`) останавливают лестницу на падении; остальные gate — находки, не остановки
 - Mutating repair, not mutating-first — `format:fix`/`lint:fix` (`mutates: true`, маркер 🔧) чинят после основания; падение мутирующего gate — находка (`🔧` вместо `❌`), лестница продолжается; `lint`/`format` после них — только чтение
 - Profile-scoped — `setup`/`code`/`test`/`full` включают разные подмножества лестницы в её каноническом порядке (см. §5)
-- Honest skip — npm-скрипта нет → `⏭ <gate> — скрипта нет в package.json, пропущено`; не считается ни pass, ни fail
+- Honest skip, но не для обязательных — npm-скрипта нет → `⏭ <gate> — скрипта нет в package.json, пропущено`; не pass и не fail. Исключение: основание профилей `code`/`test`/`full` (`REQUIRED_PROFILE_GATES`) — отсутствующий или `echo`-заглушечный скрипт там даёт `⛔` (`status: 'missing'`) и красный вердикт
+- Semantic coverage — `test:coverage` проходит, только если после прогона в `coverage/` появился свежий отчёт; exit 0 без артефакта — красный
+- Bounded repair pass — мутирующие ступени, реально изменившие дерево, вызывают один повторный прогон основания (`(re-run после мутаций)`) над исправленным кодом
 - Brief-on-success — `✅ <gate> (<dur>)`; на падении — exit code + захваченный (обрезанный) output упавшего + отдельный дайджест потерянных «not ok»-строк
 
 **Invariants:**
@@ -39,9 +41,10 @@ $ npx gennady sdd-verify
   ✅ yagni (0.9s)
 # exit 0
 
-# профиль code — тесты не гоняются, format:fix/lint:fix чинят перед read-only проверками
+# профиль code — плоский test (без покрытия), format:fix/lint:fix чинят перед read-only проверками;
+# ничего не переписали — основание не перезапускается
 $ npx gennady sdd-verify --profile code
-[sdd-verify] ✅ ALL PASS (5/5)
+[sdd-verify] ✅ ALL PASS (6/6)
   ✅ type-check (1.4s)
   ✅ test (3.2s)
   🔧 format:fix (0.5s) — мутирующий шаг
@@ -50,7 +53,20 @@ $ npx gennady sdd-verify --profile code
   ✅ format (0.6s)
 # exit 0
 
-# отсутствующий npm-скрипт — честный пропуск, не ошибка
+# починка реально переписала файлы — основание перепроверяется ОДИН раз на исправленном дереве
+$ npx gennady sdd-verify --profile code
+[sdd-verify] ✅ ALL PASS (8/8)
+  ✅ type-check (1.4s)
+  ✅ test (3.2s)
+  🔧 format:fix (0.7s) — мутирующий шаг
+  🔧 lint:fix (1.3s) — мутирующий шаг
+  ✅ lint (2.3s)
+  ✅ format (0.6s)
+  ✅ type-check (re-run после мутаций) (1.3s)
+  ✅ test (re-run после мутаций) (3.1s)
+# exit 0
+
+# отсутствующий НЕобязательный скрипт — честный пропуск, не ошибка
 $ npx gennady sdd-verify --profile test
 [sdd-verify] ✅ ALL PASS (3/4)
   ✅ type-check (1.4s)
@@ -58,6 +74,24 @@ $ npx gennady sdd-verify --profile test
   ⏭ format:fix — скрипта нет в package.json, пропущено
   ✅ format (0.6s)
 # exit 0
+
+# отсутствующая ОБЯЗАТЕЛЬНАЯ ступень профиля — красный вердикт, не пропуск
+$ npx gennady sdd-verify --profile code
+[sdd-verify] 1/2 passed — 1 FAILED
+  ✅ type-check (1.4s)
+  ⛔ test — обязательная ступень профиля «code»: скрипта нет в package.json — verify нечем,
+     лестница остановлена. Прогони infra flow (npx gennady sdd-state → GATE_QUEUE) и повтори.
+# exit 1
+
+# test:coverage вышел с кодом 0, но покрытия не измерил — красный, а не «покрытие проверено»
+$ npx gennady sdd-verify --profile full
+[sdd-verify] 1/2 passed — 1 FAILED
+  ✅ type-check (1.4s)
+  ❌ test:coverage — exit 0 (ran: npm run test:coverage)
+  --- output ---
+  команда вышла с кодом 0, но каталога coverage/ нет — покрытие фактически не измерялось.
+  --- end ---
+# exit 1
 
 # падение на основании — лестница останавливается, дальше ничего не выполняется
 $ npx gennady sdd-verify
@@ -92,7 +126,8 @@ $ npx gennady sdd-verify
 | `GATES`                | Value Object | Фикс-последовательность (каноническая лестница): type-check · test · test:coverage · format:fix · lint:fix · lint · format · yagni         |
 | `Gate`                 | Value Object | name + mutates + `haltsOnFailure` (только type-check/test/test:coverage) + `via?` (`'npm'` default \| `'gennady'` — только yagni, D-SV008) |
 | `GateRunResult`        | Value Object | exitCode + output                                                                                                                          |
-| `GateResult`           | Value Object | name · exitCode · output · durationMs · `status: 'pass' \| 'fail' \| 'skipped'` · mutates · ranCommand                                     |
+| `GateResult`           | Value Object | name · exitCode · output · durationMs · `status: 'pass' \| 'fail' \| 'skipped' \| 'missing'` · mutates · ranCommand                        |
+| `REQUIRED_PROFILE_GATES` | Value Object | Ступени, которые профиль отказывается пропускать: `setup` — ни одной; `code` — type-check+test; `test`/`full` — type-check+test:coverage  |
 | `GateRunner`           | Type         | `(command, args) => GateRunResult` — инъектируемый                                                                                         |
 | `VerifyOutcome`        | Type         | `{ok:true,text}` либо `{ok:false,code,exitCode,message}`                                                                                   |
 | `Profile`              | Type         | Профиль гейтов: `setup` \| `code` \| `test` \| `full` (D-SV006)                                                                            |
@@ -118,7 +153,10 @@ $ npx gennady sdd-verify
   - `package.json` существует (это проверяет `sdd-state` readiness; отсутствующий отдельный npm-скрипт у gate — не precondition-нарушение, а честный `skipped`)
 - Postconditions:
   - Каждый gate профиля запускается не более одного раза, в нормативном порядке лестницы: `via: 'npm'` (default) как `npm run <name>` (или его alias, D-SV009); `via: 'gennady'` (только `yagni`) как `npx gennady <name>` / `npx tsx cli/gennady.ts <name>` в self-hosting режиме — напрямую, минуя проектный npm-скрипт
-  - Отсутствующий npm-скрипт → gate `skipped` (`⏭`), не запускается, не считается ни pass, ни fail
+  - Отсутствующий npm-скрипт НЕобязательного gate → `skipped` (`⏭`), не запускается, не считается ни pass, ни fail
+  - Отсутствующий или `echo`-заглушечный скрипт gate из `REQUIRED_PROFILE_GATES[profile]` → `missing` (`⛔`), лестница останавливается, вердикт красный; заглушка НЕ запускается (её exit 0 ничего не значит)
+  - `test:coverage` с exit 0, после которого в `coverage/` нет свежего отчёта → `fail`: покрытие не измерялось
+  - Мутирующие ступени, изменившие дерево → ровно один повторный прогон уже прошедших halting-ступеней профиля с суффиксом ` (re-run после мутаций)`; их падение — красный вердикт и halt
   - Падение gate с `haltsOnFailure: true` (`type-check`, `test`, `test:coverage`) останавливает лестницу — оставшиеся gate НЕ запускаются
   - Падение gate с `mutates: true` (`format:fix`, `lint:fix`) — находка (маркер `🔧`), не остановка; лестница продолжается (RUN-ALL для немутирующей и немутирующей-halting части)
   - Успех → exit 0 + `✅ <gate> (<dur>)` на gate; падение → exit 1 + обрезанный output упавшего (`tailCap`) + дайджест потерянных «not ok»-строк, если обрезка их скрыла
@@ -141,7 +179,9 @@ $ npx gennady sdd-verify
 - `setup` — `type-check · test · format:fix · lint:fix · lint · format` (первичная настройка проекта; тот же состав, что `code`)
 - `code` — `type-check · test · format:fix · lint:fix · lint · format` (фазы кода: impl/refactor/config/doc; плоский `test` вместо `test:coverage`; `format:fix`/`lint:fix` чинят перед read-only `lint`/`format`; `yagni` НЕ входит — вызывается отдельно оркестратором на закрытии группы)
 - `test` — `type-check · test:coverage · format:fix · format` (фаза тестов; покрытие ИЗМЕРЯЕТСЯ, порог здесь не проверяется — это забота `testcov --min`/audit; `lint`/`lint:fix`/`yagni` не гоняются — фаза тестов не трогает прод-код)
-- `full` — `type-check · test:coverage · lint · format · yagni` (финал/group-close, все фазы закрыты; **default**; без мутирующих ступеней — только измерение, чтение и прямой вызов `yagni`)
+- `full` — `type-check · test:coverage · lint · format · yagni` (финал/group-close, все фазы закрыты; **default**; единственный профиль без мутирующих ступеней — исходники не переписываются, финальный вердикт не трогает то, что судит. Отчёт покрытия в `coverage/` при этом пишется — «без мутаций» здесь про исходный код, не про артефакты)
+
+Обязательные ступени (`REQUIRED_PROFILE_GATES`, D-SV012): `setup` — ни одной; `code` — `type-check` + `test`; `test`/`full` — `type-check` + `test:coverage`. Отсутствующий или `echo`-заглушечный обязательный скрипт → `⛔` и exit 1, не пропуск.
 
 Порядок внутри профиля — подмножество канонического `GATES` в неизменном порядке. Плоский `test` гоняется в `setup`/`code` (не в `full`, там — `test:coverage`); required-набор readiness (`shared/sdd/readiness.ts`) требует оба скрипта — `test` и `test:coverage` — независимо от того, какой профиль реально прогоняется.
 
@@ -232,6 +272,27 @@ cli/cmd/sdd-verify/
 - **Status:** active · **Supersedes:** D-SV005 (плоский `test` не гоняется)
 - **Why:** Профили `setup`/`code` не должны платить цену измерения покрытия на каждой кодовой фазе — плоский `test` достаточен, чтобы убедиться, что фаза не сломала тесты. `test:coverage` остаётся в профилях `test`/`full`, где покрытие релевантно. Оба скрипта остаются required в readiness (`shared/sdd/readiness.ts`) независимо от того, какой профиль их фактически использует.
 - **Risk accepted:** Нет — оба required-скрипта уже обязаны существовать; выбор какой из двух реально запускается — забота профиля, не readiness.
+
+### D-SV012 — Обязательные ступени профиля: пропуск основания больше не даёт зелёный вердикт
+
+- **Status:** active
+- **Why:** Честный пропуск (D-SV010) в пределе давал `ALL PASS (0/6)` — фаза завершалась зелёной, не выполнив ни type-check, ни тестов, ни lint, ни format, и лог оставался формально правдивым. В связке с заглушками readiness это позволяло дойти до DONE с нулевой верификацией. Теперь основание профилей, которые верифицируют код (`code`/`test`/`full`), объявлено обязательным (`REQUIRED_PROFILE_GATES`): отсутствующий или `echo`-заглушечный скрипт даёт `⛔`/`missing` и красный вердикт. `setup` намеренно требований не имеет — он идёт ДО инфраструктуры, и его пропуски законны.
+- **Rejected:** «пусть агенту запрещает директива» — промптовая защита, а не механическая; ровно тот класс гарантии, который этот флоу должен снимать с агента.
+- **Risk accepted:** Проект без инфраструктуры больше не может исполнять кодовые фазы — это и есть цель; выход один и явный: infra-очередь (`sdd-task` → `GATE_QUEUE`).
+
+### D-SV013 — `test:coverage` проверяется семантически, по свежему артефакту
+
+- **Status:** active
+- **Why:** exit 0 не доказывает, что покрытие измерялось: собственный `test:coverage` gennady был обычным прогоном тестов без coverage-инструмента, а `full` рапортовал «покрытие измерено». Теперь ступень считается пройденной, только если после её прогона в `coverage/` появился отчёт свежее старта ступени (запас 2s на гранулярность mtime).
+- **Rejected:** парсить процент покрытия здесь — это работа `testcov --min`/audit; gate отвечает за факт измерения, не за порог.
+- **Risk accepted:** Проект обязан писать отчёт именно в `coverage/` (istanbul-совместимый `coverage-final.json` — то, что уже потребляет `testcov`); иной путь потребует явного решения.
+
+### D-SV014 — Один ограниченный repair-pass: после реальных мутаций основание перепроверяется
+
+- **Status:** active
+- **Why:** Мутирующие ступени идут ПОСЛЕ основания (D-SV010, чтобы не полировать несобирающийся код), но их правки после этого никто не проверял: `lint:fix`/`format:fix` могли изменить код, а вердикт продолжал описывать до-мутационное состояние. Теперь дерево снимается fingerprint'ом (path → mtime:size, без `node_modules`/`.git`/`coverage`/`dist`/`build`/`.claude`) до первой мутирующей ступени и после лестницы; при реальном отличии уже прошедшие halting-ступени профиля прогоняются ровно один раз с суффиксом ` (re-run после мутаций)`.
+- **Rejected:** переставить починку в начало лестницы — autofix гонялся бы по несобирающемуся коду и маскировал причину падения type-check; цикл «чини-проверяй до сходимости» — недетерминированное время фазы.
+- **Risk accepted:** Один повторный прогон основания в худшем случае удваивает время тестов на фазе, где autofix реально что-то переписал; за это покупается вердикт о том коде, который уходит в handoff.
 <!--/SECTION:MODULE_DECISION_LOG-->
 
 <!--SECTION:OPEN_RISKS-->

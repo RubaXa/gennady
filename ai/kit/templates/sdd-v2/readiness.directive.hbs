@@ -152,8 +152,14 @@
     wrappers: `"check": "npx gennady sdd-verify --profile full"` (must itself stay read-only —
     `check(read-only)` in `missing` otherwise), `"fix": "npm run format:fix && npm run lint:fix"`.
 
-    A minimal `package.json` that reads as `ready` once gennady is installed — real `lint`, the rest
-    stubbed until the infra flow locks real tools (point `lint` at the project's own source dirs).
+    A minimal `package.json` that reads as **`provisional`** once gennady is installed — real `lint`,
+    the rest stubbed until the infra flow locks real tools (point `lint` at the project's own source
+    dirs). `provisional` is a real, named state, not a lesser `ready`: the seven bricks are in place,
+    so bootstrap/config/doc phases and `scaffold` may proceed — but `sdd-task --phase` mechanically
+    REFUSES every `impl`/`refactor`/`test` phase (`ERR_CLI_SDD_TASK_INFRA_NOT_READY`) and
+    `sdd-verify --profile code|test|full` returns `⛔` for a stubbed foundation, because an `echo`
+    that exits 0 verifies nothing and a green verdict on it would be a fiction. Only replacing every
+    stub with a real tool moves the project to `ready` (= execution-ready).
     The `format:fix`/`lint:fix` stubs below carry a literal `--fix`/`--write` token as a placeholder
     switch — a plain `echo TODO` alone would report as a non-mutating fixer even before a real tool
     is picked:
@@ -174,15 +180,18 @@
     ```
     `lint` may reach `gennady` directly or through an `npm run <x>` chain — either satisfies the
     `lint→gennady` check. The leaf stubs print a warning to stderr but **exit 0 — by design they
-    pass**; `format`/`lint`/`check` stay read-only-clean since neither their own body nor anything
-    they reach carries a write switch, while `format:fix`/`lint:fix` pass the mutating check on their
-    placeholder token alone — so the gate stays green while the warning keeps the gap visible until
-    the infra flow replaces every stub with a real command.
+    pass the SHAPE checks**; `format`/`lint`/`check` stay read-only-clean since neither their own
+    body nor anything they reach carries a write switch, while `format:fix`/`lint:fix` pass the
+    mutating check on their placeholder token alone. That is what makes this package.json
+    `provisional` rather than `ready`: shape is satisfied, substance is not. `sdd-state` names every
+    stub it found on the READINESS line, and that list IS the infra flow's worklist — the project
+    reaches `ready` exactly when the list is empty.
   </ReferenceData>
 
   <ChatOutput>
     Service line — dim, internal, never narrated (`AX_NO_PROCESS_NARRATION`):
-    `🧰 SETUP_R<N> · package.json=<created|patched|present> · ready=<yes|no>`. Breadcrumb milestones
+    `🧰 SETUP_R<N> · package.json=<created|patched|present> · ready=<ready|provisional|not-ready>`
+    — the three-level verdict verbatim from `sdd-state`, never flattened to yes/no. Breadcrumb milestones
     (per `BREADCRUMB_FORMAT`): Assess · Plan · Apply · Ready.
 
     {{> "contract/process/message-layout"}}

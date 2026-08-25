@@ -128,17 +128,17 @@
     | Tool | When | Call |
     |---|---|---|
     | `sdd-task <ticket> --phase P<N>` | FIRST action, every phase, every retry — objective, gates + satisfy-hints, exit, phase-scoped read-manifest, prior Handoff | `npx gennady sdd-task <ticket> --phase P2` |
-    | `sdd-extract <file> <NAME>` · `sdd-extract <file>#<anchor>` | Pull ONE cited block instead of a whole file — `<NAME>` is a `SECTION_NAME` (`PHASE_P1`, `BDD`, `VERIFICATION`, …), two args; a markdown heading anchor is the combined `path#lower-dashed-slug` form, exactly as the read-manifest prints it | `npx gennady sdd-extract <ticket> PHASE_P1` · `npx gennady sdd-extract specs/app/greeting/greeting.spec.md#module-contracts` |
-    | `sdd-log <ticket-path\|Task-ID> line "<content>" --phase <PhaseID>` | An Execution Log event line — `discovery` / `intro` / `verified` / `ver` / `yagni` / `DONE`; the ticket argument takes either the ticket path or its bare Task-ID; `--phase` inserts at the end of THIS phase's own block, never wherever the log currently ends | `npx gennady sdd-log <ticket-path\|Task-ID> line "intro Foo ← reason" --phase P2` |
+    | `sdd-extract <file> <NAME>` · `sdd-extract <file>#<anchor>` | Pull ONE cited block instead of a whole file — `<NAME>` is a `SECTION_NAME` (`PHASE_P1`, `BDD`, `VERIFICATION`, …), two args; a markdown heading anchor is the combined `path#lower-dashed-slug` form the read-manifest prints | `npx gennady sdd-extract <ticket> PHASE_P1` · `npx gennady sdd-extract specs/app/greeting/greeting.spec.md#module-contracts` |
+    | `sdd-log <ticket-path\|Task-ID> line "<content>" --phase <PhaseID>` | An Execution Log event line — `discovery` / `intro` / `verified` / `ver` / `yagni` / `DONE`; the ticket argument takes the ticket path or its bare Task-ID; `--phase` inserts at the end of THIS phase's own block, never wherever the log ends | `npx gennady sdd-log <ticket-path\|Task-ID> line "intro Foo ← reason" --phase P2` |
     | `sdd-log <ticket> phase <PhaseID> ["— re-run: <reason>"]` | STEP_1B — open this phase's header block; the `— re-run:` suffix only on a `fix` re-run, never on a fresh phase | `npx gennady sdd-log <ticket> phase P2 "— re-run: fix F-012"` |
     | `sdd-log <ticket> handoff "<payload>" --phase <PhaseID>` | STEP_6 — the typed `**Handoff →**` line, exactly the `HANDOFF_FORMAT` shape (`artifacts` / `decisions` / `open` / `deviations`, each an array); `--phase` keeps it inside THIS phase's own block | `npx gennady sdd-log <ticket> handoff "artifacts: [src/app/greeting/greeting.ts]; decisions: [module-system=esm]; open: []; deviations: []" --phase P2` |
     | `sdd-log <ticket> blocker "<reason>" --axiom <AX_NAME> --unblock "<action>" --phase <PhaseID>` | STEP_5 — an out-of-zone failure this phase cannot fix itself; opens the resolution trail the orchestrator checks (`AX_BLOCKER_RESOLUTION_TRAIL`); `--phase` keeps it inside THIS phase's own block | `npx gennady sdd-log <ticket> blocker "vitest binary missing" --axiom AX_ENV_FIX_CHANNEL --unblock "npm i -D vitest" --phase P2` |
     | `sdd-log <ticket> resolved "<what removed it>" --phase <PhaseID>` | The paired close for `blocker` — once the cause is actually gone, whoever resumes the ticket logs this into THAT SAME phase's block (`AX_BLOCKER_RESOLUTION_TRAIL`); never edit or remove the original 🛑 line | `npx gennady sdd-log <ticket> resolved "vitest installed (npm i -D vitest)" --phase P2` |
-    | `sdd-check --task <ticket>` | A point re-check when you need the mechanical verdict again after a fix, without re-deriving it by hand | `npx gennady sdd-check --task <ticket>` |
-    | `sdd-verify --profile setup\|code\|test\|full` | The read-only verdict at STEP_5 — `setup` validates bootstrap/config without inventing product code | `npx gennady sdd-verify --profile setup` |
+    | `sdd-check --task <ticket>` | A point re-check for the mechanical verdict after a fix, instead of re-deriving it by hand | `npx gennady sdd-check --task <ticket>` |
+    | `sdd-verify --profile setup\|code\|test\|full` | The phase verdict at STEP_5 — one call, whole ladder. `setup`/`code`/`test` REPAIR before judging (`🔧` rewrites files); only `full` is read-only | `npx gennady sdd-verify --profile setup` |
     | `gennady lint --spec=<module-spec> <Target Files>` | Closed-world inventory sync + cast safety on this phase's own files | `npx gennady lint --spec=specs/app/greeting/greeting.spec.md src/app/greeting/*.ts` |
     | `gennady yagni` | Runs INSIDE `sdd-verify --profile full` only (once per group, at group close); on `ERR_CLI_YAGNI_UNDERUSED` it prints a ready-to-paste `- **Usage Waiver:** <reason>` block — paste verbatim, then log it (`AX_USAGE_WAIVER_DISCIPLINE`) | standalone only for a quick iteration: `npx gennady yagni .` |
-    | `gennady testcov` | Only when the ticket's own §5 command names it (e.g. `test:coverage`) — the §5 command string is canon, never a substitute | `npx gennady testcov --run --min=80` |
+    | `gennady testcov` | Only when the ticket's §5 names it — that command string is canon, never a substitute | `npx gennady testcov --run --min=80` |
 
     Follow the next action printed by a failed gate/tool. If none is actionable, emit `H_BLOCKED`
     per `AX_BLOCKER_ESCALATION`, surfaced as PAUSED (`AX_HALT_VS_FAIL_DISTINCTION`); do not inspect
@@ -256,25 +256,38 @@
       </Action>
     </Step>
     <Step id="STEP_5_VERIFY">
-      <Goal>Run the verification gate, then the ticket §5 commands. Log only final results.</Goal>
+      <Goal>Run the verification gate, then any extra ticket §5 commands. Log only final results.</Goal>
       <Action>
         Run `npx gennady sdd-verify --profile <by kind>` (`AX_PERMITTED_BASH_COMMANDS`) — the ONE
         command this step calls; it fixes what it can and verifies the rest INSIDE itself, so never
-        call `npm run fix` / `format:fix` / `lint:fix` yourself first. It walks a fixed ladder,
+        call `npm run fix` / `format:fix` / `lint:fix` yourself first, and never run it a second time
+        because the ticket's §5 mentions it (it must not — the table carries only the EXTRA commands
+        beyond this gate; a `sdd-verify` row there is a scaffold defect: run the ladder once, log one
+        `ver` line for it, and note the duplicate row as a `discovery` line). It walks a fixed ladder,
         cheapest-and-most-important first: `type-check` → `test`/`test:coverage` (**foundation** —
         a failure here HALTS the ladder, nothing later runs: no point polishing code that does not
         build or breaks tests) → `format:fix` → `lint:fix` (mutating repair, marker `🔧` — a failure
         here is a FINDING, never a halt) → `lint` → `format` (read-only, accumulate) → `yagni` (`full`
-        only). Profile by phase kind: `bootstrap` / `config` / `doc` → `setup`; `impl` / `refactor` →
+        only). When the repair rungs actually rewrote files, the foundation (`type-check`, `test`)
+        re-runs ONCE over the repaired tree — reported as `(re-run после мутаций)` — so the verdict
+        always describes the code you are handing off, never its pre-repair state. Profile by phase
+        kind: `bootstrap` / `config` / `doc` → `setup`; `impl` / `refactor` →
         `code` (same ladder as `setup` — type-check · test · format:fix · lint:fix · lint · format;
         tests included since fresh code may have broken existing ones); `test` → `test` (type-check ·
         test:coverage · format:fix · format — no lint/lint:fix, no production code in a test-only
         phase; coverage is measured, its threshold is audit's job, not this gate's); a `fix` phase
         takes the profile of the kind it repairs. `full` (type-check · test:coverage · lint · format ·
-        yagni — read-only, no repair rungs: a final verdict must never mutate what it is judging) runs
+        yagni — the only profile with no repair rungs: a final verdict must never mutate the sources
+        it judges; `test:coverage` still writes its report into `coverage/`) runs
         once at the end (orchestrator close, right before the group audit dispatch — `AX_AUDIT_HOOK` —
         never here per phase). A gate whose npm script is not declared in `package.json` is skipped
-        with an honest `⏭` line, never an error.
+        with an honest `⏭` line — EXCEPT the foundation rungs of `code`/`test`/`full`
+        (`type-check` + `test`/`test:coverage`): those are required, and an absent or `echo`-stub
+        script there is a red `⛔` verdict, not a skip — a phase must never pass on zero real checks.
+        That verdict is not fixable from inside the phase: emit `BLOCKER_FORMAT` naming the missing
+        infrastructure and halt `H_BLOCKED`; the infra tickets that build those scripts
+        (`sdd-task` → `GATE_QUEUE`) run first. Likewise `test:coverage` passing means a FRESH report
+        appeared under `coverage/` — a command that exits 0 measuring nothing is reported red.
         If this phase authored production `.ts`/`.tsx`, regardless of phase kind, also run
         `npx gennady lint --spec=<owning module spec> <exact production Target Files>`
         immediately after authoring and again here. Do not pass tool-config or vendor-generated files;
@@ -286,11 +299,13 @@
         (`AX_INTRODUCED_DISCIPLINE`, `AX_TICKET_WRITE_SCOPE`; the worker leaves the spec to audit, `AX_SPEC_NEVER_EDITED` — the intro
         line flags it for inventory backflow at audit). MUST resolve every out-of-inventory export this way. A cast → remove (proper type / guard) or a documented `@ts-expect-error` (`AX_NO_SILENT_ESCAPE_HATCH` — never a silent suppression).
         Run `sdd-verify`, `gennady lint`, and every ticket §5 command SEQUENTIALLY, one at a time, never
-        in parallel: gates that write into a shared output path (`sdd-verify --profile full` and
-        `gennady testcov --run` both write `coverage/`) race when run together — whichever finishes
-        last overwrites or half-writes the other's artifact, producing a false red unrelated to the
-        code. Then run each ticket §5 command **verbatim** (the Canonical Gate per `AX_VERIFICATION_BEFORE_HANDOFF`),
-        exactly as written. **Error ownership scales by write zone, not by age:** for every failure the gate
+        in parallel: every profile that runs `test:coverage` writes `coverage/`, as does
+        `gennady testcov --run`, so two of them at once race — whichever finishes last overwrites or
+        half-writes the other's report, producing a false red unrelated to the code. (Repair rungs
+        rewrite source files besides; a parallel gate would be judging a tree changing under it.)
+        Then run each ticket §5 command **verbatim** (the Canonical Gate per `AX_VERIFICATION_BEFORE_HANDOFF`),
+        exactly as written — the §5 table holds only the EXTRA commands beyond the phase gate, so
+        nothing there repeats `sdd-verify`. **Error ownership scales by write zone, not by age:** for every failure the gate
         surfaces, locate the file the fix must be written into. That file is inside this phase's Target Files,
         or is a file this phase itself created → fix it here, now, regardless of whether the failure pre-dates
         this phase; "pre-existing" is never grounds to skip a fix that lands inside scope. That file sits outside

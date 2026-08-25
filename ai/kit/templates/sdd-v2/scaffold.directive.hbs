@@ -189,15 +189,22 @@
             helper (for example shadcn's `src/lib/utils.ts`) is architecture, not a runtime surprise;
             missing or version-uncertain output → research/verify now, never let the worker expand the
             module boundary through an execution-time deviation;
-        5. write the ticket Verification table. Row 1 is always the phase verify call, written
-           directly — never resolved through an alias: `npx gennady sdd-verify --profile <profile>`,
-           profile by kind (`bootstrap` / `config` / `doc` → `setup`; `impl` / `refactor` → `code`;
-           `test` → `test`; a `fix` phase → the profile of the kind it repairs), Required-by = that
-           phase's kind. Then, after all phases: union any OTHER `<RequiresVerification>` aliases
-           across the ticket's phases beyond the standard ladder (e.g. infra-spec
-           `coverage-command`), group by alias, resolve each unique alias from infra-spec
-           Verification Commands (absent → `H_VERIFICATION_COMMAND_MISSING`) — one additional row
-           per unique alias, Required-by = comma-separated declaring rule IDs.
+        5. write the ticket Verification table. It lists ONLY what §5 adds ON TOP of the phase
+           verify call — never `sdd-verify` itself. STEP_5 of the phase protocol already runs
+           `npx gennady sdd-verify --profile <by kind>` as its own first action; writing that same
+           call into the table would make every phase run the whole ladder twice (type-check, the
+           full test suite, lint, format — all of it, for nothing), because §5 commands are executed
+           verbatim and a `ver` line may only be logged for a command actually run. So: no row for
+           it. Instead, write one line directly above the table, verbatim:
+           `Гейт фазы — `npx gennady sdd-verify --profile <profile>` — выполняется на STEP_5; в
+           таблицу не дублируется.` with the profile resolved by kind (`bootstrap` / `config` /
+           `doc` → `setup`; `impl` / `refactor` → `code`; `test` → `test`; a `fix` phase → the
+           profile of the kind it repairs). Then the table itself: union any OTHER
+           `<RequiresVerification>` aliases across the ticket's phases beyond the standard ladder
+           (e.g. infra-spec `coverage-command`), group by alias, resolve each unique alias from
+           infra-spec Verification Commands (absent → `H_VERIFICATION_COMMAND_MISSING`) — one row
+           per unique alias, Required-by = comma-separated declaring rule IDs. No such alias → the
+           table is written with its header and a single `| — | — |` row, never omitted.
         Draft BDD with the mandatory `contract`-level
         typing scenario per contract (`AX_TICKET_HAS_BDD_AND_TESTS`) and, per `AX_E2E_FIRST`, an
         `e2e`-level scenario for the ticket's user-facing path by default — dropping it needs a
