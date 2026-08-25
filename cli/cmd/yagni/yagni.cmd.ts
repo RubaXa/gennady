@@ -69,7 +69,30 @@ async function changedSymbolsForFile(
     : new Set<string>();
   return current
     .filter((s) => !headNames.has(s.name))
-    .map((s) => ({ name: s.name, kind: s.kind, file: relPath }));
+    .map((s) => ({
+      name: s.name,
+      kind: s.kind,
+      file: relPath,
+      exported: isExportedDeclaration(content, s.name),
+    }));
+}
+
+/**
+ * @purpose Whether `name` is exported from this file — via an `export`-prefixed declaration or an
+ *   `export { ... }` list.
+ * @param content Source text of the declaring file.
+ * @param name Symbol name.
+ * @returns True when the file exports the symbol.
+ */
+function isExportedDeclaration(content: string, name: string): boolean {
+  const declared = new RegExp(
+    `^\\s*export\\s+(?:default\\s+)?(?:abstract\\s+)?(?:async\\s+)?` +
+      `(?:const|let|var|function\\*?|class|type|interface|enum)\\s+${name}\\b`,
+    'm'
+  );
+  if (declared.test(content)) return true;
+  const listed = new RegExp(`^\\s*export\\s*\\{[^}]*\\b${name}\\b[^}]*\\}`, 'm');
+  return listed.test(content);
 }
 
 /**

@@ -1,4 +1,4 @@
-// @file: SddVerifyCommand — run the fixed verification gate sequence and summarize (brief on success, details on failure).
+// @file: SddVerifyCommand — run the profile's verification ladder and summarize (brief on success, details on failure).
 // @consumers: gennady.ts
 // @tasks: N/A
 
@@ -11,30 +11,45 @@ import {
   type GateResult,
   type GateRunResult,
   type GateRunner,
+  type GateStatus,
   type Profile,
   type VerifyOutcome,
 } from './sdd-verify.types.ts';
 
 /**
- * @purpose Resolve the actual npm script to run for a gate with an accepted alternate spelling
- * — today, only `type-check` (canonical) / `typecheck` (accepted).
- * @invariant Reporting always keeps the canonical `gate.name` — this only changes what runs.
- * @param gateName The gate's canonical name (e.g. `type-check`).
- * @returns The script to invoke — canonical, unless only the alias is declared.
+ * @purpose Read the project's `package.json` `scripts` map once per run — decides which rungs skip.
+ * @returns The scripts map, or `{}` when package.json is absent or unparsable.
  */
-function resolveScriptName(gateName: string): string {
-  if (gateName !== 'type-check') return gateName;
+function readProjectScripts(): Record<string, string> {
   try {
     const pkg = JSON.parse(readFileSync('package.json', 'utf-8')) as {
       scripts?: Record<string, string>;
     };
-    const scripts = pkg.scripts ?? {};
+    return pkg.scripts ?? {};
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * @purpose Resolve a gate's npm script name against `scripts`, honoring the one accepted alias
+ *   (`type-check` canonical / `typecheck` accepted).
+ * @invariant Reporting always keeps the canonical `gate.name`. An undeclared script resolves to
+ *   `undefined` (skip), never a guess.
+ * @param gateName The gate's canonical name (e.g. `type-check`).
+ * @param scripts The project's `package.json` `scripts` map.
+ * @returns The script name to invoke, or `undefined` when no matching script is declared.
+ */
+function resolveNpmScriptName(
+  gateName: string,
+  scripts: Record<string, string>
+): string | undefined {
+  if (gateName === 'type-check') {
     if (scripts['type-check']) return 'type-check';
     if (scripts['typecheck']) return 'typecheck';
-  } catch {
-    // fall through to the canonical name — npm's own "missing script" error is diagnostic enough
+    return undefined;
   }
-  return gateName;
+  return scripts[gateName] ? gateName : undefined;
 }
 
 // Node's spawnSync defaults maxBuffer to 1MB — this project's own `test:coverage` TAP output
@@ -110,30 +125,60 @@ function gennadyGateCommand(gateName: string): { command: string; args: string[]
 }
 
 /**
- * @purpose Execute gennady sdd-verify — run the profile's gates in canonical order (RUN-ALL), timing each, then summarize.
+ * @purpose Execute sdd-verify — walk the profile's ladder in order, timing each rung, stopping on
+ *   a broken foundation, skipping undeclared scripts, then summarize.
+ * @invariant A foundation rung's failure (`Gate.haltsOnFailure`) breaks the loop. A missing npm
+ *   script never runs and never counts as a failure.
  * @param runner Command runner — real spawnSync in the CLI entry, a fake in tests.
  * @param [profile] Gate profile (default `full`) selecting which gates run.
  * @returns VerifyOutcome — ✅ per gate on success, else the failed gates' details.
  */
 export async function run(runner: GateRunner, profile: Profile = 'full'): Promise<VerifyOutcome> {
+  const scripts = readProjectScripts();
   const results: GateResult[] = [];
+  let haltedAt: string | undefined;
+
   for (const gate of gatesFor(profile)) {
+    const scriptName =
+      gate.via === 'gennady' ? gate.name : resolveNpmScriptName(gate.name, scripts);
+    if (gate.via !== 'gennady' && scriptName === undefined) {
+      results.push({
+        name: gate.name,
+        status: 'skipped',
+        exitCode: 0,
+        output: '',
+        durationMs: 0,
+        ranCommand: '',
+        mutates: gate.mutates,
+      });
+      continue;
+    }
+
     const start = Date.now();
     const { command, args } =
       gate.via === 'gennady'
         ? gennadyGateCommand(gate.name)
-        : { command: 'npm', args: ['run', resolveScriptName(gate.name)] };
+        : { command: 'npm', args: ['run', scriptName as string] };
     const r = runner(command, args);
     const durationMs = Date.now() - start;
     logger.debug(`[SddVerifyCommand#run] ${gate.name} → exit ${r.exitCode} (${durationMs}ms)`);
     const ranCommand = `${command} ${args.join(' ')}`;
+    const status: GateStatus = r.exitCode === 0 ? 'pass' : 'fail';
     results.push({
       name: gate.name,
+      status,
       exitCode: r.exitCode,
       output: r.output,
       durationMs,
       ranCommand,
+      mutates: gate.mutates,
     });
+
+    if (r.exitCode !== 0 && gate.haltsOnFailure) {
+      haltedAt = gate.name;
+      break;
+    }
   }
-  return verdict(results);
+
+  return verdict(results, haltedAt);
 }

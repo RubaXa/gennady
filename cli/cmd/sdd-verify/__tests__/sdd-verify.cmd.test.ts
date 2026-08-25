@@ -1,4 +1,6 @@
-// @file: Unit tests for sdd-verify — fixed gate sequence, RUN-ALL, brief success, details on failure.
+// @file: Unit tests for sdd-verify — the verification ladder: profile composition, halt-on-broken-
+//   foundation, non-halting repair findings, honest script-missing skips, brief success/detailed
+//   failure output.
 // @consumers: gennady.ts
 // @tasks: N/A
 
@@ -27,12 +29,22 @@ function fakeRunner(failNames: string[] = []): { runner: GateRunner; calls: stri
   return { runner, calls };
 }
 
-// ── Mock node:fs so `isSelfHosting`/`resolveScriptName` read a controlled
+// ── Mock node:fs so `isSelfHosting`/`resolveNpmScriptName` read a controlled
 // package.json instead of this repo's real one — otherwise tests would be at
 // the mercy of running inside gennady's own checkout (which they legitimately
 // are today, but a consumer-mode test must still be exercisable). ──────────
 
-let currentPkgJson = JSON.stringify({ name: 'gennady', scripts: { 'type-check': 'tsc' } });
+const ALL_SCRIPTS = {
+  'type-check': 'tsc',
+  test: 'node --test',
+  'test:coverage': 'c8 node --test',
+  'format:fix': 'prettier --write .',
+  'lint:fix': 'eslint --fix .',
+  lint: 'eslint .',
+  format: 'prettier --check .',
+};
+
+let currentPkgJson = JSON.stringify({ name: 'gennady', scripts: ALL_SCRIPTS });
 
 const mockReadFileSync = mock.fn((path: string) => {
   if (String(path).endsWith('package.json')) return currentPkgJson;
@@ -49,36 +61,51 @@ const { run, isSelfHosting, defaultRunner, runWithMaxBuffer, GATE_MAX_BUFFER_BYT
   await import('../sdd-verify.cmd.ts');
 
 beforeEach(() => {
-  currentPkgJson = JSON.stringify({ name: 'gennady', scripts: { 'type-check': 'tsc' } });
+  currentPkgJson = JSON.stringify({ name: 'gennady', scripts: ALL_SCRIPTS });
 });
 
 describe('GATES', () => {
-  it('is the fixed read-only exact sequence', () => {
+  it('is the canonical ladder, cheapest-and-most-important-first', () => {
     assert.deepStrictEqual(
       GATES.map((g) => g.name),
-      ['format', 'lint', 'type-check', 'test:coverage', 'yagni']
+      ['type-check', 'test', 'test:coverage', 'format:fix', 'lint:fix', 'lint', 'format', 'yagni']
     );
+  });
+
+  it('only format:fix and lint:fix mutate', () => {
     assert.deepStrictEqual(
       GATES.filter((g) => g.mutates).map((g) => g.name),
-      []
+      ['format:fix', 'lint:fix']
+    );
+  });
+
+  it('only the foundation rungs (type-check, test, test:coverage) halt the ladder', () => {
+    assert.deepStrictEqual(
+      GATES.filter((g) => g.haltsOnFailure).map((g) => g.name),
+      ['type-check', 'test', 'test:coverage']
     );
   });
 });
 
-/** Builds a GateResult[] for all GATES, with a plausible `ranCommand` per gate name. */
-function baseResults(): GateResult[] {
-  return GATES.map((g) => ({
-    name: g.name,
-    exitCode: 0,
-    output: '',
-    durationMs: 100,
-    ranCommand: g.via === 'gennady' ? `npx gennady ${g.name}` : `npm run ${g.name}`,
-  }));
+/** Builds a GateResult[] for the given gate names, all passing, with a plausible `ranCommand`. */
+function baseResults(names: string[]): GateResult[] {
+  return names.map((name) => {
+    const g = GATES.find((gate) => gate.name === name)!;
+    return {
+      name,
+      status: 'pass' as const,
+      exitCode: 0,
+      output: '',
+      durationMs: 100,
+      ranCommand: g.via === 'gennady' ? `npx gennady ${name}` : `npm run ${name}`,
+      mutates: g.mutates,
+    };
+  });
 }
 
 describe('verdict', () => {
   it('all pass → brief ✅ ALL PASS with a line per gate', () => {
-    const results = baseResults();
+    const results = baseResults(['type-check', 'test:coverage', 'lint', 'format', 'yagni']);
     const v = verdict(results);
     assert.strictEqual(v.ok, true);
     if (v.ok) {
@@ -90,27 +117,117 @@ describe('verdict', () => {
   });
 
   it('a failure → exit 1; only the failed gate dumps output, and names the command it ran', () => {
-    const results = baseResults().map((r) => ({
+    const results = baseResults(['type-check', 'test:coverage', 'lint', 'format']).map((r) => ({
       ...r,
-      exitCode: r.name === 'type-check' ? 1 : 0,
-      output: r.name === 'type-check' ? 'TS2345 ...' : '',
+      status: r.name === 'lint' ? ('fail' as const) : r.status,
+      exitCode: r.name === 'lint' ? 1 : 0,
+      output: r.name === 'lint' ? 'no-unused-vars ...' : '',
     }));
     const v = verdict(results);
     assert.strictEqual(v.ok, false);
     if (!v.ok) {
       assert.strictEqual(v.exitCode, 1);
-      assert.match(v.message, /❌ type-check — exit 1 \(ran: npm run type-check\)/);
+      assert.match(v.message, /❌ lint — exit 1 \(ran: npm run lint\)/);
       assert.match(v.message, /^\[sdd-verify\]/);
-      assert.match(v.message, /TS2345/);
+      assert.match(v.message, /no-unused-vars/);
       assert.match(v.message, /✅ format/);
       assert.doesNotMatch(v.message, /❌ format/);
     }
   });
 
+  it('a failed mutating rung is marked with 🔧, noted as a finding that never halts', () => {
+    const results = baseResults(['type-check', 'test', 'format:fix', 'format']).map((r) => ({
+      ...r,
+      status: r.name === 'format:fix' ? ('fail' as const) : r.status,
+      exitCode: r.name === 'format:fix' ? 1 : 0,
+      output: r.name === 'format:fix' ? 'could not fix everything' : '',
+    }));
+    const v = verdict(results);
+    assert.strictEqual(v.ok, false);
+    if (v.ok) return;
+    assert.match(v.message, /🔧 format:fix — exit 1 .* — находка, не останавливает лестницу/);
+    assert.match(v.message, /could not fix everything/);
+    // a later gate (format) still ran and passed — the ladder was not halted by this failure
+    assert.match(v.message, /✅ format/);
+  });
+
+  it('a passing mutating rung is marked with 🔧, not ✅', () => {
+    const results = baseResults(['format:fix', 'format']);
+    const v = verdict(results);
+    assert.strictEqual(v.ok, true);
+    if (!v.ok) return;
+    assert.match(v.text, /🔧 format:fix \(\d+\.\d+s\) — мутирующий шаг/);
+    assert.match(v.text, /✅ format \(\d+\.\d+s\)/);
+  });
+
+  it('a skipped rung is neither ✅ nor ❌ — an honest ⏭ line, and does not fail the run', () => {
+    const results: GateResult[] = [
+      ...baseResults(['type-check']),
+      {
+        name: 'format:fix',
+        status: 'skipped',
+        exitCode: 0,
+        output: '',
+        durationMs: 0,
+        ranCommand: '',
+        mutates: true,
+      },
+      ...baseResults(['format']),
+    ];
+    const v = verdict(results);
+    assert.strictEqual(v.ok, true);
+    if (!v.ok) return;
+    assert.match(v.text, /⏭ format:fix — скрипта нет в package\.json, пропущено/);
+    assert.doesNotMatch(v.text, /❌ format:fix/);
+    assert.doesNotMatch(v.text, /✅ format:fix/);
+  });
+
+  it('a halted ladder names the stopping gate and the reason in the final line', () => {
+    const results = baseResults(['type-check']).map((r) => ({
+      ...r,
+      status: 'fail' as const,
+      exitCode: 2,
+      output: 'TS2345 ...',
+    }));
+    const v = verdict(results, 'type-check');
+    assert.strictEqual(v.ok, false);
+    if (v.ok) return;
+    assert.match(
+      v.message,
+      /⛔ лестница остановлена на «type-check» — код не собирается — дальше нечего проверять и чинить, дальше не пошли$/
+    );
+  });
+
+  it('a halted ladder at the test foundation names the test-specific reason', () => {
+    const results = baseResults(['type-check', 'test:coverage']).map((r) => ({
+      ...r,
+      status: r.name === 'test:coverage' ? ('fail' as const) : r.status,
+      exitCode: r.name === 'test:coverage' ? 1 : 0,
+      output: r.name === 'test:coverage' ? 'assertion failed' : '',
+    }));
+    const v = verdict(results, 'test:coverage');
+    assert.strictEqual(v.ok, false);
+    if (v.ok) return;
+    assert.match(v.message, /лестница остановлена на «test:coverage» — тесты не проходят/);
+  });
+
+  it('no haltedAt → no stop-line, even on failure', () => {
+    const results = baseResults(['lint', 'format']).map((r) => ({
+      ...r,
+      status: r.name === 'lint' ? ('fail' as const) : r.status,
+      exitCode: r.name === 'lint' ? 1 : 0,
+    }));
+    const v = verdict(results);
+    assert.strictEqual(v.ok, false);
+    if (v.ok) return;
+    assert.doesNotMatch(v.message, /лестница остановлена/);
+  });
+
   it('a runaway failed gate is tail-capped to its last 120 lines with a truncation note', () => {
     const bigOutput = Array.from({ length: 500 }, (_, i) => `line ${i}`).join('\n');
-    const results = baseResults().map((r) => ({
+    const results = baseResults(['type-check', 'test:coverage', 'lint', 'format']).map((r) => ({
       ...r,
+      status: r.name === 'test:coverage' ? ('fail' as const) : r.status,
       exitCode: r.name === 'test:coverage' ? 1 : 0,
       output: r.name === 'test:coverage' ? bigOutput : '',
     }));
@@ -126,9 +243,26 @@ describe('verdict', () => {
     assert.doesNotMatch(v.message, /^line 0$/m);
   });
 
-  it('output that already fits both bounds is left untouched (no truncation note)', () => {
-    const results = baseResults().map((r) => ({
+  it('`not ok` lines dropped by the tail cap resurface as a failure digest above the tail', () => {
+    const lines = Array.from({ length: 500 }, (_, i) => `line ${i}`);
+    lines[3] = 'not ok 2 - the actual broken test name';
+    const results = baseResults(['type-check', 'test:coverage', 'lint', 'format']).map((r) => ({
       ...r,
+      status: r.name === 'test:coverage' ? ('fail' as const) : r.status,
+      exitCode: r.name === 'test:coverage' ? 1 : 0,
+      output: r.name === 'test:coverage' ? lines.join('\n') : '',
+    }));
+    const v = verdict(results);
+    assert.strictEqual(v.ok, false);
+    if (v.ok) return;
+    assert.match(v.message, /failing tests dropped by the cap \(first 1\):/);
+    assert.match(v.message, /not ok 2 - the actual broken test name/);
+  });
+
+  it('output that already fits both bounds is left untouched (no truncation note)', () => {
+    const results = baseResults(['type-check', 'lint']).map((r) => ({
+      ...r,
+      status: r.name === 'lint' ? ('fail' as const) : r.status,
       exitCode: r.name === 'lint' ? 1 : 0,
       output: r.name === 'lint' ? 'short failure\ndetail line' : '',
     }));
@@ -143,8 +277,9 @@ describe('verdict', () => {
   it('a failed gate whose few lines still exceed 16KB is byte-capped, not just line-capped', () => {
     const hugeLine = 'x'.repeat(20 * 1024); // 20KB on one line — over the 16KB cap alone
     const output = ['first line', hugeLine].join('\n');
-    const results = baseResults().map((r) => ({
+    const results = baseResults(['type-check', 'yagni']).map((r) => ({
       ...r,
+      status: r.name === 'yagni' ? ('fail' as const) : r.status,
       exitCode: r.name === 'yagni' ? 1 : 0,
       output: r.name === 'yagni' ? output : '',
     }));
@@ -157,8 +292,9 @@ describe('verdict', () => {
 
   it('the truncation note names the actual ranCommand, not a hardcoded npm form', () => {
     const bigOutput = Array.from({ length: 500 }, (_, i) => `line ${i}`).join('\n');
-    const results = baseResults().map((r) => ({
+    const results = baseResults(['type-check', 'yagni']).map((r) => ({
       ...r,
+      status: r.name === 'yagni' ? ('fail' as const) : r.status,
       exitCode: r.name === 'yagni' ? 1 : 0,
       output: r.name === 'yagni' ? bigOutput : '',
       ranCommand: r.name === 'yagni' ? 'npx tsx cli/gennady.ts yagni' : r.ranCommand,
@@ -175,38 +311,140 @@ describe('verdict', () => {
 });
 
 describe('profiles', () => {
-  it('gatesFor subsets GATES in canonical order per profile', () => {
+  it('gatesFor subsets GATES in canonical ladder order per profile — exact arrays', () => {
+    assert.deepStrictEqual(
+      gatesFor('setup').map((g) => g.name),
+      ['type-check', 'test', 'format:fix', 'lint:fix', 'lint', 'format']
+    );
     assert.deepStrictEqual(
       gatesFor('code').map((g) => g.name),
-      ['format', 'lint', 'type-check']
+      ['type-check', 'test', 'format:fix', 'lint:fix', 'lint', 'format']
     );
     assert.deepStrictEqual(
       gatesFor('test').map((g) => g.name),
-      ['format', 'type-check', 'test:coverage']
+      ['type-check', 'test:coverage', 'format:fix', 'format']
     );
     assert.deepStrictEqual(
       gatesFor('full').map((g) => g.name),
-      ['format', 'lint', 'type-check', 'test:coverage', 'yagni']
+      ['type-check', 'test:coverage', 'lint', 'format', 'yagni']
     );
   });
 
-  it('isProfile guards CLI input', () => {
-    assert.ok(isProfile('code') && isProfile('test') && isProfile('full'));
-    assert.ok(!isProfile('all') && !isProfile(''));
+  it('setup and code compose the identical ladder', () => {
+    assert.deepStrictEqual(gatesFor('setup'), gatesFor('code'));
   });
 
-  it('code profile runs no tests and no yagni; test profile runs no lint/yagni', async () => {
-    const code = fakeRunner();
-    await run(code.runner, 'code');
-    assert.deepStrictEqual(code.calls, ['npm run format', 'npm run lint', 'npm run type-check']);
+  it('full carries no mutating rungs — a final verdict must not mutate what it judges', () => {
+    assert.deepStrictEqual(
+      gatesFor('full').filter((g) => g.mutates),
+      []
+    );
+  });
 
-    const test = fakeRunner();
-    await run(test.runner, 'test');
-    assert.deepStrictEqual(test.calls, [
-      'npm run format',
+  it('test profile does not run lint (no production code changed) and does not check a coverage threshold — sdd-verify only reports test:coverage exit code, it never reads a % number', () => {
+    const names = gatesFor('test').map((g) => g.name);
+    assert.ok(!names.includes('lint'));
+    assert.ok(!names.includes('lint:fix'));
+    assert.ok(names.includes('test:coverage'));
+  });
+
+  it('isProfile guards CLI input', () => {
+    assert.ok(isProfile('setup') && isProfile('code') && isProfile('test') && isProfile('full'));
+    assert.ok(!isProfile('all') && !isProfile(''));
+  });
+});
+
+describe('run — ladder halting on a broken foundation', () => {
+  it('type-check failure stops the ladder — nothing after it runs', async () => {
+    const { runner, calls } = fakeRunner(['type-check']);
+    const o = await run(runner, 'full');
+    assert.strictEqual(o.ok, false);
+    assert.deepStrictEqual(calls, ['npm run type-check']);
+    if (!o.ok) {
+      assert.match(o.message, /лестница остановлена на «type-check»/);
+    }
+  });
+
+  it('test failure (code/setup profile) stops the ladder — no repair or quality rungs run', async () => {
+    const { runner, calls } = fakeRunner(['test']);
+    const o = await run(runner, 'code');
+    assert.strictEqual(o.ok, false);
+    assert.deepStrictEqual(calls, ['npm run type-check', 'npm run test']);
+    if (!o.ok) {
+      assert.match(o.message, /лестница остановлена на «test»/);
+    }
+  });
+
+  it('test:coverage failure (test/full profile) stops the ladder', async () => {
+    const { runner, calls } = fakeRunner(['test:coverage']);
+    const o = await run(runner, 'full');
+    assert.strictEqual(o.ok, false);
+    assert.deepStrictEqual(calls, ['npm run type-check', 'npm run test:coverage']);
+    if (!o.ok) {
+      assert.match(o.message, /лестница остановлена на «test:coverage»/);
+    }
+  });
+
+  it('a failing repair rung (format:fix) does not halt — later rungs still run', async () => {
+    const { runner, calls } = fakeRunner(['format:fix']);
+    const o = await run(runner, 'setup');
+    assert.strictEqual(o.ok, false); // still a failure overall
+    assert.deepStrictEqual(calls, [
       'npm run type-check',
-      'npm run test:coverage',
+      'npm run test',
+      'npm run format:fix',
+      'npm run lint:fix',
+      'npm run lint',
+      'npm run format',
     ]);
+    if (!o.ok) {
+      assert.doesNotMatch(o.message, /лестница остановлена/);
+      assert.match(o.message, /🔧 format:fix — exit 1/);
+    }
+  });
+
+  it('a failing quality rung (lint) does not halt — format still runs after it', async () => {
+    const { runner, calls } = fakeRunner(['lint']);
+    const o = await run(runner, 'setup');
+    assert.strictEqual(o.ok, false);
+    assert.ok(calls.includes('npm run format'));
+    assert.strictEqual(calls.length, 6);
+  });
+});
+
+describe('run — skipping a missing npm script', () => {
+  it('a step whose npm script is absent is skipped honestly, not treated as a failure', async () => {
+    currentPkgJson = JSON.stringify({
+      name: 'gennady',
+      scripts: { 'type-check': 'tsc', test: 'node --test', format: 'prettier --check .' },
+      // no format:fix declared
+    });
+    const { runner, calls } = fakeRunner();
+    const o = await run(runner, 'setup');
+    assert.strictEqual(o.ok, true);
+    // format:fix, lint:fix, lint were never called — no matching scripts
+    assert.deepStrictEqual(calls, ['npm run type-check', 'npm run test', 'npm run format']);
+    if (o.ok) {
+      assert.match(o.text, /⏭ format:fix — скрипта нет в package\.json, пропущено/);
+      assert.match(o.text, /⏭ lint:fix — скрипта нет в package\.json, пропущено/);
+      assert.match(o.text, /⏭ lint — скрипта нет в package\.json, пропущено/);
+      assert.match(o.text, /ALL PASS/);
+    }
+  });
+
+  it('a skipped foundation rung does not halt — the ladder still proceeds to later steps', async () => {
+    currentPkgJson = JSON.stringify({
+      name: 'gennady',
+      scripts: { 'test:coverage': 'c8 node --test', format: 'prettier --check .' },
+      // no type-check declared
+    });
+    const { runner, calls } = fakeRunner();
+    const o = await run(runner, 'test');
+    assert.strictEqual(o.ok, true);
+    assert.deepStrictEqual(calls, ['npm run test:coverage', 'npm run format']);
+    if (o.ok) {
+      assert.match(o.text, /⏭ type-check — скрипта нет в package\.json, пропущено/);
+    }
   });
 });
 
@@ -306,15 +544,15 @@ describe('isSelfHosting', () => {
 
 describe('run — via: gennady gate dispatch', () => {
   it('self-hosting (package.json name: gennady) → calls the local source through tsx', async () => {
-    currentPkgJson = JSON.stringify({ name: 'gennady', scripts: { 'type-check': 'tsc' } });
+    currentPkgJson = JSON.stringify({ name: 'gennady', scripts: ALL_SCRIPTS });
     const { runner, calls } = fakeRunner();
-    const o = await run(runner);
+    const o = await run(runner, 'full');
     assert.strictEqual(o.ok, true);
     assert.deepStrictEqual(calls, [
-      'npm run format',
-      'npm run lint',
       'npm run type-check',
       'npm run test:coverage',
+      'npm run lint',
+      'npm run format',
       'npx tsx cli/gennady.ts yagni',
     ]);
   });
@@ -322,29 +560,29 @@ describe('run — via: gennady gate dispatch', () => {
   it('consumer project (package.json name ≠ gennady) → calls npx gennady <gate> unchanged', async () => {
     currentPkgJson = JSON.stringify({
       name: 'some-consumer-app',
-      scripts: { 'type-check': 'tsc' },
+      scripts: ALL_SCRIPTS,
     });
     const { runner, calls } = fakeRunner();
-    const o = await run(runner);
+    const o = await run(runner, 'full');
     assert.strictEqual(o.ok, true);
     assert.deepStrictEqual(calls, [
-      'npm run format',
-      'npm run lint',
       'npm run type-check',
       'npm run test:coverage',
+      'npm run lint',
+      'npm run format',
       'npx gennady yagni',
     ]);
   });
 
   it('a failing gennady gate names the actual command it ran, in both modes', async () => {
-    currentPkgJson = JSON.stringify({ name: 'gennady' });
+    currentPkgJson = JSON.stringify({ name: 'gennady', scripts: ALL_SCRIPTS });
     const selfHosted = await run(fakeRunner(['yagni']).runner, 'full');
     assert.strictEqual(selfHosted.ok, false);
     if (!selfHosted.ok) {
       assert.match(selfHosted.message, /❌ yagni — exit 1 \(ran: npx tsx cli\/gennady\.ts yagni\)/);
     }
 
-    currentPkgJson = JSON.stringify({ name: 'some-consumer-app' });
+    currentPkgJson = JSON.stringify({ name: 'some-consumer-app', scripts: ALL_SCRIPTS });
     const consumer = await run(fakeRunner(['yagni']).runner, 'full');
     assert.strictEqual(consumer.ok, false);
     if (!consumer.ok) {
@@ -388,21 +626,21 @@ describe('defaultRunner — real spawnSync maxBuffer behavior', () => {
 });
 
 describe('run', () => {
-  it('defaults to the full 5-gate sequence — npm scripts as `npm run <name>`, yagni direct', async () => {
+  it('defaults to the full 5-gate ladder — npm scripts as `npm run <name>`, yagni direct', async () => {
     const { runner, calls } = fakeRunner();
     const o = await run(runner);
     assert.strictEqual(o.ok, true);
     assert.deepStrictEqual(calls, [
-      'npm run format',
-      'npm run lint',
       'npm run type-check',
       'npm run test:coverage',
+      'npm run lint',
+      'npm run format',
       'npx tsx cli/gennady.ts yagni', // self-hosting default set in beforeEach
     ]);
   });
 
-  it('RUN-ALL: keeps running after a failure and exits 1', async () => {
-    const { runner, calls } = fakeRunner(['format']);
+  it('RUN-ALL past the foundation: a quality-rung failure keeps running and exits 1', async () => {
+    const { runner, calls } = fakeRunner(['lint']);
     const o = await run(runner);
     assert.strictEqual(o.ok === false && o.exitCode, 1);
     assert.strictEqual(calls.length, 5);

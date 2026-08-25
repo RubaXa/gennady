@@ -209,6 +209,40 @@ describe('checkYagniUsage', () => {
     name,
     kind: 'function',
     file,
+    exported: true,
+  });
+
+  it('a PRIVATE symbol with exactly one usage is ordinary decomposition — no finding', () => {
+    const findings = checkYagniUsage(
+      [{ ...sym('namedConstant'), exported: false }],
+      new Map([['namedConstant', 1]]),
+      new Map(),
+      new Set()
+    );
+    assert.deepStrictEqual(findings, []);
+  });
+
+  it('a PRIVATE symbol with zero usages is dead code — finding, message says private/dead', () => {
+    const findings = checkYagniUsage(
+      [{ ...sym('deadHelper'), exported: false }],
+      new Map([['deadHelper', 0]]),
+      new Map(),
+      new Set()
+    );
+    assert.strictEqual(findings.length, 1);
+    assert.strictEqual(findings[0]?.code, ERR_CLI_YAGNI_UNDERUSED);
+    assert.match(findings[0]?.message ?? '', /private.*dead code/s);
+  });
+
+  it('an EXPORTED symbol with one usage keeps the < 2 rule — finding', () => {
+    const findings = checkYagniUsage(
+      [sym('prematureApi')],
+      new Map([['prematureApi', 1]]),
+      new Map(),
+      new Set()
+    );
+    assert.strictEqual(findings.length, 1);
+    assert.strictEqual(findings[0]?.code, ERR_CLI_YAGNI_UNDERUSED);
   });
 
   it('>= 2 usages → no finding', () => {

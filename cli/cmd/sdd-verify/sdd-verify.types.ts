@@ -1,4 +1,5 @@
-// @file: Gates, types, and verdict for sdd-verify — fixed exact gates, brief success, details only on failure.
+// @file: Gates, types, and verdict for sdd-verify — a fixed ladder (cheapest & most important
+//   rung first), foundation gates halt the ladder on failure, repair gates never do.
 // @consumers: SddVerifyCommand
 // @tasks: N/A
 
@@ -8,43 +9,52 @@ import { parseArgs } from '../../../shared/common/parse-args.ts';
 export const ERR_CLI_SDD_VERIFY_BAD_INVOCATION = 'ERR_CLI_SDD_VERIFY_BAD_INVOCATION' as const;
 
 /**
- * @purpose A read-only verification gate — an exact project npm script, or a gennady-native check called directly.
- * @invariant `via: 'gennady'` gates never require a matching project npm script — `readiness.ts`
- *   REQUIRED_SCRIPTS omits `yagni` for this reason.
+ * @purpose One rung of the verification ladder — an exact project npm script, or a gennady-native
+ *   check called directly.
+ * @invariant `haltsOnFailure` is true only for `type-check`/`test`/`test:coverage` — everything
+ *   after a broken foundation is moot. `mutates` is true only for `format:fix`/`lint:fix`.
  */
 export type Gate = {
   /** @purpose Exact npm script name (`via: 'npm'`) or gennady subcommand name (`via: 'gennady'`). */
   name: string;
-  /** @purpose True only for a legacy mutating gate; current verification profiles are read-only. */
+  /** @purpose True only for a mutating repair rung (`format:fix`, `lint:fix`) — it may rewrite files. */
   mutates: boolean;
+  /** @purpose True only for the foundation rungs — its failure stops the ladder; nothing later runs. */
+  haltsOnFailure: boolean;
   /** @purpose `'npm'` runs `npm run <name>` (default); `'gennady'` runs `npx gennady <name>` directly. */
   via?: 'npm' | 'gennady';
 };
 
 /**
- * @purpose The canonical read-only verification sequence. Profiles subset this list, preserving order.
- * @invariant Order: format check → lint check → typecheck → test:coverage → yagni. Repairs use project
- *   `fix`; `yagni` uses gennady directly (D-SV008).
+ * @purpose The canonical ladder, cheapest-and-most-important-first. Profiles subset this list,
+ *   preserving order.
+ * @invariant Order: type-check → test/test:coverage (foundation, halts) → format:fix → lint:fix
+ *   (repair, mutates, never halts) → lint → format (read-only quality) → yagni (full only).
  */
 export const GATES: readonly Gate[] = [
-  { name: 'format', mutates: false },
-  { name: 'lint', mutates: false },
-  { name: 'type-check', mutates: false },
-  { name: 'test:coverage', mutates: false },
-  { name: 'yagni', mutates: false, via: 'gennady' },
+  { name: 'type-check', mutates: false, haltsOnFailure: true },
+  { name: 'test', mutates: false, haltsOnFailure: true },
+  { name: 'test:coverage', mutates: false, haltsOnFailure: true },
+  { name: 'format:fix', mutates: true, haltsOnFailure: false },
+  { name: 'lint:fix', mutates: true, haltsOnFailure: false },
+  { name: 'lint', mutates: false, haltsOnFailure: false },
+  { name: 'format', mutates: false, haltsOnFailure: false },
+  { name: 'yagni', mutates: false, haltsOnFailure: false, via: 'gennady' },
 ];
 
 /** @purpose Gate profile by phase kind — fixed sets chosen by an explicit flag (not detection); `full` is the safe default. */
 export type Profile = 'setup' | 'code' | 'test' | 'full';
 
-// Gate names per profile: code skips tests (may not exist yet) AND yagni — yagni is a spec-level
-// diff gate, run once when a task group closes, as part of full, never per phase; test skips
-// lint + yagni (no production code changed); full runs everything, including yagni.
+// Gate names per profile, in ladder order:
+// - setup/code: the full repair ladder, tests included — fresh code may have broken existing ones.
+// - test: coverage is measured, its threshold is NOT checked here — that is audit's job; only one
+//   repair rung (format:fix) runs, no lint/lint:fix (no production code changed in a test-only phase).
+// - full: read-only, no repair rungs — a final verdict must never mutate what it is judging.
 const PROFILE_GATES: Record<Profile, readonly string[]> = {
-  setup: ['format', 'lint', 'type-check'],
-  code: ['format', 'lint', 'type-check'],
-  test: ['format', 'type-check', 'test:coverage'],
-  full: ['format', 'lint', 'type-check', 'test:coverage', 'yagni'],
+  setup: ['type-check', 'test', 'format:fix', 'lint:fix', 'lint', 'format'],
+  code: ['type-check', 'test', 'format:fix', 'lint:fix', 'lint', 'format'],
+  test: ['type-check', 'test:coverage', 'format:fix', 'format'],
+  full: ['type-check', 'test:coverage', 'lint', 'format', 'yagni'],
 };
 
 /**
@@ -138,18 +148,25 @@ export type GateRunResult = {
 /** @purpose Runs one gate command and returns its result — injectable for tests. */
 export type GateRunner = (command: string, args: string[]) => GateRunResult;
 
+/** @purpose Whether a rung actually ran and passed, actually ran and failed, or was honestly skipped. */
+export type GateStatus = 'pass' | 'fail' | 'skipped';
+
 /** @purpose A gate's run result with wall-clock timing. */
 export type GateResult = {
   /** @purpose Gate name. */
   name: string;
-  /** @purpose Exit code; 0 is pass. */
+  /** @purpose `'skipped'` when the project declares no matching npm script — never an error. */
+  status: GateStatus;
+  /** @purpose Exit code; 0 is pass, 0 also for a skipped rung (it never ran). */
   exitCode: number;
   /** @purpose Combined output — shown only when the gate fails. */
   output: string;
-  /** @purpose Wall-clock duration in milliseconds. */
+  /** @purpose Wall-clock duration in milliseconds; 0 for a skipped rung. */
   durationMs: number;
   /** @purpose The command actually run — surfaced on failure so nothing has to be guessed. */
   ranCommand: string;
+  /** @purpose Carried from `Gate.mutates` — a failed mutating rung is a finding, not a halt. */
+  mutates: boolean;
 };
 
 /**
@@ -167,6 +184,8 @@ function secs(ms: number): string {
 
 /** @purpose Tail-cap ceiling: at most this many trailing lines are kept from a failed gate's output. */
 const TAIL_CAP_LINES = 120;
+/** @purpose Cap on the `not ok` digest lines recovered from the truncated part of a failed gate's output. */
+const FAILURE_DIGEST_LINES = 10;
 /** @purpose Tail-cap ceiling: at most this many bytes are kept — whichever of the two limits is stricter wins. */
 const TAIL_CAP_BYTES = 16 * 1024;
 
@@ -191,49 +210,106 @@ function tailCap(output: string, ranCommand: string): string {
   }
 
   if (!truncated) return trimmed;
+
+  // A TAP run prints failures mid-stream and its summary at the end — a plain tail keeps the
+  // summary but can drop every `not ok` line, leaving no clue WHICH test failed. Digest them.
+  const kept = new Set(lines);
+  const droppedFailures = trimmed
+    .split('\n')
+    .filter((l) => /^\s*not ok /.test(l) && !kept.has(l))
+    .slice(0, FAILURE_DIGEST_LINES);
+
   return [
     `… output truncated to last ${lines.length} lines — full transcript: ${ranCommand}`,
+    ...(droppedFailures.length > 0
+      ? [
+          `  failing tests dropped by the cap (first ${droppedFailures.length}):`,
+          ...droppedFailures,
+        ]
+      : []),
     lines.join('\n'),
   ].join('\n');
 }
 
 /**
- * @purpose Reduce gate results to a verdict — brief on success, detailed only for failed gates.
- * @invariant Passing gates emit one `✅ <name> (<dur>)` line; a failed gate adds its captured output.
- * @param results Gate results in run order.
+ * @purpose Render one non-failing rung's summary line — passed check, passed repair, or skipped.
+ * @param r The rung's result.
+ * @returns A single `  <marker> <name> …` line.
+ */
+function lineFor(r: GateResult): string {
+  if (r.status === 'skipped') {
+    return `  ⏭ ${r.name} — скрипта нет в package.json, пропущено`;
+  }
+  const marker = r.mutates ? '🔧' : '✅';
+  const note = r.mutates ? ' — мутирующий шаг' : '';
+  return `  ${marker} ${r.name} (${secs(r.durationMs)})${note}`;
+}
+
+/**
+ * @purpose Render one failed rung's full block — marker, exit code, ran command, capped output.
+ * @param r The failed rung's result.
+ * @returns A multi-line block; mutating failures are noted as non-halting findings.
+ */
+function failBlock(r: GateResult): string {
+  const marker = r.mutates ? '🔧' : '❌';
+  const haltNote = r.mutates ? ' — находка, не останавливает лестницу' : '';
+  return [
+    `  ${marker} ${r.name} — exit ${r.exitCode} (ran: ${r.ranCommand})${haltNote}`,
+    '  --- output ---',
+    tailCap(r.output, r.ranCommand),
+    '  --- end ---',
+  ].join('\n');
+}
+
+/**
+ * @purpose Human reason the ladder stops at a given foundation rung — named once, reused by every caller.
+ * @param name The foundation gate's name (`type-check`, `test`, or `test:coverage`).
+ * @returns A short Russian reason clause, no trailing punctuation.
+ */
+function haltReason(name: string): string {
+  return name === 'type-check'
+    ? 'код не собирается — дальше нечего проверять и чинить'
+    : 'тесты не проходят — код сломал проект, полировать нечего';
+}
+
+/**
+ * @purpose Reduce ladder results to a verdict — brief on success, detailed only for failed rungs,
+ *   honest about where/why the ladder stopped early.
+ * @invariant A skipped rung is neither pass nor fail. A failed mutating rung never implies a halt
+ *   — only `haltedAt` does.
+ * @param results Gate results, in the order they actually ran (a halted ladder is simply shorter).
+ * @param [haltedAt] Name of the foundation gate that stopped the ladder, if any.
  * @returns ok with the ✅ summary, or a failure with each failed gate's exit + output.
  */
-export function verdict(results: GateResult[]): VerifyOutcome {
-  const failed = results.filter((r) => r.exitCode !== 0);
-  const passLines = results
-    .filter((r) => r.exitCode === 0)
-    .map((r) => `  ✅ ${r.name} (${secs(r.durationMs)})`);
+export function verdict(results: GateResult[], haltedAt?: string): VerifyOutcome {
+  const failed = results.filter((r) => r.status === 'fail');
+  const passed = results.filter((r) => r.status === 'pass');
+  const nonFailLines = results.filter((r) => r.status !== 'fail').map(lineFor);
 
   if (failed.length === 0) {
     return {
       ok: true,
-      text: [`[sdd-verify] ✅ ALL PASS (${results.length}/${results.length})`, ...passLines].join(
+      text: [`[sdd-verify] ✅ ALL PASS (${passed.length}/${results.length})`, ...nonFailLines].join(
         '\n'
       ),
     };
   }
 
-  const failBlocks = failed.map((r) =>
-    [
-      `  ❌ ${r.name} — exit ${r.exitCode} (ran: ${r.ranCommand})`,
-      '  --- output ---',
-      tailCap(r.output, r.ranCommand),
-      '  --- end ---',
-    ].join('\n')
-  );
+  const haltLine = haltedAt
+    ? [
+        `[sdd-verify] ⛔ лестница остановлена на «${haltedAt}» — ${haltReason(haltedAt)}, дальше не пошли`,
+      ]
+    : [];
+
   return {
     ok: false,
     code: 'ERR_CLI_SDD_VERIFY_GATE_FAILED',
     exitCode: 1,
     message: [
-      `[sdd-verify] ${results.length - failed.length}/${results.length} passed — ${failed.length} FAILED`,
-      ...passLines,
-      ...failBlocks,
+      `[sdd-verify] ${passed.length}/${results.length} passed — ${failed.length} FAILED`,
+      ...nonFailLines,
+      ...failed.map(failBlock),
+      ...haltLine,
     ].join('\n'),
   };
 }

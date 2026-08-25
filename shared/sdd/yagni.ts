@@ -10,6 +10,8 @@ export type ChangedSymbol = {
   kind: string;
   /** @purpose File the symbol was declared in. */
   file: string;
+  /** @purpose True when the declaration is exported — a private symbol is suspect only at zero usages. */
+  exported: boolean;
 };
 
 /** @purpose A parsed `- **Usage Waiver:** <reason>` (or `D-NNN — <reason>`, or the `(external: <consumer>)` variant). */
@@ -155,6 +157,9 @@ export function checkYagniUsage(
   for (const sym of changed) {
     const count = usageCounts.get(sym.name) ?? 0;
     if (count >= MIN_USAGE) continue;
+    // A private (non-exported) symbol used at least once is ordinary decomposition — a named
+    // constant or extracted helper, not speculative surface. Only a ZERO-usage private is dead code.
+    if (!sym.exported && count >= 1) continue;
 
     const waiver = waivers.get(sym.name);
     if (!waiver) {
@@ -164,7 +169,7 @@ export function checkYagniUsage(
         file: sym.file,
         symbol: sym.name,
         message: [
-          `\`${sym.name}\` (${sym.kind}) has ${count} usage(s) in production code (< 2) — YAGNI suspect.`,
+          `\`${sym.name}\` (${sym.kind}${sym.exported ? '' : ', private'}) has ${count} usage(s) in production code${sym.exported ? ' (< 2)' : ' (dead code)'} — YAGNI suspect.`,
           `Fix: remove it — or, if genuinely needed, paste this under \`${sym.name}\`'s entity heading`,
           'in MODULE_CONTRACTS / ENTITY_SURFACES / PUBLIC_API_SURFACE (never Decision Log):',
           `  - **Usage Waiver:** <reason — почему \`${sym.name}\` нужен несмотря на < 2 использований>`,
