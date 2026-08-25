@@ -164,6 +164,32 @@ describe('DbcTsLinter', () => {
       }
     });
 
+    it('A8b — should pass: ANONYMOUS default function/arrow/class WITH a contract', async () => {
+      for (const fx of [
+        'happy/export-default-anon-fn.ts',
+        'happy/export-default-arrow.ts',
+        'happy/export-default-anon-class.ts',
+      ]) {
+        const { dir, filePath } = setupTempFromFixture(fx);
+        try {
+          const report = await createLinter().lint(filePath);
+          assert.deepStrictEqual(report.errors, [], `${fx} should be clean`);
+        } finally {
+          rmSync(dir, { recursive: true, force: true });
+        }
+      }
+    });
+
+    it('A8c — should pass: a pure-expression default export needs NO contract (module wiring)', async () => {
+      const { dir, filePath } = setupTempFromFixture('happy/export-default-expr.ts');
+      try {
+        const report = await createLinter().lint(filePath);
+        assert.deepStrictEqual(report.errors, []);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
     it('A9 — should pass: comment before export keyword', async () => {
       const { dir, filePath } = setupTempFromFixture('happy/comment-before-export.ts');
       try {
@@ -278,6 +304,25 @@ describe('DbcTsLinter', () => {
         assert.strictEqual(report.errors[0]?.code, ERR_DBC_LINT_MISSING_CONTRACT);
       } finally {
         rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it('B7b — ANONYMOUS default function/arrow/class WITHOUT a contract → MISSING_CONTRACT (the round-4 bug)', async () => {
+      for (const fx of [
+        'missing-contract/export-default-anon-fn.ts',
+        'missing-contract/export-default-arrow.ts',
+        'missing-contract/export-default-anon-class.ts',
+      ]) {
+        const { dir, filePath } = setupTempFromFixture(fx);
+        try {
+          const report = await createLinter().lint(filePath);
+          assert.ok(
+            report.errors.some((e) => e.code === ERR_DBC_LINT_MISSING_CONTRACT),
+            `${fx} should report a missing contract, got ${JSON.stringify(report.errors)}`
+          );
+        } finally {
+          rmSync(dir, { recursive: true, force: true });
+        }
       }
     });
 

@@ -23,6 +23,21 @@ type RawContract = {
 };
 
 /**
+ * @purpose Declaration types whose `export default` still needs a DbC contract — function/arrow/class
+ *   in both named `_declaration` and anonymous bare-expression spellings.
+ * @invariant Anything else default-exported is pure-data wiring (object/call/identifier/literal), exempt.
+ */
+const DEFAULT_CONTRACT_DECL_TYPES: ReadonlySet<string> = new Set([
+  'function_declaration',
+  'generator_function_declaration',
+  'function',
+  'function_expression',
+  'class_declaration',
+  'class',
+  'arrow_function',
+]);
+
+/**
  * @purpose Parses TypeScript source files via tree-sitter to extract exported entities,
  * their members, JSDoc contracts, and signatures.
  * @implements {DbcAstAdapter} in ../../dbc-ast-adapter.types.ts
@@ -187,15 +202,13 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
       return undefined;
     }
 
-    // `export default <expr>` is a module wiring statement, not a named contract surface. There is
-    // no stable entity identity to attach DbC/inventory/YAGNI semantics to. Named default function
-    // and class declarations remain ordinary exported entities and are checked below.
-    if (
-      isDefault &&
-      declaration.type !== 'function_declaration' &&
-      declaration.type !== 'generator_function_declaration' &&
-      declaration.type !== 'class_declaration'
-    ) {
+    // A default export of a pure EXPRESSION (`export default { … }`, `defineConfig(…)`, an
+    // identifier, a literal) is module wiring — no behavior of its own to contract. But a default
+    // export of a function / arrow / class — NAMED OR ANONYMOUS — is a behavioral contract surface
+    // and needs a DbC contract, exactly like a named export of the same. tree-sitter gives an
+    // anonymous default a bare expression type (`function`, `class`, `arrow_function`) rather than a
+    // `_declaration`, so both spellings must be listed here or the anonymous ones slip through.
+    if (isDefault && !DEFAULT_CONTRACT_DECL_TYPES.has(declaration.type)) {
       return undefined;
     }
 
@@ -252,8 +265,12 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
     switch (nodeType) {
       case 'function_declaration':
       case 'generator_function_declaration':
+      case 'function':
+      case 'function_expression':
+      case 'arrow_function':
         return 'function';
       case 'class_declaration':
+      case 'class':
         return 'class';
       case 'interface_declaration':
         return 'interface';
