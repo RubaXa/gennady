@@ -213,7 +213,9 @@
         red: it is neither PASS nor a failure to diagnose. Split it exactly as above: a missing gate SCRIPT
         is case (a) — `FAIL` unless the graph names a different open ticket that owns building it — while
         no runner / no network / a crash before pass-fail is case (b) — `ENVIRONMENT_GATE_UNAVAILABLE`
-        unconditionally. Do NOT patch the environment yourself to make it run (that is the worker's
+        unconditionally. A `sdd-verify` line carrying BOTH `⛔` AND `обязательная ступень профиля` IS
+        case (a) — the profile's own required script is missing or stubbed (execute delegates this
+        verdict here, as the audit is the single owner of the group's `full` run). Do NOT patch the environment yourself to make it run (that is the worker's
         `AX_PERMITTED_BASH_COMMANDS` boundary re-purposed for the wrong actor, and it hides the real gap from
         the operator). Record case (b) as `ENVIRONMENT_GATE_UNAVAILABLE` and let STEP_3 route it (operator
         escalation, per `AX_FINDING_ROUTING`). **PASS is never the verdict when any gate is red OR any gate

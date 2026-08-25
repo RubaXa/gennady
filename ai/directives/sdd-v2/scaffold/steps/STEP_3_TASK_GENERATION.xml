@@ -47,8 +47,18 @@
            `<RequiresVerification>` aliases across the ticket's phases beyond the standard ladder
            (e.g. infra-spec `coverage-command`), group by alias, resolve each unique alias from
            infra-spec Verification Commands (absent → `H_VERIFICATION_COMMAND_MISSING`) — one row
-           per unique alias, Required-by = comma-separated declaring rule IDs. No such alias → the
-           table is written with its header and a single `| — | — |` row, never omitted.
+           per unique alias, Required-by = comma-separated declaring rule IDs.
+        5b. COVERAGE row — every ticket with a `test` phase gets ONE `testcov` row, SCOPED to the
+           ticket's own production Target Files (the files the tests are written to cover), so the
+           threshold is checked against the task's code, not the whole project:
+           `npx gennady testcov --run --min=<threshold> <production Target Files>`, Required-by =
+           `test`. Threshold = 80 by default; use the infra-spec `coverage-command`'s threshold
+           instead only when it names one (never invent a different number). The path arguments are
+           the ticket's PRODUCTION files (from the impl/refactor phases' Target Files), never the
+           `*.test.ts` files. This row runs at STEP_5 of the test phase like any §5 command — that is
+           where coverage is measured and gated, on the code the phase's tests exist for.
+           No alias and no test phase → the table is written with its header and a single `| — | — |`
+           row, never omitted.
         Draft BDD with the mandatory `contract`-level
         typing scenario per contract (`AX_TICKET_HAS_BDD_AND_TESTS`) and, per `AX_E2E_FIRST`, an
         `e2e`-level scenario for the ticket's user-facing path by default — dropping it needs a
@@ -129,10 +139,11 @@
 <Axiom id="AX_EXECUTION_LOG_PLAN_VS_FACT">
       **Scaffolding writes a MINIMAL skeleton; phase-subagent appends event lines as work happens.**
 
-      - **SKELETON** for Round 1 = under `### Round 1 — <date>, initial`, one `#### P<N>` block per phase declared in Phases Overview. Each block contains ONLY the closing lines:
+      - **SKELETON** for Round 1 = under `### Round 1 — <date>, initial`, one `#### P<N>` block per phase declared in Phases Overview. Each block contains ONLY the closing lines — the phase gate `ver` line FIRST (always `sdd-verify --profile <kind>`, run at STEP_5, never resolved from §Verification), then one `ver` line per EXTRA §Verification command (there is no `sdd-verify` row there — §Verification holds only extras beyond the gate, so a phase with no extras has just the gate `ver` line), then `DONE`:
         ```
         #### P<N>
-        - [ ] `<ts>` ver <cmd from Verification> → <pass|fail> exit=<code>
+        - [ ] `<ts>` ver npx gennady sdd-verify --profile <kind> → <pass|fail> exit=<code>
+        - [ ] `<ts>` ver <each extra §Verification command> → <pass|fail> exit=<code>   (0+, omit when none)
         - [ ] `<ts>` DONE
         ```
         No pre-filled `file` / `test` / `cov` / `rules` / `recon` / `sync` lines — those were noise (duplicated Target Files / Test Scenario Coverage / Rules: list / git diff). Event lines (`intro` / `decision` / `tried` / `discovery` / `insight` / `verified` / `BLOCKED`) are APPENDED by the phase agent only when the event actually happens.

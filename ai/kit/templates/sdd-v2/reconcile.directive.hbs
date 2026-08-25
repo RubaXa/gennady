@@ -172,9 +172,10 @@
       <Goal>Verify mechanically AND semantically (`AX_VERIFY_AT_END`).</Goal>
       <Action>
         This full tail applies to the DEFAULT (non-trivial) path only — the trivial fix class already
-        exited at STEP_2B with its own light gate (typecheck + tests of the touched files). Reaching
-        STEP_7 means the path is non-trivial: run this full tail once here, never as an extra "to be
-        safe" pass layered on top of an already-closed trivial path.
+        exited at STEP_2B, where it ran the SAME phase gate every phase runs, `sdd-verify --profile
+        code` (never a hand-assembled "typecheck + touched tests" substitute). Reaching STEP_7 means
+        the path is non-trivial: run this full tail once here, never as an extra "to be safe" pass
+        layered on top of an already-closed trivial path.
 
         `sdd-check` + `sdd-verify --profile full` must pass (else `H_VERIFICATION_FAIL`). Then — because
         the group-audit hook was skipped in the batch (`AX_DISPATCH_VIA_BATCH`) — restore the safety net

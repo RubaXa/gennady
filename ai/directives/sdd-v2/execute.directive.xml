@@ -483,23 +483,21 @@
           stands) — skip straight to STEP_8_SUMMARY for this ticket's cycle, then the next pickable ticket
           in the queue. A ticket's own dependents INSIDE this same group already unblocked on ITS closure,
           independent of the group's audit state.
-        - WHEN `due` (every ticket in the group is `[x] DONE`) -> BEFORE dispatching the audit, run
-          `npx gennady sdd-verify --profile full` over the group: mechanical cleanliness precedes
-          semantic review. `yagni` diffs against HEAD, and this execute flow never commits mid-run —
-          by the time a group closes, the working tree still carries the diff of the WHOLE spec's
-          changes, exactly the base `yagni` needs; this is deliberate, not a gap to "optimize" by
-          inserting an interim commit. RED -> dispatch the fix through the ordinary fix-flow (fresh
-          worker session per `AX_WORKER_SESSION_REUSE`); a `yagni` finding specifically routes to a
-          waiver decision per `AX_USAGE_WAIVER_DISCIPLINE`, logged into the ticket that owns the
-          flagged entity. Re-run `sdd-verify --profile full` until GREEN — EXCEPT one verdict no
-          worker can fix: a line carrying BOTH the `⛔` marker AND the words
-          `обязательная ступень профиля` — the gate name sits between them, so neither half alone is
-          the signal (`⛔` also opens the ordinary `лестница остановлена на «type-check»` halt line,
-          which IS an ordinary fixable failure and must go through the fix-flow as usual). The
-          two-part match means: the project's own verification scripts are missing or stubbed. That is infrastructure, not code: no fix-flow dispatch can turn it
-          green, so looping on it never terminates. Surface it to the operator instead — name the
-          missing/stubbed scripts and the infra tickets that own them (`sdd-task` → `GATE_QUEUE`),
-          leave the group open, and stop; the audit does not dispatch on an unverified group. Only THEN dispatch ONE
+        - WHEN `due` (every ticket in the group is `[x] DONE`) -> dispatch the audit directly; do NOT
+          run `sdd-verify --profile full` here first. The audit is the SINGLE owner of the group's
+          `full` run — its own STEP_1 runs the mechanical gate (`sdd-verify --profile full` + `gennady
+          lint --spec` + `testcov`) as its first act, so a pre-audit run here would pay for the whole
+          ladder (types, coverage-tests, lint, format, yagni) twice over an unchanged tree. `yagni`'s
+          HEAD-diff base is intact: this execute flow never commits mid-run, so the working tree at
+          audit dispatch still carries the WHOLE spec's diff — exactly what `yagni` needs; this is
+          deliberate, not a gap to "optimize" with an interim commit. The audit's STEP_1 handles a RED
+          mechanical verdict, including the one no fix-flow can turn green — a line carrying BOTH the
+          `⛔` marker AND the words `обязательная ступень профиля` (the project's own verification
+          scripts are missing or stubbed; the gate name sits between the two, and `⛔` alone also
+          opens the ordinary fixable `лестница остановлена на «type-check»` halt line): that is
+          infrastructure, not code, so the audit returns it as an environment escalation, and the
+          orchestrator surfaces the missing/stubbed scripts and their infra tickets (`sdd-task` →
+          `GATE_QUEUE`) to the operator, leaves the group open, and stops. Dispatch ONE
           audit-subagent on a cheap model (audit is mechanical verification): read
           `ai/directives/sdd-v2/audit.directive.xml`; group = the id `sdd-task --audit-group` just
           confirmed `due`; mode per-group. Its own STEP_1 resolves the full scope itself
