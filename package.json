@@ -33,6 +33,7 @@
   "files": [
     "dist/**/*",
     "README.md",
+    "docs/**/*",
     "ai/**/*",
     "cli/cmd/orient/README.md",
     "services/agent-run/engines/opencode/readonly.config.json",
