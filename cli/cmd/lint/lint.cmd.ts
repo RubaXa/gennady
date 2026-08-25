@@ -325,8 +325,7 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
 
   // #region START_INVENTORY_REVERSE — invariant: declared-but-unimplemented sweep over the whole scanned dir; vacuous inventory skips the sweep
   if (inventoryReverseDir && declaredInventory !== null && specPath && !inventoryVacuous) {
-    // Resolve every `Deferred Implementation: <taskId>` marker against the v2 ticket graph — a
-    // deferral is honored only when a real, open, same-scope ticket owns it (else it is drift).
+    // Resolve each `Deferred Implementation` marker against the v2 ticket graph (real, active, same-scope, owning ticket — else drift).
     const rawDeferred = specRawContent
       ? parseDeferredEntities(specRawContent)
       : new Map<string, string>();
@@ -335,7 +334,17 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
       const tickets = collectTicketRefs(projectRoot);
       const specScope = specScopeFromPath(specPath);
       for (const [name, taskId] of rawDeferred) {
-        deferredEntities.set(name, checkDeferral(taskId, tickets, specScope));
+        // Read the cited ticket's body once so checkDeferral can verify ownership while staying pure.
+        const ref = tickets.find((t) => t.taskId === taskId);
+        let ticketBody: string | null = null;
+        if (ref?.file) {
+          try {
+            ticketBody = readFileSync(ref.file, 'utf-8');
+          } catch {
+            ticketBody = null;
+          }
+        }
+        deferredEntities.set(name, checkDeferral(taskId, tickets, specScope, name, ticketBody));
       }
     }
     const reverseResult: ReverseSweepResult = reverseUnimplemented(

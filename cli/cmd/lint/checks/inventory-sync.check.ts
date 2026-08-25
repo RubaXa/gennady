@@ -6,6 +6,7 @@ import { extractSection } from '../../../../shared/sdd/section.ts';
 import {
   ERR_CLI_LINT_INVENTORY_UNDECLARED,
   ERR_CLI_LINT_INVENTORY_UNIMPLEMENTED,
+  ERR_CLI_LINT_INVENTORY_STALE_DEFERRAL,
   type LintError,
 } from '../lint.types.ts';
 
@@ -95,16 +96,19 @@ const ACTIVE_STATUS = /\b(?:TODO|IN[\s_-]?PROGRESS|WIP|DOING)\b/i;
 // A deferral is a promise that a LATER ticket will actively build the entity, so the owner must be
 // able to keep it: it must exist, be ACTIVE (only TODO / IN_PROGRESS — DONE is already past,
 // CANCELLED never will, BLOCKED is stalled with no promised date; a missing status can't be
-// confirmed active), and — when the spec's scope is known — belong to that scope (a missing or
-// foreign scope is drift).
+// confirmed active), belong to the spec's scope when that scope is known (a missing or foreign
+// scope is drift), and — crucially — actually OWN the entity: its own text must NAME it, else any
+// active same-scope ticket could be cited for any entity.
 /**
- * @purpose Resolve a `Deferred Implementation` marker against the ticket graph — valid only for a
- *   real, ACTIVE, same-scope owner (rule in the note above).
- * @invariant `tickets` is read for only three fields (Task-ID, status, scope) — a `TicketRef` subset,
- *   so `collectTicketRefs()` output passes through unchanged.
+ * @purpose Resolve a `Deferred Implementation` marker — valid only for a real, ACTIVE, same-scope
+ *   ticket that OWNS the entity (rule in the note above).
+ * @invariant Pure — `tickets` gives Task-ID/status/scope; the owning ticket's body arrives as
+ *   `ticketBody`, never read here.
  * @param taskId The cited Task-ID.
  * @param tickets The project's ticket refs (Task-ID, status, and owning scope).
  * @param specScope The spec's own scope (derived from its path); '' when the path carries none.
+ * @param entityName The declared entity this marker defers — the owning ticket must name it.
+ * @param ticketBody The cited ticket's own text (for the ownership check), or null when unreadable.
  * @returns The check verdict; `valid: false` carries a `reason`.
  */
 export function checkDeferral(
@@ -114,7 +118,9 @@ export function checkDeferral(
     status?: string | null;
     scope?: string | null;
   }>,
-  specScope: string
+  specScope: string,
+  entityName: string,
+  ticketBody: string | null
 ): DeferralCheck {
   const ref = tickets.find((t) => t.taskId === taskId);
   if (!ref) {
@@ -151,6 +157,17 @@ export function checkDeferral(
       };
     }
   }
+  // Ownership: the ticket must NAME the entity in its own text (whole-word), else it is only an
+  // active same-scope ticket, not the proven owner of THIS deferred entity. Unreadable body → fail
+  // closed. Kept inline (no one-use helper) so the whole rule lives in this one pure function.
+  const escaped = entityName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  if (!ticketBody || !new RegExp(`\\b${escaped}\\b`).test(ticketBody)) {
+    return {
+      taskId,
+      valid: false,
+      reason: `тикет ${taskId} не упоминает сущность '${entityName}' — активный same-scope тикет есть, но не подтверждено, что именно он владеет отложенной сущностью`,
+    };
+  }
   return { taskId, valid: true };
 }
 
@@ -165,7 +182,7 @@ export type ReverseSweepResult = {
 /**
  * @purpose Flag inventory entities declared in the spec but exported by no scanned file — planned-but-unbuilt / renamed-away — unless deferred to a later ticket.
  * @invariant SOUND only when `implemented` is the union over the WHOLE module — the opt-in `--inventory-reverse` flag is the guard against partial sweeps. Pure.
- * @invariant An entity present in `deferredEntities` never yields an error — it is reported via `deferred` instead, regardless of `implemented`.
+ * @invariant Valid-deferred + unimplemented → `deferred`. Implemented + still-marked → STALE error. Invalid deferral on a missing entity → drift error.
  * @param declared Entity names from the module spec inventory.
  * @param implemented Union of exported names across every scanned file.
  * @param specPath Module spec path — error location for the operator.
@@ -182,9 +199,25 @@ export function reverseUnimplemented(
   const deferred: DeferredInventoryEntity[] = [];
 
   for (const name of declared) {
-    if (implemented.has(name)) continue;
-
     const deferral = deferredEntities.get(name);
+
+    if (implemented.has(name)) {
+      // An entity that is ALREADY built but still carries a `Deferred Implementation` marker — the
+      // marker is stale (there is nothing left to defer). Flag it so the spec gets cleaned, rather
+      // than leaving a dead deferral that a future reader trusts.
+      if (deferral) {
+        errors.push({
+          file: specPath,
+          line: 1,
+          col: 1,
+          severity: 'error' as const,
+          code: ERR_CLI_LINT_INVENTORY_STALE_DEFERRAL,
+          message: `Inventory entity \`${name}\` is implemented, yet still marked \`Deferred Implementation: ${deferral.taskId}\`. A built entity is not deferred — remove the stale marker from the inventory row.`,
+        });
+      }
+      continue;
+    }
+
     if (deferral) {
       if (deferral.valid) {
         deferred.push({ name, taskId: deferral.taskId });

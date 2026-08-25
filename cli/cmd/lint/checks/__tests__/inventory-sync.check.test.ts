@@ -82,7 +82,7 @@ describe('reverseUnimplemented', () => {
     assert.deepStrictEqual(result.deferred, []);
   });
 
-  it('an implemented entity with a deferred marker is neither an error nor reported deferred', () => {
+  it('an IMPLEMENTED entity that still carries a deferred marker is a STALE deferral (error)', () => {
     const deferredEntities = new Map([['AlreadyBuilt', validDeferral('TSK-1')]]);
     const result = reverseUnimplemented(
       ['AlreadyBuilt'],
@@ -90,6 +90,17 @@ describe('reverseUnimplemented', () => {
       'spec.md',
       deferredEntities
     );
+    assert.strictEqual(result.errors.length, 1);
+    assert.strictEqual(result.errors[0]?.code, 'ERR_CLI_LINT_INVENTORY_STALE_DEFERRAL');
+    assert.match(
+      result.errors[0]?.message ?? '',
+      /implemented.*Deferred|stale|устарел|remove the stale/i
+    );
+    assert.deepStrictEqual(result.deferred, []);
+  });
+
+  it('an implemented entity with NO marker is clean — no error, not deferred', () => {
+    const result = reverseUnimplemented(['Built'], new Set(['Built']), 'spec.md');
     assert.deepStrictEqual(result.errors, []);
     assert.deepStrictEqual(result.deferred, []);
   });
@@ -114,62 +125,90 @@ describe('checkDeferral', () => {
     { taskId: 'TSK-16', status: '', scope: 'cli' },
     { taskId: 'TSK-17', status: '[ ] TODO', scope: null },
   ];
+  // The status/scope tests don't care about ownership — pass a body that names the entity so the
+  // ownership check always passes and only status/scope gate.
+  const owns = (id: string, scope: string) =>
+    checkDeferral(id, tickets, scope, 'Foo', 'builds `Foo`');
 
-  it('valid when the ticket exists, is ACTIVE (TODO), and owns the spec scope', () => {
-    assert.deepStrictEqual(checkDeferral('TSK-10', tickets, 'cli'), {
-      taskId: 'TSK-10',
-      valid: true,
-    });
+  it('valid when the ticket is ACTIVE (TODO), in scope, and names the entity', () => {
+    assert.deepStrictEqual(owns('TSK-10', 'cli'), { taskId: 'TSK-10', valid: true });
   });
 
   it('valid for an IN_PROGRESS owner — an active ticket is building the entity', () => {
-    assert.strictEqual(checkDeferral('TSK-13', tickets, 'cli').valid, true);
+    assert.strictEqual(owns('TSK-13', 'cli').valid, true);
   });
 
   it('invalid for a BLOCKED owner — stalled, not actively building (strict: only TODO/IN_PROGRESS)', () => {
-    const r = checkDeferral('TSK-14', tickets, 'cli');
+    const r = owns('TSK-14', 'cli');
     assert.strictEqual(r.valid, false);
     assert.match(r.reason ?? '', /не в активном статусе/);
   });
 
   it('invalid when the ticket does not exist', () => {
-    const r = checkDeferral('TSK-99', tickets, 'cli');
+    const r = owns('TSK-99', 'cli');
     assert.strictEqual(r.valid, false);
     assert.match(r.reason ?? '', /не найден/);
   });
 
   it('invalid when the ticket is DONE — a completed ticket cannot build a future entity', () => {
-    const r = checkDeferral('TSK-11', tickets, 'cli');
+    const r = owns('TSK-11', 'cli');
     assert.strictEqual(r.valid, false);
     assert.match(r.reason ?? '', /не в активном статусе/);
   });
 
   it('invalid when the ticket is CANCELLED — it will never build the entity', () => {
-    const r = checkDeferral('TSK-15', tickets, 'cli');
+    const r = owns('TSK-15', 'cli');
     assert.strictEqual(r.valid, false);
     assert.match(r.reason ?? '', /не в активном статусе/);
   });
 
   it('invalid when the status is unrecognized/empty — cannot confirm the ticket is active', () => {
-    const r = checkDeferral('TSK-16', tickets, 'cli');
+    const r = owns('TSK-16', 'cli');
     assert.strictEqual(r.valid, false);
     assert.match(r.reason ?? '', /не распознан статус/);
   });
 
   it('invalid when the ticket belongs to a different scope', () => {
-    const r = checkDeferral('TSK-12', tickets, 'cli');
+    const r = owns('TSK-12', 'cli');
     assert.strictEqual(r.valid, false);
     assert.match(r.reason ?? '', /скоуп/);
   });
 
   it('invalid when the spec scope is known but the ticket declares none', () => {
-    const r = checkDeferral('TSK-17', tickets, 'cli');
+    const r = owns('TSK-17', 'cli');
     assert.strictEqual(r.valid, false);
     assert.match(r.reason ?? '', /не указан скоуп/);
   });
 
   it('scope check is skipped when the spec scope is unknown, but status still gates', () => {
-    assert.strictEqual(checkDeferral('TSK-17', tickets, '').valid, true);
-    assert.strictEqual(checkDeferral('TSK-11', tickets, '').valid, false);
+    assert.strictEqual(owns('TSK-17', '').valid, true);
+    assert.strictEqual(owns('TSK-11', '').valid, false);
+  });
+
+  // #4a — ownership: an active, in-scope ticket that does NOT name the entity is not the owner.
+  it('invalid when the owner ticket does not NAME the entity (only active + in-scope)', () => {
+    const r = checkDeferral('TSK-10', tickets, 'cli', 'Foo', 'this ticket builds something else');
+    assert.strictEqual(r.valid, false);
+    assert.match(r.reason ?? '', /не упоминает сущность/);
+  });
+
+  it('invalid when the ticket body is unreadable (null) — fail closed', () => {
+    const r = checkDeferral('TSK-10', tickets, 'cli', 'Foo', null);
+    assert.strictEqual(r.valid, false);
+    assert.match(r.reason ?? '', /не упоминает сущность/);
+  });
+
+  it('ownership is whole-word — `Foo` is not owned by a ticket that only names `FooBar`', () => {
+    const r = checkDeferral('TSK-10', tickets, 'cli', 'Foo', 'implements FooBar only');
+    assert.strictEqual(r.valid, false);
+    assert.match(r.reason ?? '', /не упоминает сущность/);
+  });
+
+  it('valid ownership — the ticket names the exact entity', () => {
+    assert.strictEqual(
+      checkDeferral('TSK-10', tickets, 'cli', 'FooService', '- Target Files: src/FooService.ts')
+        .valid,
+      true
+    );
   });
 });

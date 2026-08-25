@@ -166,6 +166,10 @@ export const ERR_CLI_LINT_INVENTORY_UNDECLARED = 'ERR_CLI_LINT_INVENTORY_UNDECLA
 /** @purpose An inventory entity declared in the spec is exported by no scanned file — planned-but-unbuilt. */
 export const ERR_CLI_LINT_INVENTORY_UNIMPLEMENTED = 'ERR_CLI_LINT_INVENTORY_UNIMPLEMENTED' as const;
 
+/** @purpose An implemented inventory entity still carries a `Deferred Implementation` marker — the deferral is stale. */
+export const ERR_CLI_LINT_INVENTORY_STALE_DEFERRAL =
+  'ERR_CLI_LINT_INVENTORY_STALE_DEFERRAL' as const;
+
 /** @purpose A `-`-prefixed CLI arg matches no registered flag — typo or unsupported option. */
 export const ERR_CLI_LINT_UNKNOWN_FLAG = 'ERR_CLI_LINT_UNKNOWN_FLAG' as const;
 
