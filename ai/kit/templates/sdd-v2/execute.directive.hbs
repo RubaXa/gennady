@@ -187,7 +187,7 @@
         progress line per transition (`ORCHESTRATOR_PROGRESS_FORMAT`); the dispatch-stage line for
         THIS phase MUST also carry a session clause naming which path `AX_WORKER_SESSION_REUSE` just
         took — `session: reused <kind>@<spec>` when redispatched into an open session, or `session:
-        fresh (<reason: first|kind-switch|fix-fresh-eyes|spec-switch|mapping-lost|env-no-continuation>)`
+        fresh (<reason: first|kind-switch|fix-fresh-eyes|spec-switch|group-switch|mapping-lost|env-no-continuation>)`
         when a fresh worker was raised instead — one line, always present, so a live run makes
         whether reuse is actually happening observable rather than assumed.
 
