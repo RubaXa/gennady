@@ -60,31 +60,31 @@ _(Обновляется по мере развития проекта; аген
 
 Открывай нужный файл и следуй инструкциям в зависимости от твоей задачи.
 
-| Задача агента                                                    | Читать                                                                                                                                     |
-| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Задача агента                                                     | Читать                                                                                                                                     |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | SDD-воркфлоу: как использовать скиллы, в какой последовательности | [docs/sdd-flow.md](docs/sdd-flow.md)                                                                                                       |
-| Справочник SDD-скиллов (`@sdd-*`)                                | [ai/skills/README.md](ai/skills/README.md)                                                                                                 |
+| Справочник SDD-скиллов (`@sdd-*`)                                 | [ai/skills/README.md](ai/skills/README.md)                                                                                                 |
 | Справочник SDD-директив                                           | [ai/directives/sdd/README.md](ai/directives/sdd/README.md)                                                                                 |
-| Логирование в коде (console, logger)                             | [ai/flow/code/logging.md](ai/flow/code/logging.md)                                                                                         |
-| Ошибки: throw, rethrow, формат Error                             | [ai/flow/code/errors.md](ai/flow/code/errors.md)                                                                                           |
-| TypeScript: enum, private, конструктор                           | [ai/flow/code/typescript.md](ai/flow/code/typescript.md)                                                                                   |
-| JSDoc-контракты (экспорт, `@implements`, `@see`, порядок тегов)  | [ai/agents/agent-typescript-devgen.xml#AXIOM_JSDOC_AS_CONTRACTS](ai/agents/agent-typescript-devgen.xml#AXIOM_JSDOC_AS_CONTRACTS)           |
-| Добавление/изменение CLI-команды (help, switch, таблица команд)  | §4 ниже + [cli/AGENTS.md](cli/AGENTS.md)                                                                                                   |
-| TypeScript native patterns (enum, namespace, constructor params) | [ai/agents/agent-typescript-devgen.xml#AXIOM_TS_NATIVE_PATTERNS](ai/agents/agent-typescript-devgen.xml#AXIOM_TS_NATIVE_PATTERNS)           |
-| Teleological naming (intent over pattern)                        | [ai/agents/agent-typescript-devgen.xml#AXIOM_TELEOLOGICAL_NAMING](ai/agents/agent-typescript-devgen.xml#AXIOM_TELEOLOGICAL_NAMING)         |
-| Error handling with anchors & cause chaining                     | [ai/agents/agent-typescript-devgen.xml#AXIOM_ERROR_WITH_ANCHORS](ai/agents/agent-typescript-devgen.xml#AXIOM_ERROR_WITH_ANCHORS)           |
-| Structured logging (logger, state transitions)                   | [ai/agents/agent-typescript-devgen.xml#AXIOM_LOG_DRIVEN_DEVELOPMENT](ai/agents/agent-typescript-devgen.xml#AXIOM_LOG_DRIVEN_DEVELOPMENT)   |
-| Structural anchors (START*/END* blocks)                          | [ai/agents/agent-typescript-devgen.xml#AXIOM_STRUCTURAL_ANCHORS](ai/agents/agent-typescript-devgen.xml#AXIOM_STRUCTURAL_ANCHORS)           |
-| AI-to-AI comments (why over what)                                | [ai/agents/agent-typescript-devgen.xml#AXIOM_AI_TO_AI_COMMENTS](ai/agents/agent-typescript-devgen.xml#AXIOM_AI_TO_AI_COMMENTS)             |
-| JSDoc contracts (tag order, purpose, consumer)                   | [ai/agents/agent-typescript-devgen.xml#AXIOM_JSDOC_AS_CONTRACTS](ai/agents/agent-typescript-devgen.xml#AXIOM_JSDOC_AS_CONTRACTS)           |
-| Macro anchors & comments example                                 | [ai/agents/agent-typescript-devgen.xml#EX_MACRO_ANCHORS_AND_COMMENTS](ai/agents/agent-typescript-devgen.xml#EX_MACRO_ANCHORS_AND_COMMENTS) |
-| JSDoc data type example                                          | [ai/agents/agent-typescript-devgen.xml#EX_JSDOC_DATA_TYPE](ai/agents/agent-typescript-devgen.xml#EX_JSDOC_DATA_TYPE)                       |
-| JSDoc service contract example                                   | [ai/agents/agent-typescript-devgen.xml#EX_JSDOC_SERVICE_CONTRACT](ai/agents/agent-typescript-devgen.xml#EX_JSDOC_SERVICE_CONTRACT)         |
-| JSDoc implementation example                                     | [ai/agents/agent-typescript-devgen.xml#EX_JSDOC_IMPLEMENTATION](ai/agents/agent-typescript-devgen.xml#EX_JSDOC_IMPLEMENTATION)             |
-| Minimal logging example                                          | [ai/agents/agent-typescript-devgen.xml#EX_LOGGING_MINIMAL](ai/agents/agent-typescript-devgen.xml#EX_LOGGING_MINIMAL)                       |
-| Logging branch decision example                                  | [ai/agents/agent-typescript-devgen.xml#EX_LOGGING_BRANCH_DECISION](ai/agents/agent-typescript-devgen.xml#EX_LOGGING_BRANCH_DECISION)       |
-| Expressive terseness example                                     | [ai/agents/agent-typescript-devgen.xml#EX_EXPRESSIVE_TERSENESS](ai/agents/agent-typescript-devgen.xml#EX_EXPRESSIVE_TERSENESS)             |
-| Trace prefix definition                                          | [ai/agents/agent-typescript-devgen.xml#DEF_TRACE_PREFIX](ai/agents/agent-typescript-devgen.xml#DEF_TRACE_PREFIX)                           |
+| Логирование в коде (console, logger)                              | [ai/flow/code/logging.md](ai/flow/code/logging.md)                                                                                         |
+| Ошибки: throw, rethrow, формат Error                              | [ai/flow/code/errors.md](ai/flow/code/errors.md)                                                                                           |
+| TypeScript: enum, private, конструктор                            | [ai/flow/code/typescript.md](ai/flow/code/typescript.md)                                                                                   |
+| JSDoc-контракты (экспорт, `@implements`, `@see`, порядок тегов)   | [ai/agents/agent-typescript-devgen.xml#AXIOM_JSDOC_AS_CONTRACTS](ai/agents/agent-typescript-devgen.xml#AXIOM_JSDOC_AS_CONTRACTS)           |
+| Добавление/изменение CLI-команды (help, switch, таблица команд)   | §4 ниже + [cli/AGENTS.md](cli/AGENTS.md)                                                                                                   |
+| TypeScript native patterns (enum, namespace, constructor params)  | [ai/agents/agent-typescript-devgen.xml#AXIOM_TS_NATIVE_PATTERNS](ai/agents/agent-typescript-devgen.xml#AXIOM_TS_NATIVE_PATTERNS)           |
+| Teleological naming (intent over pattern)                         | [ai/agents/agent-typescript-devgen.xml#AXIOM_TELEOLOGICAL_NAMING](ai/agents/agent-typescript-devgen.xml#AXIOM_TELEOLOGICAL_NAMING)         |
+| Error handling with anchors & cause chaining                      | [ai/agents/agent-typescript-devgen.xml#AXIOM_ERROR_WITH_ANCHORS](ai/agents/agent-typescript-devgen.xml#AXIOM_ERROR_WITH_ANCHORS)           |
+| Structured logging (logger, state transitions)                    | [ai/agents/agent-typescript-devgen.xml#AXIOM_LOG_DRIVEN_DEVELOPMENT](ai/agents/agent-typescript-devgen.xml#AXIOM_LOG_DRIVEN_DEVELOPMENT)   |
+| Structural anchors (START*/END* blocks)                           | [ai/agents/agent-typescript-devgen.xml#AXIOM_STRUCTURAL_ANCHORS](ai/agents/agent-typescript-devgen.xml#AXIOM_STRUCTURAL_ANCHORS)           |
+| AI-to-AI comments (why over what)                                 | [ai/agents/agent-typescript-devgen.xml#AXIOM_AI_TO_AI_COMMENTS](ai/agents/agent-typescript-devgen.xml#AXIOM_AI_TO_AI_COMMENTS)             |
+| JSDoc contracts (tag order, purpose, consumer)                    | [ai/agents/agent-typescript-devgen.xml#AXIOM_JSDOC_AS_CONTRACTS](ai/agents/agent-typescript-devgen.xml#AXIOM_JSDOC_AS_CONTRACTS)           |
+| Macro anchors & comments example                                  | [ai/agents/agent-typescript-devgen.xml#EX_MACRO_ANCHORS_AND_COMMENTS](ai/agents/agent-typescript-devgen.xml#EX_MACRO_ANCHORS_AND_COMMENTS) |
+| JSDoc data type example                                           | [ai/agents/agent-typescript-devgen.xml#EX_JSDOC_DATA_TYPE](ai/agents/agent-typescript-devgen.xml#EX_JSDOC_DATA_TYPE)                       |
+| JSDoc service contract example                                    | [ai/agents/agent-typescript-devgen.xml#EX_JSDOC_SERVICE_CONTRACT](ai/agents/agent-typescript-devgen.xml#EX_JSDOC_SERVICE_CONTRACT)         |
+| JSDoc implementation example                                      | [ai/agents/agent-typescript-devgen.xml#EX_JSDOC_IMPLEMENTATION](ai/agents/agent-typescript-devgen.xml#EX_JSDOC_IMPLEMENTATION)             |
+| Minimal logging example                                           | [ai/agents/agent-typescript-devgen.xml#EX_LOGGING_MINIMAL](ai/agents/agent-typescript-devgen.xml#EX_LOGGING_MINIMAL)                       |
+| Logging branch decision example                                   | [ai/agents/agent-typescript-devgen.xml#EX_LOGGING_BRANCH_DECISION](ai/agents/agent-typescript-devgen.xml#EX_LOGGING_BRANCH_DECISION)       |
+| Expressive terseness example                                      | [ai/agents/agent-typescript-devgen.xml#EX_EXPRESSIVE_TERSENESS](ai/agents/agent-typescript-devgen.xml#EX_EXPRESSIVE_TERSENESS)             |
+| Trace prefix definition                                           | [ai/agents/agent-typescript-devgen.xml#DEF_TRACE_PREFIX](ai/agents/agent-typescript-devgen.xml#DEF_TRACE_PREFIX)                           |
 
 ---
 

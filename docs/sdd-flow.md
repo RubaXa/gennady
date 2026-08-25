@@ -1,7 +1,7 @@
 # 🧭 SDD Flow Guide
 
 > **Spec-Driven Development** — воркфлоу, в котором код рождается из спецификаций: сперва утверждаем
-> *что* и *как*, потом исполняем по маленьким тикетам, и каждый тикет проходит независимый аудит.
+> _что_ и _как_, потом исполняем по маленьким тикетам, и каждый тикет проходит независимый аудит.
 > Всё, что вы пишете, фиксируется: спека → тикет → код → трекер, — и проверяется механически.
 
 Этот гайд — единственная точка входа в SDD. Он читается по сценариям: новичок стартует с раздела 1,
@@ -27,15 +27,15 @@
 
 ### 🧭 Как выбрать скилл
 
-| Задача | Скилл |
-| --- | --- |
-| Инициализировать/обновить портал проекта (`specs/README.md`) | `@sdd-setup` |
-| Создать новый scope (спеки ещё нет) | `@sdd-discover` |
-| Доработать / изменить существующую спеку scope (refine/pivot) | `@sdd-continue` |
-| Выполнить одну задачу | `@sdd-execute TSK-NN` |
-| Выполнить всю очередь | `@sdd-execute-batch` |
-| Проверить целостность дерева | `@sdd-check` |
-| Аудит завершённой задачи | `@sdd-audit TSK-NN` |
+| Задача                                                        | Скилл                 |
+| ------------------------------------------------------------- | --------------------- |
+| Инициализировать/обновить портал проекта (`specs/README.md`)  | `@sdd-setup`          |
+| Создать новый scope (спеки ещё нет)                           | `@sdd-discover`       |
+| Доработать / изменить существующую спеку scope (refine/pivot) | `@sdd-continue`       |
+| Выполнить одну задачу                                         | `@sdd-execute TSK-NN` |
+| Выполнить всю очередь                                         | `@sdd-execute-batch`  |
+| Проверить целостность дерева                                  | `@sdd-check`          |
+| Аудит завершённой задачи                                      | `@sdd-audit TSK-NN`   |
 
 > 💡 `sdd-continue` работает **только** с существующей спекой scope (`greenfield` в нём запрещён),
 > а портал проекта обслуживает исключительно `sdd-setup`. Для новой спеки — `sdd-discover`.
@@ -58,6 +58,7 @@ npx gennady sync-skills   # навыки: ai/skills/ → .claude/skills/
 ---
 
 <a id="sec-0"></a>
+
 ## 🗺️ 0. Карта потока
 
 ```mermaid
@@ -75,40 +76,42 @@ flowchart LR
 
 **Легенда:** 🧩 — скилл (активируется `@sdd-*`) · 📜 — директива (читается агентом из `ai/directives/sdd/`) · 📦 — артефакт (файл в репозитории).
 
-| Фаза | Скиллы | Артефакт на выходе |
-| --- | --- | --- |
-| 🧱 Setup | `@sdd-setup` | `specs/README.md` — портал (Vision + Scope Graph) |
-| 🔭 Discovery | `@sdd-discover`, `@sdd-continue`, `@sdd-infra` | `specs/<scope>/<scope>.spec.md` — спека скоупа |
-| 🧩 Design | `@sdd-module-decomposition`, `@sdd-critic` | `specs/<scope>/<module>/<module>.spec.md` — модульные спеки |
-| 🗂️ Planning | `@sdd-scaffold` | `tasks/README.md`, `tasks/<scope>/README.md`, тикеты `*.task-NN.md` |
-| ⚙️ Execution | `@sdd-execute`, `@sdd-execute-batch` | изменения в Target Files + `## 7. Execution Log` внутри тикета |
-| 🔍 Audit | `@sdd-audit`, `@sdd-check` | вердикт + findings (роутятся в правки спеки/тикета/кода) |
-| 🔁 Iteration | `@sdd-continue`, `@sdd-fix` | обновлённые спеки, переоткрытые тикеты |
+| Фаза         | Скиллы                                         | Артефакт на выходе                                                  |
+| ------------ | ---------------------------------------------- | ------------------------------------------------------------------- |
+| 🧱 Setup     | `@sdd-setup`                                   | `specs/README.md` — портал (Vision + Scope Graph)                   |
+| 🔭 Discovery | `@sdd-discover`, `@sdd-continue`, `@sdd-infra` | `specs/<scope>/<scope>.spec.md` — спека скоупа                      |
+| 🧩 Design    | `@sdd-module-decomposition`, `@sdd-critic`     | `specs/<scope>/<module>/<module>.spec.md` — модульные спеки         |
+| 🗂️ Planning  | `@sdd-scaffold`                                | `tasks/README.md`, `tasks/<scope>/README.md`, тикеты `*.task-NN.md` |
+| ⚙️ Execution | `@sdd-execute`, `@sdd-execute-batch`           | изменения в Target Files + `## 7. Execution Log` внутри тикета      |
+| 🔍 Audit     | `@sdd-audit`, `@sdd-check`                     | вердикт + findings (роутятся в правки спеки/тикета/кода)            |
+| 🔁 Iteration | `@sdd-continue`, `@sdd-fix`                    | обновлённые спеки, переоткрытые тикеты                              |
 
 **Глоссарий (кратко):**
 
-| Термин | Что это |
-| --- | --- |
-| **Scope** | Архитектурно когерентная единица со своим runtime / стеком / deployment'ом |
-| **scope-type** | `infrastructure` · `contracts` · `library` · `product` |
-| **Spec** | Живой документ скоупа/модуля (`specs/**`) — источник истины (`AX_SPEC_IS_SOLE_SOURCE`) |
-| **Ticket** | Тикет задачи: Meta, Phases Overview, тела фаз, BDD, Verification, Coverage, Execution Log |
-| **Phase** | Атомарная единица работы внутри тикета: `bootstrap | impl | test | config | doc | refactor | fix` |
-| **Round** | Цикл `open → DONE` в Execution Log; старые раунды никогда не редактируются |
-| **Handoff** | Типизированный payload между фазами: `artifacts / decisions / open` |
-| **Audit** | Фаза 5: fresh-eyes проверка выравнивания спека ↔ тикет ↔ код |
-| **phases_to_fix** | Результат FAIL-аудита: маппинг finding → фаза, чьи Target Files содержат проблему |
-| **Blocker** | Неразрешённый блокер в Execution Log — останавливает выполнение (`✋ PAUSED`, не FAIL) |
+| Термин            | Что это                                                                                   |
+| ----------------- | ----------------------------------------------------------------------------------------- | ---- | ---- | ------ | --- | -------- | ---- |
+| **Scope**         | Архитектурно когерентная единица со своим runtime / стеком / deployment'ом                |
+| **scope-type**    | `infrastructure` · `contracts` · `library` · `product`                                    |
+| **Spec**          | Живой документ скоупа/модуля (`specs/**`) — источник истины (`AX_SPEC_IS_SOLE_SOURCE`)    |
+| **Ticket**        | Тикет задачи: Meta, Phases Overview, тела фаз, BDD, Verification, Coverage, Execution Log |
+| **Phase**         | Атомарная единица работы внутри тикета: `bootstrap                                        | impl | test | config | doc | refactor | fix` |
+| **Round**         | Цикл `open → DONE` в Execution Log; старые раунды никогда не редактируются                |
+| **Handoff**       | Типизированный payload между фазами: `artifacts / decisions / open`                       |
+| **Audit**         | Фаза 5: fresh-eyes проверка выравнивания спека ↔ тикет ↔ код                              |
+| **phases_to_fix** | Результат FAIL-аудита: маппинг finding → фаза, чьи Target Files содержат проблему         |
+| **Blocker**       | Неразрешённый блокер в Execution Log — останавливает выполнение (`✋ PAUSED`, не FAIL)    |
 
 ---
 
 <a id="sec-1"></a>
+
 ## 🚀 1. Новичок
 
 > Если вы ещё не работали с SDD — начинайте здесь. Оба сценария не требуют никаких знаний о
 > директивах: скилл сам читает директиву и «активируется как она».
 
 <a id="scenario-1"></a>
+
 ### Сценарий 1 — «Выполни следующую задачу»
 
 **Когда:** в проекте уже есть `tasks/` и незакрытые тикеты. · **Вход:** ничего · **Выход:** выполненный тикет + синхронизированные трекеры.
@@ -144,6 +147,7 @@ flowchart TD
 > блокера в Execution Log строкой `✅ RESOLVED <ref>` и запустить `@sdd-execute` снова.
 
 <a id="scenario-2"></a>
+
 ### Сценарий 2 — «Проект с нуля до первого выполненного тикета»
 
 **Когда:** новый репозиторий, ничего нет. · **Выход:** портал, спека, очередь тикетов и первый `[x] DONE`.
@@ -173,12 +177,14 @@ flowchart LR
 ---
 
 <a id="sec-2"></a>
+
 ## 🧭 2. Повседневные сценарии
 
 > Основная работа: спроектировать скоуп, доработать его, выполнить очередь. Диаграммы тут — для
 > понимания порядка, сам скилл делает всё сам.
 
 <a id="scenario-3"></a>
+
 ### Сценарий 3 — Спроектировать новый scope
 
 **Когда:** есть идея фичи, спеки нет. · **Вход:** имя scope + scope-type · **Выход:** `specs/<scope>/<scope>.spec.md`.
@@ -207,6 +213,7 @@ sequenceDiagram
 > superseded в Decision Log).
 
 <a id="scenario-4"></a>
+
 ### Сценарий 4 — Продолжить / изменить существующую спеку
 
 **Когда:** спека уже есть, нужно добавить требования/контракты или заменить архитектуру. · **Выход:** обновлённая спека.
@@ -226,6 +233,7 @@ sequenceDiagram
 **Директива:** `discovery.directive.xml` (режимы refine/pivot).
 
 <a id="scenario-5"></a>
+
 ### Сценарий 5 — Выполнить всю очередь (batch)
 
 **Когда:** много pickable-тикетов, хочется прогнать разом с учётом зависимостей. · **Выход:** батч-саммари `✅ N · 🔄 R · ❌ F`.
@@ -264,9 +272,11 @@ flowchart TD
 ---
 
 <a id="sec-3"></a>
+
 ## 🎓 3. Продвинутые сценарии
 
 <a id="scenario-6"></a>
+
 <details>
 <summary>🔍 Сценарий 6 — Критика артефактов перед исполнением</summary>
 
@@ -290,6 +300,7 @@ flowchart TD
 </details>
 
 <a id="scenario-7"></a>
+
 <details>
 <summary>🔧 Сценарий 7 — Аудит и починка после ревью</summary>
 
@@ -312,6 +323,7 @@ flowchart LR
 </details>
 
 <a id="scenario-8"></a>
+
 <details>
 <summary>🏗️ Сценарий 8 — Инфраструктурные scope и Go-роутинг</summary>
 
@@ -333,6 +345,7 @@ flowchart LR
 </details>
 
 <a id="scenario-9"></a>
+
 <details>
 <summary>🔍 Сценарий 9 — Целостность дерева (sdd-check)</summary>
 
@@ -352,101 +365,107 @@ flowchart LR
 ---
 
 <a id="sec-4"></a>
+
 ## 📚 4. Справочники
 
 <a id="ref-skills"></a>
+
 <details>
 <summary>🧩 4.1 Скиллы (12)</summary>
 
-| Скилл | Фаза | Инвокация | Активирует |
-| --- | --- | --- | --- |
-| `sdd-setup` | discover | `@sdd-setup создай проект` | `setup.directive.xml` |
-| `sdd-discover` | discover | `@sdd-discover спроектируй scope <name>` | `discovery.directive.xml` |
-| `sdd-infra` | discover | `@sdd-infra спроектируй infra-<stack>` | `discovery.directive.xml` (→ `sdd-infra-golang` для Go) |
-| `sdd-module-decomposition` | design | `@sdd-module-decomposition разбей <name> на модули` | `module-decomposition.directive.xml` |
-| `sdd-critic` | design | `@sdd-critic проверь спеку/таск <path>` | `critic.directive.xml` + `critic-protocol.xml` |
-| `sdd-scaffold` | plan | `@sdd-scaffold сгенерируй таски` | `scaffold.directive.xml` |
-| `sdd-execute` | execute | `@sdd-execute TSK-NN` / `next` / `pick one` | `phase-execution-protocol.xml` + `audit.directive.xml` |
-| `sdd-execute-batch` | execute | `@sdd-execute-batch выполни всю очередь` | те же |
-| `sdd-audit` | verify | `@sdd-audit TSK-NN` | `audit.directive.xml` |
-| `sdd-check` | verify | `@sdd-check` | — (read-only, через `sdd scan`/`check`) |
-| `sdd-continue` | iterate | `@sdd-continue добавь/измени <X> в <scope>` | `discovery.directive.xml` (refine/pivot) |
-| `sdd-fix` | iterate | `@sdd-fix исправь <findings>` | `fix.directive.xml` |
+| Скилл                      | Фаза     | Инвокация                                           | Активирует                                              |
+| -------------------------- | -------- | --------------------------------------------------- | ------------------------------------------------------- |
+| `sdd-setup`                | discover | `@sdd-setup создай проект`                          | `setup.directive.xml`                                   |
+| `sdd-discover`             | discover | `@sdd-discover спроектируй scope <name>`            | `discovery.directive.xml`                               |
+| `sdd-infra`                | discover | `@sdd-infra спроектируй infra-<stack>`              | `discovery.directive.xml` (→ `sdd-infra-golang` для Go) |
+| `sdd-module-decomposition` | design   | `@sdd-module-decomposition разбей <name> на модули` | `module-decomposition.directive.xml`                    |
+| `sdd-critic`               | design   | `@sdd-critic проверь спеку/таск <path>`             | `critic.directive.xml` + `critic-protocol.xml`          |
+| `sdd-scaffold`             | plan     | `@sdd-scaffold сгенерируй таски`                    | `scaffold.directive.xml`                                |
+| `sdd-execute`              | execute  | `@sdd-execute TSK-NN` / `next` / `pick one`         | `phase-execution-protocol.xml` + `audit.directive.xml`  |
+| `sdd-execute-batch`        | execute  | `@sdd-execute-batch выполни всю очередь`            | те же                                                   |
+| `sdd-audit`                | verify   | `@sdd-audit TSK-NN`                                 | `audit.directive.xml`                                   |
+| `sdd-check`                | verify   | `@sdd-check`                                        | — (read-only, через `sdd scan`/`check`)                 |
+| `sdd-continue`             | iterate  | `@sdd-continue добавь/измени <X> в <scope>`         | `discovery.directive.xml` (refine/pivot)                |
+| `sdd-fix`                  | iterate  | `@sdd-fix исправь <findings>`                       | `fix.directive.xml`                                     |
 
 Деплой в проект: сначала `npx gennady sync` (директивы), затем `npx gennady sync-skills` (навыки, из `ai/skills/` → `.claude/skills/`; dev-пути нормализуются в продуктовые).
 
 </details>
 
 <a id="ref-directives"></a>
+
 <details>
 <summary>📜 4.2 Директивы (12)</summary>
 
 Все — в `ai/directives/sdd/`.
 
-| Директива | Что делает |
-| --- | --- |
-| `setup.directive.xml` | Портал: Vision, Scope Graph, Scopes table; sole owner `specs/README.md` |
-| `discovery.directive.xml` | Спека скоупа по scope-type; режимы greenfield/refine/pivot |
+| Директива                            | Что делает                                                                                 |
+| ------------------------------------ | ------------------------------------------------------------------------------------------ |
+| `setup.directive.xml`                | Портал: Vision, Scope Graph, Scopes table; sole owner `specs/README.md`                    |
+| `discovery.directive.xml`            | Спека скоупа по scope-type; режимы greenfield/refine/pivot                                 |
 | `module-decomposition.directive.xml` | Модульные спеки: инвентарь сущностей, публичные поверхности, DbC (Ports/Adapters/Services) |
-| `scaffold.directive.xml` | Тикеты из спек: DAG, Cascade Table, BDD, Phases Overview, per-phase Rules |
-| `phase-execution-protocol.xml` | Одна фаза одного тикета: scope-lock по Target Files, Handoff, blocker-эскалация |
-| `audit.directive.xml` | Выравнивание спека ↔ тикет ↔ код; `phases_to_fix`, роутинг findings |
-| `critic.directive.xml` | Оркестратор многораундовой критики (min 3 / max 5 раундов) |
-| `critic-protocol.xml` | Изолированный критик-сабагент: read-only, только артефакт + родительская спека |
-| `fix.directive.xml` | Классификация findings → план → фиксы → reopen → execute → verify |
-| `interview-protocol.xml` | Движок интервью оператора: coverage map, один вопрос за сообщение |
-| `visual-vocabulary.xml` | Cheat-sheet диаграмм: ASCII в чате / mermaid в спеках (`<details>`) |
-| `svelte-ui-discovery.directive.xml` | Компонент-спека `.ui.spec.md` из Figma SVG (component-level) |
+| `scaffold.directive.xml`             | Тикеты из спек: DAG, Cascade Table, BDD, Phases Overview, per-phase Rules                  |
+| `phase-execution-protocol.xml`       | Одна фаза одного тикета: scope-lock по Target Files, Handoff, blocker-эскалация            |
+| `audit.directive.xml`                | Выравнивание спека ↔ тикет ↔ код; `phases_to_fix`, роутинг findings                        |
+| `critic.directive.xml`               | Оркестратор многораундовой критики (min 3 / max 5 раундов)                                 |
+| `critic-protocol.xml`                | Изолированный критик-сабагент: read-only, только артефакт + родительская спека             |
+| `fix.directive.xml`                  | Классификация findings → план → фиксы → reopen → execute → verify                          |
+| `interview-protocol.xml`             | Движок интервью оператора: coverage map, один вопрос за сообщение                          |
+| `visual-vocabulary.xml`              | Cheat-sheet диаграмм: ASCII в чате / mermaid в спеках (`<details>`)                        |
+| `svelte-ui-discovery.directive.xml`  | Компонент-спека `.ui.spec.md` из Figma SVG (component-level)                               |
 
 Правила, на которые ссылаются фазы: `ai/directives/coding/` · `testing/` · `infra/` · `architecture/`.
 
 </details>
 
 <a id="ref-artifacts"></a>
+
 <details>
 <summary>📦 4.3 Артефакты — что где создаётся</summary>
 
-| Артефакт | Создаёт | Путь |
-| --- | --- | --- |
-| Портал проекта | `sdd-setup` | `specs/README.md` |
-| Спека скоупа | `sdd-discover` / `sdd-continue` | `specs/<scope>/<scope>.spec.md` |
-| Модульная спека | `sdd-module-decomposition` | `specs/<scope>/<module>/<module>.spec.md` |
-| Компонент-спека | `svelte-ui-discovery` | `specs/<scope>/components/<name>.ui.spec.md` |
-| Проектный трекер | `sdd-scaffold` | `tasks/README.md` (Tracker Index, High-Level DAG) |
-| Трекер скоупа | `sdd-scaffold` | `tasks/<scope>/README.md` (Cascade Table, Tracker) |
-| Тикет | `sdd-scaffold` | `tasks/<scope>/<scope>.task-NN.md` |
-| Execution Log | фазы `sdd-execute` | секция `## 7.` внутри тикета |
-| Audit Rounds | `sdd-audit` | секция `## Audit Rounds` внутри тикета |
-| Decision Log | `sdd-discover` | секция в спеке (`D-NNN`) |
+| Артефакт         | Создаёт                         | Путь                                               |
+| ---------------- | ------------------------------- | -------------------------------------------------- |
+| Портал проекта   | `sdd-setup`                     | `specs/README.md`                                  |
+| Спека скоупа     | `sdd-discover` / `sdd-continue` | `specs/<scope>/<scope>.spec.md`                    |
+| Модульная спека  | `sdd-module-decomposition`      | `specs/<scope>/<module>/<module>.spec.md`          |
+| Компонент-спека  | `svelte-ui-discovery`           | `specs/<scope>/components/<name>.ui.spec.md`       |
+| Проектный трекер | `sdd-scaffold`                  | `tasks/README.md` (Tracker Index, High-Level DAG)  |
+| Трекер скоупа    | `sdd-scaffold`                  | `tasks/<scope>/README.md` (Cascade Table, Tracker) |
+| Тикет            | `sdd-scaffold`                  | `tasks/<scope>/<scope>.task-NN.md`                 |
+| Execution Log    | фазы `sdd-execute`              | секция `## 7.` внутри тикета                       |
+| Audit Rounds     | `sdd-audit`                     | секция `## Audit Rounds` внутри тикета             |
+| Decision Log     | `sdd-discover`                  | секция в спеке (`D-NNN`)                           |
 
 </details>
 
 <a id="ref-cli"></a>
+
 <details>
 <summary>🛠️ 4.4 CLI-поддержка</summary>
 
-| Команда | Зачем |
-| --- | --- |
-| `npx gennady sync` | **Обязателен первым:** деплой директив `ai/directives/` из пакета → проект (есть `--dry-run`, выбор поддиректории) |
+| Команда                   | Зачем                                                                                                                   |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `npx gennady sync`        | **Обязателен первым:** деплой директив `ai/directives/` из пакета → проект (есть `--dry-run`, выбор поддиректории)      |
 | `npx gennady sync-skills` | Деплой навыков `ai/skills/` → `.claude/skills/` (есть `--dry-run`, выбор скилла). Без `sync` навыки не найдут директивы |
-| `npx gennady verify` | Верификационные гейты стека (используется фазовым `sdd verify`) |
-| `npx gennady lint` | DBC AST-контракты, file-header, anchors |
-| `npx gennady orient` | Карта проекта / навигация по файлам и задачам |
+| `npx gennady verify`      | Верификационные гейты стека (используется фазовым `sdd verify`)                                                         |
+| `npx gennady lint`        | DBC AST-контракты, file-header, anchors                                                                                 |
+| `npx gennady orient`      | Карта проекта / навигация по файлам и задачам                                                                           |
 
 Скрипты-хелперы скилла `sdd-execute`: `sdd help · extract · lint · verify · check-blockers · scan · check` — единый диспатчер `ai/skills/sdd-execute/scripts/sdd`.
 
 </details>
 
 <a id="ref-docs"></a>
+
 <details>
 <summary>📖 4.5 Связанные документы</summary>
 
-| Документ | Что это |
-| --- | --- |
-| [`ai/skills/README.md`](../ai/skills/README.md) | Справочник скиллов (типовые сценарии вызова) |
-| [`ai/directives/sdd/README.md`](../ai/directives/sdd/README.md) | Справочник директив (поток + таблицы) |
-| [`specs/ai-skills/ai-skills.spec.md`](../specs/ai-skills/ai-skills.spec.md) | Спека библиотеки навыков |
-| [`specs/ai-skills/sdd-skills/sdd-skills.spec.md`](../specs/ai-skills/sdd-skills/sdd-skills.spec.md) | Спека модуля SDD-скиллов |
-| [`AGENTS.md`](../AGENTS.md) | Роутер по директивам и правилам для агентов |
+| Документ                                                                                            | Что это                                      |
+| --------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| [`ai/skills/README.md`](../ai/skills/README.md)                                                     | Справочник скиллов (типовые сценарии вызова) |
+| [`ai/directives/sdd/README.md`](../ai/directives/sdd/README.md)                                     | Справочник директив (поток + таблицы)        |
+| [`specs/ai-skills/ai-skills.spec.md`](../specs/ai-skills/ai-skills.spec.md)                         | Спека библиотеки навыков                     |
+| [`specs/ai-skills/sdd-skills/sdd-skills.spec.md`](../specs/ai-skills/sdd-skills/sdd-skills.spec.md) | Спека модуля SDD-скиллов                     |
+| [`AGENTS.md`](../AGENTS.md)                                                                         | Роутер по директивам и правилам для агентов  |
 
 </details>
