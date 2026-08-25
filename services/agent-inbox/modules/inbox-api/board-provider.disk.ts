@@ -17,9 +17,12 @@ import type {
   ArtifactContent,
   FixTaskCopyResult,
 } from './types.ts';
-import { parseVcsUrl } from '../../../vcs-client/parse-vcs-url.ts';
 import { isSafeArtifactPath } from './routers/artifact.router.ts';
-import { mrsRoot, mrReportsDir } from '../../../../cli/cmd/inbox/_core/logic/state-paths.logic.ts';
+import {
+  canonicalMrRef,
+  mrsRoot,
+  mrReportsDir,
+} from '../../../../cli/cmd/inbox/_core/logic/state-paths.logic.ts';
 
 /** @purpose Fields read from `report/context.json` — real shape observed on disk (ref/title/webUrl/author/reviewers/description/branches/updatedAt); every field is optional because older reports may lack it. */
 type DiskContext = {
@@ -136,12 +139,8 @@ function readDiskContext(stateDir: string, ref: string): DiskContext | null {
 
 /** @purpose Convert legacy host-prefixed refs to the same `project!iid` identity as live sync. */
 function canonicalDiskRef(ref: string, context: DiskContext | null): string {
-  const parsed = context?.webUrl ? parseVcsUrl(context.webUrl) : null;
-  if (parsed) return `${parsed.repository}!${parsed.iid}`;
-  const [project, iid] = ref.split('!');
-  const segments = project.split('/');
-  if (segments.length > 1 && segments[0].includes('.')) segments.shift();
-  return `${segments.join('/')}!${iid}`;
+  void context;
+  return canonicalMrRef(ref);
 }
 
 /**
@@ -212,20 +211,20 @@ export class BoardProviderDisk extends BoardProviderPort {
    * @returns `project!iid`, falling back to `mrId` unchanged when it isn't a recognizable VCS URL.
    */
   protected _normalizeRef(mrId: string): string {
-    const parsed = parseVcsUrl(mrId);
-    return parsed ? `${parsed.repository}!${parsed.iid}` : mrId;
+    return canonicalMrRef(mrId);
   }
 
   /**
-   * @purpose Resolve canonical refs to either their current directory or a legacy host-prefixed directory.
+   * @purpose Resolve canonical refs to the report directory that actually carries the review.
+   * @invariant Prefers the canonical directory when it holds `review.json`; otherwise falls back to
+   *   a legacy host-prefixed directory that holds `review.json`.
    * @param ref Canonical MR ref to resolve against disk layout.
    * @returns Stored ref matching `ref` — `ref` itself or a legacy host-prefixed directory name.
    */
   protected _storedRef(ref: string): string {
-    if (existsSync(mrReportsDir(this._stateDir, ref))) return ref;
+    if (existsSync(join(mrReportsDir(this._stateDir, ref), 'review.json'))) return ref;
     for (const storedRef of listReviewedRefs(this._stateDir)) {
-      const context = readDiskContext(this._stateDir, storedRef);
-      if (canonicalDiskRef(storedRef, context) === ref) return storedRef;
+      if (canonicalMrRef(storedRef) === canonicalMrRef(ref)) return storedRef;
     }
     return ref;
   }

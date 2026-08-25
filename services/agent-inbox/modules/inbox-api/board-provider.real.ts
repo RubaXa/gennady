@@ -22,7 +22,11 @@ import type { VcsActionableMr } from '../../../vcs-client/entities/vcs-actionabl
 import { parseVcsUrl } from '../../../vcs-client/parse-vcs-url.ts';
 import { isValidMrUrl } from '../inbox-core/vcs-validators.ts';
 import { isSafeArtifactPath } from './routers/artifact.router.ts';
-import { mrsRoot, mrReportsDir } from '../../../../cli/cmd/inbox/_core/logic/state-paths.logic.ts';
+import {
+  mrsRoot,
+  mrReportsDir,
+  canonicalMrRef,
+} from '../../../../cli/cmd/inbox/_core/logic/state-paths.logic.ts';
 import { decodeMrKey } from './board-provider.disk.ts';
 import { AuditLog, type AuditEntry } from '../inbox-core/audit-log.ts';
 import {
@@ -156,22 +160,25 @@ export class BoardProviderReal extends BoardProviderPort {
   }
 
   /**
-   * @purpose Resolve a canonical ref to a legacy host-prefixed report directory when necessary.
+   * @purpose Resolve a canonical ref to the report directory that actually carries the review.
+   * @invariant Prefers canonical `review.json`, falling back to a legacy host-prefixed review directory.
    * @param mrId Canonical MR id (`group/project!iid` or URL) to resolve.
    * @returns Stored ref — the canonical ref or a legacy host-prefixed directory name.
    */
   protected _artifactStoredRef(mrId: string): string {
-    const parsed = parseVcsUrl(mrId);
-    const ref = parsed ? `${parsed.repository}!${parsed.iid}` : mrId;
-    if (existsSync(mrReportsDir(this._stateDir, ref))) return ref;
+    const canonical = canonicalMrRef(mrId);
+    if (existsSync(join(mrReportsDir(this._stateDir, canonical), 'review.json'))) return canonical;
 
     const root = mrsRoot(this._stateDir);
-    if (!existsSync(root)) return ref;
-    for (const key of readdirSync(root)) {
-      const candidate = decodeMrKey(key);
-      if (candidate && (candidate === ref || candidate.endsWith(`/${ref}`))) return candidate;
+    if (existsSync(root)) {
+      for (const key of readdirSync(root)) {
+        const candidate = decodeMrKey(key);
+        if (candidate && canonicalMrRef(candidate) === canonical) {
+          if (existsSync(join(root, key, 'report', 'review.json'))) return candidate;
+        }
+      }
     }
-    return ref;
+    return canonical;
   }
 
   /**

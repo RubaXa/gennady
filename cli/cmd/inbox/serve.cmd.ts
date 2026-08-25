@@ -5,6 +5,7 @@
 // @tasks: TSK-115, TSK-121, TSK-122, TSK-184, TSK-190
 
 import { style } from '../../../shared/common/style.ts';
+import yoctoSpinner from 'yocto-spinner';
 import { existsSync, readFileSync, readdirSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
@@ -389,14 +390,25 @@ async function run(): Promise<number> {
       }
     }
 
-    const result = await bootstrap({
-      mocks,
-      mockOpencode,
-      port,
-      autoReview,
-      autoReviewQuietMinutes,
-      opencodeModel,
-    });
+    const spinner = yoctoSpinner({ text: 'Запуск agent-inbox…', handleSignals: false }).start();
+    let result: Awaited<ReturnType<typeof bootstrap>>;
+    try {
+      result = await bootstrap({
+        mocks,
+        mockOpencode,
+        port,
+        autoReview,
+        autoReviewQuietMinutes,
+        opencodeModel,
+        onProgress: (phase) => {
+          spinner.text = phase;
+        },
+      });
+    } catch (cause) {
+      spinner.error('Запуск не удался');
+      throw cause;
+    }
+    spinner.success('Запуск завершён');
 
     // #endregion END_BOOTSTRAP
 

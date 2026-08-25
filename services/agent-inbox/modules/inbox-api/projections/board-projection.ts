@@ -4,6 +4,7 @@
 // @tasks: TSK-158, TSK-162
 
 import { logger } from '#logger';
+import { canonicalMrRef } from '../../../../../cli/cmd/inbox/_core/logic/state-paths.logic.ts';
 import type { SyncSnapshot } from '../../inbox-vcs/sync.ts';
 import type { AttentionState } from '../../inbox-vcs/attention.ts';
 import type { EventJournal } from '../../inbox-core/event-journal.ts';
@@ -38,15 +39,13 @@ export type BoardProjectionResult = {
  */
 export class BoardProjection {
   /**
-   * @purpose Collapse legacy host-prefixed journal identities into the live `project!iid` key.
-   * @param ref Ref possibly in a legacy host-prefixed form.
+   * @purpose Collapse legacy host-prefixed or web-URL journal identities into the canonical
+   *   `project!iid` key via the single shared normalizer.
+   * @param ref Ref possibly in a legacy host-prefixed / web-URL form.
    * @returns Canonical `project!iid` key.
    */
   protected _canonicalRef(ref: string): string {
-    const [project, iid] = ref.split('!');
-    const segments = project.replace(/^https?:\/\//, '').split('/');
-    if (segments.length > 1 && segments[0].includes('.')) segments.shift();
-    return `${segments.join('/')}!${iid}`;
+    return canonicalMrRef(ref);
   }
   /** @purpose Last sync snapshots — populated by caller after each twoTierSync */
   protected _snapshots: SyncSnapshot[];

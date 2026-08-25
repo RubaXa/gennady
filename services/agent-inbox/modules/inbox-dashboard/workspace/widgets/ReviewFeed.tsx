@@ -134,36 +134,6 @@ function FindingsWidget(props: {
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      onAction('post');
-                    }}
-                    title="Постить"
-                    aria-label="Постить находку"
-                  >
-                    📮
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onAction('edit');
-                    }}
-                    title="Править"
-                    aria-label="Редактировать находку"
-                  >
-                    ✏️
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onAction('delete');
-                    }}
-                    title="Удалить"
-                    aria-label="Удалить находку"
-                  >
-                    🗑
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
                       onAction('deepen');
                     }}
                     title="Углубить"
@@ -189,8 +159,8 @@ function FindingsWidget(props: {
 
       {items.length > 0 && (
         <div className="v2-finding-footer">
-          <button onClick={() => onAction('post_selected')}>
-            📮 Постить выбранные ({items.length})
+          <button onClick={() => onAction('post_findings')}>
+            📮 Постить замечания ({items.length})
           </button>
           <button onClick={() => onAction('fact_check')}>✅ Фактчек всех</button>
         </div>

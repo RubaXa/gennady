@@ -10,6 +10,7 @@ import { ReviewArtifactPost, ReviewArtifactViewer } from '../artifacts/ReviewArt
 import { ReviewChatPanel } from '../chat/ReviewChatPanel.tsx';
 import { ReviewHandoffControl } from '../handoff/ReviewHandoffControl.tsx';
 import { MarkdownContent } from '../markdown/MarkdownContent.tsx';
+import { DebugLogButton } from '../components/DebugLogButton.tsx';
 
 // #region START_ATTENTION_LABEL — invariant: attention emoji is a semantic token not a display string
 const ATTENTION_LABEL: Record<string, string> = {
@@ -94,6 +95,7 @@ export function MrWorkspace(props: {
                 <button onClick={props.onBack} aria-label="Вернуться на доску">
                   ← Доска
                 </button>
+                <DebugLogButton />
                 <p className="v2-kicker">
                   {resolveRoleGlyph(card?.myRole ?? null)} {props.mrRef}
                   {card?.author ? ` · ${card.author}` : ''}

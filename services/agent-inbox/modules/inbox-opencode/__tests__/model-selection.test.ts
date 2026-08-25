@@ -3,7 +3,11 @@
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { DEFAULT_AGENT_INBOX_MODEL, parseOpenCodeModel } from '../model-selection.ts';
+import {
+  DEFAULT_AGENT_INBOX_MODEL,
+  DEFAULT_AGENT_INBOX_FAST_MODEL,
+  parseOpenCodeModel,
+} from '../model-selection.ts';
 
 describe('Agent Inbox OpenCode model selection', () => {
   it('pins the corporate LLM proxy instead of inheriting the global OpenCode default', () => {
@@ -11,6 +15,14 @@ describe('Agent Inbox OpenCode model selection', () => {
     assert.deepStrictEqual(parseOpenCodeModel(DEFAULT_AGENT_INBOX_MODEL), {
       providerID: 'llm-proxy',
       modelID: 'deepseek-v4-pro',
+    });
+  });
+
+  it('separates the fast-tier default from the review model', () => {
+    assert.strictEqual(DEFAULT_AGENT_INBOX_FAST_MODEL, 'llm-proxy/deepseek-v4-flash');
+    assert.deepStrictEqual(parseOpenCodeModel(DEFAULT_AGENT_INBOX_FAST_MODEL), {
+      providerID: 'llm-proxy',
+      modelID: 'deepseek-v4-flash',
     });
   });
 

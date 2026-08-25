@@ -321,6 +321,17 @@ export class TaskRegistry {
       priority: PRIORITY_TIERS.user,
     });
 
+    // Post findings — operator-triggered effect-like action. The operator's explicit button click
+    // IS the decision, so there is no externalRef gate (unlike effect_*, which awaits one).
+    this._addType({
+      name: 'post_findings',
+      parallelWith: [],
+      exclusiveWith: [ALL_EFFECTS],
+      dependsOn: [],
+      sessionPolicy: 'engine',
+      priority: PRIORITY_TIERS.user,
+    });
+
     // Effects — strictly sequential, gated by operator decision
     this._addType({
       name: 'effect_*',
@@ -372,7 +383,7 @@ export class TaskRegistry {
       this._types.get(name) ??
       (name.startsWith('track_') ? this._types.get('track_*') : undefined) ??
       (name.startsWith('lens_') ? this._types.get('lens_*') : undefined) ??
-      (name.startsWith('effect_') ? this._types.get('effect_*') : undefined);
+      (name === 'effect' || name.startsWith('effect_') ? this._types.get('effect_*') : undefined);
     if (!resolved) {
       const error = new Error(`[TaskRegistry#resolveType] Unknown task type: ${name}`);
       logger.error(`[TaskRegistry#resolveType] [lookup → not_found] ${name}`, { error });

@@ -22,11 +22,26 @@ const READ_RETRY_DELAYS_MS = [150, 500, 1_500, 3_000] as const;
 /** @purpose Keep transport diagnostics while making bounded read retries observable. */
 function describeCause(cause: unknown): string {
   if (cause instanceof AggregateError) {
-    return cause.errors.map((entry: unknown) => describeCause(entry)).join('; ');
+    const entries = cause.errors
+      .map((entry: unknown) => describeCause(entry))
+      .filter((entry: string) => entry.length > 0);
+    return entries.length > 0 ? entries.join('; ') : cause.message || 'AggregateError';
   }
   if (!(cause instanceof Error)) return String(cause);
   const nested = (cause as Error & { cause?: unknown }).cause;
-  return nested instanceof Error ? `${cause.message}: ${nested.message}` : cause.message;
+  const transport = cause as NodeJS.ErrnoException & {
+    address?: string;
+    port?: number;
+    syscall?: string;
+  };
+  const context = [transport.code, transport.syscall, transport.address, transport.port]
+    .filter((value) => value !== undefined && value !== '')
+    .join(' ');
+  const own =
+    context && !cause.message.includes(context) ? `${cause.message} (${context})` : cause.message;
+  if (nested === undefined) return own;
+  const nestedDescription = describeCause(nested);
+  return nestedDescription ? `${own}: ${nestedDescription}` : own;
 }
 
 /** @purpose Retry idempotent GitLab reads after transient transport/server failures. */

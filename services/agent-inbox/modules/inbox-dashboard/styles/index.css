@@ -2090,6 +2090,57 @@ body {
 .v2-markdown th {
   background: var(--ds-surface-container-high);
 }
+.v2-markdown h4,
+.v2-markdown h5,
+.v2-markdown h6 {
+  margin: 14px 0 6px;
+  line-height: 1.3;
+}
+.v2-markdown h4 {
+  font-size: 14px;
+}
+.v2-markdown h5 {
+  font-size: 13px;
+}
+.v2-markdown h6 {
+  font-size: 12px;
+  color: var(--ds-on-surface-variant);
+}
+.v2-markdown hr {
+  margin: 16px 0;
+  border: 0;
+  border-top: 1px solid var(--ds-border);
+}
+.v2-markdown ul ul,
+.v2-markdown ol ol,
+.v2-markdown ul ol,
+.v2-markdown ol ul {
+  margin: 4px 0;
+}
+.v2-markdown input[type='checkbox'] {
+  margin-right: 6px;
+  vertical-align: middle;
+}
+.v2-markdown .v2-markdown-image {
+  display: inline-block;
+  padding: 2px 8px;
+  border: 1px dashed var(--ds-border);
+  border-radius: 6px;
+  color: var(--ds-on-surface-variant);
+  font-size: 12px;
+}
+.v2-markdown .mermaid {
+  margin: 16px 0;
+  padding: 16px;
+  border: 1px solid var(--ds-border);
+  border-radius: 8px;
+  background: #0c0e10;
+}
+.v2-markdown pre.mermaid {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
 
 .v2-artifact-center {
   margin: 0 0 24px;
@@ -2476,4 +2527,45 @@ body {
   position: sticky;
   top: 0;
   height: 100vh;
+}
+
+/* 🐞 debug-log button (TSK-debug-log) */
+.v2-debug-log {
+  position: relative;
+  display: inline-block;
+}
+.v2-debug-log button {
+  padding: 2px 6px;
+  font-size: 15px;
+  line-height: 1.2;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.v2-debug-log button:hover {
+  background: var(--ds-border, #eee);
+}
+.v2-debug-log button.v2-debug-log-error {
+  color: var(--ds-danger, #cf222e);
+  animation: v2-debug-log-pulse 1s infinite;
+}
+.v2-debug-log-toast {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  z-index: 10;
+  margin-top: 4px;
+  white-space: nowrap;
+  padding: 2px 8px;
+  font-size: 12px;
+  border-radius: 6px;
+  border: 1px solid var(--ds-border, #eee);
+  background: var(--ds-bg, #fff);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+@keyframes v2-debug-log-pulse {
+  50% {
+    opacity: 0.5;
+  }
 }

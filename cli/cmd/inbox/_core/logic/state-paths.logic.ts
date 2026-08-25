@@ -41,7 +41,40 @@ export const reposMapPath = (stateDir: string): string => join(stateDir, 'repos.
 export const REPORTS_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 /**
+ * @purpose Convert supported MR references to the host-free `project!iid` identity used across storage, queues, boards, feeds, and artifacts.
+ * @param ref Any MR reference form.
+ * @returns Canonical `project!iid` key.
+ */
+export function canonicalMrRef(ref: string): string {
+  const trimmed = ref.trim();
+  if (!trimmed) return trimmed;
+
+  // Full web URL — parse pathname to extract repository + iid (host is dropped).
+  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed)) {
+    try {
+      const pathname = new URL(trimmed).pathname.replace(/\/+$/, '');
+      const gitlab = pathname.match(/^\/(.+?)\/-\/merge_requests\/(\d+)$/);
+      if (gitlab) return `${gitlab[1]}!${gitlab[2]}`;
+      const github = pathname.match(/^\/(.+?)\/pull\/(\d+)$/);
+      if (github) return `${github[1]}!${github[2]}`;
+    } catch {
+      /* not a parseable URL — fall through to composite handling */
+    }
+  }
+
+  // Composite `project!iid` (optionally host-prefixed `host/project!iid`).
+  const bang = trimmed.lastIndexOf('!');
+  if (bang === -1) return trimmed;
+  const project = trimmed.slice(0, bang);
+  const iid = trimmed.slice(bang + 1);
+  const segments = project.split('/');
+  if (segments.length > 1 && segments[0].includes('.')) segments.shift();
+  return `${segments.join('/')}!${iid}`;
+}
+
+/**
  * @purpose Stable per-MR directory-name key, flat (`/` → `__`) so it is a single path segment.
+ * @invariant Does not canonicalize; callers normalize first, while disk scans retain raw refs for legacy mapping.
  * @param ref MR reference `group/project!iid`.
  * @returns `<group__proj>-<iid>`.
  */

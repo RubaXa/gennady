@@ -6,7 +6,10 @@ import { logger } from '#logger';
 import { mkdir, readdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
-import { mrReportsDir } from '../../../../cli/cmd/inbox/_core/logic/state-paths.logic.ts';
+import {
+  canonicalMrRef,
+  mrReportsDir,
+} from '../../../../cli/cmd/inbox/_core/logic/state-paths.logic.ts';
 import { CoverageGate, type ToolTrace } from './coverage-gate.ts';
 import { FindingsJournal } from './findings-journal.ts';
 import { GateVerdict, type ReviewJson } from './gate-verdict.ts';
@@ -516,6 +519,7 @@ export class PipelineRuntime {
     taskIds: readonly string[],
     maxPasses = 50
   ): Promise<PipelineCompletion> {
+    mr = canonicalMrRef(mr);
     for (let pass = 0; pass < maxPasses; pass++) {
       await this.drain();
       const tasks = this._completionTasks(mr, taskIds);
@@ -558,6 +562,7 @@ export class PipelineRuntime {
   async readReviewArtifacts(mr: string): Promise<PipelineReviewReadback> {
     if (!this._stateDir)
       throw new Error('[PipelineRuntime#readReviewArtifacts] State directory is unavailable');
+    mr = canonicalMrRef(mr);
     const reportDir = mrReportsDir(this._stateDir, this._reportRef(mr));
     const artifacts: Record<string, unknown> = {};
     for (const name of await readdir(reportDir).catch(() => [] as string[])) {
@@ -619,11 +624,12 @@ export class PipelineRuntime {
    * @returns Queue task ids in materialized DAG order.
    */
   async startReview(mr: string, options: ReviewStartOptions = {}): Promise<string[]> {
+    mr = canonicalMrRef(mr);
     if (!this._controlPlane) return this._materializeReview(mr, options);
     if (!options.controlPlaneInput) {
       throw new Error('[PipelineRuntime#startReview] Exact control-plane input is required');
     }
-    if (options.controlPlaneInput.intent.manifestKey.mr !== mr) {
+    if (canonicalMrRef(options.controlPlaneInput.intent.manifestKey.mr) !== mr) {
       throw new Error(
         '[PipelineRuntime#startReview] Manifest MR identity does not match queue lane'
       );
@@ -1323,6 +1329,10 @@ export class PipelineRuntime {
         });
         return;
       }
+      if (task.type === 'effect' || task.type === 'post_findings') {
+        await this._dispatchPostingEffects(task, reportDir);
+        return;
+      }
       await this._writeArtifact(tasksDir, `${task.type}.result.json`, {
         taskId: task.taskId,
         type: task.type,
@@ -1330,6 +1340,107 @@ export class PipelineRuntime {
         status: 'completed',
       });
     };
+  }
+
+  /**
+   * @purpose Execute the operator's "post findings" effect: read canonical `review.json` findings
+   *   and post each as a top-level 🤖 comment through the permission-gated Effects layer.
+   * @invariant Missing coordinator or findings yields a no-op artifact without crashing the drain loop.
+   * @param task Queue effect node (`effect` | `post_findings`).
+   * @param reportDir Canonical per-MR report directory.
+   * @returns Completion after every finding is posted or degraded.
+   * @sideEffect One GitLab comment per finding; writes `effect.result.json` + a feed widget event.
+   */
+  protected async _dispatchPostingEffects(task: TaskInstance, reportDir: string): Promise<void> {
+    const mr = typeof task.params.mr === 'string' ? task.params.mr : '';
+    const mrRef = this._reportRef(mr);
+    const coordinator = this._controlPlane?.effectCoordinator;
+
+    let findings: Array<Record<string, unknown>> = [];
+    try {
+      const raw = await readFile(join(reportDir, 'review.json'), 'utf8');
+      const review = JSON.parse(raw) as { findings?: Array<Record<string, unknown>> };
+      findings = Array.isArray(review.findings) ? review.findings : [];
+    } catch (cause) {
+      logger.warn('[PipelineRuntime#_dispatchPostingEffects] [reading → no_findings]', {
+        mr,
+        reportDir,
+        error: cause instanceof Error ? cause.message : String(cause),
+      });
+    }
+
+    const outcomes: Array<Record<string, unknown>> = [];
+
+    if (findings.length === 0 || !coordinator) {
+      await this._writeArtifact(reportDir, 'effect.result.json', {
+        taskId: task.taskId,
+        type: task.type,
+        mr: mrRef,
+        status: 'completed',
+        reason: findings.length === 0 ? 'no_findings' : 'coordinator_unavailable',
+        outcomes,
+      });
+      return;
+    }
+
+    for (const finding of findings) {
+      const body = this._formatFindingComment(finding);
+      try {
+        const outcome = await coordinator.postComment(mrRef, body);
+        outcomes.push({ id: finding.id, status: outcome.status, evidence: outcome.evidence });
+        logger.info('[PipelineRuntime#_dispatchPostingEffects] [posting → outcome]', {
+          mr: mrRef,
+          findingId: finding.id,
+          status: outcome.status,
+        });
+      } catch (cause) {
+        outcomes.push({
+          id: finding.id,
+          status: 'failed',
+          error: cause instanceof Error ? cause.message : String(cause),
+        });
+        logger.error('[PipelineRuntime#_dispatchPostingEffects] [posting → failed]', {
+          mr: mrRef,
+          findingId: finding.id,
+          error: cause,
+        });
+      }
+    }
+
+    const postedCount = outcomes.filter((o) => o.status === 'applied').length;
+    await this._writeArtifact(reportDir, 'effect.result.json', {
+      taskId: task.taskId,
+      type: task.type,
+      mr: mrRef,
+      status: 'completed',
+      posted: postedCount,
+      outcomes,
+    });
+
+    await this._journal.append({
+      ts: new Date().toISOString(),
+      mr: mrRef,
+      kind: 'widget_bump',
+      actor: 'pipeline',
+      payload: { event: 'findings_posted', posted: postedCount, total: findings.length },
+    });
+  }
+
+  /**
+   * @purpose Format one review finding as a GitLab comment body — 🤖 prefix, severity badge,
+   *   summary, and a `file:line` anchor (posting-rules AX_POSTING_BOT_PREFIX).
+   * @param finding A `review.json` finding (accepts both `summary` and legacy `message`).
+   * @returns Markdown comment body.
+   */
+  protected _formatFindingComment(finding: Record<string, unknown>): string {
+    const severity = String(finding.severity ?? '').toUpperCase();
+    const summary = String(finding.summary ?? finding.message ?? '').trim();
+    const file = finding.file ? String(finding.file) : '';
+    const line = finding.line != null ? String(finding.line) : '';
+    const location = file ? (line ? `${file}:${line}` : file) : '';
+    const badge = severity ? `**[${severity}]**` : '';
+    const head = `🤖 ${badge}${badge ? ' ' : ''}${summary}`.trim();
+    return location ? `${head}\n\n\`${location}\`` : head;
   }
 
   /**
@@ -1835,19 +1946,12 @@ export class PipelineRuntime {
   }
 
   /**
-   * @purpose Normalize an API web URL to the report path's `project!iid` identity.
+   * @purpose Normalize an API web URL to the report path's canonical `project!iid` identity.
    * @param mr Queue MR reference or GitLab web URL.
    * @returns Canonical report path identity.
    */
   protected _reportRef(mr: string): string {
-    if (mr.includes('!')) {
-      const [project, iid] = mr.split('!');
-      const segments = project.replace(/^https?:\/\//, '').split('/');
-      if (segments.length > 1 && segments[0].includes('.')) segments.shift();
-      return `${segments.join('/')}!${iid}`;
-    }
-    const match = /\/([^/]+(?:\/[^/]+)*)\/-\/merge_requests\/(\d+)$/.exec(mr);
-    return match ? `${match[1]}!${match[2]}` : mr;
+    return canonicalMrRef(mr);
   }
 
   /**

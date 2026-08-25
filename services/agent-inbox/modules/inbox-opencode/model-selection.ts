@@ -4,6 +4,12 @@
 /** @purpose Stable production default independent of the operator's global OpenCode preference. */
 export const DEFAULT_AGENT_INBOX_MODEL = 'llm-proxy/deepseek-v4-pro';
 
+/**
+ * @purpose Fast-tier default for conversational/low-judgment turns (chat, triage, enrich) —
+ * cheaper than the review model and not bound to review-quality judgment.
+ */
+export const DEFAULT_AGENT_INBOX_FAST_MODEL = 'llm-proxy/deepseek-v4-flash';
+
 /** @purpose Provider/model identity accepted by the OpenCode SDK prompt body. */
 export type OpenCodeModelIdentity = {
   /** @purpose Provider identifier (e.g. `llm-proxy`). */

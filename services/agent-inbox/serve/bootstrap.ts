@@ -26,7 +26,7 @@ import { DecisionJournal } from '../modules/inbox-core/decision-journal.ts';
 import { BootReadiness } from '../modules/inbox-core/boot-readiness.ts';
 import { InboxRegistryAccess } from '../modules/inbox-core/inbox-registry.ts';
 import { CapabilityModes } from '../modules/inbox-core/capability-modes.ts';
-import { mrKey } from '../../../cli/cmd/inbox/_core/logic/state-paths.logic.ts';
+import { canonicalMrRef, mrKey } from '../../../cli/cmd/inbox/_core/logic/state-paths.logic.ts';
 import { InMemoryTaskQueue } from '../modules/inbox-queue/task-queue.ts';
 import { TaskRegistry } from '../modules/inbox-queue/task-registry.ts';
 import { SessionRouter } from '../modules/inbox-queue/session-router.ts';
@@ -481,6 +481,11 @@ export type BootstrapConfig = {
    * @returns Completion of the optional observer.
    */
   onBootState?: (state: ReturnType<BootReadiness['snapshot']>) => void | Promise<void>;
+  /**
+   * @purpose Receive startup phase labels for a foreground CLI status indicator during long operations.
+   * @param phase Short localized phase label.
+   */
+  onProgress?: (phase: string) => void;
 };
 
 /** @purpose Return value from bootstrap — all service handles needed to run and stop. */
@@ -564,6 +569,7 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
     );
   }
   const bootReadiness = new BootReadiness();
+  const progress = (phase: string): void => config.onProgress?.(phase);
   // D-305: the diagnostics surface must be observable before configuration and every external
   // phase. It is rebound to the complete runtime only after those dependencies are assembled.
   const server = new HttpServer({
@@ -641,6 +647,7 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
   let configuredAutoReviewQuietMinutes: number | undefined;
   let configLoaded = false;
   let configFailure = false;
+  progress('Загрузка конфигурации…');
 
   if (config.mocks) {
     try {
@@ -698,6 +705,7 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
   let dispatchDiscoveredReviews: (
     snapshots: Awaited<ReturnType<SyncService['twoTierSync']>>
   ) => void = () => undefined;
+  let runManualReview: ((ref: string) => Promise<void>) | undefined;
   // Single-flight slot for the heavy twoTierSync (a real 155-MR sync takes minutes): the
   // initial bootstrap sync and any board-triggered refresh must share one in-flight promise
   // instead of competing for GitLab.
@@ -748,6 +756,7 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
     backgroundVerifier = new BackgroundVerifier(vcsTruth, vcsJournal);
     // First real poll is deliberate: production truth port goes live; active snapshots pre-register the minute verifier.
     await advanceBoot('poll');
+    progress('Синхронизация входящих MR…');
     {
       // Observe the sync to settlement: a bounded wait must never fabricate 'VCS unreachable' for a slow-but-healthy sync (155 MRs ≈ minutes).
       const TIMEOUT_MS = 30_000;
@@ -777,6 +786,9 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
           };
           if (slowWarned) logger.warn('[bootstrap] [twoTierSync → completed]', detail);
           else logger.info('[bootstrap] [twoTierSync → completed]', detail);
+          progress(
+            `Синхронизировано ${snapshots.length} MR (${detail.active} активных, ${Math.round(detail.durationMs / 1000)}с)`
+          );
           return snapshots;
         },
         (cause: unknown) => {
@@ -786,6 +798,7 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
             durationMs: Date.now() - syncStartedAt,
             error,
           });
+          progress('Синхронизация не удалась — продолжение с пустым списком');
           return null;
         }
       );
@@ -809,6 +822,7 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
           '[bootstrap] [twoTierSync → slow] initial sync still running — startup continues; active MRs register when it settles',
           { elapsedMs: TIMEOUT_MS }
         );
+        progress('Синхронизация затянулась — старт продолжается…');
         void trackedSync.then((snapshots) => {
           if (snapshots) {
             registerActive(snapshots);
@@ -895,6 +909,7 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
       // Shared across all OpenCodeReal instances this process creates — see `OpenCodeRealOpts.dispatcher`.
       const opencodeDispatcher = new UndiciAgent({ headersTimeout: 0, bodyTimeout: 0 });
 
+      progress('Подключение к OpenCode…');
       const reusePort = process.env.OPENCODE_PORT ? Number(process.env.OPENCODE_PORT) : null;
       if (reusePort && Number.isFinite(reusePort)) {
         const connected = await retryOpencodeConnect(reusePort, 3, 1000);
@@ -1159,6 +1174,26 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
       }
     };
     dispatchDiscoveredReviews(initialSyncSnapshots);
+
+    runManualReview = async (ref: string): Promise<void> => {
+      const canonical = canonicalMrRef(ref);
+      const svc = syncService;
+      if (!svc) return;
+      const snapshots =
+        initialSyncSnapshots.length > 0 ? initialSyncSnapshots : await runSyncShared(svc);
+      const snapshot = snapshots.find(
+        (s) => canonicalMrRef(`${s.mr.project}!${s.mr.iid}`) === canonical
+      );
+      if (!snapshot) {
+        logger.warn('[bootstrap] [manual-review → unresolved]', { ref });
+        return;
+      }
+      await runMrsOnce({
+        mrs: [snapshot.mr.webUrl],
+        dryRun: false,
+        deps: { pipeline, store: stateStore, vcs: reviewVcs },
+      });
+    };
   }
   // #endregion END_COMPOSE_PIPELINE
 
@@ -1289,6 +1324,7 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
       loadSnapshots: () => runSyncShared(syncServiceForBoard),
       diskCards: () => scanDiskCardSeeds(stateDirForDiskCards),
       autoReviewPolicy: { enabled: config.autoReview !== false, quietMs: autoReviewQuietMs },
+      runReview: runManualReview,
     },
     bootReadiness,
   });

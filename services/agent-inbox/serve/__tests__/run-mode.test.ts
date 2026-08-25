@@ -224,7 +224,7 @@ describe('runMrsOnce pipeline acceptance', () => {
       });
       assert.strictEqual(result.results[0]?.state, 'completed', JSON.stringify(result.results[0]));
       assert.strictEqual(result.results[0]?.runtimeIdentity, context.pipeline.identity);
-      assert.ok(context.queue.state(MR).length > 0);
+      assert.ok(context.queue.state('group/project!184').length > 0);
       const controlEvents = new EventJournal(join(context.root, 'control-events.jsonl')).read();
       assert.deepStrictEqual(
         controlEvents

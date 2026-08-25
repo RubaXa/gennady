@@ -12,6 +12,7 @@ import { ChatTranscript } from '../chat-transcript.ts';
 import { StateStore } from '../../inbox-core/state-store.ts';
 import { SessionPool } from '../../inbox-opencode/session-pool.ts';
 import { OpenCodeMock } from '../../inbox-opencode/opencode.mock.ts';
+import { DEFAULT_AGENT_INBOX_FAST_MODEL } from '../../inbox-opencode/model-selection.ts';
 import type { ChatTurn, ContextChip, MutationProposal } from '../types.ts';
 import { makeTestTmpDir } from '../../inbox-core/test-support/test-tmp.ts';
 
@@ -129,7 +130,7 @@ describe('ChatSession#ask', () => {
     assert.deepStrictEqual(Object.keys(createArgs).sort(), ['directory', 'registration', 'title']);
     assert.deepStrictEqual(Object.keys(promptArgs).sort(), ['system', 'text']);
     assert.strictEqual(runtimeRequest['taskId'], 'chat:group/proj!42');
-    assert.strictEqual(runtimeRequest['model'], 'default');
+    assert.strictEqual(runtimeRequest['model'], DEFAULT_AGENT_INBOX_FAST_MODEL);
   });
 });
 

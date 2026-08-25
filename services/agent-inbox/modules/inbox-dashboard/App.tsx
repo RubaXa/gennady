@@ -146,6 +146,16 @@ export function App() {
 
   const runAction = async (type: string): Promise<void> => {
     if (!mrId) return;
+    if (type === 'prepare_env' || type === 'delta_review') {
+      setPending('запускаю ревью…');
+      try {
+        await dashboardV2Api.review(mrId);
+        setPending('ревью запущено — обновится в ленте');
+      } catch {
+        setPending('✘ ошибка — повторите действие');
+      }
+      return;
+    }
     setPending('создаю задачу…');
     try {
       const result = await dashboardV2Api.task(mrId, type, { mr: mrId });
@@ -190,7 +200,7 @@ export function App() {
   };
 
   const handleReviewDelta = async (ref: string): Promise<void> => {
-    await dashboardV2Api.task(ref, 'delta_review', { mr: ref });
+    await dashboardV2Api.review(ref);
     await refreshBoard();
   };
 

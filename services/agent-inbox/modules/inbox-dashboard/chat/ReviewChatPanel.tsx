@@ -4,6 +4,7 @@
 
 import { useState } from 'react';
 import type { ChatTranscriptTurn, FeedWidget } from '../v2-types.ts';
+import { MarkdownContent } from '../markdown/MarkdownContent.tsx';
 
 /**
  * @purpose Persistent anchored MR conversation: transcript, streaming assistant reply, anchor pill, decision controls.
@@ -56,7 +57,7 @@ export function ReviewChatPanel(props: {
         {props.transcript.map((turn) => (
           <div key={turn.turnId} className={`v2-chat-turn ${turn.role}`}>
             <b>{turn.role === 'operator' ? 'Вы' : 'Агент'}</b>
-            <p>{turn.text}</p>
+            <MarkdownContent source={turn.text} />
           </div>
         ))}
         {props.pendingQuestion && (

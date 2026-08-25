@@ -7,6 +7,10 @@
 import { mkdirSync, writeFileSync, existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join, basename } from 'node:path';
 import { logger } from '#logger';
+import {
+  DEFAULT_AGENT_INBOX_MODEL,
+  DEFAULT_AGENT_INBOX_FAST_MODEL,
+} from '../inbox-opencode/model-selection.ts';
 import type {
   RoleDefinition,
   RoleGraph,
@@ -450,7 +454,7 @@ function _enrichWebResearchRequired(): boolean {
  * @returns The `providerID/modelID` string node_enrich's session should use.
  */
 function _enrichModel(): string {
-  return process.env.AGENT_INBOX_ENRICH_MODEL ?? 'llm-proxy/deepseek-v4-flash';
+  return process.env.AGENT_INBOX_ENRICH_MODEL ?? DEFAULT_AGENT_INBOX_FAST_MODEL;
 }
 
 /**
@@ -827,7 +831,7 @@ ${_synthesisRetryHint(ctx, 'node_enrich')}`;
             restartMax: 2,
             tools: true,
             toolPolicy: REVIEW_LENS_TOOL_POLICY,
-            model: 'llm-proxy/deepseek-v4-pro',
+            model: DEFAULT_AGENT_INBOX_MODEL,
           },
         },
         {
@@ -846,7 +850,7 @@ ${_synthesisRetryHint(ctx, 'node_enrich')}`;
             restartMax: 2,
             tools: true,
             toolPolicy: REVIEW_LENS_TOOL_POLICY,
-            model: 'llm-proxy/deepseek-v4-pro',
+            model: DEFAULT_AGENT_INBOX_MODEL,
           },
         },
         {
@@ -866,7 +870,7 @@ ${_synthesisRetryHint(ctx, 'node_enrich')}`;
             restartMax: 2,
             tools: true,
             toolPolicy: REVIEW_LENS_TOOL_POLICY,
-            model: 'llm-proxy/deepseek-v4-pro',
+            model: DEFAULT_AGENT_INBOX_MODEL,
           },
         },
         // Mandatory contract-quality lens (TSK-contract): scoped by the plan's `contract` track
@@ -890,7 +894,7 @@ ${_synthesisRetryHint(ctx, 'node_enrich')}`;
             restartMax: 2,
             tools: true,
             toolPolicy: REVIEW_LENS_TOOL_POLICY,
-            model: 'llm-proxy/deepseek-v4-pro',
+            model: DEFAULT_AGENT_INBOX_MODEL,
           },
         },
       ],
@@ -939,7 +943,7 @@ ${_synthesisRetryHint(ctx, 'node_enrich')}`;
         restartMax: 2,
         tools: true,
         // TSK-perf: triage is a fast scan (not a full review battery) — flash model.
-        model: 'llm-proxy/deepseek-v4-flash',
+        model: DEFAULT_AGENT_INBOX_FAST_MODEL,
       },
     },
     {
@@ -1010,7 +1014,7 @@ ${_synthesisRetryHint(ctx, 'node_enrich')}`;
         continueMax: 2,
         restartMax: 2,
         tools: true,
-        model: 'llm-proxy/deepseek-v4-pro',
+        model: DEFAULT_AGENT_INBOX_MODEL,
       },
     },
     {
@@ -1096,7 +1100,7 @@ You have NO tools in this turn — none at all, not even read-only ones. Everyth
         // just declared (P5 fix round 2). The final response is structured JSON (`resultSchema`
         // above), never a disk write — no write tool is granted to this session either.
         toolPolicy: SYNTHESIZE_TOOL_POLICY,
-        model: 'llm-proxy/deepseek-v4-pro',
+        model: DEFAULT_AGENT_INBOX_MODEL,
       },
     },
     {

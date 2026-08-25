@@ -23,7 +23,13 @@ import type { DiskCardSeed } from './board-provider.disk.ts';
 import { FeedProjection } from './projections/feed-projection.ts';
 import { setDryRunBroadcaster } from '../inbox-core/dry-run.ts';
 import { StaticFiles } from './static-files.ts';
-import { setCorsHeaders, handlePreflight, sendDomainError } from './http-helpers.ts';
+import {
+  setCorsHeaders,
+  handlePreflight,
+  sendDomainError,
+  sendJson,
+  sendError,
+} from './http-helpers.ts';
 import type { BoardProviderPort } from './board-provider.port.ts';
 import type { SessionPool } from '../inbox-opencode/session-pool.ts';
 import type { StateStore } from '../inbox-core/state-store.ts';
@@ -113,13 +119,18 @@ export type HttpServerInboxApiConfig = {
    */
   onDecision?: (mr: string, journal: DecisionJournal) => Promise<void>;
   /**
-   * @purpose Disk-scan of already-reviewed MRs, merged into the board projection for refs the live
-   *   VCS sync hasn't (yet) reported — real-mode-only viewer path (TSK-190).
+   * @purpose Scan reviewed MRs from disk and supplement board refs absent from live VCS sync (TSK-190).
    * @returns Disk-sourced card seeds for every reviewed MR on disk.
    */
   diskCards?: () => DiskCardSeed[];
   /** @purpose Runtime policy rendered as an observable per-card auto-review timer. */
   autoReviewPolicy?: BoardAutoReviewPolicy;
+  /**
+   * @purpose Trigger a full MR review through the boot-owned pipeline; absence disables the manual route.
+   * @param ref Canonical `project!iid` key.
+   * @returns Completion (the review itself runs asynchronously and streams via SSE).
+   */
+  runReview?: (ref: string) => Promise<void>;
 };
 
 /**
@@ -158,6 +169,8 @@ export class HttpServer {
   protected _taskRouter: TaskRouter | undefined;
   /** @purpose Router for the decision endpoint — available when inboxApi is configured. */
   protected _decisionRouter: DecisionRouter | undefined;
+  /** @purpose Manual full-review trigger — available when inboxApi carries a runReview callback. */
+  protected _runReview: ((ref: string) => Promise<void>) | undefined;
   /** @purpose Router for the stream endpoint — available when inboxApi is configured. */
   protected _streamRouter: StreamRouter | undefined;
   /** @purpose SseHub shared between stream router and board projection — created when inboxApi is configured, reused by chat if present. */
@@ -294,6 +307,7 @@ export class HttpServer {
         config.inboxApi.resolveDecisionJournal,
         config.inboxApi.onDecision
       );
+      this._runReview = config.inboxApi.runReview;
 
       const snapshots = config.inboxApi.snapshots ?? [];
       const boardProjection = new BoardProjection(
@@ -515,6 +529,11 @@ export class HttpServer {
       return;
     }
 
+    if (this._matchesManualReview(req)) {
+      void this._handleManualReview(req, res);
+      return;
+    }
+
     // Check if it looks like an API path but didn't match any route
     const url = new URL(req.url ?? '/', `http://${req.headers.host ?? 'localhost'}`);
     if (url.pathname.startsWith('/api/')) {
@@ -524,5 +543,43 @@ export class HttpServer {
 
     // SPA fallback — serve static files or index.html
     this._staticFiles.serve(req, res);
+  }
+
+  /** @purpose Route pattern for the manual full-review trigger. */
+  protected static readonly MANUAL_REVIEW_RE = /^\/api\/mr\/(.+)\/review$/;
+
+  /**
+   * @purpose Check whether the request targets the manual review route.
+   * @param req Incoming HTTP request.
+   * @returns True when this server should handle the manual review request.
+   */
+  protected _matchesManualReview(req: IncomingMessage): boolean {
+    if (req.method !== 'POST' || !this._runReview) return false;
+    const url = new URL(req.url ?? '/', `http://${req.headers.host ?? 'localhost'}`);
+    return HttpServer.MANUAL_REVIEW_RE.test(url.pathname);
+  }
+
+  /**
+   * @purpose Trigger a full review for one MR via the boot-owned runReview callback.
+   * @invariant Without a wired callback the route never matches (`_matchesManualReview` gates it).
+   * @param req Incoming HTTP request.
+   * @param res Server response.
+   * @returns Completion after dispatching the review.
+   */
+  protected async _handleManualReview(req: IncomingMessage, res: ServerResponse): Promise<void> {
+    const url = new URL(req.url ?? '/', `http://${req.headers.host ?? 'localhost'}`);
+    const match = url.pathname.match(HttpServer.MANUAL_REVIEW_RE);
+    const ref = decodeURIComponent(match?.[1] ?? '');
+    if (!ref || !this._runReview) {
+      sendDomainError(res, 400, 'invalid_input', 'MR ref is required for a manual review', 'mr');
+      return;
+    }
+    try {
+      void this._runReview(ref);
+      sendJson(res, 202, { ok: true, ref });
+    } catch (cause) {
+      logger.error('[HttpServer#_handleManualReview] [review → failed]', { ref, error: cause });
+      sendError(res, cause);
+    }
   }
 }

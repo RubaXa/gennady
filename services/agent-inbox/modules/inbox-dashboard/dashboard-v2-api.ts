@@ -36,6 +36,8 @@ export const dashboardV2Api = {
       method: 'POST',
       body: JSON.stringify({ type, params }),
     }),
+  review: (ref: string) =>
+    request<{ ok: boolean }>(`/api/mr/${encodeURIComponent(ref)}/review`, { method: 'POST' }),
   decision: (ref: string, proposalId: string, verdict: 'accept' | 'edit' | 'reject') =>
     request<{ taskId?: string }>(`/api/mr/${encodeURIComponent(ref)}/decision`, {
       method: 'POST',
