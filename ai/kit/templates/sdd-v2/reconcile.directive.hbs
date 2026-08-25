@@ -177,15 +177,18 @@
         the path is non-trivial: run this full tail once here, never as an extra "to be safe" pass
         layered on top of an already-closed trivial path.
 
-        `sdd-check` + `sdd-verify --profile full` must pass (else `H_VERIFICATION_FAIL`). Then — because
-        the group-audit hook was skipped in the batch (`AX_DISPATCH_VIA_BATCH`) — restore the safety net
-        ONCE at the reconcile level: dispatch a fresh-eyes audit
+        `sdd-check` must pass — a fast mechanical integrity pass over the reconciled specs/tickets
+        (else `H_VERIFICATION_FAIL`). Do NOT run `sdd-verify --profile full` here. Because the
+        group-audit hook was skipped in the batch (`AX_DISPATCH_VIA_BATCH`), restore the safety net
+        ONCE at the reconcile level by dispatching a fresh-eyes audit
         (`READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/audit.directive.xml")`, scoped to every spec + ticket
         touched by the reconciliation — drift code↔spec over that reconciled set, not the formal
-        `AX_AUDIT_MODES` per-group cycle) and a code-review
-        (`READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/code-review.directive.xml")` — bugs in the reconciled
-        diff). A `BLOCKER` from either MUST pause and surface to the operator. Present the reconcile summary
-        (`FIX_SUMMARY_FORMAT`).
+        `AX_AUDIT_MODES` per-group cycle). That audit's OWN STEP_1 is the SINGLE owner of the full
+        mechanical gate (`sdd-verify --profile full` + `gennady lint --spec` + `testcov`) over the
+        reconciled set — running `full` here too would pay for the whole ladder twice. Also dispatch a
+        code-review (`READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/code-review.directive.xml")` — bugs in the
+        reconciled diff). A `BLOCKER` from either MUST pause and surface to the operator. Present the
+        reconcile summary (`FIX_SUMMARY_FORMAT`).
       </Action>
     </Step>
   </ExecutionPlan>

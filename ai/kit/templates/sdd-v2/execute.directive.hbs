@@ -84,7 +84,7 @@
     | `sdd-task <ticket-path>` | STEP_1_PLAN — Meta + Phases Overview + per-phase read-manifests + gates + `[BLOCKERS]`, the ONLY ticket read this directive itself does | `npx gennady sdd-task specs/app/greeting/greeting.task.APP-greet-greeting.md` |
     | `sdd-task <ticket> --phase P<N>` | Never called BY this directive — the worker's OWN first action (`phase-execution-protocol` STEP_1_GET_PHASE_CONTEXT). Listed here only so a `--phase` call surfacing in this directive's own trace (as at STEP_1_PLAN) is recognized as a defect, not repeated by habit | worker-only |
     | `sdd-task --audit-group <id>` | STEP_5_AUDIT — the tool's `due` / `not yet` verdict, never eyeballed | `npx gennady sdd-task --audit-group APP-greet-greeting` |
-    | `sdd-verify --profile full` | STEP_5_AUDIT, on `due` — the mechanical pre-audit gate over the group's own working-tree diff, run BEFORE dispatching the group audit | `npx gennady sdd-verify --profile full` |
+    | `sdd-verify --profile full` | STEP_5_AUDIT — run by the DISPATCHED audit itself as its own STEP_1 (the audit is the SINGLE owner of the group's `full` run); this directive NEVER runs it here before dispatch, else the whole ladder would be paid for twice | dispatched-subagent-only |
     | `sdd-task --group-scope <id>` | Resolved by the DISPATCHED audit / code-review subagent itself, its own STEP_1 — this directive never calls it directly | dispatched-subagent-only |
     | `sdd-log <ticket> round "<reason>"` | STEP_1_PLAN — open a new Round (auto-numbered, dated) | `npx gennady sdd-log <ticket> round "execute <Task-ID>"` |
     | `sdd-log <ticket> close` | STEP_3_CLOSE_ROUND — append the Round-close block | `npx gennady sdd-log <ticket> close` |
