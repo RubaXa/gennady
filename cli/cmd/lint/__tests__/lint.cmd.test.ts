@@ -330,14 +330,25 @@ describe('LintCommand', () => {
       'utf-8'
     );
 
-    const report = await mod.run([
-      'node',
-      'gennady',
-      'lint',
-      `--spec=${specPath}`,
-      '--inventory-reverse',
-      revDir,
-    ]);
+    // Run with the CWD chdir'd INTO the tiny fixture dir: lint's deferral resolver scans the ticket
+    // graph from process.cwd(), and we want it to scan this fixture (where TSK-42 is absent), NOT the
+    // whole real repo — both to keep the assertion hermetic and to avoid a heavy repo-wide scan
+    // racing under the parallel c8 runner.
+    const origCwd = process.cwd();
+    let report;
+    try {
+      process.chdir(revDir);
+      report = await mod.run([
+        'node',
+        'gennady',
+        'lint',
+        `--spec=${specPath}`,
+        '--inventory-reverse',
+        revDir,
+      ]);
+    } finally {
+      process.chdir(origCwd);
+    }
 
     assert.ok(
       report.errors.some(
