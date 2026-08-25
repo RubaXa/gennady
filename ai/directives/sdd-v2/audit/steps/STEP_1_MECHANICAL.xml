@@ -21,7 +21,7 @@
         | Structural / mechanical (anchors, Meta, Execution Log completeness, fabricated-DONE, phase DAG, tracker coherence, RULES_CASCADE_CLOSURE, BDD_COVERAGE, TASKS_APPEND_ONLY, CONSUMERS_RESOLVABLE) | `sdd-check --task <ticket>` (+ `--all`, `--changed`) |
         | Code (types, format, contract lint, yagni usage) | `sdd-verify --profile full` |
         | Closed-world inventory sync + cast safety over changed files | `gennady lint --spec=<module-spec> <changed files>` |
-        | Test coverage floor | `gennady testcov --run --min=<threshold>` — threshold from the ticket's own §5 / `coverage-command`; 80 only when §5 names none |
+        | Test coverage floor | `gennady testcov --min=<threshold> <production files>` — reads the `coverage/` that `sdd-verify --profile full` just wrote (no `--run`, no second suite run); threshold from the ticket's own §5 / `coverage-command`, 80 only when §5 names none |
         | Contract semantics, runtime-backing, drift — irreducibly semantic, no command runs this | STEP_2_SEMANTIC, this audit's own judgment |
 
         A gate's verdict is computed from ITS OWN exit code and the ticket/dependency graph alone —
@@ -57,16 +57,16 @@
         `npx gennady lint --spec=<spec path from AuditContext's spec/audit-group line> <every file from
         AuditContext lint-files>` (one argv item per printed file; zero files → skip lint and
         report `H_NOTHING_TO_AUDIT`, never broaden scope), and
-        `npx gennady testcov --run --min=<threshold>` (coverage gate — threshold is the ticket's own
-        §5 / `coverage-command` value; use 80 only when §5 names no threshold at all — never override
-        a threshold §5 DOES name): run these gates SEQUENTIALLY, one at a time, never in parallel —
-        `sdd-verify --profile full` and
-        `gennady testcov --run` both write into `coverage/`, and any two commands sharing an output path
-        race when parallelized: whichever finishes last overwrites or half-writes the other's artifact,
-        producing a false red that has nothing to do with the code. Parallelizing is fine only for
-        commands that write no shared artifact; a gate is disqualified from that the moment its output
-        directory overlaps another gate's. Always re-derive the gate yourself rather than trust the worker's logged `ver` lines; a gate that fails
-        here, a `ver` logged for a command that does not actually pass, or coverage below the gate, is a `BLOCKER`.
+        `npx gennady testcov --min=<threshold> <production files from AuditContext lint-files, minus
+        `*.test.*`>` (coverage gate, SCOPED to the group's own code — threshold is the ticket's own §5
+        / `coverage-command` value; use 80 only when §5 names no threshold at all — never override a
+        threshold §5 DOES name). NOTE: no `--run` — `sdd-verify --profile full` above is the SINGLE
+        owner of the coverage run; it already wrote a FRESH `coverage/`, and this `testcov` only READS
+        that report to check the scoped threshold, so the suite is never run twice and nothing races
+        for `coverage/`. Run the gates SEQUENTIALLY all the same (deterministic output, one failure at
+        a time). Always re-derive the gate yourself rather than trust the worker's logged `ver` lines;
+        a gate that fails here, a `ver` logged for a command that does not actually pass, or coverage
+        below the gate, is a `BLOCKER`.
         A gate command that does not execute at all is a DIFFERENT case from a gate that runs and reports
         red: it is neither PASS nor a failure to diagnose. Split it exactly as above: a missing gate SCRIPT
         is case (a) — `FAIL` unless the graph names a different open ticket that owns building it — while

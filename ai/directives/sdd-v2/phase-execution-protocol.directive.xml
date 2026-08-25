@@ -288,7 +288,7 @@
     | `sdd-verify --profile setup\|code\|test\|full` | The phase verdict at STEP_5 — one call, whole ladder. `setup`/`code`/`test` REPAIR before judging (`🔧` rewrites files); only `full` is read-only | `npx gennady sdd-verify --profile setup` |
     | `gennady lint --spec=<module-spec> <Target Files>` | Closed-world inventory sync + cast safety on this phase's own files | `npx gennady lint --spec=specs/app/greeting/greeting.spec.md src/app/greeting/*.ts` |
     | `gennady yagni` | Runs INSIDE `sdd-verify --profile full` only (once per group, at group close); on `ERR_CLI_YAGNI_UNDERUSED` it prints a ready-to-paste `- **Usage Waiver:** <reason>` block — paste verbatim, then log it (`AX_USAGE_WAIVER_DISCIPLINE`) | standalone only for a quick iteration: `npx gennady yagni .` |
-    | `gennady testcov` | Only when the ticket's §5 names it — that command string is canon, never a substitute | `npx gennady testcov --run --min=80` |
+    | `gennady testcov` | Only when the ticket's §5 names it — that command string is canon, never a substitute | `npx gennady testcov --min=80 src/foo.ts` |
 
     Follow the next action printed by a failed gate/tool. If none is actionable, emit `H_BLOCKED`
     per `AX_BLOCKER_ESCALATION`, surfaced as PAUSED (`AX_HALT_VS_FAIL_DISTINCTION`); do not inspect

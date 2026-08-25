@@ -65,8 +65,11 @@ if (MIN_COVERAGE !== undefined && (Number.isNaN(MIN_COVERAGE) || MIN_COVERAGE < 
   process.exit(4);
 }
 
-// Positional arg: skip "testcov" (command name), take first real path
+// Positional args: skip "testcov" (command name). EVERY remaining path is a coverage target — the
+// threshold gate (`--min`) aggregates them all (a task's Target Files are usually several files).
+// The interactive views (tree/flat/detail) still render the first target and warn about the rest.
 const positional = (args._ as string[]).filter((a) => a !== 'testcov');
+const TARGETS = positional;
 const TARGET = positional.length > 0 ? positional[0] : undefined;
 
 if (HELP) {
@@ -653,6 +656,16 @@ function findFiles(target: string): string[] {
   return results;
 }
 
+/**
+ * @purpose Union of findFiles over every target, de-duplicated and sorted — so `--min a.ts b.ts`
+ *   gates all paths, not just the first.
+ * @param targets Positional target paths.
+ * @returns Every resolved file, each once.
+ */
+function findFilesMulti(targets: string[]): string[] {
+  return [...new Set(targets.flatMap((t) => findFiles(t)))].sort();
+}
+
 function icon(p: number | null): string {
   if (p === null) return '⚫';
   if (p >= 75) return '✅';
@@ -1161,10 +1174,10 @@ function printFlat(entries: FlatEntry[]): void {
 
 if (MIN_COVERAGE !== undefined) {
   let buckets: FileCovRaw[];
-  if (TARGET) {
-    const files = findFiles(TARGET);
+  if (TARGETS.length > 0) {
+    const files = findFilesMulti(TARGETS);
     if (files.length === 0) {
-      console.error(`File not found: ${TARGET}`);
+      console.error(`File not found: ${TARGETS.join(', ')}`);
       process.exit(1);
     }
     buckets = files.map((fp) =>
@@ -1182,6 +1195,14 @@ if (MIN_COVERAGE !== undefined) {
 }
 
 // ─── Entry point ──────────────────────────────────────────────────────────────
+
+// The interactive views below render a single target; do not silently drop the rest.
+if (TARGETS.length > 1) {
+  process.stderr.write(
+    `testcov: заданы несколько путей — интерактивный вид показывает только «${TARGET}»; ` +
+      `для гейта покрытия по всем файлам используйте --min.\n`
+  );
+}
 
 if (FLAT) {
   const entries: FlatEntry[] = [];

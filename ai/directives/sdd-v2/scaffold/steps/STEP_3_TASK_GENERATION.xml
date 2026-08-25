@@ -51,12 +51,15 @@
         5b. COVERAGE row — every ticket with a `test` phase gets ONE `testcov` row, SCOPED to the
            ticket's own production Target Files (the files the tests are written to cover), so the
            threshold is checked against the task's code, not the whole project:
-           `npx gennady testcov --run --min=<threshold> <production Target Files>`, Required-by =
-           `test`. Threshold = 80 by default; use the infra-spec `coverage-command`'s threshold
-           instead only when it names one (never invent a different number). The path arguments are
-           the ticket's PRODUCTION files (from the impl/refactor phases' Target Files), never the
-           `*.test.ts` files. This row runs at STEP_5 of the test phase like any §5 command — that is
-           where coverage is measured and gated, on the code the phase's tests exist for.
+           `npx gennady testcov --min=<threshold> <production Target Files>`, Required-by =
+           `AX_COVERAGE_BY_CONTRACT_NOT_BY_LINE`. Threshold = 80 by default; use the infra-spec
+           `coverage-command`'s threshold instead only when it names one (never invent a different
+           number). The path arguments are the ticket's PRODUCTION files (from the impl/refactor
+           phases' Target Files), never the `*.test.ts` files. NOTE: no `--run` — the phase gate
+           `sdd-verify --profile test` at STEP_5 already RAN the suite with coverage and wrote a
+           FRESH `coverage/`; this row only READS that report and checks the scoped threshold, so the
+           test suite is never run twice. It runs at STEP_5 of the test phase, after the gate, like
+           any §5 command — on the code the phase's tests exist for.
            No alias and no test phase → the table is written with its header and a single `| — | — |`
            row, never omitted.
         Draft BDD with the mandatory `contract`-level

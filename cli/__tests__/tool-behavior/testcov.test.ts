@@ -66,4 +66,29 @@ describe('testcov — live --min coverage gate', () => {
       rmSync(root, { recursive: true, force: true });
     }
   });
+
+  // Critical-1a: MULTIPLE Target Files must ALL be gated. The old code took only positional[0], so
+  // `--min=80 good.ts bad.ts` measured just good.ts (100%) and passed — the uncovered bad.ts slipped
+  // through. Now both aggregate to 50% and the gate correctly fails.
+  it('several paths ALL count — good.ts + bad.ts aggregate to 50% and fail --min=80', () => {
+    const { root } = buildFixture();
+    try {
+      const r = runCli(['testcov', '--min=80', 'src/good.ts', 'src/bad.ts'], root);
+      assert.strictEqual(r.exitCode, 1, r.stdout + r.stderr);
+      assert.match(r.stdout, /50\.0% .* required ≥80% ❌/);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('several paths that are all covered pass — good.ts twice aggregates to 100%', () => {
+    const { root } = buildFixture();
+    try {
+      const r = runCli(['testcov', '--min=80', 'src/good.ts', 'src/good.ts'], root);
+      assert.strictEqual(r.exitCode, 0, r.stdout + r.stderr);
+      assert.match(r.stdout, /100\.0% .* required ≥80% ✅/);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
 });

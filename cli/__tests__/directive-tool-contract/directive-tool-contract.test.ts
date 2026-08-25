@@ -483,14 +483,14 @@ const CASES: FixtureCase[] = [
     },
   },
   {
-    id: 'testcov --run --min=80',
+    id: 'testcov --min=80 src/foo.ts',
     directive: 'phase',
-    raw: 'npx gennady testcov --run --min=80',
+    raw: 'npx gennady testcov --min=80 src/foo.ts',
     cmd: 'testcov',
-    args: () => ['--run', '--min=80'],
+    args: () => ['--min=80', 'src/foo.ts'],
     check: (r) => {
-      // Fixture declares no vitest/jest/c8 devDependency, so `--run` finds no runner to drive —
-      // testcov's own documented "no runner detected" diagnostic path (exit 1), not a crash.
+      // The §5 coverage row READS an existing report (no `--run`). The fixture has no coverage/ and
+      // no such file, so the gate fails (exit 1) — the documented read-only shape, not a crash.
       assert.strictEqual(r.exitCode, 1, r.stdout + r.stderr);
     },
   },

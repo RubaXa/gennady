@@ -48,10 +48,12 @@
         (`AX_INTRODUCED_DISCIPLINE`, `AX_TICKET_WRITE_SCOPE`; the worker leaves the spec to audit, `AX_SPEC_NEVER_EDITED` — the intro
         line flags it for inventory backflow at audit). MUST resolve every out-of-inventory export this way. A cast → remove (proper type / guard) or a documented `@ts-expect-error` (`AX_NO_SILENT_ESCAPE_HATCH` — never a silent suppression).
         Run `sdd-verify`, `gennady lint`, and every ticket §5 command SEQUENTIALLY, one at a time, never
-        in parallel: every profile that runs `test:coverage` writes `coverage/`, as does
-        `gennady testcov --run`, so two of them at once race — whichever finishes last overwrites or
-        half-writes the other's report, producing a false red unrelated to the code. (Repair rungs
-        rewrite source files besides; a parallel gate would be judging a tree changing under it.)
+        in parallel: the phase gate (`sdd-verify --profile test`/`full`) is the SINGLE owner of the
+        coverage run — it writes a fresh `coverage/`, and the §5 `testcov --min <files>` row only READS
+        that report (no `--run`, no second suite run, nothing else writing `coverage/`). Sequential
+        order still matters: the gate must finish and produce `coverage/` BEFORE the `testcov` row
+        reads it, and repair rungs rewrite source files, so a parallel gate would judge a tree changing
+        under it.
         Then run each ticket §5 command **verbatim** (the Canonical Gate per `AX_VERIFICATION_BEFORE_HANDOFF`),
         exactly as written — the §5 table holds only the EXTRA commands beyond the phase gate, so
         nothing there repeats `sdd-verify`. **Error ownership scales by write zone, not by age:** for every failure the gate

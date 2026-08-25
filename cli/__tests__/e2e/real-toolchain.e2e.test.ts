@@ -192,4 +192,102 @@ if (isE2eRun) {
       }
     });
   });
+
+  // The scoped-coverage chain the unit tests can't exercise: `sdd-verify --profile test` is the
+  // SINGLE owner of the coverage run (real c8 writes coverage-final.json), then a SEPARATE
+  // `testcov --min <files>` READS that fresh report and gates the threshold over the task's own
+  // Target Files — no second suite run. Two production files (`covered.ts` fully hit, `partial.ts`
+  // mostly unhit) prove real multi-file scoping over a genuine c8 report.
+  describe('real-toolchain e2e — sdd-verify writes coverage, scoped testcov reads it', () => {
+    const COVERED = [
+      '// @file: Fully-covered production unit.',
+      '// @consumers: N/A',
+      '// @tasks: N/A',
+      '',
+      '/**',
+      ' * @purpose Double a number.',
+      ' * @param a The input.',
+      ' * @returns Twice a.',
+      ' */',
+      'export function covered(a: number): number {',
+      '  return a * 2;',
+      '}',
+      '',
+    ].join('\n');
+    const PARTIAL = [
+      '// @file: Barely-exercised production unit — most branches never run.',
+      '// @consumers: N/A',
+      '// @tasks: N/A',
+      '',
+      '/**',
+      ' * @purpose Map a number through many unexercised branches.',
+      ' * @param n The input.',
+      ' * @returns A mapped value.',
+      ' */',
+      'export function partial(n: number): number {',
+      ...Array.from({ length: 20 }, (_, i) => `  if (n === ${i}) return ${i} * 3;`),
+      '  return -1;',
+      '}',
+      '',
+    ].join('\n');
+    // Imports both, but only fully exercises `covered` — `partial` is loaded (so c8 reports it) yet
+    // its branches stay unhit.
+    const CHAIN_TEST = [
+      '// @file: Exercises covered fully, partial minimally.',
+      '// @consumers: N/A',
+      '// @tasks: N/A',
+      "import { test } from 'node:test';",
+      "import assert from 'node:assert/strict';",
+      "import { covered } from './covered.ts';",
+      "import { partial } from './partial.ts';",
+      "test('covered + partial', () => {",
+      '  assert.strictEqual(covered(2), 4);',
+      '  assert.strictEqual(partial(0), 0);',
+      '});',
+      '',
+    ].join('\n');
+
+    /** Scripts where test:coverage only PRODUCES the report (c8 json) — the threshold is testcov's job. */
+    function chainScripts(): Record<string, string> {
+      return {
+        'type-check': `"${BIN}/tsc" --noEmit --strict --skipLibCheck --target es2022 --module esnext --moduleResolution bundler src/covered.ts src/partial.ts`,
+        'test:coverage': `"${BIN}/c8" --reporter=json --reporter=text-summary node --import "${TSX}" --test src/test.test.ts`,
+      };
+    }
+    function chainFixture(): string {
+      const { root } = buildRepoFixture({
+        scripts: chainScripts(),
+        gennadyInstalled: true,
+        directives: true,
+        files: {
+          'src/covered.ts': COVERED,
+          'src/partial.ts': PARTIAL,
+          'src/test.test.ts': CHAIN_TEST,
+        },
+      });
+      return root;
+    }
+
+    it('the gate produces coverage/, then scoped testcov reads it — all Target Files gated, no re-run', () => {
+      const root = chainFixture();
+      try {
+        // 1) The phase gate is the single owner of the coverage run — it writes a fresh coverage/.
+        const gate = runCli(['sdd-verify', '--profile', 'test'], root);
+        assert.strictEqual(gate.exitCode, 0, gate.stdout + gate.stderr);
+        assert.match(gate.stdout, /✅ test:coverage/);
+
+        // 2) Scoped over BOTH Target Files → the unhit partial.ts drags the aggregate below 80 → fail.
+        const both = runCli(['testcov', '--min=80', 'src/covered.ts', 'src/partial.ts'], root);
+        assert.strictEqual(both.exitCode, 1, both.stdout + both.stderr);
+        assert.match(both.stdout, /required ≥80% ❌/);
+
+        // 3) Scoped over the fully-covered file alone → passes. Same report, no second suite run.
+        const one = runCli(['testcov', '--min=80', 'src/covered.ts'], root);
+        assert.strictEqual(one.exitCode, 0, one.stdout + one.stderr);
+        assert.match(one.stdout, /required ≥80% ✅/);
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+      }
+    });
+  });
 }
