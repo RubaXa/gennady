@@ -150,13 +150,13 @@ test('a preflight step embeds a structured <LogicSwitch> (WHEN gates), not prose
   };
   const sw = findSwitch(step0 as TraceNode);
   assert.ok(sw, 'STEP_0 carries a structured switch');
-  // 9 cases: migration (broad blast radius), the queue-exception (queued TODO tickets already
-  // build the missing gate), readiness (broad blast radius), the two `provisional` branches (stubs
-  // block impl/refactor/test phases; bootstrap/scaffold/spec work continues), the two
-  // GATE_QUEUE_DIAG branches (approved infra spec with no tickets yet → scaffold; scope-name
-  // mismatch → fix the ticket/portal name), the narrow-blast-radius carve-out
-  // (AX_PREFLIGHT_BLAST_RADIUS_SCOPED), DEFAULT.
-  assert.equal(sw?.children?.length, 9);
+  // 10 cases: migration (broad blast radius), the queue-exception (queued TODO tickets already
+  // build the missing gate), readiness (broad blast radius), the three `provisional` branches (the
+  // GATE_QUEUE ticket itself is exempt — it builds the gates; other tickets' code phases stop;
+  // bootstrap/scaffold/spec work continues), the two GATE_QUEUE_DIAG branches (approved infra spec
+  // with no tickets yet → scaffold; scope-name mismatch → fix the ticket/portal name), the
+  // narrow-blast-radius carve-out (AX_PREFLIGHT_BLAST_RADIUS_SCOPED), DEFAULT.
+  assert.equal(sw?.children?.length, 10);
   assert.equal(sw?.children?.at(-1)?.label, 'DEFAULT');
   const run = sw?.children?.[0]?.children?.find((c) => c.kind === 'run');
   assert.match(run?.ref ?? '', /migration-v1-v2/);

@@ -13,7 +13,7 @@ script) — then the edit is legitimate work, not a gate dodge, and MUST be reco
 line in the Execution Log (`<ts> decision <script> rewritten ← <reason>`) before the gate is logged as
 passing.
 
-Supplemental tools (`sdd-verify`, `tsc --noEmit`, `npx vitest run <file>`) MAY run additionally for narrower diagnostics, but they NEVER replace ticket §5 commands. If a §5 command requires more time/scope than the supplemental tool, run the §5 command anyway — it is the contract.
+`sdd-verify --profile <by kind>` is NOT supplemental — it is the phase gate, MANDATORY at STEP_5, and it runs BEFORE the §5 commands (see `AX_PERMITTED_BASH_COMMANDS`). §5 holds only the EXTRA commands beyond that gate, so the two never overlap and neither replaces the other. Narrower diagnostics (`tsc --noEmit`, `npx vitest run <file>`) MAY run additionally while you work, but they never substitute for either. If a §5 command requires more time/scope than a diagnostic you already ran, run the §5 command anyway — it is the contract.
 
 Phase kind `doc` typically has no verification — empty section is acceptable.
 </Axiom>

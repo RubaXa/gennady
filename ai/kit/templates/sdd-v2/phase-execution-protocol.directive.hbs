@@ -286,7 +286,11 @@
         script there is a red `⛔` verdict, not a skip — a phase must never pass on zero real checks.
         That verdict is not fixable from inside the phase: emit `BLOCKER_FORMAT` naming the missing
         infrastructure and halt `H_BLOCKED`; the infra tickets that build those scripts
-        (`sdd-task` → `GATE_QUEUE`) run first. Likewise `test:coverage` passing means a FRESH report
+        (`sdd-task` → `GATE_QUEUE`) run first. ONE exception, and STEP_1's output declares it: when
+        `sdd-task --phase` printed `INFRA_QUEUE_EXEMPTION`, THIS ticket is one of those infra tickets —
+        verify with `--profile setup` instead of the profile for your kind (setup has no required
+        rungs, so it does not ⛔ on the very scripts this ticket exists to build), log the command you
+        actually ran, and add a `discovery` line recording that the phase's verification was partial. Likewise `test:coverage` passing means a FRESH report
         appeared under `coverage/` — a command that exits 0 measuring nothing is reported red.
         If this phase authored production `.ts`/`.tsx`, regardless of phase kind, also run
         `npx gennady lint --spec=<owning module spec> <exact production Target Files>`

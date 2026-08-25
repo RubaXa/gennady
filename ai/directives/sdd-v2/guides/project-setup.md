@@ -1,41 +1,59 @@
 # Настройка проекта под SDD v2
 
-> Когда нужно: `gennady sdd-state .` показал `READINESS=not-ready` — нет обязательных npm-скриптов. Роутер остановился (`H_NOT_READY`) и привёл сюда.
+> Когда нужно: `gennady sdd-state .` показал `READINESS=not-ready` — нет обязательных npm-скриптов, и флоу остановился, не найдя чем верифицировать код.
 
-SDD v2 поддерживает только Node.js. Проект обязан объявить в `package.json#scripts` **точные** имена (sdd-state проверяет точное совпадение — без угадывания `type-check`/`tsc`/и т.п.):
+SDD v2 поддерживает только Node.js. Проект обязан объявить в `package.json#scripts` **точные** имена — семь «кирпичей», из которых `sdd-verify` собирает лестницу проверок (sdd-state сверяет точное совпадение, без угадывания):
 
-| скрипт          | назначение                                                   |
-| --------------- | ------------------------------------------------------------ |
-| `typecheck`     | проверка типов без эмита (`tsc --noEmit`)                    |
-| `test`          | прогон тестов                                                |
-| `test:coverage` | тесты с покрытием                                            |
-| `lint`          | линт, **в цепочке которого вызывается `gennady` lint** (DbC) |
-| `format`        | форматирование, **которое фиксит** (не только проверяет)     |
+| скрипт          | назначение                                                                   |
+| --------------- | ---------------------------------------------------------------------------- |
+| `type-check`    | проверка типов без эмита (`tsc --noEmit`); принимается написание `typecheck` |
+| `test`          | прогон тестов                                                                |
+| `test:coverage` | тесты с покрытием, пишет отчёт в `coverage/`                                 |
+| `format`        | форматтер в режиме **проверки** — read-only, без записи                      |
+| `format:fix`    | форматтер в режиме записи — обязан нести `--write`/`--fix`/`--autofix`       |
+| `lint`          | линт, **в цепочке которого вызывается `gennady` lint** (DbC), read-only      |
+| `lint:fix`      | автофикс линтера — обязан нести `--write`/`--fix`/`--autofix`                |
+
+Ключевая пара — `format` / `format:fix` (и так же `lint` / `lint:fix`): проверяющий скрипт не должен ничего переписывать, а чинящий обязан. Скрипт `format`, который на самом деле пишет (`prettier --write .`), — ошибка конфигурации, а не мелочь: лестница использует его как read-only ступень финального вердикта.
+
+`check` и `fix` — два необязательных скрипта-обёртки для человека, CI и pre-commit (`check` = `npx gennady sdd-verify --profile full`, `fix` = `format:fix` → `lint:fix`). Readiness они не гейтят.
 
 ## Минимальный пример
 
 ```json
 {
   "scripts": {
-    "typecheck": "tsc --noEmit",
+    "type-check": "tsc --noEmit",
     "test": "node --import tsx --test",
-    "test:coverage": "c8 node --import tsx --test",
-    "lint": "npm run format && npm run typecheck && gennady lint cli/ shared/",
-    "format": "prettier --write ."
+    "test:coverage": "c8 --reporter=json node --import tsx --test",
+    "format": "prettier --check .",
+    "format:fix": "prettier --write .",
+    "lint": "gennady lint src/",
+    "lint:fix": "eslint --fix .",
+    "check": "npx gennady sdd-verify --profile full",
+    "fix": "npm run format:fix && npm run lint:fix"
   }
 }
 ```
 
-`lint` должен достигать `gennady` напрямую или через `npm run <x>`-цепочку — это и проверяет sdd-state (`lint→gennady`).
+`lint` может достигать `gennady` напрямую или через `npm run <x>`-цепочку — это и проверяет sdd-state (`lint→gennady`).
+
+## Три уровня готовности
+
+`sdd-state` различает три состояния, а не два:
+
+- `not-ready` — каких-то кирпичей нет вовсе (или `format`/`lint` пишут, или `*:fix` не мутируют). Кодовые фазы не идут.
+- `provisional` — все семь объявлены, но часть из них — заглушки: `echo TODO`, `true`, `exit 0`, либо реальная команда с заглушённым кодом возврата (`tsc --noEmit || true`). Скелет есть, гарантии нет. Bootstrap/config/doc-фазы и `scaffold` идут; `impl`/`refactor`/`test`/`fix`-фазы механически отказываются стартовать, потому что зелёный вердикт на заглушках ничего не значит.
+- `ready` — все семь реальные. Только здесь исполняются кодовые фазы.
+
+Заглушки — легальный промежуточный шаг: они позволяют разложить проект по спекам и нарезать тикеты до того, как выбран тулинг. Заменяет их infra-флоу, и `sdd-state` печатает список оставшихся заглушек — это и есть его список работ.
 
 ## Проверка
 
 ```bash
-gennady sdd-state .       # должно стать READINESS=ready
+gennady sdd-state .
 ```
 
-`[READINESS]` покажет `✔` по каждому требуемому скрипту и `lint→gennady ✔`.
-
-## Полный бутстрап (новый проект)
+`[READINESS]` покажет `✔` по каждому требуемому скрипту, `lint→gennady ✔` и итоговую строку `READINESS=ready` (либо `provisional` со списком заглушек).
 
 Если тулинга ещё нет вообще — заведите infrastructure-scope: `gennady` → роутер → infra-флоу (ставит TS / тест-раннер / линт / формат целиком, со спекой). Этот гайд — быстрый фикс под уже существующий тулинг.

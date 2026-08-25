@@ -86,7 +86,7 @@ export type ReadinessResult = {
   missing: string[];
   /** @purpose Required scripts present but vacuous — a no-op stub, or a real command with `|| true` swallowing its exit code; never in `missing`. */
   stubbed: string[];
-  /** @purpose Refined verdict: `not-ready` / `provisional` (bootstrap may proceed) / `ready` (execution may proceed). */
+  /** @purpose Refined verdict: `not-ready` / `provisional` (bootstrap/scaffold may proceed, code phases may not) / `ready` (execution may proceed). */
   level: ReadinessLevel;
   /** @purpose True only at `level === 'ready'` — the gate for impl/refactor/test phases; bootstrap phases need only `ready`. */
   executionReady: boolean;
@@ -182,8 +182,29 @@ function isScriptMutating(scripts: Record<string, string>, entry: string): boole
 const NO_OP_SEGMENT =
   /^(?:echo\b|true$|:$|exit\s+0$|node\s+-e\s+(['"])\s*\1$|npm run [A-Za-z0-9:_-]+$)/;
 
-/** @purpose A trailing `|| true` / `; :` / `|| exit 0` — the command runs, but its failure can never surface. */
-const EXIT_CODE_SILENCER = /(?:\|\||;)\s*(?:true|:|exit\s+0)\s*(?:$|[;&|])/;
+/** @purpose A bare success terminator — the classic `|| true` tail. Narrower than NO_OP_SEGMENT: `echo x` is a no-op but not a terminator. */
+const TERMINATOR_SEGMENT = /^(?:true|:|exit\s+0)$/;
+
+/**
+ * @purpose Split a script body into its top-level command segments and the separators between them.
+ * @invariant `|` is a separator too — `echo v | xargs tsc` is a real check, not an echo.
+ * @param body One `package.json` script body.
+ * @returns Trimmed non-empty segments, and the separator that preceded each (`''` for the first).
+ */
+function commandSegments(body: string): { cmd: string; sep: string }[] {
+  const parts = body.split(/(&&|\|\||\||;)/);
+  const out: { cmd: string; sep: string }[] = [];
+  let sep = '';
+  for (const part of parts) {
+    if (part === '&&' || part === '||' || part === '|' || part === ';') {
+      sep = part;
+      continue;
+    }
+    const cmd = part.trim();
+    if (cmd !== '') out.push({ cmd, sep });
+  }
+  return out;
+}
 
 /**
  * @purpose Detect a stub — every command `entry` reaches is a shell no-op, so it exits 0 verifying
@@ -196,23 +217,31 @@ const EXIT_CODE_SILENCER = /(?:\|\||;)\s*(?:true|:|exit\s+0)\s*(?:$|[;&|])/;
 export function isStubScript(scripts: Record<string, string>, entry: string): boolean {
   const bodies = reachableScriptBodies(scripts, entry);
   if (bodies.length === 0) return false;
-  return bodies.every((body) =>
-    body.split(/&&|\|\||;/).every((segment) => {
-      const s = segment.trim();
-      return s === '' || NO_OP_SEGMENT.test(s);
-    })
-  );
+  return bodies.every((body) => commandSegments(body).every(({ cmd }) => NO_OP_SEGMENT.test(cmd)));
 }
 
+// The shell reports the LAST command's status, so only a no-op in final position can mask a real
+// failure. `rm -rf dist || true && tsc --noEmit` is an honest check with a guarded prep step — the
+// exit code npm sees is tsc's. Flagging that would block a healthy project on a mainstream idiom,
+// which is a worse failure than missing an exotic fake.
 /**
- * @purpose Detect an exit-code silencer — a real command whose failure is swallowed by `|| true`.
- * @invariant Worse than a stub: the gate looks like it runs a real tool and can never report red.
+ * @purpose Detect an exit-code silencer — a real command whose failure the script's final position
+ * swallows (`tsc || true`).
+ * @invariant Worse than a stub: it looks like a real tool and can never report red.
  * @param scripts The package.json scripts map.
  * @param entry The script name to check.
- * @returns True when `entry` or a script it reaches swallows a non-zero exit.
+ * @returns True when `entry` or a script it reaches masks a real command's non-zero exit.
  */
 export function silencesExitCode(scripts: Record<string, string>, entry: string): boolean {
-  return reachableScriptBodies(scripts, entry).some((body) => EXIT_CODE_SILENCER.test(body));
+  return reachableScriptBodies(scripts, entry).some((body) => {
+    const segments = commandSegments(body);
+    const last = segments.at(-1);
+    if (!last || !NO_OP_SEGMENT.test(last.cmd)) return false;
+    // `real && true` still propagates the real command's failure — the tail never runs.
+    if (last.sep === '&&' && TERMINATOR_SEGMENT.test(last.cmd)) return false;
+    // Nothing real precedes it → this is a stub, not a silencer; `isStubScript` owns that case.
+    return segments.slice(0, -1).some(({ cmd }) => !NO_OP_SEGMENT.test(cmd));
+  });
 }
 
 /**

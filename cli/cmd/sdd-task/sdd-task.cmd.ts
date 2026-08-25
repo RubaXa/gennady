@@ -293,8 +293,12 @@ export async function run(rawArgs: string[]): Promise<TaskOutcome> {
     let infraExemptionNote: string | null = null;
     // Execution gate: an impl/refactor/test phase on stub (or absent) verification infrastructure
     // would sail through sdd-verify without a single real check — refuse before any work starts.
+    // Allow-list, never a deny-list: `kind` is free text from the Phases Overview cell with no
+    // vocabulary validation, so an unknown spelling (`implementation`, or the execution-time `fix`
+    // kind, which writes production code) must fall on the GATED side, not slip through.
     const phaseKind = phases.find((p) => p.id === phaseId)?.kind?.toLowerCase() ?? '';
-    if (['impl', 'refactor', 'test'].includes(phaseKind)) {
+    const UNGATED_KINDS = ['bootstrap', 'config', 'doc'];
+    if (!UNGATED_KINDS.includes(phaseKind)) {
       const readiness = checkReadiness(gatherReadinessInput(root));
       if (!readiness.executionReady) {
         // The infra tickets BUILDING the missing gates are exempt — they are the way out of this

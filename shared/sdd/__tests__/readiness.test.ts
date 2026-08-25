@@ -252,6 +252,13 @@ describe('isStubScript', () => {
       assert.strictEqual(isStubScript({ test: body }, 'test'), false, `expected real: ${body}`);
     }
   });
+
+  it('an echo PIPED into a real tool is not a stub — `|` separates commands like any other operator', () => {
+    assert.strictEqual(
+      isStubScript({ test: 'echo $npm_package_version | xargs -I{} tsc --noEmit' }, 'test'),
+      false
+    );
+  });
 });
 
 describe('silencesExitCode', () => {
@@ -263,14 +270,42 @@ describe('silencesExitCode', () => {
       'tsc --noEmit; true',
       'eslint . || true && echo done',
     ]) {
-      assert.strictEqual(silencesExitCode({ test: body }, 'test'), true, `expected silenced: ${body}`);
+      assert.strictEqual(
+        silencesExitCode({ test: body }, 'test'),
+        true,
+        `expected silenced: ${body}`
+      );
     }
   });
 
   it('an honest command that can fail is not flagged', () => {
     for (const body of ['tsc --noEmit', 'npm run a && npm run b', 'node --test || exit 1']) {
-      assert.strictEqual(silencesExitCode({ test: body }, 'test'), false, `expected honest: ${body}`);
+      assert.strictEqual(
+        silencesExitCode({ test: body }, 'test'),
+        false,
+        `expected honest: ${body}`
+      );
     }
+  });
+
+  // False positives are the dangerous direction here: they block an honest project while asserting
+  // something untrue about its scripts, and nothing in the flow offers an override.
+  it('a GUARDED PREP STEP followed by a real check is honest — the shell reports the real check', () => {
+    for (const body of [
+      'rm -rf dist || true && tsc --noEmit',
+      'mkdir -p coverage || true; c8 node --test',
+      'git rev-parse HEAD > .rev || true && vitest run',
+    ]) {
+      assert.strictEqual(
+        silencesExitCode({ test: body }, 'test'),
+        false,
+        `expected honest (prep step guarded, real check last): ${body}`
+      );
+    }
+  });
+
+  it('`real && true` is honest — the tail never runs when the real command fails', () => {
+    assert.strictEqual(silencesExitCode({ test: 'tsc --noEmit && true' }, 'test'), false);
   });
 
   it('a silencer reached through an npm-run hop still counts', () => {

@@ -4,7 +4,9 @@
     declares the seven exact bricks `sdd-state` checks — `type-check` · `test` · `test:coverage` ·
     `format` (read-only) · `format:fix` · `lint` (reaching `gennady`, read-only) · `lint:fix` — each
     `*:fix` MUST itself carry a real write switch (`--write` / `--fix` / `--autofix`; a fixer that
-    never mutates is a configuration error) — gennady is installed, and `READINESS` flips to `ready`.
+    never mutates is a configuration error) — gennady is installed, and `READINESS` leaves `not-ready`:
+    `ready` when every brick is a real tool, `provisional` when some are still stubs (the normal
+    landing state of a from-scratch setup — see the stub template and the exit arms below).
     `check` / `fix` are two OPTIONAL wrapper scripts this flow still seeds for the human/CI/pre-commit
     path (`check` = `npx gennady sdd-verify --profile full`; `fix` = `format:fix` → `lint:fix`) —
     neither gates readiness nor is ever called by a phase agent, which runs `sdd-verify --profile
@@ -121,9 +123,15 @@
         STEP_2's own closing `sdd-state` re-run directly; it is already the fresh post-apply
         snapshot, and a second call here would just re-confirm it — a wasted turn. Either way:
         `READINESS=ready` → setup is done; return control to the caller (the router's classify/route
-        step, or the skill's own flow). Still `not-ready` → state the remaining gap and resume at
-        `STEP_1` for the leftover items only — a fresh assessment, never a blind re-run of a command
-        that already failed.
+        step, or the skill's own flow). `READINESS=provisional (stubs: …)` → ALSO done for this flow,
+        and the expected landing state when the seven bricks were seeded from the stub template above:
+        the skeleton exists, the real tools do not. Return control the same way, saying so in one line
+        — name the stubbed scripts, and state that bootstrap/config/doc phases and `scaffold` may
+        proceed while `impl`/`refactor`/`test`/`fix` phases stay mechanically refused until an infra
+        ticket replaces those stubs. Do NOT loop back to `STEP_1` over stubs this flow just wrote by
+        design, and never report `provisional` as `ready`. Still `not-ready` → state the remaining gap
+        and resume at `STEP_1` for the leftover items only — a fresh assessment, never a blind re-run
+        of a command that already failed.
       </Action>
     </Step>
   </ExecutionPlan>
