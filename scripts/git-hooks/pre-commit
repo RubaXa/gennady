@@ -7,7 +7,13 @@
 # real branch). Unset them so every child git call resolves its repo from its own cwd.
 unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_OBJECT_DIRECTORY GIT_COMMON_DIR
 
-echo "🔍 Pre-commit: fix (format:fix + lint:fix) → check (sdd-verify --profile full) + directive gates"
+# VERIFY-ONLY, never mutate. A pre-commit hook that rewrites files (prettier --write, autofix) but
+# does not re-stage them lets the commit capture the pre-fix bytes while `prettier --check` passes
+# over the already-fixed working tree — a green hook over a dirty commit (this repo hit exactly that).
+# Repair belongs to the SDD phase flow (profiles setup/code/test carry format:fix/lint:fix); the
+# commit gate is the read-only final verdict, exactly what `sdd-verify --profile full` is. If a check
+# is red because something is unformatted, YOU run `npm run fix` and `git add -u`, then commit again.
+echo "🔍 Pre-commit: check (sdd-verify --profile full — read-only) + directive gates"
 
 fail() {
   # $1 = which gate failed
@@ -27,6 +33,10 @@ fail() {
 
 У тебя РОВНО ДВА пути:
   1. Починить причину падения (см. вывод гейта выше) и закоммитить честно.
+     Если красный гейт — это format/lint (код не отформатирован или есть
+     автофиксимые ошибки): прогони  npm run fix && git add -u  и повтори
+     commit. Хук намеренно НЕ чинит за тебя — иначе в коммит уходят
+     до-форматные байты, а рабочее дерево выглядит чистым.
   2. Если не можешь починить — ОСТАНОВИТЬСЯ и доложить оператору, что
      именно падает и почему. Дословно, с выводом гейта.
 
@@ -45,8 +55,7 @@ EOF
   exit 1
 }
 
-npm run fix || fail "fix (npm run fix)"
-npm run check || fail "check (npm run check) — sdd-verify --profile full: types, tests, lint, format, yagni"
+npm run check || fail "check (npm run check) — sdd-verify --profile full: types, tests, lint, format, yagni. Если красное — format/lint: npm run fix && git add -u, затем commit заново"
 npm run check:directives-fresh || fail "directives-fresh (npm run check:directives-fresh) — ai/directives/** must match a fresh rebuild; see the message above for what to do"
 npm run audit:axioms || fail "audit:axioms (npm run audit:axioms) — see AUTHORING.md §10"
 npm run audit:contracts || fail "audit:contracts (npm run audit:contracts) — see the header of ai/kit/audit-contract-activation.mjs"
