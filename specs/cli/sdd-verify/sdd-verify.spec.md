@@ -6,20 +6,22 @@
 
 ## 1. Module Vision
 
-Детерминированный gate верификации фазы. Прогоняет ФИКСИРОВАННЫЙ набор точных проверок — `format → lint → type-check → test:coverage → yagni` — мутирующие первыми (autofix переписывает файлы, поэтому не гоняется параллельно с чтением). Первые четыре — проектные npm-скрипты (`npm run <name>`); `yagni` — gennady-нативный гейт, вызывается напрямую (`npx gennady yagni`), НЕ через npm-скрипт проекта (D-SV008) — проект не обязан объявлять скрипт `yagni`, и `sdd-state` readiness (`shared/sdd/readiness.ts`) его не требует. Вывод краткий: на успехе строка на gate; детали — только у упавших. Реверс-спека — `verify.sh` (идея gate), но без fuzzy-классификатора (D-SV004). `yagni` несёт ту же RUN-ALL-дисциплину, что у остальных gate: YAGNI-находка в диффе фазы блокирует гейт наравне с типами и тестами (D-SV007).
+Детерминированная gate-«лестница» верификации фазы. Прогоняет ФИКСИРОВАННЫЙ, канонически упорядоченный набор gate: `type-check → test/test:coverage → format:fix → lint:fix → lint → format → yagni`. Основание лестницы (`type-check`, `test`/`test:coverage`) — halting: падение останавливает лестницу, дальше ничего не выполняется (нет смысла чинить или линтить код, который не собирается или ломает тесты). После основания — мутирующая починка (`format:fix`, `lint:fix`, маркер 🔧): переписывает файлы, падение — находка, не остановка, лестница идёт дальше. Затем read-only проверки (`lint`, `format`) — только накопление находок. `yagni` завершает лестницу и вызывается напрямую как gennady-нативный гейт (`npx gennady yagni` / `npx tsx cli/gennady.ts yagni` в self-hosting режиме), НЕ через npm-скрипт проекта (D-SV008) — включён только в профиль `full`. Отсутствующий npm-скрипт у gate — честный пропуск (`⏭`), не ошибка и не halt. Вывод краткий: на успехе строка на gate; у упавших — захваченный output, обрезанный по лимиту строк/байт с отдельным сводным блоком «not ok»-строк, которые обрезка иначе бы потеряла.
 
 **Key properties:**
 
-- Exact gates — `npm run format/lint/type-check/test:coverage` + `npx gennady yagni` (прямой вызов); никакого обнаружения/угадывания
-- Mutating-first, sequential — `format`, `lint` (autofix) идут первыми по очереди; read-only после; autofix не гоняется с чтением
-- RUN-ALL — падение gate не пропускает остальные (агент видит все проблемы)
-- Brief-on-success — `✅ <gate> (<dur>)`; на падении — exit code + захваченный output только упавшего
+- Fixed ladder, canonical order — `type-check → test/test:coverage → format:fix → lint:fix → lint → format → yagni`; никакого обнаружения/угадывания состава или порядка
+- Halting foundation — `type-check`/`test`/`test:coverage` (`haltsOnFailure: true`) останавливают лестницу на падении; остальные gate — находки, не остановки
+- Mutating repair, not mutating-first — `format:fix`/`lint:fix` (`mutates: true`, маркер 🔧) чинят после основания; падение мутирующего gate — находка (`🔧` вместо `❌`), лестница продолжается; `lint`/`format` после них — только чтение
+- Profile-scoped — `setup`/`code`/`test`/`full` включают разные подмножества лестницы в её каноническом порядке (см. §5)
+- Honest skip — npm-скрипта нет → `⏭ <gate> — скрипта нет в package.json, пропущено`; не считается ни pass, ни fail
+- Brief-on-success — `✅ <gate> (<dur>)`; на падении — exit code + захваченный (обрезанный) output упавшего + отдельный дайджест потерянных «not ok»-строк
 
 **Invariants:**
 
-- Порядок нормативен: format → lint → type-check → test:coverage → yagni
-- Все прошли → exit 0; ≥1 упал → exit 1
-- Раннер инъектируется (`run(runner)`); tail в `index.ts`, поэтому импорт `run()` в тесте НЕ запускает реальные гейты
+- Порядок нормативен и не зависит от профиля: подмножество `GATES` в каноническом порядке
+- Все прошли/пропущены → exit 0; ≥1 упал → exit 1 (halt на основании — тоже фейл)
+- Раннер инъектируется (`run(runner, profile)`); tail в `index.ts`, поэтому импорт `run()` в тесте НЕ запускает реальные гейты
 <!--/SECTION:MODULE_VISION-->
 
 <!--SECTION:MODULE_USAGE_EXAMPLE-->
@@ -27,27 +29,52 @@
 ## 2. Module Usage Example
 
 ```bash
-# всё прошло — кратко
+# профиль full (по умолчанию) — всё прошло
 $ npx gennady sdd-verify
-[verify] ✅ ALL PASS (5/5)
-  ✅ format (0.6s)
-  ✅ lint (2.3s)
+[sdd-verify] ✅ ALL PASS (5/5)
   ✅ type-check (1.4s)
   ✅ test:coverage (5.1s)
+  ✅ lint (2.3s)
+  ✅ format (0.6s)
   ✅ yagni (0.9s)
 # exit 0
 
-# падение — детали только у упавшего
-$ npx gennady sdd-verify
-[verify] 4/5 passed — 1 FAILED
-  ✅ format (0.6s)
+# профиль code — тесты не гоняются, format:fix/lint:fix чинят перед read-only проверками
+$ npx gennady sdd-verify --profile code
+[sdd-verify] ✅ ALL PASS (5/5)
+  ✅ type-check (1.4s)
+  ✅ test (3.2s)
+  🔧 format:fix (0.5s) — мутирующий шаг
+  🔧 lint:fix (1.1s) — мутирующий шаг
   ✅ lint (2.3s)
+  ✅ format (0.6s)
+# exit 0
+
+# отсутствующий npm-скрипт — честный пропуск, не ошибка
+$ npx gennady sdd-verify --profile test
+[sdd-verify] ✅ ALL PASS (3/4)
+  ✅ type-check (1.4s)
   ✅ test:coverage (5.1s)
-  ✅ yagni (0.9s)
-  ❌ type-check — exit 2
-  --- output ---
+  ⏭ format:fix — скрипта нет в package.json, пропущено
+  ✅ format (0.6s)
+# exit 0
+
+# падение на основании — лестница останавливается, дальше ничего не выполняется
+$ npx gennady sdd-verify
+[sdd-verify] ⛔ лестница остановлена на «type-check» — код не собирается, дальше нечего проверять и чинить
+  ❌ type-check — exit 2 (ran: npm run type-check)
   src/foo.ts(12,3): error TS2345: ...
-  --- end ---
+# exit 1
+
+# падение мутирующего гейта — находка, не остановка; лестница идёт дальше
+$ npx gennady sdd-verify
+[sdd-verify] 4/5 passed — 1 FAILED
+  ✅ type-check (1.4s)
+  ✅ test:coverage (5.1s)
+  🔧 lint:fix — exit 1 (ran: npm run lint:fix) — находка, не останавливает лестницу
+  … output truncated to last 120 lines — full transcript: npm run lint:fix
+  ✅ lint (2.3s)
+  ✅ format (0.6s)
 # exit 1
 ```
 
@@ -57,20 +84,22 @@ $ npx gennady sdd-verify
 
 ## 3. Entity Inventory (Closed-World)
 
-| Name            | Type         | Purpose                                                                               |
-| --------------- | ------------ | ------------------------------------------------------------------------------------- |
-| `run`           | Command      | Прогон всех GATES по порядку (RUN-ALL), тайминг, вердикт                              |
-| `defaultRunner` | Utility      | Раннер по умолчанию через `spawnSync` (без shell), exit + output                      |
-| `verdict`       | Utility      | Свёртка результатов: кратко на успехе, детали упавших                                 |
-| `GATES`         | Value Object | Фикс-последовательность: format · lint (mutates) · type-check · test:coverage · yagni |
-| `Gate`          | Value Object | name + mutates + `via?` (`'npm'` default \| `'gennady'` — прямой вызов, см. D-SV008)  |
-| `GateRunResult` | Value Object | exitCode + output                                                                     |
-| `GateResult`    | Value Object | name · exitCode · output · durationMs                                                 |
-| `GateRunner`    | Type         | `(command, args) => GateRunResult` — инъектируемый                                    |
-| `VerifyOutcome` | Type         | `{ok:true,text}` либо `{ok:false,code,exitCode,message}`                              |
-| `Profile`       | Type         | Профиль гейтов: `code` \| `test` \| `full` (D-SV006)                                  |
-| `gatesFor`      | Utility      | Гейты профиля в каноническом порядке GATES (подмножество)                             |
-| `isProfile`     | Utility      | Type-guard токена профиля из CLI-ввода                                                |
+| Name                   | Type         | Purpose                                                                                                                                    |
+| ---------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `run`                  | Command      | Прогон gate текущего профиля в каноническом порядке лестницы (RUN-ALL с halt на основании), тайминг, вердикт                               |
+| `defaultRunner`        | Utility      | Раннер по умолчанию через `spawnSync` (без shell), exit + output                                                                           |
+| `verdict`              | Utility      | Свёртка результатов: кратко на успехе, детали упавших, halt-строка при остановке лестницы, дайджест обрезанных «not ok»-строк              |
+| `GATES`                | Value Object | Фикс-последовательность (каноническая лестница): type-check · test · test:coverage · format:fix · lint:fix · lint · format · yagni         |
+| `Gate`                 | Value Object | name + mutates + `haltsOnFailure` (только type-check/test/test:coverage) + `via?` (`'npm'` default \| `'gennady'` — только yagni, D-SV008) |
+| `GateRunResult`        | Value Object | exitCode + output                                                                                                                          |
+| `GateResult`           | Value Object | name · exitCode · output · durationMs · `status: 'pass' \| 'fail' \| 'skipped'` · mutates · ranCommand                                     |
+| `GateRunner`           | Type         | `(command, args) => GateRunResult` — инъектируемый                                                                                         |
+| `VerifyOutcome`        | Type         | `{ok:true,text}` либо `{ok:false,code,exitCode,message}`                                                                                   |
+| `Profile`              | Type         | Профиль гейтов: `setup` \| `code` \| `test` \| `full` (D-SV006)                                                                            |
+| `gatesFor`             | Utility      | Гейты профиля в каноническом порядке GATES (подмножество)                                                                                  |
+| `isProfile`            | Utility      | Type-guard токена профиля из CLI-ввода                                                                                                     |
+| `resolveNpmScriptName` | Utility      | Резолв имени npm-скрипта для gate; не найден → gate `skipped` (для `type-check` — alias `typecheck`, D-SV009)                              |
+| `tailCap`              | Utility      | Обрезка output упавшего gate по лимиту строк (120) и байт (16KB); восстанавливает до 10 потерянных «not ok»-строк в отдельный дайджест     |
 
 <!--/SECTION:ENTITY_INVENTORY-->
 
@@ -86,32 +115,35 @@ $ npx gennady sdd-verify
 **Contract (DbC):**
 
 - Preconditions:
-  - Required-скрипты существуют (это проверяет `sdd-state` readiness; `sdd-verify` идёт после ready)
+  - `package.json` существует (это проверяет `sdd-state` readiness; отсутствующий отдельный npm-скрипт у gate — не precondition-нарушение, а честный `skipped`)
 - Postconditions:
-  - Каждый gate запускается ровно один раз, в нормативном порядке: `via: 'npm'` (default) как `npm run <name>`; `via: 'gennady'` (только `yagni`) как `npx gennady <name>` — напрямую, минуя проектный npm-скрипт
-  - Мутирующие (`format`, `lint`) — первыми и последовательно; падение одного не прерывает остальные (RUN-ALL)
-  - Успех → exit 0 + `✅ <gate> (<dur>)` на gate; падение → exit 1 + output только упавших
+  - Каждый gate профиля запускается не более одного раза, в нормативном порядке лестницы: `via: 'npm'` (default) как `npm run <name>` (или его alias, D-SV009); `via: 'gennady'` (только `yagni`) как `npx gennady <name>` / `npx tsx cli/gennady.ts <name>` в self-hosting режиме — напрямую, минуя проектный npm-скрипт
+  - Отсутствующий npm-скрипт → gate `skipped` (`⏭`), не запускается, не считается ни pass, ни fail
+  - Падение gate с `haltsOnFailure: true` (`type-check`, `test`, `test:coverage`) останавливает лестницу — оставшиеся gate НЕ запускаются
+  - Падение gate с `mutates: true` (`format:fix`, `lint:fix`) — находка (маркер `🔧`), не остановка; лестница продолжается (RUN-ALL для немутирующей и немутирующей-halting части)
+  - Успех → exit 0 + `✅ <gate> (<dur>)` на gate; падение → exit 1 + обрезанный output упавшего (`tailCap`) + дайджест потерянных «not ok»-строк, если обрезка их скрыла
 - Invariants:
-  - Набор и порядок gate — фиксированные (нет обнаружения по package.json)
-  - `run(runner)` детерминистична при фиксированном раннере; реальные подпроцессы — только в `index.ts`
+  - Набор и порядок gate — фиксированные (`GATES`), профиль — явное подмножество в том же порядке (нет обнаружения по package.json)
+  - `run(runner, profile)` детерминистична при фиксированном раннере; реальные подпроцессы — только в `index.ts`
   <!--/SECTION:MODULE_CONTRACTS-->
 
 <!--SECTION:PUBLIC_OPTIONS-->
 
 ## 5. Public Options & Policies
 
-| Argument                       | Type   | Description                                      |
-| ------------------------------ | ------ | ------------------------------------------------ |
-| `--profile <code\|test\|full>` | string | Какой профиль гейтов гнать. По умолчанию `full`. |
-| `--help` / `-h`                | —      | Справка.                                         |
+| Argument                              | Type   | Description                                      |
+| ------------------------------------- | ------ | ------------------------------------------------ |
+| `--profile <setup\|code\|test\|full>` | string | Какой профиль гейтов гнать. По умолчанию `full`. |
+| `--help` / `-h`                       | —      | Справка.                                         |
 
-Профили — фикс-наборы, выбор по ЯВНОМУ флагу (не обнаружение):
+Профили — фикс-наборы в каноническом порядке лестницы, выбор по ЯВНОМУ флагу (не обнаружение):
 
-- `code` — `format · lint · type-check · yagni` (фазы кода: impl/refactor/config/doc/bootstrap; тесты НЕ гоняются — их ещё может не быть; `yagni` гоняется — это уже проверка кода диффа, не тестов)
-- `test` — `format · type-check · test:coverage` (фаза тестов; `lint`/`yagni` не гоняются — фаза тестов не трогает прод-код)
-- `full` — `format · lint · type-check · test:coverage · yagni` (финал, все фазы закрыты; **default**)
+- `setup` — `type-check · test · format:fix · lint:fix · lint · format` (первичная настройка проекта; тот же состав, что `code`)
+- `code` — `type-check · test · format:fix · lint:fix · lint · format` (фазы кода: impl/refactor/config/doc; плоский `test` вместо `test:coverage`; `format:fix`/`lint:fix` чинят перед read-only `lint`/`format`; `yagni` НЕ входит — вызывается отдельно оркестратором на закрытии группы)
+- `test` — `type-check · test:coverage · format:fix · format` (фаза тестов; покрытие ИЗМЕРЯЕТСЯ, порог здесь не проверяется — это забота `testcov --min`/audit; `lint`/`lint:fix`/`yagni` не гоняются — фаза тестов не трогает прод-код)
+- `full` — `type-check · test:coverage · lint · format · yagni` (финал/group-close, все фазы закрыты; **default**; без мутирующих ступеней — только измерение, чтение и прямой вызов `yagni`)
 
-Порядок внутри профиля нормативен (мутирующие первыми). Плоский `test` НЕ гоняется (покрыт `test:coverage`), но в required-наборе readiness остаётся.
+Порядок внутри профиля — подмножество канонического `GATES` в неизменном порядке. Плоский `test` гоняется в `setup`/`code` (не в `full`, там — `test:coverage`); required-набор readiness (`shared/sdd/readiness.ts`) требует оба скрипта — `test` и `test:coverage` — независимо от того, какой профиль реально прогоняется.
 
 <!--/SECTION:PUBLIC_OPTIONS-->
 
@@ -148,7 +180,10 @@ cli/cmd/sdd-verify/
 
 ### D-SV003 — Мутирующие первыми, последовательно
 
-- **Status:** active · **Why:** `format`/`lint` делают autofix (переписывают файлы); параллель с читающими (`type-check`/`test:coverage`) — гонка. Последовательность безопасна. **Risk:** медленнее; read-only пару можно распараллелить позже (async-spawn).
+- **Status:** superseded by D-SV010
+- **Why:** `format`/`lint` делали autofix (переписывали файлы); параллель с читающими (`type-check`/`test:coverage`) — гонка. Последовательность безопасна.
+- **Risk accepted:** медленнее; read-only пару можно распараллелить позже (async-spawn).
+- **Update:** реформа верификации (см. D-SV010) развела «мутирующий autofix» (`format:fix`/`lint:fix`) и «read-only проверка» (`format`/`lint`) на разные gate — мутирующие идут ПОСЛЕ halting-основания (`type-check`/`test`), не первыми; read-only проверки — после починки, не параллельно. Идея «мутирующее до читающего» осталась (сохраняет отсутствие гонки за файлы), но сама пара `format`/`lint` больше не мутирует.
 
 ### D-SV004 — Классификатор `scripts.ts` ретайрнут
 
@@ -156,17 +191,23 @@ cli/cmd/sdd-verify/
 
 ### D-SV005 — Плоский `test` не гоняется
 
-- **Status:** active · **Why:** `test:coverage` запускает те же тесты с покрытием; гонять оба — избыточно. **Risk:** если нужна быстрая прогонка без coverage — добавить `test` в GATES.
+- **Status:** superseded by D-SV011
+- **Why:** `test:coverage` запускает те же тесты с покрытием; гонять оба в одном профиле — избыточно.
+- **Risk accepted:** если нужна быстрая прогонка без coverage — добавить `test` в GATES.
+- **Update:** `test` добавлен в `GATES` (D-SV011) и гоняется в профилях `setup`/`code` вместо `test:coverage` — фазе кода не нужно измерять покрытие, только убедиться, что тесты не сломаны; `test:coverage` остаётся в профилях `test`/`full`. Оба остаются required-скриптами readiness независимо от того, какой профиль их реально гоняет.
 
 ### D-SV006 — Профили гейтов по виду фазы
 
-- **Status:** active · **Why:** гейт привязан к `kind` фазы. Фаза кода не должна гонять тесты (их ещё нет; и корректнее, и экономит) — только format/lint/type-check; фаза тестов — покрытие; финал — всё. Профиль выбирается ЯВНЫМ `--profile` от оркестратора по виду фазы, НЕ обнаружением по package.json — дух D-SV002 («без угадываний») сохранён, наборы по-прежнему фиксированы. Default `full` — безопасный максимум, если флаг не передан. **Risk:** оркестратор обязан передать верный профиль; недопроверка от неверного профиля ловится финальным `full` (Пункт 3).
+- **Status:** active (составы профилей обновлены D-SV010/D-SV011 — само решение «профиль по виду фазы» не отменяется)
+- **Why:** гейт привязан к `kind` фазы. Фаза кода не должна гонять покрытие (только убедиться, что тесты не сломаны); фаза тестов — покрытие; финал — всё. Профиль выбирается ЯВНЫМ `--profile` от оркестратора по виду фазы, НЕ обнаружением по package.json — дух D-SV002 («без угадываний») сохранён, наборы по-прежнему фиксированы. Default `full` — безопасный максимум, если флаг не передан.
+- **Risk accepted:** оркестратор обязан передать верный профиль; недопроверка от неверного профиля ловится финальным `full`.
 
 ### D-SV007 — `yagni` добавлен как read-only гейт, в конце последовательности
 
-- **Status:** active
-- **Why:** YAGNI-проверка (`gennady yagni`, `specs/cli/yagni/yagni.spec.md`) читает готовый диф фазы — запускать её до финальных правок кода (до `type-check`/`test:coverage`) бессмысленно, поэтому она встаёт последней в `GATES`. Она не мутирует файлы (не autofix), поэтому не конкурирует за порядок с `format`/`lint`. Включена в профили `code` и `full` (код-диф уже есть), исключена из `test` (тестовая фаза не трогает прод-символы).
+- **Status:** active (положение в лестнице и профильный охват подтверждены реформой D-SV010 — `yagni` теперь только в `full`, не в `code`)
+- **Why:** YAGNI-проверка (`gennady yagni`, `specs/cli/yagni/yagni.spec.md`) читает готовый диф фазы — запускать её до финальных правок кода бессмысленно, поэтому она встаёт последней в `GATES`. Она не мутирует файлы (не autofix), поэтому не конкурирует за порядок с мутирующими гейтами.
 - **Risk accepted:** Нет — вызов напрямую, не через npm-скрипт (см. D-SV008, суперсидит первоначальный npm-скрипт подход этой записи).
+- **Update:** реформа верификации (D-SV010) вывела `yagni` из профиля `code` — она больше не гоняется на каждой кодовой фазе, только на group-close (`full`), где диф всей группы уже стабилен; профиль `setup` тоже её не включает.
 
 ### D-SV008 — `yagni`-гейт вызывается напрямую (`npx gennady yagni`), не через npm-скрипт проекта
 
@@ -179,11 +220,30 @@ cli/cmd/sdd-verify/
 - **Status:** active
 - **Why:** канонический gate-id — `type-check` (совпадает с собственным `package.json` gennady), но живые проекты в дикой природе объявляют скрипт как `typecheck` — точный `npm run type-check` на таком проекте падает `missing script`, хотя проверка типов реально настроена. Перед вызовом `resolveScriptName` читает `package.json` проекта и предпочитает `type-check`, при его отсутствии — `typecheck`; при отсутствии обоих или нечитаемом `package.json` — не угадывает дальше, оставляет каноническое имя (даёт npm сказать `missing script`, диагностика достаточна).
 - **Risk accepted:** Отображение/лог всегда используют канонический `type-check`, независимо от того, какое имя реально было вызвано — небольшая недостача точности сообщения ради единообразия репортов; не риск для корректности гейта.
+
+### D-SV010 — Реформа: лестница с halting-основанием, мутирующей починкой и профилем `setup`
+
+- **Status:** active · **Supersedes:** D-SV003 (мутирующие первыми)
+- **Why:** Плоский RUN-ALL по всем gate одинаково не различал «код не собирается — чинить нечего» от «форматирование не совпало — можно чинить и продолжать». Реформа ввела `haltsOnFailure` на основании лестницы (`type-check`, `test`, `test:coverage`) — падение останавливает всё дальнейшее, экономит время и не плодит бессмысленные находки на несобирающемся коде. Сверху добавлена мутирующая починка (`format:fix`, `lint:fix`, маркер 🔧) — отдельные gate от read-only `format`/`lint`, что снимает путаницу из D-SV003 (там `format`/`lint` сами считались мутирующими). Профиль `setup` введён с тем же составом, что `code`, для первичной настройки нового проекта.
+- **Risk accepted:** Halting-основание означает, что находки лестницы после основания никогда не увидены, пока не зафиксить type-check/тесты — это осознанный трейд-офф (нет смысла чинить формат в несобирающемся коде), а не побочный эффект.
+
+### D-SV011 — `test` возвращён в `GATES`, заменяет `test:coverage` в `setup`/`code`
+
+- **Status:** active · **Supersedes:** D-SV005 (плоский `test` не гоняется)
+- **Why:** Профили `setup`/`code` не должны платить цену измерения покрытия на каждой кодовой фазе — плоский `test` достаточен, чтобы убедиться, что фаза не сломала тесты. `test:coverage` остаётся в профилях `test`/`full`, где покрытие релевантно. Оба скрипта остаются required в readiness (`shared/sdd/readiness.ts`) независимо от того, какой профиль их фактически использует.
+- **Risk accepted:** Нет — оба required-скрипта уже обязаны существовать; выбор какой из двух реально запускается — забота профиля, не readiness.
 <!--/SECTION:MODULE_DECISION_LOG-->
+
+<!--SECTION:OPEN_RISKS-->
+
+## 8. Open Risks
+
+- **Пропуск не различает «скрипта не было» от «скрипт был и его удалили».** Честный `⏭ <gate> — скрипта нет в package.json, пропущено` (D-SV010) одинаково печатается и для проекта, который никогда не заводил, например, `format:fix`, и для проекта, где `format:fix` был, прогонялся, а затем кто-то тихо удалил его из `package.json` (регресс, не намеренное решение) — обе ситуации на выходе `sdd-verify` неразличимы, лестница одинаково идёт дальше как будто ступени никогда не существовало. На зрелом проекте это маскирует регресс инструментовки: gate, который раньше реально чинил/проверял код, перестаёт запускаться без единого exit≠0 в истории. **Предложенное усиление:** сверка текущего набора npm-скриптов с исходным манифестом (например зафиксированным при `sdd-state`/readiness READY или в git-истории `package.json`) — появление нового `⏭` для скрипта, который раньше существовал, должно репортиться отдельно от «скрипта никогда не было».
+<!--/SECTION:OPEN_RISKS-->
 
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->
 
-## 8. Inter-Module Dependencies
+## 9. Inter-Module Dependencies
 
 - **Depends on:** `node:child_process` (spawnSync), `#logger`
 - **Provides to:** `gennady.ts`; вызывается из `phase-execution-protocol` (STEP_5), `reconcile` (STEP_7)

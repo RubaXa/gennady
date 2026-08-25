@@ -12,7 +12,7 @@ import {
   getHeadContent,
   hasGitHead,
 } from '../../../shared/common/changed-files.ts';
-import { isTestFile } from '../../../shared/common/files.ts';
+import { isTestFile, isUnderTestDirectory } from '../../../shared/common/files.ts';
 import {
   checkYagniUsage,
   stripBarrelReexports,
@@ -126,7 +126,7 @@ async function usageCountFor(repoRoot: string, name: string, adapters: Adapters)
   let total = 0;
   for (const abs of candidates) {
     const rel = relative(repoRoot, abs);
-    if (isTestFile(rel)) continue;
+    if (isTestFile(rel) || isUnderTestDirectory(rel)) continue;
     let content: string;
     try {
       content = readFileSync(abs, 'utf-8');
@@ -226,7 +226,13 @@ export async function run(rawArgs: string[]): Promise<YagniReport> {
     approximate: new GrepSymbolIndexAdapter(),
   };
 
-  const changedFiles = getChangedSourceFiles(root);
+  // A symbol DECLARED in test territory (a `*.test.ts`, or a helper/fixture under `__tests__/`)
+  // can never satisfy the rule: its only legitimate consumers are tests, and test files are
+  // excluded from the usage count by design. Skipping the declaration side too is what keeps the
+  // rule about speculative PRODUCTION surface — observed live: this repo's own fixture helpers.
+  const changedFiles = getChangedSourceFiles(root).filter(
+    (rel) => !isTestFile(rel) && !isUnderTestDirectory(rel)
+  );
   const allChanged: ChangedSymbol[] = [];
   for (const rel of changedFiles) {
     allChanged.push(...(await changedSymbolsForFile(root, rel, adapters)));

@@ -42,9 +42,10 @@ npx gennady testcov --run
 npx gennady testcov --check
 npx gennady testcov --check --json
 
-# Гейт по покрытию (exit 0/1) — агрегирует line coverage по всем getRoots()
+# Гейт по покрытию (exit 0/1) — без пути агрегирует по всем getRoots()
 npx gennady testcov --min=80
 npx gennady testcov --run --min=80   # прогнать тесты, затем проверить порог
+npx gennady testcov --min=80 src/module   # порог только по src/module, не по всему проекту
 
 # Плоский список
 npx gennady testcov --flat
@@ -115,7 +116,7 @@ _Это полный список сущностей модуля `testcov`. Л�
 - **Public Operations:**
   - Парсинг аргументов через `parseArgs` (files, run, check, json, flat, help, context)
   - `--check` → `runDiagnostics()` + `printDiagnostics()`
-  - `--min=<pct>` → `aggregateLineCoverage(getRoots().map(getDirStats))` + `meetsMinCoverage()`; exit 0/1, no tree
+  - `--min=<pct>` без пути → `aggregateLineCoverage(getRoots().map(getDirStats))` (весь проект); `--min=<pct> <path>` → агрегирует только файлы под `<path>` (`findFiles(path)` → dir через `getDirStats`, file через `getCovRaw`) + `meetsMinCoverage()`; exit 0/1, no tree
   - `--run` → `detectRunners()` + `execSync(runner.runCmd(RESULTS_TMP))`
   - Загрузка `coverage-final.json` + `.tree-results.json`
   - `--flat` → `collectFlat()` + `printFlat()`
@@ -231,15 +232,19 @@ _Это полный список сущностей модуля `testcov`. Л�
 
 - Preconditions:
   - `coverage/coverage-final.json` существует и содержит валидный Istanbul JSON (та же загрузка, что для дерева)
-  - `--min` передан со значением (`--min=<N>`); без значения → usage error, exit 4
+  - `--min` передан со значением (`--min=<N>`); без значения → usage error, exit 4: `testcov: --min requires a value, e.g. --min=80`
+  - Значение `--min` — неотрицательное число; иначе → usage error, exit 4: `testcov: --min value must be a non-negative number, got "<value>"`
 - Postconditions:
-  - Агрегирует `sH`/`sT` по `getDirStats(dir)` для каждой `dir` из `getRoots()` → project-wide line coverage
+  - Без позиционного пути: агрегирует `sH`/`sT` по `getDirStats(dir)` для каждой `dir` из `getRoots()` → project-wide line coverage (как и раньше)
+  - С позиционным путём (`--min=<N> <path>`): агрегирует ТОЛЬКО файлы/директорию под `<path>` (`findFiles(path)`) — порог считается по указанному поддереву, не по всему проекту
   - `coverage% >= N` → exit 0; иначе exit 1
-  - `total=0` (ничего не инструментировано) → exit 1 при любом `N >= 0` — пустой проект не сертифицируется
-  - Печатает одну строку с процентом, `hit/total` и вердиктом; дерево/диагностика не печатаются
+  - `total=0` (ничего не инструментировано в выбранном множестве) → exit 1 при любом `N >= 0`; сообщение объясняет, что тесты ничего не загрузили: `testcov: coverage not measured — no file was loaded by tests yet (no tests written?) — cannot check the threshold ❌`
+  - Обычный вердикт печатает одну строку: `testcov: line coverage <pct>% (<hit>/<total> statements) — required ≥<N>% ✅|❌`; дерево/диагностика не печатаются
+  - Отсутствующий coverage-файл → подсказка называет настоящую команду прогона для обнаруженного раннера (`Option A: npx gennady testcov --run` / `Option B: <детектированная run-команда, например npx vitest run --coverage>`)
 - Invariants:
   - `aggregateLineCoverage`/`linePct`/`meetsMinCoverage` — чистые функции (`coverage-threshold.ts`), без I/O; юнит-тестируемы отдельно от загрузки coverage-файла
   - Порог включает равенство (`>=`), не строго `>`
+  - Позиционный путь только сужает множество агрегируемых файлов — сам механизм подсчёта (`aggregateLineCoverage`/`meetsMinCoverage`) не меняется
 
 ### 5.5 File Detail
 
@@ -268,18 +273,18 @@ _Это полный список сущностей модуля `testcov`. Л�
 
 ## 6. Public Options & Policies
 
-| Flag              | Type    | Default | Description                                              |
-| ----------------- | ------- | ------- | -------------------------------------------------------- |
-| `--files`         | boolean | false   | Показывать файлы в дереве (иначе только директории)      |
-| `--run`           | boolean | false   | Авто-запуск тестов с coverage перед показом              |
-| `--check`         | boolean | false   | Только диагностика конфигурации (exit 0/1)               |
-| `--min=<pct>`     | number  | —       | Гейт покрытия строк: exit 1 если агрегат < pct (D-TC006) |
-| `--json`          | boolean | false   | Машиночитаемый вывод (для `--check` или `--flat`)        |
-| `--flat`          | boolean | false   | Плоский список вместо дерева                             |
-| `--context`, `-c` | number  | 2       | Количество строк контекста вокруг непокрытого кода       |
-| `--color`         | boolean | false   | ANSI-подсветка красным/жёлтым фоном в file-detail        |
-| `--help`, `-h`    | boolean | false   | Показать справку                                         |
-| `<path>`          | string  | —       | Целевая директория или файл                              |
+| Flag                 | Type    | Default | Description                                                                                                                 |
+| -------------------- | ------- | ------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `--files`            | boolean | false   | Показывать файлы в дереве (иначе только директории)                                                                         |
+| `--run`              | boolean | false   | Авто-запуск тестов с coverage перед показом                                                                                 |
+| `--check`            | boolean | false   | Только диагностика конфигурации (exit 0/1)                                                                                  |
+| `--min=<pct> [path]` | number  | —       | Гейт покрытия строк: exit 1 если агрегат < pct; без `path` — по всему проекту, с `path` — только по нему (D-TC006, D-TC008) |
+| `--json`             | boolean | false   | Машиночитаемый вывод (для `--check` или `--flat`)                                                                           |
+| `--flat`             | boolean | false   | Плоский список вместо дерева                                                                                                |
+| `--context`, `-c`    | number  | 2       | Количество строк контекста вокруг непокрытого кода                                                                          |
+| `--color`            | boolean | false   | ANSI-подсветка красным/жёлтым фоном в file-detail                                                                           |
+| `--help`, `-h`       | boolean | false   | Показать справку                                                                                                            |
+| `<path>`             | string  | —       | Целевая директория или файл                                                                                                 |
 
 **SKIP_DIRS Policy:** Всегда исключаются из tree walk и агрегации: `node_modules`, `.git`, `dist`, `build`, `out`, `coverage`, `.vite`, `.cache`, `.turbo`, `.nx`, `__generated__`, `.next`, `.nuxt`, `.svelte-kit`, `vendor`, `third_party`, `external`, `.storybook`, `.husky`, `.claude`, `.github`, `__tests__`, `__snapshots__`, `__mocks__`, `docs`, `public`, `static`, `assets`, `fixtures`, `__fixtures__`, `tooling-lab`, `draft`, `tasks`, `specs`, `ai`.
 
@@ -370,6 +375,12 @@ cli/cmd/testcov/
 ### `detectNativeCoverageScript`
 
 - **Usage Waiver:** Единственный вызов внутри `runDiagnostics()`, только на пути `runners.length === 0` — выделена отдельно, чтобы у диагностики `NATIVE_COVERAGE_UNSUPPORTED` был собственный, прямо тестируемый предикат обнаружения, не заинлайненный в условие.
+
+### D-TC008 — `--min` уважает позиционный путь; честные сообщения на нулевом покрытии и на отсутствующем coverage-файле
+
+- **Status:** active
+- **Why:** До этой итерации `--min=<pct>` ВСЕГДА агрегировал весь проект (`getRoots()`), даже если оператор передал конкретный путь — порог для «моего нового модуля» на практике размывался покрытием всего остального репо, давая ложно-зелёный/ложно-красный результат не про то, что спрашивали. Теперь позиционный `<path>`, если передан, сужает агрегацию (`findFiles(path)`) до себя — порог считается только по нему; без пути поведение не изменилось (весь проект, как раньше). Дополнительно: сообщение при `total=0` (ничего не инструментировано) раньше не объясняло причину — теперь честно называет её («no file was loaded by tests yet — no tests written?»), а подсказка при отсутствующем `coverage-final.json` называет РЕАЛЬНУЮ обнаруженную run-команду для раннера проекта (vitest/jest/node:test), а не общий плейсхолдер.
+- **Risk accepted:** Нет — сужение по пути строго опционально (без пути поведение прежнее); текстовые улучшения сообщений не меняют exit-коды и машиночитаемый JSON-контракт.
 <!--/SECTION:MODULE_DECISION_LOG-->
 
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->
