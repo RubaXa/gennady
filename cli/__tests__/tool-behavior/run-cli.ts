@@ -17,9 +17,11 @@ const TSX_LOADER = join(REPO_ROOT, 'node_modules', 'tsx', 'dist', 'loader.mjs');
 export type CliResult = { stdout: string; stderr: string; exitCode: number };
 
 /**
- * @purpose Run the real `cli/gennady.ts` entry point against a fixture, with GIT_* scrubbed from the
- *   child's env — inheriting them would redirect any git-scoped tool call into the real repo instead
- *   of the fixture (see scripts/git-hooks/pre-commit's own comment on this failure mode).
+ * @purpose Run the real `cli/gennady.ts` entry point against a fixture, with GIT_* and NODE_TEST_*
+ *   scrubbed from the child's env. GIT_* would redirect a git-scoped tool call into the real repo
+ *   instead of the fixture (see scripts/git-hooks/pre-commit's own comment on this failure mode);
+ *   NODE_TEST_CONTEXT leaks in when this helper runs under `node --test` and would flip any
+ *   `node --test` a gate itself spawns into silent child-reporter mode, swallowing its non-zero exit.
  * @param args CLI arguments (after the command name is not special — pass e.g. `['sdd-verify', '--profile', 'setup']`).
  * @param cwd Fixture root to run from.
  * @returns Combined stdout/stderr and exit code (1 when the process could not even be spawned).
@@ -27,7 +29,7 @@ export type CliResult = { stdout: string; stderr: string; exitCode: number };
 export function runCli(args: string[], cwd: string): CliResult {
   const env: NodeJS.ProcessEnv = { ...process.env, GENNADY_NO_UPDATE_CHECK: '1' };
   for (const key of Object.keys(env)) {
-    if (key.startsWith('GIT_')) delete env[key];
+    if (key.startsWith('GIT_') || key.startsWith('NODE_TEST')) delete env[key];
   }
   const res = spawnSync(process.execPath, ['--import', TSX_LOADER, GENNADY_ENTRY, ...args], {
     cwd,
