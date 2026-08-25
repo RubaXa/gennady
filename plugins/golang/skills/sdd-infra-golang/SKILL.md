@@ -34,7 +34,7 @@ Machine-readable form for a subagent: `npx gennady verify --plan --json`.
 
 | Diagnostic | Meaning | Correct response |
 | --- | --- | --- |
-| `GOLANGCI_GO_TOO_OLD` | Linter binary predates the module's Go; it will panic, not lint | Install a newer golangci-lint, or `gennady.yaml: stack.golang.skipGates: [lint]` |
+| `TOOLCHAIN_MISSING` | No `go` toolchain (neither repo-pinned `./bin/go` nor PATH) — blocking, the run has no verdict | Install Go or put it on PATH |
 | `GOLANGCI_CONFIG_MISSING` | Makefile points at a config absent from the checkout | Restore it, or rely on the config the plugin discovered (shown as `config:` in `--plan`) |
 | `NESTED_MODULES` | Nested `go.mod` outside `./...` | Verify each with `--root=<dir>`, or state which modules are uncovered |
 | `CONFIG_ERROR` | Stack config is broken or has unknown keys/types | Fix it — verify refuses to run on a config it does not understand (exit 4) |

@@ -17,7 +17,7 @@
 | `fix` | ⛔ post-v1 | своих fixer'ов плагин не планирует; естественные кандидаты — `format --write`, `lint --fix` — но только как `gate.fixer` (stack.spec §4.4), не гейты |
 | `testcov` | ⛔ post-v1 | vitest/jest coverage; сегодня покрытие живёт в отдельной команде `testcov` |
 | `dbc-lint` | ⛔ post-v1 | цели для собственного линтера «Геннадии» (`.ts`/`.tsx`) |
-| `directives` | ⛔ post-v1 | stack.spec §4.5 |
+| `directives` | ⛔ post-v1 | stack.spec §4.3 |
 
 ## 3. Detection
 
@@ -78,7 +78,7 @@ npm-скрипты — **репо-уровневые команды**: они н
 ## 8. Handoff to Task Scaffolding
 
 - **Implementation files (существуют):** `node-plugin.ts`, `classify-npm-scripts.ts`
-- **Fixture files to be created:** `plugins/node/e2e/fixtures/node-*` по §6 (12 фикстур)
+- **Fixture files (существуют):** `plugins/node/e2e/fixtures/node-*` по §6 (11 фикстур)
 - **Open risks:**
   - **эвристика классификации** — главный источник ложных срабатываний: незнакомый раннер не распознаётся (гейт молча отсутствует), а нестандартное имя может попасть в чужой класс. Смягчение: `--plan` печатает выбор `класс→скрипт`, диагностика `NODE_NO_SCRIPTS` при пустом наборе, `extraGates` как обходной путь
   - `node-missing-modules` зависит от текста ошибки npm — фикстура утверждает только вердикт

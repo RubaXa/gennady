@@ -280,7 +280,7 @@ stack:
 
 **Контракт:** RUN-ALL (все гейты выполняются, отказы накапливаются); SUPPRESS-ON-SUCCESS (успешные гейты молчат); гейты **не изменяют** рабочее дерево — и это принудительно: все гейты исполняются в эфемерной реплике дерева (одна на прогон), мутация без `driftMeansFailure: true` — статус `VIOLATION`, реальное дерево не затрагивается по построению; отказ инструмента (паника линтера, недоступный module proxy) помечается `ENV_FAIL` — это не findings по коду. Таймаут — обязательный per-gate (дефолты у плагина, override в конфиге); глобального нет. Невалидный конфиг останавливает команду до запуска гейтов. Коды выхода: `0` всё прошло · `1` гейт упал · `4` неверный вызов/конфиг · `5` стек не распознан.
 
-Подробнее: [`specs/stack/stack.spec.md`](specs/stack/stack.spec.md), [`ai/directives/infra/golang-setup.xml`](ai/directives/infra/golang-setup.xml), навык `sdd-infra-golang`.
+Подробнее: [`specs/stack/stack.spec.md`](specs/stack/stack.spec.md), [`plugins/golang/directives/infra/golang-setup.xml`](plugins/golang/directives/infra/golang-setup.xml), навык `sdd-infra-golang`.
 
 ---
 

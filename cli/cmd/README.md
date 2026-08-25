@@ -184,37 +184,37 @@ npx gennady verify --plan --json
 
 ## Все команды
 
-| Команда             | Назначение                                                |
-| ------------------- | --------------------------------------------------------- |
-| `commit`            | Генерация commit message из staged-изменений через AI     |
-| `cat`               | Вывод файлов в XML/Markdown для AI-контекста              |
-| `review`            | AI-ревью staged изменений                                 |
-| `review-verify`     | Сборка промпта для верификации MR/PR discussions          |
-| `review-issues`     | XML-артефакт issues из MR/PR                              |
-| `vcs-reply`         | Постинг ответов в GitLab MR discussions                   |
-| `vcs-draft-note`    | Управление черновиками (draft notes) в GitLab MR          |
-| `vcs-approve`       | Approve / отзыв approve GitLab MR через API               |
-| `vcs-diff`          | Список изменённых файлов или содержимое файла в MR        |
-| `vcs-todo`          | Закрытие pending-todo GitLab (финализация MR)             |
-| `vcs-pipeline`      | Статус пайплайна MR: сводка джоб, логи упавших            |
-| `vcs-job`           | Управление джобой (status/play/cancel/retry)              |
-| `vcs-job-log`       | Сырой или фильтрованный лог джобы пайплайна               |
-| `vcs-worktree`      | Подготовка read-only git worktree для MR review           |
-| `inbox`             | Интерактивный разбор входящих GitLab MR                   |
-| `inbox-context`     | Атомарный сбор контекста MR (worktree+changeset+threads)  |
-| `run`               | Запуск задания через AI-движок (opencode)                 |
-| `resolve-conflicts` | Промпт для AI-разрешения merge-конфликтов                 |
-| `remote-console`    | Зеркалирование браузерной консоли в stdout                |
-| `lint`              | Валидация .ts файлов: headers, anchors, DbC, invariants   |
-| `alt-opinion`       | Мульти-модельные мнения с синтезом                        |
-| `sync`              | Синхронизация `ai/directives/` из npm-пакета              |
-| `sync-skills`       | Синхронизация SDD-навыков в `.claude/skills/`             |
-| `agent-mon`         | Интерактивный дашборд мониторинга AI-агентов              |
-| `orient`            | Навигация по file-header и DBC-контрактам                 |
-| `agents-rules`      | Инструкция по orient для AI-агентов                       |
-| `testcov`           | Визуальное дерево покрытия (vitest/jest/node:test)        |
+| Команда             | Назначение                                                      |
+| ------------------- | --------------------------------------------------------------- |
+| `commit`            | Генерация commit message из staged-изменений через AI           |
+| `cat`               | Вывод файлов в XML/Markdown для AI-контекста                    |
+| `review`            | AI-ревью staged изменений                                       |
+| `review-verify`     | Сборка промпта для верификации MR/PR discussions                |
+| `review-issues`     | XML-артефакт issues из MR/PR                                    |
+| `vcs-reply`         | Постинг ответов в GitLab MR discussions                         |
+| `vcs-draft-note`    | Управление черновиками (draft notes) в GitLab MR                |
+| `vcs-approve`       | Approve / отзыв approve GitLab MR через API                     |
+| `vcs-diff`          | Список изменённых файлов или содержимое файла в MR              |
+| `vcs-todo`          | Закрытие pending-todo GitLab (финализация MR)                   |
+| `vcs-pipeline`      | Статус пайплайна MR: сводка джоб, логи упавших                  |
+| `vcs-job`           | Управление джобой (status/play/cancel/retry)                    |
+| `vcs-job-log`       | Сырой или фильтрованный лог джобы пайплайна                     |
+| `vcs-worktree`      | Подготовка read-only git worktree для MR review                 |
+| `inbox`             | Интерактивный разбор входящих GitLab MR                         |
+| `inbox-context`     | Атомарный сбор контекста MR (worktree+changeset+threads)        |
+| `run`               | Запуск задания через AI-движок (opencode)                       |
+| `resolve-conflicts` | Промпт для AI-разрешения merge-конфликтов                       |
+| `remote-console`    | Зеркалирование браузерной консоли в stdout                      |
+| `lint`              | Валидация .ts файлов: headers, anchors, DbC, invariants         |
+| `alt-opinion`       | Мульти-модельные мнения с синтезом                              |
+| `sync`              | Синхронизация `ai/directives/` из npm-пакета                    |
+| `sync-skills`       | Синхронизация SDD-навыков в `.claude/skills/`                   |
+| `agent-mon`         | Интерактивный дашборд мониторинга AI-агентов                    |
+| `orient`            | Навигация по file-header и DBC-контрактам                       |
+| `agents-rules`      | Инструкция по orient для AI-агентов                             |
+| `testcov`           | Визуальное дерево покрытия (vitest/jest/node:test)              |
 | `verify`            | Стек-агностичные гейты (node + golang + anystack, gennady.yaml) |
-| `fix`               | Мутирующие fixer'ы (кодоген, форматтеры) в рабочем дереве |
+| `fix`               | Мутирующие fixer'ы (кодоген, форматтеры) в рабочем дереве       |
 
 ---
 

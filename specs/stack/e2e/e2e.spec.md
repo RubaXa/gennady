@@ -21,9 +21,9 @@ product
 | Матрица                                        | Владелец                                                                  |
 | ---------------------------------------------- | ------------------------------------------------------------------------- |
 | Go-фикстуры (49)                               | [`plugins/golang` §7](../../../plugins/golang/specs/golang.spec.md)       |
-| npm-фикстуры (12)                              | [`plugins/node` §6](../../../plugins/node/specs/node.spec.md)             |
-| anystack-фикстуры (4)                          | [`plugins/anystack` §6](../../../plugins/anystack/specs/anystack.spec.md) |
-| Конфиг: discovery, merge, провенанс, валидация | [`config` §6](../../config/config.spec.md)                                |
+| npm-фикстуры (11)                              | [`plugins/node` §6](../../../plugins/node/specs/node.spec.md)             |
+| anystack-фикстуры (7)                          | [`plugins/anystack` §6](../../../plugins/anystack/specs/anystack.spec.md) |
+| Конфиг: discovery, merge, провенанс, валидация | [`config` §4.2](../../config/config.spec.md)                              |
 
 **Зачем этот уровень вообще.** Классификация вердикта — композиция плагина, конфига, порядка проверок в раннере и exit-кодов настоящего инструмента. Юнит-тесты проверяют звенья по отдельности и **структурно не способны** поймать ошибку композиции. Доказательство из практики (PR #5): гейт `golang:lint` несёт `exit > 1 ↦ ENV_FAIL`, а `applyStackConfig` наследует предикаты при `overrideGates.lint.argv` — документированном способе обёртки. `make` возвращает 2 на любом упавшем рецепте, поэтому `argv: [make, lint]` превращает **каждую настоящую находку линтера** в `ENV_FAIL` с текстом «это НЕ находка про код, не меняй исходники». Все юнит-тесты при этом зелёные: каждое звено ведёт себя как задумано, ошибочна композиция. Класс дефектов особенно дорог тем, что не ломает сборку, а **тихо разворачивает инструкцию агенту** — агент бросает настоящий баг.
 
@@ -40,7 +40,7 @@ product
 $ npm run test:stack-e2e
 
 [golang] build:publish → pack → install → /tmp/gennady-e2e-golang-a1b2c/runner
-[golang] toolchains: go 1.24.2 ✓ · golangci-lint 1.64.5 ✓
+[golang] toolchains: go 1.24.2 ✓ · golangci-lint 2.12.2 ✓
 ▶ go-clean-full            весь план          expect pass        ✓ 4.1s
 ▶ go-fmt-drift             golang:fmt         expect fail        ✓ 0.7s
 ▶ go-make-lint-exit2       golang:lint        expect fail        ✓ 1.1s
@@ -138,7 +138,7 @@ _Полный список сущностей модуля. Любая сущн�
 
 - **Type:** Value Object
 - **Purpose:** Единица владения: один стек — один набор, один артефакт, один мейнтейнер
-- **Public Properties:** `stackId: 'golang' | 'node'`; `fixturesDir: string`; `toolchains: string[]` (объединение `requires` фикстур)
+- **Public Properties:** `stackId: string` (id набора — плагинного или репо-уровневого `config`; наборы плагинов derive'ятся резолвером динамически); `fixturesDir: string`; `toolchains: string[]` (объединение `requires` фикстур)
 - **Lifecycle:** объявляется в оркестраторе; добавление стека = добавление набора и директории фикстур
 - **Consumers:** Internal: оркестратор, `setupStackSuite`
 
@@ -167,7 +167,7 @@ _Полный список сущностей модуля. Любая сущн�
 ### 5.1 Service: `setupStackSuite`
 
 - **Purpose:** Подготовка окружения одного стекового набора
-- **Consumers:** Internal: `golang.e2e.test.ts`, `node.e2e.test.ts`
+- **Consumers:** Internal: `suite.ts` (`declareStackSuite`), через него `plugin-suite.e2e.test.ts` и `config.e2e.test.ts`
 - **Runtime Backing:** `real-runtime` · **Verification Levels:** `e2e`
 - **Deferred Runtime Scope:** None
 
@@ -236,21 +236,26 @@ _Полный список сущностей модуля. Любая сущн�
 
 ```
 services/stack/__tests__/e2e/
-├── golang.e2e.test.ts         # Набор golang: свой setup → фикстуры fixtures/golang/*
-├── node.e2e.test.ts           # Набор node: свой setup → фикстуры fixtures/node/*
+├── plugin-suite.e2e.test.ts   # Наборы плагинов: derive по резолверу → фикстуры plugins/<id>/e2e/fixtures/*
+├── config.e2e.test.ts         # Репо-набор config: семантика конфига → фикстуры fixtures/config/*
+├── fixture-integrity.test.ts  # Инвариант: под каждым корнем фикстур нет untracked/ignored-файлов
+├── suite.ts                   # declareStackSuite(suiteId, dir), STRICT_VARS, сводка скипов
 ├── setup.ts                   # setupStackSuite(), probeToolchains()
 ├── fixture.ts                 # materializeFixture(), runFixture(), assertFixture(), схема expect.yaml
 └── fixtures/
-    ├── golang/                # матрица — plugins/golang §7 (28 директорий)
-    └── node/                  # матрица — plugins/node §6 (12 директорий)
+    └── config/                # матрица — config.spec §4 (17 директорий)
 ```
+
+Фикстуры стеков живут не здесь, а в `plugins/<id>/e2e/fixtures/` (plugins.spec §1: всё, что принадлежит плагину, — в `plugins/<id>/`). `plugin-suite.e2e.test.ts` получает их корни из резолвера, поэтому отдельного файла-набора на стек больше нет.
 
 **File Mapping:**
 
-- `golang.e2e.test.ts` / `node.e2e.test.ts`: по набору на стек — независимый setup, независимый артефакт, независимый мейнтейнер (D-SE2E-003); перечисляют `fixtures/<stack>/*` лексикографически, skip по `requires`
-- `setup.ts`: `setupStackSuite(suite)` — `build:publish` → pack → install (`--registry`) → cleanup publish-артефактов → `probeToolchains`; подмена `HOME`
+- `plugin-suite.e2e.test.ts`: один файл на все стеки — перечисляет корни фикстур из резолвера и вызывает `declareStackSuite` для каждого; фикстуры каждого набора перечисляются лексикографически, skip по `requires`
+- `config.e2e.test.ts`: репо-набор `config` — `declareStackSuite('config', fixtures/config)` (D-SE2E-003)
+- `suite.ts`: `declareStackSuite(suiteId, dir)` — общий раннер набора: discover фикстур, probe `requires`, STRICT через `STACK_E2E_STRICT`/`CONFIG_E2E_STRICT`
+- `setup.ts`: `setupStackSuite(suiteId, toolchainIds)` — `build:publish` → pack → install (`--registry`) → cleanup publish-артефактов → `probeToolchains`; подмена `HOME`
 - `fixture.ts`: материализация, прогон, сверка + валидация `expect.yaml` по замкнутой схеме
-- `scripts/stack-e2e.ts`: обёртка для CI и `prepublishOnly` — проставляет `STACK_E2E_STRICT=1`, печатает сводку скипов, поддерживает `--fixture=<id>` и `--stack=<id>`
+- `scripts/stack-e2e.ts`: обёртка для CI и `prepublishOnly` — проставляет `STACK_E2E_STRICT=1`, печатает сводку скипов, поддерживает `--fixture=<id>` и `--suite=<id>`
 
 <!--/SECTION:FILE_STRUCTURE-->
 
@@ -277,7 +282,7 @@ _Общие решения (артефакт `build:publish`, политика �
 - **Status:** active
 - **Recorded:** review PR #5 — «Let's make 1 `.tgz` per stack … different stacks will have different maintainers»
 - **Why:** Общий setup связывает наборы: падение установки роняет чужой стек, а правка общего шага требует согласования между мейнтейнерами. У каждого стека свой набор, свой артефакт и свой временный корень — наборы запускаются и владеются независимо. Реплика прогона строится от git-toplevel фикстуры, поэтому изоляция самих фикстур сохраняется в любом случае.
-- **Risk accepted:** установка (~5s) умножается на число стеков; наборы гоняются отдельными джобами CI, локально мейнтейнер запускает свой (`--stack=<id>`).
+- **Risk accepted:** установка (~5s) умножается на число стеков; наборы гоняются отдельными джобами CI, локально мейнтейнер запускает свой (`--suite=<id>`).
 
 ### D-SE2E-004 — Фикстуры в репозитории — шаблоны, git-репозиторием становятся в temp
 
@@ -326,14 +331,16 @@ graph TD
 - **Implementation files to be created:**
   - `services/stack/__tests__/e2e/setup.ts`
   - `services/stack/__tests__/e2e/fixture.ts`
-  - `services/stack/__tests__/e2e/golang.e2e.test.ts`
-  - `services/stack/__tests__/e2e/node.e2e.test.ts`
+  - `services/stack/__tests__/e2e/suite.ts`
+  - `services/stack/__tests__/e2e/plugin-suite.e2e.test.ts`
+  - `services/stack/__tests__/e2e/config.e2e.test.ts`
+  - `services/stack/__tests__/e2e/fixture-integrity.test.ts`
   - `scripts/stack-e2e.ts`
-- **Fixture files:** по матрицам владельцев — `plugins/golang` §7, `plugins/node` §6, `config` §6
+- **Fixture files:** по матрицам владельцев — `plugins/golang` §7, `plugins/node` §6, `config` §4.2
 - **Structural changes:**
   - `package.json`: скрипты `test:stack-e2e`, `test:config-e2e`; STRICT-переменные в `prepublishOnly`
   - `infra-base` §2.1: расширить обязательный паттерн исключения фикстур на `**/__tests__/e2e/fixtures/**` — текущий `**/__tests__/fixtures/**` его не матчит (проверено); фикстуры намеренно содержат невалидный YAML/JSON
-  - `stack.spec.md` §5: `FR-STACK-15` — правка классификации вердикта сопровождается фикстурой
+  - `stack.spec.md` §5: `FR-STACK-16` — правка классификации вердикта сопровождается фикстурой
 - **Open risks:**
   - **стоимость на холодном `GOCACHE`** — бюджет достижим только с общим кэшем между фикстурами (он в контракте setup); в CI без кэша прогон заметно дольше
   - **версии тулчейнов** — фикстуры не утверждают текст сторонних инструментов, только вердикт; версии в CI пиннятся (infra-e2e §6)

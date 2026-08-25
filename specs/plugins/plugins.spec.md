@@ -140,7 +140,7 @@ plugins/golang/
 | Что                       | Как                                                                                                                         |
 | ------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
 | Поверхность               | `package.json#exports` получает `"./stack"` — единственный вход для плагинов                                                |
-| Что экспортируется        | типы (`StackPlugin`, `GateSpec`, `Gate`, `Cmd`, `GateOutcome`), комбинаторы `env-fail`, `parseDuration`, `execFileTrimSafe` |
+| Что экспортируется        | типы (`StackPlugin`, `GateSpec`, `Gate`, `Cmd`, `GateOutcome`, `GatePlanOptions`, `EnvFailPredicate`, `ScopeRequest`, `StackDetection`, `StackScope`, `StackDiagnostic`, `StackVerifyCapability`), комбинаторы `env-fail` (`allOf`, `exitCodeMatches`, `outputMatches`, `streamMatches`), `parseDuration`, `execFileTrimSafe` |
 | Built-in'ы в репозитории  | тот же специфаер через self-reference пакета; относительных путей нет ни у кого                                             |
 | Что **не** экспортируется | раннер, реестр, резолвер, загрузчик конфига целиком — плагин их не вызывает                                                 |
 
@@ -305,7 +305,7 @@ graph TD
 1. Резолвер + манифест + юнит-тесты.
 2. Поверхность `gennady/stack` (D-SP-007) — до переноса каталогов, чтобы замену импортов проверили существующие тесты.
 3. `golang`: код и фикстуры; статический индекс built-in'ов (D-SP-009), `StackPlugin.gateIds`, E2E-набор из резолвера.
-4. `golang`: спека, директива и скилл; стейджинг на публикации (D-SP-008) + тест содержимого тарбола.
+4. `golang`: спека, директива и скилл; пакет везёт каталог плагина без стейджинга в `ai/` (D-SP-008) + тест содержимого тарбола.
 5. `node` — доказательство, что механизм не golang-образный: `services/stack/plugins/` и `specs/stack/plugins/` удалены.
 
 **Что осталось открытым.**

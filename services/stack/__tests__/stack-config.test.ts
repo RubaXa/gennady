@@ -386,7 +386,7 @@ describe('applyStackConfig', () => {
   });
 
   it('an argv override drops inherited exit-code predicates but keeps output ones', () => {
-    // golang:lint ships exitAbove(1) — true for golangci-lint, false for `make lint`,
+    // golang:lint ships an exit-code predicate — true for golangci-lint, false for `make lint`,
     // which returns 2 for ANY failed recipe and would report genuine findings as ENV_FAIL.
     const exitPredicate = Object.assign(() => true, { kind: 'exit' as const });
     const outputPredicate = Object.assign(() => true, { kind: 'output' as const });
