@@ -639,11 +639,17 @@ ${REQUIREMENTS_LIST_SKELETON}
 | lint-command      | <actual invocation> |
 | format-command    | <actual invocation> |
 | check-command     | <actual invocation> |
+| fix-command       | <actual invocation> |
 
 Include only command names for tools present in the chosen stack. \`coverage-command\` is **required**
 whenever the project declares a coverage threshold gate — a threshold with no declared provider is a
 gate nobody can run.
-\`check-command\` is **always required** when the runtime setup rule (\`nodejs-npm-setup\` or equivalent) is active — it is the composed entry point that runs all active phases in \`CheckPhaseOrder\` order (typecheck → test → lint → format). Composition: chain invocations of each active phase command in that order. Task tickets use \`check-command\` as their single verification alias.
+\`check-command\` and \`fix-command\` are wrappers for humans, CI, and the pre-commit hook — with the
+runtime setup rule (\`nodejs-npm-setup\` or equivalent) active they resolve to
+\`npx gennady sdd-verify --profile full\` and \`npm run format:fix && npm run lint:fix\`. Task tickets
+do NOT cite them: a ticket's §Verification first row is its own phase ladder line,
+\`npx gennady sdd-verify --profile <phase kind>\`; further rows come from additional aliases here
+(e.g. \`coverage-command\`).
 
 [Инвариант: команды образуют конвейер, а не список — артефакты одной команды не должны ронять
 другую (типичный случай: \`coverage/\`, \`dist/\` попадают под lint/format и генерируют ложные findings).
@@ -760,7 +766,7 @@ const INFRASTRUCTURE_SECTIONS: SectionManifestEntry[] = [
     required: true,
     loadBearing: true,
     fold: false,
-    fill: 'Mandatory: Command Name/Invocation table for the active phases (typecheck/test/lint/format) plus the composed check-command alias.',
+    fill: 'Mandatory: Command Name/Invocation table for the active phases (typecheck/test/lint/format) plus the check/fix wrapper aliases.',
   },
   {
     name: 'RESEARCH',
@@ -1295,7 +1301,7 @@ use-case → \`[<ACRONYM>-REQ-N]\` → vision chain the operator reviews at scaf
 |---------|-------------|
 | <resolved invocation> | <rule-id>, <rule-id> |
 
-<!-- One row per unique check-command alias. Phase-subagent runs only rows whose Required-by overlaps its phase Rules. -->
+<!-- First row: this ticket's own ladder line, npx gennady sdd-verify --profile <phase kind>. Further rows: one per additional infra alias (e.g. coverage-command). Phase-subagent runs only rows whose Required-by overlaps its phase Rules. -->
 
 - **Task-specific Completion additions:** <list or "none beyond project baseline">
 <!--/SECTION:VERIFICATION-->
@@ -1362,7 +1368,7 @@ const TASK_SECTIONS: SectionManifestEntry[] = [
     required: true,
     loadBearing: false,
     fold: false,
-    fill: 'Command/Required-by table — one row per unique check-command alias — plus task-specific completion additions.',
+    fill: 'Command/Required-by table — first row the phase ladder line (sdd-verify --profile <kind>), then one row per extra infra alias — plus task-specific completion additions.',
   },
   {
     name: 'TEST_COVERAGE',

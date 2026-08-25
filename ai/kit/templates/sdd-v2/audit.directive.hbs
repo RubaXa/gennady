@@ -163,7 +163,7 @@
         | Structural / mechanical (anchors, Meta, Execution Log completeness, fabricated-DONE, phase DAG, tracker coherence, RULES_CASCADE_CLOSURE, BDD_COVERAGE, TASKS_APPEND_ONLY, CONSUMERS_RESOLVABLE) | `sdd-check --task <ticket>` (+ `--all`, `--changed`) |
         | Code (types, format, contract lint, yagni usage) | `sdd-verify --profile full` |
         | Closed-world inventory sync + cast safety over changed files | `gennady lint --spec=<module-spec> <changed files>` |
-        | Test coverage floor | `gennady testcov --run --min=80` (or the ticket's own §5 threshold) |
+        | Test coverage floor | `gennady testcov --run --min=<threshold>` — threshold from the ticket's own §5 / `coverage-command`; 80 only when §5 names none |
         | Contract semantics, runtime-backing, drift — irreducibly semantic, no command runs this | STEP_2_SEMANTIC, this audit's own judgment |
 
         A gate's verdict is computed from ITS OWN exit code and the ticket/dependency graph alone —
@@ -199,8 +199,10 @@
         `npx gennady lint --spec=<spec path from AuditContext's spec/audit-group line> <every file from
         AuditContext lint-files>` (one argv item per printed file; zero files → skip lint and
         report `H_NOTHING_TO_AUDIT`, never broaden scope), and
-        `npx gennady testcov --run --min=80` (coverage gate — project line coverage ≥ 80% at task completion):
-        run these gates SEQUENTIALLY, one at a time, never in parallel — `sdd-verify --profile full` and
+        `npx gennady testcov --run --min=<threshold>` (coverage gate — threshold is the ticket's own
+        §5 / `coverage-command` value; use 80 only when §5 names no threshold at all — never override
+        a threshold §5 DOES name): run these gates SEQUENTIALLY, one at a time, never in parallel —
+        `sdd-verify --profile full` and
         `gennady testcov --run` both write into `coverage/`, and any two commands sharing an output path
         race when parallelized: whichever finishes last overwrites or half-writes the other's artifact,
         producing a false red that has nothing to do with the code. Parallelizing is fine only for

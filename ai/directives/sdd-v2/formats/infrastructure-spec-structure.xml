@@ -104,11 +104,17 @@
   | lint-command      | <actual invocation> |
   | format-command    | <actual invocation> |
   | check-command     | <actual invocation> |
+  | fix-command       | <actual invocation> |
 
   Include only command names for tools present in the chosen stack. `coverage-command` is **required**
   whenever the project declares a coverage threshold gate — a threshold with no declared provider is a
   gate nobody can run.
-  `check-command` is **always required** when the runtime setup rule (`nodejs-npm-setup` or equivalent) is active — it is the composed entry point that runs all active phases in `CheckPhaseOrder` order (typecheck → test → lint → format). Composition: chain invocations of each active phase command in that order. Task tickets use `check-command` as their single verification alias.
+  `check-command` and `fix-command` are wrappers for humans, CI, and the pre-commit hook — with the
+  runtime setup rule (`nodejs-npm-setup` or equivalent) active they resolve to
+  `npx gennady sdd-verify --profile full` and `npm run format:fix && npm run lint:fix`. Task tickets
+  do NOT cite them: a ticket's §Verification first row is its own phase ladder line,
+  `npx gennady sdd-verify --profile <phase kind>`; further rows come from additional aliases here
+  (e.g. `coverage-command`).
 
   [Инвариант: команды образуют конвейер, а не список — артефакты одной команды не должны ронять
   другую (типичный случай: `coverage/`, `dist/` попадают под lint/format и генерируют ложные findings).

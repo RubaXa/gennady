@@ -189,9 +189,14 @@
             helper (for example shadcn's `src/lib/utils.ts`) is architecture, not a runtime surprise;
             missing or version-uncertain output → research/verify now, never let the worker expand the
             module boundary through an execution-time deviation;
-        5. after all phases: union `<RequiresVerification>` aliases across the ticket's phases, group
-           rules by alias, resolve each unique alias from infra-spec Verification Commands (absent →
-           `H_VERIFICATION_COMMAND_MISSING`), and write ticket Verification table — one row
+        5. write the ticket Verification table. Row 1 is always the phase verify call, written
+           directly — never resolved through an alias: `npx gennady sdd-verify --profile <profile>`,
+           profile by kind (`bootstrap` / `config` / `doc` → `setup`; `impl` / `refactor` → `code`;
+           `test` → `test`; a `fix` phase → the profile of the kind it repairs), Required-by = that
+           phase's kind. Then, after all phases: union any OTHER `<RequiresVerification>` aliases
+           across the ticket's phases beyond the standard ladder (e.g. infra-spec
+           `coverage-command`), group by alias, resolve each unique alias from infra-spec
+           Verification Commands (absent → `H_VERIFICATION_COMMAND_MISSING`) — one additional row
            per unique alias, Required-by = comma-separated declaring rule IDs.
         Draft BDD with the mandatory `contract`-level
         typing scenario per contract (`AX_TICKET_HAS_BDD_AND_TESTS`) and, per `AX_E2E_FIRST`, an

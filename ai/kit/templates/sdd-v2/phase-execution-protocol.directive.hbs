@@ -44,8 +44,9 @@
     {{> "axiom/coding/ax-introduced-discipline"}}
 
     <Axiom id="AX_USAGE_WAIVER_DISCIPLINE">
-      `gennady yagni` flags an added/changed symbol with fewer than 2 production-code usages across
-      the whole repo (tests and barrel re-exports never count) — a spec-level diff gate run once per
+      `gennady yagni` flags an added/changed EXPORTED symbol with under 2 repo-wide production
+      usages (tests and barrel re-exports never count; a private symbol is flagged only at zero
+      usages — dead code) — a spec-level diff gate run once per
       group, inside the orchestrator's pre-audit `npx gennady sdd-verify --profile full` at group
       close, never inside a phase's own `setup`/`code`/`test` gate. A finding routes to a `fix`
       dispatch on the ticket that OWNS the flagged entity. That worker either (a) removes the
@@ -257,18 +258,23 @@
     <Step id="STEP_5_VERIFY">
       <Goal>Run the verification gate, then the ticket §5 commands. Log only final results.</Goal>
       <Action>
-        Run the infra-spec's exact `fix-command` (`AX_PERMITTED_BASH_COMMANDS` — the one sanctioned
-        mutating command) immediately after authoring this phase's files and again here before the
-        read-only verdict; treat its output tree as input to the gates that follow. Run `npx gennady
-        sdd-verify --profile <by kind>`
-        (commands stay within `AX_PERMITTED_BASH_COMMANDS`; read-only, run-all, brief on pass, details
-        on fail). Profile by phase kind: `bootstrap` / `config` / `doc` → `setup` (format check · lint
-        check · typecheck; no tests, YAGNI, or invented smoke exports); `impl` / `refactor` → `code`
-        (format check · lint check · typecheck — no yagni; yagni is a spec-level diff gate that runs
-        once, group-wide, inside `full` at group close, never per phase); `test` →
-        `test` (format · typecheck · test:coverage — no lint/yagni); a `fix` phase takes the profile of
-        the kind it repairs. The full set (`full`, including yagni) runs once at the end (orchestrator
-        close, right before the group audit dispatch — `AX_AUDIT_HOOK` — never here per phase).
+        Run `npx gennady sdd-verify --profile <by kind>` (`AX_PERMITTED_BASH_COMMANDS`) — the ONE
+        command this step calls; it fixes what it can and verifies the rest INSIDE itself, so never
+        call `npm run fix` / `format:fix` / `lint:fix` yourself first. It walks a fixed ladder,
+        cheapest-and-most-important first: `type-check` → `test`/`test:coverage` (**foundation** —
+        a failure here HALTS the ladder, nothing later runs: no point polishing code that does not
+        build or breaks tests) → `format:fix` → `lint:fix` (mutating repair, marker `🔧` — a failure
+        here is a FINDING, never a halt) → `lint` → `format` (read-only, accumulate) → `yagni` (`full`
+        only). Profile by phase kind: `bootstrap` / `config` / `doc` → `setup`; `impl` / `refactor` →
+        `code` (same ladder as `setup` — type-check · test · format:fix · lint:fix · lint · format;
+        tests included since fresh code may have broken existing ones); `test` → `test` (type-check ·
+        test:coverage · format:fix · format — no lint/lint:fix, no production code in a test-only
+        phase; coverage is measured, its threshold is audit's job, not this gate's); a `fix` phase
+        takes the profile of the kind it repairs. `full` (type-check · test:coverage · lint · format ·
+        yagni — read-only, no repair rungs: a final verdict must never mutate what it is judging) runs
+        once at the end (orchestrator close, right before the group audit dispatch — `AX_AUDIT_HOOK` —
+        never here per phase). A gate whose npm script is not declared in `package.json` is skipped
+        with an honest `⏭` line, never an error.
         If this phase authored production `.ts`/`.tsx`, regardless of phase kind, also run
         `npx gennady lint --spec=<owning module spec> <exact production Target Files>`
         immediately after authoring and again here. Do not pass tool-config or vendor-generated files;

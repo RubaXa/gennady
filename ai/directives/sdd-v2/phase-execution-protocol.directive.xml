@@ -155,8 +155,9 @@
     </Axiom>
 
     <Axiom id="AX_USAGE_WAIVER_DISCIPLINE">
-      `gennady yagni` flags an added/changed symbol with fewer than 2 production-code usages across
-      the whole repo (tests and barrel re-exports never count) — a spec-level diff gate run once per
+      `gennady yagni` flags an added/changed EXPORTED symbol with under 2 repo-wide production
+      usages (tests and barrel re-exports never count; a private symbol is flagged only at zero
+      usages — dead code) — a spec-level diff gate run once per
       group, inside the orchestrator's pre-audit `npx gennady sdd-verify --profile full` at group
       close, never inside a phase's own `setup`/`code`/`test` gate. A finding routes to a `fix`
       dispatch on the ticket that OWNS the flagged entity. That worker either (a) removes the

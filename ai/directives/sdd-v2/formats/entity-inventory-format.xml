@@ -13,7 +13,16 @@
   | `OrderProcessor` | Service | Композитная обработка lifecycle заказа |
   | `PaymentGatewayPort` | Port | Абстракция для списания средств |
   | `StripePaymentAdapter` | Adapter | Реализация PaymentGatewayPort через Stripe |
+  | `RefundLedger` | Service | Учёт возвратов — Deferred Implementation: TSK-42 |
   ```
+
+  **`Deferred Implementation: <TSK-id>`** — a declared entity whose build is deliberately owned
+  by a FUTURE ticket, not this module's current Round. Append it to that row's `Purpose` cell (or
+  to a bullet-row's tail, same style as `Deferred Test Ownership:` in Test Scenario Coverage): the
+  entity may exist in this Inventory with no code behind it yet without being drift. `gennady
+  lint --spec=<spec> --inventory-reverse <code-root>` reads the marker and reports that row as an
+  informational line, never `ERR_CLI_LINT_INVENTORY_UNIMPLEMENTED` — the reverse sweep still
+  flags every OTHER declared-but-unbuilt entity as drift exactly as before.
 
   **Errors ownership is first-class**, not an afterthought: either one row above is the explicit
   errors owner (its `Purpose` says so, e.g. «Владеет обработкой/показом ошибок платежа»), or the

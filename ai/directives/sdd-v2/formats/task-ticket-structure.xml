@@ -94,7 +94,7 @@
   |---------|-------------|
   | <resolved invocation> | <rule-id>, <rule-id> |
 
-  <!-- One row per unique check-command alias. Phase-subagent runs only rows whose Required-by overlaps its phase Rules. -->
+  <!-- First row: this ticket's own ladder line, npx gennady sdd-verify --profile <phase kind>. Further rows: one per additional infra alias (e.g. coverage-command). Phase-subagent runs only rows whose Required-by overlaps its phase Rules. -->
 
   - **Task-specific Completion additions:** <list or "none beyond project baseline">
   <!--/SECTION:VERIFICATION-->
