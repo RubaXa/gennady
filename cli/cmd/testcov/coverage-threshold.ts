@@ -48,3 +48,29 @@ export function meetsMinCoverage(totals: LineCoverageTotals, minPct: number): bo
   const p = linePct(totals);
   return p !== null && p >= minPct;
 }
+
+/**
+ * @purpose Ready-to-print one-line verdict for `testcov --min`, covering the "nothing instrumented" case.
+ * @invariant `total === 0` explains itself (no tests loaded any file yet) instead of printing a bare "n/a".
+ * @param totals Aggregated hit/total counts.
+ * @param minPct Required minimum line-coverage percentage.
+ * @returns The formatted message plus whether the gate passed.
+ */
+export function describeCoverageGate(
+  totals: LineCoverageTotals,
+  minPct: number
+): { message: string; ok: boolean } {
+  const ok = meetsMinCoverage(totals, minPct);
+  const p = linePct(totals);
+  if (p === null) {
+    return {
+      ok,
+      message:
+        'testcov: coverage not measured — no file was loaded by tests yet (no tests written?) — cannot check the threshold ❌',
+    };
+  }
+  return {
+    ok,
+    message: `testcov: line coverage ${p.toFixed(1)}% (${totals.hit}/${totals.total} statements) — required ≥${minPct}% ${ok ? '✅' : '❌'}`,
+  };
+}

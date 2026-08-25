@@ -6,7 +6,15 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync, rmSync, symlinkSync, unlinkSync } from 'node:fs';
+import {
+  mkdtempSync,
+  writeFileSync,
+  mkdirSync,
+  rmSync,
+  symlinkSync,
+  unlinkSync,
+  realpathSync,
+} from 'node:fs';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -133,5 +141,90 @@ describe('testcov --check', () => {
       assert.match(diag!.message, /vitest\.config\.\*/);
       assert.match(diag!.message, /vite\.config\.\*/);
     });
+  });
+});
+
+describe('testcov --min', () => {
+  let minDir: string;
+
+  function runMin(args: string[]): { stdout: string; stderr: string; status: number | null } {
+    const res = spawnSync(process.execPath, ['--import', 'tsx', CMD, ...args], {
+      cwd: minDir,
+      encoding: 'utf-8',
+    });
+    return { stdout: res.stdout, stderr: res.stderr, status: res.status };
+  }
+
+  before(() => {
+    // realpathSync: on macOS mkdtempSync can return a path through a symlinked tmp root (e.g.
+    // /tmp -> /private/tmp); the command resolves `resolve(process.cwd())` for its ROOT, so the
+    // fixture's coverage-final.json keys must be built from the same canonical path or lookups miss.
+    minDir = realpathSync(mkdtempSync(join(tmpdir(), 'testcov-min-')));
+    symlinkSync(join(REPO_ROOT, 'node_modules'), join(minDir, 'node_modules'), 'dir');
+    mkdirSync(join(minDir, 'good'), { recursive: true });
+    mkdirSync(join(minDir, 'bad'), { recursive: true });
+    writeFileSync(join(minDir, 'good', 'a.ts'), 'export const a = 1;\n', 'utf-8');
+    writeFileSync(join(minDir, 'bad', 'b.ts'), 'export const b = 2;\n', 'utf-8');
+
+    const aPath = join(minDir, 'good', 'a.ts');
+    const bPath = join(minDir, 'bad', 'b.ts');
+    const statementMap = { '0': { start: { line: 1, column: 0 }, end: { line: 1, column: 20 } } };
+    const coverage = {
+      [aPath]: {
+        path: aPath,
+        statementMap,
+        s: { '0': 1 }, // fully covered
+        branchMap: {},
+        b: {},
+        fnMap: {},
+        f: {},
+      },
+      [bPath]: {
+        path: bPath,
+        statementMap,
+        s: { '0': 0 }, // never hit
+        branchMap: {},
+        b: {},
+        fnMap: {},
+        f: {},
+      },
+    };
+    mkdirSync(join(minDir, 'coverage'), { recursive: true });
+    writeFileSync(
+      join(minDir, 'coverage', 'coverage-final.json'),
+      JSON.stringify(coverage),
+      'utf-8'
+    );
+  });
+
+  after(() => {
+    rmSync(minDir, { recursive: true, force: true });
+  });
+
+  it('без позиционного пути агрегирует весь проект: good (100%) + bad (0%) = 50%', () => {
+    const { stdout, status } = runMin(['--min=60']);
+    assert.match(stdout, /50\.0%/);
+    assert.match(stdout, /1\/2 statements/);
+    assert.strictEqual(status, 1);
+  });
+
+  it('с позиционным путем "good" считает порог только по этому пути — 100%, порог 60% проходит', () => {
+    const { stdout, status } = runMin(['--min=60', 'good']);
+    assert.match(stdout, /100\.0%/);
+    assert.match(stdout, /1\/1 statements/);
+    assert.strictEqual(status, 0);
+  });
+
+  it('с позиционным путем "bad" считает порог только по этому пути — 0%, порог 60% не проходит', () => {
+    const { stdout, status } = runMin(['--min=60', 'bad']);
+    assert.match(stdout, /0\.0%/);
+    assert.match(stdout, /0\/1 statements/);
+    assert.strictEqual(status, 1);
+  });
+
+  it('несуществующий позиционный путь → "File not found", exit 1 (не молча агрегирует весь проект)', () => {
+    const { stderr, status } = runMin(['--min=60', 'no-such-dir']);
+    assert.match(stderr, /File not found: no-such-dir/);
+    assert.strictEqual(status, 1);
   });
 });

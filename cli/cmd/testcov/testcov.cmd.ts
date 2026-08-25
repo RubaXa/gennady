@@ -23,7 +23,7 @@ import { existsSync, readFileSync, readdirSync, lstatSync } from 'node:fs';
 import { join, extname, resolve, basename, relative } from 'node:path';
 import type { Dirent } from 'node:fs';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
-import { aggregateLineCoverage, linePct, meetsMinCoverage } from './coverage-threshold.ts';
+import { aggregateLineCoverage, describeCoverageGate } from './coverage-threshold.ts';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -259,12 +259,14 @@ function runDiagnostics(): Diagnostic[] {
 
   // #region START_DIAG_COVERAGE_FILE — coverage file must exist
   if (!existsSync(COVERAGE_FILE)) {
+    // node:test has no fixed command — the real one is whichever npm script detectRunners() found
+    // wrapped in c8; a hardcoded "npm test" would suggest a script that may not exist or lack coverage.
     const runHint =
       primary.name === 'vitest'
         ? 'npx vitest run --coverage'
         : primary.name === 'jest'
           ? 'npx jest --coverage'
-          : 'npm test';
+          : primary.runCmd(RESULTS_TMP);
     diags.push({
       level: 'error',
       code: 'NO_COVERAGE_FILE',
@@ -1151,18 +1153,31 @@ function printFlat(entries: FlatEntry[]): void {
 }
 
 // ─── --min mode ───────────────────────────────────────────────────────────────
-// Aggregates getDirStats() over every getRoots() top-level dir — the same project-wide sum the
-// default tree already renders per-root, just totalled instead of printed. Exit-code convention
-// matches --check: 0 = gate passes, 1 = gate fails (no tree/diagnostics printed on this path).
+// With no positional path: aggregates getDirStats() over every getRoots() top-level dir — the same
+// project-wide sum the default tree already renders per-root, just totalled instead of printed.
+// With a positional path: aggregates only the files findFiles(TARGET) resolves to, so `--min` scopes
+// to TARGET exactly like the tree/flat/--files paths below do. Exit-code convention matches --check:
+// 0 = gate passes, 1 = gate fails (no tree/diagnostics printed on this path).
 
 if (MIN_COVERAGE !== undefined) {
-  const totals = aggregateLineCoverage(getRoots().map((top) => getDirStats(join(ROOT, top))));
-  const p = linePct(totals);
-  const pStr = p !== null ? `${p.toFixed(1)}%` : 'n/a (no instrumented statements found)';
-  const ok = meetsMinCoverage(totals, MIN_COVERAGE);
-  console.log(
-    `testcov: line coverage ${pStr} (${totals.hit}/${totals.total} statements) — required ≥${MIN_COVERAGE}% ${ok ? '✅' : '❌'}`
-  );
+  let buckets: FileCovRaw[];
+  if (TARGET) {
+    const files = findFiles(TARGET);
+    if (files.length === 0) {
+      console.error(`File not found: ${TARGET}`);
+      process.exit(1);
+    }
+    buckets = files.map((fp) =>
+      lstatSync(fp).isDirectory()
+        ? getDirStats(fp)
+        : (getCovRaw(fp) ?? { sT: 0, sH: 0, bT: 0, bH: 0, fT: 0, fH: 0 })
+    );
+  } else {
+    buckets = getRoots().map((top) => getDirStats(join(ROOT, top)));
+  }
+  const totals = aggregateLineCoverage(buckets);
+  const { message, ok } = describeCoverageGate(totals, MIN_COVERAGE);
+  console.log(message);
   process.exit(ok ? 0 : 1);
 }
 
