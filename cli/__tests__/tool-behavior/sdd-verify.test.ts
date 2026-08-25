@@ -9,7 +9,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
-import { buildRepoFixture, markerScript, noop } from './fixture.ts';
+import { buildRepoFixture, coverageScript, markerScript, noop } from './fixture.ts';
 import { runCli } from './run-cli.ts';
 
 describe('sdd-verify — live gate ladder', () => {
@@ -31,13 +31,31 @@ describe('sdd-verify — live gate ladder', () => {
     }
   });
 
-  it('type-check present, no test script (--profile code): type-check passes, test is skipped, exit 0', () => {
+  it('type-check present, no test script (--profile code): test is a REQUIRED rung — red ⛔ verdict, not a green skip', () => {
     const { root } = buildRepoFixture({ scripts: { 'type-check': noop(0) } });
     try {
       const r = runCli(['sdd-verify', '--profile', 'code'], root);
-      assert.strictEqual(r.exitCode, 0, r.stdout + r.stderr);
+      assert.notStrictEqual(r.exitCode, 0, r.stdout + r.stderr);
       assert.match(r.stdout, /✅ type-check/);
-      assert.match(r.stdout, /⏭ test — скрипта нет в package\.json, пропущено/);
+      assert.match(r.stdout, /⛔ test — обязательная ступень профиля «code»/);
+      assert.match(r.stdout, /GATE_QUEUE/);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('echo-stub test script (--profile code): a stub that exits 0 is refused like a missing script', () => {
+    const { root } = buildRepoFixture({
+      scripts: {
+        'type-check': noop(0),
+        test: "echo 'TODO: настроить инфраструктуру (test runner)' >&2",
+      },
+    });
+    try {
+      const r = runCli(['sdd-verify', '--profile', 'code'], root);
+      assert.notStrictEqual(r.exitCode, 0, r.stdout + r.stderr);
+      assert.match(r.stdout, /⛔ test — обязательная ступень профиля «code»/);
+      assert.match(r.stdout, /echo-заглушка/);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
@@ -116,7 +134,7 @@ describe('sdd-verify — live gate ladder', () => {
     const { root } = buildRepoFixture({
       scripts: {
         'type-check': noop(0),
-        'test:coverage': noop(0),
+        'test:coverage': coverageScript(0),
         lint: noop(0),
         format: noop(0),
         'format:fix': markerScript('FORMAT_FIX_RAN', 0),
@@ -131,6 +149,49 @@ describe('sdd-verify — live gate ladder', () => {
         !existsSync(join(root, 'FORMAT_FIX_RAN')),
         'full profile must never run a mutating gate, even one declared in package.json'
       );
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('--profile full, test:coverage exits 0 without writing coverage/: red — measured coverage is a fresh artifact, not an exit code', () => {
+    const { root } = buildRepoFixture({
+      scripts: {
+        'type-check': noop(0),
+        'test:coverage': noop(0), // exits 0 but never writes coverage/ — the exact fiction being refused
+        lint: noop(0),
+        format: noop(0),
+      },
+      gennadyInstalled: true,
+    });
+    try {
+      const r = runCli(['sdd-verify', '--profile', 'full'], root);
+      assert.notStrictEqual(r.exitCode, 0, r.stdout + r.stderr);
+      assert.match(r.stdout, /❌ test:coverage — exit 0/);
+      assert.match(r.stdout, /каталога coverage\/ нет/);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('mutating rung actually rewrites a file (--profile code): foundation re-runs once over the repaired state', () => {
+    const { root } = buildRepoFixture({
+      scripts: {
+        'type-check': markerScript('TYPE_CHECK_RAN', 0),
+        test: noop(0),
+        // format:fix mutates the tree for real — rewrites a source file
+        'format:fix': `node -e "require('fs').writeFileSync('src.ts','fixed');process.exit(0)"`,
+        'lint:fix': noop(0),
+        lint: noop(0),
+        format: noop(0),
+      },
+      files: { 'src.ts': 'unformatted' },
+    });
+    try {
+      const r = runCli(['sdd-verify', '--profile', 'code'], root);
+      assert.strictEqual(r.exitCode, 0, r.stdout + r.stderr);
+      assert.match(r.stdout, /type-check \(re-run после мутаций\)/);
+      assert.match(r.stdout, /test \(re-run после мутаций\)/);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

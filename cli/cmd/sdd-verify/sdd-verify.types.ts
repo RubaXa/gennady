@@ -45,6 +45,19 @@ export const GATES: readonly Gate[] = [
 /** @purpose Gate profile by phase kind — fixed sets chosen by an explicit flag (not detection); `full` is the safe default. */
 export type Profile = 'setup' | 'code' | 'test' | 'full';
 
+/**
+ * @purpose Foundation gates a profile REFUSES to skip: absent (or echo-stub) script → red verdict,
+ *   never a green pass with zero real checks.
+ * @invariant `setup` requires nothing — it runs before the infrastructure exists, so ⏭ skips are its
+ *   legal state. Other profiles verify code, impossible without these.
+ */
+export const REQUIRED_PROFILE_GATES: Record<Profile, readonly string[]> = {
+  setup: [],
+  code: ['type-check', 'test'],
+  test: ['type-check', 'test:coverage'],
+  full: ['type-check', 'test:coverage'],
+};
+
 // Gate names per profile, in ladder order:
 // - setup/code: the full repair ladder, tests included — fresh code may have broken existing ones.
 // - test: coverage is measured, its threshold is NOT checked here — that is audit's job; only one
@@ -148,8 +161,8 @@ export type GateRunResult = {
 /** @purpose Runs one gate command and returns its result — injectable for tests. */
 export type GateRunner = (command: string, args: string[]) => GateRunResult;
 
-/** @purpose Whether a rung actually ran and passed, actually ran and failed, or was honestly skipped. */
-export type GateStatus = 'pass' | 'fail' | 'skipped';
+/** @purpose Rung outcome: ran and passed, ran and failed, honestly skipped (optional script absent), or `missing` — a REQUIRED script that is absent or stubbed. */
+export type GateStatus = 'pass' | 'fail' | 'skipped' | 'missing';
 
 /** @purpose A gate's run result with wall-clock timing. */
 export type GateResult = {
@@ -251,6 +264,10 @@ function lineFor(r: GateResult): string {
  * @returns A multi-line block; mutating failures are noted as non-halting findings.
  */
 function failBlock(r: GateResult): string {
+  // A missing REQUIRED rung never ran — there is no exit code or output dump, only the reason.
+  if (r.status === 'missing') {
+    return `  ⛔ ${r.name} — ${r.output}`;
+  }
   const marker = r.mutates ? '🔧' : '❌';
   const haltNote = r.mutates ? ' — находка, не останавливает лестницу' : '';
   return [
@@ -282,9 +299,11 @@ function haltReason(name: string): string {
  * @returns ok with the ✅ summary, or a failure with each failed gate's exit + output.
  */
 export function verdict(results: GateResult[], haltedAt?: string): VerifyOutcome {
-  const failed = results.filter((r) => r.status === 'fail');
+  const failed = results.filter((r) => r.status === 'fail' || r.status === 'missing');
   const passed = results.filter((r) => r.status === 'pass');
-  const nonFailLines = results.filter((r) => r.status !== 'fail').map(lineFor);
+  const nonFailLines = results
+    .filter((r) => r.status !== 'fail' && r.status !== 'missing')
+    .map(lineFor);
 
   if (failed.length === 0) {
     return {

@@ -46,13 +46,36 @@ const ALL_SCRIPTS = {
 
 let currentPkgJson = JSON.stringify({ name: 'gennady', scripts: ALL_SCRIPTS });
 
+// Knobs for the fs surface the ladder touches beyond package.json: the coverage-artifact freshness
+// check (readdirSync('coverage') + statSync) and the pre/post-mutation tree fingerprint.
+let coverageDirExists = true;
+let rootFiles: string[] = [];
+let currentMtimeMs = Date.now() + 60_000; // future-dated → always "fresh" unless a test says otherwise
+
 const mockReadFileSync = mock.fn((path: string) => {
   if (String(path).endsWith('package.json')) return currentPkgJson;
   throw new Error(`unexpected readFileSync path in test: ${path}`);
 });
 
+const dirent = (name: string) => ({ name, isFile: () => true, isDirectory: () => false });
+
+const mockReaddirSync = mock.fn((dir: string) => {
+  if (String(dir) === 'coverage') {
+    if (!coverageDirExists) throw new Error('ENOENT: coverage');
+    return [dirent('coverage-final.json')];
+  }
+  if (String(dir) === '.') return rootFiles.map(dirent);
+  return [];
+});
+
+const mockStatSync = mock.fn(() => ({ mtimeMs: currentMtimeMs, size: 1 }));
+
 mock.module('node:fs', {
-  namedExports: { readFileSync: mockReadFileSync },
+  namedExports: {
+    readFileSync: mockReadFileSync,
+    readdirSync: mockReaddirSync,
+    statSync: mockStatSync,
+  },
 });
 
 // ── Import SUT after the mock is registered ─────────────────────────────────
@@ -62,6 +85,9 @@ const { run, isSelfHosting, defaultRunner, runWithMaxBuffer, GATE_MAX_BUFFER_BYT
 
 beforeEach(() => {
   currentPkgJson = JSON.stringify({ name: 'gennady', scripts: ALL_SCRIPTS });
+  coverageDirExists = true;
+  rootFiles = [];
+  currentMtimeMs = Date.now() + 60_000;
 });
 
 describe('GATES', () => {
@@ -432,19 +458,167 @@ describe('run — skipping a missing npm script', () => {
     }
   });
 
-  it('a skipped foundation rung does not halt — the ladder still proceeds to later steps', async () => {
+  it('setup profile: a missing foundation rung is still an honest skip — setup runs before the infrastructure exists', async () => {
+    currentPkgJson = JSON.stringify({
+      name: 'gennady',
+      scripts: { format: 'prettier --check .' },
+      // no type-check / test declared — legal for setup, and only for setup
+    });
+    const { runner, calls } = fakeRunner();
+    const o = await run(runner, 'setup');
+    assert.strictEqual(o.ok, true);
+    assert.deepStrictEqual(calls, ['npm run format']);
+    if (o.ok) {
+      assert.match(o.text, /⏭ type-check — скрипта нет в package\.json, пропущено/);
+      assert.match(o.text, /⏭ test — скрипта нет в package\.json, пропущено/);
+    }
+  });
+});
+
+describe('run — required rungs refuse to skip (code/test/full)', () => {
+  it('test profile without type-check → red ⛔ verdict, nothing later runs', async () => {
     currentPkgJson = JSON.stringify({
       name: 'gennady',
       scripts: { 'test:coverage': 'c8 node --test', format: 'prettier --check .' },
-      // no type-check declared
+      // no type-check declared — required for the test profile
     });
     const { runner, calls } = fakeRunner();
     const o = await run(runner, 'test');
+    assert.strictEqual(o.ok, false);
+    assert.deepStrictEqual(calls, []); // the ladder stopped before running anything
+    if (o.ok) return;
+    assert.match(o.message, /⛔ type-check — обязательная ступень профиля «test»/);
+    assert.match(o.message, /скрипта нет в package\.json/);
+    assert.match(o.message, /GATE_QUEUE/);
+  });
+
+  it('code profile without test → red, after type-check has already run', async () => {
+    currentPkgJson = JSON.stringify({
+      name: 'gennady',
+      scripts: { 'type-check': 'tsc', format: 'prettier --check .' },
+    });
+    const { runner, calls } = fakeRunner();
+    const o = await run(runner, 'code');
+    assert.strictEqual(o.ok, false);
+    assert.deepStrictEqual(calls, ['npm run type-check']);
+    if (o.ok) return;
+    assert.match(o.message, /⛔ test — обязательная ступень профиля «code»/);
+  });
+
+  it('an echo-stub required script is as red as a missing one — exit 0 that verifies nothing is a fiction', async () => {
+    currentPkgJson = JSON.stringify({
+      name: 'gennady',
+      scripts: {
+        'type-check': 'tsc',
+        test: "echo 'TODO: настроить инфраструктуру (test runner)' >&2",
+        format: 'prettier --check .',
+      },
+    });
+    const { runner, calls } = fakeRunner();
+    const o = await run(runner, 'code');
+    assert.strictEqual(o.ok, false);
+    assert.ok(!calls.includes('npm run test'), 'a stub must never be run and counted as pass');
+    if (o.ok) return;
+    assert.match(o.message, /⛔ test — обязательная ступень профиля «code»/);
+    assert.match(o.message, /echo-заглушка/);
+  });
+
+  it('setup profile happily runs the same stub — bootstrap is its legal state', async () => {
+    currentPkgJson = JSON.stringify({
+      name: 'gennady',
+      scripts: {
+        'type-check': 'tsc',
+        test: "echo 'TODO: настроить инфраструктуру (test runner)' >&2",
+        format: 'prettier --check .',
+      },
+    });
+    const { runner, calls } = fakeRunner();
+    const o = await run(runner, 'setup');
     assert.strictEqual(o.ok, true);
-    assert.deepStrictEqual(calls, ['npm run test:coverage', 'npm run format']);
+    assert.ok(calls.includes('npm run test'));
+  });
+});
+
+describe('run — test:coverage semantic artifact check', () => {
+  it('exit 0 without a coverage/ dir → red: coverage was not actually measured', async () => {
+    coverageDirExists = false;
+    const { runner } = fakeRunner();
+    const o = await run(runner, 'full');
+    assert.strictEqual(o.ok, false);
+    if (o.ok) return;
+    assert.match(o.message, /❌ test:coverage — exit 0/);
+    assert.match(o.message, /каталога coverage\/ нет/);
+  });
+
+  it('exit 0 with a stale coverage artifact → red: a leftover from an earlier run does not count', async () => {
+    currentMtimeMs = Date.now() - 60 * 60 * 1000; // an hour old — clearly not this run's artifact
+    const { runner } = fakeRunner();
+    const o = await run(runner, 'full');
+    assert.strictEqual(o.ok, false);
+    if (o.ok) return;
+    assert.match(o.message, /артефакты в coverage\/ не обновились/);
+  });
+
+  it('exit 0 with a fresh artifact → pass, unchanged contract', async () => {
+    const { runner } = fakeRunner();
+    const o = await run(runner, 'full');
+    assert.strictEqual(o.ok, true);
+  });
+});
+
+describe('run — foundation re-run after real mutations', () => {
+  it('a repair rung that changed the tree triggers exactly one read-only re-run of the foundation', async () => {
+    rootFiles = ['a.ts'];
+    const calls: string[] = [];
+    const runner: GateRunner = (command, args) => {
+      const cmd = `${command} ${args.join(' ')}`;
+      calls.push(cmd);
+      if (cmd === 'npm run format:fix') currentMtimeMs += 1000; // the fixer actually rewrote a file
+      return { exitCode: 0, output: '' };
+    };
+    const o = await run(runner, 'code');
+    assert.strictEqual(o.ok, true);
+    assert.deepStrictEqual(calls, [
+      'npm run type-check',
+      'npm run test',
+      'npm run format:fix',
+      'npm run lint:fix',
+      'npm run lint',
+      'npm run format',
+      'npm run type-check', // re-run over the repaired state
+      'npm run test',
+    ]);
     if (o.ok) {
-      assert.match(o.text, /⏭ type-check — скрипта нет в package\.json, пропущено/);
+      assert.match(o.text, /type-check \(re-run после мутаций\)/);
+      assert.match(o.text, /test \(re-run после мутаций\)/);
     }
+  });
+
+  it('repair rungs that changed nothing → no re-run, no wasted test time', async () => {
+    rootFiles = ['a.ts'];
+    const { runner, calls } = fakeRunner();
+    const o = await run(runner, 'code');
+    assert.strictEqual(o.ok, true);
+    assert.strictEqual(calls.filter((c) => c === 'npm run test').length, 1);
+    assert.strictEqual(calls.filter((c) => c === 'npm run type-check').length, 1);
+  });
+
+  it('a re-run failure is a red verdict — the repaired state is what gets judged', async () => {
+    rootFiles = ['a.ts'];
+    let typeCheckRuns = 0;
+    const runner: GateRunner = (command, args) => {
+      const cmd = `${command} ${args.join(' ')}`;
+      if (cmd === 'npm run format:fix') currentMtimeMs += 1000;
+      if (cmd === 'npm run type-check' && ++typeCheckRuns === 2) {
+        return { exitCode: 2, output: 'TS2345 broken by autofix' };
+      }
+      return { exitCode: 0, output: '' };
+    };
+    const o = await run(runner, 'code');
+    assert.strictEqual(o.ok, false);
+    if (o.ok) return;
+    assert.match(o.message, /type-check \(re-run после мутаций\) — exit 2/);
+    assert.match(o.message, /broken by autofix/);
   });
 });
 

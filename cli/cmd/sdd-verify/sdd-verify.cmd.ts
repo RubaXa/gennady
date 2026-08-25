@@ -3,11 +3,15 @@
 // @tasks: N/A
 
 import { spawnSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { join } from 'node:path';
 import { logger } from '#logger';
+import { isStubScript } from '../../../shared/sdd/readiness.ts';
 import {
   gatesFor,
   verdict,
+  REQUIRED_PROFILE_GATES,
+  type Gate,
   type GateResult,
   type GateRunResult,
   type GateRunner,
@@ -124,11 +128,152 @@ function gennadyGateCommand(gateName: string): { command: string; args: string[]
   return { command: 'npx', args: ['gennady', gateName] };
 }
 
+/** @purpose Directories never fingerprinted — build/dep/artifact output whose churn is not a source mutation. */
+const FINGERPRINT_IGNORED_DIRS = new Set([
+  'node_modules',
+  '.git',
+  'coverage',
+  'dist',
+  'build',
+  '.claude',
+]);
+
 /**
- * @purpose Execute sdd-verify — walk the profile's ladder in order, timing each rung, stopping on
- *   a broken foundation, skipping undeclared scripts, then summarize.
- * @invariant A foundation rung's failure (`Gate.haltsOnFailure`) breaks the loop. A missing npm
- *   script never runs and never counts as a failure.
+ * @purpose Cheap whole-tree fingerprint (path → mtime:size) — tells whether the repair rungs
+ *   actually rewrote anything, so the foundation re-runs only then.
+ * @param [root] Directory to walk (the project root).
+ * @returns Map of file path → `mtimeMs:size` for every non-ignored file.
+ */
+function treeFingerprint(root = '.'): Map<string, string> {
+  const out = new Map<string, string>();
+  const walk = (dir: string): void => {
+    let entries;
+    try {
+      entries = readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const e of entries) {
+      if (e.isDirectory()) {
+        if (!FINGERPRINT_IGNORED_DIRS.has(e.name)) walk(join(dir, e.name));
+        continue;
+      }
+      if (!e.isFile()) continue;
+      const p = join(dir, e.name);
+      try {
+        const st = statSync(p);
+        out.set(p, `${st.mtimeMs}:${st.size}`);
+      } catch {
+        // raced with a concurrent delete — a missing file simply isn't part of the fingerprint
+      }
+    }
+  };
+  walk(root);
+  return out;
+}
+
+/** @purpose Compare two tree fingerprints for equality. | @param a First fingerprint. | @param b Second fingerprint. | @returns True when identical. */
+function fingerprintsEqual(a: Map<string, string>, b: Map<string, string>): boolean {
+  if (a.size !== b.size) return false;
+  for (const [k, v] of a) {
+    if (b.get(k) !== v) return false;
+  }
+  return true;
+}
+
+/** @purpose Small slack for filesystem mtime granularity when judging coverage-artifact freshness. */
+const ARTIFACT_MTIME_SLACK_MS = 2000;
+
+/**
+ * @purpose Semantic check for the `test:coverage` rung — exit 0 alone does not prove coverage was
+ *   measured; a fresh artifact under `coverage/` does.
+ * @param startMs When the rung started — an artifact older than this is a leftover, not this run's.
+ * @returns ok, or the honest reason the run cannot claim coverage was measured.
+ */
+function coverageArtifactFresh(startMs: number): { ok: true } | { ok: false; reason: string } {
+  let entries;
+  try {
+    entries = readdirSync('coverage', { withFileTypes: true });
+  } catch {
+    return {
+      ok: false,
+      reason:
+        'команда вышла с кодом 0, но каталога coverage/ нет — покрытие фактически не измерялось. ' +
+        'test:coverage обязан писать отчёт в coverage/ (например через c8); иначе зелёный вердикт о покрытии — фикция.',
+    };
+  }
+  let newest = 0;
+  for (const e of entries) {
+    if (!e.isFile()) continue;
+    try {
+      const st = statSync(join('coverage', e.name));
+      if (st.mtimeMs > newest) newest = st.mtimeMs;
+    } catch {
+      // ignore racing deletes
+    }
+  }
+  if (newest >= startMs - ARTIFACT_MTIME_SLACK_MS) return { ok: true };
+  return {
+    ok: false,
+    reason:
+      'команда вышла с кодом 0, но артефакты в coverage/ не обновились за этот прогон — ' +
+      'test:coverage не измеряет покрытие (проверь его команду в package.json).',
+  };
+}
+
+/**
+ * @purpose Run one resolvable gate and append its result; applies the coverage-artifact semantic
+ *   check to `test:coverage`.
+ * @param runner Command runner. | @param gate The gate. | @param scriptName Resolved npm script name (ignored for `via: 'gennady'`).
+ * @param results Accumulator. | @param [nameSuffix] Display suffix (e.g. ` (re-run)`).
+ * @returns The gate's final status.
+ */
+function runGate(
+  runner: GateRunner,
+  gate: Gate,
+  scriptName: string,
+  results: GateResult[],
+  nameSuffix = ''
+): GateStatus {
+  const start = Date.now();
+  const { command, args } =
+    gate.via === 'gennady'
+      ? gennadyGateCommand(gate.name)
+      : { command: 'npm', args: ['run', scriptName] };
+  const r = runner(command, args);
+  const durationMs = Date.now() - start;
+  logger.debug(
+    `[SddVerifyCommand#run] ${gate.name}${nameSuffix} → exit ${r.exitCode} (${durationMs}ms)`
+  );
+  const ranCommand = `${command} ${args.join(' ')}`;
+  let status: GateStatus = r.exitCode === 0 ? 'pass' : 'fail';
+  let output = r.output;
+  if (gate.name === 'test:coverage' && status === 'pass') {
+    const fresh = coverageArtifactFresh(start);
+    if (!fresh.ok) {
+      status = 'fail';
+      output = fresh.reason;
+    }
+  }
+  results.push({
+    name: `${gate.name}${nameSuffix}`,
+    status,
+    exitCode: r.exitCode,
+    output,
+    durationMs,
+    ranCommand,
+    mutates: gate.mutates,
+  });
+  return status;
+}
+
+/**
+ * @purpose Execute sdd-verify — walk the profile's ladder, halt on a broken foundation, then
+ *   summarize. Repair rungs that changed the tree trigger one foundation re-run.
+ * @invariant A foundation rung's failure (`Gate.haltsOnFailure`) breaks the loop; a missing optional
+ *   script is never a failure.
+ * @invariant A missing or echo-stub REQUIRED script (`REQUIRED_PROFILE_GATES`) is a red verdict.
+ * @invariant `test:coverage` passing additionally requires a fresh `coverage/` artifact.
  * @param runner Command runner — real spawnSync in the CLI entry, a fake in tests.
  * @param [profile] Gate profile (default `full`) selecting which gates run.
  * @returns VerifyOutcome — ✅ per gate on success, else the failed gates' details.
@@ -136,47 +281,84 @@ function gennadyGateCommand(gateName: string): { command: string; args: string[]
 export async function run(runner: GateRunner, profile: Profile = 'full'): Promise<VerifyOutcome> {
   const scripts = readProjectScripts();
   const results: GateResult[] = [];
+  const required = new Set<string>(REQUIRED_PROFILE_GATES[profile]);
   let haltedAt: string | undefined;
+  let preMutationFingerprint: Map<string, string> | null = null;
+  let anyMutatingRan = false;
 
   for (const gate of gatesFor(profile)) {
     const scriptName =
       gate.via === 'gennady' ? gate.name : resolveNpmScriptName(gate.name, scripts);
-    if (gate.via !== 'gennady' && scriptName === undefined) {
-      results.push({
-        name: gate.name,
-        status: 'skipped',
-        exitCode: 0,
-        output: '',
-        durationMs: 0,
-        ranCommand: '',
-        mutates: gate.mutates,
-      });
-      continue;
+
+    if (gate.via !== 'gennady') {
+      const isMissing = scriptName === undefined;
+      const isStub = !isMissing && isStubScript(scripts, scriptName);
+      if ((isMissing || isStub) && required.has(gate.name)) {
+        results.push({
+          name: gate.name,
+          status: 'missing',
+          exitCode: 1,
+          output: isMissing
+            ? `обязательная ступень профиля «${profile}»: скрипта нет в package.json — verify нечем, лестница остановлена. Прогони infra flow (npx gennady sdd-state → GATE_QUEUE) и повтори.`
+            : `обязательная ступень профиля «${profile}»: скрипт — echo-заглушка, она выходит с кодом 0, ничего не проверяя — зелёный вердикт был бы фикцией. Замени заглушку реальным инструментом (infra flow) и повтори.`,
+          durationMs: 0,
+          ranCommand: '',
+          mutates: gate.mutates,
+        });
+        break;
+      }
+      if (isMissing) {
+        results.push({
+          name: gate.name,
+          status: 'skipped',
+          exitCode: 0,
+          output: '',
+          durationMs: 0,
+          ranCommand: '',
+          mutates: gate.mutates,
+        });
+        continue;
+      }
     }
 
-    const start = Date.now();
-    const { command, args } =
-      gate.via === 'gennady'
-        ? gennadyGateCommand(gate.name)
-        : { command: 'npm', args: ['run', scriptName as string] };
-    const r = runner(command, args);
-    const durationMs = Date.now() - start;
-    logger.debug(`[SddVerifyCommand#run] ${gate.name} → exit ${r.exitCode} (${durationMs}ms)`);
-    const ranCommand = `${command} ${args.join(' ')}`;
-    const status: GateStatus = r.exitCode === 0 ? 'pass' : 'fail';
-    results.push({
-      name: gate.name,
-      status,
-      exitCode: r.exitCode,
-      output: r.output,
-      durationMs,
-      ranCommand,
-      mutates: gate.mutates,
-    });
+    // Snapshot the tree once, right before the first mutating rung actually runs — the cheapest
+    // honest way to know later whether the repair rungs rewrote anything.
+    if (gate.mutates && preMutationFingerprint === null) {
+      preMutationFingerprint = treeFingerprint('.');
+    }
 
-    if (r.exitCode !== 0 && gate.haltsOnFailure) {
+    const status = runGate(runner, gate, scriptName as string, results);
+    if (gate.mutates) anyMutatingRan = true;
+
+    if (status === 'fail' && gate.haltsOnFailure) {
       haltedAt = gate.name;
       break;
+    }
+  }
+
+  // One bounded repair pass: when the mutating rungs changed the tree, the foundation verdicts above
+  // describe code that no longer exists — re-run them once, read-only, over the repaired state.
+  if (anyMutatingRan && preMutationFingerprint !== null && haltedAt === undefined) {
+    const changed = !fingerprintsEqual(preMutationFingerprint, treeFingerprint('.'));
+    if (changed) {
+      for (const gate of gatesFor(profile).filter((g) => g.haltsOnFailure)) {
+        const prior = results.find((r) => r.name === gate.name);
+        if (!prior || prior.status !== 'pass') continue;
+        const scriptName =
+          gate.via === 'gennady' ? gate.name : resolveNpmScriptName(gate.name, scripts);
+        if (gate.via !== 'gennady' && scriptName === undefined) continue;
+        const status = runGate(
+          runner,
+          gate,
+          scriptName as string,
+          results,
+          ' (re-run после мутаций)'
+        );
+        if (status === 'fail') {
+          haltedAt = gate.name;
+          break;
+        }
+      }
     }
   }
 

@@ -162,12 +162,20 @@ function packageJson(): string {
       name: 'demo-fixture',
       private: true,
       type: 'module',
+      // The seven bricks, execution-ready rather than merely present: sdd-task's --phase gate and
+      // sdd-verify's required rungs both refuse a stubbed project, and this fixture stands in for a
+      // real repo mid-phase. Bodies stay no-ops (nothing here should really compile or format), but
+      // each carries what its own check demands: test:coverage actually writes coverage/, the two
+      // fixers carry a real write switch, and lint reaches the local `gennady` bin stub.
       scripts: {
         'type-check': 'node -e "process.exit(0)"',
         test: 'node -e "process.exit(0)"',
-        'test:coverage': 'node -e "process.exit(0)"',
-        lint: 'node -e "process.exit(0)"',
+        'test:coverage':
+          "node -e \"require('fs').mkdirSync('coverage',{recursive:true});require('fs').writeFileSync('coverage/coverage-final.json','{}');process.exit(0)\"",
+        lint: 'gennady lint src/',
+        'lint:fix': 'node -e "process.exit(0)" # --fix',
         format: 'node -e "process.exit(0)"',
+        'format:fix': 'node -e "process.exit(0)" # --write',
       },
     },
     null,

@@ -33,8 +33,9 @@ export type GateQueueResult = {
 
 /**
  * @purpose Find TODO tickets in infra scopes expected to build missing gates, plus advisory queue diagnostics.
- * @invariant A ready project, a portal without infrastructure scopes, or a queue without matching TODO tickets returns an empty ticket list.
- * @invariant Diagnostics never change `ticketIds` and are computed only while the project is not ready.
+ * @invariant An execution-ready project, a portal without infrastructure scopes, or a queue without matching TODO tickets returns an empty ticket list.
+ * @invariant Diagnostics never change `ticketIds`, and are computed only while not execution-ready
+ *   — a provisional project still surfaces the queue replacing its stubs.
  * @param refs Every discovered task ticket.
  * @param scopes Portal scopes from the same project snapshot.
  * @param readiness Readiness verdict from the same project snapshot.
@@ -45,7 +46,7 @@ export function queuedInfraGateTicketIds(
   scopes: Scope[],
   readiness: ReadinessResult
 ): GateQueueResult {
-  if (readiness.ready) return { ticketIds: [], diagnostics: [] };
+  if (readiness.executionReady) return { ticketIds: [], diagnostics: [] };
 
   const infraScopes = scopes.filter((scope) => scope.type === 'infrastructure');
   const infraScopeNames = new Set(infraScopes.map((scope) => scope.name));

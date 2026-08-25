@@ -51,10 +51,15 @@ export type ReadinessInput = {
   gennadyAvailable: boolean;
 };
 
+/** @purpose Three-level readiness verdict — `provisional` means the bricks exist but some are echo-stubs. */
+export type ReadinessLevel = 'not-ready' | 'provisional' | 'ready';
+
 /**
  * @purpose Verdict of the readiness check.
  * @invariant `ready` requires package.json present, all required scripts declared, `lint` reaching
  * gennady, `format`/`lint` read-only, `format:fix`/`lint:fix` mutating, and gennady installed.
+ * @invariant `level` refines `ready`: `not-ready` ⇔ `!ready`; `provisional` = ready with ≥1
+ * echo-stub; `ready` = zero stubs. `executionReady` ⇔ `level === 'ready'`.
  */
 export type ReadinessResult = {
   /** @purpose Whether a parseable package.json exists at the project root. */
@@ -79,6 +84,12 @@ export type ReadinessResult = {
   ready: boolean;
   /** @purpose Human-readable list of what is missing (package.json, script names, `lint→gennady`, gennady install). */
   missing: string[];
+  /** @purpose Canonical names of required scripts that are present but echo-stubs — never counted in `missing`. */
+  stubbed: string[];
+  /** @purpose Refined verdict: `not-ready` / `provisional` (bootstrap may proceed) / `ready` (execution may proceed). */
+  level: ReadinessLevel;
+  /** @purpose True only at `level === 'ready'` — the gate for impl/refactor/test phases; bootstrap phases need only `ready`. */
+  executionReady: boolean;
 };
 
 /**
@@ -165,6 +176,25 @@ function isScriptMutating(scripts: Record<string, string>, entry: string): boole
 }
 
 /**
+ * @purpose Detect an echo-stub — every command `entry` reaches is an `echo` or `npm run` hop, so it
+ * exits 0 verifying nothing.
+ * @invariant A body with even one non-echo command segment (e.g. `echo hi && tsc`) is NOT a stub.
+ * @param scripts The package.json scripts map.
+ * @param entry The script name to check.
+ * @returns True when `entry` exists and is echo-only all the way down.
+ */
+export function isStubScript(scripts: Record<string, string>, entry: string): boolean {
+  const bodies = reachableScriptBodies(scripts, entry);
+  if (bodies.length === 0) return false;
+  return bodies.every((body) =>
+    body.split(/&&|\|\||;/).every((segment) => {
+      const s = segment.trim();
+      return s === '' || /^echo\b/.test(s) || /^npm run [A-Za-z0-9:_-]+\s*$/.test(s);
+    })
+  );
+}
+
+/**
  * @purpose True when a script body is real — present, non-empty, and not the npm-init placeholder.
  * @param body The script body from package.json `scripts`, or undefined when absent.
  * @returns False for absent/empty bodies and for the `npm init -y` "no test specified" stub.
@@ -220,6 +250,15 @@ export function checkReadiness(input: ReadinessInput): ReadinessResult {
     lintFixMutates &&
     gennadyAvailable;
 
+  // A stub is judged on the alias actually declared, but reported under the canonical name.
+  const stubbed = REQUIRED_SCRIPTS.filter((name) =>
+    (SCRIPT_ALIASES[name] ?? [name]).some(
+      (n) => isRealScript(scripts[n]) && isStubScript(scripts, n)
+    )
+  );
+
+  const level: ReadinessLevel = !ready ? 'not-ready' : stubbed.length > 0 ? 'provisional' : 'ready';
+
   return {
     packageJsonPresent,
     required,
@@ -232,18 +271,30 @@ export function checkReadiness(input: ReadinessInput): ReadinessResult {
     gennadyAvailable,
     ready,
     missing,
+    stubbed,
+    level,
+    executionReady: level === 'ready',
   };
 }
 
 /**
- * @purpose Detect whether the gennady CLI is installed for the project.
+ * @purpose Detect whether the gennady CLI is available — installed as a dependency, or the project
+ * IS gennady (self-hosting runs its own source).
  * @param root Absolute project root.
- * @returns True when `<root>/node_modules/.bin/gennady` resolves to an existing entry.
+ * @returns True when `<root>/node_modules/.bin/gennady` exists, or package.json `name` is `gennady`.
  */
 function detectGennady(root: string): boolean {
   try {
     statSync(join(root, 'node_modules', '.bin', 'gennady'));
     return true;
+  } catch {
+    // fall through to the self-hosting check
+  }
+  try {
+    const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf-8')) as {
+      name?: string;
+    };
+    return pkg.name === 'gennady';
   } catch {
     return false;
   }

@@ -42,6 +42,7 @@ import {
   unknownIdError,
   ambiguousIdError,
   auditGroupError,
+  infraNotReadyError,
   formatAuditGroup,
   formatGroupScope,
   buildAuditGroupLine,
@@ -100,7 +101,11 @@ function formatMap(refs: TicketRef[], root: string): string {
   }
   const readiness = checkReadiness(gatherReadinessInput(root));
   const gateQueue = infraGateQueue(refs, root, readiness);
-  lines.push(`READINESS=${readiness.ready ? 'ready' : 'not-ready'}`);
+  lines.push(
+    readiness.level === 'provisional'
+      ? `READINESS=provisional (stubs: ${readiness.stubbed.join(', ')} — impl/refactor/test-фазы заблокированы, начинай с infra-очереди)`
+      : `READINESS=${readiness.level}`
+  );
   if (gateQueue.ticketIds.length > 0) {
     lines.push(
       `GATE_QUEUE=${gateQueue.ticketIds.join(',')} · гейты отсутствуют, их строят эти тикеты — для исполнения это штатно, начинай с них`
@@ -284,6 +289,20 @@ export async function run(rawArgs: string[]): Promise<TaskOutcome> {
 
   if (phaseId) {
     logger.debug(`[SddTaskCommand#run] ${meta.taskId ?? '?'}: --phase ${phaseId}`);
+    // Execution gate: an impl/refactor/test phase on stub (or absent) verification infrastructure
+    // would sail through sdd-verify without a single real check — refuse before any work starts.
+    const phaseKind = phases.find((p) => p.id === phaseId)?.kind?.toLowerCase() ?? '';
+    if (['impl', 'refactor', 'test'].includes(phaseKind)) {
+      const readiness = checkReadiness(gatherReadinessInput(root));
+      if (!readiness.executionReady) {
+        return infraNotReadyError(
+          phaseId,
+          phaseKind,
+          readiness.level,
+          readiness.level === 'provisional' ? readiness.stubbed : readiness.missing
+        );
+      }
+    }
     // `## Audit Rounds` is a plain heading section (TICKET_AUDIT_ROUND_FORMAT), not a
     // <!--SECTION:...--> anchor — the fix-worker needs its findings' bodies, not just the `fix:
     // F-NNN` tag, so it stops grepping the repo for what the audit actually found.

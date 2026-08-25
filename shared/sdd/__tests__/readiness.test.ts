@@ -4,7 +4,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { checkReadiness, REQUIRED_SCRIPTS } from '../readiness.ts';
+import { checkReadiness, isStubScript, REQUIRED_SCRIPTS } from '../readiness.ts';
 
 /** Check `scripts` with package.json present and gennady installed unless overridden. */
 function check(scripts: Record<string, string>, opts?: { pkg?: boolean; gennady?: boolean }) {
@@ -206,5 +206,70 @@ describe('checkReadiness', () => {
     assert.ok(
       !r.missing.some((m) => REQUIRED_SCRIPTS.includes(m as (typeof REQUIRED_SCRIPTS)[number]))
     );
+  });
+});
+
+describe('isStubScript', () => {
+  it('an echo-only body (with stderr redirect) is a stub', () => {
+    const scripts = { test: "echo 'TODO: настроить инфраструктуру (test runner)' >&2" };
+    assert.strictEqual(isStubScript(scripts, 'test'), true);
+  });
+
+  it('a chained echo && real-command body is NOT a stub', () => {
+    const scripts = { test: 'echo running && node --test' };
+    assert.strictEqual(isStubScript(scripts, 'test'), false);
+  });
+
+  it('an npm-run hop to an echo-only script is still a stub; a hop to a real one is not', () => {
+    assert.strictEqual(
+      isStubScript({ test: 'npm run test:inner', 'test:inner': 'echo TODO' }, 'test'),
+      true
+    );
+    assert.strictEqual(
+      isStubScript({ test: 'npm run test:inner', 'test:inner': 'node --test' }, 'test'),
+      false
+    );
+  });
+
+  it('an absent script is not a stub — it is simply missing', () => {
+    assert.strictEqual(isStubScript({}, 'test'), false);
+  });
+});
+
+describe('readiness levels (not-ready / provisional / ready)', () => {
+  it('all-real scripts → level ready, executionReady true, no stubs', () => {
+    const r = check(FULL);
+    assert.strictEqual(r.level, 'ready');
+    assert.strictEqual(r.executionReady, true);
+    assert.deepStrictEqual(r.stubbed, []);
+  });
+
+  it('echo-stubs for the leaf bricks → level provisional: ready for bootstrap, blocked for execution', () => {
+    const r = check({
+      'type-check': "echo 'TODO: настроить инфраструктуру (type-check — tsc --noEmit)' >&2",
+      test: "echo 'TODO: настроить инфраструктуру (test runner)' >&2",
+      'test:coverage': "echo 'TODO: настроить инфраструктуру (coverage)' >&2",
+      format: "echo 'TODO: настроить инфраструктуру (formatter, read-only check)' >&2",
+      'format:fix': "echo 'TODO: настроить formatter --write (write mode)' >&2",
+      lint: 'gennady lint src/',
+      'lint:fix': "echo 'TODO: настроить linter --fix (autofix)' >&2",
+    });
+    assert.strictEqual(r.ready, true, r.missing.join(', '));
+    assert.strictEqual(r.level, 'provisional');
+    assert.strictEqual(r.executionReady, false);
+    assert.deepStrictEqual(r.stubbed, [
+      'type-check',
+      'test',
+      'test:coverage',
+      'format',
+      'format:fix',
+      'lint:fix',
+    ]);
+  });
+
+  it('a not-ready project is level not-ready, never provisional, whatever its stubs', () => {
+    const r = check({ test: 'echo TODO' }, { pkg: true });
+    assert.strictEqual(r.level, 'not-ready');
+    assert.strictEqual(r.executionReady, false);
   });
 });

@@ -106,9 +106,11 @@ export function formatSnapshot(s: StateSnapshot): string {
   lines.push(`check→read-only\t${s.readiness.checkReadOnly ? '✔' : '✘'}`);
   lines.push(`gennady-installed\t${s.readiness.gennadyAvailable ? '✔' : '✘'}`);
   lines.push(
-    s.readiness.ready
+    s.readiness.level === 'ready'
       ? 'READINESS=ready'
-      : `READINESS=not-ready (missing: ${s.readiness.missing.join(', ')})`
+      : s.readiness.level === 'provisional'
+        ? `READINESS=provisional (stubs: ${s.readiness.stubbed.join(', ')} — bootstrap/scaffold можно, impl/test-фазы заблокированы до реальных инструментов)`
+        : `READINESS=not-ready (missing: ${s.readiness.missing.join(', ')})`
   );
   lines.push(
     `GATE_QUEUE=${s.queuedGateTicketIds.length > 0 ? s.queuedGateTicketIds.join(',') : 'none'}`
@@ -151,7 +153,7 @@ export function formatSnapshot(s: StateSnapshot): string {
     '[SUMMARY]',
     `flow=${s.flowVersion}`,
     `portal=${s.portalPresent ? 'present' : 'absent'}`,
-    `readiness=${s.readiness.ready ? 'ready' : 'not-ready'}`,
+    `readiness=${s.readiness.level}`,
     `gate-queue=${s.queuedGateTicketIds.length > 0 ? s.queuedGateTicketIds.join(',') : 'none'}`,
     `scopes=${s.scopes.length}`,
     `session=${s.sessionContent ? 'present' : 'absent'}`

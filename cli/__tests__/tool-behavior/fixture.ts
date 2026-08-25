@@ -33,6 +33,11 @@ export function markerScript(markerName: string, exitCode = 0): string {
   return `node -e "require('fs').writeFileSync('${markerName}','x');process.exit(${exitCode})"`;
 }
 
+/** @purpose A `test:coverage` stand-in that actually writes a fresh `coverage/` artifact — satisfies sdd-verify's semantic freshness check — then exits with `exitCode`. */
+export function coverageScript(exitCode = 0): string {
+  return `node -e "require('fs').mkdirSync('coverage',{recursive:true});require('fs').writeFileSync('coverage/coverage-final.json','{}');process.exit(${exitCode})"`;
+}
+
 /** @purpose Declarative state for one fixture repo — every field optional, only what the scenario needs. */
 export type RepoFixtureState = {
   /** @purpose package.json `scripts` map; omit for no scripts at all. */

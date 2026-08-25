@@ -50,6 +50,8 @@ export const ERR_CLI_SDD_TASK_AMBIGUOUS_ID = 'ERR_CLI_SDD_TASK_AMBIGUOUS_ID' as 
 export const ERR_CLI_SDD_TASK_NOT_V2_TICKET_NAME = 'ERR_CLI_SDD_TASK_NOT_V2_TICKET_NAME' as const;
 /** @purpose The owning spec derived from the ticket's filename convention does not exist on disk. */
 export const ERR_CLI_SDD_TASK_SPEC_MISSING = 'ERR_CLI_SDD_TASK_SPEC_MISSING' as const;
+/** @purpose --phase targets an impl/refactor/test phase while the project's verification infrastructure is stubs or missing — the phase would run against gates that verify nothing. */
+export const ERR_CLI_SDD_TASK_INFRA_NOT_READY = 'ERR_CLI_SDD_TASK_INFRA_NOT_READY' as const;
 
 /**
  * @purpose Result of one sdd-task run.
@@ -312,6 +314,38 @@ export function fileError(ticket: string): TaskOutcome {
     code: ERR_CLI_SDD_TASK_FILE,
     exitCode: 1,
     message: `[sdd-task] ${ERR_CLI_SDD_TASK_FILE}: ${ticket}\n  ${unreadableTicketHint(ticket)}`,
+  };
+}
+
+/**
+ * @purpose Build the infra-not-ready diagnostic — an impl/refactor/test phase starting while the
+ * verification gates are stubs or missing, so any green verdict is vacuous.
+ * @param phaseId The requested phase id.
+ * @param kind The phase's kind (impl/refactor/test).
+ * @param level The readiness level found (`provisional` or `not-ready`).
+ * @param detail Stubbed script names (provisional) or the missing list (not-ready).
+ * @returns The failure outcome, exit 1.
+ */
+export function infraNotReadyError(
+  phaseId: string,
+  kind: string,
+  level: string,
+  detail: string[]
+): TaskOutcome {
+  const cause =
+    level === 'provisional'
+      ? `verification-скрипты — заглушки (${detail.join(', ')}): они выходят с кодом 0, ничего не проверяя`
+      : `readiness=not-ready (missing: ${detail.join(', ')})`;
+  return {
+    ok: false,
+    code: ERR_CLI_SDD_TASK_INFRA_NOT_READY,
+    exitCode: 1,
+    message: [
+      `[sdd-task] ${ERR_CLI_SDD_TASK_INFRA_NOT_READY}: фаза ${phaseId} (kind=${kind}) не может стартовать — ${cause}.`,
+      '  Зелёный sdd-verify на такой инфраструктуре не значит ничего: код прошёл бы фазу непроверенным.',
+      '  next: выполни infra-очередь (npx gennady sdd-task → GATE_QUEUE), замени заглушки реальными инструментами,',
+      '  затем повтори этот вызов. Bootstrap/config/doc-фазы этим гейтом не блокируются.',
+    ].join('\n'),
   };
 }
 

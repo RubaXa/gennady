@@ -21,6 +21,9 @@ const notReady: ReadinessResult = {
   gennadyAvailable: false,
   ready: false,
   missing: ['package.json'],
+  stubbed: [],
+  level: 'not-ready',
+  executionReady: false,
 };
 
 const infraScope: Scope = {
@@ -47,17 +50,34 @@ describe('queuedInfraGateTicketIds', () => {
     );
   });
 
-  it('returns none once readiness is already green, with no diagnostics either', () => {
+  it('returns none once readiness is execution-ready, with no diagnostics either', () => {
     const result = queuedInfraGateTicketIds(
       [ref('infra-1', '[ ] TODO', 'infra-core')],
       [infraScope],
       {
         ...notReady,
         ready: true,
+        level: 'ready',
+        executionReady: true,
       }
     );
     assert.deepEqual(result.ticketIds, []);
     assert.deepEqual(result.diagnostics, []);
+  });
+
+  it('provisional readiness (stubs) still surfaces the queue — those tickets are what replace the stubs', () => {
+    const result = queuedInfraGateTicketIds(
+      [ref('infra-1', '[ ] TODO', 'infra-core')],
+      [infraScope],
+      {
+        ...notReady,
+        ready: true,
+        stubbed: ['test', 'format'],
+        level: 'provisional',
+        executionReady: false,
+      }
+    );
+    assert.deepEqual(result.ticketIds, ['infra-1']);
   });
 
   it('flags an approved infra scope with no ticket referencing it yet', () => {

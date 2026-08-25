@@ -11,6 +11,32 @@ import { execSync } from 'node:child_process';
 
 type TaskModule = typeof import('../sdd-task.cmd.ts');
 
+/**
+ * Make a fixture dir execution-ready (real seven scripts + a gennady bin stub) — the --phase gate
+ * refuses impl/refactor/test phases on anything less, so tests that aren't about the gate need this.
+ */
+function writeExecutionReadyInfra(root: string): void {
+  writeFileSync(
+    join(root, 'package.json'),
+    JSON.stringify({
+      name: 'fixture-app',
+      scripts: {
+        'type-check': 'tsc --noEmit',
+        test: 'node --test',
+        'test:coverage': 'c8 node --test',
+        format: 'prettier --check .',
+        'format:fix': 'prettier --write .',
+        lint: 'gennady lint src/',
+        'lint:fix': 'eslint --fix .',
+      },
+    }),
+    'utf-8'
+  );
+  const binDir = join(root, 'node_modules', '.bin');
+  mkdirSync(binDir, { recursive: true });
+  writeFileSync(join(binDir, 'gennady'), '#!/usr/bin/env node\nprocess.exit(0);\n', 'utf-8');
+}
+
 let mod: TaskModule;
 let origExit: typeof process.exit;
 let origArgv: string[];
@@ -301,6 +327,7 @@ describe('SddTaskCommand', () => {
     it('resolves for --phase too — resolution line precedes the phase context', async () => {
       const idDir = mkdtempSync(join(tmpdir(), 'sdd-task-id-'));
       writeFileSync(join(idDir, 'ticket.md'), idTicket('TSK-foo'), 'utf-8');
+      writeExecutionReadyInfra(idDir); // P1 is impl — the phase gate must find real infra
       const origCwd = process.cwd();
       process.chdir(idDir);
       try {
@@ -1064,6 +1091,89 @@ describe('SddTaskCommand', () => {
         assert.match(r.text, /Handoff-строки с артефактами/);
       } finally {
         rmSync(gDir, { recursive: true, force: true });
+      }
+    });
+  });
+
+  describe('--phase infra gate (ERR_CLI_SDD_TASK_INFRA_NOT_READY)', () => {
+    function withCwd<T>(dir: string, fn: () => Promise<T>): Promise<T> {
+      const orig = process.cwd();
+      process.chdir(dir);
+      return fn().finally(() => process.chdir(orig));
+    }
+
+    it('impl phase on a bare project (no package.json) → refused with the not-ready cause', async () => {
+      const gateDir = mkdtempSync(join(tmpdir(), 'sdd-task-gate-'));
+      writeFileSync(join(gateDir, 'ticket.md'), TICKET, 'utf-8');
+      try {
+        const r = await withCwd(gateDir, () => mod.run(argv('ticket.md', '--phase', 'P1')));
+        assert.strictEqual(r.ok, false);
+        if (r.ok) return;
+        assert.match(r.message, /ERR_CLI_SDD_TASK_INFRA_NOT_READY/);
+        assert.match(r.message, /kind=impl/);
+        assert.match(r.message, /not-ready/);
+      } finally {
+        rmSync(gateDir, { recursive: true, force: true });
+      }
+    });
+
+    it('test phase on echo-stub infra → refused, names the stubbed scripts', async () => {
+      const gateDir = mkdtempSync(join(tmpdir(), 'sdd-task-gate-'));
+      writeFileSync(join(gateDir, 'ticket.md'), TICKET, 'utf-8');
+      writeExecutionReadyInfra(gateDir);
+      // Downgrade test/test:coverage to echo-stubs — bootstrap-legal, execution-illegal.
+      writeFileSync(
+        join(gateDir, 'package.json'),
+        JSON.stringify({
+          name: 'fixture-app',
+          scripts: {
+            'type-check': 'tsc --noEmit',
+            test: "echo 'TODO: настроить инфраструктуру (test runner)' >&2",
+            'test:coverage': "echo 'TODO: настроить инфраструктуру (coverage)' >&2",
+            format: 'prettier --check .',
+            'format:fix': 'prettier --write .',
+            lint: 'gennady lint src/',
+            'lint:fix': 'eslint --fix .',
+          },
+        }),
+        'utf-8'
+      );
+      try {
+        const r = await withCwd(gateDir, () => mod.run(argv('ticket.md', '--phase', 'P2')));
+        assert.strictEqual(r.ok, false);
+        if (r.ok) return;
+        assert.match(r.message, /ERR_CLI_SDD_TASK_INFRA_NOT_READY/);
+        assert.match(r.message, /заглушки/);
+        assert.match(r.message, /test, test:coverage/);
+      } finally {
+        rmSync(gateDir, { recursive: true, force: true });
+      }
+    });
+
+    it('impl phase on execution-ready infra → passes the gate, phase context is emitted', async () => {
+      const gateDir = mkdtempSync(join(tmpdir(), 'sdd-task-gate-'));
+      writeFileSync(join(gateDir, 'ticket.md'), TICKET, 'utf-8');
+      writeExecutionReadyInfra(gateDir);
+      try {
+        const r = await withCwd(gateDir, () => mod.run(argv('ticket.md', '--phase', 'P1')));
+        assert.strictEqual(r.ok, true, r.ok ? '' : r.message);
+      } finally {
+        rmSync(gateDir, { recursive: true, force: true });
+      }
+    });
+
+    it('bootstrap-kind phase is never blocked by the gate — it exists to build the infra', async () => {
+      const gateDir = mkdtempSync(join(tmpdir(), 'sdd-task-gate-'));
+      const bootstrapTicket = TICKET.replace(
+        '| P1 | impl | — | [ ] |',
+        '| P1 | bootstrap | — | [ ] |'
+      );
+      writeFileSync(join(gateDir, 'ticket.md'), bootstrapTicket, 'utf-8');
+      try {
+        const r = await withCwd(gateDir, () => mod.run(argv('ticket.md', '--phase', 'P1')));
+        assert.strictEqual(r.ok, true, r.ok ? '' : r.message);
+      } finally {
+        rmSync(gateDir, { recursive: true, force: true });
       }
     });
   });
