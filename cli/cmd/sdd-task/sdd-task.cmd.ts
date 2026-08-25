@@ -22,7 +22,7 @@ import {
 } from '../../../shared/sdd/check.ts';
 import { checkReadiness, gatherReadinessInput } from '../../../shared/sdd/readiness.ts';
 import { parseScopes } from '../../../shared/sdd/portal.ts';
-import { queuedInfraGateTicketIds } from '../../../shared/sdd/gate-queue.ts';
+import { queuedInfraGateTicketIds, type GateQueueResult } from '../../../shared/sdd/gate-queue.ts';
 import {
   collectTicketRefs,
   resolveTicketArg,
@@ -50,21 +50,21 @@ import {
 } from './sdd-task.types.ts';
 
 /**
- * @purpose Named infra-scope TODO tickets already building the missing gate scripts — the preflight gate's queue-exception signal.
+ * @purpose Named infra-scope TODO tickets already building the missing gate scripts, plus queue diagnostics.
  * @param refs Every ticket's graph ref (Task-ID, status, owning scope).
  * @param root Absolute project root — reads `package.json` and `specs/README.md`.
- * @returns Queued infra TODO Task-IDs when readiness is missing and the queue covers it; empty otherwise.
+ * @returns Queued infra TODO Task-IDs and advisory diagnostics; both empty when the portal is unreadable.
  */
-function infraGateTicketIds(
+function infraGateQueue(
   refs: TicketRef[],
   root: string,
   readiness: ReturnType<typeof checkReadiness>
-): string[] {
+): GateQueueResult {
   let portalContent: string;
   try {
     portalContent = readFileSync(join(root, 'specs', 'README.md'), 'utf-8');
   } catch {
-    return [];
+    return { ticketIds: [], diagnostics: [] };
   }
   return queuedInfraGateTicketIds(refs, parseScopes(portalContent), readiness);
 }
@@ -99,14 +99,17 @@ function formatMap(refs: TicketRef[], root: string): string {
     lines.push(`blocked: ${b.taskId} ← ${unmet.join(', ')}  →  ${relPath(b.file)}`);
   }
   const readiness = checkReadiness(gatherReadinessInput(root));
-  const gateIds = infraGateTicketIds(refs, root, readiness);
+  const gateQueue = infraGateQueue(refs, root, readiness);
   lines.push(`READINESS=${readiness.ready ? 'ready' : 'not-ready'}`);
-  if (gateIds.length > 0) {
+  if (gateQueue.ticketIds.length > 0) {
     lines.push(
-      `GATE_QUEUE=${gateIds.join(',')} · гейты отсутствуют, их строят эти тикеты — для исполнения это штатно, начинай с них`
+      `GATE_QUEUE=${gateQueue.ticketIds.join(',')} · гейты отсутствуют, их строят эти тикеты — для исполнения это штатно, начинай с них`
     );
   } else {
     lines.push('GATE_QUEUE=none');
+  }
+  for (const d of gateQueue.diagnostics) {
+    lines.push(`GATE_QUEUE_DIAG: ${d.message}`);
   }
   lines.push(
     '',

@@ -163,7 +163,8 @@ export async function run(rawArgs: string[]): Promise<StateOutcome> {
     scopes,
     graphEdges,
     readiness,
-    queuedGateTicketIds: queuedInfraGateTicketIds(collectTicketRefs(root), scopes, readiness),
+    queuedGateTicketIds: queuedInfraGateTicketIds(collectTicketRefs(root), scopes, readiness)
+      .ticketIds,
     sessionContent,
     probe,
   };

@@ -300,6 +300,59 @@ describe('LintCommand', () => {
     );
   });
 
+  it('--spec --inventory-reverse: a Deferred Implementation entity is not drift, an unmarked missing one still is', async () => {
+    const revDir = join(tmpDir, 'deferred-rev-mod');
+    mkdirSync(revDir, { recursive: true });
+    const specPath = join(revDir, 'mod.spec.md');
+    writeFileSync(
+      specPath,
+      [
+        '# module: demo',
+        '<!--SECTION:ENTITY_INVENTORY-->',
+        '| Name | Type | Purpose |',
+        '|---|---|---|',
+        '| `Built` | Service | it exists |',
+        '| `Later` | Service | Deferred Implementation: TSK-42 — next batch |',
+        '| `Ghost` | Service | it never got built, no deferral |',
+        '<!--/SECTION:ENTITY_INVENTORY-->',
+      ].join('\n'),
+      'utf-8'
+    );
+    writeFileSync(
+      join(revDir, 'code.ts'),
+      [
+        '// @file: Reverse sweep deferred-marker test file.',
+        '// @consumers: TestRunner',
+        '',
+        '/** @purpose Built entity. */',
+        'export const Built = 1;',
+      ].join('\n'),
+      'utf-8'
+    );
+
+    const report = await mod.run([
+      'node',
+      'gennady',
+      'lint',
+      `--spec=${specPath}`,
+      '--inventory-reverse',
+      revDir,
+    ]);
+
+    assert.ok(
+      !report.errors.some(
+        (e) => e.code === 'ERR_CLI_LINT_INVENTORY_UNIMPLEMENTED' && e.message.includes('Later')
+      ),
+      'Later is deferred to TSK-42 — must not be flagged as drift'
+    );
+    assert.ok(
+      report.errors.some(
+        (e) => e.code === 'ERR_CLI_LINT_INVENTORY_UNIMPLEMENTED' && e.message.includes('Ghost')
+      ),
+      'Ghost carries no deferral marker — must still be flagged'
+    );
+  });
+
   it('--spec on a spec with no Entity Inventory section is vacuously clean (direct mode)', async () => {
     const specPath = writeFixture(
       'no-inventory.spec.md',

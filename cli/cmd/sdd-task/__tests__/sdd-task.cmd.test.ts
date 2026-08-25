@@ -695,6 +695,64 @@ describe('SddTaskCommand', () => {
       }
     });
 
+    it('approved infra scope with no ticket at all → diagnostic after GATE_QUEUE, not silence', async () => {
+      const gateDir = mkdtempSync(join(tmpdir(), 'sdd-task-gate-diag-'));
+      mkdirSync(join(gateDir, 'specs'), { recursive: true });
+      writeFileSync(join(gateDir, 'specs', 'README.md'), portalWithInfraScope, 'utf-8');
+      // No ticket referencing infra-core at all — spec approved, nothing scaffolded yet.
+      writeFileSync(
+        join(gateDir, 'ticket.md'),
+        infraTicket('app-1').replace('infra-core', 'app'),
+        'utf-8'
+      );
+      const origCwd = process.cwd();
+      process.chdir(gateDir);
+      try {
+        const r = await mod.run(argv());
+        assert.strictEqual(r.ok, true);
+        if (!r.ok) return;
+        assert.match(r.text, /GATE_QUEUE=none/);
+        assert.match(
+          r.text,
+          /GATE_QUEUE_DIAG: infra-спека `infra-core` одобрена, тикетов пока нет — нарежь scaffold'ом/
+        );
+      } finally {
+        process.chdir(origCwd);
+        rmSync(gateDir, { recursive: true, force: true });
+      }
+    });
+
+    it('TODO ticket scope near-misses the portal infra name → mismatch diagnostic', async () => {
+      const gateDir = mkdtempSync(join(tmpdir(), 'sdd-task-gate-mismatch-'));
+      mkdirSync(join(gateDir, 'specs'), { recursive: true });
+      writeFileSync(join(gateDir, 'specs', 'README.md'), portalWithInfraScope, 'utf-8');
+      writeFileSync(
+        join(gateDir, 'ticket.md'),
+        infraTicket('infra-1').replace('infra-core', 'Infra_Core'),
+        'utf-8'
+      );
+      const origCwd = process.cwd();
+      process.chdir(gateDir);
+      try {
+        const r = await mod.run(argv());
+        assert.strictEqual(r.ok, true);
+        if (!r.ok) return;
+        assert.match(r.text, /GATE_QUEUE=none/);
+        assert.match(
+          r.text,
+          /GATE_QUEUE_DIAG: область тикета 'Infra_Core' не совпала с порталом 'infra-core' \(похожие имена\)/
+        );
+        assert.doesNotMatch(
+          r.text,
+          /одобрена, тикетов пока нет/,
+          'a near-miss ticket already exists — must not also claim no tickets exist'
+        );
+      } finally {
+        process.chdir(origCwd);
+        rmSync(gateDir, { recursive: true, force: true });
+      }
+    });
+
     it('gate scripts present → no gate line, even with an infra TODO ticket queued', async () => {
       const readyDir = mkdtempSync(join(tmpdir(), 'sdd-task-ready-'));
       mkdirSync(join(readyDir, 'specs'), { recursive: true });

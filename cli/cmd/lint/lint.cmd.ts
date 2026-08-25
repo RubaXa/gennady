@@ -21,6 +21,8 @@ import {
   check as checkInventorySync,
   collectExports,
   reverseUnimplemented,
+  parseDeferredEntities,
+  type ReverseSweepResult,
 } from './checks/inventory-sync.check.ts';
 import { parseEntityInventory } from '../../../shared/sdd/inventory.ts';
 import { LintReport } from './lint.types.ts';
@@ -113,11 +115,12 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
 
   // #region START_INVENTORY_SPEC — invariant: --spec loads the declared inventory once; unreadable spec → error, checks skipped
   let declaredInventory: string[] | null = null;
+  let specRawContent: string | null = null;
   const specLoadErrors: LintError[] = [];
   if (specPath) {
     try {
-      const declared = parseEntityInventory(readFileSync(resolve(specPath), 'utf-8'));
-      declaredInventory = declared;
+      specRawContent = readFileSync(resolve(specPath), 'utf-8');
+      declaredInventory = parseEntityInventory(specRawContent);
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : String(cause);
       specLoadErrors.push({
@@ -295,7 +298,19 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
 
   // #region START_INVENTORY_REVERSE — invariant: declared-but-unimplemented sweep over the whole scanned dir; vacuous inventory skips the sweep
   if (inventoryReverseDir && declaredInventory !== null && specPath && !inventoryVacuous) {
-    allErrors.push(...reverseUnimplemented(declaredInventory, implementedUnion, specPath));
+    const deferredEntities = specRawContent ? parseDeferredEntities(specRawContent) : new Map();
+    const reverseResult: ReverseSweepResult = reverseUnimplemented(
+      declaredInventory,
+      implementedUnion,
+      specPath,
+      deferredEntities
+    );
+    allErrors.push(...reverseResult.errors);
+    for (const { name, taskId } of reverseResult.deferred) {
+      console.log(
+        `ℹ️  [LintCommand#run] Inventory entity \`${name}\` — deferred to ${taskId}, not counted as drift`
+      );
+    }
   }
   // #endregion END_INVENTORY_REVERSE
 
