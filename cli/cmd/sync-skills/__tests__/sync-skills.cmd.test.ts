@@ -154,6 +154,28 @@ describe('run integration', () => {
     );
   });
 
+  it('surfaces directive-mirror warnings — an unowned target subdirectory is reported, not deleted', () => {
+    createFile(_directivesDir, 'sdd/discovery.directive.xml', '<directive/>');
+    createFile(join(_sourceDir, 'sdd-audit'), 'SKILL.md', '# Audit Skill');
+    const customDir = join(_tmpDir, 'ai', 'directives', 'my-custom');
+    createFile(customDir, 'note.md', '# mine');
+
+    const stdout = captureStream();
+    const deps = makeDeps({ stdout: stdout as unknown as NodeJS.WriteStream });
+
+    const exitCode = run(['node', 'gennady', 'sync-skills'], deps);
+
+    assert.equal(exitCode, 0);
+    const output = stdout._chunks.join('');
+    assert.ok(
+      output.includes(
+        'Warning: unknown subdirectory in target (not owned by package, left untouched): my-custom'
+      ),
+      'warning surfaces through sync-skills directive stage'
+    );
+    assert.ok(existsSync(join(customDir, 'note.md')), 'custom file survives the mirror');
+  });
+
   it('reports unchanged on repeat run', () => {
     createFile(join(_sourceDir, 'sdd-audit'), 'SKILL.md', '# Same');
     mkdirSync(join(_tmpDir, '.claude', 'skills', 'sdd-audit'), { recursive: true });

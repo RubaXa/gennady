@@ -103,6 +103,9 @@ function syncDirectivesFirst(
     for (const line of formatSyncOutput(result.entries, { dryRun })) {
       stdout.write(line + '\n');
     }
+    for (const warning of result.warnings) {
+      stdout.write(`Warning: ${warning}\n`);
+    }
     stdout.write('\n');
     return null;
   } catch (err) {
