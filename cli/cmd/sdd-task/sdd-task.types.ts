@@ -318,6 +318,22 @@ export function fileError(ticket: string): TaskOutcome {
 }
 
 /**
+ * @purpose Announce the infra-queue exemption — this ticket builds the missing gates, so its phase
+ * proceeds under partial verification.
+ * @param level The readiness level (`provisional` or `not-ready`).
+ * @param detail Stubbed script names (provisional) or the missing list (not-ready).
+ * @returns A single warning line, prepended to the phase context.
+ */
+export function infraExemptionLine(level: string, detail: string[]): string {
+  return [
+    `⚠️  [sdd-task] INFRA_QUEUE_EXEMPTION: readiness=${level} (${detail.join(', ')}), но этот тикет сам строит недостающие гейты —`,
+    '  фаза исполняется. Верификация здесь ЧАСТИЧНАЯ: перечисленные ступени ещё не проверяют ничего.',
+    '  Не считай зелёный sdd-verify доказательством корректности — доказательство появится, когда эти',
+    '  скрипты станут реальными и по коду пройдёт обычный гейт.',
+  ].join('\n');
+}
+
+/**
  * @purpose Build the infra-not-ready diagnostic — an impl/refactor/test phase starting while the
  * verification gates are stubs or missing, so any green verdict is vacuous.
  * @param phaseId The requested phase id.

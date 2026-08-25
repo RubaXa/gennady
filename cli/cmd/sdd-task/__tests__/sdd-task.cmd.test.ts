@@ -1162,6 +1162,75 @@ describe('SddTaskCommand', () => {
       }
     });
 
+    it('an impl phase whose OWN ticket is in the infra gate queue is exempt — otherwise the flow deadlocks against its own remedy', async () => {
+      const gateDir = mkdtempSync(join(tmpdir(), 'sdd-task-gate-'));
+      mkdirSync(join(gateDir, 'specs'), { recursive: true });
+      writeFileSync(
+        join(gateDir, 'specs', 'README.md'),
+        [
+          '# Demo Project',
+          '',
+          '## Scopes',
+          '',
+          '| Scope | Type | Status | Description |',
+          '|---|---|---|---|',
+          '| [`infra-core`](./infra-core/infra-core.spec.md) | infrastructure | ✅ | bootstrap tooling |',
+          '',
+        ].join('\n'),
+        'utf-8'
+      );
+      // The ticket lives in the infra scope and is TODO → it IS the gate queue. No package.json at
+      // all, so readiness is not-ready — the harshest state the exemption must survive. The
+      // EXECUTION_LOG anchor is what makes `collectTicketRefs` see the file as a ticket at all.
+      writeFileSync(
+        join(gateDir, 'ticket.md'),
+        [
+          TICKET.replace('- **Scope:** cli', '- **Scope:** infra-core'),
+          '<!--SECTION:EXECUTION_LOG-->',
+          '<!--/SECTION:EXECUTION_LOG-->',
+        ].join('\n'),
+        'utf-8'
+      );
+      try {
+        const r = await withCwd(gateDir, () => mod.run(argv('ticket.md', '--phase', 'P1')));
+        assert.strictEqual(r.ok, true, r.ok ? '' : r.message);
+        if (!r.ok) return;
+        assert.match(r.text, /INFRA_QUEUE_EXEMPTION/);
+        assert.match(r.text, /Верификация здесь ЧАСТИЧНАЯ/);
+      } finally {
+        rmSync(gateDir, { recursive: true, force: true });
+      }
+    });
+
+    it('a NON-queued ticket gets no exemption — the escape hatch is only for the tickets building the gates', async () => {
+      const gateDir = mkdtempSync(join(tmpdir(), 'sdd-task-gate-'));
+      mkdirSync(join(gateDir, 'specs'), { recursive: true });
+      writeFileSync(
+        join(gateDir, 'specs', 'README.md'),
+        [
+          '# Demo Project',
+          '',
+          '## Scopes',
+          '',
+          '| Scope | Type | Status | Description |',
+          '|---|---|---|---|',
+          '| [`infra-core`](./infra-core/infra-core.spec.md) | infrastructure | ✅ | bootstrap tooling |',
+          '',
+        ].join('\n'),
+        'utf-8'
+      );
+      // Scope `cli` is a product scope — not in the infra queue, so the gate still refuses.
+      writeFileSync(join(gateDir, 'ticket.md'), TICKET, 'utf-8');
+      try {
+        const r = await withCwd(gateDir, () => mod.run(argv('ticket.md', '--phase', 'P1')));
+        assert.strictEqual(r.ok, false);
+        if (r.ok) return;
+        assert.match(r.message, /ERR_CLI_SDD_TASK_INFRA_NOT_READY/);
+      } finally {
+        rmSync(gateDir, { recursive: true, force: true });
+      }
+    });
+
     it('bootstrap-kind phase is never blocked by the gate — it exists to build the infra', async () => {
       const gateDir = mkdtempSync(join(tmpdir(), 'sdd-task-gate-'));
       const bootstrapTicket = TICKET.replace(

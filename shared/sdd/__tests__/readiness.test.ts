@@ -4,7 +4,13 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { checkReadiness, isStubScript, REQUIRED_SCRIPTS } from '../readiness.ts';
+import {
+  checkReadiness,
+  isStubScript,
+  isVacuousScript,
+  silencesExitCode,
+  REQUIRED_SCRIPTS,
+} from '../readiness.ts';
 
 /** Check `scripts` with package.json present and gennady installed unless overridden. */
 function check(scripts: Record<string, string>, opts?: { pkg?: boolean; gennady?: boolean }) {
@@ -234,6 +240,53 @@ describe('isStubScript', () => {
   it('an absent script is not a stub — it is simply missing', () => {
     assert.strictEqual(isStubScript({}, 'test'), false);
   });
+
+  it('every unambiguous shell no-op counts, not just `echo`', () => {
+    for (const body of ['true', ':', 'exit 0', 'node -e ""', "node -e ''", 'echo hi && true']) {
+      assert.strictEqual(isStubScript({ test: body }, 'test'), true, `expected stub: ${body}`);
+    }
+  });
+
+  it('a real command is not a stub, however short', () => {
+    for (const body of ['tsc --noEmit', 'node --test', 'vitest run', 'node -e "runTests()"']) {
+      assert.strictEqual(isStubScript({ test: body }, 'test'), false, `expected real: ${body}`);
+    }
+  });
+});
+
+describe('silencesExitCode', () => {
+  it('a real command with its failure swallowed is caught in every common spelling', () => {
+    for (const body of [
+      'tsc --noEmit || true',
+      'node --test || :',
+      'vitest run || exit 0',
+      'tsc --noEmit; true',
+      'eslint . || true && echo done',
+    ]) {
+      assert.strictEqual(silencesExitCode({ test: body }, 'test'), true, `expected silenced: ${body}`);
+    }
+  });
+
+  it('an honest command that can fail is not flagged', () => {
+    for (const body of ['tsc --noEmit', 'npm run a && npm run b', 'node --test || exit 1']) {
+      assert.strictEqual(silencesExitCode({ test: body }, 'test'), false, `expected honest: ${body}`);
+    }
+  });
+
+  it('a silencer reached through an npm-run hop still counts', () => {
+    assert.strictEqual(
+      silencesExitCode({ test: 'npm run test:inner', 'test:inner': 'tsc || true' }, 'test'),
+      true
+    );
+  });
+});
+
+describe('isVacuousScript', () => {
+  it('covers both forms — a no-op stub and a silenced real command', () => {
+    assert.strictEqual(isVacuousScript({ test: 'echo TODO' }, 'test'), true);
+    assert.strictEqual(isVacuousScript({ test: 'tsc --noEmit || true' }, 'test'), true);
+    assert.strictEqual(isVacuousScript({ test: 'tsc --noEmit' }, 'test'), false);
+  });
 });
 
 describe('readiness levels (not-ready / provisional / ready)', () => {
@@ -271,5 +324,18 @@ describe('readiness levels (not-ready / provisional / ready)', () => {
     const r = check({ test: 'echo TODO' }, { pkg: true });
     assert.strictEqual(r.level, 'not-ready');
     assert.strictEqual(r.executionReady, false);
+  });
+
+  it('a project whose real tools all swallow their exit codes is provisional, not ready — the shape is perfect, the guarantee is nil', () => {
+    const r = check({
+      ...FULL,
+      'type-check': 'tsc --noEmit || true',
+      test: 'node --test || true',
+      'test:coverage': 'c8 node --test || true',
+    });
+    assert.strictEqual(r.ready, true, r.missing.join(', '));
+    assert.strictEqual(r.level, 'provisional');
+    assert.strictEqual(r.executionReady, false);
+    assert.deepStrictEqual(r.stubbed, ['type-check', 'test', 'test:coverage']);
   });
 });

@@ -296,9 +296,25 @@ function haltReason(name: string): string {
  *   — only `haltedAt` does.
  * @param results Gate results, in the order they actually ran (a halted ladder is simply shorter).
  * @param [haltedAt] Name of the foundation gate that stopped the ladder, if any.
+ * @param [profile] The profile that ran — `setup` adds a note that its green verdict is bootstrap-level only.
  * @returns ok with the ✅ summary, or a failure with each failed gate's exit + output.
  */
-export function verdict(results: GateResult[], haltedAt?: string): VerifyOutcome {
+export function verdict(
+  results: GateResult[],
+  haltedAt?: string,
+  profile?: Profile
+): VerifyOutcome {
+  // `setup` requires no rung, so its green verdict can rest entirely on ⏭ skips and stub scripts.
+  // The profile is chosen by the caller, and nothing cross-checks it against the phase's kind — so
+  // the verdict states its own weight rather than passing for a code-phase verdict it is not.
+  const setupNote =
+    profile === 'setup'
+      ? [
+          '  ℹ️  профиль setup — вердикт уровня bootstrap: обязательных ступеней нет, пропуски и заглушки',
+          '     здесь легальны. Для impl/refactor/test-фазы он НЕ является доказательством — там нужен',
+          '     профиль code/test на реальной инфраструктуре.',
+        ]
+      : [];
   const failed = results.filter((r) => r.status === 'fail' || r.status === 'missing');
   const passed = results.filter((r) => r.status === 'pass');
   const nonFailLines = results
@@ -308,9 +324,11 @@ export function verdict(results: GateResult[], haltedAt?: string): VerifyOutcome
   if (failed.length === 0) {
     return {
       ok: true,
-      text: [`[sdd-verify] ✅ ALL PASS (${passed.length}/${results.length})`, ...nonFailLines].join(
-        '\n'
-      ),
+      text: [
+        `[sdd-verify] ✅ ALL PASS (${passed.length}/${results.length})`,
+        ...nonFailLines,
+        ...setupNote,
+      ].join('\n'),
     };
   }
 

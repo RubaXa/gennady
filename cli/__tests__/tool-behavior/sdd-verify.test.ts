@@ -55,7 +55,7 @@ describe('sdd-verify — live gate ladder', () => {
       const r = runCli(['sdd-verify', '--profile', 'code'], root);
       assert.notStrictEqual(r.exitCode, 0, r.stdout + r.stderr);
       assert.match(r.stdout, /⛔ test — обязательная ступень профиля «code»/);
-      assert.match(r.stdout, /echo-заглушка/);
+      assert.match(r.stdout, /заглушка \(no-op\)/);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
@@ -125,6 +125,24 @@ describe('sdd-verify — live gate ladder', () => {
       assert.match(r.stdout, /🔧 format:fix — exit 1 .* — находка, не останавливает лестницу/);
       assert.match(r.stdout, /✅ lint\b/);
       assert.match(r.stdout, /✅ format\b/);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('required script with its exit code silenced (--profile code): the tool looks real and can never fail — refused', () => {
+    const { root } = buildRepoFixture({
+      scripts: {
+        'type-check': noop(0),
+        // A real command whose failure is swallowed: it RUNS, it just cannot ever report red.
+        test: `${noop(1)} || true`,
+      },
+    });
+    try {
+      const r = runCli(['sdd-verify', '--profile', 'code'], root);
+      assert.notStrictEqual(r.exitCode, 0, r.stdout + r.stderr);
+      assert.match(r.stdout, /⛔ test — обязательная ступень профиля «code»/);
+      assert.match(r.stdout, /заглушён exit code/);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

@@ -6,7 +6,7 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { logger } from '#logger';
-import { isStubScript } from '../../../shared/sdd/readiness.ts';
+import { isVacuousScript, silencesExitCode } from '../../../shared/sdd/readiness.ts';
 import {
   gatesFor,
   verdict,
@@ -292,15 +292,18 @@ export async function run(runner: GateRunner, profile: Profile = 'full'): Promis
 
     if (gate.via !== 'gennady') {
       const isMissing = scriptName === undefined;
-      const isStub = !isMissing && isStubScript(scripts, scriptName);
-      if ((isMissing || isStub) && required.has(gate.name)) {
+      const isVacuous = !isMissing && isVacuousScript(scripts, scriptName);
+      if ((isMissing || isVacuous) && required.has(gate.name)) {
+        const reason = isMissing
+          ? `скрипта нет в package.json — verify нечем`
+          : silencesExitCode(scripts, scriptName as string)
+            ? `у скрипта заглушён exit code (\`|| true\` и подобное) — он не может сообщить о падении, зелёный вердикт был бы фикцией`
+            : `скрипт — заглушка (no-op), он выходит с кодом 0, ничего не проверяя — зелёный вердикт был бы фикцией`;
         results.push({
           name: gate.name,
           status: 'missing',
           exitCode: 1,
-          output: isMissing
-            ? `обязательная ступень профиля «${profile}»: скрипта нет в package.json — verify нечем, лестница остановлена. Прогони infra flow (npx gennady sdd-state → GATE_QUEUE) и повтори.`
-            : `обязательная ступень профиля «${profile}»: скрипт — echo-заглушка, она выходит с кодом 0, ничего не проверяя — зелёный вердикт был бы фикцией. Замени заглушку реальным инструментом (infra flow) и повтори.`,
+          output: `обязательная ступень профиля «${profile}»: ${reason}. Лестница остановлена. Прогони infra flow (npx gennady sdd-state → GATE_QUEUE) и повтори.`,
           durationMs: 0,
           ranCommand: '',
           mutates: gate.mutates,
@@ -362,5 +365,5 @@ export async function run(runner: GateRunner, profile: Profile = 'full'): Promis
     }
   }
 
-  return verdict(results, haltedAt);
+  return verdict(results, haltedAt, profile);
 }

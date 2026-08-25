@@ -84,7 +84,7 @@ export type ReadinessResult = {
   ready: boolean;
   /** @purpose Human-readable list of what is missing (package.json, script names, `lint→gennady`, gennady install). */
   missing: string[];
-  /** @purpose Canonical names of required scripts that are present but echo-stubs — never counted in `missing`. */
+  /** @purpose Required scripts present but vacuous — a no-op stub, or a real command with `|| true` swallowing its exit code; never in `missing`. */
   stubbed: string[];
   /** @purpose Refined verdict: `not-ready` / `provisional` (bootstrap may proceed) / `ready` (execution may proceed). */
   level: ReadinessLevel;
@@ -175,13 +175,23 @@ function isScriptMutating(scripts: Record<string, string>, entry: string): boole
   return bodies.some((body) => MUTATING_SWITCH_PATTERN.test(body));
 }
 
+// Deliberately a closed list of UNAMBIGUOUS shell no-ops. A hand-written always-succeeding program
+// (`node -e "process.exit(0)"`, a custom script that returns 0) is indistinguishable from a small
+// real wrapper without executing it, so static detection stops here — see the spec's Open Risks.
+/** @purpose A command segment that cannot fail and checks nothing: `echo …`, `true`, `:`, `exit 0`, empty `node -e ""`, a bare `npm run` hop. */
+const NO_OP_SEGMENT =
+  /^(?:echo\b|true$|:$|exit\s+0$|node\s+-e\s+(['"])\s*\1$|npm run [A-Za-z0-9:_-]+$)/;
+
+/** @purpose A trailing `|| true` / `; :` / `|| exit 0` — the command runs, but its failure can never surface. */
+const EXIT_CODE_SILENCER = /(?:\|\||;)\s*(?:true|:|exit\s+0)\s*(?:$|[;&|])/;
+
 /**
- * @purpose Detect an echo-stub — every command `entry` reaches is an `echo` or `npm run` hop, so it
- * exits 0 verifying nothing.
- * @invariant A body with even one non-echo command segment (e.g. `echo hi && tsc`) is NOT a stub.
+ * @purpose Detect a stub — every command `entry` reaches is a shell no-op, so it exits 0 verifying
+ * nothing.
+ * @invariant A body with even one real command segment (e.g. `echo hi && tsc`) is NOT a stub.
  * @param scripts The package.json scripts map.
  * @param entry The script name to check.
- * @returns True when `entry` exists and is echo-only all the way down.
+ * @returns True when `entry` exists and is no-op-only all the way down.
  */
 export function isStubScript(scripts: Record<string, string>, entry: string): boolean {
   const bodies = reachableScriptBodies(scripts, entry);
@@ -189,9 +199,31 @@ export function isStubScript(scripts: Record<string, string>, entry: string): bo
   return bodies.every((body) =>
     body.split(/&&|\|\||;/).every((segment) => {
       const s = segment.trim();
-      return s === '' || /^echo\b/.test(s) || /^npm run [A-Za-z0-9:_-]+\s*$/.test(s);
+      return s === '' || NO_OP_SEGMENT.test(s);
     })
   );
+}
+
+/**
+ * @purpose Detect an exit-code silencer — a real command whose failure is swallowed by `|| true`.
+ * @invariant Worse than a stub: the gate looks like it runs a real tool and can never report red.
+ * @param scripts The package.json scripts map.
+ * @param entry The script name to check.
+ * @returns True when `entry` or a script it reaches swallows a non-zero exit.
+ */
+export function silencesExitCode(scripts: Record<string, string>, entry: string): boolean {
+  return reachableScriptBodies(scripts, entry).some((body) => EXIT_CODE_SILENCER.test(body));
+}
+
+/**
+ * @purpose Whether a declared script can never report a real failure — a no-op stub, or a real
+ * command with its exit code silenced.
+ * @param scripts The package.json scripts map.
+ * @param entry The script name to check.
+ * @returns True when a green result from `entry` proves nothing.
+ */
+export function isVacuousScript(scripts: Record<string, string>, entry: string): boolean {
+  return isStubScript(scripts, entry) || silencesExitCode(scripts, entry);
 }
 
 /**
@@ -250,10 +282,10 @@ export function checkReadiness(input: ReadinessInput): ReadinessResult {
     lintFixMutates &&
     gennadyAvailable;
 
-  // A stub is judged on the alias actually declared, but reported under the canonical name.
+  // Judged on the alias actually declared, but reported under the canonical name.
   const stubbed = REQUIRED_SCRIPTS.filter((name) =>
     (SCRIPT_ALIASES[name] ?? [name]).some(
-      (n) => isRealScript(scripts[n]) && isStubScript(scripts, n)
+      (n) => isRealScript(scripts[n]) && isVacuousScript(scripts, n)
     )
   );
 

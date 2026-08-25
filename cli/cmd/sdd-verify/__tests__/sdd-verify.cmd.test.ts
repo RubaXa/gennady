@@ -520,7 +520,42 @@ describe('run — required rungs refuse to skip (code/test/full)', () => {
     assert.ok(!calls.includes('npm run test'), 'a stub must never be run and counted as pass');
     if (o.ok) return;
     assert.match(o.message, /⛔ test — обязательная ступень профиля «code»/);
-    assert.match(o.message, /echo-заглушка/);
+    assert.match(o.message, /заглушка \(no-op\)/);
+  });
+
+  it('a required script whose exit code is silenced (`|| true`) is refused, and the reason says so', async () => {
+    currentPkgJson = JSON.stringify({
+      name: 'gennady',
+      scripts: {
+        'type-check': 'tsc --noEmit',
+        test: 'node --test || true',
+        format: 'prettier --check .',
+      },
+    });
+    const { runner, calls } = fakeRunner();
+    const o = await run(runner, 'code');
+    assert.strictEqual(o.ok, false);
+    assert.ok(!calls.includes('npm run test'));
+    if (o.ok) return;
+    assert.match(o.message, /⛔ test — обязательная ступень профиля «code»/);
+    assert.match(o.message, /заглушён exit code/);
+  });
+
+  it('setup profile green verdict states its own weight — a bootstrap verdict is not a code-phase verdict', async () => {
+    const { runner } = fakeRunner();
+    const o = await run(runner, 'setup');
+    assert.strictEqual(o.ok, true);
+    if (!o.ok) return;
+    assert.match(o.text, /профиль setup — вердикт уровня bootstrap/);
+    assert.match(o.text, /для impl\/refactor\/test-фазы он НЕ является доказательством/i);
+  });
+
+  it('a code-profile green verdict carries no such disclaimer', async () => {
+    const { runner } = fakeRunner();
+    const o = await run(runner, 'code');
+    assert.strictEqual(o.ok, true);
+    if (!o.ok) return;
+    assert.doesNotMatch(o.text, /уровня bootstrap/);
   });
 
   it('setup profile happily runs the same stub — bootstrap is its legal state', async () => {

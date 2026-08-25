@@ -43,6 +43,7 @@ import {
   ambiguousIdError,
   auditGroupError,
   infraNotReadyError,
+  infraExemptionLine,
   formatAuditGroup,
   formatGroupScope,
   buildAuditGroupLine,
@@ -289,15 +290,32 @@ export async function run(rawArgs: string[]): Promise<TaskOutcome> {
 
   if (phaseId) {
     logger.debug(`[SddTaskCommand#run] ${meta.taskId ?? '?'}: --phase ${phaseId}`);
+    let infraExemptionNote: string | null = null;
     // Execution gate: an impl/refactor/test phase on stub (or absent) verification infrastructure
     // would sail through sdd-verify without a single real check — refuse before any work starts.
     const phaseKind = phases.find((p) => p.id === phaseId)?.kind?.toLowerCase() ?? '';
     if (['impl', 'refactor', 'test'].includes(phaseKind)) {
       const readiness = checkReadiness(gatherReadinessInput(root));
       if (!readiness.executionReady) {
-        return infraNotReadyError(
-          phaseId,
-          phaseKind,
+        // The infra tickets BUILDING the missing gates are exempt — they are the way out of this
+        // state, and blocking them would deadlock the flow against its own remedy (an infra ticket
+        // that authors a `.ts` gets impl+test phases, since impl and test never share a phase).
+        // Same queue the execution map prints as GATE_QUEUE, so the exemption needs no new field.
+        const queuedInfraIds = new Set(
+          infraGateQueue(collectTicketRefs(root), root, readiness).ticketIds
+        );
+        if (!meta.taskId || !queuedInfraIds.has(meta.taskId)) {
+          return infraNotReadyError(
+            phaseId,
+            phaseKind,
+            readiness.level,
+            readiness.level === 'provisional' ? readiness.stubbed : readiness.missing
+          );
+        }
+        logger.debug(
+          `[SddTaskCommand#run] ${meta.taskId}: infra-queue exemption — ${phaseKind} phase runs at readiness=${readiness.level}`
+        );
+        infraExemptionNote = infraExemptionLine(
           readiness.level,
           readiness.level === 'provisional' ? readiness.stubbed : readiness.missing
         );
@@ -308,8 +326,19 @@ export async function run(rawArgs: string[]): Promise<TaskOutcome> {
     // F-NNN` tag, so it stops grepping the repo for what the audit actually found.
     const auditSec = extractHeadingSection(content, 'audit-rounds');
     const auditRounds = auditSec.status === 'ok' ? auditSec.content : null;
+    const phaseOutcome = formatPhase(
+      meta,
+      phases,
+      detailsById,
+      gates,
+      handoffs,
+      phaseId,
+      auditRounds
+    );
     return withResolutionLine(
-      formatPhase(meta, phases, detailsById, gates, handoffs, phaseId, auditRounds),
+      infraExemptionNote && phaseOutcome.ok
+        ? { ok: true, text: `${infraExemptionNote}\n${phaseOutcome.text}` }
+        : phaseOutcome,
       resolutionLine
     );
   }
