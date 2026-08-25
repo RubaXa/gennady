@@ -46,16 +46,16 @@ export const GATES: readonly Gate[] = [
 export type Profile = 'setup' | 'code' | 'test' | 'full';
 
 /**
- * @purpose Foundation gates a profile REFUSES to skip: absent (or echo-stub) script → red verdict,
- *   never a green pass with zero real checks.
- * @invariant `setup` requires nothing — it runs before the infrastructure exists, so ⏭ skips are its
- *   legal state. Other profiles verify code, impossible without these.
+ * @purpose Gates a profile REFUSES to skip: an absent/vacuous script here → red verdict, never a
+ *   green pass that dropped a quality gate.
+ * @invariant `setup` requires nothing (pre-infrastructure). A code-verifying profile requires its
+ *   whole non-repair ladder; mutating `format:fix`/`lint:fix` stay optional.
  */
 export const REQUIRED_PROFILE_GATES: Record<Profile, readonly string[]> = {
   setup: [],
-  code: ['type-check', 'test'],
+  code: ['type-check', 'test', 'lint', 'format'],
   test: ['type-check', 'test:coverage'],
-  full: ['type-check', 'test:coverage'],
+  full: ['type-check', 'test:coverage', 'lint', 'format', 'yagni'],
 };
 
 // Gate names per profile, in ladder order:

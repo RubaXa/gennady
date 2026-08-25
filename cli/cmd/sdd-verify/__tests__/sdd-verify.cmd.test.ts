@@ -505,6 +505,32 @@ describe('run — required rungs refuse to skip (code/test/full)', () => {
     assert.match(o.message, /⛔ test — обязательная ступень профиля «code»/);
   });
 
+  it('a quality rung is required too — code without lint is red, not a green pass that dropped lint (B3)', async () => {
+    currentPkgJson = JSON.stringify({
+      name: 'gennady',
+      scripts: { 'type-check': 'tsc', test: 'node --test', format: 'prettier --check .' },
+      // no lint declared — now a required rung for the code profile
+    });
+    const { runner } = fakeRunner();
+    const o = await run(runner, 'code');
+    assert.strictEqual(o.ok, false);
+    if (o.ok) return;
+    assert.match(o.message, /⛔ lint — обязательная ступень профиля «code»/);
+  });
+
+  it('full requires lint AND format — a full verdict never goes green with a quality gate missing (B3)', async () => {
+    currentPkgJson = JSON.stringify({
+      name: 'gennady',
+      scripts: { 'type-check': 'tsc', 'test:coverage': 'c8 node --test', lint: 'gennady lint .' },
+      // no format declared — required for full
+    });
+    const { runner } = fakeRunner();
+    const o = await run(runner, 'full');
+    assert.strictEqual(o.ok, false);
+    if (o.ok) return;
+    assert.match(o.message, /⛔ format — обязательная ступень профиля «full»/);
+  });
+
   it('an echo-stub required script is as red as a missing one — exit 0 that verifies nothing is a fiction', async () => {
     currentPkgJson = JSON.stringify({
       name: 'gennady',
