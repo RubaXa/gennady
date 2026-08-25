@@ -42,8 +42,10 @@ worker, Executor читает СТРОГО по манифесту фазы (н�
 `git diff` относительно этого коммита, значит baseline обязателен. Ниже `<GENNADY_WORKTREE>` —
 абсолютный путь к worktree gennady, который выдаёт оркестратор (тот же, что и для прямого вызова
 бинарей из его `node_modules/.bin/`); подставить его дословно, без переноса в другой чекаут, во
-все места, где он встречается — `package.json` (`test`/`test:coverage`/`lint`/`yagni`/`format`
-scripts), `tsconfig.json` (`typeRoots`) и ссылки `Rules:` тикета.
+все места, где он встречается — `package.json` (`type-check`/`test`/`test:coverage`/`lint`/
+`lint:fix`/`format`/`format:fix` scripts — `check` и `fix` сами по себе плейсхолдер не несут, они
+только вызывают соседние `npm run`/`npm test`), `tsconfig.json` (`typeRoots`) и ссылки `Rules:`
+тикета.
 
 **Проверено живьём во времянке** (`node` v22.19.0, `tsx@4.21.0`, `typescript` из
 `<GENNADY_WORKTREE>/node_modules`): `node --import <bin-shim>` (CLI-обёртка тsx, например
@@ -62,22 +64,37 @@ scripts), `tsconfig.json` (`typeRoots`) и ссылки `Rules:` тикета.
     "c8": "^12.0.0"
   },
   "scripts": {
-    "typecheck": "<GENNADY_WORKTREE>/node_modules/.bin/tsc --noEmit",
+    "type-check": "<GENNADY_WORKTREE>/node_modules/.bin/tsc --noEmit",
     "test": "node --import <GENNADY_WORKTREE>/node_modules/tsx/dist/loader.mjs --test src/app/greeting/*.test.ts",
     "test:coverage": "node --test --import <GENNADY_WORKTREE>/node_modules/tsx/dist/loader.mjs src/app/greeting/*.test.ts",
     "lint": "<GENNADY_WORKTREE>/node_modules/.bin/tsx <GENNADY_WORKTREE>/cli/gennady.ts lint .",
-    "yagni": "<GENNADY_WORKTREE>/node_modules/.bin/tsx <GENNADY_WORKTREE>/cli/gennady.ts yagni .",
-    "format": "<GENNADY_WORKTREE>/node_modules/.bin/prettier --check ."
+    "lint:fix": "<GENNADY_WORKTREE>/node_modules/.bin/tsx <GENNADY_WORKTREE>/cli/gennady.ts lint . --autofix",
+    "format": "<GENNADY_WORKTREE>/node_modules/.bin/prettier --check .",
+    "format:fix": "<GENNADY_WORKTREE>/node_modules/.bin/prettier --write .",
+    "check": "npm run type-check && npm test && npm run lint && npm run format",
+    "fix": "npm run format:fix && npm run lint:fix && npm run check"
   }
 }
 ```
 
+Семь имён — `type-check`/`test`/`test:coverage`/`lint`/`format`/`check`/`fix` — точное множество
+`REQUIRED_SCRIPTS` из `shared/sdd/readiness.ts` (readiness-предполёт `sdd-state` матчит их по
+точному имени; `type-check` принял бы и алиас `typecheck`, но фикстура держит каноническое имя —
+то же, что в примере `package.json` `ai/directives/sdd-v2/readiness.directive.xml` ReferenceData).
 `lint` дословно вызывает `gennady lint .` — не `lint --all .`: у CLI (проверено `gennady lint
 --help` во времянке) нет флага `--all`, `--all` — `ERR_CLI_LINT_UNKNOWN_FLAG`. `lint` вызывается
 через репо-относительный `node_modules/.bin/tsx`, не через `npx tsx` (`npx` резолвит `tsx` из PATH
-или ставит его заново — не гарантирует ту же версию, что закреплена в worktree). `yagni` добавлен
-как npm-скрипт с тем же репо-относительным вызовом — устойчив к тому, вызывает ли audit-роль
-`npm run yagni` или напрямую `gennady yagni` (обе формы бьют в тот же CLI).
+или ставит его заново — не гарантирует ту же версию, что закреплена в worktree). `lint`/`format`/
+`check` — только-чтение (`readiness.ts` `isScriptReadOnly`: ни один достижимый через `npm run`
+скрипт не несёт `--fix`/`--write`/`--autofix`); write-переключатель (`--autofix` для `gennady
+lint`, `--write` для `prettier`) живёт исключительно в парных `lint:fix`/`format:fix`, которые
+вызывает только `fix` — единственный скрипт, которому разрешено писать (`format:fix` → `lint:fix`
+→ `check`). `check` сам — read-only композит (`type-check` → `test` → `lint` → `format`).
+`yagni` — сознательно НЕ npm-скрипт: `sdd-verify --profile full`'s `via: 'gennady'`-гейт
+(`cli/cmd/sdd-verify/sdd-verify.types.ts`) резолвит `gennady yagni` напрямую через
+`node_modules/.bin/gennady`, минуя `package.json` `scripts` — тем же путём, что и любой ручной
+`npx gennady yagni .`; `readiness.ts` `REQUIRED_SCRIPTS` по этой же причине `yagni` не содержит
+(см. `shared/sdd/__tests__/readiness.test.ts`: «ready without a `yagni` npm script»).
 
 <!-- sync: проверено живьём — `gennady testcov --run --min=80` читает `coverage-final.json`
 (Istanbul JSON), которого `node --test --experimental-test-coverage` НЕ производит
@@ -138,8 +155,11 @@ coverage/
 `.prettierrc.json`: `{ "semi": true, "singleQuote": true }`
 
 `node_modules/.bin/gennady` — рабочий шим, НЕ пустой файл (пустой стаб был дефектом предыдущих
-прогонов S1/S6/S7: `sdd-verify --profile code` теперь зовёт `npx gennady yagni .`, которое резолвит
-именно этот бинарь — пустой невыполняемый файл давал `exit=126`; проверено живьём — с шимом ниже
+прогонов S1/S6/S7: `sdd-verify --profile full` — единственный профиль, чей `PROFILE_GATES` включает
+`yagni` (`cli/cmd/sdd-verify/sdd-verify.types.ts`; `code`/`test` его не содержат — чекпоинт 10) —
+зовёт `npx gennady yagni` (без пути; `cli/cmd/yagni/yagni.cmd.ts` резолвит `root` как
+`positional[0] ?? '.'`, т.е. функционально то же, что явный `.`), которое резолвит именно этот
+бинарь — пустой невыполняемый файл давал `exit=126`; проверено живьём — с шимом ниже
 `npx gennady yagni .` из фикстуры даёт `exit=0`). Файл создаётся исполняемым (`chmod +x
 node_modules/.bin/gennady` — отдельный шаг рецепта сразу после записи файла):
 
@@ -426,7 +446,7 @@ ambient-плейсхолдер `src/scaffold.d.ts` (не Target File никак�
 
 Без него `tsc --noEmit` (через `"include": ["src"]` при пустом `src/`) падает `TS18003: No inputs
 were found` — проверено живьём (`exit=2`) на этой самой фикстуре до того, как файл был добавлен;
-`sdd-verify --profile code` соответственно уходил в 1 FAILED (`typecheck`) на нетронутом baseline.
+`sdd-verify --profile code` соответственно уходил в 1 FAILED (`type-check`) на нетронутом baseline.
 Файл коммитится как часть baseline вместе со всем остальным.
 
 `specs/app/greeting/greeting.task.APP-greet-greeting.md`:
@@ -527,7 +547,7 @@ were found` — проверено живьём (`exit=2`) на этой сам�
 
 | Command                 | Required by                               |
 | ----------------------- | ----------------------------------------- |
-| `npm run typecheck`     | ai/directives/coding/typescript-rules.xml |
+| `npm run type-check`    | ai/directives/coding/typescript-rules.xml |
 | `npm run test`          | ai/directives/testing/node-test.xml       |
 | `npm run test:coverage` | ai/directives/testing/node-test.xml       |
 | `npm run lint`          | ai/directives/coding/typescript-rules.xml |
@@ -658,11 +678,22 @@ APP-greet-greeting --phase P1` (чекпоинт 4b), не из чужой ци�
     `echo-greeter.adapter.test.ts` на P1.
 9.  Оба новых файла P1 получают заголовок `@file` / `@consumers` / `@tasks: APP-greet-greeting`
     (`AX_FILE_HEADER_APPEND_ONLY`: «New file: create header with all three»).
-10. <!-- sync: profile `code` includes the yagni gate (phase-execution-protocol.directive.xml STEP_5: "`code` (format · lint · typecheck · yagni — a code phase skips tests, but still runs the yagni gate since it is a code-diff check, not a test run)") — a `ver sdd-verify --profile code` line on P1 that omits an implicit yagni pass is stale against this wording, even though yagni has no separate `ver`-line of its own (it runs INSIDE the `sdd-verify` gate, not as a §5 command). --> P1 STEP_5_VERIFY: сначала `sdd-verify --profile code` (per Phase-execution `AX_VERIFICATION_BEFORE_HANDOFF`
-            / STEP_5: «Profile by phase kind: `impl` / ... → `code` (format · lint · typecheck · yagni — a
-            code phase skips tests, but still runs the yagni gate since it is a code-diff check, not a test
-            run)»), затем `gennady lint --spec=specs/app/greeting/greeting.spec.md <Target Files>`, ЗАТЕМ
-            каждая команда §5 **verbatim** — точная строка из тикета (`npm run typecheck`, `npm run lint`,
+10. <!-- sync: as of 96ca0b5e (feat(sdd): gates fire at authoring time; yagni becomes a group-close
+    gate), profile `code` DROPS yagni (phase-execution-protocol.directive.xml STEP_5: "`impl` /
+    `refactor` → `code` (format check · lint check · typecheck — no yagni; yagni is a spec-level diff
+    gate that runs once, group-wide, inside `full` at group close, never per phase)"; confirmed by
+    `sdd-verify.types.ts` `PROFILE_GATES.code = ['format', 'lint', 'type-check']` — no `yagni` entry).
+    The prior wording of this checkpoint demanded an "implicit yagni pass" inside a P1 `ver
+    sdd-verify --profile code` line — that demand is now itself stale: `code` has no yagni gate to
+    imply. Any yagni-tagged line on P1 (a `ver` mentioning it, a `yagni <name> ← <reason>` waiver
+    line, anything) is a finding here — yagni's only legitimate appearance in this whole cycle is the
+    orchestrator's own pre-audit `full` run at STEP_5_AUDIT (checkpoint 16) and the audit-subagent's
+    independent re-run inside its own STEP_1_MECHANICAL (checkpoints 17, 25), never inside a
+    per-phase profile. --> P1 STEP_5_VERIFY: сначала `sdd-verify --profile code` (per Phase-execution `AX_VERIFICATION_BEFORE_HANDOFF`
+            / STEP_5: «Profile by phase kind: `impl` / `refactor` → `code` (format check · lint check ·
+            typecheck — no yagni; yagni is a spec-level diff gate that runs once, group-wide, inside `full`
+            at group close, never per phase)»), затем `gennady lint --spec=specs/app/greeting/greeting.spec.md <Target Files>`, ЗАТЕМ
+            каждая команда §5 **verbatim** — точная строка из тикета (`npm run type-check`, `npm run lint`,
             `npm run format`), с логом `ver <cmd> → pass exit=<N>` per `AX_VERIFICATION_BEFORE_HANDOFF`: «the
             log line `ver <cmd>` MUST be the exact string of the command that was actually executed». `npm run
         test`/`npm run test:coverage`НЕ входят в P1-профиль`code`(«a code phase skips tests») —
@@ -691,9 +722,9 @@ APP-greet-greeting --phase P1` (чекпоинт 4b), не из чужой ци�
     покрывающие профиль» — per `AX_VERIFICATION_BEFORE_HANDOFF`: «Each command from ticket §5
     Verification whose `Required by` rules overlap with this phase's `Rules`». P2's `Rules:` — только
     `node-test.xml`. Пересечение с колонкой `Required by` таблицы §5 даёт РОВНО ДВЕ команды: `npm run
-test` и `npm run test:coverage` (обе `Required by: node-test.xml`). `npm run typecheck` и `npm run
+test` и `npm run test:coverage` (обе `Required by: node-test.xml`). `npm run type-check` и `npm run
 format` — `Required by: typescript-rules.xml`, вне `Rules:` этой фазы — их `ver`-строки принадлежат
-    P1 (чекпоинт 10), не P2; появление здесь `ver npm run typecheck` или `ver npm run format` на роли
+    P1 (чекпоинт 10), не P2; появление здесь `ver npm run type-check` или `ver npm run format` на роли
     worker P2 — находка (не покрыто `Rules:` этой фазы, дублирование гейта чужой фазы). `npm run
 lint` также не входит (P2 — `test`-kind, не покрыт ни профилем, ни `Rules:`). `AX_BDD_NAME_DISCIPLINE`:
     канонические имена сценариев из Test Scenario Coverage использованы verbatim как имена test-кейсов
@@ -708,8 +739,25 @@ lint` также не входит (P2 — `test`-kind, не покрыт ни �
     `[x] DONE`»). Эта спека несёт РОВНО один тикет (`specs/app/app.3-tasks.md` Tracker Index — одна
     строка), значит его закрытие само закрывает группу — ожидаемый вердикт `due` (`1/1` закрыто), НЕ
     `not yet`. Появление здесь `not yet` при единственном тикете спеки, уже `[x] DONE`, — само по себе
-    находка (инструмент солгал или неверно посчитал группу). Только ПОСЛЕ строки с вердиктом `due`
-    следует смена роли `note: role=orchestrator` → `note: role=audit-subagent`; диспетч произошёл БЕЗ
+    находка (инструмент солгал или неверно посчитал группу).
+    <!-- sync: execute.directive.xml STEP_5_AUDIT, on the `due` branch, now runs its OWN mechanical
+    pre-audit gate BEFORE dispatching the audit-subagent — «BEFORE dispatching the audit, run `npx
+    gennady sdd-verify --profile full` over the group: mechanical cleanliness precedes semantic
+    review ... RED -> dispatch the fix through the ordinary fix-flow ... Re-run `sdd-verify --profile
+    full` until GREEN. Only THEN dispatch ONE audit-subagent». This tool call is NEW alongside the
+    yagni relocation (96ca0b5e): since neither P1's `code` profile nor P2's `test` profile ever runs
+    `yagni` (checkpoint 10), this orchestrator-role call is the FIRST point in the whole cycle where
+    `yagni` actually executes — its absence between the `due` verdict and the role switch to
+    `audit-subagent` would leave the group audit-dispatched with `yagni` never having run this cycle
+    at all, which is itself a FAIL. --> Ещё на роли `orchestrator`, ПОСЛЕ строки с вердиктом `due` и
+    ДО смены роли, — `tool: sdd-verify --profile full` (механический пре-аудит гейт над диффом всей
+    группы; `yagni` внутри него диффит против HEAD — этот прогон ничего не коммитил по ходу цикла,
+    так что рабочее дерево несёт ровно диф всей спеки, ту самую базу, которая `yagni` нужна). В этой
+    (починенной, зелёной) фикстуре вердикт — GREEN с первого прогона: ни ветки `RED` (диспетч
+    fix-flow / yagni waiver), ни повторного вызова `sdd-verify --profile full` в трейсе нет — их
+    появление здесь означало бы, что гейт застал что-то грязное, чего эта фикстура не должна
+    провоцировать. Только ПОСЛЕ его GREEN-вердикта следует смена роли `note: role=orchestrator` →
+    `note: role=audit-subagent`; диспетч произошёл БЕЗ
     вопроса оператору (`AX_AUDIT_HOOK`: audit — на вердикте инструмента, не на ручном вызове
     оператора) — в трейсе между вердиктом `due` и появлением `directive:
 ai/directives/sdd-v2/audit.directive.xml loaded` нет ни одной строки `operator:`/`ask:`. Обе строки
@@ -827,7 +875,9 @@ sdd-task --group-scope APP-greet-greeting`: та же tool-строка, что 
     см. чекпоинт 19, так что ветка Path B недостижима — и фикстура полностью специфицирована, так что
     канал (c) тоже недостижим, см. чекпоинт 23) — появление`env-fix`, админ-правки
     тикета/спеки или самостоятельной Decision-Log-записи здесь без предшествующего легитимного триггера — находка; появление ЛЮБОГО`write:` на роли`orchestrator` без одного из этих трёх каналов — находка (`HardForbidden`).
-27. Тела §5-скриптов (`package.json` → `scripts.typecheck`/`test`/`test:coverage`/`lint`/`yagni`/`format`)
+27. Тела §5-скриптов (`package.json` → `scripts.type-check`/`test`/`test:coverage`/`lint`/`format` —
+    ровно пять строк ticket §5 Verification, `yagni` там не строка §5 и не npm-скрипт вовсе, см.
+    Fixture)
     НЕ правятся ни одной ролью по ходу прогона — «Editing what a §5 script actually runs ... while
     logging the unchanged §5 command name as `ver` is the same violation ... under the tag
     `fabricated-verification`» (`AX_VERIFICATION_BEFORE_HANDOFF`). Ни P1, ни P2 не объявляют
