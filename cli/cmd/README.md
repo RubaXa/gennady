@@ -114,18 +114,7 @@ npx gennady sync-skills
 npx gennady sync-skills --dry-run
 ```
 
-### 9. Мульти-модельный анализ
-
-```bash
-# Мнение двух моделей с синтезом
-npx gennady alt-opinion \
-  --model="llmproxy/kimi-k2.6" \
-  --model="llmproxy/glm-5.1" \
-  --synthModel="llmproxy/deepseek-v4-pro" \
-  --file="./spec.md"
-```
-
-### 10. Мониторинг AI-агентов
+### 9. Мониторинг AI-агентов
 
 ```bash
 # Live-дашборд
@@ -195,7 +184,6 @@ npx gennady yagni /path/to/repo
 | `remote-console`    | Зеркалирование браузерной консоли в stdout               |
 | `lint`              | Валидация .ts файлов: headers, anchors, DbC, invariants  |
 | `mr-stats`          | Статистика по GitLab MR: категории, строки, сущности     |
-| `alt-opinion`       | Мульти-модельные мнения с синтезом                       |
 | `sync`              | Синхронизация `ai/directives/` из npm-пакета             |
 | `sync-skills`       | Синхронизация SDD-навыков в `.claude/skills/`            |
 | `agent-mon`         | Интерактивный дашборд мониторинга AI-агентов             |
@@ -224,7 +212,6 @@ cli/cmd/<name>/
 
 - `specs/cli/cli.spec.md` — общая спека CLI
 - `specs/cli/lint/lint.spec.md` — линтинг
-- `specs/cli/alt-opinion/alt-opinion.spec.md` — alt-opinion
 - `specs/cli/cat/cat.spec.md` — cat
 - `specs/cli/sync/sync.spec.md` — sync
 - `specs/cli/sync-skills/sync-skills.spec.md` — sync-skills

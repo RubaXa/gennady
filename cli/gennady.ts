@@ -133,10 +133,6 @@ if (restArgs.some((a) => helpFlags.has(a))) {
       await import('./cmd/lint/help.ts').then((m) => m.printHelp());
       helpLoaded = true;
       break;
-    case 'alt-opinion':
-      await import('./cmd/alt-opinion/help.ts').then((m) => m.printHelp());
-      helpLoaded = true;
-      break;
     case 'agent-mon':
       await import('./cmd/agent-mon/help.ts').then((m) => m.printHelp());
       helpLoaded = true;
@@ -329,10 +325,6 @@ switch (command) {
 
   case 'lint':
     await import('./cmd/lint/index.ts');
-    break;
-
-  case 'alt-opinion':
-    await import('./cmd/alt-opinion/index.ts');
     break;
 
   case 'agent-mon':

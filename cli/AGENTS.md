@@ -29,7 +29,6 @@
 | remote-console    | [cmd/remote-console/](cmd/remote-console/)       | Проксирование browser console в локальный stdout через HTTP sink                    |
 | lint              | [cmd/lint/](cmd/lint/)                           | Линтинг .ts файлов — file header, anchors, DbC контракты                            |
 | mr-stats          | [cmd/mr-stats/](cmd/mr-stats/)                   | Статистика по GitLab MR: категории, строки, сущности                                |
-| alt-opinion       | [cmd/alt-opinion/](cmd/alt-opinion/)             | Получение альтернативных мнений от AI-моделей с опциональным синтезом               |
 | sync              | [cmd/sync/](cmd/sync/)                           | Синхронизация ai/directives/ из npm-пакета в текущий проект                         |
 | sync-skills       | [cmd/sync-skills/](cmd/sync-skills/)             | Sync ai/directives/ (in full) then SDD skills from ai/skills/ to .claude/skills/    |
 | agent-mon         | [cmd/agent-mon/](cmd/agent-mon/)                 | Интерактивный терминальный дашборд для мониторинга AI-агентов                       |

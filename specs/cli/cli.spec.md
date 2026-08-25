@@ -6,7 +6,7 @@ product
 
 ## 1. Vision & Primary Goal
 
-CLI-модуль с командами для AI-агентов. Команды: `lint` (трёхслойная валидация TypeScript-файлов и директорий с рекурсивным обходом), `alt-opinion` (альтернативные мнения от AI-моделей на переданный артефакт с опциональным синтезом), `cat` (сбор содержимого файлов в XML/MD для AI-агентов с поддержкой локальных файлов и удалённых через `--url`), `sync` (синхронизация `ai/directives/` из npm-пакета в текущий проект), `sync-skills` (синхронизация SDD-скилов из npm-пакета в `.claude/skills/` проекта с orphan-удалением), `orient` (ориентация по file-header и DBC-контрактам — карта проекта, поиск по задачам, потребителям, сущностям и ключевым словам, граф зависимостей), `agents-rules` (выводит инструкцию по использованию `orient` для AI-агентов — когда и какую команду вызывать для навигации по репозиторию), `review-issues` (по текущей ветке находит открытый MR на GitLab, скачивает дискуссии, выводит XML для AI-агентов), `inbox` (поверхность ассистента входящих GitLab MR: список со стадиями, дельта, `--pick`, `--reset` — см. scope agent-inbox), `vcs-worktree` (read-only git worktree head'а MR для код-ревью, с GC жизненного цикла), `vcs-reply` (постинг в MR: ответ в тред / новая дискуссия / комментарий на строку дифа + резолв/реопен дискуссий), `vcs-approve` (выставляет approve на GitLab MR через API, с авто-детектом ветки/проекта).
+CLI-модуль с командами для AI-агентов. Команды: `lint` (трёхслойная валидация TypeScript-файлов и директорий с рекурсивным обходом), `cat` (сбор содержимого файлов в XML/MD для AI-агентов с поддержкой локальных файлов и удалённых через `--url`), `sync` (синхронизация `ai/directives/` из npm-пакета в текущий проект), `sync-skills` (синхронизация SDD-скилов из npm-пакета в `.claude/skills/` проекта с orphan-удалением), `orient` (ориентация по file-header и DBC-контрактам — карта проекта, поиск по задачам, потребителям, сущностям и ключевым словам, граф зависимостей), `agents-rules` (выводит инструкцию по использованию `orient` для AI-агентов — когда и какую команду вызывать для навигации по репозиторию), `review-issues` (по текущей ветке находит открытый MR на GitLab, скачивает дискуссии, выводит XML для AI-агентов), `inbox` (поверхность ассистента входящих GitLab MR: список со стадиями, дельта, `--pick`, `--reset` — см. scope agent-inbox), `vcs-worktree` (read-only git worktree head'а MR для код-ревью, с GC жизненного цикла), `vcs-reply` (постинг в MR: ответ в тред / новая дискуссия / комментарий на строку дифа + резолв/реопен дискуссий), `vcs-approve` (выставляет approve на GitLab MR через API, с авто-детектом ветки/проекта).
 
 ## 2. Project Type
 
@@ -2431,6 +2431,14 @@ cli/cmd/review/
 - **Risk accepted:** Сетевая операция (в отличие от FR-WT-07, чисто локальной) — время на подготовку worktree растёт при наличии submodules; приватные submodules без доступа токена тихо пропускаются (best-effort), а не превращаются в ошибку подготовки.
 - **Rejected alternatives:** Симлинк submodule-директории из клона-источника — отклонено (см. Why: риск неверной версии зависимости после смены SHA в MR). Всегда выполнять `submodule update` безусловно (без opt-in) — отклонено: ломало бы существующие вызывающие (`inbox-context.cmd.ts`, `context-builder.ts`, `mr-resolver.ts`) добавлением сетевой операции, которую они не запрашивали; сделано opt-in через тот же параметр композиции, что и FR-WT-07.
 
+### D-021 — Команда alt-opinion удалена
+
+- **Status:** active · **Supersedes:** D-003 (архитектура alt-opinion), FR-ALT-\*, NFC-06/07/08/09, §5.2 (file structure)
+- **Recorded:** operator request — тотальная чистка v2, «только необходимое»
+- **Why:** `alt-opinion` (мульти-модельные мнения от AI-моделей с синтезом) признана нерабочей/незадействованной конструкцией и удалена целиком. Снято: код `cli/cmd/alt-opinion/` (runner, cmd, types, parser, prompts, tests), модульная спека `specs/cli/alt-opinion/`, регистрация в `cli/gennady.ts` (help + dispatch), строки в `cli/cmd/help/help.cmd.ts`, `cli/AGENTS.md`, `cli/cmd/README.md`, портал (`specs/README.md`), live-упоминания в этой спеке (список команд, sub-module pointer, module graph). Побочно устранён нестабильный `wallMs >= delay` тест, флейкавший главный гейт под c8.
+- **Оставлено как история (append-only):** D-003 и task-таблицы §6, где alt-opinion фигурирует как построечная запись — они фиксируют, что было сделано, и не переписываются. Мёртвые FR-ALT-\* / NFC-06..09 / §5.2 помечены superseded здесь; их окончательная вычистка из тела спеки — задача `sdd-reconcile` (from-code), чтобы не рвать requirement-id консистентность вручную.
+- **Risk accepted:** До прогона `sdd-reconcile` тело спеки временно содержит описания удалённой команды под явной пометкой superseded — дрейф зафиксирован, не молчаливый.
+
 ### 5.16 vcs-context-resolver (shared)
 
 ```
@@ -2629,7 +2637,6 @@ Spec hierarchy is materialized at `specs/cli/`. Module specs are at `specs/cli/<
 ### 9.1 Modules
 
 - [lint](./lint/lint.spec.md) — Команда `gennady lint`: file header + DBC-контракты + anchor-разметка
-- [alt-opinion](./alt-opinion/alt-opinion.spec.md) — Команда `gennady alt-opinion`: альтернативные мнения от AI-моделей с опциональным синтезом
 - [cat](./cat/cat.spec.md) — Команда `gennady cat`: сбор файлов (локальных и удалённых через --url) в XML/MD для AI-агентов
 - [review](./review/review.spec.md) — Команды `gennady review`/`review-issues`/`review-verify`: AI-ревью staged изменений и GitLab MR
 - [run](./run/run.spec.md) — Команда `gennady run`: тонкая обёртка над `@services/agent-run` — запуск внешнего AI-движка (opencode) с заданием/директориями/моделью в readonly
@@ -2651,7 +2658,6 @@ Spec hierarchy is materialized at `specs/cli/`. Module specs are at `specs/cli/<
 ```mermaid
 graph TD
     lint -. Scope Reference .-> dbc
-    alt-opinion -. Runtime .-> ai-sdk[AI SDK]
     cat -. Runtime .-> vcs[vcs-client]
     orient -. Scope Reference .-> dbc
     update-check -. Runtime .-> npm-registry[npm public registry]
