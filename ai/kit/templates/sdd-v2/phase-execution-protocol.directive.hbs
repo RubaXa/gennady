@@ -138,7 +138,7 @@
     | `sdd-verify --profile setup\|code\|test\|full` | The phase verdict at STEP_5 — one call, whole ladder. `setup`/`code`/`test` REPAIR before judging (`🔧` rewrites files); only `full` is read-only | `npx gennady sdd-verify --profile setup` |
     | `gennady lint --spec=<module-spec> <Target Files>` | Closed-world inventory sync + cast safety on this phase's own files | `npx gennady lint --spec=specs/app/greeting/greeting.spec.md src/app/greeting/*.ts` |
     | `gennady yagni` | Runs INSIDE `sdd-verify --profile full` only (once per group, at group close); on `ERR_CLI_YAGNI_UNDERUSED` it prints a ready-to-paste `- **Usage Waiver:** <reason>` block — paste verbatim, then log it (`AX_USAGE_WAIVER_DISCIPLINE`) | standalone only for a quick iteration: `npx gennady yagni .` |
-    | `gennady testcov` | Only when the ticket's §5 names it — that command string is canon, never a substitute | `npx gennady testcov --min=80 src/foo.ts` |
+    | `gennady testcov` | Only when the ticket's §5 names it — that command string is canon, never a substitute | `npx gennady testcov --min=80 <files>` |
 
     Follow the next action printed by a failed gate/tool. If none is actionable, emit `H_BLOCKED`
     per `AX_BLOCKER_ESCALATION`, surfaced as PAUSED (`AX_HALT_VS_FAIL_DISTINCTION`); do not inspect
@@ -302,13 +302,11 @@
         line via `npx gennady sdd-log <ticket> line "intro <name> ← <reason>" --phase <PhaseID>`
         (`AX_INTRODUCED_DISCIPLINE`, `AX_TICKET_WRITE_SCOPE`; the worker leaves the spec to audit, `AX_SPEC_NEVER_EDITED` — the intro
         line flags it for inventory backflow at audit). MUST resolve every out-of-inventory export this way. A cast → remove (proper type / guard) or a documented `@ts-expect-error` (`AX_NO_SILENT_ESCAPE_HATCH` — never a silent suppression).
-        Run `sdd-verify`, `gennady lint`, and every ticket §5 command SEQUENTIALLY, one at a time, never
-        in parallel: the phase gate (`sdd-verify --profile test`/`full`) is the SINGLE owner of the
-        coverage run — it writes a fresh `coverage/`, and the §5 `testcov --min <files>` row only READS
-        that report (no `--run`, no second suite run, nothing else writing `coverage/`). Sequential
-        order still matters: the gate must finish and produce `coverage/` BEFORE the `testcov` row
-        reads it, and repair rungs rewrite source files, so a parallel gate would judge a tree changing
-        under it.
+        Run `sdd-verify`, `gennady lint`, and every ticket §5 command SEQUENTIALLY, never in parallel:
+        the phase gate (`sdd-verify --profile test`/`full`) is the SINGLE owner of the coverage run —
+        it writes a fresh `coverage/`, and the §5 `testcov --min <files>` row only READS it (no
+        `--run`, no second suite run). Order matters: the gate must produce `coverage/` BEFORE the
+        `testcov` row reads it, and repair rungs rewrite source, so a parallel gate judges a shifting tree.
         Then run each ticket §5 command **verbatim** (the Canonical Gate per `AX_VERIFICATION_BEFORE_HANDOFF`),
         exactly as written — the §5 table holds only the EXTRA commands beyond the phase gate, so
         nothing there repeats `sdd-verify`. **Error ownership scales by write zone, not by age:** for every failure the gate

@@ -483,14 +483,14 @@ const CASES: FixtureCase[] = [
     },
   },
   {
-    id: 'testcov --min=80 src/foo.ts',
+    id: 'testcov --min=80 <files>',
     directive: 'phase',
-    raw: 'npx gennady testcov --min=80 src/foo.ts',
+    raw: 'npx gennady testcov --min=80 <files>',
     cmd: 'testcov',
-    args: () => ['--min=80', 'src/foo.ts'],
+    args: () => ['--min=80', '<files>'],
     check: (r) => {
-      // The §5 coverage row READS an existing report (no `--run`). The fixture has no coverage/ and
-      // no such file, so the gate fails (exit 1) — the documented read-only shape, not a crash.
+      // The §5 coverage row READS an existing report (no `--run`). The placeholder path resolves to
+      // no file, so the gate fails (exit 1) — the documented read-only shape, not a crash.
       assert.strictEqual(r.exitCode, 1, r.stdout + r.stderr);
     },
   },
