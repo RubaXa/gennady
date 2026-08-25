@@ -1,0 +1,10 @@
+notes: >
+  driftMeansFailure turns the mutation into the verdict: exit 0 plus a dirty replica is a FAIL
+  listing the drifted file, while the real tree keeps its stale copy.
+requires: [go]
+argv: ['--all']
+exitCode: 1
+gates:
+  golang:codegen-drift:
+    status: fail
+    outputIncludes: ['artifact.txt']

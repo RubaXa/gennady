@@ -391,7 +391,7 @@
     <Step id="WF_2_HANDLE_REMAINING_FINDINGS">Non-zero exit = finding remains after `--fix`. The finding belongs to a motivated non-autofix rule. Read the rule's explanatory comment in `eslint.config.ts`, fix the code accordingly, re-run. Disable comments NOT an option.</Step>
     <Step id="WF_3_PROPOSE_RULE_CHANGES_VIA_AUDIT">To add or remove a rule, run audit protocol (`PT_RULE_AUDIT_PROTOCOL`): inspect `meta.fixable`, route into autofix or motivated-non-autofix, draft explanatory comment, dry-run, present evidence + diff. Wait for explicit operator confirmation. Severity at registration always `'error'`.</Step>
     <Step id="WF_4_KEEP_THE_CONFIG_AUDITABLE">Editing `eslint.config.ts`: preserve one-block-per-concern shape. Every `'error'` rule trivially autofixable or carries explanatory comment; every `'off'` after preset spread carries one-line reason; no `'warn'` anywhere.</Step>
-    <Step id="WF_5_VERIFY_AND_FINALIZE">Before closing a task: `npm run lint:fix && npm run typecheck && npm test` all green AND `git diff` shows only the intended change. Any environment blocker → declared EXPLICITLY in the ticket.</Step>
+    <Step id="WF_5_VERIFY_AND_FINALIZE">Before closing a task: the read-only pipeline `npm run lint && npm run typecheck && npm test` all green AND `git diff` shows only the intended change. Verification observes, never mutates: if lint reports autofixable findings, run the explicit fixer step (`npm run lint:fix`, or `gennady fix` where wired) first, review its diff, then re-run the read-only pipeline. Any environment blocker → declared EXPLICITLY in the ticket.</Step>
   </WorkflowOutline>
 
   <VerificationHooks>

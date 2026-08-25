@@ -18,7 +18,13 @@ function hasCategory(body, category) {
   return patterns[category] ? patterns[category].test(body) : false;
 }
 
+// Same screen the node stack plugin applies (plugins/node/node-plugin.ts): a script
+// that rewrites the tree is a fixer, never a verification gate (D-STACK-005).
+const MUTATING_FLAG_RE = /(^|\s)--(fix|autofix|write)(?:[=\s]|$)/;
+
 function classify(name, body) {
+  if (MUTATING_FLAG_RE.test(body)) return ['mutating'];
+
   const isUmbrellaName = /^(check|ci-check|check:all|verify)$/.test(name);
   if (isUmbrellaName && body.length > 0) return ['umbrella'];
 

@@ -26,6 +26,7 @@
   },
   "exports": {
     ".": "./services/agent-mon/index.ts",
+    "./stack": "./services/stack/plugin-api.ts",
     "./providers/claude": "./services/agent-mon/providers/claude/index.ts",
     "./providers/opencode": "./services/agent-mon/providers/opencode/index.ts"
   },
@@ -34,26 +35,32 @@
     "README.md",
     "ai/**/*",
     "cli/cmd/orient/README.md",
-    "services/agent-run/engines/opencode/readonly.config.json"
+    "services/agent-run/engines/opencode/readonly.config.json",
+    "plugins/*/plugin.json",
+    "plugins/*/*.ts",
+    "plugins/*/directives/**/*",
+    "plugins/*/skills/**/*"
   ],
   "scripts": {
     "type-check": "tsc --noEmit",
     "build:types": "tsc -p tsconfig.types.json && node --import tsx scripts/normalize-dts-imports.ts",
     "build:publish": "npm run build && npm run build:types && node --import tsx scripts/prepare-publish-artifacts.ts",
     "test": "node --import tsx --test --experimental-test-module-mocks",
-    "test:e2e": "GENNADY_E2E=1 node --import tsx --test --experimental-test-module-mocks cli/__tests__/e2e/*.test.ts",
-    "test:smoke": "GENNADY_SMOKE=1 node --import tsx --test --experimental-test-module-mocks cli/__tests__/e2e/bundle-smoke.e2e.test.ts",
+    "test:cli-e2e": "GENNADY_E2E=1 node --import tsx --test --experimental-test-module-mocks cli/__tests__/e2e/*.test.ts",
+    "test:stack-e2e": "node --import tsx scripts/stack-e2e.ts",
+    "test:config-e2e": "node --import tsx scripts/stack-e2e.ts --suite=config",
+    "test:smoke": "GENNADY_SMOKE=1 node --import tsx --test --experimental-test-module-mocks cli/__tests__/e2e/bundle-smoke.e2e.test.ts cli/__tests__/e2e/publish-contents.e2e.test.ts",
     "test:watch": "tsx --test-loader 'cli/**/*.test.ts' 'shared/**/*.test.ts' 'services/**/*.test.ts'",
     "dev": "tsx cli/gennady.ts",
     "build": "vite build",
-    "prepublishOnly": "npm run lint && npm run test:smoke && npm run test:e2e && npm run build:publish",
+    "prepublishOnly": "npm run lint && npm run test:smoke && npm run test:cli-e2e && CONFIG_E2E_STRICT=1 npm run test:config-e2e && STACK_E2E_STRICT=1 npm run test:stack-e2e && npm run build:publish",
     "postpublish": "node --import tsx scripts/cleanup-publish-artifacts.ts",
     "publish-next": "node --import tsx scripts/publish-next.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "npm run format && npm run type-check && npm run lint:contracts",
     "release": "release-it",
-    "lint:contracts": "tsx cli/gennady.ts lint --autofix cli/ shared/ services/"
+    "lint:contracts": "tsx cli/gennady.ts lint --autofix cli/ shared/ services/ plugins/"
   },
   "devDependencies": {
     "@ai-sdk/openai": "^3.0.41",
@@ -71,6 +78,7 @@
     "tsx": "^4.19.1",
     "typescript": "^5.7.2",
     "vite": "^6.0.0",
+    "yaml": "2.9.0",
     "zod": "^4.3.6"
   },
   "dependencies": {

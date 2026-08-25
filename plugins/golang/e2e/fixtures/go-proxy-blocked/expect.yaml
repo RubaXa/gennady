@@ -1,0 +1,9 @@
+notes: >
+  §5.2: an unreachable module proxy is ENV_FAIL — the code never compiled, and the fix is the
+  environment. Reported by Go on a `main.go:3:8:` line, which the old `^go: `-anchored predicate
+  missed. Asserts the verdict only: message text varies by Go version and by transparent proxies.
+requires: [go]
+argv: ['--all']
+exitCode: 1
+gates:
+  golang:build: { status: env-fail }

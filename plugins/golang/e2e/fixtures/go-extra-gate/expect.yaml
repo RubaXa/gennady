@@ -1,0 +1,8 @@
+notes: 'The stdout contract on a repo-specific gate: exit 0 with output is a FAIL (config.spec §2).'
+requires: [go]
+argv: ['--all']
+exitCode: 1
+gates:
+  golang:drift-script:
+    status: fail
+    outputIncludes: ['out-of-date.pb.go']

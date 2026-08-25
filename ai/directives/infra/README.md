@@ -7,5 +7,6 @@
 | ---------------------- | ------------------------------------------------------------------- |
 | `eslint-setup.xml`     | Политика конфигурации ESLint (severity, autofix, flat config)       |
 | `git-setup.xml`        | Настройка git: .gitignore, ветки, коммиты, хуки, secrets            |
+| `golang-setup.xml`     | Go-тулчейн: stack-плагин, немутирующие гейты, скоуп, .gennadyrc     |
 | `nodejs-npm-setup.xml` | Node.js runtime: .nvmrc, engines, один package manager              |
 | `storybook-setup.xml`  | Storybook + MCP server: агентная установка, манифесты, Vitest addon |

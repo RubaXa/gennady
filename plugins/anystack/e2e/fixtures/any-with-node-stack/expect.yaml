@@ -1,0 +1,10 @@
+notes: >
+  Why auto-detection is worth the noise: anystack coexists with a real stack instead of replacing
+  it. A node repository gains config-authored gates without naming anything in stack.use, and both
+  stacks' gates run in one pass.
+requires: [npm]
+argv: ['--all']
+exitCode: 0
+gates:
+  anystack:exotic-build: { status: pass }
+  node:test: { status: pass }

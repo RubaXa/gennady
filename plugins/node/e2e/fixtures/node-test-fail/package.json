@@ -1,0 +1,1 @@
+{ "name": "test-fail", "private": true, "scripts": { "test": "node -e \"console.error('1 test failed'); process.exit(1)\"" } }

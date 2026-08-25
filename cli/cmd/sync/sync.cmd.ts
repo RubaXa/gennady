@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { logger } from '#logger';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
 import { collectAndCompare, resolvePackageDir } from './sync-core.ts';
+import { pluginSurfaceDirs } from '../../../services/plugins/plugin-assets.ts';
 import { formatSyncOutput } from '../../../shared/common/sync/sync-formatter.shared.ts';
 import type { SyncFileEntry, SyncOptions } from './sync.types.ts';
 import { ERR_SYNC_SUBDIR_NOT_FOUND } from './sync.types.ts';
@@ -87,6 +88,7 @@ export function run(rawArgs: string[], deps?: SyncCmdDeps): number {
 
   const opts: SyncOptions = {
     sourceDir: packageDir,
+    extraSourceDirs: pluginSurfaceDirs(_resolvePackageDir(cwd, 'plugins'), 'directives'),
     targetDir,
     subdirs: positional.length > 0 ? positional : undefined,
     dryRun,

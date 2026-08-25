@@ -1,0 +1,5 @@
+stack:
+  node:
+    extraGates:
+      - id: from-yaml
+        argv: ['true']

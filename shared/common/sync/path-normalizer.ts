@@ -56,6 +56,15 @@ const RULE_DIRECTIVES_TILDE: PathNormalizationRule = {
   to: 'ai/directives/',
 };
 
+/**
+ * A plugin owns its directives in `plugins/<id>/directives/`, which is where a checkout has them.
+ * Publishing stages the same files under `ai/directives/`, so consumer-facing text must say that.
+ */
+const RULE_PLUGIN_DIRECTIVES: PathNormalizationRule = {
+  from: /(?:~\/Developer\/gennady\/)?plugins\/[a-z0-9-]+\/directives\//g,
+  to: 'ai/directives/',
+};
+
 const RULE_AI_ABS: PathNormalizationRule = {
   from: /\/Users\/k\.lebedev\/Developer\/gennady\/ai\//g,
   to: 'ai/',
@@ -77,6 +86,7 @@ export const SYNC_PATH_RULES: readonly PathNormalizationRule[] = [
   RULE_CLI_TSX_SHORT,
   RULE_CLI_TILDE,
   RULE_DIRECTIVES_TILDE,
+  RULE_PLUGIN_DIRECTIVES,
   RULE_AI_ABS,
   RULE_CLI_ABS,
   RULE_CLI_HOME,
@@ -89,6 +99,7 @@ export const SYNC_SKILLS_PATH_RULES: readonly PathNormalizationRule[] = [
   RULE_CLI_TILDE,
   RULE_SKILLS_TILDE,
   RULE_DIRECTIVES_TILDE,
+  RULE_PLUGIN_DIRECTIVES,
   RULE_AI_ABS,
   RULE_CLI_ABS,
   RULE_CLI_HOME,

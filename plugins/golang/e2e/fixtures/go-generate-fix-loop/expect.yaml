@@ -1,0 +1,10 @@
+notes: >
+  The plugin's own generate fixer now rides on the generate gate rather than a separate fix facet:
+  stale committed codegen → FAIL, `gennady fix` materializes, re-verify green (D-STACK-011).
+requires: [go]
+command: verify,fix,verify
+argv: ['--all']
+exitCode: 0
+treeUnchanged: false
+gates:
+  golang:generate: { status: pass }

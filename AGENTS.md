@@ -12,7 +12,8 @@ _(Обновляется по мере развития проекта; аген
 ## Структура и навигация
 
 - **shared/** — общее: `common/` (logger, exec, files, style, xml, parse-args, language, tokens, think, unguard), `backend/` (git, rc).
-- **services/** — сервисы (vcs-client).
+- **services/** — сервисы: `config/`, `stack/` (раннер гейтов), `plugins/` (реестр/резолвер стек-плагинов), `vcs-client` и др.
+- **plugins/** — стек-плагины: `golang/`, `node/`, `anystack/`; каждый — один каталог (реализация, спека, директивы, скиллы, E2E-фикстуры), см. [specs/plugins/plugins.spec.md](specs/plugins/plugins.spec.md).
 - **cli/** — команды: `gennady.ts`, `cmd/*`, `utils/*` (commit-gen, review-gen, cat-gen, prompts, ai-legacy) в [cli/AGENTS.md](cli/AGENTS.md).
 
 ---
@@ -88,7 +89,7 @@ _(Обновляется по мере развития проекта; аген
 
 - **Логирование и ошибки**: правила в flow. Логгер — `#logger` (мапится на `service/logger/logger.ts`).
 - **Контракты**: экспортируемые сущности и implementation-linking rules по `ai/agents/agent-typescript-devgen.xml#AXIOM_JSDOC_AS_CONTRACTS`.
-- **Сборка**: `npm run build` (Vite) → `dist/` с чанками.
+- **Сборка**: `npm run build` (Vite) → `dist/` с чанками; публикуемый артефакт — `npm run build:publish` (добавляет `build:types` и копирование `ai/**` → `dist/ai/**`), потому что `prepublishOnly` не срабатывает на `npm pack`.
 - **Форматирование**: Prettier (2 пробела, singleQuote, trailingComma es5). `npm run format`, `npm run format:check`. Конфиг `.prettierrc.json`.
 - **Аксиомы и примеры TypeScript**: правила и примеры в `ai/agents/agent-typescript-devgen.xml` (AXIOM_TS_NATIVE_PATTERNS, AXIOM_TELEOLOGICAL_NAMING, AXIOM_ERROR_WITH_ANCHORS, AXIOM_LOG_DRIVEN_DEVELOPMENT, AXIOM_STRUCTURAL_ANCHORS, AXIOM_AI_TO_AI_COMMENTS, AXIOM_JSDOC_AS_CONTRACTS и др.).
 - **Определения**: Trace-Prefix и другие определения — `ai/agents/agent-typescript-devgen.xml#DEF_TRACE_PREFIX`.

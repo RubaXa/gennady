@@ -26,6 +26,9 @@ coverage
 .wisehub.app.js.map
 
 .gennadyrc
+# ...except inside E2E fixtures, where a personal rc IS the thing under test. Without this the
+# three config fixtures shipped without their rc and the suite was red from any fresh clone.
+!**/e2e/fixtures/**/.gennadyrc
 ai/drafts
 .claude/
 *.tgz

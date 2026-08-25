@@ -1,0 +1,12 @@
+notes: >
+  requires preconditions (§4.7): a broken environment is detected in milliseconds instead of a
+  10-minute hang, the verdict is env-fail with the precondition's hint, and the gate command
+  never runs (a 60s sleep against a 30s timeout would otherwise be TIMEOUT).
+requires: [go]
+argv: ['--all']
+exitCode: 1
+gates:
+  golang:e2e:
+    status: env-fail
+    outputIncludes: ['precondition failed', 'cannot reach docker daemon']
+    hintIncludes: 'colima start'

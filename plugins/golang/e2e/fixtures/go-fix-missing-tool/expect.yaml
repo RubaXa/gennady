@@ -1,0 +1,11 @@
+notes: >
+  The fixer runs the gate's work in the real tree, so it inherits the gate's ENV_FAIL predicates:
+  a missing generator during `gennady fix` must read as a broken environment with the install hint,
+  not as a failed fix. Closes the panel finding that fixers could not express ENV_FAIL.
+requires: [go]
+command: fix
+# `fix` inherits verify's scoping: without --all the changed-scope is empty, the generate gate is
+# planned as a skip and carries no fixer, so `fix` correctly reports nothing to do.
+argv: ['--all']
+exitCode: 1
+outputIncludes: ['ENV_FAIL', 'go install']

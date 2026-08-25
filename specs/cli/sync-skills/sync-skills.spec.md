@@ -2,7 +2,7 @@
 
 ## 1. Module Vision
 
-Команда `gennady sync-skills` в `cli/cmd/sync-skills/`: синхронизирует SDD-скилы из `ai/skills/` npm-пакета gennady в `<cwd>/.claude/skills/`. 13 скилов: alt-opinion, sdd-audit, sdd-check, sdd-continue, sdd-critic, sdd-discover, sdd-execute (с scripts/), sdd-execute-batch, sdd-fix, sdd-infra, sdd-module-decomposition, sdd-scaffold, sdd-setup. Каждый скил — директория с `SKILL.md` и ресурсами (scripts, prompts). Полная синхронизация с orphan-удалением (rsync --delete). Файлы сравниваются побайтово (`Buffer.compare`). **При копировании применяется нормализация путей: dev-пути (`~/Developer/gennady/...`) заменяются на продуктовые эквиваленты (`npx gennady`, `.claude/skills/...`, `ai/directives/...`).** Вывод: `+` (added), `~` (updated), `-` (deleted), `=` (unchanged). Zero runtime dependencies (только Node.js built-in). Shared core с `sync`: `resolvePackageDir`, `compareBytes`, `PathNormalizer`, `SyncFormatter`, `SyncCmdDeps` вынесены в `shared/common/sync/`. Поддержка `--dry-run`.
+Команда `gennady sync-skills` в `cli/cmd/sync-skills/`: синхронизирует скилы из npm-пакета gennady в `<cwd>/.claude/skills/`. Набор скилов не зашит в код: источник — все каталоги `ai/skills/*` с `SKILL.md` (SDD-семейство `sdd-*`, alt-opinion, agent-inbox, prd-interview, workspace-permission-setup) плюс `plugin.skills` каждого плагина (например, `sdd-infra-golang` из плагина golang). Каждый скил — директория с `SKILL.md` и ресурсами (scripts, prompts). Полная синхронизация с orphan-удалением (rsync --delete). Файлы сравниваются побайтово (`Buffer.compare`). **Корень пакета ищется вверх по `package.json`, а не отрезанием `/dist/`:** опубликованная установка резолвится внутрь `dist/`, а склонированная или `npm link`-нутая — прямо в исходник, и отрезание `dist` для второй давало путь к файлу и отказ «gennady package not found». **Источников скиллов несколько:** базовый `ai/skills/**` плюс `plugin.skills` каждого плагина (в пакете каталоги плагинов лежат рядом, в чекауте — тоже), фильтр по именам применяется к объединению, а пустой каталог никогда не перекрывает реальные файлы. **При копировании применяется нормализация путей: dev-пути (`~/Developer/gennady/...`) заменяются на продуктовые эквиваленты (`npx gennady`, `.claude/skills/...`, `ai/directives/...`).** Вывод: `+` (added), `~` (updated), `-` (deleted), `=` (unchanged). Zero runtime dependencies (только Node.js built-in). Shared core с `sync`: `resolvePackageDir`, `compareBytes`, `PathNormalizer`, `SyncFormatter`, `SyncCmdDeps` вынесены в `shared/common/sync/`. Поддержка `--dry-run`.
 
 → Parent scope: [`../cli.spec.md`](../cli.spec.md) (раздел 5.7 sync-skills).
 
@@ -151,6 +151,7 @@ _Это полный список сущностей модуля. Любое в
   6. `/Users/k.lebedev/Developer/gennady/ai/` → `ai/` (абсолютные dev-пути → относительные)
   7. `/Users/k.lebedev/Developer/gennady/cli/gennady.ts` → `npx gennady` (абсолютный путь к CLI)
   8. `$HOME/Developer/gennady/cli/gennady.ts` → `~/Developer/gennady/cli/gennady.ts` (нормализация `$HOME` в тильду, `RULE_CLI_HOME`)
+  9. `plugins/<id>/directives/` → `ai/directives/` (`RULE_PLUGIN_DIRECTIVES`): директиву в чекауте держит плагин, а потребитель получает её под `ai/` — тот же dev/prod дуализм, что у остальных путей
 - **Lifecycle:** Константа в `sync-skills-core.ts`. Передаётся в `PathNormalizer.normalize()`
 - **Consumers:** `SyncSkillsCore.collectAndCompareSkills`
 
@@ -279,20 +280,26 @@ shared/common/sync/                    # shared с командой sync
 ├── path-normalizer.ts                # PathNormalizer: замена dev-путей на продуктовые (~30 lines)
 └── sync-deps.type.ts                 # SyncCmdDeps (порт) — расширен unlink, rmdir (~15 lines)
 
-ai/skills/                            # 13 скилов (физические артефакты в репозитории)
+ai/skills/                            # скилы — физические артефакты в репозитории (17 на момент записи)
+├── agent-inbox/SKILL.md
 ├── alt-opinion/                       # SKILL.md + opinion.prompt.md + synth.prompt.md
+├── prd-interview/                     # SKILL.md + PRD_TEMPLATE.md
 ├── sdd-audit/SKILL.md
 ├── sdd-check/SKILL.md
 ├── sdd-continue/SKILL.md
 ├── sdd-critic/SKILL.md
 ├── sdd-discover/SKILL.md
-├── sdd-execute/                       # SKILL.md + scripts/ (8 файлов)
+├── sdd-execute/                       # SKILL.md + scripts/
 ├── sdd-execute-batch/SKILL.md
 ├── sdd-fix/SKILL.md
+├── sdd-hooks-install/SKILL.md
 ├── sdd-infra/SKILL.md
 ├── sdd-module-decomposition/SKILL.md
 ├── sdd-scaffold/SKILL.md
-└── sdd-setup/SKILL.md
+├── sdd-setup/SKILL.md
+└── workspace-permission-setup/SKILL.md
+
+plugins/<stack>/skills/               # скилы плагинов (plugin.skills), напр. golang/skills/sdd-infra-golang
 ```
 
 **File Mapping:**
@@ -332,7 +339,7 @@ ai/skills/                            # 13 скилов (физические а
 - **Risk accepted:** Две команды с похожим интерфейсом могут запутать пользователя. Смягчается консистентным форматом вывода и именованием. Orphan-удаление деструктивно: пользовательские скилы, не принадлежащие gennady, будут удалены — это задокументированное поведение, dry-run позволяет предпросмотр.
 - **Rejected alternatives:**
   - Флаг `--skills` в `sync` — смешивает две доменные модели
-  - Отдельный npm-пакет `@gennady/skills` — overkill для 13 скилов
+  - Отдельный npm-пакет `@gennady/skills` — overkill для такого набора скилов
 
 ### D-M006 — Orphan-удаление: полная синхронизация
 

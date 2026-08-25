@@ -1,0 +1,159 @@
+<GolangSetup keywords="golang, go, go-mod, go-work, vendor, govet, gofmt, golangci-lint, gotest, makefile, brownfield, monorepo, toolchain, verification-gates, stack-plugin, gennadyrc" type="infra-rules" ver="2.0">
+  <Mission>
+    Canonical rules for the Go toolchain layer of an SDD project: module discipline, verification gates, and how an agent runs them without breaking a large brownfield repository.
+
+    The deterministic surface is the stack plugin system: **one command — `gennady verify` — for every stack**; Go specifics live in the golang plugin, repo specifics live in `gennady.yaml` (section `stack`; personal `.gennadyrc` deep-merges on top). Never invent per-repo ad-hoc verification commands: parameterise the plugin through config instead.
+
+    **Base axiom:** a verification gate observes; it never rewrites the working tree, and it never claims a verdict about code when the tool itself failed to run.
+  </Mission>
+
+  <BeliefState>
+    <Axiom id="AX_ONE_VERB_EVERY_STACK">
+      Verification is ONE verb — `gennady verify` — regardless of stack. Different repositories differ through committed stack config (`gennady.yaml`) (gate overrides, skips, extra gates), not through different commands.
+
+      An agent that must remember `go-verify` here, `npm-verify` there, `make check` elsewhere will pick the wrong one. Detection chooses the plugin; config expresses the repo's deviations; the verb stays constant.
+    </Axiom>
+
+    <Axiom id="AX_GATES_NEVER_MUTATE">
+      A verification gate MUST NOT modify source files. This is the single most violated rule in Go tooling.
+
+      **`go fmt ./...` is forbidden as a gate.** It is a wrapper around `gofmt -l -w` — it rewrites sources in place. Running it inside verification means the gate always passes and silently edits the agent's diff, destroying the phase boundary.
+
+      Use `gofmt -l <paths>`: it prints misformatted files and exits 0; the runner treats any stdout as failure. Same for dependencies: `go mod tidy -diff`, never `go mod tidy`.
+
+      Autofix belongs in an explicit, operator-invoked fix step — never in the gate. This applies to config-declared extraGates too: a gate that writes is a bug in the config.
+    </Axiom>
+
+    <Axiom id="AX_SCOPE_BEFORE_DEPTH">
+      On a brownfield monorepo, `./...` is not a verification strategy — it is a timeout.
+
+      a brownfield monorepo we verified against carries hundreds of packages and a vendored tree; a full `go build ./...` plus `go test ./...` is a CI-scale job, not a per-phase gate. The golang plugin therefore defaults to **the packages touched by the current change** (diff vs base branch + staged + untracked). Widen deliberately (`--all`) — never by default.
+    </Axiom>
+
+    <Axiom id="AX_TOOL_FAILURE_IS_NOT_A_FINDING">
+      Distinguish "the linter found problems in your code" (FAIL) from "the linter could not run" (ENV_FAIL). Conflating them makes an agent hallucinate fixes for code that is fine.
+
+      `golangci-lint` reserves **exit 1 for issues found**; every other non-zero exit is a config, build or internal error. A `panic:` trace is never a finding. The most common cause is **Go version skew**: a golangci-lint built with an older Go than the module's `go` directive panics with `package requires newer Go version` — detected up front by comparing `golangci-lint version` against `go.mod`.
+
+      These rules are declared on the gates themselves (`envFail` patterns/exit thresholds), and the report explicitly forbids editing sources in response to ENV_FAIL.
+    </Axiom>
+
+    <Axiom id="AX_CONFIG_DISCOVERY_IS_EXPLICIT">
+      Never rely on `golangci-lint` auto-discovering its config.
+
+      Auto-discovery only finds dot-prefixed names (`.golangci.yml|yaml|toml|json`). Real repositories deviate: one brownfield monorepo we verified against keeps its config in a bare **`golangci.yml`** — no leading dot. Run without `-c` there and the linter silently applies its defaults, producing a green result that has nothing to do with the project's policy.
+
+      The plugin searches dot-prefixed and bare names and always passes the find via `-c`. A Makefile referencing a config absent from the checkout is a reportable diagnostic, not something to paper over. An exotic config path is an overrideGates.lint.argv entry in `gennady.yaml`.
+    </Axiom>
+
+    <Axiom id="AX_VENDOR_AND_WORKSPACE_ARE_EXCLUSIVE">
+      When `vendor/modules.txt` exists, gates run with `-mod=vendor` — offline and reproducible, critical for a sandboxed agent. When `go.work` exists, `-mod=vendor` is rejected by the toolchain; workspace mode wins. `vendor/` and `testdata/` are never verification targets.
+    </Axiom>
+
+    <Axiom id="AX_DOT_DOT_DOT_STOPS_AT_MODULE_EDGE">
+      `./...` does not cross module boundaries. Nested `go.mod` files (a service we verified against has two) are invisible to a root-level run. The plugin reports them as a diagnostic; verify each nested module with `--root=<dir>` or state plainly which modules were not covered.
+    </Axiom>
+
+    <Axiom id="AX_GATE_ORDER_IS_DIAGNOSTIC">
+      Gates run cheapest-and-most-diagnostic first: **build → vet → fmt → lint → test**. A compile error makes every downstream gate's output noise. Ordering is about reading results, not stopping: all gates still execute (RUN-ALL) so one pass collects the full picture.
+    </Axiom>
+
+    <Axiom id="AX_TESTS_ARE_BOUNDED">
+      `go test` always runs with an explicit `-timeout` (default 10m; override via stack config overrideGates.test.timeout — rendered into the -timeout flag). Integration tests behind build tags (`-tags=integration`) are NOT part of the default gate: they need live infrastructure the agent does not have. Declare them as an explicit extraGate only where they can actually run.
+    </Axiom>
+  </BeliefState>
+
+  <SetupSteps>
+    <Step id="STEP_1_INSPECT">Run `gennady verify --plan` from the repo root. Read: module + go directive, nested modules, vendoring, discovered lint config, make targets, toolchain diagnostics, and the exact argv of every gate.</Step>
+    <Step id="STEP_2_RESOLVE_DIAGNOSTICS">For each diagnostic, either fix the environment or encode the deviation in `gennady.yaml` (skipGates, overrideGates, extraGates). Never ignore one silently.</Step>
+    <Step id="STEP_3_ENCODE_REPO_SPECIFICS">If the repo verifies through Makefile targets or generators, express them as stack-config gate overrides / extraGates so every agent gets them for free.</Step>
+    <Step id="STEP_4_WIRE_LOOP">Per-phase gate = `gennady verify` (changed-package scope). Fast inner loop = `--only=build,vet`. Full sweep on demand = `--all`.</Step>
+    <Step id="STEP_5_COVER_NESTED_MODULES">For each nested module: `gennady verify --root=<module-dir> --all`, or record why it is out of scope.</Step>
+  </SetupSteps>
+
+  <Definitions>
+    <Definition id="DEF_GATE">A single verification command with a binary verdict, a working directory and captured output. Gates observe; they never mutate.</Definition>
+    <Definition id="DEF_ENV_FAIL">A gate outcome where the tool itself could not run (crash, config error, version skew, blocked module proxy). Distinct from FAIL, which is a genuine finding about the code.</Definition>
+    <Definition id="DEF_STACK_CONFIG">The `stack` section of `gennady.yaml` / `.gennadyrc`: `use` + per-plugin `skipGates`/`overrideGates`/`extraGates`. The single point where a repo's infra deviations are declared.</Definition>
+  </Definitions>
+
+  <CodePatterns>
+    <Pattern id="PT_INSPECT_BEFORE_RUNNING">
+      <Intent>See what verification would do — and what the environment is missing — before spending time on it.</Intent>
+      <Snippet language="bash">
+gennady verify --plan
+      </Snippet>
+      <Why>Prints detection, diagnostics (version skew, missing configs, nested modules) and exact gate argv. First command in any unfamiliar repo.</Why>
+    </Pattern>
+
+    <Pattern id="PT_PHASE_GATE">
+      <Intent>The canonical per-phase gate. Scoped, non-mutating, quiet on success, stack-agnostic.</Intent>
+      <Snippet language="bash">
+gennady verify
+      </Snippet>
+      <Why>Defaults to packages changed vs the base branch on golang; npm scripts on node. RUN-ALL, SUPPRESS-ON-SUCCESS, exit 0/1/4/5.</Why>
+    </Pattern>
+
+    <Pattern id="PT_REPO_DEVIATIONS_IN_CONFIG">
+      <Intent>Encode repo-specific infra once, in the repo, instead of teaching every agent private commands.</Intent>
+      <Snippet language="yaml">
+stack:
+  golang:
+    skipGates: [lint]
+    overrideGates:
+      test: { argv: [make, test], timeout: 15m }
+      build: { env: { GOPROXY: "https://goproxy.example.com/" } }
+    extraGates:
+      - { id: tidy-drift, argv: [go, mod, tidy, -diff], timeout: 5m }
+      </Snippet>
+      <Why>Per AX_ONE_VERB_EVERY_STACK. The verb stays `gennady verify`; the config carries the differences.</Why>
+    </Pattern>
+
+    <Pattern id="PT_FORMAT_CHECK_NOT_REWRITE">
+      <Intent>Check formatting without touching the working tree.</Intent>
+      <Snippet language="bash">
+# CORRECT — lists offenders, writes nothing (what the plugin plans)
+gofmt -l ./internal ./pkg
+
+# FORBIDDEN as a gate — rewrites sources in place
+go fmt ./...
+      </Snippet>
+      <Why>Per AX_GATES_NEVER_MUTATE.</Why>
+    </Pattern>
+
+    <Pattern id="PT_NESTED_MODULE_COVERAGE">
+      <Intent>Cover modules that `./...` cannot reach.</Intent>
+      <Snippet language="bash">
+gennady verify --root=./scripts --all
+gennady verify --root=./pkg/client --all
+      </Snippet>
+      <Why>Per AX_DOT_DOT_DOT_STOPS_AT_MODULE_EDGE. Reporting root-module success while nested modules never compiled is a false claim.</Why>
+    </Pattern>
+  </CodePatterns>
+
+  <AntiPatterns>
+    <AntiPattern id="ANTI_PER_REPO_COMMANDS">
+      <Bad>Inventing `go-verify` / `make my-check` wrappers per repository</Bad>
+      <Why>Agents must relearn the verb in every repo; knowledge does not transfer.</Why>
+      <Instead>One verb (`gennady verify`) + committed stack config for deviations.</Instead>
+    </AntiPattern>
+
+    <AntiPattern id="ANTI_GO_FMT_AS_GATE">
+      <Bad>go fmt ./...</Bad>
+      <Why>Rewrites sources during verification; the gate can never fail and the diff silently grows.</Why>
+      <Instead>gofmt -l &lt;paths&gt; (planned by the golang plugin automatically)</Instead>
+    </AntiPattern>
+
+    <AntiPattern id="ANTI_UNSCOPED_MONOREPO_RUN">
+      <Bad>go test ./...   # on an internal monorepo, per phase</Bad>
+      <Why>CI-scale work presented as a per-phase gate; the agent times out, then learns to skip verification.</Why>
+      <Instead>Changed-package scoping (the default); widen only on explicit request.</Instead>
+    </AntiPattern>
+
+    <AntiPattern id="ANTI_TRUST_LINT_EXIT_CODE_BLINDLY">
+      <Bad>golangci-lint run || echo "lint issues found"</Bad>
+      <Why>Exit 2–7 mean the linter broke, not that the code has issues. The agent then "fixes" healthy code.</Why>
+      <Instead>Exit 1 = findings; anything else (or a `panic:` trace) = ENV_FAIL. The plugin declares this on the gate.</Instead>
+    </AntiPattern>
+  </AntiPatterns>
+</GolangSetup>

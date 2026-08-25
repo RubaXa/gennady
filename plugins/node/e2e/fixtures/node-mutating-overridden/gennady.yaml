@@ -1,0 +1,6 @@
+stack:
+  node:
+    overrideGates:
+      # The same linter in check-only form: an argv override lifts the mutation skip.
+      lint:
+        argv: [node, -e, 'process.exit(0)']

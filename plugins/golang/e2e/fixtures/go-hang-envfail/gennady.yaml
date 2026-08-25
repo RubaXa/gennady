@@ -1,0 +1,11 @@
+stack:
+  use: [golang]
+  golang:
+    skipGates: [generate, build, vet, fmt, lint, test]
+    extraGates:
+      - id: sleeper
+        argv: [sh, -c, 'echo "cannot reach docker daemon" >&2; sleep 30']
+        timeout: 2s
+        envFail:
+          - stderrMatches: 'cannot reach docker daemon'
+            hint: 'start docker, then re-run'

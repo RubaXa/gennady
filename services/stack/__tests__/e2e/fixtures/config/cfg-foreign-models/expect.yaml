@@ -1,0 +1,7 @@
+notes: >
+  A foreign top-level section (`models`) is validated by its own consumer, so its problems must not
+  brick verify (review B5).
+requires: [npm]
+argv: ['--all']
+exitCode: 0
+gates: { node:test: { status: pass } }

@@ -1,0 +1,523 @@
+// @file: Stack-agnostic gate execution — RUN-ALL / SUPPRESS-ON-SUCCESS runner, env-fail combinators, report.
+// @consumers: verify.cmd, plugins (combinators)
+// @tasks: TSK-95
+
+import fs from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { execFileTrimSafe } from '../../shared/common/exec.ts';
+import { acquireTreeGuard, type TreeGuard } from './tree-guard.ts';
+import type {
+  Gate,
+  GateOutcome,
+  GateResult,
+  StackDiagnostic,
+  StackRun,
+  VerifyReport,
+} from './stack.types.ts';
+
+/** Head lines kept when truncating long gate output. */
+const TRUNCATE_HEAD_LINES = 20;
+/** Tail lines kept when truncating — test runners put the failure summary at the end. */
+const TRUNCATE_TAIL_LINES = 40;
+
+// Combinators live in env-fail.ts so the config loader can compile rules without
+// importing the runner; re-exported here for existing consumers.
+export { exitCodeMatches, outputMatches, streamMatches, allOf } from './env-fail.ts';
+
+// #region START_GUARD_POOL — one clean-tree guard per git toplevel, shared by every gate (D-STACK-017)
+
+/**
+ * @purpose Execution slot for one gate: a guarded real tree, an unguarded fallback, or a failure.
+ * @consumer gate-runner (internal)
+ */
+type GuardSlot =
+  | { readonly kind: 'guard'; readonly guard: TreeGuard }
+  | { readonly kind: 'unsandboxed' }
+  | { readonly kind: 'error'; readonly message: string };
+
+/**
+ * @purpose Lazily acquired guards, one per git toplevel, living for the whole verify run.
+ * @consumer runVerify (internal)
+ */
+type GuardPool = {
+  /** @purpose Resolve the execution slot for a gate cwd. */
+  acquire(cwd: string): GuardSlot;
+  /** @purpose True when at least one gate ran without a guard (no git repo or HEAD). */
+  unsandboxedSeen(): boolean;
+  /** @purpose Release every guard this run acquired (final reset if dirty + unlock). */
+  releaseAll(): void;
+};
+
+/**
+ * @purpose Build the pool; guards are acquired on first use per toplevel.
+ * @returns Pool for one verify run.
+ */
+function createGuardPool(): GuardPool {
+  const slots = new Map<string, GuardSlot>();
+  const toplevels = new Map<string, string>();
+  let unsandboxed = false;
+
+  return {
+    acquire(cwd) {
+      let toplevel = toplevels.get(cwd);
+      if (toplevel === undefined) {
+        toplevel = execFileTrimSafe('git', ['rev-parse', '--show-toplevel'], cwd);
+        toplevels.set(cwd, toplevel);
+      }
+      if (
+        toplevel.length === 0 ||
+        execFileTrimSafe('git', ['rev-parse', '--verify', '--quiet', 'HEAD'], toplevel).length === 0
+      ) {
+        // No git or no commits: there is nothing to reset to — run unguarded, loudly.
+        unsandboxed = true;
+        return { kind: 'unsandboxed' };
+      }
+      let slot = slots.get(toplevel);
+      if (slot === undefined) {
+        const acquisition = acquireTreeGuard(toplevel);
+        slot =
+          acquisition.kind === 'guard'
+            ? { kind: 'guard', guard: acquisition.guard }
+            : { kind: 'error', message: acquisition.message };
+        slots.set(toplevel, slot);
+      }
+      return slot;
+    },
+    unsandboxedSeen: () => unsandboxed,
+    releaseAll() {
+      for (const slot of slots.values()) {
+        if (slot.kind === 'guard') {
+          slot.guard.release();
+        }
+      }
+      slots.clear();
+    },
+  };
+}
+
+/** Diagnostic for a run whose gates had to execute without a guard — enforcement was off. */
+const UNSANDBOXED_RUN_DIAGNOSTIC: StackDiagnostic = {
+  code: 'UNSANDBOXED_RUN',
+  message:
+    'gates ran without a clean-tree guard (no git repository or HEAD) — the observe-only contract was not enforced',
+  fix: 'initialize git and create a first commit so verify can detect and roll back gate mutations',
+};
+// #endregion END_GUARD_POOL
+
+/**
+ * Diagnostic for a run that executed zero gates. The human report renders it as the terminal
+ * ZERO_GATES verdict; carrying it in `diagnostics` names the reason for `--json` consumers,
+ * while `ok` carries the verdict itself — both false on an empty run, matching the exit code.
+ */
+const ZERO_GATES_DIAGNOSTIC: StackDiagnostic = {
+  code: 'ZERO_GATES',
+  message: 'no gate was executed — the run verified nothing',
+  fix: 'declare gates under stack.<id>.extraGates in gennady.yaml, run from a directory a stack plugin recognizes, or loosen --skip/--only filters',
+};
+
+/**
+ * @purpose Run one gate to completion and classify the outcome.
+ * @param gate Gate to execute; a gate carrying a skip reason is returned untouched.
+ * @param pool Guard pool, or null to execute without a guard (fixers).
+ * @returns Result with status, exit code and captured output.
+ * @sideEffect Process: spawns the gate's external command (no shell); gate.env merged over process.env.
+ */
+function runGate(gate: Gate, pool: GuardPool | null): GateResult {
+  if (gate.skipped !== null) {
+    return { gate, status: 'skipped', exitCode: null, durationMs: 0, output: gate.skipped };
+  }
+
+  const slot: GuardSlot = pool?.acquire(gate.cwd) ?? { kind: 'unsandboxed' };
+
+  if (slot.kind === 'error') {
+    // An unguardable tree (dirty, or held by another run) is not the same as a repository
+    // that cannot have a guard. Running anyway would silently drop the observe-only
+    // guarantee for every gate, so this is an environment failure, not a gate verdict.
+    return {
+      gate,
+      status: 'env-fail',
+      exitCode: null,
+      durationMs: 0,
+      output: `clean-tree guard unavailable, refusing to execute: ${slot.message}`,
+    };
+  }
+
+  const failedPrecondition = firstFailingPrecondition(gate);
+  if (failedPrecondition !== null) {
+    return failedPrecondition;
+  }
+
+  if (slot.kind === 'unsandboxed' && gate.driftMeansFailure === true) {
+    // Drift cannot be computed without git/HEAD.
+    return {
+      gate,
+      status: 'env-fail',
+      exitCode: null,
+      durationMs: 0,
+      output: 'drift gate requires a git repository (no toplevel found)',
+    };
+  }
+
+  return executeGate(gate, slot.kind === 'guard' ? slot.guard : null);
+}
+
+/**
+ * @purpose Run the gate's preconditions; the first failure becomes the gate's ENV_FAIL result.
+ * @invariant Returning non-null means the gate command must not run (spec §4.7).
+ * @param gate Gate whose `requires` are executed.
+ * @returns The ENV_FAIL result of the first failing precondition, or null when all hold.
+ * @sideEffect Process: spawns one command per precondition until one fails.
+ */
+function firstFailingPrecondition(gate: Gate): GateResult | null {
+  for (const requirement of gate.requires ?? []) {
+    const startedAt = Date.now();
+    const hint = requirement.hint !== undefined ? `\nhint: ${requirement.hint}` : '';
+    if (!fs.existsSync(requirement.cwd)) {
+      // A precondition pointing at a directory that does not exist is itself an environment
+      // problem; spawning there would take the whole run down with a stack trace.
+      return {
+        gate,
+        status: 'env-fail',
+        exitCode: null,
+        durationMs: Date.now() - startedAt,
+        output: `precondition cwd does not exist: ${requirement.cwd}${hint}`,
+      };
+    }
+    const [bin, ...args] = requirement.argv;
+    const proc = spawnSync(bin!, args, {
+      cwd: requirement.cwd,
+      encoding: 'utf-8',
+      timeout: requirement.timeoutMs,
+      killSignal: 'SIGKILL',
+      maxBuffer: 8 * 1024 * 1024,
+      env: requirement.env !== undefined ? { ...process.env, ...requirement.env } : process.env,
+    });
+    if (proc.error === undefined && proc.status === 0) {
+      continue;
+    }
+    const detail = `${proc.stdout ?? ''}${proc.stderr ?? ''}`.trim();
+    return {
+      gate,
+      status: 'env-fail',
+      exitCode: proc.status,
+      durationMs: Date.now() - startedAt,
+      output: `precondition failed: ${requirement.argv.join(' ')}\n${detail}${hint}`,
+    };
+  }
+  return null;
+}
+
+/**
+ * @purpose Spawn the gate command in its cwd; classify via exit code, tree drift and predicates.
+ * @param gate Gate to execute in the real tree.
+ * @param guard Clean-tree guard of the gate's toplevel, or null for unguarded runs (fixers,
+ *   repositories without git/HEAD).
+ * @returns Result with status, exit code and captured output.
+ */
+function executeGate(gate: Gate, guard: TreeGuard | null): GateResult {
+  const startedAt = Date.now();
+  const [bin, ...args] = gate.argv;
+  if (!Number.isFinite(gate.timeoutMs) || gate.timeoutMs <= 0) {
+    // A mandatory timeout that is zero or absent is not mandatory; spawnSync reads 0 as "never".
+    throw new Error(
+      `[executeGate] gate ${gate.stack}:${gate.id} has a non-positive timeout (${gate.timeoutMs}ms)`
+    );
+  }
+  const proc = spawnSync(bin!, args, {
+    cwd: gate.cwd,
+    encoding: 'utf-8',
+    timeout: gate.timeoutMs,
+    // SIGTERM is ignorable, and a gate that ignores it runs to completion while the runner
+    // waits: measured 4s against a 600ms timeout, reported as SIGPIPE rather than a timeout.
+    // SIGKILL cannot be trapped, and `error.code` stays ETIMEDOUT so classification holds.
+    killSignal: 'SIGKILL',
+    maxBuffer: 64 * 1024 * 1024,
+    env: gate.env !== undefined ? { ...process.env, ...gate.env } : process.env,
+  });
+  const durationMs = Date.now() - startedAt;
+
+  const stdout = proc.stdout ?? '';
+  const captured = `${stdout}${proc.stderr ?? ''}`.trim();
+
+  const timedOut =
+    proc.error !== undefined && (proc.error as NodeJS.ErrnoException).code === 'ETIMEDOUT';
+
+  // maxBuffer overrun kills the child, so there is no exit code — but the tool DID run, which is
+  // the opposite of a spawn failure. Calling it env-fail told the reader "do not touch the code"
+  // about a gate that may have failed legitimately, so it falls through to the verdict ladder.
+  const outputTruncated =
+    proc.error !== undefined && (proc.error as NodeJS.ErrnoException).code === 'ENOBUFS';
+
+  // Inspect and restore the tree exactly once, whatever the command's outcome. Reset is
+  // provably exact: the guard refused a dirty tree, so the pre-run state is HEAD (D-STACK-017).
+  let drift = '';
+  if (guard !== null) {
+    drift = guard.drift();
+    if (drift.length > 0) {
+      guard.reset();
+    }
+  }
+
+  if (proc.error !== undefined && proc.status === null && !timedOut && !outputTruncated) {
+    // Spawn itself failed — the tool never ran; universally environmental.
+    return { gate, status: 'env-fail', exitCode: null, durationMs, output: String(proc.error) };
+  }
+
+  // #region START_VERDICTS — env-fail first, then timeout, violation, drift, stdout, exit (§8.2)
+  // Predicates see the printed head+tail window, not unbounded output (spec §8.2).
+  const output = outputTruncated
+    ? `${captured}\n[output exceeded the capture limit and was cut here; the gate ran, so this is its verdict, not a broken environment]`
+    : captured;
+
+  const outcome: GateOutcome = {
+    exitCode: proc.status,
+    timedOut,
+    stdout: truncateOutput(stdout),
+    stderr: truncateOutput(proc.stderr ?? ''),
+    output: truncateOutput(output),
+  };
+  const matched = (gate.envFail ?? []).find((predicate) => predicate(outcome));
+  if (matched !== undefined) {
+    const debris = drift.length > 0 ? `\ntree debris left behind:\n${drift}` : '';
+    return {
+      gate,
+      status: 'env-fail',
+      exitCode: proc.status,
+      durationMs,
+      output:
+        `${output}${debris}` +
+        `\nmatched env-fail rule: ${matched.describe}` +
+        `${matched.source !== undefined ? ` (from ${matched.source})` : ''}` +
+        `${matched.hint !== undefined ? `\nhint: ${matched.hint}` : ''}`,
+    };
+  }
+
+  if (timedOut) {
+    return { gate, status: 'timeout', exitCode: null, durationMs, output };
+  }
+
+  if (drift.length > 0 && gate.driftMeansFailure !== true) {
+    return {
+      gate,
+      status: 'violation',
+      exitCode: proc.status,
+      durationMs,
+      output: `gate mutated the tree — files:\n${drift}\ndeclare \`driftMeansFailure: true\` if drift is this gate's verdict, or move the mutation to \`gennady fix\` fixers (D-STACK-005)${output.length > 0 ? `\n--- command output ---\n${output}` : ''}`,
+    };
+  }
+
+  if (proc.status === 0 && drift.length > 0) {
+    return {
+      gate,
+      status: 'fail',
+      exitCode: 0,
+      durationMs,
+      output: `generated code drifted from its sources — files:\n${drift}\nrun \`gennady fix ${gate.stack}:${gate.id}\` to materialize, then commit`,
+    };
+  }
+
+  if (gate.outputMeansFailure) {
+    // Output-driven, not exit-code-driven: `gofmt -l` exits 0 with output; `grep`-style gates
+    // exit 1 on the clean no-match case. env-fail/timeout already handled above (review P2).
+    return stdout.trim().length > 0
+      ? { gate, status: 'fail', exitCode: proc.status, durationMs, output: stdout.trim() }
+      : { gate, status: 'pass', exitCode: proc.status, durationMs, output: '' };
+  }
+
+  if (proc.status === 0) {
+    return { gate, status: 'pass', exitCode: 0, durationMs, output: '' };
+  }
+
+  return { gate, status: 'fail', exitCode: proc.status, durationMs, output };
+  // #endregion END_VERDICTS
+}
+
+/**
+ * @purpose Execute every gate of every run, never short-circuiting (RUN-ALL), in the real
+ *   tree behind the clean-tree guard (D-STACK-017); guards are released at the end.
+ * @param runs Per-stack runs whose gate plans are executed in order.
+ * @param diagnostics Detection-level diagnostics carried into the report.
+ * @returns Report whose `ok` is true only when no executed gate failed or timed out.
+ * @sideEffect Process: spawns one external command per executable gate; IO: repo lockfiles.
+ */
+export function runVerify(
+  runs: readonly StackRun[],
+  diagnostics: readonly StackDiagnostic[]
+): VerifyReport {
+  const pool = createGuardPool();
+  let results: GateResult[];
+  try {
+    results = runs.flatMap((run) => run.gates.map((gate) => runGate(gate, pool)));
+  } finally {
+    pool.releaseAll();
+  }
+  const executed = results.filter((result) => result.status !== 'skipped');
+  const passed = executed.filter((result) => result.status === 'pass').length;
+
+  return {
+    runs,
+    diagnostics: [
+      ...diagnostics,
+      ...(pool.unsandboxedSeen() ? [UNSANDBOXED_RUN_DIAGNOSTIC] : []),
+      ...(executed.length === 0 ? [ZERO_GATES_DIAGNOSTIC] : []),
+    ],
+    results,
+    passed,
+    total: executed.length,
+    // A blocking diagnostic means gates could not be planned, so there was nothing left to
+    // fail. Keyed on the diagnostic, not on "zero gates executed": a stack that is legitimately
+    // out of scope executes nothing and must stay green.
+    ok:
+      executed.every((result) => result.status === 'pass') &&
+      !diagnostics.some((diagnostic) => diagnostic.blocking === true),
+  };
+}
+
+/**
+ * @purpose Keep failure output within an agent's context budget: head + tail, middle elided —
+ *   test runners print the failure summary at the end.
+ * @param output Combined tool output.
+ * @returns The output, truncated with an explicit marker when it exceeds the line caps.
+ */
+export function truncateOutput(output: string): string {
+  if (output.length === 0) {
+    return '(no output)';
+  }
+
+  const lines = output.split('\n');
+  if (lines.length <= TRUNCATE_HEAD_LINES + TRUNCATE_TAIL_LINES + 1) {
+    return output;
+  }
+
+  const elided = lines.length - TRUNCATE_HEAD_LINES - TRUNCATE_TAIL_LINES;
+  return [
+    ...lines.slice(0, TRUNCATE_HEAD_LINES),
+    `... (${elided} middle lines truncated — rerun the command above for the full output)`,
+    ...lines.slice(lines.length - TRUNCATE_TAIL_LINES),
+  ].join('\n');
+}
+
+/**
+ * @purpose Render the verify report — quiet on success, detailed and actionable on failure.
+ * @invariant Passing gates contribute zero output lines.
+ * @param report Completed run report.
+ * @returns Text block; a single summary line per stack when everything passed.
+ */
+export function formatVerifyReport(report: VerifyReport): string {
+  const lines: string[] = [];
+
+  for (const diagnostic of report.diagnostics) {
+    if (diagnostic.code === ZERO_GATES_DIAGNOSTIC.code) {
+      // Rendered as the terminal verdict block below, not as a leading warning.
+      continue;
+    }
+    lines.push(`[verify] ⚠️  ${diagnostic.code}: ${diagnostic.message}`);
+    lines.push(`         fix: ${diagnostic.fix}`);
+  }
+
+  for (const result of report.results) {
+    if (result.status === 'skipped') {
+      lines.push(
+        `[verify] ⏭️  SKIP gate: ${result.gate.stack}:${result.gate.id} — ${result.output}`
+      );
+    }
+  }
+
+  // #region START_FAILURE_DETAIL — invariant: every non-pass gate prints command, cwd, exit, output
+  for (const result of report.results) {
+    if (result.status === 'pass' || result.status === 'skipped') {
+      continue;
+    }
+
+    const verdict =
+      result.status === 'timeout'
+        ? 'TIMEOUT'
+        : result.status === 'env-fail'
+          ? 'ENV_FAIL'
+          : result.status === 'violation'
+            ? 'VIOLATION'
+            : 'FAIL';
+
+    lines.push('');
+    lines.push(
+      `[verify] ❌ ${verdict} gate: ${result.gate.stack}:${result.gate.id} — ${result.gate.label}`
+    );
+    if (result.status === 'env-fail') {
+      lines.push(
+        '  note:    the tool itself failed to run — this is NOT a finding about the code.'
+      );
+      lines.push('           Fix the toolchain; do not change source in response to this output.');
+    }
+    if (result.status === 'timeout') {
+      lines.push(
+        '  note:    the gate was killed at its timeout — this is NOT a finding about the code.'
+      );
+      lines.push('           Declare `requires` preconditions, or raise the gate timeout.');
+    }
+    if (result.status === 'violation') {
+      lines.push(
+        '  note:    this gate modified files — a gate observes, never mutates (D-STACK-005).'
+      );
+      lines.push(
+        '           Declare driftMeansFailure: true if drift is its verdict, or move it to fixers.'
+      );
+    }
+    lines.push(`  command: ${result.gate.argv.join(' ')}`);
+    lines.push(`  cwd:     ${result.gate.cwd}`);
+    lines.push(`  exit:    ${result.exitCode ?? 'killed'}`);
+    lines.push('');
+    lines.push('--- captured output ---');
+    lines.push(truncateOutput(result.output));
+    lines.push('--- end ---');
+  }
+  // #endregion END_FAILURE_DETAIL
+
+  if (report.total === 0) {
+    // A run that executed nothing must never read as success (review: ZERO_GATES).
+    const skips = report.results.filter((result) => result.status === 'skipped').length;
+    lines.push(
+      `[verify] ZERO_GATES: nothing was executed (${skips} gate(s) skipped) — verified nothing`
+    );
+    if (skips === 0) {
+      // Nothing was even planned. With anystack matching every repository this is the terminal
+      // message for an unconfigured one, so it carries the guidance NO_STACK_DETECTED used to —
+      // reusing the diagnostic's own text, so the human report and `--json` cannot drift apart.
+      lines.push(`  fix: ${ZERO_GATES_DIAGNOSTIC.fix}`);
+    }
+  } else if (report.diagnostics.some((diagnostic) => diagnostic.blocking === true)) {
+    // Without this line an ok:false run with no failing gate would end with no verdict at all.
+    const codes = report.diagnostics
+      .filter((diagnostic) => diagnostic.blocking === true)
+      .map((diagnostic) => diagnostic.code)
+      .join(', ');
+    lines.push(
+      `[verify] BLOCKED: ${codes} — the gates that matter could not run, so nothing was verified`
+    );
+  } else if (report.ok) {
+    const notes = report.runs
+      .filter((run) => run.gates.length > 0)
+      .map((run) => `${run.detection.stack}: ${run.scope.note}`)
+      .join(' · ');
+    lines.push(`[verify] ALL_GATES_PASS (${report.passed}/${report.total}) — ${notes}`);
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * @purpose Execute fixers in the REAL tree: sequential, fail-fast — they mutate one tree (§4.4).
+ * @param fixers Fixers as Gate data; `driftMeansFailure` is ignored, mutation is expected.
+ * @returns Results up to and including the first non-pass; skipped entries are reported.
+ * @sideEffect Process: runs mutating commands in the working tree.
+ */
+export function runFix(fixers: readonly Gate[]): GateResult[] {
+  const results: GateResult[] = [];
+  for (const fixer of fixers) {
+    const result = runGate({ ...fixer, driftMeansFailure: false }, null);
+    results.push(result);
+    if (result.status !== 'pass' && result.status !== 'skipped') {
+      break;
+    }
+  }
+  return results;
+}
