@@ -4,6 +4,7 @@
 // @tasks: TSK-162
 
 import { logger } from '#logger';
+import { canonicalMrRef } from '../../../../../cli/cmd/inbox/_core/logic/state-paths.logic.ts';
 import type { EventJournal, JournalEntry } from '../../inbox-core/event-journal.ts';
 import type { InboxRegistryAccess } from '../../inbox-core/inbox-registry.ts';
 import type { FeedWidget, FeedWidgetType, FeedProjectionResult } from '../dto/feed-widget.type.ts';
@@ -61,7 +62,7 @@ export class FeedProjection {
     // #region START_QUERY_JOURNAL — read entries since cursor, optionally filter by MR
     const { entries, nextCursor } = this._journal.since(cursor);
     const filtered = mrKey
-      ? entries.filter((e) => e.mr === mrKey)
+      ? entries.filter((e) => canonicalMrRef(e.mr) === canonicalMrRef(mrKey))
       : entries.filter((e) => e.mr !== 'system');
     // #endregion END_QUERY_JOURNAL
 
@@ -110,7 +111,9 @@ export class FeedProjection {
   transcript(mrKey: string): OperatorTurn[] {
     return this._journal
       .read()
-      .filter((entry) => entry.mr === mrKey && entry.kind === 'chat_turn')
+      .filter(
+        (entry) => canonicalMrRef(entry.mr) === canonicalMrRef(mrKey) && entry.kind === 'chat_turn'
+      )
       .map((entry) => entry.payload as OperatorTurn)
       .filter(
         (turn): turn is OperatorTurn =>
@@ -234,6 +237,17 @@ export class FeedProjection {
           line: this._number(item.line),
           summary: this._string(item.summary, ''),
           state: this._string(item.state, 'open'),
+          diff: this._array(item.diff).flatMap((line) => {
+            if (!this._isRecord(line)) return [];
+            return [
+              {
+                type: this._string(line.type, 'context'),
+                num: typeof line.num === 'number' ? line.num : undefined,
+                text: this._string(line.text, ''),
+              },
+            ];
+          }),
+          factcheck: this._string(item.factcheck, 'pending'),
         },
       ];
     });

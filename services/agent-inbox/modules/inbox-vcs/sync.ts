@@ -39,6 +39,11 @@ export type SyncServiceConfig = {
   };
   /** @purpose TSK-174 unified cursor/event coordinator selected by the production composition root. */
   syncCoordinator?: VcsSyncCoordinator;
+  /**
+   * @purpose Publish poll-ready and detail-ready VCS snapshots before slower phases settle.
+   * @param snapshots Complete poll/detail snapshots backed by the current live GitLab observation.
+   */
+  onSnapshotsReady?: (snapshots: SyncSnapshot[]) => void;
 };
 
 /** @purpose Sync snapshot — DTO for inbox-api, board projection, and seed fixtures. */
@@ -63,6 +68,17 @@ export type SyncSnapshot = {
   headSha: string;
   /** @purpose Last head SHA I reviewed (null = never) */
   lastReviewedHeadSha: string | null;
+  /** @purpose Commit time of the current head; null means the provider did not expose it. */
+  headCommittedAt: string | null;
+  /** @purpose Authenticated operator's own review participation; never inferred from aggregate thread counts. */
+  operatorReview?: {
+    /** @purpose Whether the operator currently has an approval on the MR. */
+    approved: boolean;
+    /** @purpose Whether the operator has left at least one non-system discussion note. */
+    commented: boolean;
+    /** @purpose Whether the canonical VCS journal last observed the operator's approval being removed. */
+    approvalReset: boolean;
+  };
   /** @purpose ISO timestamp of the MR update */
   updatedAt: string;
   /** @purpose Whether attention was computed from poll-only fields */
@@ -93,6 +109,8 @@ type PollFields = {
   draft: boolean;
   /** @purpose ISO updatedAt timestamp */
   updatedAt: string;
+  /** @purpose ISO timestamp of the current head commit. */
+  headCommittedAt: string | null;
 };
 
 /**
@@ -116,6 +134,8 @@ export class SyncService {
   protected _canonicalReview: SyncServiceConfig['canonicalReview'];
   /** @purpose Optional unified coordinator replacing transitional aggregate-only ingestion. */
   protected _syncCoordinator: VcsSyncCoordinator | undefined;
+  /** @purpose Optional early publication seam for latency-sensitive read projections. */
+  protected _onSnapshotsReady: SyncServiceConfig['onSnapshotsReady'];
   /** @purpose Per-MR cancellation handles for superseded quiet/debounce deadlines. */
   protected _verificationTimers = new Map<string, { cancel(): void }>();
 
@@ -140,6 +160,7 @@ export class SyncService {
       config?.sleep ?? ((delayMs) => new Promise((resolve) => setTimeout(resolve, delayMs)));
     this._canonicalReview = config?.canonicalReview;
     this._syncCoordinator = config?.syncCoordinator;
+    this._onSnapshotsReady = config?.onSnapshotsReady;
   }
 
   /**
@@ -150,11 +171,33 @@ export class SyncService {
   async twoTierSync(): Promise<SyncSnapshot[]> {
     logger.debug('[SyncService#twoTierSync] [idle → polling]');
 
+    // A complete poll-tier board is already useful product truth. Publish it before sequential
+    // detail/discussion enrichment so one slow MR cannot keep every other current MR invisible.
     // #region START_POLL_TIER — single cheap GraphQL call for all actionable MRs
     const mrs = await this._getInboxWithRetryAfter();
     logger.info('[SyncService#twoTierSync] [polling → poll_fetched]', { count: mrs.length });
 
     await this._resolveMyLogin();
+
+    const pollSnapshots = mrs.map((mr) => {
+      const poll = this._extractPollFields(mr);
+      const lastReviewedHeadSha = this._readLastReviewedHeadSha(poll.webUrl);
+      const attention = deriveAttention({
+        myRole: poll.myRole,
+        myLogin: this._myLogin ?? '',
+        lastReviewedHeadSha,
+        headSha: poll.headSha,
+        threads: [],
+        approvals: {
+          n: poll.approvals.n,
+          m: poll.approvals.m,
+          approvedByMe: this._myLogin ? poll.approvedBy.includes(this._myLogin) : false,
+        },
+        estimated: true,
+      });
+      return this._buildSnapshot(mr, poll, attention, lastReviewedHeadSha, []);
+    });
+    this._onSnapshotsReady?.(pollSnapshots);
 
     const snapshots: SyncSnapshot[] = [];
     for (const mr of mrs) {
@@ -223,23 +266,40 @@ export class SyncService {
     }
     // #endregion END_POLL_TIER
 
+    // Match the CLI's reaction policy once discussion-derived stages are known. Reviewers remain
+    // visible until formal approval; authors waiting on others and idle mentions leave the queue.
+    const actionableSnapshots = snapshots.filter(
+      (snapshot) =>
+        !(
+          (snapshot.stage === 'awaiting_reply' && snapshot.role !== 'reviewer') ||
+          (snapshot.stage === 'idle' && snapshot.role !== 'author')
+        )
+    );
+
+    // The board only needs the completed poll/detail observation. Canonical reconciliation may
+    // perform several additional reads per MR and must not hold already-observed cards hostage.
+    this._onSnapshotsReady?.(actionableSnapshots);
+
     if (this._canonicalReview) {
       if (this._syncCoordinator) {
         await this._syncCoordinator.synchronize(
-          snapshots.map((snapshot) => ({ project: snapshot.mr.project, iid: snapshot.mr.iid }))
+          actionableSnapshots.map((snapshot) => ({
+            project: snapshot.mr.project,
+            iid: snapshot.mr.iid,
+          }))
         );
-        await this._recordCanonicalReviewObservations(snapshots, false);
+        await this._recordCanonicalReviewObservations(actionableSnapshots, false);
       } else {
-        await this._recordCanonicalReviewObservations(snapshots);
+        await this._recordCanonicalReviewObservations(actionableSnapshots);
       }
     }
 
     logger.info('[SyncService#twoTierSync] [polling → completed]', {
-      total: snapshots.length,
-      active: snapshots.filter((s) => !s.estimated).length,
-      estimated: snapshots.filter((s) => s.estimated).length,
+      total: actionableSnapshots.length,
+      active: actionableSnapshots.filter((s) => !s.estimated).length,
+      estimated: actionableSnapshots.filter((s) => s.estimated).length,
     });
-    return snapshots;
+    return actionableSnapshots;
   }
 
   /**
@@ -417,6 +477,7 @@ export class SyncService {
       pipelineStatus: mr.pipelineStatus ?? null,
       draft: mr.draft,
       updatedAt: mr.updatedAt,
+      headCommittedAt: mr.headCommittedAt ?? null,
     };
   }
 
@@ -534,6 +595,10 @@ export class SyncService {
         !d.notes.some((n) => n.author === this._myLogin && !n.system)
       );
     }).length;
+    const approvedByMe = this._myLogin ? poll.approvedBy.includes(this._myLogin) : false;
+    const commentedByMe = discussions.some((discussion) =>
+      discussion.notes.some((note) => note.author === this._myLogin && !note.system)
+    );
 
     return {
       mr,
@@ -554,8 +619,47 @@ export class SyncService {
       },
       headSha: poll.headSha,
       lastReviewedHeadSha,
+      headCommittedAt: poll.headCommittedAt,
+      operatorReview: {
+        approved: approvedByMe,
+        commented: commentedByMe,
+        approvalReset:
+          !approvedByMe &&
+          this._wasOperatorApprovalReset(`${poll.project}!${poll.iid}`, this._myLogin),
+      },
       updatedAt: poll.updatedAt,
       estimated: attention.estimated,
     };
+  }
+
+  /**
+   * @purpose Recover an explicit GitLab approval reset for the authenticated operator from canonical history.
+   * @invariant A stale historical removal is ignored when a later approval event exists.
+   * @param mrRef Composite MR identity.
+   * @param login Authenticated GitLab username, or null before identity resolution.
+   * @returns True only when the latest approval event for this operator and MR removed approval.
+   */
+  protected _wasOperatorApprovalReset(mrRef: string, login: string | null): boolean {
+    if (!login || !this._canonicalReview) return false;
+    const [project, iid] = mrRef.split('!');
+    const matching = this._canonicalReview.journal.read().filter((entry) => {
+      const canonical = entry as unknown as {
+        mr?: string | { project?: string; iid?: string };
+        kind?: string;
+        payload?: { userId?: string; approved?: boolean };
+      };
+      const eventRef =
+        typeof canonical.mr === 'string'
+          ? canonical.mr
+          : `${canonical.mr?.project ?? ''}!${canonical.mr?.iid ?? ''}`;
+      return (
+        canonical.kind === 'approval_changed' &&
+        eventRef === `${project}!${iid}` &&
+        canonical.payload?.userId === login &&
+        typeof canonical.payload.approved === 'boolean'
+      );
+    });
+    const latest = matching.at(-1) as unknown as { payload?: { approved?: boolean } } | undefined;
+    return latest?.payload?.approved === false;
   }
 }

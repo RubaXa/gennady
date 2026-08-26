@@ -1,5 +1,5 @@
-// @file: live-monitor.spec.ts — песочница: следит за живым ревью от старта до финиша
-// Запуск: npx playwright test --config=e2e/inbox-serve/playwright.review-flow.config.ts live-monitor.spec.ts
+// @file: live-monitor.spec.ts — sandbox: tracks a live review from start to finish.
+// @consumers: npx playwright test --config=e2e/inbox-serve/playwright.review-flow.config.ts
 
 import { test, expect, type Page } from '@playwright/test';
 import { resolve, dirname } from 'node:path';
@@ -9,6 +9,7 @@ import type { BootstrapResult } from '../../../services/agent-inbox/serve/bootst
 import { bootReal, makeStateDir, teardown, MR_URL, MR_REF } from './_support.ts';
 import { mrReportsDir } from '../../../cli/cmd/inbox/_core/logic/state-paths.logic.ts';
 import { join } from 'node:path';
+import { logger } from '#logger';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SHOTS_DIR = resolve(__dirname, '..', 'test-results', 'screenshots');
@@ -43,7 +44,7 @@ test.describe('Живое наблюдение за ревью MR', () => {
     const seenNodes = new Set<string>();
 
     function note(msg: string) {
-      console.log(msg);
+      logger.info(msg);
       log.push(msg);
     }
 

@@ -108,14 +108,19 @@
        `AX_CHANGE_MAP` in arch-interrogation): entities/components as nodes coloured by change type
        (🆕/✏️/🗑️/↪︎), files annotated, greyed neighbors, one caption "что произошло". An answer that
        is just a link to the MR, with no visual, is forbidden.
-    2. **Everything in chat must render; a visual is mandatory.** Relational meaning (file map, C4,
-       flows, delta) → a picture, not prose. WHICH diagram fits which intent (and its ASCII/Mermaid
-       syntax) — `INCLUDE_ONCE("ai/directives/agent-inbox/visual-vocabulary.directive.xml")` (not
-       everything is a flowchart). Medium: **if `mcp__visualize__show_widget` is present → render
-       with the widget** (best for visualization — use it); no widget → ASCII+emoji as fallback.
-       Declare the medium as the first line (action 0). Choice/approval — `AskUserQuestion`. Never
-       send Mermaid/SVG to chat (Mermaid is for posting to the VCS, which renders it natively). Do
-       not emit markup the chat cannot render.
+    2. **Everything in chat must render; a visual is mandatory — in EVERY outcome, for EVERY MR.**
+       Relational meaning (file map, C4, flows, delta) → a picture, not prose. WHICH diagram fits
+       which intent (and its ASCII/Mermaid syntax) —
+       `INCLUDE_ONCE("ai/directives/agent-inbox/visual-vocabulary.directive.xml")` (not everything is
+       a flowchart). Medium: **if `mcp__visualize__show_widget` is present → render with the widget**
+       (best for visualization — use it); no widget → ASCII+emoji. The absence of the widget does NOT
+       excuse the absence of the diagrams: one of the two mediums MUST render them. Declare the medium
+       as the first line (action 0). Choice/approval — `AskUserQuestion`. Never send Mermaid/SVG to
+       chat (Mermaid is for posting to the VCS, which renders it natively). Do not emit markup the
+       chat cannot render.
+       **The change map (invariant 1) and the comprehension ladder (change map + C4 + behaviour +
+       scenarios) are DIFFERENT diagrams — all four are emitted in chat as separate blocks. The change
+       map does NOT replace C4/behaviour/scenarios.**
     3. **Operator language — Russian** (`AX_OPERATOR_LANGUAGE`); code/identifiers/paths/CLI/tokens —
        English.
     4. **Co-reviewer, not a secretary.** Come to every thread and candidate with a READY decision and
@@ -209,7 +214,7 @@
     | **MR context** | `npx gennady inbox-context --url <webUrl> --json-file [--skip-worktree] [--skip-threads]` | ONE call, compact stdout. `--json-file` writes the full context to `<reportsDir>/context.json` and prints a compact summary (`{"file","ref","title","webUrl","myRole","stage","author","headChanged","changeset","reviewPlanRequired"}`) — avoids pipe buffer truncation. Read the file with `Read(offset, limit)` when deeper fields are needed (worktree, newCommits, changeset.files). `--json` (no file, full dump to stdout) is available but deprecated for agent use. `reviewPlanRequired: true` → `inbox-review-plan` needed. |
     | **Review plan** | `npx gennady inbox-review-plan --path <worktree.path> --base <sha> [--scaffold --ref <ref>] [--validate <dir> [--stage enriched\|filled]]` | Whenever `reviewPlanRequired == true`. No flags — `ReviewPlan { mode, tracks[] }` (dispatch plan). `--scaffold` materializes task files → orchestrator enriches Context → subagents fill → `--validate` (document pipeline; details below, "Review pipeline"). The agent does not think, it executes. |
     | Working copy | `npx gennady vcs-worktree --url <webUrl>` · `--cleanup <path>` (manual, not in flow) | read-only code + `diff_refs`. Reused across sessions, auto-GC by TTL (7 days from last `inbox-context`). The agent NEVER removes a worktree explicitly. |
-    | Threads | `npx gennady vcs-discussions --url <webUrl> --all` · `--draft` | what was already written / my drafts |
+    | Threads | `npx gennady vcs-discussions --url <webUrl> --all --json-file` · `--json` · `--my --with-drafts` | `--json-file` = PREFERRED: writes full threads to `<reportsDir>/discussions.json` AND prints a compact summary `{file, total, summary[]}` (each `summary[]` row = `shortId`/`resolved`/`author`/`body`/`file`/`line`/`mine`) — read the file with `Read`, never parse stdout. `--my` filters to my threads; `--my --with-drafts` adds my drafts |
     | CI | `npx gennady vcs-pipeline --url <webUrl> [--all] [--logs] [--json] [--status <s>]` · `vcs-job ... --action status\|play\|cancel\|retry` · `vcs-job-log ... [--raw]` | `--all --logs` = passed+failed+failed logs; `--status failed` default; jobs — restart/cancel; `--raw` — raw log |
     | Posting | `npx gennady vcs-reply --url <webUrl>` (JSON array on stdin) | replies/comments/threads/resolve/edit/suggestion |
     | React | `npx gennady vcs-react --url <webUrl> --comment <noteId> --emoji <name>` | emoji reaction on a note (👍 `thumbsup` · 🚀 `rocket` · ❤️ `heart` · 🎉 `hooray` · 👀 `eyes`). This is the ONLY way to react — never type an emoji into a comment body. `noteId` = `vcs-discussions --json` → `notes[].id` (a NOTE id, not `discussionId`) |
@@ -324,11 +329,17 @@
          own code-review skills over `base..HEAD` (bugs/correctness) — findings into the shared report.
        The review battery ALWAYS runs in a subagent — never in this session (`AX_INDEPENDENT_ANALYSIS`);
        `inline` = one subagent, `fan_out` = one per track. Each review subagent gets this remit:
-       > ⚠️ **REMIT:** before any output on the MR `RE_READ("arch-interrogation.directive.xml")` in
-       > full, ignoring prior knowledge. Follow `OutputFormat` literally (all sections, order,
-       > separators), run `SelfCheck`, compare against `RE_READ("golden-chat-output.example.md")`. The
-       > entire `BeliefState` (`AX_*`), `InterrogationBattery`, `PackageExtractionGate`, `VerdictModel`,
-       > `HaltConditions` — mandatory in full, not a subset.
+        > ⚠️ **REMIT:** before any output on the MR `RE_READ("arch-interrogation.directive.xml")` in
+        > full, ignoring prior knowledge. Follow `OutputFormat` literally (all sections, order,
+        > separators), run `SelfCheck`, compare against `RE_READ("golden-chat-output.example.md")`. The
+        > entire `BeliefState` (`AX_*`), `InterrogationBattery`, `PackageExtractionGate`, `VerdictModel`,
+        > `HaltConditions` — mandatory in full, not a subset.
+        > **Output contract (the orchestrator's `--validate` enforces it — return nothing that fails it):**
+        > fill `## Находки`, `## Кандидаты`, `## Вердикт`; drop every `<!-- FILL -->` marker; `Ось` ∈
+        > `A`–`G` or a probe code (`NAT`/`IDIOM`/`LIT`/`DEP`/`GLOBAL`/`TEST`/`SEC`/`BIZ`/`TYPO`), `Вид` ∈
+        > `new-line-comment`/`reply-to-thread`/`correction-reply`/`awaiting-my-reply`/`suggestion`;
+        > Russian prose with no banned words (`фикса`, `гейт`, `блокер`, `medium`, calques…); no
+        > unescaped `|` inside a table cell.
 
        Subagent input — ONE path to its task file (document pipeline, "Review pipeline" Step 3):
        `ref`/`webUrl`/`diff_refs`/`path`/`base`/`prior_threads`/`my_drafts`/`my_login` are already in
@@ -459,13 +470,13 @@
 
     ## Step 0a — Drafts and discussion context (BEFORE review)
     Drafts are a temporary investigation tool, not a permanent artifact; removed after review.
-    1. Load drafts and my threads: `vcs-discussions --url <webUrl> --my --with-drafts --json` →
+    1. Load drafts and my threads: `vcs-discussions --url <webUrl> --my --with-drafts --json-file` →
        `my_drafts` = investigation vector; `my_threads` = what I already wrote (dedup).
     2. Pass to subagents via the task file's Context (not separate fields): `prior_threads` +
        `my_drafts` + `my_login` are folded into `## Контекст` at Step 2, with `worktree.path`,
        `diff_refs`, `base`, `ref`, `webUrl` — the subagent gets ONE file path, everything else inside.
     3. AFTER review, BEFORE posting (Step 4): `vcs-draft-note --delete-all` (drafts served their
-       purpose) then `vcs-discussions --url <webUrl> --all --json`. Reconcile duplicates
+       purpose) then `vcs-discussions --url <webUrl> --all --json-file`. Reconcile duplicates
        (`AX_POSTING_NO_DUPLICATES`); apply `<ThreadModel>` + `ReactionMatrix` to peer threads
        (peer-said-same → 👍 WITHOUT resolve, owner closes; my duplicate of a peer → resolve MINE;
        peer-said-different → reply).
@@ -473,7 +484,7 @@
     ## Step 1 — Scout
     Role fork:
     - `myRole=author` → load `arch-interrogation` in `<AuthorMode>`. Load ALL reviewer comments first —
-      `vcs-discussions --url <webUrl> --all --json` (not `--my`) — they are the main input. Priority:
+      `vcs-discussions --url <webUrl> --all --json-file` (not `--my`) — they are the main input. Priority:
       `role=author` + `headChanged != none` → `update-review` first, then `AuthorMode`. `headChanged ==
       none` → straight to `AuthorMode`.
     - `myRole=reviewer` → standard adversarial review via `arch-interrogation`.
@@ -566,6 +577,18 @@
     not paste raw md/`mermaid` into chat (chat does not render it). Links — markdown `[…](…)` (invariant
     6). Files — for the VCS/orchestration, chat — for the operator (rule 8).
 
+    **H_CHAT_DIAGRAM_COUNT — hard stop before ending the turn.** Count the mermaid blocks in the
+    README.md sections «Карта изменения» + «## Архитектура» + «## Поведение» + «## Сценарии»
+    (minus any explicit `n/a — <причина>`). The chat reply MUST render that many diagram blocks
+    (ASCII or widget), one per block. Fewer → do NOT end the turn: emit the missing blocks. A link to
+    the README file never replaces a single block.
+
+    **Diagram manifest — mandatory closing line of every chat reply.** The chat reply ends with a
+    literal manifest line listing which of the four diagrams were actually rendered:
+    `Схемы в чате: карта ✓ · C4 ✓ · поведение ✓ · сценарии n/a — <причина>`
+    (`✓` only if the block is truly rendered above in ASCII/widget; `n/a` only for a trivial MR, with
+    a reason). No manifest line → the reply is defective, redo it.
+
     ## STOP-CHECK (before chat output)
     Run the SelfCheck from `RE_READ("arch-interrogation.directive.xml")` (items 0–6), plus:
     | # | Check | ok? |
@@ -577,7 +600,7 @@
     | — | Synthesis (README.md/HISTORY.md) assembled from task files on disk, not from retellings | □ |
     | — | `--validate` (filled) passed: README has the C4 Mermaid + Поведение/Сценарии filled or `n/a — <причина>` | □ |
     | — | Comprehension ladder present (`AX_COMPREHENSION_LADDER`): change map + C4 (always) + behaviour (sequence\|before→after) + use-cases; trivial MR may collapse with n/a+reason | □ |
-    | — | Chat is a projection of the validated README (all ladder diagrams projected to widget/ASCII), not a fresh composition | □ |
+    | — | H_CHAT_DIAGRAM_COUNT: chat rendered ≥ (non-n/a mermaid blocks in README «Карта изменения»+«## Архитектура»+«## Поведение»+«## Сценарии»), each as a real ASCII/widget block; diagram manifest line present | □ |
     | — | Header and footer of chat output — markdown `[ref](webUrl)` (clickable); artifact paths too (invariant 6) | □ |
     | — | Relational rendered by the medium per action 0 — widget if present, ASCII only as fallback (invariant 2) | □ |
     | — | Finalization Ask fired (step 7) — approve / non-blocking comments / my note as checkboxes; NOT a bare "recommend approve" | □ |

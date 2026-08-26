@@ -84,6 +84,8 @@ export type VcsActionableMr = {
   todoIds: string[];
   /** @purpose Head commit SHA from GraphQL | @invariant May be absent for poll-only tier; filled by detail tier via getByIid */
   headSha?: string;
+  /** @purpose ISO commit time of the current head, used as the auto-review quiet-window anchor. */
+  headCommittedAt?: string;
   /** @purpose CI pipeline status from GraphQL headPipeline | @invariant May be absent for poll-only; filled by detail tier */
   pipelineStatus?: string;
   /** @purpose Number of required approvals from project settings | @invariant May be absent when not exposed by VCS */

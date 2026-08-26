@@ -360,44 +360,4 @@ describe('MrRouter — GET /api/mr/:id/audit', () => {
   });
 });
 
-describe('RoleRouter — POST /api/role/:name/activate', () => {
-  let server: HttpServer;
-  let provider: BoardProviderMock;
-  let port: number;
-
-  before(async () => {
-    provider = new BoardProviderMock();
-    provider.seed({ roles: [{ name: 'reviewer', active: true }], unassigned: [] });
-    server = new HttpServer({ port: 0, boardProvider: provider });
-    await server.start();
-    port = server.listeningPort() ?? assert.fail('Expected kernel-assigned port');
-  });
-
-  after(async () => {
-    await server.stop();
-  });
-
-  it('returns the canonical invalid_input envelope for a malformed activation', async () => {
-    const { status, data } = await fetchJson('POST', '/api/role/reviewer/activate', port, {});
-
-    assert.strictEqual(status, 400);
-    assert.deepStrictEqual(data, {
-      error: {
-        code: 'invalid_input',
-        message: 'Missing required field: active',
-        anchor: 'active',
-      },
-    });
-  });
-
-  it('returns the canonical not_found envelope for an unknown role', async () => {
-    const { status, data } = await fetchJson('POST', '/api/role/unknown/activate', port, {
-      active: true,
-    });
-
-    assert.strictEqual(status, 404);
-    assert.deepStrictEqual(data, {
-      error: { code: 'not_found', message: 'Role not found: unknown', anchor: 'role' },
-    });
-  });
-});
+// RoleRouter retired per D-API-02 (TSK-179 P1); route POST /api/role/:name/activate removed.

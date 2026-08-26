@@ -14,6 +14,7 @@ import { test, expect } from '@playwright/test';
 import type { BootstrapResult } from '../../../services/agent-inbox/serve/bootstrap.ts';
 import { bootReal, makeStateDir, teardown, MR_URL, MR_REF, BASE_URL } from './_support.ts';
 import { shot } from '../helpers/shot.ts';
+import { logger } from '#logger';
 
 let app: BootstrapResult | undefined;
 let stateDir: string | undefined;
@@ -37,8 +38,7 @@ test.describe('t8 gate action dry-run', () => {
       await app.scheduler.tick();
       ticks++;
       const inst = app.scheduler.findInstance(MR_URL);
-      // eslint-disable-next-line no-console -- D-125: localizes a stall to a node, not a bare timeout
-      console.info(
+      logger.info(
         `[t8] tick ${ticks} ${Date.now() - t0}ms — state=${inst?.state ?? 'none'} node=${inst?.currentNode ?? 'n/a'}`
       );
       // node_ask is the only currentNode this test's action can act on (setAnswer+step) — role-instance.ts's
@@ -127,8 +127,8 @@ test.describe('t8 gate action dry-run', () => {
 
     // effectApplied can flip true as early as the FIRST tick above (node_effect ran synchronously
     // server-side) — but emitDryRun's SSE broadcast still has to travel HTTP response stream →
-    // network → browser EventSource → onmessage → console.info, all asynchronous relative to the
-    // tick() call that triggered it. Asserting immediately races that delivery; poll briefly instead.
+    // network → browser EventSource → onmessage → page.on('console'), all asynchronous relative to
+    // the tick() call that triggered it. Asserting immediately races that delivery; poll briefly instead.
     for (let i = 0; i < 10 && dryRunLines.length === 0; i++) {
       await page.waitForTimeout(300);
     }

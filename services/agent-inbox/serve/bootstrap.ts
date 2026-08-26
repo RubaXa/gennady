@@ -1,6 +1,6 @@
 // @file: Bootstrap — DI composition for agent-inbox serve: creates all services, wires them together.
 // @consumers: gennady inbox serve CLI, e2e tests
-// @tasks: TSK-115, TSK-117, TSK-122, TSK-123, TSK-157, TSK-158, TSK-160, TSK-161, TSK-163, TSK-170, TSK-172, TSK-173, TSK-174, TSK-175
+// @tasks: TSK-115, TSK-117, TSK-122, TSK-123, TSK-157, TSK-158, TSK-160, TSK-161, TSK-163, TSK-170, TSK-172, TSK-173, TSK-174, TSK-175, TSK-181, TSK-184, TSK-190
 
 import { execSync, spawn, type ChildProcess } from 'node:child_process';
 import { writeFile, mkdir, readFile, unlink } from 'node:fs/promises';
@@ -12,9 +12,8 @@ import { Agent as UndiciAgent } from 'undici';
 import { logger } from '#logger';
 import { isOpencodePid, terminateOrphanedOpencode } from './pid-utils.ts';
 import { StateStore } from '../modules/inbox-core/state-store.ts';
-import { VcsInboxMock } from '../modules/inbox-core/vcs-inbox.mock.ts';
-import { VcsInboxReal } from '../modules/inbox-core/vcs-inbox.real.ts';
 import { VcsGitlabPort } from '../modules/inbox-vcs/vcs-gitlab.port.ts';
+import { VcsInboxReal } from '../modules/inbox-core/vcs-inbox.real.ts';
 import type { VcsEffectPort, VcsPort } from '../modules/inbox-vcs/vcs-port.ts';
 import { selectVcsRuntime } from '../modules/inbox-vcs/vcs-runtime.ts';
 import { SyncService } from '../modules/inbox-vcs/sync.ts';
@@ -27,14 +26,14 @@ import { DecisionJournal } from '../modules/inbox-core/decision-journal.ts';
 import { BootReadiness } from '../modules/inbox-core/boot-readiness.ts';
 import { InboxRegistryAccess } from '../modules/inbox-core/inbox-registry.ts';
 import { CapabilityModes } from '../modules/inbox-core/capability-modes.ts';
-import { mrKey } from '../../../cli/cmd/inbox/_core/logic/state-paths.logic.ts';
+import { canonicalMrRef, mrKey } from '../../../cli/cmd/inbox/_core/logic/state-paths.logic.ts';
 import { InMemoryTaskQueue } from '../modules/inbox-queue/task-queue.ts';
 import { TaskRegistry } from '../modules/inbox-queue/task-registry.ts';
 import { SessionRouter } from '../modules/inbox-queue/session-router.ts';
 import { PipelineRuntime } from '../modules/inbox-pipeline/pipeline-runtime.ts';
 import { VcsGitlabClient } from '../../vcs-client/gitlab/vcs-gitlab-client.ts';
-import type { VcsInboxPort } from '../modules/inbox-core/vcs-inbox.port.ts';
 import { OpenCodeMock } from '../modules/inbox-opencode/opencode.mock.ts';
+import { OpenCodeDynamicMock } from '../modules/inbox-opencode/opencode.dynamic-mock.ts';
 import { OpenCodeReal } from '../modules/inbox-opencode/opencode.real.ts';
 import {
   OpenCodePort,
@@ -45,16 +44,18 @@ import {
   type OpenCodeMessage,
 } from '../modules/inbox-opencode/opencode.port.ts';
 import { composeError, type OpenCodeCallResult } from '../modules/inbox-opencode/errors.ts';
-import { RoleEngine } from '../modules/inbox-roles/role-engine.ts';
-import { RoleScheduler } from '../modules/inbox-roles/role-scheduler.ts';
+import {
+  DEFAULT_AGENT_INBOX_MODEL,
+  parseOpenCodeModel,
+} from '../modules/inbox-opencode/model-selection.ts';
 import { SessionPool } from '../modules/inbox-opencode/session-pool.ts';
 import { SessionRegistry } from '../modules/inbox-opencode/session-registry.ts';
 import { SessionLifecycle } from '../modules/inbox-opencode/session-lifecycle.ts';
 import { HttpServer } from '../modules/inbox-api/http-server.ts';
 import { BoardProviderMock } from '../modules/inbox-api/board-provider.mock.ts';
-import { BoardProviderReal } from '../modules/inbox-api/board-provider.real.ts';
+import { BoardProviderDisk, scanDiskCardSeeds } from '../modules/inbox-api/board-provider.disk.ts';
 import { seedDevData } from '../modules/inbox-serve/dev-seed.ts';
-import { setDryRun, isDryRun, setDryRunRecorder } from '../modules/inbox-core/dry-run.ts';
+import { setDryRun, setDryRunRecorder } from '../modules/inbox-core/dry-run.ts';
 import {
   BootstrapSafetyError,
   ReviewRuntimeProfile,
@@ -66,7 +67,7 @@ import {
 import type { ReviewRuntimeProfileSpec } from '../modules/inbox-core/types/review-runtime-profile-spec.type.ts';
 import type { ReviewRuntimeRoots } from '../modules/inbox-core/types/review-runtime-roots.type.ts';
 import type { ReviewRuntimeBinding } from '../modules/inbox-core/types/review-runtime-binding.type.ts';
-import type { buildNodeContext } from '../modules/inbox-roles/context-builder.ts';
+import { runMrsOnce } from './run-mode.ts';
 
 // ═══════════════════════════════════════════════════════════════
 // Degraded OpenCode adapter — returns SESSION_ERROR for all prompts.
@@ -128,6 +129,27 @@ class DegradedOpencode extends OpenCodePort {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// Lifecycle coordinator shim — backward-compat surface for CLI consumers while the
+// role scheduler is being retired. All review execution goes through PipelineRuntime.
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * @purpose No-op lifecycle coordinator shim.
+ * @invariant CLI consumers (serve.cmd.ts) still call tick()/advanceInstances()/stop() through this
+ *   interface; all substantive review execution is owned by PipelineRuntime after TSK-181 migration.
+ */
+class NoOpScheduler {
+  async tick(): Promise<void> {}
+  async advanceInstances(): Promise<void> {}
+  async stop(): Promise<void> {}
+  async assignManual(
+    _mrId: string,
+    _role: string,
+    _rights?: Record<string, unknown>
+  ): Promise<void> {}
+}
+
+// ═══════════════════════════════════════════════════════════════
 // Bootstrap helpers
 // ═══════════════════════════════════════════════════════════════
 
@@ -182,7 +204,11 @@ async function retryOpencodeConnect(
   const url = `http://localhost:${port}/`;
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    logger.debug(`[bootstrap] opencode health check attempt ${attempt}/${maxRetries}`);
+    logger.debug('[retryOpencodeConnect] [idle → probing]', {
+      port,
+      attempt,
+      maxRetries,
+    });
 
     try {
       const controller = new AbortController();
@@ -193,13 +219,20 @@ async function retryOpencodeConnect(
       if (response.status > 0) {
         // opencode requires auth on all endpoints (returns 401) — any HTTP
         // response proves the server is alive and listening
-        logger.info('[bootstrap] opencode server is reachable');
+        logger.info('[retryOpencodeConnect] [probing → connected]', {
+          port,
+          attempt,
+          statusCode: response.status,
+        });
         return true;
       }
     } catch (cause) {
-      logger.debug('[bootstrap] opencode health check failed', {
+      const error = cause instanceof Error ? cause : new Error(String(cause));
+      logger.debug('[retryOpencodeConnect] [probing → retrying]', {
+        port,
         attempt,
-        error: (cause as Error).message,
+        maxRetries,
+        error,
       });
     }
 
@@ -208,7 +241,7 @@ async function retryOpencodeConnect(
     }
   }
 
-  logger.warn('[bootstrap] opencode server unreachable after all retries');
+  logger.warn('[retryOpencodeConnect] [probing → unreachable]', { port, maxRetries });
   return false;
 }
 
@@ -230,6 +263,10 @@ async function spawnOpencode(
   // Auth on it — while our SDK client never sends credentials (observed: 401 empty body
   // on POST /session, surfacing only as a generic 'Session creation failed').
   const childEnv = { ...process.env };
+  const opencodeRuntimeRoot = join(cwd, 'agent-inbox', 'opencode-runtime');
+  await mkdir(opencodeRuntimeRoot, { recursive: true });
+  childEnv.XDG_DATA_HOME = join(opencodeRuntimeRoot, 'data');
+  childEnv.XDG_CACHE_HOME = join(opencodeRuntimeRoot, 'cache');
   let strippedServerAuth = false;
   for (const key of ['OPENCODE_SERVER_USERNAME', 'OPENCODE_SERVER_PASSWORD'] as const) {
     if (childEnv[key] !== undefined) {
@@ -244,9 +281,7 @@ async function spawnOpencode(
   }
 
   for (let attempt = 1; attempt <= maxSpawnRetries; attempt++) {
-    logger.info(
-      `[bootstrap] spawning opencode serve on port ${port} (attempt ${attempt}/${maxSpawnRetries})`
-    );
+    logger.info('[spawnOpencode] [idle → spawning]', { port, attempt, maxSpawnRetries });
 
     let proc: ChildProcess;
     try {
@@ -259,18 +294,20 @@ async function spawnOpencode(
 
       // Forward opencode stdout/stderr to logger for diagnostics
       proc.stdout?.on('data', (data: Buffer) => {
-        logger.debug(`[opencode:stdout] ${data.toString().trim()}`);
+        logger.debug('[spawnOpencode] [running → stdout]', { line: data.toString().trim() });
       });
       proc.stderr?.on('data', (data: Buffer) => {
-        logger.debug(`[opencode:stderr] ${data.toString().trim()}`);
+        logger.debug('[spawnOpencode] [running → stderr]', { line: data.toString().trim() });
       });
       proc.on('error', (err: Error) => {
-        logger.warn('[bootstrap] opencode child process error', { error: err.message });
+        logger.warn('[spawnOpencode] [running → child_error]', { port, error: err });
       });
     } catch (cause) {
-      logger.warn('[bootstrap] failed to spawn opencode', {
+      const error = cause instanceof Error ? cause : new Error(String(cause));
+      logger.warn('[spawnOpencode] [spawning → failed]', {
+        port,
         attempt,
-        error: (cause as Error).message,
+        error,
       });
       continue;
     }
@@ -282,7 +319,8 @@ async function spawnOpencode(
 
       // Check if process exited prematurely
       if (proc.exitCode !== null) {
-        logger.warn('[bootstrap] opencode process exited early', {
+        logger.warn('[spawnOpencode] [starting → exited]', {
+          port,
           exitCode: proc.exitCode,
           attempt,
         });
@@ -298,11 +336,22 @@ async function spawnOpencode(
         if (response.status > 0) {
           // opencode requires auth on all endpoints — any response proves it is alive
           healthy = true;
-          logger.info('[bootstrap] opencode serve is reachable (spawned)');
+          logger.info('[spawnOpencode] [starting → connected]', {
+            port,
+            attempt,
+            statusCode: response.status,
+          });
           break;
         }
-      } catch {
-        logger.debug(`[bootstrap] opencode health check ${hc}/${maxHealthChecks}`);
+      } catch (cause) {
+        const error = cause instanceof Error ? cause : new Error(String(cause));
+        logger.debug('[spawnOpencode] [starting → probing]', {
+          port,
+          attempt,
+          healthCheck: hc,
+          maxHealthChecks,
+          error,
+        });
       }
     }
 
@@ -311,7 +360,7 @@ async function spawnOpencode(
     }
 
     // Spawn failed — kill the process and retry
-    logger.warn('[bootstrap] opencode spawn attempt failed, killing process');
+    logger.warn('[spawnOpencode] [starting → terminating]', { port, attempt });
     try {
       proc.kill('SIGTERM');
     } catch {
@@ -319,8 +368,77 @@ async function spawnOpencode(
     }
   }
 
-  logger.warn('[bootstrap] opencode spawn failed after all retries');
+  logger.warn('[spawnOpencode] [spawning → exhausted]', { port, maxSpawnRetries });
   return null;
+}
+
+/** @purpose Managed OpenCode connection owned by one bounded one-shot runtime. */
+export type ManagedRunModeOpenCode = {
+  /** @purpose OpenCode client port used to drive agent sessions */
+  opencode: OpenCodePort;
+  /** @purpose Spawned child process, or null when attached to an operator-run instance */
+  process: ChildProcess | null;
+  /** @purpose PID file path for a spawned child, or null when attached */
+  pidFile: string | null;
+  /** @purpose Resolved TCP port the OpenCode instance listens on */
+  port: number;
+};
+
+/**
+ * @purpose Connect to a healthy operator-selected OpenCode or spawn one managed child for one-shot acceptance.
+ * @invariant A direct adapter is never returned before an HTTP health check succeeds.
+ * @param stateDir Isolated runtime state root used as the child working directory.
+ * @param [explicitPort] Operator-selected already-running OpenCode port.
+ * @throws {Error} When the selected endpoint is unreachable or a managed child cannot become healthy.
+ * @returns Health-checked adapter and lifecycle handles for caller-owned cleanup.
+ * @sideEffect Process/filesystem: may spawn OpenCode and write one PID file under stateDir.
+ */
+export async function ensureRunModeOpenCode(
+  stateDir: string,
+  explicitPort?: number
+): Promise<ManagedRunModeOpenCode> {
+  const dispatcher = new UndiciAgent({ headersTimeout: 0, bodyTimeout: 0 });
+  if (explicitPort !== undefined) {
+    if (!(await retryOpencodeConnect(explicitPort, 3, 1000))) {
+      throw new Error(
+        `[ensureRunModeOpenCode] OpenCode on explicit port ${explicitPort} is unreachable`
+      );
+    }
+    return {
+      opencode: new OpenCodeReal({
+        directory: stateDir,
+        baseUrl: `http://localhost:${explicitPort}`,
+        dispatcher,
+      }),
+      process: null,
+      pidFile: null,
+      port: explicitPort,
+    };
+  }
+
+  if (!checkOpencodePath()) {
+    throw new Error('[ensureRunModeOpenCode] opencode binary is unavailable');
+  }
+  await mkdir(stateDir, { recursive: true });
+  const port = await findFreePort();
+  const process = await spawnOpencode(stateDir, port);
+  if (!process?.pid) {
+    throw new Error('[ensureRunModeOpenCode] Managed OpenCode failed to become healthy');
+  }
+  const agentInboxDir = join(stateDir, 'agent-inbox');
+  await mkdir(agentInboxDir, { recursive: true });
+  const pidFile = join(agentInboxDir, `opencode-run-mode-${port}.pid`);
+  await writeFile(pidFile, JSON.stringify({ pid: process.pid, port }) + '\n', 'utf8');
+  return {
+    opencode: new OpenCodeReal({
+      directory: stateDir,
+      baseUrl: `http://localhost:${port}`,
+      dispatcher,
+    }),
+    process,
+    pidFile,
+    port,
+  };
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -331,24 +449,30 @@ async function spawnOpencode(
 export type BootstrapConfig = {
   /** @purpose Whether to use mock adapters (dev/e2e) or real (production). */
   mocks: boolean;
+  /** @purpose Keep real VCS/state while replacing only the OpenCode network adapter. */
+  mockOpencode?: boolean;
   /** @purpose Port to listen on (default: 4174). */
   port?: number;
+  /** @purpose Disable discovery-triggered reviews while retaining real VCS/dashboard reads. */
+  autoReview?: boolean;
+  /** @purpose CLI override for the post-commit quiet window before auto-review dispatch. */
+  autoReviewQuietMinutes?: number;
+  /** @purpose Explicit OpenCode provider/model; defaults to the Agent Inbox production policy. */
+  opencodeModel?: string;
   /** @purpose Root state directory (default: ~/.gennady). */
   stateDir?: string;
   /** @purpose Explicit runtime capability binding; omitted value derives from legacy mocks mode. */
   runtimeProfile?: ReviewRuntimeProfileSpec;
   /** @purpose Overrides for the three pairwise-disjoint namespace roots. */
   runtimeRoots?: Partial<ReviewRuntimeRoots>;
-  /** @purpose Controlled content-context seam used by integration composition; production uses the live builder. */
-  buildContentContext?: typeof buildNodeContext;
   /** @purpose Reopen an existing test run read-only instead of creating a fresh run. */
   reopenRun?: boolean;
   /**
    * @purpose Suppress the two external-write seams (VCS mutation, operator DM) — journals the
    *   intended write to the dashboard console instead (TSK-131).
    * @invariant When set, mirrored into `INBOX_DRY_RUN` so every code path (including
-   *   scheduler-driven effect nodes) observes the same flag. Undefined leaves the env-derived
-   *   default untouched.
+   *   pipeline effect nodes) observes the same flag. Undefined leaves the env-derived default
+   *   untouched.
    */
   dryRun?: boolean;
   /**
@@ -357,23 +481,34 @@ export type BootstrapConfig = {
    * @returns Completion of the optional observer.
    */
   onBootState?: (state: ReturnType<BootReadiness['snapshot']>) => void | Promise<void>;
+  /**
+   * @purpose Receive startup phase labels for a foreground CLI status indicator during long operations.
+   * @param phase Short localized phase label.
+   */
+  onProgress?: (phase: string) => void;
 };
 
 /** @purpose Return value from bootstrap — all service handles needed to run and stop. */
 export type BootstrapResult = {
   /** @purpose The HTTP server instance, already listening while bootstrap phases run. */
   server: HttpServer;
-  /** @purpose The role scheduler (timer not yet started). */
-  scheduler: RoleScheduler;
+  /**
+   * @purpose No-op lifecycle coordinator shim — backward-compat surface for CLI consumers.
+   * @invariant Substantive review execution is owned by `pipeline`; this shim satisfies the
+   *   CLI's tick/stop surface until serve.cmd.ts migrates to pipeline-first orchestration.
+   */
+  scheduler: NoOpScheduler;
   /** @purpose The OpenCode adapter (mock, real, or degraded). */
   opencode: OpenCodePort;
   /** @purpose Whether the system is in degraded mode (AI disabled). */
   degraded: boolean;
   /** @purpose Human-readable opencode status for the startup bar. */
   opencodeStatus: string;
+  /** @purpose Exact provider/model pinned for control-plane review turns. */
+  opencodeModel: string;
   /** @purpose Polling interval in ms. */
   pollingInterval: number;
-  /** @purpose List of loaded role names. */
+  /** @purpose Registered role names — empty after journal-first migration; kept for CLI backward compat. */
   roles: string[];
   /** @purpose The port the server will listen on. */
   port: number;
@@ -401,6 +536,10 @@ export type BootstrapResult = {
   lifecycleReaper: NodeJS.Timeout;
   /** @purpose Shared queue-backed pipeline lifecycle, reachable from the booted runtime. */
   pipeline: PipelineRuntime;
+  /** @purpose Typed trace of the exact control-plane instances owned by pipeline. */
+  controlPlaneTrace: NonNullable<
+    ReturnType<PipelineRuntime['retrieveControlPlaneConstructionTrace']>
+  >;
   /** @purpose Shared readiness lifecycle serving GET /api/boot. */
   bootReadiness: BootReadiness;
   /** @purpose Validated physical runtime binding shared by all stateful adapters. */
@@ -415,15 +554,22 @@ export { BootstrapSafetyError };
 
 /**
  * @purpose Assemble DI for agent-inbox serve: load config, create adapters,
- * wire engine + scheduler + server, return ready handles.
+ * wire pipeline runtime + server, return ready handles.
  * @param config Bootstrap configuration — mocks, port, optional stateDir.
  * @throws When config is absent or opencode binary is not found in production mode.
- * @returns Bootstrap result with server, scheduler, opencode adapter and status metadata.
+ * @returns Bootstrap result with server, pipeline, opencode adapter and status metadata.
  */
 export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResult> {
   const port = config.port ?? 4174;
   const pollingInterval = 300_000; // 5 minutes
+  const opencodeModel = config.opencodeModel ?? DEFAULT_AGENT_INBOX_MODEL;
+  if (!parseOpenCodeModel(opencodeModel)) {
+    throw new Error(
+      `[bootstrap] Invalid OpenCode model "${opencodeModel}"; expected provider/model`
+    );
+  }
   const bootReadiness = new BootReadiness();
+  const progress = (phase: string): void => config.onProgress?.(phase);
   // D-305: the diagnostics surface must be observable before configuration and every external
   // phase. It is rebound to the complete runtime only after those dependencies are assembled.
   const server = new HttpServer({
@@ -498,14 +644,17 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
 
   // #region START_CHECK_CONFIG
   let configVcsHost: string | undefined;
+  let configuredAutoReviewQuietMinutes: number | undefined;
   let configLoaded = false;
   let configFailure = false;
+  progress('Загрузка конфигурации…');
 
   if (config.mocks) {
     try {
       const result = await stateStore.loadConfig();
       if (result.configured) {
         configVcsHost = result.vcsHost;
+        configuredAutoReviewQuietMinutes = result.autoReviewQuietMinutes;
         configLoaded = true;
       } else {
         bootReadiness.setConfigStatus(false, result.missing);
@@ -523,17 +672,23 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
       configFailure = true;
     } else {
       configVcsHost = result.vcsHost;
+      configuredAutoReviewQuietMinutes = result.autoReviewQuietMinutes;
       configLoaded = true;
     }
   }
   if (configLoaded) bootReadiness.setConfigStatus(true);
   const useMocks = config.mocks || configFailure;
+  const autoReviewQuietMinutes =
+    config.autoReviewQuietMinutes ?? configuredAutoReviewQuietMinutes ?? 15;
+  if (!Number.isFinite(autoReviewQuietMinutes) || autoReviewQuietMinutes <= 0) {
+    throw new Error('[bootstrap] autoReviewQuietMinutes must be finite and positive');
+  }
+  const autoReviewQuietMs = autoReviewQuietMinutes * 60_000;
   // #endregion END_CHECK_CONFIG
 
   // A failed production config still starts a read-only failed boot surface; external adapters
   // are intentionally not constructed until the operator fixes the configuration.
 
-  let vcs: VcsInboxPort;
   let opencode: OpenCodePort;
   let degraded = false;
   let opencodeStatus: string;
@@ -546,6 +701,11 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
   let backgroundVerifier: BackgroundVerifier | null = null;
   let vcsJournal: EventJournal | null = null;
   let vcsRegistry: InboxRegistryAccess | null = null;
+  let initialSyncSnapshots = [] as Awaited<ReturnType<SyncService['twoTierSync']>>;
+  let dispatchDiscoveredReviews: (
+    snapshots: Awaited<ReturnType<SyncService['twoTierSync']>>
+  ) => void = () => undefined;
+  let runManualReview: ((ref: string) => Promise<void>) | undefined;
   // Single-flight slot for the heavy twoTierSync (a real 155-MR sync takes minutes): the
   // initial bootstrap sync and any board-triggered refresh must share one in-flight promise
   // instead of competing for GitLab.
@@ -561,10 +721,7 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
     }
     return inflightSync;
   };
-  let initialSyncSnapshots = [] as Awaited<ReturnType<SyncService['twoTierSync']>>;
-
   if (useMocks) {
-    vcs = new VcsInboxMock();
     opencode = new OpenCodeMock();
     opencodeStatus = 'mock (dev/e2e)';
   } else {
@@ -576,11 +733,6 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
       configVcsHost ?? ''
     );
     vcsEffects = selectVcsRuntime(runtimeBinding.profile.externalIoPolicy, vcsTruth).effects;
-    vcs = new VcsInboxReal({
-      host: configVcsHost,
-      token,
-      truth: vcsTruth,
-    });
     const inboxStateDir = join(stateStore.getStateDir(), 'agent-inbox');
     vcsJournal = new EventJournal(join(inboxStateDir, 'events.jsonl'));
     vcsRegistry = new InboxRegistryAccess(stateStore.getStateDir());
@@ -594,10 +746,17 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
         clock: new SystemClock(),
       },
       syncCoordinator: new VcsSyncCoordinator(vcsTruth, canonicalJournal),
+      onSnapshotsReady: (snapshots) => {
+        initialSyncSnapshots = snapshots;
+        server.updateInboxSnapshots(snapshots);
+        dispatchDiscoveredReviews(snapshots);
+        logger.info('[bootstrap] [poll-detail → board-ready]', { snapshots: snapshots.length });
+      },
     });
     backgroundVerifier = new BackgroundVerifier(vcsTruth, vcsJournal);
     // First real poll is deliberate: production truth port goes live; active snapshots pre-register the minute verifier.
     await advanceBoot('poll');
+    progress('Синхронизация входящих MR…');
     {
       // Observe the sync to settlement: a bounded wait must never fabricate 'VCS unreachable' for a slow-but-healthy sync (155 MRs ≈ minutes).
       const TIMEOUT_MS = 30_000;
@@ -627,14 +786,19 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
           };
           if (slowWarned) logger.warn('[bootstrap] [twoTierSync → completed]', detail);
           else logger.info('[bootstrap] [twoTierSync → completed]', detail);
+          progress(
+            `Синхронизировано ${snapshots.length} MR (${detail.active} активных, ${Math.round(detail.durationMs / 1000)}с)`
+          );
           return snapshots;
         },
         (cause: unknown) => {
           syncSettled = true;
+          const error = cause instanceof Error ? cause : new Error(String(cause));
           logger.warn('[bootstrap] [twoTierSync → failed]', {
             durationMs: Date.now() - syncStartedAt,
-            error: cause instanceof Error ? cause.message : String(cause),
+            error,
           });
+          progress('Синхронизация не удалась — продолжение с пустым списком');
           return null;
         }
       );
@@ -658,6 +822,7 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
           '[bootstrap] [twoTierSync → slow] initial sync still running — startup continues; active MRs register when it settles',
           { elapsedMs: TIMEOUT_MS }
         );
+        progress('Синхронизация затянулась — старт продолжается…');
         void trackedSync.then((snapshots) => {
           if (snapshots) {
             registerActive(snapshots);
@@ -670,138 +835,147 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
     await advanceBoot('reconcile');
     // #endregion END_CREATE_VCS
 
-    // #region START_CHECK_OPENCODE_PATH
-    if (!checkOpencodePath()) {
-      throw new Error(
-        'opencode not found in PATH. Install @opencode-ai/sdk or run with --mocks for dev mode.'
-      );
-    }
-    // #endregion END_CHECK_OPENCODE_PATH
-
-    // TSK-123 P2: OPENCODE_PORT means reuse an already-running opencode serve.
-    // Falls through to the spawn path when unset.
-    // D-138: pid file scoped by port; orphan check at start + cleanup before spawn.
-    // #region START_CONNECT_OPENCODE
-    const stateDir = stateStore.getStateDir();
-    const pidFile = join(stateDir, 'agent-inbox', `opencode-${port}.pid`);
-    opencodePort = 4096;
-    opencodePidFile = null;
-
-    if (existsSync(pidFile)) {
-      try {
-        const { pid: orphanPid } = JSON.parse(await readFile(pidFile, 'utf-8')) as {
-          pid: number;
-          port: number;
-        };
-        if (await isOpencodePid(orphanPid)) {
-          // Distinguish orphan opencode (serve dead) from legitimate running serve
-          let httpAlive = false;
-          try {
-            const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 2000);
-            const response = await fetch(`http://localhost:${port}/api/board`, {
-              signal: controller.signal,
-            });
-            clearTimeout(timeout);
-            httpAlive = response.ok;
-          } catch {
-            /* HTTP not responding — orphan */
-          }
-
-          if (httpAlive) {
-            throw new Error(
-              `Already running on port ${port}. Stop the existing instance first or use a different --port.`
-            );
-          }
-
-          logger.warn('[bootstrap] [starting → orphan_found]', {
-            port,
-            pid: orphanPid,
-            reason: `pid file for inbox-serve port ${port} still points at a live opencode process — a previous instance on this port exited without cleanup`,
-          });
-          await terminateOrphanedOpencode(
-            orphanPid,
-            `starting a fresh gennady inbox serve on port ${port}`
-          );
-          try {
-            await unlink(pidFile);
-          } catch {
-            /* ignore */
-          }
-        }
-      } catch (e) {
-        if (e instanceof Error && e.message.includes('Already running')) {
-          throw e;
-        }
-        /* stale/corrupt pid file — overwritten below regardless */
-      }
-    }
-
-    // Shared across all OpenCodeReal instances this process creates — see `OpenCodeRealOpts.dispatcher`.
-    const opencodeDispatcher = new UndiciAgent({ headersTimeout: 0, bodyTimeout: 0 });
-
-    const reusePort = process.env.OPENCODE_PORT ? Number(process.env.OPENCODE_PORT) : null;
-    if (reusePort && Number.isFinite(reusePort)) {
-      const connected = await retryOpencodeConnect(reusePort, 3, 1000);
-      if (connected) {
-        opencode = new OpenCodeReal({
-          directory: stateDir,
-          baseUrl: `http://localhost:${reusePort}`,
-          dispatcher: opencodeDispatcher,
-        });
-        opencodeStatus = `connected (reused port ${reusePort})`;
-        opencodePort = reusePort;
-      } else {
-        degraded = true;
-        opencode = new DegradedOpencode();
-        opencodeStatus = 'degraded (OPENCODE_PORT set but unreachable)';
-        opencodePort = reusePort;
-      }
+    if (config.mockOpencode) {
+      opencode = new OpenCodeDynamicMock();
+      opencodeStatus = 'dynamic mock (real GitLab/state)';
     } else {
-      try {
-        opencodePort = await findFreePort();
-      } catch {
-        throw new Error('No free port available in range 4096–4106 for opencode');
+      // #region START_CHECK_OPENCODE_PATH
+      if (!checkOpencodePath()) {
+        throw new Error(
+          'opencode not found in PATH. Install @opencode-ai/sdk or run with --mocks for dev mode.'
+        );
+      }
+      // #endregion END_CHECK_OPENCODE_PATH
+
+      // TSK-123 P2: OPENCODE_PORT means reuse an already-running opencode serve.
+      // Falls through to the spawn path when unset.
+      // D-138: pid file scoped by port; orphan check at start + cleanup before spawn.
+      // #region START_CONNECT_OPENCODE
+      const stateDir = stateStore.getStateDir();
+      const pidFile = join(stateDir, 'agent-inbox', `opencode-${port}.pid`);
+      opencodePort = 4096;
+      opencodePidFile = null;
+
+      if (existsSync(pidFile)) {
+        try {
+          const { pid: orphanPid } = JSON.parse(await readFile(pidFile, 'utf-8')) as {
+            pid: number;
+            port: number;
+          };
+          if (await isOpencodePid(orphanPid)) {
+            // Distinguish orphan opencode (serve dead) from legitimate running serve
+            let httpAlive = false;
+            try {
+              const controller = new AbortController();
+              const timeout = setTimeout(() => controller.abort(), 2000);
+              const response = await fetch(`http://localhost:${port}/api/board`, {
+                signal: controller.signal,
+              });
+              clearTimeout(timeout);
+              httpAlive = response.ok;
+            } catch {
+              /* HTTP not responding — orphan */
+            }
+
+            if (httpAlive) {
+              throw new Error(
+                `Already running on port ${port}. Stop the existing instance first or use a different --port.`
+              );
+            }
+
+            logger.warn('[bootstrap] [starting → orphan_found]', {
+              port,
+              pid: orphanPid,
+              reason: `pid file for inbox-serve port ${port} still points at a live opencode process — a previous instance on this port exited without cleanup`,
+            });
+            await terminateOrphanedOpencode(
+              orphanPid,
+              `starting a fresh gennady inbox serve on port ${port}`
+            );
+            try {
+              await unlink(pidFile);
+            } catch {
+              /* ignore */
+            }
+          }
+        } catch (e) {
+          if (e instanceof Error && e.message.includes('Already running')) {
+            throw e;
+          }
+          /* stale/corrupt pid file — overwritten below regardless */
+        }
       }
 
-      const proc = await spawnOpencode(stateDir, opencodePort);
-      if (proc && proc.pid) {
-        await mkdir(join(stateDir, 'agent-inbox'), { recursive: true });
-        await writeFile(
-          pidFile,
-          JSON.stringify({ pid: proc.pid, port: opencodePort }) + '\n',
-          'utf-8'
-        );
-        opencodePidFile = pidFile;
-        opencode = new OpenCodeReal({
-          directory: stateDir,
-          baseUrl: `http://localhost:${opencodePort}`,
-          dispatcher: opencodeDispatcher,
-        });
-        opencodeStatus = `connected (port ${opencodePort})`;
-        opencodeProcess = proc;
-      } else {
-        // Spawn failed — try polling an already-running instance
-        const connected = await retryOpencodeConnect(opencodePort, 3, 2000);
+      // Shared across all OpenCodeReal instances this process creates — see `OpenCodeRealOpts.dispatcher`.
+      const opencodeDispatcher = new UndiciAgent({ headersTimeout: 0, bodyTimeout: 0 });
+
+      progress('Подключение к OpenCode…');
+      const reusePort = process.env.OPENCODE_PORT ? Number(process.env.OPENCODE_PORT) : null;
+      if (reusePort && Number.isFinite(reusePort)) {
+        const connected = await retryOpencodeConnect(reusePort, 3, 1000);
         if (connected) {
+          opencode = new OpenCodeReal({
+            directory: stateDir,
+            baseUrl: `http://localhost:${reusePort}`,
+            dispatcher: opencodeDispatcher,
+          });
+          opencodeStatus = `connected (reused port ${reusePort})`;
+          opencodePort = reusePort;
+        } else {
+          degraded = true;
+          opencode = new DegradedOpencode();
+          opencodeStatus = 'degraded (OPENCODE_PORT set but unreachable)';
+          opencodePort = reusePort;
+        }
+      } else {
+        try {
+          opencodePort = await findFreePort();
+        } catch {
+          throw new Error('No free port available in range 4096–4106 for opencode');
+        }
+
+        const proc = await spawnOpencode(stateDir, opencodePort);
+        if (proc && proc.pid) {
+          await mkdir(join(stateDir, 'agent-inbox'), { recursive: true });
+          await writeFile(
+            pidFile,
+            JSON.stringify({ pid: proc.pid, port: opencodePort }) + '\n',
+            'utf-8'
+          );
+          opencodePidFile = pidFile;
           opencode = new OpenCodeReal({
             directory: stateDir,
             baseUrl: `http://localhost:${opencodePort}`,
             dispatcher: opencodeDispatcher,
           });
           opencodeStatus = `connected (port ${opencodePort})`;
+          opencodeProcess = proc;
         } else {
-          degraded = true;
-          opencode = new DegradedOpencode();
-          opencodeStatus = 'degraded (opencode not responding)';
+          // Spawn failed — try polling an already-running instance
+          const connected = await retryOpencodeConnect(opencodePort, 3, 2000);
+          if (connected) {
+            opencode = new OpenCodeReal({
+              directory: stateDir,
+              baseUrl: `http://localhost:${opencodePort}`,
+              dispatcher: opencodeDispatcher,
+            });
+            opencodeStatus = `connected (port ${opencodePort})`;
+          } else {
+            degraded = true;
+            opencode = new DegradedOpencode();
+            opencodeStatus = 'degraded (opencode not responding)';
+          }
         }
       }
+      // #endregion END_CONNECT_OPENCODE
     }
-    // #endregion END_CONNECT_OPENCODE
   }
 
   const lifecycleJournal =
     vcsJournal ?? new EventJournal(join(stateStore.getStateDir(), 'agent-inbox', 'events.jsonl'));
+  const controlPlaneJournal = new EventJournal(
+    join(stateStore.getStateDir(), 'agent-inbox', 'control-plane-events.jsonl')
+  );
   // D-302: an MR write belongs in that MR's canonical decision/event journal. emitDryRun awaits
   // this recorder before broadcasting, so SSE can never outrun the durable source of truth.
   setDryRunRecorder(async (entry) => {
@@ -852,23 +1026,13 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
       return true;
     },
   });
-  // One unified priority pool is deliberately injected into chat and role scheduling. A second
-  // pool would let each path exceed the configured cap and defeat cross-path prioritization.
-  const reviewSessionPool = chatSessionPool;
   const lifecycleReaper = setInterval(() => {
     void sessionLifecycle.reapExpired();
   }, 60_000);
   lifecycleReaper.unref();
 
-  // F6: Roles start inactive by default — no auto-activation (mock mode activates after seeding
-  // below; real mode via operator dashboard action). Real serve also drives the reviewer graph
-  // against a live worktree/changeset (mock mode keeps its zero-network empty-artifacts start);
-  // effect nodes honour the dry-run flag (TSK-131).
-  // #region START_CREATE_ROLES
-  const engine = new RoleEngine();
-  await engine.loadAll();
-
-  // One boot-owned queue is shared by scheduler, HTTP and its durable Executor lifecycle.
+  // #region START_COMPOSE_PIPELINE
+  // One boot-owned queue is shared by pipeline runtime, HTTP and its durable Executor lifecycle.
   const pipelineRegistry = new TaskRegistry();
   const pipelineQueue = new InMemoryTaskQueue(pipelineRegistry);
   const chatSessionRouter = new SessionRouter(
@@ -901,26 +1065,138 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
             proposalId: proposal.proposalId,
           });
         }
-      : undefined
+      : undefined,
+    {
+      journal: controlPlaneJournal,
+      receiptRoot: join(stateStore.getStateDir(), 'agent-inbox', 'control-plane-receipts'),
+      runtimeNamespace: runtimeBinding.profile.stateNamespace,
+      model: opencodeModel,
+      vcs: vcsTruth ?? undefined,
+    }
   );
+  const controlPlaneTrace = pipeline.retrieveControlPlaneConstructionTrace();
+  if (!controlPlaneTrace)
+    throw new Error('[bootstrap] Pipeline control-plane construction trace is unavailable');
   pipeline.start();
+  if (!useMocks && vcsTruth) {
+    const reviewVcs = new VcsInboxReal({ host: configVcsHost, truth: vcsTruth });
+    const settledRevision = new Map<string, string>();
+    const inFlight = new Set<string>();
+    const scheduled = new Map<string, { revision: string; timer: ReturnType<typeof setTimeout> }>();
+    let dispatchChain = Promise.resolve();
+    const enqueueReview = (
+      snapshot: Awaited<ReturnType<SyncService['twoTierSync']>>[number]
+    ): void => {
+      const mr = snapshot.mr.webUrl;
+      const revision = snapshot.headSha || snapshot.updatedAt;
+      if (!mr || !revision || settledRevision.get(mr) === revision || inFlight.has(mr)) return;
+      inFlight.add(mr);
+      dispatchChain = dispatchChain.then(async () => {
+        try {
+          const result = await runMrsOnce({
+            mrs: [mr],
+            dryRun: true,
+            deps: { pipeline, store: stateStore, vcs: reviewVcs },
+          });
+          const state = result.results[0]?.state;
+          if (state === 'completed' || state === 'blocked') settledRevision.set(mr, revision);
+          const reviewError = result.results[0]?.error;
+          if (state === 'failed') {
+            logger.error('[bootstrap] [auto-review → failed]', {
+              mr,
+              revision,
+              model: opencodeModel,
+              error: reviewError ?? 'Review failed without a diagnostic',
+            });
+          } else {
+            logger.info('[bootstrap] [auto-review → settled]', {
+              mr,
+              revision,
+              state,
+              model: opencodeModel,
+            });
+          }
+        } finally {
+          inFlight.delete(mr);
+        }
+      });
+      void dispatchChain.catch((cause) => {
+        const error =
+          cause instanceof Error
+            ? cause
+            : new Error('[bootstrap] Unknown auto-review dispatch failure', { cause });
+        logger.error('[bootstrap] [auto-review → failed]', { model: opencodeModel, error });
+      });
+    };
+    dispatchDiscoveredReviews = (snapshots) => {
+      for (const snapshot of snapshots) {
+        const mr = snapshot.mr.webUrl;
+        const revision = snapshot.headSha || snapshot.updatedAt;
+        if (!mr || !revision || settledRevision.get(mr) === revision) continue;
+        const existing = scheduled.get(mr);
+        if (existing?.revision === revision || inFlight.has(mr)) continue;
+        if (existing) clearTimeout(existing.timer);
+        if (config.autoReview === false) {
+          scheduled.delete(mr);
+          continue;
+        }
+        const committedAt = snapshot.headCommittedAt
+          ? Date.parse(snapshot.headCommittedAt)
+          : Number.NaN;
+        if (!Number.isFinite(committedAt)) {
+          scheduled.delete(mr);
+          logger.warn('[bootstrap] [auto-review → unscheduled] Head commit time is unavailable', {
+            mr,
+            revision,
+          });
+          continue;
+        }
+        const dueAt = committedAt + autoReviewQuietMs;
+        const delayMs = Math.max(0, dueAt - Date.now());
+        if (delayMs === 0) {
+          scheduled.delete(mr);
+          enqueueReview(snapshot);
+          continue;
+        }
+        const timer = setTimeout(() => {
+          const current = scheduled.get(mr);
+          if (current?.revision !== revision) return;
+          scheduled.delete(mr);
+          enqueueReview(snapshot);
+        }, delayMs);
+        timer.unref();
+        scheduled.set(mr, { revision, timer });
+        logger.info('[bootstrap] [auto-review → scheduled]', {
+          mr,
+          revision,
+          dueAt: new Date(dueAt).toISOString(),
+        });
+      }
+    };
+    dispatchDiscoveredReviews(initialSyncSnapshots);
 
-  const scheduler = new RoleScheduler({
-    engine,
-    store: stateStore,
-    vcs,
-    opencode,
-    pollingInterval,
-    buildLiveContext: !useMocks || config.buildContentContext !== undefined,
-    bootReadiness,
-    buildContentContext: config.buildContentContext,
-    dryRun: isDryRun(),
-    reviewSessionPool,
-    pipeline,
-  });
-  // #endregion END_CREATE_ROLES
+    runManualReview = async (ref: string): Promise<void> => {
+      const canonical = canonicalMrRef(ref);
+      const svc = syncService;
+      if (!svc) return;
+      const snapshots =
+        initialSyncSnapshots.length > 0 ? initialSyncSnapshots : await runSyncShared(svc);
+      const snapshot = snapshots.find(
+        (s) => canonicalMrRef(`${s.mr.project}!${s.mr.iid}`) === canonical
+      );
+      if (!snapshot) {
+        logger.warn('[bootstrap] [manual-review → unresolved]', { ref });
+        return;
+      }
+      await runMrsOnce({
+        mrs: [snapshot.mr.webUrl],
+        dryRun: false,
+        deps: { pipeline, store: stateStore, vcs: reviewVcs },
+      });
+    };
+  }
+  // #endregion END_COMPOSE_PIPELINE
 
-  const loadedRoles = engine.list();
   // The readiness owner advances exactly once through the public D-305 sequence. The HTTP
   // router receives this same object, so no local router state can drift from production boot.
   if (bootReadiness.snapshot().phase !== 'failed') {
@@ -947,11 +1223,6 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
     };
     const mockSnapshots = await loadMockSnapshots();
 
-    // F6: In mock/dev mode, activate roles after seeding for BDD parity
-    for (const role of loadedRoles) {
-      engine.activate(role.name);
-    }
-
     await server.attachRuntime({
       port,
       boardProvider,
@@ -971,6 +1242,7 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
         registry: mockRegistry,
         snapshots: mockSnapshots,
         loadSnapshots: loadMockSnapshots,
+        autoReviewPolicy: { enabled: config.autoReview !== false, quietMs: autoReviewQuietMs },
       },
       bootReadiness,
     });
@@ -980,19 +1252,21 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
     logger.info('[bootstrap] [idle → assembled]', {
       mocks: useMocks,
       port,
-      roles: loadedRoles.map((r) => r.name),
+      roles: [],
       opencodeStatus,
+      opencodeModel,
       degraded,
     });
 
     return {
       server,
-      scheduler,
+      scheduler: new NoOpScheduler(),
       opencode,
       degraded,
       opencodeStatus,
+      opencodeModel,
       pollingInterval,
-      roles: loadedRoles.map((r) => r.name),
+      roles: [],
       port,
       opencodeProcess,
       opencodePidFile,
@@ -1006,20 +1280,24 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
       sessionPool: chatSessionPool,
       lifecycleReaper,
       pipeline,
+      controlPlaneTrace,
       bootReadiness,
       runtimeBinding,
     };
   }
 
+  // F1: Real mode — BoardProviderDisk backs getReport/artifacts straight off `report/` on disk, no
+  // scheduler/GitLab dependency needed to open an already-reviewed MR. BoardProjection (installed by
+  // attachRuntime via http-server._wireRuntime() once inboxApi is provided, TSK-179) merges the same
+  // disk-reviewed MRs into the board listing via `diskCards`, visible with no live sync (TSK-190).
   // #region START_CREATE_SERVER
-  // F1: Real mode — BoardProviderReal backed by RoleScheduler; reports/<mr>/ read from the
-  // same state dir the reviewer graph materializes to disk (TSK-122 gap-3/gap-4).
-  const boardProvider = new BoardProviderReal(scheduler, engine, stateStore.getStateDir());
+  const boardProvider = new BoardProviderDisk({ stateDir: stateStore.getStateDir() });
   if (!syncService || !vcsJournal || !vcsRegistry) {
     throw new Error('[bootstrap] Production VCS truth dependencies were not assembled');
   }
   // `let` captures lose CFA narrowing inside closures — rebind after the guard above.
   const syncServiceForBoard = syncService;
+  const stateDirForDiskCards = stateStore.getStateDir();
   await server.attachRuntime({
     port,
     boardProvider,
@@ -1044,6 +1322,9 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
       registry: vcsRegistry,
       snapshots: initialSyncSnapshots,
       loadSnapshots: () => runSyncShared(syncServiceForBoard),
+      diskCards: () => scanDiskCardSeeds(stateDirForDiskCards),
+      autoReviewPolicy: { enabled: config.autoReview !== false, quietMs: autoReviewQuietMs },
+      runReview: runManualReview,
     },
     bootReadiness,
   });
@@ -1053,19 +1334,21 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
   logger.info('[bootstrap] [idle → assembled]', {
     mocks: useMocks,
     port,
-    roles: loadedRoles.map((r) => r.name),
+    roles: [],
     opencodeStatus,
+    opencodeModel,
     degraded,
   });
 
   return {
     server,
-    scheduler,
+    scheduler: new NoOpScheduler(),
     opencode,
     degraded,
     opencodeStatus,
+    opencodeModel,
     pollingInterval,
-    roles: loadedRoles.map((r) => r.name),
+    roles: [],
     port,
     opencodeProcess,
     opencodePidFile: opencodePidFile ?? null,
@@ -1079,6 +1362,7 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
     sessionPool: chatSessionPool,
     lifecycleReaper,
     pipeline,
+    controlPlaneTrace,
     bootReadiness,
     runtimeBinding,
   };

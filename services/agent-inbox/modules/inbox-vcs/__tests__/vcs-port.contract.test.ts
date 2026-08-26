@@ -112,6 +112,7 @@ describe('unified VCS contracts', () => {
   const createRealRuntime = (): { runtime: VcsRuntime; mutationCalls: string[] } => {
     const mutationCalls: string[] = [];
     const client = {
+      getCurrentUser: async () => ({ login: 'operator' }),
       Inbox: { getActionable: async () => [] },
       MergeDiscussions: {
         createDiscussion: async () => {

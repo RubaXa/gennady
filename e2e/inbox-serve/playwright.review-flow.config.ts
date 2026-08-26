@@ -12,8 +12,8 @@ import { fileURLToPath } from 'node:url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 /**
- * @purpose Single-spec Playwright config: the real review-flow proof drives http://localhost:4174,
- *   the in-process server the spec boots itself — no external dev server, no vite, no tsx spawn.
+ * @purpose Single-spec Playwright config: the real review-flow proof drives localhost:4174,
+ *   where the spec boots its own in-process server without an external dev server.
  */
 export default defineConfig({
   testDir: __dirname,

@@ -6,6 +6,7 @@
 import { style } from '../../../shared/common/style.ts';
 import { buildInboxClient } from './_core/logic/build-inbox-context.logic.ts';
 import { buildInboxView, type InboxOptions } from './_core/logic/build-inbox-view.logic.ts';
+import { planTodoCleanup, markTodosDone } from './_core/logic/cleanup-todos.logic.ts';
 import { renderInboxView, renderWorkPacket } from './_core/logic/render-inbox-view.logic.ts';
 import { classifyInbox } from './_core/logic/classify-inbox.logic.ts';
 import {
@@ -43,6 +44,26 @@ import {
   type Track,
 } from '../../../services/ai-kit/selector.ts';
 import type { MrShape } from '../../../services/agent-inbox/modules/inbox-core/context-builder.ts';
+import { logger } from '#logger';
+
+const DISCUSSION_READ_CONCURRENCY = 4;
+
+/** @purpose Run expensive GitLab detail reads with a fixed concurrency ceiling. */
+async function forEachBounded<T>(
+  items: readonly T[],
+  concurrency: number,
+  visit: (item: T) => Promise<void>
+): Promise<void> {
+  let cursor = 0;
+  const worker = async (): Promise<void> => {
+    while (cursor < items.length) {
+      const index = cursor;
+      cursor += 1;
+      await visit(items[index]);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, () => worker()));
+}
 
 function parseOptions(argv: string[]): InboxOptions {
   const has = (flag: string) => argv.includes(flag);
@@ -140,6 +161,77 @@ async function runPick(ref: string, vcsSource?: string, configVcsHost?: string):
   return 0;
 }
 
+/**
+ * @purpose Clear ghost todos — pending GitLab to-dos on already merged/closed MRs that
+ *   GitLab never auto-clears. Dry-run by default; only `--apply` mutates.
+ * @param vcsSource Explicit GitLab host override, if any.
+ * @param configVcsHost Host from inbox config.
+ * @param opts `apply` performs the mutation; `json` emits a machine-readable summary.
+ * @returns Process exit code (1 only when an apply run had failed mutations).
+ * @sideEffect Network reads (paginated todos); GitLab `todoMarkDone` mutations when `apply`.
+ */
+async function runCleanup(
+  vcsSource: string | undefined,
+  configVcsHost: string | undefined,
+  opts: { apply: boolean; json: boolean }
+): Promise<number> {
+  const client = buildInboxClient(vcsSource, configVcsHost);
+  const plan = planTodoCleanup(await client.Inbox.listPendingTodos());
+
+  if (!opts.apply) {
+    if (opts.json) {
+      console.info(
+        JSON.stringify({
+          mode: 'dry-run',
+          total: plan.total,
+          ghosts: plan.ghosts.length,
+          opened: plan.openedCount,
+        })
+      );
+    } else {
+      console.info(
+        style.bold(
+          `Pending MR todos: ${plan.total} — ${style.yellow(String(plan.ghosts.length))} ghost (merged/closed), ${plan.openedCount} on open MRs`
+        )
+      );
+      console.info(
+        style.gray(
+          `Dry run — nothing changed. Re-run with --apply to mark the ${plan.ghosts.length} ghost todos done.`
+        )
+      );
+    }
+    return 0;
+  }
+
+  const { marked, failed } = await markTodosDone(
+    (todoId) => client.Inbox.markTodoDone({ todoId }),
+    plan.ghosts.map((g) => g.todoId)
+  );
+  // Reconcile: re-count the live pending list so the reported after-count is observed, not assumed.
+  const afterTotal = marked > 0 ? (await client.Inbox.listPendingTodos()).length : plan.total;
+
+  if (opts.json) {
+    console.info(
+      JSON.stringify({
+        mode: 'apply',
+        before: plan.total,
+        ghosts: plan.ghosts.length,
+        marked,
+        failed,
+        after: afterTotal,
+      })
+    );
+  } else {
+    console.info(
+      style.bold(
+        `Marked ${style.green(String(marked))} ghost todos done${failed ? style.red(` (${failed} failed)`) : ''}.`
+      )
+    );
+    console.info(`  pending MR todos: ${plan.total} → ${afterTotal}`);
+  }
+  return failed > 0 ? 1 : 0;
+}
+
 async function run(): Promise<number> {
   try {
     const argv = process.argv.slice(2);
@@ -222,11 +314,25 @@ async function run(): Promise<number> {
     const pick = parseValue(argv, '--pick');
     if (pick) return await runPick(pick, vcsSource, cfg.vcsHost);
 
+    if (argv.includes('cleanup') || argv.includes('--cleanup')) {
+      return await runCleanup(vcsSource, cfg.vcsHost, {
+        apply: argv.includes('--apply'),
+        json: argv.includes('--json'),
+      });
+    }
+
     const options = parseOptions(argv);
     const persist = !argv.includes('--no-save');
 
     const client = buildInboxClient(vcsSource, cfg.vcsHost);
-    const items = await client.Inbox.getActionable();
+    // Bound discovery by MR recency (like the staleness view): fetch only what could be
+    // shown. Under --all/--include-stale the view keeps stale MRs, so fetch unbounded.
+    // Floor the window at 90d so it always covers the (default 14d) staleness cutoff.
+    const updatedAfter =
+      options.all || options.includeStale
+        ? undefined
+        : new Date(Date.now() - Math.max(options.staleDays, 90) * 86_400_000).toISOString();
+    const items = await client.Inbox.getActionable({ updatedAfter });
 
     const now = new Date().toISOString();
     const regPath = registryPath(stateDir);
@@ -244,35 +350,43 @@ async function run(): Promise<number> {
     const stages = new Map<string, MrStage>();
     const details = new Map<string, { openQuestions: number; lastAuthor: string }>();
     const changeReasons = new Map<string, MrActivityEvent[]>();
-    await Promise.all(
-      [...visibleUrls].map(async (url) => {
-        const mr = itemByUrl.get(url);
-        if (!mr) return;
-        if (deltas.get(url) === 'idle') {
-          stages.set(url, (registry.entries[url]?.stage as MrStage) ?? 'idle');
-          return;
-        }
-        const rawDiscussions = await client.MergeDiscussions.getAll({
+    await forEachBounded([...visibleUrls], DISCUSSION_READ_CONCURRENCY, async (url) => {
+      const mr = itemByUrl.get(url);
+      if (!mr) return;
+      if (deltas.get(url) === 'idle') {
+        stages.set(url, (registry.entries[url]?.stage as MrStage) ?? 'idle');
+        return;
+      }
+      let rawDiscussions;
+      try {
+        rawDiscussions = await client.MergeDiscussions.getAll({
           project: mr.project,
           iid: mr.iid,
         });
-        const notes = flattenNotes(rawDiscussions);
-        stages.set(url, classifyMrStage(notes, me.login, mr.role));
-        details.set(url, {
-          openQuestions: buildWorkPacket(notes, me.login, mr.role).openNotes.length,
-          lastAuthor: lastNoteAuthor(notes),
+      } catch (cause) {
+        logger.warn('[inbox#run] [discussion_read → degraded]', {
+          mr: `${mr.project}!${mr.iid}`,
+          cause,
         });
-        const entry = registry.entries[url];
-        changeReasons.set(
-          url,
-          parseMrActivity(notes, entry?.lastClassifiedAt ?? '', {
-            current:
-              (rawDiscussions as Array<{ notes?: Array<{ commit_id?: string }> }>)[0]?.notes?.[0]
-                ?.commit_id ?? '',
-          })
-        );
-      })
-    );
+        stages.set(url, (registry.entries[url]?.stage as MrStage) ?? 'idle');
+        return;
+      }
+      const notes = flattenNotes(rawDiscussions);
+      stages.set(url, classifyMrStage(notes, me.login, mr.role));
+      details.set(url, {
+        openQuestions: buildWorkPacket(notes, me.login, mr.role).openNotes.length,
+        lastAuthor: lastNoteAuthor(notes),
+      });
+      const entry = registry.entries[url];
+      changeReasons.set(
+        url,
+        parseMrActivity(notes, entry?.lastClassifiedAt ?? '', {
+          current:
+            (rawDiscussions as Array<{ notes?: Array<{ commit_id?: string }> }>)[0]?.notes?.[0]
+              ?.commit_id ?? '',
+        })
+      );
+    });
     for (const [url, stage] of stages) {
       if (next.entries[url]) next.entries[url].stage = stage;
     }

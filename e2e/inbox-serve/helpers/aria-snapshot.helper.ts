@@ -20,6 +20,7 @@ export async function captureAriaSnapshot(page: Page): Promise<string> {
  * @param page Playwright Page instance.
  * @param expected Expected ARIA snapshot as YAML string.
  * @throws {Error} When the snapshot does not match — Playwright assertion failure with diff.
+ * @returns Void promise that resolves after the snapshot assertion completes.
  * @sideEffect Browser: toMatchAriaSnapshot() assertion.
  */
 export async function compareAriaSnapshot(page: Page, expected: string): Promise<void> {

@@ -43,15 +43,19 @@ function _encodedMrRef(): string {
   return `${project.replace(/\//g, '__')}-${iid}`;
 }
 
-/** @purpose Path to the operator's real, already-materialized review of MR_REF — the copy source. */
+/**
+ * @purpose Path to the operator's real, already-materialized review of MR_REF — the copy source.
+ * @returns Absolute filesystem path of the operator's real review directory for MR_REF.
+ */
 export function realReviewSourceDir(): string {
   return mrReportsDir(join(homedir(), '.gennady'), MR_REF);
 }
 
 /**
- * @purpose Create an isolated temp state dir with a valid config; optionally seed it with a byte
- *   copy of the operator's real materialized review of MR_REF.
- * @param opts.seedReview When true, copies the real review dir into the temp state's reports tree.
+ * @purpose Create isolated temp state dir with valid config; optionally seed with a byte-copy of
+ *   the operator's materialized review of MR_REF.
+ * @param opts Options with `seedReview` flag — when true, copies the real review dir into the temp
+ *   state's reports tree.
  * @returns The temp state dir path and the review.json path inside it.
  */
 export async function makeStateDir(opts: { seedReview: boolean }): Promise<{
@@ -134,6 +138,7 @@ export async function bootReal(stateDir: string): Promise<BootstrapResult> {
  *   app.
  * @param app Bootstrap result (or undefined).
  * @param stateDir Temp state dir (or undefined).
+ * @returns Void promise that resolves after graceful shutdown and optional state dir cleanup.
  */
 export async function teardown(
   app: BootstrapResult | undefined,

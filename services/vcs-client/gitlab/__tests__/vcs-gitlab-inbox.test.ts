@@ -180,8 +180,86 @@ describe('VcsGitlabInbox', () => {
 
     // #region START_APPROVALS_REQUIRED_ASSERT_RUNTIME_FACT
     assert.strictEqual(result[0].approvalsRequired, 2);
-    const [query] = graphqlFn.mock.calls[0].arguments as [string];
-    assert.match(query, /approvalsRequired/);
+    const queries = graphqlFn.mock.calls.map((c) => (c.arguments as [string])[0]);
+    // Connection sources (reviewer/assignee/author) carry the full MR projection.
+    assert.ok(
+      queries.some((q) => /approvalsRequired/.test(q)),
+      'a connection source query must request approvalsRequired'
+    );
+    // Discovery does NOT read pending todos — they are opt-in (todo management only),
+    // so a default getActionable() issues no todos query.
+    assert.ok(
+      !queries.some((q) => /todos\(/.test(q)),
+      'default discovery must not query pending todos'
+    );
     // #endregion END_APPROVALS_REQUIRED_ASSERT_RUNTIME_FACT
+  });
+});
+
+describe('VcsGitlabInbox — listPendingTodos', () => {
+  const todoNode = (id: string, state: string) => ({
+    id,
+    target: {
+      __typename: 'MergeRequest',
+      iid: id,
+      webUrl: `https://gitlab.test/g/p/-/merge_requests/${id}`,
+      state,
+      project: { fullPath: 'g/p' },
+    },
+  });
+
+  it('paginates until hasNextPage is false and carries each target state', async () => {
+    const graphqlFn = mock.fn(async (query: string) =>
+      /after: "CURSOR1"/.test(query)
+        ? {
+            currentUser: {
+              todos: {
+                pageInfo: { hasNextPage: false, endCursor: null },
+                nodes: [todoNode('3', 'closed')],
+              },
+            },
+          }
+        : {
+            currentUser: {
+              todos: {
+                pageInfo: { hasNextPage: true, endCursor: 'CURSOR1' },
+                nodes: [todoNode('1', 'merged'), todoNode('2', 'opened')],
+              },
+            },
+          }
+    );
+    const inbox = new VcsGitlabInbox(graphqlFn);
+
+    const todos = await inbox.listPendingTodos();
+
+    assert.strictEqual(graphqlFn.mock.calls.length, 2);
+    assert.match((graphqlFn.mock.calls[1].arguments as [string])[0], /after: "CURSOR1"/);
+    assert.deepStrictEqual(
+      todos.map((t) => `${t.todoId}:${t.targetState}`),
+      ['1:merged', '2:opened', '3:closed']
+    );
+  });
+
+  it('skips non-merge-request and id-less todo targets', async () => {
+    const { inbox } = createInboxTestContext({
+      graphqlImpl: async () => ({
+        currentUser: {
+          todos: {
+            pageInfo: { hasNextPage: false, endCursor: null },
+            nodes: [
+              { id: 'x', target: { __typename: 'Issue' } },
+              { id: null, target: { __typename: 'MergeRequest', webUrl: 'u', state: 'merged' } },
+              todoNode('9', 'merged'),
+            ],
+          },
+        },
+      }),
+    });
+
+    const todos = await inbox.listPendingTodos();
+    assert.deepStrictEqual(
+      todos.map((t) => t.todoId),
+      ['9']
+    );
   });
 });

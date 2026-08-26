@@ -74,15 +74,20 @@ describe('ReviewOrchestrator', () => {
           manifestKeyDigest: contract.manifestKeyDigest,
           sessionId: 's',
           taskId: slotId,
+          nextSequence: sequence,
+        },
+        async () => ({
           sourceId: manifest.ref,
           sourceVersion: manifest.manifestVersion,
           sourceDigest: manifest.ref,
           targetId: slotId,
           operation: 'READ',
           normalizedArguments: {},
-          nextSequence: sequence,
-        },
-        async () => ({ content: slotId, outcome: 'read', status: 'SUCCEEDED' })
+          content: slotId,
+          outcome: 'read',
+          status: 'SUCCEEDED',
+          observedAt: new Date().toISOString(),
+        })
       );
       return {
         status: result.status === 'ELIGIBLE' ? ('COMPLETE' as const) : ('FAILED' as const),

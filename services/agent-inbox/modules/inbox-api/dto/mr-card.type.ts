@@ -45,6 +45,30 @@ export type MrCard = {
   myRole: string | null;
   /** @purpose Computed attention group. */
   attention: AttentionState;
+  /** @purpose Operator-specific review facts used for truthful role-aware action labels. */
+  review?: {
+    /** @purpose Operator currently approved the MR. */
+    approvedByMe: boolean;
+    /** @purpose Operator left at least one review discussion note. */
+    commentedByMe: boolean;
+    /** @purpose GitLab explicitly removed the operator's previous approval. */
+    approvalReset: boolean;
+    /** @purpose A canonical review artifact exists for this MR on disk. */
+    selfReviewCompleted: boolean;
+  };
+  /** @purpose Observable automatic-review timer derived from the latest head commit. */
+  autoReview?: {
+    /** @purpose Runtime policy state for this server process. */
+    state: 'scheduled' | 'due' | 'running' | 'complete' | 'frozen' | 'unknown_commit_time';
+    /** @purpose Whether discovery-triggered review dispatch is enabled. */
+    enabled: boolean;
+    /** @purpose Configured quiet window in milliseconds. */
+    quietMs: number;
+    /** @purpose Current head commit time, or null when GitLab did not expose it. */
+    lastCommitAt: string | null;
+    /** @purpose Scheduled dispatch instant, or null without a commit timestamp. */
+    dueAt: string | null;
+  };
   /** @purpose Aggregated dashboard badges. */
   counters: {
     approvals: string;
@@ -53,6 +77,8 @@ export type MrCard = {
     threads: string;
     awaitingMe: number;
     newCommits: number;
+    /** @purpose Findings in the latest materialized review, absent before disk enrichment. */
+    findings?: number;
     unread: number;
   };
   /** @purpose Durable task work state for the MR. */

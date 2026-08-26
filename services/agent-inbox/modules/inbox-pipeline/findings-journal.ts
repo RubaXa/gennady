@@ -44,6 +44,10 @@ export type FindingEntry = {
   source: FindingSource[];
   /** @purpose Synthesis mark — assigned post-synthesis */
   mark?: FindingMark;
+  /** @purpose Bounded changed-line context for the operator diff-note. */
+  diff?: Array<{ type: 'context' | 'add' | 'remove'; num?: number; text: string }>;
+  /** @purpose Evidence verification state. */
+  factcheck?: 'verified' | 'pending' | 'debunked';
 };
 
 /**

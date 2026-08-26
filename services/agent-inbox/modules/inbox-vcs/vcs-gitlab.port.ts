@@ -16,6 +16,11 @@ import {
   type VcsReviewerState,
 } from './vcs-port.ts';
 
+/** @purpose Product visibility horizon: MRs older than three months never enter the active inbox. */
+const ACTIVE_INBOX_HORIZON_DAYS = 90;
+/** @purpose Default actionable cutoff shared with the CLI inbox view. */
+const ACTIVE_INBOX_STALE_DAYS = 14;
+
 /**
  * @purpose Concrete GitLab backing for the complete inbox-vcs surface.
  * @implements {VcsPort} in ./vcs-port.ts
@@ -42,9 +47,30 @@ export class VcsGitlabPort extends VcsPort {
     return (await this._client.getCurrentUser()).login;
   }
 
-  /** @returns Actionable GitLab MRs. @see {VcsPort#getInbox} */
+  /**
+   * @returns Current actionable GitLab MRs after the product's default noise policy.
+   * @see {VcsPort#getInbox}
+   */
   async getInbox(): Promise<VcsActionableMr[]> {
-    return this._client.Inbox.getActionable();
+    const updatedAfter = new Date(
+      Date.now() - ACTIVE_INBOX_HORIZON_DAYS * 24 * 60 * 60 * 1000
+    ).toISOString();
+    const [mrs, operator] = await Promise.all([
+      this._client.Inbox.getActionable({ updatedAfter }),
+      this._client.getCurrentUser(),
+    ]);
+    const staleBefore = Date.now() - ACTIVE_INBOX_STALE_DAYS * 24 * 60 * 60 * 1000;
+    return mrs.filter((mr) => {
+      if (mr.state !== 'opened' || !mr.role) return false;
+      if (mr.approvedBy.includes(operator.login)) return false;
+      const stale = Date.parse(mr.updatedAt) < staleBefore;
+      const authorBlocked =
+        mr.role === 'author' &&
+        (mr.events.includes('ci_failed') || mr.events.includes('unmergeable')) &&
+        !stale;
+      if (mr.draft && !authorBlocked) return false;
+      return !stale;
+    });
   }
 
   /**

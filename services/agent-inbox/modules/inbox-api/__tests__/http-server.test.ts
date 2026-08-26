@@ -249,6 +249,12 @@ describe('HttpServer — live VCS board truth (TSK-158)', () => {
         author: 'alice',
         myRole: 'reviewer',
         attention: '⏳',
+        review: {
+          approvedByMe: false,
+          commentedByMe: false,
+          approvalReset: false,
+          selfReviewCompleted: false,
+        },
         counters: {
           approvals: '0/1',
           reviewers: [{ user: 'bob', voted: false }],
@@ -256,6 +262,7 @@ describe('HttpServer — live VCS board truth (TSK-158)', () => {
           threads: '0/0',
           awaitingMe: 0,
           newCommits: 0,
+          findings: 0,
           unread: 0,
         },
         work: {

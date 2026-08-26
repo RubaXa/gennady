@@ -38,6 +38,8 @@ export type FindingsWidget = FeedWidgetBase<
       line: number;
       summary: string;
       state: string;
+      diff: Array<{ type: string; num?: number; text: string }>;
+      factcheck: string;
     }[];
   }
 >;

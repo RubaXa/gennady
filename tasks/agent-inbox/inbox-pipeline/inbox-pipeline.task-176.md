@@ -71,8 +71,8 @@
   - `services/agent-inbox/modules/inbox-pipeline/review/review-cross-reviewer.ts`
   - `services/agent-inbox/modules/inbox-pipeline/verification/review-delta-verifier.ts`
   - `services/agent-inbox/modules/inbox-pipeline/verification/review-freshness-gate.ts`
-  - `services/agent-inbox/modules/inbox-pipeline/coverage/review-structural-validator.ts`
-  - `services/agent-inbox/modules/inbox-pipeline/coverage/review-repair-coordinator.ts`
+  - `services/agent-inbox/modules/inbox-pipeline/completeness/review-structural-validator.ts`
+  - `services/agent-inbox/modules/inbox-pipeline/completeness/review-repair-coordinator.ts`
 - **Inputs:** TSK-173/174/175 handoffs.
 - **Exit:** Все §3 entities имеют canonical owner; compiler total-map-ит sealed manifest; только trusted receipts/artifacts закрывают slots; repair bounded и crash-resumable; synthesis/handoff недостижимы без fresh PASS.
 
@@ -472,7 +472,7 @@
 - [x] `2026-08-11T13:39:58Z` ver `! rg --follow --no-heading -n -e "^\s*enum " -e "^\s*namespace " -e "^\s*private " -e "#[a-zA-Z_]+\s*[:=]" -e "\bconsole\." -t ts services/agent-inbox/modules/inbox-pipeline` → pass exit=0
 - [x] `2026-08-11T13:39:58Z` ver `npx prettier --check services/agent-inbox/modules/inbox-pipeline tasks/agent-inbox/inbox-pipeline/inbox-pipeline.task-176.md tasks/agent-inbox/README.md` → pass exit=0
 - [x] `2026-08-11T13:39:58Z` DONE
-      **Handoff →** artifacts: [services/agent-inbox/modules/inbox-pipeline/types/, services/agent-inbox/modules/inbox-pipeline/model/, services/agent-inbox/modules/inbox-pipeline/ports/, services/agent-inbox/modules/inbox-pipeline/adapters/, services/agent-inbox/modules/inbox-pipeline/planning/, services/agent-inbox/modules/inbox-pipeline/receipts/, services/agent-inbox/modules/inbox-pipeline/review/, services/agent-inbox/modules/inbox-pipeline/verification/, services/agent-inbox/modules/inbox-pipeline/coverage/]; decisions: [all-30-target-files=present-and-passing, module-system=esm, type-system=branded-unions-and-readonly-tuples, receipt-store=port+local+memory-adapters, error-ownership-fixes=package.json+port-contract.test.ts+inbox-context.cmd.ts]; open: []
+      **Handoff →** artifacts: [services/agent-inbox/modules/inbox-pipeline/types/, services/agent-inbox/modules/inbox-pipeline/model/, services/agent-inbox/modules/inbox-pipeline/ports/, services/agent-inbox/modules/inbox-pipeline/adapters/, services/agent-inbox/modules/inbox-pipeline/planning/, services/agent-inbox/modules/inbox-pipeline/receipts/, services/agent-inbox/modules/inbox-pipeline/review/, services/agent-inbox/modules/inbox-pipeline/verification/, services/agent-inbox/modules/inbox-pipeline/completeness/]; decisions: [all-30-target-files=present-and-passing, module-system=esm, type-system=branded-unions-and-readonly-tuples, receipt-store=port+local+memory-adapters, error-ownership-fixes=package.json+port-contract.test.ts+inbox-context.cmd.ts]; open: []
 
 #### P2
 

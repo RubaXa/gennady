@@ -17,6 +17,7 @@ import { bootReal, makeStateDir, teardown, BASE_URL, MR_URL, MR_REF } from './_s
 import { shot } from '../helpers/shot.ts';
 import { waitForRealMermaidRender } from '../helpers/wait-render.ts';
 import { mrReportsDir } from '../../../cli/cmd/inbox/_core/logic/state-paths.logic.ts';
+import { logger } from '#logger';
 import {
   sessionArtifactsDir,
   phaseTimingsPath,
@@ -87,8 +88,7 @@ test.describe('t9 full flow', () => {
     const unassignedRegion = page.getByRole('region', { name: 'Unassigned MRs' });
     await expect(unassignedRegion).toBeVisible({ timeout: 10_000 });
 
-    // eslint-disable-next-line no-console -- D-125: t9 telemetry-marker line required by ticket P3 Exit
-    console.info(`[t9] step=board-loaded ts=${new Date().toISOString()}`);
+    logger.info(`[t9] step=board-loaded ts=${new Date().toISOString()}`);
     await shot(page, 't9-01-board-empty');
   });
 
@@ -142,8 +142,7 @@ test.describe('t9 full flow', () => {
     const reviewerRoleRegion = page.getByRole('region', { name: /reviewer/i });
     await expect(reviewerRoleRegion.getByText(MR_REF)).toBeVisible({ timeout: 10_000 });
 
-    // eslint-disable-next-line no-console -- D-125: t9 telemetry-marker line required by ticket P3 Exit
-    console.info(`[t9] step=assigned-via-ui ts=${new Date().toISOString()}`);
+    logger.info(`[t9] step=assigned-via-ui ts=${new Date().toISOString()}`);
     await shot(page, 't9-02-assigned');
   });
 
@@ -236,8 +235,7 @@ test.describe('t9 full flow', () => {
       await app!.scheduler.tick();
       ticks++;
       const inst = app!.scheduler.findInstance(MR_URL);
-      // eslint-disable-next-line no-console -- D-125: localizes a stall to a node, not a bare timeout
-      console.info(
+      logger.info(
         `[t9] P4 tick ${ticks} ${Date.now() - t0}ms — state=${inst?.state ?? 'none'} node=${inst?.currentNode ?? 'n/a'}`
       );
 
@@ -300,14 +298,12 @@ test.describe('t9 full flow', () => {
             await shot(page, `t9-03-tab-${tabName.replace(/\.task\.md$|\.md$/, '')}`);
             previousText = currentText;
           }
-          // eslint-disable-next-line no-console -- D-125: proves every artifact tab genuinely renders
-          console.info(
+          logger.info(
             `[t9] step=artifact-tabs-verified tabs=[${tabsToVerify.join(',')}] ts=${new Date().toISOString()}`
           );
 
           progress.prep = true;
-          // eslint-disable-next-line no-console -- D-125: t9 telemetry-marker line required by ticket P4 Exit
-          console.info(
+          logger.info(
             `[t9] step=prep-materialized tracks=[${taskFiles.join(',')}] ts=${new Date().toISOString()}`
           );
         }
@@ -327,8 +323,7 @@ test.describe('t9 full flow', () => {
           });
           await shot(page, 't9-04-track-review-done');
           progress.trackReview = true;
-          // eslint-disable-next-line no-console -- D-125: t9 telemetry-marker line required by ticket P4 Exit
-          console.info(
+          logger.info(
             `[t9] step=lens-track-review bytes=${bytes} toolCalls=${toolCalls} ts=${new Date().toISOString()}`
           );
         }
@@ -348,8 +343,7 @@ test.describe('t9 full flow', () => {
         await expect(page.locator('nav[aria-label="Артефакты"]')).toBeVisible({ timeout: 20_000 });
         await shot(page, 't9-05-fanout-complete');
         progress.fanout = true;
-        // eslint-disable-next-line no-console -- D-125: t9 telemetry-marker line required by ticket P4 Exit
-        console.info(`[t9] step=fanout-complete lenses=3 ts=${new Date().toISOString()}`);
+        logger.info(`[t9] step=fanout-complete lenses=3 ts=${new Date().toISOString()}`);
       }
       // #endregion END_SUBSTEP_5_FANOUT_COMPLETE
 
@@ -359,8 +353,7 @@ test.describe('t9 full flow', () => {
         await expect(page.locator('nav[aria-label="Артефакты"]')).toBeVisible({ timeout: 20_000 });
         await shot(page, 't9-06-gate-filled');
         progress.gateFilled = true;
-        // eslint-disable-next-line no-console -- D-125: t9 telemetry-marker line required by ticket P4 Exit
-        console.info(`[t9] step=gate-filled-passed ts=${new Date().toISOString()}`);
+        logger.info(`[t9] step=gate-filled-passed ts=${new Date().toISOString()}`);
       }
       // #endregion END_SUBSTEP_6_GATE_FILLED
 
@@ -404,8 +397,7 @@ test.describe('t9 full flow', () => {
         await expect(page.locator('nav[aria-label="Артефакты"]')).toBeVisible({ timeout: 20_000 });
         await shot(page, 't9-07-synthesized');
         progress.synthesized = true;
-        // eslint-disable-next-line no-console -- D-125: t9 telemetry-marker line required by ticket P4 Exit
-        console.info(
+        logger.info(
           `[t9] step=synthesized retries=${retries} outcome=${outcome} ts=${new Date().toISOString()}`
         );
       }
@@ -436,8 +428,7 @@ test.describe('t9 full flow', () => {
 
         await shot(page, 't9-08-gate-synthesis');
         progress.awaitingOperator = true;
-        // eslint-disable-next-line no-console -- D-125: t9 telemetry-marker line required by ticket P4 Exit
-        console.info(`[t9] step=awaiting-operator ts=${new Date().toISOString()}`);
+        logger.info(`[t9] step=awaiting-operator ts=${new Date().toISOString()}`);
       }
       // #endregion END_SUBSTEP_8_AWAITING_OPERATOR
 
@@ -496,8 +487,7 @@ test.describe('t9 full flow', () => {
     ).toBe(diskFindingsCount);
 
     await shot(page, 't9-09-detail');
-    // eslint-disable-next-line no-console -- D-125: t9 telemetry-marker line required by ticket P5 Exit
-    console.info(
+    logger.info(
       `[t9] step=detail-rendered findings=${diskFindingsCount} ts=${new Date().toISOString()}`
     );
   });
@@ -580,8 +570,7 @@ test.describe('t9 full flow', () => {
       'the on-disk answer must be the same text the UI actually rendered, not a different turn'
     ).toBe(lastTurn.answer.slice(0, 20));
 
-    // eslint-disable-next-line no-console -- D-125: t9 telemetry-marker line required by ticket P6 Exit
-    console.info(
+    logger.info(
       `[t9] step=chat-answered answerLen=${lastTurn.answer.length} ts=${new Date().toISOString()}`
     );
   });
@@ -615,8 +604,7 @@ test.describe('t9 P7 action (own independent live drive)', () => {
       await p7App.scheduler.tick();
       ticks++;
       const inst = p7App.scheduler.findInstance(MR_URL);
-      // eslint-disable-next-line no-console -- D-125: localizes a stall to a node, not a bare timeout
-      console.info(
+      logger.info(
         `[t9] P7 tick ${ticks} ${Date.now() - t0}ms — state=${inst?.state ?? 'none'} node=${inst?.currentNode ?? 'n/a'}`
       );
       if (inst?.state === 'awaiting_operator') {
@@ -661,8 +649,7 @@ test.describe('t9 P7 action (own independent live drive)', () => {
     await page.goto(`${BASE_URL}/#/mr/${encodeURIComponent(MR_REF)}`);
     await expect(page.locator('nav[aria-label="Артефакты"]')).toBeVisible({ timeout: 20_000 });
     await sseConnected;
-    // eslint-disable-next-line no-console -- D-125: self-reporting the SSE-ready checkpoint
-    console.info(`[t9] P7 sse-stream-connected ts=${new Date().toISOString()}`);
+    logger.info(`[t9] P7 sse-stream-connected ts=${new Date().toISOString()}`);
 
     // A live LLM review is non-deterministic — this independent live drive's synthesize step may
     // legitimately find zero candidates (a valid outcome, not a bug: P4's separate live run on the
@@ -670,8 +657,7 @@ test.describe('t9 P7 action (own independent live drive)', () => {
     // disabled at 0 — fall back to "Approve (гейт)" (no candidate needed) so P7 proves the SAME
     // action→dry-run→effect_applied mechanism regardless of what this run's review contained.
     const candidateCheckboxCount = await page.locator('input[type="checkbox"]').count();
-    // eslint-disable-next-line no-console -- D-125: self-reporting which branch this run took, not guessed externally
-    console.info(`[t9] P7 candidateCheckboxCount=${candidateCheckboxCount}`);
+    logger.info(`[t9] P7 candidateCheckboxCount=${candidateCheckboxCount}`);
 
     let actionButton;
     if (candidateCheckboxCount > 0) {
@@ -716,7 +702,7 @@ test.describe('t9 P7 action (own independent live drive)', () => {
     }
 
     // effectApplied can flip true as early as the FIRST tick above — but emitDryRun's SSE broadcast
-    // still travels HTTP response stream → network → browser EventSource → onmessage → console.info,
+    // still travels HTTP response stream → network → browser EventSource → onmessage → page.on('console'),
     // asynchronous relative to that tick() call. Asserting immediately races that delivery.
     for (let i = 0; i < 10 && dryRunLines.length === 0; i++) {
       await page.waitForTimeout(300);
@@ -733,7 +719,6 @@ test.describe('t9 P7 action (own independent live drive)', () => {
       `expected a "DRY-RUN post→MR …" console line; captured dryRunLines: ${JSON.stringify(dryRunLines)}; all console: ${JSON.stringify(allConsoleLines)}`
     ).toBe(true);
 
-    // eslint-disable-next-line no-console -- D-125: t9 telemetry-marker line required by ticket P7 Exit
-    console.info(`[t9] step=action-confirmed ts=${new Date().toISOString()}`);
+    logger.info(`[t9] step=action-confirmed ts=${new Date().toISOString()}`);
   });
 });

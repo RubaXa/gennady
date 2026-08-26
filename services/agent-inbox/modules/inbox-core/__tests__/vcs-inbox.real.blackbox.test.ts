@@ -14,7 +14,7 @@ import { VcsInboxReal } from '../vcs-inbox.real.ts';
 const HOST = 'gitlab.test';
 const GRAPHQL_URL = `https://${HOST}/api/graphql`;
 
-/** One MergeRequest node in the exact shape ACTIONABLE_QUERY selects. */
+/** One MergeRequest node in the exact shape the connection queries select. */
 function mrNode(o: {
   iid: string;
   path: string;
@@ -24,6 +24,8 @@ function mrNode(o: {
   author?: string;
   reviewers?: string[];
   approvedBy?: string[];
+  pipelineStatus?: string;
+  conflicts?: boolean;
 }) {
   return {
     iid: o.iid,
@@ -36,11 +38,13 @@ function mrNode(o: {
     author: { username: o.author ?? 'someone' },
     reviewers: { nodes: (o.reviewers ?? []).map((username) => ({ username })) },
     approvedBy: { nodes: (o.approvedBy ?? []).map((username) => ({ username })) },
+    headPipeline: o.pipelineStatus ? { status: o.pipelineStatus } : null,
+    conflicts: o.conflicts ?? false,
     project: { fullPath: o.path },
   };
 }
 
-/** The `data` payload GitLab returns across the bounded actionable source queries. */
+/** The `data` payload GitLab returns across the three bounded discovery source queries. */
 function actionableData(source: string) {
   const reviewA = mrNode({
     iid: '164',
@@ -48,40 +52,20 @@ function actionableData(source: string) {
     author: 'alice',
     reviewers: ['me'],
   });
+  // reviewB carries a FAILED head pipeline — proves ci_failed is now derived from MR
+  // facts (headPipeline.status), not from a build_failed pending todo.
   const reviewB = mrNode({
     iid: '630',
     path: 'vk-workspace/superapp',
     author: 'bob',
     reviewers: ['me'],
+    pipelineStatus: 'FAILED',
   });
   const authored = mrNode({ iid: '900', path: 'infra/iaas/ansible-devint', author: 'me' });
   const assigned = mrNode({ iid: '77', path: 'ops/runbook', author: 'dave' });
   const empty = { nodes: [] };
   return {
     currentUser: {
-      todos:
-        source === 'todos'
-          ? {
-              nodes: [
-                // Same MR as reviewB, but surfaced via a todo with a CI-failure event —
-                // proves role stays 'reviewer' (2 > mentioned 1) and the event decorates it.
-                {
-                  id: 'gid://gitlab/Todo/1',
-                  action: 'build_failed',
-                  target: { __typename: 'MergeRequest', ...reviewB },
-                },
-                // A mention-only MR not present in any connection.
-                {
-                  id: 'gid://gitlab/Todo/2',
-                  action: 'mentioned',
-                  target: {
-                    __typename: 'MergeRequest',
-                    ...mrNode({ iid: '42', path: 'team/docs', author: 'carol' }),
-                  },
-                },
-              ],
-            }
-          : empty,
       reviewRequestedMergeRequests:
         source === 'reviewRequestedMergeRequests' ? { nodes: [reviewA, reviewB] } : empty,
       assignedMergeRequests: source === 'assignedMergeRequests' ? { nodes: [assigned] } : empty,
@@ -103,36 +87,37 @@ describe('VcsInboxReal#getActionable (black-box over intercepted network)', () =
 
   it('should discover, dedup, and role-merge MRs via the real GraphQL path', async () => {
     const sourcePattern =
-      /todos\(|reviewRequestedMergeRequests\(|assignedMergeRequests\(|authoredMergeRequests\(/g;
+      /reviewRequestedMergeRequests\(|assignedMergeRequests\(|authoredMergeRequests\(/g;
     const reply = (req: { body: string | null }) => {
       const body = req.body ?? '';
       const sources = body.match(sourcePattern) ?? [];
       assert.strictEqual(sources.length, 1);
       const source = sources[0]!.slice(0, -1);
       assert.match(body, new RegExp(`${source}\\(first: 100`));
+      // discovery must not read pending todos
+      assert.doesNotMatch(body, /todos\(/);
       return { status: 200, body: { data: actionableData(source) } };
     };
-    const tracker = mockEnv.interceptMultiple('POST', GRAPHQL_URL, [reply, reply, reply, reply]);
+    const tracker = mockEnv.interceptMultiple('POST', GRAPHQL_URL, [reply, reply, reply]);
 
     const vcs = new VcsInboxReal({ host: HOST, token: 'fake-token' });
     const actionable = await vcs.getActionable();
 
     // #region ASSERT_DISCOVERY
-    assert.strictEqual(tracker.getAttemptCount(), 4);
+    assert.strictEqual(tracker.getAttemptCount(), 3);
     const byKey = new Map(actionable.map((m) => [`${m.project}!${m.iid}`, m]));
 
-    // 5 distinct MRs after dedup (reviewB appears in both a todo and the connection).
-    assert.strictEqual(actionable.length, 5);
+    // 4 distinct MRs from the three discovery sources (reviewA, reviewB, authored, assigned).
+    assert.strictEqual(actionable.length, 4);
 
     const superapp = byKey.get('vk-workspace/superapp!630');
     assert.ok(superapp, 'reviewB must be present');
-    assert.strictEqual(superapp.role, 'reviewer'); // reviewer(2) wins over the todo's mention
-    assert.deepStrictEqual(superapp.events, ['ci_failed']); // build_failed todo decorated it
+    assert.strictEqual(superapp.role, 'reviewer');
+    assert.deepStrictEqual(superapp.events, ['ci_failed']); // derived from FAILED head pipeline
 
     assert.strictEqual(byKey.get('infra/iaas/ansible-devint!900')?.role, 'author');
     assert.strictEqual(byKey.get('mail/messenger!164')?.role, 'reviewer');
-    assert.strictEqual(byKey.get('team/docs!42')?.role, 'mentioned');
-    assert.strictEqual(byKey.get('ops/runbook!77')?.role, 'mentioned');
+    assert.strictEqual(byKey.get('ops/runbook!77')?.role, 'mentioned'); // assigned → mentioned
     // #endregion ASSERT_DISCOVERY
   });
 
@@ -141,12 +126,7 @@ describe('VcsInboxReal#getActionable (black-box over intercepted network)', () =
       status: 200,
       body: { errors: [{ message: 'insufficient scope' }] },
     };
-    mockEnv.interceptMultiple('POST', GRAPHQL_URL, [
-      errorReply,
-      errorReply,
-      errorReply,
-      errorReply,
-    ]);
+    mockEnv.interceptMultiple('POST', GRAPHQL_URL, [errorReply, errorReply, errorReply]);
 
     const vcs = new VcsInboxReal({ host: HOST, token: 'fake-token' });
 

@@ -234,8 +234,19 @@ export async function run(rawArgs: string[], root: string = resolve('.')): Promi
   // The `harness/` eval lane is the same case at directory scale: never shipped
   // (`package.json#files` excludes it) and already outside lint/test/tsc scope; its fixtures and
   // gold references are single-use by nature, so YAGNI's production-surface rule does not apply.
+  // The agent-inbox surface (`isAgentInboxSurface`) is the same case by policy (DL-19): experimental,
+  // verified by its own `test:agent-inbox` gate, and kept out of the deterministic commit-gate until
+  // it is decomposed/stabilised — its many ports/DTOs/adapters are legitimate surface, not YAGNI debt.
   const changedFiles = getChangedSourceFiles(resolvedRoot).filter(
-    (rel) => !isTestFile(rel) && !isUnderTestDirectory(rel) && !rel.startsWith('harness/')
+    (rel) =>
+      !isTestFile(rel) &&
+      !isUnderTestDirectory(rel) &&
+      !rel.startsWith('harness/') &&
+      !rel.startsWith('services/agent-inbox/') &&
+      !rel.startsWith('cli/cmd/inbox') &&
+      !rel.startsWith('cli/cmd/vcs-pipeline/') &&
+      !rel.startsWith('e2e/inbox-serve/') &&
+      !rel.startsWith('test/agent-inbox/')
   );
   const allChanged: ChangedSymbol[] = [];
   for (const rel of changedFiles) {

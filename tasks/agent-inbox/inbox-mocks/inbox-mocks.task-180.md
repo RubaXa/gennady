@@ -5,7 +5,7 @@
 ## 1. Meta
 
 - **Task-ID:** TSK-180
-- **Status:** [ ] TODO
+- **Status:** [x] DONE
 - **Reopens:** 0
 - **Purpose:** Expand existing factories into strict adapters/scenarios for every variable port and failure branch.
 - **Scope:** agent-inbox
@@ -22,8 +22,8 @@
 
 | ID  | Kind | Deps | Status |
 | --- | ---- | ---- | ------ |
-| P1  | impl | —    | [ ]    |
-| P2  | test | P1   | [ ]    |
+| P1  | impl | —    | [x]    |
+| P2  | test | P1   | [x]    |
 
 <!--/SECTION:PHASES_OVERVIEW-->
 
@@ -120,19 +120,39 @@
 
 #### P1
 
-- [ ] `<ts>` ver `npm run type-check` → `<pass|fail>` exit=`<code>`
-- [ ] `<ts>` DONE
-      **Handoff →** artifacts: [...]; decisions: [...]; open: [...]
+- [x] `2026-08-11T16:48:26Z` intro `InMemoryJournalAdapter` ← реализация JournalPort без filesystem для изолированных тестов
+- [x] `2026-08-11T16:48:26Z` intro `InMemoryArtifactAdapter` ← реализация ArtifactStorePort в памяти без filesystem
+- [x] `2026-08-11T16:48:26Z` intro `ControlledClockAdapter` ← re-export ControlledClock под каноническим именем из spec
+- [x] `2026-08-11T16:48:26Z` intro `MockVcsAdapter` ← scripted VcsPort с записью effect-вызовов и падением на unseeded reads
+- [x] `2026-08-11T16:48:26Z` intro `MockAgentAdapter` ← scripted AgentRuntimePort с FIFO-очередью ответов на prompt
+- [x] `2026-08-11T16:48:26Z` intro `DeterministicTaskExecutor` ← TaskExecutorPort в памяти с FIFO-порядком и journal-бэкингом
+- [x] `2026-08-11T16:48:26Z` intro `MockRuntimeProfile` ← RuntimeProfilePort без filesystem, с защитой чужого run-id
+- [x] `2026-08-11T16:48:26Z` intro `InMemoryProjectionAdapter` ← seeded ProjectionPort для сценарных тестов
+- [x] `2026-08-11T16:48:26Z` intro `ReviewScenario` ← неизменяемое определение сценария; fresh runtime per test через start()
+- [x] `2026-08-11T16:48:26Z` intro `composePortContractSuites` (test/) ← фабрики адаптеров для P2-контрактных тестов
+- [x] `2026-08-11T17:12:00Z` ver `npm run type-check` → pass exit=0
+- [x] `2026-08-11T17:12:00Z` ver `gennady lint 11 files` → pass exit=0
+- [x] `2026-08-11T17:12:00Z` ver `npm run format:check` → pass exit=0
+- [x] `2026-08-11T17:12:00Z` ver `npm test (target files: 19 tests)` → pass exit=0
+- [x] `2026-08-11T17:12:00Z` DONE
+      **Handoff →** artifacts: [adapters/in-memory-journal.adapter.ts, adapters/in-memory-artifact.adapter.ts, adapters/controlled-clock.adapter.ts, adapters/mock-vcs.adapter.ts, adapters/mock-agent.adapter.ts, adapters/deterministic-task-executor.adapter.ts, adapters/mock-runtime-profile.adapter.ts, adapters/in-memory-projection.adapter.ts, scenarios/review-scenario.ts, index.ts, test/mock-port-suites.ts]; decisions: [implements→@see-only, extends→@see+@param+@returns, class-body #region forbidden, @throws before @returns in tag order]; open: []
 
 #### P2
 
-- [ ] `<ts>` ver `npm test -- <target-tests>` → `<pass|fail>` exit=`<code>`
-- [ ] `<ts>` DONE
-      **Handoff →** artifacts: [...]; decisions: [...]; open: [...]
+- [x] `2026-08-11T17:26:31Z` intro `mock-port.contract.test.ts` ← port contract test file: all 7 adapters run twice + per-port describe blocks
+- [x] `2026-08-11T17:26:31Z` intro `review-scenario.test.ts` ← unit tests: VCS effect matrix, partial/ambiguous failure, approval reset, controlled clock
+- [x] `2026-08-11T17:26:31Z` intro `review-scenario.integration.test.ts` ← integration tests: determinism, run-id isolation, crash recovery, ambiguous reconciliation
+- [x] `2026-08-11T17:36:06Z` discovery `npm test -- <dirs>` fails: tsx ESM resolver treats directory args as module paths (ERR_MODULE_NOT_FOUND index.json); file-arg form works; `npm run test` (sdd verify gate) discovers all target files via find and passes
+- [x] `2026-08-11T17:36:06Z` ver `npm run type-check` → pass exit=0
+- [x] `2026-08-11T17:36:06Z` ver `npm run test` → pass exit=0
+- [x] `2026-08-11T17:36:06Z` ver `node --import tsx --test --experimental-test-module-mocks $(find services/agent-inbox/modules/inbox-mocks/__tests__/ services/agent-inbox/test/__tests__/ -name '*.test.ts')` → pass exit=0
+- [x] `2026-08-11T17:36:06Z` DONE
+      **Handoff →** artifacts: [services/agent-inbox/modules/inbox-mocks/__tests__/mock-port.contract.test.ts, services/agent-inbox/test/__tests__/review-scenario.test.ts, services/agent-inbox/test/__tests__/review-scenario.integration.test.ts]; decisions: [canonical-case-names=verbatim-per-§6, contract-twice=all-seven-adapters-run-twice-in-combined-it, matrix-covers=all-9-VCS-effects+partial-fail+approval-reset+ambiguous-claim, recovery-covers=crash-requeue+ambiguous-reconcile-to-empty, isolation-covers=mock-namespace-reset-denied+foreign-runid-denied+getHost-empty+unseeded-fails]; open: [scoped-test-command=§5-directory-arg-incompatible-with-tsx-ESM-loader-sdd-verify-npm-run-test-is-canonical-gate]
 
 #### Round close
 
-- [ ] `<ts>` DONE
+- [x] `2026-08-11T17:36:53Z` sync agent-inbox+root
+- [x] `2026-08-11T17:36:53Z` DONE
 <!--/SECTION:EXECUTION_LOG-->
 
 ## 8. Decision Log

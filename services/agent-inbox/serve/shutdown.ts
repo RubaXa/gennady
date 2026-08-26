@@ -1,6 +1,6 @@
-// @file: gracefulShutdown — SIGTERM/SIGINT handler: cancels OpenCode sessions, stops scheduler, closes HTTP server.
+// @file: gracefulShutdown — SIGTERM/SIGINT handler: cancels OpenCode sessions, stops lifecycle coordinator, closes HTTP server.
 // @consumers: gennady inbox serve CLI
-// @tasks: TSK-115, TSK-117, TSK-170
+// @tasks: TSK-115, TSK-117, TSK-170, TSK-181
 
 import { readFile, unlink } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
@@ -8,7 +8,6 @@ import { logger } from '#logger';
 import type { ChildProcess } from 'node:child_process';
 import type { HttpServer } from '../modules/inbox-api/http-server.ts';
 import type { OpenCodePort } from '../modules/inbox-opencode/opencode.port.ts';
-import type { RoleScheduler } from '../modules/inbox-roles/role-scheduler.ts';
 import type { BackgroundVerifier } from '../modules/inbox-vcs/background-verify.ts';
 import { isOpencodePid, terminateOrphanedOpencode } from './pid-utils.ts';
 
@@ -27,8 +26,8 @@ export type ShutdownConfig = {
   opencodeProcess?: ChildProcess | null;
   /** @purpose Path to opencode PID file — primary method: kill by PID, then remove file. */
   opencodePidFile?: string | null;
-  /** @purpose Optional scheduler to stop before closing HTTP server. */
-  scheduler?: RoleScheduler;
+  /** @purpose Optional lifecycle coordinator to stop before closing HTTP server. */
+  scheduler?: { stop(): Promise<void> };
   /** @purpose Optional GitLab verifier timer started by the real serve composition root. */
   backgroundVerifier?: BackgroundVerifier | null;
 };

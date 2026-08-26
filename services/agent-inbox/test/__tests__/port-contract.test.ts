@@ -46,9 +46,10 @@ function realisticGitlabResponse(): { data: unknown } {
   };
 }
 
-// invariant: VcsGitlabInbox.getActionable sends QUERY_COUNT parallel GraphQL POSTs via Promise.all;
-//            one interceptor per call is required for the mock agent to satisfy all requests.
-const QUERY_COUNT = 4;
+// invariant: VcsGitlabInbox.getActionable sends QUERY_COUNT parallel GraphQL POSTs via Promise.all
+//            — one per discovery source (reviewer/assignee/author); pending todos are not a
+//            discovery source. One interceptor per call satisfies all requests in the mock agent.
+const QUERY_COUNT = 3;
 
 function makeRecordingReplies(
   cassetteDir: string,

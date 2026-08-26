@@ -20,6 +20,7 @@ import {
   type OpenCodeMessage,
 } from './opencode.port.ts';
 import { composeOk, composeError, type OpenCodeCallResult } from './errors.ts';
+import { parseOpenCodeModel } from './model-selection.ts';
 
 /**
  * @purpose Summarize a tool call's input to one short line — command, path, or pattern — for the
@@ -108,7 +109,7 @@ export class OpenCodeAgentAdapter extends AgentRuntimePort {
     this._parkedSessions = new Map();
     this._toolTraceDir = 'telemetry';
     this._dispatcher = opts.dispatcher;
-    logger.debug('[OpenCodeReal#ctor] [created]', { baseUrl: this._baseUrl });
+    logger.debug('[OpenCodeReal#ctor] [idle → created]', { baseUrl: this._baseUrl });
   }
 
   /**
@@ -130,7 +131,7 @@ export class OpenCodeAgentAdapter extends AgentRuntimePort {
           ? { fetch: (req: Request) => fetch(req, { dispatcher: this._dispatcher } as RequestInit) }
           : {}),
       });
-      logger.debug('[OpenCodeReal#_ensureClient] [client created]', {
+      logger.debug('[OpenCodeReal#_ensureClient] [idle → created]', {
         baseUrl: this._baseUrl,
         directory: this._directory,
       });
@@ -149,12 +150,14 @@ export class OpenCodeAgentAdapter extends AgentRuntimePort {
   async createSession(opts: CreateSessionOpts): Promise<SessionHandle> {
     const client = this._ensureClient();
     const directory = opts.directory || this._directory;
+    const modelLabel = opts.model ?? 'server-default';
 
     // #region START_CREATE_SESSION — POST /session with title and directory
     try {
-      logger.debug('[OpenCodeReal#createSession] [creating]', {
+      logger.debug('[OpenCodeReal#createSession] [idle → creating]', {
         title: opts.title,
         directory,
+        model: modelLabel,
       });
 
       const result = await client.session.create({
@@ -175,13 +178,16 @@ export class OpenCodeAgentAdapter extends AgentRuntimePort {
         const errMsg = rawMessage
           ? String(rawMessage)
           : `Session creation failed${status !== undefined ? ` (HTTP ${status})` : ''}`;
-        logger.warn('[OpenCodeReal#createSession] [server error]', {
+        logger.warn('[OpenCodeReal#createSession] [creating → server_failed]', {
           title: opts.title,
+          model: modelLabel,
           status,
           error: errMsg,
           rawError,
         });
-        throw new Error(`OpenCodeReal: createSession failed — ${errMsg}`);
+        throw new Error(
+          `[OpenCodeReal#createSession] Session creation failed for ${modelLabel}: ${errMsg}`
+        );
       }
 
       const session = result.data!;
@@ -193,9 +199,10 @@ export class OpenCodeAgentAdapter extends AgentRuntimePort {
         this._sessionModels.set(session.id, opts.model);
       }
 
-      logger.debug('[OpenCodeReal#createSession] [created]', {
+      logger.debug('[OpenCodeReal#createSession] [creating → created]', {
         sid: session.id,
         title: session.title,
+        model: modelLabel,
       });
 
       return {
@@ -206,11 +213,18 @@ export class OpenCodeAgentAdapter extends AgentRuntimePort {
       };
     } catch (err: unknown) {
       const cause = err instanceof Error ? err : new Error(String(err));
-      logger.error('[OpenCodeReal#createSession] [unavailable]', {
+      const error = cause.message.startsWith('[OpenCodeReal#createSession]')
+        ? cause
+        : new Error(
+            `[OpenCodeReal#createSession] Unable to create session for ${modelLabel}: ${cause.message}`,
+            { cause }
+          );
+      logger.error('[OpenCodeReal#createSession] [creating → unavailable]', {
         title: opts.title,
-        message: cause.message,
+        model: modelLabel,
+        error,
       });
-      throw cause;
+      throw error;
     }
     // #endregion END_CREATE_SESSION
   }
@@ -240,14 +254,17 @@ export class OpenCodeAgentAdapter extends AgentRuntimePort {
 
     // #region START_STATUS — GET /session/status → map SDK type to port status
     try {
-      logger.debug('[OpenCodeReal#status] [querying]', { sid });
+      logger.debug('[OpenCodeReal#status] [idle → querying]', { sid });
 
       const result = await client.session.status({
         query: directory ? { directory } : undefined,
       });
 
       if (result.error) {
-        logger.warn('[OpenCodeReal#status] [server error → terminated]', { sid });
+        logger.warn('[OpenCodeReal#status] [querying → terminated]', {
+          sid,
+          error: result.error,
+        });
         return 'terminated';
       }
 
@@ -282,9 +299,9 @@ export class OpenCodeAgentAdapter extends AgentRuntimePort {
       // #endregion END_MAP_STATUS
     } catch (err: unknown) {
       const cause = err instanceof Error ? err : new Error(String(err));
-      logger.warn('[OpenCodeReal#status] [error → terminated]', {
+      logger.warn('[OpenCodeReal#status] [querying → terminated]', {
         sid,
-        message: cause.message,
+        error: cause,
       });
       return 'terminated';
     }
@@ -306,7 +323,7 @@ export class OpenCodeAgentAdapter extends AgentRuntimePort {
 
     // #region START_AGGREGATE_TOOL_CALLS — scan full message history, not the last prompt() reply
     try {
-      logger.debug('[OpenCodeReal#toolCalls] [querying]', { sid });
+      logger.debug('[OpenCodeReal#toolCalls] [idle → querying]', { sid });
 
       const result = await client.session.messages({
         path: { id: sid },
@@ -335,11 +352,14 @@ export class OpenCodeAgentAdapter extends AgentRuntimePort {
         }
       }
 
-      logger.debug('[OpenCodeReal#toolCalls] [aggregated]', { sid, count: calls.length });
+      logger.debug('[OpenCodeReal#toolCalls] [querying → aggregated]', {
+        sid,
+        count: calls.length,
+      });
       return calls;
     } catch (err: unknown) {
       const cause = err instanceof Error ? err : new Error(String(err));
-      logger.warn('[OpenCodeReal#toolCalls] [error → empty]', { sid, message: cause.message });
+      logger.warn('[OpenCodeReal#toolCalls] [querying → empty]', { sid, error: cause });
       return [];
     }
     // #endregion END_AGGREGATE_TOOL_CALLS
@@ -360,7 +380,7 @@ export class OpenCodeAgentAdapter extends AgentRuntimePort {
 
     // #region START_AGGREGATE_TOOL_STATS — per-tool count + duration across full message history
     try {
-      logger.debug('[OpenCodeReal#toolCallStats] [querying]', { sid });
+      logger.debug('[OpenCodeReal#toolCallStats] [idle → querying]', { sid });
 
       const result = await client.session.messages({
         path: { id: sid },
@@ -402,11 +422,14 @@ export class OpenCodeAgentAdapter extends AgentRuntimePort {
         .map(([tool, { count, totalMs }]) => ({ tool, count, totalMs }))
         .sort((a, b) => b.totalMs - a.totalMs);
 
-      logger.debug('[OpenCodeReal#toolCallStats] [aggregated]', { sid, tools: stats.length });
+      logger.debug('[OpenCodeReal#toolCallStats] [querying → aggregated]', {
+        sid,
+        tools: stats.length,
+      });
       return stats;
     } catch (err: unknown) {
       const cause = err instanceof Error ? err : new Error(String(err));
-      logger.warn('[OpenCodeReal#toolCallStats] [error → empty]', { sid, message: cause.message });
+      logger.warn('[OpenCodeReal#toolCallStats] [querying → empty]', { sid, error: cause });
       return [];
     }
     // #endregion END_AGGREGATE_TOOL_STATS
@@ -471,11 +494,14 @@ export class OpenCodeAgentAdapter extends AgentRuntimePort {
         }
       }
 
-      logger.debug('[OpenCodeReal#toolCallTrace] [aggregated]', { sid, calls: trace.length });
+      logger.debug('[OpenCodeReal#toolCallTrace] [querying → aggregated]', {
+        sid,
+        calls: trace.length,
+      });
       return trace;
     } catch (err: unknown) {
       const cause = err instanceof Error ? err : new Error(String(err));
-      logger.warn('[OpenCodeReal#toolCallTrace] [error → empty]', { sid, message: cause.message });
+      logger.warn('[OpenCodeReal#toolCallTrace] [querying → empty]', { sid, error: cause });
       return [];
     }
   }
@@ -494,7 +520,7 @@ export class OpenCodeAgentAdapter extends AgentRuntimePort {
 
     // #region START_FETCH_MESSAGES — GET /session/{id}/messages
     try {
-      logger.debug('[OpenCodeReal#messages] [querying]', { sid });
+      logger.debug('[OpenCodeReal#messages] [idle → querying]', { sid });
 
       const result = await client.session.messages({
         path: { id: sid },
@@ -519,11 +545,14 @@ export class OpenCodeAgentAdapter extends AgentRuntimePort {
         });
       }
 
-      logger.debug('[OpenCodeReal#messages] [fetched]', { sid, count: messages.length });
+      logger.debug('[OpenCodeReal#messages] [querying → fetched]', {
+        sid,
+        count: messages.length,
+      });
       return messages;
     } catch (err: unknown) {
       const cause = err instanceof Error ? err : new Error(String(err));
-      logger.warn('[OpenCodeReal#messages] [error → empty]', { sid, message: cause.message });
+      logger.warn('[OpenCodeReal#messages] [querying → empty]', { sid, error: cause });
       return [];
     }
     // #endregion END_FETCH_MESSAGES
@@ -585,7 +614,7 @@ export class OpenCodeAgentAdapter extends AgentRuntimePort {
 
     // #region START_ABORT — POST /session/{id}/abort
     try {
-      logger.debug('[OpenCodeReal#abort] [aborting]', { sid });
+      logger.debug('[OpenCodeReal#abort] [active → aborting]', { sid });
 
       const result = await client.session.abort({
         path: { id: sid },
@@ -593,15 +622,18 @@ export class OpenCodeAgentAdapter extends AgentRuntimePort {
       });
 
       if (result.error) {
-        logger.warn('[OpenCodeReal#abort] [server error]', { sid, error: result.error });
+        logger.warn('[OpenCodeReal#abort] [aborting → server_failed]', {
+          sid,
+          error: result.error,
+        });
       } else {
-        logger.debug('[OpenCodeReal#abort] [aborted]', { sid });
+        logger.debug('[OpenCodeReal#abort] [aborting → aborted]', { sid });
       }
     } catch (err: unknown) {
       const cause = err instanceof Error ? err : new Error(String(err));
-      logger.warn('[OpenCodeReal#abort] [error — ignored]', {
+      logger.warn('[OpenCodeReal#abort] [aborting → ignored_failure]', {
         sid,
-        message: cause.message,
+        error: cause,
       });
     }
     // #endregion END_ABORT
@@ -621,7 +653,7 @@ export class OpenCodeAgentAdapter extends AgentRuntimePort {
 
     // #region START_CLOSE — DELETE /session/{id}
     try {
-      logger.debug('[OpenCodeReal#close] [closing]', { sid });
+      logger.debug('[OpenCodeReal#close] [active → closing]', { sid });
 
       const result = await client.session.delete({
         path: { id: sid },
@@ -629,15 +661,18 @@ export class OpenCodeAgentAdapter extends AgentRuntimePort {
       });
 
       if (result.error) {
-        logger.warn('[OpenCodeReal#close] [server error]', { sid, error: result.error });
+        logger.warn('[OpenCodeReal#close] [closing → server_failed]', {
+          sid,
+          error: result.error,
+        });
       } else {
-        logger.debug('[OpenCodeReal#close] [closed]', { sid });
+        logger.debug('[OpenCodeReal#close] [closing → closed]', { sid });
       }
     } catch (err: unknown) {
       const cause = err instanceof Error ? err : new Error(String(err));
-      logger.warn('[OpenCodeReal#close] [error — ignored]', {
+      logger.warn('[OpenCodeReal#close] [closing → ignored_failure]', {
         sid,
-        message: cause.message,
+        error: cause,
       });
     } finally {
       this._sessionDirs.delete(sid);
@@ -689,15 +724,17 @@ export class OpenCodeAgentAdapter extends AgentRuntimePort {
     const toolsGate = this._composeToolsGate(this._sessionTools.get(sid) ?? false);
 
     // Per-phase model selection (TSK-perf): PromptOpts.model overrides the session's
-    // CreateSessionOpts.model default; both absent → omit the field, server's own configured
-    // default applies (today: llm-proxy/deepseek-v4-pro — unchanged from pre-model behavior).
+    // CreateSessionOpts.model default; both absent → omit the field and let the server decide.
+    // Agent Inbox production never relies on that mutable global default: bootstrap pins its
+    // canonical model before creating a control-plane session.
     // Format is `providerID/modelID` (e.g. `llm-proxy/deepseek-v4-flash`) — split on the FIRST
     // slash only, since providerID itself may be a path-like namespace.
     const modelStr = opts.model ?? this._sessionModels.get(sid);
     const model = this._parseModel(modelStr);
+    const modelLabel = modelStr ?? 'server-default';
 
     try {
-      logger.debug('[OpenCodeReal#_sendPrompt] [prompting]', {
+      logger.debug('[OpenCodeReal#_sendPrompt] [idle → prompting]', {
         sid,
         hasFormat,
         toolsGate,
@@ -729,23 +766,48 @@ export class OpenCodeAgentAdapter extends AgentRuntimePort {
         const errName = errData?.name ?? 'UnknownError';
         const errMsg = errData?.data?.message ?? 'Prompt failed';
 
-        logger.warn('[OpenCodeReal#_sendPrompt] [server error]', {
+        logger.error('[OpenCodeReal#_sendPrompt] [prompting → server_failed]', {
           sid,
-          error: errName,
+          model: modelLabel,
+          providerID: model?.providerID,
+          modelID: model?.modelID,
+          errorName: errName,
           message: errMsg,
         });
 
         // #region START_CLASSIFY_SERVER_ERROR
         if (errName === 'MessageAbortedError') {
-          return composeError('SESSION_ERROR', `Session ${sid} was aborted: ${errMsg}`);
+          return composeError(
+            'SESSION_ERROR',
+            `[OpenCodeReal#_sendPrompt] Session ${sid} was aborted for ${modelLabel}: ${errMsg}`,
+            { model: modelLabel, providerID: model?.providerID, modelID: model?.modelID }
+          );
         }
         if (errName === 'APIError') {
           const statusCode = errData?.data && (errData.data as Record<string, unknown>).statusCode;
           if (statusCode === 404) {
-            return composeError('SESSION_ERROR', `Session ${sid} not found on server (404)`);
+            return composeError(
+              'SESSION_ERROR',
+              `[OpenCodeReal#_sendPrompt] Session ${sid} not found on OpenCode server for ${modelLabel} (HTTP 404)`,
+              {
+                model: modelLabel,
+                providerID: model?.providerID,
+                modelID: model?.modelID,
+                statusCode,
+              }
+            );
           }
         }
-        return composeError('SESSION_ERROR', `Server error: ${errName} — ${errMsg}`);
+        return composeError(
+          'SESSION_ERROR',
+          `[OpenCodeReal#_sendPrompt] OpenCode server rejected ${modelLabel}: ${errName} — ${errMsg}`,
+          {
+            model: modelLabel,
+            providerID: model?.providerID,
+            modelID: model?.modelID,
+            providerError: errName,
+          }
+        );
         // #endregion END_CLASSIFY_SERVER_ERROR
       }
 
@@ -756,24 +818,58 @@ export class OpenCodeAgentAdapter extends AgentRuntimePort {
       // Check if the assistant message itself has an error
       if (assistantInfo.error) {
         const msgErr = assistantInfo.error;
-        logger.warn('[OpenCodeReal#_sendPrompt] [assistant error]', {
+        const errorData = (msgErr.data ?? {}) as Record<string, unknown>;
+        const providerMessage =
+          typeof errorData.message === 'string'
+            ? errorData.message
+            : typeof errorData.responseBody === 'string'
+              ? errorData.responseBody.slice(0, 500)
+              : 'unknown';
+        const statusCode = errorData.statusCode;
+        const retryable = errorData.isRetryable;
+        logger.error('[OpenCodeReal#_sendPrompt] [prompting → provider_failed]', {
           sid,
+          model: modelLabel,
+          providerID: model?.providerID,
+          modelID: model?.modelID,
           errorName: msgErr.name,
+          statusCode,
+          retryable,
+          message: providerMessage,
         });
 
         if (msgErr.name === 'MessageAbortedError') {
-          return composeError('SESSION_ERROR', `Session ${sid} was aborted`);
+          return composeError(
+            'SESSION_ERROR',
+            `[OpenCodeReal#_sendPrompt] Session ${sid} was aborted for ${modelLabel}`,
+            { model: modelLabel, providerID: model?.providerID, modelID: model?.modelID }
+          );
         }
         if (msgErr.name === 'MessageOutputLengthError') {
           return composeError(
             'INCOMPLETE_ARTIFACT',
-            `Output for session ${sid} exceeded length limit`,
-            { raw: '' }
+            `[OpenCodeReal#_sendPrompt] Output for ${modelLabel} session ${sid} exceeded the length limit`,
+            {
+              raw: '',
+              model: modelLabel,
+              providerID: model?.providerID,
+              modelID: model?.modelID,
+            }
           );
         }
+        const httpLabel = typeof statusCode === 'number' ? `HTTP ${statusCode}` : 'HTTP unknown';
         return composeError(
           'SESSION_ERROR',
-          `Assistant error: ${msgErr.name} — ${(msgErr.data as { message?: string } | undefined)?.message ?? 'unknown'}`
+          `[OpenCodeReal#_sendPrompt] Provider request failed for ${modelLabel}: ${httpLabel} ${providerMessage}`,
+          {
+            model: modelLabel,
+            providerID: model?.providerID,
+            modelID: model?.modelID,
+            statusCode,
+            retryable,
+            providerError: msgErr.name,
+            providerMessage,
+          }
         );
       }
 
@@ -792,7 +888,7 @@ export class OpenCodeAgentAdapter extends AgentRuntimePort {
 
       // If no format requested, return text as output
       if (!hasFormat) {
-        logger.debug('[OpenCodeReal#_sendPrompt] [completed — text]', {
+        logger.debug('[OpenCodeReal#_sendPrompt] [prompting → completed_text]', {
           sid,
           textLength: fullText.length,
         });
@@ -817,7 +913,7 @@ export class OpenCodeAgentAdapter extends AgentRuntimePort {
       }
 
       if (jsonBlocks.length === 0) {
-        logger.warn('[OpenCodeReal#_sendPrompt] [no JSON in response]', {
+        logger.warn('[OpenCodeReal#_sendPrompt] [prompting → no_result]', {
           sid,
           textPreview: fullText.slice(0, 200),
         });
@@ -832,7 +928,7 @@ export class OpenCodeAgentAdapter extends AgentRuntimePort {
       try {
         parsed = JSON.parse(lastBlock);
       } catch {
-        logger.warn('[OpenCodeReal#_sendPrompt] [parse error]', {
+        logger.warn('[OpenCodeReal#_sendPrompt] [prompting → parse_failed]', {
           sid,
           blockPreview: lastBlock.slice(0, 200),
         });
@@ -848,7 +944,7 @@ export class OpenCodeAgentAdapter extends AgentRuntimePort {
           parsed as Record<string, unknown>
         );
         if (schemaErrors.length > 0) {
-          logger.warn('[OpenCodeReal#_sendPrompt] [schema mismatch]', {
+          logger.warn('[OpenCodeReal#_sendPrompt] [prompting → schema_mismatch]', {
             sid,
             errors: schemaErrors,
           });
@@ -865,7 +961,7 @@ export class OpenCodeAgentAdapter extends AgentRuntimePort {
         }
       }
 
-      logger.debug('[OpenCodeReal#_sendPrompt] [completed — structured]', { sid });
+      logger.debug('[OpenCodeReal#_sendPrompt] [prompting → completed_structured]', { sid });
       void this._writeToolTrace(sid, directory);
       return composeOk(parsed as Record<string, unknown>);
     } catch (err: unknown) {
@@ -878,26 +974,41 @@ export class OpenCodeAgentAdapter extends AgentRuntimePort {
         message.includes('fetch failed') ||
         message.includes('connection refused')
       ) {
-        logger.error('[OpenCodeReal#_sendPrompt] [unavailable]', {
+        logger.error('[OpenCodeReal#_sendPrompt] [prompting → unavailable]', {
           sid,
-          message: cause.message,
+          model: modelLabel,
+          error: cause,
         });
-        return composeError('SESSION_ERROR', `OpenCode server unavailable: ${cause.message}`);
+        return composeError(
+          'SESSION_ERROR',
+          `[OpenCodeReal#_sendPrompt] OpenCode server unavailable for ${modelLabel}: ${cause.message}`,
+          { model: modelLabel, providerID: model?.providerID, modelID: model?.modelID }
+        );
       }
 
       if (message.includes('timeout') || message.includes('abort')) {
-        logger.error('[OpenCodeReal#_sendPrompt] [timeout]', {
+        logger.error('[OpenCodeReal#_sendPrompt] [prompting → timed_out]', {
           sid,
-          message: cause.message,
+          model: modelLabel,
+          error: cause,
         });
-        return composeError('TIMEOUT', `Prompt timed out: ${cause.message}`);
+        return composeError(
+          'TIMEOUT',
+          `[OpenCodeReal#_sendPrompt] Prompt timed out for ${modelLabel}: ${cause.message}`,
+          { model: modelLabel, providerID: model?.providerID, modelID: model?.modelID }
+        );
       }
 
-      logger.error('[OpenCodeReal#_sendPrompt] [unexpected error]', {
+      logger.error('[OpenCodeReal#_sendPrompt] [prompting → failed]', {
         sid,
-        message: cause.message,
+        model: modelLabel,
+        error: cause,
       });
-      return composeError('SESSION_ERROR', `Unexpected error: ${cause.message}`);
+      return composeError(
+        'SESSION_ERROR',
+        `[OpenCodeReal#_sendPrompt] Unexpected failure for ${modelLabel}: ${cause.message}`,
+        { model: modelLabel, providerID: model?.providerID, modelID: model?.modelID }
+      );
       // #endregion END_CLASSIFY_NETWORK_ERROR
     }
   }
@@ -951,16 +1062,13 @@ export class OpenCodeAgentAdapter extends AgentRuntimePort {
   protected _parseModel(
     modelStr: string | undefined
   ): { providerID: string; modelID: string } | undefined {
+    const model = parseOpenCodeModel(modelStr);
     if (!modelStr) return undefined;
-    const slashIndex = modelStr.indexOf('/');
-    if (slashIndex <= 0 || slashIndex === modelStr.length - 1) {
+    if (!model) {
       logger.warn('[OpenCodeReal#_parseModel] [malformed → ignored]', { modelStr });
       return undefined;
     }
-    return {
-      providerID: modelStr.slice(0, slashIndex),
-      modelID: modelStr.slice(slashIndex + 1),
-    };
+    return model;
   }
 
   /**

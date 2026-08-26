@@ -20,6 +20,7 @@ import {
 } from './fixtures/eval-fixture.ts';
 import { shot } from './helpers/shot.ts';
 import { waitForRealMermaidRender } from './helpers/wait-render.ts';
+import { logger } from '#logger';
 
 /** @purpose Live-run opt-in switch | @invariant Unset by default — the fixture path is the fast/reproducible default (spec §7, BDD scenario 4). */
 const EVAL_LIVE = process.env.EVAL_LIVE === '1';
@@ -180,10 +181,10 @@ test.describe('reviewer-eval: live run (EVAL_LIVE=1) — drives the real dashboa
 
     const { report, reportDir } = await runEval({ mrs: [EVAL_MR_URL], dryRun: true }, { stateDir });
 
-    console.info(
+    logger.info(
       `[reviewer-eval:live] materialization finished mr=${EVAL_MR_URL} status=${report.status} reportDir=${reportDir}`
     );
-    console.info(`[reviewer-eval:live] per-MR stage detail: ${JSON.stringify(report.stages)}`);
+    logger.info(`[reviewer-eval:live] per-MR stage detail: ${JSON.stringify(report.stages)}`);
     expect(report.mr).toBe(EVAL_MR_URL);
 
     // Resolve the same `project!iid` ref BoardProviderReal/the dashboard route on (MrCard#mrKey) —
@@ -214,6 +215,6 @@ test.describe('reviewer-eval: live run (EVAL_LIVE=1) — drives the real dashboa
     await waitForRealMermaidRender(page, 45_000);
     await shot(page, 'eval-real-02-report-diagram');
 
-    console.info('[reviewer-eval:live] REAL rendered mermaid diagram confirmed for', EVAL_MR_URL);
+    logger.info('[reviewer-eval:live] REAL rendered mermaid diagram confirmed for', EVAL_MR_URL);
   });
 });

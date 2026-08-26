@@ -8,7 +8,7 @@ import { MemoryReviewRuntimeReceiptStoreAdapter } from '../../../services/agent-
 import type { ReviewArtifact } from '../../../services/agent-inbox/modules/inbox-pipeline/model/review-artifact.ts';
 import type { ReviewContract } from '../../../services/agent-inbox/modules/inbox-pipeline/model/review-contract.ts';
 import type { ReviewInputManifest } from '../../../services/agent-inbox/modules/inbox-pipeline/model/review-input-manifest.ts';
-import { ReviewStructuralValidator } from '../../../services/agent-inbox/modules/inbox-pipeline/coverage/review-structural-validator.ts';
+import { ReviewStructuralValidator } from '../../../services/agent-inbox/modules/inbox-pipeline/completeness/review-structural-validator.ts';
 import type { ReviewEvidence } from '../../../services/agent-inbox/modules/inbox-pipeline/types/review-evidence.type.ts';
 import type { ReviewRuntimeReceipt } from '../../../services/agent-inbox/modules/inbox-pipeline/types/review-runtime-receipt.type.ts';
 

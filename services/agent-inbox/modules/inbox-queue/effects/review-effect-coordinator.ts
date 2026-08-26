@@ -4,8 +4,8 @@
 
 import { logger } from '#logger';
 import { createHash } from 'node:crypto';
-import type { VcsPort, VcsEffectRequest } from '../../inbox-vcs/vcs-port.ts';
-import { Effects } from '../../inbox-vcs/effects.ts';
+import type { VcsPort, VcsEffectRequest, VcsEffectOutcome } from '../../inbox-vcs/vcs-port.ts';
+import { Effects, composeVcsEffectId } from '../../inbox-vcs/effects.ts';
 import type { JournalPort } from '../../inbox-core/event-journal.ts';
 import type { ReviewGuardedIntent } from '../types/review-guarded-intent.type.ts';
 import {
@@ -379,6 +379,52 @@ export class ReviewEffectCoordinator {
       `[ReviewEffectCoordinator#independent] [gate_pass → effect_created] commandId=${command.operatorCommandId} effectId=${effectId} kind=${command.kind}`
     );
     return effect;
+  }
+
+  /**
+   * @purpose Post one top-level MR review comment through the permission-gated, reconciled Effects layer.
+   * @invariant Uses the live head SHA; detail-read failure degrades to `live` without blocking the post.
+   * @param mr MR reference (`project!iid`).
+   * @param body Comment body in Markdown.
+   * @returns Reconciled VCS effect outcome.
+   * @sideEffect One GitLab mutation (`comment`) after permission + reconciliation gates.
+   */
+  async postComment(mr: string, body: string): Promise<VcsEffectOutcome> {
+    const parts = mr.split('!');
+    const project = parts[0] ?? mr;
+    const iid = parts[1] ?? '0';
+    const operatorLogin = await this._vcs.getCurrentUserLogin().catch(() => 'operator');
+
+    let headSha = 'live';
+    let webUrl: string | undefined;
+    let isMrAuthor = false;
+    try {
+      const detail = await this._vcs.getMrDetail(project, iid);
+      headSha = detail.headSha || headSha;
+      webUrl = detail.webUrl;
+      isMrAuthor = detail.author === operatorLogin;
+    } catch {
+      logger.debug('[ReviewEffectCoordinator#postComment] [detail → unavailable]', { mr });
+    }
+
+    const base: Omit<VcsEffectRequest, 'effectId'> = {
+      kind: 'comment',
+      project,
+      iid,
+      revision: headSha,
+      currentRevision: headSha,
+      body,
+      ...(webUrl ? { mrUrl: webUrl } : {}),
+      permission: {
+        operatorLogin,
+        operatorIsMrAuthor: isMrAuthor,
+        reviewerPermission: true,
+        automatic: false,
+      },
+    };
+    const request: VcsEffectRequest = { ...base, effectId: composeVcsEffectId(base) };
+
+    return this._effects.apply(request);
   }
 
   /**

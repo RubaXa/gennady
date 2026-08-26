@@ -14,6 +14,7 @@ import { join } from 'node:path';
 import type { BootstrapResult } from '../../../services/agent-inbox/serve/bootstrap.ts';
 import { bootReal, makeStateDir, teardown, MR_URL, MR_REF } from './_support.ts';
 import { mrReportsDir } from '../../../cli/cmd/inbox/_core/logic/state-paths.logic.ts';
+import { logger } from '#logger';
 
 let app: BootstrapResult | undefined;
 let stateDir: string | undefined;
@@ -21,8 +22,8 @@ let reviewDir: string;
 let reviewPath: string;
 let materialized = false;
 
-/** @purpose Hard 10-min wall-clock budget for the live drive (env-overridable). Exceeding it FAILS
- *   the test with the last tick's node, so a stall is localized instead of hanging tens of minutes. */
+/** @purpose Hard 10-min wall-clock budget for the live drive (env-overridable);
+ *   expiry fails the test at the last tick node, localizing stalls. */
 const DRIVE_DEADLINE_MS = Number(process.env.REVIEW_DRIVE_DEADLINE_MS ?? 900_000);
 /** @purpose Tick bound — one session node advances per tick; the graph has < ~12 nodes to synthesis. */
 const MAX_TICKS = 40;
@@ -43,8 +44,7 @@ test.describe('t3+t4 live review over the real MR', () => {
       await app.scheduler.tick();
       ticks++;
       const inst = app.scheduler.findInstance(MR_URL);
-      // eslint-disable-next-line no-console -- localizes a stall to a node instead of a bare timeout
-      console.info(
+      logger.info(
         `[t3t4] tick ${ticks} ${Date.now() - t0}ms — state=${inst?.state ?? 'none'} node=${inst?.currentNode ?? 'n/a'}`
       );
       if (inst && (inst.state === 'done' || inst.state === 'error')) break;
