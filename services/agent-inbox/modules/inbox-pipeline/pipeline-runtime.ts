@@ -3,7 +3,7 @@
 // @tasks: TSK-157, TSK-161, TSK-173, TSK-184, TSK-190
 
 import { logger } from '#logger';
-import { mkdir, readdir, readFile, rename, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
 import {
@@ -18,34 +18,27 @@ import { PlanTemplate, type ChangesetEntry, type ReviewPlan } from './plan-templ
 import { Synthesize, type ModelResult } from './synthesize.ts';
 import { TriggerRegistry } from './trigger-registry.ts';
 import type { JournalPort } from '../inbox-core/event-journal.ts';
-import type { OpenCodePort, ToolCall } from '../inbox-opencode/opencode.port.ts';
+import type { OpenCodePort } from '../inbox-opencode/opencode.port.ts';
 import type { ProposalRecord } from '../inbox-core/decision-journal.ts';
 import { Executor } from '../inbox-queue/executor.ts';
 import { TaskRegistry, type TaskInstance } from '../inbox-queue/task-registry.ts';
 import type { TaskQueuePort } from '../inbox-queue/task-queue.ts';
-import { LocalReviewRuntimeReceiptStoreAdapter } from './adapters/local-review-runtime-receipt-store.adapter.ts';
 import { ReviewRepairCoordinator } from './completeness/review-repair-coordinator.ts';
-import { ReviewStructuralValidator } from './completeness/review-structural-validator.ts';
-import { ReviewSlotSchemaCatalog } from './model/review-slot-schema-catalog.ts';
-import { ReviewSynthesis } from './model/review-synthesis.ts';
-import { ReviewContractCompiler } from './planning/review-contract-compiler.ts';
-import {
-  ReviewInputManifestBuilder,
-  type ReviewManifestCapture,
-} from './planning/review-input-manifest-builder.ts';
-import { ReviewRuntimeReceiptRecorder } from './receipts/review-runtime-receipt-recorder.ts';
-import { ReviewOrchestrator } from './review/review-orchestrator.ts';
-import { ReviewFreshnessGate } from './verification/review-freshness-gate.ts';
+import type { ReviewManifestCapture } from './planning/review-input-manifest-builder.ts';
 import type { ReviewIntent, ReviewManifestKey } from './types/review-intent.type.ts';
 import type { ReviewArtifact } from './model/review-artifact.ts';
 import type { ReviewEvidence } from './types/review-evidence.type.ts';
-import { ReviewEffectCoordinator } from '../inbox-queue/effects/review-effect-coordinator.ts';
-import { ReviewActionCatalog } from '../inbox-queue/registry/review-action-catalog.ts';
+import { VolatileJournal } from './runtime/control-plane-journals.ts';
+import { composeControlPlane } from './runtime/control-plane-composer.ts';
 import {
-  VolatileJournal,
-  EventReviewRepairJournal,
-  EventReviewFreshnessJournal,
-} from './runtime/control-plane-journals.ts';
+  writeArtifact,
+  writeArtifactBytes,
+  reportRef,
+  normalizeTaskSuffix,
+  appendToolTrace,
+  readToolTrace,
+  readWorkerResults,
+} from './runtime/artifact-io.ts';
 import { parseFindings, parseDiagrams } from './runtime/worker-output-parser.ts';
 import {
   renderWorkerReport,
@@ -142,7 +135,7 @@ export class PipelineRuntime {
     }
     this._controlJournal = controlPlane?.journal;
     this._controlPlaneModel = controlPlane?.model;
-    this._controlPlane = controlPlane ? this._composeControlPlane(controlPlane) : undefined;
+    this._controlPlane = controlPlane ? composeControlPlane(controlPlane) : undefined;
   }
 
   /**
@@ -209,50 +202,6 @@ export class PipelineRuntime {
       payload: { event: 'contract_terminal', status: contract.status, contract },
     });
     return Object.freeze({ manifest, contract });
-  }
-
-  /**
-   * @purpose Construct every deterministic boundary once under the existing runtime owner.
-   * @param config Durable journal, receipt root, namespace and optional effect provider.
-   * @returns One immutable reachable control-plane composition.
-   */
-  protected _composeControlPlane(
-    config: PipelineControlPlaneConfig
-  ): PipelineControlPlaneComposition {
-    const receiptStore = new LocalReviewRuntimeReceiptStoreAdapter(
-      config.receiptRoot,
-      config.runtimeNamespace
-    );
-    const freshnessJournal = new EventReviewFreshnessJournal(config.journal);
-    return Object.freeze({
-      manifestBuilder: new ReviewInputManifestBuilder(),
-      contractCompiler: new ReviewContractCompiler(new ReviewSlotSchemaCatalog()),
-      receiptRecorder: new ReviewRuntimeReceiptRecorder(receiptStore),
-      structuralValidator: new ReviewStructuralValidator(receiptStore),
-      repairCoordinator: (keyOrRoundId: ReviewManifestKey | string, roundId?: string) => {
-        const key =
-          typeof keyOrRoundId === 'string'
-            ? { mr: keyOrRoundId, headSHA: 'legacy', eventCursor: 'legacy' }
-            : keyOrRoundId;
-        return new ReviewRepairCoordinator(
-          new EventReviewRepairJournal(
-            config.journal,
-            key,
-            roundId ?? (typeof keyOrRoundId === 'string' ? keyOrRoundId : 'round')
-          )
-        );
-      },
-      freshnessGate: new ReviewFreshnessGate(freshnessJournal, (_purpose, _key) => ({
-        actionCapabilities: Object.freeze({}),
-        capabilityVersion: 'review-capabilities-v0',
-        dispatchPolicy: { kind: 'RECONCILE_AFTER_EFFECT' },
-      })),
-      orchestrator: new ReviewOrchestrator(),
-      synthesis: new ReviewSynthesis(),
-      effectCoordinator: config.vcs
-        ? new ReviewEffectCoordinator(config.vcs, config.journal, new ReviewActionCatalog())
-        : null,
-    });
   }
 
   /**
@@ -363,7 +312,7 @@ export class PipelineRuntime {
     if (!this._stateDir)
       throw new Error('[PipelineRuntime#readReviewArtifacts] State directory is unavailable');
     mr = canonicalMrRef(mr);
-    const reportDir = mrReportsDir(this._stateDir, this._reportRef(mr));
+    const reportDir = mrReportsDir(this._stateDir, reportRef(mr));
     const artifacts: Record<string, unknown> = {};
     for (const name of await readdir(reportDir).catch(() => [] as string[])) {
       if (!name.endsWith('.json')) continue;
@@ -469,10 +418,10 @@ export class PipelineRuntime {
         '[PipelineRuntime#_executeControlPlaneReview] Actual agent runtime evidence is required'
       );
     }
-    const reportDir = mrReportsDir(this._stateDir, this._reportRef(input.intent.manifestKey.mr));
+    const reportDir = mrReportsDir(this._stateDir, reportRef(input.intent.manifestKey.mr));
     const controlDir = join(reportDir, 'control-plane');
     await mkdir(controlDir, { recursive: true });
-    await this._writeArtifact(
+    await writeArtifact(
       controlDir,
       'manifest.json',
       manifest as unknown as Record<string, unknown>
@@ -498,7 +447,7 @@ export class PipelineRuntime {
       if (!source) return { status: 'FAILED' as const, provenance: ['mapped-source-missing'] };
       const sourceTarget = `control-plane/sources/${createHash('sha256').update(source.inputId).digest('hex')}.txt`;
       const observedSourceBytes = source.capturedBytes ?? source.digest;
-      await this._writeArtifactBytes(reportDir, sourceTarget, observedSourceBytes);
+      await writeArtifactBytes(reportDir, sourceTarget, observedSourceBytes);
       const operationTitle = `pipeline_control_slot_${createHash('sha256').update(source.inputId).digest('hex')}`;
       const session = await this._opencode!.createSession({
         title: operationTitle,
@@ -684,8 +633,8 @@ export class PipelineRuntime {
     if (execution.status !== 'COMPLETED') {
       throw new Error('[PipelineRuntime#_executeControlPlaneReview] Slot execution BLOCKED');
     }
-    await this._writeArtifact(controlDir, 'artifacts.json', { artifacts });
-    await this._writeArtifact(controlDir, 'evidence.json', { evidence });
+    await writeArtifact(controlDir, 'artifacts.json', { artifacts });
+    await writeArtifact(controlDir, 'evidence.json', { evidence });
     const persistedArtifacts = JSON.parse(
       await readFile(join(controlDir, 'artifacts.json'), 'utf8')
     ) as {
@@ -785,26 +734,6 @@ export class PipelineRuntime {
   }
 
   /**
-   * @purpose Materialize exact immutable source bytes for a callback-observed read operation.
-   * @param reportDir Review report root owning the control-plane source namespace.
-   * @param target Relative canonical operation target.
-   * @param content Exact captured source bytes.
-   * @returns Promise resolved after the source is atomically replaced.
-   * @sideEffect Filesystem: writes one profile-scoped immutable source projection.
-   */
-  protected async _writeArtifactBytes(
-    reportDir: string,
-    target: string,
-    content: string
-  ): Promise<void> {
-    const path = join(reportDir, target);
-    await mkdir(dirname(path), { recursive: true });
-    const temporary = `${path}.${randomUUID()}.tmp`;
-    await writeFile(temporary, content, 'utf8');
-    await rename(temporary, path);
-  }
-
-  /**
    * @purpose Materialize the queue DAG only after deterministic authorization.
    * @param mr Queue lane receiving the review DAG.
    * @param [options] Role, plan and authorized control-plane inputs.
@@ -839,7 +768,7 @@ export class PipelineRuntime {
 
     for (const track of tracks) {
       taskIds.push(
-        await this._enqueue(mr, `track_${this._normalize(track)}`, {
+        await this._enqueue(mr, `track_${normalizeTaskSuffix(track)}`, {
           ...pipelineParams,
           layer: 'mandatory',
         })
@@ -850,10 +779,10 @@ export class PipelineRuntime {
     for (const wave of lensResolution.mandatoryWaves)
       for (const lens of wave.lenses) {
         const dependsOn = lens.inputs.map(
-          (input) => `lens_${this._normalize(input.replace(/^lens-/, ''))}`
+          (input) => `lens_${normalizeTaskSuffix(input.replace(/^lens-/, ''))}`
         );
         taskIds.push(
-          await this._enqueue(mr, `lens_${this._normalize(lens.id.replace(/^lens-/, ''))}`, {
+          await this._enqueue(mr, `lens_${normalizeTaskSuffix(lens.id.replace(/^lens-/, ''))}`, {
             ...pipelineParams,
             layer: 'mandatory',
             lens,
@@ -960,14 +889,14 @@ export class PipelineRuntime {
     }
     return async (task) => {
       const mr = typeof task.params.mr === 'string' ? task.params.mr : '';
-      const reportDir = mrReportsDir(stateDir, this._reportRef(mr));
+      const reportDir = mrReportsDir(stateDir, reportRef(mr));
       const tasksDir = join(reportDir, 'tasks');
       await mkdir(tasksDir, { recursive: true });
       const plan = this._taskPlan(task, mr);
       const changeset = this._taskChangeset(task);
 
       if (task.type === 'prepare_env' || task.type === 'delta_prepare') {
-        await this._writeArtifact(reportDir, 'environment.json', {
+        await writeArtifact(reportDir, 'environment.json', {
           mr,
           taskId: task.taskId,
           stage: task.type,
@@ -987,16 +916,12 @@ export class PipelineRuntime {
           `---\nmr: ${mr}\n---\n\n# План ревью\n\n${planText}\n`,
           'utf8'
         );
-        await this._writeArtifact(
-          reportDir,
-          'plan.json',
-          plan as unknown as Record<string, unknown>
-        );
+        await writeArtifact(reportDir, 'plan.json', plan as unknown as Record<string, unknown>);
         return;
       }
       if (task.type === 'enrich') {
         const lenses = new LensRegistry().resolveAll(plan.tracks.map((track) => track.id));
-        await this._writeArtifact(reportDir, 'enrich.json', {
+        await writeArtifact(reportDir, 'enrich.json', {
           mr,
           mandatoryWaves: lenses.mandatoryWaves,
           proposedLenses: lenses.proposedLenses,
@@ -1010,11 +935,11 @@ export class PipelineRuntime {
       ) {
         const files = task.type.startsWith('track_')
           ? (plan.tracks.find(
-              (track) => this._normalize(track.id) === task.type.slice('track_'.length)
+              (track) => normalizeTaskSuffix(track.id) === task.type.slice('track_'.length)
             )?.files ?? [])
           : changeset.map((entry) => entry.path);
         const modelResult = await this._runWorker(task, reportDir, files);
-        await this._writeArtifact(tasksDir, `${task.type}.result.json`, {
+        await writeArtifact(tasksDir, `${task.type}.result.json`, {
           taskId: task.taskId,
           type: task.type,
           mr,
@@ -1025,16 +950,12 @@ export class PipelineRuntime {
           model: modelResult.model,
           runId: modelResult.runId,
         });
-        await this._writeArtifactBytes(
+        await writeArtifactBytes(
           reportDir,
           `tasks/${task.type}.md`,
           modelResult.report ?? renderWorkerReport(task.type, files, modelResult.findings)
         );
-        await this._writeArtifact(
-          tasksDir,
-          `${task.type}.${modelResult.model}.result.json`,
-          modelResult
-        );
+        await writeArtifact(tasksDir, `${task.type}.${modelResult.model}.result.json`, modelResult);
         return;
       }
       if (task.type === 'gate_coverage') {
@@ -1044,7 +965,7 @@ export class PipelineRuntime {
       if (task.type === 'synthesize' || task.type === 'synthesize_delta') {
         const findingsJournal = new FindingsJournal(join(reportDir, 'findings.jsonl'));
         const synthesize = new Synthesize(findingsJournal);
-        const modelResults = await this._readWorkerResults(tasksDir);
+        const modelResults = await readWorkerResults(tasksDir);
         const seededResults = Array.isArray(task.params.modelResults)
           ? (task.params.modelResults as ModelResult[])
           : [];
@@ -1058,8 +979,8 @@ export class PipelineRuntime {
           ) as ReviewJson),
           verdict: 'COMMENT',
         };
-        await this._writeArtifact(reportDir, 'review.json', review);
-        await this._writeArtifactBytes(
+        await writeArtifact(reportDir, 'review.json', review);
+        await writeArtifactBytes(
           reportDir,
           'REVIEW.md',
           renderSynthesisReport(review, modelResults.length > 0 ? modelResults : seededResults)
@@ -1095,7 +1016,7 @@ export class PipelineRuntime {
           )
         ) as ReviewJson;
         const result = new GateVerdict().validate(review);
-        await this._writeArtifact(reportDir, 'verdict.json', {
+        await writeArtifact(reportDir, 'verdict.json', {
           mr,
           ...result,
           verdict: review.verdict,
@@ -1119,7 +1040,7 @@ export class PipelineRuntime {
             proposalId: proposal.proposalId,
           });
         }
-        await this._writeArtifact(reportDir, `${task.type}.json`, {
+        await writeArtifact(reportDir, `${task.type}.json`, {
           mr,
           taskId: task.taskId,
           status: 'completed',
@@ -1130,7 +1051,7 @@ export class PipelineRuntime {
         await this._dispatchPostingEffects(task, reportDir);
         return;
       }
-      await this._writeArtifact(tasksDir, `${task.type}.result.json`, {
+      await writeArtifact(tasksDir, `${task.type}.result.json`, {
         taskId: task.taskId,
         type: task.type,
         mr,
@@ -1150,7 +1071,7 @@ export class PipelineRuntime {
    */
   protected async _dispatchPostingEffects(task: TaskInstance, reportDir: string): Promise<void> {
     const mr = typeof task.params.mr === 'string' ? task.params.mr : '';
-    const mrRef = this._reportRef(mr);
+    const mrRef = reportRef(mr);
     const coordinator = this._controlPlane?.effectCoordinator;
 
     let findings: Array<Record<string, unknown>> = [];
@@ -1169,7 +1090,7 @@ export class PipelineRuntime {
     const outcomes: Array<Record<string, unknown>> = [];
 
     if (findings.length === 0 || !coordinator) {
-      await this._writeArtifact(reportDir, 'effect.result.json', {
+      await writeArtifact(reportDir, 'effect.result.json', {
         taskId: task.taskId,
         type: task.type,
         mr: mrRef,
@@ -1205,7 +1126,7 @@ export class PipelineRuntime {
     }
 
     const postedCount = outcomes.filter((o) => o.status === 'applied').length;
-    await this._writeArtifact(reportDir, 'effect.result.json', {
+    await writeArtifact(reportDir, 'effect.result.json', {
       taskId: task.taskId,
       type: task.type,
       mr: mrRef,
@@ -1268,7 +1189,7 @@ export class PipelineRuntime {
   ): Promise<ModelResult> {
     const seeded = Array.isArray(task.params.modelResults)
       ? (task.params.modelResults as ModelResult[]).find(
-          (result) => this._normalize(result.track) === task.type.replace(/^(track_|lens_)/, '')
+          (result) => normalizeTaskSuffix(result.track) === task.type.replace(/^(track_|lens_)/, '')
         )
       : undefined;
     if (!this._opencode) {
@@ -1375,7 +1296,7 @@ export class PipelineRuntime {
         typeof result.output.report === 'string' ? result.output.report.trim() : '';
       const report = sessionReport || renderWorkerReport(task.type, files, findings);
       const calls = await this._opencode.toolCalls(session.sid);
-      await this._appendToolTrace(reportDir, calls);
+      await appendToolTrace(reportDir, calls);
       this._rememberWorkerSession(String(task.params.mr), {
         sid: session.sid,
         taskType: task.type,
@@ -1412,7 +1333,7 @@ export class PipelineRuntime {
     const deletedFiles = changeset
       .filter((entry) => entry.action === 'deleted')
       .map((entry) => entry.path);
-    const liveTrace = await this._readToolTrace(reportDir);
+    const liveTrace = await readToolTrace(reportDir);
     const initialTrace =
       liveTrace.length > 0 ? liveTrace : ((task.params.toolTrace as ToolTrace[] | undefined) ?? []);
     const gate = new CoverageGate();
@@ -1424,19 +1345,19 @@ export class PipelineRuntime {
           this._continueCoverageWorker(mr, reportDir, missingFiles, attempt),
         deletedFiles
       );
-      await this._writeArtifact(
+      await writeArtifact(
         reportDir,
         'coverage.json',
         coverage as unknown as Record<string, unknown>
       );
     } catch (cause) {
-      const coverage = gate.check(checklist, await this._readToolTrace(reportDir), deletedFiles);
-      await this._writeArtifact(
+      const coverage = gate.check(checklist, await readToolTrace(reportDir), deletedFiles);
+      await writeArtifact(
         reportDir,
         'coverage.json',
         coverage as unknown as Record<string, unknown>
       );
-      await this._writeArtifact(reportDir, 'operator-escalation.json', {
+      await writeArtifact(reportDir, 'operator-escalation.json', {
         kind: 'coverage_incomplete',
         mr,
         taskId: task.taskId,
@@ -1474,7 +1395,7 @@ export class PipelineRuntime {
     attempt: number
   ): Promise<ToolTrace[]> {
     const worker = this._workerSessions.get(mr)?.at(-1);
-    if (!worker || !this._opencode) return this._readToolTrace(reportDir);
+    if (!worker || !this._opencode) return readToolTrace(reportDir);
     const response = await this._opencode.continueSignal(worker.sid, {
       system: 'Continue the existing review session. Read every missing file before responding.',
       text: `Coverage continuation ${attempt}/2. Read: ${missingFiles.join(', ')}`,
@@ -1487,8 +1408,8 @@ export class PipelineRuntime {
         errorClass: response.error.class,
       });
     }
-    await this._appendToolTrace(reportDir, await this._opencode.toolCalls(worker.sid));
-    return this._readToolTrace(reportDir);
+    await appendToolTrace(reportDir, await this._opencode.toolCalls(worker.sid));
+    return readToolTrace(reportDir);
   }
 
   /**
@@ -1512,94 +1433,5 @@ export class PipelineRuntime {
     this._workerSessions.delete(mr);
     if (!this._opencode) return;
     await Promise.all(sessions.map((session) => this._opencode!.close(session.sid)));
-  }
-
-  /**
-   * @purpose Persist factual read telemetry from each worker for the later coverage gate.
-   * @param reportDir Durable report root for this MR.
-   * @param calls Factual tool calls returned by OpenCodePort.
-   * @returns Promise resolving once telemetry is atomically persisted.
-   */
-  protected async _appendToolTrace(reportDir: string, calls: ToolCall[]): Promise<void> {
-    const target = join(reportDir, 'tool-trace.json');
-    const existing = await import('node:fs/promises')
-      .then(async ({ readFile }) => {
-        const document = JSON.parse(await readFile(target, 'utf8')) as { entries?: ToolTrace[] };
-        return Array.isArray(document.entries) ? document.entries : [];
-      })
-      .catch(() => [] as ToolTrace[]);
-    const appended = [...existing, ...calls.map((call) => ({ tool: call.tool, file: call.path }))];
-    await this._writeArtifact(reportDir, 'tool-trace.json', { entries: appended });
-  }
-
-  /**
-   * @purpose Read persisted live tool telemetry without treating corrupt recovery data as coverage proof.
-   * @param reportDir Durable report root for this MR.
-   * @returns Valid factual tool trace entries, or an empty list when no valid artifact exists.
-   */
-  protected async _readToolTrace(reportDir: string): Promise<ToolTrace[]> {
-    return import('node:fs/promises')
-      .then(async ({ readFile }) => {
-        const document = JSON.parse(await readFile(join(reportDir, 'tool-trace.json'), 'utf8')) as {
-          entries?: ToolTrace[];
-        };
-        return Array.isArray(document.entries) ? document.entries : [];
-      })
-      .catch(() => [] as ToolTrace[]);
-  }
-
-  /**
-   * @purpose Read all named worker results so synthesis consumes durable live outputs after restart.
-   * @param tasksDir Directory containing per-worker durable artifacts.
-   * @returns Valid named model results.
-   */
-  protected async _readWorkerResults(tasksDir: string): Promise<ModelResult[]> {
-    const { readdir, readFile } = await import('node:fs/promises');
-    const names = await readdir(tasksDir).catch(() => [] as string[]);
-    const results: ModelResult[] = [];
-    for (const name of names.filter((entry) =>
-      /^((track|lens)_.+)\.opencode-[^.]+\.result\.json$/.test(entry)
-    )) {
-      const candidate = JSON.parse(await readFile(join(tasksDir, name), 'utf8')) as ModelResult;
-      if (candidate && Array.isArray(candidate.findings) && typeof candidate.track === 'string')
-        results.push(candidate);
-    }
-    return results;
-  }
-
-  /**
-   * @purpose Persist one JSON artifact with a temp sibling so readers never observe partial JSON.
-   * @param dir Existing artifact directory.
-   * @param name Artifact file name relative to `dir`.
-   * @param document JSON-compatible artifact document.
-   * @returns Promise resolving after the atomic replacement completes.
-   */
-  protected async _writeArtifact(
-    dir: string,
-    name: string,
-    document: Record<string, unknown>
-  ): Promise<void> {
-    const target = join(dir, name);
-    const temp = `${target}.tmp`;
-    await writeFile(temp, `${JSON.stringify(document, null, 2)}\n`, 'utf8');
-    await rename(temp, target);
-  }
-
-  /**
-   * @purpose Normalize an API web URL to the report path's canonical `project!iid` identity.
-   * @param mr Queue MR reference or GitLab web URL.
-   * @returns Canonical report path identity.
-   */
-  protected _reportRef(mr: string): string {
-    return canonicalMrRef(mr);
-  }
-
-  /**
-   * @purpose Convert plan/lens identifiers to concrete queue task type suffixes.
-   * @param value Plan or lens identifier.
-   * @returns Queue-safe suffix.
-   */
-  protected _normalize(value: string): string {
-    return value.replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '');
   }
 }
