@@ -31,6 +31,7 @@ import type { ReviewEvidence } from './types/review-evidence.type.ts';
 import { VolatileJournal } from './runtime/control-plane-journals.ts';
 import { composeControlPlane } from './runtime/control-plane-composer.ts';
 import { materializeReviewTasks, materializeDeltaReviewTasks } from './runtime/dag-materializer.ts';
+import { dispatchPostingEffects } from './runtime/effect-dispatcher.ts';
 import {
   writeArtifact,
   writeArtifactBytes,
@@ -41,11 +42,7 @@ import {
   readWorkerResults,
 } from './runtime/artifact-io.ts';
 import { parseFindings, parseDiagrams } from './runtime/worker-output-parser.ts';
-import {
-  renderWorkerReport,
-  renderSynthesisReport,
-  formatFindingComment,
-} from './runtime/report-renderer.ts';
+import { renderWorkerReport, renderSynthesisReport } from './runtime/report-renderer.ts';
 import type {
   PipelineControlPlaneConfig,
   PipelineControlPlaneAuthorization,
@@ -1006,77 +1003,9 @@ export class PipelineRuntime {
    * @sideEffect One GitLab comment per finding; writes `effect.result.json` + a feed widget event.
    */
   protected async _dispatchPostingEffects(task: TaskInstance, reportDir: string): Promise<void> {
-    const mr = typeof task.params.mr === 'string' ? task.params.mr : '';
-    const mrRef = reportRef(mr);
-    const coordinator = this._controlPlane?.effectCoordinator;
-
-    let findings: Array<Record<string, unknown>> = [];
-    try {
-      const raw = await readFile(join(reportDir, 'review.json'), 'utf8');
-      const review = JSON.parse(raw) as { findings?: Array<Record<string, unknown>> };
-      findings = Array.isArray(review.findings) ? review.findings : [];
-    } catch (cause) {
-      logger.warn('[PipelineRuntime#_dispatchPostingEffects] [reading → no_findings]', {
-        mr,
-        reportDir,
-        error: cause instanceof Error ? cause.message : String(cause),
-      });
-    }
-
-    const outcomes: Array<Record<string, unknown>> = [];
-
-    if (findings.length === 0 || !coordinator) {
-      await writeArtifact(reportDir, 'effect.result.json', {
-        taskId: task.taskId,
-        type: task.type,
-        mr: mrRef,
-        status: 'completed',
-        reason: findings.length === 0 ? 'no_findings' : 'coordinator_unavailable',
-        outcomes,
-      });
-      return;
-    }
-
-    for (const finding of findings) {
-      const body = formatFindingComment(finding);
-      try {
-        const outcome = await coordinator.postComment(mrRef, body);
-        outcomes.push({ id: finding.id, status: outcome.status, evidence: outcome.evidence });
-        logger.info('[PipelineRuntime#_dispatchPostingEffects] [posting → outcome]', {
-          mr: mrRef,
-          findingId: finding.id,
-          status: outcome.status,
-        });
-      } catch (cause) {
-        outcomes.push({
-          id: finding.id,
-          status: 'failed',
-          error: cause instanceof Error ? cause.message : String(cause),
-        });
-        logger.error('[PipelineRuntime#_dispatchPostingEffects] [posting → failed]', {
-          mr: mrRef,
-          findingId: finding.id,
-          error: cause,
-        });
-      }
-    }
-
-    const postedCount = outcomes.filter((o) => o.status === 'applied').length;
-    await writeArtifact(reportDir, 'effect.result.json', {
-      taskId: task.taskId,
-      type: task.type,
-      mr: mrRef,
-      status: 'completed',
-      posted: postedCount,
-      outcomes,
-    });
-
-    await this._journal.append({
-      ts: new Date().toISOString(),
-      mr: mrRef,
-      kind: 'widget_bump',
-      actor: 'pipeline',
-      payload: { event: 'findings_posted', posted: postedCount, total: findings.length },
+    return dispatchPostingEffects(task, reportDir, {
+      coordinator: this._controlPlane?.effectCoordinator,
+      journal: this._journal,
     });
   }
 
