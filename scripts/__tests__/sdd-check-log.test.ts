@@ -10,7 +10,8 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
-const SCRIPTS_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
+const SCRIPTS_DIR = path.join(REPO_ROOT, 'ai', 'skills', 'sdd-execute', 'scripts');
 const CHECK_SH = path.join(SCRIPTS_DIR, 'check.sh');
 
 const TS = '2026-01-01T00:00:00Z';
@@ -117,7 +118,9 @@ describe('check.sh [LOG]', () => {
   });
 
   it('treats a trailing colon as cosmetic rather than a different token', () => {
-    const { rows } = runLog(ticket([`- [x] \`${TS}\` insight: спека молчит про retry`, `- [x] \`${TS}\` DONE`]));
+    const { rows } = runLog(
+      ticket([`- [x] \`${TS}\` insight: спека молчит про retry`, `- [x] \`${TS}\` DONE`])
+    );
 
     assert.deepEqual(rows, []);
   });
@@ -136,9 +139,7 @@ describe('check.sh [LOG]', () => {
   });
 
   it('flags a Round close whose DONE is not ticked — the round never actually closed', () => {
-    const { rows, findings } = runLog(
-      ticket([`- [x] \`${TS}\` DONE`], [`- - [ ] TODO`])
-    );
+    const { rows, findings } = runLog(ticket([`- [x] \`${TS}\` DONE`], [`- - [ ] TODO`]));
 
     assert.equal(rows.length, 1, rows.join('\n'));
     assert.match(rows[0], /unclosed-round/);

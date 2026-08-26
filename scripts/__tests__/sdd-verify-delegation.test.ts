@@ -10,9 +10,10 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { normalize, SYNC_SKILLS_PATH_RULES } from '../../../../../shared/common/sync/path-normalizer.ts';
+import { normalize, SYNC_SKILLS_PATH_RULES } from '../../shared/common/sync/path-normalizer.ts';
 
-const SCRIPTS_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
+const SCRIPTS_DIR = path.join(REPO_ROOT, 'ai', 'skills', 'sdd-execute', 'scripts');
 const VERIFY_SH = path.join(SCRIPTS_DIR, 'verify.sh');
 const CLASSIFIER = path.join(SCRIPTS_DIR, 'classify-scripts.js');
 const LINT_ARTIFACTS_SH = path.join(SCRIPTS_DIR, 'lint-artifacts.sh');
@@ -81,7 +82,10 @@ describe('verify.sh capability probe', () => {
         );
 
         assert.ok(!out.includes('DELEGATED'), `must not delegate: ${out}`);
-        assert.ok(!out.includes('ALL_GATES_PASS'), `mutating script must not pass as a gate: ${out}`);
+        assert.ok(
+          !out.includes('ALL_GATES_PASS'),
+          `mutating script must not pass as a gate: ${out}`
+        );
         assert.match(out, /NO_SCRIPTS_DISCOVERED/);
       }
     );
@@ -94,10 +98,7 @@ describe('verify.sh capability probe', () => {
  * @param fakeGennady Shim body to expose as `gennady` on PATH; empty string exposes none.
  * @returns Exit status and merged stdout/stderr of the deployed copy.
  */
-function runDeployedLint(
-  dir: string,
-  fakeGennady: string
-): { status: number | null; out: string } {
+function runDeployedLint(dir: string, fakeGennady: string): { status: number | null; out: string } {
   const deployed = path.join(dir, 'lint-artifacts.sh');
   fs.writeFileSync(
     deployed,
@@ -171,7 +172,9 @@ describe('classify-scripts.js mutation screen', () => {
         }),
       },
       (dir) => {
-        const parsed = JSON.parse(execFileSync('node', [CLASSIFIER, dir], { encoding: 'utf-8' })) as {
+        const parsed = JSON.parse(
+          execFileSync('node', [CLASSIFIER, dir], { encoding: 'utf-8' })
+        ) as {
           scripts: Array<{ name: string; classes: string[] }>;
           selected: Record<string, string>;
         };
