@@ -84,6 +84,19 @@
       | `INFO` | observation without mandatory action (often `INSIGHT_BACKFLOW`) |
 
       Severity does not depend on agent's mood. Closed-world drift = `BLOCKER` by default; coding-rules violation = `MAJOR`; stylistic deviation = `MINOR`.
+
+      **Overall status is computed from severities, never judged.** First matching row wins; print which row matched:
+
+      | Condition | Status |
+      |---|---|
+      | any open `BLOCKER` | `FAIL` |
+      | any open `MAJOR` without operator acknowledgement | `FAIL` |
+      | every open `BLOCKER`/`MAJOR` acknowledged + Decision Log entry | `PASS_WITH_ACKNOWLEDGED_RISKS` |
+      | only `MINOR` / `INFO`, or nothing | `PASS` |
+
+      `RULE_FILE_INCOMPLETE` and every other project-scope finding enters this table capped at `MINOR` (per `AX_FINDING_ROUTING`): shared infrastructure no task owns cannot decide that task's verdict. The `sev` field still reports the finding's own severity — the cap applies to the computation, not to the record.
+
+      This matters because the status is consumed mechanically: the orchestrator sets `[x] DONE` on PASS, runs a fix round on the first FAIL, and blocks the task on the second. An unspecified verdict here makes those transitions arbitrary.
     </Axiom>
 
     <Axiom id="AX_FINDINGS_AS_PROPOSALS">
@@ -421,7 +434,7 @@
       <Action>
         1. TRACE_HEADER (STACK `ROOT__SUMMARY`).
         2. Compile all findings: counts by severity + ordered findings table + proposed actions per `AX_FINDING_ROUTING`.
-        3. Determine overall status: PASS / PASS_WITH_ACKNOWLEDGED_RISKS / FAIL.
+        3. Compute overall status from the table in `AX_SEVERITY_TAGGING` and print the row that matched. Project-scope findings enter capped at `MINOR`.
         4. **Map findings to phases (`phases_to_fix`).** For each finding whose `route` is `code-fix` or `ticket-reopen`: read its `Location.path`; find the phase block in ticket section 3 Phases whose `Target Files:` contains that path. Collect the set of phase IDs. Empty set → orchestrator will be told «no phases to fix» (e.g., findings only on specs or trackers). Used by `sdd-execute` orchestrator for selective phase re-run.
         5. Emit ephemeral summary per `AUDIT_SESSION_SUMMARY_FORMAT` in chat — include `phases_to_fix=[P<N>, …]` in the header line.
         6. If overall status is FAIL OR any finding routes to ticket reopen (per `AX_FINDING_ROUTING`) → append an `## Audit Rounds` entry to the ticket per `TICKET_AUDIT_ROUND_FORMAT` (`AX_REOPEN_ROUNDS_IN_TICKET`). PASS audits without reopen do NOT write to the ticket.

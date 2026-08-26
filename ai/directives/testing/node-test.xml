@@ -5,6 +5,10 @@
     Read `testing/common.xml` first. Everything about contract boundary, case flow, phase anchors, unified context, factory-over-hooks, BDD mapping, snapshot operator-confirm, file budget — lives there.
   </Mission>
 
+  <DependsOn>
+    - ai/directives/testing/common.xml
+  </DependsOn>
+
   <InheritedBaseline>
     All axioms in [`testing/common`](./common.xml) `Belief_State` apply here UNCHANGED — reader-agent treats them as binding under this directive. `BDD_Mapping_Hint`, `Definitions`, `Workflow_Outline` likewise inherited. This file only adds node:test-specific overrides and patterns.
   </InheritedBaseline>
