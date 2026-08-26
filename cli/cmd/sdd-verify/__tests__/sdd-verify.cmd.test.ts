@@ -262,7 +262,7 @@ describe('verdict', () => {
     if (v.ok) return;
     assert.match(
       v.message,
-      /… output truncated to last 120 lines — full transcript: npm run test:coverage/
+      /… output truncated to last 120 lines — FULL transcript saved: .*gennady-sdd-verify-test_coverage\.log/
     );
     assert.doesNotMatch(v.message, /line 379\b/); // dropped — only the last 120 lines (380..499) survive
     assert.match(v.message, /line 499/); // the tail is kept
@@ -331,7 +331,7 @@ describe('verdict', () => {
     assert.match(v.message, /❌ yagni — exit 1 \(ran: npx tsx cli\/gennady\.ts yagni\)/);
     assert.match(
       v.message,
-      /… output truncated to last 120 lines — full transcript: npx tsx cli\/gennady\.ts yagni/
+      /… output truncated to last 120 lines — FULL transcript saved: .*gennady-sdd-verify-yagni\.log/
     );
   });
 });

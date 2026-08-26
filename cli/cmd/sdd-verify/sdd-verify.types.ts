@@ -3,6 +3,9 @@
 // @consumers: SddVerifyCommand
 // @tasks: N/A
 
+import { writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
 
 /** @purpose CLI invocation carried an extra positional path, or a flag other than `--profile` — sdd-verify never silently narrows or ignores. */
@@ -203,12 +206,32 @@ const FAILURE_DIGEST_LINES = 10;
 const TAIL_CAP_BYTES = 16 * 1024;
 
 /**
+ * @purpose Save a truncated gate's FULL output to a temp file so an intermittent failure stays
+ *   debuggable: the flake's cause survives the on-screen cap.
+ * @param gateName The failed gate, sanitized into the filename.
+ * @param output The full combined stdout+stderr to persist.
+ * @param ranCommand The command that produced it, stamped atop the file.
+ * @returns The repo-relative path written, or null when the write failed (never throws).
+ */
+function persistTranscript(gateName: string, output: string, ranCommand: string): string | null {
+  try {
+    const safe = gateName.replace(/[^\w.-]+/g, '_');
+    const path = join(tmpdir(), `gennady-sdd-verify-${safe}.log`);
+    writeFileSync(path, `# ran: ${ranCommand}\n\n${output}`);
+    return path;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * @purpose Cap a failed gate's output to its last N lines or 16KB, whichever is smaller — a runaway gate must not flood context.
  * @param output Raw combined stdout+stderr of the failed gate.
  * @param ranCommand The command actually run, for the truncation note's replay hint.
- * @returns The output untouched when it already fits both bounds; otherwise the kept tail prefixed with a one-line truncation note.
+ * @param gateName The failed gate — names the saved-transcript file when truncation drops detail.
+ * @returns The output untouched when it fits both bounds; otherwise the kept tail prefixed with a truncation note pointing at the saved transcript.
  */
-function tailCap(output: string, ranCommand: string): string {
+function tailCap(output: string, ranCommand: string, gateName: string): string {
   const trimmed = output.trimEnd();
   let lines = trimmed.split('\n');
   let truncated = false;
@@ -224,6 +247,9 @@ function tailCap(output: string, ranCommand: string): string {
 
   if (!truncated) return trimmed;
 
+  // Persist the FULL output before capping: a re-run of a flake comes back green, so the on-screen
+  // tail is the ONLY record of what happened — save it to a file rather than suggesting a replay.
+  const saved = persistTranscript(gateName, trimmed, ranCommand);
   // A TAP run prints failures mid-stream and its summary at the end — a plain tail keeps the
   // summary but can drop every `not ok` line, leaving no clue WHICH test failed. Digest them.
   const kept = new Set(lines);
@@ -233,7 +259,9 @@ function tailCap(output: string, ranCommand: string): string {
     .slice(0, FAILURE_DIGEST_LINES);
 
   return [
-    `… output truncated to last ${lines.length} lines — full transcript: ${ranCommand}`,
+    saved
+      ? `… output truncated to last ${lines.length} lines — FULL transcript saved: ${saved}`
+      : `… output truncated to last ${lines.length} lines — full transcript: ${ranCommand}`,
     ...(droppedFailures.length > 0
       ? [
           `  failing tests dropped by the cap (first ${droppedFailures.length}):`,
@@ -273,7 +301,7 @@ function failBlock(r: GateResult): string {
   return [
     `  ${marker} ${r.name} — exit ${r.exitCode} (ran: ${r.ranCommand})${haltNote}`,
     '  --- output ---',
-    tailCap(r.output, r.ranCommand),
+    tailCap(r.output, r.ranCommand, r.name),
     '  --- end ---',
   ].join('\n');
 }
