@@ -199,16 +199,18 @@
         `npx gennady lint --spec=<spec path from AuditContext's spec/audit-group line> <every file from
         AuditContext lint-files>` (one argv item per printed file; zero files → skip lint and
         report `H_NOTHING_TO_AUDIT`, never broaden scope), and
-        the coverage gate, run PER TICKET (not once for the whole group): for EACH ticket in the group
-        run `npx gennady testcov --min=<THAT ticket's threshold> <THAT ticket's own production Target
-        Files, minus `*.test.*`>`. Threshold and files come from the SAME ticket — its §5 /
-        `coverage-command` value (80 only when that ticket names none). This resolves the
-        different-thresholds-in-one-group case: never a single blended number over the whole group,
-        always each ticket's own bar over its own files. NOTE: no `--run` — `sdd-verify --profile full`
-        above is the SINGLE owner of the coverage run; it already wrote a FRESH `coverage/`, and every
-        `testcov` only READS that report, so the suite is never run twice and nothing races for
-        `coverage/`. Run the gates SEQUENTIALLY all the same (deterministic output, one failure at a
-        time). Always re-derive the gate yourself rather than trust the worker's logged `ver` lines;
+        the coverage gate, run PER TICKET (not once for the whole group) — but do NOT re-read tickets
+        or interpret §5 by hand: `sdd-task --group-scope` already prints a ready `coverage-gates:`
+        block, one line per ticket, each carrying THAT ticket's own threshold over its own production
+        files. Execute those printed commands VERBATIM, one per ticket (a `—` line means no ticket had
+        production files to gate). This resolves the different-thresholds-in-one-group case: never a
+        single blended number, always each ticket's own bar over its own files, taken from the tool's
+        output — never reconstructed manually (the same rule §5.1 states for `files`/`lint-files`).
+        NOTE: those
+        commands carry no `--run` — `sdd-verify --profile full` above is the SINGLE owner of the
+        coverage run; it already wrote a FRESH `coverage/`, and every `testcov` only READS it, so the
+        suite is never run twice and nothing races for `coverage/`. Run them SEQUENTIALLY all the same
+        (deterministic output, one failure at a time). Always re-derive the gate yourself rather than trust the worker's logged `ver` lines;
         a gate that fails here, a `ver` logged for a command that does not actually pass, or coverage
         below the gate, is a `BLOCKER`.
         A gate command that does not execute at all is a DIFFERENT case from a gate that runs and reports

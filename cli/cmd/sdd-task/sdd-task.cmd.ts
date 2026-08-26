@@ -49,6 +49,7 @@ import {
   buildAuditGroupLine,
   type TaskOutcome,
   type GroupScopeGit,
+  type CoverageGate,
 } from './sdd-task.types.ts';
 
 /**
@@ -173,6 +174,7 @@ export async function run(rawArgs: string[]): Promise<TaskOutcome> {
     const targetFiles: string[] = [];
     const handoffArtifacts: string[] = [];
     const contractAnchors: string[] = [];
+    const coverageGates: CoverageGate[] = [];
     for (const r of selectedGroup) {
       let groupTicketContent: string;
       try {
@@ -180,8 +182,18 @@ export async function run(rawArgs: string[]): Promise<TaskOutcome> {
       } catch {
         continue;
       }
-      for (const f of ticketTargetFiles(groupTicketContent)) {
+      const ticketTargets = ticketTargetFiles(groupTicketContent);
+      for (const f of ticketTargets) {
         if (!targetFiles.includes(f)) targetFiles.push(f);
+      }
+      // Per-ticket coverage gate: this ticket's OWN production files + its OWN threshold — so the
+      // audit runs the exact command instead of re-reading tickets and interpreting §5 by hand.
+      const prodFiles = ticketTargets.filter(
+        (f) => /\.(ts|tsx)$/.test(f) && !/\.(test|spec)\./.test(f)
+      );
+      if (prodFiles.length > 0) {
+        const min = groupTicketContent.match(/testcov[^\n]*--min=(\d+)/)?.[1] ?? '80';
+        coverageGates.push({ taskId: r.taskId ?? '(no-id)', threshold: min, files: prodFiles });
       }
       for (const a of ticketHandoffArtifacts(groupTicketContent)) {
         if (!handoffArtifacts.includes(a)) handoffArtifacts.push(a);
@@ -229,7 +241,8 @@ export async function run(rawArgs: string[]): Promise<TaskOutcome> {
       git,
       contractAnchors,
       lintFiles,
-      codeRoots
+      codeRoots,
+      coverageGates
     );
   }
 

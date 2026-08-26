@@ -573,6 +573,16 @@ export function formatAuditGroup(
 /** @purpose Result of a git-diff scan for `--group-scope` — always honest about whether HEAD exists (AX_GIT_DIFF_SCAN's own caveat). */
 export type GroupScopeGit = { available: true; files: string[] } | { available: false };
 
+/** @purpose One ticket's ready-made coverage gate — its own Task-ID, threshold, and production files, so audit runs the exact command. */
+export type CoverageGate = {
+  /** @purpose The owning ticket's Task-ID. */
+  taskId: string;
+  /** @purpose The ticket's coverage threshold (from its §5 `--min`, else 80). */
+  threshold: string;
+  /** @purpose The ticket's own production Target Files (no test files). */
+  files: string[];
+};
+
 /**
  * @purpose Format `sdd-task --group-scope` — the ready-made review scope (Target Files ∪ git diff, plus Handoff artifacts) instead of manual git archaeology.
  * @invariant Never fabricates a git range when HEAD is absent — `git:` states that plainly instead of guessing.
@@ -585,6 +595,7 @@ export type GroupScopeGit = { available: true; files: string[] } | { available: 
  * @param [contractAnchors] Project-relative spec anchors declared by the selected tickets.
  * @param [lintFiles] Source files ready to pass to `gennady lint` without extension guessing.
  * @param [codeRoots] Minimal non-nested roots ready for reverse-inventory checks.
+ * @param [coverageGates] Per-ticket ready-made coverage commands (own threshold + own files).
  * @returns The formatted review-scope report.
  */
 export function formatGroupScope(
@@ -596,7 +607,8 @@ export function formatGroupScope(
   git: GroupScopeGit,
   contractAnchors: string[] = [],
   lintFiles: string[] = [],
-  codeRoots: string[] = []
+  codeRoots: string[] = [],
+  coverageGates: CoverageGate[] = []
 ): TaskOutcome {
   const lines = renderGroupHeader(specPath, group, root);
 
@@ -632,9 +644,20 @@ export function formatGroupScope(
     for (const a of handoffArtifacts) lines.push(`  ${a}`);
   }
 
+  // Ready-made per-ticket coverage commands — the audit runs these verbatim, one per ticket, with
+  // each ticket's OWN threshold over its OWN files. No re-reading tickets, no blended group number.
+  lines.push('', 'coverage-gates:');
+  if (coverageGates.length === 0) {
+    lines.push('  — ни у одного тикета группы нет production Target Files для coverage-гейта.');
+  } else {
+    for (const g of coverageGates) {
+      lines.push(`  ${g.taskId}: npx gennady testcov --min=${g.threshold} ${g.files.join(' ')}`);
+    }
+  }
+
   lines.push(
     '',
-    'next: передай `files` + `handoff` аудит-/код-ревью-сабагенту как готовую область обзора группы — не выясняй git-диапазон вручную.'
+    'next: передай `files` + `handoff` аудит-/код-ревью-сабагенту как готовую область обзора группы — не выясняй git-диапазон вручную; coverage-гейты выполни как есть, по одному на тикет.'
   );
   return { ok: true, text: lines.join('\n') };
 }

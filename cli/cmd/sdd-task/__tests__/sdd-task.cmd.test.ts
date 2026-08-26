@@ -1019,6 +1019,9 @@ describe('SddTaskCommand', () => {
           r.text,
           /^git: git-ссылок нет — область обзора построена по Target Files тикетов$/m
         );
+        // #4: ready-made per-ticket coverage command — own threshold (default 80) over own prod files.
+        assert.match(r.text, /^coverage-gates:$/m);
+        assert.match(r.text, /^ {2}TSK-a: npx gennady testcov --min=80 src\/TSK-a\.ts$/m);
       } finally {
         rmSync(gDir, { recursive: true, force: true });
       }
