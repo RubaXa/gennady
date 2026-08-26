@@ -348,7 +348,6 @@ function buildGuidance(errors: LintError[]): string | undefined {
 }
 // #endregion END_BUILD_GUIDANCE
 
-// Self-executing for CLI: gennady lint <args>
-const report = await run(process.argv);
-if (report.exitCode === 1 || report.autoFixed > 0) console.log(report.format());
-process.exit(report.exitCode);
+// No side effect on import: the CLI entry point is `index.ts`, which calls `run` and exits.
+// A module that lints and calls process.exit merely because it was imported cannot be loaded by
+// a test, a tool, or another command without terminating the host process.

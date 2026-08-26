@@ -12,23 +12,15 @@ import { ERR_CLI_LINT_RESOLVE_FAILED } from '../lint.types.ts';
 type LintModule = typeof import('../lint.cmd.ts');
 
 let mod: LintModule;
-let origExit: typeof process.exit;
-let origArgv: string[];
 let tmpDir: string;
 
 describe('resolveTargets', () => {
   before(async () => {
-    origExit = process.exit;
-    origArgv = process.argv;
-    process.exit = ((_code?: number) => undefined) as typeof process.exit;
-    process.argv = ['node', 'gennady', 'lint'];
     tmpDir = mkdtempSync(join(tmpdir(), 'resolve-targets-test-'));
     mod = await import('../lint.cmd.ts');
   });
 
   after(() => {
-    process.exit = origExit;
-    process.argv = origArgv;
     rmSync(tmpDir, { recursive: true, force: true });
   });
 
