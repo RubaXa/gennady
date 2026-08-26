@@ -4,7 +4,7 @@
 
 import { logger } from '#logger';
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { join } from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
 import {
   canonicalMrRef,
@@ -43,11 +43,10 @@ import {
   writeArtifactBytes,
   reportRef,
   normalizeTaskSuffix,
-  appendToolTrace,
   readWorkerResults,
 } from './runtime/artifact-io.ts';
-import { parseFindings, parseDiagrams } from './runtime/worker-output-parser.ts';
 import { renderWorkerReport, renderSynthesisReport } from './runtime/report-renderer.ts';
+import { runWorker } from './runtime/worker-executor.ts';
 import type {
   PipelineControlPlaneConfig,
   PipelineControlPlaneAuthorization,
@@ -1057,132 +1056,10 @@ export class PipelineRuntime {
     reportDir: string,
     files: string[]
   ): Promise<ModelResult> {
-    const seeded = Array.isArray(task.params.modelResults)
-      ? (task.params.modelResults as ModelResult[]).find(
-          (result) => normalizeTaskSuffix(result.track) === task.type.replace(/^(track_|lens_)/, '')
-        )
-      : undefined;
-    if (!this._opencode) {
-      if (seeded) return seeded;
-      throw new Error(`[PipelineRuntime#_runWorker] Missing OpenCode worker for ${task.type}`);
-    }
-
-    const title = `pipeline_${task.type}`;
-    // Session root = MR root (parent of reportDir): the checked-out repo lives in ./worktree
-    // and prior-step artifacts in ./report — rooting at reportDir alone left the sources
-    // outside the session's allowed paths and workers narrated "no access" prose (NO_RESULT).
-    const session = await this._opencode.createSession({
-      title,
-      directory: dirname(reportDir),
-      tools: { read: true, grep: true },
+    return runWorker(task, reportDir, files, {
+      opencode: this._opencode,
+      sessions: this._workerSessions,
     });
-    try {
-      const result = await this._opencode.prompt(session.sid, {
-        system:
-          'Review the assigned MR scope. Return ONLY one ```json fenced code block matching the schema — no prose before or after. The report field must contain the complete human-readable Markdown result of this worker session: scope, reasoning summary, findings with evidence, and conclusion. When the scope provides evidence for them, diagrams must carry operator-facing change-map, C4, behaviour/data-flow, or use-case views of the MR itself — never a map of agent tracks. When no issue is found, explain what was checked and why the scope is clear.',
-        text: `Worker ${task.type}; MR ${String(task.params.mr)}; files: ${files.join(', ') || '(no changed files)'} — read sources under ./worktree/ (repo checkout), prior-step artifacts under ./report/`,
-        format: {
-          type: 'json_schema',
-          schema: {
-            title,
-            type: 'object',
-            required: ['findings', 'report'],
-            properties: {
-              findings: {
-                type: 'array',
-                items: {
-                  type: 'object',
-                  required: ['file', 'line', 'summary', 'severity'],
-                  properties: {
-                    file: { type: 'string' },
-                    line: { type: 'number' },
-                    summary: { type: 'string' },
-                    severity: { enum: ['error', 'warning', 'info'] },
-                    diff: {
-                      type: 'array',
-                      items: {
-                        type: 'object',
-                        required: ['type', 'text'],
-                        properties: {
-                          type: { enum: ['context', 'add', 'remove'] },
-                          num: { type: 'number' },
-                          text: { type: 'string' },
-                        },
-                      },
-                    },
-                    factcheck: { enum: ['verified', 'pending', 'debunked'] },
-                  },
-                },
-              },
-              report: { type: 'string' },
-              diagrams: {
-                type: 'array',
-                items: {
-                  type: 'object',
-                  required: ['kind', 'title', 'caption', 'nodes', 'edges'],
-                  properties: {
-                    kind: { enum: ['change-map', 'c4', 'behaviour', 'use-cases'] },
-                    title: { type: 'string' },
-                    caption: { type: 'string' },
-                    nodes: {
-                      type: 'array',
-                      items: {
-                        type: 'object',
-                        required: ['id', 'label'],
-                        properties: {
-                          id: { type: 'string' },
-                          label: { type: 'string' },
-                          detail: { type: 'string' },
-                          tone: { type: 'string' },
-                        },
-                      },
-                    },
-                    edges: {
-                      type: 'array',
-                      items: {
-                        type: 'object',
-                        required: ['from', 'to'],
-                        properties: {
-                          from: { type: 'string' },
-                          to: { type: 'string' },
-                          label: { type: 'string' },
-                        },
-                      },
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      });
-      if (!result.ok)
-        throw new Error(
-          `[PipelineRuntime#_runWorker] ${result.error.class}: ${result.error.signal ?? ''}`
-        );
-      const findings = parseFindings(result.output.findings, task.type);
-      const diagrams = parseDiagrams(result.output.diagrams, task.type);
-      const sessionReport =
-        typeof result.output.report === 'string' ? result.output.report.trim() : '';
-      const report = sessionReport || renderWorkerReport(task.type, files, findings);
-      const calls = await this._opencode.toolCalls(session.sid);
-      await appendToolTrace(reportDir, calls);
-      this._rememberWorkerSession(String(task.params.mr), {
-        sid: session.sid,
-        taskType: task.type,
-      });
-      return {
-        track: task.type,
-        model: `opencode-${task.type}`,
-        runId: session.sid,
-        findings,
-        report,
-        diagrams,
-      };
-    } catch (cause) {
-      await this._opencode.close(session.sid);
-      throw cause;
-    }
   }
 
   /**
