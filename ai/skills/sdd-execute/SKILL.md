@@ -95,7 +95,6 @@ Pause path (distinguish from failure — skill is awaiting operator, not broken)
 4.  **Close Round** — append to ticket section 7:
     ```
     #### Round close
-    - [x] `<ts>` sync <scope>+root
     - [x] `<ts>` DONE
     ```
     Set ticket Meta Status → `[x] DONE`.
@@ -131,7 +130,7 @@ Pause path (distinguish from failure — skill is awaiting operator, not broken)
 6.  **Branch on audit status:**
     - `PASS` or `PASS_WITH_ACKNOWLEDGED_RISKS` → ticket verified; jump to step 9 (summary).
     - `FAIL` AND `audit_attempt = 1` → step 7 (resolve findings).
-    - `FAIL` AND `audit_attempt = 2` → STOP; jump to step 9 (summary with FAIL after 2 attempts).
+    - `FAIL` AND `audit_attempt = 2` → cap exhausted. Set Meta Status `[!] BLOCKED`, log `🛑 BLOCKED: audit-cap-exhausted` whose `💬 unblock:` line is the literal command `/sdd-execute <TSK-NN> --new-audit-session`, sync trackers, jump to step 9.
 
 7.  **Resolve audit findings (max one retry, total 2 audit attempts):**
 
@@ -197,7 +196,8 @@ Pause path (distinguish from failure — skill is awaiting operator, not broken)
 - Writing code, audit reports, or phase blocks in Execution Log. (Subagents do.)
 - Skipping audit after all phases DONE. Audit dispatch is mandatory; this is the safety net.
 - Sharing context between phase subagents and audit subagent. Each gets a fresh prompt; orchestrator threads only typed Handoff payloads.
-- Audit retry beyond 2 total attempts. Hard cap.
+- Audit retry beyond 2 attempts per session. Hard cap. Only the operator's literal `--new-audit-session` arg resets it — never your reading of «доделай» / «продолжай» / «finish it», which does not distinguish «lift the cap» from «finish what is already unblocked». No token → print the command and wait.
+- Writing a `✅ RESOLVED` marker for a blocker that is not resolved. `check-blockers` counts markers, so one makes it dispatch — that is a bug you can trigger, not permission you can grant. The marker records a fact; fabricating it is the same class as a fabricated `ver` line.
 - Re-running phases not flagged in `phases_to_fix`. The map finding-location → phase is the contract; do not "just re-run everything".
 - Auto-reopening on phase BLOCKED/FAIL. Only on audit FAIL after all phases DONE the retry kicks in.
 - Parallel dispatch of phases of the SAME task. Phases are sequential by declared `Deps`. Cross-task parallelism is the job of `sdd-execute-batch`.

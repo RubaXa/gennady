@@ -125,12 +125,13 @@ Per-task phase tokens:
                 ```
 
             b. Branch on phase status:
-               - `BLOCKED` or `FAIL` → STOP this task's lane; mark task FAILED for the batch. Other parallel tasks in same sub-batch continue.
+               - `BLOCKED` on a repo-wide gate failing in files this ticket does not own → PARK the lane, do not fail it. Parallel lanes share one working tree, so that is usually a sibling lane mid-flight. Resume each parked lane once after the sub-batch drains; still blocked → `✋ AWAITING UNBLOCK`, not `❌ FAILED`.
+               - `BLOCKED` or `FAIL` otherwise → STOP this task's lane; mark task FAILED for the batch. Other parallel tasks in same sub-batch continue.
                - `DONE` → record Handoff (artifacts, decisions, open). Continue to next phase.
 
             c. Thread next phase's Inputs from this phase's Handoff (verbatim).
 
-          After all phases DONE: close Round (append `#### Round close` block: sync + DONE). Sync trackers. Ticket Status → `[x] DONE`.
+          After all phases DONE: close Round (append `#### Round close` block per `ROUND_CLOSE_FORMAT`: a single `DONE` line). Sync trackers. Ticket Status → `[x] DONE`.
 
            d. Dispatch AUDIT subagent (`subagent_type: general-purpose`, **`model: "haiku"`** — audit is mechanical verification + fact-checking, haiku sufficient and cheaper). MANDATORY, always runs. Include in prompt the SDD tooling location: `~/Developer/gennady/ai/skills/sdd-execute/scripts/sdd` (audit may use `lint`, `verify`, `check-blockers` subcommands):
               ```
@@ -161,7 +162,7 @@ Per-task phase tokens:
                  On BLOCKED/FAIL → STOP this task's lane; mark task FAILED.
                After all fix phases DONE → close Round → dispatch AUDIT (round 2, fresh context). Branch again:
                  PASS → task complete.
-                 FAIL (audit_attempt = 2) → STOP lane; mark task FAILED.
+                 FAIL (audit_attempt = 2) → STOP lane; cap exhausted. Meta Status `[!] BLOCKED`, `🛑 BLOCKED: audit-cap-exhausted` with `💬 unblock: /sdd-execute <TSK-NN> --new-audit-session`. Report as `🛑 cap-exhausted`, distinct from `❌ FAILED`. The batch never lifts the cap itself.
 
          — Wait for all parallel task lanes in sub-batch to finish.
          — Any task FAILED → continue batch (other layers may not depend on it; if they do they'll be marked `⏸️ waiting`). Operator gets failure list in final summary.
@@ -202,7 +203,8 @@ Per-task phase tokens:
 - Writing code or phase blocks in Execution Log. (Phase subagents do.)
 - Sharing context between phase subagents of different tasks. Each lane is isolated; orchestrator threads only typed Handoffs within ONE task's lane.
 - Skipping audit after Round close in default (per-task) mode. Audit dispatch is mandatory.
-- Audit retry beyond 2 total attempts per task. Hard cap.
+- Audit retry beyond 2 attempts per task per session. Hard cap; only the operator's literal `--new-audit-session` arg resets it, and only via the sibling `sdd-execute` skill.
+- Writing a `✅ RESOLVED` marker for a blocker that is not resolved, to get past the `check-blockers` preflight. The marker records a fact, not permission.
 - Re-running phases not flagged in `phases_to_fix`. The map finding-location → phase is the contract.
 - Parallel dispatch ACROSS layers. Layers run sequentially.
 - Parallel dispatch ACROSS sub-batches in same layer. Sub-batches exist exactly because of file conflicts.

@@ -4,7 +4,10 @@
 # @contract: AX_BASH_NO_SILENT_EMPTY — never produces empty stdout. On miss → actionable instruction.
 #
 # Why this wrapper exists:
-#   - gennady CLI lives outside the project (canonical: ~/Developer/gennady/cli/gennady.ts).
+#   - gennady CLI may live outside the project; resolution is done at RUNTIME (see resolve_gennady).
+#     It MUST NOT be a bare dev-path literal assigned to a variable: `sync-skills` rewrites dev paths
+#     through PathNormalizer, which turned that assignment into an unquoted two-word command, leaving
+#     the variable unset — every deployed copy then died on `set -u`. Keep this file path-literal-free.
 #   - gennady requires `node --experimental-strip-types` (Node 22+) — the bare `node` invocation is non-obvious.
 #   - gennady returns exit code 0 even when lint reports errors (the failure signal is the literal token
 #     "[linting → failed]" in stdout). We must parse output, not trust exit code.
@@ -23,7 +26,29 @@
 set -uo pipefail
 
 PROG="lint-artifacts"
-GENNADY_CLI=~/Developer/gennady/cli/gennady.ts
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Repo root of a gennady checkout: scripts → sdd-execute → skills → ai → root.
+GENNADY_HOME="${GENNADY_HOME:-$SCRIPT_DIR/../../../..}"
+
+# Runtime resolution — deliberately contains no dev-path literal, so PathNormalizer has
+# nothing to rewrite and the deployed copy behaves identically to the checkout copy.
+GENNADY_ARGV=()
+resolve_gennady() {
+    if command -v gennady &>/dev/null; then
+        GENNADY_ARGV=(gennady)
+        return 0
+    fi
+    if [[ -x "$GENNADY_HOME/node_modules/.bin/tsx" && -f "$GENNADY_HOME/cli/gennady.ts" ]]; then
+        GENNADY_ARGV=("$GENNADY_HOME/node_modules/.bin/tsx" "$GENNADY_HOME/cli/gennady.ts")
+        return 0
+    fi
+    if [[ -x "./node_modules/.bin/gennady" ]]; then
+        GENNADY_ARGV=(./node_modules/.bin/gennady)
+        return 0
+    fi
+    return 1
+}
 
 if [[ $# -lt 1 ]]; then
     cat <<EOF
@@ -38,16 +63,18 @@ EOF
     exit 4
 fi
 
-if [[ ! -f "$GENNADY_CLI" ]]; then
+if ! resolve_gennady; then
     cat <<EOF
 [$PROG] GENNADY_CLI_NOT_FOUND
-  expected at: $GENNADY_CLI
+  tried: gennady on PATH
+         \$GENNADY_HOME/cli/gennady.ts via checkout tsx (GENNADY_HOME=$GENNADY_HOME)
+         ./node_modules/.bin/gennady
 
 Diagnosis: the gennady AST DbC linter is unreachable from this environment.
 
 Required action (ORCHESTRATOR):
-  1. Verify the gennady project is checked out at ~/Developer/gennady.
-  2. If gennady moved → update GENNADY_CLI variable in this script.
+  1. Install it in the project (\`npm i -D gennady\`) or put it on PATH.
+  2. Working from a gennady checkout → export GENNADY_HOME=<checkout-root>.
   3. If on a CI/sandbox without gennady → this is a HARD blocker; phase cannot verify.
      Report to operator: cannot complete phase without DBC contract verification.
 
@@ -65,7 +92,7 @@ tmp_out=$(mktemp -t lint-artifacts.XXXXXX)
 trap 'rm -f "$tmp_out"' EXIT
 
 # Run gennady. We intentionally ignore its exit code (unreliable per contract above).
-npx tsx "$GENNADY_CLI" lint "$@" > "$tmp_out" 2>&1 || true
+"${GENNADY_ARGV[@]}" lint "$@" > "$tmp_out" 2>&1 || true
 
 has_clean=$(grep -c '\[linting → clean\]' "$tmp_out" 2>/dev/null || echo 0)
 has_failed=$(grep -c '\[linting → failed\]' "$tmp_out" 2>/dev/null || echo 0)
@@ -108,7 +135,7 @@ Required action (PHASE AGENT, before EMIT_HANDOFF):
   5. Do NOT EMIT_HANDOFF with lint failures present — that is fabricated DONE.
 
 References:
-  /Users/k.lebedev/Developer/vkt/ai/directives/coding/typescript-rules.xml
+  ai/directives/coding/typescript-rules.xml
   — AX_TAG_USAGE_MATRIX, AX_BASE_CONTRACT_SHAPE, AX_FLAT_JSDOC_FOR_PROPERTIES
 EOF
     exit 2
@@ -135,7 +162,7 @@ Captured output:
 $(cat "$tmp_out" | head -50)
 
 Required action (ORCHESTRATOR):
-  1. Re-read gennady source: ~/Developer/gennady/cli/gennady.ts
+  1. Re-read the gennady LintCommand source in the checkout you resolved above.
   2. Check command output tokens in the LintCommand implementation.
   3. Update this script's parsing to match new tokens.
   4. Until resolved → treat as a HARD blocker; DO NOT assume PASS.

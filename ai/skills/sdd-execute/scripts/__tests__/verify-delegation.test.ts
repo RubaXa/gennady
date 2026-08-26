@@ -1,4 +1,5 @@
-// @file: Tests for verify.sh delegation probe and the legacy classifier's mutation screen.
+// @file: Tests for verify.sh delegation probe, the legacy classifier's mutation screen, and
+//        lint-artifacts.sh surviving sync-skills path normalization.
 // @consumers: CI
 // @tasks: TSK-96
 
@@ -9,10 +10,12 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { normalize, SYNC_SKILLS_PATH_RULES } from '../../../../../shared/common/sync/path-normalizer.ts';
 
 const SCRIPTS_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const VERIFY_SH = path.join(SCRIPTS_DIR, 'verify.sh');
 const CLASSIFIER = path.join(SCRIPTS_DIR, 'classify-scripts.js');
+const LINT_ARTIFACTS_SH = path.join(SCRIPTS_DIR, 'lint-artifacts.sh');
 
 /** @purpose Create a temp fixture with files, run fn, clean up. */
 function withFixture<T>(files: Record<string, string>, fn: (dir: string) => T): T {
@@ -82,6 +85,74 @@ describe('verify.sh capability probe', () => {
         assert.match(out, /NO_SCRIPTS_DISCOVERED/);
       }
     );
+  });
+});
+
+/**
+ * @purpose Write the sync-skills-normalized copy of lint-artifacts.sh into dir and run it.
+ * @param dir Temp directory acting as the deployed project root.
+ * @param fakeGennady Shim body to expose as `gennady` on PATH; empty string exposes none.
+ * @returns Exit status and merged stdout/stderr of the deployed copy.
+ */
+function runDeployedLint(
+  dir: string,
+  fakeGennady: string
+): { status: number | null; out: string } {
+  const deployed = path.join(dir, 'lint-artifacts.sh');
+  fs.writeFileSync(
+    deployed,
+    normalize(fs.readFileSync(LINT_ARTIFACTS_SH, 'utf-8'), SYNC_SKILLS_PATH_RULES)
+  );
+  fs.chmodSync(deployed, 0o755);
+
+  const bin = path.join(dir, '_bin');
+  fs.mkdirSync(bin, { recursive: true });
+  if (fakeGennady !== '') {
+    const fake = path.join(bin, 'gennady');
+    fs.writeFileSync(fake, fakeGennady);
+    fs.chmodSync(fake, 0o755);
+  }
+
+  // GENNADY_HOME points at an empty dir so only PATH resolution can succeed.
+  const proc = spawnSync('bash', [deployed, 'target.ts'], {
+    cwd: dir,
+    encoding: 'utf-8',
+    env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, GENNADY_HOME: bin },
+  });
+  return { status: proc.status, out: `${proc.stdout}${proc.stderr}` };
+}
+
+describe('lint-artifacts.sh after sync-skills normalization', () => {
+  // Regression: the CLI path used to live in `GENNADY_CLI=~/Developer/gennady/cli/gennady.ts`.
+  // PathNormalizer rewrote it to `GENNADY_CLI=npx gennady` — an assignment-prefixed command, not an
+  // assignment — so the variable stayed unset and `set -u` killed every deployed copy on first use.
+  it('resolves gennady from PATH instead of a normalization-mangled path literal', () => {
+    withFixture({ 'target.ts': 'export const x = 1;\n' }, (dir) => {
+      const { status, out } = runDeployedLint(
+        dir,
+        '#!/usr/bin/env bash\necho "[linting → clean] no errors"\nexit 0\n'
+      );
+
+      assert.equal(status, 0, out);
+      assert.match(out, /LINT_PASS/);
+      assert.ok(!out.includes('unbound variable'), `must not die on set -u: ${out}`);
+    });
+  });
+
+  it('reports an actionable miss — never an unbound variable — when gennady is unreachable', () => {
+    withFixture({ 'target.ts': 'export const x = 1;\n' }, (dir) => {
+      const { status, out } = runDeployedLint(dir, '');
+
+      assert.equal(status, 1, out);
+      assert.match(out, /GENNADY_CLI_NOT_FOUND/);
+      assert.ok(!out.includes('unbound variable'), `must not die on set -u: ${out}`);
+    });
+  });
+
+  it('carries no foreign absolute path into the deployed copy', () => {
+    const deployed = normalize(fs.readFileSync(LINT_ARTIFACTS_SH, 'utf-8'), SYNC_SKILLS_PATH_RULES);
+
+    assert.ok(!/\/Users\//.test(deployed), 'deployed skill must not reference a developer home');
   });
 });
 

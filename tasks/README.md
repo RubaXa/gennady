@@ -33,21 +33,43 @@ Task-specific additions live in each ticket's §3.
 
 Per `AX_EXECUTION_LOG_PLAN_VS_FACT`. Each round = one open-to-DONE cycle; append-only; old rounds NEVER edited.
 
-**Plan format (scaffolding pre-fills per ticket):**
+Canonical token vocabulary — mirror of the table in `ai/directives/sdd/scaffold.directive.xml`
+(**single source of truth**; this copy exists for quick lookup and must never diverge from it).
+Only these tokens may appear in log lines. `sync` / `file` / `test` / `cov` / `rules` / `recon` are
+**not** tokens: they duplicated Target Files, §6 and the `Rules:` list, and were removed.
+
+| Token       | Tail                                       | Mandatory when                                            |
+| ----------- | ------------------------------------------ | --------------------------------------------------------- |
+| `intro`     | `<Entity> ← <reason>`                      | new entity appears in code beyond module Entity Inventory |
+| `decision`  | `<key>=<value> ← <reason>`                 | typed choice that affected output                         |
+| `tried`     | `<approach> → <result>`                    | approach attempted then abandoned                         |
+| `discovery` | `<fact>`                                   | reality diverged from spec / assumption                   |
+| `insight`   | `<observation> → <spec-section>, <change>` | spec gap detected                                         |
+| `verified`  | `<tool>@<version> <summary>`               | `config` kind: third-party API confirmed                  |
+| `ver`       | `<cmd> → pass\|fail exit=<N>`              | once per phase, closing run (always present)              |
+| `BLOCKED`   | `<cause>`                                  | phase ended `[!] BLOCKED`                                 |
+| `DONE`      | (no tail)                                  | terminal line of phase or Round close (always present)    |
+
+**Round structure:**
 
 ```markdown
-### Round 1 — <YYYY-MM-DD>, initial
+### Round <N> — <YYYY-MM-DD>, <reason>
 
-- [ ] `[<ts>]` Task initialized.
-- [ ] `[<ts>]` Implementation file: `<path>`.
-- [ ] `[<ts>]` Test file: `<path>`.
-- [ ] `[<ts>]` Verification: `<command>` → `<pass|fail>` [`exit=<code>`].
-- [ ] `[<ts>]` Scenario coverage: `<scenario>` → `<test-file>::<case>`.
-- [ ] `[<ts>]` Self-audit: walked loaded rule axioms against generated code. Violations: `<list or "none">`.
-- [ ] `[<ts>]` Introduced (if any): `<Entity>` because `<reason>`.
-- [ ] `[<ts>]` Tracker synced: `tasks/<scope>/README.md` + `tasks/README.md`.
-- [ ] `[<ts>]` Status: [x] DONE.
+#### P1
+
+<!-- event lines (0+, from the table above) appended as events happen -->
+
+- [x] `<ts>` ver <cmd> → pass exit=0
+- [x] `<ts>` DONE
+
+**Handoff →** artifacts: [...]; decisions: [...]; open: [...]
+
+#### Round close
+
+- [x] `<ts>` DONE
 ```
+
+Tracker sync happens at Round close but is **not** logged — it is mechanical orchestrator work.
 
 ⛔ `[x]` line with any unreplaced `<…>` literal = fabricated done.
 

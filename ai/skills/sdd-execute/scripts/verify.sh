@@ -174,7 +174,7 @@ run_cmd() {
 while IFS=: read cls name; do
   case "$cls" in
     typecheck) run_cmd "typecheck" "npm run $name" npm run "$name" || true ;;
-    gennady)   run_cmd "gennady DBC lint" "gennady lint ${#FILES[@]} files" npx tsx ~/Developer/gennady/cli/gennady.ts lint "${FILES[@]}" || true ;;
+    gennady)   run_cmd "gennady DBC lint" "gennady lint ${#FILES[@]} files" "$SCRIPT_DIR/lint-artifacts.sh" "${FILES[@]}" || true ;;
     lint)      run_cmd "lint" "npm run $name" npm run "$name" || true ;;
     test)      run_cmd "test" "npm run $name" npm run "$name" || true ;;
     format)    run_cmd "format check" "npm run $name" npm run "$name" || true ;;

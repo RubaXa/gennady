@@ -87,10 +87,11 @@
     </Axiom>
 
     <Axiom id="AX_FINDINGS_AS_PROPOSALS">
-      Every finding contains a proposed remediation. Agent does not modify code. Three remediation types:
+      Every finding contains a proposed remediation. Agent does not modify code. Remediation types:
       - `code-fix` — concrete change in code (with location).
       - `spec-update` — concrete spec update (module or scope) with proposed diff.
       - `ticket-update` — ticket update (canonical case names, deferred scope, etc.).
+      - `rule-file-fix` — shared rule/directive/tooling artifact; outside any task, goes to its own ticket.
     </Axiom>
 
     <Axiom id="AX_FINDING_ROUTING">
@@ -108,6 +109,7 @@
       | `INSIGHT_BACKFLOW` | spec edit (scope or module spec) |
       | `STALE_AFTER_PIVOT` | reopen / refine the affected downstream artifact |
       | `TASK_ID_DRIFT` | code-fix via ticket reopen |
+      | `RULE_FILE_INCOMPLETE` | `rule-file-fix` — the rule file is shared project infrastructure, outside every phase's Target Files. Never `ticket-update` (the ticket cannot fix it, and the paper-fix loops forever), never `phases_to_fix`, never `FAIL` for this task |
       | operator-acknowledged risk | Decision Log entry in the scope spec |
 
       The audit agent proposes a concrete edit (diff or instruction). The operator decides and applies. The audit agent does not modify code autonomously (per `AX_NO_AUTO_FIX`).
@@ -458,7 +460,7 @@
     <Contract id="FINDING_FORMAT">
       ```markdown
       ### <🔴|🟠|🟡|🔵> F-NNN — <short title>
-      - **Type:** CLOSED_WORLD_DRIFT | COMPLETENESS_GAP | RUNTIME_BACKING_VIOLATION | RULES_COMPLIANCE_VIOLATION | RULES_CASCADE_MISMATCH | TASK_ID_DRIFT | BDD_COVERAGE_MISMATCH | EXECUTION_LOG_INCOMPLETE | STALE_AFTER_PIVOT | INSIGHT_BACKFLOW
+      - **Type:** CLOSED_WORLD_DRIFT | COMPLETENESS_GAP | RUNTIME_BACKING_VIOLATION | RULES_COMPLIANCE_VIOLATION | RULES_CASCADE_MISMATCH | TASK_ID_DRIFT | BDD_COVERAGE_MISMATCH | EXECUTION_LOG_INCOMPLETE | STALE_AFTER_PIVOT | INSIGHT_BACKFLOW | RULE_FILE_INCOMPLETE
       - **Severity:** 🔴 BLOCKER | 🟠 MAJOR | 🟡 MINOR | 🔵 INFO
       - **Confidence:** HIGH | MEDIUM | LOW
       - **Status:** 📂 open | ⚠️ operator-acknowledged | ✅ resolved
@@ -482,7 +484,7 @@
 
       ```
       @audit task=<Task-ID> round=<N> mode=<per-task|epic> status=<PASS|PASS_RISK|FAIL> counts=B<n>·M<n>·m<n>·I<n> phases_to_fix=[<P<N>>,...]
-      F-<NN> | sev=<B|M|m|I> | type=<TYPETOKEN> | conf=<H|M|L> | loc=<path:line|—> | phase=<P<N>|—> | src=<spec/ticket/rule anchor|—> | route=<spec-edit|ticket-reopen|ticket-update|decision-log|code-fix> | act=<one-line action, no newlines>
+      F-<NN> | sev=<B|M|m|I> | type=<TYPETOKEN> | conf=<H|M|L> | loc=<path:line|—> | phase=<P<N>|—> | src=<spec/ticket/rule anchor|—> | route=<spec-edit|ticket-reopen|ticket-update|decision-log|code-fix|rule-file-fix> | act=<one-line action, no newlines>
       F-<NN> | …
       ~applied | <target> | <one-line description of inline change>   (optional, repeat per applied change)
       ```
@@ -490,8 +492,8 @@
       Token vocabulary:
       - `sev`: `B`=BLOCKER, `M`=MAJOR, `m`=MINOR, `I`=INFO.
       - `conf`: `H`=HIGH, `M`=MEDIUM, `L`=LOW.
-      - `type`: one of `CLOSED_WORLD_DRIFT` | `COMPLETENESS_GAP` | `RUNTIME_BACKING_VIOLATION` | `RULES_COMPLIANCE_VIOLATION` | `RULES_CASCADE_MISMATCH` | `TASK_ID_DRIFT` | `BDD_COVERAGE_MISMATCH` | `EXECUTION_LOG_INCOMPLETE` | `STALE_AFTER_PIVOT` | `INSIGHT_BACKFLOW`.
-      - `route`: one of `spec-edit` | `ticket-reopen` | `ticket-update` | `decision-log` | `code-fix` (per `AX_FINDING_ROUTING`).
+      - `type`: one of `CLOSED_WORLD_DRIFT` | `COMPLETENESS_GAP` | `RUNTIME_BACKING_VIOLATION` | `RULES_COMPLIANCE_VIOLATION` | `RULES_CASCADE_MISMATCH` | `TASK_ID_DRIFT` | `BDD_COVERAGE_MISMATCH` | `EXECUTION_LOG_INCOMPLETE` | `STALE_AFTER_PIVOT` | `INSIGHT_BACKFLOW` | `RULE_FILE_INCOMPLETE`.
+      - `route`: one of `spec-edit` | `ticket-reopen` | `ticket-update` | `decision-log` | `code-fix` | `rule-file-fix` (per `AX_FINDING_ROUTING`).
       - `act` text: Russian operator-facing per `AX_OPERATOR_LANGUAGE` (this is operator-facing artifact text), single line, no pipe character.
       - `status` `PASS_RISK` = PASS_WITH_ACKNOWLEDGED_RISKS.
 
