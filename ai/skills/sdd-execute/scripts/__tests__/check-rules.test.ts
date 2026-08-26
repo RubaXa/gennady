@@ -47,13 +47,14 @@ function runCheck(
   const lines = out.split('\n');
 
   const start = lines.indexOf('[RULES]');
-  const end = lines.indexOf('[SUMMARY]');
-  const rules = lines
-    .slice(start + 1, end)
-    .filter((line) => line.trim() !== '' && !line.startsWith('#'));
+  const rest = lines.slice(start + 1);
+  const next = rest.findIndex((line) => /^\[[A-Z_]+\]$/.test(line));
+  const rules = (next === -1 ? rest : rest.slice(0, next)).filter(
+    (line) => line.trim() !== '' && !line.startsWith('#')
+  );
 
   const summary: Record<string, string> = {};
-  for (const line of lines.slice(end + 1)) {
+  for (const line of lines.slice(lines.indexOf('[SUMMARY]') + 1)) {
     const [key, value] = line.split('=');
     if (value !== undefined) summary[key] = value;
   }

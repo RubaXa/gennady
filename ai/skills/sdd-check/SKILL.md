@@ -81,6 +81,8 @@ Parse `Dependencies:` from each task ticket planning surface. Topological sort. 
 
 From scan [TASKS] output: check `placeholders` column for any task with >0. Flag tasks where placeholders > 0 even if status DONE. Also inspect `warnings` column for `no-execlog-section` or `anchors-mismatch`.
 
+Token vocabulary and Round-close shape come from `sdd check` [LOG] — do not re-read logs by hand. `unknown-token` (outside the scaffold table) and `unclosed-round` (a Round close with no ticked DONE) → FAIL. `retired-token` (valid before the vocabulary was consolidated) and `round-close-no-timestamp` → INFO: rounds are append-only, so history cannot be rewritten to satisfy a later rule.
+
 ### Check 5b — Task-ID Integrity (from `sdd check` [TASKID])
 
 Read the [TASKID] section of `sdd check`. `collision` (one Task-ID on ≥2 ticket files) → FAIL (BLOCKER). `orphan` (a code `@tasks: TSK-NN` with no ticket file) → FAIL. Empty section → PASS. Same tool sdd-audit STEP_2_5 uses.

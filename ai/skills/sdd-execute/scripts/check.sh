@@ -14,6 +14,10 @@
 #   [TASKID]       — kind(orphan|collision) \t id \t detail
 #   [TRACKER_SYNC] — task_id \t ticket_status \t tracker_status \t match(YES|NO|NO_ROW)
 #   [RULES]        — file \t belief \t anti \t hooks \t reward \t verdict(OK|INCOMPLETE) \t missing
+#   [LOG]          — ticket \t round \t line \t kind \t token \t detail
+#                    kinds: unknown-token | unclosed-round        (counted as findings)
+#                           retired-token | round-close-no-timestamp (informational: append-only
+#                           history and cosmetics never fail a tree)
 #   [SUMMARY]      — key=value totals + findings count
 #
 # [RULES] implements the mechanical half of AX_RULES_COMPLIANCE_AGAINST_ACTIVATED_RULES: a rule file
@@ -291,6 +295,97 @@ else
             RULE_FINDINGS=$((RULE_FINDINGS+1))
         fi
     done <<< "$RULE_FILES"
+fi
+
+# ---------------------------------------------------------------------------
+# [LOG] — Execution Log token vocabulary + Round-close shape
+# ---------------------------------------------------------------------------
+
+printf '\n[LOG]\n# ticket\tround\tline\tkind\ttoken\tdetail\n'
+
+# `retired` tokens were valid before the vocabulary was consolidated. Rounds are append-only, so
+# their presence in an old round is history, not a defect — they are reported and NOT counted.
+# Anything outside both sets is `unknown-token` and IS counted.
+LOG_TMP="$(mktemp -t sdd-check-log.XXXXXX)"
+trap 'rm -f "$COLLISION_TMP" "$LOG_TMP"' EXIT
+
+while IFS= read -r f; do
+    [[ -z "$f" ]] && continue
+    if [[ "$MODE" == "task" ]]; then
+        [[ "$(sdd_lib_task_id "$f")" == "$TASK_ID" ]] || continue
+    fi
+    awk -v ticket="${f#$ROOT_ABS/}" '
+        BEGIN {
+            split("intro decision tried discovery insight verified ver BLOCKED DONE", v, " ")
+            for (i in v) valid[v[i]] = 1
+            # Retired when the vocabulary was consolidated (scaffold.directive names exactly these).
+            split("sync file test cov rules recon", r, " ")
+            for (i in r) retired[r[i]] = 1
+            # Blocker lifecycle markers are their own shape, not action tokens.
+            valid["🛑"] = 1; valid["✅"] = 1
+            round = "-"; inlog = 0; inclose = 0; closelines = 0; closebad = 0
+        }
+        /^## 7\. Execution Log/ { inlog = 1; next }
+        /^## [0-9]+\./       { if (inlog) inlog = 0 }
+        inlog == 0           { next }
+        /^### Round /        {
+            if (inclose && closelines != 1 && closebad == 0)
+                printf "%s\t%s\t%d\tbad-round-close\t-\texpected exactly one DONE line, found %d\n", ticket, round, closeline, closelines
+            round = $3; inclose = 0; closelines = 0; closebad = 0; next
+        }
+        /^#### Round close/  { inclose = 1; closelines = 0; closebad = 0; closeline = NR; next }
+        /^#### /             {
+            if (inclose && closelines != 1 && closebad == 0)
+                printf "%s\t%s\t%d\tbad-round-close\t-\texpected exactly one DONE line, found %d\n", ticket, round, closeline, closelines
+            inclose = 0; closebad = 0; next
+        }
+        # Token lines: "- [x] `<ts>` <token> ..."  (blocker lines use 🛑 and are matched separately)
+        /^- \[[ x~!]\] `[^`]*` / {
+            rest = $0; sub(/^- \[[ x~!]\] `[^`]*` +/, "", rest)
+            split(rest, w, " "); tok = w[1]
+            sub(/:$/, "", tok)   # a trailing colon is cosmetic, not a different token
+            if (inclose) { if (tok == "DONE") closelines++ }
+            if (tok in valid) next
+            # Every real token is lowercase except BLOCKED / DONE. A capitalised first word is a
+            # sentence from the pre-consolidation prose plan ("Implementation file:", "Tracker
+            # synced:"), which the same consolidation retired.
+            if (tok ~ /^[A-Z]/) {
+                printf "%s\t%s\t%d\tretired-token\t%s\tprose line from the pre-consolidation plan template\n", ticket, round, NR, tok
+                next
+            }
+            if (tok in retired) {
+                printf "%s\t%s\t%d\tretired-token\t%s\tvalid before the vocabulary was consolidated; round is append-only\n", ticket, round, NR, tok
+            } else {
+                printf "%s\t%s\t%d\tunknown-token\t%s\tnot in the scaffold.directive token table\n", ticket, round, NR, tok
+            }
+            next
+        }
+        # A checkbox line inside Round close that carries no timestamped token at all.
+        # Close-block lines that carry no timestamped token. A ticked DONE without a timestamp is
+        # cosmetic drift; an unticked box means the round was never actually closed.
+        inclose == 1 && /^- / {
+            if ($0 ~ /\[x\]/ && $0 ~ /DONE/) {
+                printf "%s\t%s\t%d\tround-close-no-timestamp\tDONE\tclosed, but the `<ts>` is missing\n", ticket, round, NR
+                closelines++
+            } else {
+                printf "%s\t%s\t%d\tunclosed-round\t-\tRound close carries no ticked DONE: %s\n", ticket, round, NR, substr($0, 1, 40)
+                closebad = 1
+            }
+        }
+        END {
+            if (inclose && closelines != 1 && closebad == 0)
+                printf "%s\t%s\t%d\tbad-round-close\t-\texpected exactly one DONE line, found %d\n", ticket, round, closeline, closelines
+        }
+    ' "$f" >> "$LOG_TMP"
+done <<< "$TASK_FILES"
+
+if [[ -s "$LOG_TMP" ]]; then
+    cat "$LOG_TMP"
+    # Informational kinds record history or cosmetics; they must not fail the tree.
+    LOG_FINDINGS=$(awk -F'\t' '$4 != "retired-token" && $4 != "round-close-no-timestamp"' "$LOG_TMP" | grep -c '' || true)
+    FINDINGS=$((FINDINGS + LOG_FINDINGS))
+else
+    printf '# none\n'
 fi
 
 # ---------------------------------------------------------------------------
