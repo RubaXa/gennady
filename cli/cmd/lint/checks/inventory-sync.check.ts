@@ -91,7 +91,7 @@ export type DeferralCheck = {
 };
 
 /** @purpose ACTIVE Meta-Status tokens — the only statuses whose ticket is actively going to build the entity. */
-const ACTIVE_STATUS = /\b(?:TODO|IN[\s_-]?PROGRESS|WIP|DOING)\b/i;
+const ACTIVE_STATUS = /\b(?:TODO|IN[\s_-]?PROGRESS)\b/i;
 
 // A deferral is a promise that a LATER ticket will actively build the entity, so the owner must be
 // able to keep it: it must exist, be ACTIVE (only TODO / IN_PROGRESS — DONE is already past,
@@ -108,7 +108,8 @@ const ACTIVE_STATUS = /\b(?:TODO|IN[\s_-]?PROGRESS|WIP|DOING)\b/i;
  * @param tickets The project's ticket refs (Task-ID, status, and owning scope).
  * @param specScope The spec's own scope (derived from its path); '' when the path carries none.
  * @param entityName The declared entity this marker defers — the owning ticket must name it.
- * @param ticketBody The cited ticket's own text (for the ownership check), or null when unreadable.
+ * @param ticketBody The ticket's ownership-declaring text (Target-Files paths + Implements lines,
+ *   not prose), or null when unreadable. Caller extracts it.
  * @returns The check verdict; `valid: false` carries a `reason`.
  */
 export function checkDeferral(

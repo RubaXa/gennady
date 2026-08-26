@@ -368,6 +368,88 @@ describe('LintCommand', () => {
     );
   });
 
+  // #4a structural ownership: an active same-scope ticket that only mentions the entity in PROSE
+  // (not in Target Files / Implements) does NOT own the deferral → drift. A ticket that lists the
+  // entity's file in Target Files DOES own it → honored.
+  it('--spec --inventory-reverse: deferral ownership is structural (Target Files), not prose mention', async () => {
+    const dir = join(tmpDir, 'own-rev-mod');
+    mkdirSync(dir, { recursive: true });
+    const specPath = join(dir, 'mod.spec.md');
+    const writeSpec = () =>
+      writeFileSync(
+        specPath,
+        [
+          '# module: demo',
+          '<!--SECTION:ENTITY_INVENTORY-->',
+          '| Name | Type | Purpose |',
+          '|---|---|---|',
+          '| `Later` | Service | Deferred Implementation: OWN-1 — next batch |',
+          '<!--/SECTION:ENTITY_INVENTORY-->',
+        ].join('\n'),
+        'utf-8'
+      );
+    const ticket = (body: string) =>
+      writeFileSync(
+        join(dir, 'own.task.OWN-1.md'),
+        [
+          '# Task: OWN-1',
+          '<!--SECTION:META-->',
+          '- **Task-ID:** OWN-1',
+          '- **Status:** [ ] TODO',
+          '- **Scope:** demo',
+          '<!--/SECTION:META-->',
+          body,
+          '<!--SECTION:EXECUTION_LOG-->',
+          '<!--/SECTION:EXECUTION_LOG-->',
+        ].join('\n'),
+        'utf-8'
+      );
+    writeSpec();
+    writeFileSync(
+      join(dir, 'code.ts'),
+      '// @file: x\n// @consumers: N/A\n// @tasks: N/A\n',
+      'utf-8'
+    );
+
+    const run = async () => {
+      const orig = process.cwd();
+      try {
+        process.chdir(dir);
+        return await mod.run([
+          'node',
+          'gennady',
+          'lint',
+          `--spec=${specPath}`,
+          '--inventory-reverse',
+          dir,
+        ]);
+      } finally {
+        process.chdir(orig);
+      }
+    };
+
+    // PROSE-only mention → not owned → invalid deferral (drift).
+    ticket('We may need `Later` eventually, but this ticket builds nothing of it.');
+    const prose = await run();
+    assert.ok(
+      prose.errors.some(
+        (e) =>
+          e.code === 'ERR_CLI_LINT_INVENTORY_UNIMPLEMENTED' &&
+          e.message.includes('Later') &&
+          /not valid/i.test(e.message)
+      ),
+      `prose-only ownership must be drift, got ${JSON.stringify(prose.errors)}`
+    );
+
+    // Target-Files ownership → owned → honored (not flagged).
+    ticket('- Target Files:\n  - src/Later.ts');
+    const owned = await run();
+    assert.ok(
+      !owned.errors.some((e) => e.message.includes('Later')),
+      `Target-Files ownership must be honored, got ${JSON.stringify(owned.errors)}`
+    );
+  });
+
   it('--spec on a spec with no Entity Inventory section is vacuously clean (direct mode)', async () => {
     const specPath = writeFixture(
       'no-inventory.spec.md',

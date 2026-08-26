@@ -125,10 +125,10 @@ describe('checkDeferral', () => {
     { taskId: 'TSK-16', status: '', scope: 'cli' },
     { taskId: 'TSK-17', status: '[ ] TODO', scope: null },
   ];
-  // The status/scope tests don't care about ownership — pass a body that names the entity so the
-  // ownership check always passes and only status/scope gate.
+  // The status/scope tests don't care about ownership — pass an ownership-text (a Target-Files path)
+  // that names the entity, so the ownership check always passes and only status/scope gate.
   const owns = (id: string, scope: string) =>
-    checkDeferral(id, tickets, scope, 'Foo', 'builds `Foo`');
+    checkDeferral(id, tickets, scope, 'Foo', 'src/Foo.ts');
 
   it('valid when the ticket is ACTIVE (TODO), in scope, and names the entity', () => {
     assert.deepStrictEqual(owns('TSK-10', 'cli'), { taskId: 'TSK-10', valid: true });

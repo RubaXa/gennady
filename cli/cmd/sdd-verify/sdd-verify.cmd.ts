@@ -182,6 +182,46 @@ function fingerprintsEqual(a: Map<string, string>, b: Map<string, string>): bool
 }
 
 /**
+ * @purpose Prove the coverage report is from THIS run — clear the stale one, confirm a fresh appeared.
+ */
+export type CoverageProbe = {
+  /** @purpose Remove the existing `coverage-final.json` so a stale one can't be mistaken for fresh. */
+  clear: () => void;
+  /**
+   * @purpose Whether a coverage report reappeared after the producer ran.
+   * @returns True when `coverage-final.json` exists now.
+   */
+  wroteFresh: () => boolean;
+};
+
+/**
+ * @purpose Red a green `test:coverage` when the producer wrote NO fresh report — a suite exiting 0
+ *   having measured nothing must not pass as coverage.
+ * @param gate The gate just run. | @param status Its status. | @param results Accumulator (last entry mutated on failure).
+ * @param [probe] The coverage probe; absent → no-op (tests).
+ * @returns The (possibly downgraded) status.
+ */
+function verifyCoverageWritten(
+  gate: Gate,
+  status: GateStatus,
+  results: GateResult[],
+  probe?: CoverageProbe
+): GateStatus {
+  if (gate.name !== 'test:coverage' || status !== 'pass' || !probe || probe.wroteFresh()) {
+    return status;
+  }
+  const last = results[results.length - 1];
+  if (last && last.name.startsWith('test:coverage')) {
+    last.status = 'fail';
+    last.exitCode = last.exitCode || 1;
+    last.output =
+      (last.output ? last.output + '\n' : '') +
+      'test:coverage завершился с кодом 0, но coverage/coverage-final.json не появился — прогон ничего не измерил (producer не записал свежий отчёт). Зелёный вердикт был бы фикцией. Убедись, что test:coverage реально пишет Istanbul JSON (c8 --reporter=json / vitest coverage.reporter json).';
+  }
+  return 'fail';
+}
+
+/**
  * @purpose Run one resolvable gate and append its result.
  * @invariant The `test:coverage` rung only PRODUCES the report (exit code is the verdict); the
  *   coverage threshold is `gennady testcov`'s job, never here.
@@ -229,9 +269,14 @@ function runGate(
  * @invariant `test:coverage` here only PRODUCES the report; its threshold is `gennady testcov`'s job in the test phase, not this gate's.
  * @param runner Command runner — real spawnSync in the CLI entry, a fake in tests.
  * @param [profile] Gate profile (default `full`) selecting which gates run.
+ * @param [coverageProbe] Single-producer freshness probe; the CLI injects real fs, tests omit it.
  * @returns VerifyOutcome — ✅ per gate on success, else the failed gates' details.
  */
-export async function run(runner: GateRunner, profile: Profile = 'full'): Promise<VerifyOutcome> {
+export async function run(
+  runner: GateRunner,
+  profile: Profile = 'full',
+  coverageProbe?: CoverageProbe
+): Promise<VerifyOutcome> {
   const scripts = readProjectScripts();
   const results: GateResult[] = [];
   const required = new Set<string>(REQUIRED_PROFILE_GATES[profile]);
@@ -281,7 +326,11 @@ export async function run(runner: GateRunner, profile: Profile = 'full'): Promis
       preMutationFingerprint = treeFingerprint('.');
     }
 
-    const status = runGate(runner, gate, scriptName as string, results);
+    // Single-producer freshness: clear the stale report before the producer runs so a leftover one
+    // can't pass as this run's; verifyCoverageWritten reds it if no fresh report appeared.
+    if (gate.name === 'test:coverage') coverageProbe?.clear();
+    let status = runGate(runner, gate, scriptName as string, results);
+    status = verifyCoverageWritten(gate, status, results, coverageProbe);
     if (gate.mutates) anyMutatingRan = true;
 
     if (status === 'fail' && gate.haltsOnFailure) {
@@ -301,13 +350,15 @@ export async function run(runner: GateRunner, profile: Profile = 'full'): Promis
         const scriptName =
           gate.via === 'gennady' ? gate.name : resolveNpmScriptName(gate.name, scripts);
         if (gate.via !== 'gennady' && scriptName === undefined) continue;
-        const status = runGate(
+        if (gate.name === 'test:coverage') coverageProbe?.clear();
+        let status = runGate(
           runner,
           gate,
           scriptName as string,
           results,
           ' (re-run после мутаций)'
         );
+        status = verifyCoverageWritten(gate, status, results, coverageProbe);
         if (status === 'fail') {
           haltedAt = gate.name;
           break;

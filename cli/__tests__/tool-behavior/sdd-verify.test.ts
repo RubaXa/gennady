@@ -173,11 +173,11 @@ describe('sdd-verify — live gate ladder', () => {
     }
   });
 
-  it('--profile full, test:coverage exit 0 passes on the exit code alone — the % threshold is testcov/audit territory, not this gate', () => {
+  it('--profile full, test:coverage exit 0 that writes a FRESH report passes (% threshold is testcov/audit territory)', () => {
     const { root } = buildRepoFixture({
       scripts: {
         'type-check': noop(0),
-        'test:coverage': noop(0), // exits 0 without writing coverage/ — sdd-verify only runs the report step
+        'test:coverage': coverageScript(0), // exits 0 AND writes coverage/coverage-final.json
         lint: noop(0),
         format: noop(0),
       },
@@ -187,6 +187,26 @@ describe('sdd-verify — live gate ladder', () => {
       const r = runCli(['sdd-verify', '--profile', 'full'], root);
       assert.strictEqual(r.exitCode, 0, r.stdout + r.stderr);
       assert.match(r.stdout, /ALL PASS/);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('--profile full, test:coverage exit 0 but writes NO report is RED — single-producer freshness (reviewer C2)', () => {
+    const { root } = buildRepoFixture({
+      scripts: {
+        'type-check': noop(0),
+        'test:coverage': noop(0), // exits 0 without writing coverage/ — measured nothing
+        lint: noop(0),
+        format: noop(0),
+      },
+      gennadyInstalled: true,
+    });
+    try {
+      const r = runCli(['sdd-verify', '--profile', 'full'], root);
+      assert.notStrictEqual(r.exitCode, 0, r.stdout + r.stderr);
+      assert.match(r.stdout, /❌ test:coverage/);
+      assert.match(r.stdout, /не появился|не записал/);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

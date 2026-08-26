@@ -334,17 +334,22 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
       const tickets = collectTicketRefs(projectRoot);
       const specScope = specScopeFromPath(specPath);
       for (const [name, taskId] of rawDeferred) {
-        // Read the cited ticket's body once so checkDeferral can verify ownership while staying pure.
+        // Ownership must be STRUCTURAL (Target-Files paths + Implements/Entity/Provides lines), not a prose mention.
         const ref = tickets.find((t) => t.taskId === taskId);
-        let ticketBody: string | null = null;
+        let ownershipText: string | null = null;
         if (ref?.file) {
           try {
-            ticketBody = readFileSync(ref.file, 'utf-8');
+            ownershipText = readFileSync(ref.file, 'utf-8')
+              .split('\n')
+              .filter(
+                (l) => /\.tsx?\b/.test(l) || /^\s*[-*]?\s*(?:Implements|Entity|Provides)\b/i.test(l)
+              )
+              .join('\n');
           } catch {
-            ticketBody = null;
+            ownershipText = null;
           }
         }
-        deferredEntities.set(name, checkDeferral(taskId, tickets, specScope, name, ticketBody));
+        deferredEntities.set(name, checkDeferral(taskId, tickets, specScope, name, ownershipText));
       }
     }
     const reverseResult: ReverseSweepResult = reverseUnimplemented(

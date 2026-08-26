@@ -55,16 +55,17 @@ EOF
   exit 1
 }
 
-# INDEX-AWARE GUARD. The gate below runs over the WORKING TREE, but `git commit` records the INDEX.
-# For a file staged AND then further modified in the working tree (partial staging), those differ —
-# the gate would verify working-tree bytes while the commit captures the index bytes. `git status
-# --porcelain` marks such a file with BOTH columns non-blank (e.g. `MM`, `AM`). Refuse, so the gate
-# always verifies exactly what will be committed. (A fully-staged file — `M ` — has working tree ==
-# index, so the gate is honest; an unstaged-only file — ` M` — is not in the commit.)
-partial=$(git status --porcelain 2>/dev/null | awk '{ x=substr($0,1,1); y=substr($0,2,1); if (x != " " && x != "?" && y != " " && y != "?") print substr($0,4) }')
-if [ -n "$partial" ]; then
-  printf 'Частично застейдженные файлы (индекс ≠ рабочее дерево):\n%s\n' "$partial" >&2
-  fail "partial staging — гейт проверяет рабочее дерево, но commit запишет ИНДЕКС, и для этих файлов они разные. Сделай 'git add -u' (застейджи текущие байты) или убери лишние изменения, затем commit заново. Иначе зелёный гейт встанет над другими байтами, чем уйдут в коммит."
+# INDEX-AWARE GUARD. The gate runs over the WORKING TREE; `git commit` records the INDEX. For the
+# gate's green to actually mean "what gets committed is green", the working tree must EQUAL the index:
+# no unstaged tracked changes and no untracked files that could affect the build. `git status
+# --porcelain`: column 1 = index, column 2 = working tree. We ALLOW only cleanly-staged entries
+# (column 2 blank: `M `, `A `, `D `, `R ` — working tree == index for that file); we REFUSE anything
+# with a working-tree change (column 2 non-blank: ` M`, `MM`, `AM`, `MD`, …) OR an untracked file
+# (`??`), because those bytes are in the tree the gate checks but NOT in the commit (or vice-versa).
+dirty=$(git status --porcelain 2>/dev/null | awk '{ x=substr($0,1,1); y=substr($0,2,1); if (y != " " || x == "?") print $0 }')
+if [ -n "$dirty" ]; then
+  printf 'Рабочее дерево ≠ индекс (гейт проверил бы не то, что уйдёт в коммит):\n%s\n' "$dirty" >&2
+  fail "working tree ≠ index — есть unstaged-изменения tracked-файлов и/или untracked-файлы. Гейт проверяет рабочее дерево, а commit запишет ИНДЕКС. Сделай 'git add -A' (застейджи всё, что должно уйти в коммит) или убери/заигнорь лишнее (untracked → .gitignore), затем commit заново. Только полностью совпадающие дерево и индекс дают честный вердикт."
 fi
 
 
