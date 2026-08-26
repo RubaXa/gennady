@@ -159,3 +159,88 @@ describe('treeStatus', () => {
     });
   });
 });
+
+describe('acquireTreeGuard — wip mode', () => {
+  // A phase agent has just edited its Target Files and is forbidden every git command, so it can
+  // satisfy neither the clean precondition nor a "commit first" workaround. Without this mode its
+  // mandatory verification is unsatisfiable by construction.
+  it('acquires on a dirty tree, which the default mode refuses', () => {
+    withRepo((dir) => {
+      fs.writeFileSync(path.join(dir, 'a.txt'), 'work in progress\n');
+
+      const refused = acquireTreeGuard(dir);
+      assert.equal(refused.kind, 'error');
+      if (refused.kind === 'error') assert.match(refused.message, /DIRTY_TREE/);
+
+      const allowed = acquireTreeGuard(dir, undefined, { wip: true });
+      assert.equal(allowed.kind, 'guard', JSON.stringify(allowed));
+      if (allowed.kind === 'guard') allowed.guard.release();
+    });
+  });
+
+  // The safety property of the whole mode: the dirt IS the work being verified.
+  it('never resets — release leaves uncommitted work untouched', () => {
+    withRepo((dir) => {
+      fs.writeFileSync(path.join(dir, 'a.txt'), 'work in progress\n');
+      fs.writeFileSync(path.join(dir, 'new.txt'), 'brand new\n');
+
+      const acquisition = acquireTreeGuard(dir, undefined, { wip: true });
+      assert.equal(acquisition.kind, 'guard');
+      if (acquisition.kind !== 'guard') return;
+
+      acquisition.guard.reset(); // explicit reset must be inert too
+      acquisition.guard.release();
+
+      assert.equal(fs.readFileSync(path.join(dir, 'a.txt'), 'utf-8'), 'work in progress\n');
+      assert.equal(fs.readFileSync(path.join(dir, 'new.txt'), 'utf-8'), 'brand new\n');
+      assert.equal(fs.existsSync(lockPathOf(dir)), false, 'lock released');
+    });
+  });
+
+  it('reports no drift — a dirty tree has no baseline to diff against', () => {
+    withRepo((dir) => {
+      fs.writeFileSync(path.join(dir, 'a.txt'), 'work in progress\n');
+
+      const acquisition = acquireTreeGuard(dir, undefined, { wip: true });
+      assert.equal(acquisition.kind, 'guard');
+      if (acquisition.kind !== 'guard') return;
+
+      assert.equal(acquisition.guard.drift(), '');
+      acquisition.guard.release();
+      assert.match(treeStatus(dir), /a\.txt/, 'the work is still there');
+    });
+  });
+
+  // cleanAtStart drives the crash-recovery reset. A wip holder that dies must never hand a later
+  // run permission to `git reset --hard` over someone's unsaved work.
+  it('marks its lock as not-clean-at-start so a later run cannot recover by resetting', () => {
+    withRepo((dir) => {
+      fs.writeFileSync(path.join(dir, 'a.txt'), 'work in progress\n');
+
+      const acquisition = acquireTreeGuard(dir, undefined, { wip: true });
+      assert.equal(acquisition.kind, 'guard');
+      if (acquisition.kind !== 'guard') return;
+
+      const payload = JSON.parse(fs.readFileSync(lockPathOf(dir), 'utf-8')) as {
+        cleanAtStart: boolean;
+      };
+      assert.equal(payload.cleanAtStart, false);
+      acquisition.guard.release();
+    });
+  });
+
+  it('fails fast on a held lock when given no wait budget', () => {
+    withRepo((dir) => {
+      const held = acquireTreeGuard(dir);
+      assert.equal(held.kind, 'guard');
+      if (held.kind !== 'guard') return;
+
+      const second = acquireTreeGuard(dir, undefined, { wip: true, lockWaitMs: 0 });
+      assert.equal(second.kind, 'error');
+      if (second.kind === 'error')
+        assert.match(second.message, /another verify run holds the tree/);
+
+      held.guard.release();
+    });
+  });
+});

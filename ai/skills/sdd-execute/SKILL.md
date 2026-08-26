@@ -78,8 +78,9 @@ Pause path (distinguish from failure — skill is awaiting operator, not broken)
            SDD tooling available at: ~/Developer/gennady/ai/skills/sdd-execute/scripts/sdd
              (run "~/Developer/gennady/ai/skills/sdd-execute/scripts/sdd help" for surface; use these
               for any extraction/lint/verify operations the directive references).
-             MANDATORY before EMIT_HANDOFF: sdd verify <target-files> — auto-discovers and runs
-             typecheck, gennady lint, linter, tests, and format check for the project.
+             MANDATORY before EMIT_HANDOFF: sdd verify --wip <target-files> — auto-discovers and runs
+             typecheck, gennady lint, linter, tests, and format check for the project. --wip is
+             required: verify refuses a dirty tree, and a phase agent's tree always is.
 
           Follow the directive. This ONE phase only. Do not invoke audit.
         ```

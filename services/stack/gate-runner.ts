@@ -24,6 +24,9 @@ const TRUNCATE_TAIL_LINES = 40;
 // importing the runner; re-exported here for existing consumers.
 export { exitCodeMatches, outputMatches, streamMatches, allOf } from './env-fail.ts';
 
+/** @purpose How long a wip run waits for a worktree lock another run holds. */
+const LOCK_WAIT_MS = 15 * 60 * 1000;
+
 // #region START_GUARD_POOL — one clean-tree guard per git toplevel, shared by every gate (D-STACK-017)
 
 /**
@@ -52,7 +55,7 @@ type GuardPool = {
  * @purpose Build the pool; guards are acquired on first use per toplevel.
  * @returns Pool for one verify run.
  */
-function createGuardPool(): GuardPool {
+function createGuardPool(wip: boolean): GuardPool {
   const slots = new Map<string, GuardSlot>();
   const toplevels = new Map<string, string>();
   let unsandboxed = false;
@@ -74,7 +77,11 @@ function createGuardPool(): GuardPool {
       }
       let slot = slots.get(toplevel);
       if (slot === undefined) {
-        const acquisition = acquireTreeGuard(toplevel);
+        const acquisition = acquireTreeGuard(toplevel, undefined, {
+          wip,
+          // Lanes contending for one worktree should queue, not fail.
+          lockWaitMs: wip ? LOCK_WAIT_MS : 0,
+        });
         slot =
           acquisition.kind === 'guard'
             ? { kind: 'guard', guard: acquisition.guard }
@@ -337,14 +344,16 @@ function executeGate(gate: Gate, guard: TreeGuard | null): GateResult {
  *   tree behind the clean-tree guard (D-STACK-017); guards are released at the end.
  * @param runs Per-stack runs whose gate plans are executed in order.
  * @param diagnostics Detection-level diagnostics carried into the report.
+ * @param [options] Run mode; `wip` verifies uncommitted work without the clean-tree guard.
  * @returns Report whose `ok` is true only when no executed gate failed or timed out.
  * @sideEffect Process: spawns one external command per executable gate; IO: repo lockfiles.
  */
 export function runVerify(
   runs: readonly StackRun[],
-  diagnostics: readonly StackDiagnostic[]
+  diagnostics: readonly StackDiagnostic[],
+  options: { readonly wip?: boolean } = {}
 ): VerifyReport {
-  const pool = createGuardPool();
+  const pool = createGuardPool(options.wip === true);
   let results: GateResult[];
   try {
     results = runs.flatMap((run) => run.gates.map((gate) => runGate(gate, pool)));

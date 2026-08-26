@@ -8,6 +8,7 @@
  * npx gennady verify --all                 whole-repo gates
  * npx gennady verify --plan                show detection + plan + config provenance, run nothing
  * npx gennady verify --json                machine-readable detection + plan + results
+ * npx gennady verify --wip                 verify uncommitted work (no clean-tree guard)
  * npx gennady verify --only=golang:lint    run a subset (stack:gate, or bare gate = all stacks)
  * npx gennady verify --skip=test           drop gates from the plan
  * npx gennady verify --stack=golang        one-shot stack.use
@@ -85,6 +86,7 @@ export async function run(argv: string[]): Promise<number> {
     skip: { aliases: ['skip'], takesValue: true },
     stack: { aliases: ['stack'], takesValue: true },
     root: { aliases: ['root'], takesValue: true },
+    wip: ['wip'],
     fullOutput: ['full-output'],
     help: ['help', 'h'],
   });
@@ -301,7 +303,14 @@ export async function run(argv: string[]): Promise<number> {
 
   // D-STACK-017: verify runs only on a clean tree — refuse before the first gate. A run
   // started on uncommitted work has no known state to roll a gate mutation back to.
-  const rootToplevel = execFileTrimSafe('git', ['rev-parse', '--show-toplevel'], root);
+  //
+  // --wip opts out, and it is the only way an SDD phase agent can verify at all: it has just
+  // edited its Target Files, so the tree is always dirty, and the phase protocol forbids it every
+  // git command, so it can neither commit nor stash to satisfy the precondition. The trade is
+  // explicit — no drift detection, and the guard never resets, because the dirt is the caller's
+  // unsaved work rather than gate debris.
+  const rootToplevel =
+    args.wip === true ? '' : execFileTrimSafe('git', ['rev-parse', '--show-toplevel'], root);
   if (
     rootToplevel.length > 0 &&
     execFileTrimSafe('git', ['rev-parse', '--verify', '--quiet', 'HEAD'], rootToplevel).length > 0
@@ -321,7 +330,7 @@ export async function run(argv: string[]): Promise<number> {
     }
   }
 
-  const report = runVerify(filteredRuns, diagnostics);
+  const report = runVerify(filteredRuns, diagnostics, { wip: args.wip === true });
 
   if (args.json === true) {
     console.log(

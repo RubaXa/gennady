@@ -30,6 +30,8 @@ export function printHelp(): void {
     '  --plan, --dry-run     Print detection, diagnostics, config provenance and the plan; run nothing'
   );
   console.info('  --json                Machine-readable detection + plan + results');
+  console.info('  --wip                 Verify uncommitted work: no clean-tree precondition, no');
+  console.info('                        drift detection, never resets. Waits for a held lock.');
   console.info('  --full-output         Do not truncate gate output in --json results');
   console.info(
     '  --only=<a,b>          Run only these gates: `stack:gate` or bare `gate` (all stacks)'

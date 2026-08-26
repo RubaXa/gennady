@@ -27,6 +27,23 @@ export type TreeGuard = {
 };
 
 /**
+ * @purpose Options for taking the guard.
+ * @consumer gate-runner, verify.cmd
+ */
+export type TreeGuardOptions = {
+  // An SDD phase agent has just edited its Target Files and is forbidden every git command, so it
+  // can satisfy neither the clean precondition nor a "commit first" workaround. This mode is the
+  // only one it can use.
+  /**
+   * @purpose Verify uncommitted work: no clean precondition, no drift detection, never resets.
+   * @invariant No `reset` under any exit path — the dirt is the caller's unsaved work.
+   */
+  readonly wip?: boolean;
+  /** @purpose Milliseconds to wait for a held lock before giving up; 0 fails immediately. */
+  readonly lockWaitMs?: number;
+};
+
+/**
  * @purpose Result of taking the guard: a live guard, or the reason the tree cannot be guarded.
  * @consumer gate-runner, verify.cmd
  */
@@ -80,6 +97,27 @@ function pidAlive(pid: number): boolean {
 }
 
 /**
+ * @purpose Block until a held lock disappears, so contending runs serialise instead of failing.
+ * @param lock Absolute lockfile path.
+ * @param budgetMs Total time to wait; 0 means do not wait at all.
+ * @returns True when the lock became free within the budget.
+ * @sideEffect Process: blocks the thread in short sleeps.
+ */
+function waitForLockRelease(lock: string, budgetMs: number): boolean {
+  const stepMs = 200;
+  let waited = 0;
+  while (waited < budgetMs) {
+    const buffer = new Int32Array(new SharedArrayBuffer(4));
+    Atomics.wait(buffer, 0, 0, Math.min(stepMs, budgetMs - waited));
+    waited += stepMs;
+    if (!fs.existsSync(lock)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
  * @purpose Per-worktree lock location — `.git` may be a file in linked worktrees,
  *   so the real gitdir is resolved instead of assuming a directory.
  * @param toplevel Absolute git toplevel.
@@ -95,13 +133,16 @@ function lockPath(toplevel: string): string {
  * @invariant `cleanAtStart` flips true only AFTER the clean check — recovery never resets user work.
  * @param toplevel Absolute git toplevel with a HEAD (the caller routes no-git/no-HEAD away).
  * @param [notice] Sink for the crash-recovery notice (default: console.error).
+ * @param [options] Guard mode; `wip` verifies uncommitted work, `lockWaitMs` queues on a held lock.
  * @returns The guard, or the refusal reason (dirty tree, live concurrent run).
  * @sideEffect IO: creates/removes the lockfile; may reset a crashed run's leftovers.
  */
 export function acquireTreeGuard(
   toplevel: string,
-  notice: (message: string) => void = (message) => console.error(message)
+  notice: (message: string) => void = (message) => console.error(message),
+  options: TreeGuardOptions = {}
 ): GuardAcquisition {
+  const wip = options.wip === true;
   const lock = lockPath(toplevel);
 
   // #region START_LOCK — one verify per worktree; a leftover lock is a crash marker
@@ -130,14 +171,19 @@ export function acquireTreeGuard(
     } catch {
       previous = null; // Unreadable lock: treat as foreign and refuse below.
     }
-    if (previous === null || pidAlive(previous.pid)) {
+    const holderAlive = previous === null || pidAlive(previous.pid);
+
+    const outlasted = holderAlive && waitForLockRelease(lock, options.lockWaitMs ?? 0);
+
+    if (holderAlive && !outlasted) {
       return {
         kind: 'error',
         message: `another verify run holds the tree (lock: ${lock}${previous !== null ? `, pid ${previous.pid}` : ''}) — wait for it or remove the lock if you are sure it is dead`,
       };
     }
-    // Dead holder that had verified cleanliness: leftovers belong to a gate, reset is safe.
-    if (previous.cleanAtStart) {
+
+    // Only a DEAD holder leaves debris; one that finished while we waited cleaned up after itself.
+    if (!outlasted && previous !== null && previous.cleanAtStart) {
       notice(
         `[verify] recovering from a crashed run (pid ${previous.pid}): git reset --hard && git clean -fd in ${toplevel}`
       );
@@ -156,22 +202,30 @@ export function acquireTreeGuard(
   }
   // #endregion END_LOCK
 
-  const status = treeStatus(toplevel);
-  if (status.length > 0) {
-    fs.rmSync(lock, { force: true });
-    return {
-      kind: 'error',
-      message: `DIRTY_TREE: uncommitted changes in ${toplevel} — verify runs only on a clean tree (commit or stash first):\n${status}`,
-    };
+  if (!wip) {
+    const status = treeStatus(toplevel);
+    if (status.length > 0) {
+      fs.rmSync(lock, { force: true });
+      return {
+        kind: 'error',
+        message: `DIRTY_TREE: uncommitted changes in ${toplevel} — verify runs only on a clean tree (commit or stash first):\n${status}`,
+      };
+    }
   }
 
-  // From here on, rolling back to HEAD is provably exact.
+  // `cleanAtStart` gates the crash-recovery reset above. In wip mode it stays false: the tree held
+  // uncommitted work when we took the lock, so a later run must never "recover" it by resetting.
   fs.writeFileSync(
     lock,
-    JSON.stringify({ pid: process.pid, startedAt: new Date().toISOString(), cleanAtStart: true })
+    JSON.stringify({ pid: process.pid, startedAt: new Date().toISOString(), cleanAtStart: !wip })
   );
 
   const reset = (): void => {
+    if (wip) {
+      // The dirt is the caller's unsaved work, not gate debris. Rolling back to HEAD here would
+      // delete exactly what is being verified.
+      return;
+    }
     git(['reset', '--hard', '--quiet'], toplevel);
     git(['clean', '-fdq'], toplevel);
   };
@@ -183,7 +237,7 @@ export function acquireTreeGuard(
     }
     released = true;
     try {
-      if (treeStatus(toplevel).length > 0) {
+      if (!wip && treeStatus(toplevel).length > 0) {
         reset();
       }
     } finally {
@@ -205,6 +259,8 @@ export function acquireTreeGuard(
 
   return {
     kind: 'guard',
-    guard: { toplevel, drift: () => treeStatus(toplevel), reset, release },
+    // Drift means "a gate mutated a clean tree". With a dirty tree there is no baseline to
+    // compare against, so wip reports no drift rather than reporting the caller's own edits.
+    guard: { toplevel, drift: () => (wip ? '' : treeStatus(toplevel)), reset, release },
   };
 }

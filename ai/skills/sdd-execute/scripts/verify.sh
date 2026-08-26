@@ -12,7 +12,9 @@
 #            as a fallback for environments where gennady itself is not runnable.
 #
 # Usage:
-#   verify.sh <file1> [<file2> ...]
+#   verify.sh [--wip] [--json] [--only=...] <file1> [<file2> ...]
+#     Flags pass through to `gennady verify`. Phase agents need --wip: verify refuses a dirty
+#     tree, and a phase agent has uncommitted work by definition.
 #
 # Exit codes:
 #   0  — all gates PASS
@@ -38,11 +40,18 @@ EOF
   exit 4
 fi
 
-for file in "$@"; do
-  if [[ ! -f "$file" ]]; then
-    echo "[$PROG] FILE_NOT_FOUND: $file"
+# Flags are forwarded to `gennady verify` untouched; only positional targets are checked here.
+# `--wip` is the one a phase agent always needs: it has uncommitted work by definition.
+FILE_ARGS=()
+for arg in "$@"; do
+  case "$arg" in
+    -*) continue ;;
+  esac
+  if [[ ! -f "$arg" ]]; then
+    echo "[$PROG] FILE_NOT_FOUND: $arg"
     exit 4
   fi
+  FILE_ARGS+=("$arg")
 done
 
 # -----------------------------------------------------------
@@ -145,7 +154,7 @@ fi
 total=0
 passed=0
 failures=""
-FILES=("$@")  # save original file args for file-specific commands
+FILES=("${FILE_ARGS[@]}")  # positional targets only; flags never reach a file-specific command
 
 run_cmd() {
   local label="$1"
