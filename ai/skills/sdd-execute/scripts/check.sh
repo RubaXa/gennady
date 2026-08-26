@@ -323,19 +323,19 @@ while IFS= read -r f; do
             for (i in r) retired[r[i]] = 1
             # Blocker lifecycle markers are their own shape, not action tokens.
             valid["🛑"] = 1; valid["✅"] = 1
-            round = "-"; inlog = 0; inclose = 0; closelines = 0; closebad = 0
+            round = "-"; inlog = 0; inclose = 0; closelines = 0; closebad = 0; roundwork = 0
         }
         /^## 7\. Execution Log/ { inlog = 1; next }
         /^## [0-9]+\./       { if (inlog) inlog = 0 }
         inlog == 0           { next }
         /^### Round /        {
-            if (inclose && closelines != 1 && closebad == 0)
+            if (inclose && closelines != 1 && closebad == 0 && roundwork == 1)
                 printf "%s\t%s\t%d\tbad-round-close\t-\texpected exactly one DONE line, found %d\n", ticket, round, closeline, closelines
-            round = $3; inclose = 0; closelines = 0; closebad = 0; next
+            round = $3; inclose = 0; closelines = 0; closebad = 0; roundwork = 0; next
         }
         /^#### Round close/  { inclose = 1; closelines = 0; closebad = 0; closeline = NR; next }
         /^#### /             {
-            if (inclose && closelines != 1 && closebad == 0)
+            if (inclose && closelines != 1 && closebad == 0 && roundwork == 1)
                 printf "%s\t%s\t%d\tbad-round-close\t-\texpected exactly one DONE line, found %d\n", ticket, round, closeline, closelines
             inclose = 0; closebad = 0; next
         }
@@ -345,6 +345,7 @@ while IFS= read -r f; do
             split(rest, w, " "); tok = w[1]
             sub(/:$/, "", tok)   # a trailing colon is cosmetic, not a different token
             if (inclose) { if (tok == "DONE") closelines++ }
+            else if ($0 ~ /^- \[x\]/) roundwork = 1
             if (tok in valid) next
             # Every real token is lowercase except BLOCKED / DONE. A capitalised first word is a
             # sentence from the pre-consolidation prose plan ("Implementation file:", "Tracker
@@ -367,13 +368,15 @@ while IFS= read -r f; do
             if ($0 ~ /\[x\]/ && $0 ~ /DONE/) {
                 printf "%s\t%s\t%d\tround-close-no-timestamp\tDONE\tclosed, but the `<ts>` is missing\n", ticket, round, NR
                 closelines++
-            } else {
+            } else if (roundwork == 1) {
+                # Only a round that actually ran can be "not closed". An untouched round is the
+                # pre-filled skeleton of a [ ] TODO ticket, which is its normal state.
                 printf "%s\t%s\t%d\tunclosed-round\t-\tRound close carries no ticked DONE: %s\n", ticket, round, NR, substr($0, 1, 40)
                 closebad = 1
             }
         }
         END {
-            if (inclose && closelines != 1 && closebad == 0)
+            if (inclose && closelines != 1 && closebad == 0 && roundwork == 1)
                 printf "%s\t%s\t%d\tbad-round-close\t-\texpected exactly one DONE line, found %d\n", ticket, round, closeline, closelines
         }
     ' "$f" >> "$LOG_TMP"

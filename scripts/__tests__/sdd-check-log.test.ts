@@ -146,6 +146,20 @@ describe('check.sh [LOG]', () => {
     assert.equal(findings, '1');
   });
 
+  // A [ ] TODO ticket carries the scaffolder's untouched skeleton: unticked lines everywhere,
+  // including the Round close. That is the normal state of work that has not started, not a defect.
+  it('says nothing about a round that never ran', () => {
+    const { rows, findings } = runLog(
+      ticket(
+        ['- [ ] `<ts>` ver `npm test` → <pass|fail> exit=<code>', '- [ ] `<ts>` DONE'],
+        ['- [ ] DONE']
+      )
+    );
+
+    assert.deepEqual(rows, []);
+    assert.equal(findings, '0');
+  });
+
   it('demotes a ticked DONE missing only its timestamp to informational', () => {
     const { rows, findings } = runLog(ticket([`- [x] \`${TS}\` DONE`], ['- [x] DONE']));
 
