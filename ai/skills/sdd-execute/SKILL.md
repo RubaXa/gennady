@@ -97,13 +97,14 @@ Pause path (distinguish from failure — skill is awaiting operator, not broken)
     #### Round close
     - [x] `<ts>` DONE
     ```
-    Set ticket Meta Status → `[x] DONE`.
+    Set ticket Meta Status → `[~] IN_PROGRESS`. **Not `[x] DONE` — the round is closed, not verified.** `DONE` is set in step 6, and only on audit PASS. Dependents pick on `DONE`, so setting it here advertises a task the audit has not seen yet.
 
 4a. **Sync Trackers** (MANDATORY, cannot skip):
 
-- Read `tasks/<scope>/README.md`. Find the Tracker row for this Task-ID. Set its Status → `[x] DONE`. Write back.
-- Read `tasks/README.md` Tracker Index. Update the scope's aggregate counts (done/total). Write back.
+- Read `tasks/<scope>/README.md`. Find the Tracker row for this Task-ID. Set its Status to the ticket's current Meta Status. Write back.
+- Read `tasks/README.md` Tracker Index. Update the scope's aggregate counts (done/total) — a task counts as done only at `[x] DONE`. Write back.
 - Verify: re-read both files, confirm the changes took effect. If not → retry once.
+- Run this step again after step 6 sets the final status.
 
 5.  **Dispatch AUDIT** (MANDATORY, always runs). Dispatch ONE subagent (`subagent_type: general-purpose`, **`model: "haiku"`** — audit is mechanical verification + fact-checking against artifacts; sonnet capability is overkill, haiku is faster and cheaper for this read-heavy task). Include in prompt the SDD tooling location: `~/Developer/gennady/ai/skills/sdd-execute/scripts/sdd` (audit may use `lint`, `verify`, `check-blockers` subcommands). With this prompt:
 
@@ -128,7 +129,7 @@ Pause path (distinguish from failure — skill is awaiting operator, not broken)
     Wait for return. If dispatch fails → retry once. If fails again → mark task FAILED.
 
 6.  **Branch on audit status:**
-    - `PASS` or `PASS_WITH_ACKNOWLEDGED_RISKS` → ticket verified; jump to step 9 (summary).
+    - `PASS` or `PASS_WITH_ACKNOWLEDGED_RISKS` → ticket verified. **Only now** set Meta Status → `[x] DONE` and re-run step 4a so the trackers and the aggregate counts follow. Jump to step 9 (summary).
     - `FAIL` AND `audit_attempt = 1` → step 7 (resolve findings).
     - `FAIL` AND `audit_attempt = 2` → cap exhausted. Set Meta Status `[!] BLOCKED`, log `🛑 BLOCKED: audit-cap-exhausted` whose `💬 unblock:` line is the literal command `/sdd-execute <TSK-NN> --new-audit-session`, sync trackers, jump to step 9.
 

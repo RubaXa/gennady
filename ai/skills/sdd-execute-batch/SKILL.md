@@ -131,7 +131,7 @@ Per-task phase tokens:
 
             c. Thread next phase's Inputs from this phase's Handoff (verbatim).
 
-          After all phases DONE: close Round (append `#### Round close` block per `ROUND_CLOSE_FORMAT`: a single `DONE` line). Sync trackers. Ticket Status → `[x] DONE`.
+          After all phases DONE: close Round (append `#### Round close` block per `ROUND_CLOSE_FORMAT`: a single `DONE` line). Ticket Status → `[~] IN_PROGRESS` — closed, not verified. Sync trackers to that status. `[x] DONE` is set in step e, on audit PASS only: dependents pick on `DONE`, and a later layer must not start against a task the audit has not seen.
 
            d. Dispatch AUDIT subagent (`subagent_type: general-purpose`, **`model: "haiku"`** — audit is mechanical verification + fact-checking, haiku sufficient and cheaper). MANDATORY, always runs. Include in prompt the SDD tooling location: `~/Developer/gennady/ai/skills/sdd-execute/scripts/sdd` (audit may use `lint`, `verify`, `check-blockers` subcommands):
               ```
@@ -154,14 +154,14 @@ Per-task phase tokens:
               Wait for return. If dispatch fails → retry once. If fails again → mark task FAILED.
 
           e. Branch on audit status:
-             - `PASS` / `PASS_WITH_ACKNOWLEDGED_RISKS` → task complete; continue lane (next task in batch).
+             - `PASS` / `PASS_WITH_ACKNOWLEDGED_RISKS` → task verified. Only now set Ticket Status → `[x] DONE` and re-sync trackers. Continue lane (next task in batch).
              - `FAIL` AND `audit_attempt = 1` → trigger selective phase re-run.
                Open new Round with reason `audit-driven fix: F-NNN, F-MMM`.
                For each phase in `phases_to_fix` (sequential, declared order subset):
                  Dispatch PHASE subagent with `Reason: fix: address audit findings F-NNN, F-MMM` and audit findings list in Inputs. Wait.
                  On BLOCKED/FAIL → STOP this task's lane; mark task FAILED.
                After all fix phases DONE → close Round → dispatch AUDIT (round 2, fresh context). Branch again:
-                 PASS → task complete.
+                 PASS → task verified: Ticket Status → `[x] DONE`, re-sync trackers.
                  FAIL (audit_attempt = 2) → STOP lane; cap exhausted. Meta Status `[!] BLOCKED`, `🛑 BLOCKED: audit-cap-exhausted` with `💬 unblock: /sdd-execute <TSK-NN> --new-audit-session`. Report as `🛑 cap-exhausted`, distinct from `❌ FAILED`. The batch never lifts the cap itself.
 
          — Wait for all parallel task lanes in sub-batch to finish.

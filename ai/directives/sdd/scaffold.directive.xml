@@ -229,7 +229,9 @@
     </Axiom>
 
     <Axiom id="AX_AUDIT_HOOK">
-      Round is complete only after `audit` returns PASS. `sdd-execute` orchestrator dispatches audit-subagent automatically after the last phase of a Round closes — operator does not invoke audit manually. `[x] DONE` on the ticket is mechanical close, not verification. Until audit PASS, dependents are blocked.
+      Round is complete only after `audit` returns PASS. `sdd-execute` orchestrator dispatches audit-subagent automatically after the last phase of a Round closes — operator does not invoke audit manually.
+
+      Closing the Round does NOT set `[x] DONE`. The ticket stays `[~] IN_PROGRESS` from Round close until audit PASS, and only then becomes `[x] DONE`. So `[x] DONE` means verified — one meaning, and the one dependents rely on: pickability reads that status, and a task whose audit has not run (or has failed) must not read as pickable.
     </Axiom>
 
     <Axiom id="AX_PHASES_DECLARED_IN_HEADER">
@@ -714,7 +716,7 @@
       ⛔ `[x]` line with any unreplaced `<…>` literal = fabricated done → `EXECUTION_LOG_INCOMPLETE` (BLOCKER).
 
       ### Post-task Hook
-      Per `AX_AUDIT_HOOK`. After last phase of a Round closes, the orchestrator dispatches `sdd-audit`. Until audit returns PASS, Round is closed-but-unverified and dependents are blocked.
+      Per `AX_AUDIT_HOOK`. After last phase of a Round closes, the orchestrator dispatches `sdd-audit`. Round close leaves the ticket `[~] IN_PROGRESS`; audit PASS is what sets `[x] DONE`. Until then dependents are blocked, and the status says so.
 
       ## High-Level DAG
       Cross-scope edges + integration tickets only. Intra-scope DAGs live in per-scope READMEs.

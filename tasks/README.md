@@ -3,7 +3,7 @@
 ## Entry Points
 
 - [Specs Portal](../specs/README.md) — Scope Graph + all scope specs.
-- Tickets are picked up ONLY via `sdd-execute`. After `[x] DONE`, run `sdd-audit`.
+- Tickets are picked up ONLY via `sdd-execute`, which dispatches `sdd-audit` itself. `[x] DONE` means audit PASSed — it is set by the audit, not by closing the round.
 
 ## Project-Wide Conventions
 
@@ -75,7 +75,7 @@ Tracker sync happens at Round close but is **not** logged — it is mechanical o
 
 ### Post-task Hook
 
-After `[x] DONE`, invoke `sdd-audit` on the ticket. Until audit returns PASS, round is closed-but-unverified.
+Round close leaves the ticket `[~] IN_PROGRESS`. `sdd-execute` then dispatches `sdd-audit`; only audit PASS sets `[x] DONE`. Dependents pick on `DONE`, so an unaudited or failed task never reads as ready.
 
 ## High-Level DAG
 
