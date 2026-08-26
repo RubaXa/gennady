@@ -5,19 +5,33 @@
 #            header presence, Task-ID integrity, or tracker sync. Pure function of files on disk.
 #
 # Three modes:
-#   check.sh [project-root]          — whole tree: TASKID + TRACKER_SYNC (all tickets) + HEADERS (all marker-bearing src)
-#   check.sh --task <TSK-NN> [root]  — one ticket: TASKID (collision/orphan-for-its-refs) + TRACKER_SYNC for that id
+#   check.sh [project-root]          — whole tree: TASKID + TRACKER_SYNC (all tickets) + RULES (all rule files)
+#   check.sh --task <TSK-NN> [root]  — one ticket: TASKID + TRACKER_SYNC for that id + RULES for its cited rules
 #   check.sh --files <f1> [f2 ...]   — header-trio presence for an explicit file list (audit passes its git-diff scope)
 #
 # Output sections (TSV, machine-readable, stable):
 #   [HEADERS]      — file \t has_file \t has_consumers \t has_tasks \t verdict(OK|PARTIAL|NONE)
 #   [TASKID]       — kind(orphan|collision) \t id \t detail
 #   [TRACKER_SYNC] — task_id \t ticket_status \t tracker_status \t match(YES|NO|NO_ROW)
+#   [RULES]        — file \t belief \t anti \t hooks \t reward \t verdict(OK|INCOMPLETE) \t missing
 #   [SUMMARY]      — key=value totals + findings count
+#
+# [RULES] implements the mechanical half of AX_RULES_COMPLIANCE_AGAINST_ACTIVATED_RULES: a rule file
+# must expose <BeliefState> / <AntiPatterns> / <VerificationHooks> / <RewardCriteria>. Detection is a
+# tolerant opening-tag scan, NOT an XML parse — these files are HTML-like by design and carry prose
+# such as `<Target Files>` and `Meta<typeof Button>` that no XML parser accepts.
+#
+# Rule files are the non-`*.directive.xml` entries of the cascade categories (coding / testing / infra),
+# in the project and in plugin directive trees. `*.directive.xml` are protocols, not rules, and are
+# exempt. Tree mode scans every rule file; task mode scans only the ones that ticket's phases cite —
+# the "activated" set the axiom is written against.
+#
+# Rule findings are counted SEPARATELY from task findings (`rule_findings=`): a shared rule file is
+# project infrastructure that no single task owns or may edit, so it must not decide a task's verdict.
 #
 # Exit codes:
 #   0 — all checks clean (zero findings)
-#   3 — one or more findings (desync / orphan / collision / partial-or-missing header)
+#   3 — one or more findings (desync / orphan / collision / partial-or-missing header / incomplete rule)
 #   2 — structural failure (bad root / not an SDD project)
 #   4 — bad invocation
 
@@ -82,6 +96,7 @@ EOF
 esac
 
 FINDINGS=0
+RULE_FINDINGS=0
 
 # ---------------------------------------------------------------------------
 # Mode: --files  → HEADERS only
@@ -228,11 +243,63 @@ done <<< "$TASK_FILES"
 # is meaningful only against a known in-scope file set — provided by audit via --files.
 
 # ---------------------------------------------------------------------------
+# [RULES] — activated rule files expose the four checkable sections
+# ---------------------------------------------------------------------------
+
+printf '\n[RULES]\n# file\tbelief\tanti\thooks\treward\tverdict\tmissing\n'
+
+# Cascade categories only; `*.directive.xml` are protocols, not rules.
+rule_files_in_tree() {
+    find -L "$ROOT_ABS/ai/directives" "$ROOT_ABS"/plugins/*/directives \
+        -type d -name node_modules -prune -o \
+        -type f -name '*.xml' ! -name '*.directive.xml' -print 2>/dev/null \
+        | grep -E '/(coding|testing|infra)/[^/]+\.xml$' | sort -u || true
+}
+
+# Task mode: the rules this ticket's phases actually cite (the "activated" set).
+rule_files_for_task() {
+    local ticket
+    ticket=$(grep -l "^- \*\*Task-ID:\*\* $TASK_ID\$" $TASK_FILES 2>/dev/null | head -1)
+    [[ -z "$ticket" ]] && return
+    grep -ohE '(ai/directives|plugins/[a-z0-9-]+/directives)/[a-z0-9-]+/[a-z0-9._-]+\.xml' "$ticket" \
+        | grep -vE '\.directive\.xml$' | sort -u \
+        | while IFS= read -r rel; do
+            [[ -f "$ROOT_ABS/$rel" ]] && printf '%s\n' "$ROOT_ABS/$rel"
+          done
+}
+
+if [[ "$MODE" == "task" ]]; then
+    RULE_FILES=$(rule_files_for_task)
+else
+    RULE_FILES=$(rule_files_in_tree)
+fi
+
+if [[ -z "$RULE_FILES" ]]; then
+    printf '# none%s\n' "$([[ "$MODE" == task ]] && echo " — ticket cites no rule files")"
+else
+    while IFS= read -r rf; do
+        [[ -z "$rf" ]] && continue
+        b=0; a=0; h=0; r=0; missing=""
+        grep -q '<BeliefState' "$rf" && b=1 || missing="${missing}BeliefState,"
+        grep -q '<AntiPatterns' "$rf" && a=1 || missing="${missing}AntiPatterns,"
+        grep -q '<VerificationHooks' "$rf" && h=1 || missing="${missing}VerificationHooks,"
+        grep -q '<RewardCriteria' "$rf" && r=1 || missing="${missing}RewardCriteria,"
+        if [[ -z "$missing" ]]; then
+            printf '%s\t1\t1\t1\t1\tOK\t-\n' "${rf#$ROOT_ABS/}"
+        else
+            printf '%s\t%d\t%d\t%d\t%d\tINCOMPLETE\t%s\n' "${rf#$ROOT_ABS/}" "$b" "$a" "$h" "$r" "${missing%,}"
+            RULE_FINDINGS=$((RULE_FINDINGS+1))
+        fi
+    done <<< "$RULE_FILES"
+fi
+
+# ---------------------------------------------------------------------------
 # [SUMMARY]
 # ---------------------------------------------------------------------------
 
 printf '\n[SUMMARY]\nmode=%s\n' "$MODE"
 [[ "$MODE" == "task" ]] && printf 'task=%s\n' "$TASK_ID"
 printf 'findings=%d\n' "$FINDINGS"
+printf 'rule_findings=%d\n' "$RULE_FINDINGS"
 
-[[ "$FINDINGS" -gt 0 ]] && exit 3 || exit 0
+[[ $((FINDINGS + RULE_FINDINGS)) -gt 0 ]] && exit 3 || exit 0

@@ -49,7 +49,7 @@
       Deterministic mechanical checks — file-header presence, Task-ID collision, tracker-sync — are NOT hand-coded here. They live in one tool, `sdd check`, which sdd-check (whole tree) and this directive (scoped) both consume. Single source of mechanical truth → no drift between the two SDD reviewers.
 
       - `sdd check --files <git-diff in-scope files>` → [HEADERS] (`@file`/`@consumers`/`@tasks` presence).
-      - `sdd check --task <Task-ID>` → [TASKID] (collision for that id) + [TRACKER_SYNC] (Meta.Status vs tracker row).
+      - `sdd check --task <Task-ID>` → [TASKID] (collision for that id) + [TRACKER_SYNC] (Meta.Status vs tracker row) + [RULES] (four-section presence in the rules this ticket cites; `rule_findings` is counted apart from `findings` because a shared rule file is not this task's defect).
       - `sdd check <root>` (no flag) → tree-wide [TASKID] orphan refs (epic mode).
 
       Audit still owns everything the tool cannot decide mechanically: semantic `@consumers` resolvability, current-Task-ID identity, append-only `@tasks` regression vs git, section-anchor coverage, and all code-reading checks (closed-world, completeness, rules-compliance, runtime-backing, backflow).
@@ -172,7 +172,7 @@
       - `<VerificationHooks>` → executable check commands
       - `<RewardCriteria>` → ✅ invariants / ❌ forbidden states
 
-      Required sections: `<BeliefState>` / `<AntiPatterns>` / `<VerificationHooks>` / `<RewardCriteria>`. Optional: `<DependsOn>` (only when the rule extends another). Required section missing → `RULE_FILE_INCOMPLETE` (`MAJOR`); audit proceeds with available sections.
+      Section presence is NOT judged by eye — `sdd check --task <Task-ID>` emits `[RULES]` for exactly this ticket's cited rules (per `AX_MECHANICAL_VIA_SDD_CHECK`). Each `INCOMPLETE` row → one `RULE_FILE_INCOMPLETE`, its `missing` column copied verbatim. Audit proceeds with the sections that exist. `<DependsOn>` is optional and unchecked.
 
       **Per (artifact ∈ Round diff, rule ∈ union of all phases' Rules):**
       1. Apply rule's `<Triggers>` / `<ActivationHint>` from `knowledge.xml` to decide if the rule governs this artifact. No match → skip pair.

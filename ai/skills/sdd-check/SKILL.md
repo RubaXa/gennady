@@ -85,6 +85,10 @@ From scan [TASKS] output: check `placeholders` column for any task with >0. Flag
 
 Read the [TASKID] section of `sdd check`. `collision` (one Task-ID on ≥2 ticket files) → FAIL (BLOCKER). `orphan` (a code `@tasks: TSK-NN` with no ticket file) → FAIL. Empty section → PASS. Same tool sdd-audit STEP_2_5 uses.
 
+### Check 5c — Rule File Schema (from `sdd check` [RULES])
+
+Read the [RULES] section. Each `verdict=INCOMPLETE` row is a rule file missing one of the four checkable sections; the `missing` column names them. Report as INFO with the file list, **not** as a tree FAIL: these are shared project artifacts, tracked by `rule_findings` separately from `findings` for exactly that reason. Fixing them is its own ticket, never a task reopen.
+
 ### Check 6 — File Headers (from `sdd check --files`)
 
 Pass recently modified source files to the shared checker instead of sampling by hand:
@@ -134,8 +138,9 @@ First: Self-Reflection. Then: Mechanical Checks. Use compact single-line-per-che
 
 Rules for VERDICT line:
 
-- All 8 checks PASS AND 0 protocol violations → `✅ CLEAN — artifact tree is consistent, next pickable: TSK-NN`
-- All 8 checks PASS AND 0 violations but some tasks deferred/TODO → `✅ CLEAN — <N> tasks remaining in queue`
+- All checks PASS AND 0 protocol violations → `✅ CLEAN — artifact tree is consistent, next pickable: TSK-NN`
+- All checks PASS AND 0 violations but some tasks deferred/TODO → `✅ CLEAN — <N> tasks remaining in queue`
+- Check 5c findings are INFO — they never move the verdict off `✅ CLEAN`; append `· <N> rule file(s) incomplete` to the line instead
 - Any FAIL check OR protocol violations → `❌ NOT READY — <N> issue(s) require attention`
 - Checks skipped (marked `—`) → treat as PASS for verdict unless evidence of gap exists
   </Output>
