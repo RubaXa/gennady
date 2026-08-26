@@ -4,7 +4,7 @@
 
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, mkdirSync, existsSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, mkdirSync, existsSync, symlinkSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -122,36 +122,35 @@ describe('resolvePackageDir', () => {
   });
   // #endregion
 
-  // #region TEST_CASE_SC_7: self-repo fallback resolves local subdir
-  it('resolves subdir from self-repo when package.json name is gennady', () => {
-    // contract: no node_modules/gennady needed when projectRoot IS the gennady repo
-    writeFileSync(join(tmpDir, 'package.json'), JSON.stringify({ name: 'gennady' }));
-    const expectedPath = join(tmpDir, 'ai', 'skills');
-    mkdirSync(expectedPath, { recursive: true });
+  // #region TEST_CASE_SC_7: published install / npm-link — local node_modules/gennady is a symlink
+  it('resolves through a symlinked node_modules/gennady (npm link layout)', () => {
+    // contract: `npm link` places a symlink at node_modules/gennady pointing at the source
+    // checkout — existsSync/isDirectory treat that identically to a real copied package, so the
+    // local-path branch (checked first, ahead of the import.meta.resolve fallback) covers both a
+    // published install and a source-linked external consumer without needing to distinguish them.
+    const realPkg = join(tmpDir, 'linked-gennady-source');
+    mkdirSync(join(realPkg, 'ai', 'directives'), { recursive: true });
 
-    const result = resolvePackageDir(tmpDir, 'ai/skills');
-    assert.strictEqual(result, expectedPath);
+    const consumerRoot = join(tmpDir, 'consumer');
+    mkdirSync(join(consumerRoot, 'node_modules'), { recursive: true });
+    symlinkSync(realPkg, join(consumerRoot, 'node_modules', 'gennady'), 'dir');
+
+    const result = resolvePackageDir(consumerRoot, 'ai/directives');
+    assert.strictEqual(result, join(consumerRoot, 'node_modules', 'gennady', 'ai', 'directives'));
   });
   // #endregion
 
-  // #region TEST_CASE_SC_8: self-repo fallback does not apply to other packages
-  it('returns null for a foreign project with no node_modules/gennady, even with ai/skills present', () => {
-    // contract: self-repo fallback only fires when package.json name is exactly "gennady"
-    writeFileSync(join(tmpDir, 'package.json'), JSON.stringify({ name: 'some-other-project' }));
-    mkdirSync(join(tmpDir, 'ai', 'skills'), { recursive: true });
+  // #region TEST_CASE_SC_8: self-repo dev/CI — no local node_modules/gennady, falls back to self-reference
+  it('falls back to the package this process runs from when local node_modules/gennady is absent', () => {
+    // contract: regression coverage for the walk-up fix (d6479748/reconcile) — the previous
+    // implementation derived the package root by stripping a `/dist/` path segment, which is a
+    // no-op when running from source (self-repo dev, or this very test suite via tsx), silently
+    // breaking the fallback. `tmpDir` here has no node_modules/gennady at all, so this can only
+    // pass through the import.meta.resolve → walk-up path, exercised for real (no mocking).
+    const result = resolvePackageDir(tmpDir, 'ai/directives');
 
-    const result = resolvePackageDir(tmpDir, 'ai/skills');
-    assert.strictEqual(result, null);
-  });
-  // #endregion
-
-  // #region TEST_CASE_SC_9: self-repo package.json present but subdir missing
-  it('returns null when self-repo package.json matches but subdir is absent', () => {
-    writeFileSync(join(tmpDir, 'package.json'), JSON.stringify({ name: 'gennady' }));
-    // no ai/skills created
-
-    const result = resolvePackageDir(tmpDir, 'ai/skills');
-    assert.strictEqual(result, null);
+    assert.notEqual(result, null, 'gennady resolves from its own checkout');
+    assert.match(result ?? '', /ai[\\/]directives$/);
   });
   // #endregion
 });

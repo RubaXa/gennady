@@ -5,7 +5,7 @@ import { defineConfig } from 'vite';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { builtinModules } from 'node:module';
-import { readFileSync } from 'node:fs';
+import { chmodSync, readFileSync } from 'node:fs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -94,4 +94,16 @@ export default defineConfig({
     emptyOutDir: false,
     target: 'node22',
   },
+  plugins: [
+    {
+      name: 'chmod-cli-entry',
+      // Vite/Rollup write plain files (mode 644); npm's `bin` field requires the target to be
+      // executable, or the linked shim (or a direct `npx gennady` invocation) fails with EACCES.
+      // Only `gennady.js` (the `cli` entry, wired to `bin` in package.json) needs this — `index.js`
+      // is the library entry, never invoked directly.
+      closeBundle() {
+        chmodSync(resolve(__dirname, 'dist/gennady.js'), 0o755);
+      },
+    },
+  ],
 });

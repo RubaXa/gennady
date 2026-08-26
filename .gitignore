@@ -41,3 +41,6 @@ test-results/
 
 # transient test fixtures accidentally written into the tree (belong in os.tmpdir)
 .tmp-*/
+
+# SDD v2 migration planning workspace (not shipped; lives in the worktree)
+merge-plan/

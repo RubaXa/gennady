@@ -24,6 +24,38 @@ const STATUS_ORDER: Record<SyncSkillsFileStatus, number> = {
   unchanged: 4,
 };
 
+/** @purpose Per-entry dry-run label — used by the mixed-status renderer so every entry keeps its own status. */
+function dryRunEntryLabel(e: SyncSkillsFileEntry): string {
+  switch (e.status) {
+    case 'added':
+      return LABEL_WOULD_ADD;
+    case 'updated':
+      return LABEL_WOULD_UPDATE;
+    case 'deleted':
+      return LABEL_WOULD_DELETE;
+    case 'deleteFailed':
+      return `(delete failed: ${e.errorCode ?? 'UNKNOWN'})`;
+    default:
+      return '';
+  }
+}
+
+/** @purpose Per-entry live-mode suffix — same purpose as dryRunEntryLabel, for the non-dry-run path. */
+function liveEntrySuffix(e: SyncSkillsFileEntry): string {
+  switch (e.status) {
+    case 'added':
+      return ' (added)';
+    case 'updated':
+      return ' (updated)';
+    case 'deleted':
+      return ' (deleted)';
+    case 'deleteFailed':
+      return ` (delete failed: ${e.errorCode ?? 'UNKNOWN'})`;
+    default:
+      return '';
+  }
+}
+
 /**
  * @purpose Format sync-skills entries into stdout lines grouped by skill with markers.
  * @param entries List of sync-skills file entries.
@@ -76,39 +108,35 @@ export function format(
 
   const lines: string[] = [];
 
-  // #region START_FORMAT_GROUPS — invariant: output each group with skill header and file lines
+  // A sentinel entry (relativePath === '') marks a whole-skill orphan operation (deleteOrphan) and
+  // never coexists with added/updated entries for the same skillName (collectAndCompareSkills
+  // removes a name from the orphan set once matched to a source skill) — so hasSentinel cleanly
+  // tells a whole-skill delete/deleteFailed apart from in-skill file-level changes below.
+  // Regression guard for the generic branch: a single "dominant" marker used to filter the file
+  // list to just that one status, so a skill with e.g. both an updated SKILL.md and a deleted
+  // stray file rendered as "updated" only — the deletion silently vanished, in dry-run AND live.
+  // #region START_FORMAT_GROUPS — invariant: every non-unchanged entry visible under its own status, even in a mixed group
   for (const [skillName, group] of sortedGroups) {
     const dominant = group.dominantStatus;
+    const hasSentinel = group.entries.some((e) => e.relativePath === '');
 
-    if (dominant === 'added') {
-      const marker = '+';
+    if (dominant === 'unchanged') {
+      const marker = '=';
       const header = `  ${marker} ${skillName}/`;
-      lines.push(header);
+      const label = dryRun ? LABEL_UNCHANGED_SKIP : LABEL_UNCHANGED;
+      lines.push(header.padEnd(labelColumn) + label);
+      continue;
+    }
 
-      for (const e of group.entries.sort((a, b) => a.relativePath.localeCompare(b.relativePath))) {
-        if (dryRun) {
-          lines.push(`      ${e.relativePath}`.padEnd(labelColumn) + LABEL_WOULD_ADD);
-        } else {
-          lines.push(`      ${e.relativePath}`);
-        }
-      }
-    } else if (dominant === 'updated') {
-      const marker = '~';
+    if (hasSentinel && dominant === 'deleteFailed') {
+      const marker = '!';
+      const code = group.entries.find((e) => e.errorCode)?.errorCode ?? 'UNKNOWN';
       const header = `  ${marker} ${skillName}/`;
-      lines.push(header);
+      lines.push(header.padEnd(labelColumn) + `(delete failed: ${code})`);
+      continue;
+    }
 
-      const changed = group.entries
-        .filter((e) => e.status === 'added' || e.status === 'updated')
-        .sort((a, b) => a.relativePath.localeCompare(b.relativePath));
-
-      for (const e of changed) {
-        if (dryRun) {
-          lines.push(`      ${e.relativePath}`.padEnd(labelColumn) + LABEL_WOULD_UPDATE);
-        } else {
-          lines.push(`      ${e.relativePath}`);
-        }
-      }
-    } else if (dominant === 'deleted') {
+    if (hasSentinel && dominant === 'deleted') {
       const marker = '-';
       const header = `  ${marker} ${skillName}/`;
       if (dryRun) {
@@ -122,17 +150,31 @@ export function format(
         .sort((a, b) => a.relativePath.localeCompare(b.relativePath))) {
         lines.push(`      ${e.relativePath}`);
       }
-    } else if (dominant === 'deleteFailed') {
-      const marker = '!';
-      const code = group.entries.find((e) => e.errorCode)?.errorCode ?? 'UNKNOWN';
-      const header = `  ${marker} ${skillName}/`;
-      lines.push(header.padEnd(labelColumn) + `(delete failed: ${code})`);
-    } else {
-      // unchanged
-      const marker = '=';
-      const header = `  ${marker} ${skillName}/`;
-      const label = dryRun ? LABEL_UNCHANGED_SKIP : LABEL_UNCHANGED;
-      lines.push(header.padEnd(labelColumn) + label);
+      continue;
+    }
+
+    const marker =
+      dominant === 'added'
+        ? '+'
+        : dominant === 'updated'
+          ? '~'
+          : dominant === 'deleted'
+            ? '-'
+            : '!';
+    const header = `  ${marker} ${skillName}/`;
+    lines.push(header);
+
+    const changed = group.entries
+      .filter((e) => e.status !== 'unchanged')
+      .sort((a, b) => a.relativePath.localeCompare(b.relativePath));
+
+    for (const e of changed) {
+      const line = `      ${e.relativePath}`;
+      if (dryRun) {
+        lines.push(line.padEnd(labelColumn) + dryRunEntryLabel(e));
+      } else {
+        lines.push(line + liveEntrySuffix(e));
+      }
     }
   }
   // #endregion END_FORMAT_GROUPS

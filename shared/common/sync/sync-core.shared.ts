@@ -3,32 +3,42 @@
 // @tasks: TSK-56
 
 import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 /**
- * @purpose Detect the gennady self-repo (package.json name "gennady") and resolve subdir locally, bypassing node_modules.
- * @param projectRoot Candidate project root directory.
- * @param subdir Subdirectory path relative to the repo root (e.g., 'ai/skills').
- * @returns Absolute path or null when projectRoot is not the gennady repo or subdir is absent.
+ * @purpose Walk up from a resolved entry point to the directory owning its package.json.
+ * @invariant Layout-agnostic: published installs resolve inside `dist/`; self-repo/npm-link consumers
+ *   resolve to a source file with no `dist` segment — stripping `dist` only worked for installs.
+ * @param entryPath Absolute path of a file inside the package.
+ * @returns The package root, or null when no package.json sits above it.
  */
-function resolveSelfRepoDir(projectRoot: string, subdir: string): string | null {
-  try {
-    const pkgJsonPath = join(projectRoot, 'package.json');
-    if (!existsSync(pkgJsonPath)) return null;
-    const pkg = JSON.parse(readFileSync(pkgJsonPath, 'utf-8')) as { name?: string };
-    if (pkg.name !== 'gennady') return null;
-
-    const dirPath = join(projectRoot, subdir);
-    return existsSync(dirPath) ? dirPath : null;
-  } catch {
-    // unreadable/invalid package.json — not the self-repo
-    return null;
+function packageRootOf(entryPath: string): string | null {
+  let dir = dirname(entryPath);
+  for (;;) {
+    const manifest = join(dir, 'package.json');
+    if (existsSync(manifest)) {
+      // Must be gennady itself: an unrelated parent manifest would point the sync at a tree
+      // that has no ai/ at all, and the caller would report a confusing absence.
+      try {
+        const name = (JSON.parse(readFileSync(manifest, 'utf-8')) as { name?: string }).name;
+        if (name === 'gennady') {
+          return dir;
+        }
+      } catch {
+        // Unreadable manifest — keep walking.
+      }
+    }
+    const parent = dirname(dir);
+    if (parent === dir) {
+      return null;
+    }
+    dir = parent;
   }
 }
 
 /**
- * @purpose Locate a subdirectory inside the installed gennady npm package, or the gennady repo itself.
+ * @purpose Locate a subdirectory inside the installed gennady npm package.
  * @param projectRoot Project root directory (contains node_modules/).
  * @param subdir Subdirectory path inside the gennady package (e.g., 'ai/directives').
  * @returns Absolute path or null if the package or subdirectory is not found.
@@ -42,18 +52,14 @@ export function resolvePackageDir(projectRoot: string, subdir: string): string |
   }
 
   try {
-    const resolved = import.meta.resolve('gennady');
-    const pkgFile = fileURLToPath(resolved);
-    const pkgRoot = pkgFile.replace(/[/\\]dist[/\\].*$/, '');
-    const dirPath = join(pkgRoot, subdir);
-    if (existsSync(dirPath)) return dirPath;
+    const pkgRoot = packageRootOf(fileURLToPath(import.meta.resolve('gennady')));
+    if (pkgRoot !== null) {
+      const dirPath = join(pkgRoot, subdir);
+      if (existsSync(dirPath)) return dirPath;
+    }
   } catch {
     // import.meta.resolve may fail
   }
-
-  // gennady's own repo (dev/CI running against itself) has no node_modules/gennady to find
-  const selfRepoDir = resolveSelfRepoDir(projectRoot, subdir);
-  if (selfRepoDir) return selfRepoDir;
 
   return null;
 }

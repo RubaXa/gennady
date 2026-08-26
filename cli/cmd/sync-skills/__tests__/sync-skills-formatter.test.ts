@@ -165,6 +165,82 @@ describe('format grouping', () => {
 
 // #endregion
 
+// #region format — mixed status within one skill (regression)
+
+describe('format mixed status within one skill', () => {
+  // Regression: a skill with both an updated file and an in-skill stray-file deletion used to
+  // render as "updated" only (dominant-status rank picked 'updated' over 'deleted') and the
+  // deletion silently vanished from the output — in dry-run AND in live mode.
+  it('shows the deleted entry alongside an updated entry in the same skill (dry-run)', () => {
+    const entries = [
+      entry('sdd-execute', 'SKILL.md', 'updated', { sourceSize: 200, targetSize: 150 }),
+      entry('sdd-execute', 'scripts/README.md', 'deleted'),
+    ];
+
+    const lines = fmt(entries, { dryRun: true });
+
+    assert.ok(
+      lines.some((l) => l.includes('~ sdd-execute/')),
+      'group header present'
+    );
+    const updatedLine = lines.find((l) => l.includes('SKILL.md'));
+    const deletedLine = lines.find((l) => l.includes('scripts/README.md'));
+    assert.ok(updatedLine, 'updated entry line present');
+    assert.ok(deletedLine, 'deleted entry line present — must not be swallowed');
+    assert.ok(updatedLine!.includes('(would update)'));
+    assert.ok(deletedLine!.includes('(would delete)'));
+  });
+
+  it('shows the deleted entry alongside an updated entry in the same skill (live)', () => {
+    const entries = [
+      entry('sdd-execute', 'SKILL.md', 'updated', { sourceSize: 200, targetSize: 150 }),
+      entry('sdd-execute', 'scripts/README.md', 'deleted'),
+    ];
+
+    const lines = fmt(entries);
+
+    const deletedLine = lines.find((l) => l.includes('scripts/README.md'));
+    assert.ok(deletedLine, 'deleted entry line present in live output — must not be swallowed');
+    assert.ok(deletedLine!.includes('(deleted)'), 'live line disambiguates the status');
+
+    const summaryLine = lines[lines.length - 1];
+    assert.match(summaryLine, /Synced: 0 added, 1 updated, 0 skipped, 1 deleted/);
+  });
+
+  it('shows an added entry alongside a deleted entry in the same skill', () => {
+    const entries = [
+      entry('some-skill', 'new-file.md', 'added', { sourceSize: 50 }),
+      entry('some-skill', 'stale-file.md', 'deleted'),
+    ];
+
+    const lines = fmt(entries, { dryRun: true });
+
+    assert.ok(
+      lines.some((l) => l.includes('+ some-skill/')),
+      'added ranks as the group marker'
+    );
+    const addedLine = lines.find((l) => l.includes('new-file.md'));
+    const deletedLine = lines.find((l) => l.includes('stale-file.md'));
+    assert.ok(addedLine?.includes('(would add)'));
+    assert.ok(deletedLine, 'deleted entry not swallowed by the added-dominant group');
+    assert.ok(deletedLine!.includes('(would delete)'));
+  });
+
+  it('does not confuse an in-skill (non-sentinel) deletion with a whole-skill orphan deletion', () => {
+    // Only 'deleted' status present, but no sentinel (relativePath === '') — must render via the
+    // generic per-entry path, not the whole-skill orphan branch.
+    const entries = [entry('some-skill', 'stale-file.md', 'deleted')];
+
+    const lines = fmt(entries, { dryRun: true });
+
+    const fileLine = lines.find((l) => l.includes('stale-file.md'));
+    assert.ok(fileLine, 'file-level deletion is listed');
+    assert.ok(fileLine!.includes('(would delete)'));
+  });
+});
+
+// #endregion
+
 // #region format — dry-run labels
 
 describe('format dry-run', () => {

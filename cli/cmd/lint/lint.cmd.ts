@@ -521,8 +521,3 @@ function buildGuidance(errors: LintError[]): string | undefined {
   return parts.join('\n\n');
 }
 // #endregion END_BUILD_GUIDANCE
-
-// Self-executing for CLI: gennady lint <args>
-const report = await run(process.argv);
-if (report.exitCode === 1 || report.autoFixed > 0) console.log(report.format());
-process.exit(report.exitCode);

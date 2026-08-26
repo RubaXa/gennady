@@ -21,6 +21,24 @@ npx gennady
 npx gennady commit
 ```
 
+### 🔧 Установка из исходников
+
+Если `npx gennady` недоступен (например, корпоративный npm-registry возвращает `403`):
+
+```bash
+git clone https://github.com/rubaxa/gennady
+cd gennady
+npm ci
+npm run build
+npm link
+
+gennady help
+```
+
+- Для стабильной работы собирайте релизный тег (`git checkout v0.8.4`), а не `main`.
+- После правок кода пересоберите: `npm run build` (повторный `npm link` не нужен).
+- Для разработки без сборки: `npm run dev -- <команда>`.
+
 ---
 
 ## 🧩 Что нужно в окружении
