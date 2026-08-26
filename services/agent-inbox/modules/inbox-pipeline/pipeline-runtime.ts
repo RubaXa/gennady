@@ -3,7 +3,7 @@
 // @tasks: TSK-157, TSK-161, TSK-173, TSK-184, TSK-190
 
 import { logger } from '#logger';
-import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import {
@@ -11,15 +11,10 @@ import {
   mrReportsDir,
 } from '../../../../cli/cmd/inbox/_core/logic/state-paths.logic.ts';
 import type { ToolTrace } from './coverage-gate.ts';
-import { FindingsJournal } from './findings-journal.ts';
-import { GateVerdict, type ReviewJson } from './gate-verdict.ts';
-import { LensRegistry } from './lens-registry.ts';
-import { PlanTemplate, type ChangesetEntry, type ReviewPlan } from './plan-template.ts';
-import { Synthesize, type ModelResult } from './synthesize.ts';
-import { TriggerRegistry } from './trigger-registry.ts';
+import type { ChangesetEntry } from './plan-template.ts';
+import type { ModelResult } from './synthesize.ts';
 import type { JournalPort } from '../inbox-core/event-journal.ts';
 import type { OpenCodePort } from '../inbox-opencode/opencode.port.ts';
-import type { ProposalRecord } from '../inbox-core/decision-journal.ts';
 import { Executor } from '../inbox-queue/executor.ts';
 import { TaskRegistry, type TaskInstance } from '../inbox-queue/task-registry.ts';
 import type { TaskQueuePort } from '../inbox-queue/task-queue.ts';
@@ -36,14 +31,8 @@ import {
   rememberWorkerSession,
   closeWorkerSessions,
 } from './runtime/coverage-gate-runner.ts';
-import {
-  writeArtifact,
-  writeArtifactBytes,
-  reportRef,
-  normalizeTaskSuffix,
-  readWorkerResults,
-} from './runtime/artifact-io.ts';
-import { renderWorkerReport, renderSynthesisReport } from './runtime/report-renderer.ts';
+import { reportRef } from './runtime/artifact-io.ts';
+import { createArtifactRunner } from './runtime/artifact-stage-runner.ts';
 import { runWorker } from './runtime/worker-executor.ts';
 import {
   executeControlPlaneReview,
@@ -513,182 +502,14 @@ export class PipelineRuntime {
    * @returns Stage runner that emits the durable artifacts promised by the pipeline contract.
    */
   protected _createArtifactRunner(stateDir?: string): PipelineTaskRunner {
-    if (!stateDir) {
-      return async () => {
-        throw new Error('[PipelineRuntime] Production stage runner requires stateDir');
-      };
-    }
-    return async (task) => {
-      const mr = typeof task.params.mr === 'string' ? task.params.mr : '';
-      const reportDir = mrReportsDir(stateDir, reportRef(mr));
-      const tasksDir = join(reportDir, 'tasks');
-      await mkdir(tasksDir, { recursive: true });
-      const plan = this._taskPlan(task, mr);
-      const changeset = this._taskChangeset(task);
-
-      if (task.type === 'prepare_env' || task.type === 'delta_prepare') {
-        await writeArtifact(reportDir, 'environment.json', {
-          mr,
-          taskId: task.taskId,
-          stage: task.type,
-          preparedAt: new Date().toISOString(),
-        });
-        return;
-      }
-      if (task.type === 'plan') {
-        const planText = plan.tracks
-          .map(
-            (track) =>
-              `- [ ] ${track.source}: ${track.id} — ${track.files.join(', ') || 'no files'}`
-          )
-          .join('\n');
-        await writeFile(
-          join(reportDir, 'PLAN.md'),
-          `---\nmr: ${mr}\n---\n\n# План ревью\n\n${planText}\n`,
-          'utf8'
-        );
-        await writeArtifact(reportDir, 'plan.json', plan as unknown as Record<string, unknown>);
-        return;
-      }
-      if (task.type === 'enrich') {
-        const lenses = new LensRegistry().resolveAll(plan.tracks.map((track) => track.id));
-        await writeArtifact(reportDir, 'enrich.json', {
-          mr,
-          mandatoryWaves: lenses.mandatoryWaves,
-          proposedLenses: lenses.proposedLenses,
-        });
-        return;
-      }
-      if (
-        task.type.startsWith('track_') ||
-        task.type.startsWith('lens_') ||
-        task.type === 'delta_tracks'
-      ) {
-        const files = task.type.startsWith('track_')
-          ? (plan.tracks.find(
-              (track) => normalizeTaskSuffix(track.id) === task.type.slice('track_'.length)
-            )?.files ?? [])
-          : changeset.map((entry) => entry.path);
-        const modelResult = await this._runWorker(task, reportDir, files);
-        await writeArtifact(tasksDir, `${task.type}.result.json`, {
-          taskId: task.taskId,
-          type: task.type,
-          mr,
-          status: files.length > 0 ? 'reviewed' : 'no_applicable_files',
-          files,
-          findings: modelResult.findings,
-          diagrams: modelResult.diagrams ?? [],
-          model: modelResult.model,
-          runId: modelResult.runId,
-        });
-        await writeArtifactBytes(
-          reportDir,
-          `tasks/${task.type}.md`,
-          modelResult.report ?? renderWorkerReport(task.type, files, modelResult.findings)
-        );
-        await writeArtifact(tasksDir, `${task.type}.${modelResult.model}.result.json`, modelResult);
-        return;
-      }
-      if (task.type === 'gate_coverage') {
-        await this._runCoverageGate(task, reportDir, changeset);
-        return;
-      }
-      if (task.type === 'synthesize' || task.type === 'synthesize_delta') {
-        const findingsJournal = new FindingsJournal(join(reportDir, 'findings.jsonl'));
-        const synthesize = new Synthesize(findingsJournal);
-        const modelResults = await readWorkerResults(tasksDir);
-        const seededResults = Array.isArray(task.params.modelResults)
-          ? (task.params.modelResults as ModelResult[])
-          : [];
-        const synthesized = await synthesize.synthesize(
-          modelResults.length > 0 ? modelResults : seededResults
-        );
-        const review: ReviewJson = {
-          ...(synthesize.buildReviewJson(
-            synthesized,
-            modelResults.length > 0 ? modelResults : seededResults
-          ) as ReviewJson),
-          verdict: 'COMMENT',
-        };
-        await writeArtifact(reportDir, 'review.json', review);
-        await writeArtifactBytes(
-          reportDir,
-          'REVIEW.md',
-          renderSynthesisReport(review, modelResults.length > 0 ? modelResults : seededResults)
-        );
-        // Публикуем итог ревью в ленту: без widget_bump feed состоит из одних progress-записей,
-        // и оператор не видит, что ревью вообще состоялось (live-дефект приёмки S3).
-        await this._journal.append({
-          ts: new Date().toISOString(),
-          mr,
-          kind: 'widget_bump',
-          actor: 'pipeline',
-          payload: {
-            verdict: review.verdict ?? 'COMMENT',
-            revision: review.revision ?? 1,
-            items: (review.findings ?? []).map((finding) => ({
-              id: finding.id,
-              severity: finding.severity,
-              file: finding.file ?? '',
-              line: finding.line ?? 0,
-              summary: finding.summary ?? '',
-              state: 'open',
-              diff: finding.diff ?? [],
-              factcheck: finding.factcheck ?? 'pending',
-            })),
-          },
-        });
-        return;
-      }
-      if (task.type.startsWith('gate_verdict')) {
-        const review = JSON.parse(
-          await import('node:fs/promises').then(({ readFile }) =>
-            readFile(join(reportDir, 'review.json'), 'utf8')
-          )
-        ) as ReviewJson;
-        const result = new GateVerdict().validate(review);
-        await writeArtifact(reportDir, 'verdict.json', {
-          mr,
-          ...result,
-          verdict: review.verdict,
-        });
-        if (result.status === 'fail')
-          throw new Error(`Review verdict invalid: ${result.reasons.join('; ')}`);
-        return;
-      }
-      if (task.type.startsWith('tail_')) {
-        if (task.type === 'tail_reviewer' && this._proposalSink && mr) {
-          const proposal: ProposalRecord = {
-            proposalId: `pipeline:${task.taskId}:post_findings`,
-            capability: 'post_findings',
-            mr,
-            payload: { reviewArtifact: 'review.json', taskId: task.taskId },
-            producedBy: { sessionId: `pipeline:${task.taskId}`, taskId: task.taskId },
-          };
-          await this._proposalSink(proposal);
-          logger.info('[PipelineRuntime#_createArtifactRunner] [tail → proposal_persisted]', {
-            mr,
-            proposalId: proposal.proposalId,
-          });
-        }
-        await writeArtifact(reportDir, `${task.type}.json`, {
-          mr,
-          taskId: task.taskId,
-          status: 'completed',
-        });
-        return;
-      }
-      if (task.type === 'effect' || task.type === 'post_findings') {
-        await this._dispatchPostingEffects(task, reportDir);
-        return;
-      }
-      await writeArtifact(tasksDir, `${task.type}.result.json`, {
-        taskId: task.taskId,
-        type: task.type,
-        mr,
-        status: 'completed',
-      });
-    };
+    return createArtifactRunner(stateDir, {
+      runWorker: (task, reportDir, files) => this._runWorker(task, reportDir, files),
+      runCoverageGate: (task, reportDir, changeset) =>
+        this._runCoverageGate(task, reportDir, changeset),
+      dispatchPostingEffects: (task, reportDir) => this._dispatchPostingEffects(task, reportDir),
+      proposalSink: this._proposalSink,
+      journal: this._journal,
+    });
   }
 
   /**
@@ -705,35 +526,6 @@ export class PipelineRuntime {
       coordinator: this._controlPlane?.effectCoordinator,
       journal: this._journal,
     });
-  }
-
-  /**
-   * @purpose Read the materialized deterministic plan from task parameters or reconstruct it.
-   * @param task Queue node carrying persisted plan input.
-   * @param mr MR reference used when a recovered legacy node needs reconstruction.
-   * @returns Deterministic review plan for this task's MR.
-   */
-  protected _taskPlan(task: TaskInstance, mr: string): ReviewPlan {
-    const candidate = task.params.plan;
-    if (candidate && typeof candidate === 'object') return candidate as ReviewPlan;
-    return new PlanTemplate(new TriggerRegistry()).generate(mr, this._taskChangeset(task));
-  }
-
-  /**
-   * @purpose Narrow externally persisted params to valid changeset entries.
-   * @param task Queue node carrying persisted changeset input.
-   * @returns Valid changeset entries only.
-   */
-  protected _taskChangeset(task: TaskInstance): ChangesetEntry[] {
-    const candidate = task.params.changeset;
-    if (!Array.isArray(candidate)) return [];
-    return candidate.filter(
-      (entry): entry is ChangesetEntry =>
-        !!entry &&
-        typeof entry === 'object' &&
-        typeof entry.path === 'string' &&
-        (entry.action === 'added' || entry.action === 'modified' || entry.action === 'deleted')
-    );
   }
 
   /**
