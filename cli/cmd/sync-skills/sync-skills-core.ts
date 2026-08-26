@@ -18,8 +18,16 @@ import type {
   SyncSkillsOptions,
 } from './sync-skills.types.ts';
 
-/** @purpose Filenames excluded from scan: hidden files and system artifacts. */
-const EXCLUDED_NAMES = new Set(['.DS_Store']);
+// A skill's tests belong to this repository, not to the consumer: they import from the gennady
+// checkout (`shared/`, `services/`), so deploying them puts unresolvable imports into someone
+// else's tree and breaks the typecheck of a file they never wrote.
+/** @purpose Names never deployed into a project: hidden files, system artifacts, skill tests. */
+const EXCLUDED_NAMES = new Set(['.DS_Store', '__tests__']);
+
+/** @purpose True for a test file that must stay in this repo rather than ship with the skill. */
+function isTestArtifact(name: string): boolean {
+  return /\.(test|spec)\.[cm]?[jt]sx?$/.test(name);
+}
 
 /**
  * @purpose Scan several skill roots into one map, so plugin-owned skills sync like any other.
@@ -135,7 +143,7 @@ function collectSkillFiles(
   }
 
   for (const name of entries) {
-    if (name.startsWith('.') || EXCLUDED_NAMES.has(name)) continue;
+    if (name.startsWith('.') || EXCLUDED_NAMES.has(name) || isTestArtifact(name)) continue;
 
     const fullPath = join(dir, name);
     const relativePath = relativePrefix ? join(relativePrefix, name) : name;

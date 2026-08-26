@@ -125,6 +125,34 @@ describe('scanSkills', () => {
     assert.ok(!files.has('.hidden'));
   });
 
+  // Regression: the skill's own tests were deployed into consumer projects, where their imports
+  // of the gennady checkout (`shared/`, `services/`) do not resolve — breaking the consumer's
+  // typecheck on a file they never wrote.
+  it('never deploys a skill’s __tests__ directory', () => {
+    createFile(join(_sourceDir, 'sdd-execute'), 'SKILL.md', '# Execute');
+    createFile(join(_sourceDir, 'sdd-execute', 'scripts'), 'verify.sh', '#!/bin/bash');
+    createFile(
+      join(_sourceDir, 'sdd-execute', 'scripts', '__tests__'),
+      'verify.test.ts',
+      "import x from '../../../../../shared/thing.ts';\n"
+    );
+
+    const files = scanSkills(_sourceDir).get('sdd-execute')!;
+
+    assert.deepEqual([...files.keys()].sort(), ['SKILL.md', 'scripts/verify.sh']);
+  });
+
+  it('never deploys a stray test file sitting beside the scripts', () => {
+    createFile(join(_sourceDir, 'sdd-execute'), 'SKILL.md', '# Execute');
+    createFile(join(_sourceDir, 'sdd-execute', 'scripts'), 'verify.sh', '#!/bin/bash');
+    createFile(join(_sourceDir, 'sdd-execute', 'scripts'), 'verify.test.ts', 'x');
+    createFile(join(_sourceDir, 'sdd-execute', 'scripts'), 'verify.spec.js', 'x');
+
+    const files = scanSkills(_sourceDir).get('sdd-execute')!;
+
+    assert.deepEqual([...files.keys()].sort(), ['SKILL.md', 'scripts/verify.sh']);
+  });
+
   it('returns empty map for empty source directory', () => {
     const result = scanSkills(_sourceDir);
 
