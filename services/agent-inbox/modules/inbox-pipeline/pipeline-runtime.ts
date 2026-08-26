@@ -17,19 +17,14 @@ import { LensRegistry } from './lens-registry.ts';
 import { PlanTemplate, type ChangesetEntry, type ReviewPlan } from './plan-template.ts';
 import { Synthesize, type ModelResult } from './synthesize.ts';
 import { TriggerRegistry } from './trigger-registry.ts';
-import type { JournalEntry, JournalPort } from '../inbox-core/event-journal.ts';
-import { ReviewEvent } from '../inbox-core/types/review-event.type.ts';
+import type { JournalPort } from '../inbox-core/event-journal.ts';
 import type { OpenCodePort, ToolCall } from '../inbox-opencode/opencode.port.ts';
 import type { ProposalRecord } from '../inbox-core/decision-journal.ts';
 import { Executor } from '../inbox-queue/executor.ts';
 import { TaskRegistry, type TaskInstance } from '../inbox-queue/task-registry.ts';
 import type { TaskQueuePort } from '../inbox-queue/task-queue.ts';
 import { LocalReviewRuntimeReceiptStoreAdapter } from './adapters/local-review-runtime-receipt-store.adapter.ts';
-import {
-  ReviewRepairCoordinator,
-  type ReviewRepairJournal,
-  type ReviewRepairState,
-} from './completeness/review-repair-coordinator.ts';
+import { ReviewRepairCoordinator } from './completeness/review-repair-coordinator.ts';
 import { ReviewStructuralValidator } from './completeness/review-structural-validator.ts';
 import { ReviewSlotSchemaCatalog } from './model/review-slot-schema-catalog.ts';
 import { ReviewSynthesis } from './model/review-synthesis.ts';
@@ -40,237 +35,42 @@ import {
 } from './planning/review-input-manifest-builder.ts';
 import { ReviewRuntimeReceiptRecorder } from './receipts/review-runtime-receipt-recorder.ts';
 import { ReviewOrchestrator } from './review/review-orchestrator.ts';
-import {
-  ReviewFreshnessGate,
-  type ReviewFreshnessJournal,
-  type ReviewFreshnessPurpose,
-  type ReviewGuardedTransition,
-} from './verification/review-freshness-gate.ts';
+import { ReviewFreshnessGate } from './verification/review-freshness-gate.ts';
 import type { ReviewIntent, ReviewManifestKey } from './types/review-intent.type.ts';
-import type { ReviewInputManifestResult } from './model/review-input-manifest.ts';
-import type { ReviewContractCompilationResult } from './model/review-contract.ts';
-import type { ReviewContract } from './model/review-contract.ts';
-import type { ReviewInputManifest } from './model/review-input-manifest.ts';
 import type { ReviewArtifact } from './model/review-artifact.ts';
 import type { ReviewEvidence } from './types/review-evidence.type.ts';
 import { ReviewEffectCoordinator } from '../inbox-queue/effects/review-effect-coordinator.ts';
 import { ReviewActionCatalog } from '../inbox-queue/registry/review-action-catalog.ts';
-import type { VcsPort } from '../inbox-vcs/vcs-port.ts';
-
-/** @purpose Test-only journal preserving the Executor seam for pure DAG materialization. */
-class VolatileJournal implements JournalPort {
-  readonly identity = 'volatile-pipeline-journal';
-  protected _entries: JournalEntry[] = [];
-  protected _reviewEvents: ReviewEvent[] = [];
-
-  health(): { status: 'healthy' } {
-    return { status: 'healthy' };
-  }
-
-  async append(entry: Omit<JournalEntry, 'seq'>): Promise<number> {
-    const seq = this._entries.length + 1;
-    this._entries.push({ ...entry, seq });
-    return seq;
-  }
-
-  read(): JournalEntry[] {
-    return this._entries;
-  }
-
-  since(cursor: number) {
-    const entries = this._entries.filter((entry) => entry.seq > cursor);
-    return { entries, nextCursor: this._entries.at(-1)?.seq ?? cursor };
-  }
-
-  async appendReviewEvent(event: ReviewEvent): Promise<number> {
-    this._reviewEvents.push(ReviewEvent.validate(event.toJSON()));
-    return this._reviewEvents.length;
-  }
-
-  replayReviewEvents(): ReviewEvent[] {
-    return this._reviewEvents.map((event) => ReviewEvent.validate(event.toJSON()));
-  }
-}
-
-/** @purpose Durable state adapter for one review round stored outside canonical review events. */
-class EventReviewRepairJournal implements ReviewRepairJournal {
-  protected readonly _journal: JournalPort;
-  protected readonly _key: ReviewManifestKey;
-  protected readonly _roundId: string;
-  protected readonly _maxAttempts: number;
-
-  constructor(journal: JournalPort, key: ReviewManifestKey, roundId: string, maxAttempts = 3) {
-    this._journal = journal;
-    this._key = key;
-    this._roundId = roundId;
-    this._maxAttempts = maxAttempts;
-  }
-
-  async retrieve(): Promise<ReviewRepairState> {
-    const state = this._journal
-      .read()
-      .filter(
-        (entry) =>
-          entry.kind === 'system' &&
-          entry.mr === this._key.mr &&
-          entry.actor === 'review-control-plane' &&
-          entry.payload?.event === 'repair_state' &&
-          entry.payload?.roundId === this._roundId &&
-          JSON.stringify(entry.payload?.manifestKey) === JSON.stringify(this._key)
-      )
-      .at(-1)?.payload?.state;
-    if (this._isRepairState(state)) return state;
-    return { roundId: this._roundId, attempt: 0, maxAttempts: this._maxAttempts, provenance: [] };
-  }
-
-  async persist(state: ReviewRepairState): Promise<void> {
-    await this._journal.append({
-      ts: new Date().toISOString(),
-      mr: this._key.mr,
-      kind: 'system',
-      actor: 'review-control-plane',
-      payload: { event: 'repair_state', manifestKey: this._key, roundId: this._roundId, state },
-    });
-  }
-
-  protected _isRepairState(value: unknown): value is ReviewRepairState {
-    if (!value || typeof value !== 'object') return false;
-    const candidate = value as Record<string, unknown>;
-    return (
-      candidate.roundId === this._roundId &&
-      typeof candidate.attempt === 'number' &&
-      typeof candidate.maxAttempts === 'number' &&
-      Array.isArray(candidate.provenance)
-    );
-  }
-}
-
-/** @purpose Durable per-MR freshness transitions stored in the generic control-plane journal. */
-class EventReviewFreshnessJournal implements ReviewFreshnessJournal {
-  protected readonly _journal: JournalPort;
-
-  constructor(journal: JournalPort) {
-    this._journal = journal;
-  }
-
-  async recordGuardTransaction(
-    purpose: ReviewFreshnessPurpose,
-    key: ReviewManifestKey,
-    observedRevision: string,
-    transition?: ReviewGuardedTransition
-  ): Promise<void> {
-    await this._journal.append({
-      ts: new Date().toISOString(),
-      mr: key.mr,
-      kind: 'system',
-      actor: 'review-control-plane',
-      payload: {
-        event: 'freshness_guard_transaction',
-        purpose,
-        key,
-        observedRevision,
-        comparison: transition ? 'MATCH' : 'STALE',
-        transition,
-        deltaRequested: transition ? false : true,
-      },
-    });
-  }
-}
-
-/** @purpose Role tail selected after the common review DAG finishes. */
-export type PipelineRole = 'author' | 'reviewer';
-
-/** @purpose Optional materialization details supplied by the production role scheduler. */
-export type ReviewStartOptions = {
-  /** @purpose Review role determining the terminal tail. */
-  role?: PipelineRole;
-  /** @purpose Mandatory/triggered track ids from the deterministic plan. */
-  tracks?: string[];
-  /** @purpose Real changed files collected by the role context; empty means pipeline cannot claim coverage. */
-  changeset?: ChangesetEntry[];
-  /** @purpose Tool reads performed by the review workers, consumed by CoverageGate. */
-  toolTrace?: ToolTrace[];
-  /** @purpose Raw worker/model results, synthesized into the canonical review rather than replaced by a placeholder. */
-  modelResults?: ModelResult[];
-  /** @purpose Exact immutable review input required by the production control plane. */
-  controlPlaneInput?: Readonly<{ intent: ReviewIntent; capture: ReviewManifestCapture }>;
-};
-
-/** @purpose Production dependencies from which PipelineRuntime owns one control-plane composition. */
-type PipelineControlPlaneConfig = Readonly<{
-  journal: JournalPort;
-  receiptRoot: string;
-  runtimeNamespace: string;
-  model?: string;
-  vcs?: VcsPort;
-}>;
-
-type PipelineControlPlaneAuthorization = Readonly<{
-  intent: ReviewIntent;
-  manifest: ReviewInputManifest;
-  contract: ReviewContract;
-}>;
-
-/** @purpose Reachable concrete control-plane instances owned by one PipelineRuntime. */
-type PipelineControlPlaneComposition = Readonly<{
-  manifestBuilder: ReviewInputManifestBuilder;
-  contractCompiler: ReviewContractCompiler;
-  receiptRecorder: ReviewRuntimeReceiptRecorder;
-  structuralValidator: ReviewStructuralValidator;
-  repairCoordinator: (
-    keyOrRoundId: ReviewManifestKey | string,
-    roundId?: string
-  ) => ReviewRepairCoordinator;
-  freshnessGate: ReviewFreshnessGate;
-  orchestrator: ReviewOrchestrator;
-  synthesis: ReviewSynthesis;
-  effectCoordinator: ReviewEffectCoordinator | null;
-}>;
-
-/** @purpose Typed identity trace proving one production owner for every mandatory boundary. */
-type PipelineControlPlaneConstructionTrace = Readonly<{
-  runtimeIdentity: string;
-  taskJournalIdentity: string;
-  controlJournalIdentity: string;
-  separateControlJournal: true;
-  boundaries: Readonly<Record<keyof PipelineControlPlaneComposition, string>>;
-}>;
-
-/** @purpose Durable manifest and contract preparation result from the boot-owned runtime. */
-type PipelineControlPlanePreparation = Readonly<{
-  manifest: ReviewInputManifestResult;
-  contract?: ReviewContractCompilationResult;
-}>;
-
-/** @purpose Bounded terminal result observed from the runtime-owned durable task queue. */
-type PipelineCompletion = Readonly<{
-  runtimeIdentity: string;
-  mr: string;
-  state: 'completed' | 'failed' | 'blocked';
-  taskIds: readonly string[];
-  tasks: readonly Readonly<Pick<TaskInstance, 'taskId' | 'type' | 'status'>>[];
-  error?: string;
-}>;
-
-/** @purpose Canonical persisted artifacts read from the same runtime that drained the review. */
-type PipelineReviewReadback = Readonly<{
-  runtimeIdentity: string;
-  mr: string;
-  artifacts: Readonly<Record<string, unknown>>;
-}>;
-
-/** @purpose Hook that executes one queue lifecycle node after Executor marks it running. */
-export type PipelineTaskRunner = (task: TaskInstance) => Promise<void>;
-/** @purpose Durable production seam for an operator-visible proposal emitted by a pipeline tail. */
-export type PipelineProposalSink = (proposal: ProposalRecord) => Promise<void>;
-
-/** @purpose Live worker session retained until CoverageGate has either recovered or escalated. */
-type PipelineWorkerSession = {
-  /** @purpose OpenCode session that owns the worker's already-read context. */
-  sid: string;
-  /** @purpose Concrete fan-out node that created the session. */
-  taskType: string;
-};
+import {
+  VolatileJournal,
+  EventReviewRepairJournal,
+  EventReviewFreshnessJournal,
+} from './runtime/control-plane-journals.ts';
+import { parseFindings, parseDiagrams } from './runtime/worker-output-parser.ts';
+import {
+  renderWorkerReport,
+  renderSynthesisReport,
+  formatFindingComment,
+} from './runtime/report-renderer.ts';
+import type {
+  PipelineControlPlaneConfig,
+  PipelineControlPlaneAuthorization,
+  PipelineControlPlaneComposition,
+  PipelineControlPlaneConstructionTrace,
+  PipelineControlPlanePreparation,
+  PipelineCompletion,
+  PipelineReviewReadback,
+  PipelineTaskRunner,
+  PipelineProposalSink,
+  PipelineWorkerSession,
+  ReviewStartOptions,
+} from './runtime/pipeline-runtime.types.ts';
+export type {
+  PipelineRole,
+  ReviewStartOptions,
+  PipelineTaskRunner,
+  PipelineProposalSink,
+} from './runtime/pipeline-runtime.types.ts';
 
 /** @purpose Queue-backed production lifecycle for deterministic pipeline DAG materialization. */
 export class PipelineRuntime {
@@ -1228,7 +1028,7 @@ export class PipelineRuntime {
         await this._writeArtifactBytes(
           reportDir,
           `tasks/${task.type}.md`,
-          modelResult.report ?? this._renderWorkerReport(task.type, files, modelResult.findings)
+          modelResult.report ?? renderWorkerReport(task.type, files, modelResult.findings)
         );
         await this._writeArtifact(
           tasksDir,
@@ -1262,10 +1062,7 @@ export class PipelineRuntime {
         await this._writeArtifactBytes(
           reportDir,
           'REVIEW.md',
-          this._renderSynthesisReport(
-            review,
-            modelResults.length > 0 ? modelResults : seededResults
-          )
+          renderSynthesisReport(review, modelResults.length > 0 ? modelResults : seededResults)
         );
         // Публикуем итог ревью в ленту: без widget_bump feed состоит из одних progress-записей,
         // и оператор не видит, что ревью вообще состоялось (live-дефект приёмки S3).
@@ -1384,7 +1181,7 @@ export class PipelineRuntime {
     }
 
     for (const finding of findings) {
-      const body = this._formatFindingComment(finding);
+      const body = formatFindingComment(finding);
       try {
         const outcome = await coordinator.postComment(mrRef, body);
         outcomes.push({ id: finding.id, status: outcome.status, evidence: outcome.evidence });
@@ -1424,23 +1221,6 @@ export class PipelineRuntime {
       actor: 'pipeline',
       payload: { event: 'findings_posted', posted: postedCount, total: findings.length },
     });
-  }
-
-  /**
-   * @purpose Format one review finding as a GitLab comment body — 🤖 prefix, severity badge,
-   *   summary, and a `file:line` anchor (posting-rules AX_POSTING_BOT_PREFIX).
-   * @param finding A `review.json` finding (accepts both `summary` and legacy `message`).
-   * @returns Markdown comment body.
-   */
-  protected _formatFindingComment(finding: Record<string, unknown>): string {
-    const severity = String(finding.severity ?? '').toUpperCase();
-    const summary = String(finding.summary ?? finding.message ?? '').trim();
-    const file = finding.file ? String(finding.file) : '';
-    const line = finding.line != null ? String(finding.line) : '';
-    const location = file ? (line ? `${file}:${line}` : file) : '';
-    const badge = severity ? `**[${severity}]**` : '';
-    const head = `🤖 ${badge}${badge ? ' ' : ''}${summary}`.trim();
-    return location ? `${head}\n\n\`${location}\`` : head;
   }
 
   /**
@@ -1589,11 +1369,11 @@ export class PipelineRuntime {
         throw new Error(
           `[PipelineRuntime#_runWorker] ${result.error.class}: ${result.error.signal ?? ''}`
         );
-      const findings = this._parseFindings(result.output.findings, task.type);
-      const diagrams = this._parseDiagrams(result.output.diagrams, task.type);
+      const findings = parseFindings(result.output.findings, task.type);
+      const diagrams = parseDiagrams(result.output.diagrams, task.type);
       const sessionReport =
         typeof result.output.report === 'string' ? result.output.report.trim() : '';
-      const report = sessionReport || this._renderWorkerReport(task.type, files, findings);
+      const report = sessionReport || renderWorkerReport(task.type, files, findings);
       const calls = await this._opencode.toolCalls(session.sid);
       await this._appendToolTrace(reportDir, calls);
       this._rememberWorkerSession(String(task.params.mr), {
@@ -1732,146 +1512,6 @@ export class PipelineRuntime {
     this._workerSessions.delete(mr);
     if (!this._opencode) return;
     await Promise.all(sessions.map((session) => this._opencode!.close(session.sid)));
-  }
-
-  /**
-   * @purpose Validate model findings before they enter durable review artifacts.
-   * @param value Raw structured output field from the worker.
-   * @param taskType Concrete worker type used in failure context.
-   * @returns Valid review findings only.
-   */
-  protected _parseFindings(value: unknown, taskType: string): ModelResult['findings'] {
-    if (!Array.isArray(value))
-      throw new Error(`[PipelineRuntime#_parseFindings] ${taskType} returned no findings array`);
-    return value.map((entry) => {
-      if (
-        !entry ||
-        typeof entry !== 'object' ||
-        typeof (entry as Record<string, unknown>).file !== 'string' ||
-        typeof (entry as Record<string, unknown>).line !== 'number' ||
-        typeof (entry as Record<string, unknown>).summary !== 'string' ||
-        !['error', 'warning', 'info'].includes(String((entry as Record<string, unknown>).severity))
-      )
-        throw new Error(`[PipelineRuntime#_parseFindings] ${taskType} returned invalid finding`);
-      const finding = entry as {
-        file: string;
-        line: number;
-        summary: string;
-        severity: 'error' | 'warning' | 'info';
-        diff?: Array<{ type: 'context' | 'add' | 'remove'; num?: number; text: string }>;
-        factcheck?: 'verified' | 'pending' | 'debunked';
-      };
-      const diff = Array.isArray(finding.diff)
-        ? finding.diff.filter(
-            (line) =>
-              !!line &&
-              ['context', 'add', 'remove'].includes(line.type) &&
-              typeof line.text === 'string'
-          )
-        : undefined;
-      const factcheck = ['verified', 'pending', 'debunked'].includes(String(finding.factcheck))
-        ? finding.factcheck
-        : undefined;
-      return { ...finding, diff, factcheck };
-    });
-  }
-
-  /**
-   * @purpose Validate optional structured diagram projections before durable synthesis.
-   * @param value Raw structured output field from the worker.
-   * @param taskType Concrete worker type used in failure context.
-   * @returns Valid diagram projections, or an empty array when absent.
-   */
-  protected _parseDiagrams(value: unknown, taskType: string): ModelResult['diagrams'] {
-    if (value === undefined) return [];
-    if (!Array.isArray(value))
-      throw new Error(`[PipelineRuntime#_parseDiagrams] ${taskType} returned invalid diagrams`);
-    return value.map((candidate) => {
-      if (!candidate || typeof candidate !== 'object')
-        throw new Error(`[PipelineRuntime#_parseDiagrams] ${taskType} returned invalid diagram`);
-      const diagram = candidate as NonNullable<ModelResult['diagrams']>[number];
-      if (
-        !['change-map', 'c4', 'behaviour', 'use-cases'].includes(diagram.kind) ||
-        typeof diagram.title !== 'string' ||
-        typeof diagram.caption !== 'string' ||
-        !Array.isArray(diagram.nodes) ||
-        !Array.isArray(diagram.edges) ||
-        diagram.nodes.some(
-          (node) => !node || typeof node.id !== 'string' || typeof node.label !== 'string'
-        ) ||
-        diagram.edges.some(
-          (edge) => !edge || typeof edge.from !== 'string' || typeof edge.to !== 'string'
-        )
-      )
-        throw new Error(`[PipelineRuntime#_parseDiagrams] ${taskType} returned invalid diagram`);
-      return diagram;
-    });
-  }
-
-  /**
-   * @purpose Render a durable readable fallback for seeded/legacy workers without prose output.
-   * @param taskType Concrete worker type for the fallback header.
-   * @param files Files implicated by the findings.
-   * @param findings Findings to render as markdown lines.
-   * @returns Readable markdown report.
-   */
-  protected _renderWorkerReport(
-    taskType: string,
-    files: string[],
-    findings: ModelResult['findings']
-  ): string {
-    const findingLines = findings.length
-      ? findings.map(
-          (finding) =>
-            `- **${finding.severity.toUpperCase()}** \`${finding.file}:${finding.line}\` — ${finding.summary}`
-        )
-      : ['- Замечаний, требующих публикации, не найдено.'];
-    return [
-      `# ${taskType.replaceAll('_', ' ')}`,
-      '',
-      '## Проверенный scope',
-      '',
-      ...(files.length ? files.map((file) => `- \`${file}\``) : ['- Нет применимых файлов']),
-      '',
-      '## Находки',
-      '',
-      ...findingLines,
-      '',
-    ].join('\n');
-  }
-
-  /**
-   * @purpose Materialize the final synthesized review as the primary human-readable artifact.
-   * @param review Final synthesized review JSON.
-   * @param modelResults Model results whose report is being rendered.
-   * @returns Human-readable markdown artifact body.
-   */
-  protected _renderSynthesisReport(review: ReviewJson, modelResults: ModelResult[]): string {
-    const findings = Array.isArray(review.findings) ? review.findings : [];
-    const findingLines = findings.length
-      ? findings.map((finding, index) => {
-          const item = finding as unknown as Record<string, unknown>;
-          const location = [item.file, item.line].filter((value) => value !== undefined).join(':');
-          return `${index + 1}. **${String(item.severity ?? 'info').toUpperCase()}**${location ? ` \`${location}\`` : ''} — ${String(item.summary ?? 'Без описания')}`;
-        })
-      : ['Замечаний, требующих публикации, не найдено.'];
-    return [
-      '# Итог ревью',
-      '',
-      `> Вердикт: **${String(review.verdict ?? 'COMMENT')}** · ревизия ${String(review.revision ?? 1)}`,
-      '',
-      '## Синтезированные находки',
-      '',
-      ...findingLines,
-      '',
-      '## Результаты дорожек',
-      '',
-      ...modelResults.map(
-        (result) =>
-          `- [${result.track.replaceAll('_', ' ')}](tasks/${result.track}.md) — ${result.findings.length} находок · сессия \`${result.runId}\``
-      ),
-      '',
-    ].join('\n');
   }
 
   /**
