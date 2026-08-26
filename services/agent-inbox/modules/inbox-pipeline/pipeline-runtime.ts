@@ -5,7 +5,7 @@
 import { logger } from '#logger';
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import {
   canonicalMrRef,
   mrReportsDir,
@@ -26,8 +26,6 @@ import type { TaskQueuePort } from '../inbox-queue/task-queue.ts';
 import { ReviewRepairCoordinator } from './completeness/review-repair-coordinator.ts';
 import type { ReviewManifestCapture } from './planning/review-input-manifest-builder.ts';
 import type { ReviewIntent, ReviewManifestKey } from './types/review-intent.type.ts';
-import type { ReviewArtifact } from './model/review-artifact.ts';
-import type { ReviewEvidence } from './types/review-evidence.type.ts';
 import { VolatileJournal } from './runtime/control-plane-journals.ts';
 import { composeControlPlane } from './runtime/control-plane-composer.ts';
 import { materializeReviewTasks, materializeDeltaReviewTasks } from './runtime/dag-materializer.ts';
@@ -47,6 +45,10 @@ import {
 } from './runtime/artifact-io.ts';
 import { renderWorkerReport, renderSynthesisReport } from './runtime/report-renderer.ts';
 import { runWorker } from './runtime/worker-executor.ts';
+import {
+  executeControlPlaneReview,
+  manifestRevision,
+} from './runtime/control-plane-review-executor.ts';
 import type {
   PipelineControlPlaneConfig,
   PipelineControlPlaneAuthorization,
@@ -406,324 +408,16 @@ export class PipelineRuntime {
   protected async _executeControlPlaneReview(
     input: Readonly<{ intent: ReviewIntent; capture: ReviewManifestCapture }>
   ): Promise<PipelineControlPlaneAuthorization> {
-    if (!this._controlPlane || !this._controlJournal) {
-      throw new Error('[PipelineRuntime#_executeControlPlaneReview] Control plane is unavailable');
-    }
-    const prepared = await this.prepareControlPlaneReview(input.intent, input.capture);
-    if (prepared.manifest.status !== 'SEALED' || prepared.contract?.status !== 'COMPILED') {
-      throw new Error('[PipelineRuntime#_executeControlPlaneReview] Manifest or contract BLOCKED');
-    }
-    const manifest = prepared.manifest;
-    const contract = prepared.contract;
-    if (!this._stateDir || !this._opencode) {
-      throw new Error(
-        '[PipelineRuntime#_executeControlPlaneReview] Actual agent runtime evidence is required'
-      );
-    }
-    const reportDir = mrReportsDir(this._stateDir, reportRef(input.intent.manifestKey.mr));
-    const controlDir = join(reportDir, 'control-plane');
-    await mkdir(controlDir, { recursive: true });
-    await writeArtifact(
-      controlDir,
-      'manifest.json',
-      manifest as unknown as Record<string, unknown>
-    );
-    const artifacts: ReviewArtifact[] = [];
-    const evidence: ReviewEvidence[] = [];
-    let sequence = 0;
-    const execution = await this._controlPlane.orchestrator.execute(contract, async (slotId) => {
-      const slot = contract.slots.find((candidate) => candidate.slotId === slotId);
-      if (!slot) return { status: 'FAILED' as const, provenance: ['missing-contract-slot'] };
-      const mappedSourceId = contract.inputMappings.find((mapping) =>
-        mapping.targetSlotIds?.includes(slotId)
-      )?.inputId;
-      const dimensionSourceId = slotId.startsWith('dimension:')
-        ? `source:${slotId.slice('dimension:'.length)}`
-        : slotId === 'lens:general'
-          ? 'source:review-lens'
-          : undefined;
-      const source =
-        manifest.inputs.find(
-          (candidate) => candidate.inputId === (mappedSourceId ?? dimensionSourceId)
-        ) ?? manifest.inputs[0];
-      if (!source) return { status: 'FAILED' as const, provenance: ['mapped-source-missing'] };
-      const sourceTarget = `control-plane/sources/${createHash('sha256').update(source.inputId).digest('hex')}.txt`;
-      const observedSourceBytes = source.capturedBytes ?? source.digest;
-      await writeArtifactBytes(reportDir, sourceTarget, observedSourceBytes);
-      const operationTitle = `pipeline_control_slot_${createHash('sha256').update(source.inputId).digest('hex')}`;
-      const session = await this._opencode!.createSession({
-        title: operationTitle,
-        directory: reportDir,
-        tools: { read: true, grep: true },
-        model: this._controlPlaneModel,
-      });
-      const result = await this._opencode!.prompt(session.sid, {
-        system:
-          `Execute one review contract slot. First read ${sourceTarget} with the read tool. ` +
-          `Then return one JSON object with exactly these three top-level keys and no markdown: ` +
-          `{"sourceId":${JSON.stringify(source.inputId)},"content":"concise grounded conclusion","fields":{${slot.requiredFields
-            .map((field) => `${JSON.stringify(field)}:"grounded value or explicitly unavailable"`)
-            .join(',')}}}. ` +
-          `Do not return slotId, kind, evidence, groundedSourceContent, or any other top-level key. ` +
-          `Do not invent facts absent from the immutable source.`,
-        text: JSON.stringify({
-          slotId: slot.slotId,
-          kind: slot.kind,
-          requiredFields: slot.requiredFields,
-          sourceAnchors: slot.sourceAnchors,
-          sourceId: source.inputId,
-          sourceTarget,
-        }),
-        format: {
-          type: 'json_schema',
-          schema: {
-            title: 'pipeline_control_slot',
-            type: 'object',
-            required: ['sourceId', 'content', 'fields'],
-            properties: {
-              sourceId: { type: 'string' },
-              content: { type: 'string' },
-              fields: { type: 'object' },
-            },
-          },
-        },
-      });
-      if (!result.ok && result.error.details?.retryable === false) {
-        await this._opencode!.close(session.sid);
-        const error = new Error(
-          `[PipelineRuntime#_executeControlPlaneReview] Non-retryable ${result.error.class} for ${this._controlPlaneModel ?? 'server-default'}: ${result.error.signal ?? 'No provider diagnostic'}`,
-          { cause: result.error }
-        );
-        logger.error('[PipelineRuntime#_executeControlPlaneReview] [executing → provider_failed]', {
-          mr: input.intent.manifestKey.mr,
-          slotId,
-          sourceId: source.inputId,
-          sessionId: session.sid,
-          model: this._controlPlaneModel ?? 'server-default',
-          provider: result.error.details?.providerID,
-          modelID: result.error.details?.modelID,
-          statusCode: result.error.details?.statusCode,
-          retryable: result.error.details?.retryable,
-          error,
-        });
-        throw error;
-      }
-      if (!result.ok) {
-        logger.warn('[PipelineRuntime#_executeControlPlaneReview] [executing → slot_failed]', {
-          mr: input.intent.manifestKey.mr,
-          slotId,
-          sourceId: source.inputId,
-          sessionId: session.sid,
-          model: this._controlPlaneModel ?? 'server-default',
-          outcome: result.error.class,
-          signal: result.error.signal,
-          retryable: result.error.details?.retryable,
-        });
-      }
-      const calls = await this._opencode!.toolCalls(session.sid);
-      const trace = await this._opencode!.toolCallTrace(session.sid);
-      await this._opencode!.close(session.sid);
-      if (!result.ok || calls.length === 0 || trace.length === 0) {
-        return { status: 'FAILED' as const, provenance: ['agent-output-or-tool-receipt-missing'] };
-      }
-      const content = typeof result.output.content === 'string' ? result.output.content.trim() : '';
-      const fields =
-        result.output.fields && typeof result.output.fields === 'object'
-          ? (result.output.fields as Record<string, unknown>)
-          : {};
-      if (
-        !content ||
-        slot.requiredFields.some((field) => !(field in fields)) ||
-        !calls.some((call) => call.tool === 'read' && call.path.endsWith(sourceTarget)) ||
-        !trace.some(
-          (entry) =>
-            entry.tool === 'read' &&
-            entry.input.endsWith(sourceTarget) &&
-            entry.status === 'completed'
-        )
-      ) {
-        return { status: 'FAILED' as const, provenance: ['agent-evidence-invalid'] };
-      }
-      sequence += 1;
-      const recorded = await this._controlPlane!.receiptRecorder.recordTrustedOperation(
-        {
-          namespace: this._runtimeNamespace(),
-          contractId: contract.contractId,
-          manifestKeyDigest: contract.manifestKeyDigest,
-          contractVersion: contract.contractVersion,
-          sessionId: session.sid,
-          taskId: `slot:${slotId}`,
-          nextSequence: sequence,
-        },
-        async () => {
-          const observedBytes = await readFile(join(reportDir, sourceTarget), 'utf8');
-          const observedSourceDigest = createHash('sha256').update(observedBytes).digest('hex');
-          if (observedSourceDigest !== source.digest) {
-            throw new Error(
-              '[PipelineRuntime#_executeControlPlaneReview] Observed source digest mismatch'
-            );
-          }
-          return {
-            sourceId: source.inputId,
-            sourceVersion: source.version,
-            sourceDigest: observedSourceDigest,
-            targetId: sourceTarget,
-            operation: 'READ' as const,
-            normalizedArguments: {
-              path: sourceTarget,
-              toolCalls: JSON.stringify(calls),
-              trace: JSON.stringify(trace),
-            },
-            semanticAnchor: source.canonicalIdentity,
-            content: observedBytes,
-            outcome: trace.map((entry) => ({
-              seq: entry.seq,
-              tool: entry.tool,
-              status: entry.status,
-              outputBytes: entry.outputBytes ?? 0,
-            })),
-            status: 'SUCCEEDED' as const,
-            observedAt: new Date().toISOString(),
-          };
-        }
-      );
-      if (recorded.status !== 'ELIGIBLE') {
-        return { status: 'FAILED' as const, provenance: [`receipt-rejected:${recorded.reason}`] };
-      }
-      const artifactId = `artifact:${contract.contractId}:${slotId}`;
-      const fragmentId = `fragment:${contract.contractId}:${slotId}`;
-      artifacts.push({
-        artifactId,
-        revision: 1,
-        manifestRef: manifest.ref,
-        contractId: contract.contractId,
-        contractVersion: contract.contractVersion,
-        producerSessionId: session.sid,
-        producerModel: 'opencode-control-plane',
-        fragments: [
-          {
-            fragmentId,
-            slotId,
-            anchor: source.canonicalIdentity,
-            content,
-            fields,
-          },
-        ],
-        createdAt: new Date().toISOString(),
-      });
-      evidence.push({
-        evidenceId: `evidence:${contract.contractId}:${slotId}`,
-        slotId,
-        contractId: contract.contractId,
-        contractVersion: contract.contractVersion,
-        manifestRef: manifest.ref,
-        sourceId: source.inputId,
-        sourceVersion: source.version,
-        sourceDigest: source.digest,
-        artifactId,
-        artifactRevision: 1,
-        fragmentId,
-        producerSessionId: session.sid,
-        producerModel: 'opencode-control-plane',
-        producedAt: new Date().toISOString(),
-        receiptIds: [recorded.receipt.receiptId],
-        reuseConsumptionIds: [],
-        fields,
-      });
-      return { status: 'COMPLETE' as const, provenance: [recorded.durableDigest] };
+    return executeControlPlaneReview(input, {
+      controlPlane: this._controlPlane,
+      controlJournal: this._controlJournal,
+      stateDir: this._stateDir,
+      opencode: this._opencode,
+      controlPlaneModel: this._controlPlaneModel,
+      identity: this.identity,
+      prepareControlPlaneReview: (intent, capture) =>
+        this.prepareControlPlaneReview(intent, capture),
     });
-    if (execution.status !== 'COMPLETED') {
-      throw new Error('[PipelineRuntime#_executeControlPlaneReview] Slot execution BLOCKED');
-    }
-    await writeArtifact(controlDir, 'artifacts.json', { artifacts });
-    await writeArtifact(controlDir, 'evidence.json', { evidence });
-    const persistedArtifacts = JSON.parse(
-      await readFile(join(controlDir, 'artifacts.json'), 'utf8')
-    ) as {
-      artifacts?: ReviewArtifact[];
-    };
-    const persistedEvidence = JSON.parse(
-      await readFile(join(controlDir, 'evidence.json'), 'utf8')
-    ) as {
-      evidence?: ReviewEvidence[];
-    };
-    const verdict = this._controlPlane.structuralValidator.validate({
-      manifest,
-      contract,
-      artifacts: persistedArtifacts.artifacts ?? [],
-      evidence: persistedEvidence.evidence ?? [],
-      storeContext: {
-        namespace: this._runtimeNamespace(),
-        contractId: contract.contractId,
-        manifestKeyDigest: contract.manifestKeyDigest,
-      },
-      attempt: 0,
-      maxAttempts: 3,
-    });
-    if (verdict.status !== 'PASS') {
-      await this._controlPlane
-        .repairCoordinator(input.intent.manifestKey, contract.contractId)
-        .planTargetedRepair(contract, verdict);
-      await this._controlJournal.append({
-        ts: new Date().toISOString(),
-        mr: input.intent.manifestKey.mr,
-        kind: 'system',
-        actor: 'review-control-plane',
-        payload: { event: 'validation_terminal', status: verdict.status, verdict },
-      });
-      throw new Error('[PipelineRuntime#_executeControlPlaneReview] Structural validation BLOCKED');
-    }
-    const guardedVerdict = await this._controlPlane.freshnessGate.guard(
-      'VERDICT',
-      input.intent.manifestKey,
-      () => this._manifestRevision(input.intent.manifestKey),
-      () => verdict
-    );
-    if (guardedVerdict.status !== 'FRESH') {
-      throw new Error(
-        `[PipelineRuntime#_executeControlPlaneReview] Verdict ${guardedVerdict.status}`
-      );
-    }
-    const synthesis = this._controlPlane.synthesis.construct(contract.ref, verdict, evidence, {
-      facts: [`contract:${contract.contractId}`],
-      risks: [],
-      conflicts: [],
-      recommendationInputs: [],
-      provenance: execution.provenance,
-    });
-    if ('status' in synthesis) {
-      throw new Error(`[PipelineRuntime#_executeControlPlaneReview] Synthesis ${synthesis.status}`);
-    }
-    const publication = await this._controlPlane.freshnessGate.guard(
-      'SYNTHESIS_PUBLICATION',
-      input.intent.manifestKey,
-      () => this._manifestRevision(input.intent.manifestKey),
-      async () => {
-        await this._controlJournal!.append({
-          ts: new Date().toISOString(),
-          mr: input.intent.manifestKey.mr,
-          kind: 'system',
-          actor: 'review-control-plane',
-          payload: { event: 'synthesis_terminal', status: 'PASS', synthesis },
-        });
-        return synthesis;
-      }
-    );
-    if (publication.status !== 'FRESH') {
-      throw new Error(
-        `[PipelineRuntime#_executeControlPlaneReview] Publication ${publication.status}`
-      );
-    }
-    return Object.freeze({ intent: input.intent, manifest, contract });
-  }
-
-  /**
-   * @purpose Resolve the profile namespace owned by this runtime's receipt store.
-   * @returns Exact namespace embedded in this runtime identity.
-   */
-  protected _runtimeNamespace(): string {
-    const prefix = 'pipeline-runtime:';
-    return this.identity.slice(prefix.length, this.identity.lastIndexOf(':'));
   }
 
   /**
@@ -732,7 +426,7 @@ export class PipelineRuntime {
    * @returns Canonical head and event cursor revision.
    */
   protected _manifestRevision(key: ReviewManifestKey): string {
-    return `${key.headSHA}:${key.eventCursor}`;
+    return manifestRevision(key);
   }
 
   /**
