@@ -30,6 +30,7 @@ import type { ReviewArtifact } from './model/review-artifact.ts';
 import type { ReviewEvidence } from './types/review-evidence.type.ts';
 import { VolatileJournal } from './runtime/control-plane-journals.ts';
 import { composeControlPlane } from './runtime/control-plane-composer.ts';
+import { materializeReviewTasks, materializeDeltaReviewTasks } from './runtime/dag-materializer.ts';
 import {
   writeArtifact,
   writeArtifactBytes,
@@ -743,67 +744,10 @@ export class PipelineRuntime {
     mr: string,
     options: ReviewStartOptions = {}
   ): Promise<string[]> {
-    const role = options.role ?? 'reviewer';
-    const plan = new PlanTemplate(new TriggerRegistry()).generate(mr, options.changeset ?? []);
-    const plannedTracks = options.tracks?.length
-      ? options.tracks
-      : plan.tracks.map((track) => track.id);
-    const tracks = options.controlPlaneInput
-      ? [...new Set([...plannedTracks, 'control'])]
-      : plannedTracks;
-    const pipelineParams = {
-      mr,
-      createdBy: 'pipeline',
-      changeset: options.changeset ?? [],
-      toolTrace: options.toolTrace ?? [],
-      modelResults: options.modelResults ?? [],
-      plan,
-      controlPlaneAuthorized: options.controlPlaneInput !== undefined,
-    };
-    const base = ['prepare_env', 'plan', 'enrich'];
+    const { role, tracks, descriptors } = materializeReviewTasks(mr, options);
     const taskIds: string[] = [];
-    for (const type of base) {
-      taskIds.push(await this._enqueue(mr, type, pipelineParams));
-    }
-
-    for (const track of tracks) {
-      taskIds.push(
-        await this._enqueue(mr, `track_${normalizeTaskSuffix(track)}`, {
-          ...pipelineParams,
-          layer: 'mandatory',
-        })
-      );
-    }
-
-    const lensResolution = new LensRegistry().resolveAll(tracks);
-    for (const wave of lensResolution.mandatoryWaves)
-      for (const lens of wave.lenses) {
-        const dependsOn = lens.inputs.map(
-          (input) => `lens_${normalizeTaskSuffix(input.replace(/^lens-/, ''))}`
-        );
-        taskIds.push(
-          await this._enqueue(mr, `lens_${normalizeTaskSuffix(lens.id.replace(/^lens-/, ''))}`, {
-            ...pipelineParams,
-            layer: 'mandatory',
-            lens,
-            // Instance edges preserve LensSpec.inputs after the declarative registry has been
-            // expanded. The immutable registry only knows the common enrich prerequisite.
-            dependsOn,
-          })
-        );
-      }
-
-    if (options.controlPlaneInput) {
-      taskIds.push(
-        await this._enqueue(mr, 'lens_control', {
-          ...pipelineParams,
-          layer: 'mandatory',
-        })
-      );
-    }
-
-    for (const type of ['gate_coverage', 'synthesize', 'gate_verdict', `tail_${role}`]) {
-      taskIds.push(await this._enqueue(mr, type, { ...pipelineParams, role }));
+    for (const descriptor of descriptors) {
+      taskIds.push(await this._enqueue(mr, descriptor.type, descriptor.params, descriptor.key));
     }
     logger.info('[PipelineRuntime#startReview] [idle → queued]', { mr, role, tracks, taskIds });
     return taskIds;
@@ -821,18 +765,10 @@ export class PipelineRuntime {
     lastReviewedHeadSha: string,
     headSha: string
   ): Promise<string[]> {
-    const params = { mr, lastReviewedHeadSha, headSha, createdBy: 'pipeline' };
-    const types = [
-      'delta_review',
-      'delta_prepare',
-      'delta_changeset',
-      'delta_tracks',
-      'synthesize_delta',
-      'gate_verdict_delta',
-    ];
+    const descriptors = materializeDeltaReviewTasks(mr, lastReviewedHeadSha, headSha);
     const taskIds: string[] = [];
-    for (const type of types) {
-      taskIds.push(await this._enqueue(mr, type, params, `delta:${mr}:${type}`));
+    for (const descriptor of descriptors) {
+      taskIds.push(await this._enqueue(mr, descriptor.type, descriptor.params, descriptor.key));
     }
     logger.info('[PipelineRuntime#startDeltaReview] [idle → queued]', {
       mr,
