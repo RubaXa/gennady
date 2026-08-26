@@ -10,7 +10,7 @@ import {
   canonicalMrRef,
   mrReportsDir,
 } from '../../../../cli/cmd/inbox/_core/logic/state-paths.logic.ts';
-import { CoverageGate, type ToolTrace } from './coverage-gate.ts';
+import type { ToolTrace } from './coverage-gate.ts';
 import { FindingsJournal } from './findings-journal.ts';
 import { GateVerdict, type ReviewJson } from './gate-verdict.ts';
 import { LensRegistry } from './lens-registry.ts';
@@ -33,12 +33,17 @@ import { composeControlPlane } from './runtime/control-plane-composer.ts';
 import { materializeReviewTasks, materializeDeltaReviewTasks } from './runtime/dag-materializer.ts';
 import { dispatchPostingEffects } from './runtime/effect-dispatcher.ts';
 import {
+  runCoverageGate,
+  continueCoverageWorker,
+  rememberWorkerSession,
+  closeWorkerSessions,
+} from './runtime/coverage-gate-runner.ts';
+import {
   writeArtifact,
   writeArtifactBytes,
   reportRef,
   normalizeTaskSuffix,
   appendToolTrace,
-  readToolTrace,
   readWorkerResults,
 } from './runtime/artifact-io.ts';
 import { parseFindings, parseDiagrams } from './runtime/worker-output-parser.ts';
@@ -1193,56 +1198,10 @@ export class PipelineRuntime {
     reportDir: string,
     changeset: ChangesetEntry[]
   ): Promise<void> {
-    const mr = String(task.params.mr);
-    const checklist = changeset.map((entry) => entry.path);
-    const deletedFiles = changeset
-      .filter((entry) => entry.action === 'deleted')
-      .map((entry) => entry.path);
-    const liveTrace = await readToolTrace(reportDir);
-    const initialTrace =
-      liveTrace.length > 0 ? liveTrace : ((task.params.toolTrace as ToolTrace[] | undefined) ?? []);
-    const gate = new CoverageGate();
-    try {
-      const coverage = await gate.recoverWithContinue(
-        checklist,
-        initialTrace,
-        async (missingFiles, attempt) =>
-          this._continueCoverageWorker(mr, reportDir, missingFiles, attempt),
-        deletedFiles
-      );
-      await writeArtifact(
-        reportDir,
-        'coverage.json',
-        coverage as unknown as Record<string, unknown>
-      );
-    } catch (cause) {
-      const coverage = gate.check(checklist, await readToolTrace(reportDir), deletedFiles);
-      await writeArtifact(
-        reportDir,
-        'coverage.json',
-        coverage as unknown as Record<string, unknown>
-      );
-      await writeArtifact(reportDir, 'operator-escalation.json', {
-        kind: 'coverage_incomplete',
-        mr,
-        taskId: task.taskId,
-        missingFiles: coverage.missingFiles,
-        continueCount: coverage.continueCount,
-        outcome: 'operator_action_required',
-      });
-      logger.error('[PipelineRuntime#_runCoverageGate] [coverage → operator_escalation]', {
-        mr,
-        missingFiles: coverage.missingFiles,
-        continueCount: coverage.continueCount,
-        cause: cause instanceof Error ? cause.message : String(cause),
-      });
-      throw new Error(
-        `[PipelineRuntime#_runCoverageGate] Coverage incomplete; operator action required for ${coverage.missingFiles.join(', ')}`,
-        { cause: cause instanceof Error ? cause : undefined }
-      );
-    } finally {
-      await this._closeWorkerSessions(mr);
-    }
+    return runCoverageGate(task, reportDir, changeset, {
+      sessions: this._workerSessions,
+      opencode: this._opencode,
+    });
   }
 
   /**
@@ -1259,22 +1218,10 @@ export class PipelineRuntime {
     missingFiles: string[],
     attempt: number
   ): Promise<ToolTrace[]> {
-    const worker = this._workerSessions.get(mr)?.at(-1);
-    if (!worker || !this._opencode) return readToolTrace(reportDir);
-    const response = await this._opencode.continueSignal(worker.sid, {
-      system: 'Continue the existing review session. Read every missing file before responding.',
-      text: `Coverage continuation ${attempt}/2. Read: ${missingFiles.join(', ')}`,
+    return continueCoverageWorker(mr, reportDir, missingFiles, attempt, {
+      sessions: this._workerSessions,
+      opencode: this._opencode,
     });
-    if (!response.ok) {
-      logger.warn('[PipelineRuntime#_continueCoverageWorker] [continuing → incomplete]', {
-        mr,
-        sid: worker.sid,
-        attempt,
-        errorClass: response.error.class,
-      });
-    }
-    await appendToolTrace(reportDir, await this._opencode.toolCalls(worker.sid));
-    return readToolTrace(reportDir);
   }
 
   /**
@@ -1283,9 +1230,7 @@ export class PipelineRuntime {
    * @param session OpenCode identity and source fan-out node.
    */
   protected _rememberWorkerSession(mr: string, session: PipelineWorkerSession): void {
-    const sessions = this._workerSessions.get(mr) ?? [];
-    sessions.push(session);
-    this._workerSessions.set(mr, sessions);
+    rememberWorkerSession(mr, session, this._workerSessions);
   }
 
   /**
@@ -1294,9 +1239,6 @@ export class PipelineRuntime {
    * @returns Promise resolved once every retained session has been closed.
    */
   protected async _closeWorkerSessions(mr: string): Promise<void> {
-    const sessions = this._workerSessions.get(mr) ?? [];
-    this._workerSessions.delete(mr);
-    if (!this._opencode) return;
-    await Promise.all(sessions.map((session) => this._opencode!.close(session.sid)));
+    return closeWorkerSessions(mr, { sessions: this._workerSessions, opencode: this._opencode });
   }
 }
