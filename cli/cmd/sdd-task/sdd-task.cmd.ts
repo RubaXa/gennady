@@ -31,6 +31,8 @@ import {
 import {
   resolveAuditGroup,
   ticketTargetFiles,
+  ticketProductionTargetFiles,
+  ticketCoverageThreshold,
   ticketHandoffArtifacts,
 } from '../../../shared/sdd/audit-group.ts';
 import { hasGitHead, getChangedFiles } from '../../../shared/common/changed-files.ts';
@@ -182,18 +184,19 @@ export async function run(rawArgs: string[]): Promise<TaskOutcome> {
       } catch {
         continue;
       }
-      const ticketTargets = ticketTargetFiles(groupTicketContent);
-      for (const f of ticketTargets) {
+      for (const f of ticketTargetFiles(groupTicketContent)) {
         if (!targetFiles.includes(f)) targetFiles.push(f);
       }
-      // Per-ticket coverage gate: this ticket's OWN production files + its OWN threshold — so the
-      // audit runs the exact command instead of re-reading tickets and interpreting §5 by hand.
-      const prodFiles = ticketTargets.filter(
-        (f) => /\.(ts|tsx)$/.test(f) && !/\.(test|spec)\./.test(f)
-      );
+      // Per-ticket coverage gate: this ticket's OWN production files + its OWN threshold, both parsed
+      // structurally (Target Files bullets; §Verification --min) so audit runs the exact command
+      // instead of re-reading tickets and interpreting §5 by hand.
+      const prodFiles = ticketProductionTargetFiles(groupTicketContent);
       if (prodFiles.length > 0) {
-        const min = groupTicketContent.match(/testcov[^\n]*--min=(\d+)/)?.[1] ?? '80';
-        coverageGates.push({ taskId: r.taskId ?? '(no-id)', threshold: min, files: prodFiles });
+        coverageGates.push({
+          taskId: r.taskId ?? '(no-id)',
+          threshold: ticketCoverageThreshold(groupTicketContent),
+          files: prodFiles,
+        });
       }
       for (const a of ticketHandoffArtifacts(groupTicketContent)) {
         if (!handoffArtifacts.includes(a)) handoffArtifacts.push(a);

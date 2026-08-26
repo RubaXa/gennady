@@ -651,7 +651,12 @@ export function formatGroupScope(
     lines.push('  — ни у одного тикета группы нет production Target Files для coverage-гейта.');
   } else {
     for (const g of coverageGates) {
-      lines.push(`  ${g.taskId}: npx gennady testcov --min=${g.threshold} ${g.files.join(' ')}`);
+      // Shell-quote any path with a space or shell-sensitive char, so the printed command is safe to
+      // run VERBATIM (single quotes; an embedded quote is closed-escaped-reopened).
+      const files = g.files
+        .map((p) => (/[^\w./@-]/.test(p) ? `'${p.replace(/'/g, "'\\''")}'` : p))
+        .join(' ');
+      lines.push(`  ${g.taskId}: npx gennady testcov --min=${g.threshold} ${files}`);
     }
   }
 

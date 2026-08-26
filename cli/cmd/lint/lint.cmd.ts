@@ -27,6 +27,7 @@ import {
   type ReverseSweepResult,
 } from './checks/inventory-sync.check.ts';
 import { collectTicketRefs } from '../../../shared/sdd/ticket-resolve.ts';
+import { ticketOwnsEntity } from '../../../shared/sdd/audit-group.ts';
 import { parseEntityInventory } from '../../../shared/sdd/inventory.ts';
 import { LintReport } from './lint.types.ts';
 import {
@@ -334,22 +335,18 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
       const tickets = collectTicketRefs(projectRoot);
       const specScope = specScopeFromPath(specPath);
       for (const [name, taskId] of rawDeferred) {
-        // Ownership must be STRUCTURAL (Target-Files paths + Implements/Entity/Provides lines), not a prose mention.
+        // STRUCTURAL ownership via ticketOwnsEntity (parsed Target Files + Implements/Provides/Entity
+        // fields), not a prose scan. Unreadable ticket → false (fail-closed).
         const ref = tickets.find((t) => t.taskId === taskId);
-        let ownershipText: string | null = null;
+        let ticketOwns = false;
         if (ref?.file) {
           try {
-            ownershipText = readFileSync(ref.file, 'utf-8')
-              .split('\n')
-              .filter(
-                (l) => /\.tsx?\b/.test(l) || /^\s*[-*]?\s*(?:Implements|Entity|Provides)\b/i.test(l)
-              )
-              .join('\n');
+            ticketOwns = ticketOwnsEntity(readFileSync(ref.file, 'utf-8'), name);
           } catch {
-            ownershipText = null;
+            ticketOwns = false;
           }
         }
-        deferredEntities.set(name, checkDeferral(taskId, tickets, specScope, name, ownershipText));
+        deferredEntities.set(name, checkDeferral(taskId, tickets, specScope, name, ticketOwns));
       }
     }
     const reverseResult: ReverseSweepResult = reverseUnimplemented(

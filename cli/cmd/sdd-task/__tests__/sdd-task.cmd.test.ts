@@ -1027,6 +1027,46 @@ describe('SddTaskCommand', () => {
       }
     });
 
+    it('coverage-gates: exact decimal threshold (87.5) and shell-quoted path with a space (C4/C7)', async () => {
+      const gDir = mkdtempSync(join(tmpdir(), 'sdd-task-scope-cov-'));
+      writeFileSync(join(gDir, 'core.spec.md'), '# Core\n', 'utf-8');
+      writeFileSync(
+        join(gDir, 'core.task.TSK-c.md'),
+        [
+          '<!--SECTION:META-->',
+          '- **Task-ID:** TSK-c',
+          '- **Status:** [ ] TODO',
+          '<!--/SECTION:META-->',
+          '<!--SECTION:PHASES_OVERVIEW-->',
+          '| ID | Kind | Deps | Status |',
+          '|----|------|------|--------|',
+          '| P1 | impl | — | [ ] |',
+          '<!--/SECTION:PHASES_OVERVIEW-->',
+          '<!--SECTION:PHASE_P1-->',
+          '- **Target Files:**',
+          '  - src/my module.ts',
+          '<!--/SECTION:PHASE_P1-->',
+          '<!--SECTION:VERIFICATION-->',
+          '| Command | Required by |',
+          '|---------|-------------|',
+          '| npx gennady testcov --min=87.5 src/my module.ts | AX_COVERAGE_BY_CONTRACT_NOT_BY_LINE |',
+          '<!--/SECTION:VERIFICATION-->',
+          '<!--SECTION:EXECUTION_LOG-->',
+          '<!--/SECTION:EXECUTION_LOG-->',
+        ].join('\n'),
+        'utf-8'
+      );
+      try {
+        const r = await withCwd(gDir, () => mod.run(argv('--group-scope', 'TSK-c')));
+        assert.strictEqual(r.ok, true);
+        if (!r.ok) return;
+        // exact decimal (not 87 / 80) AND the space-bearing path single-quoted for verbatim exec.
+        assert.match(r.text, /^ {2}TSK-c: npx gennady testcov --min=87\.5 'src\/my module\.ts'$/m);
+      } finally {
+        rmSync(gDir, { recursive: true, force: true });
+      }
+    });
+
     it('--task-scope limits tickets and same-directory git files to one ready-made context', async () => {
       const gDir = mkdtempSync(join(tmpdir(), 'sdd-task-scope-single-'));
       writeFileSync(join(gDir, 'core.spec.md'), '# Core\n', 'utf-8');

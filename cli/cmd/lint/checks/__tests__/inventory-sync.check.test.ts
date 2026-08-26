@@ -125,10 +125,8 @@ describe('checkDeferral', () => {
     { taskId: 'TSK-16', status: '', scope: 'cli' },
     { taskId: 'TSK-17', status: '[ ] TODO', scope: null },
   ];
-  // The status/scope tests don't care about ownership — pass an ownership-text (a Target-Files path)
-  // that names the entity, so the ownership check always passes and only status/scope gate.
-  const owns = (id: string, scope: string) =>
-    checkDeferral(id, tickets, scope, 'Foo', 'src/Foo.ts');
+  // The status/scope tests don't care about ownership — pass ticketOwns=true so only status/scope gate.
+  const owns = (id: string, scope: string) => checkDeferral(id, tickets, scope, 'Foo', true);
 
   it('valid when the ticket is ACTIVE (TODO), in scope, and names the entity', () => {
     assert.deepStrictEqual(owns('TSK-10', 'cli'), { taskId: 'TSK-10', valid: true });
@@ -185,30 +183,14 @@ describe('checkDeferral', () => {
     assert.strictEqual(owns('TSK-11', '').valid, false);
   });
 
-  // #4a — ownership: an active, in-scope ticket that does NOT name the entity is not the owner.
-  it('invalid when the owner ticket does not NAME the entity (only active + in-scope)', () => {
-    const r = checkDeferral('TSK-10', tickets, 'cli', 'Foo', 'this ticket builds something else');
+  // #4a — ownership is a structural boolean (computed by ticketOwnsEntity, tested separately).
+  it('invalid when the ticket does NOT structurally own the entity (ticketOwns=false)', () => {
+    const r = checkDeferral('TSK-10', tickets, 'cli', 'Foo', false);
     assert.strictEqual(r.valid, false);
-    assert.match(r.reason ?? '', /не упоминает сущность/);
+    assert.match(r.reason ?? '', /структурно не владеет/);
   });
 
-  it('invalid when the ticket body is unreadable (null) — fail closed', () => {
-    const r = checkDeferral('TSK-10', tickets, 'cli', 'Foo', null);
-    assert.strictEqual(r.valid, false);
-    assert.match(r.reason ?? '', /не упоминает сущность/);
-  });
-
-  it('ownership is whole-word — `Foo` is not owned by a ticket that only names `FooBar`', () => {
-    const r = checkDeferral('TSK-10', tickets, 'cli', 'Foo', 'implements FooBar only');
-    assert.strictEqual(r.valid, false);
-    assert.match(r.reason ?? '', /не упоминает сущность/);
-  });
-
-  it('valid ownership — the ticket names the exact entity', () => {
-    assert.strictEqual(
-      checkDeferral('TSK-10', tickets, 'cli', 'FooService', '- Target Files: src/FooService.ts')
-        .valid,
-      true
-    );
+  it('valid when active, in-scope, AND structurally owns (ticketOwns=true)', () => {
+    assert.strictEqual(checkDeferral('TSK-10', tickets, 'cli', 'Foo', true).valid, true);
   });
 });

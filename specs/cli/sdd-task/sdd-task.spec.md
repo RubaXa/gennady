@@ -10,7 +10,15 @@
 
 `--group-scope <Task-ID>` выдаёт готовый review-context всей sibling-группы, а
 `--task-scope <Task-ID>` — те же поля для одного тикета: `spec`, tickets, bounded `files`,
-`contract-anchors`, source-only `lint-files`, `code-roots`, git provenance и Handoff artifacts.
+`contract-anchors`, source-only `lint-files`, `code-roots`, git provenance, Handoff artifacts и
+`coverage-gates`. Блок `coverage-gates:` — по одной готовой команде на тикет:
+`<Task-ID>: npx gennady testcov --min=<порог> <production Target Files>`. **Порог** берётся из
+§Verification этого тикета (`testcov --min=<N>`, целое или десятичное — сохраняется точно, напр.
+`87.5`), иначе `80`. **Файлы** — production Target Files тикета (структурно из bullets `Target Files`,
+только исполняемые расширения `.ts/.tsx/.mts/.cts/.js/.jsx/.mjs/.cjs/.vue/.svelte`, без тест-файлов
+по имени `.test.`/`.spec.` и без каталогов `__tests__/`). Пути с пробелами/shell-символами
+экранируются, чтобы строку можно было выполнить **verbatim**. Тикет без production-файлов даёт строку
+`—`. Аудит выполняет эти команды как есть, по одной на тикет — без повторного чтения тикетов.
 
 **Key properties:**
 

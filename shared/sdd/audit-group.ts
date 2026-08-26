@@ -131,6 +131,52 @@ export function ticketTargetFiles(content: string): string[] {
   return files;
 }
 
+// Production source extensions a coverage gate measures — kept in lockstep with testcov's CODE_EXT.
+const PRODUCTION_EXT = /\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs|vue|svelte)$/;
+// A test file — by `.test.`/`.spec.` name OR by living under a `__tests__/` dir — never in a coverage gate.
+const IS_TEST_FILE = /(?:\.(?:test|spec)\.[^/]+$)|(?:^|\/)__tests__\//;
+
+/**
+ * @purpose A ticket's PRODUCTION Target Files — parsed Target-Files bullets kept to source extensions,
+ *   test files removed. The exact list a coverage gate scopes to.
+ * @param content Full ticket markdown.
+ * @returns Production source paths, first-seen order, deduplicated.
+ */
+export function ticketProductionTargetFiles(content: string): string[] {
+  return ticketTargetFiles(content).filter((f) => PRODUCTION_EXT.test(f) && !IS_TEST_FILE.test(f));
+}
+
+/**
+ * @purpose A ticket's coverage threshold from its §Verification `testcov --min=<N>` row (integer or
+ *   decimal, verbatim) — not a whole-text scan; `80` when none is declared.
+ * @param content Full ticket markdown.
+ * @returns The threshold as a string, preserving decimals (e.g. `87.5`).
+ */
+export function ticketCoverageThreshold(content: string): string {
+  const sec = extractSection(content, 'VERIFICATION');
+  const text = sec.status === 'ok' ? sec.content : '';
+  return text.match(/testcov\b[^\n]*--min=(\d+(?:\.\d+)?)/)?.[1] ?? '80';
+}
+
+// STRUCTURAL ownership only — a parsed Target File names the entity, or an explicit
+// Implements/Provides/Entity field declares it. NOT a prose scan: "do not implement Foo" never owns.
+/**
+ * @purpose Whether a ticket STRUCTURALLY owns an entity (see the note above for the exact rule).
+ * @param content Full ticket markdown.
+ * @param entityName The declared entity the deferral marker cites.
+ * @returns True when the ticket's structure claims the entity.
+ */
+export function ticketOwnsEntity(content: string, entityName: string): boolean {
+  const escaped = entityName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const word = new RegExp(`\\b${escaped}\\b`);
+  if (ticketTargetFiles(content).some((f) => word.test(f))) return true;
+  const fieldRe = /^[\s>*-]*(?:\*\*)?(?:Implements|Provides|Entity)(?:\*\*)?\s*:\s*(.+)$/gim;
+  for (const m of content.matchAll(fieldRe)) {
+    if (m[1] && word.test(m[1])) return true;
+  }
+  return false;
+}
+
 /**
  * @purpose Union every phase's Handoff `artifacts:` list from a ticket's Execution Log.
  * @param content Full ticket markdown.

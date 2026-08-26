@@ -388,7 +388,7 @@ describe('LintCommand', () => {
         ].join('\n'),
         'utf-8'
       );
-    const ticket = (body: string) =>
+    const ticket = (phaseBody: string) =>
       writeFileSync(
         join(dir, 'own.task.OWN-1.md'),
         [
@@ -398,7 +398,14 @@ describe('LintCommand', () => {
           '- **Status:** [ ] TODO',
           '- **Scope:** demo',
           '<!--/SECTION:META-->',
-          body,
+          '<!--SECTION:PHASES_OVERVIEW-->',
+          '| ID | Kind | Deps | Status |',
+          '|----|------|------|--------|',
+          '| P1 | impl | — | [ ] |',
+          '<!--/SECTION:PHASES_OVERVIEW-->',
+          '<!--SECTION:PHASE_P1-->',
+          phaseBody,
+          '<!--/SECTION:PHASE_P1-->',
           '<!--SECTION:EXECUTION_LOG-->',
           '<!--/SECTION:EXECUTION_LOG-->',
         ].join('\n'),
@@ -442,7 +449,7 @@ describe('LintCommand', () => {
     );
 
     // Target-Files ownership → owned → honored (not flagged).
-    ticket('- Target Files:\n  - src/Later.ts');
+    ticket('- **Target Files:**\n  - src/Later.ts');
     const owned = await run();
     assert.ok(
       !owned.errors.some((e) => e.message.includes('Later')),

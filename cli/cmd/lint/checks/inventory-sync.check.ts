@@ -102,14 +102,14 @@ const ACTIVE_STATUS = /\b(?:TODO|IN[\s_-]?PROGRESS)\b/i;
 /**
  * @purpose Resolve a `Deferred Implementation` marker — valid only for a real, ACTIVE, same-scope
  *   ticket that OWNS the entity (rule in the note above).
- * @invariant Pure — `tickets` gives Task-ID/status/scope; the owning ticket's body arrives as
- *   `ticketBody`, never read here.
+ * @invariant Pure — `tickets` gives Task-ID/status/scope; STRUCTURAL ownership is decided by the
+ *   caller (via `ticketOwnsEntity`) and passed as the `ticketOwns` boolean, never computed here.
  * @param taskId The cited Task-ID.
  * @param tickets The project's ticket refs (Task-ID, status, and owning scope).
  * @param specScope The spec's own scope (derived from its path); '' when the path carries none.
- * @param entityName The declared entity this marker defers — the owning ticket must name it.
- * @param ticketBody The ticket's ownership-declaring text (Target-Files paths + Implements lines,
- *   not prose), or null when unreadable. Caller extracts it.
+ * @param entityName The declared entity this marker defers — named in the reason for context.
+ * @param ticketOwns Whether the ticket STRUCTURALLY owns the entity (Target Files / Implements field),
+ *   fail-closed to false when the ticket is unreadable.
  * @returns The check verdict; `valid: false` carries a `reason`.
  */
 export function checkDeferral(
@@ -121,7 +121,7 @@ export function checkDeferral(
   }>,
   specScope: string,
   entityName: string,
-  ticketBody: string | null
+  ticketOwns: boolean
 ): DeferralCheck {
   const ref = tickets.find((t) => t.taskId === taskId);
   if (!ref) {
@@ -158,15 +158,14 @@ export function checkDeferral(
       };
     }
   }
-  // Ownership: the ticket must NAME the entity in its own text (whole-word), else it is only an
-  // active same-scope ticket, not the proven owner of THIS deferred entity. Unreadable body → fail
-  // closed. Kept inline (no one-use helper) so the whole rule lives in this one pure function.
-  const escaped = entityName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  if (!ticketBody || !new RegExp(`\\b${escaped}\\b`).test(ticketBody)) {
+  // Ownership: the ticket must STRUCTURALLY own the entity (its parsed Target Files name it, or an
+  // Implements/Provides/Entity field declares it — decided by `ticketOwnsEntity`), else it is only an
+  // active same-scope ticket, not the proven owner. Unreadable ticket → caller passes false (fail-closed).
+  if (!ticketOwns) {
     return {
       taskId,
       valid: false,
-      reason: `тикет ${taskId} не упоминает сущность '${entityName}' — активный same-scope тикет есть, но не подтверждено, что именно он владеет отложенной сущностью`,
+      reason: `тикет ${taskId} структурно не владеет сущностью '${entityName}' (нет в его Target Files и нет поля Implements/Provides/Entity) — активный same-scope тикет есть, но владение не подтверждено`,
     };
   }
   return { taskId, valid: true };

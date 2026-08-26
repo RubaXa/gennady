@@ -54,7 +54,16 @@ export function printHelp(): void {
   console.info(
     '  ticket phase Target Files, git diff vs HEAD (when the repo has one), and Handoff artifacts —'
   );
-  console.info('  no manual git archaeology needed.');
+  console.info(
+    '  no manual git archaeology needed. Also emits a `coverage-gates:` block: one ready'
+  );
+  console.info(
+    '  `testcov --min=<ticket threshold> <ticket production files>` per ticket (threshold'
+  );
+  console.info('  from the ticket §Verification --min, else 80; files are its Target Files minus');
+  console.info(
+    '  tests; paths shell-quoted for verbatim execution) — run each verbatim, no re-reading.'
+  );
   console.info('');
   console.info('Exit codes:');
   console.info(

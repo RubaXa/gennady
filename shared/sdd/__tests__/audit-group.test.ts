@@ -12,6 +12,9 @@ import {
   collectGroupRefs,
   resolveAuditGroup,
   ticketTargetFiles,
+  ticketProductionTargetFiles,
+  ticketCoverageThreshold,
+  ticketOwnsEntity,
   ticketHandoffArtifacts,
 } from '../audit-group.ts';
 import { ticketRef, type TicketRef } from '../check.ts';
@@ -201,5 +204,146 @@ describe('resolveAuditGroup', () => {
     const res = resolveAuditGroup(p, dir);
     assert.strictEqual(res.ok, false);
     if (!res.ok) assert.strictEqual(res.reason, 'spec-missing');
+  });
+});
+
+describe('ticketProductionTargetFiles — production extensions & test exclusion (review C5/C6)', () => {
+  const phase = (files: string[]) =>
+    [
+      '<!--SECTION:PHASES_OVERVIEW-->',
+      '| ID | Kind | Deps | Status |',
+      '|----|------|------|--------|',
+      '| P1 | impl | — | [ ] |',
+      '<!--/SECTION:PHASES_OVERVIEW-->',
+      '<!--SECTION:PHASE_P1-->',
+      '- **Target Files:**',
+      ...files.map((f) => `  - ${f}`),
+      '<!--/SECTION:PHASE_P1-->',
+    ].join('\n');
+
+  it('keeps every supported production extension', () => {
+    const exts = [
+      'src/a.ts',
+      'src/b.tsx',
+      'src/c.mts',
+      'src/d.cts',
+      'src/e.js',
+      'src/f.jsx',
+      'src/g.mjs',
+      'src/h.cjs',
+      'src/i.vue',
+      'src/j.svelte',
+    ];
+    assert.deepStrictEqual(ticketProductionTargetFiles(phase(exts)), exts);
+  });
+
+  it('drops test files by name and by __tests__ dir', () => {
+    const c = phase([
+      'src/keep.ts',
+      'src/foo.test.ts',
+      'src/foo.spec.ts',
+      'src/foo.test.mts',
+      'src/__tests__/helper.ts',
+      'src/nested/__tests__/deep.tsx',
+    ]);
+    assert.deepStrictEqual(ticketProductionTargetFiles(c), ['src/keep.ts']);
+  });
+
+  it('drops non-source files (md, json)', () => {
+    assert.deepStrictEqual(
+      ticketProductionTargetFiles(phase(['src/a.ts', 'docs/readme.md', 'cfg/data.json'])),
+      ['src/a.ts']
+    );
+  });
+});
+
+describe('ticketCoverageThreshold — parsed from §Verification, decimals preserved (review C3/C4)', () => {
+  const withVerification = (row: string) =>
+    ['<!--SECTION:VERIFICATION-->', '## Verification', row, '<!--/SECTION:VERIFICATION-->'].join(
+      '\n'
+    );
+
+  it('preserves a decimal threshold verbatim (87.5, not 87)', () => {
+    assert.strictEqual(
+      ticketCoverageThreshold(withVerification('| npx gennady testcov --min=87.5 src/a.ts | AX |')),
+      '87.5'
+    );
+  });
+
+  it('reads an integer threshold', () => {
+    assert.strictEqual(
+      ticketCoverageThreshold(withVerification('npx gennady testcov --min=90 src/a.ts')),
+      '90'
+    );
+  });
+
+  it('defaults to 80 when §Verification names no testcov --min', () => {
+    assert.strictEqual(
+      ticketCoverageThreshold(withVerification('| npx gennady lint src/ | AX |')),
+      '80'
+    );
+  });
+
+  it('ignores a testcov --min mention OUTSIDE §Verification (prose)', () => {
+    const c = [
+      '<!--SECTION:PHASE_P1-->',
+      'We considered `testcov --min=50` earlier but rejected it.',
+      '<!--/SECTION:PHASE_P1-->',
+      '<!--SECTION:VERIFICATION-->',
+      '## Verification',
+      '| — | — |',
+      '<!--/SECTION:VERIFICATION-->',
+    ].join('\n');
+    assert.strictEqual(ticketCoverageThreshold(c), '80');
+  });
+});
+
+describe('ticketOwnsEntity — structural ownership only (review C8/C9/C10)', () => {
+  const withPhaseAndBody = (targetFiles: string[], body: string) =>
+    [
+      '<!--SECTION:PHASES_OVERVIEW-->',
+      '| ID | Kind | Deps | Status |',
+      '|----|------|------|--------|',
+      '| P1 | impl | — | [ ] |',
+      '<!--/SECTION:PHASES_OVERVIEW-->',
+      '<!--SECTION:PHASE_P1-->',
+      '- **Target Files:**',
+      ...targetFiles.map((f) => `  - ${f}`),
+      '',
+      body,
+      '<!--/SECTION:PHASE_P1-->',
+    ].join('\n');
+
+  it('owns via a Target File that names the entity', () => {
+    assert.strictEqual(
+      ticketOwnsEntity(withPhaseAndBody(['src/FooService.ts'], ''), 'FooService'),
+      true
+    );
+  });
+
+  it('owns .js / .mts Target Files too (per testcov contract)', () => {
+    assert.strictEqual(ticketOwnsEntity(withPhaseAndBody(['src/Bar.mjs'], ''), 'Bar'), true);
+    assert.strictEqual(ticketOwnsEntity(withPhaseAndBody(['lib/Baz.cts'], ''), 'Baz'), true);
+  });
+
+  it('owns via an explicit Implements/Provides/Entity field', () => {
+    assert.strictEqual(
+      ticketOwnsEntity(withPhaseAndBody([], '- **Implements:** Foo'), 'Foo'),
+      true
+    );
+    assert.strictEqual(ticketOwnsEntity(withPhaseAndBody([], 'Provides: Widget'), 'Widget'), true);
+    assert.strictEqual(ticketOwnsEntity(withPhaseAndBody([], '**Entity:** Gizmo'), 'Gizmo'), true);
+  });
+
+  it('PROSE mention is NOT ownership (reviewer C9 case verbatim)', () => {
+    const c = withPhaseAndBody(
+      ['src/other.ts'],
+      'Do not implement Foo; existing Foo.ts is unrelated.'
+    );
+    assert.strictEqual(ticketOwnsEntity(c, 'Foo'), false);
+  });
+
+  it('whole-word — a Target File for FooBar does not own Foo', () => {
+    assert.strictEqual(ticketOwnsEntity(withPhaseAndBody(['src/FooBar.ts'], ''), 'Foo'), false);
   });
 });

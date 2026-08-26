@@ -7,7 +7,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, rmSync } from 'node:fs';
+import { existsSync, rmSync, writeFileSync, mkdirSync, chmodSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { buildRepoFixture, coverageScript, markerScript, noop } from './fixture.ts';
 import { runCli } from './run-cli.ts';
@@ -208,6 +208,38 @@ describe('sdd-verify — live gate ladder', () => {
       assert.match(r.stdout, /❌ test:coverage/);
       assert.match(r.stdout, /не появился|не записал/);
     } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('FAIL-CLOSED: a stale report that cannot be deleted + a producer that writes nothing → RED (reviewer C2)', (t) => {
+    if (typeof process.getuid === 'function' && process.getuid() === 0) {
+      t.skip('root bypasses directory permissions — read-only guard is unobservable');
+      return;
+    }
+    const { root } = buildRepoFixture({
+      scripts: {
+        'type-check': noop(0),
+        'test:coverage': noop(0), // exits 0, writes nothing
+        lint: noop(0),
+        format: noop(0),
+      },
+      gennadyInstalled: true,
+    });
+    const covDir = join(root, 'coverage');
+    mkdirSync(covDir, { recursive: true });
+    const covFile = join(covDir, 'coverage-final.json');
+    writeFileSync(covFile, '{"stale":true}', 'utf-8');
+    const staleMtime = statSync(covFile).mtimeMs;
+    chmodSync(covDir, 0o555); // read-only dir → the probe's rm of the file inside FAILS
+    try {
+      const r = runCli(['sdd-verify', '--profile', 'full'], root);
+      // The stale report survives clear, but its mtime is unchanged → not fresh → gate is RED.
+      assert.notStrictEqual(r.exitCode, 0, r.stdout + r.stderr);
+      assert.match(r.stdout, /❌ test:coverage/);
+      assert.strictEqual(statSync(covFile).mtimeMs, staleMtime, 'stale report must be untouched');
+    } finally {
+      chmodSync(covDir, 0o755);
       rmSync(root, { recursive: true, force: true });
     }
   });
