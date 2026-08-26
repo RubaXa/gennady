@@ -34,30 +34,27 @@ describe('YagniCommand — no git HEAD', () => {
 
   it('unscoped run on a repo with no git HEAD → honest no-op, exit 0, nothing scanned', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'yagni-no-head-'));
-    const prevCwd = process.cwd();
     try {
-      process.chdir(dir);
-      const r = await mod.run(argv());
+      // Pass the fixture dir as the explicit root — an unscoped run (no positional path) resolves
+      // to it without chdir, so this is safe under a shared-process test runner.
+      const r = await mod.run(argv(), dir);
       assert.strictEqual(r.exitCode, 0);
       assert.match(r.text, /no git HEAD/);
       assert.match(r.text, /gennady yagni <path>/);
     } finally {
-      process.chdir(prevCwd);
       rmSync(dir, { recursive: true, force: true });
     }
   });
 
   it('an explicit path is a real scope, not the whole repo — proceeds past the no-HEAD guard', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'yagni-no-head-explicit-'));
-    const prevCwd = process.cwd();
     try {
-      process.chdir(dir);
-      const r = await mod.run(argv('.'));
+      // Explicit positional '.' resolved against the fixture root we pass — a real scope, no chdir.
+      const r = await mod.run(argv('.'), dir);
       // No git at all here either, so getChangedSourceFiles legitimately finds nothing — the point
       // of this test is only that it did NOT take the unscoped honest-no-op early return.
       assert.doesNotMatch(r.text, /no git HEAD/);
     } finally {
-      process.chdir(prevCwd);
       rmSync(dir, { recursive: true, force: true });
     }
   });

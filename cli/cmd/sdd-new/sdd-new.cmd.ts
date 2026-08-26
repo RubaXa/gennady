@@ -166,9 +166,10 @@ export function validateModulePath(module: string): string | null {
 /**
  * @purpose Execute gennady sdd-new — resolve the target path, refuse to overwrite, write the skeleton, report the section manifest.
  * @param rawArgs Raw command-line arguments (process.argv).
+ * @param [root] Project root for resolution — defaults to the CWD; tests pass an explicit fixture root.
  * @returns NewOutcome — created path + report on success, else an actionable failure.
  */
-export async function run(rawArgs: string[]): Promise<NewOutcome> {
+export async function run(rawArgs: string[], root: string = resolve('.')): Promise<NewOutcome> {
   const args = parseArgs(rawArgs, {
     scope: { aliases: ['scope'], takesValue: true },
     module: { aliases: ['module'], takesValue: true },
@@ -245,11 +246,11 @@ export async function run(rawArgs: string[]): Promise<NewOutcome> {
   if (kind === 'task' && opts.id) {
     const grammarReason = validateTaskId(opts.id);
     if (grammarReason) {
-      const existing = collectTaskIds(process.cwd());
+      const existing = collectTaskIds(root);
       logger.warn(`[SddNewCommand#run] bad --id (grammar): ${opts.id}`);
       return badTaskId(opts.id, grammarReason, suggestTaskId(opts.id, existing));
     }
-    const existing = collectTaskIds(process.cwd());
+    const existing = collectTaskIds(root);
     const conflicts = checkIdConflicts(opts.id, existing);
     if (conflicts.length > 0) {
       logger.warn(`[SddNewCommand#run] --id conflict: ${opts.id}`);
@@ -263,7 +264,7 @@ export async function run(rawArgs: string[]): Promise<NewOutcome> {
   // #endregion END_TASK_ID
 
   const path = resolvePath(kind, opts);
-  const abs = resolve(path);
+  const abs = resolve(root, path);
 
   if (existsSync(abs)) {
     logger.warn(`[SddNewCommand#run] target already exists: ${path}`);

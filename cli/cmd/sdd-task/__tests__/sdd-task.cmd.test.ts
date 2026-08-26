@@ -213,20 +213,14 @@ describe('SddTaskCommand', () => {
   });
 
   it('execution map with a pickable ticket → next: hint points at sdd-task <id>', async () => {
-    const origCwd = process.cwd();
-    process.chdir(dir);
-    try {
-      const r = await mod.run(argv());
-      assert.strictEqual(r.ok, true);
-      if (!r.ok) return;
-      // Sibling files accumulated by earlier tests (blocked.md, resolved.md) also carry Task-ID
-      // cli-foo — assert structure (root line, ≥1 per-line pickable path), not a specific filename.
-      assert.match(r.text, /^root: /m);
-      assert.match(r.text, /pickable \(ready now\):\n(?: {2}cli-foo → \S+\n?)+/);
-      assert.match(r.text, /next: возьми Task-ID из pickable и вызови `sdd-task <id>`/);
-    } finally {
-      process.chdir(origCwd);
-    }
+    const r = await mod.run(argv(), dir);
+    assert.strictEqual(r.ok, true);
+    if (!r.ok) return;
+    // Sibling files accumulated by earlier tests (blocked.md, resolved.md) also carry Task-ID
+    // cli-foo — assert structure (root line, ≥1 per-line pickable path), not a specific filename.
+    assert.match(r.text, /^root: /m);
+    assert.match(r.text, /pickable \(ready now\):\n(?: {2}cli-foo → \S+\n?)+/);
+    assert.match(r.text, /next: возьми Task-ID из pickable и вызови `sdd-task <id>`/);
   });
 
   it('map emits a root line and a per-line `<id> → <path>` for the pickable ticket', async () => {
@@ -236,18 +230,14 @@ describe('SddTaskCommand', () => {
       [TICKET, '<!--SECTION:EXECUTION_LOG-->', '<!--/SECTION:EXECUTION_LOG-->'].join('\n'),
       'utf-8'
     );
-    const origCwd = process.cwd();
-    process.chdir(mapDir);
     try {
-      const r = await mod.run(argv());
+      const r = await mod.run(argv(), mapDir);
       assert.strictEqual(r.ok, true);
       if (!r.ok) return;
-      // `resolve('.')` follows symlinks (e.g. macOS /tmp → /private/tmp) so the printed root may not
-      // be byte-identical to `mapDir` — assert it names a real, absolute directory instead.
+      // The printed root is the explicit root arg (`mapDir`) — assert it names a real, absolute directory.
       assert.match(r.text, /^root: \/\S*$/m);
       assert.match(r.text, /pickable \(ready now\):\n {2}cli-foo → ticket\.md$/m);
     } finally {
-      process.chdir(origCwd);
       rmSync(mapDir, { recursive: true, force: true });
     }
   });
@@ -284,15 +274,12 @@ describe('SddTaskCommand', () => {
       '<!--/SECTION:EXECUTION_LOG-->',
     ].join('\n');
     writeFileSync(join(blkDir, 'blocked.md'), blockedTicket, 'utf-8');
-    const origCwd = process.cwd();
-    process.chdir(blkDir);
     try {
-      const r = await mod.run(argv());
+      const r = await mod.run(argv(), blkDir);
       assert.strictEqual(r.ok, true);
       if (!r.ok) return;
       assert.match(r.text, /blocked: TSK-blocked ← TSK-missing\s*→\s*blocked\.md/);
     } finally {
-      process.chdir(origCwd);
       rmSync(blkDir, { recursive: true, force: true });
     }
   });
@@ -310,16 +297,13 @@ describe('SddTaskCommand', () => {
     it('resolves to its ticket — plan output is prefixed with the resolution line', async () => {
       const idDir = mkdtempSync(join(tmpdir(), 'sdd-task-id-'));
       writeFileSync(join(idDir, 'ticket.md'), idTicket('TSK-foo'), 'utf-8');
-      const origCwd = process.cwd();
-      process.chdir(idDir);
       try {
-        const outcome = await mod.run(argv('TSK-foo'));
+        const outcome = await mod.run(argv('TSK-foo'), idDir);
         assert.strictEqual(outcome.ok, true);
         if (!outcome.ok) return;
         assert.match(outcome.text, /^\[sdd-task\] TSK-foo → ticket\.md\n/);
         assert.match(outcome.text, /\[sdd-task\] TSK-foo — \[ \] TODO/);
       } finally {
-        process.chdir(origCwd);
         rmSync(idDir, { recursive: true, force: true });
       }
     });
@@ -328,16 +312,13 @@ describe('SddTaskCommand', () => {
       const idDir = mkdtempSync(join(tmpdir(), 'sdd-task-id-'));
       writeFileSync(join(idDir, 'ticket.md'), idTicket('TSK-foo'), 'utf-8');
       writeExecutionReadyInfra(idDir); // P1 is impl — the phase gate must find real infra
-      const origCwd = process.cwd();
-      process.chdir(idDir);
       try {
-        const outcome = await mod.run(argv('TSK-foo', '--phase', 'P1'));
+        const outcome = await mod.run(argv('TSK-foo', '--phase', 'P1'), idDir);
         assert.strictEqual(outcome.ok, true);
         if (!outcome.ok) return;
         assert.match(outcome.text, /^\[sdd-task\] TSK-foo → ticket\.md\n/);
         assert.match(outcome.text, /\[sdd-task\] TSK-foo — P1 impl/);
       } finally {
-        process.chdir(origCwd);
         rmSync(idDir, { recursive: true, force: true });
       }
     });
@@ -345,32 +326,26 @@ describe('SddTaskCommand', () => {
     it('an unknown but Task-ID-shaped argument → exit 2 listing known Task-IDs', async () => {
       const idDir = mkdtempSync(join(tmpdir(), 'sdd-task-id-'));
       writeFileSync(join(idDir, 'ticket.md'), idTicket('TSK-foo'), 'utf-8');
-      const origCwd = process.cwd();
-      process.chdir(idDir);
       try {
-        const outcome = await mod.run(argv('NOPE-ghost'));
+        const outcome = await mod.run(argv('NOPE-ghost'), idDir);
         assert.strictEqual(outcome.ok, false);
         if (outcome.ok) return;
         assert.strictEqual(outcome.exitCode, 2);
         assert.match(outcome.message, /ERR_CLI_SDD_TASK_UNKNOWN_ID: NOPE-ghost/);
         assert.match(outcome.message, /known Task-IDs:.*TSK-foo/);
       } finally {
-        process.chdir(origCwd);
         rmSync(idDir, { recursive: true, force: true });
       }
     });
 
     it('no tickets in the tree → unknown Task-ID reports the queue is empty', async () => {
       const emptyDir = mkdtempSync(join(tmpdir(), 'sdd-task-id-empty-'));
-      const origCwd = process.cwd();
-      process.chdir(emptyDir);
       try {
-        const outcome = await mod.run(argv('NOPE-ghost'));
+        const outcome = await mod.run(argv('NOPE-ghost'), emptyDir);
         assert.strictEqual(outcome.ok, false);
         if (outcome.ok) return;
         assert.match(outcome.message, /очередь пуста/);
       } finally {
-        process.chdir(origCwd);
         rmSync(emptyDir, { recursive: true, force: true });
       }
     });
@@ -390,10 +365,8 @@ describe('SddTaskCommand', () => {
         ].join('\n');
       writeFileSync(join(dupDir, 'a.md'), dup('a'), 'utf-8');
       writeFileSync(join(dupDir, 'b.md'), dup('b'), 'utf-8');
-      const origCwd = process.cwd();
-      process.chdir(dupDir);
       try {
-        const outcome = await mod.run(argv('TSK-dup'));
+        const outcome = await mod.run(argv('TSK-dup'), dupDir);
         assert.strictEqual(outcome.ok, false);
         if (outcome.ok) return;
         assert.strictEqual(outcome.exitCode, 2);
@@ -401,7 +374,6 @@ describe('SddTaskCommand', () => {
         assert.match(outcome.message, /a\.md/);
         assert.match(outcome.message, /b\.md/);
       } finally {
-        process.chdir(origCwd);
         rmSync(dupDir, { recursive: true, force: true });
       }
     });
@@ -660,16 +632,13 @@ describe('SddTaskCommand', () => {
       '<!--/SECTION:PHASES_OVERVIEW-->',
     ].join('\n');
     writeFileSync(join(soloDir, 'ticket.md'), blockedTicket, 'utf-8');
-    const origCwd = process.cwd();
-    process.chdir(soloDir);
     try {
-      const r = await mod.run(argv());
+      const r = await mod.run(argv(), soloDir);
       assert.strictEqual(r.ok, true);
       if (!r.ok) return;
       assert.match(r.text, /pickable \(ready now\): — none/);
       assert.match(r.text, /next: pickable пуст/);
     } finally {
-      process.chdir(origCwd);
       rmSync(soloDir, { recursive: true, force: true });
     }
   });
@@ -706,10 +675,8 @@ describe('SddTaskCommand', () => {
       writeFileSync(join(gateDir, 'specs', 'README.md'), portalWithInfraScope, 'utf-8');
       writeFileSync(join(gateDir, 'ticket.md'), infraTicket('infra-1'), 'utf-8');
       // No package.json at all → readiness is not-ready.
-      const origCwd = process.cwd();
-      process.chdir(gateDir);
       try {
-        const r = await mod.run(argv());
+        const r = await mod.run(argv(), gateDir);
         assert.strictEqual(r.ok, true);
         if (!r.ok) return;
         assert.match(
@@ -717,7 +684,6 @@ describe('SddTaskCommand', () => {
           /READINESS=not-ready\nGATE_QUEUE=infra-1 · гейты отсутствуют, их строят эти тикеты/
         );
       } finally {
-        process.chdir(origCwd);
         rmSync(gateDir, { recursive: true, force: true });
       }
     });
@@ -732,10 +698,8 @@ describe('SddTaskCommand', () => {
         infraTicket('app-1').replace('infra-core', 'app'),
         'utf-8'
       );
-      const origCwd = process.cwd();
-      process.chdir(gateDir);
       try {
-        const r = await mod.run(argv());
+        const r = await mod.run(argv(), gateDir);
         assert.strictEqual(r.ok, true);
         if (!r.ok) return;
         assert.match(r.text, /GATE_QUEUE=none/);
@@ -744,7 +708,6 @@ describe('SddTaskCommand', () => {
           /GATE_QUEUE_DIAG: infra-спека `infra-core` одобрена, тикетов пока нет — нарежь scaffold'ом/
         );
       } finally {
-        process.chdir(origCwd);
         rmSync(gateDir, { recursive: true, force: true });
       }
     });
@@ -758,10 +721,8 @@ describe('SddTaskCommand', () => {
         infraTicket('infra-1').replace('infra-core', 'Infra_Core'),
         'utf-8'
       );
-      const origCwd = process.cwd();
-      process.chdir(gateDir);
       try {
-        const r = await mod.run(argv());
+        const r = await mod.run(argv(), gateDir);
         assert.strictEqual(r.ok, true);
         if (!r.ok) return;
         assert.match(r.text, /GATE_QUEUE=none/);
@@ -775,7 +736,6 @@ describe('SddTaskCommand', () => {
           'a near-miss ticket already exists — must not also claim no tickets exist'
         );
       } finally {
-        process.chdir(origCwd);
         rmSync(gateDir, { recursive: true, force: true });
       }
     });
@@ -805,15 +765,12 @@ describe('SddTaskCommand', () => {
         }),
         'utf-8'
       );
-      const origCwd = process.cwd();
-      process.chdir(readyDir);
       try {
-        const r = await mod.run(argv());
+        const r = await mod.run(argv(), readyDir);
         assert.strictEqual(r.ok, true);
         if (!r.ok) return;
         assert.match(r.text, /READINESS=ready\nGATE_QUEUE=none/);
       } finally {
-        process.chdir(origCwd);
         rmSync(readyDir, { recursive: true, force: true });
       }
     });
@@ -848,23 +805,13 @@ describe('SddTaskCommand', () => {
         '<!--/SECTION:EXECUTION_LOG-->',
       ].join('\n');
 
-    function withCwd<T>(dir: string, fn: () => T): T {
-      const orig = process.cwd();
-      process.chdir(dir);
-      try {
-        return fn();
-      } finally {
-        process.chdir(orig);
-      }
-    }
-
     it('all group tickets DONE → audit due (N/N), next: dispatches the group audit', async () => {
       const gDir = mkdtempSync(join(tmpdir(), 'sdd-task-audit-due-'));
       writeFileSync(join(gDir, 'core.spec.md'), '# Core\n', 'utf-8');
       writeFileSync(join(gDir, 'core.task.TSK-a.md'), groupTicket('TSK-a', '[x] DONE'), 'utf-8');
       writeFileSync(join(gDir, 'core.task.TSK-b.md'), groupTicket('TSK-b', '[x] DONE'), 'utf-8');
       try {
-        const r = await withCwd(gDir, () => mod.run(argv('--audit-group', 'TSK-a')));
+        const r = await mod.run(argv('--audit-group', 'TSK-a'), gDir);
         assert.strictEqual(r.ok, true);
         if (!r.ok) return;
         assert.match(r.text, /^spec: core\.spec\.md$/m);
@@ -888,7 +835,7 @@ describe('SddTaskCommand', () => {
         'utf-8'
       );
       try {
-        const r = await withCwd(gDir, () => mod.run(argv('--audit-group', 'TSK-solo')));
+        const r = await mod.run(argv('--audit-group', 'TSK-solo'), gDir);
         assert.strictEqual(r.ok, true);
         if (!r.ok) return;
         assert.match(r.text, /^audit: due — все тикеты группы закрыты \(1\/1\)$/m);
@@ -904,7 +851,7 @@ describe('SddTaskCommand', () => {
       writeFileSync(join(gDir, 'core.task.TSK-b.md'), groupTicket('TSK-b', '[ ] TODO'), 'utf-8');
       try {
         // resolve via the ticket PATH this time (not the bare id)
-        const r = await withCwd(gDir, () => mod.run(argv('--audit-group', 'core.task.TSK-a.md')));
+        const r = await mod.run(argv('--audit-group', join(gDir, 'core.task.TSK-a.md')), gDir);
         assert.strictEqual(r.ok, true);
         if (!r.ok) return;
         assert.match(r.text, /^audit: not yet — открыто: TSK-b$/m);
@@ -918,7 +865,7 @@ describe('SddTaskCommand', () => {
       const gDir = mkdtempSync(join(tmpdir(), 'sdd-task-audit-badname-'));
       writeFileSync(join(gDir, 'plain.md'), groupTicket('TSK-plain', '[ ] TODO'), 'utf-8');
       try {
-        const r = await withCwd(gDir, () => mod.run(argv('--audit-group', join(gDir, 'plain.md'))));
+        const r = await mod.run(argv('--audit-group', join(gDir, 'plain.md')), gDir);
         assert.strictEqual(r.ok, false);
         if (r.ok) return;
         assert.match(r.message, /ERR_CLI_SDD_TASK_NOT_V2_TICKET_NAME/);
@@ -932,7 +879,7 @@ describe('SddTaskCommand', () => {
       const gDir = mkdtempSync(join(tmpdir(), 'sdd-task-audit-nospec-'));
       writeFileSync(join(gDir, 'core.task.TSK-x.md'), groupTicket('TSK-x', '[ ] TODO'), 'utf-8');
       try {
-        const r = await withCwd(gDir, () => mod.run(argv('--audit-group', 'TSK-x')));
+        const r = await mod.run(argv('--audit-group', 'TSK-x'), gDir);
         assert.strictEqual(r.ok, false);
         if (r.ok) return;
         assert.match(r.message, /ERR_CLI_SDD_TASK_SPEC_MISSING/);
@@ -948,7 +895,7 @@ describe('SddTaskCommand', () => {
       writeFileSync(join(gDir, 'core.task.TSK-a.md'), groupTicket('TSK-a', '[ ] TODO'), 'utf-8');
       writeFileSync(join(gDir, 'core.task.TSK-b.md'), groupTicket('TSK-b', '[x] DONE'), 'utf-8');
       try {
-        const r = await withCwd(gDir, () => mod.run(argv(join(gDir, 'core.task.TSK-a.md'))));
+        const r = await mod.run(argv(join(gDir, 'core.task.TSK-a.md')), gDir);
         assert.strictEqual(r.ok, true);
         if (!r.ok) return;
         assert.match(r.text, /^audit-group: core\.spec\.md \(1\/2\)$/m);
@@ -983,7 +930,7 @@ describe('SddTaskCommand', () => {
       // a non-source file — must also surface now that the scan carries no extension filter
       writeFileSync(join(gDir, 'notes.md'), '# untracked notes\n', 'utf-8');
       try {
-        const r = await withCwd(gDir, () => mod.run(argv('--group-scope', 'TSK-a')));
+        const r = await mod.run(argv('--group-scope', 'TSK-a'), gDir);
         assert.strictEqual(r.ok, true);
         if (!r.ok) return;
         assert.match(r.text, /^files:$/m);
@@ -1007,7 +954,7 @@ describe('SddTaskCommand', () => {
       writeFileSync(join(gDir, 'core.spec.md'), '# Core\n', 'utf-8');
       writeFileSync(join(gDir, 'core.task.TSK-a.md'), groupTicket('TSK-a', '[x] DONE'), 'utf-8');
       try {
-        const r = await withCwd(gDir, () => mod.run(argv('--group-scope', 'TSK-a')));
+        const r = await mod.run(argv('--group-scope', 'TSK-a'), gDir);
         assert.strictEqual(r.ok, true);
         if (!r.ok) return;
         assert.match(r.text, /^files:$/m);
@@ -1057,7 +1004,7 @@ describe('SddTaskCommand', () => {
         'utf-8'
       );
       try {
-        const r = await withCwd(gDir, () => mod.run(argv('--group-scope', 'TSK-c')));
+        const r = await mod.run(argv('--group-scope', 'TSK-c'), gDir);
         assert.strictEqual(r.ok, true);
         if (!r.ok) return;
         // exact decimal (not 87 / 80) AND the space-bearing path single-quoted for verbatim exec.
@@ -1078,7 +1025,7 @@ describe('SddTaskCommand', () => {
       initGitRepo(gDir);
       writeFileSync(join(gDir, 'src', 'helper.ts'), '// helper\n', 'utf-8');
       try {
-        const r = await withCwd(gDir, () => mod.run(argv('--task-scope', 'TSK-a')));
+        const r = await mod.run(argv('--task-scope', 'TSK-a'), gDir);
         assert.strictEqual(r.ok, true);
         if (!r.ok) return;
         assert.match(r.text, /^ {2}TSK-a /m);
@@ -1101,7 +1048,7 @@ describe('SddTaskCommand', () => {
         .replace('  - src/TSK-a.ts', '  - tasks/src/a.ts\n  - tasks/src/sub/b.ts');
       writeFileSync(join(ticketDir, 'core.task.TSK-a.md'), content, 'utf-8');
       try {
-        const r = await withCwd(gDir, () => mod.run(argv('--group-scope', 'TSK-a')));
+        const r = await mod.run(argv('--group-scope', 'TSK-a'), gDir);
         assert.strictEqual(r.ok, true);
         if (!r.ok) return;
         assert.match(r.text, /^contract-anchors: tasks\/core\/core\.spec\.md#core-contract$/m);
@@ -1126,7 +1073,7 @@ describe('SddTaskCommand', () => {
       ].join('\n');
       writeFileSync(join(gDir, 'core.task.TSK-bare.md'), bare, 'utf-8');
       try {
-        const r = await withCwd(gDir, () => mod.run(argv('--group-scope', 'TSK-bare')));
+        const r = await mod.run(argv('--group-scope', 'TSK-bare'), gDir);
         assert.strictEqual(r.ok, true);
         if (!r.ok) return;
         assert.match(r.text, /область обзора построить не из чего/);
@@ -1139,17 +1086,11 @@ describe('SddTaskCommand', () => {
   });
 
   describe('--phase infra gate (ERR_CLI_SDD_TASK_INFRA_NOT_READY)', () => {
-    function withCwd<T>(dir: string, fn: () => Promise<T>): Promise<T> {
-      const orig = process.cwd();
-      process.chdir(dir);
-      return fn().finally(() => process.chdir(orig));
-    }
-
     it('impl phase on a bare project (no package.json) → refused with the not-ready cause', async () => {
       const gateDir = mkdtempSync(join(tmpdir(), 'sdd-task-gate-'));
       writeFileSync(join(gateDir, 'ticket.md'), TICKET, 'utf-8');
       try {
-        const r = await withCwd(gateDir, () => mod.run(argv('ticket.md', '--phase', 'P1')));
+        const r = await mod.run(argv(join(gateDir, 'ticket.md'), '--phase', 'P1'), gateDir);
         assert.strictEqual(r.ok, false);
         if (r.ok) return;
         assert.match(r.message, /ERR_CLI_SDD_TASK_INFRA_NOT_READY/);
@@ -1182,7 +1123,7 @@ describe('SddTaskCommand', () => {
         'utf-8'
       );
       try {
-        const r = await withCwd(gateDir, () => mod.run(argv('ticket.md', '--phase', 'P2')));
+        const r = await mod.run(argv(join(gateDir, 'ticket.md'), '--phase', 'P2'), gateDir);
         assert.strictEqual(r.ok, false);
         if (r.ok) return;
         assert.match(r.message, /ERR_CLI_SDD_TASK_INFRA_NOT_READY/);
@@ -1198,7 +1139,7 @@ describe('SddTaskCommand', () => {
       writeFileSync(join(gateDir, 'ticket.md'), TICKET, 'utf-8');
       writeExecutionReadyInfra(gateDir);
       try {
-        const r = await withCwd(gateDir, () => mod.run(argv('ticket.md', '--phase', 'P1')));
+        const r = await mod.run(argv(join(gateDir, 'ticket.md'), '--phase', 'P1'), gateDir);
         assert.strictEqual(r.ok, true, r.ok ? '' : r.message);
       } finally {
         rmSync(gateDir, { recursive: true, force: true });
@@ -1235,7 +1176,7 @@ describe('SddTaskCommand', () => {
         'utf-8'
       );
       try {
-        const r = await withCwd(gateDir, () => mod.run(argv('ticket.md', '--phase', 'P1')));
+        const r = await mod.run(argv(join(gateDir, 'ticket.md'), '--phase', 'P1'), gateDir);
         assert.strictEqual(r.ok, true, r.ok ? '' : r.message);
         if (!r.ok) return;
         assert.match(r.text, /INFRA_QUEUE_EXEMPTION/);
@@ -1277,7 +1218,7 @@ describe('SddTaskCommand', () => {
         'utf-8'
       );
       try {
-        const r = await withCwd(gateDir, () => mod.run(argv('ticket.md', '--phase', 'P1')));
+        const r = await mod.run(argv(join(gateDir, 'ticket.md'), '--phase', 'P1'), gateDir);
         assert.strictEqual(r.ok, true, r.ok ? '' : r.message);
         if (!r.ok) return;
         assert.match(r.text, /INFRA_QUEUE_EXEMPTION/);
@@ -1306,7 +1247,7 @@ describe('SddTaskCommand', () => {
       // Scope `cli` is a product scope — not in the infra queue, so the gate still refuses.
       writeFileSync(join(gateDir, 'ticket.md'), TICKET, 'utf-8');
       try {
-        const r = await withCwd(gateDir, () => mod.run(argv('ticket.md', '--phase', 'P1')));
+        const r = await mod.run(argv(join(gateDir, 'ticket.md'), '--phase', 'P1'), gateDir);
         assert.strictEqual(r.ok, false);
         if (r.ok) return;
         assert.match(r.message, /ERR_CLI_SDD_TASK_INFRA_NOT_READY/);
@@ -1323,7 +1264,7 @@ describe('SddTaskCommand', () => {
       );
       writeFileSync(join(gateDir, 'ticket.md'), bootstrapTicket, 'utf-8');
       try {
-        const r = await withCwd(gateDir, () => mod.run(argv('ticket.md', '--phase', 'P1')));
+        const r = await mod.run(argv(join(gateDir, 'ticket.md'), '--phase', 'P1'), gateDir);
         assert.strictEqual(r.ok, true, r.ok ? '' : r.message);
       } finally {
         rmSync(gateDir, { recursive: true, force: true });

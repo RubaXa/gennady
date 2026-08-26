@@ -195,20 +195,21 @@ function decisionLive(specsRoot: string, decisionId: string): boolean {
  * @purpose Execute gennady yagni — count changed symbols' production-code usage, report ungated
  *   underused ones.
  * @param rawArgs Raw command-line arguments (process.argv).
+ * @param [root] Project root — defaults to the CWD; an explicit positional path resolves against it.
  * @returns YagniReport — the ESLint-style report and exit code.
  */
-export async function run(rawArgs: string[]): Promise<YagniReport> {
+export async function run(rawArgs: string[], root: string = resolve('.')): Promise<YagniReport> {
   const args = parseArgs(rawArgs, {});
   const positional = (args._ as string[]).filter((a) => typeof a === 'string' && a !== 'yagni');
   const explicitRoot = typeof positional[0] === 'string';
-  const root = resolve(positional[0] ?? '.');
-  const specsRoot = join(root, 'specs');
+  const resolvedRoot = explicitRoot ? resolve(root, positional[0] as string) : root;
+  const specsRoot = join(resolvedRoot, 'specs');
 
   // #region START_NO_HEAD — invariant: an unscoped run on a repo with zero commits must not silently
   // treat every untracked file as "the diff" — that scans unrelated in-progress work and misreports
   // its single-use symbols as YAGNI violations. Honest no-op instead; an explicit root is a real scope,
   // not the whole repo, so it proceeds as normal.
-  if (!explicitRoot && !hasGitHead(root)) {
+  if (!explicitRoot && !hasGitHead(resolvedRoot)) {
     return {
       text: [
         'yagni: repo has no git HEAD (0 commits) — `git diff --name-only HEAD` yields nothing, so an',
@@ -233,18 +234,18 @@ export async function run(rawArgs: string[]): Promise<YagniReport> {
   // The `harness/` eval lane is the same case at directory scale: never shipped
   // (`package.json#files` excludes it) and already outside lint/test/tsc scope; its fixtures and
   // gold references are single-use by nature, so YAGNI's production-surface rule does not apply.
-  const changedFiles = getChangedSourceFiles(root).filter(
+  const changedFiles = getChangedSourceFiles(resolvedRoot).filter(
     (rel) => !isTestFile(rel) && !isUnderTestDirectory(rel) && !rel.startsWith('harness/')
   );
   const allChanged: ChangedSymbol[] = [];
   for (const rel of changedFiles) {
-    allChanged.push(...(await changedSymbolsForFile(root, rel, adapters)));
+    allChanged.push(...(await changedSymbolsForFile(resolvedRoot, rel, adapters)));
   }
 
   const usageCounts = new Map<string, number>();
   for (const sym of allChanged) {
     if (usageCounts.has(sym.name)) continue;
-    usageCounts.set(sym.name, await usageCountFor(root, sym.name, adapters));
+    usageCounts.set(sym.name, await usageCountFor(resolvedRoot, sym.name, adapters));
   }
 
   const waivers = new Map<string, UsageWaiver>();

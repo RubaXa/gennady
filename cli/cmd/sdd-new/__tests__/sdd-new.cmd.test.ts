@@ -217,38 +217,32 @@ describe('SddNewCommand', () => {
 
   it('creates a flat task ticket (no --module) at specs/<scope>/<scope>.task.<id>.md', async () => {
     const cwd = mkdtempSync(join(tmpdir(), 'sdd-new-flat-'));
-    const prevCwd = process.cwd();
     try {
-      process.chdir(cwd);
-      const outcome = await mod.run(argv('task', '--scope', 'demo', '--id', 'DEM-x'));
+      const outcome = await mod.run(argv('task', '--scope', 'demo', '--id', 'DEM-x'), cwd);
       assert.strictEqual(outcome.ok, true);
       if (outcome.ok) {
         assert.strictEqual(outcome.path, 'specs/demo/demo.task.DEM-x.md');
-        assert.ok(existsSync(outcome.path));
+        assert.ok(existsSync(join(cwd, outcome.path)));
         assert.match(
           outcome.text,
           /Task-ID: DEM-x — во всех дальнейших ссылках используй ровно этот ID\./
         );
       }
     } finally {
-      process.chdir(prevCwd);
       rmSync(cwd, { recursive: true, force: true });
     }
   });
 
   it('creates a flat module-index (no --module) at specs/<scope>/<scope>.3-tasks.md', async () => {
     const cwd = mkdtempSync(join(tmpdir(), 'sdd-new-flat-idx-'));
-    const prevCwd = process.cwd();
     try {
-      process.chdir(cwd);
-      const outcome = await mod.run(argv('module-index', '--scope', 'demo'));
+      const outcome = await mod.run(argv('module-index', '--scope', 'demo'), cwd);
       assert.strictEqual(outcome.ok, true);
       if (outcome.ok) {
         assert.strictEqual(outcome.path, 'specs/demo/demo.3-tasks.md');
-        assert.ok(existsSync(outcome.path));
+        assert.ok(existsSync(join(cwd, outcome.path)));
       }
     } finally {
-      process.chdir(prevCwd);
       rmSync(cwd, { recursive: true, force: true });
     }
   });
@@ -294,11 +288,10 @@ describe('SddNewCommand', () => {
 
   it('rejects a --id that fails the v2 grammar, with exit 4 / BAD_TASK_ID and a suggestion', async () => {
     const cwd = mkdtempSync(join(tmpdir(), 'sdd-new-id-'));
-    const prevCwd = process.cwd();
     try {
-      process.chdir(cwd);
       const outcome = await mod.run(
-        argv('task', '--scope', 's', '--module', 'm', '--id', 'bad_id')
+        argv('task', '--scope', 's', '--module', 'm', '--id', 'bad_id'),
+        cwd
       );
       assert.strictEqual(outcome.ok, false);
       if (!outcome.ok) {
@@ -309,39 +302,35 @@ describe('SddNewCommand', () => {
       }
       assert.ok(!existsSync(join(cwd, 'specs')), 'must not create anything on rejection');
     } finally {
-      process.chdir(prevCwd);
       rmSync(cwd, { recursive: true, force: true });
     }
   });
 
   it('rejects a --id one char past the slug cap (9 chars), naming the length', async () => {
     const cwd = mkdtempSync(join(tmpdir(), 'sdd-new-id-'));
-    const prevCwd = process.cwd();
     try {
-      process.chdir(cwd);
       const outcome = await mod.run(
-        argv('task', '--scope', 's', '--module', 'm', '--id', 'GAT-abcdefghi')
+        argv('task', '--scope', 's', '--module', 'm', '--id', 'GAT-abcdefghi'),
+        cwd
       );
       assert.strictEqual(outcome.ok, false);
       if (!outcome.ok) assert.match(outcome.message, /9-char/);
     } finally {
-      process.chdir(prevCwd);
       rmSync(cwd, { recursive: true, force: true });
     }
   });
 
   it('rejects a --id that duplicates an existing project Task-ID', async () => {
     const cwd = mkdtempSync(join(tmpdir(), 'sdd-new-id-'));
-    const prevCwd = process.cwd();
     try {
       mkdirSync(join(cwd, 'specs', 's', 'm'), { recursive: true });
       writeFileSync(
         join(cwd, 'specs', 's', 'm', 'm.task.GAT-login.md'),
         '<!--SECTION:META-->\n- **Task-ID:** GAT-login\n<!--/SECTION:META-->\n'
       );
-      process.chdir(cwd);
       const outcome = await mod.run(
-        argv('task', '--scope', 's', '--module', 'm', '--id', 'GAT-login')
+        argv('task', '--scope', 's', '--module', 'm', '--id', 'GAT-login'),
+        cwd
       );
       assert.strictEqual(outcome.ok, false);
       if (!outcome.ok) {
@@ -350,23 +339,21 @@ describe('SddNewCommand', () => {
         assert.match(outcome.message, /already exists/);
       }
     } finally {
-      process.chdir(prevCwd);
       rmSync(cwd, { recursive: true, force: true });
     }
   });
 
   it('rejects a --id that prefix-conflicts with an existing Task-ID (gates vs gates-v2)', async () => {
     const cwd = mkdtempSync(join(tmpdir(), 'sdd-new-id-'));
-    const prevCwd = process.cwd();
     try {
       mkdirSync(join(cwd, 'specs', 's', 'm'), { recursive: true });
       writeFileSync(
         join(cwd, 'specs', 's', 'm', 'm.task.GAT-gates.md'),
         '<!--SECTION:META-->\n- **Task-ID:** GAT-gates\n<!--/SECTION:META-->\n'
       );
-      process.chdir(cwd);
       const outcome = await mod.run(
-        argv('task', '--scope', 's', '--module', 'm', '--id', 'GAT-gates-v2')
+        argv('task', '--scope', 's', '--module', 'm', '--id', 'GAT-gates-v2'),
+        cwd
       );
       assert.strictEqual(outcome.ok, false);
       if (!outcome.ok) {
@@ -375,23 +362,20 @@ describe('SddNewCommand', () => {
         assert.match(outcome.message, /GAT-gates/);
       }
     } finally {
-      process.chdir(prevCwd);
       rmSync(cwd, { recursive: true, force: true });
     }
   });
 
   it('accepts a valid, conflict-free --id and creates the ticket', async () => {
     const cwd = mkdtempSync(join(tmpdir(), 'sdd-new-id-'));
-    const prevCwd = process.cwd();
     try {
-      process.chdir(cwd);
       const outcome = await mod.run(
-        argv('task', '--scope', 's', '--module', 'm', '--id', 'GAT-login')
+        argv('task', '--scope', 's', '--module', 'm', '--id', 'GAT-login'),
+        cwd
       );
       assert.strictEqual(outcome.ok, true);
-      if (outcome.ok) assert.ok(existsSync(outcome.path));
+      if (outcome.ok) assert.ok(existsSync(join(cwd, outcome.path)));
     } finally {
-      process.chdir(prevCwd);
       rmSync(cwd, { recursive: true, force: true });
     }
   });
@@ -502,11 +486,10 @@ describe('SddNewCommand', () => {
 
     it('creates a research doc at specs/<scope>/research/<today>-<slug>.research.md and reports the section manifest', async () => {
       const cwd = mkdtempSync(join(tmpdir(), 'sdd-new-research-'));
-      const prevCwd = process.cwd();
       try {
-        process.chdir(cwd);
         const outcome = await mod.run(
-          argv('research', '--scope', 'demo', '--slug', 'ai-tooling-stack')
+          argv('research', '--scope', 'demo', '--slug', 'ai-tooling-stack'),
+          cwd
         );
         assert.strictEqual(outcome.ok, true);
         if (outcome.ok) {
@@ -515,8 +498,8 @@ describe('SddNewCommand', () => {
             outcome.path,
             `specs/demo/research/${today}-ai-tooling-stack.research.md`
           );
-          assert.ok(existsSync(outcome.path));
-          const written = readFileSync(outcome.path, 'utf-8');
+          assert.ok(existsSync(join(cwd, outcome.path)));
+          const written = readFileSync(join(cwd, outcome.path), 'utf-8');
           assert.match(written, /<!--SECTION:STATUS-->/);
           assert.match(written, /<!--SECTION:EVIDENCE-->/);
           assert.match(outcome.text, /created research skeleton/);
@@ -525,7 +508,8 @@ describe('SddNewCommand', () => {
 
         // Same-day re-run at the same slug never overwrites — ERR_FILE_EXISTS.
         const again = await mod.run(
-          argv('research', '--scope', 'demo', '--slug', 'ai-tooling-stack')
+          argv('research', '--scope', 'demo', '--slug', 'ai-tooling-stack'),
+          cwd
         );
         assert.strictEqual(again.ok, false);
         if (!again.ok) {
@@ -533,17 +517,14 @@ describe('SddNewCommand', () => {
           assert.match(again.code, /FILE_EXISTS/);
         }
       } finally {
-        process.chdir(prevCwd);
         rmSync(cwd, { recursive: true, force: true });
       }
     });
 
     it('prints a next: block naming the concrete scope spec to register the doc in (--scope substituted)', async () => {
       const cwd = mkdtempSync(join(tmpdir(), 'sdd-new-research-next-'));
-      const prevCwd = process.cwd();
       try {
-        process.chdir(cwd);
-        const outcome = await mod.run(argv('research', '--scope', 'checkout', '--slug', 'x'));
+        const outcome = await mod.run(argv('research', '--scope', 'checkout', '--slug', 'x'), cwd);
         assert.strictEqual(outcome.ok, true);
         if (outcome.ok) {
           assert.match(outcome.text, /next:/);
@@ -551,7 +532,6 @@ describe('SddNewCommand', () => {
           assert.match(outcome.text, /## Research/);
         }
       } finally {
-        process.chdir(prevCwd);
         rmSync(cwd, { recursive: true, force: true });
       }
     });

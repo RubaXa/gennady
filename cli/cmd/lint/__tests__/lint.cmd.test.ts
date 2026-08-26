@@ -330,25 +330,12 @@ describe('LintCommand', () => {
       'utf-8'
     );
 
-    // Run with the CWD chdir'd INTO the tiny fixture dir: lint's deferral resolver scans the ticket
-    // graph from process.cwd(), and we want it to scan this fixture (where TSK-42 is absent), NOT the
-    // whole real repo — both to keep the assertion hermetic and to avoid a heavy repo-wide scan
-    // racing under the parallel c8 runner.
-    const origCwd = process.cwd();
-    let report;
-    try {
-      process.chdir(revDir);
-      report = await mod.run([
-        'node',
-        'gennady',
-        'lint',
-        `--spec=${specPath}`,
-        '--inventory-reverse',
-        revDir,
-      ]);
-    } finally {
-      process.chdir(origCwd);
-    }
+    // lint's deferral resolver scans the ticket graph from the explicit root we pass (the tiny
+    // fixture, where TSK-42 is absent), not process.cwd() — hermetic, no chdir, no repo-wide scan.
+    const report = await mod.run(
+      ['node', 'gennady', 'lint', `--spec=${specPath}`, '--inventory-reverse', revDir],
+      revDir
+    );
 
     assert.ok(
       report.errors.some(
@@ -418,22 +405,8 @@ describe('LintCommand', () => {
       'utf-8'
     );
 
-    const run = async () => {
-      const orig = process.cwd();
-      try {
-        process.chdir(dir);
-        return await mod.run([
-          'node',
-          'gennady',
-          'lint',
-          `--spec=${specPath}`,
-          '--inventory-reverse',
-          dir,
-        ]);
-      } finally {
-        process.chdir(orig);
-      }
-    };
+    const run = async () =>
+      mod.run(['node', 'gennady', 'lint', `--spec=${specPath}`, '--inventory-reverse', dir], dir);
 
     // PROSE-only mention (even with a differently-named file present) → not owned → drift.
     ticket(

@@ -57,7 +57,7 @@ import {
 /**
  * @purpose Named infra-scope TODO tickets already building the missing gate scripts, plus queue diagnostics.
  * @param refs Every ticket's graph ref (Task-ID, status, owning scope).
- * @param root Absolute project root — reads `package.json` and `specs/README.md`.
+ * @param root Project root for readiness/portal reads.
  * @returns Queued infra TODO Task-IDs and advisory diagnostics; both empty when the portal is unreadable.
  */
 function infraGateQueue(
@@ -139,9 +139,10 @@ function withResolutionLine(outcome: TaskOutcome, line: string | null): TaskOutc
  * @purpose Execute gennady sdd-task — read only the planning sections of a ticket and emit the orchestrator's read surface.
  * @invariant A sole positional naming an existing directory is the map's project root, not a ticket — a ticket never resolves to a directory.
  * @param rawArgs Raw command-line arguments (process.argv).
+ * @param [root] Absolute project root — the map's scan root and every ticket/spec/readiness read; defaults to the process CWD.
  * @returns TaskOutcome — the planning surface on success, else an actionable failure.
  */
-export async function run(rawArgs: string[]): Promise<TaskOutcome> {
+export async function run(rawArgs: string[], root: string = resolve('.')): Promise<TaskOutcome> {
   const args = parseArgs(rawArgs, {
     phase: { aliases: ['phase'], takesValue: true },
     auditGroup: { aliases: ['audit-group'], takesValue: true },
@@ -156,7 +157,7 @@ export async function run(rawArgs: string[]): Promise<TaskOutcome> {
   const groupScopeArg = typeof args.groupScope === 'string' ? args.groupScope : null;
   const taskScopeArg = typeof args.taskScope === 'string' ? args.taskScope : null;
 
-  const defaultRoot = resolve('.');
+  const defaultRoot = root;
 
   if (auditGroupArg) {
     const resolution = resolveAuditGroup(auditGroupArg, defaultRoot);
@@ -268,7 +269,6 @@ export async function run(rawArgs: string[]): Promise<TaskOutcome> {
     return { ok: true, text: formatMap(collectTicketRefs(altRoot), altRoot) };
   }
 
-  const root = defaultRoot;
   const resolved = resolveTicketArg(ticket, root);
   if (!resolved.ok) {
     if (resolved.reason === 'unreadable') return fileError(ticket);

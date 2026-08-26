@@ -220,18 +220,16 @@ describe('SddCheckCommand', () => {
   });
 
   it('--task matches a declared test-file by full path suffix, not just basename', async () => {
-    const cwd = mkdtempSync(join(tmpdir(), 'sdd-check-cwd-'));
-    const prevCwd = process.cwd();
+    const root = mkdtempSync(join(tmpdir(), 'sdd-check-root-'));
     try {
-      writeFileSync(join(cwd, 'package.json'), '{}', 'utf-8');
-      mkdirSync(join(cwd, 'src', 'app'), { recursive: true });
+      writeFileSync(join(root, 'package.json'), '{}', 'utf-8');
+      mkdirSync(join(root, 'src', 'app'), { recursive: true });
       writeFileSync(
-        join(cwd, 'src', 'app', 'x.test.ts'),
+        join(root, 'src', 'app', 'x.test.ts'),
         "it('does the thing', () => {});",
         'utf-8'
       );
-      process.chdir(cwd);
-      const t = join(cwd, 'ticket.md');
+      const t = join(root, 'ticket.md');
       writeFileSync(
         t,
         ticketWithCoverage(
@@ -241,90 +239,80 @@ describe('SddCheckCommand', () => {
         ),
         'utf-8'
       );
-      const r = await mod.run(argv(`--task=${t}`));
+      const r = await mod.run(argv(`--task=${t}`), root);
       assert.doesNotMatch(r.text, /SDD_BDD_SCENARIO_UNTESTED/);
     } finally {
-      process.chdir(prevCwd);
-      rmSync(cwd, { recursive: true, force: true });
+      rmSync(root, { recursive: true, force: true });
     }
   });
 
   it('--task skips the SDD_BDD_SCENARIO_UNTESTED existence check before Status is DONE — mid-implementation, the test file legitimately does not exist yet', async () => {
-    const cwd = mkdtempSync(join(tmpdir(), 'sdd-check-cwd-'));
-    const prevCwd = process.cwd();
+    const root = mkdtempSync(join(tmpdir(), 'sdd-check-root-'));
     try {
-      writeFileSync(join(cwd, 'package.json'), '{}', 'utf-8');
-      process.chdir(cwd);
-      const t = join(cwd, 'ticket.md');
+      writeFileSync(join(root, 'package.json'), '{}', 'utf-8');
+      const t = join(root, 'ticket.md');
       // no test file on disk at all, Status TODO — existence check must not run
       writeFileSync(
         t,
         ticketWithCoverage('cli-foo', '- scenario → `never-written.test.ts` :: `does the thing`'),
         'utf-8'
       );
-      const r = await mod.run(argv(`--task=${t}`));
+      const r = await mod.run(argv(`--task=${t}`), root);
       assert.doesNotMatch(r.text, /SDD_BDD_SCENARIO_UNTESTED/);
     } finally {
-      process.chdir(prevCwd);
-      rmSync(cwd, { recursive: true, force: true });
+      rmSync(root, { recursive: true, force: true });
     }
   });
 
   it('--task matches a declared test-file by bare basename', async () => {
-    const cwd = mkdtempSync(join(tmpdir(), 'sdd-check-cwd-'));
-    const prevCwd = process.cwd();
+    const root = mkdtempSync(join(tmpdir(), 'sdd-check-root-'));
     try {
-      writeFileSync(join(cwd, 'package.json'), '{}', 'utf-8');
-      mkdirSync(join(cwd, 'src', 'app'), { recursive: true });
+      writeFileSync(join(root, 'package.json'), '{}', 'utf-8');
+      mkdirSync(join(root, 'src', 'app'), { recursive: true });
       writeFileSync(
-        join(cwd, 'src', 'app', 'x.test.ts'),
+        join(root, 'src', 'app', 'x.test.ts'),
         "it('does the thing', () => {});",
         'utf-8'
       );
-      process.chdir(cwd);
-      const t = join(cwd, 'ticket.md');
+      const t = join(root, 'ticket.md');
       writeFileSync(
         t,
         ticketWithCoverage('cli-foo', '- scenario → `x.test.ts` :: `does the thing`', '[x] DONE'),
         'utf-8'
       );
-      const r = await mod.run(argv(`--task=${t}`));
+      const r = await mod.run(argv(`--task=${t}`), root);
       assert.doesNotMatch(r.text, /SDD_BDD_SCENARIO_UNTESTED/);
     } finally {
-      process.chdir(prevCwd);
-      rmSync(cwd, { recursive: true, force: true });
+      rmSync(root, { recursive: true, force: true });
     }
   });
 
   it('--task warns SDD_BDD_TESTFILE_AMBIGUOUS when a declared basename matches >1 file', async () => {
-    const cwd = mkdtempSync(join(tmpdir(), 'sdd-check-cwd-'));
-    const prevCwd = process.cwd();
+    const root = mkdtempSync(join(tmpdir(), 'sdd-check-root-'));
     try {
-      writeFileSync(join(cwd, 'package.json'), '{}', 'utf-8');
-      mkdirSync(join(cwd, 'src', 'app'), { recursive: true });
-      mkdirSync(join(cwd, 'src', 'other'), { recursive: true });
+      writeFileSync(join(root, 'package.json'), '{}', 'utf-8');
+      mkdirSync(join(root, 'src', 'app'), { recursive: true });
+      mkdirSync(join(root, 'src', 'other'), { recursive: true });
       writeFileSync(
-        join(cwd, 'src', 'app', 'x.test.ts'),
+        join(root, 'src', 'app', 'x.test.ts'),
         "it('does the thing', () => {});",
         'utf-8'
       );
       writeFileSync(
-        join(cwd, 'src', 'other', 'x.test.ts'),
+        join(root, 'src', 'other', 'x.test.ts'),
         "it('does the thing', () => {});",
         'utf-8'
       );
-      process.chdir(cwd);
-      const t = join(cwd, 'ticket.md');
+      const t = join(root, 'ticket.md');
       writeFileSync(
         t,
         ticketWithCoverage('cli-foo', '- scenario → `x.test.ts` :: `does the thing`', '[x] DONE'),
         'utf-8'
       );
-      const r = await mod.run(argv(`--task=${t}`));
+      const r = await mod.run(argv(`--task=${t}`), root);
       assert.match(r.text, /SDD_BDD_TESTFILE_AMBIGUOUS/);
     } finally {
-      process.chdir(prevCwd);
-      rmSync(cwd, { recursive: true, force: true });
+      rmSync(root, { recursive: true, force: true });
     }
   });
 
@@ -381,15 +369,10 @@ describe('SddCheckCommand', () => {
       '# Not a product spec\n\n```mermaid\nthis is intentionally invalid\n```\n',
       'utf-8'
     );
-    const previousCwd = process.cwd();
-    try {
-      process.chdir(root);
-      const r = await mod.run(argv('--all'));
-      assert.strictEqual(r.exitCode, 0);
-      assert.match(r.text, /0 file\(s\) checked/);
-    } finally {
-      process.chdir(previousCwd);
-    }
+    // No positional target — the default root arg stands in for what `process.cwd()` used to supply.
+    const r = await mod.run(argv('--all'), root);
+    assert.strictEqual(r.exitCode, 0);
+    assert.match(r.text, /0 file\(s\) checked/);
   });
 
   it('--all: a legacy tracker embedded in tasks/<scope>/README.md (no *.3-tasks.md file) is still cross-checked — the TSK-58 gap: tracker says DONE, ticket itself is still TODO', async () => {
@@ -553,20 +536,17 @@ describe('SddCheckCommand', () => {
 
   describe('--task bare Task-ID resolution (AX_TASK_RESOLUTION)', () => {
     // "cli-foo" (the shared fixtures) is lowercase-ACR, not v2-Task-ID-shaped — these tests build
-    // their own grammar-conforming ticket in an isolated, chdir'd directory.
+    // their own grammar-conforming ticket in an isolated directory passed as the explicit root arg.
     const idClean = (id: string): string => CLEAN_TICKET.replace('cli-foo', id);
 
     it('resolves to its ticket — banner precedes the report, findings key off the real path', async () => {
       const idDir = mkdtempSync(join(tmpdir(), 'sdd-check-id-'));
       writeFileSync(join(idDir, 'ticket.md'), idClean('TSK-foo'), 'utf-8');
-      const origCwd = process.cwd();
-      process.chdir(idDir);
       try {
-        const r = await mod.run(argv('--task', 'TSK-foo'));
+        const r = await mod.run(argv('--task', 'TSK-foo'), idDir);
         assert.match(r.text, /^\[sdd-check\] TSK-foo → ticket\.md\n/);
         assert.strictEqual(r.exitCode, 0);
       } finally {
-        process.chdir(origCwd);
         rmSync(idDir, { recursive: true, force: true });
       }
     });
@@ -574,15 +554,12 @@ describe('SddCheckCommand', () => {
     it('an unknown but Task-ID-shaped argument → exit 2 listing known Task-IDs', async () => {
       const idDir = mkdtempSync(join(tmpdir(), 'sdd-check-id-'));
       writeFileSync(join(idDir, 'ticket.md'), idClean('TSK-foo'), 'utf-8');
-      const origCwd = process.cwd();
-      process.chdir(idDir);
       try {
-        const r = await mod.run(argv('--task', 'NOPE-ghost'));
+        const r = await mod.run(argv('--task', 'NOPE-ghost'), idDir);
         assert.strictEqual(r.exitCode, 2);
         assert.match(r.text, /ERR_CLI_SDD_CHECK_UNKNOWN_ID: NOPE-ghost/);
         assert.match(r.text, /known Task-IDs:.*TSK-foo/);
       } finally {
-        process.chdir(origCwd);
         rmSync(idDir, { recursive: true, force: true });
       }
     });
@@ -591,16 +568,13 @@ describe('SddCheckCommand', () => {
       const dupDir = mkdtempSync(join(tmpdir(), 'sdd-check-dup-'));
       writeFileSync(join(dupDir, 'a.md'), idClean('TSK-dup'), 'utf-8');
       writeFileSync(join(dupDir, 'b.md'), idClean('TSK-dup'), 'utf-8');
-      const origCwd = process.cwd();
-      process.chdir(dupDir);
       try {
-        const r = await mod.run(argv('--task', 'TSK-dup'));
+        const r = await mod.run(argv('--task', 'TSK-dup'), dupDir);
         assert.strictEqual(r.exitCode, 2);
         assert.match(r.text, /ERR_CLI_SDD_CHECK_AMBIGUOUS_ID: TSK-dup matches 2 tickets/);
         assert.match(r.text, /a\.md/);
         assert.match(r.text, /b\.md/);
       } finally {
-        process.chdir(origCwd);
         rmSync(dupDir, { recursive: true, force: true });
       }
     });

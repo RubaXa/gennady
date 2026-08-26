@@ -63,9 +63,10 @@ function specScopeFromPath(specPath: string): string {
  * @purpose Execute the gennady lint command — collect files, run configured checks, output ESLint-format report.
  * @implements {LintCommand} in specs/cli/lint/lint.spec.md
  * @param rawArgs Raw command-line arguments (process.argv).
+ * @param [root] Project root for resolution — defaults to the CWD; tests pass an explicit fixture root.
  * @returns LintReport with aggregated errors and exit code.
  */
-export async function run(rawArgs: string[]): Promise<LintReport> {
+export async function run(rawArgs: string[], root: string = resolve('.')): Promise<LintReport> {
   let args: Record<string, unknown> & { _: string[] };
   try {
     args = parseArgs(
@@ -252,7 +253,7 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
   // #region START_EXCLUDE_FILTER — invariant: apply glob excludes to collected files
   if (files.length > 0 && excludeRegexes.length > 0) {
     const before = files.length;
-    const cwd = resolve('.');
+    const cwd = root;
     files = files.filter((f) => {
       const rel = f.startsWith('/') ? relative(cwd, f) : f;
       return !excludeRegexes.some((re) => re.test(rel));
@@ -273,7 +274,7 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
   const implementedUnion = new Set<string>();
 
   // #region START_RESOLVE_REFERENCES — invariant: load taskRefMap once, collect task IDs from headers
-  const projectRoot = resolve('.');
+  const projectRoot = root;
   const taskRefMap = loadTaskReferences(projectRoot);
   const foundTaskIds = new Set<string>();
   // #endregion END_RESOLVE_REFERENCES

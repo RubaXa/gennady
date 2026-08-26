@@ -485,9 +485,10 @@ function scopeSpecDirs(specsRoot: string): string[] {
 /**
  * @purpose Execute gennady sdd-check — run mechanical checks over one ticket or the whole project tree.
  * @param rawArgs Raw command-line arguments (process.argv).
+ * @param [root] Project root for resolution — defaults to the CWD; tests pass an explicit fixture root.
  * @returns CheckResult — the ESLint-style report and exit code.
  */
-export async function run(rawArgs: string[]): Promise<CheckResult> {
+export async function run(rawArgs: string[], root: string = resolve('.')): Promise<CheckResult> {
   const args = parseArgs(rawArgs, { task: ['task'], all: ['all'], changed: ['changed'] });
   const positional = (args._ as string[]).filter(
     (a: string) => typeof a === 'string' && a !== 'sdd-check'
@@ -506,7 +507,7 @@ export async function run(rawArgs: string[]): Promise<CheckResult> {
   let taskBanner: string | null = null;
 
   if (taskPath) {
-    const repoRoot = process.cwd();
+    const repoRoot = root;
     const resolved = resolveTicketArg(taskPath, repoRoot);
     if (!resolved.ok) {
       if (resolved.reason === 'unreadable') return fileError(taskPath);
@@ -537,17 +538,17 @@ export async function run(rawArgs: string[]): Promise<CheckResult> {
     fileCount = 1;
   } else if (changed) {
     // #region START_CHANGED — invariant: TASKS_APPEND_ONLY + CONSUMERS_RESOLVABLE run over changed source files, not the full spec/ticket tree
-    const root = resolve(positional[0] ?? '.');
-    for (const rel of getChangedSourceFiles(root)) {
-      const abs = join(root, rel);
+    const scanRoot = resolve(positional[0] ?? root);
+    for (const rel of getChangedSourceFiles(scanRoot)) {
+      const abs = join(scanRoot, rel);
       let content: string;
       try {
         content = readFileSync(abs, 'utf-8');
       } catch {
         continue;
       }
-      findings.push(...checkTasksAppendOnly(rel, content, getHeadContent(root, rel)));
-      findings.push(...checkFileConsumersResolvable(rel, content, root, resolve(abs)));
+      findings.push(...checkTasksAppendOnly(rel, content, getHeadContent(scanRoot, rel)));
+      findings.push(...checkFileConsumersResolvable(rel, content, scanRoot, resolve(abs)));
       fileCount++;
     }
     // #endregion END_CHANGED
@@ -559,12 +560,12 @@ export async function run(rawArgs: string[]): Promise<CheckResult> {
     // The implicit repository root stays empty before `/sdd` creates specs/; scanning it would lint
     // bundled examples and unrelated Markdown as if they were the product specification.
     // #region START_ALL — invariant: scan specs/ AND tasks/ when present, or an explicit scoped root
-    const root = resolve(positional[0] ?? '.');
-    const repoRoot = findRepoRoot(root);
-    const specsRoot = join(root, 'specs');
-    const tasksRoot = join(root, 'tasks');
+    const scanRoot = resolve(positional[0] ?? root);
+    const repoRoot = findRepoRoot(scanRoot);
+    const specsRoot = join(scanRoot, 'specs');
+    const tasksRoot = join(scanRoot, 'tasks');
     const bases = [specsRoot, tasksRoot].filter((d) => existsSync(d));
-    if (bases.length === 0 && positional[0]) bases.push(root);
+    if (bases.length === 0 && positional[0]) bases.push(scanRoot);
     const portalFile = join(specsRoot, 'README.md');
     const mdFiles: string[] = [];
     for (const b of bases) walkMd(b, mdFiles);
@@ -681,10 +682,10 @@ export async function run(rawArgs: string[]): Promise<CheckResult> {
 
   // --all/--changed walk absolute paths internally (specFlowVersion et al. need the full path to
   // locate the `specs`/`tasks` segment) — only the reported Finding.file is shortened, relative to
-  // cwd, so hundreds of findings don't each repeat the worktree's absolute prefix. --task keeps the
-  // caller's own path verbatim (its Finding.file is never touched below).
+  // the project root, so hundreds of findings don't each repeat the worktree's absolute prefix. --task
+  // keeps the caller's own path verbatim (its Finding.file is never touched below).
   if (!taskPath) {
-    for (const f of findings) f.file = relative(process.cwd(), resolve(f.file)) || f.file;
+    for (const f of findings) f.file = relative(root, resolve(f.file)) || f.file;
   }
 
   logger.debug(`[SddCheckCommand#run] ${findings.length} finding(s) across ${fileCount} file(s)`);

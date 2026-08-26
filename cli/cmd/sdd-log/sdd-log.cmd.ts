@@ -39,9 +39,14 @@ const MODES = ['round', 'line', 'close', 'phase', 'handoff', 'blocker', 'resolve
  *   blocker block, its paired resolved line, or close block into EXECUTION_LOG, append-only.
  * @param rawArgs Raw command-line arguments (process.argv).
  * @param now Clock injected for deterministic timestamps (the CLI tail passes the real now).
+ * @param [root] Project root for resolution — defaults to the CWD; tests pass an explicit fixture root.
  * @returns LogOutcome — echo of the appended lines on success, else an actionable failure.
  */
-export async function run(rawArgs: string[], now: Date): Promise<LogOutcome> {
+export async function run(
+  rawArgs: string[],
+  now: Date,
+  root: string = resolve('.')
+): Promise<LogOutcome> {
   const args = parseArgs(rawArgs, {
     axiom: { aliases: ['axiom'], takesValue: true },
     unblock: { aliases: ['unblock'], takesValue: true },
@@ -96,7 +101,6 @@ export async function run(rawArgs: string[], now: Date): Promise<LogOutcome> {
   // #endregion END_PHASE_FLAG
 
   // #region START_READ — invariant: path or Task-ID (AX_TASK_RESOLUTION) → resolved path + content
-  const root = resolve('.');
   const resolved = resolveTicketArg(ticket, root);
   if (!resolved.ok) {
     if (resolved.reason === 'unreadable') return fileError(ticket);

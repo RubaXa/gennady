@@ -27,7 +27,7 @@ const GITIGNORE_LINE = '.sdd-session.md';
 
 /**
  * @purpose Ensure `.sdd-session.md` is git-ignored at the project root — append the line, or create the file.
- * @param root Project root (cwd).
+ * @param root Project root whose `.gitignore` is updated.
  * @invariant Idempotent — a project already ignoring the line is left byte-identical.
  */
 function ensureGitignore(root: string): void {
@@ -50,9 +50,14 @@ function ensureGitignore(root: string): void {
  * @purpose Execute gennady sdd-session — CLI-owned lifecycle of specs/.sdd-session.md per SESSION_FILE_FORMAT.
  * @param rawArgs Raw command-line arguments (process.argv).
  * @param now Clock injected for deterministic dates (the CLI tail passes the real now).
+ * @param [root] Project root — defaults to the process CWD; tests pass an explicit fixture dir.
  * @returns SessionOutcome — a report of what happened, or an actionable failure.
  */
-export async function run(rawArgs: string[], now: Date): Promise<SessionOutcome> {
+export async function run(
+  rawArgs: string[],
+  now: Date,
+  root: string = resolve('.')
+): Promise<SessionOutcome> {
   const args = parseArgs(rawArgs, {
     intent: { aliases: ['intent'], takesValue: true },
     scale: { aliases: ['scale'], takesValue: true },
@@ -66,7 +71,6 @@ export async function run(rawArgs: string[], now: Date): Promise<SessionOutcome>
     return badInvocation(`unknown mode "${mode ?? ''}" — use ${MODES.join(' | ')}`);
   }
 
-  const root = resolve('.');
   const specsDir = join(root, 'specs');
   const sessionPath = join(specsDir, '.sdd-session.md');
 

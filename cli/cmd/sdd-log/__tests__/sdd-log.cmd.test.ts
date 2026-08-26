@@ -519,17 +519,14 @@ describe('SddLogCommand', () => {
     it('resolves to its ticket — output is prefixed with the `[sdd-log] <id> → <path>` banner', async () => {
       const idDir = mkdtempSync(join(tmpdir(), 'sdd-log-id-'));
       writeFileSync(join(idDir, 'ticket.md'), idTicket('TSK-foo'), 'utf-8');
-      const origCwd = process.cwd();
-      process.chdir(idDir);
       try {
-        const outcome = await mod.run(argv('TSK-foo', 'line', 'DONE'), CLOCK);
+        const outcome = await mod.run(argv('TSK-foo', 'line', 'DONE'), CLOCK, idDir);
         assert.strictEqual(outcome.ok, true);
         if (!outcome.ok) return;
         assert.match(outcome.text, /^\[sdd-log\] TSK-foo → ticket\.md\n/);
         const body = readFileSync(join(idDir, 'ticket.md'), 'utf-8');
         assert.match(body, /- \[x\] `.*` DONE/);
       } finally {
-        process.chdir(origCwd);
         rmSync(idDir, { recursive: true, force: true });
       }
     });
@@ -537,17 +534,14 @@ describe('SddLogCommand', () => {
     it('an unknown but Task-ID-shaped argument → exit 2 listing known Task-IDs', async () => {
       const idDir = mkdtempSync(join(tmpdir(), 'sdd-log-id-'));
       writeFileSync(join(idDir, 'ticket.md'), idTicket('TSK-foo'), 'utf-8');
-      const origCwd = process.cwd();
-      process.chdir(idDir);
       try {
-        const outcome = await mod.run(argv('NOPE-ghost', 'line', 'DONE'), CLOCK);
+        const outcome = await mod.run(argv('NOPE-ghost', 'line', 'DONE'), CLOCK, idDir);
         assert.strictEqual(outcome.ok, false);
         if (outcome.ok) return;
         assert.strictEqual(outcome.exitCode, 2);
         assert.match(outcome.message, /ERR_CLI_SDD_LOG_UNKNOWN_ID: NOPE-ghost/);
         assert.match(outcome.message, /known Task-IDs:.*TSK-foo/);
       } finally {
-        process.chdir(origCwd);
         rmSync(idDir, { recursive: true, force: true });
       }
     });
@@ -565,10 +559,8 @@ describe('SddLogCommand', () => {
         ].join('\n');
       writeFileSync(join(dupDir, 'a.md'), dup('a'), 'utf-8');
       writeFileSync(join(dupDir, 'b.md'), dup('b'), 'utf-8');
-      const origCwd = process.cwd();
-      process.chdir(dupDir);
       try {
-        const outcome = await mod.run(argv('TSK-dup', 'line', 'DONE'), CLOCK);
+        const outcome = await mod.run(argv('TSK-dup', 'line', 'DONE'), CLOCK, dupDir);
         assert.strictEqual(outcome.ok, false);
         if (outcome.ok) return;
         assert.strictEqual(outcome.exitCode, 2);
@@ -576,7 +568,6 @@ describe('SddLogCommand', () => {
         assert.match(outcome.message, /a\.md/);
         assert.match(outcome.message, /b\.md/);
       } finally {
-        process.chdir(origCwd);
         rmSync(dupDir, { recursive: true, force: true });
       }
     });
