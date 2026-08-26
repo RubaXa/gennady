@@ -189,6 +189,12 @@
             helper (for example shadcn's `src/lib/utils.ts`) is architecture, not a runtime surprise;
             missing or version-uncertain output → research/verify now, never let the worker expand the
             module boundary through an execution-time deviation;
+        4d. for every impl/refactor phase, fill its `Entities:` field with the exact
+            module-Entity-Inventory names this phase implements (verbatim, comma-separated) — this is
+            the STRUCTURAL, filename-independent ownership record a `Deferred Implementation: <ticket>`
+            marker resolves against (`ticketOwnsEntity`), so it MUST be set whenever another module's
+            inventory row defers an entity to this ticket; a file name alone (e.g. `foo-service.ts`
+            for `FooService`) does NOT establish ownership. Omit only for test/config/doc phases;
         5. write the ticket Verification table. It lists ONLY what §5 adds ON TOP of the phase
            verify call — never `sdd-verify` itself. STEP_5 of the phase protocol already runs
            `npx gennady sdd-verify --profile <by kind>` as its own first action; writing that same

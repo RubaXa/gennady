@@ -244,6 +244,31 @@ describe('sdd-verify — live gate ladder', () => {
     }
   });
 
+  it('CHAIN: an EMPTY-but-fresh report passes sdd-verify freshness but the full chain fails at testcov (C2 division)', () => {
+    // Division of responsibility: sdd-verify proves the report is from THIS run (fresh); testcov
+    // proves it is VALID + meets the threshold. An empty `{}` report is fresh (probe passes) yet has
+    // no data, so `testcov --min` reds it — neither step alone is the whole guarantee.
+    const { root } = buildRepoFixture({
+      scripts: {
+        'type-check': noop(0),
+        'test:coverage': coverageScript(0), // writes a FRESH but empty `{}` coverage-final.json
+      },
+      gennadyInstalled: true,
+      files: { 'src/thing.ts': 'export const x = 1;\n' },
+    });
+    try {
+      // sdd-verify: probe sees a fresh report appear → test:coverage passes.
+      const verify = runCli(['sdd-verify', '--profile', 'test'], root);
+      assert.strictEqual(verify.exitCode, 0, verify.stdout + verify.stderr);
+      assert.match(verify.stdout, /✅ test:coverage/);
+      // testcov: the `{}` report has no data for the file → threshold gate is RED.
+      const cov = runCli(['testcov', '--min=80', 'src/thing.ts'], root);
+      assert.notStrictEqual(cov.exitCode, 0, cov.stdout + cov.stderr);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it('mutating rung actually rewrites a file (--profile code): foundation re-runs once over the repaired state', () => {
     const { root } = buildRepoFixture({
       scripts: {

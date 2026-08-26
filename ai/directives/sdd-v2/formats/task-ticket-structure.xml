@@ -55,6 +55,7 @@
     - [<PortName>](<spec anchor>)
   - **Target Files:**
     - <path>
+  - **Entities:** <ContractName, ...>   <!-- impl/refactor phases: the exported entities (verbatim from the module Entity Inventory) THIS phase implements — the structural, filename-independent ownership source a Deferred Implementation marker (pointing at this ticket) resolves against; omit for test/config/doc phases -->
   - **Inputs:** none   <!-- or "P1 handoff" -->
   - **Exit:** <verifiable criterion>
   <!--/SECTION:PHASE_P1-->

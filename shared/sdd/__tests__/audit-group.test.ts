@@ -326,13 +326,30 @@ describe('ticketOwnsEntity — structural ownership only (review C8/C9/C10)', ()
     assert.strictEqual(ticketOwnsEntity(withPhaseAndBody(['lib/Baz.cts'], ''), 'Baz'), true);
   });
 
-  it('owns via an explicit Implements/Provides/Entity field', () => {
+  it('owns via an explicit Entities/Provides/Implements/Entity field', () => {
+    assert.strictEqual(
+      ticketOwnsEntity(
+        withPhaseAndBody([], '- **Entities:** FooService, BarService'),
+        'FooService'
+      ),
+      true
+    );
     assert.strictEqual(
       ticketOwnsEntity(withPhaseAndBody([], '- **Implements:** Foo'), 'Foo'),
       true
     );
     assert.strictEqual(ticketOwnsEntity(withPhaseAndBody([], 'Provides: Widget'), 'Widget'), true);
     assert.strictEqual(ticketOwnsEntity(withPhaseAndBody([], '**Entity:** Gizmo'), 'Gizmo'), true);
+  });
+
+  it('owns via the Entities field even when the FILE name differs (FooService → foo-service.ts)', () => {
+    const c = withPhaseAndBody(['src/foo-service.ts'], '- **Entities:** FooService');
+    assert.strictEqual(ticketOwnsEntity(c, 'FooService'), true);
+  });
+
+  it('a differently-named file WITHOUT an Entities field does not own (filename ≠ entity)', () => {
+    const c = withPhaseAndBody(['src/foo-service.ts'], '');
+    assert.strictEqual(ticketOwnsEntity(c, 'FooService'), false);
   });
 
   it('PROSE mention is NOT ownership (reviewer C9 case verbatim)', () => {

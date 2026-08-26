@@ -383,7 +383,7 @@ describe('LintCommand', () => {
           '<!--SECTION:ENTITY_INVENTORY-->',
           '| Name | Type | Purpose |',
           '|---|---|---|',
-          '| `Later` | Service | Deferred Implementation: OWN-1 — next batch |',
+          '| `FooService` | Service | Deferred Implementation: OWN-1 — next batch |',
           '<!--/SECTION:ENTITY_INVENTORY-->',
         ].join('\n'),
         'utf-8'
@@ -435,25 +435,28 @@ describe('LintCommand', () => {
       }
     };
 
-    // PROSE-only mention → not owned → invalid deferral (drift).
-    ticket('We may need `Later` eventually, but this ticket builds nothing of it.');
+    // PROSE-only mention (even with a differently-named file present) → not owned → drift.
+    ticket(
+      '- **Target Files:**\n  - src/foo-service.ts\n\nWe may need `FooService` eventually, but this ticket builds nothing of it.'
+    );
     const prose = await run();
     assert.ok(
       prose.errors.some(
         (e) =>
           e.code === 'ERR_CLI_LINT_INVENTORY_UNIMPLEMENTED' &&
-          e.message.includes('Later') &&
+          e.message.includes('FooService') &&
           /not valid/i.test(e.message)
       ),
       `prose-only ownership must be drift, got ${JSON.stringify(prose.errors)}`
     );
 
-    // Target-Files ownership → owned → honored (not flagged).
-    ticket('- **Target Files:**\n  - src/Later.ts');
+    // Structural ownership via an Entities field — file name (foo-service.ts) ≠ entity (FooService),
+    // yet the explicit field proves ownership → honored (not flagged).
+    ticket('- **Target Files:**\n  - src/foo-service.ts\n- **Entities:** FooService');
     const owned = await run();
     assert.ok(
-      !owned.errors.some((e) => e.message.includes('Later')),
-      `Target-Files ownership must be honored, got ${JSON.stringify(owned.errors)}`
+      !owned.errors.some((e) => e.message.includes('FooService')),
+      `Entities-field ownership must be honored, got ${JSON.stringify(owned.errors)}`
     );
   });
 

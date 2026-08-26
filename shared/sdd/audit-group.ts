@@ -158,8 +158,10 @@ export function ticketCoverageThreshold(content: string): string {
   return text.match(/testcov\b[^\n]*--min=(\d+(?:\.\d+)?)/)?.[1] ?? '80';
 }
 
-// STRUCTURAL ownership only — a parsed Target File names the entity, or an explicit
-// Implements/Provides/Entity field declares it. NOT a prose scan: "do not implement Foo" never owns.
+// STRUCTURAL ownership only — an explicit `Entities:`/`Provides:`/`Implements:`/`Entity:` field
+// declares the entity (the primary, filename-independent source, since `FooService` may live in
+// `foo-service.ts`), OR a parsed Target File path names it. NOT a prose scan: "do not implement Foo"
+// never owns.
 /**
  * @purpose Whether a ticket STRUCTURALLY owns an entity (see the note above for the exact rule).
  * @param content Full ticket markdown.
@@ -169,12 +171,14 @@ export function ticketCoverageThreshold(content: string): string {
 export function ticketOwnsEntity(content: string, entityName: string): boolean {
   const escaped = entityName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const word = new RegExp(`\\b${escaped}\\b`);
-  if (ticketTargetFiles(content).some((f) => word.test(f))) return true;
-  const fieldRe = /^[\s>*-]*(?:\*\*)?(?:Implements|Provides|Entity)(?:\*\*)?\s*:\s*(.+)$/gim;
+  // (1) explicit declaration field — the canonical, filename-independent source.
+  const fieldRe =
+    /^[\s>*-]*(?:\*\*)?(?:Entities|Provides|Implements|Entity)(?:\*\*)?\s*:\s*(.+)$/gim;
   for (const m of content.matchAll(fieldRe)) {
     if (m[1] && word.test(m[1])) return true;
   }
-  return false;
+  // (2) a parsed Target File path that names the entity (a convenience when file == entity name).
+  return ticketTargetFiles(content).some((f) => word.test(f));
 }
 
 /**
