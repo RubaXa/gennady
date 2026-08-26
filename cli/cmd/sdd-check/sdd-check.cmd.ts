@@ -95,6 +95,10 @@ const SKIP_DIRS = new Set([
   'out',
   'coverage',
   '__tests__',
+  // The eval harness lane holds fixture repos with their own specs/tickets — not real project
+  // artifacts; keep them out of a repo-root `sdd-check --all`. In-workspace runs (rooted inside a
+  // copied fixture) have no `harness/` ancestor, so they still check the fixture's own specs.
+  'harness',
 ]);
 
 /** @purpose Recursively collect .md files under a directory, skipping system/build dirs and symlinks. */

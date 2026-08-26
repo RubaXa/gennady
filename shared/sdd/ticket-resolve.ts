@@ -15,6 +15,10 @@ const SKIP_DIRS = new Set([
   'out',
   'coverage',
   '__tests__',
+  // The eval harness lane holds fixture repos with their OWN specs/tickets — never real project
+  // artifacts. Skipping it keeps `harness/fixtures/**` tickets out of the gennady repo's ticket
+  // graph (a scan from a fixture workspace root has no `harness/` ancestor, so it is unaffected).
+  'harness',
 ]);
 
 /**

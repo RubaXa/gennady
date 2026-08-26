@@ -230,8 +230,11 @@ export async function run(rawArgs: string[]): Promise<YagniReport> {
   // can never satisfy the rule: its only legitimate consumers are tests, and test files are
   // excluded from the usage count by design. Skipping the declaration side too is what keeps the
   // rule about speculative PRODUCTION surface — observed live: this repo's own fixture helpers.
+  // The `harness/` eval lane is the same case at directory scale: never shipped
+  // (`package.json#files` excludes it) and already outside lint/test/tsc scope; its fixtures and
+  // gold references are single-use by nature, so YAGNI's production-surface rule does not apply.
   const changedFiles = getChangedSourceFiles(root).filter(
-    (rel) => !isTestFile(rel) && !isUnderTestDirectory(rel)
+    (rel) => !isTestFile(rel) && !isUnderTestDirectory(rel) && !rel.startsWith('harness/')
   );
   const allChanged: ChangedSymbol[] = [];
   for (const rel of changedFiles) {

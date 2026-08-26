@@ -9,3 +9,6 @@ ai/skills/
 ai/kit/
 .claude/skills/
 e2e/inbox-serve/test-results/
+# SDD spec artifacts — Prettier must never reformat anything under a specs/ tree; its
+# reflow corrupts the v2 section-marker / requirement / table format the SDD gates parse.
+**/specs/**
