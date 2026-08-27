@@ -2,8 +2,8 @@
 // @consumers: RoleScheduler, RightsEscalator, inbox-api
 // @tasks: TSK-113, TSK-121, TSK-124, TSK-141, TSK-142, TSK-143, TSK-160, TSK-175
 
-import { join, dirname } from 'node:path';
-import { mkdirSync, writeFileSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { readFileSync } from 'node:fs';
 import { logger } from '#logger';
 import { buildNodePrompt } from '../../../ai-kit/compile.ts';
 import { mrRoot } from '../../../../cli/cmd/inbox/_core/logic/state-paths.logic.ts';
@@ -17,7 +17,6 @@ import type {
   RoleArtifacts,
   PrepNode,
   SessionNode,
-  SessionPolicy,
   GateNode,
   AskNode,
   EffectNode,
@@ -28,14 +27,11 @@ import type {
 import type { VcsInboxPort, MrContext, Discussion } from '../inbox-core/vcs-inbox.port.ts';
 import type {
   OpenCodePort,
-  AgentRuntimeResult,
   PromptOpts,
   ToolCallStat,
   ToolTraceEntry,
-  ToolGate,
 } from '../inbox-opencode/opencode.port.ts';
 import type { SessionPool } from '../inbox-opencode/session-pool.ts';
-import type { OpenCodeCallResult } from '../inbox-opencode/errors.ts';
 import type { StateStore } from '../inbox-core/state-store.ts';
 import type { AuditEntry } from '../inbox-core/audit-log.ts';
 import { OutcomeClassifier } from './outcome-classifier.ts';
@@ -57,6 +53,12 @@ import {
   recordSessionResponse,
 } from './phase-telemetry.ts';
 import { resolveDiskArtifact } from './disk-artifact.ts';
+import {
+  _resolveSessionTools,
+  _toOpenCodeCallResult,
+  _persistNodeResult,
+  _outputContract,
+} from './role-instance/node-run-helpers.ts';
 
 /**
  * @purpose Options for creating a RoleInstance.
@@ -110,112 +112,6 @@ export type RoleInstanceCheckpoint = {
   /** @purpose Artifacts already produced by completed nodes — done tracks are not re-run */
   artifacts: RoleArtifacts;
 };
-
-/**
- * @purpose Resolve the tool gate `createSession` accepts from a node's policy (D-118..D-123).
- * @invariant `toolPolicy` takes precedence over the coarser `tools` flag and passes through as a
- *   fine-grained `ToolGate` — real per-tool enforcement (`OpenCodeReal#_composeToolsGate`).
- * @invariant No `toolPolicy` → pre-existing coarse boolean behavior unchanged.
- * @param policy The node's `SessionPolicy`.
- * @returns Coarse boolean gate, or a `ToolGate` for fine-grained per-lens allowlisting.
- */
-function _resolveSessionTools(policy: SessionPolicy | undefined): boolean | ToolGate {
-  if (policy?.toolPolicy) {
-    const { bash, read, grep, write } = policy.toolPolicy;
-    return write === undefined ? { bash, read, grep } : { bash, read, grep, write };
-  }
-  return policy?.tools === true;
-}
-
-/** @purpose Preserve legacy role classification while runtime execution uses the attributed port. */
-function _toOpenCodeCallResult(result: AgentRuntimeResult): OpenCodeCallResult {
-  if (result.ok) return { ok: true, output: result.output };
-  return {
-    ok: false,
-    error: {
-      class: result.outcome,
-      signal: result.signal,
-      raw: result.raw,
-      retry: result.retry,
-    },
-  };
-}
-
-/**
- * @purpose Persist a node's declared `persistResult` output — the ENGINE writes this (D-118..D-123),
- *   never the agent. Best-effort: a write failure only logs a warning.
- * @param persistResult The node's `persistResult` hook, if declared.
- * @param ctx Node context forwarded to the hook.
- * @param output The node's structured OK output.
- * @param logLabel One-line label for the warning log on failure (caller + node id).
- * @sideEffect FS: writes the hook's returned `{path, content}`, creating parent dirs as needed.
- */
-function _persistNodeResult(
-  persistResult:
-    | ((
-        ctx: NodeContext,
-        output: Record<string, unknown>
-      ) => { path: string; content: string } | undefined)
-    | undefined,
-  ctx: NodeContext,
-  output: Record<string, unknown>,
-  logLabel: string
-): void {
-  if (!persistResult) return;
-  const toPersist = persistResult(ctx, output);
-  if (!toPersist) return;
-  try {
-    mkdirSync(dirname(toPersist.path), { recursive: true });
-    writeFileSync(toPersist.path, toPersist.content);
-  } catch (cause) {
-    logger.warn('[RoleInstance#_persistNodeResult] [writing → degraded]', {
-      node: logLabel,
-      path: toPersist.path,
-      error: String(cause),
-    });
-  }
-}
-
-/**
- * @purpose Render a compact JSON example for one schema property, by type — a shape hint so the
- *   model closes its turn with parseable JSON.
- * @param prop A `resultSchema.properties[k]` descriptor (`{ type }`).
- * @returns A one-token example value (`[]`, `{}`, `"..."`, `0`, `false`, `null`).
- */
-function _exampleForProp(prop: unknown): string {
-  const type = (prop as { type?: string } | undefined)?.type;
-  switch (type) {
-    case 'array':
-      return '[]';
-    case 'object':
-      return '{}';
-    case 'string':
-      return '"..."';
-    case 'number':
-    case 'integer':
-      return '0';
-    case 'boolean':
-      return 'false';
-    default:
-      return 'null';
-  }
-}
-
-/**
- * @purpose Build the output-contract suffix appended to a node's task text — turns `resultSchema`
- *   into an explicit "end your turn with this JSON" instruction.
- * @invariant Appended to TASK TEXT, never the system directive (schema-in-system made the model
- *   hang) — item shape only, carried by the node's task text.
- * @param schema The node's `resultSchema`.
- * @returns Markdown suffix instructing the final-message JSON shape.
- */
-function _outputContract(schema: unknown): string {
-  const props = (schema as { properties?: Record<string, unknown> } | undefined)?.properties ?? {};
-  const shape = Object.entries(props)
-    .map(([key, prop]) => `"${key}": ${_exampleForProp(prop)}`)
-    .join(', ');
-  return `\n\n### Output contract\nInvestigate with the tools first. Then the FINAL message of your turn must be EXACTLY ONE fenced json code block and NOTHING after it, matching this shape:\n\`\`\`json\n{ ${shape} }\n\`\`\``;
-}
 
 /**
  * @purpose Gate ids whose PASS marks a completed synthesis — the trigger for promoting
