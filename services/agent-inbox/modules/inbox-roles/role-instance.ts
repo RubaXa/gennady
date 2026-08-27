@@ -21,7 +21,6 @@ import type {
   EffectNode,
   ParallelNode,
   ParallelSessionSpec,
-  ChangesetFile,
 } from './role-node.ts';
 import type { VcsInboxPort, MrContext, Discussion } from '../inbox-core/vcs-inbox.port.ts';
 import type { OpenCodePort, PromptOpts } from '../inbox-opencode/opencode.port.ts';
@@ -32,14 +31,7 @@ import { OutcomeClassifier } from './outcome-classifier.ts';
 import type { ClassifiedOutcome, RemediationAction } from './outcome-classifier.ts';
 import { EffectExecutor } from './effect-executor.ts';
 import type { ProposedAction } from './effect-executor.ts';
-import { DebounceTracker } from './mr-watch.ts';
-import {
-  classifyThreadSignals,
-  decideThreadAction,
-  type ThreadSignalVerdict,
-  type ThreadDecision,
-  type MrDiffContext,
-} from './thread-signal-classifier.ts';
+import type { ThreadDecision } from './thread-signal-classifier.ts';
 import {
   recordPhaseTiming,
   recordToolTrace,
@@ -70,6 +62,11 @@ import {
   buildDisputeSummary,
 } from './role-instance/thread-dispute.ts';
 import { runLensSession } from './role-instance/lens-session-runner.ts';
+import {
+  promoteReviewedHead,
+  resolveThreadTriageAutonomously,
+  THREAD_ESCALATION_SIGNALS_KEY,
+} from './role-instance/gate-triage.ts';
 
 /**
  * @purpose Options for creating a RoleInstance.
@@ -125,26 +122,11 @@ export type RoleInstanceCheckpoint = {
 };
 
 /**
- * @purpose Gate ids whose PASS marks a completed synthesis — the trigger for promoting
- *   `lastReviewedHeadSha` (SV-21).
- * @invariant Owned by `reviewer.role.ts` (TSK-113); not a node-level flag — single consumer today.
- */
-const SYNTHESIS_GATE_IDS = new Set(['gate_review_synthesis', 'gate_delta_synthesis']);
-
-/**
  * @purpose Gate id whose PASS triggers SV-22 autonomous thread resolution (D-133), bypassing
  *   operator approval for rules (a)-(d); a dispute (rule e) still escalates via `node_ask`.
  * @invariant Owned by `reviewer.role.ts` (TSK-142); single consumer today.
  */
 const THREAD_TRIAGE_GATE_ID = 'gate_triage';
-
-/**
- * @purpose Artifact key `_resolveThreadTriageAutonomously` stores per-thread SV-22 signals under —
- *   read back by `_executeAsk` (a later node) to feed the SV-24 escalation gate.
- * @invariant Fixed key, not `${node.id}_...` — producer runs at `gate_triage`, consumer runs at
- *   `node_ask`; a node-id-scoped key would never be found by the reader.
- */
-const THREAD_ESCALATION_SIGNALS_KEY = 'thread_triage_escalation_signals';
 
 export { shouldEscalateToOperator } from './role-instance/escalation-gate.ts';
 export type {
@@ -784,33 +766,7 @@ export class RoleInstance {
    * @sideEffect Registry: writes `candidateHeadSha`, promotes to `lastReviewedHeadSha`, persists to disk.
    */
   protected _promoteReviewedHead(node: GateNode, ctx: NodeContext): void {
-    if (!SYNTHESIS_GATE_IDS.has(node.id)) return;
-    const headSha = ctx.artifacts['headSha'] as string | undefined;
-    if (!headSha || !ctx.store) return;
-
-    try {
-      const registry = ctx.store.loadRegistry();
-      const entry = registry.entries[this.mr];
-      if (!entry) return;
-
-      entry.candidateHeadSha = headSha;
-      ctx.store.promoteReviewedHeadSha(this.mr);
-      ctx.store.saveRegistry();
-
-      logger.info('[RoleInstance#_promoteReviewedHead] [synthesis → promoted]', {
-        instance: this.id,
-        mr: this.mr,
-        node: node.id,
-        headSha,
-      });
-    } catch (cause) {
-      logger.warn('[RoleInstance#_promoteReviewedHead] [synthesis → degraded]', {
-        instance: this.id,
-        mr: this.mr,
-        node: node.id,
-        error: String(cause),
-      });
-    }
+    return promoteReviewedHead(node, ctx, { mr: this.mr, id: this.id });
   }
 
   /**
@@ -830,76 +786,13 @@ export class RoleInstance {
     node: GateNode,
     ctx: NodeContext
   ): Promise<void> {
-    if (!ctx.vcs || !ctx.store) return;
-
-    const triage = ctx.artifacts['node_thread_triage'] as { threads?: unknown[] } | undefined;
-    if (!triage?.threads?.length) return;
-
-    try {
-      const [discussions, myLogin] = await Promise.all([
-        ctx.vcs.getDiscussions(this.mr, { my: true }),
-        ctx.vcs.getMyLogin(),
-      ]);
-
-      const changesetFiles = (ctx.artifacts['changesetFiles'] as ChangesetFile[] | undefined) ?? [];
-      const mrDiff: MrDiffContext = {
-        changedFiles: new Set(changesetFiles.map((f) => f.path)),
-        worktreePath: ctx.artifacts['worktreePath'] as string | undefined,
-        authorLogin: ctx.mr.author,
-      };
-
-      const debounce = new DebounceTracker(ctx.store.getStateDir());
-      const ref = `${ctx.mr.project}!${ctx.mr.iid}`;
-      const quietPeriodElapsed = debounce.shouldTriggerAnalysis(ref, new Date().toISOString());
-
-      const actions: ProposedAction[] = [];
-      const threadSignals: ThreadEscalationSignal[] = [];
-
-      // invariant: `disputed`/`ambiguous` are read from node_thread_triage's own per-thread
-      // classification (matched by discussion id), never recomputed here
-      for (const thread of discussions) {
-        const triageEntry = triage.threads?.find(
-          (t) => (t as { id?: string })?.id === thread.id
-        ) as { disputed?: boolean; status?: string } | undefined;
-
-        const verdict: ThreadSignalVerdict = {
-          ...classifyThreadSignals(thread, mrDiff, myLogin),
-          disputed: triageEntry?.disputed === true || triageEntry?.status === 'disagree',
-          quietPeriodElapsed,
-        };
-
-        const decision = decideThreadAction(verdict);
-        this._appendThreadDecisionActions(actions, thread, decision);
-        threadSignals.push({
-          decision,
-          thread,
-          ambiguous: triageEntry?.status === 'ambiguous' || triageEntry?.status === 'unclear',
-        });
-      }
-
-      // SV-24 (D-135): persisted for `_executeAsk`'s escalation gate — this pass may run at
-      // gate_triage, several nodes before node_ask actually reads it back.
-      this._artifacts[THREAD_ESCALATION_SIGNALS_KEY] = threadSignals;
-
-      if (actions.length > 0) {
-        const executor = new EffectExecutor({
-          vcs: ctx.vcs,
-          store: ctx.store,
-          dryRun: this._dryRun,
-        });
-        const result = await executor.execute(
-          { mr: this.mr, role: this.role, nodeId: node.id },
-          actions
-        );
-        this._artifacts[`${node.id}_autonomous_result`] = result;
-      }
-    } catch (cause) {
-      logger.warn('[RoleInstance#_resolveThreadTriageAutonomously] [resolving → degraded]', {
-        instance: this.id,
-        node: node.id,
-        error: String(cause),
-      });
-    }
+    return resolveThreadTriageAutonomously(node, ctx, {
+      mr: this.mr,
+      role: this.role,
+      id: this.id,
+      dryRun: this._dryRun,
+      artifacts: this._artifacts,
+    });
   }
 
   /**
