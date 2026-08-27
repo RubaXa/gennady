@@ -3,7 +3,6 @@
 // @tasks: TSK-113, TSK-121, TSK-124, TSK-141, TSK-142, TSK-143, TSK-160, TSK-175
 
 import { join } from 'node:path';
-import { readFileSync } from 'node:fs';
 import { logger } from '#logger';
 import { buildNodePrompt } from '../../../ai-kit/compile.ts';
 import { mrRoot } from '../../../../cli/cmd/inbox/_core/logic/state-paths.logic.ts';
@@ -71,6 +70,10 @@ import {
   collectProposedActions,
 } from './role-instance/artifact-readers.ts';
 import { findNode, resolveEdge } from './role-instance/graph-lookup.ts';
+import {
+  appendThreadDecisionActions,
+  buildDisputeSummary,
+} from './role-instance/thread-dispute.ts';
 
 /**
  * @purpose Options for creating a RoleInstance.
@@ -1115,32 +1118,7 @@ export class RoleInstance {
     thread: Discussion,
     decision: ThreadDecision
   ): void {
-    switch (decision.kind) {
-      case 'resolve_silently':
-        actions.push({
-          type: 'reply',
-          discussionId: thread.id,
-          body: 'Automated check: commit + code re-read confirm this is fixed. Resolving.',
-        });
-        actions.push({ type: 'resolve', discussionId: thread.id, resolve: true });
-        break;
-      case 'react_then_resolve': {
-        const lastNote = thread.notes[thread.notes.length - 1];
-        if (lastNote) actions.push({ type: 'react', commentId: lastNote.id, emoji: '👍' });
-        actions.push({ type: 'resolve', discussionId: thread.id, resolve: true });
-        break;
-      }
-      case 'reply_not_done':
-        actions.push({
-          type: 'reply',
-          discussionId: thread.id,
-          body: 'Automated check: no fix found for this yet after the quiet period. Still open.',
-        });
-        break;
-      case 'skip':
-      case 'dispute':
-        break;
-    }
+    appendThreadDecisionActions(actions, thread, decision);
   }
 
   /**
@@ -1235,42 +1213,7 @@ export class RoleInstance {
    * @returns Dispute summary for display at the ask node.
    */
   protected _buildDisputeSummary(thread: Discussion, ctx: NodeContext): DisputeSummary {
-    const authorNote = [...thread.notes].reverse().find((note) => note.username === ctx.mr.author);
-
-    return {
-      finding: thread.body,
-      authorArgument: authorNote?.body ?? '(автор не ответил в треде)',
-      codeSnippet: this._readDisputeCodeSnippet(thread, ctx),
-      recommendation:
-        'Сверить довод автора с находкой и решить: закрыть тред вручную или настоять на исправлении.',
-    };
-  }
-
-  /**
-   * @purpose Read a few lines of code around a disputed thread's location, for the dispute summary.
-   * @invariant Degrades to `undefined` on a file-less thread or an unreadable worktree — never
-   *   blocks the dispute summary on a missing code snippet.
-   * @param thread The disputed discussion.
-   * @param ctx Node context — supplies `worktreePath`.
-   * @returns A short code snippet, or undefined when unavailable.
-   * @sideEffect FS: reads `thread.file` under `ctx.artifacts.worktreePath`.
-   */
-  protected _readDisputeCodeSnippet(thread: Discussion, ctx: NodeContext): string | undefined {
-    const worktreePath = ctx.artifacts['worktreePath'] as string | undefined;
-    if (!worktreePath || !thread.file || thread.line === undefined) return undefined;
-
-    try {
-      const lines = readFileSync(join(worktreePath, thread.file), 'utf-8').split('\n');
-      const start = Math.max(0, thread.line - 2);
-      const end = Math.min(lines.length, thread.line + 1);
-      return lines.slice(start, end).join('\n');
-    } catch (cause) {
-      logger.warn('[RoleInstance#_readDisputeCodeSnippet] [reading → degraded]', {
-        file: thread.file,
-        error: String(cause),
-      });
-      return undefined;
-    }
+    return buildDisputeSummary(thread, ctx);
   }
 
   /**
