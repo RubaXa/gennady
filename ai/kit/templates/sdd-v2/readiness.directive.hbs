@@ -1,16 +1,17 @@
 <SddReadiness keywords="readiness, setup, bootstrap, tooling, package-json, npm-scripts, gennady, stub, not-ready, proxy-handoff, sdd-readiness" type="directive" ver="2.0">
   <Mission>
     Bring a not-ready repo to the point where the SDD flow can run: a `package.json` exists and
-    declares the seven exact bricks `sdd-state` checks — `type-check` · `test` · `test:coverage` ·
-    `format` (read-only) · `format:fix` · `lint` (reaching `gennady`, read-only) · `lint:fix` — each
-    `*:fix` MUST itself carry a real write switch (`--write` / `--fix` / `--autofix`; a fixer that
-    never mutates is a configuration error) — gennady is installed, and `READINESS` leaves `not-ready`:
+    declares the eight exact bricks `sdd-state` checks — `type-check` · `test` · `test:coverage` ·
+    `format` (read-only) · `format:fix` · `lint` (reaching `gennady`, read-only) · `lint:fix` · the
+    public whole-project `fix`. Each real `*:fix` MUST declare an argument-forwarding prefix ending in a
+    write switch (`--write` / `--fix` / `--autofix`; a non-mutating or obvious broad-root brick is a
+    configuration error), and `fix` reaches formatter then linter — gennady is installed, and `READINESS` leaves `not-ready`:
     `ready` when every brick is a real tool, `provisional` when some are still stubs (the normal
     landing state of a from-scratch setup — see the stub template and the exit arms below).
-    `check` / `fix` are two OPTIONAL wrapper scripts this flow still seeds for the human/CI/pre-commit
-    path (`check` = `npx gennady sdd-verify --profile full`; `fix` = `format:fix` → `lint:fix`) —
-    neither gates readiness nor is ever called by a phase agent, which runs `sdd-verify --profile
-    <kind>` directly.
+    `check` is an optional read-only wrapper; phase agents pass exact Target Files to `sdd-verify`,
+    whose private repair passes that set to the same project leaves and then enforces the actual write
+    zone by a runtime workspace diff; static brick shape is only early diagnostics. Required `fix` is
+    the single public whole-project repair entrypoint.
     This is the minimal mechanical bootstrap, NOT the tooling design: a real command where a tool is
     already installed, else a visible TODO stub that points at the infra flow. Entered when
     `sdd-state` reports `READINESS=not-ready` — from the router preflight or from any skill's own preflight.
@@ -43,6 +44,8 @@
     {{> "axiom/process/ax-no-process-narration"}}
 
     {{> "axiom/process/ax-operator-output-live-text"}}
+
+    {{> "axiom/truth/ax-research-persisted"}}
   </BeliefState>
 
   <ChatProtocol>
@@ -76,32 +79,43 @@
         From the `missing` list, lay out what will be done: patch `package.json` (real command where
         the tool is already a dependency, else a TODO stub), wire `lint` to `gennady`, keep `format` /
         `lint` read-only (any formatter/linter write switch moves to `format:fix` / `lint:fix`, each of
-        which MUST carry one), seed the optional `check` / `fix` wrappers, and install the missing
-        dependencies / `gennady`. If the operator wants
-        to lock a real tool now (test runner,
-        formatter, type-checker) — a genuine NEW pick, not the stub path — run a research gate first:
-        2–3 targeted WebSearch queries (is each candidate alive and current, how AI-agent-friendly it is
-        this year — text-configurable, autofix, machine-readable diagnostics) before offering 2–3
-        options with trade-offs (`AX_DIVERGE_BEFORE_RECOMMEND`); for each option, one line on why it's
-        offered per the research (not recall) plus the source. If WebSearch is unavailable here, say so
-        plainly — `предлагаю по памяти на <дата обучения модели>, ресёрч недоступен` — a named caveat,
-        not silence. Otherwise stub it and defer the choice to the infra flow (no research needed for a
-        stub). Present the plan + Approval Check (`AX_OPERATOR_AGREEMENT` — no edits before an explicit
+        which MUST carry one), seed required whole-project `fix` and optional read-only `check`, and install the missing
+        dependencies / `gennady`. If the operator wants to lock a real tool now (test runner,
+        formatter, type-checker) — a genuine NEW pick, not the stub path — first resolve its exact
+        owning infrastructure scope from the caller's saved `sdd-state` Scopes/GATE_QUEUE snapshot.
+        No owning infra scope means no toolchain research or choice in this bootstrap flow: seed the
+        stub and defer the decision to infra. This is not an exception to persistence; it avoids
+        producing ownerless evidence.
+
+        With an exact owning infra scope, run the research gate: 2–3 targeted WebSearch/external-doc
+        queries (alive/current and AI-agent-friendly this year). Before any finding shapes the options,
+        run exact researchManifest ToolCall below
+        and fill the created document: source URL + access date in EVIDENCE, findings/trade-offs in the
+        corresponding analysis sections, and FINAL_DISPOSITION linking the exact owning Tool Stack /
+        Decision record when the operator chooses. Then offer 2–3 options with trade-offs
+        (`AX_DIVERGE_BEFORE_RECOMMEND`), each rationale linked to that artifact. There is no bootstrap
+        exception to `AX_RESEARCH_PERSISTED`, and no extra Ask: the existing plan Approval Check owns
+        the choice. If WebSearch is unavailable, say so plainly — `предлагаю по памяти на <дата
+        обучения модели>, ресёрч недоступен` — and create no fake research artifact. If no external
+        research is used, make no research call/artifact. Otherwise stub it and defer the choice to
+        infra. Present the plan + Approval Check (`AX_OPERATOR_AGREEMENT` — no edits before an explicit
         go-ahead). STOP.
+        <ToolCall owner="this-step" result="researchManifest">npx gennady sdd-new research --scope <owning-infra-scope> --slug <tool-category-slug></ToolCall> Inputs <owning-infra-scope>, <tool-category-slug>: <owning-infra-scope>=exact infrastructure scope from caller's saved sdd-state snapshot; <tool-category-slug>=restricted slug for the one researched tool category; only after external research is actually used. Use researchManifest.
       </Action>
     </Step>
     <Step id="STEP_2_APPLY">
       <Goal>Do everything the agent can — edits and installs.</Goal>
       <Action>
-        With approval: create `package.json` if absent (name + `scripts`); add the seven exact bricks —
+        With approval: create `package.json` if absent (name + `scripts`); add the eight exact bricks —
         real command where the tool exists, else the TODO stub (see Reference Data); `lint` always
         reaches `gennady`; `format` / `lint` stay read-only, while `format:fix` / `lint:fix` MUST each
         carry a real write switch (`--write` / `--fix` / `--autofix`) — a fixer that never mutates is
-        a configuration error, flagged the same as a missing script; seed the two optional wrappers
-        too (`check` = `npx gennady sdd-verify --profile full`, staying read-only itself; `fix` =
-        `format:fix` → `lint:fix`); AND run the dependency installs the project needs (`npm i -D …`,
-        gennady) — try them — the corporate proxy often blocks installs, but not always. Re-run
-        `sdd-state`. Anything that failed goes to STEP_3.
+        a configuration error, flagged the same as a missing script; seed required whole-project
+        `fix` = `format:fix` → `lint:fix` and optional read-only `check` =
+        <ToolLiteral role="ticket">npx gennady sdd-verify --profile full</ToolLiteral>; AND run the dependency installs the project needs (`npm i -D …`,
+        gennady) — try them — the corporate proxy often blocks installs, but not always. Re-run exact
+        readinessState ToolCall below. Anything that failed goes to STEP_3.
+        <ToolCall owner="this-step" result="readinessState">npx gennady sdd-state</ToolCall> Use readinessState.
       </Action>
     </Step>
     <Step id="STEP_3_REPORT_FAILURES">
@@ -118,13 +132,14 @@
       <Goal>Confirm ready, then return control.</Goal>
       <Action>
         WHEN `STEP_3_REPORT_FAILURES` ran (some command failed and the operator stepped in by hand) →
-        re-run `sdd-state` now — the operator's own actions changed state since STEP_2's snapshot, so
+        re-run exact readinessState ToolCall below now — the operator's own actions changed state since STEP_2's snapshot, so
         it is stale. WHEN `STEP_3` was skipped (STEP_2 applied cleanly, nothing failed) → reuse
         STEP_2's own closing `sdd-state` re-run directly; it is already the fresh post-apply
         snapshot, and a second call here would just re-confirm it — a wasted turn. Either way:
-        `READINESS=ready` → setup is done; return control to the caller (the router's classify/route
+        `READINESS=ready` → setup is done; return exact post-mutation alias `readinessState` to the
+        caller (the router's preflight/route
         step, or the skill's own flow). `READINESS=provisional (stubs: …)` → ALSO done for this flow,
-        and the expected landing state when the seven bricks were seeded from the stub template above:
+        and the expected landing state when the eight bricks were seeded from the stub template above:
         the skeleton exists, the real tools do not. Return control the same way, saying so in one line
         — name the stubbed scripts, and state that bootstrap/config/doc phases and `scaffold` may
         proceed while `impl`/`refactor`/`test`/`fix` phases stay mechanically refused until an infra
@@ -132,12 +147,15 @@
         design, and never report `provisional` as `ready`. Still `not-ready` → state the remaining gap
         and resume at `STEP_1` for the leftover items only — a fresh assessment, never a blind re-run
         of a command that already failed.
+        Every return from this directive carries exactly that one latest `readinessState`; the caller
+        must reuse it and must not refresh again.
+        <ToolCall owner="this-step" result="readinessState">npx gennady sdd-state</ToolCall> Use readinessState only when STEP_3 ran; otherwise reuse STEP_2 readinessState.
       </Action>
     </Step>
   </ExecutionPlan>
 
   <ReferenceData>
-    The seven exact bricks `sdd-state` checks (exact match — `type-check` also accepts the
+    The eight exact bricks `sdd-state` checks (exact match — `type-check` also accepts the
     `typecheck` spelling, every other name has exactly one):
 
     | script | purpose | stubbable until infra flow? |
@@ -149,23 +167,28 @@
     | `format:fix` | formatter write mode — MUST carry `--write` / `--fix` / `--autofix` | yes (stub still needs the literal switch — see below) |
     | `lint` | lint chain that reaches `gennady` (DbC), read-only | **no — must wire gennady** |
     | `lint:fix` | linter autofix — MUST carry `--write` / `--fix` / `--autofix` | yes (same caveat) |
+    | `fix` | public whole-project repair: `format:fix` then `lint:fix`, with broad roots supplied here | yes |
 
     `format` and `lint` — and every script either reaches via `npm run <x>` — must stay free of known
     write switches (`eslint … --fix`, `prettier … --write`, `… --autofix`); a leaked write switch
     fails that script's own read-only check (`format(read-only)` / `lint(read-only)` in `missing`),
-    even if every script name is present. `format:fix` and `lint:fix` invert the rule: each MUST
-    carry a real write switch — absent, it reports `format:fix(no --write/--fix/--autofix — a fixer
-    that never mutates)` / `lint:fix(…)` in `missing`, exactly like a missing script. `check` and
-    `fix` sit OUTSIDE the seven and never gate readiness — seed them anyway as the optional human/CI
-    wrappers: `"check": "npx gennady sdd-verify --profile full"` (must itself stay read-only —
-    `check(read-only)` in `missing` otherwise), `"fix": "npm run format:fix && npm run lint:fix"`.
+    even if every script name is present. A real `format:fix` / `lint:fix` declares an argument-forwarding
+    command prefix: its write switch is the final token and no obvious broad root/glob is baked into
+    the command. The phase appends exact Target Files; required whole-project `fix` supplies broad roots
+    explicitly while reaching both leaves in order. This static, tool-agnostic shape check cannot prove
+    that an arbitrary exact operand such as `src/a.ts` is a target rather than tool config/subcommand;
+    the phase's runtime workspace boundary closes that ambiguity by rejecting and listing actual writes
+    outside its canonical Target Files without rolling them back. A missing switch or obvious broad target reports in `missing`.
+    Bootstrap echo-stubs are the sole temporary exception because setup never executes them.
+    Optional `check` is the human/CI wrapper:
+    `"check": "npx gennady sdd-verify --profile full"` and must itself stay read-only.
 
     A minimal `package.json` that reads as **`provisional`** once gennady is installed — real `lint`,
     the rest stubbed until the infra flow locks real tools (point `lint` at the project's own source
-    dirs). `provisional` is a real, named state, not a lesser `ready`: the seven bricks are in place,
+    dirs). `provisional` is a real, named state, not a lesser `ready`: the eight bricks are in place,
     so bootstrap/config/doc phases and `scaffold` may proceed — but `sdd-task --phase` mechanically
     REFUSES every `impl`/`refactor`/`test` phase (`ERR_CLI_SDD_TASK_INFRA_NOT_READY`) and
-    `sdd-verify --profile code|test|full` returns `⛔` for a stubbed foundation, because an `echo`
+    a code/test phase call (`sdd-verify --task ... --phase ...`) and `--profile full` return `⛔` for a stubbed foundation, because an `echo`
     that exits 0 verifies nothing and a green verdict on it would be a fiction. Only replacing every
     stub with a real tool moves the project to `ready` (= execution-ready).
     The `format:fix`/`lint:fix` stubs below carry a literal `--fix`/`--write` token as a placeholder
@@ -182,7 +205,7 @@
         "lint": "gennady lint src/",
         "lint:fix": "echo 'TODO: настроить linter --fix (autofix)' >&2",
         "check": "npx gennady sdd-verify --profile full",
-        "fix": "npm run format:fix && npm run lint:fix"
+        "fix": "npm run format:fix -- . && npm run lint:fix -- src/"
       }
     }
     ```
@@ -190,7 +213,8 @@
     `lint→gennady` check. The leaf stubs print a warning to stderr but **exit 0 — by design they
     pass the SHAPE checks**; `format`/`lint`/`check` stay read-only-clean since neither their own
     body nor anything they reach carries a write switch, while `format:fix`/`lint:fix` pass the
-    mutating check on their placeholder token alone. That is what makes this package.json
+    mutating check on their placeholder token alone. A real replacement must become an
+    declared argument-forwarding prefix; broad roots stay in required `fix`. That is what makes this package.json
     `provisional` rather than `ready`: shape is satisfied, substance is not. `sdd-state` names every
     stub it found on the READINESS line, and that list IS the infra flow's worklist — the project
     reaches `ready` exactly when the list is empty.

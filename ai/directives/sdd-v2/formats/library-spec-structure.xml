@@ -101,7 +101,7 @@
   <details>
   <summary>Полные записи Decision Log</summary>
 
-  [D-NNN entries.]
+  [<ACR>-DL-N entries per DECISION_LOG_ENTRY_FORMAT.]
 
   </details>
   <!--/SECTION:DECISION_LOG-->
@@ -113,8 +113,8 @@
   <details>
   <summary>Таблица предусловий</summary>
 
-  | Requirement | Kind | Owner | Resolution |
-  |---|---|---|---|
+  | Requirement | Kind | Owner | Resolution | Readiness Gates | Gate Artifacts |
+  |---|---|---|---|---|---|
   <!-- Empty list allowed only when STEP_7 audit produced zero external assumptions — declare explicitly. -->
 
   </details>

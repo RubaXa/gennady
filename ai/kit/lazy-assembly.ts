@@ -388,7 +388,7 @@ function buildStepListEntry(step: TagBlock, directiveName: string): string {
   const stepId = requireStepId(step, directiveName);
   const relativePath = buildStepPackagePath(directiveName, stepId);
   const gist = extractStepGist(step.body);
-  return `- **${stepId}** — ${gist} Full step text: \`${relativePath}\` (Read tool — no CLI command, no version argument).`;
+  return `- **${stepId}** — ${gist} Before executing this step, READ_AND_USE_DIRECTIVE("${relativePath}").`;
 }
 
 function extractStepGist(stepBody: string): string {

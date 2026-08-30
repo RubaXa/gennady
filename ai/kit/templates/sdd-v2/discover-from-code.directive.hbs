@@ -28,6 +28,10 @@
     {{> "axiom/process/ax-artifact-style-self-check"}}
   </BeliefState>
 
+  <SessionState>
+    {{> "contract/process/session-file-format"}}
+  </SessionState>
+
   <KernelGrammar>
     {{> "definition/process/def-read-and-use-directive"}}
   </KernelGrammar>
@@ -73,13 +77,14 @@
       <Goal>Persist the picture — the primary, self-sufficient outcome.</Goal>
       <Action>
         Before writing, run the self-check pass per `AX_ARTIFACT_STYLE_SELF_CHECK`. `specs/README.md`
-        does not exist yet on this path — create its skeleton via `sdd-new portal` first (never
+        does not exist yet on this path — create its skeleton via portalManifest ToolCall below first (never
         overwrites, prints the section manifest). Assemble the
         portal (Vision + Scope Graph + Scopes table) to it via
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/portal-structure.xml")` — do NOT re-enter
         `root` (it routed here — re-entry would loop). Recover the infra scope from the configs via
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/infra.directive.xml")`. The repo now has a portal —
         a valid place to stop.
+        <ToolCall owner="this-step" result="portalManifest">npx gennady sdd-new portal</ToolCall> Use portalManifest.
       </Action>
     </Step>
     <Step id="STEP_3_DEEPEN">
@@ -99,7 +104,11 @@
       <Goal>Prove what was produced is coherent.</Goal>
       <Action>
         Whatever exists now (at minimum portal + infra; plus any deepened scopes) is coherent;
-        `sdd-check --all` clean. Return control.
+        exact integrityCheck ToolCall below clean. Return `TerminalDecision: continue` to the
+        already-loaded root greenfield/recovery owner with the produced portal/scopes as its saved
+        result; root chooses the next scope or pause from the same session. This discovery branch
+        never runs <ToolLiteral role="future">npx gennady sdd-session close</ToolLiteral> and never asks the operator to re-enter `/sdd`.
+        <ToolCall owner="this-step" result="integrityCheck">npx gennady sdd-check --all .</ToolCall> Use integrityCheck.
       </Action>
     </Step>
   </ExecutionPlan>

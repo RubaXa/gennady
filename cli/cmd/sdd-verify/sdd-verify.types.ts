@@ -1,5 +1,5 @@
-// @file: Gates, types, and verdict for sdd-verify — a fixed ladder (cheapest & most important
-//   rung first), foundation gates halt the ladder on failure, repair gates never do.
+// @file: Gates, types, and verdict for sdd-verify — repair-first phase profiles and a read-only
+//   full profile, each with a fixed order and fail-closed required gates.
 // @consumers: SddVerifyCommand
 // @tasks: N/A
 
@@ -11,73 +11,87 @@ export const ERR_CLI_SDD_VERIFY_BAD_INVOCATION = 'ERR_CLI_SDD_VERIFY_BAD_INVOCAT
 /**
  * @purpose One rung of the verification ladder — an exact project npm script, or a gennady-native
  *   check called directly.
- * @invariant `haltsOnFailure` is true only for `type-check`/`test`/`test:coverage` — everything
- *   after a broken foundation is moot. `mutates` is true only for `format:fix`/`lint:fix`.
+ * @invariant Repair and foundation gates halt on failure; only `fix` mutates.
  */
 export type Gate = {
   /** @purpose Exact npm script name (`via: 'npm'`) or gennady subcommand name (`via: 'gennady'`). */
   name: string;
-  /** @purpose True only for a mutating repair rung (`format:fix`, `lint:fix`) — it may rewrite files. */
+  /** @purpose True only for the exact-target phase repair rung (`fix`). */
   mutates: boolean;
-  /** @purpose True only for the foundation rungs — its failure stops the ladder; nothing later runs. */
+  /** @purpose Whether failure stops the ladder; true for repair and foundation rungs. */
   haltsOnFailure: boolean;
-  /** @purpose `'npm'` runs `npm run <name>` (default); `'gennady'` runs `npx gennady <name>` directly. */
-  via?: 'npm' | 'gennady';
+  /** @purpose Dispatch: project npm script, gennady-native command, or exact-target phase repair. */
+  via?: 'npm' | 'gennady' | 'target-repair';
 };
 
 /**
- * @purpose The canonical ladder, cheapest-and-most-important-first. Profiles subset this list,
- *   preserving order.
- * @invariant Order: type-check → test/test:coverage (foundation, halts) → format:fix → lint:fix
- *   (repair, mutates, never halts) → lint → format (read-only quality) → yagni (full only).
+ * @purpose Canonical gate registry. Profiles select a fixed repair-first or read-only sequence.
+ * @invariant Phase order is `fix` then foundation; full is read-only foundation then quality.
  */
 export const GATES: readonly Gate[] = [
+  { name: 'fix', mutates: true, haltsOnFailure: true, via: 'target-repair' },
   { name: 'type-check', mutates: false, haltsOnFailure: true },
   { name: 'test', mutates: false, haltsOnFailure: true },
   { name: 'test:coverage', mutates: false, haltsOnFailure: true },
-  { name: 'format:fix', mutates: true, haltsOnFailure: false },
-  { name: 'lint:fix', mutates: true, haltsOnFailure: false },
   { name: 'lint', mutates: false, haltsOnFailure: false },
   { name: 'format', mutates: false, haltsOnFailure: false },
   { name: 'yagni', mutates: false, haltsOnFailure: false, via: 'gennady' },
 ];
 
-/** @purpose Gate profile by phase kind — fixed sets chosen by an explicit flag (not detection); `full` is the safe default. */
+/** @purpose Gate profile — phase sets derive from ticket kind; only global `full` is selected explicitly. */
 export type Profile = 'setup' | 'code' | 'test' | 'full';
 
 /**
  * @purpose Gates a profile REFUSES to skip: an absent/vacuous script here → red verdict, never a
  *   green pass that dropped a quality gate.
- * @invariant `setup` requires nothing (pre-infrastructure). A code-verifying profile requires its
- *   whole non-repair ladder; mutating `format:fix`/`lint:fix` stay optional.
+ * @invariant `setup` requires nothing because it may create the scripts. Code/test require the
+ *   canonical repair plus their foundation; full requires every read-only verdict gate.
  */
-export const REQUIRED_PROFILE_GATES: Record<Profile, readonly string[]> = {
+const REQUIRED_PROFILE_GATES: Record<Profile, readonly string[]> = {
   setup: [],
-  code: ['type-check', 'test', 'lint', 'format'],
-  test: ['type-check', 'test:coverage'],
+  code: ['fix', 'type-check', 'test'],
+  test: ['fix', 'type-check', 'test:coverage'],
   full: ['type-check', 'test:coverage', 'lint', 'format', 'yagni'],
 };
 
 // Gate names per profile, in ladder order:
-// - setup/code: the full repair ladder, tests included — fresh code may have broken existing ones.
-// - test: coverage is measured, its threshold is NOT checked here — that is audit's job; only one
-//   repair rung (format:fix) runs, no lint/lint:fix (no production code changed in a test-only phase).
+// - setup/code: one exact-target repair, then types and the flat test suite exactly once.
+// - test: the same phase repair (including test files), then types and coverage exactly once.
 // - full: read-only, no repair rungs — a final verdict must never mutate what it is judging.
 const PROFILE_GATES: Record<Profile, readonly string[]> = {
-  setup: ['type-check', 'test', 'format:fix', 'lint:fix', 'lint', 'format'],
-  code: ['type-check', 'test', 'format:fix', 'lint:fix', 'lint', 'format'],
-  test: ['type-check', 'test:coverage', 'format:fix', 'format'],
+  setup: ['fix', 'type-check', 'test'],
+  code: ['fix', 'type-check', 'test'],
+  test: ['fix', 'type-check', 'test:coverage'],
   full: ['type-check', 'test:coverage', 'lint', 'format', 'yagni'],
 };
 
 /**
  * @purpose The gates for a profile, in canonical GATES order.
  * @param profile Selected profile.
+ * @param [producesCoverage] Whether a test phase owns the producer; ignored by other profiles.
  * @returns Filtered, ordered gate list.
  */
-export function gatesFor(profile: Profile): readonly Gate[] {
-  const names = PROFILE_GATES[profile];
+export function gatesFor(profile: Profile, producesCoverage = profile === 'test'): readonly Gate[] {
+  const names =
+    profile === 'test' && !producesCoverage
+      ? ['fix', 'type-check', 'test']
+      : PROFILE_GATES[profile];
   return GATES.filter((g) => names.includes(g.name));
+}
+
+/**
+ * @purpose Required names for the exact selected ladder; setup alone may skip bootstrap gaps.
+ * @param profile Selected profile.
+ * @param [producesCoverage] Whether a test phase owns the producer; ignored by other profiles.
+ * @returns Required gate names in ladder order.
+ */
+export function requiredGatesFor(
+  profile: Profile,
+  producesCoverage = profile === 'test'
+): readonly string[] {
+  if (profile === 'setup') return [];
+  if (profile === 'test' && !producesCoverage) return ['fix', 'type-check', 'test'];
+  return REQUIRED_PROFILE_GATES[profile];
 }
 
 /**
@@ -98,29 +112,33 @@ export function isProfile(v: string): v is Profile {
 function badInvocationMessage(detail: string): string {
   return [
     `[sdd-verify] ${ERR_CLI_SDD_VERIFY_BAD_INVOCATION}: ${detail}`,
-    '  sdd-verify always runs its fixed gate profile over the WHOLE project — it takes no path',
-    '  arguments, and no flag besides --profile. A path here does not narrow the run; it is rejected,',
-    '  never silently ignored.',
-    '  To check only your own files, run: npx gennady lint --spec=<module-spec> <paths>',
-    '  usage: npx gennady sdd-verify [--profile <setup|code|test|full>]',
+    '  Phase verification reads kind, Target Files, and owning spec from the ticket.',
+    '  usage: npx gennady sdd-verify --task <ticket-path> --phase <PhaseID>',
+    '         npx gennady sdd-verify --profile full',
   ].join('\n');
 }
 
-/** @purpose Outcome of parsing sdd-verify's CLI invocation. */
-export type InvocationResult = { ok: true; profile: Profile } | { ok: false; message: string };
+/** @purpose Strict CLI shape: a phase context, or the global read-only full gate. */
+export type InvocationResult =
+  | { ok: true; mode: 'full'; profile: 'full' }
+  | { ok: true; mode: 'phase'; task: string; phase: string }
+  | { ok: false; message: string };
 
 /**
- * @purpose Parse sdd-verify's CLI invocation strictly: only `--profile <code|test|full>` is
- *   accepted, no positional argument. An extra path or bad flag is a hard, teaching error.
+ * @purpose Parse sdd-verify strictly: phase context, or the explicit global full profile.
  * @param argv Full `process.argv` — the shape `parseArgs` expects.
- * @returns The resolved profile, or a ready-to-print bad-invocation message (exit code 4).
+ * @returns Structural phase identity, global full, or a ready-to-print bad-invocation message (exit code 4).
  */
 export function parseInvocation(argv: string[]): InvocationResult {
   let parsed: Record<string, unknown> & { _: string[] };
   try {
     parsed = parseArgs(
       argv,
-      { profile: { aliases: ['profile'], takesValue: true } },
+      {
+        profile: { aliases: ['profile'], takesValue: true },
+        task: { aliases: ['task'], takesValue: true },
+        phase: { aliases: ['phase'], takesValue: true },
+      },
       { strict: true }
     );
   } catch (cause) {
@@ -138,16 +156,55 @@ export function parseInvocation(argv: string[]): InvocationResult {
     };
   }
 
-  const rawProfile = typeof parsed.profile === 'string' ? parsed.profile : 'full';
-  if (!isProfile(rawProfile)) {
+  const scalar = (
+    key: 'profile' | 'task' | 'phase'
+  ): { ok: true; value?: string } | { ok: false; message: string } => {
+    const raw = parsed[key];
+    if (raw === undefined) return { ok: true };
+    if (typeof raw !== 'string' || raw.trim().length === 0) {
+      return {
+        ok: false,
+        message: badInvocationMessage(`--${key} requires exactly one non-empty value`),
+      };
+    }
+    return { ok: true, value: raw };
+  };
+  const profileValue = scalar('profile');
+  if (!profileValue.ok) return profileValue;
+  const taskValue = scalar('task');
+  if (!taskValue.ok) return taskValue;
+  const phaseValue = scalar('phase');
+  if (!phaseValue.ok) return phaseValue;
+  const rawProfile = profileValue.value;
+  const task = taskValue.value;
+  const phase = phaseValue.value;
+  if (rawProfile !== undefined && rawProfile !== 'full') {
     return {
       ok: false,
       message: badInvocationMessage(
-        `unknown --profile '${rawProfile}' (expected: setup | code | test | full)`
+        `only '--profile full' is public; phase profiles are derived from --task/--phase (got '${rawProfile}')`
       ),
     };
   }
-  return { ok: true, profile: rawProfile };
+  if (rawProfile === 'full') {
+    if (task || phase) {
+      return {
+        ok: false,
+        message: badInvocationMessage("'--profile full' cannot be combined with --task/--phase"),
+      };
+    }
+    return { ok: true, mode: 'full', profile: 'full' };
+  }
+  if (!task && !phase) return { ok: true, mode: 'full', profile: 'full' };
+  if (!task || !phase) {
+    return {
+      ok: false,
+      message: badInvocationMessage(
+        'phase verification requires both --task <ticket-path> and --phase <PhaseID>'
+      ),
+    };
+  }
+  return { ok: true, mode: 'phase', task, phase };
 }
 
 /** @purpose Outcome of running one command — exit code + combined output. */
@@ -158,8 +215,11 @@ export type GateRunResult = {
   output: string;
 };
 
-/** @purpose Runs one gate command and returns its result — injectable for tests. */
-export type GateRunner = (command: string, args: string[]) => GateRunResult;
+/** @purpose Runs one gate command and returns its result — sync fakes and async production runners are both injectable. */
+export type GateRunner = (
+  command: string,
+  args: string[]
+) => GateRunResult | Promise<GateRunResult>;
 
 /** @purpose Rung outcome: ran and passed, ran and failed, honestly skipped (optional script absent), or `missing` — a REQUIRED script that is absent or stubbed. */
 export type GateStatus = 'pass' | 'fail' | 'skipped' | 'missing';
@@ -178,7 +238,7 @@ export type GateResult = {
   durationMs: number;
   /** @purpose The command actually run — surfaced on failure so nothing has to be guessed. */
   ranCommand: string;
-  /** @purpose Carried from `Gate.mutates` — a failed mutating rung is a finding, not a halt. */
+  /** @purpose Carried from `Gate.mutates`; the phase repair rung is mutating. */
   mutates: boolean;
 };
 
@@ -261,7 +321,7 @@ function lineFor(r: GateResult): string {
 /**
  * @purpose Render one failed rung's full block — marker, exit code, ran command, capped output.
  * @param r The failed rung's result.
- * @returns A multi-line block; mutating failures are noted as non-halting findings.
+ * @returns A multi-line failure block.
  */
 function failBlock(r: GateResult): string {
   // A missing REQUIRED rung never ran — there is no exit code or output dump, only the reason.
@@ -269,7 +329,7 @@ function failBlock(r: GateResult): string {
     return `  ⛔ ${r.name} — ${r.output}`;
   }
   const marker = r.mutates ? '🔧' : '❌';
-  const haltNote = r.mutates ? ' — находка, не останавливает лестницу' : '';
+  const haltNote = r.mutates ? ' — repair не завершён' : '';
   return [
     `  ${marker} ${r.name} — exit ${r.exitCode} (ran: ${r.ranCommand})${haltNote}`,
     '  --- output ---',
@@ -279,21 +339,22 @@ function failBlock(r: GateResult): string {
 }
 
 /**
- * @purpose Human reason the ladder stops at a given foundation rung — named once, reused by every caller.
- * @param name The foundation gate's name (`type-check`, `test`, or `test:coverage`).
+ * @purpose Human reason the ladder stops at a repair or foundation rung.
+ * @param name The stopping gate's name (`fix`, `type-check`, `test`, or `test:coverage`).
  * @returns A short Russian reason clause, no trailing punctuation.
  */
 function haltReason(name: string): string {
-  return name === 'type-check'
-    ? 'код не собирается — дальше нечего проверять и чинить'
-    : 'тесты не проходят — код сломал проект, полировать нечего';
+  return name === 'fix'
+    ? 'после repair нет доказанно чистого post-state — foundation запускать рано'
+    : name === 'type-check'
+      ? 'код не собирается — дальше нечего проверять и чинить'
+      : 'тесты не проходят — код сломал проект, полировать нечего';
 }
 
 /**
  * @purpose Reduce ladder results to a verdict — brief on success, detailed only for failed rungs,
  *   honest about where/why the ladder stopped early.
- * @invariant A skipped rung is neither pass nor fail. A failed mutating rung never implies a halt
- *   — only `haltedAt` does.
+ * @invariant A skipped rung is neither pass nor fail; only `haltedAt` adds a stop reason.
  * @param results Gate results, in the order they actually ran (a halted ladder is simply shorter).
  * @param [haltedAt] Name of the foundation gate that stopped the ladder, if any.
  * @param [profile] The profile that ran — `setup` adds a note that its green verdict is bootstrap-level only.

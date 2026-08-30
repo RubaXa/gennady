@@ -4,7 +4,15 @@
 
 import { describe, it, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -59,6 +67,41 @@ describe('SddSessionCommand', () => {
     assert.match(body, /^glossary:$/m);
     assert.match(body, /^journal:$/m);
     assert.match(body, /open: —/);
+    assert.ok(existsSync(join(dir, '.claude', 'tmp')));
+  });
+
+  it('open fails closed when .claude is a symlink instead of creating a payload boundary through it', async () => {
+    const target = join(dir, 'elsewhere');
+    mkdirSync(target);
+    symlinkSync(target, join(dir, '.claude'));
+    const outcome = await mod.run(argv('open', '--intent', 'scope'), CLOCK);
+    assert.strictEqual(outcome.ok, false);
+    if (!outcome.ok) assert.strictEqual(outcome.exitCode, 1);
+    assert.strictEqual(existsSync(sessionPath()), false);
+    assert.strictEqual(existsSync(join(target, 'tmp')), false);
+  });
+
+  it('open rejects a symlinked specs directory and leaves the external victim untouched', async () => {
+    const victim = mkdtempSync(join(tmpdir(), 'sdd-session-victim-'));
+    try {
+      writeFileSync(join(victim, '.sdd-session.md'), 'victim\n', 'utf-8');
+      symlinkSync(victim, join(dir, 'specs'));
+      const outcome = await mod.run(argv('open', '--intent', 'scope'), CLOCK);
+      assert.strictEqual(outcome.ok, false);
+      assert.strictEqual(readFileSync(join(victim, '.sdd-session.md'), 'utf-8'), 'victim\n');
+    } finally {
+      rmSync(victim, { recursive: true, force: true });
+    }
+  });
+
+  it('open rejects a symlinked session file and never follows it outside the repository', async () => {
+    const victim = join(dir, 'victim.md');
+    mkdirSync(join(dir, 'specs'));
+    writeFileSync(victim, 'victim\n', 'utf-8');
+    symlinkSync(victim, sessionPath());
+    const outcome = await mod.run(argv('open', '--intent', 'scope'), CLOCK);
+    assert.strictEqual(outcome.ok, false);
+    assert.strictEqual(readFileSync(victim, 'utf-8'), 'victim\n');
   });
 
   it('open carries a next: hint pointing at workset/log/term', async () => {
@@ -138,6 +181,20 @@ describe('SddSessionCommand', () => {
       assert.match(readFileSync(sessionPath(), 'utf-8'), /^intent: project-setup$/m);
     });
 
+    it('set and close reject a session retargeted to an external symlink without touching the victim', async () => {
+      const victim = join(dir, 'session-victim.md');
+      writeFileSync(victim, 'victim\n', 'utf-8');
+      rmSync(sessionPath());
+      symlinkSync(victim, sessionPath());
+
+      const set = await mod.run(argv('set', 'intent', 'mutate-victim'), CLOCK);
+      const close = await mod.run(argv('close'), CLOCK);
+      assert.strictEqual(set.ok, false);
+      assert.strictEqual(close.ok, false);
+      assert.strictEqual(readFileSync(victim, 'utf-8'), 'victim\n');
+      assert.strictEqual(existsSync(sessionPath()), true);
+    });
+
     it('set scale replaces the field', async () => {
       await mod.run(argv('set', 'scale', 'library'), CLOCK);
       assert.match(readFileSync(sessionPath(), 'utf-8'), /^scale: library$/m);
@@ -190,6 +247,72 @@ describe('SddSessionCommand', () => {
       const o = await mod.run(argv('log'), CLOCK);
       assert.strictEqual(o.ok, false);
       if (!o.ok) assert.strictEqual(o.exitCode, 4);
+    });
+
+    it('file-backed log preserves shell syntax/newline literally, executes nothing, and consumes exact file', async () => {
+      mkdirSync(join(dir, '.claude', 'tmp'), { recursive: true });
+      const payloadPath = join(dir, '.claude', 'tmp', 'journal.txt');
+      const pwnedPath = join(dir, '.claude', 'tmp', 'PWNED');
+      const payload = 'quote "x" $(touch .claude/tmp/PWNED) `touch .claude/tmp/PWNED`\nsecond';
+      writeFileSync(payloadPath, payload, 'utf-8');
+      const outcome = await mod.run(
+        argv('log', '--content-file', '.claude/tmp/journal.txt'),
+        CLOCK
+      );
+      assert.strictEqual(outcome.ok, true);
+      assert.ok(readFileSync(sessionPath(), 'utf-8').includes(payload));
+      assert.strictEqual(existsSync(pwnedPath), false);
+      assert.strictEqual(existsSync(payloadPath), false);
+    });
+
+    it('file-backed set/workset/term use the same one-shot contract', async () => {
+      mkdirSync(join(dir, '.claude', 'tmp'), { recursive: true });
+      const cases = [
+        ['set', 'open', 'operator says "continue"', 'open: operator says "continue"'],
+        ['workset', '', 'specs/a b.md — open', 'specs/a b.md — open'],
+        ['term', '', 'скоуп — scope with `$()` literal', 'скоуп — scope with `$()` literal'],
+      ] as const;
+      for (const [mode, field, payload, expected] of cases) {
+        const rel = `.claude/tmp/${mode}.txt`;
+        writeFileSync(join(dir, rel), payload, 'utf-8');
+        const outcome = await mod.run(
+          argv(mode, ...(field ? [field] : []), '--content-file', rel),
+          CLOCK
+        );
+        assert.strictEqual(outcome.ok, true);
+        assert.ok(readFileSync(sessionPath(), 'utf-8').includes(expected));
+        assert.strictEqual(existsSync(join(dir, rel)), false);
+      }
+    });
+
+    it('rejects outside/symlink/oversize payloads and unknown/repeated flags without session mutation', async () => {
+      mkdirSync(join(dir, '.claude', 'tmp'), { recursive: true });
+      const before = readFileSync(sessionPath(), 'utf-8');
+      writeFileSync(join(dir, 'outside.txt'), 'outside', 'utf-8');
+      writeFileSync(join(dir, '.claude', 'tmp', 'target.txt'), 'target', 'utf-8');
+      symlinkSync('target.txt', join(dir, '.claude', 'tmp', 'link.txt'));
+      writeFileSync(join(dir, '.claude', 'tmp', 'large.txt'), 'x'.repeat(32 * 1024 + 1));
+      writeFileSync(join(dir, '.claude', 'tmp', 'valid.txt'), 'valid', 'utf-8');
+
+      const outcomes = [
+        await mod.run(argv('log', '--content-file', 'outside.txt'), CLOCK),
+        await mod.run(argv('log', '--content-file', '.claude/tmp/link.txt'), CLOCK),
+        await mod.run(argv('log', '--content-file', '.claude/tmp/large.txt'), CLOCK),
+        await mod.run(argv('log', '--bogus', 'x'), CLOCK),
+        await mod.run(
+          argv(
+            'log',
+            '--content-file',
+            '.claude/tmp/valid.txt',
+            '--content-file',
+            '.claude/tmp/valid.txt'
+          ),
+          CLOCK
+        ),
+      ];
+      assert.ok(outcomes.every((outcome) => !outcome.ok));
+      assert.strictEqual(readFileSync(sessionPath(), 'utf-8'), before);
+      assert.ok(existsSync(join(dir, '.claude', 'tmp', 'valid.txt')));
     });
 
     it('term appends a glossary entry between working set: and journal:', async () => {

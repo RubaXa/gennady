@@ -25,25 +25,50 @@ test('root tag is the directive element', () => {
 
 test('top-level sections appear in document order', () => {
   const labels = (tree.children ?? []).map((c) => c.label);
-  assert.deepEqual(labels, [
+  const requiredOrder = [
     '<Mission>',
     '<BeliefState>',
+    '<SessionState>',
     '<HaltConditions>',
     '<ContextExpectation>',
     '<ExecutionPlan>',
     '<HardForbidden>',
     '<ChatProtocol>',
     '<ChatOutput>',
-  ]);
+  ];
+  const positions = requiredOrder.map((label) => labels.indexOf(label));
+  assert.ok(
+    positions.every((position) => position >= 0),
+    'every execute section is present'
+  );
+  assert.deepEqual(
+    [...positions].sort((a, b) => a - b),
+    positions,
+    'required sections preserve their source order even when a new section is added'
+  );
 });
 
-test('BeliefState carries 19 axioms with id + summary', () => {
+test('BeliefState carries the execute-owned axioms with ids and readable bodies', () => {
   const bs = section('<BeliefState>');
-  assert.equal(bs?.children?.length, 19);
-  const tool = bs?.children?.find((a) => a.label === 'AX_TOOL_INVOCATION');
-  assert.ok(tool, 'AX_TOOL_INVOCATION present');
-  assert.ok((tool?.note?.length ?? 0) > 0, 'axiom has a short summary');
-  assert.ok((tool?.detail?.length ?? 0) > (tool?.note?.length ?? 0), 'axiom keeps full body');
+  const axioms = (bs?.children ?? []).filter((child) => child.kind === 'axiom');
+  const ids = axioms.map((axiom) => axiom.label);
+  assert.equal(new Set(ids).size, ids.length, 'axiom ids stay unique');
+  for (const id of [
+    'AX_OWNER',
+    'AX_EXECUTION_ORDER',
+    'AX_WORKER_SESSION_REUSE',
+    'AX_VERIFY_AND_FINALIZE',
+    'AX_ENV_FIX_CHANNEL',
+  ]) {
+    assert.ok(ids.includes(id), `${id} remains owned by execute after delta assembly`);
+  }
+  for (const axiom of axioms) {
+    assert.ok((axiom.note?.length ?? 0) > 0, `${axiom.label} has a short summary`);
+    assert.ok(
+      (axiom.detail?.length ?? 0) >= (axiom.note?.length ?? 0),
+      `${axiom.label} keeps at least the summarized body`
+    );
+  }
 });
 
 test('HaltConditions carries the 6 halts', () => {
@@ -106,16 +131,48 @@ test('the structured <LogicSwitch> is parsed into a switch node', () => {
   assert.match(routerSwitch?.note ?? '', /sdd-state|intent/);
 });
 
-test('LogicSwitch yields one branch per WHEN/DEFAULT (9 total, incl. DEFAULT)', () => {
+test('LogicSwitch keeps accepted module decomposition before its refusal halt', () => {
   const branches = routerSwitch?.children ?? [];
-  assert.equal(branches.length, 9);
   assert.equal(branches.at(-1)?.label, 'DEFAULT');
+
+  const acceptedIndex = branches.findIndex((branch) =>
+    branch.children?.some(
+      (child) => child.kind === 'run' && child.ref === 'ai/directives/sdd-v2/module.directive.xml'
+    )
+  );
+  const refusalIndex = branches.findIndex(
+    (branch) => branch.label === 'intent = module-decomposition AND neither exact state above holds'
+  );
+
+  assert.ok(acceptedIndex >= 0, 'accepted module-decomposition branch is present');
+  assert.equal(refusalIndex, acceptedIndex + 1, 'refusal follows the accepted exact-state branch');
+
+  const acceptedRun = branches[acceptedIndex]?.children?.find((child) => child.kind === 'run');
+  assert.equal(acceptedRun?.ref, 'ai/directives/sdd-v2/module.directive.xml');
+
+  const refusal = branches[refusalIndex];
+  assert.match(refusal?.detail ?? '', /halt `H_SCOPE_DRAFT_NOT_OPERATOR_APPROVED`/);
+  assert.equal(
+    refusal?.children?.some((child) => child.kind === 'run'),
+    false,
+    'refusal halts without READ_AND_USE descent'
+  );
 });
 
-test('each routing branch descends via a run node to its directive', () => {
-  const first = routerSwitch?.children?.[0];
-  const run = first?.children?.find((c) => c.kind === 'run');
-  assert.equal(run?.ref, 'ai/directives/sdd-v2/root.directive.xml');
+test('forced owner routes and inferred project setup descend to their semantic owners', () => {
+  const branches = routerSwitch?.children ?? [];
+  const assertRoute = (label: string, ref: string) => {
+    const branch = branches.find((candidate) => candidate.label.includes(label));
+    assert.ok(branch, `${label} route is present`);
+    const run = branch.children?.find((child) => child.kind === 'run');
+    assert.equal(run?.ref, ref, `${label} routes to its owner`);
+  };
+
+  assertRoute('forced intent = scaffold', 'ai/directives/sdd-v2/scaffold.directive.xml');
+  assertRoute('forced intent = reconcile', 'ai/directives/sdd-v2/reconcile.directive.xml');
+  assertRoute('forced intent = critic', 'ai/directives/sdd-v2/critic.directive.xml');
+  assertRoute('forced intent = execute', 'ai/directives/sdd-v2/execute.directive.xml');
+  assertRoute('intent = project-setup', 'ai/directives/sdd-v2/root.directive.xml');
 });
 
 test('STEP_6_BRANCH LogicSwitch yields 5 branches — mechanical-fix path precedes the operator risk-ask', () => {
@@ -139,7 +196,7 @@ test('STEP_6_BRANCH LogicSwitch yields 5 branches — mechanical-fix path preced
 
 test('a preflight step embeds a structured <LogicSwitch> (WHEN gates), not prose', () => {
   const ep = router.children?.find((c) => c.label === '<ExecutionPlan>');
-  const step0 = ep?.children?.[0];
+  const preflight = ep?.children?.find((c) => c.attrs?.id === 'STEP_1B_PREFLIGHT');
   const findSwitch = (n: TraceNode): TraceNode | null => {
     if (n.kind === 'switch') return n;
     for (const c of n.children ?? []) {
@@ -148,8 +205,8 @@ test('a preflight step embeds a structured <LogicSwitch> (WHEN gates), not prose
     }
     return null;
   };
-  const sw = findSwitch(step0 as TraceNode);
-  assert.ok(sw, 'STEP_0 carries a structured switch');
+  const sw = findSwitch(preflight as TraceNode);
+  assert.ok(sw, 'STEP_1B_PREFLIGHT carries a structured switch after the session barrier');
   // 10 cases: migration (broad blast radius), the queue-exception (queued TODO tickets already
   // build the missing gate), readiness (broad blast radius), the three `provisional` branches (the
   // GATE_QUEUE ticket itself is exempt — it builds the gates; other tickets' code phases stop;

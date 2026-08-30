@@ -10,6 +10,8 @@ export const ERR_CLI_SDD_SESSION_FILE = 'ERR_CLI_SDD_SESSION_FILE' as const;
 export const ERR_CLI_SDD_SESSION_NO_SESSION = 'ERR_CLI_SDD_SESSION_NO_SESSION' as const;
 /** @purpose Content carries an unreplaced `<…>` placeholder — a fabricated / incomplete value. */
 export const ERR_CLI_SDD_SESSION_PLACEHOLDER = 'ERR_CLI_SDD_SESSION_PLACEHOLDER' as const;
+/** @purpose A one-shot `.claude/tmp/` payload failed path, size, UTF-8, or content validation. */
+export const ERR_CLI_SDD_SESSION_PAYLOAD_FILE = 'ERR_CLI_SDD_SESSION_PAYLOAD_FILE' as const;
 
 /**
  * @purpose Result of one sdd-session run.
@@ -196,6 +198,7 @@ export function badInvocation(detail: string): SessionOutcome {
       '  expected: gennady sdd-session open --intent <intent> [--scale <scale>]',
       '        | gennady sdd-session set <intent|scale|open> "<value>"',
       '        | gennady sdd-session log "<line>" | workset "<line>" | term "<term> — <phrasing>" | close',
+      '  agent free text: use --content-file .claude/tmp/<safe-name> instead of quoted content.',
     ].join('\n'),
   };
 }
@@ -231,6 +234,25 @@ export function noSession(sessionPath: string): SessionOutcome {
     message: [
       `[sdd-session] ${ERR_CLI_SDD_SESSION_NO_SESSION}: ${sessionPath}`,
       '  No open session — run `gennady sdd-session open --intent <intent>` first.',
+    ].join('\n'),
+  };
+}
+
+/**
+ * @purpose Build a teaching diagnostic for an unsafe file-backed session payload.
+ * @param detail Exact failed safety condition.
+ * @returns Outcome with exit 2; the session file remains untouched.
+ */
+export function payloadFileError(detail: string): SessionOutcome {
+  return {
+    ok: false,
+    code: ERR_CLI_SDD_SESSION_PAYLOAD_FILE,
+    exitCode: 2,
+    message: [
+      `[sdd-session] ${ERR_CLI_SDD_SESSION_PAYLOAD_FILE}: ${detail}`,
+      '  Write literal content with the file-write tool to a regular `.claude/tmp/<name>` file,',
+      '  then pass its exact repo-relative path via --content-file.',
+      '  The rejected file was not consumed; correct or remove that exact scratch file.',
     ].join('\n'),
   };
 }

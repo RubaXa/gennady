@@ -2,7 +2,7 @@
 <Contract id="FINDING_FORMAT">
       ```markdown
       ### <🔴|🟠|🟡|🔵> F-NNN — <short title>
-      - **Type:** CLOSED_WORLD_DRIFT | COMPLETENESS_GAP | RUNTIME_BACKING_VIOLATION | RULES_COMPLIANCE_VIOLATION | RULES_CASCADE_MISMATCH | TASK_ID_DRIFT | BDD_COVERAGE_MISMATCH | EXECUTION_LOG_INCOMPLETE | STALE_AFTER_PIVOT | INSIGHT_BACKFLOW
+      - **Type:** CLOSED_WORLD_DRIFT | COMPLETENESS_GAP | RUNTIME_BACKING_VIOLATION | RULES_COMPLIANCE_VIOLATION | RULES_CASCADE_MISMATCH | TASK_ID_DRIFT | BDD_COVERAGE_MISMATCH | EXECUTION_LOG_INCOMPLETE | STALE_AFTER_PIVOT | INSIGHT_BACKFLOW | RULE_FILE_INCOMPLETE | LANGUAGE_QUALITY | YAGNI_WAIVER_INCOMPLETE | ENVIRONMENT_GATE_UNAVAILABLE | DEAD_CODE_SUSPECT
       - **Severity:** 🔴 BLOCKER | 🟠 MAJOR | 🟡 MINOR | 🔵 INFO
       - **Confidence:** HIGH | MEDIUM | LOW
       - **Status:** 📂 open | ⚠️ operator-acknowledged | ✅ resolved
@@ -10,7 +10,7 @@
       - 💬 **Detail:** <factual description, no value words>
       - 🔗 **Source-of-truth:** link to spec section / ticket section / rule axiom
       - 📝 **Proposed Remediation:**
-        - Type: `code-fix` | `spec-update` | `ticket-update`
+        - Route: `spec-edit` | `ticket-reopen` | `ticket-update` | `decision-log` | `code-fix` | `operator-escalation` | `new-task`
         - Action: <concrete proposal, with diff if possible>
         - Routing: <per AX_FINDING_ROUTING — where this change goes>
       ```

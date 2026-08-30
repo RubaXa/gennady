@@ -1,6 +1,6 @@
 ---
 name: sdd-critic
-description: Autonomous multi-round critique of an SDD artifact — scope spec, task ticket, or batch. Dispatches an isolated reviewer subagent, weighs its findings against full project context, surgically edits the artifact, re-runs until clean (cap 5 rounds). Use for "покритикуй", "проверь спеку", "проверь таск", "найди слепые пятна", "проревьюй", "шлифуй", "/sdd-critic".
+description: Autonomous multi-round critique of an SDD artifact or bounded spec bundle. Dispatches an isolated reviewer, weighs findings against full project context, surgically edits, and re-runs for up to five automatic rounds; CLEAN ends earlier, and continuing after the fifth result requires explicit operator authorization. Use for "покритикуй", "проверь спеку", "проверь таск", "найди слепые пятна", "проревьюй", "шлифуй", "/sdd-critic".
 compatibility: opencode
 ---
 
@@ -12,24 +12,25 @@ compatibility: opencode
     directive, you do not parse it.
   </Priming>
 
-  <Mission>Run an autonomous critique loop on an SDD artifact: per round dispatch one isolated critic-sensor, weigh its findings against full project context, reconcile every introduced entity against the existing surface (reuse > extend > justify > escalate), surgically edit, re-dispatch if edited (cap 5). I own the artifact and apply edits; the sensor only reports.</Mission>
+  <Mission>Enter the single SDD router with forced intent `critic`. The router owns session conflict/open policy and loads the canonical critic; this skill only gathers one state snapshot and preserves the bounded target.</Mission>
 
   <ExecutionPlan>
     <Step id="GATHER">
-      One parallel batch (do NOT serialize): run `npx gennady sdd-state`
-      AND read in full `ai/directives/sdd-v2/critic.directive.xml`.
+      One parallel batch (do NOT serialize): execute the exact routerState ToolCall below AND read in
+      full `ai/directives/sdd-v2/router.directive.xml`. The exact `routerState` bytes are
+      the router snapshot; this is the only initial state call, and the router never executes it itself.
+      <ToolCall owner="entry-skill" result="routerState">npx gennady sdd-state</ToolCall> Use routerState as the literal stdout snapshot.
     </Step>
     <Step id="PREFLIGHT">
-      State is already gathered (GATHER, above). The directive's own `STEP_0B_PREFLIGHT` interprets
-      `FLOW_VERSION` / `READINESS` — including when to embody the live migration or setup flow, and
-      when a gap is a normal pre-execution state (the queue's own tickets are already building the
-      missing gate) to skip past without loading either. Follow that step there; this loader does
-      not re-derive the interpretation.
+      Pass exact result alias `routerState` to router `STEP_0_STATE` with literal `forced intent: critic`;
+      do not call `sdd-state` again and do not open, relabel, ignore, or close a session here. The
+      router resolves a live-session conflict without a redundant SCALE question, then loads critic, whose own
+      `STEP_0B_PREFLIGHT` interprets readiness.
     </Step>
     <Step id="EMBODY">
-      You ARE the critic orchestrator now. Target — a spec / task / batch from the operator message.
-      The sensor reads only the artifact + parent spec (isolation); you reconcile entities via `orient`.
-      Follow the ExecutionPlan; on CLEAN, delete the temporary `## Critic Rounds` scratch.
+      You ARE the router now. Preserve forced intent `critic` and the spec / task / batch target from
+      the operator message; follow its `LOGIC_SWITCH`. The critic owner it loads owns target-set,
+      continuation, cap, evidence, and readiness; never reconstruct them in this loader.
     </Step>
   </ExecutionPlan>
 </SddSkill>

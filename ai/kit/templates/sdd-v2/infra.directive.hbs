@@ -64,6 +64,10 @@
     {{> "axiom/process/ax-close-with-integrity-check"}}
   </BeliefState>
 
+  <SessionState>
+    {{> "contract/process/session-file-format"}}
+  </SessionState>
+
   <HaltConditions>
     | 🛑 ID | Trigger |
     |---|---|
@@ -110,7 +114,7 @@
     <Step id="STEP_1B_SYSTEM_FIT">
       <Goal>Reconcile with the existing system before tool categories are declared.</Goal>
       <Action>
-        FIRST action this step: run `npx gennady sdd-orient --scope <scope>` (this works even before
+        FIRST action this step: run orientation ToolCall below (this works even before
         `sdd-new` materializes the infra spec)
         and read its output in full: the portal line, the one-hop neighbours with their paths,
         entity/contract NAMES, requirement IDs + titles, the consumers list, and its closing question.
@@ -132,6 +136,7 @@
         genuinely greenfield project with no neighbours, `sdd-orient` degenerates to its one-line
         "соседей нет" — the checklist still runs, (a) still gets an honest answer, (c)/(d) collapse to
         "н/д"; the step itself is never skipped. STOP.
+        <ToolCall owner="this-step" result="orientation">npx gennady sdd-orient --scope <scope></ToolCall> Inputs <scope>: <scope>=operator-confirmed infrastructure scope retained by this flow. Use orientation.
       </Action>
     </Step>
     <Step id="STEP_2_TOOL_CATEGORIES">
@@ -169,8 +174,8 @@
         EXPRESS branch (typical stack): run the STEP_3 research gate now, for every still-unlocked
         category at once (2–3 targeted WebSearch queries per category — alive/current, AI-agent
         friendliness for the current year). Per `AX_RESEARCH_PERSISTED`, before the candidates table
-        below is shown, persist the findings — `npx gennady sdd-new research --scope <scope> --slug
-        <slug>`, filled (STATUS/PROBLEM/CRITERIA/OPTIONS/DECISION/CONSEQUENCES/EVIDENCE/RELATED), one
+        below is shown, persist the findings with researchManifest ToolCall below, filled
+        (STATUS/PROBLEM/CRITERIA/OPTIONS/DECISION/CONSEQUENCES/EVIDENCE/RELATED), one
         document per category or one covering the batch. Then present ONE batch Ask — a single
         candidates table, one row per still-unlocked category (an already-locked category never gets
         a row — it already had its reference line above), each row naming the recommended tool + a
@@ -187,6 +192,8 @@
         GATE tool, the same Integration Detail concreteness bar as STEP_3 applies — no exemption for
         having taken the fast path. STEP_3 is done once this closes —
         proceed to STEP_4. STOP only when that Ask was needed.
+        Inputs <scope>, <slug>: this STEP_2 category context.
+        <ToolCall owner="this-step" result="researchManifest">npx gennady sdd-new research --scope <scope> --slug <slug></ToolCall> Use researchManifest.
       </Action>
     </Step>
     <Step id="STEP_3_TOOL_CHOICES">
@@ -207,7 +214,7 @@
         (not abandoned / superseded), and how it compares on AI-agent friendliness for the current year
         (text-configurable, autofix, machine-readable diagnostics) — before drafting candidates from
         memory. Per `AX_RESEARCH_PERSISTED`, before candidates are presented, persist the findings —
-        `npx gennady sdd-new research --scope <scope> --slug <slug>`, filled
+        researchManifest ToolCall below, filled
         (STATUS/PROBLEM/CRITERIA/OPTIONS/DECISION/CONSEQUENCES/EVIDENCE/RELATED). Then per category,
         2–3 candidates with trade-offs per `AX_DIVERGE_BEFORE_RECOMMEND`
         (reach past the obvious default; judge against THIS project); for each candidate presented,
@@ -236,6 +243,7 @@
         document in parentheses; no tool locked without one
         (`H_TOOL_LOCKED_WITHOUT_DECISION`). Tool Interaction Check (linter vs formatter, runner vs
         type-check, CI vs package manager). STOP.
+        <ToolCall owner="this-step" result="researchManifest">npx gennady sdd-new research --scope <scope> --slug <slug></ToolCall> Inputs <scope>, <slug>: <scope>=operator-confirmed infrastructure scope; <slug>=short restricted slug for this STEP_3 tool comparison. Use researchManifest.
       </Action>
     </Step>
     <Step id="STEP_4_DEV_WORKFLOW">
@@ -269,15 +277,16 @@
         (narrow read for inventory only, per `AX_BOOTSTRAP_NARROW_READ` and `AX_SPEC_IS_SOLE_SOURCE` —
         design stays sourced from specs); resolve with the operator; record confirmed cross-scope
         assumptions as `depends-on` edges per `AX_CROSS_SCOPE_DEPENDENCIES`;
-        materialize the Bootstrap Requirements table. Empty only if explicit «nothing to bootstrap»,
-        else `H_BOOTSTRAP_REQUIREMENTS_MISSING`.
+        materialize the Bootstrap Requirements table. For project-readiness work, record exact
+        `Readiness Gates` and repo-relative `Gate Artifacts`; use `—` for non-readiness rows. Empty
+        only if explicit «nothing to bootstrap», else `H_BOOTSTRAP_REQUIREMENTS_MISSING`.
       </Action>
     </Step>
     <Step id="STEP_7_FINAL_SPEC">
       <Goal>Emit the infrastructure spec.</Goal>
       <Action>
         In `greenfield`/`rewrite` mode, when `specs/<scope>/<scope>.spec.md` does not exist yet,
-        create its skeleton via `sdd-new infrastructure --scope <scope>` — it never overwrites and
+        create its skeleton via infrastructureManifest ToolCall below — it never overwrites and
         prints the section manifest (which sections are REQUIRED and what to fill); in
         `refine`/`pivot` mode the file already exists, edit it in place, skip `sdd-new`. Editing in
         place means a targeted `Edit` per changed passage — never a bulk regex/`perl -0pi` pass over
@@ -290,7 +299,7 @@
         `AX_ARTIFACT_STYLE_SELF_CHECK`. In `refine` mode update sections in place per
         `AX_LIVING_SPEC`. In `pivot` mode also
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/pivot-formats.xml")`
-        (`AX_PIVOT_REQUIRES_SUPERSESSION`); in `rewrite` mode write fresh — no supersession, no invalidation list. For a brand-new scope, append the `🚧 (awaiting root sync)` placeholder row to the portal Scopes table per `AX_PORTAL_READ_ONLY_WITH_PLACEHOLDER_EXCEPTION` — every other portal edit belongs to the root flow. Write in review-state per `AX_SPEC_LIFECYCLE` — prepend a `CHANGE_MANIFEST` (`READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/change-manifest.xml")`) and mark changed lines `✚`/`~` (greenfield → manifest only, no per-line marks) — its «СОСЕДИ» block carries the (c)/(d) answers `STEP_1B_SYSTEM_FIT` recorded, never left empty by omission; compress folds it to master downstream after the change ships. During authoring run the exact `fix-command` recorded in §Verification Commands once; its output becomes the input tree for the read-only gate. Then run `npx gennady sdd-check --all specs/<scope>` and use its returned findings as the single remaining fix list; rerun only when findings existed (`AX_CLOSE_WITH_INTEGRITY_CHECK`). CI and approval never invoke `fix-command`.
+        (`AX_PIVOT_REQUIRES_SUPERSESSION`); in `rewrite` mode write fresh — no supersession, no invalidation list. For a brand-new scope, append the `🚧 (awaiting root sync)` placeholder row to the portal Scopes table per `AX_PORTAL_READ_ONLY_WITH_PLACEHOLDER_EXCEPTION` — every other portal edit belongs to the root flow. Write in review-state per `AX_SPEC_LIFECYCLE` — prepend a `CHANGE_MANIFEST` (`READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/change-manifest.xml")`) and mark changed lines `✚`/`~` (greenfield → manifest only, no per-line marks) — its «СОСЕДИ» block carries the (c)/(d) answers `STEP_1B_SYSTEM_FIT` recorded, never left empty by omission; compress folds it to master downstream after the change ships. During authoring run the exact `fix-command` recorded in §Verification Commands once; its output becomes the input tree for the read-only gate. Then run integrityCheck ToolCall below and use its returned findings as the single remaining fix list; rerun only when findings existed (`AX_CLOSE_WITH_INTEGRITY_CHECK`). CI and approval never invoke `fix-command`.
 
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/preflight-protocol.directive.xml")` and run
         only the domain checklists whose triggers match the chosen stack. The critic is not the first
@@ -304,15 +313,30 @@
         and Verification Commands has a recorded Decision Log entry — no dangling "we'll figure this
         out" left implicit.
 
-        Git recon before publish is ONE combined call — `git status --porcelain -uno && git --no-pager diff --stat` —
-        never a sequence of separate `status` / `diff` / `log` invocations for the same check. Then
-        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/review-lifecycle.directive.xml")` — internal critic → publish (MR) → external review → compress + merge on approval. After the spec merges to master, render the continuity menu per `NEXT_STEP_MENU_FORMAT`:
-        recommended — «Продолжить спеки: discovery `<next scope per the Scope Graph>`»; the
-        scaffold option reads «Разбить готовые спеки на задачи (scaffold) — механическая нарезка
-        УТВЕРЖДЁННЫХ спек в тикеты; рекомендуется после того, как готовы ВСЕ спеки», never
-        «scaffold infra-base = материализовать конфиги» — materializing configs is execute's job
-        (writing code against a ticket), not scaffold's (which only decomposes specs into tickets).
-        Approval Check. STOP.
+        Publication context and VCS cleanliness are owned entirely by the review lifecycle; do not run
+        a pre-lifecycle `git status` / `git diff` probe here (it duplicates that owner and can hide
+        untracked publication files). `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/review-lifecycle.directive.xml")`
+        — finalize/compress semantics → delta-only final Approval → integrated critic → publish the
+        exact final bytes → external approval → merge the same reviewed commit. Every review wait or Approval
+        Check returns `TerminalDecision: pause` and preserves the current session; the review handoff and
+        merge return `continue`, never close it.
+
+        After the spec merges to master, render one continuity menu per `NEXT_STEP_MENU_FORMAT`. When
+        another scope in the Scope Graph still lacks a spec, recommend «Продолжить спеки: discovery
+        `<next scope per the Scope Graph>`»; selection returns `TerminalDecision: continue` to the
+        already-loaded router with that scope, which loads its owner in this SAME session. When all
+        specs exist, the chained option is «Разбить готовые спеки на задачи (scaffold) — механическая
+        нарезка УТВЕРЖДЁННЫХ спек в тикеты; рекомендуется после того, как готовы ВСЕ спеки»; selection
+        returns `continue` to the router with forced intent `scaffold`. Never describe scaffold as
+        materializing configs — execute does that against a ticket. A pause selection returns
+        `TerminalDecision: pause` and preserves the session. Only when this step establishes
+        `unfinished chained work: none` may it offer literal «Complete / finish»; only that answer is
+        the decision source for `TerminalDecision: complete`, followed by exact
+        terminal ToolCall below once. A successful spec/review/merge never implies complete.
+        No option tells the operator to invoke `/sdd` or `/sdd-scaffold` manually. STOP.
+        <ToolCall owner="this-step" result="infrastructureManifest">npx gennady sdd-new infrastructure --scope <scope></ToolCall> Use infrastructureManifest.
+        <ToolCall owner="this-step" result="integrityCheck">npx gennady sdd-check --all specs/<scope></ToolCall> Use integrityCheck.
+        <ToolCall owner="this-step" result="terminal">npx gennady sdd-session close</ToolCall>
       </Action>
     </Step>
   </ExecutionPlan>

@@ -23,6 +23,8 @@ export const ERR_CLI_SDD_LOG_PLACEHOLDER = 'ERR_CLI_SDD_LOG_PLACEHOLDER' as cons
 export const ERR_CLI_SDD_LOG_MISSING_FLAG = 'ERR_CLI_SDD_LOG_MISSING_FLAG' as const;
 /** @purpose `--phase <PhaseID>` names a phase with no open `#### <PhaseID>` block in EXECUTION_LOG. */
 export const ERR_CLI_SDD_LOG_PHASE_NOT_OPEN = 'ERR_CLI_SDD_LOG_PHASE_NOT_OPEN' as const;
+/** @purpose A one-shot `.claude/tmp/` payload failed path, size, UTF-8, or schema validation. */
+export const ERR_CLI_SDD_LOG_PAYLOAD_FILE = 'ERR_CLI_SDD_LOG_PAYLOAD_FILE' as const;
 
 /**
  * @purpose Result of one sdd-log run.
@@ -148,6 +150,25 @@ export function buildResolvedLine(reason: string, ts: string): string {
   return `- [x] \`${ts}\` ✅ RESOLVED: ${reason}`;
 }
 
+/**
+ * @purpose Build a teaching diagnostic for an unsafe or malformed file-backed payload.
+ * @param detail Exact failed safety/schema condition.
+ * @returns Outcome with exit 2; the ticket remains untouched.
+ */
+export function payloadFileError(detail: string): LogOutcome {
+  return {
+    ok: false,
+    code: ERR_CLI_SDD_LOG_PAYLOAD_FILE,
+    exitCode: 2,
+    message: [
+      `[sdd-log] ${ERR_CLI_SDD_LOG_PAYLOAD_FILE}: ${detail}`,
+      '  Write literal content with the file-write tool to a regular `.claude/tmp/<name>` file,',
+      '  then pass its exact repo-relative path via --content-file or --payload-file.',
+      '  The rejected file was not consumed; correct or remove that exact scratch file.',
+    ].join('\n'),
+  };
+}
+
 /** @purpose A phase-heading line inside EXECUTION_LOG — `#### P<N>` (optionally with a re-run suffix), same shape `parsePhaseHandoffs` (check.ts) keys off. */
 const PHASE_HEADING_RE = /^#{2,6}\s+(P[0-9]+)\b/;
 /** @purpose Any markdown heading line — the boundary of a phase's block within EXECUTION_LOG (next phase/round header). */
@@ -268,6 +289,7 @@ export function missingFlag(detail: string): LogOutcome {
     message: [
       `[sdd-log] ${ERR_CLI_SDD_LOG_MISSING_FLAG}: ${detail}`,
       '  expected: gennady sdd-log <ticket> blocker "<reason>" --axiom <AX_NAME> --unblock "<concrete action>"',
+      '        or: gennady sdd-log <ticket> blocker --payload-file .claude/tmp/<name>.json --phase P<N>',
     ].join('\n'),
   };
 }
@@ -289,6 +311,8 @@ export function badInvocation(detail: string): LogOutcome {
       '         phase <P-ID> ["— re-run: <reason>"] | handoff "<payload>" [--phase P<N>] |',
       '         blocker "<reason>" --axiom <AX_NAME> --unblock "<action>" --phase P<N> |',
       '         resolved "<what removed it>" --phase P<N>   # paired close for blocker',
+      '  agent free text: replace the quoted content with --content-file .claude/tmp/<safe-name>;',
+      '  blocker uses --payload-file .claude/tmp/<safe-name>.json with reason/axiom/unblock keys.',
       '  --phase P<N> is only valid on line | handoff | blocker | resolved — it inserts at the end',
       "  of that phase's own block instead of the end of EXECUTION_LOG (phases execute sequentially).",
       '  content must carry no <…> placeholder.',

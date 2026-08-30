@@ -1,16 +1,17 @@
 <SddReadiness keywords="readiness, setup, bootstrap, tooling, package-json, npm-scripts, gennady, stub, not-ready, proxy-handoff, sdd-readiness" type="directive" ver="2.0">
   <Mission>
     Bring a not-ready repo to the point where the SDD flow can run: a `package.json` exists and
-    declares the seven exact bricks `sdd-state` checks — `type-check` · `test` · `test:coverage` ·
-    `format` (read-only) · `format:fix` · `lint` (reaching `gennady`, read-only) · `lint:fix` — each
-    `*:fix` MUST itself carry a real write switch (`--write` / `--fix` / `--autofix`; a fixer that
-    never mutates is a configuration error) — gennady is installed, and `READINESS` leaves `not-ready`:
+    declares the eight exact bricks `sdd-state` checks — `type-check` · `test` · `test:coverage` ·
+    `format` (read-only) · `format:fix` · `lint` (reaching `gennady`, read-only) · `lint:fix` · the
+    public whole-project `fix`. Each real `*:fix` MUST declare an argument-forwarding prefix ending in a
+    write switch (`--write` / `--fix` / `--autofix`; a non-mutating or obvious broad-root brick is a
+    configuration error), and `fix` reaches formatter then linter — gennady is installed, and `READINESS` leaves `not-ready`:
     `ready` when every brick is a real tool, `provisional` when some are still stubs (the normal
     landing state of a from-scratch setup — see the stub template and the exit arms below).
-    `check` / `fix` are two OPTIONAL wrapper scripts this flow still seeds for the human/CI/pre-commit
-    path (`check` = `npx gennady sdd-verify --profile full`; `fix` = `format:fix` → `lint:fix`) —
-    neither gates readiness nor is ever called by a phase agent, which runs `sdd-verify --profile
-    <kind>` directly.
+    `check` is an optional read-only wrapper; phase agents pass exact Target Files to `sdd-verify`,
+    whose private repair passes that set to the same project leaves and then enforces the actual write
+    zone by a runtime workspace diff; static brick shape is only early diagnostics. Required `fix` is
+    the single public whole-project repair entrypoint.
     This is the minimal mechanical bootstrap, NOT the tooling design: a real command where a tool is
     already installed, else a visible TODO stub that points at the infra flow. Entered when
     `sdd-state` reports `READINESS=not-ready` — from the router preflight or from any skill's own preflight.
@@ -26,48 +27,7 @@
   </Mission>
 
   <BeliefState>
-    Inherited from the loading directive (already in context): AX_OPERATOR_DIALOGUE_STYLE, AX_OPERATOR_LANGUAGE
-
-    <Axiom id="AX_TOOL_INVOCATION">
-      The SDD mechanical tools are `gennady` CLI commands. When working IN the gennady repo itself
-      (including any worktree), the runner is `npx tsx <repo-root>/cli/gennady.ts`; in every other
-      project it is `npx gennady`. Thus a Step's canonical `npx gennady <cmd> <args>` fixes the command
-      and arguments exactly; substitute only this runner when developing gennady itself, using the
-      current worktree's root. Tools: `sdd-state`, `sdd-task`, `sdd-extract`, `sdd-verify`, `sdd-log`,
-      `sdd-sync`, `sdd-check`, `sdd-new`, `sdd-migrate`, `sdd-orient`, `sdd-session`, `orient`, `lint`, `yagni`, `testcov`. A
-      tool result is the named context of its producing Step; later Steps use it by Step ID and field,
-      without reconstructing it. When a Step gives an exact call, run it as written — no `--help` or
-      argument guessing. Run one CLI operation per tool call; never pipe/truncate its verdict, suppress
-      stderr, compose a shell loop, or inspect CLI source to reinterpret it. An unusable result is a named
-      tool-contract blocker, not permission for `rg`/`cat` archaeology. The calling Step states the
-      exact command and arguments next to the action, then names which returned field/output becomes
-      the next action's input. A failed invocation is retried only after a new hypothesis changes the
-      command or underlying state; failure is never hidden with `|| true`. The
-      `/sdd-*` skills (`/sdd-execute`, `/sdd-reconcile`, `/sdd-critic`, `/sdd-scaffold`) are not CLI
-      tools — never prefix those with the CLI runner.
-    </Axiom>
-
-    <Axiom id="AX_DIALOGUE_DISCIPLINE" cross-cutting="true">
-      Move forward unless stopped — gated by confidence and stakes:
-      - HIGH confidence + low-stakes step → show the result and proceed; the operator can object at any moment.
-      - LOW confidence, OR a high-stakes step (architecture, pivot, a trust boundary, an irreversible choice) → hard stop, wait for the operator.
-
-      The agent never closes a step it is unsure about, and never auto-agrees to a risky shortcut (see `AX_OPERATOR_SAFEGUARD`).
-
-      Named hard stops — Approval Checks and the SCALE confirmation exchange — are exempt from the proceed rule; they always stop, however high the confidence.
-
-      Keep the dialogue compact: no repeat questions; group obvious questions into one; on long dialogues show the delta, not a full restate. Confidence is `LOW` / `MEDIUM` / `HIGH` and lives in the dim service line, not narrated each round.
-    </Axiom>
-
-    <Axiom id="AX_OPERATOR_SAFEGUARD" cross-cutting="true">
-      The agent's job is to protect the operator from their own blind spots and lead them to a sound decision — even a junior operator.
-      - Warn, don't only ask: name the risk that will hurt later, the requirement likely missing, the thing probably forgotten, the trust boundary (auth, payments, persistence) that needs a real runtime.
-      - Pull the thread, don't fill a quota: after each answer, check whether it opened a new gap or risk; if so, follow it until the gap is actually closed — not until a question count is hit.
-      - Ask developing questions — ones that deepen the topic and check what should and should NOT exist — not merely uncomfortable ones. Never announce a question; just ask it plainly.
-      - Neutral and critical: if the operator wants to skip something risky, surface the cost and ask for a reason; never silently agree.
-
-      Blind-spot instincts (not a checklist to recite): canonical source of truth? behavior on dependency failure? where simulation ends and real runtime begins? who validates input here? which assumption, if wrong, kills the design?
-    </Axiom>
+    Inherited from the loading directive (already in context): AX_DIALOGUE_DISCIPLINE, AX_DIVERGE_BEFORE_RECOMMEND, AX_NO_PROCESS_NARRATION, AX_OPERATOR_DIALOGUE_STYLE, AX_OPERATOR_LANGUAGE, AX_OPERATOR_OUTPUT_LIVE_TEXT, AX_OPERATOR_SAFEGUARD, AX_PROGRESSIVE_DISCLOSURE, AX_TOOL_INVOCATION, HALT_FORMAT, MESSAGE_LAYOUT, QUESTION_RULE_SLIM
 
     <Axiom id="AX_OPERATOR_AGREEMENT">
       Every fix must be operator-approved before execution. The plan is shown as a table.
@@ -75,56 +35,25 @@
       Operator may edit the plan (remove items, change classification, add notes).
     </Axiom>
 
-    <Axiom id="AX_DIVERGE_BEFORE_RECOMMEND">
-      A recommendation must be the result of a search, not the first typical answer. Aligned models
-      collapse to the modal option; a single quick recommendation usually IS that mode, which is
-      rarely the best fit for a specific task.
+    <Axiom id="AX_RESEARCH_PERSISTED">
+      External research (WebSearch/WebFetch) run in this session ALWAYS lands as a research document
+      via `npx gennady sdd-new research --scope <scope> --slug <slug>` — filled in BEFORE the result
+      feeds a proposal to the operator; a chat summary is not storage (session dies, research dies
+      with it). Every factual claim must be re-verifiable: traced to a source (a specific page, URL +
+      access date; for code-derived facts — path + commit) OR explicitly flagged `agent conclusion` /
+      `from model memory as of <knowledge date>`. A fact carrying neither is a document defect, not a
+      style choice. A repeat question checks existing `specs/**/research/` first — supersede, never
+      duplicate.
 
-      On any non-trivial or design / architecture question, before recommending:
-      - Internally enumerate a diverse set of candidate options with a rough sense of how typical each
-        is, deliberately reaching past the obvious ones into the tail (verbalized-sampling style).
-      - Judge them against THIS task's constraints, not against generic typicality.
-      - Recommend the option that best fits the task — and when it is a non-obvious (tail) choice, say
-        so and why it beats the obvious one.
-
-      Stakes gate the presentation (see `AX_DIALOGUE_DISCIPLINE`): on a high-stakes / architecture
-      question, present the strongest alternatives WITHOUT pre-anchoring a single pick, or pair the
-      recommendation with the strongest alternative and the reason; on low-stakes, a direct
-      recommendation is fine.
-    </Axiom>
-
-    <Axiom id="AX_NO_PROCESS_NARRATION" cross-cutting="true">
-      The operator never sees the agent's machinery. No «DIRECTIVE ACTIVATED», no mode-detection
-      narration, no «grounding collected», no «перехожу к STEP_2», no frame-stack talk. Detection,
-      reading, and step transitions happen silently. Mode / scope / confidence live in the dim service
-      line and the log, nowhere else.
-    </Axiom>
-
-    <Axiom id="AX_OPERATOR_OUTPUT_LIVE_TEXT" cross-cutting="true">
-      Everything the operator reads is a normal chat message with live-rendered markdown — headers,
-      bold, lists, blockquotes, tables. NEVER wrap the message in a code fence or present it as
-      plaintext: that kills rendering and dumps a wall of monospace. Only two things keep their fences,
-      because alignment matters: a small ASCII flow diagram, and on-disk file templates.
+      Prefer primary evidence: official documentation, repository/release notes, standards, or papers.
+      A secondary comparison may supplement but never solely support a tool/version/API decision. The
+      candidate analysis remains immutable after it is shown. Once the operator decides, update only
+      `FINAL_DISPOSITION`: outcome, the actual spec/Decision Log choice, and its delta from the research
+      recommendation. A later critic change updates the same disposition or marks the document superseded.
     </Axiom>
   </BeliefState>
 
   <ChatProtocol>
-    <Contract id="QUESTION_RULE_SLIM">
-      A question to the operator fires only through `AskUserQuestion` — or, when the tool is
-      unavailable, a plain-text fallback carrying the same context plus an explicit list of named
-      options — and always after the context is explained in the same message, never as bare
-      free-form text. Batch mutually independent sub-questions into one call; dependent questions go
-      one call at a time, composed only after the previous answer is in. No numbering, no semantic
-      question IDs.
-
-      Full format, with worked examples — `QUESTION_FORMAT` in the interview / vision directives.
-    </Contract>
-
-    <Contract id="HALT_FORMAT">
-      A halt is a plain sentence first (what happened + what to do), with the token as a trailing tag:
-
-      🛑 <что случилось по-человечески> — <что сделать оператору>   `[H_*]`
-    </Contract>
   </ChatProtocol>
 
   <HaltConditions>
@@ -152,32 +81,43 @@
         From the `missing` list, lay out what will be done: patch `package.json` (real command where
         the tool is already a dependency, else a TODO stub), wire `lint` to `gennady`, keep `format` /
         `lint` read-only (any formatter/linter write switch moves to `format:fix` / `lint:fix`, each of
-        which MUST carry one), seed the optional `check` / `fix` wrappers, and install the missing
-        dependencies / `gennady`. If the operator wants
-        to lock a real tool now (test runner,
-        formatter, type-checker) — a genuine NEW pick, not the stub path — run a research gate first:
-        2–3 targeted WebSearch queries (is each candidate alive and current, how AI-agent-friendly it is
-        this year — text-configurable, autofix, machine-readable diagnostics) before offering 2–3
-        options with trade-offs (`AX_DIVERGE_BEFORE_RECOMMEND`); for each option, one line on why it's
-        offered per the research (not recall) plus the source. If WebSearch is unavailable here, say so
-        plainly — `предлагаю по памяти на <дата обучения модели>, ресёрч недоступен` — a named caveat,
-        not silence. Otherwise stub it and defer the choice to the infra flow (no research needed for a
-        stub). Present the plan + Approval Check (`AX_OPERATOR_AGREEMENT` — no edits before an explicit
+        which MUST carry one), seed required whole-project `fix` and optional read-only `check`, and install the missing
+        dependencies / `gennady`. If the operator wants to lock a real tool now (test runner,
+        formatter, type-checker) — a genuine NEW pick, not the stub path — first resolve its exact
+        owning infrastructure scope from the caller's saved `sdd-state` Scopes/GATE_QUEUE snapshot.
+        No owning infra scope means no toolchain research or choice in this bootstrap flow: seed the
+        stub and defer the decision to infra. This is not an exception to persistence; it avoids
+        producing ownerless evidence.
+
+        With an exact owning infra scope, run the research gate: 2–3 targeted WebSearch/external-doc
+        queries (alive/current and AI-agent-friendly this year). Before any finding shapes the options,
+        run exact researchManifest ToolCall below
+        and fill the created document: source URL + access date in EVIDENCE, findings/trade-offs in the
+        corresponding analysis sections, and FINAL_DISPOSITION linking the exact owning Tool Stack /
+        Decision record when the operator chooses. Then offer 2–3 options with trade-offs
+        (`AX_DIVERGE_BEFORE_RECOMMEND`), each rationale linked to that artifact. There is no bootstrap
+        exception to `AX_RESEARCH_PERSISTED`, and no extra Ask: the existing plan Approval Check owns
+        the choice. If WebSearch is unavailable, say so plainly — `предлагаю по памяти на <дата
+        обучения модели>, ресёрч недоступен` — and create no fake research artifact. If no external
+        research is used, make no research call/artifact. Otherwise stub it and defer the choice to
+        infra. Present the plan + Approval Check (`AX_OPERATOR_AGREEMENT` — no edits before an explicit
         go-ahead). STOP.
+        <ToolCall owner="this-step" result="researchManifest">npx gennady sdd-new research --scope <owning-infra-scope> --slug <tool-category-slug></ToolCall> Inputs <owning-infra-scope>, <tool-category-slug>: <owning-infra-scope>=exact infrastructure scope from caller's saved sdd-state snapshot; <tool-category-slug>=restricted slug for the one researched tool category; only after external research is actually used. Use researchManifest.
       </Action>
     </Step>
     <Step id="STEP_2_APPLY">
       <Goal>Do everything the agent can — edits and installs.</Goal>
       <Action>
-        With approval: create `package.json` if absent (name + `scripts`); add the seven exact bricks —
+        With approval: create `package.json` if absent (name + `scripts`); add the eight exact bricks —
         real command where the tool exists, else the TODO stub (see Reference Data); `lint` always
         reaches `gennady`; `format` / `lint` stay read-only, while `format:fix` / `lint:fix` MUST each
         carry a real write switch (`--write` / `--fix` / `--autofix`) — a fixer that never mutates is
-        a configuration error, flagged the same as a missing script; seed the two optional wrappers
-        too (`check` = `npx gennady sdd-verify --profile full`, staying read-only itself; `fix` =
-        `format:fix` → `lint:fix`); AND run the dependency installs the project needs (`npm i -D …`,
-        gennady) — try them — the corporate proxy often blocks installs, but not always. Re-run
-        `sdd-state`. Anything that failed goes to STEP_3.
+        a configuration error, flagged the same as a missing script; seed required whole-project
+        `fix` = `format:fix` → `lint:fix` and optional read-only `check` =
+        <ToolLiteral role="ticket">npx gennady sdd-verify --profile full</ToolLiteral>; AND run the dependency installs the project needs (`npm i -D …`,
+        gennady) — try them — the corporate proxy often blocks installs, but not always. Re-run exact
+        readinessState ToolCall below. Anything that failed goes to STEP_3.
+        <ToolCall owner="this-step" result="readinessState">npx gennady sdd-state</ToolCall> Use readinessState.
       </Action>
     </Step>
     <Step id="STEP_3_REPORT_FAILURES">
@@ -194,13 +134,14 @@
       <Goal>Confirm ready, then return control.</Goal>
       <Action>
         WHEN `STEP_3_REPORT_FAILURES` ran (some command failed and the operator stepped in by hand) →
-        re-run `sdd-state` now — the operator's own actions changed state since STEP_2's snapshot, so
+        re-run exact readinessState ToolCall below now — the operator's own actions changed state since STEP_2's snapshot, so
         it is stale. WHEN `STEP_3` was skipped (STEP_2 applied cleanly, nothing failed) → reuse
         STEP_2's own closing `sdd-state` re-run directly; it is already the fresh post-apply
         snapshot, and a second call here would just re-confirm it — a wasted turn. Either way:
-        `READINESS=ready` → setup is done; return control to the caller (the router's classify/route
+        `READINESS=ready` → setup is done; return exact post-mutation alias `readinessState` to the
+        caller (the router's preflight/route
         step, or the skill's own flow). `READINESS=provisional (stubs: …)` → ALSO done for this flow,
-        and the expected landing state when the seven bricks were seeded from the stub template above:
+        and the expected landing state when the eight bricks were seeded from the stub template above:
         the skeleton exists, the real tools do not. Return control the same way, saying so in one line
         — name the stubbed scripts, and state that bootstrap/config/doc phases and `scaffold` may
         proceed while `impl`/`refactor`/`test`/`fix` phases stay mechanically refused until an infra
@@ -208,12 +149,15 @@
         design, and never report `provisional` as `ready`. Still `not-ready` → state the remaining gap
         and resume at `STEP_1` for the leftover items only — a fresh assessment, never a blind re-run
         of a command that already failed.
+        Every return from this directive carries exactly that one latest `readinessState`; the caller
+        must reuse it and must not refresh again.
+        <ToolCall owner="this-step" result="readinessState">npx gennady sdd-state</ToolCall> Use readinessState only when STEP_3 ran; otherwise reuse STEP_2 readinessState.
       </Action>
     </Step>
   </ExecutionPlan>
 
   <ReferenceData>
-    The seven exact bricks `sdd-state` checks (exact match — `type-check` also accepts the
+    The eight exact bricks `sdd-state` checks (exact match — `type-check` also accepts the
     `typecheck` spelling, every other name has exactly one):
 
     | script | purpose | stubbable until infra flow? |
@@ -225,23 +169,28 @@
     | `format:fix` | formatter write mode — MUST carry `--write` / `--fix` / `--autofix` | yes (stub still needs the literal switch — see below) |
     | `lint` | lint chain that reaches `gennady` (DbC), read-only | **no — must wire gennady** |
     | `lint:fix` | linter autofix — MUST carry `--write` / `--fix` / `--autofix` | yes (same caveat) |
+    | `fix` | public whole-project repair: `format:fix` then `lint:fix`, with broad roots supplied here | yes |
 
     `format` and `lint` — and every script either reaches via `npm run <x>` — must stay free of known
     write switches (`eslint … --fix`, `prettier … --write`, `… --autofix`); a leaked write switch
     fails that script's own read-only check (`format(read-only)` / `lint(read-only)` in `missing`),
-    even if every script name is present. `format:fix` and `lint:fix` invert the rule: each MUST
-    carry a real write switch — absent, it reports `format:fix(no --write/--fix/--autofix — a fixer
-    that never mutates)` / `lint:fix(…)` in `missing`, exactly like a missing script. `check` and
-    `fix` sit OUTSIDE the seven and never gate readiness — seed them anyway as the optional human/CI
-    wrappers: `"check": "npx gennady sdd-verify --profile full"` (must itself stay read-only —
-    `check(read-only)` in `missing` otherwise), `"fix": "npm run format:fix && npm run lint:fix"`.
+    even if every script name is present. A real `format:fix` / `lint:fix` declares an argument-forwarding
+    command prefix: its write switch is the final token and no obvious broad root/glob is baked into
+    the command. The phase appends exact Target Files; required whole-project `fix` supplies broad roots
+    explicitly while reaching both leaves in order. This static, tool-agnostic shape check cannot prove
+    that an arbitrary exact operand such as `src/a.ts` is a target rather than tool config/subcommand;
+    the phase's runtime workspace boundary closes that ambiguity by rejecting and listing actual writes
+    outside its canonical Target Files without rolling them back. A missing switch or obvious broad target reports in `missing`.
+    Bootstrap echo-stubs are the sole temporary exception because setup never executes them.
+    Optional `check` is the human/CI wrapper:
+    `"check": "npx gennady sdd-verify --profile full"` and must itself stay read-only.
 
     A minimal `package.json` that reads as **`provisional`** once gennady is installed — real `lint`,
     the rest stubbed until the infra flow locks real tools (point `lint` at the project's own source
-    dirs). `provisional` is a real, named state, not a lesser `ready`: the seven bricks are in place,
+    dirs). `provisional` is a real, named state, not a lesser `ready`: the eight bricks are in place,
     so bootstrap/config/doc phases and `scaffold` may proceed — but `sdd-task --phase` mechanically
     REFUSES every `impl`/`refactor`/`test` phase (`ERR_CLI_SDD_TASK_INFRA_NOT_READY`) and
-    `sdd-verify --profile code|test|full` returns `⛔` for a stubbed foundation, because an `echo`
+    a code/test phase call (`sdd-verify --task ... --phase ...`) and `--profile full` return `⛔` for a stubbed foundation, because an `echo`
     that exits 0 verifies nothing and a green verdict on it would be a fiction. Only replacing every
     stub with a real tool moves the project to `ready` (= execution-ready).
     The `format:fix`/`lint:fix` stubs below carry a literal `--fix`/`--write` token as a placeholder
@@ -258,7 +207,7 @@
         "lint": "gennady lint src/",
         "lint:fix": "echo 'TODO: настроить linter --fix (autofix)' >&2",
         "check": "npx gennady sdd-verify --profile full",
-        "fix": "npm run format:fix && npm run lint:fix"
+        "fix": "npm run format:fix -- . && npm run lint:fix -- src/"
       }
     }
     ```
@@ -266,7 +215,8 @@
     `lint→gennady` check. The leaf stubs print a warning to stderr but **exit 0 — by design they
     pass the SHAPE checks**; `format`/`lint`/`check` stay read-only-clean since neither their own
     body nor anything they reach carries a write switch, while `format:fix`/`lint:fix` pass the
-    mutating check on their placeholder token alone. That is what makes this package.json
+    mutating check on their placeholder token alone. A real replacement must become an
+    declared argument-forwarding prefix; broad roots stay in required `fix`. That is what makes this package.json
     `provisional` rather than `ready`: shape is satisfied, substance is not. `sdd-state` names every
     stub it found on the READINESS line, and that list IS the infra flow's worklist — the project
     reaches `ready` exactly when the list is empty.
@@ -277,54 +227,6 @@
     `🧰 SETUP_R<N> · package.json=<created|patched|present> · ready=<ready|provisional|not-ready>`
     — the three-level verdict verbatim from `sdd-state`, never flattened to yes/no. Breadcrumb milestones
     (per `BREADCRUMB_FORMAT`): Assess · Plan · Apply · Ready.
-
-    <Contract id="MESSAGE_LAYOUT">
-      A step-boundary / decision message (the decision card) is sectioned with markdown headers, in
-      this order. Skip any section empty for this step. During free dialogue inside a step the agent
-      does NOT print this layout — it just talks.
-
-      `<dim service line>`        — internal anchor + scope + mode + confidence (supplied by the branch)
-
-      `<breadcrumb>`              — per `BREADCRUMB_FORMAT`, its OWN paragraph (a blank line above it,
-      not just a `\n`) — markdown collapses a single newline into a space, so without the blank line
-      the breadcrumb visually fuses onto the service line
-
-      ## `<glyph>` `<scope>` — одной фразой, что делаем
-
-      ### 🤔 Как я понял задачу    — an italic blockquote (`> _…_`), 2–3 sentences max: the task retold
-      in the agent's own words plus the single riskiest assumption, linked by wording to the question
-      that resolves it; never a restate of already-settled content — only what is NEW or could be
-      misread (goes at the TOP)
-      ### 🎯 Главное решение       — the crux in plain words; if the decision is a flow (data moving,
-      state transitions, start/stop conditions), add a small ASCII diagram — the one place a fenced
-      block is allowed in this message, at most one per message
-      ### 💡 <О чём решаем>         — per `QUESTION_RULE_SLIM` (full format with worked examples lives in
-      `QUESTION_FORMAT`, in the interview / vision directives)
-      ### ↓ Детали — по желанию    — reasoning, full comparison, change-list (per `AX_PROGRESSIVE_DISCLOSURE`)
-
-      Glyph dictionary — closed inventory, one assigned meaning each, never a free pick. Every glyph
-      here is chosen to read clearly on BOTH a light and a dark terminal/chat theme — half-tone shading
-      characters (`░ ▒ ▓` and similar) are forbidden anywhere in this layout: they render as near-invisible
-      or vanish outright depending on theme.
-
-      Section-header glyphs (fixed, one per header, in the order above):
-      - `🤔` — the agent's own understanding check, at the top of a decision card
-      - `🎯` — the crux decision, in plain words
-      - `💡` — a decision the agent is proposing for the operator to confirm or pick between
-      - `↓` — folded detail, expand on demand
-
-      Step-TYPE glyphs (fixed, keyed by the step's TYPE, used in the service line / breadcrumb, never a free pick):
-      - `🏗` — creation / scaffold (new spec, new tickets, new files)
-      - `🔍` — audit / review (fresh-eyes read, no write)
-      - `🔧` — fix / reconcile (spec ⟷ code drift repair)
-      - `⚡` — execute (a task ticket's phases running)
-      - `🗺` — routing / overview (intent classification, project-level map)
-
-      Breadcrumb-status glyphs (per `BREADCRUMB_FORMAT`): `✅` done · `👷` active · `◻️` not yet.
-
-      No other emoji appear in message or section headers — the glyphs enumerated above are the only
-      ones this layout permits.
-    </Contract>
 
     <Contract id="BREADCRUMB_FORMAT">
       One line, its own paragraph below the service line — a blank line separates the two (per
@@ -339,12 +241,5 @@
       `Vision ✅ · Scope Graph 👷 · Infra ◻️ · Portal ◻️`
     </Contract>
 
-    <Axiom id="AX_PROGRESSIVE_DISCLOSURE" cross-cutting="true">
-      Decision first, reasoning on demand. The must-read top of a message is short: where we are + my
-      read + what to decide. Everything heavy — full option comparison, evidence, the change-list,
-      derivations — goes BELOW a `### ↓ Детали — по желанию` header. Never dump reasoning above the
-      questions. Facts already verified collapse to one line («сверился: …»); uncertainties that need
-      the operator BECOME the questions — never list them twice.
-    </Axiom>
   </ChatOutput>
 </SddReadiness>

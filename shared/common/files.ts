@@ -7,7 +7,7 @@
  * @consumer core/utils
  */
 export const isTestFile = (filename: string): boolean => {
-  return /\.(test|spec)s?\./.test(filename);
+  return /\.(test|spec)s?(?:-helpers?)?\./.test(filename);
 };
 
 /**

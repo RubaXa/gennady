@@ -2,6 +2,8 @@
 // @consumers: sdd-task.cmd
 // @tasks: N/A
 
+import { lexMarkdownTableRow, unescapeMarkdownTablePipes } from './markdown-table.ts';
+
 /** @purpose One Spec Reference entry from Meta. */
 export type SpecRef = {
   /** @purpose Role label (Contract / Adapter / Consumer / …), or empty if the bullet had none. */
@@ -50,6 +52,10 @@ export type PhaseDetail = {
   rules: string[];
   /** @purpose Target file paths the phase may write. */
   targetFiles: string[];
+  /** @purpose Repo-local tracked paths this phase intentionally removes. */
+  deletedFiles: string[];
+  /** @purpose Missing readiness gates this phase structurally creates; absent for ordinary phases. */
+  readinessGates: string[];
   /** @purpose Optional per-phase spec-anchor subset (`Spec Refs:` bullets) — when empty, callers fall back to the ticket's whole Meta Spec References. */
   specRefs: string[];
   /** @purpose Inputs line (e.g. `none`, `P1 handoff`), or null. */
@@ -64,7 +70,19 @@ export type Gate = {
   command: string;
   /** @purpose Rule-ids that require this gate. */
   requiredBy: string[];
+  /** @purpose Structured gate role; `coverage` identifies the ticket's one coverage reader. */
+  role: string | null;
 };
+
+/** @purpose Marker distinguishing coverage-policy-aware tickets from grandfathered legacy tickets. */
+const COVERAGE_POLICY_SCHEMA_MARKER = '<!--COVERAGE_POLICY:v1-->';
+
+/** @purpose Parsed, validated coverage applicability from one ticket Verification section. */
+export type TicketCoveragePolicy =
+  | { status: 'required'; command: string; ownerPhase: string }
+  | { status: 'not-applicable'; reason: string }
+  | { status: 'legacy' }
+  | { status: 'invalid'; issues: string[] };
 
 /** @purpose Extract the inline value after a `- **Label:**` field, or null. */
 function inlineField(body: string, label: string): string | null {
@@ -135,7 +153,7 @@ export function parseMetaInfo(metaBody: string): MetaInfo {
   };
 }
 
-/** @purpose Split a markdown table row into trimmed content cells. */
+/** @purpose Split a simple non-Verification markdown table row into trimmed content cells. */
 function rowCells(line: string): string[] {
   return line
     .trim()
@@ -148,6 +166,24 @@ function rowCells(line: string): string[] {
 /** @purpose True for a table separator row like `|---|---|`. */
 function isSeparator(line: string): boolean {
   return /^\|?\s*:?-{2,}/.test(line.trim());
+}
+
+/** @purpose Remove one exact markdown code-span wrapper and report whether bytes were wrapped. */
+function parseInlineCode(value: string): { value: string; wrapped: boolean } {
+  const trimmed = value.trim();
+  const delimiter = trimmed.match(/^`+/)?.[0];
+  const wrapped = Boolean(
+    delimiter && trimmed.length >= delimiter.length * 2 && trimmed.endsWith(delimiter)
+  );
+  return {
+    value: wrapped && delimiter ? trimmed.slice(delimiter.length, -delimiter.length) : trimmed,
+    wrapped,
+  };
+}
+
+/** @purpose Remove one exact markdown code-span wrapper without rewriting bytes inside it. */
+function unwrapInlineCode(value: string): string {
+  return parseInlineCode(value).value;
 }
 
 /**
@@ -188,7 +224,15 @@ export function parsePhaseDetail(phaseBody: string): PhaseDetail {
   return {
     objective: inlineField(phaseBody, 'Objective'),
     rules: bulletsUnder(phaseBody, 'Rules').map((b) => parseLink(b).anchor || parseLink(b).name),
-    targetFiles: bulletsUnder(phaseBody, 'Target Files').map((b) => b.replace(/[`*]/g, '').trim()),
+    // Backticks are presentation. `*` is path syntax (glob) and must survive so strict consumers
+    // such as sdd-verify can reject it instead of silently turning `src/*.ts` into `src/.ts`.
+    targetFiles: bulletsUnder(phaseBody, 'Target Files').map((b) => b.replace(/`/g, '').trim()),
+    deletedFiles: bulletsUnder(phaseBody, 'Deleted Files')
+      .map((b) => b.replace(/`/g, '').trim())
+      .filter((path) => path !== 'none' && path !== '—'),
+    readinessGates: bulletsUnder(phaseBody, 'Readiness Gates').map((b) =>
+      b.replace(/`/g, '').trim()
+    ),
     specRefs: bulletsUnder(phaseBody, 'Spec Refs').map(
       (b) => parseLink(b).anchor || parseLink(b).name
     ),
@@ -203,20 +247,230 @@ export function parsePhaseDetail(phaseBody: string): PhaseDetail {
  * @returns One Gate per command row.
  */
 export function parseVerification(body: string): Gate[] {
+  const parsed = parseVerificationTable(body, false);
+  return parsed.ok ? parsed.gates : [];
+}
+
+/** @purpose Whether every cell in a lexed row is a markdown separator token. */
+function separatorCells(cells: readonly string[]): boolean {
+  return cells.length > 0 && cells.every((cell) => /^:?-{2,}:?$/.test(cell));
+}
+
+/** @purpose Build a line-numbered teaching issue for a malformed Verification table row. */
+function verificationRowIssue(line: number, issue: string): string {
+  return `Verification table line ${line}: ${issue}`;
+}
+
+/** @purpose Exact canonical Verification header for strict or grandfathered parsing. */
+function verificationHeader(cells: readonly string[], strict: boolean): boolean {
+  const normalized = cells.map((cell) => cell.trim().toLowerCase());
+  return strict
+    ? normalized.length === 3 &&
+        normalized[0] === 'command' &&
+        normalized[1] === 'required by' &&
+        normalized[2] === 'role'
+    : (normalized.length === 2 || normalized.length === 3) &&
+        normalized[0] === 'command' &&
+        normalized[1] === 'required by' &&
+        (normalized.length === 2 || normalized[2] === 'role');
+}
+
+/** @purpose Whether a source line can be a Markdown table row without parsing ordinary prose. */
+function tableRowCandidate(line: string): boolean {
+  return line.includes('|');
+}
+
+/**
+ * @purpose Parse Verification with the exact three-column schema required by mechanical consumers.
+ * @param body Text of the VERIFICATION section.
+ * @param [strict] Whether every table row must declare Command, Required by, and Role.
+ * @returns Parsed gates or all teaching structural issues.
+ */
+export function parseVerificationTable(
+  body: string,
+  strict = true
+): { ok: true; gates: Gate[] } | { ok: false; issues: string[] } {
   const out: Gate[] = [];
-  for (const line of body.split('\n')) {
-    if (!line.trimStart().startsWith('|') || isSeparator(line)) continue;
-    const cells = rowCells(line);
-    if (cells.length < 2 || cells[0]?.toLowerCase() === 'command') continue;
-    const [command, requiredBy] = cells;
-    if (!command) continue;
+  const issues: string[] = [];
+  const headerIssues: string[] = [];
+  const lines = body.split('\n');
+  let headerIndex = -1;
+
+  for (const [index, line] of lines.entries()) {
+    if (!tableRowCandidate(line)) continue;
+    const row = lexMarkdownTableRow(line);
+    if (!row.ok) {
+      if (/\bCommand\b/i.test(line)) headerIssues.push(verificationRowIssue(index + 1, row.issue));
+      continue;
+    }
+    if (row.cells[0]?.trim().toLowerCase() !== 'command') continue;
+    if (!verificationHeader(row.cells, strict)) {
+      headerIssues.push(
+        verificationRowIssue(
+          index + 1,
+          `expected header ${strict ? 'Command | Required by | Role' : 'Command | Required by [| Role]'}`
+        )
+      );
+      continue;
+    }
+    if (headerIndex !== -1) {
+      issues.push(verificationRowIssue(index + 1, 'duplicate canonical header'));
+      continue;
+    }
+    headerIndex = index;
+  }
+
+  if (headerIndex === -1) {
+    if (headerIssues.length > 0) issues.push(...headerIssues);
+    else
+      issues.push(
+        verificationRowIssue(
+          1,
+          `missing canonical header ${strict ? 'Command | Required by | Role' : 'Command | Required by [| Role]'}`
+        )
+      );
+    return { ok: false, issues };
+  }
+
+  const separatorIndex = headerIndex + 1;
+  const separatorLine = lines[separatorIndex] ?? '';
+  const separator = lexMarkdownTableRow(separatorLine);
+  const separatorCellCount = strict ? 3 : separator.ok ? separator.cells.length : 0;
+  if (
+    !separator.ok ||
+    !separatorCells(separator.cells) ||
+    (strict ? separator.cells.length !== 3 : separatorCellCount < 2 || separatorCellCount > 3)
+  ) {
+    issues.push(
+      verificationRowIssue(
+        separatorIndex + 1,
+        `expected ${strict ? 'three-column' : 'two- or three-column'} separator immediately after the header`
+      )
+    );
+    return { ok: false, issues };
+  }
+
+  for (let index = separatorIndex + 1; index < lines.length; index += 1) {
+    const line = lines[index] ?? '';
+    if (line.trim() === '') break;
+    if (!tableRowCandidate(line)) continue;
+    const row = lexMarkdownTableRow(line);
+    if (!row.ok) {
+      issues.push(verificationRowIssue(index + 1, row.issue));
+      continue;
+    }
+    const cells = row.cells;
+    const validCellCount = strict ? cells.length === 3 : cells.length === 2 || cells.length === 3;
+    if (!validCellCount) {
+      issues.push(
+        verificationRowIssue(
+          index + 1,
+          `expected exactly ${strict ? 3 : '2 or 3'} cells (Command | Required by | Role), found ${cells.length}`
+        )
+      );
+      continue;
+    }
+    if (separatorCells(cells)) {
+      issues.push(verificationRowIssue(index + 1, 'unexpected separator inside table data'));
+      continue;
+    }
+    if (cells[0]?.toLowerCase() === 'command') {
+      issues.push(verificationRowIssue(index + 1, 'duplicate canonical header'));
+      continue;
+    }
+    const [command, requiredBy, role] = cells;
+    if (!command) {
+      issues.push(verificationRowIssue(index + 1, 'Command cell must not be empty'));
+      continue;
+    }
+    const parsedCommand = parseInlineCode(command);
     out.push({
-      command: command.replace(/`/g, '').trim(),
+      command: parsedCommand.wrapped
+        ? parsedCommand.value
+        : unescapeMarkdownTablePipes(parsedCommand.value),
       requiredBy: (requiredBy ?? '')
         .split(',')
-        .map((r) => r.trim())
+        .map((r) => unescapeMarkdownTablePipes(r.trim()))
         .filter(Boolean),
+      role: unescapeMarkdownTablePipes(role?.trim() ?? '').toLowerCase() || null,
     });
   }
-  return out;
+  return issues.length > 0 ? { ok: false, issues } : { ok: true, gates: out };
+}
+
+/** @purpose Collect every exact bold-field value so duplicate/conflicting policy declarations stay visible. */
+function fieldValues(body: string, label: string): string[] {
+  const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re = new RegExp(`^\\s*-\\s+\\*\\*${escaped}:\\*\\*\\s*(.+?)\\s*$`, 'gim');
+  return [...body.matchAll(re)].map((match) => unwrapInlineCode(match[1] ?? ''));
+}
+
+/** @purpose Whether a structured field is still an empty scaffold token rather than a decision. */
+function missingDecision(value: string): boolean {
+  return value.trim() === '' || /^(?:—|none|<[^>]+>)$/i.test(value.trim());
+}
+
+/**
+ * @purpose Parse the ticket's explicit coverage applicability and its one role-tagged reader command.
+ * @invariant No path, extension, platform, threshold, or command is inferred; legacy means the schema
+ *   marker and every structured coverage field/role are absent.
+ * @param verificationBody Text inside SECTION:VERIFICATION.
+ * @returns Valid required/N-A policy, grandfathered legacy, or all structural issues.
+ */
+export function parseTicketCoveragePolicy(verificationBody: string): TicketCoveragePolicy {
+  const policies = fieldValues(verificationBody, 'Coverage Policy').map((value) =>
+    value.toLowerCase()
+  );
+  const reasons = fieldValues(verificationBody, 'Coverage Reason');
+  const owners = fieldValues(verificationBody, 'Coverage Owner Phase');
+  const legacyGates = parseVerification(verificationBody);
+  const coverageGates = legacyGates.filter((gate) => gate.role === 'coverage');
+  const aware =
+    verificationBody.includes(COVERAGE_POLICY_SCHEMA_MARKER) ||
+    policies.length > 0 ||
+    reasons.length > 0 ||
+    owners.length > 0 ||
+    coverageGates.length > 0;
+  if (!aware) return { status: 'legacy' };
+
+  const verification = parseVerificationTable(verificationBody);
+  if (!verification.ok) return { status: 'invalid', issues: verification.issues };
+  const strictCoverageGates = verification.gates.filter((gate) => gate.role === 'coverage');
+
+  const issues: string[] = [];
+  if (policies.length !== 1)
+    issues.push(`Coverage Policy must appear exactly once (found ${policies.length})`);
+  const policy = policies[0];
+  if (policy !== 'required' && policy !== 'not-applicable')
+    issues.push('Coverage Policy must be exactly `required` or `not-applicable`');
+
+  if (policy === 'required') {
+    if (reasons.length > 0)
+      issues.push(
+        'required coverage forbids Coverage Reason; the reason belongs only to not-applicable'
+      );
+    if (strictCoverageGates.length !== 1)
+      issues.push(
+        `required coverage needs exactly one table row with Role=coverage (found ${strictCoverageGates.length})`
+      );
+    if (strictCoverageGates[0] && missingDecision(strictCoverageGates[0].command))
+      issues.push('required coverage command is unresolved');
+    if (owners.length !== 1 || !/^P[0-9]+$/.test(owners[0] ?? ''))
+      issues.push('required coverage needs exactly one Coverage Owner Phase (`P<N>`)');
+  }
+  if (policy === 'not-applicable') {
+    if (reasons.length !== 1 || missingDecision(reasons[0] ?? ''))
+      issues.push('not-applicable coverage needs exactly one concise Coverage Reason');
+    if (strictCoverageGates.length > 0)
+      issues.push('not-applicable coverage forbids a table row with Role=coverage');
+    if (owners.length > 0) issues.push('not-applicable coverage forbids Coverage Owner Phase');
+  }
+  if (issues.length > 0) return { status: 'invalid', issues };
+  if (policy === 'required')
+    return {
+      status: 'required',
+      command: strictCoverageGates[0]?.command ?? '',
+      ownerPhase: owners[0] ?? '',
+    };
+  return { status: 'not-applicable', reason: reasons[0] ?? '' };
 }

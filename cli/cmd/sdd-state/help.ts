@@ -15,7 +15,7 @@ export function printHelp(): void {
   console.info('  FLOW_VERSION — v1 (tasks/ layout) or v2');
   console.info('  PORTAL       — whether specs/README.md exists (absent → project-setup route)');
   console.info(
-    '  [READINESS]  — package.json, exact required scripts, lint→gennady, gennady-installed, GATE_QUEUE'
+    '  [READINESS]  — package.json, exact scripts, install, and structural missing-gate phase owners in GATE_QUEUE'
   );
   console.info(
     '  [SCOPES]     — name · type · status (done/wip) · description · spec path, from the portal'

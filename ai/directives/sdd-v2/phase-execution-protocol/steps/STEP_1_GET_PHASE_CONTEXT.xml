@@ -3,7 +3,7 @@
 <Step id="STEP_1_GET_PHASE_CONTEXT">
       <Goal>First action, every phase, every retry: get the manifest from the tool, not from a pasted prompt.</Goal>
       <Action>
-        Run `npx gennady sdd-task <ticket> --phase <PhaseID>`. Its output IS the phase's working
+        Run phaseContext ToolCall below. Its output IS the phase's working
         context — objective, gates with a satisfy-hint, exit criterion, the phase-scoped
         read-manifest, and a `[HANDOFF]` block quoting every completed prior phase's verbatim
         `**Handoff →**` line (absent → this is the first phase). Follow this output for the rest of
@@ -12,5 +12,6 @@
         header line's `status=[x]` with no `fix` reason from the dispatch → `H_PHASE_ALREADY_DONE`;
         an Input that should cite a prior phase but has no matching `[HANDOFF]` entry →
         `H_INPUT_HANDOFF_MISSING`.
+        <ToolCall owner="phase-worker" result="phaseContext">npx gennady sdd-task <ticket> --phase <PhaseID></ToolCall> Inputs <ticket>, <PhaseID>: <ticket> and <PhaseID>=exact activation values supplied by execute STEP_2. Use phaseContext.
       </Action>
     </Step>

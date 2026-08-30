@@ -4,16 +4,41 @@
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
-import { join, relative, isAbsolute } from 'node:path';
+import { execFileSync } from 'node:child_process';
+import {
+  chmodSync,
+  existsSync,
+  mkdtempSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  symlinkSync,
+  writeFileSync,
+  rmSync,
+} from 'node:fs';
+import { dirname, join, relative, isAbsolute } from 'node:path';
 import { tmpdir } from 'node:os';
+import {
+  formatCriticChangedState,
+  hasCriticRoundsSection,
+  latestCriticTargetSet,
+  latestCriticWriteSet,
+} from '../../../../shared/sdd/critic-readiness.ts';
 
 type CheckModule = typeof import('../sdd-check.cmd.ts');
 
 let mod: CheckModule;
 let origExit: typeof process.exit;
 let origArgv: string[];
+let origCwd: string;
 let dir: string;
+
+function replaceFixture(source: string, needle: string, replacement: string): string {
+  assert.ok(source.includes(needle), `fixture needle missing: ${needle}`);
+  const changed = source.replace(needle, replacement);
+  assert.notStrictEqual(changed, source);
+  return changed;
+}
 
 const CLEAN_TICKET = [
   '<!--SECTION:META-->',
@@ -46,14 +71,304 @@ function argv(...rest: string[]): string[] {
   return ['node', 'gennady', 'sdd-check', ...rest];
 }
 
+function normalizeTaskArgs(rawArgs: string[]): { args: string[]; root: string } {
+  let taskIndex = rawArgs.findIndex((value) => value === '--task');
+  let embedded = false;
+  if (taskIndex === -1) {
+    taskIndex = rawArgs.findIndex((value) => value.startsWith('--task='));
+    embedded = taskIndex !== -1;
+  }
+  const rawTask =
+    taskIndex === -1
+      ? null
+      : embedded
+        ? (rawArgs[taskIndex] ?? '').slice('--task='.length)
+        : (rawArgs[taskIndex + 1] ?? null);
+  let root = process.cwd() === origCwd ? dir : process.cwd();
+  if (rawTask && isAbsolute(rawTask)) {
+    if (rawTask === dir || rawTask.startsWith(`${dir}/`)) root = dir;
+    else {
+      const specsAt = rawTask.indexOf('/specs/');
+      root = specsAt === -1 ? dirname(rawTask) : rawTask.slice(0, specsAt);
+    }
+  }
+  if (!rawTask || !isAbsolute(rawTask)) return { args: rawArgs, root };
+  const normalized = relative(root, rawTask);
+  const args = [...rawArgs];
+  if (embedded) args[taskIndex] = `--task=${normalized}`;
+  else args[taskIndex + 1] = normalized;
+  return { args, root };
+}
+
+/** @purpose Make a path unreadable when the host enforces chmod; otherwise skip the platform-sensitive assertion. */
+function denyRead(
+  context: { skip(message?: string): void },
+  path: string,
+  kind: 'file' | 'directory'
+): boolean {
+  chmodSync(path, 0o000);
+  try {
+    if (kind === 'file') readFileSync(path, 'utf-8');
+    else readdirSync(path);
+    context.skip('chmod does not deny reads for this test process');
+    return false;
+  } catch {
+    return true;
+  }
+}
+
+const reviewMember = (name: string): string =>
+  [
+    `# ${name}`,
+    '<!--SECTION:CHANGE_MANIFEST-->',
+    '## Change Manifest',
+    'ТИП ИЗМЕНЕНИЯ: refine',
+    '<!--/SECTION:CHANGE_MANIFEST-->',
+  ].join('\n');
+
+const reviewState = (
+  name: string,
+  verdict: string,
+  targetSet: string,
+  writeSet = targetSet,
+  changes = 'none'
+): string =>
+  [
+    reviewMember(name),
+    '## Critic Rounds',
+    '### Round 1 — 2026-08-28',
+    `- Verdict: ${verdict}`,
+    `- Target-set: ${targetSet}`,
+    `- Write-set: ${writeSet}`,
+    `- Changed-state: sha256:${'0'.repeat(64)}`,
+    '- Dispatch: fresh — initial target-set',
+    `- Changes: ${changes}`,
+  ].join('\n');
+
+const criticHistory = (
+  name: string,
+  rounds: { verdict: string; decision?: string; changes?: string }[],
+  targetSet = 'primary.spec.md',
+  writeSet = targetSet,
+  primaryWritable = true
+): string =>
+  [
+    primaryWritable ? reviewMember(name) : `# ${name}`,
+    '## Critic Rounds',
+    ...rounds.flatMap(({ verdict, decision, changes }, index) => {
+      const number = index + 1;
+      const resolvedChanges =
+        changes ?? (index < rounds.length - 1 ? `edited round ${number}` : 'none');
+      const changedState =
+        index < rounds.length - 1
+          ? `sha256:${'0123456789abcdef'[number % 16]?.repeat(64)}`
+          : `sha256:${'0'.repeat(64)}`;
+      return [
+        `### Round ${number} — 2026-08-${String(number).padStart(2, '0')}`,
+        `- Verdict: ${verdict}`,
+        `- Target-set: ${targetSet}`,
+        `- Write-set: ${writeSet}`,
+        `- Changed-state: ${changedState}`,
+        `- Dispatch: ${number === 1 ? 'fresh — initial target-set' : 'continued'}`,
+        `- Changes: ${resolvedChanges}`,
+        ...(decision ? [`- Operator-decision: ${decision}`] : []),
+      ];
+    }),
+  ].join('\n');
+
+const roundExample = (): string =>
+  ['### Round 1 — 2026-08-28', '- Verdict: CLEAN', '- Target-set: secondary.spec.md'].join('\n');
+
+const publicationResearch = (): string =>
+  [
+    '# Demo research',
+    '<!--SECTION:STATUS-->',
+    '**State:** proposed',
+    '<!--/SECTION:STATUS-->',
+    '<!--SECTION:PROBLEM-->',
+    'Bounded problem.',
+    '<!--/SECTION:PROBLEM-->',
+    '<!--SECTION:CRITERIA-->',
+    'Deterministic attribution.',
+    '<!--/SECTION:CRITERIA-->',
+    '<!--SECTION:OPTIONS-->',
+    'One bounded option.',
+    '<!--/SECTION:OPTIONS-->',
+    '<!--SECTION:DECISION-->',
+    'Candidate decision.',
+    '<!--/SECTION:DECISION-->',
+    '<!--SECTION:FINAL_DISPOSITION-->',
+    '**Outcome:** pending',
+    '<!--/SECTION:FINAL_DISPOSITION-->',
+    '<!--SECTION:CONSEQUENCES-->',
+    'Known consequence.',
+    '<!--/SECTION:CONSEQUENCES-->',
+    '<!--SECTION:EVIDENCE-->',
+    'Local evidence.',
+    '<!--/SECTION:EVIDENCE-->',
+    '<!--SECTION:RELATED-->',
+    'No related documents.',
+    '<!--/SECTION:RELATED-->',
+  ].join('\n');
+
+const publicationSpec = (): string =>
+  [
+    reviewMember('Demo'),
+    '<!--SECTION:SCOPE_TYPE-->',
+    'infrastructure',
+    '<!--/SECTION:SCOPE_TYPE-->',
+    '<!--SECTION:RESEARCH-->',
+    '## Research',
+    '| Document | Finding | Decision |',
+    '| --- | --- | --- |',
+    '| [Demo research](./research/2026-08-30-demo.research.md) | bounded | candidate |',
+    '<!--/SECTION:RESEARCH-->',
+  ].join('\n');
+
+const publicationPortal = (vision = 'Demo project'): string =>
+  [
+    '# Demo',
+    '',
+    '## Vision',
+    '',
+    vision,
+    '',
+    '## Scope Graph',
+    '',
+    '```mermaid',
+    'graph TD',
+    '  demo[demo]',
+    '```',
+    '',
+    '## Scopes',
+    '',
+    '| Scope | Type | Status | Description |',
+    '| --- | --- | --- | --- |',
+    '| [`demo`](./demo/demo.spec.md) | infrastructure | 🚧 | Demo scope |',
+    '',
+  ].join('\n');
+
+const publicationProjectIndex = (): string =>
+  [
+    '# Project Tasks',
+    '## Entry Points',
+    '- [Specs Portal](./README.md)',
+    '## Project-Wide Conventions (declared once, inherited)',
+    '- Deterministic.',
+    '## Cross-Scope DAG',
+    'No cross-scope edges.',
+    '## Scope Tracker',
+    '| Scope | Type | Index | Tasks | Done |',
+    '| --- | --- | --- | --- | --- |',
+    '| demo | infrastructure | [3-tasks](./demo/demo.3-tasks.md) | 1 | 0/1 |',
+  ].join('\n');
+
+const publicationScopeIndex = (): string =>
+  [
+    '# Tasks: demo',
+    '## Scope Spec',
+    '- [Scope spec](./demo.spec.md)',
+    '## Cascade Table',
+    '| Tier | coding | testing | infra | docs |',
+    '| --- | --- | --- | --- | --- |',
+    '| demo | deterministic | deterministic | — | — |',
+    '## Inter-Module DAG',
+    'No modules.',
+    '## Tracker',
+    '| Task-ID | Title | Module | Dependencies | Status | Reopens |',
+    '| --- | --- | --- | --- | --- | --- |',
+    '| DEMO-first | First | — | — | [ ] TODO | — |',
+  ].join('\n');
+
+function initPublicationRepo(name: string): {
+  repo: string;
+  spec: string;
+  publicationPaths: string[];
+} {
+  const repo = join(dir, name);
+  const scope = join(repo, 'specs', 'demo');
+  mkdirSync(join(scope, 'research'), { recursive: true });
+  writeFileSync(join(repo, 'package.json'), '{}\n');
+  writeFileSync(join(repo, '.gitignore'), 'dist/\n');
+  execFileSync('git', ['init', '-q'], { cwd: repo });
+  execFileSync('git', ['config', 'user.email', 'test@example.com'], { cwd: repo });
+  execFileSync('git', ['config', 'user.name', 'test'], { cwd: repo });
+  execFileSync('git', ['add', 'package.json', '.gitignore'], { cwd: repo });
+  execFileSync('git', ['commit', '-q', '-m', 'baseline'], { cwd: repo });
+
+  const spec = join(scope, 'demo.spec.md');
+  writeFileSync(spec, publicationSpec());
+  writeFileSync(join(scope, 'research', '2026-08-30-demo.research.md'), publicationResearch());
+  writeFileSync(join(repo, 'specs', 'README.md'), publicationPortal());
+  writeFileSync(join(repo, 'specs', '3-tasks.md'), publicationProjectIndex());
+  writeFileSync(join(scope, 'demo.3-tasks.md'), publicationScopeIndex());
+  writeFileSync(join(repo, '.gitignore'), 'dist/\n.sdd-session.md\n');
+  return {
+    repo,
+    spec,
+    publicationPaths: [
+      '.gitignore',
+      'specs/3-tasks.md',
+      'specs/README.md',
+      'specs/demo/demo.3-tasks.md',
+      'specs/demo/demo.spec.md',
+      'specs/demo/research/2026-08-30-demo.research.md',
+    ],
+  };
+}
+
+/** @purpose Replace the fixture placeholder with the exact integrated-state fingerprint. */
+function stampReviewState(bundle: string): void {
+  const files = readdirSync(bundle)
+    .filter((name) => name.endsWith('.spec.md'))
+    .map((name) => join(bundle, name));
+  const primary = files.find((file) => hasCriticRoundsSection(readFileSync(file, 'utf-8')));
+  if (!primary) return;
+  const primaryContent = readFileSync(primary, 'utf-8');
+  const targetSet = latestCriticTargetSet(primaryContent);
+  const writeSet = latestCriticWriteSet(primaryContent);
+  if (!targetSet || !writeSet) return;
+  let members: { path: string; content: string; primary: boolean }[];
+  try {
+    members = targetSet.map((path) => ({
+      path,
+      content: readFileSync(join(bundle, path), 'utf-8'),
+      primary: join(bundle, path) === primary,
+    }));
+  } catch {
+    return;
+  }
+  const state = formatCriticChangedState(members);
+  assert.ok(primaryContent.includes(`sha256:${'0'.repeat(64)}`));
+  writeFileSync(primary, primaryContent.replaceAll(`sha256:${'0'.repeat(64)}`, state), 'utf-8');
+}
+
+/** @purpose Give review-ready semantic fixtures genuine clean VCS evidence instead of bypassing git. */
+function commitReviewFixture(root: string): void {
+  if (!existsSync(join(root, '.git'))) execFileSync('git', ['init', '-q'], { cwd: root });
+  execFileSync('git', ['config', 'user.email', 'test@example.com'], { cwd: root });
+  execFileSync('git', ['config', 'user.name', 'test'], { cwd: root });
+  execFileSync('git', ['add', '-A'], { cwd: root });
+  execFileSync('git', ['commit', '--allow-empty', '-qm', 'review fixture'], { cwd: root });
+}
+
 describe('SddCheckCommand', () => {
   before(async () => {
     origExit = process.exit;
     origArgv = process.argv;
+    origCwd = process.cwd();
     process.exit = ((_code?: number) => undefined) as typeof process.exit;
     process.argv = ['node', 'gennady', 'sdd-check'];
     dir = mkdtempSync(join(tmpdir(), 'sdd-check-'));
-    mod = await import('../sdd-check.cmd.ts');
+    const loaded = await import('../sdd-check.cmd.ts');
+    mod = {
+      ...loaded,
+      run: (rawArgs, explicitRoot) => {
+        if (explicitRoot) return loaded.run(rawArgs, explicitRoot);
+        const normalized = normalizeTaskArgs(rawArgs);
+        return loaded.run(normalized.args, normalized.root);
+      },
+    };
   });
 
   after(() => {
@@ -76,6 +391,1270 @@ describe('SddCheckCommand', () => {
     const r = await mod.run(argv('--task', t));
     assert.strictEqual(r.exitCode, 0);
     assert.match(r.text, /✅ clean/);
+  });
+
+  it('rejects unknown flags, missing values, illegal extra roots, and conflicting modes', async () => {
+    const t = join(dir, 'strict-argv-clean.md');
+    writeFileSync(t, CLEAN_TICKET, 'utf-8');
+    const invalid = [
+      argv('--all', dir, '--typo'),
+      argv('--task'),
+      argv('--review-ready'),
+      argv('--review-publication'),
+      argv('--review-state'),
+      argv('--task', t, 'extra.md'),
+      argv('--task', t, 'sdd-check'),
+      argv('--all', dir, 'extra-root'),
+      argv('--changed', dir, 'extra-root'),
+      argv('--task', t, '--all'),
+      argv('--all=true'),
+    ];
+    for (const rawArgs of invalid) {
+      const result = await mod.run(rawArgs);
+      assert.strictEqual(result.exitCode, 4);
+      assert.match(result.text, /usage: gennady sdd-check/);
+    }
+  });
+
+  it('--changed fails closed on a corrupt HEAD instead of reporting an empty clean set', async () => {
+    const repo = join(dir, 'changed-corrupt-head');
+    mkdirSync(repo, { recursive: true });
+    writeFileSync(join(repo, 'tracked.ts'), '// @tasks: TSK-one\nexport const value = 1;\n');
+    execFileSync('git', ['init', '-q'], { cwd: repo });
+    execFileSync('git', ['config', 'user.email', 'test@example.com'], { cwd: repo });
+    execFileSync('git', ['config', 'user.name', 'test'], { cwd: repo });
+    execFileSync('git', ['add', '-A'], { cwd: repo });
+    execFileSync('git', ['commit', '-q', '-m', 'baseline'], { cwd: repo });
+    writeFileSync(join(repo, 'tracked.ts'), '// dirty tracked file\nexport const value = 2;\n');
+    const branch = execFileSync('git', ['symbolic-ref', 'HEAD'], {
+      cwd: repo,
+      encoding: 'utf-8',
+    }).trim();
+    writeFileSync(join(repo, '.git', branch), `${'1'.repeat(40)}\n`);
+
+    const result = await mod.run(argv('--changed', repo));
+    assert.strictEqual(result.exitCode, 1);
+    assert.match(result.text, /ERR_CLI_SDD_CHECK_GIT_EVIDENCE/);
+    assert.match(result.text, /exit \d+/);
+    assert.doesNotMatch(result.text, /✅ clean/);
+  });
+
+  it('--changed treats a proven unborn repository as staged plus untracked empty-tree changes', async () => {
+    const repo = join(dir, 'changed-unborn');
+    mkdirSync(repo, { recursive: true });
+    execFileSync('git', ['init', '-q'], { cwd: repo });
+    writeFileSync(join(repo, 'new.ts'), '// @tasks: N/A\nexport const value = 1;\n');
+    execFileSync('git', ['add', 'new.ts'], { cwd: repo });
+    writeFileSync(join(repo, 'other.ts'), '// @tasks: N/A\nexport const other = 2;\n');
+    const result = await mod.run(argv('--changed', repo));
+    assert.strictEqual(result.exitCode, 0);
+    assert.match(result.text, /2 file\(s\) checked/);
+  });
+
+  it('--changed never evaluates shell syntax embedded in the repository root', async () => {
+    const parent = join(dir, 'changed-hostile-parent');
+    const repo = join(parent, 'repo-$(touch SHOULD_NOT_EXIST)-`touch SHOULD_NOT_EXIST`');
+    const marker = join(parent, 'SHOULD_NOT_EXIST');
+    mkdirSync(repo, { recursive: true });
+    execFileSync('git', ['init', '-q'], { cwd: repo });
+    writeFileSync(
+      join(repo, 'new.ts'),
+      '// @tasks: N/A\n// @consumers: MissingConsumer\nexport const value = 1;\n'
+    );
+    const previous = process.cwd();
+    try {
+      process.chdir(parent);
+      const result = await mod.run(argv('--changed', repo));
+      assert.strictEqual(result.exitCode, 0, result.text);
+      assert.match(result.text, /CONSUMERS_UNRESOLVED/);
+      assert.throws(() => readFileSync(marker, 'utf-8'));
+    } finally {
+      process.chdir(previous);
+    }
+  });
+
+  it('--changed accepts a legitimately deleted tracked source when append-only metadata is preserved', async () => {
+    const repo = join(dir, 'changed-deleted-clean');
+    mkdirSync(repo, { recursive: true });
+    const source = join(repo, 'retired.ts');
+    writeFileSync(source, '// @tasks: N/A\nexport const retired = true;\n');
+    execFileSync('git', ['init', '-q'], { cwd: repo });
+    execFileSync('git', ['config', 'user.email', 'test@example.com'], { cwd: repo });
+    execFileSync('git', ['config', 'user.name', 'test'], { cwd: repo });
+    execFileSync('git', ['add', '-A'], { cwd: repo });
+    execFileSync('git', ['commit', '-q', '-m', 'baseline'], { cwd: repo });
+    rmSync(source);
+
+    const result = await mod.run(argv('--changed', repo));
+    assert.strictEqual(result.exitCode, 0, result.text);
+    assert.match(result.text, /1 file\(s\) checked/);
+  });
+
+  it('--changed checks deleted tracked sources against HEAD instead of silently omitting them', async () => {
+    const repo = join(dir, 'changed-deleted-task-id');
+    mkdirSync(repo, { recursive: true });
+    const source = join(repo, 'retired.ts');
+    writeFileSync(source, '// @tasks: TSK-retired\nexport const retired = true;\n');
+    execFileSync('git', ['init', '-q'], { cwd: repo });
+    execFileSync('git', ['config', 'user.email', 'test@example.com'], { cwd: repo });
+    execFileSync('git', ['config', 'user.name', 'test'], { cwd: repo });
+    execFileSync('git', ['add', '-A'], { cwd: repo });
+    execFileSync('git', ['commit', '-q', '-m', 'baseline'], { cwd: repo });
+    rmSync(source);
+
+    const result = await mod.run(argv('--changed', repo));
+    assert.strictEqual(result.exitCode, 1, result.text);
+    assert.match(result.text, /SDD_TASKS_APPEND_ONLY_REGRESSION/);
+    assert.doesNotMatch(result.text, /0 file\(s\) checked/);
+  });
+
+  it('--all fails closed when a selected spec file is unreadable', async (context) => {
+    const repo = join(dir, 'all-unreadable-spec');
+    const spec = join(repo, 'specs', 'demo', 'demo.spec.md');
+    mkdirSync(join(repo, 'specs', 'demo'), { recursive: true });
+    writeFileSync(join(repo, 'package.json'), '{}\n');
+    writeFileSync(spec, '# Demo\n');
+    if (!denyRead(context, spec, 'file')) return;
+    try {
+      const result = await mod.run(argv('--all', repo));
+      assert.strictEqual(result.exitCode, 1, result.text);
+      assert.match(result.text, /ERR_CLI_SDD_CHECK_READ_FAILED/);
+      assert.match(result.text, /demo\.spec\.md/);
+      assert.match(result.text, /EACCES|EPERM/);
+      assert.doesNotMatch(result.text, /✅ clean/);
+    } finally {
+      chmodSync(spec, 0o600);
+    }
+  });
+
+  it('--all fails closed when an in-scope nested directory is unreadable', async (context) => {
+    const repo = join(dir, 'all-unreadable-subtree');
+    const nested = join(repo, 'specs', 'demo', 'nested');
+    mkdirSync(nested, { recursive: true });
+    writeFileSync(join(repo, 'package.json'), '{}\n');
+    writeFileSync(join(nested, 'hidden.spec.md'), '# Hidden\n');
+    if (!denyRead(context, nested, 'directory')) return;
+    try {
+      const result = await mod.run(argv('--all', repo));
+      assert.strictEqual(result.exitCode, 1, result.text);
+      assert.match(result.text, /ERR_CLI_SDD_CHECK_READ_FAILED/);
+      assert.match(result.text, /nested/);
+      assert.match(result.text, /EACCES|EPERM/);
+      assert.doesNotMatch(result.text, /✅ clean/);
+    } finally {
+      chmodSync(nested, 0o700);
+    }
+  });
+
+  it('--task fails closed when the selected ticket is unreadable', async (context) => {
+    const ticket = join(dir, 'unreadable-ticket.md');
+    writeFileSync(ticket, CLEAN_TICKET);
+    if (!denyRead(context, ticket, 'file')) return;
+    try {
+      const result = await mod.run(argv('--task', ticket));
+      assert.strictEqual(result.exitCode, 1, result.text);
+      assert.match(result.text, /ERR_CLI_SDD_CHECK_READ_FAILED/);
+      assert.match(result.text, /unreadable-ticket\.md/);
+      assert.match(result.text, /EACCES|EPERM/);
+      assert.doesNotMatch(result.text, /✅ clean/);
+    } finally {
+      chmodSync(ticket, 0o600);
+    }
+  });
+
+  it('--task fails closed when a referenced spec exists but is unreadable', async (context) => {
+    const fixture = join(dir, 'unreadable-spec-ref');
+    const ticket = join(fixture, 'demo.task.DEMO-1.md');
+    const spec = join(fixture, 'demo.spec.md');
+    mkdirSync(fixture, { recursive: true });
+    writeFileSync(ticket, `${CLEAN_TICKET}\n- [Contract](./demo.spec.md#contract)\n`);
+    writeFileSync(spec, '# Contract\n');
+    if (!denyRead(context, spec, 'file')) return;
+    try {
+      const result = await mod.run(argv('--task', ticket));
+      assert.strictEqual(result.exitCode, 1, result.text);
+      assert.match(result.text, /ERR_CLI_SDD_CHECK_READ_FAILED/);
+      assert.match(result.text, /demo\.spec\.md/);
+      assert.match(result.text, /EACCES|EPERM/);
+      assert.doesNotMatch(result.text, /✅ clean/);
+    } finally {
+      chmodSync(spec, 0o600);
+    }
+  });
+
+  it('--changed fails closed when a selected source file is unreadable', async (context) => {
+    const repo = join(dir, 'changed-unreadable-source');
+    const source = join(repo, 'changed.ts');
+    mkdirSync(repo, { recursive: true });
+    writeFileSync(source, '// @tasks: N/A\nexport const value = 1;\n');
+    execFileSync('git', ['init', '-q'], { cwd: repo });
+    execFileSync('git', ['config', 'user.email', 'test@example.com'], { cwd: repo });
+    execFileSync('git', ['config', 'user.name', 'test'], { cwd: repo });
+    execFileSync('git', ['add', '-A'], { cwd: repo });
+    execFileSync('git', ['commit', '-q', '-m', 'baseline'], { cwd: repo });
+    writeFileSync(source, '// @tasks: N/A\nexport const value = 2;\n');
+    if (!denyRead(context, source, 'file')) return;
+    try {
+      const result = await mod.run(argv('--changed', repo));
+      assert.strictEqual(result.exitCode, 1, result.text);
+      assert.match(result.text, /ERR_CLI_SDD_CHECK_READ_FAILED/);
+      assert.match(result.text, /changed\.ts/);
+      assert.match(result.text, /EACCES|EPERM/);
+      assert.doesNotMatch(result.text, /✅ clean/);
+    } finally {
+      chmodSync(source, 0o600);
+    }
+  });
+
+  it('--task rejects every inconsistent schema-aware coverage policy shape', async () => {
+    const invalidSections = [
+      ['<!--COVERAGE_POLICY:v1-->'],
+      [
+        '<!--COVERAGE_POLICY:v1-->',
+        '- **Coverage Policy:** required',
+        '- **Coverage Policy:** not-applicable',
+        '- **Coverage Reason:** conflicting declarations',
+      ],
+      ['<!--COVERAGE_POLICY:v1-->', '- **Coverage Policy:** required'],
+      [
+        '<!--COVERAGE_POLICY:v1-->',
+        '- **Coverage Policy:** required',
+        '- **Coverage Reason:** contradictory N/A metadata',
+        '| Command | Required by | Role |',
+        '|---|---|---|',
+        '| custom coverage read | RULE | coverage |',
+      ],
+      [
+        '<!--COVERAGE_POLICY:v1-->',
+        '- **Coverage Policy:** not-applicable',
+        '- **Coverage Reason:** config only',
+        '- **Coverage Owner Phase:** P1',
+      ],
+      [
+        '<!--COVERAGE_POLICY:v1-->',
+        '- **Coverage Policy:** not-applicable',
+        '- **Coverage Reason:** config only',
+        '| Command | Required by | Role |',
+        '|---|---|---|',
+        '| custom coverage read | RULE | coverage |',
+      ],
+      [
+        '<!--COVERAGE_POLICY:v1-->',
+        '- **Coverage Policy:** not-applicable',
+        '- **Coverage Reason:** <reason>',
+      ],
+    ];
+    for (const [index, section] of invalidSections.entries()) {
+      const t = join(dir, `coverage-invalid-${index}.md`);
+      writeFileSync(
+        t,
+        [
+          CLEAN_TICKET,
+          '<!--SECTION:VERIFICATION-->',
+          ...(section ?? []),
+          ...((section ?? []).some((line) => line.includes('| Command'))
+            ? []
+            : ['| Command | Required by | Role |', '|---|---|---|']),
+          '<!--/SECTION:VERIFICATION-->',
+        ].join('\n'),
+        'utf-8'
+      );
+      const r = await mod.run(argv('--task', t));
+      assert.strictEqual(r.exitCode, 1, r.text);
+      assert.match(r.text, /SDD_COVERAGE_POLICY_INVALID/);
+    }
+  });
+
+  it('--task accepts explicit not-applicable with a concise reason and no coverage row', async () => {
+    const t = join(dir, 'coverage-na.md');
+    writeFileSync(
+      t,
+      [
+        CLEAN_TICKET,
+        '<!--SECTION:VERIFICATION-->',
+        '<!--COVERAGE_POLICY:v1-->',
+        '- **Coverage Policy:** not-applicable',
+        '- **Coverage Reason:** configuration metadata only; no executable behavior',
+        '| Command | Required by | Role |',
+        '|---|---|---|',
+        '| — | — | extra |',
+        '<!--/SECTION:VERIFICATION-->',
+      ].join('\n'),
+      'utf-8'
+    );
+    const r = await mod.run(argv('--task', t));
+    assert.doesNotMatch(r.text, /SDD_COVERAGE_POLICY_INVALID/);
+  });
+
+  it('--task rejects a malformed Verification row instead of silently omitting it', async () => {
+    const t = join(dir, 'verification-malformed.md');
+    writeFileSync(
+      t,
+      [
+        CLEAN_TICKET,
+        '<!--SECTION:VERIFICATION-->',
+        '| Command | Required by | Role |',
+        '|---|---|---|',
+        '| printf x | grep x | RULE | extra |',
+        '<!--/SECTION:VERIFICATION-->',
+      ].join('\n'),
+      'utf-8'
+    );
+    const r = await mod.run(argv('--task', t));
+    assert.strictEqual(r.exitCode, 1, r.text);
+    assert.match(r.text, /SDD_VERIFICATION_TABLE_INVALID/);
+    assert.match(r.text, /expected exactly 3 cells/);
+  });
+
+  it('--task rejects required coverage when its declared owner phase does not exist', async () => {
+    const t = join(dir, 'coverage-required-no-test-phase.md');
+    writeFileSync(
+      t,
+      [
+        CLEAN_TICKET,
+        '<!--SECTION:VERIFICATION-->',
+        '<!--COVERAGE_POLICY:v1-->',
+        '- **Coverage Policy:** required',
+        '- **Coverage Owner Phase:** P9',
+        '| Command | Required by | Role |',
+        '|---|---|---|',
+        '| go tool cover -func=coverage.out | GO-COVER | coverage |',
+        '<!--/SECTION:VERIFICATION-->',
+      ].join('\n'),
+      'utf-8'
+    );
+    const r = await mod.run(argv('--task', t));
+    assert.strictEqual(r.exitCode, 1, r.text);
+    assert.match(r.text, /SDD_COVERAGE_OWNER_INVALID/);
+  });
+
+  it('--task rejects a non-test owner and a reader not required by the owner rule', async () => {
+    const ticket = (kind: string, requiredBy: string) =>
+      [
+        CLEAN_TICKET,
+        '<!--SECTION:PHASES_OVERVIEW-->',
+        '| ID | Kind | Deps | Status |',
+        '|---|---|---|---|',
+        `| P1 | ${kind} | — | [ ] |`,
+        '<!--/SECTION:PHASES_OVERVIEW-->',
+        '<!--SECTION:PHASE_P1-->',
+        '- **Rules:**',
+        '  - [Coverage](RULE-OWNER)',
+        '- **Target Files:**',
+        '  - src/a.ts',
+        '<!--/SECTION:PHASE_P1-->',
+        '<!--SECTION:VERIFICATION-->',
+        '<!--COVERAGE_POLICY:v1-->',
+        '- **Coverage Policy:** required',
+        '- **Coverage Owner Phase:** P1',
+        '| Command | Required by | Role |',
+        '|---|---|---|',
+        `| custom coverage read | ${requiredBy} | coverage |`,
+        '<!--/SECTION:VERIFICATION-->',
+      ].join('\n');
+    const cases: Array<[string, string, RegExp]> = [
+      ['impl', 'RULE-OWNER', /SDD_COVERAGE_OWNER_INVALID/],
+      ['test', 'OTHER-RULE', /SDD_COVERAGE_READER_OWNER_MISMATCH/],
+    ];
+    for (const [kind, requiredBy, expected] of cases) {
+      const t = join(dir, `coverage-owner-${kind}-${requiredBy}.md`);
+      writeFileSync(t, ticket(kind, requiredBy), 'utf-8');
+      const r = await mod.run(argv('--task', t));
+      assert.strictEqual(r.exitCode, 1, r.text);
+      assert.match(r.text, expected);
+    }
+  });
+
+  it('--review-ready checks the one primary record and fails on its non-CLEAN last verdict', async () => {
+    const bundle = join(dir, 'review-bundle-fail');
+    mkdirSync(bundle, { recursive: true });
+    const targetSet = 'blocked.spec.md | clean.spec.md';
+    writeFileSync(join(bundle, 'clean.spec.md'), reviewMember('Clean'), 'utf-8');
+    writeFileSync(
+      join(bundle, 'blocked.spec.md'),
+      reviewState('Blocked', 'NEEDS_WORK', targetSet),
+      'utf-8'
+    );
+    writeFileSync(join(bundle, 'master.spec.md'), '# Master\nNo review state.', 'utf-8');
+    stampReviewState(bundle);
+    commitReviewFixture(bundle);
+
+    const r = await mod.run(argv('--review-ready', bundle));
+    assert.strictEqual(r.exitCode, 1);
+    assert.match(r.text, /SDD_CRITIC_NOT_CLEAN/);
+    assert.match(r.text, /2 file\(s\)/);
+  });
+
+  it('--review-ready passes a CLEAN review-state spec and ignores master specs', async () => {
+    const bundle = join(dir, 'review-bundle-clean');
+    mkdirSync(bundle, { recursive: true });
+    writeFileSync(
+      join(bundle, 'scope.spec.md'),
+      reviewState('Scope', 'CLEAN', 'scope.spec.md'),
+      'utf-8'
+    );
+    writeFileSync(join(bundle, 'master.spec.md'), '# Master', 'utf-8');
+    stampReviewState(bundle);
+    commitReviewFixture(bundle);
+
+    const r = await mod.run(argv(`--review-ready=${bundle}`));
+    assert.strictEqual(r.exitCode, 0);
+    assert.match(r.text, /1 file\(s\) checked/);
+  });
+
+  it('--review-ready passes one CLEAN primary plus a secondary changed member without Critic Rounds', async () => {
+    const bundle = join(dir, 'review-bundle-one-primary');
+    mkdirSync(bundle, { recursive: true });
+    writeFileSync(
+      join(bundle, 'primary.spec.md'),
+      reviewState('Primary', 'CLEAN', 'primary.spec.md | secondary.spec.md'),
+      'utf-8'
+    );
+    writeFileSync(
+      join(bundle, 'secondary.spec.md'),
+      `${reviewMember('Secondary')}\n~~~md\n## Critic Rounds\n${roundExample()}\n~~~`,
+      'utf-8'
+    );
+    stampReviewState(bundle);
+    commitReviewFixture(bundle);
+
+    const r = await mod.run(argv('--review-ready', bundle));
+    assert.strictEqual(r.exitCode, 0);
+    assert.match(r.text, /2 file\(s\) checked/);
+  });
+
+  it('--review-ready fails when one bundle member has a malformed CHANGE_MANIFEST', async () => {
+    const bundle = join(dir, 'review-bundle-malformed');
+    mkdirSync(bundle, { recursive: true });
+    writeFileSync(
+      join(bundle, 'clean.spec.md'),
+      [
+        '<!--SECTION:CHANGE_MANIFEST-->',
+        'ТИП ИЗМЕНЕНИЯ: refine',
+        '<!--/SECTION:CHANGE_MANIFEST-->',
+        '## Critic Rounds',
+        '### Round 1 — 2026-08-28',
+        '- Verdict: CLEAN',
+        '- Target-set: broken.spec.md | clean.spec.md',
+      ].join('\n'),
+      'utf-8'
+    );
+    writeFileSync(
+      join(bundle, 'broken.spec.md'),
+      '<!--SECTION:CHANGE_MANIFEST-->\nТИП ИЗМЕНЕНИЯ: refine',
+      'utf-8'
+    );
+    commitReviewFixture(bundle);
+
+    const r = await mod.run(argv('--review-ready', bundle));
+    assert.strictEqual(r.exitCode, 1);
+    assert.match(r.text, /SDD_REVIEW_READY_MEMBER_MALFORMED/);
+  });
+
+  it('rejects multiple modes instead of silently choosing one', async () => {
+    const r = await mod.run(argv('--review-ready', dir, '--all'));
+    assert.strictEqual(r.exitCode, 4);
+    assert.match(r.text, /ERR_CLI_SDD_CHECK_BAD_INVOCATION/);
+  });
+
+  it('--review-ready requires every changed review-state member in the integrated target-set', async () => {
+    const bundle = join(dir, 'review-bundle-incomplete');
+    mkdirSync(bundle, { recursive: true });
+    writeFileSync(join(bundle, 'a.spec.md'), reviewState('A', 'CLEAN', 'a.spec.md'), 'utf-8');
+    writeFileSync(join(bundle, 'b.spec.md'), reviewMember('B'), 'utf-8');
+    stampReviewState(bundle);
+    commitReviewFixture(bundle);
+
+    const r = await mod.run(argv('--review-ready', bundle));
+    assert.strictEqual(r.exitCode, 1);
+    assert.match(r.text, /SDD_CRITIC_TARGET_SET_INCOMPLETE/);
+  });
+
+  it('--review-ready rejects more than one primary evidence artifact', async () => {
+    const bundle = join(dir, 'review-bundle-divergent');
+    mkdirSync(bundle, { recursive: true });
+    writeFileSync(
+      join(bundle, 'a.spec.md'),
+      reviewState('A', 'CLEAN', 'a.spec.md | b.spec.md'),
+      'utf-8'
+    );
+    writeFileSync(join(bundle, 'b.spec.md'), reviewState('B', 'CLEAN', 'b.spec.md'), 'utf-8');
+    commitReviewFixture(bundle);
+
+    const r = await mod.run(argv('--review-ready', bundle));
+    assert.strictEqual(r.exitCode, 1);
+    assert.match(r.text, /SDD_CRITIC_PRIMARY_COUNT_INVALID/);
+  });
+
+  it('--review-ready rejects a directory with no primary evidence artifact', async () => {
+    const bundle = join(dir, 'review-bundle-no-primary');
+    mkdirSync(bundle, { recursive: true });
+    writeFileSync(join(bundle, 'a.spec.md'), reviewMember('A'), 'utf-8');
+    writeFileSync(join(bundle, 'b.spec.md'), reviewMember('B'), 'utf-8');
+    commitReviewFixture(bundle);
+
+    const r = await mod.run(argv('--review-ready', bundle));
+    assert.strictEqual(r.exitCode, 1);
+    assert.match(r.text, /SDD_CRITIC_PRIMARY_COUNT_INVALID/);
+  });
+
+  it('--review-ready allows an unchanged context module in the target-set without a manifest', async () => {
+    const bundle = join(dir, 'review-bundle-context');
+    mkdirSync(bundle, { recursive: true });
+    writeFileSync(join(bundle, 'context.spec.md'), '# Unchanged context', 'utf-8');
+    writeFileSync(
+      join(bundle, 'scope.spec.md'),
+      reviewState('Scope', 'CLEAN', 'context.spec.md | scope.spec.md', 'scope.spec.md'),
+      'utf-8'
+    );
+    stampReviewState(bundle);
+    commitReviewFixture(bundle);
+
+    const r = await mod.run(argv('--review-ready', bundle));
+    assert.strictEqual(r.exitCode, 0);
+    assert.match(r.text, /1 file\(s\) checked/);
+  });
+
+  it('--review-ready allows a read-only primary when one secondary owns the write-set', async () => {
+    const bundle = join(dir, 'review-bundle-read-only-primary');
+    mkdirSync(bundle, { recursive: true });
+    writeFileSync(
+      join(bundle, 'primary.spec.md'),
+      criticHistory(
+        'Primary context',
+        [{ verdict: 'CLEAN' }],
+        'primary.spec.md | secondary.spec.md',
+        'secondary.spec.md',
+        false
+      ),
+      'utf-8'
+    );
+    writeFileSync(join(bundle, 'secondary.spec.md'), reviewMember('Secondary'), 'utf-8');
+    stampReviewState(bundle);
+    commitReviewFixture(bundle);
+
+    const result = await mod.run(argv('--review-ready', bundle));
+    assert.strictEqual(result.exitCode, 0, result.text);
+  });
+
+  it('--review-ready does not let a changed spec disappear by omitting its manifest', async () => {
+    const repo = join(dir, 'review-bundle-git');
+    const specs = join(repo, 'specs');
+    mkdirSync(specs, { recursive: true });
+    writeFileSync(join(repo, 'package.json'), '{}', 'utf-8');
+    const changed = join(specs, 'changed.spec.md');
+    writeFileSync(changed, '# Master before', 'utf-8');
+    execFileSync('git', ['init', '-q'], { cwd: repo });
+    execFileSync('git', ['add', '.'], { cwd: repo });
+    execFileSync(
+      'git',
+      ['-c', 'user.name=Test', '-c', 'user.email=test@example.com', 'commit', '-qm', 'baseline'],
+      { cwd: repo }
+    );
+    writeFileSync(changed, '# Changed without review state', 'utf-8');
+
+    const r = await mod.run(argv('--review-ready', specs));
+    assert.strictEqual(r.exitCode, 1);
+    assert.match(r.text, /SDD_REVIEW_READY_MEMBER_MALFORMED/);
+    assert.match(r.text, /Changed spec has no valid CHANGE_MANIFEST/);
+  });
+
+  it('--review-ready fails closed with typed git evidence when HEAD is corrupt', async () => {
+    const bundle = join(dir, 'review-ready-corrupt-head');
+    mkdirSync(bundle, { recursive: true });
+    writeFileSync(
+      join(bundle, 'scope.spec.md'),
+      reviewState('Scope', 'CLEAN', 'scope.spec.md'),
+      'utf-8'
+    );
+    stampReviewState(bundle);
+    commitReviewFixture(bundle);
+    const branch = execFileSync('git', ['symbolic-ref', 'HEAD'], {
+      cwd: bundle,
+      encoding: 'utf-8',
+    }).trim();
+    writeFileSync(join(bundle, '.git', branch), `${'1'.repeat(40)}\n`, 'utf-8');
+
+    const result = await mod.run(argv('--review-ready', bundle));
+
+    assert.strictEqual(result.exitCode, 1, result.text);
+    assert.match(result.text, /ERR_CLI_SDD_CHECK_GIT_EVIDENCE/);
+    assert.match(result.text, /git inspect symbolic HEAD branch failed/);
+    assert.doesNotMatch(result.text, /\u2705 clean/);
+  });
+
+  it('--review-ready supports a proven unborn HEAD when every changed spec has review evidence', async () => {
+    const bundle = join(dir, 'review-ready-unborn');
+    mkdirSync(bundle, { recursive: true });
+    writeFileSync(
+      join(bundle, 'scope.spec.md'),
+      reviewState('Scope', 'CLEAN', 'scope.spec.md'),
+      'utf-8'
+    );
+    stampReviewState(bundle);
+    execFileSync('git', ['init', '-q'], { cwd: bundle });
+
+    const result = await mod.run(argv('--review-ready', bundle));
+
+    assert.strictEqual(result.exitCode, 0, result.text);
+    assert.match(result.text, /\u2705 clean/);
+  });
+
+  it('--review-ready rejects an unborn changed spec with no manifest or review marker', async () => {
+    const bundle = join(dir, 'review-ready-unborn-unmarked');
+    mkdirSync(bundle, { recursive: true });
+    writeFileSync(join(bundle, 'plain.spec.md'), '# Changed but unmarked\n', 'utf-8');
+    execFileSync('git', ['init', '-q'], { cwd: bundle });
+
+    const result = await mod.run(argv('--review-ready', bundle));
+
+    assert.strictEqual(result.exitCode, 1, result.text);
+    assert.match(result.text, /SDD_REVIEW_READY_MEMBER_MALFORMED/);
+    assert.match(result.text, /Changed spec has no valid CHANGE_MANIFEST/);
+    assert.doesNotMatch(result.text, /\u2705 clean/);
+  });
+
+  it('--review-ready rejects target-set paths that do not resolve to repo-local specs', async () => {
+    const bundle = join(dir, 'review-bundle-invalid-target');
+    mkdirSync(bundle, { recursive: true });
+    writeFileSync(
+      join(bundle, 'scope.spec.md'),
+      reviewState('Scope', 'CLEAN', '../outside.spec.md | scope.spec.md'),
+      'utf-8'
+    );
+    commitReviewFixture(bundle);
+
+    const r = await mod.run(argv('--review-ready', bundle));
+    assert.strictEqual(r.exitCode, 1);
+    assert.match(r.text, /SDD_CRITIC_TARGET_SET_INVALID/);
+  });
+
+  it('--review-ready treats a file target itself as primary', async () => {
+    const bundle = join(dir, 'review-file-primary');
+    mkdirSync(bundle, { recursive: true });
+    const primary = join(bundle, 'primary.spec.md');
+    writeFileSync(primary, reviewState('Primary', 'CLEAN', 'primary.spec.md'), 'utf-8');
+    stampReviewState(bundle);
+    commitReviewFixture(bundle);
+    assert.strictEqual((await mod.run(argv('--review-ready', primary))).exitCode, 0);
+
+    const missing = join(bundle, 'missing-evidence.spec.md');
+    writeFileSync(missing, reviewMember('Missing evidence'), 'utf-8');
+    const r = await mod.run(argv('--review-ready', missing));
+    assert.strictEqual(r.exitCode, 1);
+    assert.match(r.text, /SDD_CRITIC_PRIMARY_COUNT_INVALID/);
+  });
+
+  it('--review-ready resolves a secondary file to the one primary integrated history', async () => {
+    const bundle = join(dir, 'review-file-secondary');
+    mkdirSync(bundle, { recursive: true });
+    const primary = join(bundle, 'primary.spec.md');
+    const secondary = join(bundle, 'secondary.spec.md');
+    writeFileSync(
+      primary,
+      reviewState('Primary', 'CLEAN', 'primary.spec.md | secondary.spec.md'),
+      'utf-8'
+    );
+    writeFileSync(secondary, reviewMember('Secondary'), 'utf-8');
+    writeFileSync(
+      join(bundle, 'unrelated.spec.md'),
+      '<!--SECTION:CHANGE_MANIFEST-->\nmalformed unrelated bundle',
+      'utf-8'
+    );
+    stampReviewState(bundle);
+    commitReviewFixture(bundle);
+
+    const clean = await mod.run(argv('--review-ready', secondary));
+    assert.strictEqual(clean.exitCode, 0, clean.text);
+
+    writeFileSync(secondary, `${readFileSync(secondary, 'utf-8')}\npost-review drift`, 'utf-8');
+    const stale = await mod.run(argv('--review-ready', secondary));
+    assert.strictEqual(stale.exitCode, 1);
+    assert.match(stale.text, /SDD_CRITIC_CHANGED_STATE_MISMATCH/);
+  });
+
+  it('--review-state prints one canonical primary manifest and exact integrated-state hash', async () => {
+    const bundle = join(dir, 'review-state-print');
+    mkdirSync(bundle, { recursive: true });
+    const primary = join(bundle, 'primary.spec.md');
+    const secondary = join(bundle, 'secondary.spec.md');
+    writeFileSync(primary, reviewMember('Primary'), 'utf-8');
+    writeFileSync(secondary, '# Secondary', 'utf-8');
+
+    const result = await mod.run(argv('--review-state', primary, secondary));
+    assert.strictEqual(result.exitCode, 0, result.text);
+    assert.match(result.text, /primary: primary\.spec\.md/);
+    assert.match(result.text, /target-set: primary\.spec\.md \| secondary\.spec\.md/);
+    assert.match(result.text, /changed-state: sha256:[0-9a-f]{64}/);
+  });
+
+  it('--review-publication freezes and stages exactly the greenfield durable output set', async () => {
+    const { repo, spec, publicationPaths } = initPublicationRepo('review-publication-greenfield');
+
+    const result = await mod.run(argv('--review-publication', spec));
+    assert.strictEqual(result.exitCode, 0, result.text);
+    assert.match(result.text, /^\[sdd-check\] review-publication/m);
+    assert.match(result.text, /^target-set: specs\/demo\/demo\.spec\.md$/m);
+    assert.match(result.text, /^write-set: specs\/demo\/demo\.spec\.md$/m);
+    assert.match(result.text, /^publication-state: sha256:[0-9a-f]{64}$/m);
+    const serialized = /^publication-set: (.+)$/m.exec(result.text)?.[1];
+    assert.ok(serialized, result.text);
+    const entries = JSON.parse(serialized) as { role: string; path: string }[];
+    assert.deepStrictEqual(
+      entries.map((entry) => entry.path),
+      publicationPaths
+    );
+    assert.deepStrictEqual(
+      entries.map((entry) => entry.role),
+      ['session-ignore', 'project-index', 'portal', 'scope-index', 'spec', 'research']
+    );
+
+    execFileSync('git', ['add', '--', ...entries.map((entry) => entry.path)], { cwd: repo });
+    const staged = execFileSync('git', ['diff', '--cached', '--name-only', '-z'], {
+      cwd: repo,
+      encoding: 'utf-8',
+    })
+      .split('\0')
+      .filter(Boolean)
+      .sort();
+    assert.deepStrictEqual(staged, publicationPaths);
+  });
+
+  it('--review-publication rejects an unrelated dirty path', async () => {
+    const { repo, spec } = initPublicationRepo('review-publication-unrelated');
+    writeFileSync(join(repo, 'notes.md'), 'unrelated\n');
+
+    const result = await mod.run(argv('--review-publication', spec));
+    assert.strictEqual(result.exitCode, 1);
+    assert.match(result.text, /ERR_CLI_SDD_CHECK_REVIEW_PUBLICATION/);
+    assert.match(result.text, /dirty path\(s\).*notes\.md/);
+  });
+
+  it('--review-publication rejects an unrelated mutation in the same portal file', async () => {
+    const { repo, spec } = initPublicationRepo('review-publication-portal-mutation');
+    execFileSync('git', ['add', 'specs/README.md'], { cwd: repo });
+    execFileSync('git', ['commit', '-q', '-m', 'portal baseline'], { cwd: repo });
+    writeFileSync(join(repo, 'specs', 'README.md'), publicationPortal('Unrelated vision mutation'));
+
+    const result = await mod.run(argv('--review-publication', spec));
+    assert.strictEqual(result.exitCode, 1);
+    assert.match(
+      result.text,
+      /portal diff changes bytes outside attributable scope rows\/graph lines/
+    );
+  });
+
+  it('--review-publication rejects any same-file gitignore mutation beyond the exact session ignore line', async () => {
+    const { repo, spec } = initPublicationRepo('review-publication-gitignore-mutation');
+    writeFileSync(join(repo, '.gitignore'), 'dist/\n.sdd-session.md\ncoverage/\n');
+
+    const result = await mod.run(argv('--review-publication', spec));
+    assert.strictEqual(result.exitCode, 1);
+    assert.match(result.text, /gitignore.*bytes beyond the exact .*addition/i);
+  });
+
+  it('--review-publication rejects a whitespace-lookalike session ignore line', async () => {
+    const { repo, spec } = initPublicationRepo('review-publication-gitignore-lookalike');
+    writeFileSync(join(repo, '.gitignore'), 'dist/\n .sdd-session.md\n');
+
+    const result = await mod.run(argv('--review-publication', spec));
+    assert.strictEqual(result.exitCode, 1);
+    assert.match(result.text, /must contain exactly one `.sdd-session\.md` line/);
+  });
+
+  it('--review-publication rejects unsafe, missing, invalid, and symlinked linked research', async () => {
+    const scenarios: {
+      name: string;
+      link: string;
+      setup?: (repo: string) => void;
+      match: RegExp;
+    }[] = [
+      {
+        name: 'traversal',
+        link: '../outside.research.md',
+        match: /contain no absolute\/URL\/`\.\.` path/,
+      },
+      {
+        name: 'absolute',
+        link: '/tmp/outside.research.md',
+        match: /contain no absolute\/URL\/`\.\.` path/,
+      },
+      {
+        name: 'missing',
+        link: './research/2026-08-30-missing.research.md',
+        match: /missing or unreadable/,
+      },
+      {
+        name: 'invalid-content',
+        link: './research/2026-08-30-demo.research.md',
+        setup: (repo) =>
+          writeFileSync(
+            join(repo, 'specs', 'demo', 'research', '2026-08-30-demo.research.md'),
+            '# invalid research\n'
+          ),
+        match: /missing canonical section/,
+      },
+      {
+        name: 'symlink',
+        link: './research/2026-08-30-link.research.md',
+        setup: (repo) =>
+          symlinkSync(
+            '2026-08-30-demo.research.md',
+            join(repo, 'specs', 'demo', 'research', '2026-08-30-link.research.md')
+          ),
+        match: /traverses a symlink/,
+      },
+    ];
+    for (const scenario of scenarios) {
+      const { repo, spec } = initPublicationRepo(`review-publication-${scenario.name}`);
+      scenario.setup?.(repo);
+      writeFileSync(
+        spec,
+        publicationSpec().replace('./research/2026-08-30-demo.research.md', scenario.link)
+      );
+      const result = await mod.run(argv('--review-publication', spec));
+      assert.strictEqual(result.exitCode, 1, `${scenario.name}: ${result.text}`);
+      assert.match(result.text, scenario.match, scenario.name);
+    }
+  });
+
+  it('--review-publication rejects an edit to an existing mixed-content index as ambiguous', async () => {
+    const { repo, spec } = initPublicationRepo('review-publication-index-ambiguous');
+    execFileSync('git', ['add', 'specs/3-tasks.md'], { cwd: repo });
+    execFileSync('git', ['commit', '-q', '-m', 'index baseline'], { cwd: repo });
+    writeFileSync(
+      join(repo, 'specs', '3-tasks.md'),
+      publicationProjectIndex().replace('0/1', '1/1')
+    );
+
+    const result = await mod.run(argv('--review-publication', spec));
+    assert.strictEqual(result.exitCode, 1);
+    assert.match(
+      result.text,
+      /already exists in HEAD; its mixed-content edit is ambiguously attributable/
+    );
+  });
+
+  it('--review-state blocks product/library review before complete module decomposition', async () => {
+    const bundle = join(dir, 'review-state-undecomposed-scope');
+    mkdirSync(bundle, { recursive: true });
+    const primary = join(bundle, 'primary.spec.md');
+    writeFileSync(
+      primary,
+      [
+        reviewMember('Primary'),
+        '<!--SECTION:SCOPE_TYPE-->',
+        'product',
+        '<!--/SECTION:SCOPE_TYPE-->',
+        '<!--SECTION:MODULE_MAP-->',
+        'Modules not yet decomposed',
+        '<!--/SECTION:MODULE_MAP-->',
+      ].join('\n'),
+      'utf-8'
+    );
+
+    const result = await mod.run(argv('--review-state', primary));
+    assert.strictEqual(result.exitCode, 1);
+    assert.match(result.text, /not completely decomposed/);
+    assert.match(result.text, /continue through \/sdd into the module flow/);
+  });
+
+  it('--review-ready cannot accept a fabricated CLEAN before product/library decomposition', async () => {
+    const bundle = join(dir, 'review-ready-undecomposed-scope');
+    mkdirSync(bundle, { recursive: true });
+    const primary = join(bundle, 'primary.spec.md');
+    writeFileSync(
+      primary,
+      [
+        reviewState('Primary', 'CLEAN', 'primary.spec.md'),
+        '<!--SECTION:SCOPE_TYPE-->',
+        'product',
+        '<!--/SECTION:SCOPE_TYPE-->',
+        '<!--SECTION:MODULE_MAP-->',
+        'Modules not yet decomposed',
+        '<!--/SECTION:MODULE_MAP-->',
+      ].join('\n'),
+      'utf-8'
+    );
+    stampReviewState(bundle);
+    commitReviewFixture(bundle);
+
+    const result = await mod.run(argv('--review-ready', primary));
+    assert.strictEqual(result.exitCode, 1);
+    assert.match(result.text, /SDD_SCOPE_DECOMPOSITION_INCOMPLETE/);
+    assert.match(result.text, /before module decomposition is complete/);
+  });
+
+  it('--review-state requires the structurally complete scope plus every declared module', async () => {
+    const bundle = join(dir, 'review-state-complete-scope');
+    const moduleDir = join(bundle, 'checkout');
+    mkdirSync(moduleDir, { recursive: true });
+    const primary = join(bundle, 'primary.spec.md');
+    const moduleSpec = join(moduleDir, 'checkout.spec.md');
+    writeFileSync(
+      primary,
+      [
+        reviewMember('Primary'),
+        '<!--SECTION:SCOPE_TYPE-->',
+        'library',
+        '<!--/SECTION:SCOPE_TYPE-->',
+        '<!--SECTION:MODULE_MAP-->',
+        '- [checkout](./checkout/checkout.spec.md)',
+        '<!--/SECTION:MODULE_MAP-->',
+      ].join('\n'),
+      'utf-8'
+    );
+    writeFileSync(
+      moduleSpec,
+      [
+        reviewMember('Checkout'),
+        '<!--SECTION:MODULE_VISION-->',
+        'checkout',
+        '<!--/SECTION:MODULE_VISION-->',
+      ].join('\n'),
+      'utf-8'
+    );
+
+    const incomplete = await mod.run(argv('--review-state', primary));
+    assert.strictEqual(incomplete.exitCode, 1);
+    assert.match(incomplete.text, /complete integrated target-set/);
+    assert.match(incomplete.text, /checkout\/checkout\.spec\.md \| primary\.spec\.md/);
+
+    const complete = await mod.run(argv('--review-state', primary, moduleSpec));
+    assert.strictEqual(complete.exitCode, 0, complete.text);
+    assert.match(complete.text, /target-set: checkout\/checkout\.spec\.md \| primary\.spec\.md/);
+  });
+
+  it('requires scope-primary review while a module secondary resolves the valid integrated set', async () => {
+    const project = join(dir, 'review-module-ownership');
+    const scopeDir = join(project, 'specs', 'shop');
+    const moduleDir = join(scopeDir, 'core');
+    mkdirSync(moduleDir, { recursive: true });
+    writeFileSync(join(project, 'package.json'), '{}', 'utf-8');
+    const scopeSpec = join(scopeDir, 'shop.spec.md');
+    const moduleSpec = join(moduleDir, 'core.spec.md');
+    const scopeShape = [
+      '<!--SECTION:SCOPE_TYPE-->',
+      'product',
+      '<!--/SECTION:SCOPE_TYPE-->',
+      '<!--SECTION:MODULE_MAP-->',
+      '- [core](./core/core.spec.md)',
+      '<!--/SECTION:MODULE_MAP-->',
+    ].join('\n');
+    const moduleShape = [
+      '# Core',
+      '<!--SECTION:MODULE_VISION-->',
+      'core',
+      '<!--/SECTION:MODULE_VISION-->',
+    ].join('\n');
+    writeFileSync(scopeSpec, `${reviewMember('Shop')}\n${scopeShape}`, 'utf-8');
+    writeFileSync(moduleSpec, moduleShape, 'utf-8');
+
+    const modulePrimary = await mod.run(argv('--review-state', moduleSpec));
+    assert.strictEqual(modulePrimary.exitCode, 1);
+    assert.match(
+      modulePrimary.text,
+      /module `specs\/shop\/core\/core\.spec\.md` cannot own Critic Rounds/
+    );
+    assert.match(modulePrimary.text, /use owning scope `specs\/shop\/shop\.spec\.md` as primary/);
+
+    writeFileSync(
+      moduleSpec,
+      `${reviewState('Core', 'CLEAN', 'specs/shop/core/core.spec.md')}\n${moduleShape}`,
+      'utf-8'
+    );
+    commitReviewFixture(project);
+    const fabricated = await mod.run(argv('--review-ready', moduleSpec));
+    assert.strictEqual(fabricated.exitCode, 1);
+    assert.match(fabricated.text, /SDD_CRITIC_PRIMARY_SCOPE_REQUIRED/);
+
+    writeFileSync(moduleSpec, moduleShape, 'utf-8');
+    const targetSet = 'specs/shop/core/core.spec.md | specs/shop/shop.spec.md';
+    let scopeContent = `${reviewState(
+      'Shop',
+      'CLEAN',
+      targetSet,
+      'specs/shop/shop.spec.md'
+    )}\n${scopeShape}`;
+    const state = formatCriticChangedState([
+      { path: 'specs/shop/shop.spec.md', content: scopeContent, primary: true },
+      { path: 'specs/shop/core/core.spec.md', content: moduleShape, primary: false },
+    ]);
+    scopeContent = replaceFixture(scopeContent, `sha256:${'0'.repeat(64)}`, state);
+    writeFileSync(scopeSpec, scopeContent, 'utf-8');
+    commitReviewFixture(project);
+    const secondary = await mod.run(argv('--review-ready', moduleSpec));
+    assert.strictEqual(secondary.exitCode, 0, secondary.text);
+  });
+
+  it('--review-state rejects module primaries with absent or undeclared ownership', async () => {
+    const project = join(dir, 'review-module-invalid-owner');
+    const orphanDir = join(project, 'specs', 'orphan');
+    const scopeDir = join(project, 'specs', 'shop');
+    const extraDir = join(scopeDir, 'extra');
+    mkdirSync(orphanDir, { recursive: true });
+    mkdirSync(extraDir, { recursive: true });
+    writeFileSync(join(project, 'package.json'), '{}', 'utf-8');
+    const module = '<!--SECTION:MODULE_VISION-->\nmodule\n<!--/SECTION:MODULE_VISION-->';
+    const orphan = join(orphanDir, 'orphan.spec.md');
+    writeFileSync(orphan, module, 'utf-8');
+    writeFileSync(
+      join(scopeDir, 'shop.spec.md'),
+      '<!--SECTION:SCOPE_TYPE-->\nproduct\n<!--/SECTION:SCOPE_TYPE-->\n<!--SECTION:MODULE_MAP-->\nModules not yet decomposed\n<!--/SECTION:MODULE_MAP-->',
+      'utf-8'
+    );
+    const extra = join(extraDir, 'extra.spec.md');
+    writeFileSync(extra, module, 'utf-8');
+
+    const noOwner = await mod.run(argv('--review-state', orphan));
+    assert.strictEqual(noOwner.exitCode, 1);
+    assert.match(noOwner.text, /has invalid scope ownership \(module has no canonical/);
+
+    const undeclared = await mod.run(argv('--review-state', extra));
+    assert.strictEqual(undeclared.exitCode, 1);
+    assert.match(undeclared.text, /owning scope decomposition is not complete/);
+  });
+
+  it('--review-state rejects duplicate arguments and aliases resolving to one target', async () => {
+    const bundle = join(dir, 'review-state-duplicate');
+    mkdirSync(bundle, { recursive: true });
+    const primary = join(bundle, 'primary.spec.md');
+    writeFileSync(primary, reviewMember('Primary'), 'utf-8');
+
+    for (const duplicate of [primary, `${bundle}/./primary.spec.md`]) {
+      const result = await mod.run(argv('--review-state', primary, duplicate));
+      assert.strictEqual(result.exitCode, 1);
+      assert.match(result.text, /ERR_CLI_SDD_CHECK_REVIEW_STATE: duplicate target arguments/);
+    }
+  });
+
+  it('--review-state rejects Critic Rounds in a secondary artifact', async () => {
+    const bundle = join(dir, 'review-state-secondary-history');
+    mkdirSync(bundle, { recursive: true });
+    const primary = join(bundle, 'primary.spec.md');
+    const secondary = join(bundle, 'secondary.spec.md');
+    writeFileSync(primary, reviewMember('Primary'), 'utf-8');
+    writeFileSync(secondary, reviewState('Secondary', 'CLEAN', 'secondary.spec.md'), 'utf-8');
+
+    const result = await mod.run(argv('--review-state', primary, secondary));
+    assert.strictEqual(result.exitCode, 1);
+    assert.match(
+      result.text,
+      /secondary `secondary\.spec\.md` contains parser-visible Critic Rounds/
+    );
+  });
+
+  it('--review-state rejects malformed existing primary history', async () => {
+    const bundle = join(dir, 'review-state-malformed-primary');
+    mkdirSync(bundle, { recursive: true });
+    const primary = join(bundle, 'primary.spec.md');
+    writeFileSync(
+      primary,
+      `${reviewMember('Primary')}\n## Critic Rounds\n### Round latest — broken`,
+      'utf-8'
+    );
+
+    const result = await mod.run(argv('--review-state', primary));
+    assert.strictEqual(result.exitCode, 1);
+    assert.match(result.text, /primary `primary\.spec\.md` has malformed Critic Rounds/);
+  });
+
+  it('--review-state rejects a canonical-looking latest round with missing required evidence', async () => {
+    const bundle = join(dir, 'review-state-incomplete-primary');
+    mkdirSync(bundle, { recursive: true });
+    const primary = join(bundle, 'primary.spec.md');
+    writeFileSync(
+      primary,
+      [
+        reviewMember('Primary'),
+        '## Critic Rounds',
+        '### Round 1 — 2026-08-28',
+        '- Verdict: NEEDS_WORK',
+        '- Target-set: primary.spec.md',
+        '- Write-set: primary.spec.md',
+      ].join('\n'),
+      'utf-8'
+    );
+
+    const result = await mod.run(argv('--review-state', primary));
+    assert.strictEqual(result.exitCode, 1);
+    assert.match(result.text, /SDD_CRITIC_CHANGED_STATE_MISSING/);
+  });
+
+  it('--review-state rejects existing primary history for a different target-set', async () => {
+    const bundle = join(dir, 'review-state-target-mismatch');
+    mkdirSync(bundle, { recursive: true });
+    const primary = join(bundle, 'primary.spec.md');
+    const secondary = join(bundle, 'secondary.spec.md');
+    writeFileSync(primary, reviewState('Primary', 'NEEDS_WORK', 'primary.spec.md'), 'utf-8');
+    writeFileSync(secondary, reviewMember('Secondary'), 'utf-8');
+
+    const result = await mod.run(argv('--review-state', primary, secondary));
+    assert.strictEqual(result.exitCode, 1);
+    assert.match(result.text, /history targets `primary\.spec\.md`/);
+    assert.match(result.text, /start a fresh target-set cycle/);
+  });
+
+  it('--review-state accepts an ordinary NEEDS_WORK history for the exact same set', async () => {
+    const bundle = join(dir, 'review-state-existing-valid');
+    mkdirSync(bundle, { recursive: true });
+    const primary = join(bundle, 'primary.spec.md');
+    const secondary = join(bundle, 'secondary.spec.md');
+    writeFileSync(
+      primary,
+      reviewState('Primary', 'NEEDS_WORK', 'primary.spec.md | secondary.spec.md'),
+      'utf-8'
+    );
+    writeFileSync(secondary, reviewMember('Secondary'), 'utf-8');
+
+    const result = await mod.run(argv('--review-state', primary, secondary));
+    assert.strictEqual(result.exitCode, 0, result.text);
+    assert.match(result.text, /target-set: primary\.spec\.md \| secondary\.spec\.md/);
+    assert.match(result.text, /write-set: primary\.spec\.md \| secondary\.spec\.md/);
+  });
+
+  it('--review-state derives a read-only context member outside the write-set', async () => {
+    const bundle = join(dir, 'review-state-read-only-context');
+    mkdirSync(bundle, { recursive: true });
+    const primary = join(bundle, 'primary.spec.md');
+    const secondary = join(bundle, 'secondary.spec.md');
+    writeFileSync(primary, reviewMember('Primary'), 'utf-8');
+    writeFileSync(secondary, '# Read-only context', 'utf-8');
+
+    const result = await mod.run(argv('--review-state', primary, secondary));
+    assert.strictEqual(result.exitCode, 0, result.text);
+    assert.match(result.text, /target-set: primary\.spec\.md \| secondary\.spec\.md/);
+    assert.match(result.text, /write-set: primary\.spec\.md(?:\n|$)/);
+  });
+
+  it('--review-state requires a fresh cycle when a read-only member is promoted', async () => {
+    const bundle = join(dir, 'review-state-write-set-promotion');
+    mkdirSync(bundle, { recursive: true });
+    const primary = join(bundle, 'primary.spec.md');
+    const secondary = join(bundle, 'secondary.spec.md');
+    writeFileSync(
+      primary,
+      reviewState(
+        'Primary',
+        'NEEDS_WORK',
+        'primary.spec.md | secondary.spec.md',
+        'primary.spec.md'
+      ),
+      'utf-8'
+    );
+    writeFileSync(secondary, reviewMember('Promoted secondary'), 'utf-8');
+
+    const result = await mod.run(argv('--review-state', primary, secondary));
+    assert.strictEqual(result.exitCode, 1);
+    assert.match(result.text, /history writes `primary\.spec\.md`/);
+    assert.match(result.text, /promote\/demote members only by restarting at Round 1/);
+  });
+
+  it('--review-state rejects a cycle already completed by an early sensor CLEAN', async () => {
+    const bundle = join(dir, 'review-state-sensor-clean');
+    mkdirSync(bundle, { recursive: true });
+    const primary = join(bundle, 'primary.spec.md');
+    writeFileSync(primary, reviewState('Primary', 'CLEAN', 'primary.spec.md'), 'utf-8');
+    stampReviewState(bundle);
+
+    const result = await mod.run(argv('--review-state', primary));
+    assert.strictEqual(result.exitCode, 1);
+    assert.match(result.text, /ERR_CLI_SDD_CHECK_REVIEW_STATE/);
+    assert.match(result.text, /critic cycle is already complete/);
+    assert.match(result.text, /--review-ready primary\.spec\.md/);
+    assert.match(result.text, /do not dispatch another critic round/);
+  });
+
+  it('--review-state fails closed when bytes changed after a sensor CLEAN', async () => {
+    const bundle = join(dir, 'review-state-stale-clean');
+    mkdirSync(bundle, { recursive: true });
+    const primary = join(bundle, 'primary.spec.md');
+    writeFileSync(primary, reviewState('Primary', 'CLEAN', 'primary.spec.md'), 'utf-8');
+    stampReviewState(bundle);
+    const reviewed = readFileSync(primary, 'utf-8');
+    writeFileSync(primary, replaceFixture(reviewed, '# Primary', '# Primary edited'), 'utf-8');
+
+    const result = await mod.run(argv('--review-state', primary));
+    assert.strictEqual(result.exitCode, 1);
+    assert.match(result.text, /SDD_CRITIC_CHANGED_STATE_MISMATCH/);
+    assert.match(result.text, /Re-dispatch critic before readiness/);
+  });
+
+  it('--review-state rejects a cycle completed by operator CLEAN at round five', async () => {
+    const bundle = join(dir, 'review-state-operator-clean');
+    mkdirSync(bundle, { recursive: true });
+    const primary = join(bundle, 'primary.spec.md');
+    const rounds = [1, 2, 3, 4].map(() => ({ verdict: 'NEEDS_WORK' }));
+    rounds.push({ verdict: 'NEEDS_WORK', decision: 'CLEAN' });
+    writeFileSync(primary, criticHistory('Primary', rounds), 'utf-8');
+    stampReviewState(bundle);
+
+    const result = await mod.run(argv('--review-state', primary));
+    assert.strictEqual(result.exitCode, 1);
+    assert.match(result.text, /critic cycle is already complete/);
+    assert.match(result.text, /--review-ready/);
+  });
+
+  it('--review-state rejects operator CLEAN when the cap round edited the bundle', async () => {
+    const bundle = join(dir, 'review-state-operator-clean-after-edits');
+    mkdirSync(bundle, { recursive: true });
+    const primary = join(bundle, 'primary.spec.md');
+    const rounds = [1, 2, 3, 4].map(() => ({ verdict: 'NEEDS_WORK' }));
+    rounds.push({
+      verdict: 'CLEAN',
+      decision: 'CLEAN',
+      changes: 'updated primary.spec.md',
+    });
+    writeFileSync(primary, criticHistory('Primary', rounds), 'utf-8');
+
+    const result = await mod.run(argv('--review-state', primary));
+    assert.strictEqual(result.exitCode, 1);
+    assert.match(result.text, /SDD_CRITIC_OPERATOR_DECISION_INVALID/);
+    assert.match(result.text, /CLEAN is allowed only when Changes=none/);
+  });
+
+  it('--review-state permits the operator-approved continuation after round-five CLEAN', async () => {
+    const bundle = join(dir, 'review-state-continued-clean');
+    mkdirSync(bundle, { recursive: true });
+    const primary = join(bundle, 'primary.spec.md');
+    const rounds = [1, 2, 3, 4].map(() => ({ verdict: 'NEEDS_WORK' }));
+    rounds.push({ verdict: 'CLEAN', decision: 'CONTINUE THROUGH ROUND 7' });
+    writeFileSync(primary, criticHistory('Primary', rounds), 'utf-8');
+
+    const result = await mod.run(argv('--review-state', primary));
+    assert.strictEqual(result.exitCode, 0, result.text);
+    assert.match(result.text, /target-set: primary\.spec\.md/);
+  });
+
+  it('--review-state rejects an operator RESTART as terminal for the old cycle', async () => {
+    const bundle = join(dir, 'review-state-restart');
+    mkdirSync(bundle, { recursive: true });
+    const primary = join(bundle, 'primary.spec.md');
+    const rounds = [1, 2, 3, 4].map(() => ({ verdict: 'NEEDS_WORK' }));
+    rounds.push({ verdict: 'NEEDS_WORK', decision: 'RESTART: target changed' });
+    writeFileSync(primary, criticHistory('Primary', rounds), 'utf-8');
+
+    const result = await mod.run(argv('--review-state', primary));
+    assert.strictEqual(result.exitCode, 1);
+    assert.match(result.text, /SDD_CRITIC_RESTART_REQUIRED/);
+    assert.match(result.text, /begin a fresh Round 1/);
+  });
+
+  it('--review-ready fails closed on an unreadable spec member', async () => {
+    const bundle = join(dir, 'review-bundle-unreadable');
+    mkdirSync(bundle, { recursive: true });
+    const unreadable = join(bundle, 'unreadable.spec.md');
+    writeFileSync(unreadable, reviewState('Unreadable', 'CLEAN', 'unreadable.spec.md'), 'utf-8');
+    stampReviewState(bundle);
+    commitReviewFixture(bundle);
+    chmodSync(unreadable, 0o000);
+    try {
+      const r = await mod.run(argv('--review-ready', bundle));
+      assert.strictEqual(r.exitCode, 1);
+      assert.match(r.text, /SDD_REVIEW_READY_MEMBER_UNREADABLE/);
+    } finally {
+      chmodSync(unreadable, 0o600);
+    }
   });
 
   it('--task on a fabricated DONE → exit 1 with the finding', async () => {
@@ -105,12 +1684,13 @@ describe('SddCheckCommand', () => {
     assert.doesNotMatch(r.text, /next: структура\/якоря/);
   });
 
-  it('--task flags a phase rule link that does not resolve (SDD_BROKEN_RULE_LINK)', async () => {
+  it('--task fails closed when a phase rule link does not resolve', async () => {
     const t = join(dir, 'broken-rule.md');
     writeFileSync(t, TICKET_BROKEN_RULE, 'utf-8');
     const r = await mod.run(argv(`--task=${t}`));
     assert.strictEqual(r.exitCode, 1);
-    assert.match(r.text, /SDD_BROKEN_RULE_LINK/);
+    assert.match(r.text, /ERR_CLI_SDD_CHECK_READ_FAILED/);
+    assert.match(r.text, /missing-rule\.xml/);
   });
 
   it('--task: a resolvable rule link is not flagged', async () => {
@@ -118,7 +1698,8 @@ describe('SddCheckCommand', () => {
     const t = join(dir, 'ok-rule.md');
     writeFileSync(t, TICKET_BROKEN_RULE.replace('./missing-rule.xml', './real-rule.xml'), 'utf-8');
     const r = await mod.run(argv(`--task=${t}`));
-    assert.doesNotMatch(r.text, /SDD_BROKEN_RULE_LINK/);
+    assert.strictEqual(r.exitCode, 0, r.text);
+    assert.doesNotMatch(r.text, /ERR_CLI_SDD_CHECK_READ_FAILED/);
   });
 
   const specRefTicket = (anchorLink: string): string =>
@@ -531,12 +2112,13 @@ describe('SddCheckCommand', () => {
     assert.ok(!isAbsolute(reportedPath), `expected a relative path, got: ${reportedPath}`);
   });
 
-  it('--task keeps the caller-supplied path verbatim (not rewritten to relative)', async () => {
+  it('--task reports the exact validated repository-relative path', async () => {
     const t = join(dir, 'fab-path.md');
     writeFileSync(t, FABRICATED, 'utf-8');
     const r = await mod.run(argv(`--task=${t}`));
     assert.ok(isAbsolute(t));
-    assert.ok(r.text.includes(t), `expected verbatim path ${t} in:\n${r.text}`);
+    assert.match(r.text, /^fab-path\.md:/m);
+    assert.ok(!r.text.includes(t), `absolute fixture path leaked into report:\n${r.text}`);
   });
 
   it('exits 4 with neither --task nor --all, 1 on missing --task file', async () => {
@@ -602,6 +2184,32 @@ describe('SddCheckCommand', () => {
       } finally {
         process.chdir(origCwd);
         rmSync(dupDir, { recursive: true, force: true });
+      }
+    });
+
+    it('cannot resolve a bare Task-ID cleanly through an unreadable search subtree', async (context) => {
+      const idDir = mkdtempSync(join(tmpdir(), 'sdd-check-id-unreadable-'));
+      const hidden = join(idDir, 'hidden');
+      mkdirSync(hidden);
+      writeFileSync(join(idDir, 'visible.md'), idClean('TSK-safe'), 'utf-8');
+      writeFileSync(join(hidden, 'possible-duplicate.md'), idClean('TSK-safe'), 'utf-8');
+      if (!denyRead(context, hidden, 'directory')) {
+        rmSync(idDir, { recursive: true, force: true });
+        return;
+      }
+      const origCwd = process.cwd();
+      process.chdir(idDir);
+      try {
+        const result = await mod.run(argv('--task', 'TSK-safe'));
+        assert.strictEqual(result.exitCode, 1, result.text);
+        assert.match(result.text, /ERR_CLI_SDD_CHECK_READ_FAILED/);
+        assert.match(result.text, /hidden/);
+        assert.match(result.text, /EACCES|EPERM/);
+        assert.doesNotMatch(result.text, /✅ clean/);
+      } finally {
+        process.chdir(origCwd);
+        chmodSync(hidden, 0o700);
+        rmSync(idDir, { recursive: true, force: true });
       }
     });
   });
@@ -758,6 +2366,179 @@ describe('SddCheckCommand', () => {
       const r = await mod.run(argv('--all', root));
       assert.doesNotMatch(r.text, /SDD_RESEARCH_ORPHAN/);
       assert.doesNotMatch(r.text, /SDD_RESEARCH_UNREGISTERED/);
+    });
+  });
+
+  describe('RULES_CASCADE dependency evidence is fail-closed', () => {
+    const cascadeTicket = (rulePaths: string | string[]): string =>
+      [
+        '<!--SECTION:META-->',
+        '- **Task-ID:** RULE-evidence',
+        '- **Status:** [ ] TODO',
+        '<!--/SECTION:META-->',
+        '<!--SECTION:PHASES_OVERVIEW-->',
+        '| ID | Kind | Deps | Status |',
+        '|---|---|---|---|',
+        '| P1 | impl | — | [ ] |',
+        '<!--/SECTION:PHASES_OVERVIEW-->',
+        '<!--SECTION:PHASE_P1-->',
+        '- **Rules:**',
+        ...(Array.isArray(rulePaths) ? rulePaths : [rulePaths]).map(
+          (rulePath) => `  - [rule](${rulePath})`
+        ),
+        '<!--/SECTION:PHASE_P1-->',
+        '<!--SECTION:EXECUTION_LOG-->',
+        '- pending',
+        '<!--/SECTION:EXECUTION_LOG-->',
+      ].join('\n');
+
+    const unsafeRuleFixture = (
+      name: string
+    ): { parent: string; root: string; external: string } => {
+      const parent = mkdtempSync(join(tmpdir(), `sdd-check-rule-${name}-`));
+      const root = join(parent, 'repo');
+      const external = join(parent, 'external.xml');
+      mkdirSync(join(root, 'rules'), { recursive: true });
+      writeFileSync(external, '<DependsOn>\n  - external-was-read.xml\n</DependsOn>\n');
+      return { parent, root, external };
+    };
+
+    it('a readable rule with no DependsOn is a genuine leaf, not a read failure', async () => {
+      const root = mkdtempSync(join(tmpdir(), 'sdd-check-rule-leaf-'));
+      mkdirSync(join(root, 'rules'));
+      writeFileSync(join(root, 'rules', 'leaf.xml'), '<Rule>leaf</Rule>\n');
+      writeFileSync(join(root, 'ticket.md'), cascadeTicket('rules/leaf.xml'));
+      try {
+        const result = await mod.run(argv('--task', 'ticket.md'), root);
+        assert.doesNotMatch(result.text, /ERR_CLI_SDD_CHECK_READ_FAILED/);
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+      }
+    });
+
+    it('ordinary local direct and transitive rules remain valid evidence', async () => {
+      const root = mkdtempSync(join(tmpdir(), 'sdd-check-rule-local-'));
+      mkdirSync(join(root, 'rules'));
+      writeFileSync(
+        join(root, 'rules', 'root.xml'),
+        '<DependsOn>\n  - rules/leaf.xml\n</DependsOn>\n'
+      );
+      writeFileSync(join(root, 'rules', 'leaf.xml'), '<Rule>leaf</Rule>\n');
+      writeFileSync(join(root, 'ticket.md'), cascadeTicket(['rules/root.xml', 'rules/leaf.xml']));
+      try {
+        const result = await mod.run(argv('--task', 'ticket.md'), root);
+        assert.strictEqual(result.exitCode, 0, result.text);
+        assert.doesNotMatch(result.text, /ERR_CLI_SDD_CHECK_READ_FAILED/);
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+      }
+    });
+
+    it('does not reuse a trusted rule identity across separate command invocations', async () => {
+      const { parent, root, external } = unsafeRuleFixture('identity-replaced');
+      const rule = join(root, 'rules', 'replaceable.xml');
+      writeFileSync(rule, '<Rule>local</Rule>\n');
+      writeFileSync(join(root, 'ticket.md'), cascadeTicket('rules/replaceable.xml'));
+      try {
+        const first = await mod.run(argv('--task', 'ticket.md'), root);
+        assert.strictEqual(first.exitCode, 0, first.text);
+        rmSync(rule);
+        symlinkSync(external, rule);
+        const second = await mod.run(argv('--task', 'ticket.md'), root);
+        assert.strictEqual(second.exitCode, 1, second.text);
+        assert.match(second.text, /ERR_CLI_SDD_CHECK_READ_FAILED/);
+        assert.match(second.text, /symlink component/);
+        assert.doesNotMatch(second.text, /external-was-read/);
+      } finally {
+        rmSync(parent, { recursive: true, force: true });
+      }
+    });
+
+    for (const scenario of ['symlink', 'absolute', 'traversal'] as const) {
+      it(`rejects a direct ${scenario} rule before its bytes are trusted`, async () => {
+        const { parent, root, external } = unsafeRuleFixture(`direct-${scenario}`);
+        const link =
+          scenario === 'symlink'
+            ? 'rules/link.xml'
+            : scenario === 'absolute'
+              ? external
+              : '../external.xml';
+        if (scenario === 'symlink') symlinkSync(external, join(root, link));
+        writeFileSync(join(root, 'ticket.md'), cascadeTicket(link));
+        try {
+          const result = await mod.run(argv('--task', 'ticket.md'), root);
+          assert.strictEqual(result.exitCode, 1, result.text);
+          assert.match(result.text, /ERR_CLI_SDD_CHECK_READ_FAILED/);
+          assert.match(
+            result.text,
+            scenario === 'symlink'
+              ? /symlink component/
+              : scenario === 'absolute'
+                ? /absolute paths are forbidden/
+                : /`\.\.` path segments are forbidden/
+          );
+          assert.doesNotMatch(result.text, /external-was-read/);
+          assert.doesNotMatch(result.text, /✅ clean/);
+        } finally {
+          rmSync(parent, { recursive: true, force: true });
+        }
+      });
+
+      it(`rejects a transitive ${scenario} rule before its bytes are trusted`, async () => {
+        const { parent, root, external } = unsafeRuleFixture(`transitive-${scenario}`);
+        const dependency =
+          scenario === 'symlink'
+            ? 'rules/link.xml'
+            : scenario === 'absolute'
+              ? external
+              : '../external.xml';
+        if (scenario === 'symlink') symlinkSync(external, join(root, dependency));
+        writeFileSync(
+          join(root, 'rules', 'root.xml'),
+          `<DependsOn>\n  - ${dependency}\n</DependsOn>\n`
+        );
+        writeFileSync(join(root, 'ticket.md'), cascadeTicket('rules/root.xml'));
+        try {
+          const result = await mod.run(argv('--task', 'ticket.md'), root);
+          assert.strictEqual(result.exitCode, 1, result.text);
+          assert.match(result.text, /ERR_CLI_SDD_CHECK_READ_FAILED/);
+          assert.match(
+            result.text,
+            scenario === 'symlink'
+              ? /symlink component/
+              : scenario === 'absolute'
+                ? /absolute paths are forbidden/
+                : /`\.\.` path segments are forbidden/
+          );
+          assert.doesNotMatch(result.text, /external-was-read/);
+          assert.doesNotMatch(result.text, /✅ clean/);
+        } finally {
+          rmSync(parent, { recursive: true, force: true });
+        }
+      });
+    }
+
+    it('an unreadable exact rule remains nonzero and names the failed rule', async (context) => {
+      const root = mkdtempSync(join(tmpdir(), 'sdd-check-rule-unreadable-'));
+      mkdirSync(join(root, 'rules'));
+      const rule = join(root, 'rules', 'blocked.xml');
+      writeFileSync(rule, '<Rule>blocked</Rule>\n');
+      writeFileSync(join(root, 'ticket.md'), cascadeTicket('rules/blocked.xml'));
+      if (!denyRead(context, rule, 'file')) {
+        rmSync(root, { recursive: true, force: true });
+        return;
+      }
+      try {
+        const result = await mod.run(argv('--task', 'ticket.md'), root);
+        assert.strictEqual(result.exitCode, 1, result.text);
+        assert.match(result.text, /ERR_CLI_SDD_CHECK_READ_FAILED/);
+        assert.match(result.text, /rules\/blocked\.xml/);
+        assert.match(result.text, /rule 'rules\/blocked\.xml' dependency evidence is unreadable/);
+        assert.doesNotMatch(result.text, /✅ clean/);
+      } finally {
+        chmodSync(rule, 0o600);
+        rmSync(root, { recursive: true, force: true });
+      }
     });
   });
 });

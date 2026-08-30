@@ -12,22 +12,25 @@ compatibility: opencode
     directive, you do not parse it.
   </Priming>
 
-  <Mission>Restore the spec ⟷ code ⟷ task triangle, then verify. The heart is the probe — bug vs spec-defect, the problem's class, the blast radius — not the single symptom. Both modes end with the same tail: back-sync specs/tasks, then verify.</Mission>
+  <Mission>Enter the single SDD router with forced intent `reconcile`. The router owns session conflict/open policy and loads the reconcile owner; its probe restores the spec ⟷ code ⟷ task triangle and verifies it.</Mission>
 
   <ExecutionPlan>
     <Step id="GATHER">
-      One parallel batch (do NOT serialize): run `npx gennady sdd-state`
-      AND read in full `ai/directives/sdd-v2/reconcile.directive.xml`.
+      One parallel batch (do NOT serialize): execute the exact routerState ToolCall below AND read in
+      full `ai/directives/sdd-v2/router.directive.xml`. The exact `routerState` bytes are
+      the router snapshot; this is the only initial state call, and the router never executes it itself.
+      <ToolCall owner="entry-skill" result="routerState">npx gennady sdd-state</ToolCall> Use routerState as the literal stdout snapshot.
     </Step>
     <Step id="PREFLIGHT">
-      State is already gathered (GATHER, above). The directive's own `STEP_0B_PREFLIGHT` interprets
-      the snapshot's `FLOW_VERSION` / `READINESS` without another CLI call, including when to embody
-      the live migration or setup flow. Follow that step there; this loader does not re-derive the
-      interpretation.
+      Pass exact result alias `routerState` to router `STEP_0_STATE` with literal `forced intent: reconcile`;
+      do not call `sdd-state` again and do not open, relabel, ignore, or close a session here. The
+      router resolves a live-session conflict without a redundant SCALE question, then loads reconcile, whose own
+      `STEP_0B_PREFLIGHT` interprets readiness.
     </Step>
     <Step id="EMBODY">
-      You ARE the reconcile directive now. Input — findings / a bug / a review, OR "I changed code, formalize it";
-      the mode (fix / from-code) auto-detects per the directive. Follow the ExecutionPlan; never reduce to the reported symptom.
+      You ARE the router now. Preserve forced intent `reconcile` and the operator payload — findings /
+      bug / review, or "I changed code, formalize it" — and follow its `LOGIC_SWITCH`. The reconcile
+      owner it loads auto-detects fix / from-code. Never reduce the payload to the reported symptom.
     </Step>
   </ExecutionPlan>
 </SddSkill>

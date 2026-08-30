@@ -86,9 +86,9 @@ function createSkeletonBindingContext(): SkeletonBindingContext {
   return { pilots, fingerprint };
 }
 
-/** Every `Full step text: \`<path>\`` package path a skeleton's step list prints, in listed order. */
+/** Every runtime `READ_AND_USE_DIRECTIVE("<path>")` package path a skeleton prints, in listed order. */
 function extractPackagePaths(skeletonText: string): string[] {
-  const pattern = /Full step text: `([^`]+)`/g;
+  const pattern = /Before executing this step, READ_AND_USE_DIRECTIVE\("([^"]+)"\)\./g;
   const paths: string[] = [];
   let match: RegExpExecArray | null;
   while ((match = pattern.exec(skeletonText))) paths.push(match[1]!);
@@ -145,7 +145,11 @@ function extractSkeletonBody(skeletonText: string, fingerprint: string): string 
 /** Locates one Step's exact step-list-entry substring inside the skeleton body (DA-REQ-5 shape). */
 function extractStepListEntry(skeletonBody: string, pkg: StepPackage): string {
   const pattern = new RegExp(
-    '- \\*\\*' + escapeRegExp(pkg.stepId) + '\\*\\* — [\\s\\S]*?\\(Read tool — no CLI command, no version argument\\)\\.'
+    '- \\*\\*' +
+      escapeRegExp(pkg.stepId) +
+      '\\*\\* — [^\\n]*?Before executing this step, READ_AND_USE_DIRECTIVE\\("' +
+      escapeRegExp(pkg.relativePath) +
+      '"\\)\\.'
   );
   const match = pattern.exec(skeletonBody);
   assert.ok(match, `${pkg.stepId}: step-list entry not found in skeleton body`);

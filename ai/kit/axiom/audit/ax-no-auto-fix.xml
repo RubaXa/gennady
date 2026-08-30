@@ -1,4 +1,9 @@
 <!-- source: ai/directives/sdd/audit.directive.xml -->
 <Axiom id="AX_NO_AUTO_FIX">
-      Audit does not modify code or specs autonomously. Any remediation is a proposal per `AX_FINDING_ROUTING`. If operator approves inline changes during the session, audit agent may apply them to spec/ticket files (not code). Creating commits or editing code files independently is forbidden.
+      Audit and code-review workers are read-only: they return findings and proposed remediations, never
+      edit code, specs, tickets, or commits. After operator approval, the orchestrator routes the proposal
+      to the artifact owner: a task phase owns code, the scope/module/infra/interface authoring flow owns
+      semantic spec changes, and the execute orchestrator owns only its explicitly bounded administrative
+      ticket / Decision Log channel. Approval changes who may apply the fix; it never makes the reviewer
+      itself an editor.
     </Axiom>

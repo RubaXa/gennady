@@ -2,8 +2,8 @@
 // @consumers: gennady.ts
 // @tasks: N/A
 
-import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
-import { dirname, join, resolve, relative } from 'node:path';
+import { readdirSync, realpathSync } from 'node:fs';
+import { dirname, join, resolve, relative, sep } from 'node:path';
 import { logger } from '#logger';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
 import { extractSection } from '../../../shared/sdd/section.ts';
@@ -14,6 +14,13 @@ import {
   updateTrackerStatus,
 } from '../../../shared/sdd/tracker.ts';
 import { resolveTicketArg, resolutionLine } from '../../../shared/sdd/ticket-resolve.ts';
+import {
+  proveRepoFile,
+  readProvenRepoFile,
+  revalidateRepoFile,
+  writeProvenRepoFile,
+  type RepoFileIdentity,
+} from '../../../shared/common/repo-file-identity.ts';
 import {
   ambiguousIdError,
   badInvocation,
@@ -29,64 +36,103 @@ import {
  * @param ticketPath Path of the ticket whose trackers are sought.
  * @returns Absolute paths of discovered index files, nearest first.
  */
-function discoverIndexes(ticketPath: string): string[] {
-  const found: string[] = [];
+function isAllowedOwnerIndex(ticketPath: string, index: RepoFileIdentity): boolean {
+  const parts = index.relative.split('/');
+  if (parts[0] !== 'specs') return false;
+  const name = parts.at(-1) ?? '';
+  if (index.relative === 'specs/3-tasks.md') return true;
+  if (!name.endsWith('.3-tasks.md') || parts.length < 3) return false;
+  const owner = name.slice(0, -'.3-tasks.md'.length);
+  if (owner !== parts.at(-2)) return false;
+  const indexDir = dirname(index.absolute);
+  const ticketDir = dirname(ticketPath);
+  const ownership = relative(indexDir, ticketDir);
+  return ownership === '' || (!ownership.startsWith(`..${sep}`) && ownership !== '..');
+}
+
+type IndexSet = { ok: true; indexes: RepoFileIdentity[] } | { ok: false; detail: string };
+
+function discoverIndexes(root: string, ticketPath: string): IndexSet {
+  const found: RepoFileIdentity[] = [];
   let dir = dirname(resolve(ticketPath));
   for (let hops = 0; hops < 8; hops++) {
+    const relDir = relative(root, dir);
+    if (relDir === '..' || relDir.startsWith(`..${sep}`)) {
+      return { ok: false, detail: 'ticket owner walk escaped the canonical project root' };
+    }
     try {
       for (const entry of readdirSync(dir)) {
         // `<scope-or-module>.3-tasks.md` (scope/module trackers) AND the bare project-index
         // `3-tasks.md` (specs/3-tasks.md, no scope prefix) — both are in scope for the rollup
         // Progress recompute pass, see recomputeProgress().
-        if (entry.endsWith('.3-tasks.md') || entry === '3-tasks.md') found.push(join(dir, entry));
+        if (!entry.endsWith('.3-tasks.md') && entry !== '3-tasks.md') continue;
+        const raw = relative(root, join(dir, entry));
+        const proven = proveRepoFile(root, raw);
+        if (!proven.ok) return { ok: false, detail: `${raw}: ${proven.detail}` };
+        if (isAllowedOwnerIndex(ticketPath, proven.identity)) found.push(proven.identity);
       }
-    } catch {
-      // unreadable dir — skip this level
+    } catch (cause) {
+      return {
+        ok: false,
+        detail: `${relDir || '.'}: ${(cause as NodeJS.ErrnoException).code ?? 'unreadable directory'}`,
+      };
     }
     const parent = dirname(dir);
-    if (parent === dir) break;
+    if (parent === dir || dir === root) break;
     dir = parent;
   }
-  return found;
+  return { ok: true, indexes: found };
 }
 
 /**
  * @purpose Recompute each index's rollup Progress cells (`Tasks`/`Done`) from its linked trackers'
  *   fresh-off-disk rows, resolving Index links relative to that index's own directory.
- * @invariant Skips a non-rollup index and any link that fails to resolve/read — never a failure.
- * @param indexes Absolute paths of every index in scope for this sync run.
- * @returns One report line per index whose rollup table changed.
+ * @invariant Skips a non-rollup index and unresolved linked tracker; index identity loss fails verify.
+ * @param root Canonical project root for linked tracker containment.
+ * @param indexes Proven identities of every index in scope for this sync run.
+ * @returns Report lines plus whether an index could no longer be proven.
  */
-function recomputeProgress(indexes: string[]): string[] {
+function recomputeProgress(
+  root: string,
+  indexes: RepoFileIdentity[]
+): { report: string[]; verifyFailed: boolean } {
   const report: string[] = [];
+  let verifyFailed = false;
   for (const idx of indexes) {
-    let content: string;
-    try {
-      content = readFileSync(idx, 'utf-8');
-    } catch {
+    const observed = readProvenRepoFile(idx);
+    if (!observed.ok) {
+      verifyFailed = true;
+      report.push(`  VERIFY-FAIL: ${relative(process.cwd(), idx.absolute)}`);
       continue;
     }
+    const content = observed.content;
     const { text, updated } = recomputeRollupProgress(content, (link) => {
-      try {
-        return parseTrackerRows(readFileSync(resolve(dirname(idx), link), 'utf-8'));
-      } catch {
-        return null;
-      }
+      const linkedRaw = relative(root, resolve(dirname(idx.absolute), link));
+      const linked = proveRepoFile(root, linkedRaw);
+      if (!linked.ok) return null;
+      const read = readProvenRepoFile(linked.identity);
+      return read.ok ? parseTrackerRows(read.content) : null;
     });
     if (updated.length === 0) continue;
-    writeFileSync(idx, text, 'utf-8');
-    const rel = relative(process.cwd(), idx);
+    const written = writeProvenRepoFile(idx, text);
+    if (!written.ok) {
+      verifyFailed = true;
+      report.push(`  VERIFY-FAIL: ${relative(process.cwd(), idx.absolute)}`);
+      continue;
+    }
+    const rel = relative(process.cwd(), idx.absolute);
     report.push(`  progress:   ${rel} (${updated.join(', ')})`);
   }
-  return report;
+  return { report, verifyFailed };
 }
 
 /**
  * @purpose Execute gennady sdd-sync — read the ticket Status and bring matching tracker rows into agreement, verifying each write.
  * @param rawArgs Raw command-line arguments (process.argv).
+ * @param [projectRoot] Canonical ticket/index root; defaults to cwd.
  * @returns SyncOutcome — a per-index report on success, else an actionable failure.
  */
-export async function run(rawArgs: string[]): Promise<SyncOutcome> {
+export async function run(rawArgs: string[], projectRoot = resolve('.')): Promise<SyncOutcome> {
   const args = parseArgs(rawArgs, {});
   const positional = (args._ as string[]).filter(
     (a: string) => typeof a === 'string' && a !== 'sdd-sync'
@@ -95,12 +141,16 @@ export async function run(rawArgs: string[]): Promise<SyncOutcome> {
   const ticket = positional[0];
   if (!ticket) return badInvocation('missing <ticket>');
 
-  const root = resolve('.');
+  const root = realpathSync(resolve(projectRoot));
   const resolved = resolveTicketArg(ticket, root);
   if (!resolved.ok) {
     if (resolved.reason === 'unreadable') return fileError(ticket);
+    if (resolved.reason === 'unsafe-path' || resolved.reason === 'unsafe-corpus') {
+      return fileError(`${ticket} (${resolved.detail})`);
+    }
     if (resolved.reason === 'unknown-id') return unknownIdError(ticket, resolved.refs);
-    return ambiguousIdError(ticket, resolved.matches, root);
+    if (resolved.reason === 'ambiguous-id') return ambiguousIdError(ticket, resolved.matches, root);
+    return fileError(ticket);
   }
   const ticketPath = resolved.path;
   const ticketContent = resolved.content;
@@ -114,24 +164,41 @@ export async function run(rawArgs: string[]): Promise<SyncOutcome> {
   const { taskId, status } = parseMeta(metaRes.content);
   if (!taskId || !status) return metaError(ticket);
 
-  const indexes =
-    positional.length > 1
-      ? positional.slice(1).map((p) => resolve(p))
-      : discoverIndexes(ticketPath);
+  let indexSet: IndexSet;
+  if (positional.length > 1) {
+    const indexes: RepoFileIdentity[] = [];
+    for (const raw of positional.slice(1)) {
+      const proven = proveRepoFile(root, raw);
+      if (!proven.ok) return fileError(`${raw} (${proven.detail})`);
+      if (!isAllowedOwnerIndex(ticketPath, proven.identity)) {
+        return fileError(
+          `${raw} (index must be specs/3-tasks.md or an owning specs/**/<owner>.3-tasks.md)`
+        );
+      }
+      indexes.push(proven.identity);
+    }
+    indexSet = { ok: true, indexes };
+  } else {
+    indexSet = discoverIndexes(root, ticketPath);
+  }
+  if (!indexSet.ok) return fileError(`index discovery (${indexSet.detail})`);
+  const indexes = indexSet.indexes;
+  const ticketStillSame = revalidateRepoFile(resolved.identity);
+  if (!ticketStillSame.ok) return fileError(`${ticket} (${ticketStillSame.detail})`);
   logger.debug(`[SddSyncCommand#run] ${taskId} → ${status}; ${indexes.length} index file(s)`);
 
   // #region START_SYNC — invariant: update each index; verify the write took before reporting updated
   const report: string[] = [];
   let verifyFailed = false;
   for (const idx of indexes) {
-    const rel = relative(process.cwd(), idx);
-    let idxContent: string;
-    try {
-      idxContent = readFileSync(idx, 'utf-8');
-    } catch {
+    const rel = relative(process.cwd(), idx.absolute);
+    const observed = readProvenRepoFile(idx);
+    if (!observed.ok) {
+      verifyFailed = true;
       report.push(`  unreadable: ${rel}`);
       continue;
     }
+    const idxContent = observed.content;
     const upd = updateTrackerStatus(idxContent, taskId, status);
     if (!upd.ok) {
       report.push(`  ${upd.reason === 'task_not_found' ? 'no-row' : 'no-table'}:   ${rel}`);
@@ -141,8 +208,16 @@ export async function run(rawArgs: string[]): Promise<SyncOutcome> {
       report.push(`  in-sync:    ${rel}`);
       continue;
     }
-    writeFileSync(idx, upd.text, 'utf-8');
-    const reverify = updateTrackerStatus(readFileSync(idx, 'utf-8'), taskId, status);
+    const written = writeProvenRepoFile(idx, upd.text);
+    if (!written.ok) {
+      verifyFailed = true;
+      report.push(`  VERIFY-FAIL: ${rel}`);
+      continue;
+    }
+    const reread = readProvenRepoFile(idx);
+    const reverify = reread.ok
+      ? updateTrackerStatus(reread.content, taskId, status)
+      : { ok: false as const, reason: 'no_table' as const };
     if (reverify.ok && !reverify.changed) {
       report.push(`  updated:    ${rel}`);
     } else {
@@ -154,7 +229,9 @@ export async function run(rawArgs: string[]): Promise<SyncOutcome> {
 
   // Progress recompute happens AFTER the Status write above, so it reads the just-updated tracker
   // rows, not the stale pre-sync state.
-  report.push(...recomputeProgress(indexes));
+  const progress = recomputeProgress(root, indexes);
+  report.push(...progress.report);
+  verifyFailed ||= progress.verifyFailed;
 
   const header = `[sdd-sync] ${taskId} → ${status}`;
   const body = indexes.length === 0 ? '  (no *.3-tasks.md index files found)' : report.join('\n');

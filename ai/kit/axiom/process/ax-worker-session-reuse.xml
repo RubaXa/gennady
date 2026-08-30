@@ -12,6 +12,11 @@ substitute for the instruction; every task arrives as if from a cold start. This
 context overflow and compaction harmless: state lives in files (ticket, Execution Log, Handoff,
 `sdd-task --phase` output), never in conversational memory.
 
+Batch parallelism has two independent gates: the tickets' Target Files are disjoint AND their next
+worker session keys `(spec, kind)` are different. The same key owns one mutable long-lived session,
+so dispatches sharing it serialize even when their Target Files are disjoint. Different keys never
+override a Target-File overlap.
+
 Reuse is an optimization with a mandatory environment-agnostic fallback: not every environment can
 continue a subagent session. Where continuation is available, redispatch by key; where it is not,
 raise a fresh worker with the SAME message. Correctness never depends on which path ran — the

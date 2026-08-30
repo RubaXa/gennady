@@ -68,16 +68,16 @@ worker, Executor читает СТРОГО по манифесту фазы (н�
     "test": "node --import <GENNADY_WORKTREE>/node_modules/tsx/dist/loader.mjs --test src/app/greeting/*.test.ts",
     "test:coverage": "node --test --import <GENNADY_WORKTREE>/node_modules/tsx/dist/loader.mjs src/app/greeting/*.test.ts",
     "lint": "<GENNADY_WORKTREE>/node_modules/.bin/tsx <GENNADY_WORKTREE>/cli/gennady.ts lint .",
-    "lint:fix": "<GENNADY_WORKTREE>/node_modules/.bin/tsx <GENNADY_WORKTREE>/cli/gennady.ts lint . --autofix",
+    "lint:fix": "<GENNADY_WORKTREE>/node_modules/.bin/tsx <GENNADY_WORKTREE>/cli/gennady.ts lint --autofix",
     "format": "<GENNADY_WORKTREE>/node_modules/.bin/prettier --check .",
-    "format:fix": "<GENNADY_WORKTREE>/node_modules/.bin/prettier --write .",
+    "format:fix": "<GENNADY_WORKTREE>/node_modules/.bin/prettier --write",
     "check": "npm run type-check && npm test && npm run lint && npm run format",
-    "fix": "npm run format:fix && npm run lint:fix && npm run check"
+    "fix": "npm run format:fix -- . && npm run lint:fix -- ."
   }
 }
 ```
 
-Семь имён — `type-check`/`test`/`test:coverage`/`lint`/`format`/`check`/`fix` — точное множество
+Восемь имён — `type-check`/`test`/`test:coverage`/`lint`/`lint:fix`/`format`/`format:fix`/`fix` — точное множество
 `REQUIRED_SCRIPTS` из `shared/sdd/readiness.ts` (readiness-предполёт `sdd-state` матчит их по
 точному имени; `type-check` принял бы и алиас `typecheck`, но фикстура держит каноническое имя —
 то же, что в примере `package.json` `ai/directives/sdd-v2/readiness.directive.xml` ReferenceData).
@@ -87,9 +87,9 @@ worker, Executor читает СТРОГО по манифесту фазы (н�
 или ставит его заново — не гарантирует ту же версию, что закреплена в worktree). `lint`/`format`/
 `check` — только-чтение (`readiness.ts` `isScriptReadOnly`: ни один достижимый через `npm run`
 скрипт не несёт `--fix`/`--write`/`--autofix`); write-переключатель (`--autofix` для `gennady
-lint`, `--write` для `prettier`) живёт исключительно в парных `lint:fix`/`format:fix`, которые
-вызывает только `fix` — единственный скрипт, которому разрешено писать (`format:fix` → `lint:fix`
-→ `check`). `check` сам — read-only композит (`type-check` → `test` → `lint` → `format`).
+lint`, `--write` для `prettier`) живёт исключительно в парных declared target-forwarding
+`lint:fix`/`format:fix`; phase verifier передаёт им точные Target Files, а обязательный whole-project `fix`
+передаёт широкий корень. `check` сам — read-only композит (`type-check` → `test` → `lint` → `format`).
 `yagni` — сознательно НЕ npm-скрипт: `sdd-verify --profile full`'s `via: 'gennady'`-гейт
 (`cli/cmd/sdd-verify/sdd-verify.types.ts`) резолвит `gennady yagni` напрямую через
 `node_modules/.bin/gennady`, минуя `package.json` `scripts` — тем же путём, что и любой ручной

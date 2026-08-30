@@ -4,15 +4,28 @@
 
 import { describe, it, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  symlinkSync,
+  unlinkSync,
+  writeFileSync,
+} from 'node:fs';
+import { isAbsolute, join, relative } from 'node:path';
 import { tmpdir } from 'node:os';
+import { runCli } from '../../../__tests__/tool-behavior/run-cli.ts';
+import { readScratchPayloadFile } from '../../../../shared/common/scratch-payload-file.ts';
 
 type LogModule = typeof import('../sdd-log.cmd.ts');
 
 let mod: LogModule;
 let origExit: typeof process.exit;
 let origArgv: string[];
+let origCwd: string;
 let dir: string;
 let ticket: string;
 
@@ -30,33 +43,51 @@ const BASE = [
 ].join('\n');
 
 function argv(...rest: string[]): string[] {
-  return ['node', 'gennady', 'sdd-log', ...rest];
+  return [
+    'node',
+    'gennady',
+    'sdd-log',
+    ...rest.map((value) => (isAbsolute(value) ? relative(dir, value) : value)),
+  ];
 }
 
 describe('SddLogCommand', () => {
   before(async () => {
     origExit = process.exit;
     origArgv = process.argv;
+    origCwd = process.cwd();
     process.exit = ((_code?: number) => undefined) as typeof process.exit;
     process.argv = ['node', 'gennady', 'sdd-log'];
     dir = mkdtempSync(join(tmpdir(), 'sdd-log-'));
     ticket = join(dir, 'ticket.md');
-    mod = await import('../sdd-log.cmd.ts');
+    process.chdir(dir);
+    const loaded = await import('../sdd-log.cmd.ts');
+    mod = {
+      ...loaded,
+      run: (rawArgs, now) =>
+        loaded.run(
+          rawArgs,
+          now,
+          /^[A-Z][A-Z0-9]*-[A-Za-z0-9]/.test(rawArgs[3] ?? '') ? process.cwd() : dir
+        ),
+    };
   });
 
   beforeEach(() => {
+    process.chdir(dir);
     writeFileSync(ticket, BASE, 'utf-8');
   });
 
   after(() => {
     process.exit = origExit;
     process.argv = origArgv;
+    process.chdir(origCwd);
     rmSync(dir, { recursive: true, force: true });
   });
 
   it('opens a round, numbered and dated, before the close marker', async () => {
     const outcome = await mod.run(argv(ticket, 'round', 'initial'), CLOCK);
-    assert.strictEqual(outcome.ok, true);
+    assert.strictEqual(outcome.ok, true, outcome.ok ? '' : outcome.message);
     const body = readFileSync(ticket, 'utf-8');
     assert.match(body, /### Round 1 — 2026-06-21, initial/);
     // inserted before the close marker
@@ -76,6 +107,26 @@ describe('SddLogCommand', () => {
     assert.strictEqual(outcome.ok, true);
     const body = readFileSync(ticket, 'utf-8');
     assert.match(body, /- \[x\] `2026-06-21T10:00:00\.000Z` ver `npm run check` → pass exit=0/);
+  });
+
+  it('rejects absolute/outside and symlink ticket paths without mutating the external victim', async () => {
+    const victimDir = mkdtempSync(join(tmpdir(), 'sdd-log-victim-'));
+    const victim = join(victimDir, 'ticket.md');
+    writeFileSync(victim, BASE, 'utf-8');
+    symlinkSync(victim, join(dir, 'linked-ticket.md'));
+    try {
+      const absolute = await mod.run(
+        ['node', 'gennady', 'sdd-log', victim, 'line', 'PWNED'],
+        CLOCK
+      );
+      const linked = await mod.run(argv('linked-ticket.md', 'line', 'PWNED'), CLOCK);
+      assert.strictEqual(absolute.ok, false);
+      assert.strictEqual(linked.ok, false);
+      assert.strictEqual(readFileSync(victim, 'utf-8'), BASE);
+    } finally {
+      rmSync(join(dir, 'linked-ticket.md'));
+      rmSync(victimDir, { recursive: true, force: true });
+    }
   });
 
   it('appends the round-close block', async () => {
@@ -414,6 +465,214 @@ describe('SddLogCommand', () => {
     );
     assert.strictEqual(noUnblock.ok, false);
     if (!noUnblock.ok) assert.strictEqual(noUnblock.exitCode, 4);
+  });
+
+  describe('file-backed payloads (agent-safe shell boundary)', () => {
+    async function inFixture<T>(fn: () => Promise<T> | T): Promise<T> {
+      const before = process.cwd();
+      process.chdir(dir);
+      try {
+        mkdirSync(join(dir, '.claude', 'tmp'), { recursive: true });
+        return await fn();
+      } finally {
+        process.chdir(before);
+      }
+    }
+
+    it('logs quotes, command substitutions, backticks, and newline literally; executes nothing; consumes the file', async () => {
+      const payloadPath = join(dir, '.claude', 'tmp', 'event.txt');
+      const pwnedPath = join(dir, '.claude', 'tmp', 'PWNED');
+      const content =
+        'quoted "value" $(touch .claude/tmp/PWNED) `touch .claude/tmp/PWNED`\nnext line';
+      const outcome = await inFixture(async () => {
+        writeFileSync(payloadPath, content, 'utf-8');
+        return mod.run(argv(ticket, 'line', '--content-file', '.claude/tmp/event.txt'), CLOCK);
+      });
+      assert.strictEqual(outcome.ok, true);
+      assert.ok(readFileSync(ticket, 'utf-8').includes(content));
+      assert.strictEqual(existsSync(pwnedPath), false, 'payload bytes must never execute');
+      assert.strictEqual(
+        existsSync(payloadPath),
+        false,
+        'successful append consumes exact payload'
+      );
+    });
+
+    it('proves the same boundary through the real CLI entry point', () => {
+      mkdirSync(join(dir, '.claude', 'tmp'), { recursive: true });
+      const payloadPath = join(dir, '.claude', 'tmp', 'real-cli.txt');
+      const pwnedPath = join(dir, '.claude', 'tmp', 'PWNED');
+      const content = '"quoted" $(touch .claude/tmp/PWNED) `touch .claude/tmp/PWNED`\nreal CLI';
+      writeFileSync(payloadPath, content, 'utf-8');
+      const result = runCli(
+        ['sdd-log', 'ticket.md', 'line', '--content-file', '.claude/tmp/real-cli.txt'],
+        dir
+      );
+      assert.strictEqual(result.exitCode, 0, result.stdout + result.stderr);
+      assert.ok(readFileSync(ticket, 'utf-8').includes(content));
+      assert.strictEqual(existsSync(pwnedPath), false);
+      assert.strictEqual(existsSync(payloadPath), false);
+    });
+
+    it('accepts a strict blocker JSON payload and consumes it only after append', async () => {
+      await mod.run(argv(ticket, 'phase', 'P1'), CLOCK);
+      const payloadPath = join(dir, '.claude', 'tmp', 'blocker.json');
+      const outcome = await inFixture(async () => {
+        writeFileSync(
+          payloadPath,
+          JSON.stringify({
+            reason: 'tool says "no" and contains $() literally',
+            axiom: 'AX_BLOCKER_ESCALATION',
+            unblock: 'operator approves `npm install`',
+          }),
+          'utf-8'
+        );
+        return mod.run(
+          argv(ticket, 'blocker', '--payload-file', '.claude/tmp/blocker.json', '--phase', 'P1'),
+          CLOCK
+        );
+      });
+      assert.strictEqual(outcome.ok, true);
+      const body = readFileSync(ticket, 'utf-8');
+      assert.match(body, /BLOCKED: tool says "no" and contains \$\(\) literally/);
+      assert.match(body, /axiom: AX_BLOCKER_ESCALATION/);
+      assert.match(body, /unblock: operator approves `npm install`/);
+      assert.strictEqual(existsSync(payloadPath), false);
+    });
+
+    it('rejects outside, symlink, oversize, and malformed blocker payloads without consuming them', async () => {
+      await mod.run(argv(ticket, 'phase', 'P1'), CLOCK);
+      await inFixture(async () => {
+        writeFileSync(join(dir, 'outside.txt'), 'outside', 'utf-8');
+        const outside = await mod.run(
+          argv(ticket, 'line', '--content-file', 'outside.txt', '--phase', 'P1'),
+          CLOCK
+        );
+        assert.strictEqual(outside.ok, false);
+
+        writeFileSync(join(dir, '.claude', 'tmp', 'target.txt'), 'target', 'utf-8');
+        symlinkSync('target.txt', join(dir, '.claude', 'tmp', 'link.txt'));
+        const symlink = await mod.run(
+          argv(ticket, 'line', '--content-file', '.claude/tmp/link.txt', '--phase', 'P1'),
+          CLOCK
+        );
+        assert.strictEqual(symlink.ok, false);
+
+        writeFileSync(join(dir, '.claude', 'tmp', 'large.txt'), 'x'.repeat(32 * 1024 + 1));
+        const oversize = await mod.run(
+          argv(ticket, 'line', '--content-file', '.claude/tmp/large.txt', '--phase', 'P1'),
+          CLOCK
+        );
+        assert.strictEqual(oversize.ok, false);
+
+        writeFileSync(join(dir, '.claude', 'tmp', 'invalid.txt'), Buffer.from([0xff]));
+        const invalidUtf8 = await mod.run(
+          argv(ticket, 'line', '--content-file', '.claude/tmp/invalid.txt', '--phase', 'P1'),
+          CLOCK
+        );
+        assert.strictEqual(invalidUtf8.ok, false);
+
+        writeFileSync(join(dir, '.claude', 'tmp', 'bad.json'), '{not-json', 'utf-8');
+        const malformed = await mod.run(
+          argv(ticket, 'blocker', '--payload-file', '.claude/tmp/bad.json', '--phase', 'P1'),
+          CLOCK
+        );
+        assert.strictEqual(malformed.ok, false);
+        if (!malformed.ok) assert.match(malformed.code, /PAYLOAD_FILE/);
+        assert.ok(existsSync(join(dir, '.claude', 'tmp', 'bad.json')));
+      });
+    });
+
+    it('rejects unknown/repeated payload flags and inline+file ambiguity', async () => {
+      await inFixture(async () => {
+        writeFileSync(join(dir, '.claude', 'tmp', 'event.txt'), 'safe', 'utf-8');
+        for (const outcome of [
+          await mod.run(argv(ticket, 'line', '--unknown', 'x'), CLOCK),
+          await mod.run(
+            argv(
+              ticket,
+              'line',
+              '--content-file',
+              '.claude/tmp/event.txt',
+              '--content-file',
+              '.claude/tmp/event.txt'
+            ),
+            CLOCK
+          ),
+          await mod.run(
+            argv(ticket, 'line', 'inline', '--content-file', '.claude/tmp/event.txt'),
+            CLOCK
+          ),
+        ]) {
+          assert.strictEqual(outcome.ok, false);
+          if (!outcome.ok) assert.strictEqual(outcome.exitCode, 4);
+        }
+      });
+    });
+
+    it('consumes only the inode that was read and never a same-path replacement', async () => {
+      await inFixture(() => {
+        const relativePayload = '.claude/tmp/identity.txt';
+        const payloadPath = join(dir, relativePayload);
+        const originalPath = join(dir, '.claude', 'tmp', 'original.txt');
+        writeFileSync(payloadPath, 'same bytes', 'utf-8');
+        const read = readScratchPayloadFile(dir, relativePayload);
+        assert.strictEqual(read.ok, true);
+        if (!read.ok) return;
+
+        renameSync(payloadPath, originalPath);
+        writeFileSync(payloadPath, 'same bytes', 'utf-8');
+        const failure = read.payload.consume();
+
+        assert.match(failure ?? '', /identity changed/);
+        assert.strictEqual(readFileSync(payloadPath, 'utf-8'), 'same bytes');
+        assert.strictEqual(readFileSync(originalPath, 'utf-8'), 'same bytes');
+      });
+    });
+
+    it('refuses a same-path symlink replacement and leaves both replacement and target intact', async () => {
+      await inFixture(() => {
+        const relativePayload = '.claude/tmp/identity-link.txt';
+        const payloadPath = join(dir, relativePayload);
+        const targetPath = join(dir, '.claude', 'tmp', 'replacement-target.txt');
+        writeFileSync(payloadPath, 'old bytes', 'utf-8');
+        const read = readScratchPayloadFile(dir, relativePayload);
+        assert.strictEqual(read.ok, true);
+        if (!read.ok) return;
+
+        unlinkSync(payloadPath);
+        writeFileSync(targetPath, 'old bytes', 'utf-8');
+        symlinkSync('replacement-target.txt', payloadPath);
+        const failure = read.payload.consume();
+
+        assert.ok(failure);
+        assert.strictEqual(readFileSync(payloadPath, 'utf-8'), 'old bytes');
+        assert.strictEqual(readFileSync(targetPath, 'utf-8'), 'old bytes');
+      });
+    });
+
+    it('removes an unchanged original payload and reports a missing original fail-closed', async () => {
+      await inFixture(() => {
+        const consumedPath = join(dir, '.claude', 'tmp', 'consume.txt');
+        writeFileSync(consumedPath, 'consume me', 'utf-8');
+        const consumed = readScratchPayloadFile(dir, '.claude/tmp/consume.txt');
+        assert.strictEqual(consumed.ok, true);
+        if (consumed.ok) {
+          assert.strictEqual(consumed.payload.consume(), null);
+          assert.strictEqual(existsSync(consumedPath), false);
+        }
+
+        const missingPath = join(dir, '.claude', 'tmp', 'missing.txt');
+        writeFileSync(missingPath, 'remove first', 'utf-8');
+        const missing = readScratchPayloadFile(dir, '.claude/tmp/missing.txt');
+        assert.strictEqual(missing.ok, true);
+        unlinkSync(missingPath);
+        if (missing.ok) {
+          assert.match(missing.payload.consume() ?? '', /path is missing|does not exist|ENOENT/);
+          assert.strictEqual(existsSync(missingPath), false);
+        }
+      });
+    });
   });
 
   describe('resolved mode — paired close for blocker', () => {

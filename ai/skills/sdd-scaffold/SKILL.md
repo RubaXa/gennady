@@ -12,24 +12,26 @@ compatibility: opencode
     directive, you do not parse it.
   </Priming>
 
-  <Mission>Converge the approved specs into a DAG of self-contained task tickets + the task-index hierarchy. Gather state, embody the scaffold directive, hand off. No interview, no code — that is `/sdd` and execute.</Mission>
+  <Mission>Enter the single SDD router with forced intent `scaffold`; the router owns session conflict/open policy and loads the scaffold owner. Converge approved specs into task tickets without duplicating bootstrap in this loader. No interview, no code.</Mission>
 
   <ExecutionPlan>
     <Step id="GATHER">
-      One parallel batch (do NOT serialize): run `npx gennady sdd-state`
-      (flow version · readiness · portal · scopes) AND read in full
-      `ai/directives/sdd-v2/scaffold.directive.xml`.
+      One parallel batch (do NOT serialize): execute the exact routerState ToolCall below
+      (flow version · readiness · portal · scopes · session) AND read in full
+      `ai/directives/sdd-v2/router.directive.xml`. The exact `routerState` bytes are the router
+      snapshot; this is the only initial state call, and the router never executes it itself.
+      <ToolCall owner="entry-skill" result="routerState">npx gennady sdd-state</ToolCall> Use routerState as the literal stdout snapshot.
     </Step>
     <Step id="PREFLIGHT">
-      State is already gathered (GATHER, above). The directive's own `STEP_0B_PREFLIGHT` interprets
-      the snapshot's `FLOW_VERSION` / `READINESS` without another CLI call, including when to embody
-      the live migration or setup flow. Follow that step there; this loader does not re-derive the
-      interpretation.
+      Pass exact result alias `routerState` to router `STEP_0_STATE` with literal `forced intent: scaffold`;
+      do not call `sdd-state` again and do not open, relabel, ignore, or close a session here. The
+      router resolves a live-session conflict without a redundant SCALE question, then loads scaffold, whose own
+      `STEP_0B_PREFLIGHT` interprets readiness.
     </Step>
     <Step id="EMBODY">
-      You ARE the scaffold directive now. Mode (initial / extend-dag) auto-detects from existing tickets.
-      Input is the approved `specs/` tree; converge it into tickets, surfacing only the two operator gates
-      (the breakdown and the test plan).
+      You ARE the router now. Preserve forced intent `scaffold` and the operator's approved-spec
+      payload; follow its `LOGIC_SWITCH`. The scaffold owner it loads auto-detects initial / extend-dag
+      and owns the two operator gates. This loader never reads the scaffold directive directly.
     </Step>
   </ExecutionPlan>
 </SddSkill>

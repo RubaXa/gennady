@@ -2,20 +2,72 @@
 <Contract id="SESSION_FILE_FORMAT">
   A single temporary scratch file for the current SDD session — `specs/.sdd-session.md`, gitignored, not
   a deliverable. It lets a multi-step or multi-scope flow survive a context squeeze or a session break
-  within the same piece of work; it is NOT carried between unrelated sessions. The kernel reads it on
-  entry and updates it after each loaded directive. On the work finishing, it is discarded.
+  within the same piece of work. The kernel reads it on entry and updates it after each loaded
+  directive. Its lifetime is controlled by one typed terminal result:
 
-  The `scale:` field carries the operator-confirmed SCALE (`AX_SCALE_PROPORTIONAL_DEPTH`) — the
-  router writes it once at classification; every branch reads it as its depth parameter (interview
-  depth, number of design alternatives, weight of the verification tail). For `intent: project-setup`
-  with no scope yet in play, the router still records `intent:` and the chosen branch at
-  classification; `scale:` appears once a scope exists to size (root's own STEP_1/STEP_2 approval
-  checks bind before any scope-level SCALE is meaningful).
+  `TerminalDecision = continue | pause | complete`.
 
-  The `glossary:` section is the session's terminology anchor (`AX_OPERATOR_LANGUAGE`): the first time
-  a domain concept is named, `npx gennady sdd-session term "<term> — <definition>"` appends it here;
-  every later mention of that concept — in chat or in an artifact — reuses the recorded name verbatim.
-  Before introducing a new name for something, check this list in the `sdd-state` snapshot first.
+  - `continue` means a known next link remains in the current chain — root → scope → module → integrated
+    review → scaffold → execute, including another scope in dependency order. Preserve the same session;
+    an internal handoff never closes it.
+  - `pause` means an Approval Check, external-review wait, critic/scaffold cap, blocker, failed check, or
+    operator choice to resume later. Preserve the same session and its working set; a pause is not
+    completion.
+  - `complete` is legal only after the current terminal menu records an explicit operator choice named
+    `complete` or `finish` and the owning step has established `unfinished chained work: none`. That step
+    runs exact `npx gennady sdd-session close` once. No inferred completion, successful intermediate
+    artifact, merge, ticket close, empty subagent queue, or context end may call it. `close` removes only
+    the scratch file; the durable `.gitignore` entry remains.
+
+  A live session is never silently reused for an unrelated incoming intent. The already-gathered
+  `sdd-state` `[SESSION]` block is the current-session card. This compatibility decision is the first
+  write barrier: before readiness, migration, glossary, journal, spec, ticket, config, or any other
+  project mutation, compare its literal
+  `intent`, `scale`, `working set`, and `open` fields with the incoming intent. If related continuation
+  cannot be proved, show that card and ask exactly one operator decision: `continue existing` or
+  `close-and-start-new` with the proposed new intent and, only for a SCALE-consuming authoring owner,
+  the proposed scale shown. Preserve the old file while the
+  answer is pending (`pause`). `continue existing` routes from the stored fields without calling `open`.
+  `close-and-start-new` itself confirms the displayed new values: run exact
+  `npx gennady sdd-session close`; only after success run exact
+  `npx gennady sdd-session open --intent <confirmed-intent> --scale <confirmed-scale>` for a
+  SCALE-consuming authoring owner, or exact `npx gennady sdd-session open --intent <confirmed-intent>`
+  otherwise. Never call `--help`, guess values, or use
+  `sdd-session open` idempotence as evidence that an existing intent is compatible. A confirmed
+  same-chain stage transition may use exact `npx gennady sdd-session set intent "<confirmed-intent>"`
+  and `npx gennady sdd-session set scale "<confirmed-scale>"`; it is not a way to relabel unrelated
+  work.
+
+  The `scale:` field carries operator-confirmed SCALE (`AX_SCALE_PROPORTIONAL_DEPTH`) for authoring
+  routes whose depth actually changes: `project-setup`, `new-scope`, `evolve-scope`,
+  `module-decomposition`, and `multi-scope`, routed to root/scope/module/infra/interface. Those routes
+  confirm SCALE once and record it in the same `sdd-session open --intent ... --scale ...` call.
+  `execute`, `recover-from-code`, `scaffold`, `reconcile`, and `critic` consume no SCALE: the router
+  asks no SCALE question and opens a new session with intent only. A compatible existing session may
+  retain its already-recorded scale untouched; non-consumers do not reinterpret it.
+
+  The `glossary:` section is the session's terminology anchor (`AX_OPERATOR_LANGUAGE`). Only the
+  stateful orchestrator that has crossed the compatibility/open barrier may mutate it. For each
+  accepted term, write exactly `<term> — <definition>` to the regular non-symlink payload
+  `.claude/tmp/sdd-glossary-term.txt`, then run the router's exact glossaryUpdate ToolCall; the
+  successful tool consumes that payload. Never pass agent-produced glossary text inline. A pre-session router buffers a
+  suggestion without writing it. Read-only critic/audit/code-review workers return
+  `GlossarySuggestions` and never invoke this ToolCall. In compact audit/code-review output, the final
+  `@glossary suggestions=[<term> — <definition>; ...]` line is the serialization of that exact field:
+  `[]` maps to no suggestions; each semicolon-delimited item maps byte-for-byte to one
+  `GlossarySuggestions` item. The compatible stateful orchestrator deduplicates these against the
+  saved glossary, presents genuinely new/conflicting terms at its next existing operator checkpoint
+  (never opens a glossary-only Ask), and persists only accepted items through `glossaryUpdate`.
+  Every worker dispatch receives the current saved glossary as read-only input; a direct read-only
+  skill reads only the `glossary:` block from `specs/.sdd-session.md` when that file exists, otherwise
+  uses an empty list. Every later mention reuses the recorded name
+  verbatim; before introducing a new name, check this list in the saved `sdd-state` snapshot.
+
+  Router preflight runs only AFTER compatibility/open. Readiness returns exactly one post-mutation
+  snapshot alias `readinessState`; migration returns exactly one alias `migrationState`. The router
+  replaces its routing input with that returned snapshot and never refreshes it itself. A branch
+  journal entry is written through the already-compatible session, so no pre-session journal buffer
+  exists and no write can land in an unrelated session.
 
   ```markdown
   # SDD session — <YYYY-MM-DD>

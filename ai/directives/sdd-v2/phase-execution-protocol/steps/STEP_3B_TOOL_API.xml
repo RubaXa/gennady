@@ -1,28 +1,47 @@
 0.8.4
 
 <Step id="STEP_3B_TOOL_API">
-      <Goal>`config` kind only: verify the CURRENT API of every third-party tool this phase configures (`AX_THIRD_PARTY_TOOL_CURRENT_API`). Any other kind skips this step.</Goal>
+      <Goal>`config` kind only: verify each configured third-party tool through the declared ecosystem's registered ToolDocAdapter (`AX_THIRD_PARTY_TOOL_CURRENT_API`). Any other kind skips this step.</Goal>
       <Action>
-        Per tool, BEFORE writing any config:
-        1. Installed version: read `<modules-dir>/<pkg>/package.json` field `version`.
-        2. Local CHANGELOG (recent major + previous): look for `BREAKING`, `deprecated`, `removed`, `migration`.
-        3. Local README: current-version config syntax.
-        4. Local docs minimal → WebFetch homepage from `package.json#homepage` / `repository.url`.
-        5. Network blocked AND local docs insufficient → `H_THIRD_PARTY_API_UNVERIFIABLE` — halt rather
-           than guess or apply a training-default silently.
-        This four-step read (`package.json` version, CHANGELOG, README, homepage) is the FULL extent
-        of local-package inspection this step performs. Reverse-engineering a tool's internal
-        schema/config-shape files under `node_modules` (a bundled `configuration_schema.json`,
-        minified source, internal type declarations) is not a step in this protocol — the concrete
-        config specifics this phase needs (exact version, config-schema version/URL, a literal
-        config skeleton, known version gotchas) are a decision-time infra-spec responsibility
-        (`AX_RESEARCH_PERSISTED`, `infra.directive` STEP_3_TOOL_CHOICES), sourced from the ticket's
-        Spec Refs or a linked research document, never reconstructed here by archaeology through
-        package internals. When the ticket / spec / research does not already carry what this phase
-        needs to write the config, that gap is `H_THIRD_PARTY_API_UNVERIFIABLE` (surfaced as
-        `H_BLOCKED` to the operator per `AX_BLOCKER_ESCALATION`) — never a cue to keep digging
-        through `node_modules` for it.
-        Then log via `npx gennady sdd-log <ticket> line "verified <tool>@<version> <one-line
-        summary>" --phase <PhaseID>` (`AX_TICKET_WRITE_SCOPE`) — audit requires this entry per config artifact.
+        <ToolDocAdapterRegistry>
+          Activate only when STEP_1 `phaseContext.kind=config`; every other kind skips without a
+          probe. Detect ecosystem + tool only from that phaseContext's Target Files, Spec Refs, and
+          readiness evidence — never memory, repo-wide search, or filename guessing. Each adapter
+          owns its version source, permitted local docs, and explicit remote policy:
+
+          | Adapter | Version + local docs | Remote policy |
+          |---|---|---|
+          | `node/npm` | `node_modules/<pkg>/package.json#version`; that installed package root's `README*` and `CHANGELOG*` | only if local docs are insufficient, WebFetch the exact `homepage` or `repository.url` in that same package manifest |
+          | `go` | unsupported — no registered adapter | none |
+          | `ios/swift` | unsupported — no registered adapter | none |
+          | `android/gradle` | unsupported — no registered adapter | none |
+
+          An ambiguous ecosystem, unregistered tool, unsupported adapter, missing installed version,
+          or insufficient permitted evidence → `H_THIRD_PARTY_API_UNVERIFIABLE`. Its blocker
+          `unblock` asks the operator for the exact version plus official/persisted docs or a
+          registered adapter; apply `AX_BLOCKER_ESCALATION` and stop. Never guess, call `--help`,
+          explore an undeclared cache, inspect tool internals, or access the network outside the
+          selected adapter's remote policy.
+        </ToolDocAdapterRegistry>
+
+        BEFORE writing config, select and follow that adapter. Exact config specifics remain a
+        decision-time infra-spec concern
+        (`AX_RESEARCH_PERSISTED`, `infra.directive` STEP_3_TOOL_CHOICES), sourced from Spec Refs or a
+        linked research artifact.
+        Then write exact `verified <tool>@<version> <one-line summary>` to the phase log payload and
+        run eventLog ToolCall below — audit requires this entry per config artifact.
+        <ToolCall owner="phase-worker" result="eventLog">npx gennady sdd-log <ticket> line --content-file .claude/tmp/<task-id>-<phase-id>-log.txt --phase <PhaseID></ToolCall> Inputs <ticket>, <task-id>, <phase-id>, <PhaseID>: file-write of literal evidence gathered here. Use eventLog.
       </Action>
     </Step>
+
+<Axiom id="AX_BLOCKER_ESCALATION">
+      When stuck, escalate — never improvise. Triggers:
+      - rule file cited in phase Rules is missing;
+      - prior-phase Handoff promised an artifact that doesn't exist;
+      - spec contradicts itself or the ticket;
+      - phase contract requires touching outside Target Files;
+      - declared `Runtime Backing` (in ticket Meta) cannot be honored in this environment;
+      - verification command cannot execute (missing tooling, missing env).
+
+      Mechanics: log `<ts> BLOCKED <one-line cause>` per `BLOCKER_FORMAT`; status of phase → `[!] BLOCKED`; return BLOCKED to orchestrator with proposed unblock. Stop.
+    </Axiom>

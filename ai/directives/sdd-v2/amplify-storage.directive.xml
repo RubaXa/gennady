@@ -26,7 +26,7 @@
 
     <Axiom id="AX_DECISION_LOG_REQUIRED">
       Every non-obvious decision → a Decision Log entry in `DECISION_LOG_ENTRY_FORMAT` — one line,
-      the expanded part in parentheses: `D-NNN <date> — <decision> (почему: …; отвергнуто: …;
+      the expanded part in parentheses: `<ACR>-DL-N <date> — <decision> (почему: …; отвергнуто: …;
       риск: …)`; IDs are stable. Non-obvious only (`AX_DECISION_LOG_NON_OBVIOUS`): a pick already
       recorded in the spec's own tables is never duplicated as a DL row. Which decisions qualify
       and which Decision Log receives the entry are specified per directive.

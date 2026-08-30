@@ -1,0 +1,33 @@
+<!-- source: scaffold feasibility lifecycle — append-only state in the SDD session scratch file -->
+<Contract id="FEASIBILITY_STATE_FORMAT">
+  `FeasibilityState` is not model memory. It is the fold of append-only
+  `sdd-scaffold-feasibility/v1` JSON events in the compatible session's `journal:` section. The
+  router has already proved/opened that session before scaffold starts, so the state survives an
+  operator pause, context loss, and same-session resume without writing a second project artifact.
+
+  Each event is one compact UTF-8 JSON line with keys in this order:
+  `schema`, `cycle`, `seq`, `event`, `payload`. `cycle` binds the scaffold target-set and initial
+  ticket hashes; `seq` increases by one. Event kinds are:
+  `opened` (target paths/hashes, worker session, `fallbackUsed=false`, `resultCount=0`,
+  `activeCap=5`) · `target-refreshed` (latest paths/hashes and changed tickets) · `worker-state` ·
+  `sensor-result` (the NEW cumulative result count, literal verdict, literal Changes, and latest
+  target hashes) · `operator-disposition` (the referenced result count and exact CLEAN / CONTINUE
+  THROUGH ROUND N / RESTART answer) · `gate2-choice` · `closed`.
+
+  Before the first critic dispatch, append `opened`. After every ticket mutation, append
+  `target-refreshed` before dispatch. Most importantly, after a critic returns, append the complete
+  `sensor-result` with the already-incremented count and require tool success BEFORE interpreting
+  CLEAN, a product fork, GOAL, the cap, or emitting any Ask. An operator answer is a separate later
+  immutable `operator-disposition`; never rewrite the result it disposes. On resume, fold only the
+  matching cycle's events. A latest `sensor-result` with no disposition and a cap/GOAL Ask pending
+  means re-present that same decision from the recorded bytes — do not redispatch, increment, or
+  reset. `activeCap` starts at exactly 5 and changes only by a recorded CONTINUE disposition.
+
+  To append any event, write that one JSON line to the regular non-symlink
+  `.claude/tmp/sdd-scaffold-feasibility-event.json`, then execute the current scaffold transition's
+  exact feasibility-event ToolCall. The
+  successful command consumes the payload; inline event text is forbidden. `closed` is the explicit
+  cleanup marker after STEP_5 integrity succeeds (or before an operator-confirmed RESTART opens a new
+  cycle); the session scratch itself is removed only by its normal terminal `sdd-session close`.
+
+</Contract>

@@ -23,19 +23,19 @@ const FULL = {
   'lint:contracts': 'gennady lint .',
   format: 'prettier --check .',
   check: 'npm run type-check && npm test && npm run lint && npm run format',
-  fix: 'npm run format:fix && npm run lint:fix && npm run check',
-  'format:fix': 'prettier --write .',
-  'lint:fix': 'eslint --fix .',
+  fix: 'npm run format:fix -- . && npm run lint:fix -- .',
+  'format:fix': 'prettier --write',
+  'lint:fix': 'eslint --fix',
 };
 
 describe('REQUIRED_SCRIPTS', () => {
-  it('is the exact v2 set — seven bricks sdd-verify composes; `check`/`fix` are wrappers, not bricks', () => {
+  it('is the exact v2 set — repair leaves and the public fix entrypoint are required', () => {
     assert.deepStrictEqual(
       [...REQUIRED_SCRIPTS],
-      ['type-check', 'test', 'test:coverage', 'format', 'format:fix', 'lint', 'lint:fix']
+      ['type-check', 'test', 'test:coverage', 'format', 'format:fix', 'lint', 'lint:fix', 'fix']
     );
     assert.ok(!REQUIRED_SCRIPTS.includes('check' as (typeof REQUIRED_SCRIPTS)[number]));
-    assert.ok(!REQUIRED_SCRIPTS.includes('fix' as (typeof REQUIRED_SCRIPTS)[number]));
+    assert.ok(REQUIRED_SCRIPTS.includes('fix'));
   });
 
   it('rejects a format script that itself writes (prettier --write)', () => {
@@ -66,9 +66,9 @@ describe('REQUIRED_SCRIPTS', () => {
     assert.strictEqual(r.ready, false);
   });
 
-  it('stays ready with `check`/`fix` entirely absent — they are wrappers, not required bricks', () => {
+  it('stays ready without the optional read-only check wrapper', () => {
     const withoutWrappers = Object.fromEntries(
-      Object.entries(FULL).filter(([name]) => name !== 'check' && name !== 'fix')
+      Object.entries(FULL).filter(([name]) => name !== 'check')
     );
     const r = checkReadiness({
       packageJsonPresent: true,
@@ -77,6 +77,26 @@ describe('REQUIRED_SCRIPTS', () => {
     });
     assert.strictEqual(r.ready, true);
     assert.deepStrictEqual(r.missing, []);
+  });
+
+  it('rejects a missing public whole-project fix entrypoint even when both leaves exist', () => {
+    const withoutFix = Object.fromEntries(Object.entries(FULL).filter(([name]) => name !== 'fix'));
+    const r = check(withoutFix);
+    assert.strictEqual(r.ready, false);
+    assert.ok(r.missing.includes('fix'));
+  });
+
+  it('rejects fix when it does not reach both canonical repair leaves', () => {
+    const r = check({ ...FULL, fix: 'npm run format:fix' });
+    assert.strictEqual(r.fixHasCanonicalRepairs, false);
+    assert.ok(r.missing.includes('fix(must run format:fix then lint:fix)'));
+    assert.strictEqual(r.ready, false);
+  });
+
+  it('rejects fix when lint repair runs before formatter repair', () => {
+    const r = check({ ...FULL, fix: 'npm run lint:fix && npm run format:fix' });
+    assert.strictEqual(r.fixHasCanonicalRepairs, false);
+    assert.ok(r.missing.includes('fix(must run format:fix then lint:fix)'));
   });
 
   it('rejects a format:fix that never mutates (missing --write/--fix/--autofix)', () => {
@@ -98,18 +118,40 @@ describe('REQUIRED_SCRIPTS', () => {
   });
 
   it("accepts gennady's own `--autofix` as the mutating switch for lint:fix", () => {
-    const r = check({ ...FULL, 'lint:fix': 'gennady lint --autofix .' });
+    const r = check({ ...FULL, 'lint:fix': 'gennady lint --autofix' });
     assert.strictEqual(r.lintFixMutates, true);
+    assert.strictEqual(r.fixHasCanonicalRepairs, true);
     assert.strictEqual(r.ready, true);
   });
 
-  it('a lint:fix that only reaches its mutating sibling transitively still counts as mutating', () => {
+  it('a transitive lint:fix may mutate but is rejected as a non-transparent target prefix', () => {
     const r = check({
       ...FULL,
       'lint:fix': 'npm run lint:fix:inner',
-      'lint:fix:inner': 'eslint --fix .',
+      'lint:fix:inner': 'eslint --fix',
     });
     assert.strictEqual(r.lintFixMutates, true);
+    assert.strictEqual(r.lintFixDeclaredTargetPrefix, false);
+    assert.strictEqual(r.ready, false);
+  });
+
+  it('rejects a mutating repair brick with a baked-in broad root', () => {
+    for (const script of ['alternative-formatter --write .', 'alternative-formatter . --write']) {
+      const r = check({ ...FULL, 'format:fix': script });
+      assert.strictEqual(r.formatFixMutates, true);
+      assert.strictEqual(r.formatFixDeclaredTargetPrefix, false);
+      assert.ok(
+        r.missing.includes(
+          'format:fix(must declare an argument-forwarding prefix with no obvious broad root/glob; runtime phase repair verifies actual writes)'
+        )
+      );
+      assert.strictEqual(r.ready, false);
+    }
+  });
+
+  it('honestly accepts an exact baked operand that static tool-agnostic analysis cannot classify', () => {
+    const r = check({ ...FULL, 'format:fix': 'alternative-formatter src/a.ts --write' });
+    assert.strictEqual(r.formatFixDeclaredTargetPrefix, true);
     assert.strictEqual(r.ready, true);
   });
 });
@@ -189,7 +231,7 @@ describe('checkReadiness', () => {
     assert.ok(r.missing.includes('package.json'));
   });
 
-  it('ready without a `yagni` npm script — sdd-verify runs yagni via `npx gennady yagni` directly, never `npm run yagni`, so no project script is required for readiness/sdd-verify consistency', () => {
+  it('ready without a `yagni` npm script — sdd-verify runs installed gennady directly, never `npm run yagni`, so no project script is required for readiness/sdd-verify consistency', () => {
     const r = check(FULL);
     assert.strictEqual('yagni' in FULL, false);
     assert.strictEqual(r.ready, true);
@@ -313,8 +355,9 @@ describe('shape-check comment & flag holes (round 4)', () => {
       scripts: {
         ...base,
         lint: 'gennady lint .',
-        'format:fix': 'prettier --write .',
-        'lint:fix': 'eslint --fix .',
+        'format:fix': 'prettier --write',
+        'lint:fix': 'eslint --fix',
+        fix: 'npm run format:fix -- . && npm run lint:fix -- .',
         ...extra,
       },
     });
@@ -348,8 +391,8 @@ describe('shape-check comment & flag holes (round 4)', () => {
         scripts: {
           ...base,
           lint: 'echo gennady && eslint .',
-          'format:fix': 'prettier --write .',
-          'lint:fix': 'eslint --fix .',
+          'format:fix': 'prettier --write',
+          'lint:fix': 'eslint --fix',
         },
       }).lintHasGennady,
       false
@@ -410,6 +453,7 @@ describe('readiness levels (not-ready / provisional / ready)', () => {
       'format:fix': "echo 'TODO: настроить formatter --write (write mode)' >&2",
       lint: 'gennady lint src/',
       'lint:fix': "echo 'TODO: настроить linter --fix (autofix)' >&2",
+      fix: 'npm run format:fix && npm run lint:fix',
     });
     assert.strictEqual(r.ready, true, r.missing.join(', '));
     assert.strictEqual(r.level, 'provisional');
@@ -421,6 +465,7 @@ describe('readiness levels (not-ready / provisional / ready)', () => {
       'format',
       'format:fix',
       'lint:fix',
+      'fix',
     ]);
   });
 

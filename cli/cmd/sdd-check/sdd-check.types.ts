@@ -14,7 +14,8 @@ export const ERR_CLI_SDD_CHECK_FILE = 'ERR_CLI_SDD_CHECK_FILE' as const;
 export const ERR_CLI_SDD_CHECK_UNKNOWN_ID = 'ERR_CLI_SDD_CHECK_UNKNOWN_ID' as const;
 /** @purpose More than one ticket carries the same Meta Task-ID (a project-wide collision). */
 export const ERR_CLI_SDD_CHECK_AMBIGUOUS_ID = 'ERR_CLI_SDD_CHECK_AMBIGUOUS_ID' as const;
-
+/** @purpose A selected file or directory could not be observed, so the audit cannot claim clean. */
+export const ERR_CLI_SDD_CHECK_READ_FAILED = 'ERR_CLI_SDD_CHECK_READ_FAILED' as const;
 /** @purpose Outcome of a check run: the report plus the process exit code. */
 export type CheckResult = {
   /** @purpose The ESLint-style report (findings + summary) for stdout. */
@@ -58,15 +59,39 @@ export function formatFindings(findings: Finding[], fileCount: number): CheckRes
 
 /**
  * @purpose Build the bad-invocation result.
+ * @param [detail] Parser or mode-grammar failure; defaults to a generic invalid-arguments detail.
  * @returns Result with exit 4.
  */
-export function badInvocation(): CheckResult {
+export function badInvocation(detail = 'invalid arguments'): CheckResult {
   return {
     text: [
       `[sdd-check] ${ERR_CLI_SDD_CHECK_BAD_INVOCATION}`,
-      '  expected: gennady sdd-check (--task <ticket> | --all [project-root] | --changed [project-root])',
+      `  problem: ${detail}`,
+      '  usage: gennady sdd-check (--task <ticket> | --all [project-root] | --changed [project-root] | --review-state <primary> [secondary...] | --review-publication <primary> [secondary...] | --review-ready <spec-or-dir>)',
     ].join('\n'),
     exitCode: 4,
+  };
+}
+
+/**
+ * @purpose Build a fail-closed git-evidence result with the original operation/status/stderr.
+ * @param operation Human-readable failed git operation.
+ * @param exitCode Process exit status, or null on spawn failure.
+ * @param stderr Preserved process diagnostic.
+ * @returns Exit-1 result that cannot be mistaken for clean.
+ */
+export function gitEvidenceError(
+  operation: string,
+  exitCode: number | null,
+  stderr: string
+): CheckResult {
+  return {
+    text: [
+      '[sdd-check] ERR_CLI_SDD_CHECK_GIT_EVIDENCE',
+      `  problem: git ${operation} failed (exit ${exitCode ?? 'spawn'}): ${stderr || 'no stderr'}`,
+      '  repair the repository/HEAD evidence, then rerun the same sdd-check command; an empty clean result was not emitted.',
+    ].join('\n'),
+    exitCode: 1,
   };
 }
 
@@ -78,6 +103,41 @@ export function badInvocation(): CheckResult {
 export function fileError(ticket: string): CheckResult {
   return {
     text: `[sdd-check] ${ERR_CLI_SDD_CHECK_FILE}: ${ticket}\n  ${unreadableTicketHint(ticket)}`,
+    exitCode: 1,
+  };
+}
+
+/** @purpose Build one fail-closed filesystem-observation result with the exact path and retained reason. | @param path Selected or in-scope path that could not be read. | @param reason Original filesystem diagnostic. | @returns Exit-1 result that cannot be mistaken for clean. */
+export function readFailed(path: string, reason: string): CheckResult {
+  return {
+    text: `[sdd-check] ${ERR_CLI_SDD_CHECK_READ_FAILED}: ${path}\n  reason: ${reason}`,
+    exitCode: 1,
+  };
+}
+
+/** @purpose Build a focused missing/unreadable review-bundle diagnostic. | @param target Requested spec or directory. | @returns Result with exit 1. */
+export function reviewTargetError(target: string): CheckResult {
+  return {
+    text: [
+      `[sdd-check] ERR_CLI_SDD_CHECK_REVIEW_TARGET: ${target}`,
+      '  pass the review-state spec file, or the scope directory containing the complete review bundle.',
+    ].join('\n'),
+    exitCode: 1,
+  };
+}
+
+/** @purpose Build a fail-closed pre-dispatch critic-state diagnostic. | @param message Actionable contract violation. | @returns Result with exit 1. */
+export function reviewStateError(message: string): CheckResult {
+  return {
+    text: `[sdd-check] ERR_CLI_SDD_CHECK_REVIEW_STATE: ${message}`,
+    exitCode: 1,
+  };
+}
+
+/** @purpose Build a fail-closed VCS publication-set diagnostic without changing critic ownership. | @param message Actionable attribution/content violation. | @returns Result with exit 1. */
+export function reviewPublicationError(message: string): CheckResult {
+  return {
+    text: `[sdd-check] ERR_CLI_SDD_CHECK_REVIEW_PUBLICATION: ${message}`,
     exitCode: 1,
   };
 }

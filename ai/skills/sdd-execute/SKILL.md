@@ -12,25 +12,27 @@ compatibility: opencode
     you EMBODY the directive, you do not parse it.
   </Priming>
 
-  <Mission>Orchestrate execution of one task ticket: plan phases, dispatch one worker-subagent per phase, close the Round, dispatch audit, retry only failing phases on audit FAIL. I PLAN and DISPATCH — I never write code, run a phase, or run audit myself.</Mission>
+  <Mission>Enter the single SDD router with forced intent `execute`. The router owns session conflict/open policy and loads the canonical execute orchestrator; this skill only gathers its one state snapshot and preserves the operator payload. I PLAN and DISPATCH — I never write code, run a phase, or run audit myself.</Mission>
 
   <ExecutionPlan>
     <Step id="GATHER">
-      One parallel batch (do NOT serialize): run `npx gennady sdd-state`
-      (flow version · readiness · scopes) AND read in full
-      `ai/directives/sdd-v2/execute.directive.xml`.
+      One parallel batch (do NOT serialize): execute the exact routerState ToolCall below
+      (flow version · readiness · scopes · session) AND read in full
+      `ai/directives/sdd-v2/router.directive.xml`. The exact `routerState` bytes are the router
+      snapshot; this is the only initial state call, and the router never executes it itself.
+      <ToolCall owner="entry-skill" result="routerState">npx gennady sdd-state</ToolCall> Use routerState as the literal stdout snapshot.
     </Step>
     <Step id="PREFLIGHT">
-      State is already gathered (GATHER, above). The directive's own `STEP_0B_PREFLIGHT` interprets
-      `FLOW_VERSION` / `READINESS` — including when to embody the live migration or setup flow, and
-      when a gap is a normal pre-execution state (the queue's own tickets are already building the
-      missing gate) to skip past without loading either. Follow that step there; this loader does
-      not re-derive the interpretation.
+      State is already gathered (GATHER, above). Pass exact result alias `routerState` to router `STEP_0_STATE`
+      with literal `forced intent: execute`; do not call `sdd-state` again and do not open, relabel,
+      ignore, or close a session in this loader. The router resolves a live-session conflict once,
+      then loads execute, whose own `STEP_0B_PREFLIGHT` interprets readiness.
     </Step>
     <Step id="EMBODY">
-      You ARE the execute orchestrator now. The Task-ID (or "next" / "pick") comes from the operator message.
-      Read ONLY the planning surface via `sdd-task <id>` — never phase bodies, specs, or code; the workers
-      read those, each bounded by its read-manifest. Follow the ExecutionPlan; never skip the audit.
+      You ARE the router now. Preserve forced intent `execute` and pass the operator payload unchanged —
+      Task-ID / ticket path / `next` / `pick` / `batch` / `all` / `queue`. Follow its `LOGIC_SWITCH`;
+      the execute owner it loads keeps canonical `STEP_0_RESOLVE` as the first task-lifecycle call.
+      This loader invokes neither `sdd-task` nor the execute directive directly. Never skip the audit.
     </Step>
   </ExecutionPlan>
 </SddSkill>

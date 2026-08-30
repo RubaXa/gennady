@@ -5,7 +5,7 @@
 // @tasks: N/A
 
 import { execSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -100,10 +100,9 @@ function ticket(): string {
     '- **Exit:** tests pass',
     '<!--/SECTION:PHASE_P2-->',
     '<!--SECTION:VERIFICATION-->',
-    '| Command | Required by |',
-    '|---------|-------------|',
-    '| npm run type-check | typescript-rules |',
-    '| npm run test | node-test |',
+    '| Command | Required by | Role |',
+    '|---------|-------------|------|',
+    '| — | — | extra |',
     '<!--/SECTION:VERIFICATION-->',
     '<!--SECTION:EXECUTION_LOG-->',
     '## 7. Execution Log',
@@ -146,7 +145,7 @@ const GREETER_TEST_TS = [
   '',
   "import { describe, it } from 'node:test';",
   "import assert from 'node:assert/strict';",
-  "import { greet } from '../src/greeter.ts';",
+  "import { greet } from './greeter.ts';",
   '',
   "describe('greet', () => {",
   "  it('greets the given name', () => {",
@@ -162,20 +161,22 @@ function packageJson(): string {
       name: 'demo-fixture',
       private: true,
       type: 'module',
-      // The seven bricks, execution-ready rather than merely present: sdd-task's --phase gate and
+      // The eight required bricks including public `fix`, execution-ready rather than merely present: sdd-task's --phase gate and
       // sdd-verify's required rungs both refuse a stubbed project, and this fixture stands in for a
       // real repo mid-phase. Bodies stay no-ops (nothing here should really compile or format), but
       // each carries what its own check demands: test:coverage actually writes coverage/, the two
-      // fixers carry a real write switch, and lint reaches the local `gennady` bin stub.
+      // fixers carry a real write switch, and lint reaches the local `gennady` bin stub. Script
+      // files are deliberate: receipt provenance rejects opaque inline code because it can hide
+      // repo-local reads from the input fingerprint.
       scripts: {
-        'type-check': 'node -e "process.exit(0)"',
-        test: 'node -e "process.exit(0)"',
-        'test:coverage':
-          "node -e \"require('fs').mkdirSync('coverage',{recursive:true});require('fs').writeFileSync('coverage/coverage-final.json','{}');process.exit(0)\"",
-        lint: 'gennady lint src/',
-        'lint:fix': 'node -e "process.exit(0)" -- --fix',
-        format: 'node -e "process.exit(0)"',
-        'format:fix': 'node -e "process.exit(0)" -- --write',
+        'type-check': 'node scripts/pass.mjs',
+        test: 'node scripts/pass.mjs',
+        'test:coverage': 'node scripts/coverage.mjs',
+        lint: './node_modules/.bin/gennady lint src/',
+        'lint:fix': './node_modules/.bin/gennady lint --autofix',
+        format: './node_modules/.bin/prettier --check .',
+        'format:fix': './node_modules/.bin/prettier --write',
+        fix: 'npm run format:fix -- . && npm run lint:fix -- src/',
       },
     },
     null,
@@ -194,11 +195,11 @@ export function buildFixture(): Fixture {
 
   mkdirSync(join(root, 'specs', 'demo'), { recursive: true });
   mkdirSync(join(root, 'src'), { recursive: true });
-  mkdirSync(join(root, 'test'), { recursive: true });
   mkdirSync(join(root, 'ai', 'directives', 'sdd-v2'), { recursive: true });
   mkdirSync(join(root, 'ai', 'directives', 'coding'), { recursive: true });
   mkdirSync(join(root, 'ai', 'directives', 'testing'), { recursive: true });
   mkdirSync(join(root, 'node_modules', '.bin'), { recursive: true });
+  mkdirSync(join(root, 'scripts'), { recursive: true });
 
   writeFileSync(join(root, 'package.json'), packageJson(), 'utf-8');
   writeFileSync(join(root, 'specs', 'README.md'), PORTAL, 'utf-8');
@@ -206,10 +207,20 @@ export function buildFixture(): Fixture {
   writeFileSync(join(root, 'specs', 'demo', `demo.task.${TASK_ID}.md`), ticket(), 'utf-8');
   writeFileSync(join(root, 'specs', 'demo', 'demo.3-tasks.md'), tracker(), 'utf-8');
   writeFileSync(join(root, 'src', 'greeter.ts'), GREETER_TS, 'utf-8');
-  writeFileSync(join(root, 'test', 'greeter.test.ts'), GREETER_TEST_TS, 'utf-8');
-  writeFileSync(join(root, 'node_modules', '.bin', 'gennady'), '', 'utf-8');
-  // Minimal but structurally real rule files — just enough for the Rules: links in the ticket to
-  // resolve on disk (SDD_BROKEN_RULE_LINK); content depth is not this fixture's concern.
+  writeFileSync(join(root, 'src', 'greeter.test.ts'), GREETER_TEST_TS, 'utf-8');
+  writeFileSync(join(root, 'scripts', 'pass.mjs'), 'process.exit(0);\n', 'utf-8');
+  writeFileSync(
+    join(root, 'scripts', 'coverage.mjs'),
+    "import { mkdirSync, writeFileSync } from 'node:fs';\nmkdirSync('coverage', { recursive: true });\nwriteFileSync('coverage/coverage-final.json', '{}');\n",
+    'utf-8'
+  );
+  for (const name of ['gennady', 'prettier']) {
+    const bin = join(root, 'node_modules', '.bin', name);
+    writeFileSync(bin, '#!/usr/bin/env node\nprocess.exit(0)\n', 'utf-8');
+    chmodSync(bin, 0o755);
+  }
+  // Minimal but structurally real rule files — enough for each Rules: identity to pass the strict
+  // repo-local read boundary; content depth is not this fixture's concern.
   writeFileSync(
     join(root, 'ai', 'directives', 'coding', 'typescript-rules.xml'),
     '<Rule id="typescript-rules"><Mission>stub</Mission></Rule>\n',

@@ -1,12 +1,11 @@
 <!-- source: ai/directives/infra/git-setup.xml -->
 <Axiom id="AX_HOOKS_INTEGRATION">
-  Hooks fire on every commit/push. `pre-commit` is one full mechanical pass, run as ONE hook command:
-  the format + lint script `AX_PRETTIER_OWNS_FORMATTING` owns (staged files), chained with a
-  whole-project typecheck (`tsc --noEmit`) in the same command. Budget is honest, not aspirational:
-  tens of seconds, not sub-5s — `tsc --noEmit` is whole-project by construction, not scoped to staged
-  files, and no amount of staged-file filtering makes a real type check fit a five-second budget.
-  `pre-push` runs the full test suite; tests do not belong in `pre-commit` — a suite run on every commit is the friction that
-  pushes operators toward `--no-verify`. `commit-msg` (conventional-commits validator) stays required.
+  Hooks fire on every commit/push. `pre-commit` is verify-only: first require working tree == index,
+  then run the whole-project read-only `sdd-verify --profile full` (types, coverage suite, production
+  contract lint, format check, yagni) and the directive freshness/axiom/contract/halt/budget audits. It never
+  runs formatter/autofix or re-stages bytes; a red repairable result tells the author to run the
+  project `fix`, stage the result, and retry. Budget is honestly tens of seconds because tests and
+  types are whole-project. `commit-msg` (conventional-commits validator) stays required.
   Optional: `prepare-commit-msg` (prepend issue ID), `post-merge` (reinstall if lock changed). Hook
   config committed to repo; one onboarding command registers them (e.g. `lefthook install`).
 </Axiom>

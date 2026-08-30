@@ -106,6 +106,10 @@
     {{> "axiom/process/ax-close-with-integrity-check"}}
   </BeliefState>
 
+  <SessionState>
+    {{> "contract/process/session-file-format"}}
+  </SessionState>
+
   <HaltConditions>
     | 🛑 ID | Trigger |
     |---|---|
@@ -202,7 +206,7 @@
     <Step id="STEP_4B_SYSTEM_FIT">
       <Goal>Reconcile with the existing system before architecture locks.</Goal>
       <Action>
-        FIRST action this step: run `npx gennady sdd-orient --scope <scope>` (this works even before
+        FIRST action this step: run orientation ToolCall below (this works even before
         `sdd-new` materializes the spec — a
         greenfield scope-type is not a reason to skip the call). Read its output in full: the portal
         line, the one-hop neighbours with their paths, entity/contract NAMES, requirement IDs + titles,
@@ -227,6 +231,7 @@
         degenerates to its one-line "соседей нет" — the checklist still runs, (a) still gets an honest
         answer, (c)/(d) collapse to "н/д"; the step itself is never skipped. These answers feed
         STEP_5's consolidated design packet; they are not a dedicated confirmation surface.
+        <ToolCall owner="this-step" result="orientation">npx gennady sdd-orient --scope <scope></ToolCall> Inputs <scope>: <scope>=operator-confirmed scope retained by this flow. Use orientation.
       </Action>
     </Step>
     <Step id="STEP_5_ARCHITECTURE">
@@ -237,11 +242,12 @@
         architect for them; at scale `module` / `function` — proportional per
         `AX_SCALE_PROPORTIONAL_DEPTH` (light pass, or skip with a one-line rationale); at scale
         `fix` — skipped, no research. Where it runs, persist it per `AX_RESEARCH_PERSISTED` before
-        the Design Variants / Architecture below are drafted — `npx gennady sdd-new research
-        --scope <scope> --slug <slug>`, filled
+        the Design Variants / Architecture below are drafted with researchManifest ToolCall below, filled
         (STATUS/PROBLEM/CRITERIA/OPTIONS/DECISION/CONSEQUENCES/EVIDENCE/RELATED) — and link the
         document in this message and in the Decision Log entry's RELATED (parentheses) once the
         variant is picked at STEP_6.
+        Inputs <scope>, <slug>: this STEP_5 research context.
+        <ToolCall owner="this-step" result="researchManifest">npx gennady sdd-new research --scope <scope> --slug <slug></ToolCall> Use researchManifest.
 
         library → Architecture: public surface structure, key patterns, briefly-rejected alternatives.
         product → Design Variants per `AX_DIVERGE_BEFORE_RECOMMEND` — reach past the obvious
@@ -300,7 +306,8 @@
         `unknown` with the operator (source · version · owner), each a Decision Log entry. Record
         every confirmed cross-scope assumption as a `depends-on` edge in Scope Dependencies per
         `AX_CROSS_SCOPE_DEPENDENCIES` (cross-scope contracts come from `interface` scopes). Materialize
-        the Bootstrap Requirements table `| Requirement | Kind | Owner | Resolution |`. Gate: empty list
+        the Bootstrap Requirements table. Readiness rows additionally name exact `Readiness Gates`
+        and repo-relative `Gate Artifacts`; non-readiness rows use `—`. Gate: empty list
         only if explicitly «nothing to bootstrap», else `H_BOOTSTRAP_REQUIREMENTS_MISSING`. An existing
         mechanism this audit turns up feeds back into Architecture / Contracts now, in the SAME session
         — per `AX_BOOTSTRAP_NARROW_READ`, pop back to the relevant earlier step, incorporate it, re-run
@@ -312,7 +319,8 @@
       <Goal>Emit the scope spec.</Goal>
       <Action>
         In `greenfield`/`rewrite` mode, when `specs/<scope>/<scope>.spec.md` does not exist yet, create
-        its skeleton via `sdd-new product --scope <scope>` (or `sdd-new library --scope <scope>`) —
+        its skeleton via productManifest ToolCall below (or
+        libraryManifest ToolCall below) —
         the command never overwrites and prints the section manifest (which sections are REQUIRED and
         what to fill); in `refine`/`pivot` mode the file already exists, edit it in place, skip
         `sdd-new`. Content guidance per `READ_AND_USE_DIRECTIVE` the matching format —
@@ -335,11 +343,52 @@
         master downstream after the change ships. Before internal critic,
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/preflight-protocol.directive.xml")` and run
         its lazy active-domain checklist. Then close with the integrity check per
-        `AX_CLOSE_WITH_INTEGRITY_CHECK`: run `sdd-check --all specs/<scope>` (anchor
+        `AX_CLOSE_WITH_INTEGRITY_CHECK`: run integrityCheck ToolCall below (anchor
         balance + required sections + links) and resolve any finding. Then
-        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/review-lifecycle.directive.xml")` — internal critic →
-        publish (MR) → external review → compress + merge on approval. Only after the spec merges to master,
-        hand off to the `module` flow per `AX_HANDOFF_TO_MODULE_DECOMPOSITION`. Approval Check. STOP.
+        Branch by decomposition and impact — missing/ambiguous evidence fails closed:
+        - New / rewritten `product` or `library`, or `refine` / `pivot` with incomplete decomposition:
+          do NOT
+          run critic or external review yet. Keep the scope draft in review-state. Only after this
+          step's final Approval Check is accepted, run sessionWorkset ToolCall below,
+          then re-enter the `/sdd` router with intent `module-decomposition` per
+          `AX_HANDOFF_TO_MODULE_DECOMPOSITION`; its real module directive creates/resolves the modules
+          and reviews one integrated target-set only after boundaries exist. Completeness is structural:
+          the non-empty Module Map must resolve one-to-one to every canonical module spec on disk.
+        - `refine` / `pivot` changes a module boundary or contract: first use the `module` flow to
+          update every affected module in review-state. Then review one integrated target-set = changed
+          scope + ALL module specs; unchanged modules are read-only members.
+        - `refine` / `pivot` is scope-only and leaves all module boundaries/contracts unchanged, with
+          decomposition already complete: keep
+          existing modules as read-only critic members. Do NOT add `CHANGE_MANIFEST`, line marks, or
+          review-state to them. Review one target-set whose sole write-set member is the scope, while
+          the review-set still names every module spec.
+        A standalone `infrastructure` scope is the sole no-module exception, but its actually changed
+        scope artifact still runs the same review lifecycle. Load
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/review-lifecycle.directive.xml")` once for the
+        selected target-set. Only the integrated product/library bundle (or reviewed infrastructure
+        exception) may reach master. After a scope-only refine/pivot returns from integrated review,
+        determine its downstream outcome once: no task/DAG impact → finish as a spec-only change and
+        enter the terminal-candidate handling below; task/DAG impact → load scaffold and extend the existing DAG;
+        return `TerminalDecision: continue` in this same session.
+        The new/incomplete-decomposition handoff above and every module-boundary handoff also return
+        `continue`; neither closes the session. No task/DAG impact → spec-only terminal candidate. If
+        any chained work remains, offer only continue or «Пауза — продолжу позже»; pause returns
+        `TerminalDecision: pause` and preserves the scratch. Only after proving
+        `unfinished chained work: none` may the terminal menu offer literal «Complete / finish»;
+        after that explicit selection return `TerminalDecision: complete` and run exact
+        terminal ToolCall below once. Its decision source is this STEP_9 terminal answer, not
+        authoring approval, critic CLEAN, external merge, or no-impact classification. Never silently stop between review
+        and this disposition, and do not create a new Ask unless impact or the terminal
+        choice is genuinely unresolved. The final Approval Check itself returns `pause` while awaiting
+        its answer and never closes the session. STOP.
+        <ToolCall owner="this-step" result="productManifest">npx gennady sdd-new product --scope <scope></ToolCall> Use productManifest.
+        <ToolCall owner="this-step" result="libraryManifest">npx gennady sdd-new library --scope <scope></ToolCall> Use libraryManifest.
+        <ToolCall owner="this-step" result="integrityCheck">npx gennady sdd-check --all specs/<scope></ToolCall> Use integrityCheck.
+        Inputs <scope-spec-path>: this STEP_9 authored scope path. Write the literal
+        `<scope-spec-path> — module-decomposition handoff — operator-approved review-state draft`
+        to `.claude/tmp/sdd-scope-workset.txt`, then run:
+        <ToolCall owner="this-step" result="sessionWorkset">npx gennady sdd-session workset --content-file .claude/tmp/sdd-scope-workset.txt</ToolCall> Use sessionWorkset.
+        <ToolCall owner="this-step" result="terminal">npx gennady sdd-session close</ToolCall>
       </Action>
     </Step>
   </ExecutionPlan>

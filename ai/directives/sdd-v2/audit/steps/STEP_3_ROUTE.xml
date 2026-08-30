@@ -4,12 +4,14 @@
       <Goal>Route findings; summarize. Route only — leave the fix to its owner.</Goal>
       <Action>
         Emit each finding as a neutral proposal (`AX_FINDINGS_AS_PROPOSALS`, `AX_NEUTRAL_FINDINGS`,
-        `FINDING_FORMAT`) routed to its home (`AX_FINDING_ROUTING`: phase-fix / ticket-update / spec-edit
-        / decision-log); route only, MUST leave the fix to its owner (`AX_NO_AUTO_FIX`). Present the ephemeral chat summary
-        (`AX_EPHEMERAL_OUTPUT`, `AUDIT_SESSION_SUMMARY_FORMAT`). If a finding triggers a reopen, append an
-        Audit Rounds section to whichever ticket in the group owns that finding (`AX_REOPEN_ROUNDS_IN_TICKET`
-        — a group audit may reopen more than one ticket, each gets its own section) —
-        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/audit-round.xml")` for the format.
+        `FINDING_FORMAT`) routed to its home (`AX_FINDING_ROUTING`); route only, MUST leave the fix to
+        its owner (`AX_NO_AUTO_FIX`). Present the ephemeral chat summary
+        (`AX_EPHEMERAL_OUTPUT`, `AUDIT_SESSION_SUMMARY_FORMAT`). If a finding triggers a reopen, propose
+        an Audit Rounds record for whichever ticket in the group owns that finding
+        (`AX_REOPEN_ROUNDS_IN_TICKET` — a group audit may reopen more than one ticket). The read-only
+        worker does not append it; the execute orchestrator routes the accepted proposal to its bounded
+        ticket owner channel. `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/audit-round.xml")`
+        defines the proposed record's format.
 
         **`PASS_WITH_ACKNOWLEDGED_RISKS` (`status=PASS_RISK`) is never this subagent's own
         judgment call — it is a fact-check against a PRIOR operator acceptance, never a live request
@@ -47,7 +49,12 @@
     </Axiom>
 
 <Axiom id="AX_NO_AUTO_FIX">
-      Audit does not modify code or specs autonomously. Any remediation is a proposal per `AX_FINDING_ROUTING`. If operator approves inline changes during the session, audit agent may apply them to spec/ticket files (not code). Creating commits or editing code files independently is forbidden.
+      Audit and code-review workers are read-only: they return findings and proposed remediations, never
+      edit code, specs, tickets, or commits. After operator approval, the orchestrator routes the proposal
+      to the artifact owner: a task phase owns code, the scope/module/infra/interface authoring flow owns
+      semantic spec changes, and the execute orchestrator owns only its explicitly bounded administrative
+      ticket / Decision Log channel. Approval changes who may apply the fix; it never makes the reviewer
+      itself an editor.
     </Axiom>
 
 <Axiom id="AX_EPHEMERAL_OUTPUT">
@@ -59,11 +66,15 @@
     </Axiom>
 
 <Axiom id="AX_REOPEN_ROUNDS_IN_TICKET">
-      When an audit round triggers a ticket reopen, the round's audit summary is appended to the ticket file under a new `## Audit Rounds` section so the reopen history lives next to the Execution Log rounds it caused. Format per `TICKET_AUDIT_ROUND_FORMAT`. Append-only: prior audit rounds in the ticket are immutable.
+      When an audit round triggers a ticket reopen, the read-only audit worker returns the proposed
+      round summary; after acceptance, the execute orchestrator's bounded administrative ticket channel
+      appends it under a new `## Audit Rounds` section so the reopen history lives next to the Execution
+      Log rounds it caused. Format per `TICKET_AUDIT_ROUND_FORMAT`. Append-only: prior audit rounds in
+      the ticket are immutable.
 
       Rationale: full ephemeral output loses reopen-causation between rounds; `audits/<task-id>.audit.md` separate-tree was overkill. Co-locating the audit round with the Execution Log it caused keeps history reviewable in one file.
 
-      Per-task audits that PASS without triggering a reopen do not write to the ticket — they remain ephemeral.
+      Per-task audits that PASS without triggering a reopen produce no ticket write — they remain ephemeral.
 
       Epic-level audits never touch ticket files; their consolidated output is ephemeral OR routed to a scope-spec Decision Log entry.
     </Axiom>
@@ -71,7 +82,7 @@
 <Contract id="FINDING_FORMAT">
       ```markdown
       ### <🔴|🟠|🟡|🔵> F-NNN — <short title>
-      - **Type:** CLOSED_WORLD_DRIFT | COMPLETENESS_GAP | RUNTIME_BACKING_VIOLATION | RULES_COMPLIANCE_VIOLATION | RULES_CASCADE_MISMATCH | TASK_ID_DRIFT | BDD_COVERAGE_MISMATCH | EXECUTION_LOG_INCOMPLETE | STALE_AFTER_PIVOT | INSIGHT_BACKFLOW
+      - **Type:** CLOSED_WORLD_DRIFT | COMPLETENESS_GAP | RUNTIME_BACKING_VIOLATION | RULES_COMPLIANCE_VIOLATION | RULES_CASCADE_MISMATCH | TASK_ID_DRIFT | BDD_COVERAGE_MISMATCH | EXECUTION_LOG_INCOMPLETE | STALE_AFTER_PIVOT | INSIGHT_BACKFLOW | RULE_FILE_INCOMPLETE | LANGUAGE_QUALITY | YAGNI_WAIVER_INCOMPLETE | ENVIRONMENT_GATE_UNAVAILABLE | DEAD_CODE_SUSPECT
       - **Severity:** 🔴 BLOCKER | 🟠 MAJOR | 🟡 MINOR | 🔵 INFO
       - **Confidence:** HIGH | MEDIUM | LOW
       - **Status:** 📂 open | ⚠️ operator-acknowledged | ✅ resolved
@@ -79,7 +90,7 @@
       - 💬 **Detail:** <factual description, no value words>
       - 🔗 **Source-of-truth:** link to spec section / ticket section / rule axiom
       - 📝 **Proposed Remediation:**
-        - Type: `code-fix` | `spec-update` | `ticket-update`
+        - Route: `spec-edit` | `ticket-reopen` | `ticket-update` | `decision-log` | `code-fix` | `operator-escalation` | `new-task`
         - Action: <concrete proposal, with diff if possible>
         - Routing: <per AX_FINDING_ROUTING — where this change goes>
       ```
@@ -89,22 +100,23 @@
     </Contract>
 
 <Contract id="AUDIT_SESSION_SUMMARY_FORMAT">
-      **Compact AI-to-AI inline format.** Ephemeral output at session end. One header line + one line per finding + optional applied-changes lines. No markdown tables, no decorative text. Designed so the next agent (or operator's tooling) parses it in one pass.
+      **Compact AI-to-AI inline format.** Ephemeral read-only output at session end. One header line +
+      one line per finding. No markdown tables, decorative text, or applied-change records.
 
       Grammar (one logical record per line, EOL-terminated; fields separated by ` | `):
 
       ```
       @audit task=<Task-ID|spec-path> round=<N|—> mode=<per-task|per-group> status=<PASS|PASS_RISK|FAIL> counts=B<n>·M<n>·m<n>·I<n> phases_to_fix=[<P<N>|Task-ID:P<N>>,...]
-      F-<NN> | sev=<B|M|m|I> | type=<TYPETOKEN> | conf=<H|M|L> | loc=<path:line|—> | phase=<P<N>|—> | src=<spec/ticket/rule anchor|—> | route=<spec-edit|ticket-reopen|ticket-update|decision-log|code-fix> | act=<one-line action, no newlines>
+      F-<NN> | sev=<B|M|m|I> | type=<TYPETOKEN> | conf=<H|M|L> | loc=<path:line|—> | phase=<P<N>|—> | src=<spec/ticket/rule anchor|—> | route=<spec-edit|ticket-reopen|ticket-update|decision-log|code-fix|operator-escalation|new-task> | act=<one-line action, no newlines>
       F-<NN> | …
-      ~applied | <target> | <one-line description of inline change>   (optional, repeat per applied change)
+      @glossary suggestions=[]
       ```
 
       Token vocabulary:
       - `sev`: `B`=BLOCKER, `M`=MAJOR, `m`=MINOR, `I`=INFO.
       - `conf`: `H`=HIGH, `M`=MEDIUM, `L`=LOW.
-      - `type`: one of `CLOSED_WORLD_DRIFT` | `COMPLETENESS_GAP` | `RUNTIME_BACKING_VIOLATION` | `RULES_COMPLIANCE_VIOLATION` | `RULES_CASCADE_MISMATCH` | `TASK_ID_DRIFT` | `BDD_COVERAGE_MISMATCH` | `EXECUTION_LOG_INCOMPLETE` | `STALE_AFTER_PIVOT` | `INSIGHT_BACKFLOW`.
-      - `route`: one of `spec-edit` | `ticket-reopen` | `ticket-update` | `decision-log` | `code-fix` (per `AX_FINDING_ROUTING`).
+      - `type`: one of `CLOSED_WORLD_DRIFT` | `COMPLETENESS_GAP` | `RUNTIME_BACKING_VIOLATION` | `RULES_COMPLIANCE_VIOLATION` | `RULES_CASCADE_MISMATCH` | `TASK_ID_DRIFT` | `BDD_COVERAGE_MISMATCH` | `EXECUTION_LOG_INCOMPLETE` | `STALE_AFTER_PIVOT` | `INSIGHT_BACKFLOW` | `RULE_FILE_INCOMPLETE` | `LANGUAGE_QUALITY` | `YAGNI_WAIVER_INCOMPLETE` | `ENVIRONMENT_GATE_UNAVAILABLE` | `DEAD_CODE_SUSPECT`.
+      - `route`: one of `spec-edit` | `ticket-reopen` | `ticket-update` | `decision-log` | `code-fix` | `operator-escalation` | `new-task` (per `AX_FINDING_ROUTING`).
       - `act` text: Russian operator-facing per `AX_OPERATOR_LANGUAGE` (this is operator-facing artifact text), single line, no pipe character.
       - `status` `PASS_RISK` = PASS_WITH_ACKNOWLEDGED_RISKS.
       - `mode=per-group` (default, auto-dispatch, `AX_AUDIT_MODES`): `task` carries the group's spec path,
@@ -114,17 +126,19 @@
 
       Example:
       ```
-      @audit task=TSK-04 round=3 mode=per-task status=FAIL counts=B1·M2·m0·I1
-      F-01 | sev=B | type=CLOSED_WORLD_DRIFT | conf=H | loc=src/payments/adapter.ts:42 | src=specs/backend/payments/payments.spec.md#2 | route=spec-edit | act=добавить `IdempotencyKey` в Entity Inventory модуля payments
-      F-02 | sev=M | type=RULES_COMPLIANCE_VIOLATION | conf=H | loc=src/payments/adapter.ts:100 | src=ai/directives/coding/typescript-rules.xml#AX_STRICT_NULL | route=ticket-reopen | act=добавить null-guard на response.balanceTransaction
-      F-03 | sev=M | type=BDD_COVERAGE_MISMATCH | conf=H | loc=src/payments/adapter.test.ts:55 | src=specs/backend/payments/payments.task.PAY-adapter.md#4 | route=ticket-update | act=переименовать тест-кейс в `should reject non-positive amount with InvalidAmountError`
-      F-04 | sev=I | type=INSIGHT_BACKFLOW | conf=M | loc=src/payments/adapter.ts:88 | src=specs/backend/payments/payments.spec.md#4 | route=spec-edit | act=зафиксировать retry-budget в DbC postcondition
-      ~applied | specs/backend/payments/payments.spec.md2 | добавлен `IdempotencyKey` в Entity Inventory
+      @audit task=TSK-04 round=3 mode=per-task status=FAIL counts=B1·M2·m0·I1 phases_to_fix=[P2,P3]
+      F-01 | sev=B | type=CLOSED_WORLD_DRIFT | conf=H | loc=src/payments/adapter.ts:42 | phase=P2 | src=specs/backend/payments/payments.spec.md#2 | route=spec-edit | act=добавить `IdempotencyKey` в Entity Inventory модуля payments
+      F-02 | sev=M | type=RULES_COMPLIANCE_VIOLATION | conf=H | loc=src/payments/adapter.ts:100 | phase=P2 | src=ai/directives/coding/typescript-rules.xml#AX_STRICT_NULL | route=ticket-reopen | act=добавить null-guard на response.balanceTransaction
+      F-03 | sev=M | type=BDD_COVERAGE_MISMATCH | conf=H | loc=src/payments/adapter.test.ts:55 | phase=P3 | src=specs/backend/payments/payments.task.PAY-adapter.md#4 | route=ticket-update | act=переименовать тест-кейс в `should reject non-positive amount with InvalidAmountError`
+      F-04 | sev=I | type=INSIGHT_BACKFLOW | conf=M | loc=src/payments/adapter.ts:88 | phase=— | src=specs/backend/payments/payments.spec.md#4 | route=spec-edit | act=зафиксировать retry-budget в DbC postcondition
+      @glossary suggestions=[]
       ```
 
       Rules:
       - First line MUST be the `@audit` header. No free-text preamble.
-      - Findings ordered by descending severity, then by `F-NN`.
+      - Findings ordered by descending severity, then by `F-NN`; the final `@glossary` line is
+        mandatory (`[]` or `[<term> — <definition>; ...]`). Audit/code-review workers only propose
+        terms there and never call `sdd-session`.
       - No empty lines inside the block.
       - If `loc` or `src` is N/A, emit literal `—` (em-dash) — do not omit the field.
       - `act` is operator-facing text (Russian per policy); everything else is English tokens.

@@ -33,6 +33,27 @@ const FIXTURES: Record<string, string> = {
 
 const { render } = createRenderer(FIXTURES);
 
+type CorpusEntry = {
+  name: string;
+  canonical: string;
+  oraclePartial: string;
+};
+
+/**
+ * Build the corpus oracle with one shared renderer registration pass. Unique oracle partial names
+ * preserve the old per-brick canonical rendering semantics without rebuilding the complete kit
+ * registry for every comparison.
+ */
+function createCorpusOracle(
+  entries: CorpusEntry[],
+  rendererFactory: typeof createRenderer = createRenderer
+) {
+  const oraclePartials = Object.fromEntries(
+    entries.map(({ canonical, oraclePartial }) => [oraclePartial, canonical])
+  );
+  return rendererFactory(oraclePartials).render;
+}
+
 /** Shift canonical brick text to depth D: prefix each non-blank line with D × UNIT. */
 function shiftToDepth(text: string, depth: number): string {
   const pad = UNIT.repeat(depth);
@@ -80,21 +101,52 @@ describe('indent matrix — every fixture at every depth equals canonical shifte
 describe('corpus — every real kit brick round-trips at an arbitrary depth', () => {
   it('all bricks: render(depth 1) === canonical shifted by 1', () => {
     const bricks = walk(KIT, (p) => p.endsWith('.xml') && !p.startsWith(TEMPLATES + '/'));
+    const entries = bricks.map((path, index): CorpusEntry => ({
+      name: relative(KIT, path).replace(/\.xml$/, ''),
+      canonical: normalizeBrick(readFileSync(path, 'utf8')),
+      oraclePartial: `__corpus_oracle__/brick-${index}`,
+    }));
+    let registrationPasses = 0;
+    const renderCorpus = createCorpusOracle(entries, (partials) => {
+      registrationPasses += 1;
+      return createRenderer(partials);
+    });
     const fails: string[] = [];
-    for (const f of bricks) {
-      const name = relative(KIT, f).replace(/\.xml$/, '');
-      const canonical = normalizeBrick(readFileSync(f, 'utf8'));
+    let comparisons = 0;
+    for (const { name, oraclePartial } of entries) {
       // A few bricks (contract/**) nest `{{> "sdd-skeleton-*"}}` partials inline, so comparing raw
       // literal text would spuriously fail on those. Render canonical the same way real bricks are
-      // rendered — as a registered partial invoked via a standalone `{{> "tmp"}}` — so any nested
-      // partials expand identically on both sides of the comparison.
-      const { render: renderTmp } = createRenderer({ tmp: canonical });
-      const canonicalRendered = stripTrailingNewlines(renderTmp('{{> "tmp"}}\n'));
-      const out = stripTrailingNewlines(render(`${UNIT}{{> "${name}"}}\n`));
+      // rendered — as a uniquely registered partial invoked through the shared corpus renderer —
+      // so any nested partials expand identically on both sides of the comparison.
+      const canonicalRendered = stripTrailingNewlines(
+        renderCorpus(`{{> "${oraclePartial}"}}\n`)
+      );
+      const out = stripTrailingNewlines(renderCorpus(`${UNIT}{{> "${name}"}}\n`));
       if (out !== stripTrailingNewlines(shiftToDepth(canonicalRendered, 1))) fails.push(name);
+      comparisons += 1;
     }
     assert.equal(fails.length, 0, `bricks with broken indent: ${fails.slice(0, 20).join(', ')}`);
-    assert.ok(bricks.length > 100, `expected a real corpus, got ${bricks.length} bricks`);
+    assert.equal(comparisons, entries.length, 'every discovered brick must reach the oracle');
+    assert.ok(entries.length >= 888, `expected the complete corpus, got ${entries.length} bricks`);
+    assert.equal(
+      registrationPasses,
+      1,
+      'corpus registration must remain O(1), never one complete pass per brick'
+    );
+  });
+
+  it('fresh renderer instances isolate representative nested extra partials', () => {
+    const nested = (value: string) => ({
+      'fresh/leaf': `<Leaf>${value}</Leaf>`,
+      'fresh/outer': '<Outer>\n  {{> "fresh/leaf"}}\n</Outer>',
+    });
+    const first = createRenderer(nested('first')).render('{{> "fresh/outer"}}\n');
+    const second = createRenderer(nested('second')).render('{{> "fresh/outer"}}\n');
+
+    assert.match(first, /<Leaf>first<\/Leaf>/);
+    assert.doesNotMatch(first, /<Leaf>second<\/Leaf>/);
+    assert.match(second, /<Leaf>second<\/Leaf>/);
+    assert.doesNotMatch(second, /<Leaf>first<\/Leaf>/);
   });
 });
 

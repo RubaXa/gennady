@@ -10,7 +10,8 @@
         `AX_DAG_AND_TICKET_BOUNDARIES` (one per coherent spec unit; subdivide only for parallelism or
         context overflow); cross-scope placement per `AX_CROSS_SCOPE_TASK_PLACEMENT`; assign slugs
         (`AX_TASK_ID_UNIQUENESS`). Acyclic. **Present the DAG (the breakdown) as a decision card and
-        get operator approval — this is the one gate on structure.** STOP.
+        get operator approval — this is the one gate on structure.** While awaiting it return
+        `TerminalDecision: pause` and preserve the session. STOP.
       </Action>
     </Step>
 
@@ -28,6 +29,28 @@
       Sequential split (A → B with hard Deps) without (C) = pure overhead: B's phase-subagent re-reads what A's already loaded; zero wall-clock gain.
 
       Cross-scope: scope B DONE before A's tasks consuming B's outputs. Bootstrap tickets DONE before non-bootstrap of the same scope.
+    </Axiom>
+
+<Axiom id="AX_BOOTSTRAP_TICKET_DERIVATION">
+      **Bootstrap Requirements rows with Owner=`this-scope-task` aggregate into the minimum number of tickets per `AX_DAG_AND_TICKET_BOUNDARIES`.** Default — group by Resolution affinity (all `package` rows → one «install deps» ticket; all `structural` rows editing the same config file → one ticket); subdivide only when (P) parallel-executable or (C) context overflow. Source: scope spec Bootstrap Requirements (infrastructure 9, contracts 7, library 8, product 8).
+      - Rows with Owner=`external-prereq-scope` → cross-scope dependency edge, not a ticket here.
+      - Rows with Owner=`operator-action` → noted in tracker index as a blocking external prerequisite, not a ticket.
+      - Bootstrap tickets must be DONE before any non-bootstrap ticket of the same scope (e.g. `install package` precedes `wire config that uses package`).
+      - Bootstrap tickets carry Verification populated from the Resolution column (e.g. `npm ls <pkg>` exit 0)
+        — ONE `npm ls <pkg>` call PER package, never a single `npm ls pkg1 pkg2 ...` covering several:
+        a multi-package call can exit 0 as soon as one of the named packages resolves, silently masking
+        an absent one among the rest (observed with a missing optional-peer package, e.g.
+        `@vitest/coverage-v8`, riding alongside a resolved `vitest` in the same call) — the gate passes
+        while a real dependency is missing. One call per package makes that package's own absence
+        surface as that call's own non-zero exit, with nowhere to hide behind a sibling that did resolve.
+      - **Every shared infra file — `package.json` scripts, `.nvmrc`, a tool config a bootstrap ticket
+        creates or edits — gets EXACTLY ONE ticket-owner: the bootstrap ticket whose Target Files list
+        it.** Any OTHER ticket whose phase reads or extends that same file (adds a script, bumps the
+        pinned tool version) does not re-derive ownership by grepping neighboring tickets — its phase
+        text carries an explicit line naming the owner, `владелец — <ticket>` (or `owner — <ticket>`),
+        written at scaffold time, so the worker executing that phase already knows whose ticket to
+        defer to / coordinate with without a search.
+      - If Bootstrap Requirements is absent from the spec → abort with `H_BOOTSTRAP_REQUIREMENTS_MISSING` (the spec did not pass discovery STEP_7).
     </Axiom>
 
 <Axiom id="AX_TASK_ID_UNIQUENESS">

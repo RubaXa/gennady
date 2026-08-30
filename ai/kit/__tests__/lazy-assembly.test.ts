@@ -197,12 +197,12 @@ describe('LazyDirectiveAssembler#assemble', () => {
     assert.equal(stepOne.relativePath, 'ai/directives/sdd-v2/fixture-directive/steps/STEP_ONE.xml');
   });
 
-  it('lists each step with a relative path to its package file readable by a plain Read, no CLI command and no version argument', () => {
+  it('makes loading each step package a runtime imperative, not a discoverable-only path', () => {
     const result = LazyDirectiveAssembler.assemble(createDirectiveFixture());
     const stepOneLine = result.skeleton.text.split('\n').find((line) => line.includes('**STEP_ONE**'))!;
     assert.match(
       stepOneLine,
-      /Full step text: `ai\/directives\/sdd-v2\/fixture-directive\/steps\/STEP_ONE\.xml` \(Read tool — no CLI command, no version argument\)/
+      /Before executing this step, READ_AND_USE_DIRECTIVE\("ai\/directives\/sdd-v2\/fixture-directive\/steps\/STEP_ONE\.xml"\)\./
     );
     assert.doesNotMatch(stepOneLine, /npx|gennady/);
   });

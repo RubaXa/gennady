@@ -1,23 +1,20 @@
 <!-- source: sdd/fix.directive.xml -->
 <Contract id="FIX_SUMMARY_FORMAT">
       ```
-      ## ✅ sdd-fix complete
-
-      Trivial fixes: N applied            <!-- STEP_2B short-circuit only: patch + its regression test, one grouped entry -->
-        ✅ <what> (+ regression test) → <file>
+      ## ✅ sdd-reconcile complete
 
       Direct fixes: N applied
         ✅ <what> → <file>
-        ✅ <what> → <file>
+        🔍 receipt: target-set=<literal paths> · command=<exact command> · exit=0
 
       Spec updates: N applied
-        ✅ <what> → <file>
+        ✅ <what> → <file> · authoring=<scope|module|infra|interface> · publication=MERGED
 
       Tasks reopened: N
-        🔄 TSK-NN — Round N: <reason> → dispatched
-        🔄 TSK-MM — Round N: <reason> → dispatched
+        🔄 TSK-NN — Round N: <reason> · phases=<fix PhaseID>,<test PhaseID> → ordinary execute
+        🔄 TSK-MM — Round N: <reason> · phases=<fix PhaseID>,<test PhaseID> → ordinary execute
 
-      🔍 sdd-check: ✅ PASS (N/N checks)   <!-- full path; the trivial branch reports its light gate here instead: `🔍 light gate: typecheck ✅ · tests ✅ (N/N)` — a red pre-existing gate is reported per the branch rule, and the header then must NOT read "complete" -->
+      🔍 path evidence: <execute group results | merged-publication proof | direct verification receipt>
       ```
       Omit any section whose count is 0. Every file changed on disk MUST appear under exactly one section — a summary whose counts are all zero while the diff is non-empty is a defective summary.
     </Contract>

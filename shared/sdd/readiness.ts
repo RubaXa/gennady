@@ -7,8 +7,8 @@ import { readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
 /**
- * @purpose The exact npm script names a v2-ready project must declare — sdd-verify's seven bricks.
- * check/fix are wrappers, not required.
+ * @purpose Exact npm scripts a v2-ready project declares: repair leaves, their public `fix`
+ * entrypoint, and read-only foundation/quality gates. Human `check` remains optional.
  * @invariant Matched by exact name only — no fuzzy guessing. `type-check` also accepts `typecheck`
  * via SCRIPT_ALIASES — still exact-match against a closed set.
  */
@@ -20,6 +20,7 @@ export const REQUIRED_SCRIPTS = [
   'format:fix',
   'lint',
   'lint:fix',
+  'fix',
 ] as const;
 
 /**
@@ -29,6 +30,16 @@ export const REQUIRED_SCRIPTS = [
 const SCRIPT_ALIASES: Partial<Record<(typeof REQUIRED_SCRIPTS)[number], readonly string[]>> = {
   'type-check': ['type-check', 'typecheck'],
 };
+
+/** @purpose Resolve the exact declared project script a canonical verification gate executes. | @param scripts Project scripts map. | @param canonical Canonical gate/script name. | @returns Declared executable name, preferring the canonical spelling, or undefined. */
+export function resolveProjectScriptName(
+  scripts: Record<string, string>,
+  canonical: string
+): string | undefined {
+  const aliases =
+    canonical === 'type-check' ? (SCRIPT_ALIASES['type-check'] ?? ['type-check']) : [canonical];
+  return aliases.find((name) => typeof scripts[name] === 'string' && scripts[name]!.trim() !== '');
+}
 
 /** @purpose One required script and whether it is declared. */
 export type RequiredScript = {
@@ -57,7 +68,7 @@ export type ReadinessLevel = 'not-ready' | 'provisional' | 'ready';
 /**
  * @purpose Verdict of the readiness check.
  * @invariant `ready` requires package.json present, all required scripts declared, `lint` reaching
- * gennady, `format`/`lint` read-only, `format:fix`/`lint:fix` mutating, and gennady installed.
+ * gennady, read-only checks, mutating leaves, and gennady installed.
  * @invariant `level` refines `ready`: `not-ready` ⇔ `!ready`; `provisional` = ready with ≥1
  * echo-stub; `ready` = zero stubs. `executionReady` ⇔ `level === 'ready'`.
  */
@@ -78,6 +89,12 @@ export type ReadinessResult = {
   formatFixMutates: boolean;
   /** @purpose Whether `lint:fix`, if present, or a script it reaches carries a mutating switch. */
   lintFixMutates: boolean;
+  /** @purpose Whether `format:fix` declares an argument-forwarding prefix with no obvious broad operand. */
+  formatFixDeclaredTargetPrefix: boolean;
+  /** @purpose Whether `lint:fix` declares an argument-forwarding prefix with no obvious broad operand. */
+  lintFixDeclaredTargetPrefix: boolean;
+  /** @purpose Whether canonical `fix` reaches both `format:fix` and `lint:fix`. */
+  fixHasCanonicalRepairs: boolean;
   /** @purpose Whether the gennady CLI is installed for the project. */
   gennadyAvailable: boolean;
   /** @purpose True when the project is ready (package.json + all required present + gennady in lint + gennady installed). */
@@ -203,6 +220,32 @@ function reachableScriptBodies(scripts: Record<string, string>, entry: string): 
   return bodies;
 }
 
+/**
+ * @purpose Whether the canonical `fix` graph reaches formatter repair before lint repair.
+ * @param scripts Package scripts map.
+ * @returns True only when a depth-first execution-order walk encounters `format:fix`, then
+ * `lint:fix`. Cycles are bounded by `seen`.
+ */
+function fixHasCanonicalRepairOrder(scripts: Record<string, string>): boolean {
+  const seen = new Set<string>();
+  const repairs: string[] = [];
+  const visit = (name: string): void => {
+    if (seen.has(name)) return;
+    seen.add(name);
+    const body = scripts[name];
+    if (body === undefined) return;
+    for (const segment of commandSegments(stripShellComments(body))) {
+      const next = scriptHopTarget(segment.cmd);
+      if (next === 'format:fix' || next === 'lint:fix') repairs.push(next);
+      else if (next !== null) visit(next);
+    }
+  };
+  visit('fix');
+  const formatIndex = repairs.indexOf('format:fix');
+  const lintIndex = repairs.indexOf('lint:fix');
+  return formatIndex >= 0 && lintIndex > formatIndex;
+}
+
 // `(?![\w-])` ends the flag exactly — so `--fix-dry-run` / `--writeable` are NOT the mutating flag,
 // while `--fix`, `--fix `, `--fix=…` are. `--fix-dry-run` reads and reports, never mutates.
 /** @purpose The known formatter/linter write switches forbidden in a read-only script graph. */
@@ -238,6 +281,34 @@ function isScriptMutating(scripts: Record<string, string>, entry: string): boole
   const bodies = reachableScriptBodies(scripts, entry);
   if (bodies.length === 0) return false;
   return bodies.some((body) => MUTATING_SWITCH_PATTERN.test(body));
+}
+
+/**
+ * @purpose Check the declared argument-forwarding repair shape without pretending to prove its write set.
+ * @invariant One command ends in its write switch and contains no broad target, shell chain, or
+ *   opaque `npm run` hop.
+ * @param scripts Project package scripts.
+ * @param entry Repair brick name.
+ * @returns True for a declared prefix with no obvious broad target/glob or shell indirection.
+ */
+export function isDeclaredArgumentForwardingRepairBrick(
+  scripts: Record<string, string>,
+  entry: string
+): boolean {
+  const raw = scripts[entry];
+  if (raw === undefined) return false;
+  const segments = commandSegments(stripShellComments(raw));
+  if (segments.length !== 1) return false;
+  const command = segments[0]?.cmd.trim() ?? '';
+  if (scriptHopTarget(command)) return false;
+  const tokens = command.split(/\s+/);
+  if (!/^--(?:write|fix|autofix)$/.test(tokens.at(-1) ?? '')) return false;
+  // A broad operand is unsafe even when authors put it before the write switch (`tool . --write`).
+  // Keep this lexical and tool-agnostic: exact tool syntax is intentionally not inferred here.
+  const bakedBroadTarget = tokens
+    .slice(0, -1)
+    .some((token) => /^(?:\.|\.\/)$/.test(token) || /\/$/.test(token) || /[*?\[]/.test(token));
+  return !bakedBroadTarget;
 }
 
 // Deliberately a closed list of UNAMBIGUOUS shell no-ops. A hand-written always-succeeding program
@@ -360,7 +431,7 @@ export function isRealScript(body: string | undefined): boolean {
 /**
  * @purpose Check the gathered tooling facts against the exact v2 readiness requirements.
  * @invariant Exact-name match only; `lint` reaches gennady; `format`/`lint` read-only; `check`, if
- * present, read-only too; `format:fix`/`lint:fix` mutate; gennady installed; package.json present.
+ * present, read-only too; repair leaves mutate; `fix` reaches both leaves; gennady installed.
  * @param input The gathered facts: package.json presence, the `scripts` map, and gennady install state.
  * @returns A ReadinessResult: presence flags, per-script presence, overall readiness, and the missing list.
  */
@@ -378,6 +449,12 @@ export function checkReadiness(input: ReadinessInput): ReadinessResult {
   const checkReadOnly = isScriptReadOnly(scripts, 'check');
   const formatFixMutates = isScriptMutating(scripts, 'format:fix');
   const lintFixMutates = isScriptMutating(scripts, 'lint:fix');
+  const formatFixDeclaredTargetPrefix = isDeclaredArgumentForwardingRepairBrick(
+    scripts,
+    'format:fix'
+  );
+  const lintFixDeclaredTargetPrefix = isDeclaredArgumentForwardingRepairBrick(scripts, 'lint:fix');
+  const fixHasCanonicalRepairs = fixHasCanonicalRepairOrder(scripts);
 
   const missing: string[] = [];
   if (!packageJsonPresent) missing.push('package.json');
@@ -390,6 +467,24 @@ export function checkReadiness(input: ReadinessInput): ReadinessResult {
     missing.push('format:fix(no --write/--fix/--autofix — a fixer that never mutates)');
   if (scripts['lint:fix'] !== undefined && !lintFixMutates)
     missing.push('lint:fix(no --write/--fix/--autofix — a fixer that never mutates)');
+  if (
+    scripts['format:fix'] !== undefined &&
+    !isStubScript(scripts, 'format:fix') &&
+    !formatFixDeclaredTargetPrefix
+  )
+    missing.push(
+      'format:fix(must declare an argument-forwarding prefix with no obvious broad root/glob; runtime phase repair verifies actual writes)'
+    );
+  if (
+    scripts['lint:fix'] !== undefined &&
+    !isStubScript(scripts, 'lint:fix') &&
+    !lintFixDeclaredTargetPrefix
+  )
+    missing.push(
+      'lint:fix(must declare an argument-forwarding prefix with no obvious broad root/glob; runtime phase repair verifies actual writes)'
+    );
+  if (scripts['fix'] !== undefined && !fixHasCanonicalRepairs)
+    missing.push('fix(must run format:fix then lint:fix)');
   if (!gennadyAvailable) missing.push('gennady (not installed)');
 
   const ready =
@@ -401,6 +496,9 @@ export function checkReadiness(input: ReadinessInput): ReadinessResult {
     (scripts['check'] === undefined || checkReadOnly) &&
     formatFixMutates &&
     lintFixMutates &&
+    (isStubScript(scripts, 'format:fix') || formatFixDeclaredTargetPrefix) &&
+    (isStubScript(scripts, 'lint:fix') || lintFixDeclaredTargetPrefix) &&
+    fixHasCanonicalRepairs &&
     gennadyAvailable;
 
   // Judged on the alias actually declared, but reported under the canonical name.
@@ -421,6 +519,9 @@ export function checkReadiness(input: ReadinessInput): ReadinessResult {
     checkReadOnly,
     formatFixMutates,
     lintFixMutates,
+    formatFixDeclaredTargetPrefix,
+    lintFixDeclaredTargetPrefix,
+    fixHasCanonicalRepairs,
     gennadyAvailable,
     ready,
     missing,

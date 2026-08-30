@@ -30,17 +30,32 @@ export function printHelp(): void {
     '  npx gennady sdd-session close                                      # discard the session'
   );
   console.info('');
+  console.info('File-backed form (required for agent-produced free text):');
+  console.info('  npx gennady sdd-session <log|workset|term> --content-file .claude/tmp/<name>');
+  console.info(
+    '  npx gennady sdd-session set <intent|scale|open> --content-file .claude/tmp/<name>'
+  );
+  console.info('');
   console.info('Guarantees:');
   console.info(
-    '  - open is idempotent — an existing session file is never overwritten; reports "already open".'
+    '  - open is storage-idempotent — an existing session file is never overwritten; callers must compare its intent before reuse.'
   );
   console.info(
     '  - open ensures specs/.sdd-session.md is git-ignored — appends the line to .gitignore (creates it if absent).'
   );
   console.info(
+    '  - open also creates/proves the regular non-symlink .claude/tmp/ payload boundary used by later steps.'
+  );
+  console.info(
     '  - No fabricated values — content with an unreplaced <…> placeholder is rejected (exit 2).'
   );
   console.info('  - close deletes the file — the session is scratch, never a deliverable.');
+  console.info(
+    '  - Payload files are exact regular non-symlink UTF-8 files under .claude/tmp/, bounded to 32768 bytes.'
+  );
+  console.info(
+    '  - Payload bytes are never shell-interpreted; the exact file is deleted only after a successful update.'
+  );
   console.info('');
   console.info('Exit codes:');
   console.info('  0 ok   1 file I/O error   2 no open session / placeholder   4 bad invocation');

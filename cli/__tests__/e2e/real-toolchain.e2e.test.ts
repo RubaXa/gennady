@@ -10,7 +10,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { buildRepoFixture } from '../tool-behavior/fixture.ts';
 import { runCli } from '../tool-behavior/run-cli.ts';
@@ -19,6 +19,79 @@ const REPO_ROOT = resolve(import.meta.dirname, '..', '..', '..');
 const BIN = join(REPO_ROOT, 'node_modules', '.bin');
 const TSX = join(REPO_ROOT, 'node_modules', 'tsx', 'dist', 'loader.mjs');
 const GENNADY = join(REPO_ROOT, 'cli', 'gennady.ts');
+
+function replaceFixture(source: string, needle: string, replacement: string): string {
+  assert.ok(source.includes(needle), `fixture needle missing: ${needle}`);
+  const changed = source.replace(needle, replacement);
+  assert.notStrictEqual(changed, source);
+  return changed;
+}
+
+function installRealRepairBins(root: string): void {
+  const binDir = join(root, 'node_modules', '.bin');
+  const prettierBin = join(binDir, 'prettier');
+  const gennadyBin = join(binDir, 'gennady');
+  writeFileSync(prettierBin, `#!/bin/sh\nexec "${BIN}/prettier" "$@"\n`, 'utf-8');
+  writeFileSync(gennadyBin, `#!/bin/sh\nexec node --import "${TSX}" "${GENNADY}" "$@"\n`, 'utf-8');
+  chmodSync(prettierBin, 0o755);
+  chmodSync(gennadyBin, 0o755);
+}
+
+function phaseArgs(root: string, kind: string, targets: string[]): string[] {
+  mkdirSync(join(root, 'specs', 'app'), { recursive: true });
+  writeFileSync(
+    join(root, 'specs/app/app.spec.md'),
+    [
+      '# App',
+      '<!--SECTION:ENTITY_INVENTORY-->',
+      '| Name | Type | Purpose |',
+      '|---|---|---|',
+      '| `add` | Function | Adds values. |',
+      '| `untested` | Function | Coverage fixture. |',
+      '| `covered` | Function | Covered fixture. |',
+      '| `partial` | Function | Partial fixture. |',
+      '<!--/SECTION:ENTITY_INVENTORY-->',
+    ].join('\n'),
+    'utf-8'
+  );
+  writeFileSync(
+    join(root, 'specs/app/app.task.TSK-1.md'),
+    [
+      '<!--SECTION:META-->',
+      '- **Task-ID:** TSK-1',
+      '- **Status:** [ ] TODO',
+      '<!--/SECTION:META-->',
+      '<!--SECTION:PHASES_OVERVIEW-->',
+      '| ID | Kind | Deps | Status |',
+      '|---|---|---|---|',
+      `| P1 | ${kind} | — | [ ] |`,
+      '<!--/SECTION:PHASES_OVERVIEW-->',
+      '<!--SECTION:PHASE_P1-->',
+      ...(kind === 'test' ? ['- **Rules:**', '  - [Coverage](TEST-RULE)'] : []),
+      '- **Target Files:**',
+      ...targets.map((target) => `  - ${target}`),
+      '<!--/SECTION:PHASE_P1-->',
+      ...(kind === 'test'
+        ? [
+            '<!--SECTION:VERIFICATION-->',
+            '<!--COVERAGE_POLICY:v1-->',
+            '- **Coverage Policy:** required',
+            '- **Coverage Owner Phase:** P1',
+            '| Command | Required by | Role |',
+            '|---|---|---|',
+            `| node -e "process.stdout.write('coverage-read')" | TEST-RULE | coverage |`,
+            '<!--/SECTION:VERIFICATION-->',
+          ]
+        : []),
+      '<!--SECTION:EXECUTION_LOG-->',
+      '## Execution Log',
+      '<!--PHASE_RECEIPTS:v1-->',
+      '<!--/SECTION:EXECUTION_LOG-->',
+    ].join('\n'),
+    'utf-8'
+  );
+  return ['sdd-verify', '--task', 'specs/app/app.task.TSK-1.md', '--phase', 'P1'];
+}
 
 /** A prettier-clean, DbC-valid production module the real toolchain type-checks, tests, lints, and covers. */
 const THING = [
@@ -55,34 +128,34 @@ const THING_TEST = [
 /**
  * @purpose package.json scripts wired to the repo's REAL binaries (absolute paths — the fixture temp
  *   dir has no node_modules of its own), so each sdd-verify gate runs the genuine tool.
- * @param withFormatFix Include the mutating `format:fix` (prettier --write) repair step. Omit it to
- *   test that the read-only `format` CHECK catches a real violation the ladder would otherwise heal.
  * @returns The scripts map for buildRepoFixture.
  */
-function realScripts(withFormatFix: boolean): Record<string, string> {
+function realScripts(): Record<string, string> {
   return {
     'type-check': `"${BIN}/tsc" --noEmit --strict --skipLibCheck --target es2022 --module esnext --moduleResolution bundler src/thing.ts`,
     test: `node --import "${TSX}" --test src/thing.test.ts`,
     'test:coverage': `"${BIN}/c8" --reporter=text-summary --check-coverage --lines=80 node --import "${TSX}" --test src/thing.test.ts`,
     format: `"${BIN}/prettier" --check "src/**/*.ts"`,
-    ...(withFormatFix ? { 'format:fix': `"${BIN}/prettier" --write "src/**/*.ts"` } : {}),
-    lint: `node --import "${TSX}" "${GENNADY}" lint src/thing.ts`,
+    'format:fix': `"${BIN}/prettier" --write`,
+    lint: `gennady lint src/thing.ts`,
+    'lint:fix': `gennady lint --autofix`,
+    fix: 'npm run format:fix -- "src/**/*.ts" && npm run lint:fix -- src/',
   };
 }
 
 /**
  * @purpose Build a fixture repo whose gates are the real toolchain, seeded with the given source.
  * @param files Source files to write under the fixture root.
- * @param withFormatFix Whether to include the mutating format repair step.
  * @returns The fixture's absolute root.
  */
-function realFixture(files: Record<string, string>, withFormatFix = true): string {
+function realFixture(files: Record<string, string>): string {
   const { root } = buildRepoFixture({
-    scripts: realScripts(withFormatFix),
+    scripts: realScripts(),
     gennadyInstalled: true,
     directives: true,
     files,
   });
+  installRealRepairBins(root);
   return root;
 }
 
@@ -93,13 +166,13 @@ if (isE2eRun) {
     it('GREEN: real tsc + node --test + gennady lint + prettier all pass → ALL PASS, exit 0', () => {
       const root = realFixture({ 'src/thing.ts': THING, 'src/thing.test.ts': THING_TEST });
       try {
-        const r = runCli(['sdd-verify', '--profile', 'code'], root);
+        const r = runCli(phaseArgs(root, 'impl', ['src/thing.ts', 'src/thing.test.ts']), root);
         assert.strictEqual(r.exitCode, 0, r.stdout + r.stderr);
         assert.match(r.stdout, /ALL PASS/);
         assert.match(r.stdout, /✅ type-check/);
         assert.match(r.stdout, /✅ test\b/);
-        assert.match(r.stdout, /✅ lint\b/);
-        assert.match(r.stdout, /✅ format\b/);
+        assert.match(r.stdout, /🔧 fix\b/);
+        assert.doesNotMatch(r.stdout, /✅ lint\b|✅ format\b/);
       } finally {
         rmSync(root, { recursive: true, force: true });
       }
@@ -107,11 +180,11 @@ if (isE2eRun) {
 
     it('a REAL type error (string returned where number is declared) halts the ladder at type-check', () => {
       const root = realFixture({
-        'src/thing.ts': THING.replace('return a + b;', "return a + b + '';"),
+        'src/thing.ts': replaceFixture(THING, 'return a + b;', "return a + b + '';"),
         'src/thing.test.ts': THING_TEST,
       });
       try {
-        const r = runCli(['sdd-verify', '--profile', 'code'], root);
+        const r = runCli(phaseArgs(root, 'impl', ['src/thing.ts']), root);
         assert.notStrictEqual(r.exitCode, 0, r.stdout + r.stderr);
         assert.match(r.stdout, /❌ type-check/);
         // Not a scripted exit code — the genuine tsc diagnostic reaches the operator.
@@ -125,10 +198,10 @@ if (isE2eRun) {
     it('a REAL failing assertion (add(2,3) expected 6) halts the ladder at test', () => {
       const root = realFixture({
         'src/thing.ts': THING,
-        'src/thing.test.ts': THING_TEST.replace('add(2, 3), 5', 'add(2, 3), 6'),
+        'src/thing.test.ts': replaceFixture(THING_TEST, 'add(2, 3), 5', 'add(2, 3), 6'),
       });
       try {
-        const r = runCli(['sdd-verify', '--profile', 'code'], root);
+        const r = runCli(phaseArgs(root, 'impl', ['src/thing.test.ts']), root);
         assert.notStrictEqual(r.exitCode, 0, r.stdout + r.stderr);
         assert.match(r.stdout, /✅ type-check/);
         assert.match(r.stdout, /❌ test\b/);
@@ -138,25 +211,24 @@ if (isE2eRun) {
       }
     });
 
-    it('REAL unformatted code (no format:fix to heal it) fails the read-only format gate', () => {
-      const root = realFixture(
-        {
-          'src/thing.ts': THING.replace('  return a + b;', '  return    a+b;'),
-          'src/thing.test.ts': THING_TEST,
-        },
-        false
-      );
+    it('REAL unformatted code is repaired before the single foundation pass', () => {
+      const root = realFixture({
+        'src/thing.ts': replaceFixture(THING, '  return a + b;', '  return    a+b;'),
+        'src/thing.test.ts': THING_TEST,
+      });
       try {
-        const r = runCli(['sdd-verify', '--profile', 'code'], root);
-        assert.notStrictEqual(r.exitCode, 0, r.stdout + r.stderr);
+        const r = runCli(phaseArgs(root, 'impl', ['src/thing.ts']), root);
+        assert.strictEqual(r.exitCode, 0, r.stdout + r.stderr);
+        assert.match(r.stdout, /🔧 fix\b/);
         assert.match(r.stdout, /✅ type-check/);
-        assert.match(r.stdout, /❌ format\b/);
+        assert.match(r.stdout, /✅ test\b/);
+        assert.doesNotMatch(r.stdout, /re-run|✅ format\b|✅ lint\b/);
       } finally {
         rmSync(root, { recursive: true, force: true });
       }
     });
 
-    it('a REAL coverage shortfall (uncovered branches below --lines=80) halts --profile test at test:coverage', () => {
+    it('a REAL coverage shortfall (uncovered branches below --lines=80) halts a derived test profile at test:coverage', () => {
       // A large unexercised function — the test covers only `add`, so real c8 lands far below the
       // --lines=80 threshold (≈48% measured), a wide margin that survives context differences.
       const uncoveredBody = Array.from(
@@ -180,7 +252,7 @@ if (isE2eRun) {
         ].join('\n');
       const root = realFixture({ 'src/thing.ts': uncovered, 'src/thing.test.ts': THING_TEST });
       try {
-        const r = runCli(['sdd-verify', '--profile', 'test'], root);
+        const r = runCli(phaseArgs(root, 'test', ['src/thing.test.ts']), root);
         assert.notStrictEqual(r.exitCode, 0, r.stdout + r.stderr);
         assert.match(r.stdout, /✅ type-check/);
         assert.match(r.stdout, /❌ test:coverage/);
@@ -193,7 +265,7 @@ if (isE2eRun) {
     });
   });
 
-  // The scoped-coverage chain the unit tests can't exercise: `sdd-verify --profile test` is the
+  // The scoped-coverage chain the unit tests can't exercise: the context-derived test phase is the
   // SINGLE owner of the coverage run (real c8 writes coverage-final.json), then a SEPARATE
   // `testcov --min <files>` READS that fresh report and gates the threshold over the task's own
   // Target Files — no second suite run. Two production files (`covered.ts` fully hit, `partial.ts`
@@ -251,7 +323,13 @@ if (isE2eRun) {
     function chainScripts(): Record<string, string> {
       return {
         'type-check': `"${BIN}/tsc" --noEmit --strict --skipLibCheck --target es2022 --module esnext --moduleResolution bundler src/covered.ts src/partial.ts`,
+        test: `node --import "${TSX}" --test src/test.test.ts`,
         'test:coverage': `"${BIN}/c8" --reporter=json --reporter=text-summary node --import "${TSX}" --test src/test.test.ts`,
+        format: `"${BIN}/prettier" --check "src/**/*.ts"`,
+        'format:fix': `"${BIN}/prettier" --write`,
+        lint: `gennady lint src/covered.ts src/partial.ts`,
+        'lint:fix': `gennady lint --autofix`,
+        fix: 'npm run format:fix -- "src/**/*.ts" && npm run lint:fix -- src/',
       };
     }
     function chainFixture(): string {
@@ -265,6 +343,7 @@ if (isE2eRun) {
           'src/test.test.ts': CHAIN_TEST,
         },
       });
+      installRealRepairBins(root);
       return root;
     }
 
@@ -272,7 +351,10 @@ if (isE2eRun) {
       const root = chainFixture();
       try {
         // 1) The phase gate is the single owner of the coverage run — it writes a fresh coverage/.
-        const gate = runCli(['sdd-verify', '--profile', 'test'], root);
+        const gate = runCli(
+          phaseArgs(root, 'test', ['src/covered.ts', 'src/partial.ts', 'src/test.test.ts']),
+          root
+        );
         assert.strictEqual(gate.exitCode, 0, gate.stdout + gate.stderr);
         assert.match(gate.stdout, /✅ test:coverage/);
 

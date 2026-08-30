@@ -37,6 +37,10 @@
     {{> "axiom/process/ax-close-with-integrity-check"}}
   </BeliefState>
 
+  <SessionState>
+    {{> "contract/process/session-file-format"}}
+  </SessionState>
+
   <ChatProtocol>
     {{> "contract/process/question-format"}}
   </ChatProtocol>
@@ -101,7 +105,7 @@
           сейчас» → a `AX_DECISION_LOG_REQUIRED` entry in `DECISION_LOG_ENTRY_FORMAT`, marked deferred.
           Example: operator says «v1 строго local-only, без бэкенда» while the goal is full sync → Vision
           keeps «полная синхронизация между устройствами» as the target, and the Decision Log gets
-          `D-001 <date> — v1 без бэкенда (почему: быстрее показать локальный сценарий; отложено до: этап
+          `<ACR>-DL-1 <date> — v1 без бэкенда (почему: быстрее показать локальный сценарий; отложено до: этап
           синхронизации; риск: придётся менять модель хранения данных)`.
         - **Technical/stack preference** — a named framework, «готовый UIKit», a design-system pick →
           carried forward as intake for the step that actually owns implementation choices (STEP_2's
@@ -194,19 +198,22 @@
       <Action>
         No tooling declared → skip. Else, per `AX_INFRA_BASE_BOOTSTRAP`,
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/infra-base-minimal-spec.xml")`,
-        then scaffold the file via the CLI — `npx gennady sdd-new infrastructure --scope infra-base`
+        then scaffold the file via the CLI — infrastructureManifest ToolCall below
         (it creates directories itself and prints the section manifest; writing the spec from a blank
         Write instead of the scaffold is the same violation as hand-writing the portal skeleton) —
         and fill the skeleton to that format (scope-type infrastructure,
         one-sentence Vision, Tool Stack table, note pointing to `discovery infra-base` for the full
         Decision Log — the bootstrap only locks the tool choice, the full `infra` flow comes later).
         Approval Check. STOP.
+
+        <ToolCall owner="this-step" result="infrastructureManifest">npx gennady sdd-new infrastructure --scope infra-base</ToolCall> Use infrastructureManifest.
       </Action>
     </Step>
     <Step id="STEP_4_PORTAL_WRITE">
       <Goal>Write / update `specs/README.md`.</Goal>
       <Action>
-        When `specs/README.md` does not exist yet, create its skeleton via `sdd-new portal` first —
+        When `specs/README.md` does not exist yet, create its skeleton via
+        portalManifest ToolCall below first —
         it never overwrites and prints the section manifest (which sections are REQUIRED and what to
         fill); when it already exists, edit it in place, skip `sdd-new`. Content guidance per
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/portal-structure.xml")` and assemble the
@@ -218,7 +225,7 @@
         `AX_SCOPE_TABLE_FORMAT`.
         Reconcile any placeholder rows left by the scope flow into full rows — root is the primary
         owner of `specs/README.md` and the only flow that rewrites it (`AX_PORTAL_PRIMARY_OWNER`).
-        Write the file. Then run `sdd-check --all .` to verify portal integrity —
+        Write the file. Then run integrityCheck ToolCall below to verify portal integrity —
         graph acyclicity, graph↔table↔spec coherence, no orphan specs or dangling scope references — and
         resolve any finding before finishing, per `AX_CLOSE_WITH_INTEGRITY_CHECK`.
 
@@ -242,12 +249,22 @@
         present, else the lowest-level scope just added). On this pick, do NOT end the session —
         hand control to that scope's branch of the router's own `LOGIC_SWITCH` immediately (the
         `scope` or `infra` case, by that scope's scope-type), in the SAME session, exactly as
-        `LOGIC_SWITCH`'s multi-scope case already chains branches. A scaffold option is offered
+        `LOGIC_SWITCH`'s multi-scope case already chains branches; return `TerminalDecision: continue`.
+        A scaffold option is offered
         instead ONLY once every scope in the graph already has a spec — per `NEXT_STEP_MENU_FORMAT`
         it is never recommended over an outstanding spec (specs need the operator's judgment,
-        scaffold is mechanical decomposition of what is already approved). Last option always:
-        «Закончить сессию» — on this pick, print a short resume instruction instead (`/sdd` + name
-        the scope to design next) and stop; no directive loads. STOP.
+        scaffold is mechanical decomposition of what is already approved); selecting it also returns
+        `continue` and loads scaffold in this same session. While either next link exists, the last
+        option is «Пауза — продолжу позже»: return `TerminalDecision: pause`, preserve the session,
+        print `/sdd` plus the next scope/step, and load no directive. Only when this step proves
+        `unfinished chained work: none` may it instead offer literal «Complete / finish». After that
+        explicit selection, return `TerminalDecision: complete` and run exact
+        terminal ToolCall below once; the source is this STEP_4 terminal-menu answer, never the
+        successful portal write or integrity check. STOP.
+
+        <ToolCall owner="this-step" result="portalManifest">npx gennady sdd-new portal</ToolCall> Use portalManifest.
+        <ToolCall owner="this-step" result="integrityCheck">npx gennady sdd-check --all .</ToolCall> Use integrityCheck.
+        <ToolCall owner="this-step" result="terminal">npx gennady sdd-session close</ToolCall>
       </Action>
     </Step>
   </ExecutionPlan>

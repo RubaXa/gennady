@@ -4,6 +4,7 @@
 
 import { dirname, basename, join, resolve } from 'node:path';
 import { extractSection } from './section.ts';
+import type { Finding } from './finding.ts';
 import { parseMetaInfo, parsePhasesOverview } from './ticket.ts';
 import { legacyHeaderBody } from './anchor-inject.ts';
 import { parseGraphEdges } from './portal.ts';
@@ -28,18 +29,18 @@ import { extractMermaidBlocks } from '../mermaid/mermaid.ts';
  * @purpose One audit finding.
  * @invariant `error` fails the gate; `warn` is advisory (reported, non-fatal).
  */
-export type Finding = {
-  /** @purpose Severity — error fails the gate, warn is advisory. */
-  severity: 'error' | 'warn';
-  /** @purpose Stable finding code token. */
-  code: string;
-  /** @purpose File the finding refers to. */
-  file: string;
-  /** @purpose Description with the issue and a location hint. */
-  message: string;
-  /** @purpose 1-based line the finding points at, when a precise location is known. */
-  line?: number;
-};
+export type { Finding } from './finding.ts';
+export {
+  checkRequirementBudgetsAgainstBaseline,
+  REQUIREMENT_ENTRY_MAX_LINES,
+} from './requirement-budget.ts';
+export {
+  checkCriticReadinessForTargetSet,
+  formatCriticChangedState,
+  formatCriticTargetSet,
+  hasCriticRoundsSection,
+  latestCriticTargetSet,
+} from './critic-readiness.ts';
 
 // Scaffold placeholder: `<` then a letter or ellipsis (e.g. <ts>, <cmd>, <TBD>, <…>) — NOT an HTML
 // comment/marker (`<!--…-->`) or closing tag (`</…>`), which start with `!` or `/`; NOT a markup tag
@@ -1147,8 +1148,10 @@ export const FOLD_REQUIRED_V2: string[] = Array.from(
 // FOLD_REQUIRED_V2 are exempt — folding is their containment mechanism, not a line count.
 // Calibrated against 210 non-folded top-level sections across specs/**/*.spec.md: median 15, P75 22,
 // P90 43, P95 55, P99 110, max 286. 120 sits just above P99 — it catches only the two genuine
-// outliers in the corpus today (REQUIREMENTS_AND_CONSTRAINTS at 286 lines in agent-inbox.spec.md,
-// MODULE_USAGE_EXAMPLE at 140 lines in cli/e2e/e2e.spec.md) without touching the routine tail.
+// outliers in the corpus today. New-format Requirements sections are deliberately excluded: their
+// cognitive size is checked by requirement count + per-entry budget
+// (`checkRequirementBudgetsAgainstBaseline`), so
+// line wrapping never pressures an agent to merge Markdown mechanically.
 const SECTION_LINE_HARD_LIMIT_V2 = 120;
 
 // Table-cell policy (AX_SPEC_TABLE_IS_INDEX, v2 only): a table is an index, not text — one short
@@ -1520,6 +1523,11 @@ export function checkSpecStructure(
         if (FOLD_REQUIRED_V2.includes(name)) continue;
         const sec = extractSection(content, name);
         if (sec.status !== 'ok') continue;
+        if (
+          (name === 'REQUIREMENTS_AND_CONSTRAINTS' || name === 'MODULE_REQUIREMENTS') &&
+          parseRequirementHeadings(sec.content).length > 0
+        )
+          continue;
         const lines = sec.content.split('\n').length;
         if (lines > SECTION_LINE_HARD_LIMIT_V2) {
           findings.push({

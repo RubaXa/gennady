@@ -5,14 +5,15 @@
         ```json
         {
             "scripts": {
-                "format": "prettier --write .",
-                "lint": "eslint --fix .",
-                "lint:fix": "npm run format && npm run lint",
-                "lint:check": "prettier --check . && eslint .",
+                "format": "prettier --check .",
+                "format:fix": "prettier --write",
+                "lint": "eslint .",
+                "lint:fix": "eslint --fix",
+                "fix": "npm run format:fix -- . && npm run lint:fix -- .",
                 "typecheck": "tsc --noEmit"
             }
         }
         ```
       </Snippet>
-      <Why>`lint:fix` is agent's default (mechanical, mutating); `lint:check` is CI's default (read-only, fails on drift). `typecheck` is its own script — type-aware concerns are routed to TS, not lint.</Why>
+      <Why>Read-only and repair commands are separate. Repair bricks declare target-forwarding prefixes; required `fix` supplies whole-project roots while phase verification supplies exact targets. Static checking rejects only obvious broad operands and shell indirection. `typecheck` is its own script — type-aware concerns are routed to TS, not lint.</Why>
     </Pattern>

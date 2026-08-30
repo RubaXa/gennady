@@ -13,7 +13,7 @@
 - Header-located column — `updateTrackerStatus` находит `Task-ID`/`Status` по шапке таблицы; переносимо между разными формами трекеров
 - Surgical — переписывается только сегмент Status совпавшей строки; прочие ячейки/строки байт-в-байт нетронуты
 - Verified — после записи файл перечитывается и проверяется, что строка уже в синке (иначе exit 1)
-- Walk-up discovery — без явных индексов синкаются все `*.3-tasks.md`/`3-tasks.md` от каталога тикета вверх
+- Owner-only discovery — без явных индексов синкаются только доказанные owner-индексы под `specs/` от каталога тикета вверх
 - Progress recompute — отдельный проход после Status-синка пересчитывает `Tasks`/`Done` в любом роллапе (`Index`+`Tasks`+`Done` колонки) по актуальным строкам связанного трекера
 
 **Invariants:**
@@ -35,7 +35,7 @@ $ npx gennady sdd-sync specs/cli/core/core.task-foo.md
   progress:   specs/3-tasks.md (./cli/cli.3-tasks.md)
 
 # --- явные индексы ---
-$ npx gennady sdd-sync ticket.md module.3-tasks.md scope.3-tasks.md
+$ npx gennady sdd-sync specs/app/core/core.task.APP-1.md specs/app/core/core.3-tasks.md specs/app/app.3-tasks.md
 [sdd-sync] cli-foo → [x] DONE
   updated:    module.3-tasks.md
   updated:    scope.3-tasks.md
@@ -96,10 +96,10 @@ $ npx gennady sdd-sync ticket.md module.3-tasks.md scope.3-tasks.md
 
 ## 5. Public Options & Policies
 
-| Argument      | Type   | Description                                                 |
-| ------------- | ------ | ----------------------------------------------------------- |
-| `<ticket>`    | string | Тикет-источник статуса (читается Meta)                      |
-| `[index ...]` | string | Явные трекеры; без них — авто-обход вверх по `*.3-tasks.md` |
+| Argument      | Type   | Description                                                     |
+| ------------- | ------ | --------------------------------------------------------------- |
+| `<ticket>`    | string | Точный repo-relative regular non-symlink тикет                  |
+| `[index ...]` | string | Точные owner-индексы под `specs/`; без них — безопасный walk-up |
 
 <!--/SECTION:PUBLIC_OPTIONS-->
 
@@ -141,9 +141,15 @@ shared/sdd/tracker.ts    # parseMeta + updateTrackerStatus + parseTrackerRows + 
 
 ### D-SY003 — Walk-up обнаружение индексов + явный override
 
-- **Status:** active
+- **Status:** superseded by D-SY005
 - **Why:** Резолв task-id → пути сложен; co-located layout кладёт module/scope/project индексы по пути тикета вверх. Авто-обход (cap 8) покрывает типовой случай; явные пути — для детерминизма и тестов.
 - **Risk accepted:** Обход поднимается до корня ФС (cap 8) — лишние `*.3-tasks.md` вне дерева теоретически попали бы; на практике их там нет, а `no-row` безвреден.
+
+### D-SY005 — Все mutation paths доказываются относительно canonical project root
+
+- **Status:** active
+- **Why:** Абсолютный/`..`/symlink путь мог направить status-sync за пределы проекта; walk-up мог выйти к корню ФС. Теперь тикет и весь набор индексов доказываются до первой записи как exact regular non-symlink files: `specs/3-tasks.md` либо owning `specs/**/<owner>.3-tasks.md`. Каждая запись повторно сверяет device/inode непосредственно перед mutation.
+- **Risk accepted:** Нет. Потеря identity после чтения даёт verify-fail, а не частичный зелёный отчёт.
 
 ### D-SY004 — Progress-роллап (`Tasks`/`Done`) пересчитывается отдельным проходом после Status-синка
 

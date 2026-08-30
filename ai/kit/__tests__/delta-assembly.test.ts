@@ -52,9 +52,11 @@ function buildPlan() {
 
 /** Render node `e` the same way build-directives.ts's pass 2 does. */
 function deltaRenderOf(e: Pass1Entry, excluded: string[]): string {
-  if (excluded.length === 0) return e.renderedFull;
-  const { render } = createRenderer();
-  return render(applyDelta(e.hbsSource, excluded).source);
+  const rendered =
+    excluded.length === 0
+      ? e.renderedFull
+      : createRenderer().render(applyDelta(e.hbsSource, excluded).source);
+  return rendered.replace(/[ \t]+$/gm, '');
 }
 
 describe('delta-assembly — graph shape', () => {
@@ -79,9 +81,9 @@ describe('delta-assembly — graph shape', () => {
     }
   });
 
-  it('class 1 (SKILL.md entry points) matches the known set', () => {
+  it('class 1 matches direct SKILL.md entry points after stateful entries converge on router', () => {
     const { plan } = buildPlan();
-    const expected = ['audit', 'code-review', 'critic', 'execute', 'reconcile', 'router', 'scaffold'].map(
+    const expected = ['audit', 'code-review', 'router'].map(
       (n) => `ai/directives/sdd-v2/${n}.directive.xml`
     );
     assert.deepEqual([...plan.class1].sort(), expected.sort());
@@ -213,14 +215,14 @@ describe('delta-assembly — generated ai/directives/sdd-v2 matches the plan', (
         const actualSkeleton = readFileSync(join(OUT_ROOT, e.rel), 'utf8');
         assert.equal(
           actualSkeleton,
-          skeleton.text,
+          skeleton.text.replace(/[ \t]+$/gm, ''),
           `${e.rel}: generated skeleton is stale — rerun ai/kit/build-directives.ts -- --assembly=lazy`
         );
         for (const pkg of packages) {
           const actualPackage = readFileSync(join(PROJECT_ROOT, pkg.relativePath), 'utf8');
           assert.equal(
             actualPackage,
-            pkg.text,
+            pkg.text.replace(/[ \t]+$/gm, ''),
             `${e.rel} (step ${pkg.stepId}): generated package is stale — rerun ai/kit/build-directives.ts -- --assembly=lazy`
           );
         }

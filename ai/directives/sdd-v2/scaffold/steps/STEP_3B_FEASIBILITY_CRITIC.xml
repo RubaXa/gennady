@@ -3,14 +3,90 @@
 <Step id="STEP_3B_FEASIBILITY_CRITIC">
       <Goal>Reject structurally valid but operationally impossible tickets before execute. (auto)</Goal>
       <Action>
-        Dispatch ONE fresh isolated critic with only the materialized tickets, owning spec anchors,
+        First fold the matching persisted `FeasibilityState`. A pending `sensor-result` resumes its
+        first incomplete transition below: re-present a required unresolved Ask from that result, or
+        apply its recorded disposition, without dispatching, incrementing, or resetting. Only when no
+        result is pending may this step dispatch ONE isolated critic with the materialized tickets, owning spec anchors,
         infra Verification Commands, and resolved phase Rules. For every phase, simulate:
-        `dependency outputs + phase Target Files → mandatory verification profile + ticket §5 commands`.
+        `dependency outputs + phase Target Files → one mandatory phase command (ladder + applicable §5 rows)`.
         The critic must report: a gate that needs a file owned by a later phase; a repository-wide
         fix before ignore/exclusion files exist; shared-file double ownership; an undeclared
         generator output; production entities placed in a scope without module inventory; or a test
-        mapping whose code cannot exist yet. Mechanics are fixed directly in tickets and rechecked
-        once; only a genuinely new product decomposition fork reaches the operator at STEP_4.
-        No CLEAN verdict → `H_SCAFFOLD_NOT_EXECUTABLE`; do not hand off to execute.
+        mapping whose code cannot exist yet.
+
+        Persist and fold one explicit `FeasibilityState` through Gate 2 via
+        `FEASIBILITY_STATE_FORMAT`; never rely on chat memory:
+        `LatestTargetSet` = every materialized ticket path plus its exact latest bytes and content hash;
+        `ChangedTickets` = tickets changed since the last critic result;
+        `WorkerSession` = retained id and `alive|unsupported|lost` availability;
+        `FallbackUsed` = boolean; `ResultCount` = cumulative critic results; `ActiveCap` = 5 or the
+        operator-raised value; `ApprovedGate2Choices` = exact prior approvals;
+        `PendingGate2Delta` = only a genuinely new product/toolchain fork;
+        `LastResult` = literal verdict plus literal Changes. Before the first critic dispatch append
+        the `opened` event. Never reset this record on Gate 2 or fallback.
+
+        Process every critic result in this order, with no shortcut:
+
+        | Event after a result | Mandatory transition |
+        |---|---|
+        | Any result | Increment `ResultCount`; append and require the complete `sensor-result` event; refresh `LatestTargetSet` and `ChangedTickets`; only then evaluate `ResultCount >= ActiveCap` BEFORE GOAL, Ask, CLEAN, fork, proceed, or re-dispatch. |
+        | Active cap reached | Ask the operator per `AX_CAP_5`, regardless of verdict. If Changes is empty, offer `CLEAN`, `CONTINUE THROUGH ROUND N` with an explicit higher cap, or `RESTART: reason`; if Changes is non-empty, omit CLEAN. No automatic next result exists. |
+        | Below cap + Changes non-empty | The latest bytes are unreviewed: re-dispatch; ignore any simultaneous CLEAN/fork as stale until a later no-change result reviews those bytes. |
+        | Below cap + no Changes + CLEAN | The latest bytes are reviewed; proceed to STEP_4. |
+        | Below cap + no Changes + new fork | Set only that fork in `PendingGate2Delta`; proceed to STEP_4 without approving it. |
+        | Below cap + other no-change verdict | Apply only its ordinary ticket corrections, refresh `ChangedTickets`, and re-dispatch; unresolved/non-actionable output halts with `H_SCAFFOLD_NOT_EXECUTABLE`. |
+
+        No cap/GOAL Ask is legal until the result/count event is durable. The Ask itself never
+        mutates or replaces that event. Append the operator answer as its own immutable
+        `operator-disposition` referencing the pending result before applying it. On resume, a
+        pending result without that disposition re-presents the same Ask and performs no dispatch.
+
+        Cap disposition is explicit: `CLEAN` accepts the latest no-change bytes and advances;
+        `CONTINUE THROUGH ROUND N` sets `ActiveCap=N` greater than `ResultCount`, then evaluates the
+        SAME `LastResult` through the below-cap rows without incrementing it twice; `RESTART: reason`
+        follows that exact operator reason and is the only disposition allowed to replace this state.
+
+        Re-dispatch into the SAME worker session whenever it is alive; only that live same-session
+        path may send just `ChangedTickets`, because the session retains the unchanged target context.
+        If continuation is unsupported or the retained session is lost, allow exactly ONE fresh
+        fallback critic, mark `FallbackUsed`, and send the FULL `LatestTargetSet` plus the full retained
+        state/context and complete prior result history; keep `ResultCount`. If that exact payload
+        cannot be delivered, or a second fallback would be required, pause with a teaching
+        `H_SCAFFOLD_NOT_EXECUTABLE` blocker that names the missing set/context. Never regenerate the DAG
+        or all tickets, never reset the cap, and never hand off unreviewed latest bytes.
+        <ToolCall owner="this-step" result="feasibilityEvent">npx gennady sdd-session log --content-file .claude/tmp/sdd-scaffold-feasibility-event.json</ToolCall> Payload: current opened/target-refreshed/worker-state/sensor-result/operator-disposition event. Use feasibilityEvent and require success before its transition.
       </Action>
     </Step>
+
+<Contract id="FEASIBILITY_STATE_FORMAT">
+      `FeasibilityState` is not model memory. It is the fold of append-only
+      `sdd-scaffold-feasibility/v1` JSON events in the compatible session's `journal:` section. The
+      router has already proved/opened that session before scaffold starts, so the state survives an
+      operator pause, context loss, and same-session resume without writing a second project artifact.
+
+      Each event is one compact UTF-8 JSON line with keys in this order:
+      `schema`, `cycle`, `seq`, `event`, `payload`. `cycle` binds the scaffold target-set and initial
+      ticket hashes; `seq` increases by one. Event kinds are:
+      `opened` (target paths/hashes, worker session, `fallbackUsed=false`, `resultCount=0`,
+      `activeCap=5`) · `target-refreshed` (latest paths/hashes and changed tickets) · `worker-state` ·
+      `sensor-result` (the NEW cumulative result count, literal verdict, literal Changes, and latest
+      target hashes) · `operator-disposition` (the referenced result count and exact CLEAN / CONTINUE
+      THROUGH ROUND N / RESTART answer) · `gate2-choice` · `closed`.
+
+      Before the first critic dispatch, append `opened`. After every ticket mutation, append
+      `target-refreshed` before dispatch. Most importantly, after a critic returns, append the complete
+      `sensor-result` with the already-incremented count and require tool success BEFORE interpreting
+      CLEAN, a product fork, GOAL, the cap, or emitting any Ask. An operator answer is a separate later
+      immutable `operator-disposition`; never rewrite the result it disposes. On resume, fold only the
+      matching cycle's events. A latest `sensor-result` with no disposition and a cap/GOAL Ask pending
+      means re-present that same decision from the recorded bytes — do not redispatch, increment, or
+      reset. `activeCap` starts at exactly 5 and changes only by a recorded CONTINUE disposition.
+
+      To append any event, write that one JSON line to the regular non-symlink
+      `.claude/tmp/sdd-scaffold-feasibility-event.json`, then execute the current scaffold transition's
+      exact feasibility-event ToolCall. The
+      successful command consumes the payload; inline event text is forbidden. `closed` is the explicit
+      cleanup marker after STEP_5 integrity succeeds (or before an operator-confirmed RESTART opens a new
+      cycle); the session scratch itself is removed only by its normal terminal `sdd-session close`.
+
+    </Contract>

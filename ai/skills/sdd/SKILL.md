@@ -1,6 +1,6 @@
 ---
 name: sdd
-description: SDD entry point. Router — picks the right flow (project portal / scope / infra / interface / module / recover a spec from an existing path / execute the task queue) from project state + operator intent. Use for "new project", "new scope", "design or evolve a spec", "pivot", "module decomposition", "воссоздай спеку для services/foo по коду", "/sdd".
+description: SDD entry point. Loads project state and delegates all route selection — including execute and multi-scope — to router.directive.xml's exact LOGIC_SWITCH. Use for "new project", "new scope", "design or evolve a spec", "pivot", "module decomposition", "воссоздай спеку для services/foo по коду", "/sdd".
 compatibility: opencode
 ---
 
@@ -16,14 +16,19 @@ compatibility: opencode
 
   <ExecutionPlan>
     <Step id="GATHER">
-      One parallel batch (do NOT serialize): run `npx gennady sdd-state`
-      — one call returns portal presence, the Scopes table (id / type / status), declared gate scripts,
-      and the in-progress session set — AND read in full `ai/directives/sdd-v2/router.directive.xml`.
+      One parallel batch (do NOT serialize): execute the exact routerState ToolCall below — one call
+      returns portal presence, the Scopes table (id / type / status), declared gate scripts, and the
+      in-progress session set — AND read in full
+      `ai/directives/sdd-v2/router.directive.xml`. This is the only initial state call; the router
+      consumes the exact `routerState` bytes and never executes that initial call itself.
+      <ToolCall owner="entry-skill" result="routerState">npx gennady sdd-state</ToolCall> Use routerState as the literal stdout snapshot.
     </Step>
-    <Step id="EMBODY">You ARE the router directive now. Intent — from the operator message; state — from sdd-state.</Step>
+    <Step id="EMBODY">You ARE the router directive now. Intent — from the operator message; state — exact result alias `routerState`.</Step>
     <Step id="ROUTE">
-      Evaluate the directive's `LOGIC_SWITCH` (state + intent + scope-type) and `READ_AND_USE_DIRECTIVE`
-      exactly one branch (root / recover-from-code / scope / infra / interface / module). Ambiguous → ask, never guess.
+      Delegate route selection exclusively to the loaded router directive's exact `LOGIC_SWITCH`
+      (state + intent + scope-type); this skill keeps no closed route inventory. Follow the first
+      matching result and `READ_AND_USE_DIRECTIVE` the path it returns, including its execute and
+      chained multi-scope outcomes. Handle ambiguity exactly as that switch directs; never guess.
     </Step>
   </ExecutionPlan>
 </SddSkill>

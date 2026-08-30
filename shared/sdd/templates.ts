@@ -78,9 +78,9 @@ export type ArtifactTemplate = {
 
 // #region START_SHARED_SECTIONS — text shared verbatim by every scope-type template
 const DECISION_LOG_FILL =
-  'One-line human summary of how many decisions and what area; fold the full D-NNN entries under <details> per AX_SPEC_PROGRESSIVE_DISCLOSURE.';
+  'One-line human summary of how many decisions and what area; fold the full <ACR>-DL-N entries under <details> per AX_SPEC_PROGRESSIVE_DISCLOSURE.';
 const BOOTSTRAP_REQUIREMENTS_FILL =
-  'One-line human summary of outstanding prerequisites; fold the full Requirement/Kind/Owner/Resolution table under <details>. Declare explicitly ("No external bootstrap required.") when the STEP_7 audit found none — do not leave the table silently empty.';
+  'One-line human summary of outstanding prerequisites; fold the full table under <details>. For readiness tooling, name exact Readiness Gates and repo-relative Gate Artifacts; otherwise use —. Declare explicitly ("No external bootstrap required.") when the audit found none.';
 const OVERVIEW_FILL =
   'MANDATORY (AX_SPEC_MANDATORY_DIAGRAM): at least one fenced mermaid or ASCII diagram giving a reader the shape of this artifact at a glance, up top. Caption directly under the fence per DIAGRAM_CAPTION_FORMAT (formats/diagram-vocabulary.xml) — `_<что показывает одной фразой>[ — <ACR>-REQ-N[, <ACR>-REQ-M]]._`; the phrase itself stays mandatory always — the ID list is optional, add it when the diagram illustrates concrete requirements.';
 const DATA_FLOW_FILL =
@@ -232,7 +232,7 @@ ${RESEARCH_REGISTRY_SKELETON_SCOPE}
 <details>
 <summary>Полные записи Decision Log</summary>
 
-[D-NNN entries.]
+[<ACR>-DL-N entries per DECISION_LOG_ENTRY_FORMAT.]
 
 </details>
 <!--/SECTION:DECISION_LOG-->
@@ -244,8 +244,8 @@ ${RESEARCH_REGISTRY_SKELETON_SCOPE}
 <details>
 <summary>Таблица предусловий</summary>
 
-| Requirement | Kind | Owner | Resolution |
-|---|---|---|---|
+| Requirement | Kind | Owner | Resolution | Readiness Gates | Gate Artifacts |
+|---|---|---|---|---|---|
 <!-- Empty list allowed only when STEP_7 audit produced zero external assumptions — declare explicitly. -->
 
 </details>
@@ -432,7 +432,7 @@ ${RESEARCH_REGISTRY_SKELETON_SCOPE}
 <details>
 <summary>Полные записи Decision Log</summary>
 
-[D-NNN entries.]
+[<ACR>-DL-N entries per DECISION_LOG_ENTRY_FORMAT.]
 
 </details>
 <!--/SECTION:DECISION_LOG-->
@@ -444,8 +444,8 @@ ${RESEARCH_REGISTRY_SKELETON_SCOPE}
 <details>
 <summary>Таблица предусловий</summary>
 
-| Requirement | Kind | Owner | Resolution |
-|---|---|---|---|
+| Requirement | Kind | Owner | Resolution | Readiness Gates | Gate Artifacts |
+|---|---|---|---|---|---|
 <!-- Empty list allowed only when STEP_7 audit produced zero external assumptions — declare explicitly. -->
 
 </details>
@@ -592,7 +592,7 @@ ${REQUIREMENTS_LIST_SKELETON}
 ### Tool Choices
 | Category | Tool | Rationale |
 |---|---|---|
-| <category> | <tool> | D-NNN |
+| <category> | <tool> | <ACR>-DL-N |
 
 ### Integration Detail
 [Для каждого выбранного инструмента — поля интеграции ниже. Заполняются на стадии решения; если
@@ -624,7 +624,7 @@ ${REQUIREMENTS_LIST_SKELETON}
 
 | Rule | Category | Source |
 |---|---|---|
-| <rule-name> | coding | infra (D-NNN) |
+| <rule-name> | coding | infra (<ACR>-DL-N) |
 
 </details>
 <!--/SECTION:EFFECTIVE_RULES-->
@@ -635,7 +635,7 @@ ${REQUIREMENTS_LIST_SKELETON}
 | Command Name      | Invocation          |
 | typecheck-command | <actual invocation> |
 | test-command      | <actual invocation> |
-| coverage-command  | <actual invocation — name the coverage provider too, e.g. \`@vitest/coverage-v8\`> |
+| coverage-command  | <actual read/check invocation — name the coverage provider too, e.g. \`@vitest/coverage-v8\`; MUST NOT rerun the suite> |
 | lint-command      | <actual invocation> |
 | format-command    | <actual invocation> |
 | check-command     | <actual invocation> |
@@ -643,13 +643,16 @@ ${REQUIREMENTS_LIST_SKELETON}
 
 Include only command names for tools present in the chosen stack. \`coverage-command\` is **required**
 whenever the project declares a coverage threshold gate — a threshold with no declared provider is a
-gate nobody can run.
+gate nobody can run. It reads/checks the report produced by the platform's phase/full verifier and
+MUST NOT own a second test-suite run.
 \`check-command\` and \`fix-command\` are wrappers for humans, CI, and the pre-commit hook — with the
-runtime setup rule (\`nodejs-npm-setup\` or equivalent) active they resolve to
-\`npx gennady sdd-verify --profile full\` and \`npm run format:fix && npm run lint:fix\`. Task tickets
-do NOT cite them, and they do NOT put the phase ladder line in §Verification either: STEP_5 of the
-phase protocol already runs \`npx gennady sdd-verify --profile <phase kind>\` itself, so a row for it
-would make every phase run the whole ladder twice. §Verification carries ONLY the extra commands
+runtime setup rule (\`nodejs-npm-setup\` or equivalent) active they resolve to the read-only
+\`npx gennady sdd-verify --profile full\` and a whole-project wrapper that passes broad roots to the
+declared argument-forwarding repair prefixes. The phase runtime boundary, not this static shape,
+proves the actual write-zone. Task tickets do NOT cite them, and they do NOT put the phase
+ladder line in §Verification either: STEP_5 already runs
+\`npx gennady sdd-verify --task <ticket-path> --phase <PhaseID>\`, so a row for it would make every
+phase run the ladder twice. §Verification carries ONLY the extra commands
 beyond that gate — one row per additional alias here (e.g. \`coverage-command\`).
 
 [Инвариант: команды образуют конвейер, а не список — артефакты одной команды не должны ронять
@@ -666,7 +669,7 @@ ${RESEARCH_REGISTRY_SKELETON_SCOPE}
 <details>
 <summary>Полные записи Decision Log</summary>
 
-[D-NNN entries.]
+[<ACR>-DL-N entries per DECISION_LOG_ENTRY_FORMAT.]
 
 </details>
 <!--/SECTION:DECISION_LOG-->
@@ -678,8 +681,8 @@ ${RESEARCH_REGISTRY_SKELETON_SCOPE}
 <details>
 <summary>Таблица предусловий</summary>
 
-| Requirement | Kind | Owner | Resolution |
-|---|---|---|---|
+| Requirement | Kind | Owner | Resolution | Readiness Gates | Gate Artifacts |
+|---|---|---|---|---|---|
 
 <!-- Kind ∈ package | workspace-link | tool | file | external-type | env | service | structural -->
 <!-- Owner ∈ this-scope-task | external-prereq-scope | operator-action -->
@@ -739,7 +742,7 @@ const INFRASTRUCTURE_SECTIONS: SectionManifestEntry[] = [
     required: true,
     loadBearing: true,
     fold: false,
-    fill: 'Categories covered plus rationale for exclusions, the Category/Tool/Rationale (D-NNN) choices table, and per-tool Integration Detail (Version/API, needed methods, integration sketch, constraints — research if unknown at write time).',
+    fill: 'Categories covered plus rationale for exclusions, the Category/Tool/Rationale (<ACR>-DL-N) choices table, and per-tool Integration Detail (Version/API, needed methods, integration sketch, constraints — research if unknown at write time).',
   },
   {
     name: 'WORKFLOW_EXAMPLE',
@@ -866,7 +869,7 @@ ${RESEARCH_REGISTRY_SKELETON_SCOPE}
 <details>
 <summary>Полные записи Decision Log</summary>
 
-[D-NNN entries.]
+[<ACR>-DL-N entries per DECISION_LOG_ENTRY_FORMAT.]
 
 </details>
 <!--/SECTION:DECISION_LOG-->
@@ -878,8 +881,8 @@ ${RESEARCH_REGISTRY_SKELETON_SCOPE}
 <details>
 <summary>Таблица предусловий</summary>
 
-| Requirement | Kind | Owner | Resolution |
-|---|---|---|---|
+| Requirement | Kind | Owner | Resolution | Readiness Gates | Gate Artifacts |
+|---|---|---|---|---|---|
 <!-- Empty list allowed only when STEP_7 audit produced zero external assumptions — declare explicitly. -->
 
 </details>
@@ -1088,7 +1091,7 @@ ${RESEARCH_REGISTRY_SKELETON_MODULE}
 <details>
 <summary>Полные записи Decision Log</summary>
 
-[D-NNN entries at module level per \`DECISION_LOG_ENTRY_FORMAT\`. Cross-module or cross-scope → scope spec or contracts spec.]
+[<ACR>-DL-N entries at module level per \`DECISION_LOG_ENTRY_FORMAT\`. Cross-module or cross-scope → scope spec or contracts spec.]
 
 </details>
 <!--/SECTION:MODULE_DECISION_LOG-->
@@ -1201,7 +1204,7 @@ const MODULE_SECTIONS: SectionManifestEntry[] = [
     required: false,
     loadBearing: false,
     fold: true,
-    fill: 'One-line summary of recorded decisions; full D-NNN entries per DECISION_LOG_ENTRY_FORMAT fold under <details>.',
+    fill: 'One-line summary of recorded decisions; full <ACR>-DL-N entries per DECISION_LOG_ENTRY_FORMAT fold under <details>.',
   },
   {
     name: 'HANDOFF',
@@ -1263,6 +1266,10 @@ const TASK_SKELETON = `# Task: <ACRONYM>-<slug> — <Task Title>
   - [<PortName>](<spec anchor>)
 - **Target Files:**
   - <path>
+- **Deleted Files:**
+  - none   <!-- or exact repo-local tracked paths already absent when verification runs -->
+- **Readiness Gates:**   <!-- bootstrap phase only: exact gates this phase creates, copied from the owning Bootstrap Requirements row; omit otherwise -->
+  - <gate>
 - **Entities:** <ContractName, ...>   <!-- impl/refactor phases: the exported entities (verbatim from the module Entity Inventory) THIS phase implements — the structural, filename-independent ownership source a Deferred Implementation marker (pointing at this ticket) resolves against; omit for test/config/doc phases -->
 - **Inputs:** none   <!-- or "P1 handoff" -->
 - **Exit:** <verifiable criterion>
@@ -1277,6 +1284,10 @@ const TASK_SKELETON = `# Task: <ACRONYM>-<slug> — <Task Title>
   - [<PortName>](<spec anchor>)
 - **Target Files:**
   - <path>
+- **Deleted Files:**
+  - none   <!-- or exact repo-local tracked paths already absent when verification runs -->
+- **Readiness Gates:**   <!-- omit unless this exact phase creates declared readiness gates -->
+  - <gate>
 - **Inputs:** P1 handoff
 - **Exit:** <verifiable criterion>
 <!--/SECTION:PHASE_P2-->
@@ -1299,13 +1310,21 @@ use-case → \`[<ACRONYM>-REQ-N]\` → vision chain the operator reviews at scaf
 
 <!--SECTION:VERIFICATION-->
 ## Verification
-Гейт фазы — \`npx gennady sdd-verify --profile <profile>\` — выполняется на STEP_5; в таблицу не дублируется.
+Гейт фазы — \`npx gennady sdd-verify --task <ticket-path> --phase <PhaseID>\` — выполняется на STEP_5; профиль и Target Files читаются из тикета, в таблицу не дублируется.
 
-| Command | Required by |
-|---------|-------------|
-| <resolved invocation> | <rule-id>, <rule-id> |
+<!--PHASE_RECEIPTS:v1-->
 
-<!-- NO sdd-verify row: STEP_5 runs the ladder itself, so a row here would run it twice. Rows: one per additional infra alias (e.g. coverage-command); none → a single | — | — | row. Phase-subagent runs only rows whose Required-by overlaps its phase Rules. -->
+<!--COVERAGE_POLICY:v1-->
+- **Coverage Policy:** <required | not-applicable>
+- **Coverage Owner Phase:** <P<N>; required only; omit for not-applicable>
+- **Coverage Reason:** <required only for not-applicable; omit this field for required>
+
+| Command | Required by | Role |
+|---------|-------------|------|
+| \`<resolved invocation>\` | <rule-id>, <rule-id> | <coverage | extra> |
+
+<!-- COMMAND CELL SERIALIZATION: wrap the exact runtime command in a Markdown code span. The outer backtick run MUST be strictly longer than every consecutive backtick run inside the command; do not escape or normalize inner bytes. The parser removes only that matching outer delimiter, so runtime bytes remain exact. Raw | outside the wrapper is a table separator. Do not XML-escape the command. -->
+<!-- NO sdd-verify row: STEP_5 invokes the CLI exactly once per attempt; the CLI runs the ladder plus applicable rows and writes their receipt. A failed attempt writes no receipt; retry after a fix is a new attempt. Coverage Policy is mandatory for COVERAGE_POLICY:v1. required → one test Coverage Owner Phase and exactly one resolved read/check command with Role=coverage whose Required-by is an owner-phase rule; not-applicable → concise reason, NO owner and NO coverage row. Every other resolved alias uses Role=extra; no rows → a single | — | — | extra | row. -->
 
 - **Task-specific Completion additions:** <list or "none beyond project baseline">
 <!--/SECTION:VERIFICATION-->
@@ -1322,7 +1341,6 @@ use-case → \`[<ACRONYM>-REQ-N]\` → vision chain the operator reviews at scaf
 ### Round 1 — <YYYY-MM-DD>, initial
 
 #### P1
-- [ ] \`<ts>\` ver \`<cmd>\` → \`<pass|fail>\` exit=\`<code>\`
 - [ ] \`<ts>\` DONE
 **Handoff →** artifacts: [...]; decisions: [...]; open: [...]
 
@@ -1332,7 +1350,7 @@ use-case → \`[<ACRONYM>-REQ-N]\` → vision chain the operator reviews at scaf
 
 <!--SECTION:DECISION_LOG-->
 ## Decision Log
-<!-- local decisions taken during execution, ADR-compact (\`<ACRONYM>-D-N · <statement>\` → why ↳ rejected). Omit if none beyond the spec. -->
+<!-- local decisions taken during execution, one-line \`<ACR>-DL-N\` per DECISION_LOG_ENTRY_FORMAT. Omit if none beyond the spec. -->
 <!--/SECTION:DECISION_LOG-->
 
 <!-- AUDIT_ROUNDS appended only after the first reopen-triggering audit (per the audit directive). -->
@@ -1358,7 +1376,7 @@ const TASK_SECTIONS: SectionManifestEntry[] = [
     required: true,
     loadBearing: false,
     fold: false,
-    fill: 'One anchored PHASE_P<N> section per row in Phases Overview: Objective, Rules (links only), optional Spec Refs (per-phase subset of Meta Spec References; omit to fall back to the full set), Target Files, Inputs, Exit criterion.',
+    fill: 'One anchored PHASE_P<N> section per row in Phases Overview: Objective, Rules, optional Spec Refs, existing Target Files, Deleted Files (`none` or tracked tombstones), Inputs, Exit criterion.',
   },
   {
     name: 'BDD',
@@ -1372,7 +1390,7 @@ const TASK_SECTIONS: SectionManifestEntry[] = [
     required: true,
     loadBearing: false,
     fold: false,
-    fill: 'Command/Required-by table — the EXTRA commands beyond the phase gate only (one row per infra alias), never an sdd-verify row (STEP_5 runs the ladder itself); the gate is named in a line above the table — plus task-specific completion additions.',
+    fill: 'Command/Required-by table — EXTRA commands beyond the phase ladder, never an sdd-verify row; STEP_5 invokes the CLI exactly once per attempt and only a successful attempt writes the phase receipt.',
   },
   {
     name: 'TEST_COVERAGE',
@@ -1386,7 +1404,7 @@ const TASK_SECTIONS: SectionManifestEntry[] = [
     required: true,
     loadBearing: false,
     fold: false,
-    fill: 'Round/phase event log — timestamps, verification runs, DONE lines, handoffs. Never fabricate a [x] with a placeholder still in it.',
+    fill: 'Round/phase event log — semantic events, CLI-owned phase receipts, DONE lines, handoffs. Never fabricate a [x] with a placeholder still in it.',
   },
   {
     name: 'DECISION_LOG',
@@ -1489,7 +1507,7 @@ graph TD
 | <ACR>-<slug> | <title> | <module> | <deps> | [ ] TODO | — |
 
 ## Decision Log (scope task level)
-[D-NNN for scope-level decomposition / planning choices.]
+[<ACR>-DL-N for scope-level decomposition / planning choices.]
 `;
 
 const SCOPE_INDEX_SECTIONS: SectionManifestEntry[] = [
@@ -1526,7 +1544,7 @@ const SCOPE_INDEX_SECTIONS: SectionManifestEntry[] = [
     required: false,
     loadBearing: false,
     fold: false,
-    fill: 'Scope-level decomposition/planning decisions, D-NNN, ADR-compact.',
+    fill: 'Scope-level decomposition/planning decisions, <ACR>-DL-N, ADR-compact.',
   },
 ];
 // #endregion END_SCOPE_INDEX
@@ -1542,8 +1560,8 @@ const PROJECT_INDEX_SKELETON = `# Project Tasks
 
 ## Project-Wide Conventions (declared once, inherited)
 - **File-header:** owned by the coding rule (\`@file\` / \`@consumers\` / \`@tasks\`), enforced by \`sdd-verify\`.
-- **Baseline Completion Rule:** a Round cannot go \`[x] DONE\` until — every phase \`[x]\`; every BDD scenario mapped to a test or \`Deferred Test Ownership\`; verification commands run with exit recorded; every entity beyond the Inventory logged \`intro …\`; a Handoff line closes each phase.
-- **Execution-Log token vocabulary:** \`intro <Entity> ← <reason>\` · \`decision <key>=<value> ← <reason>\` · \`tried <approach> → <result>\` · \`discovery <fact>\` · \`insight <observation> → <spec-section>\` · \`verified <tool>@<version> <summary>\` · \`ver <cmd> → pass|fail exit=<N>\` · \`BLOCKED <cause>\` · \`DONE\`. A \`[x]\` line with an unreplaced \`<…>\` placeholder is fabricated (BLOCKER).
+- **Baseline Completion Rule:** a Round cannot go \`[x] DONE\` until — every phase \`[x]\` with a current CLI-owned verification receipt; every BDD scenario mapped to a test or \`Deferred Test Ownership\`; every entity beyond the Inventory logged \`intro …\`; a semantic Handoff line closes each phase.
+- **Execution-Log token vocabulary:** \`intro <Entity> ← <reason>\` · \`decision <key>=<value> ← <reason>\` · \`tried <approach> → <result>\` · \`discovery <fact>\` · \`insight <observation> → <spec-section>\` · \`verified <tool>@<version> <summary>\` · CLI-owned \`SDD_PHASE_RECEIPT\` · \`BLOCKED <cause>\` · \`DONE\`. A \`[x]\` line with an unreplaced \`<…>\` placeholder is fabricated (BLOCKER).
 - **Post-task hook:** after a Round closes the orchestrator runs audit; until PASS the round is closed-but-unverified and dependents are blocked.
 
 ## Cross-Scope DAG
@@ -1561,7 +1579,7 @@ graph TD
 | backend | product | [3-tasks](./backend/backend.3-tasks.md) | 12 | 0/12 |
 
 ## Decision Log (project task level)
-[D-NNN when the operator made non-default cross-scope choices.]
+[<ACR>-DL-N when the operator made non-default cross-scope choices.]
 `;
 
 const PROJECT_INDEX_SECTIONS: SectionManifestEntry[] = [
@@ -1598,7 +1616,7 @@ const PROJECT_INDEX_SECTIONS: SectionManifestEntry[] = [
     required: false,
     loadBearing: false,
     fold: false,
-    fill: 'Cross-scope decomposition/planning decisions, D-NNN, ADR-compact.',
+    fill: 'Cross-scope decomposition/planning decisions, <ACR>-DL-N, ADR-compact.',
   },
 ];
 // #endregion END_PROJECT_INDEX
@@ -1641,7 +1659,7 @@ graph TD
 Vision, а рядом: Vision держит целевое состояние целиком, здесь фиксируется что сознательно
 отложено/отвергнуто и почему.>
 
-- D-001 <date> — v1 без бэкенда (почему: быстрее показать локальный сценарий; отложено до: этап синхронизации; риск: придётся менять модель хранения данных)
+- <ACR>-DL-1 <date> — v1 без бэкенда (почему: быстрее показать локальный сценарий; отложено до: этап синхронизации; риск: придётся менять модель хранения данных)
 `;
 
 const PORTAL_SECTIONS: SectionManifestEntry[] = [
@@ -1770,7 +1788,7 @@ const RESEARCH_SKELETON = `# Research: <topic-title>
 <!--SECTION:RELATED-->
 ## Related
 - **Scope spec:** [<scope>.spec.md](../<scope>.spec.md)
-- **Decision Log entry:** D-NNN
+- **Decision Log entry:** <ACR>-DL-N
 - **Superseded by:**   <!-- пусто при создании; заполняется при superseded-by -->
 <!--/SECTION:RELATED-->
 `;
@@ -1837,7 +1855,7 @@ const RESEARCH_SECTIONS: SectionManifestEntry[] = [
     required: false,
     loadBearing: false,
     fold: false,
-    fill: 'Links to the scope spec, the Decision Log entry (D-NNN), and superseded-by (present but empty at creation).',
+    fill: 'Links to the scope spec, the Decision Log entry (<ACR>-DL-N), and superseded-by (present but empty at creation).',
   },
 ];
 // #endregion END_RESEARCH

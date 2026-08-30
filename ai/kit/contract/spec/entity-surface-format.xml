@@ -15,12 +15,12 @@
       - **Consumers:**
         - Internal: `<path/to/file.ts>` or `<OtherEntityName>`
         - External: <CLI / External API / Browser / OS Event Bus / ...>
-      - **Usage Waiver:** <omit when usage is >= 2 in production code> <why this entity exists despite few usages> [D-NNN — only when a Decision Log entry actually backs the reason]
+      - **Usage Waiver:** <omit when usage is >= 2 in production code> <why this entity exists despite few usages> [<ACR>-DL-N — only when a Decision Log entry actually backs the reason]
       ```
 
       **Usage Waiver** (`AX_USAGE_WAIVER_DISCIPLINE`, gennady yagni): same rule as `DBC_PORT_FORMAT`
       (`dbc-contracts.xml`) — a `<2`-usage entity is a YAGNI finding unless this field carries a real
-      reason. Cite a `D-NNN` only when the reason IS a Decision Log entry (a genuine, non-obvious
+      reason. Cite an `<ACR>-DL-N` only when the reason IS a Decision Log entry (a genuine, non-obvious
       call); when cited, it must have a heading in some Decision Log. Set by the agent, never the
       operator; omit entirely once usage clears the threshold. Public API for a named external
       consumer uses `- **Usage Waiver (external: <named consumer>):** <reason>` — the rule still

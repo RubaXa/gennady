@@ -10,30 +10,30 @@
 
 _Это полный список сущностей модуля. Любое введение сущности execution-агентом помимо этого списка считается drift'ом и требует обновления spec._
 
-| Name                   | Type         | Purpose                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| ---------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `LintCommand`          | Service      | CLI-обвязка: parseArgs, сбор файлов из директорий (рекурсивно), git scan (`--staged`), цикл по файлам, агрегация ошибок, резолвинг связанных spec/task файлов для ошибочных файлов, вывод в ESLint-формате                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| `LintError`            | Value Object | Единый тип ошибки: `file`, `line`, `col`, `severity`, `code`, `message`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| `LintOptions`          | Value Object | Опции запуска: `files` (абсолютные пути после `resolveTargets`), `autofix`, `gitMode`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| `LintReport`           | Value Object | Результат линтинга: `errors`, `autoFixed`, `taskPaths`, `specPaths`, `exitCode`, `format()`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| `FileHeaderCheck`      | Service      | Проверка `// @file:` и `// @consumers:` в начале файла                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| `LanguageCheck`        | Service      | Проверка языка: JSDoc-контракты и file headers (`@file:`, `@consumers:`) — только английский. Кириллица → `ERR_CLI_LINT_NON_ENGLISH`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| `AnchorCheck`          | Service      | Проверка парности и вложенности `// #region START/END`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| `DbcContractCheck`     | Service      | Адаптер к `DbcTsLinter`: вызов `lint()` / `lintAndFix()` с контентом                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| `DisablesCheck`        | Service      | Проверка дисциплины отключений TypeScript / линтера (`@ts-ignore`, `@ts-nocheck`, `@ts-expect-error`, `eslint-disable*`): каждый маркер обязан в той же строке нести (a) ссылку `D-\d+` на Decision Log, (b) purpose (≥ 8 непробельных символов после удаления маркера и токена `D-NNN`). Реализация политики D-007 из `cli.spec.md`.                                                                                                                                                                                                                                                                                                                                                                                    |
-| `InvariantCountCheck`  | Service      | Проверка лимита инвариантов: подсчитывает `@invariant` в JSDoc-контрактах и `invariant:` в регион-комментариях на каждую экспортируемую сущность. Превышение порога → `ERR_CLI_LINT_TOO_MANY_INVARIANTS`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| `AnchorClassBodyCheck` | Service      | Проверка, что `// #region START` / `// #endregion END` не находятся на уровне тела класса (между декларациями методов). Допустимы только внутри тел методов/функций/геттеров/сеттеров. Нарушение → `ERR_CLI_LINT_ANCHOR_AT_CLASS_BODY`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| `AnchorThinCheck`      | Service      | Проверка минимальной наполненности регионов: внутри `#region START` / `#endregion END` должно быть ≥ 2 meaningful строк кода (не пустых, не комментариев, не маркеров региона). Регионы, оборачивающие только комментарии — ошибка с предложением оставить комментарий и убрать обёртку. Нарушение → `ERR_CLI_LINT_ANCHOR_TOO_THIN`.                                                                                                                                                                                                                                                                                                                                                                                     |
-| `WordCountCheck`       | Service      | Проверка длины описаний JSDoc-тегов и file-header строк: считает слова (split по пробелам) в `@param`, `@returns`, `@purpose`, `@implements`, `@invariant`, `@sideEffect`, `@consumer`, `@see` и `// @file:`, `// @consumers:`. Описание = текст от тега до следующего тега или `*/`. Превышение порога → `ERR_CLI_LINT_TAG_TOO_MANY_WORDS`. Порог по умолчанию: 25 слов, настраивается через `--max-words <n>`.                                                                                                                                                                                                                                                                                                         |
-| `RegionCommentCheck`   | Service      | Проверка количества комментариев в теле региона и длины START-аннотации. Считает любые `//` и `/*` строки внутри региона (исключая маркеры `#region`/`#endregion`). Аннотация на START-строке проверяется на лимит слов (по умолчанию 30, не настраивается). Комментарии в теле — абсолютный лимит (по умолчанию 3), настраивается через `--max-region-comments <n>`. Нарушения → `ERR_CLI_LINT_REGION_TOO_MANY_COMMENTS`, `ERR_CLI_LINT_REGION_START_ANNOTATION_TOO_LONG`. Вложенные регионы: комментарии внутренних регионов засчитываются внешним. Дополняет `AnchorThinCheck`, не заменяет.                                                                                                                          |
-| `InventorySyncCheck`   | Service      | Активируется только с `--spec=<module-spec>`. Прямое направление: экспорт файла отсутствует в Entity Inventory спеки → `ERR_CLI_LINT_INVENTORY_UNDECLARED` (по каждому файлу). Обратное направление (только с `--inventory-reverse <dir>`): после полного обхода `<dir>` каждая сущность инвентаря обязана быть реализована → `ERR_CLI_LINT_INVENTORY_UNIMPLEMENTED` (ошибка на файле спеки). Исключение — ТОЛЬКО валидный `Deferred Implementation` по D-018: существующий активный (`TODO`/`IN_PROGRESS`) same-scope тикет со структурным ownership. Невалидный marker остаётся `ERR_CLI_LINT_INVENTORY_UNIMPLEMENTED`; marker на уже реализованной сущности → `ERR_CLI_LINT_INVENTORY_STALE_DEFERRAL` (D-016, D-018). |
+| Name                   | Type         | Purpose                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| ---------------------- | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `LintCommand`          | Service      | CLI-обвязка: parseArgs, сбор файлов из директорий (рекурсивно), git scan (`--staged`), цикл по файлам, агрегация ошибок, резолвинг связанных spec/task файлов для ошибочных файлов, вывод в ESLint-формате                                                                                                                                                                                                                                                                                                                                                                                      |
+| `LintError`            | Value Object | Единый тип ошибки: `file`, `line`, `col`, `severity`, `code`, `message`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `LintOptions`          | Value Object | Опции запуска: `files` (абсолютные пути после `resolveTargets`), `autofix`, `gitMode`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `LintReport`           | Value Object | Результат линтинга: `errors`, `autoFixed`, `taskPaths`, `specPaths`, `exitCode`, `format()`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `FileHeaderCheck`      | Service      | Проверка `// @file:` и `// @consumers:` в начале файла                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| `LanguageCheck`        | Service      | Проверка языка: JSDoc-контракты и file headers (`@file:`, `@consumers:`) — только английский. Кириллица → `ERR_CLI_LINT_NON_ENGLISH`.                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `AnchorCheck`          | Service      | Проверка парности и вложенности `// #region START/END`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| `DbcContractCheck`     | Service      | Адаптер к `DbcTsLinter`: вызов `lint()` / `lintAndFix()` с контентом                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `DisablesCheck`        | Service      | Проверка дисциплины отключений TypeScript / линтера (`@ts-ignore`, `@ts-nocheck`, `@ts-expect-error`, `eslint-disable*`): каждый маркер обязан в той же строке нести (a) ссылку `D-\d+` на Decision Log, (b) purpose (≥ 8 непробельных символов после удаления маркера и токена `D-NNN`). Реализация политики D-007 из `cli.spec.md`.                                                                                                                                                                                                                                                           |
+| `InvariantCountCheck`  | Service      | Проверка лимита инвариантов: подсчитывает `@invariant` в JSDoc-контрактах и `invariant:` в регион-комментариях на каждую экспортируемую сущность. Превышение порога → `ERR_CLI_LINT_TOO_MANY_INVARIANTS`.                                                                                                                                                                                                                                                                                                                                                                                       |
+| `AnchorClassBodyCheck` | Service      | Проверка, что `// #region START` / `// #endregion END` не находятся на уровне тела класса (между декларациями методов). Допустимы только внутри тел методов/функций/геттеров/сеттеров. Нарушение → `ERR_CLI_LINT_ANCHOR_AT_CLASS_BODY`.                                                                                                                                                                                                                                                                                                                                                         |
+| `AnchorThinCheck`      | Service      | Проверка минимальной наполненности регионов: внутри `#region START` / `#endregion END` должно быть ≥ 2 meaningful строк кода (не пустых, не комментариев, не маркеров региона). Регионы, оборачивающие только комментарии — ошибка с предложением оставить комментарий и убрать обёртку. Нарушение → `ERR_CLI_LINT_ANCHOR_TOO_THIN`.                                                                                                                                                                                                                                                            |
+| `WordCountCheck`       | Service      | Два семантических prose-budget: file headers (24) и JSDoc contracts (30). Синтаксис тега/параметра/типа и голые URL/path/reference/identifier не считаются прозой; multiline-описание принадлежит тегу до следующего тега/`*/`. Typed override имеет приоритет над legacy `--max-words`.                                                                                                                                                                                                                                                                                                        |
+| `RegionCommentCheck`   | Service      | Проверка количества комментариев в теле региона и длины START-аннотации. Считает любые `//` и `/*` строки внутри региона (исключая маркеры `#region`/`#endregion`). Аннотация на START-строке проверяется на лимит слов (по умолчанию 30, не настраивается). Комментарии в теле — абсолютный лимит (по умолчанию 3), настраивается через `--max-region-comments <n>`. Нарушения → `ERR_CLI_LINT_REGION_TOO_MANY_COMMENTS`, `ERR_CLI_LINT_REGION_START_ANNOTATION_TOO_LONG`. Вложенные регионы: комментарии внутренних регионов засчитываются внешним. Дополняет `AnchorThinCheck`, не заменяет. |
+| `InventorySyncCheck`   | Service      | Активируется с `--spec=<module-spec>` только для production targets. Recognized test targets продолжают обычный lint, но не участвуют в production Entity Inventory. Прямое направление: production-экспорт вне inventory → `ERR_CLI_LINT_INVENTORY_UNDECLARED`. Обратное: каждая сущность обязана иметь production-реализацию → `ERR_CLI_LINT_INVENTORY_UNIMPLEMENTED`; test-only export её не удовлетворяет. Deferral — только валидный active same-scope structural owner (D-018, D-019).                                                                                                    |
 
 ## 3. Entity Surfaces
 
 ### `LintCommand`
 
 - **Type:** Service
-- **Purpose:** Точка входа команды `gennady lint`. Парсинг аргументов, резолвинг целей (файлы + директории → плоский список `.ts`/`.tsx`), оркестрация проверок, резолвинг ссылок на spec/task файлы (только для файлов с ошибками), вывод.
+- **Purpose:** Точка входа `gennady lint`: резолвинг целей, оркестрация проверок и вывод. В `--autofix` сначала применяет DbC fixes, затем перечитывает файл с диска и запускает полный read-only набор проверок над post-state; exit 0 означает чистый post-state.
 - **Public Operations:**
   - `run(args: string[]) → Promise<LintReport>` — выполнить линтинг
   - `resolveTargets(targets: string[]) → { files: string[]; errors: LintError[] }` — рекурсивно обойти директории, собрать файлы поддерживаемых расширений. `files` — уникальный, отсортированный список абсолютных путей к `.ts`/`.tsx`. `errors` — ошибки для целей, которые не удалось обработать (ENOENT, EACCES). Файлы других расширений молча игнорируются
@@ -81,10 +81,10 @@ _Это полный список сущностей модуля. Любое в
   - `autoFixed: number` — количество авто-исправленных ошибок
   - `taskPaths: string[]` — пути к task-файлам, связанным с ошибочными файлами
   - `specPaths: string[]` — пути к spec-файлам, связанным с ошибочными файлами
-  - `exitCode: 0 | 1`
+  - `exitCode: 0 | 1 | 4` (`4` — argv rejected before linting)
   - `guidance?: string` — agent guidance, генерируется `buildGuidance()`
 - **Public Operations:**
-  - `format() → string` — ESLint-формат: `file:line:col: severity: code: message`. Если есть ошибки — также выводит блок `Relevant specs & tasks for errors above:` с путями к связанным spec/task файлам. Если `autoFixed > 0` — первую строку `Auto-fixed: N error(s)`. | `LintReport` | `errors: LintError[]`, `autoFixed: number`, `taskPaths: string[]`, `specPaths: string[]`, `exitCode: 0 \| 1`, `guidance?: string`, `format(): string` |
+  - `format() → string` — ESLint-формат: `file:line:col: severity: code: message`. Если есть ошибки — также выводит блок `Relevant specs & tasks for errors above:` с путями к связанным spec/task файлам. Если `autoFixed > 0` — первую строку `Auto-fixed: N error(s)`. | `LintReport` | `errors: LintError[]`, `autoFixed: number`, `taskPaths: string[]`, `specPaths: string[]`, `exitCode: 0 \| 1 \| 4`, `guidance?: string`, `format(): string` |
 - **Lifecycle:** immutable value object
 - **Consumers:**
   - Internal: `LintCommand` (вывод в stdout)
@@ -154,13 +154,13 @@ _Это полный список сущностей модуля. Любое в
 
 ### Value Objects
 
-| Name                      | Key Properties                                                                                                                                        |
-| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `LintError`               | `file: string`, `line: number`, `col: number`, `severity: 'error'`, `code: string`, `message: string`                                                 |
-| `LintOptions`             | `files: string[]`, `autofix: boolean`, `gitMode?: 'staged'`                                                                                           |
-| `LintReport`              | `errors: LintError[]`, `autoFixed: number`, `taskPaths: string[]`, `specPaths: string[]`, `exitCode: 0 \| 1`, `guidance?: string`, `format(): string` |
-| `ReverseSweepResult`      | `errors: LintError[]`, `deferred: DeferredInventoryEntity[]` — результат обратной сверки `--inventory-reverse` (D-016)                                |
-| `DeferredInventoryEntity` | `name: string`, `taskId: string` — declared-сущность с маркером `Deferred Implementation: <TSK-id>`                                                   |
+| Name                      | Key Properties                                                                                                                                             |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `LintError`               | `file: string`, `line: number`, `col: number`, `severity: 'error'`, `code: string`, `message: string`                                                      |
+| `LintOptions`             | `files: string[]`, `autofix: boolean`, `gitMode?: 'staged'`                                                                                                |
+| `LintReport`              | `errors: LintError[]`, `autoFixed: number`, `taskPaths: string[]`, `specPaths: string[]`, `exitCode: 0 \| 1 \| 4`, `guidance?: string`, `format(): string` |
+| `ReverseSweepResult`      | `errors: LintError[]`, `deferred: DeferredInventoryEntity[]` — результат обратной сверки `--inventory-reverse` (D-016)                                     |
+| `DeferredInventoryEntity` | `name: string`, `taskId: string` — declared-сущность с маркером `Deferred Implementation: <TSK-id>`                                                        |
 
 ### Error Codes
 
@@ -181,6 +181,8 @@ ERR_CLI_LINT_ANCHOR_AT_CLASS_BODY    = 'ERR_CLI_LINT_ANCHOR_AT_CLASS_BODY'
 ERR_CLI_LINT_ANCHOR_CONSECUTIVE_START = 'ERR_CLI_LINT_ANCHOR_CONSECUTIVE_START'
 ERR_CLI_LINT_ANCHOR_TOO_THIN        = 'ERR_CLI_LINT_ANCHOR_TOO_THIN'
 ERR_CLI_LINT_TAG_TOO_MANY_WORDS      = 'ERR_CLI_LINT_TAG_TOO_MANY_WORDS'
+ERR_CLI_LINT_BAD_WORD_LIMIT           = 'ERR_CLI_LINT_BAD_WORD_LIMIT'
+ERR_CLI_LINT_BAD_INVOCATION           = 'ERR_CLI_LINT_BAD_INVOCATION'
 ERR_CLI_LINT_REGION_TOO_MANY_COMMENTS = 'ERR_CLI_LINT_REGION_TOO_MANY_COMMENTS'
 ERR_CLI_LINT_REGION_START_ANNOTATION_TOO_LONG = 'ERR_CLI_LINT_REGION_START_ANNOTATION_TOO_LONG'
 ERR_CLI_LINT_INVENTORY_UNDECLARED  = 'ERR_CLI_LINT_INVENTORY_UNDECLARED'
@@ -448,11 +450,11 @@ ERR_CLI_LINT_INVENTORY_REVERSE_NEEDS_SPEC = 'ERR_CLI_LINT_INVENTORY_REVERSE_NEED
 ### `WordCountCheck`
 
 - **Type:** Service
-- **Purpose:** Проверка длины описаний JSDoc-тегов и file-header строк. Считает слова (split по пробелам) в описании каждого тега. Граница описания — от имени тега до следующего тега или закрывающего `*/`. File-header строки (`// @file:`, `// @consumers:`) проверяются до первого `import`.
+- **Purpose:** Проверка двух разных когнитивных бюджетов: file-header prose и JSDoc contract prose. Считает семантические слова описания, а не синтаксис тега, имя/type параметра или голый URL/path/reference/identifier. Граница multiline-описания — до следующего поддерживаемого тега или `*/`; file-header строки проверяются до первого `import`.
 - **Public Operations:**
-  - `check(content: string, filePath: string, maxWords: number) → LintError[]` — проверить файл на превышение лимита слов
+  - `check(content: string, filePath: string, limits: WordBudgetLimits | number) → LintError[]` — проверить typed budgets; число сохраняет legacy direct-call semantics для обеих категорий
 - **Lifecycle:** stateless; pure function
-- **Errors & Degradation:** Не кидает исключений. Превышение `maxWords` → `ERR_CLI_LINT_TAG_TOO_MANY_WORDS`.
+- **Errors & Degradation:** Не кидает исключений. Превышение applicable category limit → `ERR_CLI_LINT_TAG_TOO_MANY_WORDS` с category/count/limit и просьбой переписать контракт целиком; autofix прозу не меняет.
 - **Consumers:**
   - Internal: `LintCommand`
   - External: N/A
@@ -462,13 +464,13 @@ ERR_CLI_LINT_INVENTORY_REVERSE_NEEDS_SPEC = 'ERR_CLI_LINT_INVENTORY_REVERSE_NEED
 - Preconditions:
   - `content` — непустая строка
   - `filePath` — путь к файлу (для сообщений об ошибках)
-  - `maxWords` — целое число ≥ 1 (порог, по умолчанию 25)
+  - category limits — целые числа ≥ 1 (defaults: header 24, contract 30)
 - Postconditions:
   - Возвращает `LintError[]` (пустой — все описания в пределах лимита)
-  - Каждый JSDoc-тег (`@param`, `@returns`, `@purpose`, `@implements`, `@invariant`, `@sideEffect`, `@consumer`, `@see`) с описанием > `maxWords` слов → `ERR_CLI_LINT_TAG_TOO_MANY_WORDS`
-  - Каждая file-header строка (`// @file:`, `// @consumers:`) с > `maxWords` слов → `ERR_CLI_LINT_TAG_TOO_MANY_WORDS`
+  - Каждый поддерживаемый JSDoc contract с semantic prose > contract limit → `ERR_CLI_LINT_TAG_TOO_MANY_WORDS`
+  - Каждая file-header строка (`// @file:`, `// @consumers:`) с semantic prose > header limit → та же category-specific ошибка
 - Invariants:
-  - Слова считаются split по пробелам, непустые токены
+  - Tag/type/param syntax и голые URL/path/reference/exact identifiers не расходуют prose budget
   - Граница описания JSDoc-тега: от имени тега до следующего `@`-тега или закрытия `*/`
   - File-header: проверяет только строки до первого `import`
   - Чистая функция, не зависит от внешнего состояния
@@ -507,10 +509,13 @@ ERR_CLI_LINT_INVENTORY_REVERSE_NEEDS_SPEC = 'ERR_CLI_LINT_INVENTORY_REVERSE_NEED
 | Option                  | Bound to                                    | Status        |
 | ----------------------- | ------------------------------------------- | ------------- |
 | `--autofix`             | `LintCommand.run()` → `DbcContractCheck`    | active (v1)   |
+| `--include-tests`       | `LintCommand.run()` → file filtering        | active (v2)   |
 | `--staged`              | `LintCommand.run()` → git scan              | active (v1)   |
 | `--max-invariants`      | `LintCommand.run()` → `InvariantCountCheck` | active (v1)   |
 | `--exclude`             | `LintCommand.run()` → file filtering        | active (v1)   |
 | `--max-words`           | `LintCommand.run()` → `WordCountCheck`      | active (v1)   |
+| `--max-header-words`    | `LintCommand.run()` → `WordCountCheck`      | active (v2)   |
+| `--max-contract-words`  | `LintCommand.run()` → `WordCountCheck`      | active (v2)   |
 | `--max-region-comments` | `LintCommand.run()` → `RegionCommentCheck`  | active (v1)   |
 | `--spec`                | `LintCommand.run()` → `InventorySyncCheck`  | active (v2)   |
 | `--inventory-reverse`   | `LintCommand.run()` → `InventorySyncCheck`  | active (v2)   |
@@ -524,6 +529,12 @@ ERR_CLI_LINT_INVENTORY_REVERSE_NEEDS_SPEC = 'ERR_CLI_LINT_INVENTORY_REVERSE_NEED
 - Передаётся в `InvariantCountCheck.check(content, filePath, maxInvariants)`
 
 **`--exclude` contract:**
+
+Все scalar/boolean options допускаются ровно один раз; scalar обязан иметь непустое значение.
+Единственное repeatable-исключение — `--exclude`, причём каждое его значение непустое. Ошибка формы
+argv останавливает команду до resolve/read/lint, печатает canonical usage и возвращает exit `4`.
+`--max-invariants` принимает safe integer ≥ 1, `--max-region-comments` — safe integer ≥ 0;
+частичный `parseInt` (`4x`), дробь, знак, `Infinity` и overflow недопустимы.
 
 - Тип: `string` (glob-паттерн), можно указывать несколько раз
 - Назначение: исключить файлы из линтинга по glob-паттерну, применённому к относительному пути от `cwd`
@@ -540,13 +551,27 @@ ERR_CLI_LINT_INVENTORY_REVERSE_NEEDS_SPEC = 'ERR_CLI_LINT_INVENTORY_REVERSE_NEED
 - Фильтрация применяется после сбора файлов (`resolveTargets` / `--staged`), перед линтингом
 - Glob-синтаксис: `*` (кроме `/`), `**` (включая `/`), `?` (один символ), `[...]` (класс символов)
 
+**`--include-tests` contract:** включает `**/__tests__/**` в полный lint/autofix pass. Fixtures,
+mocks и config-файлы остаются исключены; `--include-all` остаётся более широким режимом.
+Whole-project `lint`/`lint:fix` намеренно не используют этот флаг: оба имеют одинаковый production
+scope и не линтят intentional negative fixtures. Фазовый `sdd-verify` применяет `--include-tests`
+только к Target Files, структурно прочитанным из `--task ... --phase ...`, поэтому новый test-файл
+получает обычные header/DbC/word rules без захвата чужих тестов. При `--spec` recognized test targets
+структурно исключены только из production Entity Inventory forward/reverse accounting; production
+targets в том же вызове продолжают closed-world inventory check.
+
+**`--staged` contract:** собирает NUL-delimited пути двумя argv-safe вызовами Git: staged
+`ACMR` через `git diff --cached --name-only --diff-filter=ACMR -z --` и untracked через
+`git ls-files --others --exclude-standard -z --`. Существующие `.ts`/`.tsx` дедуплицируются;
+staged deletion не является lint target. Пользовательский `status.showUntrackedFiles` не влияет на выборку.
+
 **`--max-words` contract:**
 
 - Тип: `number`, целое ≥ 1
-- По умолчанию: `25`
-- Назначение: максимальное количество слов в описании JSDoc-тега или file-header строки
-- Передаётся в `WordCountCheck.check(content, filePath, maxWords)`
-- Слова считаются split по пробелам
+- Назначение: legacy/global override обоих typed limits; без флага не подменяет defaults
+- Typed `--max-header-words` / `--max-contract-words` имеют приоритет над ним для своей категории
+- Defaults без overrides: header 24, contract 30
+- Любое значение обязано быть целым ≥ 1; `4x`, `0`, отрицательное значение → `ERR_CLI_LINT_BAD_WORD_LIMIT`
 
 **`--max-region-comments` contract:**
 
@@ -566,7 +591,7 @@ ERR_CLI_LINT_INVENTORY_REVERSE_NEEDS_SPEC = 'ERR_CLI_LINT_INVENTORY_REVERSE_NEED
 **`--inventory-reverse` contract:**
 
 - Тип: `string` — директория модуля для полного обратного обхода
-- Требует `--spec`; без него — `ERR_CLI_LINT_INVENTORY_REVERSE_NEEDS_SPEC`, чек не выполняется
+- Требует `--spec`; без него — `ERR_CLI_LINT_INVENTORY_REVERSE_NEEDS_SPEC`, canonical usage и exit 4 до lint
 - Без явных позиционных целей директория из `--inventory-reverse` используется и как цель обхода (обычные чеки + прямой инвентарь), и как корень обратного обхода
 - После обхода: инвентарные сущности, не экспортированные ни одним просканированным файлом → `ERR_CLI_LINT_INVENTORY_UNIMPLEMENTED` (ошибка на файле спеки)
 - Сущность, помеченная маркером `Deferred Implementation: <TSK-id>`, исключается из ошибок ТОЛЬКО когда цитируемый тикет ВАЛИДНО ей владеет (D-016); иначе маркер — это drift, а не исключение. Валидность (`checkDeferral` + `ticketOwnsEntity`, D-018) требует: тикет существует в графе; его статус АКТИВНЫЙ — строго `TODO`/`IN_PROGRESS` (DONE/CANCELLED/BLOCKED/нераспознанный → drift); его скоуп совпадает со скоупом спеки, когда тот известен; и он СТРУКТУРНО владеет сущностью — её имя есть в поле `Entities:`/`Provides:`/`Implements:`/`Entity:` тикета ИЛИ в пути его Target Files (не в произвольной прозе). Валидно отложенная сущность собирается в `ReverseSweepResult.deferred` и печатается info-строкой; невалидная — `ERR_CLI_LINT_INVENTORY_UNIMPLEMENTED` с конкретной причиной. Отдельно: сущность, которая УЖЕ реализована, но всё ещё несёт маркер, — устаревший маркер → `ERR_CLI_LINT_INVENTORY_STALE_DEFERRAL`
@@ -581,21 +606,21 @@ ERR_CLI_LINT_INVENTORY_REVERSE_NEEDS_SPEC = 'ERR_CLI_LINT_INVENTORY_REVERSE_NEED
 
 **Правила обхода директорий:**
 
-| Правило                                   | Поведение                                                                                                 |
-| ----------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| Рекурсивность                             | По умолчанию, без флага `--recursive`                                                                     |
-| Фильтр расширений                         | Только `.ts`, `.tsx` (регистро-независимо). Остальные файлы — молча игнорируются, включая явно переданные |
-| Дедупликация                              | Файлы возвращаются уникальными. Если файл передан явно и он же найден в директории — один экземпляр       |
-| Сортировка                                | Результат отсортирован по абсолютному пути (детерминированный порядок)                                    |
-| Относительные пути                        | Нормализуются в абсолютные через `path.resolve()`                                                         |
-| Символические ссылки                      | Не следуем. `lstat` вместо `stat`; symlink-директории не обходятся                                        |
-| Скрытые директории (`.`-префикс)          | Пропускаются (`.git`, `.DS_Store`). Скрытые файлы — пропускаются                                          |
-| `node_modules`                            | Пропускается при рекурсивном обходе                                                                       |
-| `dist`, `coverage`, `build`, `out`        | Пропускаются при рекурсивном обходе                                                                       |
-| Пустая директория                         | Ошибок нет, файлов нет                                                                                    |
-| Несуществующий путь (`ENOENT`)            | Ошибка `ERR_CLI_LINT_RESOLVE_FAILED` в `errors[]`, цель пропускается                                      |
-| Нет прав на чтение (`EACCES`)             | Ошибка `ERR_CLI_LINT_RESOLVE_FAILED` в `errors[]`, цель пропускается                                      |
-| Спецсимволы / пробелы / кириллица в путях | Корректная обработка через `fs` API                                                                       |
+| Правило                                   | Поведение                                                                                                    |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Рекурсивность                             | По умолчанию, без флага `--recursive`                                                                        |
+| Фильтр расширений                         | Только `.ts`, `.tsx` (регистро-независимо). Остальные файлы — молча игнорируются, включая явно переданные    |
+| Дедупликация                              | Файлы возвращаются уникальными. Если файл передан явно и он же найден в директории — один экземпляр          |
+| Сортировка                                | Результат отсортирован по абсолютному пути (детерминированный порядок)                                       |
+| Относительные пути                        | Нормализуются в абсолютные через `path.resolve()`                                                            |
+| Символические ссылки                      | Явная symlink-цель и symlink `.ts`/`.tsx` под выбранной директорией → `ERR_CLI_LINT_READ_FAILED`; не следуем |
+| Скрытые директории (`.`-префикс)          | Пропускаются (`.git`, `.DS_Store`). Скрытые файлы — пропускаются                                             |
+| `node_modules`                            | Пропускается при рекурсивном обходе                                                                          |
+| `dist`, `coverage`, `build`, `out`        | Пропускаются при рекурсивном обходе                                                                          |
+| Пустая директория                         | Ошибок нет, файлов нет                                                                                       |
+| Несуществующий путь (`ENOENT`)            | Ошибка `ERR_CLI_LINT_RESOLVE_FAILED` в `errors[]`, цель пропускается                                         |
+| Нет прав на чтение (`EACCES`)             | Ошибка `ERR_CLI_LINT_RESOLVE_FAILED` в `errors[]`, цель пропускается                                         |
+| Спецсимволы / пробелы / кириллица в путях | Корректная обработка через `fs` API                                                                          |
 
 **Контракт `resolveTargets`:**
 
@@ -610,7 +635,7 @@ ERR_CLI_LINT_INVENTORY_REVERSE_NEEDS_SPEC = 'ERR_CLI_LINT_INVENTORY_REVERSE_NEED
   - Не кидает исключений (все ошибки — в возвращаемом `errors[]`)
   - Порядок `errors[]` соответствует порядку `targets[]`
   - Файлы в `node_modules` не попадают в результат даже при явной передаче директории `node_modules/`
-  - Не следует по симлинкам: `lstat` на каждом элементе, symlink → пропуск
+  - Не следует по симлинкам: `lstat` на каждом элементе. Явная symlink file/dir цель и symlink `.ts`/`.tsx`, выбранный обходом директории, дают `ERR_CLI_LINT_READ_FAILED`, чтобы уменьшенный набор не стал clean. Вложенная symlink-директория и symlink с неподдерживаемым расширением не обходятся и игнорируются по явной политике как не входящие в реализованный lint source-set
 
 ## 6. File Structure
 
@@ -664,56 +689,56 @@ cli/cmd/lint/
 
 ### Unit: `resolveTargets()` (изолированно, с моком `fs`)
 
-| ID    | Сценарий                                                             | Ожидаемый результат                                                                 |
-| ----- | -------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| UT-01 | Пустой массив целей                                                  | `{ files: [], errors: [] }`                                                         |
-| UT-02 | Один `.ts` файл (существует)                                         | `{ files: [absPath], errors: [] }`                                                  |
-| UT-03 | Один `.tsx` файл (существует)                                        | `{ files: [absPath], errors: [] }`                                                  |
-| UT-04 | Один `.js` файл (явно передан)                                       | `{ files: [], errors: [] }` — молча игнорируется                                    |
-| UT-05 | Директория с `.ts`, `.tsx`, `.js`, `.json`                           | `files` содержит только `.ts`/`.tsx`; `.js`/`.json` молча пропущены                 |
-| UT-06 | Вложенные директории (2 уровня)                                      | Рекурсивный сбор всех `.ts`/`.tsx` на всех уровнях                                  |
-| UT-07 | Расширение в верхнем регистре (`.TS`, `.TSX`)                        | Файлы попадают в `files` (регистро-независимое сравнение)                           |
-| UT-08 | Дубликат: файл + директория с этим же файлом                         | Файл в `files` ровно один раз                                                       |
-| UT-09 | Два одинаковых файла разными путями (symlink / relative vs absolute) | Дедупликация по `realpath`; один экземпляр                                          |
-| UT-10 | Несуществующий путь (`ENOENT`)                                       | `{ files: [], errors: [ERR_CLI_LINT_RESOLVE_FAILED] }`                              |
-| UT-11 | Нет прав на чтение (`EACCES`)                                        | `{ files: [], errors: [ERR_CLI_LINT_RESOLVE_FAILED] }`                              |
-| UT-12 | Смешанные цели: валидный файл + несуществующий + EACCES              | Валидный в `files`, ошибки в `errors[]`, порядок ошибок соответствует порядку целей |
-| UT-13 | Директория с symlink на другую директорию                            | Symlink-директория не обходится (пропуск)                                           |
-| UT-14 | Директория с symlink на `.ts` файл                                   | Symlink-файл не включается (пропуск)                                                |
-| UT-15 | Директория с циклическим symlink                                     | Не зависает; symlink не обходится                                                   |
-| UT-16 | Пустая директория                                                    | `{ files: [], errors: [] }`                                                         |
-| UT-17 | Директория только с неподдерживаемыми расширениями                   | `{ files: [], errors: [] }`                                                         |
-| UT-18 | `node_modules/` — передан явно                                       | `files: []`, содержимое `node_modules` не обходится                                 |
-| UT-19 | Скрытая директория (`.git/`)                                         | Пропускается при рекурсивном обходе                                                 |
-| UT-20 | `dist/`, `coverage/`, `build/`, `out/`                               | Пропускаются при рекурсивном обходе                                                 |
-| UT-21 | Сортировка: файлы из разных директорий                               | `files` отсортирован по абсолютному пути                                            |
-| UT-22 | Относительный путь → нормализация                                    | Все пути в `files` — абсолютные                                                     |
-| UT-23 | Пробелы в путях                                                      | Корректная обработка                                                                |
-| UT-24 | Кириллица в путях                                                    | Корректная обработка                                                                |
+| ID    | Сценарий                                                              | Ожидаемый результат                                                                 |
+| ----- | --------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| UT-01 | Пустой массив целей                                                   | `{ files: [], errors: [] }`                                                         |
+| UT-02 | Один `.ts` файл (существует)                                          | `{ files: [absPath], errors: [] }`                                                  |
+| UT-03 | Один `.tsx` файл (существует)                                         | `{ files: [absPath], errors: [] }`                                                  |
+| UT-04 | Один `.js` файл (явно передан)                                        | `{ files: [], errors: [] }` — молча игнорируется                                    |
+| UT-05 | Директория с `.ts`, `.tsx`, `.js`, `.json`                            | `files` содержит только `.ts`/`.tsx`; `.js`/`.json` молча пропущены                 |
+| UT-06 | Вложенные директории (2 уровня)                                       | Рекурсивный сбор всех `.ts`/`.tsx` на всех уровнях                                  |
+| UT-07 | Расширение в верхнем регистре (`.TS`, `.TSX`)                         | Файлы попадают в `files` (регистро-независимое сравнение)                           |
+| UT-08 | Дубликат: файл + директория с этим же файлом                          | Файл в `files` ровно один раз                                                       |
+| UT-09 | Два одинаковых файла разными путями (symlink / relative vs absolute)  | Дедупликация по `realpath`; один экземпляр                                          |
+| UT-10 | Несуществующий путь (`ENOENT`)                                        | `{ files: [], errors: [ERR_CLI_LINT_RESOLVE_FAILED] }`                              |
+| UT-11 | Нет прав на чтение (`EACCES`)                                         | `{ files: [], errors: [ERR_CLI_LINT_RESOLVE_FAILED] }`                              |
+| UT-12 | Смешанные цели: валидный файл + несуществующий + EACCES               | Валидный в `files`, ошибки в `errors[]`, порядок ошибок соответствует порядку целей |
+| UT-13 | Явно переданная symlink-директория                                    | `ERR_CLI_LINT_READ_FAILED`, не empty-clean                                          |
+| UT-14 | Явно переданный или найденный под выбранной директорией symlink `.ts` | `ERR_CLI_LINT_READ_FAILED`, victim не читается                                      |
+| UT-15 | Директория с циклическим symlink                                      | Не зависает; symlink не обходится                                                   |
+| UT-16 | Пустая директория                                                     | `{ files: [], errors: [] }`                                                         |
+| UT-17 | Директория только с неподдерживаемыми расширениями                    | `{ files: [], errors: [] }`                                                         |
+| UT-18 | `node_modules/` — передан явно                                        | `files: []`, содержимое `node_modules` не обходится                                 |
+| UT-19 | Скрытая директория (`.git/`)                                          | Пропускается при рекурсивном обходе                                                 |
+| UT-20 | `dist/`, `coverage/`, `build/`, `out/`                                | Пропускаются при рекурсивном обходе                                                 |
+| UT-21 | Сортировка: файлы из разных директорий                                | `files` отсортирован по абсолютному пути                                            |
+| UT-22 | Относительный путь → нормализация                                     | Все пути в `files` — абсолютные                                                     |
+| UT-23 | Пробелы в путях                                                       | Корректная обработка                                                                |
+| UT-24 | Кириллица в путях                                                     | Корректная обработка                                                                |
 
 ### Integration: `lint.cmd.test.ts` (CLI-обвязка)
 
-| ID    | Сценарий                                      | Ожидаемый результат                                                                   |
-| ----- | --------------------------------------------- | ------------------------------------------------------------------------------------- |
-| IT-01 | Запуск без аргументов                         | Пустой отчёт, exit 0                                                                  |
-| IT-02 | Один `.ts` файл с ошибками                    | ESLint-формат ошибок в stdout, exit 1                                                 |
-| IT-03 | Один `.ts` файл без ошибок                    | Пустой stdout, exit 0                                                                 |
-| IT-04 | Явно передан `.js` файл                       | Пустой отчёт, exit 0 (молча игнорируется)                                             |
-| IT-05 | Директория с `.ts`/`.tsx` (есть ошибки)       | Все файлы пролинчены, агрегированный вывод ошибок, exit 1                             |
-| IT-06 | Директория без поддерживаемых файлов          | Пустой отчёт, exit 0                                                                  |
-| IT-07 | Смешанный ввод: файл + директория             | Дедупликация (если файл в директории — один экземпляр), exit по наличию ошибок        |
-| IT-08 | Несуществующий файл                           | `ERR_CLI_LINT_RESOLVE_FAILED` в stderr, exit 0                                        |
-| IT-09 | Файл без прав на чтение                       | `ERR_CLI_LINT_RESOLVE_FAILED` в stderr, exit 0                                        |
-| IT-10 | Частичный сбой: 1 валидный + 1 несуществующий | Валидный пролинчен, ошибка для несуществующего в stderr, exit по ошибкам линтинга     |
-| IT-11 | `--staged` без git-репозитория                | Ошибка в stderr, exit 0                                                               |
-| IT-12 | `--staged` с staged `.ts` файлами             | Линтятся только staged файлы, exit по ошибкам                                         |
-| IT-13 | `--staged` + позиционные цели                 | Ошибка: флаги взаимоисключающие, exit 1                                               |
-| IT-14 | `--autofix` с директорией                     | Исправлены dbc-ошибки во всех файлах, вывод `Auto-fixed: N error(s)`, exit по остатку |
-| IT-15 | `--staged --autofix`                          | Autofix применён к staged файлам, exit по остатку                                     |
-| IT-16 | Директория с 1000+ файлов (дымовой тест)      | Завершается без падения, в разумное время                                             |
-| IT-17 | Директория `node_modules/` передана явно      | Пустой отчёт (содержимое не обходится), exit 0                                        |
-| IT-18 | Все цели невалидны (3 несуществующих пути)    | 3 ошибки в stderr, пустой отчёт, exit 0                                               |
-| IT-19 | Пути с пробелами и кириллицей                 | Корректная обработка, ошибки линтинга с правильными путями                            |
+| ID    | Сценарий                                       | Ожидаемый результат                                                                   |
+| ----- | ---------------------------------------------- | ------------------------------------------------------------------------------------- |
+| IT-01 | Запуск без аргументов                          | Пустой отчёт, exit 0                                                                  |
+| IT-02 | Один `.ts` файл с ошибками                     | ESLint-формат ошибок в stdout, exit 1                                                 |
+| IT-03 | Один `.ts` файл без ошибок                     | Пустой stdout, exit 0                                                                 |
+| IT-04 | Явно передан `.js` файл                        | Пустой отчёт, exit 0 (молча игнорируется)                                             |
+| IT-05 | Директория с `.ts`/`.tsx` (есть ошибки)        | Все файлы пролинчены, агрегированный вывод ошибок, exit 1                             |
+| IT-06 | Директория без поддерживаемых файлов           | Пустой отчёт, exit 0                                                                  |
+| IT-07 | Смешанный ввод: файл + директория              | Дедупликация (если файл в директории — один экземпляр), exit по наличию ошибок        |
+| IT-08 | Несуществующий файл                            | `ERR_CLI_LINT_RESOLVE_FAILED` в stderr, exit 0                                        |
+| IT-09 | Файл без прав на чтение                        | `ERR_CLI_LINT_RESOLVE_FAILED` в stderr, exit 0                                        |
+| IT-10 | Частичный сбой: 1 валидный + 1 несуществующий  | Валидный пролинчен, ошибка для несуществующего в stderr, exit по ошибкам линтинга     |
+| IT-11 | `--staged` без git-репозитория                 | Ошибка в stderr, exit 0                                                               |
+| IT-12 | `--staged`: staged ACMR + untracked `.ts/.tsx` | Оба набора линтятся NUL-safe; staged deletions игнорируются, exit по ошибкам          |
+| IT-13 | `--staged` + позиционные цели                  | Ошибка: флаги взаимоисключающие, exit 1                                               |
+| IT-14 | `--autofix` с директорией                      | Исправлены dbc-ошибки во всех файлах, вывод `Auto-fixed: N error(s)`, exit по остатку |
+| IT-15 | `--staged --autofix`                           | Autofix применён к staged файлам, exit по остатку                                     |
+| IT-16 | Директория с 1000+ файлов (дымовой тест)       | Завершается без падения, в разумное время                                             |
+| IT-17 | Директория `node_modules/` передана явно       | Пустой отчёт (содержимое не обходится), exit 0                                        |
+| IT-18 | Все цели невалидны (3 несуществующих пути)     | 3 ошибки в stderr, пустой отчёт, exit 0                                               |
+| IT-19 | Пути с пробелами и кириллицей                  | Корректная обработка, ошибки линтинга с правильными путями                            |
 
 ### Unit: `DisablesCheck` (`disables.check.test.ts`)
 
@@ -952,6 +977,11 @@ cli/cmd/lint/
 - D-015 (module) — `InventorySyncCheck` вакуумный случай: спека без секции Entity Inventory (или с пустой таблицей). **Was:** `parseEntityInventory` возвращает `[]` и для «нет секции», и для «секция есть, но пустая»; `LintCommand` кормил этот пустой список в `checkInventorySync`/`reverseUnimplemented` как если бы это было реальное closed-world-объявление — каждый экспорт кода трактовался как undeclared (`ERR_CLI_LINT_INVENTORY_UNDECLARED` на каждый), и то же самое ждало reverse-свип. **Now:** `LintCommand` детектит `declaredInventory.length === 0` как `inventoryVacuous` и пропускает оба чека (прямой и `--inventory-reverse`) для этой спеки — печатает одну info-строку «has no Entity Inventory section — nothing to verify», errors[] остаётся пуст, exit=0 (вакуумно-истинный гейт: нечего сверять — сверка не может провалиться). **Risk:** нет — спека с реально заполненным Entity Inventory продолжает сверяться как раньше; меняется только поведение на пустом/отсутствующем инвентаре.
 - D-016 (module) — `InventorySyncCheck` обратная сверка уважает `Deferred Implementation: <TSK-id>`. **Was:** `reverseUnimplemented` считал любую declared-сущность без хотя бы одного экспорта расхождением (`ERR_CLI_LINT_INVENTORY_UNIMPLEMENTED`) независимо от того, отложена ли её реализация намеренным решением (запись в тикете) или просто забыта. Спеки, честно фиксирующие «реализация отложена до TSK-N», получали тот же шум, что и настоящий дрифт. **Now:** сущность, у которой строка инвентаря несёт маркер `Deferred Implementation: <TSK-id>`, распознаётся `reverseUnimplemented` как отложенная — уходит в `ReverseSweepResult.deferred` (`{name, taskId}[]`) и печатается информационной строкой, не ошибкой; `ReverseSweepResult = { errors: LintError[]; deferred: DeferredInventoryEntity[] }` — новый экспортируемый тип. **Risk:** нет — маркер должен быть явно написан в спеке; необорудованная сущность продолжает считаться расхождением как раньше.
 - D-018 (module) — `Deferred Implementation` маркер ВАЛИДИРУЕТСЯ против графа тикетов, а не просто исключается. **Расширяет:** D-016. **Was:** D-016 выводил из ошибок ЛЮБУЮ сущность с маркером `Deferred Implementation: <TSK-id>` — достаточно было написать маркер, тикет не проверялся; можно было «отложить» на выдуманный/закрытый/чужой тикет и sweep оставался зелёным. **Now:** маркер honored только когда цитируемый тикет ВАЛИДНО владеет сущностью — `checkDeferral` (в `inventory-sync.check.ts`) + `ticketOwnsEntity` (в `shared/sdd/audit-group.ts`) требуют: (1) тикет существует в графе (`collectTicketRefs`); (2) статус АКТИВНЫЙ — строго `TODO`/`IN_PROGRESS` (DONE/CANCELLED/BLOCKED/пустой → drift); (3) скоуп совпадает со скоупом спеки, когда тот известен (иначе drift); (4) СТРУКТУРНОЕ владение — имя сущности в поле `Entities:`/`Provides:`/`Implements:`/`Entity:` тикета или в пути его Target Files (не в прозе; имя файла может отличаться, поэтому поле — первичный источник). Невалидный маркер → `ERR_CLI_LINT_INVENTORY_UNIMPLEMENTED` с причиной. **Плюс stale-marker:** сущность, уже реализованная, но всё ещё несущая маркер → `ERR_CLI_LINT_INVENTORY_STALE_DEFERRAL` (built entity не бывает отложенной). **Risk accepted:** тикеты обязаны нести структурное поле `Entities:` для владения (scaffold заполняет его из Entity Inventory) — маркер без реального открытого same-scope владельца больше не глушит sweep.
+- D-019 (module) — Entity Inventory описывает production surface, не test helpers. **Extends:** D-013/D-018. При `--spec` recognized `.test.*`/`.spec.*` и файлы под `__tests__/` проходят обычные file-header/DbC/word checks, но не подаются в `checkInventorySync` и не пополняют `implementedUnion` reverse-sweep. Production export по-прежнему обязан быть declared; test-only export не вызывает `INVENTORY_UNDECLARED` и не может ложно реализовать production entity.
+- D-020 (module) — Word budgets разделены по смыслу и считают semantic prose. **Supersedes:** общий default 25 из первоначального `WordCountCheck`. Production corpus после удаления tag/type/param/path/URL/reference boilerplate: headers `n=1306, P90=11, P95=13, max=23`; contracts `n=13872, P90=13, P95=16, max=24` (2026-08-29). Defaults выбраны 24 для header и 30 для contract: первый остаётся плотным над наблюдаемым максимумом, второй оставляет умеренный запас для связного multiline DbC. Legacy `--max-words` остаётся global override; typed category override выше него. Autofix прозу не режет.
+- D-021 (module) — CLI cardinality is fail-closed. Все scalar/boolean options принимаются не более одного раза и scalar требует непустое значение; только `--exclude` repeatable. Numeric options разбираются целиком как safe integers в документированном домене, без `parseInt`-усечения. Malformed argv, включая `--inventory-reverse` без `--spec` и `--staged` вместе с targets, возвращает exit 4 с canonical usage до filesystem/lint work; lint findings сохраняют exit 1.
+- D-022 (module) — Standalone lint selection is fail-closed at symlink boundaries. Явно выбранные symlink file/dir и symlink `.ts`/`.tsx`, найденные внутри выбранной директории, больше не превращаются в ноль файлов и clean: shared `inspectRepoPath` даёт `ERR_CLI_LINT_READ_FAILED` с teaching fix. Вложенные symlink-директории и unsupported-extension symlink не обходятся и могут быть проигнорированы только потому, что не входят в реализованный `.ts`/`.tsx` source-set.
+- D-023 (module) — `--staged` соответствует публичному staged+untracked контракту: argv-safe Git + NUL-delimited paths, staged `ACMR` и untracked неignored `.ts/.tsx`; staged deletions исключаются до чтения. Имена с whitespace/newline не дробятся shell/string parsing.
 - Все архитектурные решения — на уровне scope (D-001, D-002 в `cli.spec.md`).
 
 ## 8. Inter-Module Dependencies

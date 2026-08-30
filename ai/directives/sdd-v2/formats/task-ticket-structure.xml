@@ -12,6 +12,10 @@
   (Execution-Log token vocabulary, baseline Completion Rule, audit hint, file-header rule) lives
   once in `<module>.3-tasks.md` per `AX_TICKET_DEDUPLICATION` — not duplicated here.
 
+  Every Verification `Command` cell serializes the exact runtime command as a Markdown code span.
+  Its outer backtick run is one longer than the longest consecutive backtick run inside the command;
+  no command byte is escaped or normalized. The parser removes only that matching outer delimiter.
+
   ```markdown
   # Task: <ACRONYM>-<slug> — <Task Title>
 
@@ -55,6 +59,10 @@
     - [<PortName>](<spec anchor>)
   - **Target Files:**
     - <path>
+  - **Deleted Files:**
+    - none   <!-- or exact repo-local tracked paths already absent when verification runs -->
+  - **Readiness Gates:**   <!-- bootstrap phase only: exact gates this phase creates, copied from the owning Bootstrap Requirements row; omit otherwise -->
+    - <gate>
   - **Entities:** <ContractName, ...>   <!-- impl/refactor phases: the exported entities (verbatim from the module Entity Inventory) THIS phase implements — the structural, filename-independent ownership source a Deferred Implementation marker (pointing at this ticket) resolves against; omit for test/config/doc phases -->
   - **Inputs:** none   <!-- or "P1 handoff" -->
   - **Exit:** <verifiable criterion>
@@ -69,6 +77,10 @@
     - [<PortName>](<spec anchor>)
   - **Target Files:**
     - <path>
+  - **Deleted Files:**
+    - none   <!-- or exact repo-local tracked paths already absent when verification runs -->
+  - **Readiness Gates:**   <!-- omit unless this exact phase creates declared readiness gates -->
+    - <gate>
   - **Inputs:** P1 handoff
   - **Exit:** <verifiable criterion>
   <!--/SECTION:PHASE_P2-->
@@ -91,13 +103,21 @@
 
   <!--SECTION:VERIFICATION-->
   ## Verification
-  Гейт фазы — `npx gennady sdd-verify --profile <profile>` — выполняется на STEP_5; в таблицу не дублируется.
+  Гейт фазы — `npx gennady sdd-verify --task <ticket-path> --phase <PhaseID>` — выполняется на STEP_5; профиль и Target Files читаются из тикета, в таблицу не дублируется.
 
-  | Command | Required by |
-  |---------|-------------|
-  | <resolved invocation> | <rule-id>, <rule-id> |
+  <!--PHASE_RECEIPTS:v1-->
 
-  <!-- NO sdd-verify row: STEP_5 runs the ladder itself, so a row here would run it twice. Rows: one per additional infra alias (e.g. coverage-command); none → a single | — | — | row. Phase-subagent runs only rows whose Required-by overlaps its phase Rules. -->
+  <!--COVERAGE_POLICY:v1-->
+  - **Coverage Policy:** <required | not-applicable>
+  - **Coverage Owner Phase:** <P<N>; required only; omit for not-applicable>
+  - **Coverage Reason:** <required only for not-applicable; omit this field for required>
+
+  | Command | Required by | Role |
+  |---------|-------------|------|
+  | `<resolved invocation>` | <rule-id>, <rule-id> | <coverage | extra> |
+
+  <!-- COMMAND CELL SERIALIZATION: wrap the exact runtime command in a Markdown code span. The outer backtick run MUST be strictly longer than every consecutive backtick run inside the command; do not escape or normalize inner bytes. The parser removes only that matching outer delimiter, so runtime bytes remain exact. Raw | outside the wrapper is a table separator. Do not XML-escape the command. -->
+  <!-- NO sdd-verify row: STEP_5 invokes the CLI exactly once per attempt; the CLI runs the ladder plus applicable rows and writes their receipt. A failed attempt writes no receipt; retry after a fix is a new attempt. Coverage Policy is mandatory for COVERAGE_POLICY:v1. required → one test Coverage Owner Phase and exactly one resolved read/check command with Role=coverage whose Required-by is an owner-phase rule; not-applicable → concise reason, NO owner and NO coverage row. Every other resolved alias uses Role=extra; no rows → a single | — | — | extra | row. -->
 
   - **Task-specific Completion additions:** <list or "none beyond project baseline">
   <!--/SECTION:VERIFICATION-->
@@ -114,7 +134,6 @@
   ### Round 1 — <YYYY-MM-DD>, initial
 
   #### P1
-  - [ ] `<ts>` ver `<cmd>` → `<pass|fail>` exit=`<code>`
   - [ ] `<ts>` DONE
   **Handoff →** artifacts: [...]; decisions: [...]; open: [...]
 
@@ -124,7 +143,7 @@
 
   <!--SECTION:DECISION_LOG-->
   ## Decision Log
-  <!-- local decisions taken during execution, ADR-compact (`<ACRONYM>-D-N · <statement>` → why ↳ rejected). Omit if none beyond the spec. -->
+  <!-- local decisions taken during execution, one-line `<ACR>-DL-N` per DECISION_LOG_ENTRY_FORMAT. Omit if none beyond the spec. -->
   <!--/SECTION:DECISION_LOG-->
 
   <!-- AUDIT_ROUNDS appended only after the first reopen-triggering audit (per the audit directive). -->

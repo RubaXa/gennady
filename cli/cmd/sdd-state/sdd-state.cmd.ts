@@ -19,12 +19,13 @@ import { detectFlowVersion } from '../../../shared/sdd/flow.ts';
 import { countModuleSpecs } from '../../../shared/sdd/module-specs.ts';
 import { sumRollupProgress } from '../../../shared/sdd/tracker.ts';
 import { renderLadder } from '../../../shared/sdd/ladder.ts';
-import { collectTicketRefs } from '../../../shared/sdd/ticket-resolve.ts';
+import { collectTicketCorpus } from '../../../shared/sdd/ticket-resolve.ts';
 import { queuedInfraGateTicketIds } from '../../../shared/sdd/gate-queue.ts';
 import {
   badInvocation,
   badRoot,
   directivesMissing,
+  ticketCorpusError,
   formatSnapshot,
   KEY_DIRECTIVE_FILES,
   SDD_V2_SUBDIR,
@@ -82,10 +83,18 @@ function parseProjectName(portalContent: string): string | null {
  * @returns StateOutcome — the formatted snapshot on success, else an actionable failure.
  */
 export async function run(rawArgs: string[]): Promise<StateOutcome> {
-  const args = parseArgs(rawArgs, { probe: ['probe'] });
-  const positional = (args._ as string[]).filter(
-    (a: string) => typeof a === 'string' && a !== 'sdd-state'
-  );
+  let args: Record<string, unknown> & { _: string[] };
+  try {
+    args = parseArgs(rawArgs, { probe: ['probe'] }, { strict: true });
+  } catch (cause) {
+    return badInvocation(cause instanceof Error ? cause.message : String(cause));
+  }
+  if (args.probe !== undefined && args.probe !== true) {
+    return badInvocation('--probe does not take a value');
+  }
+  const parsedPositionals = args._ as string[];
+  const positional =
+    parsedPositionals[0] === 'sdd-state' ? parsedPositionals.slice(1) : parsedPositionals;
 
   if (positional.length > 1) return badInvocation(positional.join(' '));
 
@@ -155,6 +164,9 @@ export async function run(rawArgs: string[]): Promise<StateOutcome> {
   // `--probe` is still accepted as a no-op for older synced directives.
   const probe = probeRepo(root);
 
+  const ticketCorpus = collectTicketCorpus(root);
+  if (!ticketCorpus.ok) return ticketCorpusError(root, ticketCorpus.detail);
+  const gateQueue = queuedInfraGateTicketIds(ticketCorpus.refs, scopes, readiness, root);
   const snapshot: StateSnapshot = {
     root,
     flowVersion,
@@ -163,8 +175,8 @@ export async function run(rawArgs: string[]): Promise<StateOutcome> {
     scopes,
     graphEdges,
     readiness,
-    queuedGateTicketIds: queuedInfraGateTicketIds(collectTicketRefs(root), scopes, readiness)
-      .ticketIds,
+    queuedGateTicketIds: gateQueue.ticketIds,
+    gateQueueDiagnostics: gateQueue.diagnostics,
     sessionContent,
     probe,
   };

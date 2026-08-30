@@ -102,7 +102,7 @@ const KIT_DIR = dirname(fileURLToPath(import.meta.url)); // ai/kit
 const REPO_ROOT = join(KIT_DIR, '..', '..');
 const TEMPLATES_DIR = join(KIT_DIR, 'templates', 'sdd-v2');
 const DIRECTIVES_DIR = join(REPO_ROOT, 'ai', 'directives', 'sdd-v2');
-const STEP_PACKAGE_LINE_RE = /Full step text: `([^`]+)`/g;
+const STEP_PACKAGE_LINE_RE = /Before executing this step, READ_AND_USE_DIRECTIVE\("([^"]+)"\)\./g;
 
 const H_ID_RE = /(?<![A-Za-z0-9_])H_[A-Z0-9_]+/g;
 const AX_ID_RE = /(?<![A-Za-z0-9_])AX_[A-Z0-9_]+/g;

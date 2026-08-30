@@ -128,7 +128,11 @@
     </Axiom>
 
     <Axiom id="AX_HOOKS_INTEGRATION">
-      Hooks fire on every commit/push. `pre-commit` is one full mechanical pass, run as ONE hook command: the format + lint script `AX_PRETTIER_OWNS_FORMATTING` owns (staged files), chained with a whole-project typecheck (`tsc --noEmit`) in the same command. Budget is honest, not aspirational: tens of seconds, not sub-5s — `tsc --noEmit` is whole-project by construction, and no staged-file filtering makes a real type check fit a five-second budget. `pre-push` runs the full test suite; tests do not belong in `pre-commit` — a suite run on every commit is the friction that pushes operators toward `--no-verify`. `commit-msg` (conventional-commits validator) stays required. Optional: `prepare-commit-msg` (prepend issue ID), `post-merge` (reinstall if lock changed). Hook config committed to repo; one onboarding command registers them (e.g. `lefthook install`).
+      Hooks fire on every commit/push. `pre-commit` first requires working tree == index, then runs
+      whole-project read-only `sdd-verify --profile full` (types, coverage tests, production lint, format, yagni)
+      plus directive freshness/axiom/contract/halt/budget audits. It never repairs or re-stages bytes;
+      a repairable failure tells the author to run project `fix`, stage, and retry. Budget is honestly
+      tens of seconds. `commit-msg` stays required. Optional: `prepare-commit-msg`, `post-merge`.
     </Axiom>
 
     <Axiom id="AX_LFS_SUBMODULES">
@@ -176,7 +180,9 @@
       Add remote and push only after `.gitignore` is committed and verified. Before first feature work, configure branch protection on `main`: require PR before merge, require CI status checks, disallow force-push.
     </Step>
     <Step id="STEP_6_INSTALL_HOOKS">
-      Install hooks runner per infrastructure scope decision (lefthook / husky / simple-git-hooks). Commit config file (e.g. `lefthook.yml`). Register with one onboarding command. Configure per `AX_HOOKS_INTEGRATION`: `pre-commit` (one command: format + lint on staged + whole-project `tsc --noEmit`; honest budget — tens of seconds), `commit-msg` (conventional commits), `pre-push` (full test suite).
+      Install hooks runner per infrastructure scope decision. Commit its config and register with one
+      onboarding command. Configure per `AX_HOOKS_INTEGRATION`: index-equality guard, read-only full
+      project gate plus directive audits in `pre-commit`, and conventional `commit-msg` validation.
     </Step>
     <Step id="STEP_7_VERIFY">
       Confirm: `git status` clean; `.gitignore` covers all tool-generated paths; hooks fire on test commit; remote branch protection active.

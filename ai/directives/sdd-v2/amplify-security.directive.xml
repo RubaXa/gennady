@@ -7,10 +7,10 @@
     sensitive data; inherits the session core (language, dialogue, safeguard, no-narration) — not
     repeated here.
 
-    Input — the scope spec draft + interview context. Output — a filled `Security` subsection
-    inside Requirements & Constraints (`SECURITY_SECTION_FORMAT`) + follow-up items appended to
-    the discovery interview map. Out of scope: pentest planning, infra hardening runbooks — the
-    spec records decisions, not procedures.
+    Input — the scope spec draft + interview context. Output — ordinary flat requirement entries
+    in the canonical Requirements section + follow-up items appended to the discovery interview
+    map. Out of scope: pentest planning and infra-hardening runbooks — detailed material belongs in
+    Architecture or one referenced supporting section only when genuinely needed.
   </Mission>
 
   <BeliefState deps="AX_OPERATOR_LANGUAGE, AX_OPERATOR_SAFEGUARD, AX_NO_PROCESS_NARRATION">
@@ -29,7 +29,7 @@
 
     <Axiom id="AX_DECISION_LOG_REQUIRED">
       Every non-obvious decision → a Decision Log entry in `DECISION_LOG_ENTRY_FORMAT` — one line,
-      the expanded part in parentheses: `D-NNN <date> — <decision> (почему: …; отвергнуто: …;
+      the expanded part in parentheses: `<ACR>-DL-N <date> — <decision> (почему: …; отвергнуто: …;
       риск: …)`; IDs are stable. Non-obvious only (`AX_DECISION_LOG_NON_OBVIOUS`): a pick already
       recorded in the spec's own tables is never duplicated as a DL row. Which decisions qualify
       and which Decision Log receives the entry are specified per directive.
@@ -72,11 +72,12 @@
       <Goal>Assemble the security defaults package for this product class.</Goal>
       <Action>
         From the spec draft, map the attack surface: trust boundaries, entry points, stored data
-        classes. Per `AX_AMPLIFY_DEFAULTS_FIRST`, draft one default decision per topic — boundaries
+        classes. Per `AX_AMPLIFY_DEFAULTS_FIRST`, draft one observable outcome per relevant topic — boundaries
         + validation (per `AX_EXTERNAL_INPUT_UNTRUSTED`), authn/authz model, secrets handling (per
         `AX_SECRETS_DISCIPLINE`), PII classification, SCA delegation — grounded in what live
-        products of this class ship; short targeted research when class practice is uncertain.
-        Zero surface found → `H_NO_SECURITY_SURFACE`.
+        products of this class ship; short targeted research when class practice is uncertain. A
+        topic with no observable product constraint is not an entry. Zero surface found →
+        `H_NO_SECURITY_SURFACE`.
       </Action>
     </Step>
     <Step id="STEP_1_AGREE">
@@ -89,13 +90,22 @@
       </Action>
     </Step>
     <Step id="STEP_2_APPLY">
-      <Goal>Write the agreed decisions into the spec.</Goal>
+      <Goal>Write the agreed outcomes as current-format requirements.</Goal>
       <Action>
-        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/security-section-format.xml")` and
-        write the `Security` subsection into Requirements & Constraints of the scope spec.
-        Non-default picks and notable accepted defaults → Decision Log per
-        `AX_DECISION_LOG_REQUIRED`. Topics left unresolved after deep-dive → items on the
-        discovery interview map. Return control to the interview.
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/requirement-entry-format.xml")`.
+        Continue the spec's next unused sequential `<ACR>-REQ-<N>` IDs. Write one ordinary flat
+        entry per accepted observable outcome, with modality class, behaviour sentence, and short
+        `Constraint`, `Verification`, and `Trace` lines. Never create `### Security`, another topic
+        heading, or a table inside Requirements.
+
+        If the existing Requirements section is legacy split/topic format, read it as input and
+        migrate the whole section to flat entries in this already-approved edit; preserve every
+        still-valid outcome and do not leave a mixed representation or ask for a second approval.
+        A threat/data-classification table belongs in Architecture by default, or in one explicitly
+        named supporting section outside Requirements only when the detail is genuinely needed;
+        link it from `Trace`. Non-default picks and notable accepted defaults → Decision Log per
+        `AX_DECISION_LOG_REQUIRED`. Unresolved topics → discovery interview map, not vague
+        requirements. Return control to the interview.
       </Action>
     </Step>
   </ExecutionPlan>

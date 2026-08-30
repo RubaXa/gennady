@@ -286,11 +286,11 @@ function parseMonolithSteps(inner: string): TraceNode[] {
 }
 
 /** Одна bullet-строка списка шагов lazy-скелета:
- *  `- **STEP_ID** — gist. Full step text: \`ai/directives/sdd-v2/<name>/steps/<id>.xml\` (...).`
+ *  `- **STEP_ID** — gist. Before executing this step, READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/<name>/steps/<id>.xml").`
  *  (форма — buildStepListEntry в ai/kit/lazy-assembly.ts). Захватываем id + путь к пакету; gist —
  *  только как честный fallback-текст, если пакет физически не прочитался. */
 const LAZY_STEP_BULLET_RE =
-  /-\s*\*\*([A-Za-z0-9_]+)\*\*\s*[—-]\s*([^\n]*?)\s*Full step text:\s*`([^`]+)`[^\n]*/g;
+  /-\s*\*\*([A-Za-z0-9_]+)\*\*\s*[—-]\s*([^\n]*?)\s*Before executing this step,\s*READ_AND_USE_DIRECTIVE\("([^"]+)"\)\.[^\n]*/g;
 
 /** Top-level `<Axiom>`/`<Contract>` блоки, физически перенесённые lazy-сборкой в файл пакета шага
  *  (DA-REQ-9: аксиома/контракт, активирующийся только в ОДНОМ шаге, живёт только там — его больше

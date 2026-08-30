@@ -4,22 +4,28 @@
       <Goal>Detect a prior aborted attempt at THIS phase before writing or logging anything.</Goal>
       <Action>
         `sdd-task --phase` shows prior PHASES' Handoff, never this phase's OWN Execution Log entries
-        — check those separately: `npx gennady sdd-extract <ticket> EXECUTION_LOG` and look for this
+        — check those separately: sectionExtract ToolCall below and look for this
         phase's heading in the current Round.
 
         <LogicSwitch on="this phase's own Execution Log entries, current Round">
         - WHEN a `#### <PhaseID>` block already exists WITHOUT a closing `DONE` + Handoff -> a prior
           attempt at this exact phase was interrupted (crash, context limit, killed process — not a
           formal `fix` re-run, which always closes with `DONE`). Read its logged lines in order;
-          every already-logged `intro` / `decision` / `verified` / `ver → pass` line is done work —
+          every already-logged `intro` / `decision` / `verified` line is done semantic work —
           do not redo it or re-log it, and do not re-open files it already reports created unless
-          STEP_2 recon finds them missing or STEP_5 finds the gate stale. Do NOT call `sdd-log
+          STEP_2 recon finds them missing. A prior receipt is replaced by STEP_5 so it attests the
+          resumed attempt's final bytes. Do NOT call `sdd-log
           <ticket> phase <PhaseID>` again — the header already exists; resume by appending the next
           event line into that same block, continuing from where the log stopped.
         - WHEN no such open block exists (fresh phase, or the only block present is a prior Round's
           closed `— re-run: <reason>` attempt that already ends in `DONE` + Handoff) -> fresh start:
-          append the phase header via `npx gennady sdd-log <ticket> phase <PhaseID> ["— re-run:
-          <reason>"]` (`AX_TICKET_WRITE_SCOPE` — the tool is the sole writer, never a manual `Edit`).
+          without a fix reason run phaseLog ToolCall below. On a formal fix
+          re-run, write exact `— re-run: <reason>` to `.claude/tmp/<task-id>-<phase-id>-log.txt`, then
+          run phaseLog ToolCall below
+          (`AX_TICKET_WRITE_SCOPE` — the tool is the sole writer, never a manual `Edit`).
         </LogicSwitch>
+        <ToolCall owner="phase-worker" result="sectionExtract">npx gennady sdd-extract <ticket> EXECUTION_LOG</ToolCall> Use sectionExtract.
+        <ToolCall owner="phase-worker" result="phaseLog">npx gennady sdd-log <ticket> phase <PhaseID></ToolCall> Use phaseLog.
+        <ToolCall owner="phase-worker" result="phaseLog">npx gennady sdd-log <ticket> phase <PhaseID> --content-file .claude/tmp/<task-id>-<phase-id>-log.txt</ToolCall> Use phaseLog.
       </Action>
     </Step>

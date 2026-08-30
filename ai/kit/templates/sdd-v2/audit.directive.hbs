@@ -12,8 +12,9 @@
     Input — one Task-ID plus explicit mode. My own FIRST action resolves `AuditContext`:
     per-group → `npx gennady sdd-task --group-scope <id>`; per-task → `npx gennady sdd-task --task-scope <Task-ID>`.
     The result owns tickets, bounded files, lint-files, code-roots, Handoff artifacts, spec and anchors; never hand-run git
-    or inspect tool source to rebuild it. Output — an ephemeral findings summary in chat; on a reopen-triggering round,
-    an Audit Rounds section appended to whichever ticket(s) in the group own the finding.
+    or inspect tool source to rebuild it. Output — an ephemeral findings summary in chat; on a
+    reopen-triggering round, a proposed Audit Rounds record routed to the execute orchestrator for
+    append in whichever ticket(s) own the finding. This audit worker remains read-only.
 
     **Glossary.** Drift = code / ticket / spec disagree. Finding = a neutral, routed proposal — a
     proposal, MUST stay a proposal. Modes: per-group (default, auto-dispatch) · per-task (operator-manual).
@@ -37,7 +38,7 @@
 
       `gennady yagni` (run as part of `sdd-verify --profile full`, STEP_1) is likewise taken as
       given for its own two checks: usage count `< 2` (`ERR_CLI_YAGNI_UNDERUSED`) and, when the
-      Usage Waiver label cites a `D-NNN`, whether it resolves to a live Decision Log entry
+      Usage Waiver label cites an `<ACR>-DL-N` (or immutable legacy id), whether it resolves to a live Decision Log entry
       (`ERR_CLI_YAGNI_WAIVER_DECISION_MISSING`) — do not re-count usages or re-search Decision Logs
       by hand.
 
@@ -55,9 +56,9 @@
     <Axiom id="AX_AUDIT_YAGNI_CROSSCHECK">
       Every symbol `gennady yagni` reports as gated (a Usage Waiver present, per
       `AX_MECHANICAL_VIA_SDD_CHECK`) MUST have both: (1) the `- **Usage Waiver:** <reason>` label
-      (or `D-NNN — <reason>` when a genuine Decision Log entry backs it) in its contract/surface
+      (or `<ACR>-DL-N — <reason>` when a genuine Decision Log entry backs it) in its contract/surface
       entry, (2) a `<ts> yagni <name> ← <reason>` line in the round's Execution Log
-      (`AX_USAGE_WAIVER_DISCIPLINE`). When the label cites a `D-NNN`, it must also resolve to a live
+      (`AX_USAGE_WAIVER_DISCIPLINE`). When the label cites a Decision Log id, it must also resolve to a live
       Decision Log entry — the tool confirms that; audit cross-checks (2) against (1), since they
       are two different artifacts and the tool never reads the Execution Log. A label with no
       matching log line is `YAGNI_WAIVER_INCOMPLETE` (`MAJOR`): indistinguishable from a
@@ -115,12 +116,16 @@
       | `INSIGHT_BACKFLOW` | spec edit (scope or module spec) |
       | `STALE_AFTER_PIVOT` | reopen / refine the affected downstream artifact |
       | `TASK_ID_DRIFT` | code-fix via ticket reopen |
+      | `RULE_FILE_INCOMPLETE` | ticket update to correct the declared Rules list OR a separate rule-maintenance task when the referenced rule itself is incomplete |
+      | `LANGUAGE_QUALITY` | spec edit or ticket update at the exact operator-facing sentence |
       | `YAGNI_WAIVER_INCOMPLETE` | ticket update (add the missing Execution Log line) OR spec edit (remove the label if it was never actually decided) |
       | `ENVIRONMENT_GATE_UNAVAILABLE` | operator escalation — NOT a phase fix and NOT something audit or the worker repairs itself; spin out as a separate infra/environment task if the fix is non-trivial |
       | `DEAD_CODE_SUSPECT` (spotted incidentally during a probe) | spin out as a separate task (background task / new ticket) — never fixed inside the current task; keeps the current blast radius bounded |
       | operator-acknowledged risk | Decision Log entry in the scope spec |
 
-      The audit agent proposes a concrete edit (diff or instruction). The operator decides and applies. The audit agent does not modify code autonomously (per `AX_NO_AUTO_FIX`).
+      The audit agent proposes a concrete edit (diff or instruction). The operator decides; the
+      orchestrator routes an accepted proposal to the artifact owner. The audit/code-review worker stays
+      read-only throughout (`AX_NO_AUTO_FIX`).
     </Axiom>
 
     {{> "axiom/audit/ax-neutral-findings"}}
@@ -150,8 +155,8 @@
         prior round.** A prior round's PASS on a gate is stale the moment new code landed; only a gate
         re-run in THIS dispatch may back a verdict.
         FIRST resolve `AuditContext` (`AX_GIT_DIFF_SCAN`): per-group →
-        `npx gennady sdd-task --group-scope <id>`; per-task →
-        `npx gennady sdd-task --task-scope <Task-ID>`. Both forms return the same named fields —
+        auditContext ToolCall below; per-task →
+        auditContext ToolCall below. Both forms return the same named fields —
         tickets, bounded files, lint-files, code-roots, Handoff artifacts, spec and anchors. Use this
         result for every check below and pass its fields forward by this Step ID; never re-derive the
         scope by hand.
@@ -162,8 +167,8 @@
         |---|---|
         | Structural / mechanical (anchors, Meta, Execution Log completeness, fabricated-DONE, phase DAG, tracker coherence, RULES_CASCADE_CLOSURE, BDD_COVERAGE, TASKS_APPEND_ONLY, CONSUMERS_RESOLVABLE) | `sdd-check --task <ticket>` (+ `--all`, `--changed`) |
         | Code (types, format, contract lint, yagni usage) | `sdd-verify --profile full` |
-        | Closed-world inventory sync + cast safety over changed files | `gennady lint --spec=<module-spec> <changed files>` |
-        | Test coverage floor | `gennady testcov --min=<threshold> <production files>` — reads the `coverage/` that `sdd-verify --profile full` just wrote (no `--run`, no second suite run); threshold from the ticket's own §5 / `coverage-command`, 80 only when §5 names none |
+        | Closed-world inventory + exact-target contract lint | `gennady lint --include-tests --spec=<module-spec> <AuditContext lint-files>` |
+        | Test coverage policy | Per-ticket `coverage-gates:` from AuditContext: execute a `required` command verbatim; skip explicit `not-applicable` with its reason; legacy-unset is grandfathered and invents nothing; INVALID blocks audit |
         | Contract semantics, runtime-backing, drift — irreducibly semantic, no command runs this | STEP_2_SEMANTIC, this audit's own judgment |
 
         A gate's verdict is computed from ITS OWN exit code and the ticket/dependency graph alone —
@@ -188,29 +193,26 @@
         escalation, never a phase fix and never something audit or the worker repairs itself.
 
         Then iterate `AuditContext.tickets` in its printed order and run exactly one
-        `npx gennady sdd-check --task <ticket-path>` per item (one item in per-task mode) — separate
-        tool calls, never a shell loop — then `npx gennady sdd-check --all .` and
-        `npx gennady sdd-check --changed .` per `AX_AUDIT_MODES` / `AX_MECHANICAL_VIA_SDD_CHECK`.
+        ticketCheck ToolCall below per item (one item in per-task mode) — separate
+        tool calls, never a shell loop — then integrityCheck ToolCall below and
+        changedCheck ToolCall below per `AX_AUDIT_MODES` / `AX_MECHANICAL_VIA_SDD_CHECK`.
         Together they report the deterministic
         findings: structure / anchors / Task-ID + Status, fabricated-DONE, the phase graph,
         Execution-Log completeness, the task DAG, tracker↔ticket coherence, RULES_CASCADE_CLOSURE,
         BDD_COVERAGE, TASKS_APPEND_ONLY, and CONSUMERS_RESOLVABLE. Take these as given — the tool owns
-        them. Then INDEPENDENTLY re-run the green gate — `npx gennady sdd-verify --profile full`,
-        `npx gennady lint --spec=<spec path from AuditContext's spec/audit-group line> <every file from
-        AuditContext lint-files>` (one argv item per printed file; zero files → skip lint and
+        them. Then INDEPENDENTLY re-run the green gate — verification ToolCall below and
+        contractCheck ToolCall below (one argv item per printed AuditContext lint-file; zero files → skip lint and
         report `H_NOTHING_TO_AUDIT`, never broaden scope), and
-        the coverage gate, run PER TICKET (not once for the whole group) — but do NOT re-read tickets
-        or interpret §5 by hand: `sdd-task --group-scope` already prints a ready `coverage-gates:`
-        block, one line per ticket, each carrying THAT ticket's own threshold over its own production
-        files. Execute those printed commands VERBATIM, one per ticket (a `—` line means no ticket had
-        production files to gate). This resolves the different-thresholds-in-one-group case: never a
-        single blended number, always each ticket's own bar over its own files, taken from the tool's
-        output — never reconstructed manually (the same rule §5.1 states for `files`/`lint-files`).
-        NOTE: those
-        commands carry no `--run` — `sdd-verify --profile full` above is the SINGLE owner of the
-        coverage run; it already wrote a FRESH `coverage/`, and every `testcov` only READS it, so the
-        suite is never run twice and nothing races for `coverage/`. Run them SEQUENTIALLY all the same
-        (deterministic output, one failure at a time). Always re-derive the gate yourself rather than trust the worker's logged `ver` lines;
+        per-ticket coverage policy — but do NOT re-read tickets or interpret §5 by hand:
+        `sdd-task --group-scope` already prints `coverage-gates:` in ticket order. Execute only each
+        `required (owner P<N>) — <command>` suffix VERBATIM, one command per ticket; skip `not-applicable` while
+        retaining its printed reason in the audit record; skip `legacy-unset` under the documented
+        pre-schema compatibility rule; `INVALID` is a blocker. Never derive extensions, paths,
+        thresholds, `testcov`, or platform defaults, and never blend tickets. Required commands are
+        read/check owners only: the named phase owns the ticket-phase producer and full owns its
+        separate audit run; the command
+        MUST NOT rerun the suite. Run required readers sequentially (deterministic output, one failure
+        at a time). Always re-derive the gate yourself rather than trust the worker's logged `ver` lines;
         a gate that fails here, a `ver` logged for a command that does not actually pass, or coverage
         below the gate, is a `BLOCKER`.
         A gate command that does not execute at all is a DIFFERENT case from a gate that runs and reports
@@ -230,12 +232,20 @@
         Per-group mode closes the WHOLE spec by definition (`due` only fires once every sibling ticket is
         DONE, per `AX_AUDIT_HOOK`) — always add the reverse closed-world sweep over the module's code
         root. In per-task mode, add it only when this ticket is the module's last (every sibling DONE):
-        Run once for each printed `AuditContext.code-roots` item:
-        `npx gennady lint --spec=<spec path from AuditContext> --inventory-reverse <code-root>` — every entity declared in the
+        Run inventoryCheck ToolCall below once for each printed `AuditContext.code-roots` item — every entity declared in the
         inventory must now be exported by some file (`ERR_CLI_LINT_INVENTORY_UNIMPLEMENTED` = declared-but-unbuilt
         / renamed-away). Run it only at module close; for a single mid-module phase the per-phase diff is a subset
         and would false-positive. Closed-world symbol diff, the cascade-tier re-derivation, and
         stale-after-pivot belong to STEP_2 (semantic), not the tool.
+        <ToolCall owner="audit-worker" result="auditContext">npx gennady sdd-task --group-scope <id></ToolCall> Inputs <id>: <id>=audit-group id supplied by execute dispatch. Use auditContext.
+        <ToolCall owner="audit-worker" result="auditContext">npx gennady sdd-task --task-scope <Task-ID></ToolCall> Inputs <Task-ID>: <Task-ID>=single task id supplied by per-task dispatch. Use auditContext.
+        <ToolCall owner="audit-worker" result="ticketCheck">npx gennady sdd-check --task <ticket-path></ToolCall> Inputs <ticket-path>: <ticket-path>=each exact AuditContext.tickets item, one call per item. Use ticketCheck.
+        <ToolCall owner="audit-worker" result="integrityCheck">npx gennady sdd-check --all .</ToolCall> Use integrityCheck.
+        <ToolCall owner="audit-worker" result="changedCheck">npx gennady sdd-check --changed .</ToolCall> Use changedCheck.
+        <ToolCall owner="audit-worker" result="verification">npx gennady sdd-verify --profile full</ToolCall> Use verification.
+        <ToolCall owner="audit-worker" result="contractCheck">npx gennady lint --include-tests --spec=<spec-path> <lint-file> [lint-file...]</ToolCall> Inputs <spec-path>, <lint-file>, [lint-file...]: <spec-path>=literal AuditContext spec/audit-group field; each <lint-file>=ordered AuditContext lint-files item; zero files skips. Use contractCheck.
+        Inputs <code-root>: `AuditContext.code-roots` above.
+        <ToolCall owner="audit-worker" result="inventoryCheck">npx gennady lint --spec=<spec-path> --inventory-reverse <code-root></ToolCall> Use inventoryCheck.
       </Action>
     </Step>
     <Step id="STEP_2_SEMANTIC">
@@ -270,12 +280,14 @@
       <Goal>Route findings; summarize. Route only — leave the fix to its owner.</Goal>
       <Action>
         Emit each finding as a neutral proposal (`AX_FINDINGS_AS_PROPOSALS`, `AX_NEUTRAL_FINDINGS`,
-        `FINDING_FORMAT`) routed to its home (`AX_FINDING_ROUTING`: phase-fix / ticket-update / spec-edit
-        / decision-log); route only, MUST leave the fix to its owner (`AX_NO_AUTO_FIX`). Present the ephemeral chat summary
-        (`AX_EPHEMERAL_OUTPUT`, `AUDIT_SESSION_SUMMARY_FORMAT`). If a finding triggers a reopen, append an
-        Audit Rounds section to whichever ticket in the group owns that finding (`AX_REOPEN_ROUNDS_IN_TICKET`
-        — a group audit may reopen more than one ticket, each gets its own section) —
-        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/audit-round.xml")` for the format.
+        `FINDING_FORMAT`) routed to its home (`AX_FINDING_ROUTING`); route only, MUST leave the fix to
+        its owner (`AX_NO_AUTO_FIX`). Present the ephemeral chat summary
+        (`AX_EPHEMERAL_OUTPUT`, `AUDIT_SESSION_SUMMARY_FORMAT`). If a finding triggers a reopen, propose
+        an Audit Rounds record for whichever ticket in the group owns that finding
+        (`AX_REOPEN_ROUNDS_IN_TICKET` — a group audit may reopen more than one ticket). The read-only
+        worker does not append it; the execute orchestrator routes the accepted proposal to its bounded
+        ticket owner channel. `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/audit-round.xml")`
+        defines the proposed record's format.
 
         **`PASS_WITH_ACKNOWLEDGED_RISKS` (`status=PASS_RISK`) is never this subagent's own
         judgment call — it is a fact-check against a PRIOR operator acceptance, never a live request

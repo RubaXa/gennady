@@ -109,7 +109,7 @@
   <!--SECTION:RELATED-->
   ## Related
   - **Scope spec:** [<scope>.spec.md](../<scope>.spec.md)
-  - **Decision Log entry:** D-NNN
+  - **Decision Log entry:** <ACR>-DL-N
   - **Superseded by:**   <!-- пусто при создании; заполняется при superseded-by -->
   <!--/SECTION:RELATED-->
   ```

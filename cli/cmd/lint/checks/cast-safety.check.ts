@@ -19,9 +19,9 @@ const TS_EXTS = new Set(['.ts', '.tsx', '.mts', '.cts']);
  */
 function castMessage(type: string, dangerous: boolean): string {
   if (dangerous) {
-    return `Unsafe cast \`as ${type}\` defeats the type system — escape hatches must be surfaced, not hidden (AX_NO_SILENT_ESCAPE_HATCH). Fix: remove it (use a proper type or type guard); if a real type error must be suppressed, replace it with a documented \`// @ts-expect-error <reason, D-NNN>\`. If this slipped in under context loss, re-read AX_NO_SILENT_ESCAPE_HATCH.`;
+    return `Unsafe cast \`as ${type}\` defeats the type system — escape hatches must be surfaced, not hidden (AX_NO_SILENT_ESCAPE_HATCH). Fix: remove it (use a proper type or type guard); if a real type error must be suppressed, replace it with a documented \`// @ts-expect-error <reason, <ACR>-DL-N>\`. If this slipped in under context loss, re-read AX_NO_SILENT_ESCAPE_HATCH.`;
   }
-  return `Type assertion \`as ${type}\` bypasses inference — the compiler stops checking this value, a silent escape hatch (AX_NO_SILENT_ESCAPE_HATCH). Fix: narrow with a type guard or correct the source type so the assertion is unnecessary; if it is genuinely required (e.g. a parsed external boundary), keep it and document why in a nearby comment, or use a documented \`// @ts-expect-error <reason, D-NNN>\`. If this slipped in under context loss, re-read AX_NO_SILENT_ESCAPE_HATCH.`;
+  return `Type assertion \`as ${type}\` bypasses inference — the compiler stops checking this value, a silent escape hatch (AX_NO_SILENT_ESCAPE_HATCH). Fix: narrow with a type guard or correct the source type so the assertion is unnecessary; if it is genuinely required (e.g. a parsed external boundary), keep it and document why in a nearby comment, or use a documented \`// @ts-expect-error <reason, <ACR>-DL-N>\`. If this slipped in under context loss, re-read AX_NO_SILENT_ESCAPE_HATCH.`;
 }
 
 /**

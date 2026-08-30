@@ -3,8 +3,10 @@
 <Step id="STEP_6_EMIT_HANDOFF">
       <Goal>Close the phase block with a typed Handoff and DONE.</Goal>
       <Action>
-        Append `<ts> DONE` via `npx gennady sdd-log <ticket> line "DONE" --phase <PhaseID>`; append the
-        `**Handoff →**` line via `npx gennady sdd-log <ticket> handoff "<payload>" --phase <PhaseID>` per
+        Append `<ts> DONE` via eventLog ToolCall below; append the
+        the exact `HANDOFF_FORMAT` payload with the file-write tool to
+        `.claude/tmp/<task-id>-<phase-id>-handoff.txt`, then append `**Handoff →**` via
+        handoffLog ToolCall below per
         `HANDOFF_FORMAT` (typed payload,
         `AX_HANDOFF_TYPED`, `AX_TICKET_WRITE_SCOPE` — the tool is the sole writer for both lines, never
         a manual `Edit`, and this phase's OWN and ONLY write of them — the orchestrator that dispatched
@@ -14,6 +16,9 @@
         flip this phase's Status in Phases Overview `[ ]` → `[x]` via a direct `Edit`
         (outside the Execution Log, `AX_TICKET_WRITE_SCOPE`); return the structured summary per
         `RETURN_SUMMARY_FORMAT` to the orchestrator.
+        Inputs <ticket>, <PhaseID>: STEP_1 phase context.
+        <ToolCall owner="phase-worker" result="eventLog">npx gennady sdd-log <ticket> line "DONE" --phase <PhaseID></ToolCall> Use eventLog.
+        <ToolCall owner="phase-worker" result="handoffLog">npx gennady sdd-log <ticket> handoff --content-file .claude/tmp/<task-id>-<phase-id>-handoff.txt --phase <PhaseID></ToolCall> Use handoffLog.
       </Action>
     </Step>
 

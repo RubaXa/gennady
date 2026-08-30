@@ -1,4 +1,4 @@
-// @file: Pure line-coverage aggregation + threshold check for `gennady testcov --min=<pct>`. Reading coverage-final.json and walking getRoots()/getDirStats() stays in testcov.cmd.ts.
+// @file: Pure line-coverage aggregation + threshold check for `gennady testcov --min=<pct>`; selected-adapter artifact I/O and source traversal stay outside this module.
 // @consumers: testcov.cmd.ts
 // @tasks: N/A
 

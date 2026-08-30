@@ -1,15 +1,14 @@
 <SddAmplifyNfr keywords="nfr, amplify, budgets, latency, throughput, scale, availability, consistency, bottlenecks, degradation, sdd-amplify-nfr" type="directive" ver="2.0">
   <Mission>
-    Turn the empty Non-Functional Constraints header of a scope spec into quantitative budgets:
-    latency / throughput / scale / availability / consistency as numbers, plus named bottlenecks
-    and behavior under overload. Loaded lazily by the discovery interview's triage when the scope
-    carries load, growth, or availability expectations; inherits the session core — not repeated
-    here.
+    Turn performance and reliability signals into ordinary atomic requirements: latency /
+    throughput / scale / availability / consistency as numbers, plus observable overload
+    behaviour. Loaded lazily by the discovery interview's triage when the scope carries load,
+    growth, or availability expectations; inherits the session core — not repeated here.
 
-    Input — the scope spec draft + interview context (usage profile signals). Output — a filled
-    `Non-Functional Constraints` subsection (`NFR_BUDGETS_FORMAT`) + follow-up items on the
-    discovery interview map. Out of scope: benchmark methodology, load-test tooling — those are
-    execution-time concerns.
+    Input — the scope spec draft + interview context (usage profile signals). Output — flat
+    requirement entries in the canonical Requirements section + follow-up items on the discovery
+    interview map. Out of scope: benchmark methodology and load-test tooling — detailed material
+    belongs in Architecture or one referenced supporting section only when genuinely needed.
   </Mission>
 
   <BeliefState deps="AX_OPERATOR_LANGUAGE, AX_OPERATOR_SAFEGUARD, AX_NO_PROCESS_NARRATION">
@@ -36,18 +35,19 @@
       <Goal>Assemble the numeric budget package for this product class.</Goal>
       <Action>
         Extract the usage profile from the spec draft (who calls what, how often, how much data).
-        Per `AX_AMPLIFY_DEFAULTS_FIRST`, draft a default budget per dimension — latency,
+        Per `AX_AMPLIFY_DEFAULTS_FIRST`, draft one observable outcome per relevant dimension — latency,
         throughput, scale + growth horizon, availability, consistency — with numbers live products
         of this class actually hold (per `AX_BUDGETS_ARE_NUMBERS`; short targeted research when
         class practice is uncertain). Name the expected first bottleneck and the degradation
         posture under overload (shed / queue / reject — mind `AX_BACKPRESSURE_IS_LAW`,
-        `AX_LATENCY_STACKING`). No usage signal at all → `H_NO_USAGE_SIGNAL`.
+        `AX_LATENCY_STACKING`). A dimension with no design consequence is not an entry. No usage
+        signal at all → `H_NO_USAGE_SIGNAL`.
       </Action>
     </Step>
     <Step id="STEP_1_AGREE">
       <Goal>One accept-or-edit gate; deep-dive only on explicit pick.</Goal>
       <Action>
-        Present the budget table as ONE reply per `AX_AMPLIFY_DEFAULTS_FIRST` (AskUserQuestion when
+        Present the candidate outcomes as ONE compact reply per `AX_AMPLIFY_DEFAULTS_FIRST` (AskUserQuestion when
         available, else `QUESTION_FORMAT`); each dimension accept / edit / deep-dive. Deep-dive
         topic map: load profile → latency budget → scale horizon → availability + error budget →
         consistency → bottlenecks → degradation. A dimension the operator consciously skips gets an
@@ -55,13 +55,23 @@
       </Action>
     </Step>
     <Step id="STEP_2_APPLY">
-      <Goal>Write the agreed budgets into the spec.</Goal>
+      <Goal>Write the agreed outcomes as current-format requirements.</Goal>
       <Action>
-        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/nfr-budgets-format.xml")` and fill
-        the `Non-Functional Constraints` subsection of the scope spec. Non-default picks and
-        notable accepted defaults → Decision Log per `AX_DECISION_LOG_REQUIRED`. Budgets that need
-        validation against reality → items on the discovery interview map. Return control to the
-        interview.
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/requirement-entry-format.xml")`.
+        Continue the spec's next unused sequential `<ACR>-REQ-<N>` IDs. Write one ordinary flat
+        entry per accepted observable outcome, with modality class, behaviour sentence, and short
+        `Constraint`, `Verification`, and `Trace` lines; quantified budgets stay numeric. Never
+        create `### Non-Functional Constraints`, another topic heading, or a table inside
+        Requirements.
+
+        If the existing Requirements section is legacy split/topic format, read it as input and
+        migrate the whole section to flat entries in this already-approved edit; preserve every
+        still-valid outcome and do not leave a mixed representation or ask for a second approval.
+        A benchmark/load-profile table belongs in Architecture by default, or in one explicitly
+        named supporting section outside Requirements only when the detail is genuinely needed;
+        link it from `Trace`. Non-default picks and notable accepted defaults → Decision Log per
+        `AX_DECISION_LOG_REQUIRED`. Budgets still needing reality validation → discovery interview
+        map, not vague requirements. Return control to the interview.
       </Action>
     </Step>
   </ExecutionPlan>

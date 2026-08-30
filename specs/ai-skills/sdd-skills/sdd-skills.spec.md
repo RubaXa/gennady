@@ -10,7 +10,7 @@
 
 Навыки в модуле:
 
-- **Router (единая точка входа):** `sdd` — маршрутизирует к portal / scope / infra / interface / module / recover-from-code / execute (внутренний переход router → execute идёт той же веткой LOGIC_SWITCH, `READ_AND_USE_DIRECTIVE` на `execute.directive.xml`, без остановки на операторе)
+- **Router (единая session/front-door политика):** `sdd` передаёт свободный intent, а stateful direct entries `sdd-scaffold` / `sdd-execute` / `sdd-critic` / `sdd-reconcile` передают literal forced intent в ту же router-директиву. Каждый делает ровно один начальный `sdd-state` и связывает literal stdout с alias `routerState`; router потребляет эти bytes, обновляет snapshot только после подтверждённой preflight-мутации и решает session conflict/open до journal flush. SKILL не хранит закрытый список веток и не открывает session сам.
 - **Planning:** `sdd-scaffold`
 - **Execution:** `sdd-execute` (single ticket или batch — интент внутри одного навыка)
 - **Verification:** `sdd-audit`, `sdd-check`, `sdd-code-review`
@@ -27,20 +27,20 @@
 Агент активирует `sdd` (роутер) для greenfield-скоупа:
 
 ```markdown
-1. GATHER: sdd-state (portal/scopes) + читает ai/directives/sdd-v2/router.directive.xml
+1. GATHER: sdd-state (portal/scopes) → exact result alias routerState + читает ai/directives/sdd-v2/router.directive.xml
 
 2. EMBODY: You ARE the router directive now. Intent — "новый скоуп my-feature".
 
-3. ROUTE: LOGIC_SWITCH(state, intent, scope-type) → READ_AND_USE_DIRECTIVE(scope.directive.xml)
+3. ROUTE: загруженная router-директива вычисляет LOGIC_SWITCH(state, intent, scope-type) → навык читает и выполняет возвращённый путь (включая execute или chained multi-scope)
 ```
 
 Агент активирует `sdd-execute` (single ticket или batch — один и тот же навык):
 
 ```
 <SddSkill id="execute">
-1. GATHER: sdd-state + читает ai/directives/sdd-v2/execute.directive.xml
-2. EMBODY: You ARE the execute orchestrator now. Task-ID = TSK-01 (или "batch").
-3. Plan: P1 (impl) → P2 (test) → audit
+1. GATHER: один sdd-state → exact result alias routerState + читает ai/directives/sdd-v2/router.directive.xml
+2. ROUTE: передаёт routerState + forced intent=execute; router решает session conflict/open один раз и загружает execute.directive.xml. Если preflight действительно мутировал проект, router делает один refresh; journal branch-result пишется только после совместимой/открытой session.
+3. EMBODY OWNER: Task-ID = TSK-01 (или "batch"); Plan: P1 (impl) → P2 (test) → audit
 4. Dispatch P1: worker reads phase-execution-protocol.directive.xml
    → DONE, handoff: artifacts=["src/foo.ts"]
 5. Dispatch P2: worker with handoff from P1
@@ -150,7 +150,7 @@ _Это полный список сущностей модуля. Любое в
 - **Type:** Enumeration
 - **Purpose:** Классификация навыка по фазе SDD-воркфлоу
 - **Values:**
-  - `route` — sdd (единая точка входа-роутер: portal / scope / infra / interface / module / recover-from-code / execute)
+  - `route` — общий front-door для stateful public entries; точное множество исходов принадлежит `LOGIC_SWITCH` router-директивы, включая forced execute/scaffold/critic/reconcile и multi-scope
   - `plan` — sdd-scaffold
   - `execute` — sdd-execute (single ticket и batch)
   - `verify` — sdd-audit, sdd-check, sdd-code-review
@@ -185,6 +185,7 @@ _Это полный список сущностей модуля. Любое в
   - Max 2 попытки аудита
   - Селективный реран фаз: только те, что в `phases_to_fix`
   - Оркестратор не читает bodies фаз, BDD, Verification, Coverage
+  - Batch-параллелизм разрешён только при непересекающихся Target Files И разных session keys `(spec, kind)`; одинаковый ключ сериализуется
 
   <!--/SECTION:MODULE_CONTRACTS-->
 
@@ -240,6 +241,16 @@ ai/skills/
 - **Rejected alternatives:**
   - 5 подмодулей по фазам — overengineered: некоторые содержали бы 1-2 навыка
   - Навыки как отдельные модули — 12 модулей, overhead управления
+
+### D-M003 — Stateful public entries проходят через один router
+
+- **Status:** active
+- **Recorded:** RC follow-up, session-entry coherence
+- **Why:** Прямые `sdd-scaffold` / `sdd-execute` / `sdd-critic` / `sdd-reconcile` раньше дублировали bootstrap и могли открыть, переименовать либо проигнорировать живую session иначе, чем `sdd`. Теперь каждый передаёт один `routerState` snapshot и forced intent в router; router не повторяет initial probe, session conflict/open решается один раз до journal flush, а SCALE спрашивается только у root/scope/module/infra/interface, которые реально используют его как параметр глубины.
+- **Risk accepted:** Router получает ещё четыре явных forced-intent ветки, но сами owner-директивы и их payload semantics не дублируются.
+- **Rejected alternatives:**
+  - Session bootstrap в каждом SKILL — расходится со временем и повторяет `sdd-state`.
+  - Запрет direct skills — ухудшает явный DX для execute/scaffold/reconcile/critic.
   <!--/SECTION:MODULE_DECISION_LOG-->
 
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->

@@ -1,7 +1,10 @@
 <Axiom id="AX_NARROW_RECON">
 Before any Edit / Write: one quick recon scoped to THIS phase only.
-1. `ls <Target Files parent dirs>` — check whether parent directories exist.
-2. Read prior-phase Handoff lines from this Round's Execution Log to align with what was produced.
+1. Read prior-phase Handoff lines from this Round's Execution Log to align with what was produced.
+2. Do not list every Target File parent. Run one bounded `ls <nearest existing declared ancestor>`
+   only when a Target File declares a new parent directory or STEP_1/Handoff evidence says its parent
+   is absent. When the parent is already established by the current phase context or Handoff, no `ls`
+   is needed. Never use `ls` to discover targets or widen the manifest.
 
 Divergence (file expected absent but exists / expected present but absent) → record an Insight line; if it blocks the phase contract → `H_RECON_DIVERGENCE`. Do not «fix» silently.
 

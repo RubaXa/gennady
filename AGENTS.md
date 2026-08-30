@@ -99,19 +99,20 @@ inbox-serve:build`), если тестируется через `gennady inbox s
 
 Открывай нужный файл и следуй инструкциям в зависимости от твоей задачи.
 
-| Задача агента                                                   | Читать                                                                                                         |
-| --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| Логирование в коде (console, logger)                            | [ai/flow/code/logging.md](ai/flow/code/logging.md)                                                             |
-| Ошибки: throw, rethrow, формат Error                            | [ai/flow/code/errors.md](ai/flow/code/errors.md)                                                               |
-| TypeScript: enum, private, конструктор                          | [ai/flow/code/typescript.md](ai/flow/code/typescript.md)                                                       |
-| Добавление/изменение CLI-команды (help, switch, таблица команд) | §4 ниже + [cli/AGENTS.md](cli/AGENTS.md)                                                                       |
-| Разбор MR / конвейер ревью / финализация                        | [ai/directives/agent-inbox/inbox-flow.directive.xml](ai/directives/agent-inbox/inbox-flow.directive.xml)       |
-| Постинг замечаний после согласования                            | [ai/directives/agent-inbox/posting-rules.directive.xml](ai/directives/agent-inbox/posting-rules.directive.xml) |
+| Задача агента                                                   | Читать                                                                                                                                                 |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| SDD workflow / skills                                           | [ai/skills/README.md](ai/skills/README.md)                                                                                                             |
+| Логирование в коде (console, logger)                            | [ai/directives/coding/typescript-rules.xml#AX_STRUCTURED_LOGGING](ai/directives/coding/typescript-rules.xml#AX_STRUCTURED_LOGGING)                     |
+| Ошибки: throw, rethrow, формат Error                            | [ai/directives/coding/typescript-rules.xml#AX_ERROR_CHAINING_CAUSE](ai/directives/coding/typescript-rules.xml#AX_ERROR_CHAINING_CAUSE)                 |
+| TypeScript: enum, private, конструктор                          | [ai/directives/coding/typescript-rules.xml#AX_NO_TRANSPILE_ONLY_CONSTRUCTS](ai/directives/coding/typescript-rules.xml#AX_NO_TRANSPILE_ONLY_CONSTRUCTS) |
+| Добавление/изменение CLI-команды (help, switch, таблица команд) | [cli/AGENTS.md](cli/AGENTS.md)                                                                                                                         |
+| Разбор MR / конвейер ревью / финализация                        | [ai/directives/agent-inbox/inbox-flow.directive.xml](ai/directives/agent-inbox/inbox-flow.directive.xml)                                               |
+| Постинг замечаний после согласования                            | [ai/directives/agent-inbox/posting-rules.directive.xml](ai/directives/agent-inbox/posting-rules.directive.xml)                                         |
 
 ---
 
 ## What exists (implementation pointers)
 
-- **Логирование и ошибки**: правила в flow. Логгер — `#logger` (мапится на `service/logger/logger.ts`).
+- **Логирование и ошибки**: правила в flow. Логгер — `#logger` (мапится на `services/logger/logger.ts`).
 - **Сборка**: `npm run build` (Vite) → `dist/` с чанками.
 - **Форматирование**: Prettier (2 пробела, singleQuote, trailingComma es5). `npm run format`, `npm run format:check`. Конфиг `.prettierrc.json`.

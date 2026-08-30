@@ -10,7 +10,7 @@ unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_OBJECT_DIRECTORY GIT_COMMON_DIR
 # VERIFY-ONLY, never mutate. A pre-commit hook that rewrites files (prettier --write, autofix) but
 # does not re-stage them lets the commit capture the pre-fix bytes while `prettier --check` passes
 # over the already-fixed working tree — a green hook over a dirty commit (this repo hit exactly that).
-# Repair belongs to the SDD phase flow (profiles setup/code/test carry format:fix/lint:fix); the
+# Repair belongs to the SDD phase flow (the task/phase context carries one exact-target repair rung); the
 # commit gate is the read-only final verdict, exactly what `sdd-verify --profile full` is. If a check
 # is red because something is unformatted, YOU run `npm run fix` and `git add -u`, then commit again.
 echo "🔍 Pre-commit: check (sdd-verify --profile full — read-only) + directive gates"
@@ -62,7 +62,7 @@ EOF
 # (column 2 blank: `M `, `A `, `D `, `R ` — working tree == index for that file); we REFUSE anything
 # with a working-tree change (column 2 non-blank: ` M`, `MM`, `AM`, `MD`, …) OR an untracked file
 # (`??`), because those bytes are in the tree the gate checks but NOT in the commit (or vice-versa).
-dirty=$(git status --porcelain 2>/dev/null | awk '{ x=substr($0,1,1); y=substr($0,2,1); if (y != " " || x == "?") print $0 }')
+dirty=$(git status --porcelain=v1 --untracked-files=all 2>/dev/null | awk '{ x=substr($0,1,1); y=substr($0,2,1); if (y != " " || x == "?") print $0 }')
 if [ -n "$dirty" ]; then
   printf 'Рабочее дерево ≠ индекс (гейт проверил бы не то, что уйдёт в коммит):\n%s\n' "$dirty" >&2
   fail "working tree ≠ index — есть unstaged-изменения tracked-файлов и/или untracked-файлы. Гейт проверяет рабочее дерево, а commit запишет ИНДЕКС. Сделай 'git add -A' (застейджи всё, что должно уйти в коммит) или убери/заигнорь лишнее (untracked → .gitignore), затем commit заново. Только полностью совпадающие дерево и индекс дают честный вердикт."

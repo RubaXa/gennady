@@ -1,0 +1,23 @@
+<!-- source: critic pause/resume safety — a sensor result exists before an operator decision -->
+<Contract id="CRITIC_SENSOR_STATE_FORMAT">
+  The primary artifact's `## Critic Rounds` remains the canonical completed-round history. Between a
+  sensor return and that completed entry, the compatible SDD session journal is the durable pending
+  state. Persist one compact JSON line with schema `sdd-critic-sensor/v1`, cycle target/write-set
+  hashes, `resultCount` (the next Round number), Changed-state, literal sensor verdict, literal
+  findings, reconciled addressees, and dispatch disposition. Write it to the regular non-symlink
+  `.claude/tmp/sdd-critic-event.json`, then run the current transition's exact critic-event ToolCall.
+  Tool success is mandatory BEFORE
+  any artifact edit, GOAL/cap Ask, CLEAN decision, or redispatch; inline free text is forbidden.
+
+  Every operator answer is a separate later immutable event in the same schema, with
+  `event=goal-disposition` or `event=cap-disposition`, the referenced `resultCount`, and the exact
+  answer. Append it before applying the answer. After STEP_3C completes the primary's canonical Round
+  entry, append `event=round-recorded`. On resume, fold the matching session events against the
+  artifact history: a sensor result lacking a required disposition re-presents the recorded Ask and
+  never redispatches/increments; a disposition lacking `round-recorded` resumes the remaining edit /
+  record transition. This fold occurs in STEP_0 before the dispatch step; the pending branch skips
+  dispatch/evaluate/persist and resumes the first incomplete edit/disposition/record transition. A
+  recorded round permits the next dispatch. A changed target/write-set appends
+  `event=cycle-restarted` before beginning new Round 1. Session close performs final scratch cleanup.
+
+</Contract>

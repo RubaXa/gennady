@@ -8,33 +8,35 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { buildRepoFixture, coverageScript, noop } from './fixture.ts';
+import { buildRepoFixture } from './fixture.ts';
 import { runCli } from './run-cli.ts';
 
 /** @purpose The stub `package.json` scripts the readiness directive itself prescribes for a from-scratch project. */
 const STUB_SCRIPTS: Record<string, string> = {
-  'type-check': "echo 'TODO: настроить инфраструктуру (type-check — tsc --noEmit)' >&2",
-  test: "echo 'TODO: настроить инфраструктуру (test runner)' >&2",
-  'test:coverage': "echo 'TODO: настроить инфраструктуру (coverage)' >&2",
-  format: "echo 'TODO: настроить инфраструктуру (formatter, read-only check)' >&2",
-  'format:fix': "echo 'TODO: настроить formatter --write (write mode)' >&2",
+  'type-check': "echo 'TODO: настроить инфраструктуру (type-check — tsc --noEmit)'",
+  test: "echo 'TODO: настроить инфраструктуру (test runner)'",
+  'test:coverage': "echo 'TODO: настроить инфраструктуру (coverage)'",
+  format: "echo 'TODO: настроить инфраструктуру (formatter, read-only check)'",
+  'format:fix': "echo 'TODO: настроить formatter --write (write mode)'",
   lint: 'gennady lint src/',
-  'lint:fix': "echo 'TODO: настроить linter --fix (autofix)' >&2",
+  'lint:fix': "echo 'TODO: настроить linter --fix (autofix)'",
+  fix: 'npm run format:fix && npm run lint:fix',
 };
 
-/** @purpose Real tooling — no-ops that genuinely run and report, standing in for tsc/vitest/prettier. */
+/** @purpose Real file-backed tooling that the receipt can bind, standing in for tsc/vitest/prettier. */
 const REAL_SCRIPTS: Record<string, string> = {
-  'type-check': noop(0),
-  test: noop(0),
-  'test:coverage': coverageScript(0),
-  format: noop(0),
+  'type-check': 'node scripts/verify-pass.mjs',
+  test: 'node scripts/verify-pass.mjs',
+  'test:coverage': 'node scripts/verify-coverage.mjs',
+  format: 'node scripts/verify-pass.mjs',
   // Carry the write switch as a REAL script arg (`--` ends node's own options), not a `# comment` —
   // the detector now correctly rejects a switch hidden in a comment.
-  'format:fix': `${noop(0)} -- --write`,
+  'format:fix': 'node scripts/verify-pass.mjs -- --write',
   lint: 'gennady lint src/',
-  'lint:fix': `${noop(0)} -- --fix`,
+  'lint:fix': 'node scripts/verify-pass.mjs -- --fix',
+  fix: 'npm run format:fix && npm run lint:fix',
 };
 
 const PORTAL = [
@@ -56,6 +58,10 @@ const PORTAL = [
  * @returns Full ticket markdown.
  */
 function ticket(taskId: string, scope: string, status: string): string {
+  const infraClaims =
+    scope === 'infra-core'
+      ? ['- **Readiness Gates:**', ...Object.keys(STUB_SCRIPTS).map((gate) => `  - ${gate}`)]
+      : [];
   return [
     `# Task: ${taskId}`,
     '<!--SECTION:META-->',
@@ -76,7 +82,8 @@ function ticket(taskId: string, scope: string, status: string): string {
     '### P1 — impl',
     '- **Objective:** build it',
     '- **Target Files:**',
-    '  - src/thing.ts',
+    `  - ${scope === 'infra-core' ? 'package.json' : 'src/thing.ts'}`,
+    ...infraClaims,
     '- **Exit:** it exists',
     '<!--/SECTION:PHASE_P1-->',
     '<!--SECTION:PHASE_P2-->',
@@ -86,7 +93,18 @@ function ticket(taskId: string, scope: string, status: string): string {
     '  - src/thing.test.ts',
     '- **Exit:** tests pass',
     '<!--/SECTION:PHASE_P2-->',
+    '<!--SECTION:VERIFICATION-->',
+    '## Verification',
+    '<!--PHASE_RECEIPTS:v1-->',
+    '<!--COVERAGE_POLICY:v1-->',
+    '- **Coverage Policy:** not-applicable',
+    '- **Coverage Reason:** synthetic readiness-path fixture; production coverage ownership is outside this scenario',
+    '| Command | Required by | Role |',
+    '|---|---|---|',
+    '| — | — | extra |',
+    '<!--/SECTION:VERIFICATION-->',
     '<!--SECTION:EXECUTION_LOG-->',
+    '## Execution Log',
     '<!--/SECTION:EXECUTION_LOG-->',
   ].join('\n');
 }
@@ -99,6 +117,14 @@ function bootstrapFixture(scripts: Record<string, string>): string {
     directives: true,
     files: {
       'specs/README.md': PORTAL,
+      'specs/infra-core/infra-core.spec.md': [
+        '<!--SECTION:BOOTSTRAP_REQUIREMENTS-->',
+        '| Requirement | Kind | Owner | Resolution | Readiness Gates | Gate Artifacts |',
+        '|---|---|---|---|---|---|',
+        `| toolchain | tool | this-scope-task | create | ${Object.keys(STUB_SCRIPTS).join(', ')} | package.json |`,
+        '<!--/SECTION:BOOTSTRAP_REQUIREMENTS-->',
+      ].join('\n'),
+      'specs/app/app.spec.md': '# App\n',
       // IN_PROGRESS on purpose: the orchestrator opens the Round before the first phase dispatch,
       // so this — not TODO — is the state the gate actually meets.
       'specs/infra-core/infra-core.task.INFRA-1.md': ticket(
@@ -108,8 +134,22 @@ function bootstrapFixture(scripts: Record<string, string>): string {
       ),
       'specs/app/app.task.APP-1.md': ticket('APP-1', 'app', '[ ] TODO'),
       'src/thing.ts': '// @file: Thing.\n// @consumers: N/A\n// @tasks: N/A\n',
+      'src/thing.test.ts': '// verifies the synthetic bootstrap target\n',
+      'scripts/verify-pass.mjs': 'process.exit(0);\n',
+      'scripts/verify-coverage.mjs': [
+        "import { mkdirSync, writeFileSync } from 'node:fs';",
+        "mkdirSync('coverage', { recursive: true });",
+        "writeFileSync('coverage/coverage-final.json', '{}');",
+        'process.exit(0);',
+        '',
+      ].join('\n'),
     },
   });
+  const binDir = join(root, 'node_modules', '.bin');
+  mkdirSync(binDir, { recursive: true });
+  const prettier = join(binDir, 'prettier');
+  writeFileSync(prettier, '#!/usr/bin/env node\nprocess.exit(0)\n', 'utf-8');
+  chmodSync(prettier, 0o755);
   return root;
 }
 
@@ -137,16 +177,47 @@ describe('bootstrap path — from stub scripts to a verified product phase', () 
       assert.strictEqual(r.exitCode, 0, r.stdout + r.stderr);
       assert.match(r.stdout, /INFRA_QUEUE_EXEMPTION/);
       // It must also say HOW to verify — a code profile would ⛔ on the very scripts it builds.
-      assert.match(r.stdout, /--profile setup/);
+      assert.match(r.stdout, /--task <ticket-path> --phase <PhaseID>/);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
   });
 
-  it('the exempted phase can actually verify: --profile setup is green on the stub project', () => {
+  it('an unrelated test phase of the same infra ticket does not inherit the setup exemption', () => {
     const root = bootstrapFixture(STUB_SCRIPTS);
     try {
-      const r = runCli(['sdd-verify', '--profile', 'setup'], root);
+      const ticketPath = join(root, 'specs/infra-core/infra-core.task.INFRA-1.md');
+      const verified = runCli(
+        ['sdd-verify', '--task', 'specs/infra-core/infra-core.task.INFRA-1.md', '--phase', 'P1'],
+        root
+      );
+      assert.strictEqual(verified.exitCode, 0, verified.stdout + verified.stderr);
+      writeFileSync(
+        ticketPath,
+        readFileSync(ticketPath, 'utf-8').replace(
+          '| P1 | impl | — | [ ] |',
+          '| P1 | impl | — | [x] |'
+        ),
+        'utf-8'
+      );
+      const r = runCli(
+        ['sdd-task', 'specs/infra-core/infra-core.task.INFRA-1.md', '--phase', 'P2'],
+        root
+      );
+      assert.notStrictEqual(r.status, 0);
+      assert.match(r.stdout + r.stderr, /ERR_CLI_SDD_TASK_INFRA_NOT_READY/);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('the exempted phase can actually verify: its derived setup profile is green on the stub project', () => {
+    const root = bootstrapFixture(STUB_SCRIPTS);
+    try {
+      const r = runCli(
+        ['sdd-verify', '--task', 'specs/infra-core/infra-core.task.INFRA-1.md', '--phase', 'P1'],
+        root
+      );
       assert.strictEqual(r.exitCode, 0, r.stdout + r.stderr);
       assert.match(r.stdout, /ALL PASS/);
       // …and it is honest about what that green means.
@@ -167,6 +238,36 @@ describe('bootstrap path — from stub scripts to a verified product phase', () 
     }
   });
 
+  it('sdd-verify fails closed when provisional readiness cannot load the portal', () => {
+    const root = bootstrapFixture(STUB_SCRIPTS);
+    try {
+      rmSync(join(root, 'specs', 'README.md'));
+      const r = runCli(
+        ['sdd-verify', '--task', 'specs/app/app.task.APP-1.md', '--phase', 'P1'],
+        root
+      );
+      assert.notStrictEqual(r.exitCode, 0, r.stdout + r.stderr);
+      assert.match(r.stdout + r.stderr, /portal\/GATE_QUEUE cannot be resolved/);
+      assert.match(r.stdout + r.stderr, /ENOENT/);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('sdd-verify fails closed when provisional readiness has no exact queue owner for the phase', () => {
+    const root = bootstrapFixture(STUB_SCRIPTS);
+    try {
+      const r = runCli(
+        ['sdd-verify', '--task', 'specs/app/app.task.APP-1.md', '--phase', 'P1'],
+        root
+      );
+      assert.notStrictEqual(r.exitCode, 0, r.stdout + r.stderr);
+      assert.match(r.stdout + r.stderr, /does not structurally own a missing readiness gate/);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it('once the infra ticket has replaced the stubs, the project is ready, the queue is empty, and the product phase runs', () => {
     const root = bootstrapFixture(REAL_SCRIPTS);
     try {
@@ -179,7 +280,10 @@ describe('bootstrap path — from stub scripts to a verified product phase', () 
       assert.doesNotMatch(product.stdout, /INFRA_QUEUE_EXEMPTION/);
 
       // And the real ladder now actually verifies, instead of skipping or ⛔-ing.
-      const verify = runCli(['sdd-verify', '--profile', 'code'], root);
+      const verify = runCli(
+        ['sdd-verify', '--task', 'specs/app/app.task.APP-1.md', '--phase', 'P1'],
+        root
+      );
       assert.strictEqual(verify.exitCode, 0, verify.stdout + verify.stderr);
       assert.match(verify.stdout, /✅ type-check/);
       assert.match(verify.stdout, /✅ test\b/);

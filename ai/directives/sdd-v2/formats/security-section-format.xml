@@ -1,6 +1,7 @@
 <Contract id="SECURITY_SECTION_FORMAT">
-  Fills a `### Security` subsection inside Requirements & Constraints
-  (`SECTION:REQUIREMENTS_AND_CONSTRAINTS`) of the scope spec:
+  Legacy read/migration shape only. Current amplifiers MUST NOT write this subsection: they load
+  `REQUIREMENT_ENTRY_FORMAT` and emit one flat requirement per observable outcome. This contract
+  remains solely so an old spec can be understood and migrated without inventing semantics:
 
   ```markdown
   ### Security

@@ -1,7 +1,8 @@
 <SddCriticProtocol keywords="critic, sensor, read-only, comprehension-first, blind-spot, quality-dimensions, severity, verdict, isolated" type="directive" ver="2.0">
   <Mission>
-    Read ONE SDD artifact (spec or task) with fresh eyes and report findings. MUST stay read-only.
-    Dispatched isolated by the critic orchestrator; you read the artifact + its parent spec, and pull the
+    Review ONE canonical bounded SDD review-set (a decomposed scope + ALL its module specs, one
+    standalone infrastructure/interface spec, or one task set) and report integrated findings. MUST stay read-only.
+    Dispatched isolated by the critic orchestrator; you read every target artifact + minimal parent context, and pull the
     Vision / Goals of its direct dependencies via a tool to understand the system (`AX_ISOLATION`).
     Treat your own confusion as a signal the artifact is underspecified — record it, do not ask.
     Tag every finding with its addressee — `MECHANICAL` | `GOAL` (`AX_FINDING_ADDRESSEE`).
@@ -49,8 +50,8 @@
 
   <ExecutionPlan>
     <Step id="STEP_1_READ">
-      <Goal>Read the artifact end-to-end.</Goal>
-      <Action>Read the artifact fully. For a task, read the parent spec slice (entity inventory, contracts, relevant requirements) — nothing else (`AX_ISOLATION`, `AX_READ_ONLY`). The artifact's `## Critic Rounds` block, when present, is the critique's own history, not spec content (`AX_SCRATCH_LOG`) — read it as part of the full read. A finding it shows already rejected with a reason stays rejected: raise it again only on new grounds the entry does not already cover. The block itself is never a finding — do not flag its presence, format, or length as a defect.</Action>
+      <Goal>Read the bounded target-set end-to-end.</Goal>
+      <Action>On a first or fresh-fallback dispatch, read every named member of the full review-set and no unnamed full spec. The separately named write-set is only the orchestrator's edit boundary; I remain read-only. On continuation, reread the changed-set and retain the explicitly reconfirmed unchanged full review-set/write-set; request a fresh dispatch if either frame is absent or differs. For a task, also read the bounded parent-spec slice (`AX_ISOLATION`, `AX_READ_ONLY`). Exactly one primary may carry `## Critic Rounds`; it is shared history, not spec content (`AX_SCRATCH_LOG`). A finding already rejected there stays rejected unless new grounds exist. The block is never a finding, and its absence from secondary artifacts is correct.</Action>
     </Step>
     <Step id="STEP_1B_SYSTEM_CONTEXT">
       <Goal>Understand the system, not one spec in isolation.</Goal>
@@ -58,14 +59,16 @@
         Resolve the artifact's direct NEIGHBOURHOOD in BOTH directions: what it depends on (scope — `## Scope
         Dependencies` + portal graph; module — `Inter-Module Dependencies` depends-on) AND its CONSUMERS — who depends on it (portal
         reverse edges; module `Inter-Module Dependencies` Provides-to). For each, pull ONLY its Vision / Goals via
-        `sdd-extract <dep-spec> VISION` (`MODULE_VISION` for a module) — the tool does the gathering, not
+        exact sectionExtract ToolCall below (`MODULE_VISION` for a module) — the tool does the gathering, not
         eyeballing, and the read stays bounded (`AX_ISOLATION`). Consumers matter most: value is consumer-defined
         (`AX_PRODUCT_ARCHITECT_LENS`) — you cannot judge whether the design serves its purpose without seeing who it serves.
+        <ToolCall owner="critic" result="sectionExtract">npx gennady sdd-extract <dep-spec> VISION</ToolCall> Inputs <dep-spec>: <dep-spec>=exact scope dependency path named by the bounded primary/review-set; section=literal VISION. Use sectionExtract.
+        <ToolCall owner="critic" result="sectionExtract">npx gennady sdd-extract <dep-spec> MODULE_VISION</ToolCall> Use sectionExtract.
       </Action>
     </Step>
     <Step id="STEP_2_UNDERSTAND">
       <Goal>Articulate understanding (`AX_COMPREHENSION_FIRST`).</Goal>
-      <Action>Write `## What I understood` — spec: system, boundaries, entities; task: the change, phases, BDD scenarios.</Action>
+      <Action>Write `## What I understood` — for a bundle: shared goal, boundaries, cross-artifact contracts, and each member's role; for one spec: system/boundaries/entities; for a task: change/phases/BDD scenarios.</Action>
     </Step>
     <Step id="STEP_3_CONFUSION">
       <Goal>Flag confusion.</Goal>
@@ -76,7 +79,8 @@
       <Action>
         FIRST apply `AX_PRODUCT_ARCHITECT_LENS` — does the design serve real consumer / product value, is the
         goal drawn too narrow (widen it at the edges), what fundamental blind spots would make it miss its
-        purpose. Also: can an agent implement this from the spec ALONE (autonomy)? Leave the
+        purpose. Also: can an agent implement this from the bounded target-set alone (autonomy), and do
+        scope/module contracts agree across the set? Leave the
         deterministic structural checks to the tool (`AX_MECHANICAL_VIA_SDD_CHECK`) — do not hand-redo them. Ask the uncomfortable
         questions (`AX_UNCOMFORTABLE_QUESTIONS`) — record each one the artifact leaves unanswered as a
         `GOAL` finding. THEN the supporting structural dimensions — `AX_SPEC_DIMENSIONS` (spec) /
@@ -84,6 +88,8 @@
         quality as a secondary lens (`AX_LANGUAGE_LENS`). Per finding
         under `## Problems found`: `### <dimension> — <summary>` then
         `Location | Finding | Why | Severity | Addressee | Suggested fix` (`AX_SEVERITY`, `AX_FINDING_ADDRESSEE`).
+        If a fix needs a read-only review-set member, name that member explicitly; the orchestrator must
+        promote/restart or route the blocker rather than editing outside the write-set.
       </Action>
     </Step>
     <Step id="STEP_5_VERDICT">

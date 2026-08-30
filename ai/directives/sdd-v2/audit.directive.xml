@@ -15,8 +15,9 @@
     Input — one Task-ID plus explicit mode. My own FIRST action resolves `AuditContext`:
     per-group → `npx gennady sdd-task --group-scope <id>`; per-task → `npx gennady sdd-task --task-scope <Task-ID>`.
     The result owns tickets, bounded files, lint-files, code-roots, Handoff artifacts, spec and anchors; never hand-run git
-    or inspect tool source to rebuild it. Output — an ephemeral findings summary in chat; on a reopen-triggering round,
-    an Audit Rounds section appended to whichever ticket(s) in the group own the finding.
+    or inspect tool source to rebuild it. Output — an ephemeral findings summary in chat; on a
+    reopen-triggering round, a proposed Audit Rounds record routed to the execute orchestrator for
+    append in whichever ticket(s) own the finding. This audit worker remains read-only.
 
     **Glossary.** Drift = code / ticket / spec disagree. Finding = a neutral, routed proposal — a
     proposal, MUST stay a proposal. Modes: per-group (default, auto-dispatch) · per-task (operator-manual).
@@ -34,7 +35,7 @@
       of its own artifact fields are operator-facing.
 
       **English regardless of context:** code, JSDoc, intent comments, file paths, tool commands,
-      axiom IDs (`AX_*`), Trace anchors, IDs (`D-NNN` / `TSK-NN` / `F-NNN` / `P<N>` / `H_*`),
+      axiom IDs (`AX_*`), Trace anchors, IDs (`<ACR>-DL-N` / `TSK-NN` / `F-NNN` / `P<N>` / `H_*`),
       severity / status / scope-type tokens, BDD keywords, field labels (`**Status:**`, `**Why:**`).
 
       **Не спрягать английские глагольные корни по-русски, когда есть готовый русский глагол:**
@@ -50,9 +51,17 @@
 
       **Терминологическая дисциплина.** Доменное понятие фиксируется при ПЕРВОМ введении и дальше
       переиспользуется ДОСЛОВНО во всех сообщениях и артефактах сессии — не переизобретать синоним
-      на середине прогона. Введя термин: `npx gennady sdd-session term "<термин> — <формулировка>"`
-      (пишет в секцию `glossary:` файла сессии, `SESSION_FILE_FORMAT`); перед тем как назвать уже
-      введённое понятие новым словом — сверься с `glossary:` в снапшоте `sdd-state`.
+      на середине прогона. Перед тем как назвать уже введённое понятие новым словом, сверься с
+      `glossary:` в сохранённом снапшоте `sdd-state`.
+
+      Право записи словаря принадлежит только stateful-оркестратору ПОСЛЕ того, как router доказал
+      совместимость живой сессии или успешно открыл подтверждённую новую. Он записывает ровно
+      `<термин> — <формулировка>` в `.claude/tmp/sdd-glossary-term.txt` и выполняет канонический
+      файловый ToolCall из `SESSION_FILE_FORMAT`; свободный текст в argv запрещён. До этого барьера
+      router только держит предложение в памяти. Read-only critic/audit/code-review и любые другие
+      воркеры НИКОГДА не вызывают `sdd-session term`: они возвращают поле
+      `GlossarySuggestions: [<термин> — <формулировка>]`, а совместимый stateful-оркестратор принимает
+      или отклоняет предложения и, при принятии, сохраняет их тем же каноническим ToolCall.
 
       **Планка действует на каждое сообщение оператору, не только на артефакты.** Всё выше — кальки,
       канцелярит, устойчивые термины — применяется к заголовкам Ask, вариантам ответа и объяснениям
@@ -121,11 +130,11 @@
         валидация») with subject+strong verb; drops the calque («утилизация» for «использование»).
     </Axiom>
 
-    
 
-    
 
-    
+
+
+
 
     <Axiom id="AX_GIT_DIFF_SCAN">
       Read scope must widen beyond declared `Target Files` — a phase agent could create a helper in `src/utils/`, modify shared types, add a migration without mentioning it, and Target Files alone would miss it. The tool computes this widened scope; hand-run git archaeology is never the way to build it. `sdd-task --group-scope <id>` prints the owning spec, the group's ticket list, the union of every group ticket's `Target Files`, the git diff over that union when repo refs are available, and the union of Handoff artifacts — take this as the in-scope set, verbatim.
@@ -135,33 +144,33 @@
       Files the tool's diff surfaces but that are absent from ticket declaration + Execution Log → candidates for `CLOSED_WORLD_DRIFT` (public entities) or `EXECUTION_LOG_INCOMPLETE` (utility-only changes).
     </Axiom>
 
-    
 
-    
+
+
 
     <Axiom id="AX_AUDIT_YAGNI_CROSSCHECK">
       Every symbol `gennady yagni` reports as gated (a Usage Waiver present, per
       `AX_MECHANICAL_VIA_SDD_CHECK`) MUST have both: (1) the `- **Usage Waiver:** <reason>` label
-      (or `D-NNN — <reason>` when a genuine Decision Log entry backs it) in its contract/surface
+      (or `<ACR>-DL-N — <reason>` when a genuine Decision Log entry backs it) in its contract/surface
       entry, (2) a `<ts> yagni <name> ← <reason>` line in the round's Execution Log
-      (`AX_USAGE_WAIVER_DISCIPLINE`). When the label cites a `D-NNN`, it must also resolve to a live
+      (`AX_USAGE_WAIVER_DISCIPLINE`). When the label cites a Decision Log id, it must also resolve to a live
       Decision Log entry — the tool confirms that; audit cross-checks (2) against (1), since they
       are two different artifacts and the tool never reads the Execution Log. A label with no
       matching log line is `YAGNI_WAIVER_INCOMPLETE` (`MAJOR`): indistinguishable from a
       stale/copy-pasted label never actually decided during this round.
     </Axiom>
 
-    
 
-    
 
-    
 
-    
 
-    
 
-    
+
+
+
+
+
+
 
     <Axiom id="AX_FINDING_ROUTING">
       Every finding is routed to the artifact that owns the remediation:
@@ -178,23 +187,27 @@
       | `INSIGHT_BACKFLOW` | spec edit (scope or module spec) |
       | `STALE_AFTER_PIVOT` | reopen / refine the affected downstream artifact |
       | `TASK_ID_DRIFT` | code-fix via ticket reopen |
+      | `RULE_FILE_INCOMPLETE` | ticket update to correct the declared Rules list OR a separate rule-maintenance task when the referenced rule itself is incomplete |
+      | `LANGUAGE_QUALITY` | spec edit or ticket update at the exact operator-facing sentence |
       | `YAGNI_WAIVER_INCOMPLETE` | ticket update (add the missing Execution Log line) OR spec edit (remove the label if it was never actually decided) |
       | `ENVIRONMENT_GATE_UNAVAILABLE` | operator escalation — NOT a phase fix and NOT something audit or the worker repairs itself; spin out as a separate infra/environment task if the fix is non-trivial |
       | `DEAD_CODE_SUSPECT` (spotted incidentally during a probe) | spin out as a separate task (background task / new ticket) — never fixed inside the current task; keeps the current blast radius bounded |
       | operator-acknowledged risk | Decision Log entry in the scope spec |
 
-      The audit agent proposes a concrete edit (diff or instruction). The operator decides and applies. The audit agent does not modify code autonomously (per `AX_NO_AUTO_FIX`).
+      The audit agent proposes a concrete edit (diff or instruction). The operator decides; the
+      orchestrator routes an accepted proposal to the artifact owner. The audit/code-review worker stays
+      read-only throughout (`AX_NO_AUTO_FIX`).
     </Axiom>
 
-    
 
-    
 
-    
 
-    
 
-    
+
+
+
+
+
   </BeliefState>
 
   <HaltConditions>
@@ -205,14 +218,14 @@
   </HaltConditions>
 
   <ExecutionPlan>
-    - **STEP_1_MECHANICAL** — Get the mechanical findings from the tool. Take them as given. Full step text: `ai/directives/sdd-v2/audit/steps/STEP_1_MECHANICAL.xml` (Read tool — no CLI command, no version argument).
-    - **STEP_2_SEMANTIC** — Add the layer the tool cannot — meaning. Full step text: `ai/directives/sdd-v2/audit/steps/STEP_2_SEMANTIC.xml` (Read tool — no CLI command, no version argument).
-    - **STEP_3_ROUTE** — Route findings; summarize. Route only — leave the fix to its owner. Full step text: `ai/directives/sdd-v2/audit/steps/STEP_3_ROUTE.xml` (Read tool — no CLI command, no version argument).
+    - **STEP_1_MECHANICAL** — Get the mechanical findings from the tool. Take them as given. Before executing this step, READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/audit/steps/STEP_1_MECHANICAL.xml").
+    - **STEP_2_SEMANTIC** — Add the layer the tool cannot — meaning. Before executing this step, READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/audit/steps/STEP_2_SEMANTIC.xml").
+    - **STEP_3_ROUTE** — Route findings; summarize. Route only — leave the fix to its owner. Before executing this step, READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/audit/steps/STEP_3_ROUTE.xml").
   </ExecutionPlan>
 
   <OutputContracts>
-    
 
-    
+
+
   </OutputContracts>
 </SddAudit>

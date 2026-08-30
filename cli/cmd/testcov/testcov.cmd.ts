@@ -18,59 +18,122 @@
  * Legend: ✅ ≥75%   🟢 ≥50%   🟡 ≥25%   🟠 >0%   🔴 0%   ⚫ not instrumented
  */
 
-import { execSync } from 'node:child_process';
-import { existsSync, readFileSync, readdirSync, lstatSync, statSync } from 'node:fs';
-import { join, extname, resolve, basename, relative } from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { existsSync, readFileSync, lstatSync } from 'node:fs';
+import { join, resolve, basename, relative } from 'node:path';
 import type { Dirent } from 'node:fs';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
 import { aggregateLineCoverage, describeCoverageGate } from './coverage-threshold.ts';
+import { selectCoverageAdapter } from './coverage-adapter-registry.ts';
+import type {
+  CoverageFileDetail,
+  CoverageLineDetail,
+  CoverageMetrics,
+  CoveragePresentationResult,
+  CoverageProducer,
+  CoverageReport,
+} from './coverage-adapter.types.ts';
+import { createCoverageArtifactBoundary } from './coverage-artifact.ts';
+import { inspectRepoPath } from '../../../shared/common/repo-path.ts';
+import { CoverageTraversalError, readCoverageDirectory } from './coverage-traversal.ts';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const ROOT = resolve(process.cwd());
-const COVERAGE_FILE = join(ROOT, 'coverage', 'coverage-final.json');
-const RESULTS_TMP = join(ROOT, 'coverage', '.tree-results.json');
 
 // ─── Argument parsing ─────────────────────────────────────────────────────────
 
-const args = parseArgs(process.argv, {
-  files: ['files'],
-  run: ['run'],
-  check: ['check'],
-  json: ['json'],
-  flat: ['flat'],
-  help: ['help', 'h'],
-  context: ['context', 'c'],
-  color: ['color'],
-  min: ['min'],
-});
+const USAGE = [
+  'usage: gennady testcov [path] [options]',
+  '       gennady testcov --min=<pct> [path...]',
+].join('\n');
 
-const RUN_TESTS = args.run === true || args.run === 'true';
-const CHECK_ONLY = args.check === true || args.check === 'true';
-const SHOW_FILES = args.files === true || args.files === 'true';
-const FLAT = args.flat === true || args.flat === 'true';
-const JSON_OUT = args.json === true || args.json === 'true';
-const HELP = args.help === true || args.help === 'true';
-const CONTEXT = typeof args.context === 'string' ? parseInt(args.context, 10) || 2 : 2;
-const COLOR = args.color === true || args.color === 'true';
-// --min=<pct>: coverage-threshold gate. `--min` with no value is a usage error (no implicit default —
-// unlike --context, a silently-assumed threshold would let a bare `--min` pass everything).
-const MIN_COVERAGE = typeof args.min === 'string' ? parseFloat(args.min) : undefined;
-if (args.min === true) {
-  console.error('testcov: --min requires a value, e.g. --min=80');
-  process.exit(4);
-}
-if (MIN_COVERAGE !== undefined && (Number.isNaN(MIN_COVERAGE) || MIN_COVERAGE < 0)) {
-  console.error(`testcov: --min value must be a non-negative number, got "${String(args.min)}"`);
+/** @purpose Stop before coverage I/O when argv does not match the public testcov grammar. */
+function badInvocation(problem: string): never {
+  console.error(
+    [`[testcov] ERR_CLI_TESTCOV_BAD_INVOCATION`, `  problem: ${problem}`, `  ${USAGE}`].join('\n')
+  );
   process.exit(4);
 }
 
-// Positional args: skip "testcov" (command name). EVERY remaining path is a coverage target — the
-// threshold gate (`--min`) aggregates them all (a task's Target Files are usually several files).
-// The interactive views (tree/flat/detail) still render the first target and warn about the rest.
-const positional = (args._ as string[]).filter((a) => a !== 'testcov');
+let args: Record<string, unknown> & { _: string[] };
+try {
+  args = parseArgs(
+    process.argv,
+    {
+      files: ['files'],
+      run: ['run'],
+      check: ['check'],
+      json: ['json'],
+      flat: ['flat'],
+      help: ['help', 'h'],
+      context: { aliases: ['context', 'c'], takesValue: true },
+      color: ['color'],
+      // Public grammar is intentionally equals-only: --min=<pct>.
+      min: ['min'],
+    },
+    { strict: true }
+  );
+} catch (cause) {
+  badInvocation(cause instanceof Error ? cause.message : String(cause));
+}
+
+const booleanOptions = [
+  ['--files', args.files],
+  ['--run', args.run],
+  ['--check', args.check],
+  ['--json', args.json],
+  ['--flat', args.flat],
+  ['--help', args.help],
+  ['--color', args.color],
+] as const;
+const invalidBoolean = booleanOptions.find(([, value]) => value !== undefined && value !== true);
+if (invalidBoolean) badInvocation(`${invalidBoolean[0]} does not take a value or repeat`);
+
+if (
+  args.context !== undefined &&
+  (typeof args.context !== 'string' || args.context.trim().length === 0)
+) {
+  badInvocation('--context/-c requires exactly one value');
+}
+const contextValue = typeof args.context === 'string' ? Number(args.context) : 2;
+if (!Number.isFinite(contextValue) || !Number.isInteger(contextValue) || contextValue < 0) {
+  badInvocation(`--context/-c must be a finite nonnegative integer, got "${String(args.context)}"`);
+}
+
+if (args.min !== undefined && (typeof args.min !== 'string' || args.min.trim().length === 0)) {
+  badInvocation('--min requires exactly one value in the form --min=<pct>');
+}
+const minValue = typeof args.min === 'string' ? Number(args.min) : undefined;
+if (minValue !== undefined && (!Number.isFinite(minValue) || minValue < 0 || minValue > 100)) {
+  badInvocation(`--min must be a finite number from 0 to 100, got "${String(args.min)}"`);
+}
+
+const RUN_TESTS = args.run === true;
+const CHECK_ONLY = args.check === true;
+const SHOW_FILES = args.files === true;
+const FLAT = args.flat === true;
+const JSON_OUT = args.json === true;
+const HELP = args.help === true;
+const CONTEXT = contextValue;
+const COLOR = args.color === true;
+const MIN_COVERAGE = minValue;
+
+// Positional args: skip only the router's leading "testcov" command token. The threshold gate
+// aggregates every remaining target (a task usually has several Target Files); interactive views
+// accept one target and reject extras above, rather than silently rendering only the first.
+const parsedPositionals = args._ as string[];
+const positional =
+  parsedPositionals[0] === 'testcov' ? parsedPositionals.slice(1) : parsedPositionals;
 const TARGETS = positional;
 const TARGET = positional.length > 0 ? positional[0] : undefined;
+
+if (CHECK_ONLY && TARGETS.length > 0) {
+  badInvocation(`--check does not take positional target(s): ${TARGETS.join(' ')}`);
+}
+if (MIN_COVERAGE === undefined && TARGETS.length > 1) {
+  badInvocation(`unexpected positional argument(s): ${TARGETS.slice(1).join(' ')}`);
+}
 
 if (HELP) {
   const { printHelp } = await import('./help.ts');
@@ -78,22 +141,98 @@ if (HELP) {
   process.exit(0);
 }
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+/** @purpose Reject an unsafe scoped coverage target before adapter detection or report identity work. */
+function coverageTargetFailure(target: string, detail: string): never {
+  console.error(
+    [
+      '[testcov] ERR_CLI_TESTCOV_TARGET_PATH',
+      `  problem: target \`${target}\` is not safe coverage evidence: ${detail}`,
+      '  fix: pass an exact repo-relative regular file or directory below the current project; absolute, outside, missing, special, and symlink paths are rejected.',
+    ].join('\n')
+  );
+  process.exit(1);
+}
 
-type DiagCode =
-  | 'NO_PACKAGE_JSON'
-  | 'NO_RUNNER'
-  | 'NATIVE_COVERAGE_UNSUPPORTED'
-  | 'NO_COVERAGE_FILE'
-  | 'COVERAGE_FILE_PARSE_ERROR'
-  | 'NO_RUNNER_CONFIG'
-  | 'MISSING_JSON_REPORTER'
-  | 'MISSING_REPORT_ON_FAILURE'
-  | 'REPORT_ON_FAILURE_DISABLED';
+const INSPECTED_GATE_TARGETS =
+  MIN_COVERAGE !== undefined
+    ? TARGETS.map((target) => {
+        const inspected = inspectRepoPath(ROOT, target, 'potential');
+        if (!inspected.ok) coverageTargetFailure(target, inspected.detail);
+        let stat;
+        try {
+          stat = lstatSync(inspected.absolute);
+        } catch (cause) {
+          coverageTargetFailure(
+            target,
+            `path cannot be inspected: ${(cause as NodeJS.ErrnoException).code ?? 'I/O error'}`
+          );
+        }
+        if (!stat.isFile() && !stat.isDirectory()) {
+          coverageTargetFailure(target, 'path is neither a regular file nor a directory');
+        }
+        return inspected.absolute;
+      })
+    : [];
+
+const adapterSelection = selectCoverageAdapter(ROOT);
+if (adapterSelection.kind !== 'selected') {
+  const code =
+    adapterSelection.kind === 'unsupported'
+      ? 'ERR_CLI_TESTCOV_ADAPTER_NOT_FOUND'
+      : 'ERR_CLI_TESTCOV_ADAPTER_AMBIGUOUS';
+  const problem =
+    adapterSelection.kind === 'unsupported'
+      ? 'no coverage platform/report adapter matches this project'
+      : `several coverage adapters match: ${adapterSelection.matches
+          .map(({ id, evidence }) => `${id} (${evidence.join(', ') || 'unspecified evidence'})`)
+          .join('; ')}`;
+  const fix =
+    adapterSelection.kind === 'unsupported'
+      ? `configure a supported coverage report adapter (available: ${adapterSelection.available.join(', ') || 'none registered'}); iOS, Android, and Go are not supported yet`
+      : 'remove the conflicting report/platform evidence; testcov refuses to guess which adapter owns the gate';
+  if (CHECK_ONLY && JSON_OUT) {
+    process.stdout.write(
+      `${JSON.stringify({
+        ok: false,
+        adapter: null,
+        diagnostics: [{ level: 'error', code, message: problem, fix }],
+      })}\n`
+    );
+  } else {
+    process.stderr.write(`[testcov] ${code}\n  problem: ${problem}\n  fix: ${fix}\n`);
+  }
+  process.exit(1);
+}
+const coverageAdapter = adapterSelection.adapter;
+const coverageBoundaryResult = createCoverageArtifactBoundary(ROOT, coverageAdapter);
+if (!coverageBoundaryResult.ok) {
+  const message = `selected adapter ${coverageAdapter.id} declared an unsafe artifact: ${coverageBoundaryResult.detail}`;
+  const fix =
+    'repair the repository path (no symlink components) or the adapter registration; no producer was run and no artifact was read or removed';
+  if (CHECK_ONLY && JSON_OUT) {
+    process.stdout.write(
+      `${JSON.stringify({
+        ok: false,
+        adapter: coverageAdapter.id,
+        diagnostics: [{ level: 'error', code: 'ERR_CLI_TESTCOV_ARTIFACT_PATH', message, fix }],
+      })}\n`
+    );
+  } else {
+    process.stderr.write(
+      `[testcov] ERR_CLI_TESTCOV_ARTIFACT_PATH\n  problem: ${message}\n  fix: ${fix}.\n`
+    );
+  }
+  process.exit(1);
+}
+const coverageBoundary = coverageBoundaryResult.boundary;
+const COVERAGE_FILE = coverageBoundary.reportAbsolute;
+const RESULTS_TMP = coverageBoundary.testResultsAbsolute;
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Diagnostic {
   level: 'error' | 'warning';
-  code: DiagCode;
+  code: string;
   /** Human-readable description of what is wrong. */
   message: string;
   /** What the tool expects in order to work. */
@@ -102,10 +241,8 @@ interface Diagnostic {
   fix: string;
 }
 
-interface DetectedRunner {
-  name: 'vitest' | 'jest' | 'node:test';
-  /** Returns the shell command that runs tests with coverage and writes coverage-final.json. */
-  runCmd(resultsFile: string): string;
+function renderInvocation(invocation: { command: string; args: string[] }): string {
+  return [invocation.command, ...invocation.args].join(' ');
 }
 
 type PkgJson = {
@@ -115,14 +252,7 @@ type PkgJson = {
   jest?: { coverageReporters?: string[] };
 };
 
-interface FileCovRaw {
-  sT: number;
-  sH: number;
-  bT: number;
-  bH: number;
-  fT: number;
-  fH: number;
-}
+type FileCovRaw = CoverageMetrics;
 
 interface DirStats extends FileCovRaw {
   cases: number;
@@ -150,65 +280,24 @@ function readPkg(): PkgJson | null {
 }
 
 /** @purpose Reads package.json deps+scripts to detect which test runner(s) are installed; priority: vitest > jest > node:test. */
-function detectRunners(): DetectedRunner[] {
-  const pkg = readPkg();
-  if (!pkg) return [];
-
-  const deps = { ...(pkg.devDependencies ?? {}), ...(pkg.dependencies ?? {}) };
-  const scripts = pkg.scripts ?? {};
-  const runners: DetectedRunner[] = [];
-
-  // #region START_VITEST_DETECTION — detects vitest or its coverage providers
-  if (deps['vitest'] || deps['@vitest/coverage-v8'] || deps['@vitest/coverage-istanbul']) {
-    runners.push({
-      name: 'vitest',
-      runCmd: (out) =>
-        `npx vitest run --coverage --reporter=default --reporter=json --outputFile.json=${out}`,
-    });
-  }
-  // #endregion END_VITEST_DETECTION
-
-  // #region START_JEST_DETECTION — detects jest core or related packages
-  if (deps['jest'] || deps['@jest/core'] || deps['jest-circus'] || deps['babel-jest']) {
-    runners.push({
-      name: 'jest',
-      runCmd: (out) => `npx jest --coverage --json --outputFile=${out}`,
-    });
-  }
-  // #endregion END_JEST_DETECTION
-
-  // #region START_NODE_TEST_DETECTION — detects c8 + node --test script; re-uses npm script for correct TS loader
-  const nodeTestEntry = Object.entries(scripts).find(([, v]) => /\bnode\s+--test\b/.test(v));
-  if (deps['c8'] && nodeTestEntry) {
-    const [scriptName, scriptCmd] = nodeTestEntry;
-    const alreadyWrappedWithC8 = /\bc8\b/.test(scriptCmd);
-    runners.push({
-      name: 'node:test',
-      runCmd: (_out) =>
-        alreadyWrappedWithC8
-          ? `npm run ${scriptName}`
-          : `npx c8 --reporter=json npm run ${scriptName}`,
-    });
-  }
-  // #endregion END_NODE_TEST_DETECTION
-
-  return runners;
+function detectRunners(): CoverageProducer[] {
+  const capability = coverageAdapter.producerCapability(ROOT);
+  return capability.kind === 'available' ? capability.producers : [];
 }
 
 /**
- * @purpose Detect a `node --test --experimental-test-coverage` script — node's OWN native coverage,
- *   legal on its own but NOT the c8-wrapped Istanbul JSON `detectRunners` requires.
- * @invariant Checked only when `detectRunners()` found nothing — never shadows a real c8-backed
- *   runner; this is "found something unusable," not a runner pick.
- * @param pkg Parsed package.json.
- * @returns `[scriptName, scriptCmd]` of the first matching script, or null.
+ * @purpose Isolate a nested producer from its caller's Node test and V8 coverage control plane
+ *   without dropping ordinary runtime environment.
+ * @returns Inherited environment with nested-process control variables cleared.
  */
-function detectNativeCoverageScript(pkg: PkgJson): [string, string] | null {
-  const scripts = pkg.scripts ?? {};
-  const entry = Object.entries(scripts).find(
-    ([, v]) => /\bnode\s+--test\b/.test(v) && /--experimental-test-coverage\b/.test(v)
-  );
-  return entry ?? null;
+function producerEnvironment(): NodeJS.ProcessEnv {
+  // Node re-injects its active NODE_V8_COVERAGE into spawn children when the key is absent. An
+  // explicit empty value is the supported opt-out for this child boundary; deleting alone leaks it.
+  const env: NodeJS.ProcessEnv = { ...process.env, NODE_V8_COVERAGE: '' };
+  for (const key of Object.keys(env)) {
+    if (key.startsWith('NODE_TEST_')) delete env[key];
+  }
+  return env;
 }
 
 // ─── Diagnostics ──────────────────────────────────────────────────────────────
@@ -217,51 +306,28 @@ function detectNativeCoverageScript(pkg: PkgJson): [string, string] | null {
 function runDiagnostics(): Diagnostic[] {
   const diags: Diagnostic[] = [];
 
-  // #region START_DIAG_PACKAGE_JSON — package.json must exist
-  const pkg = readPkg();
-  if (!pkg) {
+  // #region START_DIAG_RUNNER — selected adapter owns platform manifest and producer capability
+  // The adapter owns its platform manifest. Istanbul reports NO_PACKAGE_JSON itself; a future
+  // Go/iOS/Android adapter is not forced through a JavaScript package.json precondition here.
+  const producerCapability = coverageAdapter.producerCapability(ROOT);
+  if (producerCapability.kind === 'unsupported') {
     diags.push({
       level: 'error',
-      code: 'NO_PACKAGE_JSON',
-      message: 'package.json not found at project root',
-      expect: `package.json at ${ROOT}`,
-      fix: 'Run from the project root (directory containing package.json)',
+      code: producerCapability.code,
+      message: producerCapability.message,
+      expect: producerCapability.expect,
+      fix: producerCapability.fix,
     });
     return diags;
   }
-  // #endregion END_DIAG_PACKAGE_JSON
-
-  // #region START_DIAG_RUNNER — at least one runner must be detected
-  const runners = detectRunners();
-  if (runners.length === 0) {
-    const native = detectNativeCoverageScript(pkg);
-    if (native) {
-      const [scriptName] = native;
-      diags.push({
-        level: 'error',
-        code: 'NATIVE_COVERAGE_UNSUPPORTED',
-        message: `native node coverage found: "${scriptName}" runs "node --test --experimental-test-coverage" — but testcov's tree/gate pipeline reads c8's Istanbul JSON output, which node's own --experimental-test-coverage does not produce`,
-        expect: 'c8 with a "node --test" npm script (Istanbul-format coverage-final.json)',
-        fix: `native node coverage found; install c8 for testcov integration — npm install -D c8, then wrap the script: npx c8 --reporter=json npm run ${scriptName}`,
-      });
-      return diags;
-    }
-    diags.push({
-      level: 'error',
-      code: 'NO_RUNNER',
-      message: 'No supported test runner detected in package.json',
-      expect:
-        'devDependencies must include one of: vitest, @vitest/coverage-v8, jest, @jest/core, jest-circus — or c8 with a "node --test" npm script',
-      fix: 'Install a runner: npm install -D vitest @vitest/coverage-v8',
-    });
-    return diags;
-  }
+  const runners = producerCapability.producers;
   // #endregion END_DIAG_RUNNER
 
   const primary = runners[0]!;
 
   // #region START_DIAG_COVERAGE_FILE — coverage file must exist
-  if (!existsSync(COVERAGE_FILE)) {
+  const reportRead = coverageBoundary.readReport();
+  if (!reportRead.ok) {
     // node:test has no fixed command — the real one is whichever npm script detectRunners() found
     // wrapped in c8; a hardcoded "npm test" would suggest a script that may not exist or lack coverage.
     const runHint =
@@ -269,12 +335,12 @@ function runDiagnostics(): Diagnostic[] {
         ? 'npx vitest run --coverage'
         : primary.name === 'jest'
           ? 'npx jest --coverage'
-          : primary.runCmd(RESULTS_TMP);
+          : renderInvocation(primary.invocation(RESULTS_TMP));
     diags.push({
       level: 'error',
       code: 'NO_COVERAGE_FILE',
-      message: 'coverage/coverage-final.json not found — tests have not been run with coverage',
-      expect: `Istanbul JSON coverage file at: ${COVERAGE_FILE}`,
+      message: `${coverageBoundary.reportRelative} not found or unavailable as safe coverage evidence: ${reportRead.detail}; the selected producer did not produce a readable current report`,
+      expect: `${coverageAdapter.reportFormat} regular non-symlink report at: ${COVERAGE_FILE}`,
       fix: `Option A: npx gennady testcov --run\nOption B: ${runHint}  (then re-run without --run)`,
     });
   }
@@ -284,7 +350,7 @@ function runDiagnostics(): Diagnostic[] {
   if (primary.name === 'vitest') {
     collectVitestDiags(diags);
   } else if (primary.name === 'jest') {
-    collectJestDiags(diags, pkg);
+    collectJestDiags(diags, readPkg() ?? {});
   }
   // node:test: c8 works without extra config — no validation needed.
   // #endregion END_DIAG_RUNNER_CONFIG
@@ -392,6 +458,7 @@ function printDiagnostics(diags: Diagnostic[], asJson: boolean): void {
       JSON.stringify(
         {
           ok: diags.every((d) => d.level !== 'error'),
+          adapter: coverageAdapter.id,
           runner: runners[0]?.name ?? null,
           coverageFile: COVERAGE_FILE,
           diagnostics: diags,
@@ -436,6 +503,7 @@ if (CHECK_ONLY) {
 
 // ─── --run mode ───────────────────────────────────────────────────────────────
 
+let runnerExitCode: number | null = null;
 if (RUN_TESTS) {
   const runners = detectRunners();
   const runner = runners[0];
@@ -444,182 +512,146 @@ if (RUN_TESTS) {
     process.exit(1);
   }
   process.stderr.write(`testcov: running ${runner.name} with coverage...\n`);
-  try {
-    // inherit all stdio so the user (and any calling agent) sees runner output + errors.
-    execSync(runner.runCmd(RESULTS_TMP), { stdio: ['ignore', 'inherit', 'inherit'], cwd: ROOT });
-  } catch (err) {
-    // Exit code 1 = test failures — expected. Coverage is still written (vitest: reportOnFailure: true).
-    // Exit code > 1 usually means a runner crash (missing binary, config error, etc.).
-    const status = (err as { status?: number }).status ?? -1;
-    if (status !== 1) {
-      process.stderr.write(
-        `\ntestcov: ⚠  ${runner.name} exited with code ${status} — possible configuration error.\n`
-      );
-      process.stderr.write(`  Run: npx gennady testcov --check  to diagnose.\n`);
-    }
+  const cleared = coverageBoundary.clearProducerArtifacts();
+  if (!cleared.ok) {
+    process.stderr.write(
+      `[testcov] ERR_CLI_TESTCOV_ARTIFACT_PATH\n  problem: cannot safely clear prior ${coverageBoundary.reportRelative}: ${cleared.detail}\n  fix: replace symlink/special/unreadable artifact components with a normal repo-local directory and retry; the producer was not started.\n`
+    );
+    process.exit(1);
   }
+  const invocation = runner.invocation(RESULTS_TMP);
+  const result = spawnSync(invocation.command, invocation.args, {
+    stdio: ['ignore', 'inherit', 'inherit'],
+    cwd: ROOT,
+    env: producerEnvironment(),
+  });
+  if (result.error) {
+    runnerExitCode = 127;
+    process.stderr.write(
+      `\ntestcov: ${runner.name} could not start: ${result.error.message} (${renderInvocation(invocation)})\n`
+    );
+  } else {
+    runnerExitCode = result.status ?? 1;
+  }
+  if (runnerExitCode !== 0) {
+    process.stderr.write(
+      `\ntestcov: ⚠  ${runner.name} exited with code ${runnerExitCode} — coverage output is diagnostic only; the invocation remains failed.\n`
+    );
+    process.stderr.write(`  Run: npx gennady testcov --check  to diagnose.\n`);
+  }
+}
+
+/** @purpose Preserve a failed producer's status through any later coverage-rendering diagnostic. */
+function coverageFailureExitCode(): number {
+  return runnerExitCode !== null && runnerExitCode !== 0 ? runnerExitCode : 1;
 }
 
 // ─── Load coverage data ───────────────────────────────────────────────────────
 
-if (!existsSync(COVERAGE_FILE)) {
+const reportRead = coverageBoundary.readReport();
+if (!reportRead.ok) {
   printDiagnostics(runDiagnostics(), false);
-  process.exit(1);
+  process.exit(coverageFailureExitCode());
 }
 
-let coverageJson: Record<
-  string,
-  { s?: Record<string, number>; b?: Record<string, number[]>; f?: Record<string, number> }
->;
+let coverageReport: CoverageReport;
 try {
-  coverageJson = JSON.parse(readFileSync(COVERAGE_FILE, 'utf8'));
+  coverageReport = coverageAdapter.parseReport(reportRead.content);
 } catch {
   printDiagnostics(
     [
       {
         level: 'error',
         code: 'COVERAGE_FILE_PARSE_ERROR',
-        message: 'coverage-final.json is not valid JSON',
-        expect: `Valid Istanbul-format JSON at: ${COVERAGE_FILE}`,
+        message: `${coverageAdapter.reportFormat} report is not valid`,
+        expect: `Valid ${coverageAdapter.reportFormat} coverage report at: ${COVERAGE_FILE}`,
         fix: 'Delete the file and re-run: npx gennady testcov --run',
       },
     ],
     false
   );
-  process.exit(1);
+  process.exit(coverageFailureExitCode());
 }
-
-const covRaw: Record<string, FileCovRaw> = {};
-for (const [fp, data] of Object.entries(coverageJson)) {
-  const sV = Object.values(data.s ?? {});
-  const bV = Object.values(data.b ?? {}).flat();
-  const fV = Object.values(data.f ?? {});
-  covRaw[fp] = {
-    sT: sV.length,
-    sH: sV.filter((v) => v > 0).length,
-    bT: bV.length,
-    bH: bV.filter((v) => v > 0).length,
-    fT: fV.length,
-    fH: fV.filter((v) => v > 0).length,
-  };
-}
+const coverageJson = coverageReport.entries;
+const covRaw = coverageReport.metrics;
 
 // ─── Load test results ────────────────────────────────────────────────────────
 
 const testCases: Record<string, number> = {};
 
-if (existsSync(RESULTS_TMP)) {
+const resultsRead = coverageBoundary.readTestResults();
+if (resultsRead.ok) {
   try {
-    const d = JSON.parse(readFileSync(RESULTS_TMP, 'utf8')) as {
-      testResults?: Array<{
-        name?: string;
-        testFilePath?: string;
-        assertionResults?: Array<{ status: string }>;
-      }>;
-    };
-    for (const s of d.testResults ?? []) {
-      // jest uses testFilePath; vitest uses name
-      const filePath = s.testFilePath ?? s.name;
-      if (filePath) {
-        testCases[filePath] = (s.assertionResults ?? []).filter(
-          (t) => t.status === 'passed'
-        ).length;
-      }
+    const parsed = coverageAdapter.parseTestResults(resultsRead.content);
+    if (parsed.kind === 'supported') {
+      Object.assign(testCases, parsed.value);
+    } else if (MIN_COVERAGE === undefined) {
+      process.stderr.write(
+        `[testcov] ${parsed.code}\n  problem: ${parsed.message}\n  effect: coverage remains available, but no test counts are shown.\n`
+      );
     }
-  } catch {
-    // ignore malformed results file
+  } catch (cause) {
+    if (MIN_COVERAGE === undefined) {
+      process.stderr.write(
+        `[testcov] ERR_CLI_TESTCOV_RESULTS_PARSE\n  problem: selected adapter could not parse ${coverageBoundary.testResultsRelative}: ${cause instanceof Error ? cause.message : String(cause)}\n  effect: coverage remains available, but no test counts are shown.\n`
+      );
+    }
   }
 }
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
-const SKIP_DIRS = new Set([
-  'node_modules',
-  '.git',
-  'dist',
-  'build',
-  'out',
-  'coverage',
-  '.vite',
-  '.cache',
-  '.turbo',
-  '.nx',
-  '__generated__',
-  '.next',
-  '.nuxt',
-  '.svelte-kit',
-  'vendor',
-  'third_party',
-  'external',
-  '.storybook',
-  '.husky',
-  '.claude',
-  '.github',
-  '__tests__',
-  '__snapshots__',
-  '__mocks__',
-  'docs',
-  'public',
-  'static',
-  'assets',
-  'fixtures',
-  '__fixtures__',
-  'tooling-lab',
-  'draft',
-  'tasks',
-  'specs',
-  'ai',
-]);
-
-const CODE_EXT = new Set([
-  '.ts',
-  '.tsx',
-  '.mts',
-  '.cts',
-  '.svelte',
-  '.vue',
-  '.js',
-  '.jsx',
-  '.mjs',
-  '.cjs',
-]);
-const IS_TEST = (name: string) => /\.(test|spec)\.(ts|tsx|mts|js|jsx|mjs|svelte|vue)$/.test(name);
-
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-/** @purpose Find coverage entry by absolute path; falls back to basename match if exact path not found. */
-function findCovEntry(
-  absPath: string,
-  covJson: Record<string, unknown>
-): Record<string, unknown> | undefined {
-  // Step 1: exact match
-  if (covJson[absPath]) return covJson[absPath] as Record<string, unknown>;
-
-  // Step 2: basename match (handles container paths, different cwd roots, etc.)
-  const targetName = basename(absPath);
-  for (const [key, val] of Object.entries(covJson)) {
-    if (basename(key) === targetName) return val as Record<string, unknown>;
-  }
-
-  return undefined;
+/** @purpose Find the uniquely path-identified coverage entry for a source file. */
+function findCovEntry(absPath: string): unknown | undefined {
+  const resolution = coverageAdapter.resolveSource(ROOT, coverageReport, absPath);
+  return resolution.kind === 'found' ? coverageJson[resolution.key] : undefined;
 }
 
-const covRawByName: Record<string, FileCovRaw> = {};
-for (const [key, raw] of Object.entries(covRaw)) {
-  const name = basename(key);
-  if (!covRawByName[name]) covRawByName[name] = raw;
-}
-
-/** @purpose Resolve coverage stats for a filesystem path; falls back to basename match. */
+/** @purpose Resolve coverage stats only through full path identity, never basename alone. */
 function getCovRaw(fp: string): FileCovRaw | undefined {
-  return covRaw[fp] ?? covRawByName[basename(fp)];
+  const resolution = coverageAdapter.resolveSource(ROOT, coverageReport, fp);
+  return resolution.kind === 'found' ? covRaw[resolution.key] : undefined;
+}
+
+/** @purpose Enumerate production files under an exact gate target, applying the same extension/skip policy as the tree. */
+function productionFiles(target: string): string[] {
+  return coverageAdapter.collectProductionFiles(target);
+}
+
+/** @purpose Reject every incomplete project-wide or scoped source walk with one teaching error. */
+function traversalFailure(cause: unknown, scope: string): never {
+  const detail =
+    cause instanceof CoverageTraversalError
+      ? cause.message
+      : cause instanceof Error
+        ? cause.message
+        : String(cause);
+  console.error(
+    [
+      '[testcov] ERR_CLI_TESTCOV_TRAVERSAL',
+      `  problem: ${scope} could not be enumerated completely: ${detail}`,
+      '  fix: restore read access to the entire coverage source tree and retry; partial coverage aggregates are never accepted.',
+    ].join('\n')
+  );
+  process.exit(coverageFailureExitCode());
+}
+
+/** @purpose Enumerate one coverage directory through the shared fail-closed traversal boundary. */
+function coverageEntries(dir: string): Dirent[] {
+  try {
+    return readCoverageDirectory(dir);
+  } catch (cause) {
+    traversalFailure(cause, relative(ROOT, dir) || '.');
+  }
 }
 
 function isLink(p: string): boolean {
   try {
     return lstatSync(p).isSymbolicLink();
-  } catch {
-    return false;
+  } catch (cause) {
+    traversalFailure(cause, relative(ROOT, p) || '.');
   }
 }
 
@@ -637,18 +669,13 @@ function findFiles(target: string): string[] {
   const dirs = [ROOT];
   while (dirs.length > 0) {
     const dir = dirs.pop()!;
-    let ents: Dirent[];
-    try {
-      ents = readdirSync(dir, { withFileTypes: true });
-    } catch {
-      continue;
-    }
+    const ents = coverageEntries(dir);
     for (const e of ents) {
       const fp = join(dir, e.name);
       if (isLink(fp)) continue;
       if (e.isDirectory()) {
-        if (!SKIP_DIRS.has(e.name) && !e.name.startsWith('.')) dirs.push(fp);
-      } else if (e.name === name && CODE_EXT.has(extname(e.name)) && !IS_TEST(e.name)) {
+        if (!coverageAdapter.shouldSkipDirectory(e.name) && !e.name.startsWith('.')) dirs.push(fp);
+      } else if (e.name === name && coverageAdapter.isProductionSource(fp)) {
         results.push(fp);
       }
     }
@@ -667,136 +694,18 @@ function icon(p: number | null): string {
 
 // ─── File detail (line-by-line coverage) ──────────────────────────────────────
 
-interface LineInfo {
-  num: number;
-  text: string;
-  sT: number;
-  sH: number;
-  bT: number;
-  bH: number;
-  fT: number;
-  fH: number;
-}
-
-interface FileDetail {
-  path: string;
-  lines: LineInfo[];
-  sT: number;
-  sH: number;
-  bT: number;
-  bH: number;
-  fT: number;
-  fH: number;
-}
-
-/** @purpose Builds a per-line coverage map from Istanbul statementMap/branchMap/fnMap + source text. */
-function buildFileDetail(absPath: string, covEntry: Record<string, unknown>): FileDetail | null {
+/** @purpose Ask the selected adapter for normalized line detail without inspecting native schema. */
+function buildFileDetail(
+  absPath: string,
+  covEntry: unknown
+): CoveragePresentationResult<CoverageFileDetail> | null {
   if (!existsSync(absPath)) return null;
   const source = readFileSync(absPath, 'utf8');
-  const srcLines = source.split('\n');
-
-  // Initialize line info for every line
-  const lineMap = new Map<number, LineInfo>();
-  for (let i = 0; i < srcLines.length; i++) {
-    lineMap.set(i + 1, {
-      num: i + 1,
-      text: srcLines[i]!,
-      sT: 0,
-      sH: 0,
-      bT: 0,
-      bH: 0,
-      fT: 0,
-      fH: 0,
-    });
-  }
-
-  // Map statements to lines
-  const sm = (covEntry['statementMap'] ?? {}) as Record<
-    string,
-    { start: { line: number }; end: { line: number } }
-  >;
-  const s = (covEntry['s'] ?? {}) as Record<string, number>;
-  for (const [id, loc] of Object.entries(sm)) {
-    const hit = s[id] ?? 0;
-    for (let ln = loc.start.line; ln <= loc.end.line; ln++) {
-      const li = lineMap.get(ln);
-      if (li) {
-        li.sT++;
-        if (hit > 0) li.sH++;
-      }
-    }
-  }
-
-  // Map branches to lines
-  const bm = (covEntry['branchMap'] ?? {}) as Record<
-    string,
-    { locations: Array<{ start: { line: number }; end: { line: number } }> }
-  >;
-  const b = (covEntry['b'] ?? {}) as Record<string, number[]>;
-  for (const [id, branch] of Object.entries(bm)) {
-    const hits = b[id] ?? [];
-    for (let bi = 0; bi < branch.locations.length; bi++) {
-      const loc = branch.locations[bi]!;
-      for (let ln = loc.start.line; ln <= loc.end.line; ln++) {
-        const li = lineMap.get(ln);
-        if (li) {
-          li.bT++;
-          if ((hits[bi] ?? 0) > 0) li.bH++;
-        }
-      }
-    }
-  }
-
-  // Map functions to lines
-  const fm = (covEntry['fnMap'] ?? {}) as Record<
-    string,
-    {
-      decl: { start: { line: number }; end: { line: number } };
-      loc: { start: { line: number }; end: { line: number } };
-    }
-  >;
-  const f = (covEntry['f'] ?? {}) as Record<string, number>;
-  for (const [id, fn] of Object.entries(fm)) {
-    const hit = f[id] ?? 0;
-    for (let ln = fn.loc.start.line; ln <= fn.loc.end.line; ln++) {
-      const li = lineMap.get(ln);
-      if (li) {
-        li.fT++;
-        if (hit > 0) li.fH++;
-      }
-    }
-  }
-
-  // Aggregate totals
-  let totalST = 0,
-    totalSH = 0,
-    totalBT = 0,
-    totalBH = 0,
-    totalFT = 0,
-    totalFH = 0;
-  for (const li of lineMap.values()) {
-    totalST += li.sT;
-    totalSH += li.sH;
-    totalBT += li.bT;
-    totalBH += li.bH;
-    totalFT += li.fT;
-    totalFH += li.fH;
-  }
-
-  return {
-    path: absPath,
-    lines: [...lineMap.values()],
-    sT: totalST,
-    sH: totalSH,
-    bT: totalBT,
-    bH: totalBH,
-    fT: totalFT,
-    fH: totalFH,
-  };
+  return coverageAdapter.fileDetail(absPath, source, covEntry);
 }
 
-/** @purpose Renders a source file annotated with per-line coverage: full annotated view with context around uncovered regions. */
-function printFileDetail(detail: FileDetail, ctx: number, covEntry: Record<string, unknown>): void {
+/** @purpose Render adapter-normalized line coverage without reading native report fields. */
+function printFileDetail(detail: CoverageFileDetail, ctx: number): void {
   const lP = pct(detail.sH, detail.sT);
   const bP = pct(detail.bH, detail.bT);
   const fP = pct(detail.fH, detail.fT);
@@ -852,48 +761,6 @@ function printFileDetail(detail: FileDetail, ctx: number, covEntry: Record<strin
   let lastPrinted = 0;
   let gap = false;
 
-  // Build branch annotation map from original coverage data — keyed by branch start line
-  const branchNotes = new Map<number, string>();
-  const bmRaw = (covEntry['branchMap'] ?? {}) as Record<
-    string,
-    { line?: number; locations: Array<{ start: { line: number } }> }
-  >;
-  const bRaw = (covEntry['b'] ?? {}) as Record<string, number[]>;
-  for (const [id, branch] of Object.entries(bmRaw)) {
-    const hits = bRaw[id] ?? [];
-    const total = branch.locations.length;
-    const covered = hits.filter((h) => h > 0).length;
-    if (covered < total) {
-      const line = branch.line ?? branch.locations[0]?.start.line ?? 0;
-      if (line > 0 && !branchNotes.has(line)) {
-        const label = covered === 0 ? 'not taken' : `${covered}/${total} taken`;
-        branchNotes.set(line, `← branch ${label}`);
-      }
-    }
-  }
-
-  // Build function annotation map for uncovered functions
-  const funcNotes = new Map<number, string>();
-  const fmRaw = (covEntry['fnMap'] ?? {}) as Record<
-    string,
-    { line?: number; name?: string; loc: { start: { line: number } } }
-  >;
-  const fRaw = (covEntry['f'] ?? {}) as Record<string, number>;
-  for (const [id, fn] of Object.entries(fmRaw)) {
-    const hit = fRaw[id] ?? 0;
-    if (hit === 0) {
-      const line = fn.line ?? fn.loc.start.line;
-      if (line > 0 && !funcNotes.has(line)) {
-        const isAnon =
-          !fn.name ||
-          fn.name === '(anonymous)' ||
-          fn.name === '__name' ||
-          fn.name.startsWith('(anonymous');
-        funcNotes.set(line, isAnon ? '← never called' : `← ${fn.name}() never called`);
-      }
-    }
-  }
-
   for (const li of detail.lines) {
     if (!showAll && !expanded.has(li.num)) {
       if (!gap && lastPrinted > 0 && lastPrinted < li.num - 1) {
@@ -914,8 +781,7 @@ function printFileDetail(detail: FileDetail, ctx: number, covEntry: Record<strin
           ? '\x1b[43m\x1b[30m'
           : '';
     const suffix = prefix ? '\x1b[0m' : '';
-    const note = branchNotes.get(li.num) ?? funcNotes.get(li.num);
-    const noteStr = note ? (COLOR ? `  \x1b[33m${note}\x1b[0m` : `  ${note}`) : '';
+    const noteStr = li.note ? (COLOR ? `  \x1b[33m${li.note}\x1b[0m` : `  ${li.note}`) : '';
     console.log(`${prefix}${lineNum} ${marker} ${li.text}${suffix}${noteStr}`);
   }
 
@@ -923,7 +789,7 @@ function printFileDetail(detail: FileDetail, ctx: number, covEntry: Record<strin
   console.log(`\n  ${icon(null)} not instrumented   ♦️ uncovered   🔸 partial   ✓ covered`);
 }
 
-function lineMarker(li: LineInfo): string {
+function lineMarker(li: CoverageLineDetail): string {
   if (li.sT === 0 && li.bT === 0 && li.fT === 0) return '·';
   if (li.sT > 0 && li.sH === 0) return '♦️';
   if (li.sT > 0 && li.sH < li.sT) return '🔸';
@@ -937,25 +803,19 @@ function lineMarker(li: LineInfo): string {
 
 const statsCache = new Map<string, DirStats>();
 
-/** @purpose Recursively aggregates raw Istanbul hit counts for a directory; memoized per dir path. */
+/** @purpose Recursively aggregate adapter metrics for a completely readable directory. */
 function getDirStats(dir: string): DirStats {
   const cached = statsCache.get(dir);
   if (cached) return cached;
 
   const a: DirStats = { sT: 0, sH: 0, bT: 0, bH: 0, fT: 0, fH: 0, cases: 0 };
-  let ents: Dirent[];
-  try {
-    ents = readdirSync(dir, { withFileTypes: true });
-  } catch {
-    statsCache.set(dir, a);
-    return a;
-  }
+  const ents = coverageEntries(dir);
 
   for (const e of ents) {
     const fp = join(dir, e.name);
     if (isLink(fp)) continue;
     if (e.isDirectory()) {
-      if (SKIP_DIRS.has(e.name)) continue;
+      if (coverageAdapter.shouldSkipDirectory(e.name)) continue;
       const c = getDirStats(fp);
       a.sT += c.sT;
       a.sH += c.sH;
@@ -965,11 +825,10 @@ function getDirStats(dir: string): DirStats {
       a.fH += c.fH;
       a.cases += c.cases;
     } else {
-      if (!CODE_EXT.has(extname(e.name))) continue;
-      if (IS_TEST(e.name)) {
+      if (coverageAdapter.isTestSource(fp)) {
         // Test files: contribute case counts but NOT coverage metrics.
         a.cases += testCases[fp] ?? 0;
-      } else {
+      } else if (coverageAdapter.isProductionSource(fp)) {
         const cov = getCovRaw(fp);
         if (cov) {
           a.sT += cov.sT;
@@ -995,22 +854,16 @@ function fmtDirStats(s: DirStats): string {
 
 // ─── Tree output ──────────────────────────────────────────────────────────────
 
-/** @purpose Renders an ASCII coverage tree for dir; respects SHOW_FILES and SKIP_DIRS; never shows test files. */
+/** @purpose Renders an ASCII coverage tree using the selected adapter's source policy. */
 function walk(dir: string, pfx: string): void {
-  let ents: Dirent[];
-  try {
-    ents = readdirSync(dir, { withFileTypes: true });
-  } catch {
-    return;
-  }
+  const ents = coverageEntries(dir);
 
   const visible = ents.filter((e) => {
     const fp = join(dir, e.name);
     if (isLink(fp)) return false;
-    if (e.isDirectory()) return !SKIP_DIRS.has(e.name);
+    if (e.isDirectory()) return !coverageAdapter.shouldSkipDirectory(e.name);
     if (!SHOW_FILES) return false;
-    if (IS_TEST(e.name)) return false;
-    return CODE_EXT.has(extname(e.name));
+    return coverageAdapter.isProductionSource(join(dir, e.name));
   });
 
   visible.sort((a, b) => {
@@ -1057,15 +910,14 @@ function walk(dir: string, pfx: string): void {
 /** @purpose Returns true if dir contains any source file (up to depth 4); used to filter root dirs. */
 function hasCode(dir: string, depth = 0): boolean {
   if (depth > 4) return false;
-  let ents: Dirent[];
-  try {
-    ents = readdirSync(dir, { withFileTypes: true });
-  } catch {
-    return false;
-  }
+  const ents = coverageEntries(dir);
   for (const e of ents) {
-    if (e.isFile() && CODE_EXT.has(extname(e.name))) return true;
-    if (e.isDirectory() && !SKIP_DIRS.has(e.name) && !isLink(join(dir, e.name))) {
+    if (e.isFile() && coverageAdapter.isProductionSource(join(dir, e.name))) return true;
+    if (
+      e.isDirectory() &&
+      !coverageAdapter.shouldSkipDirectory(e.name) &&
+      !isLink(join(dir, e.name))
+    ) {
       if (hasCode(join(dir, e.name), depth + 1)) return true;
     }
   }
@@ -1074,10 +926,10 @@ function hasCode(dir: string, depth = 0): boolean {
 
 /** @purpose Returns top-level directories under ROOT that contain source files, sorted. */
 function getRoots(): string[] {
-  return readdirSync(ROOT, { withFileTypes: true })
+  return coverageEntries(ROOT)
     .filter((e) => {
       if (!e.isDirectory()) return false;
-      if (SKIP_DIRS.has(e.name)) return false;
+      if (coverageAdapter.shouldSkipDirectory(e.name)) return false;
       if (e.name.startsWith('.')) return false;
       if (isLink(join(ROOT, e.name))) return false;
       return hasCode(join(ROOT, e.name));
@@ -1089,12 +941,7 @@ function getRoots(): string[] {
 // ─── Flat collection ──────────────────────────────────────────────────────────
 
 function collectFlat(dir: string, base: string, out: FlatEntry[]): void {
-  let ents: Dirent[];
-  try {
-    ents = readdirSync(dir, { withFileTypes: true });
-  } catch {
-    return;
-  }
+  const ents = coverageEntries(dir);
 
   const sorted = [...ents].sort((a, b) => {
     if (a.isDirectory() !== b.isDirectory()) return a.isDirectory() ? -1 : 1;
@@ -1107,7 +954,7 @@ function collectFlat(dir: string, base: string, out: FlatEntry[]): void {
     if (isLink(fp)) continue;
 
     if (e.isDirectory()) {
-      if (SKIP_DIRS.has(e.name)) continue;
+      if (coverageAdapter.shouldSkipDirectory(e.name)) continue;
       if (SHOW_FILES) {
         collectFlat(fp, rel, out);
       } else {
@@ -1123,8 +970,7 @@ function collectFlat(dir: string, base: string, out: FlatEntry[]): void {
       }
     } else {
       if (!SHOW_FILES) continue;
-      if (!CODE_EXT.has(extname(e.name))) continue;
-      if (IS_TEST(e.name)) continue;
+      if (!coverageAdapter.isProductionSource(fp)) continue;
       const cov = getCovRaw(fp);
       if (cov) {
         out.push({
@@ -1156,68 +1002,79 @@ function printFlat(entries: FlatEntry[]): void {
 }
 
 // ─── --min mode ───────────────────────────────────────────────────────────────
-// With no positional path: aggregates getDirStats() over every getRoots() top-level dir — the same
-// project-wide sum the default tree already renders per-root, just totalled instead of printed.
-// With a positional path: aggregates only the files findFiles(TARGET) resolves to, so `--min` scopes
-// to TARGET exactly like the tree/flat/--files paths below do. Exit-code convention matches --check:
-// 0 = gate passes, 1 = gate fails (no tree/diagnostics printed on this path).
+// Both project-wide and scoped gates derive one complete production-source set through the selected
+// platform adapter. Every member must be fresh and resolve to exactly one report identity before any
+// aggregate is trusted. Tree rendering remains presentation-only and never defines gate membership.
 
 if (MIN_COVERAGE !== undefined) {
-  let buckets: FileCovRaw[];
-  if (TARGETS.length > 0) {
-    // The gate demands EXACT paths — NO basename fallback (which could resolve `src/a/x.ts` to
-    // `src/b/x.ts`, or let a whole missing Target File silently vanish because a sibling was found).
-    // Every path must exist exactly as given, or the verdict is red.
-    const missing = TARGETS.filter((t) => !existsSync(resolve(ROOT, t)));
-    if (missing.length > 0) {
-      console.error(
-        `testcov: путь(и) не найдены по указанному пути: ${missing.join(', ')}. ` +
-          `Для гейта каждый Target File обязан существовать точно (basename-поиск не применяется) — иначе красный вердикт.`
-      );
-      process.exit(1);
-    }
-    const resolved = TARGETS.map((t) => resolve(ROOT, t));
-
-    // Freshness: the report must be NEWER than the files it is gating. `sdd-verify --profile test`
-    // is only the single producer if the report it wrote is actually fresh — otherwise `--min` would
-    // pass on a stale `coverage-final.json` left by an earlier run (a test:coverage that ran but wrote
-    // no coverage, or code changed since). A source file newer than the report = stale = red.
-    const covMtime = statSync(COVERAGE_FILE).mtimeMs;
-    const stale = resolved.filter(
-      (p) => !lstatSync(p).isDirectory() && statSync(p).mtimeMs > covMtime
+  // The gate demands an exact COMPLETE source set. With no positional targets the adapter walks
+  // ROOT itself, so root-level files and arbitrarily nested sources cannot disappear behind the
+  // presentation tree's top-level/depth heuristics. Future platforms retain ownership of source
+  // extensions and ignored directories through collectProductionFiles().
+  let selectedFiles: string[];
+  try {
+    const targets = TARGETS.length > 0 ? INSPECTED_GATE_TARGETS : [ROOT];
+    selectedFiles = [...new Set(targets.flatMap(productionFiles))].sort();
+  } catch (cause) {
+    console.error(
+      [
+        '[testcov] ERR_CLI_TESTCOV_TRAVERSAL',
+        `  problem: coverage source set could not be enumerated completely: ${cause instanceof Error ? cause.message : String(cause)}`,
+        '  fix: restore read access to the entire selected subtree and retry; partial coverage aggregates are never accepted.',
+      ].join('\n')
     );
-    if (stale.length > 0) {
-      console.error(
-        `testcov: coverage/coverage-final.json устарел — эти файлы изменены ПОСЛЕ прогона покрытия: ` +
-          `${stale.map((p) => relative(ROOT, p)).join(', ')}. ` +
-          `Перегони покрытие (sdd-verify --profile test / testcov --run) перед проверкой порога.`
-      );
-      process.exit(1);
-    }
-
-    buckets = resolved.map((fp) =>
-      lstatSync(fp).isDirectory()
-        ? getDirStats(fp)
-        : (getCovRaw(fp) ?? { sT: 0, sH: 0, bT: 0, bH: 0, fT: 0, fH: 0 })
-    );
-  } else {
-    buckets = getRoots().map((top) => getDirStats(join(ROOT, top)));
+    process.exit(coverageFailureExitCode());
   }
+
+  const resolvedSources = selectedFiles.map((file) => ({
+    file,
+    resolution: coverageAdapter.resolveSource(ROOT, coverageReport, file),
+  }));
+  const unresolved = resolvedSources.filter(({ resolution }) => resolution.kind !== 'found');
+  if (unresolved.length > 0) {
+    for (const { file, resolution } of unresolved) {
+      const target = relative(ROOT, file);
+      if (resolution.kind === 'ambiguous') {
+        console.error(
+          `testcov: неоднозначная coverage identity для ${target}; полному repo-relative пути соответствуют несколько записей: ${resolution.keys.join(', ')}`
+        );
+      } else {
+        console.error(
+          `testcov: coverage identity не найдена для ${target}; каждый production-файл в полном source-set должен иметь единственную запись по точному или полному repo-relative пути (basename-only запрещён)`
+        );
+      }
+    }
+    process.exit(coverageFailureExitCode());
+  }
+
+  // Freshness is checked for the very same complete set whose unique identities form the aggregate.
+  // A directory mtime cannot stand in for nested source bytes.
+  let stale: string[];
+  try {
+    stale = coverageAdapter.staleSources(reportRead.mtimeMs, selectedFiles);
+  } catch (cause) {
+    traversalFailure(cause, 'coverage source freshness');
+  }
+  if (stale.length > 0) {
+    console.error(
+      `testcov: ${relative(ROOT, COVERAGE_FILE)} устарел — эти файлы изменены ПОСЛЕ прогона покрытия: ` +
+        `${stale.map((p) => relative(ROOT, p)).join(', ')}. ` +
+        `Перегони покрытие (sdd-verify --task <ticket-path> --phase <test-PhaseID> / testcov --run) перед проверкой порога.`
+    );
+    process.exit(coverageFailureExitCode());
+  }
+
+  const buckets = resolvedSources.map(({ resolution }) => {
+    if (resolution.kind !== 'found') throw new Error('unreachable unresolved coverage identity');
+    return covRaw[resolution.key] as FileCovRaw;
+  });
   const totals = aggregateLineCoverage(buckets);
   const { message, ok } = describeCoverageGate(totals, MIN_COVERAGE);
   console.log(message);
-  process.exit(ok ? 0 : 1);
+  process.exit(runnerExitCode && runnerExitCode !== 0 ? runnerExitCode : ok ? 0 : 1);
 }
 
 // ─── Entry point ──────────────────────────────────────────────────────────────
-
-// The interactive views below render a single target; do not silently drop the rest.
-if (TARGETS.length > 1) {
-  process.stderr.write(
-    `testcov: заданы несколько путей — интерактивный вид показывает только «${TARGET}»; ` +
-      `для гейта покрытия по всем файлам используйте --min.\n`
-  );
-}
 
 if (FLAT) {
   const entries: FlatEntry[] = [];
@@ -1225,7 +1082,7 @@ if (FLAT) {
     const files = findFiles(TARGET);
     if (files.length === 0) {
       console.error(`File not found: ${TARGET}`);
-      process.exit(1);
+      process.exit(coverageFailureExitCode());
     }
     for (const fp of files) {
       // If it's a directory, collect flat; otherwise add file entry
@@ -1251,16 +1108,22 @@ if (FLAT) {
   const files = findFiles(TARGET);
   if (files.length === 0) {
     console.error(`File not found: ${TARGET}`);
-    process.exit(1);
+    process.exit(coverageFailureExitCode());
   }
   for (const fp of files) {
     const stat = lstatSync(fp);
-    if (stat.isFile() && CODE_EXT.has(extname(fp)) && !IS_TEST(fp)) {
-      const covEntryRaw = findCovEntry(fp, coverageJson as Record<string, unknown>);
-      if (covEntryRaw && typeof covEntryRaw['statementMap'] === 'object') {
+    if (stat.isFile() && coverageAdapter.isProductionSource(fp)) {
+      const covEntryRaw = findCovEntry(fp);
+      if (covEntryRaw !== undefined) {
         const detail = buildFileDetail(fp, covEntryRaw);
         if (detail) {
-          printFileDetail(detail, CONTEXT, covEntryRaw);
+          if (detail.kind === 'unsupported') {
+            console.error(
+              `[testcov] ${detail.code}\n  problem: ${detail.message}\n  fix: install or extend adapter ${coverageAdapter.id} with file-detail support; no native report fields were guessed.`
+            );
+            process.exit(coverageFailureExitCode());
+          }
+          printFileDetail(detail.value, CONTEXT);
           continue;
         }
       }
@@ -1281,3 +1144,5 @@ if (FLAT) {
     walk(fp, '');
   }
 }
+
+if (runnerExitCode && runnerExitCode !== 0) process.exit(runnerExitCode);

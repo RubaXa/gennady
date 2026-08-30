@@ -14,6 +14,8 @@ export const ERR_CLI_SDD_NEW_FILE_EXISTS = 'ERR_CLI_SDD_NEW_FILE_EXISTS' as cons
 export const ERR_CLI_SDD_NEW_WRITE_FAILED = 'ERR_CLI_SDD_NEW_WRITE_FAILED' as const;
 /** @purpose --id fails the v2 grammar/length cap, or collides (duplicate or prefix) with an existing Task-ID. */
 export const ERR_CLI_SDD_NEW_BAD_TASK_ID = 'ERR_CLI_SDD_NEW_BAD_TASK_ID' as const;
+/** @purpose A task was requested before its scope/decomposition could be proved. */
+export const ERR_CLI_SDD_NEW_SCOPE_NOT_DECOMPOSED = 'ERR_CLI_SDD_NEW_SCOPE_NOT_DECOMPOSED' as const;
 
 /**
  * @purpose Result of one sdd-new run.
@@ -49,8 +51,11 @@ export function badInvocation(detail: string): NewOutcome {
     exitCode: 4,
     message: [
       `[sdd-new] ${ERR_CLI_SDD_NEW_BAD_INVOCATION}: ${detail}`,
-      '  expected: gennady sdd-new <kind> --scope <s> [--module <m[/sub/sub]>] [--id <ACR-slug>] [--slug <slug>] [--out <path>]',
-      '  or:       gennady sdd-new --list',
+      '  expected: npx gennady sdd-new <kind> --scope <s> [--module <m[/sub/sub]>] [--id <ACR-slug>] [--slug <slug>] [--out <path>]',
+      '  task:     npx gennady sdd-new task --scope <s> --id <ACR-slug> [--module <m>] [--out <path>]',
+      '  inferred: npx gennady sdd-new task --id <ACR-slug> --out specs/<scope>/<path>',
+      '  scope:    <s> is one kebab-case name (lowercase letters/digits and hyphens), never a path',
+      '  or:       npx gennady sdd-new --list',
       `  <kind> ∈ ${KNOWN_KINDS.join(' | ')}`,
     ].join('\n'),
   };
@@ -69,7 +74,7 @@ export function unknownKind(kind: string): NewOutcome {
     message: [
       `[sdd-new] ${ERR_CLI_SDD_NEW_UNKNOWN_KIND}: "${kind}"`,
       `  Known kinds: ${KNOWN_KINDS.join(', ')}.`,
-      '  Run `gennady sdd-new --list` to see every kind with its path pattern.',
+      '  Run `npx gennady sdd-new --list` to see every kind with its path pattern.',
     ].join('\n'),
   };
 }
@@ -93,6 +98,27 @@ export function badTaskId(id: string, reason: string, suggestion: string | null)
         ? `  try: --id ${suggestion}`
         : '  no automatic suggestion available — pick a different slug yourself.',
       '  sdd-new never auto-substitutes a Task-ID — fix --id and re-run.',
+    ].join('\n'),
+  };
+}
+
+/**
+ * @purpose Explain the fail-closed scope/decomposition gate at the exact command that would violate it.
+ * @param scope Scope whose task was requested.
+ * @param reason Missing, unreadable, ambiguous, unsupported, or undecomposed scope evidence.
+ * @returns Outcome with exit 1; a canonically classified infrastructure scope never calls this builder.
+ */
+export function scopeNotDecomposed(scope: string, reason: string): NewOutcome {
+  return {
+    ok: false,
+    code: ERR_CLI_SDD_NEW_SCOPE_NOT_DECOMPOSED,
+    exitCode: 1,
+    message: [
+      `[sdd-new] ${ERR_CLI_SDD_NEW_SCOPE_NOT_DECOMPOSED}: cannot prove ${scope} is ready for task scaffolding.`,
+      `  ${reason}.`,
+      `  Continue through /sdd for ${scope} with module-decomposition intent; complete the real module flow before scaffolding any task.`,
+      `  After integrated product/library review, rerun npx gennady sdd-new task --scope ${scope} --id <ACR-slug>; interface work uses its owning product/library scope.`,
+      '  A canonically classified infrastructure scope is the sole flat-scope exception.',
     ].join('\n'),
   };
 }

@@ -38,8 +38,8 @@ const READY_PKG = JSON.stringify({
     format: 'prettier --check .',
     check: 'npm run typecheck && npm test && npm run lint && npm run format',
     fix: 'npm run format:fix && npm run lint:fix && npm run check',
-    'format:fix': 'prettier --write .',
-    'lint:fix': 'eslint --fix .',
+    'format:fix': 'prettier --write',
+    'lint:fix': 'eslint --fix',
   },
 });
 
@@ -215,6 +215,15 @@ describe('SddStateCommand', () => {
     assert.strictEqual(badr.ok === false && badr.exitCode, 2);
     const bad4 = await mod.run(argv(ready, noPortal));
     assert.strictEqual(bad4.ok === false && bad4.exitCode, 4);
+  });
+
+  it('rejects unknown flags and values on the boolean --probe flag with canonical usage', async () => {
+    for (const args of [['--typo'], ['--probe=deep'], [ready, 'sdd-state']]) {
+      const outcome = await mod.run(argv(...args));
+      assert.strictEqual(outcome.ok === false && outcome.exitCode, 4);
+      if (outcome.ok) continue;
+      assert.match(outcome.message, /usage: gennady sdd-state \[project-root\] \[--probe\]/);
+    }
   });
 });
 

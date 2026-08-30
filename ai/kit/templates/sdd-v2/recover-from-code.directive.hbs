@@ -22,7 +22,7 @@
     for it pass the same closed-world reverse check any hand-written module spec would.
   </Mission>
 
-  <BeliefState deps="AX_OPERATOR_LANGUAGE, AX_TOOL_INVOCATION, AX_OPERATOR_DIALOGUE_STYLE, AX_DIALOGUE_DISCIPLINE, AX_OPERATOR_SAFEGUARD, AX_NO_PROCESS_NARRATION, AX_OPERATOR_OUTPUT_LIVE_TEXT, AX_STATELESS_ARTIFACT, AX_SCALE_PROPORTIONAL_DEPTH, AX_READER_WITHOUT_SESSION_CONTEXT, AX_DECISION_LOG_NON_OBVIOUS">
+  <BeliefState deps="AX_OPERATOR_LANGUAGE, AX_TOOL_INVOCATION, AX_OPERATOR_DIALOGUE_STYLE, AX_DIALOGUE_DISCIPLINE, AX_OPERATOR_SAFEGUARD, AX_NO_PROCESS_NARRATION, AX_OPERATOR_OUTPUT_LIVE_TEXT, AX_STATELESS_ARTIFACT, AX_READER_WITHOUT_SESSION_CONTEXT, AX_DECISION_LOG_NON_OBVIOUS">
     <Axiom id="AX_NO_NEW_TOOL">
       This flow adds no CLI command and no shared-code helper. Surveying a path — what the code does,
       who imports whom, which docs / tests sit beside it — is done live by the agent through `bash`
@@ -69,6 +69,10 @@
     {{> "axiom/process/ax-artifact-style-self-check"}}
   </BeliefState>
 
+  <SessionState>
+    {{> "contract/process/session-file-format"}}
+  </SessionState>
+
   <KernelGrammar>
     {{> "definition/process/def-read-and-use-directive"}}
   </KernelGrammar>
@@ -92,10 +96,12 @@
     <Step id="STEP_0_INTAKE">
       <Goal>Validate the path and the portal before spending any read.</Goal>
       <Action>
-        Confirm the named path exists and contains source (`H_PATH_NOT_FOUND` / `H_PATH_EMPTY`
-        otherwise). Confirm the portal is live (`specs/README.md` present — `H_NO_PORTAL` otherwise,
-        which hands off to project-scale recovery instead). Both gates are cheap and mechanical; clear
-        them before STEP_1.
+        Consume the exact router snapshot saved before this directive was loaded. Confirm the named
+        path exists and contains source (`H_PATH_NOT_FOUND` / `H_PATH_EMPTY` otherwise), and confirm
+        portal presence from that same snapshot (`H_NO_PORTAL` otherwise, which returns to the router's
+        project-scale recovery route). No mutation occurs between the router's single GATHER call and
+        these gates; do not refresh, re-probe, or call `sdd-state` here. Both gates are cheap and
+        mechanical; clear them before STEP_1.
       </Action>
     </Step>
     <Step id="STEP_1_SURVEY">
@@ -103,9 +109,9 @@
       <Action>
         Walk the cheap-to-expensive order from `AX_DOSED_SURVEY`: layout → manifest → README / ADR /
         docs beside the path → import edges in and out → tests → deeper source read only if still
-        unclear. Keep Facts / Assumptions / Hypotheses apart throughout (`AX_EVIDENCE_HYGIENE`). Also
-        read the current portal's Scope Graph + Scopes table (`sdd-state`) — the survey needs the
-        existing scopes to judge fit against.
+        unclear. Keep Facts / Assumptions / Hypotheses apart throughout (`AX_EVIDENCE_HYGIENE`). Use
+        the literal Scope Graph + Scopes table already saved in the router snapshot to judge fit;
+        it is the exact result this branch consumes, not permission to call `sdd-state` again.
       </Action>
     </Step>
     <Step id="STEP_2_PROPOSE">
@@ -140,10 +146,15 @@
     <Step id="STEP_4_VERIFY">
       <Goal>Prove the recovered spec matches the real code, not a paraphrase of it.</Goal>
       <Action>
-        For every module spec produced: `gennady lint --spec=<module-spec> --inventory-reverse
-        <module-dir>` clean (`AX_REVERSE_INVENTORY_GATE`) — fix the inventory or the spec, not the
-        code, when it disagrees with reality. Then `sdd-check --all .` clean over the whole tree.
-        Return control.
+        For every module spec produced, run inventoryCheck ToolCall below clean
+        (`AX_REVERSE_INVENTORY_GATE`) — fix the inventory or the spec, not the
+        code, when it disagrees with reality. Then integrityCheck ToolCall below clean over the whole tree.
+        Return `TerminalDecision: continue` to the already-loaded router with the confirmed scope/module
+        result so it can select the next owner in this SAME session. Never close the session here and
+        never tell the operator to invoke `/sdd` manually.
+        Inputs <module-spec>, <module-dir>: each module pair produced by STEP_3.
+        <ToolCall owner="this-step" result="inventoryCheck">npx gennady lint --spec=<module-spec> --inventory-reverse <module-dir></ToolCall> Use inventoryCheck.
+        <ToolCall owner="this-step" result="integrityCheck">npx gennady sdd-check --all .</ToolCall> Use integrityCheck.
       </Action>
     </Step>
   </ExecutionPlan>

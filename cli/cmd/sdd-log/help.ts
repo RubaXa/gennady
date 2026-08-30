@@ -31,6 +31,25 @@ export function printHelp(): void {
     '  npx gennady sdd-log <ticket> resolved "<what removed it>" --phase P<N>   # paired close for blocker — ✅ RESOLVED marker'
   );
   console.info('');
+  console.info('File-backed form (required for agent-produced free text):');
+  console.info('  npx gennady sdd-log <ticket> round --content-file .claude/tmp/<name>');
+  console.info(
+    '  npx gennady sdd-log <ticket> line --content-file .claude/tmp/<name> [--phase P<N>]'
+  );
+  console.info(
+    '  npx gennady sdd-log <ticket> phase <P-ID> [--content-file .claude/tmp/<rerun-suffix>]'
+  );
+  console.info(
+    '  npx gennady sdd-log <ticket> handoff --content-file .claude/tmp/<name> [--phase P<N>]'
+  );
+  console.info(
+    '  npx gennady sdd-log <ticket> resolved --content-file .claude/tmp/<name> --phase P<N>'
+  );
+  console.info(
+    '  npx gennady sdd-log <ticket> blocker --payload-file .claude/tmp/<name>.json --phase P<N>'
+  );
+  console.info('  blocker JSON keys: {"reason":"...","axiom":"AX_...","unblock":"..."}');
+  console.info('');
   console.info('Guarantees:');
   console.info(
     '  - Append-only — content is inserted before the section close marker; prior lines are never touched.'
@@ -47,6 +66,12 @@ export function printHelp(): void {
   console.info('  - Timestamped — the real time is stamped into each line / round date.');
   console.info(
     '  - No fabricated DONE — content with an unreplaced <…> placeholder is rejected (exit 2).'
+  );
+  console.info(
+    '  - Payload files are exact regular non-symlink UTF-8 files under .claude/tmp/, bounded to 32768 bytes.'
+  );
+  console.info(
+    '  - Payload bytes are never shell-interpreted; the exact file is deleted only after a successful append.'
   );
   console.info('');
   console.info('Exit codes:');

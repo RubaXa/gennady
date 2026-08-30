@@ -33,7 +33,7 @@
       of its own artifact fields are operator-facing.
 
       **English regardless of context:** code, JSDoc, intent comments, file paths, tool commands,
-      axiom IDs (`AX_*`), Trace anchors, IDs (`D-NNN` / `TSK-NN` / `F-NNN` / `P<N>` / `H_*`),
+      axiom IDs (`AX_*`), Trace anchors, IDs (`<ACR>-DL-N` / `TSK-NN` / `F-NNN` / `P<N>` / `H_*`),
       severity / status / scope-type tokens, BDD keywords, field labels (`**Status:**`, `**Why:**`).
 
       **Не спрягать английские глагольные корни по-русски, когда есть готовый русский глагол:**
@@ -49,9 +49,17 @@
 
       **Терминологическая дисциплина.** Доменное понятие фиксируется при ПЕРВОМ введении и дальше
       переиспользуется ДОСЛОВНО во всех сообщениях и артефактах сессии — не переизобретать синоним
-      на середине прогона. Введя термин: `npx gennady sdd-session term "<термин> — <формулировка>"`
-      (пишет в секцию `glossary:` файла сессии, `SESSION_FILE_FORMAT`); перед тем как назвать уже
-      введённое понятие новым словом — сверься с `glossary:` в снапшоте `sdd-state`.
+      на середине прогона. Перед тем как назвать уже введённое понятие новым словом, сверься с
+      `glossary:` в сохранённом снапшоте `sdd-state`.
+
+      Право записи словаря принадлежит только stateful-оркестратору ПОСЛЕ того, как router доказал
+      совместимость живой сессии или успешно открыл подтверждённую новую. Он записывает ровно
+      `<термин> — <формулировка>` в `.claude/tmp/sdd-glossary-term.txt` и выполняет канонический
+      файловый ToolCall из `SESSION_FILE_FORMAT`; свободный текст в argv запрещён. До этого барьера
+      router только держит предложение в памяти. Read-only critic/audit/code-review и любые другие
+      воркеры НИКОГДА не вызывают `sdd-session term`: они возвращают поле
+      `GlossarySuggestions: [<термин> — <формулировка>]`, а совместимый stateful-оркестратор принимает
+      или отклоняет предложения и, при принятии, сохраняет их тем же каноническим ToolCall.
 
       **Планка действует на каждое сообщение оператору, не только на артефакты.** Всё выше — кальки,
       канцелярит, устойчивые термины — применяется к заголовкам Ask, вариантам ответа и объяснениям
@@ -175,16 +183,14 @@
     </Axiom>
 
     <Axiom id="AX_NO_AUTO_FIX">
-      Audit does not modify code or specs autonomously. Any remediation is a proposal per `AX_FINDING_ROUTING`. If operator approves inline changes during the session, audit agent may apply them to spec/ticket files (not code). Creating commits or editing code files independently is forbidden.
+      Audit and code-review workers are read-only: they return findings and proposed remediations, never
+      edit code, specs, tickets, or commits. After operator approval, the orchestrator routes the proposal
+      to the artifact owner: a task phase owns code, the scope/module/infra/interface authoring flow owns
+      semantic spec changes, and the execute orchestrator owns only its explicitly bounded administrative
+      ticket / Decision Log channel. Approval changes who may apply the fix; it never makes the reviewer
+      itself an editor.
     </Axiom>
 
-    <Axiom id="AX_EPHEMERAL_OUTPUT">
-      The audit summary itself does not create files in `audits/`. Output is an ephemeral session-summary emitted in chat per `AUDIT_SESSION_SUMMARY_FORMAT`: counts by severity + findings table + proposed changes per `AX_FINDING_ROUTING`.
-
-      Reopen-history of a ticket is persisted *inside the ticket file* — see `AX_REOPEN_ROUNDS_IN_TICKET`. Long-term audit history = git history of the affected spec and ticket files.
-
-      Epic-level audit: cross-task findings (e.g., two modules with conflicting contracts) → Decision Log entry in the relevant scope spec.
-    </Axiom>
   </BeliefState>
 
   <HaltConditions>
@@ -197,11 +203,13 @@
     <Step id="STEP_1_READ_DIFF">
       <Goal>See exactly what changed, across the whole group.</Goal>
       <Action>
-        Resolve `ReviewContext` FIRST: per-group → `npx gennady sdd-task --group-scope <id>`
-        (`AX_GIT_DIFF_SCAN`); per-task → `npx gennady sdd-task --task-scope <Task-ID>`. Read only the files and
+        Resolve `ReviewContext` FIRST: per-group → reviewContext ToolCall below
+        (`AX_GIT_DIFF_SCAN`); per-task → reviewContext ToolCall below. Read only the files and
         contract anchors this result returns (per
         `AX_READ_PER_MANIFEST` — the bounded artifacts list, not the whole repo; `AX_AUDIT_READS_CODE`).
         Empty scope → `H_NOTHING_TO_REVIEW`.
+        <ToolCall owner="review-worker" result="reviewContext">npx gennady sdd-task --group-scope <id></ToolCall> Inputs <id>: <id>=audit-group id supplied by execute dispatch. Use reviewContext.
+        <ToolCall owner="review-worker" result="reviewContext">npx gennady sdd-task --task-scope <Task-ID></ToolCall> Inputs <Task-ID>: <Task-ID>=single task id supplied by per-task dispatch. Use reviewContext.
       </Action>
     </Step>
     <Step id="STEP_2_HUNT">
@@ -218,11 +226,12 @@
     <Step id="STEP_3_ROUTE">
       <Goal>Route findings; return a verdict. (no edits)</Goal>
       <Action>
-        Emit each as a neutral proposal (`AX_FINDINGS_AS_PROPOSALS`, `AX_NEUTRAL_FINDINGS`, `FINDING_FORMAT`)
-        routed to a phase-fix — a phase may belong to ANY ticket in the group, name its owning ticket; leave
-        every fix to the phase-fix (`AX_NO_AUTO_FIX`). Present the ephemeral summary
-        (`AX_EPHEMERAL_OUTPUT`). Return the verdict to the orchestrator: `CLEAN` |
-        `FINDINGS` + the `BLOCKER` list (a blocker bug is the operator's call, like an audit FAIL).
+        Emit the one read-only `CODE_REVIEW_OUTPUT_FORMAT` block: neutral proposals only
+        (`AX_FINDINGS_AS_PROPOSALS`, `AX_NEUTRAL_FINDINGS`), as ephemeral chat output. A finding routes to `code-fix` and
+        names its owning ticket + phase — either may belong to ANY ticket in the group. Leave every
+        edit to that phase (`AX_NO_AUTO_FIX`). Return literal `verdict=CLEAN` when no finding exists;
+        otherwise `verdict=FINDINGS`. The orchestrator reads the same block: any `sev=B` pauses for
+        the operator; non-blocking findings ride in STEP_8's proposals.
       </Action>
     </Step>
   </ExecutionPlan>
@@ -234,66 +243,20 @@
   </HardForbidden>
 
   <OutputContracts>
-    <Contract id="FINDING_FORMAT">
-      ```markdown
-      ### <🔴|🟠|🟡|🔵> F-NNN — <short title>
-      - **Type:** CLOSED_WORLD_DRIFT | COMPLETENESS_GAP | RUNTIME_BACKING_VIOLATION | RULES_COMPLIANCE_VIOLATION | RULES_CASCADE_MISMATCH | TASK_ID_DRIFT | BDD_COVERAGE_MISMATCH | EXECUTION_LOG_INCOMPLETE | STALE_AFTER_PIVOT | INSIGHT_BACKFLOW
-      - **Severity:** 🔴 BLOCKER | 🟠 MAJOR | 🟡 MINOR | 🔵 INFO
-      - **Confidence:** HIGH | MEDIUM | LOW
-      - **Status:** 📂 open | ⚠️ operator-acknowledged | ✅ resolved
-      - 📍 **Location:** `<path>:<line>` if applicable
-      - 💬 **Detail:** <factual description, no value words>
-      - 🔗 **Source-of-truth:** link to spec section / ticket section / rule axiom
-      - 📝 **Proposed Remediation:**
-        - Type: `code-fix` | `spec-update` | `ticket-update`
-        - Action: <concrete proposal, with diff if possible>
-        - Routing: <per AX_FINDING_ROUTING — where this change goes>
+    <Contract id="CODE_REVIEW_OUTPUT_FORMAT">
+      One EOL-terminated block, no preamble and no edits/applied-lines:
       ```
-      F-NNN IDs unique per audit session; do not reuse.
-
-      Usage: this verbose form is for in-session discussion / deep dive only. The canonical machine-readable record at session end is the compact `AUDIT_SESSION_SUMMARY_FORMAT`. Do NOT emit `FINDING_FORMAT` blocks in the final summary.
-    </Contract>
-
-    <Contract id="AUDIT_SESSION_SUMMARY_FORMAT">
-      **Compact AI-to-AI inline format.** Ephemeral output at session end. One header line + one line per finding + optional applied-changes lines. No markdown tables, no decorative text. Designed so the next agent (or operator's tooling) parses it in one pass.
-
-      Grammar (one logical record per line, EOL-terminated; fields separated by ` | `):
-
+      @code-review task=<Task-ID|spec-path> mode=<per-task|per-group> verdict=<CLEAN|FINDINGS> counts=B<n>·M<n>·m<n>
+      F-<NN> | sev=<B|M|m> | conf=<H|M|L> | loc=<path:line|—> | ticket=<Task-ID|—> | phase=<P<N>|—> | src=<contract-anchor|—> | route=code-fix | act=<one-line action without pipe>
+      @glossary suggestions=[]
       ```
-      @audit task=<Task-ID|spec-path> round=<N|—> mode=<per-task|per-group> status=<PASS|PASS_RISK|FAIL> counts=B<n>·M<n>·m<n>·I<n> phases_to_fix=[<P<N>|Task-ID:P<N>>,...]
-      F-<NN> | sev=<B|M|m|I> | type=<TYPETOKEN> | conf=<H|M|L> | loc=<path:line|—> | phase=<P<N>|—> | src=<spec/ticket/rule anchor|—> | route=<spec-edit|ticket-reopen|ticket-update|decision-log|code-fix> | act=<one-line action, no newlines>
-      F-<NN> | …
-      ~applied | <target> | <one-line description of inline change>   (optional, repeat per applied change)
-      ```
-
-      Token vocabulary:
-      - `sev`: `B`=BLOCKER, `M`=MAJOR, `m`=MINOR, `I`=INFO.
-      - `conf`: `H`=HIGH, `M`=MEDIUM, `L`=LOW.
-      - `type`: one of `CLOSED_WORLD_DRIFT` | `COMPLETENESS_GAP` | `RUNTIME_BACKING_VIOLATION` | `RULES_COMPLIANCE_VIOLATION` | `RULES_CASCADE_MISMATCH` | `TASK_ID_DRIFT` | `BDD_COVERAGE_MISMATCH` | `EXECUTION_LOG_INCOMPLETE` | `STALE_AFTER_PIVOT` | `INSIGHT_BACKFLOW`.
-      - `route`: one of `spec-edit` | `ticket-reopen` | `ticket-update` | `decision-log` | `code-fix` (per `AX_FINDING_ROUTING`).
-      - `act` text: Russian operator-facing per `AX_OPERATOR_LANGUAGE` (this is operator-facing artifact text), single line, no pipe character.
-      - `status` `PASS_RISK` = PASS_WITH_ACKNOWLEDGED_RISKS.
-      - `mode=per-group` (default, auto-dispatch, `AX_AUDIT_MODES`): `task` carries the group's spec path,
-        not a single Task-ID; `phases_to_fix` entries carry the owning Task-ID prefix (`Task-ID:P<N>`) since
-        a finding may name a phase on any ticket in the group. `mode=per-task` (operator-manual): `task`
-        carries the single audited Task-ID; `phases_to_fix` entries are bare `P<N>` (that ticket is implicit).
-
-      Example:
-      ```
-      @audit task=TSK-04 round=3 mode=per-task status=FAIL counts=B1·M2·m0·I1
-      F-01 | sev=B | type=CLOSED_WORLD_DRIFT | conf=H | loc=src/payments/adapter.ts:42 | src=specs/backend/payments/payments.spec.md#2 | route=spec-edit | act=добавить `IdempotencyKey` в Entity Inventory модуля payments
-      F-02 | sev=M | type=RULES_COMPLIANCE_VIOLATION | conf=H | loc=src/payments/adapter.ts:100 | src=ai/directives/coding/typescript-rules.xml#AX_STRICT_NULL | route=ticket-reopen | act=добавить null-guard на response.balanceTransaction
-      F-03 | sev=M | type=BDD_COVERAGE_MISMATCH | conf=H | loc=src/payments/adapter.test.ts:55 | src=specs/backend/payments/payments.task.PAY-adapter.md#4 | route=ticket-update | act=переименовать тест-кейс в `should reject non-positive amount with InvalidAmountError`
-      F-04 | sev=I | type=INSIGHT_BACKFLOW | conf=M | loc=src/payments/adapter.ts:88 | src=specs/backend/payments/payments.spec.md#4 | route=spec-edit | act=зафиксировать retry-budget в DbC postcondition
-      ~applied | specs/backend/payments/payments.spec.md2 | добавлен `IdempotencyKey` в Entity Inventory
-      ```
-
-      Rules:
-      - First line MUST be the `@audit` header. No free-text preamble.
-      - Findings ordered by descending severity, then by `F-NN`.
-      - No empty lines inside the block.
-      - If `loc` or `src` is N/A, emit literal `—` (em-dash) — do not omit the field.
-      - `act` is operator-facing text (Russian per policy); everything else is English tokens.
+      Findings are ordered by severity then id. `CLEAN` requires zero finding lines and zero counts;
+      `FINDINGS` requires at least one. `mode=per-group` uses the owning spec path in `task` and each
+      finding names its ticket + phase; `mode=per-task` uses its Task-ID and may omit the redundant
+      ticket as `—`. `loc` is the repository-relative code location; `src` is the contract tested.
+      The final glossary line is mandatory: `[]` maps to no `GlossarySuggestions`; each
+      semicolon-delimited item maps byte-for-byte to one suggestion. This read-only worker never
+      persists it.
     </Contract>
   </OutputContracts>
 </SddCodeReview>

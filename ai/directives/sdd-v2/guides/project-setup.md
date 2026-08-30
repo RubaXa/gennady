@@ -2,7 +2,7 @@
 
 > Когда нужно: `gennady sdd-state .` показал `READINESS=not-ready` — нет обязательных npm-скриптов, и флоу остановился, не найдя чем верифицировать код.
 
-SDD v2 поддерживает только Node.js. Проект обязан объявить в `package.json#scripts` **точные** имена — семь «кирпичей», из которых `sdd-verify` собирает лестницу проверок (sdd-state сверяет точное совпадение, без угадывания):
+SDD v2 поддерживает только Node.js. Проект обязан объявить в `package.json#scripts` восемь точных «кирпичей» readiness:
 
 | скрипт          | назначение                                                                   |
 | --------------- | ---------------------------------------------------------------------------- |
@@ -13,10 +13,11 @@ SDD v2 поддерживает только Node.js. Проект обязан 
 | `format:fix`    | форматтер в режиме записи — обязан нести `--write`/`--fix`/`--autofix`       |
 | `lint`          | линт, **в цепочке которого вызывается `gennady` lint** (DbC), read-only      |
 | `lint:fix`      | автофикс линтера — обязан нести `--write`/`--fix`/`--autofix`                |
+| `fix`           | единая whole-project починка: `format:fix`, затем `lint:fix`, с roots здесь  |
 
 Ключевая пара — `format` / `format:fix` (и так же `lint` / `lint:fix`): проверяющий скрипт не должен ничего переписывать, а чинящий обязан. Скрипт `format`, который на самом деле пишет (`prettier --write .`), — ошибка конфигурации, а не мелочь: лестница использует его как read-only ступень финального вердикта.
 
-`check` и `fix` — два необязательных скрипта-обёртки для человека, CI и pre-commit (`check` = `npx gennady sdd-verify --profile full`, `fix` = `format:fix` → `lint:fix`). Readiness они не гейтят.
+Фаза передаёт `sdd-verify` точные Target Files через проектные repair bricks. Поэтому реальные `format:fix`/`lint:fix` объявляются как command prefixes: write-switch стоит последним, а цели добавляет вызывающий. Статическая проверка честно ловит shell-chain и очевидные `.`/directory/glob operands, но не может универсально отличить точечный baked target от tool config/subcommand. Обязательный whole-project `fix` сам передаёт широкие roots. Затем types/tests запускаются один раз.
 
 ## Минимальный пример
 
@@ -27,11 +28,11 @@ SDD v2 поддерживает только Node.js. Проект обязан 
     "test": "node --import tsx --test",
     "test:coverage": "c8 --reporter=json node --import tsx --test",
     "format": "prettier --check .",
-    "format:fix": "prettier --write .",
+    "format:fix": "prettier --write",
     "lint": "gennady lint src/",
-    "lint:fix": "eslint --fix .",
+    "lint:fix": "eslint --fix",
     "check": "npx gennady sdd-verify --profile full",
-    "fix": "npm run format:fix && npm run lint:fix"
+    "fix": "npm run format:fix -- . && npm run lint:fix -- src/"
   }
 }
 ```
@@ -42,9 +43,9 @@ SDD v2 поддерживает только Node.js. Проект обязан 
 
 `sdd-state` различает три состояния, а не два:
 
-- `not-ready` — каких-то кирпичей нет вовсе (или `format`/`lint` пишут, или `*:fix` не мутируют). Кодовые фазы не идут.
-- `provisional` — все семь объявлены, но часть из них — заглушки: `echo TODO`, `true`, `exit 0`, либо реальная команда с заглушённым кодом возврата (`tsc --noEmit || true`). Скелет есть, гарантии нет. Bootstrap/config/doc-фазы и `scaffold` идут; `impl`/`refactor`/`test`/`fix`-фазы механически отказываются стартовать, потому что зелёный вердикт на заглушках ничего не значит.
-- `ready` — все семь реальные. Только здесь исполняются кодовые фазы.
+- `not-ready` — каких-то кирпичей нет вовсе (включая public `fix`), `format`/`lint` пишут, repair leaf не мутирует/содержит очевидный broad target, либо `fix` нарушает formatter→linter order. Кодовые фазы не идут.
+- `provisional` — все восемь объявлены, но часть из них — заглушки. Bootstrap/config/doc-фазы и `scaffold` идут; кодовые фазы ждут реальные инструменты.
+- `ready` — все восемь реальные. Только здесь исполняются кодовые фазы.
 
 Заглушки — легальный промежуточный шаг: они позволяют разложить проект по спекам и нарезать тикеты до того, как выбран тулинг. Заменяет их infra-флоу, и `sdd-state` печатает список оставшихся заглушек — это и есть его список работ.
 

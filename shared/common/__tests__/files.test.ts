@@ -16,6 +16,12 @@ describe('isTestFile', () => {
   it('does not match a helper that merely lives beside tests', () => {
     assert.strictEqual(isTestFile('cli/__tests__/tool-behavior/fixture.ts'), false);
   });
+
+  it('matches helpers whose filename explicitly declares test-only ownership', () => {
+    assert.strictEqual(isTestFile('cli/cmd/foo/foo.test-helper.ts'), true);
+    assert.strictEqual(isTestFile('shared/sdd/readiness.spec-helpers.ts'), true);
+    assert.strictEqual(isTestFile('cli/cmd/foo/contest-helper.ts'), false);
+  });
 });
 
 describe('isUnderTestDirectory', () => {

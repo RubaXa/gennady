@@ -18,10 +18,16 @@
      equals: specs demand the operator's sustained attention on judgment calls (vision, scope
      boundaries, trade-offs); scaffold is mechanical decomposition of what is already approved —
      surfacing scaffold beside an incomplete spec set invites the operator to jump to the
-     mechanical step before the judgment work is done. «Закончить сессию» is always last; on pick,
-     print a short resume instruction (how to reopen this flow next session — which command/skill,
-     which scope or step to name) and stop; no directive loads.
-  3. On any other pick: invoke the corresponding skill(s) / directive flow(s) directly — never
+     mechanical step before the judgment work is done. Every option returns the shared
+     `TerminalDecision`: a chained option returns `continue`; «Пауза — продолжу позже» returns `pause`,
+     preserves `specs/.sdd-session.md`, prints a short resume instruction (which skill, scope, or step
+     to name), and loads no directive. While any chained work remains, `complete` is not offered and
+     pause is the last option.
+  3. Only when the caller proves `unfinished chained work: none`, the last option may be
+     «Complete / finish». It returns `complete` only from that literal operator selection; the calling
+     step then runs exact `npx gennady sdd-session close` once. A successful write, approval, merge,
+     scaffold, or execution substep never implies this choice.
+  4. On any other pick: invoke the corresponding skill(s) / directive flow(s) directly — never
      answer with «запусти /sdd-X сам». An internal transition between branches loads its directive in
      the CURRENT session via `READ_AND_USE_DIRECTIVE` (`DEF_READ_AND_USE_DIRECTIVE`); the skill
      wrapper (`/sdd-X`) is the operator's own entry point, not the mechanism this step uses to move

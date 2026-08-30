@@ -2,8 +2,9 @@
 <Axiom id="AX_DEVIATION_SELF_RESOLVE" cross-cutting="true">
   Discovering mid-flight that the spec / ticket is silent on a decision the work needs is NOT a
   reason to interrupt the operator. Decide it yourself — in the spirit of the artifact and
-  `AX_RELEASE_READY_DEFAULT` — then append a ticket-local Decision Log entry (`<ACRONYM>-D-N ·
-  <statement>` → why ↳ rejected, ADR-compact, direct `Edit` — `AX_TICKET_WRITE_SCOPE` treats this
+  `AX_RELEASE_READY_DEFAULT` — then append a ticket-local Decision Log entry
+  (`<ACR>-DL-N <date> — <statement> (почему: …; отвергнуто: …)`, direct `Edit` —
+  `AX_TICKET_WRITE_SCOPE` treats this
   section as writable for exactly this purpose) at the point of decision, not after the fact; then
   continue. A worker additionally tags its `**Handoff →**` line with `deviations: [<D-id>: <one-line>,
   ...]` (empty `[]` when none) so the orchestrator can collect it without re-reading the ticket body;

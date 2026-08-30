@@ -142,7 +142,7 @@
   <details>
   <summary>Полные записи Decision Log</summary>
 
-  [D-NNN entries at module level per `DECISION_LOG_ENTRY_FORMAT`. Cross-module or cross-scope → scope spec or contracts spec.]
+  [<ACR>-DL-N entries at module level per `DECISION_LOG_ENTRY_FORMAT`. Cross-module or cross-scope → scope spec or contracts spec.]
 
   </details>
   <!--/SECTION:MODULE_DECISION_LOG-->

@@ -1,4 +1,14 @@
 <!-- source: ai/directives/sdd/discovery.directive.xml -->
 <Axiom id="AX_HANDOFF_TO_MODULE_DECOMPOSITION">
-      For product / library scope: the spec carries Handoff with primary input for the `module` flow, named abstractions, open risks.
+      Module decomposition accepts exactly two `product` / `library` scope states:
+      - **operator-approved review-state draft** — the spec has a valid `CHANGE_MANIFEST`, and the
+        current `sdd-state` `[SESSION]` working set contains the exact entry
+        `<scope-spec-path> — module-decomposition handoff — operator-approved review-state draft`,
+        written by the scope flow only after its final Approval Check;
+      - **master** — the spec has no `CHANGE_MANIFEST`, and its exact `[SCOPES]` row's `status` column
+        is `done`.
+      A review-state draft without that exact session entry is unapproved and must not enter the
+      module flow; a bare `approved` label is not an alias for either state. Infrastructure remains
+      the sole no-module scope type. The scope draft is not independently critic-reviewed: integrated
+      review starts only after the module bundle exists.
     </Axiom>

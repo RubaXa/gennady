@@ -96,7 +96,7 @@ Usage: gennady lint [--autofix] [--staged] [--max-words <n>] [--max-region-comme
 
 Flags:
   --autofix         Auto-fix fixable errors
-  --staged          Lint only staged .ts files (mutually exclusive with positional targets)
+  --staged          Lint existing staged ACMR + untracked .ts/.tsx; ignore staged deletions
   --max-words <n>   Max words per file (default: 50)
   ...
 

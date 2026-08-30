@@ -103,7 +103,11 @@ for (const e of pass1) {
   const id = 'ai/directives/' + e.rel;
   const isDirective = e.rel.endsWith('.directive.xml');
   const excluded = isDirective ? excludedPartialsFor(plan, id) : [];
-  const out = excluded.length === 0 ? e.renderedFull : render(applyDelta(e.hbsSource, excluded).source);
+  const assembled =
+    excluded.length === 0 ? e.renderedFull : render(applyDelta(e.hbsSource, excluded).source);
+  // Delta-elided standalone partials can leave their indentation behind on an otherwise empty
+  // line. Generated XML is canonical source output, so never emit whitespace-only diff noise.
+  const out = assembled.replace(/[ \t]+$/gm, '');
   rendered.push({ file: e.rel, text: out });
 
   const resolvedMode: AssemblyMode = isDirective ? resolveAssemblyMode(e.rel, assemblyFlag) : 'monolith';
@@ -216,7 +220,7 @@ function writeLazyDirective(rel: string, deltaReducedText: string, deltaSuffix: 
   for (const pkg of packages) {
     const packageDest = join(outRoot, pkg.relativePath.slice(ASSEMBLY_XML_ROOT_PREFIX.length));
     mkdirSync(dirname(packageDest), { recursive: true });
-    writeFileSync(packageDest, pkg.text);
+    writeFileSync(packageDest, pkg.text.replace(/[ \t]+$/gm, ''));
     if (!existsSync(packageDest)) {
       packageFailures.push(`${rel} (step ${pkg.stepId}): package file missing after write — ${packageDest}`);
     }
@@ -228,6 +232,6 @@ function writeLazyDirective(rel: string, deltaReducedText: string, deltaSuffix: 
 
   const dest = join(outRoot, rel);
   mkdirSync(dirname(dest), { recursive: true });
-  writeFileSync(dest, skeleton.text);
+  writeFileSync(dest, skeleton.text.replace(/[ \t]+$/gm, ''));
   // #endregion END_WRITE_PACKAGES_BEFORE_SKELETON
 }

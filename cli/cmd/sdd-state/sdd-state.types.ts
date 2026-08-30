@@ -6,6 +6,7 @@ import type { ReadinessResult } from '../../../shared/sdd/readiness.ts';
 import type { GraphEdge, Scope } from '../../../shared/sdd/portal.ts';
 import { renderScopeGraph } from '../../../shared/sdd/portal.ts';
 import type { RepoProbe } from '../../../shared/sdd/probe.ts';
+import type { GateQueueDiagnostic } from '../../../shared/sdd/gate-queue.ts';
 
 /** @purpose More than one positional argument was passed. */
 export const ERR_CLI_SDD_STATE_BAD_INVOCATION = 'ERR_CLI_SDD_STATE_BAD_INVOCATION' as const;
@@ -13,6 +14,8 @@ export const ERR_CLI_SDD_STATE_BAD_INVOCATION = 'ERR_CLI_SDD_STATE_BAD_INVOCATIO
 export const ERR_CLI_SDD_STATE_BAD_ROOT = 'ERR_CLI_SDD_STATE_BAD_ROOT' as const;
 /** @purpose ai/directives/sdd-v2/ is missing (or incomplete) at both checked locations. */
 export const ERR_CLI_SDD_STATE_DIRECTIVES_MISSING = 'ERR_CLI_SDD_STATE_DIRECTIVES_MISSING' as const;
+/** @purpose A complete ticket corpus could not be observed, so GATE_QUEUE cannot be trusted. */
+export const ERR_CLI_SDD_STATE_TICKET_CORPUS = 'ERR_CLI_SDD_STATE_TICKET_CORPUS' as const;
 
 /** @purpose The sdd-v2 directives subdirectory, checked at the project root and under node_modules/gennady/. */
 export const SDD_V2_SUBDIR = 'ai/directives/sdd-v2';
@@ -58,6 +61,8 @@ export type StateSnapshot = {
   readiness: ReadinessResult;
   /** @purpose TODO infrastructure tickets that make missing readiness gates an expected queue state. */
   queuedGateTicketIds: string[];
+  /** @purpose Fail-closed structural ownership diagnostics for missing readiness gates. */
+  gateQueueDiagnostics: GateQueueDiagnostic[];
   /** @purpose Raw content of the session scratch (specs/.sdd-session.md), or null when no active session. */
   sessionContent: string | null;
   /** @purpose Code/infra heuristics — always gathered: one snapshot carries everything any router branch needs. */
@@ -70,7 +75,7 @@ export type StateSnapshot = {
  */
 export type StateOutcome =
   | { ok: true; text: string }
-  | { ok: false; code: string; exitCode: 2 | 3 | 4; message: string };
+  | { ok: false; code: string; exitCode: 1 | 2 | 3 | 4; message: string };
 
 /**
  * @purpose Resolve a scope's portal-relative spec link into a repo-root-relative path — every printed path must open as-is from the repo root.
@@ -115,6 +120,8 @@ export function formatSnapshot(s: StateSnapshot): string {
   lines.push(
     `GATE_QUEUE=${s.queuedGateTicketIds.length > 0 ? s.queuedGateTicketIds.join(',') : 'none'}`
   );
+  for (const diagnostic of s.gateQueueDiagnostics)
+    lines.push(`GATE_QUEUE_DIAG=${diagnostic.message}`);
 
   lines.push('', '[SCOPES]', '# name\ttype\tstatus\tdescription\tspec');
   if (!s.portalPresent) {
@@ -179,8 +186,8 @@ export function badInvocation(got: string): StateOutcome {
     exitCode: 4,
     message: [
       `[sdd-state] ${ERR_CLI_SDD_STATE_BAD_INVOCATION}`,
-      '  expected: gennady sdd-state [project-root]   (zero or one positional argument)',
-      `  got:      ${got || '(extra arguments)'}`,
+      '  usage: gennady sdd-state [project-root] [--probe]',
+      `  problem: ${got || 'invalid arguments'}`,
     ].join('\n'),
   };
 }
@@ -198,6 +205,26 @@ export function badRoot(root: string): StateOutcome {
     message: [
       `[sdd-state] ${ERR_CLI_SDD_STATE_BAD_ROOT}: ${root}`,
       '  Pass an existing project root, or run with no argument from inside the project.',
+    ].join('\n'),
+  };
+}
+
+/**
+ * @purpose Refuse a state snapshot whose GATE_QUEUE would come from a partial ticket corpus.
+ * @param root Selected project root whose corpus is incomplete.
+ * @param detail Exact failed corpus observation.
+ * @returns Exit-1 teaching outcome without partial state or queue data.
+ */
+export function ticketCorpusError(root: string, detail: string): StateOutcome {
+  return {
+    ok: false,
+    code: ERR_CLI_SDD_STATE_TICKET_CORPUS,
+    exitCode: 1,
+    message: [
+      `[sdd-state] ${ERR_CLI_SDD_STATE_TICKET_CORPUS}`,
+      `  root: ${root}`,
+      `  problem: ${detail}`,
+      '  fix the named ticket file/directory (or remove the unsafe symlink), then rerun sdd-state; no partial snapshot or GATE_QUEUE was emitted.',
     ].join('\n'),
   };
 }

@@ -3,16 +3,17 @@
 <Step id="STEP_3_TASK_GENERATION">
       <Goal>Generate tickets + test plan. (auto)</Goal>
       <Action>
-        Iterate the approved STEP_2 DAG nodes in their displayed order. For each node, make one
-        separate `sdd-new task` tool call — never compose the iteration as a shell loop or pipeline.
-        Create the ticket from that node's owner: module-owned →
-        `npx gennady sdd-new task --scope <scope> --module <module> --id <ACR>-<slug>`; scope-owned →
-        `npx gennady sdd-new task --scope <scope> --id <ACR>-<slug>` (omit `--module`, never invent one).
-        Scope/module/ID come verbatim from that DAG node. The command never overwrites and
-        prints the section manifest (which sections are REQUIRED and what to fill). Content guidance
-        per `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/task-ticket-structure.xml")`. Per
-        ticket: decompose into phases (`AX_PHASES_DECLARED_IN_HEADER`; impl and test always separate). Activate
-        rules per phase (`AX_RULE_ACTIVATION_PLAN`):
+        This auto step never prompts or pauses; unresolved coverage/toolchain alternatives go to
+        STEP_4 Gate 2. Iterate STEP_2 nodes in order: one marked-owner `sdd-new task` call per node,
+        never a shell loop. Fill its returned section manifest per
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/task-ticket-structure.xml")`. Per
+        ticket: decompose into phases (`AX_PHASES_DECLARED_IN_HEADER`; impl and test always separate).
+        Fill every phase's `Deleted Files:` with exact tracked paths the phase removes, or the literal
+        `none`; this is mechanical DAG data and adds no operator interaction. Deleted paths do not belong in `Target Files`.
+        For each readiness Bootstrap Requirement, copy its exact `Readiness Gates` only into the
+        single phase that creates every listed `Gate Artifact`; include those artifacts in that
+        phase's `Target Files`. Ordinary phases omit `Readiness Gates`. Activate rules per phase
+        (`AX_RULE_ACTIVATION_PLAN`):
         1. candidates = the scope's cascade set from STEP_1;
         2. include each candidate whose `<Triggers>` match THIS phase's `Target Files` + `kind` and
            whose `<SkipWhen>` does not apply;
@@ -22,17 +23,11 @@
            `<DependsOn>` at runtime;
         4. write the phase `Rules:` bullet list — one `[<rule-id>](<rule-file-path>)` per rule, direct
            + transitive, all explicit;
-        4b. per `AX_BOOTSTRAP_TICKET_DERIVATION`'s shared-infra-file ownership rule: when this phase
-            reads or extends a shared infra file (`package.json` scripts, `.nvmrc`, a tool config)
-            owned by a DIFFERENT bootstrap ticket, write an explicit `владелец — <ticket>` line into
-            this phase's text naming that owner — never leave it for the worker to reconstruct by
-            grepping sibling tickets;
-        4c. when the phase invokes a generator/scaffolder, record its expected output manifest in
-            `Target Files` before execution: every created or modified file, its owning spec/module,
-            and whether it is production, test, tool-config, or vendor-generated. A known generated
-            helper (for example shadcn's `src/lib/utils.ts`) is architecture, not a runtime surprise;
-            missing or version-uncertain output → research/verify now, never let the worker expand the
-            module boundary through an execution-time deviation;
+        4b. when a DIFFERENT bootstrap ticket owns a shared infra file this phase reads/extends,
+            write `владелец — <ticket>` in the phase; never make the worker grep siblings;
+        4c. before any generator/scaffolder runs, put every expected created/modified file in
+            `Target Files`, with owning spec/module and production/test/tool-config/vendor kind.
+            Unknown/version-sensitive output → verify now, never expand the boundary at execution;
         4d. for every impl/refactor phase, fill its `Entities:` field with the exact
             module-Entity-Inventory names this phase implements (verbatim, comma-separated) — this is
             the STRUCTURAL, filename-independent ownership record a `Deferred Implementation: <ticket>`
@@ -41,33 +36,37 @@
             for `FooService`) does NOT establish ownership. Omit only for test/config/doc phases;
         5. write the ticket Verification table. It lists ONLY what §5 adds ON TOP of the phase
            verify call — never `sdd-verify` itself. STEP_5 of the phase protocol already runs
-           `npx gennady sdd-verify --profile <by kind>` as its own first action; writing that same
-           call into the table would make every phase run the whole ladder twice (type-check, the
-           full test suite, lint, format — all of it, for nothing), because §5 commands are executed
-           verbatim and a `ver` line may only be logged for a command actually run. So: no row for
+           <ToolLiteral role="ticket">npx gennady sdd-verify --task <ticket-path> --phase <PhaseID></ToolLiteral> as its own first action; writing that same
+           call into the table would make the command recursively repeat its own ladder. The CLI
+           executes applicable §5 rows verbatim and owns their receipt. So: no row for
            it. Instead, write one line directly above the table, verbatim:
-           `Гейт фазы — `npx gennady sdd-verify --profile <profile>` — выполняется на STEP_5; в
-           таблицу не дублируется.` with the profile resolved by kind (`bootstrap` / `config` /
-           `doc` → `setup`; `impl` / `refactor` → `code`; `test` → `test`; a `fix` phase → the
-           profile of the kind it repairs). Then the table itself: union any OTHER
-           `<RequiresVerification>` aliases across the ticket's phases beyond the standard ladder
-           (e.g. infra-spec `coverage-command`), group by alias, resolve each unique alias from
+           `Гейт фазы — <ToolLiteral role="ticket">npx gennady sdd-verify --task <ticket-path> --phase <PhaseID></ToolLiteral> — выполняется
+           на STEP_5; профиль, Target Files и owning spec выводятся из тикета; в таблицу не
+           дублируется.` Then the table itself: union any OTHER
+           `<RequiresVerification>` aliases across the ticket's phases beyond the standard ladder,
+           EXCLUDING the coverage-reader alias owned solely by 5b; group the remaining aliases and
+           resolve each unique alias from
            infra-spec Verification Commands (absent → `H_VERIFICATION_COMMAND_MISSING`) — one row
-           per unique alias, Required-by = comma-separated declaring rule IDs.
-        5b. COVERAGE row — every ticket with a `test` phase gets ONE `testcov` row, SCOPED to the
-           ticket's own production Target Files (the files the tests are written to cover), so the
-           threshold is checked against the task's code, not the whole project:
-           `npx gennady testcov --min=<threshold> <production Target Files>`, Required-by =
-           `AX_COVERAGE_BY_CONTRACT_NOT_BY_LINE`. Threshold = 80 by default; use the infra-spec
-           `coverage-command`'s threshold instead only when it names one (never invent a different
-           number). The path arguments are the ticket's PRODUCTION files (from the impl/refactor
-           phases' Target Files), never the `*.test.ts` files. NOTE: no `--run` — the phase gate
-           `sdd-verify --profile test` at STEP_5 already RAN the suite with coverage and wrote a
-           FRESH `coverage/`; this row only READS that report and checks the scoped threshold, so the
-           test suite is never run twice. It runs at STEP_5 of the test phase, after the gate, like
-           any §5 command — on the code the phase's tests exist for.
-           No alias and no test phase → the table is written with its header and a single `| — | — |`
-           row, never omitted.
+           per unique alias, Required-by = comma-separated declaring rule IDs, Role = `extra`.
+           Serialize exact Command as a code span with N+1 outer backticks, where N is the longest
+           inner backtick run (0 if none); change no inner byte. Parser strips only that wrapper,
+           restoring runtime bytes. Raw outside `|` splits cells; never XML-escape.
+        5b. COVERAGE POLICY — fill the structured v1 fields from behavior semantics, never from file
+           extension, path, phase kind, platform guess, or a default threshold. Exactly one state:
+           - `required`: the relevant infra/platform Verification Commands contract MUST provide one
+             concrete read/check command. Serialize it by the same exact code-span rule into one
+             table row with Role=`coverage`; after the phase DAG exists, record exactly one test phase as
+             `Coverage Owner Phase` and set Required-by to one of that phase's rules. Its verifier is
+             the single producer; other test phases use ordinary tests. Select a unique owner
+             mechanically; otherwise record the exact alternatives for Gate 2, never prompt here. Do not invent
+             `testcov`, `80`, target paths, or another platform. The row only reads/checks its report and
+             MUST NOT rerun the suite. Missing command owner is
+             `H_VERIFICATION_COMMAND_MISSING`; unresolved concrete toolchain alternatives go to Gate 2,
+             never a separate prompt here.
+           - `not-applicable`: write a concise `Coverage Reason` tied to the ticket behavior and NO
+             Coverage Owner Phase or Role=`coverage` row. Config/doc/bootstrap/infra labels alone do not decide this state.
+           Missing/conflicting policy is invalid. With no extra aliases, keep the three-column table
+           and one `| — | — | extra |` row; never omit the policy fields.
         Draft BDD with the mandatory `contract`-level
         typing scenario per contract (`AX_TICKET_HAS_BDD_AND_TESTS`) and, per `AX_E2E_FIRST`, an
         `e2e`-level scenario for the ticket's user-facing path by default — dropping it needs a
@@ -95,10 +94,14 @@
         GitHub-style heading slug (lowercase, hyphen-separated) `sdd-extract` resolves directly — e.g.
         `../greeting/greeting.spec.md#module-contracts` for the `## Module Contracts` heading, or
         `../greeting/greeting.spec.md#MODULE_CONTRACTS` when that section carries an explicit anchor.
-        An anchor that is neither — a bare prose reference, a heading paraphrase, a line number — fails
+        A bare prose reference, heading paraphrase, or line number fails
         `sdd-task --phase`'s downstream read at execution time; a link a worker or auditor cannot
         resolve with `sdd-extract <file>#<anchor>` verbatim is not a valid Spec Reference. No operator
         stop — automated.
+        Inputs <scope>/<module>/<ACR>/<slug>: STEP_2 node. Product/library module → only
+        moduleTaskManifest; infrastructure → only flatInfraTaskManifest; interface → neither.
+        <ToolCall owner="this-step" result="moduleTaskManifest">npx gennady sdd-new task --scope <scope> --module <module> --id <ACR>-<slug></ToolCall> Use only for product/library.
+        <ToolCall owner="this-step" result="flatInfraTaskManifest">npx gennady sdd-new task --scope <scope> --id <ACR>-<slug></ToolCall> Use only for infrastructure.
       </Action>
     </Step>
 
@@ -106,7 +109,7 @@
       **Rules activate per phase, not per ticket.** `ai/directives/knowledge.xml` (`<Rules>` section) is the canonical rule registry. Invariants of a correctly activated phase:
       - A rule is active for a phase exactly when its `<Triggers>` match THAT PHASE's `Target Files` + `kind` AND its `<SkipWhen>` does not apply. Signal-based only — the directive carries zero hardcoded language/tool knowledge.
       - The phase's `Rules:` bullet list is the **explicit, fully-resolved transitive closure** over `<DependsOn>` — one `[<rule-id>](<rule-file-path>)` per rule, direct + transitive; the phase-subagent reads the list as-is and never walks `<DependsOn>` at runtime.
-      - Every `<RequiresVerification>` alias declared by an active rule resolves through infra-spec Verification Commands into the ticket-level Verification table; the phase-subagent runs only the rows whose Required-by intersects its phase's `Rules`.
+      - Every `<RequiresVerification>` alias declared by an active rule resolves through infra-spec Verification Commands into the ticket-level Verification table; the phase verifier runs only rows whose Required-by intersects the selected phase's `Rules` and records them in its receipt.
     </Axiom>
 
 <Axiom id="AX_RELEASE_READY_DEFAULT" cross-cutting="true">
@@ -148,11 +151,9 @@
 <Axiom id="AX_EXECUTION_LOG_PLAN_VS_FACT">
       **Scaffolding writes a MINIMAL skeleton; phase-subagent appends event lines as work happens.**
 
-      - **SKELETON** for Round 1 = under `### Round 1 — <date>, initial`, one `#### P<N>` block per phase declared in Phases Overview. Each block contains ONLY the closing lines — the phase gate `ver` line FIRST (always `sdd-verify --profile <kind>`, run at STEP_5, never resolved from §Verification), then one `ver` line per EXTRA §Verification command (there is no `sdd-verify` row there — §Verification holds only extras beyond the gate, so a phase with no extras has just the gate `ver` line), then `DONE`:
+      - **SKELETON** for Round 1 = under `### Round 1 — <date>, initial`, one `#### P<N>` block per phase declared in Phases Overview. It contains only semantic closing placeholders; successful STEP_5 inserts its structured receipt atomically:
         ```
         #### P<N>
-        - [ ] `<ts>` ver npx gennady sdd-verify --profile <kind> → <pass|fail> exit=<code>
-        - [ ] `<ts>` ver <each extra §Verification command> → <pass|fail> exit=<code>   (0+, omit when none)
         - [ ] `<ts>` DONE
         ```
         No pre-filled `file` / `test` / `cov` / `rules` / `recon` / `sync` lines — those were noise (duplicated Target Files / Test Scenario Coverage / Rules: list / git diff). Event lines (`intro` / `decision` / `tried` / `discovery` / `insight` / `verified` / `BLOCKED`) are APPENDED by the phase agent only when the event actually happens.
@@ -162,7 +163,7 @@
       - **Forbidden**: `[x]` line containing any unreplaced `<…>` literal = fabricated done.
       - Append-only by Rounds.
 
-      A trivial phase with no surprises has 2 lines (`ver`, `DONE`) + Handoff. A phase with real engineering content (decisions, discoveries, intros) has those lines too — but they earn their place by carrying information that isn't elsewhere.
+      A trivial phase has one CLI-owned receipt, `DONE`, and Handoff. Event lines exist only when they carry information that is not elsewhere.
     </Axiom>
 
 <Axiom id="AX_PHASES_DECLARED_IN_HEADER">
@@ -191,7 +192,7 @@
 
 <Axiom id="AX_DECISION_LOG_REQUIRED">
       Every non-obvious decision → a Decision Log entry in `DECISION_LOG_ENTRY_FORMAT` — one line,
-      the expanded part in parentheses: `D-NNN <date> — <decision> (почему: …; отвергнуто: …;
+      the expanded part in parentheses: `<ACR>-DL-N <date> — <decision> (почему: …; отвергнуто: …;
       риск: …)`; IDs are stable. Non-obvious only (`AX_DECISION_LOG_NON_OBVIOUS`): a pick already
       recorded in the spec's own tables is never duplicated as a DL row. Which decisions qualify
       and which Decision Log receives the entry are specified per directive.
@@ -211,7 +212,8 @@
 
       **ID.** `<ACR>-DL-<N>` — spec acronym first, exactly like a Task-ID and like `<ACR>-REQ-<N>`
       (`REQUIREMENT_ENTRY_FORMAT`); `<N>` is sequential within THIS spec only — the acronym gives global
-      uniqueness, not the number. Replaces the old file-local `D-NNN` (unique only inside one file);
+      uniqueness, not the number. This is the only grammar for NEW entries. Existing append-only
+      file-local `D-N` entries remain immutable and resolvable as legacy references; never create another;
       conflicts (a duplicate number inside one spec) are caught mechanically, the same way as for
       `<ACR>-REQ-<N>`.
 

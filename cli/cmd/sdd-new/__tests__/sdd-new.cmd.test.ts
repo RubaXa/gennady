@@ -4,7 +4,15 @@
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, existsSync } from 'node:fs';
+import {
+  mkdtempSync,
+  mkdirSync,
+  writeFileSync,
+  readFileSync,
+  rmSync,
+  existsSync,
+  symlinkSync,
+} from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -17,6 +25,16 @@ let tmpDir: string;
 
 function argv(...rest: string[]): string[] {
   return ['node', 'gennady', 'sdd-new', ...rest];
+}
+
+function writeScope(root: string, scope: string, scopeType: string): void {
+  const scopeDir = join(root, 'specs', scope);
+  mkdirSync(scopeDir, { recursive: true });
+  writeFileSync(
+    join(scopeDir, `${scope}.spec.md`),
+    `<!--SECTION:SCOPE_TYPE-->\n## scope-type\n${scopeType}\n<!--/SECTION:SCOPE_TYPE-->`,
+    'utf-8'
+  );
 }
 
 describe('SddNewCommand', () => {
@@ -64,6 +82,85 @@ describe('SddNewCommand', () => {
     }
   });
 
+  it('rejects an unknown flag and prints canonical usage without requiring --help', async () => {
+    const outcome = await mod.run(argv('product', '--scpoe', 'backend'));
+    assert.strictEqual(outcome.ok, false);
+    if (!outcome.ok) {
+      assert.strictEqual(outcome.exitCode, 4);
+      assert.match(outcome.message, /unknown flag "--scpoe"/);
+      assert.match(outcome.message, /expected: npx gennady sdd-new <kind> --scope <s>/);
+      assert.match(outcome.message, /scope: +<s> is one kebab-case name/);
+    }
+  });
+
+  it('rejects an extra positional token instead of silently ignoring it', async () => {
+    const outcome = await mod.run(argv('product', 'surprise', '--scope', 'backend'));
+    assert.strictEqual(outcome.ok, false);
+    if (!outcome.ok) {
+      assert.strictEqual(outcome.exitCode, 4);
+      assert.match(outcome.message, /unexpected positional argument "surprise"/);
+    }
+  });
+
+  it('rejects a value flag without its value instead of treating true as undefined', async () => {
+    const outcome = await mod.run(argv('product', '--scope'));
+    assert.strictEqual(outcome.ok, false);
+    if (!outcome.ok) {
+      assert.strictEqual(outcome.exitCode, 4);
+      assert.match(outcome.message, /flag "--scope" requires a value/);
+      assert.match(outcome.message, /expected: npx gennady sdd-new/);
+    }
+  });
+
+  it('rejects repeated scalar and boolean modes before any filesystem write', async () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'sdd-new-repeated-'));
+    const prevCwd = process.cwd();
+    try {
+      process.chdir(cwd);
+      const invalid = [
+        argv('product', '--scope=alpha', '--out=a.md', '--out=b.md'),
+        argv('product', '--scope=alpha', '--scope=beta'),
+        argv('--list', '--list'),
+        argv('module', '--manifest', '--manifest'),
+      ];
+      for (const rawArgs of invalid) {
+        const outcome = await mod.run(rawArgs);
+        assert.strictEqual(outcome.ok, false, rawArgs.join(' '));
+        if (!outcome.ok) {
+          assert.strictEqual(outcome.exitCode, 4);
+          assert.match(outcome.message, /must be specified at most once/);
+        }
+      }
+      assert.strictEqual(existsSync(join(cwd, 'a.md')), false);
+      assert.strictEqual(existsSync(join(cwd, 'b.md')), false);
+      assert.strictEqual(existsSync(join(cwd, 'specs')), false);
+    } finally {
+      process.chdir(prevCwd);
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects every path-like or non-kebab scope before touching the filesystem', async () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'sdd-new-bad-scope-'));
+    const prevCwd = process.cwd();
+    try {
+      process.chdir(cwd);
+      for (const scope of ['../escape', '/absolute', 'a/b', 'a\\b', '.', '', 'Bad_Name']) {
+        const outcome = await mod.run(argv('product', `--scope=${scope}`));
+        assert.strictEqual(outcome.ok, false, `scope must be rejected: ${JSON.stringify(scope)}`);
+        if (!outcome.ok) {
+          assert.strictEqual(outcome.exitCode, 4);
+          assert.match(outcome.message, /--scope/);
+        }
+      }
+      assert.ok(!existsSync(join(cwd, 'specs')), 'invalid scope must not create specs/');
+      assert.ok(!existsSync(join(cwd, 'escape')), 'invalid scope must not escape specs/');
+    } finally {
+      process.chdir(prevCwd);
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
   it('rejects a scope-kind with no --scope and no --out with exit 4 / BAD_INVOCATION', async () => {
     const outcome = await mod.run(argv('product'));
     assert.strictEqual(outcome.ok, false);
@@ -88,6 +185,31 @@ describe('SddNewCommand', () => {
     if (!outcome.ok) {
       assert.match(outcome.message, /task requires --id/);
     }
+  });
+
+  it('rejects task --out=<path> when both --scope and --id are missing', async () => {
+    const outcome = await mod.run(argv('task', `--out=${join(tmpDir, 'bypass-equals.md')}`));
+    assert.strictEqual(outcome.ok, false);
+    if (!outcome.ok) {
+      assert.match(outcome.code, /BAD_INVOCATION/);
+      assert.match(outcome.message, /cannot prove task --out ownership/);
+    }
+  });
+
+  it('rejects task --out <path> when --scope is missing', async () => {
+    const outcome = await mod.run(
+      argv('task', '--id', 'TSK-out', '--out', join(tmpDir, 'missing-scope.md'))
+    );
+    assert.strictEqual(outcome.ok, false);
+    if (!outcome.ok) assert.match(outcome.message, /absolute paths are forbidden/);
+  });
+
+  it('rejects task --out <path> when --id is missing', async () => {
+    const outcome = await mod.run(
+      argv('task', '--scope', 'infra-base', '--out', join(tmpDir, 'missing-id.md'))
+    );
+    assert.strictEqual(outcome.ok, false);
+    if (!outcome.ok) assert.match(outcome.message, /absolute paths are forbidden/);
   });
 
   it('rejects module with --scope but no --module with exit 4 / BAD_INVOCATION (module always needs --module)', async () => {
@@ -119,6 +241,15 @@ describe('SddNewCommand', () => {
     const out = join(tmpDir, 'specs', 'deep', 'nested', 'module', 'module.spec.md');
     const outcome = await mod.run(
       argv('module', '--scope', 'deep', '--module', 'nested', '--out', out)
+    );
+    assert.strictEqual(outcome.ok, true);
+    assert.ok(existsSync(out));
+  });
+
+  it('accepts a nested module with an explicit --out destination', async () => {
+    const out = join(tmpDir, 'custom', 'nested-module.spec.md');
+    const outcome = await mod.run(
+      argv('module', '--scope', 'deep-scope', '--module', 'auth/tokens', '--out', out)
     );
     assert.strictEqual(outcome.ok, true);
     assert.ok(existsSync(out));
@@ -180,6 +311,385 @@ describe('SddNewCommand', () => {
     assert.strictEqual(path, 'specs/infra-base/infra-base.3-tasks.md');
   });
 
+  it('refuses a product task until the scope has a module spec', async () => {
+    const root = join(tmpDir, 'product-without-modules');
+    const scopeDir = join(root, 'specs', 'shop');
+    mkdirSync(scopeDir, { recursive: true });
+    writeFileSync(
+      join(scopeDir, 'shop.spec.md'),
+      '<!--SECTION:SCOPE_TYPE-->\n## scope-type\nproduct\n<!--/SECTION:SCOPE_TYPE-->',
+      'utf-8'
+    );
+    const previous = process.cwd();
+    process.chdir(root);
+    try {
+      const outcome = await mod.run(argv('task', '--scope', 'shop', '--id', 'SHP-checkout'));
+      assert.strictEqual(outcome.ok, false);
+      if (!outcome.ok) assert.match(outcome.code, /SCOPE_NOT_DECOMPOSED/);
+      assert.strictEqual(existsSync(join(scopeDir, 'shop.task.SHP-checkout.md')), false);
+    } finally {
+      process.chdir(previous);
+    }
+  });
+
+  it('allows a product task after module decomposition and exempts infrastructure scopes', async () => {
+    const root = join(tmpDir, 'decomposed-and-infra');
+    const productDir = join(root, 'specs', 'shop');
+    const moduleDir = join(productDir, 'checkout');
+    const infraDir = join(root, 'specs', 'infra-base');
+    mkdirSync(moduleDir, { recursive: true });
+    mkdirSync(infraDir, { recursive: true });
+    writeFileSync(
+      join(productDir, 'shop.spec.md'),
+      [
+        '<!--SECTION:SCOPE_TYPE-->',
+        '## scope-type',
+        'product',
+        '<!--/SECTION:SCOPE_TYPE-->',
+        '<!--SECTION:MODULE_MAP-->',
+        '- [checkout](./checkout/checkout.spec.md)',
+        '<!--/SECTION:MODULE_MAP-->',
+      ].join('\n'),
+      'utf-8'
+    );
+    writeFileSync(
+      join(moduleDir, 'checkout.spec.md'),
+      '<!--SECTION:MODULE_VISION-->\n## Vision\ncheckout\n<!--/SECTION:MODULE_VISION-->',
+      'utf-8'
+    );
+    writeFileSync(
+      join(infraDir, 'infra-base.spec.md'),
+      '<!--SECTION:SCOPE_TYPE-->\n## scope-type\ninfrastructure\n<!--/SECTION:SCOPE_TYPE-->',
+      'utf-8'
+    );
+    const previous = process.cwd();
+    process.chdir(root);
+    try {
+      const product = await mod.run(argv('task', '--scope', 'shop', '--id', 'SHP-checkout'));
+      const infra = await mod.run(argv('task', '--scope', 'infra-base', '--id', 'INF-tooling'));
+      assert.strictEqual(product.ok, true);
+      assert.strictEqual(infra.ok, true);
+    } finally {
+      process.chdir(previous);
+    }
+  });
+
+  it('rejects a ghost module and infers the exact declared module from --out', async () => {
+    const root = join(tmpDir, 'module-task-owner');
+    const scopeDir = join(root, 'specs', 'shop');
+    const moduleDir = join(scopeDir, 'checkout');
+    mkdirSync(moduleDir, { recursive: true });
+    writeFileSync(
+      join(scopeDir, 'shop.spec.md'),
+      '<!--SECTION:SCOPE_TYPE-->\nproduct\n<!--/SECTION:SCOPE_TYPE-->\n<!--SECTION:MODULE_MAP-->\n- [checkout](./checkout/checkout.spec.md)\n<!--/SECTION:MODULE_MAP-->'
+    );
+    writeFileSync(
+      join(moduleDir, 'checkout.spec.md'),
+      '<!--SECTION:MODULE_VISION-->\ncheckout\n<!--/SECTION:MODULE_VISION-->'
+    );
+    const previous = process.cwd();
+    process.chdir(root);
+    try {
+      const ghost = await mod.run(
+        argv('task', '--scope', 'shop', '--module', 'ghost', '--id', 'SHP-ghost')
+      );
+      assert.strictEqual(ghost.ok, false);
+      if (!ghost.ok) assert.match(ghost.message, /no exact canonical|not an exact declared/);
+
+      const out = 'specs/shop/checkout/custom.task.md';
+      const inferred = await mod.run(argv('task', '--id', 'SHP-owned', '--out', out));
+      assert.strictEqual(inferred.ok, true, inferred.ok ? '' : inferred.message);
+      assert.strictEqual(existsSync(join(root, out)), true);
+    } finally {
+      process.chdir(previous);
+    }
+  });
+
+  it('rejects an explicit module that conflicts with ownership inferred from --out', async () => {
+    const root = join(tmpDir, 'module-out-conflict');
+    const scopeDir = join(root, 'specs', 'shop');
+    for (const module of ['one', 'two']) {
+      mkdirSync(join(scopeDir, module), { recursive: true });
+      writeFileSync(
+        join(scopeDir, module, `${module}.spec.md`),
+        '<!--SECTION:MODULE_VISION-->\nmodule\n<!--/SECTION:MODULE_VISION-->'
+      );
+    }
+    writeFileSync(
+      join(scopeDir, 'shop.spec.md'),
+      '<!--SECTION:SCOPE_TYPE-->\nproduct\n<!--/SECTION:SCOPE_TYPE-->\n<!--SECTION:MODULE_MAP-->\n- [one](./one/one.spec.md)\n- [two](./two/two.spec.md)\n<!--/SECTION:MODULE_MAP-->'
+    );
+    const previous = process.cwd();
+    process.chdir(root);
+    try {
+      const outcome = await mod.run(
+        argv(
+          'task',
+          '--scope',
+          'shop',
+          '--module',
+          'two',
+          '--id',
+          'SHP-conflict',
+          '--out',
+          'specs/shop/one/task.md'
+        )
+      );
+      assert.strictEqual(outcome.ok, false);
+      if (!outcome.ok) assert.match(outcome.message, /conflicts with --out module owner one/);
+    } finally {
+      process.chdir(previous);
+    }
+  });
+
+  it('rejects incomplete decomposition even when a module-like file exists', async () => {
+    const root = join(tmpDir, 'incomplete-decomposition');
+    const scopeDir = join(root, 'specs', 'shop');
+    const moduleDir = join(scopeDir, 'checkout');
+    mkdirSync(moduleDir, { recursive: true });
+    writeFileSync(
+      join(scopeDir, 'shop.spec.md'),
+      [
+        '<!--SECTION:SCOPE_TYPE-->',
+        'product',
+        '<!--/SECTION:SCOPE_TYPE-->',
+        '<!--SECTION:MODULE_MAP-->',
+        '- [missing](./missing/missing.spec.md)',
+        '<!--/SECTION:MODULE_MAP-->',
+      ].join('\n')
+    );
+    writeFileSync(
+      join(moduleDir, 'checkout.spec.md'),
+      '<!--SECTION:MODULE_VISION-->\ncheckout\n<!--/SECTION:MODULE_VISION-->'
+    );
+    const previous = process.cwd();
+    process.chdir(root);
+    try {
+      const outcome = await mod.run(argv('task', '--scope', 'shop', '--id', 'SHP-gap'));
+      assert.strictEqual(outcome.ok, false);
+      if (!outcome.ok) {
+        assert.match(outcome.message, /declared module spec missing\/missing\.spec\.md is missing/);
+        assert.match(outcome.message, /checkout\/checkout\.spec\.md is undeclared/);
+      }
+    } finally {
+      process.chdir(previous);
+    }
+  });
+
+  it('fails closed when the task scope spec is missing', async () => {
+    const root = join(tmpDir, 'missing-scope-spec');
+    mkdirSync(root, { recursive: true });
+    const previous = process.cwd();
+    process.chdir(root);
+    try {
+      const outcome = await mod.run(argv('task', '--scope', 'ghost', '--id', 'GHO-task'));
+      assert.strictEqual(outcome.ok, false);
+      if (!outcome.ok) {
+        assert.match(outcome.code, /SCOPE_NOT_DECOMPOSED/);
+        assert.match(outcome.message, /missing or unreadable/);
+      }
+    } finally {
+      process.chdir(previous);
+    }
+  });
+
+  it('fails closed on malformed or ambiguous SCOPE_TYPE evidence', async () => {
+    const root = join(tmpDir, 'bad-scope-types');
+    writeScope(root, 'malformed', 'not-a-scope-type');
+    writeScope(root, 'ambiguous', 'product\nlibrary');
+    const previous = process.cwd();
+    process.chdir(root);
+    try {
+      const malformed = await mod.run(argv('task', '--scope', 'malformed', '--id', 'BAD-type'));
+      const ambiguous = await mod.run(argv('task', '--scope', 'ambiguous', '--id', 'AMB-type'));
+      assert.strictEqual(malformed.ok, false);
+      assert.strictEqual(ambiguous.ok, false);
+      if (!malformed.ok) assert.match(malformed.message, /literal is unsupported/);
+      if (!ambiguous.ok) assert.match(ambiguous.message, /exactly one literal/);
+    } finally {
+      process.chdir(previous);
+    }
+  });
+
+  it('does not accept a fenced example as canonical SCOPE_TYPE evidence', async () => {
+    const root = join(tmpDir, 'fenced-scope-type');
+    writeScope(root, 'example-only', '```text\nproduct\n```');
+    const previous = process.cwd();
+    process.chdir(root);
+    try {
+      const outcome = await mod.run(argv('task', '--scope', 'example-only', '--id', 'EXA-ticket'));
+      assert.strictEqual(outcome.ok, false);
+      if (!outcome.ok) assert.match(outcome.message, /exactly one literal/);
+    } finally {
+      process.chdir(previous);
+    }
+  });
+
+  it('does not give interface a direct task-scaffold route, even with module-like files present', async () => {
+    const root = join(tmpDir, 'interface-no-modules');
+    writeScope(root, 'api-contract', 'interface');
+    const moduleDir = join(root, 'specs', 'api-contract', 'client');
+    mkdirSync(moduleDir, { recursive: true });
+    writeFileSync(
+      join(moduleDir, 'client.spec.md'),
+      '<!--SECTION:MODULE_VISION-->\n## Vision\nclient\n<!--/SECTION:MODULE_VISION-->',
+      'utf-8'
+    );
+    const previous = process.cwd();
+    process.chdir(root);
+    try {
+      const outcome = await mod.run(argv('task', '--scope', 'api-contract', '--id', 'API-ticket'));
+      assert.strictEqual(outcome.ok, false);
+      if (!outcome.ok) {
+        assert.match(outcome.message, /interface scopes have no direct task-scaffold route/);
+        assert.match(outcome.message, /sole flat-scope exception/);
+      }
+    } finally {
+      process.chdir(previous);
+    }
+  });
+
+  it('creates a task at a custom --out path in both equals and separated forms', async () => {
+    const root = join(tmpDir, 'task-custom-out');
+    writeScope(root, 'infra-base', 'infrastructure');
+    const previous = process.cwd();
+    process.chdir(root);
+    try {
+      const equalsPath = 'specs/infra-base/custom/equals.task.md';
+      const separatedPath = 'specs/infra-base/custom/separated.task.md';
+      const equals = await mod.run(
+        argv('task', '--scope', 'infra-base', '--id', 'INF-equal', `--out=${equalsPath}`)
+      );
+      const separated = await mod.run(
+        argv('task', '--scope', 'infra-base', '--id', 'INF-separate', '--out', separatedPath)
+      );
+      assert.strictEqual(equals.ok, true);
+      assert.strictEqual(separated.ok, true);
+      assert.strictEqual(existsSync(join(root, equalsPath)), true);
+      assert.strictEqual(existsSync(join(root, separatedPath)), true);
+    } finally {
+      process.chdir(previous);
+    }
+  });
+
+  it('infers task --scope from the one canonical scope ancestor of --out', async () => {
+    const root = join(tmpDir, 'task-inferred-scope');
+    writeScope(root, 'infra-base', 'infrastructure');
+    const previous = process.cwd();
+    process.chdir(root);
+    try {
+      const out = 'specs/infra-base/custom/ticket.md';
+      const outcome = await mod.run(argv('task', '--id', 'INF-inferred', '--out', out));
+      assert.strictEqual(outcome.ok, true, outcome.ok ? '' : outcome.message);
+      assert.strictEqual(existsSync(join(root, out)), true);
+    } finally {
+      process.chdir(previous);
+    }
+  });
+
+  it('rejects a non-kebab scope owner inferred from task --out before writing the ticket', async () => {
+    const root = join(tmpDir, 'task-invalid-inferred-scope');
+    writeScope(root, 'bad_scope', 'infrastructure');
+    const previous = process.cwd();
+    process.chdir(root);
+    try {
+      const out = 'specs/bad_scope/custom/ticket.md';
+      const outcome = await mod.run(argv('task', '--id', 'BAD-owner', '--out', out));
+      assert.strictEqual(outcome.ok, false);
+      if (!outcome.ok) {
+        assert.strictEqual(outcome.exitCode, 4);
+        assert.match(outcome.message, /inferred an invalid owner/);
+        assert.match(outcome.message, /--scope "bad_scope" is not kebab-case/);
+      }
+      assert.strictEqual(existsSync(join(root, out)), false);
+    } finally {
+      process.chdir(previous);
+    }
+  });
+
+  it('fails closed when task --out has no owner or multiple canonical scope ancestors', async () => {
+    const root = join(tmpDir, 'task-owner-failures');
+    writeScope(root, 'outer', 'infrastructure');
+    writeScope(join(root, 'specs', 'outer'), 'inner', 'infrastructure');
+    const previous = process.cwd();
+    process.chdir(root);
+    try {
+      const noOwner = await mod.run(argv('task', '--id', 'OWN-none', '--out', 'custom/ticket.md'));
+      assert.strictEqual(noOwner.ok, false);
+      if (!noOwner.ok) assert.match(noOwner.message, /cannot prove task --out ownership/);
+
+      const ambiguous = await mod.run(
+        argv('task', '--id', 'OWN-many', '--out', 'specs/outer/specs/inner/ticket.md')
+      );
+      assert.strictEqual(ambiguous.ok, false);
+      if (!ambiguous.ok) assert.match(ambiguous.message, /ambiguous scope owners \(inner, outer\)/);
+    } finally {
+      process.chdir(previous);
+    }
+  });
+
+  it('rejects absolute, traversal, and ownerless task --out even with an explicit scope', async () => {
+    const root = join(tmpDir, 'task-unsafe-out');
+    writeScope(root, 'infra-base', 'infrastructure');
+    const previous = process.cwd();
+    process.chdir(root);
+    try {
+      const cases = [
+        join(root, 'specs', 'infra-base', 'absolute.task.md'),
+        '../escaped.task.md',
+        'custom/ownerless.task.md',
+      ];
+      for (const out of cases) {
+        const outcome = await mod.run(
+          argv('task', '--scope', 'infra-base', '--id', `INF-${cases.indexOf(out)}`, '--out', out)
+        );
+        assert.strictEqual(outcome.ok, false, out);
+        if (!outcome.ok) {
+          assert.strictEqual(outcome.exitCode, 4);
+          assert.match(outcome.message, /cannot prove task --out ownership/);
+          assert.match(outcome.message, /cannot replace ownership evidence/);
+        }
+      }
+      assert.strictEqual(existsSync(join(root, '..', 'escaped.task.md')), false);
+      assert.strictEqual(existsSync(join(root, 'custom', 'ownerless.task.md')), false);
+    } finally {
+      process.chdir(previous);
+    }
+  });
+
+  it('rejects task --out through a symlink file or symlink directory without dereferencing it', async () => {
+    const root = join(tmpDir, 'task-symlink-out');
+    writeScope(root, 'infra-base', 'infrastructure');
+    mkdirSync(join(root, 'elsewhere'));
+    symlinkSync(join(root, 'elsewhere'), join(root, 'specs', 'infra-base', 'alias-dir'));
+    writeFileSync(join(root, 'elsewhere', 'real.task.md'), 'do not overwrite');
+    symlinkSync(
+      join(root, 'elsewhere', 'real.task.md'),
+      join(root, 'specs', 'infra-base', 'alias.task.md')
+    );
+    const previous = process.cwd();
+    process.chdir(root);
+    try {
+      for (const out of [
+        'specs/infra-base/alias-dir/new.task.md',
+        'specs/infra-base/alias.task.md',
+      ]) {
+        const outcome = await mod.run(
+          argv('task', '--scope', 'infra-base', '--id', `INF-link-${out.length}`, '--out', out)
+        );
+        assert.strictEqual(outcome.ok, false, out);
+        if (!outcome.ok) assert.match(outcome.message, /symlink component/);
+      }
+      assert.strictEqual(existsSync(join(root, 'elsewhere', 'new.task.md')), false);
+      assert.strictEqual(
+        readFileSync(join(root, 'elsewhere', 'real.task.md'), 'utf-8'),
+        'do not overwrite'
+      );
+    } finally {
+      process.chdir(previous);
+    }
+  });
+
   it('resolves scope-index: specs/<scope>/<scope>.3-tasks.md', () => {
     const path = mod.resolvePath('scope-index', { scope: 's' });
     assert.strictEqual(path, 'specs/s/s.3-tasks.md');
@@ -219,6 +729,7 @@ describe('SddNewCommand', () => {
     const cwd = mkdtempSync(join(tmpdir(), 'sdd-new-flat-'));
     const prevCwd = process.cwd();
     try {
+      writeScope(cwd, 'demo', 'infrastructure');
       process.chdir(cwd);
       const outcome = await mod.run(argv('task', '--scope', 'demo', '--id', 'DEM-x'));
       assert.strictEqual(outcome.ok, true);
@@ -340,9 +851,7 @@ describe('SddNewCommand', () => {
         '<!--SECTION:META-->\n- **Task-ID:** GAT-login\n<!--/SECTION:META-->\n'
       );
       process.chdir(cwd);
-      const outcome = await mod.run(
-        argv('task', '--scope', 's', '--module', 'm', '--id', 'GAT-login')
-      );
+      const outcome = await mod.run(argv('task', '--scope', 's', '--id', 'GAT-login'));
       assert.strictEqual(outcome.ok, false);
       if (!outcome.ok) {
         assert.strictEqual(outcome.exitCode, 4);
@@ -384,10 +893,9 @@ describe('SddNewCommand', () => {
     const cwd = mkdtempSync(join(tmpdir(), 'sdd-new-id-'));
     const prevCwd = process.cwd();
     try {
+      writeScope(cwd, 's', 'infrastructure');
       process.chdir(cwd);
-      const outcome = await mod.run(
-        argv('task', '--scope', 's', '--module', 'm', '--id', 'GAT-login')
-      );
+      const outcome = await mod.run(argv('task', '--scope', 's', '--id', 'GAT-login'));
       assert.strictEqual(outcome.ok, true);
       if (outcome.ok) assert.ok(existsSync(outcome.path));
     } finally {

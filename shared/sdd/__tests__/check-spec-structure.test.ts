@@ -246,6 +246,22 @@ describe('checkSpecStructure — per-section hard size cap (F4, v2 only)', () =>
     assert.ok(!v2Codes(md).includes('SDD_SECTION_TOO_LONG'));
   });
 
+  it('a new-format Requirements section is governed by requirement budgets, not raw line count', () => {
+    const requirements = [
+      '<!--SECTION:REQUIREMENTS_AND_CONSTRAINTS-->',
+      '## Requirements & Constraints',
+      '### DEM-REQ-1 [должен]',
+      ...Array.from({ length: 130 }, (_, i) => `line ${i}`),
+      '<!--/SECTION:REQUIREMENTS_AND_CONSTRAINTS-->',
+    ].join('\n');
+    const md = [
+      '<!--SECTION:SCOPE_TYPE-->\n## scope-type\nproduct\n<!--/SECTION:SCOPE_TYPE-->',
+      block('VISION'),
+      requirements,
+    ].join('\n\n');
+    assert.ok(!v2Codes(md).includes('SDD_SECTION_TOO_LONG'));
+  });
+
   it('a folded section (DECISION_LOG) past 120 lines is exempt — folding is its containment', () => {
     const md = [
       '<!--SECTION:SCOPE_TYPE-->\n## scope-type\nproduct\n<!--/SECTION:SCOPE_TYPE-->',

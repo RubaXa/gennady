@@ -1,5 +1,5 @@
 // @file: Live-CLI behavior of sdd-state's readiness report — a real run against a fixture whose
-//   seven required scripts, read-only/mutating shapes, and gennady install all satisfy
+//   eight required scripts, read-only/mutating shapes, and gennady install all satisfy
 //   shared/sdd/readiness.ts, so the snapshot must report full readiness with nothing missing.
 // @consumers: N/A
 // @tasks: N/A
@@ -11,7 +11,7 @@ import { buildRepoFixture, noop } from './fixture.ts';
 import { runCli } from './run-cli.ts';
 
 describe('sdd-state — live readiness snapshot', () => {
-  it('all seven bricks present + read-only/mutating correctly shaped + gennady installed → fully ready', () => {
+  it('all eight bricks present + read-only/mutating correctly shaped + gennady installed → fully ready', () => {
     const { root } = buildRepoFixture({
       directives: true,
       gennadyInstalled: true,
@@ -22,11 +22,12 @@ describe('sdd-state — live readiness snapshot', () => {
         // read-only: no --write/--fix/--autofix.
         format: 'prettier --check .',
         // mutating: carries --write.
-        'format:fix': 'prettier --write .',
+        'format:fix': 'prettier --write',
         // read-only, and invokes gennady in command position (no execution involved).
         lint: 'gennady lint src/',
         // mutating: gennady's own autofix switch.
-        'lint:fix': 'gennady lint --autofix src/',
+        'lint:fix': 'gennady lint --autofix',
+        fix: 'npm run format:fix -- . && npm run lint:fix -- src/',
       },
     });
     try {
@@ -43,6 +44,7 @@ describe('sdd-state — live readiness snapshot', () => {
         'format:fix',
         'lint',
         'lint:fix',
+        'fix',
       ]) {
         assert.match(r.stdout, new RegExp(`${script}\t✔`), `expected ${script} declared ✔`);
       }

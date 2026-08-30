@@ -30,6 +30,6 @@
   | <ACR>-<slug> | <title> | <module> | <deps> | [ ] TODO | — |
 
   ## Decision Log (scope task level)
-  [D-NNN for scope-level decomposition / planning choices.]
+  [<ACR>-DL-N for scope-level decomposition / planning choices.]
   ```
 </Contract>

@@ -3,7 +3,7 @@
 // @tasks: N/A
 
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { logger } from '#logger';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
 import {
@@ -20,11 +20,16 @@ import {
   suggestTaskId,
 } from '../../../shared/sdd/task-id.ts';
 import {
+  resolveTaskOutputOwnership,
+  resolveTaskOwnership,
+} from '../../../shared/sdd/module-specs.ts';
+import {
   badInvocation,
   unknownKind,
   fileExists,
   writeFailed,
   badTaskId,
+  scopeNotDecomposed,
   renderCreated,
   renderManifestReport,
   type NewOutcome,
@@ -96,7 +101,7 @@ export function resolvePath(
 }
 
 /**
- * @purpose Which options are required for a kind, beyond --out (which always short-circuits path computation).
+ * @purpose List missing options for one artifact kind.
  * @invariant `task`/`module-index` skip --module (flat path via `resolvePath`); `module` always
  *   needs it. `research` needs --slug (kebab-case) — the tool, never the operator, supplies the date.
  * @param kind Artifact kind.
@@ -106,11 +111,15 @@ function missingOptions(
   kind: ArtifactKind,
   opts: { scope?: string; module?: string; id?: string; out?: string; slug?: string }
 ): string[] {
-  if (opts.out) return [];
   const missing: string[] = [];
+  if (kind === 'task') {
+    if (!opts.scope && !opts.out) missing.push('--scope');
+    if (!opts.id) missing.push('--id');
+    return missing;
+  }
+  if (opts.out) return missing;
   if (kind !== 'portal' && kind !== 'project-index' && !opts.scope) missing.push('--scope');
   if (kind === 'module' && !opts.module) missing.push('--module');
-  if (kind === 'task' && !opts.id) missing.push('--id');
   if (kind === 'research' && !opts.slug) missing.push('--slug');
   return missing;
 }
@@ -119,6 +128,28 @@ function missingOptions(
 // `--scope` name follows. `--module` may nest to any depth (AX_HIERARCHICAL_SPECS); every segment
 // must satisfy this on its own.
 const SEGMENT_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+
+/** @purpose Value-bearing long options accepted by sdd-new's public CLI. */
+const VALUE_FLAGS = new Set(['scope', 'module', 'id', 'out', 'slug']);
+/** @purpose Boolean long options accepted by sdd-new's public CLI. */
+const BOOLEAN_FLAGS = new Set(['list', 'manifest']);
+
+/**
+ * @purpose Validate a scope as one kebab-case identity segment, never a filesystem path.
+ * @invariant Scope, module segments, and research slug share the same SEGMENT_RE grammar.
+ * @param scope Raw --scope value, explicit or structurally inferred from task --out.
+ * @returns null when valid, else a human-readable reason.
+ */
+export function validateScope(scope: string): string | null {
+  if (scope.length === 0) return '--scope must not be empty';
+  if (scope === '.' || scope === '..' || scope.includes('/') || scope.includes('\\')) {
+    return `--scope must be one kebab-case name, not a path: "${scope}"`;
+  }
+  if (!SEGMENT_RE.test(scope)) {
+    return `--scope "${scope}" is not kebab-case (lowercase letters/digits, hyphen-separated)`;
+  }
+  return null;
+}
 
 /**
  * @purpose Validate a `research` --slug: same grammar as one `--module` segment (kebab-case,
@@ -169,6 +200,43 @@ export function validateModulePath(module: string): string | null {
  * @returns NewOutcome — created path + report on success, else an actionable failure.
  */
 export async function run(rawArgs: string[]): Promise<NewOutcome> {
+  // Fail before the permissive shared parser can erase an unknown flag or turn a missing value
+  // into boolean `true`; badInvocation prints the complete canonical call, so no --help retry.
+  const rawTokens = rawArgs.slice(2);
+  const seenFlags = new Set<string>();
+  for (let i = 0; i < rawTokens.length; i++) {
+    const token = rawTokens[i] as string;
+    if (token === '--') break;
+    if (!token.startsWith('-')) continue;
+    const match = token.match(/^--([^=]+)(?:=(.*))?$/);
+    if (!match) return badInvocation(`unknown flag "${token}"`);
+    const name = match[1] as string;
+    const inlineValue = match[2];
+    if (!VALUE_FLAGS.has(name) && !BOOLEAN_FLAGS.has(name)) {
+      return badInvocation(`unknown flag "--${name}"`);
+    }
+    if (seenFlags.has(name)) {
+      return badInvocation(`flag "--${name}" must be specified at most once`);
+    }
+    seenFlags.add(name);
+    if (BOOLEAN_FLAGS.has(name)) {
+      if (inlineValue !== undefined) {
+        return badInvocation(`flag "--${name}" does not take a value`);
+      }
+      continue;
+    }
+    if (inlineValue !== undefined) {
+      if (inlineValue.length === 0) {
+        return badInvocation(`flag "--${name}" requires a value`);
+      }
+      continue;
+    }
+    const next = rawTokens[i + 1];
+    if (next === undefined || next.length === 0 || next.startsWith('-')) {
+      return badInvocation(`flag "--${name}" requires a value`);
+    }
+    i++;
+  }
   const args = parseArgs(rawArgs, {
     scope: { aliases: ['scope'], takesValue: true },
     module: { aliases: ['module'], takesValue: true },
@@ -190,6 +258,9 @@ export async function run(rawArgs: string[]): Promise<NewOutcome> {
   if (!kindArg) {
     logger.warn('[SddNewCommand#run] bad invocation — missing <kind>');
     return badInvocation('missing <kind>');
+  }
+  if (positional.length > 1) {
+    return badInvocation(`unexpected positional argument "${positional[1]}" after <kind>`);
   }
   if (!(ARTIFACT_KINDS as string[]).includes(kindArg)) {
     logger.warn(`[SddNewCommand#run] unknown kind: ${kindArg}`);
@@ -216,6 +287,42 @@ export async function run(rawArgs: string[]): Promise<NewOutcome> {
     out: typeof args.out === 'string' ? args.out : undefined,
     slug: typeof args.slug === 'string' ? args.slug : undefined,
   };
+
+  if (opts.scope) {
+    const reason = validateScope(opts.scope);
+    if (reason) {
+      logger.warn(`[SddNewCommand#run] bad --scope: ${reason}`);
+      return badInvocation(reason);
+    }
+  }
+
+  if (kind === 'task' && opts.out) {
+    const inferred = resolveTaskOutputOwnership(opts.out);
+    if (!inferred.scope || inferred.reason) {
+      return badInvocation(
+        `cannot prove task --out ownership: ${inferred.reason ?? 'no canonical owner'}; --scope/--module may verify the proven owner but cannot replace ownership evidence`
+      );
+    }
+    if (opts.scope && opts.scope !== inferred.scope) {
+      return badInvocation(
+        `task --scope ${opts.scope} conflicts with --out owner ${inferred.scope}; use the owning scope or a different destination`
+      );
+    }
+    if (opts.module && opts.module !== inferred.module) {
+      return badInvocation(
+        `task --module ${opts.module} conflicts with --out module owner ${inferred.module ?? '(scope-level)'}; use the owning module subtree or omit --module`
+      );
+    }
+    opts.scope ??= inferred.scope;
+    opts.module ??= inferred.module;
+    if (opts.scope) {
+      const reason = validateScope(opts.scope);
+      if (reason) {
+        logger.warn(`[SddNewCommand#run] bad inferred --scope: ${reason}`);
+        return badInvocation(`task --out inferred an invalid owner; ${reason}`);
+      }
+    }
+  }
 
   const missing = missingOptions(kind, opts);
   if (missing.length > 0) {
@@ -261,6 +368,20 @@ export async function run(rawArgs: string[]): Promise<NewOutcome> {
     }
   }
   // #endregion END_TASK_ID
+
+  // #region START_SCOPE_DECOMPOSITION — infrastructure is the sole flat-scope exception
+  if (kind === 'task' && opts.scope) {
+    const scopeDir = resolve('specs', opts.scope);
+    const scopeSpec = join(scopeDir, `${opts.scope}.spec.md`);
+    const ownership = resolveTaskOwnership(scopeSpec, opts.module);
+    if (ownership.status === 'invalid') {
+      logger.warn(
+        `[SddNewCommand#run] task ownership is not ready: ${opts.scope}/${opts.module ?? '(scope)'} `
+      );
+      return scopeNotDecomposed(opts.scope, ownership.reason);
+    }
+  }
+  // #endregion END_SCOPE_DECOMPOSITION
 
   const path = resolvePath(kind, opts);
   const abs = resolve(path);

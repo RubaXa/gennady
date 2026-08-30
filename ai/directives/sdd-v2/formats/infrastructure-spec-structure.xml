@@ -57,7 +57,7 @@
   ### Tool Choices
   | Category | Tool | Rationale |
   |---|---|---|
-  | <category> | <tool> | D-NNN |
+  | <category> | <tool> | <ACR>-DL-N |
 
   ### Integration Detail
   [Для каждого выбранного инструмента — поля интеграции ниже. Заполняются на стадии решения; если
@@ -89,7 +89,7 @@
 
   | Rule | Category | Source |
   |---|---|---|
-  | <rule-name> | coding | infra (D-NNN) |
+  | <rule-name> | coding | infra (<ACR>-DL-N) |
 
   </details>
   <!--/SECTION:EFFECTIVE_RULES-->
@@ -100,7 +100,7 @@
   | Command Name      | Invocation          |
   | typecheck-command | <actual invocation> |
   | test-command      | <actual invocation> |
-  | coverage-command  | <actual invocation — name the coverage provider too, e.g. `@vitest/coverage-v8`> |
+  | coverage-command  | <actual read/check invocation — name the coverage provider too, e.g. `@vitest/coverage-v8`; MUST NOT rerun the suite> |
   | lint-command      | <actual invocation> |
   | format-command    | <actual invocation> |
   | check-command     | <actual invocation> |
@@ -108,13 +108,16 @@
 
   Include only command names for tools present in the chosen stack. `coverage-command` is **required**
   whenever the project declares a coverage threshold gate — a threshold with no declared provider is a
-  gate nobody can run.
+  gate nobody can run. It reads/checks the report produced by the platform's phase/full verifier and
+  MUST NOT own a second test-suite run.
   `check-command` and `fix-command` are wrappers for humans, CI, and the pre-commit hook — with the
-  runtime setup rule (`nodejs-npm-setup` or equivalent) active they resolve to
-  `npx gennady sdd-verify --profile full` and `npm run format:fix && npm run lint:fix`. Task tickets
-  do NOT cite them, and they do NOT put the phase ladder line in §Verification either: STEP_5 of the
-  phase protocol already runs `npx gennady sdd-verify --profile <phase kind>` itself, so a row for it
-  would make every phase run the whole ladder twice. §Verification carries ONLY the extra commands
+  runtime setup rule (`nodejs-npm-setup` or equivalent) active they resolve to the read-only
+  `npx gennady sdd-verify --profile full` and a whole-project wrapper that passes broad roots to the
+  declared argument-forwarding repair prefixes. The phase runtime boundary, not this static shape,
+  proves the actual write-zone. Task tickets do NOT cite them, and they do NOT put the phase
+  ladder line in §Verification either: STEP_5 already runs
+  `npx gennady sdd-verify --task <ticket-path> --phase <PhaseID>`, so a row for it would make every
+  phase run the ladder twice. §Verification carries ONLY the extra commands
   beyond that gate — one row per additional alias here (e.g. `coverage-command`).
 
   [Инвариант: команды образуют конвейер, а не список — артефакты одной команды не должны ронять
@@ -140,7 +143,7 @@
   <details>
   <summary>Полные записи Decision Log</summary>
 
-  [D-NNN entries.]
+  [<ACR>-DL-N entries per DECISION_LOG_ENTRY_FORMAT.]
 
   </details>
   <!--/SECTION:DECISION_LOG-->
@@ -152,8 +155,8 @@
   <details>
   <summary>Таблица предусловий</summary>
 
-  | Requirement | Kind | Owner | Resolution |
-  |---|---|---|---|
+  | Requirement | Kind | Owner | Resolution | Readiness Gates | Gate Artifacts |
+  |---|---|---|---|---|---|
 
   <!-- Kind ∈ package | workspace-link | tool | file | external-type | env | service | structural -->
   <!-- Owner ∈ this-scope-task | external-prereq-scope | operator-action -->

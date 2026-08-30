@@ -1,11 +1,9 @@
 <Axiom id="AX_EXECUTION_LOG_PLAN_VS_FACT">
 **Scaffolding writes a MINIMAL skeleton; phase-subagent appends event lines as work happens.**
 
-- **SKELETON** for Round 1 = under `### Round 1 — <date>, initial`, one `#### P<N>` block per phase declared in Phases Overview. Each block contains ONLY the closing lines — the phase gate `ver` line FIRST (always `sdd-verify --profile <kind>`, run at STEP_5, never resolved from §Verification), then one `ver` line per EXTRA §Verification command (there is no `sdd-verify` row there — §Verification holds only extras beyond the gate, so a phase with no extras has just the gate `ver` line), then `DONE`:
+- **SKELETON** for Round 1 = under `### Round 1 — <date>, initial`, one `#### P<N>` block per phase declared in Phases Overview. It contains only semantic closing placeholders; successful STEP_5 inserts its structured receipt atomically:
   ```
   #### P<N>
-  - [ ] `<ts>` ver npx gennady sdd-verify --profile <kind> → <pass|fail> exit=<code>
-  - [ ] `<ts>` ver <each extra §Verification command> → <pass|fail> exit=<code>   (0+, omit when none)
   - [ ] `<ts>` DONE
   ```
   No pre-filled `file` / `test` / `cov` / `rules` / `recon` / `sync` lines — those were noise (duplicated Target Files / Test Scenario Coverage / Rules: list / git diff). Event lines (`intro` / `decision` / `tried` / `discovery` / `insight` / `verified` / `BLOCKED`) are APPENDED by the phase agent only when the event actually happens.
@@ -15,5 +13,5 @@
 - **Forbidden**: `[x]` line containing any unreplaced `<…>` literal = fabricated done.
 - Append-only by Rounds.
 
-A trivial phase with no surprises has 2 lines (`ver`, `DONE`) + Handoff. A phase with real engineering content (decisions, discoveries, intros) has those lines too — but they earn their place by carrying information that isn't elsewhere.
+A trivial phase has one CLI-owned receipt, `DONE`, and Handoff. Event lines exist only when they carry information that is not elsewhere.
 </Axiom>

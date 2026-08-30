@@ -8,7 +8,11 @@
       dependency edges A→B (from the Mermaid `graph TD` Scope Graph, or the Scopes table
       `depends-on` column).
 
-      For each scope with ✅ status, read its spec file at `specs/<scope>/<scope>.spec.md`.
+      Before reading scope specs, resolve the scaffold target set from the operator/session payload and
+      compute its transitive `depends-on` closure from the portal graph. Read only that target+closure
+      set. If the request intentionally targets the whole approved project or carries no narrower
+      target, use every ✅ scope from the same snapshot as an explicit bounded fallback and say so;
+      never use glob/ls/find or filesystem archaeology to broaden it.
 
       Cascade computation requires full scope graph traversal:
       - **Traversed-scopes** for a target scope = all scopes reachable via `depends-on` edges (transitive closure).

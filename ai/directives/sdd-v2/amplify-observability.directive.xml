@@ -5,10 +5,10 @@
     discovery interview's triage when the scope has an operational runtime (service, worker,
     long-lived process); inherits the session core — not repeated here.
 
-    Input — the scope spec draft + interview context. Output — an `Observability` subsection
-    inside Requirements & Constraints of the scope spec + follow-up items on the discovery
-    interview map. Out of scope: dashboard layouts, vendor configuration — the spec records what
-    is observed and why, tooling carries the how.
+    Input — the scope spec draft + interview context. Output — ordinary flat requirement entries
+    in the canonical Requirements section + follow-up items on the discovery interview map. Out of
+    scope: dashboard layouts and vendor configuration — detailed material belongs in Architecture
+    or one referenced supporting section only when genuinely needed.
   </Mission>
 
   <BeliefState deps="AX_OPERATOR_LANGUAGE, AX_OPERATOR_SAFEGUARD, AX_NO_PROCESS_NARRATION">
@@ -27,7 +27,7 @@
 
     <Axiom id="AX_DECISION_LOG_REQUIRED">
       Every non-obvious decision → a Decision Log entry in `DECISION_LOG_ENTRY_FORMAT` — one line,
-      the expanded part in parentheses: `D-NNN <date> — <decision> (почему: …; отвергнуто: …;
+      the expanded part in parentheses: `<ACR>-DL-N <date> — <decision> (почему: …; отвергнуто: …;
       риск: …)`; IDs are stable. Non-obvious only (`AX_DECISION_LOG_NON_OBVIOUS`): a pick already
       recorded in the spec's own tables is never duplicated as a DL row. Which decisions qualify
       and which Decision Log receives the entry are specified per directive.
@@ -64,12 +64,13 @@
       <Action>
         From the spec draft, list the operational surfaces: entry points, external I/O, queues,
         long operations. No runtime surface → `H_NO_RUNTIME_SURFACE`. Per
-        `AX_AMPLIFY_DEFAULTS_FIRST`, draft one default decision per signal: logs (structure +
+        `AX_AMPLIFY_DEFAULTS_FIRST`, draft one observable outcome per relevant signal: logs (structure +
         levels per `AX_STRUCTURED_LOGGING`, density per `AX_LOG_DENSITY`), metrics (RED for
         request paths / USE for resources — the minimal set answering «жив ли сервис и где
         болит»), traces (propagation boundaries + sampling), alerts (symptom → threshold →
         severity → first action, per `AX_ALERTS_ON_SYMPTOMS`) — grounded in what live products of
-        this class ship; short targeted research when class practice is uncertain.
+        this class ship; short targeted research when class practice is uncertain. A signal with
+        no operational decision is not an entry.
       </Action>
     </Step>
     <Step id="STEP_1_AGREE">
@@ -82,14 +83,22 @@
       </Action>
     </Step>
     <Step id="STEP_2_APPLY">
-      <Goal>Write the agreed observability decisions into the spec.</Goal>
+      <Goal>Write the agreed outcomes as current-format requirements.</Goal>
       <Action>
-        Write an `### Observability` subsection into Requirements & Constraints of the scope spec:
-        **Logs** (структура, уровни, транспорт) → **Metrics** (`| Метрика | Тип | Что отвечает |`)
-        → **Traces** (границы propagation, sampling) → **Alerts**
-        (`| Симптом | Порог | Severity | Первое действие |`). Non-default picks and notable
-        accepted defaults → Decision Log per `AX_DECISION_LOG_REQUIRED`. Unresolved topics → items
-        on the discovery interview map. Return control to the interview.
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/requirement-entry-format.xml")`.
+        Continue the spec's next unused sequential `<ACR>-REQ-<N>` IDs. Write one ordinary flat
+        entry per accepted observable outcome, with modality class, behaviour sentence, and short
+        `Constraint`, `Verification`, and `Trace` lines. Never create `### Observability`, another
+        topic heading, or a table inside Requirements.
+
+        If the existing Requirements section is legacy split/topic format, read it as input and
+        migrate the whole section to flat entries in this already-approved edit; preserve every
+        still-valid outcome and do not leave a mixed representation or ask for a second approval.
+        An SLO/telemetry/alert matrix belongs in Architecture by default, or in one explicitly
+        named supporting section outside Requirements only when the detail is genuinely needed;
+        link it from `Trace`. Non-default picks and notable accepted defaults → Decision Log per
+        `AX_DECISION_LOG_REQUIRED`. Unresolved topics → discovery interview map, not vague
+        requirements. Return control to the interview.
       </Action>
     </Step>
   </ExecutionPlan>

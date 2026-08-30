@@ -28,7 +28,7 @@ export type LintOptions = {
   gitMode?: 'staged';
 };
 
-/** @purpose Aggregated lint result with ESLint-compatible formatting. | @invariant exitCode is 0 when errors is empty, 1 otherwise. */
+/** @purpose Aggregated lint result with ESLint-compatible formatting. | @invariant exitCode 4 is reserved for bad invocation; otherwise 0 when clean and 1 for findings. */
 export class LintReport {
   /** @purpose Collected lint errors — empty array when clean. */
   readonly errors: LintError[];
@@ -40,6 +40,8 @@ export class LintReport {
   readonly specPaths: string[];
   /** @purpose Agent guidance hint shown at the end of the report when relevant error families are present. */
   readonly guidance?: string;
+  /** @purpose Explicit CLI-level exit for an invocation rejected before linting. */
+  readonly exitCodeOverride?: 4;
 
   /**
    * @purpose Creates a LintReport with collected errors, autoFixed count, resolved references, and optional guidance.
@@ -48,24 +50,27 @@ export class LintReport {
    * @param [taskPaths] Resolved task file paths (deduplicated).
    * @param [specPaths] Resolved spec file paths (deduplicated).
    * @param [guidance] Agent guidance hint, defaults to undefined.
+   * @param [exitCodeOverride] Exit 4 for a rejected command line.
    */
   constructor(
     errors: LintError[],
     autoFixed = 0,
     taskPaths: string[] = [],
     specPaths: string[] = [],
-    guidance?: string
+    guidance?: string,
+    exitCodeOverride?: 4
   ) {
     this.errors = errors;
     this.autoFixed = autoFixed;
     this.taskPaths = taskPaths;
     this.specPaths = specPaths;
     this.guidance = guidance;
+    this.exitCodeOverride = exitCodeOverride;
   }
 
-  /** @purpose Returns 0 when no errors, 1 otherwise — ESLint convention. | @returns 0 for clean, 1 for errors. */
-  get exitCode(): 0 | 1 {
-    return this.errors.length > 0 ? 1 : 0;
+  /** @purpose Returns 4 for bad argv, otherwise ESLint-style 0/1. | @returns 0 clean, 1 findings, or 4 bad invocation. */
+  get exitCode(): 0 | 1 | 4 {
+    return this.exitCodeOverride ?? (this.errors.length > 0 ? 1 : 0);
   }
 
   /**
@@ -124,13 +129,19 @@ export const ERR_CLI_LINT_NON_ENGLISH = 'ERR_CLI_LINT_NON_ENGLISH' as const;
 /** @purpose Target resolution failed — path does not exist (ENOENT) or permission denied (EACCES). | @invariant Used by resolveTargets for graceful degradation. */
 export const ERR_CLI_LINT_RESOLVE_FAILED = 'ERR_CLI_LINT_RESOLVE_FAILED' as const;
 
+/** @purpose A selected lint file or directory exists but cannot be read; the run must fail instead of treating missing evidence as clean. */
+export const ERR_CLI_LINT_READ_FAILED = 'ERR_CLI_LINT_READ_FAILED' as const;
+
+/** @purpose An explicit file target uses an extension the current lint pipeline does not inspect. */
+export const ERR_CLI_LINT_UNSUPPORTED_TARGET = 'ERR_CLI_LINT_UNSUPPORTED_TARGET' as const;
+
 /** @purpose Mutually exclusive flags: --staged and positional targets cannot be used together. */
 export const ERR_CLI_LINT_STAGED_CONFLICT = 'ERR_CLI_LINT_STAGED_CONFLICT' as const;
 
-/** @purpose TypeScript / linter disable comment without a Decision Log reference (D-NNN) in the same line. | @invariant Implements policy D-007 (cli.spec.md): every @ts-ignore / @ts-nocheck / @ts-expect-error / eslint-disable* must cite D-NNN in the same comment. */
+/** @purpose TypeScript / linter disable comment without a Decision Log reference in the same line. | @invariant Implements policy D-007: every disable must cite `<ACR>-DL-N` (legacy `D-N` remains readable). */
 export const ERR_CLI_LINT_UNAUTHORIZED_DISABLE = 'ERR_CLI_LINT_UNAUTHORIZED_DISABLE' as const;
 
-/** @purpose TypeScript / linter disable comment has a D-NNN reference but lacks a purpose explanation. | @invariant Implements D-007 tightening (TSK-52): >= 8 non-whitespace chars of purpose must remain after stripping comment opener, marker, and D-NNN token. */
+/** @purpose TypeScript / linter disable comment has a Decision Log reference but lacks a purpose explanation. | @invariant Implements D-007 tightening (TSK-52): >= 8 non-whitespace chars of purpose remain after stripping opener, marker, and id. */
 export const ERR_CLI_LINT_DISABLE_MISSING_PURPOSE = 'ERR_CLI_LINT_DISABLE_MISSING_PURPOSE' as const;
 
 /** @purpose Entity has more invariants than the configured threshold — contract may be overloaded. | @invariant Counts both @invariant JSDoc tags and invariant: in region comments. */
@@ -146,8 +157,13 @@ export const ERR_CLI_LINT_ANCHOR_CONSECUTIVE_START =
 /** @purpose Region contains fewer than 2 meaningful lines — region is too thin. Keep any comment and remove the region wrapper. */
 export const ERR_CLI_LINT_ANCHOR_TOO_THIN = 'ERR_CLI_LINT_ANCHOR_TOO_THIN' as const;
 
-/** @purpose JSDoc tag or file-header line exceeds the maximum word count. | @invariant Applies to @param, @returns, @purpose, @implements, @invariant, @sideEffect, @consumer, @see and // @file:, // @consumers:. */
+/** @purpose A JSDoc contract or file-header description exceeds its semantic prose-word category limit. */
 export const ERR_CLI_LINT_TAG_TOO_MANY_WORDS = 'ERR_CLI_LINT_TAG_TOO_MANY_WORDS' as const;
+
+/** @purpose A word-budget override is not an integer greater than or equal to one. */
+export const ERR_CLI_LINT_BAD_WORD_LIMIT = 'ERR_CLI_LINT_BAD_WORD_LIMIT' as const;
+/** @purpose Command-line shape is invalid and linting did not start. */
+export const ERR_CLI_LINT_BAD_INVOCATION = 'ERR_CLI_LINT_BAD_INVOCATION' as const;
 
 /** @purpose Region body contains more comments (// or /*) than the configured limit. */
 export const ERR_CLI_LINT_REGION_TOO_MANY_COMMENTS =

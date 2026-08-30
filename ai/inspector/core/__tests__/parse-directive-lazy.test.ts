@@ -139,11 +139,23 @@ test('phase-execution-protocol: <PhaseProcedure> gets a dedicated step list, not
   assert.deepEqual(ids.slice(0, 2), ['STEP_1_GET_PHASE_CONTEXT', 'STEP_1B_RESUME_OR_START']);
 });
 
-test('phase-execution-protocol: a step body resolves from its package, including a package-only <Contract>', () => {
-  const step = findStep(phaseProcedure, 'STEP_5_VERIFY');
-  assert.ok(step, 'STEP_5_VERIFY present');
-  const contract = step?.children?.find((c) => c.label === 'BLOCKER_FORMAT');
-  assert.ok(contract, 'BLOCKER_FORMAT contract surfaced from the package, otherwise invisible');
+test('phase-execution-protocol: cross-cutting and package-only contracts remain reachable from their real owners', () => {
+  const outputContracts = phaseProtocol.children?.find((c) => c.label === '<OutputContracts>');
+  const blocker = outputContracts?.children?.find((c) => c.label === 'BLOCKER_FORMAT');
+  assert.ok(blocker, 'cross-cutting BLOCKER_FORMAT remains visible in the skeleton');
+  assert.match(blocker?.detail ?? '', /BLOCKED/, 'the skeleton carries the real blocker body');
+
+  const handoffStep = findStep(phaseProcedure, 'STEP_6_EMIT_HANDOFF');
+  assert.ok(handoffStep, 'STEP_6_EMIT_HANDOFF present');
+  const packageRead = handoffStep?.children?.find((c) => c.kind === 'read');
+  assert.equal(
+    packageRead?.ref,
+    'ai/directives/sdd-v2/phase-execution-protocol/steps/STEP_6_EMIT_HANDOFF.xml',
+    'the lazy step retains its exact READ_AND_USE package edge'
+  );
+  const handoff = handoffStep?.children?.find((c) => c.label === 'HANDOFF_FORMAT');
+  assert.ok(handoff, 'package-only HANDOFF_FORMAT surfaces under its activating step');
+  assert.match(handoff?.detail ?? '', /Handoff/, 'the package carries the real handoff body');
 });
 
 // --- graceful degradation: no `read` injected, or the package file is missing ---

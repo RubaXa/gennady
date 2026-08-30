@@ -11,9 +11,18 @@
   > <почему это требование существует — на что опирается, что ломается без него>
   ```
 
-  Replaces the old split Functional Requirements / Non-Functional Constraints subsections for
-  specs written from now on. A spec already holding the old split sections stays valid as-is —
-  this format is not retrofitted onto existing text, only used going forward.
+  Replaces the old split Functional Requirements / Non-Functional Constraints and topic
+  subsections (`### Security`, `### Observability`, and similar) for specs written from now on.
+  Requirements is one flat sequence of entries: a writer or amplifier never adds a topic
+  heading or a detail table between entries.
+
+  A spec already holding old split/topic subsections stays valid while it is left in that
+  legacy representation. An author may read those sections as source material. When a write
+  introduces current-format entries, migrate the whole Requirements section in the same edit:
+  preserve every still-valid outcome, assign stable sequential IDs, and remove the old nested
+  representation. Never leave a mixed old/new Requirements section. This is an authoring rule,
+  not a request for a validator exception: unchanged legacy text remains grandfathered, while
+  every new or changed flat entry keeps the current checks.
 
   **ID.** `<ACR>-REQ-<N>` — spec acronym first, exactly like a Task-ID; `<N>` is sequential
   within THIS spec only (the acronym gives global uniqueness, not the number). A duplicate
@@ -42,6 +51,31 @@
   **Explanation.** A blockquote (`>`) directly under the requirement, mandatory and non-empty:
   what backs the requirement — compliance, an incident, an economic reason — and what breaks
   without it.
+
+  **Amplified outcome.** Security, performance/reliability, and observability amplifiers emit
+  the same ordinary requirement entry, never a private subsection schema. After the behaviour
+  sentence, each amplified entry carries three short one-line fields before the explanation:
+
+  ```markdown
+  **Constraint:** <numeric budget, security rule, signal/SLO boundary, or other falsifiable limit>
+  **Verification:** <one observable proof; method/tool detail stays outside Requirements>
+  **Trace:** <operator/default/research source and, when detail exists, its Architecture/supporting-section anchor>
+  ```
+
+  One observable outcome = one ID. If a topic needs a threat table, SLO matrix, telemetry
+  catalog, or benchmark method, put it in Architecture by default. Only when that would obscure
+  Architecture may the spec use one explicitly named supporting section outside Requirements;
+  the requirement's `Trace` line links to it. Create neither detail container speculatively.
+  Missing or unresolved outcomes stay on the interview map instead of becoming vague entries.
+
+  **Atomic size.** One entry has at most 10 non-empty body lines, excluding its heading. This
+  limit has no override: split independent observable behaviour into another requirement, or
+  move implementation and contract detail into Architecture / DbC. The list itself has a lazy
+  default budget of 20 entries: only `sdd-check` exceeding it asks for duplicate/merge/detail
+  review. If the larger list remains intentional, operator approval is persisted exactly as
+  `**Requirements budget:** <N> · operator-approved: <YYYY-MM-DD>` inside the section. Zero
+  markers is normal below the budget; duplicate, malformed, or non-increasing evidence never
+  authorizes a larger list.
 
   **Action — active verb.** `должна обработать`, never `должна осуществлять обработку`:
   nominalizations and passive voice are forbidden in the reaction slot (see `AX_OPERATOR_LANGUAGE`

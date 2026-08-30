@@ -1,10 +1,12 @@
 // @file: Guards the FLOW_VERSION/READINESS preflight gate against the exact regression an audit
 // found: the router's qualifier ("AND the request needs a missing gate script") and the
 // queue-exception branch got lost when 4 SKILL.md files hand-copied the interpretation. The fix —
-// a single shared partial (ai/kit/contract/process/readiness-preflight-gate.xml) embedded in the
-// router + the 4 worker directives, with the 4 SKILL.md loaders thinned to defer to it — must not
-// regress: (a) every generated directive still carries the partial's text; (b) no SKILL.md
-// re-derives the READINESS interpretation by hand.
+// a single shared partial (ai/kit/contract/process/readiness-preflight-gate.xml) declared by each
+// directive that activates it. At runtime the router is the single owner: public skills enter the
+// router, then delta assembly removes the duplicate bytes from execute / critic and leaves an
+// explicit inherited-contract receipt. This must not regress: (a) source templates still declare
+// the contract at the activating step; (b) generated output contains one runtime owner plus typed
+// inherited consumers, not hand-copied duplicates; (c) no SKILL.md bypasses or re-derives it.
 // @consumers: node:test runner
 // @tasks: N/A
 
@@ -17,6 +19,8 @@ import { resolveAssemblyMode } from '../lazy-assembly.ts';
 
 const SDD_V2 = join(OUT_ROOT, 'sdd-v2');
 const SKILLS_ROOT = join(OUT_ROOT, '..', 'skills');
+const CONTRACTS_ROOT = join(OUT_ROOT, '..', 'kit', 'contract', 'process');
+const TEMPLATES_ROOT = join(OUT_ROOT, '..', 'kit', 'templates', 'sdd-v2');
 // ai/directives -> <repo root> — project-root-relative package paths (DA-REQ-4) resolve off this.
 const PROJECT_ROOT = join(OUT_ROOT, '..', '..');
 
@@ -30,7 +34,9 @@ const PROJECT_ROOT = join(OUT_ROOT, '..', '..');
 function readFullDirectiveText(file: string): string {
   const skeletonText = readFileSync(join(SDD_V2, file), 'utf-8');
   if (resolveAssemblyMode(`sdd-v2/${file}`) !== 'lazy') return skeletonText;
-  const packagePaths = [...skeletonText.matchAll(/Full step text: `([^`]+)`/g)].map((m) => m[1]!);
+  const packagePaths = [
+    ...skeletonText.matchAll(/Before executing this step, READ_AND_USE_DIRECTIVE\("([^"]+)"\)\./g),
+  ].map((m) => m[1]!);
   const packageTexts = packagePaths.map((p) => readFileSync(join(PROJECT_ROOT, p), 'utf-8'));
   return [skeletonText, ...packageTexts].join('\n');
 }
@@ -38,22 +44,49 @@ function readFullDirectiveText(file: string): string {
 /** Marker phrase unique to the shared partial — proves the generated directive embeds it, not a hand-typed paraphrase. */
 const PARTIAL_MARKER = 'preflight input reports `GATE_QUEUE=<Task-ID,...>`';
 
-const GATED_DIRECTIVES = [
-  'router.directive.xml',
-  'execute.directive.xml',
-  'critic.directive.xml',
-];
+const ROUTER_OWNED_CONSUMERS = ['execute.directive.xml', 'critic.directive.xml'];
 
 const GATED_SKILLS = ['sdd-execute', 'sdd-scaffold', 'sdd-critic', 'sdd-reconcile'];
 
 describe('readiness preflight gate — single source, no hand-copied interpretation', () => {
-  for (const file of GATED_DIRECTIVES) {
-    it(`${file}: embeds the shared readiness-preflight-gate partial`, () => {
-      const text = readFullDirectiveText(file);
-      assert.ok(
-        text.includes(PARTIAL_MARKER),
-        `${file} is missing the shared preflight-gate partial text (${PARTIAL_MARKER})`
+  it('router is the single generated owner of the shared readiness-preflight gate', () => {
+    const contract = readFileSync(join(CONTRACTS_ROOT, 'readiness-preflight-gate.xml'), 'utf-8');
+    assert.ok(contract.includes(PARTIAL_MARKER), 'the marker must originate in the shared contract');
+
+    const routerSource = readFileSync(join(TEMPLATES_ROOT, 'router.directive.hbs'), 'utf-8');
+    assert.match(routerSource, /\{\{>\s*"contract\/process\/readiness-preflight-gate"\s*\}\}/);
+
+    const router = readFullDirectiveText('router.directive.xml');
+    assert.equal(
+      router.split(PARTIAL_MARKER).length - 1,
+      1,
+      'router must carry the shared gate exactly once at the public runtime boundary'
+    );
+  });
+
+  for (const file of ROUTER_OWNED_CONSUMERS) {
+    it(`${file}: declares the gate in source and consumes the router-owned runtime copy`, () => {
+      const source = readFileSync(join(TEMPLATES_ROOT, file.replace(/\.xml$/, '.hbs')), 'utf-8');
+      assert.match(source, /\{\{>\s*"contract\/process\/readiness-preflight-gate"\s*\}\}/);
+
+      const built = readFullDirectiveText(file);
+      assert.match(
+        built,
+        /Inherited from the loading directive \(already in context\):[^\n]*readiness-preflight-gate/,
+        `${file} must retain an explicit receipt for the delta-elided gate`
       );
+      assert.ok(
+        !built.includes(PARTIAL_MARKER),
+        `${file} duplicates the router-owned preflight gate instead of consuming it from context`
+      );
+    });
+  }
+
+  for (const skill of ['sdd-execute', 'sdd-critic']) {
+    it(`${skill}/SKILL.md: enters the router instead of loading its owner directive directly`, () => {
+      const text = readFileSync(join(SKILLS_ROOT, skill, 'SKILL.md'), 'utf-8');
+      assert.match(text, /ai\/directives\/sdd-v2\/router\.directive\.xml/);
+      assert.doesNotMatch(text, new RegExp(`ai/directives/sdd-v2/${skill.slice(4)}\\.directive\\.xml`));
     });
   }
 

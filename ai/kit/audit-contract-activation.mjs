@@ -136,7 +136,7 @@ const REPO_ROOT = join(KIT_DIR, '..', '..');
 const TEMPLATES_DIR = join(KIT_DIR, 'templates', 'sdd-v2');
 const CONTRACT_DIR = join(KIT_DIR, 'contract');
 const DIRECTIVES_DIR = join(REPO_ROOT, 'ai', 'directives', 'sdd-v2');
-const STEP_PACKAGE_LINE_RE = /Full step text: `([^`]+)`/g;
+const STEP_PACKAGE_LINE_RE = /Before executing this step, READ_AND_USE_DIRECTIVE\("([^"]+)"\)\./g;
 
 /** `assembly-manifest.json` override key for a file under `DIRECTIVES_DIR` (mirrors `build-directives.ts`'s own `e.rel`). */
 function manifestKeyFor(absPath) {

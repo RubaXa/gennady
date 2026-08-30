@@ -14,16 +14,21 @@
 npx gennady sync-skills
 ```
 
-Затем в агенте: «@sdd создай проект» → «@sdd спроектируй scope vcs-client» → «@sdd разбей vcs-client на модули» → «@sdd-scaffold сгенерируй таски» → «@sdd-critic проверь таски» → «@sdd-execute TSK-01»
+Затем в агенте: «@sdd создай проект» → «@sdd спроектируй scope vcs-client» → «@sdd разбей vcs-client на модули». Дальше happy-path идёт внутри SDD flow: integrated review scope + всех module specs → scaffold feasibility critic + Gate 2 → automatic `sdd-execute` в той же сессии. Отдельный `@sdd-critic` — on-demand проверка, а не обязательная ступень этого пути.
 
-`@sdd` — единственная входная дверь: роутер сам классифицирует intent (project-setup / new-scope / evolve-scope / module-decomposition / recover-from-code) и scope-type (infrastructure / interface / library / product), затем грузит нужную v2-директиву.
+Router — единственная дверь для routing/session policy. `@sdd` передаёт ему свободный intent;
+stateful direct entries `@sdd-scaffold` / `@sdd-execute` / `@sdd-critic` / `@sdd-reconcile`
+передают forced intent. Каждый связывает единственный начальный `sdd-state` с result alias
+`routerState`; router потребляет эти exact bytes и не повторяет initial call. Refresh допустим только
+после подтверждённой preflight-мутации. Результат такой ветки буферизуется до выбора совместимой session
+или успешного `open`, поэтому первый not-ready прогон не вызывает `log` раньше создания session.
 
 | Шаг | Навык | Что делает |
 | --- | ----- | ---------- |
-| 1 | `sdd` | Инициализирует портал, проектирует/эволюционирует scope, декомпозирует на модули — маршрутизация по intent + scope-type |
-| 2 | `sdd-scaffold` | Генерирует DAG тасков из спек: Cascade Table, BDD, Phases Overview |
-| 3 | `sdd-critic` | Многораундовая критика тасков: диспатчит критика, правит артефакт (до 5 раундов) |
-| 4 | `sdd-execute` | Исполняет один таск или всю pickable-очередь: dispatch фаз → audit → code-review |
+| 1 | `sdd` | Инициализирует портал, проектирует/эволюционирует scope, декомпозирует на модули и проводит integrated review scope + всех module specs |
+| 2 | `sdd-scaffold` | Генерирует DAG тасков, запускает feasibility critic, проводит Gate 2 и автоматически передаёт управление execute в той же сессии |
+| 3 | `sdd-execute` | Исполняет один таск или всю pickable-очередь: dispatch фаз → audit → code-review |
+| on-demand | `sdd-critic` | Проверяет bounded target-set отдельно от happy-path: до пяти автоматических раундов; CLEAN завершает раньше; после пятого продолжение возможно только по точной авторизации оператора |
 
 ### 2. Выполнить задачу (одну или всю очередь)
 
@@ -34,7 +39,7 @@ npx gennady sync-skills
 
 Или: «выполни следующую», «execute pickable», «выбери что делать дальше», «выполни всю очередь».
 
-Один навык на оба режима: LOGIC-SWITCH на intent (Task-ID / `next` / `batch`/`all`/`queue`) решает — одиночный таск или вся pickable-очередь (параллель по тасками с непересекающимися файлами). Навык читает таск(и), диспатчит фазы одну за другой, закрывает round, диспатчит fresh-eyes audit + code-review.
+Один навык на оба режима: LOGIC-SWITCH на intent (Task-ID / `next` / `batch`/`all`/`queue`) решает — одиночный таск или вся pickable-очередь. Параллельный dispatch разрешён только когда одновременно не пересекаются Target Files и различаются next-worker session keys `(spec, kind)`; иначе таски сериализуются. Навык читает таск(и), диспатчит фазы одну за другой, закрывает round, диспатчит fresh-eyes audit + code-review.
 
 ### 3. Проверить качество спеки / таска
 
@@ -43,7 +48,7 @@ npx gennady sync-skills
 @sdd-critic проверь таск TSK-03
 ```
 
-Многораундовая критика (до 5 раундов): диспатчит изолированного критика, оценивает фидбек, правит артефакт.
+Многораундовая критика следует lifecycle, загружаемому навыком; cap и continuation не дублируются в README.
 
 ### 4. Продолжить / доработать существующую спеку
 
@@ -92,9 +97,10 @@ Fresh-eyes: читает таск + спеку + git diff, механическ�
 
 | Паттерн | Как работает | Навыки |
 | ------- | ----------- | ------ |
-| **Directive activation** | Извлечь intent → загрузить v2-директиву → активироваться как она → выполнить план | sdd, sdd-scaffold, sdd-audit, sdd-critic, sdd-reconcile |
-| **Orchestrator** | Прочитать таск(и) → dispatch фаз (typed Handoff) → dispatch audit + code-review. Сам код не пишет | sdd-execute |
-| **Read-only verifier** | Саморефлексия + механические проверки через `sdd scan`. Код не пишет | sdd-check |
+| **Router-fronted stateful entry** | Один `sdd-state` → exact `routerState` → router + free/forced intent → единая session policy → lazy owner | sdd, sdd-scaffold, sdd-execute, sdd-critic, sdd-reconcile |
+| **Direct directive activation** | Извлечь bounded intent → загрузить v2-директиву → выполнить план без stateful chain | sdd-audit, sdd-code-review |
+| **Execute owner** | После router планирует таск(и) → dispatch фаз (typed Handoff) → audit + code-review; сам код не пишет | owner-директива sdd-execute |
+| **Read-only verifier** | Саморефлексия + механические проверки через `npx gennady sdd-check --all [project-root]`. Код не пишет | sdd-check |
 
 ---
 
