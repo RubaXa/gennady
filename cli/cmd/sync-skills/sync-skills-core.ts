@@ -24,6 +24,60 @@ import type {
 /** @purpose Names never deployed into a project: hidden files, system artifacts, skill tests. */
 const EXCLUDED_NAMES = new Set(['.DS_Store', '__tests__']);
 
+/**
+ * @purpose Name of the file recording which skills this sync installed.
+ * @invariant Dot-prefixed on purpose: every readdir filter here already skips `.`-names,
+ *   so the manifest can never be mistaken for a skill directory.
+ */
+const MANIFEST_NAME = '.gennady-synced';
+
+/**
+ * @purpose Read the set of skill names a previous sync installed into the target.
+ * @invariant null means prune nothing, not prune everything: projects author their own skills
+ *   here, so a manifest-less run only writes the manifest.
+ * @param targetDir Skills directory being synced into.
+ * @param deps Injectable IO.
+ * @returns The recorded names, or null when no manifest exists (never synced by this version).
+ */
+export function readSyncManifest(targetDir: string, deps: SyncCmdDeps): Set<string> | null {
+  try {
+    const raw = deps.readFile!(join(targetDir, MANIFEST_NAME)).toString('utf-8');
+    const names = raw
+      .split('\n')
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0 && !l.startsWith('#'));
+    return new Set(names);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * @purpose Record which skills this sync installed, so the next run can prune only those.
+ * @param targetDir Skills directory being synced into.
+ * @param names Skill names present in the source for this run.
+ * @param dryRun When true, nothing is written.
+ * @param deps Injectable IO.
+ */
+export function writeSyncManifest(
+  targetDir: string,
+  names: readonly string[],
+  dryRun: boolean,
+  deps: SyncCmdDeps
+): void {
+  if (dryRun) return;
+  const body =
+    '# Skills installed by `gennady sync-skills`. Only these are pruned when they\n' +
+    '# disappear from the package. Anything else in this directory is left alone.\n' +
+    [...names].sort().join('\n') +
+    '\n';
+  try {
+    deps.writeFile!(join(targetDir, MANIFEST_NAME), Buffer.from(body, 'utf-8'));
+  } catch {
+    // A missing manifest only means the next run prunes nothing — never fail the sync over it.
+  }
+}
+
 /** @purpose True for a test file that must stay in this repo rather than ship with the skill. */
 function isTestArtifact(name: string): boolean {
   return /\.(test|spec)\.[cm]?[jt]sx?$/.test(name);
@@ -445,13 +499,19 @@ export function collectAndCompareSkills(
     targetSkillNames = targetSkillNames.filter((n) => n !== skillName);
   }
   const filterSkillNames = opts.skillNames;
-  const orphansToDelete = filterSkillNames
+  const orphanCandidates = filterSkillNames
     ? targetSkillNames.filter((n) => filterSkillNames.includes(n))
     : targetSkillNames;
+
+  // Prune only what a previous sync installed — see readSyncManifest's @invariant.
+  const manifest = readSyncManifest(opts.targetDir, deps);
+  const orphansToDelete = manifest === null ? [] : orphanCandidates.filter((n) => manifest.has(n));
 
   for (const skillName of orphansToDelete.sort()) {
     entries.push(...deleteOrphan(skillName, opts.targetDir, opts.dryRun ?? false, deps));
   }
+
+  writeSyncManifest(opts.targetDir, [...sourceSkills.keys()], opts.dryRun ?? false, deps);
   // #endregion END_SYNC_AND_CLEAN
 
   return new SyncSkillsResult(entries);

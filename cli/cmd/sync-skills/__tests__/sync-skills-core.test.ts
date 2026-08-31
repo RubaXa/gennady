@@ -341,6 +341,8 @@ describe('collectAndCompareSkills', () => {
     createFile(join(_targetDir, 'sdd-audit'), 'SKILL.md', '# Audit');
     mkdirSync(join(_targetDir, 'sdd-old'), { recursive: true });
     createFile(join(_targetDir, 'sdd-old'), 'SKILL.md', '# Old');
+    // A previous sync installed both, so both are ours to prune.
+    createFile(_targetDir, '.gennady-synced', 'sdd-audit\nsdd-old\n');
 
     const result = run();
 
@@ -348,6 +350,34 @@ describe('collectAndCompareSkills', () => {
     assert.equal(result.unchanged.length, 1);
     assert.equal(result.deleted.length, 1);
     assert.ok(!existsSync(join(_targetDir, 'sdd-old')));
+  });
+
+  it('leaves a project-authored skill alone — it is not in the manifest', () => {
+    createFile(join(_sourceDir, 'sdd-audit'), 'SKILL.md', '# Audit');
+    mkdirSync(join(_targetDir, 'sdd-audit'), { recursive: true });
+    createFile(join(_targetDir, 'sdd-audit'), 'SKILL.md', '# Audit');
+    mkdirSync(join(_targetDir, 'our-own-skill'), { recursive: true });
+    createFile(join(_targetDir, 'our-own-skill'), 'SKILL.md', '# Ours');
+    createFile(_targetDir, '.gennady-synced', 'sdd-audit\n');
+
+    const result = run();
+
+    assert.equal(result.deleted.length, 0);
+    assert.ok(existsSync(join(_targetDir, 'our-own-skill', 'SKILL.md')));
+  });
+
+  it('prunes nothing on the first run and writes a manifest for the next one', () => {
+    createFile(join(_sourceDir, 'sdd-audit'), 'SKILL.md', '# Audit');
+    mkdirSync(join(_targetDir, 'sdd-old'), { recursive: true });
+    createFile(join(_targetDir, 'sdd-old'), 'SKILL.md', '# Old');
+
+    const result = run();
+
+    assert.equal(result.deleted.length, 0, 'no manifest yet — nothing is ours to delete');
+    assert.ok(existsSync(join(_targetDir, 'sdd-old')));
+    const manifest = readFileSync(join(_targetDir, '.gennady-synced'), 'utf-8');
+    assert.match(manifest, /^sdd-audit$/m);
+    assert.doesNotMatch(manifest, /^sdd-old$/m);
   });
 
   it('orphan detection respects filter — only deletes orphans within filter', () => {
@@ -367,6 +397,8 @@ describe('collectAndCompareSkills', () => {
     createFile(join(_sourceDir, 'sdd-new'), 'SKILL.md', '# New');
     mkdirSync(join(_targetDir, 'sdd-old'), { recursive: true });
     createFile(join(_targetDir, 'sdd-old'), 'SKILL.md', '# Old');
+    // `sdd-old` was installed by an earlier sync, so it is ours to prune.
+    createFile(_targetDir, '.gennady-synced', 'sdd-old\n');
 
     const result = run({ dryRun: true });
 
@@ -558,6 +590,8 @@ describe('collectAndCompareSkills deleteFailed', () => {
     const targetDir = join(_tmpDir, '.claude', 'skills');
     mkdirSync(join(targetDir, 'sdd-old'), { recursive: true });
     createFile(join(targetDir, 'sdd-old'), 'SKILL.md', '# Old');
+    // `sdd-old` was installed by an earlier sync, so it is ours to prune.
+    createFile(targetDir, '.gennady-synced', 'sdd-old\n');
 
     const result = runDeps(sourceDir, targetDir, {
       unlink: () => {
@@ -578,6 +612,8 @@ describe('collectAndCompareSkills deleteFailed', () => {
     mkdirSync(sourceDir, { recursive: true });
     const targetDir = join(_tmpDir, '.claude', 'skills');
     mkdirSync(join(targetDir, 'sdd-old'), { recursive: true });
+    // `sdd-old` was installed by an earlier sync, so it is ours to prune.
+    createFile(targetDir, '.gennady-synced', 'sdd-old\n');
 
     const result = runDeps(sourceDir, targetDir, {
       rmdir: () => {
@@ -600,6 +636,8 @@ describe('collectAndCompareSkills deleteFailed', () => {
     const targetDir = join(_tmpDir, '.claude', 'skills');
     mkdirSync(join(targetDir, 'sdd-old'), { recursive: true });
     createFile(join(targetDir, 'sdd-old'), 'SKILL.md', '# Old');
+    // `sdd-old` was installed by an earlier sync, so it is ours to prune.
+    createFile(targetDir, '.gennady-synced', 'sdd-old\n');
 
     const result = runDeps(sourceDir, targetDir, {
       unlink: () => {
