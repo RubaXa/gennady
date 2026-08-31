@@ -187,6 +187,10 @@ ticket_warnings() {
     local w=()
     # Required structural sections
     grep -q '^## 1\. Meta' "$f" 2>/dev/null || w+=("no-meta-section")
+    # Task-ID grammar: legacy TSK-NN, or path-based TSK-{PREFIX}-{NNN} with exactly three digits.
+    head -30 "$f" 2>/dev/null \
+        | grep -qE 'Task-ID:\*?\*?[[:space:]]*TSK-([A-Z]+-[0-9]{3}|[0-9]+)' \
+        || w+=("task-id-unparseable")
     grep -q '^## 7\. Execution Log' "$f" 2>/dev/null || w+=("no-execlog-section")
     # Anchor closure sanity
     local opens closes
@@ -219,7 +223,8 @@ else
         | sort || true)
     if [[ -z "$TASK_FILES" ]]; then
         printf '# (no ticket files with a Task-ID found under tasks/)\n'
-        emit_warn "INFO" "tasks/" "no markdown ticket with a Task-ID — project may be pre-scaffold"
+        # WARN, not INFO: an empty scope must not read as a clean snapshot.
+        emit_warn "WARN" "tasks/" "no markdown ticket with a Task-ID — project may be pre-scaffold"
     else
         while IFS= read -r f; do
             [[ -z "$f" ]] && continue

@@ -296,7 +296,14 @@ describe('check.sh [LOG]', () => {
   it('does not return clean for a well-formed but nonexistent prefixed Task-ID', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sdd-missing-task-'));
     try {
-      fs.mkdirSync(path.join(dir, 'tasks'), { recursive: true });
+      // The scope must hold at least one ticket: check.sh exits 2 (NO_TICKETS_FOUND) over an
+      // empty one, and "nonexistent id" is only a meaningful case against a populated tree.
+      fs.mkdirSync(path.join(dir, 'tasks', 'demo'), { recursive: true });
+      fs.writeFileSync(path.join(dir, 'tasks', 'demo', 'demo.task-01.md'), ticket([]));
+      fs.writeFileSync(
+        path.join(dir, 'tasks', 'demo', 'README.md'),
+        '| Task | Status |\n| --- | --- |\n| [TSK-01](demo.task-01.md) | `[x]` DONE |\n'
+      );
       const proc = spawnSync('bash', [CHECK_SH, '--task', 'TSK-ZZZ-999', dir], {
         cwd: dir,
         encoding: 'utf-8',

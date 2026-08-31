@@ -38,8 +38,13 @@
 # Exit codes:
 #   0 — all checks clean (zero findings)
 #   3 — one or more findings (desync / orphan / collision / partial-or-missing header / incomplete rule)
-#   2 — structural failure (bad root / not an SDD project)
-#   4 — bad invocation
+#   2 — structural failure: bad root, not an SDD project, NO_TICKETS_FOUND (empty scope),
+#       TICKET_ID_UNREADABLE (a ticket's Meta Task-ID is unparseable)
+#   4 — bad invocation (including a Task-ID outside the accepted grammar)
+#
+# A `findings=0` line is only ever emitted after something was actually checked: the
+# discovery gate turns "nothing to check" into exit 2, never into a clean report. An
+# absent `--task` id is a counted `missing` [TASKID] finding, so it exits 3, not 0.
 
 set -uo pipefail
 
@@ -63,12 +68,13 @@ case "${1:-}" in
         MODE="task"
         TASK_ID="${2:-}"
         ROOT="${3:-.}"
-        if [[ -z "$TASK_ID" || ! "$TASK_ID" =~ ^TSK-([A-Z][A-Z0-9]*-)?[0-9]+$ ]]; then
+        if [[ -z "$TASK_ID" || ! "$TASK_ID" =~ ^$SDD_TASK_ID_RE$ ]]; then
             cat <<EOF
 [$PROG] BAD_INVOCATION
   expected: $PROG --task TSK-NN|TSK-PREFIX-NNN [project-root]
   got:      $PROG --task '${TASK_ID:-}' ...
-Required action: pass a Task-ID of the form TSK-<number>.
+Required action: pass a Task-ID of the form TSK-<number> (legacy) or TSK-<PREFIX>-<NNN>
+  (path-based, exactly three digits — 'TSK-IB-1' is not a Task-ID).
 EOF
             exit 4
         fi
@@ -161,6 +167,43 @@ printf 'ROOT=%s\n' "$ROOT_ABS"
 TASK_FILES=$(find -L "$ROOT_ABS/tasks" -name '*.md' ! -name 'README.md' -type f 2>/dev/null | sort || true)
 
 # ---------------------------------------------------------------------------
+# Discovery gate — a green result must mean "checked clean", never "checked nothing".
+# ---------------------------------------------------------------------------
+
+if [[ -z "$TASK_FILES" ]]; then
+    cat <<EOF
+[$PROG] NO_TICKETS_FOUND
+  scope:  $ROOT_ABS/tasks
+  reason: no markdown ticket file under tasks/ (README.md trackers aside)
+Required action: run from the project that owns the tickets, or scaffold them first.
+  A zero-finding report over an empty scope would mean "checked nothing", not "clean".
+EOF
+    exit 2
+fi
+
+if [[ "$MODE" == "task" ]]; then
+    META_HIT=""
+    PATH_HIT=""
+    while IFS= read -r f; do
+        [[ -z "$f" ]] && continue
+        [[ "$(sdd_lib_task_id "$f")" == "$TASK_ID" ]] && META_HIT="${f#$ROOT_ABS/}"
+        [[ "$(sdd_lib_task_id_from_path "$f")" == "$TASK_ID" ]] && PATH_HIT="${f#$ROOT_ABS/}"
+    done <<< "$TASK_FILES"
+
+    if [[ -z "$META_HIT" && -n "$PATH_HIT" ]]; then
+        cat <<EOF
+[$PROG] TICKET_ID_UNREADABLE
+  ticket: $PATH_HIT
+  task:   $TASK_ID
+  reason: the filename claims this Task-ID but Meta carries no parseable
+          '- **Task-ID:** $TASK_ID' line
+Required action: repair the ticket Meta Task-ID line, then re-run.
+EOF
+        exit 2
+    fi
+fi
+
+# ---------------------------------------------------------------------------
 # [TASKID] — collisions (global) + orphan @tasks references
 # ---------------------------------------------------------------------------
 
@@ -209,7 +252,7 @@ if [[ "$MODE" == "tree" ]]; then
               --include='*.rs' --include='*.cs' --include='*.php' \
               --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist \
               --exclude-dir=worktrees --exclude-dir=.claude 2>/dev/null \
-            | grep -oE 'TSK-([A-Z][A-Z0-9]*-)?[0-9]+' | sort -u || true)
+            | grep -oE "$SDD_TASK_ID_RE" | sort -u || true)
     while IFS= read -r rid; do
         [[ -z "$rid" ]] && continue
         if ! echo "$known_ids" | grep -qx "$rid"; then

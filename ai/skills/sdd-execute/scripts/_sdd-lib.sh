@@ -33,12 +33,24 @@ sdd_lib_status() {
     esac
 }
 
-# Extract a legacy TSK-NN or current TSK-{PREFIX}-{NNN} from ticket Meta.
+# Accepted Task-ID grammar, both conventions: legacy `TSK-NN`, and the path-based
+# `TSK-{PREFIX}-{NNN}` that scaffold.directive.xml AX_TASK_ID_UNIQUENESS mandates
+# (TSK-IB-001, TSK-TDSQ-003). The path-based form takes EXACTLY three digits, so a
+# typo like `TSK-IB-1` is rejected rather than silently matching nothing.
+SDD_TASK_ID_RE='TSK-([A-Z]+-[0-9]{3}|[0-9]+)'
+
+# Extract Task-ID from a ticket Meta. Echoes the ID or empty string.
 sdd_lib_task_id() {
     local f="$1"
     head -30 "$f" 2>/dev/null \
-        | grep -m1 -oE 'Task-ID:\*?\*?[[:space:]]*TSK-([A-Z][A-Z0-9]*-)?[0-9]+' \
-        | grep -oE 'TSK-([A-Z][A-Z0-9]*-)?[0-9]+' || true
+        | grep -m1 -oE "Task-ID:\*?\*?[[:space:]]*$SDD_TASK_ID_RE" \
+        | grep -oE "$SDD_TASK_ID_RE" || true
+}
+
+# Derive the Task-ID a ticket's filename claims. Echoes the ID or empty string.
+# Naming mirrors the ID: `<name>.task-NN.md` / `<name>.{PREFIX}-{NNN}.md`.
+sdd_lib_task_id_from_path() {
+    basename "$1" | sed -nE 's/^.*\.task-([0-9]+)\.md$/TSK-\1/p; s/^.*\.([A-Z]+-[0-9]{3})\.md$/TSK-\1/p'
 }
 
 # Map a tracker-row status cell (`[x]` DONE etc.) to canonical token for ONE Task-ID.
