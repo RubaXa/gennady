@@ -204,6 +204,9 @@ if [[ "$MODE" == "tree" ]]; then
     # Collect @tasks references from source files (exclude heavy dirs).
     refs=$(grep -rhoE '@tasks:[^@]*' "$ROOT_ABS" \
               --include='*.ts' --include='*.js' --include='*.sh' --include='*.go' \
+              --include='*.swift' --include='*.m' --include='*.mm' --include='*.h' \
+              --include='*.kt' --include='*.java' --include='*.py' --include='*.rb' \
+              --include='*.rs' --include='*.cs' --include='*.php' \
               --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist \
               --exclude-dir=worktrees --exclude-dir=.claude 2>/dev/null \
             | grep -oE 'TSK-([A-Z][A-Z0-9]*-)?[0-9]+' | sort -u || true)
