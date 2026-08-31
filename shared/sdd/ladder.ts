@@ -29,6 +29,10 @@ export type LadderInput = {
   scopesApproved: number;
   /** @purpose Count of module-classified spec files (MODULE_VISION marker) anywhere under specs/. */
   moduleSpecCount: number;
+  /** @purpose Whether at least one approved product/library scope requires module decomposition. */
+  modulesRequired: boolean;
+  /** @purpose Whether the approved spec graph may be scaffolded even when runtime gates are absent. */
+  authoringReady: boolean;
   /** @purpose Whether a parseable package.json exists — the rung reads not-configured when false. */
   packageJsonPresent: boolean;
   /** @purpose Exact-name presence of the three gate scripts. */
@@ -60,7 +64,7 @@ function mark(done: boolean): string {
 export function renderLadder(s: LadderInput): string {
   const portalDone = s.portalPresent;
   const scopesDone = s.scopesTotal > 0 && s.scopesApproved === s.scopesTotal;
-  const modulesDone = s.moduleSpecCount > 0;
+  const modulesDone = s.scopesTotal > 0 && (!s.modulesRequired || s.moduleSpecCount > 0);
   const infraDone = s.packageJsonPresent && s.gates.typecheck && s.gates.test && s.gates.lint;
   const tasksDone =
     s.tasksTotal !== null &&
@@ -75,7 +79,12 @@ export function renderLadder(s: LadderInput): string {
   const step2 =
     s.scopesTotal === 0 ? 'нет ни одной' : `approved: ${s.scopesApproved} из ${s.scopesTotal}`;
 
-  const step3 = s.moduleSpecCount > 0 ? `модульных спек: ${s.moduleSpecCount}` : '—';
+  const step3 =
+    s.scopesTotal > 0 && !s.modulesRequired
+      ? 'не требуются (infra-only)'
+      : s.moduleSpecCount > 0
+        ? `модульных спек: ${s.moduleSpecCount}`
+        : '—';
 
   const step4 = !s.packageJsonPresent
     ? 'не настроена'
@@ -94,12 +103,12 @@ export function renderLadder(s: LadderInput): string {
   else if (!portalDone) next = 'создать проект — /sdd';
   else if (!scopesDone) next = 'написать и approve скоуп-спеку — /sdd';
   else if (!modulesDone) next = 'разбить скоуп на модули — /sdd';
-  else if (!infraDone) next = 'настроить инфраструктуру (гейты) перед scaffold';
-  else if (!tasksDone)
-    next =
-      s.tasksTotal === null
-        ? 'разбить спеки на задачи — /sdd-scaffold'
-        : 'выполнить следующую задачу — /sdd-execute';
+  else if (s.tasksTotal === null || s.tasksTotal === 0)
+    next = s.authoringReady
+      ? 'разбить спеки на задачи — /sdd-scaffold'
+      : 'исправить готовность спецификаций к scaffold — /sdd';
+  else if (!tasksDone) next = 'выполнить следующую задачу — /sdd-execute';
+  else if (!infraDone) next = 'завершить инфраструктурную задачу — /sdd-execute';
   else next = 'всё закрыто — следующий цикл /sdd-execute';
   // #endregion END_NEXT_STEP
 

@@ -282,6 +282,11 @@ describe('SddStateCommand', () => {
         assert.match(scaffoldable.text, /AUTHORING_SCOPE=infra-core\tREADY=yes/);
         assert.match(scaffoldable.text, /EXECUTION_READY=no/);
         assert.match(scaffoldable.text, /NEXT=scaffold may create the declared bootstrap tickets/);
+        assert.match(
+          scaffoldable.text,
+          /👉 Следующий шаг: разбить спеки на задачи — \/sdd-scaffold/
+        );
+        assert.doesNotMatch(scaffoldable.text, /настроить инфраструктуру .*перед scaffold/);
       }
 
       mkdirSync(join(root, 'specs', 'broken'), { recursive: true });
@@ -671,14 +676,17 @@ describe('SddStateCommand — readiness ladder card', () => {
     }
   });
 
-  it('portal + approved scope + module spec, no infra: next step is infra before scaffold', async () => {
+  it('portal + approved scope + module spec but incomplete authoring contract: routes back to spec readiness', async () => {
     const o = await mod2.run(argv(scopesNoInfra));
     assert.strictEqual(o.ok, true);
     if (o.ok) {
       assert.match(o.text, /✅ 2\. Скоупы\s+approved: 1 из 1/);
       assert.match(o.text, /✅ 3\. Модули\s+модульных спек: 1/);
       assert.match(o.text, /⬜ 4\. Инфраструктура\s+не настроена/);
-      assert.match(o.text, /👉 Следующий шаг: настроить инфраструктуру \(гейты\) перед scaffold/);
+      assert.match(
+        o.text,
+        /👉 Следующий шаг: исправить готовность спецификаций к scaffold — \/sdd/
+      );
     }
   });
 

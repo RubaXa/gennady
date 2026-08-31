@@ -255,6 +255,10 @@ export async function run(rawArgs: string[]): Promise<StateOutcome> {
     scopesTotal: scopes.length,
     scopesApproved: scopes.filter((s) => s.status === 'done').length,
     moduleSpecCount,
+    modulesRequired: scopes.some(
+      (scope) => scope.status === 'done' && (scope.type === 'product' || scope.type === 'library')
+    ),
+    authoringReady: authoringReadiness.ready,
     packageJsonPresent,
     gates: {
       typecheck: requiredPresence.get('type-check') ?? false,
