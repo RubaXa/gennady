@@ -31,7 +31,26 @@ import type { SyncCmdDeps } from '../../../../shared/common/sync/sync-deps.type.
 
 // #region HELPERS
 
-let _tmpDir: string;
+/**
+ * @purpose Fresh throwaway project root for one test.
+ * @invariant Per-suite local, never a module-level `let`: six suites here register their own
+ *   `beforeEach`/`afterEach` over the same file, and one shared variable means any suite's
+ *   teardown can delete another suite's tree — an isolation hazard whose symptom (a target
+ *   directory, and with it the `.gennady-synced` manifest, vanishing mid-test) reads as a
+ *   pruning bug rather than a test bug.
+ * @returns Absolute path to the new directory.
+ */
+function makeTmpDir(prefix = 'sync-skills-test-'): string {
+  return mkdtempSync(join(tmpdir(), prefix));
+}
+
+/**
+ * @purpose Remove a test's tree, tolerating one already gone.
+ * @param dir Directory from `makeTmpDir`.
+ */
+function cleanTmpDir(dir: string | undefined): void {
+  if (dir !== undefined && existsSync(dir)) rmSync(dir, { recursive: true, force: true });
+}
 
 function createFile(dir: string, relativePath: string, content: string): void {
   const fullPath = join(dir, relativePath);
@@ -70,16 +89,17 @@ function createMockDeps(
 // #region scanSkills
 
 describe('scanSkills', () => {
+  let _tmpDir: string;
   let _sourceDir: string;
 
   beforeEach(() => {
-    _tmpDir = mkdtempSync(join(tmpdir(), 'sync-skills-test-'));
+    _tmpDir = makeTmpDir();
     _sourceDir = join(_tmpDir, 'ai', 'skills');
     mkdirSync(_sourceDir, { recursive: true });
   });
 
   afterEach(() => {
-    if (existsSync(_tmpDir)) rmSync(_tmpDir, { recursive: true });
+    cleanTmpDir(_tmpDir);
   });
 
   it('finds .md files in skill directories', () => {
@@ -201,16 +221,17 @@ describe('scanSkills', () => {
 // #region scanSkillRoots — root-failure semantics
 
 describe('scanSkillRoots', () => {
+  let _tmpDir: string;
   let _baseDir: string;
 
   beforeEach(() => {
-    _tmpDir = mkdtempSync(join(tmpdir(), 'sync-skills-roots-'));
+    _tmpDir = makeTmpDir('sync-skills-roots-');
     _baseDir = join(_tmpDir, 'ai', 'skills');
     mkdirSync(_baseDir, { recursive: true });
   });
 
   afterEach(() => {
-    if (existsSync(_tmpDir)) rmSync(_tmpDir, { recursive: true, force: true });
+    cleanTmpDir(_tmpDir);
   });
 
   it('tolerates a missing plugin root — a plugin without skills is normal', () => {
@@ -266,18 +287,19 @@ describe('scanSkillRoots', () => {
 // #region collectAndCompareSkills — added / updated / unchanged / deleted
 
 describe('collectAndCompareSkills', () => {
+  let _tmpDir: string;
   let _sourceDir: string;
   let _targetDir: string;
 
   beforeEach(() => {
-    _tmpDir = mkdtempSync(join(tmpdir(), 'sync-skills-test-'));
+    _tmpDir = makeTmpDir();
     _sourceDir = join(_tmpDir, 'ai', 'skills');
     _targetDir = join(_tmpDir, '.claude', 'skills');
     mkdirSync(_sourceDir, { recursive: true });
   });
 
   afterEach(() => {
-    if (existsSync(_tmpDir)) rmSync(_tmpDir, { recursive: true });
+    cleanTmpDir(_tmpDir);
   });
 
   function run(
@@ -465,15 +487,187 @@ describe('collectAndCompareSkills', () => {
 
 // #endregion
 
-// #region collectAndCompareSkills — error paths
+// #region collectAndCompareSkills — manifest lifecycle
 
-describe('collectAndCompareSkills error paths', () => {
+describe('collectAndCompareSkills manifest', () => {
+  let _tmpDir: string;
+  let _sourceDir: string;
+  let _targetDir: string;
+
   beforeEach(() => {
-    _tmpDir = mkdtempSync(join(tmpdir(), 'sync-skills-test-'));
+    _tmpDir = makeTmpDir('sync-skills-manifest-');
+    _sourceDir = join(_tmpDir, 'ai', 'skills');
+    _targetDir = join(_tmpDir, '.claude', 'skills');
+    mkdirSync(_sourceDir, { recursive: true });
   });
 
   afterEach(() => {
-    if (existsSync(_tmpDir)) rmSync(_tmpDir, { recursive: true });
+    cleanTmpDir(_tmpDir);
+  });
+
+  function run(
+    opts?: Partial<SyncSkillsOptions>,
+    depsOverrides?: Partial<SyncCmdDeps>
+  ): SyncSkillsResult {
+    const deps = createMockDeps(_sourceDir, _targetDir, depsOverrides);
+    return collectAndCompareSkills(deps, {
+      sourceDir: _sourceDir,
+      targetDir: _targetDir,
+      ...opts,
+    });
+  }
+
+  function manifestNames(): string[] {
+    return readFileSync(join(_targetDir, '.gennady-synced'), 'utf-8')
+      .split('\n')
+      .filter((l) => l.length > 0 && !l.startsWith('#'));
+  }
+
+  function installed(dir: string, name: string, content = '# Skill'): void {
+    createFile(join(dir, name), 'SKILL.md', content);
+  }
+
+  function refuse(code: string): () => never {
+    return () => {
+      const err = new Error(`${code}: refused`) as NodeJS.ErrnoException;
+      err.code = code;
+      throw err;
+    };
+  }
+
+  it('full sync — manifest records every package-installed skill', () => {
+    installed(_sourceDir, 'sdd-audit');
+    installed(_sourceDir, 'sdd-check');
+
+    run();
+
+    assert.deepEqual(manifestNames(), ['sdd-audit', 'sdd-check']);
+  });
+
+  // Regression (review): rewriting the manifest from this run's skills alone handed the
+  // untouched skills back to the project, so the next package version could never prune them.
+  it('filtered sync — merges the previous manifest instead of replacing it', () => {
+    installed(_sourceDir, 'sdd-execute', '# v2');
+    installed(_sourceDir, 'sdd-audit');
+    installed(_sourceDir, 'sdd-check');
+    installed(_targetDir, 'sdd-execute', '# v1');
+    installed(_targetDir, 'sdd-audit');
+    installed(_targetDir, 'sdd-check');
+    createFile(_targetDir, '.gennady-synced', 'sdd-execute\nsdd-audit\nsdd-check\n');
+
+    run({ skillNames: ['sdd-execute'] });
+
+    assert.deepEqual(manifestNames(), ['sdd-audit', 'sdd-check', 'sdd-execute']);
+  });
+
+  it('successful prune — the deleted orphan leaves the manifest', () => {
+    installed(_sourceDir, 'sdd-audit');
+    installed(_targetDir, 'sdd-audit');
+    installed(_targetDir, 'sdd-old');
+    createFile(_targetDir, '.gennady-synced', 'sdd-audit\nsdd-old\n');
+
+    const result = run();
+
+    assert.equal(result.deleted.length, 1);
+    assert.deepEqual(manifestNames(), ['sdd-audit']);
+  });
+
+  // Regression (review): a rewritten manifest without the undeletable orphan meant the next run
+  // no longer owned it, so the failure was never retried.
+  it('failed prune — the orphan stays in the manifest for the next run', () => {
+    installed(_sourceDir, 'sdd-audit');
+    installed(_targetDir, 'sdd-audit');
+    installed(_targetDir, 'sdd-old');
+    createFile(_targetDir, '.gennady-synced', 'sdd-audit\nsdd-old\n');
+
+    const result = run(undefined, { unlink: refuse('EACCES'), rmdir: refuse('EACCES') });
+
+    assert.equal(result.deleteFailed.length, 1);
+    assert.ok(existsSync(join(_targetDir, 'sdd-old', 'SKILL.md')));
+    assert.deepEqual(manifestNames(), ['sdd-audit', 'sdd-old']);
+  });
+
+  // Migration policy: nothing in the target proves who wrote a skill directory, so only the
+  // names the package ships now are adopted; an older version's leftovers are left alone.
+  it('first run without a manifest — adopts only what the package ships now', () => {
+    installed(_sourceDir, 'sdd-audit');
+    installed(_targetDir, 'sdd-audit');
+    installed(_targetDir, 'sdd-stale');
+    installed(_targetDir, 'our-own-skill');
+
+    const result = run();
+
+    assert.equal(result.deleted.length, 0, 'a first run never prunes');
+    assert.deepEqual(manifestNames(), ['sdd-audit']);
+    assert.ok(existsSync(join(_targetDir, 'sdd-stale', 'SKILL.md')));
+    assert.ok(existsSync(join(_targetDir, 'our-own-skill', 'SKILL.md')));
+  });
+
+  it('first run with a filter — adopts package skills outside the filter too', () => {
+    installed(_sourceDir, 'sdd-execute', '# v2');
+    installed(_sourceDir, 'sdd-audit');
+    installed(_targetDir, 'sdd-execute', '# v1');
+    installed(_targetDir, 'sdd-audit');
+
+    run({ skillNames: ['sdd-execute'] });
+
+    assert.deepEqual(manifestNames(), ['sdd-audit', 'sdd-execute']);
+  });
+
+  it('drops a manifest entry whose directory the project removed by hand', () => {
+    installed(_sourceDir, 'sdd-audit');
+    installed(_targetDir, 'sdd-audit');
+    createFile(_targetDir, '.gennady-synced', 'sdd-audit\nsdd-gone\n');
+
+    run();
+
+    assert.deepEqual(manifestNames(), ['sdd-audit']);
+  });
+
+  it('lifecycle — install, filtered sync, package removal, retry after a failed prune', () => {
+    installed(_sourceDir, 'sdd-audit');
+    installed(_sourceDir, 'sdd-check');
+    installed(_sourceDir, 'sdd-old');
+    installed(_targetDir, 'our-own-skill');
+
+    run();
+    assert.deepEqual(manifestNames(), ['sdd-audit', 'sdd-check', 'sdd-old']);
+
+    createFile(join(_sourceDir, 'sdd-audit'), 'SKILL.md', '# Audit v2');
+    run({ skillNames: ['sdd-audit'] });
+    assert.deepEqual(manifestNames(), ['sdd-audit', 'sdd-check', 'sdd-old']);
+
+    rmSync(join(_sourceDir, 'sdd-old'), { recursive: true });
+    const failed = run(undefined, { unlink: refuse('EBUSY'), rmdir: refuse('EBUSY') });
+    assert.deepEqual(
+      failed.deleteFailed.map((e) => e.skillName),
+      ['sdd-old']
+    );
+    assert.deepEqual(manifestNames(), ['sdd-audit', 'sdd-check', 'sdd-old']);
+
+    const retried = run();
+    assert.deepEqual(
+      retried.deleted.map((e) => e.skillName),
+      ['sdd-old']
+    );
+    assert.ok(!existsSync(join(_targetDir, 'sdd-old')));
+    assert.deepEqual(manifestNames(), ['sdd-audit', 'sdd-check']);
+    assert.ok(existsSync(join(_targetDir, 'our-own-skill', 'SKILL.md')));
+  });
+});
+
+// #endregion
+
+// #region collectAndCompareSkills — error paths
+
+describe('collectAndCompareSkills error paths', () => {
+  let _tmpDir: string;
+  beforeEach(() => {
+    _tmpDir = makeTmpDir();
+  });
+
+  afterEach(() => {
+    cleanTmpDir(_tmpDir);
   });
 
   function runDeps(
@@ -567,12 +761,13 @@ describe('collectAndCompareSkills error paths', () => {
 // #region collectAndCompareSkills — deleteFailed
 
 describe('collectAndCompareSkills deleteFailed', () => {
+  let _tmpDir: string;
   beforeEach(() => {
-    _tmpDir = mkdtempSync(join(tmpdir(), 'sync-skills-test-'));
+    _tmpDir = makeTmpDir();
   });
 
   afterEach(() => {
-    if (existsSync(_tmpDir)) rmSync(_tmpDir, { recursive: true });
+    cleanTmpDir(_tmpDir);
   });
 
   function runDeps(
