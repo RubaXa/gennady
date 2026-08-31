@@ -3,18 +3,14 @@
 <Step id="STEP_0_INTAKE">
       <Goal>Read the Portal; detect scopes, graph, mode. (auto)</Goal>
       <Action>
-        Scope names, types, and statuses come from the current portal's Scope Graph + Scopes table
-        (`sdd-state`, per `AX_SCOPE_GRAPH_DETECTION`) already in context — the skill that dispatched
-        this flow already called it; a fresh `sdd-state` call here is a wasted turn. Read
-        `specs/README.md` itself ONLY for the one thing that snapshot does not carry: the
-        dependency edges A→B of the Mermaid Scope Graph (absent portal → `H_NO_SPECS`). Before opening
-        any scope spec, resolve the target set from the operator/session scaffold payload, then compute
-        its transitive `depends-on` closure from that already-bounded portal graph. Read only target +
-        closure scope specs and their linked module specs — specs only, never code
-        (`AX_SPEC_IS_SOLE_SOURCE`). When the request intentionally means the whole approved project or
-        names no narrower target, the explicit bounded fallback is every ✅ scope listed by the same
-        `sdd-state` snapshot; say that fallback was selected. Never replace a missing/ambiguous target
-        with filesystem discovery, glob/ls, or an all-spec archaeology pass.
+        The bounded target set comes from `routerState`: its selected scaffold target, the portal edge
+        graph's transitive `depends-on` closure, and the declared module links of those scopes. The
+        portal supplies scope names/types/statuses and graph edges; the linked scope/module specs supply
+        authoring content (`AX_SCOPE_GRAPH_DETECTION`, `AX_SPEC_IS_SOLE_SOURCE`). When the request names
+        the whole approved project or no narrower target, use every ✅ scope in the same snapshot as the
+        explicit bounded fallback and state that choice. Typed `sdd-state` diagnostics identify any
+        ambiguous/missing structural evidence and give its next owning action; an absent portal or
+        approved scope is `H_NO_SPECS`.
 
         After this exact bounded target set is resolved, and only when the router-proved session is
         already present and compatible, write `.claude/tmp/sdd-scaffold-workset.txt` with one non-empty
@@ -30,7 +26,7 @@
         scope type must be
         present and unambiguous; product/library requires a non-empty Module Map whose explicit links
         resolve one-to-one to every canonical module spec on disk; interface cannot directly own tasks.
-        Otherwise `H_SCOPE_NOT_DECOMPOSED`. Do not issue an extra discovery command for this check.
+        Otherwise follow the typed diagnostic to `H_SCOPE_NOT_DECOMPOSED` and its owning correction.
         Dependency-only interface scopes remain read context, never task owners. Classify every DAG
         node with exactly one task owner: `infrastructure-flat` (scope-level infrastructure),
         `scope-bootstrap` (scope-level bootstrap in a completely decomposed product/library), or
@@ -86,19 +82,17 @@
     </Axiom>
 
 <Axiom id="AX_SCOPE_GRAPH_DETECTION">
-      Scope names, types, and statuses are read from the `sdd-state` snapshot already in context
-      (its `[SCOPES]` section) — the calling skill already ran it; do not re-derive them by
-      re-reading `specs/README.md`. Portal absent → no specs → HALT.
+      Scope names, types, and statuses come from the `sdd-state` snapshot already in context
+      (its `[SCOPES]` section). Portal absent → no specs → HALT.
 
       `specs/README.md` itself is read for the one thing that snapshot does not carry: the
       dependency edges A→B (from the Mermaid `graph TD` Scope Graph, or the Scopes table
       `depends-on` column).
 
-      Before reading scope specs, resolve the scaffold target set from the operator/session payload and
-      compute its transitive `depends-on` closure from the portal graph. Read only that target+closure
-      set. If the request intentionally targets the whole approved project or carries no narrower
-      target, use every ✅ scope from the same snapshot as an explicit bounded fallback and say so;
-      never use glob/ls/find or filesystem archaeology to broaden it.
+      The scaffold target set is the operator/session target plus its transitive `depends-on` closure
+      from the portal graph and the scopes' declared module links. If the request targets the whole
+      approved project or carries no narrower target, every ✅ scope from the same snapshot is the
+      explicit bounded fallback. Typed diagnostics name missing/ambiguous evidence and its next owner.
 
       Cascade computation requires full scope graph traversal:
       - **Traversed-scopes** for a target scope = all scopes reachable via `depends-on` edges (transitive closure).

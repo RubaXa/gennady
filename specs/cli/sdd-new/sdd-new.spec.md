@@ -10,13 +10,14 @@
 
 **Key properties:**
 
-- Single source of truth — скелет пишется байт-в-байт из `TEMPLATES[<kind>].skeleton`; тот же реестр гонит derived-списки в `check.ts`
+- Single source of truth — скелет берётся из `TEMPLATES[<kind>].skeleton`; для `task` инструмент заменяет только уже доказанные identity/ownership placeholders, а тот же реестр гонит derived-списки в `check.ts`
 - Never-overwrite — существующий файл по вычисленному (или явному `--out`) пути никогда не перезаписывается
 - Manifest-on-create — успешный вызов возвращает не только путь, но и таблицу секций (имя · REQUIRED/OPTIONAL · FOLD · что заполнить) — контракт «что агенту делать дальше»
 - `--manifest` — та же таблица секций для `<kind>`, БЕЗ создания файла и БЕЗ требования `--scope`/`--owner`/`--module`/`--id`; для `task` дополнительно печатает закрытую owner-матрицу
 - `--out` побеждает только конвенцию пути; для `task` он repo-relative, остаётся внутри `specs/`, не проходит через symlink и обязан сам доказать ровно одного canonical owner; explicit `--scope`/`--module` только сверяют доказанное владение
 - `task` требует явный `--owner`: легальны только infrastructure flat, product/library scope bootstrap и product/library module; обычная product/library реализация без module и любой interface owner запрещены
 - Успешное создание `task` печатает path-aware copy-ready literals: ссылку на owning spec, bounded typed contract anchors, все канонические rule tuples (`id` + ticket-relative href) из `ai/directives/knowledge.xml` и полную строку Deferred Test Ownership; pathless `--manifest` только объясняет этот контракт и не выдумывает href
+- Созданный `task` уже содержит известные инструменту поля: точные Task-ID, TODO, Scope, Module/N/A, Structural Owner и относительную ссылку Owning Spec; Purpose, contracts и фазы остаются незаполненными, потому что CLI их не выдумывает
 
 **Invariants:**
 
@@ -112,6 +113,7 @@ $ npx gennady sdd-new --list
 | `missingOptions` / `resolveTaskOutputOwnership`                              | Utility        | Для `task`: `--id` и `--owner` всегда обязательны; безопасный `--out` обязан доказать ровно одного SCOPE_TYPE-bearing owner                                              |
 | `resolveScopeDecomposition`                                                  | Utility        | (`shared/sdd/module-specs`) scope type + non-empty Module Map ↔ exact canonical module-spec closure                                                                      |
 | `TaskOwnerKind` / `resolveTaskOwnership`                                     | Type / Utility | Закрытые owner kinds + исчерпывающая проверка owner против scope type, decomposition и exact module                                                                      |
+| `renderTaskSkeleton`                                                         | Utility        | Подставляет в canonical task skeleton только механически доказанные identity/ownership поля; семантические placeholders не трогает                                       |
 | `renderManifestTable` / `renderCreated` / `renderManifestReport`             | Utility        | (`sdd-new.types`) Section manifest table + success report text + `--manifest` report text (no path)                                                                      |
 | `parseContractAnchors` / `parseRuleRegistry` / `renderTaskAuthoringLiterals` | Utility        | (`shared/sdd/task-authoring-literals`) Bounded typed contract anchors, канонические rule tuples и copy-ready owning/deferred literals относительно реального ticket path |
 | `badInvocation` / `unknownKind` / `fileExists` / `writeFailed`               | Utility        | Diagnostic builders                                                                                                                                                      |
@@ -138,14 +140,14 @@ $ npx gennady sdd-new --list
   - `--module`, если задан, валиден: каждый `/`-сегмент непустой, не `.`/`..`, kebab-case (как имя scope) — иначе `BAD_INVOCATION` ДО вычисления пути
   - Для `task` `specs/<scope>/<scope>.spec.md` читается fail-closed: отсутствующий/нечитаемый файл, malformed/ambiguous `SCOPE_TYPE`, `interface` или неполное product/library разложение блокируют создание. `infrastructure-flat` принимает только infrastructure без module; `scope-bootstrap` — только complete product/library без module; `module` — только complete product/library с exact declared module. Обычный product/library task без module не имеет legal owner
 - Postconditions:
-  - Целевой файл не существовал до вызова → создан с содержимым `TEMPLATES[<kind>].skeleton` байт-в-байт, недостающие родительские директории созданы
+  - Целевой файл не существовал до вызова → создан из `TEMPLATES[<kind>].skeleton`, недостающие родительские директории созданы; не-task kinds пишутся байт-в-байт, а task получает точные Task-ID/Scope/Module/Structural Owner/Owning Spec и исходный TODO до записи
   - Целевой файл уже существовал → ничего не записано, exit 1
   - Успех (без `--manifest`) → stdout содержит путь + таблицу секций (`Section | Required | Fold | Fill`) из `TEMPLATES[<kind>].sections`
   - `--manifest` → stdout содержит таблицу секций для `<kind>` (та же `TEMPLATES[<kind>].sections`); task manifest также содержит закрытую owner-матрицу, никакой файл не создаётся и не проверяется на существование
 - Invariants:
   - `--out`, если задан, переопределяет только путь по конвенции и не отменяет task identity/decomposition preconditions; его scope inference структурный и fail-closed, не догадка по имени файла
   - `--manifest` проверяется ПОСЛЕ валидации `<kind>`, но ДО `missingOptions`/`resolvePath`/no-overwrite/записи — неизвестный `<kind>` с `--manifest` всё равно даёт `UNKNOWN_KIND`
-  - Скелет никогда не выдумывается по месту — только literal-копия из реестра
+  - Скелет никогда не выдумывается по месту — только шаблон из реестра; task-instantiation заменяет закрытый набор уже известных полей и не заполняет Purpose, contracts, phases или verification
 
 <!--/SECTION:MODULE_CONTRACTS-->
 
@@ -289,6 +291,12 @@ shared/sdd/templates.ts   # ArtifactKind registry: skeleton + section manifest +
 - **Status:** active · **Extends:** D-NW005, D-NW014
 - **Why:** Pathless manifest не способен честно назвать ticket-relative href, а агент, вычисляющий `../../../` или переводящий display-name правила в ID, воспроизводит ошибки `common` вместо registry ID `testing-common` и битые spec refs. После создания task команда уже знает фактический ticket path и typed owner: она печатает copy-ready owning-spec link, ID+href для каждого `<Rule>` из единственного registry `ai/directives/knowledge.xml`, полную допустимую Deferred Test Ownership row и bounded `contract-anchors` из структурных headings `Service|Port|Adapter|Component|Pattern|Value Object|Entity: <name>`. Slug вычисляет общий `headingSlug`; `<details>` не скрывает heading, fenced examples не считаются. Пустой набор печатается как explicit none. Duplicate slug или больше 40 anchors краснеет до записи task с owning-flow route. Scaffold выбирает применимые literals, но не сочиняет их байты и не перебирает `sdd-extract` guesses.
 - **Risk accepted:** typed heading vocabulary закрыт намеренно; новый contract kind добавляется в общий parser/tests, а не угадывается из произвольного заголовка.
+
+### D-NW016 — Task skeleton materializes proved identity and ownership
+
+- **Status:** active · **Extends:** D-NW014, D-NW015
+- **Why:** Возвращать Task-ID/owner/owning spec в stdout, но оставлять те же уже известные значения placeholders внутри созданного файла, заставляло scaffold повторно переносить механику и провоцировало файловую разведку в поиске примера. `sdd-new task` теперь до записи подставляет Task-ID, исходный TODO, Scope, Module либо N/A, явный Structural Owner и ticket-relative Owning Spec. Смысловые поля, contracts и фазы остаются placeholders: CLI не принимает решений за автора.
+- **Risk accepted:** Тикет больше не является байт-в-байт копией registry skeleton; закрытый набор замен проверяется behavior-тестами на module, scope-bootstrap и infrastructure-flat owners.
 <!--/SECTION:MODULE_DECISION_LOG-->
 
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->

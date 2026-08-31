@@ -156,12 +156,12 @@ describe('SDD prompt owner coherence', () => {
 
   it('computes scaffold target dependency closure before opening bounded specs', () => {
     const intake = step(template('scaffold'), 'STEP_0_INTAKE');
-    assert.match(
-      intake,
-      /compute\s+its transitive `depends-on` closure.+Read only target \+/s
-    );
-    assert.match(intake, /explicit bounded fallback is every ✅ scope listed by the same\s+`sdd-state` snapshot/s);
-    assert.match(intake, /Never replace a missing\/ambiguous target\s+with filesystem discovery, glob\/ls/s);
+    assert.match(intake, /bounded target set comes from `routerState`/);
+    assert.match(intake, /portal edge\s+graph's transitive `depends-on` closure/s);
+    assert.match(intake, /declared module links of those scopes/s);
+    assert.match(intake, /use every ✅ scope in the same snapshot as the\s+explicit bounded fallback/s);
+    assert.match(intake, /Typed `sdd-state` diagnostics.+next owning action/s);
+    assert.doesNotMatch(intake, /filesystem discovery, glob\/ls/);
     assert.doesNotMatch(intake, /Read each\s+✅ scope spec/);
   });
 });

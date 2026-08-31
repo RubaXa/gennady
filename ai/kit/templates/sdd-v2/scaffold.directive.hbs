@@ -41,8 +41,6 @@
 
     {{> "axiom/scaffold/ax-extend-dag-preserves-existing-ids"}}
 
-    {{> "axiom/scaffold/ax-rules-resolution-hard-fail"}}
-
     {{> "axiom/scaffold/ax-rules-cascade-resolution"}}
 
     {{> "axiom/scaffold/ax-rule-activation-plan"}}
@@ -90,8 +88,6 @@
     | `H_NO_SPECS` | `specs/README.md` absent, or no approved scope spec to scaffold |
     | `H_SCOPE_NOT_DECOMPOSED` | Scope type is missing/ambiguous; product/library Module Map is not a non-empty exact manifest of its canonical module specs; or an interface is used as a task owner. Start the nested same-chain module-decomposition correction below, preserve `intent: scaffold` and the exact bounded target-set, then return to scaffold `STEP_0_INTAKE`; infrastructure is the sole flat-scope exception. |
     | `H_AMBIGUOUS_MODE` | Tasks exist + mode verb absent (per `AX_MODE_AUTO_DETECT_OR_HALT`) |
-    | `H_MISSING_RULE_FILE` | A rule reference or `<DependsOn>` entry does not resolve to an existing file (`AX_RULES_RESOLUTION_HARD_FAIL`) |
-    | `H_RULES_CYCLE` | `<DependsOn>` closure cycles during per-phase rule activation (STEP_3) |
     | `H_VERIFICATION_COMMAND_MISSING` | A `<RequiresVerification>` alias is absent from infra-spec Verification Commands (alias, ticket ID) |
     | `H_BOOTSTRAP_REQUIREMENTS_MISSING` | The target scope being scaffolded (the intake target) lacks a Bootstrap Requirements section — checked ONLY for that scope, not for every ✅ scope in the Portal (did not pass the scope flow) |
     | `H_SPEC_SCHEMA_INVALID` | `sdd-state` reports the target scope/module spec as `invalid`; structural evidence is ambiguous and only its owning authoring flow may repair it |
@@ -106,18 +102,14 @@
     <Step id="STEP_0_INTAKE">
       <Goal>Read the Portal; detect scopes, graph, mode. (auto)</Goal>
       <Action>
-        Scope names, types, and statuses come from the current portal's Scope Graph + Scopes table
-        (`sdd-state`, per `AX_SCOPE_GRAPH_DETECTION`) already in context — the skill that dispatched
-        this flow already called it; a fresh `sdd-state` call here is a wasted turn. Read
-        `specs/README.md` itself ONLY for the one thing that snapshot does not carry: the
-        dependency edges A→B of the Mermaid Scope Graph (absent portal → `H_NO_SPECS`). Before opening
-        any scope spec, resolve the target set from the operator/session scaffold payload, then compute
-        its transitive `depends-on` closure from that already-bounded portal graph. Read only target +
-        closure scope specs and their linked module specs — specs only, never code
-        (`AX_SPEC_IS_SOLE_SOURCE`). When the request intentionally means the whole approved project or
-        names no narrower target, the explicit bounded fallback is every ✅ scope listed by the same
-        `sdd-state` snapshot; say that fallback was selected. Never replace a missing/ambiguous target
-        with filesystem discovery, glob/ls, or an all-spec archaeology pass.
+        The bounded target set comes from `routerState`: its selected scaffold target, the portal edge
+        graph's transitive `depends-on` closure, and the declared module links of those scopes. The
+        portal supplies scope names/types/statuses and graph edges; the linked scope/module specs supply
+        authoring content (`AX_SCOPE_GRAPH_DETECTION`, `AX_SPEC_IS_SOLE_SOURCE`). When the request names
+        the whole approved project or no narrower target, use every ✅ scope in the same snapshot as the
+        explicit bounded fallback and state that choice. Typed `sdd-state` diagnostics identify any
+        ambiguous/missing structural evidence and give its next owning action; an absent portal or
+        approved scope is `H_NO_SPECS`.
 
         After this exact bounded target set is resolved, and only when the router-proved session is
         already present and compatible, write `.claude/tmp/sdd-scaffold-workset.txt` with one non-empty
@@ -133,7 +125,7 @@
         scope type must be
         present and unambiguous; product/library requires a non-empty Module Map whose explicit links
         resolve one-to-one to every canonical module spec on disk; interface cannot directly own tasks.
-        Otherwise `H_SCOPE_NOT_DECOMPOSED`. Do not issue an extra discovery command for this check.
+        Otherwise follow the typed diagnostic to `H_SCOPE_NOT_DECOMPOSED` and its owning correction.
         Dependency-only interface scopes remain read context, never task owners. Classify every DAG
         node with exactly one task owner: `infrastructure-flat` (scope-level infrastructure),
         `scope-bootstrap` (scope-level bootstrap in a completely decomposed product/library), or
@@ -205,9 +197,7 @@
         2. overlay the target-scope tier (scope spec Effective Rules for infra; Rules for
            product/library), then each `module:<name>` tier (module spec Handoff Module Rules
            Additions), then task-tier rules the operator supplied — later tier wins on collision;
-        3. resolve every rule ref to an existing file (`AX_RULES_RESOLUTION_HARD_FAIL`, else
-           `H_MISSING_RULE_FILE`);
-        4. build the per-scope Cascade Table (Scope × Categories) destined for
+        3. build the per-scope Cascade Table (Scope × Categories) destined for
            `specs/<scope>/<scope>.3-tasks.md`.
         No operator stop — mechanical.
       </Action>
@@ -249,12 +239,10 @@
         1. candidates = the scope's cascade set from STEP_1;
         2. include each candidate whose `<Triggers>` match THIS phase's `Target Files` + `kind` and
            whose `<SkipWhen>` does not apply;
-        3. close the set over `<DependsOn>` transitively — open each included rule file, add every
-           dependency, recurse until the set stops growing (cycle → `H_RULES_CYCLE`; missing file →
-           `H_MISSING_RULE_FILE`) — the list ships fully resolved, the phase-subagent never walks
-           `<DependsOn>` at runtime;
-        4. write the phase `Rules:` bullet list — one `[<rule-id>](<rule-file-path>)` per rule, direct
-           + transitive, all explicit;
+        3. write the selected direct candidates into the phase `Rules:` bullet list. When this phase
+           needs mechanical feedback, use <ToolLiteral role="future">npx gennady sdd-check --task <created-ticket-path> --authoring --phase <PhaseID></ToolLiteral>: its ticket-line diagnostics name any missing/unsafe direct
+           rule, missing transitive dependency, or incomplete closure and provide the exact repair.
+           The mandatory full authoring gate in STEP_3_TICKET_LOOP proves the completed ticket;
         4b. when a DIFFERENT bootstrap ticket owns a shared infra file this phase reads/extends,
             write `владелец — <ticket>` in the phase; never make the worker grep siblings;
         4c. before any generator/scaffolder runs, put every expected created/modified file in
@@ -337,22 +325,22 @@
     <Step id="STEP_3_TICKET_LOOP">
       <Goal>Materialize and validate exactly one prepared ticket at a time. (auto)</Goal>
       <Action>
-        Select only the next unprocessed STEP_2 node. Do not inspect or plan the following node yet.
-        Run exactly one matching ToolCall below, never a shell loop. From the returned manifest plus
-        the common contract, form and fill content only for this current node.
-        Copy its returned path-aware owning-spec/rule/deferred literals verbatim into the prepared
-        content; never compute paths or translate IDs. Fill that one returned manifest completely.
-        Inputs <owner>/<scope>/<module>/<ACR>/<slug>: STEP_2 node. This table is exhaustive; interface maps to none.
+        Select the current unprocessed STEP_2 node and run its one exact `sdd-new` ToolCall. Fill the
+        returned ticket from that approved DAG node, its owning specs, the common contract, and the
+        returned manifest; copy the manifest's path-aware owning-spec/rule/deferred literals verbatim.
+        Inputs <owner>/<scope>/<module>/<ACR>/<slug>: current STEP_2 node. This table is exhaustive;
+        interface maps to none.
         <ToolCall owner="this-step" result="flatInfraTaskManifest">npx gennady sdd-new task --owner infrastructure-flat --scope <scope> --id <ACR>-<slug></ToolCall> Use flatInfraTaskManifest only for infrastructure-flat.
         <ToolCall owner="this-step" result="scopeBootstrapTaskManifest">npx gennady sdd-new task --owner scope-bootstrap --scope <scope> --id <ACR>-<slug></ToolCall> Use scopeBootstrapTaskManifest only for product/library scope-bootstrap.
         <ToolCall owner="this-step" result="moduleTaskManifest">npx gennady sdd-new task --owner module --scope <scope> --module <module> --id <ACR>-<slug></ToolCall> Use moduleTaskManifest only for product/library module.
-        Set <created-ticket-path> to the exact ticket path returned by that node's selected manifest.
-        Immediately after filling ONE created ticket, run its authoringGate ToolCall below. Red: fix
-        only that ticket from the copy-ready findings and repeat the SAME call, at most three attempts;
-        then `H_TICKET_AUTHORING_INVALID`. Green: only then may the next node's content be formed.
-        Never plan or create a later ticket or any task index while this gate is red; no shell loop
-        or command chain.
-        <ToolCall owner="this-step" result="authoringGate">npx gennady sdd-check --task <created-ticket-path> --authoring</ToolCall> Use authoringGate before the next ticket.
+        Set <created-ticket-path> to that manifest's exact returned path. Optional phase feedback is
+        available while filling a phase; `<PhaseID>` is that current phase's exact id. Apply its
+        copy-ready findings to this ticket.
+        <ToolCall owner="this-step" result="phaseAuthoringFeedback">npx gennady sdd-check --task <created-ticket-path> --authoring --phase <PhaseID></ToolCall> Use phaseAuthoringFeedback only when the current phase needs mechanical feedback.
+        The full authoringGate is mandatory after filling the ticket. A GREEN authoringGate authorizes
+        selecting the next STEP_2 node. Across phase/full feedback, make at most three repair attempts
+        for this ticket; a third RED result is the exact `H_TICKET_AUTHORING_INVALID` blocker.
+        <ToolCall owner="this-step" result="authoringGate">npx gennady sdd-check --task <created-ticket-path> --authoring</ToolCall> Use authoringGate before the next STEP_2 node.
 
         After every node has a green per-ticket authoring gate, run the complete-graph feasibilityGate
         exactly once before STEP_3B. It evaluates the materialized graph against clean HEAD and emits
@@ -488,14 +476,16 @@
         not phase noise to suppress.
         These trackers and tickets are read by execute with no memory of this scaffolding run —
         every DAG edge, rule reference, and BDD scenario must already be in the file
-        (`AX_STATELESS_ARTIFACT`). Emit a created-files summary with traceability links. Hand off to
-        execute in the SAME session —
-        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/execute.directive.xml")` — no operator stop;
-        isolation lives one level down, at the phase-worker subagent execute dispatches per phase, not
-        at this handoff. After integrityCheck is clean, append the exact `closed` feasibility event;
-        its successful content-file call consumes the payload and closes this persisted cycle. Return
-        `TerminalDecision: continue`; scaffold is an intermediate owner and
-        never runs `sdd-session close`.
+        (`AX_STATELESS_ARTIFACT`). Emit a created-files summary with traceability links. After
+        integrityCheck is clean, append the exact `closed` feasibility event; its successful
+        content-file call consumes the payload and closes this persisted cycle. Then present one
+        navigation `AskUserQuestion` — it is not a third approval gate:
+        - `execute now — /sdd-execute`: continue with
+          `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/execute.directive.xml")` in the same session and
+          return `TerminalDecision: continue`;
+        - `stop here`: keep the ready tickets and open session intact, and return
+          `TerminalDecision: pause`.
+        Scaffold remains an intermediate owner; this navigation leaves session closure to execute.
         <ToolCall owner="this-step" result="moduleIndexManifest">npx gennady sdd-new module-index --scope <scope> --module <module></ToolCall> Use moduleIndexManifest.
         <ToolCall owner="this-step" result="scopeIndexManifest">npx gennady sdd-new scope-index --scope <scope></ToolCall> Use scopeIndexManifest.
         <ToolCall owner="this-step" result="projectIndexManifest">npx gennady sdd-new project-index</ToolCall> Use projectIndexManifest.

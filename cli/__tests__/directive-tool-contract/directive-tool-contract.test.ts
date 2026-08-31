@@ -279,6 +279,22 @@ describe('callable SDD-v2 action-call inventory', () => {
       }) ?? '',
       /accepts at most one root/
     );
+    assert.match(
+      validateToolCallSyntax({
+        raw: 'npx gennady sdd-check --task ticket.md --phase P1',
+        cmd: 'sdd-check',
+        argsRaw: '--task ticket.md --phase P1',
+      }) ?? '',
+      /--phase requires --authoring/
+    );
+    assert.strictEqual(
+      validateToolCallSyntax({
+        raw: 'npx gennady sdd-check --task ticket.md --authoring --phase P1',
+        cmd: 'sdd-check',
+        argsRaw: '--task ticket.md --authoring --phase P1',
+      }),
+      null
+    );
   });
 
   it('attributes phase context to the phase worker and returns retries to the original audit call', () => {
@@ -925,25 +941,25 @@ describe('historical SDD agent-confusion regressions', () => {
     }
     assert.doesNotMatch(step, /sdd-new task (?![^<\n]*--owner)/);
     assert.doesNotMatch(step, /--owner <owner>/);
-    assert.match(step, /Run exactly one matching ToolCall/);
-    assert.match(step, /never a shell\s+loop/);
+    assert.match(step, /run its one exact `sdd-new` ToolCall/);
     assert.match(
       step,
-      /Copy its returned path-aware owning-spec\/rule\/deferred literals verbatim/
+      /copy the manifest's path-aware owning-spec\/rule\/deferred literals verbatim/i
     );
-    assert.match(step, /never compute paths or\s+translate IDs/);
+    assert.strictEqual(
+      step.match(
+        /<ToolCall owner="this-step" result="phaseAuthoringFeedback">npx gennady sdd-check --task <created-ticket-path> --authoring --phase <PhaseID><\/ToolCall>/g
+      )?.length,
+      1
+    );
     assert.strictEqual(
       step.match(
         /<ToolCall owner="this-step" result="authoringGate">npx gennady sdd-check --task <created-ticket-path> --authoring<\/ToolCall>/g
       )?.length,
       1
     );
-    assert.match(step, /Green: only then may the next node's content be formed/);
-    assert.match(
-      step,
-      /Never plan or create a later ticket or any task index while this gate is red/
-    );
-    assert.match(step, /Do not inspect or plan the following node yet/);
+    assert.match(step, /GREEN authoringGate authorizes\s+selecting the next STEP_2 node/);
+    assert.match(step, /at most three repair attempts.+H_TICKET_AUTHORING_INVALID/s);
     assert.match(generation, /Do NOT form, draft, or retain any node's ticket content here/);
     assert.match(generation, /Pass only the ordered node identities plus shared facts/);
     assert.doesNotMatch(generation, /complete ticket-content plan|complete ordered plans/);

@@ -18,12 +18,10 @@
         1. candidates = the scope's cascade set from STEP_1;
         2. include each candidate whose `<Triggers>` match THIS phase's `Target Files` + `kind` and
            whose `<SkipWhen>` does not apply;
-        3. close the set over `<DependsOn>` transitively — open each included rule file, add every
-           dependency, recurse until the set stops growing (cycle → `H_RULES_CYCLE`; missing file →
-           `H_MISSING_RULE_FILE`) — the list ships fully resolved, the phase-subagent never walks
-           `<DependsOn>` at runtime;
-        4. write the phase `Rules:` bullet list — one `[<rule-id>](<rule-file-path>)` per rule, direct
-           + transitive, all explicit;
+        3. write the selected direct candidates into the phase `Rules:` bullet list. When this phase
+           needs mechanical feedback, use <ToolLiteral role="future">npx gennady sdd-check --task <created-ticket-path> --authoring --phase <PhaseID></ToolLiteral>: its ticket-line diagnostics name any missing/unsafe direct
+           rule, missing transitive dependency, or incomplete closure and provide the exact repair.
+           The mandatory full authoring gate in STEP_3_TICKET_LOOP proves the completed ticket;
         4b. when a DIFFERENT bootstrap ticket owns a shared infra file this phase reads/extends,
             write `владелец — <ticket>` in the phase; never make the worker grep siblings;
         4c. before any generator/scaffolder runs, put every expected created/modified file in

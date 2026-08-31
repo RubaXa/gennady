@@ -18,6 +18,7 @@ import {
 } from 'node:fs';
 import { dirname, join, relative, isAbsolute } from 'node:path';
 import { tmpdir } from 'node:os';
+import { fileURLToPath } from 'node:url';
 import {
   formatCriticChangedState,
   hasCriticRoundsSection,
@@ -70,6 +71,10 @@ const TICKET_BROKEN_RULE = [
 function argv(...rest: string[]): string[] {
   return ['node', 'gennady', 'sdd-check', ...rest];
 }
+
+const AUTHORING_CORRECTED_FIXTURE = fileURLToPath(
+  new URL('./fixtures/authoring/corrected.task.md', import.meta.url)
+);
 
 function normalizeTaskArgs(rawArgs: string[]): { args: string[]; root: string } {
   let taskIndex = rawArgs.findIndex((value) => value === '--task');
@@ -1818,6 +1823,8 @@ describe('SddCheckCommand', () => {
         '- **Purpose:** validate one authored ticket',
         '- **Scope:** infra-base',
         '- **Module:** N/A',
+        '- **Structural Owner:** infrastructure-flat',
+        '- **Owning Spec:** [Owning spec](./infra-base.spec.md)',
         '- **Dependencies:** None',
         '- **Spec References:**',
         '  - Contract: [infra](infra-base.spec.md#SCOPE_TYPE)',
@@ -1842,7 +1849,7 @@ describe('SddCheckCommand', () => {
         '- **Exit:** authoring gate passes',
         '<!--/SECTION:PHASE_P1-->',
         '<!--SECTION:BDD-->',
-        '**Scenario:** rejects an invalid ticket [`unit`] `[INF-REQ-1]`',
+        '**Scenario:** rejects an invalid ticket [`contract`] `[INF-REQ-1]`',
         '- **Given** an invalid authored ticket',
         '- **When** the authoring gate runs',
         '- **Then** it rejects the ticket',
@@ -1908,11 +1915,319 @@ describe('SddCheckCommand', () => {
 
       writeFileSync(
         ticketPath,
-        ticket('- rejects an invalid ticket → `not-created.test.ts` :: `rejects`')
+        ticket('- rejects an invalid ticket → `future.test.ts` :: `rejects`')
       );
       const green = await mod.run(argv('--task', ticketArg, '--authoring'), root);
       assert.strictEqual(green.exitCode, 0, green.text);
       assert.match(green.text, /✅ clean — 1 file\(s\) checked/);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('--authoring reports line-addressed RED fixtures and the corrected ticket becomes GREEN', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'sdd-check-authoring-feedback-'));
+    const scopeDir = join(root, 'specs', 'infra-base');
+    const ticketArg = 'specs/infra-base/infra-base.task.INF-tool.md';
+    const ticketPath = join(root, ticketArg);
+    const corrected = readFileSync(AUTHORING_CORRECTED_FIXTURE, 'utf-8');
+    const lineOf = (text: string, needle: string): number => {
+      const index = text.split('\n').findIndex((line) => line.includes(needle));
+      assert.notStrictEqual(index, -1, `fixture line missing: ${needle}`);
+      return index + 1;
+    };
+    mkdirSync(scopeDir, { recursive: true });
+    mkdirSync(join(root, 'ai', 'directives'), { recursive: true });
+    writeFileSync(
+      join(scopeDir, 'infra-base.spec.md'),
+      [
+        '<!--SECTION:SCOPE_TYPE-->',
+        'infrastructure',
+        '<!--/SECTION:SCOPE_TYPE-->',
+        '#### Service: `Toolchain`',
+      ].join('\n')
+    );
+    writeFileSync(join(root, 'ai', 'directives', 'test-rule.xml'), '<Rule></Rule>');
+    try {
+      const cases = [
+        {
+          name: 'placeholder required Meta field',
+          ticket: replaceFixture(
+            corrected,
+            'author one deterministic infrastructure ticket',
+            '<purpose>'
+          ),
+          code: 'SDD_AUTHORING_META_INCOMPLETE',
+          lineNeedle: '- **Purpose:**',
+          section: 'META',
+        },
+        {
+          name: 'empty required Meta field',
+          ticket: replaceFixture(
+            corrected,
+            '- **Purpose:** author one deterministic infrastructure ticket',
+            '- **Purpose:**'
+          ),
+          code: 'SDD_AUTHORING_META_INCOMPLETE',
+          lineNeedle: '- **Purpose:**',
+          section: 'META',
+        },
+        {
+          name: 'malformed READ/CREATE Target File',
+          ticket: replaceFixture(corrected, 'src/toolchain.ts', 'src/*.ts'),
+          code: 'SDD_AUTHORING_TARGET_PATH',
+          lineNeedle: 'src/*.ts',
+          section: 'PHASE_P1',
+        },
+        {
+          name: 'overview dependency and Inputs disagree',
+          ticket: replaceFixture(corrected, '- **Inputs:** P1 handoff', '- **Inputs:** none'),
+          code: 'SDD_AUTHORING_PHASE_DEPENDENCY',
+          lineNeedle: '| P2 | test | P1 |',
+          section: 'PHASES_OVERVIEW',
+        },
+        {
+          name: 'contract has no contract-level BDD scenario',
+          ticket: replaceFixture(corrected, '[`contract`]', '[`unit`]'),
+          code: 'SDD_AUTHORING_BDD_CONTRACT',
+          lineNeedle: '**Scenario:** creates the project toolchain',
+          section: 'BDD',
+        },
+        {
+          name: 'BDD test mapping has no owning test phase target',
+          ticket: replaceFixture(
+            corrected,
+            '`test/toolchain.test.ts` ::',
+            '`test/unowned.test.ts` ::'
+          ),
+          code: 'SDD_AUTHORING_BDD_PHASE',
+          lineNeedle: 'test/unowned.test.ts',
+          section: 'TEST_COVERAGE',
+        },
+        {
+          name: 'structural owner drift',
+          ticket: replaceFixture(
+            corrected,
+            '- **Structural Owner:** infrastructure-flat',
+            '- **Structural Owner:** module'
+          ),
+          code: 'SDD_TASK_OWNER_METADATA',
+          lineNeedle: '- **Structural Owner:**',
+          section: 'META',
+        },
+        {
+          name: 'owning spec drift',
+          ticket: replaceFixture(
+            corrected,
+            '[Owning spec](./infra-base.spec.md)',
+            '[Owning spec](./wrong.spec.md)'
+          ),
+          code: 'SDD_TASK_OWNER_METADATA',
+          lineNeedle: '- **Structural Owner:**',
+          section: 'META',
+        },
+      ];
+
+      for (const fixture of cases) {
+        writeFileSync(ticketPath, fixture.ticket);
+        const outcome = await mod.run(argv('--task', ticketArg, '--authoring'), root);
+        assert.strictEqual(outcome.exitCode, 1, `${fixture.name}\n${outcome.text}`);
+        assert.match(
+          outcome.text,
+          new RegExp(`${ticketArg}:${lineOf(fixture.ticket, fixture.lineNeedle)}:`)
+        );
+        assert.match(outcome.text, new RegExp(`${fixture.code}  \\[${fixture.section}\\]`));
+        assert.match(outcome.text, /Fix:|Example:/);
+        assert.doesNotMatch(outcome.text, new RegExp(root.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+      }
+
+      writeFileSync(ticketPath, corrected);
+      const green = await mod.run(argv('--task', ticketArg, '--authoring'), root);
+      assert.strictEqual(green.exitCode, 0, green.text);
+      assert.match(green.text, /✅ clean — 1 file\(s\) checked/);
+
+      mkdirSync(join(root, 'src'), { recursive: true });
+      writeFileSync(join(root, 'src', 'existing.ts'), 'export const existing = true;');
+      writeFileSync(ticketPath, replaceFixture(corrected, 'src/toolchain.ts', 'src/existing.ts'));
+      const existingRead = await mod.run(argv('--task', ticketArg, '--authoring'), root);
+      assert.strictEqual(existingRead.exitCode, 0, existingRead.text);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('--authoring --phase validates only that phase plus its overview/dependency boundary', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'sdd-check-authoring-phase-'));
+    const scopeDir = join(root, 'specs', 'infra-base');
+    const ticketArg = 'specs/infra-base/infra-base.task.INF-tool.md';
+    const ticketPath = join(root, ticketArg);
+    const corrected = readFileSync(AUTHORING_CORRECTED_FIXTURE, 'utf-8');
+    const brokenP2 = replaceFixture(corrected, 'test/toolchain.test.ts', 'test/*.test.ts');
+    mkdirSync(scopeDir, { recursive: true });
+    mkdirSync(join(root, 'ai', 'directives'), { recursive: true });
+    writeFileSync(
+      join(scopeDir, 'infra-base.spec.md'),
+      '<!--SECTION:SCOPE_TYPE-->\ninfrastructure\n<!--/SECTION:SCOPE_TYPE-->\n#### Service: `Toolchain`'
+    );
+    writeFileSync(join(root, 'ai', 'directives', 'test-rule.xml'), '<Rule></Rule>');
+    writeFileSync(ticketPath, brokenP2);
+    try {
+      const phaseOne = await mod.run(
+        argv('--task', ticketArg, '--authoring', '--phase', 'P1'),
+        root
+      );
+      assert.strictEqual(phaseOne.exitCode, 0, phaseOne.text);
+
+      const phaseTwo = await mod.run(
+        argv('--task', ticketArg, '--authoring', '--phase', 'P2'),
+        root
+      );
+      assert.strictEqual(phaseTwo.exitCode, 1, phaseTwo.text);
+      assert.match(phaseTwo.text, /SDD_AUTHORING_TARGET_PATH  \[PHASE_P2\]/);
+      assert.doesNotMatch(phaseTwo.text, /META|BDD|VERIFICATION|TEST_COVERAGE/);
+
+      const full = await mod.run(argv('--task', ticketArg, '--authoring'), root);
+      assert.strictEqual(full.exitCode, 1, full.text);
+      assert.match(full.text, /SDD_AUTHORING_TARGET_PATH/);
+
+      const phaseWithoutAuthoring = await mod.run(argv('--task', ticketArg, '--phase', 'P1'), root);
+      assert.strictEqual(phaseWithoutAuthoring.exitCode, 4, phaseWithoutAuthoring.text);
+      assert.match(phaseWithoutAuthoring.text, /--phase requires --authoring/);
+
+      const malformedPhase = await mod.run(
+        argv('--task', ticketArg, '--authoring', '--phase', 'phase-1'),
+        root
+      );
+      assert.strictEqual(malformedPhase.exitCode, 4, malformedPhase.text);
+      assert.match(malformedPhase.text, /--phase must match P<N>/);
+
+      const absentPhase = await mod.run(
+        argv('--task', ticketArg, '--authoring', '--phase', 'P9'),
+        root
+      );
+      assert.strictEqual(absentPhase.exitCode, 1, absentPhase.text);
+      assert.match(absentPhase.text, /SDD_AUTHORING_PHASE_NOT_FOUND  \[PHASES_OVERVIEW\]/);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('--authoring --phase proves only the selected Rules cascade and addresses failures to the ticket', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'sdd-check-authoring-rules-'));
+    const scopeDir = join(root, 'specs', 'infra-base');
+    const rulesDir = join(root, 'ai', 'directives');
+    const ticketArg = 'specs/infra-base/infra-base.task.INF-tool.md';
+    const ticketPath = join(root, ticketArg);
+    const corrected = readFileSync(AUTHORING_CORRECTED_FIXTURE, 'utf-8');
+    const p2Rules = (links: string[]): string =>
+      corrected.replace(
+        /(<!--SECTION:PHASE_P2-->[\s\S]*?- \*\*Rules:\*\*\n)(?:  - .+\n)+(?=- \*\*Target Files:\*\*)/,
+        `$1${links.map((link) => `  - [rule](${link})`).join('\n')}\n`
+      );
+    const lineOf = (text: string, needle: string): number =>
+      text.split('\n').findIndex((line) => line.includes(needle)) + 1;
+    const phaseLineOf = (text: string, phaseId: string, needle: string): number => {
+      const lines = text.split('\n');
+      const start = lines.findIndex((line) => line.includes(`<!--SECTION:PHASE_${phaseId}-->`));
+      return lines.findIndex((line, index) => index > start && line.includes(needle)) + 1;
+    };
+    mkdirSync(scopeDir, { recursive: true });
+    mkdirSync(rulesDir, { recursive: true });
+    writeFileSync(
+      join(scopeDir, 'infra-base.spec.md'),
+      '<!--SECTION:SCOPE_TYPE-->\ninfrastructure\n<!--/SECTION:SCOPE_TYPE-->\n#### Service: `Toolchain`'
+    );
+    writeFileSync(join(rulesDir, 'test-rule.xml'), '<Rule>leaf</Rule>');
+    try {
+      const missingDirectTicket = p2Rules(['../../ai/directives/missing-direct.xml']);
+      writeFileSync(ticketPath, missingDirectTicket);
+      const unaffectedP1 = await mod.run(
+        argv('--task', ticketArg, '--authoring', '--phase', 'P1'),
+        root
+      );
+      assert.strictEqual(unaffectedP1.exitCode, 0, unaffectedP1.text);
+
+      const missingDirect = await mod.run(
+        argv('--task', ticketArg, '--authoring', '--phase', 'P2'),
+        root
+      );
+      assert.strictEqual(missingDirect.exitCode, 1, missingDirect.text);
+      assert.match(missingDirect.text, /ERR_CLI_SDD_CHECK_READ_FAILED  \[PHASE_P2\] Fix:/);
+      assert.match(missingDirect.text, /ai\/directives\/missing-direct\.xml/);
+      assert.match(
+        missingDirect.text,
+        new RegExp(`${ticketArg}:${lineOf(missingDirectTicket, 'missing-direct.xml')}:`)
+      );
+      assert.doesNotMatch(missingDirect.text, new RegExp(`^ai/directives/missing-direct`, 'm'));
+      const fullMissingDirect = await mod.run(argv('--task', ticketArg, '--authoring'), root);
+      assert.strictEqual(fullMissingDirect.exitCode, 1, fullMissingDirect.text);
+      assert.match(fullMissingDirect.text, /ERR_CLI_SDD_CHECK_READ_FAILED  \[PHASE_P2\] Fix:/);
+
+      const unsafeDirectTicket = p2Rules(['../../../external.xml']);
+      writeFileSync(ticketPath, unsafeDirectTicket);
+      const unsafeDirect = await mod.run(
+        argv('--task', ticketArg, '--authoring', '--phase', 'P2'),
+        root
+      );
+      assert.strictEqual(unsafeDirect.exitCode, 1, unsafeDirect.text);
+      assert.match(unsafeDirect.text, /ERR_CLI_SDD_CHECK_READ_FAILED  \[PHASE_P2\] Fix:/);
+      assert.match(unsafeDirect.text, /path segments are forbidden/);
+      assert.match(
+        unsafeDirect.text,
+        new RegExp(`${ticketArg}:${lineOf(unsafeDirectTicket, '../../../external.xml')}:`)
+      );
+
+      writeFileSync(
+        join(rulesDir, 'root.xml'),
+        '<DependsOn>\n  - ai/directives/missing-transitive.xml\n</DependsOn>\n'
+      );
+      const missingTransitiveTicket = p2Rules(['../../ai/directives/root.xml']);
+      writeFileSync(ticketPath, missingTransitiveTicket);
+      const missingTransitive = await mod.run(
+        argv('--task', ticketArg, '--authoring', '--phase', 'P2'),
+        root
+      );
+      assert.strictEqual(missingTransitive.exitCode, 1, missingTransitive.text);
+      assert.match(
+        missingTransitive.text,
+        /ERR_CLI_SDD_CHECK_READ_FAILED  \[PHASE_P2\] Fix:[\s\S]*ai\/directives\/missing-transitive\.xml/
+      );
+      assert.match(
+        missingTransitive.text,
+        new RegExp(`${ticketArg}:${phaseLineOf(missingTransitiveTicket, 'P2', '- **Rules:**')}:`)
+      );
+      assert.doesNotMatch(missingTransitive.text, /SDD_RULES_CASCADE_UNRESOLVED/);
+
+      writeFileSync(
+        join(rulesDir, 'root.xml'),
+        '<DependsOn>\n  - ai/directives/leaf.xml\n</DependsOn>\n'
+      );
+      writeFileSync(join(rulesDir, 'leaf.xml'), '<Rule>leaf</Rule>\n');
+      const incompleteClosureTicket = p2Rules(['../../ai/directives/root.xml']);
+      writeFileSync(ticketPath, incompleteClosureTicket);
+      const incompleteClosure = await mod.run(
+        argv('--task', ticketArg, '--authoring', '--phase', 'P2'),
+        root
+      );
+      assert.strictEqual(incompleteClosure.exitCode, 1, incompleteClosure.text);
+      assert.match(
+        incompleteClosure.text,
+        /SDD_RULES_CASCADE_UNRESOLVED  \[PHASE_P2\] Fix:[\s\S]*ai\/directives\/leaf\.xml/
+      );
+      assert.match(
+        incompleteClosure.text,
+        new RegExp(`${ticketArg}:${phaseLineOf(incompleteClosureTicket, 'P2', '- **Rules:**')}:`)
+      );
+
+      writeFileSync(
+        ticketPath,
+        p2Rules(['../../ai/directives/root.xml', '../../ai/directives/leaf.xml'])
+      );
+      const green = await mod.run(argv('--task', ticketArg, '--authoring', '--phase', 'P2'), root);
+      assert.strictEqual(green.exitCode, 0, green.text);
+      assert.match(green.text, /✅ clean — 1 file\(s\) checked/);
+      const fullGreen = await mod.run(argv('--task', ticketArg, '--authoring'), root);
+      assert.strictEqual(fullGreen.exitCode, 0, fullGreen.text);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

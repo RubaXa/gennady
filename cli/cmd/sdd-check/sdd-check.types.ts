@@ -86,7 +86,7 @@ export function badInvocation(detail = 'invalid arguments'): CheckResult {
     text: [
       `[sdd-check] ${ERR_CLI_SDD_CHECK_BAD_INVOCATION}`,
       `  problem: ${detail}`,
-      '  usage: gennady sdd-check (--task <ticket> [--authoring] | --scaffold-feasibility [project-root] | --all [project-root] | --changed [project-root] | --review-state <primary> [secondary...] | --review-publication <primary> [secondary...] | --review-ready <spec-or-dir>)',
+      '  usage: gennady sdd-check (--task <ticket> [--authoring [--phase P<N>]] | --scaffold-feasibility [project-root] | --all [project-root] | --changed [project-root] | --review-state <primary> [secondary...] | --review-publication <primary> [secondary...] | --review-ready <spec-or-dir>)',
     ].join('\n'),
     exitCode: 4,
   };

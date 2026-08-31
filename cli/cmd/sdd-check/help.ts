@@ -16,6 +16,9 @@ export function printHelp(): void {
     '  npx gennady sdd-check --task <created-ticket-path> --authoring  # pre-index ticket-only authoring gate'
   );
   console.info(
+    '  npx gennady sdd-check --task <created-ticket-path> --authoring --phase P1  # incremental one-phase authoring feedback'
+  );
+  console.info(
     '  npx gennady sdd-check --all [project-root]   # check every ticket + spec under specs/'
   );
   console.info(
@@ -39,7 +42,10 @@ export function printHelp(): void {
   console.info('');
   console.info('Mechanical checks (per ticket):');
   console.info(
-    '  --authoring: exact path returned by sdd-new; structure/anchors, owner metadata, Task-ID/status/phases, spec+rule refs/cascade and BDD/deferred grammar only; max 12 shown; no receipts, runtime files, coverage execution, siblings, trackers, or global scan'
+    '  --authoring: exact path returned by sdd-new; full ticket structure/owner/phase/BDD feedback before the next ticket; max 12 shown; no receipts, coverage execution, siblings, trackers, or global scan'
+  );
+  console.info(
+    '  --authoring --phase P<N>: only that phase plus overview dependency/Inputs, exact existing-READ/future-CREATE Target Files, and readable direct+transitive Rules closure; full --authoring is still required before moving on'
   );
   console.info('  - anchor balance · required sections (META, EXECUTION_LOG)');
   console.info('  - Task-ID present · Status parseable');
@@ -92,6 +98,9 @@ export function printHelp(): void {
   );
   console.info('  insight backflow, stale-after-pivot, language quality (comprehension layer).');
   console.info('');
-  console.info('Output: ESLint-style `file: severity: code  message` + summary.');
+  console.info('Output: ESLint-style finding lines + summary.');
+  console.info(
+    '  --authoring: `repo-relative-file:line: severity: stable-code  [SECTION] Fix: …`.'
+  );
   console.info('Exit codes: 0 clean (warnings allowed)   1 error(s) found   4 bad invocation');
 }

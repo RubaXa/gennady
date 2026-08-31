@@ -1232,6 +1232,8 @@ const TASK_SKELETON = `# Task: <ACRONYM>-<slug> — <Task Title>
 - **Purpose:** <semantic goal one-liner>
 - **Scope:** <scope-name>
 - **Module:** <module-name or N/A>
+- **Structural Owner:** <infrastructure-flat | scope-bootstrap | module>
+- **Owning Spec:** [Owning spec](<relative owning spec path>)
 - **Dependencies:** <comma-separated Task-IDs or None>
 - **Reopens:** <count> (<YYYY-MM-DD> — <last reason>)   <!-- omit when 0 -->
 - **Spec References:**   <!-- one anchor PER contract — makes the contract set enumerable for the typing-scenario check -->
@@ -1366,7 +1368,7 @@ const TASK_SECTIONS: SectionManifestEntry[] = [
     required: true,
     loadBearing: false,
     fold: false,
-    fill: 'Task-ID, Status, Purpose, Scope/Module, Dependencies, Spec References (one anchor per contract), Runtime Backing, Verification Levels, Deferred Runtime Scope.',
+    fill: 'Task-ID, Status, Purpose, Scope/Module, Structural Owner, Owning Spec, Dependencies, Spec References (one anchor per contract), Runtime Backing, Verification Levels, Deferred Runtime Scope.',
   },
   {
     name: 'PHASES_OVERVIEW',
@@ -1380,7 +1382,7 @@ const TASK_SECTIONS: SectionManifestEntry[] = [
     required: true,
     loadBearing: false,
     fold: false,
-    fill: 'One anchored PHASE_P<N> section per row in Phases Overview: Objective, Rules, optional Spec Refs, existing Target Files, Deleted Files (`none` or tracked tombstones), Inputs, Exit criterion.',
+    fill: 'One anchored PHASE_P<N> section per row in Phases Overview: Objective, Rules, optional Spec Refs, existing READ Target Files or future CREATE Target Files, Deleted Files (`none` or tracked tombstones), Inputs, Exit criterion.',
   },
   {
     name: 'BDD',

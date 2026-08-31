@@ -12,7 +12,6 @@ import { pathToFileURL } from 'node:url';
 const ROOT = resolve(import.meta.dirname, '../../..');
 const RUNNER = join(ROOT, 'scripts/test-topology.ts');
 const TEST_LAYERS = ['unit', 'contract', 'local', 'external'] as const;
-const V2_GATE_CORPUS_SIZE = 285;
 const SDD_COMMAND_NAVIGATION_TEST = 'cli/__tests__/sdd-command-navigation.test.ts';
 const YAGNI_SOURCE_POLICY_TEST = 'shared/common/__tests__/yagni-source-policy.test.ts';
 const INCIDENT_TEST_LAYERS = {
@@ -25,6 +24,7 @@ const INCIDENT_TEST_LAYERS = {
     'ai/kit/__tests__/execute-selection-barrier-contract.test.ts',
     'ai/kit/__tests__/scaffold-feasibility-contract.test.ts',
     'ai/kit/__tests__/scaffold-nested-correction-regression.test.ts',
+    'ai/kit/__tests__/scaffold-tool-guidance.test.ts',
   ],
   local: [
     'cli/__tests__/tool-behavior/clean-repo-composition.test.ts',
@@ -154,7 +154,11 @@ describe('test topology contract', () => {
     const classified = TEST_LAYERS.flatMap((layer) => topology[layer]);
     const expected = legacyGateCorpus();
 
-    assert.strictEqual(expected.length, V2_GATE_CORPUS_SIZE);
+    assert.strictEqual(
+      expected.length,
+      classified.length,
+      'independent corpus discovery must match the executable topology SSOT count'
+    );
     assert.strictEqual(new Set(classified).size, classified.length);
     assert.deepStrictEqual([...classified].sort(), expected);
     assert.ok(

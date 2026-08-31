@@ -354,9 +354,10 @@ describe('flow coherence contracts', () => {
     assert.match(generation, /exact alternatives for Gate 2, never prompt here/);
     assert.match(generation, /toolchain alternatives go to Gate 2.+never a separate prompt/s);
     assert.match(ticketLoop, /Materialize and validate exactly one prepared ticket at a time\. \(auto\)/);
-    assert.match(ticketLoop, /Select only the next unprocessed STEP_2 node/);
+    assert.match(ticketLoop, /Select the current unprocessed STEP_2 node/);
+    assert.match(ticketLoop, /result="phaseAuthoringFeedback"/);
     assert.match(ticketLoop, /result="authoringGate"/);
-    assert.match(ticketLoop, /Green: only then may the next node's content be formed/);
+    assert.match(ticketLoop, /GREEN authoringGate authorizes\s+selecting the next STEP_2 node/);
     assert.doesNotMatch(ticketLoop, /\bAsk(?:UserQuestion)?\b/);
     assert.match(gate, /STEP_3 coverage-owner\/toolchain\/e2e alternative/);
     assert.match(gate, /SAME card;\s+its one approval resolves all/s);

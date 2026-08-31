@@ -188,6 +188,7 @@ const COMMAND_SCHEMAS: Readonly<Record<string, CommandSchema>> = {
     {
       '--task': 'scalar',
       '--authoring': 'boolean',
+      '--phase': 'scalar',
       '--all': 'boolean',
       '--changed': 'boolean',
       '--scaffold-feasibility': 'boolean',
@@ -207,6 +208,7 @@ const COMMAND_SCHEMAS: Readonly<Record<string, CommandSchema>> = {
       ].filter((x) => has(f, x));
       if (modes.length !== 1) return 'requires exactly one mode';
       if (has(f, '--authoring') && modes[0] !== '--task') return '--authoring requires --task';
+      if (has(f, '--phase') && !has(f, '--authoring')) return '--phase requires --authoring';
       if (
         (modes[0] === '--all' ||
           modes[0] === '--changed' ||

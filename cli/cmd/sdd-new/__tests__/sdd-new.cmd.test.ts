@@ -5,6 +5,7 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  cpSync,
   mkdtempSync,
   mkdirSync,
   writeFileSync,
@@ -15,6 +16,7 @@ import {
 } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { fileURLToPath } from 'node:url';
 
 type SddNewModule = typeof import('../sdd-new.cmd.ts');
 
@@ -36,6 +38,8 @@ function writeScope(root: string, scope: string, scopeType: string): void {
     'utf-8'
   );
 }
+
+const PRE_SCAFFOLD_FIXTURE = fileURLToPath(new URL('./fixtures/pre-scaffold', import.meta.url));
 
 describe('SddNewCommand', () => {
   before(async () => {
@@ -427,6 +431,13 @@ describe('SddNewCommand', () => {
       assert.strictEqual(infra.ok, true);
       if (bootstrap.ok) {
         assert.match(bootstrap.text, /owning-spec: \[Owning spec\]\(\.\/shop\.spec\.md\)/);
+        const ticket = readFileSync(join(root, bootstrap.path), 'utf-8');
+        assert.match(ticket, /^- \*\*Task-ID:\*\* SHP-boot\s+<!-- semantic slug;/m);
+        assert.match(ticket, /^- \*\*Status:\*\* \[ \] TODO\b/m);
+        assert.match(ticket, /^- \*\*Scope:\*\* shop$/m);
+        assert.match(ticket, /^- \*\*Module:\*\* N\/A$/m);
+        assert.match(ticket, /^- \*\*Structural Owner:\*\* scope-bootstrap$/m);
+        assert.match(ticket, /^- \*\*Owning Spec:\*\* \[Owning spec\]\(\.\/shop\.spec\.md\)$/m);
       }
       if (product.ok) {
         assert.match(product.text, /\[Port: TodoStore\]\(\.\/checkout\.spec\.md#port-todostore\)/);
@@ -442,6 +453,81 @@ describe('SddNewCommand', () => {
       }
     } finally {
       process.chdir(previous);
+    }
+  });
+
+  it('pre-scaffold fixture: module task is created with every mechanically-known owner field and CREATE-aware guidance', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'sdd-new-pre-scaffold-module-'));
+    cpSync(PRE_SCAFFOLD_FIXTURE, root, { recursive: true });
+    const previous = process.cwd();
+    process.chdir(root);
+    try {
+      const outcome = await mod.run(
+        argv(
+          'task',
+          '--owner',
+          'module',
+          '--scope',
+          'todos-app',
+          '--module',
+          'core',
+          '--id',
+          'TODO-core'
+        )
+      );
+
+      assert.strictEqual(outcome.ok, true, outcome.ok ? '' : outcome.message);
+      if (!outcome.ok) return;
+      assert.match(
+        outcome.text,
+        /^\[sdd-new\] created task skeleton: specs\/todos-app\/core\/core\.task\.TODO-core\.md$/m
+      );
+      assert.match(outcome.text, /existing READ Target Files or future CREATE Target Files/);
+      assert.doesNotMatch(outcome.text, /existing Target Files/);
+
+      const ticket = readFileSync(join(root, outcome.path), 'utf-8');
+      assert.match(ticket, /^# Task: TODO-core — <Task Title>$/m);
+      assert.match(ticket, /^- \*\*Task-ID:\*\* TODO-core\s+<!-- semantic slug;/m);
+      assert.match(ticket, /^- \*\*Status:\*\* \[ \] TODO\b/m);
+      assert.match(ticket, /^- \*\*Scope:\*\* todos-app$/m);
+      assert.match(ticket, /^- \*\*Module:\*\* core$/m);
+      assert.match(ticket, /^- \*\*Structural Owner:\*\* module$/m);
+      assert.match(ticket, /^- \*\*Owning Spec:\*\* \[Owning spec\]\(\.\/core\.spec\.md\)$/m);
+      assert.doesNotMatch(ticket, /<ACRONYM>-<slug>/);
+      assert.doesNotMatch(ticket, /- \*\*Scope:\*\* <scope-name>/);
+      assert.doesNotMatch(ticket, /- \*\*Module:\*\* <module-name or N\/A>/);
+    } finally {
+      process.chdir(previous);
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('pre-scaffold fixture: flat infrastructure task records N/A module and its structural owner', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'sdd-new-pre-scaffold-infra-'));
+    cpSync(PRE_SCAFFOLD_FIXTURE, root, { recursive: true });
+    const previous = process.cwd();
+    process.chdir(root);
+    try {
+      const outcome = await mod.run(
+        argv('task', '--owner', 'infrastructure-flat', '--scope', 'infra-base', '--id', 'INF-setup')
+      );
+
+      assert.strictEqual(outcome.ok, true, outcome.ok ? '' : outcome.message);
+      if (!outcome.ok) return;
+      assert.strictEqual(outcome.path, 'specs/infra-base/infra-base.task.INF-setup.md');
+      assert.match(outcome.text, /owning-spec: \[Owning spec\]\(\.\/infra-base\.spec\.md\)/);
+      assert.doesNotMatch(outcome.text, /existing Target Files/);
+
+      const ticket = readFileSync(join(root, outcome.path), 'utf-8');
+      assert.match(ticket, /^- \*\*Task-ID:\*\* INF-setup\s+<!-- semantic slug;/m);
+      assert.match(ticket, /^- \*\*Status:\*\* \[ \] TODO\b/m);
+      assert.match(ticket, /^- \*\*Scope:\*\* infra-base$/m);
+      assert.match(ticket, /^- \*\*Module:\*\* N\/A$/m);
+      assert.match(ticket, /^- \*\*Structural Owner:\*\* infrastructure-flat$/m);
+      assert.match(ticket, /^- \*\*Owning Spec:\*\* \[Owning spec\]\(\.\/infra-base\.spec\.md\)$/m);
+    } finally {
+      process.chdir(previous);
+      rmSync(root, { recursive: true, force: true });
     }
   });
 

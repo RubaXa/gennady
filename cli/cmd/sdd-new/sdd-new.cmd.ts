@@ -28,6 +28,7 @@ import {
 import {
   loadRuleRegistry,
   renderTaskAuthoringLiterals,
+  ticketRelativeHref,
 } from '../../../shared/sdd/task-authoring-literals.ts';
 import {
   badInvocation,
@@ -62,6 +63,40 @@ export function renderList(): string {
 function moduleName(module: string): string {
   const segments = module.split('/').filter((s) => s.length > 0);
   return segments[segments.length - 1] ?? module;
+}
+
+/**
+ * @purpose Materialize only the task identity and structural ownership facts already proved by
+ * `sdd-new`; semantic purpose, contracts, phases, and verification remain author-owned.
+ * @param template Canonical task skeleton from the template registry.
+ * @param context Exact CLI identity plus path-derived owning spec.
+ * @returns Task skeleton with known Meta values and owning-spec link filled.
+ */
+function renderTaskSkeleton(
+  template: string,
+  context: {
+    id: string;
+    scope: string;
+    module?: string;
+    owner: TaskOwnerKind;
+    ticketPath: string;
+    owningSpecPath: string;
+  }
+): string {
+  const owningHref = ticketRelativeHref(context.ticketPath, context.owningSpecPath);
+  return template
+    .replace('# Task: <ACRONYM>-<slug> —', `# Task: ${context.id} —`)
+    .replace('- **Task-ID:** <ACRONYM>-<slug>', `- **Task-ID:** ${context.id}`)
+    .replace('- **Scope:** <scope-name>', `- **Scope:** ${context.scope}`)
+    .replace('- **Module:** <module-name or N/A>', `- **Module:** ${context.module ?? 'N/A'}`)
+    .replace(
+      '- **Structural Owner:** <infrastructure-flat | scope-bootstrap | module>',
+      `- **Structural Owner:** ${context.owner}`
+    )
+    .replace(
+      '- **Owning Spec:** [Owning spec](<relative owning spec path>)',
+      `- **Owning Spec:** [Owning spec](${owningHref})`
+    );
 }
 
 /**
@@ -450,7 +485,18 @@ export async function run(rawArgs: string[]): Promise<NewOutcome> {
 
   try {
     mkdirSync(dirname(abs), { recursive: true });
-    writeFileSync(abs, TEMPLATES[kind].skeleton, 'utf-8');
+    const skeleton =
+      kind === 'task' && opts.id && opts.scope && opts.owner
+        ? renderTaskSkeleton(TEMPLATES.task.skeleton, {
+            id: opts.id,
+            scope: opts.scope,
+            ...(opts.module ? { module: opts.module } : {}),
+            owner: opts.owner,
+            ticketPath: path,
+            owningSpecPath,
+          })
+        : TEMPLATES[kind].skeleton;
+    writeFileSync(abs, skeleton, 'utf-8');
   } catch (cause) {
     logger.warn(`[SddNewCommand#run] write failed: ${path}`);
     return writeFailed(path, cause);

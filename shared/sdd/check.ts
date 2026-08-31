@@ -3,7 +3,7 @@
 // @tasks: N/A
 
 import { dirname, basename, join, resolve } from 'node:path';
-import { extractSection } from './section.ts';
+import { extractSection, findSectionBounds } from './section.ts';
 import type { Finding } from './finding.ts';
 import { parseMetaInfo, parsePhaseDetail, parsePhasesOverview } from './ticket.ts';
 import { legacyHeaderBody } from './anchor-inject.ts';
@@ -24,6 +24,7 @@ import {
 // Pure text scan only (no jsdom/mermaid load — that lives behind loadMermaidParse, never imported
 // here) — safe to pull into this sync module for the call-chain rung's sequenceDiagram detection.
 import { extractMermaidBlocks } from '../mermaid/mermaid.ts';
+import { parseTestCoverage } from './bdd-coverage.ts';
 
 /**
  * @purpose One audit finding.
@@ -510,15 +511,40 @@ export function checkTicket(file: string, content: string): Finding[] {
  * against each parseable overview row. Runtime receipts, file existence, and coverage results are out.
  * @param file Ticket file reported in findings.
  * @param content Full pre-index ticket markdown.
+ * @param [phaseId] Optional one-phase authoring slice; absent validates the complete ticket.
  * @returns Copy-ready structural findings; empty only for a complete authored ticket.
  */
-export function checkTicketAuthoringStructure(file: string, content: string): Finding[] {
+export function checkTicketAuthoringStructure(
+  file: string,
+  content: string,
+  phaseId?: string
+): Finding[] {
   const findings: Finding[] = [];
-  const add = (code: string, message: string): void => {
-    findings.push({ severity: 'error', code, file, message });
+  const sectionLine = (section: string, includes?: string): number => {
+    const bounds = findSectionBounds(content, section);
+    if (!bounds) return 1;
+    if (includes) {
+      const lines = content.split('\n');
+      for (let index = bounds.openLine + 1; index < bounds.closeLine; index++) {
+        if ((lines[index] ?? '').includes(includes)) return index + 1;
+      }
+    }
+    return bounds.openLine + 1;
+  };
+  const add = (code: string, section: string, message: string, includes?: string): void => {
+    const actionable = /^(?:Fix|Example):/.test(message) ? message : `Fix: ${message}`;
+    findings.push({
+      severity: 'error',
+      code,
+      file,
+      line: sectionLine(section, includes),
+      message: `[${section}] ${actionable}`,
+    });
   };
   const required = TEMPLATES.task.sections.filter((section) => section.required);
-  const fixedRequired = required.filter((section) => section.name !== 'PHASE_P<N>');
+  const fixedRequired = phaseId
+    ? required.filter((section) => section.name === 'PHASES_OVERVIEW')
+    : required.filter((section) => section.name !== 'PHASE_P<N>');
   const bodies = new Map<string, string>();
 
   for (const section of fixedRequired) {
@@ -526,6 +552,7 @@ export function checkTicketAuthoringStructure(file: string, content: string): Fi
     if (extracted.status !== 'ok' || extracted.content.trim().length === 0) {
       add(
         'SDD_AUTHORING_SECTION_REQUIRED',
+        section.name,
         `Add and fill the complete required ${section.name} section: <!--SECTION:${section.name}--> … <!--/SECTION:${section.name}-->.`
       );
       continue;
@@ -533,15 +560,21 @@ export function checkTicketAuthoringStructure(file: string, content: string): Fi
     bodies.set(section.name, extracted.content);
   }
 
-  const metaBody = bodies.get('META');
+  const metaBody = phaseId ? undefined : bodies.get('META');
   if (metaBody) {
     const meta = parseMetaInfo(metaBody);
+    const inlineMetaValue = (label: string): string | null => {
+      const line = metaBody.match(
+        new RegExp(`^[ \\t]*-[ \\t]*\\*\\*${label}:\\*\\*[ \\t]*(.*)$`, 'm')
+      )?.[1];
+      return line?.trim() || null;
+    };
     const requiredMeta = [
-      ['Task-ID', meta.taskId],
-      ['Status', meta.status],
-      ['Purpose', meta.purpose],
-      ['Scope', meta.scope],
-      ['Module', meta.module],
+      ['Task-ID', inlineMetaValue('Task-ID') && meta.taskId],
+      ['Status', inlineMetaValue('Status') && meta.status],
+      ['Purpose', inlineMetaValue('Purpose') && meta.purpose],
+      ['Scope', inlineMetaValue('Scope') && meta.scope],
+      ['Module', inlineMetaValue('Module') && meta.module],
     ] as const;
     const absent: string[] = requiredMeta
       .filter(([, value]) => !value || hasPlaceholder(value))
@@ -553,14 +586,16 @@ export function checkTicketAuthoringStructure(file: string, content: string): Fi
       'Deferred Runtime Scope',
     ];
     for (const label of literalFields) {
-      const value = metaBody.match(new RegExp(`\\*\\*${label}:\\*\\*\\s*(.+)`))?.[1]?.trim();
+      const value = inlineMetaValue(label);
       if (!value || hasPlaceholder(value)) absent.push(label);
     }
     if (meta.specRefs.length === 0) absent.push('Spec References');
     if (absent.length > 0)
       add(
         'SDD_AUTHORING_META_INCOMPLETE',
-        `Fill the complete META fields before validation; missing or placeholder: ${absent.join(', ')}.`
+        'META',
+        `Fix: replace the missing or placeholder Meta fields: ${absent.join(', ')}. Example: "- **Purpose:** validate the project toolchain".`,
+        `**${absent[0]}:**`
       );
   }
 
@@ -575,19 +610,50 @@ export function checkTicketAuthoringStructure(file: string, content: string): Fi
   if (overviewBody && (phases.length === 0 || usablePhases.length !== phases.length))
     add(
       'SDD_AUTHORING_PHASES_INVALID',
+      'PHASES_OVERVIEW',
       'Replace PHASES_OVERVIEW with at least one parseable row: | P1 | <bootstrap|impl|test|config|doc|refactor> | — | [ ] |.'
     );
 
-  for (const phase of usablePhases) {
+  if (phaseId && !usablePhases.some((phase) => phase.id === phaseId)) {
+    add(
+      'SDD_AUTHORING_PHASE_NOT_FOUND',
+      'PHASES_OVERVIEW',
+      `Fix: add one canonical overview row for ${phaseId}, for example "| ${phaseId} | impl | — | [ ] |", or pass an existing PhaseID.`
+    );
+  }
+
+  const overviewIndex = new Map(usablePhases.map((phase, index) => [phase.id, index]));
+  const selectedPhases = phaseId
+    ? usablePhases.filter((phase) => phase.id === phaseId)
+    : usablePhases;
+  for (const phase of selectedPhases) {
+    const rowIndex = overviewIndex.get(phase.id) as number;
+    const invalidDeps = phase.deps.filter(
+      (dependency) =>
+        !overviewIndex.has(dependency) || (overviewIndex.get(dependency) as number) >= rowIndex
+    );
+    if (invalidDeps.length > 0) {
+      add(
+        'SDD_AUTHORING_PHASE_DEPENDENCY',
+        'PHASES_OVERVIEW',
+        `Fix: list only earlier PhaseIDs in ${phase.id} Deps; invalid: ${invalidDeps.join(', ')}. Example: "| ${phase.id} | ${phase.kind} | ${rowIndex === 0 ? '—' : usablePhases[rowIndex - 1]?.id} | [ ] |".`,
+        `| ${phase.id} |`
+      );
+    }
+  }
+
+  for (const phase of selectedPhases) {
     const name = `PHASE_${phase.id}`;
     const extracted = extractSection(content, name);
     if (extracted.status !== 'ok' || extracted.content.trim().length === 0) {
       add(
         'SDD_AUTHORING_PHASE_REQUIRED',
+        name,
         `Add and fill the phase declared by PHASES_OVERVIEW: <!--SECTION:${name}--> … <!--/SECTION:${name}-->.`
       );
       continue;
     }
+    bodies.set(name, extracted.content);
     const detail = parsePhaseDetail(extracted.content);
     const missing = [
       ['Objective', detail.objective],
@@ -602,11 +668,32 @@ export function checkTicketAuthoringStructure(file: string, content: string): Fi
     if (missing.length > 0)
       add(
         'SDD_AUTHORING_PHASE_INCOMPLETE',
-        `Fill the complete ${name} fields before validation; missing or placeholder: ${missing.join(', ')}.`
+        name,
+        `Fix: replace the missing or placeholder fields: ${missing.join(', ')}. Example: "- **Exit:** the phase verification command exits 0".`,
+        `**${missing[0]}:**`
       );
+
+    const inputDeps = [...(detail.inputs ?? '').matchAll(/\b(P[0-9]+)\s+handoff\b/g)].map(
+      (match) => match[1] as string
+    );
+    const expectedDeps = [...phase.deps].sort();
+    const actualDeps = [...new Set(inputDeps)].sort();
+    const inputsMatch =
+      expectedDeps.length === 0
+        ? /^none$/i.test(detail.inputs ?? '')
+        : expectedDeps.length === actualDeps.length &&
+          expectedDeps.every((dependency, index) => dependency === actualDeps[index]);
+    if (!inputsMatch) {
+      add(
+        'SDD_AUTHORING_PHASE_DEPENDENCY',
+        'PHASES_OVERVIEW',
+        `Fix: make ${phase.id} Inputs mirror its overview Deps exactly. Example: "- **Inputs:** ${expectedDeps.length > 0 ? expectedDeps.map((dependency) => `${dependency} handoff`).join(', ') : 'none'}".`,
+        `| ${phase.id} |`
+      );
+    }
   }
 
-  const bddBody = bodies.get('BDD');
+  const bddBody = phaseId ? undefined : bodies.get('BDD');
   if (
     bddBody &&
     !(
@@ -618,28 +705,90 @@ export function checkTicketAuthoringStructure(file: string, content: string): Fi
   )
     add(
       'SDD_AUTHORING_BDD_INCOMPLETE',
+      'BDD',
       'Fill BDD with at least one complete **Scenario:** plus Given, When, and Then lines.'
     );
 
-  const verificationBody = bodies.get('VERIFICATION');
+  const verificationBody = phaseId ? undefined : bodies.get('VERIFICATION');
   if (
     verificationBody &&
     !/\*\*Coverage Policy:\*\*\s*(?:required|not-applicable)/.test(verificationBody)
   )
     add(
       'SDD_AUTHORING_VERIFICATION_INCOMPLETE',
+      'VERIFICATION',
       'Fill VERIFICATION with one explicit **Coverage Policy:** required or not-applicable and its applicable fields/table.'
     );
 
-  const coverageBody = bodies.get('TEST_COVERAGE');
+  const coverageBody = phaseId ? undefined : bodies.get('TEST_COVERAGE');
   if (
     coverageBody &&
     !/^-[^\n]+(?:→\s*`[^`]+`\s*::\s*`[^`]+`|Deferred Test Ownership:)/m.test(coverageBody)
   )
     add(
       'SDD_AUTHORING_TEST_COVERAGE_INCOMPLETE',
+      'TEST_COVERAGE',
       "Fill TEST_COVERAGE with each scenario's complete `→ test-file :: case` row or canonical Deferred Test Ownership row."
     );
+
+  if (bddBody && coverageBody && metaBody) {
+    const scenarios = bddBody.split('\n').flatMap((line) => {
+      const match = /^\*\*Scenario:\*\*\s*(.+?)\s+\[\`?(contract|unit|integration|e2e)\`?\]/.exec(
+        line.trim()
+      );
+      return match ? [{ name: (match[1] as string).trim(), level: match[2] as string }] : [];
+    });
+    const coverageEntries = parseTestCoverage(coverageBody);
+    const covered = new Set(coverageEntries.map((entry) => entry.scenario));
+    const unmapped = scenarios.filter((scenario) => !covered.has(scenario.name));
+    if (unmapped.length > 0) {
+      add(
+        'SDD_AUTHORING_BDD_MAPPING',
+        'BDD',
+        `Fix: add one TEST_COVERAGE row per BDD scenario. Example: "- ${unmapped[0]?.name} → \`test/example.test.ts\` :: \`${unmapped[0]?.name}\`".`,
+        `**Scenario:** ${unmapped[0]?.name}`
+      );
+    }
+
+    const contractRefs = parseMetaInfo(metaBody).specRefs.filter(
+      (reference) => reference.role.trim().toLowerCase() === 'contract'
+    );
+    const contractScenarios = scenarios.filter((scenario) => scenario.level === 'contract');
+    if (contractScenarios.length < contractRefs.length) {
+      add(
+        'SDD_AUTHORING_BDD_CONTRACT',
+        'BDD',
+        `Fix: add at least one [\`contract\`] typing scenario per Contract Spec Reference (${contractScenarios.length}/${contractRefs.length}). Example: "**Scenario:** ${contractRefs[contractScenarios.length]?.name ?? 'contract'} typing [\`contract\`] [\`<ACR>-REQ-N\`]".`,
+        '**Scenario:**'
+      );
+    }
+
+    const testTargets = usablePhases
+      .filter((phase) => phase.kind === 'test')
+      .flatMap((phase) => {
+        const section = extractSection(content, `PHASE_${phase.id}`);
+        return section.status === 'ok' ? parsePhaseDetail(section.content).targetFiles : [];
+      })
+      .map((target) => target.replace(/\\/g, '/'));
+    const unowned = coverageEntries.find(
+      (entry) =>
+        entry.deferred === null &&
+        !testTargets.some(
+          (target) =>
+            target === entry.testFile ||
+            target.endsWith(`/${entry.testFile}`) ||
+            entry.testFile.endsWith(`/${target}`)
+        )
+    );
+    if (unowned) {
+      add(
+        'SDD_AUTHORING_BDD_PHASE',
+        'TEST_COVERAGE',
+        `Fix: add "${unowned.testFile}" to one test phase Target Files, or map the scenario to a file already owned by a test phase.`,
+        unowned.testFile
+      );
+    }
+  }
 
   for (const [name, body] of bodies) {
     if (name === 'EXECUTION_LOG') continue;
@@ -647,7 +796,12 @@ export function checkTicketAuthoringStructure(file: string, content: string): Fi
     if (hasPlaceholder(authoredText))
       add(
         'SDD_AUTHORING_PLACEHOLDER',
-        `Replace every authoring placeholder in ${name}; the section still contains an unresolved <…> token.`
+        name,
+        `Fix: replace every unresolved <…> token in ${name}; use a concrete value or remove an optional field.`,
+        body
+          .split('\n')
+          .find((line) => hasPlaceholder(line))
+          ?.trim()
       );
   }
 

@@ -28,14 +28,16 @@
         not phase noise to suppress.
         These trackers and tickets are read by execute with no memory of this scaffolding run —
         every DAG edge, rule reference, and BDD scenario must already be in the file
-        (`AX_STATELESS_ARTIFACT`). Emit a created-files summary with traceability links. Hand off to
-        execute in the SAME session —
-        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/execute.directive.xml")` — no operator stop;
-        isolation lives one level down, at the phase-worker subagent execute dispatches per phase, not
-        at this handoff. After integrityCheck is clean, append the exact `closed` feasibility event;
-        its successful content-file call consumes the payload and closes this persisted cycle. Return
-        `TerminalDecision: continue`; scaffold is an intermediate owner and
-        never runs `sdd-session close`.
+        (`AX_STATELESS_ARTIFACT`). Emit a created-files summary with traceability links. After
+        integrityCheck is clean, append the exact `closed` feasibility event; its successful
+        content-file call consumes the payload and closes this persisted cycle. Then present one
+        navigation `AskUserQuestion` — it is not a third approval gate:
+        - `execute now — /sdd-execute`: continue with
+          `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/execute.directive.xml")` in the same session and
+          return `TerminalDecision: continue`;
+        - `stop here`: keep the ready tickets and open session intact, and return
+          `TerminalDecision: pause`.
+        Scaffold remains an intermediate owner; this navigation leaves session closure to execute.
         <ToolCall owner="this-step" result="moduleIndexManifest">npx gennady sdd-new module-index --scope <scope> --module <module></ToolCall> Use moduleIndexManifest.
         <ToolCall owner="this-step" result="scopeIndexManifest">npx gennady sdd-new scope-index --scope <scope></ToolCall> Use scopeIndexManifest.
         <ToolCall owner="this-step" result="projectIndexManifest">npx gennady sdd-new project-index</ToolCall> Use projectIndexManifest.

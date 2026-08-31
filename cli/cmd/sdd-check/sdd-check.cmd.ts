@@ -67,7 +67,7 @@ import {
 } from '../../../shared/sdd/flow.ts';
 import { checkSpecMermaid } from '../../../shared/sdd/mermaid-check.ts';
 import { parseTrackerRows } from '../../../shared/sdd/tracker.ts';
-import { extractSection } from '../../../shared/sdd/section.ts';
+import { extractSection, findSectionBounds } from '../../../shared/sdd/section.ts';
 import {
   parseMetaInfo,
   parsePhaseDetail,
@@ -107,6 +107,7 @@ import {
   resolveScopeDecomposition,
   resolveTaskOutputOwnership,
 } from '../../../shared/sdd/module-specs.ts';
+import { resolveOwningSpec, validateTicketReviewPaths } from '../../../shared/sdd/audit-group.ts';
 import {
   ambiguousIdError,
   badInvocation,
@@ -299,9 +300,71 @@ function checkResearchRefs(file: string, content: string): Finding[] {
   return findings;
 }
 
-/** @purpose Prove and safely read every direct `](….xml)` rule link through the same repository identity boundary used by its transitive dependencies. | @param file Ticket path. | @param content Ticket markdown. | @param repoRoot Canonical trust root for every rule identity. | @returns Typed read findings for missing, unsafe, special, symlinked, or unreadable rule evidence. */
-function checkRuleLinks(file: string, content: string, repoRoot: string): Finding[] {
+/** @purpose Optional authoring slice for rule evidence checks. */
+type RuleCheckSelection = {
+  /** @purpose Exact phases to inspect; absent means every overview phase. */
+  phaseIds?: readonly string[];
+  /** @purpose Address failures to the ticket's phase Rules block rather than the missing rule path. */
+  authoring?: boolean;
+};
+
+/** @purpose Absolute one-based ticket line inside one phase, falling back to its section marker. */
+function phaseRuleLine(content: string, phaseId: string, needle = '**Rules:**'): number {
+  const bounds = findSectionBounds(content, `PHASE_${phaseId}`);
+  if (!bounds) return 1;
+  const lines = content.split('\n');
+  for (let index = bounds.openLine + 1; index < bounds.closeLine; index++) {
+    if ((lines[index] ?? '').includes(needle)) return index + 1;
+  }
+  return bounds.openLine + 1;
+}
+
+/** @purpose Parse only the requested phases through the canonical overview/phase parsers. */
+function selectedRulePhases(
+  content: string,
+  phaseIds?: readonly string[]
+): { id: string; rules: string[] }[] {
+  const overview = extractSection(content, 'PHASES_OVERVIEW');
+  if (overview.status !== 'ok') return [];
+  const selected = phaseIds ? new Set(phaseIds) : null;
+  return parsePhasesOverview(overview.content).flatMap((phase) => {
+    if (selected && !selected.has(phase.id)) return [];
+    const section = extractSection(content, `PHASE_${phase.id}`);
+    return section.status === 'ok'
+      ? [{ id: phase.id, rules: parsePhaseDetail(section.content).rules }]
+      : [];
+  });
+}
+
+/** @purpose Prove and safely read every direct `](….xml)` rule link through the same repository identity boundary used by its transitive dependencies. | @param file Ticket path. | @param content Ticket markdown. | @param repoRoot Canonical trust root for every rule identity. | @param [selection] Optional exact authoring phase slice. | @returns Typed read findings for missing, unsafe, special, symlinked, or unreadable rule evidence. */
+function checkRuleLinks(
+  file: string,
+  content: string,
+  repoRoot: string,
+  selection?: RuleCheckSelection
+): Finding[] {
   const findings: Finding[] = [];
+  if (selection) {
+    for (const phase of selectedRulePhases(content, selection.phaseIds)) {
+      for (const target of phase.rules.filter((rule) => rule.endsWith('.xml'))) {
+        const ruleId = normalizeRulePath(file, repoRoot, target);
+        const observed = getRuleDeps(repoRoot, ruleId);
+        if (observed.ok) continue;
+        if (!selection.authoring) {
+          addReadIssue(findings, observed.issue);
+          continue;
+        }
+        findings.push({
+          severity: 'error',
+          code: ERR_CLI_SDD_CHECK_READ_FAILED,
+          file,
+          line: phaseRuleLine(content, phase.id, target),
+          message: `[PHASE_${phase.id}] Fix: create or correct the direct rule link "${target}" so exact rule "${ruleId}" is a readable repo-local file. Detail: ${observed.issue.reason}.`,
+        });
+      }
+    }
+    return findings;
+  }
   for (const m of content.matchAll(/\]\(([^)`#]+\.xml)(?:#[^)]*)?\)/g)) {
     const target = m[1];
     if (!target) continue;
@@ -376,26 +439,53 @@ function buildRuleDepsMap(
   return { map, issues };
 }
 
-/** @purpose RULES_CASCADE_CLOSURE for one ticket — per phase, verify the Rules: list is already the transitive `<DependsOn>` closure. | @param file Ticket path. | @param content Ticket markdown. | @param repoRoot Repository root (anchors rule-link resolution). | @returns SDD_RULES_CASCADE_UNRESOLVED findings, if any. */
-function checkTicketRulesCascade(file: string, content: string, repoRoot: string): Finding[] {
-  const overviewSec = extractSection(content, 'PHASES_OVERVIEW');
-  if (overviewSec.status !== 'ok') return [];
+/** @purpose RULES_CASCADE_CLOSURE for one ticket — per phase, verify the Rules: list is already the transitive `<DependsOn>` closure. | @param file Ticket path. | @param content Ticket markdown. | @param repoRoot Repository root (anchors rule-link resolution). | @param [selection] Optional exact authoring phase slice. | @returns SDD_RULES_CASCADE_UNRESOLVED findings, if any. */
+function checkTicketRulesCascade(
+  file: string,
+  content: string,
+  repoRoot: string,
+  selection?: RuleCheckSelection
+): Finding[] {
   const findings: Finding[] = [];
-  for (const p of parsePhasesOverview(overviewSec.content)) {
-    const phaseSec = extractSection(content, `PHASE_${p.id}`);
-    if (phaseSec.status !== 'ok') continue;
-    const ruleIds = parsePhaseDetail(phaseSec.content)
-      .rules.filter((r) => r.endsWith('.xml'))
-      .map((r) => normalizeRulePath(file, repoRoot, r));
+  for (const phase of selectedRulePhases(content, selection?.phaseIds)) {
+    const ruleIds = phase.rules
+      .filter((rule) => rule.endsWith('.xml'))
+      .map((rule) => normalizeRulePath(file, repoRoot, rule));
     if (ruleIds.length === 0) continue;
     const deps = buildRuleDepsMap(repoRoot, ruleIds);
     // Direct entries were already validated by checkRuleLinks. Report only dependency-only nodes
     // here, so one failed identity produces one diagnostic while omitted transitive evidence still
     // fails closed.
     for (const issue of deps.issues) {
-      if (!ruleIds.includes(issue.path)) addReadIssue(findings, issue);
+      if (ruleIds.includes(issue.path)) continue;
+      if (!selection?.authoring) {
+        addReadIssue(findings, issue);
+        continue;
+      }
+      findings.push({
+        severity: 'error',
+        code: ERR_CLI_SDD_CHECK_READ_FAILED,
+        file,
+        line: phaseRuleLine(content, phase.id),
+        message: `[PHASE_${phase.id}] Fix: create or correct transitive rule "${issue.path}" required by this Rules cascade, then list it in Rules. Detail: ${issue.reason}.`,
+      });
     }
-    findings.push(...checkRulesCascadeClosure(file, p.id, ruleIds, deps.map));
+    const closure = checkRulesCascadeClosure(file, phase.id, ruleIds, deps.map);
+    if (!selection?.authoring) {
+      findings.push(...closure);
+      continue;
+    }
+    for (const finding of closure) {
+      const dependency = /rule dependency "([^"]+)"/.exec(finding.message)?.[1] ?? '<dependency>';
+      if (deps.issues.some((issue) => !ruleIds.includes(issue.path) && issue.path === dependency))
+        continue;
+      const href = relative(dirname(file), resolve(repoRoot, dependency)).split(sep).join('/');
+      findings.push({
+        ...finding,
+        line: phaseRuleLine(content, phase.id),
+        message: `[PHASE_${phase.id}] Fix: add "- [rule](${href})" for exact dependency "${dependency}" to this phase's Rules list.`,
+      });
+    }
   }
   return findings;
 }
@@ -880,25 +970,145 @@ function checkTicketOwnerMetadata(file: string, content: string, repoRoot: strin
   const meta = parseMetaInfo(metaSection.content);
   const owner = resolveTaskOutputOwnership(relative(repoRoot, file), repoRoot);
   const expectedModule = owner.module ?? 'N/A';
+  const expectedOwner = owner.module ? 'module' : 'infrastructure-flat';
+  const structuralOwner = /\*\*Structural Owner:\*\*\s*([^\n]+)/
+    .exec(metaSection.content)?.[1]
+    ?.trim();
+  const owningSpecClaim = /\*\*Owning Spec:\*\*\s*\[[^\]]+\]\(([^)#]+(?:#[^)]*)?)\)/.exec(
+    metaSection.content
+  )?.[1];
+  const owningSpec = resolveOwningSpec(file);
+  const expectedSpecHref = owningSpec.ok
+    ? (() => {
+        const href = relative(dirname(file), owningSpec.specPath).split(sep).join('/');
+        return href.startsWith('.') ? href : `./${href}`;
+      })()
+    : null;
+  const ownerLine = content
+    .split('\n')
+    .findIndex((sourceLine) => sourceLine.includes('**Structural Owner:**'));
+  const scopeLine = content
+    .split('\n')
+    .findIndex((sourceLine) => sourceLine.includes('**Scope:**'));
+  const line = Math.max(1, ownerLine >= 0 ? ownerLine + 1 : scopeLine + 1);
   if (owner.reason || !owner.scope) {
     return [
       {
         severity: 'error',
         code: 'SDD_TASK_OWNER_METADATA',
         file,
-        message: `Ticket path has no unambiguous structural owner: ${owner.reason ?? 'scope missing'}. Move/recreate it through its exact sdd-new owner ToolCall; do not guess Meta ownership.`,
+        line,
+        message: `[META] Fix: recreate/move the ticket through its exact sdd-new owner call; the path has no unambiguous structural owner: ${owner.reason ?? 'scope missing'}.`,
       },
     ];
   }
-  if (meta.scope === owner.scope && (meta.module ?? 'N/A') === expectedModule) return [];
+  const scopeSpec = resolve(repoRoot, 'specs', owner.scope, `${owner.scope}.spec.md`);
+  let structuralOwnerKind = expectedOwner;
+  try {
+    const decomposition = resolveScopeDecomposition(scopeSpec);
+    structuralOwnerKind =
+      decomposition.status === 'flat'
+        ? 'infrastructure-flat'
+        : owner.module
+          ? 'module'
+          : 'scope-bootstrap';
+  } catch {
+    // resolveTaskOutputOwnership already carries the fail-closed structural result used above.
+  }
+  if (
+    meta.scope === owner.scope &&
+    (meta.module ?? 'N/A') === expectedModule &&
+    structuralOwner === structuralOwnerKind &&
+    expectedSpecHref !== null &&
+    owningSpecClaim === expectedSpecHref
+  )
+    return [];
   return [
     {
       severity: 'error',
       code: 'SDD_TASK_OWNER_METADATA',
       file,
-      message: `Replace the complete owner metadata with "- **Scope:** ${owner.scope}" and "- **Module:** ${expectedModule}".`,
+      line,
+      message: `[META] Fix: replace the owner block with "- **Scope:** ${owner.scope}\n- **Module:** ${expectedModule}\n- **Structural Owner:** ${structuralOwnerKind}\n- **Owning Spec:** [Owning spec](${expectedSpecHref ?? '<recreate through sdd-new>'})".`,
     },
   ];
+}
+
+/** @purpose Validate exact existing READ / future CREATE path claims for one authoring slice using the dispatch path validator. */
+function checkAuthoringTargetPaths(
+  file: string,
+  content: string,
+  repoRoot: string,
+  phaseId?: string
+): Finding[] {
+  const overview = extractSection(content, 'PHASES_OVERVIEW');
+  const phases = overview.status === 'ok' ? parsePhasesOverview(overview.content) : [];
+  const phaseIds = phaseId ? [phaseId] : phases.map((phase) => phase.id);
+  if (phaseIds.length === 0) return [];
+  const validation = validateTicketReviewPaths(repoRoot, content, {
+    phaseIds,
+    targetExpectation: 'dispatch',
+    deletedPhaseIds: phaseIds,
+    handoffPhaseIds: [],
+  });
+  if (validation.ok) return [];
+  const section =
+    phaseIds.find((id) => {
+      const extracted = extractSection(content, `PHASE_${id}`);
+      return extracted.status === 'ok' && extracted.content.includes(validation.path);
+    }) ??
+    phaseId ??
+    phaseIds[0] ??
+    'P1';
+  const lineIndex = content
+    .split('\n')
+    .findIndex((sourceLine) => sourceLine.includes(validation.path));
+  return [
+    {
+      severity: 'error',
+      code: 'SDD_AUTHORING_TARGET_PATH',
+      file,
+      line: lineIndex >= 0 ? lineIndex + 1 : 1,
+      message: `[PHASE_${section}] Fix: replace "${validation.path}" with one exact repo-relative file path (existing = READ, absent = CREATE); no glob, directory, absolute path, traversal, or symlink. Detail: ${validation.detail}. Example: "src/toolchain.ts".`,
+    },
+  ];
+}
+
+/** @purpose Normalize every exact-ticket authoring diagnostic to the same line-addressed, copy-ready protocol. */
+function normalizeAuthoringFinding(finding: Finding, content: string): Finding {
+  const explicitSection = /^\[([A-Z0-9_]+)\]\s*/.exec(finding.message)?.[1];
+  const section =
+    explicitSection ??
+    (finding.code.includes('TEST_COVERAGE') ||
+    /SDD_BDD_(?:COVERAGE|TESTFILE|DEFERRED|PHASE)/.test(finding.code)
+      ? 'TEST_COVERAGE'
+      : finding.code.startsWith('SDD_BDD_')
+        ? 'BDD'
+        : /(?:META|TASK_ID|STATUS|SPEC_REF|OWNER_METADATA)/.test(finding.code)
+          ? 'META'
+          : /(?:PHASE|RULES_CASCADE)/.test(finding.code)
+            ? 'PHASES_OVERVIEW'
+            : /(?:VERIFICATION|COVERAGE_POLICY)/.test(finding.code)
+              ? 'VERIFICATION'
+              : finding.code.includes('EXECUTION')
+                ? 'EXECUTION_LOG'
+                : 'TICKET');
+  const sectionLine =
+    section === 'TICKET'
+      ? 1
+      : Math.max(
+          1,
+          content.split('\n').findIndex((line) => line.includes(`<!--SECTION:${section}-->`)) + 1
+        );
+  const detail = explicitSection
+    ? finding.message.replace(/^\[[A-Z0-9_]+\]\s*/, '')
+    : finding.message;
+  const actionable = /^(?:Fix|Example):/.test(detail) ? detail : `Fix: ${detail}`;
+  return {
+    ...finding,
+    line: finding.line ?? sectionLine,
+    message: `[${section}] ${actionable}`,
+  };
 }
 
 /**
@@ -988,6 +1198,7 @@ export async function run(
       {
         task: { aliases: ['task'], takesValue: true },
         authoring: ['authoring'],
+        phase: { aliases: ['phase'], takesValue: true },
         all: ['all'],
         changed: ['changed'],
         scaffoldFeasibility: ['scaffold-feasibility'],
@@ -1005,6 +1216,7 @@ export async function run(
     parsedPositionals[0] === 'sdd-check' ? parsedPositionals.slice(1) : parsedPositionals;
   const invalidValue = [
     ['--task', args.task],
+    ['--phase', args.phase],
     ['--review-publication', args.reviewPublication],
     ['--review-ready', args.reviewReady],
     ['--review-state', args.reviewState],
@@ -1021,6 +1233,7 @@ export async function run(
 
   const taskPath = typeof args.task === 'string' ? args.task : undefined;
   const authoring = args.authoring === true;
+  const authoringPhase = typeof args.phase === 'string' ? args.phase : undefined;
   const all = args.all === true;
   const changed = args.changed === true;
   const scaffoldFeasibility = args.scaffoldFeasibility === true;
@@ -1047,6 +1260,7 @@ export async function run(
     selectedModeCount !== 1 ||
     (taskSelected && positional.length > 0) ||
     (authoring && !taskSelected) ||
+    (authoringPhase !== undefined && (!taskSelected || !authoring)) ||
     (reviewReadySelected && positional.length > 0) ||
     ((all || changed || scaffoldFeasibility) && positional.length > 1)
   )
@@ -1055,8 +1269,13 @@ export async function run(
         ? 'choose exactly one mode'
         : authoring && !taskSelected
           ? '--authoring requires --task <ticket>'
-          : `unexpected positional argument(s): ${positional.join(' ')}`
+          : authoringPhase !== undefined && (!taskSelected || !authoring)
+            ? '--phase requires --authoring and --task <ticket>'
+            : `unexpected positional argument(s): ${positional.join(' ')}`
     );
+
+  if (authoringPhase !== undefined && !/^P[1-9][0-9]*$/.test(authoringPhase))
+    return badInvocation('--phase must match P<N>, for example P1');
 
   if (authoring && taskPath && looksLikeTaskId(taskPath))
     return badInvocation(
@@ -1512,24 +1731,49 @@ export async function run(
     if (resolved.resolvedFrom === 'id') {
       taskBanner = resolutionLine('sdd-check', resolved.id, resolved.path, repoRoot);
     }
-    findings.push(...checkTicket(effectivePath, content));
-    if (authoring) findings.push(...checkTicketAuthoringStructure(effectivePath, content));
-    if (authoring) findings.push(...checkTicketOwnerMetadata(resolved.path, content, repoRoot));
+    if (!authoringPhase) findings.push(...checkTicket(effectivePath, content));
+    if (authoring)
+      findings.push(...checkTicketAuthoringStructure(effectivePath, content, authoringPhase));
+    if (authoring && !authoringPhase)
+      findings.push(...checkTicketOwnerMetadata(resolved.path, content, repoRoot));
+    if (authoring)
+      findings.push(...checkAuthoringTargetPaths(resolved.path, content, repoRoot, authoringPhase));
     if (!authoring)
       findings.push(...checkPhaseReceipts(effectivePath, resolved.path, content, repoRoot));
-    findings.push(...checkRuleLinks(effectivePath, content, repoRoot));
-    findings.push(...checkSpecRefs(effectivePath, content));
+    findings.push(
+      ...checkRuleLinks(
+        effectivePath,
+        content,
+        repoRoot,
+        authoring
+          ? { phaseIds: authoringPhase ? [authoringPhase] : undefined, authoring: true }
+          : undefined
+      )
+    );
+    if (!authoringPhase) findings.push(...checkSpecRefs(effectivePath, content));
     if (!authoring) findings.push(...checkResearchRefs(effectivePath, content));
     if (!authoring) findings.push(...(await checkSpecMermaid(effectivePath, content)));
-    findings.push(...checkTicketRulesCascade(effectivePath, content, repoRoot));
-    findings.push(...checkTicketBddCoverage(effectivePath, content, repoRoot));
+    findings.push(
+      ...checkTicketRulesCascade(
+        effectivePath,
+        content,
+        repoRoot,
+        authoring
+          ? { phaseIds: authoringPhase ? [authoringPhase] : undefined, authoring: true }
+          : undefined
+      )
+    );
+    if (!authoringPhase) findings.push(...checkTicketBddCoverage(effectivePath, content, repoRoot));
     if (!authoring) findings.push(...checkTicketCoveragePolicy(effectivePath, content));
     if (!authoring && specFlowVersion(resolve(effectivePath)) === 'v2')
       findings.push(...checkSpecLanguage(effectivePath, content));
-    if (isV2SpecsTicket(effectivePath))
+    if (!authoringPhase && isV2SpecsTicket(effectivePath))
       findings.push(...checkTaskIdGrammar(effectivePath, content));
-    for (const finding of findings.slice(firstTaskFinding)) {
-      if (resolve(finding.file) === resolved.path) finding.file = displayPath;
+    for (let index = firstTaskFinding; index < findings.length; index++) {
+      const finding = findings[index] as Finding;
+      if (resolve(finding.file) === resolved.path)
+        finding.file = authoring ? relative(repoRoot, resolved.path) : displayPath;
+      if (authoring) findings[index] = normalizeAuthoringFinding(finding, content);
     }
     fileCount = 1;
   } else if (changed) {

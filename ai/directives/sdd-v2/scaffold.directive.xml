@@ -186,8 +186,6 @@
 
 
 
-
-
     <Axiom id="AX_CAP_5">Five critic results is the hard automatic cap. At the fifth result — regardless
       of sensor verdict — the operator must dispose the cycle before readiness or another dispatch. If that
       round made no edits, the choices are `CLEAN`, `CONTINUE THROUGH ROUND N` with an explicit higher cap,
@@ -291,8 +289,6 @@
     | `H_NO_SPECS` | `specs/README.md` absent, or no approved scope spec to scaffold |
     | `H_SCOPE_NOT_DECOMPOSED` | Scope type is missing/ambiguous; product/library Module Map is not a non-empty exact manifest of its canonical module specs; or an interface is used as a task owner. Start the nested same-chain module-decomposition correction below, preserve `intent: scaffold` and the exact bounded target-set, then return to scaffold `STEP_0_INTAKE`; infrastructure is the sole flat-scope exception. |
     | `H_AMBIGUOUS_MODE` | Tasks exist + mode verb absent (per `AX_MODE_AUTO_DETECT_OR_HALT`) |
-    | `H_MISSING_RULE_FILE` | A rule reference or `<DependsOn>` entry does not resolve to an existing file (`AX_RULES_RESOLUTION_HARD_FAIL`) |
-    | `H_RULES_CYCLE` | `<DependsOn>` closure cycles during per-phase rule activation (STEP_3) |
     | `H_VERIFICATION_COMMAND_MISSING` | A `<RequiresVerification>` alias is absent from infra-spec Verification Commands (alias, ticket ID) |
     | `H_BOOTSTRAP_REQUIREMENTS_MISSING` | The target scope being scaffolded (the intake target) lacks a Bootstrap Requirements section — checked ONLY for that scope, not for every ✅ scope in the Portal (did not pass the scope flow) |
     | `H_SPEC_SCHEMA_INVALID` | `sdd-state` reports the target scope/module spec as `invalid`; structural evidence is ambiguous and only its owning authoring flow may repair it |

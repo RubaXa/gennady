@@ -26,6 +26,8 @@
   - **Purpose:** <semantic goal one-liner>
   - **Scope:** <scope-name>
   - **Module:** <module-name or N/A>
+  - **Structural Owner:** <infrastructure-flat | scope-bootstrap | module>
+  - **Owning Spec:** [Owning spec](<relative owning spec path>)
   - **Dependencies:** <comma-separated Task-IDs or None>
   - **Reopens:** <count> (<YYYY-MM-DD> — <last reason>)   <!-- omit when 0 -->
   - **Spec References:**   <!-- one anchor PER contract — makes the contract set enumerable for the typing-scenario check -->

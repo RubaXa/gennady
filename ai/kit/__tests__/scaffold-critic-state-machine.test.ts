@@ -179,9 +179,10 @@ describe('scaffold feasibility-critic state machine', () => {
         );
       }
       assert.doesNotMatch(loop, /result="taskManifest"/);
-      assert.match(loop, /This table is exhaustive; interface maps to none/);
-      assert.match(loop, /Select only the next unprocessed STEP_2 node/);
-      assert.match(loop, /Green: only then may the next node's content be formed/);
+      assert.match(loop, /This table is exhaustive;\s+interface maps to none/);
+      assert.match(loop, /Select the current unprocessed STEP_2 node/);
+      assert.match(loop, /result="phaseAuthoringFeedback"/);
+      assert.match(loop, /GREEN authoringGate authorizes\s+selecting the next STEP_2 node/);
     }
   });
 

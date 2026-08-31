@@ -68,7 +68,16 @@ describe('SDD session lifetime contract', () => {
     assert.match(step(module, 'STEP_6_FINAL_HIERARCHY'), /hand off to scaffold.+TerminalDecision: continue/s);
     assert.match(step(lifecycle, 'STEP_4_AWAIT'), /TerminalDecision: pause.+preserve the SDD session/s);
     assert.match(step(lifecycle, 'STEP_6_MERGE_REVIEWED_COMMIT'), /TerminalDecision: continue.+downstream handoff/s);
-    assert.match(step(scaffold, 'STEP_5_FINALIZE'), /execute in the SAME session.+TerminalDecision: continue/s);
+    const scaffoldFinalize = step(scaffold, 'STEP_5_FINALIZE');
+    assert.match(scaffoldFinalize, /navigation `AskUserQuestion`.+not a third approval gate/s);
+    assert.match(
+      scaffoldFinalize,
+      /`execute now — \/sdd-execute`.+execute\.directive\.xml.+same session.+TerminalDecision: continue/s
+    );
+    assert.match(
+      scaffoldFinalize,
+      /`stop here`.+keep the ready tickets and open session intact.+TerminalDecision: pause/s
+    );
 
     const capAndBlockerSources = [scaffold, execute, lifecycle].join('\n');
     assert.match(capAndBlockerSources, /active cap.+TerminalDecision: pause/s);

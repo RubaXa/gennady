@@ -10,17 +10,11 @@
         2. overlay the target-scope tier (scope spec Effective Rules for infra; Rules for
            product/library), then each `module:<name>` tier (module spec Handoff Module Rules
            Additions), then task-tier rules the operator supplied — later tier wins on collision;
-        3. resolve every rule ref to an existing file (`AX_RULES_RESOLUTION_HARD_FAIL`, else
-           `H_MISSING_RULE_FILE`);
-        4. build the per-scope Cascade Table (Scope × Categories) destined for
+        3. build the per-scope Cascade Table (Scope × Categories) destined for
            `specs/<scope>/<scope>.3-tasks.md`.
         No operator stop — mechanical.
       </Action>
     </Step>
-
-<Axiom id="AX_RULES_RESOLUTION_HARD_FAIL">
-      **All rule references must resolve; missing rule = abort.** Sources: scope spec (Effective Rules for infra; Rules for product/library), module spec (Handoff Module Rules Additions), task (operator-supplied at STEP_4). Each ref must exist as `ai/directives/<category>/<rule>.xml`. On miss: abort with explicit list. A placeholder rule reference (TBD, `<rule>`, "to be authored", any unresolved name) = abort, never write a ticket against it.
-    </Axiom>
 
 <Axiom id="AX_RULES_CASCADE_RESOLUTION">
       **Effective rule-set per task = union of 4 tiers; later tier overrides earlier on collision.**

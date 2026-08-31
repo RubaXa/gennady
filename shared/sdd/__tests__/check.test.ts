@@ -4,7 +4,22 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { checkTicket, isTicket, scanBlockerTrail, parsePhaseHandoffs } from '../check.ts';
+import { readFileSync } from 'node:fs';
+import {
+  checkTicket,
+  checkTicketAuthoringStructure,
+  isTicket,
+  scanBlockerTrail,
+  parsePhaseHandoffs,
+} from '../check.ts';
+
+const AUTHORING_CORRECTED = readFileSync(
+  new URL(
+    '../../../cli/cmd/sdd-check/__tests__/fixtures/authoring/corrected.task.md',
+    import.meta.url
+  ),
+  'utf-8'
+);
 
 const CLEAN = [
   '<!--SECTION:META-->',
@@ -22,6 +37,45 @@ const CLEAN = [
 function codes(content: string): string[] {
   return checkTicket('t.md', content).map((f) => f.code);
 }
+
+describe('checkTicketAuthoringStructure', () => {
+  it('accepts the complete corrected authoring fixture', () => {
+    assert.deepStrictEqual(checkTicketAuthoringStructure('ticket.md', AUTHORING_CORRECTED), []);
+  });
+
+  it('limits phase mode to the requested phase plus its dependency boundary', () => {
+    const brokenLaterPhase = AUTHORING_CORRECTED.replace(
+      '- **Objective:** prove the toolchain contract behavior',
+      '- **Objective:** <objective>'
+    );
+    assert.deepStrictEqual(checkTicketAuthoringStructure('ticket.md', brokenLaterPhase, 'P1'), []);
+    assert.ok(
+      checkTicketAuthoringStructure('ticket.md', brokenLaterPhase, 'P2').some(
+        (finding) =>
+          finding.code === 'SDD_AUTHORING_PHASE_INCOMPLETE' &&
+          finding.message.startsWith('[PHASE_P2] Fix:')
+      )
+    );
+  });
+
+  it('reports dependency, contract, and test-phase mapping drift with stable codes and lines', () => {
+    const broken = AUTHORING_CORRECTED.replace('- **Inputs:** P1 handoff', '- **Inputs:** none')
+      .replace('[`contract`]', '[`unit`]')
+      .replace('`test/toolchain.test.ts` ::', '`test/unowned.test.ts` ::');
+    const findings = checkTicketAuthoringStructure('ticket.md', broken);
+
+    for (const code of [
+      'SDD_AUTHORING_PHASE_DEPENDENCY',
+      'SDD_AUTHORING_BDD_CONTRACT',
+      'SDD_AUTHORING_BDD_PHASE',
+    ]) {
+      const finding = findings.find((candidate) => candidate.code === code);
+      assert.ok(finding, `missing ${code}`);
+      assert.ok((finding.line ?? 0) > 0, `${code} must carry an absolute file line`);
+      assert.match(finding.message, /^\[[A-Z0-9_]+\] (?:Fix:|Example:)/);
+    }
+  });
+});
 
 describe('isTicket', () => {
   it('recognizes a ticket by META + EXECUTION_LOG', () => {
