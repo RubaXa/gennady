@@ -40,7 +40,7 @@ setup ──► discovery ──► module-decomposition? ──► scaffold ─
 | `scaffold.directive.xml`             | Строит DAG task-тикетов с Phases Overview, BDD, правилами per phase                 | Все scope-specs             | `tasks/README.md`, `tasks/<scope>/*.task-NN.md` |
 | `phase-execution-protocol.xml`       | Выполняет ОДНУ фазу одного тикета (диспетчится `sdd-execute` оркестратором)         | Phase ID + ticket + Handoff | Изменения в Target Files фазы + лог-блок        |
 | `audit.directive.xml`                | Проверяет выравнивание: spec ↔ тикет ↔ код; маппит finding-ы на фазы                | Закрытый Round + код        | Вердикт + `phases_to_fix`                       |
-| `critic.directive.xml`               | Оркестратор многораундовой критики спек/тасков (min 3 / max 5 раундов)              | Артефакт (спека/таск)       | Доработанный артефакт / вердикт CLEAN           |
+| `critic.directive.xml`               | Оркестратор критики: baseline → узкая проверка правок, CLEAN сразу / max 5          | Артефакт (спека/таск)       | Закрытые пробелы / вердикт CLEAN                |
 | `critic-protocol.xml`                | Изолированный критик-сабагент: read-only, только артефакт + родительская спека      | Артефакт                    | Находки (отчёт)                                 |
 | `fix.directive.xml`                  | Findings → классификация → план → фиксы → reopen → execute → verify                 | Находки (ревью/аудит/check) | Исправления + переоткрытые тикеты               |
 | `interview-protocol.xml`             | Движок интервью оператора: coverage map, один вопрос за сообщение                   | scope-type + focus          | Закрытая карта покрытия + ответы                |

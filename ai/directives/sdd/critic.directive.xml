@@ -1,24 +1,27 @@
-<SddCritic keywords="critic, spec-review, task-review, bdd-audit, blind-spot, autonomous-polish, multi-round, pre-execute, orchestration, language-register, next-step-menu" type="directive" ver="2.1">
+<SddCritic keywords="critic, spec-review, task-review, bdd-audit, blind-spot, autonomous-polish, multi-round, pre-execute, orchestration, language-register, next-step-menu" type="directive" ver="2.2">
   <DirectiveContext>
     <Mission>
-      Autonomous critique loop for SDD artifacts — spec, task, or batch (spec + all tasks). By default the critic surfaces only production-threatening defects (logic/correctness, unhandled failures, security, observability, design-evident resource leaks, broken contracts, spec drift), not mechanical polish (AX_POLISH_MODE). You are the ORCHESTRATOR in the root session. Per round: dispatch one isolated critic subagent, evaluate its findings against full project context, reconcile every introduced entity against existing surface (reuse > extend > justify > escalate), surgically edit the artifact, re-dispatch if edits applied (max 5 rounds). Batch: spec first, then tasks in DAG layers — parallel within a layer, sequential between layers. On CLEAN: delete `## Critic Rounds` (temporary scaffolding). Minimum 3 rounds before CLEAN is terminal — earlier CLEAN triggers one additional polish-pass.
+      Gap-closing critique loop for SDD artifacts — spec, task, or batch (spec + all tasks). By default the critic surfaces only evidence-backed, production-threatening defects already implied by the artifact's requirements (logic/correctness, unhandled failures, security, observability, design-evident resource leaks, broken contracts, spec drift), not alternative designs or mechanical polish (AX_POLISH_MODE). You are the ORCHESTRATOR in the root session. Round 1 is the baseline review. After accepted fixes, dispatch a focused verification round limited to those fixes and their regressions; do not restart a broad review. Evaluate findings against full project context, surgically close genuine gaps in the current artifact only, and stop immediately on CLEAN (max 5 rounds as an emergency cap). Batch: spec first, then tasks in DAG layers — parallel within a layer, sequential between layers. On CLEAN: delete `## Critic Rounds` (temporary scaffolding).
     </Mission>
   </DirectiveContext>
 
   <BeliefState>
     <Axiom id="AX_OWNER">Orchestrator owns artifact, applies edits. The critic only reports, never edits.</Axiom>
-    <Axiom id="AX_ISOLATION_SIGNAL">Critic receives ONLY artifact + parent spec. Confusion = underspecification. Fix the artifact.</Axiom>
-    <Axiom id="AX_RE_DISPATCH">SUBSTANTIVE edit on a non-CLEAN verdict → re-dispatch mandatory: an edit can create contradictions only a fresh isolated agent will catch. Edits on a post-round-3 CLEAN verdict do NOT re-dispatch (AX_CLEAN_TERMINAL). Before round 3, CLEAN triggers ONE additional polish-pass round. Language-register wording edits (AX_LANGUAGE_REGISTER_CHANNEL replacements, meaning untouched) are NOT substantive — alone they never trigger a re-dispatch.</Axiom>
-    <Axiom id="AX_CLEAN_TERMINAL">After round 3: CLEAN is terminal — no more findings, conclude immediately. Before round 3: CLEAN → one additional polish-pass round (MINOR polish only, risk-free on a converged artifact), then conclude regardless of that round's verdict. Never spend more than one polish-pass re-validating an already-clean artifact. A polish-pass round does NOT restart the round counter for CLEAN termination.</Axiom>
-    <Axiom id="AX_MIN_ROUNDS">Minimum 3 rounds of dispatch + edit. The critic must exercise the full loop at least 3 times — a single-pass or two-pass critique misses contradictions introduced by intermediate edits. Round 1: baseline. Round 2: re-critique after first edits. Round 3: convergence check. After round 3, CLEAN is truly terminal.</Axiom>
+    <Axiom id="AX_ISOLATION_SIGNAL">Critic receives ONLY artifact + parent spec. Confusion is evidence to classify, never proof that the artifact is underspecified. The orchestrator uses full project context to distinguish an artifact gap from missing local context (AX_CONFUSION_TRIAGE).</Axiom>
+    <Axiom id="AX_RE_DISPATCH">SUBSTANTIVE edit on a non-CLEAN verdict → dispatch one focused verification round: verify accepted fixes and contradictions introduced by those edits, not the whole artifact again (AX_ROUND_FRONTIER). Edits on CLEAN do NOT re-dispatch (AX_CLEAN_TERMINAL). Language-register wording edits (AX_LANGUAGE_REGISTER_CHANNEL replacements, meaning untouched) are NOT substantive — alone they never trigger a re-dispatch.</Axiom>
+    <Axiom id="AX_CLEAN_TERMINAL">CLEAN is terminal at any round — conclude immediately. Optional MINOR polish MAY be applied on CLEAN but does NOT trigger another round. Never spend a round re-validating an already-clean artifact.</Axiom>
     <Axiom id="AX_STOP_NO_EDITS">Zero edits → stop. Unchanged input → unchanged verdict → infinite loop.</Axiom>
     <Axiom id="AX_CAP_5">Max 5 rounds. Round 5 + edits + not CLEAN → stop, flag MAX_ROUNDS.</Axiom>
     <Axiom id="AX_REJECTION_REASON">Every rejection cites specific context: file, section, entity that resolves the concern. No vague "more context."</Axiom>
-    <Axiom id="AX_DEFAULT_ACCEPT">Uncertain → ACCEPT. Cost of rejecting real finding > cost of accepting marginal one. Applies to CLARIFYING findings (close a gap, fix a ref, fill a placeholder). For ADDITIVE findings it inverts — see AX_NECESSITY_FIRST.</Axiom>
+    <Axiom id="AX_FINDING_EVIDENCE">A blocking finding must cite the existing requirement, invariant, scenario, or artifact location it contradicts; name what concretely breaks, for whom, and when. An ambiguity finding must also name two plausible incompatible implementations. No anchor or no concrete breakage → not a blocking finding.</Axiom>
+    <Axiom id="AX_DEFAULT_ACCEPT">Uncertainty alone is NOT a blocking finding. ACCEPT only an artifact gap that passes AX_FINDING_EVIDENCE. A preference, alternative design, missing local convention, or question without concrete breakage → REJECT as blocking and classify through AX_CONFUSION_TRIAGE when applicable.</Axiom>
     <Axiom id="AX_NECESSITY_FIRST">Additive finding = one demanding NEW surface to guard a failure (entity, type, error-kind, Result wrapper, parameter, dependency, decision, observability hook). For these the default inverts: before accepting, name the concrete failure it guards (I/O error, invalid external input, dependency crash). Cancellation / dispose / abort / shutdown is NOT a failure — it is a "stop" outcome (null/sentinel), no error contract needed. No nameable failure → REJECT; do not grow the surface. (AX_REUSE_FIRST blocks duplicate surface; this blocks unnecessary surface.)</Axiom>
-    <Axiom id="AX_CONFUSION_BUG">Critic confusion ("don't understand X") → artifact underspecified → ALWAYS accept, clarify.</Axiom>
+    <Axiom id="AX_CONFUSION_TRIAGE">Classify each confusion point: ARTIFACT_GAP when two plausible implementations conflict and concrete breakage follows → evaluate as a finding; CONTEXT_MISSING when a local convention or unavailable project fact would answer it → orchestrator resolves context, no artifact edit; NON_BLOCKING_QUESTION when correctness is unchanged → record only when useful, no artifact edit.</Axiom>
+    <Axiom id="AX_ROUND_FRONTIER">Round 1 = baseline review. Round 2+ = verification of previously accepted fixes, still-open findings, and regressions directly introduced in changed sections. A new independent design concern discovered after round 1 is not folded into this loop: surface it to the orchestrator and stop with H_AUTHORING_REQUIRED instead of editing and opening another review frontier.</Axiom>
+    <Axiom id="AX_ARTIFACT_BOUNDARY">A critic loop may edit only the artifact currently under review. A finding requiring changes to the parent spec, DAG, sibling tasks, or project-wide conventions → H_AUTHORING_REQUIRED. Do not turn a single-artifact review into a systemic authoring pass.</Axiom>
+    <Axiom id="AX_SAME_MECHANISM_STOP">If two consecutive rounds find a substantive defect in the same mechanism, surgical wording is not converging. Stop with H_AUTHORING_REQUIRED and propose a separate design/scaffold decision; do not consume another critic round on the same mechanism.</Axiom>
     <Axiom id="AX_SURGICAL">Close the gap only. No restructure, rewrite, restyle. Structural overhaul → suggest re-scaffold, stop.</Axiom>
-    <Axiom id="AX_REUSE_FIRST">Only the orchestrator holds full project context, so only it can detect duplication against existing code/specs (the isolated critic cannot). For every entity/type/method/contract the artifact introduces, reconcile before accepting: REUSE existing (adapt artifact to it) > EXTEND existing > JUSTIFY new (one-line rationale in artifact: why existing surface is insufficient) > ESCALATE to operator. Unjustified new surface is a finding to resolve, not wave through. Bias toward consolidation — don't add a duplicate entity each round.</Axiom>
+    <Axiom id="AX_REUSE_FIRST">Only the orchestrator holds full project context, so only it can detect duplication against existing code/specs (the isolated critic cannot). Reconcile only entities/types/methods/contracts implicated by an accepted finding: REUSE existing (adapt artifact to it) > EXTEND existing > JUSTIFY new (one-line rationale in artifact: why existing surface is insufficient) > ESCALATE to operator. Do not sweep every entity in the artifact during critique; that is authoring, not gap closure.</Axiom>
     <Axiom id="AX_SCRATCH_LOG">`## Critic Rounds` = temporary working memory for orchestrator between rounds. Deleted on final CLEAN.</Axiom>
     <Axiom id="AX_TASK_PARALLEL">Tasks critiqued in DAG layers. Same layer (no inter-dependencies) → parallel dispatch. Different layers → sequential.</Axiom>
     <Axiom id="AX_POLISH_MODE">Default dispatch is `Polish: off` → report only CRITICAL/MAJOR (production-threatening logic, failure, security, observability, design-evident leak, contract, alignment defects). Set `Polish: on` ONLY when the operator explicitly asks for nits ("шлифуй", "и мелочи", "polish"). MINOR/INFO never drive the loop or the verdict — include them as a non-blocking list when requested.</Axiom>
@@ -69,19 +72,23 @@
     | H_PARENT_SPEC_MISSING | Task scope spec not found |
     | H_DISPATCH_FAILED | Critic subagent dispatch failed twice |
     | H_STRUCTURAL | Artifact needs restructuring beyond surgical edits |
+    | H_AUTHORING_REQUIRED | Finding needs a new requirement, cross-artifact change, or repeated redesign rather than gap closure |
   </HaltConditions>
 
   <AntiPatterns>
     <Pattern id="AP_SELF_CRITIQUE">Critiquing artifact yourself. Dispatch isolated critic.</Pattern>
     <Pattern id="AP_DELEGATE_LOOP">Letting the dispatched critic run the rounds, reconcile entities, or edit the artifact. The critic is read-only single-pass (critic-protocol AX_READ_ONLY); the ROOT session owns the round loop, reuse-reconciliation (STEP_2B), accept/reject, and ALL edits. If a critic returns applied edits or a multi-round report, treat it as overreach: keep only its findings, discard the rest, run STEP_2→5 yourself.</Pattern>
-    <Pattern id="AP_NO_RE_DISPATCH">Edits without re-dispatch. Edit invalidates prior verdict.</Pattern>
+    <Pattern id="AP_NO_RE_DISPATCH">Substantive edits after a non-CLEAN verdict without focused verification. Such an edit invalidates the prior verdict.</Pattern>
     <Pattern id="AP_SPIN">Re-dispatch with zero edits. Same input → same verdict.</Pattern>
-    <Pattern id="AP_POLISH_SPIN">Re-dispatching after a post-round-3 CLEAN verdict to re-validate optional MINOR polish. CLEAN is terminal after round 3 (AX_CLEAN_TERMINAL).</Pattern>
+    <Pattern id="AP_POLISH_SPIN">Re-dispatching after any CLEAN verdict to re-validate optional MINOR polish. CLEAN is terminal (AX_CLEAN_TERMINAL).</Pattern>
     <Pattern id="AP_OVEREDIT">Rewriting sections. Close the gap, don't redecorate.</Pattern>
-    <Pattern id="AP_DISMISS_CONFUSION">Ignoring "I don't understand X". Always fix.</Pattern>
+    <Pattern id="AP_CONFUSION_TO_EDIT">Treating every "I don't understand X" as an artifact defect. Classify it through AX_CONFUSION_TRIAGE first.</Pattern>
     <Pattern id="AP_VAGUE_REJECT">Rejecting without citing specific context.</Pattern>
-    <Pattern id="AP_ENTITY_SPRAWL">Accepting a new entity/type/method without first searching the project for one to reuse or extend. New surface every round = sprawl.</Pattern>
+    <Pattern id="AP_ENTITY_SPRAWL">Accepting a new entity/type/method implicated by a finding without first searching the project for one to reuse or extend. New surface every round = sprawl.</Pattern>
     <Pattern id="AP_PHANTOM_ACCEPT">Accepting an additive finding (new error-kind, Result wrapper, param, dependency) without naming the real failure it guards. Cancellation/dispose/abort is not a failure (AX_NECESSITY_FIRST).</Pattern>
+    <Pattern id="AP_COAUTHOR">Using critique to add requirements, compare alternative designs, improve completeness, or rewrite neighboring artifacts. Critic closes evidence-backed gaps in the current artifact only.</Pattern>
+    <Pattern id="AP_NEW_FRONTIER">Running a fresh full audit after round 1 or folding an unrelated late concern into the active loop. Verification rounds stay on the accepted-fix frontier (AX_ROUND_FRONTIER).</Pattern>
+    <Pattern id="AP_CROSS_ARTIFACT_EDIT">Editing parent spec, DAG, sibling tasks, or conventions while critiquing one artifact (AX_ARTIFACT_BOUNDARY).</Pattern>
   </AntiPatterns>
 
   <ExecutionPlan>
@@ -105,7 +112,9 @@
         ```
         Step 1 — Read directive: ai/directives/sdd/critic-protocol.xml
         Step 2 — Activate. Announce: "🔒 SddCriticProtocol"
-        Step 3 — Apply. Artifact: <path>, Parent spec: <path|N/A>, Round: <N>, Polish: <on|off>.
+        Step 3 — Apply. Artifact: <absolute-path>, Parent spec: <absolute-path|N/A>, Round: <N>, Review mode: <baseline|verification>, Polish: <on|off>.
+        Previous accepted findings: <N/A|list>.
+        Changed sections since previous round: <N/A|list>.
         Follow ExecutionPlan. Do not deviate.
 
         HARD CONSTRAINTS — override any contrary impulse:
@@ -120,19 +129,20 @@
     <Step id="2_EVALUATE">
       <Goal>Classify findings: ACCEPT or REJECT.</Goal>
       <Action>
-        ACCEPT: genuine gap, misunderstanding reveals ambiguity, would break downstream agent, or uncertain (AX_DEFAULT_ACCEPT).
-        REJECT: misreading no competent agent would make AND specific context cited that resolves it.
+        ACCEPT: evidence-backed artifact gap that passes AX_FINDING_EVIDENCE and can be closed surgically in the current artifact.
+        REJECT as blocking: preference, alternative design, uncertainty without evidence, missing local context, or a misreading resolved by specific project context (AX_DEFAULT_ACCEPT, AX_CONFUSION_TRIAGE).
         ADDITIVE finding (demands new surface) → apply AX_NECESSITY_FIRST: accept ONLY if you can name the concrete failure it guards; cancellation/dispose/abort is not a failure → REJECT and keep the surface minimal.
-        Confusion points → ALWAYS accept (AX_CONFUSION_BUG).
+        Confusion points → classify ARTIFACT_GAP | CONTEXT_MISSING | NON_BLOCKING_QUESTION (AX_CONFUSION_TRIAGE). Only ARTIFACT_GAP enters ACCEPT/REJECT.
+        In verification mode, a new independent concern outside previous findings and changed sections → H_AUTHORING_REQUIRED after recording it; do not edit it inside this loop (AX_ROUND_FRONTIER).
         `## Язык (не блокирует)` hits (AX_LANGUAGE_REGISTER_CHANNEL in critic-protocol) → apply as surgical wording edits by default (quote → replacement, meaning untouched); they never count toward the verdict and never justify a re-dispatch on their own.
-        Go to STEP_2B (reconcile entities) — always, even with zero accepted findings.
+        Go to STEP_2B only for accepted findings that introduce or change surface. Otherwise go to STEP_3 with accepted non-surface gaps, or STEP_5 when there are no edits.
       </Action>
     </Step>
 
     <Step id="2B_RECONCILE">
       <Goal>Reuse-first reconciliation — orchestrator-only, uses full project context (AX_REUSE_FIRST).</Goal>
       <Action>
-        Round 1: reconcile EVERY entity/type/method/contract the artifact introduces. Later rounds: reconcile only newly-introduced or critic-flagged (parsimony) ones.
+        Reconcile only the entity/type/method/contract implicated by an accepted finding. Never inventory every surface in the artifact during critique.
         For each, search the project (code + sibling specs) for surface that already covers it, then classify:
         - REUSE — existing covers it → edit artifact to point at it, drop the new declaration (surgical).
         - EXTEND — existing should grow → note the extension target in the artifact, drop the duplicate (surgical).
@@ -145,7 +155,7 @@
     <Step id="3_EDIT">
       <Goal>Surgical edit.</Goal>
       <Action>
-        Per accepted finding: add missing BDD scenario, clarify boundary, correct entity ref, fill placeholder. Per reconcile decision: point at existing surface (REUSE/EXTEND) or record new-entity rationale (JUSTIFY). Target only the gap. Structural rewrite or entity merge/removal → H_STRUCTURAL / ESCALATE.
+        Per accepted finding: add a required missing BDD scenario, clarify the ambiguous boundary, correct the conflicting entity ref, or fill a blocking placeholder. Per reconcile decision: point at existing surface (REUSE/EXTEND) or record new-entity rationale (JUSTIFY). Target only the gap in the current artifact. A parent-spec/DAG/sibling edit → H_AUTHORING_REQUIRED. Structural rewrite or entity merge/removal → H_STRUCTURAL / ESCALATE.
       </Action>
     </Step>
 
@@ -155,9 +165,11 @@
         Create/append `## Critic Rounds`:
         ```
         ### Round N — YYYY-MM-DD
+        - Mode: <baseline|verification>
         - Verdict: <CLEAN|NEEDS_WORK|CRITICAL>
         - Accepted: N — <list>
         - Rejected: N — "<finding>" → <reason>
+        - Context: <CONTEXT_MISSING items resolved by orchestrator | none>
         - Reconcile: <entity → REUSE <target> | EXTEND <target> | JUSTIFY <rationale> | ESCALATE>
         - Changes: <list>
         ```
@@ -168,9 +180,10 @@
     <Step id="5_DECIDE">
       <Goal>Re-dispatch or conclude.</Goal>
       <Action>
-        Verdict CLEAN AND round ≥ 3 → conclude (go to STEP_6). CLEAN before round 3 → one additional polish-pass round, then conclude regardless (AX_CLEAN_TERMINAL, AX_MIN_ROUNDS).
-        Else: SUBSTANTIVE edits applied AND round < 5 → round++, go to STEP_1 (language-register wording edits alone do not count — per AX_RE_DISPATCH).
+        Verdict CLEAN → conclude immediately (go to STEP_6), regardless of round number or optional MINOR wording edits (AX_CLEAN_TERMINAL).
         No edits → conclude (go to STEP_6).
+        Same mechanism received substantive findings in two consecutive rounds → H_AUTHORING_REQUIRED (AX_SAME_MECHANISM_STOP).
+        SUBSTANTIVE edits applied AND round < 5 → round++, set Review mode = verification, pass accepted findings + changed sections, go to STEP_1 (AX_RE_DISPATCH, AX_ROUND_FRONTIER).
         Round 5 → conclude, flag MAX_ROUNDS if not CLEAN.
       </Action>
     </Step>
@@ -219,7 +232,8 @@
         - scope spec (product/library) → «Декомпозиция на модули (рекомендую)» · «Scaffold + критик» · «Закончить сессию»;
         - scope spec (infrastructure/contracts) or module specs → «Scaffold + критик (рекомендую)» · «Сразу scaffold» · «Закончить сессию»;
         - task ticket(s) → «Выполнить (sdd-execute) (рекомендую)» · «Выполнить всю очередь (sdd-execute-batch)» · «Закончить сессию».
-        Not CLEAN → prepend «Показать нерешённые находки и решить вручную (рекомендую)» and demote the pipeline options.
+        Not CLEAN without a halt → prepend «Показать нерешённые находки и решить вручную (рекомендую)» and demote the pipeline options.
+        MAX_ROUNDS / H_STRUCTURAL / H_AUTHORING_REQUIRED → do NOT offer execution, scaffold, or another critic pass. Offer only «Вернуться к авторингу и изменить дизайн (рекомендую)» · «Показать нерешённые находки» · «Закончить сессию». A later critic run is a new baseline only after an explicit authoring change, never a reset of the same loop.
       </Action>
     </Step>
   </ExecutionPlan>
@@ -227,16 +241,20 @@
   <HardForbidden>
     - Self-critique. Dispatch critic.
     - Re-dispatch with zero edits.
-    - Re-dispatch after a post-round-3 CLEAN verdict (AX_CLEAN_TERMINAL) — CLEAN concludes the loop.
+    - Re-dispatch after any CLEAN verdict (AX_CLEAN_TERMINAL) — CLEAN concludes the loop.
     - >5 rounds.
+    - Reset/restart the same critic loop after MAX_ROUNDS without an explicit separate authoring change.
     - Rewrite artifact.
     - Share full context with critic.
+    - Run a broad baseline audit after round 1; verification rounds stay on changed sections and accepted findings.
+    - Accept uncertainty, CONTEXT_MISSING, or a design preference as a blocking finding.
+    - Edit parent spec, DAG, sibling tasks, or project conventions while reviewing one artifact.
     - Keep `## Critic Rounds` after CLEAN.
     - ACCEPT without edit.
     - REJECT without specific context.
     - Accept a new entity without reuse-first reconciliation (AX_REUSE_FIRST).
+    - Reconcile every entity in the artifact without an accepted finding implicating it.
     - Accept an additive finding without naming the concrete failure it guards (AX_NECESSITY_FIRST).
     - Structurally merge/remove entities yourself — ESCALATE instead.
-    - Stop before 3 rounds when edits exist and verdict is not CLEAN (AX_MIN_ROUNDS).
   </HardForbidden>
 </SddCritic>
