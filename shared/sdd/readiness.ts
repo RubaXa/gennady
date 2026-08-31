@@ -103,6 +103,8 @@ export type ReadinessResult = {
   missing: string[];
   /** @purpose Required scripts present but vacuous — a no-op stub, or a real command with `|| true` swallowing its exit code; never in `missing`. */
   stubbed: string[];
+  /** @purpose Canonical, de-duplicated gate aliases currently absent, vacuous, or structurally invalid, consumed by platform-neutral bootstrap ownership. */
+  missingGates: string[];
   /** @purpose Refined verdict: `not-ready` / `provisional` (bootstrap/scaffold may proceed, code phases may not) / `ready` (execution may proceed). */
   level: ReadinessLevel;
   /** @purpose True only at `level === 'ready'` — the gate for impl/refactor/test phases; bootstrap phases need only `ready`. */
@@ -168,14 +170,15 @@ function invokesGennady(cmd: string): boolean {
  * @purpose Resolve whether `lint` reaches a real gennady invocation, following run-hops deterministically.
  * @invariant Judged on comment-stripped, command-position tokens — a `# gennady` comment or an `echo gennady` argument does not count.
  * @param scripts The package.json scripts map.
+ * @param entry Script name from which transitive run-hop traversal starts.
  * @returns True when gennady is reachable from the `lint` script.
  */
-function lintReachesGennady(scripts: Record<string, string>): boolean {
-  const lint = scripts['lint'];
-  if (lint === undefined) return false;
+export function scriptReachesGennady(scripts: Record<string, string>, entry: string): boolean {
+  const first = scripts[entry];
+  if (first === undefined) return false;
 
   const seen = new Set<string>();
-  const queue: string[] = [lint];
+  const queue: string[] = [first];
   while (queue.length > 0) {
     const raw = queue.shift();
     if (raw === undefined) continue;
@@ -190,6 +193,11 @@ function lintReachesGennady(scripts: Record<string, string>): boolean {
     }
   }
   return false;
+}
+
+/** @purpose Whether the canonical read-only lint script reaches the Gennady contract linter. */
+function lintReachesGennady(scripts: Record<string, string>): boolean {
+  return scriptReachesGennady(scripts, 'lint');
 }
 
 /**
@@ -509,6 +517,29 @@ export function checkReadiness(input: ReadinessInput): ReadinessResult {
   );
 
   const level: ReadinessLevel = !ready ? 'not-ready' : stubbed.length > 0 ? 'provisional' : 'ready';
+  const missingGates = [
+    ...(!packageJsonPresent ? ['package.json'] : []),
+    ...required.filter((item) => !item.present).map((item) => item.name),
+    ...stubbed,
+    ...(!lintHasGennady && scripts['lint'] !== undefined ? ['lint'] : []),
+    ...(!formatReadOnly && scripts['format'] !== undefined ? ['format'] : []),
+    ...(!lintReadOnly && scripts['lint'] !== undefined ? ['lint'] : []),
+    ...(!checkReadOnly && scripts['check'] !== undefined ? ['check'] : []),
+    ...(!formatFixMutates && scripts['format:fix'] !== undefined ? ['format:fix'] : []),
+    ...(!formatFixDeclaredTargetPrefix &&
+    scripts['format:fix'] !== undefined &&
+    !isStubScript(scripts, 'format:fix')
+      ? ['format:fix']
+      : []),
+    ...(!lintFixMutates && scripts['lint:fix'] !== undefined ? ['lint:fix'] : []),
+    ...(!lintFixDeclaredTargetPrefix &&
+    scripts['lint:fix'] !== undefined &&
+    !isStubScript(scripts, 'lint:fix')
+      ? ['lint:fix']
+      : []),
+    ...(!fixHasCanonicalRepairs && scripts['fix'] !== undefined ? ['fix'] : []),
+    ...(!gennadyAvailable ? ['gennady'] : []),
+  ].filter((gate, index, gates) => gates.indexOf(gate) === index);
 
   return {
     packageJsonPresent,
@@ -526,6 +557,7 @@ export function checkReadiness(input: ReadinessInput): ReadinessResult {
     ready,
     missing,
     stubbed,
+    missingGates,
     level,
     executionReady: level === 'ready',
   };

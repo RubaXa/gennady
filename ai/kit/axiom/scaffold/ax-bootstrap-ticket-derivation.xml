@@ -1,9 +1,17 @@
 <!-- source: ai/directives/sdd/scaffold.directive.xml -->
 <Axiom id="AX_BOOTSTRAP_TICKET_DERIVATION">
       **Bootstrap Requirements rows with Owner=`this-scope-task` aggregate into the minimum number of tickets per `AX_DAG_AND_TICKET_BOUNDARIES`.** Default — group by Resolution affinity (all `package` rows → one «install deps» ticket; all `structural` rows editing the same config file → one ticket); subdivide only when (P) parallel-executable or (C) context overflow. Source: scope spec Bootstrap Requirements (infrastructure 9, contracts 7, library 8, product 8).
+      Each emitted node carries its closed owner kind: infrastructure rows → `infrastructure-flat`;
+      product/library `this-scope-task` rows → `scope-bootstrap`; product/library module work →
+      `module`. No fourth owner exists; interface never owns a task.
       - Rows with Owner=`external-prereq-scope` → cross-scope dependency edge, not a ticket here.
       - Rows with Owner=`operator-action` → noted in tracker index as a blocking external prerequisite, not a ticket.
       - Bootstrap tickets must be DONE before any non-bootstrap ticket of the same scope (e.g. `install package` precedes `wire config that uses package`).
+      - Package/tool rows materialize one explicit dependency provider phase: `Bootstrap Action: dependency-install`,
+        `Provides Packages: <exact package names>`, and Target Files containing both `package.json` and
+        the active clean-HEAD lockfile. Every phase that needs those tools declares `Requires Packages:`
+        and its ticket depends forward on that provider. Provider→consumer reverse edges and cycles are
+        invalid; a later “install deps” ticket cannot rescue an earlier config/gate ticket.
       - Bootstrap tickets carry Verification populated from the Resolution column (e.g. `npm ls <pkg>` exit 0)
         — ONE `npm ls <pkg>` call PER package, never a single `npm ls pkg1 pkg2 ...` covering several:
         a multi-package call can exit 0 as soon as one of the named packages resolves, silently masking
@@ -11,7 +19,7 @@
         `@vitest/coverage-v8`, riding alongside a resolved `vitest` in the same call) — the gate passes
         while a real dependency is missing. One call per package makes that package's own absence
         surface as that call's own non-zero exit, with nowhere to hide behind a sibling that did resolve.
-      - **Every shared infra file — `package.json` scripts, `.nvmrc`, a tool config a bootstrap ticket
+      - **Every shared infra file — `package.json` plus its active lockfile, scripts, `.nvmrc`, a tool config a bootstrap ticket
         creates or edits — gets EXACTLY ONE ticket-owner: the bootstrap ticket whose Target Files list
         it.** Any OTHER ticket whose phase reads or extends that same file (adds a script, bumps the
         pinned tool version) does not re-derive ownership by grepping neighboring tickets — its phase

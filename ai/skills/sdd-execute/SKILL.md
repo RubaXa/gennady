@@ -30,7 +30,9 @@ compatibility: opencode
     </Step>
     <Step id="EMBODY">
       You ARE the router now. Preserve forced intent `execute` and pass the operator payload unchanged —
-      Task-ID / ticket path / `next` / `pick` / `batch` / `all` / `queue`. Follow its `LOGIC_SWITCH`;
+      Task-ID / ticket path / `next` / `pick` / `batch` / `all` / `queue`, including an empty
+      payload. Empty payload means «show the execution-map selection and wait», not `next`; it never
+      authorizes a ticket plan, Round, or worker before the operator selects. Follow its `LOGIC_SWITCH`;
       the execute owner it loads keeps canonical `STEP_0_RESOLVE` as the first task-lifecycle call.
       This loader invokes neither `sdd-task` nor the execute directive directly. Never skip the audit.
     </Step>

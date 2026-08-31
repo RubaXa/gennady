@@ -68,7 +68,7 @@ import {
  * @purpose Named infra-scope TODO tickets already building the missing gate scripts, plus queue diagnostics.
  * @param refs Every ticket's graph ref (Task-ID, status, owning scope).
  * @param root Absolute project root — reads `package.json` and `specs/README.md`.
- * @returns Queued infra TODO Task-IDs and advisory diagnostics; both empty when the portal is unreadable.
+ * @returns Queued infra TODO Task-IDs and fail-closed diagnostics.
  */
 function infraGateQueue(
   refs: TicketCorpusRef[],
@@ -78,8 +78,17 @@ function infraGateQueue(
   let portalContent: string;
   try {
     portalContent = readFileSync(join(root, 'specs', 'README.md'), 'utf-8');
-  } catch {
-    return { ticketIds: [], owners: [], diagnostics: [] };
+  } catch (cause) {
+    return {
+      ticketIds: [],
+      owners: [],
+      diagnostics: [
+        {
+          kind: 'gate-contract-missing',
+          message: `portal/GATE_QUEUE cannot be resolved: ${cause instanceof Error ? cause.message : String(cause)}`,
+        },
+      ],
+    };
   }
   return queuedInfraGateTicketIds(refs, parseScopes(portalContent), readiness, root);
 }
@@ -89,11 +98,25 @@ function infraGateQueue(
  * @param refs Every ticket's graph ref. | @param root Absolute project root (readiness + portal reads). | @returns A human + agent readable map. */
 function formatMap(refs: TicketCorpusRef[], root: string): string {
   const canonicalRoot = realpathSync(root);
-  const pickable = pickableTasks(refs);
-  const pickableIds = new Set(pickable.map((r) => r.taskId));
+  const readiness = checkReadiness(gatherReadinessInput(canonicalRoot));
+  const gateQueue = infraGateQueue(refs, canonicalRoot, readiness);
+  const graphPickable = pickableTasks(refs);
+  const gateTicketFiles = new Set(gateQueue.owners.map((owner) => owner.ticketFile));
   const doneIds = new Set(
     refs.filter((r) => /\bDONE\b/i.test(r.status ?? '')).map((r) => r.taskId)
   );
+  const queuePickable = refs.filter(
+    (ref) =>
+      gateTicketFiles.has(ref.file) &&
+      !/\bDONE\b/i.test(ref.status ?? '') &&
+      ref.dependencies.every(
+        (dependency) =>
+          /^(?:none|n\/a)\b|^[—-]$/i.test(dependency.trim()) || doneIds.has(dependency)
+      )
+  );
+  const pickable = readiness.executionReady ? graphPickable : queuePickable;
+  const pickableIds = new Set(pickable.map((r) => r.taskId));
+  const graphPickableIds = new Set(graphPickable.map((r) => r.taskId));
   const blocked = refs.filter(
     (r) => /\bTODO\b/i.test(r.status ?? '') && !pickableIds.has(r.taskId)
   );
@@ -112,15 +135,16 @@ function formatMap(refs: TicketCorpusRef[], root: string): string {
     const unmet = b.dependencies.filter(
       (d) => !/^(none|n\/a|[—-])\b/i.test(d.trim()) && !doneIds.has(d)
     );
+    if (!readiness.executionReady && graphPickableIds.has(b.taskId))
+      unmet.push('EXECUTION_READY=no');
     lines.push(`blocked: ${b.taskId} ← ${unmet.join(', ')}  →  ${relPath(b.file)}`);
   }
-  const readiness = checkReadiness(gatherReadinessInput(canonicalRoot));
-  const gateQueue = infraGateQueue(refs, canonicalRoot, readiness);
   lines.push(
     readiness.level === 'provisional'
       ? `READINESS=provisional (stubs: ${readiness.stubbed.join(', ')} — impl/refactor/test-фазы заблокированы, начинай с infra-очереди)`
       : `READINESS=${readiness.level}`
   );
+  lines.push(`EXECUTION_READY=${readiness.executionReady ? 'yes' : 'no'}`);
   if (gateQueue.ticketIds.length > 0) {
     lines.push(
       `GATE_QUEUE=${gateQueue.ticketIds.join(',')} · гейты отсутствуют, их строят эти тикеты — для исполнения это штатно, начинай с них`
@@ -134,7 +158,9 @@ function formatMap(refs: TicketCorpusRef[], root: string): string {
   lines.push(
     '',
     pickable.length
-      ? 'next: возьми Task-ID из pickable и вызови `sdd-task <id>` за планом фаз.'
+      ? readiness.executionReady
+        ? 'next: возьми Task-ID из pickable и вызови `sdd-task <id>` за планом фаз.'
+        : 'next: возьми Task-ID из GATE_QUEUE/pickable и вызови `sdd-task <id>` за bootstrap-планом.'
       : 'next: pickable пуст — разблокируй одну из blocked (закрой её зависимости), затем повтори.'
   );
   return lines.join('\n');
@@ -398,6 +424,7 @@ export async function run(rawArgs: string[], projectRoot = resolve('.')): Promis
     const phaseIndex = phases.findIndex((phase) => phase.id === phaseId);
     const phasePaths = validateTicketReviewPaths(root, content, {
       phaseIds: [phaseId],
+      targetExpectation: 'dispatch',
       deletedPhaseIds: phases.slice(0, phaseIndex + 1).map((phase) => phase.id),
       handoffPhaseIds: phases.slice(0, phaseIndex).map((phase) => phase.id),
     });
@@ -457,7 +484,13 @@ export async function run(rawArgs: string[], projectRoot = resolve('.')): Promis
       gates,
       handoffs,
       phaseId,
-      auditRounds
+      auditRounds,
+      {
+        readFiles: phasePaths.paths.targets.filter(
+          (target) => !phasePaths.paths.createTargets.includes(target)
+        ),
+        createFiles: phasePaths.paths.createTargets,
+      }
     );
     return withResolutionLine(
       infraExemptionNote && phaseOutcome.ok

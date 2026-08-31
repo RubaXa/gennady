@@ -213,6 +213,7 @@ export function gateHint(command: string): string {
  * @param phaseId The requested phase id (e.g. `P2`).
  * @param [auditRounds] The ticket's `## Audit Rounds` section body, verbatim, or null when absent
  *   (never audited, or every audit passed clean).
+ * @param [fileLifecycle] Existing Target Files that may be read and absent exact Target Files reserved for creation.
  * @returns The compact phase context, or a not-found failure when `phaseId` has no Phases Overview row.
  */
 export function formatPhase(
@@ -222,7 +223,8 @@ export function formatPhase(
   gates: Gate[],
   handoffs: Record<string, string>,
   phaseId: string,
-  auditRounds: string | null = null
+  auditRounds: string | null = null,
+  fileLifecycle?: { readFiles: string[]; createFiles: string[] }
 ): TaskOutcome {
   const idx = phases.findIndex((p) => p.id === phaseId);
   if (idx === -1) return phaseNotFound(phaseId, phases);
@@ -250,11 +252,14 @@ export function formatPhase(
   const specAnchors = d.specRefs.length
     ? d.specRefs
     : meta.specRefs.map((s) => s.anchor || s.name).filter(Boolean);
-  lines.push('', 'read-manifest (AX_READ_PER_MANIFEST):');
+  lines.push('', 'lifecycle manifest (AX_READ_PER_MANIFEST):');
   lines.push(`  READ rules:  ${d.rules.length ? d.rules.join(', ') : '—'}`);
   lines.push(`  READ specs:  ${specAnchors.length ? specAnchors.join(', ') : '—'}`);
   lines.push(`  READ ticket: PHASE_${p.id}, BDD, VERIFICATION`);
-  lines.push(`  READ files:  ${d.targetFiles.length ? d.targetFiles.join(', ') : '—'}`);
+  const readFiles = fileLifecycle?.readFiles ?? d.targetFiles;
+  const createFiles = fileLifecycle?.createFiles ?? [];
+  lines.push(`  READ files:  ${readFiles.length ? readFiles.join(', ') : '—'}`);
+  lines.push(`  CREATE files: ${createFiles.length ? createFiles.join(', ') : '—'}`);
   lines.push(
     '  DO NOT READ: other phase bodies · code outside READ files · specs beyond the anchors above'
   );

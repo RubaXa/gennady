@@ -154,14 +154,13 @@
     </Axiom>
 
     <Axiom id="AX_PREFLIGHT_BLAST_RADIUS_SCOPED">
-      The `FLOW_VERSION=v1` / `READINESS=not-ready` preflight gate protects scope-spanning work — a full
-      migration or readiness setup dwarfs a narrow request. Size the gate to the task's own blast radius
-      before firing it: when the requested change stays inside the entry point's own scope (a spec
-      paragraph, a single ticket) and never touches the legacy v1 `tasks/` layout or a missing gate script, record the
-      state in one line and proceed straight to the entry point's own work — offer migration / readiness
-      setup to the operator as a separate next step, not inside this run. A change whose blast radius does
-      reach the legacy v1 `tasks/` layout, task-ID rewriting, or a missing gate script fires the gate as before, ahead of
-      the entry point's own work.
+      `FLOW_VERSION=v1` migration and runtime `EXECUTION_READY=no` remediation can dwarf a narrow request.
+      Size only those broad actions to the task's own blast radius: a narrow owning spec edit may proceed
+      without migrating unrelated legacy tasks or installing unrelated runtime gates. Each `AUTHORING_SCOPE`
+      fact is different: it is a target-specific structural proof and is binding whenever scaffold would create
+      tickets. A red authoring fact blocks scaffold but never blocks the named owning spec flow that repairs
+      the evidence. Product execution always consumes `EXECUTION_READY`; only the exact active GATE_QUEUE
+      setup phase receives its typed exemption.
     </Axiom>
 
     <Axiom id="AX_DIVERGE_BEFORE_RECOMMEND">
@@ -354,9 +353,10 @@
       uses an empty list. Every later mention reuses the recorded name
       verbatim; before introducing a new name, check this list in the saved `sdd-state` snapshot.
 
-      Router preflight runs only AFTER compatibility/open. Readiness returns exactly one post-mutation
-      snapshot alias `readinessState`; migration returns exactly one alias `migrationState`. The router
-      replaces its routing input with that returned snapshot and never refreshes it itself. A branch
+      Router preflight runs only AFTER compatibility/open. Its readiness cases consume the existing
+      `activeRouterState` without invoking a readiness mutation flow. Migration alone returns exactly one
+      alias `migrationState`; the router replaces its routing input with that snapshot and never refreshes
+      it itself. A branch
       journal entry is written through the already-compatible session, so no pre-session journal buffer
       exists and no write can land in an unrelated session.
 
@@ -488,6 +488,11 @@
         when state and message agree — the confirming question weighs the real candidate intents
         against each other, not just the first plausible one (`AX_DIVERGE_BEFORE_RECOMMEND`).
 
+        The `[SPEC_SCHEMA]` block is binding router evidence. For forced `scaffold`, pass it unchanged
+        to scaffold STEP_0B; schema remediation is a resumable preflight subflow, never permission for
+        scaffold or router to edit scope/module specs. Do not collapse `stale-migratable` and
+        `invalid` into one generic drift branch.
+
         `recover-from-code` fires when the operator asks to recover / recreate a spec FROM EXISTING
         CODE and names a concrete path (a folder or a file) in the message — e.g. «воссоздай спеку для
         `services/foo` по коду». It requires a LIVE portal (`specs/README.md` present): a path-less
@@ -551,7 +556,11 @@
         orchestrator accept a `GlossarySuggestions` item: write its exact bytes to
         `.claude/tmp/sdd-glossary-term.txt` and use the canonical glossaryUpdate ToolCall from
         `SESSION_FILE_FORMAT`. Never persist a term before this point and never pass it inline.
-        Set `activeRouterState = routerState` and continue to STEP_1B_PREFLIGHT.
+        Set `activeRouterState = routerState`. For execute, also retain the exact transition as
+        `executeSessionMode`: compatible existing session → `reused execute@<working-set>`; newly
+        opened session → `fresh (first)`; an operator-confirmed close-and-start-new →
+        `fresh (intent-switch)`. STEP_2 passes this label unchanged to the execute owner for its
+        canonical progress lines. Then continue to STEP_1B_PREFLIGHT.
 
         Inputs <confirmed-intent>, <confirmed-scale>: this STEP_1 operator confirmation.
         <ToolCall owner="this-step" result="previousSessionClosed">npx gennady sdd-session close</ToolCall> Use previousSessionClosed before sessionOpen.
@@ -565,15 +574,15 @@
     <Step id="STEP_1B_PREFLIGHT">
       <Goal>Clear readiness/migration only after the compatible session write barrier is open.</Goal>
       <Action>
-        Use `FLOW_VERSION`, `READINESS`, and `GATE_QUEUE` from `activeRouterState`; do not call
+        Use `FLOW_VERSION`, requested `AUTHORING_SCOPE` line(s), `EXECUTION_READY`, and `GATE_QUEUE` from `activeRouterState`; do not call
         `sdd-state` or a task-lifecycle command to rediscover them. Apply the switch below, sized to
         the classified request's blast radius (`AX_PREFLIGHT_BLAST_RADIUS_SCOPED`). Its mutating arms
         are legal here only because STEP_1 already proved or opened the owning session.
 
-        A readiness arm returns exactly one fresh post-mutation snapshot as `readinessState`; set
-        `activeRouterState = readinessState`. A migration arm returns exactly one fresh
-        post-mutation snapshot as `migrationState`; set `activeRouterState = migrationState`.
-        Do not run a router refresh after either return. A non-mutating/default arm retains the
+        The migration arm returns exactly one fresh post-mutation snapshot as `migrationState`; set
+        `activeRouterState = migrationState`. Do not run a router refresh after that return.
+        Readiness branches are routing decisions over `activeRouterState`, not mutation subflows;
+        every non-migration arm retains the
         current `activeRouterState`. After a mutating branch returns, write exactly
         `<branch-id> — <what it produced>` to
         `.claude/tmp/sdd-router-preflight-journal.txt`, run branchJournal once, and require success;
@@ -582,17 +591,17 @@
 
         <ToolCall owner="this-step" result="branchJournal">npx gennady sdd-session log --content-file .claude/tmp/sdd-router-preflight-journal.txt</ToolCall> Run once per successfully returned mutating branch; use branchJournal before routing.
 
-        <LogicSwitch on="FLOW_VERSION · READINESS · GATE_QUEUE · blast radius">
+        <LogicSwitch on="FLOW_VERSION · requested AUTHORING_SCOPE line(s) · EXECUTION_READY · GATE_QUEUE · blast radius">
           - WHEN `FLOW_VERSION=v1` AND the request's blast radius reaches the legacy v1 `tasks/` layout or task-ID rewriting                                          -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/migration-v1-v2.directive.xml")   (live v1→v2 migration; returns when the repo is v2)
-          - WHEN `READINESS=not-ready` AND the already-fetched preflight input reports `GATE_QUEUE=<Task-ID,...>`                                    -> normal pre-execution state, continue your own flow; the readiness bootstrap does NOT load
-          - WHEN `READINESS=not-ready` AND the request needs a missing gate script                                                                       -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/readiness.directive.xml")        (live setup: forces missing scripts, hands proxy-blocked installs to the operator; returns once ready)
-          - WHEN `READINESS=provisional (stubs: …)` AND the ticket about to run is itself listed in `GATE_QUEUE`                                         -> continue your own flow: this is the ticket that BUILDS the missing gates, so it is exempt (`sdd-task --phase` prints `INFRA_QUEUE_EXEMPTION`; canonical `sdd-verify --task <ticket-path> --phase <PhaseID>` derives setup mechanically). Blocking it here would deadlock the flow against its own remedy
-          - WHEN `READINESS=provisional (stubs: …)` AND the request would run an `impl`/`refactor`/`test`/`fix` phase of a ticket NOT in `GATE_QUEUE`      -> STOP: those phases are mechanically refused (`ERR_CLI_SDD_TASK_INFRA_NOT_READY`) — the named stubs exit 0 verifying nothing, so any green verdict on them is a fiction. Work the infra queue first (`GATE_QUEUE`), or READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/readiness.directive.xml") when no ticket owns those stubs
-          - WHEN `READINESS=provisional (stubs: …)` AND the request stays inside bootstrap/config/doc work, scaffold, or spec authoring              -> normal pre-execution state, continue your own flow; the stub list is the infra queue's worklist, not a blocker for this request
+          - WHEN any requested scaffold target has `AUTHORING_SCOPE=<target> READY=no|not-applicable`                                                       -> STOP with that target's exact `AUTHORING_SCOPE_DIAG` and `AUTHORING_SCOPE_NEXT`; the named owning spec flow remains allowed to repair evidence, but scaffold never edits it
+          - WHEN every requested scaffold target has `AUTHORING_SCOPE=<target> READY=yes`                                                                   -> continue scaffold authoring; unrelated red scope lines and aggregate `AUTHORING_READY=no` do not block a narrower target set; missing runtime gates are declared bootstrap work, not a reason to load readiness setup
+          - WHEN `EXECUTION_READY=no` AND the ticket/phase about to run is itself the exact owner listed in `GATE_QUEUE`                               -> continue only that phase: `sdd-task --phase` and `sdd-verify --task … --phase …` independently derive the setup exemption; it expires when the ticket is no longer TODO/IN_PROGRESS
+          - WHEN `EXECUTION_READY=no` AND the request would execute any other product/library phase                                                        -> STOP: work the exact `GATE_QUEUE` first; a missing/vacuous runtime gate can never authorize product execution
           - WHEN `GATE_QUEUE_DIAG: infra-спека … одобрена, тикетов пока нет …` is printed (kind `infra-spec-no-tickets`)                                 -> tell the operator that infra scope has no tickets yet and point at the `/sdd-scaffold` skill to cut them — a separate process, never READ_AND_USE_DIRECTIVE'd from here (scaffold itself hands off back into this flow, so loading it in-place would cycle)
           - WHEN `GATE_QUEUE_DIAG: область тикета … не совпала с порталом … (похожие имена)` is printed (kind `scope-name-mismatch`)                     -> fix the mismatch directly — edit the ticket's `Scope:` field or the portal scope name (whichever is the typo), never both by guesswork; not a reason to load another directive
-          - WHEN (`FLOW_VERSION=v1` OR `READINESS=not-ready`) AND the request's blast radius stays inside its own scope (`AX_PREFLIGHT_BLAST_RADIUS_SCOPED`) -> record state in one line, continue your own flow; propose migration / readiness setup to the operator as a separate next step
-          - DEFAULT                                                                                                                                       -> repo is `v2` + `READINESS=ready` (execution-ready, no stubs) — continue your own flow
+          - WHEN `FLOW_VERSION=v1` AND the request's blast radius stays inside its own legacy scope (`AX_PREFLIGHT_BLAST_RADIUS_SCOPED`)                    -> record state in one line and continue the legacy-compatible owner flow; do not reinterpret v1 with v2 authoring fields
+          - WHEN `EXECUTION_READY=yes` AND the request is execute                                                                                          -> continue execution
+          - DEFAULT                                                                                                                                       -> continue the non-scaffold, non-execution owner flow without reinterpreting either readiness fact
         </LogicSwitch>
       </Action>
     </Step>
@@ -609,7 +618,8 @@
         `SESSION_FILE_FORMAT`. `continue` keeps this session for the selected next link; `pause` keeps
         it for resume after approval/check/cap/blocker/operator pause. A branch may return `complete`
         only from its own terminal menu after proving no chained work remains; no intermediate route
-        closes the session.
+        closes the session. When routing execute, pass the exact `executeSessionMode` produced by
+        STEP_1; the owner must not infer reused/fresh from filesystem reads or extra probes.
       </Action>
     </Step>
   </ExecutionPlan>

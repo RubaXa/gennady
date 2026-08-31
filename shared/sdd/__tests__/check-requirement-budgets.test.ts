@@ -236,10 +236,10 @@ describe('checkRequirementBudgetsAgainstBaseline', () => {
     assert.doesNotMatch(findings[0]?.message ?? '', /approval/i);
   });
 
-  it('does not let a nested ### heading terminate the requirement entry', () => {
+  it('does not let a nested #### detail heading terminate the requirement entry', () => {
     const body = [
       ...Array.from({ length: 5 }, (_, i) => `before ${i + 1}`),
-      '### Details',
+      '#### Details',
       ...Array.from({ length: 5 }, (_, i) => `after ${i + 1}`),
     ];
     assert.deepStrictEqual(
@@ -248,6 +248,139 @@ describe('checkRequirementBudgetsAgainstBaseline', () => {
       ),
       ['SDD_REQUIREMENT_ENTRY_TOO_LONG']
     );
+  });
+
+  it('draft.54: canonical sibling subsections terminate the final requirement body', () => {
+    const content = [
+      '<!--SECTION:REQUIREMENTS_AND_CONSTRAINTS-->',
+      '## Requirements & Constraints',
+      '',
+      '### Requirements',
+      '',
+      '### TA-REQ-14 [должен]',
+      '**Пока** приложение развивается, **оно должно** держать покрытие unit-тестами ≥80%.',
+      '> Критерий проверяется Vitest и Playwright.',
+      '',
+      '### Out-of-Scope',
+      ...Array.from({ length: 5 }, (_, i) => `- excluded capability ${i + 1}`),
+      '',
+      '### Runtime & Deferred Scope',
+      ...Array.from({ length: 5 }, (_, i) => `- deferred runtime ${i + 1}`),
+      '',
+      '### Rules',
+      '| Rule | Category | Source |',
+      '|---|---|---|',
+      '| testing-common | testing | infra |',
+      '<!--/SECTION:REQUIREMENTS_AND_CONSTRAINTS-->',
+    ].join('\n');
+
+    assert.deepStrictEqual(
+      checkNewRequirementBudgets('specs/todos-app/todos-app.spec.md', content),
+      []
+    );
+  });
+
+  it('treats any unknown structural ### sibling as a boundary without inventing a section whitelist', () => {
+    const content = spec([
+      requirement(7),
+      '### Deployment Notes',
+      ...Array.from({ length: REQUIREMENT_ENTRY_MAX_LINES }, (_, i) => `detail ${i + 1}`),
+    ]);
+    assert.deepStrictEqual(checkNewRequirementBudgets('specs/demo/demo.spec.md', content), []);
+  });
+
+  it('accepts optional closing hashes on a structural sibling boundary', () => {
+    const content = spec([
+      requirement(8),
+      '### Out-of-Scope ###',
+      ...Array.from({ length: REQUIREMENT_ENTRY_MAX_LINES + 1 }, (_, i) => `- excluded ${i + 1}`),
+    ]);
+    assert.deepStrictEqual(checkNewRequirementBudgets('specs/demo/demo.spec.md', content), []);
+  });
+
+  it('ends a requirement at arbitrary level-1 and level-2 structural ATX headings', () => {
+    for (const boundary of ['# Appendix', '## Deployment Notes']) {
+      const content = spec([
+        requirement(9),
+        boundary,
+        ...Array.from({ length: REQUIREMENT_ENTRY_MAX_LINES + 1 }, (_, i) => `detail ${i + 1}`),
+      ]);
+      assert.deepStrictEqual(
+        checkNewRequirementBudgets('specs/demo/demo.spec.md', content),
+        [],
+        boundary
+      );
+    }
+  });
+
+  it('does not treat a canonical sibling heading inside a fence as a structural boundary', () => {
+    const body = [
+      ...Array.from({ length: 5 }, (_, i) => `before ${i + 1}`),
+      '```md',
+      '### Out-of-Scope',
+      '```',
+      ...Array.from({ length: 3 }, (_, i) => `after ${i + 1}`),
+    ];
+    assert.deepStrictEqual(
+      checkNewRequirementBudgets('specs/demo/demo.spec.md', spec([requirement(3, body)])).map(
+        (finding) => finding.code
+      ),
+      ['SDD_REQUIREMENT_ENTRY_TOO_LONG']
+    );
+  });
+
+  it('does not treat blockquoted or four-space-indented ### text as a boundary', () => {
+    for (const pseudoHeading of ['> ### Out-of-Scope', '    ### Out-of-Scope']) {
+      const body = [
+        ...Array.from({ length: 5 }, (_, i) => `before ${i + 1}`),
+        pseudoHeading,
+        ...Array.from({ length: 5 }, (_, i) => `after ${i + 1}`),
+      ];
+      assert.deepStrictEqual(
+        checkNewRequirementBudgets('specs/demo/demo.spec.md', spec([requirement(10, body)])).map(
+          (finding) => finding.code
+        ),
+        ['SDD_REQUIREMENT_ENTRY_TOO_LONG'],
+        pseudoHeading
+      );
+    }
+  });
+
+  it('does not go dormant on CRLF and legal three-space Markdown headings', () => {
+    const content = [
+      '<!--SECTION:REQUIREMENTS_AND_CONSTRAINTS-->',
+      '## Requirements & Constraints',
+      '### Requirements',
+      '   ### DEM-REQ-17 [должен]   ',
+      ...Array.from({ length: REQUIREMENT_ENTRY_MAX_LINES + 1 }, (_, i) => `detail ${i + 1}`),
+      '<!--/SECTION:REQUIREMENTS_AND_CONSTRAINTS-->',
+    ].join('\r\n');
+
+    assert.deepStrictEqual(
+      checkNewRequirementBudgets('specs/demo/demo.spec.md', content).map((finding) => finding.code),
+      ['SDD_REQUIREMENT_ENTRY_TOO_LONG']
+    );
+  });
+
+  it('non-sequential requirement ids do not change canonical sibling boundaries', () => {
+    const content = [
+      '<!--SECTION:REQUIREMENTS_AND_CONSTRAINTS-->',
+      '## Requirements & Constraints',
+      '### Requirements',
+      '### DEM-REQ-17 [должен]',
+      '**Когда** A, **сервис должен** B.',
+      '### DEM-REQ-6 [должен]',
+      '**Когда** C, **сервис должен** D.',
+      '### Out-of-Scope',
+      ...Array.from({ length: REQUIREMENT_ENTRY_MAX_LINES + 2 }, (_, i) => `- excluded ${i + 1}`),
+      '### Runtime & Deferred Scope',
+      '- deferred',
+      '### Rules',
+      '| Rule | Category | Source |',
+      '<!--/SECTION:REQUIREMENTS_AND_CONSTRAINTS-->',
+    ].join('\n');
+
+    assert.deepStrictEqual(checkNewRequirementBudgets('specs/demo/demo.spec.md', content), []);
   });
 
   it('does not let a fenced canonical-looking heading split or hide the entry body', () => {
@@ -339,10 +472,10 @@ describe('checkRequirementBudgetsAgainstBaseline', () => {
     );
   });
 
-  it('does not let a legacy topic heading hide body lines after a flat requirement starts', () => {
+  it('does not let a nested legacy detail heading hide body lines after a flat requirement starts', () => {
     const body = [
       '**Когда** X, **сервис должен** Y.',
-      '### Security',
+      '#### Security',
       ...Array.from({ length: REQUIREMENT_ENTRY_MAX_LINES }, (_, i) => `security detail ${i + 1}`),
     ];
     assert.deepStrictEqual(

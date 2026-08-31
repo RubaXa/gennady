@@ -29,7 +29,10 @@ describe('verification ownership contract', () => {
     const phase = read('ai/kit/templates/sdd-v2/phase-execution-protocol.directive.hbs');
     assert.match(phase, /sdd-verify --task <ticket-path> --phase <PhaseID>/);
     assert.match(phase, /derives profile, exact\s+Target Files, owning spec/s);
-    assert.match(phase, /performs exact-target\s+repair under a runtime before\/after write-zone/s);
+    assert.match(
+      phase,
+      /performs exact-target\s+repair through ordered formatter\/project-linter\/Gennady-contract adapters,[\s\S]*applicable exact targets,[\s\S]*under a runtime before\/after write-zone/
+    );
     assert.doesNotMatch(phase, /--target <each exact Target File/);
   });
 

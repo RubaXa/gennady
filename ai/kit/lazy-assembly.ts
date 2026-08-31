@@ -241,6 +241,8 @@ export type LazyAssemblyInput = {
   sourceText: string;
   /** @purpose This build's stamped fingerprint, from `stampFingerprint` */
   fingerprint: BuildFingerprint;
+  /** @purpose Whether the skeleton indexes every package or exposes only the entry package and chains the rest at runtime. */
+  loadTopology?: 'index' | 'chain';
 };
 
 /** @purpose The slim, always-in-context half of a lazy-assembled directive. */
@@ -325,7 +327,15 @@ export const LazyDirectiveAssembler = {
         fingerprint: input.fingerprint,
         text: buildSkeletonText(input, steps, singleStepAxioms, singleStepContracts),
       },
-      packages: steps.map((step) => buildStepPackage(input, step, singleStepAxioms, singleStepContracts)),
+      packages: steps.map((step, index) =>
+        buildStepPackage(
+          input,
+          step,
+          singleStepAxioms,
+          singleStepContracts,
+          input.loadTopology === 'chain' ? steps[index + 1] : undefined
+        )
+      ),
     };
   },
 };
@@ -355,10 +365,13 @@ function buildSkeletonText(
   singleStepContracts: readonly ClassifiedTagBlock[]
 ): string {
   const spans = [
-    ...steps.map((step) => ({
+    ...steps.map((step, index) => ({
       start: step.start,
       end: step.end,
-      replacement: buildStepListEntry(step, input.directiveName),
+      replacement:
+        input.loadTopology !== 'chain' || index === 0
+          ? buildStepListEntry(step, input.directiveName)
+          : '',
     })),
     ...[...singleStepAxioms, ...singleStepContracts].map((tag) => ({
       start: tag.start,
@@ -407,7 +420,8 @@ function buildStepPackage(
   input: LazyAssemblyInput,
   step: TagBlock,
   singleStepAxioms: readonly ClassifiedTagBlock[],
-  singleStepContracts: readonly ClassifiedTagBlock[]
+  singleStepContracts: readonly ClassifiedTagBlock[],
+  nextStep?: TagBlock
 ): StepPackage {
   const stepId = requireStepId(step, input.directiveName);
   const ownedAxioms = singleStepAxioms.filter((axiom) => axiom.ownerStepId === stepId).map((axiom) => axiom.fullMatch);
@@ -419,7 +433,17 @@ function buildStepPackage(
     stepId,
     relativePath: buildStepPackagePath(input.directiveName, stepId),
     fingerprint: input.fingerprint,
-    text: [input.fingerprint, step.fullMatch, ...ownedAxioms, ...ownedContracts].join('\n\n'),
+    text: [
+      input.fingerprint,
+      step.fullMatch,
+      ...ownedAxioms,
+      ...ownedContracts,
+      ...(nextStep
+        ? [
+            `After completing this step, and only then, READ_AND_USE_DIRECTIVE("${buildStepPackagePath(input.directiveName, requireStepId(nextStep, input.directiveName))}"). Do not preload later step packages.`,
+          ]
+        : []),
+    ].join('\n\n'),
   };
 }
 

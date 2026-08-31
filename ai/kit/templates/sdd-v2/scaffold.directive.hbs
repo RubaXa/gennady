@@ -88,14 +88,16 @@
     | 🛑 ID | Trigger |
     |---|---|
     | `H_NO_SPECS` | `specs/README.md` absent, or no approved scope spec to scaffold |
-    | `H_SCOPE_NOT_DECOMPOSED` | Scope type is missing/ambiguous; product/library Module Map is not a non-empty exact manifest of its canonical module specs; or an interface is used as a task owner. Continue through `/sdd` module decomposition and integrated review first; infrastructure is the sole flat-scope exception. |
+    | `H_SCOPE_NOT_DECOMPOSED` | Scope type is missing/ambiguous; product/library Module Map is not a non-empty exact manifest of its canonical module specs; or an interface is used as a task owner. Start the nested same-chain module-decomposition correction below, preserve `intent: scaffold` and the exact bounded target-set, then return to scaffold `STEP_0_INTAKE`; infrastructure is the sole flat-scope exception. |
     | `H_AMBIGUOUS_MODE` | Tasks exist + mode verb absent (per `AX_MODE_AUTO_DETECT_OR_HALT`) |
     | `H_MISSING_RULE_FILE` | A rule reference or `<DependsOn>` entry does not resolve to an existing file (`AX_RULES_RESOLUTION_HARD_FAIL`) |
     | `H_RULES_CYCLE` | `<DependsOn>` closure cycles during per-phase rule activation (STEP_3) |
     | `H_VERIFICATION_COMMAND_MISSING` | A `<RequiresVerification>` alias is absent from infra-spec Verification Commands (alias, ticket ID) |
     | `H_BOOTSTRAP_REQUIREMENTS_MISSING` | The target scope being scaffolded (the intake target) lacks a Bootstrap Requirements section — checked ONLY for that scope, not for every ✅ scope in the Portal (did not pass the scope flow) |
+    | `H_SPEC_SCHEMA_INVALID` | `sdd-state` reports the target scope/module spec as `invalid`; structural evidence is ambiguous and only its owning authoring flow may repair it |
     | `H_ID_COLLISION` | A generated Task-ID / slug collides with an existing one |
     | `H_TYPING_SCENARIO_MISSING` | A DbC contract in Spec References has no `contract`-level typing scenario mapped to a test |
+    | `H_TICKET_AUTHORING_INVALID` | One just-filled ticket still fails its bounded single-ticket authoring gate after three repair attempts; no later ticket or index may be created |
     | `H_SCAFFOLD_NOT_EXECUTABLE` | The feasibility critic cannot reach an operator-disposed state within its bounded loop, or a required fresh fallback cannot receive the full latest target-set plus retained context/history |
     | `H_OPERATOR_REJECT` | Operator rejected the breakdown or the test plan |
   </HaltConditions>
@@ -117,15 +119,40 @@
         `sdd-state` snapshot; say that fallback was selected. Never replace a missing/ambiguous target
         with filesystem discovery, glob/ls, or an all-spec archaeology pass.
 
+        After this exact bounded target set is resolved, and only when the router-proved session is
+        already present and compatible, write `.claude/tmp/sdd-scaffold-workset.txt` with one non-empty
+        line per exact repo-relative spec in the set, in stable path order. Grammar is exactly
+        `<repo-relative-spec-path> — <role> — open`, where `<role>` is exactly one of `scaffold target`
+        or `dependency context`; use `scaffold target` for requested scope/module specs and
+        `dependency context` only for transitive read context.
+        Then run the one ToolCall below exactly once. If session evidence is absent/incompatible, do
+        not call `workset`, open a session, or guess: return to the router's session barrier.
+        <ToolCall owner="this-step" result="sessionWorkset">npx gennady sdd-session workset --content-file .claude/tmp/sdd-scaffold-workset.txt</ToolCall> Use sessionWorkset before decomposition/DAG work.
+
         From this bounded set, enforce the decomposition gate fail-closed for each task-owning target:
         scope type must be
         present and unambiguous; product/library requires a non-empty Module Map whose explicit links
         resolve one-to-one to every canonical module spec on disk; interface cannot directly own tasks.
         Otherwise `H_SCOPE_NOT_DECOMPOSED`. Do not issue an extra discovery command for this check.
-        Dependency-only interface scopes remain read context, never task owners. `infrastructure` is
-        the sole valid flat scope. Every `sdd-new task` call repeats this guard
-        defensively and must use the exact form
-        <ToolLiteral role="future">npx gennady sdd-new task --scope <scope> --id <ACR-slug></ToolLiteral>;
+        Dependency-only interface scopes remain read context, never task owners. Classify every DAG
+        node with exactly one task owner: `infrastructure-flat` (scope-level infrastructure),
+        `scope-bootstrap` (scope-level bootstrap in a completely decomposed product/library), or
+        `module` (ordinary product/library work in one declared module). Product/library ordinary
+        work without a module is invalid; interface has no owner. Every `sdd-new task` call repeats
+        this typed guard defensively; `--owner` is mandatory.
+        Before Gate 1, map every runtime requirement/deliverable to exactly one declared module,
+        including composition-root files such as `App`, `main`, `index`, and Vite/runtime entrypoints.
+        “Outside modules”, no mapping, or multiple candidate modules → `H_SCOPE_NOT_DECOMPOSED`.
+        Invoke `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/module.directive.xml")` as a nested
+        same-chain module-decomposition correction: preserve the compatible session's
+        `intent: scaffold` and exact bounded target-set, and set its return owner to scaffold
+        `STEP_0_INTAKE` without inventing a session field or relabelling intent. An active
+        `CHANGE_MANIFEST` under `intent: scaffold` is the resume evidence for this nested owner.
+        On pause keep that intent/target-set and record the concrete blocker in `open`; on the nested correction return,
+        no ticket or Gate 1 may begin until the corrected decomposition has its owning review disposition;
+        re-enter STEP_0_INTAKE only after accepted/CLEAN. Never auto-assign composition to UI
+        and never invent a fourth owner. `scope-bootstrap` is legal only for an exact Bootstrap Requirements row
+        whose Owner is `this-scope-task`; it cannot carry app-shell or ordinary runtime work.
         `--out` overrides only destination. If a lower-level caller omits `--scope`, the CLI accepts
         only one SCOPE_TYPE-bearing ancestor of that output path; zero/multiple owners fail with the
         exact request to pass `--scope`, and the same decomposition proof still runs.
@@ -143,15 +170,29 @@
       </Action>
     </Step>
     <Step id="STEP_0B_PREFLIGHT">
-      <Goal>Clear the FLOW_VERSION/READINESS preflight gate before scaffolding.</Goal>
+      <Goal>Clear schema, FLOW_VERSION, and target-specific authoring readiness before scaffolding.</Goal>
       <Action>
-        Use the `FLOW_VERSION` / `READINESS` fields from the `sdd-state` snapshot already produced by
+        Use the `SPEC_SCHEMA` / `FLOW_VERSION` / `AUTHORING_SCOPE` / `AUTHORING_SCOPE_DIAG` / `AUTHORING_SCOPE_NEXT` fields from the `sdd-state` snapshot already produced by
         the skill's GATHER step; do not call `sdd-state` or `sdd-task` again here. Size the gate to this
-        request's own blast radius (`AX_PREFLIGHT_BLAST_RADIUS_SCOPED`): v1 intersecting legacy task
+        request's own blast radius (`AX_PREFLIGHT_BLAST_RADIUS_SCOPED`). First match only findings for
+        the target scope spec and its declared module specs (a target path absent from the printed
+        non-current findings is `current`): `current` → continue; `stale-migratable` → keep the
+        compatible session's existing `intent: scaffold` unchanged (no relabel and no new state field),
+        keep the literal intake in current context, then
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/reconcile.directive.xml")` in fix mode with the
+        literal typed finding from `sdd-state`. Reconcile decides mechanical vs semantic and routes
+        every spec change through its owner; this is a nested same-chain preflight subflow. After its
+        verified completion re-enter STEP_0B with the same intake. Do not enter STEP_1/STEP_2, edit a spec, read implementation, generate a
+        ticket, or add an Ask here. `invalid` → `H_SPEC_SCHEMA_INVALID` with the named path/reason and
+        owning authoring-flow next action; do not reinterpret it as migratable. Then apply the remaining
+        gates: v1 intersecting legacy task
         layout → `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/migration-v1-v2.directive.xml")`;
-        not-ready and this scaffold needs a missing gate →
-        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/readiness.directive.xml")`;
-        otherwise record the out-of-scope state in one line and continue.
+        Match the exact requested target scope name. A single-target scaffold consumes only that line;
+        an all-scope request requires every requested non-interface line to be `READY=yes`. Any requested
+        `READY=no` or `not-applicable` → stop with that same scope's exact DIAG/NEXT. Unrelated red scope
+        lines and aggregate `AUTHORING_READY=no` never block a narrower target. `READY=yes` → continue
+        even when `EXECUTION_READY=no`, because the declared bootstrap nodes are what scaffold must create.
+        Never load readiness setup from scaffold and never infer readiness from another scope.
       </Action>
     </Step>
     <Step id="STEP_1_CASCADE">
@@ -178,6 +219,11 @@
         (`AX_BOOTSTRAP_TICKET_DERIVATION`); missing section on the target scope →
         `H_BOOTSTRAP_REQUIREMENTS_MISSING` (checked only for the scope in intake, not for other
         ✅ scopes reachable via the graph). Form tickets per
+        the closed mapping from STEP_0: every runtime node names exactly one declared module owner;
+        only exact `this-scope-task` Bootstrap Requirements rows may become `scope-bootstrap` nodes.
+        A composition-root/app-shell node with absent, ambiguous, or “outside modules” ownership halts
+        with `H_SCOPE_NOT_DECOMPOSED` before presenting Gate 1. Do not assign it to UI by convention.
+        Then form tickets per
         `AX_DAG_AND_TICKET_BOUNDARIES` (one per coherent spec unit; subdivide only for parallelism or
         context overflow); cross-scope placement per `AX_CROSS_SCOPE_TASK_PLACEMENT`; assign slugs
         (`AX_TASK_ID_UNIQUENESS`). Acyclic. **Present the DAG (the breakdown) as a decision card and
@@ -186,13 +232,14 @@
       </Action>
     </Step>
     <Step id="STEP_3_TASK_GENERATION">
-      <Goal>Generate tickets + test plan. (auto)</Goal>
+      <Goal>Load the common ticket-authoring contract and order; do not plan ticket bodies. (auto)</Goal>
       <Action>
-        This auto step never prompts or pauses; unresolved coverage/toolchain alternatives go to
-        STEP_4 Gate 2. Iterate STEP_2 nodes in order: one marked-owner `sdd-new task` call per node,
-        never a shell loop. Fill its returned section manifest per
+        Retain only STEP_2's approved node order, shared cascade facts, and shared test/toolchain
+        facts. Do NOT form, draft, or retain any node's ticket content here; content belongs to the
+        current-node iteration in STEP_3_TICKET_LOOP, after every prior node is green. Unresolved
+        coverage/toolchain alternatives go to STEP_4. The per-node contract is
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/task-ticket-structure.xml")`. Per
-        ticket: decompose into phases (`AX_PHASES_DECLARED_IN_HEADER`; impl and test always separate).
+        current ticket: decompose into phases (`AX_PHASES_DECLARED_IN_HEADER`; impl and test always separate).
         Fill every phase's `Deleted Files:` with exact tracked paths the phase removes, or the literal
         `none`; this is mechanical DAG data and adds no operator interaction. Deleted paths do not belong in `Target Files`.
         For each readiness Bootstrap Requirement, copy its exact `Readiness Gates` only into the
@@ -283,10 +330,37 @@
         `sdd-task --phase`'s downstream read at execution time; a link a worker or auditor cannot
         resolve with `sdd-extract <file>#<anchor>` verbatim is not a valid Spec Reference. No operator
         stop — automated.
-        Inputs <scope>/<module>/<ACR>/<slug>: STEP_2 node. Product/library module → only
-        moduleTaskManifest; infrastructure → only flatInfraTaskManifest; interface → neither.
-        <ToolCall owner="this-step" result="moduleTaskManifest">npx gennady sdd-new task --scope <scope> --module <module> --id <ACR>-<slug></ToolCall> Use only for product/library.
-        <ToolCall owner="this-step" result="flatInfraTaskManifest">npx gennady sdd-new task --scope <scope> --id <ACR>-<slug></ToolCall> Use only for infrastructure.
+        Pass only the ordered node identities plus shared facts to STEP_3_TICKET_LOOP; create no
+        ticket content, files, or indexes here.
+      </Action>
+    </Step>
+    <Step id="STEP_3_TICKET_LOOP">
+      <Goal>Materialize and validate exactly one prepared ticket at a time. (auto)</Goal>
+      <Action>
+        Select only the next unprocessed STEP_2 node. Do not inspect or plan the following node yet.
+        Run exactly one matching ToolCall below, never a shell loop. From the returned manifest plus
+        the common contract, form and fill content only for this current node.
+        Copy its returned path-aware owning-spec/rule/deferred literals verbatim into the prepared
+        content; never compute paths or translate IDs. Fill that one returned manifest completely.
+        Inputs <owner>/<scope>/<module>/<ACR>/<slug>: STEP_2 node. This table is exhaustive; interface maps to none.
+        <ToolCall owner="this-step" result="flatInfraTaskManifest">npx gennady sdd-new task --owner infrastructure-flat --scope <scope> --id <ACR>-<slug></ToolCall> Use flatInfraTaskManifest only for infrastructure-flat.
+        <ToolCall owner="this-step" result="scopeBootstrapTaskManifest">npx gennady sdd-new task --owner scope-bootstrap --scope <scope> --id <ACR>-<slug></ToolCall> Use scopeBootstrapTaskManifest only for product/library scope-bootstrap.
+        <ToolCall owner="this-step" result="moduleTaskManifest">npx gennady sdd-new task --owner module --scope <scope> --module <module> --id <ACR>-<slug></ToolCall> Use moduleTaskManifest only for product/library module.
+        Set <created-ticket-path> to the exact ticket path returned by that node's selected manifest.
+        Immediately after filling ONE created ticket, run its authoringGate ToolCall below. Red: fix
+        only that ticket from the copy-ready findings and repeat the SAME call, at most three attempts;
+        then `H_TICKET_AUTHORING_INVALID`. Green: only then may the next node's content be formed.
+        Never plan or create a later ticket or any task index while this gate is red; no shell loop
+        or command chain.
+        <ToolCall owner="this-step" result="authoringGate">npx gennady sdd-check --task <created-ticket-path> --authoring</ToolCall> Use authoringGate before the next ticket.
+
+        After every node has a green per-ticket authoring gate, run the complete-graph feasibilityGate
+        exactly once before STEP_3B. It evaluates the materialized graph against clean HEAD and emits
+        named causal diagnostics: one exact owner for `package.json` and the active lockfile,
+        provider→consumer ordering, and command
+        proof. Red: repair only the named ticket fields/edges and rerun the same command; do not dispatch
+        the semantic critic. Green: continue to STEP_3B. Never replace these named causal diagnostics with general critic prose.
+        <ToolCall owner="this-step" result="feasibilityGate">npx gennady sdd-check --scaffold-feasibility</ToolCall> Use feasibilityGate before STEP_3B_FEASIBILITY_CRITIC.
       </Action>
     </Step>
     <Step id="STEP_3B_FEASIBILITY_CRITIC">
@@ -301,7 +375,9 @@
         The critic must report: a gate that needs a file owned by a later phase; a repository-wide
         fix before ignore/exclusion files exist; shared-file double ownership; an undeclared
         generator output; production entities placed in a scope without module inventory; or a test
-        mapping whose code cannot exist yet.
+        mapping whose code cannot exist yet; or any runtime deliverable (including App/main/index/Vite
+        composition roots) without exactly one declared module owner, especially one hidden inside a
+        `scope-bootstrap` node without an exact Bootstrap Requirements row.
 
         Persist and fold one explicit `FeasibilityState` through Gate 2 via
         `FEASIBILITY_STATE_FORMAT`; never rely on chat memory:

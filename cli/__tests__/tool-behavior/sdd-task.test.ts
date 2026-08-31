@@ -4,7 +4,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { rmSync, symlinkSync } from 'node:fs';
+import { rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { buildRepoFixture } from './fixture.ts';
 import { runCli } from './run-cli.ts';
@@ -135,6 +135,78 @@ describe('sdd-task — live gate-queue diagnostic', () => {
     }
   });
 
+  it('scaffold-shaped create target dispatches before creation, then verify fails closed until the file exists', () => {
+    const ticket = [
+      '# Task: APP-create — Create one source file',
+      '<!--SECTION:META-->',
+      '- **Task-ID:** APP-create',
+      '- **Status:** [ ] TODO',
+      '- **Scope:** app',
+      '- **Dependencies:** None',
+      '<!--/SECTION:META-->',
+      '<!--SECTION:PHASES_OVERVIEW-->',
+      '| ID | Kind | Deps | Status |',
+      '|---|---|---|---|',
+      '| P1 | config | — | [ ] |',
+      '<!--/SECTION:PHASES_OVERVIEW-->',
+      '<!--SECTION:PHASE_P1-->',
+      '- **Objective:** create the new source beside an existing input',
+      '- **Rules:**',
+      '  - none',
+      '- **Target Files:**',
+      '  - src/existing.ts',
+      '  - src/new.ts',
+      '- **Deleted Files:**',
+      '  - none',
+      '- **Inputs:** none',
+      '- **Exit:** both files exist',
+      '<!--/SECTION:PHASE_P1-->',
+      '<!--SECTION:VERIFICATION-->',
+      '<!--PHASE_RECEIPTS:v1-->',
+      '| Command | Required by | Role |',
+      '|---|---|---|',
+      '| — | — | extra |',
+      '<!--/SECTION:VERIFICATION-->',
+      '<!--SECTION:EXECUTION_LOG-->',
+      '## Execution Log',
+      '<!--/SECTION:EXECUTION_LOG-->',
+    ].join('\n');
+    const { root } = buildRepoFixture({
+      scripts: {},
+      files: {
+        'src/existing.ts': 'export const existing = true;\n',
+        'specs/app/app.spec.md': '# App\n',
+        'specs/app/app.task.APP-create.md': ticket,
+      },
+    });
+    try {
+      const taskArgs = ['sdd-task', 'specs/app/app.task.APP-create.md', '--phase', 'P1'];
+      const dispatched = runCli(taskArgs, root);
+      assert.strictEqual(dispatched.exitCode, 0, dispatched.stdout + dispatched.stderr);
+      assert.match(dispatched.stdout, /READ files:\s+src\/existing\.ts/);
+      assert.match(dispatched.stdout, /CREATE files:\s+src\/new\.ts/);
+      assert.doesNotMatch(dispatched.stdout, /READ files:[^\n]*src\/new\.ts/);
+
+      const verifyArgs = [
+        'sdd-verify',
+        '--task',
+        'specs/app/app.task.APP-create.md',
+        '--phase',
+        'P1',
+      ];
+      const missing = runCli(verifyArgs, root);
+      assert.notStrictEqual(missing.exitCode, 0, missing.stdout + missing.stderr);
+      assert.match(missing.stderr, /Target File path is missing: src\/new\.ts/);
+
+      writeFileSync(join(root, 'src', 'new.ts'), 'export const created = true;\n', 'utf-8');
+      const verified = runCli(verifyArgs, root);
+      assert.strictEqual(verified.exitCode, 0, verified.stdout + verified.stderr);
+      assert.match(verified.stdout, /ALL PASS/);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it('outside and symlink Target/Handoff paths fail before READ or next', () => {
     const cases: Array<{
       name: string;
@@ -181,6 +253,37 @@ describe('sdd-task — live gate-queue diagnostic', () => {
       } finally {
         rmSync(root, { recursive: true, force: true });
       }
+    }
+  });
+
+  it('create-target dispatch still rejects glob, root, traversal, directory, and symlink-ancestor paths', () => {
+    const { root } = buildRepoFixture({
+      scripts: EXECUTION_SCRIPTS,
+      gennadyInstalled: true,
+      files: {
+        'src/current.ts': 'export const current = 1;\n',
+        'src/real/keep.ts': 'export const keep = 1;\n',
+      },
+    });
+    try {
+      symlinkSync(join(root, 'src', 'real'), join(root, 'src', 'alias'));
+      const cases = [
+        ['glob', 'src/*.ts'],
+        ['repo root', '.'],
+        ['traversal', '../outside.ts'],
+        ['existing directory', 'src'],
+        ['symlink ancestor', 'src/alias/future.ts'],
+      ] as const;
+      for (const [name, target] of cases) {
+        writeFileSync(join(root, 'ticket.md'), phaseTicket(target), 'utf-8');
+        const result = runCli(['sdd-task', 'ticket.md', '--phase', 'P1'], root);
+        const output = `${result.stdout}${result.stderr}`;
+        assert.strictEqual(result.exitCode, 1, `${name}: ${output}`);
+        assert.match(output, /ERR_CLI_SDD_TASK_PHASE_EVIDENCE/, name);
+        assert.doesNotMatch(output, /READ |CREATE |next:/, name);
+      }
+    } finally {
+      rmSync(root, { recursive: true, force: true });
     }
   });
 });

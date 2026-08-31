@@ -39,6 +39,12 @@ const REAL_SCRIPTS: Record<string, string> = {
   fix: 'npm run format:fix && npm run lint:fix',
 };
 
+/** @purpose draft.55's real failure shape: every gate exists, but lint repair captures the repo root. */
+const BROAD_ROOT_SCRIPTS: Record<string, string> = {
+  ...REAL_SCRIPTS,
+  'lint:fix': 'eslint --fix .',
+};
+
 const PORTAL = [
   '# Demo Project',
   '',
@@ -83,6 +89,7 @@ function ticket(taskId: string, scope: string, status: string): string {
     '- **Objective:** build it',
     '- **Target Files:**',
     `  - ${scope === 'infra-core' ? 'package.json' : 'src/thing.ts'}`,
+    ...(scope === 'infra-core' ? ['  - scripts/gates-smoke.mjs'] : []),
     ...infraClaims,
     '- **Exit:** it exists',
     '<!--/SECTION:PHASE_P1-->',
@@ -121,7 +128,7 @@ function bootstrapFixture(scripts: Record<string, string>): string {
         '<!--SECTION:BOOTSTRAP_REQUIREMENTS-->',
         '| Requirement | Kind | Owner | Resolution | Readiness Gates | Gate Artifacts |',
         '|---|---|---|---|---|---|',
-        `| toolchain | tool | this-scope-task | create | ${Object.keys(STUB_SCRIPTS).join(', ')} | package.json |`,
+        `| toolchain | tool | this-scope-task | create | ${Object.keys(STUB_SCRIPTS).join(', ')} | package.json, scripts/gates-smoke.mjs |`,
         '<!--/SECTION:BOOTSTRAP_REQUIREMENTS-->',
       ].join('\n'),
       'specs/app/app.spec.md': '# App\n',
@@ -136,6 +143,7 @@ function bootstrapFixture(scripts: Record<string, string>): string {
       'src/thing.ts': '// @file: Thing.\n// @consumers: N/A\n// @tasks: N/A\n',
       'src/thing.test.ts': '// verifies the synthetic bootstrap target\n',
       'scripts/verify-pass.mjs': 'process.exit(0);\n',
+      'scripts/gates-smoke.mjs': 'process.exit(0);\n',
       'scripts/verify-coverage.mjs': [
         "import { mkdirSync, writeFileSync } from 'node:fs';",
         "mkdirSync('coverage', { recursive: true });",
@@ -154,6 +162,120 @@ function bootstrapFixture(scripts: Record<string, string>): string {
 }
 
 describe('bootstrap path — from stub scripts to a verified product phase', () => {
+  it('draft.55 broad-root lint repair maps the exact lint:fix gate to its sole infra owner across state, map, and verify', () => {
+    const root = bootstrapFixture(BROAD_ROOT_SCRIPTS);
+    try {
+      const state = runCli(['sdd-state'], root);
+      assert.strictEqual(state.exitCode, 0, state.stdout + state.stderr);
+      assert.match(state.stdout, /EXECUTION_READY=no/);
+      assert.match(state.stdout, /GATE_QUEUE=INFRA-1/);
+
+      const map = runCli(['sdd-task'], root);
+      assert.strictEqual(map.exitCode, 0, map.stdout + map.stderr);
+      assert.match(map.stdout, /pickable \(ready now\):\s+INFRA-1/m);
+      assert.doesNotMatch(map.stdout, /^  APP-1 →/m);
+      assert.match(map.stdout, /blocked: APP-1 ← EXECUTION_READY=no/);
+      assert.match(map.stdout, /GATE_QUEUE=INFRA-1/);
+
+      const unrelated = runCli(
+        ['sdd-verify', '--task', 'specs/app/app.task.APP-1.md', '--phase', 'P1'],
+        root
+      );
+      assert.notStrictEqual(unrelated.exitCode, 0, unrelated.stdout + unrelated.stderr);
+      assert.match(
+        unrelated.stdout + unrelated.stderr,
+        /does not structurally own a missing readiness gate/
+      );
+
+      const ownerDispatch = runCli(
+        ['sdd-task', 'specs/infra-core/infra-core.task.INFRA-1.md', '--phase', 'P1'],
+        root
+      );
+      assert.strictEqual(ownerDispatch.exitCode, 0, ownerDispatch.stdout + ownerDispatch.stderr);
+      assert.match(ownerDispatch.stdout, /INFRA_QUEUE_EXEMPTION/);
+
+      // Verify consumes the same accepted owner (so it gets past phase-context), then the receipt
+      // layer independently rejects the broad `.` input. The builder must repair that script first.
+      const ownerVerify = runCli(
+        ['sdd-verify', '--task', 'specs/infra-core/infra-core.task.INFRA-1.md', '--phase', 'P1'],
+        root
+      );
+      assert.notStrictEqual(ownerVerify.exitCode, 0, ownerVerify.stdout + ownerVerify.stderr);
+      assert.doesNotMatch(
+        ownerVerify.stdout + ownerVerify.stderr,
+        /does not structurally own a missing readiness gate/
+      );
+      assert.match(ownerVerify.stdout + ownerVerify.stderr, /cannot fingerprint.*repository root/s);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('real CLI map fails closed for ambiguous, DONE, artifact-mismatched, and unclaimed gate owners', () => {
+    const variants: Array<{
+      name: string;
+      mutate(root: string): void;
+      diagnostic: RegExp;
+    }> = [
+      {
+        name: 'ambiguous',
+        mutate(root) {
+          writeFileSync(
+            join(root, 'specs/infra-core/infra-core.task.INFRA-2.md'),
+            ticket('INFRA-2', 'infra-core', '[ ] TODO'),
+            'utf-8'
+          );
+        },
+        diagnostic: /multiple phase owners.*INFRA-1\/P1.*INFRA-2\/P1/,
+      },
+      {
+        name: 'done',
+        mutate(root) {
+          writeFileSync(
+            join(root, 'specs/infra-core/infra-core.task.INFRA-1.md'),
+            ticket('INFRA-1', 'infra-core', '[x] DONE'),
+            'utf-8'
+          );
+        },
+        diagnostic: /missing gate 'lint:fix' has no exact active ticket phase owner/,
+      },
+      {
+        name: 'artifact mismatch',
+        mutate(root) {
+          const path = join(root, 'specs/infra-core/infra-core.task.INFRA-1.md');
+          writeFileSync(
+            path,
+            readFileSync(path, 'utf-8').replace('  - scripts/gates-smoke.mjs\n', ''),
+            'utf-8'
+          );
+        },
+        diagnostic: /claim and Target Files match Bootstrap Requirements/,
+      },
+      {
+        name: 'unclaimed',
+        mutate(root) {
+          const path = join(root, 'specs/infra-core/infra-core.task.INFRA-1.md');
+          writeFileSync(path, readFileSync(path, 'utf-8').replace('  - lint:fix\n', ''), 'utf-8');
+        },
+        diagnostic: /missing gate 'lint:fix' has no exact active ticket phase owner/,
+      },
+    ];
+
+    for (const variant of variants) {
+      const root = bootstrapFixture(BROAD_ROOT_SCRIPTS);
+      try {
+        variant.mutate(root);
+        const map = runCli(['sdd-task'], root);
+        assert.strictEqual(map.exitCode, 0, `${variant.name}: ${map.stdout}${map.stderr}`);
+        assert.match(map.stdout, /pickable \(ready now\): — none/);
+        assert.match(map.stdout, /GATE_QUEUE=none/);
+        assert.match(map.stdout, variant.diagnostic);
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+      }
+    }
+  });
+
   it("a from-scratch project on the directive's own stub scripts reads as provisional, not ready and not broken", () => {
     const root = bootstrapFixture(STUB_SCRIPTS);
     try {

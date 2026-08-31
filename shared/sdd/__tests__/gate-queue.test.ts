@@ -7,7 +7,11 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { phaseOwnsMissingReadinessGate, queuedInfraGateTicketIds } from '../gate-queue.ts';
+import {
+  checkAuthoringReadiness,
+  phaseOwnsMissingReadinessGate,
+  queuedInfraGateTicketIds,
+} from '../gate-queue.ts';
 import type { TicketCorpusRef } from '../ticket-resolve.ts';
 import type { Scope } from '../portal.ts';
 import type { ReadinessResult } from '../readiness.ts';
@@ -33,6 +37,7 @@ const notReady: ReadinessResult = {
   ready: false,
   missing: ['lint'],
   stubbed: [],
+  missingGates: ['lint'],
   level: 'not-ready',
   executionReady: false,
 };
@@ -45,6 +50,9 @@ function fixture(ticketCount = 1): { root: string; refs: TicketCorpusRef[]; scop
   writeFileSync(
     join(scopeDir, 'infra.spec.md'),
     [
+      '<!--SECTION:SCOPE_TYPE-->',
+      'infrastructure',
+      '<!--/SECTION:SCOPE_TYPE-->',
       '<!--SECTION:BOOTSTRAP_REQUIREMENTS-->',
       '| Requirement | Kind | Owner | Resolution | Readiness Gates | Gate Artifacts |',
       '|---|---|---|---|---|---|',
@@ -142,6 +150,7 @@ describe('queuedInfraGateTicketIds structural ownership', () => {
           { name: 'test', present: false },
         ],
         missing: ['lint', 'test'],
+        missingGates: ['lint', 'test'],
       },
       f.root
     );
@@ -208,5 +217,154 @@ describe('queuedInfraGateTicketIds structural ownership', () => {
       queue.diagnostics.map((item) => item.message).join('\n'),
       /unsafe portal specPath.*symlink component/
     );
+  });
+});
+
+describe('checkAuthoringReadiness structural scaffold permission', () => {
+  const currentSchema = { version: 'test', status: 'current' as const, findings: [] };
+
+  it('accepts a future platform gate alias when one complete infrastructure row owns it', () => {
+    const f = fixture();
+    const spec = join(f.root, 'specs', 'infra', 'infra.spec.md');
+    writeFileSync(
+      spec,
+      readFileSync(spec, 'utf-8')
+        .replace('lint gate', 'swift gate')
+        .replace('| lint | package.json |', '| swift-build | Package.swift |')
+    );
+
+    const result = checkAuthoringReadiness(
+      f.scopes,
+      { ...notReady, missingGates: ['swift-build'] },
+      currentSchema,
+      f.root
+    );
+
+    assert.deepStrictEqual(result, {
+      ready: true,
+      diagnostics: [],
+      scopes: [{ name: 'infra', status: 'yes', diagnostics: [] }],
+    });
+  });
+
+  it('blocks scaffold when a missing gate row has ambiguous ownership metadata', () => {
+    const f = fixture();
+    const spec = join(f.root, 'specs', 'infra', 'infra.spec.md');
+    writeFileSync(spec, readFileSync(spec, 'utf-8').replace('| create |', '| — |'));
+
+    const result = checkAuthoringReadiness(f.scopes, notReady, currentSchema, f.root);
+
+    assert.equal(result.ready, false);
+    assert.match(result.diagnostics.join('\n'), /has no Resolution/);
+  });
+
+  it('does not let a product scope own a missing runtime gate', () => {
+    const f = fixture();
+    (f.scopes[0] as Scope).type = 'product';
+
+    const result = checkAuthoringReadiness(f.scopes, notReady, currentSchema, f.root);
+
+    assert.equal(result.ready, false);
+    assert.match(result.diagnostics.join('\n'), /no complete infrastructure.*owner row/);
+  });
+
+  it('isolates target scope health while keeping missing runtime-gate ownership project-wide', () => {
+    const root = mkdtempSync(join(tmpdir(), 'authoring-scopes-'));
+    roots.push(root);
+    const writeScope = (name: string, type: string, bootstrap: string, extra = ''): void => {
+      const dir = join(root, 'specs', name);
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(
+        join(dir, `${name}.spec.md`),
+        [
+          '<!--SECTION:SCOPE_TYPE-->',
+          type,
+          '<!--/SECTION:SCOPE_TYPE-->',
+          extra,
+          '<!--SECTION:BOOTSTRAP_REQUIREMENTS-->',
+          bootstrap,
+          '<!--/SECTION:BOOTSTRAP_REQUIREMENTS-->',
+        ].join('\n')
+      );
+    };
+    const currentHeader =
+      '| Requirement | Kind | Owner | Resolution | Readiness Gates | Gate Artifacts |\n|---|---|---|---|---|---|';
+    writeScope('healthy', 'infrastructure', currentHeader);
+    writeScope(
+      'broken',
+      'product',
+      '| Requirement | Kind | Owner | Resolution |\n|---|---|---|---|'
+    );
+    writeScope('api', 'interface', currentHeader);
+    const scopes: Scope[] = [
+      {
+        name: 'healthy',
+        type: 'infrastructure',
+        status: 'done',
+        description: '',
+        specPath: './healthy/healthy.spec.md',
+      },
+      {
+        name: 'broken',
+        type: 'product',
+        status: 'done',
+        description: '',
+        specPath: './broken/broken.spec.md',
+      },
+      {
+        name: 'api',
+        type: 'interface',
+        status: 'done',
+        description: '',
+        specPath: './api/api.spec.md',
+      },
+    ];
+    const schema = {
+      version: 'test',
+      status: 'stale-migratable' as const,
+      findings: [
+        {
+          path: 'specs/healthy/healthy.spec.md',
+          kind: 'scope' as const,
+          status: 'current' as const,
+          reason: 'current',
+        },
+        {
+          path: 'specs/broken/broken.spec.md',
+          kind: 'scope' as const,
+          status: 'stale-migratable' as const,
+          reason: 'legacy columns',
+        },
+      ],
+    };
+    const runtimeReady = {
+      ...notReady,
+      ready: true,
+      level: 'ready' as const,
+      executionReady: true,
+      missingGates: [],
+    };
+
+    const isolated = checkAuthoringReadiness(scopes, runtimeReady, schema, root);
+    assert.equal(isolated.ready, false, 'all-scope aggregate stays red');
+    assert.equal(isolated.scopes.find((fact) => fact.name === 'healthy')?.status, 'yes');
+    assert.equal(isolated.scopes.find((fact) => fact.name === 'broken')?.status, 'no');
+    assert.equal(isolated.scopes.find((fact) => fact.name === 'api')?.status, 'not-applicable');
+
+    const sharedMissing = checkAuthoringReadiness(scopes, notReady, schema, root);
+    assert.equal(sharedMissing.scopes.find((fact) => fact.name === 'healthy')?.status, 'no');
+    assert.match(
+      sharedMissing.scopes.find((fact) => fact.name === 'healthy')?.diagnostics.join('\n') ?? '',
+      /missing runtime gate 'lint'.*no complete infrastructure/
+    );
+
+    writeScope(
+      'healthy',
+      'infrastructure',
+      `${currentHeader}\n| lint gate | tool | this-scope-task | create | lint | package.json |`
+    );
+    const owned = checkAuthoringReadiness(scopes, notReady, schema, root);
+    assert.equal(owned.scopes.find((fact) => fact.name === 'healthy')?.status, 'yes');
+    assert.equal(owned.scopes.find((fact) => fact.name === 'broken')?.status, 'no');
   });
 });

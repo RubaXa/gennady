@@ -120,9 +120,9 @@ describe('SDD session lifetime contract', () => {
     assert.match(classify, /compatible existing session selected/);
     assert.match(classify, /required sessionOpen succeeded/);
     assert.match(preflight, /legal here only because STEP_1 already proved or opened the owning session/);
-    assert.match(preflight, /activeRouterState = readinessState/);
+    assert.doesNotMatch(preflight, /readinessState|readiness arm/);
     assert.match(preflight, /activeRouterState = migrationState/);
-    assert.match(preflight, /must not refresh again|Do not run a router refresh/);
+    assert.match(preflight, /Do not run a router refresh after that return/);
     assert.equal(
       preflight.match(/<ToolCall\b[^>]*>npx gennady sdd-session log/g)?.length,
       1,

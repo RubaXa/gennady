@@ -5,12 +5,12 @@
 import { dirname, basename, join, resolve } from 'node:path';
 import { extractSection } from './section.ts';
 import type { Finding } from './finding.ts';
-import { parseMetaInfo, parsePhasesOverview } from './ticket.ts';
+import { parseMetaInfo, parsePhaseDetail, parsePhasesOverview } from './ticket.ts';
 import { legacyHeaderBody } from './anchor-inject.ts';
 import { parseGraphEdges } from './portal.ts';
 import type { Scope, GraphEdge } from './portal.ts';
 import type { FlowVersion } from './flow.ts';
-import { SCOPE_KINDS, loadBearingSections, foldSections } from './templates.ts';
+import { SCOPE_KINDS, TEMPLATES, loadBearingSections, foldSections } from './templates.ts';
 import { validateTaskId, findPrefixClashes, describeIdConflict } from './task-id.ts';
 import {
   deriveSpecAcronym,
@@ -500,6 +500,156 @@ export function checkTicket(file: string, content: string): Finding[] {
     }
   }
   // #endregion END_PHASES
+
+  return findings;
+}
+
+/**
+ * @purpose Fail closed on incomplete ticket authoring before scaffold indexes or repeats it.
+ * @invariant Required fixed sections come from the task template manifest; PHASE_P<N> is checked
+ * against each parseable overview row. Runtime receipts, file existence, and coverage results are out.
+ * @param file Ticket file reported in findings.
+ * @param content Full pre-index ticket markdown.
+ * @returns Copy-ready structural findings; empty only for a complete authored ticket.
+ */
+export function checkTicketAuthoringStructure(file: string, content: string): Finding[] {
+  const findings: Finding[] = [];
+  const add = (code: string, message: string): void => {
+    findings.push({ severity: 'error', code, file, message });
+  };
+  const required = TEMPLATES.task.sections.filter((section) => section.required);
+  const fixedRequired = required.filter((section) => section.name !== 'PHASE_P<N>');
+  const bodies = new Map<string, string>();
+
+  for (const section of fixedRequired) {
+    const extracted = extractSection(content, section.name);
+    if (extracted.status !== 'ok' || extracted.content.trim().length === 0) {
+      add(
+        'SDD_AUTHORING_SECTION_REQUIRED',
+        `Add and fill the complete required ${section.name} section: <!--SECTION:${section.name}--> … <!--/SECTION:${section.name}-->.`
+      );
+      continue;
+    }
+    bodies.set(section.name, extracted.content);
+  }
+
+  const metaBody = bodies.get('META');
+  if (metaBody) {
+    const meta = parseMetaInfo(metaBody);
+    const requiredMeta = [
+      ['Task-ID', meta.taskId],
+      ['Status', meta.status],
+      ['Purpose', meta.purpose],
+      ['Scope', meta.scope],
+      ['Module', meta.module],
+    ] as const;
+    const absent: string[] = requiredMeta
+      .filter(([, value]) => !value || hasPlaceholder(value))
+      .map(([name]) => name);
+    const literalFields = [
+      'Dependencies',
+      'Runtime Backing',
+      'Verification Levels',
+      'Deferred Runtime Scope',
+    ];
+    for (const label of literalFields) {
+      const value = metaBody.match(new RegExp(`\\*\\*${label}:\\*\\*\\s*(.+)`))?.[1]?.trim();
+      if (!value || hasPlaceholder(value)) absent.push(label);
+    }
+    if (meta.specRefs.length === 0) absent.push('Spec References');
+    if (absent.length > 0)
+      add(
+        'SDD_AUTHORING_META_INCOMPLETE',
+        `Fill the complete META fields before validation; missing or placeholder: ${absent.join(', ')}.`
+      );
+  }
+
+  const overviewBody = bodies.get('PHASES_OVERVIEW');
+  const phases = overviewBody ? parsePhasesOverview(overviewBody) : [];
+  const usablePhases = phases.filter(
+    (phase) =>
+      /^P[0-9]+$/.test(phase.id) &&
+      /^(bootstrap|impl|test|config|doc|refactor)$/.test(phase.kind) &&
+      /^\[(?: |~|x|!)\](?:\s+[A-Z_]+)?$/.test(phase.status)
+  );
+  if (overviewBody && (phases.length === 0 || usablePhases.length !== phases.length))
+    add(
+      'SDD_AUTHORING_PHASES_INVALID',
+      'Replace PHASES_OVERVIEW with at least one parseable row: | P1 | <bootstrap|impl|test|config|doc|refactor> | — | [ ] |.'
+    );
+
+  for (const phase of usablePhases) {
+    const name = `PHASE_${phase.id}`;
+    const extracted = extractSection(content, name);
+    if (extracted.status !== 'ok' || extracted.content.trim().length === 0) {
+      add(
+        'SDD_AUTHORING_PHASE_REQUIRED',
+        `Add and fill the phase declared by PHASES_OVERVIEW: <!--SECTION:${name}--> … <!--/SECTION:${name}-->.`
+      );
+      continue;
+    }
+    const detail = parsePhaseDetail(extracted.content);
+    const missing = [
+      ['Objective', detail.objective],
+      ['Rules', detail.rules.length > 0 ? 'present' : null],
+      ['Target Files', detail.targetFiles.length > 0 ? 'present' : null],
+      ['Deleted Files', /\*\*Deleted Files:\*\*/.test(extracted.content) ? 'present' : null],
+      ['Inputs', detail.inputs],
+      ['Exit', detail.exit],
+    ]
+      .filter(([, value]) => !value || hasPlaceholder(value))
+      .map(([name]) => name);
+    if (missing.length > 0)
+      add(
+        'SDD_AUTHORING_PHASE_INCOMPLETE',
+        `Fill the complete ${name} fields before validation; missing or placeholder: ${missing.join(', ')}.`
+      );
+  }
+
+  const bddBody = bodies.get('BDD');
+  if (
+    bddBody &&
+    !(
+      /^\*\*Scenario:\*\*.+$/m.test(bddBody) &&
+      /^- \*\*Given\*\*.+$/m.test(bddBody) &&
+      /^- \*\*When\*\*.+$/m.test(bddBody) &&
+      /^- \*\*Then\*\*.+$/m.test(bddBody)
+    )
+  )
+    add(
+      'SDD_AUTHORING_BDD_INCOMPLETE',
+      'Fill BDD with at least one complete **Scenario:** plus Given, When, and Then lines.'
+    );
+
+  const verificationBody = bodies.get('VERIFICATION');
+  if (
+    verificationBody &&
+    !/\*\*Coverage Policy:\*\*\s*(?:required|not-applicable)/.test(verificationBody)
+  )
+    add(
+      'SDD_AUTHORING_VERIFICATION_INCOMPLETE',
+      'Fill VERIFICATION with one explicit **Coverage Policy:** required or not-applicable and its applicable fields/table.'
+    );
+
+  const coverageBody = bodies.get('TEST_COVERAGE');
+  if (
+    coverageBody &&
+    !/^-[^\n]+(?:→\s*`[^`]+`\s*::\s*`[^`]+`|Deferred Test Ownership:)/m.test(coverageBody)
+  )
+    add(
+      'SDD_AUTHORING_TEST_COVERAGE_INCOMPLETE',
+      "Fill TEST_COVERAGE with each scenario's complete `→ test-file :: case` row or canonical Deferred Test Ownership row."
+    );
+
+  for (const [name, body] of bodies) {
+    if (name === 'EXECUTION_LOG') continue;
+    const authoredText = body.replace(/<!--[\s\S]*?-->/g, '');
+    if (hasPlaceholder(authoredText))
+      add(
+        'SDD_AUTHORING_PLACEHOLDER',
+        `Replace every authoring placeholder in ${name}; the section still contains an unresolved <…> token.`
+      );
+  }
 
   return findings;
 }

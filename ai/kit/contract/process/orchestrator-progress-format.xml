@@ -1,8 +1,14 @@
 <!-- source: sdd-execute skill ProgressReporting -->
 <Contract id="ORCHESTRATOR_PROGRESS_FORMAT">
   Subagents are black boxes; emit one progress line per state transition so the operator sees the run.
+  Every progress message uses exactly this one-line grammar; do not introduce alternate service-line
+  prose or omit a field:
 
-  `[<bar>] <pct>% | <Task-ID> | <stage>`
+  `[<bar>] <pct>% | task=<Task-ID|selection> | stage=<stage> | session=<reused <kind>@<spec>|fresh (<reason>)>`
+
+  Before task selection use `task=selection`. Before a worker key exists, `session=` reports the
+  router's exact execute-session transition (`reused execute@<working-set>` or `fresh (first)`). Once a
+  worker is selected it reports that worker path (`reused <kind>@<spec>` or `fresh (<reason>)`).
 
   Stages: `⏳ resolving + planning` · `🔧 phase <P<N>> (<kind>, <model>) executing` · `✅ phase <P<N>> done → next` · `✅ all phases done → 🔍 audit` · `✅ audit PASS`.
   Retry path: `❌ audit FAIL → 🔄 re-run <phases> as fix` · `✅ re-run done → 🔍 audit R2`.

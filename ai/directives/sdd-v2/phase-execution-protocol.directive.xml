@@ -272,7 +272,7 @@
 
     | Tool | When | Call |
     |---|---|---|
-    | `sdd-task <ticket> --phase P<N>` | FIRST action, every phase, every retry — objective, gates + satisfy-hints, exit, phase-scoped read-manifest, prior Handoff | `npx gennady sdd-task <ticket> --phase P2` |
+    | `sdd-task <ticket> --phase P<N>` | FIRST action, every phase, every retry — objective, gates + satisfy-hints, exit, phase-scoped READ/CREATE lifecycle manifest, prior Handoff | `npx gennady sdd-task <ticket> --phase P2` |
     | `sdd-extract <file> <NAME>` · `sdd-extract <file>#<anchor>` | Pull ONE cited block instead of a whole file — `<NAME>` is a `SECTION_NAME` (`PHASE_P1`, `BDD`, `VERIFICATION`, …), two args; a markdown heading anchor is the combined `path#lower-dashed-slug` form the read-manifest prints | `npx gennady sdd-extract <ticket> PHASE_P1` · `npx gennady sdd-extract specs/app/greeting/greeting.spec.md#module-contracts` |
     | `sdd-log <ticket-path\|Task-ID> line --content-file <payload> --phase <PhaseID>` | Semantic event; agent writes free text with the file-write tool, never shell argv | `npx gennady sdd-log <ticket-path\|Task-ID> line --content-file .claude/tmp/TSK-x-P2-log.txt --phase P2` |
     | `sdd-log <ticket> phase <PhaseID> [--content-file <payload>]` | Fresh phase has no payload; a `fix` re-run file contains only the `— re-run:` suffix | `npx gennady sdd-log <ticket> phase P2 --content-file .claude/tmp/TSK-x-P2-log.txt` |

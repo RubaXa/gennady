@@ -16,6 +16,7 @@ import {
 } from '../../../shared/common/changed-files.ts';
 import {
   checkTicket,
+  checkTicketAuthoringStructure,
   isTicket,
   isLegacyTicket,
   checkLegacyTicket,
@@ -94,10 +95,17 @@ import {
   parseTestCoverage,
   resolveTestFileMatches,
 } from '../../../shared/sdd/bdd-coverage.ts';
-import { resolveTicketArg, resolutionLine } from '../../../shared/sdd/ticket-resolve.ts';
+import {
+  collectTicketCorpus,
+  resolveTicketArg,
+  resolutionLine,
+} from '../../../shared/sdd/ticket-resolve.ts';
+import { checkScaffoldFeasibility } from '../../../shared/sdd/scaffold-feasibility.ts';
+import { looksLikeTaskId } from '../../../shared/sdd/task-id.ts';
 import {
   resolveModuleScopeOwnership,
   resolveScopeDecomposition,
+  resolveTaskOutputOwnership,
 } from '../../../shared/sdd/module-specs.ts';
 import {
   ambiguousIdError,
@@ -865,6 +873,34 @@ function checkSpecRefs(file: string, content: string): Finding[] {
   return findings;
 }
 
+/** @purpose Check one ticket's Meta Scope/Module against structural ownership proved by its path. | @param file Absolute ticket path. | @param content Ticket markdown. | @param repoRoot Canonical project root. | @returns One copy-ready ownership finding when metadata is absent or disagrees. */
+function checkTicketOwnerMetadata(file: string, content: string, repoRoot: string): Finding[] {
+  const metaSection = extractSection(content, 'META');
+  if (metaSection.status !== 'ok') return [];
+  const meta = parseMetaInfo(metaSection.content);
+  const owner = resolveTaskOutputOwnership(relative(repoRoot, file), repoRoot);
+  const expectedModule = owner.module ?? 'N/A';
+  if (owner.reason || !owner.scope) {
+    return [
+      {
+        severity: 'error',
+        code: 'SDD_TASK_OWNER_METADATA',
+        file,
+        message: `Ticket path has no unambiguous structural owner: ${owner.reason ?? 'scope missing'}. Move/recreate it through its exact sdd-new owner ToolCall; do not guess Meta ownership.`,
+      },
+    ];
+  }
+  if (meta.scope === owner.scope && (meta.module ?? 'N/A') === expectedModule) return [];
+  return [
+    {
+      severity: 'error',
+      code: 'SDD_TASK_OWNER_METADATA',
+      file,
+      message: `Replace the complete owner metadata with "- **Scope:** ${owner.scope}" and "- **Module:** ${expectedModule}".`,
+    },
+  ];
+}
+
 /**
  * @purpose Flow version governing ONE spec file — per-scope, so a mid-migration (mixed) repo checks
  * migrated scopes strictly while pre-migration scopes stay lenient.
@@ -951,8 +987,10 @@ export async function run(
       rawArgs,
       {
         task: { aliases: ['task'], takesValue: true },
+        authoring: ['authoring'],
         all: ['all'],
         changed: ['changed'],
+        scaffoldFeasibility: ['scaffold-feasibility'],
         reviewPublication: { aliases: ['review-publication'], takesValue: true },
         reviewReady: { aliases: ['review-ready'], takesValue: true },
         reviewState: { aliases: ['review-state'], takesValue: true },
@@ -976,10 +1014,16 @@ export async function run(
     return badInvocation('--all does not take a value');
   if (args.changed !== undefined && args.changed !== true)
     return badInvocation('--changed does not take a value');
+  if (args.authoring !== undefined && args.authoring !== true)
+    return badInvocation('--authoring does not take a value');
+  if (args.scaffoldFeasibility !== undefined && args.scaffoldFeasibility !== true)
+    return badInvocation('--scaffold-feasibility does not take a value');
 
   const taskPath = typeof args.task === 'string' ? args.task : undefined;
+  const authoring = args.authoring === true;
   const all = args.all === true;
   const changed = args.changed === true;
+  const scaffoldFeasibility = args.scaffoldFeasibility === true;
   const reviewPublicationSelected = typeof args.reviewPublication === 'string';
   const reviewPublicationPaths = reviewPublicationSelected
     ? [args.reviewPublication as string, ...positional]
@@ -994,6 +1038,7 @@ export async function run(
     taskSelected,
     all,
     changed,
+    scaffoldFeasibility,
     reviewPublicationSelected,
     reviewReadySelected,
     reviewStateSelected,
@@ -1001,14 +1046,86 @@ export async function run(
   if (
     selectedModeCount !== 1 ||
     (taskSelected && positional.length > 0) ||
+    (authoring && !taskSelected) ||
     (reviewReadySelected && positional.length > 0) ||
-    ((all || changed) && positional.length > 1)
+    ((all || changed || scaffoldFeasibility) && positional.length > 1)
   )
     return badInvocation(
       selectedModeCount !== 1
         ? 'choose exactly one mode'
-        : `unexpected positional argument(s): ${positional.join(' ')}`
+        : authoring && !taskSelected
+          ? '--authoring requires --task <ticket>'
+          : `unexpected positional argument(s): ${positional.join(' ')}`
     );
+
+  if (authoring && taskPath && looksLikeTaskId(taskPath))
+    return badInvocation(
+      '--authoring requires the exact created ticket path returned by sdd-new, not a Task-ID'
+    );
+
+  if (scaffoldFeasibility) {
+    const selectedRoot = positional[0] ?? ticketProjectRoot;
+    const rootIssue = selectedRootIssue(selectedRoot);
+    if (rootIssue) return readFailed(rootIssue.path, rootIssue.reason);
+    const repoRoot = realpathSync(resolve(selectedRoot));
+    const corpus = collectTicketCorpus(repoRoot);
+    if (!corpus.ok) return readFailed(selectedRoot, corpus.detail);
+
+    const packageHead = readHeadContent(repoRoot, 'package.json');
+    if (packageHead.status === 'error')
+      return gitEvidenceError(packageHead.operation, packageHead.exitCode, packageHead.stderr);
+    let packageContent = packageHead.status === 'ok' ? packageHead.content : '{}';
+    if (packageHead.status === 'no-head') {
+      const observed = readUtf8(join(repoRoot, 'package.json'));
+      if (observed.ok) packageContent = observed.value;
+    }
+    let parsedPackage: {
+      dependencies?: Record<string, string>;
+      devDependencies?: Record<string, string>;
+      optionalDependencies?: Record<string, string>;
+    };
+    try {
+      parsedPackage = JSON.parse(packageContent) as typeof parsedPackage;
+    } catch {
+      return readFailed('package.json@HEAD', 'clean-HEAD package.json is not valid JSON');
+    }
+    const declaredPackages = new Set([
+      ...Object.keys(parsedPackage.dependencies ?? {}),
+      ...Object.keys(parsedPackage.devDependencies ?? {}),
+      ...Object.keys(parsedPackage.optionalDependencies ?? {}),
+    ]);
+    const activeLockfiles: string[] = [];
+    for (const lockfile of [
+      'package-lock.json',
+      'npm-shrinkwrap.json',
+      'pnpm-lock.yaml',
+      'yarn.lock',
+      'bun.lock',
+      'bun.lockb',
+    ]) {
+      const head = readHeadContent(repoRoot, lockfile);
+      if (head.status === 'error')
+        return gitEvidenceError(head.operation, head.exitCode, head.stderr);
+      if (head.status === 'ok') activeLockfiles.push(lockfile);
+      else if (head.status === 'no-head' && existsSync(join(repoRoot, lockfile)))
+        activeLockfiles.push(lockfile);
+    }
+    const feasibility = checkScaffoldFeasibility(corpus.refs, {
+      declaredPackages,
+      activeLockfiles,
+    });
+    for (const item of feasibility) {
+      if (item.file !== '(scaffold graph)') item.file = relative(repoRoot, item.file) || item.file;
+    }
+    const formatted = formatFindings(feasibility, corpus.refs.length, {
+      repairHint:
+        'repair the named scaffold graph facts, then rerun the same --scaffold-feasibility command before the semantic critic.',
+    });
+    return {
+      text: `[sdd-check] scaffold feasibility (clean HEAD)\n${formatted.text}`,
+      exitCode: formatted.exitCode,
+    };
+  }
 
   if (reviewPublicationSelected) {
     const bundle = resolveReviewBundle(reviewPublicationPaths, reviewPublicationError);
@@ -1396,15 +1513,18 @@ export async function run(
       taskBanner = resolutionLine('sdd-check', resolved.id, resolved.path, repoRoot);
     }
     findings.push(...checkTicket(effectivePath, content));
-    findings.push(...checkPhaseReceipts(effectivePath, resolved.path, content, repoRoot));
+    if (authoring) findings.push(...checkTicketAuthoringStructure(effectivePath, content));
+    if (authoring) findings.push(...checkTicketOwnerMetadata(resolved.path, content, repoRoot));
+    if (!authoring)
+      findings.push(...checkPhaseReceipts(effectivePath, resolved.path, content, repoRoot));
     findings.push(...checkRuleLinks(effectivePath, content, repoRoot));
     findings.push(...checkSpecRefs(effectivePath, content));
-    findings.push(...checkResearchRefs(effectivePath, content));
-    findings.push(...(await checkSpecMermaid(effectivePath, content)));
+    if (!authoring) findings.push(...checkResearchRefs(effectivePath, content));
+    if (!authoring) findings.push(...(await checkSpecMermaid(effectivePath, content)));
     findings.push(...checkTicketRulesCascade(effectivePath, content, repoRoot));
     findings.push(...checkTicketBddCoverage(effectivePath, content, repoRoot));
-    findings.push(...checkTicketCoveragePolicy(effectivePath, content));
-    if (specFlowVersion(resolve(effectivePath)) === 'v2')
+    if (!authoring) findings.push(...checkTicketCoveragePolicy(effectivePath, content));
+    if (!authoring && specFlowVersion(resolve(effectivePath)) === 'v2')
       findings.push(...checkSpecLanguage(effectivePath, content));
     if (isV2SpecsTicket(effectivePath))
       findings.push(...checkTaskIdGrammar(effectivePath, content));
@@ -1614,8 +1734,21 @@ export async function run(
     for (const f of findings) f.file = relative(process.cwd(), resolve(f.file)) || f.file;
   }
 
+  if (authoring) {
+    for (const finding of findings) finding.severity = 'error';
+  }
+
   logger.debug(`[SddCheckCommand#run] ${findings.length} finding(s) across ${fileCount} file(s)`);
-  const result = formatFindings(findings, fileCount);
+  const result = formatFindings(
+    findings,
+    fileCount,
+    authoring
+      ? {
+          maxFindings: 12,
+          repairHint: 'fix only this ticket, then rerun the same authoring command.',
+        }
+      : {}
+  );
   return taskBanner ? { text: `${taskBanner}\n${result.text}`, exitCode: result.exitCode } : result;
 }
 

@@ -190,6 +190,11 @@
         when state and message agree — the confirming question weighs the real candidate intents
         against each other, not just the first plausible one (`AX_DIVERGE_BEFORE_RECOMMEND`).
 
+        The `[SPEC_SCHEMA]` block is binding router evidence. For forced `scaffold`, pass it unchanged
+        to scaffold STEP_0B; schema remediation is a resumable preflight subflow, never permission for
+        scaffold or router to edit scope/module specs. Do not collapse `stale-migratable` and
+        `invalid` into one generic drift branch.
+
         `recover-from-code` fires when the operator asks to recover / recreate a spec FROM EXISTING
         CODE and names a concrete path (a folder or a file) in the message — e.g. «воссоздай спеку для
         `services/foo` по коду». It requires a LIVE portal (`specs/README.md` present): a path-less
@@ -253,7 +258,11 @@
         orchestrator accept a `GlossarySuggestions` item: write its exact bytes to
         `.claude/tmp/sdd-glossary-term.txt` and use the canonical glossaryUpdate ToolCall from
         `SESSION_FILE_FORMAT`. Never persist a term before this point and never pass it inline.
-        Set `activeRouterState = routerState` and continue to STEP_1B_PREFLIGHT.
+        Set `activeRouterState = routerState`. For execute, also retain the exact transition as
+        `executeSessionMode`: compatible existing session → `reused execute@<working-set>`; newly
+        opened session → `fresh (first)`; an operator-confirmed close-and-start-new →
+        `fresh (intent-switch)`. STEP_2 passes this label unchanged to the execute owner for its
+        canonical progress lines. Then continue to STEP_1B_PREFLIGHT.
 
         Inputs <confirmed-intent>, <confirmed-scale>: this STEP_1 operator confirmation.
         <ToolCall owner="this-step" result="previousSessionClosed">npx gennady sdd-session close</ToolCall> Use previousSessionClosed before sessionOpen.
@@ -267,15 +276,15 @@
     <Step id="STEP_1B_PREFLIGHT">
       <Goal>Clear readiness/migration only after the compatible session write barrier is open.</Goal>
       <Action>
-        Use `FLOW_VERSION`, `READINESS`, and `GATE_QUEUE` from `activeRouterState`; do not call
+        Use `FLOW_VERSION`, requested `AUTHORING_SCOPE` line(s), `EXECUTION_READY`, and `GATE_QUEUE` from `activeRouterState`; do not call
         `sdd-state` or a task-lifecycle command to rediscover them. Apply the switch below, sized to
         the classified request's blast radius (`AX_PREFLIGHT_BLAST_RADIUS_SCOPED`). Its mutating arms
         are legal here only because STEP_1 already proved or opened the owning session.
 
-        A readiness arm returns exactly one fresh post-mutation snapshot as `readinessState`; set
-        `activeRouterState = readinessState`. A migration arm returns exactly one fresh
-        post-mutation snapshot as `migrationState`; set `activeRouterState = migrationState`.
-        Do not run a router refresh after either return. A non-mutating/default arm retains the
+        The migration arm returns exactly one fresh post-mutation snapshot as `migrationState`; set
+        `activeRouterState = migrationState`. Do not run a router refresh after that return.
+        Readiness branches are routing decisions over `activeRouterState`, not mutation subflows;
+        every non-migration arm retains the
         current `activeRouterState`. After a mutating branch returns, write exactly
         `<branch-id> — <what it produced>` to
         `.claude/tmp/sdd-router-preflight-journal.txt`, run branchJournal once, and require success;
@@ -300,7 +309,8 @@
         `SESSION_FILE_FORMAT`. `continue` keeps this session for the selected next link; `pause` keeps
         it for resume after approval/check/cap/blocker/operator pause. A branch may return `complete`
         only from its own terminal menu after proving no chained work remains; no intermediate route
-        closes the session.
+        closes the session. When routing execute, pass the exact `executeSessionMode` produced by
+        STEP_1; the owner must not infer reused/fresh from filesystem reads or extra probes.
       </Action>
     </Step>
   </ExecutionPlan>

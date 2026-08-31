@@ -1,0 +1,33 @@
+0.8.4
+
+<Step id="STEP_3_TICKET_LOOP">
+      <Goal>Materialize and validate exactly one prepared ticket at a time. (auto)</Goal>
+      <Action>
+        Select only the next unprocessed STEP_2 node. Do not inspect or plan the following node yet.
+        Run exactly one matching ToolCall below, never a shell loop. From the returned manifest plus
+        the common contract, form and fill content only for this current node.
+        Copy its returned path-aware owning-spec/rule/deferred literals verbatim into the prepared
+        content; never compute paths or translate IDs. Fill that one returned manifest completely.
+        Inputs <owner>/<scope>/<module>/<ACR>/<slug>: STEP_2 node. This table is exhaustive; interface maps to none.
+        <ToolCall owner="this-step" result="flatInfraTaskManifest">npx gennady sdd-new task --owner infrastructure-flat --scope <scope> --id <ACR>-<slug></ToolCall> Use flatInfraTaskManifest only for infrastructure-flat.
+        <ToolCall owner="this-step" result="scopeBootstrapTaskManifest">npx gennady sdd-new task --owner scope-bootstrap --scope <scope> --id <ACR>-<slug></ToolCall> Use scopeBootstrapTaskManifest only for product/library scope-bootstrap.
+        <ToolCall owner="this-step" result="moduleTaskManifest">npx gennady sdd-new task --owner module --scope <scope> --module <module> --id <ACR>-<slug></ToolCall> Use moduleTaskManifest only for product/library module.
+        Set <created-ticket-path> to the exact ticket path returned by that node's selected manifest.
+        Immediately after filling ONE created ticket, run its authoringGate ToolCall below. Red: fix
+        only that ticket from the copy-ready findings and repeat the SAME call, at most three attempts;
+        then `H_TICKET_AUTHORING_INVALID`. Green: only then may the next node's content be formed.
+        Never plan or create a later ticket or any task index while this gate is red; no shell loop
+        or command chain.
+        <ToolCall owner="this-step" result="authoringGate">npx gennady sdd-check --task <created-ticket-path> --authoring</ToolCall> Use authoringGate before the next ticket.
+
+        After every node has a green per-ticket authoring gate, run the complete-graph feasibilityGate
+        exactly once before STEP_3B. It evaluates the materialized graph against clean HEAD and emits
+        named causal diagnostics: one exact owner for `package.json` and the active lockfile,
+        provider→consumer ordering, and command
+        proof. Red: repair only the named ticket fields/edges and rerun the same command; do not dispatch
+        the semantic critic. Green: continue to STEP_3B. Never replace these named causal diagnostics with general critic prose.
+        <ToolCall owner="this-step" result="feasibilityGate">npx gennady sdd-check --scaffold-feasibility</ToolCall> Use feasibilityGate before STEP_3B_FEASIBILITY_CRITIC.
+      </Action>
+    </Step>
+
+After completing this step, and only then, READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/scaffold/steps/STEP_3B_FEASIBILITY_CRITIC.xml"). Do not preload later step packages.

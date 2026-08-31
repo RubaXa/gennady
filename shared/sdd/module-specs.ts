@@ -23,6 +23,11 @@ export const SCOPE_TYPES = ['product', 'library', 'infrastructure', 'interface']
 /** @purpose One canonical SCOPE_TYPE literal. */
 export type ScopeType = (typeof SCOPE_TYPES)[number];
 
+/** @purpose Exhaustive semantic owners accepted for one scaffolded task. */
+export const TASK_OWNER_KINDS = ['infrastructure-flat', 'scope-bootstrap', 'module'] as const;
+/** @purpose One legal DAG/task ownership shape, selected explicitly by scaffold. */
+export type TaskOwnerKind = (typeof TASK_OWNER_KINDS)[number];
+
 /** @purpose Structural decomposition result shared by review and scaffold gates. */
 export type ScopeDecomposition = {
   /** @purpose Absolute scope-spec path inspected by the gate. */
@@ -53,7 +58,7 @@ type ModuleScopeOwnership =
     };
 
 /** @purpose Structural ownership of one task at scope or declared-module level. */
-type TaskOwnership =
+export type TaskOwnership =
   | {
       /** @purpose Ownership was proved from the canonical scope decomposition. */
       status: 'owned';
@@ -299,10 +304,15 @@ export function resolveScopeDecomposition(scopeSpec: string): ScopeDecomposition
 /**
  * @purpose Prove that a task belongs to its scope or to one exact declared module.
  * @param scopeSpec Canonical owning scope spec.
+ * @param owner Explicit semantic owner selected by the scaffold DAG node.
  * @param [module] Optional nested module path relative to the scope.
  * @returns Owned decomposition/module spec, or a fail-closed reason.
  */
-export function resolveTaskOwnership(scopeSpec: string, module?: string): TaskOwnership {
+export function resolveTaskOwnership(
+  scopeSpec: string,
+  owner: TaskOwnerKind,
+  module?: string
+): TaskOwnership {
   const decomposition = resolveScopeDecomposition(scopeSpec);
   if (decomposition.status !== 'complete' && decomposition.status !== 'flat') {
     return {
@@ -310,9 +320,35 @@ export function resolveTaskOwnership(scopeSpec: string, module?: string): TaskOw
       reason: decomposition.reason ?? `scope decomposition is ${decomposition.status}`,
     };
   }
-  if (!module) return { status: 'owned', decomposition };
-  if (decomposition.status !== 'complete') {
-    return { status: 'invalid', reason: 'a flat infrastructure scope cannot own a module task' };
+  if (owner === 'infrastructure-flat') {
+    if (decomposition.status !== 'flat' || decomposition.scopeType !== 'infrastructure') {
+      return {
+        status: 'invalid',
+        reason: 'owner infrastructure-flat requires one infrastructure scope',
+      };
+    }
+    if (module) {
+      return { status: 'invalid', reason: 'owner infrastructure-flat does not accept --module' };
+    }
+    return { status: 'owned', decomposition };
+  }
+  if (
+    decomposition.status !== 'complete' ||
+    (decomposition.scopeType !== 'product' && decomposition.scopeType !== 'library')
+  ) {
+    return {
+      status: 'invalid',
+      reason: `owner ${owner} requires one completely decomposed product/library scope`,
+    };
+  }
+  if (owner === 'scope-bootstrap') {
+    if (module) {
+      return { status: 'invalid', reason: 'owner scope-bootstrap does not accept --module' };
+    }
+    return { status: 'owned', decomposition };
+  }
+  if (!module) {
+    return { status: 'invalid', reason: 'owner module requires --module' };
   }
   const leaf = module.split('/').at(-1) ?? module;
   const expected = resolve(dirname(decomposition.scopeSpec), module, `${leaf}.spec.md`);
@@ -396,12 +432,17 @@ export function resolveTaskOutputOwnership(
   }
   const scopeSpec = ownerSpecs[0] as string;
   const scope = basename(dirname(scopeSpec));
-  const ownership = resolveTaskOwnership(scopeSpec);
-  if (ownership.status === 'invalid') return { scope, reason: ownership.reason };
-  if (ownership.decomposition.status === 'flat') return { scope };
+  const decomposition = resolveScopeDecomposition(scopeSpec);
+  if (decomposition.status !== 'complete' && decomposition.status !== 'flat') {
+    return {
+      scope,
+      reason: decomposition.reason ?? `scope decomposition is ${decomposition.status}`,
+    };
+  }
+  if (decomposition.status === 'flat') return { scope };
 
   const scopeDir = dirname(scopeSpec);
-  const candidates = ownership.decomposition.moduleSpecs
+  const candidates = decomposition.moduleSpecs
     .filter((spec) => {
       const moduleDir = dirname(realpathSync(spec));
       const rel = relative(moduleDir, target);
@@ -511,4 +552,40 @@ export function resolveModuleScopeOwnership(moduleSpec: string): ModuleScopeOwne
  */
 export function countModuleSpecs(specsDir: string): number {
   return collectModuleSpecs(specsDir, false).paths.length;
+}
+
+/**
+ * @purpose Find every readable scope/module spec currently carrying a CHANGE_MANIFEST review-state marker.
+ * @invariant Read-only, stable absolute path order, and never follows symlinks.
+ * @param specsDir Absolute project specs directory.
+ * @returns Review-state spec paths; unreadable/non-spec files are ignored because sdd-check owns their diagnostics.
+ */
+export function findReviewStateSpecs(specsDir: string): string[] {
+  const paths: string[] = [];
+  function walk(dir: string): void {
+    let entries: Dirent[];
+    try {
+      entries = readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      if (entry.isSymbolicLink()) continue;
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) {
+        if (!SKIP_DIRS.has(entry.name)) walk(path);
+        continue;
+      }
+      if (!entry.name.endsWith('.spec.md')) continue;
+      try {
+        if (readFileSync(path, 'utf-8').includes('<!--SECTION:CHANGE_MANIFEST-->')) {
+          paths.push(resolve(path));
+        }
+      } catch {
+        // Structural diagnostics own unreadable files; route inference cannot claim review-state.
+      }
+    }
+  }
+  walk(specsDir);
+  return paths.sort();
 }

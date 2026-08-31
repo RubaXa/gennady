@@ -12,9 +12,26 @@ import { pathToFileURL } from 'node:url';
 const ROOT = resolve(import.meta.dirname, '../../..');
 const RUNNER = join(ROOT, 'scripts/test-topology.ts');
 const TEST_LAYERS = ['unit', 'contract', 'local', 'external'] as const;
-const V2_GATE_CORPUS_SIZE = 276;
+const V2_GATE_CORPUS_SIZE = 285;
 const SDD_COMMAND_NAVIGATION_TEST = 'cli/__tests__/sdd-command-navigation.test.ts';
 const YAGNI_SOURCE_POLICY_TEST = 'shared/common/__tests__/yagni-source-policy.test.ts';
+const INCIDENT_TEST_LAYERS = {
+  unit: [
+    'shared/sdd/__tests__/spec-schema.test.ts',
+    'shared/sdd/__tests__/task-authoring-literals.test.ts',
+  ],
+  contract: [
+    'ai/kit/__tests__/audit-halt-activation.test.ts',
+    'ai/kit/__tests__/execute-selection-barrier-contract.test.ts',
+    'ai/kit/__tests__/scaffold-feasibility-contract.test.ts',
+    'ai/kit/__tests__/scaffold-nested-correction-regression.test.ts',
+  ],
+  local: [
+    'cli/__tests__/tool-behavior/clean-repo-composition.test.ts',
+    'cli/__tests__/tool-behavior/scaffold-feasibility.test.ts',
+    'cli/__tests__/tool-behavior/sdd-verify-repair-adapters.test.ts',
+  ],
+} as const;
 const EXCLUDED_NAMES = new Set([
   'http-server.test.ts',
   'eval-driver.test.ts',
@@ -148,6 +165,14 @@ describe('test topology contract', () => {
       topology.unit.includes(YAGNI_SOURCE_POLICY_TEST),
       'the pure YAGNI source-selection policy belongs to the hermetic unit layer'
     );
+    for (const [layer, files] of Object.entries(INCIDENT_TEST_LAYERS) as [
+      keyof typeof INCIDENT_TEST_LAYERS,
+      readonly string[],
+    ][]) {
+      for (const file of files) {
+        assert.ok(topology[layer].includes(file), `${file} belongs to the ${layer} layer`);
+      }
+    }
   });
 
   it('check reports the exact list counts', () => {

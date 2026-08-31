@@ -56,6 +56,9 @@ export function printHelp(): void {
   console.info(
     '  - Payload bytes are never shell-interpreted; the exact file is deleted only after a successful update.'
   );
+  console.info(
+    '  - A file-backed workset payload may contain multiple non-empty lines; each line becomes one exact working-set bullet in one command.'
+  );
   console.info('');
   console.info('Exit codes:');
   console.info('  0 ok   1 file I/O error   2 no open session / placeholder   4 bad invocation');

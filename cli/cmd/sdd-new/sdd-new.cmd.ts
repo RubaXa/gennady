@@ -2,7 +2,7 @@
 // @consumers: gennady.ts
 // @tasks: N/A
 
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { logger } from '#logger';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
@@ -20,9 +20,15 @@ import {
   suggestTaskId,
 } from '../../../shared/sdd/task-id.ts';
 import {
+  TASK_OWNER_KINDS,
   resolveTaskOutputOwnership,
   resolveTaskOwnership,
+  type TaskOwnerKind,
 } from '../../../shared/sdd/module-specs.ts';
+import {
+  loadRuleRegistry,
+  renderTaskAuthoringLiterals,
+} from '../../../shared/sdd/task-authoring-literals.ts';
 import {
   badInvocation,
   unknownKind,
@@ -30,6 +36,8 @@ import {
   writeFailed,
   badTaskId,
   scopeNotDecomposed,
+  ruleRegistryInvalid,
+  authoringLiteralsInvalid,
   renderCreated,
   renderManifestReport,
   type NewOutcome,
@@ -109,12 +117,20 @@ export function resolvePath(
  */
 function missingOptions(
   kind: ArtifactKind,
-  opts: { scope?: string; module?: string; id?: string; out?: string; slug?: string }
+  opts: {
+    scope?: string;
+    module?: string;
+    id?: string;
+    out?: string;
+    slug?: string;
+    owner?: string;
+  }
 ): string[] {
   const missing: string[] = [];
   if (kind === 'task') {
     if (!opts.scope && !opts.out) missing.push('--scope');
     if (!opts.id) missing.push('--id');
+    if (!opts.owner) missing.push('--owner');
     return missing;
   }
   if (opts.out) return missing;
@@ -130,7 +146,7 @@ function missingOptions(
 const SEGMENT_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 
 /** @purpose Value-bearing long options accepted by sdd-new's public CLI. */
-const VALUE_FLAGS = new Set(['scope', 'module', 'id', 'out', 'slug']);
+const VALUE_FLAGS = new Set(['scope', 'module', 'id', 'out', 'slug', 'owner']);
 /** @purpose Boolean long options accepted by sdd-new's public CLI. */
 const BOOLEAN_FLAGS = new Set(['list', 'manifest']);
 
@@ -243,6 +259,7 @@ export async function run(rawArgs: string[]): Promise<NewOutcome> {
     id: { aliases: ['id'], takesValue: true },
     out: { aliases: ['out'], takesValue: true },
     slug: { aliases: ['slug'], takesValue: true },
+    owner: { aliases: ['owner'], takesValue: true },
     list: { aliases: ['list'] },
     manifest: { aliases: ['manifest'] },
   });
@@ -280,13 +297,24 @@ export async function run(rawArgs: string[]): Promise<NewOutcome> {
     out?: string;
     slug?: string;
     date?: string;
+    owner?: TaskOwnerKind;
   } = {
     scope: typeof args.scope === 'string' ? args.scope : undefined,
     module: typeof args.module === 'string' ? args.module : undefined,
     id: typeof args.id === 'string' ? args.id : undefined,
     out: typeof args.out === 'string' ? args.out : undefined,
     slug: typeof args.slug === 'string' ? args.slug : undefined,
+    owner:
+      typeof args.owner === 'string' && (TASK_OWNER_KINDS as readonly string[]).includes(args.owner)
+        ? (args.owner as TaskOwnerKind)
+        : undefined,
   };
+
+  if (typeof args.owner === 'string' && !opts.owner) {
+    return badInvocation(
+      `--owner must be one of ${TASK_OWNER_KINDS.join(' | ')}, got "${args.owner}"`
+    );
+  }
 
   if (opts.scope) {
     const reason = validateScope(opts.scope);
@@ -373,7 +401,7 @@ export async function run(rawArgs: string[]): Promise<NewOutcome> {
   if (kind === 'task' && opts.scope) {
     const scopeDir = resolve('specs', opts.scope);
     const scopeSpec = join(scopeDir, `${opts.scope}.spec.md`);
-    const ownership = resolveTaskOwnership(scopeSpec, opts.module);
+    const ownership = resolveTaskOwnership(scopeSpec, opts.owner as TaskOwnerKind, opts.module);
     if (ownership.status === 'invalid') {
       logger.warn(
         `[SddNewCommand#run] task ownership is not ready: ${opts.scope}/${opts.module ?? '(scope)'} `
@@ -383,12 +411,41 @@ export async function run(rawArgs: string[]): Promise<NewOutcome> {
   }
   // #endregion END_SCOPE_DECOMPOSITION
 
+  let taskRules: ReturnType<typeof loadRuleRegistry> = [];
+  if (kind === 'task') {
+    try {
+      taskRules = loadRuleRegistry(process.cwd());
+    } catch (cause) {
+      return ruleRegistryInvalid(cause);
+    }
+  }
+
   const path = resolvePath(kind, opts);
   const abs = resolve(path);
 
   if (existsSync(abs)) {
     logger.warn(`[SddNewCommand#run] target already exists: ${path}`);
     return fileExists(path);
+  }
+
+  const owningSpecPath =
+    kind === 'task' && opts.scope
+      ? opts.module
+        ? `specs/${opts.scope}/${opts.module}/${moduleName(opts.module)}.spec.md`
+        : `specs/${opts.scope}/${opts.scope}.spec.md`
+      : '';
+  let authoringLiterals = '';
+  if (kind === 'task' && owningSpecPath) {
+    try {
+      authoringLiterals = renderTaskAuthoringLiterals(
+        path,
+        owningSpecPath,
+        taskRules,
+        readFileSync(resolve(owningSpecPath), 'utf-8')
+      );
+    } catch (cause) {
+      return authoringLiteralsInvalid(owningSpecPath, cause);
+    }
   }
 
   try {
@@ -406,7 +463,11 @@ export async function run(rawArgs: string[]): Promise<NewOutcome> {
     module: opts.module,
     id: opts.id,
   });
-  return { ok: true, text: renderCreated(kind, path, TEMPLATES[kind].sections, nextSteps), path };
+  return {
+    ok: true,
+    text: renderCreated(kind, path, TEMPLATES[kind].sections, nextSteps, authoringLiterals),
+    path,
+  };
 }
 
 // Self-executing for CLI: gennady sdd-new <kind> --scope <s> [--module <m>] [--id <ACR-slug>] [--out <path>] | gennady sdd-new --list

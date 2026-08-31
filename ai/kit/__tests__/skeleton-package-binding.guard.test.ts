@@ -95,6 +95,19 @@ function extractPackagePaths(skeletonText: string): string[] {
   return paths;
 }
 
+/** Follow a chain-lazy skeleton through each package's one successor edge. */
+function extractReachablePackagePaths(skeletonText: string): string[] {
+  const paths: string[] = [];
+  let text = skeletonText;
+  while (true) {
+    const next = /READ_AND_USE_DIRECTIVE\("([^"\n]+\/steps\/[^"\n]+\.xml)"\)/.exec(text)?.[1];
+    if (!next) return paths;
+    assert.equal(paths.includes(next), false, `step-package load cycle: ${next}`);
+    paths.push(next);
+    text = readFileSync(join(PROJECT_ROOT, next), 'utf8');
+  }
+}
+
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
@@ -168,7 +181,10 @@ describe('SkeletonPackageBindingGuard', () => {
       );
 
       const skeletonText = readFileSync(join(OUT_ROOT, pilot.directiveKey), 'utf8');
-      const packagePaths = extractPackagePaths(skeletonText);
+      const packagePaths =
+        pilot.directiveName === 'scaffold'
+          ? extractReachablePackagePaths(skeletonText)
+          : extractPackagePaths(skeletonText);
       assert.ok(packagePaths.length > 0, `${pilot.directiveKey}: skeleton lists zero step packages`);
 
       // DA-REQ-12: every path the skeleton prints must resolve on disk — a dangling reference never ships.
@@ -187,7 +203,10 @@ describe('SkeletonPackageBindingGuard', () => {
     for (const pilot of ctx.pilots) {
       const skeletonText = readFileSync(join(OUT_ROOT, pilot.directiveKey), 'utf8');
       const skeletonFingerprint = skeletonText.split('\n', 1)[0]!;
-      const packagePaths = extractPackagePaths(skeletonText);
+      const packagePaths =
+        pilot.directiveName === 'scaffold'
+          ? extractReachablePackagePaths(skeletonText)
+          : extractPackagePaths(skeletonText);
       assert.ok(packagePaths.length > 0, `${pilot.directiveKey}: skeleton lists zero step packages`);
 
       const skeleton: DirectiveSkeleton = {
@@ -224,6 +243,7 @@ describe('SkeletonPackageBindingGuard', () => {
           directiveName: pilot.directiveName,
           sourceText: pilot.monolithText,
           fingerprint: ctx.fingerprint,
+          loadTopology: pilot.directiveName === 'scaffold' ? 'chain' : 'index',
         });
 
         const steps = extractNamedBlocks(pilot.monolithText, 'Step');
@@ -281,7 +301,9 @@ describe('SkeletonPackageBindingGuard', () => {
         ]);
 
         const skeletonBody = extractSkeletonBody(skeleton.text, ctx.fingerprint);
-        const stepListEntries = packages.map((pkg) => extractStepListEntry(skeletonBody, pkg));
+        const indexedPackages =
+          pilot.directiveName === 'scaffold' ? packages.slice(0, 1) : packages;
+        const stepListEntries = indexedPackages.map((pkg) => extractStepListEntry(skeletonBody, pkg));
         const skeletonResidual = removeAllOnce(skeletonBody, stepListEntries);
 
         assert.equal(
@@ -293,4 +315,34 @@ describe('SkeletonPackageBindingGuard', () => {
       }
     }
   );
+
+  it('scaffold exposes one strictly ordered lazy chain and never advertises later steps early', () => {
+    const root = readFileSync(join(OUT_ROOT, 'sdd-v2/scaffold.directive.xml'), 'utf8');
+    const reached = extractReachablePackagePaths(root);
+    const expected = [
+      'STEP_0_INTAKE',
+      'STEP_0B_PREFLIGHT',
+      'STEP_1_CASCADE',
+      'STEP_2_DAG',
+      'STEP_3_TASK_GENERATION',
+      'STEP_3_TICKET_LOOP',
+      'STEP_3B_FEASIBILITY_CRITIC',
+      'STEP_4_TEST_PLAN_REVIEW',
+      'STEP_5_FINALIZE',
+    ].map((step) => `ai/directives/sdd-v2/scaffold/steps/${step}.xml`);
+
+    assert.deepEqual(reached, expected);
+    assert.deepEqual(extractPackagePaths(root), [expected[0]]);
+    for (let index = 0; index < expected.length; index += 1) {
+      const text = readFileSync(join(PROJECT_ROOT, expected[index]!), 'utf8');
+      const advertised = [
+        ...text.matchAll(/READ_AND_USE_DIRECTIVE\("([^"\n]+\/steps\/[^"\n]+\.xml)"\)/g),
+      ].map((match) => match[1]!);
+      assert.deepEqual(
+        advertised,
+        index + 1 < expected.length ? [expected[index + 1]!] : [],
+        `${expected[index]} must advertise only its immediate successor`
+      );
+    }
+  });
 });

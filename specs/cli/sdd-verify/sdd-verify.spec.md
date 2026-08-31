@@ -10,7 +10,7 @@
 
 **Key properties:**
 
-- Repair-first phases — `fix → type-check → test/test:coverage`; успешный `fix` уже гарантирует formatter/linter post-state, поэтому немедленных `lint`/`format` дублей нет
+- Repair-first phases — `fix → type-check → test/test:coverage`; `fix` упорядочивает formatter, project-linter и Gennady-contract adapters, фильтрует exact targets по capability и не дублирует Gennady leaf
 - Runtime write-zone — before/after snapshot допускает только фактические мутации canonical Target Files; внешний путь краснит repair, перечисляется и не откатывается
 - Single foundation pass — types/tests запускаются один раз после repair; fingerprint и повторный прогон удалены
 - Read-only full — `type-check → test:coverage → lint → format → yagni`, без repair
@@ -26,6 +26,7 @@
 - Все прошли/пропущены → exit 0; ≥1 упал → exit 1 (halt на основании — тоже фейл)
 - CLI grammar fail (`unknown`, missing/repeated/empty scalar, conflict, extra positional) → exit 4 с canonical usage; успешно разобранный, но неразрешимый ticket/phase context → gate failure exit 1
 - Раннер инъектируется (`run(runner, profile)`); tail в `index.ts`, поэтому импорт `run()` в тесте НЕ запускает реальные гейты
+
 <!--/SECTION:MODULE_VISION-->
 
 <!--SECTION:MODULE_USAGE_EXAMPLE-->
@@ -83,7 +84,7 @@ $ npx gennady sdd-verify
 # repair не установил чистый post-state — foundation не запускается
 $ npx gennady sdd-verify --task specs/app/app.task.TSK-1.md --phase P2
 [sdd-verify] 0/1 passed — 1 FAILED
-  🔧 fix — exit 1 (ran: npm run format:fix -- <targets> && npm run lint:fix -- --include-tests --spec=<spec> -- <targets>) — repair не завершён
+  🔧 fix — exit 1 (ran: npm run format:fix -- <targets> && npm run lint:fix -- <applicable-targets> && npx --no-install gennady lint --autofix --include-tests --spec=<spec> -- <ts-targets>) — repair не завершён
   --- output ---
   lint post-state is not clean
   --- end ---
@@ -102,6 +103,8 @@ $ npx gennady sdd-verify --task specs/app/app.task.TSK-1.md --phase P2
 | `run`                               | Command      | Прогон фиксированного repair-first phase либо read-only full профиля, тайминг и вердикт                                                |
 | `runPhaseVerification`              | Command      | Одна фазовая транзакция: ladder + applicable Verification rows + atomic receipt                                                        |
 | `createRepairMutationBoundary`      | Utility      | Before/after workspace proof: actual repair writes остаются внутри canonical Target Files                                              |
+| `planTargetRepair`                  | Utility      | Extensible adapter registry: formatter → project linter → Gennady contract linter, exact capability-filtered targets и named skips     |
+| `RepairAction`                      | Type         | Одна adapter invocation либо honest zero-applicable skip; stable evidence попадает в receipt                                           |
 | `RepairMutationBoundary`            | Type         | Injectable capture/inspect boundary around the mutating repair rung                                                                    |
 | `CoverageProbe`                     | Type         | Shared-adapter-backed, identity-safe clear/read proof for the selected producer artifact                                               |
 | `captureTicketContainment`          | Utility      | Fail-closed identity proof для regular non-symlink receipt-owning ticket path                                                          |
@@ -344,6 +347,7 @@ shared/sdd/phase-receipt.ts # paired receipt schema, parser, renderer and state 
 - **Why:** readiness не может принимать один formatter/linter, пока phase verifier исполняет другой. `format:fix`/`lint:fix` объявляются command prefixes, заканчиваются write-switch, а static shape rejects shell hops и obvious broad root/glob; phase verifier вызывает именно `npm run <brick> -- …` с exact Target Files. Required whole-project `fix` передаёт широкие roots сам. Static check подтверждает форму вызова, а не фактический write-set — его доказательство добавлено D-SV022.
 - **Lint inventory applicability:** одна exact lint-команда получает production и test targets. Обычные DbC/word/header правила применяются к обоим; test targets структурно исключены только из production Entity Inventory forward/reverse accounting.
 - **Rejected:** hardcoded tool detection; чтение/переписывание script body; shell/glob reconstruction; baked-in `.` в repair brick.
+- **Update:** D-SV037 добавляет явную capability-классификацию project leaf: она не переписывает script body, а выбирает adapter ABI и exact applicable subset перед запуском.
 - **Static boundary:** tool-agnostic analysis не может отличить произвольный exact operand (`src/a.ts`) от subcommand/config operand. Поэтому она остаётся ранней диагностикой; runtime invariant D-SV022 закрывает фактическую мутацию.
 
 ### D-SV020 — Explicit coverage policy selects the test producer profile
@@ -451,6 +455,13 @@ shared/sdd/phase-receipt.ts # paired receipt schema, parser, renderer and state 
 - **Visibility:** `npm run test:topology`, runner `check`, `list`, and `--help` expose layer counts and the coverage partition. The topology contract compares their union with the legacy corpus and rejects omissions, overlaps, or duplication. Network opt-ins and credentials are removed independently for every child process. The already-instrumented observed runner clears inherited `NODE_V8_COVERAGE` before tests, so its later subprocesses cannot emit irrelevant child profiles while the current in-process production remains observable. Concurrency remains bounded at the existing value and is not the optimization mechanism.
 - **Boundary:** this is the package's concrete implementation of the project brick, not a cross-platform requirement on consumer repositories. A future layer that executes production in-process must be classified into an observed layer (or the partition model extended explicitly), never silently excluded.
 
+### D-SV037 — Repair ABI belongs to explicit capabilities, not generic `lint:fix`
+
+- **Status:** active · **Extends:** D-SV019/D-SV022
+- **Why:** phase repair unconditionally appended Gennady-only `--include-tests` and `--spec` to the project's generic `lint:fix`. A valid ESLint leaf therefore failed before linting the original IB-gates target set (`package.json` + `scripts/gates-smoke.mjs`), while a Gennady leaf received unsupported non-TS operands. Repair now plans ordered adapters: formatter receives the declared exact set; the selected project-linter adapter receives only its applicable exact subset and its own ABI; the Gennady contract adapter receives `--include-tests`, owning `--spec`, and only `.ts/.tsx` targets.
+- **No duplicate:** when `lint:fix` already reaches Gennady, that one project invocation satisfies both project and contract roles. Otherwise Gennady contract lint runs once after the project linter. Zero applicable targets produce stable named skip evidence rather than an unsupported-target error.
+- **Extensibility/safety:** platform support is an ordered registry entry (`matches` + `accepts` + capability), not an extension ladder inside `runTargetRepair`. All invocations remain inside one formatter→lint runtime mutation boundary; broad roots are never synthesized, and any actual outside mutation remains listed and fail-closed.
+
 <!--SECTION:OPEN_RISKS-->
 
 ## 8. Open Risks
@@ -461,6 +472,7 @@ shared/sdd/phase-receipt.ts # paired receipt schema, parser, renderer and state 
 - **Deletion оформляется отдельно от repair.** `Target Files` остаются существующими файлами; `Deleted Files` обязаны отсутствовать и иметь tracked VCS baseline до staging/commit. Receipt связывает их отсутствие, поэтому повторное появление stale'ит evidence; pre-staged removal без index baseline намеренно требует восстановить проверяемый порядок.
 - **Environment provenance ограничен adapter-visible вводом.** Runner и receipt используют одно resolved script name (`type-check`, иначе `typecheck`), затем fingerprint'ят его reachable npm lifecycle (`pre`/body/`post`, включая start/test/stop/restart shortcuts) и root-scoped option-aware `npm`/`pnpm`/`yarn` script graph. Exact forwarded argv после script name входят в classifier evidence, а каждый распознанный repo-local operand/config (включая quoted и backslash-escaped whitespace) связывается по lexical/canonical/type/content evidence. Malformed shell word, inline code, неизвестный runner, отсутствующий/escaping input, non-root package selector и неоднозначная local/dynamic форма краснят plan вместо partial receipt. Transitive module graph, package resolution, external absolute inputs, binaries/env/remote services остаются за явно записанной trust boundary — система не называет процесс полностью герметичным.
 - **Workspace zero-write означает project content, не tool state.** Snapshot наблюдает persistent files, symlinks и directory entries, но исключает `.git` metadata и установленный `node_modules`: реальные VCS/package tools обязаны менять это служебное состояние. Эти исключения не разрешают менять production/source вне них.
+
 <!--/SECTION:OPEN_RISKS-->
 
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->
@@ -469,4 +481,5 @@ shared/sdd/phase-receipt.ts # paired receipt schema, parser, renderer and state 
 
 - **Depends on:** `node:child_process` (spawnSync), `node:fs`/`node:path`/`node:crypto` (package scripts, coverage freshness, workspace write-zone), `#logger`, `shared/sdd/readiness.ts` (`isVacuousScript`, static repair-prefix diagnostics)
 - **Provides to:** `gennady.ts`; вызывается из `phase-execution-protocol` (STEP_5), `reconcile` (STEP_7)
+
 <!--/SECTION:INTER_MODULE_DEPENDENCIES-->

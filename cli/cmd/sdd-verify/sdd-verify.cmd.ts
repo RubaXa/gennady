@@ -23,6 +23,7 @@ import {
   type VerifyOutcome,
 } from './sdd-verify.types.ts';
 import type { RepairMutationBoundary } from './workspace-mutation.ts';
+import { describeRepairAction, planTargetRepair } from './repair-adapters.ts';
 
 /**
  * @purpose Read the project's `package.json` `scripts` map once per run — decides which rungs skip.
@@ -238,16 +239,17 @@ async function runGate(runner: GateRunner, gate: Gate, scriptName: string): Prom
 }
 
 /**
- * @purpose Ask the project's formatter/linter prefixes to repair the phase Target Files;
- *   lint's own post-pass re-reads bytes and runs every applicable read-only check.
+ * @purpose Execute the ordered formatter/project-linter/Gennady-contract adapter plan over only
+ *   each capability's applicable exact phase Target Files.
  * @invariant Arguments are passed without a shell; the injected runtime boundary, not static script
  *   inspection, proves that final workspace mutations stayed inside the canonical target set.
- * @param runner Command runner. | @param targets Exact Target Files from phase context.
+ * @param runner Command runner. | @param scripts Project script capabilities. | @param targets Exact Target Files from phase context.
  * @param results Accumulator receiving one logical `fix` result.
  * @returns Final repair status; formatter failure prevents lint from judging an unstable post-state.
  */
 async function runTargetRepair(
   runner: GateRunner,
+  scripts: Record<string, string>,
   targets: readonly string[],
   results: GateResult[],
   specPath?: string,
@@ -269,28 +271,22 @@ async function runTargetRepair(
     });
     return 'fail';
   }
-  const safeTargets = targets.map((target) => (target.startsWith('-') ? `./${target}` : target));
-  const formatter = {
-    command: 'npm',
-    args: ['run', 'format:fix', '--', ...safeTargets],
-  };
-  const linter = {
-    command: 'npm',
-    args: [
-      'run',
-      'lint:fix',
-      '--',
-      '--include-tests',
-      ...(specPath ? [`--spec=${specPath}`] : []),
-      '--',
-      ...safeTargets,
-    ],
-  };
-  const commands = [formatter, linter];
+  const actions = planTargetRepair({
+    scripts,
+    targets,
+    specPath,
+    gennadyCommand: gennadyGateCommand('lint'),
+  });
   const outputs: string[] = [];
+  const evidence: string[] = [];
   let exitCode = 0;
-  for (const command of commands) {
-    const result = await runner(command.command, command.args);
+  for (const action of actions) {
+    evidence.push(describeRepairAction(action));
+    if (action.kind === 'skip') {
+      outputs.push(`⏭ ${describeRepairAction(action)}`);
+      continue;
+    }
+    const result = await runner(action.command, action.args);
     if (result.output) outputs.push(result.output);
     if (result.exitCode !== 0) {
       exitCode = result.exitCode;
@@ -312,7 +308,7 @@ async function runTargetRepair(
     exitCode,
     output: outputs.join('\n'),
     durationMs: Date.now() - start,
-    ranCommand: commands.map(({ command, args }) => `${command} ${args.join(' ')}`).join(' && '),
+    ranCommand: evidence.join(' && '),
     mutates: true,
   });
   return exitCode === 0 ? 'pass' : 'fail';
@@ -473,6 +469,7 @@ export async function run(
       }
       const status = await runTargetRepair(
         runner,
+        scripts,
         phaseContext.targets,
         results,
         phaseContext.specPath,

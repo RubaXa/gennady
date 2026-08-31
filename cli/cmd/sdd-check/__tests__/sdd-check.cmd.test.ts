@@ -1800,6 +1800,124 @@ describe('SddCheckCommand', () => {
     assert.doesNotMatch(r.text, /SDD_BDD_COVERAGE_ROW_UNPARSED/);
   });
 
+  it('--task --authoring gates one pre-index ticket without runtime files or sibling scans', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'sdd-check-authoring-'));
+    const scopeDir = join(root, 'specs', 'infra-base');
+    mkdirSync(scopeDir, { recursive: true });
+    writeFileSync(
+      join(scopeDir, 'infra-base.spec.md'),
+      '<!--SECTION:SCOPE_TYPE-->\ninfrastructure\n<!--/SECTION:SCOPE_TYPE-->'
+    );
+    const ticketPath = join(scopeDir, 'infra-base.task.INF-gate.md');
+    const ticketArg = 'specs/infra-base/infra-base.task.INF-gate.md';
+    const ticket = (row: string): string =>
+      [
+        '<!--SECTION:META-->',
+        '- **Task-ID:** INF-gate',
+        '- **Status:** [ ] TODO',
+        '- **Purpose:** validate one authored ticket',
+        '- **Scope:** infra-base',
+        '- **Module:** N/A',
+        '- **Dependencies:** None',
+        '- **Spec References:**',
+        '  - Contract: [infra](infra-base.spec.md#SCOPE_TYPE)',
+        '- **Runtime Backing:** not-implemented',
+        '- **Verification Levels:** unit',
+        '- **Deferred Runtime Scope:** None',
+        '<!--/SECTION:META-->',
+        '<!--SECTION:PHASES_OVERVIEW-->',
+        '| ID | Kind | Deps | Status |',
+        '|----|------|------|--------|',
+        '| P1 | test | — | [ ] |',
+        '<!--/SECTION:PHASES_OVERVIEW-->',
+        '<!--SECTION:PHASE_P1-->',
+        '- **Objective:** add the authored-ticket test',
+        '- **Rules:**',
+        '  - [test rule](../../ai/directives/test-rule.xml)',
+        '- **Target Files:**',
+        '  - test/future.test.ts',
+        '- **Deleted Files:**',
+        '  - none',
+        '- **Inputs:** none',
+        '- **Exit:** authoring gate passes',
+        '<!--/SECTION:PHASE_P1-->',
+        '<!--SECTION:BDD-->',
+        '**Scenario:** rejects an invalid ticket [`unit`] `[INF-REQ-1]`',
+        '- **Given** an invalid authored ticket',
+        '- **When** the authoring gate runs',
+        '- **Then** it rejects the ticket',
+        '<!--/SECTION:BDD-->',
+        '<!--SECTION:VERIFICATION-->',
+        '<!--COVERAGE_POLICY:v1-->',
+        '- **Coverage Policy:** not-applicable',
+        '- **Coverage Reason:** this fixture validates authoring structure only',
+        '| Command | Required by | Role |',
+        '|---------|-------------|------|',
+        '| — | — | extra |',
+        '<!--/SECTION:VERIFICATION-->',
+        '<!--SECTION:TEST_COVERAGE-->',
+        row,
+        '<!--/SECTION:TEST_COVERAGE-->',
+        '<!--SECTION:EXECUTION_LOG-->',
+        '- pending',
+        '<!--/SECTION:EXECUTION_LOG-->',
+      ].join('\n');
+    mkdirSync(join(root, 'ai', 'directives'), { recursive: true });
+    writeFileSync(join(root, 'ai', 'directives', 'test-rule.xml'), '<Rule></Rule>');
+    writeFileSync(ticketPath, ticket('- broken deferred row'));
+    writeFileSync(join(scopeDir, 'infra-base.task.INF-sibling.md'), '<!-- broken sibling -->');
+    try {
+      const red = await mod.run(argv('--task', ticketArg, '--authoring'), root);
+      assert.strictEqual(red.exitCode, 1, red.text);
+      assert.match(red.text, /SDD_BDD_COVERAGE_ROW_UNPARSED/);
+      assert.doesNotMatch(red.text, /INF-sibling|PHASE_RECEIPT|COVERAGE_POLICY/);
+      assert.match(red.text, /fix only this ticket, then rerun the same authoring command/);
+      assert.doesNotMatch(red.text, /sdd-reconcile/);
+
+      const idLookup = await mod.run(argv('--task', 'INF-gate', '--authoring'), root);
+      assert.strictEqual(idLookup.exitCode, 4, idLookup.text);
+      assert.match(idLookup.text, /exact created ticket path returned by sdd-new/);
+
+      const noBdd = ticket('- rejects an invalid ticket → `future.test.ts` :: `rejects`').replace(
+        /<!--SECTION:BDD-->[\s\S]*?<!--\/SECTION:BDD-->/,
+        ''
+      );
+      writeFileSync(ticketPath, noBdd);
+      const missingBdd = await mod.run(argv('--task', ticketArg, '--authoring'), root);
+      assert.match(missingBdd.text, /SDD_AUTHORING_SECTION_REQUIRED.+BDD/);
+
+      writeFileSync(
+        ticketPath,
+        ticket('- rejects an invalid ticket → `future.test.ts` :: `rejects`').replace(
+          '| P1 | test | — | [ ] |',
+          '| not-a-phase | unknown | — | pending |'
+        )
+      );
+      const badPhases = await mod.run(argv('--task', ticketArg, '--authoring'), root);
+      assert.match(badPhases.text, /SDD_AUTHORING_PHASES_INVALID/);
+
+      writeFileSync(
+        ticketPath,
+        ticket('- rejects an invalid ticket → `future.test.ts` :: `rejects`').replace(
+          'validate one authored ticket',
+          '<purpose>'
+        )
+      );
+      const placeholder = await mod.run(argv('--task', ticketArg, '--authoring'), root);
+      assert.match(placeholder.text, /SDD_AUTHORING_(?:META_INCOMPLETE|PLACEHOLDER)/);
+
+      writeFileSync(
+        ticketPath,
+        ticket('- rejects an invalid ticket → `not-created.test.ts` :: `rejects`')
+      );
+      const green = await mod.run(argv('--task', ticketArg, '--authoring'), root);
+      assert.strictEqual(green.exitCode, 0, green.text);
+      assert.match(green.text, /✅ clean — 1 file\(s\) checked/);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it('--task matches a declared test-file by full path suffix, not just basename', async () => {
     const cwd = mkdtempSync(join(tmpdir(), 'sdd-check-cwd-'));
     const prevCwd = process.cwd();

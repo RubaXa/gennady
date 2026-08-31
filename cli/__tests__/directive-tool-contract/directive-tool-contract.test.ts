@@ -63,13 +63,20 @@ function readAssemblyFragments(path: string): string[] {
   const manifestKey = relative(join(REPO_ROOT, 'ai', 'directives'), path).replaceAll('\\', '/');
   const fragments = [skeletonText];
   if (resolveAssemblyMode(manifestKey) === 'lazy') {
-    const packagePaths = [
-      ...skeletonText.matchAll(
-        /Before executing this step, READ_AND_USE_DIRECTIVE\("([^"]+)"\)\./g
-      ),
-    ].map((m) => m[1]!);
-    for (const packagePath of packagePaths) {
-      fragments.push(readFileSync(join(REPO_ROOT, packagePath), 'utf-8'));
+    const queued = [skeletonText];
+    const seen = new Set<string>();
+    while (queued.length > 0) {
+      const owner = queued.shift()!;
+      const packagePaths = [
+        ...owner.matchAll(/READ_AND_USE_DIRECTIVE\("([^"\n]+\/steps\/[^"\n]+\.xml)"\)/g),
+      ].map((match) => match[1]!);
+      for (const packagePath of packagePaths) {
+        if (seen.has(packagePath)) continue;
+        seen.add(packagePath);
+        const packageText = readFileSync(join(REPO_ROOT, packagePath), 'utf-8');
+        fragments.push(packageText);
+        queued.push(packageText);
+      }
     }
   }
   return fragments;
@@ -225,7 +232,7 @@ describe('callable SDD-v2 action-call inventory', () => {
     );
   });
 
-  it('rejects an unmarked Action call and invalid/repeated flags', () => {
+  it('registers scaffold feasibility and rejects an unmarked Action call or invalid flags', () => {
     assert.deepStrictEqual(
       unclassifiedActionCommands(
         '<Step id="STEP_X"><Action>Run `npx gennady sdd-state` now.</Action></Step>'
@@ -247,6 +254,30 @@ describe('callable SDD-v2 action-call inventory', () => {
         argsRaw: 'ticket --phase P1 --phase P2',
       }) ?? '',
       /repeated/
+    );
+    assert.strictEqual(
+      validateToolCallSyntax({
+        raw: 'npx gennady sdd-check --scaffold-feasibility',
+        cmd: 'sdd-check',
+        argsRaw: '--scaffold-feasibility',
+      }),
+      null
+    );
+    assert.strictEqual(
+      validateToolCallSyntax({
+        raw: 'npx gennady sdd-check --scaffold-feasibility <project-root>',
+        cmd: 'sdd-check',
+        argsRaw: '--scaffold-feasibility <project-root>',
+      }),
+      null
+    );
+    assert.match(
+      validateToolCallSyntax({
+        raw: 'npx gennady sdd-check --scaffold-feasibility first second',
+        cmd: 'sdd-check',
+        argsRaw: '--scaffold-feasibility first second',
+      }) ?? '',
+      /accepts at most one root/
     );
   });
 
@@ -861,8 +892,8 @@ describe('historical SDD agent-confusion regressions', () => {
     );
   });
 
-  it('scaffold gives exact module-owned and scope-owned ticket calls', () => {
-    const step = readFileSync(
+  it('scaffold exhaustively maps every legal DAG owner to one exact ticket call', () => {
+    const generation = readFileSync(
       join(
         REPO_ROOT,
         'ai',
@@ -874,12 +905,49 @@ describe('historical SDD agent-confusion regressions', () => {
       ),
       'utf-8'
     );
-    assert.match(step, /--scope <scope> --module <module> --id <ACR>-<slug>/);
-    assert.match(step, /--scope <scope> --id <ACR>-<slug>/);
-    assert.match(step, /Product\/library module → only\s+moduleTaskManifest/);
-    assert.match(step, /infrastructure → only flatInfraTaskManifest/);
-    assert.match(step, /one marked-owner `sdd-new task` call per node/);
-    assert.match(step, /never a shell loop/);
+    const step = readFileSync(
+      join(REPO_ROOT, 'ai', 'directives', 'sdd-v2', 'scaffold', 'steps', 'STEP_3_TICKET_LOOP.xml'),
+      'utf-8'
+    );
+    assert.match(step, /--owner module --scope <scope> --module <module> --id <ACR>-<slug>/);
+    assert.match(step, /--owner scope-bootstrap --scope <scope> --id <ACR>-<slug>/);
+    assert.match(step, /--owner infrastructure-flat --scope <scope> --id <ACR>-<slug>/);
+    assert.match(step, /table is exhaustive/);
+    const taskCalls = [
+      ...step.matchAll(
+        /<ToolCall owner="this-step" result="[^"]+">(npx gennady sdd-new task [\s\S]*?)<\/ToolCall>/g
+      ),
+    ].map((match) => match[1] as string);
+    assert.strictEqual(taskCalls.length, 3, taskCalls.join('\n'));
+    for (const owner of ['module', 'scope-bootstrap', 'infrastructure-flat']) {
+      assert.strictEqual(step.match(new RegExp(`--owner ${owner}`, 'g'))?.length, 1);
+      assert.strictEqual(taskCalls.filter((call) => call.includes(`--owner ${owner}`)).length, 1);
+    }
+    assert.doesNotMatch(step, /sdd-new task (?![^<\n]*--owner)/);
+    assert.doesNotMatch(step, /--owner <owner>/);
+    assert.match(step, /Run exactly one matching ToolCall/);
+    assert.match(step, /never a shell\s+loop/);
+    assert.match(
+      step,
+      /Copy its returned path-aware owning-spec\/rule\/deferred literals verbatim/
+    );
+    assert.match(step, /never compute paths or\s+translate IDs/);
+    assert.strictEqual(
+      step.match(
+        /<ToolCall owner="this-step" result="authoringGate">npx gennady sdd-check --task <created-ticket-path> --authoring<\/ToolCall>/g
+      )?.length,
+      1
+    );
+    assert.match(step, /Green: only then may the next node's content be formed/);
+    assert.match(
+      step,
+      /Never plan or create a later ticket or any task index while this gate is red/
+    );
+    assert.match(step, /Do not inspect or plan the following node yet/);
+    assert.match(generation, /Do NOT form, draft, or retain any node's ticket content here/);
+    assert.match(generation, /Pass only the ordered node identities plus shared facts/);
+    assert.doesNotMatch(generation, /complete ticket-content plan|complete ordered plans/);
+    assert.doesNotMatch(step, /authoring[^\n]*(?:&&|;|\|\|)/);
   });
 
   it('skills advertise only implemented audit/review modes', () => {

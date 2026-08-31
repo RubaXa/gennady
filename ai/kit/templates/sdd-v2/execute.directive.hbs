@@ -8,7 +8,8 @@
     (`/sdd-execute`), run isolated. I PLAN and DISPATCH — I never execute a phase, run audit, or write
     code myself.
 
-    Input — a specific Task-ID, or `next` / `pick`, or `batch` / `all`. I FIRST get the deterministic
+    Input — an empty selection request, a specific Task-ID / ticket path, `next` / `pick`, or
+    `batch` / `all`. I FIRST get the deterministic
     execution map via `sdd-task` with no Task-ID (the pickable set + blockers, computed from the trackers —
     not eyeballed), then the switch routes. Per ticket I read only the planning surface via `sdd-task <id>`
     (Meta + Phases Overview + per-phase read-manifests + gates). Workers read phase bodies, specs, and
@@ -37,8 +38,6 @@
     {{> "axiom/spec/ax-stateless-artifact"}}
 
     {{> "axiom/process/ax-owner"}}
-
-    {{> "axiom/process/ax-task-resolution"}}
 
     {{> "axiom/scaffold/ax-dag-and-ticket-boundaries"}}
 
@@ -71,7 +70,7 @@
     | 🛑 ID | Trigger |
     |---|---|
     | `H_NO_TASKS` | No task index / no pickable task — no dispatch; terminal choice is still explicit, never inferred |
-    | `H_AMBIGUOUS_TASK` | "next" / "pick" matches more than one pickable task — shortlist for the operator |
+    | `H_AMBIGUOUS_TASK` | "next" / "pick" matches two or more pickable tasks — show Task-ID + ticket-path shortlist and wait for the operator |
     | `H_PAUSED_AWAITING_OPERATOR` | Unresolved blocker in the log, or a phase returned BLOCKED / FAIL — `TerminalDecision: pause` (NOT a failure); preserve the SDD session, operator resolves, then re-runs. An infrastructure-shaped blocker MAY instead be resolved via the narrow `AX_ENV_FIX_CHANNEL` (operator-approved point fix to env/config, never code or specs) |
     | `H_AUDIT_FAIL_AFTER_RETRY` | Audit still FAIL after 2 attempts — `pause`, preserve the SDD session for manual intervention |
     | `H_CODE_REVIEW_BLOCKER` | Code-review returned a `BLOCKER` bug — `pause` and preserve the SDD session for the operator (not an auto-retry) |
@@ -110,18 +109,28 @@
     <Step id="STEP_0_RESOLVE">
       <Goal>Resolve the task.</Goal>
       <Action>
-        FIRST run executionMap ToolCall below (no Task-ID) for the deterministic execution map — the pickable set
-        (`[ ] TODO` with every dependency `[x] DONE`, computed from the trackers) and
-        the blocked tickets. When intent arrives as a path instead of a Task-ID, resolve the owner from
-        the artifact (`AX_TASK_RESOLUTION`): a ticket path (`*.task.<ACR>-<slug>.md`) carries its Task-ID
-        in the filename; a code / spec file resolves via its `@tasks:` header (read the header, extract
-        `@tasks: <ACR>-<slug>[, ...]`, map file → [Task-IDs]; no header → ask the operator). Then route on intent:
+        FIRST run executionMap ToolCall below (no Task-ID) for the deterministic execution map — the
+        readiness-filtered pickable set and blocked tickets. On `EXECUTION_READY=yes` pickable is graph-ready
+        (`[ ] TODO` with every dependency `[x] DONE`); on `no` it contains only dependency-ready exact active
+        `GATE_QUEUE` owners, including an already-open `IN_PROGRESS` owner. Accept only a Task-ID or
+        ticket path as an explicit task selector; pass either value to `sdd-task`, which owns resolution.
+        A code/spec path is not a planning selector here: ask for its Task-ID without reading the file,
+        its header, or the surrounding tree. Then route on intent:
 
         <LogicSwitch on="intent">
+        - WHEN intent payload is empty                         -> show a visible operator selection derived only from `executionMap`: every pickable row as `<Task-ID> — <ticket-path>` plus the map's named blockers. Ask the operator to select a Task-ID, `next` / `pick`, or a queue mode; return `TerminalDecision: pause`. Empty never aliases `next`, even when exactly one row is pickable. Do not enter STEP_1_PLAN, open a Round, or dispatch a worker until the operator selects.
         - WHEN intent is a specific Task-ID / ticket path -> run that ticket (STEP_1–8)
-        - WHEN intent = `next` / `pick`                   -> the first pickable from the map (none → H_NO_TASKS; several + ambiguous → H_AMBIGUOUS_TASK, shortlist for the operator)
+        - WHEN intent = `next` / `pick` AND zero pickable rows       -> `H_NO_TASKS`; no plan or dispatch
+        - WHEN intent = `next` / `pick` AND exactly one pickable row -> auto-select that exact Task-ID / ticket path and run it (STEP_1–8)
+        - WHEN intent = `next` / `pick` AND two or more pickable rows -> `H_AMBIGUOUS_TASK`; show the `<Task-ID> — <ticket-path>` shortlist from `executionMap`, return `TerminalDecision: pause`, and wait for an explicit selection
         - WHEN intent = `batch` / `all` / `queue`         -> EVERY pickable ticket in DAG order. Parallel dispatch requires BOTH disjoint Target-File sets (`AX_DAG_AND_TICKET_BOUNDARIES`) AND different next-worker session keys `(spec, kind)` (`AX_WORKER_SESSION_REUSE`). Any overlap, or the same session key even with disjoint files, serializes.
         </LogicSwitch>
+
+        **Pre-dispatch planning boundary.** The inherited router snapshot/session transition, this
+        execution-map call, the selected ticket's STEP_1 plan call, its Round log, and the worker
+        dispatch are the complete orchestration surface. Do not inspect `package.json`, read
+        `specs/.sdd-session.md`, glob the repository, or read a whole spec / phase body. The map and
+        selected plan are the deterministic sources; the worker owns phase context.
 
         The single-ticket flow (STEP_1–8) runs per selected ticket; in `batch` it loops, re-fetching the
         map after each ticket (statuses change as tickets finish), until the map is empty or a ticket
@@ -132,12 +141,12 @@
     <Step id="STEP_0B_PREFLIGHT">
       <Goal>Clear the FLOW_VERSION/READINESS preflight gate before dispatching any phase.</Goal>
       <Action>
-        Use `READINESS` and `GATE_QUEUE` from the `sdd-task` map just fetched above; do not issue a
+        Use `EXECUTION_READY` and `GATE_QUEUE` from the `sdd-task` map just fetched above; do not issue a
         second preflight call. `GATE_QUEUE` names only tickets with an exact phase owner for every
         missing gate; `GATE_QUEUE_DIAG` explains zero/ambiguous ownership.
-        Size the gate to this request's own blast radius (`AX_PREFLIGHT_BLAST_RADIUS_SCOPED`).
-
-        {{> "contract/process/readiness-preflight-gate"}}
+        Size the gate to this request's own blast radius (`AX_PREFLIGHT_BLAST_RADIUS_SCOPED`). The
+        router already applied the shared readiness gate before loading this directive; do not
+        duplicate its project-level interpretation here.
       </Action>
     </Step>
     <Step id="STEP_1_PLAN">
@@ -198,10 +207,11 @@
         already supplies those, verbatim and current. Require the report back regardless: DONE / BLOCKED /
         FAIL plus the worker's typed `**Handoff →**` line verbatim (`RETURN_SUMMARY_FORMAT`,
         `AX_HANDOFF_TYPED`) — thread exactly that into the next phase's Inputs, never a paraphrase. Emit a
-        progress line per transition (`ORCHESTRATOR_PROGRESS_FORMAT`); the dispatch-stage line for
-        THIS phase MUST also carry a session clause naming which path `AX_WORKER_SESSION_REUSE` just
-        took — `session: reused <kind>@<spec>` when redispatched into an open session, or `session:
-        fresh (<reason: first|kind-switch|fix-fresh-eyes|spec-switch|group-switch|mapping-lost|env-no-continuation>)`
+        progress line per transition (`ORCHESTRATOR_PROGRESS_FORMAT`); every line carries its canonical
+        `task=`, `stage=`, and `session=` fields. The dispatch-stage line names which path
+        `AX_WORKER_SESSION_REUSE` just took — `session=reused <kind>@<spec>` when redispatched into an
+        open session, or `session=fresh (<reason:
+        first|kind-switch|fix-fresh-eyes|spec-switch|group-switch|mapping-lost|env-no-continuation>)`
         when a fresh worker was raised instead — one line, always present, so a live run makes
         whether reuse is actually happening observable rather than assumed.
 

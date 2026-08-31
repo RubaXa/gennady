@@ -22,6 +22,12 @@ export function printHelp(): void {
   console.info(
     'GATE_QUEUE grants bootstrap setup only when each missing readiness gate has one declared ticket/phase owner.'
   );
+  console.info(
+    'The execution map prints EXECUTION_READY explicitly; ordinary product phases require yes, while only the exact active GATE_QUEUE setup phase may run on no.'
+  );
+  console.info(
+    'Therefore pickable is readiness-filtered: on no it contains only dependency-ready GATE_QUEUE owners; every unrelated graph-ready ticket is blocked.'
+  );
   console.info('');
   console.info('Without --phase, emits (the ONLY ticket read the orchestrator needs):');
   console.info('  - Meta: Task-ID, Status, Purpose, Scope/Module, Dependencies, Spec References');
@@ -43,7 +49,7 @@ export function printHelp(): void {
   );
   console.info('  - objective · gates (each with a one-line satisfy-hint) · exit criterion');
   console.info(
-    '  - read-manifest filtered to this phase (Spec Refs when declared, else the full set)'
+    '  - lifecycle manifest filtered to this phase: existing targets under READ files, absent exact repo-local targets under CREATE files'
   );
   console.info(
     "  - [HANDOFF]: prior completed phases' verbatim Handoff lines from Execution Log (omitted for the first phase)"
@@ -73,10 +79,10 @@ export function printHelp(): void {
     '  exact targets/spec/tickets always belong; undeclared neighbours belong only under a group-private target directory.'
   );
   console.info(
-    '  In phase and group modes, paths are exact and repo-relative: no glob, ../, absolute path, missing Target/Handoff, or any symlink component;'
+    '  In phase and group modes, paths are exact and repo-relative: no glob, ../, absolute path, directory target, or any symlink component;'
   );
   console.info(
-    '  a missing file is accepted only as a tracked HEAD tombstone declared under Deleted Files.'
+    '  phase dispatch alone accepts an ordinary missing Target File as CREATE; group review still requires Targets/Handoffs to exist, while Deleted Files require a tracked HEAD tombstone.'
   );
   console.info(
     '  Unborn HEAD falls back to declared files; corrupt/unavailable git or unreadable ticket corpus fails closed.'

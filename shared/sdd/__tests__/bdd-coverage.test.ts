@@ -196,6 +196,10 @@ describe('findUnparsedCoverageRows / checkUnparsedCoverageRows', () => {
     assert.strictEqual(findings.length, 1);
     assert.strictEqual(findings[0]?.code, 'SDD_BDD_COVERAGE_ROW_UNPARSED');
     assert.strictEqual(findings[0]?.severity, 'warn');
+    assert.match(
+      findings[0]?.message ?? '',
+      /Replace the whole row with either "- <scenario name>.*or "- Deferred Test Ownership: <other-Task-ID> <scenario name>/
+    );
   });
 
   it('checkUnparsedCoverageRows на чистой секции → []', () => {

@@ -3,7 +3,7 @@
 // tests pin the exact scenarios we walk through by hand (auto-enter at EMBODY, LOGIC_SWITCH branch,
 // step-into descent, DEFAULT proceed) so the flow can't silently regress.
 
-import { test } from 'node:test';
+import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve, dirname, join } from 'node:path';
@@ -13,9 +13,13 @@ import { parseSkill } from '../../core/parse-skill.ts';
 import { resolveTree, type DirectiveReader } from '../../core/resolve.ts';
 // the module under test — the pure, DOM-free debugger model the UI draws from
 import { simulate, unitsOf, mainDirective, transitionsFor, readsOf, base } from '../debug.js';
+import { buildDirectiveTreeFixture } from '../../__tests__/directive-tree-fixture.ts';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..');
+const fixture = buildDirectiveTreeFixture(repoRoot);
+after(() => fixture.cleanup());
 const read: DirectiveReader = (ref) => {
+  if (ref.startsWith('ai/directives/')) return fixture.read(ref);
   const p = resolve(repoRoot, ref);
   return existsSync(p) ? readFileSync(p, 'utf8') : null;
 };
@@ -135,7 +139,7 @@ test('scenario: advancing past GATHER auto-enters the router at EMBODY (stack /s
   assert.ok(loaded, 'router node carried on the entry divider for the collapsed inspect block');
 });
 
-test('scenario: after the session barrier STEP_1B_PREFLIGHT offers migration / readiness / DEFAULT branches', () => {
+test('scenario: after the session barrier STEP_1B_PREFLIGHT offers typed migration / authoring / execution / DEFAULT branches', () => {
   const sdd = loadSkill('sdd');
   const { sim } = driveUntil(sdd, (state) => state.current?.unit.attrs?.id === 'STEP_1B_PREFLIGHT');
   assert.ok(sim.current, 'a current unit is active');
@@ -147,7 +151,8 @@ test('scenario: after the session barrier STEP_1B_PREFLIGHT offers migration / r
   );
   const labels = trans.map((t: any) => t.label).join(' | ');
   assert.match(labels, /FLOW_VERSION=v1/); // → migration branch
-  assert.match(labels, /READINESS=not-ready/); // → readiness branch
+  assert.match(labels, /AUTHORING_SCOPE=<target> READY=no\|not-applicable/);
+  assert.match(labels, /EXECUTION_READY=no/);
   assert.match(labels, /DEFAULT/);
   // the conditional branches carry the directive they would load
   const migBranch = trans.find((t: any) => t.run && /migration-v1-v2/.test(t.run.ref));

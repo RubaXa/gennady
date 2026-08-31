@@ -20,7 +20,25 @@ describe('scaffold feasibility-critic state machine', () => {
   const source = read('ai', 'kit', 'templates', 'sdd-v2', 'scaffold.directive.hbs');
   const builtSkeleton = read('ai', 'directives', 'sdd-v2', 'scaffold.directive.xml');
   const sourceCritic = step(source, 'STEP_3B_FEASIBILITY_CRITIC');
+  const sourceGeneration = step(source, 'STEP_3_TASK_GENERATION');
+  const sourceTicketLoop = step(source, 'STEP_3_TICKET_LOOP');
   const sourceGate2 = step(source, 'STEP_4_TEST_PLAN_REVIEW');
+  const builtGeneration = read(
+    'ai',
+    'directives',
+    'sdd-v2',
+    'scaffold',
+    'steps',
+    'STEP_3_TASK_GENERATION.xml'
+  );
+  const builtTicketLoop = read(
+    'ai',
+    'directives',
+    'sdd-v2',
+    'scaffold',
+    'steps',
+    'STEP_3_TICKET_LOOP.xml'
+  );
   const builtCritic = read(
     'ai',
     'directives',
@@ -125,15 +143,46 @@ describe('scaffold feasibility-critic state machine', () => {
     }
   });
 
-  it('makes the two conditional task manifests unambiguous', () => {
-    const generation = step(source, 'STEP_3_TASK_GENERATION');
-    assert.match(generation, /result="moduleTaskManifest"/);
-    assert.match(generation, /result="flatInfraTaskManifest"/);
-    assert.doesNotMatch(generation, /result="taskManifest"/);
-    const conditionAt = generation.indexOf('Product/library module → only');
-    const moduleCallAt = generation.indexOf('result="moduleTaskManifest"');
-    const infraCallAt = generation.indexOf('result="flatInfraTaskManifest"');
-    assert.ok(conditionAt >= 0 && moduleCallAt > conditionAt && infraCallAt > moduleCallAt);
+  it('keeps planning manifest-free and gives the per-node loop three exhaustive typed task calls', () => {
+    for (const generation of [sourceGeneration, builtGeneration]) {
+      assert.match(generation, /Pass only the ordered node identities plus shared facts/);
+      assert.match(generation, /create no\s+ticket content, files, or indexes here/);
+      assert.doesNotMatch(generation, /sdd-new task|TaskManifest/);
+    }
+
+    const typedCalls = [
+      [
+        'flatInfraTaskManifest',
+        'npx gennady sdd-new task --owner infrastructure-flat --scope <scope> --id <ACR>-<slug>',
+      ],
+      [
+        'scopeBootstrapTaskManifest',
+        'npx gennady sdd-new task --owner scope-bootstrap --scope <scope> --id <ACR>-<slug>',
+      ],
+      [
+        'moduleTaskManifest',
+        'npx gennady sdd-new task --owner module --scope <scope> --module <module> --id <ACR>-<slug>',
+      ],
+    ] as const;
+    for (const loop of [sourceTicketLoop, builtTicketLoop]) {
+      const taskCalls =
+        loop.match(
+          /<ToolCall\b[^>]*>npx gennady sdd-new task [\s\S]*?<\/ToolCall>/g
+        ) ?? [];
+      assert.equal(taskCalls.length, 3);
+      for (const [result, call] of typedCalls) {
+        assert.match(
+          loop,
+          new RegExp(
+            `<ToolCall owner="this-step" result="${result}">${call.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}</ToolCall>`
+          )
+        );
+      }
+      assert.doesNotMatch(loop, /result="taskManifest"/);
+      assert.match(loop, /This table is exhaustive; interface maps to none/);
+      assert.match(loop, /Select only the next unprocessed STEP_2 node/);
+      assert.match(loop, /Green: only then may the next node's content be formed/);
+    }
   });
 
   it('reviews latest changed bytes and rejects a stale simultaneous CLEAN or fork', () => {

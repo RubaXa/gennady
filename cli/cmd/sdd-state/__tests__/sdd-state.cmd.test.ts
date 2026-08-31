@@ -4,7 +4,7 @@
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -70,6 +70,90 @@ function installDirectives(root: string, at = join(root, 'ai', 'directives', 'sd
     mkdirSync(dirname(target), { recursive: true });
     writeFileSync(target, '<directive/>\n', 'utf-8');
   }
+}
+
+/** @purpose Reproduce draft.54's approved scopes plus one unresolved module CHANGE_MANIFEST. */
+function writeDraft54ModuleReviewFixture(
+  root: string,
+  intent: 'module-decomposition' | 'scaffold'
+): void {
+  installDirectives(root);
+  mkdirSync(join(root, 'specs', 'infra-base'), { recursive: true });
+  mkdirSync(join(root, 'specs', 'todos-app', 'ui'), { recursive: true });
+  mkdirSync(join(root, 'node_modules', '.bin'), { recursive: true });
+  writeFileSync(join(root, 'node_modules', '.bin', 'gennady'), '#!/bin/sh\n', 'utf-8');
+  writeFileSync(join(root, 'package.json'), READY_PKG, 'utf-8');
+  writeFileSync(
+    join(root, 'specs', 'README.md'),
+    [
+      '# TodoMVC',
+      '## Scopes',
+      '| Scope | Type | Status | Description |',
+      '|---|---|---|---|',
+      '| [`infra-base`](./infra-base/infra-base.spec.md) | infrastructure | ✅ | toolchain |',
+      '| [`todos-app`](./todos-app/todos-app.spec.md) | product | ✅ | application |',
+    ].join('\n'),
+    'utf-8'
+  );
+  writeFileSync(
+    join(root, 'specs', 'infra-base', 'infra-base.spec.md'),
+    [
+      '<!--SECTION:SCOPE_TYPE-->',
+      'infrastructure',
+      '<!--/SECTION:SCOPE_TYPE-->',
+      '<!--SECTION:BOOTSTRAP_REQUIREMENTS-->',
+      '| Requirement | Kind | Owner | Resolution | Readiness Gates | Gate Artifacts |',
+      '|---|---|---|---|---|---|',
+      '| toolchain | tool | this-scope-task | install | type-check, test, test:coverage, format, format:fix, lint, lint:fix, fix | package.json |',
+      '<!--/SECTION:BOOTSTRAP_REQUIREMENTS-->',
+    ].join('\n'),
+    'utf-8'
+  );
+  writeFileSync(
+    join(root, 'specs', 'todos-app', 'todos-app.spec.md'),
+    [
+      '<!--SECTION:SCOPE_TYPE-->',
+      'product',
+      '<!--/SECTION:SCOPE_TYPE-->',
+      '<!--SECTION:MODULE_MAP-->',
+      '[ui](./ui/ui.spec.md)',
+      '<!--/SECTION:MODULE_MAP-->',
+      '<!--SECTION:BOOTSTRAP_REQUIREMENTS-->',
+      '| Requirement | Kind | Owner | Resolution | Readiness Gates | Gate Artifacts |',
+      '|---|---|---|---|---|---|',
+      '<!--/SECTION:BOOTSTRAP_REQUIREMENTS-->',
+    ].join('\n'),
+    'utf-8'
+  );
+  writeFileSync(
+    join(root, 'specs', 'todos-app', 'ui', 'ui.spec.md'),
+    [
+      '<!--SECTION:CHANGE_MANIFEST-->',
+      '## ⟢ Change Manifest — review-state',
+      'ТИП ИЗМЕНЕНИЯ: refine · composition root owner',
+      '<!--/SECTION:CHANGE_MANIFEST-->',
+      '<!--SECTION:MODULE_VISION-->',
+      '## Module Vision',
+      'UI owns App/main/index/Vite composition.',
+      '<!--/SECTION:MODULE_VISION-->',
+    ].join('\n'),
+    'utf-8'
+  );
+  writeFileSync(
+    join(root, 'specs', '.sdd-session.md'),
+    [
+      '# SDD session — 2026-08-31',
+      `intent: ${intent}`,
+      ...(intent === 'module-decomposition' ? ['scale: module'] : []),
+      'working set:',
+      '  - specs/todos-app/todos-app.spec.md — scaffold target — open',
+      '  - specs/todos-app/ui/ui.spec.md — scaffold target — open',
+      'glossary:',
+      'journal:',
+      'open: module review-state is unresolved',
+    ].join('\n'),
+    'utf-8'
+  );
 }
 
 describe('SddStateCommand', () => {
@@ -150,6 +234,255 @@ describe('SddStateCommand', () => {
       assert.match(o.text, /intent: evolve-scope/);
       assert.match(o.text, /readiness=ready/);
       assert.doesNotMatch(o.text, /\[GRAPH\]/);
+    }
+  });
+
+  it('separates scaffold authoring readiness from runtime execution readiness', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'sdd-state-authoring-ready-'));
+    const specPath = join(root, 'specs', 'infra-core', 'infra-core.spec.md');
+    const completeRow =
+      '| tooling | tool | this-scope-task | create bootstrap toolchain | package.json, type-check, test, test:coverage, format, format:fix, lint, lint:fix, fix, gennady | package.json |';
+    const writeSpec = (row: string): void => {
+      mkdirSync(dirname(specPath), { recursive: true });
+      writeFileSync(
+        specPath,
+        [
+          '<!--SECTION:SCOPE_TYPE-->',
+          'infrastructure',
+          '<!--/SECTION:SCOPE_TYPE-->',
+          '<!--SECTION:BOOTSTRAP_REQUIREMENTS-->',
+          '| Requirement | Kind | Owner | Resolution | Readiness Gates | Gate Artifacts |',
+          '|---|---|---|---|---|---|',
+          row,
+          '<!--/SECTION:BOOTSTRAP_REQUIREMENTS-->',
+        ].join('\n'),
+        'utf-8'
+      );
+    };
+    try {
+      installDirectives(root);
+      mkdirSync(join(root, 'specs'), { recursive: true });
+      writeFileSync(
+        join(root, 'specs', 'README.md'),
+        [
+          '# demo',
+          '## Scopes',
+          '| Scope | Type | Status | Description |',
+          '|---|---|---|---|',
+          '| [`infra-core`](./infra-core/infra-core.spec.md) | infrastructure | ✅ | tooling |',
+        ].join('\n'),
+        'utf-8'
+      );
+      writeSpec(completeRow);
+
+      const scaffoldable = await mod.run(argv(root));
+      assert.strictEqual(scaffoldable.ok, true);
+      if (scaffoldable.ok) {
+        assert.match(scaffoldable.text, /AUTHORING_READY=yes/);
+        assert.match(scaffoldable.text, /AUTHORING_SCOPE=infra-core\tREADY=yes/);
+        assert.match(scaffoldable.text, /EXECUTION_READY=no/);
+        assert.match(scaffoldable.text, /NEXT=scaffold may create the declared bootstrap tickets/);
+      }
+
+      mkdirSync(join(root, 'specs', 'broken'), { recursive: true });
+      writeFileSync(
+        join(root, 'specs', 'broken', 'broken.spec.md'),
+        [
+          '<!--SECTION:SCOPE_TYPE-->',
+          'product',
+          '<!--/SECTION:SCOPE_TYPE-->',
+          '<!--SECTION:BOOTSTRAP_REQUIREMENTS-->',
+          '| Requirement | Kind | Owner | Resolution |',
+          '|---|---|---|---|',
+          '<!--/SECTION:BOOTSTRAP_REQUIREMENTS-->',
+        ].join('\n'),
+        'utf-8'
+      );
+      writeFileSync(
+        join(root, 'specs', 'README.md'),
+        [
+          '# demo',
+          '## Scopes',
+          '| Scope | Type | Status | Description |',
+          '|---|---|---|---|',
+          '| [`infra-core`](./infra-core/infra-core.spec.md) | infrastructure | ✅ | tooling |',
+          '| [`broken`](./broken/broken.spec.md) | product | ✅ | stale unrelated scope |',
+        ].join('\n'),
+        'utf-8'
+      );
+      const mixed = await mod.run(argv(root));
+      assert.strictEqual(mixed.ok, true);
+      if (mixed.ok) {
+        assert.match(mixed.text, /AUTHORING_READY=no/);
+        assert.match(mixed.text, /AUTHORING_SCOPE=infra-core\tREADY=yes/);
+        assert.match(mixed.text, /AUTHORING_SCOPE=broken\tREADY=no/);
+        assert.match(mixed.text, /AUTHORING_SCOPE_NEXT=broken\trepair only scope 'broken'/);
+      }
+      rmSync(join(root, 'specs', 'broken'), { recursive: true, force: true });
+      writeFileSync(
+        join(root, 'specs', 'README.md'),
+        [
+          '# demo',
+          '## Scopes',
+          '| Scope | Type | Status | Description |',
+          '|---|---|---|---|',
+          '| [`infra-core`](./infra-core/infra-core.spec.md) | infrastructure | ✅ | tooling |',
+        ].join('\n'),
+        'utf-8'
+      );
+
+      writeSpec(completeRow.replace('create bootstrap toolchain', '—'));
+      const ambiguous = await mod.run(argv(root));
+      assert.strictEqual(ambiguous.ok, true);
+      if (ambiguous.ok) {
+        assert.match(ambiguous.text, /AUTHORING_READY=no/);
+        assert.match(ambiguous.text, /Bootstrap row 'tooling' has no Resolution/);
+      }
+
+      writeSpec(completeRow);
+      writeFileSync(join(root, 'package.json'), READY_PKG, 'utf-8');
+      mkdirSync(join(root, 'node_modules', '.bin'), { recursive: true });
+      writeFileSync(join(root, 'node_modules', '.bin', 'gennady'), '#!/bin/sh\n', 'utf-8');
+      const fullyReady = await mod.run(argv(root));
+      assert.strictEqual(fullyReady.ok, true);
+      if (fullyReady.ok) {
+        assert.match(fullyReady.text, /AUTHORING_READY=yes/);
+        assert.match(fullyReady.text, /EXECUTION_READY=yes/);
+        assert.match(fullyReady.text, /NEXT=scaffold and product execute may proceed/);
+      }
+
+      const stubbedPackage = JSON.parse(READY_PKG) as { scripts: Record<string, string> };
+      stubbedPackage.scripts.test = 'echo TODO';
+      writeFileSync(join(root, 'package.json'), JSON.stringify(stubbedPackage), 'utf-8');
+      const vacuous = await mod.run(argv(root));
+      assert.strictEqual(vacuous.ok, true);
+      if (vacuous.ok) {
+        assert.match(vacuous.text, /READINESS=provisional/);
+        assert.match(vacuous.text, /AUTHORING_READY=yes/);
+        assert.match(vacuous.text, /EXECUTION_READY=no/);
+      }
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('draft.54: active module decomposition in review-state takes precedence over scaffold next', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'sdd-state-draft54-review-'));
+    try {
+      writeDraft54ModuleReviewFixture(root, 'module-decomposition');
+
+      const outcome = await mod.run(argv(root));
+      assert.strictEqual(outcome.ok, true);
+      if (outcome.ok) {
+        assert.doesNotMatch(outcome.text, /NEXT=scaffold|\/sdd-scaffold/);
+        assert.match(
+          outcome.text,
+          /NEXT=resume active module-decomposition review for specs\/todos-app\/ui\/ui\.spec\.md; do not scaffold until CHANGE_MANIFEST is resolved/
+        );
+        assert.match(
+          outcome.text,
+          /👉 Следующий шаг: завершить active module-decomposition review/
+        );
+      }
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('draft.54: scaffold-owned nested module correction preserves scaffold intent and suppresses generic scaffold', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'sdd-state-draft54-nested-'));
+    try {
+      writeDraft54ModuleReviewFixture(root, 'scaffold');
+
+      const outcome = await mod.run(argv(root));
+      assert.strictEqual(outcome.ok, true);
+      if (outcome.ok) {
+        assert.doesNotMatch(outcome.text, /NEXT=scaffold(?:\s|$)|\/sdd-scaffold/);
+        assert.match(
+          outcome.text,
+          /NEXT=resume scaffold-owned nested module correction for specs\/todos-app\/ui\/ui\.spec\.md; keep intent=scaffold and exact target-set, then return to scaffold STEP_0_INTAKE after accepted\/CLEAN/
+        );
+        assert.match(
+          outcome.text,
+          /👉 Следующий шаг: завершить scaffold-owned nested module correction/
+        );
+        assert.match(
+          readFileSync(join(root, 'specs', '.sdd-session.md'), 'utf-8'),
+          /^intent: scaffold$/m
+        );
+      }
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('distinguishes draft.52 stale-migratable from invalid and prints each exact route', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'sdd-state-schema-'));
+    try {
+      installDirectives(root);
+      mkdirSync(join(root, 'specs', 'legacy'), { recursive: true });
+      writeFileSync(
+        join(root, 'specs', 'legacy', 'legacy.spec.md'),
+        [
+          '<!--SECTION:SCOPE_TYPE-->',
+          'product',
+          '<!--/SECTION:SCOPE_TYPE-->',
+          '<!--SECTION:BOOTSTRAP_REQUIREMENTS-->',
+          '| Requirement | Kind | Owner | Resolution |',
+          '|---|---|---|---|',
+          '<!--/SECTION:BOOTSTRAP_REQUIREMENTS-->',
+        ].join('\n'),
+        'utf-8'
+      );
+      const outcome = await mod.run(argv(root));
+      assert.strictEqual(outcome.ok, true);
+      if (outcome.ok) {
+        assert.match(
+          outcome.text,
+          /\[SPEC_SCHEMA\]\nVERSION=sdd-v2\.schema-1\nSTATUS=stale-migratable/
+        );
+        assert.match(
+          outcome.text,
+          /stale-migratable\tspecs\/legacy\/legacy\.spec\.md\t.+Readiness Gates, Gate Artifacts/
+        );
+        assert.match(
+          outcome.text,
+          /NEXT=router loads ai\/directives\/sdd-v2\/reconcile\.directive\.xml.+no CLI or public skill invocation.+intent=scaffold unchanged.+re-enter STEP_0B/
+        );
+        assert.match(outcome.text, /spec-schema=stale-migratable/);
+        assert.equal(outcome.text.match(/^NEXT=/gm)?.length, 1, 'stale schema has one exact route');
+      }
+
+      writeFileSync(
+        join(root, 'specs', 'legacy', 'legacy.spec.md'),
+        [
+          '<!--SECTION:SCOPE_TYPE-->',
+          'product',
+          '<!--/SECTION:SCOPE_TYPE-->',
+          '<!--SECTION:BOOTSTRAP_REQUIREMENTS-->',
+          '| Requirement | Owner | Mystery |',
+          '|---|---|---|',
+          '<!--/SECTION:BOOTSTRAP_REQUIREMENTS-->',
+        ].join('\n'),
+        'utf-8'
+      );
+      const invalid = await mod.run(argv(root));
+      assert.strictEqual(invalid.ok, true);
+      if (invalid.ok) {
+        assert.match(invalid.text, /STATUS=invalid/);
+        assert.match(invalid.text, /invalid\tspecs\/legacy\/legacy\.spec\.md\t.+ambiguous/);
+        assert.match(
+          invalid.text,
+          /NEXT=repair each listed spec through its owning authoring flow/
+        );
+        assert.equal(
+          invalid.text.match(/^NEXT=/gm)?.length,
+          1,
+          'invalid schema has one exact route'
+        );
+      }
+    } finally {
+      rmSync(root, { recursive: true, force: true });
     }
   });
 

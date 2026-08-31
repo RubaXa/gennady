@@ -9,8 +9,9 @@
     `ready` when every brick is a real tool, `provisional` when some are still stubs (the normal
     landing state of a from-scratch setup — see the stub template and the exit arms below).
     `check` is an optional read-only wrapper; phase agents pass exact Target Files to `sdd-verify`,
-    whose private repair passes that set to the same project leaves and then enforces the actual write
-    zone by a runtime workspace diff; static brick shape is only early diagnostics. Required `fix` is
+    whose private repair adapters pass capability-filtered exact subsets to the formatter, project
+    linter, and Gennady contract linter, then enforce the actual write zone by a runtime workspace
+    diff; static brick shape is only early diagnostics. Required `fix` is
     the single public whole-project repair entrypoint.
     This is the minimal mechanical bootstrap, NOT the tooling design: a real command where a tool is
     already installed, else a visible TODO stub that points at the infra flow. Entered when
@@ -27,12 +28,38 @@
   </Mission>
 
   <BeliefState>
-    Inherited from the loading directive (already in context): AX_DIALOGUE_DISCIPLINE, AX_DIVERGE_BEFORE_RECOMMEND, AX_NO_PROCESS_NARRATION, AX_OPERATOR_DIALOGUE_STYLE, AX_OPERATOR_LANGUAGE, AX_OPERATOR_OUTPUT_LIVE_TEXT, AX_OPERATOR_SAFEGUARD, AX_PROGRESSIVE_DISCLOSURE, AX_TOOL_INVOCATION, HALT_FORMAT, MESSAGE_LAYOUT, QUESTION_RULE_SLIM
+    Inherited from the loading directive (already in context): AX_DIALOGUE_DISCIPLINE, AX_OPERATOR_AGREEMENT, AX_OPERATOR_DIALOGUE_STYLE, AX_OPERATOR_LANGUAGE, AX_OPERATOR_SAFEGUARD, AX_TOOL_INVOCATION, MESSAGE_LAYOUT, QUESTION_RULE_SLIM
 
-    <Axiom id="AX_OPERATOR_AGREEMENT">
-      Every fix must be operator-approved before execution. The plan is shown as a table.
-      No edits are made before explicit operator "yes" / "go" / "ok".
-      Operator may edit the plan (remove items, change classification, add notes).
+    <Axiom id="AX_DIVERGE_BEFORE_RECOMMEND">
+      A recommendation must be the result of a search, not the first typical answer. Aligned models
+      collapse to the modal option; a single quick recommendation usually IS that mode, which is
+      rarely the best fit for a specific task.
+
+      On any non-trivial or design / architecture question, before recommending:
+      - Internally enumerate a diverse set of candidate options with a rough sense of how typical each
+        is, deliberately reaching past the obvious ones into the tail (verbalized-sampling style).
+      - Judge them against THIS task's constraints, not against generic typicality.
+      - Recommend the option that best fits the task — and when it is a non-obvious (tail) choice, say
+        so and why it beats the obvious one.
+
+      Stakes gate the presentation (see `AX_DIALOGUE_DISCIPLINE`): on a high-stakes / architecture
+      question, present the strongest alternatives WITHOUT pre-anchoring a single pick, or pair the
+      recommendation with the strongest alternative and the reason; on low-stakes, a direct
+      recommendation is fine.
+    </Axiom>
+
+    <Axiom id="AX_NO_PROCESS_NARRATION" cross-cutting="true">
+      The operator never sees the agent's machinery. No «DIRECTIVE ACTIVATED», no mode-detection
+      narration, no «grounding collected», no «перехожу к STEP_2», no frame-stack talk. Detection,
+      reading, and step transitions happen silently. Mode / scope / confidence live in the dim service
+      line and the log, nowhere else.
+    </Axiom>
+
+    <Axiom id="AX_OPERATOR_OUTPUT_LIVE_TEXT" cross-cutting="true">
+      Everything the operator reads is a normal chat message with live-rendered markdown — headers,
+      bold, lists, blockquotes, tables. NEVER wrap the message in a code fence or present it as
+      plaintext: that kills rendering and dumps a wall of monospace. Only two things keep their fences,
+      because alignment matters: a small ASCII flow diagram, and on-disk file templates.
     </Axiom>
 
     <Axiom id="AX_RESEARCH_PERSISTED">
@@ -54,6 +81,11 @@
   </BeliefState>
 
   <ChatProtocol>
+    <Contract id="HALT_FORMAT">
+      A halt is a plain sentence first (what happened + what to do), with the token as a trailing tag:
+
+      🛑 <что случилось по-человечески> — <что сделать оператору>   `[H_*]`
+    </Contract>
   </ChatProtocol>
 
   <HaltConditions>
@@ -168,7 +200,7 @@
     | `format` | formatter in check-only mode — read-only | yes |
     | `format:fix` | formatter write mode — MUST carry `--write` / `--fix` / `--autofix` | yes (stub still needs the literal switch — see below) |
     | `lint` | lint chain that reaches `gennady` (DbC), read-only | **no — must wire gennady** |
-    | `lint:fix` | linter autofix — MUST carry `--write` / `--fix` / `--autofix` | yes (same caveat) |
+    | `lint:fix` | project-linter autofix prefix — MUST carry `--write` / `--fix` / `--autofix`; receives only its own ABI, never assumed Gennady flags | yes (same caveat) |
     | `fix` | public whole-project repair: `format:fix` then `lint:fix`, with broad roots supplied here | yes |
 
     `format` and `lint` — and every script either reaches via `npm run <x>` — must stay free of known
@@ -181,6 +213,10 @@
     that an arbitrary exact operand such as `src/a.ts` is a target rather than tool config/subcommand;
     the phase's runtime workspace boundary closes that ambiguity by rejecting and listing actual writes
     outside its canonical Target Files without rolling them back. A missing switch or obvious broad target reports in `missing`.
+    Phase repair treats formatter, project linter, and Gennady contract lint as distinct capabilities:
+    ESLint-like leaves receive only applicable exact code targets; Gennady receives `--include-tests`,
+    owning `--spec`, and only supported `.ts`/`.tsx`. If `lint:fix` itself reaches Gennady it runs once
+    for both lint roles; zero applicable targets are an explicit named skip, never a broad-root fallback.
     Bootstrap echo-stubs are the sole temporary exception because setup never executes them.
     Optional `check` is the human/CI wrapper:
     `"check": "npx gennady sdd-verify --profile full"` and must itself stay read-only.
@@ -241,5 +277,12 @@
       `Vision ✅ · Scope Graph 👷 · Infra ◻️ · Portal ◻️`
     </Contract>
 
+    <Axiom id="AX_PROGRESSIVE_DISCLOSURE" cross-cutting="true">
+      Decision first, reasoning on demand. The must-read top of a message is short: where we are + my
+      read + what to decide. Everything heavy — full option comparison, evidence, the change-list,
+      derivations — goes BELOW a `### ↓ Детали — по желанию` header. Never dump reasoning above the
+      questions. Facts already verified collapse to one line («сверился: …»); uncertainties that need
+      the operator BECOME the questions — never list them twice.
+    </Axiom>
   </ChatOutput>
 </SddReadiness>

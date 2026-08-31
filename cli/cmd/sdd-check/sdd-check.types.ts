@@ -29,32 +29,51 @@ export type CheckResult = {
  * @invariant Exit 1 iff at least one error-severity finding is present; warnings alone exit 0.
  * @param findings All findings collected across checked files.
  * @param fileCount Number of files checked (for the summary line).
+ * @param [options] Optional output bound and mode-specific repair instruction.
  * @returns The report text and exit code.
  */
-export function formatFindings(findings: Finding[], fileCount: number): CheckResult {
+export function formatFindings(
+  findings: Finding[],
+  fileCount: number,
+  options: { maxFindings?: number; repairHint?: string } = {}
+): CheckResult {
   if (findings.length === 0) {
     return { text: `[sdd-check] ✅ clean — ${fileCount} file(s) checked`, exitCode: 0 };
   }
-  const lines = findings.map(
+  const visible = findings.slice(0, options.maxFindings ?? findings.length);
+  const lines = visible.map(
     (f) =>
       `${f.file}${f.line !== undefined ? `:${f.line}` : ''}: ${f.severity}: ${f.code}  ${f.message}`
   );
   const errors = findings.filter((f) => f.severity === 'error').length;
   const warns = findings.length - errors;
   const summary = `[sdd-check] ${errors} error(s), ${warns} warning(s) across ${fileCount} file(s)`;
+  const omitted = findings.length - visible.length;
 
   // next: two doors only, one per finding family present — the language calque and everything
   // else (structure / anchors / links / DAG / trackers) fix through different channels.
   const hasLanguage = findings.some((f) => f.code === 'SDD_LANGUAGE_CALQUE');
   const hasStructural = findings.some((f) => f.code !== 'SDD_LANGUAGE_CALQUE');
-  const next: string[] = [];
-  if (hasStructural) next.push('next: структура/якоря — правь через `/sdd-reconcile`.');
-  if (hasLanguage)
+  const next: string[] = options.repairHint ? [`next: ${options.repairHint}`] : [];
+  if (!options.repairHint && hasStructural)
+    next.push('next: структура/якоря — правь через `/sdd-reconcile`.');
+  if (!options.repairHint && hasLanguage)
     next.push(
       'next: язык — калька за калькой, по месту (`file:line`) правь всё предложение целиком.'
     );
 
-  return { text: [...lines, '', summary, ...next].join('\n'), exitCode: errors > 0 ? 1 : 0 };
+  return {
+    text: [
+      ...lines,
+      ...(omitted > 0
+        ? [`… ${omitted} more finding(s) omitted; fix the shown rows, then rerun the same command.`]
+        : []),
+      '',
+      summary,
+      ...next,
+    ].join('\n'),
+    exitCode: errors > 0 ? 1 : 0,
+  };
 }
 
 /**
@@ -67,7 +86,7 @@ export function badInvocation(detail = 'invalid arguments'): CheckResult {
     text: [
       `[sdd-check] ${ERR_CLI_SDD_CHECK_BAD_INVOCATION}`,
       `  problem: ${detail}`,
-      '  usage: gennady sdd-check (--task <ticket> | --all [project-root] | --changed [project-root] | --review-state <primary> [secondary...] | --review-publication <primary> [secondary...] | --review-ready <spec-or-dir>)',
+      '  usage: gennady sdd-check (--task <ticket> [--authoring] | --scaffold-feasibility [project-root] | --all [project-root] | --changed [project-root] | --review-state <primary> [secondary...] | --review-publication <primary> [secondary...] | --review-ready <spec-or-dir>)',
     ].join('\n'),
     exitCode: 4,
   };

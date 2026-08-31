@@ -358,7 +358,7 @@ describe('SddTaskCommand', () => {
     }
   });
 
-  it('map emits a root line and a per-line `<id> → <path>` for the pickable ticket', async () => {
+  it('map emits a root line and per-line path for a graph-ready ticket blocked by runtime readiness', async () => {
     const mapDir = mkdtempSync(join(tmpdir(), 'sdd-task-map-'));
     writeFileSync(
       join(mapDir, 'ticket.md'),
@@ -374,14 +374,16 @@ describe('SddTaskCommand', () => {
       // `resolve('.')` follows symlinks (e.g. macOS /tmp → /private/tmp) so the printed root may not
       // be byte-identical to `mapDir` — assert it names a real, absolute directory instead.
       assert.match(r.text, /^root: \/\S*$/m);
-      assert.match(r.text, /pickable \(ready now\):\n {2}cli-foo → ticket\.md$/m);
+      assert.match(r.text, /pickable \(ready now\): — none/);
+      assert.match(r.text, /blocked: cli-foo ← EXECUTION_READY=no  →  ticket\.md$/m);
+      assert.match(r.text, /portal\/GATE_QUEUE cannot be resolved/);
     } finally {
       process.chdir(origCwd);
       rmSync(mapDir, { recursive: true, force: true });
     }
   });
 
-  it("a positional project root (no chdir needed) shows that root's map — symmetric with `sdd-state [project-root]`", async () => {
+  it("a positional project root (no chdir needed) applies that root's readiness to its map", async () => {
     const mapDir = mkdtempSync(join(tmpdir(), 'sdd-task-map-root-'));
     writeFileSync(
       join(mapDir, 'ticket.md'),
@@ -393,7 +395,8 @@ describe('SddTaskCommand', () => {
       assert.strictEqual(r.ok, true);
       if (!r.ok) return;
       assert.match(r.text, /^\[sdd-task\] execution map/);
-      assert.match(r.text, /pickable \(ready now\):\n {2}cli-foo → ticket\.md$/m);
+      assert.match(r.text, /pickable \(ready now\): — none/);
+      assert.match(r.text, /blocked: cli-foo ← EXECUTION_READY=no  →  ticket\.md$/m);
     } finally {
       rmSync(mapDir, { recursive: true, force: true });
     }
@@ -1069,7 +1072,7 @@ describe('SddTaskCommand', () => {
         if (!r.ok) return;
         assert.match(
           r.text,
-          /READINESS=not-ready\nGATE_QUEUE=infra-1 · гейты отсутствуют, их строят эти тикеты/
+          /READINESS=not-ready\nEXECUTION_READY=no\nGATE_QUEUE=infra-1 · гейты отсутствуют, их строят эти тикеты/
         );
       } finally {
         process.chdir(origCwd);
@@ -1167,7 +1170,7 @@ describe('SddTaskCommand', () => {
         const r = await mod.run(argv());
         assert.strictEqual(r.ok, true);
         if (!r.ok) return;
-        assert.match(r.text, /READINESS=ready\nGATE_QUEUE=none/);
+        assert.match(r.text, /READINESS=ready\nEXECUTION_READY=yes\nGATE_QUEUE=none/);
       } finally {
         process.chdir(origCwd);
         rmSync(readyDir, { recursive: true, force: true });
@@ -1868,6 +1871,40 @@ describe('SddTaskCommand', () => {
         if (!r.ok) return;
         assert.match(r.text, /INFRA_QUEUE_EXEMPTION/);
         assert.match(r.text, /Верификация здесь ЧАСТИЧНАЯ/);
+
+        writeFileSync(
+          join(gateDir, 'ticket.md'),
+          [
+            claimAllReadinessGates(
+              TICKET.replace('- **Scope:** cli', '- **Scope:** infra-core').replace(
+                '- **Status:** [ ] TODO',
+                '- **Status:** [x] DONE'
+              )
+            ),
+            '<!--SECTION:EXECUTION_LOG-->',
+            '<!--/SECTION:EXECUTION_LOG-->',
+          ].join('\n'),
+          'utf-8'
+        );
+        const expired = await withCwd(gateDir, () => mod.run(argv('ticket.md', '--phase', 'P1')));
+        assert.strictEqual(expired.ok, false);
+        if (!expired.ok) assert.match(expired.message, /ERR_CLI_SDD_TASK_INFRA_NOT_READY/);
+
+        writeFileSync(
+          join(gateDir, 'ticket.md'),
+          [
+            claimAllReadinessGates(TICKET.replace('- **Scope:** cli', '- **Scope:** product-app')),
+            '<!--SECTION:EXECUTION_LOG-->',
+            '<!--/SECTION:EXECUTION_LOG-->',
+          ].join('\n'),
+          'utf-8'
+        );
+        const productClaim = await withCwd(gateDir, () =>
+          mod.run(argv('ticket.md', '--phase', 'P1'))
+        );
+        assert.strictEqual(productClaim.ok, false);
+        if (!productClaim.ok)
+          assert.match(productClaim.message, /ERR_CLI_SDD_TASK_INFRA_NOT_READY/);
       } finally {
         rmSync(gateDir, { recursive: true, force: true });
       }

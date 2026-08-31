@@ -187,8 +187,10 @@ const COMMAND_SCHEMAS: Readonly<Record<string, CommandSchema>> = {
   'sdd-check': schema(
     {
       '--task': 'scalar',
+      '--authoring': 'boolean',
       '--all': 'boolean',
       '--changed': 'boolean',
+      '--scaffold-feasibility': 'boolean',
       '--review-ready': 'scalar',
       '--review-state': 'scalar',
       '--review-publication': 'scalar',
@@ -198,12 +200,19 @@ const COMMAND_SCHEMAS: Readonly<Record<string, CommandSchema>> = {
         '--task',
         '--all',
         '--changed',
+        '--scaffold-feasibility',
         '--review-ready',
         '--review-state',
         '--review-publication',
       ].filter((x) => has(f, x));
       if (modes.length !== 1) return 'requires exactly one mode';
-      if ((modes[0] === '--all' || modes[0] === '--changed') && p.length > 1)
+      if (has(f, '--authoring') && modes[0] !== '--task') return '--authoring requires --task';
+      if (
+        (modes[0] === '--all' ||
+          modes[0] === '--changed' ||
+          modes[0] === '--scaffold-feasibility') &&
+        p.length > 1
+      )
         return `${modes[0]} accepts at most one root`;
       if (modes[0] === '--task' || modes[0] === '--review-ready')
         return p.length === 0 ? null : `${modes[0]} accepts no trailing paths`;
@@ -253,6 +262,7 @@ const COMMAND_SCHEMAS: Readonly<Record<string, CommandSchema>> = {
       '--id': 'scalar',
       '--slug': 'scalar',
       '--out': 'scalar',
+      '--owner': 'scalar',
       '--list': 'boolean',
       '--manifest': 'boolean',
     },
@@ -277,8 +287,8 @@ const COMMAND_SCHEMAS: Readonly<Record<string, CommandSchema>> = {
       )
         return `unknown artifact kind ${kind}`;
       if (has(f, '--manifest')) return null;
-      if (kind === 'task' && (!has(f, '--scope') || !has(f, '--id')))
-        return 'task requires --scope and --id';
+      if (kind === 'task' && (!has(f, '--scope') || !has(f, '--id') || !has(f, '--owner')))
+        return 'task requires --scope, --id, and --owner';
       if (
         (kind === 'module' || kind === 'module-index') &&
         (!has(f, '--scope') || !has(f, '--module'))

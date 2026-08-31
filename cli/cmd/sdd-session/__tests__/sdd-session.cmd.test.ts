@@ -285,6 +285,26 @@ describe('SddSessionCommand', () => {
       }
     });
 
+    it('file-backed workset appends every non-empty line as one exact bullet in one call', async () => {
+      mkdirSync(join(dir, '.claude', 'tmp'), { recursive: true });
+      const rel = '.claude/tmp/scaffold-workset.txt';
+      writeFileSync(
+        join(dir, rel),
+        [
+          'specs/app/app.spec.md — scaffold target — open',
+          'specs/app/ui/ui.spec.md — scaffold target — open',
+          'specs/shared/contracts.spec.md — dependency context — open',
+        ].join('\n'),
+        'utf-8'
+      );
+      const outcome = await mod.run(argv('workset', '--content-file', rel), CLOCK);
+      assert.strictEqual(outcome.ok, true);
+      const session = readFileSync(sessionPath(), 'utf-8');
+      assert.match(session, /  - specs\/app\/app\.spec\.md — scaffold target — open/);
+      assert.match(session, /  - specs\/app\/ui\/ui\.spec\.md — scaffold target — open/);
+      assert.match(session, /  - specs\/shared\/contracts\.spec\.md — dependency context — open/);
+    });
+
     it('rejects outside/symlink/oversize payloads and unknown/repeated flags without session mutation', async () => {
       mkdirSync(join(dir, '.claude', 'tmp'), { recursive: true });
       const before = readFileSync(sessionPath(), 'utf-8');

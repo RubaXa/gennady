@@ -16,15 +16,40 @@
         `sdd-state` snapshot; say that fallback was selected. Never replace a missing/ambiguous target
         with filesystem discovery, glob/ls, or an all-spec archaeology pass.
 
+        After this exact bounded target set is resolved, and only when the router-proved session is
+        already present and compatible, write `.claude/tmp/sdd-scaffold-workset.txt` with one non-empty
+        line per exact repo-relative spec in the set, in stable path order. Grammar is exactly
+        `<repo-relative-spec-path> — <role> — open`, where `<role>` is exactly one of `scaffold target`
+        or `dependency context`; use `scaffold target` for requested scope/module specs and
+        `dependency context` only for transitive read context.
+        Then run the one ToolCall below exactly once. If session evidence is absent/incompatible, do
+        not call `workset`, open a session, or guess: return to the router's session barrier.
+        <ToolCall owner="this-step" result="sessionWorkset">npx gennady sdd-session workset --content-file .claude/tmp/sdd-scaffold-workset.txt</ToolCall> Use sessionWorkset before decomposition/DAG work.
+
         From this bounded set, enforce the decomposition gate fail-closed for each task-owning target:
         scope type must be
         present and unambiguous; product/library requires a non-empty Module Map whose explicit links
         resolve one-to-one to every canonical module spec on disk; interface cannot directly own tasks.
         Otherwise `H_SCOPE_NOT_DECOMPOSED`. Do not issue an extra discovery command for this check.
-        Dependency-only interface scopes remain read context, never task owners. `infrastructure` is
-        the sole valid flat scope. Every `sdd-new task` call repeats this guard
-        defensively and must use the exact form
-        <ToolLiteral role="future">npx gennady sdd-new task --scope <scope> --id <ACR-slug></ToolLiteral>;
+        Dependency-only interface scopes remain read context, never task owners. Classify every DAG
+        node with exactly one task owner: `infrastructure-flat` (scope-level infrastructure),
+        `scope-bootstrap` (scope-level bootstrap in a completely decomposed product/library), or
+        `module` (ordinary product/library work in one declared module). Product/library ordinary
+        work without a module is invalid; interface has no owner. Every `sdd-new task` call repeats
+        this typed guard defensively; `--owner` is mandatory.
+        Before Gate 1, map every runtime requirement/deliverable to exactly one declared module,
+        including composition-root files such as `App`, `main`, `index`, and Vite/runtime entrypoints.
+        “Outside modules”, no mapping, or multiple candidate modules → `H_SCOPE_NOT_DECOMPOSED`.
+        Invoke `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/module.directive.xml")` as a nested
+        same-chain module-decomposition correction: preserve the compatible session's
+        `intent: scaffold` and exact bounded target-set, and set its return owner to scaffold
+        `STEP_0_INTAKE` without inventing a session field or relabelling intent. An active
+        `CHANGE_MANIFEST` under `intent: scaffold` is the resume evidence for this nested owner.
+        On pause keep that intent/target-set and record the concrete blocker in `open`; on the nested correction return,
+        no ticket or Gate 1 may begin until the corrected decomposition has its owning review disposition;
+        re-enter STEP_0_INTAKE only after accepted/CLEAN. Never auto-assign composition to UI
+        and never invent a fourth owner. `scope-bootstrap` is legal only for an exact Bootstrap Requirements row
+        whose Owner is `this-scope-task`; it cannot carry app-shell or ordinary runtime work.
         `--out` overrides only destination. If a lower-level caller omits `--scope`, the CLI accepts
         only one SCOPE_TYPE-bearing ancestor of that output path; zero/multiple owners fail with the
         exact request to pass `--scope`, and the same decomposition proof still runs.
@@ -96,3 +121,5 @@
       - Per-scope Cascade Table may update; existing tickets keep their old per-phase `Rules:` lists — orchestrator re-derives on reopen if the operator opts in.
       - DAG edges/IDs preserved; new tasks appended.
     </Axiom>
+
+After completing this step, and only then, READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/scaffold/steps/STEP_0B_PREFLIGHT.xml"). Do not preload later step packages.

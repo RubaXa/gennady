@@ -13,7 +13,13 @@ export function printHelp(): void {
   console.info('Usage:');
   console.info('  npx gennady sdd-check --task <ticket>        # check one ticket');
   console.info(
+    '  npx gennady sdd-check --task <created-ticket-path> --authoring  # pre-index ticket-only authoring gate'
+  );
+  console.info(
     '  npx gennady sdd-check --all [project-root]   # check every ticket + spec under specs/'
+  );
+  console.info(
+    '  npx gennady sdd-check --scaffold-feasibility [project-root]  # clean-HEAD package/lock DAG + command-proof barrier before scaffold critic'
   );
   console.info(
     '  npx gennady sdd-check --changed [project-root]  # check @tasks/@consumers headers of changed files'
@@ -28,10 +34,13 @@ export function printHelp(): void {
     '  npx gennady sdd-check --review-publication <primary> [secondary...]  # exact role-validated VCS publication-set after critic readiness'
   );
   console.info(
-    '  Choose exactly one mode: --task, --all, --changed, --review-state, --review-publication, or --review-ready.'
+    '  Choose exactly one mode: --task, --scaffold-feasibility, --all, --changed, --review-state, --review-publication, or --review-ready.'
   );
   console.info('');
   console.info('Mechanical checks (per ticket):');
+  console.info(
+    '  --authoring: exact path returned by sdd-new; structure/anchors, owner metadata, Task-ID/status/phases, spec+rule refs/cascade and BDD/deferred grammar only; max 12 shown; no receipts, runtime files, coverage execution, siblings, trackers, or global scan'
+  );
   console.info('  - anchor balance · required sections (META, EXECUTION_LOG)');
   console.info('  - Task-ID present · Status parseable');
   console.info('  - fabricated DONE: a [x] line with an unreplaced <…> placeholder');
@@ -50,6 +59,9 @@ export function printHelp(): void {
     '  - PHASE_RECEIPT: every checked schema-aware phase has complete current CLI evidence for its plan, commands, and Target Files'
   );
   console.info('  --all also: broken `](…spec.md)` links that do not resolve on disk');
+  console.info(
+    '  --scaffold-feasibility: one dependency-install phase owns package.json + active lockfile; explicit package consumers depend forward on it; npm-run BDD When maps to the exact :: command probe and Role=probe row'
+  );
   console.info(
     '  --changed: TASKS_APPEND_ONLY (@tasks: header never drops an id present at HEAD) ·'
   );

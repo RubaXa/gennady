@@ -211,7 +211,7 @@ describe('flow coherence contracts', () => {
     assert.match(skillSpec, /SKILL не хранит закрытый список веток/);
   });
 
-  it('consumes one initial snapshot and reuses each mutating branch post-state', () => {
+  it('consumes one initial snapshot and reuses only the migration branch post-state', () => {
     const state = step(router, 'STEP_0_STATE');
     const classify = step(router, 'STEP_1_CLASSIFY');
     const preflight = step(router, 'STEP_1B_PREFLIGHT');
@@ -230,9 +230,9 @@ describe('flow coherence contracts', () => {
         router.indexOf('<Step id="STEP_1B_PREFLIGHT">')
     );
     assert.match(classify, /Set `activeRouterState = routerState`/);
-    assert.match(preflight, /activeRouterState = readinessState/);
+    assert.doesNotMatch(preflight, /readinessState|readiness arm/);
     assert.match(preflight, /activeRouterState = migrationState/);
-    assert.match(preflight, /Do not run a router refresh after either return/);
+    assert.match(preflight, /Do not run a router refresh after that return/);
   });
 
   it('keeps execute loader thin for both one ticket and batch', () => {
@@ -345,12 +345,19 @@ describe('flow coherence contracts', () => {
 
   it('keeps STEP_3 automatic and resolves coverage alternatives in the single Gate 2 card', () => {
     const generation = step(scaffold, 'STEP_3_TASK_GENERATION');
+    const ticketLoop = step(scaffold, 'STEP_3_TICKET_LOOP');
     const gate = step(scaffold, 'STEP_4_TEST_PLAN_REVIEW');
 
-    assert.match(generation, /auto step never prompts or pauses/);
+    assert.match(generation, /Pass only the ordered node identities plus shared facts/);
+    assert.match(generation, /create no\s+ticket content, files, or indexes here/);
     assert.doesNotMatch(generation, /\bAsk(?:UserQuestion)?\b/);
     assert.match(generation, /exact alternatives for Gate 2, never prompt here/);
     assert.match(generation, /toolchain alternatives go to Gate 2.+never a separate prompt/s);
+    assert.match(ticketLoop, /Materialize and validate exactly one prepared ticket at a time\. \(auto\)/);
+    assert.match(ticketLoop, /Select only the next unprocessed STEP_2 node/);
+    assert.match(ticketLoop, /result="authoringGate"/);
+    assert.match(ticketLoop, /Green: only then may the next node's content be formed/);
+    assert.doesNotMatch(ticketLoop, /\bAsk(?:UserQuestion)?\b/);
     assert.match(gate, /STEP_3 coverage-owner\/toolchain\/e2e alternative/);
     assert.match(gate, /SAME card;\s+its one approval resolves all/s);
   });

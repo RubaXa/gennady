@@ -273,7 +273,12 @@ export async function run(rawArgs: string[], now: Date): Promise<SessionOutcome>
 
   const read = readProvenRepoFile(session.identity);
   if (!read.ok) return fileError(`${sessionPath} (${read.detail})`);
-  const updated = appendToSection(read.content, section, payload);
+  const entries =
+    mode === 'workset' ? payload.split(/\r?\n/).filter((line) => line.length > 0) : [payload];
+  let updated: string | null = read.content;
+  for (const entry of entries) {
+    updated = updated === null ? null : appendToSection(updated, section, entry);
+  }
   if (updated === null) return fileError(`${sessionPath} — no "${section}:" section found`);
   const written = writeProvenRepoFile(session.identity, updated);
   if (!written.ok) return fileError(`${sessionPath} (${written.detail})`);

@@ -37,6 +37,8 @@ export type LadderInput = {
   tasksTotal: number | null;
   /** @purpose Done tickets across the rollup; meaningful only when tasksTotal is non-null. */
   tasksDone: number | null;
+  /** @purpose Active owner route that suppresses the generic first-unclosed-rung suggestion. */
+  nextOverride?: string;
 };
 
 /** @purpose Column width the rung label is padded to, so every description lines up. */
@@ -88,7 +90,8 @@ export function renderLadder(s: LadderInput): string {
 
   // #region START_NEXT_STEP — first unclosed rung; Infra is reachable only once Scopes+Modules are closed
   let next: string;
-  if (!portalDone) next = 'создать проект — /sdd';
+  if (s.nextOverride) next = s.nextOverride;
+  else if (!portalDone) next = 'создать проект — /sdd';
   else if (!scopesDone) next = 'написать и approve скоуп-спеку — /sdd';
   else if (!modulesDone) next = 'разбить скоуп на модули — /sdd';
   else if (!infraDone) next = 'настроить инфраструктуру (гейты) перед scaffold';

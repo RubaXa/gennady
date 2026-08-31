@@ -9,23 +9,11 @@ import type { Scope } from './portal.ts';
 import { extractSection } from './section.ts';
 import { parseMetaInfo, parsePhaseDetail, parsePhasesOverview } from './ticket.ts';
 import type { ReadinessResult } from './readiness.ts';
+import { resolveScopeDecomposition } from './module-specs.ts';
+import type { SpecSchemaReport } from './spec-schema.ts';
 
-/** @purpose Closed platform-neutral readiness facts that bootstrap ownership may claim. */
-export const READINESS_GATES = [
-  'package.json',
-  'type-check',
-  'test',
-  'test:coverage',
-  'format',
-  'format:fix',
-  'lint',
-  'lint:fix',
-  'fix',
-  'check',
-  'gennady',
-] as const;
 /** @purpose One canonical readiness fact identifier. */
-export type ReadinessGate = (typeof READINESS_GATES)[number];
+export type ReadinessGate = string;
 /** @purpose Exact active ticket phase proved to own one missing readiness fact. */
 export type GateQueueOwner = {
   /** @purpose Missing readiness fact owned by this phase. */
@@ -60,6 +48,26 @@ export type GateQueueResult = {
 };
 
 type BootstrapGateContract = { gate: ReadinessGate; artifacts: string[] };
+
+/** @purpose Structural permission to scaffold while runtime gates are still absent. */
+export type AuthoringReadinessResult = {
+  /** @purpose True when every approved task-owning scope is independently scaffoldable. */
+  ready: boolean;
+  /** @purpose Aggregate blockers for an explicit all-scope scaffold. */
+  diagnostics: string[];
+  /** @purpose Target-specific facts consumed by scaffold instead of the aggregate. */
+  scopes: AuthoringScopeReadiness[];
+};
+
+/** @purpose One portal scope's independent scaffold permission. */
+export type AuthoringScopeReadiness = {
+  /** @purpose Exact portal scope name used as the stable lookup key. */
+  name: string;
+  /** @purpose Yes/no for task owners; interface explicitly has no task owner. */
+  status: 'yes' | 'no' | 'not-applicable';
+  /** @purpose Target-local blockers plus genuinely project-wide missing-gate blockers. */
+  diagnostics: string[];
+};
 
 function normalizeScopeName(name: string): string {
   return name.toLowerCase().replace(/[-_]/g, '');
@@ -101,18 +109,49 @@ function bootstrapGateContracts(content: string): {
   const header = tableCells(headerLine);
   const gateIndex = header.findIndex((cell) => /^readiness gates?$/i.test(cell));
   const artifactIndex = header.findIndex((cell) => /^gate artifacts?$/i.test(cell));
+  const requirementIndex = header.findIndex((cell) => /^requirement$/i.test(cell));
+  const kindIndex = header.findIndex((cell) => /^kind$/i.test(cell));
+  const ownerIndex = header.findIndex((cell) => /^owner$/i.test(cell));
+  const resolutionIndex = header.findIndex((cell) => /^resolution$/i.test(cell));
   if (artifactIndex < 0)
     return { contracts: [], reason: 'BOOTSTRAP_REQUIREMENTS needs a Gate Artifacts column' };
   const contracts: BootstrapGateContract[] = [];
   for (const line of rows) {
     if (line === headerLine || /^\|?\s*:?-{2,}/.test(line.trim())) continue;
     const cells = tableCells(line);
+    const rowName = cells[requirementIndex] || '<unnamed>';
+    for (const [label, index] of [
+      ['Requirement', requirementIndex],
+      ['Kind', kindIndex],
+      ['Owner', ownerIndex],
+      ['Resolution', resolutionIndex],
+    ] as const) {
+      const value = cells[index]?.replace(/`/g, '').trim();
+      if (!value || value === '—')
+        return { contracts: [], reason: `Bootstrap row '${rowName}' has no ${label}` };
+    }
     const artifacts = splitList(cells[artifactIndex] ?? '');
+    const owner = cells[ownerIndex]?.replace(/`/g, '').trim();
     for (const raw of splitList(cells[gateIndex] ?? '')) {
-      if (!(READINESS_GATES as readonly string[]).includes(raw))
-        return { contracts: [], reason: `unknown readiness gate '${raw}'` };
+      if (owner !== 'this-scope-task')
+        return {
+          contracts: [],
+          reason: `readiness gate '${raw}' must use Owner 'this-scope-task', got '${owner || 'empty'}'`,
+        };
       if (artifacts.length === 0)
         return { contracts: [], reason: `readiness gate '${raw}' has no Gate Artifacts` };
+      const unsafeArtifact = artifacts.find(
+        (artifact) =>
+          isAbsolute(artifact) ||
+          /^[A-Za-z]:[\\/]/.test(artifact) ||
+          artifact.split(/[\\/]/).includes('..') ||
+          /[*?{}[\]]/.test(artifact)
+      );
+      if (unsafeArtifact)
+        return {
+          contracts: [],
+          reason: `readiness gate '${raw}' has non-literal repo-relative Gate Artifact '${unsafeArtifact}'`,
+        };
       contracts.push({ gate: raw as ReadinessGate, artifacts });
     }
   }
@@ -123,7 +162,7 @@ function bootstrapGateContracts(content: string): {
 function readScopeSpec(
   root: string,
   specPath: string
-): { ok: true; content: string } | { ok: false; detail: string } {
+): { ok: true; content: string; path: string } | { ok: false; detail: string } {
   if (isAbsolute(specPath) || /^[A-Za-z]:[\\/]/.test(specPath)) {
     return {
       ok: false,
@@ -139,11 +178,127 @@ function readScopeSpec(
   }
   const read = readProvenRepoFile(identity.identity);
   return read.ok
-    ? { ok: true, content: read.content }
+    ? { ok: true, content: read.content, path: identity.identity.absolute }
     : {
         ok: false,
         detail: `portal specPath \`${specPath}\` cannot be read safely: ${read.detail}`,
       };
+}
+
+/**
+ * @purpose Decide whether scaffold has enough current structural evidence to create bootstrap nodes.
+ * @invariant Runtime gate existence is irrelevant here; every missing alias must instead have one
+ * complete infrastructure Bootstrap Requirements row. Interface scopes never own tickets.
+ * @param scopes Portal scopes from the same snapshot.
+ * @param readiness Runtime readiness from the same snapshot.
+ * @param schema Whole-project structural schema diagnosis.
+ * @param [root] Project root used for specs and decomposition.
+ * @returns Independent authoring permission plus exact blockers.
+ */
+export function checkAuthoringReadiness(
+  scopes: Scope[],
+  readiness: ReadinessResult,
+  schema: SpecSchemaReport,
+  root = process.cwd()
+): AuthoringReadinessResult {
+  const infraContracts: BootstrapGateContract[] = [];
+  const observedScopes = new Map<string, ReturnType<typeof readScopeSpec>>();
+  for (const scope of scopes.filter((item) => item.status === 'done' && item.specPath)) {
+    const observed = readScopeSpec(root, scope.specPath as string);
+    observedScopes.set(scope.name, observed);
+    if (!observed.ok || scope.type !== 'infrastructure') continue;
+    const contracts = bootstrapGateContracts(observed.content);
+    if (!contracts.reason) infraContracts.push(...contracts.contracts);
+  }
+
+  const sharedGateDiagnostics: string[] = [];
+  for (const gate of missingReadinessGates(readiness)) {
+    const owners = infraContracts.filter((contract) => contract.gate === gate);
+    if (owners.length !== 1)
+      sharedGateDiagnostics.push(
+        owners.length === 0
+          ? `missing runtime gate '${gate}' has no complete infrastructure Bootstrap Requirements owner row`
+          : `missing runtime gate '${gate}' has ${owners.length} infrastructure Bootstrap Requirements owner rows`
+      );
+  }
+
+  const scopeFacts: AuthoringScopeReadiness[] = [];
+  for (const scope of scopes) {
+    if (scope.status !== 'done') {
+      scopeFacts.push({
+        name: scope.name,
+        status: 'no',
+        diagnostics: [`scope '${scope.name}' is not approved in the portal`],
+      });
+      continue;
+    }
+    if (scope.type === 'interface') {
+      scopeFacts.push({
+        name: scope.name,
+        status: 'not-applicable',
+        diagnostics: [`scope '${scope.name}' is interface and cannot own scaffold tickets`],
+      });
+      continue;
+    }
+    const diagnostics: string[] = [];
+    if (!scope.specPath) {
+      scopeFacts.push({
+        name: scope.name,
+        status: 'no',
+        diagnostics: [`scope '${scope.name}' has no spec path`],
+      });
+      continue;
+    }
+    const observed = observedScopes.get(scope.name) ?? readScopeSpec(root, scope.specPath);
+    if (!observed.ok) {
+      scopeFacts.push({
+        name: scope.name,
+        status: 'no',
+        diagnostics: [`scope '${scope.name}': ${observed.detail}`, ...sharedGateDiagnostics],
+      });
+      continue;
+    }
+    const decomposition = resolveScopeDecomposition(observed.path);
+    const validDecomposition =
+      decomposition.status === 'complete' || decomposition.status === 'flat';
+    if (!validDecomposition)
+      diagnostics.push(
+        `scope '${scope.name}': ${decomposition.reason ?? 'scope decomposition is incomplete'}`
+      );
+
+    const targetPaths = new Set([
+      relative(root, observed.path).split(sep).join('/'),
+      ...decomposition.moduleSpecs.map((path) => relative(root, path).split(sep).join('/')),
+    ]);
+    for (const finding of schema.findings.filter(
+      (item) => targetPaths.has(item.path) && item.status !== 'current'
+    ))
+      diagnostics.push(
+        `scope '${scope.name}': ${finding.path} schema is ${finding.status} (${finding.reason})`
+      );
+
+    const contracts = bootstrapGateContracts(observed.content);
+    if (contracts.reason) diagnostics.push(`scope '${scope.name}': ${contracts.reason}`);
+    diagnostics.push(...sharedGateDiagnostics);
+    scopeFacts.push({
+      name: scope.name,
+      status: diagnostics.length === 0 ? 'yes' : 'no',
+      diagnostics: [...new Set(diagnostics)],
+    });
+  }
+
+  const approvedTaskOwnerNames = new Set(
+    scopes
+      .filter((scope) => scope.status === 'done' && scope.type !== 'interface')
+      .map((scope) => scope.name)
+  );
+  const taskOwningFacts = scopeFacts.filter((fact) => approvedTaskOwnerNames.has(fact.name));
+  const diagnostics = taskOwningFacts.flatMap((fact) => fact.diagnostics);
+  return {
+    ready: taskOwningFacts.length > 0 && taskOwningFacts.every((fact) => fact.status === 'yes'),
+    diagnostics: [...new Set(diagnostics)],
+    scopes: scopeFacts,
+  };
 }
 
 /**
@@ -152,23 +307,7 @@ function readScopeSpec(
  * @returns Missing or stubbed gates in canonical order.
  */
 function missingReadinessGates(readiness: ReadinessResult): ReadinessGate[] {
-  const missing = new Set<ReadinessGate>();
-  if (!readiness.packageJsonPresent) missing.add('package.json');
-  for (const item of readiness.required) if (!item.present) missing.add(item.name as ReadinessGate);
-  for (const item of readiness.stubbed) missing.add(item as ReadinessGate);
-  for (const detail of readiness.missing) {
-    if (detail === 'package.json') missing.add('package.json');
-    else if (detail.startsWith('lint→') || detail.startsWith('lint(')) missing.add('lint');
-    else if (detail.startsWith('format(')) missing.add('format');
-    else if (detail.startsWith('format:fix(')) missing.add('format:fix');
-    else if (detail.startsWith('lint:fix(')) missing.add('lint:fix');
-    else if (detail.startsWith('fix(')) missing.add('fix');
-    else if (detail.startsWith('check(')) missing.add('check');
-    else if (detail.startsWith('gennady')) missing.add('gennady');
-    else if ((READINESS_GATES as readonly string[]).includes(detail))
-      missing.add(detail as ReadinessGate);
-  }
-  return READINESS_GATES.filter((gate) => missing.has(gate));
+  return readiness.missingGates;
 }
 
 function isActive(status: string | null): boolean {

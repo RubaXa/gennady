@@ -2,6 +2,9 @@
 // @consumers: check.ts, sdd-new.cmd
 // @tasks: N/A
 
+import { BOOTSTRAP_REQUIREMENTS_TABLE_HEADER } from './spec-schema.ts';
+import { DEFERRED_TEST_OWNERSHIP_LITERAL } from './task-authoring-literals.ts';
+
 /**
  * @purpose Every artifact kind the registry knows how to scaffold.
  */
@@ -244,8 +247,7 @@ ${RESEARCH_REGISTRY_SKELETON_SCOPE}
 <details>
 <summary>Таблица предусловий</summary>
 
-| Requirement | Kind | Owner | Resolution | Readiness Gates | Gate Artifacts |
-|---|---|---|---|---|---|
+${BOOTSTRAP_REQUIREMENTS_TABLE_HEADER}
 <!-- Empty list allowed only when STEP_7 audit produced zero external assumptions — declare explicitly. -->
 
 </details>
@@ -444,8 +446,7 @@ ${RESEARCH_REGISTRY_SKELETON_SCOPE}
 <details>
 <summary>Таблица предусловий</summary>
 
-| Requirement | Kind | Owner | Resolution | Readiness Gates | Gate Artifacts |
-|---|---|---|---|---|---|
+${BOOTSTRAP_REQUIREMENTS_TABLE_HEADER}
 <!-- Empty list allowed only when STEP_7 audit produced zero external assumptions — declare explicitly. -->
 
 </details>
@@ -681,8 +682,7 @@ ${RESEARCH_REGISTRY_SKELETON_SCOPE}
 <details>
 <summary>Таблица предусловий</summary>
 
-| Requirement | Kind | Owner | Resolution | Readiness Gates | Gate Artifacts |
-|---|---|---|---|---|---|
+${BOOTSTRAP_REQUIREMENTS_TABLE_HEADER}
 
 <!-- Kind ∈ package | workspace-link | tool | file | external-type | env | service | structural -->
 <!-- Owner ∈ this-scope-task | external-prereq-scope | operator-action -->
@@ -881,8 +881,7 @@ ${RESEARCH_REGISTRY_SKELETON_SCOPE}
 <details>
 <summary>Таблица предусловий</summary>
 
-| Requirement | Kind | Owner | Resolution | Readiness Gates | Gate Artifacts |
-|---|---|---|---|---|---|
+${BOOTSTRAP_REQUIREMENTS_TABLE_HEADER}
 <!-- Empty list allowed only when STEP_7 audit produced zero external assumptions — declare explicitly. -->
 
 </details>
@@ -1260,6 +1259,9 @@ const TASK_SKELETON = `# Task: <ACRONYM>-<slug> — <Task Title>
 <!--SECTION:PHASE_P1-->
 ### P1 — <kind>
 - **Objective:** <one-line>
+- **Bootstrap Action:** dependency-install   <!-- only the one package+active-lockfile owner; omit otherwise -->
+- **Provides Packages:** <comma-separated exact package names>   <!-- dependency-install only -->
+- **Requires Packages:** <comma-separated exact package names>   <!-- phases whose config/commands need packages absent from clean HEAD; omit otherwise -->
 - **Rules:**   <!-- links only, resolved from the cascade; rule content is never inlined -->
   - [ai/directives/<category>/<rule>.xml](<relative-path>)
 - **Spec Refs:**   <!-- optional — subset of Meta Spec References THIS phase actually reads; omit the whole field to fall back to the full Meta set (sdd-task --phase filters to this list when present) -->
@@ -1321,7 +1323,7 @@ use-case → \`[<ACRONYM>-REQ-N]\` → vision chain the operator reviews at scaf
 
 | Command | Required by | Role |
 |---------|-------------|------|
-| \`<resolved invocation>\` | <rule-id>, <rule-id> | <coverage | extra> |
+| \`<resolved invocation>\` | <rule-id>, <rule-id> | <coverage | probe | extra> |
 
 <!-- COMMAND CELL SERIALIZATION: wrap the exact runtime command in a Markdown code span. The outer backtick run MUST be strictly longer than every consecutive backtick run inside the command; do not escape or normalize inner bytes. The parser removes only that matching outer delimiter, so runtime bytes remain exact. Raw | outside the wrapper is a table separator. Do not XML-escape the command. -->
 <!-- NO sdd-verify row: STEP_5 invokes the CLI exactly once per attempt; the CLI runs the ladder plus applicable rows and writes their receipt. A failed attempt writes no receipt; retry after a fix is a new attempt. Coverage Policy is mandatory for COVERAGE_POLICY:v1. required → one test Coverage Owner Phase and exactly one resolved read/check command with Role=coverage whose Required-by is an owner-phase rule; not-applicable → concise reason, NO owner and NO coverage row. Every other resolved alias uses Role=extra; no rows → a single | — | — | extra | row. -->
@@ -1331,7 +1333,9 @@ use-case → \`[<ACRONYM>-REQ-N]\` → vision chain the operator reviews at scaf
 
 <!--SECTION:TEST_COVERAGE-->
 ## Test Scenario Coverage   <!-- BLOCKER: an unmapped scenario blocks task close -->
-- Scenario <name> → \`<test-file>\` :: \`<canonical case name>\`   <!-- or: Deferred Test Ownership: <Task-ID> -->
+- Scenario <name> → \`<test-file>\` :: \`<canonical case name>\`
+<!-- A scenario whose When invokes npm run appends exact executable evidence: - <name> → \`<test-file>\` :: \`<case>\` :: command \`npm run <script>\`; Verification repeats it once with Role=probe. -->
+<!-- Runtime-only delegation uses exactly: ${DEFERRED_TEST_OWNERSHIP_LITERAL}. It is forbidden for contract-level typing scenarios and scenarios owned by this ticket. -->
 <!--/SECTION:TEST_COVERAGE-->
 
 <!--SECTION:EXECUTION_LOG-->

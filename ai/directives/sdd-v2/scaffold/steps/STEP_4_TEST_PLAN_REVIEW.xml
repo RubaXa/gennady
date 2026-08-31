@@ -38,3 +38,5 @@
         <ToolCall owner="this-step" result="feasibilityGate2Event">npx gennady sdd-session log --content-file .claude/tmp/sdd-scaffold-feasibility-event.json</ToolCall> Payload: current gate2-choice/target-refreshed/operator-disposition event. Use feasibilityGate2Event before its transition.
       </Action>
     </Step>
+
+After completing this step, and only then, READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/scaffold/steps/STEP_5_FINALIZE.xml"). Do not preload later step packages.

@@ -4,6 +4,7 @@
 
 import type { Finding } from './check.ts';
 import type { FlowVersion } from './flow.ts';
+import { DEFERRED_TEST_OWNERSHIP_LITERAL } from './task-authoring-literals.ts';
 
 /**
  * @purpose One `## Test Scenario Coverage` row, parsed.
@@ -18,6 +19,8 @@ export type CoverageEntry = {
   caseNames: string[];
   /** @purpose Task-ID owning a deferred scenario, or null for a concrete (checkable) row. */
   deferred: string | null;
+  /** @purpose Exact executable command this scenario proves, or null for non-command behavior. */
+  probeCommand: string | null;
 };
 
 /**
@@ -31,7 +34,9 @@ function parseCoverageRow(line: string): CoverageEntry | null {
   const deferred = deferredM?.[1] ?? null;
   const rest = deferredM ? (deferredM[2] ?? '') : line.replace(/^-\s*/, '');
 
-  const m = /^(.+?)\s*→\s*`([^`]+)`\s*::\s*(.+?)\.?\s*$/.exec(rest);
+  const commandSuffix = /\s*::\s*command\s+`([^`]+)`\s*\.?\s*$/.exec(rest);
+  const mapping = commandSuffix ? rest.slice(0, commandSuffix.index).trimEnd() : rest;
+  const m = /^(.+?)\s*→\s*`([^`]+)`\s*::\s*(.+?)\.?\s*$/.exec(mapping);
   if (!m) return null;
 
   const scenario = (m[1] ?? '').replace(/`\[[^\]]+\]`|\[[^\]]+\]/g, '').trim();
@@ -39,7 +44,13 @@ function parseCoverageRow(line: string): CoverageEntry | null {
   const caseNames = [...(m[3] ?? '').matchAll(/`([^`]+)`/g)].map((x) => x[1] as string);
   if (!testFile || caseNames.length === 0) return null;
 
-  return { scenario, testFile, caseNames, deferred };
+  return {
+    scenario,
+    testFile,
+    caseNames,
+    deferred,
+    probeCommand: commandSuffix?.[1]?.trim() ?? null,
+  };
 }
 
 /**
@@ -189,7 +200,7 @@ export function checkUnparsedCoverageRows(file: string, body: string): Finding[]
       severity: 'warn',
       code: 'SDD_BDD_COVERAGE_ROW_UNPARSED',
       file,
-      message: `Test Scenario Coverage row could not be parsed — no "→ \\\`file\\\` :: \\\`case\\\`" and no valid "Deferred Test Ownership: <Task-ID>": "${raw}"`,
+      message: `Test Scenario Coverage row could not be parsed: "${raw}". Replace the whole row with either "- <scenario name> → \\\`<test-file>\\\` :: \\\`<canonical case name>\\\`" or "${DEFERRED_TEST_OWNERSHIP_LITERAL}".`,
     })
   );
 }

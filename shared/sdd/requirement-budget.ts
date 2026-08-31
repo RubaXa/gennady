@@ -12,7 +12,7 @@ export const REQUIREMENT_ENTRY_MAX_LINES = 10;
 const APPROVAL =
   /^[ \t]*\*\*Requirements budget:\*\*[ \t]*(\d+)[ \t]*·[ \t]*operator-approved:[ \t]*(\d{4}-\d{2}-\d{2})[ \t]*$/;
 const APPROVAL_CANDIDATE = /^[ \t]*\*\*Requirements budget:\*\*/;
-const REQUIREMENT_HEADING = /^###[ \t]+(\S+)[ \t]*\[([^\]]*)\][ \t]*$/;
+const REQUIREMENT_HEADING_BODY = /^(\S+)[ \t]*\[([^\]]*)\][ \t]*$/;
 
 type RequirementsSection = { body: string; markerLine: number };
 type ApprovalCandidate = {
@@ -33,6 +33,24 @@ type RequirementsBudgetApproval = {
   invalidReason: string | null;
   identity: string;
 };
+type AtxHeading = { level: number; body: string };
+
+/** @purpose Split Markdown into logical lines without leaking CR bytes into structural regexes. */
+function markdownLines(content: string): string[] {
+  return content.split(/\r?\n/);
+}
+
+/**
+ * @purpose Parse one real CommonMark-style ATX heading outside blockquote/indented-code context.
+ * @invariant Zero to three leading spaces are legal; four spaces, blockquotes, and missing whitespace after hashes are not headings.
+ */
+function parseAtxHeading(line: string): AtxHeading | null {
+  const match = /^ {0,3}(#{1,6})(?:[ \t]+(.*)|[ \t]*)$/.exec(line);
+  if (!match?.[1]) return null;
+  const rawBody = match[2] ?? '';
+  const body = rawBody.replace(/[ \t]+#+[ \t]*$/, '').trimEnd();
+  return { level: match[1].length, body };
+}
 
 /** @purpose Resolve the canonical scope/module Requirements body and its file-line origin. */
 function requirementsSection(content: string): RequirementsSection | null {
@@ -52,7 +70,7 @@ function requirementsSection(content: string): RequirementsSection | null {
 function approvalCandidates(section: RequirementsSection): ApprovalCandidate[] {
   let fence: MarkdownFence | null = null;
   const candidates: ApprovalCandidate[] = [];
-  for (const [index, line] of section.body.split('\n').entries()) {
+  for (const [index, line] of markdownLines(section.body).entries()) {
     const next = nextMarkdownFence(line, fence);
     if (next !== fence) {
       fence = next;
@@ -69,11 +87,15 @@ function approvalCandidates(section: RequirementsSection): ApprovalCandidate[] {
   return candidates;
 }
 
-/** @purpose Parse requirement entries fence-aware without treating nested headings as entries. */
+/**
+ * @purpose Parse requirement entries against Markdown hierarchy rather than platform-specific sibling names.
+ * @invariant A level-3 ID/class heading opens an entry; the next real ATX heading at level 1–3 closes it, while deeper/fenced/quoted/indented heading text remains body.
+ */
 function parseEntries(section: RequirementsSection): RequirementBudgetEntry[] {
-  const lines = section.body.split('\n');
+  const lines = markdownLines(section.body);
   const evidenceLines = new Set(approvalCandidates(section).map(({ index }) => index));
   const starts: { index: number; heading: RequirementBudgetEntry['heading'] }[] = [];
+  const boundaries: number[] = [];
   let fence: MarkdownFence | null = null;
   for (let index = 0; index < lines.length; index++) {
     const line = lines[index] as string;
@@ -83,15 +105,19 @@ function parseEntries(section: RequirementsSection): RequirementBudgetEntry[] {
       continue;
     }
     if (fence !== null) continue;
-    const match = REQUIREMENT_HEADING.exec(line);
+    const atx = parseAtxHeading(line);
+    if (atx === null) continue;
+    if (atx.level <= 3) boundaries.push(index);
+    if (atx.level !== 3) continue;
+    const match = REQUIREMENT_HEADING_BODY.exec(atx.body);
     if (!match) continue;
     starts.push({
       index,
       heading: { id: match[1] as string, classTag: (match[2] as string).trim() },
     });
   }
-  return starts.map((start, position) => {
-    const end = starts[position + 1]?.index ?? lines.length;
+  return starts.map((start) => {
+    const end = boundaries.find((boundary) => boundary > start.index) ?? lines.length;
     const body = lines
       .slice(start.index + 1, end)
       .filter(

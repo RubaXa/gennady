@@ -9,8 +9,9 @@
     `ready` when every brick is a real tool, `provisional` when some are still stubs (the normal
     landing state of a from-scratch setup — see the stub template and the exit arms below).
     `check` is an optional read-only wrapper; phase agents pass exact Target Files to `sdd-verify`,
-    whose private repair passes that set to the same project leaves and then enforces the actual write
-    zone by a runtime workspace diff; static brick shape is only early diagnostics. Required `fix` is
+    whose private repair adapters pass capability-filtered exact subsets to the formatter, project
+    linter, and Gennady contract linter, then enforce the actual write zone by a runtime workspace
+    diff; static brick shape is only early diagnostics. Required `fix` is
     the single public whole-project repair entrypoint.
     This is the minimal mechanical bootstrap, NOT the tooling design: a real command where a tool is
     already installed, else a visible TODO stub that points at the infra flow. Entered when
@@ -166,7 +167,7 @@
     | `format` | formatter in check-only mode — read-only | yes |
     | `format:fix` | formatter write mode — MUST carry `--write` / `--fix` / `--autofix` | yes (stub still needs the literal switch — see below) |
     | `lint` | lint chain that reaches `gennady` (DbC), read-only | **no — must wire gennady** |
-    | `lint:fix` | linter autofix — MUST carry `--write` / `--fix` / `--autofix` | yes (same caveat) |
+    | `lint:fix` | project-linter autofix prefix — MUST carry `--write` / `--fix` / `--autofix`; receives only its own ABI, never assumed Gennady flags | yes (same caveat) |
     | `fix` | public whole-project repair: `format:fix` then `lint:fix`, with broad roots supplied here | yes |
 
     `format` and `lint` — and every script either reaches via `npm run <x>` — must stay free of known
@@ -179,6 +180,10 @@
     that an arbitrary exact operand such as `src/a.ts` is a target rather than tool config/subcommand;
     the phase's runtime workspace boundary closes that ambiguity by rejecting and listing actual writes
     outside its canonical Target Files without rolling them back. A missing switch or obvious broad target reports in `missing`.
+    Phase repair treats formatter, project linter, and Gennady contract lint as distinct capabilities:
+    ESLint-like leaves receive only applicable exact code targets; Gennady receives `--include-tests`,
+    owning `--spec`, and only supported `.ts`/`.tsx`. If `lint:fix` itself reaches Gennady it runs once
+    for both lint roles; zero applicable targets are an explicit named skip, never a broad-root fallback.
     Bootstrap echo-stubs are the sole temporary exception because setup never executes them.
     Optional `check` is the human/CI wrapper:
     `"check": "npx gennady sdd-verify --profile full"` and must itself stay read-only.

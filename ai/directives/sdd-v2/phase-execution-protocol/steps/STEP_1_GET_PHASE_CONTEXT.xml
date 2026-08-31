@@ -5,7 +5,8 @@
       <Action>
         Run phaseContext ToolCall below. Its output IS the phase's working
         context — objective, gates with a satisfy-hint, exit criterion, the phase-scoped
-        read-manifest, and a `[HANDOFF]` block quoting every completed prior phase's verbatim
+        lifecycle manifest (`READ files` are existing inputs; `CREATE files` are absent write
+        reservations and MUST NOT be read before creation), and a `[HANDOFF]` block quoting every completed prior phase's verbatim
         `**Handoff →**` line (absent → this is the first phase). Follow this output for the rest of
         the phase; do not separately open Meta, Phases Overview, or another phase's body — the tool
         already filtered all of that. `ERR_CLI_SDD_TASK_PHASE_NOT_FOUND` → `H_PHASE_NOT_FOUND`; the

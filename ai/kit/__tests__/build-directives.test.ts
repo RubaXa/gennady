@@ -22,7 +22,8 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { spawnSync, type SpawnSyncReturns } from 'node:child_process';
+import { spawn, spawnSync, type SpawnSyncReturns } from 'node:child_process';
+import { parseDirective } from '../../inspector/core/parse-directive.ts';
 
 const ROOT = join(import.meta.dirname, '..', '..', '..');
 const BUILD_SCRIPT = join(ROOT, 'ai/kit/build-directives.ts');
@@ -33,6 +34,59 @@ function runBuild(args: string[]): SpawnSyncReturns<string> {
     encoding: 'utf8',
   });
 }
+
+function runBuildAsync(args: string[]): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, ['--experimental-strip-types', BUILD_SCRIPT, ...args], {
+      cwd: ROOT,
+      stdio: 'pipe',
+    });
+    let output = '';
+    child.stdout.on('data', (chunk) => (output += chunk));
+    child.stderr.on('data', (chunk) => (output += chunk));
+    child.once('error', reject);
+    child.once('close', (code) =>
+      code === 0 ? resolve() : reject(new Error(`build exited ${code}:\n${output}`))
+    );
+  });
+}
+
+it('keeps simultaneous lazy and monolith builds isolated and the lazy scaffold inspector chain complete', async () => {
+  const lazyRoot = mkdtempSync(join(tmpdir(), 'gennady-concurrent-lazy-'));
+  const monolithRoot = mkdtempSync(join(tmpdir(), 'gennady-concurrent-monolith-'));
+  try {
+    await Promise.all([
+      runBuildAsync([`--out=${lazyRoot}`, '--assembly=lazy']),
+      runBuildAsync([`--out=${monolithRoot}`, '--assembly=monolith']),
+    ]);
+    const rel = 'ai/directives/sdd-v2/scaffold.directive.xml';
+    const xml = readFileSync(join(lazyRoot, 'sdd-v2/scaffold.directive.xml'), 'utf8');
+    const tree = parseDirective(rel, xml, (ref) => {
+      const prefix = 'ai/directives/';
+      if (!ref.startsWith(prefix)) return null;
+      const path = join(lazyRoot, ref.slice(prefix.length));
+      return existsSync(path) ? readFileSync(path, 'utf8') : null;
+    });
+    const plan = tree.children?.find((child) => child.label === '<ExecutionPlan>');
+    assert.deepEqual(
+      plan?.children?.map((step) => step.attrs?.id),
+      [
+        'STEP_0_INTAKE',
+        'STEP_0B_PREFLIGHT',
+        'STEP_1_CASCADE',
+        'STEP_2_DAG',
+        'STEP_3_TASK_GENERATION',
+        'STEP_3_TICKET_LOOP',
+        'STEP_3B_FEASIBILITY_CRITIC',
+        'STEP_4_TEST_PLAN_REVIEW',
+        'STEP_5_FINALIZE',
+      ]
+    );
+  } finally {
+    rmSync(lazyRoot, { recursive: true, force: true });
+    rmSync(monolithRoot, { recursive: true, force: true });
+  }
+});
 
 describe('build-directives — assembly-mode flag scope (F-02)', () => {
   let outDir: string;

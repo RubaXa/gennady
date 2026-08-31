@@ -97,12 +97,12 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, dirname, relative, sep, extname, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { resolveAssemblyMode } from './lazy-assembly.ts';
+import { readAssembledFragments } from './audit-halt-fragments.mjs';
 
 const KIT_DIR = dirname(fileURLToPath(import.meta.url)); // ai/kit
 const REPO_ROOT = join(KIT_DIR, '..', '..');
 const TEMPLATES_DIR = join(KIT_DIR, 'templates', 'sdd-v2');
 const DIRECTIVES_DIR = join(REPO_ROOT, 'ai', 'directives', 'sdd-v2');
-const STEP_PACKAGE_LINE_RE = /Before executing this step, READ_AND_USE_DIRECTIVE\("([^"]+)"\)\./g;
 
 const H_ID_RE = /(?<![A-Za-z0-9_])H_[A-Z0-9_]+/g;
 const AX_ID_RE = /(?<![A-Za-z0-9_])AX_[A-Z0-9_]+/g;
@@ -226,17 +226,6 @@ function manifestKeyFor(absPath) {
  * a monolith build, or the skeleton PLUS every step package it points at for a lazy build.
  * Fragments are returned as a plain array, never joined (see header comment).
  */
-function readAssembledFragments(absPath) {
-  const skeletonText = readFileSync(absPath, 'utf8');
-  const fragments = [skeletonText];
-  if (resolveAssemblyMode(manifestKeyFor(absPath)) === 'lazy') {
-    for (const m of skeletonText.matchAll(STEP_PACKAGE_LINE_RE)) {
-      fragments.push(readFileSync(join(REPO_ROOT, m[1]), 'utf8'));
-    }
-  }
-  return fragments;
-}
-
 /** One fragment's own `<HaltConditions>` rows (id -> trigger text) and its body-text-minus-table. */
 function splitFragment(text) {
   const m = HALT_SECTION_RE.exec(text);
@@ -302,7 +291,10 @@ for (const file of listTemplates()) {
 
 const assembledViolations = [];
 for (const file of listAssembledDirectives()) {
-  const fragments = readAssembledFragments(file);
+  const fragments = readAssembledFragments(file, {
+    repoRoot: REPO_ROOT,
+    lazy: resolveAssemblyMode(manifestKeyFor(file)) === 'lazy',
+  });
   const wholeText = fragments.join('\n');
   if (!HALT_SECTION_RE.test(wholeText) && !H_ID_RE.test(wholeText)) continue; // no halts — skip
   const rel = relative(REPO_ROOT, file);
@@ -324,31 +316,30 @@ if (allViolations.length === 0) {
     `✓ halt-activation audit clean — ${listTemplates().length} template(s) + ` +
       `${listAssembledDirectives().length} assembled directive(s) checked.`
   );
-  process.exit(0);
+} else {
+  console.error(`⚠ ${allViolations.length} halt-activation violation(s):\n`);
+  const byFile = new Map();
+  for (const v of allViolations) {
+    const list = byFile.get(v.file) ?? [];
+    list.push(v);
+    byFile.set(v.file, list);
+  }
+  for (const [file, vs] of byFile) {
+    console.error(`  ${file}`);
+    for (const v of vs) console.error(`    - ${v.id} — ${v.reason}`);
+  }
+  console.error(
+    `\nAn H_* token used anywhere in a directive (or, for a lazy directive, one of its own step\n` +
+      `packages) must be a row in that SAME directive's own <HaltConditions> table — the class of bug\n` +
+      `fixed in scaffold.directive.hbs for H_SCAFFOLD_NOT_EXECUTABLE (STEP_3B_FEASIBILITY_CRITIC halted\n` +
+      `with it, the table never declared it). Fix: add the row, worded from the actual halting site.\n` +
+      `A deliberate reference to ANOTHER directive's own already-declared halt (a pointer, not a local\n` +
+      `re-raise) belongs in ALLOWLIST_CROSS_DIRECTIVE_REFS instead, documented like the existing\n` +
+      `root/scope -> router H_ASK_WITHOUT_CARD entries.\n` +
+      `\nA row in <HaltConditions> that appears nowhere else is either a boundary precondition or a\n` +
+      `continuously-checked meta-condition (see this script's header) — genuinely fine, verified, and\n` +
+      `belongs in ALLOWLIST_UNUSED_HALT_IDS with a reason — or it is dead weight nobody wires up; check\n` +
+      `the directive's own ExecutionPlan before deciding which.`
+  );
+  process.exitCode = 1;
 }
-
-console.error(`⚠ ${allViolations.length} halt-activation violation(s):\n`);
-const byFile = new Map();
-for (const v of allViolations) {
-  const list = byFile.get(v.file) ?? [];
-  list.push(v);
-  byFile.set(v.file, list);
-}
-for (const [file, vs] of byFile) {
-  console.error(`  ${file}`);
-  for (const v of vs) console.error(`    - ${v.id} — ${v.reason}`);
-}
-console.error(
-  `\nAn H_* token used anywhere in a directive (or, for a lazy directive, one of its own step\n` +
-    `packages) must be a row in that SAME directive's own <HaltConditions> table — the class of bug\n` +
-    `fixed in scaffold.directive.hbs for H_SCAFFOLD_NOT_EXECUTABLE (STEP_3B_FEASIBILITY_CRITIC halted\n` +
-    `with it, the table never declared it). Fix: add the row, worded from the actual halting site.\n` +
-    `A deliberate reference to ANOTHER directive's own already-declared halt (a pointer, not a local\n` +
-    `re-raise) belongs in ALLOWLIST_CROSS_DIRECTIVE_REFS instead, documented like the existing\n` +
-    `root/scope -> router H_ASK_WITHOUT_CARD entries.\n` +
-    `\nA row in <HaltConditions> that appears nowhere else is either a boundary precondition or a\n` +
-    `continuously-checked meta-condition (see this script's header) — genuinely fine, verified, and\n` +
-    `belongs in ALLOWLIST_UNUSED_HALT_IDS with a reason — or it is dead weight nobody wires up; check\n` +
-    `the directive's own ExecutionPlan before deciding which.`
-);
-process.exit(1);

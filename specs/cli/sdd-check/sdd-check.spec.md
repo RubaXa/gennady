@@ -6,7 +6,7 @@
 
 ## 1. Module Vision
 
-Механический аудит SDD-артефактов — детерминированная половина `audit`/`check`. `sdd-check --task <ticket>` проверяет один тикет; `--all [root]` обходит `specs/`; `--review-state <primary> [secondary...]` печатает канонические spec-only review-set, manifest-derived write-set и changed-state интегрированной пачки; `--review-ready <spec-or-dir>` fail-closed проверяет эту пачку и ровно одну primary critic history. После readiness отдельный `--review-publication <primary> [secondary...]` выводит role-bearing publication-set для VCS: write-set спеки плюс только механически атрибутированные durable research/portal/index/session-ignore outputs. Он не расширяет critic ownership. Готовность — sensor `CLEAN` без последующих edits до cap либо operator `CLEAN` в cap при `Changes: none`. Это основной потребитель механики; семантические проверки остаются за аудит-АГЕНТОМ.
+Механический аудит SDD-артефактов — детерминированная половина `audit`/`check`. `sdd-check --task <ticket>` проверяет один тикет; `sdd-check --task <created-ticket-path> --authoring` до индексации ограниченно проверяет только authoring-инварианты одного нового тикета; `--scaffold-feasibility [root]` проверяет весь уже материализованный ticket graph против clean HEAD до semantic critic: единственного package+active-lock owner, явные package provider/consumer edges и exact command probes для command-bearing BDD; `--all [root]` обходит `specs/`; `--review-state <primary> [secondary...]` печатает канонические spec-only review-set, manifest-derived write-set и changed-state интегрированной пачки; `--review-ready <spec-or-dir>` fail-closed проверяет эту пачку и ровно одну primary critic history. После readiness отдельный `--review-publication <primary> [secondary...]` выводит role-bearing publication-set для VCS: write-set спеки плюс только механически атрибутированные durable research/portal/index/session-ignore outputs. Он не расширяет critic ownership. Готовность — sensor `CLEAN` без последующих edits до cap либо operator `CLEAN` в cap при `Changes: none`. Это основной потребитель механики; семантические проверки остаются за аудит-АГЕНТОМ.
 
 **Key properties:**
 
@@ -19,7 +19,7 @@
 - exit `1` ⇔ есть хотя бы одна error-находка; warning-и одни → exit 0
 - Verification rows are strict three-cell Markdown rows; malformed/raw-pipeline rows produce `SDD_VERIFICATION_TABLE_INVALID`, while a command wrapped by a longer-than-inner backtick delimiter round-trips to exact runtime bytes
 - `--all` распознаёт Tracker Index по содержимому (таблица Task-ID/Status), не по имени файла — покрывает и `*.3-tasks.md`, и легаси `tasks/<scope>/README.md`; сверяет со статусом тикета (см. постусловия, tracker↔ticket); тикет (v2) = файл с META + EXECUTION_LOG маркерами; легаси-тикет (v1) = те же заголовки как голый markdown (`## N. Meta`/`## N. Execution Log`), Task-ID/Status читаются, но полная структурная проверка недоступна без якорей (см. D-CK012)
-- exit `4`, если выбран не ровно один режим из `--task`/`--all`/`--changed`/`--review-state`/`--review-publication`/`--review-ready`
+- exit `4`, если выбран не ровно один режим из `--task`/`--scaffold-feasibility`/`--all`/`--changed`/`--review-state`/`--review-publication`/`--review-ready`
 - `--changed` получает git evidence через argv-safe process call: proven unborn HEAD означает empty-tree scan по cached/index (включая intent-to-add) + untracked, а corrupt/unavailable git возвращает exit `1` с operation/status/stderr — никогда `clean — 0 files`
 - General `--task`/`--all`/`--changed` fail closed: выбранный тикет/source, referenced spec, reachable `<DependsOn>` rule или in-scope Markdown subtree, который нельзя прочитать, даёт единый `ERR_CLI_SDD_CHECK_READ_FAILED` с точным путём и причиной; непрочитанное правило никогда не считается dependency-free leaf; только действительно отсутствующие необязательные `specs/`/`tasks/` корни не являются ошибкой
 <!--/SECTION:MODULE_VISION-->
@@ -39,6 +39,10 @@ specs/cli/core/core.task-foo.md: warn: SDD_DONE_WITH_PLACEHOLDERS  Status is DON
 
 [sdd-check] 1 error(s), 1 warning(s) across 1 file(s)
 # exit 1
+
+$ npx gennady sdd-check --task specs/infra-base/infra-base.task.INF-gate.md --authoring
+[sdd-check] ✅ clean — 1 file(s) checked
+# exit 0; exact path only, no sibling/global/runtime/coverage scan
 
 $ npx gennady sdd-check --review-publication specs/demo/demo.spec.md
 [sdd-check] review-publication
@@ -70,6 +74,9 @@ publication-state: sha256:<64-hex>
 | `parseGraphEdges`                        | Utility      | (`shared/sdd/portal`) рёбра Mermaid-графа портала → `{from,to}[]`                                                                                                     |
 | `checkPortal`                            | Utility      | (`shared/sdd/check`) чистые проверки портала (граф/таблица/сироты) → `Finding[]`                                                                                      |
 | `checkTicket`                            | Utility      | (`shared/sdd/check`) чистые пер-тикет проверки → `Finding[]`                                                                                                          |
+| `checkTicketAuthoringStructure`          | Utility      | Из task manifest проверяет required sections, заполненные Meta/phase fields и отсутствие authoring placeholders до индексации                                         |
+| `checkScaffoldFeasibility`               | Utility      | Полный materialized graph против clean HEAD: package/lock owner, package provider edges и BDD command probes до semantic critic                                       |
+| `checkTicketOwnerMetadata`               | Utility      | Сверяет Meta Scope/Module pre-index тикета с owner, структурно выведенным из точного пути                                                                             |
 | `checkTicketCoveragePolicy`              | Utility      | Проверяет schema-aware policy, единственную test owner-phase и Required-by связь reader; pre-schema оставляет legacy                                                  |
 | `checkPhaseReceipts`                     | Utility      | Проверяет CLI-owned phase evidence: plan/command completeness и свежесть exact Target Files                                                                           |
 | `isTicket`                               | Utility      | (`shared/sdd/check`) распознавание тикета (v2) по META + EXECUTION_LOG маркерам                                                                                       |
@@ -219,7 +226,7 @@ shared/sdd/anchor-inject.ts  # injectAnchors + legacyHeaderBody (shared header/s
 
 - **Status:** active
 - **Why:** Свежий тикет из `TASK_SKELETON` (`shared/sdd/templates.ts`) даёт ложный `SDD_FABRICATED_DONE` на строке-подсказке Execution Log — она содержит и `` `[x]` ``, и `` `<…>` `` внутри бэктиков как иллюстрацию правила, не как реальный чекбокс. Проверка теперь матчит `[x]` только на строке БЕЗ инлайн-код-спанов (`` `…` `` вырезаются перед тестом), а плейсхолдер — на исходной строке (реальный `[x] \`<ts>\``— плейсхолдер конвенционально в бэктиках рядом с чекбоксом — продолжает ловиться). Отдельно —`bdd-coverage.ts`тихо пропускал два класса реальных проблем: (1)`Deferred Test Ownership:`строка, чей Task-ID == Task-ID самого тикета — самоделегирование, прячущее отсутствующее покрытие вместо честной пометки`TODO`/реальной передачи другому тикету → `SDD_BDD_DEFERRED_TO_SELF`(error, не градуируется по`flowVersion`— единичная настоящая находка, не легаси-шум); (2) строка`## Test Scenario Coverage`, похожая на ряд (`-`-префикс), но не матчащая ни arrow-форму, ни валидный `Deferred Test Ownership:`— раньше исчезала без следа из`parseTestCoverage`, теперь `findUnparsedCoverageRows`/`checkUnparsedCoverageRows`дают`SDD_BDD_COVERAGE_ROW_UNPARSED` (warn, тоже не градуируется — единичная находка).
-- **Risk accepted:** Нет — оба нового кода репортят реальные, а не легаси-переходные, проблемы; severity фиксирована умышленно, без v1/v2-градации (в отличие от `SDD_BDD_SCENARIO_UNTESTED`).
+- **Risk accepted:** Нет — оба нового кода репортят реальные, а не легаси-переходные, проблемы; severity фиксирована умышленно, без v1/v2-градации (в отличие от `SDD_BDD_SCENARIO_UNTESTED`). Диагностика unparsed-row печатает две полные copy-ready формы замены, включая каноническую `- Deferred Test Ownership: <other-Task-ID> <scenario name> → \`<future-test-file>\` :: \`<canonical case name>\``, а не фрагмент грамматики.
 
 ### D-CK016 — Declared test-file матчится по суффиксу пути, не по basename-равенству
 
@@ -375,6 +382,11 @@ shared/sdd/anchor-inject.ts  # injectAnchors + legacyHeaderBody (shared header/s
 
 - **Status:** active · **Extends:** D-CK025
 - **Why:** `--review-ready` used changed files to expose a changed spec without `CHANGE_MANIFEST`, but collapsed any `getChangedFiles` error to `changedSpecs = null`; the same unmarked spec could then disappear and readiness pass. A genuine repository/HEAD/diff failure now returns `ERR_CLI_SDD_CHECK_GIT_EVIDENCE` immediately. The one accepted exception remains a proven symbolic unborn branch: its cached + untracked set is checked normally, so an unmarked greenfield spec is red while a complete reviewed bundle remains supported.
+
+### D-CK031 — Pre-index authoring gate is exact-ticket and bounded
+
+- **Status:** active
+- **Why:** scaffold previously filled many tickets before the first full audit, so one repeated authoring mistake became dozens of late findings. `--task <created-ticket-path> --authoring` validates one ticket immediately after filling it and before planning, indexing or creating the next. Required sections derive from `TEMPLATES.task.sections`; the gate also requires complete Meta fields, at least one parseable overview phase with its complete `PHASE_P<N>`, filled BDD/Verification/Test Coverage and no unresolved authoring placeholders. It additionally checks anchors, owner metadata, Task-ID/status, resolvable spec/rule references and cascade, plus BDD/deferred grammar. It deliberately excludes receipts, runtime-file existence, coverage execution/results, language and sibling/global checks. A Task-ID is rejected because resolving it requires a corpus scan; the exact path returned by `sdd-new` is mandatory. At most 12 findings are printed with one exact repair action: fix only this ticket and rerun the same command.
 <!--/SECTION:MODULE_DECISION_LOG-->
 
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->

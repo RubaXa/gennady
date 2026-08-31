@@ -51,10 +51,10 @@ export function printHelp(): void {
   console.info('');
   console.info('Phase ladder, in order:');
   console.info(
-    '  1. fix — project format:fix + lint:fix prefixes over parsed phase Target Files; a runtime before/after boundary rejects'
+    '  1. fix — ordered adapters run project format:fix, the project lint:fix ABI, and Gennady contract repair over only their applicable exact Target Files;'
   );
   console.info(
-    '     any actual mutation outside their canonical set (changes are reported, never rolled back), then lint proves clean post-state.'
+    '     a Gennady project leaf satisfies both lint roles once; zero applicable targets are named skips. The runtime boundary rejects any mutation outside the canonical set.'
   );
   console.info(
     '     Installed local tools only (no download); failure stops before foundation. setup may skip while bootstrap creates scripts.'

@@ -15,7 +15,7 @@
   </Mission>
 
   <BeliefState>
-    Inherited from the loading directive (already in context): AX_OPERATOR_DIALOGUE_STYLE, AX_OPERATOR_LANGUAGE, AX_PREFLIGHT_BLAST_RADIUS_SCOPED, HALT_FORMAT, SESSION_FILE_FORMAT, readiness-preflight-gate
+    Inherited from the loading directive (already in context): AX_OPERATOR_DIALOGUE_STYLE, AX_OPERATOR_LANGUAGE, AX_PREFLIGHT_BLAST_RADIUS_SCOPED, SESSION_FILE_FORMAT
 
     <Axiom id="AX_OWNER">Orchestrator owns artifact, applies edits. Critic is sensor — reports only, never edits.</Axiom>
 
@@ -190,10 +190,10 @@
     <Step id="STEP_0B_PREFLIGHT">
       <Goal>Clear the FLOW_VERSION/READINESS preflight gate before dispatching the sensor.</Goal>
       <Action>
-        Use `FLOW_VERSION`, `READINESS`, and `GATE_QUEUE` from the already-gathered `sdd-state`
+        Use `FLOW_VERSION`, `AUTHORING_READY`, `EXECUTION_READY`, and `GATE_QUEUE` from the already-gathered `sdd-state`
         snapshot; do not enter task lifecycle merely to clear this gate. Size the gate to this request's own blast radius
-        (`AX_PREFLIGHT_BLAST_RADIUS_SCOPED`).
-
+        (`AX_PREFLIGHT_BLAST_RADIUS_SCOPED`). The router already applied the shared readiness gate
+        before loading this directive; do not repeat or reinterpret it here.
       </Action>
     </Step>
     <Step id="STEP_1_DISPATCH">
@@ -404,10 +404,22 @@
       the decision.
     </Contract>
 
+    <Contract id="HALT_FORMAT">
+      A halt is a plain sentence first (what happened + what to do), with the token as a trailing tag:
+
+      🛑 <что случилось по-человечески> — <что сделать оператору>   `[H_*]`
+    </Contract>
+
     <Contract id="ORCHESTRATOR_PROGRESS_FORMAT">
       Subagents are black boxes; emit one progress line per state transition so the operator sees the run.
+      Every progress message uses exactly this one-line grammar; do not introduce alternate service-line
+      prose or omit a field:
 
-      `[<bar>] <pct>% | <Task-ID> | <stage>`
+      `[<bar>] <pct>% | task=<Task-ID|selection> | stage=<stage> | session=<reused <kind>@<spec>|fresh (<reason>)>`
+
+      Before task selection use `task=selection`. Before a worker key exists, `session=` reports the
+      router's exact execute-session transition (`reused execute@<working-set>` or `fresh (first)`). Once a
+      worker is selected it reports that worker path (`reused <kind>@<spec>` or `fresh (<reason>)`).
 
       Stages: `⏳ resolving + planning` · `🔧 phase <P<N>> (<kind>, <model>) executing` · `✅ phase <P<N>> done → next` · `✅ all phases done → 🔍 audit` · `✅ audit PASS`.
       Retry path: `❌ audit FAIL → 🔄 re-run <phases> as fix` · `✅ re-run done → 🔍 audit R2`.

@@ -322,10 +322,22 @@ function parsePackageExtras(extras: string): TraceNode[] {
  */
 function parseLazySteps(inner: string, read: FileReader | undefined): TraceNode[] {
   const steps: TraceNode[] = [];
-  for (const m of inner.matchAll(LAZY_STEP_BULLET_RE)) {
+  const pending = [...inner.matchAll(LAZY_STEP_BULLET_RE)];
+  const visited = new Set<string>();
+  for (let cursor = 0; cursor < pending.length; cursor++) {
+    const m = pending[cursor] as RegExpMatchArray;
     const id = m[1] as string;
     const gist = clean(m[2] as string);
     const packagePath = m[3] as string;
+    if (visited.has(packagePath)) {
+      steps.push({
+        kind: 'unparsed',
+        label: 'цикл цепочки пакетов шагов',
+        note: packagePath,
+      });
+      break;
+    }
+    visited.add(packagePath);
     const content = read ? read(packagePath) : null;
     if (content == null) {
       steps.push({
@@ -366,6 +378,26 @@ function parseLazySteps(inner: string, read: FileReader | undefined): TraceNode[
     stepNode.attrs = { ...stepNode.attrs, source: packagePath };
     stepNode.note = `физически в пакете: ${packagePath}`;
     steps.push(stepNode);
+
+    // Chain-topology skeletons expose only their entry package. Each package names exactly the
+    // next package at its tail, so the inspector follows that bounded chain without changing the
+    // runtime's genuinely lazy loading contract.
+    const next = /After completing this step,[^\n]*READ_AND_USE_DIRECTIVE\("([^"]+)"\)/.exec(
+      extras
+    );
+    if (next) {
+      const nextPath = next[1] as string;
+      const nextId = /\/steps\/([A-Za-z0-9_]+)\.xml$/.exec(nextPath)?.[1];
+      if (!nextId) {
+        steps.push({
+          kind: 'unparsed',
+          label: 'некорректный путь следующего шага',
+          note: nextPath,
+        });
+        break;
+      }
+      pending.push([next[0], nextId, '', nextPath] as unknown as RegExpMatchArray);
+    }
   }
   return steps;
 }

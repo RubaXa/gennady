@@ -6,29 +6,30 @@
 // regresses: non-empty step list, count matching the on-disk package files, and real step bodies
 // (not just the skeleton's one-line gist) present in the tree.
 
-import { test } from 'node:test';
+import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { readdirSync } from 'node:fs';
 import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseDirective } from '../parse-directive.ts';
 import type { FileReader, TraceNode } from '../model.ts';
+import { buildDirectiveTreeFixture } from '../../__tests__/directive-tree-fixture.ts';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
+const fixture = buildDirectiveTreeFixture(repoRoot);
+after(() => fixture.cleanup());
 
 /** Same contract as ai/inspector/generate.ts's own reader — repo-relative ref → content or null. */
-const read: FileReader = (ref) => {
-  const p = resolve(repoRoot, ref);
-  return existsSync(p) ? readFileSync(p, 'utf8') : null;
-};
+const read: FileReader = fixture.read;
 
 function loadDirective(relPath: string): TraceNode {
-  const xml = readFileSync(join(repoRoot, relPath), 'utf8');
+  const xml = read(relPath);
+  assert.ok(xml, `fixture contains ${relPath}`);
   return parseDirective(relPath, xml, read);
 }
 
 function stepFilesOf(directiveName: string): string[] {
-  return readdirSync(join(repoRoot, 'ai/directives/sdd-v2', directiveName, 'steps')).sort();
+  return readdirSync(join(fixture.directivesRoot, 'sdd-v2', directiveName, 'steps')).sort();
 }
 
 /** Find a step node anywhere under an ExecutionPlan/PhaseProcedure section by its bare id. */
@@ -183,7 +184,8 @@ test('lazy step list without an injected reader marks every step honestly unread
 });
 
 function loadDirectiveWithReader(relPath: string, reader: FileReader | undefined): TraceNode {
-  const xml = readFileSync(join(repoRoot, relPath), 'utf8');
+  const xml = read(relPath);
+  assert.ok(xml, `fixture contains ${relPath}`);
   return parseDirective(relPath, xml, reader);
 }
 

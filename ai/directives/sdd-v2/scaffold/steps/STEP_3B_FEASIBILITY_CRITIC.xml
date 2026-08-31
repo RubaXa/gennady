@@ -12,7 +12,9 @@
         The critic must report: a gate that needs a file owned by a later phase; a repository-wide
         fix before ignore/exclusion files exist; shared-file double ownership; an undeclared
         generator output; production entities placed in a scope without module inventory; or a test
-        mapping whose code cannot exist yet.
+        mapping whose code cannot exist yet; or any runtime deliverable (including App/main/index/Vite
+        composition roots) without exactly one declared module owner, especially one hidden inside a
+        `scope-bootstrap` node without an exact Bootstrap Requirements row.
 
         Persist and fold one explicit `FeasibilityState` through Gate 2 via
         `FEASIBILITY_STATE_FORMAT`; never rely on chat memory:
@@ -90,3 +92,5 @@
       cycle); the session scratch itself is removed only by its normal terminal `sdd-session close`.
 
     </Contract>
+
+After completing this step, and only then, READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/scaffold/steps/STEP_4_TEST_PLAN_REVIEW.xml"). Do not preload later step packages.

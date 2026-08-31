@@ -90,11 +90,10 @@
     <Step id="STEP_0B_PREFLIGHT">
       <Goal>Clear the FLOW_VERSION/READINESS preflight gate before dispatching the sensor.</Goal>
       <Action>
-        Use `FLOW_VERSION`, `READINESS`, and `GATE_QUEUE` from the already-gathered `sdd-state`
+        Use `FLOW_VERSION`, `AUTHORING_READY`, `EXECUTION_READY`, and `GATE_QUEUE` from the already-gathered `sdd-state`
         snapshot; do not enter task lifecycle merely to clear this gate. Size the gate to this request's own blast radius
-        (`AX_PREFLIGHT_BLAST_RADIUS_SCOPED`).
-
-        {{> "contract/process/readiness-preflight-gate"}}
+        (`AX_PREFLIGHT_BLAST_RADIUS_SCOPED`). The router already applied the shared readiness gate
+        before loading this directive; do not repeat or reinterpret it here.
       </Action>
     </Step>
     <Step id="STEP_1_DISPATCH">

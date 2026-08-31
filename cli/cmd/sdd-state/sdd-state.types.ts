@@ -6,7 +6,11 @@ import type { ReadinessResult } from '../../../shared/sdd/readiness.ts';
 import type { GraphEdge, Scope } from '../../../shared/sdd/portal.ts';
 import { renderScopeGraph } from '../../../shared/sdd/portal.ts';
 import type { RepoProbe } from '../../../shared/sdd/probe.ts';
-import type { GateQueueDiagnostic } from '../../../shared/sdd/gate-queue.ts';
+import type {
+  AuthoringReadinessResult,
+  GateQueueDiagnostic,
+} from '../../../shared/sdd/gate-queue.ts';
+import type { SpecSchemaReport } from '../../../shared/sdd/spec-schema.ts';
 
 /** @purpose More than one positional argument was passed. */
 export const ERR_CLI_SDD_STATE_BAD_INVOCATION = 'ERR_CLI_SDD_STATE_BAD_INVOCATION' as const;
@@ -59,12 +63,18 @@ export type StateSnapshot = {
   graphEdges: GraphEdge[];
   /** @purpose Exact-match readiness of the required npm scripts. */
   readiness: ReadinessResult;
+  /** @purpose Structural permission to scaffold before runtime gates exist. */
+  authoringReadiness: AuthoringReadinessResult;
   /** @purpose TODO infrastructure tickets that make missing readiness gates an expected queue state. */
   queuedGateTicketIds: string[];
   /** @purpose Fail-closed structural ownership diagnostics for missing readiness gates. */
   gateQueueDiagnostics: GateQueueDiagnostic[];
   /** @purpose Raw content of the session scratch (specs/.sdd-session.md), or null when no active session. */
   sessionContent: string | null;
+  /** @purpose Exact active owner route that takes precedence over generic scaffold/execute advice. */
+  activeOwnerRoute: { machine: string; human: string } | null;
+  /** @purpose Read-only structural schema diagnosis used by pre-scaffold routing. */
+  specSchema: SpecSchemaReport;
   /** @purpose Code/infra heuristics — always gathered: one snapshot carries everything any router branch needs. */
   probe?: RepoProbe;
 };
@@ -117,11 +127,56 @@ export function formatSnapshot(s: StateSnapshot): string {
         ? `READINESS=provisional (stubs: ${s.readiness.stubbed.join(', ')} — bootstrap/scaffold можно, impl/test-фазы заблокированы до реальных инструментов)`
         : `READINESS=not-ready (missing: ${s.readiness.missing.join(', ')})`
   );
+  lines.push(`AUTHORING_READY=${s.authoringReadiness.ready ? 'yes' : 'no'}`);
+  lines.push(`EXECUTION_READY=${s.readiness.executionReady ? 'yes' : 'no'}`);
+  for (const fact of s.authoringReadiness.scopes) {
+    lines.push(`AUTHORING_SCOPE=${fact.name}\tREADY=${fact.status}`);
+    for (const diagnostic of fact.diagnostics)
+      lines.push(`AUTHORING_SCOPE_DIAG=${fact.name}\t${diagnostic}`);
+    if (fact.status === 'no')
+      lines.push(
+        `AUTHORING_SCOPE_NEXT=${fact.name}\trepair only scope '${fact.name}' through its owning spec flow, then rerun the same sdd-state command`
+      );
+    if (fact.status === 'not-applicable')
+      lines.push(
+        `AUTHORING_SCOPE_NEXT=${fact.name}\tdo not scaffold this interface scope; select a product, library, or infrastructure task owner`
+      );
+  }
   lines.push(
     `GATE_QUEUE=${s.queuedGateTicketIds.length > 0 ? s.queuedGateTicketIds.join(',') : 'none'}`
   );
   for (const diagnostic of s.gateQueueDiagnostics)
     lines.push(`GATE_QUEUE_DIAG=${diagnostic.message}`);
+  // SPEC_SCHEMA owns the route while structural migration/repair is pending; emitting a second
+  // NEXT here would make a weak router choose between two instructions for the same snapshot.
+  if (s.activeOwnerRoute !== null) {
+    lines.push(`NEXT=${s.activeOwnerRoute.machine}`);
+  } else if (s.specSchema.status === 'current') {
+    if (s.flowVersion === 'v1')
+      lines.push('NEXT=migrate the v1 task layout before entering the v2 scaffold flow');
+    else if (s.authoringReadiness.ready && !s.readiness.executionReady)
+      lines.push(
+        'NEXT=scaffold may create the declared bootstrap tickets; product execute remains blocked, and only an exact active GATE_QUEUE phase may run with setup verification'
+      );
+    else if (s.authoringReadiness.ready)
+      lines.push('NEXT=scaffold and product execute may proceed');
+  }
+
+  lines.push('', '[SPEC_SCHEMA]');
+  lines.push(`VERSION=${s.specSchema.version}`);
+  lines.push(`STATUS=${s.specSchema.status}`);
+  const affected = s.specSchema.findings.filter((finding) => finding.status !== 'current');
+  if (affected.length === 0) lines.push('# all observed scope/module specs are current');
+  for (const finding of affected)
+    lines.push(`${finding.status}\t${finding.path}\t${finding.reason}`);
+  if (s.specSchema.status === 'stale-migratable')
+    lines.push(
+      'NEXT=router loads ai/directives/sdd-v2/reconcile.directive.xml as a nested fix preflight inside the compatible scaffold session; no CLI or public skill invocation; keep intent=scaffold unchanged, then re-enter STEP_0B after verification'
+    );
+  if (s.specSchema.status === 'invalid')
+    lines.push(
+      'NEXT=repair each listed spec through its owning authoring flow; do not scaffold from ambiguous structural evidence'
+    );
 
   lines.push('', '[SCOPES]', '# name\ttype\tstatus\tdescription\tspec');
   if (!s.portalPresent) {
@@ -161,6 +216,9 @@ export function formatSnapshot(s: StateSnapshot): string {
     `flow=${s.flowVersion}`,
     `portal=${s.portalPresent ? 'present' : 'absent'}`,
     `readiness=${s.readiness.level}`,
+    `authoring-ready=${s.authoringReadiness.ready ? 'yes' : 'no'}`,
+    `execution-ready=${s.readiness.executionReady ? 'yes' : 'no'}`,
+    `spec-schema=${s.specSchema.status}`,
     `gate-queue=${s.queuedGateTicketIds.length > 0 ? s.queuedGateTicketIds.join(',') : 'none'}`,
     `scopes=${s.scopes.length}`,
     `session=${s.sessionContent ? 'present' : 'absent'}`

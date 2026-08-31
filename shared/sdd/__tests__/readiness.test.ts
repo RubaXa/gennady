@@ -132,6 +132,7 @@ describe('REQUIRED_SCRIPTS', () => {
     });
     assert.strictEqual(r.lintFixMutates, true);
     assert.strictEqual(r.lintFixDeclaredTargetPrefix, false);
+    assert.deepStrictEqual(r.missingGates, ['lint:fix']);
     assert.strictEqual(r.ready, false);
   });
 
@@ -140,12 +141,32 @@ describe('REQUIRED_SCRIPTS', () => {
       const r = check({ ...FULL, 'format:fix': script });
       assert.strictEqual(r.formatFixMutates, true);
       assert.strictEqual(r.formatFixDeclaredTargetPrefix, false);
+      assert.deepStrictEqual(r.missingGates, ['format:fix']);
       assert.ok(
         r.missing.includes(
           'format:fix(must declare an argument-forwarding prefix with no obvious broad root/glob; runtime phase repair verifies actual writes)'
         )
       );
       assert.strictEqual(r.ready, false);
+    }
+  });
+
+  it('projects every readiness defect onto one canonical, de-duplicated gate id', () => {
+    const cases: Array<[Record<string, string>, { gennady?: boolean }, string]> = [
+      [{ ...FULL, test: '' }, {}, 'test'],
+      [{ ...FULL, test: 'echo TODO: configure tests' }, {}, 'test'],
+      [{ ...FULL, lint: 'eslint src/' }, {}, 'lint'],
+      [{ ...FULL, lint: 'gennady lint --autofix src/' }, {}, 'lint'],
+      [{ ...FULL, check: 'npm run lint:fix' }, {}, 'check'],
+      [{ ...FULL, 'format:fix': 'prettier --check .' }, {}, 'format:fix'],
+      [{ ...FULL, 'lint:fix': 'eslint --fix .' }, {}, 'lint:fix'],
+      [{ ...FULL, fix: 'npm run lint:fix' }, {}, 'fix'],
+      [FULL, { gennady: false }, 'gennady'],
+    ];
+    for (const [scripts, options, expected] of cases) {
+      const result = check(scripts, options);
+      assert.ok(result.missingGates.includes(expected), `${expected}: ${result.missingGates}`);
+      assert.strictEqual(new Set(result.missingGates).size, result.missingGates.length);
     }
   });
 

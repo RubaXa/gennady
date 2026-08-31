@@ -37,6 +37,11 @@ function fakeRunner(failNames: string[] = []): { runner: GateRunner; calls: stri
 const PHASE_TARGETS = ['src/changed.ts'];
 const TARGET_REPAIR_CALLS = [
   'npm run format:fix -- src/changed.ts',
+  'npm run lint:fix -- src/changed.ts',
+  'npx --no-install tsx cli/gennady.ts lint --autofix --include-tests -- src/changed.ts',
+];
+const GENNADY_TARGET_REPAIR_CALLS = [
+  'npm run format:fix -- src/changed.ts',
   'npm run lint:fix -- --include-tests -- src/changed.ts',
 ];
 const REPAIR_SCRIPTS = {
@@ -518,7 +523,7 @@ describe('run — required rungs refuse to skip (code/test/full)', () => {
     const { runner, calls } = fakeRunner();
     const o = await run(runner, 'test', undefined, { targets: PHASE_TARGETS });
     assert.strictEqual(o.ok, false);
-    assert.deepStrictEqual(calls, TARGET_REPAIR_CALLS);
+    assert.deepStrictEqual(calls, GENNADY_TARGET_REPAIR_CALLS);
     if (o.ok) return;
     assert.match(o.message, /⛔ type-check — обязательная ступень профиля «test»/);
     assert.match(o.message, /скрипта нет в package\.json/);
@@ -533,7 +538,7 @@ describe('run — required rungs refuse to skip (code/test/full)', () => {
     const { runner, calls } = fakeRunner();
     const o = await run(runner, 'code', undefined, { targets: PHASE_TARGETS });
     assert.strictEqual(o.ok, false);
-    assert.deepStrictEqual(calls, [...TARGET_REPAIR_CALLS, 'npm run type-check']);
+    assert.deepStrictEqual(calls, [...GENNADY_TARGET_REPAIR_CALLS, 'npm run type-check']);
     if (o.ok) return;
     assert.match(o.message, /⛔ test — обязательная ступень профиля «code»/);
   });
@@ -546,7 +551,11 @@ describe('run — required rungs refuse to skip (code/test/full)', () => {
     const { runner, calls } = fakeRunner();
     const o = await run(runner, 'code', undefined, { targets: PHASE_TARGETS });
     assert.strictEqual(o.ok, true);
-    assert.deepStrictEqual(calls, [...TARGET_REPAIR_CALLS, 'npm run type-check', 'npm run test']);
+    assert.deepStrictEqual(calls, [
+      ...GENNADY_TARGET_REPAIR_CALLS,
+      'npm run type-check',
+      'npm run test',
+    ]);
   });
 
   it('full requires lint AND format — a full verdict never goes green with a quality gate missing (B3)', async () => {
@@ -748,22 +757,24 @@ describe('run — repair-first call counts', () => {
     assert.strictEqual(o.ok, true);
     assert.deepStrictEqual(calls, [
       'npm run format:fix -- src/new.test.ts',
-      'npm run lint:fix -- --include-tests -- src/new.test.ts',
+      'npm run lint:fix -- src/new.test.ts',
+      'npx --no-install tsx cli/gennady.ts lint --autofix --include-tests -- src/new.test.ts',
       'npm run type-check',
       'npm run test:coverage',
     ]);
   });
 
-  it('phase repair passes the structurally resolved owning spec to the same exact-target lint', async () => {
+  it('phase repair keeps the project linter generic and passes owning spec only to contract lint', async () => {
     const { runner, calls } = fakeRunner();
     const o = await run(runner, 'code', undefined, {
       targets: PHASE_TARGETS,
       specPath: 'specs/app/app.spec.md',
     });
     assert.strictEqual(o.ok, true);
+    assert.strictEqual(calls[1], 'npm run lint:fix -- src/changed.ts');
     assert.strictEqual(
-      calls[1],
-      'npm run lint:fix -- --include-tests --spec=specs/app/app.spec.md -- src/changed.ts'
+      calls[2],
+      'npx --no-install tsx cli/gennady.ts lint --autofix --include-tests --spec=specs/app/app.spec.md -- src/changed.ts'
     );
   });
 });

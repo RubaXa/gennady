@@ -170,7 +170,7 @@ describe('SDD v2 release-candidate composition', () => {
       writeFileSync(modulePath, moduleContent, 'utf-8');
       const decomposition = resolveScopeDecomposition(scopePath);
       assert.strictEqual(decomposition.status, 'complete');
-      assert.strictEqual(resolveTaskOwnership(scopePath, 'mod').status, 'owned');
+      assert.strictEqual(resolveTaskOwnership(scopePath, 'module', 'mod').status, 'owned');
 
       const targets = [relative(root, scopePath), relative(root, modulePath)].sort();
       const targetSet = formatCriticTargetSet(targets);
@@ -215,7 +215,18 @@ describe('SDD v2 release-candidate composition', () => {
       );
 
       const scaffold = runCli(
-        ['sdd-new', 'task', '--scope', 'app', '--module', 'mod', '--id', 'APP-feature'],
+        [
+          'sdd-new',
+          'task',
+          '--owner',
+          'module',
+          '--scope',
+          'app',
+          '--module',
+          'mod',
+          '--id',
+          'APP-feature',
+        ],
         root
       );
       assert.strictEqual(scaffold.exitCode, 0, scaffold.stdout + scaffold.stderr);

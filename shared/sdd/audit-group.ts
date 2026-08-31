@@ -174,6 +174,8 @@ function existingReviewPath(
 type TicketReviewPathSelection = {
   /** @purpose Current phase sections whose Target paths must be proven. */
   phaseIds: readonly string[];
+  /** @purpose Dispatch accepts a not-yet-created exact Target File while preserving strict existing-file evidence everywhere else. */
+  targetExpectation?: 'existing' | 'dispatch';
   /** @purpose Phase sections whose tombstones may explain absent prior Handoff artifacts. */
   deletedPhaseIds?: readonly string[];
   /** @purpose Completed prior phases whose structured Handoff artifacts must be proven. */
@@ -194,7 +196,10 @@ export function validateTicketReviewPaths(
   content: string,
   selection?: TicketReviewPathSelection
 ):
-  | { ok: true; paths: { targets: string[]; deleted: string[]; handoffs: string[] } }
+  | {
+      ok: true;
+      paths: { targets: string[]; createTargets: string[]; deleted: string[]; handoffs: string[] };
+    }
   | { ok: false; path: string; detail: string } {
   const overview = extractSection(content, 'PHASES_OVERVIEW');
   const phases = overview.status === 'ok' ? parsePhasesOverview(overview.content) : [];
@@ -225,11 +230,24 @@ export function validateTicketReviewPaths(
       return section.status === 'ok' ? [parsePhaseDetail(section.content)] : [];
     });
   const targets: string[] = [];
+  const createTargets: string[] = [];
   for (const detail of phaseDetails) {
     for (const raw of detail.targetFiles) {
-      const validated = existingReviewPath(root, raw, true);
+      let validated = existingReviewPath(root, raw, true);
+      let createTarget = false;
+      if (
+        !validated.ok &&
+        validated.detail === 'path is missing' &&
+        selection?.targetExpectation === 'dispatch'
+      ) {
+        validated = existingReviewPath(root, raw, false);
+        createTarget = validated.ok;
+      }
       if (!validated.ok) return { ok: false, path: raw, detail: `Target File ${validated.detail}` };
       if (!targets.includes(validated.relative)) targets.push(validated.relative);
+      if (createTarget && !createTargets.includes(validated.relative)) {
+        createTargets.push(validated.relative);
+      }
     }
   }
 
@@ -284,7 +302,7 @@ export function validateTicketReviewPaths(
     }
     if (!handoffs.includes(inspected.relative)) handoffs.push(inspected.relative);
   }
-  return { ok: true, paths: { targets, deleted, handoffs } };
+  return { ok: true, paths: { targets, createTargets, deleted, handoffs } };
 }
 
 /**

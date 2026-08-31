@@ -138,6 +138,25 @@ describe('SddExtractCommand', () => {
         assert.match(outcome.message, /cli-foo-task-ticket/);
       }
     });
+
+    it('resolves a typed contract heading inside details by its copy-ready canonical anchor', async () => {
+      const spec = join(tmpDir, 'contracts.spec.md');
+      writeFileSync(
+        spec,
+        [
+          '<details>',
+          '<summary>Contracts</summary>',
+          '',
+          '#### Port: `TodoStore`',
+          'The storage contract.',
+          '</details>',
+        ].join('\n'),
+        'utf-8'
+      );
+      const outcome = await mod.run(argv(`${spec}#port-todostore`));
+      assert.strictEqual(outcome.ok, true);
+      if (outcome.ok) assert.match(outcome.content, /The storage contract/);
+    });
   });
 
   describe('the forms a read-manifest actually prints (AX_EXTRACT_ANCHOR_FORMS)', () => {

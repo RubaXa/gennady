@@ -175,6 +175,7 @@ function writeLazyDirective(rel: string, deltaReducedText: string, deltaSuffix: 
       directiveName,
       sourceText: deltaReducedText,
       fingerprint: buildFingerprint,
+      loadTopology: directiveName === 'scaffold' ? 'chain' : 'index',
     });
   } catch (cause) {
     failures.push(`${rel}: lazy split failed — ${cause instanceof Error ? cause.message : String(cause)}`);

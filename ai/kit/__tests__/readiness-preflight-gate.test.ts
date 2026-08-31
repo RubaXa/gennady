@@ -1,12 +1,11 @@
 // @file: Guards the FLOW_VERSION/READINESS preflight gate against the exact regression an audit
 // found: the router's qualifier ("AND the request needs a missing gate script") and the
 // queue-exception branch got lost when 4 SKILL.md files hand-copied the interpretation. The fix —
-// a single shared partial (ai/kit/contract/process/readiness-preflight-gate.xml) declared by each
-// directive that activates it. At runtime the router is the single owner: public skills enter the
-// router, then delta assembly removes the duplicate bytes from execute / critic and leaves an
-// explicit inherited-contract receipt. This must not regress: (a) source templates still declare
-// the contract at the activating step; (b) generated output contains one runtime owner plus typed
-// inherited consumers, not hand-copied duplicates; (c) no SKILL.md bypasses or re-derives it.
+// a single shared partial (ai/kit/contract/process/readiness-preflight-gate.xml) declared by its
+// router owner. Public skills enter the router; execute / critic neither redeclare nor copy it and
+// need no inherited receipt string. This must not regress: (a) the router source declares the
+// contract at the activating step; (b) generated output contains one runtime owner and no duplicate copy;
+// (c) no SKILL.md bypasses or re-derives it.
 // @consumers: node:test runner
 // @tasks: N/A
 
@@ -34,15 +33,22 @@ const PROJECT_ROOT = join(OUT_ROOT, '..', '..');
 function readFullDirectiveText(file: string): string {
   const skeletonText = readFileSync(join(SDD_V2, file), 'utf-8');
   if (resolveAssemblyMode(`sdd-v2/${file}`) !== 'lazy') return skeletonText;
-  const packagePaths = [
-    ...skeletonText.matchAll(/Before executing this step, READ_AND_USE_DIRECTIVE\("([^"]+)"\)\./g),
-  ].map((m) => m[1]!);
-  const packageTexts = packagePaths.map((p) => readFileSync(join(PROJECT_ROOT, p), 'utf-8'));
+  const packageTexts: string[] = [];
+  let cursor = skeletonText;
+  const seen = new Set<string>();
+  while (true) {
+    const path = /READ_AND_USE_DIRECTIVE\("([^"]+\/steps\/[^"]+\.xml)"\)/.exec(cursor)?.[1];
+    if (!path) break;
+    assert.equal(seen.has(path), false, `step-package load cycle: ${path}`);
+    seen.add(path);
+    cursor = readFileSync(join(PROJECT_ROOT, path), 'utf-8');
+    packageTexts.push(cursor);
+  }
   return [skeletonText, ...packageTexts].join('\n');
 }
 
 /** Marker phrase unique to the shared partial — proves the generated directive embeds it, not a hand-typed paraphrase. */
-const PARTIAL_MARKER = 'preflight input reports `GATE_QUEUE=<Task-ID,...>`';
+const PARTIAL_MARKER = 'every requested scaffold target has `AUTHORING_SCOPE=<target> READY=yes`';
 
 const ROUTER_OWNED_CONSUMERS = ['execute.directive.xml', 'critic.directive.xml'];
 
@@ -65,20 +71,16 @@ describe('readiness preflight gate — single source, no hand-copied interpretat
   });
 
   for (const file of ROUTER_OWNED_CONSUMERS) {
-    it(`${file}: declares the gate in source and consumes the router-owned runtime copy`, () => {
+    it(`${file}: relies on router entry without redeclaring or duplicating its readiness gate`, () => {
       const source = readFileSync(join(TEMPLATES_ROOT, file.replace(/\.xml$/, '.hbs')), 'utf-8');
-      assert.match(source, /\{\{>\s*"contract\/process\/readiness-preflight-gate"\s*\}\}/);
+      assert.doesNotMatch(source, /\{\{>\s*"contract\/process\/readiness-preflight-gate"\s*\}\}/);
 
       const built = readFullDirectiveText(file);
-      assert.match(
-        built,
-        /Inherited from the loading directive \(already in context\):[^\n]*readiness-preflight-gate/,
-        `${file} must retain an explicit receipt for the delta-elided gate`
-      );
       assert.ok(
         !built.includes(PARTIAL_MARKER),
         `${file} duplicates the router-owned preflight gate instead of consuming it from context`
       );
+      assert.doesNotMatch(built, /readiness\.directive\.xml/);
     });
   }
 
@@ -98,6 +100,20 @@ describe('readiness preflight gate — single source, no hand-copied interpretat
       const text = readFullDirectiveText(file);
       assert.doesNotMatch(text, /run\s+`?sdd-task`? \(no Task-ID\)/i, `${file} invokes the task map before task lifecycle`);
     }
+  });
+
+  it('separates scaffold authoring permission from product execution permission', () => {
+    const contract = readFileSync(join(CONTRACTS_ROOT, 'readiness-preflight-gate.xml'), 'utf-8');
+    const scaffold = readFullDirectiveText('scaffold.directive.xml');
+    const execute = readFullDirectiveText('execute.directive.xml');
+
+    assert.match(contract, /every requested scaffold target.+continue scaffold authoring/);
+    assert.match(contract, /requested scaffold target.+READY=no\|not-applicable.+owning spec flow/s);
+    assert.match(contract, /EXECUTION_READY=no.+execute any other product\/library phase.+STOP/);
+    assert.match(scaffold, /single-target scaffold consumes only that line.+`READY=yes`.+`EXECUTION_READY=no`/s);
+    assert.match(scaffold, /Unrelated red scope.+never block a narrower target/s);
+    assert.match(execute, /Use `EXECUTION_READY` and `GATE_QUEUE` from the `sdd-task` map/);
+    assert.doesNotMatch(scaffold, /not-ready and this scaffold needs a missing gate/);
   });
 
   it('keeps router and critic preflight outside task lifecycle', () => {

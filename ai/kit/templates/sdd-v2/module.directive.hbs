@@ -117,9 +117,10 @@
       product or architecture fork — entity ownership, public behavior/error semantics, Port-vs-Service,
       or file ownership — show only that delta plus real alternatives and ask once before choosing; batch
       related forks in one decision. Never re-ask a choice settled earlier in the same packet. STEP_6's
-      review lifecycle always shows the exact final hierarchy and its unsettled delta for the mandatory
-      terminal Approval before critic/publication. Thus no semantic choice disappears, but zero-new-info
-      steps cost zero operator turns.
+      standalone review lifecycle always shows the exact final hierarchy and its unsettled delta for the
+      mandatory terminal Approval before critic/publication. A scaffold-owned nested correction uses the
+      same terminal Approval and critic convergence, but returns through its bounded exception in STEP_6.
+      Thus no semantic choice disappears, but zero-new-info steps cost zero operator turns.
     </Axiom>
 
     {{> "axiom/coding/ax-consumer-driven"}}
@@ -182,10 +183,14 @@
       <Goal>Resolve scope, mode; gate scope-type.</Goal>
       <Action>
         Read `specs/<scope>/<scope>.spec.md` (sole source per `AX_SPEC_IS_SOLE_SOURCE`). Accept only
-        the two exact states in `AX_HANDOFF_TO_MODULE_DECOMPOSITION`: valid `CHANGE_MANIFEST` plus the
+        the two standalone states in `AX_HANDOFF_TO_MODULE_DECOMPOSITION`: valid `CHANGE_MANIFEST` plus the
         exact `[SESSION]` operator-approved review-state draft entry, or no `CHANGE_MANIFEST` plus the
         exact master `[SCOPES]` row whose `status` column is `done`. Any other draft/clean state →
         `H_SCOPE_DRAFT_NOT_OPERATOR_APPROVED`; never infer acceptance from a bare `approved` label.
+        One bounded nested state is also valid: the compatible session still says `intent: scaffold`,
+        its exact target-set contains this scope, and an active module `CHANGE_MANIFEST` identifies the
+        correction. This does not change intent or add a session field; its return owner is scaffold
+        `STEP_0_INTAKE`.
         This gate does not demand a premature critic/MR. Missing → `H_SCOPE_SPEC_MISSING`; incomplete → `H_INCOMPLETE_SCOPE_SPEC`. scope-type must be
         product / library (`AX_SCOPE_TYPE_GATE`, else `H_INVALID_SCOPE_TYPE`). Mode per
         `AX_MODE_AUTO_DETECT_OR_HALT` — initial / add-module / refine-module; the mode picked here
@@ -457,7 +462,27 @@
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/preflight-protocol.directive.xml")` and run
         its lazy active-domain checklist. The integrated review target-set is the parent scope spec plus
         ALL module specs in that scope after decomposition; unchanged module specs are read-only members
-        and do not receive synthetic `CHANGE_MANIFEST` or review-state. Then
+        and do not receive synthetic `CHANGE_MANIFEST` or review-state.
+
+        when entered as scaffold's nested decomposition correction, the return owner is scaffold `STEP_0_INTAKE`;
+        stop the standalone branch here.
+        Show the exact final hierarchy and unsettled delta for terminal operator Approval; a pause keeps
+        `intent: scaffold`, the exact target-set, and the concrete blocker in `open`. After Approval,
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/critic.directive.xml")` for that integrated
+        target-set, reusing its worker and its one global maximum of five critic results. On
+        accepted/CLEAN, apply the nested clean finalization in `AX_SPEC_LIFECYCLE`: remove the
+        `CHANGE_MANIFEST`/marks and Critic Rounds last, rerun integrity, append the session journal event,
+        set `open` to `—`, emit `TerminalDecision: continue`, and return there.
+        Use the session log ToolCall below for that return. If Approval or critic disposition pauses,
+        log the literal blocker with the same ToolCall before pausing. In this nested decomposition correction,
+        do not load `ai/directives/sdd-v2/review-lifecycle.directive.xml` before returning to scaffold;
+        do not publish, commit, push, open a PR, or merge. This is an early-return branch;
+        only standalone module work continues below.
+        <ToolCall owner="this-step" result="nestedSessionLog">npx gennady sdd-session log --content-file .claude/tmp/sdd-module-nested-event.txt</ToolCall> Inputs .claude/tmp/sdd-module-nested-event.txt: one literal journal event describing pause or accepted/CLEAN return. Use nestedSessionLog.
+        <ToolCall owner="this-step" result="nestedPauseState">npx gennady sdd-session set open "<literal module-correction blocker>"</ToolCall> Inputs <literal module-correction blocker>: exact unresolved Approval/critic/integrity blocker. Use nestedPauseState only on pause.
+        <ToolCall owner="this-step" result="nestedReturnState">npx gennady sdd-session set open "—"</ToolCall> Use nestedReturnState only on accepted/CLEAN return.
+
+        For standalone module work, then
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/review-lifecycle.directive.xml")` once for that
         integrated bundle. Its fixed order is: finalize/compress semantics → show the exact final
         hierarchy and only its unsettled delta → Approval Check. STOP → integrated critic → publish the

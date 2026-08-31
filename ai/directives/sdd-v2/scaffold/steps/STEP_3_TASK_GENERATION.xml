@@ -1,13 +1,14 @@
 0.8.4
 
 <Step id="STEP_3_TASK_GENERATION">
-      <Goal>Generate tickets + test plan. (auto)</Goal>
+      <Goal>Load the common ticket-authoring contract and order; do not plan ticket bodies. (auto)</Goal>
       <Action>
-        This auto step never prompts or pauses; unresolved coverage/toolchain alternatives go to
-        STEP_4 Gate 2. Iterate STEP_2 nodes in order: one marked-owner `sdd-new task` call per node,
-        never a shell loop. Fill its returned section manifest per
+        Retain only STEP_2's approved node order, shared cascade facts, and shared test/toolchain
+        facts. Do NOT form, draft, or retain any node's ticket content here; content belongs to the
+        current-node iteration in STEP_3_TICKET_LOOP, after every prior node is green. Unresolved
+        coverage/toolchain alternatives go to STEP_4. The per-node contract is
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/task-ticket-structure.xml")`. Per
-        ticket: decompose into phases (`AX_PHASES_DECLARED_IN_HEADER`; impl and test always separate).
+        current ticket: decompose into phases (`AX_PHASES_DECLARED_IN_HEADER`; impl and test always separate).
         Fill every phase's `Deleted Files:` with exact tracked paths the phase removes, or the literal
         `none`; this is mechanical DAG data and adds no operator interaction. Deleted paths do not belong in `Target Files`.
         For each readiness Bootstrap Requirement, copy its exact `Readiness Gates` only into the
@@ -98,10 +99,8 @@
         `sdd-task --phase`'s downstream read at execution time; a link a worker or auditor cannot
         resolve with `sdd-extract <file>#<anchor>` verbatim is not a valid Spec Reference. No operator
         stop — automated.
-        Inputs <scope>/<module>/<ACR>/<slug>: STEP_2 node. Product/library module → only
-        moduleTaskManifest; infrastructure → only flatInfraTaskManifest; interface → neither.
-        <ToolCall owner="this-step" result="moduleTaskManifest">npx gennady sdd-new task --scope <scope> --module <module> --id <ACR>-<slug></ToolCall> Use only for product/library.
-        <ToolCall owner="this-step" result="flatInfraTaskManifest">npx gennady sdd-new task --scope <scope> --id <ACR>-<slug></ToolCall> Use only for infrastructure.
+        Pass only the ordered node identities plus shared facts to STEP_3_TICKET_LOOP; create no
+        ticket content, files, or indexes here.
       </Action>
     </Step>
 
@@ -126,7 +125,10 @@
 
       - Acceptance Criteria = strict BDD (Given/When/Then) translated from DbC pre/post + Requirements & Constraints + Decision Log. Negative scenarios, fallbacks, trust boundaries, platform limits pulled from spec, not inferred from component name.
       - Each scenario gets a verification level marker: `contract` | `unit` | `integration` | `e2e`.
-      - Each scenario maps to `<test-file>::<canonical case name>` in Test Scenario Coverage, OR explicit `Deferred Test Ownership: <task-id>`.
+      - Each scenario maps to `<test-file>::<canonical case name>` in Test Scenario Coverage, OR the complete Deferred Test Ownership row returned by that ticket's `sdd-new` call.
+      - When a scenario's `When` invokes an exact `npm run <script>` command, its coverage row appends
+        `:: command \`npm run <script>\`` and Verification carries that same exact command once with
+        Role=`probe`. A presence/config smoke is not evidence that the declared command executes.
       - At least one phase of kind `test` MUST exist whose Target Files contains the test file, unless every scenario has `Deferred Test Ownership`.
       - Canonical case names are normative: phase-subagent uses verbatim or updates the ticket before phase DONE.
       - BDD describes behavior, not language-specific syntax.
@@ -224,3 +226,5 @@
       the prose says so directly (e.g. `отвергнуто в пользу X` folded into the same line that would have
       recorded it, never a standalone rejected entry with its own `<ACR>-DL-N`).
     </Contract>
+
+After completing this step, and only then, READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/scaffold/steps/STEP_3_TICKET_LOOP.xml"). Do not preload later step packages.

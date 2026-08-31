@@ -178,8 +178,8 @@ describe('countModuleSpecs', () => {
 
   it('accepts only an exact declared canonical module for a module-owned task', () => {
     const scope = join(root, 'specs', 'owned', 'owned.spec.md');
-    assert.strictEqual(resolveTaskOwnership(scope, 'core').status, 'owned');
-    const ghost = resolveTaskOwnership(scope, 'ghost');
+    assert.strictEqual(resolveTaskOwnership(scope, 'module', 'core').status, 'owned');
+    const ghost = resolveTaskOwnership(scope, 'module', 'ghost');
     assert.strictEqual(ghost.status, 'invalid');
     if (ghost.status === 'invalid') assert.match(ghost.reason, /no exact canonical|not.*declared/);
   });

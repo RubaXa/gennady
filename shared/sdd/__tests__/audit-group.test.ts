@@ -353,6 +353,7 @@ describe('validateTicketReviewPaths', () => {
       ok: true,
       paths: {
         targets: ['src/live.ts'],
+        createTargets: [],
         deleted: ['src/gone.ts'],
         handoffs: ['src/live.ts', 'src/gone.ts'],
       },

@@ -6,7 +6,8 @@
         Run verification ToolCall below
         (`AX_PERMITTED_BASH_COMMANDS`, `AX_VERIFICATION_BEFORE_HANDOFF`). This is the one mechanical owner: it derives profile, exact
         Target Files, owning spec and applicable §Verification rows from the ticket; performs exact-target
-        repair under a runtime before/after write-zone (any outside mutation is listed, left intact and
+        repair through ordered formatter/project-linter/Gennady-contract adapters, each receiving only
+        its applicable exact targets, under a runtime before/after write-zone (any outside mutation is listed, left intact and
         halts before foundation; `.git` metadata and installed `node_modules` are excluded tool-state), one foundation run, then those read-only extra rows sequentially under
         a zero-write boundary; and only on complete success
         atomically records the structured phase receipt in Execution Log. Do not reconstruct arguments,

@@ -1,14 +1,40 @@
 0.8.4
 
 <Step id="STEP_0B_PREFLIGHT">
-      <Goal>Clear the FLOW_VERSION/READINESS preflight gate before scaffolding.</Goal>
+      <Goal>Clear schema, FLOW_VERSION, and target-specific authoring readiness before scaffolding.</Goal>
       <Action>
-        Use the `FLOW_VERSION` / `READINESS` fields from the `sdd-state` snapshot already produced by
+        Use the `SPEC_SCHEMA` / `FLOW_VERSION` / `AUTHORING_SCOPE` / `AUTHORING_SCOPE_DIAG` / `AUTHORING_SCOPE_NEXT` fields from the `sdd-state` snapshot already produced by
         the skill's GATHER step; do not call `sdd-state` or `sdd-task` again here. Size the gate to this
-        request's own blast radius (`AX_PREFLIGHT_BLAST_RADIUS_SCOPED`): v1 intersecting legacy task
+        request's own blast radius (`AX_PREFLIGHT_BLAST_RADIUS_SCOPED`). First match only findings for
+        the target scope spec and its declared module specs (a target path absent from the printed
+        non-current findings is `current`): `current` → continue; `stale-migratable` → keep the
+        compatible session's existing `intent: scaffold` unchanged (no relabel and no new state field),
+        keep the literal intake in current context, then
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/reconcile.directive.xml")` in fix mode with the
+        literal typed finding from `sdd-state`. Reconcile decides mechanical vs semantic and routes
+        every spec change through its owner; this is a nested same-chain preflight subflow. After its
+        verified completion re-enter STEP_0B with the same intake. Do not enter STEP_1/STEP_2, edit a spec, read implementation, generate a
+        ticket, or add an Ask here. `invalid` → `H_SPEC_SCHEMA_INVALID` with the named path/reason and
+        owning authoring-flow next action; do not reinterpret it as migratable. Then apply the remaining
+        gates: v1 intersecting legacy task
         layout → `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/migration-v1-v2.directive.xml")`;
-        not-ready and this scaffold needs a missing gate →
-        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/readiness.directive.xml")`;
-        otherwise record the out-of-scope state in one line and continue.
+        Match the exact requested target scope name. A single-target scaffold consumes only that line;
+        an all-scope request requires every requested non-interface line to be `READY=yes`. Any requested
+        `READY=no` or `not-applicable` → stop with that same scope's exact DIAG/NEXT. Unrelated red scope
+        lines and aggregate `AUTHORING_READY=no` never block a narrower target. `READY=yes` → continue
+        even when `EXECUTION_READY=no`, because the declared bootstrap nodes are what scaffold must create.
+        Never load readiness setup from scaffold and never infer readiness from another scope.
       </Action>
     </Step>
+
+<Axiom id="AX_PREFLIGHT_BLAST_RADIUS_SCOPED">
+      `FLOW_VERSION=v1` migration and runtime `EXECUTION_READY=no` remediation can dwarf a narrow request.
+      Size only those broad actions to the task's own blast radius: a narrow owning spec edit may proceed
+      without migrating unrelated legacy tasks or installing unrelated runtime gates. Each `AUTHORING_SCOPE`
+      fact is different: it is a target-specific structural proof and is binding whenever scaffold would create
+      tickets. A red authoring fact blocks scaffold but never blocks the named owning spec flow that repairs
+      the evidence. Product execution always consumes `EXECUTION_READY`; only the exact active GATE_QUEUE
+      setup phase receives its typed exemption.
+    </Axiom>
+
+After completing this step, and only then, READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/scaffold/steps/STEP_1_CASCADE.xml"). Do not preload later step packages.

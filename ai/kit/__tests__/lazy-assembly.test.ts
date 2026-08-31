@@ -207,6 +207,20 @@ describe('LazyDirectiveAssembler#assemble', () => {
     assert.doesNotMatch(stepOneLine, /npx|gennady/);
   });
 
+  it('chain topology exposes only the entry step and reveals each successor only after completion', () => {
+    const result = LazyDirectiveAssembler.assemble({
+      ...createDirectiveFixture(),
+      loadTopology: 'chain',
+    });
+    assert.match(result.skeleton.text, /STEP_ONE/);
+    assert.doesNotMatch(result.skeleton.text, /steps\/STEP_TWO\.xml/);
+    assert.match(
+      result.packages[0]?.text ?? '',
+      /After completing this step, and only then, READ_AND_USE_DIRECTIVE\("ai\/directives\/sdd-v2\/fixture-directive\/steps\/STEP_TWO\.xml"\)/
+    );
+    assert.doesNotMatch(result.packages[1]?.text ?? '', /Do not preload later step packages/);
+  });
+
   it("stamps the same BuildFingerprint value into the skeleton header and the first line of every StepPackage", () => {
     const fingerprint = stampFingerprint('0.8.4-draft.40');
     const result = LazyDirectiveAssembler.assemble(createDirectiveFixture({ fingerprint }));

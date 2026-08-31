@@ -41,6 +41,11 @@ stateful direct entries `@sdd-scaffold` / `@sdd-execute` / `@sdd-critic` / `@sdd
 
 Один навык на оба режима: LOGIC-SWITCH на intent (Task-ID / `next` / `batch`/`all`/`queue`) решает — одиночный таск или вся pickable-очередь. Параллельный dispatch разрешён только когда одновременно не пересекаются Target Files и различаются next-worker session keys `(spec, kind)`; иначе таски сериализуются. Навык читает таск(и), диспатчит фазы одну за другой, закрывает round, диспатчит fresh-eyes audit + code-review.
 
+Пустой `/sdd-execute` — это запрос карты выбора, а не неявный `next`: после обязательной карточки
+router показывается shortlist из execution map и выполнение ждёт явного выбора. `next` / `pick`
+автовыбирает задачу только когда pickable-строка ровно одна; несколько строк останавливаются с
+`H_AMBIGUOUS_TASK` и путями тикетов.
+
 ### 3. Проверить качество спеки / таска
 
 ```

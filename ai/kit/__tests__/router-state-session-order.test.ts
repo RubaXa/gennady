@@ -19,6 +19,13 @@ describe('router state/session execution order', () => {
   const state = step(router, 'STEP_0_STATE');
   const classify = step(router, 'STEP_1_CLASSIFY');
   const preflight = step(router, 'STEP_1B_PREFLIGHT');
+  const preflightGate = read(
+    'ai',
+    'kit',
+    'contract',
+    'process',
+    'readiness-preflight-gate.xml'
+  );
   const skills = ['sdd', 'sdd-execute', 'sdd-scaffold', 'sdd-reconcile', 'sdd-critic'].map(
     (name) => [name, read('ai', 'skills', name, 'SKILL.md')] as const
   );
@@ -52,12 +59,10 @@ describe('router state/session execution order', () => {
       const assembledPreflight = step(assembled, 'STEP_1B_PREFLIGHT');
       assert.doesNotMatch(assembledState, /<ToolCall\b|READ_AND_USE_DIRECTIVE/);
       assert.match(assembledClassify, /result="sessionOpen"/);
-      if (assembled === router) {
-        assert.match(assembledPreflight, /contract\/process\/readiness-preflight-gate/);
-      } else {
-        assert.match(assembledPreflight, /migration-v1-v2\.directive\.xml/);
-        assert.match(assembledPreflight, /readiness\.directive\.xml/);
-      }
+      const effectivePreflight =
+        assembled === router ? `${assembledPreflight}\n${preflightGate}` : assembledPreflight;
+      assert.match(effectivePreflight, /migration-v1-v2\.directive\.xml/);
+      assert.doesNotMatch(effectivePreflight, /readiness\.directive\.xml/);
     }
     assert.doesNotMatch(state, /readiness-preflight-gate|READ_AND_USE_DIRECTIVE/);
     assert.doesNotMatch(state, /<ToolCall\b/);
@@ -77,21 +82,14 @@ describe('router state/session execution order', () => {
     );
   });
 
-  it('reuses the branch-owned post-mutation snapshot and never refreshes in the router', () => {
+  it('reuses only the migration-owned post-mutation snapshot and never refreshes in the router', () => {
     assert.doesNotMatch(router, /<ToolCall\b[^>]*>npx gennady sdd-state<\/ToolCall>/);
-    assert.match(preflight, /activeRouterState = readinessState/);
+    assert.doesNotMatch(preflight, /readinessState|readiness arm/);
     assert.match(preflight, /activeRouterState = migrationState/);
-    assert.match(preflight, /Do not run a router refresh after either return/);
+    assert.match(preflight, /Do not run a router refresh after that return/);
+    assert.match(preflight, /Readiness branches are routing decisions over `activeRouterState`/);
 
-    const readiness = read('ai', 'kit', 'templates', 'sdd-v2', 'readiness.directive.hbs');
     const migration = read('ai', 'kit', 'templates', 'sdd-v2', 'migration-v1-v2.directive.hbs');
-    assert.equal(
-      readiness.match(/<ToolCall\b[^>]*result="readinessState">npx gennady sdd-state<\/ToolCall>/g)
-        ?.length,
-      2,
-      'two mutually exclusive call-sites produce the same one returned alias'
-    );
-    assert.match(readiness, /Every return from this directive carries exactly that one latest `readinessState`/);
     assert.equal(
       migration.match(/<ToolCall\b[^>]*>npx gennady sdd-state<\/ToolCall>/g)?.length,
       1,
