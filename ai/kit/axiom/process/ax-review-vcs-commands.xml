@@ -6,7 +6,7 @@
       no empty, dot, dot-dot, terminal-dot, terminal-slash, `.lock`, or `@{` component/form. A review
       slug is derived from the primary spec's canonical scope segment and must match
       `[a-z0-9]+(-[a-z0-9]+)*`. A PR number is a non-zero decimal integer.
-      Read/freeze: `git status --porcelain=v1 --untracked-files=all`, `git hash-object -- <path>`,
+      Read/freeze: `git status --porcelain=v1 --untracked-files=all`,
       `git diff --cached --name-only`, `git diff --exit-code -- <publication-files>`,
       `git ls-files --stage -- <publication-files>`, `git rev-parse HEAD`,
       `git branch --show-current`,

@@ -12,6 +12,10 @@
   (Execution-Log token vocabulary, baseline Completion Rule, audit hint, file-header rule) lives
   once in `<module>.3-tasks.md` per `AX_TICKET_DEDUPLICATION` — not duplicated here.
 
+  Approval #2 is not copied into every ticket. The narrowest owning task index lists the complete
+  reviewed ticket set and carries the human-readable `ARTIFACT_APPROVAL_MARKER`; execution resolves
+  that index and requires the selected ticket to be a listed member.
+
   Every Verification `Command` cell serializes the exact runtime command as a Markdown code span.
   Its outer backtick run is one longer than the longest consecutive backtick run inside the command;
   no command byte is escaped or normalized. The parser removes only that matching outer delimiter.
@@ -55,12 +59,6 @@
   <!--SECTION:PHASE_P1-->
   ### P1 — <kind>
   - **Objective:** <one-line>
-  - **Capability Adapter:** <adapter-id>   <!-- required when this phase declares package/capability facts; omit otherwise -->
-  - **Provides Capabilities:** <comma-separated capability ids>   <!-- capabilities this phase materializes; omit when none -->
-  - **Requires Capabilities:** <comma-separated capability ids>   <!-- exact current/upstream prerequisites; omit when none -->
-  - **Bootstrap Action:** dependency-install   <!-- every phase that adds packages; omit otherwise -->
-  - **Provides Packages:** <comma-separated exact package names>   <!-- dependency-install only -->
-  - **Requires Packages:** <comma-separated exact package names>   <!-- phases whose config/commands need packages absent from clean HEAD; omit otherwise -->
   - **Rules:**   <!-- links only, resolved from the cascade; rule content is never inlined -->
     - [ai/directives/<category>/<rule>.xml](<relative-path>)
   - **Spec Refs:**   <!-- optional — subset of Meta Spec References THIS phase actually reads; omit the whole field to fall back to the full Meta set (sdd-task --phase filters to this list when present) -->
@@ -79,12 +77,6 @@
   <!--SECTION:PHASE_P2-->
   ### P2 — <kind>
   - **Objective:** <one-line>
-  - **Capability Adapter:** <adapter-id>   <!-- required when this phase declares package/capability facts; omit otherwise -->
-  - **Provides Capabilities:** <comma-separated capability ids>   <!-- omit when none -->
-  - **Requires Capabilities:** <comma-separated capability ids>   <!-- omit when none -->
-  - **Bootstrap Action:** dependency-install   <!-- include only when this phase adds packages -->
-  - **Provides Packages:** <comma-separated exact package names>   <!-- dependency-install only -->
-  - **Requires Packages:** <comma-separated exact package names>   <!-- omit when none -->
   - **Rules:**
     - [ai/directives/<category>/<rule>.xml](<relative-path>)
   - **Spec Refs:**   <!-- optional, see P1 -->

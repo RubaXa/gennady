@@ -4,11 +4,10 @@
   Every progress message uses exactly this one-line grammar; do not introduce alternate service-line
   prose or omit a field:
 
-  `[<bar>] <pct>% | task=<Task-ID|selection> | stage=<stage> | session=<reused <kind>@<spec>|fresh (<reason>)>`
+  `[<bar>] <pct>% | task=<Task-ID|selection> | phase=<P<N>|—> | stage=<stage>`
 
-  Before task selection use `task=selection`. Before a worker key exists, `session=` reports the
-  router's exact execute-session transition (`reused execute@<working-set>` or `fresh (first)`). Once a
-  worker is selected it reports that worker path (`reused <kind>@<spec>` or `fresh (<reason>)`).
+  Before task selection use `task=selection` and `phase=—`. Worker identity and conversation reuse
+  are deliberately absent: progress is the durable ticket/phase transition, not the agent process.
 
   Stages: `⏳ resolving + planning` · `🔧 phase <P<N>> (<kind>, <model>) executing` · `✅ phase <P<N>> done → next` · `✅ all phases done → 🔍 audit` · `✅ audit PASS`.
   Retry path: `❌ audit FAIL → 🔄 re-run <phases> as fix` · `✅ re-run done → 🔍 audit R2`.

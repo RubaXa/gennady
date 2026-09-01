@@ -46,7 +46,6 @@ console.info('  sdd-extract       Extract one anchored section from an SDD artif
 console.info('  sdd-new           Scaffold one SDD v2 artifact');
 console.info('  sdd-verify        Run the ticket or profile verification ladder');
 console.info('  sdd-log           Append an event to a ticket Execution Log');
-console.info('  sdd-session       Manage the SDD session scratch file');
 console.info('  sdd-sync          Propagate ticket status into task trackers');
 console.info('  sdd-task          Show the execution map or one ticket phase context');
 console.info('  sdd-migrate       Run deterministic SDD v1-to-v2 migration steps');

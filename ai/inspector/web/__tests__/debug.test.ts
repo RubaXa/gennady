@@ -85,7 +85,7 @@ test('regression: a formats/*.xml contract reference (not *.directive.xml) is of
   assert.ok(after.done, 'flow completes after the content-only contract immediately unwinds');
 });
 
-test('/sdd skill exposes the GATHER / EMBODY / ROUTE loader steps and embodies the router', () => {
+test('/sdd skill exposes the stateless GATHER / EMBODY / ROUTE loader steps and embodies the router', () => {
   const sdd = loadSkill('sdd');
   const units = unitsOf(sdd);
   const ids = units.map((u: any) => u.attrs?.id);
@@ -104,16 +104,16 @@ test('a lazy directive step carries the package READ_AND_USE into the debugger m
   assert.equal(
     main.run.ref,
     'ai/directives/sdd-v2/router.directive.xml',
-    'public intent skills enter through the router instead of bypassing session policy'
+    'public intent skills enter through the stateless router'
   );
 
-  const { sim } = driveUntil(scaffold, (s) => s.current?.unit.attrs?.id === 'STEP_2_DAG', [
+  const { sim } = driveUntil(scaffold, (s) => s.current?.unit.attrs?.id === 'STEP_2_MATERIALIZE', [
     /scaffold\.directive\.xml/,
   ]);
   assert.equal(
     sim.current?.unit.attrs?.id,
-    'STEP_2_DAG',
-    'the router scaffold branch reaches the lazy DAG step in the debugger'
+    'STEP_2_MATERIALIZE',
+    'the router scaffold route reaches the lazy ticket materialization step'
   );
   assert.deepEqual(
     stackLabels(sim),
@@ -122,7 +122,7 @@ test('a lazy directive step carries the package READ_AND_USE into the debugger m
   );
   const reads = readsOf(sim.current.unit);
   assert.equal(reads.length, 1);
-  assert.equal(reads[0].ref, 'ai/directives/sdd-v2/scaffold/steps/STEP_2_DAG.xml');
+  assert.equal(reads[0].ref, 'ai/directives/sdd-v2/scaffold/steps/STEP_2_MATERIALIZE.xml');
 });
 
 test('scenario: advancing past GATHER auto-enters the router at EMBODY (stack /sdd › <SddRouter>)', () => {
@@ -139,36 +139,45 @@ test('scenario: advancing past GATHER auto-enters the router at EMBODY (stack /s
   assert.ok(loaded, 'router node carried on the entry divider for the collapsed inspect block');
 });
 
-test('scenario: after the session barrier STEP_1B_PREFLIGHT offers typed migration / authoring / execution / DEFAULT branches', () => {
+test('scenario: STEP_2_ROUTE exposes the exact current stateless owner routes', () => {
   const sdd = loadSkill('sdd');
-  const { sim } = driveUntil(sdd, (state) => state.current?.unit.attrs?.id === 'STEP_1B_PREFLIGHT');
+  const { sim } = driveUntil(sdd, (state) => state.current?.unit.attrs?.id === 'STEP_2_ROUTE');
   assert.ok(sim.current, 'a current unit is active');
-  assert.equal(sim.current.unit.attrs?.id, 'STEP_1B_PREFLIGHT');
+  assert.equal(sim.current.unit.attrs?.id, 'STEP_2_ROUTE');
   const trans = sim.current.transitions;
   assert.ok(
     trans.every((t: any) => t.type === 'branch'),
-    'preflight switch yields branch choices, not a linear next'
+    'the current LOGIC_SWITCH yields conditional branches, not flattened directive links'
   );
-  const labels = trans.map((t: any) => t.label).join(' | ');
-  assert.match(labels, /FLOW_VERSION=v1/); // → migration branch
-  assert.match(labels, /AUTHORING_SCOPE=<target> READY=no\|not-applicable/);
-  assert.match(labels, /EXECUTION_READY=no/);
-  assert.match(labels, /DEFAULT/);
-  // the conditional branches carry the directive they would load
-  const migBranch = trans.find((t: any) => t.run && /migration-v1-v2/.test(t.run.ref));
-  assert.ok(migBranch, 'FLOW_VERSION=v1 branch loads migration-v1-v2.directive.xml');
+  assert.equal(trans.at(-1)?.label, 'DEFAULT');
+  assert.deepEqual(
+    trans.slice(0, -1).map((t: any) => base(t.run?.ref)),
+    [
+      'migration-v1-v2.directive.xml',
+      'scaffold.directive.xml',
+      'execute.directive.xml',
+      'critic.directive.xml',
+      'reconcile.directive.xml',
+      'root.directive.xml',
+      'discover-from-code.directive.xml',
+      'module.directive.xml',
+      'infra.directive.xml',
+      'interface.directive.xml',
+      'scope.directive.xml',
+    ]
+  );
 });
 
-test('scenario: taking the FLOW_VERSION=v1 branch descends into the migration directive (3-level stack)', () => {
+test('scenario: taking the explicit V1→V2 branch descends into the migration directive', () => {
   const sdd = loadSkill('sdd');
   const { sim, moves } = driveUntil(
     sdd,
-    (state) => state.current?.unit.attrs?.id === 'STEP_1B_PREFLIGHT'
+    (state) => state.current?.unit.attrs?.id === 'STEP_2_ROUTE'
   );
   const migIdx = sim.current.transitions.findIndex(
     (t: any) => t.run && /migration-v1-v2/.test(t.run.ref)
   );
-  assert.ok(migIdx >= 0, 'migration branch present');
+  assert.ok(migIdx >= 0, 'the sole V1→V2 migration route is present');
   const after = simulate(sdd, [...moves, { type: 'branch', i: migIdx }]);
   assert.deepEqual(stackLabels(after), ['/sdd', '<SddRouter>', '<SddMigrationV1V2>']);
   assert.ok(divs(after).some((d: string) => d.startsWith('ветка → загружена <SddMigrationV1V2>')));
@@ -177,24 +186,26 @@ test('scenario: taking the FLOW_VERSION=v1 branch descends into the migration di
   assert.equal(migDiv.depth, 2, 'migration entry sits at depth 2 (shifted two levels in)');
 });
 
-test('scenario: the DEFAULT preflight branch proceeds inside the router (no descent) to routing', () => {
+test('scenario: taking the scaffold branch descends through the stateless router', () => {
   const sdd = loadSkill('sdd');
   const { sim, moves } = driveUntil(
     sdd,
-    (state) => state.current?.unit.attrs?.id === 'STEP_1B_PREFLIGHT'
+    (state) => state.current?.unit.attrs?.id === 'STEP_2_ROUTE'
   );
-  const defIdx = sim.current.transitions.findIndex((t: any) => /DEFAULT/.test(t.label));
-  const after = simulate(sdd, [...moves, { type: 'branch', i: defIdx }]);
-  // DEFAULT has no directive to load → we stay in the router frame and advance past preflight.
-  assert.deepEqual(stackLabels(after), ['/sdd', '<SddRouter>']);
-  assert.equal(after.current?.unit.attrs?.id, 'STEP_2_ROUTE', 'advanced beyond the preflight');
+  const scaffold = sim.current.transitions.findIndex(
+    (t: any) => t.run && /scaffold\.directive\.xml/.test(t.run.ref)
+  );
+  assert.ok(scaffold >= 0, 'scaffold route present');
+  const after = simulate(sdd, [...moves, { type: 'branch', i: scaffold }]);
+  assert.deepEqual(stackLabels(after), ['/sdd', '<SddRouter>', '<SddScaffold>']);
+  assert.equal(after.current?.unit.attrs?.id, 'STEP_0_PREFLIGHT');
 });
 
 test('determinism: identical moves reproduce an identical log', () => {
   const sdd = loadSkill('sdd');
   const { sim, moves } = driveUntil(
     sdd,
-    (state) => state.current?.unit.attrs?.id === 'STEP_1B_PREFLIGHT'
+    (state) => state.current?.unit.attrs?.id === 'STEP_2_ROUTE'
   );
   const migration = sim.current.transitions.findIndex(
     (transition: any) => transition.run && /migration-v1-v2/.test(transition.run.ref)

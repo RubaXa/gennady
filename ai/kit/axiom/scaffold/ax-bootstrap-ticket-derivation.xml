@@ -1,19 +1,26 @@
-<!-- source: ai/directives/sdd/scaffold.directive.xml -->
+<!-- source: stateless SDD v2 scaffold bootstrap ordering -->
 <Axiom id="AX_BOOTSTRAP_TICKET_DERIVATION">
-      **Bootstrap Requirements rows with Owner=`this-scope-task` become the minimum coherent capability workstreams per `AX_DAG_AND_TICKET_BOUNDARIES`.** Derive only layers demanded by the selected requirements: runtime → package manager/dependencies → language/compiler → quality/test tooling → app platform. This is a platform-neutral taxonomy, not a mandatory five-ticket stack; adapter ids bind the concrete platform facts.
-      Each emitted node carries its closed owner kind: infrastructure rows → `infrastructure-flat`;
-      product/library `this-scope-task` rows → `scope-bootstrap`; product/library module work →
-      `module`. No fourth owner exists; interface never owns a task.
-      - Rows with Owner=`external-prereq-scope` → cross-scope dependency edge, not a ticket here.
-      - Rows with Owner=`operator-action` → noted in tracker index as a blocking external prerequisite, not a ticket.
-      - For each selected layer declare `Capability Adapter`, `Provides Capabilities`, and exact `Requires Capabilities`; every requirement reaches exactly one current/upstream provider through the phase/task DAG.
-      - Every package mutation declares `Bootstrap Action: dependency-install`, exact `Provides Packages`, and Target Files containing the adapter manifest plus future/active lockfile. Consumers declare exact `Requires Packages`. Several layers may write the same manifest/lock only when the DAG strictly serializes them; no global single-owner rule exists.
-      - Populate Verification from the Bootstrap Requirements Resolution command. One package probe proves one exact package; do not merge unrelated package probes.
-      - A causally coupled dependency → config → command-smoke workstream is one DAG-connected ordered
-        chain; coherent spec/context boundaries may split it across serialized tickets or phases. Never gate
-        an earlier node on a later artifact. Project-wide wrappers belong to readiness/full audit.
-        Role=`probe` belongs to the unique test phase owning its mapped test file; `Required-by` is
-        traceability, not phase routing.
-      - The authoring and feasibility tool calls own adapter lookup, rule-file evidence, provider uniqueness/order, package materialization, shared-writer serialization, and smoke ownership diagnostics. Apply their exact finding and rerun; do not reconstruct those mechanics in prose.
-      - If Bootstrap Requirements is absent from the spec → abort with `H_BOOTSTRAP_REQUIREMENTS_MISSING` (the spec did not pass discovery STEP_7).
-    </Axiom>
+  Bootstrap Requirements with Owner=`this-scope-task` become the smallest coherent infrastructure
+  workstream needed by the approved specification. Prefer one ticket; split only for a real independent
+  outcome or the general `AX_DAG_AND_TICKET_BOUNDARIES` conditions. Do not manufacture one ticket per
+  runtime, package manager, dependency, compiler, quality tool, or application platform.
+
+  Ownership remains structural: infrastructure rows use `infrastructure-flat`; product/library
+  bootstrap rows use `scope-bootstrap`; module work uses `module`. `external-prereq-scope` becomes a
+  cross-scope dependency and `operator-action` becomes an explicit blocking prerequisite in the index.
+
+  Express the implementation plan with ordinary ticket fields only: ordered phases, `Deps`, `Rules`,
+  `Spec Refs`, `Target Files`, `Readiness Gates`, `Inputs`, `Exit`, BDD, and Verification. The semantic
+  DAG must put every prerequisite before its consumer. For example, a repository runtime/version
+  contract (`.nvmrc` or equivalent) and the selected package-manager contract precede dependency
+  installation; dependency materialization precedes scripts, configuration, tests, and commands that
+  consume those dependencies. Shared manifest/lock writers are serialized by phase/ticket dependencies.
+
+  `sdd-check --task ... --authoring` and `sdd-check --all .` validate structure, references, IDs, and
+  dependency shape. The independent actual-ticket review judges whether the declared order is
+  semantically sufficient and whether each real Verification command proves its requirement. No
+  synthetic provider/package field schema or feasibility pre-plan/tool mode is part of this flow.
+
+  If Bootstrap Requirements is absent, stop scaffold and return to the owning specification flow;
+  scaffold must not invent infrastructure requirements.
+</Axiom>

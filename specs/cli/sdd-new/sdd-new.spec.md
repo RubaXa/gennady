@@ -305,9 +305,15 @@ shared/sdd/templates.ts   # ArtifactKind registry: skeleton + section manifest +
 
 ### D-NW018 — Task skeleton exposes capability and package ownership fields
 
-- **Status:** active · **Extends:** D-NW016, D-NW017
+- **Status:** superseded by D-NW019 · **Extends:** D-NW016, D-NW017
 - **Why:** a blank ticket without adapter, capability, and package ownership fields pushes deterministic infrastructure boundaries into prose or execute-time discovery. Every phase skeleton now exposes optional `Capability Adapter`, capability provides/requires, bootstrap action, and package provides/requires. Task success prints the exact path-aware `sdd-check --task … --authoring` command and the later project `sdd-check --scaffold-feasibility` command, so happy-path authoring does not require `--help` or searching another repository.
 - **Risk accepted:** fields are optional for phases without capability/package responsibility; authoring and feasibility decide applicability.
+
+### D-NW019 — Task skeleton stays a semantic implementation plan
+
+- **Status:** active · **Supersedes:** D-NW018 · **Extends:** D-NW016, D-NW017
+- **Why:** capability adapters, package provides/requires and bootstrap actions turned ordinary ticket authoring into a second platform dependency program that duplicated the semantic phase plan. The task skeleton now keeps only operator-readable Objective, phase Deps, Rules, Spec Refs, Target/Deleted Files, Readiness Gates, Inputs, Exit, BDD, Verification and Requirement-ID traceability. Infrastructure ordering is approved by semantic ticket review; `sdd-verify` confirms real runnable commands and waits for downstream Readiness Gate owners through the declared phase dependency graph. Task success prints the exact path-aware `sdd-check --task … --authoring` command and routes the completed ticket set to independent semantic review instead of `--scaffold-feasibility`.
+- **Risk accepted:** mechanical authoring no longer proves a synthetic capability graph. Ambiguous infrastructure ordering must be rejected by semantic review, while missing or premature runtime gates still fail closed in `sdd-verify`.
 <!--/SECTION:MODULE_DECISION_LOG-->
 
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->

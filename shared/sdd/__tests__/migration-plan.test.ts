@@ -157,7 +157,7 @@ describe('migration-plan', () => {
   });
 
   it('mapHeadingToSection: нераспознанный заголовок → UNMAPPED, не угадывает ближайшее', () => {
-    assert.strictEqual(mapHeadingToSection('## Critic Rounds'), UNMAPPED);
+    assert.strictEqual(mapHeadingToSection('## Unknown Section'), UNMAPPED);
     assert.strictEqual(mapHeadingToSection('## CLI Interface'), UNMAPPED);
     assert.strictEqual(mapHeadingToSection('## Emoji Mapping'), UNMAPPED);
   });
@@ -165,14 +165,14 @@ describe('migration-plan', () => {
   it('Section Map: нераспознанный заголовок помечен UNMAPPED и валит plan --verify', () => {
     writeFileSync(
       join(root, 'specs', 'demo', 'core', 'core.spec.md'),
-      MODULE_SPEC + '\n## 2. Critic Rounds\nтекст',
+      MODULE_SPEC + '\n## 2. Unknown Section\nтекст',
       'utf-8'
     );
     const scan = scanMigrationUnits(root);
     const core = scan.units.find((u) => u.module === 'core');
     assert.ok(core);
     const content = scaffoldUnitFile(core);
-    assert.ok(content.includes(`| \`## 2. Critic Rounds\` | ? | ${UNMAPPED} |`));
+    assert.ok(content.includes(`| \`## 2. Unknown Section\` | ? | ${UNMAPPED} |`));
     const codes = verifyUnitFile(unitFilePath(core), content, core).map((f) => f.code);
     assert.ok(codes.includes('MIG_SECTION_UNMAPPED_TARGET'), codes.join(','));
   });

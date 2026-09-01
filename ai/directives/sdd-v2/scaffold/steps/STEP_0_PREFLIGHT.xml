@@ -1,0 +1,25 @@
+0.8.4
+
+<Step id="STEP_0_PREFLIGHT">
+      <Goal>Resolve the exact approved spec set and existing ticket topology.</Goal>
+      <Action>
+        Use the router snapshot plus actual specs and task indexes. Accept only V2 specs whose current
+        state carries a well-formed `approved` approval #1 marker in
+        `ARTIFACT_APPROVAL_MARKER` format. Check its paths and use Git evidence
+        plus semantic judgment for staleness; a marker is not a byte/hash gate. Missing, malformed, or
+        stale approval stops with `H_SPEC_NOT_APPROVED`. Structurally invalid V2 stops with
+        `H_V2_INVALID` and returns to the owning V2 authoring flow. Auto-detect `initial`
+        or `extend-dag`; preserve existing IDs and
+        completed tickets in extend mode. Do not create a migration path, `.sdd-session.md`,
+        scaffold-plan JSON, digest, feasibility event, or critic journal (`AX_STATELESS_FLOW`).
+      </Action>
+    </Step>
+
+<Axiom id="AX_STATELESS_FLOW" invariant="true">
+      SDD orchestration owns no durable hidden control plane. Specs, ticket fields, task indexes,
+      Execution Log, Git, and real command output are the complete continuation state. A scratch file
+      may carry bytes between two adjacent tool calls, but it is disposable, never an approval record,
+      never a state machine, and never required to resume.
+    </Axiom>
+
+After completing this step, and only then, READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/scaffold/steps/STEP_1_DERIVE.xml"). Do not preload later step packages.

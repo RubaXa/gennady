@@ -56,18 +56,6 @@ export type PhaseDetail = {
   deletedFiles: string[];
   /** @purpose Missing readiness gates this phase structurally creates; absent for ordinary phases. */
   readinessGates: string[];
-  /** @purpose Closed bootstrap action; `dependency-install` identifies the package+lock owner. */
-  bootstrapAction: string | null;
-  /** @purpose Exact package names installed by this dependency-install phase. */
-  providesPackages: string[];
-  /** @purpose Exact package names this phase's artifacts/commands need before execution. */
-  requiresPackages: string[];
-  /** @purpose Explicit platform adapter id that interprets this phase's capability fields. */
-  capabilityAdapter: string | null;
-  /** @purpose Exact platform-neutral capability ids materialized by this phase. */
-  providesCapabilities: string[];
-  /** @purpose Exact platform-neutral capability ids that must precede this phase. */
-  requiresCapabilities: string[];
   /** @purpose Optional per-phase spec-anchor subset (`Spec Refs:` bullets) — when empty, callers fall back to the ticket's whole Meta Spec References. */
   specRefs: string[];
   /** @purpose Inputs line (e.g. `none`, `P1 handoff`), or null. */
@@ -235,11 +223,6 @@ export function parsePhasesOverview(body: string): PhaseOverview[] {
  * @returns The PhaseDetail (objective, rule links, target files, inputs, exit).
  */
 export function parsePhaseDetail(phaseBody: string): PhaseDetail {
-  const commaList = (label: string): string[] =>
-    (inlineField(phaseBody, label) ?? '')
-      .split(',')
-      .map((value) => value.replace(/`/g, '').trim())
-      .filter(Boolean);
   return {
     objective: inlineField(phaseBody, 'Objective'),
     rules: bulletsUnder(phaseBody, 'Rules').map((b) => parseLink(b).anchor || parseLink(b).name),
@@ -252,12 +235,6 @@ export function parsePhaseDetail(phaseBody: string): PhaseDetail {
     readinessGates: bulletsUnder(phaseBody, 'Readiness Gates').map((b) =>
       b.replace(/`/g, '').trim()
     ),
-    bootstrapAction: inlineField(phaseBody, 'Bootstrap Action'),
-    providesPackages: commaList('Provides Packages'),
-    requiresPackages: commaList('Requires Packages'),
-    capabilityAdapter: inlineField(phaseBody, 'Capability Adapter'),
-    providesCapabilities: commaList('Provides Capabilities'),
-    requiresCapabilities: commaList('Requires Capabilities'),
     specRefs: bulletsUnder(phaseBody, 'Spec Refs').map(
       (b) => parseLink(b).anchor || parseLink(b).name
     ),

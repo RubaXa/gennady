@@ -676,7 +676,11 @@ describe('SddTaskCommand', () => {
       assert.match(text, /\[sdd-task\] cli-foo — P2 test  status=\[ \]/);
       assert.match(text, /objective:   test foo/);
       assert.match(text, /gates:\n {2}npm run test — /);
-      assert.doesNotMatch(text, /npm run type-check/);
+      assert.doesNotMatch(text, /^ {2}npm run type-check — /m);
+      assert.match(
+        text,
+        /^ {2}gate-state: type-check CONFIGURED provider=none next=run npm run type-check$/m
+      );
       assert.match(text, /exit:        all scenarios pass/);
       assert.match(text, /READ rules:  ai\/directives\/testing\/node-test\.xml/);
       assert.match(text, /READ files:  src\/foo\.test\.ts/);

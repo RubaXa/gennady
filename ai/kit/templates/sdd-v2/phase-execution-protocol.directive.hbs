@@ -1,373 +1,47 @@
-<SddPhaseExecution keywords="phase-execution, single-phase, scope-lock, narrow-recon, verify-gate, live-log, handoff, worker, isolated, sdd-task, resume" type="directive" ver="2.5">
+<PhaseExecutionProtocol keywords="sdd, phase, worker, implementation, verification" type="directive" ver="2.3">
   <Mission>
-    Execute ONE phase of ONE task ticket, on a minimal activation from the execute orchestrator —
-    this directive's path, ticket path, phase ID, and reason. This directive plus STEP_1's
-    `gennady sdd-task <ticket> --phase P<N>` output are the WHOLE working context: nothing beyond
-    the anchors the tool names.
-    Return every stop with evidence and a typed outcome. Technical facts are
-    `RECOVERABLE_TECHNICAL`; the orchestrator owns technical replan and operator routing. Project failures describe the
-    project plan, not Gennady internals.
-
-    Read only what this phase needs; write only Target Files and remove only declared Deleted Files; run the verification gate;
-    emit a typed Handoff. A worker directive — runs in isolation on a cheaper model, returns to the
-    orchestrator, stays silent to the operator (no decision cards here).
-
-    The orchestrator owns all of: selecting the next phase · running audit · re-running prior phases ·
-    syncing the project trackers.
-
-    Phase = atomic unit declared in the ticket `Phases`. Kind ∈ bootstrap | impl | test | config
-    | doc | refactor | fix.
+    Implement exactly one approved ticket phase, verify it with declared real commands, update the
+    phase's durable Execution Log facts, and return a typed handoff. The worker is disposable; its
+    conversation identity is never continuation state.
   </Mission>
-
   <BeliefState>
-    {{> "axiom/process/ax-operator-language"}}
-
-    {{> "axiom/process/ax-tool-invocation"}}
-
-    {{> "axiom/process/ax-operator-dialogue-style"}}
-
+    {{> "axiom/process/ax-stateless-flow"}}
     {{> "axiom/process/ax-phase-scope-lock"}}
-
-    {{> "axiom/boundary/ax-ticket-write-scope"}}
-
-    {{> "axiom/boundary/ax-spec-never-edited"}}
-
-    {{> "axiom/process/ax-release-ready-default"}}
-
-    {{> "axiom/process/ax-narrow-recon"}}
-
-    {{> "axiom/process/ax-read-per-manifest"}}
-
-    {{> "axiom/scaffold/ax-rules-load-from-phase-block"}}
-
-    {{> "axiom/boundary/ax-closed-world-inventory"}}
-
-    {{> "axiom/coding/ax-introduced-discipline"}}
-
-    <Axiom id="AX_USAGE_WAIVER_DISCIPLINE">
-      `gennady yagni` flags an added/changed EXPORTED symbol with under 2 repo-wide production
-      usages (tests and barrel re-exports never count; a private symbol is flagged only at zero
-      usages — dead code) — a spec-level diff gate run once per group, inside the dispatched
-      audit's `npx gennady sdd-verify --profile full`, never inside a phase's own
-      `setup`/`code`/`test` gate and never as an orchestrator preflight. A finding routes to a `fix`
-      dispatch on the ticket that OWNS the flagged entity. That worker either (a) removes the
-      symbol, or (b) genuinely needs it — then adds `- **Usage Waiver:** <reason>` to its
-      contract/surface entry (`DBC_PORT_FORMAT` / `DBC_ADAPTER_FORMAT` / `ENTITY_SURFACE_FORMAT`)
-      AND logs `yagni <EntityName> ← <reason>` by writing that literal text with the file-write tool
-      to `.claude/tmp/<task-id>-<phase-id>-log.txt`, then running
-      `npx gennady sdd-log <owning-ticket> line --content-file .claude/tmp/<task-id>-<phase-id>-log.txt --phase <PhaseID>` —
-      the label alone is not sufficient, the log line is what audit cross-checks
-      (`AX_AUDIT_YAGNI_CROSSCHECK`). Cite an `<ACR>-DL-N` only when the reason IS a real Decision Log
-      heading, else `gennady yagni` re-reports as `ERR_CLI_YAGNI_WAIVER_DECISION_MISSING`. Public
-      API for a named external consumer uses the `(external: <consumer>)` variant — mandatory label,
-      same rule. On a finding the tool prints the exact `- **Usage Waiver:**` block — paste it
-      verbatim, never compose it from memory.
-    </Axiom>
-
-    {{> "axiom/coding/ax-no-silent-escape-hatch"}}
-
-    {{> "axiom/coding/ax-file-header-append-only"}}
-
-    {{> "axiom/testing/ax-bdd-name-discipline"}}
-
-    {{> "axiom/infra/ax-third-party-tool-current-api"}}
-
-    {{> "axiom/infra/ax-dependency-addition-checklist"}}
-
+    {{> "axiom/process/ax-tool-invocation"}}
     {{> "axiom/process/ax-verification-before-handoff"}}
-
-    {{> "axiom/process/ax-permitted-bash-commands"}}
-
-    {{> "axiom/process/ax-live-log"}}
-
-    {{> "axiom/process/ax-halt-vs-fail-distinction"}}
-
-    {{> "axiom/process/ax-deviation-self-resolve"}}
-
     {{> "axiom/process/ax-handoff-typed"}}
   </BeliefState>
-
-  <HaltConditions>
-    | 🛑 ID | Trigger |
-    |---|---|
-    | `H_PHASE_NOT_FOUND` | `sdd-task --phase` returns `ERR_CLI_SDD_TASK_PHASE_NOT_FOUND` — the phase ID from the orchestrator matches no row in Phases Overview |
-    | `H_PHASE_ALREADY_DONE` | The `status=` field in `sdd-task --phase`'s header line is `[x]` and no `fix` reason was passed |
-    | `H_RECON_DIVERGENCE` | Recon shows Target Files inconsistent with the phase plan |
-    | `H_MISSING_RULE_FILE` | A rule cited in the phase's `READ rules:` line does not resolve |
-    | `H_INPUT_HANDOFF_MISSING` | A phase Input cites a prior phase whose Handoff is absent from `sdd-task --phase`'s `[HANDOFF]` block in the current Round |
-    | `H_OUT_OF_PHASE_WRITE` | A write is required outside Target Files, a deletion outside Deleted Files, or a ticket write outside `AX_TICKET_WRITE_SCOPE` |
-    | `H_THIRD_PARTY_API_UNVERIFIABLE` | `config` kind: ToolDocAdapter unsupported/ambiguous, installed version unavailable, or its permitted evidence is insufficient |
-    | `H_VERIFICATION_FAIL` | Verification evidence is `RECOVERABLE_TECHNICAL`; the orchestrator owns bounded retry/exhaustion |
-    | `H_TECHNICAL_REPLAN` | Missing config/package/gate/CREATE target, target mismatch, tool diagnostic, or task-decomposition defect — report `RECOVERABLE_TECHNICAL` with evidence and a bounded plan to the orchestrator |
-    | `H_SPEC_GOAL_CONFLICT` | A technical repair contradicts an approved spec/BDD goal — report `SPEC_GOAL_CONFLICT` with the exact conflicting refs |
-    | `H_EXTERNAL_AUTHORITY_REQUIRED` | Completion requires permission or external authority unavailable to the worker — report `EXTERNAL_AUTHORITY_REQUIRED` with evidence |
-  </HaltConditions>
-
-  <OutcomeRouting>
-    `H_VERIFICATION_FAIL` and `H_TECHNICAL_REPLAN` return `RECOVERABLE_TECHNICAL`;
-    `H_SPEC_GOAL_CONFLICT` returns `SPEC_GOAL_CONFLICT`; `H_EXTERNAL_AUTHORITY_REQUIRED` returns
-    `EXTERNAL_AUTHORITY_REQUIRED`. The orchestrator owns every NEXT transition.
-  </OutcomeRouting>
-
-  <ContextExpectation>
-    Dispatch contains only this directive path, ticket, phase, kind + reason (`initial` / `fix:
-    F-NNN` / `resume`), and 1-3 context lines the ticket lacks. It does NOT paste the read-manifest, gates, or
-    prior Handoff — STEP_1 gets all of that directly, as the first action of this phase, by calling
-    `sdd-task` itself. A tool call made fresh at the start of THIS run cannot go stale between
-    dispatch and execution — the concern a pasted-prompt approach had on a retry.
-
-    This activation may land in a session that already ran a prior phase for this same ticket's
-    spec (the orchestrator's `AX_WORKER_SESSION_REUSE`) — continuing a session is a context
-    optimization on the orchestrator's side, never a reason to skip or shortcut STEP_1 below. Run
-    STEP_1 (`sdd-task --phase`) fresh regardless, and do not rely on memory of the previous task —
-    this task's own state lives entirely in what that call returns, not in what an earlier phase in
-    this session remembered.
-
-    Per `AX_READ_PER_MANIFEST`: read EXACTLY the manifest the tool hands you, nothing beyond it. Pull
-    each cited block by anchor (`sdd-extract <file> <NAME>`, or `sdd-extract <file>#<anchor>` when the
-    manifest already prints the combined form), not whole files. Something needed but
-    absent from the manifest → emit a `discovery` line and surface it; keep the read within the
-    manifest.
-
-    **Tool reference** — this tested table is the complete mechanical surface for the phase. Do not
-    call `--help`; each row gives the exact grammar and an example:
-
-    | Tool | When | Call |
-    |---|---|---|
-    | `sdd-task <ticket> --phase P<N>` | FIRST action, every phase, every retry — objective, gates + satisfy-hints, exit, phase-scoped READ/CREATE lifecycle manifest, prior Handoff | `npx gennady sdd-task <ticket> --phase P2` |
-    | `sdd-extract <file> <NAME>` · `sdd-extract <file>#<anchor>` | Pull ONE cited block instead of a whole file — `<NAME>` is a `SECTION_NAME` (`PHASE_P1`, `BDD`, `VERIFICATION`, …), two args; a markdown heading anchor is the combined `path#lower-dashed-slug` form the read-manifest prints | `npx gennady sdd-extract <ticket> PHASE_P1` · `npx gennady sdd-extract specs/app/greeting/greeting.spec.md#module-contracts` |
-    | `sdd-log <ticket-path\|Task-ID> line --content-file <payload> --phase <PhaseID>` | Semantic event; agent writes free text with the file-write tool, never shell argv | `npx gennady sdd-log <ticket-path\|Task-ID> line --content-file .claude/tmp/TSK-x-P2-log.txt --phase P2` |
-    | `sdd-log <ticket> phase <PhaseID> [--content-file <payload>]` | Fresh phase has no payload; a `fix` re-run file contains only the `— re-run:` suffix | `npx gennady sdd-log <ticket> phase P2 --content-file .claude/tmp/TSK-x-P2-log.txt` |
-    | `sdd-log <ticket> handoff --content-file <payload> --phase <PhaseID>` | Typed `HANDOFF_FORMAT`, file-write then one-shot consume | `npx gennady sdd-log <ticket> handoff --content-file .claude/tmp/TSK-x-P2-handoff.txt --phase P2` |
-    | `sdd-log <ticket> blocker --payload-file <json> --phase <PhaseID>` | Strict JSON keys `reason`,`axiom`,`unblock`; opens phase-owned resolution trail | `npx gennady sdd-log <ticket> blocker --payload-file .claude/tmp/TSK-x-P2-blocker.json --phase P2` |
-    | `sdd-log <ticket> resolved --content-file <payload> --phase <PhaseID>` | Paired blocker close from literal remediation file | `npx gennady sdd-log <ticket> resolved --content-file .claude/tmp/TSK-x-P2-log.txt --phase P2` |
-    | `sdd-check --task <ticket>` | A point re-check for the mechanical verdict after a fix, instead of re-deriving it by hand | `npx gennady sdd-check --task <ticket>` |
-    | `sdd-verify --task <ticket-path> --phase <PhaseID>` | The complete STEP_5 transaction — derives context, repairs, runs foundation + applicable §5 rows once, writes the receipt | `npx gennady sdd-verify --task specs/app/app.task.TSK-1.md --phase P2` |
-    | `sdd-verify --profile full` | Global read-only full gate; owned by dispatched audit, not phase execution | `npx gennady sdd-verify --profile full` |
-    | `gennady yagni` | Runs INSIDE `sdd-verify --profile full` only (once per group, at group close); on `ERR_CLI_YAGNI_UNDERUSED` it prints a ready-to-paste `- **Usage Waiver:** <reason>` block — paste verbatim, then log it (`AX_USAGE_WAIVER_DISCIPLINE`) | standalone only for a quick iteration: `npx gennady yagni .` |
-    | ticket coverage reader | Only in the declared `Coverage Owner Phase`; its `sdd-verify` call produces once then executes the one §5 Role=`coverage` reader — command owner may be Node/iOS/Android/Go | internal to the canonical phase call |
-
-    `sdd-session open` has already created the regular non-symlink `.claude/tmp/` boundary. For every
-    agent-produced free-text payload above, use the file-write tool (never shell echo/redirection/
-    heredoc/escaping) to write the exact deterministic filename shown, then call the literal command.
-    The CLI validates UTF-8/size/path, treats quotes/`$()`/backticks/newlines only as data, and deletes
-    exactly that file after success. A failed append leaves it for correction; resolve any cleanup
-    warning before handoff. Consumed scratch leaves phase source-state unchanged; never blanket-ignore
-    other `.claude/tmp/` mutations.
-
-    Follow the next action printed by a failed gate/tool. If none is actionable, return
-    `RECOVERABLE_TECHNICAL` with that diagnostic as evidence; if execution requires an unavailable
-    permission, return `EXTERNAL_AUTHORITY_REQUIRED`. The orchestrator owns the transition.
-  </ContextExpectation>
-
-  <PhaseProcedure>
-    <Step id="STEP_1_GET_PHASE_CONTEXT">
-      <Goal>First action, every phase, every retry: get the manifest from the tool, not from a pasted prompt.</Goal>
+  <Contracts>{{> "contract/process/handoff-format"}}</Contracts>
+  <ExecutionPlan>
+    <Step id="STEP_1_ORIENT">
       <Action>
-        Run phaseContext ToolCall below. Its output IS the phase's working
-        context — objective, gates with a satisfy-hint, exit criterion, the phase-scoped
-        lifecycle manifest (`READ files` are existing inputs; `CREATE files` are absent write
-        reservations and MUST NOT be read before creation), and a `[HANDOFF]` block quoting every completed prior phase's verbatim
-        `**Handoff →**` line (absent → this is the first phase). Follow this output for the rest of
-        the phase; do not separately open Meta, Phases Overview, or another phase's body — the tool
-        already filtered all of that. `ERR_CLI_SDD_TASK_PHASE_NOT_FOUND` → `H_PHASE_NOT_FOUND`; the
-        header line's `status=[x]` with no `fix` reason from the dispatch → `H_PHASE_ALREADY_DONE`;
-        an Input that should cite a prior phase but has no matching `[HANDOFF]` entry →
-        `H_INPUT_HANDOFF_MISSING`.
-        <ToolCall owner="phase-worker" result="phaseContext">npx gennady sdd-task <ticket> --phase <PhaseID></ToolCall> Inputs <ticket>, <PhaseID>: <ticket> and <PhaseID>=exact activation values supplied by execute STEP_2. Use phaseContext.
+        Consume only the supplied phase block, referenced spec/rule excerpts, target files, Execution
+        Log facts, and Git evidence. Verify targets still match the ticket. Ask the orchestrator for a
+        missing required excerpt; do not explore unrelated repository areas or inspect CLI source.
+        Reconstruct state from these durable inputs per `AX_STATELESS_FLOW` and enforce the declared
+        phase boundary per `AX_PHASE_SCOPE_LOCK`.
       </Action>
     </Step>
-    <Step id="STEP_1B_RESUME_OR_START">
-      <Goal>Detect a prior aborted attempt at THIS phase before writing or logging anything.</Goal>
+    <Step id="STEP_2_IMPLEMENT">
       <Action>
-        `sdd-task --phase` shows prior PHASES' Handoff, never this phase's OWN Execution Log entries
-        — check those separately: sectionExtract ToolCall below and look for this
-        phase's heading in the current Round.
-
-        <LogicSwitch on="this phase's own Execution Log entries, current Round">
-        - WHEN a `#### <PhaseID>` block already exists WITHOUT a closing `DONE` + Handoff -> a prior
-          attempt at this exact phase was interrupted (crash, context limit, killed process — not a
-          formal `fix` re-run, which always closes with `DONE`). Read its logged lines in order;
-          every already-logged `intro` / `decision` / `verified` line is done semantic work —
-          do not redo it or re-log it, and do not re-open files it already reports created unless
-          STEP_2 recon finds them missing. A prior receipt is replaced by STEP_5 so it attests the
-          resumed attempt's final bytes. Do NOT call `sdd-log
-          <ticket> phase <PhaseID>` again — the header already exists; resume by appending the next
-          event line into that same block, continuing from where the log stopped.
-        - WHEN no such open block exists (fresh phase, or the only block present is a prior Round's
-          closed `— re-run: <reason>` attempt that already ends in `DONE` + Handoff) -> fresh start:
-          without a fix reason run phaseLog ToolCall below. On a formal fix
-          re-run, write exact `— re-run: <reason>` to `.claude/tmp/<task-id>-<phase-id>-log.txt`, then
-          run phaseLog ToolCall below
-          (`AX_TICKET_WRITE_SCOPE` — the tool is the sole writer, never a manual `Edit`).
-        </LogicSwitch>
-        <ToolCall owner="phase-worker" result="sectionExtract">npx gennady sdd-extract <ticket> EXECUTION_LOG</ToolCall> Use sectionExtract.
-        <ToolCall owner="phase-worker" result="phaseLog">npx gennady sdd-log <ticket> phase <PhaseID></ToolCall> Use phaseLog.
-        <ToolCall owner="phase-worker" result="phaseLog">npx gennady sdd-log <ticket> phase <PhaseID> --content-file .claude/tmp/<task-id>-<phase-id>-log.txt</ToolCall> Use phaseLog.
+        Implement the smallest change satisfying the phase and its referenced requirements. Stay
+        inside target files. Do not alter task dependencies, phases, approved BDD/test plan, or spec
+        meaning. If such a change is necessary, return `APPROVAL_BOUNDARY_CHANGE` with evidence.
       </Action>
     </Step>
-    <Step id="STEP_2_NARROW_RECON">
-      <Goal>Verify ground truth before writing — log only on divergence.</Goal>
+    <Step id="STEP_3_VERIFY">
       <Action>
-        Per `AX_NARROW_RECON`: log a recon line ONLY on divergence; when state matches the plan, stay
-        silent. On divergence write exact `discovery <fact>` to the phase log payload, then run
-        eventLog ToolCall below;
-        if it breaks the phase contract → `H_RECON_DIVERGENCE`, else proceed.
-        <ToolCall owner="phase-worker" result="eventLog">npx gennady sdd-log <ticket> line --content-file .claude/tmp/<task-id>-<phase-id>-log.txt --phase <PhaseID></ToolCall> Inputs <ticket>, <task-id>, <phase-id>, <PhaseID>: file-write of literal divergence observed here. Use eventLog.
+        Per `AX_VERIFICATION_BEFORE_HANDOFF`, run the phase's exact declared commands. Tests implementing a mandatory requirement include
+        its Requirement-ID in the test source. Implement applicable negative/failure cases, not only
+        the happy path. Report command, exit status, and concise result without suppressing errors.
       </Action>
     </Step>
-    <Step id="STEP_3_LOAD_RULES">
-      <Goal>Internalize the rules governing this phase. No log line.</Goal>
+    <Step id="STEP_4_HANDOFF">
       <Action>
-        Read the rule files named on STEP_1's `READ rules:` line (`AX_RULES_LOAD_FROM_PHASE_BLOCK` +
-        `AX_READ_PER_MANIFEST`) — the bounded set already filtered by phase kind + Target Files. A
-        cited file that fails to resolve → `H_MISSING_RULE_FILE`. Skip the `rules` log line — the
-        manifest already declares them.
+        Per `AX_HANDOFF_TYPED`, return `HANDOFF_FORMAT` with files changed, requirements demonstrated, commands/results,
+        deviations, and the next declared phase. The orchestrator validates this against Git and the
+        ticket. Do not write JSON checkpoints, worker IDs, session keys, or NEXT state.
       </Action>
     </Step>
-    <Step id="STEP_3B_TOOL_API">
-      <Goal>`config` kind only: verify each configured third-party tool through the declared ecosystem's registered ToolDocAdapter (`AX_THIRD_PARTY_TOOL_CURRENT_API`). Any other kind skips this step.</Goal>
-      <Action>
-        <ToolDocAdapterRegistry>
-          Activate only when STEP_1 `phaseContext.kind=config`; every other kind skips without a
-          probe. Detect ecosystem + tool only from that phaseContext's Target Files, Spec Refs, and
-          readiness evidence — never memory, repo-wide search, or filename guessing. Each adapter
-          owns its version source, permitted local docs, and explicit remote policy:
-
-          | Adapter | Version + local docs | Remote policy |
-          |---|---|---|
-          | `node/npm` | `node_modules/<pkg>/package.json#version`; that installed package root's `README*` and `CHANGELOG*` | only if local docs are insufficient, WebFetch the exact `homepage` or `repository.url` in that same package manifest |
-          | `go` | unsupported — no registered adapter | none |
-          | `ios/swift` | unsupported — no registered adapter | none |
-          | `android/gradle` | unsupported — no registered adapter | none |
-
-          An ambiguous ecosystem, unregistered tool, unsupported adapter, missing installed version,
-          or insufficient permitted evidence → `H_THIRD_PARTY_API_UNVERIFIABLE`. Missing adapter,
-          version, or persisted docs is `RECOVERABLE_TECHNICAL`; an exact external-access permission
-          is `EXTERNAL_AUTHORITY_REQUIRED`. Return evidence and the bounded next action. Never guess, call `--help`,
-          explore an undeclared cache, inspect tool internals, or access the network outside the
-          selected adapter's remote policy.
-        </ToolDocAdapterRegistry>
-
-        BEFORE writing config, select and follow that adapter. Exact config specifics remain a
-        decision-time infra-spec concern
-        (`AX_RESEARCH_PERSISTED`, `infra.directive` STEP_3_TOOL_CHOICES), sourced from Spec Refs or a
-        linked research artifact.
-        Then write exact `verified <tool>@<version> <one-line summary>` to the phase log payload and
-        run eventLog ToolCall below — audit requires this entry per config artifact.
-        <ToolCall owner="phase-worker" result="eventLog">npx gennady sdd-log <ticket> line --content-file .claude/tmp/<task-id>-<phase-id>-log.txt --phase <PhaseID></ToolCall> Inputs <ticket>, <task-id>, <phase-id>, <PhaseID>: file-write of literal evidence gathered here. Use eventLog.
-      </Action>
-    </Step>
-    <Step id="STEP_4_EXECUTE">
-      <Goal>Produce the phase artifacts in Target Files and remove every declared Deleted File.</Goal>
-      <Action>
-        Before any probe that needs scratch state, use deterministic files prefixed
-        `.claude/tmp/<task-id>-<phase-id>-`; consume/remove each exact file before handoff. This
-        boundary already exists from `sdd-session open`, so the worker never has to discover or
-        request `/tmp`, `$TMPDIR`, a home-directory cache, or another permission boundary.
-        Apply rules continuously; respect `AX_PHASE_SCOPE_LOCK`, `AX_FILE_HEADER_APPEND_ONLY`,
-        `AX_INTRODUCED_DISCIPLINE`. `test` kind honors `AX_BDD_NAME_DISCIPLINE`; `config` kind applies
-        the current-version API verified at STEP_3B (`AX_THIRD_PARTY_TOOL_CURRENT_API`). Dependency
-        registry/install commands are allowed only when this phase is `bootstrap`, its Objective names
-        adding that dependency, and Target Files contain `package.json` plus the active npm lock file.
-        For one `<pkg>` at a time, run exactly `npm view <pkg> engines`, `npm view <pkg> version`, and
-        `npm view <pkg> dist-tags`; no `--help` or other probe is needed. Then use exactly
-        `npm install --save-dev --save-exact <pkg>@<verified-stable-version>` or
-        `npm add --save-dev --save-exact <pkg>@<verified-stable-version>` for a dev tool; for a runtime
-        dependency use exactly `npm install <pkg>@<verified-stable-version>` or
-        `npm add <pkg>@<verified-stable-version>`. This
-        works `AX_DEPENDENCY_ADDITION_CHECKLIST` — Node/module-system compatibility,
-        pinning discipline, and release channel — without permitting any other npm/network command;
-        non-bootstrap phases remain forbidden from adding dependencies. Depth of the
-        work itself is public-release by default, not POC (`AX_RELEASE_READY_DEFAULT`) — error
-        handling, edge cases, empty/loading states are part of THIS phase's Objective unless the
-        ticket itself named POC/MVP. For each event, write exact content to the phase log payload and
-        run eventLog ToolCall below
-        as it happens (`AX_LIVE_LOG`, `AX_TICKET_WRITE_SCOPE` — the tool
-        is the sole writer, never a manual `Edit`); a spec gap goes to an `insight` line the same way and leaves
-        the spec untouched (`AX_SPEC_NEVER_EDITED`). A TICKET gap — the phase needs a decision the
-        ticket does not cover — is not a spec gap and not a reason to stop and ask the operator:
-        decide it yourself, then append a ticket-local Decision Log entry via a direct `Edit`
-        (`AX_DEVIATION_SELF_RESOLVE`, `AX_TICKET_WRITE_SCOPE`) — one line, id `<ACR>-DL-N`
-        (ticket-local, per `AX_DEVIATION_SELF_RESOLVE`), body shaped per `DECISION_LOG_ENTRY_FORMAT`:
-        `<ACR>-DL-N <date> — <decision in one phrase> (почему: <compromise/criterion>; отвергнуто:
-        <alternative — why not>; риск: <if accepted>)` — omit a clause entirely rather than writing it
-        empty — and continue. A deletion is autonomous only when its exact path is already declared:
-        use exact `unlink` for that entry and exact `rmdir` only for a declared directory after its
-        declared contents are gone. Never use a glob/recursive delete or reinterpret a missing Target
-        File as deletion; an undeclared deletion is `H_OUT_OF_PHASE_WRITE` and routes to re-planning.
-        <ToolCall owner="phase-worker" result="eventLog">npx gennady sdd-log <ticket> line --content-file .claude/tmp/<task-id>-<phase-id>-log.txt --phase <PhaseID></ToolCall> Inputs <ticket>, <PhaseID>: file-write of one concrete event produced here. Use eventLog.
-      </Action>
-    </Step>
-    <Step id="STEP_5_VERIFY">
-      <Goal>Let the CLI run and attest one complete mechanical phase-verification attempt.</Goal>
-      <Action>
-        Run verification ToolCall below
-        (`AX_PERMITTED_BASH_COMMANDS`, `AX_VERIFICATION_BEFORE_HANDOFF`). This is the one mechanical owner: it derives profile, exact
-        Target Files, owning spec and applicable §Verification rows from the ticket; performs exact-target
-        repair through ordered formatter/project-linter/Gennady-contract adapters, each receiving only
-        its applicable exact targets, under a runtime before/after write-zone (any outside mutation is listed, left intact and
-        halts before foundation; `.git` metadata and installed `node_modules` are excluded tool-state), one foundation run, then those read-only extra rows sequentially under
-        a zero-write boundary; and only on complete success
-        atomically records the structured phase receipt in Execution Log. Do not reconstruct arguments,
-        run a §5 row yourself, add `ver` attestations, or duplicate the command within one attempt. Required coverage keeps
-        one producer followed by its read/check row; not-applicable invents neither. `setup` may honestly
-        skip absent bootstrap bricks; code/test fail closed. The receipt is mechanical evidence, not the
-        semantic Handoff in STEP_6.
-
-        On failure, fix only inside this phase's Target Files (regardless of age), then start a new attempt
-        with the same command. Restore/remove a tombstone only through its declared `Deleted Files` outcome;
-        tombstones are never repair targets. If remediation belongs to another technical phase,
-        edge, artifact owner, package/config/gate, or a missing CREATE target, return
-        `RECOVERABLE_TECHNICAL` with exact evidence and bounded task/DAG/artifact edits. The
-        orchestrator records the checkpoint, amends the technical plan, reruns deterministic checks,
-        and redispatches; this worker keeps the declared write zone. An
-        out-of-inventory export is removed or logged as `intro <name> ← <reason>` for audit backflow
-        (`AX_CLOSED_WORLD_INVENTORY`); failure returns a typed outcome per `AX_HALT_VS_FAIL_DISTINCTION`;
-        unsafe casts are removed or explicitly justified per `AX_NO_SILENT_ESCAPE_HATCH`.
-        If the same in-zone verification failure remains after its fixes, or its required tooling is
-        unavailable, return `RECOVERABLE_TECHNICAL`; a checked phase without a receipt is never an
-        exit. The orchestrator alone classifies replan exhaustion after the recorded budget.
-        Once the cause is actually gone, write exact remediation to the phase log payload and run
-        resolutionLog ToolCall below into THIS SAME phase block, per `AX_BLOCKER_RESOLUTION_TRAIL`;
-        logged by whoever resumes the ticket (this phase's own retry, or the orchestrator), never a manual `Edit`.
-        Inputs <ticket>: STEP_1 ticket identity.
-        <ToolCall owner="phase-worker" result="verification">npx gennady sdd-verify --task <ticket-path> --phase <PhaseID></ToolCall> Inputs <ticket-path>: <ticket-path>=canonical path returned by STEP_1; <PhaseID>=exact STEP_1 phase. Use verification.
-        <ToolCall owner="phase-worker" result="resolutionLog">npx gennady sdd-log <ticket> resolved --content-file .claude/tmp/<task-id>-<phase-id>-log.txt --phase <PhaseID></ToolCall> Inputs <task-id>, <phase-id>: exact current task and phase from phaseContext. Use resolutionLog.
-      </Action>
-    </Step>
-    <Step id="STEP_6_EMIT_HANDOFF">
-      <Goal>Close the phase block with a typed Handoff and DONE.</Goal>
-      <Action>
-        Append `<ts> DONE` via eventLog ToolCall below; append the
-        the exact `HANDOFF_FORMAT` payload with the file-write tool to
-        `.claude/tmp/<task-id>-<phase-id>-handoff.txt`, then append `**Handoff →**` via
-        handoffLog ToolCall below per
-        `HANDOFF_FORMAT` (typed payload,
-        `AX_HANDOFF_TYPED`, `AX_TICKET_WRITE_SCOPE` — the tool is the sole writer for both lines, never
-        a manual `Edit`, and this phase's OWN and ONLY write of them — the orchestrator that dispatched
-        this phase reads this Handoff line back but never re-logs it, per its own logging-zone boundary)
-        — its `deviations:` field lists the id of every Decision Log entry this phase
-        added while self-resolving a ticket gap (`AX_DEVIATION_SELF_RESOLVE`; empty `[]` when none);
-        flip this phase's Status in Phases Overview `[ ]` → `[x]` via a direct `Edit`
-        (outside the Execution Log, `AX_TICKET_WRITE_SCOPE`); return the structured summary per
-        `RETURN_SUMMARY_FORMAT` to the orchestrator.
-        Inputs <ticket>, <PhaseID>: STEP_1 phase context.
-        <ToolCall owner="phase-worker" result="eventLog">npx gennady sdd-log <ticket> line "DONE" --phase <PhaseID></ToolCall> Use eventLog.
-        <ToolCall owner="phase-worker" result="handoffLog">npx gennady sdd-log <ticket> handoff --content-file .claude/tmp/<task-id>-<phase-id>-handoff.txt --phase <PhaseID></ToolCall> Use handoffLog.
-      </Action>
-    </Step>
-  </PhaseProcedure>
-
-  <OutputContracts>
-    {{> "contract/process/phase-block-format"}}
-
-    {{> "contract/process/handoff-format"}}
-
-    {{> "contract/process/blocker-format"}}
-
-    {{> "contract/process/return-summary-format"}}
-
-    {{> "contract/spec/decision-log-entry-format"}}
-  </OutputContracts>
-</SddPhaseExecution>
+  </ExecutionPlan>
+</PhaseExecutionProtocol>

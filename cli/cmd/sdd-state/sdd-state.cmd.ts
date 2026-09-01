@@ -3,7 +3,7 @@
 // @tasks: N/A
 
 import { existsSync, readFileSync, statSync } from 'node:fs';
-import { dirname, join, relative, resolve, sep } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { logger } from '#logger';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
@@ -16,7 +16,7 @@ import {
 } from '../../../shared/sdd/portal.ts';
 import { probeRepo } from '../../../shared/sdd/probe.ts';
 import { detectFlowVersion } from '../../../shared/sdd/flow.ts';
-import { countModuleSpecs, findReviewStateSpecs } from '../../../shared/sdd/module-specs.ts';
+import { countModuleSpecs } from '../../../shared/sdd/module-specs.ts';
 import { sumRollupProgress } from '../../../shared/sdd/tracker.ts';
 import { renderLadder } from '../../../shared/sdd/ladder.ts';
 import { collectTicketCorpus } from '../../../shared/sdd/ticket-resolve.ts';
@@ -85,7 +85,7 @@ function parseProjectName(portalContent: string): string | null {
 }
 
 /**
- * @purpose Execute gennady sdd-state — report flow version, readiness, portal scopes, and the session set.
+ * @purpose Execute gennady sdd-state — report flow version, readiness, and portal scopes.
  * @param rawArgs Raw command-line arguments (process.argv).
  * @returns StateOutcome — the formatted snapshot on success, else an actionable failure.
  */
@@ -154,39 +154,6 @@ export async function run(rawArgs: string[]): Promise<StateOutcome> {
   const readiness = checkReadiness(readinessInput);
   // #endregion END_READINESS
 
-  // #region START_SESSION — the session scratch is optional flow-state; absent is normal
-  let sessionContent: string | null = null;
-  try {
-    sessionContent = readFileSync(join(root, 'specs', '.sdd-session.md'), 'utf-8').trim() || null;
-  } catch {
-    sessionContent = null;
-  }
-  // #endregion END_SESSION
-
-  const sessionIntent = sessionContent?.match(/^intent:\s*(\S.*)$/m)?.[1]?.trim() ?? null;
-  const reviewStateSpecs = findReviewStateSpecs(join(root, 'specs')).map((path) =>
-    relative(root, path).split(sep).join('/')
-  );
-  const reviewPaths = reviewStateSpecs.join(', ');
-  const activeOwnerRoute =
-    sessionIntent === 'scaffold' && reviewStateSpecs.length > 0
-      ? {
-          machine:
-            `resume scaffold-owned nested module correction for ${reviewPaths}; keep intent=scaffold and exact target-set, ` +
-            'then return to scaffold STEP_0_INTAKE after accepted/CLEAN',
-          human:
-            'завершить scaffold-owned nested module correction и вернуться в scaffold STEP_0_INTAKE',
-        }
-      : sessionIntent === 'module-decomposition' || reviewStateSpecs.length > 0
-        ? {
-            machine:
-              reviewStateSpecs.length > 0
-                ? `resume active module-decomposition review for ${reviewPaths}; do not scaffold until CHANGE_MANIFEST is resolved`
-                : 'resume active module-decomposition owner; do not scaffold until its terminal disposition',
-            human: 'завершить active module-decomposition review',
-          }
-        : null;
-
   logger.debug(
     `[SddStateCommand#run] flow=${flowVersion} portal=${portalPresent} ready=${readiness.ready} scopes=${scopes.length}`
   );
@@ -223,8 +190,6 @@ export async function run(rawArgs: string[]): Promise<StateOutcome> {
     authoringReadiness,
     queuedGateTicketIds: gateQueue.ticketIds,
     gateQueueDiagnostics: gateQueue.diagnostics,
-    sessionContent,
-    activeOwnerRoute,
     specSchema,
     probe,
   };
@@ -267,7 +232,6 @@ export async function run(rawArgs: string[]): Promise<StateOutcome> {
     },
     tasksTotal,
     tasksDone,
-    nextOverride: activeOwnerRoute?.human,
   });
   // #endregion END_LADDER
 

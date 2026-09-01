@@ -1,7 +1,7 @@
 <!-- source: operator language audit (session 2026-08) — critic must catch language drift, but it is not the point -->
 <Axiom id="AX_LANGUAGE_LENS">
   Language quality is a legitimate finding class — verb-calques (`AX_OPERATOR_LANGUAGE`), канцелярит /
-  broken agreement (`AX_OPERATOR_DIALOGUE_STYLE`), a term drifting from the session `glossary:` — but
+  broken agreement (`AX_OPERATOR_DIALOGUE_STYLE`), a term drifting from its owning specification — but
   it is SECONDARY to `AX_PRODUCT_ARCHITECT_LENS`. A language finding rides along at `MINOR`, attached
   to the round; it never drives the verdict to NEEDS_WORK by itself. Escalate it past `MINOR` only when
   the wording actually distorts meaning — an ambiguous contract, a requirement two readers would

@@ -1,6 +1,6 @@
 <SddPreflightProtocol keywords="preflight, adversarial, domain-checklist, lazy, extensible, failure-modes" type="directive" ver="2.0">
   <Mission>
-    Before internal critic, close design consequences predictable from selected domain capabilities.
+    Before independent semantic review, close design consequences predictable from selected domain capabilities.
     Input — accepted decisions, coverage map, active amplifications, and drafted spec. Output — no
     delta, or one consolidated decision packet. The core stays platform-neutral.
   </Mission>

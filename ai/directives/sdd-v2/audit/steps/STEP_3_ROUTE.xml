@@ -138,7 +138,7 @@
       - First line MUST be the `@audit` header. No free-text preamble.
       - Findings ordered by descending severity, then by `F-NN`; the final `@glossary` line is
         mandatory (`[]` or `[<term> — <definition>; ...]`). Audit/code-review workers only propose
-        terms there and never call `sdd-session`.
+        terminology there; the owning specification remains the source of truth.
       - No empty lines inside the block.
       - If `loc` or `src` is N/A, emit literal `—` (em-dash) — do not omit the field.
       - `act` is operator-facing text (Russian per policy); everything else is English tokens.

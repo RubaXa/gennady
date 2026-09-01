@@ -1,7 +1,7 @@
 <SddModule keywords="module-decomposition, module-map, entity-inventory, dbc-contracts, ports-adapters, closed-world, file-structure, modes, add-module, refine-module, sdd-module" type="directive" ver="2.1">
   <Mission>
-    Turn an `AX_HANDOFF_TO_MODULE_DECOMPOSITION`-valid `product` / `library` operator-approved
-    review-state draft or master spec into a hierarchy of module specs: a
+    Turn an `AX_HANDOFF_TO_MODULE_DECOMPOSITION`-valid `product` / `library` scope draft or approved
+    spec into a hierarchy of module specs: a
     closed-world entity inventory, an explicit public surface per entity, strict DbC contracts
     (Ports / Adapters / Services), and a designed file structure. Loaded lazily by the router;
     inherits the router core (language, dialogue, safeguard, diverge, no-narration, stateless) —
@@ -94,7 +94,7 @@
       per `DIAGRAM_CAPTION_FORMAT` (`formats/diagram-vocabulary.xml`).
 
       **Delta rung** (`STEP_6_FINAL_HIERARCHY`, `refine-module` / `pivot` only) — the diagram twin
-      of the `CHANGE_MANIFEST` text delta: a composition graph carrying ONLY the changed corner
+      of the Git diff: a composition graph carrying ONLY the changed corner
       with the new node marked (`:::new` or a `(добавлено)` suffix) plus the ADDED Call Chain
       steps, per `DELTA_DIAGRAM_FORMAT` (`formats/pivot-formats.xml`) — the unchanged part of the
       module is NOT redrawn. Mandatory on every `refine-module` / `pivot` round.
@@ -117,9 +117,9 @@
       product or architecture fork — entity ownership, public behavior/error semantics, Port-vs-Service,
       or file ownership — show only that delta plus real alternatives and ask once before choosing; batch
       related forks in one decision. Never re-ask a choice settled earlier in the same packet. STEP_6's
-      standalone review lifecycle always shows the exact final hierarchy and its unsettled delta for the
-      mandatory terminal Approval before critic/publication. A scaffold-owned nested correction uses the
-      same terminal Approval and critic convergence, but returns through its bounded exception in STEP_6.
+      review lifecycle shows the exact final hierarchy and unsettled delta, dispatches one independent
+      semantic review, then asks for approval #1. A scaffold-discovered spec correction returns through
+      the same complete boundary before scaffold restarts.
       Thus no semantic choice disappears, but zero-new-info steps cost zero operator turns.
     </Axiom>
 
@@ -156,16 +156,11 @@
     {{> "axiom/process/ax-close-with-integrity-check"}}
   </BeliefState>
 
-  <SessionState>
-    {{> "contract/process/session-file-format"}}
-  </SessionState>
-
   <HaltConditions>
     | 🛑 ID | Trigger |
     |---|---|
     | `H_INVALID_SCOPE_TYPE` | scope-type = infrastructure or interface — module-decomposition not applicable |
     | `H_SCOPE_SPEC_MISSING` | `specs/<scope>/<scope>.spec.md` does not exist — run the scope flow first |
-    | `H_SCOPE_DRAFT_NOT_OPERATOR_APPROVED` | Review-state lacks the exact `operator-approved review-state draft` entry in `[SESSION]`, or the clean scope's `[SCOPES]` row's `status` column is not `done` |
     | `H_INCOMPLETE_SCOPE_SPEC` | Scope spec missing required sections (Vision, Architecture, Golden DX) |
     | `H_AMBIGUOUS_MODE` | Module specs exist + mode verb absent + no Pivot Invalidation List |
     | `H_LOW_CONFIDENCE` | Confidence LOW at decomposition lock or final hierarchy |
@@ -182,16 +177,10 @@
     <Step id="STEP_0_INTAKE">
       <Goal>Resolve scope, mode; gate scope-type.</Goal>
       <Action>
-        Read `specs/<scope>/<scope>.spec.md` (sole source per `AX_SPEC_IS_SOLE_SOURCE`). Accept only
-        the two standalone states in `AX_HANDOFF_TO_MODULE_DECOMPOSITION`: valid `CHANGE_MANIFEST` plus the
-        exact `[SESSION]` operator-approved review-state draft entry, or no `CHANGE_MANIFEST` plus the
-        exact master `[SCOPES]` row whose `status` column is `done`. Any other draft/clean state →
-        `H_SCOPE_DRAFT_NOT_OPERATOR_APPROVED`; never infer acceptance from a bare `approved` label.
-        One bounded nested state is also valid: the compatible session still says `intent: scaffold`,
-        its exact target-set contains this scope, and an active module `CHANGE_MANIFEST` identifies the
-        correction. This does not change intent or add a session field; its return owner is scaffold
-        `STEP_0_INTAKE`.
-        This gate does not demand a premature critic/MR. Missing → `H_SCOPE_SPEC_MISSING`; incomplete → `H_INCOMPLETE_SCOPE_SPEC`. scope-type must be
+        Read `specs/<scope>/<scope>.spec.md` (sole source per `AX_SPEC_IS_SOLE_SOURCE`). Accept a
+        structurally complete current V2 scope draft or an already-approved current V2 scope per
+        `AX_HANDOFF_TO_MODULE_DECOMPOSITION`. Missing → `H_SCOPE_SPEC_MISSING`; incomplete →
+        `H_INCOMPLETE_SCOPE_SPEC`. scope-type must be
         product / library (`AX_SCOPE_TYPE_GATE`, else `H_INVALID_SCOPE_TYPE`). Mode per
         `AX_MODE_AUTO_DETECT_OR_HALT` — initial / add-module / refine-module; the mode picked here
         controls step branching downstream (`AX_DIRECTIVE_MODE`). On `add-module` /
@@ -219,8 +208,7 @@
         (b) If not: which existing module / mechanism the extract names are we EXTENDING instead of
         introducing a new one?
         (c) Which neighbour specs (paths, from the extract) will need work for this decomposition to
-        fit the system — each becomes its own «СОСЕДИ» line in the eventual `CHANGE_MANIFEST` / Pivot
-        Invalidation List sideways entry?
+        fit the system — each is recorded in the owning dependency/impact section or Pivot Invalidation List?
         (d) Which neighbour requirements (IDs, from the extract) conflict with the boundaries we are
         about to lock, and how is the conflict resolved?
         "Вводим новое" answers (a)/(b) ONLY together with the specific neighbour invariant/requirement
@@ -235,7 +223,7 @@
         conflict with more than one valid resolution, show one delta decision card and use
         `AskUserQuestion` (`QUESTION_RULE_SLIM`): `REUSE/EXTEND <named existing owner>` versus
         `INTRODUCE <new owner> — existing <requirement/invariant id> cannot satisfy <need>`, plus the
-        concrete conflict alternatives when applicable. Return `TerminalDecision: pause` while waiting.
+        concrete conflict alternatives when applicable. Stop while waiting; no artifact mutation occurs.
         The selected INTRODUCE branch appends one `<ACR>-DL-N` entry per
         `DECISION_LOG_ENTRY_FORMAT`; a reuse/extend selection updates the boundary and continues.
         Do not use an unconditional STOP as a substitute for this decision route.
@@ -292,7 +280,7 @@
         still misses) and «Бесхозная ответственность» (a responsibility no listed entity owns). A
         dispute or tangent raised mid-interview opens a nested frame on the flow's stack — this
         step's main path never silently stalls on it (`AX_STACK_BASED_FLOW`).
-        Size the interview to the confirmed `scale:` from the session file
+        Size the interview to the SCALE confirmed for this invocation
         (`AX_SCALE_PROPORTIONAL_DEPTH`). Keep evidence separated per `AX_EVIDENCE_HYGIENE`: entities
         named by the scope spec are facts; entities inferred during the interview stay hypotheses
         until the operator confirms them.
@@ -388,7 +376,7 @@
 
         On `refine-module` / `pivot`, the Delta rung (composition graph with the new node marked
         plus the ADDED Call Chain steps, per `DELTA_DIAGRAM_FORMAT` in `formats/pivot-formats.xml`)
-        is drawn later, at `STEP_6_FINAL_HIERARCHY` alongside the `CHANGE_MANIFEST` — not here.
+        is drawn later, at `STEP_6_FINAL_HIERARCHY` alongside the textual delta — not here.
 
         Close the step with two checks before presenting:
         1. Every module / entity / Port in the contracts carries a confirmed v1 consumer or
@@ -435,7 +423,7 @@
         markdown link per canonical `<module>/<module>.spec.md`, no duplicate, missing, ambiguous, or
         undeclared module spec. In `pivot` / `refine-module`, draw the Delta rung
         (`AX_SPEC_MANDATORY_DIAGRAM`, per `DELTA_DIAGRAM_FORMAT` in
-        `ai/directives/sdd-v2/formats/pivot-formats.xml`) alongside the `CHANGE_MANIFEST`: the
+        `ai/directives/sdd-v2/formats/pivot-formats.xml`) alongside the textual Git delta: the
         composition graph carrying ONLY the changed corner with the new node marked, plus the
         ADDED Call Chain steps — the unchanged part of the module is NOT redrawn. As ASCII in
         chat BEFORE this step's Approval Check, per `AX_CHAT_BEFORE_SPEC`; its absence on a
@@ -450,48 +438,25 @@
         (shortlist + considered-skips, operator locks the list; architecture / infra rules get the
         per-axiom walk-through); every referenced rule file must resolve, else
         `H_MISSING_RULE_FILE`. Before writing, run the self-check pass per
-        `AX_ARTIFACT_STYLE_SELF_CHECK`. Write in review-state per `AX_SPEC_LIFECYCLE` — prepend a
-        `CHANGE_MANIFEST` (`READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/change-manifest.xml")`) and
-        mark changed lines `✚`/`~` (greenfield → manifest only, no per-line marks) — its «СОСЕДИ» block
-        carries the (c)/(d) answers `STEP_0B_SYSTEM_FIT` recorded, never left empty by omission;
-        compress folds it to
-        master downstream after the change ships. Then run
+        `AX_ARTIFACT_STYLE_SELF_CHECK`. Write the ordinary V2 spec directly per
+        `AX_SPEC_LIFECYCLE`; Git diff carries the review delta. Record affected neighbours in the
+        owning dependency/impact fields rather than a temporary manifest. Then run
         integrityCheck ToolCall below (anchor balance + required sections + links + size budget:
         `SDD_MODULE_OVERSIZED` / `SDD_MODULE_SPEC_VERBOSE`) and resolve or consciously defer any finding
-        per `AX_CLOSE_WITH_INTEGRITY_CHECK`. Then
+        per `AX_CLOSE_WITH_INTEGRITY_CHECK`. Then hand the approved module set to task scaffolding per
+        `AX_HANDOFF_TO_TASK_SCAFFOLDING`.
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/preflight-protocol.directive.xml")` and run
-        its lazy active-domain checklist. The integrated review target-set is the parent scope spec plus
-        ALL module specs in that scope after decomposition; unchanged module specs are read-only members
-        and do not receive synthetic `CHANGE_MANIFEST` or review-state.
+        its lazy active-domain checklist. The semantic review target-set is the parent scope spec plus
+        ALL module specs in that scope after decomposition; unchanged module specs are read-only members.
 
-        when entered as scaffold's nested decomposition correction, the return owner is scaffold `STEP_0_INTAKE`;
-        stop the standalone branch here.
-        Show the exact final hierarchy and unsettled delta for terminal operator Approval; a pause keeps
-        `intent: scaffold`, the exact target-set, and the concrete blocker in `open`. After Approval,
-        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/critic.directive.xml")` for that integrated
-        target-set, reusing its worker and its one global maximum of five critic results. On
-        accepted/CLEAN, apply the nested clean finalization in `AX_SPEC_LIFECYCLE`: remove the
-        `CHANGE_MANIFEST`/marks and Critic Rounds last, rerun integrity, append the session journal event,
-        set `open` to `—`, emit `TerminalDecision: continue`, and return there.
-        Use the session log ToolCall below for that return. If Approval or critic disposition pauses,
-        log the literal blocker with the same ToolCall before pausing. In this nested decomposition correction,
-        do not load `ai/directives/sdd-v2/review-lifecycle.directive.xml` before returning to scaffold;
-        do not publish, commit, push, open a PR, or merge. This is an early-return branch;
-        only standalone module work continues below.
-        <ToolCall owner="this-step" result="nestedSessionLog">npx gennady sdd-session log --content-file .claude/tmp/sdd-module-nested-event.txt</ToolCall> Inputs .claude/tmp/sdd-module-nested-event.txt: one literal journal event describing pause or accepted/CLEAN return. Use nestedSessionLog.
-        <ToolCall owner="this-step" result="nestedPauseState">npx gennady sdd-session set open "<literal module-correction blocker>"</ToolCall> Inputs <literal module-correction blocker>: exact unresolved Approval/critic/integrity blocker. Use nestedPauseState only on pause.
-        <ToolCall owner="this-step" result="nestedReturnState">npx gennady sdd-session set open "—"</ToolCall> Use nestedReturnState only on accepted/CLEAN return.
-
-        For standalone module work, then
-        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/review-lifecycle.directive.xml")` once for that
-        integrated bundle. Its fixed order is: finalize/compress semantics → show the exact final
-        hierarchy and only its unsettled delta → Approval Check. STOP → integrated critic → publish the
-        exact final bytes → external approval → merge the same reviewed commit. No review, publication,
-        merge, or scaffold handoff may precede that final hierarchy Approval. The external-review wait and every Approval Check
-        return `TerminalDecision: pause` and preserve the session. Only after the whole bundle merges
-        to master, hand off to scaffold (`AX_HANDOFF_TO_TASK_SCAFFOLDING`) with
-        `TerminalDecision: continue` in that same session. This directive has no terminal `complete`
-        branch and never runs `sdd-session close`.
+        Whether entered directly or because scaffold exposed a spec inconsistency, load
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/review-lifecycle.directive.xml")` once for this
+        complete bundle. It runs structural checks, one fresh independent semantic review,
+        reconciliation, and operator approval #1 over the actual spec bytes. A scaffold-discovered
+        semantic change invalidates prior ticket work; after approval #1, restart scaffold from its
+        artifact preflight. Standalone module work likewise hands the approved bundle to scaffold.
+        No nested critic, retained worker, session journal, publication state machine, or hidden
+        return token exists.
         <ToolCall owner="this-step" result="moduleManifest">npx gennady sdd-new module --scope <scope> --module <module></ToolCall> Use moduleManifest.
         <ToolCall owner="this-step" result="integrityCheck">npx gennady sdd-check --all specs/<scope></ToolCall> Use integrityCheck.
       </Action>

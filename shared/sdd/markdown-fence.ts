@@ -1,5 +1,5 @@
 // @file: Shared line-oriented Markdown fence state for SDD structural parsers.
-// @consumers: critic-readiness, requirement-budget
+// @consumers: requirement-budget
 // @tasks: N/A
 
 /** @purpose Active CommonMark-style backtick or tilde fence. */

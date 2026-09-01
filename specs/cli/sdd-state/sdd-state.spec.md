@@ -6,13 +6,13 @@
 
 ## 1. Module Vision
 
-Детерминированный preflight-снимок проекта для роутера, одним вызовом. Без LLM. Вместе с `FLOW_VERSION`, legacy `READINESS`, scopes, session и code/infra probe он сообщает разные факты `AUTHORING_READY` и `EXECUTION_READY`, exact `GATE_QUEUE` и typed `SPEC_SCHEMA`: current, распознанная устаревшая structural schema или неоднозначный spec. Поэтому scaffold может создать явно объявленную bootstrap-очередь, но не импровизирует schema-миграцию и не принимает отсутствие runtime-гейтов за разрешение product execute.
+Детерминированный read-only preflight-снимок проекта для роутера, одним вызовом. Без LLM и без постоянной flow-сессии. Вместе с `FLOW_VERSION`, legacy `READINESS`, scopes и code/infra probe он сообщает разные факты `AUTHORING_READY` и `EXECUTION_READY`, exact `GATE_QUEUE` и typed `SPEC_SCHEMA`: current или неоднозначный spec. Поэтому scaffold может создать явно объявленную bootstrap-очередь, но не импровизирует миграцию V2-схемы и не принимает отсутствие runtime-гейтов за разрешение product execute.
 
 **Key properties:**
 
 - Deterministic — чистые ядра `shared/sdd/portal.ts` (таблица Scopes + Description) + `shared/sdd/readiness.ts` (точная проверка required-скриптов)
 - Exact readiness — восемь точных bricks: foundation, read-only lint/format, два mutating repair leaves и публичный whole-project `fix`. Только `check` optional.
-- Absence-is-data — нет портала → `PORTAL=absent` (project-setup); нет сессии → `(no active session)` — exit 0, не ошибка
+- Absence-is-data — нет портала → `PORTAL=absent` (project-setup), exit 0, не ошибка
 - Single-turn snapshot — code/infra `[PROBE]` всегда включён; `--probe` принят как compatibility no-op для старых синхронизированных директив
 - Schema-first — `[SPEC_SCHEMA]` проверяет scope/module specs по versioned structural-rule registry до scaffold и называет affected paths + owner-flow route
 - Split readiness — `AUTHORING_SCOPE=<name> READY=...` доказывает достаточные данные отдельно для каждой scaffold-цели; `AUTHORING_READY` — только all-approved aggregate; `EXECUTION_READY` независимо доказывает реальные non-vacuous runtime gates
@@ -64,10 +64,6 @@ STATUS=current
 # name	type	status	description	spec
 backend	product	wip	REST API	./backend/backend.spec.md
 
-[SESSION]
-# specs/.sdd-session.md
-# (no active session)
-
 [PROBE]
 CODE=present (N file(s))
 code-dirs=src
@@ -75,7 +71,7 @@ INFRA=present
 configs=package.json, tsconfig.json
 
 [SUMMARY]
-flow=v2 · portal=present · readiness=not-ready · authoring-ready=yes · execution-ready=no · scopes=1 · session=absent
+flow=v2 · portal=present · readiness=not-ready · authoring-ready=yes · execution-ready=no · scopes=1
 ```
 
 (`[SUMMARY]` в выводе построчно `key=value`; здесь сжато.)
@@ -90,7 +86,7 @@ flow=v2 · portal=present · readiness=not-ready · authoring-ready=yes · execu
 
 | Name                         | Type         | Purpose                                                                                                                                                        |
 | ---------------------------- | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `run`                        | Command      | Точка входа CLI: резолв корня, flow/portal/readiness/session → снимок                                                                                          |
+| `run`                        | Command      | Точка входа CLI: резолв корня, flow/portal/readiness/schema → снимок                                                                                           |
 | `isV1Layout`                 | Utility      | Маркер v1 — `<root>/tasks/` это каталог                                                                                                                        |
 | `detectGennady`              | Utility      | gennady установлен — `<root>/node_modules/.bin/gennady` существует                                                                                             |
 | `probeRepo`                  | Utility      | (`shared/sdd/probe`) всегда включённые эвристики кода/инфры (find `*.js/jsx/ts/tsx` без node_modules + конфиги)                                                |
@@ -100,7 +96,7 @@ flow=v2 · portal=present · readiness=not-ready · authoring-ready=yes · execu
 | `diagnoseProjectSpecSchemas` | Utility      | (`shared/sdd/spec-schema`) single V2 structure → current / invalid + exact paths/reasons; migration exists only from V1 to V2                                  |
 | `formatSnapshot`             | Utility      | Рендер `StateSnapshot` в bracketed-формат                                                                                                                      |
 | `badInvocation` / `badRoot`  | Utility      | Билдеры диагностик                                                                                                                                             |
-| `StateSnapshot`              | Value Object | root · flowVersion · portal · scopes · runtime/authoring readiness · gate queue · specSchema · session · probe                                                 |
+| `StateSnapshot`              | Value Object | root · flowVersion · portal · scopes · runtime/authoring readiness · gate queue · specSchema · active review route · probe                                     |
 | `FlowVersion`                | Type         | `v1` / `v2`                                                                                                                                                    |
 | `ReadinessResult`            | Value Object | package/scripts/install facts + read-only checks, mutating leaves, static argument-prefix diagnostics, canonical `fix`, ready/missing (`shared/sdd/readiness`) |
 | `ReadinessInput`             | Value Object | packageJsonPresent · scripts · gennadyAvailable — вход `checkReadiness` (`shared/sdd/readiness`)                                                               |
@@ -128,9 +124,8 @@ flow=v2 · portal=present · readiness=not-ready · authoring-ready=yes · execu
   - `[READINESS]` — восемь required scripts, их read-only/mutating shape, canonical-order `fix`, `lint→gennady`, install; optional `check` валидируется только когда объявлен; каждая `AUTHORING_SCOPE`-строка независимо проверяет target scope + declared modules, `AUTHORING_READY` агрегирует все approved task-owning scopes, а `EXECUTION_READY` остаётся runtime-фактом; `GATE_QUEUE=<ids>` называет exact active infrastructure phase owners, иначе `none`
   - `[SCOPES]` — name/type/status/**description**/spec из таблицы портала; absent → метка project-setup
   - `[SPEC_SCHEMA]` — V2 structure, aggregate status и exact non-current paths/reasons; canonical six-column Bootstrap Requirements → `current`, любая иная/непарная V2-структура → `invalid` и возврат в owning authoring flow
-  - `[SESSION]` — содержимое `specs/.sdd-session.md` или `(no active session)`
   - `[PROBE]` — всегда: `CODE`/`INFRA` present/absent + счётчик файлов / dirs / configs; `--probe` сохраняет тот же байтовый результат
-  - exit 0 (снимок — это данные; отсутствие портала/сессии/готовности НЕ роняет тул)
+  - exit 0 (снимок — это данные; отсутствие портала/готовности НЕ роняет тул)
 - Invariants:
   - Никакого fuzzy-классификатора: только точное совпадение имён
   - Детерминирован при фиксированной ФС
@@ -162,8 +157,7 @@ shared/sdd/         portal.ts · readiness.ts · gate-queue.ts · probe.ts · sp
 ```
 
 **Registration points (4 files):** `cli/gennady.ts` · `cli/cmd/help/help.cmd.ts` · `cli/AGENTS.md` · `cli/cmd/README.md`.
-**Роутер:** STEP_0 зовёт `sdd-state`; forced scaffold передаёт `[SPEC_SCHEMA]` и `[READINESS]` в scaffold STEP_0B. `invalid` возвращается в owning scope/infra authoring flow; scaffold и router не редактируют и не мигрируют V2-спеки. Только `current` + `AUTHORING_READY=yes` проходит к project-feasibility и затем cascade/DAG независимо от runtime gates. Execute отдельно требует `EXECUTION_READY=yes`, кроме exact active `GATE_QUEUE` setup owner. Единственный migration route — V1→V2.
-Активный module `CHANGE_MANIFEST` всегда подавляет generic scaffold-next. При `intent: scaffold` это typed resume-route вложенной module correction с сохранением exact target-set и возвратом в `STEP_0_INTAKE`; при standalone `module-decomposition` — продолжение owning module review.
+**Роутер:** STEP_0 зовёт `sdd-state`; forced scaffold передаёт `[SPEC_SCHEMA]` и `[READINESS]` в scaffold. `invalid` возвращается в owning scope/infra authoring flow; scaffold и router не редактируют и не мигрируют V2-спеки. Только `current` + `AUTHORING_READY=yes` допускает создание тикетов и обычные структурные проверки. Execute отдельно требует `EXECUTION_READY=yes`, кроме exact active `GATE_QUEUE` setup owner. Единственный migration route — V1→V2. Семантические review/approval-маркеры принадлежат артефактам и модели, а не `sdd-state`.
 **E2E:** отложен (прокси). Покрытие: unit + lint + typecheck + ручной smoke.
 
 <!--/SECTION:FILE_STRUCTURE-->
@@ -180,9 +174,9 @@ shared/sdd/         portal.ts · readiness.ts · gate-queue.ts · probe.ts · sp
 
 - **Status:** active · **Why:** переиспользуемы и независимо тестируемы. **Risk:** низкий.
 
-### D-ST003 — Отсутствие портала/сессии/готовности — данные, не ошибка (exit 0)
+### D-ST003 — Отсутствие портала/готовности — данные, не ошибка (exit 0)
 
-- **Status:** active · **Why:** роутер ветвится на этих фактах. exit ≠ 0 только на плохом вызове/корне. **Risk:** нет.
+- **Status:** active · **Why:** роутер ветвится на структурных фактах репозитория; workflow-state и семантическая готовность не выводятся скрытым классификатором. exit ≠ 0 только на плохом вызове/корне. **Risk:** нет.
 
 ### D-ST004 — Точное совпадение имён, без классификатора
 
@@ -255,9 +249,15 @@ shared/sdd/         portal.ts · readiness.ts · gate-queue.ts · probe.ts · sp
 
 ### D-ST017 — Active review owner takes precedence over generic scaffold routing
 
-- **Status:** active · **Extends:** D-ST015/D-ST016
+- **Status:** superseded by D-ST018 · **Extends:** D-ST015/D-ST016
 - **Why:** a green readiness snapshot can coexist with an unresolved module `CHANGE_MANIFEST`. Returning `NEXT=scaffold` in that state loses the owning correction and repeats draft.54's false route. `sdd-state` therefore detects active review-state specs recursively and emits one exact owner route before its generic ladder route. `intent: scaffold` means a same-chain nested module correction: intent and exact target-set stay unchanged and accepted/CLEAN returns to scaffold `STEP_0_INTAKE`. Any other active module review routes to its owning module flow; no `/sdd-scaffold` hint is printed.
 - **Risk accepted:** the command diagnoses ownership from the canonical manifest marker and current session intent; semantic validity of the manifest remains the owning authoring flow's integrity responsibility.
+
+### D-ST018 — `sdd-state` reports structure, not semantic workflow state
+
+- **Status:** active · **Supersedes:** D-ST017
+- **Why:** распознавание временного manifest создавало скрытый nested review route и возвращало удалённую state machine. Команда теперь сообщает только flow version, portal/scopes, schema, readiness, gate queue и repository probe. Текущий approval определяют человекочитаемые маркеры в canonical artifacts и семантическая проверка модели.
+- **Risk accepted:** `sdd-state` не пытается механически доказать, устарело ли утверждение после смысловой правки; при сомнении authoring/scaffold сбрасывает marker в pending.
 <!--/SECTION:MODULE_DECISION_LOG-->
 
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->

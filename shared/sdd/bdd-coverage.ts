@@ -23,6 +23,64 @@ export type CoverageEntry = {
   probeCommand: string | null;
 };
 
+/** @purpose One BDD scenario's stable requirement links, derived without interpreting semantics. */
+type BddRequirementTrace = {
+  /** @purpose Scenario name with verification-level and requirement tags removed. */
+  scenario: string;
+  /** @purpose Exact `<ACR>-REQ-<N>` tokens declared on the Scenario heading. */
+  requirementIds: string[];
+};
+
+/** @purpose Extract scenario names and explicit Requirement-IDs from a BDD section. */
+function parseBddRequirementTraces(body: string): BddRequirementTrace[] {
+  return body.split('\n').flatMap((rawLine) => {
+    const match = /^\*\*Scenario:\*\*\s*(.+)$/.exec(rawLine.trim());
+    if (!match) return [];
+    const heading = match[1] as string;
+    const requirementIds = [...new Set(heading.match(/[A-Z][A-Z0-9]*-REQ-[0-9]+/g) ?? [])];
+    const scenario = heading.replace(/`?\[[^\]]+\]`?/g, '').trim();
+    return [{ scenario, requirementIds }];
+  });
+}
+
+/**
+ * @purpose Prove the mechanical BDD → Test Scenario Coverage part of requirement traceability.
+ * @invariant Each BDD Requirement-ID occurs verbatim in a canonical coverage case;
+ * `checkBddCoverage` requires that exact `it()`/`test()` name in the declared test file.
+ * @param file Ticket path used in findings.
+ * @param bddBody BDD section body.
+ * @param coverageBody Test Scenario Coverage section body.
+ * @returns One error per Requirement-ID whose scenario has no coverage case carrying that ID.
+ */
+export function checkBddRequirementTraceability(
+  file: string,
+  bddBody: string,
+  coverageBody: string
+): Finding[] {
+  const entries = parseTestCoverage(coverageBody);
+  const findings: Finding[] = [];
+  for (const trace of parseBddRequirementTraces(bddBody)) {
+    const caseRequirementIds = new Set(
+      entries
+        .filter((entry) => entry.scenario === trace.scenario)
+        .flatMap((entry) => entry.caseNames)
+        .flatMap((caseName) => caseName.match(/[A-Z][A-Z0-9]*-REQ-[0-9]+/g) ?? [])
+    );
+    for (const requirementId of trace.requirementIds) {
+      if (caseRequirementIds.has(requirementId)) continue;
+      findings.push({
+        severity: 'error',
+        code: 'SDD_BDD_REQUIREMENT_UNTRACED',
+        file,
+        message:
+          `BDD scenario "${trace.scenario}" declares ${requirementId}, but none of its Test Scenario Coverage case names contains that exact Requirement-ID. ` +
+          `Fix: map it as "- ${trace.scenario} → \`<test-file>\` :: \`[${requirementId}] <canonical case name>\`" and use that exact name in the real it()/test().`,
+      });
+    }
+  }
+  return findings;
+}
+
 /** @purpose One test phase's exact Target Files, used to bind BDD evidence and command probes to their execution owner. */
 type TestPhaseTargets = {
   /** @purpose Phase identifier from Phases Overview. */

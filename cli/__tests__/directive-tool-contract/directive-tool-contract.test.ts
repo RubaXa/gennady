@@ -12,7 +12,7 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { readFileSync, readdirSync, rmSync } from 'node:fs';
 import { join, resolve, relative } from 'node:path';
 import {
   extractActionToolCalls,
@@ -255,38 +255,6 @@ describe('callable SDD-v2 action-call inventory', () => {
       }) ?? '',
       /repeated/
     );
-    assert.strictEqual(
-      validateToolCallSyntax({
-        raw: 'npx gennady sdd-check --project-feasibility',
-        cmd: 'sdd-check',
-        argsRaw: '--project-feasibility',
-      }),
-      null
-    );
-    assert.strictEqual(
-      validateToolCallSyntax({
-        raw: 'npx gennady sdd-check --scaffold-plan <json> <project-root>',
-        cmd: 'sdd-check',
-        argsRaw: '--scaffold-plan <json> <project-root>',
-      }),
-      null
-    );
-    assert.strictEqual(
-      validateToolCallSyntax({
-        raw: 'npx gennady sdd-check --scaffold-feasibility --plan <json>',
-        cmd: 'sdd-check',
-        argsRaw: '--scaffold-feasibility --plan <json>',
-      }),
-      null
-    );
-    assert.match(
-      validateToolCallSyntax({
-        raw: 'npx gennady sdd-check --scaffold-feasibility first second',
-        cmd: 'sdd-check',
-        argsRaw: '--scaffold-feasibility first second',
-      }) ?? '',
-      /accepts at most one root/
-    );
     assert.match(
       validateToolCallSyntax({
         raw: 'npx gennady sdd-check --task ticket.md --phase P1',
@@ -305,19 +273,18 @@ describe('callable SDD-v2 action-call inventory', () => {
     );
   });
 
-  it('attributes phase context to the phase worker and returns retries to the original audit call', () => {
+  it('keeps task-state resolution with the stateless orchestrator before worker dispatch', () => {
     const execute = readFileSync(join(SOURCE_DIRECTIVE_ROOT, 'execute.directive.hbs'), 'utf-8');
     const calls = extractActionToolCalls(execute);
-    const phase = calls.find((call) => call.result === 'phaseContext');
-    assert.strictEqual(phase?.owner, 'phase-worker');
-    assert.strictEqual(
-      calls.filter((call) => call.raw === 'npx gennady sdd-task --audit-group <ticket>').length,
-      1
-    );
-    assert.match(execute, /return to STEP_5's original `auditGroup` owner\/result and re-run it/);
+    const taskMap = calls.find((call) => call.result === 'taskMap');
+    assert.strictEqual(taskMap?.owner, 'this-step');
+    assert.strictEqual(taskMap?.raw, 'npx gennady sdd-task &lt;ticket&gt;');
+    assert.match(execute, /dispatch a fresh worker with the current\s+phase block/s);
+    assert.match(execute, /Do not require continuation of the same worker/);
+    assert.match(execute, /do not serialize a\s+checkpoint/);
   });
 
-  it('gives each stateful public skill one structural initial-state owner/result', () => {
+  it('gives each stateless public skill one structural repository-snapshot owner/result', () => {
     for (const name of ['sdd', 'sdd-execute', 'sdd-scaffold', 'sdd-reconcile', 'sdd-critic']) {
       const skill = readFileSync(join(REPO_ROOT, 'ai', 'skills', name, 'SKILL.md'), 'utf-8');
       const calls = [
@@ -332,7 +299,7 @@ describe('callable SDD-v2 action-call inventory', () => {
         validateToolCallSyntax({ raw: calls[0]![3]!, cmd: 'sdd-state', argsRaw: '' }),
         null
       );
-      assert.match(skill, /Use routerState as the literal stdout snapshot\./);
+      assert.match(skill, /(?:result alias |exact )`routerState`/);
     }
   });
 });
@@ -379,11 +346,6 @@ after(() => {
   for (const d of scratchDirs) rmSync(d, { recursive: true, force: true });
 });
 
-function freshFixture(): Fixture {
-  const fx = buildFixture();
-  scratchDirs.push(fx.root);
-  return fx;
-}
 // #endregion END_FIXTURES
 
 type FixtureCase = {
@@ -394,9 +356,6 @@ type FixtureCase = {
   cmd: string;
   args: (fx: Fixture) => string[];
   cwd?: (fx: Fixture) => string;
-  fresh?: boolean;
-  /** @purpose Extra CLI calls to run against the fixture before the documented call itself — e.g. opening the phase block a `--phase` pointer needs to already exist. */
-  setup?: (fx: Fixture) => void;
   check: (result: CliResult, fx: Fixture) => void;
 };
 
@@ -415,7 +374,7 @@ const CASES: FixtureCase[] = [
   {
     id: 'sdd-task <ticket-path> — plan',
     directive: 'execute',
-    raw: 'npx gennady sdd-task specs/app/greeting/greeting.task.APP-greet-greeting.md',
+    raw: 'npx gennady sdd-task &lt;ticket&gt;',
     cmd: 'sdd-task',
     args: (fx) => [fx.ticketPath],
     check: (r, fx) => {
@@ -425,31 +384,9 @@ const CASES: FixtureCase[] = [
     },
   },
   {
-    id: 'sdd-task --audit-group <ticket>',
-    directive: 'execute',
-    raw: 'npx gennady sdd-task --audit-group APP-greet-greeting',
-    cmd: 'sdd-task',
-    args: (fx) => ['--audit-group', fx.taskId],
-    check: (r) => {
-      assert.strictEqual(r.exitCode, 0, r.stdout + r.stderr);
-      assert.match(r.stdout, /^audit: /m);
-    },
-  },
-  {
-    id: 'sdd-task <ticket> --phase P<N>',
-    directive: 'phase',
-    raw: 'npx gennady sdd-task <ticket> --phase P2',
-    cmd: 'sdd-task',
-    args: (fx) => [fx.ticketPath, '--phase', 'P1'],
-    check: (r, fx) => {
-      assert.strictEqual(r.exitCode, 0, r.stdout + r.stderr);
-      assert.match(r.stdout, new RegExp(`\\[sdd-task\\] ${fx.taskId} — P1 impl`));
-    },
-  },
-  {
     id: 'sdd-task --group-scope <id>',
     directive: 'audit',
-    raw: 'sdd-task --group-scope <id>',
+    raw: 'npx gennady sdd-task --group-scope <id>',
     cmd: 'sdd-task',
     args: (fx) => ['--group-scope', fx.taskId],
     check: (r) => {
@@ -472,142 +409,9 @@ const CASES: FixtureCase[] = [
     },
   },
   {
-    id: 'sdd-log <ticket> round "<reason>"',
-    directive: 'execute',
-    raw: 'npx gennady sdd-log <ticket> round "execute <Task-ID>"',
-    cmd: 'sdd-log',
-    fresh: true,
-    args: (fx) => [fx.ticketPath, 'round', `execute ${fx.taskId}`],
-    check: (r) => {
-      assert.strictEqual(r.exitCode, 0, r.stdout + r.stderr);
-      assert.match(r.stdout, /Round 1 —/);
-    },
-  },
-  {
-    id: 'sdd-log <ticket> close',
-    directive: 'execute',
-    raw: 'npx gennady sdd-log <ticket> close',
-    cmd: 'sdd-log',
-    fresh: true,
-    args: (fx) => [fx.ticketPath, 'close'],
-    check: (r, fx) => {
-      assert.strictEqual(r.exitCode, 0, r.stdout + r.stderr);
-      const body = readFileSync(join(fx.root, fx.ticketPath), 'utf-8');
-      assert.match(body, /#### Round close\n- \[x\] `[^`]+` DONE/);
-    },
-  },
-  {
-    id: 'sdd-log phase from a file-backed rerun suffix',
-    directive: 'phase',
-    raw: 'npx gennady sdd-log <ticket> phase <PhaseID> --content-file .claude/tmp/<task-id>-<phase-id>-log.txt',
-    cmd: 'sdd-log',
-    fresh: true,
-    setup: (fx) => {
-      mkdirSync(join(fx.root, '.claude', 'tmp'), { recursive: true });
-      writeFileSync(join(fx.root, '.claude', 'tmp', 'phase-log.txt'), '— re-run: fix F-012');
-    },
-    args: (fx) => [fx.ticketPath, 'phase', 'P1', '--content-file', '.claude/tmp/phase-log.txt'],
-    check: (r, fx) => {
-      assert.strictEqual(r.exitCode, 0, r.stdout + r.stderr);
-      const body = readFileSync(join(fx.root, fx.ticketPath), 'utf-8');
-      assert.match(body, /\n#### P1 — re-run: fix F-012\n/);
-    },
-  },
-  {
-    id: 'sdd-log handoff from a file-backed payload',
-    directive: 'phase',
-    raw: 'npx gennady sdd-log <ticket> handoff --content-file .claude/tmp/<task-id>-<phase-id>-handoff.txt --phase <PhaseID>',
-    cmd: 'sdd-log',
-    fresh: true,
-    // --phase requires that phase's block already open — same STEP_1B precondition a real worker
-    // always satisfies before STEP_6 runs.
-    setup: (fx) => {
-      runCli(['sdd-log', fx.ticketPath, 'phase', 'P2'], fx.root);
-      mkdirSync(join(fx.root, '.claude', 'tmp'), { recursive: true });
-      writeFileSync(
-        join(fx.root, '.claude', 'tmp', 'handoff.txt'),
-        'artifacts: [src/greeter.ts]; decisions: [module-system=esm]; open: []; deviations: []'
-      );
-    },
-    args: (fx) => [
-      fx.ticketPath,
-      'handoff',
-      '--content-file',
-      '.claude/tmp/handoff.txt',
-      '--phase',
-      'P2',
-    ],
-    check: (r, fx) => {
-      assert.strictEqual(r.exitCode, 0, r.stdout + r.stderr);
-      const body = readFileSync(join(fx.root, fx.ticketPath), 'utf-8');
-      assert.ok(
-        body.includes(
-          '**Handoff →** artifacts: [src/greeter.ts]; decisions: [module-system=esm]; open: []; deviations: []'
-        )
-      );
-    },
-  },
-  {
-    id: 'sdd-log blocker from a file-backed JSON payload',
-    directive: 'phase',
-    raw: 'npx gennady sdd-log <ticket> blocker --payload-file .claude/tmp/TSK-x-P2-blocker.json --phase P2',
-    cmd: 'sdd-log',
-    fresh: true,
-    setup: (fx) => {
-      runCli(['sdd-log', fx.ticketPath, 'phase', 'P2'], fx.root);
-      mkdirSync(join(fx.root, '.claude', 'tmp'), { recursive: true });
-      writeFileSync(
-        join(fx.root, '.claude', 'tmp', 'blocker.json'),
-        JSON.stringify({
-          reason: 'test runner missing',
-          axiom: 'AX_ENV_FIX_CHANNEL',
-          unblock: 'npm i -D vitest',
-        })
-      );
-    },
-    args: (fx) => [
-      fx.ticketPath,
-      'blocker',
-      '--payload-file',
-      '.claude/tmp/blocker.json',
-      '--phase',
-      'P2',
-    ],
-    check: (r, fx) => {
-      assert.strictEqual(r.exitCode, 0, r.stdout + r.stderr);
-      const body = readFileSync(join(fx.root, fx.ticketPath), 'utf-8');
-      assert.match(body, /- 🛑 `[^`]+` BLOCKED: test runner missing/);
-      assert.match(body, /- 🔗 axiom: AX_ENV_FIX_CHANNEL/);
-      assert.match(body, /- 💬 unblock: npm i -D vitest/);
-    },
-  },
-  {
-    id: 'sdd-sync <ticket>',
-    directive: 'execute',
-    raw: 'npx gennady sdd-sync <ticket>',
-    cmd: 'sdd-sync',
-    fresh: true,
-    args: (fx) => [fx.ticketPath],
-    check: (r, fx) => {
-      assert.strictEqual(r.exitCode, 0, r.stdout + r.stderr);
-      assert.match(r.stdout, new RegExp(`^\\[sdd-sync\\] ${fx.taskId} → `));
-    },
-  },
-  {
-    id: 'sdd-state [project-root]',
-    directive: 'execute',
-    raw: 'npx gennady sdd-state',
-    cmd: 'sdd-state',
-    args: () => [],
-    check: (r) => {
-      assert.strictEqual(r.exitCode, 0, r.stdout + r.stderr);
-      assert.match(r.stdout, /FLOW_VERSION=v2/);
-    },
-  },
-  {
     id: 'sdd-check --task <ticket>',
     directive: 'execute',
-    raw: 'npx gennady sdd-check --task <ticket>',
+    raw: 'npx gennady sdd-check --task &lt;ticket&gt;',
     cmd: 'sdd-check',
     args: (fx) => ['--task', fx.ticketPath],
     check: (r) => {
@@ -618,7 +422,7 @@ const CASES: FixtureCase[] = [
   {
     id: 'sdd-check --all [root]',
     directive: 'audit',
-    raw: 'sdd-check --all [root]',
+    raw: 'npx gennady sdd-check --all .',
     cmd: 'sdd-check',
     args: () => ['--all'],
     check: (r) => {
@@ -629,7 +433,7 @@ const CASES: FixtureCase[] = [
   {
     id: 'sdd-check --changed [root]',
     directive: 'audit',
-    raw: 'sdd-check --changed [root]',
+    raw: 'npx gennady sdd-check --changed .',
     cmd: 'sdd-check',
     args: () => ['--changed'],
     check: (r) => {
@@ -649,39 +453,6 @@ const CASES: FixtureCase[] = [
     },
   },
   {
-    id: 'sdd-extract <file> <NAME>',
-    directive: 'phase',
-    raw: 'npx gennady sdd-extract <ticket> PHASE_P1',
-    cmd: 'sdd-extract',
-    args: (fx) => [fx.ticketPath, 'PHASE_P1'],
-    check: (r) => {
-      assert.strictEqual(r.exitCode, 0, r.stdout + r.stderr);
-      assert.match(r.stdout, /### P1 — impl/);
-    },
-  },
-  {
-    id: 'sdd-extract <file>#<anchor>',
-    directive: 'phase',
-    raw: 'npx gennady sdd-extract specs/app/greeting/greeting.spec.md#module-contracts',
-    cmd: 'sdd-extract',
-    args: (fx) => [`${fx.specPath}#module-contracts`],
-    check: (r) => {
-      assert.strictEqual(r.exitCode, 0, r.stdout + r.stderr);
-      assert.match(r.stdout, /Greeter/);
-    },
-  },
-  {
-    id: 'sdd-verify --task <ticket-path> --phase <PhaseID>',
-    directive: 'phase',
-    raw: 'npx gennady sdd-verify --task specs/app/app.task.TSK-1.md --phase P2',
-    cmd: 'sdd-verify',
-    args: (fx) => ['--task', fx.ticketPath, '--phase', 'P1'],
-    check: (r) => {
-      assert.strictEqual(r.exitCode, 0, r.stdout + r.stderr);
-      assert.match(r.stdout, /ALL PASS/);
-    },
-  },
-  {
     id: 'lint --spec=<module-spec> --inventory-reverse <module-code-dir>',
     directive: 'audit',
     raw: 'npx gennady lint --spec=<spec-path> --inventory-reverse <code-root>',
@@ -690,16 +461,6 @@ const CASES: FixtureCase[] = [
     check: (r) => {
       assert.strictEqual(r.exitCode, 0, r.stdout + r.stderr);
       assert.match(r.stdout, /clean|no errors/);
-    },
-  },
-  {
-    id: 'yagni .',
-    directive: 'phase',
-    raw: 'npx gennady yagni .',
-    cmd: 'yagni',
-    args: () => ['.'],
-    check: (r) => {
-      assert.strictEqual(r.exitCode, 0, r.stdout + r.stderr);
     },
   },
 ];
@@ -741,91 +502,14 @@ describe('sdd-orient documented invocation contract', () => {
     });
   }
 
-  it('critic uses the existing-artifact positional form without --scope', () => {
+  it('critic reviews the bounded artifact set directly without an obsolete orient detour', () => {
     const text = readFileSync(
       join(REPO_ROOT, 'ai', 'directives', 'sdd-v2', 'critic.directive.xml'),
       'utf-8'
     );
-    assert.match(text, /npx gennady sdd-orient <artifact-path><\/ToolCall>/);
-    assert.doesNotMatch(text, /sdd-orient <artifact-path> --scope/);
-  });
-});
-
-describe('review publication documented invocation contract', () => {
-  it('critic derives and lifecycle rechecks the same exact CLI form without --help', () => {
-    const critic = readFileSync(
-      join(REPO_ROOT, 'ai', 'directives', 'sdd-v2', 'critic.directive.xml'),
-      'utf-8'
-    );
-    const lifecycle = readFileSync(
-      join(REPO_ROOT, 'ai', 'directives', 'sdd-v2', 'review-lifecycle.directive.xml'),
-      'utf-8'
-    );
-    const exact = 'npx gennady sdd-check --review-publication <primary> [secondary...]';
-
-    assert.match(critic, new RegExp(exact.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
-    assert.match(lifecycle, new RegExp(exact.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
-    assert.doesNotMatch(
-      [critic, lifecycle].join('\n'),
-      /sdd-check --review-publication[^`\n]*--help/
-    );
-    assert.ok(knownCommands().has('sdd-check'));
-  });
-
-  it('pins branch and PR identity while keeping hostile PR body bytes out of shell commands', () => {
-    const lifecycle = readFileSync(
-      join(REPO_ROOT, 'ai', 'directives', 'sdd-v2', 'review-lifecycle.directive.xml'),
-      'utf-8'
-    );
-    const publish =
-      lifecycle.match(/<Step id="STEP_3_PUBLISH_FINAL_BYTES">([\s\S]*?)<\/Step>/)?.[1] ?? '';
-    const merge =
-      lifecycle.match(/<Step id="STEP_6_MERGE_REVIEWED_COMMIT">([\s\S]*?)<\/Step>/)?.[1] ?? '';
-
-    const addAt = publish.indexOf('git add -- <publication-files>');
-    const commitAt = publish.indexOf('git commit -m');
-    const branchChecks = [...publish.matchAll(/git branch --show-current/g)].map(
-      (match) => match.index
-    );
-    assert.ok(addAt > 0 && commitAt > addAt);
-    assert.ok(
-      branchChecks.some((at) => at > publish.indexOf('Immediately before staging') && at < addAt)
-    );
-    assert.ok(branchChecks.some((at) => at > addAt && at < commitAt));
-    assert.match(publish, /H_CURRENT_BRANCH_MISMATCH.+before\s+any VCS mutation/s);
-    assert.match(
-      publish,
-      /gh pr list --head <head-branch> --base <base-branch> --state open --json number,url --limit 2/
-    );
-    assert.match(publish, /exactly one row after creation/);
-    assert.match(publish, /store the one literal `<pr-number>` and `<pr-url>`/);
-
-    const exactMutations = [...lifecycle.matchAll(/`(gh pr (?:create|edit)[^`\n]+)`/g)].map(
-      (match) => match[1]!
-    );
-    const hostileBody = [
-      '# Markdown',
-      '`code` and ```fence```',
-      '$(touch never)',
-      '"double" and \'single\'',
-    ].join('\n');
-    assert.ok(exactMutations.length >= 2);
-    for (const command of exactMutations) {
-      assert.match(command, /--body-file <pr-body-path>/);
-      assert.doesNotMatch(command, /(?:^|\s)--body(?:\s|=)/);
-      for (const hostileLine of hostileBody.split('\n')) {
-        assert.ok(!command.includes(hostileLine));
-      }
-    }
-
-    assert.match(publish, /git commit -m "sdd\(<review-slug>\): publish specification"/);
-    assert.match(publish, /gh pr edit <pr-number> /);
-    assert.match(publish, /gh pr view <pr-number> /);
-    assert.match(merge, /gh pr view <pr-number> /);
-    assert.match(merge, /gh pr merge <pr-number> --merge --match-head-commit <reviewed-commit>/);
-    assert.doesNotMatch(lifecycle, /gh pr (?:view|edit|merge) --/);
-    assert.doesNotMatch(lifecycle, /\$\(|`echo\s|&(?:gt|lt|amp);/);
-    assert.doesNotMatch(lifecycle, /<commit-title>|<pr-title>|<pr-body>/);
+    assert.match(text, /Resolve exact artifact paths and owning references/);
+    assert.match(text, /Read the full bounded target/);
+    assert.doesNotMatch(text, /sdd-orient|--scope/);
   });
 });
 
@@ -838,7 +522,10 @@ describe('historical SDD agent-confusion regressions', () => {
     assert.match(executionPlan, /npx gennady sdd-check --all <verification-root>/);
     assert.match(executionPlan, /DIRECT_VERIFICATION_RECEIPT/);
     assert.match(executionPlan, /one-line fix.+new Round/s);
-    assert.match(executionPlan, /publication=MERGED.+Only AFTER that proof.+scaffold/s);
+    assert.match(
+      executionPlan,
+      /operator approval #1 with a current marker.+Only AFTER that proof.+scaffold/s
+    );
   });
 
   it('audit and code-review define both modes once and pass named context forward', () => {
@@ -886,7 +573,11 @@ describe('historical SDD agent-confusion regressions', () => {
   });
 
   it('scaffold exhaustively maps every legal DAG owner to one exact ticket call', () => {
-    const generation = readFileSync(
+    const materialize = readFileSync(
+      join(REPO_ROOT, 'ai', 'directives', 'sdd-v2', 'scaffold', 'steps', 'STEP_2_MATERIALIZE.xml'),
+      'utf-8'
+    );
+    const mechanical = readFileSync(
       join(
         REPO_ROOT,
         'ai',
@@ -894,53 +585,47 @@ describe('historical SDD agent-confusion regressions', () => {
         'sdd-v2',
         'scaffold',
         'steps',
-        'STEP_3_TASK_GENERATION.xml'
+        'STEP_3_MECHANICAL_CHECK.xml'
       ),
       'utf-8'
     );
-    const step = readFileSync(
-      join(REPO_ROOT, 'ai', 'directives', 'sdd-v2', 'scaffold', 'steps', 'STEP_3_TICKET_LOOP.xml'),
-      'utf-8'
+    assert.match(
+      materialize,
+      /--owner module --scope &lt;scope&gt; --module &lt;module&gt; --id &lt;ACR&gt;-&lt;slug&gt;/
     );
-    assert.match(step, /--owner module --scope <scope> --module <module> --id <ACR>-<slug>/);
-    assert.match(step, /--owner scope-bootstrap --scope <scope> --id <ACR>-<slug>/);
-    assert.match(step, /--owner infrastructure-flat --scope <scope> --id <ACR>-<slug>/);
-    assert.match(step, /table is exhaustive/);
+    assert.match(
+      materialize,
+      /--owner scope-bootstrap --scope &lt;scope&gt; --id &lt;ACR&gt;-&lt;slug&gt;/
+    );
+    assert.match(
+      materialize,
+      /--owner infrastructure-flat --scope &lt;scope&gt; --id &lt;ACR&gt;-&lt;slug&gt;/
+    );
     const taskCalls = [
-      ...step.matchAll(
+      ...materialize.matchAll(
         /<ToolCall owner="this-step" result="[^"]+">(npx gennady sdd-new task [\s\S]*?)<\/ToolCall>/g
       ),
     ].map((match) => match[1] as string);
     assert.strictEqual(taskCalls.length, 3, taskCalls.join('\n'));
     for (const owner of ['module', 'scope-bootstrap', 'infrastructure-flat']) {
-      assert.strictEqual(step.match(new RegExp(`--owner ${owner}`, 'g'))?.length, 1);
+      assert.strictEqual(materialize.match(new RegExp(`--owner ${owner}`, 'g'))?.length, 1);
       assert.strictEqual(taskCalls.filter((call) => call.includes(`--owner ${owner}`)).length, 1);
     }
-    assert.doesNotMatch(step, /sdd-new task (?![^<\n]*--owner)/);
-    assert.doesNotMatch(step, /--owner <owner>/);
-    assert.match(step, /run its one exact `sdd-new` ToolCall/);
+    assert.doesNotMatch(materialize, /sdd-new task (?![^<\n]*--owner)/);
+    assert.doesNotMatch(materialize, /--owner &lt;owner&gt;/);
     assert.match(
-      step,
-      /copy the manifest's path-aware owning-spec\/rule\/deferred literals verbatim/i
+      materialize,
+      /For each derived node call exactly one applicable `sdd-new` command/
     );
     assert.strictEqual(
-      step.match(
-        /<ToolCall owner="this-step" result="phaseAuthoringFeedback">npx gennady sdd-check --task <created-ticket-path> --authoring --phase <PhaseID><\/ToolCall>/g
+      mechanical.match(
+        /<ToolCall owner="this-step" result="authoringGate">npx gennady sdd-check --task &lt;ticket-path&gt; --authoring<\/ToolCall>/g
       )?.length,
       1
     );
-    assert.strictEqual(
-      step.match(
-        /<ToolCall owner="this-step" result="authoringGate">npx gennady sdd-check --task <created-ticket-path> --authoring<\/ToolCall>/g
-      )?.length,
-      1
-    );
-    assert.match(step, /GREEN authoringGate authorizes\s+selecting the next STEP_2 node/);
-    assert.match(step, /at most three repair attempts.+H_TICKET_AUTHORING_INVALID/s);
-    assert.match(generation, /Do NOT form, draft, or retain any node's ticket content here/);
-    assert.match(generation, /Pass only the ordered node identities plus shared facts/);
-    assert.doesNotMatch(generation, /complete ticket-content plan|complete ordered plans/);
-    assert.doesNotMatch(step, /authoring[^\n]*(?:&&|;|\|\|)/);
+    assert.match(mechanical, /Correct only named findings and rerun the same\s+check/s);
+    assert.match(mechanical, /H_TICKET_AUTHORING_INVALID/);
+    assert.match(mechanical, /result="integrityGate">npx gennady sdd-check --all \.<\/ToolCall>/);
   });
 
   it('skills advertise only implemented audit/review modes', () => {
@@ -961,9 +646,8 @@ describe('historical SDD agent-confusion regressions', () => {
 describe('documented result class against a real fixture repo', () => {
   for (const c of CASES) {
     it(c.id, () => {
-      const fx = c.fresh ? freshFixture() : ro;
+      const fx = ro;
       const cwd = c.cwd ? c.cwd(fx) : fx.root;
-      c.setup?.(fx);
       const result = runCli([c.cmd, ...c.args(fx)], cwd);
       c.check(result, fx);
     });

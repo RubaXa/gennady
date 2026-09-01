@@ -113,45 +113,51 @@ const scaffoldPlan = scaffold.children?.find((c) => c.label === '<ExecutionPlan>
 test('scaffold: lazy step list non-empty, count matches steps/ directory, skeleton order preserved (not alphabetical)', () => {
   const ids = (scaffoldPlan?.children ?? []).map((c) => c.attrs?.id);
   assert.equal(ids.length, stepFilesOf('scaffold').length);
-  // alphabetically STEP_0B_PREFLIGHT sorts BEFORE STEP_0_INTAKE ('B' < '_'); the real skeleton
-  // list puts STEP_0_INTAKE first — proves order comes from the skeleton bullet list, not a sort.
-  assert.deepEqual(ids.slice(0, 2), ['STEP_0_INTAKE', 'STEP_0B_PREFLIGHT']);
+  assert.deepEqual(ids, [
+    'STEP_0_PREFLIGHT',
+    'STEP_1_DERIVE',
+    'STEP_2_MATERIALIZE',
+    'STEP_3_MECHANICAL_CHECK',
+    'STEP_4_INDEPENDENT_TICKET_REVIEW',
+    'STEP_5_OPERATOR_APPROVAL_2',
+    'STEP_6_HANDOFF',
+  ]);
 });
 
 test('scaffold: a lazy step body is reachable end to end (Action text from the real package)', () => {
-  const step = findStep(scaffoldPlan, 'STEP_2_DAG');
+  const step = findStep(scaffoldPlan, 'STEP_2_MATERIALIZE');
   const action = step?.children?.find((c) => c.label === '<Action>');
   assert.ok((action?.detail?.length ?? 0) > 0, 'Action has real content from the package file');
+  assert.match(action?.detail ?? '', /Create actual tickets and indexes|sdd-new/);
 });
 
-// --- phase-execution-protocol.directive.xml (<PhaseProcedure> — the OTHER step-bearing tag,
-// previously unhandled at all: no dedicated parser, bullet list survived only as flat prose) ---
+// --- phase-execution-protocol.directive.xml (lazy <ExecutionPlan>) ---
 
 const phaseProtocol = loadDirective('ai/directives/sdd-v2/phase-execution-protocol.directive.xml');
-const phaseProcedure = phaseProtocol.children?.find((c) => c.label === '<PhaseProcedure>');
+const phaseProcedure = phaseProtocol.children?.find((c) => c.label === '<ExecutionPlan>');
 
-test('phase-execution-protocol: <PhaseProcedure> gets a dedicated step list, not flattened prose', () => {
-  assert.ok(phaseProcedure, '<PhaseProcedure> section present');
+test('phase-execution-protocol: <ExecutionPlan> gets the four disposable-worker steps', () => {
+  assert.ok(phaseProcedure, '<ExecutionPlan> section present');
   const ids = (phaseProcedure?.children ?? []).map((c) => c.attrs?.id);
-  assert.ok(ids.length > 0, 'step list must not be empty');
   assert.equal(ids.length, stepFilesOf('phase-execution-protocol').length);
-  // alphabetically STEP_1B_RESUME_OR_START sorts BEFORE STEP_1_GET_PHASE_CONTEXT ('B' < '_'); the
-  // real skeleton list puts STEP_1_GET_PHASE_CONTEXT first.
-  assert.deepEqual(ids.slice(0, 2), ['STEP_1_GET_PHASE_CONTEXT', 'STEP_1B_RESUME_OR_START']);
+  assert.deepEqual(ids, ['STEP_1_ORIENT', 'STEP_2_IMPLEMENT', 'STEP_3_VERIFY', 'STEP_4_HANDOFF']);
 });
 
-test('phase-execution-protocol: cross-cutting and package-only contracts remain reachable from their real owners', () => {
-  const outputContracts = phaseProtocol.children?.find((c) => c.label === '<OutputContracts>');
-  const blocker = outputContracts?.children?.find((c) => c.label === 'BLOCKER_FORMAT');
-  assert.ok(blocker, 'cross-cutting BLOCKER_FORMAT remains visible in the skeleton');
-  assert.match(blocker?.detail ?? '', /BLOCKED/, 'the skeleton carries the real blocker body');
+test('phase-execution-protocol: package-only stateless axiom and handoff contract remain reachable', () => {
+  const orientStep = findStep(phaseProcedure, 'STEP_1_ORIENT');
+  const stateless = orientStep?.children?.find((c) => c.label === 'AX_STATELESS_FLOW');
+  assert.ok(stateless, 'AX_STATELESS_FLOW is visible under the orienting step that activates it');
+  assert.match(
+    stateless?.detail ?? '',
+    /no durable hidden control plane|complete continuation state/i
+  );
 
-  const handoffStep = findStep(phaseProcedure, 'STEP_6_EMIT_HANDOFF');
-  assert.ok(handoffStep, 'STEP_6_EMIT_HANDOFF present');
+  const handoffStep = findStep(phaseProcedure, 'STEP_4_HANDOFF');
+  assert.ok(handoffStep, 'STEP_4_HANDOFF present');
   const packageRead = handoffStep?.children?.find((c) => c.kind === 'read');
   assert.equal(
     packageRead?.ref,
-    'ai/directives/sdd-v2/phase-execution-protocol/steps/STEP_6_EMIT_HANDOFF.xml',
+    'ai/directives/sdd-v2/phase-execution-protocol/steps/STEP_4_HANDOFF.xml',
     'the lazy step retains its exact READ_AND_USE package edge'
   );
   const handoff = handoffStep?.children?.find((c) => c.label === 'HANDOFF_FORMAT');
@@ -196,7 +202,7 @@ test('a directive with no assembly-manifest override still parses <Step> blocks 
   const ep = execute.children?.find((c) => c.label === '<ExecutionPlan>');
   assert.equal(
     ep?.children?.length,
-    11,
+    8,
     'unchanged from the existing monolith test in parse-directive.test.ts'
   );
   assert.equal(ep?.children?.[0]?.attrs?.id, 'STEP_0_RESOLVE');

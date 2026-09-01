@@ -10,6 +10,7 @@ import type { DeclaredSymbol, ReferenceCount, SymbolIndex } from '../../symbol-i
 // which is exactly what separates `exact` (this adapter) from `approximate` (grep, plain text search).
 const REFERENCE_NODE_TYPES = new Set([
   'identifier',
+  'private_property_identifier',
   'property_identifier',
   'type_identifier',
   'shorthand_property_identifier',

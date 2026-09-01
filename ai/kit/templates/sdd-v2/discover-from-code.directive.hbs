@@ -28,10 +28,6 @@
     {{> "axiom/process/ax-artifact-style-self-check"}}
   </BeliefState>
 
-  <SessionState>
-    {{> "contract/process/session-file-format"}}
-  </SessionState>
-
   <KernelGrammar>
     {{> "definition/process/def-read-and-use-directive"}}
   </KernelGrammar>
@@ -104,10 +100,9 @@
       <Goal>Prove what was produced is coherent.</Goal>
       <Action>
         Whatever exists now (at minimum portal + infra; plus any deepened scopes) is coherent;
-        exact integrityCheck ToolCall below clean. Return `TerminalDecision: continue` to the
-        already-loaded root greenfield/recovery owner with the produced portal/scopes as its saved
-        result; root chooses the next scope or pause from the same session. This discovery branch
-        never runs <ToolLiteral role="future">npx gennady sdd-session close</ToolLiteral> and never asks the operator to re-enter `/sdd`.
+        exact integrityCheck ToolCall below clean. Hand the produced portal/scope paths to the root
+        owner, which chooses the next scope or pause. The artifacts themselves are the saved result;
+        no session continuation or close operation exists.
         <ToolCall owner="this-step" result="integrityCheck">npx gennady sdd-check --all .</ToolCall> Use integrityCheck.
       </Action>
     </Step>

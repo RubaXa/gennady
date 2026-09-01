@@ -6,11 +6,52 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   checkBddCoverage,
+  checkBddRequirementTraceability,
   checkUnparsedCoverageRows,
   extractTestCaseNames,
   findUnparsedCoverageRows,
   parseTestCoverage,
 } from '../bdd-coverage.ts';
+
+describe('checkBddRequirementTraceability', () => {
+  const bdd = [
+    '**Scenario:** rejects an expired token [`integration`] `[PAY-REQ-17]`',
+    '- **Given** an expired token',
+    '- **When** payment starts',
+    '- **Then** it rejects the request',
+  ].join('\n');
+
+  it('Requirement-ID in canonical case name closes the BDD → coverage link', () => {
+    const coverage =
+      '- rejects an expired token → `payment.test.ts` :: `[PAY-REQ-17] rejects an expired token`';
+    assert.deepStrictEqual(checkBddRequirementTraceability('t.md', bdd, coverage), []);
+  });
+
+  it('generalized fixture: an arbitrary uncovered Requirement-ID is an error', () => {
+    const coverage = '- rejects an expired token → `payment.test.ts` :: `rejects an expired token`';
+    const findings = checkBddRequirementTraceability('t.md', bdd, coverage);
+    assert.strictEqual(findings.length, 1);
+    assert.strictEqual(findings[0]?.code, 'SDD_BDD_REQUIREMENT_UNTRACED');
+    assert.strictEqual(findings[0]?.severity, 'error');
+    assert.match(findings[0]?.message ?? '', /PAY-REQ-17/);
+  });
+
+  it('each ID in a multi-requirement scenario needs its own explicit trace', () => {
+    const multi = bdd.replace('`[PAY-REQ-17]`', '`[PAY-REQ-17]` `[PAY-REQ-23]`');
+    const coverage =
+      '- rejects an expired token → `payment.test.ts` :: `[PAY-REQ-17] rejects an expired token`';
+    const findings = checkBddRequirementTraceability('t.md', multi, coverage);
+    assert.deepStrictEqual(
+      findings.map((finding) => finding.message.match(/PAY-REQ-[0-9]+/)?.[0]),
+      ['PAY-REQ-23']
+    );
+  });
+
+  it('missing coverage row cannot silently drop a Requirement-ID', () => {
+    const findings = checkBddRequirementTraceability('t.md', bdd, '');
+    assert.strictEqual(findings[0]?.code, 'SDD_BDD_REQUIREMENT_UNTRACED');
+  });
+});
 
 describe('parseTestCoverage', () => {
   it('парсит обычную строку с одним кейсом', () => {
@@ -78,6 +119,13 @@ describe('extractTestCaseNames', () => {
 });
 
 describe('checkBddCoverage', () => {
+  it('exact real test name may carry the Requirement-ID contract', () => {
+    const entries = parseTestCoverage(
+      '- scenario → `f.test.ts` :: `[GAT-REQ-9] rejects invalid input`'
+    );
+    const map = new Map([['f.test.ts', ['[GAT-REQ-9] rejects invalid input']]]);
+    assert.deepStrictEqual(checkBddCoverage('t.md', entries, map, 'v2'), []);
+  });
   it('кейс найден в тест-файле → без findings', () => {
     const entries = parseTestCoverage('- scenario → `f.test.ts` :: `does the thing`');
     const map = new Map([['f.test.ts', ['does the thing']]]);

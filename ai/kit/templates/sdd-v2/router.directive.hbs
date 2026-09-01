@@ -1,44 +1,21 @@
-<SddRouter keywords="sdd, router, entry, intent, scale, route, logic-switch, lazy-load, state" type="directive" ver="2.2">
+<SddRouter keywords="sdd, router, entry, intent, scale, route, stateless" type="directive" ver="2.3">
   <Mission>
-    Single entry to SDD spec-authoring. On invocation I (1) obtain project state, (2) classify
-    operator intent, (3) route to exactly ONE branch directive via LOGIC_SWITCH, loading it
-    lazily. I carry the cross-cutting core every branch inherits: how to talk to the operator and
-    how to read routes. The per-branch rendering (breadcrumb, decision card) and the artifact
-    format live on the branch, loaded when its route fires.
-
-    Input — operator intent plus exact result alias `routerState`, the one already-gathered
-    `sdd-state` snapshot. The ordinary `sdd` entry
-    leaves intent unforced; a public direct entry supplies one literal forced intent from
-    `execute | scaffold | reconcile | critic`. A forced intent records which owner the operator
-    invoked; it does not bypass session conflict handling, readiness, SCALE confirmation when that
-    owner needs SCALE, or the owner's own input parsing. Output — control handed to one branch
-    directive; the router writes no artifact and prints no formatted trace itself.
-
-    **Glossary.** scope-type ∈ {infrastructure, interface, library, product}. Scope Graph =
-    directed graph; edge A→B = «scope A depends on scope B». SCALE ∈ {product, library, module,
-    function, fix} — the size axis of the request, from «a product from scratch» down to «a fix =
-    investigation on autopilot». SCALE is an attribute of the session, never a route: routing
-    stays intent + scope-type, SCALE travels in the session file as the depth parameter
-    (`AX_SCALE_PROPORTIONAL_DEPTH`). The fix scale already owns a dedicated skill — `/sdd-reconcile`
-    (mode=fix); a fix-sized request arriving through this router keeps its route by
-    intent + scope-type and simply carries `scale: fix`.
+    Route one operator intent from one read-only `sdd-state` snapshot to exactly one owner. The
+    router writes no artifacts and maintains no persistent session. Durable artifacts and current
+    repository state are the only continuation context.
   </Mission>
-
   <BeliefState>
     {{> "axiom/process/ax-operator-language"}}
-
     {{> "axiom/process/ax-tool-invocation"}}
-
     {{> "axiom/process/ax-operator-dialogue-style"}}
-
     {{> "axiom/process/ax-dialogue-discipline"}}
-
     {{> "axiom/process/ax-operator-safeguard"}}
-
-    {{> "axiom/process/ax-preflight-blast-radius-scoped"}}
-
+    {{> "axiom/process/ax-no-process-narration"}}
+    {{> "axiom/process/ax-operator-output-live-text"}}
     {{> "axiom/process/ax-diverge-before-recommend"}}
-
+    {{> "axiom/process/ax-scale-proportional-depth"}}
+    {{> "axiom/process/ax-stateless-flow"}}
+    {{> "axiom/spec/ax-stateless-artifact"}}
     <Axiom id="AX_READER_WITHOUT_SESSION_CONTEXT" cross-cutting="true">
       Repo artifacts (specs, tickets, Decision Log entries) outlive the session that wrote them and
       are read by someone with zero memory of it. Before writing artifact text, apply the reader
@@ -47,7 +24,6 @@
       set — forbidden in artifacts; they belong to the session log. Introduce every term inline
       before using it. The artifact explains the thing; it never reports the work of making it.
     </Axiom>
-
     <Axiom id="AX_DECISION_LOG_NON_OBVIOUS" cross-cutting="true">
       A Decision Log entry is insider information for a future agent — the «why THIS way» it could
       not derive from the task alone: a real alternative rejected, an accepted risk, an operator's
@@ -66,304 +42,104 @@
       already carries it; no (there is a real compromise, rejection, or risk that only the operator's
       reasoning explains) → DL entry.
     </Axiom>
-
-    {{> "axiom/process/ax-no-process-narration"}}
-
-    {{> "axiom/process/ax-operator-output-live-text"}}
-
-    {{> "axiom/process/ax-cross-scope-change"}}
-
-    {{> "axiom/process/ax-scale-proportional-depth"}}
-
-    {{> "axiom/spec/ax-stateless-artifact"}}
-
-    {{> "axiom/spec/ax-handoff-to-module-decomposition"}}
+    <Axiom id="AX_V2_HAS_NO_INTERNAL_MIGRATION">
+      `sdd-migrate` is exclusively the explicit V1→V2 boundary. Invalid or stale V2 artifacts return
+      to their owning V2 authoring flow. Never invent V2→V2 migration, schema upgrade, compatibility
+      route, or migration session.
+    </Axiom>
   </BeliefState>
-
   <KernelGrammar>
     {{> "definition/process/def-logic-switch"}}
-
     {{> "definition/process/def-read-and-use-directive"}}
   </KernelGrammar>
-
-  <SessionState>
-    {{> "contract/process/session-file-format"}}
-  </SessionState>
-
-  <ChatProtocol>
+  <Contracts>
+    {{> "contract/process/artifact-approval-flow"}}
+    {{> "contract/process/artifact-approval-marker"}}
+    {{> "contract/process/readiness-preflight-gate"}}
     {{> "contract/process/question-rule-slim"}}
-
     {{> "contract/process/halt-format"}}
-  </ChatProtocol>
-
+  </Contracts>
   <HaltConditions>
-    | 🛑 ID | Trigger |
+    | ID | Trigger |
     |---|---|
-    | `H_AMBIGUOUS_INTENT` | Operator intent cannot be classified against state — ask, never guess |
-    | `H_SCOPE_DRAFT_NOT_OPERATOR_APPROVED` | `module-decomposition` targets a product/library review-state draft without the exact `operator-approved review-state draft` working-set entry, or a clean scope whose `[SCOPES]` row's `status` column is not `done` |
-    | `H_WRONG_REPO` | Operator answered the empty-intake entry Ask with «я не в том репозитории» — stop here, no directive loads |
-    | `H_SESSION_INTENT_CONFLICT` | A live session and the incoming intent are unrelated or their relationship is ambiguous — preserve the old session and obtain the one explicit continue-existing vs close-and-start-new decision before routing |
-    | `H_ASK_WITHOUT_CARD` | An `AskUserQuestion` / `QUESTION_RULE_SLIM` question fired without the `sdd-state` card having been shown verbatim as its own visible unit first — operator may answer `STOP` and demand the card |
-    | `H_UNFORMATTED_ASK` | A question reached the operator as bare free-form text — no `### 💡 <О чём решаем>` explanation first, no `AskUserQuestion` call, or (text fallback) no explicit named option list — `H_ASK_WITHOUT_CARD` is the special case of this same rule for STEP_0's card: show-then-ask is the general law, the card is just its first instance |
+    | `H_AMBIGUOUS_INTENT` | Repository state and operator message support several materially different routes |
+    | `H_SPEC_NOT_APPROVED` | Scaffold targets specs that have not passed approval #1 |
+    | `H_V2_INVALID` | A V2 artifact is structurally invalid; return to its authoring owner, never migrate it |
+    | `H_WRONG_REPO` | Operator says this is the wrong repository |
   </HaltConditions>
-
   <ExecutionPlan>
     <Step id="STEP_0_STATE">
-      <Goal>Consume and show the one gathered project-state snapshot without mutating the project.</Goal>
+      <Goal>Show the exact read-only repository snapshot.</Goal>
       <Action>
-        Consume exact result alias `routerState` from the entry skill's GATHER step; the router does
-        not own or repeat that initial `sdd-state` call. This applies equally to ordinary `sdd` and
-        to a public direct entry: the direct skill passes the exact saved bytes plus its literal forced intent and never
-        loads its owner directive itself. That one deterministic call returns everything routing needs: `FLOW_VERSION`,
-        `READINESS` (eight exact required scripts: type-check / test / test:coverage / read-only lint+gennady / read-only format / format:fix / lint:fix / fix; optional check is read-only),
-        portal presence (`specs/README.md`), the Scopes table (id + scope-type + status + description),
-        and the in-progress session set (`SESSION_FILE_FORMAT`, `specs/.sdd-session.md`).
-
-        **SHOW-gate (mechanical, not narrative — the reader must be able to check it by eye, not by
-        trusting the agent's account of it).** Copy the card — the block from `🏗 SDD ·` through the
-        `👉 Следующий шаг:` line, inclusive — byte-for-byte into a fenced code block, as its OWN
-        message, BEFORE any classification of intent begins. When the channel genuinely cannot carry
-        a bare separate message, the fenced card MAY open the same message that carries the next Ask,
-        but it must still stand as its own visible fenced block, never folded into the Ask's own
-        text. This is required every time, including when the state looks empty — an absent portal
-        still gets the card; «нет ни одной спеки» IS the picture. Never paraphrase it, never
-        summarize it, never fold it silently into the agent's own reasoning, never skip it.
-        `AX_NO_PROCESS_NARRATION` bans commentary about the work being done — it does not ban this
-        display, which is a required observable artifact, not narration.
-
-        **AskUserQuestion is void without the shown card.** Any `AskUserQuestion` call (or
-        `QUESTION_RULE_SLIM` question) fired anywhere downstream of STEP_0 — including STEP_1_CLASSIFY's
-        empty-intake Ask below — is INVALID unless the fenced card above already appeared, verbatim,
-        as its own visible unit earlier in this turn. Collapsing the card's content into the
-        question's title or description (e.g. «Репозиторий пустой: портал отсутствует, скоупов нет,
-        кода нет. С чего начнём?») is not the card — it is a **summary, and a summary is not the
-        card**: the same forbidden substitution as an orchestrator's self-probe standing in for a
-        dispatched critic (mirrors `AX_FIX_CLASSIFICATION`'s self-probe-is-void pattern). An Ask
-        posed without the card having been shown is `H_ASK_WITHOUT_CARD` — the operator receiving
-        such an Ask is entitled to answer `STOP` and demand the card before answering anything else.
-        Once the card has been shown, the Ask's own title MAY be short — brevity there is legal
-        precisely because the card already carried the full picture.
-
-        End this step after display. It owns no readiness/migration load, no session/glossary/journal
-        call, and no file write. STEP_1 must resolve session compatibility/open before
-        STEP_1B_PREFLIGHT may mutate anything.
+        Consume exact result alias `routerState` from the entry skill. Do not repeat `sdd-state`.
+        Show its card as a fenced block before the first question. Do not summarize the card into an
+        Ask. Emit operator-visible results as live text per `AX_OPERATOR_OUTPUT_LIVE_TEXT`, without
+        narrating internal mechanics per `AX_NO_PROCESS_NARRATION`. Per `AX_STATELESS_FLOW`, this step
+        performs no write and creates no hidden resume state. If the operator identifies this as the
+        wrong repository, stop with `H_WRONG_REPO`.
       </Action>
     </Step>
     <Step id="STEP_1_CLASSIFY">
-      <Goal>Classify operator intent and scope-type; confirm SCALE only for an authoring owner that consumes it.</Goal>
+      <Goal>Resolve current intent and, only for spec authoring, proportional depth.</Goal>
       <Action>
-        First reconcile the incoming message — including any literal forced intent supplied by a
-        public direct skill — with the literal `[SESSION]` card already shown at
-        STEP_0. No active session → classify normally below. Active session + explicit continuation of
-        its intent / working set / open item → `TerminalDecision: continue`; route from those stored
-        fields, and change `intent` / `scale` only for an operator-confirmed next stage of that same
-        chain. When the message is unrelated, or relation cannot be proved, do not mutate or silently
-        inherit the old file (`H_SESSION_INTENT_CONFLICT`). Show the current card unchanged and make the
-        ordinary intent proposal, plus SCALE only when the destination authoring owner consumes it,
-        inside ONE `AskUserQuestion` decision:
-        `continue existing` (uses the stored intent, scale, working set, and open item) or
-        `close-and-start-new — intent=<proposed>[, scale=<proposed>]` (the selected option confirms the
-        displayed values; omit scale for execute, recover-from-code, scaffold, reconcile, and critic).
-        While awaiting the answer return
-        `TerminalDecision: pause` and preserve the old file.
+        A forced intent from a direct skill is authoritative: `scaffold`, `execute`, `critic`, or
+        `reconcile`. Preserve the rest of the message as owner payload.
 
-        On `continue existing`, call neither close nor open. The stored session becomes usable only
-        after compatibility is proved. On `close-and-start-new`, and only after
-        that literal operator choice, run exact terminal ToolCall below; require success, then
-        run the exact scale-bearing or scale-less sessionOpen ToolCall below, according to the
-        destination owner's contract. The close/open pair belongs to this decision
-        step and nowhere earlier. Never call `--help`, infer missing arguments, or treat `open`'s
-        storage-idempotent `already open` result as intent compatibility.
+        Otherwise classify from current message plus `routerState`: project-setup · new-scope ·
+        evolve-scope · module-decomposition · multi-scope · recover-from-code · execute. Resolve
+        scope type for scope work. Ask one concise question only when alternatives would change the
+        owner or artifact boundary.
 
-        A supplied forced intent is already confirmed by the operator's direct skill invocation:
-        preserve it exactly as `execute`, `scaffold`, `reconcile`, or `critic`; use the remaining
-        operator message only as that owner's payload (Task-ID/queue selector, approved spec tree,
-        finding/change, or bounded critic target). Never reclassify a forced intent into a nearby
-        authoring intent. When no forced intent was supplied, derive intent from state + operator
-        message: project-setup · new-scope · evolve-scope · module-decomposition · multi-scope ·
-        recover-from-code · execute. When the intent concerns a
-        scope, also resolve its scope-type — for a new scope from the operator, for an existing one from
-        `sdd-state` (the Scopes table). A change spanning several scopes (cross-platform) is normal
-        (`AX_CROSS_SCOPE_CHANGE`): open a working set of the touched specs in the session and route them
-        in Scope-Graph dependency order — the shared / cross-cutting scope first, then its dependents —
-        looping the per-scope branches, not a new branch. Ambiguous → ask the operator; classify only
-        when state and message agree — the confirming question weighs the real candidate intents
-        against each other, not just the first plausible one (`AX_DIVERGE_BEFORE_RECOMMEND`).
+        Apply the artifact reader test from `AX_READER_WITHOUT_SESSION_CONTEXT`: the selected owner
+        must produce artifacts understandable without memory of this conversation.
 
-        The `[SPEC_SCHEMA]` block is binding router evidence. For forced `scaffold`, pass it unchanged
-        to scaffold STEP_0B. Any invalid V2 structure returns to its owning authoring flow; scaffold and
-        router never edit or migrate V2 specs. The only migration route is the explicit V1→V2 flow.
+        When alternatives exist, apply `AX_DIVERGE_BEFORE_RECOMMEND`; do not collapse them before the
+        operator can see the material trade-off. Confirm SCALE only for project/scope/module authoring
+        where it changes interview depth per `AX_SCALE_PROPORTIONAL_DEPTH`.
+        Execute, scaffold, critic, reconcile, and recovery do not need SCALE.
 
-        `recover-from-code` fires when the operator asks to recover / recreate a spec FROM EXISTING
-        CODE and names a concrete path (a folder or a file) in the message — e.g. «воссоздай спеку для
-        `services/foo` по коду». It requires a LIVE portal (`specs/README.md` present): a path-less
-        request against an absent portal is `project-setup` instead (the whole-project recovery lives
-        inside the `root` branch, not this switch). A path-bearing request against an absent portal is
-        still ambiguous between the two — ask the operator which they mean before routing.
+        Apply `READINESS_PREFLIGHT_GATE` once to the read-only snapshot. Missing repository gate
+        scripts return to their owning infrastructure/spec authoring path; they never create a
+        session or migration branch.
 
-        `execute` fires when the operator names a concrete Task-ID, or says `next` / `pick` / `batch` /
-        `all`, or asks in Russian to run a task or the queue («выполни задачу», «выполни очередь»,
-        «прогони батч») — it runs already-scaffolded tickets, never a spec, so it carries no scope-type
-        and no SCALE: skip both resolutions below for this intent and record `intent: execute` alone.
-
-        WHEN `specs/README.md` is absent AND the operator's message carries no substantive project
-        content (bare `/sdd`, a greeting, no vision / scope-type stated) — empty intake against an empty
-        portal — do NOT silently classify `project-setup` by elimination; the operator just saw the state
-        card (SHOW-gate, STEP_0) and is still «в непонятной ситуации» without a concrete next step. Read
-        `CODE` from the `sdd-state` output already in context — the probe is part of the default
-        snapshot, a second `sdd-state` call is a wasted turn — and STOP: ask via the `AskUserQuestion` tool when
-        available, otherwise `QUESTION_RULE_SLIM` (message in Russian) — this Ask is itself subject to the
-        SHOW-gate: the card must already stand shown as its own fenced unit, and this Ask's title MUST
-        NOT re-summarize it (`H_ASK_WITHOUT_CARD` — a title like «Репозиторий пустой: портал
-        отсутствует...» is the forbidden summary-as-card, not a legal short title) — «Создать проект» (рекомендую) · «Воссоздать спеки из
-        существующего кода» (offered ONLY when `CODE=present`) · «Я не в том репозитории» → halt
-        (`H_WRONG_REPO`), no directive loads. Either non-halt answer locks `intent: project-setup` for
-        STEP_2_ROUTE's existing case below — this is a confirmation of intent, not a new route. WHEN the
-        message already carries substantive project content (e.g. «новый проект X про Y») this Ask is
-        skipped entirely — classify `project-setup` directly and fold its confirmation into the ordinary
-        SCALE exchange below; one stop, not two.
-
-        SCALE is consumed only by the authoring routes `project-setup`, `new-scope`, `evolve-scope`,
-        `module-decomposition`, and `multi-scope` — their destination is root, scope, module, infra,
-        or interface, whose interview/design depth actually changes. For those intents only, assess
-        SCALE ∈ {product, library, module, function, fix} from context:
-        the intent itself, the portal state (an empty portal leans product; a mature scope leans
-        module / function), and the size of the request. Per `AX_SCALE_PROPORTIONAL_DEPTH` the
-        assessment binds only after operator confirmation — defaults-first: present the proposed
-        SCALE together with the classified intent as a pre-filled default the operator confirms or
-        corrects, in the SAME exchange that resolves any intent ambiguity — one stop for both,
-        never a second one. This exchange is mandatory for those authoring owners even when the intent is unambiguous from
-        state and the scale does not change the route — it is a named hard stop
-        (`AX_DIALOGUE_DISCIPLINE`), never skipped on high confidence. Use the AskUserQuestion tool
-        when available; otherwise `QUESTION_RULE_SLIM`. Message in Russian.
-
-        `execute`, `recover-from-code`, and forced `scaffold` / `reconcile` / `critic` do not consume
-        SCALE. Do not ask for it, invent it, or add a redundant hard stop; preserve an existing
-        compatible session's scale field untouched, or open a new session with intent only.
-
-        With no active session, an authoring owner records `intent:` and `scale:` into the session file
-        via exact <ToolLiteral role="example">npx gennady sdd-session open --intent <intent> --scale <scale></ToolLiteral>;
-        an owner that does not consume SCALE uses exact scale-less sessionOpen ToolCall below. The command creates `specs/` and
-        the `.gitignore` entry itself. Within a confirmed existing chain, a stage re-classification
-        uses exact sessionIntentUpdate ToolCall below and, when applicable,
-        exact sessionScaleUpdate ToolCall below; never use `set` to relabel
-        unrelated work. Never write the file by hand
-        (`SESSION_FILE_FORMAT` describes the shape the TOOL maintains, not a template to copy) — a
-        later step or a future session reads this file with no memory of this turn, so everything
-        it needs travels through the tool's own format (`AX_STATELESS_ARTIFACT`).
-
-        After exactly one of these states is true — (a) compatible existing session selected, or
-        (b) required sessionOpen succeeded — the write barrier is open. Only now may this stateful
-        orchestrator accept a `GlossarySuggestions` item: write its exact bytes to
-        `.claude/tmp/sdd-glossary-term.txt` and use the canonical glossaryUpdate ToolCall from
-        `SESSION_FILE_FORMAT`. Never persist a term before this point and never pass it inline.
-        Set `activeRouterState = routerState`. For execute, also retain the exact transition as
-        `executeSessionMode`: compatible existing session → `reused execute@<working-set>`; newly
-        opened session → `fresh (first)`; an operator-confirmed close-and-start-new →
-        `fresh (intent-switch)`. STEP_2 passes this label unchanged to the execute owner for its
-        canonical progress lines. Then continue to STEP_1B_PREFLIGHT.
-
-        Inputs <confirmed-intent>, <confirmed-scale>: this STEP_1 operator confirmation.
-        <ToolCall owner="this-step" result="previousSessionClosed">npx gennady sdd-session close</ToolCall> Use previousSessionClosed before sessionOpen.
-        <ToolCall owner="this-step" result="sessionOpen">npx gennady sdd-session open --intent <confirmed-intent> --scale <confirmed-scale></ToolCall> Use sessionOpen.
-        <ToolCall owner="this-step" result="sessionOpen">npx gennady sdd-session open --intent <confirmed-intent></ToolCall> Use sessionOpen.
-        <ToolCall owner="this-step" result="sessionIntentUpdate">npx gennady sdd-session set intent "<confirmed-intent>"</ToolCall> Run only for a confirmed same-chain stage transition; use sessionIntentUpdate.
-        <ToolCall owner="this-step" result="sessionScaleUpdate">npx gennady sdd-session set scale "<confirmed-scale>"</ToolCall> Run only when that same-chain transition also confirmed a changed SCALE; use sessionScaleUpdate.
-        <ToolCall owner="compatible-stateful-orchestrator" result="glossaryUpdate">npx gennady sdd-session term --content-file .claude/tmp/sdd-glossary-term.txt</ToolCall> Run only after the write barrier opens; use glossaryUpdate before introducing the accepted term.
-      </Action>
-    </Step>
-    <Step id="STEP_1B_PREFLIGHT">
-      <Goal>Clear readiness/migration only after the compatible session write barrier is open.</Goal>
-      <Action>
-        Use `FLOW_VERSION`, requested `AUTHORING_SCOPE` line(s), `EXECUTION_READY`, and `GATE_QUEUE` from `activeRouterState`; do not call
-        `sdd-state` or a task-lifecycle command to rediscover them. Apply the switch below, sized to
-        the classified request's blast radius (`AX_PREFLIGHT_BLAST_RADIUS_SCOPED`). Its mutating arms
-        are legal here only because STEP_1 already proved or opened the owning session.
-
-        The migration arm returns exactly one fresh post-mutation snapshot as `migrationState`; set
-        `activeRouterState = migrationState`. Do not run a router refresh after that return.
-        Readiness branches are routing decisions over `activeRouterState`, not mutation subflows;
-        every non-migration arm retains the
-        current `activeRouterState`. After a mutating branch returns, write exactly
-        `<branch-id> — <what it produced>` to
-        `.claude/tmp/sdd-router-preflight-journal.txt`, run branchJournal once, and require success;
-        the CLI consumes the payload. Then proceed to STEP_2_ROUTE with that exact active snapshot.
-        Editing `specs/.sdd-session.md` by hand or writing journal free text inline is forbidden.
-
-        <ToolCall owner="this-step" result="branchJournal">npx gennady sdd-session log --content-file .claude/tmp/sdd-router-preflight-journal.txt</ToolCall> Run once per successfully returned mutating branch; use branchJournal before routing.
-
-        {{> "contract/process/readiness-preflight-gate"}}
+        `FLOW_VERSION=v1` may route to the explicit V1→V2 migration directive after operator
+        confirmation. `FLOW_VERSION=v2` never routes to migration. Invalid V2 structure is
+        `H_V2_INVALID` and returns to the relevant V2 authoring owner.
       </Action>
     </Step>
     <Step id="STEP_2_ROUTE">
-      <Goal>Hand control to exactly one branch, passing SCALE down as the depth parameter.</Goal>
+      <Goal>Load exactly one owner.</Goal>
       <Action>
-        Evaluate the LOGIC_SWITCH below and follow the first matching case. The switch keys on
-        intent + scope-type only — SCALE selects depth, never a branch. Hand SCALE down via the
-        session file: the branch reads `scale:` from it and, per `AX_SCALE_PROPORTIONAL_DEPTH`,
-        sizes its interview depth, the number of design alternatives, and the weight of the
-        verification tail to that value. For module decomposition, apply the two exact input states
-        and rejection branch in `AX_HANDOFF_TO_MODULE_DECOMPOSITION`; do not infer another state.
-        Every loaded branch returns `TerminalDecision = continue | pause | complete` per
-        `SESSION_FILE_FORMAT`. `continue` keeps this session for the selected next link; `pause` keeps
-        it for resume after approval/check/cap/blocker/operator pause. A branch may return `complete`
-        only from its own terminal menu after proving no chained work remains; no intermediate route
-        closes the session. When routing execute, pass the exact `executeSessionMode` produced by
-        STEP_1; the owner must not infer reused/fresh from filesystem reads or extra probes.
+        <LOGIC_SWITCH>
+          WHEN flow version is v1 AND operator explicitly requests migration
+            -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/migration-v1-v2.directive.xml")
+          WHEN forced intent = scaffold
+            -> require well-formed, semantically current approval #1 markers in actual specs, else `H_SPEC_NOT_APPROVED`; READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/scaffold.directive.xml")
+          WHEN forced intent = execute OR intent = execute
+            -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/execute.directive.xml")
+          WHEN forced intent = critic
+            -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/critic.directive.xml")
+          WHEN forced intent = reconcile
+            -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/reconcile.directive.xml")
+          WHEN intent = project-setup
+            -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/root.directive.xml")
+          WHEN intent = recover-from-code
+            -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/discover-from-code.directive.xml")
+          WHEN intent = module-decomposition
+            -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/module.directive.xml")
+          WHEN intent in {new-scope, evolve-scope, multi-scope} AND scope-type = infrastructure
+            -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/infra.directive.xml")
+          WHEN intent in {new-scope, evolve-scope, multi-scope} AND scope-type = interface
+            -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/interface.directive.xml")
+          WHEN intent in {new-scope, evolve-scope, multi-scope} AND scope-type in {product, library}
+            -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/scope.directive.xml")
+          OTHERWISE -> H_AMBIGUOUS_INTENT
+        </LOGIC_SWITCH>
+        Per `AX_STATELESS_ARTIFACT`, multi-scope work processes scopes in dependency order and obtains approval #1 for the complete
+        changed spec set. It is iteration over owners, not another workflow or session. Any durable
+        choice recorded by the selected owner follows `AX_DECISION_LOG_NON_OBVIOUS`: Decision Log
+        captures only non-obvious trade-offs, exceptions, and accepted risks.
       </Action>
     </Step>
   </ExecutionPlan>
-
-  <ChatOutput>
-    Service line — dim, internal, never narrated (`AX_NO_PROCESS_NARRATION`):
-    `🗺️ ROUTE_R<N> · intent=<classified-or-pending> · scale=<confirmed-or-pending>`.
-
-    {{> "contract/process/message-layout"}}
-
-    {{> "axiom/process/ax-progressive-disclosure"}}
-  </ChatOutput>
-
-  <LogicSwitch>
-    ```
-    LOGIC_SWITCH (on sdd-state + intent + scope-type):
-      - WHEN forced intent = scaffold
-          -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/scaffold.directive.xml")
-      - WHEN forced intent = reconcile
-          -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/reconcile.directive.xml")
-      - WHEN forced intent = critic
-          -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/critic.directive.xml")
-      - WHEN forced intent = execute
-          -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/execute.directive.xml")
-      - WHEN specs/README.md is absent OR intent = project-setup
-          (vision / scope graph / register scope / bootstrap infra)
-          -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/root.directive.xml")
-      - WHEN intent = recover-from-code (portal present, operator names a folder or file and asks to
-          recover / recreate its spec from the code that already lives there)
-          -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/recover-from-code.directive.xml")
-      - WHEN intent ∈ {new-scope, evolve-scope} AND scope-type ∈ {product, library}
-          -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/scope.directive.xml")
-      - WHEN intent ∈ {new-scope, evolve-scope} AND scope-type = infrastructure
-          -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/infra.directive.xml")
-      - WHEN intent ∈ {new-scope, evolve-scope} AND scope-type = interface
-          -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/interface.directive.xml")
-      - WHEN intent = module-decomposition AND scope-type ∈ {product, library} AND either
-          (a) the scope has a valid `CHANGE_MANIFEST` plus the exact `[SESSION]` working-set entry
-              `<scope-spec-path> — module-decomposition handoff — operator-approved review-state draft`, OR
-          (b) the scope has no `CHANGE_MANIFEST` and its exact `[SCOPES]` row's `status` column is `done` (master)
-          (`AX_HANDOFF_TO_MODULE_DECOMPOSITION`)
-          -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/module.directive.xml")
-      - WHEN intent = module-decomposition AND neither exact state above holds
-          -> halt `H_SCOPE_DRAFT_NOT_OPERATOR_APPROVED`; do not load the module directive
-      - WHEN intent = multi-scope (one change spans several scopes)
-          -> decompose the request against the Scope Graph in dependency order per `AX_CROSS_SCOPE_CHANGE`
-             (the shared / cross-cutting scope first, then its dependents); for EACH scope in that order run
-             its own ordinary route (branches 3–6 of this same LOGIC_SWITCH) to completion, one scope at a
-             time, with a brief check-in with the operator between scopes
-      - WHEN intent = execute (a concrete Task-ID, or `next` / `pick` / `batch` / `all`, or an operator
-          request to run a task or the queue)
-          -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/execute.directive.xml")
-      - DEFAULT
-          -> ask the operator which intent applies (message in Russian); route only on a confirmed intent
-    ```
-  </LogicSwitch>
 </SddRouter>

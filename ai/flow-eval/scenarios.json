@@ -1,0 +1,23 @@
+[
+  {
+    "id": "fibonacci-library",
+    "fixture": "fibonacci-library",
+    "phase": "spec-authoring",
+    "mode": "full-spec-to-approval-1",
+    "intent": "Author the complete canonical Fibonacci specification from inputs/brief.md, including behavior, edge cases, and acceptance criteria."
+  },
+  {
+    "id": "tic-tac-toe",
+    "fixture": "tic-tac-toe",
+    "phase": "scaffold",
+    "mode": "actual-tickets-to-approval-2",
+    "intent": "Derive actual implementation tickets from the approved tic-tac-toe specification, with dependencies and executable acceptance criteria."
+  },
+  {
+    "id": "slugify-toolchain",
+    "fixture": "slugify-toolchain",
+    "phase": "execute",
+    "mode": "canonical-execute",
+    "intent": "Execute the canonical slugify ticket against the canonical slugify specification, including tests and the declared toolchain."
+  }
+]

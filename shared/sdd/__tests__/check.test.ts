@@ -84,12 +84,12 @@ describe('checkTicketAuthoringStructure', () => {
       .replace('\n| P2 | test | P1 | [ ] |', '')
       .replace(/\n<!--SECTION:PHASE_P2-->[\s\S]*?<!--\/SECTION:PHASE_P2-->/, '')
       .replace(
-        '- creates the project toolchain → `test/toolchain.test.ts` :: `creates the project toolchain`',
-        '- creates the project toolchain → `package.json` :: `creates the project toolchain` :: command `npm run type-check`'
+        '- creates the project toolchain → `test/toolchain.test.ts` :: `[INF-REQ-1] creates the project toolchain`',
+        '- creates the project toolchain → `package.json` :: `[INF-REQ-1] creates the project toolchain` :: command `npm run type-check`'
       )
       .replace(
-        '- rejects an invalid project root → `test/toolchain.test.ts` :: `rejects an invalid project root`',
-        '- rejects an invalid project root → `package.json` :: `rejects an invalid project root`'
+        '- rejects an invalid project root → `test/toolchain.test.ts` :: `[INF-REQ-2] rejects an invalid project root`',
+        '- rejects an invalid project root → `package.json` :: `[INF-REQ-2] rejects an invalid project root`'
       );
 
     const finding = checkTicketAuthoringStructure('infra.task.IB-gates.md', bootstrapOnly).find(
@@ -103,37 +103,16 @@ describe('checkTicketAuthoringStructure', () => {
     assert.match(finding.message, /package\.json is not test evidence/i);
   });
 
-  it('requires typed capability ownership before a dependency-install phase can pass authoring', () => {
-    const dependencyInstall = AUTHORING_CORRECTED.replace(
+  it('accepts infrastructure target ownership without capability-program fields', () => {
+    const infrastructurePhase = AUTHORING_CORRECTED.replace(
       '- **Objective:** create the toolchain contract implementation',
-      [
-        '- **Objective:** install the TypeScript toolchain dependency',
-        '- **Bootstrap Action:** dependency-install',
-        '- **Provides Packages:** typescript',
-        '- **Provides Capabilities:** node.dependencies',
-      ].join('\n')
+      '- **Objective:** install the TypeScript toolchain dependency'
     ).replace('  - src/toolchain.ts', '  - package.json\n  - package-lock.json');
 
-    const missingAdapter = checkTicketAuthoringStructure('ticket.md', dependencyInstall, 'P1').find(
-      (finding) => finding.code === 'SDD_AUTHORING_CAPABILITY_ADAPTER_REQUIRED'
+    assert.deepStrictEqual(
+      checkTicketAuthoringStructure('ticket.md', infrastructurePhase, 'P1'),
+      []
     );
-    assert.ok(missingAdapter);
-    assert.match(missingAdapter.message, /Expected:/);
-    assert.match(missingAdapter.message, /Example: - \*\*Capability Adapter:\*\* node/);
-
-    const missingLockfile = checkTicketAuthoringStructure(
-      'ticket.md',
-      dependencyInstall
-        .replace(
-          '- **Bootstrap Action:** dependency-install',
-          '- **Capability Adapter:** node\n- **Bootstrap Action:** dependency-install'
-        )
-        .replace('\n  - package-lock.json', ''),
-      'P1'
-    ).find((finding) => finding.code === 'SDD_AUTHORING_PACKAGE_TARGETS_INCOMPLETE');
-    assert.ok(missingLockfile);
-    assert.match(missingLockfile.message, /package-lock\.json/);
-    assert.match(missingLockfile.message, /Next:/);
   });
 });
 

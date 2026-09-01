@@ -192,36 +192,6 @@ describe('parsePhaseDetail', () => {
     assert.deepStrictEqual(parsePhaseDetail(withGates).readinessGates, ['lint', 'test:coverage']);
     assert.deepStrictEqual(parsePhaseDetail(`${PHASE}\nMention lint in prose.`).readinessGates, []);
   });
-
-  it('parses adapter and capability ids only from their structured phase fields', () => {
-    const capabilityPhase = [
-      PHASE,
-      '- **Capability Adapter:** node',
-      '- **Provides Capabilities:** typescript.compiler, node.dependencies',
-      '- **Requires Capabilities:** node.package-manager',
-      'Mention fake.capability in prose.',
-    ].join('\n');
-    const detail = parsePhaseDetail(capabilityPhase);
-    assert.strictEqual(detail.capabilityAdapter, 'node');
-    assert.deepStrictEqual(detail.providesCapabilities, [
-      'typescript.compiler',
-      'node.dependencies',
-    ]);
-    assert.deepStrictEqual(detail.requiresCapabilities, ['node.package-manager']);
-  });
-
-  it('keeps an empty capability field empty instead of consuming the next structured field', () => {
-    const detail = parsePhaseDetail(
-      [
-        '- **Capability Adapter:**',
-        '- **Requires Capabilities:**',
-        '- **Rules:**',
-        '  - none',
-      ].join('\n')
-    );
-    assert.strictEqual(detail.capabilityAdapter, null);
-    assert.deepStrictEqual(detail.requiresCapabilities, []);
-  });
 });
 
 describe('parseVerification', () => {

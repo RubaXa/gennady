@@ -20,7 +20,6 @@ const EXPECTED = [
   'sdd-migrate',
   'sdd-new',
   'sdd-orient',
-  'sdd-session',
   'sdd-state',
   'sdd-sync',
   'sdd-task',
@@ -40,7 +39,7 @@ describe('dispatchable SDD command navigation', () => {
   const dispatchSwitch = entrypoint.slice(dispatchStart);
   const expected = [...EXPECTED].sort();
 
-  it('extracts the same exact 11-command set from help and dispatch switches', () => {
+  it('extracts the same exact 10-command set from help and dispatch switches', () => {
     assert.ok(helpStart >= 0 && helpEnd > helpStart && dispatchStart > helpEnd);
     const helpCases = sortedMatches(helpSwitch, /case '(sdd-[a-z-]+)':/g);
     const dispatchCases = sortedMatches(dispatchSwitch, /case '(sdd-[a-z-]+)':/g);

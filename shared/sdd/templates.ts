@@ -1261,12 +1261,6 @@ const TASK_SKELETON = `# Task: <ACRONYM>-<slug> — <Task Title>
 <!--SECTION:PHASE_P1-->
 ### P1 — <kind>
 - **Objective:** <one-line>
-- **Capability Adapter:** <adapter-id>   <!-- required when this phase declares package/capability facts; omit otherwise -->
-- **Provides Capabilities:** <comma-separated capability ids>   <!-- capabilities this phase materializes; omit when none -->
-- **Requires Capabilities:** <comma-separated capability ids>   <!-- exact current/upstream prerequisites; omit when none -->
-- **Bootstrap Action:** dependency-install   <!-- every phase that adds packages; omit otherwise -->
-- **Provides Packages:** <comma-separated exact package names>   <!-- dependency-install only -->
-- **Requires Packages:** <comma-separated exact package names>   <!-- phases whose config/commands need packages absent from clean HEAD; omit otherwise -->
 - **Rules:**   <!-- links only, resolved from the cascade; rule content is never inlined -->
   - [ai/directives/<category>/<rule>.xml](<relative-path>)
 - **Spec Refs:**   <!-- optional — subset of Meta Spec References THIS phase actually reads; omit the whole field to fall back to the full Meta set (sdd-task --phase filters to this list when present) -->
@@ -1285,12 +1279,6 @@ const TASK_SKELETON = `# Task: <ACRONYM>-<slug> — <Task Title>
 <!--SECTION:PHASE_P2-->
 ### P2 — <kind>
 - **Objective:** <one-line>
-- **Capability Adapter:** <adapter-id>   <!-- required when this phase declares package/capability facts; omit otherwise -->
-- **Provides Capabilities:** <comma-separated capability ids>   <!-- omit when none -->
-- **Requires Capabilities:** <comma-separated capability ids>   <!-- omit when none -->
-- **Bootstrap Action:** dependency-install   <!-- include only when this phase adds packages -->
-- **Provides Packages:** <comma-separated exact package names>   <!-- dependency-install only -->
-- **Requires Packages:** <comma-separated exact package names>   <!-- omit when none -->
 - **Rules:**
   - [ai/directives/<category>/<rule>.xml](<relative-path>)
 - **Spec Refs:**   <!-- optional, see P1 -->
@@ -1892,7 +1880,7 @@ const NEXT_STEPS: Record<ArtifactKind, string[] | ((ctx: NextStepsContext) => st
   task: (ctx: NextStepsContext): string[] => [
     'Заполни тикет по манифесту секций выше (Meta, фазы, BDD, Verification, Test Coverage).',
     `Проверь заполненный тикет: \`npx gennady sdd-check --task ${ctx.path} --authoring\`.`,
-    'После GREEN всех тикетов проверь общий capability-DAG: `npx gennady sdd-check --scaffold-feasibility`.',
+    'После GREEN всех тикетов передай фактическое разбиение и тест-план на независимое семантическое ревью, затем оператору на утверждение.',
     `Task-ID: ${ctx.id ?? '<id>'} — во всех дальнейших ссылках используй ровно этот ID.`,
   ],
   'module-index': [

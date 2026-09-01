@@ -17,8 +17,8 @@ compatibility: opencode
   <ExecutionPlan>
     <Step id="GATHER">
       Read in full `ai/directives/sdd-v2/code-review.directive.xml`. If
-      `specs/.sdd-session.md` exists, read only its `glossary:` block as read-only terminology input;
-      otherwise use an empty glossary.
+      terminology comes from the owning specification and ticket. Do not read or create a
+      persistent session file.
     </Step>
     <Step id="EMBODY">
       You ARE the code-review now. Input — the group (spec path + ticket list), or a single Task-ID on

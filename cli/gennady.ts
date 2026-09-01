@@ -226,10 +226,6 @@ if (restArgs.some((a) => helpFlags.has(a))) {
       await import('./cmd/sdd-log/help.ts').then((m) => m.printHelp());
       helpLoaded = true;
       break;
-    case 'sdd-session':
-      await import('./cmd/sdd-session/help.ts').then((m) => m.printHelp());
-      helpLoaded = true;
-      break;
     case 'sdd-sync':
       await import('./cmd/sdd-sync/help.ts').then((m) => m.printHelp());
       helpLoaded = true;
@@ -425,10 +421,6 @@ switch (command) {
 
   case 'sdd-log':
     await import('./cmd/sdd-log/index.ts');
-    break;
-
-  case 'sdd-session':
-    await import('./cmd/sdd-session/index.ts');
     break;
 
   case 'sdd-sync':

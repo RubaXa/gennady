@@ -24,8 +24,11 @@ import {
 // Pure text scan only (no jsdom/mermaid load — that lives behind loadMermaidParse, never imported
 // here) — safe to pull into this sync module for the call-chain rung's sequenceDiagram detection.
 import { extractMermaidBlocks } from '../mermaid/mermaid.ts';
-import { matchingTestPhaseIds, parseTestCoverage } from './bdd-coverage.ts';
-import { DEFAULT_CAPABILITY_ADAPTER_REGISTRY } from './capability-adapter.ts';
+import {
+  checkBddRequirementTraceability,
+  matchingTestPhaseIds,
+  parseTestCoverage,
+} from './bdd-coverage.ts';
 
 /**
  * @purpose One audit finding.
@@ -36,13 +39,6 @@ export {
   checkRequirementBudgetsAgainstBaseline,
   REQUIREMENT_ENTRY_MAX_LINES,
 } from './requirement-budget.ts';
-export {
-  checkCriticReadinessForTargetSet,
-  formatCriticChangedState,
-  formatCriticTargetSet,
-  hasCriticRoundsSection,
-  latestCriticTargetSet,
-} from './critic-readiness.ts';
 
 // Scaffold placeholder: `<` then a letter or ellipsis (e.g. <ts>, <cmd>, <TBD>, <…>) — NOT an HTML
 // comment/marker (`<!--…-->`) or closing tag (`</…>`), which start with `!` or `/`; NOT a markup tag
@@ -334,16 +330,16 @@ function splitBddScenarios(body: string): string[] {
 /**
  * @purpose Flag a ticket's Acceptance Criteria (BDD) when it has only happy-path scenarios.
  * @invariant Pure. Mechanical marker match per scenario block (NEGATIVE_SCENARIO_MARKERS).
- * @invariant Severity mirrors checkBddCoverage's DONE-gates-existence shape: warn pre-DONE, error once DONE.
+ * @invariant Always an error: authoring must not approve a happy-path-only task.
  * @param file Ticket file path.
  * @param bddBody Extracted BDD section body (caller skips the call when BDD is absent).
- * @param isDone Whether the ticket's Meta Status is DONE.
+ * @param _isDone Retained for call-site compatibility; severity no longer depends on ticket status.
  * @returns One SDD_BDD_MISSING_NEGATIVE finding when no scenario matches a negative marker; else empty.
  */
 export function checkBddNegativeScenario(
   file: string,
   bddBody: string,
-  isDone: boolean
+  _isDone: boolean
 ): Finding[] {
   const scenarios = splitBddScenarios(bddBody);
   const hasNegative = scenarios.some((s) => NEGATIVE_SCENARIO_MARKERS.some((re) => re.test(s)));
@@ -351,7 +347,7 @@ export function checkBddNegativeScenario(
 
   return [
     {
-      severity: isDone ? 'error' : 'warn',
+      severity: 'error',
       code: 'SDD_BDD_MISSING_NEGATIVE',
       file,
       message:
@@ -422,6 +418,9 @@ export function checkTicket(file: string, content: string): Finding[] {
   const bddSec = extractSection(content, 'BDD');
   if (bddSec.status === 'ok') {
     findings.push(...checkBddNegativeScenario(file, bddSec.content, isDone));
+    const coverageSec = extractSection(content, 'TEST_COVERAGE');
+    if (coverageSec.status === 'ok')
+      findings.push(...checkBddRequirementTraceability(file, bddSec.content, coverageSec.content));
   }
   // #endregion END_BDD_NEGATIVE
 
@@ -673,65 +672,6 @@ export function checkTicketAuthoringStructure(
         `Fix: replace the missing or placeholder fields: ${missing.join(', ')}. Example: "- **Exit:** the phase verification command exits 0".`,
         `**${missing[0]}:**`
       );
-
-    const capabilityFactsPresent =
-      detail.bootstrapAction !== null ||
-      detail.providesPackages.length > 0 ||
-      detail.requiresPackages.length > 0 ||
-      detail.providesCapabilities.length > 0 ||
-      detail.requiresCapabilities.length > 0;
-    const adapter = detail.capabilityAdapter
-      ? DEFAULT_CAPABILITY_ADAPTER_REGISTRY[detail.capabilityAdapter]
-      : undefined;
-    if (capabilityFactsPresent && !detail.capabilityAdapter) {
-      add(
-        'SDD_AUTHORING_CAPABILITY_ADAPTER_REQUIRED',
-        name,
-        `Expected: capability/package fields name one registered adapter (${Object.keys(DEFAULT_CAPABILITY_ADAPTER_REGISTRY).sort().join(', ')}). Next: add the adapter id and rerun the same authoring command. Example: - **Capability Adapter:** node.`,
-        '**Bootstrap Action:**'
-      );
-    } else if (detail.capabilityAdapter && !adapter) {
-      add(
-        'SDD_AUTHORING_CAPABILITY_ADAPTER_UNKNOWN',
-        name,
-        `Expected: one registered adapter (${Object.keys(DEFAULT_CAPABILITY_ADAPTER_REGISTRY).sort().join(', ')}). Next: replace "${detail.capabilityAdapter}" with the adapter that owns this phase's capabilities, then rerun authoring.`,
-        '**Capability Adapter:**'
-      );
-    }
-    if (detail.providesPackages.length > 0 && detail.bootstrapAction !== 'dependency-install') {
-      add(
-        'SDD_AUTHORING_PACKAGE_ACTION_REQUIRED',
-        name,
-        'Expected: a phase that adds packages declares Bootstrap Action: dependency-install. Next: add that exact action or remove Provides Packages when this phase does not mutate dependencies.',
-        '**Provides Packages:**'
-      );
-    }
-    if (detail.bootstrapAction === 'dependency-install') {
-      if (detail.providesPackages.length === 0) {
-        add(
-          'SDD_AUTHORING_PACKAGE_PROVIDER_REQUIRED',
-          name,
-          'Expected: dependency-install names every package it materializes. Next: add **Provides Packages:** with exact package names.',
-          '**Bootstrap Action:**'
-        );
-      }
-      if (adapter?.dependencyBoundary) {
-        const requiredTargets = [
-          adapter.dependencyBoundary.manifestPath,
-          adapter.dependencyBoundary.lockfilePath,
-        ];
-        const absentTargets = requiredTargets.filter(
-          (target) => !detail.targetFiles.includes(target)
-        );
-        if (absentTargets.length > 0)
-          add(
-            'SDD_AUTHORING_PACKAGE_TARGETS_INCOMPLETE',
-            name,
-            `Expected: ${adapter.id} dependency-install owns ${requiredTargets.join(' and ')}. Next: add ${absentTargets.join(', ')} to this phase's Target Files and rerun authoring.`,
-            '**Target Files:**'
-          );
-      }
-    }
 
     const inputDeps = [...(detail.inputs ?? '').matchAll(/\b(P[0-9]+)\s+handoff\b/g)].map(
       (match) => match[1] as string
@@ -2159,44 +2099,6 @@ export function checkSpecHierarchy(specs: SpecEntry[]): Finding[] {
   return findings;
 }
 
-// An orphaned change-mark: a line beginning with ✚ (new) + space. Only ✚ is matched — it is unambiguous;
-// ~ (changed) collides with legitimate markdown (file trees, diffs), so it is not used for detection.
-const CHANGE_MARK = /^[ \t]*✚ /m;
-
-/**
- * @purpose Track a spec's lifecycle state (master vs review-state) and flag broken or stuck review-states.
- * @invariant master = no CHANGE_MANIFEST and no ✚/~ marks; review-state = manifest (marks optional for greenfield). Mismatches surfaced per AX_SPEC_LIFECYCLE.
- * @param file Spec file path.
- * @param content Full spec markdown.
- * @returns SDD_REVIEW_INCONSISTENT errors for a malformed review-state. A valid manifest is normal during review and is silent.
- */
-export function checkReviewState(file: string, content: string): Finding[] {
-  const findings: Finding[] = [];
-  const manifest = extractSection(content, 'CHANGE_MANIFEST');
-  const hasManifest = manifest.status === 'ok';
-  const hasMarks = CHANGE_MARK.test(content);
-
-  if (hasMarks && !hasManifest) {
-    findings.push({
-      severity: 'error',
-      code: 'SDD_REVIEW_INCONSISTENT',
-      file,
-      message: `Found a ✚ change-mark but no CHANGE_MANIFEST — review-state is malformed (compress half-ran, or marks added without entering review-state). Add the manifest (CHANGE_MANIFEST_FORMAT) or strip the marks. AX_SPEC_LIFECYCLE.`,
-    });
-  }
-  if (hasManifest) {
-    if (!/ТИП ИЗМЕНЕНИЯ/.test(manifest.content)) {
-      findings.push({
-        severity: 'error',
-        code: 'SDD_REVIEW_INCONSISTENT',
-        file,
-        message: `CHANGE_MANIFEST is missing the «ТИП ИЗМЕНЕНИЯ» field — the manifest is incomplete and cannot be reviewed or compressed. Fill the required fields (CHANGE_MANIFEST_FORMAT). AX_SPEC_LIFECYCLE.`,
-      });
-    }
-  }
-  return findings;
-}
-
 // Visualization-chain rungs beyond the OVERVIEW floor: caption, scope data-flow, module
 // call-chain, delta marking (see 2026-08-20-visualization-chain.research.md). Gate discipline
 // mirrors SDD_REQ_MISSING_UNHAPPY: dormant (or warn) for the pre-migration Requirements format,
@@ -2426,36 +2328,6 @@ export function checkModuleCallChain(file: string, content: string): Finding[] {
       code: 'SDD_MODULE_NO_CALL_CHAIN',
       file,
       message: `Module spec has ${entities} entities (≥ 2) but no call-chain rung — add either a \`\`\`mermaid sequenceDiagram for the module's main scenario, or a step table with columns Шаг/Участник/Действие/Данные (AX_SPEC_MANDATORY_DIAGRAM, рунг «цепочка вызовов»).`,
-    },
-  ];
-}
-
-// Marks a NEW node/step inside a diagram — mermaid's own `:::new` class-shorthand, or a prose tag
-// next to an added node. `\bNEW\b` requires word boundaries on BOTH sides so an all-caps identifier
-// merely containing "NEW" (e.g. "NEWTASK") does not false-positive.
-const NEW_NODE_MARK = /:::new\b|\(добавлено\)|\bNEW\b/;
-
-/**
- * @purpose Delta rung: a spec in review-state with ✚ additions must mark the added node/step in a
- * diagram; the unchanged system stays undrawn.
- * @invariant Always warn, no old/new-format split. Silent when CHANGE_MANIFEST is malformed —
- * checkReviewState already owns that finding.
- * @param file Spec file path.
- * @param content Full spec markdown.
- * @returns One SDD_DELTA_DIAGRAM_MISSING warn when ✚ exists but no diagram marks a new node.
- */
-export function checkDeltaDiagram(file: string, content: string): Finding[] {
-  if (!CHANGE_MARK.test(content)) return [];
-  const manifest = extractSection(content, 'CHANGE_MANIFEST');
-  if (manifest.status !== 'ok') return [];
-  if (/ТИП ИЗМЕНЕНИЯ:\s*greenfield\b/i.test(manifest.content)) return [];
-  if (NEW_NODE_MARK.test(content)) return [];
-  return [
-    {
-      severity: 'warn',
-      code: 'SDD_DELTA_DIAGRAM_MISSING',
-      file,
-      message: `Spec is in review-state with ✚ additions in CHANGE_MANIFEST, but no diagram marks a new node — add \`:::new\` (mermaid) or «(добавлено)» next to the added node/step in a diagram; leave the unchanged part unredrawn (AX_SPEC_MANDATORY_DIAGRAM, рунг «дельта»).`,
     },
   ];
 }

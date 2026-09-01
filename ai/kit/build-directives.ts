@@ -45,7 +45,7 @@
  * After rendering, the dangling-axiom lint (lint-axioms.ts) runs over the FINAL (post-delta)
  * output and prints warnings (never fails the build) — see AUTHORING.md §7.
  */
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, unlinkSync } from 'node:fs';
 import { join, dirname, basename, relative, sep } from 'node:path';
 import { createRenderer, walk, TEMPLATES, OUT_ROOT, KIT } from './render.ts';
 import { lintDanglingAxioms, formatDanglingReport, type RenderedDirective } from './lint-axioms.ts';
@@ -240,6 +240,18 @@ function writeLazyDirective(rel: string, deltaReducedText: string, deltaSuffix: 
   if (packageFailures.length > 0) {
     failures.push(...packageFailures);
     return; // never write a skeleton unless every path it would print was already confirmed present
+  }
+
+  // A lazy directive may shrink or rename its Step set. Remove only generated XML siblings that
+  // are no longer promised by the freshly assembled skeleton; otherwise obsolete executable steps
+  // survive a successful rebuild and `check:directives-fresh` correctly reports drift.
+  const expectedPackages = new Set(
+    packages.map((pkg) => join(outRoot, pkg.relativePath.slice(ASSEMBLY_XML_ROOT_PREFIX.length)))
+  );
+  const packageDirectory = dirname(expectedPackages.values().next().value as string);
+  for (const file of readdirSync(packageDirectory)) {
+    const candidate = join(packageDirectory, file);
+    if (file.endsWith('.xml') && !expectedPackages.has(candidate)) unlinkSync(candidate);
   }
 
   const dest = join(outRoot, rel);

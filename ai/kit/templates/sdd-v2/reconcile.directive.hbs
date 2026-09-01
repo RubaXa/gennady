@@ -9,8 +9,8 @@
 
     The probe (`AX_PROBLEM_PROBES_SPEC`) classifies ownership, problem class, blast radius, and whether
     a spec delta is semantic. Remediation then follows its real owner: task-owned code always becomes a
-    new ticket Round; semantic design changes go through the artifact-kind authoring flow and integrated
-    review/publication before implementation; only genuinely task-free non-semantic metadata with an
+    new ticket Round; semantic design changes go through the artifact-kind authoring flow, independent
+    semantic review, and operator approval #1 before implementation; only genuinely task-free non-semantic metadata with an
     exact verifier may use the bounded direct path.
 
     Input — findings / a bug / a review, OR "I changed code, formalize it". Output — merged design when
@@ -58,10 +58,6 @@
     {{> "axiom/process/ax-verify-at-end"}}
   </BeliefState>
 
-  <SessionState>
-    {{> "contract/process/session-file-format"}}
-  </SessionState>
-
   <HaltConditions>
     | 🛑 ID | Trigger |
     |---|---|
@@ -71,7 +67,7 @@
     | `H_CLASSIFICATION_UNCONFIRMED` | The dispatched probe did not return ownership, problem class, blast radius, and semantic/editorial verdict |
     | `H_DIRECT_VERIFICATION_UNAVAILABLE` | A proposed direct edit is task-owned, semantic, has no frozen bounded target-set, or lacks an exact dedicated verifier |
     | `H_SPEC_KIND_UNRESOLVED` | A semantic spec finding cannot be mapped uniquely to scope, module, infrastructure, or interface authoring |
-    | `H_SPEC_REVIEW_NOT_MERGED` | Semantic spec authoring did not return the integrated review lifecycle's merged-publication proof |
+    | `H_SPEC_REVIEW_NOT_APPROVED` | Semantic spec authoring did not return approval #1 over independently reviewed actual bytes |
     | `H_VERIFICATION_FAIL` | The evidence owned by the chosen remediation path is missing or red |
   </HaltConditions>
 
@@ -131,7 +127,7 @@
           No task-owned code path may enter bounded-direct.
         - **semantic-spec-update** — any change to GOAL, requirements, observable behaviour, contracts,
           inventory, architecture, dependencies, BDD acceptance, risks, or Decision Log meaning. Route
-          by artifact kind to authoring and complete integrated review/publication before any scaffold,
+          by artifact kind to authoring and complete independent semantic review plus approval #1 before any scaffold,
           ticket reopen, or execute handoff (`AX_SPEC_LIFECYCLE`).
         - **editorial-spec-correction** — spelling, formatting, or a mechanical link correction whose
           already-defined target and meaning do not change. Record an explicit `semantic: no` rationale.
@@ -173,9 +169,8 @@
         Ask through `QUESTION_RULE_SLIM` once for only the new or unresolved plan delta. Preserve every
         already accepted classification/choice without restating or re-asking it; batch independent
         unresolved choices. Warn only about newly discovered class/blast-radius impact
-        (`AX_OPERATOR_SAFEGUARD`). While awaiting the answer return
-        `TerminalDecision: pause` and preserve the session. Rejected → `H_OPERATOR_REJECT`, also
-        `pause`; rejection is not completion. STOP.
+        (`AX_OPERATOR_SAFEGUARD`). Stop while awaiting the answer. Rejected → `H_OPERATOR_REJECT`;
+        rejection is not completion and does not create hidden resume state.
       </Action>
     </Step>
     <Step id="STEP_5_APPLY">
@@ -195,15 +190,15 @@
           `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/module.directive.xml")`; infrastructure spec →
           `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/infra.directive.xml")`; interface spec →
           `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/interface.directive.xml")`. Unknown or mixed kind
-          without one owning flow is `H_SPEC_KIND_UNRESOLVED`. The selected authoring flow writes
-          review-state and MUST run one integrated
+          without one owning flow is `H_SPEC_KIND_UNRESOLVED`. The selected authoring flow writes the
+          ordinary V2 artifact and MUST run one
           `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/review-lifecycle.directive.xml")` for its complete
-          bundle. Require its literal reviewed commit, PR identity, and `publication=MERGED` proof;
-          missing proof is `H_SPEC_REVIEW_NOT_MERGED`. Only AFTER that proof may implementation move:
+          bundle. Require its independent verdict and operator approval #1 with a current marker;
+          missing proof is `H_SPEC_REVIEW_NOT_APPROVED`. Only AFTER that proof may implementation move:
           reopen impacted existing tickets with new concrete fix/test phases and hand ordinary execute;
           for uncovered implementation load
-          `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/scaffold.directive.xml")`, whose Gate 2 and
-          same-session handoff own ordinary execute. Interface changes first route implementation
+          `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/scaffold.directive.xml")`, whose actual-ticket
+          review and approval #2 precede ordinary execute. Interface changes first route implementation
           through their owning product/library module authoring; they never create a flat interface
           scaffold. No implementation impact ends as the merged spec-only branch.
 
@@ -230,8 +225,8 @@
         - task-reopen or ticket-create-or-recover → consume ordinary execute's per-ticket sync and phase
           gates plus each affected group's audit `PASS` / `PASS_WITH_ACKNOWLEDGED_RISKS` and code-review
           outcome. Missing group evidence returns to ordinary execute for that group.
-        - semantic spec-only → consume the integrated lifecycle's merged-publication proof.
-        - semantic spec plus implementation → require that merge proof to precede the ordinary execute
+        - semantic spec-only → consume independent review plus operator approval #1 evidence.
+        - semantic spec plus implementation → require approval #1 to precede the ordinary execute
           evidence above.
         - bounded-direct → require the exact `DIRECT_VERIFICATION_RECEIPT` frozen in STEP_3.
         </LogicSwitch>
@@ -239,16 +234,10 @@
         owned evidence is `H_VERIFICATION_FAIL`. Carry non-blocking code-review proposals into
         `FIX_SUMMARY_FORMAT`.
 
-        Then type the outer result. A task-reopen, ticket recovery, semantic implementation follow-up,
-        or other recorded owner still in flight returns `TerminalDecision: continue` to ordinary
-        authoring/scaffold/execute in this same session. Any blocker, red evidence, cap, unresolved
-        proposal, or operator deferral returns `TerminalDecision: pause` and preserves it. Only a
-        fully verified spec-only or bounded-direct branch with `unfinished chained work: none` may show
-        the terminal menu. It offers pause and literal «Complete / finish»; after the operator
-        explicitly selects the latter, return `TerminalDecision: complete` and run exact
-        terminal ToolCall below once. The decision source is this STEP_6 terminal-menu answer,
-        never a green receipt, merged spec, or execute completion inferred by reconcile.
-        <ToolCall owner="this-step" result="terminal">npx gennady sdd-session close</ToolCall>
+        Then report the outer result. If task recovery or implementation remains, hand the exact
+        ticket/spec paths to the next ordinary owner. Any blocker, red evidence, unresolved proposal,
+        or operator deferral stops with a concrete resume command. A fully verified spec-only or
+        bounded-direct branch reports completion. All continuation state is in artifacts and Git.
       </Action>
     </Step>
   </ExecutionPlan>

@@ -23,14 +23,12 @@ export function printHelp(): void {
   console.info(
     '  [SPEC_SCHEMA] — current / invalid V2 structure, affected paths, and exact owning-authoring route (only V1→V2 is migration)'
   );
-  console.info(
-    '  NEXT         — active module CHANGE_MANIFEST owner precedes generic scaffold; intent=scaffold resumes its nested correction'
-  );
+  console.info('  NEXT         — next structural authoring or execution route');
   console.info(
     '  [PROBE]      — code/infra heuristics (CODE/INFRA present, dirs, configs), always included'
   );
   console.info(
-    '  [SUMMARY]    — flow · portal · authoring/execution readiness · scope count · session · code/infra'
+    '  [SUMMARY]    — flow · portal · authoring/execution readiness · scope count · code/infra'
   );
   console.info('');
   console.info('Flags:');

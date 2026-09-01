@@ -69,10 +69,6 @@
     {{> "axiom/process/ax-artifact-style-self-check"}}
   </BeliefState>
 
-  <SessionState>
-    {{> "contract/process/session-file-format"}}
-  </SessionState>
-
   <KernelGrammar>
     {{> "definition/process/def-read-and-use-directive"}}
   </KernelGrammar>
@@ -149,9 +145,8 @@
         For every module spec produced, run inventoryCheck ToolCall below clean
         (`AX_REVERSE_INVENTORY_GATE`) — fix the inventory or the spec, not the
         code, when it disagrees with reality. Then integrityCheck ToolCall below clean over the whole tree.
-        Return `TerminalDecision: continue` to the already-loaded router with the confirmed scope/module
-        result so it can select the next owner in this SAME session. Never close the session here and
-        never tell the operator to invoke `/sdd` manually.
+        Hand the confirmed scope/module paths to the router so it can select the next owner from
+        current artifacts. No session continuation or close operation exists.
         Inputs <module-spec>, <module-dir>: each module pair produced by STEP_3.
         <ToolCall owner="this-step" result="inventoryCheck">npx gennady lint --spec=<module-spec> --inventory-reverse <module-dir></ToolCall> Use inventoryCheck.
         <ToolCall owner="this-step" result="integrityCheck">npx gennady sdd-check --all .</ToolCall> Use integrityCheck.

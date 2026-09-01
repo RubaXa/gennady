@@ -13,6 +13,10 @@
   (Execution-Log token vocabulary, baseline Completion Rule, audit hint, file-header rule) lives
   once in `<module>.3-tasks.md` per `AX_TICKET_DEDUPLICATION` — not duplicated here.
 
+  Approval #2 is not copied into every ticket. The narrowest owning task index lists the complete
+  reviewed ticket set and carries the human-readable `ARTIFACT_APPROVAL_MARKER`; execution resolves
+  that index and requires the selected ticket to be a listed member.
+
   Every Verification `Command` cell serializes the exact runtime command as a Markdown code span.
   Its outer backtick run is one longer than the longest consecutive backtick run inside the command;
   no command byte is escaped or normalized. The parser removes only that matching outer delimiter.

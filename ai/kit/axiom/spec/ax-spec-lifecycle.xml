@@ -1,27 +1,18 @@
-<!-- source: messenger/draft/ai/sdd-authoring-{core A11, lifecycle L1-L5} -->
+<!-- source: stateless SDD v2 specification lifecycle -->
 <Axiom id="AX_SPEC_LIFECYCLE">
-      A spec lives in two states. **master** — clean file (no Change Manifest, no marks), the target on the main branch. **review-state** — the same file on a working branch during a change: the target text is written IN PLACE (everything else byte-for-byte, so the branch diff reads like a normal PR), with the temporary change manifest loaded by the owning authoring flow at the top and affected lines marked `✚` (new) / `~` (changed). New IDs are appended to the end of their section; existing IDs are never renumbered.
+  A V2 specification has one durable format. Greenfield authoring creates that format directly;
+  refine/pivot edits it in place. Git diff shows changes for semantic judgment. Temporary Change Manifest,
+  per-line review marks, Critic Rounds, publication state, and migration between V2 subformats are
+  not part of the specification.
 
-      `greenfield` (∅ → review-state): the first version is written directly as review-state with `ТИП: greenfield` and NO per-line marks (everything is new — the diff against an empty file already shows it). `refine` / `pivot` edit an existing master in place WITH marks.
+  Before approval #1, run structural checks and one fresh independent semantic review of the
+  complete target set. Resolve findings in the owning specs. Any semantic edit invalidates the old
+  verdict, resets the human-readable approval marker to pending, and requires a fresh bounded review.
+  The operator then approves the current artifacts and the specs record approval #1 per
+  `ARTIFACT_APPROVAL_MARKER`. Implementation follows only after approval #1. Marker mechanics never
+  use a content hash; the model judges staleness from the artifacts and Git evidence.
 
-      The spec change is a reviewable PR (design-PR). Before the internal critic, finalize semantic bytes
-      (Decision Log compression including merge/delete, ID collision repair, pivot supersession), then
-      obtain the operator's delta-only final hierarchy Approval. The critic loop is necessary but NOT
-      sufficient and owns one global five-result cap across any correction/finalization return; such a
-      return preserves its scratch and next round number. Critic target/write ownership stays specs-only;
-      the separate VCS publication-set may add only mechanically attributed durable authoring outputs
-      (registered research, canonical portal/index files, and the exact session-ignore addition), and any
-      other dirty path halts. After the critic, approve only its actual delta, remove review scaffolding
-      with Critic Rounds last, and pass the final-byte integrity check. Publish exactly the role-validated
-      clean publication-set bytes. External approval names one reviewed commit; merge that same commit
-      with no semantic rewrite afterward. Implementation (scaffold → execute) follows the merged master.
-
-      Reconcile has one narrow non-semantic exception: an explicitly classified editorial correction
-      (spelling, formatting, or a mechanical link correction to an already-defined target) may use its
-      frozen task-free target-set plus exact `sdd-check --all` direct receipt. It must change no GOAL,
-      requirement, behaviour, contract, inventory, architecture, dependency, BDD acceptance, risk, or
-      Decision Log meaning. Any such delta is semantic and returns to the authoring + integrated review
-      lifecycle above before scaffold/reopen/execute.
-
-      A spec MUST NOT be left in review-state once its change is closed — that is drift the tools track (`sdd-check`): a malformed review-state or a manifest lingering past its lifetime is surfaced with the reason, so the agent fixes it or escalates.
-    </Axiom>
+  An editorial correction may use its exact mechanical verifier only when it changes no requirement,
+  behavior, contract, inventory, architecture, dependency, BDD acceptance, risk, or Decision Log
+  meaning. Any such delta is semantic and returns to the lifecycle above.
+</Axiom>

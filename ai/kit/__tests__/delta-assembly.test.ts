@@ -76,10 +76,10 @@ describe('delta-assembly — graph shape', () => {
     const reconcileRef =
       'READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/reconcile.directive.xml")';
 
-    const scaffoldPreflight = step(scaffold, 'STEP_0B_PREFLIGHT');
+    const scaffoldPreflight = step(scaffold, 'STEP_0_PREFLIGHT');
     assert.equal(occurrences(scaffold, reconcileRef), 0);
     assert.equal(occurrences(scaffoldPreflight, reconcileRef), 0);
-    assert.match(scaffoldPreflight, /V2 has\s+no internal migration route/);
+    assert.match(scaffoldPreflight, /Do not create a migration path/);
   });
 
   it('no READ_AND_USE_DIRECTIVE edge targets a class-3 subagent world', () => {

@@ -8,13 +8,13 @@
         🔍 receipt: target-set=<literal paths> · command=<exact command> · exit=0
 
       Spec updates: N applied
-        ✅ <what> → <file> · authoring=<scope|module|infra|interface> · publication=MERGED
+        ✅ <what> → <file> · authoring=<scope|module|infra|interface> · approval1=APPROVED
 
       Tasks reopened: N
         🔄 TSK-NN — Round N: <reason> · phases=<fix PhaseID>,<test PhaseID> → ordinary execute
         🔄 TSK-MM — Round N: <reason> · phases=<fix PhaseID>,<test PhaseID> → ordinary execute
 
-      🔍 path evidence: <execute group results | merged-publication proof | direct verification receipt>
+      🔍 path evidence: <execute group results | independent review + approval #1 | direct verification receipt>
       ```
       Omit any section whose count is 0. Every file changed on disk MUST appear under exactly one section — a summary whose counts are all zero while the diff is non-empty is a defective summary.
     </Contract>

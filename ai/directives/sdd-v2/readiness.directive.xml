@@ -28,7 +28,7 @@
   </Mission>
 
   <BeliefState>
-    Inherited from the loading directive (already in context): AX_DIALOGUE_DISCIPLINE, AX_DIVERGE_BEFORE_RECOMMEND, AX_NO_PROCESS_NARRATION, AX_OPERATOR_AGREEMENT, AX_OPERATOR_DIALOGUE_STYLE, AX_OPERATOR_LANGUAGE, AX_OPERATOR_OUTPUT_LIVE_TEXT, AX_OPERATOR_SAFEGUARD, AX_PROGRESSIVE_DISCLOSURE, AX_TOOL_INVOCATION, HALT_FORMAT, MESSAGE_LAYOUT, QUESTION_RULE_SLIM
+    Inherited from the loading directive (already in context): AX_DIALOGUE_DISCIPLINE, AX_DIVERGE_BEFORE_RECOMMEND, AX_NO_PROCESS_NARRATION, AX_OPERATOR_AGREEMENT, AX_OPERATOR_DIALOGUE_STYLE, AX_OPERATOR_LANGUAGE, AX_OPERATOR_OUTPUT_LIVE_TEXT, AX_OPERATOR_SAFEGUARD, AX_TOOL_INVOCATION, HALT_FORMAT, MESSAGE_LAYOUT, QUESTION_RULE_SLIM
 
     <Axiom id="AX_RESEARCH_PERSISTED">
       External research (WebSearch/WebFetch) run in this session ALWAYS lands as a research document
@@ -240,5 +240,12 @@
       `Vision ✅ · Scope Graph 👷 · Infra ◻️ · Portal ◻️`
     </Contract>
 
+    <Axiom id="AX_PROGRESSIVE_DISCLOSURE" cross-cutting="true">
+      Decision first, reasoning on demand. The must-read top of a message is short: where we are + my
+      read + what to decide. Everything heavy — full option comparison, evidence, the change-list,
+      derivations — goes BELOW a `### ↓ Детали — по желанию` header. Never dump reasoning above the
+      questions. Facts already verified collapse to one line («сверился: …»); uncertainties that need
+      the operator BECOME the questions — never list them twice.
+    </Axiom>
   </ChatOutput>
 </SddReadiness>

@@ -507,16 +507,20 @@ describe('SddNewCommand', () => {
       assert.match(ticket, /^- \*\*Module:\*\* core$/m);
       assert.match(ticket, /^- \*\*Structural Owner:\*\* module$/m);
       assert.match(ticket, /^- \*\*Owning Spec:\*\* \[Owning spec\]\(\.\/core\.spec\.md\)$/m);
-      assert.match(ticket, /^- \*\*Capability Adapter:\*\* <adapter-id>/m);
-      assert.match(ticket, /^- \*\*Provides Capabilities:\*\* <comma-separated capability ids>/m);
-      assert.match(ticket, /^- \*\*Requires Capabilities:\*\* <comma-separated capability ids>/m);
+      assert.match(ticket, /^- \*\*Objective:\*\* <one-line>$/m);
+      assert.match(ticket, /^- \*\*Target Files:\*\*$/m);
+      assert.match(ticket, /^- \*\*Readiness Gates:\*\*/m);
+      assert.doesNotMatch(
+        ticket,
+        /\*\*(?:Capability Adapter|Provides Capabilities|Requires Capabilities|Bootstrap Action|Provides Packages|Requires Packages):\*\*/
+      );
       assert.match(
         outcome.text,
         new RegExp(
           `npx gennady sdd-check --task ${outcome.path.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} --authoring`
         )
       );
-      assert.match(outcome.text, /npx gennady sdd-check --scaffold-feasibility/);
+      assert.match(outcome.text, /независимое семантическое ревью/);
       assert.doesNotMatch(outcome.text, /--help/);
       assert.doesNotMatch(ticket, /<ACRONYM>-<slug>/);
       assert.doesNotMatch(ticket, /- \*\*Scope:\*\* <scope-name>/);

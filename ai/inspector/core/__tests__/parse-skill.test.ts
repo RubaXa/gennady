@@ -61,9 +61,9 @@ test('parseSkill is order-agnostic — it walks sections in whatever document or
   );
 });
 
-test('ExecutionPlan exposes GATHER / PREFLIGHT / EMBODY in order', () => {
+test('ExecutionPlan exposes the stateless GATHER / EMBODY loader in order', () => {
   const ids = (plan(skill)?.children ?? []).map((s) => s.attrs?.id);
-  assert.deepEqual(ids, ['GATHER', 'PREFLIGHT', 'EMBODY']);
+  assert.deepEqual(ids, ['GATHER', 'EMBODY']);
 });
 
 test('GATHER reads the single router entry and runs sdd-state', () => {
@@ -114,13 +114,11 @@ test('legacy inline command remains executable during the typed migration', () =
   );
 });
 
-test('PREFLIGHT no longer re-derives the FLOW_VERSION/READINESS interpretation — that moved into the directive itself (STEP_0B_PREFLIGHT), read via GATHER', () => {
-  const refs = refsOf(stepById(skill, 'PREFLIGHT'));
-  assert.deepEqual(
-    refs,
-    [],
-    'PREFLIGHT should carry no directive refs of its own — see ai/kit/__tests__/readiness-preflight-gate.test.ts for the project-wide guard'
-  );
+test('EMBODY delegates state interpretation to the router without a session preflight step', () => {
+  const embody = stepById(skill, 'EMBODY');
+  assert.match(embody?.detail ?? '', /You are the router now/);
+  assert.match(embody?.detail ?? '', /exact `routerState`/);
+  assert.doesNotMatch(embody?.detail ?? '', /session barrier|STEP_1B_PREFLIGHT/);
 });
 
 test('resolveTree expands a run node into the referenced directive tree', () => {

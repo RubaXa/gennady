@@ -72,7 +72,7 @@ compatibility: opencode
       `ai/directives/sdd-v2/router.directive.xml`; pass the saved snapshot with forced intent `execute`.
     </Step>
     <Step id="PREFLIGHT">
-      Router resolves the live-session conflict/open policy and readiness once, then loads
+      Router consumes the read-only snapshot and readiness once, then loads
       `ai/directives/sdd-v2/execute.directive.xml` through its `LOGIC_SWITCH`.
     </Step>
     <Step id="EMBODY">
@@ -313,13 +313,29 @@ ai/skills/<name>/
 
 ### D-008 — Единый router-front для stateful public SDD entries
 
-- **Status:** active
+- **Status:** superseded by D-009
 - **Recorded:** RC follow-up, session-entry coherence
-- **Why:** `sdd`, `sdd-scaffold`, `sdd-execute`, `sdd-critic`, `sdd-reconcile` должны одинаково разрешать живую session и не повторять `sdd-state`. Каждый entry собирает один snapshot; direct entry добавляет forced intent; router один раз выполняет conflict/open, спрашивает SCALE только для root/scope/module/infra/interface, которые его потребляют, и лениво загружает owner.
+- **Why:** `sdd`, `sdd-scaffold`, `sdd-execute`, `sdd-critic`, `sdd-reconcile` должны были одинаково разрешать живую session и не повторять `sdd-state`.
+- **Why superseded:** живой flow показал, что session conflict/open, glossary journal, feasibility events и worker checkpoints не восстанавливают цель, а создают дополнительный control plane и ложные ветки. Возврат к persistent session отложен до отдельного доказательства необходимости.
 - **Risk accepted:** Router знает четыре public forced intents, но не знает их внутренний payload/ExecutionPlan.
 - **Rejected alternatives:**
   - Дублировать session bootstrap в каждом SKILL — дешевле локально, но неизбежно расходится.
   - Удалить direct entries — лишает оператора явных execute/scaffold/reconcile/critic дверей.
+
+### D-009 — Stateless SDD v2 с двумя semantic approval boundaries
+
+- **Status:** active
+- **Recorded:** RC follow-up after draft.64 degradation
+- **Why:** direct entries по-прежнему передают router один read-only `sdd-state` snapshot и forced
+  intent, но router не открывает session. Смысл проверяется один раз на фактических specs перед
+  operator approval #1 и один раз на фактических tickets перед operator approval #2. Execute
+  восстанавливается из ticket, Execution Log, Git и текущего tool output.
+- **Risk accepted:** semantic edit требует fresh review новых bytes; это дополнительный модельный
+  вызов, но не долговечная session и не ручной JSON-протокол.
+- **Rejected alternatives:**
+  - Сохранить session как необязательную подсказку — создаёт два конкурирующих источника истины.
+  - Утверждать абстрактный scaffold plan — оператор не видит реальные ticket bytes.
+  - Убрать model review полностью — механика не доказывает согласованность смысла.
 <!--/SECTION:DECISION_LOG-->
 
 <!--SECTION:SCOPE_DEPENDENCIES-->

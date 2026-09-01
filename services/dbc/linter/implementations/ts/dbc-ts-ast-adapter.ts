@@ -799,7 +799,11 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
     for (let i = 0; i < node.childCount; i += 1) {
       const child = node.child(i);
       if (!child) continue;
-      if (child.type === 'property_identifier' || child.type === 'identifier') {
+      if (
+        child.type === 'private_property_identifier' ||
+        child.type === 'property_identifier' ||
+        child.type === 'identifier'
+      ) {
         return source.slice(child.startIndex, child.endIndex);
       }
     }

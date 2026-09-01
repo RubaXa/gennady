@@ -1,5 +1,5 @@
 // @file: Shared SDD mechanical finding shape.
-// @consumers: check, critic-readiness, requirement-budget, focused SDD checks
+// @consumers: check, requirement-budget, focused SDD checks
 // @tasks: N/A
 
 /** @purpose One audit finding; errors fail the gate while warnings remain advisory. */

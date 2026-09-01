@@ -7,7 +7,7 @@
       dependency edges A→B (from the Mermaid `graph TD` Scope Graph, or the Scopes table
       `depends-on` column).
 
-      The scaffold target set is the operator/session target plus its transitive `depends-on` closure
+      The scaffold target set is the operator's current target plus its transitive `depends-on` closure
       from the portal graph and the scopes' declared module links. If the request targets the whole
       approved project or carries no narrower target, every ✅ scope from the same snapshot is the
       explicit bounded fallback. Typed diagnostics name missing/ambiguous evidence and its next owner.

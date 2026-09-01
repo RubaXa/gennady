@@ -71,15 +71,13 @@ it('keeps simultaneous lazy and monolith builds isolated and the lazy scaffold i
     assert.deepEqual(
       plan?.children?.map((step) => step.attrs?.id),
       [
-        'STEP_0_INTAKE',
-        'STEP_0B_PREFLIGHT',
-        'STEP_1_CASCADE',
-        'STEP_2_DAG',
-        'STEP_3_TASK_GENERATION',
-        'STEP_3_TICKET_LOOP',
-        'STEP_3B_FEASIBILITY_CRITIC',
-        'STEP_4_TEST_PLAN_REVIEW',
-        'STEP_5_FINALIZE',
+        'STEP_0_PREFLIGHT',
+        'STEP_1_DERIVE',
+        'STEP_2_MATERIALIZE',
+        'STEP_3_MECHANICAL_CHECK',
+        'STEP_4_INDEPENDENT_TICKET_REVIEW',
+        'STEP_5_OPERATOR_APPROVAL_2',
+        'STEP_6_HANDOFF',
       ]
     );
   } finally {
@@ -152,7 +150,7 @@ describe('build-directives — packages written before the skeleton that referen
     // packages loop — simulating a real interruption between package 1 and package 2 of the same
     // lazy directive, the exact gap F-03 flagged. phase-execution-protocol carries a manifest
     // override to 'lazy' already, so no --assembly flag is needed to reach this code path.
-    mkdirSync(join(outDir, 'sdd-v2/phase-execution-protocol/steps/STEP_1B_RESUME_OR_START.xml'), {
+    mkdirSync(join(outDir, 'sdd-v2/phase-execution-protocol/steps/STEP_2_IMPLEMENT.xml'), {
       recursive: true,
     });
   });
@@ -166,8 +164,8 @@ describe('build-directives — packages written before the skeleton that referen
     assert.notEqual(result.status, 0, 'the injected EISDIR fault must still surface as a build failure, not be swallowed');
 
     const skeleton = join(outDir, 'sdd-v2/phase-execution-protocol.directive.xml');
-    const packageBeforeFault = join(outDir, 'sdd-v2/phase-execution-protocol/steps/STEP_1_GET_PHASE_CONTEXT.xml');
-    const packageAfterFault = join(outDir, 'sdd-v2/phase-execution-protocol/steps/STEP_2_NARROW_RECON.xml');
+    const packageBeforeFault = join(outDir, 'sdd-v2/phase-execution-protocol/steps/STEP_1_ORIENT.xml');
+    const packageAfterFault = join(outDir, 'sdd-v2/phase-execution-protocol/steps/STEP_3_VERIFY.xml');
 
     assert.equal(
       existsSync(packageBeforeFault),

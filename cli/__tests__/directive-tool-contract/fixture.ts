@@ -81,9 +81,6 @@ function ticket(): string {
     '<!--SECTION:PHASE_P1-->',
     '### P1 — impl',
     '- **Objective:** implement greet()',
-    '- **Capability Adapter:** typescript',
-    '- **Provides Capabilities:** typescript.compiler',
-    '- **Requires Capabilities:** none',
     '- **Rules:**',
     // Same reason — resolved relative to specs/demo/, two hops up to the fixture root.
     '  - [typescript-rules](../../ai/directives/coding/typescript-rules.xml)',

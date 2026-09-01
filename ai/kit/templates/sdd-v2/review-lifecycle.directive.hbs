@@ -1,212 +1,62 @@
-<SddReviewLifecycle keywords="review-lifecycle, master, review-state, compress, publish, MR, external-review, git, gh, sdd-review-lifecycle" type="directive" ver="2.2">
+<SddReviewLifecycle keywords="sdd, spec, semantic-review, operator-approval" type="directive" ver="2.3">
   <Mission>
-    Drive one review bundle from review-state to merged master through EXTERNAL review. A bundle is either
-    a product/library scope plus all its module specs after decomposition, or one complete standalone infrastructure/interface
-    spec. Loaded lazily AFTER every member is written in review-state. I do NOT author
-    spec content — the authoring flow did; I finalize the bounded semantic bytes, obtain one delta-only
-    operator approval, then run one integrated spec-only critic target/write-set and derive the separate
-    role-validated publication-set of durable authoring outputs. I publish exactly that publication-set
-    for review, wait for the operator's verdict,
-    and merge the reviewed commit unchanged on approval.
-
-    Git is native `git` + `gh` via bash — no separate VCS client. Per `AX_SPEC_LIFECYCLE`, external
-    review sees final master-form bytes: no semantic compression, merge/delete, collision repair, or
-    other rewrite is allowed after approval.
+    Establish approval #1 for the complete actual spec set. One fresh independent reviewer judges
+    semantic coherence; the operator approves the reviewed artifacts. Resume uses only durable artifacts.
   </Mission>
-
-  <BeliefState deps="AX_OPERATOR_LANGUAGE, AX_OPERATOR_DIALOGUE_STYLE">
-    {{> "axiom/spec/ax-spec-lifecycle"}}
-
-    {{> "axiom/process/ax-review-vcs-commands"}}
+  <BeliefState>
+    {{> "axiom/process/ax-stateless-flow"}}
+    {{> "axiom/process/ax-operator-language"}}
+    {{> "axiom/process/ax-tool-invocation"}}
+    {{> "axiom/process/ax-operator-agreement"}}
   </BeliefState>
-
-  <SessionState>
-    {{> "contract/process/session-file-format"}}
-  </SessionState>
-
-  <HaltConditions>
-    | 🛑 ID | Trigger |
-    |---|---|
-    | `H_AWAITING_EXTERNAL_REVIEW` | Change published — session waits for the operator's verdict (feedback or «no comments»). A PAUSE, not a failure. |
-    | `H_DIRTY_TREE_NOT_THIS_CHANGE` | The git working tree carries changes unrelated to this spec change — operator resolves before publish |
-    | `H_PR_PUBLICATION_INPUT_MISSING` | A derived head branch, base branch, review slug, or file-written PR body is missing or fails the VCS contract's restricted grammar before publication |
-    | `H_CURRENT_BRANCH_MISMATCH` | Exact `git branch --show-current` output differs from the frozen validated head branch before staging or commit |
-    | `H_REVIEWED_HEAD_MISMATCH` | Local HEAD, PR head, or PR base differs from the frozen reviewed publication state |
-    | `H_MERGE_POSTCONDITION_FAILED` | PR is not MERGED, merge metadata is incomplete, or the exact reviewed commit is not an ancestor of the fetched merged base |
-  </HaltConditions>
-
+  <Contracts>
+    {{> "contract/process/artifact-approval-flow"}}
+    {{> "contract/process/artifact-approval-marker"}}
+  </Contracts>
   <ExecutionPlan>
-    <Step id="STEP_1_FINALIZE_SEMANTICS">
-      <Goal>Make the authoring bundle semantically final before its critic cycle starts.</Goal>
+    <Step id="STEP_1_FREEZE_TARGET">
+      <Goal>Identify the complete spec set whose meaning is being approved.</Goal>
       <Action>
-        Per `AX_SPEC_LIFECYCLE`, before any sensor dispatch, finalize every spec's semantics: resolve ID collisions; for `pivot`,
-        mark superseded decisions; and compress the ENTIRE Decision Log against
-        `AX_DECISION_LOG_NON_OBVIOUS`. Dissolve derivable entries into their owning sections, retain genuine
-        compromises/risks/exceptions, and merge duplicate conclusions into one surviving id. Repeat this
-        step locally until a pass makes no semantic edit. Report
-        `Decision Log: <N> растворено, <M> оставлено, <K> слито` once for the stable result.
+        Use actual spec paths and their current content. Set approval #1 to `pending` in every member
+        of the reviewed set. Include every changed parent, child, interface,
+        infrastructure, or dependent spec needed to judge consistency. Do not review a prose plan or
+        a subset that hides cross-spec effects. Per `AX_STATELESS_FLOW`, this durable set is the whole
+        review state. Run the owning structural/integrity checks first.
+      </Action>
+    </Step>
+    <Step id="STEP_2_INDEPENDENT_REVIEW">
+      <Goal>Obtain one semantic judgment independent from the author.</Goal>
+      <Action>
+        Dispatch one fresh reviewer with the exact bounded spec set. The reviewer reads but never
+        edits. It checks requirements, negative/failure behavior, interfaces, dependencies,
+        invariants, verification strategy, contradictions, and missing decisions. It returns
+        `CLEAN` or evidence-backed findings naming file and anchor.
 
-        If `## Critic Rounds` already exists because the operator corrected a post-critic delta, it is
-        immutable scratch: semantic finalization MUST preserve the section and its round numbering exactly.
-        Returning to the critic continues the same cycle and same global result count; compression is never
-        a reason to restart at Round 1. A changed target-set/write-set still follows the critic's explicit
-        RESTART rule.
+        The author may mentally inspect its own work before this dispatch, but that does not count as
+        independent review. Do not serialize a plan into JSON, retain the reviewer, or create
+        multi-round critic bookkeeping.
       </Action>
     </Step>
-    <Step id="STEP_1B_OPERATOR_APPROVAL">
-      <Goal>Approve the finalized authoring bytes before integrated review.</Goal>
+    <Step id="STEP_3_RECONCILE">
+      <Goal>Make the proposed specs match accepted review conclusions.</Goal>
       <Action>
-        Show the exact finalized hierarchy and only the delta from the last operator-approved authoring
-        packet; do not re-ask settled choices. Approval Check. STOP. While unanswered, return
-        `TerminalDecision: pause`. A correction returns to STEP_1; acceptance freezes
-        `<operator-approved-state>` and continues to STEP_2. This is the final hierarchy approval: it is
-        always before the integrated critic, publication, merge, and downstream handoff.
+        For each finding, either correct the owning spec or present a concrete disagreement to the
+        operator. Run structural checks after edits. Any semantic edit resets the applicable approval
+        markers to `pending` and therefore requires one fresh STEP_2 review of the new complete target. This is a new bounded
+        verification, not continuation of a reviewer session.
       </Action>
     </Step>
-    <Step id="STEP_2_INTERNAL_CRITIC">
-      <Goal>Internal review until mechanically ready — necessary, not sufficient.</Goal>
+    <Step id="STEP_4_OPERATOR_APPROVAL_1">
+      <Goal>Ask the operator to approve the reviewed specifications.</Goal>
       <Action>
-        Dispatch the critic (isolated), on a worker-tier model (`AX_CRITIC_MODEL_TIER`), on the complete
-        review bundle as one stable target-set —
-        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/critic.directive.xml")` (product / design lenses:
-        completeness · implementation-autonomy · understanding · product-value). The critic directive
-        alone owns findings, same-worker continuation/fallback, the five-result global automatic cap,
-        spec-only target/write state, and readiness. It returns exact
-        <ToolLiteral role="delegated">npx gennady sdd-check --review-ready <bundle-path></ToolLiteral> and
-        <ToolLiteral role="delegated">npx gennady sdd-check --review-publication <primary> [secondary...]</ToolLiteral>
-        outputs with `## Critic Rounds` still present. Auxiliary publication paths never enter critic
-        target/write ownership. This lifecycle neither reconstructs that loop nor runs one critic per file.
-
-        If the critic's stable bytes differ from `<operator-approved-state>`, show one delta-only Approval
-        Check containing only critic-caused changes. Acceptance is a non-mutating terminal disposition for
-        these final bytes. A correction preserves `## Critic Rounds`, returns to STEP_1, and then continues
-        the SAME critic worker/cycle with the next round number. It never resets the global count; if five
-        results already exist, a sixth dispatch still requires the critic's exact operator cap disposition.
-        While either Approval Check waits, return `TerminalDecision: pause`.
-      </Action>
-    </Step>
-    <Step id="STEP_2B_FREEZE_FINAL_BYTES">
-      <Goal>Remove review scaffolding last and freeze the exact bytes external review will approve.</Goal>
-      <Action>
-        Preserve the critic's literal ordered JSON `publication-set`, roles, and `publication-state`; it
-        is not the critic target/write-set. With `## Critic Rounds` still present, rerun exact
-        reviewReadiness and reviewPublication ToolCalls below and require the same target-set, write-set,
-        publication-set, and publication-state. Any mismatch or dirty path halts. Then mechanically remove
-        every `CHANGE_MANIFEST` and strip `✚`/`~` prefixes without changing the owned line content. Remove
-        `## Critic Rounds` LAST, only after the finalized bytes have an accepted terminal Approval and no
-        semantic work remains. No artifact edit is permitted afterward.
-
-        Run exact integrityCheck; it MUST be clean of `SDD_REVIEW_STATE_STUCK` /
-        `SDD_REVIEW_INCONSISTENT`. For every exact `<publication-path>`, run exact
-        `git hash-object -- <publication-path>` and record the literal
-        `<publication-path> → <final-blob-id>` map. These are the only bytes eligible for staging/review.
-        <ToolCall owner="this-step" result="reviewReadiness">npx gennady sdd-check --review-ready <bundle-path></ToolCall> Inputs <bundle-path>: <bundle-path>=primary artifact path whose Critic Rounds embeds the frozen bundle. Use reviewReadiness.
-        <ToolCall owner="this-step" result="reviewPublication">npx gennady sdd-check --review-publication <primary> [secondary...]</ToolCall> Inputs <primary>, [secondary...]: same ordered spec arguments returned by STEP_2. Use reviewPublication.
-        <ToolCall owner="this-step" result="integrityCheck">npx gennady sdd-check --all <project-root></ToolCall> Inputs <project-root>: current project root containing every finalized publication member. Use integrityCheck.
-      </Action>
-    </Step>
-    <Step id="STEP_3_PUBLISH_FINAL_BYTES">
-      <Goal>Stage, commit, and push exactly the allowed final-byte bundle.</Goal>
-      <Action>
-        Under `AX_REVIEW_VCS_COMMANDS`, run exact `git status --porcelain=v1 --untracked-files=all`
-        and require its path set to equal the preserved `publication-set` paths exactly; otherwise
-        `H_DIRTY_TREE_NOT_THIS_CHANGE`. Before mutation, derive `<head-branch>` from exact
-        `git branch --show-current`, `<base-branch>` from exact
-        `gh repo view --json defaultBranchRef --jq .defaultBranchRef.name`, and `<review-slug>` from the
-        primary spec's canonical scope segment. Copy the outputs literally, validate them against the
-        contract's restricted grammars, require different head and base refs, and freeze all three;
-        missing or invalid input is `H_PR_PUBLICATION_INPUT_MISSING`. Use a file-write tool, not bash,
-        to write the complete operator-facing Markdown body to exact
-        `.claude/tmp/sdd-review-<review-slug>.md`; freeze that literal `<pr-body-path>`. Body content is
-        opaque and may contain Markdown code spans, dollar-parenthesis text, and single or double
-        quotes: never interpolate any of it into a command, and never use `echo`, redirection, or a
-        shell variable to create or pass it.
-
-        Immediately before staging, rerun exact `git branch --show-current`, copy its literal output,
-        and require equality with frozen `<head-branch>`; otherwise `H_CURRENT_BRANCH_MISMATCH` before
-        any VCS mutation. Then, in this exact order: `git add -- <publication-files>`; verify
-        `git diff --cached --name-only` equals the publication path set exactly; verify
-        `git diff --exit-code -- <publication-files>` is empty; run exact
-        `git ls-files --stage -- <publication-files>` and require one stage-0 row per publication path whose
-        staged blob id equals that path's recorded `<final-blob-id>`. Immediately before commit, rerun
-        exact `git branch --show-current` and again require literal equality with frozen
-        `<head-branch>`; otherwise `H_CURRENT_BRANCH_MISMATCH` and do not commit. Then run exact
-        `git commit -m "sdd(<review-slug>): publish specification"`; run exact
-        `git rev-parse HEAD` and copy its literal output into orchestration state/report as
-        `<reviewed-commit>` (no shell assignment); run exact
-        `git push --set-upstream origin <head-branch>`. Run exact
-        `gh pr list --head <head-branch> --base <base-branch> --state open --json number,url --limit 2`
-        and copy its literal output. Empty → run exact
-        `gh pr create --base <base-branch> --head <head-branch> --title "SDD <review-slug>: publish specification" --body-file <pr-body-path>`,
-        then rerun the same head-plus-base list query. One existing row → validate/freeze its non-zero
-        decimal `<pr-number>` and literal `<pr-url>`, then run exact
-        `gh pr edit <pr-number> --base <base-branch> --title "SDD <review-slug>: publish specification" --body-file <pr-body-path>`.
-        More than one row, or anything other than exactly one row after creation, halts instead of
-        guessing. After either branch, store the one literal `<pr-number>` and `<pr-url>` in
-        orchestration state/report. Run exact
-        `gh pr view <pr-number> --json number,url,headRefOid,baseRefName,state --jq '{number:.number,url:.url,headRefOid:.headRefOid,baseRefName:.baseRefName,state:.state}'`,
-        copy its literal JSON output, and require the same number and URL, `state=OPEN`,
-        `headRefOid=<reviewed-commit>`, and `baseRefName=<base-branch>`; otherwise
-        `H_REVIEWED_HEAD_MISMATCH`. Present the stored literal URL and commit hash. Every PR operation
-        after identity resolution carries `<pr-number>` explicitly; never select by current branch and
-        never call `--help`.
-      </Action>
-    </Step>
-    <Step id="STEP_4_AWAIT">
-      <Goal>Wait for the external verdict.</Goal>
-      <Action>
-        `H_AWAITING_EXTERNAL_REVIEW` — return `TerminalDecision: pause`; preserve the SDD session.
-        The operator reviews the MR and returns with feedback or «no comments». Publication is not
-        terminal completion and never closes the session.
-      </Action>
-    </Step>
-    <Step id="STEP_5_ON_RESUME">
-      <Goal>Branch on the verdict.</Goal>
-      <Action>
-        Feedback → return `TerminalDecision: continue`, restore review-state evidence for the exact
-        critic spec target/write-set, apply edits in place, and return to STEP_1. This is a new external
-        review revision and therefore a new critic cycle; the whole
-        finalize/recheck/stage/commit/push/remote-head verification sequence runs again and produces a
-        new reviewed commit. «no comments» (approved) → `continue`, STEP_6.
-      </Action>
-    </Step>
-    <Step id="STEP_6_MERGE_REVIEWED_COMMIT">
-      <Goal>Merge exactly the externally reviewed commit, without rewriting it.</Goal>
-      <Action>
-        Under `AX_REVIEW_VCS_COMMANDS`, run exact `git status --porcelain=v1 --untracked-files=all`
-        and require no local staged/unstaged change in the frozen publication-set. Run exact
-        `git rev-parse HEAD` and exact
-        `gh pr view <pr-number> --json number,url,headRefOid,baseRefName,state --jq '{number:.number,url:.url,headRefOid:.headRefOid,baseRefName:.baseRefName,state:.state}'`;
-        copy both literal outputs and require the returned number and URL to equal the stored PR identity,
-        local HEAD and `headRefOid` to equal stored `<reviewed-commit>`, `baseRefName` to equal stored
-        `<base-branch>`, and `state=OPEN`, else `H_REVIEWED_HEAD_MISMATCH`. Do not edit, stage, commit,
-        or push between approval and merge. Run exact
-        `gh pr merge <pr-number> --merge --match-head-commit <reviewed-commit>` — never squash or rebase.
-
-        Then run exact
-        `gh pr view <pr-number> --json state,mergedAt,mergeCommit,baseRefName --jq '{state:.state,mergedAt:.mergedAt,mergeCommitOid:.mergeCommit.oid,baseRefName:.baseRefName}'`
-        and copy its literal JSON output;
-        require `state=MERGED`, non-null `mergedAt`, non-empty `mergeCommitOid`, and the stored
-        `baseRefName`. Run exact `git fetch origin <base-branch>`, then exact
-        `git merge-base --is-ancestor <reviewed-commit> FETCH_HEAD` and record exit code 0.
-        Any mismatch/nonzero result is `H_MERGE_POSTCONDITION_FAILED` and returns
-        `TerminalDecision: pause`. Only this proof permits `TerminalDecision: continue` back to the
-        authoring flow's downstream handoff. This lifecycle is never a terminal owner and never runs
-        `sdd-session close`.
+        Present a compact decision card: exact spec paths, key requirements and negative scenarios,
+        dependencies/interfaces, verification promises, independent verdict, and accepted risks.
+        Ask `Approve specs` or `Return for correction` per `AX_OPERATOR_AGREEMENT`. On approval, update the human-readable
+        approval #1 Decision Log markers exactly as `ARTIFACT_APPROVAL_MARKER` defines. Record durable
+        product/architecture decisions in the same specs; do not record workflow state outside those
+        artifacts. A new session checks marker shape mechanically and uses Git evidence plus semantic
+        judgment to detect staleness; it never computes a fingerprint.
       </Action>
     </Step>
   </ExecutionPlan>
-
-  <HardForbidden>
-    - Publishing review-state bytes, or performing semantic compression / merge / delete / ID-collision repair after external review starts.
-    - Starting the integrated critic before semantic finalization and the final hierarchy Approval, resetting its round count after compression/correction, or removing scratch before the accepted final bytes are stable.
-    - Publishing a change whose critic did not pass exact `npx gennady sdd-check --review-ready <bundle-path>`, derive exact `npx gennady sdd-check --review-publication <primary> [secondary...]`, and then remove its scratch as the last review-scaffolding mutation.
-    - Conflating the spec-only critic target/write-set with the role-bearing publication-set.
-    - Staging anything except the exact frozen publication-set, or committing before staged paths and blob ids match its frozen final bytes.
-    - Merging when local HEAD or remote PR head differs from the stored literal `<reviewed-commit>`.
-    - Selecting a PR implicitly from the current branch, or using an unstored PR number/URL after head-plus-base identity resolution.
-    - Passing commit/PR free text through shell interpolation, or passing a PR body by any mechanism except the frozen `.claude/tmp/` body file.
-    - Squash/rebase merge, merge without `--match-head-commit`, or handoff without merged-status plus ancestry proof.
-    - Authoring unrelated spec content — the loading flow owns that; I only review, finalize, publish, and merge the bounded change.
-  </HardForbidden>
 </SddReviewLifecycle>

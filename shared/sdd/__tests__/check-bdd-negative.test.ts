@@ -26,11 +26,11 @@ const WITH_NEGATIVE = [
 ].join('\n');
 
 describe('checkBddNegativeScenario', () => {
-  it('happy-path-only scenarios, ticket TODO → warn', () => {
+  it('happy-path-only scenarios, ticket TODO → error during authoring', () => {
     const findings = checkBddNegativeScenario('t.md', HAPPY_ONLY, false);
     assert.strictEqual(findings.length, 1);
     assert.strictEqual(findings[0]?.code, 'SDD_BDD_MISSING_NEGATIVE');
-    assert.strictEqual(findings[0]?.severity, 'warn');
+    assert.strictEqual(findings[0]?.severity, 'error');
   });
 
   it('happy-path-only scenarios, ticket DONE → error', () => {
@@ -93,11 +93,11 @@ describe('checkTicket integration — SDD_BDD_MISSING_NEGATIVE', () => {
     assert.ok(!findings.some((f) => f.code === 'SDD_BDD_MISSING_NEGATIVE'));
   });
 
-  it('TODO ticket, happy-path-only BDD → warn finding present', () => {
+  it('TODO ticket, happy-path-only BDD → error finding present', () => {
     const findings = checkTicket('t.md', ticket({ status: '[ ] TODO', bdd: HAPPY_ONLY }));
     const finding = findings.find((f) => f.code === 'SDD_BDD_MISSING_NEGATIVE');
     assert.ok(finding, 'expected SDD_BDD_MISSING_NEGATIVE');
-    assert.strictEqual(finding?.severity, 'warn');
+    assert.strictEqual(finding?.severity, 'error');
   });
 
   it('DONE ticket, happy-path-only BDD → error finding present', () => {

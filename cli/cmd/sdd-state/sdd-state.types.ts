@@ -69,10 +69,6 @@ export type StateSnapshot = {
   queuedGateTicketIds: string[];
   /** @purpose Fail-closed structural ownership diagnostics for missing readiness gates. */
   gateQueueDiagnostics: GateQueueDiagnostic[];
-  /** @purpose Raw content of the session scratch (specs/.sdd-session.md), or null when no active session. */
-  sessionContent: string | null;
-  /** @purpose Exact active owner route that takes precedence over generic scaffold/execute advice. */
-  activeOwnerRoute: { machine: string; human: string } | null;
   /** @purpose Read-only structural schema diagnosis used by pre-scaffold routing. */
   specSchema: SpecSchemaReport;
   /** @purpose Code/infra heuristics — always gathered: one snapshot carries everything any router branch needs. */
@@ -103,7 +99,7 @@ function repoRelativeSpecPath(rawPath: string, portalPath: string): string {
 /**
  * @purpose Render a StateSnapshot into the bracketed, machine-readable form the router consumes.
  * @param s The assembled snapshot.
- * @returns A multi-section string: header + `[READINESS]` + `[SCOPES]` + `[GRAPH]` (when a scope graph exists) + `[SESSION]` + `[SUMMARY]`.
+ * @returns A multi-section string: header + `[READINESS]` + `[SCOPES]` + `[GRAPH]` (when a scope graph exists) + `[SUMMARY]`.
  */
 export function formatSnapshot(s: StateSnapshot): string {
   const lines: string[] = [
@@ -149,9 +145,7 @@ export function formatSnapshot(s: StateSnapshot): string {
     lines.push(`GATE_QUEUE_DIAG=${diagnostic.message}`);
   // SPEC_SCHEMA owns the route while structural repair is pending; emitting a second
   // NEXT here would make a weak router choose between two instructions for the same snapshot.
-  if (s.activeOwnerRoute !== null) {
-    lines.push(`NEXT=${s.activeOwnerRoute.machine}`);
-  } else if (s.specSchema.status === 'current') {
+  if (s.specSchema.status === 'current') {
     if (s.flowVersion === 'v1')
       lines.push('NEXT=migrate the v1 task layout before entering the v2 scaffold flow');
     else if (s.authoringReadiness.ready && !s.readiness.executionReady)
@@ -193,9 +187,6 @@ export function formatSnapshot(s: StateSnapshot): string {
   }
   // #endregion END_GRAPH
 
-  lines.push('', '[SESSION]', '# specs/.sdd-session.md');
-  lines.push(s.sessionContent ? s.sessionContent : '# (no active session)');
-
   if (s.probe) {
     lines.push('', '[PROBE]');
     lines.push(
@@ -216,8 +207,7 @@ export function formatSnapshot(s: StateSnapshot): string {
     `execution-ready=${s.readiness.executionReady ? 'yes' : 'no'}`,
     `spec-schema=${s.specSchema.status}`,
     `gate-queue=${s.queuedGateTicketIds.length > 0 ? s.queuedGateTicketIds.join(',') : 'none'}`,
-    `scopes=${s.scopes.length}`,
-    `session=${s.sessionContent ? 'present' : 'absent'}`
+    `scopes=${s.scopes.length}`
   );
   if (s.probe) {
     lines.push(

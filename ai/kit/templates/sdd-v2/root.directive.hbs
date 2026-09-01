@@ -37,10 +37,6 @@
     {{> "axiom/process/ax-close-with-integrity-check"}}
   </BeliefState>
 
-  <SessionState>
-    {{> "contract/process/session-file-format"}}
-  </SessionState>
-
   <ChatProtocol>
     {{> "contract/process/question-format"}}
   </ChatProtocol>
@@ -246,25 +242,18 @@
         `AskUserQuestion`. Option 1, recommended while any scope still lacks a spec: «Продолжить
         спеки: discovery `<следующий скоуп по графу зависимостей>`» — the first UNSPEC'D scope in
         Scope Graph dependency order (the level-0 / foundation scope, e.g. `infra-base` when
-        present, else the lowest-level scope just added). On this pick, do NOT end the session —
-        hand control to that scope's branch of the router's own `LOGIC_SWITCH` immediately (the
-        `scope` or `infra` case, by that scope's scope-type), in the SAME session, exactly as
-        `LOGIC_SWITCH`'s multi-scope case already chains branches; return `TerminalDecision: continue`.
+        present, else the lowest-level scope just added). On this pick, hand control to that scope's
+        branch of the router's own `LOGIC_SWITCH` immediately. The next owner reconstructs context
+        from the portal and specs; no session handoff is required.
         A scaffold option is offered
         instead ONLY once every scope in the graph already has a spec — per `NEXT_STEP_MENU_FORMAT`
         it is never recommended over an outstanding spec (specs need the operator's judgment,
-        scaffold is mechanical decomposition of what is already approved); selecting it also returns
-        `continue` and loads scaffold in this same session. While either next link exists, the last
-        option is «Пауза — продолжу позже»: return `TerminalDecision: pause`, preserve the session,
-        print `/sdd` plus the next scope/step, and load no directive. Only when this step proves
-        `unfinished chained work: none` may it instead offer literal «Complete / finish». After that
-        explicit selection, return `TerminalDecision: complete` and run exact
-        terminal ToolCall below once; the source is this STEP_4 terminal-menu answer, never the
-        successful portal write or integrity check. STOP.
+        scaffold decomposes only approved specs). Selecting it loads scaffold. «Пауза — продолжу
+        позже» stops after printing `/sdd` plus the next scope/step; durable files make that safe.
+        When no work remains, report completion. No terminal state machine or close command exists.
 
         <ToolCall owner="this-step" result="portalManifest">npx gennady sdd-new portal</ToolCall> Use portalManifest.
         <ToolCall owner="this-step" result="integrityCheck">npx gennady sdd-check --all .</ToolCall> Use integrityCheck.
-        <ToolCall owner="this-step" result="terminal">npx gennady sdd-session close</ToolCall>
       </Action>
     </Step>
   </ExecutionPlan>
@@ -283,6 +272,8 @@
     {{> "contract/process/flow-diagram-when"}}
 
     {{> "contract/process/next-step-menu-format"}}
+
+    {{> "contract/process/question-rule-slim"}}
 
     {{> "axiom/process/ax-progressive-disclosure"}}
   </ChatOutput>

@@ -191,42 +191,15 @@ const COMMAND_SCHEMAS: Readonly<Record<string, CommandSchema>> = {
       '--phase': 'scalar',
       '--all': 'boolean',
       '--changed': 'boolean',
-      '--project-feasibility': 'boolean',
-      '--scaffold-plan': 'scalar',
-      '--scaffold-feasibility': 'boolean',
-      '--plan': 'scalar',
-      '--review-ready': 'scalar',
-      '--review-state': 'scalar',
-      '--review-publication': 'scalar',
     },
     (p, f) => {
-      const modes = [
-        '--task',
-        '--all',
-        '--changed',
-        '--project-feasibility',
-        '--scaffold-plan',
-        '--scaffold-feasibility',
-        '--review-ready',
-        '--review-state',
-        '--review-publication',
-      ].filter((x) => has(f, x));
+      const modes = ['--task', '--all', '--changed'].filter((x) => has(f, x));
       if (modes.length !== 1) return 'requires exactly one mode';
       if (has(f, '--authoring') && modes[0] !== '--task') return '--authoring requires --task';
       if (has(f, '--phase') && !has(f, '--authoring')) return '--phase requires --authoring';
-      if (has(f, '--plan') && modes[0] !== '--scaffold-feasibility')
-        return '--plan requires --scaffold-feasibility';
-      if (
-        (modes[0] === '--all' ||
-          modes[0] === '--changed' ||
-          modes[0] === '--project-feasibility' ||
-          modes[0] === '--scaffold-plan' ||
-          modes[0] === '--scaffold-feasibility') &&
-        p.length > 1
-      )
+      if ((modes[0] === '--all' || modes[0] === '--changed') && p.length > 1)
         return `${modes[0]} accepts at most one root`;
-      if (modes[0] === '--task' || modes[0] === '--review-ready')
-        return p.length === 0 ? null : `${modes[0]} accepts no trailing paths`;
+      if (modes[0] === '--task') return p.length === 0 ? null : '--task accepts no trailing paths';
       return null;
     }
   ),
@@ -310,26 +283,6 @@ const COMMAND_SCHEMAS: Readonly<Record<string, CommandSchema>> = {
       if (!['portal', 'project-index'].includes(kind) && !has(f, '--scope'))
         return `${kind} requires --scope`;
       return null;
-    }
-  ),
-  'sdd-session': schema(
-    { '--intent': 'scalar', '--scale': 'scalar', '--content-file': 'scalar' },
-    (p, f) => {
-      const op = p[0];
-      if (op === 'close') return p.length === 1 && f.size === 0 ? null : 'close takes no arguments';
-      if (op === 'open')
-        return p.length === 1 && has(f, '--intent') ? null : 'open requires --intent';
-      if (op === 'set')
-        return p.length === 3 || (p.length === 2 && has(f, '--content-file'))
-          ? null
-          : 'set requires field and value/content-file';
-      if (op === 'feasibility' || op === 'checkpoint')
-        return p.length === 1 && has(f, '--content-file') ? null : `${op} requires --content-file`;
-      if (['log', 'workset', 'term'].includes(op ?? ''))
-        return p.length === 2 || (p.length === 1 && has(f, '--content-file'))
-          ? null
-          : `${op} requires value/content-file`;
-      return 'unknown session operation';
     }
   ),
   'sdd-log': schema(

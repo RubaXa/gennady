@@ -41,6 +41,24 @@ describe('TsSymbolIndexAdapter#declaredSymbols', () => {
     assert.strictEqual(symbols.find((s) => s.name === 'render')?.visibility, 'private');
   });
 
+  it('keeps private-field names instead of inventing an unknown member', async (t) => {
+    if (!(await grammarLoads())) {
+      t.skip('tree-sitter native module unavailable in this environment');
+      return;
+    }
+    const adapter = new TsSymbolIndexAdapter();
+    const content = [
+      'export class Registry {',
+      '  #client: object;',
+      '  read(): object { return this.#client; }',
+      '}',
+    ].join('\n');
+    const symbols = await adapter.declaredSymbols('x.ts', content);
+    assert.ok(symbols.some((symbol) => symbol.name === '#client'));
+    assert.ok(symbols.every((symbol) => symbol.name !== 'unknown'));
+    assert.strictEqual((await adapter.countReferences('#client', 'x.ts', content)).count, 2);
+  });
+
   it('includes non-exported top-level declarations', async (t) => {
     if (!(await grammarLoads())) {
       t.skip('tree-sitter native module unavailable in this environment');

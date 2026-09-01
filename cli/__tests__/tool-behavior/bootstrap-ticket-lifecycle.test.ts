@@ -39,11 +39,6 @@ const TICKET = [
   '<!--SECTION:PHASE_P1-->',
   '### P1 — bootstrap',
   '- **Objective:** install the declared toolchain packages',
-  '- **Capability Adapter:** node',
-  '- **Bootstrap Action:** dependency-install',
-  '- **Provides Packages:** typescript',
-  '- **Provides Capabilities:** node.runtime-version, node.manifest-engine, node.manifest-module-kind, node.registry-config, node.dependencies, node.runtime, node.package-manager',
-  '- **Requires Capabilities:** node.runtime',
   '- **Rules:**',
   '  - [nodejs-npm-setup](../../ai/directives/infra/nodejs-npm-setup.xml)',
   '- **Target Files:**',
@@ -59,25 +54,20 @@ const TICKET = [
   '<!--SECTION:PHASE_P2-->',
   '### P2 — config',
   '- **Objective:** configure the compiler command',
-  '- **Capability Adapter:** typescript',
-  '- **Provides Capabilities:** typescript.compiler',
-  '- **Requires Capabilities:** node.package-manager, node.dependencies',
-  '- **Requires Packages:** typescript',
   '- **Rules:**',
   '  - none',
   '- **Target Files:**',
   '  - tsconfig.json',
   '- **Deleted Files:**',
   '  - none',
+  '- **Readiness Gates:**',
+  '  - type-check',
   '- **Inputs:** P1 handoff',
   '- **Exit:** the compiler configuration exists',
   '<!--/SECTION:PHASE_P2-->',
   '<!--SECTION:PHASE_P3-->',
   '### P3 — test',
   '- **Objective:** prove the exact compiler command',
-  '- **Capability Adapter:** typescript',
-  '- **Requires Capabilities:** typescript.compiler',
-  '- **Requires Packages:** typescript',
   '- **Rules:**',
   '  - none',
   '- **Target Files:**',
@@ -115,9 +105,9 @@ const TICKET = [
   '<!--/SECTION:VERIFICATION-->',
   '<!--SECTION:TEST_COVERAGE-->',
   '## Test Scenario Coverage',
-  '- exposes the toolchain contract → `test/toolchain-smoke.test.ts` :: `exposes the toolchain contract`',
-  '- runs the compiler command → `test/toolchain-smoke.test.ts` :: `runs the compiler command` :: command `npm run type-check`',
-  '- rejects a missing compiler config → `test/toolchain-smoke.test.ts` :: `rejects a missing compiler config` :: command `npm run type-check`',
+  '- exposes the toolchain contract → `test/toolchain-smoke.test.ts` :: `[IB-REQ-1] exposes the toolchain contract`',
+  '- runs the compiler command → `test/toolchain-smoke.test.ts` :: `[IB-REQ-2] runs the compiler command` :: command `npm run type-check`',
+  '- rejects a missing compiler config → `test/toolchain-smoke.test.ts` :: `[IB-REQ-3] rejects a missing compiler config` :: command `npm run type-check`',
   '<!--/SECTION:TEST_COVERAGE-->',
   '<!--SECTION:EXECUTION_LOG-->',
   '## Execution Log',
@@ -126,7 +116,7 @@ const TICKET = [
 ].join('\n');
 
 describe('bootstrap ticket lifecycle', () => {
-  it('is accepted by authoring and feasibility, then exposes only existing P1 inputs to execute', () => {
+  it('is accepted by authoring, then exposes only existing P1 inputs to execute', () => {
     const { root } = buildRepoFixture({
       files: {
         'package-lock.json': '{"lockfileVersion":3}\n',
@@ -141,9 +131,6 @@ describe('bootstrap ticket lifecycle', () => {
       const authoring = runCli(['sdd-check', '--task', TICKET_PATH, '--authoring'], root);
       assert.strictEqual(authoring.exitCode, 0, authoring.stdout + authoring.stderr);
 
-      const feasibility = runCli(['sdd-check', '--scaffold-feasibility'], root);
-      assert.strictEqual(feasibility.exitCode, 0, feasibility.stdout + feasibility.stderr);
-
       const dispatch = runCli(['sdd-task', TICKET_PATH, '--phase', 'P1'], root);
       assert.strictEqual(dispatch.exitCode, 0, dispatch.stdout + dispatch.stderr);
       assert.match(dispatch.stdout, /READ files:\s+package\.json, package-lock\.json/);
@@ -156,15 +143,11 @@ describe('bootstrap ticket lifecycle', () => {
     }
   });
 
-  it('validates the exact ESLint rule only for an explicitly selected ESLint capability', () => {
+  it('validates the exact ESLint rule only for the declared ESLint phase', () => {
     const eslintPhase = [
       '<!--SECTION:PHASE_P4-->',
       '### P4 — config',
       '- **Objective:** configure the selected ESLint lint gate',
-      '- **Capability Adapter:** typescript-quality',
-      '- **Provides Capabilities:** typescript.eslint-lint-tooling',
-      '- **Requires Capabilities:** typescript.compiler, node.dependencies',
-      '- **Requires Packages:** eslint, eslint-config-prettier',
       '- **Rules:**',
       '  - [eslint-setup](../../ai/directives/infra/eslint-setup.xml)',
       '- **Target Files:**',
@@ -172,6 +155,8 @@ describe('bootstrap ticket lifecycle', () => {
       '  - eslint.config.mjs',
       '- **Deleted Files:**',
       '  - none',
+      '- **Readiness Gates:**',
+      '  - lint',
       '- **Inputs:** P2 handoff',
       '- **Exit:** the lint command and config are materialized',
       '<!--/SECTION:PHASE_P4-->',

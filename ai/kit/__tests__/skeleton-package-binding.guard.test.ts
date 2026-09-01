@@ -320,15 +320,13 @@ describe('SkeletonPackageBindingGuard', () => {
     const root = readFileSync(join(OUT_ROOT, 'sdd-v2/scaffold.directive.xml'), 'utf8');
     const reached = extractReachablePackagePaths(root);
     const expected = [
-      'STEP_0_INTAKE',
-      'STEP_0B_PREFLIGHT',
-      'STEP_1_CASCADE',
-      'STEP_2_DAG',
-      'STEP_3_TASK_GENERATION',
-      'STEP_3_TICKET_LOOP',
-      'STEP_3B_FEASIBILITY_CRITIC',
-      'STEP_4_TEST_PLAN_REVIEW',
-      'STEP_5_FINALIZE',
+      'STEP_0_PREFLIGHT',
+      'STEP_1_DERIVE',
+      'STEP_2_MATERIALIZE',
+      'STEP_3_MECHANICAL_CHECK',
+      'STEP_4_INDEPENDENT_TICKET_REVIEW',
+      'STEP_5_OPERATOR_APPROVAL_2',
+      'STEP_6_HANDOFF',
     ].map((step) => `ai/directives/sdd-v2/scaffold/steps/${step}.xml`);
 
     assert.deepEqual(reached, expected);

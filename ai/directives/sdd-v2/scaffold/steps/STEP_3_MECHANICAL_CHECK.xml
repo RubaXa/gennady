@@ -1,0 +1,21 @@
+0.8.4
+
+<Step id="STEP_3_MECHANICAL_CHECK">
+      <Goal>Prove actual ticket structure before semantic review.</Goal>
+      <Action>
+        Run the authoring check on every created or changed ticket. It checks required sections,
+        anchors, resolvable spec references, dependencies/phases, requirement-to-scenario-to-test
+        traceability, and required negative scenarios. Correct only named findings and rerun the same
+        check. If it remains red after that bounded correction, stop with
+        `H_TICKET_AUTHORING_INVALID`. Do not ask a reviewer to compensate for malformed artifacts.
+        <ToolCall owner="this-step" result="authoringGate">npx gennady sdd-check --task &lt;ticket-path&gt; --authoring</ToolCall>
+        Consume `authoringGate` and correct only its named findings.
+
+        Then run the complete structural check over actual specs, tickets, and indexes. It checks ID
+        uniqueness, dependency resolution/acyclicity, tracker sync, and declared ownership/order.
+        <ToolCall owner="this-step" result="integrityGate">npx gennady sdd-check --all .</ToolCall>
+        Consume `integrityGate`; do not proceed to semantic review while it is red.
+      </Action>
+    </Step>
+
+After completing this step, and only then, READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/scaffold/steps/STEP_4_INDEPENDENT_TICKET_REVIEW.xml"). Do not preload later step packages.

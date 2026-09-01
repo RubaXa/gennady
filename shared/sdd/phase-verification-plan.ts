@@ -4,10 +4,6 @@
 
 import { resolve } from 'node:path';
 import { realpathSync } from 'node:fs';
-import {
-  DEFAULT_CAPABILITY_ADAPTER_REGISTRY,
-  type CapabilityAdapterRegistry,
-} from './capability-adapter.ts';
 import { extractSection } from './section.ts';
 import {
   parseMetaInfo,
@@ -86,9 +82,9 @@ export type PhaseVerificationGatePlan = {
   required: boolean;
   /** @purpose Exact runnable command, or null until the command exists. */
   command: string | null;
-  /** @purpose Capability ids that configure this gate. */
+  /** @purpose Reserved compatibility field; runtime gates no longer use capability prerequisites. */
   prerequisites: string[];
-  /** @purpose Exact ticket and phase that materialize the active prerequisite. */
+  /** @purpose Reserved compatibility field; infrastructure order belongs to semantic review. */
   provider: string | null;
   /** @purpose Deterministic next action for the current state. */
   next: string;
@@ -114,34 +110,20 @@ type PhaseVerificationPlanInput = {
   ticketFile: string;
   phaseId: string;
   scripts: Readonly<Record<string, string>>;
+  /** @deprecated Runtime verification is based on runnable commands, not inferred artifacts. */
   availableArtifacts: ReadonlySet<string>;
-  registry?: CapabilityAdapterRegistry;
+  /** @deprecated Capability registries no longer participate in phase verification. */
+  registry?: unknown;
   mode?: 'planning' | 'runtime';
   profileOverride?: Exclude<VerificationProfile, 'full'>;
 };
 
 /**
- * @purpose List exact repo paths whose materialization can configure canonical capability gates.
- * @param [registry] Capability registry whose gate artifacts are inspected.
- * @returns Deduplicated paths used by at least one canonical gate requirement.
+ * @purpose Compatibility shim for callers that used to probe capability artifacts.
+ * @returns Empty because real phase verification resolves runnable commands directly.
  */
-export function phaseVerificationArtifactPaths(
-  registry: CapabilityAdapterRegistry = DEFAULT_CAPABILITY_ADAPTER_REGISTRY
-): string[] {
-  const required = new Set(
-    Object.values(registry).flatMap((adapter) =>
-      adapter.gateRequirements.flatMap((requirement) => requirement.capabilities)
-    )
-  );
-  return [
-    ...new Set(
-      Object.values(registry).flatMap((adapter) =>
-        adapter.artifacts
-          .filter((artifact) => required.has(artifact.id))
-          .map((artifact) => artifact.location.path)
-      )
-    ),
-  ];
+export function phaseVerificationArtifactPaths(): string[] {
+  return [];
 }
 
 type PlanNode = {
@@ -151,9 +133,6 @@ type PlanNode = {
   phase: string;
   kind: string;
   phaseDependencies: string[];
-  adapter: string | null;
-  provides: string[];
-  requires: string[];
   readinessGates: string[];
   targets: string[];
   content: string;
@@ -187,9 +166,6 @@ function planNodes(refs: readonly TicketCorpusRef[]): PlanNode[] {
           phase: phase.id,
           kind: phase.kind,
           phaseDependencies: phase.deps,
-          adapter: detail.capabilityAdapter,
-          provides: detail.providesCapabilities,
-          requires: detail.requiresCapabilities,
           readinessGates: detail.readinessGates,
           targets: detail.targetFiles,
           content: ref.content,
@@ -199,84 +175,7 @@ function planNodes(refs: readonly TicketCorpusRef[]): PlanNode[] {
   });
 }
 
-type GateRequirementCandidate = {
-  adapter: string;
-  capabilities: string[];
-};
-
-type GateRequirementSelection =
-  | { kind: 'none'; capabilities: [] }
-  | { kind: 'selected'; capabilities: string[] }
-  | { kind: 'ambiguous'; capabilities: string[]; adapters: string[] };
-
-function gateRequirementCandidates(
-  registry: CapabilityAdapterRegistry,
-  gate: string
-): GateRequirementCandidate[] {
-  return Object.values(registry)
-    .flatMap((adapter) =>
-      adapter.gateRequirements
-        .filter((requirement) => requirement.gate === gate)
-        .map((requirement) => ({
-          adapter: adapter.id,
-          capabilities: [...requirement.capabilities],
-        }))
-    )
-    .sort(
-      (left, right) =>
-        left.adapter.localeCompare(right.adapter) ||
-        left.capabilities.join(',').localeCompare(right.capabilities.join(','))
-    );
-}
-
-function selectGateRequirement(
-  nodes: readonly PlanNode[],
-  current: PlanNode,
-  registry: CapabilityAdapterRegistry,
-  gate: string
-): GateRequirementSelection {
-  const candidates = gateRequirementCandidates(registry, gate);
-  if (candidates.length === 0) return { kind: 'none', capabilities: [] };
-  const matches = (declared: readonly string[]) =>
-    candidates.filter((candidate) =>
-      candidate.capabilities.some((capability) => declared.includes(capability))
-    );
-  const currentOrUpstream = candidates.filter((candidate) =>
-    candidate.capabilities.some((capability) =>
-      nodes
-        .filter((node) => node.provides.includes(capability))
-        .some((provider) =>
-          ['current', 'upstream'].includes(providerRelation(nodes, current, provider))
-        )
-    )
-  );
-  const ownedSomewhere = candidates.filter((candidate) =>
-    candidate.capabilities.some((capability) =>
-      nodes.some((node) => node.provides.includes(capability))
-    )
-  );
-  const stages = [
-    matches(current.provides),
-    matches(current.requires),
-    current.adapter ? candidates.filter((candidate) => candidate.adapter === current.adapter) : [],
-    currentOrUpstream,
-    ownedSomewhere,
-  ];
-  const selected = stages.find((stage) => stage.length > 0) ?? candidates;
-  if (selected.length === 1) {
-    return { kind: 'selected', capabilities: selected[0]?.capabilities ?? [] };
-  }
-  return {
-    kind: 'ambiguous',
-    capabilities: [...new Set(selected.flatMap((candidate) => candidate.capabilities))].sort(),
-    adapters: [...new Set(selected.map((candidate) => candidate.adapter))].sort(),
-  };
-}
-
-function ownedVerificationGateNames(
-  current: PlanNode,
-  registry: CapabilityAdapterRegistry
-): string[] {
+function ownedVerificationGateNames(current: PlanNode): string[] {
   const gateOrder = [
     ...new Set([
       ...verificationGateNames('code'),
@@ -289,14 +188,7 @@ function ownedVerificationGateNames(
     if (['fix', 'format:fix', 'lint:fix'].includes(gate)) return ['fix'];
     return gateOrder.includes(gate) ? [gate] : [];
   });
-  const byCapability = Object.values(registry).flatMap((adapter) =>
-    adapter.gateRequirements
-      .filter((requirement) =>
-        requirement.capabilities.some((capability) => current.provides.includes(capability))
-      )
-      .map((requirement) => requirement.gate)
-  );
-  const owned = new Set([...direct, ...byCapability]);
+  const owned = new Set(direct);
   return gateOrder.filter((gate) => owned.has(gate));
 }
 
@@ -389,46 +281,45 @@ function coverageProducer(current: PlanNode, profile: PhaseVerificationPlan['pro
   return policy.status === 'legacy';
 }
 
-type ProviderRelation = 'current' | 'upstream' | 'downstream' | 'unordered';
+type ReadinessOwnerRelation = 'current' | 'upstream' | 'downstream' | 'unordered';
 
-function providerRelation(
+function readinessOwnerRelation(
   nodes: readonly PlanNode[],
   current: PlanNode,
-  provider: PlanNode
-): ProviderRelation {
-  if (current.ticket === provider.ticket && current.phase === provider.phase) return 'current';
-  if (nodeReaches(nodes, current, provider)) return 'upstream';
-  if (nodeReaches(nodes, provider, current)) return 'downstream';
+  owner: PlanNode
+): ReadinessOwnerRelation {
+  if (current.ticket === owner.ticket && current.phase === owner.phase) return 'current';
+  if (nodeReaches(nodes, current, owner)) return 'upstream';
+  if (nodeReaches(nodes, owner, current)) return 'downstream';
   return 'unordered';
 }
 
-function selectProvider(
+function selectReadinessOwner(
   nodes: readonly PlanNode[],
   current: PlanNode,
-  owners: readonly PlanNode[]
-): { node: PlanNode; relation: ProviderRelation } | null {
-  const candidates = owners.map((node) => ({
-    node,
-    relation: providerRelation(nodes, current, node),
-  }));
+  gate: string
+): { node: PlanNode; relation: ReadinessOwnerRelation } | null {
+  const owners = nodes
+    .filter((node) => ownedVerificationGateNames(node).includes(gate))
+    .map((node) => ({ node, relation: readinessOwnerRelation(nodes, current, node) }));
   return (
-    candidates.find((candidate) => candidate.relation === 'current') ??
-    candidates.find((candidate) => candidate.relation === 'upstream') ??
-    candidates.find((candidate) => candidate.relation === 'downstream') ??
-    candidates[0] ??
+    owners.find((candidate) => candidate.relation === 'current') ??
+    owners.find((candidate) => candidate.relation === 'upstream') ??
+    owners.find(
+      (candidate) => candidate.relation === 'downstream' && candidate.node.ticket === current.ticket
+    ) ??
     null
   );
 }
 
 /**
- * @purpose Resolve canonical gate states once for every phase consumer.
- * @param input Ticket graph, clean/current scripts, and materialized capability artifacts.
+ * @purpose Resolve canonical gate states from ticket shape and actually runnable project scripts.
+ * @param input Ticket corpus, selected phase, and current project scripts.
  * @returns Exact plan, or null when the requested ticket/phase cannot be structurally resolved.
  */
 export function resolvePhaseVerificationPlan(
   input: PhaseVerificationPlanInput
 ): PhaseVerificationPlan | null {
-  const registry = input.registry ?? DEFAULT_CAPABILITY_ADAPTER_REGISTRY;
   const nodes = planNodes(input.refs);
   const current = nodes.find(
     (node) => sameFile(node.file, input.ticketFile) && node.phase === input.phaseId
@@ -437,90 +328,38 @@ export function resolvePhaseVerificationPlan(
   const profile = input.profileOverride ?? phaseProfileForKind(current.kind);
   if (!profile) return null;
   const producesCoverage = coverageProducer(current, profile);
-  const ownedNames = ownedVerificationGateNames(current, registry);
+  const ownedNames = ownedVerificationGateNames(current);
   const requiredNames = new Set([
     ...requiredVerificationGateNames(profile, producesCoverage),
     ...ownedNames,
   ]);
-  const artifactByCapability = new Map(
-    Object.values(registry).flatMap((adapter) =>
-      adapter.artifacts.map((artifact) => [artifact.id, artifact.location.path] as const)
-    )
-  );
-  const manifestPaths = new Set(
-    Object.values(registry).flatMap((adapter) =>
-      adapter.dependencyBoundary ? [adapter.dependencyBoundary.manifestPath] : []
-    )
-  );
   const gateNames = [
     ...new Set([...verificationGateNames(profile, producesCoverage), ...ownedNames]),
   ];
   const gates = gateNames.map((name): PhaseVerificationGatePlan => {
     const command = commandForGate(name, input.scripts, current.targets);
-    const requirement = selectGateRequirement(nodes, current, registry, name);
-    const prerequisites = requirement.capabilities.filter((capability) => {
-      const artifact = artifactByCapability.get(capability);
-      return (
-        command !== null ||
-        nodes.some((node) => node.provides.includes(capability)) ||
-        Boolean(artifact && input.availableArtifacts.has(artifact))
-      );
-    });
-    let state: PhaseVerificationGateState = command ? 'CONFIGURED' : 'COMMAND_MISSING';
-    let provider: string | null = null;
-    let next = command
-      ? `run ${command}`
-      : `declare a real '${name}' script before this gate becomes required`;
-    if (requirement.kind === 'ambiguous') {
-      state = 'PREREQUISITE_MISSING';
-      next = `gate '${name}' prerequisite is ambiguous across adapters ${requirement.adapters.join(', ')}; declare Capability Adapter and Requires Capabilities for this phase`;
-    }
-    for (const capability of requirement.kind === 'ambiguous' ? [] : prerequisites) {
-      const artifact = artifactByCapability.get(capability);
-      const owners = nodes.filter((node) => node.provides.includes(capability));
-      const selected = selectProvider(nodes, current, owners);
-      provider = selected ? `${selected.node.ticket}/${selected.node.phase}` : null;
-      const available = Boolean(artifact && input.availableArtifacts.has(artifact));
-      if (selected?.relation === 'downstream' || selected?.relation === 'unordered') {
-        state = 'PREREQUISITE_PENDING';
-        next = `materialize '${artifact ?? capability}' in ${provider} before runtime verification`;
-      } else if (available) {
-        state = command ? 'CONFIGURED' : 'COMMAND_MISSING';
-        next = command
-          ? `run ${command}`
-          : `declare a real '${name}' script before this gate becomes required`;
-      } else if (selected && (input.mode ?? 'runtime') === 'planning') {
-        state = 'DECLARED';
-        next = `materialize '${artifact ?? capability}' in ${provider} before runtime verification`;
-      } else if (selected?.relation === 'current') {
-        state = 'PREREQUISITE_PENDING';
-        next = `materialize '${artifact ?? capability}' in ${provider}, then rerun this phase command`;
-      } else {
-        state = 'PREREQUISITE_MISSING';
-        next = selected
-          ? `restore the missing '${artifact ?? capability}' from reachable provider ${provider}`
-          : `add an exact provider for '${capability}' and order it before this phase`;
-      }
-      break;
-    }
-    if (state === 'COMMAND_MISSING' && (input.mode ?? 'runtime') === 'planning') {
-      const commandOwner = nodes.find(
-        (node) =>
-          node.targets.some((target) => manifestPaths.has(target)) &&
-          nodeReaches(nodes, current, node)
-      );
-      if (commandOwner) {
-        state = 'DECLARED';
-        provider = `${commandOwner.ticket}/${commandOwner.phase}`;
-        next = `materialize '${name}' in ${provider} before runtime verification`;
-      }
-    }
+    const planning = (input.mode ?? 'runtime') === 'planning';
+    const owner = selectReadinessOwner(nodes, current, name);
+    const waitsForOwner = owner?.relation === 'downstream';
+    const state: PhaseVerificationGateState = waitsForOwner
+      ? 'PREREQUISITE_PENDING'
+      : command
+        ? 'CONFIGURED'
+        : planning
+          ? 'DECLARED'
+          : 'COMMAND_MISSING';
+    const provider = owner ? `${owner.node.ticket}/${owner.node.phase}` : null;
+    const next = waitsForOwner
+      ? `complete readiness owner ${provider} before running '${name}'`
+      : command
+        ? `run ${command}`
+        : `declare a real '${name}' script before this gate becomes required`;
     return {
       name,
       state,
       required: requiredNames.has(name),
       command,
-      prerequisites,
+      prerequisites: [],
       provider,
       next,
     };

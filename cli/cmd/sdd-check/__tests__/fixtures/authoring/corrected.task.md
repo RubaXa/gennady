@@ -76,8 +76,8 @@
 
 <!--SECTION:TEST_COVERAGE-->
 ## Test Scenario Coverage
-- creates the project toolchain → `test/toolchain.test.ts` :: `creates the project toolchain`
-- rejects an invalid project root → `test/toolchain.test.ts` :: `rejects an invalid project root`
+- creates the project toolchain → `test/toolchain.test.ts` :: `[INF-REQ-1] creates the project toolchain`
+- rejects an invalid project root → `test/toolchain.test.ts` :: `[INF-REQ-2] rejects an invalid project root`
 <!--/SECTION:TEST_COVERAGE-->
 
 <!--SECTION:EXECUTION_LOG-->

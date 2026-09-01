@@ -316,10 +316,6 @@ const ALLOWLIST_PAIRS = new Set([
   // Same relationship for the worker's typed return: the orchestrator requires the line be
   // present and threads it verbatim, never composes it itself.
   'AX_HANDOFF_TYPED->RETURN_SUMMARY_FORMAT',
-  // AX_OPERATOR_LANGUAGE's terminology-discipline clause: the glossary entry is written by the
-  // `sdd-session term` CLI tool, mechanically, in SESSION_FILE_FORMAT shape — the agent invokes
-  // the tool, it does not compose the section by hand.
-  'AX_OPERATOR_LANGUAGE->SESSION_FILE_FORMAT',
   // AX_PERMITTED_BASH_COMMANDS (review-lifecycle): "BLOCKER_FORMAT … per the phase-execution
   // protocol" — the sentence itself names where the contract lives, same shape as the
   // QUESTION_RULE_SLIM pointer.

@@ -22,7 +22,7 @@
       orchestrator routes an accepted proposal to the artifact owner. The audit/code-review worker stays
       read-only throughout (`AX_NO_AUTO_FIX`).
       When reconcile consumes the proposal, every semantic "spec edit" in this table means route to
-      the owning scope/module/infra/interface authoring flow and integrated review/publication before
+      the owning scope/module/infra/interface authoring flow, independent semantic review, and operator approval #1 before
       implementation. Only an explicitly non-semantic editorial correction may use reconcile's bounded
       task-free direct receipt. Every task-owned code action means a new Round with concrete fix/test
       PhaseIDs; finding size never bypasses the ticket.

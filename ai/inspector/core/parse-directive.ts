@@ -195,10 +195,10 @@ function parseHalts(inner: string): TraceNode[] {
 /** Тело Action → структурный <LogicSwitch> (если есть) + тулы/порталы; метка только при РЕАЛЬНОМ текстовом ветвлении. */
 function parseAction(inner: string): TraceNode[] {
   const out: TraceNode[] = [];
-  const sw = /<LogicSwitch\b([^>]*)>([\s\S]*?)<\/LogicSwitch>/.exec(inner);
+  const sw = /<(LogicSwitch|LOGIC_SWITCH)\b([^>]*)>([\s\S]*?)<\/\1>/.exec(inner);
   let rest = inner;
   if (sw) {
-    out.push(parseLogicSwitch(sw[2] as string, parseAttrs(sw[1] as string).on));
+    out.push(parseLogicSwitch(sw[3] as string, parseAttrs(sw[2] as string).on));
     rest = inner.replace(sw[0], ' '); // не дублировать ссылки свича как плоские run
   }
   out.push(...scanRefsAndTools(rest));
@@ -221,9 +221,9 @@ function parseLogicSwitch(inner: string, onAttr?: string): TraceNode {
   const header = /LOGIC_SWITCH\s*\(([^)]*)\)/.exec(inner);
   const branches: TraceNode[] = [];
   for (const m of inner.matchAll(
-    /-\s*(WHEN|DEFAULT)\b([\s\S]*?)(?=\n\s*-\s*(?:WHEN|DEFAULT)\b|\n```|$)/g
+    /^[ \t]*(?:-[ \t]*)?(WHEN|DEFAULT|OTHERWISE)\b([\s\S]*?)(?=^[ \t]*(?:-[ \t]*)?(?:WHEN|DEFAULT|OTHERWISE)\b|\n```|(?![\s\S]))/gim
   )) {
-    const kind = m[1] as string;
+    const kind = (m[1] as string).toUpperCase();
     const rest = m[2] as string;
     const ai = rest.indexOf('->');
     const cond = ai >= 0 ? rest.slice(0, ai) : rest;
@@ -233,7 +233,7 @@ function parseLogicSwitch(inner: string, onAttr?: string): TraceNode {
       kids.push({ kind: 'text', label: '→ ' + firstSentence(clean(action)) });
     branches.push({
       kind: 'branch',
-      label: kind === 'DEFAULT' ? 'DEFAULT' : firstSentence(clean(cond)),
+      label: kind === 'WHEN' ? firstSentence(clean(cond)) : 'DEFAULT',
       detail: clean(rest),
       children: kids.length ? kids : undefined,
     });
@@ -264,7 +264,7 @@ function buildStepNode(attrsRaw: string, body: string): TraceNode {
   const action = /<Action>([\s\S]*?)<\/Action>/.exec(body);
   if (action) {
     const ai = action[1] as string;
-    const prose = ai.replace(/<LogicSwitch\b[^>]*>[\s\S]*?<\/LogicSwitch>/g, ' '); // switch shown as branches, not raw in detail
+    const prose = ai.replace(/<(LogicSwitch|LOGIC_SWITCH)\b[^>]*>[\s\S]*?<\/\1>/g, ' '); // switch shown as branches, not raw in detail
     children.push({
       kind: 'text',
       label: '<Action>',
@@ -474,7 +474,8 @@ export function parseDirective(path: string, xml: string, read?: FileReader): Tr
         note: 'процедура фазы',
         children: parseSteps(el.inner, path, read),
       });
-    else if (el.name === 'LogicSwitch') sections.push(parseLogicSwitch(el.inner, attrs.on));
+    else if (el.name === 'LogicSwitch' || el.name === 'LOGIC_SWITCH')
+      sections.push(parseLogicSwitch(el.inner, attrs.on));
     else
       sections.push({ kind: 'section', label: `<${el.name}>`, ...parseGenericSection(el.inner) });
   }

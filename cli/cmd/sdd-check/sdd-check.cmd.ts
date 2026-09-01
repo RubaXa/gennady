@@ -2,15 +2,13 @@
 // @consumers: gennady.ts
 // @tasks: N/A
 
-import { readFileSync, readdirSync, existsSync, lstatSync, realpathSync, statSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync, lstatSync, realpathSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
-import { createHash } from 'node:crypto';
 import { basename, isAbsolute, join, resolve, relative, dirname, sep } from 'node:path';
 import { logger } from '#logger';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
 import { proveRepoFile, readProvenRepoFile } from '../../../shared/common/repo-file-identity.ts';
 import {
-  getChangedFiles,
   getChangedSourceFiles,
   getHeadContent,
   readHeadContent,
@@ -27,7 +25,6 @@ import {
   checkSpecStructure,
   checkSpecLanguage,
   checkTaskIdGrammar,
-  checkReviewState,
   checkModuleGraph,
   checkScopeDeps,
   checkSpecHierarchy,
@@ -39,7 +36,6 @@ import {
   checkDiagramCaptions,
   checkScopeDataFlowDiagram,
   checkModuleCallChain,
-  checkDeltaDiagram,
   findResearchLinks,
   findRegisteredResearchLinks,
   moduleGraphEdges,
@@ -51,14 +47,6 @@ import {
   type SpecEntry,
 } from '../../../shared/sdd/check.ts';
 import { checkRequirementBudgetsAgainstBaseline } from '../../../shared/sdd/requirement-budget.ts';
-import {
-  checkCriticReadinessForTargetSet,
-  hasCriticRoundsSection,
-  latestCriticTargetSet,
-  latestCriticWriteSet,
-  formatCriticTargetSet,
-  formatCriticChangedState,
-} from '../../../shared/sdd/critic-readiness.ts';
 import type { GraphEdge } from '../../../shared/sdd/portal.ts';
 import { parseScopes, parseGraphEdges } from '../../../shared/sdd/portal.ts';
 import {
@@ -96,29 +84,9 @@ import {
   parseTestCoverage,
   resolveTestFileMatches,
 } from '../../../shared/sdd/bdd-coverage.ts';
-import {
-  collectTicketCorpus,
-  resolveTicketArg,
-  resolutionLine,
-} from '../../../shared/sdd/ticket-resolve.ts';
-import {
-  checkScaffoldFeasibility,
-  deriveScaffoldCriticContext,
-  materializedScaffoldPlanNodes,
-} from '../../../shared/sdd/scaffold-feasibility.ts';
-import {
-  checkProjectFeasibility,
-  checkScaffoldDraftPlan,
-  checkScaffoldPlanMaterialization,
-  deriveProjectFeasibilityContext,
-  type ProjectSpecRef,
-  type ScaffoldDraftPlan,
-} from '../../../shared/sdd/project-feasibility.ts';
-import { phaseVerificationArtifactPaths } from '../../../shared/sdd/phase-verification-plan.ts';
-import { deriveCapabilityAdapterContract } from '../../../shared/sdd/capability-adapter.ts';
+import { resolveTicketArg, resolutionLine } from '../../../shared/sdd/ticket-resolve.ts';
 import { looksLikeTaskId } from '../../../shared/sdd/task-id.ts';
 import {
-  resolveModuleScopeOwnership,
   resolveScopeDecomposition,
   resolveTaskOutputOwnership,
 } from '../../../shared/sdd/module-specs.ts';
@@ -129,16 +97,12 @@ import {
   fileError,
   formatFindings,
   gitEvidenceError,
-  reviewPublicationError,
-  reviewStateError,
-  reviewTargetError,
   readFailed,
   ERR_CLI_SDD_CHECK_READ_FAILED,
   unknownIdError,
   type CheckResult,
 } from './sdd-check.types.ts';
 import { checkPhaseReceipts } from './phase-receipt-check.ts';
-import { deriveReviewPublicationSet } from './review-publication.ts';
 
 const SKIP_DIRS = new Set([
   'node_modules',
@@ -172,124 +136,6 @@ function readUtf8(path: string): ReadObservation<string> {
   } catch (cause) {
     return { ok: false, issue: { path, reason: readReason(cause) } };
   }
-}
-
-/** @purpose Collect the portal-declared scope specs and their exact dependency edges for project proof. */
-function collectProjectSpecRefs(
-  repoRoot: string
-): { ok: true; refs: ProjectSpecRef[] } | { ok: false; issue: ReadIssue } {
-  const portalPath = join(repoRoot, 'specs', 'README.md');
-  const portal = readUtf8(portalPath);
-  if (!portal.ok) return portal;
-  const scopes = parseScopes(portal.value);
-  const edges = parseGraphEdges(portal.value);
-  const refs: ProjectSpecRef[] = [];
-  for (const scope of scopes) {
-    if (!scope.specPath) {
-      return {
-        ok: false,
-        issue: {
-          path: portalPath,
-          reason: `scope '${scope.name}' has no canonical spec path`,
-        },
-      };
-    }
-    const repoRelative = `specs/${scope.specPath.replace(/^\.\//, '')}`;
-    const identity = proveRepoFile(repoRoot, repoRelative);
-    if (!identity.ok) {
-      return {
-        ok: false,
-        issue: { path: repoRelative, reason: identity.detail },
-      };
-    }
-    const observed = readProvenRepoFile(identity.identity);
-    if (!observed.ok) {
-      return {
-        ok: false,
-        issue: { path: repoRelative, reason: observed.detail },
-      };
-    }
-    refs.push({
-      file: identity.identity.relative,
-      scope: scope.name,
-      dependencies: edges.filter((edge) => edge.from === scope.name).map((edge) => edge.to),
-      content: observed.content,
-    });
-  }
-  return { ok: true, refs };
-}
-
-function stringArray(value: unknown): value is string[] {
-  return Array.isArray(value) && value.every((item) => typeof item === 'string');
-}
-
-/** @purpose Fail closed on malformed pre-Gate-1 JSON before structural plan checks run. */
-function isScaffoldDraftPlan(value: unknown): value is ScaffoldDraftPlan {
-  if (!value || typeof value !== 'object') return false;
-  const plan = value as Record<string, unknown>;
-  if (plan.schema !== 'sdd-scaffold-plan/v1') return false;
-  if (
-    !Array.isArray(plan.specs) ||
-    !plan.specs.every(
-      (spec) =>
-        spec !== null &&
-        typeof spec === 'object' &&
-        typeof (spec as Record<string, unknown>).path === 'string' &&
-        typeof (spec as Record<string, unknown>).digest === 'string'
-    )
-  )
-    return false;
-  return (
-    Array.isArray(plan.nodes) &&
-    plan.nodes.every((node) => {
-      if (!node || typeof node !== 'object') return false;
-      const item = node as Record<string, unknown>;
-      return (
-        typeof item.id === 'string' &&
-        typeof item.scope === 'string' &&
-        stringArray(item.dependencies) &&
-        stringArray(item.requirementRefs) &&
-        typeof item.adapter === 'string' &&
-        (item.action === null || item.action === 'dependency-install') &&
-        stringArray(item.targets) &&
-        stringArray(item.provides) &&
-        stringArray(item.requires)
-      );
-    })
-  );
-}
-
-function loadScaffoldDraftPlan(
-  repoRoot: string,
-  path: string
-): { ok: true; plan: ScaffoldDraftPlan; content: string } | { ok: false; result: CheckResult } {
-  const candidate = isAbsolute(path) ? relative(repoRoot, path) : path;
-  const identity = proveRepoFile(repoRoot, candidate);
-  if (!identity.ok) return { ok: false, result: readFailed(path, identity.detail) };
-  const observed = readProvenRepoFile(identity.identity);
-  if (!observed.ok) return { ok: false, result: readFailed(path, observed.detail) };
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(observed.content);
-  } catch (cause) {
-    return {
-      ok: false,
-      result: readFailed(
-        path,
-        `invalid JSON: ${cause instanceof Error ? cause.message : String(cause)}`
-      ),
-    };
-  }
-  if (!isScaffoldDraftPlan(parsed)) {
-    return {
-      ok: false,
-      result: readFailed(
-        path,
-        'expected schema sdd-scaffold-plan/v1 with specs[] and fully typed nodes[]'
-      ),
-    };
-  }
-  return { ok: true, plan: parsed, content: observed.content };
 }
 
 /** @purpose Add one fail-closed read finding without duplicating a path already reported by this run. */
@@ -359,40 +205,6 @@ function walkMd(dir: string, acc: string[], issues?: ReadIssue[]): void {
       continue;
     }
     if (entry.isDirectory()) walkMd(full, acc, issues);
-    else if (entry.isFile() && entry.name.endsWith('.md')) acc.push(full);
-  }
-}
-
-/** @purpose Strict review-bundle walk: unreadable directories and spec symlinks are evidence errors, never silent omissions. */
-function walkReviewMd(dir: string, acc: string[], findings: Finding[]): void {
-  let entries;
-  try {
-    entries = readdirSync(dir, { withFileTypes: true });
-  } catch {
-    findings.push({
-      severity: 'error',
-      code: 'SDD_REVIEW_READY_MEMBER_UNREADABLE',
-      file: dir,
-      message: 'Review target contains an unreadable directory; readiness cannot prove its bundle.',
-    });
-    return;
-  }
-  for (const entry of entries) {
-    if (entry.name.startsWith('.') || SKIP_DIRS.has(entry.name)) continue;
-    const full = join(dir, entry.name);
-    if (entry.isSymbolicLink()) {
-      if (entry.name.endsWith('.spec.md')) {
-        findings.push({
-          severity: 'error',
-          code: 'SDD_REVIEW_READY_MEMBER_UNREADABLE',
-          file: full,
-          message:
-            'Review target contains a symlinked spec; readiness requires a readable regular bundle member.',
-        });
-      }
-      continue;
-    }
-    if (entry.isDirectory()) walkReviewMd(full, acc, findings);
     else if (entry.isFile() && entry.name.endsWith('.md')) acc.push(full);
   }
 }
@@ -682,7 +494,7 @@ function getTestCaseNames(absPath: string): string[] {
   return names;
 }
 
-/** @purpose BDD_COVERAGE for one ticket — canonical case names in Test Scenario Coverage vs real it()/test() names, self-deferral, and unparsed rows. | @invariant Existence checks (SCENARIO_UNTESTED, TESTFILE_AMBIGUOUS) run only once Status is DONE — the test file may not exist yet mid-implementation. Format checks run regardless. | @param file Ticket path. | @param content Ticket markdown. | @param repoRoot Repository root (anchors the test-file basename search + flow-version detection). | @returns SDD_BDD_SCENARIO_UNTESTED (severity by the ticket's own flow version), SDD_BDD_TESTFILE_AMBIGUOUS, SDD_BDD_DEFERRED_TO_SELF, and SDD_BDD_COVERAGE_ROW_UNPARSED findings, if any. */
+/** @purpose BDD_COVERAGE for one ticket — canonical case names in Test Scenario Coverage vs real it()/test() names, self-deferral, and unparsed rows. | @invariant A TODO ticket may name a future test file, but once that file exists its canonical cases are checked immediately; DONE also fails when the declared file is absent. Format checks run regardless. | @param file Ticket path. | @param content Ticket markdown. | @param repoRoot Repository root (anchors the test-file basename search + flow-version detection). | @returns SDD_BDD_SCENARIO_UNTESTED (severity by the ticket's own flow version), SDD_BDD_TESTFILE_AMBIGUOUS, SDD_BDD_DEFERRED_TO_SELF, and SDD_BDD_COVERAGE_ROW_UNPARSED findings, if any. */
 function checkTicketBddCoverage(file: string, content: string, repoRoot: string): Finding[] {
   const sec = extractSection(content, 'TEST_COVERAGE');
   if (sec.status !== 'ok') return [];
@@ -696,17 +508,19 @@ function checkTicketBddCoverage(file: string, content: string, repoRoot: string)
   const isDone = /\bDONE\b/i.test(meta?.status ?? '');
 
   const caseNamesByFile = new Map<string, string[]>();
-  if (isDone) {
-    const idx = getTestFileIndex(repoRoot);
-    for (const e of entries) {
-      if (e.deferred !== null || caseNamesByFile.has(e.testFile)) continue;
-      const matches = resolveTestFileMatches(idx, e.testFile);
-      findings.push(...checkTestFileAmbiguity(file, e.testFile, matches));
-      caseNamesByFile.set(
-        e.testFile,
-        matches.flatMap((m) => getTestCaseNames(m))
-      );
-    }
+  const checkableEntries: typeof entries = [];
+  const idx = getTestFileIndex(repoRoot);
+  for (const e of entries) {
+    if (e.deferred !== null) continue;
+    const matches = resolveTestFileMatches(idx, e.testFile);
+    if (matches.length === 0 && !isDone) continue;
+    checkableEntries.push(e);
+    if (caseNamesByFile.has(e.testFile)) continue;
+    findings.push(...checkTestFileAmbiguity(file, e.testFile, matches));
+    caseNamesByFile.set(
+      e.testFile,
+      matches.flatMap((m) => getTestCaseNames(m))
+    );
   }
   findings.push(
     ...checkBddCoverage(
@@ -715,7 +529,15 @@ function checkTicketBddCoverage(file: string, content: string, repoRoot: string)
       caseNamesByFile,
       ticketFlowVersion(file, repoRoot),
       selfTaskId,
-      isDone
+      false
+    ),
+    ...checkBddCoverage(
+      file,
+      checkableEntries,
+      caseNamesByFile,
+      ticketFlowVersion(file, repoRoot),
+      null,
+      true
     )
   );
   return findings;
@@ -866,184 +688,6 @@ function findRepoRoot(start: string): string {
     if (parent === dir) return start;
     dir = parent;
   }
-}
-
-type ScopeReviewSet =
-  | { status: 'not-required' }
-  | { status: 'invalid'; subject: 'scope' | 'module'; reason: string }
-  | { status: 'wrong-primary'; owner: string; targetSet: string }
-  | { status: 'complete'; targetSet: string };
-
-/** @purpose Derive the one product/library integrated review set from structural decomposition. */
-function scopeReviewTargetSet(repoRoot: string, primary: string, content: string): ScopeReviewSet {
-  if (content.includes('<!--SECTION:MODULE_VISION-->')) {
-    const ownership = resolveModuleScopeOwnership(resolve(repoRoot, primary));
-    if (ownership.status === 'invalid') return { ...ownership, subject: 'module' };
-    const owner = relative(repoRoot, ownership.decomposition.scopeSpec);
-    return {
-      status: 'wrong-primary',
-      owner,
-      targetSet: formatCriticTargetSet([
-        owner,
-        ...ownership.decomposition.moduleSpecs.map((path) => relative(repoRoot, path)),
-      ]),
-    };
-  }
-  if (!content.includes('<!--SECTION:SCOPE_TYPE-->')) return { status: 'not-required' };
-  const decomposition = resolveScopeDecomposition(resolve(repoRoot, primary));
-  if (decomposition.scopeType !== 'product' && decomposition.scopeType !== 'library') {
-    return { status: 'not-required' };
-  }
-  if (decomposition.status !== 'complete') {
-    return {
-      status: 'invalid',
-      subject: 'scope',
-      reason: decomposition.reason ?? 'unknown module state',
-    };
-  }
-  return {
-    status: 'complete',
-    targetSet: formatCriticTargetSet([
-      primary,
-      ...decomposition.moduleSpecs.map((path) => relative(repoRoot, path)),
-    ]),
-  };
-}
-
-type ReviewWriteSet = { status: 'ok'; paths: string[] } | { status: 'invalid'; reason: string };
-
-/** @purpose Derive the explicit writable subset from valid CHANGE_MANIFEST sections only. */
-function reviewWriteSet(members: { path: string; content: string }[]): ReviewWriteSet {
-  const paths: string[] = [];
-  for (const member of members) {
-    const manifest = extractSection(member.content, 'CHANGE_MANIFEST');
-    const markerVisible =
-      member.content.includes('SECTION:CHANGE_MANIFEST') || /^[ \t]*[✚~] /m.test(member.content);
-    if (manifest.status === 'ok') paths.push(member.path);
-    else if (markerVisible) {
-      return {
-        status: 'invalid',
-        reason: `member \`${member.path}\` has ${manifest.status} CHANGE_MANIFEST evidence; repair it before deriving the write-set.`,
-      };
-    }
-  }
-  if (paths.length === 0) {
-    return {
-      status: 'invalid',
-      reason:
-        'write-set is empty; at least one reviewed member must carry a valid CHANGE_MANIFEST while context-only members stay unmarked.',
-    };
-  }
-  return { status: 'ok', paths: Array.from(new Set(paths)).sort() };
-}
-
-type ResolvedReviewBundle = {
-  status: 'ok';
-  repoRoot: string;
-  members: { path: string; content: string; primary: boolean }[];
-  primary: { path: string; content: string; primary: boolean };
-  targetSet: string;
-  writeSetPaths: string[];
-  writeSet: string;
-};
-
-type ReviewBundleResolution = ResolvedReviewBundle | { status: 'error'; result: CheckResult };
-
-/** @purpose Resolve one complete critic bundle once so review-state and publication derivation cannot disagree. */
-function resolveReviewBundle(
-  requestedPaths: string[],
-  contractError: (message: string) => CheckResult
-): ReviewBundleResolution {
-  const absolute = requestedPaths.map((path) => resolve(path));
-  if (absolute.length === 0) {
-    return { status: 'error', result: contractError('the review bundle is empty.') };
-  }
-  if (new Set(absolute).size !== absolute.length) {
-    return {
-      status: 'error',
-      result: contractError(
-        'duplicate target arguments resolve to the same path; pass each integrated member exactly once.'
-      ),
-    };
-  }
-
-  const repoRoot = findRepoRoot(dirname(absolute[0] as string));
-  const realRepoRoot = realpathSync(repoRoot);
-  const members: { path: string; content: string; primary: boolean }[] = [];
-  for (let index = 0; index < absolute.length; index++) {
-    const file = absolute[index] as string;
-    const rel = relative(repoRoot, file).split(sep).join('/');
-    if (rel.startsWith('..') || !file.endsWith('.spec.md')) {
-      return { status: 'error', result: reviewTargetError(file) };
-    }
-    try {
-      if (lstatSync(file).isSymbolicLink() || !statSync(file).isFile()) {
-        return { status: 'error', result: reviewTargetError(file) };
-      }
-      const realRel = relative(realRepoRoot, realpathSync(file));
-      if (realRel.startsWith('..')) {
-        return { status: 'error', result: reviewTargetError(file) };
-      }
-      members.push({ path: rel, content: readFileSync(file, 'utf-8'), primary: index === 0 });
-    } catch {
-      return { status: 'error', result: reviewTargetError(file) };
-    }
-  }
-
-  const targetSet = formatCriticTargetSet(members.map((member) => member.path));
-  for (const secondary of members.slice(1)) {
-    if (hasCriticRoundsSection(secondary.content)) {
-      return {
-        status: 'error',
-        result: contractError(
-          `secondary \`${secondary.path}\` contains parser-visible Critic Rounds; keep history only in primary \`${members[0]?.path}\`.`
-        ),
-      };
-    }
-  }
-
-  const primary = members[0] as ResolvedReviewBundle['primary'];
-  const scopeSet = scopeReviewTargetSet(repoRoot, primary.path, primary.content);
-  if (scopeSet.status === 'invalid') {
-    return {
-      status: 'error',
-      result: contractError(
-        scopeSet.subject === 'scope'
-          ? `primary \`${primary.path}\` is not completely decomposed (${scopeSet.reason}); continue through /sdd into the module flow before critic dispatch.`
-          : `module primary \`${primary.path}\` has invalid scope ownership (${scopeSet.reason}); resolve its one declared owning scope and use that scope as primary.`
-      ),
-    };
-  }
-  if (scopeSet.status === 'wrong-primary') {
-    return {
-      status: 'error',
-      result: contractError(
-        `module \`${primary.path}\` cannot own Critic Rounds; use owning scope \`${scopeSet.owner}\` as primary with exact target-set \`${scopeSet.targetSet}\`.`
-      ),
-    };
-  }
-  if (scopeSet.status === 'complete' && scopeSet.targetSet !== targetSet) {
-    return {
-      status: 'error',
-      result: contractError(
-        `product/library review must use the complete integrated target-set \`${scopeSet.targetSet}\`; pass the scope primary plus every declared module spec.`
-      ),
-    };
-  }
-
-  const currentWriteSet = reviewWriteSet(members);
-  if (currentWriteSet.status === 'invalid') {
-    return { status: 'error', result: contractError(currentWriteSet.reason) };
-  }
-  return {
-    status: 'ok',
-    repoRoot,
-    members,
-    primary,
-    targetSet,
-    writeSetPaths: currentWriteSet.paths,
-    writeSet: formatCriticTargetSet(currentWriteSet.paths),
-  };
 }
 
 /** @purpose GitHub-style heading slug: lowercase, drop non-word chars (keep spaces/hyphens), spaces→hyphens. | @param heading Heading text. | @returns Anchor slug. */
@@ -1334,13 +978,6 @@ export async function run(
         phase: { aliases: ['phase'], takesValue: true },
         all: ['all'],
         changed: ['changed'],
-        projectFeasibility: ['project-feasibility'],
-        plan: { aliases: ['plan'], takesValue: true },
-        scaffoldPlan: { aliases: ['scaffold-plan'], takesValue: true },
-        scaffoldFeasibility: ['scaffold-feasibility'],
-        reviewPublication: { aliases: ['review-publication'], takesValue: true },
-        reviewReady: { aliases: ['review-ready'], takesValue: true },
-        reviewState: { aliases: ['review-state'], takesValue: true },
       },
       { strict: true }
     );
@@ -1353,11 +990,6 @@ export async function run(
   const invalidValue = [
     ['--task', args.task],
     ['--phase', args.phase],
-    ['--plan', args.plan],
-    ['--scaffold-plan', args.scaffoldPlan],
-    ['--review-publication', args.reviewPublication],
-    ['--review-ready', args.reviewReady],
-    ['--review-state', args.reviewState],
   ].find(([, value]) => value !== undefined && (typeof value !== 'string' || value.length === 0));
   if (invalidValue) return badInvocation(`${invalidValue[0]} requires exactly one value`);
   if (args.all !== undefined && args.all !== true)
@@ -1366,50 +998,20 @@ export async function run(
     return badInvocation('--changed does not take a value');
   if (args.authoring !== undefined && args.authoring !== true)
     return badInvocation('--authoring does not take a value');
-  if (args.scaffoldFeasibility !== undefined && args.scaffoldFeasibility !== true)
-    return badInvocation('--scaffold-feasibility does not take a value');
-  if (args.projectFeasibility !== undefined && args.projectFeasibility !== true)
-    return badInvocation('--project-feasibility does not take a value');
 
   const taskPath = typeof args.task === 'string' ? args.task : undefined;
   const authoring = args.authoring === true;
   const authoringPhase = typeof args.phase === 'string' ? args.phase : undefined;
   const all = args.all === true;
   const changed = args.changed === true;
-  const projectFeasibility = args.projectFeasibility === true;
-  const approvedPlanPath = typeof args.plan === 'string' ? args.plan : undefined;
-  const scaffoldPlanPath = typeof args.scaffoldPlan === 'string' ? args.scaffoldPlan : undefined;
-  const scaffoldFeasibility = args.scaffoldFeasibility === true;
-  const reviewPublicationSelected = typeof args.reviewPublication === 'string';
-  const reviewPublicationPaths = reviewPublicationSelected
-    ? [args.reviewPublication as string, ...positional]
-    : [];
-  const reviewReadyPath = typeof args.reviewReady === 'string' ? args.reviewReady : undefined;
-  const reviewStateSelected = typeof args.reviewState === 'string';
-  const reviewStatePaths = reviewStateSelected ? [args.reviewState as string, ...positional] : [];
-
   const taskSelected = taskPath !== undefined;
-  const reviewReadySelected = reviewReadyPath !== undefined;
-  const selectedModeCount = [
-    taskSelected,
-    all,
-    changed,
-    projectFeasibility,
-    scaffoldPlanPath !== undefined,
-    scaffoldFeasibility,
-    reviewPublicationSelected,
-    reviewReadySelected,
-    reviewStateSelected,
-  ].filter(Boolean).length;
+  const selectedModeCount = [taskSelected, all, changed].filter(Boolean).length;
   if (
     selectedModeCount !== 1 ||
     (taskSelected && positional.length > 0) ||
     (authoring && !taskSelected) ||
     (authoringPhase !== undefined && (!taskSelected || !authoring)) ||
-    (approvedPlanPath !== undefined && !scaffoldFeasibility) ||
-    (reviewReadySelected && positional.length > 0) ||
-    ((all || changed || projectFeasibility || scaffoldFeasibility || scaffoldPlanPath) &&
-      positional.length > 1)
+    ((all || changed) && positional.length > 1)
   )
     return badInvocation(
       selectedModeCount !== 1
@@ -1418,9 +1020,7 @@ export async function run(
           ? '--authoring requires --task <ticket>'
           : authoringPhase !== undefined && (!taskSelected || !authoring)
             ? '--phase requires --authoring and --task <ticket>'
-            : approvedPlanPath !== undefined && !scaffoldFeasibility
-              ? '--plan requires --scaffold-feasibility'
-              : `unexpected positional argument(s): ${positional.join(' ')}`
+            : `unexpected positional argument(s): ${positional.join(' ')}`
     );
 
   if (authoringPhase !== undefined && !/^P[1-9][0-9]*$/.test(authoringPhase))
@@ -1431,495 +1031,11 @@ export async function run(
       '--authoring requires the exact created ticket path returned by sdd-new, not a Task-ID'
     );
 
-  if (projectFeasibility) {
-    const selectedRoot = positional[0] ?? ticketProjectRoot;
-    const rootIssue = selectedRootIssue(selectedRoot);
-    if (rootIssue) return readFailed(rootIssue.path, rootIssue.reason);
-    const repoRoot = realpathSync(resolve(selectedRoot));
-    const project = collectProjectSpecRefs(repoRoot);
-    if (!project.ok) return readFailed(project.issue.path, project.issue.reason);
-    const feasibility = checkProjectFeasibility(project.refs);
-    const formatted = formatFindings(feasibility, project.refs.length, {
-      repairHint:
-        'resume evolve-scope at the external-dependencies audit, repair the named declared row/artifact ownership facts, and rerun --project-feasibility before spec approval.',
-    });
-    const context =
-      formatted.exitCode === 0
-        ? `\nproject-context: ${JSON.stringify(deriveProjectFeasibilityContext(project.refs))}`
-        : '';
-    const adapterContract = `\ncapability-contract: ${JSON.stringify(deriveCapabilityAdapterContract())}`;
-    return {
-      text: `[sdd-check] project feasibility (spec graph)\n${formatted.text}${context}${adapterContract}`,
-      exitCode: formatted.exitCode,
-    };
-  }
-
-  if (scaffoldPlanPath) {
-    const selectedRoot = positional[0] ?? ticketProjectRoot;
-    const rootIssue = selectedRootIssue(selectedRoot);
-    if (rootIssue) return readFailed(rootIssue.path, rootIssue.reason);
-    const repoRoot = realpathSync(resolve(selectedRoot));
-    const project = collectProjectSpecRefs(repoRoot);
-    if (!project.ok) return readFailed(project.issue.path, project.issue.reason);
-    const loadedPlan = loadScaffoldDraftPlan(repoRoot, scaffoldPlanPath);
-    if (!loadedPlan.ok) return loadedPlan.result;
-    const feasibility = checkScaffoldDraftPlan(project.refs, loadedPlan.plan);
-    const formatted = formatFindings(feasibility, loadedPlan.plan.nodes.length, {
-      repairHint:
-        'repair the named draft-plan mapping/order facts and rerun the same --scaffold-plan command before presenting Gate 1.',
-    });
-    const planDigest = `sha256:${createHash('sha256').update(loadedPlan.content).digest('hex')}`;
-    return {
-      text: `[sdd-check] scaffold draft plan (pre-Gate-1)\n${formatted.text}\nplan-digest: ${planDigest}`,
-      exitCode: formatted.exitCode,
-    };
-  }
-
-  if (scaffoldFeasibility) {
-    const selectedRoot = positional[0] ?? ticketProjectRoot;
-    const rootIssue = selectedRootIssue(selectedRoot);
-    if (rootIssue) return readFailed(rootIssue.path, rootIssue.reason);
-    const repoRoot = realpathSync(resolve(selectedRoot));
-    const corpus = collectTicketCorpus(repoRoot);
-    if (!corpus.ok) return readFailed(selectedRoot, corpus.detail);
-
-    const packageHead = readHeadContent(repoRoot, 'package.json');
-    if (packageHead.status === 'error')
-      return gitEvidenceError(packageHead.operation, packageHead.exitCode, packageHead.stderr);
-    let packageContent = packageHead.status === 'ok' ? packageHead.content : '{}';
-    if (packageHead.status === 'no-head') {
-      const observed = readUtf8(join(repoRoot, 'package.json'));
-      if (observed.ok) packageContent = observed.value;
-    }
-    let parsedPackage: {
-      dependencies?: Record<string, string>;
-      devDependencies?: Record<string, string>;
-      optionalDependencies?: Record<string, string>;
-      scripts?: Record<string, string>;
-    };
-    try {
-      parsedPackage = JSON.parse(packageContent) as typeof parsedPackage;
-    } catch {
-      return readFailed('package.json@HEAD', 'clean-HEAD package.json is not valid JSON');
-    }
-    const declaredPackages = new Set([
-      ...Object.keys(parsedPackage.dependencies ?? {}),
-      ...Object.keys(parsedPackage.devDependencies ?? {}),
-      ...Object.keys(parsedPackage.optionalDependencies ?? {}),
-    ]);
-    const activeLockfiles: string[] = [];
-    for (const lockfile of [
-      'package-lock.json',
-      'npm-shrinkwrap.json',
-      'pnpm-lock.yaml',
-      'yarn.lock',
-      'bun.lock',
-      'bun.lockb',
-    ]) {
-      const head = readHeadContent(repoRoot, lockfile);
-      if (head.status === 'error')
-        return gitEvidenceError(head.operation, head.exitCode, head.stderr);
-      if (head.status === 'ok') activeLockfiles.push(lockfile);
-      else if (head.status === 'no-head' && existsSync(join(repoRoot, lockfile)))
-        activeLockfiles.push(lockfile);
-    }
-    const baseline = {
-      declaredPackages,
-      activeLockfiles,
-      scripts: parsedPackage.scripts ?? {},
-      availableArtifacts: new Set(
-        phaseVerificationArtifactPaths().filter((path) => existsSync(join(repoRoot, path)))
-      ),
-    };
-    const feasibility = checkScaffoldFeasibility(corpus.refs, baseline);
-    let approvedPlanDigest = '';
-    if (approvedPlanPath) {
-      const project = collectProjectSpecRefs(repoRoot);
-      if (!project.ok) return readFailed(project.issue.path, project.issue.reason);
-      const loadedPlan = loadScaffoldDraftPlan(repoRoot, approvedPlanPath);
-      if (!loadedPlan.ok) return loadedPlan.result;
-      feasibility.push(...checkScaffoldDraftPlan(project.refs, loadedPlan.plan));
-      feasibility.push(
-        ...checkScaffoldPlanMaterialization(
-          loadedPlan.plan,
-          materializedScaffoldPlanNodes(corpus.refs)
-        )
-      );
-      approvedPlanDigest = `\napproved-plan-digest: sha256:${createHash('sha256').update(loadedPlan.content).digest('hex')}`;
-    }
-    for (const item of feasibility) {
-      if (item.file !== '(scaffold graph)') item.file = relative(repoRoot, item.file) || item.file;
-    }
-    const formatted = formatFindings(feasibility, corpus.refs.length, {
-      repairHint:
-        'repair the named scaffold graph facts, then rerun the same --scaffold-feasibility command before the semantic critic.',
-    });
-    const criticContext =
-      formatted.exitCode === 0
-        ? `\ncritic-context: ${JSON.stringify(
-            deriveScaffoldCriticContext(corpus.refs, baseline, (file) =>
-              relative(repoRoot, file).split(sep).join('/')
-            )
-          )}`
-        : '';
-    return {
-      text: `[sdd-check] scaffold feasibility (clean HEAD)\n${formatted.text}${approvedPlanDigest}${criticContext}`,
-      exitCode: formatted.exitCode,
-    };
-  }
-
-  if (reviewPublicationSelected) {
-    const bundle = resolveReviewBundle(reviewPublicationPaths, reviewPublicationError);
-    if (bundle.status === 'error') return bundle.result;
-    const publication = deriveReviewPublicationSet(
-      bundle.repoRoot,
-      bundle.members,
-      bundle.writeSetPaths
-    );
-    if (!publication.ok) {
-      if ('git' in publication) {
-        return gitEvidenceError(
-          publication.git.operation,
-          publication.git.exitCode,
-          publication.git.stderr
-        );
-      }
-      return reviewPublicationError(publication.reason);
-    }
-    return {
-      text: [
-        '[sdd-check] review-publication',
-        `primary: ${bundle.primary.path}`,
-        `target-set: ${bundle.targetSet}`,
-        `write-set: ${bundle.writeSet}`,
-        `publication-set: ${JSON.stringify(publication.entries)}`,
-        `publication-state: ${publication.fingerprint}`,
-      ].join('\n'),
-      exitCode: 0,
-    };
-  }
-
-  if (reviewStateSelected) {
-    const bundle = resolveReviewBundle(reviewStatePaths, reviewStateError);
-    if (bundle.status === 'error') return bundle.result;
-    if (hasCriticRoundsSection(bundle.primary.content)) {
-      const latest = latestCriticTargetSet(bundle.primary.content);
-      if (latest === null) {
-        return reviewStateError(
-          `primary \`${bundle.primary.path}\` has malformed Critic Rounds; repair or remove the broken history before dispatch.`
-        );
-      }
-      if (formatCriticTargetSet(latest) !== bundle.targetSet) {
-        return reviewStateError(
-          `primary \`${bundle.primary.path}\` history targets \`${formatCriticTargetSet(latest)}\`, but this invocation targets \`${bundle.targetSet}\`; start a fresh target-set cycle instead of continuing ambiguous history.`
-        );
-      }
-      const latestWriteSet = latestCriticWriteSet(bundle.primary.content);
-      if (latestWriteSet === null) {
-        return reviewStateError(
-          `primary \`${bundle.primary.path}\` has malformed or missing Write-set evidence; repair or restart that history before dispatch.`
-        );
-      }
-      if (formatCriticTargetSet(latestWriteSet) !== bundle.writeSet) {
-        return reviewStateError(
-          `primary \`${bundle.primary.path}\` history writes \`${formatCriticTargetSet(latestWriteSet)}\`, but current manifests derive \`${bundle.writeSet}\`; promote/demote members only by restarting at Round 1.`
-        );
-      }
-      const readiness = checkCriticReadinessForTargetSet(
-        bundle.primary.path,
-        bundle.primary.content,
-        latest,
-        formatCriticChangedState(bundle.members),
-        bundle.writeSetPaths
-      );
-      if (readiness.length === 0) {
-        return reviewStateError(
-          `primary \`${bundle.primary.path}\` critic cycle is already complete; run \`npx gennady sdd-check --review-ready ${bundle.primary.path}\` and do not dispatch another critic round.`
-        );
-      }
-      const malformed = readiness.find((finding) => finding.code !== 'SDD_CRITIC_NOT_CLEAN');
-      if (malformed) {
-        return reviewStateError(
-          `primary \`${bundle.primary.path}\` has invalid Critic Rounds (${malformed.code}): ${malformed.message}`
-        );
-      }
-    }
-    return {
-      text: [
-        '[sdd-check] review-state',
-        `primary: ${bundle.primary.path}`,
-        `target-set: ${bundle.targetSet}`,
-        `write-set: ${bundle.writeSet}`,
-        `changed-state: ${formatCriticChangedState(bundle.members)}`,
-      ].join('\n'),
-      exitCode: 0,
-    };
-  }
-
   const findings: Finding[] = [];
   let fileCount = 0;
   let taskBanner: string | null = null;
 
-  if (reviewReadyPath) {
-    const target = resolve(reviewReadyPath);
-    if (!existsSync(target)) return reviewTargetError(reviewReadyPath);
-    let targetIsDirectory = false;
-    try {
-      targetIsDirectory = statSync(target).isDirectory();
-    } catch {
-      return reviewTargetError(reviewReadyPath);
-    }
-    const repoRoot = findRepoRoot(targetIsDirectory ? target : dirname(target));
-    const targetRel = relative(repoRoot, target);
-    const candidates: string[] = [];
-    try {
-      if (targetIsDirectory) walkReviewMd(target, candidates, findings);
-      else {
-        const specsRoot = join(repoRoot, 'specs');
-        const targetInsideSpecs =
-          existsSync(specsRoot) &&
-          (target === specsRoot || target.startsWith(`${specsRoot}${sep}`));
-        // File mode scans only to discover the primary whose manifest names this member. Unrelated
-        // review bundles must not make this exact target red; the resolved target-set is checked
-        // fail-closed below.
-        walkMd(targetInsideSpecs ? specsRoot : dirname(target), candidates);
-      }
-    } catch {
-      candidates.push(target);
-    }
-    const reviewChanges = getChangedFiles(repoRoot);
-    if (reviewChanges.status === 'error') {
-      return gitEvidenceError(
-        reviewChanges.operation,
-        reviewChanges.exitCode,
-        reviewChanges.stderr
-      );
-    }
-    const changedSpecs = new Set(
-      reviewChanges.files
-        .filter((path) => path.endsWith('.spec.md'))
-        .map((path) => resolve(repoRoot, path))
-    );
-    const reviewMembers: { file: string; content: string | null; manifestOk: boolean }[] = [];
-    for (const file of candidates.filter((candidate) => candidate.endsWith('.spec.md')).sort()) {
-      let content: string | null = null;
-      try {
-        content = readFileSync(file, 'utf-8');
-      } catch {
-        findings.push({
-          severity: 'error',
-          code: 'SDD_REVIEW_READY_MEMBER_UNREADABLE',
-          file,
-          message: 'Review target contains an unreadable `*.spec.md`; readiness cannot skip it.',
-        });
-        reviewMembers.push({ file, content: null, manifestOk: false });
-        fileCount++;
-        continue;
-      }
-      const manifest = extractSection(content, 'CHANGE_MANIFEST');
-      if (!targetIsDirectory) {
-        const isRequestedFile = resolve(file) === target;
-        const isOwningPrimary =
-          hasCriticRoundsSection(content) &&
-          latestCriticTargetSet(content)?.includes(targetRel) === true;
-        if (!isRequestedFile && !isOwningPrimary) continue;
-      }
-      const historyVisible = hasCriticRoundsSection(content);
-      const reviewHint =
-        manifest.status === 'ok' ||
-        content.includes('SECTION:CHANGE_MANIFEST') ||
-        /^[ \t]*[✚~] /m.test(content) ||
-        historyVisible;
-      if (!reviewHint && !changedSpecs?.has(resolve(file))) continue;
-      const manifestOk = manifest.status === 'ok';
-      reviewMembers.push({ file, content, manifestOk });
-      if (!manifestOk && (manifest.status !== 'not_found' || !historyVisible)) {
-        findings.push({
-          severity: 'error',
-          code: 'SDD_REVIEW_READY_MEMBER_MALFORMED',
-          file,
-          message: changedSpecs?.has(resolve(file))
-            ? 'Changed spec has no valid CHANGE_MANIFEST; enter review-state before integrated readiness.'
-            : `Review-state marker is ${manifest.status}; repair CHANGE_MANIFEST before readiness can be evaluated.`,
-        });
-      } else {
-        findings.push(...checkReviewState(file, content));
-      }
-      fileCount++;
-    }
-    let primary: (typeof reviewMembers)[number] | null = null;
-    const evidenceMembers = reviewMembers.filter((member) => {
-      if (member.content === null || !hasCriticRoundsSection(member.content)) return false;
-      if (targetIsDirectory) return true;
-      return latestCriticTargetSet(member.content)?.includes(targetRel) === true;
-    });
-    if (evidenceMembers.length !== 1) {
-      findings.push({
-        severity: 'error',
-        code: 'SDD_CRITIC_PRIMARY_COUNT_INVALID',
-        file: reviewReadyPath,
-        message: targetIsDirectory
-          ? `Review bundle must contain exactly one primary artifact with Critic Rounds evidence; found ${evidenceMembers.length}.`
-          : `Secondary/file invocation must resolve to exactly one primary whose integrated target-set contains \`${targetRel}\`; found ${evidenceMembers.length}.`,
-      });
-    } else {
-      primary = evidenceMembers[0] as (typeof reviewMembers)[number];
-    }
-    const expectedTargetSet =
-      primary?.content === null || primary === null ? null : latestCriticTargetSet(primary.content);
-    if (primary?.content !== null && primary !== null) {
-      const primaryRel = relative(repoRoot, primary.file);
-      const scopeSet = scopeReviewTargetSet(repoRoot, primaryRel, primary.content);
-      if (scopeSet.status === 'invalid') {
-        findings.push({
-          severity: 'error',
-          code:
-            scopeSet.subject === 'scope'
-              ? 'SDD_SCOPE_DECOMPOSITION_INCOMPLETE'
-              : 'SDD_MODULE_SCOPE_OWNERSHIP_INVALID',
-          file: primary.file,
-          message:
-            scopeSet.subject === 'scope'
-              ? `Product/library review cannot finish before module decomposition is complete: ${scopeSet.reason}. Continue through /sdd into the module flow.`
-              : `Module primary has invalid scope ownership: ${scopeSet.reason}. Resolve one declared owning scope and use that scope as primary.`,
-        });
-      } else if (scopeSet.status === 'wrong-primary') {
-        findings.push({
-          severity: 'error',
-          code: 'SDD_CRITIC_PRIMARY_SCOPE_REQUIRED',
-          file: primary.file,
-          message: `Module cannot own Critic Rounds; use owning scope \`${scopeSet.owner}\` as primary with exact target-set \`${scopeSet.targetSet}\`.`,
-        });
-      } else if (
-        scopeSet.status === 'complete' &&
-        (expectedTargetSet === null ||
-          formatCriticTargetSet(expectedTargetSet) !== scopeSet.targetSet)
-      ) {
-        findings.push({
-          severity: 'error',
-          code: 'SDD_CRITIC_TARGET_SET_INCOMPLETE',
-          file: primary.file,
-          message: `Product/library readiness requires the complete integrated target-set \`${scopeSet.targetSet}\`.`,
-        });
-      }
-    }
-    if (expectedTargetSet) {
-      const expectedSet = new Set(expectedTargetSet);
-      for (const member of targetIsDirectory ? reviewMembers : []) {
-        if (member.content === null) continue;
-        const rel = relative(repoRoot, member.file);
-        if (!expectedSet.has(rel)) {
-          findings.push({
-            severity: 'error',
-            code: 'SDD_CRITIC_TARGET_SET_INCOMPLETE',
-            file: member.file,
-            message: `Changed review-state member \`${rel}\` is absent from the integrated critic target-set.`,
-          });
-        }
-      }
-      for (const rel of expectedTargetSet) {
-        const abs = resolve(repoRoot, rel);
-        let valid = abs.startsWith(`${repoRoot}${sep}`) && abs.endsWith('.spec.md');
-        try {
-          valid = valid && statSync(abs).isFile();
-        } catch {
-          valid = false;
-        }
-        if (!valid) {
-          findings.push({
-            severity: 'error',
-            code: 'SDD_CRITIC_TARGET_SET_INVALID',
-            file: reviewReadyPath,
-            message: `Critic target-set entry does not resolve to a repo-local spec file: ${rel}.`,
-          });
-        }
-      }
-    }
-    let expectedChangedState: string | null = null;
-    let expectedWriteSet: string[] | null = null;
-    if (primary?.content !== null && primary !== null && expectedTargetSet) {
-      const primaryRel = relative(repoRoot, primary.file);
-      const stateMembers: { path: string; content: string; primary: boolean }[] = [];
-      for (const rel of expectedTargetSet) {
-        try {
-          const abs = resolve(repoRoot, rel);
-          const content = readFileSync(abs, 'utf-8');
-          stateMembers.push({
-            path: rel,
-            content,
-            primary: rel === primaryRel,
-          });
-          if (!targetIsDirectory && !reviewMembers.some((member) => resolve(member.file) === abs)) {
-            const manifest = extractSection(content, 'CHANGE_MANIFEST');
-            const reviewHint =
-              manifest.status === 'ok' ||
-              content.includes('SECTION:CHANGE_MANIFEST') ||
-              /^[ \t]*✚ /m.test(content);
-            if (reviewHint || changedSpecs?.has(abs)) {
-              fileCount++;
-              if (manifest.status !== 'ok') {
-                findings.push({
-                  severity: 'error',
-                  code: 'SDD_REVIEW_READY_MEMBER_MALFORMED',
-                  file: abs,
-                  message: changedSpecs?.has(abs)
-                    ? 'Changed spec has no valid CHANGE_MANIFEST; enter review-state before integrated readiness.'
-                    : `Review-state marker is ${manifest.status}; repair CHANGE_MANIFEST before readiness can be evaluated.`,
-                });
-              } else {
-                findings.push(...checkReviewState(abs, content));
-              }
-            }
-          }
-        } catch {
-          // The invalid target-set finding above already owns the unreadable/missing member.
-        }
-      }
-      const historyCount = stateMembers.filter((member) =>
-        hasCriticRoundsSection(member.content)
-      ).length;
-      if (historyCount !== 1) {
-        findings.push({
-          severity: 'error',
-          code: 'SDD_CRITIC_PRIMARY_COUNT_INVALID',
-          file: reviewReadyPath,
-          message: `Integrated target-set must carry Critic Rounds in exactly one primary artifact; found ${historyCount}.`,
-        });
-      }
-      if (stateMembers.length === expectedTargetSet.length)
-        expectedChangedState = formatCriticChangedState(stateMembers);
-      const derivedWriteSet = reviewWriteSet(stateMembers);
-      if (derivedWriteSet.status === 'invalid') {
-        findings.push({
-          severity: 'error',
-          code: 'SDD_CRITIC_WRITE_SET_INVALID',
-          file: reviewReadyPath,
-          message: derivedWriteSet.reason,
-        });
-      } else {
-        expectedWriteSet = derivedWriteSet.paths;
-      }
-    }
-    if (primary?.content !== null && primary !== null) {
-      findings.push(
-        ...checkCriticReadinessForTargetSet(
-          primary.file,
-          primary.content,
-          expectedTargetSet ?? null,
-          expectedChangedState,
-          expectedWriteSet
-        )
-      );
-    }
-    if (fileCount === 0) {
-      findings.push({
-        severity: 'error',
-        code: 'SDD_REVIEW_READY_NO_REVIEW_STATE',
-        file: reviewReadyPath,
-        message: 'Target contains no review-state `*.spec.md` with a CHANGE_MANIFEST.',
-      });
-    }
-  } else if (taskPath) {
+  if (taskPath) {
     let repoRoot: string;
     try {
       repoRoot = realpathSync(resolve(ticketProjectRoot));
@@ -2123,7 +1239,6 @@ export async function run(
         const specFlow = specFlowVersion(file);
         findings.push(...checkSpecStructure(file, content, specFlow));
         if (specFlow === 'v2') findings.push(...checkSpecLanguage(file, content));
-        findings.push(...checkReviewState(file, content));
         findings.push(...checkScopeDeps(file, content, portalEdges));
         findings.push(...checkRequirementIds(file, content));
         findings.push(
@@ -2138,7 +1253,6 @@ export async function run(
         findings.push(...checkDiagramCaptions(file, content));
         findings.push(...checkScopeDataFlowDiagram(file, content));
         findings.push(...checkModuleCallChain(file, content));
-        findings.push(...checkDeltaDiagram(file, content));
         specEntries.push({ file, content, flowVersion: specFlow });
         // Module spec path .../specs/<scope>/<module>/.../<mod>.spec.md; group inter-module edges by scope for a per-scope cycle check (base-independent).
         const parts = file.split(sep);

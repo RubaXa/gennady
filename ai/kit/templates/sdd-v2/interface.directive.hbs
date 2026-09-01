@@ -51,10 +51,6 @@
     {{> "axiom/process/ax-close-with-integrity-check"}}
   </BeliefState>
 
-  <SessionState>
-    {{> "contract/process/session-file-format"}}
-  </SessionState>
-
   <HaltConditions>
     | 🛑 ID | Trigger |
     |---|---|
@@ -87,8 +83,8 @@
         versioning scheme (semver / date-based / none), namespacing — Facts / Assumptions /
         Hypotheses separated per `AX_EVIDENCE_HYGIENE`. Then run the operator interview —
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/interview-protocol.directive.xml")` — passing
-        scope-type `interface` (selects the TopicCatalog block) and the confirmed `scale:` from
-        the session file: per `AX_SCALE_PROPORTIONAL_DEPTH` `fix` / `function` → base topics + the
+        scope-type `interface` (selects the TopicCatalog block) and the SCALE confirmed for this
+        invocation: per `AX_SCALE_PROPORTIONAL_DEPTH` `fix` / `function` → base topics + the
         triage minimum; `product` → the full scope-type block. The interview IS the substance of
         the step. Approval Check. STOP.
       </Action>
@@ -108,8 +104,8 @@
         (b) If not: which existing contract the extract names are we EXTENDING (a new version, a new
         field) instead of introducing a parallel one?
         (c) Which neighbour specs (paths, from the extract — producers, consumers) will need work for
-        this to fit the system — each becomes its own «СОСЕДИ» line in the eventual `CHANGE_MANIFEST`
-        / Pivot Invalidation List sideways entry?
+        this to fit the system — each is recorded in the owning dependency/impact section or Pivot
+        Invalidation List?
         (d) Which neighbour requirements (IDs, from the extract) conflict with the versioning policy
         we are about to lock, and how is the conflict resolved?
         "Вводим новое" answers (a)/(b) ONLY together with the specific neighbour invariant/requirement
@@ -155,26 +151,23 @@
         the file already exists, edit it in place, skip `sdd-new`. Content guidance per
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/interface-spec-structure.xml")`.
         Before writing, run the self-check pass per
-        `AX_ARTIFACT_STYLE_SELF_CHECK`. In `refine` mode update sections in place per
+        `AX_ARTIFACT_STYLE_SELF_CHECK`. Write the ordinary V2 artifact per `AX_SPEC_LIFECYCLE` and
+        close with the declared integrity check per `AX_CLOSE_WITH_INTEGRITY_CHECK`. In `refine` mode update sections in place per
         `AX_LIVING_SPEC`. In `pivot` mode also
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/pivot-formats.xml")`
-        (`AX_PIVOT_REQUIRES_SUPERSESSION`); in `rewrite` mode write fresh — no supersession. For a brand-new scope, append the `🚧 (awaiting root sync)` placeholder row to the portal Scopes table per `AX_PORTAL_READ_ONLY_WITH_PLACEHOLDER_EXCEPTION` — every other portal edit belongs to the root flow. Write in review-state per `AX_SPEC_LIFECYCLE` — prepend a `CHANGE_MANIFEST` (`READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/change-manifest.xml")`) and mark changed lines `✚`/`~` (greenfield → manifest only, no per-line marks) — its «СОСЕДИ» block carries the (c)/(d) answers `STEP_2B_SYSTEM_FIT` recorded, never left empty by omission; compress folds it to master downstream after the change ships. `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/preflight-protocol.directive.xml")` and run its lazy active-domain checklist. Then close with the integrity check per `AX_CLOSE_WITH_INTEGRITY_CHECK`: run integrityCheck ToolCall below (anchor balance + required sections + links) and resolve any finding. Then `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/review-lifecycle.directive.xml")` — finalize/compress semantics → delta-only final Approval → integrated critic → publish the exact final bytes → external approval → merge the same reviewed commit. Every review wait or Approval Check returns `TerminalDecision: pause`; review handoff and merge return `continue`; neither closes the session.
+        (`AX_PIVOT_REQUIRES_SUPERSESSION`); in `rewrite` mode write fresh — no supersession. For a
+        brand-new scope, append the `🚧 (awaiting root sync)` placeholder row to the portal Scopes table
+        per `AX_PORTAL_READ_ONLY_WITH_PLACEHOLDER_EXCEPTION`; every other portal edit belongs to root.
+        Write the actual spec, run the preflight checklist and exact integrity check, then
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/review-lifecycle.directive.xml")` for one fresh
+        independent semantic review and operator approval #1 recorded by the human-readable marker.
 
-        After merge render one continuity menu per `NEXT_STEP_MENU_FORMAT`. An interface spec has no
-        direct flat-scope scaffold route: if its implementation chain remains, the option identifies
-        the owning product/library scope and returns `TerminalDecision: continue` to the already-loaded
-        router for that scope's authoring/module route in this SAME session. If another scope spec is
-        next in dependency order, its option likewise returns `continue` to the router. Never tell the
-        operator to invoke `/sdd` manually, and never load scaffold directly for the interface scope;
-        infrastructure is the sole no-module scaffold exception. A pause selection returns
-        `TerminalDecision: pause` and preserves the session. Only when this step establishes
-        `unfinished chained work: none` may it offer literal «Complete / finish»; only that answer is
-        the decision source for `TerminalDecision: complete`, followed by exact
-        terminal ToolCall below once. A successful spec/review/merge never implies complete.
-        STOP.
+        Render one continuity menu per `NEXT_STEP_MENU_FORMAT`. An interface has no direct flat-scope
+        scaffold route: route implementation through its owning product/library scope. Another scope
+        in dependency order returns to the router using current artifacts. Pause prints the exact next
+        scope/skill. When no work remains, report completion. No session close exists.
         <ToolCall owner="this-step" result="interfaceManifest">npx gennady sdd-new interface --scope <scope></ToolCall> Use interfaceManifest.
         <ToolCall owner="this-step" result="integrityCheck">npx gennady sdd-check --all specs/<scope></ToolCall> Use integrityCheck.
-        <ToolCall owner="this-step" result="terminal">npx gennady sdd-session close</ToolCall>
       </Action>
     </Step>
   </ExecutionPlan>

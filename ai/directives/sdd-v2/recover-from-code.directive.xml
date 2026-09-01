@@ -23,8 +23,6 @@
   </Mission>
 
   <BeliefState deps="AX_OPERATOR_LANGUAGE, AX_TOOL_INVOCATION, AX_OPERATOR_DIALOGUE_STYLE, AX_DIALOGUE_DISCIPLINE, AX_OPERATOR_SAFEGUARD, AX_NO_PROCESS_NARRATION, AX_OPERATOR_OUTPUT_LIVE_TEXT, AX_STATELESS_ARTIFACT, AX_READER_WITHOUT_SESSION_CONTEXT, AX_DECISION_LOG_NON_OBVIOUS">
-    Inherited from the loading directive (already in context): AX_PROGRESSIVE_DISCLOSURE, HALT_FORMAT, MESSAGE_LAYOUT, QUESTION_RULE_SLIM, SESSION_FILE_FORMAT
-
     <Axiom id="AX_NO_NEW_TOOL">
       This flow adds no CLI command and no shared-code helper. Surveying a path — what the code does,
       who imports whom, which docs / tests sit beside it — is done live by the agent through `bash`
@@ -78,9 +76,6 @@
     </Axiom>
   </BeliefState>
 
-  <SessionState>
-  </SessionState>
-
   <KernelGrammar>
     <Definition id="DEF_READ_AND_USE_DIRECTIVE">
       `READ_AND_USE_DIRECTIVE(src)` tells the agent to READ the file at `src` and apply it as part
@@ -96,6 +91,22 @@
   </KernelGrammar>
 
   <ChatProtocol>
+    <Contract id="QUESTION_RULE_SLIM">
+      A question to the operator fires only through `AskUserQuestion` — or, when the tool is
+      unavailable, a plain-text fallback carrying the same context plus an explicit list of named
+      options — and always after the context is explained in the same message, never as bare
+      free-form text. Batch mutually independent sub-questions into one call; dependent questions go
+      one call at a time, composed only after the previous answer is in. No numbering, no semantic
+      question IDs.
+
+      Full format, with worked examples — `QUESTION_FORMAT` in the interview / vision directives.
+    </Contract>
+
+    <Contract id="HALT_FORMAT">
+      A halt is a plain sentence first (what happened + what to do), with the token as a trailing tag:
+
+      🛑 <что случилось по-человечески> — <что сделать оператору>   `[H_*]`
+    </Contract>
   </ChatProtocol>
 
   <HaltConditions>
@@ -164,9 +175,8 @@
         For every module spec produced, run inventoryCheck ToolCall below clean
         (`AX_REVERSE_INVENTORY_GATE`) — fix the inventory or the spec, not the
         code, when it disagrees with reality. Then integrityCheck ToolCall below clean over the whole tree.
-        Return `TerminalDecision: continue` to the already-loaded router with the confirmed scope/module
-        result so it can select the next owner in this SAME session. Never close the session here and
-        never tell the operator to invoke `/sdd` manually.
+        Hand the confirmed scope/module paths to the router so it can select the next owner from
+        current artifacts. No session continuation or close operation exists.
         Inputs <module-spec>, <module-dir>: each module pair produced by STEP_3.
         <ToolCall owner="this-step" result="inventoryCheck">npx gennady lint --spec=<module-spec> --inventory-reverse <module-dir></ToolCall> Use inventoryCheck.
         <ToolCall owner="this-step" result="integrityCheck">npx gennady sdd-check --all .</ToolCall> Use integrityCheck.
@@ -178,5 +188,60 @@
     Service line — dim, internal, never narrated (`AX_NO_PROCESS_NARRATION`):
     `🧭 RFC_R<N> · path=<path> · scope=<scope-or-new> · step=<id>`.
 
+    <Contract id="MESSAGE_LAYOUT">
+      A step-boundary / decision message (the decision card) is sectioned with markdown headers, in
+      this order. Skip any section empty for this step. During free dialogue inside a step the agent
+      does NOT print this layout — it just talks.
+
+      `<dim service line>`        — internal anchor + scope + mode + confidence (supplied by the branch)
+
+      `<breadcrumb>`              — per `BREADCRUMB_FORMAT`, its OWN paragraph (a blank line above it,
+      not just a `\n`) — markdown collapses a single newline into a space, so without the blank line
+      the breadcrumb visually fuses onto the service line
+
+      ## `<glyph>` `<scope>` — одной фразой, что делаем
+
+      ### 🤔 Как я понял задачу    — an italic blockquote (`> _…_`), 2–3 sentences max: the task retold
+      in the agent's own words plus the single riskiest assumption, linked by wording to the question
+      that resolves it; never a restate of already-settled content — only what is NEW or could be
+      misread (goes at the TOP)
+      ### 🎯 Главное решение       — the crux in plain words; if the decision is a flow (data moving,
+      state transitions, start/stop conditions), add a small ASCII diagram — the one place a fenced
+      block is allowed in this message, at most one per message
+      ### 💡 <О чём решаем>         — per `QUESTION_RULE_SLIM` (full format with worked examples lives in
+      `QUESTION_FORMAT`, in the interview / vision directives)
+      ### ↓ Детали — по желанию    — reasoning, full comparison, change-list (per `AX_PROGRESSIVE_DISCLOSURE`)
+
+      Glyph dictionary — closed inventory, one assigned meaning each, never a free pick. Every glyph
+      here is chosen to read clearly on BOTH a light and a dark terminal/chat theme — half-tone shading
+      characters (`░ ▒ ▓` and similar) are forbidden anywhere in this layout: they render as near-invisible
+      or vanish outright depending on theme.
+
+      Section-header glyphs (fixed, one per header, in the order above):
+      - `🤔` — the agent's own understanding check, at the top of a decision card
+      - `🎯` — the crux decision, in plain words
+      - `💡` — a decision the agent is proposing for the operator to confirm or pick between
+      - `↓` — folded detail, expand on demand
+
+      Step-TYPE glyphs (fixed, keyed by the step's TYPE, used in the service line / breadcrumb, never a free pick):
+      - `🏗` — creation / scaffold (new spec, new tickets, new files)
+      - `🔍` — audit / review (fresh-eyes read, no write)
+      - `🔧` — fix / reconcile (spec ⟷ code drift repair)
+      - `⚡` — execute (a task ticket's phases running)
+      - `🗺` — routing / overview (intent classification, project-level map)
+
+      Breadcrumb-status glyphs (per `BREADCRUMB_FORMAT`): `✅` done · `👷` active · `◻️` not yet.
+
+      No other emoji appear in message or section headers — the glyphs enumerated above are the only
+      ones this layout permits.
+    </Contract>
+
+    <Axiom id="AX_PROGRESSIVE_DISCLOSURE" cross-cutting="true">
+      Decision first, reasoning on demand. The must-read top of a message is short: where we are + my
+      read + what to decide. Everything heavy — full option comparison, evidence, the change-list,
+      derivations — goes BELOW a `### ↓ Детали — по желанию` header. Never dump reasoning above the
+      questions. Facts already verified collapse to one line («сверился: …»); uncertainties that need
+      the operator BECOME the questions — never list them twice.
+    </Axiom>
   </ChatOutput>
 </SddRecoverFromCode>

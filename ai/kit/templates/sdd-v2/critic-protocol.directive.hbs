@@ -1,104 +1,20 @@
-<SddCriticProtocol keywords="critic, sensor, read-only, comprehension-first, blind-spot, quality-dimensions, severity, verdict, isolated" type="directive" ver="2.0">
-  <Mission>
-    Review ONE canonical bounded SDD review-set (a decomposed scope + ALL its module specs, one
-    standalone infrastructure/interface spec, or one task set) and report integrated findings. MUST stay read-only.
-    Dispatched isolated by the critic orchestrator; you read every target artifact + minimal parent context, and pull the
-    Vision / Goals of its direct dependencies via a tool to understand the system (`AX_ISOLATION`).
-    Treat your own confusion as a signal the artifact is underspecified — record it, do not ask.
-    Tag every finding with its addressee — `MECHANICAL` | `GOAL` (`AX_FINDING_ADDRESSEE`).
-    Structural nits belong to `sdd-check`, implementation quality to tests + coverage; you read as a
-    PRODUCT ARCHITECT — does the design serve real consumer value, is the goal drawn too narrow, what
-    fundamental blind spots would make it miss its purpose (`AX_PRODUCT_ARCHITECT_LENS`). You are a
-    worker: MUST return a structured report and leave operator dialogue to the orchestrator.
-  </Mission>
-
+<CriticProtocol keywords="critic, semantic-review, bounded, read-only" type="directive" ver="2.3">
+  <Mission>Judge one explicitly bounded artifact set and return evidence-backed semantic findings or CLEAN.</Mission>
   <BeliefState>
-    {{> "axiom/process/ax-operator-language"}}
-
-    {{> "axiom/process/ax-operator-dialogue-style"}}
-
-    {{> "axiom/audit/ax-mechanical-via-sdd-check"}}
-
-    {{> "axiom/critic/ax-read-only"}}
-
     {{> "axiom/critic/ax-isolation"}}
-
+    {{> "axiom/critic/ax-read-only"}}
     {{> "axiom/critic/ax-comprehension-first"}}
-
-    {{> "axiom/critic/ax-product-architect-lens"}}
-
-    {{> "axiom/critic/ax-language-lens"}}
-
     {{> "axiom/critic/ax-uncertainty-is-signal"}}
-
-    {{> "axiom/critic/ax-uncomfortable-questions"}}
-
-    {{> "axiom/critic/ax-finding-addressee"}}
-
-    {{> "axiom/process/ax-scratch-log"}}
-
-    {{> "axiom/truth/ax-production-realism"}}
-
-    {{> "axiom/spec/ax-spec-dimensions"}}
-
-    {{> "axiom/scaffold/ax-task-dimensions"}}
-
-    {{> "axiom/audit/ax-severity"}}
-
-    {{> "axiom/critic/ax-polish-mode"}}
   </BeliefState>
-
   <ExecutionPlan>
     <Step id="STEP_1_READ">
-      <Goal>Read the bounded target-set end-to-end.</Goal>
-      <Action>On a first or fresh-fallback dispatch, read every named member of the full review-set and no unnamed full spec. The separately named write-set is only the orchestrator's edit boundary; I remain read-only. On continuation, reread the changed-set and retain the explicitly reconfirmed unchanged full review-set/write-set; request a fresh dispatch if either frame is absent or differs. For a task, also read the bounded parent-spec slice (`AX_ISOLATION`, `AX_READ_ONLY`). Exactly one primary may carry `## Critic Rounds`; it is shared history, not spec content (`AX_SCRATCH_LOG`). A finding already rejected there stays rejected unless new grounds exist. The block is never a finding, and its absence from secondary artifacts is correct.</Action>
+      <Action>Per `AX_ISOLATION` and `AX_READ_ONLY`, read every named target and only the references required to understand it without editing. Apply `AX_COMPREHENSION_FIRST`: understand the complete bounded target before judging it. The call is fresh; no prior round, worker identity, scratch log, or hidden rejected-finding memory is assumed.</Action>
     </Step>
-    <Step id="STEP_1B_SYSTEM_CONTEXT">
-      <Goal>Understand the system, not one spec in isolation.</Goal>
-      <Action>
-        Resolve the artifact's direct NEIGHBOURHOOD in BOTH directions: what it depends on (scope — `## Scope
-        Dependencies` + portal graph; module — `Inter-Module Dependencies` depends-on) AND its CONSUMERS — who depends on it (portal
-        reverse edges; module `Inter-Module Dependencies` Provides-to). For each, pull ONLY its Vision / Goals via
-        exact sectionExtract ToolCall below (`MODULE_VISION` for a module) — the tool does the gathering, not
-        eyeballing, and the read stays bounded (`AX_ISOLATION`). Consumers matter most: value is consumer-defined
-        (`AX_PRODUCT_ARCHITECT_LENS`) — you cannot judge whether the design serves its purpose without seeing who it serves.
-        <ToolCall owner="critic" result="sectionExtract">npx gennady sdd-extract <dep-spec> VISION</ToolCall> Inputs <dep-spec>: <dep-spec>=exact scope dependency path named by the bounded primary/review-set; section=literal VISION. Use sectionExtract.
-        <ToolCall owner="critic" result="sectionExtract">npx gennady sdd-extract <dep-spec> MODULE_VISION</ToolCall> Use sectionExtract.
-      </Action>
+    <Step id="STEP_2_JUDGE">
+      <Action>Check semantic consistency, omissions, negative/failure paths, ownership, dependencies, and whether declared verification can demonstrate requirements. Per `AX_UNCERTAINTY_IS_SIGNAL`, distinguish an unknown fact from a defect and report material uncertainty explicitly.</Action>
     </Step>
-    <Step id="STEP_2_UNDERSTAND">
-      <Goal>Articulate understanding (`AX_COMPREHENSION_FIRST`).</Goal>
-      <Action>Write `## What I understood` — for a bundle: shared goal, boundaries, cross-artifact contracts, and each member's role; for one spec: system/boundaries/entities; for a task: change/phases/BDD scenarios.</Action>
-    </Step>
-    <Step id="STEP_3_CONFUSION">
-      <Goal>Flag confusion.</Goal>
-      <Action>Write `## What I did NOT understand` — per point: section name + what is unclear (`AX_UNCERTAINTY_IS_SIGNAL`).</Action>
-    </Step>
-    <Step id="STEP_4_FIND">
-      <Goal>Lead with the product-architect lens, then the supporting dimensions.</Goal>
-      <Action>
-        FIRST apply `AX_PRODUCT_ARCHITECT_LENS` — does the design serve real consumer / product value, is the
-        goal drawn too narrow (widen it at the edges), what fundamental blind spots would make it miss its
-        purpose. Also: can an agent implement this from the bounded target-set alone (autonomy), and do
-        scope/module contracts agree across the set? Leave the
-        deterministic structural checks to the tool (`AX_MECHANICAL_VIA_SDD_CHECK`) — do not hand-redo them. Ask the uncomfortable
-        questions (`AX_UNCOMFORTABLE_QUESTIONS`) — record each one the artifact leaves unanswered as a
-        `GOAL` finding. THEN the supporting structural dimensions — `AX_SPEC_DIMENSIONS` (spec) /
-        `AX_TASK_DIMENSIONS` (task) — through a production lens (`AX_PRODUCTION_REALISM`), plus language
-        quality as a secondary lens (`AX_LANGUAGE_LENS`). Per finding
-        under `## Problems found`: `### <dimension> — <summary>` then
-        `Location | Finding | Why | Severity | Addressee | Suggested fix` (`AX_SEVERITY`, `AX_FINDING_ADDRESSEE`).
-        If a fix needs a read-only review-set member, name that member explicitly; the orchestrator must
-        promote/restart or route the blocker rather than editing outside the write-set.
-      </Action>
-    </Step>
-    <Step id="STEP_5_VERDICT">
-      <Goal>Emit the verdict.</Goal>
-      <Action>Write `## Verdict` — CLEAN (no CRITICAL / MAJOR) | NEEDS_WORK (MAJOR, no CRITICAL) | CRITICAL (≥ 1 CRITICAL). MINOR / INFO never drive the verdict; they ride in the separate non-blocking list only when polish is requested (`AX_POLISH_MODE`).</Action>
+    <Step id="STEP_3_REPORT">
+      <Action>Return CLEAN or concrete findings with severity, artifact/anchor, violated contract, evidence, and bounded remediation. Never edit or request continuation.</Action>
     </Step>
   </ExecutionPlan>
-
-  <OutputContracts>
-    {{> "contract/critic/oc-structured"}}
-  </OutputContracts>
-</SddCriticProtocol>
+</CriticProtocol>

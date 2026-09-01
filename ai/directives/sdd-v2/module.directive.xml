@@ -1,7 +1,7 @@
 <SddModule keywords="module-decomposition, module-map, entity-inventory, dbc-contracts, ports-adapters, closed-world, file-structure, modes, add-module, refine-module, sdd-module" type="directive" ver="2.1">
   <Mission>
-    Turn an `AX_HANDOFF_TO_MODULE_DECOMPOSITION`-valid `product` / `library` operator-approved
-    review-state draft or master spec into a hierarchy of module specs: a
+    Turn an `AX_HANDOFF_TO_MODULE_DECOMPOSITION`-valid `product` / `library` scope draft or approved
+    spec into a hierarchy of module specs: a
     closed-world entity inventory, an explicit public surface per entity, strict DbC contracts
     (Ports / Adapters / Services), and a designed file structure. Loaded lazily by the router;
     inherits the router core (language, dialogue, safeguard, diverge, no-narration, stateless) —
@@ -20,7 +20,7 @@
   </Mission>
 
   <BeliefState deps="AX_OPERATOR_LANGUAGE, AX_OPERATOR_DIALOGUE_STYLE, AX_DIALOGUE_DISCIPLINE, AX_OPERATOR_SAFEGUARD, AX_NO_PROCESS_NARRATION, AX_STATELESS_ARTIFACT, AX_SCALE_PROPORTIONAL_DEPTH">
-    Inherited from the loading directive (already in context): AX_DIVERGE_BEFORE_RECOMMEND, AX_HANDOFF_TO_MODULE_DECOMPOSITION, AX_PROGRESSIVE_DISCLOSURE, MESSAGE_LAYOUT, QUESTION_RULE_SLIM, SESSION_FILE_FORMAT
+    Inherited from the loading directive (already in context): QUESTION_RULE_SLIM
 
     <Axiom id="AX_DIRECTIVE_MODE">
       Each directive runs in one of several modes, auto-detected from operator intake. Mode controls
@@ -54,6 +54,24 @@
       deferred — the phase-subagent loads them at phase entry per `phase-execution-protocol`.
     </Axiom>
 
+    <Axiom id="AX_DIVERGE_BEFORE_RECOMMEND">
+      A recommendation must be the result of a search, not the first typical answer. Aligned models
+      collapse to the modal option; a single quick recommendation usually IS that mode, which is
+      rarely the best fit for a specific task.
+
+      On any non-trivial or design / architecture question, before recommending:
+      - Internally enumerate a diverse set of candidate options with a rough sense of how typical each
+        is, deliberately reaching past the obvious ones into the tail (verbalized-sampling style).
+      - Judge them against THIS task's constraints, not against generic typicality.
+      - Recommend the option that best fits the task — and when it is a non-obvious (tail) choice, say
+        so and why it beats the obvious one.
+
+      Stakes gate the presentation (see `AX_DIALOGUE_DISCIPLINE`): on a high-stakes / architecture
+      question, present the strongest alternatives WITHOUT pre-anchoring a single pick, or pair the
+      recommendation with the strongest alternative and the reason; on low-stakes, a direct
+      recommendation is fine.
+    </Axiom>
+
     <Axiom id="AX_MODULE_BOUNDARY_BY_OPERATOR">
       Module boundaries are decided by the operator. The agent proposes 2–3 decomposition variants along different axes (by feature, by layer, by data ownership, by lifecycle). No unilateral pick. Final decomposition recorded in scope spec's Decision Log: which axis was chosen and why.
     </Axiom>
@@ -81,13 +99,13 @@
       The `module` flow owns TWO sections in the scope spec (`specs/<scope>/<scope>.spec.md`):
 
       - **Module Map** (`Module Map`) — append-only rows per module.
-      - **Approved Usage Example** (`Usage Example` section — library / product) — composition view. Every `module` flow session (`initial` / `add-module` / `refine-module`) rewrites this section as one user-facing flow over the current module set. Module-level snippets NOT inlined — anchor-link to each module's `Module Usage Example`. Skip rewrite only when scope has zero modules with public surface.
+      - **Approved Usage Example** (`Usage Example` section — library / product) — composition view. Every `module` flow invocation (`initial` / `add-module` / `refine-module`) rewrites this section as one user-facing flow over the current module set. Module-level snippets NOT inlined — anchor-link to each module's `Module Usage Example`. Skip rewrite only when scope has zero modules with public surface.
 
-      **Bidirectional consistency check** before session close — both directions must pass:
+      **Bidirectional consistency check** before handoff — both directions must pass:
       - (→) every named abstraction in scope-spec Usage Example has a home in some module's `Entity Inventory`;
       - (←) every module with public surface (≥1 entry in `Entity Surfaces`) either appears in scope-spec Usage Example OR carries `internal-only — not in composition view` in its `Module Decision Log`.
 
-      Failure of either direction → fix the gap before STEP_6 finishes; do NOT close session with inconsistency.
+      Failure of either direction → fix the gap before STEP_6 hands off.
 
       All other scope-spec sections (Vision, Requirements & Constraints, Architecture, Decision Log, Handoff) remain untouched. Cross-scope module dependencies → `Scope Reference` in module-spec `Inter-Module Dependencies`, never a direct reference to another product scope's modules.
 
@@ -103,7 +121,7 @@
 
       Growth is the decomposition signal, not a license to expand. When scope-level design reaches entity / contract / file granularity, that detail moves into a module — it does NOT accumulate in the scope spec. A scope converges to a thin index; it does not grow without bound.
 
-      First decomposition is a migration: the `initial` module session moves entity-level detail out of the scope spec into the new module specs, leaving the scope spec in the index representation. The same rule recurses — a module that reaches sub-module granularity sheds detail into sub-modules and stays an index over them.
+      First decomposition is an authoring refactor: the `initial` module invocation moves entity-level detail out of the scope spec into new module specs, leaving the scope spec in the index representation. The same rule recurses — a module that reaches sub-module granularity sheds detail into sub-modules and stays an index over them.
 
       Held by tooling: `sdd-check` flags a bloated scope index (`SDD_SCOPE_BLOATED`) and, recursing the same rule to a module with child modules beneath it, a parent module that has not become a thin index (`SDD_PARENT_MODULE_NOT_INDEX`).
     </Axiom>
@@ -143,36 +161,38 @@
 
       A breaking change additionally emits a Pivot Invalidation List (`PIVOT_INVALIDATION_LIST_FORMAT`) in this module's spec: its consumer modules — the siblings whose `Inter-Module Dependencies` declares an edge `--> this-module` — listed as `refine-module` targets, plus their tasks to reopen. Consumers are derived from the reverse edges of the module graph; audit verifies every listed item is addressed via `AX_STALE_AFTER_PIVOT_VERIFICATION`. Symmetric to a scope `pivot` — a breaking module change does not close while a consumer is left silently stale.
 
-      Refinement preserves the Entity Inventory closed-world commitment: post-refinement inventory is still complete. New entities go into the inventory in the same session.
+      Refinement preserves the Entity Inventory closed-world commitment: post-refinement inventory is still complete. New entities go into the inventory in the same authoring change.
 
       Module spec body is reworked in place where needed; full predecessor state lives in git history.
     </Axiom>
 
     <Axiom id="AX_SPEC_LIFECYCLE">
-      A spec lives in two states. **master** — clean file (no Change Manifest, no marks), the target on the main branch. **review-state** — the same file on a working branch during a change: the target text is written IN PLACE (everything else byte-for-byte, so the branch diff reads like a normal PR), with the temporary change manifest loaded by the owning authoring flow at the top and affected lines marked `✚` (new) / `~` (changed). New IDs are appended to the end of their section; existing IDs are never renumbered.
+      A V2 specification has one durable format. Greenfield authoring creates that format directly;
+      refine/pivot edits it in place. Git diff shows changes for semantic judgment. Temporary Change Manifest,
+      per-line review marks, Critic Rounds, publication state, and migration between V2 subformats are
+      not part of the specification.
 
-      `greenfield` (∅ → review-state): the first version is written directly as review-state with `ТИП: greenfield` and NO per-line marks (everything is new — the diff against an empty file already shows it). `refine` / `pivot` edit an existing master in place WITH marks.
+      Before approval #1, run structural checks and one fresh independent semantic review of the
+      complete target set. Resolve findings in the owning specs. Any semantic edit invalidates the old
+      verdict, resets the human-readable approval marker to pending, and requires a fresh bounded review.
+      The operator then approves the current artifacts and the specs record approval #1 per
+      `ARTIFACT_APPROVAL_MARKER`. Implementation follows only after approval #1. Marker mechanics never
+      use a content hash; the model judges staleness from the artifacts and Git evidence.
 
-      The spec change is a reviewable PR (design-PR). Before the internal critic, finalize semantic bytes
-      (Decision Log compression including merge/delete, ID collision repair, pivot supersession), then
-      obtain the operator's delta-only final hierarchy Approval. The critic loop is necessary but NOT
-      sufficient and owns one global five-result cap across any correction/finalization return; such a
-      return preserves its scratch and next round number. Critic target/write ownership stays specs-only;
-      the separate VCS publication-set may add only mechanically attributed durable authoring outputs
-      (registered research, canonical portal/index files, and the exact session-ignore addition), and any
-      other dirty path halts. After the critic, approve only its actual delta, remove review scaffolding
-      with Critic Rounds last, and pass the final-byte integrity check. Publish exactly the role-validated
-      clean publication-set bytes. External approval names one reviewed commit; merge that same commit
-      with no semantic rewrite afterward. Implementation (scaffold → execute) follows the merged master.
+      An editorial correction may use its exact mechanical verifier only when it changes no requirement,
+      behavior, contract, inventory, architecture, dependency, BDD acceptance, risk, or Decision Log
+      meaning. Any such delta is semantic and returns to the lifecycle above.
+    </Axiom>
 
-      Reconcile has one narrow non-semantic exception: an explicitly classified editorial correction
-      (spelling, formatting, or a mechanical link correction to an already-defined target) may use its
-      frozen task-free target-set plus exact `sdd-check --all` direct receipt. It must change no GOAL,
-      requirement, behaviour, contract, inventory, architecture, dependency, BDD acceptance, risk, or
-      Decision Log meaning. Any such delta is semantic and returns to the authoring + integrated review
-      lifecycle above before scaffold/reopen/execute.
+    <Axiom id="AX_HANDOFF_TO_MODULE_DECOMPOSITION">
+      Module decomposition accepts a structurally complete `product` or `library` scope draft as the
+      next authoring step before approval #1. It creates/updates the module specs needed to make the
+      complete spec set reviewable. For an already-approved scope, add/refine module work is also valid.
+      Neither case depends on a session working set, temporary manifest, or bare approval label.
+      Infrastructure remains the sole no-module scope type.
 
-      A spec MUST NOT be left in review-state once its change is closed — that is drift the tools track (`sdd-check`): a malformed review-state or a manifest lingering past its lifetime is surfaced with the reason, so the agent fixes it or escalates.
+      The resulting complete scope+module spec set runs one independent semantic review and operator
+      approval #1 before scaffold. A later semantic change repeats that boundary.
     </Axiom>
 
     <Axiom id="AX_CLOSED_WORLD_INVENTORY">
@@ -221,7 +241,7 @@
       per `DIAGRAM_CAPTION_FORMAT` (`formats/diagram-vocabulary.xml`).
 
       **Delta rung** (`STEP_6_FINAL_HIERARCHY`, `refine-module` / `pivot` only) — the diagram twin
-      of the `CHANGE_MANIFEST` text delta: a composition graph carrying ONLY the changed corner
+      of the Git diff: a composition graph carrying ONLY the changed corner
       with the new node marked (`:::new` or a `(добавлено)` suffix) plus the ADDED Call Chain
       steps, per `DELTA_DIAGRAM_FORMAT` (`formats/pivot-formats.xml`) — the unchanged part of the
       module is NOT redrawn. Mandatory on every `refine-module` / `pivot` round.
@@ -244,9 +264,9 @@
       product or architecture fork — entity ownership, public behavior/error semantics, Port-vs-Service,
       or file ownership — show only that delta plus real alternatives and ask once before choosing; batch
       related forks in one decision. Never re-ask a choice settled earlier in the same packet. STEP_6's
-      standalone review lifecycle always shows the exact final hierarchy and its unsettled delta for the
-      mandatory terminal Approval before critic/publication. A scaffold-owned nested correction uses the
-      same terminal Approval and critic convergence, but returns through its bounded exception in STEP_6.
+      review lifecycle shows the exact final hierarchy and unsettled delta, dispatches one independent
+      semantic review, then asks for approval #1. A scaffold-discovered spec correction returns through
+      the same complete boundary before scaffold restarts.
       Thus no semantic choice disappears, but zero-new-info steps cost zero operator turns.
     </Axiom>
 
@@ -366,15 +386,11 @@
     </Axiom>
   </BeliefState>
 
-  <SessionState>
-  </SessionState>
-
   <HaltConditions>
     | 🛑 ID | Trigger |
     |---|---|
     | `H_INVALID_SCOPE_TYPE` | scope-type = infrastructure or interface — module-decomposition not applicable |
     | `H_SCOPE_SPEC_MISSING` | `specs/<scope>/<scope>.spec.md` does not exist — run the scope flow first |
-    | `H_SCOPE_DRAFT_NOT_OPERATOR_APPROVED` | Review-state lacks the exact `operator-approved review-state draft` entry in `[SESSION]`, or the clean scope's `[SCOPES]` row's `status` column is not `done` |
     | `H_INCOMPLETE_SCOPE_SPEC` | Scope spec missing required sections (Vision, Architecture, Golden DX) |
     | `H_AMBIGUOUS_MODE` | Module specs exist + mode verb absent + no Pivot Invalidation List |
     | `H_LOW_CONFIDENCE` | Confidence LOW at decomposition lock or final hierarchy |
@@ -391,16 +407,10 @@
     <Step id="STEP_0_INTAKE">
       <Goal>Resolve scope, mode; gate scope-type.</Goal>
       <Action>
-        Read `specs/<scope>/<scope>.spec.md` (sole source per `AX_SPEC_IS_SOLE_SOURCE`). Accept only
-        the two standalone states in `AX_HANDOFF_TO_MODULE_DECOMPOSITION`: valid `CHANGE_MANIFEST` plus the
-        exact `[SESSION]` operator-approved review-state draft entry, or no `CHANGE_MANIFEST` plus the
-        exact master `[SCOPES]` row whose `status` column is `done`. Any other draft/clean state →
-        `H_SCOPE_DRAFT_NOT_OPERATOR_APPROVED`; never infer acceptance from a bare `approved` label.
-        One bounded nested state is also valid: the compatible session still says `intent: scaffold`,
-        its exact target-set contains this scope, and an active module `CHANGE_MANIFEST` identifies the
-        correction. This does not change intent or add a session field; its return owner is scaffold
-        `STEP_0_INTAKE`.
-        This gate does not demand a premature critic/MR. Missing → `H_SCOPE_SPEC_MISSING`; incomplete → `H_INCOMPLETE_SCOPE_SPEC`. scope-type must be
+        Read `specs/<scope>/<scope>.spec.md` (sole source per `AX_SPEC_IS_SOLE_SOURCE`). Accept a
+        structurally complete current V2 scope draft or an already-approved current V2 scope per
+        `AX_HANDOFF_TO_MODULE_DECOMPOSITION`. Missing → `H_SCOPE_SPEC_MISSING`; incomplete →
+        `H_INCOMPLETE_SCOPE_SPEC`. scope-type must be
         product / library (`AX_SCOPE_TYPE_GATE`, else `H_INVALID_SCOPE_TYPE`). Mode per
         `AX_MODE_AUTO_DETECT_OR_HALT` — initial / add-module / refine-module; the mode picked here
         controls step branching downstream (`AX_DIRECTIVE_MODE`). On `add-module` /
@@ -428,8 +438,7 @@
         (b) If not: which existing module / mechanism the extract names are we EXTENDING instead of
         introducing a new one?
         (c) Which neighbour specs (paths, from the extract) will need work for this decomposition to
-        fit the system — each becomes its own «СОСЕДИ» line in the eventual `CHANGE_MANIFEST` / Pivot
-        Invalidation List sideways entry?
+        fit the system — each is recorded in the owning dependency/impact section or Pivot Invalidation List?
         (d) Which neighbour requirements (IDs, from the extract) conflict with the boundaries we are
         about to lock, and how is the conflict resolved?
         "Вводим новое" answers (a)/(b) ONLY together with the specific neighbour invariant/requirement
@@ -444,7 +453,7 @@
         conflict with more than one valid resolution, show one delta decision card and use
         `AskUserQuestion` (`QUESTION_RULE_SLIM`): `REUSE/EXTEND <named existing owner>` versus
         `INTRODUCE <new owner> — existing <requirement/invariant id> cannot satisfy <need>`, plus the
-        concrete conflict alternatives when applicable. Return `TerminalDecision: pause` while waiting.
+        concrete conflict alternatives when applicable. Stop while waiting; no artifact mutation occurs.
         The selected INTRODUCE branch appends one `<ACR>-DL-N` entry per
         `DECISION_LOG_ENTRY_FORMAT`; a reuse/extend selection updates the boundary and continues.
         Do not use an unconditional STOP as a substitute for this decision route.
@@ -501,7 +510,7 @@
         still misses) and «Бесхозная ответственность» (a responsibility no listed entity owns). A
         dispute or tangent raised mid-interview opens a nested frame on the flow's stack — this
         step's main path never silently stalls on it (`AX_STACK_BASED_FLOW`).
-        Size the interview to the confirmed `scale:` from the session file
+        Size the interview to the SCALE confirmed for this invocation
         (`AX_SCALE_PROPORTIONAL_DEPTH`). Keep evidence separated per `AX_EVIDENCE_HYGIENE`: entities
         named by the scope spec are facts; entities inferred during the interview stay hypotheses
         until the operator confirms them.
@@ -597,7 +606,7 @@
 
         On `refine-module` / `pivot`, the Delta rung (composition graph with the new node marked
         plus the ADDED Call Chain steps, per `DELTA_DIAGRAM_FORMAT` in `formats/pivot-formats.xml`)
-        is drawn later, at `STEP_6_FINAL_HIERARCHY` alongside the `CHANGE_MANIFEST` — not here.
+        is drawn later, at `STEP_6_FINAL_HIERARCHY` alongside the textual delta — not here.
 
         Close the step with two checks before presenting:
         1. Every module / entity / Port in the contracts carries a confirmed v1 consumer or
@@ -644,7 +653,7 @@
         markdown link per canonical `<module>/<module>.spec.md`, no duplicate, missing, ambiguous, or
         undeclared module spec. In `pivot` / `refine-module`, draw the Delta rung
         (`AX_SPEC_MANDATORY_DIAGRAM`, per `DELTA_DIAGRAM_FORMAT` in
-        `ai/directives/sdd-v2/formats/pivot-formats.xml`) alongside the `CHANGE_MANIFEST`: the
+        `ai/directives/sdd-v2/formats/pivot-formats.xml`) alongside the textual Git delta: the
         composition graph carrying ONLY the changed corner with the new node marked, plus the
         ADDED Call Chain steps — the unchanged part of the module is NOT redrawn. As ASCII in
         chat BEFORE this step's Approval Check, per `AX_CHAT_BEFORE_SPEC`; its absence on a
@@ -659,48 +668,25 @@
         (shortlist + considered-skips, operator locks the list; architecture / infra rules get the
         per-axiom walk-through); every referenced rule file must resolve, else
         `H_MISSING_RULE_FILE`. Before writing, run the self-check pass per
-        `AX_ARTIFACT_STYLE_SELF_CHECK`. Write in review-state per `AX_SPEC_LIFECYCLE` — prepend a
-        `CHANGE_MANIFEST` (`READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/change-manifest.xml")`) and
-        mark changed lines `✚`/`~` (greenfield → manifest only, no per-line marks) — its «СОСЕДИ» block
-        carries the (c)/(d) answers `STEP_0B_SYSTEM_FIT` recorded, never left empty by omission;
-        compress folds it to
-        master downstream after the change ships. Then run
+        `AX_ARTIFACT_STYLE_SELF_CHECK`. Write the ordinary V2 spec directly per
+        `AX_SPEC_LIFECYCLE`; Git diff carries the review delta. Record affected neighbours in the
+        owning dependency/impact fields rather than a temporary manifest. Then run
         integrityCheck ToolCall below (anchor balance + required sections + links + size budget:
         `SDD_MODULE_OVERSIZED` / `SDD_MODULE_SPEC_VERBOSE`) and resolve or consciously defer any finding
-        per `AX_CLOSE_WITH_INTEGRITY_CHECK`. Then
+        per `AX_CLOSE_WITH_INTEGRITY_CHECK`. Then hand the approved module set to task scaffolding per
+        `AX_HANDOFF_TO_TASK_SCAFFOLDING`.
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/preflight-protocol.directive.xml")` and run
-        its lazy active-domain checklist. The integrated review target-set is the parent scope spec plus
-        ALL module specs in that scope after decomposition; unchanged module specs are read-only members
-        and do not receive synthetic `CHANGE_MANIFEST` or review-state.
+        its lazy active-domain checklist. The semantic review target-set is the parent scope spec plus
+        ALL module specs in that scope after decomposition; unchanged module specs are read-only members.
 
-        when entered as scaffold's nested decomposition correction, the return owner is scaffold `STEP_0_INTAKE`;
-        stop the standalone branch here.
-        Show the exact final hierarchy and unsettled delta for terminal operator Approval; a pause keeps
-        `intent: scaffold`, the exact target-set, and the concrete blocker in `open`. After Approval,
-        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/critic.directive.xml")` for that integrated
-        target-set, reusing its worker and its one global maximum of five critic results. On
-        accepted/CLEAN, apply the nested clean finalization in `AX_SPEC_LIFECYCLE`: remove the
-        `CHANGE_MANIFEST`/marks and Critic Rounds last, rerun integrity, append the session journal event,
-        set `open` to `—`, emit `TerminalDecision: continue`, and return there.
-        Use the session log ToolCall below for that return. If Approval or critic disposition pauses,
-        log the literal blocker with the same ToolCall before pausing. In this nested decomposition correction,
-        do not load `ai/directives/sdd-v2/review-lifecycle.directive.xml` before returning to scaffold;
-        do not publish, commit, push, open a PR, or merge. This is an early-return branch;
-        only standalone module work continues below.
-        <ToolCall owner="this-step" result="nestedSessionLog">npx gennady sdd-session log --content-file .claude/tmp/sdd-module-nested-event.txt</ToolCall> Inputs .claude/tmp/sdd-module-nested-event.txt: one literal journal event describing pause or accepted/CLEAN return. Use nestedSessionLog.
-        <ToolCall owner="this-step" result="nestedPauseState">npx gennady sdd-session set open "<literal module-correction blocker>"</ToolCall> Inputs <literal module-correction blocker>: exact unresolved Approval/critic/integrity blocker. Use nestedPauseState only on pause.
-        <ToolCall owner="this-step" result="nestedReturnState">npx gennady sdd-session set open "—"</ToolCall> Use nestedReturnState only on accepted/CLEAN return.
-
-        For standalone module work, then
-        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/review-lifecycle.directive.xml")` once for that
-        integrated bundle. Its fixed order is: finalize/compress semantics → show the exact final
-        hierarchy and only its unsettled delta → Approval Check. STOP → integrated critic → publish the
-        exact final bytes → external approval → merge the same reviewed commit. No review, publication,
-        merge, or scaffold handoff may precede that final hierarchy Approval. The external-review wait and every Approval Check
-        return `TerminalDecision: pause` and preserve the session. Only after the whole bundle merges
-        to master, hand off to scaffold (`AX_HANDOFF_TO_TASK_SCAFFOLDING`) with
-        `TerminalDecision: continue` in that same session. This directive has no terminal `complete`
-        branch and never runs `sdd-session close`.
+        Whether entered directly or because scaffold exposed a spec inconsistency, load
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/review-lifecycle.directive.xml")` once for this
+        complete bundle. It runs structural checks, one fresh independent semantic review,
+        reconciliation, and operator approval #1 over the actual spec bytes. A scaffold-discovered
+        semantic change invalidates prior ticket work; after approval #1, restart scaffold from its
+        artifact preflight. Standalone module work likewise hands the approved bundle to scaffold.
+        No nested critic, retained worker, session journal, publication state machine, or hidden
+        return token exists.
         <ToolCall owner="this-step" result="moduleManifest">npx gennady sdd-new module --scope <scope> --module <module></ToolCall> Use moduleManifest.
         <ToolCall owner="this-step" result="integrityCheck">npx gennady sdd-check --all specs/<scope></ToolCall> Use integrityCheck.
       </Action>
@@ -716,6 +702,54 @@
     `BREADCRUMB_FORMAT`): Module Map · Inventory · Surface · Contracts · Files · Hierarchy. Disputes
     and side-topics open a nested frame on the flow's stack per `AX_STACK_BASED_FLOW` (rendered per
     `SIDE_DIVE_FORMAT`); the main path never silently stalls.
+
+    <Contract id="MESSAGE_LAYOUT">
+      A step-boundary / decision message (the decision card) is sectioned with markdown headers, in
+      this order. Skip any section empty for this step. During free dialogue inside a step the agent
+      does NOT print this layout — it just talks.
+
+      `<dim service line>`        — internal anchor + scope + mode + confidence (supplied by the branch)
+
+      `<breadcrumb>`              — per `BREADCRUMB_FORMAT`, its OWN paragraph (a blank line above it,
+      not just a `\n`) — markdown collapses a single newline into a space, so without the blank line
+      the breadcrumb visually fuses onto the service line
+
+      ## `<glyph>` `<scope>` — одной фразой, что делаем
+
+      ### 🤔 Как я понял задачу    — an italic blockquote (`> _…_`), 2–3 sentences max: the task retold
+      in the agent's own words plus the single riskiest assumption, linked by wording to the question
+      that resolves it; never a restate of already-settled content — only what is NEW or could be
+      misread (goes at the TOP)
+      ### 🎯 Главное решение       — the crux in plain words; if the decision is a flow (data moving,
+      state transitions, start/stop conditions), add a small ASCII diagram — the one place a fenced
+      block is allowed in this message, at most one per message
+      ### 💡 <О чём решаем>         — per `QUESTION_RULE_SLIM` (full format with worked examples lives in
+      `QUESTION_FORMAT`, in the interview / vision directives)
+      ### ↓ Детали — по желанию    — reasoning, full comparison, change-list (per `AX_PROGRESSIVE_DISCLOSURE`)
+
+      Glyph dictionary — closed inventory, one assigned meaning each, never a free pick. Every glyph
+      here is chosen to read clearly on BOTH a light and a dark terminal/chat theme — half-tone shading
+      characters (`░ ▒ ▓` and similar) are forbidden anywhere in this layout: they render as near-invisible
+      or vanish outright depending on theme.
+
+      Section-header glyphs (fixed, one per header, in the order above):
+      - `🤔` — the agent's own understanding check, at the top of a decision card
+      - `🎯` — the crux decision, in plain words
+      - `💡` — a decision the agent is proposing for the operator to confirm or pick between
+      - `↓` — folded detail, expand on demand
+
+      Step-TYPE glyphs (fixed, keyed by the step's TYPE, used in the service line / breadcrumb, never a free pick):
+      - `🏗` — creation / scaffold (new spec, new tickets, new files)
+      - `🔍` — audit / review (fresh-eyes read, no write)
+      - `🔧` — fix / reconcile (spec ⟷ code drift repair)
+      - `⚡` — execute (a task ticket's phases running)
+      - `🗺` — routing / overview (intent classification, project-level map)
+
+      Breadcrumb-status glyphs (per `BREADCRUMB_FORMAT`): `✅` done · `👷` active · `◻️` not yet.
+
+      No other emoji appear in message or section headers — the glyphs enumerated above are the only
+      ones this layout permits.
+    </Contract>
 
     <Contract id="BREADCRUMB_FORMAT">
       One line, its own paragraph below the service line — a blank line separates the two (per
@@ -737,6 +771,13 @@
       ← `<итог одной фразой>`
     </Contract>
 
+    <Axiom id="AX_PROGRESSIVE_DISCLOSURE" cross-cutting="true">
+      Decision first, reasoning on demand. The must-read top of a message is short: where we are + my
+      read + what to decide. Everything heavy — full option comparison, evidence, the change-list,
+      derivations — goes BELOW a `### ↓ Детали — по желанию` header. Never dump reasoning above the
+      questions. Facts already verified collapse to one line («сверился: …»); uncertainties that need
+      the operator BECOME the questions — never list them twice.
+    </Axiom>
   </ChatOutput>
 
   <ArtifactOutput>

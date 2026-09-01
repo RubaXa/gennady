@@ -16,20 +16,16 @@ const SDD_COMMAND_NAVIGATION_TEST = 'cli/__tests__/sdd-command-navigation.test.t
 const YAGNI_SOURCE_POLICY_TEST = 'shared/common/__tests__/yagni-source-policy.test.ts';
 const INCIDENT_TEST_LAYERS = {
   unit: [
-    'shared/sdd/__tests__/scaffold-critic-context.test.ts',
     'shared/sdd/__tests__/spec-schema.test.ts',
     'shared/sdd/__tests__/task-authoring-literals.test.ts',
   ],
   contract: [
     'ai/kit/__tests__/audit-halt-activation.test.ts',
-    'ai/kit/__tests__/execute-selection-barrier-contract.test.ts',
-    'ai/kit/__tests__/scaffold-feasibility-contract.test.ts',
-    'ai/kit/__tests__/scaffold-nested-correction-regression.test.ts',
-    'ai/kit/__tests__/scaffold-tool-guidance.test.ts',
+    'ai/kit/__tests__/stateless-sdd-flow-contract.test.ts',
   ],
   local: [
+    'ai/flow-eval/__tests__/harness.test.ts',
     'cli/__tests__/tool-behavior/clean-repo-composition.test.ts',
-    'cli/__tests__/tool-behavior/scaffold-feasibility.test.ts',
     'cli/__tests__/tool-behavior/sdd-verify-repair-adapters.test.ts',
   ],
 } as const;

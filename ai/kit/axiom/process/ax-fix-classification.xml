@@ -5,7 +5,7 @@
   (bounded-direct / authoring-flow / task-reopen / ticket-create-or-recover), the full problem class,
   and the blast radius. Code carrying a resolvable `@tasks:` owner ALWAYS routes to a newly appended
   Round in that ticket, even for a one-line fix; size never authorizes a direct patch. A semantic spec
-  change ALWAYS routes through the artifact-kind authoring flow and integrated review/publication
+  change ALWAYS routes through the artifact-kind authoring flow, independent semantic review, and operator approval #1
   lifecycle before implementation. Direct editing is reserved for genuinely task-free, non-semantic
   metadata with a frozen target-set and a known exact verifier. A fix applied without this
   classification is a symptom patch, not SDD.

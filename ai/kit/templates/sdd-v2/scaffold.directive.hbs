@@ -1,533 +1,159 @@
-<SddScaffold keywords="task-scaffolding, dependency-graph, dag, bdd, rules-cascade, rule-activation, tickets, modes, extend-dag, isolated, cheap-model, sdd-scaffold" type="directive" ver="2.0">
+<SddScaffold keywords="sdd, scaffold, tickets, dag, test-plan, approval" type="directive" ver="2.3">
   <Mission>
-    Decompose the approved spec tree into a DAG of compact, self-contained task tickets ready for
-    autonomous execution by a cheaper model in isolation. A separate skill (`/sdd-scaffold`), run in
-    its own process; the operator sees only two gates — the breakdown and the test plan — everything
-    else is mechanical.
-
-    Input — `specs/README.md` Scope Graph (+ each scope / module spec). Output — per-module ticket
-    files + the task-index hierarchy (`<module>.3-tasks.md`, scope, project). Next — the execute
-    orchestrator consumes one ticket at a time.
-
-    Out of scope: writing code, running tests — that is execute. Spec authoring — that is the `/sdd`
-    flow. This directive does not interview; it converges existing specs into tickets.
-
-    **Glossary.** Modes: initial · extend-dag. Cascade = the set of rule files effective for a scope,
-    computed from the Scope Graph (root → scope → module → phase).
+    Transform operator-approved V2 specifications into actual task tickets and indexes. Validate the
+    real artifacts mechanically, obtain one independent semantic review of those actual artifacts,
+    then obtain operator approval #2 for decomposition and test plan together. Do not write code.
   </Mission>
 
   <BeliefState>
-    {{> "axiom/process/ax-operator-language"}}
-
+    {{> "axiom/process/ax-stateless-flow"}}
     {{> "axiom/process/ax-tool-invocation"}}
-
-    {{> "axiom/process/ax-operator-dialogue-style"}}
-
-    {{> "axiom/process/ax-no-process-narration"}}
-
-    {{> "axiom/process/ax-operator-output-live-text"}}
-
-    {{> "axiom/process/ax-preflight-blast-radius-scoped"}}
-
-    {{> "axiom/spec/ax-stateless-artifact"}}
-
-    {{> "axiom/scaffold/ax-directive-mode"}}
-
-    {{> "axiom/scaffold/ax-mode-auto-detect-or-halt"}}
-
-    {{> "axiom/truth/ax-spec-is-sole-source"}}
-
-    {{> "axiom/spec/ax-scope-graph-detection"}}
-
-    {{> "axiom/scaffold/ax-extend-dag-preserves-existing-ids"}}
-
-    {{> "axiom/scaffold/ax-rules-cascade-resolution"}}
-
-    {{> "axiom/scaffold/ax-rule-activation-plan"}}
-
-    {{> "axiom/scaffold/ax-dag-and-ticket-boundaries"}}
-
-    {{> "axiom/scaffold/ax-bootstrap-ticket-derivation"}}
-
-    {{> "axiom/process/ax-release-ready-default"}}
-
-    {{> "axiom/scaffold/ax-ticket-has-bdd-and-tests"}}
-
-    {{> "axiom/testing/ax-e2e-first"}}
-
-    {{> "axiom/scaffold/ax-ticket-deduplication"}}
-
+    {{> "axiom/process/ax-operator-language"}}
+    {{> "axiom/process/ax-operator-agreement"}}
     {{> "axiom/process/ax-task-id-uniqueness"}}
-
-    {{> "axiom/process/ax-execution-log-plan-vs-fact"}}
-
-    {{> "axiom/scaffold/ax-cross-scope-task-placement"}}
-
-    {{> "axiom/scaffold/ax-phases-declared-in-header"}}
-
-    {{> "axiom/boundary/ax-ssot-traceability"}}
-
-    {{> "axiom/spec/ax-decision-log-required"}}
-
     {{> "axiom/process/ax-ticket-section-names-normative"}}
-
-    {{> "axiom/process/ax-close-with-integrity-check"}}
-
-    {{> "axiom/process/ax-cap-5"}}
+    {{> "axiom/scaffold/ax-dag-and-ticket-boundaries"}}
+    {{> "axiom/scaffold/ax-ticket-deduplication"}}
+    {{> "axiom/scaffold/ax-ticket-has-bdd-and-tests"}}
+    {{> "axiom/scaffold/ax-bootstrap-ticket-derivation"}}
   </BeliefState>
 
-  <SessionState>
-    {{> "contract/process/session-file-format"}}
-
-    {{> "contract/scaffold/feasibility-state-format"}}
-  </SessionState>
+  <Contracts>
+    {{> "contract/process/artifact-approval-flow"}}
+    {{> "contract/process/artifact-approval-marker"}}
+    {{> "contract/scaffold/task-ticket-structure"}}
+    {{> "contract/process/question-rule-slim"}}
+    {{> "contract/spec/decision-log-entry-format"}}
+  </Contracts>
 
   <HaltConditions>
-    | 🛑 ID | Trigger |
+    | ID | Trigger |
     |---|---|
-    | `H_NO_SPECS` | `specs/README.md` absent, or no approved scope spec to scaffold |
-    | `H_SCOPE_NOT_DECOMPOSED` | Scope type is missing/ambiguous; product/library Module Map is not a non-empty exact manifest of its canonical module specs; or an interface is used as a task owner. Start the nested same-chain module-decomposition correction below, preserve `intent: scaffold` and the exact bounded target-set, then return to scaffold `STEP_0_INTAKE`; infrastructure is the sole flat-scope exception. |
-    | `H_AMBIGUOUS_MODE` | Tasks exist + mode verb absent (per `AX_MODE_AUTO_DETECT_OR_HALT`) |
-    | `H_VERIFICATION_COMMAND_MISSING` | A `<RequiresVerification>` alias is absent from infra-spec Verification Commands (alias, ticket ID) |
-    | `H_BOOTSTRAP_REQUIREMENTS_MISSING` | The target scope being scaffolded (the intake target) lacks a Bootstrap Requirements section — checked ONLY for that scope, not for every ✅ scope in the Portal (did not pass the scope flow) |
-    | `H_SPEC_SCHEMA_INVALID` | `sdd-state` reports the target scope/module spec as `invalid`; structural evidence is ambiguous and only its owning authoring flow may repair it |
-    | `H_ID_COLLISION` | A generated Task-ID / slug collides with an existing one |
-    | `H_TYPING_SCENARIO_MISSING` | A DbC contract in Spec References has no `contract`-level typing scenario mapped to a test |
-    | `H_TICKET_AUTHORING_INVALID` | One just-filled ticket still fails its bounded single-ticket authoring gate after three repair attempts; no later ticket or index may be created |
-    | `H_SCAFFOLD_PLAN_UNPROVEN` | Three fresh bounded semantic reviewers rejected the pre-Gate-1 plan; no ticket may be created until the operator revises the specs or planning constraints |
-    | `H_SCAFFOLD_NOT_EXECUTABLE` | The feasibility critic cannot reach an operator-disposed state within its bounded loop, or a required fresh fallback cannot receive the full latest target-set plus retained context/history |
-    | `H_OPERATOR_REJECT` | Operator rejected the breakdown or the test plan |
+    | `H_SPEC_NOT_APPROVED` | Target spec set has not passed operator approval #1 |
+    | `H_V2_INVALID` | A target is invalid V2; return to its authoring owner, never migrate it |
+    | `H_TICKET_AUTHORING_INVALID` | Mechanical authoring check remains red after a bounded correction |
+    | `H_TICKET_REVIEW_FINDING` | Independent reviewer found an unresolved semantic conflict |
+    | `H_OPERATOR_REJECT` | Operator rejected decomposition or test plan |
   </HaltConditions>
 
   <ExecutionPlan>
-    <Step id="STEP_0_INTAKE">
-      <Goal>Read the Portal; detect scopes, graph, mode. (auto)</Goal>
+    <Step id="STEP_0_PREFLIGHT">
+      <Goal>Resolve the exact approved spec set and existing ticket topology.</Goal>
       <Action>
-        The bounded target set comes from `routerState`: its selected scaffold target, the portal edge
-        graph's transitive `depends-on` closure, and the declared module links of those scopes. The
-        portal supplies scope names/types/statuses and graph edges; the linked scope/module specs supply
-        authoring content (`AX_SCOPE_GRAPH_DETECTION`, `AX_SPEC_IS_SOLE_SOURCE`). When the request names
-        the whole approved project or no narrower target, use every ✅ scope in the same snapshot as the
-        explicit bounded fallback and state that choice. Typed `sdd-state` diagnostics identify any
-        ambiguous/missing structural evidence and give its next owning action; an absent portal or
-        approved scope is `H_NO_SPECS`.
-
-        After this exact bounded target set is resolved, and only when the router-proved session is
-        already present and compatible, write `.claude/tmp/sdd-scaffold-workset.txt` with one non-empty
-        line per exact repo-relative spec in the set, in stable path order. Grammar is exactly
-        `<repo-relative-spec-path> — <role> — open`, where `<role>` is exactly one of `scaffold target`
-        or `dependency context`; use `scaffold target` for requested scope/module specs and
-        `dependency context` only for transitive read context.
-        Then run the one ToolCall below exactly once. If session evidence is absent/incompatible, do
-        not call `workset`, open a session, or guess: return to the router's session barrier.
-        <ToolCall owner="this-step" result="sessionWorkset">npx gennady sdd-session workset --content-file .claude/tmp/sdd-scaffold-workset.txt</ToolCall> Use sessionWorkset before decomposition/DAG work.
-
-        From this bounded set, enforce the decomposition gate fail-closed for each task-owning target:
-        scope type must be
-        present and unambiguous; product/library requires a non-empty Module Map whose explicit links
-        resolve one-to-one to every canonical module spec on disk; interface cannot directly own tasks.
-        Otherwise follow the typed diagnostic to `H_SCOPE_NOT_DECOMPOSED` and its owning correction.
-        Dependency-only interface scopes remain read context, never task owners. Classify every DAG
-        node with exactly one task owner: `infrastructure-flat` (scope-level infrastructure),
-        `scope-bootstrap` (scope-level bootstrap in a completely decomposed product/library), or
-        `module` (ordinary product/library work in one declared module). Product/library ordinary
-        work without a module is invalid; interface has no owner. Every `sdd-new task` call repeats
-        this typed guard defensively; `--owner` is mandatory.
-        Before Gate 1, map every runtime requirement/deliverable to exactly one declared module,
-        including composition-root files such as `App`, `main`, `index`, and Vite/runtime entrypoints.
-        “Outside modules”, no mapping, or multiple candidate modules → `H_SCOPE_NOT_DECOMPOSED`.
-        Invoke `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/module.directive.xml")` as a nested
-        same-chain module-decomposition correction: preserve the compatible session's
-        `intent: scaffold` and exact bounded target-set, and set its return owner to scaffold
-        `STEP_0_INTAKE` without inventing a session field or relabelling intent. An active
-        `CHANGE_MANIFEST` under `intent: scaffold` is the resume evidence for this nested owner.
-        On pause keep that intent/target-set and record the concrete blocker in `open`; on the nested correction return,
-        no ticket or Gate 1 may begin until the corrected decomposition has its owning review disposition;
-        re-enter STEP_0_INTAKE only after accepted/CLEAN. Never auto-assign composition to UI
-        and never invent a fourth owner. `scope-bootstrap` is legal only for an exact Bootstrap Requirements row
-        whose Owner is `this-scope-task`; it cannot carry app-shell or ordinary runtime work.
-        `--out` overrides only destination. If a lower-level caller omits `--scope`, the CLI accepts
-        only one SCOPE_TYPE-bearing ancestor of that output path; zero/multiple owners fail with the
-        exact request to pass `--scope`, and the same decomposition proof still runs.
-        Detect mode per `AX_DIRECTIVE_MODE` / `AX_MODE_AUTO_DETECT_OR_HALT`
-        — **detection table (directive-specific):**
-
-        | Mode | Detection |
-        |---|---|
-        | `initial` | No `*.3-tasks.md` exists yet anywhere under the target scope (module / scope index absent) |
-        | `extend-dag` | A `*.3-tasks.md` index already exists for the target scope and intake adds tickets to it |
-        | — ambiguous | Index(es) exist but intake states neither add-tickets nor any mode verb → `H_AMBIGUOUS_MODE` |
-
-        `extend-dag` reads existing tickets and preserves their IDs
-        (`AX_EXTEND_DAG_PRESERVES_EXISTING_IDS`).
-      </Action>
-    </Step>
-    <Step id="STEP_0B_PREFLIGHT">
-      <Goal>Clear schema, FLOW_VERSION, and target-specific authoring readiness before scaffolding.</Goal>
-      <Action>
-        Use the `SPEC_SCHEMA` / `FLOW_VERSION` / `AUTHORING_SCOPE` / `AUTHORING_SCOPE_DIAG` / `AUTHORING_SCOPE_NEXT` fields from the `sdd-state` snapshot already produced by
-        the skill's GATHER step; do not call `sdd-state` or `sdd-task` again here. Size the gate to this
-        request's own blast radius (`AX_PREFLIGHT_BLAST_RADIUS_SCOPED`). First match only findings for
-        the target scope spec and its declared module specs (a target path absent from the printed
-        non-current findings is `current`): `current` → continue. `invalid` →
-        `H_SPEC_SCHEMA_INVALID` with the named path/reason and owning authoring-flow next action. V2 has
-        no internal migration route: do not load reconcile, edit a spec, read implementation, generate
-        a ticket, or add an Ask here. Then apply the remaining
-        gates: v1 intersecting legacy task
-        layout → `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/migration-v1-v2.directive.xml")`;
-        Match the exact requested target scope name. A single-target scaffold consumes only that line;
-        an all-scope request requires every requested non-interface line to be `READY=yes`. Any requested
-        `READY=no` or `not-applicable` → stop with that same scope's exact DIAG/NEXT. Unrelated red scope
-        lines and aggregate `AUTHORING_READY=no` never block a narrower target. `READY=yes` → continue
-        even when `EXECUTION_READY=no`, because the declared bootstrap nodes are what scaffold must create.
-        After every requested target is READY=yes, run exact projectFeasibility ToolCall below once.
-        It rechecks the complete portal graph and emits the digest-bound `project-context` used by STEP_2;
-        any finding returns to the named scope/infra external-dependencies audit before cascade. Never
-        load readiness setup from scaffold and never infer readiness from another scope.
-        <ToolCall owner="this-step" result="projectFeasibility">npx gennady sdd-check --project-feasibility</ToolCall> Use projectFeasibility; retain its exact project-context for STEP_2.
-      </Action>
-    </Step>
-    <Step id="STEP_1_CASCADE">
-      <Goal>Resolve the rules cascade. (auto)</Goal>
-      <Action>
-        Read the rule registry — `ai/directives/knowledge.xml`, `<Rules>` section. Per scope, resolve
-        the effective rule-set per `AX_RULES_CASCADE_RESOLUTION`:
-        1. collect the traversed-scopes tier — union of Effective Rules from every scope reachable via
-           `depends-on` from the target scope (transitive closure);
-        2. overlay the target-scope tier (scope spec Effective Rules for infra; Rules for
-           product/library), then each `module:<name>` tier (module spec Handoff Module Rules
-           Additions), then task-tier rules the operator supplied — later tier wins on collision;
-        3. build the per-scope Cascade Table (Scope × Categories) destined for
-           `specs/<scope>/<scope>.3-tasks.md`.
-        No operator stop — mechanical.
-      </Action>
-    </Step>
-    <Step id="STEP_2_DAG">
-      <Goal>Build the acyclic task DAG. — GATE 1: operator approves the BREAKDOWN.</Goal>
-      <Action>
-        Bootstrap Requirements of the target scope's spec → Phase-0 bootstrap tickets
-        (`AX_BOOTSTRAP_TICKET_DERIVATION`); missing section on the target scope →
-        `H_BOOTSTRAP_REQUIREMENTS_MISSING` (checked only for the scope in intake, not for other
-        ✅ scopes reachable via the graph). Form tickets per
-        the closed mapping from STEP_0: every runtime node names exactly one declared module owner;
-        only exact `this-scope-task` Bootstrap Requirements rows may become `scope-bootstrap` nodes.
-        A composition-root/app-shell node with absent, ambiguous, or “outside modules” ownership halts
-        with `H_SCOPE_NOT_DECOMPOSED` before presenting Gate 1. Do not assign it to UI by convention.
-        Semantically interpret the selected requirements and choose the capability layers they need; declare their
-        `Provides Capabilities` / `Requires Capabilities`, and connect each consumer to one
-        current/upstream provider in the DAG. Order repeated manifest/lock writers through DAG
-        serialization. This interpretation belongs to the orchestrator, not to CLI keyword matching.
-        Mechanical tools validate only the explicit adapter vocabulary, declared edges, coverage,
-        artifacts, and graph consistency. Then form tickets per
-        `AX_DAG_AND_TICKET_BOUNDARIES` (one per coherent spec unit; subdivide only for parallelism or
-        context overflow); cross-scope placement per `AX_CROSS_SCOPE_TASK_PLACEMENT`; assign slugs
-        (`AX_TASK_ID_UNIQUENESS`). Acyclic. Before presenting Gate 1, write
-        `.claude/tmp/sdd-scaffold-plan.json` with schema `sdd-scaffold-plan/v1`: copy `specs` byte-for-byte
-        from STEP_0B project-context; encode every proposed phase as one node with exact fields
-        `id` (`<Task-ID>/<PhaseID>`), `scope`, `dependencies` (predecessor node ids), `requirementRefs`,
-        `adapter`, `action` (`dependency-install` or null), `targets`, `provides`, `requires`. Every
-        `this-scope-task` row reference from project-context maps to exactly one node; no invented
-        reference is allowed. These references are derived proof data, not new spec fields.
-        Run scaffoldPlanGate ToolCall. A finding returns to this step (or to the named spec owner when
-        the project-context is stale); do not present a plan and do not create ticket files. Only GREEN
-        authorizes semantic review; it does not prove that the plan correctly interprets prose.
-
-        After every GREEN mechanical check, dispatch ONE isolated semantic plan reviewer. Its bounded
-        input is only: the exact spec roster bound by the plan, STEP_0B project-context, the proposed
-        DAG, and the orchestrator's concise row-to-node rationale. It must not search tickets, prior
-        sessions, fixtures, or repository history. It checks four questions: (1) does each node
-        correctly interpret its mapped requirements; (2) are ownership and task boundaries coherent;
-        (3) do real infrastructure prerequisites precede consumers; (4) are work, conflicts, or
-        necessary tasks missing? The reviewer returns exactly `Verdict: CLEAN` or `Verdict: REVISE`,
-        followed by findings anchored to requirement refs and node ids. `REVISE` returns to this step:
-        revise the plan, rerun scaffoldPlanGate, then use a fresh reviewer. After three non-CLEAN
-        reviews halt with `H_SCAFFOLD_PLAN_UNPROVEN`; never show Gate 1 as approved evidence.
-
-        Only a GREEN mechanical check plus `Verdict: CLEAN` authorizes the decision card. Include the
-        literal checked plan digest and keep two evidence blocks separate: (a) mechanical — exact
-        requirement coverage, declared provider order, shared-writer serialization, no cycles;
-        (b) semantic — the reviewer's row-to-node interpretation, conflict analysis, and verdict.
-        Never describe the mechanical block as semantic proof.
-        **Present the reviewed DAG (the breakdown) as a decision card and get operator approval — this is
-        the one gate on structure.** While awaiting it return
-        `TerminalDecision: pause` and preserve the session. STOP.
-        <ToolCall owner="this-step" result="scaffoldPlanGate">npx gennady sdd-check --scaffold-plan .claude/tmp/sdd-scaffold-plan.json</ToolCall> Use scaffoldPlanGate before Gate 1.
-      </Action>
-    </Step>
-    <Step id="STEP_3_TASK_GENERATION">
-      <Goal>Load the common ticket-authoring contract and order; do not plan ticket bodies. (auto)</Goal>
-      <Action>
-        Retain only STEP_2's approved node order, shared cascade facts, and shared test/toolchain
-        facts. Do NOT form, draft, or retain any node's ticket content here; content belongs to the
-        current-node iteration in STEP_3_TICKET_LOOP, after every prior node is green. Unresolved
-        coverage/toolchain alternatives go to STEP_4. The per-node contract is
-        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/task-ticket-structure.xml")`. Per
-        current ticket: decompose into phases (`AX_PHASES_DECLARED_IN_HEADER`; impl and test always separate).
-        Fill every phase's `Deleted Files:` with exact tracked paths the phase removes, or the literal
-        `none`; this is mechanical DAG data and adds no operator interaction. Deleted paths do not belong in `Target Files`.
-        For each readiness Bootstrap Requirement, copy its exact `Readiness Gates` only into the
-        single phase that creates every listed `Gate Artifact`; include those artifacts in that
-        phase's `Target Files`. Ordinary phases omit `Readiness Gates`. Activate rules per phase
-        (`AX_RULE_ACTIVATION_PLAN`):
-        1. candidates = the scope's cascade set from STEP_1;
-        2. include each candidate whose `<Triggers>` match THIS phase's `Target Files` + `kind` and
-           whose `<SkipWhen>` does not apply;
-        3. write selected candidates into `Rules:`; when empty, copy manifest `empty-rule-set`.
-           Feedback: <ToolLiteral role="future">npx gennady sdd-check --task <created-ticket-path> --authoring --phase <PhaseID></ToolLiteral>;
-           it names the rule/cascade repair. The full gate remains mandatory;
-        4b. capability layer: fill `Capability Adapter`, `Provides Capabilities`, and exact
-            `Requires Capabilities`. A dependency writer also fills `dependency-install`, exact
-            package provides/requires, and manifest+lock targets. DAG-order shared writers; apply
-            authoring/feasibility findings;
-        4c. before a generator runs, list every expected CREATE/MODIFY path in `Target Files`;
-            resolve unknown/version-sensitive outputs now;
-        4d. for every impl/refactor phase, fill its `Entities:` field with the exact
-            module-Entity-Inventory names this phase implements (verbatim, comma-separated) — this is
-            the STRUCTURAL, filename-independent ownership record a `Deferred Implementation: <ticket>`
-            marker resolves against (`ticketOwnsEntity`), so it MUST be set whenever another module's
-            inventory row defers an entity to this ticket; a file name alone (e.g. `foo-service.ts`
-            for `FooService`) does NOT establish ownership. Omit only for test/config/doc phases;
-        5. write the ticket Verification table. It lists ONLY what §5 adds ON TOP of the phase
-           verify call — never `sdd-verify` itself. STEP_5 of the phase protocol already runs
-           <ToolLiteral role="ticket">npx gennady sdd-verify --task <ticket-path> --phase <PhaseID></ToolLiteral> as its own first action; writing that same
-           call into the table would make the command recursively repeat its own ladder. The CLI
-           executes applicable §5 rows verbatim and owns their receipt. So: no row for
-           it. Instead, write one line directly above the table, verbatim:
-           `Гейт фазы — <ToolLiteral role="ticket">npx gennady sdd-verify --task <ticket-path> --phase <PhaseID></ToolLiteral> — выполняется
-           на STEP_5; профиль, Target Files и owning spec выводятся из тикета; в таблицу не
-           дублируется.` Then the table itself: union any OTHER
-           `<RequiresVerification>` aliases across the ticket's phases beyond the standard ladder,
-           EXCLUDING the coverage-reader alias owned solely by 5b; group the remaining aliases and
-           resolve each unique alias from
-           infra-spec Verification Commands (absent → `H_VERIFICATION_COMMAND_MISSING`) — one row
-           per unique alias, Required-by = comma-separated declaring rule IDs, Role = `extra`.
-           Serialize exact Command as a code span with N+1 outer backticks, where N is the longest
-           inner backtick run (0 if none); change no inner byte. Parser strips only that wrapper,
-           restoring runtime bytes. Raw outside `|` splits cells; never XML-escape.
-        5b. COVERAGE POLICY — fill the structured v1 fields from behavior semantics, never from file
-           extension, path, phase kind, platform guess, or a default threshold. Exactly one state:
-           - `required`: the relevant infra/platform Verification Commands contract MUST provide one
-             concrete read/check command. Serialize it by the same exact code-span rule into one
-             table row with Role=`coverage`; after the phase DAG exists, record exactly one test phase as
-             `Coverage Owner Phase` and set Required-by to one of that phase's rules. Its verifier is
-             the single producer; other test phases use ordinary tests. Select a unique owner
-             mechanically; otherwise record the exact alternatives for Gate 2, never prompt here. Do not invent
-             `testcov`, `80`, target paths, or another platform. The row only reads/checks its report and
-             MUST NOT rerun the suite. Missing command owner is
-             `H_VERIFICATION_COMMAND_MISSING`; unresolved concrete toolchain alternatives go to Gate 2,
-             never a separate prompt here.
-           - `not-applicable`: write a concise `Coverage Reason` tied to the ticket behavior and NO
-             Coverage Owner Phase or Role=`coverage` row. Config/doc/bootstrap/infra labels alone do not decide this state.
-           Missing/conflicting policy is invalid. With no extra aliases, keep the three-column table
-           and one `| — | — | extra |` row; never omit the policy fields.
-        Draft BDD with the mandatory `contract`-level
-        typing scenario per contract (`AX_TICKET_HAS_BDD_AND_TESTS`) and, per `AX_E2E_FIRST`, an
-        `e2e`-level scenario for the ticket's user-facing path by default — dropping it needs a
-        named Decision Log entry with a risk line, not a quiet "unit is enough" call by the phase
-        subagent; pre-fill the Execution Log plan
-        (`AX_EXECUTION_LOG_PLAN_VS_FACT`). Error-path and edge-case scenarios are drafted NOW, at this
-        step, not left for a later pass (`AX_RELEASE_READY_DEFAULT` — release-ready is the default
-        depth unless the operator named POC/MVP); an error scenario asserts against the thrown error
-        class + a stable message fragment (`AX_FOCUSED_ERROR_ASSERTIONS`), never a `Result` shape,
-        since the canon public-API error mechanism is throw + try/catch (`AX_RESULT_PUBLIC_BOUNDARY` —
-        Result is a narrow, contract-scoped exception, not the default). **BDD coverage pass — dispatch
-        ONE isolated subagent** with a
-        clean slice (module spec + contract anchors + requirements + draft BDD) asking «which negative /
-        corner / trust-boundary / failure-mode scenarios are missing?»; merge approved ones — never
-        defer one to "later" without an explicit operator decision and a Decision Log entry naming the
-        risk (`AX_RELEASE_READY_DEFAULT`) — log the
-        reviewed checklist in the ticket Decision Log (`AX_DECISION_LOG_REQUIRED`,
-        `DECISION_LOG_ENTRY_FORMAT`). Validate every contract has its typing scenario
-        mapped to a test (else `H_TYPING_SCENARIO_MISSING`). Check each emitted ticket against
-        `TASK_TICKET_STRUCTURE`: section anchors match the normative names exactly
-        (`AX_TICKET_SECTION_NAMES_NORMATIVE`), and contract material is linked by spec anchor with zero
-        copied contract text (`AX_SSOT_TRACEABILITY`) — write every Meta `Spec References:` entry and
-        every phase `Spec Refs:` entry in the RESOLVABLE form `<path>#<anchor>`, where `<anchor>` is
-        either a `SECTION_NAME` the spec file wraps in `<!--SECTION:NAME-->` markers, or the
-        GitHub-style heading slug (lowercase, hyphen-separated) `sdd-extract` resolves directly — e.g.
-        `../greeting/greeting.spec.md#module-contracts` for the `## Module Contracts` heading, or
-        `../greeting/greeting.spec.md#MODULE_CONTRACTS` when that section carries an explicit anchor.
-        A bare prose reference, heading paraphrase, or line number fails
-        `sdd-task --phase`'s downstream read at execution time; a link a worker or auditor cannot
-        resolve with `sdd-extract <file>#<anchor>` verbatim is not a valid Spec Reference. No operator
-        stop — automated.
-        Pass only the ordered node identities plus shared facts to STEP_3_TICKET_LOOP; create no
-        ticket content, files, or indexes here.
-      </Action>
-    </Step>
-    <Step id="STEP_3_TICKET_LOOP">
-      <Goal>Materialize and validate exactly one prepared ticket at a time. (auto)</Goal>
-      <Action>
-        Select the current unprocessed STEP_2 node and run its one exact `sdd-new` ToolCall. Fill the
-        returned ticket from that approved DAG node, its owning specs, the common contract, and the
-        returned manifest; copy the manifest's path-aware owning-spec/rule/deferred literals verbatim.
-        Copy the approved node's adapter/action/targets/provides/requires/dependencies without
-        reinterpretation. Row references remain in the approved plan and are not written into specs or tickets.
-        Ticket prose, BDD, and verification may elaborate the node but never change those machine facts.
-        Inputs <owner>/<scope>/<module>/<ACR>/<slug>: current STEP_2 node. This table is exhaustive;
-        interface maps to none.
-        <ToolCall owner="this-step" result="flatInfraTaskManifest">npx gennady sdd-new task --owner infrastructure-flat --scope <scope> --id <ACR>-<slug></ToolCall> Use flatInfraTaskManifest only for infrastructure-flat.
-        <ToolCall owner="this-step" result="scopeBootstrapTaskManifest">npx gennady sdd-new task --owner scope-bootstrap --scope <scope> --id <ACR>-<slug></ToolCall> Use scopeBootstrapTaskManifest only for product/library scope-bootstrap.
-        <ToolCall owner="this-step" result="moduleTaskManifest">npx gennady sdd-new task --owner module --scope <scope> --module <module> --id <ACR>-<slug></ToolCall> Use moduleTaskManifest only for product/library module.
-        Set <created-ticket-path> to that manifest's exact returned path. Optional phase feedback is
-        available while filling a phase; `<PhaseID>` is that current phase's exact id. Apply its
-        copy-ready findings to this ticket.
-        <ToolCall owner="this-step" result="phaseAuthoringFeedback">npx gennady sdd-check --task <created-ticket-path> --authoring --phase <PhaseID></ToolCall> Use phaseAuthoringFeedback only when the current phase needs mechanical feedback.
-        The full authoringGate is mandatory after filling the ticket. A GREEN authoringGate authorizes
-        selecting the next STEP_2 node. Across phase/full feedback, make at most three repair attempts
-        for this ticket; a third RED result is the exact `H_TICKET_AUTHORING_INVALID` blocker.
-        <ToolCall owner="this-step" result="authoringGate">npx gennady sdd-check --task <created-ticket-path> --authoring</ToolCall> Use authoringGate before the next STEP_2 node.
-
-        After every node has a green per-ticket authoring gate, run the complete-graph feasibilityGate
-        exactly once before STEP_3B. It evaluates the materialized graph against clean HEAD and emits
-        named causal diagnostics: one exact owner for `package.json` and the active lockfile,
-        provider→consumer ordering, and command
-        proof. Red: repair only the named ticket fields/edges and rerun the same command; do not dispatch
-        the semantic critic. Green: continue to STEP_3B. Never replace these named causal diagnostics with general critic prose.
-        <ToolCall owner="this-step" result="feasibilityGate">npx gennady sdd-check --scaffold-feasibility --plan .claude/tmp/sdd-scaffold-plan.json</ToolCall> Use feasibilityGate before STEP_3B_FEASIBILITY_CRITIC. It must report the same approved plan digest from Gate 1; any materialization drift returns to the exact ticket phase, while an architecture change requires rebuilding STEP_2 and a new Gate 1 approval.
-      </Action>
-    </Step>
-    <Step id="STEP_3B_FEASIBILITY_CRITIC">
-      <Goal>Reject structurally valid but operationally impossible tickets before execute. (auto)</Goal>
-      <Action>
-        Start or resume only through `FEASIBILITY_STATE_FORMAT`. For each transition write its one
-        typed event, call feasibilityEvent, and obey the returned `NEXT=` instruction; the command
-        reconstructs the persisted cycle and rejects skipped results, stale targets, cap bypasses,
-        lost worker identity, or an illegal restart without changing the session.
-        <ToolCall owner="this-step" result="feasibilityEvent">npx gennady sdd-session feasibility --content-file .claude/tmp/sdd-scaffold-feasibility-event.json</ToolCall> Payload: the current typed feasibility event. Use feasibilityEvent before acting on that transition.
-
-        For a new cycle submit `opened`, spawn ONE isolated critic, then submit its `worker-state`
-        before dispatch. The initial dispatch carries the exact `critic-context:` JSON value from
-        feasibilityGate unchanged, all materialized ticket bytes, and owning spec anchors. Per
-        `FEASIBILITY_CRITIC_CONTEXT`, that value is the authoritative mechanical account. The critic
-        answers only residual causal/semantic questions: whether declared outputs satisfy later
-        inputs; repository-wide fixes have prerequisites; outputs declared by the ticket and owning
-        spec are mutually complete; runtime composition and cross-platform behavior match the specs;
-        and every production entity has one module owner. When a needed mechanical fact is absent or
-        listed in `gaps`, it returns `TOOL_CONTRACT_MISSING: <fact> — <needed-for>` rather than
-        reconstructing tool semantics.
-
-        Record every returned response as one `sensor-result` before interpreting it. Use verdict
-        `NEW_FORK` plus one exact `fork` only for a no-change product/toolchain delta; it reaches Gate 2
-        unresolved. `NEXT=ASK_OPERATOR_CAP` asks per `AX_CAP_5` and records the answer as
-        `operator-disposition`; `NEXT=PRESENT_GATE2` continues to STEP_4;
-        `NEXT=APPLY_CHANGES_THEN_REFRESH_TARGETS` applies only the returned ticket corrections, reruns
-        contextRefresh, records `target-refreshed`, and follows `NEXT=REDISPATCH_CRITIC`.
-        <ToolCall owner="this-step" result="contextRefresh">npx gennady sdd-check --scaffold-feasibility</ToolCall> Use contextRefresh after ticket mutation; GREEN supplies the refreshed exact critic-context for target-refreshed and re-dispatch.
-
-        Re-dispatch into the same live worker with changed ticket bytes plus refreshed critic-context.
-        If continuation is unsupported or lost, record `worker-state` and allow exactly one fallback
-        carrying the full latest target set, critic-context, and prior result history; a second fallback
-        or incomplete payload halts with `H_SCAFFOLD_NOT_EXECUTABLE`. `NEXT=OPEN_RESTART_CYCLE` opens a
-        new typed cycle from the operator's exact RESTART reason. No transition regenerates the DAG or
-        resets the cumulative count except that validated restart.
+        Use the router snapshot plus actual specs and task indexes. Accept only V2 specs whose current
+        state carries a well-formed `approved` approval #1 marker in
+        `ARTIFACT_APPROVAL_MARKER` format. Check its paths and use Git evidence
+        plus semantic judgment for staleness; a marker is not a byte/hash gate. Missing, malformed, or
+        stale approval stops with `H_SPEC_NOT_APPROVED`. Structurally invalid V2 stops with
+        `H_V2_INVALID` and returns to the owning V2 authoring flow. Auto-detect `initial`
+        or `extend-dag`; preserve existing IDs and
+        completed tickets in extend mode. Do not create a migration path, `.sdd-session.md`,
+        scaffold-plan JSON, digest, feasibility event, or critic journal (`AX_STATELESS_FLOW`).
       </Action>
     </Step>
 
-    <Contract id="FEASIBILITY_CRITIC_CONTEXT">
-      A green `feasibilityGate` emits one `critic-context:` JSON line with schema
-      `sdd-scaffold-critic-context/v1`. It is the semantic critic's authoritative mechanical input:
-      ticket paths/dependencies, clean-HEAD package facts, global package ownership, per-phase
-      targets/profiles/ladders/bootstrap edges, Verification routing, command proof, coverage, and
-      deterministic schema gaps. The first dispatch carries it unchanged. After ticket bytes change,
-      the same gate refreshes it and the same-session delta carries changed tickets plus the new exact
-      value. If a semantic conclusion needs a fact absent from the context — including an external
-      generator's real output contract — return `TOOL_CONTRACT_MISSING: <fact> — <needed-for>` instead
-      of replacing evidence with an implementation guess.
-    </Contract>
-    <Step id="STEP_4_TEST_PLAN_REVIEW">
-      <Goal>GATE 2: operator approves the TEST PLAN.</Goal>
+    <Step id="STEP_1_DERIVE">
+      <Goal>Reason about a coherent ticket DAG before writing it.</Goal>
       <Action>
-        Present the test plan as a decision card: each BDD scenario as a use-case, tagged
-        `[<ACRONYM>-REQ-N]`, traced up to the scope Vision / goal it protects, plus coverage (every
-        contract has a typing scenario, every scenario maps to a test). The operator approves **what is
-        tested, which use-cases are covered, and that this guarantees the vision** — the one gate on
-        substance. Include every STEP_3 coverage-owner/toolchain/e2e alternative in this SAME card;
-        its one approval resolves all. Out-of-scope proposals the subagent surfaced are raised here.
-        Return `TerminalDecision: pause` and preserve the session while stopped for that decision.
+        Read the approved specs and derive the smallest useful tickets per
+        `AX_DAG_AND_TICKET_BOUNDARIES` and `AX_TICKET_DEDUPLICATION`. Each ticket has one observable
+        outcome, bounded target files, explicit dependencies, phase order, verification commands, and
+        requirement references. Infrastructure providers precede consumers: package manager and
+        dependency materialization precede scripts, configs, tests, or commands that consume them.
 
-        On approval, materialize only the selected coverage/toolchain/e2e choices in affected tickets,
-        then record `gate2-choice {choices,changedTickets}` through feasibilityGate2Event and follow its
-        `NEXT=`. Empty changedTickets permits `NEXT=FINALIZE`. Non-empty changedTickets requires
-        `NEXT=REFRESH_TARGETS`: run gate2ContextRefresh, record `target-refreshed`, and return to
-        STEP_3B's same retained critic. Do not regenerate the DAG, rerun STEP_3, or replay choices
-        already approved.
-
-        A critic `NEW_FORK` is presented as one delta-only card with its affected use-cases; its Gate 2
-        choice must name changed tickets and be reviewed before finalize. Every subsequent response is
-        first recorded through STEP_3B, so result 5 or a raised cap returns
-        `NEXT=ASK_OPERATOR_CAP` before CLEAN or a fork can advance. At any operator decision return
-        `TerminalDecision: pause`; the CLI-owned journal is the resume state.
-        <ToolCall owner="this-step" result="gate2ContextRefresh">npx gennady sdd-check --scaffold-feasibility</ToolCall> Use gate2ContextRefresh after Gate 2 changes and before critic re-dispatch.
-        <ToolCall owner="this-step" result="feasibilityGate2Event">npx gennady sdd-session feasibility --content-file .claude/tmp/sdd-scaffold-feasibility-event.json</ToolCall> Payload: current gate2-choice or target-refreshed event. Use feasibilityGate2Event before acting on its NEXT instruction.
+        Perform a local coherence pass in reasoning: every requirement has an owner, dependencies are
+        acyclic, shared writers are serialized, no ticket invents requirements, and infrastructure is
+        not fragmented without an independently verifiable outcome. Derive any necessary bootstrap
+        work per `AX_BOOTSTRAP_TICKET_DERIVATION`. This pass needs no subagent and
+        no intermediate JSON. It prepares the artifacts; it does not approve them.
       </Action>
     </Step>
-    <Step id="STEP_5_FINALIZE">
-      <Goal>Write the index hierarchy; hand off. (auto)</Goal>
+
+    <Step id="STEP_2_MATERIALIZE">
+      <Goal>Create actual tickets and indexes.</Goal>
       <Action>
-        For each `<module>.3-tasks.md` that does not exist yet, run moduleIndexManifest ToolCall below
-        to lay down the skeleton (nested `--module foo/bar` per
-        `AX_HIERARCHICAL_SPECS`); an existing file is filled in place, never re-scaffolded. Fill per
-        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/module-tasks-index.xml")` (Tracker, Slug
-        Registry, intra-module DAG, shared content per `AX_TICKET_DEDUPLICATION`). Roll up the scope
-        tracker the same way — scopeIndexManifest ToolCall below when `<scope>.3-tasks.md` is
-        missing, then fill per
-        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/scope-tasks-index.xml")` — and roll up
-        the project index the same way — projectIndexManifest ToolCall below when `specs/3-tasks.md` is missing,
-        then fill per
-        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/project-tasks-index.xml")`; never a
-        manual `Write` of `specs/3-tasks.md` from scratch.
-        Then run integrityCheck ToolCall below (task-DAG: id-collisions · deps resolve · acyclic; tracker↔ticket sync;
-        phase graph; exec-log) and resolve or consciously defer every finding per
-        `AX_CLOSE_WITH_INTEGRITY_CHECK` — the scaffold mutation is done only once the task graph passes.
-        `BDD_COVERAGE` (canonical case names exist in the declared test file) gates on the ticket's
-        own Meta Status — the existence check runs only once that ticket is `[x] DONE`, never for a
-        freshly-scaffolded `[ ] TODO` ticket (whose test files do not exist yet by design), so a clean
-        integrityCheck ToolCall below right after this step is expected, not a sign the check is silently
-        skipped. Fix only structural findings at this step (id collisions, unresolved deps, cycles,
-        tracker drift, broken `](…spec.md)` links) — a BDD/test-existence finding here would mean a
-        ticket was mis-marked DONE before its tests exist, a scaffold defect worth fixing on its own,
-        not phase noise to suppress.
-        These trackers and tickets are read by execute with no memory of this scaffolding run —
-        every DAG edge, rule reference, and BDD scenario must already be in the file
-        (`AX_STATELESS_ARTIFACT`). Emit a created-files summary with traceability links. After
-        integrityCheck is clean, append the exact `closed` feasibility event; its successful
-        content-file call consumes the payload and closes this persisted cycle. Then present one
-        navigation `AskUserQuestion` — it is not a third approval gate:
-        - `execute now — /sdd-execute`: continue with
-          `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/execute.directive.xml")` in the same session and
-          return `TerminalDecision: continue`;
-        - `stop here`: keep the ready tickets and open session intact, and return
-          `TerminalDecision: pause`.
-        Scaffold remains an intermediate owner; this navigation leaves session closure to execute.
-        <ToolCall owner="this-step" result="moduleIndexManifest">npx gennady sdd-new module-index --scope <scope> --module <module></ToolCall> Use moduleIndexManifest.
-        <ToolCall owner="this-step" result="scopeIndexManifest">npx gennady sdd-new scope-index --scope <scope></ToolCall> Use scopeIndexManifest.
-        <ToolCall owner="this-step" result="projectIndexManifest">npx gennady sdd-new project-index</ToolCall> Use projectIndexManifest.
-        <ToolCall owner="this-step" result="integrityCheck">npx gennady sdd-check --all .</ToolCall> Use integrityCheck.
-        <ToolCall owner="this-step" result="feasibilityClosedEvent">npx gennady sdd-session feasibility --content-file .claude/tmp/sdd-scaffold-feasibility-event.json</ToolCall> Payload: exact closed event. Use feasibilityClosedEvent after integrityCheck succeeds and follow NEXT=CLOSE_SESSION.
+        For each derived node call exactly one applicable `sdd-new` command and fill the returned file.
+        <ToolCall owner="this-step" result="flatInfraTaskManifest">npx gennady sdd-new task --owner infrastructure-flat --scope &lt;scope&gt; --id &lt;ACR&gt;-&lt;slug&gt;</ToolCall>
+        <ToolCall owner="this-step" result="scopeBootstrapTaskManifest">npx gennady sdd-new task --owner scope-bootstrap --scope &lt;scope&gt; --id &lt;ACR&gt;-&lt;slug&gt;</ToolCall>
+        <ToolCall owner="this-step" result="moduleTaskManifest">npx gennady sdd-new task --owner module --scope &lt;scope&gt; --module &lt;module&gt; --id &lt;ACR&gt;-&lt;slug&gt;</ToolCall>
+        Consume exactly the applicable `flatInfraTaskManifest`, `scopeBootstrapTaskManifest`, or
+        `moduleTaskManifest`; never call the other owner variants for that node.
+
+        Preserve globally unique IDs per `AX_TASK_ID_UNIQUENESS` and the normative section names per
+        `AX_TICKET_SECTION_NAMES_NORMATIVE`. Fill every ticket from owning spec anchors. Per
+        `AX_TICKET_HAS_BDD_AND_TESTS`, the BDD/Test Plan must contain requirement IDs in
+        the scenarios and mapped test cases. Happy-path-only is invalid: every behavior-bearing
+        ticket contains at least one applicable negative/failure scenario, plus boundary or trust
+        scenarios required by the spec. A scenario without a test mapping or a mandatory requirement
+        without a scenario is incomplete.
+
+        Create missing index skeletons with the canonical commands, then fill their tracker and DAG
+        rows from the actual tickets.
+        <ToolCall owner="this-step" result="moduleIndexManifest">npx gennady sdd-new module-index --scope &lt;scope&gt; --module &lt;module&gt;</ToolCall>
+        <ToolCall owner="this-step" result="scopeIndexManifest">npx gennady sdd-new scope-index --scope &lt;scope&gt;</ToolCall>
+        <ToolCall owner="this-step" result="projectIndexManifest">npx gennady sdd-new project-index</ToolCall>
+        Consume each produced `moduleIndexManifest`, `scopeIndexManifest`, and
+        `projectIndexManifest` before filling its tracker and DAG rows.
+      </Action>
+    </Step>
+
+    <Step id="STEP_3_MECHANICAL_CHECK">
+      <Goal>Prove actual ticket structure before semantic review.</Goal>
+      <Action>
+        Run the authoring check on every created or changed ticket. It checks required sections,
+        anchors, resolvable spec references, dependencies/phases, requirement-to-scenario-to-test
+        traceability, and required negative scenarios. Correct only named findings and rerun the same
+        check. If it remains red after that bounded correction, stop with
+        `H_TICKET_AUTHORING_INVALID`. Do not ask a reviewer to compensate for malformed artifacts.
+        <ToolCall owner="this-step" result="authoringGate">npx gennady sdd-check --task &lt;ticket-path&gt; --authoring</ToolCall>
+        Consume `authoringGate` and correct only its named findings.
+
+        Then run the complete structural check over actual specs, tickets, and indexes. It checks ID
+        uniqueness, dependency resolution/acyclicity, tracker sync, and declared ownership/order.
+        <ToolCall owner="this-step" result="integrityGate">npx gennady sdd-check --all .</ToolCall>
+        Consume `integrityGate`; do not proceed to semantic review while it is red.
+      </Action>
+    </Step>
+
+    <Step id="STEP_4_INDEPENDENT_TICKET_REVIEW">
+      <Goal>Judge the actual ticket set against approved specifications.</Goal>
+      <Action>
+        Dispatch one fresh read-only reviewer with exact paths and bytes of all changed tickets,
+        indexes, and their approved specs. The reviewer checks: coherent decomposition; provider before
+        consumer; no conflicting/shared writes; phases form an executable order; each requirement is
+        owned; negative/failure behavior is represented; test cases would demonstrate the declared
+        requirement; and no ticket adds product meaning absent from specs.
+
+        The reviewer returns `CLEAN` or concrete findings naming ticket, section, and spec anchor. The
+        reviewer does not edit. Do not retain it for execution and do not require it to consume a JSON
+        plan. If a finding changes ticket meaning, edit the actual ticket, repeat STEP_3, and obtain one
+        fresh review of the new actual set. An unresolved semantic conflict stops with
+        `H_TICKET_REVIEW_FINDING`.
+      </Action>
+    </Step>
+
+    <Step id="STEP_5_OPERATOR_APPROVAL_2">
+      <Goal>Approve decomposition and test plan in one decision.</Goal>
+      <Action>
+        Present a compact card based on actual tickets: ordered ticket list with dependencies and
+        outcomes; infrastructure provider/consumer order; Requirement-ID → scenario → planned test
+        mapping; negative/failure scenarios; declared real verification commands; independent verdict.
+        Ask `Approve tickets and test plan` or `Return for correction` per `AX_OPERATOR_AGREEMENT`. Do not ask approval for an
+        abstract pre-ticket plan. On approval, write approval #2 to the narrowest owning task index in
+        the human-readable `ARTIFACT_APPROVAL_MARKER` format. Any later semantic ticket/index edit
+        resets it to `pending`; no fingerprint, digest, or JSON approval record exists.
+      </Action>
+    </Step>
+
+    <Step id="STEP_6_HANDOFF">
+      <Goal>Leave a directly executable durable queue.</Goal>
+      <Action>
+        Rerun the complete mechanical check after the approval marker is recorded.
+        <ToolCall owner="this-step" result="finalIntegrityGate">npx gennady sdd-check --all .</ToolCall>
+        Consume `finalIntegrityGate`. Report exact ticket
+        paths and the next command `/sdd-execute &lt;Task-ID|next|all&gt;`. Stopping here is safe because
+        the whole continuation state lives in tickets, indexes, specs, Execution Logs, and Git.
       </Action>
     </Step>
   </ExecutionPlan>
-
-  <ChatProtocol>
-    {{> "contract/process/question-rule-slim"}}
-  </ChatProtocol>
-
-  <ChatOutput>
-    Service line — dim, internal, kept silent (per `AX_NO_PROCESS_NARRATION`):
-    `📋 TS_R<N> · <scope> · <mode> · conf=<LOW|MEDIUM|HIGH>`. Breadcrumb milestones (per
-    `BREADCRUMB_FORMAT`): Intake · Cascade · DAG · Tickets · Tests · Done. Only two milestones are
-    operator gates — DAG (breakdown) and Tests (test plan).
-
-    {{> "contract/process/message-layout"}}
-
-    {{> "contract/process/breadcrumb-format"}}
-
-    {{> "axiom/process/ax-progressive-disclosure"}}
-  </ChatOutput>
-
-  <ArtifactOutput>
-    <!-- ticket / module-index / scope+project trackers load lazily at STEP_3 / STEP_5 — see ExecutionPlan. -->
-    {{> "contract/spec/decision-log-entry-format"}}
-  </ArtifactOutput>
 </SddScaffold>

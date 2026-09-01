@@ -553,39 +553,3 @@ export function resolveModuleScopeOwnership(moduleSpec: string): ModuleScopeOwne
 export function countModuleSpecs(specsDir: string): number {
   return collectModuleSpecs(specsDir, false).paths.length;
 }
-
-/**
- * @purpose Find every readable scope/module spec currently carrying a CHANGE_MANIFEST review-state marker.
- * @invariant Read-only, stable absolute path order, and never follows symlinks.
- * @param specsDir Absolute project specs directory.
- * @returns Review-state spec paths; unreadable/non-spec files are ignored because sdd-check owns their diagnostics.
- */
-export function findReviewStateSpecs(specsDir: string): string[] {
-  const paths: string[] = [];
-  function walk(dir: string): void {
-    let entries: Dirent[];
-    try {
-      entries = readdirSync(dir, { withFileTypes: true });
-    } catch {
-      return;
-    }
-    for (const entry of entries) {
-      if (entry.isSymbolicLink()) continue;
-      const path = join(dir, entry.name);
-      if (entry.isDirectory()) {
-        if (!SKIP_DIRS.has(entry.name)) walk(path);
-        continue;
-      }
-      if (!entry.name.endsWith('.spec.md')) continue;
-      try {
-        if (readFileSync(path, 'utf-8').includes('<!--SECTION:CHANGE_MANIFEST-->')) {
-          paths.push(resolve(path));
-        }
-      } catch {
-        // Structural diagnostics own unreadable files; route inference cannot claim review-state.
-      }
-    }
-  }
-  walk(specsDir);
-  return paths.sort();
-}

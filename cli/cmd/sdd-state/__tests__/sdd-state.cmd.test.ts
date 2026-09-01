@@ -1,4 +1,4 @@
-// @file: Integration tests for SddStateCommand#run — flow version, exact readiness, scopes+description, session, exit codes.
+// @file: Integration tests for SddStateCommand#run — flow version, exact readiness, scopes+description, exit codes.
 // @consumers: gennady.ts
 // @tasks: N/A
 
@@ -43,13 +43,6 @@ const READY_PKG = JSON.stringify({
   },
 });
 
-const SESSION = [
-  '# SDD session — 2026-06-21',
-  'intent: evolve-scope',
-  'working set:',
-  '  - specs/web/web.spec.md — add auth — open',
-].join('\n');
-
 function argv(...rest: string[]): string[] {
   return ['node', 'gennady', 'sdd-state', ...rest];
 }
@@ -72,90 +65,6 @@ function installDirectives(root: string, at = join(root, 'ai', 'directives', 'sd
   }
 }
 
-/** @purpose Reproduce draft.54's approved scopes plus one unresolved module CHANGE_MANIFEST. */
-function writeDraft54ModuleReviewFixture(
-  root: string,
-  intent: 'module-decomposition' | 'scaffold'
-): void {
-  installDirectives(root);
-  mkdirSync(join(root, 'specs', 'infra-base'), { recursive: true });
-  mkdirSync(join(root, 'specs', 'todos-app', 'ui'), { recursive: true });
-  mkdirSync(join(root, 'node_modules', '.bin'), { recursive: true });
-  writeFileSync(join(root, 'node_modules', '.bin', 'gennady'), '#!/bin/sh\n', 'utf-8');
-  writeFileSync(join(root, 'package.json'), READY_PKG, 'utf-8');
-  writeFileSync(
-    join(root, 'specs', 'README.md'),
-    [
-      '# TodoMVC',
-      '## Scopes',
-      '| Scope | Type | Status | Description |',
-      '|---|---|---|---|',
-      '| [`infra-base`](./infra-base/infra-base.spec.md) | infrastructure | ✅ | toolchain |',
-      '| [`todos-app`](./todos-app/todos-app.spec.md) | product | ✅ | application |',
-    ].join('\n'),
-    'utf-8'
-  );
-  writeFileSync(
-    join(root, 'specs', 'infra-base', 'infra-base.spec.md'),
-    [
-      '<!--SECTION:SCOPE_TYPE-->',
-      'infrastructure',
-      '<!--/SECTION:SCOPE_TYPE-->',
-      '<!--SECTION:BOOTSTRAP_REQUIREMENTS-->',
-      '| Requirement | Kind | Owner | Resolution | Readiness Gates | Gate Artifacts |',
-      '|---|---|---|---|---|---|',
-      '| toolchain | tool | this-scope-task | install | type-check, test, test:coverage, format, format:fix, lint, lint:fix, fix | package.json |',
-      '<!--/SECTION:BOOTSTRAP_REQUIREMENTS-->',
-    ].join('\n'),
-    'utf-8'
-  );
-  writeFileSync(
-    join(root, 'specs', 'todos-app', 'todos-app.spec.md'),
-    [
-      '<!--SECTION:SCOPE_TYPE-->',
-      'product',
-      '<!--/SECTION:SCOPE_TYPE-->',
-      '<!--SECTION:MODULE_MAP-->',
-      '[ui](./ui/ui.spec.md)',
-      '<!--/SECTION:MODULE_MAP-->',
-      '<!--SECTION:BOOTSTRAP_REQUIREMENTS-->',
-      '| Requirement | Kind | Owner | Resolution | Readiness Gates | Gate Artifacts |',
-      '|---|---|---|---|---|---|',
-      '<!--/SECTION:BOOTSTRAP_REQUIREMENTS-->',
-    ].join('\n'),
-    'utf-8'
-  );
-  writeFileSync(
-    join(root, 'specs', 'todos-app', 'ui', 'ui.spec.md'),
-    [
-      '<!--SECTION:CHANGE_MANIFEST-->',
-      '## ⟢ Change Manifest — review-state',
-      'ТИП ИЗМЕНЕНИЯ: refine · composition root owner',
-      '<!--/SECTION:CHANGE_MANIFEST-->',
-      '<!--SECTION:MODULE_VISION-->',
-      '## Module Vision',
-      'UI owns App/main/index/Vite composition.',
-      '<!--/SECTION:MODULE_VISION-->',
-    ].join('\n'),
-    'utf-8'
-  );
-  writeFileSync(
-    join(root, 'specs', '.sdd-session.md'),
-    [
-      '# SDD session — 2026-08-31',
-      `intent: ${intent}`,
-      ...(intent === 'module-decomposition' ? ['scale: module'] : []),
-      'working set:',
-      '  - specs/todos-app/todos-app.spec.md — scaffold target — open',
-      '  - specs/todos-app/ui/ui.spec.md — scaffold target — open',
-      'glossary:',
-      'journal:',
-      'open: module review-state is unresolved',
-    ].join('\n'),
-    'utf-8'
-  );
-}
-
 describe('SddStateCommand', () => {
   before(async () => {
     origExit = process.exit;
@@ -166,7 +75,6 @@ describe('SddStateCommand', () => {
     ready = mkdtempSync(join(tmpdir(), 'sdd-state-ready-'));
     mkdirSync(join(ready, 'specs'), { recursive: true });
     writeFileSync(join(ready, 'specs', 'README.md'), PORTAL, 'utf-8');
-    writeFileSync(join(ready, 'specs', '.sdd-session.md'), SESSION, 'utf-8');
     writeFileSync(join(ready, 'package.json'), READY_PKG, 'utf-8');
     mkdirSync(join(ready, 'node_modules', '.bin'), { recursive: true });
     writeFileSync(join(ready, 'node_modules', '.bin', 'gennady'), '#!/bin/sh\n', 'utf-8');
@@ -213,7 +121,7 @@ describe('SddStateCommand', () => {
     rmSync(withGraph, { recursive: true, force: true });
   });
 
-  it('reports v2 flow, ready, scopes with description, and the session', async () => {
+  it('reports v2 flow, ready, and scopes with description', async () => {
     const o = await mod.run(argv(ready));
     assert.strictEqual(o.ok, true);
     if (o.ok) {
@@ -231,7 +139,6 @@ describe('SddStateCommand', () => {
         /infra-base\tinfrastructure\tdone\tTS toolchain\tspecs\/infra-base\/infra-base\.spec\.md/
       );
       assert.match(o.text, /web\tproduct\twip\tReact SPA\tspecs\/web\/web\.spec\.md/);
-      assert.match(o.text, /intent: evolve-scope/);
       assert.match(o.text, /readiness=ready/);
       assert.doesNotMatch(o.text, /\[GRAPH\]/);
     }
@@ -374,56 +281,6 @@ describe('SddStateCommand', () => {
     }
   });
 
-  it('draft.54: active module decomposition in review-state takes precedence over scaffold next', async () => {
-    const root = mkdtempSync(join(tmpdir(), 'sdd-state-draft54-review-'));
-    try {
-      writeDraft54ModuleReviewFixture(root, 'module-decomposition');
-
-      const outcome = await mod.run(argv(root));
-      assert.strictEqual(outcome.ok, true);
-      if (outcome.ok) {
-        assert.doesNotMatch(outcome.text, /NEXT=scaffold|\/sdd-scaffold/);
-        assert.match(
-          outcome.text,
-          /NEXT=resume active module-decomposition review for specs\/todos-app\/ui\/ui\.spec\.md; do not scaffold until CHANGE_MANIFEST is resolved/
-        );
-        assert.match(
-          outcome.text,
-          /👉 Следующий шаг: завершить active module-decomposition review/
-        );
-      }
-    } finally {
-      rmSync(root, { recursive: true, force: true });
-    }
-  });
-
-  it('draft.54: scaffold-owned nested module correction preserves scaffold intent and suppresses generic scaffold', async () => {
-    const root = mkdtempSync(join(tmpdir(), 'sdd-state-draft54-nested-'));
-    try {
-      writeDraft54ModuleReviewFixture(root, 'scaffold');
-
-      const outcome = await mod.run(argv(root));
-      assert.strictEqual(outcome.ok, true);
-      if (outcome.ok) {
-        assert.doesNotMatch(outcome.text, /NEXT=scaffold(?:\s|$)|\/sdd-scaffold/);
-        assert.match(
-          outcome.text,
-          /NEXT=resume scaffold-owned nested module correction for specs\/todos-app\/ui\/ui\.spec\.md; keep intent=scaffold and exact target-set, then return to scaffold STEP_0_INTAKE after accepted\/CLEAN/
-        );
-        assert.match(
-          outcome.text,
-          /👉 Следующий шаг: завершить scaffold-owned nested module correction/
-        );
-        assert.match(
-          readFileSync(join(root, 'specs', '.sdd-session.md'), 'utf-8'),
-          /^intent: scaffold$/m
-        );
-      }
-    } finally {
-      rmSync(root, { recursive: true, force: true });
-    }
-  });
-
   it('treats every non-current V2 shape as invalid and never routes through migration', async () => {
     const root = mkdtempSync(join(tmpdir(), 'sdd-state-schema-'));
     try {
@@ -496,15 +353,15 @@ describe('SddStateCommand', () => {
     }
   });
 
-  it('renders [GRAPH] between [SCOPES] and [SESSION] when the portal has a scope graph', async () => {
+  it('renders [GRAPH] between [SCOPES] and [SUMMARY] when the portal has a scope graph', async () => {
     const o = await mod.run(argv(withGraph));
     assert.strictEqual(o.ok, true);
     if (o.ok) {
       assert.match(o.text, /\[GRAPH\]\nуровень 0 \(фундамент\): infra-base\nуровень 1: web/);
       const scopesIdx = o.text.indexOf('[SCOPES]');
       const graphIdx = o.text.indexOf('[GRAPH]');
-      const sessionIdx = o.text.indexOf('[SESSION]');
-      assert.ok(scopesIdx < graphIdx && graphIdx < sessionIdx);
+      const summaryIdx = o.text.indexOf('[SUMMARY]');
+      assert.ok(scopesIdx < graphIdx && graphIdx < summaryIdx);
     }
   });
 
@@ -519,7 +376,7 @@ describe('SddStateCommand', () => {
       assert.match(o.text, /package\.json\t✔/);
       assert.match(o.text, /gennady-installed\t✘/);
       assert.match(o.text, /PORTAL=absent/);
-      assert.match(o.text, /session=absent/);
+      assert.doesNotMatch(o.text, /\[SESSION\]|session=/);
     }
   });
 

@@ -86,7 +86,7 @@ export function badInvocation(detail = 'invalid arguments'): CheckResult {
     text: [
       `[sdd-check] ${ERR_CLI_SDD_CHECK_BAD_INVOCATION}`,
       `  problem: ${detail}`,
-      '  usage: gennady sdd-check (--task <ticket> [--authoring [--phase P<N>]] | --project-feasibility [project-root] | --scaffold-plan <json> [project-root] | --scaffold-feasibility [--plan <json>] [project-root] | --all [project-root] | --changed [project-root] | --review-state <primary> [secondary...] | --review-publication <primary> [secondary...] | --review-ready <spec-or-dir>)',
+      '  usage: gennady sdd-check (--task <ticket> [--authoring [--phase P<N>]] | --all [project-root] | --changed [project-root])',
     ].join('\n'),
     exitCode: 4,
   };
@@ -130,33 +130,6 @@ export function fileError(ticket: string): CheckResult {
 export function readFailed(path: string, reason: string): CheckResult {
   return {
     text: `[sdd-check] ${ERR_CLI_SDD_CHECK_READ_FAILED}: ${path}\n  reason: ${reason}`,
-    exitCode: 1,
-  };
-}
-
-/** @purpose Build a focused missing/unreadable review-bundle diagnostic. | @param target Requested spec or directory. | @returns Result with exit 1. */
-export function reviewTargetError(target: string): CheckResult {
-  return {
-    text: [
-      `[sdd-check] ERR_CLI_SDD_CHECK_REVIEW_TARGET: ${target}`,
-      '  pass the review-state spec file, or the scope directory containing the complete review bundle.',
-    ].join('\n'),
-    exitCode: 1,
-  };
-}
-
-/** @purpose Build a fail-closed pre-dispatch critic-state diagnostic. | @param message Actionable contract violation. | @returns Result with exit 1. */
-export function reviewStateError(message: string): CheckResult {
-  return {
-    text: `[sdd-check] ERR_CLI_SDD_CHECK_REVIEW_STATE: ${message}`,
-    exitCode: 1,
-  };
-}
-
-/** @purpose Build a fail-closed VCS publication-set diagnostic without changing critic ownership. | @param message Actionable attribution/content violation. | @returns Result with exit 1. */
-export function reviewPublicationError(message: string): CheckResult {
-  return {
-    text: `[sdd-check] ERR_CLI_SDD_CHECK_REVIEW_PUBLICATION: ${message}`,
     exitCode: 1,
   };
 }

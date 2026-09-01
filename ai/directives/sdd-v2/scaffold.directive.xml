@@ -1,63 +1,73 @@
 0.8.4
 <!-- Step packages regenerate via: npm run build:directives -- --assembly=lazy. A missing file at a path below means the build or sync is stale — rebuild rather than guess. -->
 
-<SddScaffold keywords="task-scaffolding, dependency-graph, dag, bdd, rules-cascade, rule-activation, tickets, modes, extend-dag, isolated, cheap-model, sdd-scaffold" type="directive" ver="2.0">
+<SddScaffold keywords="sdd, scaffold, tickets, dag, test-plan, approval" type="directive" ver="2.3">
   <Mission>
-    Decompose the approved spec tree into a DAG of compact, self-contained task tickets ready for
-    autonomous execution by a cheaper model in isolation. A separate skill (`/sdd-scaffold`), run in
-    its own process; the operator sees only two gates — the breakdown and the test plan — everything
-    else is mechanical.
-
-    Input — `specs/README.md` Scope Graph (+ each scope / module spec). Output — per-module ticket
-    files + the task-index hierarchy (`<module>.3-tasks.md`, scope, project). Next — the execute
-    orchestrator consumes one ticket at a time.
-
-    Out of scope: writing code, running tests — that is execute. Spec authoring — that is the `/sdd`
-    flow. This directive does not interview; it converges existing specs into tickets.
-
-    **Glossary.** Modes: initial · extend-dag. Cascade = the set of rule files effective for a scope,
-    computed from the Scope Graph (root → scope → module → phase).
+    Transform operator-approved V2 specifications into actual task tickets and indexes. Validate the
+    real artifacts mechanically, obtain one independent semantic review of those actual artifacts,
+    then obtain operator approval #2 for decomposition and test plan together. Do not write code.
   </Mission>
 
   <BeliefState>
-    Inherited from the loading directive (already in context): AX_NO_PROCESS_NARRATION, AX_OPERATOR_DIALOGUE_STYLE, AX_OPERATOR_LANGUAGE, AX_OPERATOR_OUTPUT_LIVE_TEXT, AX_PREFLIGHT_BLAST_RADIUS_SCOPED, AX_PROGRESSIVE_DISCLOSURE, AX_STATELESS_ARTIFACT, AX_TOOL_INVOCATION, MESSAGE_LAYOUT, QUESTION_RULE_SLIM, SESSION_FILE_FORMAT
+    Inherited from the loading directive (already in context): QUESTION_RULE_SLIM
 
 
+    <Axiom id="AX_TOOL_INVOCATION">
+      The SDD mechanical tools are `gennady` CLI commands. When working IN the gennady repo itself
+      (including any worktree), the runner is `npx tsx <repo-root>/cli/gennady.ts`; in every other
+      project it is `npx gennady`. Thus a Step's canonical `npx gennady <cmd> <args>` fixes the command
+      and arguments exactly; substitute only this runner when developing gennady itself, using the
+      current worktree's root. Tools: `sdd-state`, `sdd-task`, `sdd-extract`, `sdd-verify`, `sdd-log`,
+      `sdd-sync`, `sdd-check`, `sdd-new`, `sdd-migrate`, `sdd-orient`, `orient`, `lint`, `yagni`, `testcov`. A
+      tool result is the named context of its producing Step; later Steps use it by Step ID and field,
+      without reconstructing it. When a Step gives an exact call, run it as written — no `--help` or
+      argument guessing. Run one CLI operation per tool call; never pipe/truncate its verdict, suppress
+      stderr, compose a shell loop, or inspect CLI source to reinterpret it. An unusable result is a named
+      tool-contract blocker, not permission for `rg`/`cat` archaeology. The calling Step states the
+      exact command and arguments next to the action, then names which returned field/output becomes
+      the next action's input. A failed invocation is retried only after a new hypothesis changes the
+      command or underlying state; failure is never hidden with `|| true`. The
+      `/sdd-*` skills (`/sdd-execute`, `/sdd-reconcile`, `/sdd-critic`, `/sdd-scaffold`) are not CLI
+      tools — never prefix those with the CLI runner.
+    </Axiom>
+    <Axiom id="AX_OPERATOR_LANGUAGE" cross-cutting="true">
+      **Directive text (axioms, halt names, step procedures, contract identifiers, structural
+      section headings, action/status tokens) — English.**
 
+      **Operator-facing artifact text and operator-facing messages — Russian.** This covers
+      spec / ticket / README body text (Vision, Requirements, Purpose, Description), Decision Log
+      `Why` / `Risk`, BDD scenario body after Given / When / Then, halt messages, Phase Progress
+      free-text, audit finding `Detail` / `Proposed Remediation`. Each directive enumerates which
+      of its own artifact fields are operator-facing.
 
+      **English regardless of context:** code, JSDoc, intent comments, file paths, tool commands,
+      axiom IDs (`AX_*`), Trace anchors, IDs (`<ACR>-DL-N` / `TSK-NN` / `F-NNN` / `P<N>` / `H_*`),
+      severity / status / scope-type tokens, BDD keywords, field labels (`**Status:**`, `**Why:**`).
 
+      **Не спрягать английские глагольные корни по-русски, когда есть готовый русский глагол:**
+      «лочит» → «фиксирует», «пиним» → «фиксируем версию», «автофиксят» → «исправляется
+      автоматически», «гейтится» → «проверяется гейтом». Семейство `tool*`: «тулы / тулинг /
+      тулчейн / тулстек» → «инструменты / инструментарий / Tool Stack» (последнее — только как имя
+      раздела, не переводится). «Usage Example» — тоже имя раздела, не переводится (как Tool Stack).
 
+      **Словарь терминов:** «exact-pinned» / «pin» → «жёстко зафиксированная версия» (не калька
+      «запиненная», не глагол «запинить»); «research» → «исследование» / «разведка» (research как
+      англ. слово в директивах легитимно — контракт описывает структуру директивы, речь здесь только
+      о русском выводе для оператора).
 
+      **Терминологическая дисциплина.** Доменное понятие определяется при первом введении в owning
+      specification и дальше используется дословно. Спека — единственный долговечный источник
+      терминологии. Тикет ссылается на термин и spec anchor, но не создаёт параллельный словарь.
 
+      Автор или reviewer может предложить уточнение термина обычным finding. Принятое уточнение
+      редактирует owning specification и снова проходит semantic review. Никакой session glossary,
+      временный JSON или скрытая память агента не являются источником истины.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+      **Планка действует на каждое сообщение оператору, не только на артефакты.** Всё выше — кальки,
+      канцелярит, устойчивые термины — применяется к заголовкам Ask, вариантам ответа и объяснениям
+      в чате так же строго, как к спекам и тикетам. Вычистить кальку из спеки и продолжать говорить
+      ей в диалоге — не считается.
+    </Axiom>
 
 
 
@@ -67,29 +77,265 @@
 
   </BeliefState>
 
-  <SessionState>
+  <Contracts>
+    <Contract id="ARTIFACT_APPROVAL_FLOW">
+      SDD v2 has exactly two mandatory semantic approval boundaries.
 
-  </SessionState>
+      1. **Spec approval.** The complete intended spec set exists as actual files, passes structural
+         checks, and receives one fresh independent semantic review of the current artifacts. The author
+         resolves findings. Any semantic edit invalidates the old review and requires one fresh review
+         of the changed set. The operator then approves the specs themselves and the canonical specs
+         record `ARTIFACT_APPROVAL_MARKER` approval #1.
+      2. **Ticket approval.** Actual tickets and indexes exist, each ticket passes the mechanical
+         authoring check, and one fresh independent reviewer checks the complete actual ticket set
+         against the approved specs. The operator then approves task decomposition and the test plan in
+         one decision. The owning task index records `ARTIFACT_APPROVAL_MARKER` approval #2. Any semantic
+         ticket or index edit invalidates the old review and approval.
+
+      Reviewers are bounded calls, not durable sessions. They never edit targets and do not exchange
+      JSON state with the orchestrator. The author may reason about its own draft before dispatch, but
+      self-review never substitutes for the independent review at either boundary.
+
+      Resume state is always reconstructible from human-readable approval markers, specs, tickets,
+      Execution Log, Git, and current tool output. Mechanical checks validate marker shape and membership;
+      the model uses Git evidence to judge semantic staleness. No `.sdd-session.md`, plan digest, critic
+      journal, content hash, or worker checkpoint is part of correctness.
+    </Contract>
+    <Contract id="ARTIFACT_APPROVAL_MARKER">
+      Approval evidence is ordinary, human-readable content in the canonical artifact. It is not a
+      session record, JSON sidecar, digest, fingerprint, or byte-level lock.
+
+      Approval #1 is a Decision Log entry in every specification in the reviewed set:
+
+      ```markdown
+      ### Approval #1 — current specification set
+      - **Status:** pending | approved
+      - **Reviewed set:** `specs/...`, `specs/...`
+      - **Independent review:** pending | clean | findings resolved
+      - **Operator decision:** pending | approved
+      - **Recorded:** YYYY-MM-DD
+      ```
+
+      Approval #2 is a section in the narrowest task index that owns the complete reviewed ticket set
+      (module, scope, or project index):
+
+      ```markdown
+      ## Approval #2 — decomposition and test plan
+      - **Status:** pending | approved
+      - **Reviewed tickets:** `specs/...task....md`, `specs/...task....md`
+      - **Independent review:** pending | clean | findings resolved
+      - **Operator decision:** pending | approved
+      - **Recorded:** YYYY-MM-DD
+      ```
+
+      Authoring starts with `pending`. A clean independent review updates only the review field. Operator
+      approval changes `Status` and `Operator decision` to `approved`. These metadata-only marker edits do
+      not require another review. Any later semantic edit to a listed spec, ticket, or owning index resets
+      the applicable marker to `pending`; for approval #1, reset every marker whose Reviewed set contains
+      the edited path. If staleness is uncertain, treat the marker as pending and repeat the boundary.
+
+      Mechanical checks own only marker presence, accepted field values, path existence, and membership.
+      The model owns the semantic question whether current Git changes make an apparently approved marker
+      stale. Git diff/history are evidence for that judgment, not a cryptographic gate. The agent never
+      computes or copies a content hash for approval.
+    </Contract>
+    <Contract id="TASK_TICKET_STRUCTURE">
+      Sections are wrapped with `<!--SECTION:UPPER_SNAKE-->…<!--/SECTION:UPPER_SNAKE-->` markers
+      (grammar: the `sdd-extract` CLI, name grammar `^[A-Z][A-Z0-9_]*$`). Anchor names are normative per
+      `AX_TICKET_SECTION_NAMES_NORMATIVE` — orchestrator (`sdd-execute`) and auditor extract by exact
+      string (`extract <ticket> PHASE_P<N>`, `META`, `EXECUTION_LOG`, …). Each `### P<N>` phase block
+      under `Phases` gets its own anchor (`PHASE_P1`, `PHASE_P2`, …); the `Phases` container
+      itself carries NO anchor — extraction is per phase.
+
+      Spec content is referenced, never copied (`AX_SSOT_TRACEABILITY`): tickets link to spec sections
+      via Markdown anchors — module spec for contracts / consumers / invariants; scope spec Requirements & Constraints only for
+      cross-cutting constraints. Shared per-module content
+      (Execution-Log token vocabulary, baseline Completion Rule, audit hint, file-header rule) lives
+      once in `<module>.3-tasks.md` per `AX_TICKET_DEDUPLICATION` — not duplicated here.
+
+      Approval #2 is not copied into every ticket. The narrowest owning task index lists the complete
+      reviewed ticket set and carries the human-readable `ARTIFACT_APPROVAL_MARKER`; execution resolves
+      that index and requires the selected ticket to be a listed member.
+
+      Every Verification `Command` cell serializes the exact runtime command as a Markdown code span.
+      Its outer backtick run is one longer than the longest consecutive backtick run inside the command;
+      no command byte is escaped or normalized. The parser removes only that matching outer delimiter.
+
+      ```markdown
+      # Task: <ACRONYM>-<slug> — <Task Title>
+
+      <!--SECTION:META-->
+      ## Meta
+      - **Task-ID:** <ACRONYM>-<slug>   <!-- semantic slug; same slug across branches = same feature (see Slug Registry) -->
+      - **Status:** [ ] TODO   <!-- [ ] TODO | [~] IN_PROGRESS | [x] DONE | [!] BLOCKED -->
+      - **Purpose:** <semantic goal one-liner>
+      - **Scope:** <scope-name>
+      - **Module:** <module-name or N/A>
+      - **Structural Owner:** <infrastructure-flat | scope-bootstrap | module>
+      - **Owning Spec:** [Owning spec](<relative owning spec path>)
+      - **Dependencies:** <comma-separated Task-IDs or None>
+      - **Reopens:** <count> (<YYYY-MM-DD> — <last reason>)   <!-- omit when 0 -->
+      - **Spec References:**   <!-- one anchor PER contract — makes the contract set enumerable for the typing-scenario check -->
+        - Contract: [<PortName>](<spec anchor>)
+        - Adapter: [<AdapterName>](<spec anchor>)
+        - Consumer: [<ConsumerName>](<spec anchor>)
+        - Constraints (if applicable): [<scope spec §>](<path>)
+      - **Runtime Backing:** `not-implemented` | `simulation` | `real-runtime`
+      - **Verification Levels:** subset of `contract` | `unit` | `integration` | `e2e`
+      - **Deferred Runtime Scope:** None | <description>
+      <!--/SECTION:META-->
+
+      <!--SECTION:PHASES_OVERVIEW-->
+      ## Phases Overview
+      | ID | Kind | Deps | Status |
+      |----|------|------|--------|
+      | P1 | <kind> | — | [ ] |
+      | P2 | <kind> | P1 | [ ] |
+
+      <!-- Kind ∈ bootstrap | impl | test | config | doc | refactor (fix only on execution). impl and test are ALWAYS separate phases. Orchestrator reads this table to plan. -->
+      <!--/SECTION:PHASES_OVERVIEW-->
+
+      ## Phases
+
+      <!--SECTION:PHASE_P1-->
+      ### P1 — <kind>
+      - **Objective:** <one-line>
+      - **Rules:**   <!-- links only, resolved from the cascade; rule content is never inlined -->
+        - [ai/directives/<category>/<rule>.xml](<relative-path>)
+      - **Spec Refs:**   <!-- optional — subset of Meta Spec References THIS phase actually reads; omit the whole field to fall back to the full Meta set (sdd-task --phase filters to this list when present) -->
+        - [<PortName>](<spec anchor>)
+      - **Target Files:**
+        - <path>
+      - **Deleted Files:**
+        - none   <!-- or exact repo-local tracked paths already absent when verification runs -->
+      - **Readiness Gates:**   <!-- bootstrap phase only: exact gates this phase creates, copied from the owning Bootstrap Requirements row; omit otherwise -->
+        - <gate>
+      - **Entities:** <ContractName, ...>   <!-- impl/refactor phases: the exported entities (verbatim from the module Entity Inventory) THIS phase implements — the structural, filename-independent ownership source a Deferred Implementation marker (pointing at this ticket) resolves against; omit for test/config/doc phases -->
+      - **Inputs:** none   <!-- or "P1 handoff" -->
+      - **Exit:** <verifiable criterion>
+      <!--/SECTION:PHASE_P1-->
+
+      <!--SECTION:PHASE_P2-->
+      ### P2 — <kind>
+      - **Objective:** <one-line>
+      - **Rules:**
+        - [ai/directives/<category>/<rule>.xml](<relative-path>)
+      - **Spec Refs:**   <!-- optional, see P1 -->
+        - [<PortName>](<spec anchor>)
+      - **Target Files:**
+        - <path>
+      - **Deleted Files:**
+        - none   <!-- or exact repo-local tracked paths already absent when verification runs -->
+      - **Readiness Gates:**   <!-- omit unless this exact phase creates declared readiness gates -->
+        - <gate>
+      - **Inputs:** P1 handoff
+      - **Exit:** <verifiable criterion>
+      <!--/SECTION:PHASE_P2-->
+
+      <!--SECTION:BDD-->
+      ## Acceptance Criteria (BDD)
+      Each scenario is tagged with the requirement it proves and its verification level — this is the
+      use-case → `[<ACRONYM>-REQ-N]` → vision chain the operator reviews at scaffold.
+
+      **Feature:** <component behavior>
+
+      **Scenario:** <name> [`<level>`] `[<ACRONYM>-REQ-N]`
+      - **Given** <precondition>
+      - **When** <command / query>
+      - **Then** <postcondition>
+      - **And** <side effect>
+
+      <!-- BLOCKER: every DbC contract in Spec References has at least one `contract`-level typing scenario; Deferred Test Ownership is forbidden for typing scenarios. -->
+      <!--/SECTION:BDD-->
+
+      <!--SECTION:VERIFICATION-->
+      ## Verification
+      Гейт фазы — `npx gennady sdd-verify --task <ticket-path> --phase <PhaseID>` — выполняется на STEP_5; профиль и Target Files читаются из тикета, в таблицу не дублируется.
+
+      <!--PHASE_RECEIPTS:v1-->
+
+      <!--COVERAGE_POLICY:v1-->
+      - **Coverage Policy:** <required | not-applicable>
+      - **Coverage Owner Phase:** <P<N>; required only; omit for not-applicable>
+      - **Coverage Reason:** <required only for not-applicable; omit this field for required>
+
+      | Command | Required by | Role |
+      |---------|-------------|------|
+      | `<resolved invocation>` | <rule-id>, <rule-id> | <coverage | probe | extra> |
+
+      <!-- COMMAND CELL SERIALIZATION: wrap the exact runtime command in a Markdown code span. The outer backtick run MUST be strictly longer than every consecutive backtick run inside the command; do not escape or normalize inner bytes. The parser removes only that matching outer delimiter, so runtime bytes remain exact. Raw | outside the wrapper is a table separator. Do not XML-escape the command. -->
+      <!-- NO sdd-verify row: STEP_5 invokes the CLI exactly once per attempt; the CLI runs the ladder plus applicable rows and writes their receipt. A failed attempt writes no receipt; retry after a fix is a new attempt. Coverage Policy is mandatory for COVERAGE_POLICY:v1. required → one test Coverage Owner Phase and exactly one resolved read/check command with Role=coverage whose Required-by is an owner-phase rule; not-applicable → concise reason, NO owner and NO coverage row. Every other resolved alias uses Role=extra; no rows → a single | — | — | extra | row. -->
+
+      - **Task-specific Completion additions:** <list or "none beyond project baseline">
+      <!--/SECTION:VERIFICATION-->
+
+      <!--SECTION:TEST_COVERAGE-->
+      ## Test Scenario Coverage   <!-- BLOCKER: an unmapped scenario blocks task close -->
+      - Scenario <name> → `<test-file>` :: `<canonical case name>`
+      <!-- A scenario whose When invokes npm run appends exact executable evidence: - <name> → `<test-file>` :: `<case>` :: command `npm run <script>`; Verification repeats it once with Role=probe. -->
+      <!-- Runtime-only delegation uses exactly: - Deferred Test Ownership: <other-Task-ID> <scenario name> → `<future-test-file>` :: `<canonical case name>`. It is forbidden for contract-level typing scenarios and scenarios owned by this ticket. -->
+      <!--/SECTION:TEST_COVERAGE-->
+
+      <!--SECTION:EXECUTION_LOG-->
+      ## Execution Log
+      *(Round = one execute-then-audit attempt; per-phase blocks within a Round. Skeleton is minimal — event lines appear only when the event happens. Token vocabulary lives in `<module>.3-tasks.md`. A `[x]` line still carrying an unreplaced angle-bracket token is a fabricated DONE — forbidden.)*
+
+      ### Round 1 — <YYYY-MM-DD>, initial
+
+      #### P1
+      - [ ] `<ts>` DONE
+      **Handoff →** artifacts: [...]; decisions: [...]; open: [...]
+
+      #### Round close
+      - [ ] `<ts>` DONE
+      <!--/SECTION:EXECUTION_LOG-->
+
+      <!--SECTION:DECISION_LOG-->
+      ## Decision Log
+      <!-- local decisions taken during execution, one-line `<ACR>-DL-N` per DECISION_LOG_ENTRY_FORMAT. Omit if none beyond the spec. -->
+      <!--/SECTION:DECISION_LOG-->
+
+      <!-- AUDIT_ROUNDS appended only after the first reopen-triggering audit (per the audit directive). -->
+      ```
+    </Contract>
+    <Contract id="DECISION_LOG_ENTRY_FORMAT">
+      One line per entry — no Status/Recorded fields, no multi-line block. The parenthetical carries
+      only what applies; omit a clause entirely rather than writing it empty.
+
+      ```markdown
+      <ACR>-DL-N <date> — <decision in one phrase> (почему: <compromise/criterion>; отвергнуто: <alternative — why not>; риск: <if accepted>)
+      ```
+
+      **ID.** `<ACR>-DL-<N>` — spec acronym first, exactly like a Task-ID and like `<ACR>-REQ-<N>`
+      (`REQUIREMENT_ENTRY_FORMAT`); `<N>` is sequential within THIS spec only — the acronym gives global
+      uniqueness, not the number. This is the only grammar for NEW entries. Existing append-only
+      file-local `D-N` entries remain immutable and resolvable as legacy references; never create another;
+      conflicts (a duplicate number inside one spec) are caught mechanically, the same way as for
+      `<ACR>-REQ-<N>`.
+
+      Superseding a prior decision appends `; supersedes: <ACR>-DL-M` to the parenthetical instead of a
+      separate field — the entry stays one line. `<date>` is the recording date (`YYYY-MM-DD`); status
+      (active / superseded / rejected / deferred) is implicit from prose and from whether a later entry
+      supersedes this one — a spec has no dangling "rejected" or "deferred" entries sitting as if active,
+      the prose says so directly (e.g. `отвергнуто в пользу X` folded into the same line that would have
+      recorded it, never a standalone rejected entry with its own `<ACR>-DL-N`).
+    </Contract>
+  </Contracts>
 
   <HaltConditions>
-    | 🛑 ID | Trigger |
+    | ID | Trigger |
     |---|---|
-    | `H_NO_SPECS` | `specs/README.md` absent, or no approved scope spec to scaffold |
-    | `H_SCOPE_NOT_DECOMPOSED` | Scope type is missing/ambiguous; product/library Module Map is not a non-empty exact manifest of its canonical module specs; or an interface is used as a task owner. Start the nested same-chain module-decomposition correction below, preserve `intent: scaffold` and the exact bounded target-set, then return to scaffold `STEP_0_INTAKE`; infrastructure is the sole flat-scope exception. |
-    | `H_AMBIGUOUS_MODE` | Tasks exist + mode verb absent (per `AX_MODE_AUTO_DETECT_OR_HALT`) |
-    | `H_VERIFICATION_COMMAND_MISSING` | A `<RequiresVerification>` alias is absent from infra-spec Verification Commands (alias, ticket ID) |
-    | `H_BOOTSTRAP_REQUIREMENTS_MISSING` | The target scope being scaffolded (the intake target) lacks a Bootstrap Requirements section — checked ONLY for that scope, not for every ✅ scope in the Portal (did not pass the scope flow) |
-    | `H_SPEC_SCHEMA_INVALID` | `sdd-state` reports the target scope/module spec as `invalid`; structural evidence is ambiguous and only its owning authoring flow may repair it |
-    | `H_ID_COLLISION` | A generated Task-ID / slug collides with an existing one |
-    | `H_TYPING_SCENARIO_MISSING` | A DbC contract in Spec References has no `contract`-level typing scenario mapped to a test |
-    | `H_TICKET_AUTHORING_INVALID` | One just-filled ticket still fails its bounded single-ticket authoring gate after three repair attempts; no later ticket or index may be created |
-    | `H_SCAFFOLD_PLAN_UNPROVEN` | Three fresh bounded semantic reviewers rejected the pre-Gate-1 plan; no ticket may be created until the operator revises the specs or planning constraints |
-    | `H_SCAFFOLD_NOT_EXECUTABLE` | The feasibility critic cannot reach an operator-disposed state within its bounded loop, or a required fresh fallback cannot receive the full latest target-set plus retained context/history |
-    | `H_OPERATOR_REJECT` | Operator rejected the breakdown or the test plan |
+    | `H_SPEC_NOT_APPROVED` | Target spec set has not passed operator approval #1 |
+    | `H_V2_INVALID` | A target is invalid V2; return to its authoring owner, never migrate it |
+    | `H_TICKET_AUTHORING_INVALID` | Mechanical authoring check remains red after a bounded correction |
+    | `H_TICKET_REVIEW_FINDING` | Independent reviewer found an unresolved semantic conflict |
+    | `H_OPERATOR_REJECT` | Operator rejected decomposition or test plan |
   </HaltConditions>
 
   <ExecutionPlan>
-    - **STEP_0_INTAKE** — Read the Portal; detect scopes, graph, mode. (auto) Before executing this step, READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/scaffold/steps/STEP_0_INTAKE.xml").
+    - **STEP_0_PREFLIGHT** — Resolve the exact approved spec set and existing ticket topology. Before executing this step, READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/scaffold/steps/STEP_0_PREFLIGHT.xml").
+
+
 
 
 
@@ -101,33 +347,4 @@
 
 
   </ExecutionPlan>
-
-  <ChatProtocol>
-  </ChatProtocol>
-
-  <ChatOutput>
-    Service line — dim, internal, kept silent (per `AX_NO_PROCESS_NARRATION`):
-    `📋 TS_R<N> · <scope> · <mode> · conf=<LOW|MEDIUM|HIGH>`. Breadcrumb milestones (per
-    `BREADCRUMB_FORMAT`): Intake · Cascade · DAG · Tickets · Tests · Done. Only two milestones are
-    operator gates — DAG (breakdown) and Tests (test plan).
-
-    <Contract id="BREADCRUMB_FORMAT">
-      One line, its own paragraph below the service line — a blank line separates the two (per
-      `MESSAGE_LAYOUT`); a single `\n` with no blank line is a contract defect, markdown renders it
-      fused onto the service line as one run-on. This session's milestones, each rendered `<Name>
-      <status>`, with a status marker chosen for legibility on BOTH light and dark themes — no
-      half-tone shading characters (`░ ▒ ▓`) anywhere, they vanish depending on theme. Status set: `✅`
-      done · `👷` active (the step running now) · `◻️` not yet reached. Delta only; never re-list
-      everything already settled. This is the «where are we», and it replaces a verbose run-on of
-      finished steps.
-
-      `Vision ✅ · Scope Graph 👷 · Infra ◻️ · Portal ◻️`
-    </Contract>
-
-  </ChatOutput>
-
-  <ArtifactOutput>
-    <!-- ticket / module-index / scope+project trackers load lazily at STEP_3 / STEP_5 — see ExecutionPlan. -->
-
-  </ArtifactOutput>
 </SddScaffold>

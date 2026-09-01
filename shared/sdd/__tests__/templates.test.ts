@@ -202,10 +202,10 @@ describe('nextSteps — "what happens after this skeleton exists"', () => {
     }
   });
 
-  it('task points at exact authoring then project feasibility checks without --help', () => {
+  it('task points at exact authoring then semantic review without --help', () => {
     const steps = resolveNextSteps('task', { path: 'irrelevant' });
     assert.ok(steps.some((s) => s.includes('sdd-check --task irrelevant --authoring')));
-    assert.ok(steps.some((s) => s.includes('sdd-check --scaffold-feasibility')));
+    assert.ok(steps.some((s) => s.includes('семантическое ревью')));
     assert.ok(steps.every((s) => !s.includes('--help')));
   });
 

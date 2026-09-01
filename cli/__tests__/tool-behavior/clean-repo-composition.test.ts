@@ -1,5 +1,5 @@
 // @file: Finite real-CLI composition harness from empty SDD state through infra closure.
-// @consumers: sdd-new, sdd-check, sdd-task, sdd-session, sdd-verify, sdd-log, sdd-sync
+// @consumers: sdd-new, sdd-check, sdd-task, sdd-verify, sdd-log, sdd-sync
 // @tasks: N/A
 
 import assert from 'node:assert/strict';
@@ -17,7 +17,6 @@ const GENNADY_ENTRY = join(REPO_ROOT, 'cli', 'gennady.ts');
 const TICKET = 'specs/infra/infra.task.IB-tool.md';
 const INDEX = 'specs/infra/infra.3-tasks.md';
 const NODE_RULE = 'ai/directives/infra/nodejs-npm-setup.xml';
-const CHECKPOINT_PAYLOAD = '.claude/tmp/IB-tool-P2-worker-checkpoint.json';
 
 type TicketOptions = { typecheckTarget: boolean; deviation: boolean };
 
@@ -78,7 +77,7 @@ function ticket(options: TicketOptions): string {
     '## Meta',
     '- **Task-ID:** IB-tool',
     '- **Status:** [ ] TODO',
-    '- **Purpose:** materialize and prove the minimal Node, TypeScript, and test capability DAG',
+    '- **Purpose:** materialize and prove the minimal Node, TypeScript, and test infrastructure order',
     '- **Scope:** infra',
     '- **Module:** N/A',
     '- **Structural Owner:** infrastructure-flat',
@@ -101,11 +100,6 @@ function ticket(options: TicketOptions): string {
     '<!--SECTION:PHASE_P1-->',
     '### P1 — bootstrap',
     '- **Objective:** materialize the Node/npm dependency boundary',
-    '- **Capability Adapter:** node',
-    '- **Bootstrap Action:** dependency-install',
-    '- **Provides Packages:** typescript, vitest',
-    '- **Provides Capabilities:** node.runtime-version, node.manifest-engine, node.manifest-module-kind, node.registry-config, node.dependencies, node.runtime, node.package-manager',
-    '- **Requires Capabilities:** node.runtime',
     '- **Rules:**',
     '  - [nodejs-npm-setup](../../ai/directives/infra/nodejs-npm-setup.xml)',
     '- **Target Files:**',
@@ -124,10 +118,6 @@ function ticket(options: TicketOptions): string {
     '<!--SECTION:PHASE_P2-->',
     '### P2 — config',
     '- **Objective:** materialize the separately selected TypeScript compiler boundary',
-    '- **Capability Adapter:** typescript',
-    '- **Provides Capabilities:** typescript.compiler',
-    '- **Requires Capabilities:** node.package-manager, node.dependencies',
-    '- **Requires Packages:** typescript',
     '- **Rules:**',
     '  - none',
     '- **Target Files:**',
@@ -143,10 +133,6 @@ function ticket(options: TicketOptions): string {
     '<!--SECTION:PHASE_P3-->',
     '### P3 — test',
     '- **Objective:** materialize only the selected TypeScript test-gate boundary and prove it',
-    '- **Capability Adapter:** typescript-quality',
-    '- **Provides Capabilities:** typescript.test-tooling',
-    '- **Requires Capabilities:** typescript.compiler, node.dependencies',
-    '- **Requires Packages:** vitest',
     '- **Rules:**',
     '  - none',
     '- **Target Files:**',
@@ -163,7 +149,7 @@ function ticket(options: TicketOptions): string {
     '## Acceptance Criteria (BDD)',
     '**Scenario:** exposes the toolchain contract [`contract`] `[IB-REQ-1]`',
     '- **Given** the infrastructure toolchain contract',
-    '- **When** its capability graph is resolved',
+    '- **When** its phase order is semantically reviewed and executed',
     '- **Then** Node, TypeScript, and selected test tooling are ordered',
     '',
     '**Scenario:** runs the selected smoke command [`integration`] `[IB-REQ-2]`',
@@ -171,10 +157,10 @@ function ticket(options: TicketOptions): string {
     '- **When** `npm test` runs',
     '- **Then** it exits successfully',
     '',
-    '**Scenario:** rejects an obsolete monolithic quality capability [`unit`] `[IB-REQ-3]`',
-    '- **Given** the old combined quality capability id',
-    '- **When** scaffold feasibility validates the selected adapter',
-    '- **Then** it rejects the id and prints the supported requirement-selected capabilities',
+    '**Scenario:** rejects a missing real readiness input [`unit`] `[IB-REQ-3]`',
+    '- **Given** a gate command whose declared target does not exist yet',
+    '- **When** phase verification validates the selected phase',
+    '- **Then** it waits for the readiness owner instead of running the command early',
     '<!--/SECTION:BDD-->',
     '<!--SECTION:VERIFICATION-->',
     '## Verification',
@@ -188,16 +174,16 @@ function ticket(options: TicketOptions): string {
     '<!--/SECTION:VERIFICATION-->',
     '<!--SECTION:TEST_COVERAGE-->',
     '## Test Scenario Coverage',
-    '- exposes the toolchain contract → `test/toolchain-smoke.test.js` :: `exposes the toolchain contract`',
-    '- runs the selected smoke command → `test/toolchain-smoke.test.js` :: `runs the selected smoke command` :: command `npm test`',
-    '- rejects an obsolete monolithic quality capability → `test/toolchain-smoke.test.js` :: `rejects an obsolete monolithic quality capability`',
+    '- exposes the toolchain contract → `test/toolchain-smoke.test.js` :: `[IB-REQ-1] exposes the toolchain contract`',
+    '- runs the selected smoke command → `test/toolchain-smoke.test.js` :: `[IB-REQ-2] runs the selected smoke command` :: command `npm test`',
+    '- rejects a missing real readiness input → `test/toolchain-smoke.test.js` :: `[IB-REQ-3] rejects a missing real readiness input`',
     '<!--/SECTION:TEST_COVERAGE-->',
     '<!--SECTION:EXECUTION_LOG-->',
     '## Execution Log',
     '<!--/SECTION:EXECUTION_LOG-->',
     '<!--SECTION:DECISION_LOG-->',
     '## Decision Log',
-    '- IB-DL-1 — Keep Node/npm and TypeScript compiler as separate capability layers.',
+    '- IB-DL-1 — Keep Node/npm setup and TypeScript compiler configuration in separate ordered phases.',
     ...(options.deviation
       ? [
           '- IB-DEV-1 — Runtime evidence required scripts/typecheck.mjs to become an explicit P2 target.',
@@ -247,7 +233,6 @@ function createArtifactsThroughSddNew(root: string): void {
     'IB-tool',
   ]);
   assert.match(created, /npx gennady sdd-check --task .* --authoring/);
-  assert.match(created, /npx gennady sdd-check --scaffold-feasibility/);
   assert.doesNotMatch(created, /--help/);
   runOk(root, ['sdd-new', 'scope-index', '--scope', 'infra']);
   writeFileSync(join(root, TICKET), ticket({ typecheckTarget: false, deviation: false }), 'utf8');
@@ -307,73 +292,11 @@ function verifyPhase(root: string, phase: string): void {
   assert.match(output, new RegExp(`receipt recorded: ${TICKET.replaceAll('.', '\\.')}#${phase}`));
 }
 
-function writeCheckpoint(root: string): void {
-  runOk(root, ['sdd-session', 'open', '--intent', 'execute']);
-  const payloadPath = join(root, CHECKPOINT_PAYLOAD);
-  mkdirSync(dirname(payloadPath), { recursive: true });
-  writeFileSync(
-    payloadPath,
-    JSON.stringify({
-      schema: 'sdd-worker-checkpoint/v1',
-      seq: 1,
-      task: 'IB-tool',
-      phase: 'P2',
-      worker: { session: 'execute-config-1', kind: 'config', observedContextChars: 4096 },
-      reason: 'repair-command contract points at an undeclared CREATE target',
-      outcome: 'RECOVERABLE_TECHNICAL',
-      attempt: { current: 1, budget: 2 },
-      evidence: [`${TICKET}#EXECUTION_LOG`],
-      technicalPlan: {
-        summary: 'declare the typecheck implementation as an exact P2 target',
-        taskEdits: [`${TICKET}#PHASE_P2`],
-        dagEdits: [TICKET],
-        artifactEdits: ['scripts/typecheck.mjs'],
-      },
-      durableRefs: {
-        phase: `${TICKET}#PHASE_P2`,
-        task: TICKET,
-        decisions: [`${TICKET}#IB-DL-1`],
-        deviations: [`${TICKET}#IB-DEV-1`],
-        handoff: `${TICKET}#EXECUTION_LOG`,
-      },
-    }),
-    'utf8'
-  );
-  const checkpoint = runOk(root, [
-    'sdd-session',
-    'checkpoint',
-    '--content-file',
-    CHECKPOINT_PAYLOAD,
-  ]);
-  assert.match(checkpoint, /NEXT=AUTO_REPLAN_AND_CONTINUE/);
-  assert.match(checkpoint, /attempt=1\/2/);
-}
-
 describe('clean-repo SDD composition harness', { concurrency: 1 }, () => {
   it('proves canonical scaffold, bounded replan, receipts, sync, and infra closure', () => {
     const root = buildCompositionFixture();
     try {
       assert.match(runOk(root, ['sdd-check', '--task', TICKET, '--authoring']), /clean/i);
-      assert.match(runOk(root, ['sdd-check', '--scaffold-feasibility']), /clean/i);
-
-      const validTicket = readFileSync(join(root, TICKET), 'utf8');
-      writeFileSync(
-        join(root, TICKET),
-        validTicket.replace('typescript.test-tooling', 'typescript.quality-test-tooling'),
-        'utf8'
-      );
-      commitFixtureState(root, 'old monolithic capability negative');
-      const obsolete = runCli(['sdd-check', '--scaffold-feasibility'], root);
-      const obsoleteOutput = `${obsolete.stdout}${obsolete.stderr}`;
-      assert.notStrictEqual(obsolete.exitCode, 0, obsoleteOutput);
-      assert.match(obsoleteOutput, /SDD_SCAFFOLD_CAPABILITY_NOT_DECLARED_BY_ADAPTER/);
-      assert.match(
-        obsoleteOutput,
-        /Expected: one of typescript\.test-tooling, typescript\.eslint-lint-tooling, typescript\.format-tooling/
-      );
-      assert.match(obsoleteOutput, /Next:/);
-      writeFileSync(join(root, TICKET), validTicket, 'utf8');
-      commitFixtureState(root, 'restore selected test capability');
 
       const future = runOk(root, ['sdd-task', TICKET, '--phase', 'P1']);
       assert.match(future, /CREATE files:[^\n]*\.nvmrc[^\n]*\.npmrc/);
@@ -385,11 +308,9 @@ describe('clean-repo SDD composition harness', { concurrency: 1 }, () => {
         'utf8'
       );
       commitFixtureState(root, 'record recoverable technical evidence');
-      writeCheckpoint(root);
       writeFileSync(join(root, TICKET), ticket({ typecheckTarget: true, deviation: true }), 'utf8');
       commitFixtureState(root, 'apply bounded P2 target correction');
       runOk(root, ['sdd-check', '--task', TICKET, '--authoring']);
-      runOk(root, ['sdd-check', '--scaffold-feasibility']);
       assert.match(runOk(root, ['sdd-task']), /pickable \(ready now\):\s+IB-tool/i);
 
       runOk(root, ['sdd-log', TICKET, 'round', 'composition']);
@@ -442,9 +363,9 @@ describe('clean-repo SDD composition harness', { concurrency: 1 }, () => {
           "import assert from 'node:assert/strict';",
           "import { existsSync } from 'node:fs';",
           "import test from 'node:test';",
-          "test('exposes the toolchain contract', () => assert.equal(existsSync('package.json'), true));",
-          "test('runs the selected smoke command', () => assert.equal(existsSync('tsconfig.json'), true));",
-          "test('rejects an obsolete monolithic quality capability', () => assert.equal(existsSync('test/toolchain-smoke.test.js'), true));",
+          "test('[IB-REQ-1] exposes the toolchain contract', () => assert.equal(existsSync('package.json'), true));",
+          "test('[IB-REQ-2] runs the selected smoke command', () => assert.equal(existsSync('tsconfig.json'), true));",
+          "test('[IB-REQ-3] rejects a missing real readiness input', () => assert.equal(existsSync('test/toolchain-smoke.test.js'), true));",
           '',
         ].join('\n'),
         'utf8'
