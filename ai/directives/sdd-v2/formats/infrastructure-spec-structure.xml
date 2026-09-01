@@ -155,8 +155,8 @@
   <details>
   <summary>Таблица предусловий</summary>
 
-  | Requirement | Kind | Owner | Resolution | Readiness Gates | Gate Artifacts |
-  |---|---|---|---|---|---|
+  | ID | Requirement | Kind | Owner | Resolution | Capability Adapter | Provides Capabilities | Requires Capabilities | Readiness Gates | Gate Artifacts |
+  |---|---|---|---|---|---|---|---|---|---|
 
   <!-- Kind ∈ package | workspace-link | tool | file | external-type | env | service | structural -->
   <!-- Owner ∈ this-scope-task | external-prereq-scope | operator-action -->

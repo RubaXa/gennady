@@ -5,12 +5,13 @@
 import { isAbsolute, relative, resolve, sep } from 'node:path';
 import { proveRepoFile, readProvenRepoFile } from '../common/repo-file-identity.ts';
 import type { TicketCorpusRef } from './ticket-resolve.ts';
-import type { Scope } from './portal.ts';
+import type { GraphEdge, Scope } from './portal.ts';
 import { extractSection } from './section.ts';
 import { parseMetaInfo, parsePhaseDetail, parsePhasesOverview } from './ticket.ts';
 import type { ReadinessResult } from './readiness.ts';
 import { resolveScopeDecomposition } from './module-specs.ts';
 import type { SpecSchemaReport } from './spec-schema.ts';
+import { checkProjectFeasibility, type ProjectSpecRef } from './project-feasibility.ts';
 
 /** @purpose One canonical readiness fact identifier. */
 export type ReadinessGate = string;
@@ -193,13 +194,15 @@ function readScopeSpec(
  * @param readiness Runtime readiness from the same snapshot.
  * @param schema Whole-project structural schema diagnosis.
  * @param [root] Project root used for specs and decomposition.
+ * @param [graphEdges] Portal dependency edges used for project-wide capability reachability.
  * @returns Independent authoring permission plus exact blockers.
  */
 export function checkAuthoringReadiness(
   scopes: Scope[],
   readiness: ReadinessResult,
   schema: SpecSchemaReport,
-  root = process.cwd()
+  root = process.cwd(),
+  graphEdges: readonly GraphEdge[] = []
 ): AuthoringReadinessResult {
   const infraContracts: BootstrapGateContract[] = [];
   const observedScopes = new Map<string, ReturnType<typeof readScopeSpec>>();
@@ -220,6 +223,26 @@ export function checkAuthoringReadiness(
           ? `missing runtime gate '${gate}' has no complete infrastructure Bootstrap Requirements owner row`
           : `missing runtime gate '${gate}' has ${owners.length} infrastructure Bootstrap Requirements owner rows`
       );
+  }
+  if (schema.status === 'current') {
+    const projectRefs: ProjectSpecRef[] = [];
+    for (const scope of scopes.filter(
+      (item) => item.status === 'done' && item.type !== 'interface' && item.specPath
+    )) {
+      const observed = observedScopes.get(scope.name);
+      if (!observed?.ok) continue;
+      projectRefs.push({
+        file: relative(root, observed.path).split(sep).join('/'),
+        scope: scope.name,
+        dependencies: graphEdges.filter((edge) => edge.from === scope.name).map((edge) => edge.to),
+        content: observed.content,
+      });
+    }
+    sharedGateDiagnostics.push(
+      ...checkProjectFeasibility(projectRefs).map(
+        (item) => `${item.code}: ${item.file}: ${item.message}`
+      )
+    );
   }
 
   const scopeFacts: AuthoringScopeReadiness[] = [];

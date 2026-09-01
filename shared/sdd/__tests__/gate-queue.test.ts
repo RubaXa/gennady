@@ -54,9 +54,9 @@ function fixture(ticketCount = 1): { root: string; refs: TicketCorpusRef[]; scop
       'infrastructure',
       '<!--/SECTION:SCOPE_TYPE-->',
       '<!--SECTION:BOOTSTRAP_REQUIREMENTS-->',
-      '| Requirement | Kind | Owner | Resolution | Readiness Gates | Gate Artifacts |',
-      '|---|---|---|---|---|---|',
-      '| lint gate | tool | this-scope-task | create | lint | package.json |',
+      '| ID | Requirement | Kind | Owner | Resolution | Capability Adapter | Provides Capabilities | Requires Capabilities | Readiness Gates | Gate Artifacts |',
+      '|---|---|---|---|---|---|---|---|---|---|',
+      '| INFRA-LINT | lint gate | tool | this-scope-task | create | node | — | — | lint | package.json |',
       '<!--/SECTION:BOOTSTRAP_REQUIREMENTS-->',
     ].join('\n')
   );

@@ -68,6 +68,8 @@ export type PhaseDetail = {
   providesCapabilities: string[];
   /** @purpose Exact platform-neutral capability ids that must precede this phase. */
   requiresCapabilities: string[];
+  /** @purpose Approved Bootstrap Requirement IDs materialized by this exact phase. */
+  bootstrapRequirementIds: string[];
   /** @purpose Optional per-phase spec-anchor subset (`Spec Refs:` bullets) — when empty, callers fall back to the ticket's whole Meta Spec References. */
   specRefs: string[];
   /** @purpose Inputs line (e.g. `none`, `P1 handoff`), or null. */
@@ -258,6 +260,7 @@ export function parsePhaseDetail(phaseBody: string): PhaseDetail {
     capabilityAdapter: inlineField(phaseBody, 'Capability Adapter'),
     providesCapabilities: commaList('Provides Capabilities'),
     requiresCapabilities: commaList('Requires Capabilities'),
+    bootstrapRequirementIds: commaList('Bootstrap Requirements'),
     specRefs: bulletsUnder(phaseBody, 'Spec Refs').map(
       (b) => parseLink(b).anchor || parseLink(b).name
     ),

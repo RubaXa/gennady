@@ -18,9 +18,20 @@
         owners, or edges. Then form tickets per
         `AX_DAG_AND_TICKET_BOUNDARIES` (one per coherent spec unit; subdivide only for parallelism or
         context overflow); cross-scope placement per `AX_CROSS_SCOPE_TASK_PLACEMENT`; assign slugs
-        (`AX_TASK_ID_UNIQUENESS`). Acyclic. **Present the DAG (the breakdown) as a decision card and
-        get operator approval — this is the one gate on structure.** While awaiting it return
+        (`AX_TASK_ID_UNIQUENESS`). Acyclic. Before presenting Gate 1, write
+        `.claude/tmp/sdd-scaffold-plan.json` with schema `sdd-scaffold-plan/v1`: copy `specs` byte-for-byte
+        from STEP_0B project-context; encode every proposed phase as one node with exact fields
+        `id` (`<Task-ID>/<PhaseID>`), `scope`, `dependencies` (predecessor node ids), `requirementIds`,
+        `adapter`, `action` (`dependency-install` or null), `targets`, `provides`, `requires`. Every
+        `this-scope-task` Bootstrap Requirement ID maps to exactly one node; no invented ID is allowed.
+        Run scaffoldPlanGate ToolCall. A finding returns to this step (or to the named spec owner when
+        the project-context is stale); do not present a plan and do not create ticket files. Only GREEN
+        authorizes the decision card. Include the literal checked plan digest and a compact proof list:
+        exact requirement coverage, provider order, shared-writer serialization, no cycles.
+        **Present the proven DAG (the breakdown) as a decision card and get operator approval — this is
+        the one gate on structure.** While awaiting it return
         `TerminalDecision: pause` and preserve the session. STOP.
+        <ToolCall owner="this-step" result="scaffoldPlanGate">npx gennady sdd-check --scaffold-plan .claude/tmp/sdd-scaffold-plan.json</ToolCall> Use scaffoldPlanGate before Gate 1.
       </Action>
     </Step>
 

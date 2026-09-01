@@ -206,7 +206,7 @@ export async function run(rawArgs: string[]): Promise<StateOutcome> {
       : { version: SPEC_SCHEMA_VERSION, status: 'current' as const, findings: [] };
   const authoringReadiness =
     flowVersion === 'v2'
-      ? checkAuthoringReadiness(scopes, readiness, specSchema, root)
+      ? checkAuthoringReadiness(scopes, readiness, specSchema, root, graphEdges)
       : {
           ready: false,
           diagnostics: ['FLOW_VERSION=v1; migrate before v2 scaffold'],
