@@ -6,14 +6,18 @@ import { lstatSync, readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
 /** @purpose Current installed structural schema identifier emitted by sdd-state. */
-export const SPEC_SCHEMA_VERSION = 'sdd-v2.schema-1';
+export const SPEC_SCHEMA_VERSION = 'sdd-v2.schema-2';
 
 /** @purpose Canonical ordered structural fields shared by scope skeletons and diagnosis. */
 export const BOOTSTRAP_REQUIREMENTS_COLUMNS = [
+  'ID',
   'Requirement',
   'Kind',
   'Owner',
   'Resolution',
+  'Capability Adapter',
+  'Provides Capabilities',
+  'Requires Capabilities',
   'Readiness Gates',
   'Gate Artifacts',
 ] as const;
@@ -58,7 +62,10 @@ const SCOPE_TABLE_RULES: readonly TableRule[] = [
   {
     section: 'BOOTSTRAP_REQUIREMENTS',
     current: BOOTSTRAP_REQUIREMENTS_COLUMNS,
-    migratableFrom: [['Requirement', 'Kind', 'Owner', 'Resolution']],
+    migratableFrom: [
+      ['Requirement', 'Kind', 'Owner', 'Resolution'],
+      ['Requirement', 'Kind', 'Owner', 'Resolution', 'Readiness Gates', 'Gate Artifacts'],
+    ],
   },
 ];
 

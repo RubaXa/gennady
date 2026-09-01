@@ -4,6 +4,7 @@
 
 import { readFileSync, readdirSync, existsSync, lstatSync, realpathSync, statSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { basename, isAbsolute, join, resolve, relative, dirname, sep } from 'node:path';
 import { logger } from '#logger';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
@@ -103,8 +104,18 @@ import {
 import {
   checkScaffoldFeasibility,
   deriveScaffoldCriticContext,
+  materializedScaffoldPlanNodes,
 } from '../../../shared/sdd/scaffold-feasibility.ts';
+import {
+  checkProjectFeasibility,
+  checkScaffoldDraftPlan,
+  checkScaffoldPlanMaterialization,
+  deriveProjectFeasibilityContext,
+  type ProjectSpecRef,
+  type ScaffoldDraftPlan,
+} from '../../../shared/sdd/project-feasibility.ts';
 import { phaseVerificationArtifactPaths } from '../../../shared/sdd/phase-verification-plan.ts';
+import { deriveCapabilityAdapterContract } from '../../../shared/sdd/capability-adapter.ts';
 import { looksLikeTaskId } from '../../../shared/sdd/task-id.ts';
 import {
   resolveModuleScopeOwnership,
@@ -161,6 +172,124 @@ function readUtf8(path: string): ReadObservation<string> {
   } catch (cause) {
     return { ok: false, issue: { path, reason: readReason(cause) } };
   }
+}
+
+/** @purpose Collect the portal-declared scope specs and their exact dependency edges for project proof. */
+function collectProjectSpecRefs(
+  repoRoot: string
+): { ok: true; refs: ProjectSpecRef[] } | { ok: false; issue: ReadIssue } {
+  const portalPath = join(repoRoot, 'specs', 'README.md');
+  const portal = readUtf8(portalPath);
+  if (!portal.ok) return portal;
+  const scopes = parseScopes(portal.value);
+  const edges = parseGraphEdges(portal.value);
+  const refs: ProjectSpecRef[] = [];
+  for (const scope of scopes) {
+    if (!scope.specPath) {
+      return {
+        ok: false,
+        issue: {
+          path: portalPath,
+          reason: `scope '${scope.name}' has no canonical spec path`,
+        },
+      };
+    }
+    const repoRelative = `specs/${scope.specPath.replace(/^\.\//, '')}`;
+    const identity = proveRepoFile(repoRoot, repoRelative);
+    if (!identity.ok) {
+      return {
+        ok: false,
+        issue: { path: repoRelative, reason: identity.detail },
+      };
+    }
+    const observed = readProvenRepoFile(identity.identity);
+    if (!observed.ok) {
+      return {
+        ok: false,
+        issue: { path: repoRelative, reason: observed.detail },
+      };
+    }
+    refs.push({
+      file: identity.identity.relative,
+      scope: scope.name,
+      dependencies: edges.filter((edge) => edge.from === scope.name).map((edge) => edge.to),
+      content: observed.content,
+    });
+  }
+  return { ok: true, refs };
+}
+
+function stringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === 'string');
+}
+
+/** @purpose Fail closed on hand-authored pre-Gate-1 JSON before semantic plan checks run. */
+function isScaffoldDraftPlan(value: unknown): value is ScaffoldDraftPlan {
+  if (!value || typeof value !== 'object') return false;
+  const plan = value as Record<string, unknown>;
+  if (plan.schema !== 'sdd-scaffold-plan/v1') return false;
+  if (
+    !Array.isArray(plan.specs) ||
+    !plan.specs.every(
+      (spec) =>
+        spec !== null &&
+        typeof spec === 'object' &&
+        typeof (spec as Record<string, unknown>).path === 'string' &&
+        typeof (spec as Record<string, unknown>).digest === 'string'
+    )
+  )
+    return false;
+  return (
+    Array.isArray(plan.nodes) &&
+    plan.nodes.every((node) => {
+      if (!node || typeof node !== 'object') return false;
+      const item = node as Record<string, unknown>;
+      return (
+        typeof item.id === 'string' &&
+        typeof item.scope === 'string' &&
+        stringArray(item.dependencies) &&
+        stringArray(item.requirementIds) &&
+        typeof item.adapter === 'string' &&
+        (item.action === null || item.action === 'dependency-install') &&
+        stringArray(item.targets) &&
+        stringArray(item.provides) &&
+        stringArray(item.requires)
+      );
+    })
+  );
+}
+
+function loadScaffoldDraftPlan(
+  repoRoot: string,
+  path: string
+): { ok: true; plan: ScaffoldDraftPlan; content: string } | { ok: false; result: CheckResult } {
+  const candidate = isAbsolute(path) ? relative(repoRoot, path) : path;
+  const identity = proveRepoFile(repoRoot, candidate);
+  if (!identity.ok) return { ok: false, result: readFailed(path, identity.detail) };
+  const observed = readProvenRepoFile(identity.identity);
+  if (!observed.ok) return { ok: false, result: readFailed(path, observed.detail) };
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(observed.content);
+  } catch (cause) {
+    return {
+      ok: false,
+      result: readFailed(
+        path,
+        `invalid JSON: ${cause instanceof Error ? cause.message : String(cause)}`
+      ),
+    };
+  }
+  if (!isScaffoldDraftPlan(parsed)) {
+    return {
+      ok: false,
+      result: readFailed(
+        path,
+        'expected schema sdd-scaffold-plan/v1 with specs[] and fully typed nodes[]'
+      ),
+    };
+  }
+  return { ok: true, plan: parsed, content: observed.content };
 }
 
 /** @purpose Add one fail-closed read finding without duplicating a path already reported by this run. */
@@ -1205,6 +1334,9 @@ export async function run(
         phase: { aliases: ['phase'], takesValue: true },
         all: ['all'],
         changed: ['changed'],
+        projectFeasibility: ['project-feasibility'],
+        plan: { aliases: ['plan'], takesValue: true },
+        scaffoldPlan: { aliases: ['scaffold-plan'], takesValue: true },
         scaffoldFeasibility: ['scaffold-feasibility'],
         reviewPublication: { aliases: ['review-publication'], takesValue: true },
         reviewReady: { aliases: ['review-ready'], takesValue: true },
@@ -1221,6 +1353,8 @@ export async function run(
   const invalidValue = [
     ['--task', args.task],
     ['--phase', args.phase],
+    ['--plan', args.plan],
+    ['--scaffold-plan', args.scaffoldPlan],
     ['--review-publication', args.reviewPublication],
     ['--review-ready', args.reviewReady],
     ['--review-state', args.reviewState],
@@ -1234,12 +1368,17 @@ export async function run(
     return badInvocation('--authoring does not take a value');
   if (args.scaffoldFeasibility !== undefined && args.scaffoldFeasibility !== true)
     return badInvocation('--scaffold-feasibility does not take a value');
+  if (args.projectFeasibility !== undefined && args.projectFeasibility !== true)
+    return badInvocation('--project-feasibility does not take a value');
 
   const taskPath = typeof args.task === 'string' ? args.task : undefined;
   const authoring = args.authoring === true;
   const authoringPhase = typeof args.phase === 'string' ? args.phase : undefined;
   const all = args.all === true;
   const changed = args.changed === true;
+  const projectFeasibility = args.projectFeasibility === true;
+  const approvedPlanPath = typeof args.plan === 'string' ? args.plan : undefined;
+  const scaffoldPlanPath = typeof args.scaffoldPlan === 'string' ? args.scaffoldPlan : undefined;
   const scaffoldFeasibility = args.scaffoldFeasibility === true;
   const reviewPublicationSelected = typeof args.reviewPublication === 'string';
   const reviewPublicationPaths = reviewPublicationSelected
@@ -1255,6 +1394,8 @@ export async function run(
     taskSelected,
     all,
     changed,
+    projectFeasibility,
+    scaffoldPlanPath !== undefined,
     scaffoldFeasibility,
     reviewPublicationSelected,
     reviewReadySelected,
@@ -1265,8 +1406,10 @@ export async function run(
     (taskSelected && positional.length > 0) ||
     (authoring && !taskSelected) ||
     (authoringPhase !== undefined && (!taskSelected || !authoring)) ||
+    (approvedPlanPath !== undefined && !scaffoldFeasibility) ||
     (reviewReadySelected && positional.length > 0) ||
-    ((all || changed || scaffoldFeasibility) && positional.length > 1)
+    ((all || changed || projectFeasibility || scaffoldFeasibility || scaffoldPlanPath) &&
+      positional.length > 1)
   )
     return badInvocation(
       selectedModeCount !== 1
@@ -1275,7 +1418,9 @@ export async function run(
           ? '--authoring requires --task <ticket>'
           : authoringPhase !== undefined && (!taskSelected || !authoring)
             ? '--phase requires --authoring and --task <ticket>'
-            : `unexpected positional argument(s): ${positional.join(' ')}`
+            : approvedPlanPath !== undefined && !scaffoldFeasibility
+              ? '--plan requires --scaffold-feasibility'
+              : `unexpected positional argument(s): ${positional.join(' ')}`
     );
 
   if (authoringPhase !== undefined && !/^P[1-9][0-9]*$/.test(authoringPhase))
@@ -1285,6 +1430,50 @@ export async function run(
     return badInvocation(
       '--authoring requires the exact created ticket path returned by sdd-new, not a Task-ID'
     );
+
+  if (projectFeasibility) {
+    const selectedRoot = positional[0] ?? ticketProjectRoot;
+    const rootIssue = selectedRootIssue(selectedRoot);
+    if (rootIssue) return readFailed(rootIssue.path, rootIssue.reason);
+    const repoRoot = realpathSync(resolve(selectedRoot));
+    const project = collectProjectSpecRefs(repoRoot);
+    if (!project.ok) return readFailed(project.issue.path, project.issue.reason);
+    const feasibility = checkProjectFeasibility(project.refs);
+    const formatted = formatFindings(feasibility, project.refs.length, {
+      repairHint:
+        'resume evolve-scope at the external-dependencies audit, repair the named project capability facts, and rerun --project-feasibility before spec approval.',
+    });
+    const context =
+      formatted.exitCode === 0
+        ? `\nproject-context: ${JSON.stringify(deriveProjectFeasibilityContext(project.refs))}`
+        : '';
+    const adapterContract = `\ncapability-contract: ${JSON.stringify(deriveCapabilityAdapterContract())}`;
+    return {
+      text: `[sdd-check] project feasibility (spec graph)\n${formatted.text}${context}${adapterContract}`,
+      exitCode: formatted.exitCode,
+    };
+  }
+
+  if (scaffoldPlanPath) {
+    const selectedRoot = positional[0] ?? ticketProjectRoot;
+    const rootIssue = selectedRootIssue(selectedRoot);
+    if (rootIssue) return readFailed(rootIssue.path, rootIssue.reason);
+    const repoRoot = realpathSync(resolve(selectedRoot));
+    const project = collectProjectSpecRefs(repoRoot);
+    if (!project.ok) return readFailed(project.issue.path, project.issue.reason);
+    const loadedPlan = loadScaffoldDraftPlan(repoRoot, scaffoldPlanPath);
+    if (!loadedPlan.ok) return loadedPlan.result;
+    const feasibility = checkScaffoldDraftPlan(project.refs, loadedPlan.plan);
+    const formatted = formatFindings(feasibility, loadedPlan.plan.nodes.length, {
+      repairHint:
+        'repair the named draft-plan mapping/order facts and rerun the same --scaffold-plan command before presenting Gate 1.',
+    });
+    const planDigest = `sha256:${createHash('sha256').update(loadedPlan.content).digest('hex')}`;
+    return {
+      text: `[sdd-check] scaffold draft plan (pre-Gate-1)\n${formatted.text}\nplan-digest: ${planDigest}`,
+      exitCode: formatted.exitCode,
+    };
+  }
 
   if (scaffoldFeasibility) {
     const selectedRoot = positional[0] ?? ticketProjectRoot;
@@ -1343,6 +1532,21 @@ export async function run(
       ),
     };
     const feasibility = checkScaffoldFeasibility(corpus.refs, baseline);
+    let approvedPlanDigest = '';
+    if (approvedPlanPath) {
+      const project = collectProjectSpecRefs(repoRoot);
+      if (!project.ok) return readFailed(project.issue.path, project.issue.reason);
+      const loadedPlan = loadScaffoldDraftPlan(repoRoot, approvedPlanPath);
+      if (!loadedPlan.ok) return loadedPlan.result;
+      feasibility.push(...checkScaffoldDraftPlan(project.refs, loadedPlan.plan));
+      feasibility.push(
+        ...checkScaffoldPlanMaterialization(
+          loadedPlan.plan,
+          materializedScaffoldPlanNodes(corpus.refs)
+        )
+      );
+      approvedPlanDigest = `\napproved-plan-digest: sha256:${createHash('sha256').update(loadedPlan.content).digest('hex')}`;
+    }
     for (const item of feasibility) {
       if (item.file !== '(scaffold graph)') item.file = relative(repoRoot, item.file) || item.file;
     }
@@ -1359,7 +1563,7 @@ export async function run(
           )}`
         : '';
     return {
-      text: `[sdd-check] scaffold feasibility (clean HEAD)\n${formatted.text}${criticContext}`,
+      text: `[sdd-check] scaffold feasibility (clean HEAD)\n${formatted.text}${approvedPlanDigest}${criticContext}`,
       exitCode: formatted.exitCode,
     };
   }

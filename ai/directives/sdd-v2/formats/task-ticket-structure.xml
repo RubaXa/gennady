@@ -58,6 +58,7 @@
   - **Capability Adapter:** <adapter-id>   <!-- required when this phase declares package/capability facts; omit otherwise -->
   - **Provides Capabilities:** <comma-separated capability ids>   <!-- capabilities this phase materializes; omit when none -->
   - **Requires Capabilities:** <comma-separated capability ids>   <!-- exact current/upstream prerequisites; omit when none -->
+  - **Bootstrap Requirements:** <comma-separated project-unique Bootstrap Requirement IDs>   <!-- exact approved rows this phase materializes; omit for non-bootstrap module work -->
   - **Bootstrap Action:** dependency-install   <!-- every phase that adds packages; omit otherwise -->
   - **Provides Packages:** <comma-separated exact package names>   <!-- dependency-install only -->
   - **Requires Packages:** <comma-separated exact package names>   <!-- phases whose config/commands need packages absent from clean HEAD; omit otherwise -->
@@ -82,6 +83,7 @@
   - **Capability Adapter:** <adapter-id>   <!-- required when this phase declares package/capability facts; omit otherwise -->
   - **Provides Capabilities:** <comma-separated capability ids>   <!-- omit when none -->
   - **Requires Capabilities:** <comma-separated capability ids>   <!-- omit when none -->
+  - **Bootstrap Requirements:** <comma-separated project-unique Bootstrap Requirement IDs>   <!-- omit for non-bootstrap module work -->
   - **Bootstrap Action:** dependency-install   <!-- include only when this phase adds packages -->
   - **Provides Packages:** <comma-separated exact package names>   <!-- dependency-install only -->
   - **Requires Packages:** <comma-separated exact package names>   <!-- omit when none -->

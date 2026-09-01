@@ -22,7 +22,13 @@ export function printHelp(): void {
     '  npx gennady sdd-check --all [project-root]   # check every ticket + spec under specs/'
   );
   console.info(
-    '  npx gennady sdd-check --scaffold-feasibility [project-root]  # clean-HEAD package/lock DAG + command-proof barrier before scaffold critic'
+    '  npx gennady sdd-check --project-feasibility [project-root]  # prove the combined Bootstrap Requirements graph before spec approval'
+  );
+  console.info(
+    '  npx gennady sdd-check --scaffold-plan <json> [project-root]  # prove exact requirement coverage and capability order before Gate 1'
+  );
+  console.info(
+    '  npx gennady sdd-check --scaffold-feasibility [--plan <json>] [project-root]  # materialized graph + approved-plan binding before scaffold critic'
   );
   console.info(
     '  npx gennady sdd-check --changed [project-root]  # check @tasks/@consumers headers of changed files'
@@ -37,7 +43,7 @@ export function printHelp(): void {
     '  npx gennady sdd-check --review-publication <primary> [secondary...]  # exact role-validated VCS publication-set after critic readiness'
   );
   console.info(
-    '  Choose exactly one mode: --task, --scaffold-feasibility, --all, --changed, --review-state, --review-publication, or --review-ready.'
+    '  Choose exactly one mode: --task, --project-feasibility, --scaffold-plan, --scaffold-feasibility, --all, --changed, --review-state, --review-publication, or --review-ready.'
   );
   console.info('');
   console.info('Mechanical checks (per ticket):');
@@ -66,7 +72,13 @@ export function printHelp(): void {
   );
   console.info('  --all also: broken `](…spec.md)` links that do not resolve on disk');
   console.info(
-    '  --scaffold-feasibility: selected capability adapters have one reachable provider per requirement; dependency writers own manifest+lock and shared writers are DAG-serialized; exact package and command probes are proven before critic; GREEN emits authoritative critic-context JSON'
+    '  --scaffold-feasibility: selected capability adapters have one reachable provider per requirement; dependency writers own manifest+lock and shared writers are DAG-serialized; --plan also proves materialized phases match the approved pre-Gate-1 graph; exact package and command probes are proven before critic; GREEN emits authoritative critic-context JSON'
+  );
+  console.info(
+    '  --project-feasibility: every Bootstrap Requirement has a stable ID and explicit adapter/provides/requires facts; providers must be in the same scope or an upstream portal dependency; GREEN emits digest-bound project-context JSON'
+  );
+  console.info(
+    '  --scaffold-plan: every this-scope-task requirement is mapped exactly once; copied capability facts and spec digests are fresh; every provider precedes its consumer before Gate 1'
   );
   console.info(
     '  --changed: TASKS_APPEND_ONLY (@tasks: header never drops an id present at HEAD) ·'
