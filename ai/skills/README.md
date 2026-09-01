@@ -27,7 +27,7 @@ npx gennady sync-skills   # навыки
 | 3 | `sdd-module-decomposition` | Декомпозирует product/library scope на модульные спеки с инвентарём сущностей |
 | 4 | `sdd-scaffold` | Генерирует DAG тасков из спек: Cascade Table, BDD, Phases Overview |
 | 5 | `sdd-critic` | Критика пробелов: baseline, затем узкая проверка принятых правок (до 5 раундов) |
-| 6 | `sdd-execute` | Исполняет один таск от начала до конца: dispatch фаз → audit |
+| 6 | `sdd-execute` | Исполняет таск автономно: typed Handoff → terminal audit → точечный retry |
 
 ### 2. Выполнить задачу
 
@@ -37,7 +37,14 @@ npx gennady sync-skills   # навыки
 
 Или: «выполни следующую», «execute pickable», «выбери что делать дальше».
 
-Навык читает таск, диспатчит фазы одну за другой, закрывает round, диспатчит fresh-eyes audit.
+Навык диспатчит фазы последовательно и передаёт typed Handoff. Безопасно разрешимое
+расхождение фиксируется обычным `decision`/`insight` и не останавливает execution. После
+закрытия round fresh-eyes audit автономно доходит до terminal result и сохраняет его в таске.
+При FAIL каждый finding сам называет владельца: phase, ticket, spec или project. Смешанные findings не
+теряются; свежие аудиты продолжаются, пока исправления закрывают предыдущие блокирующие находки либо
+дают новые доказательства и другой проверяемый путь. Эквивалентный результат без новых доказательств
+или пути означает доказанный no-progress, а не запрос оператору разрешить ещё одну попытку. Runtime
+PASS опирается на выполненную команду или probe с наблюдаемым результатом.
 
 ### 3. Выполнить пачку задач
 
@@ -45,7 +52,10 @@ npx gennady sync-skills   # навыки
 @sdd-execute-batch выполни всю очередь
 ```
 
-Параллелит таски с непересекающимися файлами. Опциональный epic-level audit.
+Планирует очередь по фактическим зависимостям и последовательно запускает для каждого готового
+TODO/IN_PROGRESS тикета канонический `sdd-execute` lifecycle. В одном worktree таски не параллелятся:
+так audit diff и tracker writes не смешиваются. BLOCKED/PAUSED lane не останавливает независимые
+тикеты. Опциональный `epic-audit` добавляется после обязательных per-task audits.
 
 ### 4. Проверить качество спеки / таска
 
@@ -79,7 +89,8 @@ Read-only: проверяет связность спек, синхрониза�
 @sdd-audit TSK-05
 ```
 
-Fresh-eyes: читает таск + спеку + git diff, механический линтинг, верификация правил. Фидинги роутятся в артефакты (правки спек, переоткрытие тасков).
+Fresh-eyes: читает таск + спеку + git diff, перепроверяет execution decisions, тесты и правила. Один запуск
+не паузится для оператора: terminal PASS/FAIL сохраняется в Audit Rounds, а findings называют route и phase-owner.
 
 ### 8. Починить после ревью / sdd-check
 
@@ -112,7 +123,7 @@ Fresh-eyes: читает таск + спеку + git diff, механическ�
 | Паттерн | Как работает | Навыки |
 | ------- | ----------- | ------ |
 | **Directive activation** | Извлечь intent → загрузить директиву → активироваться как она → выполнить план | sdd-setup, sdd-discover, sdd-module-decomposition, sdd-scaffold, sdd-audit, sdd-continue, sdd-critic, sdd-fix, sdd-infra |
-| **Orchestrator** | Прочитать таск → dispatch фаз (typed Handoff) → dispatch audit. Сам код не пишет | sdd-execute, sdd-execute-batch |
+| **Orchestrator** | Dispatch фаз → typed Handoff → persisted audit → remediation по route/phase → свежий audit | sdd-execute, sdd-execute-batch |
 | **CLI delegation** | Подготовить артефакт → вызвать `npx gennady alt-opinion` → показать результат | alt-opinion |
 | **Read-only verifier** | Саморефлексия + механические проверки через `sdd scan`. Код не пишет | sdd-check |
 

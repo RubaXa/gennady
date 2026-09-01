@@ -1,21 +1,23 @@
 #!/usr/bin/env bash
 # @file: Deterministic SDD mechanical checks shared by sdd-check (whole tree) and sdd-audit (scoped).
 # @consumers: sdd-check skill (whole-tree preflight); sdd-audit directive STEP_2_5 (scoped pre-pass).
+# @tasks: TSK-96, TSK-97
 # @contract: AX_BASH_NO_SILENT_EMPTY. Single source of mechanical truth — neither skill re-implements
 #            header presence, Task-ID integrity, or tracker sync. Pure function of files on disk.
 #
 # Three modes:
 #   check.sh [project-root]          — whole tree: TASKID + TRACKER_SYNC (all tickets) + RULES (all rule files)
-#   check.sh --task <TSK-NN> [root]  — one ticket: TASKID + TRACKER_SYNC for that id + RULES for its cited rules
+#   check.sh --task <Task-ID> [root]  — one ticket: TASKID + TRACKER_SYNC for that id + RULES for its cited rules
 #   check.sh --files <f1> [f2 ...]   — header-trio presence for an explicit file list (audit passes its git-diff scope)
 #
 # Output sections (TSV, machine-readable, stable):
 #   [HEADERS]      — file \t has_file \t has_consumers \t has_tasks \t verdict(OK|PARTIAL|NONE)
-#   [TASKID]       — kind(orphan|collision) \t id \t detail
+#   [TASKID]       — kind(orphan|collision|missing) \t id \t detail
 #   [TRACKER_SYNC] — task_id \t ticket_status \t tracker_status \t match(YES|NO|NO_ROW)
+#   [REOPENS]      — task_id \t meta \t audit_triggered \t verdict(OK|PENDING|MISMATCH|UNVERIFIABLE)
 #   [RULES]        — file \t belief \t anti \t hooks \t reward \t verdict(OK|INCOMPLETE) \t missing
 #   [LOG]          — ticket \t round \t line \t kind \t token \t detail
-#                    kinds: unknown-token | unclosed-round        (counted as findings)
+#                    kinds: unknown-token | unclosed-round | fabricated-placeholder (findings)
 #                           retired-token | round-close-no-timestamp (informational: append-only
 #                           history and cosmetics never fail a tree)
 #   [SUMMARY]      — key=value totals + findings count
@@ -61,10 +63,10 @@ case "${1:-}" in
         MODE="task"
         TASK_ID="${2:-}"
         ROOT="${3:-.}"
-        if [[ -z "$TASK_ID" || ! "$TASK_ID" =~ ^TSK-[0-9]+$ ]]; then
+        if [[ -z "$TASK_ID" || ! "$TASK_ID" =~ ^TSK-([A-Z][A-Z0-9]*-)?[0-9]+$ ]]; then
             cat <<EOF
 [$PROG] BAD_INVOCATION
-  expected: $PROG --task TSK-NN [project-root]
+  expected: $PROG --task TSK-NN|TSK-PREFIX-NNN [project-root]
   got:      $PROG --task '${TASK_ID:-}' ...
 Required action: pass a Task-ID of the form TSK-<number>.
 EOF
@@ -89,7 +91,7 @@ EOF
         cat <<EOF
 [$PROG] BAD_INVOCATION
   unknown flag: $1
-  expected: $PROG [project-root] | $PROG --task TSK-NN [root] | $PROG --files <files...>
+  expected: $PROG [project-root] | $PROG --task <Task-ID> [root] | $PROG --files <files...>
 EOF
         exit 4
         ;;
@@ -156,13 +158,25 @@ fi
 printf '# sdd check v%s (mode=%s%s)\n' "$VERSION" "$MODE" "$([[ "$MODE" == task ]] && echo " $TASK_ID")"
 printf 'ROOT=%s\n' "$ROOT_ABS"
 
-TASK_FILES=$(find -L "$ROOT_ABS/tasks" -name '*.task-*.md' -type f 2>/dev/null | sort || true)
+TASK_FILES=$(find -L "$ROOT_ABS/tasks" -name '*.md' ! -name 'README.md' -type f 2>/dev/null | sort || true)
 
 # ---------------------------------------------------------------------------
 # [TASKID] — collisions (global) + orphan @tasks references
 # ---------------------------------------------------------------------------
 
 printf '\n[TASKID]\n# kind\tid\tdetail\n'
+
+if [[ "$MODE" == "task" ]]; then
+    TASK_MATCHES=0
+    while IFS= read -r f; do
+        [[ -z "$f" ]] && continue
+        [[ "$(sdd_lib_task_id "$f")" == "$TASK_ID" ]] && TASK_MATCHES=$((TASK_MATCHES+1))
+    done <<< "$TASK_FILES"
+    if [[ "$TASK_MATCHES" -eq 0 ]]; then
+        printf 'missing\t%s\tno ticket declares this Meta Task-ID\n' "$TASK_ID"
+        FINDINGS=$((FINDINGS+1))
+    fi
+fi
 
 # Build id → files map to detect collisions (two tickets declaring same Task-ID).
 COLLISION_TMP="$(mktemp -t sdd-check-ids.XXXXXX)"
@@ -183,7 +197,7 @@ while IFS= read -r id; do
     FINDINGS=$((FINDINGS+1))
 done < <(cut -f1 "$COLLISION_TMP" | sort | uniq -d)
 
-# Orphans: @tasks: TSK-NN in source with no matching ticket file.
+# Orphans: @tasks Task-IDs in source with no matching ticket Meta ID.
 # Whole-tree mode only (task mode trusts its own ticket exists).
 if [[ "$MODE" == "tree" ]]; then
     known_ids=$(cut -f1 "$COLLISION_TMP" | sort -u)
@@ -192,11 +206,11 @@ if [[ "$MODE" == "tree" ]]; then
               --include='*.ts' --include='*.js' --include='*.sh' --include='*.go' \
               --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist \
               --exclude-dir=worktrees --exclude-dir=.claude 2>/dev/null \
-            | grep -oE 'TSK-[0-9]+' | sort -u || true)
+            | grep -oE 'TSK-([A-Z][A-Z0-9]*-)?[0-9]+' | sort -u || true)
     while IFS= read -r rid; do
         [[ -z "$rid" ]] && continue
         if ! echo "$known_ids" | grep -qx "$rid"; then
-            printf 'orphan\t%s\t@tasks reference with no tasks/**/*.task-*.md\n' "$rid"
+            printf 'orphan\t%s\t@tasks reference with no ticket declaring this Meta Task-ID\n' "$rid"
             FINDINGS=$((FINDINGS+1))
         fi
     done <<< "$refs"
@@ -242,6 +256,91 @@ while IFS= read -r f; do
     sync_one "$f"
 done <<< "$TASK_FILES"
 
+# ---------------------------------------------------------------------------
+# [REOPENS] — Meta count follows persisted audit causation, not all Round headers
+# ---------------------------------------------------------------------------
+
+printf '\n[REOPENS]\n# task_id\tmeta\taudit_triggered\tverdict\n'
+
+reopens_one() {
+    local f="$1" id meta triggered first_after verdict causal_ok pending audit_line after target expected status last_audit ticket_status
+    id=$(sdd_lib_task_id "$f")
+    [[ -z "$id" ]] && return
+    meta=$(grep -m1 -oE 'Reopens:\*?\*?[[:space:]]*[0-9]+' "$f" 2>/dev/null | grep -oE '[0-9]+$' || true)
+    triggered=$(grep -cE '^@audit .* triggered-reopen=Round-[0-9]+' "$f" 2>/dev/null || true)
+    first_after=$(grep -m1 -E '^@audit .* after-exec-round=[0-9]+' "$f" 2>/dev/null | sed -E 's/.* after-exec-round=([0-9]+).*/\1/' || true)
+    causal_ok=1
+    pending=0
+    last_audit=$(grep -E '^@audit ' "$f" 2>/dev/null | tail -1 || true)
+    ticket_status=$(sdd_lib_status "$f")
+
+    while IFS= read -r audit_line; do
+        [[ -z "$audit_line" ]] && continue
+        after=$(echo "$audit_line" | sed -nE 's/.* after-exec-round=([0-9]+).*/\1/p')
+        target=$(echo "$audit_line" | sed -nE 's/.* triggered-reopen=Round-([0-9]+).*/\1/p')
+        status=$(echo "$audit_line" | sed -nE 's/.* status=([^ ]+).*/\1/p')
+        [[ -z "$after" || -z "$target" ]] && { causal_ok=0; continue; }
+        expected=$((after + 1))
+        [[ "$target" -ne "$expected" || "$status" != "FAIL" ]] && causal_ok=0
+        if ! grep -qE "^### Round ${target}([[:space:]]|$)" "$f" 2>/dev/null; then
+            if [[ "$audit_line" == "$last_audit" && ( "$ticket_status" == "IN_PROGRESS" || "$ticket_status" == "BLOCKED" ) ]]; then
+                pending=1
+            else
+                causal_ok=0
+            fi
+        fi
+    done < <(grep -E '^@audit .* triggered-reopen=Round-[0-9]+' "$f" 2>/dev/null || true)
+
+    # Causation is bidirectional: a phase-owned code route requires a triggered Round, and a
+    # triggered Round requires at least one such route.
+    if ! awk '
+        function close_record() { if (seen && triggered != owned) bad = 1 }
+        /^@audit / {
+            close_record()
+            seen = 1
+            triggered = ($0 ~ / triggered-reopen=Round-[0-9]+/)
+            owned = 0
+            next
+        }
+        seen && /^F-/ && / phase=P[0-9]+ / && / route=(code-fix|ticket-reopen) / { owned = 1 }
+        END { close_record(); exit bad }
+    ' "$f"; then
+        causal_ok=0
+    fi
+
+    if [[ "$causal_ok" -ne 1 ]]; then
+        [[ -z "$meta" ]] && meta="-"
+        verdict="MISMATCH"; FINDINGS=$((FINDINGS+1))
+    elif [[ -z "$meta" && "$triggered" -eq 0 ]]; then
+        meta="-"; verdict="OK"
+    elif [[ "$meta" == "0" && "$triggered" -eq 0 && -z "$first_after" ]]; then
+        verdict="OK"
+    elif [[ -z "$meta" || -z "$first_after" || "$first_after" -ne 1 ]]; then
+        # Legacy tickets may have reopens from before persisted audit records existed. The available
+        # records are not a complete denominator, so report the data without inventing a mismatch.
+        [[ -z "$meta" ]] && meta="-"
+        verdict="UNVERIFIABLE"
+    elif [[ -n "$meta" && "$meta" -ne "$triggered" ]]; then
+        verdict="MISMATCH"; FINDINGS=$((FINDINGS+1))
+    elif [[ "$pending" -eq 1 ]]; then
+        verdict="PENDING"
+    elif [[ -n "$meta" && "$meta" -eq "$triggered" ]]; then
+        verdict="OK"
+    else
+        [[ -z "$meta" ]] && meta="-"
+        verdict="MISMATCH"; FINDINGS=$((FINDINGS+1))
+    fi
+    printf '%s\t%s\t%s\t%s\n' "$id" "$meta" "$triggered" "$verdict"
+}
+
+while IFS= read -r f; do
+    [[ -z "$f" ]] && continue
+    if [[ "$MODE" == "task" ]]; then
+        [[ "$(sdd_lib_task_id "$f")" == "$TASK_ID" ]] || continue
+    fi
+    reopens_one "$f"
+done <<< "$TASK_FILES"
+
 # [HEADERS] is intentionally NOT run in tree mode: "which files must carry @tasks"
 # is a policy (task-generated vs hand-authored), not a mechanical fact. Header presence
 # is meaningful only against a known in-scope file set — provided by audit via --files.
@@ -252,12 +351,15 @@ done <<< "$TASK_FILES"
 
 printf '\n[RULES]\n# file\tbelief\tanti\thooks\treward\tverdict\tmissing\n'
 
-# Cascade categories only; `*.directive.xml` are protocols, not rules.
+# Cascade categories and protocol exclusion come from the shared path predicate.
 rule_files_in_tree() {
     find -L "$ROOT_ABS/ai/directives" "$ROOT_ABS"/plugins/*/directives \
         -type d -name node_modules -prune -o \
-        -type f -name '*.xml' ! -name '*.directive.xml' -print 2>/dev/null \
-        | grep -E '/(coding|testing|infra)/[^/]+\.xml$' | sort -u || true
+        -type f -name '*.xml' -print 2>/dev/null \
+        | while IFS= read -r path; do
+            sdd_lib_is_rule_path "$path" && printf '%s\n' "$path"
+          done \
+        | sort -u || true
 }
 
 # Task mode: the rules this ticket's phases actually cite (the "activated" set).
@@ -266,10 +368,10 @@ rule_files_for_task() {
     ticket=$(grep -l "^- \*\*Task-ID:\*\* $TASK_ID\$" $TASK_FILES 2>/dev/null | head -1)
     [[ -z "$ticket" ]] && return
     grep -ohE '(ai/directives|plugins/[a-z0-9-]+/directives)/[a-z0-9-]+/[a-z0-9._-]+\.xml' "$ticket" \
-        | grep -vE '\.directive\.xml$' | sort -u \
         | while IFS= read -r rel; do
-            [[ -f "$ROOT_ABS/$rel" ]] && printf '%s\n' "$ROOT_ABS/$rel"
-          done
+            sdd_lib_is_rule_path "$rel" && [[ -f "$ROOT_ABS/$rel" ]] && printf '%s\n' "$ROOT_ABS/$rel"
+          done \
+        | sort -u
 }
 
 if [[ "$MODE" == "task" ]]; then
@@ -315,6 +417,18 @@ while IFS= read -r f; do
         [[ "$(sdd_lib_task_id "$f")" == "$TASK_ID" ]] || continue
     fi
     awk -v ticket="${f#$ROOT_ABS/}" '
+        function has_scaffold_marker(tok, line) {
+            if (line ~ /^- \[x\] `<[^>]+>` /) return 1
+            if (tok == "intro") return line ~ /<Entity>|<reason>/
+            if (tok == "decision") return line ~ /<key>|<value>|<reason>/
+            if (tok == "tried") return line ~ /<approach>|<result>/
+            if (tok == "discovery") return line ~ /<fact>/
+            if (tok == "insight") return line ~ /<observation>|<spec-section>|<change>/
+            if (tok == "verified") return line ~ /<tool>|<version>|<summary>/
+            if (tok == "ver") return line ~ /<cmd>|<pass\|fail>|<code>|<N>/
+            if (tok == "BLOCKED") return line ~ /<cause>/
+            return 0
+        }
         BEGIN {
             split("intro decision tried discovery insight verified ver BLOCKED DONE", v, " ")
             for (i in v) valid[v[i]] = 1
@@ -331,6 +445,8 @@ while IFS= read -r f; do
         /^### Round /        {
             if (inclose && closelines != 1 && closebad == 0 && roundwork == 1)
                 printf "%s\t%s\t%d\tbad-round-close\t-\texpected exactly one DONE line, found %d\n", ticket, round, closeline, closelines
+            if ($0 ~ /<YYYY-MM-DD>/)
+                printf "%s\t-\t%d\tfabricated-placeholder\tRound\tround header retains a scaffold marker\n", ticket, NR
             round = $3; inclose = 0; closelines = 0; closebad = 0; roundwork = 0; next
         }
         /^#### Round close/  { inclose = 1; closelines = 0; closebad = 0; closeline = NR; next }
@@ -346,6 +462,10 @@ while IFS= read -r f; do
             sub(/:$/, "", tok)   # a trailing colon is cosmetic, not a different token
             if (inclose) { if (tok == "DONE") closelines++ }
             else if ($0 ~ /^- \[x\]/) roundwork = 1
+            if ($0 ~ /^- \[x\]/ && has_scaffold_marker(tok, $0)) {
+                printf "%s\t%s\t%d\tfabricated-placeholder\t%s\tchecked protocol line retains a scaffold marker\n", ticket, round, NR, tok
+                next
+            }
             if (tok in valid) next
             # Every real token is lowercase except BLOCKED / DONE. A capitalised first word is a
             # sentence from the pre-consolidation prose plan ("Implementation file:", "Tracker

@@ -107,7 +107,8 @@ _Это полный список сущностей модуля. Любое в
   - Dispatch phases — sequential loop: fresh context per phase, typed Handoff between phases
   - Close round — append round close to Execution Log, sync trackers
   - Dispatch audit — mandatory, always runs after round close
-  - Retry on FAIL — max 2 audit attempts, selective phase re-run
+  - Retry on FAIL — selective phase re-run while findings materially converge; stop on evidenced
+    no-progress or an external/requirements decision
 - **Invariants:**
   - Оркестратор не читает bodies фаз, BDD, Verification, Coverage
   - Оркестратор не пишет код
@@ -120,7 +121,7 @@ _Это полный список сущностей модуля. Любое в
 - **Purpose:** Шаблон prompt'а для диспатча фазового subagent'а
 - **Public Properties:**
   - Step 1: Read directive (`ai/directives/sdd/phase-execution-protocol.xml`)
-  - Step 2: Activate (`🔒 DIRECTIVE ACTIVATED: SddPhaseExecution`)
+  - Step 2: Apply directive silently (no activation or internal-step narration)
   - Step 3: Apply to intent (Ticket + Phase + Reason + Inputs)
   - Tooling: `${SKILL_DIR}/scripts/sdd`
 - **Consumers:** sdd-execute, sdd-execute-batch
@@ -131,7 +132,7 @@ _Это полный список сущностей модуля. Любое в
 - **Purpose:** Шаблон prompt'а для диспатча аудита
 - **Public Properties:**
   - Step 1: Read directive (`ai/directives/sdd/audit.directive.xml`)
-  - Step 2: Activate (`🔒 DIRECTIVE ACTIVATED: SddAudit`)
+  - Step 2: Apply directive silently (no activation or internal-step narration)
   - Step 3: Apply to intent (Task + Ticket + Round + Artifacts + Mode)
 - **Consumers:** sdd-execute, sdd-execute-batch
 
@@ -199,11 +200,50 @@ _Это полный список сущностей модуля. Любое в
   - Все pending-фазы выполнены последовательно
   - Execution Log содержит закрытый раунд
   - Tracker синхронизирован: ticket Meta.Status ↔ tasks/\*/README.md ↔ tasks/README.md
-  - Аудит выполнен (PASS или FAIL с деталями)
+  - Аудит выполнен (`PASS` или `FAIL` с деталями)
+  - Нештатные решения и предложения обратной связи перечислены оператору в финальной сводке
 - **Invariants:**
-  - Max 2 попытки аудита
-  - Селективный реран фаз: только те, что в `phases_to_fix`
+  - `sdd-execute` is the only per-task lifecycle owner. Batch schedules that lifecycle serially for
+    ready TODO/IN_PROGRESS tickets; it does not duplicate phase/audit/retry logic or run parallel
+    lanes in one working tree
+  - Scaffolded open Round/phase skeletons are filled in place. A later Round is created only after a
+    closed Round when new phase work is required
+  - Phase, critic and audit dispatch inherit the caller's configured model; directives do not pin
+    provider-specific model aliases
+  - The execution invocation authorizes deterministic task selection and the printed batch plan;
+    execution does not request a duplicate start confirmation
+  - Audit retries have no numeric attempt token: remediation continues while it closes preceding
+    blocking findings or yields new evidence and a different owned remediation; it stops on an
+    equivalent finding set with neither new evidence nor a different in-scope remediation
+  - Каждый audit finding обрабатывается один раз по собственным `route` и `phase`; смешанные
+    phase/ticket/spec findings не подавляют друг друга
+  - Селективный реран: только фазы, явно названные владельцами audit findings
   - Оркестратор не читает bodies фаз, BDD, Verification, Coverage
+  - Безопасно разрешимое расхождение не останавливает execution: фаза использует существующие
+    `decision`/`insight` и Handoff, сохраняет BDD/requirements/Vision и продолжает до обычного аудита
+  - Runtime PASS requires executed evidence tied to the audited revision; printed commands and code
+    reading alone do not prove runtime behavior
+  - Audit proposes owned remediation; the orchestrator applies only exact bounded corrections.
+    Requirement/Vision changes, risk acknowledgements, external state, and optional insight backflow
+    remain operator decisions
+  - Meta `Reopens` counts only persisted audit records with `triggered-reopen != none`; the mechanical
+    check also validates the audit ↔ phase-owned route in both directions and the declared next
+    Round. Audit refreshes Meta in the same ticket write; a latest causative FAIL is `PENDING` until
+    execution creates that Round
+  - Mechanical checks recognize legacy `TSK-NN` and current `TSK-{PREFIX}-{NNN}` IDs from ticket Meta,
+    independent of filename convention
+  - A checked Execution Log protocol line retaining a scaffold marker is a mechanical
+    `fabricated-placeholder` finding; matching is token-aware, so ordinary event prose may mention
+    unrelated angle-bracket literals
+  - A valid but nonexistent Task-ID is a mechanical `missing` finding, never a clean empty result
+  - `ANCHOR_NOT_FOUND` alone enters readable-legacy fallback; a present `ANCHOR_EMPTY` section is a
+    distinct MAJOR corruption and cannot pass with zero BDD scenarios
+  - A fix phase that returns BLOCKED/FAIL leaves its Round open and prevents a fresh audit until the
+    concrete blocker is resolved
+  - Control-plane exemption is limited to the active ticket, its Task-ID-owning scope tracker, and
+    its aggregate scope row; unrelated modified trackers remain undeclared-diff findings
+  - Tree and task rule scans share one predicate covering canonical cascade categories, including
+    architecture and quality rules, while excluding protocol `*.directive.xml` files
 
 ### Artifact: `SddScripts`
 
@@ -296,6 +336,44 @@ ai/skills/
 - **Rejected alternatives:**
   - 5 подмодулей по фазам — overengineered: некоторые содержали бы 1-2 навыка
   - Навыки как отдельные модули — 12 модулей, overhead управления
+
+### D-M003 — Adaptive execution reuses the existing flow
+
+- **Status:** active
+- **Recorded:** RCA TSK-IB-005, 2026-09-01
+- **Why:** `sdd-execute` должен автономно доходить до аудита при неполной или временно
+  противоречивой документации. Фаза фиксирует выбор через `decision`/`insight` в Execution Log и
+  `decisions` в Handoff; аудит проверяет результат обычными PASS/FAIL и `INSIGHT_BACKFLOW`, а итоговая
+  сводка предъявляет решения оператору одним блоком.
+- **Safety boundary:** продолжение допустимо только для in-scope выбора, сохраняющего BDD,
+  functional requirements и Vision и проверяемого обычными тестами/аудитом. Иначе `BLOCKED`.
+- **Backflow:** оператор направляет предложение в существующий refine/reopen/follow-up flow.
+- **Rejected alternatives:**
+  - BLOCKED на любом spec/task mismatch — лишает execution автономности
+
+### D-M004 — Review roles stay separate; orchestration owns transitions
+
+- **Status:** active
+- **Recorded:** independent SDD flow simulations, 2026-09-01
+- **Why:** Critic проверяет качество task/spec до разработки; audit независимо проверяет реализацию
+  после неё. Общими являются только механика сохранения результата, явный владелец каждого finding и
+  повторный запуск после исправления. Это устраняет расхождения без объединения критериев двух ролей.
+- **Critic evidence:** финальный `CLEAN` сохраняется компактной строкой; подробный scratch удаляется.
+- **Audit autonomy:** один запуск проходит все проверки без промежуточного подтверждения и возвращает
+  один терминальный результат.
+- **Remediation:** execution обрабатывает все route-группы одного FAIL и запускает свежий audit,
+  пока исправления закрывают предыдущие блокирующие findings либо дают новые доказательства и другой
+  owned remediation. Эквивалентный результат без новых доказательств и нового пути означает
+  доказанный no-progress, а не запрос токена у оператора.
+- **Evidence:** runtime-утверждение подтверждается фактически выполненной командой или probe с
+  наблюдаемым результатом; напечатанная команда и чтение кода не подменяют прогон.
+- **Severity:** документное рассогласование блокирует только тогда, когда из-за него неоднозначны
+  поведение, scope, владелец исправления или проверка; иначе это `MINOR`.
+- **Dispatch:** phase, critic и audit наследуют настроенную модель и не показывают оператору
+  внутреннее объявление активации.
+- **Reopens:** счётчик выводится из сохранённых audit records с `triggered-reopen != none`, а не из
+  общего количества Execution Rounds.
+- **Legacy:** отсутствие anchors не блокирует читаемый старый тикет; неоднозначная структура блокирует.
   <!--/SECTION:MODULE_DECISION_LOG-->
 
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->
@@ -328,7 +406,8 @@ graph TD
 
 ## 10. Handoff to Task Scaffolding
 
-- **Implementation files to be created:** Все 12 навыков уже существуют в `ai/skills/`. Реализация завершена: dev-пути (`~/Developer/gennady/...`) в телах SKILL.md нормализуются в продуктовые при `sync-skills`.
+- **Implementation files to be created:** Все 12 навыков уже существуют в `ai/skills/`. Tooling path
+  резолвится от фактически загруженного `sdd-execute/SKILL.md` и передаётся subagent'ам абсолютным.
 - **Test files to be created:** Интеграционные тесты для скриптов (sdd verify, sdd extract, sdd check-blockers)
 - **Stack dependencies:**
   - Language: TypeScript (для classify-scripts.ts)
@@ -340,8 +419,8 @@ graph TD
 | —    | —        | —      |
 
 - **Open risks & validation needs:**
-  - dev-пути `~/Developer/gennady/` в телах SKILL.md — осознанная конвенция: нормализуются в продуктовые при `sync-skills`
-  - `${SKILL_DIR}` — переменная, предоставляемая агентом-хостером; поведение при отсутствии требует проверки
+  - Runtime должен сообщить путь загруженного SKILL; fallback на другой checkout запрещён, чтобы
+    audit/execute не проверяли не ту ревизию
   - Скрипты завязаны на macOS/bash 3.2+ — не кроссплатформенны
   - classify-scripts.js и classify-scripts.ts — дублирование, требует консолидации
   <!--/SECTION:HANDOFF-->

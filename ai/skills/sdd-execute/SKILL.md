@@ -1,6 +1,6 @@
 ---
 name: sdd-execute
-description: Execute ONE task ticket end-to-end. Reads ticket header + Phases Overview + Execution Log to plan; dispatches one phase-subagent per pending phase (sequential), threading typed Handoff between them; closes Round and dispatches audit-subagent (fresh-eyes). On audit FAIL — re-runs ONLY failing-phases as `fix` kind, max 1 retry. Use when operator passes a Task-ID, ticket path, or "next" / "следующую" / "выбери" / "pick one".
+description: Execute ONE task ticket end-to-end. Dispatches sequential phase subagents, carries typed Handoffs, audits with fresh eyes, selectively repairs failures, and reports non-routine execution decisions to the operator at the end. Use when operator passes a Task-ID, ticket path, or "next" / "следующую" / "выбери" / "pick one".
 license: MIT
 compatibility: opencode
 ---
@@ -13,6 +13,10 @@ You are an ORCHESTRATOR. You PLAN and DISPATCH; you do NOT execute phases yourse
 You DO read the ticket — but only its planning surface: section 1 Meta, section 2 Phases Overview, current Round of section 7 Execution Log. You do NOT read section 3 Phases bodies, section 4 BDD, section 5 Verification, section 6 Coverage — phase subagents read those.
 
 Each subagent runs in a FRESH ISOLATED CONTEXT.
+
+Resolve `SDD_PATH` once from this installed skill's own directory as `scripts/sdd`, canonicalize it to
+an absolute path, and pass that value to subagents. Never substitute a user-home checkout or a
+different installed copy.
 
 <ProgressReporting>
 Black-box: subagents are opaque to the orchestrator. Emit one progress line per state transition.
@@ -30,8 +34,8 @@ Stages:
 Retry path:
 
 - `<pct>% ❌ audit FAIL → 🔄 re-run phases <list> as fix`
-- `<pct>% ✅ phases re-run done → 🔍 audit R2`
-- `100% ✅ audit R2 PASS — OR — ❌ FAIL after 2 attempts (manual intervention)`
+- `<pct>% ✅ phases re-run done → 🔍 fresh audit R<N>`
+- `100% ✅ audit PASS — OR — 🛑 BLOCKED: findings repeated without new evidence or remediation`
 
 Pause path (distinguish from failure — skill is awaiting operator, not broken):
 
@@ -41,42 +45,55 @@ Pause path (distinguish from failure — skill is awaiting operator, not broken)
 <Protocol>
 1. **Resolve task:**
    - Operator passed Task-ID or ticket path → use it.
-   - Operator said "next" / "следующую" / "выбери" / "pick one" / no pointer → read tasks/README.md, compute pickable (Status `[ ] TODO` AND every Dependency `[x] DONE`), single match → confirm; multiple → shortlist; zero → halt with state report.
+   - Operator said "next" / "следующую" / "выбери" / "pick one" / no pointer → read
+     tasks/README.md, compute pickable (Status `[ ] TODO` AND every Dependency `[x] DONE`). Choose
+     the first pickable task in tracker order and report the choice as progress; multiple choices do
+     not require another confirmation. Zero → halt with state report.
    - No `tasks/` directory → halt: "No tasks/ — wrong cwd or scaffolding not done".
 
 2.  **Plan:** Read ONLY ticket sections 1, 2, and 7-current-Round.
-    - **Preflight: scan for unresolved blockers** (per `AX_BLOCKER_RESOLUTION_TRAIL`). Skill ships its own helper scripts at `~/Developer/gennady/ai/skills/sdd-execute/scripts/`. Run `~/Developer/gennady/ai/skills/sdd-execute/scripts/sdd check-blockers <ticket-path>`.
+    - **Preflight: scan for unresolved blockers** (per `AX_BLOCKER_RESOLUTION_TRAIL`). Run
+      `<SDD_PATH> check-blockers <ticket-path>`.
       - exit 0 (CLEAR) → continue to state detection.
       - exit 2 (UNRESOLVED_BLOCKERS) → emit **✋ AWAITING OPERATOR DECISION** message with the script's output, then halt. This is a PAUSED state, NOT a skill failure — be clear in the message. Operator must either (a) mark resolution in Execution Log if blocker is no longer active, or (b) provide unblock decision.
     - State detection from Phases Overview Status column:
       - all `[ ]` → fresh task; plan = all phases in declared order respecting `Deps`.
       - some `[x]`, some `[ ]` → resume; plan = remaining phases in declared order.
       - all `[x]` AND no audit yet → plan = audit only.
-      - all `[x]` AND audit PASS in current Round → halt: "nothing to do".
+      - all `[x]` AND latest persisted audit is `FAIL` → resume at step 6 from that exact terminal
+        record; route its still-current findings before creating any Round.
+      - all `[x]` AND latest persisted audit is `PASS` or `PASS_WITH_ACKNOWLEDGED_RISKS` → ensure
+        final Meta/tracker sync, then halt: "nothing to do".
       - any `[!] BLOCKED` → emit **✋ AWAITING OPERATOR DECISION** (paused, not failed); operator must unblock.
-    - Open new Round in section 7 if this is a fresh attempt or resume after closure: append `### Round N — <YYYY-MM-DD>, <reason>`. Reason for Round 1 = `initial`. Subsequent rounds: `audit-driven fix`, `late-detected bug`, etc.
+    - Reuse the scaffolded current Round when it is still open. Its untouched phase skeletons are the
+      places the phase agents fill; do not append duplicate Round or phase headers. Open a new Round
+      only when no Round exists or the preceding Round is closed and new phase work is required:
+      `### Round N — <YYYY-MM-DD>, <reason>`. Reason for Round 1 = `initial`; later reasons include
+      `audit-driven fix` or `late-detected bug`.
 
 3.  **Phase dispatch loop** — sequential, one phase at a time:
 
     For each phase in plan:
 
-    a. Dispatch PHASE subagent (`subagent_type: general-purpose`, **`model: "sonnet"`** — phase work requires capable code-generation model; haiku-class is insufficient for structured JSDoc/anchor discipline and was empirically observed to skip closing anchors and put @param on type declarations), fresh context, with prompt:
+    a. Dispatch PHASE subagent (`subagent_type: general-purpose`) in fresh context. Do not pin a
+    model: inherit the caller's configured model so execution quality follows the active runtime
+    policy rather than a stale model alias. Use this prompt:
 
     ````
     Step 1 — Read the directive. Use Read tool directly on:
     ai/directives/sdd/phase-execution-protocol.xml
     On failure → halt, report exact path.
 
-        Step 2 — Activate. Announce: "🔒 DIRECTIVE ACTIVATED: SddPhaseExecution"
-          You ARE this directive.
+        Step 2 — Apply the directive silently. You ARE this directive; do not narrate activation or
+          internal step transitions.
 
         Step 3 — Apply to intent.
           Ticket: <absolute ticket path>
           Phase: <P<N>>, kind: <kind>
           Reason: <"initial" | "fix: address audit findings F-NNN, F-MMM" | "resume after blocker">
           Inputs: <verbatim prior Handoff lines OR "none — first phase">
-           SDD tooling available at: ~/Developer/gennady/ai/skills/sdd-execute/scripts/sdd
-             (run "~/Developer/gennady/ai/skills/sdd-execute/scripts/sdd help" for surface; use these
+           SDD tooling available at: <SDD_PATH>
+             (run "<SDD_PATH> help" for surface; use these
               for any extraction/lint/verify operations the directive references).
              MANDATORY before EMIT_HANDOFF: sdd verify --wip <target-files> — auto-discovers and runs
              typecheck, gennady lint, linter, tests, and format check for the project. --wip is
@@ -86,14 +103,20 @@ Pause path (distinguish from failure — skill is awaiting operator, not broken)
         ```
 
     b. Branch on phase status:
-    - `BLOCKED` or `FAIL` → STOP loop. Audit not invoked (round not closed). Show operator the blocker. Done.
+    - `BLOCKED` → STOP loop. Audit not invoked and Round not closed. Set ticket Meta `[!] BLOCKED`,
+      sync trackers, persist the concrete unblock condition, and report a PAUSED lifecycle (not a
+      malfunction). The phase's blocker record remains the source of truth.
+    - `FAIL` → STOP loop. Audit not invoked and Round not closed. Persist the malfunction evidence,
+      sync any status transition, and report FAILED.
     - `DONE` → record Handoff (artifacts, decisions, open). Continue to next phase.
 
     c. Thread next phase's Inputs from this phase's Handoff (verbatim).
 
     ````
 
-4.  **Close Round** — append to ticket section 7:
+4.  **Close Round when needed.** If the current Round already has a checked unique Round close, do
+    not write another one (audit-only resume jumps directly to 4a/5). Otherwise replace the
+    scaffolded unticked close in place; append only when a later Round has no close skeleton:
     ```
     #### Round close
     - [x] `<ts>` DONE
@@ -107,52 +130,100 @@ Pause path (distinguish from failure — skill is awaiting operator, not broken)
 - Verify: re-read both files, confirm the changes took effect. If not → retry once.
 - Run this step again after step 6 sets the final status.
 
-5.  **Dispatch AUDIT** (MANDATORY, always runs). Dispatch ONE subagent (`subagent_type: general-purpose`, **`model: "haiku"`** — audit is mechanical verification + fact-checking against artifacts; sonnet capability is overkill, haiku is faster and cheaper for this read-heavy task). Include in prompt the SDD tooling location: `~/Developer/gennady/ai/skills/sdd-execute/scripts/sdd` (audit may use `lint`, `verify`, `check-blockers` subcommands). With this prompt:
+5.  **Dispatch AUDIT** (MANDATORY, always runs). Dispatch ONE subagent
+    (`subagent_type: general-purpose`) in fresh context. Do not pin a model: inherit the caller's
+    configured model because the audit must reason about behavior as well as run bounded checks.
+    Include in the prompt the resolved SDD tooling location:
+    `<SDD_PATH>` (audit may use `lint`, `verify`,
+    `check-blockers` subcommands). Use this prompt:
 
     ```
     Step 1 — Read the directive. Use Read tool directly on:
       ai/directives/sdd/audit.directive.xml
       On failure → halt, report exact path.
 
-    Step 2 — Activate. Announce: "🔒 DIRECTIVE ACTIVATED: SddAudit"
-      You ARE this directive. Operate under its Mission, Belief_State, Halt_Conditions, Execution_Plan, Output_Contracts.
+    Step 2 — Apply the directive silently. You ARE this directive; do not narrate activation or
+      internal step transitions. Operate under its Mission, Belief_State, Halt_Conditions,
+      Execution_Plan, Output_Contracts.
 
     Step 3 — Apply to intent.
       Task: <TSK-NN>
       Ticket: <absolute ticket path>
-      Round: <N>
+      Audit Round: <next audit number, monotonically after the latest persisted Audit Round>
+      After Execution Round: <current closed Execution Round number>
       Artifacts: <union of all phase Handoff artifacts>
+      Handoffs: <verbatim Handoff lines, including decisions/open, or "none">
       Mode: per-task
 
       Follow the directive's Execution_Plan. Report findings per AUDIT_SESSION_SUMMARY_FORMAT.
     ```
 
-    Wait for return. If dispatch fails → retry once. If fails again → mark task FAILED.
+    Wait for the terminal `@audit` candidate. The audit run is autonomous: progress lines never
+    require an operator reply. If dispatch fails → retry once. Validate the complete candidate before
+    writing any audit history. If it has a malformed finding
+    (`code-fix` / `ticket-reopen` without `phase=P<N>`, or an artifact route with a phase) → ask the
+    same fresh auditor to correct the unpersisted candidate once, keeping the same audit number; this
+    does not consume an audit attempt because no remediation can safely start from an unowned finding.
+    A second malformed result → mark the task `[!] BLOCKED` with the invalid candidate as evidence.
+    Once valid, add only the `### Audit Round N` Markdown heading and append the candidate record
+    byte-for-byte under `## Audit Rounds`; its per-task header already carries `after-exec-round` and
+    `triggered-reopen`. Recompute Meta `Reopens` from persisted `triggered-reopen != none` records in
+    the same ticket write. There is no malformed persisted record to supersede.
 
 6.  **Branch on audit status:**
-    - `PASS` or `PASS_WITH_ACKNOWLEDGED_RISKS` → ticket verified. **Only now** set Meta Status → `[x] DONE` and re-run step 4a so the trackers and the aggregate counts follow. Jump to step 9 (summary).
-    - `FAIL` AND `audit_attempt = 1` → step 7 (resolve findings).
-    - `FAIL` AND `audit_attempt = 2` → cap exhausted. Set Meta Status `[!] BLOCKED`, log `🛑 BLOCKED: audit-cap-exhausted` whose `💬 unblock:` line is the literal command `/sdd-execute <TSK-NN> --new-audit-session`, sync trackers, jump to step 9.
+    - `PASS` or `PASS_WITH_ACKNOWLEDGED_RISKS` → ticket verified. The risk status is valid only
+      when the canonical spec Decision Log already contains the operator acknowledgement.
+      **Only now** set Meta Status → `[x] DONE` and re-run step 4a so the trackers and aggregate counts
+      follow. Jump to step 9 (summary).
+    - `FAIL` → compare its open BLOCKER/MAJOR findings with the preceding audit, ignoring ephemeral
+      finding IDs. The stable identity is `type + route + phase + source anchor + failure mechanism`.
+      - Progress means at least one preceding blocking finding closed; a surviving finding gained new
+        executed evidence that supports a materially different owned remediation; or a genuinely new
+        blocking mechanism was exposed by the completed correction and has executed evidence plus an
+        owned in-scope remediation. First FAIL also enters remediation. On progress → step 7, then a
+        fresh audit.
+      - No-progress means none of those transitions occurred, including an equivalent blocking set
+        with neither new evidence nor a different in-scope remediation. If no-progress is evidenced,
+        or remediation requires a functional-requirements / Vision decision, risk acknowledgement,
+        or unavailable external state, set Meta Status `[!] BLOCKED`, record the unresolved findings
+        and concrete unblock condition, sync trackers, then jump to step 9.
 
-7.  **Resolve audit findings (max one retry, total 2 audit attempts):**
+7.  **Route every current audit finding once, then re-audit until PASS or evidenced no-progress:**
 
-    Two resolution paths depending on `phases_to_fix`:
+    Do not choose between a phase path and an artifact path. One FAIL may contain both; group all
+    findings by their own `route` / `phase` fields and process every group:
 
-    **Path A — phases_to_fix is non-empty** (findings require code changes):
-    Show: "Audit FAIL: <top findings>. Auto re-running phases <phases_to_fix> as fix."
-    Open new Round: `### Round N — <YYYY-MM-DD>, audit-driven fix: F-NNN, F-MMM`.
-    For each phase in `phases_to_fix` (sequential, declared-order subset):
-    Dispatch PHASE subagent (fresh context) with same shape as step 3a, but: - Reason: `fix: address audit findings F-NNN, F-MMM` - Inputs include audit findings relevant to this phase's Target Files.
-    Wait. BLOCKED/FAIL → STOP; jump to step 9. DONE → continue.
-    After all fix phases DONE → close Round (step 4) → dispatch AUDIT R2 → return to step 6.
+    - Any `conf=L` finding (necessarily `INFO`) and any INFO `INSIGHT_BACKFLOW` → preserve as a
+      proposal for the final operator review. It does not get auto-applied and never causes another
+      audit or Execution Round.
+    - `decision-log` → pause for the operator's explicit acknowledgement or rejection. The
+      orchestrator never manufactures an acknowledgement.
+    - Other `ticket-update`, `spec-edit` findings → apply the exact bounded artifact correction. The
+      orchestrator may read and edit only the target section named by the finding. Record provisional
+      spec/task choices as ordinary `decision` / `insight` evidence so the final summary shows them to
+      the operator. Do not open an Execution Round for document-only corrections.
+    - `code-fix`, `ticket-reopen` → collect the explicit `phase=P<N>` owners. Open one new Round:
+      `### Round N — <YYYY-MM-DD>, audit-driven fix: F-NNN, F-MMM`; dispatch only those phases in
+      declared order with their own findings in Inputs. A finding may never be assigned from path
+      coincidence after audit — the auditor already owns that semantic decision.
+      The accepted audit record already updated Meta `Reopens` from persisted causation; verify it before
+      creating the declared Round and never infer it from total Execution Round count.
+    - `rule-file-fix` → keep as a project follow-up in the final summary. It neither reopens a task
+      phase nor decides this task's verdict.
 
-    **Path B — phases_to_fix is EMPTY** (findings are ticket-update / spec-edit only):
-    Do NOT open a new Round. Apply fixes DIRECTLY:
-    - For each finding with `route=ticket-update`: edit the ticket file yourself (add missing intro/cov lines, fix tracker sync, update Meta fields).
-    - For each finding with `route=spec-edit`: edit the spec file yourself (update entity surface, DbC contract, add missing parameter).
-    - For each finding with `route=decision-log`: add Decision Log entry to scope spec.
-      After all fixes applied → dispatch AUDIT subagent again (round 2, fresh context). Return to step 6.
-      Rationale: these are paper-fixes that don't need a phase subagent. Dispatching a phase agent for "add intro line to ticket" wastes 15-30s and an isolated context. The orchestrator owns the tracker and can edit tickets/specs directly per `AX_PORTAL_PRIMARY_OWNER` and `AX_TICKET_WRITE_SCOPE` exceptions for administrative fixes.
+    Apply artifact corrections before phase re-runs so phase agents read the current contract. If a
+    proposed artifact correction is ambiguous or would change functional requirements / Vision,
+    record `BLOCKED` and ask the operator; never guess a new requirement. Otherwise continue
+    autonomously.
+
+    A fix phase returning `BLOCKED` or `FAIL` is not a completed correction: apply the durable status
+    handling from step 3b, leave the Round open, do not dispatch another audit, emit `✋ PAUSED` with
+    the concrete unblock condition, and jump to step 9. Only after every owned correction returns
+    DONE: close the new Round when one was opened, sync trackers, dispatch one fresh AUDIT, and return
+    to step 6. Document-only corrections go directly to audit without creating a fake execution
+    round. Audit round numbers increase monotonically; there is no attempt cap and no operator
+    command that grants more attempts. Convergence is decided only by PASS or the evidenced
+    no-progress conditions in step 6.
 
 8.  **Aggregate TELEMETRY and present to operator:**
     Collect TELEMETRY blocks from all phase and audit subagents. Compute:
@@ -176,7 +247,10 @@ Pause path (distinguish from failure — skill is awaiting operator, not broken)
           P2 (fix)   ✅ DONE  | 2.1s | r=3 b=1 w=1 | ok=true
         🔍 Round 2 audit: ✅ PASS
 
-        📊 Final: <✅ PASS | ⚠️ PASS_RISK | ❌ FAIL>
+        🧭 Decisions made during execution:
+          <phase/timestamp>  <decision>  | audit=<verified|finding F-NN> | backflow=<proposal|none>
+
+        📊 Final: <✅ PASS | ⚠️ PASS_WITH_ACKNOWLEDGED_RISKS | ❌ FAIL>
 
         ⏱️ Total wall time: 17.9s across 4 subagents
 
@@ -188,19 +262,29 @@ Pause path (distinguish from failure — skill is awaiting operator, not broken)
           P1: test failed on first run — missing null guard, fixed in same phase
         ```
 
+    Group `decision`/`insight` entries and audit `INSIGHT_BACKFLOW` findings here once, after execution.
+    If backflow is proposed, ask the operator whether to accept it into spec/task, revise the implementation,
+    or create a follow-up task. Route the answer through the existing spec-refine/task-reopen flows.
+
     </Protocol>
     ````
 
 <HardForbidden>
 - Reading phase-execution-protocol.xml or audit.directive.xml yourself. (Subagents do.)
 - Reading ticket sections 3 (Phases bodies), 4 (BDD), 5 (Verification), 6 (Coverage). Phase subagents do.
-- Reading specs, rule files, or code. (Subagents do.)
+- Reading specs, rule files, or code, except the exact ticket/spec section named by an audit
+  `ticket-update`, `spec-edit`, or `decision-log` finding. This exception is for bounded remediation;
+  the fresh R2 auditor still verifies it independently.
 - Writing code, audit reports, or phase blocks in Execution Log. (Subagents do.)
 - Skipping audit after all phases DONE. Audit dispatch is mandatory; this is the safety net.
 - Sharing context between phase subagents and audit subagent. Each gets a fresh prompt; orchestrator threads only typed Handoff payloads.
-- Audit retry beyond 2 attempts per session. Hard cap. Only the operator's literal `--new-audit-session` arg resets it — never your reading of «доделай» / «продолжай» / «finish it», which does not distinguish «lift the cap» from «finish what is already unblocked». No token → print the command and wait.
+- Repeating an equivalent blocking finding set when the fresh audit provides neither new evidence nor
+  a different in-scope remediation. Persist the evidence and exact unblock condition instead of
+  looping or asking the operator for an attempt token.
 - Writing a `✅ RESOLVED` marker for a blocker that is not resolved. `check-blockers` counts markers, so one makes it dispatch — that is a bug you can trigger, not permission you can grant. The marker records a fact; fabricating it is the same class as a fabricated `ver` line.
-- Re-running phases not flagged in `phases_to_fix`. The map finding-location → phase is the contract; do not "just re-run everything".
+- Re-running a phase not named in a finding's `phase=P<N>` field. Finding ownership, not path
+  coincidence or "just re-run everything", is the contract.
+- Writing a risk acknowledgement or Decision Log acceptance without the operator's explicit choice.
 - Auto-reopening on phase BLOCKED/FAIL. Only on audit FAIL after all phases DONE the retry kicks in.
 - Parallel dispatch of phases of the SAME task. Phases are sequential by declared `Deps`. Cross-task parallelism is the job of `sdd-execute-batch`.
 </HardForbidden>

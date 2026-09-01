@@ -179,10 +179,16 @@
     <Axiom id="AX_REOPEN_TICKET_FORMAT">
       **Reopens accumulate as appended Rounds in one ticket; never spawn parallel tickets for same scope.**
 
-      - Meta `Reopens: <count> (<YYYY-MM-DD> — <last reason>)` on a single line; field omitted when 0.
+      - Meta `Reopens: <count> (<YYYY-MM-DD> — <last reason>)` on a single line; use `Reopens: 0`
+        before the first audit-triggered reopen. The count equals persisted `@audit` records whose
+        `triggered-reopen` is not `none`; initial, operator-requested, and investigative Execution
+        Rounds do not increment it.
       - Status returns to `[~] IN_PROGRESS`; no separate `REOPENED`.
       - Execution Log structured by `### Round N — <date>, <reason>`, append-only. Old Rounds NEVER edited.
-      - Re-runs are governed by `sdd-execute` orchestrator: audit FAIL triggers a `fix`-kind re-run of ONLY the phases whose Target Files contain finding locations. Phases not flagged are NOT re-run.
+      - Re-runs are governed by `sdd-execute`: an audit FAIL opens a new Execution Round only when it
+        contains `code-fix` / `ticket-reopen` findings with explicit phase owners, and that Round runs
+        ONLY those phases. Artifact-only FAIL is corrected and re-audited without a fake Execution
+        Round. Phases not named are NOT re-run.
     </Axiom>
 
     <Axiom id="AX_EXECUTION_LOG_PLAN_VS_FACT">
@@ -198,7 +204,10 @@
       - **FACT** = the closing `[x]` lines have placeholders replaced with real values; preceding event lines exist only if their event happened.
       - Each phase block ends with `**Handoff →** artifacts: [...]; decisions: [...]; open: [...]` line.
       - Round closes with `#### Round close` block (single `DONE`) emitted by orchestrator after the last phase.
-      - **Forbidden**: `[x]` line containing any unreplaced `<…>` literal = fabricated done.
+      - **Forbidden**: `[x]` protocol line whose timestamp or required field from the token table
+        below still contains its canonical scaffold marker = fabricated done. Detection is
+        token-aware; angle-bracket text in an otherwise filled engineering explanation is not a
+        placeholder by shape alone.
       - Append-only by Rounds.
 
       A trivial phase with no surprises has 2 lines (`ver`, `DONE`) + Handoff. A phase with real engineering content (decisions, discoveries, intros) has those lines too — but they earn their place by carrying information that isn't elsewhere.
@@ -547,7 +556,7 @@
       - **Scope:** <scope-name>
       - **Module:** <module-name or N/A>
       - **Dependencies:** <comma-separated Task-IDs or None>
-      - **Reopens:** <count> (<YYYY-MM-DD> — <last reason>)   <!-- omit when 0 -->
+      - **Reopens:** 0   <!-- on reopen: <count> (<YYYY-MM-DD> — <last reason>) -->
       - **Spec References:**
         - Contract: [<ContractName>](<spec anchor>)
         - Consumer: [<ConsumerName>](<spec anchor>)
@@ -642,12 +651,12 @@
       - [ ] `<ts>` DONE
       **Handoff →** artifacts: [...]; decisions: [...]; open: [...]
 
-      <!-- After last phase, orchestrator appends Round close: -->
+      <!-- After last phase, orchestrator fills this Round close in place: -->
       #### Round close
       - [ ] `<ts>` DONE
       <!--/SECTION:EXECUTION_LOG-->
 
-      <!-- AUDIT_ROUNDS section appended ONLY after first reopen-triggering audit, per audit AX_REOPEN_ROUNDS_IN_TICKET. Anchor format: -->
+      <!-- AUDIT_ROUNDS section appended after every per-task audit per audit AX_AUDIT_ROUNDS_IN_TICKET. Anchor format: -->
       <!--   <!--SECTION:AUDIT_ROUNDS--> -->
       <!--   ## Audit Rounds -->
       <!--   …(per TICKET_AUDIT_ROUND_FORMAT in audit.directive.xml) -->
@@ -713,7 +722,9 @@
 
       Trivial phase with no events → 2 lines (`ver` + `DONE`) + Handoff. Padding with empty lines is forbidden.
 
-      ⛔ `[x]` line with any unreplaced `<…>` literal = fabricated done → `EXECUTION_LOG_INCOMPLETE` (BLOCKER).
+      ⛔ `[x]` protocol line whose timestamp or required field from its token-table shape retains a
+      canonical scaffold marker = fabricated done → `EXECUTION_LOG_INCOMPLETE` (BLOCKER). The check
+      is token-aware; ordinary prose such as `Map<Key, Value>` is not a marker.
 
       ### Post-task Hook
       Per `AX_AUDIT_HOOK`. After last phase of a Round closes, the orchestrator dispatches `sdd-audit`. Round close leaves the ticket `[~] IN_PROGRESS`; audit PASS is what sets `[x] DONE`. Until then dependents are blocked, and the status says so.

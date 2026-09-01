@@ -9,7 +9,7 @@
 #   sdd verify <file>...                — comprehensive gate: typecheck + gennady lint + forbidden_grep
 #   sdd check-blockers <ticket-file>    — scan Execution Log for unresolved BLOCKER entries
 #   sdd scan [project-root]             — emit comprehensive project snapshot (single rich call)
-#   sdd check [root|--task TSK-NN|--files f...] — deterministic mechanical checks (task-id, tracker-sync, headers)
+#   sdd check [root|--task <Task-ID>|--files f...] — deterministic mechanical checks
 #   sdd help                            — print this help
 #
 # Why this wrapper exists:
@@ -85,7 +85,7 @@ SUBCOMMANDS
                                   in [WARNINGS]. Defaults to current directory.
 
     check [root]                Deterministic mechanical checks — the single source of
-      check --task TSK-NN [root]   mechanical truth shared by sdd-check (whole tree) and
+      check --task <Task-ID> [root] mechanical truth shared by sdd-check (whole tree) and
       check --files <f...>         sdd-audit (scoped). Emits [TASKID] (collisions, orphan
                                   @tasks refs), [TRACKER_SYNC] (ticket Meta.Status vs tracker
                                   row), and — in --files mode — [HEADERS] (@file/@consumers/

@@ -1,7 +1,7 @@
 <SddCritic keywords="critic, spec-review, task-review, bdd-audit, blind-spot, autonomous-polish, multi-round, pre-execute, orchestration, language-register, next-step-menu" type="directive" ver="2.2">
   <DirectiveContext>
     <Mission>
-      Gap-closing critique loop for SDD artifacts — spec, task, or batch (spec + all tasks). By default the critic surfaces only evidence-backed, production-threatening defects already implied by the artifact's requirements (logic/correctness, unhandled failures, security, observability, design-evident resource leaks, broken contracts, spec drift), not alternative designs or mechanical polish (AX_POLISH_MODE). You are the ORCHESTRATOR in the root session. Round 1 is the baseline review. After accepted fixes, dispatch a focused verification round limited to those fixes and their regressions; do not restart a broad review. Evaluate findings against full project context, surgically close genuine gaps in the current artifact only, and stop immediately on CLEAN (max 5 rounds as an emergency cap). Batch: spec first, then tasks in DAG layers — parallel within a layer, sequential between layers. On CLEAN: delete `## Critic Rounds` (temporary scaffolding).
+      Gap-closing critique loop for SDD artifacts — spec, task, or batch (spec + all tasks). By default the critic surfaces only evidence-backed, production-threatening defects already implied by the artifact's requirements (logic/correctness, unhandled failures, security, observability, design-evident resource leaks, broken contracts, spec drift), not alternative designs or mechanical polish (AX_POLISH_MODE). You are the ORCHESTRATOR in the root session. Round 1 is the baseline review. After accepted fixes, dispatch a focused verification round limited to those fixes and their regressions; do not restart a broad review. Evaluate findings against full project context, surgically close genuine gaps in the current artifact only, and stop immediately on CLEAN (max 5 rounds as an emergency cap). Batch: spec first, then tasks in DAG layers — parallel within a layer, sequential between layers. On CLEAN: collapse the working notes to one compact final record; never erase the fact that critique ran.
     </Mission>
   </DirectiveContext>
 
@@ -22,7 +22,7 @@
     <Axiom id="AX_SAME_MECHANISM_STOP">If two consecutive rounds find a substantive defect in the same mechanism, surgical wording is not converging. Stop with H_AUTHORING_REQUIRED and propose a separate design/scaffold decision; do not consume another critic round on the same mechanism.</Axiom>
     <Axiom id="AX_SURGICAL">Close the gap only. No restructure, rewrite, restyle. Structural overhaul → suggest re-scaffold, stop.</Axiom>
     <Axiom id="AX_REUSE_FIRST">Only the orchestrator holds full project context, so only it can detect duplication against existing code/specs (the isolated critic cannot). Reconcile only entities/types/methods/contracts implicated by an accepted finding: REUSE existing (adapt artifact to it) > EXTEND existing > JUSTIFY new (one-line rationale in artifact: why existing surface is insufficient) > ESCALATE to operator. Do not sweep every entity in the artifact during critique; that is authoring, not gap closure.</Axiom>
-    <Axiom id="AX_SCRATCH_LOG">`## Critic Rounds` = temporary working memory for orchestrator between rounds. Deleted on final CLEAN.</Axiom>
+    <Axiom id="AX_SCRATCH_LOG">Detailed `## Critic Rounds` entries are temporary working memory between rounds. On final CLEAN, replace the details with one compact `@critic` result. This preserves proof without carrying the whole discussion in the artifact.</Axiom>
     <Axiom id="AX_TASK_PARALLEL">Tasks critiqued in DAG layers. Same layer (no inter-dependencies) → parallel dispatch. Different layers → sequential.</Axiom>
     <Axiom id="AX_POLISH_MODE">Default dispatch is `Polish: off` → report only CRITICAL/MAJOR (production-threatening logic, failure, security, observability, design-evident leak, contract, alignment defects). Set `Polish: on` ONLY when the operator explicitly asks for nits ("шлифуй", "и мелочи", "polish"). MINOR/INFO never drive the loop or the verdict — include them as a non-blocking list when requested.</Axiom>
     <Axiom id="AX_OPERATOR_LANGUAGE">
@@ -108,7 +108,9 @@
     <Step id="1_DISPATCH">
       <Goal>Dispatch one isolated critic subagent.</Goal>
       <Action>
-        Dispatch subagent (`subagent_type: general-purpose`, **`model: "sonnet"`** — the critic reasons about impact (logic/correctness, race/ordering, security, observability, design-evident leaks), not mechanical fact-checking like audit; haiku-class is too weak here), fresh context:
+        Dispatch subagent (`subagent_type: general-purpose`) in fresh context. Do not pin a model;
+        inherit the caller's configured model because critic quality is part of the active runtime
+        policy, not this directive:
         ```
         Step 1 — Read directive: ai/directives/sdd/critic-protocol.xml
         Step 2 — Activate. Announce: "🔒 SddCriticProtocol"
@@ -191,8 +193,13 @@
     <Step id="6_FINALIZE">
       <Goal>Cleanup and detailed final summary.</Goal>
       <Action>
-        If final critic verdict CLEAN → DELETE `## Critic Rounds` section from artifact.
-        If not CLEAN → keep section as documentation of unresolved findings.
+        If final critic verdict CLEAN → replace the detailed `## Critic Rounds` body with:
+        ```markdown
+        ## Critic Rounds
+
+        @critic status=CLEAN rounds=<N> final-round=<N> date=<YYYY-MM-DD>
+        ```
+        If not CLEAN → keep detailed round entries as documentation of unresolved findings.
 
         Emit FULL summary (operator needs detail to discuss, challenge, or revert):
         ```
@@ -249,7 +256,7 @@
     - Run a broad baseline audit after round 1; verification rounds stay on changed sections and accepted findings.
     - Accept uncertainty, CONTEXT_MISSING, or a design preference as a blocking finding.
     - Edit parent spec, DAG, sibling tasks, or project conventions while reviewing one artifact.
-    - Keep `## Critic Rounds` after CLEAN.
+    - Delete all evidence of a CLEAN critic run; keep the compact final `@critic` record.
     - ACCEPT without edit.
     - REJECT without specific context.
     - Accept a new entity without reuse-first reconciliation (AX_REUSE_FIRST).

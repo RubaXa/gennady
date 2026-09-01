@@ -12,19 +12,23 @@
       - Cascade Table from `tasks/<scope>/README.md` (for cascade verification).
 
       Output:
-      - Ephemeral session-summary in chat: findings counts by severity + list of proposed / applied changes.
-      - On reopen-triggering rounds: an appended `## Audit Rounds` section in the ticket file (per `AX_REOPEN_ROUNDS_IN_TICKET`) — co-locates audit history with the Execution Log rounds it caused.
+      - A validated terminal candidate in chat: findings counts, execution decisions, and proposed
+        owned changes. The caller persists that exact candidate after validating its grammar.
       - No standalone files in `audits/` (deprecated in v3.0).
 
-      Audit does not modify code. It reports + proposes; operator decides.
+      Audit does not modify code or apply remediation. It reports evidence and owned routes. The
+      orchestrator autonomously applies exact bounded corrections that preserve requirements and
+      Vision; the operator decides only ambiguous contract choices, requirement/Vision changes,
+      external-state decisions, risk acknowledgements, and optional insight backflow.
 
-      **Glossary.** Phase 5 of SDD. Phase agent = subagent that operated under `phase-execution-protocol` on one of the phase blocks. Orchestrator = `sdd-execute` SKILL agent that dispatched the phases and now dispatches audit. Scaffolder = agent that operated under `task-scaffolding` when the ticket was generated. `phases_to_fix` = list of phase IDs returned by audit on FAIL, mapping finding locations to phases whose `Target Files` contain them.
+      **Glossary.** Phase 5 of SDD. Phase agent = subagent that operated under `phase-execution-protocol` on one of the phase blocks. Orchestrator = `sdd-execute` SKILL agent that dispatched the phases and now dispatches audit. Scaffolder = agent that operated under `task-scaffolding` when the ticket was generated. Each finding identifies its remediation route and, when phase work is required, the owning phase. The orchestrator groups those findings after audit; audit does not control execution state.
     </Mission>
   </DirectiveContext>
 
   <BeliefState>
     <Axiom id="AX_AUDIT_READS_CODE">
-      Audit is the only SDD directive allowed to read code. Reading scope is bounded:
+      Among SDD review directives, audit is the only one allowed to read code. Execution directives
+      necessarily read and change their owned Target Files. Audit reading scope is bounded:
       - all files listed in per-phase `Target Files` under ticket section 3 Phases;
       - artifacts list passed by orchestrator (union of phase Handoffs);
       - related ports/adapters/services in `Spec References`;
@@ -42,14 +46,22 @@
       - collect modified / added / deleted files;
       - in-scope set = union(all phases' `Target Files`, diff files, `intro` log).
 
-      Files in diff but absent from ticket declaration + Execution Log → candidates for `CLOSED_WORLD_DRIFT` (public entities) or `EXECUTION_LOG_INCOMPLETE` (utility-only changes).
+      Files in diff but absent from ticket declaration + Execution Log → candidates for `CLOSED_WORLD_DRIFT` (public entities) or `EXECUTION_LOG_INCOMPLETE` (utility-only changes). The active ticket,
+      the one per-scope tracker containing its Task-ID row, and that scope's aggregate row in
+      `tasks/README.md` are orchestration state, not phase output: include them in audit scope and
+      verify their structure/sync, but never require them in phase `Target Files` or an `intro` line.
+      Any other modified tracker remains an ordinary undeclared-diff candidate; control-plane status
+      is not a blanket exemption for `tasks/**/README.md`.
     </Axiom>
 
     <Axiom id="AX_MECHANICAL_VIA_SDD_CHECK">
       Deterministic mechanical checks — file-header presence, Task-ID collision, tracker-sync — are NOT hand-coded here. They live in one tool, `sdd check`, which sdd-check (whole tree) and this directive (scoped) both consume. Single source of mechanical truth → no drift between the two SDD reviewers.
 
       - `sdd check --files <git-diff in-scope files>` → [HEADERS] (`@file`/`@consumers`/`@tasks` presence).
-      - `sdd check --task <Task-ID>` → [TASKID] (collision for that id) + [TRACKER_SYNC] (Meta.Status vs tracker row) + [RULES] (four-section presence in the rules this ticket cites; `rule_findings` is counted apart from `findings` because a shared rule file is not this task's defect).
+      - `sdd check --task <Task-ID>` → [TASKID] (collision for that id) + [TRACKER_SYNC]
+        (Meta.Status vs tracker row) + [REOPENS] (persisted audit causation) + [RULES]
+        (four-section presence in the rules this ticket cites; `rule_findings` is counted apart from
+        `findings` because a shared rule file is not this task's defect).
       - `sdd check <root>` (no flag) → tree-wide [TASKID] orphan refs (epic mode).
 
       Audit still owns everything the tool cannot decide mechanically: semantic `@consumers` resolvability, current-Task-ID identity, append-only `@tasks` regression vs git, section-anchor coverage, and all code-reading checks (closed-world, completeness, rules-compliance, runtime-backing, backflow).
@@ -79,11 +91,27 @@
       | Severity | Meaning |
       |---|---|
       | `BLOCKER` | task cannot be considered complete; merge forbidden |
-      | `MAJOR` | protocol violation; requires fix; allows merge only with explicit operator acceptance + Decision Log entry |
-      | `MINOR` | stylistic or secondary discrepancy |
+      | `MAJOR` | behavior, required scope, remediation ownership, or verification is broken or cannot be proved; requires fix; allows merge only with explicit operator acceptance + Decision Log entry |
+      | `MINOR` | mechanically fixable documentation, protocol, or style discrepancy that does not make behavior, scope, ownership, or verification ambiguous |
       | `INFO` | observation without mandatory action (often `INSIGHT_BACKFLOW`) |
 
-      Severity does not depend on agent's mood. Closed-world drift = `BLOCKER` by default; coding-rules violation = `MAJOR`; stylistic deviation = `MINOR`.
+      Confidence constrains what severity may decide. `HIGH` and `MEDIUM` may participate in the
+      verdict table. `LOW` is an unconfirmed observation: before summary, run one bounded independent
+      check that can raise it to `MEDIUM`/`HIGH`; if it remains `LOW`, emit it only as `INFO`. A
+      `LOW` finding never causes `FAIL`, opens an Execution Round, or authorizes an artifact change.
+      It remains visible to the operator instead of becoming an interactive halt.
+
+      Severity does not depend on agent's mood or on whether the mismatch is in code or prose.
+      Closed-world drift = `BLOCKER` by default; a coding-rules violation that can change behavior or
+      verification = `MAJOR`; stylistic deviation = `MINOR`. A protocol or documentation mismatch is
+      `MAJOR` only when it makes required behavior, scope, remediation ownership, or verification
+      ambiguous or unprovable. Otherwise it is `MINOR` and cannot force another execution round.
+      Distinguish that from new knowledge: a sound execution choice that preserves current
+      requirements but suggests enriching canonical text is `INSIGHT_BACKFLOW` `INFO`, presented for
+      optional operator review. A known canonical fact copied incorrectly into another artifact is
+      documentation mismatch and remains `MINOR`.
+      A claimed verification result with no executed evidence is not paper drift: it leaves required
+      behavior unproved and is `MAJOR`.
 
       **Overall status is computed from severities, never judged.** First matching row wins; print which row matched:
 
@@ -91,18 +119,20 @@
       |---|---|
       | any open `BLOCKER` | `FAIL` |
       | any open `MAJOR` without operator acknowledgement | `FAIL` |
-      | every open `BLOCKER`/`MAJOR` acknowledged + Decision Log entry | `PASS_WITH_ACKNOWLEDGED_RISKS` |
+      | every open `MAJOR` acknowledged + Decision Log entry, and no `BLOCKER` | `PASS_WITH_ACKNOWLEDGED_RISKS` |
       | only `MINOR` / `INFO`, or nothing | `PASS` |
 
       `RULE_FILE_INCOMPLETE` and every other project-scope finding enters this table capped at `MINOR` (per `AX_FINDING_ROUTING`): shared infrastructure no task owns cannot decide that task's verdict. The `sev` field still reports the finding's own severity — the cap applies to the computation, not to the record.
 
-      This matters because the status is consumed mechanically: the orchestrator sets `[x] DONE` on PASS, runs a fix round on the first FAIL, and blocks the task on the second. An unspecified verdict here makes those transitions arbitrary.
+      This matters because the status is consumed mechanically: the orchestrator sets `[x] DONE` on
+      PASS, remediates a progressing FAIL, and blocks only on evidenced no-progress or a real external
+      decision. An unspecified verdict here makes those transitions arbitrary.
     </Axiom>
 
     <Axiom id="AX_FINDINGS_AS_PROPOSALS">
       Every finding contains a proposed remediation. Agent does not modify code. Remediation types:
       - `code-fix` — concrete change in code (with location).
-      - `spec-update` — concrete spec update (module or scope) with proposed diff.
+      - `spec-edit` — concrete spec update (module or scope) with proposed diff.
       - `ticket-update` — ticket update (canonical case names, deferred scope, etc.).
       - `rule-file-fix` — shared rule/directive/tooling artifact; outside any task, goes to its own ticket.
     </Axiom>
@@ -122,32 +152,54 @@
       | `INSIGHT_BACKFLOW` | spec edit (scope or module spec) |
       | `STALE_AFTER_PIVOT` | reopen / refine the affected downstream artifact |
       | `TASK_ID_DRIFT` | code-fix via ticket reopen |
-      | `RULE_FILE_INCOMPLETE` | `rule-file-fix` — the rule file is shared project infrastructure, outside every phase's Target Files. Never `ticket-update` (the ticket cannot fix it, and the paper-fix loops forever), never `phases_to_fix`, never `FAIL` for this task |
+      | `RULE_FILE_INCOMPLETE` | `rule-file-fix` — the rule file is shared project infrastructure, outside every phase's Target Files. Never `ticket-update`, never a phase owner, never `FAIL` for this task |
       | operator-acknowledged risk | Decision Log entry in the scope spec |
 
-      The audit agent proposes a concrete edit (diff or instruction). The operator decides and applies. The audit agent does not modify code autonomously (per `AX_NO_AUTO_FIX`).
+      The audit agent proposes a concrete edit (diff or instruction) and never applies it. The
+      orchestrator applies unambiguous bounded corrections; operator review is reserved for the
+      decisions listed in the Mission and for optional `INSIGHT_BACKFLOW` proposals.
+
+      Routing is complete per finding, not inferred later from a header-level phase list:
+      - `code-fix` and `ticket-reopen` MUST carry `phase=P<N>`. Determine the phase from semantic ownership and Target Files; when no phase owns the required work, use the owning artifact route instead.
+      - `ticket-update`, `spec-edit`, `decision-log`, and `rule-file-fix` MUST carry `phase=—`.
+      - A FAIL finding without a valid route/phase pair is malformed output; correct the audit result before the orchestrator changes any artifact.
+      Mixed results are normal: one audit may require phase work, a ticket update, and a spec update. None may be dropped merely because another route is present.
     </Axiom>
 
     <Axiom id="AX_EPHEMERAL_OUTPUT">
-      The audit summary itself does not create files in `audits/`. Output is an ephemeral session-summary emitted in chat per `AUDIT_SESSION_SUMMARY_FORMAT`: counts by severity + findings table + proposed changes per `AX_FINDING_ROUTING`.
+      The audit summary itself does not create files in `audits/`. Chat output follows
+      `AUDIT_SESSION_SUMMARY_FORMAT`; the caller appends every accepted per-task result to the
+      ticket after validating the complete terminal block.
 
-      Reopen-history of a ticket is persisted *inside the ticket file* — see `AX_REOPEN_ROUNDS_IN_TICKET`. Long-term audit history = git history of the affected spec and ticket files.
+      Audit and reopen history are persisted *inside the ticket file* — see
+      `AX_AUDIT_ROUNDS_IN_TICKET`. Long-term history = git history of the affected spec and ticket files.
 
       Epic-level audit: cross-task findings (e.g., two modules with conflicting contracts) → Decision Log entry in the relevant scope spec.
     </Axiom>
 
-    <Axiom id="AX_REOPEN_ROUNDS_IN_TICKET">
-      When an audit round triggers a ticket reopen, the round's audit summary is appended to the ticket file under a new `## Audit Rounds` section so the reopen history lives next to the Execution Log rounds it caused. Format per `TICKET_AUDIT_ROUND_FORMAT`. Append-only: prior audit rounds in the ticket are immutable.
+    <Axiom id="AX_AUDIT_ROUNDS_IN_TICKET">
+      Every accepted per-task audit is appended exactly once by its caller under
+      `## Audit Rounds`, whether it returns PASS, PASS_WITH_ACKNOWLEDGED_RISKS, or FAIL. Format per
+      `TICKET_AUDIT_ROUND_FORMAT`. Append-only: prior audit rounds are immutable. A malformed candidate
+      is never persisted and therefore needs no supersede record; the corrected candidate keeps the
+      same audit number until it passes validation.
 
-      Rationale: full ephemeral output loses reopen-causation between rounds; `audits/<task-id>.audit.md` separate-tree was overkill. Co-locating the audit round with the Execution Log it caused keeps history reviewable in one file.
-
-      Per-task audits that PASS without triggering a reopen do not write to the ticket — they remain ephemeral.
+      Rationale: ephemeral PASS output cannot prove why DONE was allowed. Co-locating every audit with
+      the Execution Log keeps evidence and reopen causation reviewable without a separate audit tree.
 
       Epic-level audits never touch ticket files; their consolidated output is ephemeral OR routed to a scope-spec Decision Log entry.
     </Axiom>
 
     <Axiom id="AX_NEUTRAL_FINDINGS">
       Findings are objective, free of value judgments. No «bad», «should be better», «ugly». Use «X is missing from Y», «Z contradicts W», «case name `foo` in ticket does not match `bar` in test». Criticism appeals to an axiom or rule: «violates `AX_CLOSED_WORLD_INVENTORY` of module spec».
+
+      Empirical claims use executed evidence. A command printed by a script, copied into a transcript,
+      or written in a `ver` line is provenance, not proof that it ran. Runtime proof records the exact
+      command or probe, exit status, and observed result from this audit run; existing durable output
+      may be reused only when those three are present and tied to the audited revision. Static code
+      reading may prove structure, reachability, or absence, but never a runtime result. If required
+      behavior is runnable, reproduce a representative positive or adversarial case. If it cannot run,
+      report the concrete unavailable dependency instead of inferring PASS.
     </Axiom>
 
     <Axiom id="AX_CLOSED_WORLD_PRIMARY_CHECK">
@@ -220,11 +272,25 @@
       Checks:
       - New or header-carrying files in scope: `@file:` present (`MAJOR` if absent); `@consumers:` present (`MINOR` if absent); `@tasks:` present and contains current Task-ID (`MAJOR` if absent).
       - `@consumers:` naming convention: value must be an entity name resolvable in the spec or codebase. File paths or directory names → `MINOR`.
-      - Collect all `@tasks: TSK-NN[, TSK-MM, …]` references from in-scope files.
-      - Each ID has a corresponding `tasks/**/*.task-NN.md`. Orphan → `TASK_ID_DRIFT` (`MAJOR`).
+      - Collect all legacy `TSK-NN` and current `TSK-{PREFIX}-{NNN}` references from in-scope
+        `@tasks:` fields.
+      - Each ID resolves to exactly one ticket by its Meta Task-ID; filenames are not identity.
+        Missing ticket → `TASK_ID_DRIFT` (`MAJOR`).
       - Two ticket files declaring same Task-ID → `TASK_ID_DRIFT` (`BLOCKER`).
       - Compare current `@tasks:` field values against pre-task git ref. Prior IDs removed → `TASK_ID_DRIFT` (`MAJOR`).
-      - **Ticket section-anchor coverage** (per scaffold `AX_TICKET_SECTION_NAMES_NORMATIVE`). For each anchor name templated in `TASK_TICKET_STRUCTURE` invoke `~/.claude/skills/sdd-execute/scripts/sdd extract <ticket> <NAME>`. Exit `2` (ANCHOR_NOT_FOUND/EMPTY) → `EXECUTION_LOG_INCOMPLETE` (`MAJOR`) tagged `missing-section-anchor`. Exit `3` (UNBALANCED/DUPLICATED) → `EXECUTION_LOG_INCOMPLETE` (`MAJOR`) tagged `anchor-unbalanced`. Optional names (`AUDIT_ROUNDS`, `PIVOT_INVALIDATION_LIST`) — not flagged when absent. Ticket with ZERO required anchors found → escalate to `BLOCKER` (dispatch impossible). Spec section names are author-discretionary → balance is checked by the STEP_1 mechanical pre-pass; no per-name coverage is enforced on specs.
+      - **Ticket section-anchor coverage** (per scaffold `AX_TICKET_SECTION_NAMES_NORMATIVE`). For
+        each anchor name templated in `TASK_TICKET_STRUCTURE` invoke
+        `<sdd-path> extract <ticket> <NAME>`, using the exact absolute tool path supplied by the
+        orchestrator. Exit `3` (UNBALANCED/DUPLICATED) → `EXECUTION_LOG_INCOMPLETE` (`MAJOR`) tagged
+        `anchor-unbalanced`. Exit `5` (`ANCHOR_EMPTY`) → `EXECUTION_LOG_INCOMPLETE` (`MAJOR`) tagged
+        `anchor-empty`; a present current-format section with no payload is never legacy fallback.
+        Exit `2` (`ANCHOR_NOT_FOUND`) triggers the same full-file fallback used by phase execution:
+        if the named section is uniquely readable, emit at most one `ticket-update` `MINOR` for the
+        legacy ticket and continue; if the target section cannot be resolved uniquely, emit
+        `BLOCKER` because dispatch is actually ambiguous. Optional names (`AUDIT_ROUNDS`,
+        `PIVOT_INVALIDATION_LIST`) are not flagged when absent. Spec section names are
+        author-discretionary → balance is checked by the STEP_1 mechanical pre-pass; no per-name
+        coverage is enforced on specs.
     </Axiom>
 
     <Axiom id="AX_STALE_AFTER_PIVOT_VERIFICATION">
@@ -243,6 +309,9 @@
       BDD ↔ test code must align.
       - Every Acceptance Scenario from ticket has a corresponding test case in the specified test file.
       - Canonical case name from `Test Scenario Coverage` matches actual `it` / `test` name verbatim.
+      - For changed behavior that is runnable in the audit environment, execute the smallest
+        representative positive or adversarial case. Merely finding the test or command text does not
+        prove its result.
 
       Mismatch → `BDD_COVERAGE_MISMATCH` with proposal: update test or update ticket.
     </Axiom>
@@ -250,7 +319,16 @@
     <Axiom id="AX_EXECUTION_LOG_VERIFICATION">
       Token vocabulary in `scaffold.directive.xml` Execution Log Template. Required per phase block: `ver` (one final result), `DONE`, `**Handoff →**`, `intro <X> ← <reason>` for every entity in code but not in module Inventory (cross-check via git diff), `verified` for `config`-kind, `BLOCKED <cause>` if phase ended blocked.
 
-      Missing required line → `EXECUTION_LOG_INCOMPLETE`. Unreplaced `<…>` placeholder on `[x]` line → `EXECUTION_LOG_INCOMPLETE` (BLOCKER, «fabricated done»). Line with a token outside the vocabulary → `EXECUTION_LOG_INCOMPLETE` (MINOR, «padding»).
+      Missing required line → `EXECUTION_LOG_INCOMPLETE`. A canonical scaffold marker left in the
+      timestamp or a required field of a checked protocol line, according to that token's table
+      shape, → `EXECUTION_LOG_INCOMPLETE` (BLOCKER, «fabricated done»). Detection is token-aware;
+      arbitrary angle-bracket engineering prose is not a placeholder. Line with a token outside the vocabulary →
+      `EXECUTION_LOG_INCOMPLETE` (MINOR, «padding»).
+
+      A completed `ver` line is an execution claim, not self-authenticating evidence. Cross-check it
+      against command + exit status + observed output tied to the audited revision, or rerun the
+      smallest command/probe that proves the acceptance-affecting behavior. A command that was only
+      printed, proposed, or inspected in source remains unproved.
     </Axiom>
 
     <Axiom id="AX_INSIGHT_BACKFLOW_CAPTURE">
@@ -260,7 +338,8 @@
       - spec assumptions turned out incorrect;
       - new dependency emerged, not in Inter-Module Dependencies,
 
-      → `INSIGHT_BACKFLOW` finding with proposed spec-update diff.
+      → `INSIGHT_BACKFLOW` INFO finding with a proposed `spec-edit` diff. It is optional backflow,
+      not an execution defect, and awaits final operator review without forcing another audit.
     </Axiom>
 
     <Axiom id="AX_AUDIT_MODES">
@@ -270,7 +349,14 @@
     </Axiom>
 
     <Axiom id="AX_NO_AUTO_FIX">
-      Audit does not modify code or specs autonomously. Any remediation is a proposal per `AX_FINDING_ROUTING`. If operator approves inline changes during the session, audit agent may apply them to spec/ticket files (not code). Creating commits or editing code files independently is forbidden.
+      Audit is read-only: it never modifies code, specs, tickets, or execution state. It returns one
+      validated terminal candidate. The caller persists that exact candidate and, when it
+      declares `triggered-reopen`, refreshes Meta `Reopens` from persisted audit causation in the same
+      ticket write. Those fields are evidence, not remediation.
+      Every remediation is an owned proposal per `AX_FINDING_ROUTING`. After audit returns, the
+      orchestrator may apply exact bounded artifact corrections or reopen named phases under the
+      execution lifecycle. Operator input is required only for the decision classes listed in the
+      Mission. Creating commits or editing any other artifact from the audit context is forbidden.
     </Axiom>
 
     <Axiom id="AX_OPERATOR_LANGUAGE">
@@ -285,9 +371,12 @@
     </Axiom>
 
     <Axiom id="AX_DIALOGUE_DISCIPLINE">
-      - **Phase agreement.** Agent does not close audit session autonomously. Signal `STATUS=READY_TO_ADVANCE`; operator confirms.
+      - **Autonomous run.** After scope is resolved, execute every audit step without intermediate operator approval. Progress output is observational, never a pause. The operator acts on the final persisted result; an audit subagent dispatched by execution must be able to return one terminal block without an interactive channel.
       - **Neutral + critical.** Operator asks to lower severity or hide a finding → surface the risk, request justification, record as `operator-acknowledged` AND emit a Decision Log entry. Do not stay silent; do not lower severity without Decision Log.
       - **Confidence explicit.** Every finding has confidence: HIGH (mechanically verifiable), MEDIUM (depends on interpretation), LOW (observation, requires confirmation).
+      - **Evidence before verdict.** Do not convert a narrative, source-code inspection, or printed
+        command into a runtime PASS. Execute a bounded probe or state precisely why the claim remains
+        unproved.
       - **Context budget.** Epic-level audit aggregates findings by type; do not repeat identical ones 50 times.
     </Axiom>
   </BeliefState>
@@ -298,8 +387,6 @@
     | `H_NO_SCOPE` | Operator did not provide task-ID or scope |
     | `H_TICKET_NOT_DONE` | Ticket Execution Log lacks final `[x] DONE`; audit is premature |
     | `H_NO_MODULE_SPEC` | Required module spec or scope spec is missing/inaccessible |
-    | `H_LOW_CONFIDENCE` | Findings classified mostly LOW; report cannot mark PASS without operator review |
-    | `H_OPERATOR_REJECT` | Operator refuses summary at STEP_8 final approval |
   </HaltConditions>
 
   <ExecutionPlan>
@@ -319,8 +406,16 @@
         1. TRACE_HEADER (STACK `ROOT__PRECONDITIONS_CHECK`).
         2. Inspect Execution Log: `[x] DONE` present? Verification commands executed and recorded?
         3. Not closed → `H_TICKET_NOT_DONE`. Module or scope spec missing → `H_NO_MODULE_SPEC`.
-        4. **Mechanical pre-pass.** (a) Lint: changed `.ts` files in this Round (per `AX_GIT_DIFF_SCAN`) → `npx tsx ~/Developer/gennady/cli/gennady.ts lint <files...>`; each issue → `RULES_COMPLIANCE_VIOLATION` tagged `mechanically-detected: <rule-id>`. No `.ts` / tool absent → skip silently / log warning. (b) Anchor balance: `~/.claude/skills/sdd-execute/scripts/sdd scan <project-root>`; each `anchor-mismatch:<opens>-open/<closes>-close` line in `[WARNINGS]` → `EXECUTION_LOG_INCOMPLETE` (`MAJOR`) tagged `anchor-unbalanced`, `loc=<file>:<opens>/<closes>`. Universal — name-agnostic, works on any markdown artifact. Per-ticket name coverage happens in STEP_2_5.
-        5. Phase Progress + Approval Check. STOP otherwise → STEP_2.
+        4. **Mechanical pre-pass.** Use the exact absolute `<sdd-path>` supplied by the orchestrator;
+           a missing path is a structural halt, never a reason to fall back to a home-directory copy.
+           (a) Lint changed `.ts` files in this Round (per `AX_GIT_DIFF_SCAN`) with
+           `<sdd-path> lint <files...>`; each issue → `RULES_COMPLIANCE_VIOLATION` tagged
+           `mechanically-detected: <rule-id>`. No `.ts` → skip silently. (b) Anchor balance:
+           `<sdd-path> scan <project-root>`; each `anchor-mismatch:<opens>-open/<closes>-close` line in
+           `[WARNINGS]` → `EXECUTION_LOG_INCOMPLETE` (`MAJOR`) tagged `anchor-unbalanced`,
+           `loc=<file>:<opens>/<closes>`. Universal — name-agnostic, works on any markdown artifact.
+           Per-ticket name coverage happens in STEP_2_5.
+        5. Emit Phase Progress, then continue to STEP_2.
       </Action>
     </Step>
 
@@ -334,8 +429,8 @@
         5. Scan for public entities (classes, exported types, exported functions, value objects with explicit identity).
         6. Findings:
            - entity ∈ code ∖ (inventory ∪ logged-introductions) → `CLOSED_WORLD_DRIFT` (`BLOCKER`, HIGH).
-           - file ∈ git diff ∖ ((union of phase `Target Files`) ∪ logged-introductions) → `EXECUTION_LOG_INCOMPLETE` (`MAJOR`) tagged «untracked file change».
-        7. Phase Progress. STOP.
+           - non-control-plane file ∈ git diff ∖ ((union of phase `Target Files`) ∪ logged-introductions) → `EXECUTION_LOG_INCOMPLETE` (`MAJOR`) tagged «untracked file change». The active ticket, its Task-ID-owning per-scope tracker, and its aggregate row in `tasks/README.md` are control-plane state checked in STEP_6. A different scope's tracker is not exempt.
+        7. Emit Phase Progress, then continue.
       </Action>
     </Step>
 
@@ -344,14 +439,22 @@
       <Action>
         1. TRACE_HEADER (STACK `ROOT__TASK_ID_INTEGRITY_CHECK`).
         2. **Mechanical primitives — delegate, do NOT hand-grep** (shared source of truth with sdd-check, per `AX_MECHANICAL_VIA_SDD_CHECK`):
-           - `~/.claude/skills/sdd-execute/scripts/sdd check --files <git-diff in-scope files>` → [HEADERS]: `verdict=PARTIAL`/`NONE` on a code file → `@file:` absent = `TASK_ID_DRIFT`/`MAJOR`, `@tasks:` absent = `MAJOR`; `has_consumers=0` = `MINOR`.
-           - `~/.claude/skills/sdd-execute/scripts/sdd check --task <Task-ID>` → [TASKID] `collision` → `TASK_ID_DRIFT` (`BLOCKER`); orphan refs surface in tree-mode (run plain `sdd check` for epic-level).
+           - `<sdd-path> check --files <git-diff in-scope files>` → [HEADERS]: `verdict=PARTIAL`/`NONE` on a code file → `@file:` absent = `TASK_ID_DRIFT`/`MAJOR`, `@tasks:` absent = `MAJOR`; `has_consumers=0` = `MINOR`.
+           - `<sdd-path> check --task <Task-ID>` → [TASKID] `collision` → `TASK_ID_DRIFT`
+             (`BLOCKER`); `missing` → structural halt because the requested ticket does not exist;
+             orphan refs surface in tree-mode (run plain `sdd check` for epic-level).
         3. **Residual semantic checks the tool cannot do** (keep here):
            - `@consumers:` value must resolve to an entity name in spec/codebase (not a path/dir) → `MINOR` if it does not.
            - `@tasks:` contains current Task-ID (the tool reports presence; YOU confirm it is THIS Task-ID, not just any).
            - Compare current `@tasks:` values against pre-task git ref. Prior IDs removed → `TASK_ID_DRIFT` (`MAJOR`).
-        4. **Ticket section-anchor coverage** (per `AX_TASK_ID_INTEGRITY` last bullet). For each anchor name templated in `TASK_TICKET_STRUCTURE` → `~/.claude/skills/sdd-execute/scripts/sdd extract <ticket> <NAME>`. Exit `2` → `EXECUTION_LOG_INCOMPLETE` `missing-section-anchor`; exit `3` → `EXECUTION_LOG_INCOMPLETE` `anchor-unbalanced`. Zero anchors found → escalate to BLOCKER.
-        5. Phase Progress. STOP.
+        4. **Ticket section-anchor coverage** (per `AX_TASK_ID_INTEGRITY` last bullet). For each
+           anchor name templated in `TASK_TICKET_STRUCTURE` →
+           `<sdd-path> extract <ticket> <NAME>`. Exit `3` → `EXECUTION_LOG_INCOMPLETE`
+           `anchor-unbalanced`. Exit `5` (`ANCHOR_EMPTY`) → `EXECUTION_LOG_INCOMPLETE` (`MAJOR`)
+           tagged `anchor-empty`. Exit `2` (`ANCHOR_NOT_FOUND`) → use full-file fallback: uniquely
+           readable legacy structure gets one `ticket-update` `MINOR`; ambiguous/missing target
+           structure gets `BLOCKER`.
+        5. Emit Phase Progress, then continue.
       </Action>
     </Step>
 
@@ -362,7 +465,7 @@
         2. Forward pass: every Acceptance Scenario → test case with canonical name? Every Entity Surface operation → public method/function in code?
         3. Backward pass (informational): exported public entities without spec/ticket mention.
         4. Findings: `COMPLETENESS_GAP` (forward — `MAJOR` or `BLOCKER`); backward → `INFO`.
-        5. Phase Progress. STOP.
+        5. Emit Phase Progress, then continue.
       </Action>
     </Step>
 
@@ -374,7 +477,7 @@
         3. Scan adapter/implementation code per `AX_RUNTIME_BACKING_VERIFICATION`.
         4. For each declared `Verification Level`, confirm corresponding test artifact exists.
         5. Mismatches → `RUNTIME_BACKING_VIOLATION` (`BLOCKER` if `real-runtime` promised but missing).
-        6. Phase Progress. STOP.
+        6. Emit Phase Progress, then continue.
       </Action>
     </Step>
 
@@ -389,7 +492,7 @@
            - identify `config`-kind phases; for each, list its `Target Files` targeting a third-party tool;
            - for each, scan that phase's block for `<ts> verified <tool>@<version> <summary>` entry;
            - missing entry → `RULES_COMPLIANCE_VIOLATION` (`MAJOR`) tagged `stale-tool-api-not-verified`.
-        5. Phase Progress. STOP.
+        5. Emit Phase Progress, then continue.
       </Action>
     </Step>
 
@@ -399,13 +502,23 @@
         1. TRACE_HEADER (STACK `ROOT__BDD_AND_LOG_CHECK`).
         2. BDD per `AX_BDD_COVERAGE_VERIFICATION`. Mismatch → `BDD_COVERAGE_MISMATCH`.
         3. Execution Log completeness per `AX_EXECUTION_LOG_VERIFICATION` (current round only). Omission → `EXECUTION_LOG_INCOMPLETE` (`MAJOR` or `BLOCKER`).
-        4. **Placeholder leftover scan** (fabricated done): for every `[x]` line in current round, scan for residual `<...>` literal. Any match → `EXECUTION_LOG_INCOMPLETE` (`BLOCKER`) tagged «fabricated done».
+        4. **Placeholder leftover scan** (fabricated done): consume `<sdd-path> check --task`
+           [LOG] `fabricated-placeholder` findings for known scaffold markers in checked
+           token-aware protocol lines. Do not classify arbitrary `<...>` prose by shape alone.
         5. Round immutability: prior round sections compared against pre-round git ref. Any edit/reorder/delete → `EXECUTION_LOG_INCOMPLETE` (`BLOCKER`).
-        6. Reopens metadata: Meta `Reopens: <count>` = (Round headers count − 1). Mismatch → `EXECUTION_LOG_INCOMPLETE` (`MAJOR`).
-        7. Tracker sync — delegate to `sdd check --task <Task-ID>` (per `AX_MECHANICAL_VIA_SDD_CHECK`), do NOT hand-grep:
+        6. Reopens metadata — consume `<sdd-path> check --task <Task-ID>` [REOPENS], do not hand-count:
+           - `OK` → continue;
+           - `PENDING` → latest phase-owned FAIL has durably declared the next Round and updated Meta,
+             but the orchestrator has not created that Round yet; preserve it as resumable state, not
+             a finding;
+           - `MISMATCH` → `EXECUTION_LOG_INCOMPLETE` (`MINOR`, or `MAJOR` when the causative
+             audit/Execution Round relation is ambiguous);
+           - `UNVERIFIABLE` → INFO plus a manual legacy-history cross-check, never an invented
+             mismatch.
+        7. Tracker sync — consume the same command's [TRACKER_SYNC] (per `AX_MECHANICAL_VIA_SDD_CHECK`), do NOT hand-grep:
            - read [TRACKER_SYNC]: `match=NO` (ticket Meta.Status ≠ tracker row) or `NO_ROW` → `EXECUTION_LOG_INCOMPLETE` (`MAJOR`) tagged «tracker desync». `UNPARSEABLE` → INFO.
            - aggregate Tracker Index counts (`tasks/README.md`) vs sum of statuses in scope remains a manual cross-check in epic mode.
-        8. Phase Progress. STOP.
+        8. Emit Phase Progress, then continue.
       </Action>
     </Step>
 
@@ -413,9 +526,9 @@
       <Goal>If scope spec has Pivot Invalidation List, verify each listed artifact has been addressed.</Goal>
       <Action>
         1. TRACE_HEADER (STACK `ROOT__PIVOT_STALENESS_CHECK`).
-        2. Read scope spec Pivot Invalidation List. Absent → log «No pivot list — check skipped», STOP.
+        2. Read scope spec Pivot Invalidation List. Absent → log «No pivot list — check skipped» and continue to the next audit step.
         3. Apply checks per `AX_STALE_AFTER_PIVOT_VERIFICATION` table.
-        4. Phase Progress. STOP.
+        4. Emit Phase Progress, then continue.
       </Action>
     </Step>
 
@@ -423,25 +536,33 @@
       <Goal>Capture insights that should flow back into the spec.</Goal>
       <Action>
         1. TRACE_HEADER (STACK `ROOT__INSIGHT_BACKFLOW`).
-        2. Walk Execution Log `intro <X> ← <Y>` lines entries. For each: spec-update proposal — add `<X>` to corresponding module Entity Inventory with proposed surface. Tag as `INSIGHT_BACKFLOW`.
+        2. Walk Execution Log `intro <X> ← <Y>` lines entries. For each: `spec-edit` proposal — add
+           `<X>` to corresponding module Entity Inventory with proposed surface. Tag as
+           `INSIGHT_BACKFLOW` INFO for final operator review.
         3. Walk `Introduced … because …` reasons for new edge cases / assumptions / constraints that should land in Requirements & Constraints or Module Decision Log.
-        4. Phase Progress. STOP.
+        4. Walk `decision`, `discovery`, and `insight` lines plus Handoff `decisions`. Verify the
+           resulting implementation against the existing spec, ticket BDD, and executed evidence per
+           `AX_NEUTRAL_FINDINGS`; never accept the phase narrative, a printed command, or code reading
+           alone as proof of runtime behavior. A behavior mismatch is routed through the
+           existing finding taxonomy. A sound choice that makes canonical text stale is routed as an
+           `INSIGHT_BACKFLOW` INFO proposal while the standard verdict table determines PASS or FAIL.
+        5. Emit Phase Progress, then continue.
       </Action>
     </Step>
 
     <Step id="STEP_8_SUMMARY">
-      <Goal>Emit ephemeral audit summary per AUDIT_SESSION_SUMMARY_FORMAT. Map findings to phases. Apply approved inline changes if operator confirms.</Goal>
+      <Goal>Emit one validated terminal audit candidate. Leave persistence and remediation to the caller.</Goal>
       <Action>
         1. TRACE_HEADER (STACK `ROOT__SUMMARY`).
         2. Compile all findings: counts by severity + ordered findings table + proposed actions per `AX_FINDING_ROUTING`.
-        3. Compute overall status from the table in `AX_SEVERITY_TAGGING` and print the row that matched. Project-scope findings enter capped at `MINOR`.
-        4. **Map findings to phases (`phases_to_fix`).** For each finding whose `route` is `code-fix` or `ticket-reopen`: read its `Location.path`; find the phase block in ticket section 3 Phases whose `Target Files:` contains that path. Collect the set of phase IDs. Empty set → orchestrator will be told «no phases to fix» (e.g., findings only on specs or trackers). Used by `sdd-execute` orchestrator for selective phase re-run.
-        5. Emit ephemeral summary per `AUDIT_SESSION_SUMMARY_FORMAT` in chat — include `phases_to_fix=[P<N>, …]` in the header line.
-        6. If overall status is FAIL OR any finding routes to ticket reopen (per `AX_FINDING_ROUTING`) → append an `## Audit Rounds` entry to the ticket per `TICKET_AUDIT_ROUND_FORMAT` (`AX_REOPEN_ROUNDS_IN_TICKET`). PASS audits without reopen do NOT write to the ticket.
-        7. If operator approves inline changes (spec edits, ticket updates) → apply them directly to the corresponding spec/ticket files. Log applied changes in summary `~applied` lines.
-        8. Approval Check. STOP.
-
-        Operator approval → session ends. No files written to `audits/`.
+        3. Apply the confidence rule from `AX_SEVERITY_TAGGING`: independently check `LOW` observations
+           once; any that remain `LOW` MUST be `INFO` and cannot determine the terminal status.
+        4. Validate every finding's `route`/`phase` pair per `AX_FINDING_ROUTING`. Do not emit a terminal result with an unowned FAIL finding.
+        5. Compute overall status from the table in `AX_SEVERITY_TAGGING` and print the row that matched. Project-scope findings enter capped at `MINOR`.
+        6. Include every `INSIGHT_BACKFLOW` proposal in the final findings block so the orchestrator
+           can present all execution compromises to the operator once, after execution.
+        7. Emit the terminal candidate per `AUDIT_SESSION_SUMMARY_FORMAT` and return immediately. No
+           intermediate approval, persistence, inline remediation, or files written to `audits/`.
       </Action>
     </Step>
   </ExecutionPlan>
@@ -466,7 +587,7 @@
       🎯 Phase Progress — <STEPNAME>
         📊 Findings so far: 🔴 <N> · 🟠 <M> · 🟡 <K> · 🔵 <L>
         ⏳ Open:    <under discussion>
-        ▶️ Next:    <agent proposal; operator decides>
+        ▶️ Next:    <owned remediation route or explicit operator decision>
       ```
     </Contract>
 
@@ -481,7 +602,7 @@
       - 💬 **Detail:** <factual description, no value words>
       - 🔗 **Source-of-truth:** link to spec section / ticket section / rule axiom
       - 📝 **Proposed Remediation:**
-        - Type: `code-fix` | `spec-update` | `ticket-update`
+        - Type: `code-fix` | `spec-edit` | `ticket-reopen` | `ticket-update` | `decision-log` | `rule-file-fix`
         - Action: <concrete proposal, with diff if possible>
         - Routing: <per AX_FINDING_ROUTING — where this change goes>
       ```
@@ -491,33 +612,36 @@
     </Contract>
 
     <Contract id="AUDIT_SESSION_SUMMARY_FORMAT">
-      **Compact AI-to-AI inline format.** Ephemeral output at session end. One header line + one line per finding + optional applied-changes lines.       No markdown tables, no decorative text. Designed so the next agent (or operator's tooling) parses it in one pass.
+      **Compact AI-to-AI inline format.** Ephemeral output at session end. One header line + one line per finding. No markdown tables, no decorative text. Designed so the next agent (or operator's tooling) parses it in one pass.
 
       Grammar (one logical record per line, EOL-terminated; fields separated by ` | `):
 
       ```
-      @audit task=<Task-ID> round=<N> mode=<per-task|epic> status=<PASS|PASS_RISK|FAIL> counts=B<n>·M<n>·m<n>·I<n> phases_to_fix=[<P<N>>,...]
+      @audit task=<Task-ID> round=<N> mode=per-task after-exec-round=<M> triggered-reopen=<Round-M+1|none> status=<PASS|PASS_WITH_ACKNOWLEDGED_RISKS|FAIL> counts=B<n>·M<n>·m<n>·I<n>
+      @audit task=<scope|multiple> round=<N> mode=epic status=<PASS|PASS_WITH_ACKNOWLEDGED_RISKS|FAIL> counts=B<n>·M<n>·m<n>·I<n>
       F-<NN> | sev=<B|M|m|I> | type=<TYPETOKEN> | conf=<H|M|L> | loc=<path:line|—> | phase=<P<N>|—> | src=<spec/ticket/rule anchor|—> | route=<spec-edit|ticket-reopen|ticket-update|decision-log|code-fix|rule-file-fix> | act=<one-line action, no newlines>
       F-<NN> | …
-      ~applied | <target> | <one-line description of inline change>   (optional, repeat per applied change)
       ```
+
+      Per-task output uses the first header and already carries every field needed by
+      `TICKET_AUDIT_ROUND_FORMAT`. The caller adds only the Markdown round heading and appends the
+      candidate record byte-for-byte; it never reconstructs `triggered-reopen` after audit.
 
       Token vocabulary:
       - `sev`: `B`=BLOCKER, `M`=MAJOR, `m`=MINOR, `I`=INFO.
       - `conf`: `H`=HIGH, `M`=MEDIUM, `L`=LOW.
       - `type`: one of `CLOSED_WORLD_DRIFT` | `COMPLETENESS_GAP` | `RUNTIME_BACKING_VIOLATION` | `RULES_COMPLIANCE_VIOLATION` | `RULES_CASCADE_MISMATCH` | `TASK_ID_DRIFT` | `BDD_COVERAGE_MISMATCH` | `EXECUTION_LOG_INCOMPLETE` | `STALE_AFTER_PIVOT` | `INSIGHT_BACKFLOW` | `RULE_FILE_INCOMPLETE`.
       - `route`: one of `spec-edit` | `ticket-reopen` | `ticket-update` | `decision-log` | `code-fix` | `rule-file-fix` (per `AX_FINDING_ROUTING`).
+      - `phase`: required `P<N>` for `code-fix` / `ticket-reopen`; literal `—` for every artifact-level route.
       - `act` text: Russian operator-facing per `AX_OPERATOR_LANGUAGE` (this is operator-facing artifact text), single line, no pipe character.
-      - `status` `PASS_RISK` = PASS_WITH_ACKNOWLEDGED_RISKS.
 
       Example:
       ```
-      @audit task=TSK-04 round=3 mode=per-task status=FAIL counts=B1·M2·m0·I1
-      F-01 | sev=B | type=CLOSED_WORLD_DRIFT | conf=H | loc=src/payments/adapter.ts:42 | src=specs/backend/payments/payments.spec.md#2 | route=spec-edit | act=добавить `IdempotencyKey` в Entity Inventory модуля payments
-      F-02 | sev=M | type=RULES_COMPLIANCE_VIOLATION | conf=H | loc=src/payments/adapter.ts:100 | src=ai/directives/coding/typescript-rules.xml#AX_STRICT_NULL | route=ticket-reopen | act=добавить null-guard на response.balanceTransaction
-      F-03 | sev=M | type=BDD_COVERAGE_MISMATCH | conf=H | loc=src/payments/adapter.test.ts:55 | src=tasks/backend/payments/payments.task-04.md#4 | route=ticket-update | act=переименовать тест-кейс в `should reject non-positive amount with InvalidAmountError`
-      F-04 | sev=I | type=INSIGHT_BACKFLOW | conf=M | loc=src/payments/adapter.ts:88 | src=specs/backend/payments/payments.spec.md#4 | route=spec-edit | act=зафиксировать retry-budget в DbC postcondition
-      ~applied | specs/backend/payments/payments.spec.md2 | добавлен `IdempotencyKey` в Entity Inventory
+      @audit task=TSK-04 round=3 mode=per-task after-exec-round=2 triggered-reopen=Round-3 status=FAIL counts=B1·M2·m0·I1
+      F-01 | sev=B | type=CLOSED_WORLD_DRIFT | conf=H | loc=src/payments/adapter.ts:42 | phase=— | src=specs/backend/payments/payments.spec.md#2 | route=spec-edit | act=добавить `IdempotencyKey` в Entity Inventory модуля payments
+      F-02 | sev=M | type=RULES_COMPLIANCE_VIOLATION | conf=H | loc=src/payments/adapter.ts:100 | phase=P1 | src=ai/directives/coding/typescript-rules.xml#AX_STRICT_NULL | route=ticket-reopen | act=добавить null-guard на response.balanceTransaction
+      F-03 | sev=M | type=BDD_COVERAGE_MISMATCH | conf=H | loc=src/payments/adapter.test.ts:55 | phase=— | src=tasks/backend/payments/payments.task-04.md#4 | route=ticket-update | act=переименовать тест-кейс в `should reject non-positive amount with InvalidAmountError`
+      F-04 | sev=I | type=INSIGHT_BACKFLOW | conf=M | loc=src/payments/adapter.ts:88 | phase=— | src=specs/backend/payments/payments.spec.md#4 | route=spec-edit | act=зафиксировать retry-budget в DbC postcondition
       ```
 
       Rules:
@@ -529,7 +653,10 @@
     </Contract>
 
     <Contract id="TICKET_AUDIT_ROUND_FORMAT">
-      Appended to the ticket file as a `## Audit Rounds` section (created on first reopen-triggering audit; subsequent audits append `### Audit Round N` entries). Same compact AI-to-AI inline grammar as `AUDIT_SESSION_SUMMARY_FORMAT` — the ticket carries the canonical audit record machines can re-parse later.
+      Appended to the ticket file as a `## Audit Rounds` section (created on the first per-task audit;
+      subsequent audits append `### Audit Round N` entries). Same compact AI-to-AI inline grammar as
+      `AUDIT_SESSION_SUMMARY_FORMAT` — the ticket carries the canonical audit record machines can
+      re-parse later.
 
       Shape inside the ticket:
 
@@ -538,10 +665,9 @@
 
       ### Audit Round <N> — <YYYY-MM-DD>, after Execution Round <M>
       ```
-      @audit task=<Task-ID> round=<N> after-exec-round=<M> triggered-reopen=<Round-M+1|none> status=<FAIL|PASS_RISK> counts=B<n>·M<n>·m<n>·I<n>
-      F-NN | sev=… | type=… | conf=… | loc=… | src=… | route=… | act=…
+      @audit task=<Task-ID> round=<N> mode=per-task after-exec-round=<M> triggered-reopen=<Round-M+1|none> status=<PASS|PASS_WITH_ACKNOWLEDGED_RISKS|FAIL> counts=B<n>·M<n>·m<n>·I<n>
+      F-NN | sev=… | type=… | conf=… | loc=… | phase=… | src=… | route=… | act=…
       …
-      ~applied | <target> | <one-line description>
       ```
       ```
 
@@ -552,17 +678,24 @@
 
       ### Audit Round 1 — 2026-05-12, after Execution Round 1
       ```
-      @audit task=TSK-04 round=1 after-exec-round=1 triggered-reopen=Round-2 status=FAIL counts=B1·M1·m0·I0
-      F-01 | sev=B | type=CLOSED_WORLD_DRIFT | conf=H | loc=src/payments/adapter.ts:42 | src=specs/backend/payments/payments.spec.md#2 | route=spec-edit | act=добавить `IdempotencyKey` в Entity Inventory
-      F-02 | sev=M | type=RULES_COMPLIANCE_VIOLATION | conf=H | loc=src/payments/adapter.ts:100 | src=ai/directives/coding/typescript-rules.xml#AX_STRICT_NULL | route=ticket-reopen | act=добавить null-guard на response.balanceTransaction
-      ~applied | specs/backend/payments/payments.spec.md2 | добавлен `IdempotencyKey` в Entity Inventory
+      @audit task=TSK-04 round=1 mode=per-task after-exec-round=1 triggered-reopen=Round-2 status=FAIL counts=B1·M1·m0·I0
+      F-01 | sev=B | type=CLOSED_WORLD_DRIFT | conf=H | loc=src/payments/adapter.ts:42 | phase=— | src=specs/backend/payments/payments.spec.md#2 | route=spec-edit | act=добавить `IdempotencyKey` в Entity Inventory
+      F-02 | sev=M | type=RULES_COMPLIANCE_VIOLATION | conf=H | loc=src/payments/adapter.ts:100 | phase=P1 | src=ai/directives/coding/typescript-rules.xml#AX_STRICT_NULL | route=ticket-reopen | act=добавить null-guard на response.balanceTransaction
       ```
       ```
 
       Constraints:
       - Append-only. Prior `### Audit Round` entries are immutable (mirrors Round-immutability in `phase-execution-protocol`).
-      - PASS audits without reopen are NOT written here — output stays ephemeral.
+      - Every accepted per-task result is written exactly once by the caller, including `PASS`. This
+        makes the proof chain durable even when no reopen occurs. Epic summaries remain ephemeral.
       - `N` increments monotonically across the ticket's lifetime, independent of Execution Round numbers.
+      - `triggered-reopen=Round-<M>` only when this audit has at least one `code-fix` or
+        `ticket-reopen` finding owned by a phase and therefore requires that next Execution Round;
+        document-only and project-only findings use `none`.
+      - Meta `Reopens` is the count of persisted `@audit` records whose `triggered-reopen` is not `none`;
+        it is refreshed in the same ticket write as this audit record and is not derived from the
+        total number of Execution Round headers. Until the orchestrator creates the declared next
+        Round, mechanical checking reports this latest causative record as `PENDING`, not mismatch.
       - The fenced code block inside each round is the same compact grammar as `AUDIT_SESSION_SUMMARY_FORMAT` — machines parse it without rewriting.
     </Contract>
   </OutputContracts>

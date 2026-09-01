@@ -1,6 +1,6 @@
 // @file: Regression contract for the SDD critic directive markup and its documented loop semantics.
 // @consumers: CI
-// @tasks: N/A
+// @tasks: TSK-97
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -57,8 +57,11 @@ describe('SDD critic convergence contract', () => {
   });
 
   it('keeps operator documentation aligned with immediate CLEAN and focused verification', () => {
+    // #region START_OPERATOR_DOCS_ASSERT_CRITIC_CONVERGENCE
     assert.match(FLOW_GUIDE, /CLEAN на любом раунде/);
+    assert.match(FLOW_GUIDE, /оставить компактный @critic/);
     assert.match(FLOW_GUIDE, /проверяет только принятые правки/);
     assert.doesNotMatch(FLOW_GUIDE, /минимум 3 раунда|min 3/);
+    // #endregion END_OPERATOR_DOCS_ASSERT_CRITIC_CONVERGENCE
   });
 });

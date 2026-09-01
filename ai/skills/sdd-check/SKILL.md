@@ -42,10 +42,14 @@ Output: a compact self-assessment table before proceeding to mechanical checks.
 <ExecutionStrategy>
 **BATCH ALL READS.** Use the SDD scan tool for one-shot snapshot, then targeted reads.
 
+Resolve `SDD_PATH` from the actually loaded `sdd-check` skill to the sibling
+`sdd-execute/scripts/sdd`, canonicalize it, and use that exact absolute path. Never fall back to a
+home-directory checkout.
+
 1. **Two bash calls** to get comprehensive snapshot + mechanical findings:
-   - `~/Developer/gennady/ai/skills/sdd-execute/scripts/sdd scan <project-root>`
+   - `<SDD_PATH> scan <project-root>`
      → [HEADER] [TASKS] [TRACKERS] [SPECS] [WARNINGS] [SUMMARY] in one call.
-   - `~/Developer/gennady/ai/skills/sdd-execute/scripts/sdd check <project-root>`
+   - `<SDD_PATH> check <project-root>`
      → [TASKID] (collisions, orphan @tasks refs) + [TRACKER_SYNC] (ticket Meta.Status vs tracker row).
      This is the SAME tool sdd-audit uses — do NOT re-implement these greps by hand (Checks 3 & 5b below read its output).
 
@@ -79,13 +83,24 @@ Parse `Dependencies:` from each task ticket planning surface. Topological sort. 
 
 ### Check 5 — Execution Log Completeness
 
-From scan [TASKS] output: check `placeholders` column for any task with >0. Flag tasks where placeholders > 0 even if status DONE. Also inspect `warnings` column for `no-execlog-section` or `anchors-mismatch`.
+From scan [TASKS], inspect `warnings` for `no-execlog-section` or `anchors-mismatch`. The raw
+`placeholders` count is triage only because untouched TODO skeletons legitimately contain markers.
 
-Token vocabulary and Round-close shape come from `sdd check` [LOG] — do not re-read logs by hand. `unknown-token` (outside the scaffold table) and `unclosed-round` (a Round close with no ticked DONE) → FAIL. `retired-token` (valid before the vocabulary was consolidated) and `round-close-no-timestamp` → INFO: rounds are append-only, so history cannot be rewritten to satisfy a later rule.
+Token vocabulary, checked-placeholder detection, and Round-close shape come from `sdd check` [LOG] —
+do not re-read logs by hand. `fabricated-placeholder`, `unknown-token`, and `unclosed-round` → FAIL.
+`retired-token` and `round-close-no-timestamp` → INFO: rounds are append-only, so history cannot be
+rewritten to satisfy a later rule.
+
+Consume [REOPENS] from the same command as part of this lifecycle check. `MISMATCH` → FAIL;
+`PENDING` → INFO for a resumable latest audit FAIL; `UNVERIFIABLE` → INFO requiring legacy-history
+review; `OK` → PASS. Do not derive Reopens from total Round headers.
 
 ### Check 5b — Task-ID Integrity (from `sdd check` [TASKID])
 
-Read the [TASKID] section of `sdd check`. `collision` (one Task-ID on ≥2 ticket files) → FAIL (BLOCKER). `orphan` (a code `@tasks: TSK-NN` with no ticket file) → FAIL. Empty section → PASS. Same tool sdd-audit STEP_2_5 uses.
+Read the [TASKID] section of `sdd check`. `collision` (one Task-ID on ≥2 ticket files) → FAIL
+(BLOCKER). `orphan` (a legacy or prefixed code `@tasks` ID with no ticket declaring it in Meta) →
+FAIL. `missing` means the requested Task-ID has no ticket and is also FAIL, never empty PASS. Empty
+section → PASS. Same tool sdd-audit STEP_2_5 uses.
 
 ### Check 5c — Rule File Schema (from `sdd check` [RULES])
 
@@ -125,7 +140,7 @@ First: Self-Reflection. Then: Mechanical Checks. Use compact single-line-per-che
   ✅ Tracker sync    dbc 13/13  cli 7/7  vcs 1/1   (sdd check [TRACKER_SYNC])
   ✅ Task-ID         no collisions, no orphan @tasks   (sdd check [TASKID])
   ✅ DAG             no cycles, all deps satisfied
-  ✅ Execution Log   no <YYYY-MM-DD> placeholders in tasks
+  ✅ Execution Log   no checked scaffold placeholders; Reopens causation OK
   ✅ File headers    21 files scanned, all have @file: + @consumers:
   —  Test coverage   not checked
   —  Decision Log    not checked

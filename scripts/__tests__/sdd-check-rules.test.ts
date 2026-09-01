@@ -1,6 +1,6 @@
 // @file: Tests for check.sh [RULES] — activated-rule-file section scan and its separate counter.
 // @consumers: CI
-// @tasks: TSK-96
+// @tasks: TSK-96, TSK-97
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -71,6 +71,33 @@ describe('check.sh [RULES]', () => {
       assert.deepEqual(rules, ['ai/directives/coding/good.xml\t1\t1\t1\t1\tOK\t-']);
       assert.equal(summary.rule_findings, '0');
     });
+  });
+
+  it('uses the same canonical category predicate in tree and task modes', () => {
+    withProject(
+      {
+        'ai/directives/architecture/ports-adapters.xml': COMPLETE_RULE,
+        'tasks/demo/demo.task-01.md': [
+          '## 1. Meta',
+          '',
+          '- **Task-ID:** TSK-01',
+          '- **Status:** [ ] TODO',
+          '',
+          '## 3. Phases',
+          '',
+          '- **Rules:**',
+          '  - ai/directives/architecture/ports-adapters.xml',
+          '',
+        ].join('\n'),
+      },
+      (dir) => {
+        const tree = runCheck(dir);
+        const task = runCheck(dir, ['--task', 'TSK-01']);
+
+        assert.deepEqual(tree.rules, task.rules);
+        assert.match(tree.rules[0], /architecture\/ports-adapters\.xml/);
+      }
+    );
   });
 
   it('names every missing section rather than only failing', () => {
@@ -145,6 +172,37 @@ describe('check.sh [RULES]', () => {
 
         assert.equal(rules.length, 1, rules.join('\n'));
         assert.match(rules[0], /good\.xml\t1\t1\t1\t1\tOK/);
+      }
+    );
+  });
+
+  it('task mode ignores cited SDD protocols outside rule cascade categories', () => {
+    withProject(
+      {
+        'ai/directives/sdd/phase-execution-protocol.xml':
+          '<Protocol><BeliefState>x</BeliefState></Protocol>\n',
+        'ai/directives/coding/good.xml': COMPLETE_RULE,
+        'tasks/demo/demo.task-01.md': [
+          '## 1. Meta',
+          '',
+          '- **Task-ID:** TSK-01',
+          '- **Status:** [ ] TODO',
+          '',
+          '## 3. Phases',
+          '',
+          '- **Rules:**',
+          '  - ai/directives/coding/good.xml',
+          '- **Target Files:**',
+          '  - ai/directives/sdd/phase-execution-protocol.xml',
+          '',
+        ].join('\n'),
+      },
+      (dir) => {
+        const { rules, summary } = runCheck(dir, ['--task', 'TSK-01']);
+
+        assert.equal(rules.length, 1, rules.join('\n'));
+        assert.match(rules[0], /good\.xml/);
+        assert.equal(summary.rule_findings, '0');
       }
     );
   });
