@@ -103,8 +103,8 @@
   <details>
   <summary>Таблица предусловий</summary>
 
-  | ID | Requirement | Kind | Owner | Resolution | Capability Adapter | Provides Capabilities | Requires Capabilities | Readiness Gates | Gate Artifacts |
-  |---|---|---|---|---|---|---|---|---|---|
+  | Requirement | Kind | Owner | Resolution | Readiness Gates | Gate Artifacts |
+  |---|---|---|---|---|---|
   <!-- Empty list allowed only when STEP_7 audit produced zero external assumptions — declare explicitly. -->
 
   </details>

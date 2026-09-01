@@ -241,7 +241,7 @@ describe('SddStateCommand', () => {
     const root = mkdtempSync(join(tmpdir(), 'sdd-state-authoring-ready-'));
     const specPath = join(root, 'specs', 'infra-core', 'infra-core.spec.md');
     const completeRow =
-      '| INFRA-TOOLING | tooling | tool | this-scope-task | create bootstrap toolchain | node | node.runtime-version, node.manifest-engine, node.manifest-module-kind, node.registry-config, node.dependencies, node.runtime, node.package-manager | — | package.json, type-check, test, test:coverage, format, format:fix, lint, lint:fix, fix, gennady | package.json, package-lock.json, .nvmrc, .npmrc |';
+      '| tooling | tool | this-scope-task | create bootstrap toolchain | package.json, type-check, test, test:coverage, format, format:fix, lint, lint:fix, fix, gennady | package.json |';
     const writeSpec = (row: string): void => {
       mkdirSync(dirname(specPath), { recursive: true });
       writeFileSync(
@@ -251,8 +251,8 @@ describe('SddStateCommand', () => {
           'infrastructure',
           '<!--/SECTION:SCOPE_TYPE-->',
           '<!--SECTION:BOOTSTRAP_REQUIREMENTS-->',
-          '| ID | Requirement | Kind | Owner | Resolution | Capability Adapter | Provides Capabilities | Requires Capabilities | Readiness Gates | Gate Artifacts |',
-          '|---|---|---|---|---|---|---|---|---|---|',
+          '| Requirement | Kind | Owner | Resolution | Readiness Gates | Gate Artifacts |',
+          '|---|---|---|---|---|---|',
           row,
           '<!--/SECTION:BOOTSTRAP_REQUIREMENTS-->',
         ].join('\n'),
@@ -444,7 +444,7 @@ describe('SddStateCommand', () => {
       if (outcome.ok) {
         assert.match(
           outcome.text,
-          /\[SPEC_SCHEMA\]\nVERSION=sdd-v2\.schema-2\nSTATUS=stale-migratable/
+          /\[SPEC_SCHEMA\]\nVERSION=sdd-v2\.schema-1\nSTATUS=stale-migratable/
         );
         assert.match(
           outcome.text,

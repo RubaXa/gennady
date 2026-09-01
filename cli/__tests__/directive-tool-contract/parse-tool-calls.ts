@@ -191,10 +191,7 @@ const COMMAND_SCHEMAS: Readonly<Record<string, CommandSchema>> = {
       '--phase': 'scalar',
       '--all': 'boolean',
       '--changed': 'boolean',
-      '--project-feasibility': 'boolean',
-      '--scaffold-plan': 'scalar',
       '--scaffold-feasibility': 'boolean',
-      '--plan': 'scalar',
       '--review-ready': 'scalar',
       '--review-state': 'scalar',
       '--review-publication': 'scalar',
@@ -204,8 +201,6 @@ const COMMAND_SCHEMAS: Readonly<Record<string, CommandSchema>> = {
         '--task',
         '--all',
         '--changed',
-        '--project-feasibility',
-        '--scaffold-plan',
         '--scaffold-feasibility',
         '--review-ready',
         '--review-state',
@@ -214,13 +209,9 @@ const COMMAND_SCHEMAS: Readonly<Record<string, CommandSchema>> = {
       if (modes.length !== 1) return 'requires exactly one mode';
       if (has(f, '--authoring') && modes[0] !== '--task') return '--authoring requires --task';
       if (has(f, '--phase') && !has(f, '--authoring')) return '--phase requires --authoring';
-      if (has(f, '--plan') && modes[0] !== '--scaffold-feasibility')
-        return '--plan requires --scaffold-feasibility';
       if (
         (modes[0] === '--all' ||
           modes[0] === '--changed' ||
-          modes[0] === '--project-feasibility' ||
-          modes[0] === '--scaffold-plan' ||
           modes[0] === '--scaffold-feasibility') &&
         p.length > 1
       )

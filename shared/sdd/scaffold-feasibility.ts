@@ -24,7 +24,6 @@ import {
   type CapabilityAdapter,
   type CapabilityAdapterRegistry,
 } from './capability-adapter.ts';
-import type { ScaffoldDraftPlanNode } from './project-feasibility.ts';
 
 /** @purpose Clean-HEAD package facts against which planned dependency installation is evaluated. */
 export type ScaffoldPackageBaseline = {
@@ -114,7 +113,6 @@ export type ScaffoldCriticContext = {
 type PhaseNode = {
   ticketId: string;
   ticketFile: string;
-  scope: string;
   phaseId: string;
   kind: string;
   dependencies: string[];
@@ -128,7 +126,6 @@ type PhaseNode = {
   capabilityAdapter: string | null;
   providesCapabilities: string[];
   requiresCapabilities: string[];
-  bootstrapRequirementIds: string[];
 };
 
 type CommandScenario = { name: string; command: string };
@@ -181,7 +178,6 @@ function phaseNodes(refs: readonly TicketCorpusRef[]): PhaseNode[] {
         {
           ticketId: meta.taskId as string,
           ticketFile: ref.file,
-          scope: meta.scope ?? '(unknown)',
           phaseId: phase.id,
           kind: phase.kind,
           dependencies: meta.dependencies,
@@ -195,48 +191,10 @@ function phaseNodes(refs: readonly TicketCorpusRef[]): PhaseNode[] {
           capabilityAdapter: detail.capabilityAdapter,
           providesCapabilities: detail.providesCapabilities,
           requiresCapabilities: detail.requiresCapabilities,
-          bootstrapRequirementIds: detail.bootstrapRequirementIds,
         },
       ];
     });
   });
-}
-
-/**
- * @purpose Normalize materialized ticket phases to the same node contract approved before Gate 1.
- * @param refs Complete ticket corpus after STEP_3 authoring.
- * @returns Exact comparable phase nodes with ticket dependencies bound to predecessor terminal phases.
- */
-export function materializedScaffoldPlanNodes(
-  refs: readonly TicketCorpusRef[]
-): ScaffoldDraftPlanNode[] {
-  const nodes = phaseNodes(refs);
-  const terminalPhaseByTicket = new Map<string, string>();
-  for (const ref of refs) {
-    const meta = extractSection(ref.content, 'META');
-    const overview = extractSection(ref.content, 'PHASES_OVERVIEW');
-    if (meta.status !== 'ok' || overview.status !== 'ok') continue;
-    const taskId = parseMetaInfo(meta.content).taskId;
-    const terminal = parsePhasesOverview(overview.content).at(-1)?.id;
-    if (taskId && terminal) terminalPhaseByTicket.set(taskId, terminal);
-  }
-  return nodes.map((node) => ({
-    id: `${node.ticketId}/${node.phaseId}`,
-    scope: node.scope,
-    dependencies: [
-      ...node.phaseDependencies.map((phase) => `${node.ticketId}/${phase}`),
-      ...node.dependencies.flatMap((ticket) => {
-        const terminal = terminalPhaseByTicket.get(ticket);
-        return terminal ? [`${ticket}/${terminal}`] : [];
-      }),
-    ],
-    requirementIds: [...node.bootstrapRequirementIds],
-    adapter: node.capabilityAdapter ?? '',
-    action: node.action === 'dependency-install' ? 'dependency-install' : null,
-    targets: [...node.targets],
-    provides: [...node.providesCapabilities],
-    requires: [...node.requiresCapabilities],
-  }));
 }
 
 function ruleAliases(rule: string): string[] {

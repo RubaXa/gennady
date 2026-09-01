@@ -54,19 +54,6 @@ npx gennady orient --file=path/to/file.ts
 npx gennady agents-rules
 ```
 
-### 3.1. Доказать переходы SDD до исполнения
-
-```bash
-# До утверждения спецификаций: общий граф предусловий всех областей
-npx gennady sdd-check --project-feasibility
-
-# До Scaffold Gate 1: покрытие требований и порядок чернового плана
-npx gennady sdd-check --scaffold-plan .claude/tmp/sdd-scaffold-plan.json
-
-# После создания задач: повторная проверка материализованного графа
-npx gennady sdd-check --scaffold-feasibility --plan .claude/tmp/sdd-scaffold-plan.json
-```
-
 ### 4. Ревью MR/PR
 
 ```bash

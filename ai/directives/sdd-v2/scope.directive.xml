@@ -517,11 +517,8 @@
         `unknown` with the operator (source · version · owner), each a Decision Log entry. Record
         every confirmed cross-scope assumption as a `depends-on` edge in Scope Dependencies per
         `AX_CROSS_SCOPE_DEPENDENCIES` (cross-scope contracts come from `interface` scopes). Materialize
-        the Bootstrap Requirements table. Give every row a project-unique `ID`. For every executable
-        prerequisite, resolve one registered `Capability Adapter` and exact `Provides Capabilities` /
-        `Requires Capabilities`; these facts form the project-wide causal graph and are not inferred
-        later by scaffold. Readiness rows additionally name exact `Readiness Gates` and repo-relative
-        `Gate Artifacts`; non-readiness rows use `—`. Gate: empty list
+        the Bootstrap Requirements table. Readiness rows additionally name exact `Readiness Gates`
+        and repo-relative `Gate Artifacts`; non-readiness rows use `—`. Gate: empty list
         only if explicitly «nothing to bootstrap», else `H_BOOTSTRAP_REQUIREMENTS_MISSING`. An existing
         mechanism this audit turns up feeds back into Architecture / Contracts now, in the SAME session
         — per `AX_BOOTSTRAP_NARROW_READ`, pop back to the relevant earlier step, incorporate it, re-run
@@ -598,7 +595,6 @@
         <ToolCall owner="this-step" result="productManifest">npx gennady sdd-new product --scope <scope></ToolCall> Use productManifest.
         <ToolCall owner="this-step" result="libraryManifest">npx gennady sdd-new library --scope <scope></ToolCall> Use libraryManifest.
         <ToolCall owner="this-step" result="integrityCheck">npx gennady sdd-check --all specs/<scope></ToolCall> Use integrityCheck.
-        <ToolCall owner="this-step" result="projectFeasibility">npx gennady sdd-check --project-feasibility</ToolCall> Use projectFeasibility after integrityCheck and before authoring approval or integrated critic. Any finding returns to STEP_8; CLEAN is the only proof that this scope and every portal neighbour can be ordered together.
         Inputs <scope-spec-path>: this STEP_9 authored scope path. Write the literal
         `<scope-spec-path> — module-decomposition handoff — operator-approved review-state draft`
         to `.claude/tmp/sdd-scope-workset.txt`, then run:

@@ -23,11 +23,7 @@
         `READY=no` or `not-applicable` → stop with that same scope's exact DIAG/NEXT. Unrelated red scope
         lines and aggregate `AUTHORING_READY=no` never block a narrower target. `READY=yes` → continue
         even when `EXECUTION_READY=no`, because the declared bootstrap nodes are what scaffold must create.
-        After every requested target is READY=yes, run exact projectFeasibility ToolCall below once.
-        It rechecks the complete portal graph and emits the digest-bound `project-context` used by STEP_2;
-        any finding returns to the named scope/infra external-dependencies audit before cascade. Never
-        load readiness setup from scaffold and never infer readiness from another scope.
-        <ToolCall owner="this-step" result="projectFeasibility">npx gennady sdd-check --project-feasibility</ToolCall> Use projectFeasibility; retain its exact project-context for STEP_2.
+        Never load readiness setup from scaffold and never infer readiness from another scope.
       </Action>
     </Step>
 

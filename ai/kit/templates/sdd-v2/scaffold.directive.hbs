@@ -184,11 +184,7 @@
         `READY=no` or `not-applicable` → stop with that same scope's exact DIAG/NEXT. Unrelated red scope
         lines and aggregate `AUTHORING_READY=no` never block a narrower target. `READY=yes` → continue
         even when `EXECUTION_READY=no`, because the declared bootstrap nodes are what scaffold must create.
-        After every requested target is READY=yes, run exact projectFeasibility ToolCall below once.
-        It rechecks the complete portal graph and emits the digest-bound `project-context` used by STEP_2;
-        any finding returns to the named scope/infra external-dependencies audit before cascade. Never
-        load readiness setup from scaffold and never infer readiness from another scope.
-        <ToolCall owner="this-step" result="projectFeasibility">npx gennady sdd-check --project-feasibility</ToolCall> Use projectFeasibility; retain its exact project-context for STEP_2.
+        Never load readiness setup from scaffold and never infer readiness from another scope.
       </Action>
     </Step>
     <Step id="STEP_1_CASCADE">
@@ -224,20 +220,9 @@
         owners, or edges. Then form tickets per
         `AX_DAG_AND_TICKET_BOUNDARIES` (one per coherent spec unit; subdivide only for parallelism or
         context overflow); cross-scope placement per `AX_CROSS_SCOPE_TASK_PLACEMENT`; assign slugs
-        (`AX_TASK_ID_UNIQUENESS`). Acyclic. Before presenting Gate 1, write
-        `.claude/tmp/sdd-scaffold-plan.json` with schema `sdd-scaffold-plan/v1`: copy `specs` byte-for-byte
-        from STEP_0B project-context; encode every proposed phase as one node with exact fields
-        `id` (`<Task-ID>/<PhaseID>`), `scope`, `dependencies` (predecessor node ids), `requirementIds`,
-        `adapter`, `action` (`dependency-install` or null), `targets`, `provides`, `requires`. Every
-        `this-scope-task` Bootstrap Requirement ID maps to exactly one node; no invented ID is allowed.
-        Run scaffoldPlanGate ToolCall. A finding returns to this step (or to the named spec owner when
-        the project-context is stale); do not present a plan and do not create ticket files. Only GREEN
-        authorizes the decision card. Include the literal checked plan digest and a compact proof list:
-        exact requirement coverage, provider order, shared-writer serialization, no cycles.
-        **Present the proven DAG (the breakdown) as a decision card and get operator approval — this is
-        the one gate on structure.** While awaiting it return
+        (`AX_TASK_ID_UNIQUENESS`). Acyclic. **Present the DAG (the breakdown) as a decision card and
+        get operator approval — this is the one gate on structure.** While awaiting it return
         `TerminalDecision: pause` and preserve the session. STOP.
-        <ToolCall owner="this-step" result="scaffoldPlanGate">npx gennady sdd-check --scaffold-plan .claude/tmp/sdd-scaffold-plan.json</ToolCall> Use scaffoldPlanGate before Gate 1.
       </Action>
     </Step>
     <Step id="STEP_3_TASK_GENERATION">
@@ -347,9 +332,6 @@
         Select the current unprocessed STEP_2 node and run its one exact `sdd-new` ToolCall. Fill the
         returned ticket from that approved DAG node, its owning specs, the common contract, and the
         returned manifest; copy the manifest's path-aware owning-spec/rule/deferred literals verbatim.
-        Copy the approved node's exact `requirementIds` into the owning phase's `Bootstrap Requirements`
-        field, and copy its adapter/action/targets/provides/requires/dependencies without reinterpretation.
-        Ticket prose, BDD, and verification may elaborate the node but never change those machine facts.
         Inputs <owner>/<scope>/<module>/<ACR>/<slug>: current STEP_2 node. This table is exhaustive;
         interface maps to none.
         <ToolCall owner="this-step" result="flatInfraTaskManifest">npx gennady sdd-new task --owner infrastructure-flat --scope <scope> --id <ACR>-<slug></ToolCall> Use flatInfraTaskManifest only for infrastructure-flat.
@@ -370,7 +352,7 @@
         provider→consumer ordering, and command
         proof. Red: repair only the named ticket fields/edges and rerun the same command; do not dispatch
         the semantic critic. Green: continue to STEP_3B. Never replace these named causal diagnostics with general critic prose.
-        <ToolCall owner="this-step" result="feasibilityGate">npx gennady sdd-check --scaffold-feasibility --plan .claude/tmp/sdd-scaffold-plan.json</ToolCall> Use feasibilityGate before STEP_3B_FEASIBILITY_CRITIC. It must report the same approved plan digest from Gate 1; any materialization drift returns to the exact ticket phase, while an architecture change requires rebuilding STEP_2 and a new Gate 1 approval.
+        <ToolCall owner="this-step" result="feasibilityGate">npx gennady sdd-check --scaffold-feasibility</ToolCall> Use feasibilityGate before STEP_3B_FEASIBILITY_CRITIC.
       </Action>
     </Step>
     <Step id="STEP_3B_FEASIBILITY_CRITIC">

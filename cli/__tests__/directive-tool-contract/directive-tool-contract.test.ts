@@ -257,25 +257,17 @@ describe('callable SDD-v2 action-call inventory', () => {
     );
     assert.strictEqual(
       validateToolCallSyntax({
-        raw: 'npx gennady sdd-check --project-feasibility',
+        raw: 'npx gennady sdd-check --scaffold-feasibility',
         cmd: 'sdd-check',
-        argsRaw: '--project-feasibility',
+        argsRaw: '--scaffold-feasibility',
       }),
       null
     );
     assert.strictEqual(
       validateToolCallSyntax({
-        raw: 'npx gennady sdd-check --scaffold-plan <json> <project-root>',
+        raw: 'npx gennady sdd-check --scaffold-feasibility <project-root>',
         cmd: 'sdd-check',
-        argsRaw: '--scaffold-plan <json> <project-root>',
-      }),
-      null
-    );
-    assert.strictEqual(
-      validateToolCallSyntax({
-        raw: 'npx gennady sdd-check --scaffold-feasibility --plan <json>',
-        cmd: 'sdd-check',
-        argsRaw: '--scaffold-feasibility --plan <json>',
+        argsRaw: '--scaffold-feasibility <project-root>',
       }),
       null
     );

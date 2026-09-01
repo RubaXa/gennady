@@ -38,10 +38,10 @@ describe('spec structural schema', () => {
     assert.match(finding.reason, /Readiness Gates, Gate Artifacts/);
   });
 
-  it('classifies the causal ten-column fixture as current', () => {
+  it('classifies the current six-column fixture as current', () => {
     const finding = diagnose(
       wrap(
-        '| ID | Requirement | Kind | Owner | Resolution | Capability Adapter | Provides Capabilities | Requires Capabilities | Readiness Gates | Gate Artifacts |\n|---|---|---|---|---|---|---|---|---|---|'
+        '| Requirement | Kind | Owner | Resolution | Readiness Gates | Gate Artifacts |\n|---|---|---|---|---|---|'
       )
     );
     assert.strictEqual(finding.status, 'current');
