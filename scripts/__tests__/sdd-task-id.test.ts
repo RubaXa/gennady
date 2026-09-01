@@ -39,6 +39,13 @@ const PATH_BASED: Record<string, string> = {
   'tasks/ingest/README.md': tracker('TSK-IB-001', 'ingest-batch.IB-001.md'),
 };
 
+/**
+ * Task-IDs whose *valid prefix* is the real ID `TSK-IB-001`. An unanchored grammar match
+ * inside the value reads them as that ID and reports the ticket clean; every parser must
+ * take the whole token first and only then apply the grammar.
+ */
+const PREFIX_TRAPS = ['TSK-IB-0012', 'TSK-IB-001X'];
+
 /** @purpose Build a project tree from `files`, hand the directory to `fn`, clean up. */
 function withProject<T>(files: Record<string, string>, fn: (dir: string) => T): T {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sdd-task-id-'));
@@ -105,6 +112,34 @@ describe('scan.sh path-based Task-ID', () => {
       }
     );
   });
+
+  for (const bad of PREFIX_TRAPS) {
+    it(`treats \`${bad}\` as unparseable instead of matching its valid prefix`, () => {
+      withProject(
+        {
+          'tasks/ingest/ingest-batch.IB-001.md': ticket(`- **Task-ID:** ${bad}`),
+          'tasks/ingest/README.md': tracker(bad, 'ingest-batch.IB-001.md'),
+        },
+        (dir) => {
+          const { lines } = run(SCAN_SH, dir);
+
+          assert.match(sectionRows(lines, '[TASKS]')[0], /task-id-unparseable/);
+          // The tracker cell must not be counted as a row of TSK-IB-001 either — and the
+          // uncounted row is reported, not silently dropped.
+          assert.deepEqual(sectionRows(lines, '[TRACKERS]'), [
+            'tasks/ingest/README.md\t0\t0\t0\t0\t0',
+          ]);
+          assert.match(
+            sectionRows(lines, '[WARNINGS]').join('\n'),
+            new RegExp(
+              `^WARN\\t.*README\\.md\\ttracker Task-ID\\(s\\) outside the grammar.*${bad}`,
+              'm'
+            )
+          );
+        }
+      );
+    });
+  }
 
   it('warns rather than reporting a clean snapshot when no tickets exist at all', () => {
     withProject({}, (dir) => {
@@ -176,6 +211,81 @@ describe('check.sh --task path-based Task-ID', () => {
         assert.match(out, /tasks\/ingest\/ingest-batch\.IB-001\.md/);
       }
     );
+  });
+
+  for (const bad of PREFIX_TRAPS) {
+    it(`refuses to green-light TSK-IB-001 when Meta says \`${bad}\``, () => {
+      withProject(
+        {
+          'tasks/ingest/ingest-batch.IB-001.md': ticket(`- **Task-ID:** ${bad}`),
+          'tasks/ingest/README.md': tracker('TSK-IB-001', 'ingest-batch.IB-001.md'),
+        },
+        (dir) => {
+          const { out, status } = run(CHECK_SH, dir, ['--task', 'TSK-IB-001']);
+
+          assert.equal(status, 2);
+          assert.match(out, /TICKET_ID_UNREADABLE/);
+          assert.doesNotMatch(out, /findings=/);
+        }
+      );
+    });
+
+    it(`flags \`${bad}\` as an unreadable ticket Meta in whole-tree mode`, () => {
+      withProject(
+        {
+          'tasks/ingest/ingest-batch.IB-001.md': ticket(`- **Task-ID:** ${bad}`),
+          'tasks/ingest/README.md': tracker('TSK-IB-001', 'ingest-batch.IB-001.md'),
+        },
+        (dir) => {
+          const { lines, status } = run(CHECK_SH, dir);
+
+          assert.deepEqual(sectionRows(lines, '[TASKID]'), [
+            `unreadable\t${bad}\ttasks/ingest/ingest-batch.IB-001.md: Meta Task-ID '${bad}' is outside the grammar (TSK-NN | TSK-PREFIX-NNN)`,
+          ]);
+          assert.equal(status, 3);
+        }
+      );
+    });
+
+    it(`does not read a tracker cell of \`${bad}\` as the row of TSK-IB-001`, () => {
+      withProject(
+        {
+          'tasks/ingest/ingest-batch.IB-001.md': ticket('- **Task-ID:** TSK-IB-001'),
+          'tasks/ingest/README.md': tracker(bad, 'ingest-batch.IB-001.md'),
+        },
+        (dir) => {
+          const { lines, status } = run(CHECK_SH, dir, ['--task', 'TSK-IB-001']);
+
+          assert.deepEqual(sectionRows(lines, '[TRACKER_SYNC]'), [
+            'TSK-IB-001\tTODO\tUNKNOWN\tNO_ROW',
+          ]);
+          assert.equal(status, 3);
+        }
+      );
+    });
+
+    it(`reports an @tasks reference to \`${bad}\` instead of matching TSK-IB-001`, () => {
+      withProject({ ...PATH_BASED, 'src/ingest.ts': `// @tasks: ${bad}\n` }, (dir) => {
+        const { lines, status } = run(CHECK_SH, dir);
+
+        assert.deepEqual(sectionRows(lines, '[TASKID]'), [
+          `unparseable-ref\t${bad}\t@tasks reference outside the Task-ID grammar (TSK-NN | TSK-PREFIX-NNN); not matched against any ticket`,
+        ]);
+        // A hand-written source comment is reported, not counted (see check.sh header).
+        assert.equal(status, 0);
+      });
+    });
+  }
+
+  it('still counts an in-grammar @tasks reference with no ticket as an orphan', () => {
+    withProject({ ...PATH_BASED, 'src/ingest.ts': '// @tasks: TSK-IB-002\n' }, (dir) => {
+      const { lines, status } = run(CHECK_SH, dir);
+
+      assert.deepEqual(sectionRows(lines, '[TASKID]'), [
+        'orphan\tTSK-IB-002\t@tasks reference with no ticket declaring this Meta Task-ID',
+      ]);
+      assert.equal(status, 3);
+    });
   });
 
   it('refuses to report a clean tree when no tickets were discovered', () => {

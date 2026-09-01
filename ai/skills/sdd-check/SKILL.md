@@ -99,8 +99,13 @@ review; `OK` → PASS. Do not derive Reopens from total Round headers.
 
 Read the [TASKID] section of `sdd check`. `collision` (one Task-ID on ≥2 ticket files) → FAIL
 (BLOCKER). `orphan` (a legacy or prefixed code `@tasks` ID with no ticket declaring it in Meta) →
-FAIL. `missing` means the requested Task-ID has no ticket and is also FAIL, never empty PASS. Empty
-section → PASS. Same tool sdd-audit STEP_2_5 uses.
+FAIL. `missing` means the requested Task-ID has no ticket and is also FAIL, never empty PASS.
+`unreadable` (a ticket whose Meta Task-ID is absent or outside the grammar — e.g. `TSK-IB-0012`,
+four digits) → FAIL: the tree cannot identify that ticket at all. `unparseable-ref` (an `@tasks`
+comment citing a non-grammar ID such as `TSK-XX`) → INFO: it is reported precisely so it is never
+silently truncated to a valid ID (`TSK-IB-0012` → `TSK-IB-001`) and matched against a real ticket,
+but a hand-written source comment does not fail a tree. Empty section, or only `unparseable-ref`
+rows → PASS. Same tool sdd-audit STEP_2_5 uses.
 
 ### Check 5c — Rule File Schema (from `sdd check` [RULES])
 
