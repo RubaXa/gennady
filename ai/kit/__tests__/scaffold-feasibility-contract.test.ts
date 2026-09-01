@@ -25,6 +25,22 @@ describe('scaffold deterministic feasibility contract', () => {
     assert.match(scaffold, /named causal diagnostics/);
   });
 
+  it('keeps semantic plan judgement with a bounded fresh reviewer before Gate 1', () => {
+    const planStep = scaffold.match(/<Step id="STEP_2_DAG">([\s\S]*?)<\/Step>/)?.[1];
+    assert.ok(planStep);
+    assert.match(planStep, /interpretation belongs to the orchestrator, not to CLI keyword matching/);
+    assert.match(planStep, /dispatch ONE isolated semantic plan reviewer/);
+    assert.match(planStep, /Verdict: CLEAN/);
+    assert.match(planStep, /Verdict: REVISE/);
+    assert.match(planStep, /GREEN mechanical check plus `Verdict: CLEAN`/);
+    assert.match(planStep, /Never describe the mechanical block as semantic proof/);
+    assert.match(planStep, /H_SCAFFOLD_PLAN_UNPROVEN/);
+    assert.ok(planStep.indexOf('Run scaffoldPlanGate ToolCall') < planStep.indexOf('dispatch ONE'));
+    assert.ok(
+      planStep.indexOf('dispatch ONE') < planStep.indexOf('Present the reviewed DAG')
+    );
+  });
+
   it('authors explicit package provider/consumer facts and exact command probes', () => {
     assert.match(bootstrap, /Bootstrap Action.+dependency-install/s);
     assert.match(bootstrap, /Provides Packages/);

@@ -387,7 +387,7 @@
         <ToolCall owner="this-step" result="productManifest">npx gennady sdd-new product --scope <scope></ToolCall> Use productManifest.
         <ToolCall owner="this-step" result="libraryManifest">npx gennady sdd-new library --scope <scope></ToolCall> Use libraryManifest.
         <ToolCall owner="this-step" result="integrityCheck">npx gennady sdd-check --all specs/<scope></ToolCall> Use integrityCheck.
-        <ToolCall owner="this-step" result="projectFeasibility">npx gennady sdd-check --project-feasibility</ToolCall> Use projectFeasibility after integrityCheck and before authoring approval or integrated critic. Any finding returns to STEP_8; CLEAN is the only proof that this scope and every portal neighbour can be ordered together.
+        <ToolCall owner="this-step" result="projectFeasibility">npx gennady sdd-check --project-feasibility</ToolCall> Use projectFeasibility after integrityCheck and before authoring approval or integrated critic. Any finding returns to STEP_8; CLEAN proves only declared row completeness, external artifact ownership, and orderability. The integrated critic remains responsible for semantic correctness across scopes.
         Inputs <scope-spec-path>: this STEP_9 authored scope path. Write the literal
         `<scope-spec-path> — module-decomposition handoff — operator-approved review-state draft`
         to `.claude/tmp/sdd-scope-workset.txt`, then run:

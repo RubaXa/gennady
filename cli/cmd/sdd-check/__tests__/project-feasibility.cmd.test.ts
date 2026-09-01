@@ -64,7 +64,7 @@ describe('sdd-check project transition barriers', () => {
     rmSync(root, { recursive: true, force: true });
   });
 
-  it('--project-feasibility rejects runtime owned after the first package install', async () => {
+  it('--project-feasibility does not invent capability order from requirement words', async () => {
     writeFileSync(
       join(root, 'specs', 'infra', 'infra.spec.md'),
       spec('infra', [
@@ -78,8 +78,8 @@ describe('sdd-check project transition barriers', () => {
       ])
     );
     const result = await run(['node', 'gennady', 'sdd-check', '--project-feasibility', root]);
-    assert.strictEqual(result.exitCode, 1);
-    assert.match(result.text, /SDD_PROJECT_CAPABILITY_PREREQUISITE_ORDER/);
+    assert.strictEqual(result.exitCode, 0);
+    assert.doesNotMatch(result.text, /CAPABILITY/);
   });
 
   it('--scaffold-plan rejects a causally unordered pre-Gate-1 plan', async () => {

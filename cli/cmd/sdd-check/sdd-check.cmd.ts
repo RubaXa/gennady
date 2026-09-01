@@ -223,7 +223,7 @@ function stringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === 'string');
 }
 
-/** @purpose Fail closed on hand-authored pre-Gate-1 JSON before semantic plan checks run. */
+/** @purpose Fail closed on malformed pre-Gate-1 JSON before structural plan checks run. */
 function isScaffoldDraftPlan(value: unknown): value is ScaffoldDraftPlan {
   if (!value || typeof value !== 'object') return false;
   const plan = value as Record<string, unknown>;
@@ -1441,7 +1441,7 @@ export async function run(
     const feasibility = checkProjectFeasibility(project.refs);
     const formatted = formatFindings(feasibility, project.refs.length, {
       repairHint:
-        'resume evolve-scope at the external-dependencies audit, repair the named project capability facts, and rerun --project-feasibility before spec approval.',
+        'resume evolve-scope at the external-dependencies audit, repair the named declared row/artifact ownership facts, and rerun --project-feasibility before spec approval.',
     });
     const context =
       formatted.exitCode === 0

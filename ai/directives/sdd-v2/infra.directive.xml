@@ -501,7 +501,7 @@
         No option tells the operator to invoke `/sdd` or `/sdd-scaffold` manually. STOP.
         <ToolCall owner="this-step" result="infrastructureManifest">npx gennady sdd-new infrastructure --scope <scope></ToolCall> Use infrastructureManifest.
         <ToolCall owner="this-step" result="integrityCheck">npx gennady sdd-check --all specs/<scope></ToolCall> Use integrityCheck.
-        <ToolCall owner="this-step" result="projectFeasibility">npx gennady sdd-check --project-feasibility</ToolCall> Use projectFeasibility after integrityCheck and before authoring approval or integrated critic. Any finding returns to STEP_6; CLEAN is the only proof that this infrastructure scope precedes every consumer that depends on it.
+        <ToolCall owner="this-step" result="projectFeasibility">npx gennady sdd-check --project-feasibility</ToolCall> Use projectFeasibility after integrityCheck and before authoring approval or integrated critic. Any finding returns to STEP_6; CLEAN proves only declared row completeness, external artifact ownership, and orderability. The integrated critic remains responsible for whether the infrastructure meaning is correct.
         <ToolCall owner="this-step" result="terminal">npx gennady sdd-session close</ToolCall>
       </Action>
     </Step>

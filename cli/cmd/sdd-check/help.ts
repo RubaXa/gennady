@@ -75,10 +75,10 @@ export function printHelp(): void {
     '  --scaffold-feasibility: selected capability adapters have one reachable provider per requirement; dependency writers own manifest+lock and shared writers are DAG-serialized; --plan also proves materialized phases match the approved pre-Gate-1 graph; exact package and command probes are proven before critic; GREEN emits authoritative critic-context JSON'
   );
   console.info(
-    '  --project-feasibility: every Bootstrap Requirement has a stable ID and explicit adapter/provides/requires facts; providers must be in the same scope or an upstream portal dependency; GREEN emits digest-bound project-context JSON'
+    '  --project-feasibility: every Bootstrap Requirement has a stable reference and complete declared fields; external Gate Artifacts have upstream owners and shared writers are ordered; GREEN emits raw digest-bound project-context JSON without inferring semantics from prose'
   );
   console.info(
-    '  --scaffold-plan: every this-scope-task requirement is mapped exactly once; copied capability facts and spec digests are fresh; every provider precedes its consumer before Gate 1'
+    '  --scaffold-plan: every this-scope-task requirement is mapped exactly once; spec digests and explicit Gate Artifacts are preserved; agent-selected adapter/capability facts are internally valid and every declared provider precedes its consumer before Gate 1'
   );
   console.info(
     '  --changed: TASKS_APPEND_ONLY (@tasks: header never drops an id present at HEAD) ·'

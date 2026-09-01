@@ -52,19 +52,18 @@ const DEPENDENCIES: Row = {
 };
 
 describe('project feasibility before spec approval', () => {
-  it('rejects package installation whose runtime provider exists only downstream', () => {
-    const findings = checkProjectFeasibility([
+  it('does not infer runtime or capability order from requirement prose', () => {
+    const named = checkProjectFeasibility([
       spec('infra-base', [], [DEPENDENCIES]),
       spec('todos-app', ['infra-base'], [RUNTIME]),
-    ]);
+    ]).map((finding) => finding.code);
+    const opaque = checkProjectFeasibility([
+      spec('infra-base', [], [{ ...DEPENDENCIES, requirement: 'Prepare the blue envelope' }]),
+      spec('todos-app', ['infra-base'], [{ ...RUNTIME, requirement: 'Apply item seven' }]),
+    ]).map((finding) => finding.code);
 
-    assert.ok(
-      findings.some(
-        (finding) =>
-          finding.code === 'SDD_PROJECT_CAPABILITY_PREREQUISITE_ORDER' &&
-          /node\.runtime-version/.test(finding.message)
-      )
-    );
+    assert.deepStrictEqual(named, opaque);
+    assert.ok(!named.some((code) => code.includes('CAPABILITY')));
   });
 
   it('rejects a package row that hides the manifest or lockfile writer', () => {
@@ -85,6 +84,28 @@ describe('project feasibility before spec approval', () => {
         ),
       ]),
       []
+    );
+  });
+
+  it('emits exact row fields without guessed adapter or capability facts', () => {
+    const [requirement] = deriveProjectFeasibilityContext([
+      spec(
+        'infra-base',
+        [],
+        [
+          {
+            requirement: 'Vitest Node npm TypeScript lint format',
+            kind: 'tool',
+            gates: ['test', 'lint'],
+            artifacts: ['tool.config.ts'],
+          },
+        ]
+      ),
+    ]).requirements;
+
+    assert.deepStrictEqual(
+      Object.keys(requirement!).sort(),
+      ['artifacts', 'gates', 'kind', 'owner', 'ref', 'requirement', 'resolution', 'scope'].sort()
     );
   });
 });
@@ -154,6 +175,98 @@ describe('scaffold plan proof before Gate 1', () => {
     assert.ok(
       findings.some((finding) => finding.code === 'SDD_SCAFFOLD_PLAN_SHARED_WRITER_OVERLAP')
     );
+  });
+
+  it('accepts agent-selected capability facts without deriving them from row prose', () => {
+    const opaqueRefs = [
+      spec(
+        'infra-base',
+        [],
+        [
+          { ...RUNTIME, requirement: 'Prepare item seven' },
+          { ...DEPENDENCIES, requirement: 'Apply the blue envelope' },
+        ]
+      ),
+    ];
+    const opaqueContext = deriveProjectFeasibilityContext(opaqueRefs);
+    const draft = runtimePlan();
+    draft.specs = [
+      { path: opaqueRefs[0]!.file, digest: projectSpecDigest(opaqueRefs[0]!.content) },
+    ];
+    draft.nodes[0]!.requirementRefs = [opaqueContext.requirements[0]!.ref];
+    draft.nodes.push({
+      id: 'IB-install/P1',
+      scope: 'infra-base',
+      dependencies: ['IB-runtime/P1'],
+      requirementRefs: [opaqueContext.requirements[1]!.ref],
+      adapter: 'node',
+      action: 'dependency-install',
+      targets: ['package.json', 'package-lock.json', 'agent-selected-extra.json'],
+      provides: ['node.dependencies'],
+      requires: [
+        'node.runtime-version',
+        'node.manifest-engine',
+        'node.manifest-module-kind',
+        'node.registry-config',
+        'node.package-manager',
+      ],
+    });
+
+    assert.deepStrictEqual(checkScaffoldDraftPlan(opaqueRefs, draft), []);
+  });
+
+  it('leaves semantic mismatch to the reviewer when the explicit plan is structurally valid', () => {
+    const semanticRefs = [
+      spec(
+        'infra-base',
+        [],
+        [
+          {
+            requirement: 'Configure the TypeScript compiler',
+            kind: 'tool',
+            artifacts: ['tsconfig.json'],
+          },
+        ]
+      ),
+    ];
+    const semanticContext = deriveProjectFeasibilityContext(semanticRefs);
+    const semanticallyWrong: ScaffoldDraftPlan = {
+      schema: 'sdd-scaffold-plan/v1',
+      specs: [
+        {
+          path: semanticRefs[0]!.file,
+          digest: projectSpecDigest(semanticRefs[0]!.content),
+        },
+      ],
+      nodes: [
+        {
+          id: 'IB-wrong/P1',
+          scope: 'infra-base',
+          dependencies: [],
+          requirementRefs: [semanticContext.requirements[0]!.ref],
+          adapter: 'node',
+          action: null,
+          targets: ['tsconfig.json'],
+          provides: ['node.runtime'],
+          requires: [],
+        },
+      ],
+    };
+
+    assert.deepStrictEqual(checkScaffoldDraftPlan(semanticRefs, semanticallyWrong), []);
+  });
+
+  it('rejects internally invalid explicit adapter and capability claims', () => {
+    const draft = runtimePlan();
+    draft.nodes[0]!.adapter = 'typescript';
+    const mismatch = checkScaffoldDraftPlan(refs, draft);
+    assert.ok(
+      mismatch.some((finding) => finding.code === 'SDD_SCAFFOLD_PLAN_CAPABILITY_ADAPTER_MISMATCH')
+    );
+
+    draft.nodes[0]!.adapter = 'unknown-platform';
+    const unknown = checkScaffoldDraftPlan(refs, draft);
+    assert.ok(unknown.some((finding) => finding.code === 'SDD_SCAFFOLD_PLAN_ADAPTER_UNKNOWN'));
   });
 
   it('rejects ticket materialization that changes approved targets', () => {

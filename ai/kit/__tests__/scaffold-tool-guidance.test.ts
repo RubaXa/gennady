@@ -59,8 +59,9 @@ describe('scaffold tool-guided authoring protocol', () => {
     const loop = step(source, 'STEP_3_TICKET_LOOP');
     assert.match(
       `${dag}\n${generation}`,
-      /derive.+capability layers.+Provides Capabilities.+Requires Capabilities.+DAG/is
+      /Semantically interpret.+capability layers.+Provides Capabilities.+Requires Capabilities.+DAG/is
     );
+    assert.match(dag, /interpretation belongs to the orchestrator, not to CLI keyword matching/);
     assert.match(`${dag}\n${generation}`, /(?:DAG.+serial.+shared writers|shared writers.+DAG.+serial)/is);
     assert.match(loop, /sdd-check --task <created-ticket-path> --authoring/);
     assert.match(loop, /sdd-check --scaffold-feasibility/);

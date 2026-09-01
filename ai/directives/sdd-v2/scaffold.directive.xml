@@ -83,6 +83,7 @@
     | `H_ID_COLLISION` | A generated Task-ID / slug collides with an existing one |
     | `H_TYPING_SCENARIO_MISSING` | A DbC contract in Spec References has no `contract`-level typing scenario mapped to a test |
     | `H_TICKET_AUTHORING_INVALID` | One just-filled ticket still fails its bounded single-ticket authoring gate after three repair attempts; no later ticket or index may be created |
+    | `H_SCAFFOLD_PLAN_UNPROVEN` | Three fresh bounded semantic reviewers rejected the pre-Gate-1 plan; no ticket may be created until the operator revises the specs or planning constraints |
     | `H_SCAFFOLD_NOT_EXECUTABLE` | The feasibility critic cannot reach an operator-disposed state within its bounded loop, or a required fresh fallback cannot receive the full latest target-set plus retained context/history |
     | `H_OPERATOR_REJECT` | Operator rejected the breakdown or the test plan |
   </HaltConditions>

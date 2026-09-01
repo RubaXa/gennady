@@ -11,11 +11,12 @@
         only exact `this-scope-task` Bootstrap Requirements rows may become `scope-bootstrap` nodes.
         A composition-root/app-shell node with absent, ambiguous, or “outside modules” ownership halts
         with `H_SCOPE_NOT_DECOMPOSED` before presenting Gate 1. Do not assign it to UI by convention.
-        Derive the capability layers required by the selected requirements, declare their
+        Semantically interpret the selected requirements and choose the capability layers they need; declare their
         `Provides Capabilities` / `Requires Capabilities`, and connect each consumer to one
         current/upstream provider in the DAG. Order repeated manifest/lock writers through DAG
-        serialization. The authoring and feasibility tools name missing adapters, rules, packages,
-        owners, or edges. Then form tickets per
+        serialization. This interpretation belongs to the orchestrator, not to CLI keyword matching.
+        Mechanical tools validate only the explicit adapter vocabulary, declared edges, coverage,
+        artifacts, and graph consistency. Then form tickets per
         `AX_DAG_AND_TICKET_BOUNDARIES` (one per coherent spec unit; subdivide only for parallelism or
         context overflow); cross-scope placement per `AX_CROSS_SCOPE_TASK_PLACEMENT`; assign slugs
         (`AX_TASK_ID_UNIQUENESS`). Acyclic. Before presenting Gate 1, write
@@ -27,9 +28,25 @@
         reference is allowed. These references are derived proof data, not new spec fields.
         Run scaffoldPlanGate ToolCall. A finding returns to this step (or to the named spec owner when
         the project-context is stale); do not present a plan and do not create ticket files. Only GREEN
-        authorizes the decision card. Include the literal checked plan digest and a compact proof list:
-        exact requirement coverage, provider order, shared-writer serialization, no cycles.
-        **Present the proven DAG (the breakdown) as a decision card and get operator approval — this is
+        authorizes semantic review; it does not prove that the plan correctly interprets prose.
+
+        After every GREEN mechanical check, dispatch ONE isolated semantic plan reviewer. Its bounded
+        input is only: the exact spec roster bound by the plan, STEP_0B project-context, the proposed
+        DAG, and the orchestrator's concise row-to-node rationale. It must not search tickets, prior
+        sessions, fixtures, or repository history. It checks four questions: (1) does each node
+        correctly interpret its mapped requirements; (2) are ownership and task boundaries coherent;
+        (3) do real infrastructure prerequisites precede consumers; (4) are work, conflicts, or
+        necessary tasks missing? The reviewer returns exactly `Verdict: CLEAN` or `Verdict: REVISE`,
+        followed by findings anchored to requirement refs and node ids. `REVISE` returns to this step:
+        revise the plan, rerun scaffoldPlanGate, then use a fresh reviewer. After three non-CLEAN
+        reviews halt with `H_SCAFFOLD_PLAN_UNPROVEN`; never show Gate 1 as approved evidence.
+
+        Only a GREEN mechanical check plus `Verdict: CLEAN` authorizes the decision card. Include the
+        literal checked plan digest and keep two evidence blocks separate: (a) mechanical — exact
+        requirement coverage, declared provider order, shared-writer serialization, no cycles;
+        (b) semantic — the reviewer's row-to-node interpretation, conflict analysis, and verdict.
+        Never describe the mechanical block as semantic proof.
+        **Present the reviewed DAG (the breakdown) as a decision card and get operator approval — this is
         the one gate on structure.** While awaiting it return
         `TerminalDecision: pause` and preserve the session. STOP.
         <ToolCall owner="this-step" result="scaffoldPlanGate">npx gennady sdd-check --scaffold-plan .claude/tmp/sdd-scaffold-plan.json</ToolCall> Use scaffoldPlanGate before Gate 1.
