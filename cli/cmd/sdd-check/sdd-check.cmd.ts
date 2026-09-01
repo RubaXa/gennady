@@ -100,7 +100,11 @@ import {
   resolveTicketArg,
   resolutionLine,
 } from '../../../shared/sdd/ticket-resolve.ts';
-import { checkScaffoldFeasibility } from '../../../shared/sdd/scaffold-feasibility.ts';
+import {
+  checkScaffoldFeasibility,
+  deriveScaffoldCriticContext,
+} from '../../../shared/sdd/scaffold-feasibility.ts';
+import { phaseVerificationArtifactPaths } from '../../../shared/sdd/phase-verification-plan.ts';
 import { looksLikeTaskId } from '../../../shared/sdd/task-id.ts';
 import {
   resolveModuleScopeOwnership,
@@ -1302,6 +1306,7 @@ export async function run(
       dependencies?: Record<string, string>;
       devDependencies?: Record<string, string>;
       optionalDependencies?: Record<string, string>;
+      scripts?: Record<string, string>;
     };
     try {
       parsedPackage = JSON.parse(packageContent) as typeof parsedPackage;
@@ -1329,10 +1334,15 @@ export async function run(
       else if (head.status === 'no-head' && existsSync(join(repoRoot, lockfile)))
         activeLockfiles.push(lockfile);
     }
-    const feasibility = checkScaffoldFeasibility(corpus.refs, {
+    const baseline = {
       declaredPackages,
       activeLockfiles,
-    });
+      scripts: parsedPackage.scripts ?? {},
+      availableArtifacts: new Set(
+        phaseVerificationArtifactPaths().filter((path) => existsSync(join(repoRoot, path)))
+      ),
+    };
+    const feasibility = checkScaffoldFeasibility(corpus.refs, baseline);
     for (const item of feasibility) {
       if (item.file !== '(scaffold graph)') item.file = relative(repoRoot, item.file) || item.file;
     }
@@ -1340,8 +1350,16 @@ export async function run(
       repairHint:
         'repair the named scaffold graph facts, then rerun the same --scaffold-feasibility command before the semantic critic.',
     });
+    const criticContext =
+      formatted.exitCode === 0
+        ? `\ncritic-context: ${JSON.stringify(
+            deriveScaffoldCriticContext(corpus.refs, baseline, (file) =>
+              relative(repoRoot, file).split(sep).join('/')
+            )
+          )}`
+        : '';
     return {
-      text: `[sdd-check] scaffold feasibility (clean HEAD)\n${formatted.text}`,
+      text: `[sdd-check] scaffold feasibility (clean HEAD)\n${formatted.text}${criticContext}`,
       exitCode: formatted.exitCode,
     };
   }

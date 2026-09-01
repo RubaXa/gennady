@@ -4,22 +4,33 @@
 
 import { relative } from 'node:path';
 import { extractSection } from '../../../shared/sdd/section.ts';
-import {
-  parsePhaseReceipts,
-  phaseReceiptPlanState,
-  phaseReceiptTargetState,
-} from '../../../shared/sdd/phase-receipt.ts';
+import { parsePhaseReceipts } from '../../../shared/sdd/phase-receipt.ts';
 import { parsePhasesOverview } from '../../../shared/sdd/ticket.ts';
 import type { Finding } from '../../../shared/sdd/check.ts';
-import {
-  expectedPhaseReceiptPlan,
-  phaseReceiptCommandIssue,
-} from '../sdd-verify/phase-receipt-validation.ts';
+import { phaseReceiptIssue } from '../sdd-verify/phase-receipt-validation.ts';
 
 const SCHEMA_MARKER = '<!--PHASE_RECEIPTS:v1-->';
 
 function finding(file: string, code: string, message: string): Finding {
   return { severity: 'error', code, file, message };
+}
+
+function receiptIssueFinding(file: string, phase: string, issue: string): Finding {
+  if (/Target Files or Deleted Files changed/.test(issue))
+    return finding(
+      file,
+      'SDD_PHASE_RECEIPT_STALE_TARGETS',
+      `Phase ${phase} Target Files or deletion tombstones changed after verification; rerun the canonical phase command.`
+    );
+  if (/verification plan or environment changed/.test(issue))
+    return finding(
+      file,
+      'SDD_PHASE_RECEIPT_STALE_PLAN',
+      `Phase ${phase} verification plan changed after its receipt; rerun the canonical phase command.`
+    );
+  if (/^receipt /.test(issue))
+    return finding(file, 'SDD_PHASE_RECEIPT_INCOMPLETE', `Phase ${phase}: ${issue}.`);
+  return finding(file, 'SDD_PHASE_RECEIPT_INVALID', `Phase ${phase}: ${issue}.`);
 }
 
 /** @purpose Reject completed phases whose CLI-owned proof is absent, incomplete, or stale. | @param file Finding display path. | @param ticketPath Actual ticket path. | @param content Full ticket content. | @param root Project root. | @returns Receipt findings. */
@@ -67,41 +78,8 @@ export function checkPhaseReceipts(
       );
       continue;
     }
-    const state = phaseReceiptTargetState(root, receipt.targets, receipt.deletedFiles);
-    if (!state.ok || state.state !== receipt.targetState) {
-      findings.push(
-        finding(
-          file,
-          'SDD_PHASE_RECEIPT_STALE_TARGETS',
-          `Phase ${receipt.phase} Target Files or deletion tombstones changed after verification; rerun the canonical phase command.`
-        )
-      );
-      continue;
-    }
-    const expected = expectedPhaseReceiptPlan(root, receipt, receipt.phase, ticketPath);
-    if (!expected.ok) {
-      findings.push(
-        finding(file, 'SDD_PHASE_RECEIPT_INVALID', `Phase ${receipt.phase}: ${expected.issue}.`)
-      );
-      continue;
-    }
-    if (receipt.planState !== phaseReceiptPlanState(expected.plan)) {
-      findings.push(
-        finding(
-          file,
-          'SDD_PHASE_RECEIPT_STALE_PLAN',
-          `Phase ${receipt.phase} verification plan changed after its receipt; rerun the canonical phase command.`
-        )
-      );
-      continue;
-    }
-    const commands = phaseReceiptCommandIssue(receipt);
-    if (commands) {
-      findings.push(
-        finding(file, 'SDD_PHASE_RECEIPT_INCOMPLETE', `Phase ${receipt.phase}: ${commands}.`)
-      );
-      continue;
-    }
+    const issue = phaseReceiptIssue(root, receipt, receipt.phase, ticketPath);
+    if (issue) findings.push(receiptIssueFinding(file, receipt.phase, issue));
   }
   return findings;
 }

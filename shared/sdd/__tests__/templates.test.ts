@@ -4,6 +4,8 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import {
   TEMPLATES,
   ARTIFACT_KINDS,
@@ -18,6 +20,24 @@ import { extractMermaidBlocks, validateMermaid } from '../../mermaid/mermaid.ts'
 const sortedSet = (xs: string[]): string[] => Array.from(new Set(xs)).sort();
 
 describe('templates registry', () => {
+  it('keeps shared manifest/lock ownership DAG-serialized in source and generated infra format', () => {
+    const source = readFileSync(fileURLToPath(new URL('../templates.ts', import.meta.url)), 'utf8');
+    const generated = readFileSync(
+      fileURLToPath(
+        new URL(
+          '../../../ai/directives/sdd-v2/formats/infrastructure-spec-structure.xml',
+          import.meta.url
+        )
+      ),
+      'utf8'
+    );
+    const contract =
+      /Every shared manifest\/lock write has an owning phase\/task; all writers of the same file are strictly DAG-serialized/;
+    assert.match(source, contract);
+    assert.match(generated, contract);
+    assert.doesNotMatch(source, /EXACTLY ONE owning task/);
+    assert.doesNotMatch(generated, /EXACTLY ONE owning task/);
+  });
   it('carries every artifact kind', () => {
     assert.deepStrictEqual(
       new Set(ARTIFACT_KINDS),
@@ -182,9 +202,11 @@ describe('nextSteps — "what happens after this skeleton exists"', () => {
     }
   });
 
-  it('task points at sdd-task', () => {
+  it('task points at exact authoring then project feasibility checks without --help', () => {
     const steps = resolveNextSteps('task', { path: 'irrelevant' });
-    assert.ok(steps.some((s) => s.includes('sdd-task')));
+    assert.ok(steps.some((s) => s.includes('sdd-check --task irrelevant --authoring')));
+    assert.ok(steps.some((s) => s.includes('sdd-check --scaffold-feasibility')));
+    assert.ok(steps.every((s) => !s.includes('--help')));
   });
 
   it('task echoes the created --id, telling the agent to use exactly that ID going forward', () => {

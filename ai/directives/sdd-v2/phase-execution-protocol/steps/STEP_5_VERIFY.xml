@@ -18,22 +18,23 @@
 
         On failure, fix only inside this phase's Target Files (regardless of age), then start a new attempt
         with the same command. Restore/remove a tombstone only through its declared `Deleted Files` outcome;
-        tombstones are never repair targets. If remediation belongs to specs, another phase, or shared config this phase did not create,
-        write strict JSON `{ "reason": "...", "axiom": "AX_...", "unblock": "..." }` to
-        `.claude/tmp/<task-id>-<phase-id>-blocker.json`, run blockerLog ToolCall below, and halt
-        `H_BLOCKED`; never widen the write zone. An
+        tombstones are never repair targets. If remediation belongs to another technical phase,
+        edge, artifact owner, package/config/gate, or a missing CREATE target, return
+        `RECOVERABLE_TECHNICAL` with exact evidence and bounded task/DAG/artifact edits. The
+        orchestrator records the checkpoint, amends the technical plan, reruns deterministic checks,
+        and redispatches; this worker keeps the declared write zone. An
         out-of-inventory export is removed or logged as `intro <name> ← <reason>` for audit backflow
-        (`AX_CLOSED_WORLD_INVENTORY`); failure pauses or fails by `AX_HALT_VS_FAIL_DISTINCTION`;
+        (`AX_CLOSED_WORLD_INVENTORY`); failure returns a typed outcome per `AX_HALT_VS_FAIL_DISTINCTION`;
         unsafe casts are removed or explicitly justified per `AX_NO_SILENT_ESCAPE_HATCH`.
         If the same in-zone verification failure remains after its fixes, or its required tooling is
-        unavailable, halt `H_VERIFICATION_FAIL`; a checked phase without a receipt is never an exit.
+        unavailable, return `RECOVERABLE_TECHNICAL`; a checked phase without a receipt is never an
+        exit. The orchestrator alone classifies replan exhaustion after the recorded budget.
         Once the cause is actually gone, write exact remediation to the phase log payload and run
         resolutionLog ToolCall below into THIS SAME phase block, per `AX_BLOCKER_RESOLUTION_TRAIL`;
         logged by whoever resumes the ticket (this phase's own retry, or the orchestrator), never a manual `Edit`.
         Inputs <ticket>: STEP_1 ticket identity.
         <ToolCall owner="phase-worker" result="verification">npx gennady sdd-verify --task <ticket-path> --phase <PhaseID></ToolCall> Inputs <ticket-path>: <ticket-path>=canonical path returned by STEP_1; <PhaseID>=exact STEP_1 phase. Use verification.
-        <ToolCall owner="phase-worker" result="blockerLog">npx gennady sdd-log <ticket> blocker --payload-file .claude/tmp/<task-id>-<phase-id>-blocker.json --phase <PhaseID></ToolCall> Use blockerLog.
-        <ToolCall owner="phase-worker" result="resolutionLog">npx gennady sdd-log <ticket> resolved --content-file .claude/tmp/<task-id>-<phase-id>-log.txt --phase <PhaseID></ToolCall> Use resolutionLog.
+        <ToolCall owner="phase-worker" result="resolutionLog">npx gennady sdd-log <ticket> resolved --content-file .claude/tmp/<task-id>-<phase-id>-log.txt --phase <PhaseID></ToolCall> Inputs <task-id>, <phase-id>: exact current task and phase from phaseContext. Use resolutionLog.
       </Action>
     </Step>
 
@@ -99,9 +100,9 @@
       All recon stays inside the project root. A fact that genuinely lives outside it — a global
       `~/.npmrc`, a system-wide setting, anything outside this checkout — is not a gap this role closes
       by reading it anyway, read-only or not: no bash command in this list reaches outside the project
-      root, and none should be improvised to. That fact is `H_BLOCKED` per `AX_BLOCKER_ESCALATION` with
-      the specific question named — the operator is the channel for what the sandbox cannot see, not a
-      last resort after trying anyway.
+      root, and none should be improvised to. Return `EXTERNAL_AUTHORITY_REQUIRED` only when the exact
+      required fact needs permission outside the checkout; ordinary missing project configuration is
+      `RECOVERABLE_TECHNICAL`.
 
       **Temp files stay under `.claude/tmp/`, nowhere else.** Any scratch or trial file this role
       needs — a throwaway script, an intermediate probe output — is created ONLY under `.claude/tmp/`
@@ -121,11 +122,10 @@
     </Axiom>
 
 <Axiom id="AX_HALT_VS_FAIL_DISTINCTION">
-      Halt is NOT failure. A skill or phase that stops awaiting operator decision is in a **PAUSED** state, not a **FAILED** state. Surface to operator with distinct semantics:
-
-      - **✋ PAUSED — awaiting operator decision**: orchestrator detected unresolved BLOCKER per `AX_BLOCKER_RESOLUTION_TRAIL`, or phase agent returned `BLOCKED` per `AX_BLOCKER_ESCALATION`, or planning surface revealed `[!] BLOCKED` in Phases Overview. Skill is fully functional; it is waiting for a decision or environmental fix. To resume: operator addresses the blocker, then re-runs the skill.
-      - **❌ FAILED — skill malfunction**: skill cannot proceed due to missing rule files, malformed ticket structure beyond scaffold convention, infrastructure unreachable, or other reasons unrelated to operator decisions. To resume: fix the infrastructure issue.
-      - **⚠️ AUDIT FAIL — verification mismatch**: phases completed but audit found discrepancies. Has its own retry path (per `phase_audit_loop`).
-
-      Operator-facing messages MUST use the icon and word for the actual state. Misusing `❌` for a paused state is itself a self-deception that erodes trust in skill output (treated as fabricated halt; orchestrator must correct).
+      A stop is evidence, not an automatic operator pause. Classify before routing:
+      - `RECOVERABLE_TECHNICAL`: missing rules/config/packages, malformed task structure, gate/tool
+        diagnostics, or audit mismatch — checkpoint, bounded replan, recheck, redispatch.
+      - `SPEC_GOAL_CONFLICT`: repair contradicts approved spec/BDD — operator product decision.
+      - `EXTERNAL_AUTHORITY_REQUIRED`: exact unavailable permission/authority — operator boundary.
+      - `TECHNICAL_REPLAN_EXHAUSTED`: CLI-owned retry budget consumed — operator receives evidence.
     </Axiom>

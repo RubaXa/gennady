@@ -66,7 +66,7 @@ export function printHelp(): void {
   );
   console.info('  --all also: broken `](…spec.md)` links that do not resolve on disk');
   console.info(
-    '  --scaffold-feasibility: one dependency-install phase owns package.json + active lockfile; explicit package consumers depend forward on it; npm-run BDD When maps to the exact :: command probe and Role=probe row'
+    '  --scaffold-feasibility: selected capability adapters have one reachable provider per requirement; dependency writers own manifest+lock and shared writers are DAG-serialized; exact package and command probes are proven before critic; GREEN emits authoritative critic-context JSON'
   );
   console.info(
     '  --changed: TASKS_APPEND_ONLY (@tasks: header never drops an id present at HEAD) ·'

@@ -11,6 +11,7 @@ import {
   resolveProjectScriptName,
 } from '../../../shared/sdd/readiness.ts';
 import {
+  GATES,
   gatesFor,
   verdict,
   requiredGatesFor,
@@ -24,6 +25,7 @@ import {
 } from './sdd-verify.types.ts';
 import type { RepairMutationBoundary } from './workspace-mutation.ts';
 import { describeRepairAction, planTargetRepair } from './repair-adapters.ts';
+import type { PhaseVerificationPlan } from '../../../shared/sdd/phase-verification-plan.ts';
 
 /**
  * @purpose Read the project's `package.json` `scripts` map once per run — decides which rungs skip.
@@ -338,6 +340,7 @@ export async function run(
     specPath?: string;
     producesCoverage?: boolean;
     deletionOnly?: boolean;
+    gatePlan?: PhaseVerificationPlan;
   } = { targets: [] },
   resultSink?: GateResult[],
   mutationBoundaries?: {
@@ -349,9 +352,20 @@ export async function run(
 ): Promise<VerifyOutcome> {
   const scripts = readProjectScripts();
   const results: GateResult[] = [];
-  const producesCoverage = phaseContext.producesCoverage ?? profile === 'test';
-  const required = new Set<string>(requiredGatesFor(profile, producesCoverage));
-  const selectedGates = gatesFor(profile, producesCoverage);
+  const producesCoverage =
+    phaseContext.gatePlan?.producesCoverage ?? phaseContext.producesCoverage ?? profile === 'test';
+  const required = new Set<string>(
+    phaseContext.gatePlan
+      ? phaseContext.gatePlan.gates.filter((gate) => gate.required).map((gate) => gate.name)
+      : requiredGatesFor(profile, producesCoverage)
+  );
+  const selectedGates = phaseContext.gatePlan
+    ? GATES.filter((gate) =>
+        phaseContext.gatePlan?.gates.some(
+          (planned) => planned.name === gate.name && planned.state === 'CONFIGURED'
+        )
+      )
+    : gatesFor(profile, producesCoverage);
   const qualityTail =
     profile === 'full'
       ? selectedGates.filter((gate) => ['lint', 'format', 'yagni'].includes(gate.name))
@@ -482,8 +496,14 @@ export async function run(
       continue;
     }
 
+    const plannedCommand = phaseContext.gatePlan?.gates.find(
+      (planned) => planned.name === gate.name
+    )?.command;
+    const plannedScript = /^npm run (\S+)$/.exec(plannedCommand ?? '')?.[1];
     const scriptName =
-      gate.via === 'gennady' ? gate.name : resolveProjectScriptName(scripts, gate.name);
+      gate.via === 'gennady'
+        ? gate.name
+        : (plannedScript ?? resolveProjectScriptName(scripts, gate.name));
 
     if (gate.via !== 'gennady') {
       const isMissing = scriptName === undefined;

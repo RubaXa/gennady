@@ -367,18 +367,28 @@ describe('flow coherence contracts', () => {
     const feasibility = step(scaffold, 'STEP_3B_FEASIBILITY_CRITIC');
     const gate = step(scaffold, 'STEP_4_TEST_PLAN_REVIEW');
     const finalizeAt = scaffold.indexOf('<Step id="STEP_5_FINALIZE">');
-    const materializeAt = scaffold.indexOf('On approval, apply each newly selected coverage owner');
-    const recheckAt = scaffold.indexOf("use STEP_3B's exact dispatch/fallback transition");
+    const materializeAt = scaffold.indexOf(
+      'On approval, materialize only the selected coverage/toolchain/e2e choices'
+    );
+    const recheckAt = scaffold.indexOf('result="gate2ContextRefresh"');
 
-    assert.match(feasibility, /Persist and fold one explicit `FeasibilityState` through Gate 2/);
-    assert.match(feasibility, /only that live same-session\s+path may send just `ChangedTickets`/s);
-    assert.match(feasibility, /Increment `ResultCount`.+sensor-result.+evaluate `ResultCount >= ActiveCap`.+BEFORE GOAL, Ask, CLEAN/s);
+    assert.match(feasibility, /Start or resume only through `FEASIBILITY_STATE_FORMAT`/);
+    assert.match(
+      feasibility,
+      /Re-dispatch into the same live worker with changed ticket bytes plus refreshed critic-context/
+    );
+    assert.match(
+      feasibility,
+      /Record every returned response as one `sensor-result` before interpreting it/
+    );
     assert.ok(materializeAt > 0 && recheckAt > materializeAt && finalizeAt > recheckAt);
-    assert.match(gate, /apply each newly selected coverage owner, verification toolchain, and e2e inclusion or\s+explicit waiver directly to the already-generated tickets whose bytes change/s);
-    assert.match(gate, /Do not regenerate the DAG, rerun STEP_3 for all tickets/);
-    assert.match(gate, /below-cap, no-change CLEAN over the latest bytes continues to STEP_5/);
-    assert.match(gate, /ordinary\s+structural corrections autonomously.+same\s+cumulative budget/s);
-    assert.match(gate, /one delta-only\s+Gate 2 decision card containing only `PendingGate2Delta`/s);
-    assert.match(gate, /continuation of Gate 2, not another standing gate/);
+    assert.match(
+      gate,
+      /materialize only the selected coverage\/toolchain\/e2e choices in affected tickets/
+    );
+    assert.match(gate, /Do not regenerate the DAG, rerun STEP_3/);
+    assert.match(gate, /record `gate2-choice \{choices,changedTickets\}`/);
+    assert.match(gate, /Non-empty changedTickets requires\s+`NEXT=REFRESH_TARGETS`/s);
+    assert.match(gate, /A critic `NEW_FORK` is presented as one delta-only card/);
   });
 });

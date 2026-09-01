@@ -116,6 +116,16 @@ describe('task authoring literals', () => {
     ]);
   });
 
+  it('prints one copy-ready empty Rules literal instead of making the author invent syntax', () => {
+    const text = renderTaskAuthoringLiterals(
+      'specs/shop/shop.task.SHP-boot.md',
+      'specs/shop/shop.spec.md',
+      []
+    );
+    assert.match(text, /empty-rule-set: - none/);
+    assert.deepStrictEqual(parsePhaseDetail('- **Rules:**\n  - none').rules, ['none']);
+  });
+
   it('resolves every real registry tuple from an actual ticket directory', () => {
     const ticket = 'specs/example/module/module.task.EXA-work.md';
     const rules = loadRuleRegistry(process.cwd());

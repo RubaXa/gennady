@@ -18,15 +18,15 @@
         1. candidates = the scope's cascade set from STEP_1;
         2. include each candidate whose `<Triggers>` match THIS phase's `Target Files` + `kind` and
            whose `<SkipWhen>` does not apply;
-        3. write the selected direct candidates into the phase `Rules:` bullet list. When this phase
-           needs mechanical feedback, use <ToolLiteral role="future">npx gennady sdd-check --task <created-ticket-path> --authoring --phase <PhaseID></ToolLiteral>: its ticket-line diagnostics name any missing/unsafe direct
-           rule, missing transitive dependency, or incomplete closure and provide the exact repair.
-           The mandatory full authoring gate in STEP_3_TICKET_LOOP proves the completed ticket;
-        4b. when a DIFFERENT bootstrap ticket owns a shared infra file this phase reads/extends,
-            write `владелец — <ticket>` in the phase; never make the worker grep siblings;
-        4c. before any generator/scaffolder runs, put every expected created/modified file in
-            `Target Files`, with owning spec/module and production/test/tool-config/vendor kind.
-            Unknown/version-sensitive output → verify now, never expand the boundary at execution;
+        3. write selected candidates into `Rules:`; when empty, copy manifest `empty-rule-set`.
+           Feedback: <ToolLiteral role="future">npx gennady sdd-check --task <created-ticket-path> --authoring --phase <PhaseID></ToolLiteral>;
+           it names the rule/cascade repair. The full gate remains mandatory;
+        4b. capability layer: fill `Capability Adapter`, `Provides Capabilities`, and exact
+            `Requires Capabilities`. A dependency writer also fills `dependency-install`, exact
+            package provides/requires, and manifest+lock targets. DAG-order shared writers; apply
+            authoring/feasibility findings;
+        4c. before a generator runs, list every expected CREATE/MODIFY path in `Target Files`;
+            resolve unknown/version-sensitive outputs now;
         4d. for every impl/refactor phase, fill its `Entities:` field with the exact
             module-Entity-Inventory names this phase implements (verbatim, comma-separated) — this is
             the STRUCTURAL, filename-independent ownership record a `Deferred Implementation: <ticket>`
@@ -127,6 +127,9 @@
       - When a scenario's `When` invokes an exact `npm run <script>` command, its coverage row appends
         `:: command \`npm run <script>\`` and Verification carries that same exact command once with
         Role=`probe`. A presence/config smoke is not evidence that the declared command executes.
+      - Role=`probe` runs only in the unique test phase owning its mapped Test Scenario Coverage file;
+        `Required-by` is traceability, not routing. Its prerequisites must exist in earlier phases of the
+        same ticket; cross-ticket project wrappers belong to readiness/full audit.
       - At least one phase of kind `test` MUST exist whose Target Files contains the test file, unless every scenario has `Deferred Test Ownership`.
       - Canonical case names are normative: phase-subagent uses verbatim or updates the ticket before phase DONE.
       - BDD describes behavior, not language-specific syntax.

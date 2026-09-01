@@ -144,10 +144,11 @@ describe('checkPhaseReceipts', () => {
     }
   });
 
-  it('rejects evidence after a verified Target File changes', () => {
+  it('keeps legacy receipts without per-target evidence fail-closed after a Target File changes', () => {
     const f = fixture();
     try {
       const content = withReceipt(f);
+      assert.doesNotMatch(content, /"targetEvidence"/);
       writeFileSync(join(f.root, 'src/a.ts'), 'export const a = 2;');
       assert.deepStrictEqual(
         checkPhaseReceipts(f.path, f.path, content, f.root).map((x) => x.code),

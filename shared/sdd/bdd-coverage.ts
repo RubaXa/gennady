@@ -23,6 +23,38 @@ export type CoverageEntry = {
   probeCommand: string | null;
 };
 
+/** @purpose One test phase's exact Target Files, used to bind BDD evidence and command probes to their execution owner. */
+type TestPhaseTargets = {
+  /** @purpose Phase identifier from Phases Overview. */
+  phaseId: string;
+  /** @purpose Exact Target Files declared by that test phase. */
+  targets: readonly string[];
+};
+
+/**
+ * @purpose Resolve which test phases own a declared Test Scenario Coverage file.
+ * @invariant Uses the same exact-or-path-suffix matching as authoring validation; callers decide
+ * whether zero or multiple owners are errors.
+ * @param testFile Declared test-file path from one coverage row.
+ * @param phases Test phases and their exact Target Files.
+ * @returns Matching phase IDs in input order.
+ */
+export function matchingTestPhaseIds(
+  testFile: string,
+  phases: readonly TestPhaseTargets[]
+): string[] {
+  const declared = testFile.replace(/\\/g, '/');
+  return phases.flatMap((phase) => {
+    const owns = phase.targets.some((rawTarget) => {
+      const target = rawTarget.replace(/\\/g, '/');
+      return (
+        target === declared || target.endsWith(`/${declared}`) || declared.endsWith(`/${target}`)
+      );
+    });
+    return owns ? [phase.phaseId] : [];
+  });
+}
+
 /**
  * @purpose Parse one trimmed `- ...` Test Scenario Coverage line.
  * @invariant Matches the `→ \`file\` :: \`case\`` shape and the `Deferred Test Ownership:` variant (§TEST_COVERAGE); anything else is unparseable — null.

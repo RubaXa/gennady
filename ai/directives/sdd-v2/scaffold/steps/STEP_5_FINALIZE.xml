@@ -42,7 +42,7 @@
         <ToolCall owner="this-step" result="scopeIndexManifest">npx gennady sdd-new scope-index --scope <scope></ToolCall> Use scopeIndexManifest.
         <ToolCall owner="this-step" result="projectIndexManifest">npx gennady sdd-new project-index</ToolCall> Use projectIndexManifest.
         <ToolCall owner="this-step" result="integrityCheck">npx gennady sdd-check --all .</ToolCall> Use integrityCheck.
-        <ToolCall owner="this-step" result="feasibilityClosedEvent">npx gennady sdd-session log --content-file .claude/tmp/sdd-scaffold-feasibility-event.json</ToolCall> Payload: exact closed event. Use feasibilityClosedEvent after integrityCheck succeeds.
+        <ToolCall owner="this-step" result="feasibilityClosedEvent">npx gennady sdd-session feasibility --content-file .claude/tmp/sdd-scaffold-feasibility-event.json</ToolCall> Payload: exact closed event. Use feasibilityClosedEvent after integrityCheck succeeds and follow NEXT=CLOSE_SESSION.
       </Action>
     </Step>
 

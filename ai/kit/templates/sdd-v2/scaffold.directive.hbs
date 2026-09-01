@@ -213,7 +213,11 @@
         only exact `this-scope-task` Bootstrap Requirements rows may become `scope-bootstrap` nodes.
         A composition-root/app-shell node with absent, ambiguous, or “outside modules” ownership halts
         with `H_SCOPE_NOT_DECOMPOSED` before presenting Gate 1. Do not assign it to UI by convention.
-        Then form tickets per
+        Derive the capability layers required by the selected requirements, declare their
+        `Provides Capabilities` / `Requires Capabilities`, and connect each consumer to one
+        current/upstream provider in the DAG. Order repeated manifest/lock writers through DAG
+        serialization. The authoring and feasibility tools name missing adapters, rules, packages,
+        owners, or edges. Then form tickets per
         `AX_DAG_AND_TICKET_BOUNDARIES` (one per coherent spec unit; subdivide only for parallelism or
         context overflow); cross-scope placement per `AX_CROSS_SCOPE_TASK_PLACEMENT`; assign slugs
         (`AX_TASK_ID_UNIQUENESS`). Acyclic. **Present the DAG (the breakdown) as a decision card and
@@ -239,15 +243,15 @@
         1. candidates = the scope's cascade set from STEP_1;
         2. include each candidate whose `<Triggers>` match THIS phase's `Target Files` + `kind` and
            whose `<SkipWhen>` does not apply;
-        3. write the selected direct candidates into the phase `Rules:` bullet list. When this phase
-           needs mechanical feedback, use <ToolLiteral role="future">npx gennady sdd-check --task <created-ticket-path> --authoring --phase <PhaseID></ToolLiteral>: its ticket-line diagnostics name any missing/unsafe direct
-           rule, missing transitive dependency, or incomplete closure and provide the exact repair.
-           The mandatory full authoring gate in STEP_3_TICKET_LOOP proves the completed ticket;
-        4b. when a DIFFERENT bootstrap ticket owns a shared infra file this phase reads/extends,
-            write `владелец — <ticket>` in the phase; never make the worker grep siblings;
-        4c. before any generator/scaffolder runs, put every expected created/modified file in
-            `Target Files`, with owning spec/module and production/test/tool-config/vendor kind.
-            Unknown/version-sensitive output → verify now, never expand the boundary at execution;
+        3. write selected candidates into `Rules:`; when empty, copy manifest `empty-rule-set`.
+           Feedback: <ToolLiteral role="future">npx gennady sdd-check --task <created-ticket-path> --authoring --phase <PhaseID></ToolLiteral>;
+           it names the rule/cascade repair. The full gate remains mandatory;
+        4b. capability layer: fill `Capability Adapter`, `Provides Capabilities`, and exact
+            `Requires Capabilities`. A dependency writer also fills `dependency-install`, exact
+            package provides/requires, and manifest+lock targets. DAG-order shared writers; apply
+            authoring/feasibility findings;
+        4c. before a generator runs, list every expected CREATE/MODIFY path in `Target Files`;
+            resolve unknown/version-sensitive outputs now;
         4d. for every impl/refactor phase, fill its `Entities:` field with the exact
             module-Entity-Inventory names this phase implements (verbatim, comma-separated) — this is
             the STRUCTURAL, filename-independent ownership record a `Deferred Implementation: <ticket>`
@@ -354,62 +358,51 @@
     <Step id="STEP_3B_FEASIBILITY_CRITIC">
       <Goal>Reject structurally valid but operationally impossible tickets before execute. (auto)</Goal>
       <Action>
-        First fold the matching persisted `FeasibilityState`. A pending `sensor-result` resumes its
-        first incomplete transition below: re-present a required unresolved Ask from that result, or
-        apply its recorded disposition, without dispatching, incrementing, or resetting. Only when no
-        result is pending may this step dispatch ONE isolated critic with the materialized tickets, owning spec anchors,
-        infra Verification Commands, and resolved phase Rules. For every phase, simulate:
-        `dependency outputs + phase Target Files → one mandatory phase command (ladder + applicable §5 rows)`.
-        The critic must report: a gate that needs a file owned by a later phase; a repository-wide
-        fix before ignore/exclusion files exist; shared-file double ownership; an undeclared
-        generator output; production entities placed in a scope without module inventory; or a test
-        mapping whose code cannot exist yet; or any runtime deliverable (including App/main/index/Vite
-        composition roots) without exactly one declared module owner, especially one hidden inside a
-        `scope-bootstrap` node without an exact Bootstrap Requirements row.
+        Start or resume only through `FEASIBILITY_STATE_FORMAT`. For each transition write its one
+        typed event, call feasibilityEvent, and obey the returned `NEXT=` instruction; the command
+        reconstructs the persisted cycle and rejects skipped results, stale targets, cap bypasses,
+        lost worker identity, or an illegal restart without changing the session.
+        <ToolCall owner="this-step" result="feasibilityEvent">npx gennady sdd-session feasibility --content-file .claude/tmp/sdd-scaffold-feasibility-event.json</ToolCall> Payload: the current typed feasibility event. Use feasibilityEvent before acting on that transition.
 
-        Persist and fold one explicit `FeasibilityState` through Gate 2 via
-        `FEASIBILITY_STATE_FORMAT`; never rely on chat memory:
-        `LatestTargetSet` = every materialized ticket path plus its exact latest bytes and content hash;
-        `ChangedTickets` = tickets changed since the last critic result;
-        `WorkerSession` = retained id and `alive|unsupported|lost` availability;
-        `FallbackUsed` = boolean; `ResultCount` = cumulative critic results; `ActiveCap` = 5 or the
-        operator-raised value; `ApprovedGate2Choices` = exact prior approvals;
-        `PendingGate2Delta` = only a genuinely new product/toolchain fork;
-        `LastResult` = literal verdict plus literal Changes. Before the first critic dispatch append
-        the `opened` event. Never reset this record on Gate 2 or fallback.
+        For a new cycle submit `opened`, spawn ONE isolated critic, then submit its `worker-state`
+        before dispatch. The initial dispatch carries the exact `critic-context:` JSON value from
+        feasibilityGate unchanged, all materialized ticket bytes, and owning spec anchors. Per
+        `FEASIBILITY_CRITIC_CONTEXT`, that value is the authoritative mechanical account. The critic
+        answers only residual causal/semantic questions: whether declared outputs satisfy later
+        inputs; repository-wide fixes have prerequisites; outputs declared by the ticket and owning
+        spec are mutually complete; runtime composition and cross-platform behavior match the specs;
+        and every production entity has one module owner. When a needed mechanical fact is absent or
+        listed in `gaps`, it returns `TOOL_CONTRACT_MISSING: <fact> — <needed-for>` rather than
+        reconstructing tool semantics.
 
-        Process every critic result in this order, with no shortcut:
+        Record every returned response as one `sensor-result` before interpreting it. Use verdict
+        `NEW_FORK` plus one exact `fork` only for a no-change product/toolchain delta; it reaches Gate 2
+        unresolved. `NEXT=ASK_OPERATOR_CAP` asks per `AX_CAP_5` and records the answer as
+        `operator-disposition`; `NEXT=PRESENT_GATE2` continues to STEP_4;
+        `NEXT=APPLY_CHANGES_THEN_REFRESH_TARGETS` applies only the returned ticket corrections, reruns
+        contextRefresh, records `target-refreshed`, and follows `NEXT=REDISPATCH_CRITIC`.
+        <ToolCall owner="this-step" result="contextRefresh">npx gennady sdd-check --scaffold-feasibility</ToolCall> Use contextRefresh after ticket mutation; GREEN supplies the refreshed exact critic-context for target-refreshed and re-dispatch.
 
-        | Event after a result | Mandatory transition |
-        |---|---|
-        | Any result | Increment `ResultCount`; append and require the complete `sensor-result` event; refresh `LatestTargetSet` and `ChangedTickets`; only then evaluate `ResultCount >= ActiveCap` BEFORE GOAL, Ask, CLEAN, fork, proceed, or re-dispatch. |
-        | Active cap reached | Ask the operator per `AX_CAP_5`, regardless of verdict. If Changes is empty, offer `CLEAN`, `CONTINUE THROUGH ROUND N` with an explicit higher cap, or `RESTART: reason`; if Changes is non-empty, omit CLEAN. No automatic next result exists. |
-        | Below cap + Changes non-empty | The latest bytes are unreviewed: re-dispatch; ignore any simultaneous CLEAN/fork as stale until a later no-change result reviews those bytes. |
-        | Below cap + no Changes + CLEAN | The latest bytes are reviewed; proceed to STEP_4. |
-        | Below cap + no Changes + new fork | Set only that fork in `PendingGate2Delta`; proceed to STEP_4 without approving it. |
-        | Below cap + other no-change verdict | Apply only its ordinary ticket corrections, refresh `ChangedTickets`, and re-dispatch; unresolved/non-actionable output halts with `H_SCAFFOLD_NOT_EXECUTABLE`. |
-
-        No cap/GOAL Ask is legal until the result/count event is durable. The Ask itself never
-        mutates or replaces that event. Append the operator answer as its own immutable
-        `operator-disposition` referencing the pending result before applying it. On resume, a
-        pending result without that disposition re-presents the same Ask and performs no dispatch.
-
-        Cap disposition is explicit: `CLEAN` accepts the latest no-change bytes and advances;
-        `CONTINUE THROUGH ROUND N` sets `ActiveCap=N` greater than `ResultCount`, then evaluates the
-        SAME `LastResult` through the below-cap rows without incrementing it twice; `RESTART: reason`
-        follows that exact operator reason and is the only disposition allowed to replace this state.
-
-        Re-dispatch into the SAME worker session whenever it is alive; only that live same-session
-        path may send just `ChangedTickets`, because the session retains the unchanged target context.
-        If continuation is unsupported or the retained session is lost, allow exactly ONE fresh
-        fallback critic, mark `FallbackUsed`, and send the FULL `LatestTargetSet` plus the full retained
-        state/context and complete prior result history; keep `ResultCount`. If that exact payload
-        cannot be delivered, or a second fallback would be required, pause with a teaching
-        `H_SCAFFOLD_NOT_EXECUTABLE` blocker that names the missing set/context. Never regenerate the DAG
-        or all tickets, never reset the cap, and never hand off unreviewed latest bytes.
-        <ToolCall owner="this-step" result="feasibilityEvent">npx gennady sdd-session log --content-file .claude/tmp/sdd-scaffold-feasibility-event.json</ToolCall> Payload: current opened/target-refreshed/worker-state/sensor-result/operator-disposition event. Use feasibilityEvent and require success before its transition.
+        Re-dispatch into the same live worker with changed ticket bytes plus refreshed critic-context.
+        If continuation is unsupported or lost, record `worker-state` and allow exactly one fallback
+        carrying the full latest target set, critic-context, and prior result history; a second fallback
+        or incomplete payload halts with `H_SCAFFOLD_NOT_EXECUTABLE`. `NEXT=OPEN_RESTART_CYCLE` opens a
+        new typed cycle from the operator's exact RESTART reason. No transition regenerates the DAG or
+        resets the cumulative count except that validated restart.
       </Action>
     </Step>
+
+    <Contract id="FEASIBILITY_CRITIC_CONTEXT">
+      A green `feasibilityGate` emits one `critic-context:` JSON line with schema
+      `sdd-scaffold-critic-context/v1`. It is the semantic critic's authoritative mechanical input:
+      ticket paths/dependencies, clean-HEAD package facts, global package ownership, per-phase
+      targets/profiles/ladders/bootstrap edges, Verification routing, command proof, coverage, and
+      deterministic schema gaps. The first dispatch carries it unchanged. After ticket bytes change,
+      the same gate refreshes it and the same-session delta carries changed tickets plus the new exact
+      value. If a semantic conclusion needs a fact absent from the context — including an external
+      generator's real output contract — return `TOOL_CONTRACT_MISSING: <fact> — <needed-for>` instead
+      of replacing evidence with an implementation guess.
+    </Contract>
     <Step id="STEP_4_TEST_PLAN_REVIEW">
       <Goal>GATE 2: operator approves the TEST PLAN.</Goal>
       <Action>
@@ -421,31 +414,20 @@
         its one approval resolves all. Out-of-scope proposals the subagent surfaced are raised here.
         Return `TerminalDecision: pause` and preserve the session while stopped for that decision.
 
-        On approval, apply each newly selected coverage owner, verification toolchain, and e2e inclusion or
-        explicit waiver directly to the already-generated tickets whose bytes change, including their
-        Coverage Policy/Owner Phase, Verification row, BDD mapping, and Decision Log where applicable.
-        Append those exact answers to `ApprovedGate2Choices`. Do not ask again about choices already
-        recorded as approved; a later card contains only
-        `PendingGate2Delta` and its affected use-cases.
-        Do not regenerate the DAG, rerun STEP_3 for all tickets, or create a second standing approval
-        gate. Refresh `LatestTargetSet` and `ChangedTickets`, clear the materialized
-        `PendingGate2Delta`, and use STEP_3B's exact dispatch/fallback transition. A live retained
-        session receives only `ChangedTickets`; a first fallback receives the FULL latest target-set,
-        retained state/context, and complete result history. Each returned result enters STEP_3B's
-        mandatory `increment → cap check → verdict/Changes` transition; therefore result 5 or an
-        operator-raised cap always pauses for `AX_CAP_5` even when it says CLEAN or exposes a new fork.
-        Only a below-cap, no-change CLEAN over the latest bytes continues to STEP_5. Apply ordinary
-        structural corrections autonomously to the affected tickets and recheck within that same
-        cumulative budget.
+        On approval, materialize only the selected coverage/toolchain/e2e choices in affected tickets,
+        then record `gate2-choice {choices,changedTickets}` through feasibilityGate2Event and follow its
+        `NEXT=`. Empty changedTickets permits `NEXT=FINALIZE`. Non-empty changedTickets requires
+        `NEXT=REFRESH_TARGETS`: run gate2ContextRefresh, record `target-refreshed`, and return to
+        STEP_3B's same retained critic. Do not regenerate the DAG, rerun STEP_3, or replay choices
+        already approved.
 
-        If that recheck alone exposes a genuinely new product/toolchain fork, return one delta-only
-        Gate 2 decision card containing only `PendingGate2Delta` and affected use-cases; do not replay
-        already approved choices. After that answer, materialize the delta and use the same state-machine
-        transition above. This is a continuation of Gate 2, not another standing gate. A fork result at
-        the active cap is disposed by `AX_CAP_5` BEFORE any delta card; it cannot authorize round 6.
-        At any cap, return `TerminalDecision: pause`; the persisted event fold is the preserved
-        `FeasibilityState`, and unreviewed changed bytes never finalize.
-        <ToolCall owner="this-step" result="feasibilityGate2Event">npx gennady sdd-session log --content-file .claude/tmp/sdd-scaffold-feasibility-event.json</ToolCall> Payload: current gate2-choice/target-refreshed/operator-disposition event. Use feasibilityGate2Event before its transition.
+        A critic `NEW_FORK` is presented as one delta-only card with its affected use-cases; its Gate 2
+        choice must name changed tickets and be reviewed before finalize. Every subsequent response is
+        first recorded through STEP_3B, so result 5 or a raised cap returns
+        `NEXT=ASK_OPERATOR_CAP` before CLEAN or a fork can advance. At any operator decision return
+        `TerminalDecision: pause`; the CLI-owned journal is the resume state.
+        <ToolCall owner="this-step" result="gate2ContextRefresh">npx gennady sdd-check --scaffold-feasibility</ToolCall> Use gate2ContextRefresh after Gate 2 changes and before critic re-dispatch.
+        <ToolCall owner="this-step" result="feasibilityGate2Event">npx gennady sdd-session feasibility --content-file .claude/tmp/sdd-scaffold-feasibility-event.json</ToolCall> Payload: current gate2-choice or target-refreshed event. Use feasibilityGate2Event before acting on its NEXT instruction.
       </Action>
     </Step>
     <Step id="STEP_5_FINALIZE">
@@ -490,7 +472,7 @@
         <ToolCall owner="this-step" result="scopeIndexManifest">npx gennady sdd-new scope-index --scope <scope></ToolCall> Use scopeIndexManifest.
         <ToolCall owner="this-step" result="projectIndexManifest">npx gennady sdd-new project-index</ToolCall> Use projectIndexManifest.
         <ToolCall owner="this-step" result="integrityCheck">npx gennady sdd-check --all .</ToolCall> Use integrityCheck.
-        <ToolCall owner="this-step" result="feasibilityClosedEvent">npx gennady sdd-session log --content-file .claude/tmp/sdd-scaffold-feasibility-event.json</ToolCall> Payload: exact closed event. Use feasibilityClosedEvent after integrityCheck succeeds.
+        <ToolCall owner="this-step" result="feasibilityClosedEvent">npx gennady sdd-session feasibility --content-file .claude/tmp/sdd-scaffold-feasibility-event.json</ToolCall> Payload: exact closed event. Use feasibilityClosedEvent after integrityCheck succeeds and follow NEXT=CLOSE_SESSION.
       </Action>
     </Step>
   </ExecutionPlan>

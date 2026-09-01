@@ -13,6 +13,23 @@ const read = (...parts: string[]): string => readFileSync(join(ROOT, ...parts), 
 const step = (text: string): string =>
   text.match(/<Step id="STEP_3B_TOOL_API">([\s\S]*?)<\/Step>/)?.[1] ?? '';
 
+function assertTypedFailureRouting(text: string, label: string): void {
+  assert.match(text, /unsupported adapter.+`H_THIRD_PARTY_API_UNVERIFIABLE`/s, label);
+  assert.match(
+    text,
+    /Missing adapter,\s+version, or persisted docs is `RECOVERABLE_TECHNICAL`/s,
+    label
+  );
+  assert.match(
+    text,
+    /exact external-access permission\s+is `EXTERNAL_AUTHORITY_REQUIRED`/s,
+    label
+  );
+  assert.match(text, /Return evidence and the bounded next action/, label);
+  assert.doesNotMatch(text, /ask(?:s|ing)?\s+the operator|AskUserQuestion/i, label);
+  assert.doesNotMatch(text, /<ToolCall\b[^>]*>[^<]*--help/i, label);
+}
+
 describe('config-phase ToolDocAdapter contract', () => {
   const source = read('ai', 'kit', 'templates', 'sdd-v2', 'phase-execution-protocol.directive.hbs');
   const axiom = read('ai', 'kit', 'axiom', 'infra', 'ax-third-party-tool-current-api.xml');
@@ -43,8 +60,7 @@ describe('config-phase ToolDocAdapter contract', () => {
         new RegExp(`\\| ${adapter.replace('/', '\\/')} \\|[^\\n]+unsupported`)
       );
     }
-    assert.match(configStep, /unsupported adapter.+`H_THIRD_PARTY_API_UNVERIFIABLE`/s);
-    assert.match(configStep, /asks the operator for the exact version plus official\/persisted docs/);
+    assertTypedFailureRouting(configStep, 'source');
   });
 
   it('never falls back to help, silent network, cache guessing, or source archaeology', () => {
@@ -66,7 +82,10 @@ describe('config-phase ToolDocAdapter contract', () => {
     assert.doesNotMatch(skeleton, /<ToolDocAdapterRegistry>/);
     assert.match(built, /registered ToolDocAdapter/);
     assert.match(built, /<ToolDocAdapterRegistry>/);
-    assert.match(built, /asks the operator for the exact version plus official\/persisted docs/);
+    for (const adapter of ['`go`', '`ios/swift`', '`android/gradle`']) {
+      assert.match(built, new RegExp(`\\| ${adapter.replace('/', '\\/')} \\|[^\\n]+unsupported`));
+    }
+    assertTypedFailureRouting(built, 'generated');
     assert.doesNotMatch(built, /four-step read|Installed version: read/);
   });
 });

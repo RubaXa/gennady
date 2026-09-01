@@ -8,6 +8,9 @@
       - When a scenario's `When` invokes an exact `npm run <script>` command, its coverage row appends
         `:: command \`npm run <script>\`` and Verification carries that same exact command once with
         Role=`probe`. A presence/config smoke is not evidence that the declared command executes.
+      - Role=`probe` runs only in the unique test phase owning its mapped Test Scenario Coverage file;
+        `Required-by` is traceability, not routing. Its prerequisites must exist in earlier phases of the
+        same ticket; cross-ticket project wrappers belong to readiness/full audit.
       - At least one phase of kind `test` MUST exist whose Target Files contains the test file, unless every scenario has `Deferred Test Ownership`.
       - Canonical case names are normative: phase-subagent uses verbatim or updates the ticket before phase DONE.
       - BDD describes behavior, not language-specific syntax.

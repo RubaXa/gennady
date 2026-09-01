@@ -56,12 +56,35 @@ test('BeliefState carries the execute-owned axioms with ids and readable bodies'
   for (const id of [
     'AX_OWNER',
     'AX_EXECUTION_ORDER',
+    'AX_BLOCKER_RESOLUTION_TRAIL',
+    'AX_DEVIATION_SELF_RESOLVE',
+    'AX_RE_DISPATCH',
     'AX_WORKER_SESSION_REUSE',
     'AX_VERIFY_AND_FINALIZE',
-    'AX_ENV_FIX_CHANNEL',
   ]) {
     assert.ok(ids.includes(id), `${id} remains owned by execute after delta assembly`);
   }
+  assert.ok(
+    !ids.includes('AX_ENV_FIX_CHANNEL'),
+    'the removed operator-approved environment patch channel is not reintroduced'
+  );
+
+  const recoveryContract = axioms
+    .filter((axiom) =>
+      ['AX_BLOCKER_RESOLUTION_TRAIL', 'AX_DEVIATION_SELF_RESOLVE'].includes(axiom.label ?? '')
+    )
+    .map((axiom) => axiom.detail)
+    .join('\n');
+  assert.match(
+    recoveryContract,
+    /RECOVERABLE_TECHNICAL/,
+    'execute-owned axioms classify ordinary technical gaps for autonomous recovery'
+  );
+  assert.match(
+    recoveryContract,
+    /EXTERNAL_AUTHORITY_REQUIRED/,
+    'execute-owned axioms preserve the exact external-authority boundary'
+  );
   for (const axiom of axioms) {
     assert.ok((axiom.note?.length ?? 0) > 0, `${axiom.label} has a short summary`);
     assert.ok(
@@ -76,11 +99,11 @@ test('HaltConditions carries the 6 halts', () => {
   const ids = (h?.children ?? []).map((c) => c.label).sort();
   assert.deepEqual(ids, [
     'H_AMBIGUOUS_TASK',
-    'H_AUDIT_FAIL_AFTER_RETRY',
-    'H_CODE_REVIEW_BLOCKER',
+    'H_EXTERNAL_AUTHORITY_REQUIRED',
     'H_NO_TASKS',
     'H_PAUSED_AWAITING_OPERATOR',
-    'H_WORKER_INTERRUPTED',
+    'H_SPEC_GOAL_CONFLICT',
+    'H_TECHNICAL_REPLAN_EXHAUSTED',
   ]);
 });
 
@@ -175,7 +198,7 @@ test('forced owner routes and inferred project setup descend to their semantic o
   assertRoute('intent = project-setup', 'ai/directives/sdd-v2/root.directive.xml');
 });
 
-test('STEP_6_BRANCH LogicSwitch yields 5 branches — mechanical-fix path precedes the operator risk-ask', () => {
+test('STEP_6_BRANCH keeps autonomous repair paths before exact operator boundaries', () => {
   const ep = section('<ExecutionPlan>');
   const step6 = ep?.children?.find((c) => c.attrs?.id === 'STEP_6_BRANCH');
   const findSwitch = (n: TraceNode): TraceNode | null => {
@@ -189,9 +212,41 @@ test('STEP_6_BRANCH LogicSwitch yields 5 branches — mechanical-fix path preced
   const sw = findSwitch(step6 as TraceNode);
   assert.ok(sw, 'STEP_6_BRANCH carries a structured switch');
   const branches = sw?.children ?? [];
-  assert.equal(branches.length, 5);
-  assert.match(branches[1]?.detail ?? '', /concrete mechanical remediation/);
-  assert.match(branches[2]?.detail ?? '', /NO concrete mechanical remediation/);
+  assert.equal(branches.length, 6);
+
+  const technicalRepair = branches.findIndex((branch) =>
+    (branch.detail ?? '').includes('technical finding names exact `phases_to_fix`')
+  );
+  const mechanicalRepair = branches.findIndex((branch) =>
+    (branch.detail ?? '').includes('concrete mechanical remediation')
+  );
+  const productRisk = branches.findIndex((branch) =>
+    (branch.detail ?? '').includes('explicit product-risk acceptance')
+  );
+  const blockerRepair = branches.findIndex((branch) =>
+    (branch.detail ?? '').includes('open `BLOCKER`, or a declined risk')
+  );
+  const exhausted = branches.findIndex((branch) =>
+    (branch.detail ?? '').includes('H_TECHNICAL_REPLAN_EXHAUSTED')
+  );
+
+  assert.deepEqual(
+    [technicalRepair, mechanicalRepair, productRisk, blockerRepair, exhausted],
+    [1, 2, 3, 4, 5],
+    'bounded repair paths precede the product-risk and exhausted-budget boundaries'
+  );
+  for (const index of [technicalRepair, mechanicalRepair, blockerRepair]) {
+    assert.match(branches[index]?.detail ?? '', /STEP_7_RESOLVE/);
+    assert.doesNotMatch(branches[index]?.detail ?? '', /ask the operator/);
+  }
+  assert.match(branches[productRisk]?.detail ?? '', /ask the operator to accept that product risk/);
+  assert.match(branches[productRisk]?.detail ?? '', /RECOVERABLE_TECHNICAL/);
+  assert.match(branches[exhausted]?.detail ?? '', /STEP_8_SUMMARY presents the operator boundary/);
+  assert.equal(
+    branches.some((branch) => (branch.detail ?? '').includes('NO concrete mechanical remediation')),
+    false,
+    'the removed generic operator-risk route stays absent'
+  );
 });
 
 test('a preflight step embeds a structured <LogicSwitch> (WHEN gates), not prose', () => {

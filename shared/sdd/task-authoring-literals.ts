@@ -105,6 +105,9 @@ export function ticketRelativeHref(ticketPath: string, targetPath: string): stri
 export const DEFERRED_TEST_OWNERSHIP_LITERAL =
   '- Deferred Test Ownership: <other-Task-ID> <scenario name> → `<future-test-file>` :: `<canonical case name>`';
 
+/** @purpose Canonical Rules-list item for a phase with no applicable cascade candidate. */
+const EMPTY_RULE_SET_LITERAL = '- none';
+
 /**
  * @purpose Render path-aware authoring literals for one newly-created task.
  * @param ticketPath Repository-relative path of the created ticket.
@@ -130,6 +133,8 @@ export function renderTaskAuthoringLiterals(
       : ['    - none (owning spec has no typed contract-bearing headings)']),
     '  rule-tuples:',
     ...rules.map((rule) => `    - [${rule.id}](${ticketRelativeHref(ticketPath, rule.file)})`),
+    `  empty-rule-set: ${EMPTY_RULE_SET_LITERAL}`,
+    '  empty-rule-set-use: copy only when this phase has no applicable cascade candidate',
     `  deferred-test-ownership: ${DEFERRED_TEST_OWNERSHIP_LITERAL}`,
     '  deferred-test-ownership-not-applicable: contract-level typing scenarios and scenarios owned by this ticket',
   ].join('\n');

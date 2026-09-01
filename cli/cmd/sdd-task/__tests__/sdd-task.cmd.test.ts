@@ -970,7 +970,7 @@ describe('SddTaskCommand', () => {
     });
   });
 
-  it('execution map with nothing pickable → next: hint points at unblocking', async () => {
+  it('execution map with no classified active ticket → routes back to sdd-state', async () => {
     const soloDir = mkdtempSync(join(tmpdir(), 'sdd-task-blocked-'));
     const blockedTicket = [
       '# Task: cli-bar — Bar',
@@ -994,7 +994,7 @@ describe('SddTaskCommand', () => {
       assert.strictEqual(r.ok, true);
       if (!r.ok) return;
       assert.match(r.text, /pickable \(ready now\): — none/);
-      assert.match(r.text, /next: pickable пуст/);
+      assert.match(r.text, /next: активных TODO-тикетов нет — вызови `sdd-state`/);
     } finally {
       process.chdir(origCwd);
       rmSync(soloDir, { recursive: true, force: true });
@@ -1102,6 +1102,8 @@ describe('SddTaskCommand', () => {
           r.text,
           /GATE_QUEUE_DIAG: infra-спека `infra-core` одобрена, тикетов пока нет — нарежь scaffold'ом/
         );
+        assert.match(r.text, /next: bootstrap-тикетов ещё нет — запусти `\/sdd-scaffold`/);
+        assert.doesNotMatch(r.text, /разблокируй одну из blocked/);
       } finally {
         process.chdir(origCwd);
         rmSync(gateDir, { recursive: true, force: true });

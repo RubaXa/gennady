@@ -314,6 +314,8 @@ const COMMAND_SCHEMAS: Readonly<Record<string, CommandSchema>> = {
         return p.length === 3 || (p.length === 2 && has(f, '--content-file'))
           ? null
           : 'set requires field and value/content-file';
+      if (op === 'feasibility' || op === 'checkpoint')
+        return p.length === 1 && has(f, '--content-file') ? null : `${op} requires --content-file`;
       if (['log', 'workset', 'term'].includes(op ?? ''))
         return p.length === 2 || (p.length === 1 && has(f, '--content-file'))
           ? null

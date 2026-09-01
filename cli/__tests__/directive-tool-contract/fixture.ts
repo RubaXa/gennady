@@ -81,11 +81,15 @@ function ticket(): string {
     '<!--SECTION:PHASE_P1-->',
     '### P1 — impl',
     '- **Objective:** implement greet()',
+    '- **Capability Adapter:** typescript',
+    '- **Provides Capabilities:** typescript.compiler',
+    '- **Requires Capabilities:** none',
     '- **Rules:**',
     // Same reason — resolved relative to specs/demo/, two hops up to the fixture root.
     '  - [typescript-rules](../../ai/directives/coding/typescript-rules.xml)',
     '- **Target Files:**',
     '  - src/greeter.ts',
+    '  - tsconfig.json',
     '- **Inputs:** none',
     '- **Exit:** greeter.ts compiles and exports greet',
     '<!--/SECTION:PHASE_P1-->',
@@ -208,6 +212,7 @@ export function buildFixture(): Fixture {
   writeFileSync(join(root, 'specs', 'demo', 'demo.3-tasks.md'), tracker(), 'utf-8');
   writeFileSync(join(root, 'src', 'greeter.ts'), GREETER_TS, 'utf-8');
   writeFileSync(join(root, 'src', 'greeter.test.ts'), GREETER_TEST_TS, 'utf-8');
+  writeFileSync(join(root, 'tsconfig.json'), '{"compilerOptions":{"noEmit":true}}\n', 'utf-8');
   writeFileSync(join(root, 'scripts', 'pass.mjs'), 'process.exit(0);\n', 'utf-8');
   writeFileSync(
     join(root, 'scripts', 'coverage.mjs'),

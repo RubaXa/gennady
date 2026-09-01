@@ -30,6 +30,32 @@ describe('scaffold deterministic feasibility contract', () => {
     assert.match(bootstrap, /Provides Packages/);
     assert.match(bootstrap, /Requires Packages/);
     assert.match(ticket, /:: command.+npm run/s);
-    assert.match(scaffold, /one exact owner.+package\.json.+active lockfile/s);
+    assert.match(bootstrap, /manifest plus future\/active lockfile/);
+    assert.match(bootstrap, /DAG strictly serializes them/);
+    assert.match(bootstrap, /no global single-owner rule exists/);
+  });
+
+  it('derives one executable bootstrap workstream without forcing one monolithic ticket', () => {
+    assert.match(bootstrap, /one DAG-connected ordered.+serialized tickets or phases/is);
+    assert.doesNotMatch(bootstrap, /workstream is one ticket/);
+    assert.match(bootstrap, /Project-wide.+wrappers.+readiness\/full audit/is);
+    assert.match(bootstrap, /Role=`probe`.+unique test phase.+mapped test file/is);
+  });
+
+  it('dispatches the gate-produced mechanical context instead of reconstructing tool semantics', () => {
+    const criticStep = scaffold.match(
+      /<Step id="STEP_3B_FEASIBILITY_CRITIC">([\s\S]*?)<\/Step>/
+    )?.[1];
+    assert.ok(criticStep);
+    assert.match(scaffold, /<Contract id="FEASIBILITY_CRITIC_CONTEXT">/);
+    assert.match(scaffold, /sdd-scaffold-critic-context\/v1/);
+    assert.match(scaffold, /authoritative mechanical input/);
+    assert.match(scaffold, /external\s+generator's real output contract/s);
+    assert.match(criticStep, /exact `critic-context:` JSON value from\s+feasibilityGate unchanged/);
+    assert.match(criticStep, /answers only residual causal\/semantic questions/);
+    assert.match(criticStep, /TOOL_CONTRACT_MISSING: <fact> — <needed-for>/);
+    assert.match(criticStep, /result="contextRefresh">npx gennady sdd-check --scaffold-feasibility/);
+    assert.match(criticStep, /changed ticket bytes plus refreshed critic-context/);
+    assert.doesNotMatch(criticStep, /For every phase, simulate/);
   });
 });

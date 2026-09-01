@@ -110,6 +110,8 @@ describe('sdd-task — live gate-queue diagnostic', () => {
         r.stdout,
         /GATE_QUEUE_DIAG: infra-спека `infra-core` одобрена, тикетов пока нет — нарежь scaffold'ом/
       );
+      assert.match(r.stdout, /next: bootstrap-тикетов ещё нет — запусти `\/sdd-scaffold`/);
+      assert.doesNotMatch(r.stdout, /разблокируй одну из blocked/);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

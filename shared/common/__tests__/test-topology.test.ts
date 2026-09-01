@@ -16,6 +16,7 @@ const SDD_COMMAND_NAVIGATION_TEST = 'cli/__tests__/sdd-command-navigation.test.t
 const YAGNI_SOURCE_POLICY_TEST = 'shared/common/__tests__/yagni-source-policy.test.ts';
 const INCIDENT_TEST_LAYERS = {
   unit: [
+    'shared/sdd/__tests__/scaffold-critic-context.test.ts',
     'shared/sdd/__tests__/spec-schema.test.ts',
     'shared/sdd/__tests__/task-authoring-literals.test.ts',
   ],

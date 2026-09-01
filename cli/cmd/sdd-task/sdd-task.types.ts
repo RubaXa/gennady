@@ -14,6 +14,10 @@ import type {
 import type { TicketRef } from '../../../shared/sdd/check.ts';
 import { unreadableTicketHint } from '../../../shared/sdd/ticket-resolve.ts';
 import type { AuditGroupResolution } from '../../../shared/sdd/audit-group.ts';
+import {
+  formatPhaseVerificationGatePlan,
+  type PhaseVerificationPlan,
+} from '../../../shared/sdd/phase-verification-plan.ts';
 
 /**
  * @purpose Realpath a path when possible — resolves symlinks (macOS `/var` → `/private/var`) so
@@ -214,6 +218,7 @@ export function gateHint(command: string): string {
  * @param [auditRounds] The ticket's `## Audit Rounds` section body, verbatim, or null when absent
  *   (never audited, or every audit passed clean).
  * @param [fileLifecycle] Existing Target Files that may be read and absent exact Target Files reserved for creation.
+ * @param [verificationPlan] Canonical gate states, providers, and next actions for this phase.
  * @returns The compact phase context, or a not-found failure when `phaseId` has no Phases Overview row.
  */
 export function formatPhase(
@@ -224,7 +229,8 @@ export function formatPhase(
   handoffs: Record<string, string>,
   phaseId: string,
   auditRounds: string | null = null,
-  fileLifecycle?: { readFiles: string[]; createFiles: string[] }
+  fileLifecycle?: { readFiles: string[]; createFiles: string[] },
+  verificationPlan?: PhaseVerificationPlan
 ): TaskOutcome {
   const idx = phases.findIndex((p) => p.id === phaseId);
   if (idx === -1) return phaseNotFound(phaseId, phases);
@@ -244,8 +250,13 @@ export function formatPhase(
 
   const pg = gatesForPhase(d, gates);
   lines.push('', 'gates:');
-  if (pg.length === 0) lines.push("  — (none required by this phase's rules)");
+  if (pg.length === 0 && !verificationPlan) lines.push("  — (none required by this phase's rules)");
   for (const g of pg) lines.push(`  ${g.command} — ${gateHint(g.command)}`);
+  if (verificationPlan) {
+    for (const gate of verificationPlan.gates) {
+      lines.push(`  ${formatPhaseVerificationGatePlan(gate)}`);
+    }
+  }
 
   lines.push('', `exit:        ${d.exit ?? '—'}`);
 

@@ -7,6 +7,10 @@ import { existsSync, lstatSync, readFileSync, readdirSync, realpathSync } from '
 import { isAbsolute, relative, resolve, sep } from 'node:path';
 import { inspectRepoPath } from '../common/repo-path.ts';
 import { resolveProjectScriptName } from './readiness.ts';
+import type {
+  PhaseVerificationGateState,
+  PhaseVerificationPlan,
+} from './phase-verification-plan.ts';
 
 /** @purpose One command proven by the phase verifier. */
 export type PhaseReceiptCommand = {
@@ -52,8 +56,17 @@ export type PhaseReceipt = PhaseReceiptPlan & {
   planState: string;
   /** @purpose Hash of exact current Target File paths and bytes. */
   targetState: string;
+  /** @purpose Per-path evidence allowing a valid ordered writer to supersede only shared targets. */
+  targetEvidence?: Record<string, string>;
   /** @purpose Commands actually executed successfully. */
   commands: PhaseReceiptCommand[];
+  /** @purpose Canonical gate disposition; only a successfully executed command is PROVEN. */
+  gateEvidence?: {
+    name: string;
+    state: PhaseVerificationGateState;
+    command: string | null;
+    provider: string | null;
+  }[];
 };
 
 /** @purpose Parsed receipt collection or one fail-closed structural issue. */
@@ -1111,26 +1124,19 @@ function localInputEntries(
 }
 
 /** @purpose Fingerprint the exact project script definitions reachable from this phase's mechanical plan. | @param root Project root. | @param profile Derived phase profile. | @param producesCoverage Coverage producer choice. | @param verification Ticket-owned extra commands. | @param [hasRepairTargets] Whether repair script bodies belong to this plan. | @returns Stable environment state or a manifest error. */
-export function phaseVerificationEnvironmentState(
+function phaseVerificationEnvironmentFromScripts(
   root: string,
-  profile: PhaseReceiptPlan['profile'],
-  producesCoverage: boolean,
-  verification: readonly { command: string }[],
-  hasRepairTargets = true
+  rootScripts: readonly string[],
+  verification: readonly { command: string }[]
 ): { ok: true; state: string } | { ok: false; issue: string } {
   try {
     const pkg = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf-8')) as {
       scripts?: Record<string, string>;
     };
     const scripts = pkg.scripts ?? {};
-    const roots = [
-      ...(hasRepairTargets ? ['format:fix', 'lint:fix'] : []),
-      resolveProjectScriptName(scripts, 'type-check') ?? 'type-check',
-      resolveProjectScriptName(
-        scripts,
-        profile === 'test' && producesCoverage ? 'test:coverage' : 'test'
-      ) ?? (profile === 'test' && producesCoverage ? 'test:coverage' : 'test'),
-    ].map((name): ScriptInvocation => ({ name, lifecycleHooks: true, manager: 'npm' }));
+    const roots = rootScripts.map(
+      (name): ScriptInvocation => ({ name, lifecycleHooks: true, manager: 'npm' })
+    );
     const referenced = verification.flatMap((gate) =>
       referencedScriptInvocations(gate.command, scripts)
     );
@@ -1193,6 +1199,60 @@ export function phaseVerificationEnvironmentState(
   }
 }
 
+/** @purpose Fingerprint the exact project script definitions reachable from this phase's mechanical plan. | @param root Project root. | @param profile Derived phase profile. | @param producesCoverage Coverage producer choice. | @param verification Ticket-owned extra commands. | @param [hasRepairTargets] Whether repair script bodies belong to this plan. | @returns Stable environment state or a manifest error. */
+export function phaseVerificationEnvironmentState(
+  root: string,
+  profile: PhaseReceiptPlan['profile'],
+  producesCoverage: boolean,
+  verification: readonly { command: string }[],
+  hasRepairTargets = true
+): { ok: true; state: string } | { ok: false; issue: string } {
+  let scripts: Record<string, string> = {};
+  try {
+    scripts =
+      (
+        JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf-8')) as {
+          scripts?: Record<string, string>;
+        }
+      ).scripts ?? {};
+  } catch {
+    // The shared environment helper below owns the teaching parse error.
+  }
+  return phaseVerificationEnvironmentFromScripts(
+    root,
+    [
+      ...(hasRepairTargets ? ['format:fix', 'lint:fix'] : []),
+      resolveProjectScriptName(scripts, 'type-check') ?? 'type-check',
+      resolveProjectScriptName(
+        scripts,
+        profile === 'test' && producesCoverage ? 'test:coverage' : 'test'
+      ) ?? (profile === 'test' && producesCoverage ? 'test:coverage' : 'test'),
+    ],
+    verification
+  );
+}
+
+/**
+ * @purpose Fingerprint only commands that the canonical applicable phase plan can actually run.
+ * @param root Project root containing package scripts and command dependencies.
+ * @param plan Canonical applicable gate plan.
+ * @param verification Exact additional verification commands.
+ * @returns Stable environment state, or a fail-closed fingerprint issue.
+ */
+export function phaseVerificationPlanEnvironmentState(
+  root: string,
+  plan: PhaseVerificationPlan,
+  verification: readonly { command: string }[]
+): { ok: true; state: string } | { ok: false; issue: string } {
+  const roots = plan.gates.flatMap((gate) => {
+    if (!['CONFIGURED', 'PROVEN'].includes(gate.state) || gate.command === null) return [];
+    if (gate.name === 'fix') return ['format:fix', 'lint:fix'];
+    const npm = /^npm run (\S+)$/.exec(gate.command)?.[1];
+    return npm ? [npm] : [];
+  });
+  return phaseVerificationEnvironmentFromScripts(root, roots, verification);
+}
+
 /** @purpose Fingerprint exact target paths and bytes after every command has passed. | @param root Project root. | @param targets Exact project-relative Target Files. | @param [deletedFiles] Exact project-relative tombstones whose absence is verified. | @returns Stable state or a read failure. */
 export function phaseReceiptTargetState(
   root: string,
@@ -1224,6 +1284,43 @@ export function phaseReceiptTargetState(
   return { ok: true, state: sha(parts) };
 }
 
+/**
+ * @purpose Fingerprint each exact target independently so ordered shared writers do not hide unrelated drift.
+ * @param root Project root containing the target paths.
+ * @param targets Exact project-relative files expected to exist.
+ * @param [deletedFiles] Exact project-relative tombstones expected to remain absent.
+ * @returns Per-target evidence, or a fail-closed path/read issue.
+ */
+export function phaseReceiptTargetEvidence(
+  root: string,
+  targets: readonly string[],
+  deletedFiles: readonly string[] = []
+): { ok: true; evidence: Record<string, string> } | { ok: false; issue: string } {
+  const evidence: Record<string, string> = {};
+  try {
+    for (const target of targets) {
+      const inspected = inspectRepoPath(root, target, 'file');
+      if (!inspected.ok) throw new Error(`Target File ${inspected.detail}: ${target}`);
+      evidence[target] = sha([
+        target,
+        relative(resolve(root), inspected.absolute),
+        readFileSync(inspected.absolute),
+      ]);
+    }
+    for (const deleted of deletedFiles) {
+      const inspected = inspectRepoPath(root, deleted, 'missing');
+      if (!inspected.ok) throw new Error(`Deleted File ${inspected.detail}: ${deleted}`);
+      evidence[deleted] = sha([`deleted:${deleted}`, 'absent']);
+    }
+  } catch (cause) {
+    return {
+      ok: false,
+      issue: `cannot read every Target File: ${cause instanceof Error ? cause.message : String(cause)}`,
+    };
+  }
+  return { ok: true, evidence };
+}
+
 function isReceipt(value: unknown, phase: string): value is PhaseReceipt {
   if (!value || typeof value !== 'object') return false;
   const receipt = value as Partial<PhaseReceipt>;
@@ -1250,6 +1347,14 @@ function isReceipt(value: unknown, phase: string): value is PhaseReceipt {
     /^sha256:[0-9a-f]{64}$/.test(receipt.environmentState ?? '') &&
     /^sha256:[0-9a-f]{64}$/.test(receipt.planState ?? '') &&
     /^sha256:[0-9a-f]{64}$/.test(receipt.targetState ?? '') &&
+    (receipt.targetEvidence === undefined ||
+      (typeof receipt.targetEvidence === 'object' &&
+        receipt.targetEvidence !== null &&
+        JSON.stringify(Object.keys(receipt.targetEvidence).sort()) ===
+          JSON.stringify([...(receipt.targets ?? []), ...(receipt.deletedFiles ?? [])].sort()) &&
+        Object.values(receipt.targetEvidence).every((value) =>
+          /^sha256:[0-9a-f]{64}$/.test(value)
+        ))) &&
     Array.isArray(receipt.commands) &&
     receipt.commands.every(
       (command) =>
@@ -1260,7 +1365,20 @@ function isReceipt(value: unknown, phase: string): value is PhaseReceipt {
         typeof command.command === 'string' &&
         command.command.length > 0 &&
         command.exitCode === 0
-    )
+    ) &&
+    (receipt.gateEvidence === undefined ||
+      (Array.isArray(receipt.gateEvidence) &&
+        receipt.gateEvidence.every(
+          (gate) =>
+            typeof gate === 'object' &&
+            gate !== null &&
+            typeof gate.name === 'string' &&
+            /^(DECLARED|PREREQUISITE_PENDING|PREREQUISITE_MISSING|COMMAND_MISSING|CONFIGURED|PROVEN)$/.test(
+              gate.state ?? ''
+            ) &&
+            (gate.command === null || typeof gate.command === 'string') &&
+            (gate.provider === null || typeof gate.provider === 'string')
+        )))
   );
 }
 

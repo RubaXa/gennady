@@ -11,31 +11,20 @@
         its one approval resolves all. Out-of-scope proposals the subagent surfaced are raised here.
         Return `TerminalDecision: pause` and preserve the session while stopped for that decision.
 
-        On approval, apply each newly selected coverage owner, verification toolchain, and e2e inclusion or
-        explicit waiver directly to the already-generated tickets whose bytes change, including their
-        Coverage Policy/Owner Phase, Verification row, BDD mapping, and Decision Log where applicable.
-        Append those exact answers to `ApprovedGate2Choices`. Do not ask again about choices already
-        recorded as approved; a later card contains only
-        `PendingGate2Delta` and its affected use-cases.
-        Do not regenerate the DAG, rerun STEP_3 for all tickets, or create a second standing approval
-        gate. Refresh `LatestTargetSet` and `ChangedTickets`, clear the materialized
-        `PendingGate2Delta`, and use STEP_3B's exact dispatch/fallback transition. A live retained
-        session receives only `ChangedTickets`; a first fallback receives the FULL latest target-set,
-        retained state/context, and complete result history. Each returned result enters STEP_3B's
-        mandatory `increment → cap check → verdict/Changes` transition; therefore result 5 or an
-        operator-raised cap always pauses for `AX_CAP_5` even when it says CLEAN or exposes a new fork.
-        Only a below-cap, no-change CLEAN over the latest bytes continues to STEP_5. Apply ordinary
-        structural corrections autonomously to the affected tickets and recheck within that same
-        cumulative budget.
+        On approval, materialize only the selected coverage/toolchain/e2e choices in affected tickets,
+        then record `gate2-choice {choices,changedTickets}` through feasibilityGate2Event and follow its
+        `NEXT=`. Empty changedTickets permits `NEXT=FINALIZE`. Non-empty changedTickets requires
+        `NEXT=REFRESH_TARGETS`: run gate2ContextRefresh, record `target-refreshed`, and return to
+        STEP_3B's same retained critic. Do not regenerate the DAG, rerun STEP_3, or replay choices
+        already approved.
 
-        If that recheck alone exposes a genuinely new product/toolchain fork, return one delta-only
-        Gate 2 decision card containing only `PendingGate2Delta` and affected use-cases; do not replay
-        already approved choices. After that answer, materialize the delta and use the same state-machine
-        transition above. This is a continuation of Gate 2, not another standing gate. A fork result at
-        the active cap is disposed by `AX_CAP_5` BEFORE any delta card; it cannot authorize round 6.
-        At any cap, return `TerminalDecision: pause`; the persisted event fold is the preserved
-        `FeasibilityState`, and unreviewed changed bytes never finalize.
-        <ToolCall owner="this-step" result="feasibilityGate2Event">npx gennady sdd-session log --content-file .claude/tmp/sdd-scaffold-feasibility-event.json</ToolCall> Payload: current gate2-choice/target-refreshed/operator-disposition event. Use feasibilityGate2Event before its transition.
+        A critic `NEW_FORK` is presented as one delta-only card with its affected use-cases; its Gate 2
+        choice must name changed tickets and be reviewed before finalize. Every subsequent response is
+        first recorded through STEP_3B, so result 5 or a raised cap returns
+        `NEXT=ASK_OPERATOR_CAP` before CLEAN or a fork can advance. At any operator decision return
+        `TerminalDecision: pause`; the CLI-owned journal is the resume state.
+        <ToolCall owner="this-step" result="gate2ContextRefresh">npx gennady sdd-check --scaffold-feasibility</ToolCall> Use gate2ContextRefresh after Gate 2 changes and before critic re-dispatch.
+        <ToolCall owner="this-step" result="feasibilityGate2Event">npx gennady sdd-session feasibility --content-file .claude/tmp/sdd-scaffold-feasibility-event.json</ToolCall> Payload: current gate2-choice or target-refreshed event. Use feasibilityGate2Event before acting on its NEXT instruction.
       </Action>
     </Step>
 

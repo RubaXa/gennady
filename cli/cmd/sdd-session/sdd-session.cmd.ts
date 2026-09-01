@@ -23,7 +23,9 @@ import {
   appendToSection,
   badInvocation,
   buildSkeleton,
+  checkpointError,
   fileError,
+  feasibilityError,
   hasPlaceholder,
   isValidTermEntry,
   noSession,
@@ -35,8 +37,19 @@ import {
   type SessionOutcome,
   type SetField,
 } from './sdd-session.types.ts';
+import { applyFeasibilityEvent } from './feasibility-state.ts';
+import { applyWorkerCheckpoint } from './worker-checkpoint.ts';
 
-const MODES = ['open', 'set', 'log', 'workset', 'term', 'close'] as const;
+const MODES = [
+  'open',
+  'set',
+  'log',
+  'workset',
+  'term',
+  'feasibility',
+  'checkpoint',
+  'close',
+] as const;
 const GITIGNORE_LINE = '.sdd-session.md';
 
 function oneFlag(value: unknown, name: string): string | undefined | SessionOutcome {
@@ -201,7 +214,7 @@ export async function run(rawArgs: string[], now: Date): Promise<SessionOutcome>
     return badInvocation('--intent and --scale apply only to open mode');
   }
 
-  // set/log/workset/close all require an already-open, exact regular session file.
+  // set/log/workset/term/feasibility/checkpoint/close require an open regular session file.
   const destination = proveRepoDestination(root, sessionRelative, 'potential');
   if (!destination.ok) return fileError(`${sessionPath} (${destination.detail})`);
   if (!existsSync(destination.absolute)) return noSession(sessionPath);
@@ -237,6 +250,33 @@ export async function run(rawArgs: string[], now: Date): Promise<SessionOutcome>
     payload = scratch.content;
   }
   if (payload.trim() === '') return badInvocation(`mode "${mode}" needs content`);
+
+  if (mode === 'feasibility') {
+    if (!contentFile || positional.length !== 1)
+      return badInvocation('feasibility requires only --content-file <path>');
+    const read = readProvenRepoFile(session.identity);
+    if (!read.ok) return fileError(`${sessionPath} (${read.detail})`);
+    const applied = applyFeasibilityEvent(read.content, payload);
+    if (!applied.ok) return feasibilityError(applied.detail);
+    const written = writeProvenRepoFile(session.identity, applied.content);
+    if (!written.ok) return fileError(`${sessionPath} (${written.detail})`);
+    return consumed(`[sdd-session] feasibility event accepted\n${applied.next}`, scratch);
+  }
+
+  if (mode === 'checkpoint') {
+    if (!contentFile || positional.length !== 1)
+      return badInvocation('checkpoint requires only --content-file <path>');
+    const read = readProvenRepoFile(session.identity);
+    if (!read.ok) return fileError(`${sessionPath} (${read.detail})`);
+    const applied = applyWorkerCheckpoint(read.content, payload, root);
+    if (!applied.ok) return checkpointError(applied.detail);
+    const written = writeProvenRepoFile(session.identity, applied.content);
+    if (!written.ok) return fileError(`${sessionPath} (${written.detail})`);
+    return consumed(
+      `[sdd-session] checkpoint accepted: sdd-worker-checkpoint/v1\n${applied.next}`,
+      scratch
+    );
+  }
 
   if (mode === 'set') {
     const field = positional[1] as SetField | undefined;
@@ -286,7 +326,7 @@ export async function run(rawArgs: string[], now: Date): Promise<SessionOutcome>
   return consumed(`[sdd-session] appended to ${section}: ${payload}`, scratch);
 }
 
-// Self-executing for CLI: gennady sdd-session <open|set|log|workset|close> [...] — see MODES above.
+// Self-executing for CLI: gennady sdd-session <open|set|log|workset|term|feasibility|checkpoint|close> [...] — see MODES above.
 const outcome = await run(process.argv, new Date());
 console.log(outcome.ok ? outcome.text : outcome.message);
 process.exit(outcome.ok ? 0 : outcome.exitCode);

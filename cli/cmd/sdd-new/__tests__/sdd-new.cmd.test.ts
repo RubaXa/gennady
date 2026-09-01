@@ -259,6 +259,20 @@ describe('SddNewCommand', () => {
     }
   });
 
+  it('creates an infrastructure spec with DAG-serialized shared-writer guidance', async () => {
+    const out = join(tmpDir, 'specs', 'infra-contract', 'infra-contract.spec.md');
+    const outcome = await mod.run(
+      argv('infrastructure', '--scope', 'infra-contract', '--out', out)
+    );
+    assert.strictEqual(outcome.ok, true);
+    const written = readFileSync(out, 'utf8');
+    assert.match(
+      written,
+      /Every shared manifest\/lock write has an owning phase\/task; all writers of the same file are strictly DAG-serialized/
+    );
+    assert.doesNotMatch(written, /EXACTLY ONE owning task/);
+  });
+
   it('creates missing parent directories', async () => {
     const out = join(tmpDir, 'specs', 'deep', 'nested', 'module', 'module.spec.md');
     const outcome = await mod.run(
@@ -493,6 +507,17 @@ describe('SddNewCommand', () => {
       assert.match(ticket, /^- \*\*Module:\*\* core$/m);
       assert.match(ticket, /^- \*\*Structural Owner:\*\* module$/m);
       assert.match(ticket, /^- \*\*Owning Spec:\*\* \[Owning spec\]\(\.\/core\.spec\.md\)$/m);
+      assert.match(ticket, /^- \*\*Capability Adapter:\*\* <adapter-id>/m);
+      assert.match(ticket, /^- \*\*Provides Capabilities:\*\* <comma-separated capability ids>/m);
+      assert.match(ticket, /^- \*\*Requires Capabilities:\*\* <comma-separated capability ids>/m);
+      assert.match(
+        outcome.text,
+        new RegExp(
+          `npx gennady sdd-check --task ${outcome.path.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} --authoring`
+        )
+      );
+      assert.match(outcome.text, /npx gennady sdd-check --scaffold-feasibility/);
+      assert.doesNotMatch(outcome.text, /--help/);
       assert.doesNotMatch(ticket, /<ACRONYM>-<slug>/);
       assert.doesNotMatch(ticket, /- \*\*Scope:\*\* <scope-name>/);
       assert.doesNotMatch(ticket, /- \*\*Module:\*\* <module-name or N\/A>/);

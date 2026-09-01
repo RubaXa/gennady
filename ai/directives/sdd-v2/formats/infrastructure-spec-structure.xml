@@ -161,7 +161,7 @@
   <!-- Kind ∈ package | workspace-link | tool | file | external-type | env | service | structural -->
   <!-- Owner ∈ this-scope-task | external-prereq-scope | operator-action -->
   <!-- Empty list allowed only when STEP_7 audit produced zero external assumptions — declare it explicitly: "No external bootstrap required." -->
-  <!-- A shared file (package.json scripts, .nvmrc, a tool config) has EXACTLY ONE owning task — the one whose Kind/Owner row creates it. Every other task that touches the same file references/extends it, never re-creates it. -->
+  <!-- Every shared manifest/lock write has an owning phase/task; all writers of the same file are strictly DAG-serialized. -->
 
 
   </details>

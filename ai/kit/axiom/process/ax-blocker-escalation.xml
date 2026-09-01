@@ -8,5 +8,8 @@
       - declared `Runtime Backing` (in ticket Meta) cannot be honored in this environment;
       - verification command cannot execute (missing tooling, missing env).
 
-      Mechanics: log `<ts> BLOCKED <one-line cause>` per `BLOCKER_FORMAT`; status of phase → `[!] BLOCKED`; return BLOCKED to orchestrator with proposed unblock. Stop.
+      Mechanics: return evidence plus one typed outcome. Missing tooling/config/artifact/phase
+      ownership is `RECOVERABLE_TECHNICAL`; a contradiction with approved goals is
+      `SPEC_GOAL_CONFLICT`; unavailable permission is `EXTERNAL_AUTHORITY_REQUIRED`. The
+      orchestrator checkpoints and routes it.
     </Axiom>

@@ -12,11 +12,10 @@
   directly (`AX_OWNER`).
 
   Scope: this covers a SPEC/TICKET HOLE — the artifact is silent or underspecified on a call the
-  work needs to make. It does NOT cover an environment/infra blocker (`AX_BLOCKER_ESCALATION`,
-  `H_PAUSED_AWAITING_OPERATOR`) or a risk-acceptance on an open `MAJOR` audit finding (execute
-  STEP_6_BRANCH) — both stay a pause; they are about risk and environment, not a gap in the spec.
-  Test: "can I honor the artifact's stated intent with a sound default?" → self-resolve; "does
-  proceeding need the operator's own risk tolerance, or an environment I cannot fix?" → pause.
+  work needs to make. Technical environment/infra gaps use `RECOVERABLE_TECHNICAL`; exact missing
+  permission uses `EXTERNAL_AUTHORITY_REQUIRED`. Product-risk acceptance on an open `MAJOR` remains
+  an operator decision. Test: "can I honor the approved goals with a sound technical default?" →
+  self-resolve/replan; "does this change product intent or need external authority?" → typed boundary.
 
   The orchestrator collects every `deviations:` entry across the run just finished — one ticket, or
   every ticket of a `batch` — and raises them ONCE, at the very end, as a single batched

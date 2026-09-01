@@ -85,8 +85,8 @@ describe('scope decomposition and scaffold contract', () => {
       /<ToolCall\b[^>]*>npx gennady sdd-session [^<\n]+<\/ToolCall>/g
     ) ?? [];
     assert.equal(invocations.length, toolCalls.length);
-    assert.match(scaffold, /Re-dispatch into the SAME worker session whenever it is alive/);
-    assert.match(scaffold, /allow exactly ONE fresh\s+fallback critic/);
+    assert.match(scaffold, /Re-dispatch into the same live worker/);
+    assert.match(scaffold, /allow exactly one fallback\s+carrying/i);
   });
 
   it('rejects the draft.53 app-shell outside-modules hole before Gate 1', () => {

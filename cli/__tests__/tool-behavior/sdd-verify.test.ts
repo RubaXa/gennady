@@ -22,6 +22,7 @@ import { tmpdir } from 'node:os';
 import { buildRepoFixture as buildBaseRepoFixture, type RepoFixtureState } from './fixture.ts';
 import { cleanTestChildEnv, runCliAsync } from './run-cli.ts';
 import { parsePhaseReceipts } from '../../../shared/sdd/phase-receipt.ts';
+import { installCapabilityProviderFixtures } from './capability-provider-fixture.ts';
 
 function installExecutable(root: string, name: string, body: string): void {
   const binDir = join(root, 'node_modules', '.bin');
@@ -160,6 +161,19 @@ function installPhaseTicket(
   return ['sdd-verify', '--task', 'specs/app/app.task.TSK-1.md', '--phase', 'P1'];
 }
 
+/** @purpose Install a runnable phase ticket backed by the shared canonical compiler fixture. */
+function installPhaseTicketWithCompilerProvider(
+  root: string,
+  kind: string,
+  targets: string[],
+  coveragePolicy?: 'required' | 'not-applicable',
+  deletedFiles: string[] = []
+): string[] {
+  const args = installPhaseTicket(root, kind, targets, coveragePolicy, deletedFiles);
+  installCapabilityProviderFixtures(root, 'specs/app/app.task.TSK-1.md');
+  return args;
+}
+
 const REPAIR_BRICKS = {
   'format:fix': 'prettier --write',
   'lint:fix': 'gennady lint --autofix',
@@ -230,17 +244,17 @@ describe('sdd-verify — live gate ladder', { concurrency: 4 }, () => {
     assert.strictEqual(source.NODE_V8_COVERAGE, '/tmp/root-c8-owner', 'parent env stays untouched');
   });
 
-  it('empty project bootstrap phase: every rung is honestly skipped, exit 0', async () => {
+  it('empty project bootstrap phase: every optional gate is explicitly command-missing, exit 0', async () => {
     const { root } = buildRepoFixture({ scripts: {} });
     try {
       const r = await runCliAsync(installPhaseTicket(root, 'bootstrap', ['package.json']), root);
       assert.strictEqual(r.exitCode, 0, r.stdout + r.stderr);
-      assert.match(r.stdout, /ALL PASS \(0\/3\)/);
+      assert.match(r.stdout, /ALL PASS \(0\/0\)/);
       for (const gate of ['fix', 'type-check', 'test']) {
         assert.match(
           r.stdout,
-          new RegExp(`⏭ ${gate} — скрипта нет в package\\.json, пропущено`),
-          `expected a skipped ⏭ line for ${gate}`
+          new RegExp(`gate-state: ${gate} COMMAND_MISSING`),
+          `expected an explicit non-applicable command state for ${gate}`
         );
       }
     } finally {
@@ -261,7 +275,7 @@ describe('sdd-verify — live gate ladder', { concurrency: 4 }, () => {
     }
   });
 
-  it('verifies a tracked deletion-only phase and makes reappearance stale', async () => {
+  it('verifies a tracked config deletion-only phase and makes reappearance stale', async () => {
     const { root } = buildRepoFixture({
       scripts: {
         ...REPAIR_BRICKS,
@@ -277,7 +291,7 @@ describe('sdd-verify — live gate ladder', { concurrency: 4 }, () => {
         "require('fs').writeFileSync('LINTER_MUST_NOT_RUN','x')"
       );
       rmSync(join(root, 'src/obsolete.ts'));
-      const args = installPhaseTicket(root, 'impl', [], undefined, ['src/obsolete.ts']);
+      const args = installPhaseTicket(root, 'config', [], undefined, ['src/obsolete.ts']);
       const result = await runCliAsync(args, root);
       assert.strictEqual(result.exitCode, 0, result.stdout + result.stderr);
       assert.ok(!existsSync(join(root, 'FORMATTER_MUST_NOT_RUN')));
@@ -385,7 +399,10 @@ describe('sdd-verify — live gate ladder', { concurrency: 4 }, () => {
         'alternative-formatter',
         "require('fs').appendFileSync(process.argv.at(-1),'// repaired\\n')"
       );
-      const r = await runCliAsync(installPhaseTicket(root, 'impl', ['src/target.ts']), root);
+      const r = await runCliAsync(
+        installPhaseTicketWithCompilerProvider(root, 'impl', ['src/target.ts']),
+        root
+      );
       assert.strictEqual(r.exitCode, 0, r.stdout + r.stderr);
       assert.match(readFileSync(join(root, 'src/target.ts'), 'utf-8'), /repaired/);
       assert.ok(!existsSync(join(root, 'PRETTIER_RAN')), 'hardcoded prettier must not run');
@@ -448,7 +465,7 @@ describe('sdd-verify — live gate ladder', { concurrency: 4 }, () => {
         'alternative-formatter',
         "require('fs').appendFileSync(process.argv.at(-1),'first repair\\n')"
       );
-      const args = installPhaseTicket(root, 'impl', ['src/target.ts']);
+      const args = installPhaseTicketWithCompilerProvider(root, 'impl', ['src/target.ts']);
       const ticket = join(root, 'specs/app/app.task.TSK-1.md');
       const first = await runCliAsync(args, root);
       assert.strictEqual(first.exitCode, 0, first.stdout + first.stderr);
@@ -491,7 +508,7 @@ describe('sdd-verify — live gate ladder', { concurrency: 4 }, () => {
     });
     try {
       installRepairTools(root);
-      const args = installPhaseTicket(root, 'impl', ['src/owned.ts']);
+      const args = installPhaseTicketWithCompilerProvider(root, 'impl', ['src/owned.ts']);
       const ticket = join(root, 'specs/app/app.task.TSK-1.md');
       const command = 'node scripts/check.mjs';
       const original = readFileSync(ticket, 'utf-8');
@@ -540,7 +557,7 @@ describe('sdd-verify — live gate ladder', { concurrency: 4 }, () => {
     });
     try {
       installRepairTools(root);
-      const args = installPhaseTicket(root, 'impl', ['src/owned.ts']);
+      const args = installPhaseTicketWithCompilerProvider(root, 'impl', ['src/owned.ts']);
       const ticket = join(root, 'specs/app/app.task.TSK-1.md');
       const original = readFileSync(ticket, 'utf-8');
       writeFileSync(
@@ -589,14 +606,17 @@ describe('sdd-verify — live gate ladder', { concurrency: 4 }, () => {
         "process.exit(process.argv.includes('src/owned.test.ts') ? 9 : 0)"
       );
       const owned = await runCliAsync(
-        installPhaseTicket(root, 'impl', ['src/owned.test.ts']),
+        installPhaseTicketWithCompilerProvider(root, 'impl', ['src/owned.test.ts']),
         root
       );
       assert.notStrictEqual(owned.exitCode, 0, owned.stdout + owned.stderr);
       assert.match(owned.stdout, /лестница остановлена на «fix»/);
 
       writeFileSync(join(root, 'src/clean.ts'), 'clean', 'utf-8');
-      const clean = await runCliAsync(installPhaseTicket(root, 'impl', ['src/clean.ts']), root);
+      const clean = await runCliAsync(
+        installPhaseTicketWithCompilerProvider(root, 'impl', ['src/clean.ts']),
+        root
+      );
       assert.strictEqual(clean.exitCode, 0, clean.stdout + clean.stderr);
     } finally {
       rmSync(root, { recursive: true, force: true });
@@ -619,7 +639,12 @@ describe('sdd-verify — live gate ladder', { concurrency: 4 }, () => {
       });
       installRepairTools(root);
       const r = await runCliAsync(
-        installPhaseTicket(root, 'test', ['src/assertion.test.ts'], 'not-applicable'),
+        installPhaseTicketWithCompilerProvider(
+          root,
+          'test',
+          ['src/assertion.test.ts'],
+          'not-applicable'
+        ),
         root
       );
       assert.strictEqual(r.exitCode, 0, r.stdout + r.stderr);
@@ -657,7 +682,7 @@ describe('sdd-verify — live gate ladder', { concurrency: 4 }, () => {
         'test:coverage': `${COVERAGE_SCRIPT} && ${coverageGate.script}`,
       });
       installRepairTools(root);
-      installPhaseTicket(root, 'test', ['src/one.test.ts'], 'required');
+      installPhaseTicketWithCompilerProvider(root, 'test', ['src/one.test.ts'], 'required');
       const ticket = join(root, 'specs/app/app.task.TSK-1.md');
       const current = readFileSync(ticket, 'utf-8');
       const readerMarker = externalRunMarker(t, root, 'READER_RAN');
@@ -727,7 +752,10 @@ describe('sdd-verify — live gate ladder', { concurrency: 4 }, () => {
     });
     try {
       installRepairTools(root);
-      const r = await runCliAsync(installPhaseTicket(root, 'impl', ['src.ts']), root);
+      const r = await runCliAsync(
+        installPhaseTicketWithCompilerProvider(root, 'impl', ['src.ts']),
+        root
+      );
       assert.notStrictEqual(r.exitCode, 0, r.stdout + r.stderr);
       assert.match(r.stdout, /⛔ лестница остановлена на «type-check»/);
     } finally {
@@ -746,7 +774,10 @@ describe('sdd-verify — live gate ladder', { concurrency: 4 }, () => {
     });
     try {
       installRepairTools(root);
-      const r = await runCliAsync(installPhaseTicket(root, 'impl', ['src.ts']), root);
+      const r = await runCliAsync(
+        installPhaseTicketWithCompilerProvider(root, 'impl', ['src.ts']),
+        root
+      );
       assert.notStrictEqual(r.exitCode, 0, r.stdout + r.stderr);
       assert.match(r.stdout, /✅ type-check/);
       assert.match(r.stdout, /⛔ лестница остановлена на «test»/);
@@ -765,7 +796,10 @@ describe('sdd-verify — live gate ladder', { concurrency: 4 }, () => {
       const testGate = externalRunMarker(t, root, 'TEST_RAN');
       setPackageScripts(root, { 'type-check': typeCheck.script, test: testGate.script });
       installRepairTools(root, 'process.exit(1)');
-      const r = await runCliAsync(installPhaseTicket(root, 'impl', ['src.ts']), root);
+      const r = await runCliAsync(
+        installPhaseTicketWithCompilerProvider(root, 'impl', ['src.ts']),
+        root
+      );
       assert.notStrictEqual(r.exitCode, 0, r.stdout + r.stderr);
       assert.match(r.stdout, /🔧 fix — exit 1 .* — repair не завершён/);
       assert.match(r.stdout, /лестница остановлена на «fix»/);
@@ -790,7 +824,10 @@ describe('sdd-verify — live gate ladder', { concurrency: 4 }, () => {
     });
     try {
       installRepairTools(root);
-      const r = await runCliAsync(installPhaseTicket(root, 'impl', ['src.ts']), root);
+      const r = await runCliAsync(
+        installPhaseTicketWithCompilerProvider(root, 'impl', ['src.ts']),
+        root
+      );
       assert.match(r.stdout, /✅ test\b/);
       assert.doesNotMatch(r.stdout, /⛔ test — обязательная ступень профиля «code»/);
     } finally {
@@ -959,7 +996,10 @@ describe('sdd-verify — live gate ladder', { concurrency: 4 }, () => {
     try {
       installRepairTools(root);
       // sdd-verify: probe sees a fresh report appear → test:coverage passes.
-      const verify = await runCliAsync(installPhaseTicket(root, 'test', ['src/thing.ts']), root);
+      const verify = await runCliAsync(
+        installPhaseTicketWithCompilerProvider(root, 'test', ['src/thing.ts']),
+        root
+      );
       assert.strictEqual(verify.exitCode, 0, verify.stdout + verify.stderr);
       assert.match(verify.stdout, /✅ test:coverage/);
       // testcov: the `{}` report has no data for the file → threshold gate is RED.
@@ -981,7 +1021,10 @@ describe('sdd-verify — live gate ladder', { concurrency: 4 }, () => {
     });
     try {
       installRepairTools(root, "require('fs').writeFileSync(process.argv.at(-1),'fixed')");
-      const r = await runCliAsync(installPhaseTicket(root, 'impl', ['src.ts']), root);
+      const r = await runCliAsync(
+        installPhaseTicketWithCompilerProvider(root, 'impl', ['src.ts']),
+        root
+      );
       assert.strictEqual(r.exitCode, 0, r.stdout + r.stderr);
       assert.match(r.stdout, /🔧 fix/);
       assert.match(r.stdout, /✅ type-check/);

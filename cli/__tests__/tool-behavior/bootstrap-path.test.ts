@@ -12,6 +12,7 @@ import { chmodSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:
 import { join } from 'node:path';
 import { buildRepoFixture } from './fixture.ts';
 import { runCli } from './run-cli.ts';
+import { installCapabilityProviderFixtures } from './capability-provider-fixture.ts';
 
 /** @purpose The stub `package.json` scripts the readiness directive itself prescribes for a from-scratch project. */
 const STUB_SCRIPTS: Record<string, string> = {
@@ -205,7 +206,38 @@ describe('bootstrap path — from stub scripts to a verified product phase', () 
         ownerVerify.stdout + ownerVerify.stderr,
         /does not structurally own a missing readiness gate/
       );
-      assert.match(ownerVerify.stdout + ownerVerify.stderr, /cannot fingerprint.*repository root/s);
+      assert.match(
+        ownerVerify.stdout + ownerVerify.stderr,
+        /SDD_VERIFY_PHASE_PREREQUISITE_REQUIRED: fix COMMAND_MISSING/
+      );
+      assert.doesNotMatch(ownerVerify.stdout + ownerVerify.stderr, /receipt recorded:/);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('a setup phase records a receipt only after its exact declared repair ownership is proven', () => {
+    const root = bootstrapFixture(REAL_SCRIPTS);
+    try {
+      const ticketPath = join(root, 'specs/infra-core/infra-core.task.INFRA-1.md');
+      writeFileSync(
+        ticketPath,
+        readFileSync(ticketPath, 'utf-8')
+          .replace('| P1 | impl | — | [ ] |', '| P1 | config | — | [ ] |')
+          .replace('### P1 — impl', '### P1 — config')
+          .replace(
+            /- \*\*Readiness Gates:\*\*\n(?:  - .*\n)+/,
+            '- **Readiness Gates:**\n  - lint:fix\n'
+          ),
+        'utf-8'
+      );
+      const verified = runCli(
+        ['sdd-verify', '--task', 'specs/infra-core/infra-core.task.INFRA-1.md', '--phase', 'P1'],
+        root
+      );
+      assert.strictEqual(verified.exitCode, 0, verified.stdout + verified.stderr);
+      assert.match(verified.stdout, /gate-state: fix PROVEN/);
+      assert.match(verified.stdout, /receipt recorded:/);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
@@ -308,42 +340,30 @@ describe('bootstrap path — from stub scripts to a verified product phase', () 
   it('an unrelated test phase of the same infra ticket does not inherit the setup exemption', () => {
     const root = bootstrapFixture(STUB_SCRIPTS);
     try {
-      const ticketPath = join(root, 'specs/infra-core/infra-core.task.INFRA-1.md');
-      const verified = runCli(
-        ['sdd-verify', '--task', 'specs/infra-core/infra-core.task.INFRA-1.md', '--phase', 'P1'],
-        root
-      );
-      assert.strictEqual(verified.exitCode, 0, verified.stdout + verified.stderr);
-      writeFileSync(
-        ticketPath,
-        readFileSync(ticketPath, 'utf-8').replace(
-          '| P1 | impl | — | [ ] |',
-          '| P1 | impl | — | [x] |'
-        ),
-        'utf-8'
-      );
       const r = runCli(
-        ['sdd-task', 'specs/infra-core/infra-core.task.INFRA-1.md', '--phase', 'P2'],
+        ['sdd-verify', '--task', 'specs/infra-core/infra-core.task.INFRA-1.md', '--phase', 'P2'],
         root
       );
-      assert.notStrictEqual(r.status, 0);
-      assert.match(r.stdout + r.stderr, /ERR_CLI_SDD_TASK_INFRA_NOT_READY/);
+      assert.notStrictEqual(r.exitCode, 0);
+      assert.match(r.stdout + r.stderr, /does not structurally own a missing readiness gate/);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
   });
 
-  it('the exempted phase can actually verify: its derived setup profile is green on the stub project', () => {
+  it('the exempted owner cannot record a receipt while its declared gates are still stubs', () => {
     const root = bootstrapFixture(STUB_SCRIPTS);
     try {
       const r = runCli(
         ['sdd-verify', '--task', 'specs/infra-core/infra-core.task.INFRA-1.md', '--phase', 'P1'],
         root
       );
-      assert.strictEqual(r.exitCode, 0, r.stdout + r.stderr);
-      assert.match(r.stdout, /ALL PASS/);
-      // …and it is honest about what that green means.
-      assert.match(r.stdout, /вердикт уровня bootstrap/);
+      assert.notStrictEqual(r.exitCode, 0, r.stdout + r.stderr);
+      assert.match(
+        r.stdout + r.stderr,
+        /SDD_VERIFY_PHASE_PREREQUISITE_REQUIRED: fix COMMAND_MISSING/
+      );
+      assert.doesNotMatch(r.stdout + r.stderr, /receipt recorded:/);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
@@ -393,6 +413,7 @@ describe('bootstrap path — from stub scripts to a verified product phase', () 
   it('once the infra ticket has replaced the stubs, the project is ready, the queue is empty, and the product phase runs', () => {
     const root = bootstrapFixture(REAL_SCRIPTS);
     try {
+      installCapabilityProviderFixtures(root, 'specs/app/app.task.APP-1.md');
       const state = runCli(['sdd-state'], root);
       assert.match(state.stdout, /READINESS=ready/);
       assert.match(state.stdout, /GATE_QUEUE=none/);

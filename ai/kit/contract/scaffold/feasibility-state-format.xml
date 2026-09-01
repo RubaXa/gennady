@@ -1,33 +1,25 @@
-<!-- source: scaffold feasibility lifecycle — append-only state in the SDD session scratch file -->
+<!-- source: scaffold feasibility lifecycle — CLI-folded append-only state -->
 <Contract id="FEASIBILITY_STATE_FORMAT">
-  `FeasibilityState` is not model memory. It is the fold of append-only
-  `sdd-scaffold-feasibility/v1` JSON events in the compatible session's `journal:` section. The
-  router has already proved/opened that session before scaffold starts, so the state survives an
-  operator pause, context loss, and same-session resume without writing a second project artifact.
+  `FeasibilityState` is the validated fold of `sdd-scaffold-feasibility/v1` events in the open
+  session journal. Write one JSON event to
+  `.claude/tmp/sdd-scaffold-feasibility-event.json`, call the declared `sdd-session feasibility`
+  ToolCall, and follow its single `NEXT=` instruction. A rejected event changes neither session nor
+  payload. The CLI, not the model, owns sequence, result count, cap, retained-worker, target-hash,
+  fork, Gate 2, and restart transitions.
 
-  Each event is one compact UTF-8 JSON line with keys in this order:
-  `schema`, `cycle`, `seq`, `event`, `payload`. `cycle` binds the scaffold target-set and initial
-  ticket hashes; `seq` increases by one. Event kinds are:
-  `opened` (target paths/hashes, worker session, `fallbackUsed=false`, `resultCount=0`,
-  `activeCap=5`) · `target-refreshed` (latest paths/hashes and changed tickets) · `worker-state` ·
-  `sensor-result` (the NEW cumulative result count, literal verdict, literal Changes, and latest
-  target hashes) · `operator-disposition` (the referenced result count and exact CLEAN / CONTINUE
-  THROUGH ROUND N / RESTART answer) · `gate2-choice` · `closed`.
+  Every event has the exact key set `{schema,cycle,seq,event,payload}`; JSON key order is immaterial.
+  A cycle begins with `opened {targets,fallbackUsed:false,resultCount:0,activeCap:5}`, then records
+  `worker-state {availability,workerSession,fallbackUsed}` before its first `sensor-result`.
+  Each critic response is recorded exactly once as
+  `sensor-result {resultCount,verdict,changes,targets}` before any correction, re-dispatch, Gate 2,
+  or cap decision. A no-change product/toolchain fork additionally carries `fork` with verdict
+  `NEW_FORK`. Ticket mutations use `target-refreshed {targets,changedTickets}` before re-dispatch.
 
-  Before the first critic dispatch, append `opened`. After every ticket mutation, append
-  `target-refreshed` before dispatch. Most importantly, after a critic returns, append the complete
-  `sensor-result` with the already-incremented count and require tool success BEFORE interpreting
-  CLEAN, a product fork, GOAL, the cap, or emitting any Ask. An operator answer is a separate later
-  immutable `operator-disposition`; never rewrite the result it disposes. On resume, fold only the
-  matching cycle's events. A latest `sensor-result` with no disposition and a cap/GOAL Ask pending
-  means re-present that same decision from the recorded bytes — do not redispatch, increment, or
-  reset. `activeCap` starts at exactly 5 and changes only by a recorded CONTINUE disposition.
-
-  To append any event, write that one JSON line to the regular non-symlink
-  `.claude/tmp/sdd-scaffold-feasibility-event.json`, then execute the current scaffold transition's
-  exact feasibility-event ToolCall. The
-  successful command consumes the payload; inline event text is forbidden. `closed` is the explicit
-  cleanup marker after STEP_5 integrity succeeds (or before an operator-confirmed RESTART opens a new
-  cycle); the session scratch itself is removed only by its normal terminal `sdd-session close`.
-
+  At the active cap, record the operator's exact
+  `operator-disposition {resultCount,disposition}`: `CLEAN`, `CONTINUE THROUGH ROUND N`, or
+  `RESTART: reason`. RESTART authorizes a new cycle whose `opened` resets count/cap/worker state.
+  Gate 2 records `gate2-choice {choices,changedTickets}`; non-empty changed tickets must be refreshed
+  and reviewed by the retained critic before `closed {}`. A NEW_FORK reaches Gate 2 as an unresolved
+  delta and cannot auto-approve itself. The regular terminal `sdd-session close` alone removes the
+  session scratch.
 </Contract>

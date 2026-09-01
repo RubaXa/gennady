@@ -75,6 +75,66 @@ describe('checkTicketAuthoringStructure', () => {
       assert.match(finding.message, /^\[[A-Z0-9_]+\] (?:Fix:|Example:)/);
     }
   });
+
+  it('teaches the bootstrap command-probe repair without sending the author to another example', () => {
+    const bootstrapOnly = AUTHORING_CORRECTED.replace(
+      '| P1 | impl | — | [ ] |',
+      '| P1 | bootstrap | — | [ ] |'
+    )
+      .replace('\n| P2 | test | P1 | [ ] |', '')
+      .replace(/\n<!--SECTION:PHASE_P2-->[\s\S]*?<!--\/SECTION:PHASE_P2-->/, '')
+      .replace(
+        '- creates the project toolchain → `test/toolchain.test.ts` :: `creates the project toolchain`',
+        '- creates the project toolchain → `package.json` :: `creates the project toolchain` :: command `npm run type-check`'
+      )
+      .replace(
+        '- rejects an invalid project root → `test/toolchain.test.ts` :: `rejects an invalid project root`',
+        '- rejects an invalid project root → `package.json` :: `rejects an invalid project root`'
+      );
+
+    const finding = checkTicketAuthoringStructure('infra.task.IB-gates.md', bootstrapOnly).find(
+      (candidate) => candidate.code === 'SDD_AUTHORING_BDD_PHASE'
+    );
+
+    assert.ok(finding);
+    assert.match(finding.message, /command-probe/i);
+    assert.match(finding.message, /test phase/i);
+    assert.match(finding.message, /future CREATE/i);
+    assert.match(finding.message, /package\.json is not test evidence/i);
+  });
+
+  it('requires typed capability ownership before a dependency-install phase can pass authoring', () => {
+    const dependencyInstall = AUTHORING_CORRECTED.replace(
+      '- **Objective:** create the toolchain contract implementation',
+      [
+        '- **Objective:** install the TypeScript toolchain dependency',
+        '- **Bootstrap Action:** dependency-install',
+        '- **Provides Packages:** typescript',
+        '- **Provides Capabilities:** node.dependencies',
+      ].join('\n')
+    ).replace('  - src/toolchain.ts', '  - package.json\n  - package-lock.json');
+
+    const missingAdapter = checkTicketAuthoringStructure('ticket.md', dependencyInstall, 'P1').find(
+      (finding) => finding.code === 'SDD_AUTHORING_CAPABILITY_ADAPTER_REQUIRED'
+    );
+    assert.ok(missingAdapter);
+    assert.match(missingAdapter.message, /Expected:/);
+    assert.match(missingAdapter.message, /Example: - \*\*Capability Adapter:\*\* node/);
+
+    const missingLockfile = checkTicketAuthoringStructure(
+      'ticket.md',
+      dependencyInstall
+        .replace(
+          '- **Bootstrap Action:** dependency-install',
+          '- **Capability Adapter:** node\n- **Bootstrap Action:** dependency-install'
+        )
+        .replace('\n  - package-lock.json', ''),
+      'P1'
+    ).find((finding) => finding.code === 'SDD_AUTHORING_PACKAGE_TARGETS_INCOMPLETE');
+    assert.ok(missingLockfile);
+    assert.match(missingLockfile.message, /package-lock\.json/);
+    assert.match(missingLockfile.message, /Next:/);
+  });
 });
 
 describe('isTicket', () => {

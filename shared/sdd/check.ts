@@ -24,7 +24,8 @@ import {
 // Pure text scan only (no jsdom/mermaid load — that lives behind loadMermaidParse, never imported
 // here) — safe to pull into this sync module for the call-chain rung's sequenceDiagram detection.
 import { extractMermaidBlocks } from '../mermaid/mermaid.ts';
-import { parseTestCoverage } from './bdd-coverage.ts';
+import { matchingTestPhaseIds, parseTestCoverage } from './bdd-coverage.ts';
+import { DEFAULT_CAPABILITY_ADAPTER_REGISTRY } from './capability-adapter.ts';
 
 /**
  * @purpose One audit finding.
@@ -673,6 +674,65 @@ export function checkTicketAuthoringStructure(
         `**${missing[0]}:**`
       );
 
+    const capabilityFactsPresent =
+      detail.bootstrapAction !== null ||
+      detail.providesPackages.length > 0 ||
+      detail.requiresPackages.length > 0 ||
+      detail.providesCapabilities.length > 0 ||
+      detail.requiresCapabilities.length > 0;
+    const adapter = detail.capabilityAdapter
+      ? DEFAULT_CAPABILITY_ADAPTER_REGISTRY[detail.capabilityAdapter]
+      : undefined;
+    if (capabilityFactsPresent && !detail.capabilityAdapter) {
+      add(
+        'SDD_AUTHORING_CAPABILITY_ADAPTER_REQUIRED',
+        name,
+        `Expected: capability/package fields name one registered adapter (${Object.keys(DEFAULT_CAPABILITY_ADAPTER_REGISTRY).sort().join(', ')}). Next: add the adapter id and rerun the same authoring command. Example: - **Capability Adapter:** node.`,
+        '**Bootstrap Action:**'
+      );
+    } else if (detail.capabilityAdapter && !adapter) {
+      add(
+        'SDD_AUTHORING_CAPABILITY_ADAPTER_UNKNOWN',
+        name,
+        `Expected: one registered adapter (${Object.keys(DEFAULT_CAPABILITY_ADAPTER_REGISTRY).sort().join(', ')}). Next: replace "${detail.capabilityAdapter}" with the adapter that owns this phase's capabilities, then rerun authoring.`,
+        '**Capability Adapter:**'
+      );
+    }
+    if (detail.providesPackages.length > 0 && detail.bootstrapAction !== 'dependency-install') {
+      add(
+        'SDD_AUTHORING_PACKAGE_ACTION_REQUIRED',
+        name,
+        'Expected: a phase that adds packages declares Bootstrap Action: dependency-install. Next: add that exact action or remove Provides Packages when this phase does not mutate dependencies.',
+        '**Provides Packages:**'
+      );
+    }
+    if (detail.bootstrapAction === 'dependency-install') {
+      if (detail.providesPackages.length === 0) {
+        add(
+          'SDD_AUTHORING_PACKAGE_PROVIDER_REQUIRED',
+          name,
+          'Expected: dependency-install names every package it materializes. Next: add **Provides Packages:** with exact package names.',
+          '**Bootstrap Action:**'
+        );
+      }
+      if (adapter?.dependencyBoundary) {
+        const requiredTargets = [
+          adapter.dependencyBoundary.manifestPath,
+          adapter.dependencyBoundary.lockfilePath,
+        ];
+        const absentTargets = requiredTargets.filter(
+          (target) => !detail.targetFiles.includes(target)
+        );
+        if (absentTargets.length > 0)
+          add(
+            'SDD_AUTHORING_PACKAGE_TARGETS_INCOMPLETE',
+            name,
+            `Expected: ${adapter.id} dependency-install owns ${requiredTargets.join(' and ')}. Next: add ${absentTargets.join(', ')} to this phase's Target Files and rerun authoring.`,
+            '**Target Files:**'
+          );
+      }
+    }
+
     const inputDeps = [...(detail.inputs ?? '').matchAll(/\b(P[0-9]+)\s+handoff\b/g)].map(
       (match) => match[1] as string
     );
@@ -763,30 +823,24 @@ export function checkTicketAuthoringStructure(
       );
     }
 
-    const testTargets = usablePhases
+    const testPhases = usablePhases
       .filter((phase) => phase.kind === 'test')
-      .flatMap((phase) => {
+      .map((phase) => {
         const section = extractSection(content, `PHASE_${phase.id}`);
-        return section.status === 'ok' ? parsePhaseDetail(section.content).targetFiles : [];
-      })
-      .map((target) => target.replace(/\\/g, '/'));
+        return {
+          phaseId: phase.id,
+          targets: section.status === 'ok' ? parsePhaseDetail(section.content).targetFiles : [],
+        };
+      });
     const unowned = coverageEntries.find(
       (entry) =>
-        entry.deferred === null &&
-        !testTargets.some(
-          (target) =>
-            target === entry.testFile ||
-            target.endsWith(`/${entry.testFile}`) ||
-            entry.testFile.endsWith(`/${target}`)
-        )
+        entry.deferred === null && matchingTestPhaseIds(entry.testFile, testPhases).length === 0
     );
     if (unowned) {
-      add(
-        'SDD_AUTHORING_BDD_PHASE',
-        'TEST_COVERAGE',
-        `Fix: add "${unowned.testFile}" to one test phase Target Files, or map the scenario to a file already owned by a test phase.`,
-        unowned.testFile
-      );
+      const fix = unowned.probeCommand
+        ? `Command-probe "${unowned.probeCommand}" needs a test phase that owns a future CREATE smoke test Target File; map this row to that test file. ${unowned.testFile} is not test evidence.`
+        : `Add "${unowned.testFile}" to one test phase Target Files, or map the scenario to a file already owned by a test phase.`;
+      add('SDD_AUTHORING_BDD_PHASE', 'TEST_COVERAGE', `Fix: ${fix}`, unowned.testFile);
     }
   }
 

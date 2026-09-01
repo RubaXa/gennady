@@ -3,7 +3,7 @@
 // @tasks: N/A
 
 import { spawnSync } from 'node:child_process';
-import { lstatSync, readFileSync, realpathSync, statSync } from 'node:fs';
+import { existsSync, lstatSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { basename, isAbsolute, join, relative, resolve } from 'node:path';
 import { inspectRepoPath } from '../../../shared/common/repo-path.ts';
 import { resolveOwningSpec } from '../../../shared/sdd/audit-group.ts';
@@ -13,6 +13,8 @@ import {
 } from '../../../shared/sdd/gate-queue.ts';
 import { parseScopes } from '../../../shared/sdd/portal.ts';
 import { checkReadiness, gatherReadinessInput } from '../../../shared/sdd/readiness.ts';
+import { ticketRef } from '../../../shared/sdd/check.ts';
+import { matchingTestPhaseIds, parseTestCoverage } from '../../../shared/sdd/bdd-coverage.ts';
 import { extractSection } from '../../../shared/sdd/section.ts';
 import {
   parseMetaInfo,
@@ -22,6 +24,12 @@ import {
   parseVerificationTable,
 } from '../../../shared/sdd/ticket.ts';
 import { collectTicketCorpus } from '../../../shared/sdd/ticket-resolve.ts';
+import {
+  phaseProfileForKind,
+  phaseVerificationArtifactPaths,
+  resolvePhaseVerificationPlan,
+  type PhaseVerificationPlan,
+} from '../../../shared/sdd/phase-verification-plan.ts';
 import type { Profile } from './sdd-verify.types.ts';
 
 /** @purpose Mechanically derived phase profile, exact repair targets, and optional owning spec. */
@@ -46,6 +54,8 @@ export type PhaseVerifyContext = {
   coverageOwner?: string;
   /** @purpose Whether this test phase owns the producer; independent from its test profile. */
   producesCoverage: boolean;
+  /** @purpose Canonical gate states shared byte-for-byte with sdd-task and feasibility. */
+  gatePlan?: PhaseVerificationPlan;
 };
 
 /** @purpose Valid phase context, or a ready-to-print teaching failure. */
@@ -64,14 +74,6 @@ function canonicallyInside(root: string, path: string): boolean {
   } catch {
     return false;
   }
-}
-
-function profileForKind(kind: string): Exclude<Profile, 'full'> | null {
-  const normalized = kind.trim().toLowerCase();
-  if (['bootstrap', 'config', 'doc'].includes(normalized)) return 'setup';
-  if (normalized === 'test') return 'test';
-  if (['impl', 'refactor', 'fix'].includes(normalized)) return 'code';
-  return null;
 }
 
 function failure(detail: string): PhaseContextResult {
@@ -125,7 +127,7 @@ export function resolvePhaseContext(
   const phases = parsePhasesOverview(overview.content);
   const phase = phases.find((candidate) => candidate.id === phaseId);
   if (!phase) return failure(`phase '${phaseId}' is absent from ${taskArg}`);
-  let profile = profileForKind(phase.kind);
+  let profile = phaseProfileForKind(phase.kind);
   let profileBasis: PhaseVerifyContext['profileBasis'] = 'phase-kind';
   if (!profile) return failure(`phase '${phaseId}' has unsupported kind '${phase.kind}'`);
   const verification = extractSection(content, 'VERIFICATION');
@@ -159,12 +161,7 @@ export function resolvePhaseContext(
         `the Role=coverage reader must be Required by a rule declared by owner phase ${coveragePolicy.ownerPhase}`
       );
   }
-  // Kind owns the profile. Coverage policy independently selects which test phase produces.
-  const isTestPhase = phase.kind.trim().toLowerCase() === 'test';
-  const producesCoverage =
-    isTestPhase &&
-    (coveragePolicy.status === 'legacy' ||
-      (coveragePolicy.status === 'required' && coveragePolicy.ownerPhase === phaseId));
+  // Kind owns the profile. The shared phase plan independently selects the sole coverage producer.
   const section = extractSection(content, `PHASE_${phaseId}`);
   if (section.status !== 'ok')
     return failure(`phase '${phaseId}' has no readable PHASE_${phaseId} section`);
@@ -172,11 +169,50 @@ export function resolvePhaseContext(
   const rawTargets = phaseDetail.targetFiles;
   const rawDeleted = phaseDetail.deletedFiles;
   const aliases = new Set(phaseDetail.rules.flatMap(ruleAliases));
+  const coverageSection = extractSection(content, 'TEST_COVERAGE');
+  const coverageEntries =
+    coverageSection.status === 'ok' ? parseTestCoverage(coverageSection.content) : [];
+  const testPhases = phases
+    .filter((candidate) => candidate.kind.trim().toLowerCase() === 'test')
+    .map((candidate) => {
+      const candidateSection = extractSection(content, `PHASE_${candidate.id}`);
+      return {
+        phaseId: candidate.id,
+        targets:
+          candidateSection.status === 'ok'
+            ? parsePhaseDetail(candidateSection.content).targetFiles
+            : [],
+      };
+    });
   const verificationRows = verificationTable.gates;
+  for (const gate of verificationRows.filter((candidate) => candidate.role === 'probe')) {
+    const mappings = coverageEntries.filter(
+      (entry) => entry.deferred === null && entry.probeCommand === gate.command
+    );
+    const owners = [
+      ...new Set(mappings.flatMap((entry) => matchingTestPhaseIds(entry.testFile, testPhases))),
+    ];
+    if (owners.length === 0)
+      return failure(
+        `Role=probe command '${gate.command}' has no Test Scenario Coverage row owned by a test phase; map it to one future CREATE test file first`
+      );
+    if (owners.length > 1)
+      return failure(
+        `Role=probe command '${gate.command}' is ambiguously owned by test phases ${owners.join(', ')}`
+      );
+  }
   const applicable = verificationRows.filter((gate) => {
     if (gate.command === '—') return false;
     if (gate.role === 'coverage') {
       return coveragePolicy.status === 'required' && coveragePolicy.ownerPhase === phaseId;
+    }
+    if (gate.role === 'probe') {
+      return coverageEntries.some(
+        (entry) =>
+          entry.deferred === null &&
+          entry.probeCommand === gate.command &&
+          matchingTestPhaseIds(entry.testFile, testPhases).includes(phaseId)
+      );
     }
     return gate.requiredBy.some((required) => aliases.has(required));
   });
@@ -266,6 +302,35 @@ export function resolvePhaseContext(
         : `owning spec is missing: ${relative(projectRoot, spec.specPath)}`;
     return failure(`${detail}; code/test repair refuses to omit --spec`);
   }
+  const corpus = collectTicketCorpus(projectRoot);
+  if (!corpus.ok)
+    return failure(`ticket corpus cannot resolve phase gate states: ${corpus.detail}`);
+  const planRefs = corpus.refs.some((ref) => resolve(ref.file) === resolve(taskPath))
+    ? corpus.refs
+    : [...corpus.refs, { ...ticketRef(taskPath, content), content }];
+  let scripts: Record<string, string> = {};
+  try {
+    scripts =
+      (
+        JSON.parse(readFileSync(join(projectRoot, 'package.json'), 'utf-8')) as {
+          scripts?: Record<string, string>;
+        }
+      ).scripts ?? {};
+  } catch {
+    scripts = {};
+  }
+  const gatePlan = resolvePhaseVerificationPlan({
+    refs: planRefs,
+    ticketFile: taskPath,
+    phaseId,
+    scripts,
+    availableArtifacts: new Set(
+      phaseVerificationArtifactPaths().filter((path) => existsSync(join(projectRoot, path)))
+    ),
+    mode: 'runtime',
+    profileOverride: profile,
+  });
+  if (!gatePlan) return failure(`phase '${phaseId}' gate plan cannot be resolved`);
   return {
     ok: true,
     context: {
@@ -280,7 +345,8 @@ export function resolvePhaseContext(
         role: gate.role ?? 'extra',
       })),
       ...(coveragePolicy.status === 'required' ? { coverageOwner: coveragePolicy.ownerPhase } : {}),
-      producesCoverage,
+      producesCoverage: gatePlan.producesCoverage,
+      gatePlan,
       ...(spec.ok ? { specPath: relative(projectRoot, spec.specPath) } : {}),
     },
   };

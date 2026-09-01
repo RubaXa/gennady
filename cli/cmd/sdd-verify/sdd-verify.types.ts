@@ -4,6 +4,11 @@
 // @tasks: N/A
 
 import { parseArgs } from '../../../shared/common/parse-args.ts';
+import {
+  requiredVerificationGateNames,
+  verificationGateNames,
+  type VerificationProfile,
+} from '../../../shared/sdd/phase-verification-plan.ts';
 
 /** @purpose CLI invocation carried an extra positional path, or a flag other than `--profile` — sdd-verify never silently narrows or ignores. */
 export const ERR_CLI_SDD_VERIFY_BAD_INVOCATION = 'ERR_CLI_SDD_VERIFY_BAD_INVOCATION' as const;
@@ -39,31 +44,7 @@ export const GATES: readonly Gate[] = [
 ];
 
 /** @purpose Gate profile — phase sets derive from ticket kind; only global `full` is selected explicitly. */
-export type Profile = 'setup' | 'code' | 'test' | 'full';
-
-/**
- * @purpose Gates a profile REFUSES to skip: an absent/vacuous script here → red verdict, never a
- *   green pass that dropped a quality gate.
- * @invariant `setup` requires nothing because it may create the scripts. Code/test require the
- *   canonical repair plus their foundation; full requires every read-only verdict gate.
- */
-const REQUIRED_PROFILE_GATES: Record<Profile, readonly string[]> = {
-  setup: [],
-  code: ['fix', 'type-check', 'test'],
-  test: ['fix', 'type-check', 'test:coverage'],
-  full: ['type-check', 'test:coverage', 'lint', 'format', 'yagni'],
-};
-
-// Gate names per profile, in ladder order:
-// - setup/code: one exact-target repair, then types and the flat test suite exactly once.
-// - test: the same phase repair (including test files), then types and coverage exactly once.
-// - full: read-only, no repair rungs — a final verdict must never mutate what it is judging.
-const PROFILE_GATES: Record<Profile, readonly string[]> = {
-  setup: ['fix', 'type-check', 'test'],
-  code: ['fix', 'type-check', 'test'],
-  test: ['fix', 'type-check', 'test:coverage'],
-  full: ['type-check', 'test:coverage', 'lint', 'format', 'yagni'],
-};
+export type Profile = VerificationProfile;
 
 /**
  * @purpose The gates for a profile, in canonical GATES order.
@@ -72,10 +53,7 @@ const PROFILE_GATES: Record<Profile, readonly string[]> = {
  * @returns Filtered, ordered gate list.
  */
 export function gatesFor(profile: Profile, producesCoverage = profile === 'test'): readonly Gate[] {
-  const names =
-    profile === 'test' && !producesCoverage
-      ? ['fix', 'type-check', 'test']
-      : PROFILE_GATES[profile];
+  const names = verificationGateNames(profile, producesCoverage);
   return GATES.filter((g) => names.includes(g.name));
 }
 
@@ -89,9 +67,7 @@ export function requiredGatesFor(
   profile: Profile,
   producesCoverage = profile === 'test'
 ): readonly string[] {
-  if (profile === 'setup') return [];
-  if (profile === 'test' && !producesCoverage) return ['fix', 'type-check', 'test'];
-  return REQUIRED_PROFILE_GATES[profile];
+  return requiredVerificationGateNames(profile, producesCoverage);
 }
 
 /**

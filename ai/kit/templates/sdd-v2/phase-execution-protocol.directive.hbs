@@ -4,8 +4,9 @@
     this directive's path, ticket path, phase ID, and reason. This directive plus STEP_1's
     `gennady sdd-task <ticket> --phase P<N>` output are the WHOLE working context: nothing beyond
     the anchors the tool names.
-    Never inspect CLI internals. Follow actionable tool output; an error it does not explain and
-    that cannot map to `HaltConditions` is `H_BLOCKED` — log it and stop.
+    Return every stop with evidence and a typed outcome. Technical facts are
+    `RECOVERABLE_TECHNICAL`; the orchestrator owns technical replan and operator routing. Project failures describe the
+    project plan, not Gennady internals.
 
     Read only what this phase needs; write only Target Files and remove only declared Deleted Files; run the verification gate;
     emit a typed Handoff. A worker directive — runs in isolation on a cheaper model, returns to the
@@ -81,8 +82,6 @@
 
     {{> "axiom/process/ax-halt-vs-fail-distinction"}}
 
-    {{> "axiom/process/ax-blocker-escalation"}}
-
     {{> "axiom/process/ax-deviation-self-resolve"}}
 
     {{> "axiom/process/ax-handoff-typed"}}
@@ -98,14 +97,21 @@
     | `H_INPUT_HANDOFF_MISSING` | A phase Input cites a prior phase whose Handoff is absent from `sdd-task --phase`'s `[HANDOFF]` block in the current Round |
     | `H_OUT_OF_PHASE_WRITE` | A write is required outside Target Files, a deletion outside Deleted Files, or a ticket write outside `AX_TICKET_WRITE_SCOPE` |
     | `H_THIRD_PARTY_API_UNVERIFIABLE` | `config` kind: ToolDocAdapter unsupported/ambiguous, installed version unavailable, or its permitted evidence is insufficient |
-    | `H_VERIFICATION_FAIL` | The verification gate fails after fix attempts (or tooling is missing) |
-    | `H_BLOCKED` | Generic blocker per `AX_BLOCKER_ESCALATION` — includes any tool/infrastructure error that does not map to one of the rows above |
+    | `H_VERIFICATION_FAIL` | Verification evidence is `RECOVERABLE_TECHNICAL`; the orchestrator owns bounded retry/exhaustion |
+    | `H_TECHNICAL_REPLAN` | Missing config/package/gate/CREATE target, target mismatch, tool diagnostic, or task-decomposition defect — report `RECOVERABLE_TECHNICAL` with evidence and a bounded plan to the orchestrator |
+    | `H_SPEC_GOAL_CONFLICT` | A technical repair contradicts an approved spec/BDD goal — report `SPEC_GOAL_CONFLICT` with the exact conflicting refs |
+    | `H_EXTERNAL_AUTHORITY_REQUIRED` | Completion requires permission or external authority unavailable to the worker — report `EXTERNAL_AUTHORITY_REQUIRED` with evidence |
   </HaltConditions>
 
+  <OutcomeRouting>
+    `H_VERIFICATION_FAIL` and `H_TECHNICAL_REPLAN` return `RECOVERABLE_TECHNICAL`;
+    `H_SPEC_GOAL_CONFLICT` returns `SPEC_GOAL_CONFLICT`; `H_EXTERNAL_AUTHORITY_REQUIRED` returns
+    `EXTERNAL_AUTHORITY_REQUIRED`. The orchestrator owns every NEXT transition.
+  </OutcomeRouting>
+
   <ContextExpectation>
-    The orchestrator's dispatch prompt is short, by design: this directive's path, the ticket path,
-    the phase ID, kind + reason (`initial` / `fix: F-NNN` / `resume`), and at most 1-3 lines of
-    context the ticket genuinely does not carry. It does NOT paste the read-manifest, the gates, or
+    Dispatch contains only this directive path, ticket, phase, kind + reason (`initial` / `fix:
+    F-NNN` / `resume`), and 1-3 context lines the ticket lacks. It does NOT paste the read-manifest, gates, or
     prior Handoff — STEP_1 gets all of that directly, as the first action of this phase, by calling
     `sdd-task` itself. A tool call made fresh at the start of THIS run cannot go stale between
     dispatch and execution — the concern a pasted-prompt approach had on a retry.
@@ -149,9 +155,9 @@
     warning before handoff. Consumed scratch leaves phase source-state unchanged; never blanket-ignore
     other `.claude/tmp/` mutations.
 
-    Follow the next action printed by a failed gate/tool. If none is actionable, emit `H_BLOCKED`
-    per `AX_BLOCKER_ESCALATION`, surfaced as PAUSED (`AX_HALT_VS_FAIL_DISTINCTION`); do not inspect
-    its source.
+    Follow the next action printed by a failed gate/tool. If none is actionable, return
+    `RECOVERABLE_TECHNICAL` with that diagnostic as evidence; if execution requires an unavailable
+    permission, return `EXTERNAL_AUTHORITY_REQUIRED`. The orchestrator owns the transition.
   </ContextExpectation>
 
   <PhaseProcedure>
@@ -236,9 +242,9 @@
           | `android/gradle` | unsupported — no registered adapter | none |
 
           An ambiguous ecosystem, unregistered tool, unsupported adapter, missing installed version,
-          or insufficient permitted evidence → `H_THIRD_PARTY_API_UNVERIFIABLE`. Its blocker
-          `unblock` asks the operator for the exact version plus official/persisted docs or a
-          registered adapter; apply `AX_BLOCKER_ESCALATION` and stop. Never guess, call `--help`,
+          or insufficient permitted evidence → `H_THIRD_PARTY_API_UNVERIFIABLE`. Missing adapter,
+          version, or persisted docs is `RECOVERABLE_TECHNICAL`; an exact external-access permission
+          is `EXTERNAL_AUTHORITY_REQUIRED`. Return evidence and the bounded next action. Never guess, call `--help`,
           explore an undeclared cache, inspect tool internals, or access the network outside the
           selected adapter's remote policy.
         </ToolDocAdapterRegistry>
@@ -311,22 +317,23 @@
 
         On failure, fix only inside this phase's Target Files (regardless of age), then start a new attempt
         with the same command. Restore/remove a tombstone only through its declared `Deleted Files` outcome;
-        tombstones are never repair targets. If remediation belongs to specs, another phase, or shared config this phase did not create,
-        write strict JSON `{ "reason": "...", "axiom": "AX_...", "unblock": "..." }` to
-        `.claude/tmp/<task-id>-<phase-id>-blocker.json`, run blockerLog ToolCall below, and halt
-        `H_BLOCKED`; never widen the write zone. An
+        tombstones are never repair targets. If remediation belongs to another technical phase,
+        edge, artifact owner, package/config/gate, or a missing CREATE target, return
+        `RECOVERABLE_TECHNICAL` with exact evidence and bounded task/DAG/artifact edits. The
+        orchestrator records the checkpoint, amends the technical plan, reruns deterministic checks,
+        and redispatches; this worker keeps the declared write zone. An
         out-of-inventory export is removed or logged as `intro <name> ← <reason>` for audit backflow
-        (`AX_CLOSED_WORLD_INVENTORY`); failure pauses or fails by `AX_HALT_VS_FAIL_DISTINCTION`;
+        (`AX_CLOSED_WORLD_INVENTORY`); failure returns a typed outcome per `AX_HALT_VS_FAIL_DISTINCTION`;
         unsafe casts are removed or explicitly justified per `AX_NO_SILENT_ESCAPE_HATCH`.
         If the same in-zone verification failure remains after its fixes, or its required tooling is
-        unavailable, halt `H_VERIFICATION_FAIL`; a checked phase without a receipt is never an exit.
+        unavailable, return `RECOVERABLE_TECHNICAL`; a checked phase without a receipt is never an
+        exit. The orchestrator alone classifies replan exhaustion after the recorded budget.
         Once the cause is actually gone, write exact remediation to the phase log payload and run
         resolutionLog ToolCall below into THIS SAME phase block, per `AX_BLOCKER_RESOLUTION_TRAIL`;
         logged by whoever resumes the ticket (this phase's own retry, or the orchestrator), never a manual `Edit`.
         Inputs <ticket>: STEP_1 ticket identity.
         <ToolCall owner="phase-worker" result="verification">npx gennady sdd-verify --task <ticket-path> --phase <PhaseID></ToolCall> Inputs <ticket-path>: <ticket-path>=canonical path returned by STEP_1; <PhaseID>=exact STEP_1 phase. Use verification.
-        <ToolCall owner="phase-worker" result="blockerLog">npx gennady sdd-log <ticket> blocker --payload-file .claude/tmp/<task-id>-<phase-id>-blocker.json --phase <PhaseID></ToolCall> Use blockerLog.
-        <ToolCall owner="phase-worker" result="resolutionLog">npx gennady sdd-log <ticket> resolved --content-file .claude/tmp/<task-id>-<phase-id>-log.txt --phase <PhaseID></ToolCall> Use resolutionLog.
+        <ToolCall owner="phase-worker" result="resolutionLog">npx gennady sdd-log <ticket> resolved --content-file .claude/tmp/<task-id>-<phase-id>-log.txt --phase <PhaseID></ToolCall> Inputs <task-id>, <phase-id>: exact current task and phase from phaseContext. Use resolutionLog.
       </Action>
     </Step>
     <Step id="STEP_6_EMIT_HANDOFF">

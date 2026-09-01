@@ -34,6 +34,30 @@ function sessionPath(): string {
   return join(dir, 'specs', '.sdd-session.md');
 }
 
+const TARGET_A = 'a'.repeat(64);
+const TARGET_B = 'b'.repeat(64);
+
+function feasibilityEvent(
+  seq: number,
+  event: string,
+  payload: Record<string, unknown>,
+  cycle = 'draft60-regression'
+): string {
+  return JSON.stringify({
+    schema: 'sdd-scaffold-feasibility/v1',
+    cycle,
+    seq,
+    event,
+    payload,
+  });
+}
+
+async function submitFeasibility(payload: string) {
+  const relative = '.claude/tmp/sdd-scaffold-feasibility-event.json';
+  writeFileSync(join(dir, relative), payload, 'utf-8');
+  return mod.run(argv('feasibility', '--content-file', relative), CLOCK);
+}
+
 describe('SddSessionCommand', () => {
   before(async () => {
     origExit = process.exit;
@@ -303,6 +327,119 @@ describe('SddSessionCommand', () => {
       assert.match(session, /  - specs\/app\/app\.spec\.md — scaffold target — open/);
       assert.match(session, /  - specs\/app\/ui\/ui\.spec\.md — scaffold target — open/);
       assert.match(session, /  - specs\/shared\/contracts\.spec\.md — dependency context — open/);
+    });
+
+    it('records the draft.60 three-result lifecycle without losing worker identity', async () => {
+      const targetsA = { 'specs/app/app.task.TA-a.md': TARGET_A };
+      const targetsB = { 'specs/app/app.task.TA-a.md': TARGET_B };
+      const events = [
+        feasibilityEvent(1, 'opened', {
+          targets: targetsA,
+          fallbackUsed: false,
+          resultCount: 0,
+          activeCap: 5,
+        }),
+        feasibilityEvent(2, 'worker-state', {
+          availability: 'alive',
+          workerSession: 'critic-session-60',
+          fallbackUsed: false,
+        }),
+        feasibilityEvent(3, 'sensor-result', {
+          resultCount: 1,
+          verdict: 'CHANGES',
+          changes: ['repair first ticket set'],
+          targets: targetsA,
+        }),
+        feasibilityEvent(4, 'target-refreshed', {
+          targets: targetsB,
+          changedTickets: ['specs/app/app.task.TA-a.md'],
+        }),
+        feasibilityEvent(5, 'sensor-result', {
+          resultCount: 2,
+          verdict: 'CHANGES',
+          changes: ['repair second ticket set'],
+          targets: targetsB,
+        }),
+        feasibilityEvent(6, 'target-refreshed', {
+          targets: targetsA,
+          changedTickets: ['specs/app/app.task.TA-a.md'],
+        }),
+        feasibilityEvent(7, 'sensor-result', {
+          resultCount: 3,
+          verdict: 'CLEAN',
+          changes: [],
+          targets: targetsA,
+        }),
+        feasibilityEvent(8, 'gate2-choice', {
+          choices: ['approved test plan'],
+          changedTickets: [],
+        }),
+        feasibilityEvent(9, 'closed', {}),
+      ];
+      const outcomes = [];
+      for (const event of events) outcomes.push(await submitFeasibility(event));
+
+      assert.ok(outcomes.every((outcome) => outcome.ok));
+      const final = outcomes.at(-1);
+      if (final?.ok) {
+        assert.match(final.text, /^\[sdd-session\] feasibility event accepted/m);
+        assert.match(
+          final.text,
+          /NEXT=CLOSE_SESSION.+resultCount=3.+workerSession=critic-session-60/
+        );
+      }
+      const session = readFileSync(sessionPath(), 'utf-8');
+      assert.strictEqual(session.match(/"event":"sensor-result"/g)?.length, 3);
+      assert.match(session, /"workerSession":"critic-session-60"/);
+      assert.match(session, /"resultCount":1/);
+      assert.match(session, /"resultCount":2/);
+      assert.match(session, /"resultCount":3/);
+    });
+
+    it('rejects a direct result #3 or omitted worker-state without mutating the session', async () => {
+      const targets = { 'specs/app/app.task.TA-a.md': TARGET_A };
+      const opened = await submitFeasibility(
+        feasibilityEvent(1, 'opened', {
+          targets,
+          fallbackUsed: false,
+          resultCount: 0,
+          activeCap: 5,
+        })
+      );
+      assert.strictEqual(opened.ok, true);
+      const afterOpened = readFileSync(sessionPath(), 'utf-8');
+      const missingWorker = await submitFeasibility(
+        feasibilityEvent(2, 'sensor-result', {
+          resultCount: 1,
+          verdict: 'CHANGES',
+          changes: ['x'],
+          targets,
+        })
+      );
+      assert.strictEqual(missingWorker.ok, false);
+      assert.strictEqual(readFileSync(sessionPath(), 'utf-8'), afterOpened);
+
+      const worker = await submitFeasibility(
+        feasibilityEvent(2, 'worker-state', {
+          availability: 'alive',
+          workerSession: 'critic-session-60',
+          fallbackUsed: false,
+        })
+      );
+      assert.strictEqual(worker.ok, true);
+      const beforeJump = readFileSync(sessionPath(), 'utf-8');
+      const jump = await submitFeasibility(
+        feasibilityEvent(3, 'sensor-result', {
+          resultCount: 3,
+          verdict: 'CLEAN',
+          changes: [],
+          targets,
+        })
+      );
+      assert.strictEqual(jump.ok, false);
+      if (!jump.ok) assert.match(jump.message, /resultCount must be 1/);
+      assert.strictEqual(readFileSync(sessionPath(), 'utf-8'), beforeJump);
+      assert.ok(existsSync(join(dir, '.claude/tmp/sdd-scaffold-feasibility-event.json')));
     });
 
     it('rejects outside/symlink/oversize payloads and unknown/repeated flags without session mutation', async () => {

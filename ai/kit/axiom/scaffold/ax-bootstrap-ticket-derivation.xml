@@ -1,30 +1,19 @@
 <!-- source: ai/directives/sdd/scaffold.directive.xml -->
 <Axiom id="AX_BOOTSTRAP_TICKET_DERIVATION">
-      **Bootstrap Requirements rows with Owner=`this-scope-task` aggregate into the minimum number of tickets per `AX_DAG_AND_TICKET_BOUNDARIES`.** Default — group by Resolution affinity (all `package` rows → one «install deps» ticket; all `structural` rows editing the same config file → one ticket); subdivide only when (P) parallel-executable or (C) context overflow. Source: scope spec Bootstrap Requirements (infrastructure 9, contracts 7, library 8, product 8).
+      **Bootstrap Requirements rows with Owner=`this-scope-task` become the minimum coherent capability workstreams per `AX_DAG_AND_TICKET_BOUNDARIES`.** Derive only layers demanded by the selected requirements: runtime → package manager/dependencies → language/compiler → quality/test tooling → app platform. This is a platform-neutral taxonomy, not a mandatory five-ticket stack; adapter ids bind the concrete platform facts.
       Each emitted node carries its closed owner kind: infrastructure rows → `infrastructure-flat`;
       product/library `this-scope-task` rows → `scope-bootstrap`; product/library module work →
       `module`. No fourth owner exists; interface never owns a task.
       - Rows with Owner=`external-prereq-scope` → cross-scope dependency edge, not a ticket here.
       - Rows with Owner=`operator-action` → noted in tracker index as a blocking external prerequisite, not a ticket.
-      - Bootstrap tickets must be DONE before any non-bootstrap ticket of the same scope (e.g. `install package` precedes `wire config that uses package`).
-      - Package/tool rows materialize one explicit dependency provider phase: `Bootstrap Action: dependency-install`,
-        `Provides Packages: <exact package names>`, and Target Files containing both `package.json` and
-        the active clean-HEAD lockfile. Every phase that needs those tools declares `Requires Packages:`
-        and its ticket depends forward on that provider. Provider→consumer reverse edges and cycles are
-        invalid; a later “install deps” ticket cannot rescue an earlier config/gate ticket.
-      - Bootstrap tickets carry Verification populated from the Resolution column (e.g. `npm ls <pkg>` exit 0)
-        — ONE `npm ls <pkg>` call PER package, never a single `npm ls pkg1 pkg2 ...` covering several:
-        a multi-package call can exit 0 as soon as one of the named packages resolves, silently masking
-        an absent one among the rest (observed with a missing optional-peer package, e.g.
-        `@vitest/coverage-v8`, riding alongside a resolved `vitest` in the same call) — the gate passes
-        while a real dependency is missing. One call per package makes that package's own absence
-        surface as that call's own non-zero exit, with nowhere to hide behind a sibling that did resolve.
-      - **Every shared infra file — `package.json` plus its active lockfile, scripts, `.nvmrc`, a tool config a bootstrap ticket
-        creates or edits — gets EXACTLY ONE ticket-owner: the bootstrap ticket whose Target Files list
-        it.** Any OTHER ticket whose phase reads or extends that same file (adds a script, bumps the
-        pinned tool version) does not re-derive ownership by grepping neighboring tickets — its phase
-        text carries an explicit line naming the owner, `владелец — <ticket>` (or `owner — <ticket>`),
-        written at scaffold time, so the worker executing that phase already knows whose ticket to
-        defer to / coordinate with without a search.
+      - For each selected layer declare `Capability Adapter`, `Provides Capabilities`, and exact `Requires Capabilities`; every requirement reaches exactly one current/upstream provider through the phase/task DAG.
+      - Every package mutation declares `Bootstrap Action: dependency-install`, exact `Provides Packages`, and Target Files containing the adapter manifest plus future/active lockfile. Consumers declare exact `Requires Packages`. Several layers may write the same manifest/lock only when the DAG strictly serializes them; no global single-owner rule exists.
+      - Populate Verification from the Bootstrap Requirements Resolution command. One package probe proves one exact package; do not merge unrelated package probes.
+      - A causally coupled dependency → config → command-smoke workstream is one DAG-connected ordered
+        chain; coherent spec/context boundaries may split it across serialized tickets or phases. Never gate
+        an earlier node on a later artifact. Project-wide wrappers belong to readiness/full audit.
+        Role=`probe` belongs to the unique test phase owning its mapped test file; `Required-by` is
+        traceability, not phase routing.
+      - The authoring and feasibility tool calls own adapter lookup, rule-file evidence, provider uniqueness/order, package materialization, shared-writer serialization, and smoke ownership diagnostics. Apply their exact finding and rerun; do not reconstruct those mechanics in prose.
       - If Bootstrap Requirements is absent from the spec → abort with `H_BOOTSTRAP_REQUIREMENTS_MISSING` (the spec did not pass discovery STEP_7).
     </Axiom>

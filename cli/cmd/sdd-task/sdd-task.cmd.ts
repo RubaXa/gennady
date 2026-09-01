@@ -40,6 +40,10 @@ import { checkPhaseDependencies } from '../../../shared/sdd/phase-dependencies.t
 import { phaseReceiptIssue } from '../sdd-verify/phase-receipt-validation.ts';
 import { isGennadyLintTarget } from '../lint/lint-source-policy.ts';
 import {
+  phaseVerificationArtifactPaths,
+  resolvePhaseVerificationPlan,
+} from '../../../shared/sdd/phase-verification-plan.ts';
+import {
   fileError,
   formatPlan,
   formatPhase,
@@ -155,13 +159,20 @@ function formatMap(refs: TicketCorpusRef[], root: string): string {
   for (const d of gateQueue.diagnostics) {
     lines.push(`GATE_QUEUE_DIAG: ${d.message}`);
   }
+  const needsScaffold = gateQueue.diagnostics.some(
+    (diagnostic) => diagnostic.kind === 'infra-spec-no-tickets'
+  );
   lines.push(
     '',
     pickable.length
       ? readiness.executionReady
         ? 'next: возьми Task-ID из pickable и вызови `sdd-task <id>` за планом фаз.'
         : 'next: возьми Task-ID из GATE_QUEUE/pickable и вызови `sdd-task <id>` за bootstrap-планом.'
-      : 'next: pickable пуст — разблокируй одну из blocked (закрой её зависимости), затем повтори.'
+      : needsScaffold
+        ? 'next: bootstrap-тикетов ещё нет — запусти `/sdd-scaffold` по готовым спецификациям.'
+        : blocked.length > 0
+          ? 'next: pickable пуст — разблокируй одну из blocked (закрой её зависимости), затем повтори.'
+          : 'next: активных TODO-тикетов нет — вызови `sdd-state` для следующего шага.'
   );
   return lines.join('\n');
 }
@@ -477,6 +488,29 @@ export async function run(rawArgs: string[], projectRoot = resolve('.')): Promis
     // F-NNN` tag, so it stops grepping the repo for what the audit actually found.
     const auditSec = extractHeadingSection(content, 'audit-rounds');
     const auditRounds = auditSec.status === 'ok' ? auditSec.content : null;
+    const corpus = collectTicketCorpus(root);
+    if (!corpus.ok) return ticketCorpusError(root, corpus.detail);
+    let scripts: Record<string, string> = {};
+    try {
+      scripts =
+        (
+          JSON.parse(readFileSync(join(root, 'package.json'), 'utf-8')) as {
+            scripts?: Record<string, string>;
+          }
+        ).scripts ?? {};
+    } catch {
+      scripts = {};
+    }
+    const verificationPlan = resolvePhaseVerificationPlan({
+      refs: corpus.refs,
+      ticketFile: resolved.path,
+      phaseId,
+      scripts,
+      availableArtifacts: new Set(
+        phaseVerificationArtifactPaths().filter((path) => existsSync(join(root, path)))
+      ),
+      mode: 'runtime',
+    });
     const phaseOutcome = formatPhase(
       meta,
       phases,
@@ -490,7 +524,8 @@ export async function run(rawArgs: string[], projectRoot = resolve('.')): Promis
           (target) => !phasePaths.paths.createTargets.includes(target)
         ),
         createFiles: phasePaths.paths.createTargets,
-      }
+      },
+      verificationPlan ?? undefined
     );
     return withResolutionLine(
       infraExemptionNote && phaseOutcome.ok

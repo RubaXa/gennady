@@ -79,10 +79,10 @@ describe('SDD session lifetime contract', () => {
       /`stop here`.+keep the ready tickets and open session intact.+TerminalDecision: pause/s
     );
 
-    const capAndBlockerSources = [scaffold, execute, lifecycle].join('\n');
-    assert.match(capAndBlockerSources, /active cap.+TerminalDecision: pause/s);
-    assert.match(execute, /H_PAUSED_AWAITING_OPERATOR.+TerminalDecision: pause/);
-    assert.match(execute, /H_CODE_REVIEW_BLOCKER.+`pause`.+preserve the SDD session/);
+    assert.match(scaffold, /NEXT=ASK_OPERATOR_CAP.+operator-disposition/s);
+    assert.match(execute, /H_PAUSED_AWAITING_OPERATOR.+ASK_OPERATOR_SPEC_GOAL_CONFLICT/);
+    assert.doesNotMatch(execute, /H_CODE_REVIEW_BLOCKER/);
+    assert.match(execute, /SPEC_GOAL_CONFLICT.+operator/);
     assert.match(lifecycle, /H_AWAITING_EXTERNAL_REVIEW.+TerminalDecision: pause/);
   });
 

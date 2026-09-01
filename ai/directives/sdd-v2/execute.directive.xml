@@ -80,7 +80,10 @@
     <Axiom id="AX_BLOCKER_RESOLUTION_TRAIL">
       A BLOCKER entry in Execution Log (line containing `🛑` and `BLOCKED`) remains ACTIVE until a later Round entry explicitly marks it RESOLVED. Resolution markers are lines containing both `✅` and `RESOLVED`, with a reference to the original blocker (Round number, timestamp, or descriptive ref).
 
-      Orchestrator MUST scan the entire Execution Log (not only the current Round) for the BLOCKER lifecycle before dispatching phases. The source is the `[BLOCKERS]` section `sdd-task <ticket>` already returns as part of its one planning call — `blockers: none` or `blockers: ACTIVE <n>` with one line per active blocker, computed from the same `🛑 BLOCKED` / `✅ RESOLVED` pairing mechanically. Take that section as given: `blockers: ACTIVE <n>` halts as PAUSED awaiting operator (NOT failed, see `AX_HALT_VS_FAIL_DISTINCTION`); `blockers: none` is CLEAR to dispatch. Do NOT spend a separate `sdd-check --task` call re-deriving this at plan time — that tool remains available as a point-recheck for audit and other out-of-band verification, not as a second call on the orchestrator's hot path. If `sdd-task` is unavailable, fall back to scanning the log by hand for the same `🛑 BLOCKED` / `✅ RESOLVED` pairing.
+      Orchestrator consumes the `[BLOCKERS]` section already returned by `sdd-task <ticket>`.
+      `blockers: none` is clear; each `blockers: ACTIVE <n>` entry is classified through the typed
+      checkpoint as recoverable technical, spec-goal conflict, or external authority. Active history
+      never implies an operator pause by itself. Do not spend a second check call or reconstruct it.
 
       Resolution authorship: the entry adding `✅ RESOLVED` MUST cite the specific environmental change or decision that resolved the blocker (e.g. "tsconfig moduleResolution fixed", "operator chose option B"). Empty resolution text → audit treats as fabricated and may re-flag.
 
@@ -100,11 +103,10 @@
       directly (`AX_OWNER`).
 
       Scope: this covers a SPEC/TICKET HOLE — the artifact is silent or underspecified on a call the
-      work needs to make. It does NOT cover an environment/infra blocker (`AX_BLOCKER_ESCALATION`,
-      `H_PAUSED_AWAITING_OPERATOR`) or a risk-acceptance on an open `MAJOR` audit finding (execute
-      STEP_6_BRANCH) — both stay a pause; they are about risk and environment, not a gap in the spec.
-      Test: "can I honor the artifact's stated intent with a sound default?" → self-resolve; "does
-      proceeding need the operator's own risk tolerance, or an environment I cannot fix?" → pause.
+      work needs to make. Technical environment/infra gaps use `RECOVERABLE_TECHNICAL`; exact missing
+      permission uses `EXTERNAL_AUTHORITY_REQUIRED`. Product-risk acceptance on an open `MAJOR` remains
+      an operator decision. Test: "can I honor the approved goals with a sound technical default?" →
+      self-resolve/replan; "does this change product intent or need external authority?" → typed boundary.
 
       The orchestrator collects every `deviations:` entry across the run just finished — one ticket, or
       every ticket of a `batch` — and raises them ONCE, at the very end, as a single batched
@@ -160,29 +162,6 @@
       Finalizing a test = re-checking isolation, naming, anchor pairing, snapshot placement, and the diagnostic quality of failures, then running type-check + tests with coverage. Blocker → declared EXPLICITLY.
     </Axiom>
 
-    <Axiom id="AX_ENV_FIX_CHANNEL">
-      The orchestrator does not write code or specs (`HardForbidden`). This axiom carves one narrow,
-      opt-in exception for infrastructure noise that blocks the gate itself — not for the codebase the
-      task is about.
-
-      Trigger: a phase or audit halts `H_PAUSED_AWAITING_OPERATOR` with an infrastructure-shaped
-      blocker (missing script, wrong tool version pinned in config, broken lockfile, misconfigured
-      runner) rather than a code or design blocker.
-
-      Then, and only then, the orchestrator MAY propose a point fix scoped to environment/config
-      artifacts only — `package.json` scripts, tool config files, lockfiles — NEVER production code
-      under the module's `Target Files` and NEVER `specs/**` (`AX_SPEC_NEVER_EDITED` still applies to
-      the orchestrator). The proposal is a decision-card: the blocker it resolves, the exact diff to
-      apply, and why a narrower fix will not do. It is presented to the operator and nothing is
-      written until the operator gives explicit approval of THAT specific diff — silence, a generic
-      "go ahead", or approval of a different fix does not count.
-
-      Only after explicit approval: apply the diff, append `<ts> env-fix <file> ← <operator decision
-      ref>` to the Execution Log (distinct tag from `decision` / `insight`, so audit can find it
-      without confusing it with a phase's own work), and mention the fix in
-      `EXECUTE_SUMMARY_FORMAT`. Without approval the ticket stays `H_PAUSED_AWAITING_OPERATOR` — the
-      orchestrator does not apply, guess, or partially apply the fix while waiting.
-    </Axiom>
   </BeliefState>
 
   <SessionState>
@@ -193,10 +172,10 @@
     |---|---|
     | `H_NO_TASKS` | No task index / no pickable task — no dispatch; terminal choice is still explicit, never inferred |
     | `H_AMBIGUOUS_TASK` | "next" / "pick" matches two or more pickable tasks — show Task-ID + ticket-path shortlist and wait for the operator |
-    | `H_PAUSED_AWAITING_OPERATOR` | Unresolved blocker in the log, or a phase returned BLOCKED / FAIL — `TerminalDecision: pause` (NOT a failure); preserve the SDD session, operator resolves, then re-runs. An infrastructure-shaped blocker MAY instead be resolved via the narrow `AX_ENV_FIX_CHANNEL` (operator-approved point fix to env/config, never code or specs) |
-    | `H_AUDIT_FAIL_AFTER_RETRY` | Audit still FAIL after 2 attempts — `pause`, preserve the SDD session for manual intervention |
-    | `H_CODE_REVIEW_BLOCKER` | Code-review returned a `BLOCKER` bug — `pause` and preserve the SDD session for the operator (not an auto-retry) |
-    | `H_WORKER_INTERRUPTED` | Same phase's dispatch came back with no typed Handoff twice in a row (cancelled / timed out / crashed, not a verdict) — `pause`; preserve the SDD session while the operator checks the environment, then re-runs |
+    | `H_PAUSED_AWAITING_OPERATOR` | A phase checkpoint NEXT is `ASK_OPERATOR_SPEC_GOAL_CONFLICT`, `ASK_OPERATOR_EXTERNAL_AUTHORITY_REQUIRED`, or `ASK_OPERATOR_TECHNICAL_REPLAN_EXHAUSTED`; an audit/code-review branch may raise the same exact typed halt with its own retained evidence. Generic BLOCKED / FAIL is unclassified input, not an operator boundary |
+    | `H_TECHNICAL_REPLAN_EXHAUSTED` | A phase checkpoint or the bounded audit lifecycle proves the technical retry budget is consumed — operator receives the retained evidence |
+    | `H_SPEC_GOAL_CONFLICT` | A proposed repair contradicts approved spec/BDD goals — operator owns the product decision |
+    | `H_EXTERNAL_AUTHORITY_REQUIRED` | Progress requires external permission/authority unavailable to the orchestrator or repeated worker interruption proves the environment unavailable |
   </HaltConditions>
 
   <ContextExpectation>
@@ -216,15 +195,15 @@
     | `sdd-log <ticket> round "<reason>"` | STEP_1_PLAN — open a new Round (auto-numbered, dated) | `npx gennady sdd-log <ticket> round "execute <Task-ID>"` |
     | `sdd-log <ticket> close` | STEP_3_CLOSE_ROUND — append the Round-close block | `npx gennady sdd-log <ticket> close` |
     | `sdd-sync <ticket>` | STEP_4_SYNC — propagate ticket Status into every `*.3-tasks.md` from the ticket upward, verify the write | `npx gennady sdd-sync <ticket>` |
-    | `sdd-log <ticket> line --content-file <payload> --phase <PhaseID>` | The ONE sanctioned `line` form for this orchestrator — only after explicit operator approval of the exact diff, per `AX_ENV_FIX_CHANNEL`; write literal `env-fix <file> ← <operator decision ref>` to `.claude/tmp/<task-id>-env-fix.txt` first | `npx gennady sdd-log <ticket> line --content-file .claude/tmp/<task-id>-env-fix.txt --phase <PhaseID>` |
     | `sdd-state [project-root]` | Deterministic FLOW_VERSION / READINESS snapshot — STEP_0B_PREFLIGHT already gets this from the `sdd-task` map's own `гейты:` line; call directly only when nothing else has surfaced it yet | `npx gennady sdd-state` |
     | `sdd-check --task <ticket>` | A point re-check after a fix — never a substitute for `sdd-task`'s own lifecycle verdict at STEP_1_PLAN (that call there is the wasted-turn case the step's own text already forbids) | `npx gennady sdd-check --task <ticket>` |
+    | `sdd-session checkpoint --content-file <payload>` | After every phase-worker return — validate/fold `sdd-worker-checkpoint/v1` and return the sole `NEXT=` transition | `npx gennady sdd-session checkpoint --content-file .claude/tmp/<task-id>-<phase-id>-worker-checkpoint.json` |
+    | `sdd-check --task <ticket> --authoring` | Recoverable technical replan — validate amended task facts before redispatch | `npx gennady sdd-check --task <ticket> --authoring` |
+    | `sdd-check --scaffold-feasibility` | Recoverable technical replan — validate the amended capability/DAG boundary before redispatch | `npx gennady sdd-check --scaffold-feasibility` |
 
-    `round` and `close` are this directive's ONLY two unconditional `sdd-log` modes; `phase` /
-    `handoff` / `blocker` belong exclusively to the worker (`phase-execution-protocol`) with no
-    exception. `line` is likewise off-limits EXCEPT the single env-fix form in the table above —
-    the `AX_ENV_FIX_CHANNEL` write, sanctioned only after explicit prior operator approval of the
-    exact diff; see the logging-zone rule at STEP_3_CLOSE_ROUND and `HardForbidden` below.
+    `round` and `close` are this directive's ONLY two `sdd-log` modes; phase event/handoff writes
+    belong to the worker. Technical recovery amends task/DAG/deviation facts, then redispatches the
+    owning worker; the orchestrator does not patch package/config targets itself.
   </ContextExpectation>
 
   <ExecutionPlan>
@@ -255,8 +234,8 @@
         selected plan are the deterministic sources; the worker owns phase context.
 
         The single-ticket flow (STEP_1–8) runs per selected ticket; in `batch` it loops, re-fetching the
-        map after each ticket (statuses change as tickets finish), until the map is empty or a ticket
-        pauses (`H_PAUSED_AWAITING_OPERATOR`).
+        map after each ticket (statuses change as tickets finish), until the map is empty or a typed
+        checkpoint reaches one of the three authority boundaries.
         <ToolCall owner="this-step" result="executionMap">npx gennady sdd-task</ToolCall> Use executionMap.
       </Action>
     </Step>
@@ -277,13 +256,14 @@
         ticketPlan ToolCall below returns Meta + Phases Overview + per-phase read-manifests + gates + a
         `[BLOCKERS]` section — the only ticket read I do. Preflight blocker scan reads that
         `[BLOCKERS]` section directly (`AX_BLOCKER_RESOLUTION_TRAIL`): `blockers: none` → clear to
-        dispatch; `blockers: ACTIVE <n>` (each active blocker listed with its log text) →
-        `H_PAUSED_AWAITING_OPERATOR`. A separate `sdd-check --task` call at this step is a wasted
+        dispatch; every `blockers: ACTIVE <n>` entry is classified into
+        `RECOVERABLE_TECHNICAL`, `SPEC_GOAL_CONFLICT`, or `EXTERNAL_AUTHORITY_REQUIRED` and recorded
+        through workerCheckpoint before routing. A separate `sdd-check --task` call at this step is a wasted
         turn — `sdd-task` already carries the same lifecycle verdict (the execute-family mirror of
         the router's one-`sdd-state`-call rule); `sdd-check --task` remains the tool for a
         point-recheck under audit, not for this step. State from Phases Overview: all `[ ]` → fresh
         (all phases by `Deps`); mixed → resume (remaining); all `[x]` + no audit → audit only; any
-        `[!]` → pause. Open a new Round via exact roundLog ToolCall below.
+        `[!]` → classify through the same typed checkpoint. Open a new Round via exact roundLog ToolCall below.
         <ToolCall owner="this-step" result="ticketPlan">npx gennady sdd-task <ticket></ToolCall> Use ticketPlan.
         <ToolCall owner="this-step" result="roundLog">npx gennady sdd-log <ticket> round "execute <Task-ID>"</ToolCall> Inputs <Task-ID>: <ticket>=same selected value passed to this STEP_1 sdd-task; <Task-ID>=literal Meta Task-ID returned by that call. Use roundLog.
       </Action>
@@ -326,8 +306,9 @@
         the phase kind + reason (`initial` / `fix: F-NNN` / `resume`) when it is not already inferable, and
         for any orchestrator knowledge genuinely absent from the ticket the tool will surface; never a
         restatement of read-manifest files, Rules, Target Files, or gates — the worker's own tool call
-        already supplies those, verbatim and current. Require the report back regardless: DONE / BLOCKED /
-        FAIL plus the worker's typed `**Handoff →**` line verbatim (`RETURN_SUMMARY_FORMAT`,
+        already supplies those, verbatim and current. Require the typed report back regardless:
+        outcome, evidence, attempt/budget, technical plan, durable refs, plus the worker's typed
+        `**Handoff →**` line verbatim (`RETURN_SUMMARY_FORMAT`,
         `AX_HANDOFF_TYPED`) — thread exactly that into the next phase's Inputs, never a paraphrase. Emit a
         progress line per transition (`ORCHESTRATOR_PROGRESS_FORMAT`); every line carries its canonical
         `task=`, `stage=`, and `session=` fields. The dispatch-stage line names which path
@@ -337,8 +318,21 @@
         when a fresh worker was raised instead — one line, always present, so a live run makes
         whether reuse is actually happening observable rather than assumed.
 
+        Write that return as exact `sdd-worker-checkpoint/v1` JSON to the checkpoint payload and run
+        workerCheckpoint below. Use workerCheckpoint.next as the sole transition. The orchestrator,
+        not the worker, owns bounded technical task/DAG/artifact amendments. On
+        `AUTO_REPLAN_AND_CONTINUE`, append the cited Decision/Deviation evidence, amend only technical
+        phases, edges, and artifacts inside approved spec/BDD goals, run authoringRecheck,
+        feasibilityRecheck, and refreshedTaskMap below, then redispatch the same phase. The replan
+        does not weaken requirements, BDD, coverage, or verification.
+
         <LogicSwitch on="worker dispatch outcome">
-        - WHEN `BLOCKED` / `FAIL` -> stop, no audit; `H_PAUSED_AWAITING_OPERATOR`
+        - WHEN `RECOVERABLE_TECHNICAL` -> `AUTO_REPLAN` inside approved goals + `DEVIATION_LEDGER`; consume `NEXT=AUTO_REPLAN_AND_CONTINUE`, recheck, redispatch
+        - WHEN `CONTEXT_ROTATION` -> consume `NEXT=ROTATE_EXECUTE_WORKER`; retain task/phase/attempt and durable refs, then continue in the replacement worker
+        - WHEN `SPEC_GOAL_CONFLICT` -> `H_SPEC_GOAL_CONFLICT`; consume `NEXT=ASK_OPERATOR_SPEC_GOAL_CONFLICT`
+        - WHEN `EXTERNAL_AUTHORITY_REQUIRED` -> `H_EXTERNAL_AUTHORITY_REQUIRED`; consume `NEXT=ASK_OPERATOR_EXTERNAL_AUTHORITY_REQUIRED`
+        - WHEN `TECHNICAL_REPLAN_EXHAUSTED` -> `OPERATOR`; consume `NEXT=ASK_OPERATOR_TECHNICAL_REPLAN_EXHAUSTED`
+        - WHEN `BLOCKED` / `FAIL` -> `CLASSIFY_CHECKPOINT`; reject generic status and request typed evidence from the worker, without an operator transition
         - WHEN `DONE`             -> record Handoff in working memory (for threading and the STEP_8
           aggregation — the worker's own STEP_6_EMIT_HANDOFF already wrote it to the Execution Log;
           this directive never re-logs it), thread it into the next phase's Inputs; carry
@@ -352,8 +346,12 @@
           it exactly ONCE, same phase, the identical 3-line activation above — the worker's own
           `STEP_1B_RESUME_OR_START` finds any block it already opened for this phase and continues from
           there, so resuming never redoes or duplicates logged work. Same phase interrupted again on that
-          retry -> stop, no audit; `H_WORKER_INTERRUPTED`
+          retry -> record `EXTERNAL_AUTHORITY_REQUIRED` through workerCheckpoint; follow its NEXT
         </LogicSwitch>
+        <ToolCall owner="this-step" result="workerCheckpoint">npx gennady sdd-session checkpoint --content-file .claude/tmp/<task-id>-<phase-id>-worker-checkpoint.json</ToolCall> Inputs <task-id>, <phase-id>: exact current task and phase from phaseContext. Use workerCheckpoint.next as the sole transition.
+        <ToolCall owner="this-step" result="authoringRecheck">npx gennady sdd-check --task <ticket> --authoring</ToolCall> Use only on NEXT=AUTO_REPLAN_AND_CONTINUE after applying the bounded technical plan.
+        <ToolCall owner="this-step" result="feasibilityRecheck">npx gennady sdd-check --scaffold-feasibility</ToolCall> Use only after authoringRecheck is green.
+        <ToolCall owner="this-step" result="refreshedTaskMap">npx gennady sdd-task <ticket></ToolCall> Use only after feasibilityRecheck is green; redispatch from its current phase plan.
         <ToolCall owner="phase-worker" result="phaseContext">npx gennady sdd-task <id-or-path> --phase <PhaseID></ToolCall> Inputs <id-or-path>, <PhaseID>: <id-or-path>=same ticket value resolved by STEP_0/1; <PhaseID>=next dependency-ready phase id from STEP_1 Phases Overview. Use phaseContext.
       </Action>
     </Step>
@@ -403,9 +401,9 @@
           `⛔` marker AND the words `обязательная ступень профиля` (the project's own verification
           scripts are missing or stubbed; the gate name sits between the two, and `⛔` alone also
           opens the ordinary fixable `лестница остановлена на «type-check»` halt line): that is
-          infrastructure, not code, so the audit returns it as an environment escalation, and the
-          orchestrator surfaces the missing/stubbed scripts and their infra tickets (`sdd-task` →
-          `GATE_QUEUE`) to the operator, leaves the group open, and stops. Dispatch ONE
+          infrastructure, not code, so the audit returns `RECOVERABLE_TECHNICAL`; the orchestrator
+          records it, amends the owning infra task/DAG facts, reruns deterministic checks, and
+          redispatches. Dispatch ONE
           audit-subagent on a cheap model (audit is mechanical verification): read
           `ai/directives/sdd-v2/audit.directive.xml`; group selector = the exact `<ticket>` this step
           passed to auditGroup, owning spec = auditGroup `spec:` field, mode per-group, saved glossary =
@@ -421,10 +419,11 @@
       <Action>
         <LogicSwitch on="group audit verdict + attempt">
         - WHEN `PASS` / `PASS_WITH_ACKNOWLEDGED_RISKS`                          -> STEP_7B_CODE_REVIEW (a `PASS_WITH_ACKNOWLEDGED_RISKS` here always already carries a Decision Log entry — audit only confirms a PRIOR acceptance, per `audit.directive`; it never asks live)
+        - WHEN `FAIL` + attempt 1 + a technical finding names exact `phases_to_fix` / affected artifacts -> STEP_7_RESOLVE, repair those named phases/artifacts and re-dispatch audit (R2)
         - WHEN `FAIL` + attempt 1 + every open finding carries a concrete mechanical remediation the orchestrator can apply (via Path B — ticket / Decision Log / waiver-label edits — or via `phases_to_fix` → apply/re-run per STEP_7_RESOLVE, whichever the finding calls for) -> STEP_7_RESOLVE, apply every finding's fix directly (no operator stop — a finding with a concrete mechanical fix is not a risk decision), then re-dispatch audit (R2); a `phases_to_fix` re-run ALWAYS raises a fresh worker session, never the session that ran the original phase (`AX_WORKER_SESSION_REUSE` — fresh eyes on a fix, no exception)
-        - WHEN `FAIL` + only open `MAJOR` findings (no open `BLOCKER`) + attempt 1 + at least one open finding has NO concrete mechanical remediation (it can only be accepted as-is — an open gate-risk, an environment limitation) -> ask the operator, per such finding: accept this risk? ALL accepted -> STEP_7_RESOLVE Path B (append a Decision Log entry per accepted finding — the acceptance record the next audit dispatch will find — no new Round), then re-dispatch audit (R2, which now returns `PASS_WITH_ACKNOWLEDGED_RISKS`); ANY declined -> STEP_7_RESOLVE as an ordinary `FAIL` (Path A/B per the finding's fix, not an acceptance)
+        - WHEN `FAIL` + only open `MAJOR` findings (no open `BLOCKER`) + attempt 1 + at least one finding is an explicit product-risk acceptance inside approved goals -> ask the operator to accept that product risk; technical/environment findings instead route through `RECOVERABLE_TECHNICAL`. ALL product risks accepted -> STEP_7_RESOLVE Path B, then audit R2; ANY declined -> ordinary `FAIL` repair
         - WHEN `FAIL` (open `BLOCKER`, or a declined risk) + attempt 1          -> STEP_7_RESOLVE (one retry)
-        - WHEN `FAIL` + attempt 2                                              -> H_AUDIT_FAIL_AFTER_RETRY, then STEP_8 (`AX_RE_DISPATCH` caps at 2)
+        - WHEN `FAIL` + attempt 2                                              -> `H_TECHNICAL_REPLAN_EXHAUSTED`; retain the exact audit evidence, then STEP_8_SUMMARY presents the operator boundary (`AX_RE_DISPATCH` caps at 2)
         </LogicSwitch>
       </Action>
     </Step>
@@ -444,8 +443,7 @@
         decision-log only (administrative artifact edits: tracker fields, Decision Log entries, a
         contract Usage Waiver label in the spec — never production code): apply them directly under
         the orchestrator's own artifact-edit channel (the orchestrator owns trackers and may make these
-        administrative edits, `AX_OWNER`; distinct from and narrower than `AX_ENV_FIX_CHANNEL`, which
-        covers env/config, not artifacts — see `HardForbidden`), no new Round, then re-dispatch audit
+        administrative edits, `AX_OWNER`), no new Round, then re-dispatch audit
         (R2). Either way return to STEP_6. An R2 verdict that skipped a full gate re-run is invalid —
         before accepting R2's verdict at STEP_6, the orchestrator MUST confirm the R2 summary carries
         every applicable gate line (`sdd-check --task`, `sdd-check --changed`,
@@ -462,8 +460,12 @@
         scope itself (`sdd-task --group-scope <ticket>`) — no pasted manifest or artifact list in this dispatch
         prompt, same self-bootstrap pattern as the audit dispatch above. It scopes to bugs only
         (correctness / edge / error-path / security), leaving drift and style out.
-        Verdict: `CLEAN` → STEP_8; `FINDINGS` with a `BLOCKER` → `H_CODE_REVIEW_BLOCKER` (pause for the
-        operator); `FINDINGS` non-blocking → carry into the summary as routed proposals, STEP_8.
+        <LogicSwitch on="code-review verdict">
+        - WHEN `CLEAN` -> STEP_8_SUMMARY
+        - WHEN a bug `BLOCKER` has a bounded technical repair with exact affected phases/artifacts -> STEP_7_RESOLVE; repair and re-run those phases, then rerun audit and code-review
+        - WHEN `SPEC_GOAL_CONFLICT` names an exact contradiction with approved goals -> `H_SPEC_GOAL_CONFLICT`; retain the review evidence, then STEP_8_SUMMARY presents the operator boundary
+        - WHEN other non-blocking findings remain -> STEP_8_SUMMARY with routed proposals
+        </LogicSwitch>
       </Action>
     </Step>
     <Step id="STEP_8_SUMMARY">
@@ -488,9 +490,10 @@
         ONE batched `AskUserQuestion` (`QUESTION_RULE_SLIM`) right after the summary, covering every
         deviation together — never one question per deviation, never mid-run: per deviation, «внести
         в спеку» / «откатить» / «принять как есть». This is the only point deviations reach the
-        operator; the legal live pauses (`H_PAUSED_AWAITING_OPERATOR`, `H_CODE_REVIEW_BLOCKER`, the
-        STEP_6 risk-accept dialogue) are a separate class — environment/risk, not a spec hole — and
-        keep firing live exactly as today. While any such answer is pending return
+        operator; the three typed authority boundaries and the STEP_6 product-risk dialogue are a
+        separate class — authority/risk, not a technical repair — and
+        keep firing live exactly as today. While any such answer is pending, retain its exact typed
+        halt under `H_PAUSED_AWAITING_OPERATOR` and return
         `TerminalDecision: pause` and preserve the SDD session.
 
         After the summary/answer, type the outer result. Another selected ticket, an open ticket in
@@ -511,11 +514,11 @@
 
   <HardForbidden>
     - Workers read phase bodies / BDD / Verification / specs / rule files / code, each bounded by their manifest; the orchestrator does not.
-    - Phase workers write code and their phase blocks. Audit/code-review workers are read-only and return reports/proposals. The orchestrator does not write production code, ever. It has exactly THREE narrow, non-overlapping write channels: (a) `AX_ENV_FIX_CHANNEL` — env/config artifacts only (`package.json` scripts, tool config, lockfiles), never `Target Files` code or `specs/**`, never without prior explicit operator approval of the exact diff; (b) STEP_7_RESOLVE Path B — administrative edits to ticket / Decision Log / spec waiver-labels, applying an ACCEPTED audit finding directly per `AX_OWNER`; (c) a ticket-local Decision Log append when the orchestrator itself self-resolves a spec/ticket hole it hit directly, not delegated to a worker (`AX_DEVIATION_SELF_RESOLVE`) — distinct from (b), which is gated on an audit finding the operator already accepted, while (c) fires on a gap the orchestrator decides on its own and reports only in the STEP_8 batch. None of the three extends to production code under a module's `Target Files`.
+    - Phase workers write code/config and phase blocks. Audit/code-review workers are read-only. The orchestrator never writes production/config targets; it may amend technical task/DAG/deviation facts for redispatch, apply accepted administrative audit edits, and append a ticket-local Decision Log entry when self-resolving an in-goal gap.
     - Run the group audit only when `sdd-task --audit-group` reports the group `due` — never per ticket, never on eyeballed "this looks like the last one"; run code-review immediately after that audit passes, on the same trigger, never independently of it.
     - Thread only typed Handoff payloads between subagents; keep their contexts separate.
-    - This directive's own `sdd-log` calls are `round` (STEP_1_PLAN) and `close` (STEP_3_CLOSE_ROUND), unconditionally — `phase` / `handoff` / `blocker` are forbidden with no exception, the worker's exclusive writes (`phase-execution-protocol`, `AX_TICKET_WRITE_SCOPE`); this directive never re-logs a phase header or a Handoff line the worker already wrote. `line` is forbidden EXCEPT the canonical file-backed ToolCall in the tool table: write literal `env-fix <file> ← <operator decision ref>` to `.claude/tmp/<task-id>-env-fix.txt`, then run exact `npx gennady sdd-log <ticket> line --content-file .claude/tmp/<task-id>-env-fix.txt --phase <PhaseID>`, and only after explicit operator approval of the exact diff (`AX_ENV_FIX_CHANNEL`). Inline free text and every other `line` call remain off-limits.
-    - Cap audit attempts at 2; re-run only phases in `phases_to_fix`; drive a retry from audit FAIL only (a phase BLOCKED pauses, it does not reopen); run phases of the same task sequentially, one at a time.
+    - This directive's own `sdd-log` calls are `round` and `close`; workers own phase/event/handoff writes. Technical replans are durable checkpoint + task/DAG/deviation amendments, followed by worker redispatch.
+    - Cap audit attempts at 2; re-run only phases in `phases_to_fix`; every technical stop is typed and checkpointed; run phases of the same task sequentially.
   </HardForbidden>
 
   <ChatProtocol>

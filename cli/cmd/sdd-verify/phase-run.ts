@@ -23,8 +23,10 @@ import {
   formatPhaseReceipt,
   parsePhaseReceipts,
   phaseReceiptPlanState,
+  phaseReceiptTargetEvidence,
   phaseReceiptTargetState,
   phaseVerificationEnvironmentState,
+  phaseVerificationPlanEnvironmentState,
   type PhaseReceipt,
   type PhaseReceiptCommand,
   type PhaseReceiptPlan,
@@ -43,6 +45,10 @@ import {
 } from './workspace-mutation.ts';
 import { checkPhaseDependencies } from '../../../shared/sdd/phase-dependencies.ts';
 import { phaseReceiptIssue } from './phase-receipt-validation.ts';
+import {
+  formatPhaseVerificationGatePlan,
+  markPhaseVerificationProven,
+} from '../../../shared/sdd/phase-verification-plan.ts';
 
 /** @purpose Execute one ticket-owned command byte-for-byte and return its process result. */
 type VerbatimRunner = (command: string) => GateRunResult;
@@ -177,13 +183,15 @@ function updateReceipt(
 }
 
 function planFor(root: string, context: PhaseVerifyContext): PhaseReceiptPlan | string {
-  const environment = phaseVerificationEnvironmentState(
-    root,
-    context.profile,
-    context.producesCoverage,
-    context.verification,
-    context.targets.length > 0
-  );
+  const environment = context.gatePlan
+    ? phaseVerificationPlanEnvironmentState(root, context.gatePlan, context.verification)
+    : phaseVerificationEnvironmentState(
+        root,
+        context.profile,
+        context.producesCoverage,
+        context.verification,
+        context.targets.length > 0
+      );
   if (!environment.ok) return environment.issue;
   return {
     ticket: context.taskPath,
@@ -194,7 +202,7 @@ function planFor(root: string, context: PhaseVerifyContext): PhaseReceiptPlan | 
     deletedFiles: [...context.deletedFiles],
     verification: context.verification.map((gate) => ({ ...gate })),
     ...(context.coverageOwner ? { coverageOwner: context.coverageOwner } : {}),
-    producesCoverage: context.producesCoverage,
+    producesCoverage: context.gatePlan?.producesCoverage ?? context.producesCoverage,
     environmentState: environment.state,
   };
 }
@@ -237,6 +245,22 @@ export async function runPhaseVerification(
     deletedFiles: [...context.deletedFiles],
     verification: context.verification.map((gate) => ({ ...gate })),
   };
+  if (frozenContext.gatePlan) {
+    const required = frozenContext.gatePlan.gates.find(
+      (gate) => gate.required && gate.state !== 'CONFIGURED'
+    );
+    if (required) {
+      return {
+        ok: false,
+        code: 'SDD_VERIFY_PHASE_PREREQUISITE_REQUIRED',
+        exitCode: 1,
+        message: [
+          `[sdd-verify] SDD_VERIFY_PHASE_PREREQUISITE_REQUIRED: ${required.name} ${required.state}`,
+          formatPhaseVerificationGatePlan(required),
+        ].join('\n'),
+      };
+    }
+  }
   const ticketPath = resolve(root, frozenContext.taskPath);
   let ticketContainment: TicketContainmentSnapshot;
   try {
@@ -257,7 +281,12 @@ export async function runPhaseVerification(
   const dependencyIssue = checkPhaseDependencies(
     ticketContent,
     frozenContext.phaseId,
-    (receipt, phase) => phaseReceiptIssue(root, receipt, phase, ticketPath)
+    (receipt, phase) =>
+      phaseReceiptIssue(root, receipt, phase, ticketPath, {
+        taskPath: ticketPath,
+        phase: frozenContext.phaseId,
+        targets: [...frozenContext.targets, ...frozenContext.deletedFiles],
+      })
   );
   if (dependencyIssue) return receiptError(dependencyIssue);
   const plan = planFor(root, frozenContext);
@@ -283,6 +312,7 @@ export async function runPhaseVerification(
       ...(frozenContext.specPath ? { specPath: frozenContext.specPath } : {}),
       producesCoverage: plan.producesCoverage,
       deletionOnly: plan.targets.length === 0 && plan.deletedFiles.length > 0,
+      ...(frozenContext.gatePlan ? { gatePlan: frozenContext.gatePlan } : {}),
     },
     ladderResults,
     {
@@ -358,12 +388,31 @@ export async function runPhaseVerification(
 
   const targetState = phaseReceiptTargetState(root, plan.targets, plan.deletedFiles);
   if (!targetState.ok) return receiptError(targetState.issue);
+  const targetEvidence = phaseReceiptTargetEvidence(root, plan.targets, plan.deletedFiles);
+  if (!targetEvidence.ok) return receiptError(targetEvidence.issue);
+  const provenPlan = frozenContext.gatePlan
+    ? markPhaseVerificationProven(
+        frozenContext.gatePlan,
+        new Set(commands.filter((command) => command.exitCode === 0).map((command) => command.gate))
+      )
+    : null;
   const receipt: PhaseReceipt = {
     schema: 1,
     ...plan,
     planState: phaseReceiptPlanState(plan),
     targetState: targetState.state,
+    targetEvidence: targetEvidence.evidence,
     commands,
+    ...(provenPlan
+      ? {
+          gateEvidence: provenPlan.gates.map(({ name, state, command, provider }) => ({
+            name,
+            state,
+            command,
+            provider,
+          })),
+        }
+      : {}),
   };
   const writeFailure = updateReceipt(ticketPath, plan.phase, receipt, ticketContainment);
   if (writeFailure) return receiptError(writeFailure);
@@ -371,6 +420,7 @@ export async function runPhaseVerification(
     ok: true,
     text: [
       ladder.text,
+      ...(provenPlan ? provenPlan.gates.map(formatPhaseVerificationGatePlan) : []),
       ...plan.verification.map((gate) => `  ✅ ${gate.role}: ${gate.command}`),
       `[sdd-verify] receipt recorded: ${plan.ticket}#${plan.phase}`,
     ].join('\n'),

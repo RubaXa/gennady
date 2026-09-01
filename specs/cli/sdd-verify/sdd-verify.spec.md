@@ -134,7 +134,7 @@ $ npx gennady sdd-verify --task specs/app/app.task.TSK-1.md --phase P2
 | `GateStatus`                        | Type         | Исход ступени: `pass` \| `fail` \| `skipped` (необязательная, скрипта нет) \| `missing` (обязательная, скрипта нет или он фиктивный)   |
 | `InvocationResult`                  | Type         | Разбор CLI-вызова: phase identity либо global full; ошибка содержит обучающую диагностику                                              |
 | `parseInvocation`                   | Utility      | Строгий разбор argv: `--task+--phase` либо `--profile full`; иначе bad-invocation с exit 4                                             |
-| `resolvePhaseContext`               | Utility      | Структурно выводит kind→profile, точные существующие in-project Target Files и owning spec                                             |
+| `resolvePhaseContext`               | Utility      | Структурно выводит kind→profile, точные существующие in-project Target Files, owning spec и test-owner для command probes              |
 | `ERR_CLI_SDD_VERIFY_BAD_INVOCATION` | Value Object | Код ошибки неверного вызова: лишний путь или неизвестный флаг — sdd-verify никогда не сужает область молча                             |
 | `isSelfHosting`                     | Utility      | Self-hosting-детект по `package.json#name === 'gennady'` — определяет, как запускать `via: 'gennady'` гейты (D-SV008)                  |
 | `runWithMaxBuffer`                  | Utility      | Spawn с явным `maxBuffer`; переполнение репортится честной ошибкой (exit 127), а не молча обрезанным вердиктом                         |
@@ -461,6 +461,11 @@ shared/sdd/phase-receipt.ts # paired receipt schema, parser, renderer and state 
 - **Why:** phase repair unconditionally appended Gennady-only `--include-tests` and `--spec` to the project's generic `lint:fix`. A valid ESLint leaf therefore failed before linting the original IB-gates target set (`package.json` + `scripts/gates-smoke.mjs`), while a Gennady leaf received unsupported non-TS operands. Repair now plans ordered adapters: formatter receives the declared exact set; the selected project-linter adapter receives only its applicable exact subset and its own ABI; the Gennady contract adapter receives `--include-tests`, owning `--spec`, and only `.ts/.tsx` targets.
 - **No duplicate:** when `lint:fix` already reaches Gennady, that one project invocation satisfies both project and contract roles. Otherwise Gennady contract lint runs once after the project linter. Zero applicable targets produce stable named skip evidence rather than an unsupported-target error.
 - **Extensibility/safety:** platform support is an ordered registry entry (`matches` + `accepts` + capability), not an extension ladder inside `runTargetRepair`. All invocations remain inside one formatter→lint runtime mutation boundary; broad roots are never synthesized, and any actual outside mutation remains listed and fail-closed.
+
+### D-SV038 — Command probes are routed by test ownership, not requirement aliases
+
+- **Status:** active · **Extends:** D-SV018
+- **Why:** `Required-by` is requirement/rule traceability and does not identify a phase. Selecting a `Role=probe` row through phase Rules could execute a project command during bootstrap/config or execute it in no phase at all. Phase context now resolves the row's exact command-bearing Test Scenario Coverage entry, requires one owning `test` phase, and adds the probe only to that phase. Zero or multiple test owners fail before tools run; ordinary `extra` and `coverage` rows keep their existing routing.
 
 <!--SECTION:OPEN_RISKS-->
 

@@ -277,6 +277,11 @@ shared/sdd/ticket.ts     # parseMetaInfo / parsePhasesOverview / parsePhaseDetai
 - **Status:** active · **Extends:** D-TK010/D-TK016/D-TK017
 - **Why:** printing `EXECUTION_READY=no` beside an unfiltered graph-pickable list still let `next` choose an unrelated product/config ticket before its missing gate owner. The map now derives readiness and `GateQueueResult` once, then exposes only dependency-ready accepted queue owners while runtime is red. `TODO` and already-open `IN_PROGRESS` owners are actionable; DONE, ambiguous, artifact-mismatched, or absent owners yield an empty queue plus diagnostics. State, task phase dispatch and verify already consume the same canonical `missingGates` and structural owner contract.
 - **Safety:** readiness projection includes declared-prefix failures (`format:fix`/`lint:fix`) as their exact canonical IDs and de-duplicates aliases, so a present but broad-root repair script cannot collapse to `GATE_QUEUE=none`.
+
+### D-TK020 — Empty execution map routes by observed state
+
+- **Status:** active · **Extends:** D-TK007/D-TK019
+- **Why:** the map printed “unblock blocked” before scaffold, contradicting its own `infra-spec-no-tickets` diagnostic and `sdd-state`. The final hint now gives that typed diagnostic priority and routes to `/sdd-scaffold`; a genuinely non-empty blocked set without the diagnostic keeps the dependency repair hint, while no active TODO and no scaffold diagnostic routes back to `sdd-state`.
 <!--/SECTION:MODULE_DECISION_LOG-->
 
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->

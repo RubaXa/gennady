@@ -59,6 +59,13 @@ describe('phase receipt', () => {
     assert.strictEqual(parsePhaseReceipts(`${block}\n${block}`).ok, false);
   });
 
+  it('rejects partial per-target evidence instead of silently leaving a target unbound', () => {
+    assert.strictEqual(
+      parsePhaseReceipts(formatPhaseReceipt({ ...receipt(), targetEvidence: {} })).ok,
+      false
+    );
+  });
+
   it('changes the target fingerprint when verified bytes change', () => {
     const root = mkdtempSync(join(tmpdir(), 'phase-receipt-'));
     try {

@@ -62,6 +62,12 @@ export type PhaseDetail = {
   providesPackages: string[];
   /** @purpose Exact package names this phase's artifacts/commands need before execution. */
   requiresPackages: string[];
+  /** @purpose Explicit platform adapter id that interprets this phase's capability fields. */
+  capabilityAdapter: string | null;
+  /** @purpose Exact platform-neutral capability ids materialized by this phase. */
+  providesCapabilities: string[];
+  /** @purpose Exact platform-neutral capability ids that must precede this phase. */
+  requiresCapabilities: string[];
   /** @purpose Optional per-phase spec-anchor subset (`Spec Refs:` bullets) — when empty, callers fall back to the ticket's whole Meta Spec References. */
   specRefs: string[];
   /** @purpose Inputs line (e.g. `none`, `P1 handoff`), or null. */
@@ -92,9 +98,11 @@ export type TicketCoveragePolicy =
 
 /** @purpose Extract the inline value after a `- **Label:**` field, or null. */
 function inlineField(body: string, label: string): string | null {
-  const re = new RegExp(`\\*\\*${label}:\\*\\*\\s*(.+)`);
+  const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re = new RegExp(`^\\s*-?\\s*\\*\\*${escaped}:\\*\\*[ \\t]*([^\\r\\n]*)`, 'im');
   const m = body.match(re);
-  return m?.[1]?.trim() ?? null;
+  const value = m?.[1]?.trim();
+  return value ? value : null;
 }
 
 /** @purpose Collect the `- ` sub-bullets that follow a `**Label:**` line, until the next bold field or dedent. */
@@ -247,6 +255,9 @@ export function parsePhaseDetail(phaseBody: string): PhaseDetail {
     bootstrapAction: inlineField(phaseBody, 'Bootstrap Action'),
     providesPackages: commaList('Provides Packages'),
     requiresPackages: commaList('Requires Packages'),
+    capabilityAdapter: inlineField(phaseBody, 'Capability Adapter'),
+    providesCapabilities: commaList('Provides Capabilities'),
+    requiresCapabilities: commaList('Requires Capabilities'),
     specRefs: bulletsUnder(phaseBody, 'Spec Refs').map(
       (b) => parseLink(b).anchor || parseLink(b).name
     ),

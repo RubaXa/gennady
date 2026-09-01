@@ -71,7 +71,8 @@ describe('SDD prompt owner coherence', () => {
     assert.match(review, /verdict=<CLEAN\|FINDINGS>/);
     assert.match(review, /no preamble and no edits\/applied-lines/);
     assert.doesNotMatch(review, /AUDIT_SESSION_SUMMARY_FORMAT|~applied/);
-    assert.match(execute, /Verdict: `CLEAN` → STEP_8; `FINDINGS` with a `BLOCKER`/);
+    assert.match(execute, /WHEN `CLEAN` -> STEP_8_SUMMARY/);
+    assert.match(execute, /WHEN a bug `BLOCKER` has a bounded technical repair.+STEP_7_RESOLVE/);
   });
 
   it('leaves infra publication state and untracked-file detection to review lifecycle', () => {
@@ -93,7 +94,16 @@ describe('SDD prompt owner coherence', () => {
     assert.match(audit, /proposed Audit Rounds record routed to the execute orchestrator/);
     assert.match(review, /findings are proposals only/);
     assert.match(route, /read-only\s+worker does not append it/s);
-    assert.match(template('execute'), /Audit\/code-review workers are read-only and return reports\/proposals/);
+    const executeSurfaces = [
+      ['source', template('execute')],
+      ['generated', read('ai', 'directives', 'sdd-v2', 'execute.directive.xml')],
+    ] as const;
+    for (const [label, execute] of executeSurfaces) {
+      assert.match(execute, /Phase workers write code\/config and phase blocks/, label);
+      assert.match(execute, /Audit\/code-review workers are read-only/, label);
+      assert.match(execute, /orchestrator never writes production\/config targets/, label);
+      assert.match(execute, /findings remain -> STEP_8_SUMMARY with routed proposals/, label);
+    }
   });
 
   it('asks SCALE only for root, scope, module, infra, and interface authoring owners', () => {

@@ -489,37 +489,6 @@ const CASES: FixtureCase[] = [
     },
   },
   {
-    id: 'sdd-log env-fix from a file-backed payload',
-    directive: 'execute',
-    raw: 'npx gennady sdd-log <ticket> line --content-file .claude/tmp/<task-id>-env-fix.txt --phase <PhaseID>',
-    cmd: 'sdd-log',
-    fresh: true,
-    setup: (fx) => {
-      runCli(['sdd-log', fx.ticketPath, 'phase', 'P1'], fx.root);
-      mkdirSync(join(fx.root, '.claude', 'tmp'), { recursive: true });
-      writeFileSync(
-        join(fx.root, '.claude', 'tmp', 'TSK-x-env-fix.txt'),
-        'env-fix package.json ← operator approved narrower type-check script'
-      );
-    },
-    args: (fx) => [
-      fx.ticketPath,
-      'line',
-      '--content-file',
-      '.claude/tmp/TSK-x-env-fix.txt',
-      '--phase',
-      'P1',
-    ],
-    check: (r, fx) => {
-      assert.strictEqual(r.exitCode, 0, r.stdout + r.stderr);
-      const body = readFileSync(join(fx.root, fx.ticketPath), 'utf-8');
-      assert.match(
-        body,
-        /- \[x\] `[^`]+` env-fix package\.json ← operator approved narrower type-check script/
-      );
-    },
-  },
-  {
     id: 'sdd-log phase from a file-backed rerun suffix',
     directive: 'phase',
     raw: 'npx gennady sdd-log <ticket> phase <PhaseID> --content-file .claude/tmp/<task-id>-<phase-id>-log.txt',
@@ -573,7 +542,7 @@ const CASES: FixtureCase[] = [
   {
     id: 'sdd-log blocker from a file-backed JSON payload',
     directive: 'phase',
-    raw: 'npx gennady sdd-log <ticket> blocker --payload-file .claude/tmp/<task-id>-<phase-id>-blocker.json --phase <PhaseID>',
+    raw: 'npx gennady sdd-log <ticket> blocker --payload-file .claude/tmp/TSK-x-P2-blocker.json --phase P2',
     cmd: 'sdd-log',
     fresh: true,
     setup: (fx) => {

@@ -15,6 +15,8 @@ const step = (text: string, id: string): string =>
 
 describe('scaffold tool-guided authoring protocol', () => {
   const source = read('ai', 'kit', 'templates', 'sdd-v2', 'scaffold.directive.hbs');
+  const bootstrap = read('ai', 'kit', 'axiom', 'scaffold', 'ax-bootstrap-ticket-derivation.xml');
+  const bdd = read('ai', 'kit', 'axiom', 'scaffold', 'ax-ticket-has-bdd-and-tests.xml');
 
   it('derives the bounded target set positively from typed router and spec-graph evidence', () => {
     const intake = step(source, 'STEP_0_INTAKE');
@@ -36,11 +38,35 @@ describe('scaffold tool-guided authoring protocol', () => {
     assert.doesNotMatch(source, /H_MISSING_RULE_FILE/);
     assert.doesNotMatch(source, /ax-rules-resolution-hard-fail/);
     assert.match(generation, /<Triggers>.+<SkipWhen>/s);
-    assert.match(generation, /write the selected direct candidates into the phase `Rules:` bullet list/);
+    assert.match(generation, /write selected candidates into `Rules:`/);
     assert.match(generation, /--authoring --phase <PhaseID>/);
-    assert.match(generation, /missing.+unsafe.+transitive.+closure/is);
+    assert.match(generation, /rule\/cascade repair/is);
+    assert.match(generation, /when empty.+manifest.+empty-rule-set/is);
     assert.doesNotMatch(generation, /close the set over `<DependsOn>` transitively/);
     assert.doesNotMatch(generation, /open each included rule file/);
+  });
+
+  it('keeps bootstrap command proof in the test phase that owns its future smoke test', () => {
+    assert.match(bootstrap, /one DAG-connected ordered.+serialized tickets or phases/is);
+    assert.doesNotMatch(bootstrap, /workstream is one ticket/);
+    assert.match(bdd, /Role=`probe`.+unique test phase.+Test Scenario Coverage/is);
+    assert.match(bootstrap, /Project-wide.+wrappers.+readiness\/full audit/is);
+  });
+
+  it('keeps capability decomposition as a short tool-driven recipe, not a shared-file prohibition', () => {
+    const dag = step(source, 'STEP_2_DAG');
+    const generation = step(source, 'STEP_3_TASK_GENERATION');
+    const loop = step(source, 'STEP_3_TICKET_LOOP');
+    assert.match(
+      `${dag}\n${generation}`,
+      /derive.+capability layers.+Provides Capabilities.+Requires Capabilities.+DAG/is
+    );
+    assert.match(`${dag}\n${generation}`, /(?:DAG.+serial.+shared writers|shared writers.+DAG.+serial)/is);
+    assert.match(loop, /sdd-check --task <created-ticket-path> --authoring/);
+    assert.match(loop, /sdd-check --scaffold-feasibility/);
+    assert.doesNotMatch(bootstrap, /EXACTLY ONE ticket-owner/);
+    assert.doesNotMatch(`${dag}\n${generation}`, /(?:ls|glob|test -f).+rule file/is);
+    assert.doesNotMatch(`${dag}\n${generation}`, /ask.+operator.+technical/is);
   });
 
   it('uses one compact new → fill → optional phase feedback → mandatory full GREEN loop', () => {
@@ -73,11 +99,17 @@ describe('scaffold tool-guided authoring protocol', () => {
       read('ai', 'directives', 'sdd-v2', 'scaffold', 'steps', 'STEP_1_CASCADE.xml'),
       read('ai', 'directives', 'sdd-v2', 'scaffold', 'steps', 'STEP_3_TASK_GENERATION.xml'),
       read('ai', 'directives', 'sdd-v2', 'scaffold', 'steps', 'STEP_3_TICKET_LOOP.xml'),
+      read('ai', 'directives', 'sdd-v2', 'scaffold', 'steps', 'STEP_3B_FEASIBILITY_CRITIC.xml'),
       read('ai', 'directives', 'sdd-v2', 'scaffold', 'steps', 'STEP_5_FINALIZE.xml'),
     ].join('\n');
     assert.match(generated, /result="phaseAuthoringFeedback"/);
     assert.match(generated, /result="authoringGate"/);
     assert.match(generated, /execute now.+\/sdd-execute/is);
+    assert.match(
+      generated,
+      /exact `critic-context:` JSON value from\s+`?feasibilityGate`? unchanged/
+    );
+    assert.match(generated, /TOOL_CONTRACT_MISSING: <fact> — <needed-for>/);
     assert.doesNotMatch(generated, /filesystem discovery, glob\/ls/);
     assert.doesNotMatch(generated, /resolve every rule ref to an existing file/);
     assert.doesNotMatch(generated, /close the set over `<DependsOn>` transitively/);

@@ -7,8 +7,9 @@
     this directive's path, ticket path, phase ID, and reason. This directive plus STEP_1's
     `gennady sdd-task <ticket> --phase P<N>` output are the WHOLE working context: nothing beyond
     the anchors the tool names.
-    Never inspect CLI internals. Follow actionable tool output; an error it does not explain and
-    that cannot map to `HaltConditions` is `H_BLOCKED` — log it and stop.
+    Return every stop with evidence and a typed outcome. Technical facts are
+    `RECOVERABLE_TECHNICAL`; the orchestrator owns technical replan and operator routing. Project failures describe the
+    project plan, not Gennady internals.
 
     Read only what this phase needs; write only Target Files and remove only declared Deleted Files; run the verification gate;
     emit a typed Handoff. A worker directive — runs in isolation on a cheaper model, returns to the
@@ -201,8 +202,6 @@
 
 
 
-
-
     <Axiom id="AX_DEVIATION_SELF_RESOLVE" cross-cutting="true">
       Discovering mid-flight that the spec / ticket is silent on a decision the work needs is NOT a
       reason to interrupt the operator. Decide it yourself — in the spirit of the artifact and
@@ -216,11 +215,10 @@
       directly (`AX_OWNER`).
 
       Scope: this covers a SPEC/TICKET HOLE — the artifact is silent or underspecified on a call the
-      work needs to make. It does NOT cover an environment/infra blocker (`AX_BLOCKER_ESCALATION`,
-      `H_PAUSED_AWAITING_OPERATOR`) or a risk-acceptance on an open `MAJOR` audit finding (execute
-      STEP_6_BRANCH) — both stay a pause; they are about risk and environment, not a gap in the spec.
-      Test: "can I honor the artifact's stated intent with a sound default?" → self-resolve; "does
-      proceeding need the operator's own risk tolerance, or an environment I cannot fix?" → pause.
+      work needs to make. Technical environment/infra gaps use `RECOVERABLE_TECHNICAL`; exact missing
+      permission uses `EXTERNAL_AUTHORITY_REQUIRED`. Product-risk acceptance on an open `MAJOR` remains
+      an operator decision. Test: "can I honor the approved goals with a sound technical default?" →
+      self-resolve/replan; "does this change product intent or need external authority?" → typed boundary.
 
       The orchestrator collects every `deviations:` entry across the run just finished — one ticket, or
       every ticket of a `batch` — and raises them ONCE, at the very end, as a single batched
@@ -242,14 +240,21 @@
     | `H_INPUT_HANDOFF_MISSING` | A phase Input cites a prior phase whose Handoff is absent from `sdd-task --phase`'s `[HANDOFF]` block in the current Round |
     | `H_OUT_OF_PHASE_WRITE` | A write is required outside Target Files, a deletion outside Deleted Files, or a ticket write outside `AX_TICKET_WRITE_SCOPE` |
     | `H_THIRD_PARTY_API_UNVERIFIABLE` | `config` kind: ToolDocAdapter unsupported/ambiguous, installed version unavailable, or its permitted evidence is insufficient |
-    | `H_VERIFICATION_FAIL` | The verification gate fails after fix attempts (or tooling is missing) |
-    | `H_BLOCKED` | Generic blocker per `AX_BLOCKER_ESCALATION` — includes any tool/infrastructure error that does not map to one of the rows above |
+    | `H_VERIFICATION_FAIL` | Verification evidence is `RECOVERABLE_TECHNICAL`; the orchestrator owns bounded retry/exhaustion |
+    | `H_TECHNICAL_REPLAN` | Missing config/package/gate/CREATE target, target mismatch, tool diagnostic, or task-decomposition defect — report `RECOVERABLE_TECHNICAL` with evidence and a bounded plan to the orchestrator |
+    | `H_SPEC_GOAL_CONFLICT` | A technical repair contradicts an approved spec/BDD goal — report `SPEC_GOAL_CONFLICT` with the exact conflicting refs |
+    | `H_EXTERNAL_AUTHORITY_REQUIRED` | Completion requires permission or external authority unavailable to the worker — report `EXTERNAL_AUTHORITY_REQUIRED` with evidence |
   </HaltConditions>
 
+  <OutcomeRouting>
+    `H_VERIFICATION_FAIL` and `H_TECHNICAL_REPLAN` return `RECOVERABLE_TECHNICAL`;
+    `H_SPEC_GOAL_CONFLICT` returns `SPEC_GOAL_CONFLICT`; `H_EXTERNAL_AUTHORITY_REQUIRED` returns
+    `EXTERNAL_AUTHORITY_REQUIRED`. The orchestrator owns every NEXT transition.
+  </OutcomeRouting>
+
   <ContextExpectation>
-    The orchestrator's dispatch prompt is short, by design: this directive's path, the ticket path,
-    the phase ID, kind + reason (`initial` / `fix: F-NNN` / `resume`), and at most 1-3 lines of
-    context the ticket genuinely does not carry. It does NOT paste the read-manifest, the gates, or
+    Dispatch contains only this directive path, ticket, phase, kind + reason (`initial` / `fix:
+    F-NNN` / `resume`), and 1-3 context lines the ticket lacks. It does NOT paste the read-manifest, gates, or
     prior Handoff — STEP_1 gets all of that directly, as the first action of this phase, by calling
     `sdd-task` itself. A tool call made fresh at the start of THIS run cannot go stale between
     dispatch and execution — the concern a pasted-prompt approach had on a retry.
@@ -293,9 +298,9 @@
     warning before handoff. Consumed scratch leaves phase source-state unchanged; never blanket-ignore
     other `.claude/tmp/` mutations.
 
-    Follow the next action printed by a failed gate/tool. If none is actionable, emit `H_BLOCKED`
-    per `AX_BLOCKER_ESCALATION`, surfaced as PAUSED (`AX_HALT_VS_FAIL_DISTINCTION`); do not inspect
-    its source.
+    Follow the next action printed by a failed gate/tool. If none is actionable, return
+    `RECOVERABLE_TECHNICAL` with that diagnostic as evidence; if execution requires an unavailable
+    permission, return `EXTERNAL_AUTHORITY_REQUIRED`. The orchestrator owns the transition.
   </ContextExpectation>
 
   <PhaseProcedure>

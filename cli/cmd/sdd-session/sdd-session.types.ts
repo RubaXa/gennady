@@ -12,6 +12,10 @@ export const ERR_CLI_SDD_SESSION_NO_SESSION = 'ERR_CLI_SDD_SESSION_NO_SESSION' a
 export const ERR_CLI_SDD_SESSION_PLACEHOLDER = 'ERR_CLI_SDD_SESSION_PLACEHOLDER' as const;
 /** @purpose A one-shot `.claude/tmp/` payload failed path, size, UTF-8, or content validation. */
 export const ERR_CLI_SDD_SESSION_PAYLOAD_FILE = 'ERR_CLI_SDD_SESSION_PAYLOAD_FILE' as const;
+/** @purpose A typed scaffold feasibility event or transition is invalid. */
+export const ERR_CLI_SDD_SESSION_FEASIBILITY = 'ERR_CLI_SDD_SESSION_FEASIBILITY' as const;
+/** @purpose A typed execute-worker checkpoint schema or transition is invalid. */
+export const ERR_CLI_SDD_SESSION_CHECKPOINT = 'ERR_CLI_SDD_SESSION_CHECKPOINT' as const;
 
 /**
  * @purpose Result of one sdd-session run.
@@ -197,8 +201,46 @@ export function badInvocation(detail: string): SessionOutcome {
       `[sdd-session] ${ERR_CLI_SDD_SESSION_BAD_INVOCATION}: ${detail}`,
       '  expected: gennady sdd-session open --intent <intent> [--scale <scale>]',
       '        | gennady sdd-session set <intent|scale|open> "<value>"',
+      '        | gennady sdd-session feasibility --content-file .claude/tmp/sdd-scaffold-feasibility-event.json',
+      '        | gennady sdd-session checkpoint --content-file .claude/tmp/sdd-worker-checkpoint-event.json',
       '        | gennady sdd-session log "<line>" | workset "<line>" | term "<term> — <phrasing>" | close',
       '  agent free text: use --content-file .claude/tmp/<safe-name> instead of quoted content.',
+    ].join('\n'),
+  };
+}
+
+/**
+ * @purpose Build a fail-closed execute-worker checkpoint diagnostic.
+ * @param detail Exact checkpoint schema, transition, or durable-reference failure.
+ * @returns Exit-2 session outcome that preserves existing session bytes.
+ */
+export function checkpointError(detail: string): SessionOutcome {
+  return {
+    ok: false,
+    code: ERR_CLI_SDD_SESSION_CHECKPOINT,
+    exitCode: 2,
+    message: [
+      `[sdd-session] ${ERR_CLI_SDD_SESSION_CHECKPOINT}: ${detail}`,
+      '  Fix the exact typed checkpoint and rerun the same checkpoint --content-file command.',
+      '  Session bytes and the rejected payload were not changed.',
+    ].join('\n'),
+  };
+}
+
+/**
+ * @purpose Build a fail-closed typed feasibility schema/transition diagnostic.
+ * @param detail Exact invalid schema, fold, or transition condition.
+ * @returns Outcome with exit 2; session and payload remain untouched.
+ */
+export function feasibilityError(detail: string): SessionOutcome {
+  return {
+    ok: false,
+    code: ERR_CLI_SDD_SESSION_FEASIBILITY,
+    exitCode: 2,
+    message: [
+      `[sdd-session] ${ERR_CLI_SDD_SESSION_FEASIBILITY}: ${detail}`,
+      '  Fix the exact event and rerun the same feasibility --content-file command.',
+      '  Session bytes and the rejected payload were not changed.',
     ].join('\n'),
   };
 }

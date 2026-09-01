@@ -27,11 +27,19 @@ export function printHelp(): void {
     '  npx gennady sdd-session term "<term> — <phrasing>"                # add/replace a glossary entry'
   );
   console.info(
+    '  npx gennady sdd-session feasibility --content-file .claude/tmp/sdd-scaffold-feasibility-event.json'
+  );
+  console.info(
+    '  npx gennady sdd-session checkpoint --content-file .claude/tmp/sdd-worker-checkpoint-event.json'
+  );
+  console.info(
     '  npx gennady sdd-session close                                      # discard the session'
   );
   console.info('');
   console.info('File-backed form (required for agent-produced free text):');
-  console.info('  npx gennady sdd-session <log|workset|term> --content-file .claude/tmp/<name>');
+  console.info(
+    '  npx gennady sdd-session <log|workset|term|feasibility|checkpoint> --content-file .claude/tmp/<name>'
+  );
   console.info(
     '  npx gennady sdd-session set <intent|scale|open> --content-file .claude/tmp/<name>'
   );
@@ -58,6 +66,21 @@ export function printHelp(): void {
   );
   console.info(
     '  - A file-backed workset payload may contain multiple non-empty lines; each line becomes one exact working-set bullet in one command.'
+  );
+  console.info(
+    '  - feasibility validates and folds sdd-scaffold-feasibility/v1 atomically, then prints one deterministic NEXT= instruction.'
+  );
+  console.info(
+    '  - feasibility requires opened → worker-state before the first sensor-result; every result, refresh, cap disposition, Gate 2 choice, restart, and close is a separate typed event.'
+  );
+  console.info(
+    '  - JSON object key order is immaterial; result count, target hashes, retained worker id, fallback count, active cap, and legal transition are checked fail-closed.'
+  );
+  console.info(
+    '  - checkpoint validates/folds sdd-worker-checkpoint/v1, retains task/phase/evidence/attempt/deviation refs, and prints one deterministic NEXT= instruction.'
+  );
+  console.info(
+    '  - checkpoint owns technical retry budget=2; attempts advance exactly, CONTEXT_ROTATION consumes none, and durable refs must resolve to existing files/anchors.'
   );
   console.info('');
   console.info('Exit codes:');

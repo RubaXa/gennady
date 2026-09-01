@@ -687,7 +687,7 @@ ${BOOTSTRAP_REQUIREMENTS_TABLE_HEADER}
 <!-- Kind ∈ package | workspace-link | tool | file | external-type | env | service | structural -->
 <!-- Owner ∈ this-scope-task | external-prereq-scope | operator-action -->
 <!-- Empty list allowed only when STEP_7 audit produced zero external assumptions — declare it explicitly: "No external bootstrap required." -->
-<!-- A shared file (package.json scripts, .nvmrc, a tool config) has EXACTLY ONE owning task — the one whose Kind/Owner row creates it. Every other task that touches the same file references/extends it, never re-creates it. -->
+<!-- Every shared manifest/lock write has an owning phase/task; all writers of the same file are strictly DAG-serialized. -->
 
 
 </details>
@@ -1261,7 +1261,10 @@ const TASK_SKELETON = `# Task: <ACRONYM>-<slug> — <Task Title>
 <!--SECTION:PHASE_P1-->
 ### P1 — <kind>
 - **Objective:** <one-line>
-- **Bootstrap Action:** dependency-install   <!-- only the one package+active-lockfile owner; omit otherwise -->
+- **Capability Adapter:** <adapter-id>   <!-- required when this phase declares package/capability facts; omit otherwise -->
+- **Provides Capabilities:** <comma-separated capability ids>   <!-- capabilities this phase materializes; omit when none -->
+- **Requires Capabilities:** <comma-separated capability ids>   <!-- exact current/upstream prerequisites; omit when none -->
+- **Bootstrap Action:** dependency-install   <!-- every phase that adds packages; omit otherwise -->
 - **Provides Packages:** <comma-separated exact package names>   <!-- dependency-install only -->
 - **Requires Packages:** <comma-separated exact package names>   <!-- phases whose config/commands need packages absent from clean HEAD; omit otherwise -->
 - **Rules:**   <!-- links only, resolved from the cascade; rule content is never inlined -->
@@ -1282,6 +1285,12 @@ const TASK_SKELETON = `# Task: <ACRONYM>-<slug> — <Task Title>
 <!--SECTION:PHASE_P2-->
 ### P2 — <kind>
 - **Objective:** <one-line>
+- **Capability Adapter:** <adapter-id>   <!-- required when this phase declares package/capability facts; omit otherwise -->
+- **Provides Capabilities:** <comma-separated capability ids>   <!-- omit when none -->
+- **Requires Capabilities:** <comma-separated capability ids>   <!-- omit when none -->
+- **Bootstrap Action:** dependency-install   <!-- include only when this phase adds packages -->
+- **Provides Packages:** <comma-separated exact package names>   <!-- dependency-install only -->
+- **Requires Packages:** <comma-separated exact package names>   <!-- omit when none -->
 - **Rules:**
   - [ai/directives/<category>/<rule>.xml](<relative-path>)
 - **Spec Refs:**   <!-- optional, see P1 -->
@@ -1882,7 +1891,8 @@ const NEXT_STEPS: Record<ArtifactKind, string[] | ((ctx: NextStepsContext) => st
   module: SPEC_NEXT_STEPS,
   task: (ctx: NextStepsContext): string[] => [
     'Заполни тикет по манифесту секций выше (Meta, фазы, BDD, Verification, Test Coverage).',
-    'Тикет попадёт в execution map автоматически — смотри `sdd-task` (pickable = TODO + все Dependencies DONE).',
+    `Проверь заполненный тикет: \`npx gennady sdd-check --task ${ctx.path} --authoring\`.`,
+    'После GREEN всех тикетов проверь общий capability-DAG: `npx gennady sdd-check --scaffold-feasibility`.',
     `Task-ID: ${ctx.id ?? '<id>'} — во всех дальнейших ссылках используй ровно этот ID.`,
   ],
   'module-index': [

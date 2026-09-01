@@ -110,20 +110,35 @@ describe('resolvePhaseContext', () => {
     ] as const) {
       const f = fixture(kind, ['src/thing.ts', 'src/thing.test.ts']);
       try {
-        assert.deepStrictEqual(resolvePhaseContext(f.ticket, 'P1', f.root), {
-          ok: true,
-          context: {
-            profile,
-            profileBasis: 'phase-kind',
-            targets: ['src/thing.ts', 'src/thing.test.ts'],
-            deletedFiles: [],
-            specPath: 'specs/app/app.spec.md',
-            taskPath: f.ticket,
-            phaseId: 'P1',
-            verification: [],
-            producesCoverage: kind === 'test',
-          },
-        });
+        const result = resolvePhaseContext(f.ticket, 'P1', f.root);
+        assert.strictEqual(result.ok, true);
+        if (result.ok) {
+          assert.deepStrictEqual(
+            {
+              profile: result.context.profile,
+              profileBasis: result.context.profileBasis,
+              targets: result.context.targets,
+              deletedFiles: result.context.deletedFiles,
+              specPath: result.context.specPath,
+              taskPath: result.context.taskPath,
+              phaseId: result.context.phaseId,
+              verification: result.context.verification,
+              producesCoverage: result.context.producesCoverage,
+            },
+            {
+              profile,
+              profileBasis: 'phase-kind',
+              targets: ['src/thing.ts', 'src/thing.test.ts'],
+              deletedFiles: [],
+              specPath: 'specs/app/app.spec.md',
+              taskPath: f.ticket,
+              phaseId: 'P1',
+              verification: [],
+              producesCoverage: kind === 'test',
+            }
+          );
+          assert.strictEqual(result.context.gatePlan?.profile, profile);
+        }
       } finally {
         rmSync(f.root, { recursive: true, force: true });
       }
@@ -212,6 +227,9 @@ describe('resolvePhaseContext', () => {
         assert.strictEqual(ordinary.context.producesCoverage, false);
         assert.deepStrictEqual(ordinary.context.verification, []);
         assert.strictEqual(ordinary.context.coverageOwner, 'P2');
+        assert.strictEqual(ordinary.context.gatePlan?.producesCoverage, false);
+        assert.ok(ordinary.context.gatePlan?.gates.some((gate) => gate.name === 'test'));
+        assert.ok(!ordinary.context.gatePlan?.gates.some((gate) => gate.name === 'test:coverage'));
       }
       if (owner.ok) {
         assert.strictEqual(owner.context.profile, 'test');
@@ -219,6 +237,9 @@ describe('resolvePhaseContext', () => {
         assert.deepStrictEqual(owner.context.verification, [
           { command: 'custom coverage reader', role: 'coverage' },
         ]);
+        assert.strictEqual(owner.context.gatePlan?.producesCoverage, true);
+        assert.ok(owner.context.gatePlan?.gates.some((gate) => gate.name === 'test:coverage'));
+        assert.ok(!owner.context.gatePlan?.gates.some((gate) => gate.name === 'test'));
       }
     } finally {
       rmSync(f.root, { recursive: true, force: true });
@@ -284,6 +305,62 @@ describe('resolvePhaseContext', () => {
         assert.deepStrictEqual(result.context.verification, [
           { command: 'npm run first', role: 'extra' },
           { command: 'npm run second', role: 'extra' },
+        ]);
+    } finally {
+      rmSync(f.root, { recursive: true, force: true });
+    }
+  });
+
+  it('routes a command probe only to the test phase that owns its mapped test file', () => {
+    const f = fixture('config', ['config/tool.json'], false);
+    const path = join(f.root, f.ticket);
+    const original = readFileSync(path, 'utf-8');
+    mkdirSync(join(f.root, 'test'), { recursive: true });
+    writeFileSync(join(f.root, 'test/gates-smoke.test.ts'), 'test', 'utf-8');
+    writeFileSync(
+      path,
+      [
+        original
+          .replace(
+            '| P1 | config | — | [ ] |',
+            '| P1 | config | — | [ ] |\n| P2 | test | P1 | [ ] |'
+          )
+          .replace(
+            '<!--/SECTION:PHASE_P1-->',
+            [
+              '<!--/SECTION:PHASE_P1-->',
+              '<!--SECTION:PHASE_P2-->',
+              '### P2 — test',
+              '- **Rules:**',
+              '  - none',
+              '- **Target Files:**',
+              '  - test/gates-smoke.test.ts',
+              '<!--/SECTION:PHASE_P2-->',
+            ].join('\n')
+          ),
+        '<!--SECTION:VERIFICATION-->',
+        '<!--COVERAGE_POLICY:v1-->',
+        '- **Coverage Policy:** not-applicable',
+        '- **Coverage Reason:** command behavior is proven by the exact smoke probe, not line coverage',
+        '| Command | Required by | Role |',
+        '|---|---|---|',
+        '| `npm run type-check` | IB-REQ-1 | probe |',
+        '<!--/SECTION:VERIFICATION-->',
+        '<!--SECTION:TEST_COVERAGE-->',
+        '- type-check command → `test/gates-smoke.test.ts` :: `type-check works` :: command `npm run type-check`',
+        '<!--/SECTION:TEST_COVERAGE-->',
+      ].join('\n'),
+      'utf-8'
+    );
+    try {
+      const config = resolvePhaseContext(f.ticket, 'P1', f.root);
+      const test = resolvePhaseContext(f.ticket, 'P2', f.root);
+      assert.strictEqual(config.ok, true);
+      assert.strictEqual(test.ok, true);
+      if (config.ok) assert.deepStrictEqual(config.context.verification, []);
+      if (test.ok)
+        assert.deepStrictEqual(test.context.verification, [
+          { command: 'npm run type-check', role: 'probe' },
         ]);
     } finally {
       rmSync(f.root, { recursive: true, force: true });

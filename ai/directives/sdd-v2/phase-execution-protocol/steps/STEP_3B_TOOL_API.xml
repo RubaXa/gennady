@@ -17,9 +17,9 @@
           | `android/gradle` | unsupported — no registered adapter | none |
 
           An ambiguous ecosystem, unregistered tool, unsupported adapter, missing installed version,
-          or insufficient permitted evidence → `H_THIRD_PARTY_API_UNVERIFIABLE`. Its blocker
-          `unblock` asks the operator for the exact version plus official/persisted docs or a
-          registered adapter; apply `AX_BLOCKER_ESCALATION` and stop. Never guess, call `--help`,
+          or insufficient permitted evidence → `H_THIRD_PARTY_API_UNVERIFIABLE`. Missing adapter,
+          version, or persisted docs is `RECOVERABLE_TECHNICAL`; an exact external-access permission
+          is `EXTERNAL_AUTHORITY_REQUIRED`. Return evidence and the bounded next action. Never guess, call `--help`,
           explore an undeclared cache, inspect tool internals, or access the network outside the
           selected adapter's remote policy.
         </ToolDocAdapterRegistry>
@@ -33,15 +33,3 @@
         <ToolCall owner="phase-worker" result="eventLog">npx gennady sdd-log <ticket> line --content-file .claude/tmp/<task-id>-<phase-id>-log.txt --phase <PhaseID></ToolCall> Inputs <ticket>, <task-id>, <phase-id>, <PhaseID>: file-write of literal evidence gathered here. Use eventLog.
       </Action>
     </Step>
-
-<Axiom id="AX_BLOCKER_ESCALATION">
-      When stuck, escalate — never improvise. Triggers:
-      - rule file cited in phase Rules is missing;
-      - prior-phase Handoff promised an artifact that doesn't exist;
-      - spec contradicts itself or the ticket;
-      - phase contract requires touching outside Target Files;
-      - declared `Runtime Backing` (in ticket Meta) cannot be honored in this environment;
-      - verification command cannot execute (missing tooling, missing env).
-
-      Mechanics: log `<ts> BLOCKED <one-line cause>` per `BLOCKER_FORMAT`; status of phase → `[!] BLOCKED`; return BLOCKED to orchestrator with proposed unblock. Stop.
-    </Axiom>

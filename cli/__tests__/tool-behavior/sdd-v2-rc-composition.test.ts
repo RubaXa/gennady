@@ -17,6 +17,7 @@ import {
 } from '../../../shared/sdd/module-specs.ts';
 import { buildRepoFixture } from './fixture.ts';
 import { runCli } from './run-cli.ts';
+import { installCapabilityProviderFixtures } from './capability-provider-fixture.ts';
 
 function executable(root: string, name: string, body = 'process.exit(0)'): void {
   const dir = join(root, 'node_modules', '.bin');
@@ -274,6 +275,7 @@ describe('SDD v2 release-candidate composition', () => {
         ].join('\n'),
         'utf-8'
       );
+      installCapabilityProviderFixtures(root, ticketRel);
       const readiness = runCli(['sdd-state'], root);
       assert.match(readiness.stdout, /READINESS=ready/, readiness.stdout + readiness.stderr);
       const verifyP1 = runCli(['sdd-verify', '--task', ticketRel, '--phase', 'P1'], root);

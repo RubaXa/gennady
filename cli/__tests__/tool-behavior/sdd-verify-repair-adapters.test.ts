@@ -8,6 +8,7 @@ import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync }
 import { dirname, join, resolve } from 'node:path';
 import { buildRepoFixture } from './fixture.ts';
 import { runCliAsync } from './run-cli.ts';
+import { installCapabilityProviderFixtures } from './capability-provider-fixture.ts';
 
 const REPO_ROOT = resolve(import.meta.dirname, '..', '..', '..');
 const ESLINT_BIN = join(REPO_ROOT, 'node_modules', '.bin', 'eslint');
@@ -102,6 +103,7 @@ function installTicket(root: string, targets: readonly string[]): string[] {
     ].join('\n'),
     'utf-8'
   );
+  installCapabilityProviderFixtures(root, 'specs/app/app.task.TSK-repair.md');
   return ['sdd-verify', '--task', 'specs/app/app.task.TSK-repair.md', '--phase', 'P1'];
 }
 

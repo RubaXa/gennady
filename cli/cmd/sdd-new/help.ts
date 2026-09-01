@@ -91,6 +91,12 @@ export function printHelp(): void {
   console.info(
     '  tuples from ai/directives/knowledge.xml, and the complete Deferred Test Ownership row.'
   );
+  console.info(
+    '  Its phase skeleton includes capability adapter/provides/requires and package ownership fields;'
+  );
+  console.info(
+    '  success gives the exact authoring check, followed by the project feasibility check after all tickets are green.'
+  );
   console.info('');
   console.info('Output:');
   console.info(

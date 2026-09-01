@@ -195,7 +195,7 @@ npx gennady yagni /path/to/repo
 | `sdd-new`           | Scaffold одного SDD v2 артефакта                         |
 | `sdd-verify`        | Запуск verification ladder для тикета или профиля        |
 | `sdd-log`           | Append-only запись событий в Execution Log тикета        |
-| `sdd-session`       | Управление session scratch-файлом SDD                    |
+| `sdd-session`       | Session scratch + typed scaffold/execute lifecycle       |
 | `sdd-sync`          | Синхронизация статуса тикета с tasks-трекерами           |
 | `sdd-task`          | Карта исполнения и фазовый контекст тикета               |
 | `sdd-migrate`       | Детерминированная миграция SDD v1 → v2                   |
@@ -234,6 +234,7 @@ cli/cmd/<name>/
 - `specs/cli/sdd-new/sdd-new.spec.md` — sdd-new
 - `specs/cli/sdd-verify/sdd-verify.spec.md` — sdd-verify
 - `specs/cli/sdd-log/sdd-log.spec.md` — sdd-log
+- `specs/cli/sdd-session/sdd-session.spec.md` — session scratch и CLI-owned scaffold/execute lifecycle
 - `specs/cli/sdd-sync/sdd-sync.spec.md` — sdd-sync
 - `specs/cli/sdd-task/sdd-task.spec.md` — sdd-task
 - `specs/cli/sdd-migrate/sdd-migrate.spec.md` — sdd-migrate

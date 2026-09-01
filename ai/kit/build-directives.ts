@@ -52,6 +52,10 @@ import { lintDanglingAxioms, formatDanglingReport, type RenderedDirective } from
 import { buildDeltaPlan, excludedPartialsFor, applyDelta, type PlanNodeInput } from './delta-assembly.ts';
 import { resolveAssemblyMode, stampFingerprint, LazyDirectiveAssembler, type AssemblyMode } from './lazy-assembly.ts';
 import { check as checkStepBudgets } from './step-budget-gate.ts';
+import {
+  DIRECTIVE_ASSEMBLY_MARKER_FILE,
+  serializeDirectiveAssemblyMarker,
+} from './directive-assembly-marker.ts';
 
 const args = process.argv.slice(2);
 const checkOnly = args.includes('--check') || args.includes('--dry-run');
@@ -156,6 +160,13 @@ if (buildFailures.length > 0) {
   process.exit(1);
 }
 // #endregion END_FAIL_ON_LAZY_BUILD_FAILURES
+
+if (!checkOnly) {
+  writeFileSync(
+    join(outRoot, DIRECTIVE_ASSEMBLY_MARKER_FILE),
+    serializeDirectiveAssemblyMarker(assemblyFlag ?? 'manifest')
+  );
+}
 
 /**
  * Splits one delta-reduced directive into a skeleton + step packages (DA-REQ-3/4/10), measures the
