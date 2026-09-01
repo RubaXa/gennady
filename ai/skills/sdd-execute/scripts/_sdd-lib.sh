@@ -9,6 +9,15 @@
 #
 # macOS bash 3.2 compatible: grep -E / sed -E / awk only. No grep -P, no GNU sed -i.
 
+# Canonical cascade categories. Protocol `*.directive.xml` files are never rules even when stored in
+# one of these directories. The predicate accepts repo-relative and absolute paths.
+SDD_RULE_PATH_RE='(^|/)(ai/directives|plugins/[a-z0-9-]+/directives)/(architecture|coding|infra|quality|testing)/[^/]+\.xml$'
+
+sdd_lib_is_rule_path() {
+    local path="$1"
+    [[ "$path" =~ $SDD_RULE_PATH_RE ]] && [[ "$path" != *.directive.xml ]]
+}
+
 # Extract Meta.Status flag from a ticket. Echoes: DONE | TODO | IN_PROGRESS | BLOCKED | UNKNOWN
 sdd_lib_status() {
     local f="$1" line flag
@@ -24,16 +33,16 @@ sdd_lib_status() {
     esac
 }
 
-# Extract Task-ID (TSK-NN) from a ticket Meta. Echoes the ID or empty string.
+# Extract a legacy TSK-NN or current TSK-{PREFIX}-{NNN} from ticket Meta.
 sdd_lib_task_id() {
     local f="$1"
     head -30 "$f" 2>/dev/null \
-        | grep -m1 -oE 'Task-ID:\*?\*?\s*TSK-[0-9]+' \
-        | grep -oE 'TSK-[0-9]+' || true
+        | grep -m1 -oE 'Task-ID:\*?\*?[[:space:]]*TSK-([A-Z][A-Z0-9]*-)?[0-9]+' \
+        | grep -oE 'TSK-([A-Z][A-Z0-9]*-)?[0-9]+' || true
 }
 
 # Map a tracker-row status cell (`[x]` DONE etc.) to canonical token for ONE Task-ID.
-# Args: <tracker-file> <TSK-NN>. Echoes DONE|TODO|IN_PROGRESS|BLOCKED|UNKNOWN (UNKNOWN if no row).
+# Args: <tracker-file> <Task-ID>. Echoes DONE|TODO|IN_PROGRESS|BLOCKED|UNKNOWN (UNKNOWN if no row).
 sdd_lib_tracker_status() {
     local tr="$1" id="$2" row flag
     # Row form: | [TSK-NN](...) | ... | `[x]` DONE | ... |  (also bare TSK-NN)

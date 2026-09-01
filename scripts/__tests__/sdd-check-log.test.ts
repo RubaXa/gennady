@@ -1,6 +1,6 @@
 // @file: Tests for check.sh [LOG] — Execution Log token vocabulary and Round-close shape.
 // @consumers: CI
-// @tasks: TSK-96
+// @tasks: TSK-96, TSK-97
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -33,11 +33,15 @@ function sectionRows(lines: string[], header: string): string[] {
 }
 
 /** @purpose Assemble a ticket whose Execution Log holds the given P1 and Round-close lines. */
-function ticket(p1Lines: string[], closeLines: string[] = [`- [x] \`${TS}\` DONE`]): string {
+function ticket(
+  p1Lines: string[],
+  closeLines: string[] = [`- [x] \`${TS}\` DONE`],
+  taskId = 'TSK-01'
+): string {
   return [
     '## 1. Meta',
     '',
-    '- **Task-ID:** TSK-01',
+    `- **Task-ID:** ${taskId}`,
     '- **Status:** [x] DONE',
     '',
     '## 7. Execution Log',
@@ -56,17 +60,34 @@ function ticket(p1Lines: string[], closeLines: string[] = [`- [x] \`${TS}\` DONE
 }
 
 /** @purpose Run check.sh over a one-ticket project and return its [LOG] rows and findings count. */
-function runLog(body: string): { rows: string[]; findings: string; ruleFindings: string } {
+function runLog(
+  body: string,
+  taskMode = false
+): {
+  rows: string[];
+  reopens: string[];
+  findings: string;
+  ruleFindings: string;
+} {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sdd-log-'));
   try {
+    const taskId = body.match(/Task-ID:\*\*\s*(TSK-(?:[A-Z][A-Z0-9]*-)?[0-9]+)/)?.[1] ?? 'TSK-01';
+    const trackerStatus = body.includes('- **Status:** [~] IN_PROGRESS')
+      ? '`[~]` IN_PROGRESS'
+      : body.includes('- **Status:** [!] BLOCKED')
+        ? '`[!]` BLOCKED'
+        : body.includes('- **Status:** [ ] TODO')
+          ? '`[ ]` TODO'
+          : '`[x]` DONE';
     fs.mkdirSync(path.join(dir, 'tasks', 'demo'), { recursive: true });
-    fs.writeFileSync(path.join(dir, 'tasks', 'demo', 'demo.task-01.md'), body);
+    fs.writeFileSync(path.join(dir, 'tasks', 'demo', `demo.${taskId}.md`), body);
     fs.writeFileSync(
       path.join(dir, 'tasks', 'demo', 'README.md'),
-      '| Task | Status |\n| --- | --- |\n| [TSK-01](demo.task-01.md) | `[x]` DONE |\n'
+      `| Task | Status |\n| --- | --- |\n| [${taskId}](demo.${taskId}.md) | ${trackerStatus} |\n`
     );
 
-    const proc = spawnSync('bash', [CHECK_SH, dir], { cwd: dir, encoding: 'utf-8' });
+    const args = taskMode ? [CHECK_SH, '--task', taskId, dir] : [CHECK_SH, dir];
+    const proc = spawnSync('bash', args, { cwd: dir, encoding: 'utf-8' });
     const lines = `${proc.stdout}${proc.stderr}`.split('\n');
     const rows = sectionRows(lines, '[LOG]');
 
@@ -77,24 +98,62 @@ function runLog(body: string): { rows: string[]; findings: string; ruleFindings:
         .filter((pair) => pair.length === 2)
     ) as Record<string, string>;
 
-    return { rows, findings: summary.findings, ruleFindings: summary.rule_findings };
+    return {
+      rows,
+      reopens: sectionRows(lines, '[REOPENS]'),
+      findings: summary.findings,
+      ruleFindings: summary.rule_findings,
+    };
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
 }
 
+/** @purpose Add Reopens metadata and canonical persisted audit records to a valid ticket. */
+function ticketWithAuditReopens(reopens: number, triggered: Array<string | 'none'>): string {
+  const base = ticket([`- [x] \`${TS}\` ver \`npm test\` → pass exit=0`, `- [x] \`${TS}\` DONE`]);
+  const extraRounds = Array.from({ length: triggered.length }, (_, index) => index + 2)
+    .map(
+      (round) =>
+        `### Round ${round} — 2026-01-01, audit-driven fix\n\n` +
+        `#### P1 — re-run\n\n- [x] \`${TS}\` ver \`npm test\` → pass exit=0\n` +
+        `- [x] \`${TS}\` DONE\n\n#### Round close\n\n- [x] \`${TS}\` DONE`
+    )
+    .join('\n\n');
+  const audits = triggered
+    .map((value, index) => {
+      const finding =
+        value === 'none'
+          ? ''
+          : '\nF-01 | sev=M | type=COMPLETENESS_GAP | conf=H | loc=src/a.ts:1 | phase=P1 | src=ticket | route=ticket-reopen | act=исправить';
+      return (
+        `### Audit Round ${index + 1} — 2026-01-01, after Execution Round ${index + 1}\n\n` +
+        `\`\`\`text\n@audit task=TSK-01 round=${index + 1} after-exec-round=${index + 1} ` +
+        `triggered-reopen=${value} status=${value === 'none' ? 'PASS' : 'FAIL'} counts=B0·M0·m0·I0${finding}\n\`\`\``
+      );
+    })
+    .join('\n\n');
+
+  return `${base.replace('- **Status:** [x] DONE', `- **Status:** [x] DONE\n- **Reopens:** ${reopens}`).replace('\n#### Round close', `\n#### Round close`)}\n${extraRounds}\n\n## Audit Rounds\n\n${audits}\n`;
+}
+
 describe('check.sh [LOG]', () => {
   it('accepts a log using only canonical tokens', () => {
+    // #region START_CANONICAL_TOKENS_SETUP_EXECUTION_LOG
     const { rows, findings } = runLog(
       ticket([
         `- [x] \`${TS}\` intro \`Thing\` ← нужна новая сущность`,
+        `- [x] \`${TS}\` decision module=esm ← package runtime requires ESM`,
         `- [x] \`${TS}\` ver \`npm test\` → pass exit=0`,
         `- [x] \`${TS}\` DONE`,
       ])
     );
+    // #endregion END_CANONICAL_TOKENS_SETUP_EXECUTION_LOG
 
+    // #region START_CANONICAL_TOKENS_ASSERT_NO_FINDINGS
     assert.deepEqual(rows, []);
     assert.equal(findings, '0');
+    // #endregion END_CANONICAL_TOKENS_ASSERT_NO_FINDINGS
   });
 
   it('flags a token outside the vocabulary', () => {
@@ -165,6 +224,120 @@ describe('check.sh [LOG]', () => {
 
     assert.equal(rows.length, 1, rows.join('\n'));
     assert.match(rows[0], /round-close-no-timestamp/);
+    assert.equal(findings, '0');
+  });
+
+  it('counts only audit-triggered reopens', () => {
+    const { reopens, findings } = runLog(ticketWithAuditReopens(2, ['Round-2', 'none', 'Round-4']));
+
+    assert.equal(reopens.length, 1, reopens.join('\n'));
+    assert.match(reopens[0], /TSK-01\t2\t2\tOK$/);
+    assert.equal(findings, '0');
+  });
+
+  it('flags Reopens metadata that counts unrelated execution rounds', () => {
+    const { reopens, findings } = runLog(ticketWithAuditReopens(2, ['Round-2', 'none']));
+
+    assert.equal(reopens.length, 1, reopens.join('\n'));
+    assert.match(reopens[0], /TSK-01\t2\t1\tMISMATCH$/);
+    assert.equal(findings, '1');
+  });
+
+  it('flags a fabricated checked line that still contains scaffold placeholders', () => {
+    const { rows, findings } = runLog(
+      ticket(['- [x] `<ts>` ver `<cmd>` → <pass|fail> exit=<code>', `- [x] \`${TS}\` DONE`])
+    );
+
+    assert.equal(rows.length, 1, rows.join('\n'));
+    assert.match(rows[0], /fabricated-placeholder/);
+    assert.equal(findings, '1');
+  });
+
+  it('flags token-specific event placeholders without treating all angle brackets as markers', () => {
+    const { rows, findings } = runLog(
+      ticket([
+        `- [x] \`${TS}\` verified \`<tool>@<version>\` <summary>`,
+        `- [x] \`${TS}\` ver \`npm test\` → pass exit=0`,
+        `- [x] \`${TS}\` DONE`,
+      ])
+    );
+
+    assert.equal(rows.length, 1, rows.join('\n'));
+    assert.match(rows[0], /fabricated-placeholder\tverified/);
+    assert.equal(findings, '1');
+  });
+
+  it('allows scaffold-like literals in checked engineering event prose', () => {
+    const { rows, findings } = runLog(
+      ticket([
+        `- [x] \`${TS}\` insight literal \`<cmd>\` is documentation syntax`,
+        `- [x] \`${TS}\` ver \`npm test\` → pass exit=0`,
+        `- [x] \`${TS}\` DONE`,
+      ])
+    );
+
+    assert.deepEqual(rows, []);
+    assert.equal(findings, '0');
+  });
+
+  it('discovers current prefixed Task-IDs independently of legacy ticket filenames', () => {
+    const { findings } = runLog(
+      ticket(
+        [`- [x] \`${TS}\` ver \`npm test\` → pass exit=0`, `- [x] \`${TS}\` DONE`],
+        undefined,
+        'TSK-AIS-001'
+      ),
+      true
+    );
+
+    assert.equal(findings, '0');
+  });
+
+  it('does not return clean for a well-formed but nonexistent prefixed Task-ID', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sdd-missing-task-'));
+    try {
+      fs.mkdirSync(path.join(dir, 'tasks'), { recursive: true });
+      const proc = spawnSync('bash', [CHECK_SH, '--task', 'TSK-ZZZ-999', dir], {
+        cwd: dir,
+        encoding: 'utf-8',
+      });
+
+      assert.equal(proc.status, 3);
+      assert.match(proc.stdout, /missing\tTSK-ZZZ-999\tno ticket declares this Meta Task-ID/);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('flags a triggered reopen whose target round is not caused by the preceding audit', () => {
+    const body = ticketWithAuditReopens(1, ['Round-2']).replace(
+      'triggered-reopen=Round-2',
+      'triggered-reopen=Round-99'
+    );
+    const { reopens, findings } = runLog(body);
+
+    assert.match(reopens[0], /MISMATCH$/);
+    assert.equal(findings, '1');
+  });
+
+  it('flags a phase-owned audit finding that falsely declares no reopen', () => {
+    const body = ticketWithAuditReopens(0, ['none']).replace(
+      'counts=B0·M0·m0·I0',
+      'counts=B0·M1·m0·I0\nF-01 | sev=M | type=COMPLETENESS_GAP | conf=H | loc=src/a.ts:1 | phase=P1 | src=ticket | route=ticket-reopen | act=исправить'
+    );
+    const { reopens, findings } = runLog(body);
+
+    assert.match(reopens[0], /MISMATCH$/);
+    assert.equal(findings, '1');
+  });
+
+  it('reports the latest causative audit as pending until its declared Round is created', () => {
+    const body = ticketWithAuditReopens(1, ['Round-2'])
+      .replace('- **Status:** [x] DONE', '- **Status:** [~] IN_PROGRESS')
+      .replace('### Round 2 —', '### Planned Round 2 —');
+    const { reopens, findings } = runLog(body);
+
+    assert.match(reopens[0], /PENDING$/);
     assert.equal(findings, '0');
   });
 });

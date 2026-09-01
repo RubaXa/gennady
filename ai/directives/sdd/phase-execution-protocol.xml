@@ -1,7 +1,9 @@
 <SddPhaseExecution keywords="phase-execution, single-phase, scope-discipline, live-log, intro-discipline, blocker-escalation, handoff" type="directive" ver="3.0">
   <DirectiveContext>
     <Mission>
-      Execute ONE phase of ONE task ticket, dispatched by `sdd-execute` orchestrator. Read only what this phase needs; write only this phase's Target Files; emit a typed Handoff summary.
+      Execute ONE phase of ONE task ticket, dispatched by `sdd-execute` orchestrator. Read only what
+      this phase needs; write only this phase's Target Files plus its own control-plane records; emit
+      a typed Handoff summary.
 
       Phase = atomic unit of work declared in ticket section `## 3. Phases`. Kinds: `bootstrap | impl | test | config | doc | refactor | fix`. Each phase has its own Objective, Rules list, Target Files, Inputs (handoffs from prior phases), and Exit criteria.
 
@@ -27,7 +29,12 @@
 
   <BeliefState>
     <Axiom id="AX_PHASE_SCOPE_LOCK">
-      Touch only this phase's `Target Files`. Reading other files (specs, sibling-phase code, rule files cited in this phase's Rules list) is allowed and expected. Writing anywhere outside this phase's Target Files → `H_OUT_OF_PHASE_WRITE`. Operator decides via re-planning or new task.
+      Product/project writes are limited to this phase's `Target Files`. The only control-plane
+      exception is the active ticket: update this phase's status in Phases Overview and fill/append
+      this phase's block in the current Execution Round. The phase agent never edits Meta, Audit
+      Rounds, or trackers. Reading specs, sibling-phase code, and cited rule files is allowed and
+      expected. Any other write outside Target Files → `H_OUT_OF_PHASE_WRITE`; operator decides via
+      re-planning or a new task.
 
       This bounds ownership of verification failures too. A repo-wide gate that fails inside ANOTHER phase's `Target Files` is that phase's work: do not write there, do not call it resolved, do not treat it as your blocker. Record it in Handoff `open:` and continue. Everywhere else the failure is yours — including a file you never opened whose build your diff broke. Nothing outside this ticket's phases is covered by either case: that is `AX_BLOCKER_ESCALATION`.
     </Axiom>
@@ -38,7 +45,8 @@
       1. `ls <Target Files parent dirs>` — check whether parent directories exist.
       2. Read prior-phase Handoff lines from this Round's Execution Log to align with what was produced.
 
-      Divergence (file expected absent but exists / expected present but absent) → record an Insight line; if it blocks the phase contract → `H_RECON_DIVERGENCE`. Do not «fix» silently.
+      Divergence (file expected absent but exists / expected present but absent) → record a `discovery`
+      line and resolve it during `STEP_4_EXECUTE`. Do not «fix» silently.
 
       Forbidden: `git status`, `git branch`, `git log`, `git diff`, or any other git operation. The phase agent does not commit, does not inspect repository state, does not work with git. Full project recon is the orchestrator's job.
     </Axiom>
@@ -54,7 +62,11 @@
 
       Mechanics: replace placeholders in scaffolder's pre-filled `ver` + `DONE` lines with real values; toggle `[ ]` → `[x]`. Append event lines (intro / decision / tried / discovery / insight / verified / BLOCKED) BEFORE the closing block as events happen; never retrofit, never batch.
 
-      Forbidden: toggling `[x]` with any unreplaced `<…>` literal (fabricated done → `EXECUTION_LOG_INCOMPLETE` BLOCKER); padding with empty lines to «look thorough».
+      Forbidden: toggling `[x]` while the timestamp or a required field from that token's canonical
+      table shape remains an unreplaced scaffold marker (fabricated done →
+      `EXECUTION_LOG_INCOMPLETE` BLOCKER); padding with empty lines to «look thorough». Detection is
+      token-aware: angle-bracket syntax in an otherwise filled engineering explanation is not a
+      placeholder merely by shape.
     </Axiom>
 
     <Axiom id="AX_INTRODUCED_DISCIPLINE">
@@ -140,10 +152,11 @@
     </Axiom>
 
     <Axiom id="AX_BLOCKER_ESCALATION">
-      When stuck, escalate — never improvise. Triggers:
+      When no safe in-scope path preserves the ticket's BDD, functional requirements, and Vision,
+      escalate — never hide the conflict. Triggers:
       - rule file cited in phase Rules is missing;
       - prior-phase Handoff promised an artifact that doesn't exist;
-      - spec contradicts itself or the ticket;
+      - spec contradicts itself or the ticket and every available choice changes required behavior;
       - phase contract requires touching outside Target Files;
       - declared `Runtime Backing` (in ticket Meta) cannot be honored in this environment;
       - verification command cannot execute (missing tooling, missing env).
@@ -152,7 +165,11 @@
     </Axiom>
 
     <Axiom id="AX_SPEC_NEVER_EDITED">
-      Phase agent does NOT modify `specs/**`. Spec wrong / incomplete / stale → record `<ts> insight <observation> → <spec-section>, <what-change>`. Audit picks up these entries and proposes the spec change; operator approves and applies.
+      Phase agent does NOT modify `specs/**`. Spec wrong / incomplete / stale → record
+      `<ts> insight <observation> → <spec-section>, <what-change>`. Audit picks up these entries and
+      proposes an owned route. The orchestrator may apply an exact bounded correction that preserves
+      requirements and Vision; ambiguity, requirement/Vision change, risk, external state, and
+      optional INFO backflow remain operator decisions.
     </Axiom>
 
     <Axiom id="AX_TICKET_WRITE_SCOPE">
@@ -161,7 +178,9 @@
       - `## 6. Test Scenario Coverage` canonical case names (when test reality differs, phase kind = `test`);
       - `## 2. Phases Overview` Status column for THIS phase ID only.
 
-      Anything else (Phases definitions, Rules lists, Target Files, BDD scenarios, Verification table, Dependencies, Meta) → `H_OUT_OF_PHASE_WRITE`. Operator decides via re-planning.
+      Anything else (phase definitions, Rules lists, Target Files, BDD scenarios, Verification table,
+      Dependencies, Meta, Audit Rounds, trackers) → `H_OUT_OF_PHASE_WRITE`. Operator decides via
+      re-planning.
     </Axiom>
 
     <Axiom id="AX_HANDOFF_TYPED">
@@ -242,7 +261,13 @@
     3. Each rule file cited in the target phase's Rules list.
     4. Spec anchors cited in section 1 Spec References (only those relevant to this phase).
 
-    Tickets and specs carry `<!--SECTION:NAME-->` anchors. Phase agent MAY substitute `~/.claude/skills/sdd-execute/scripts/sdd extract <file> <NAME>` for full-file Read (own block `PHASE_P<N>` / `PHASE_P<N>_FIX`; ticket sections `META` / `VERIFICATION` / `TEST_COVERAGE` / `BDD` / `EXECUTION_LOG`; spec sections by canonical name). Read remains the fallback — use it when multiple sections are needed or when extract returns `ANCHOR_NOT_FOUND` (legacy artifact; log a discovery line and proceed).
+    Tickets and specs carry `<!--SECTION:NAME-->` anchors. Phase agent MAY substitute
+    `<sdd-path> extract <file> <NAME>` for full-file Read (own block `PHASE_P<N>` /
+    `PHASE_P<N>_FIX`; ticket sections `META` / `VERIFICATION` / `TEST_COVERAGE` / `BDD` /
+    `EXECUTION_LOG`; spec sections by canonical name). Read remains the fallback — use it when
+    multiple sections are needed or when extract returns `ANCHOR_NOT_FOUND` (legacy artifact; log a
+    discovery line and proceed). `ANCHOR_EMPTY` is not legacy fallback: the current-format section
+    exists but has lost its payload, so halt with `H_RECON_DIVERGENCE` until it is restored.
   </ContextExpectation>
 
   <PhaseProcedure>
@@ -252,14 +277,19 @@
         1. Read ticket section 1 Meta + section 2 Phases Overview + the target phase block from section 3 Phases.
         2. Phase block missing → `H_PHASE_NOT_FOUND`. Phase Status `[x]` and orchestrator did not pass `fix` reason → `H_PHASE_ALREADY_DONE`.
         3. For each Input listed under phase: locate the prior phase's `**Handoff →**` line in current Round of section 7 Execution Log. Missing → `H_INPUT_HANDOFF_MISSING`.
-        4. Append phase header in current Round: `#### <PhaseID>` (or `#### <PhaseID> — re-run: <reason>` for fix-kind).
+        4. In the current open Round, locate this phase header. If exactly one untouched scaffold
+           skeleton already exists, fill that block in place. If no header exists (the normal shape
+           of a later selective-fix Round), append `#### <PhaseID>` or
+           `#### <PhaseID> — re-run: <reason>`. More than one matching header, or a completed header
+           without an explicit fix reason, is structural ambiguity → `H_RECON_DIVERGENCE`. Never
+           create a duplicate header merely because scaffolding prepared Round 1.
       </Action>
     </Step>
 
     <Step id="STEP_2_NARROW_RECON">
       <Goal>Verify ground truth before write. Silent when nothing surprising.</Goal>
       <Action>
-        Per `AX_NARROW_RECON`. Do NOT log a `recon` line when state matches plan — silence is the signal that nothing is surprising. ONLY log if divergence found: emit a `discovery` line describing the divergence (e.g. `<ts> discovery file <path> already exists with non-trivial content`), then evaluate — divergence blocks the phase contract → `H_RECON_DIVERGENCE`; otherwise proceed.
+        Per `AX_NARROW_RECON`. Do NOT log a `recon` line when state matches plan — silence is the signal that nothing is surprising. ONLY log if divergence found: emit a `discovery` line describing the divergence (e.g. `<ts> discovery file <path> already exists with non-trivial content`), then resolve it in `STEP_4_EXECUTE` or return `H_RECON_DIVERGENCE` when no safe in-scope resolution exists.
       </Action>
     </Step>
 
@@ -277,6 +307,12 @@
         2. For phase kind = `test`: honor `AX_BDD_NAME_DISCIPLINE`.
         3. For phase kind = `config`: honor `AX_THIRD_PARTY_TOOL_CURRENT_API` BEFORE writing config.
         4. Append event lines to current phase block per `AX_LIVE_LOG` (vocabulary in scaffold). Spec gap → `insight` line, never edit specs (per `AX_SPEC_NEVER_EDITED`).
+        5. When spec, task, and runtime do not agree, prefer an in-scope implementation choice that
+           preserves BDD, functional requirements, and Vision. Record it with the existing
+           `decision <key>=<value> ← <reason>` token, add an `insight` only when canonical text must
+           change, carry the decision in Handoff, and continue through verification. If no such choice
+           exists, use `AX_BLOCKER_ESCALATION`. Do not ask the operator about a choice the audit can
+           verify at the end.
       </Action>
     </Step>
 
@@ -300,8 +336,11 @@
     <Step id="STEP_6_EMIT_HANDOFF">
       <Goal>Close phase block with typed Handoff and DONE token.</Goal>
       <Action>
-        1. Append final phase line: `<ts> DONE`.
-        2. Append `**Handoff →**` line per `HANDOFF_FORMAT`.
+        1. If this is a scaffolded phase block, replace its unique unticked `<ts> DONE` skeleton line
+           with the real checked line. If a later selective-fix block has no skeleton, append the
+           real `<ts> DONE` line. Never keep both.
+        2. Replace the scaffolded placeholder `**Handoff →**` in place, or append one only when the
+           current phase block has none. Emit exactly one Handoff per phase block.
         3. Update section 2 Phases Overview Status for THIS phase ID: `[ ]` → `[x]`.
         4. Return structured summary to orchestrator (see `RETURN_SUMMARY_FORMAT`).
       </Action>
@@ -333,11 +372,11 @@
     <Contract id="HANDOFF_FORMAT">
       Compact, typed, single line at end of phase block:
       ```
-      **Handoff →** artifacts: [path1, path2]; decisions: [key=value, key=value]; open: [id: text, id: text]
+      **Handoff →** artifacts: [path1, path2]; decisions: [key=value]; open: [id: text, id: text]
       ```
       Fields:
       - `artifacts` — files produced or modified by this phase (paths).
-      - `decisions` — key facts the next phase or audit needs (e.g. `IdempotencyKey=introduced`, `module-system=esm`).
+      - `decisions` — key facts and non-routine choices the next phase or audit needs (e.g. `IdempotencyKey=introduced`, `module-system=esm`).
       - `open` — unresolved questions / risks / deferred sub-tasks (id + one-line). Empty list → `[]`.
 
       Free-form text forbidden. Each field is an array (possibly empty).

@@ -71,7 +71,12 @@ Only these tokens may appear in log lines. `sync` / `file` / `test` / `cov` / `r
 
 Tracker sync happens at Round close but is **not** logged — it is mechanical orchestrator work.
 
-⛔ `[x]` line with any unreplaced `<…>` literal = fabricated done.
+Non-routine choices stay in this Execution Log, pass through Handoff, and are reviewed by the normal
+audit. The final execute summary groups any `INSIGHT_BACKFLOW` proposals for operator review.
+
+⛔ `[x]` closing/protocol line with a known unreplaced scaffold marker (`<ts>`, `<pass|fail>`,
+`<code>`, `<cmd>`, `<YYYY-MM-DD>`) = fabricated done. Ordinary angle-bracket engineering prose is
+not a placeholder by shape alone.
 
 ### Post-task Hook
 
@@ -147,6 +152,7 @@ graph TD
     TSK-95[TSK-95: stack library — plugins node+golang (stack)]
     TSK-96[TSK-96: gennady verify command (stack)]
     TSK-96 --> TSK-95
+    TSK-97[TSK-97: autonomous execution in existing SDD flow]
 ```
 
 ## Tracker Index
@@ -163,6 +169,7 @@ graph TD
 | infra-npm-publish | infrastructure | [README](infra-npm-publish/README.md) | 3 | 3/3 |
 | agent-run | library | [README](agent-run/README.md) | 3 | 3/3 |
 | stack | library | [README](stack/README.md) | 2 | 2/2 |
+| ai-skills | library | [README](ai-skills/README.md) | 2 | 1/2 |
 
 ## Decision Log
 

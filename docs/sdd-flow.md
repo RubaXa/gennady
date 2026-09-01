@@ -72,33 +72,34 @@ flowchart LR
     F --> G["🔍 @sdd-audit"]
     G -->|❌ FAIL| F
     G -->|✅ PASS| H["🗂️ tracker synced"]
+    H -. decisions / insights .-> R["👤 operator review\nrefine / reopen / follow-up"]
 ```
 
 **Легенда:** 🧩 — скилл (активируется `@sdd-*`) · 📜 — директива (читается агентом из `ai/directives/sdd/`) · 📦 — артефакт (файл в репозитории).
 
-| Фаза         | Скиллы                                         | Артефакт на выходе                                                  |
-| ------------ | ---------------------------------------------- | ------------------------------------------------------------------- |
-| 🧱 Setup     | `@sdd-setup`                                   | `specs/README.md` — портал (Vision + Scope Graph)                   |
-| 🔭 Discovery | `@sdd-discover`, `@sdd-continue`, `@sdd-infra` | `specs/<scope>/<scope>.spec.md` — спека скоупа                      |
-| 🧩 Design    | `@sdd-module-decomposition`, `@sdd-critic`     | `specs/<scope>/<module>/<module>.spec.md` — модульные спеки         |
-| 🗂️ Planning  | `@sdd-scaffold`                                | `tasks/README.md`, `tasks/<scope>/README.md`, тикеты `*.task-NN.md` |
-| ⚙️ Execution | `@sdd-execute`, `@sdd-execute-batch`           | изменения в Target Files + `## 7. Execution Log` внутри тикета      |
-| 🔍 Audit     | `@sdd-audit`, `@sdd-check`                     | вердикт + findings (роутятся в правки спеки/тикета/кода)            |
-| 🔁 Iteration | `@sdd-continue`, `@sdd-fix`                    | обновлённые спеки, переоткрытые тикеты                              |
+| Фаза         | Скиллы                                         | Артефакт на выходе                                                                     |
+| ------------ | ---------------------------------------------- | -------------------------------------------------------------------------------------- |
+| 🧱 Setup     | `@sdd-setup`                                   | `specs/README.md` — портал (Vision + Scope Graph)                                      |
+| 🔭 Discovery | `@sdd-discover`, `@sdd-continue`, `@sdd-infra` | `specs/<scope>/<scope>.spec.md` — спека скоупа                                         |
+| 🧩 Design    | `@sdd-module-decomposition`, `@sdd-critic`     | `specs/<scope>/<module>/<module>.spec.md` — модульные спеки                            |
+| 🗂️ Planning  | `@sdd-scaffold`                                | `tasks/README.md`, `tasks/<scope>/README.md`, prefixed tickets + legacy `*.task-NN.md` |
+| ⚙️ Execution | `@sdd-execute`, `@sdd-execute-batch`           | изменения в Target Files + `## 7. Execution Log` внутри тикета                         |
+| 🔍 Audit     | `@sdd-audit`, `@sdd-check`                     | вердикт + findings (роутятся в правки спеки/тикета/кода)                               |
+| 🔁 Iteration | `@sdd-continue`, `@sdd-fix`                    | обновлённые спеки, переоткрытые тикеты                                                 |
 
 **Глоссарий (кратко):**
 
 | Термин            | Что это                                                                                   |
-| ----------------- | ----------------------------------------------------------------------------------------- | ---- | ---- | ------ | --- | -------- | ---- |
+| ----------------- | ----------------------------------------------------------------------------------------- |
 | **Scope**         | Архитектурно когерентная единица со своим runtime / стеком / deployment'ом                |
 | **scope-type**    | `infrastructure` · `contracts` · `library` · `product`                                    |
 | **Spec**          | Живой документ скоупа/модуля (`specs/**`) — источник истины (`AX_SPEC_IS_SOLE_SOURCE`)    |
 | **Ticket**        | Тикет задачи: Meta, Phases Overview, тела фаз, BDD, Verification, Coverage, Execution Log |
-| **Phase**         | Атомарная единица работы внутри тикета: `bootstrap                                        | impl | test | config | doc | refactor | fix` |
+| **Phase**         | Атомарная единица работы: `bootstrap \| impl \| test \| config \| doc \| refactor \| fix` |
 | **Round**         | Цикл `open → DONE` в Execution Log; старые раунды никогда не редактируются                |
 | **Handoff**       | Типизированный payload между фазами: `artifacts / decisions / open`                       |
-| **Audit**         | Фаза 5: fresh-eyes проверка выравнивания спека ↔ тикет ↔ код                              |
-| **phases_to_fix** | Результат FAIL-аудита: маппинг finding → фаза, чьи Target Files содержат проблему         |
+| **Audit**         | Fresh-eyes проверка выравнивания спека ↔ тикет ↔ код                                      |
+| **Finding owner** | Владелец исправления из результата аудита: конкретная фаза, ticket, spec или project      |
 | **Blocker**       | Неразрешённый блокер в Execution Log — останавливает выполнение (`✋ PAUSED`, не FAIL)    |
 
 ---
@@ -130,16 +131,35 @@ flowchart TD
     LOOP -->|нет| CLOSE["🔒 close Round + sync trackers"]
     CLOSE --> AUD["🔍 диспатч аудита"]
     AUD -->|✅ PASS| OK["🎉 тикет DONE"]
-    AUD -->|❌ FAIL| FIX["🔧 fix-фазы phases_to_fix → аудит R2"]
+    AUD -->|❌ FAIL| ROUTE{"кто владеет исправлением?"}
+    ROUTE -->|phase=P<N>| FIX["🔧 только названные фазы"]
+    ROUTE -->|ticket / spec| DOC["📝 точечная правка артефакта"]
+    ROUTE -->|project| FOLLOW["📌 follow-up без ложного reopen"]
     FIX --> AUD
+    DOC --> AUD
+    OK -. decisions / insights .-> REC["👤 refine spec / reopen / follow-up"]
 ```
 
 **Шаги:**
 
 1. `npx gennady sync && npx gennady sync-skills` — развернуть директивы и скиллы (однократно).
-2. `@sdd-execute next` (или `@sdd-execute TSK-03`) — скилл сам найдёт pickable-тикет: `[ ] TODO` и все зависимости `[x] DONE`.
+2. `@sdd-execute next` (или `@sdd-execute TSK-03`) — скилл сам выберет первый pickable-тикет:
+   `[ ] TODO` и все зависимости `[x] DONE`. Команда уже разрешает запуск; повторное подтверждение не
+   требуется.
 3. Наблюдайте за прогрессом: `0% ⏳ resolving` → `🔧 P1 executing` → `✅ all phases done → 🔍 audit` → `100% ✅ audit PASS`.
-4. На тикете FAIL аудита скилл сам перезапустит **только** отмеченные фазы (максимум 2 попытки аудита) — не надо чинить вручную.
+4. На тикете FAIL скилл сам перезапустит **только** отмеченные фазы и продолжит свежие аудиты, пока
+   исправления закрывают предыдущие блокирующие находки или дают новые доказательства и другой
+   проверяемый путь исправления. Эквивалентный результат без новых доказательств и нового пути
+   считается отсутствием прогресса и возвращается оператору с конкретным условием разблокировки —
+   отдельный токен на следующую попытку не нужен.
+
+Если во время реализации спека, задача и реальность не стыкуются, но существует проверяемый вариант,
+который сохраняет BDD, функциональные требования и Vision, агент не останавливается. Он использует
+обычные `decision`/`insight` в `Execution Log`, передаёт выбор через Handoff и продолжает до стандартного
+аудита. Аудит возвращает обычный PASS/FAIL и подтверждает runtime-утверждения выполненной командой
+или probe, а не напечатанным текстом или чтением кода. Предложения обновить spec/task идут как
+`INSIGHT_BACKFLOW`.
+В финале оператор получает их одним блоком и направляет в существующий refine/reopen/follow-up flow.
 
 **Директивы (читаются скиллом, вам не нужны):** `phase-execution-protocol.xml` (фазы), `audit.directive.xml` (аудит).
 
@@ -239,35 +259,31 @@ sequenceDiagram
 **Когда:** много pickable-тикетов, хочется прогнать разом с учётом зависимостей. · **Выход:** батч-саммари `✅ N · 🔄 R · ❌ F`.
 
 ```mermaid
-flowchart TD
-    subgraph L0["Layer 0 — параллельно (файлы не пересекаются)"]
-        T1["TSK-01: порт A"]
-        T2["TSK-02: порт B"]
-        T3["TSK-03: порт C"]
-    end
-    subgraph L1["Layer 1 — параллельно"]
-        T4["TSK-04: композит AB"]
-    end
-    subgraph L2["Layer 2 — последовательно (конфликт на src/shared.ts)"]
-        T5["TSK-05"]
-        T6["TSK-06"]
-    end
-    T1 --> T4
-    T2 --> T4
-    T4 --> L2
-    T3 --> L2
+flowchart LR
+    Q["Очередь TODO + IN_PROGRESS"] --> R{"Зависимости уже DONE?"}
+    R -->|да| E["канонический sdd-execute<br/>один тикет до terminal state"]
+    E --> F["обновить фактические статусы"]
+    F --> R
+    R -->|нет готовых| S["DONE / BLOCKED / PAUSED / waiting"]
 ```
 
 **Шаги:**
 
-1. `@sdd-execute-batch выполни всю очередь` — оркестратор построит слои DAG и покажет план.
-2. Проверьте план (`📋 Execution Plan`), ответьте на запрос старта.
-3. Внутри слоя тикеты без файловых конфликтов выполняются параллельно; слои — последовательно.
-4. Опциональный флаг `epic-only` — один эпик-аудит в конце вместо per-task аудитов.
+1. `@sdd-execute-batch выполни всю очередь` — scheduler покажет dependency-план и сразу начнёт:
+   сам вызов уже является разрешением на выполнение.
+2. Каждый готовый тикет последовательно проходит тот же `sdd-execute` lifecycle, включая resume,
+   audit-only, исправления по findings и обязательный per-task audit.
+3. После каждого terminal state scheduler перечитывает статусы: независимые тикеты продолжаются,
+   зависимые от BLOCKED/PAUSED/FAILED остаются `waiting` с точной причиной.
+4. Опциональный `epic-audit` добавляет cross-task аудит в конце, но не заменяет per-task audits.
+
+Тикеты намеренно не идут параллельно в одном worktree: иначе их diff, проверки и tracker writes
+смешиваются. Параллельный режим допустим только с изолированным worktree на каждый lane.
 
 **Доп. аргументы:** явный список `@sdd-execute-batch TSK-04 TSK-05`, домен `domain:cli`, путь к тикету.
 
-> ⚠️ Тикеты со статусом `[!] BLOCKED` или ожидающие `[~] IN_PROGRESS` зависимость **исключаются** из батча и помечаются `⏸️ waiting` — это не ошибка батча.
+> ⚠️ `[~] IN_PROGRESS` входит в очередь как resume/audit-only. `[!] BLOCKED` не запускается; его
+> незавершённые dependents получают `waiting`, а независимые задачи продолжаются.
 
 ---
 
@@ -289,7 +305,7 @@ flowchart TD
     C -->|находки| D["оркестратор правит артефакт"]
     D --> E["Раунд N+1: проверка правки\nбез нового полного аудита"]
     E --> C
-    C -->|"CLEAN на любом раунде"| F["✅ стоп · удалить ## Critic Rounds"]
+    C -->|"CLEAN на любом раунде"| F["✅ стоп · оставить компактный @critic"]
     C -->|"5 раундов и не CLEAN"| G["⛔ MAX_ROUNDS — стоп"]
 ```
 
@@ -406,7 +422,7 @@ flowchart LR
 | `module-decomposition.directive.xml` | Модульные спеки: инвентарь сущностей, публичные поверхности, DbC (Ports/Adapters/Services) |
 | `scaffold.directive.xml`             | Тикеты из спек: DAG, Cascade Table, BDD, Phases Overview, per-phase Rules                  |
 | `phase-execution-protocol.xml`       | Одна фаза одного тикета: scope-lock по Target Files, Handoff, blocker-эскалация            |
-| `audit.directive.xml`                | Выравнивание спека ↔ тикет ↔ код; `phases_to_fix`, роутинг findings                        |
+| `audit.directive.xml`                | Выравнивание спека ↔ тикет ↔ код; каждый finding называет владельца исправления            |
 | `critic.directive.xml`               | Оркестратор критики: baseline → узкая проверка правок, CLEAN сразу / max 5                 |
 | `critic-protocol.xml`                | Изолированный критик-сабагент: read-only, только артефакт + родительская спека             |
 | `fix.directive.xml`                  | Классификация findings → план → фиксы → reopen → execute → verify                          |
@@ -423,18 +439,18 @@ flowchart LR
 <details>
 <summary>📦 4.3 Артефакты — что где создаётся</summary>
 
-| Артефакт         | Создаёт                         | Путь                                               |
-| ---------------- | ------------------------------- | -------------------------------------------------- |
-| Портал проекта   | `sdd-setup`                     | `specs/README.md`                                  |
-| Спека скоупа     | `sdd-discover` / `sdd-continue` | `specs/<scope>/<scope>.spec.md`                    |
-| Модульная спека  | `sdd-module-decomposition`      | `specs/<scope>/<module>/<module>.spec.md`          |
-| Компонент-спека  | `svelte-ui-discovery`           | `specs/<scope>/components/<name>.ui.spec.md`       |
-| Проектный трекер | `sdd-scaffold`                  | `tasks/README.md` (Tracker Index, High-Level DAG)  |
-| Трекер скоупа    | `sdd-scaffold`                  | `tasks/<scope>/README.md` (Cascade Table, Tracker) |
-| Тикет            | `sdd-scaffold`                  | `tasks/<scope>/<scope>.task-NN.md`                 |
-| Execution Log    | фазы `sdd-execute`              | секция `## 7.` внутри тикета                       |
-| Audit Rounds     | `sdd-audit`                     | секция `## Audit Rounds` внутри тикета             |
-| Decision Log     | `sdd-discover`                  | секция в спеке (`D-NNN`)                           |
+| Артефакт         | Создаёт                         | Путь                                                               |
+| ---------------- | ------------------------------- | ------------------------------------------------------------------ |
+| Портал проекта   | `sdd-setup`                     | `specs/README.md`                                                  |
+| Спека скоупа     | `sdd-discover` / `sdd-continue` | `specs/<scope>/<scope>.spec.md`                                    |
+| Модульная спека  | `sdd-module-decomposition`      | `specs/<scope>/<module>/<module>.spec.md`                          |
+| Компонент-спека  | `svelte-ui-discovery`           | `specs/<scope>/components/<name>.ui.spec.md`                       |
+| Проектный трекер | `sdd-scaffold`                  | `tasks/README.md` (Tracker Index, High-Level DAG)                  |
+| Трекер скоупа    | `sdd-scaffold`                  | `tasks/<scope>/README.md` (Cascade Table, Tracker)                 |
+| Тикет            | `sdd-scaffold`                  | `tasks/<scope>/<scope>.{PREFIX}-{NNN}.md` (legacy: `*.task-NN.md`) |
+| Execution Log    | фазы `sdd-execute`              | секция `## 7.` внутри тикета                                       |
+| Audit Rounds     | `sdd-audit`                     | секция `## Audit Rounds` внутри тикета                             |
+| Decision Log     | `sdd-discover`                  | секция в спеке (`D-NNN`)                                           |
 
 </details>
 

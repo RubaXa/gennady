@@ -17,6 +17,7 @@ flowchart LR
     E --> F["sdd-execute / sdd-execute-batch"]
     F --> G[audit]
     G -->|FAIL| F
+    G -->|PASS + insights| H["operator reviews canonical backflow"]
 ```
 
 ```
@@ -32,22 +33,28 @@ setup ──► discovery ──► module-decomposition? ──► scaffold ─
 
 ## Директивы
 
-| Директива                            | Что делает                                                                          | Входные данные              | Выходные данные                                 |
-| ------------------------------------ | ----------------------------------------------------------------------------------- | --------------------------- | ----------------------------------------------- |
-| `setup.directive.xml`                | Создаёт/обновляет портал проекта — Vision и Scope Graph (sole owner)                | Намерение оператора         | `specs/README.md`                               |
-| `discovery.directive.xml`            | Проектирует scope: vision, архитектура, инструменты; режимы greenfield/refine/pivot | Название scope + scope-type | `specs/<scope>/<scope>.spec.md`                 |
-| `module-decomposition.directive.xml` | Декомпозирует scope на модули (только library/product)                              | scope-spec                  | `specs/<scope>/<module>/<module>.spec.md`       |
-| `scaffold.directive.xml`             | Строит DAG task-тикетов с Phases Overview, BDD, правилами per phase                 | Все scope-specs             | `tasks/README.md`, `tasks/<scope>/*.task-NN.md` |
-| `phase-execution-protocol.xml`       | Выполняет ОДНУ фазу одного тикета (диспетчится `sdd-execute` оркестратором)         | Phase ID + ticket + Handoff | Изменения в Target Files фазы + лог-блок        |
-| `audit.directive.xml`                | Проверяет выравнивание: spec ↔ тикет ↔ код; маппит finding-ы на фазы                | Закрытый Round + код        | Вердикт + `phases_to_fix`                       |
-| `critic.directive.xml`               | Оркестратор критики: baseline → узкая проверка правок, CLEAN сразу / max 5          | Артефакт (спека/таск)       | Закрытые пробелы / вердикт CLEAN                |
-| `critic-protocol.xml`                | Изолированный критик-сабагент: read-only, только артефакт + родительская спека      | Артефакт                    | Находки (отчёт)                                 |
-| `fix.directive.xml`                  | Findings → классификация → план → фиксы → reopen → execute → verify                 | Находки (ревью/аудит/check) | Исправления + переоткрытые тикеты               |
-| `interview-protocol.xml`             | Движок интервью оператора: coverage map, один вопрос за сообщение                   | scope-type + focus          | Закрытая карта покрытия + ответы                |
-| `visual-vocabulary.xml`              | Cheat-sheet диаграмм: ASCII в чате / mermaid в спеках                               | Контекст авторинга          | Выбор диаграммы                                 |
-| `svelte-ui-discovery.directive.xml`  | Компонент-спека `.ui.spec.md` из Figma SVG (component-level, дополняет flow)        | Имя компонента + SVG        | `specs/<scope>/components/<name>.ui.spec.md`    |
+| Директива                            | Что делает                                                                            | Входные данные              | Выходные данные                                 |
+| ------------------------------------ | ------------------------------------------------------------------------------------- | --------------------------- | ----------------------------------------------- |
+| `setup.directive.xml`                | Создаёт/обновляет портал проекта — Vision и Scope Graph (sole owner)                  | Намерение оператора         | `specs/README.md`                               |
+| `discovery.directive.xml`            | Проектирует scope: vision, архитектура, инструменты; режимы greenfield/refine/pivot   | Название scope + scope-type | `specs/<scope>/<scope>.spec.md`                 |
+| `module-decomposition.directive.xml` | Декомпозирует scope на модули (только library/product)                                | scope-spec                  | `specs/<scope>/<module>/<module>.spec.md`       |
+| `scaffold.directive.xml`             | Строит DAG task-тикетов с Phases Overview, BDD, правилами per phase                   | Все scope-specs             | `tasks/README.md`, `tasks/<scope>/*.task-NN.md` |
+| `phase-execution-protocol.xml`       | Выполняет одну фазу; безопасные расхождения фиксирует обычным `decision` и продолжает | Phase ID + ticket + Handoff | Target Files + лог-блок + typed Handoff         |
+| `audit.directive.xml`                | Проверяет spec ↔ тикет ↔ код; каждый finding называет владельца исправления           | Закрытый Round + код        | PASS / FAIL + маршрутизация                     |
+| `critic.directive.xml`               | Baseline → узкая проверка правок; сохраняет компактный итог CLEAN                     | Артефакт (спека/таск)       | Закрытые пробелы / проверяемый вердикт          |
+| `critic-protocol.xml`                | Изолированный критик-сабагент: read-only, только артефакт + родительская спека        | Артефакт                    | Находки (отчёт)                                 |
+| `fix.directive.xml`                  | Findings → классификация → план → фиксы → reopen → execute → verify                   | Находки (ревью/аудит/check) | Исправления + переоткрытые тикеты               |
+| `interview-protocol.xml`             | Движок интервью оператора: coverage map, один вопрос за сообщение                     | scope-type + focus          | Закрытая карта покрытия + ответы                |
+| `visual-vocabulary.xml`              | Cheat-sheet диаграмм: ASCII в чате / mermaid в спеках                                 | Контекст авторинга          | Выбор диаграммы                                 |
+| `svelte-ui-discovery.directive.xml`  | Компонент-спека `.ui.spec.md` из Figma SVG (component-level, дополняет flow)          | Имя компонента + SVG        | `specs/<scope>/components/<name>.ui.spec.md`    |
 
-Оркестрация — через SKILL-ы (`sdd-execute`, `sdd-execute-batch`). Они читают только заголовок тикета + Phases Overview и диспетчат phase-subagent-ов; никогда не выполняют сами.
+Оркестрация — через SKILL-ы: `sdd-execute` владеет единственным per-task lifecycle, а
+`sdd-execute-batch` только планирует dependency-очередь и последовательно делегирует ему готовые
+TODO/IN_PROGRESS тикеты. Они читают planning surface и никогда не выполняют фазы сами. Нештатные
+решения переносятся существующим Handoff до fresh-eyes аудита. Диспатчи наследуют настроенную модель. Аудит подтверждает
+runtime-утверждения выполненной командой или probe, продолжает исправления до PASS либо доказанного
+no-progress и возвращает обычные `INSIGHT_BACKFLOW` предложения; оператор получает их одним блоком
+после исполнения.
 
 ## Scope Model
 

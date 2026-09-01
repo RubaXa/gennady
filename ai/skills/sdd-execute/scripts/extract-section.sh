@@ -25,6 +25,7 @@
 #   2  — anchor markers not present in file
 #   3  — START found but END missing, or vice versa (corrupted markers), or duplicate occurrences
 #   4  — bad invocation (missing args, invalid NAME)
+#   5  — markers are present and balanced, but the section payload is empty
 
 set -uo pipefail
 
@@ -137,7 +138,7 @@ Required action (ORCHESTRATOR, not phase agent):
   1. Read the file directly via Read tool.
   2. Verify the section exists by markdown header (e.g. ## 1. Meta, ### P1 — impl).
   3. If section exists in header form but lacks anchors → retrofit anchors per
-      AX_TICKET_ANCHOR_FORMAT in ~/Developer/gennady/ai/directives/sdd/scaffold.directive.xml.
+      AX_TICKET_ANCHOR_FORMAT in the scaffold directive installed with this SDD skill set.
   4. If section does not exist at all → escalate to operator: ticket needs
      re-scaffolding or section content authoring.
 
@@ -212,7 +213,7 @@ Required action (ORCHESTRATOR):
   3. If accidental → re-author content.
   4. If intentional → use a different section reference; this one carries no payload.
 EOF
-    exit 2
+    exit 5
 fi
 
 printf '%s\n' "$content"

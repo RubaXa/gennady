@@ -1,5 +1,14 @@
 # AGENTS — Router
 
+## Directive markup — mandatory
+
+Файлы `ai/directives/**/*.xml` и `plugins/*/directives/**/*.xml` — **HTML-like prompt markup, а не XML-документы**. Расширение `.xml` историческое.
+
+- Сохраняй парность и понятную вложенность тегов: они структурируют инструкции для агента.
+- Не требуй XML well-formedness, schema, namespaces или XML escaping.
+- Не запускай XML parser/validator (`xmllint` и аналоги) для проверки директив.
+- Читай и редактируй директивы как prompt text; тестируй поведение и смысловые anchors, а не XML-валидность.
+
 ## Project description
 
 _(Обновляется по мере развития проекта; агент должен ориентироваться на этот блок.)_

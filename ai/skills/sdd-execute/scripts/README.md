@@ -1,31 +1,34 @@
 # sdd-execute / scripts
 
-Helper scripts bundled with the `sdd-execute` skill. They live alongside the skill, not in any project — invoke via absolute path `~/Developer/gennady/ai/skills/sdd-execute/scripts/sdd`.
+Helper scripts bundled with the `sdd-execute` skill. They live alongside the skill, not in any
+project. Resolve `scripts/sdd` relative to the installed `sdd-execute/SKILL.md`, canonicalize it, and
+pass that absolute path to dispatched agents. Never assume a particular home-directory checkout.
 
 All scripts honor the contract: **never produce silent empty output**. On miss, they emit actionable diagnostic instructions and a non-zero exit code. Phase agents and audit agents can therefore rely on either content-on-stdout (exit 0) or instruction-on-stdout (exit ≠ 0) to drive their next decision.
 
 ## Entry point — `sdd` dispatcher
 
 ```bash
-~/Developer/gennady/ai/skills/sdd-execute/scripts/sdd help                                 # surface
-~/Developer/gennady/ai/skills/sdd-execute/scripts/sdd extract <file> <SECTION_NAME>        # extract anchored section
-~/Developer/gennady/ai/skills/sdd-execute/scripts/sdd lint <file>...                       # gennady DBC AST contract lint
-~/Developer/gennady/ai/skills/sdd-execute/scripts/sdd verify <file>...                     # comprehensive gate (typecheck + lint + grep)
-~/Developer/gennady/ai/skills/sdd-execute/scripts/sdd check-blockers <ticket-file>         # scan Execution Log per AX_BLOCKER_RESOLUTION_TRAIL
-~/Developer/gennady/ai/skills/sdd-execute/scripts/sdd scan [project-root]                  # one-shot rich snapshot for triage skills
-~/Developer/gennady/ai/skills/sdd-execute/scripts/sdd check [root|--task TSK-NN|--files f...] # deterministic mechanical checks (shared by sdd-check + sdd-audit)
+SDD_PATH=/absolute/path/to/installed/sdd-execute/scripts/sdd
+"$SDD_PATH" help
+"$SDD_PATH" extract <file> <SECTION_NAME>
+"$SDD_PATH" lint <file>...
+"$SDD_PATH" verify <file>...
+"$SDD_PATH" check-blockers <ticket-file>
+"$SDD_PATH" scan [project-root]
+"$SDD_PATH" check [root|--task <Task-ID>|--files f...]
 ```
 
 Single permission rule covers all subcommands:
 
 ```json
-"Bash(~/Developer/gennady/ai/skills/sdd-execute/scripts/sdd *)"
+"Bash(<resolved-sdd-path> *)"
 ```
 
 Or broader:
 
 ```json
-"Bash(~/Developer/gennady/ai/skills/sdd-execute/scripts/*)"
+"Bash(<resolved-sdd-scripts-directory>/*)"
 ```
 
 ## Files
@@ -33,12 +36,12 @@ Or broader:
 | File                 | Purpose                                                                                                                                                                                                                                                                                                              |
 | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `sdd`                | Command dispatcher (single entry point)                                                                                                                                                                                                                                                                              |
-| `extract-section.sh` | Extract `<!--SECTION:NAME-->...<!--/SECTION:NAME-->` block from markdown                                                                                                                                                                                                                                             |
+| `extract-section.sh` | Extract `<!--SECTION:NAME-->...<!--/SECTION:NAME-->` block from markdown; exit 2 = absent legacy anchor, 3 = unbalanced/duplicate, 5 = present-but-empty                                                                                                                                                                |
 | `lint-artifacts.sh`  | Run gennady DBC AST contract lint; parse output reliably                                                                                                                                                                                                                                                             |
 | `verify.sh`          | Verification gate. Delegates to `gennady verify` (stack plugins: anystack + golang + node, `.gennadyrc` overrides); legacy npm-script heuristic remains as fallback                                                                                                                                                                                                                                     |
 | `check-blockers.sh`  | Detect unresolved BLOCKER entries in ticket Execution Log per `AX_BLOCKER_RESOLUTION_TRAIL`                                                                                                                                                                                                                          |
 | `scan.sh`            | Emit comprehensive project snapshot ([HEADER]/[TASKS]/[TRACKERS]/[SPECS]/[WARNINGS]/[SUMMARY]). Designed so triage skills make ONE call instead of many ad-hoc find/grep. Surfaces suspicious states automatically (DONE+placeholders, DONE+active-blocker, anchor mismatch, unparseable Status, broken spec links). |
-| `check.sh`           | Deterministic mechanical checks — [TASKID] (collisions, orphan `@tasks`), [TRACKER_SYNC] (ticket Meta.Status vs tracker row), [HEADERS] (`--files` mode). Single source of mechanical truth shared by `sdd-check` (whole tree) and `sdd-audit` (scoped via `--task`/`--files`). Exit 0 clean / 3 findings / 2 structural / 4 bad-invocation. |
+| `check.sh`           | Deterministic mechanical checks — [TASKID], [TRACKER_SYNC], [RULES], [LOG], and [HEADERS] (`--files`). Single source shared by `sdd-check` and `sdd-audit`. Exit 0 clean / 3 findings / 2 structural / 4 bad-invocation. |
 | `_sdd-lib.sh`        | Shared artifact parsers (status, Task-ID, tracker-row, header flags) sourced by `check.sh`. Not executed directly. `scan.sh` migration to this lib pending.                                                                                                                                                          |
 
 ## Anchor convention (used by `extract`)

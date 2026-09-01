@@ -214,10 +214,12 @@ if [[ $has_tasks -eq 0 ]]; then
     emit_warn "WARN" "tasks/" "directory missing; no tickets to scan"
 else
     # -L follows symlinks (project convention; see AGENTS.md in symlinked projects)
-    TASK_FILES=$(find -L "$ROOT_ABS/tasks" -name '*.task-*.md' -type f 2>/dev/null | sort || true)
+    TASK_FILES=$(find -L "$ROOT_ABS/tasks" -name '*.md' ! -name 'README.md' -type f 2>/dev/null \
+        -exec grep -lE 'Task-ID:\*?\*?[[:space:]]*TSK-([A-Z][A-Z0-9]*-)?[0-9]+' {} \; \
+        | sort || true)
     if [[ -z "$TASK_FILES" ]]; then
-        printf '# (no *.task-*.md files found under tasks/)\n'
-        emit_warn "INFO" "tasks/" "no ticket files matching '*.task-*.md' — project may be pre-scaffold"
+        printf '# (no ticket files with a Task-ID found under tasks/)\n'
+        emit_warn "INFO" "tasks/" "no markdown ticket with a Task-ID — project may be pre-scaffold"
     else
         while IFS= read -r f; do
             [[ -z "$f" ]] && continue
@@ -266,12 +268,11 @@ else
         while IFS= read -r tr; do
             [[ -z "$tr" ]] && continue
             rel="${tr#$ROOT_ABS/}"
-            # Count tracker rows matching TSK-NN pattern with status cell
-            # Match both bare and link form: `| TSK-NN |` or `| [TSK-NN](...) |`
-            done_c=$(grep -E '\|[[:space:]]*\[?TSK-[0-9]+.*`?\[x\]`?[[:space:]]+DONE' "$tr" 2>/dev/null | wc -l | tr -d ' ')
-            todo_c=$(grep -E '\|[[:space:]]*\[?TSK-[0-9]+.*`?\[ \]`?[[:space:]]+TODO' "$tr" 2>/dev/null | wc -l | tr -d ' ')
-            inpg_c=$(grep -E '\|[[:space:]]*\[?TSK-[0-9]+.*`?\[~\]`?[[:space:]]+IN_PROGRESS' "$tr" 2>/dev/null | wc -l | tr -d ' ')
-            blkd_c=$(grep -E '\|[[:space:]]*\[?TSK-[0-9]+.*`?\[!\]`?[[:space:]]+BLOCKED' "$tr" 2>/dev/null | wc -l | tr -d ' ')
+            # Match both legacy and prefixed Task-IDs, in bare or markdown-link form.
+            done_c=$(grep -E '\|[[:space:]]*\[?TSK-([A-Z][A-Z0-9]*-)?[0-9]+.*`?\[x\]`?[[:space:]]+DONE' "$tr" 2>/dev/null | wc -l | tr -d ' ')
+            todo_c=$(grep -E '\|[[:space:]]*\[?TSK-([A-Z][A-Z0-9]*-)?[0-9]+.*`?\[ \]`?[[:space:]]+TODO' "$tr" 2>/dev/null | wc -l | tr -d ' ')
+            inpg_c=$(grep -E '\|[[:space:]]*\[?TSK-([A-Z][A-Z0-9]*-)?[0-9]+.*`?\[~\]`?[[:space:]]+IN_PROGRESS' "$tr" 2>/dev/null | wc -l | tr -d ' ')
+            blkd_c=$(grep -E '\|[[:space:]]*\[?TSK-([A-Z][A-Z0-9]*-)?[0-9]+.*`?\[!\]`?[[:space:]]+BLOCKED' "$tr" 2>/dev/null | wc -l | tr -d ' ')
             total=$((done_c + todo_c + inpg_c + blkd_c))
             if [[ "$total" -eq 0 ]]; then
                 # Tracker README might be the top-level overview without ticket rows — fine, but mark with hint
