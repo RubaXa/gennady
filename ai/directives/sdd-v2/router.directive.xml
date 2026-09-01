@@ -489,9 +489,8 @@
         against each other, not just the first plausible one (`AX_DIVERGE_BEFORE_RECOMMEND`).
 
         The `[SPEC_SCHEMA]` block is binding router evidence. For forced `scaffold`, pass it unchanged
-        to scaffold STEP_0B; schema remediation is a resumable preflight subflow, never permission for
-        scaffold or router to edit scope/module specs. Do not collapse `stale-migratable` and
-        `invalid` into one generic drift branch.
+        to scaffold STEP_0B. Any invalid V2 structure returns to its owning authoring flow; scaffold and
+        router never edit or migrate V2 specs. The only migration route is the explicit V1→V2 flow.
 
         `recover-from-code` fires when the operator asks to recover / recreate a spec FROM EXISTING
         CODE and names a concrete path (a folder or a file) in the message — e.g. «воссоздай спеку для

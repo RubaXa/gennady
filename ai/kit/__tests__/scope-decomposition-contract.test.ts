@@ -111,19 +111,14 @@ describe('scope decomposition and scaffold contract', () => {
     assert.match(gate1, /Do not assign it to UI by convention/);
   });
 
-  it('routes stale structural schema before cascade/DAG and never lets scaffold repair specs', () => {
+  it('rejects invalid V2 structure before cascade and never invents an internal migration', () => {
     const preflight = scaffold.slice(
       scaffold.indexOf('<Step id="STEP_0B_PREFLIGHT">'),
       scaffold.indexOf('<Step id="STEP_1_CASCADE">')
     );
-    assert.match(
-      preflight,
-      /`stale-migratable`.+existing `intent: scaffold` unchanged.+no relabel and no new state field.+reconcile\.directive/s
-    );
-    assert.match(preflight, /nested same-chain preflight subflow.+re-enter STEP_0B with the same intake/s);
-    assert.doesNotMatch(preflight, /resume-intent/);
-    assert.match(preflight, /Do not enter STEP_1\/STEP_2, edit a spec, read implementation, generate a\s+ticket, or add an Ask here/);
-    assert.match(preflight, /`invalid` → `H_SPEC_SCHEMA_INVALID`/);
+    assert.match(preflight, /`invalid` →\s+`H_SPEC_SCHEMA_INVALID`/);
+    assert.match(preflight, /V2 has\s+no internal migration route/);
+    assert.doesNotMatch(preflight, /stale-migratable|reconcile\.directive/);
     assert.match(router, /\[SPEC_SCHEMA\].+binding router evidence.+pass it unchanged.+scaffold STEP_0B/s);
   });
 

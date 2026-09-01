@@ -277,11 +277,11 @@
         (narrow read for inventory only, per `AX_BOOTSTRAP_NARROW_READ` and `AX_SPEC_IS_SOLE_SOURCE` —
         design stays sourced from specs); resolve with the operator; record confirmed cross-scope
         assumptions as `depends-on` edges per `AX_CROSS_SCOPE_DEPENDENCIES`;
-        materialize the Bootstrap Requirements table. Give every row a project-unique `ID`; for every
-        executable prerequisite, resolve one registered `Capability Adapter` and exact `Provides
-        Capabilities` / `Requires Capabilities`. These facts form the project-wide causal graph and
-        are not inferred later by scaffold. For project-readiness work, record exact `Readiness Gates`
-        and repo-relative `Gate Artifacts`; use `—` for non-readiness rows. Empty
+        materialize the canonical six-column Bootstrap Requirements table. Every task-owned `package`
+        row names exact `package.json, package-lock.json` Gate Artifacts. The infrastructure scope that
+        first installs dependencies must own Node/npm runtime artifacts (`.nvmrc`, Node fields in
+        `package.json`, `.npmrc`) before that install. For project-readiness work, record exact
+        `Readiness Gates` and repo-relative `Gate Artifacts`; use `—` for non-readiness rows. Empty
         only if explicit «nothing to bootstrap», else `H_BOOTSTRAP_REQUIREMENTS_MISSING`.
       </Action>
     </Step>

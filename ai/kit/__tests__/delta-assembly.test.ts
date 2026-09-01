@@ -60,16 +60,9 @@ function deltaRenderOf(e: Pass1Entry, excluded: string[]): string {
 }
 
 describe('delta-assembly — graph shape', () => {
-  it('the only sdd-v2 cycle is the intentional scaffold nested-correction/reconcile return pair', () => {
+  it('has no scaffold-to-reconcile V2 migration cycle', () => {
     const { pass1, plan } = buildPlan();
-    assert.deepEqual(
-      [...plan.cyclic],
-      [
-        'ai/directives/sdd-v2/scaffold.directive.xml',
-        'ai/directives/sdd-v2/reconcile.directive.xml',
-      ],
-      `unexpected cycle among: ${[...plan.cyclic].join(', ')}`
-    );
+    assert.deepEqual([...plan.cyclic], [], `unexpected cycle among: ${[...plan.cyclic].join(', ')}`);
 
     const step = (source: string, id: string): string => {
       const match = new RegExp(`<Step id="${id}">([\\s\\S]*?)<\\/Step>`).exec(source);
@@ -80,42 +73,13 @@ describe('delta-assembly — graph shape', () => {
       source.split(literal).length - 1;
     const scaffold = pass1.find((entry) => entry.rel === 'sdd-v2/scaffold.directive.xml')!
       .renderedFull;
-    const reconcile = pass1.find((entry) => entry.rel === 'sdd-v2/reconcile.directive.xml')!
-      .renderedFull;
     const reconcileRef =
       'READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/reconcile.directive.xml")';
-    const scaffoldRef =
-      'READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/scaffold.directive.xml")';
 
     const scaffoldPreflight = step(scaffold, 'STEP_0B_PREFLIGHT');
-    assert.equal(occurrences(scaffold, reconcileRef), 1, 'no unguarded scaffold→reconcile edge');
-    assert.equal(occurrences(scaffoldPreflight, reconcileRef), 1);
-    assert.ok(scaffoldPreflight.indexOf('stale-migratable') < scaffoldPreflight.indexOf(reconcileRef));
-    assert.ok(scaffoldPreflight.indexOf('intent: scaffold') < scaffoldPreflight.indexOf(reconcileRef));
-    assert.ok(
-      scaffoldPreflight.indexOf(reconcileRef) <
-        scaffoldPreflight.indexOf('verified completion re-enter STEP_0B'),
-      'return to STEP_0B is guarded by verified completion'
-    );
-
-    const reconcileApply = step(reconcile, 'STEP_5_APPLY');
-    assert.equal(occurrences(reconcile, scaffoldRef), 2, 'only the two guarded return sites exist');
-    assert.equal(occurrences(reconcileApply, scaffoldRef), 2);
-    const semantic = reconcileApply.slice(
-      reconcileApply.indexOf('WHEN **semantic-spec-update**'),
-      reconcileApply.indexOf('WHEN **bounded-direct**')
-    );
-    assert.equal(occurrences(semantic, scaffoldRef), 1);
-    assert.ok(semantic.indexOf('publication=MERGED') < semantic.indexOf(scaffoldRef));
-    assert.ok(semantic.indexOf('Only AFTER that proof') < semantic.indexOf(scaffoldRef));
-    const ticketCreate = reconcileApply.slice(
-      reconcileApply.indexOf('WHEN **ticket-create-or-recover**')
-    );
-    assert.equal(occurrences(ticketCreate, scaffoldRef), 1);
-    assert.match(
-      ticketCreate,
-      /READ_AND_USE_DIRECTIVE\("ai\/directives\/sdd-v2\/scaffold\.directive\.xml"\)` against the owning\s+already-merged spec/
-    );
+    assert.equal(occurrences(scaffold, reconcileRef), 0);
+    assert.equal(occurrences(scaffoldPreflight, reconcileRef), 0);
+    assert.match(scaffoldPreflight, /V2 has\s+no internal migration route/);
   });
 
   it('no READ_AND_USE_DIRECTIVE edge targets a class-3 subagent world', () => {

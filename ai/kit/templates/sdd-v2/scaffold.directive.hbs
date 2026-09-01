@@ -168,15 +168,10 @@
         the skill's GATHER step; do not call `sdd-state` or `sdd-task` again here. Size the gate to this
         request's own blast radius (`AX_PREFLIGHT_BLAST_RADIUS_SCOPED`). First match only findings for
         the target scope spec and its declared module specs (a target path absent from the printed
-        non-current findings is `current`): `current` → continue; `stale-migratable` → keep the
-        compatible session's existing `intent: scaffold` unchanged (no relabel and no new state field),
-        keep the literal intake in current context, then
-        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/reconcile.directive.xml")` in fix mode with the
-        literal typed finding from `sdd-state`. Reconcile decides mechanical vs semantic and routes
-        every spec change through its owner; this is a nested same-chain preflight subflow. After its
-        verified completion re-enter STEP_0B with the same intake. Do not enter STEP_1/STEP_2, edit a spec, read implementation, generate a
-        ticket, or add an Ask here. `invalid` → `H_SPEC_SCHEMA_INVALID` with the named path/reason and
-        owning authoring-flow next action; do not reinterpret it as migratable. Then apply the remaining
+        non-current findings is `current`): `current` → continue. `invalid` →
+        `H_SPEC_SCHEMA_INVALID` with the named path/reason and owning authoring-flow next action. V2 has
+        no internal migration route: do not load reconcile, edit a spec, read implementation, generate
+        a ticket, or add an Ask here. Then apply the remaining
         gates: v1 intersecting legacy task
         layout → `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/migration-v1-v2.directive.xml")`;
         Match the exact requested target scope name. A single-target scaffold consumes only that line;
@@ -227,9 +222,10 @@
         (`AX_TASK_ID_UNIQUENESS`). Acyclic. Before presenting Gate 1, write
         `.claude/tmp/sdd-scaffold-plan.json` with schema `sdd-scaffold-plan/v1`: copy `specs` byte-for-byte
         from STEP_0B project-context; encode every proposed phase as one node with exact fields
-        `id` (`<Task-ID>/<PhaseID>`), `scope`, `dependencies` (predecessor node ids), `requirementIds`,
+        `id` (`<Task-ID>/<PhaseID>`), `scope`, `dependencies` (predecessor node ids), `requirementRefs`,
         `adapter`, `action` (`dependency-install` or null), `targets`, `provides`, `requires`. Every
-        `this-scope-task` Bootstrap Requirement ID maps to exactly one node; no invented ID is allowed.
+        `this-scope-task` row reference from project-context maps to exactly one node; no invented
+        reference is allowed. These references are derived proof data, not new spec fields.
         Run scaffoldPlanGate ToolCall. A finding returns to this step (or to the named spec owner when
         the project-context is stale); do not present a plan and do not create ticket files. Only GREEN
         authorizes the decision card. Include the literal checked plan digest and a compact proof list:
@@ -347,8 +343,8 @@
         Select the current unprocessed STEP_2 node and run its one exact `sdd-new` ToolCall. Fill the
         returned ticket from that approved DAG node, its owning specs, the common contract, and the
         returned manifest; copy the manifest's path-aware owning-spec/rule/deferred literals verbatim.
-        Copy the approved node's exact `requirementIds` into the owning phase's `Bootstrap Requirements`
-        field, and copy its adapter/action/targets/provides/requires/dependencies without reinterpretation.
+        Copy the approved node's adapter/action/targets/provides/requires/dependencies without
+        reinterpretation. Row references remain in the approved plan and are not written into specs or tickets.
         Ticket prose, BDD, and verification may elaborate the node but never change those machine facts.
         Inputs <owner>/<scope>/<module>/<ACR>/<slug>: current STEP_2 node. This table is exhaustive;
         interface maps to none.

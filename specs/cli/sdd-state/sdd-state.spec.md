@@ -97,7 +97,7 @@ flow=v2 · portal=present · readiness=not-ready · authoring-ready=yes · execu
 | `checkReadiness`             | Utility      | (`shared/sdd/readiness`) точная проверка: package.json + required-скрипты + lint→gennady + gennady-install                                                     |
 | `checkAuthoringReadiness`    | Utility      | (`shared/sdd/gate-queue`) current schema + decomposition + complete infra Bootstrap owner row for every missing gate alias                                     |
 | `parseScopes`                | Utility      | (`shared/sdd/portal`) таблица Scopes → `Scope[]` (incl. description)                                                                                           |
-| `diagnoseProjectSpecSchemas` | Utility      | (`shared/sdd/spec-schema`) versioned structural rules → current / stale-migratable / invalid + exact paths/reasons                                             |
+| `diagnoseProjectSpecSchemas` | Utility      | (`shared/sdd/spec-schema`) single V2 structure → current / invalid + exact paths/reasons; migration exists only from V1 to V2                                  |
 | `formatSnapshot`             | Utility      | Рендер `StateSnapshot` в bracketed-формат                                                                                                                      |
 | `badInvocation` / `badRoot`  | Utility      | Билдеры диагностик                                                                                                                                             |
 | `StateSnapshot`              | Value Object | root · flowVersion · portal · scopes · runtime/authoring readiness · gate queue · specSchema · session · probe                                                 |
@@ -127,7 +127,7 @@ flow=v2 · portal=present · readiness=not-ready · authoring-ready=yes · execu
   - `FLOW_VERSION=v1` при наличии `<root>/tasks/`, иначе `v2`
   - `[READINESS]` — восемь required scripts, их read-only/mutating shape, canonical-order `fix`, `lint→gennady`, install; optional `check` валидируется только когда объявлен; каждая `AUTHORING_SCOPE`-строка независимо проверяет target scope + declared modules, `AUTHORING_READY` агрегирует все approved task-owning scopes, а `EXECUTION_READY` остаётся runtime-фактом; `GATE_QUEUE=<ids>` называет exact active infrastructure phase owners, иначе `none`
   - `[SCOPES]` — name/type/status/**description**/spec из таблицы портала; absent → метка project-setup
-  - `[SPEC_SCHEMA]` — installed schema version, aggregate status и exact non-current paths/reasons; распознанная draft.52 four-column Bootstrap Requirements → `stale-migratable`, current six-column → `current`, иная/непарная структура → `invalid`
+  - `[SPEC_SCHEMA]` — V2 structure, aggregate status и exact non-current paths/reasons; canonical six-column Bootstrap Requirements → `current`, любая иная/непарная V2-структура → `invalid` и возврат в owning authoring flow
   - `[SESSION]` — содержимое `specs/.sdd-session.md` или `(no active session)`
   - `[PROBE]` — всегда: `CODE`/`INFRA` present/absent + счётчик файлов / dirs / configs; `--probe` сохраняет тот же байтовый результат
   - exit 0 (снимок — это данные; отсутствие портала/сессии/готовности НЕ роняет тул)
@@ -162,7 +162,7 @@ shared/sdd/         portal.ts · readiness.ts · gate-queue.ts · probe.ts · sp
 ```
 
 **Registration points (4 files):** `cli/gennady.ts` · `cli/cmd/help/help.cmd.ts` · `cli/AGENTS.md` · `cli/cmd/README.md`.
-**Роутер:** STEP_0 зовёт `sdd-state`; forced scaffold передаёт `[SPEC_SCHEMA]` и `[READINESS]` в scaffold STEP_0B: target `stale-migratable` → router загружает `ai/directives/sdd-v2/reconcile.directive.xml` как вложенный fix preflight (не CLI и не новый public-skill invocation) при неизменном session `intent: scaffold`, затем повторно входит в STEP_0B с тем же intake; `invalid` → teaching blocker; `current` + `AUTHORING_READY=yes` проходит к cascade/DAG независимо от runtime gates. Execute отдельно требует `EXECUTION_READY=yes`, кроме exact active `GATE_QUEUE` setup owner.
+**Роутер:** STEP_0 зовёт `sdd-state`; forced scaffold передаёт `[SPEC_SCHEMA]` и `[READINESS]` в scaffold STEP_0B. `invalid` возвращается в owning scope/infra authoring flow; scaffold и router не редактируют и не мигрируют V2-спеки. Только `current` + `AUTHORING_READY=yes` проходит к project-feasibility и затем cascade/DAG независимо от runtime gates. Execute отдельно требует `EXECUTION_READY=yes`, кроме exact active `GATE_QUEUE` setup owner. Единственный migration route — V1→V2.
 Активный module `CHANGE_MANIFEST` всегда подавляет generic scaffold-next. При `intent: scaffold` это typed resume-route вложенной module correction с сохранением exact target-set и возвратом в `STEP_0_INTAKE`; при standalone `module-decomposition` — продолжение owning module review.
 **E2E:** отложен (прокси). Покрытие: unit + lint + typecheck + ручной smoke.
 
@@ -243,8 +243,8 @@ shared/sdd/         portal.ts · readiness.ts · gate-queue.ts · probe.ts · sp
 ### D-ST015 — Structural schema is typed pre-scaffold state
 
 - **Status:** active
-- **Why:** draft.52 scope specs carried four-column Bootstrap Requirements, while draft.53 scaffold consumed two additional structural fields and otherwise tempted the agent to patch specs during scaffold. `shared/sdd/spec-schema.ts` now owns a versioned rule registry (section + complete ordered field-set + recognized predecessor shapes), not a one-column heuristic. `sdd-state` reports exact affected paths as `current`, `stale-migratable`, or `invalid`; scaffold routes the recognized predecessor through reconcile/owning authoring flow and preserves its original intent, while ambiguous structure blocks before cascade/DAG.
-- **Risk accepted:** The registry currently versions the known Bootstrap Requirements transition. A future structural transition must add a registry rule and fixture in the same package; semantic values for newly introduced fields are never invented by this read-only diagnosis.
+- **Why:** V2 должен иметь один текущий контракт, а не цепочку миграций между draft-версиями. `shared/sdd/spec-schema.ts` проверяет canonical six-column Bootstrap Requirements. Любое отклонение внутри V2 блокируется как `invalid` и чинится владельцем спеки; scaffold не загружает reconcile. Проектная причинность выводится отдельно из существующих строк и проверяется до Gate 1 без изменения формата спеки.
+- **Risk accepted:** Изменение структуры в будущем потребует отдельного решения о новой major-версии flow. До такого решения V2 fail-closed: инструмент не изобретает миграцию и не дописывает семантические значения.
 
 ### D-ST016 — Authoring readiness and execution readiness are separate facts
 

@@ -147,7 +147,7 @@ export function formatSnapshot(s: StateSnapshot): string {
   );
   for (const diagnostic of s.gateQueueDiagnostics)
     lines.push(`GATE_QUEUE_DIAG=${diagnostic.message}`);
-  // SPEC_SCHEMA owns the route while structural migration/repair is pending; emitting a second
+  // SPEC_SCHEMA owns the route while structural repair is pending; emitting a second
   // NEXT here would make a weak router choose between two instructions for the same snapshot.
   if (s.activeOwnerRoute !== null) {
     lines.push(`NEXT=${s.activeOwnerRoute.machine}`);
@@ -169,10 +169,6 @@ export function formatSnapshot(s: StateSnapshot): string {
   if (affected.length === 0) lines.push('# all observed scope/module specs are current');
   for (const finding of affected)
     lines.push(`${finding.status}\t${finding.path}\t${finding.reason}`);
-  if (s.specSchema.status === 'stale-migratable')
-    lines.push(
-      'NEXT=router loads ai/directives/sdd-v2/reconcile.directive.xml as a nested fix preflight inside the compatible scaffold session; no CLI or public skill invocation; keep intent=scaffold unchanged, then re-enter STEP_0B after verification'
-    );
   if (s.specSchema.status === 'invalid')
     lines.push(
       'NEXT=repair each listed spec through its owning authoring flow; do not scaffold from ambiguous structural evidence'

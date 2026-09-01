@@ -46,12 +46,6 @@
       </Action>
     </Step>
 
-<Axiom id="AX_STATELESS_ARTIFACT" cross-cutting="true">
-      Every produced artifact is self-contained: all inventories, contracts, links, decisions,
-      and completion rules are baked into the Markdown. Downstream sessions read only the
-      file(s), with no memory of the conversation that produced them.
-    </Axiom>
-
 <Axiom id="AX_TICKET_DEDUPLICATION">
       **Project-wide content lives ONCE in `specs/3-tasks.md`.** Declared there: file-header convention, baseline Completion Rule, Execution Log template, post-task audit hint. Per-scope Cascade Table lives in `specs/<scope>/<scope>.3-tasks.md`. Per ticket: only task-specific Meta, BDD, Test Scenario Coverage, Completion additions (if any), Execution Log instance (initially empty plan).
     </Axiom>

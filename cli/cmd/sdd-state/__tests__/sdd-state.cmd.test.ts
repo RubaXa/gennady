@@ -241,7 +241,7 @@ describe('SddStateCommand', () => {
     const root = mkdtempSync(join(tmpdir(), 'sdd-state-authoring-ready-'));
     const specPath = join(root, 'specs', 'infra-core', 'infra-core.spec.md');
     const completeRow =
-      '| INFRA-TOOLING | tooling | tool | this-scope-task | create bootstrap toolchain | node | node.runtime-version, node.manifest-engine, node.manifest-module-kind, node.registry-config, node.dependencies, node.runtime, node.package-manager | — | package.json, type-check, test, test:coverage, format, format:fix, lint, lint:fix, fix, gennady | package.json, package-lock.json, .nvmrc, .npmrc |';
+      '| Node/npm runtime and tooling | tool | this-scope-task | create bootstrap toolchain | package.json, type-check, test, test:coverage, format, format:fix, lint, lint:fix, fix, gennady | package.json, package-lock.json, .nvmrc, .npmrc |';
     const writeSpec = (row: string): void => {
       mkdirSync(dirname(specPath), { recursive: true });
       writeFileSync(
@@ -251,8 +251,8 @@ describe('SddStateCommand', () => {
           'infrastructure',
           '<!--/SECTION:SCOPE_TYPE-->',
           '<!--SECTION:BOOTSTRAP_REQUIREMENTS-->',
-          '| ID | Requirement | Kind | Owner | Resolution | Capability Adapter | Provides Capabilities | Requires Capabilities | Readiness Gates | Gate Artifacts |',
-          '|---|---|---|---|---|---|---|---|---|---|',
+          '| Requirement | Kind | Owner | Resolution | Readiness Gates | Gate Artifacts |',
+          '|---|---|---|---|---|---|',
           row,
           '<!--/SECTION:BOOTSTRAP_REQUIREMENTS-->',
         ].join('\n'),
@@ -341,7 +341,10 @@ describe('SddStateCommand', () => {
       assert.strictEqual(ambiguous.ok, true);
       if (ambiguous.ok) {
         assert.match(ambiguous.text, /AUTHORING_READY=no/);
-        assert.match(ambiguous.text, /Bootstrap row 'tooling' has no Resolution/);
+        assert.match(
+          ambiguous.text,
+          /Bootstrap row 'Node\/npm runtime and tooling' has no Resolution/
+        );
       }
 
       writeSpec(completeRow);
@@ -421,7 +424,7 @@ describe('SddStateCommand', () => {
     }
   });
 
-  it('distinguishes draft.52 stale-migratable from invalid and prints each exact route', async () => {
+  it('treats every non-current V2 shape as invalid and never routes through migration', async () => {
     const root = mkdtempSync(join(tmpdir(), 'sdd-state-schema-'));
     try {
       installDirectives(root);
@@ -442,20 +445,22 @@ describe('SddStateCommand', () => {
       const outcome = await mod.run(argv(root));
       assert.strictEqual(outcome.ok, true);
       if (outcome.ok) {
+        assert.match(outcome.text, /\[SPEC_SCHEMA\]\nVERSION=sdd-v2\nSTATUS=invalid/);
         assert.match(
           outcome.text,
-          /\[SPEC_SCHEMA\]\nVERSION=sdd-v2\.schema-2\nSTATUS=stale-migratable/
+          /invalid\tspecs\/legacy\/legacy\.spec\.md\t.+Readiness Gates, Gate Artifacts/
         );
         assert.match(
           outcome.text,
-          /stale-migratable\tspecs\/legacy\/legacy\.spec\.md\t.+Readiness Gates, Gate Artifacts/
+          /NEXT=repair each listed spec through its owning authoring flow/
         );
-        assert.match(
-          outcome.text,
-          /NEXT=router loads ai\/directives\/sdd-v2\/reconcile\.directive\.xml.+no CLI or public skill invocation.+intent=scaffold unchanged.+re-enter STEP_0B/
+        assert.match(outcome.text, /spec-schema=invalid/);
+        assert.doesNotMatch(outcome.text, /reconcile\.directive|stale-migratable/);
+        assert.equal(
+          outcome.text.match(/^NEXT=/gm)?.length,
+          1,
+          'invalid schema has one exact route'
         );
-        assert.match(outcome.text, /spec-schema=stale-migratable/);
-        assert.equal(outcome.text.match(/^NEXT=/gm)?.length, 1, 'stale schema has one exact route');
       }
 
       writeFileSync(

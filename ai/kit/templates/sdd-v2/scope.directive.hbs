@@ -306,10 +306,10 @@
         `unknown` with the operator (source · version · owner), each a Decision Log entry. Record
         every confirmed cross-scope assumption as a `depends-on` edge in Scope Dependencies per
         `AX_CROSS_SCOPE_DEPENDENCIES` (cross-scope contracts come from `interface` scopes). Materialize
-        the Bootstrap Requirements table. Give every row a project-unique `ID`. For every executable
-        prerequisite, resolve one registered `Capability Adapter` and exact `Provides Capabilities` /
-        `Requires Capabilities`; these facts form the project-wide causal graph and are not inferred
-        later by scaffold. Readiness rows additionally name exact `Readiness Gates` and repo-relative
+        the canonical six-column Bootstrap Requirements table. Every task-owned `package` row names
+        exact `package.json, package-lock.json` Gate Artifacts. Node/npm runtime artifacts (`.nvmrc`,
+        the Node fields in `package.json`, `.npmrc`) belong to the same or an upstream scope before any
+        dependency install. Readiness rows additionally name exact `Readiness Gates` and repo-relative
         `Gate Artifacts`; non-readiness rows use `—`. Gate: empty list
         only if explicitly «nothing to bootstrap», else `H_BOOTSTRAP_REQUIREMENTS_MISSING`. An existing
         mechanism this audit turns up feeds back into Architecture / Contracts now, in the SAME session

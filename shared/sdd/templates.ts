@@ -83,7 +83,7 @@ export type ArtifactTemplate = {
 const DECISION_LOG_FILL =
   'One-line human summary of how many decisions and what area; fold the full <ACR>-DL-N entries under <details> per AX_SPEC_PROGRESSIVE_DISCLOSURE.';
 const BOOTSTRAP_REQUIREMENTS_FILL =
-  'One-line human summary of outstanding prerequisites; fold the full table under <details>. Give every row a project-unique ID. For executable prerequisites, name one registered Capability Adapter plus exact Provides/Requires Capabilities; this is the project-level causal proof. Name exact Readiness Gates and repo-relative Gate Artifacts; otherwise use —. Declare explicitly ("No external bootstrap required.") when the audit found none.';
+  'One-line human summary of outstanding prerequisites; fold the full table under <details>. Keep the canonical six V2 columns. Every task-owned package row must name package.json and package-lock.json; Node/npm runtime files must be owned by the same or an upstream scope. Name exact Readiness Gates and repo-relative Gate Artifacts; otherwise use —. Declare explicitly ("No external bootstrap required.") when the audit found none.';
 const OVERVIEW_FILL =
   'MANDATORY (AX_SPEC_MANDATORY_DIAGRAM): at least one fenced mermaid or ASCII diagram giving a reader the shape of this artifact at a glance, up top. Caption directly under the fence per DIAGRAM_CAPTION_FORMAT (formats/diagram-vocabulary.xml) — `_<что показывает одной фразой>[ — <ACR>-REQ-N[, <ACR>-REQ-M]]._`; the phrase itself stays mandatory always — the ID list is optional, add it when the diagram illustrates concrete requirements.';
 const DATA_FLOW_FILL =
@@ -1264,7 +1264,6 @@ const TASK_SKELETON = `# Task: <ACRONYM>-<slug> — <Task Title>
 - **Capability Adapter:** <adapter-id>   <!-- required when this phase declares package/capability facts; omit otherwise -->
 - **Provides Capabilities:** <comma-separated capability ids>   <!-- capabilities this phase materializes; omit when none -->
 - **Requires Capabilities:** <comma-separated capability ids>   <!-- exact current/upstream prerequisites; omit when none -->
-- **Bootstrap Requirements:** <comma-separated project-unique Bootstrap Requirement IDs>   <!-- exact approved rows this phase materializes; omit for non-bootstrap module work -->
 - **Bootstrap Action:** dependency-install   <!-- every phase that adds packages; omit otherwise -->
 - **Provides Packages:** <comma-separated exact package names>   <!-- dependency-install only -->
 - **Requires Packages:** <comma-separated exact package names>   <!-- phases whose config/commands need packages absent from clean HEAD; omit otherwise -->
@@ -1289,7 +1288,6 @@ const TASK_SKELETON = `# Task: <ACRONYM>-<slug> — <Task Title>
 - **Capability Adapter:** <adapter-id>   <!-- required when this phase declares package/capability facts; omit otherwise -->
 - **Provides Capabilities:** <comma-separated capability ids>   <!-- omit when none -->
 - **Requires Capabilities:** <comma-separated capability ids>   <!-- omit when none -->
-- **Bootstrap Requirements:** <comma-separated project-unique Bootstrap Requirement IDs>   <!-- omit for non-bootstrap module work -->
 - **Bootstrap Action:** dependency-install   <!-- include only when this phase adds packages -->
 - **Provides Packages:** <comma-separated exact package names>   <!-- dependency-install only -->
 - **Requires Packages:** <comma-separated exact package names>   <!-- omit when none -->

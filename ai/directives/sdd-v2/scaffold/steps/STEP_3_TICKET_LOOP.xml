@@ -6,8 +6,8 @@
         Select the current unprocessed STEP_2 node and run its one exact `sdd-new` ToolCall. Fill the
         returned ticket from that approved DAG node, its owning specs, the common contract, and the
         returned manifest; copy the manifest's path-aware owning-spec/rule/deferred literals verbatim.
-        Copy the approved node's exact `requirementIds` into the owning phase's `Bootstrap Requirements`
-        field, and copy its adapter/action/targets/provides/requires/dependencies without reinterpretation.
+        Copy the approved node's adapter/action/targets/provides/requires/dependencies without
+        reinterpretation. Row references remain in the approved plan and are not written into specs or tickets.
         Ticket prose, BDD, and verification may elaborate the node but never change those machine facts.
         Inputs <owner>/<scope>/<module>/<ACR>/<slug>: current STEP_2 node. This table is exhaustive;
         interface maps to none.

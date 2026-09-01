@@ -30,18 +30,18 @@ afterEach(() => {
 });
 
 describe('spec structural schema', () => {
-  it('classifies the draft.52 four-column Bootstrap Requirements fixture as stale-migratable', () => {
+  it('rejects a four-column V2 Bootstrap Requirements table without inventing a migration', () => {
     const finding = diagnose(
       wrap('| Requirement | Kind | Owner | Resolution |\n|---|---|---|---|')
     );
-    assert.strictEqual(finding.status, 'stale-migratable');
+    assert.strictEqual(finding.status, 'invalid');
     assert.match(finding.reason, /Readiness Gates, Gate Artifacts/);
   });
 
-  it('classifies the causal ten-column fixture as current', () => {
+  it('classifies the canonical six-column V2 fixture as current', () => {
     const finding = diagnose(
       wrap(
-        '| ID | Requirement | Kind | Owner | Resolution | Capability Adapter | Provides Capabilities | Requires Capabilities | Readiness Gates | Gate Artifacts |\n|---|---|---|---|---|---|---|---|---|---|'
+        '| Requirement | Kind | Owner | Resolution | Readiness Gates | Gate Artifacts |\n|---|---|---|---|---|---|'
       )
     );
     assert.strictEqual(finding.status, 'current');

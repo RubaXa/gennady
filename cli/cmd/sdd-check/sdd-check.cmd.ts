@@ -248,7 +248,7 @@ function isScaffoldDraftPlan(value: unknown): value is ScaffoldDraftPlan {
         typeof item.id === 'string' &&
         typeof item.scope === 'string' &&
         stringArray(item.dependencies) &&
-        stringArray(item.requirementIds) &&
+        stringArray(item.requirementRefs) &&
         typeof item.adapter === 'string' &&
         (item.action === null || item.action === 'dependency-install') &&
         stringArray(item.targets) &&

@@ -7,15 +7,10 @@
         the skill's GATHER step; do not call `sdd-state` or `sdd-task` again here. Size the gate to this
         request's own blast radius (`AX_PREFLIGHT_BLAST_RADIUS_SCOPED`). First match only findings for
         the target scope spec and its declared module specs (a target path absent from the printed
-        non-current findings is `current`): `current` → continue; `stale-migratable` → keep the
-        compatible session's existing `intent: scaffold` unchanged (no relabel and no new state field),
-        keep the literal intake in current context, then
-        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/reconcile.directive.xml")` in fix mode with the
-        literal typed finding from `sdd-state`. Reconcile decides mechanical vs semantic and routes
-        every spec change through its owner; this is a nested same-chain preflight subflow. After its
-        verified completion re-enter STEP_0B with the same intake. Do not enter STEP_1/STEP_2, edit a spec, read implementation, generate a
-        ticket, or add an Ask here. `invalid` → `H_SPEC_SCHEMA_INVALID` with the named path/reason and
-        owning authoring-flow next action; do not reinterpret it as migratable. Then apply the remaining
+        non-current findings is `current`): `current` → continue. `invalid` →
+        `H_SPEC_SCHEMA_INVALID` with the named path/reason and owning authoring-flow next action. V2 has
+        no internal migration route: do not load reconcile, edit a spec, read implementation, generate
+        a ticket, or add an Ask here. Then apply the remaining
         gates: v1 intersecting legacy task
         layout → `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/migration-v1-v2.directive.xml")`;
         Match the exact requested target scope name. A single-target scaffold consumes only that line;
@@ -30,15 +25,5 @@
         <ToolCall owner="this-step" result="projectFeasibility">npx gennady sdd-check --project-feasibility</ToolCall> Use projectFeasibility; retain its exact project-context for STEP_2.
       </Action>
     </Step>
-
-<Axiom id="AX_PREFLIGHT_BLAST_RADIUS_SCOPED">
-      `FLOW_VERSION=v1` migration and runtime `EXECUTION_READY=no` remediation can dwarf a narrow request.
-      Size only those broad actions to the task's own blast radius: a narrow owning spec edit may proceed
-      without migrating unrelated legacy tasks or installing unrelated runtime gates. Each `AUTHORING_SCOPE`
-      fact is different: it is a target-specific structural proof and is binding whenever scaffold would create
-      tickets. A red authoring fact blocks scaffold but never blocks the named owning spec flow that repairs
-      the evidence. Product execution always consumes `EXECUTION_READY`; only the exact active GATE_QUEUE
-      setup phase receives its typed exemption.
-    </Axiom>
 
 After completing this step, and only then, READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/scaffold/steps/STEP_1_CASCADE.xml"). Do not preload later step packages.

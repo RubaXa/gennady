@@ -1,4 +1,4 @@
-// @file: CLI proof barriers before spec approval and scaffold Gate 1.
+// @file: Black-box CLI barriers before scaffold Gate 1.
 // @consumers: SddCheckCommand
 // @tasks: N/A
 
@@ -7,7 +7,11 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, before, describe, it } from 'node:test';
-import { projectSpecDigest } from '../../../../shared/sdd/project-feasibility.ts';
+import {
+  deriveProjectFeasibilityContext,
+  projectSpecDigest,
+  type ProjectSpecRef,
+} from '../../../../shared/sdd/project-feasibility.ts';
 
 let root: string;
 let run: typeof import('../sdd-check.cmd.ts').run;
@@ -30,16 +34,13 @@ function portal(): string {
   ].join('\n');
 }
 
-function spec(scope: string, row: string, legacy = false): string {
+function spec(scope: string, rows: string[]): string {
   return [
     `# ${scope}`,
     '<!--SECTION:BOOTSTRAP_REQUIREMENTS-->',
-    '## Prerequisites',
-    legacy
-      ? '| Requirement | Kind | Owner | Resolution | Readiness Gates | Gate Artifacts |'
-      : '| ID | Requirement | Kind | Owner | Resolution | Capability Adapter | Provides Capabilities | Requires Capabilities | Readiness Gates | Gate Artifacts |',
-    legacy ? '|---|---|---|---|---|---|' : '|---|---|---|---|---|---|---|---|---|---|',
-    row,
+    '| Requirement | Kind | Owner | Resolution | Readiness Gates | Gate Artifacts |',
+    '|---|---|---|---|---|---|',
+    ...rows,
     '<!--/SECTION:BOOTSTRAP_REQUIREMENTS-->',
   ].join('\n');
 }
@@ -63,64 +64,57 @@ describe('sdd-check project transition barriers', () => {
     rmSync(root, { recursive: true, force: true });
   });
 
-  it('--project-feasibility rejects old specs before scaffold', async () => {
+  it('--project-feasibility rejects runtime owned after the first package install', async () => {
     writeFileSync(
       join(root, 'specs', 'infra', 'infra.spec.md'),
-      spec(
-        'infra',
-        '| install tools | package | this-scope-task | install | test | package.json |',
-        true
-      )
+      spec('infra', [
+        '| install tools | package | this-scope-task | install | — | package.json, package-lock.json |',
+      ])
     );
     writeFileSync(
       join(root, 'specs', 'app', 'app.spec.md'),
-      spec('app', '| runtime files | file | this-scope-task | create | — | .nvmrc, .npmrc |', true)
+      spec('app', [
+        '| Node/npm runtime | file | this-scope-task | create | — | .nvmrc, package.json, .npmrc |',
+      ])
     );
-
     const result = await run(['node', 'gennady', 'sdd-check', '--project-feasibility', root]);
-
     assert.strictEqual(result.exitCode, 1);
-    assert.match(result.text, /SDD_PROJECT_BOOTSTRAP_FACTS_MISSING/);
-    assert.match(result.text, /before spec approval/);
+    assert.match(result.text, /SDD_PROJECT_CAPABILITY_PREREQUISITE_ORDER/);
   });
 
-  it('--scaffold-plan rejects a fresh but causally unordered pre-Gate-1 plan', async () => {
-    const infra = spec(
-      'infra',
-      '| INFRA-RUNTIME | runtime files | file | this-scope-task | create | node | node.runtime-version, node.registry-config, node.runtime, node.package-manager | — | — | .nvmrc, .npmrc |'
-    );
-    const app = spec(
-      'app',
-      '| APP-DEPS | app packages | package | this-scope-task | install | node | node.dependencies | node.runtime-version, node.registry-config, node.package-manager | — | package.json, package-lock.json |'
-    );
+  it('--scaffold-plan rejects a causally unordered pre-Gate-1 plan', async () => {
+    const infra = spec('infra', [
+      '| Node/npm runtime | file | this-scope-task | create | — | .nvmrc, package.json, .npmrc |',
+    ]);
+    const app = spec('app', [
+      '| app packages | package | this-scope-task | install | — | package.json, package-lock.json |',
+    ]);
     writeFileSync(join(root, 'specs', 'infra', 'infra.spec.md'), infra);
     writeFileSync(join(root, 'specs', 'app', 'app.spec.md'), app);
+    const refs: ProjectSpecRef[] = [
+      { file: 'specs/infra/infra.spec.md', scope: 'infra', dependencies: [], content: infra },
+      { file: 'specs/app/app.spec.md', scope: 'app', dependencies: ['infra'], content: app },
+    ];
+    const context = deriveProjectFeasibilityContext(refs);
     const planPath = join(root, 'plan.json');
     writeFileSync(
       planPath,
       JSON.stringify({
         schema: 'sdd-scaffold-plan/v1',
-        specs: [
-          {
-            path: 'specs/app/app.spec.md',
-            digest: projectSpecDigest(app),
-          },
-          {
-            path: 'specs/infra/infra.spec.md',
-            digest: projectSpecDigest(infra),
-          },
-        ],
+        specs: refs.map((ref) => ({ path: ref.file, digest: projectSpecDigest(ref.content) })),
         nodes: [
           {
-            id: 'INFRA-bootstrap/P1',
+            id: 'INFRA-runtime/P1',
             scope: 'infra',
             dependencies: [],
-            requirementIds: ['INFRA-RUNTIME'],
+            requirementRefs: [context.requirements.find((item) => item.scope === 'infra')!.ref],
             adapter: 'node',
             action: null,
-            targets: ['.nvmrc', '.npmrc'],
+            targets: ['.nvmrc', 'package.json', '.npmrc'],
             provides: [
               'node.runtime-version',
+              'node.manifest-engine',
+              'node.manifest-module-kind',
               'node.registry-config',
               'node.runtime',
               'node.package-manager',
@@ -131,17 +125,22 @@ describe('sdd-check project transition barriers', () => {
             id: 'APP-install/P1',
             scope: 'app',
             dependencies: [],
-            requirementIds: ['APP-DEPS'],
+            requirementRefs: [context.requirements.find((item) => item.scope === 'app')!.ref],
             adapter: 'node',
             action: 'dependency-install',
             targets: ['package.json', 'package-lock.json'],
             provides: ['node.dependencies'],
-            requires: ['node.runtime-version', 'node.registry-config', 'node.package-manager'],
+            requires: [
+              'node.runtime-version',
+              'node.manifest-engine',
+              'node.manifest-module-kind',
+              'node.registry-config',
+              'node.package-manager',
+            ],
           },
         ],
       })
     );
-
     const result = await run([
       'node',
       'gennady',
@@ -150,9 +149,7 @@ describe('sdd-check project transition barriers', () => {
       'plan.json',
       root,
     ]);
-
     assert.strictEqual(result.exitCode, 1);
     assert.match(result.text, /SDD_SCAFFOLD_PLAN_CAPABILITY_PREREQUISITE_ORDER/);
-    assert.match(result.text, /before Gate 1/);
   });
 });

@@ -54,9 +54,9 @@ function fixture(ticketCount = 1): { root: string; refs: TicketCorpusRef[]; scop
       'infrastructure',
       '<!--/SECTION:SCOPE_TYPE-->',
       '<!--SECTION:BOOTSTRAP_REQUIREMENTS-->',
-      '| ID | Requirement | Kind | Owner | Resolution | Capability Adapter | Provides Capabilities | Requires Capabilities | Readiness Gates | Gate Artifacts |',
-      '|---|---|---|---|---|---|---|---|---|---|',
-      '| INFRA-LINT | lint gate | tool | this-scope-task | create | node | — | — | lint | package.json |',
+      '| Requirement | Kind | Owner | Resolution | Readiness Gates | Gate Artifacts |',
+      '|---|---|---|---|---|---|',
+      '| lint gate | tool | this-scope-task | create | lint | package.json |',
       '<!--/SECTION:BOOTSTRAP_REQUIREMENTS-->',
     ].join('\n')
   );
@@ -221,6 +221,46 @@ describe('queuedInfraGateTicketIds structural ownership', () => {
 });
 
 describe('checkAuthoringReadiness structural scaffold permission', () => {
+  it('treats an em dash as an empty gate list for external prerequisite rows', () => {
+    const { root, scopes } = fixture(0);
+    const productDir = join(root, 'specs', 'app');
+    mkdirSync(productDir, { recursive: true });
+    writeFileSync(
+      join(productDir, 'app.spec.md'),
+      [
+        '<!--SECTION:SCOPE_TYPE-->',
+        'product',
+        '<!--/SECTION:SCOPE_TYPE-->',
+        '<!--SECTION:BOOTSTRAP_REQUIREMENTS-->',
+        '| Requirement | Kind | Owner | Resolution | Readiness Gates | Gate Artifacts |',
+        '|---|---|---|---|---|---|',
+        '| Node runtime | file | external-prereq-scope | infra | — | .nvmrc |',
+        '<!--/SECTION:BOOTSTRAP_REQUIREMENTS-->',
+      ].join('\n')
+    );
+    const schema = {
+      version: 'test',
+      status: 'current' as const,
+      findings: [],
+    };
+    const result = checkAuthoringReadiness(
+      [
+        ...scopes,
+        {
+          name: 'app',
+          type: 'product',
+          status: 'done' as const,
+          description: '',
+          specPath: './app/app.spec.md',
+        },
+      ],
+      { ...notReady, missingGates: [] },
+      schema,
+      root
+    );
+    assert.doesNotMatch(result.diagnostics.join('\n'), /readiness gate '—'/);
+  });
+
   const currentSchema = { version: 'test', status: 'current' as const, findings: [] };
 
   it('accepts a future platform gate alias when one complete infrastructure row owns it', () => {
@@ -321,7 +361,7 @@ describe('checkAuthoringReadiness structural scaffold permission', () => {
     ];
     const schema = {
       version: 'test',
-      status: 'stale-migratable' as const,
+      status: 'invalid' as const,
       findings: [
         {
           path: 'specs/healthy/healthy.spec.md',
@@ -332,7 +372,7 @@ describe('checkAuthoringReadiness structural scaffold permission', () => {
         {
           path: 'specs/broken/broken.spec.md',
           kind: 'scope' as const,
-          status: 'stale-migratable' as const,
+          status: 'invalid' as const,
           reason: 'legacy columns',
         },
       ],

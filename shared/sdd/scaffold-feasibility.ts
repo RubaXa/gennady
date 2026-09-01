@@ -128,7 +128,6 @@ type PhaseNode = {
   capabilityAdapter: string | null;
   providesCapabilities: string[];
   requiresCapabilities: string[];
-  bootstrapRequirementIds: string[];
 };
 
 type CommandScenario = { name: string; command: string };
@@ -195,7 +194,6 @@ function phaseNodes(refs: readonly TicketCorpusRef[]): PhaseNode[] {
           capabilityAdapter: detail.capabilityAdapter,
           providesCapabilities: detail.providesCapabilities,
           requiresCapabilities: detail.requiresCapabilities,
-          bootstrapRequirementIds: detail.bootstrapRequirementIds,
         },
       ];
     });
@@ -230,7 +228,7 @@ export function materializedScaffoldPlanNodes(
         return terminal ? [`${ticket}/${terminal}`] : [];
       }),
     ],
-    requirementIds: [...node.bootstrapRequirementIds],
+    requirementRefs: [],
     adapter: node.capabilityAdapter ?? '',
     action: node.action === 'dependency-install' ? 'dependency-install' : null,
     targets: [...node.targets],

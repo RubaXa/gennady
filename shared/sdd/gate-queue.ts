@@ -74,9 +74,11 @@ function normalizeScopeName(name: string): string {
   return name.toLowerCase().replace(/[-_]/g, '');
 }
 function splitList(value: string): string[] {
-  return value
+  const normalized = value.replace(/`/g, '').trim();
+  if (!normalized || normalized === '—' || /^none$/i.test(normalized)) return [];
+  return normalized
     .split(',')
-    .map((part) => part.replace(/`/g, '').trim())
+    .map((part) => part.trim())
     .filter(Boolean);
 }
 function tableCells(line: string): string[] {

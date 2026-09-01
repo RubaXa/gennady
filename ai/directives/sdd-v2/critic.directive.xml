@@ -15,7 +15,7 @@
   </Mission>
 
   <BeliefState>
-    Inherited from the loading directive (already in context): AX_OPERATOR_DIALOGUE_STYLE, AX_OPERATOR_LANGUAGE, AX_PREFLIGHT_BLAST_RADIUS_SCOPED, SESSION_FILE_FORMAT
+    Inherited from the loading directive (already in context): AX_OPERATOR_DIALOGUE_STYLE, AX_OPERATOR_LANGUAGE, AX_PREFLIGHT_BLAST_RADIUS_SCOPED, HALT_FORMAT, SESSION_FILE_FORMAT
 
     <Axiom id="AX_OWNER">Orchestrator owns artifact, applies edits. Critic is sensor — reports only, never edits.</Axiom>
 
@@ -402,12 +402,6 @@
       delta and is itself the violation. (c) if the operator answers the repeat pass with another
       counter-question instead of a pick, do not fire a third pass — stop and ask directly what is blocking
       the decision.
-    </Contract>
-
-    <Contract id="HALT_FORMAT">
-      A halt is a plain sentence first (what happened + what to do), with the token as a trailing tag:
-
-      🛑 <что случилось по-человечески> — <что сделать оператору>   `[H_*]`
     </Contract>
 
     <Contract id="ORCHESTRATOR_PROGRESS_FORMAT">

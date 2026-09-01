@@ -21,9 +21,10 @@
         (`AX_TASK_ID_UNIQUENESS`). Acyclic. Before presenting Gate 1, write
         `.claude/tmp/sdd-scaffold-plan.json` with schema `sdd-scaffold-plan/v1`: copy `specs` byte-for-byte
         from STEP_0B project-context; encode every proposed phase as one node with exact fields
-        `id` (`<Task-ID>/<PhaseID>`), `scope`, `dependencies` (predecessor node ids), `requirementIds`,
+        `id` (`<Task-ID>/<PhaseID>`), `scope`, `dependencies` (predecessor node ids), `requirementRefs`,
         `adapter`, `action` (`dependency-install` or null), `targets`, `provides`, `requires`. Every
-        `this-scope-task` Bootstrap Requirement ID maps to exactly one node; no invented ID is allowed.
+        `this-scope-task` row reference from project-context maps to exactly one node; no invented
+        reference is allowed. These references are derived proof data, not new spec fields.
         Run scaffoldPlanGate ToolCall. A finding returns to this step (or to the named spec owner when
         the project-context is stale); do not present a plan and do not create ticket files. Only GREEN
         authorizes the decision card. Include the literal checked plan digest and a compact proof list:

@@ -6,18 +6,14 @@ import { lstatSync, readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
 /** @purpose Current installed structural schema identifier emitted by sdd-state. */
-export const SPEC_SCHEMA_VERSION = 'sdd-v2.schema-2';
+export const SPEC_SCHEMA_VERSION = 'sdd-v2';
 
 /** @purpose Canonical ordered structural fields shared by scope skeletons and diagnosis. */
 export const BOOTSTRAP_REQUIREMENTS_COLUMNS = [
-  'ID',
   'Requirement',
   'Kind',
   'Owner',
   'Resolution',
-  'Capability Adapter',
-  'Provides Capabilities',
-  'Requires Capabilities',
   'Readiness Gates',
   'Gate Artifacts',
 ] as const;
@@ -26,7 +22,7 @@ export const BOOTSTRAP_REQUIREMENTS_COLUMNS = [
 export const BOOTSTRAP_REQUIREMENTS_TABLE_HEADER = `| ${BOOTSTRAP_REQUIREMENTS_COLUMNS.join(' | ')} |\n|${BOOTSTRAP_REQUIREMENTS_COLUMNS.map(() => '---').join('|')}|`;
 
 /** @purpose Closed diagnosis states consumed by router/scaffold preflight. */
-export type SpecSchemaStatus = 'current' | 'stale-migratable' | 'invalid';
+export type SpecSchemaStatus = 'current' | 'invalid';
 
 /** @purpose Diagnosis of one canonical scope or module spec. */
 export type SpecSchemaFinding = {
@@ -40,11 +36,11 @@ export type SpecSchemaFinding = {
   reason: string;
 };
 
-/** @purpose Whole-project schema report; invalid dominates stale, stale dominates current. */
+/** @purpose Whole-project schema report; any structural mismatch is invalid inside V2. */
 export type SpecSchemaReport = {
   /** @purpose Structural-rule registry version. */
   version: string;
-  /** @purpose Aggregate status with invalid > stale-migratable > current precedence. */
+  /** @purpose Aggregate status; V2 has no internal migration state. */
   status: SpecSchemaStatus;
   /** @purpose Stable path-sorted per-spec diagnoses. */
   findings: SpecSchemaFinding[];
@@ -53,19 +49,14 @@ export type SpecSchemaReport = {
 type TableRule = {
   section: string;
   current: readonly string[];
-  migratableFrom: readonly (readonly string[])[];
 };
 
-// One registry is the source of truth for versioned structural fields. Add future structural
-// migrations here instead of teaching sdd-state about a single column name.
+// V2 has one live structure. A different shape is invalid and returns to the owning authoring flow;
+// only the separate V1→V2 flow is a migration.
 const SCOPE_TABLE_RULES: readonly TableRule[] = [
   {
     section: 'BOOTSTRAP_REQUIREMENTS',
     current: BOOTSTRAP_REQUIREMENTS_COLUMNS,
-    migratableFrom: [
-      ['Requirement', 'Kind', 'Owner', 'Resolution'],
-      ['Requirement', 'Kind', 'Owner', 'Resolution', 'Readiness Gates', 'Gate Artifacts'],
-    ],
   },
 ];
 
@@ -126,13 +117,6 @@ function diagnoseScope(path: string, content: string): SpecSchemaFinding {
       };
     const actual = headers[0]!;
     if (sameColumns(actual, rule.current)) continue;
-    if (rule.migratableFrom.some((legacy) => sameColumns(actual, legacy)))
-      return {
-        path,
-        kind: 'scope',
-        status: 'stale-migratable',
-        reason: `${rule.section} columns [${actual.join(', ')}] predate ${SPEC_SCHEMA_VERSION}; expected [${rule.current.join(', ')}]`,
-      };
     return {
       path,
       kind: 'scope',
@@ -147,7 +131,7 @@ function diagnoseScope(path: string, content: string): SpecSchemaFinding {
  * @purpose Diagnose one scope/module spec against the installed structural-schema registry.
  * @param path Repo-relative spec path used in diagnostics.
  * @param content Full markdown content.
- * @returns Typed current, stale-migratable, or invalid finding.
+ * @returns Typed current or invalid finding.
  */
 function diagnoseSpecSchema(path: string, content: string): SpecSchemaFinding {
   const scopeMarkers = sectionBodies(content, 'SCOPE_TYPE').length;
@@ -203,8 +187,6 @@ export function diagnoseProjectSpecSchemas(root: string): SpecSchemaReport {
   });
   const status: SpecSchemaStatus = findings.some((finding) => finding.status === 'invalid')
     ? 'invalid'
-    : findings.some((finding) => finding.status === 'stale-migratable')
-      ? 'stale-migratable'
-      : 'current';
+    : 'current';
   return { version: SPEC_SCHEMA_VERSION, status, findings };
 }

@@ -21,7 +21,7 @@ export function printHelp(): void {
     '  [SCOPES]     — name · type · status (done/wip) · description · spec path, from the portal'
   );
   console.info(
-    '  [SPEC_SCHEMA] — current / stale-migratable / invalid structural spec schema, affected paths, and exact next route'
+    '  [SPEC_SCHEMA] — current / invalid V2 structure, affected paths, and exact owning-authoring route (only V1→V2 is migration)'
   );
   console.info(
     '  NEXT         — active module CHANGE_MANIFEST owner precedes generic scaffold; intent=scaffold resumes its nested correction'

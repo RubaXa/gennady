@@ -1,98 +1,102 @@
-// @file: Project bootstrap proof shared by spec approval and scaffold draft planning.
+// @file: Project bootstrap proof derived from the existing V2 spec format.
 // @consumers: sdd-check, sdd-state, scaffold directives, tests
 // @tasks: N/A
 
-import type { Finding } from './finding.ts';
 import { createHash } from 'node:crypto';
-import {
-  DEFAULT_CAPABILITY_ADAPTER_REGISTRY,
-  type CapabilityAdapter,
-  type CapabilityAdapterRegistry,
-} from './capability-adapter.ts';
+import type { Finding } from './finding.ts';
 import { lexMarkdownTableRow, unescapeMarkdownTablePipes } from './markdown-table.ts';
 import { extractSection } from './section.ts';
 import { BOOTSTRAP_REQUIREMENTS_COLUMNS } from './spec-schema.ts';
 
-/** @purpose Causal columns required before a Bootstrap Requirements table can be approved. */
+/** @purpose Canonical V2 columns used by project bootstrap proof. */
 export const PROJECT_BOOTSTRAP_COLUMNS = BOOTSTRAP_REQUIREMENTS_COLUMNS;
 
-/** @purpose One scope spec and its already-approved project-graph dependencies. */
+/** @purpose One portal scope spec and its direct upstream dependency set. */
 export type ProjectSpecRef = {
   /** @purpose Repo-relative spec path used in diagnostics and digest binding. */
   file: string;
-  /** @purpose Portal scope that owns this spec. */
+  /** @purpose Portal scope that owns the spec. */
   scope: string;
-  /** @purpose Direct upstream portal dependencies visible to this scope. */
+  /** @purpose Direct upstream portal scopes. */
   dependencies: string[];
-  /** @purpose Exact spec bytes checked by the project barrier. */
+  /** @purpose Exact spec bytes checked by the proof. */
   content: string;
 };
 
-/** @purpose One pre-Gate-1 node with exact requirement coverage and executable capability facts. */
+/** @purpose One task phase proposed and checked before scaffold Gate 1. */
 export type ScaffoldDraftPlanNode = {
-  /** @purpose Globally unique planned phase identity `<Task-ID>/<Phase-ID>`. */
+  /** @purpose Unique planned phase identity `<Task-ID>/<Phase-ID>`. */
   id: string;
-  /** @purpose Scope that owns the planned phase. */
+  /** @purpose Scope that owns this phase. */
   scope: string;
   /** @purpose Exact predecessor node identities. */
   dependencies: string[];
-  /** @purpose Approved Bootstrap Requirement IDs materialized by this node. */
-  requirementIds: string[];
-  /** @purpose Registered capability adapter copied from the requirements. */
+  /** @purpose Stable derived row references; they are not stored in specs. */
+  requirementRefs: string[];
+  /** @purpose Adapter derived from mapped V2 rows. */
   adapter: string;
-  /** @purpose Machine action required at this phase boundary. */
+  /** @purpose Dependency installation boundary, or null for other work. */
   action: 'dependency-install' | null;
-  /** @purpose Exact repo-relative files or structured artifact paths written by the node. */
+  /** @purpose Exact repo-relative artifacts written by the node. */
   targets: string[];
-  /** @purpose Capability IDs produced by the node. */
+  /** @purpose Derived capabilities materialized by the node. */
   provides: string[];
-  /** @purpose Capability IDs that must precede the node. */
+  /** @purpose Derived capabilities that must precede the node. */
   requires: string[];
 };
 
-/** @purpose Machine-readable scaffold plan checked before the operator sees Gate 1. */
+/** @purpose Machine-readable pre-Gate-1 plan bound to exact spec bytes. */
 export type ScaffoldDraftPlan = {
-  /** @purpose Versioned wire schema for the pre-Gate-1 proof artifact. */
+  /** @purpose Closed wire-schema discriminator. */
   schema: 'sdd-scaffold-plan/v1';
   /** @purpose Exact checked spec roster and content digests. */
   specs: Array<{ path: string; digest: string }>;
-  /** @purpose Complete proposed phase graph shown at Gate 1. */
+  /** @purpose Complete proposed phase graph. */
   nodes: ScaffoldDraftPlanNode[];
 };
 
-/** @purpose Frozen spec evidence and requirement roster consumed by scaffold plan authoring. */
 type ProjectFeasibilityContext = {
   schema: 'sdd-project-feasibility/v1';
   specs: Array<{ path: string; digest: string }>;
   requirements: Array<{
-    id: string;
+    ref: string;
     scope: string;
     owner: string;
     adapter: string;
+    action: 'dependency-install' | null;
     provides: string[];
     requires: string[];
     artifacts: string[];
   }>;
 };
 
-/** @purpose Parsed causal Bootstrap Requirements row. */
 type ProjectBootstrapRequirement = {
   file: string;
   scope: string;
   dependencies: string[];
-  id: string;
+  ref: string;
   requirement: string;
   kind: string;
   owner: string;
+  resolution: string;
+  gates: string[];
+  artifacts: string[];
   adapter: string;
+  action: 'dependency-install' | null;
   provides: string[];
   requires: string[];
-  artifacts: string[];
 };
 
 type ParsedSpec =
   | { ok: true; requirements: ProjectBootstrapRequirement[] }
   | { ok: false; finding: Finding };
+
+const NODE_PREREQUISITE_ARTIFACTS = [
+  'node.runtime-version',
+  'node.manifest-engine',
+  'node.manifest-module-kind',
+  'node.registry-config',
+] as const;
 
 function finding(file: string, code: string, message: string): Finding {
   return { severity: 'error', code, file, message };
@@ -105,6 +109,10 @@ function splitList(value: string): string[] {
     .split(',')
     .map((part) => part.trim())
     .filter(Boolean);
+}
+
+function unique(values: readonly string[]): string[] {
+  return [...new Set(values)];
 }
 
 function tableRows(content: string): string[][] {
@@ -127,60 +135,175 @@ function isSeparator(cells: readonly string[]): boolean {
   return cells.every((cell) => /^:?-{2,}:?$/.test(cell.trim()));
 }
 
+/** @purpose Stable reference to one row without adding an ID column to the V2 spec. */
+function requirementRef(
+  file: string,
+  scope: string,
+  ordinal: number,
+  cells: readonly string[]
+): string {
+  const digest = createHash('sha256')
+    .update(`${file}\n${cells.join('\u001f')}`)
+    .digest('hex')
+    .slice(0, 12);
+  return `${scope}:R${ordinal}:${digest}`;
+}
+
+function rowText(requirement: string, gates: readonly string[]): string {
+  return `${requirement} ${gates.join(' ')}`.toLowerCase();
+}
+
+function qualityCapabilities(text: string): string[] {
+  const capabilities: string[] = [];
+  if (/\b(?:test|vitest|playwright|coverage)\b|тест|покрыт/.test(text))
+    capabilities.push('typescript.test-tooling');
+  if (/\b(?:lint|eslint)\b|линт/.test(text)) capabilities.push('typescript.eslint-lint-tooling');
+  if (/\b(?:format|prettier)\b|формат/.test(text)) capabilities.push('typescript.format-tooling');
+  return capabilities;
+}
+
+function deriveFacts(input: {
+  requirement: string;
+  kind: string;
+  owner: string;
+  gates: string[];
+  artifacts: string[];
+}): Pick<ProjectBootstrapRequirement, 'adapter' | 'action' | 'provides' | 'requires'> {
+  const text = rowText(input.requirement, input.gates);
+  const owned = input.owner === 'this-scope-task';
+  const external = input.owner === 'external-prereq-scope';
+  const give = (capabilities: readonly string[]) => (owned ? [...capabilities] : []);
+  const need = (capabilities: readonly string[]) => (external ? [...capabilities] : []);
+
+  if (input.kind.toLowerCase() === 'package' && owned)
+    return {
+      adapter: 'node',
+      action: 'dependency-install',
+      provides: ['node.dependencies'],
+      requires: [...NODE_PREREQUISITE_ARTIFACTS, 'node.package-manager'],
+    };
+
+  const nodeArtifacts: string[] = [];
+  if (input.artifacts.includes('.nvmrc')) nodeArtifacts.push('node.runtime-version');
+  if (input.artifacts.includes('.npmrc')) nodeArtifacts.push('node.registry-config');
+  if (
+    input.artifacts.includes('package.json') &&
+    /\b(?:node|npm|runtime|engine|module)\b|рантайм|движок|модул/.test(text)
+  )
+    nodeArtifacts.push('node.manifest-engine', 'node.manifest-module-kind');
+  if (nodeArtifacts.length > 0) {
+    const layerCapabilities = /\b(?:node|npm|runtime)\b|рантайм/.test(text)
+      ? ['node.runtime', 'node.package-manager']
+      : [];
+    return {
+      adapter: 'node',
+      action: null,
+      provides: unique([...give(nodeArtifacts), ...give(layerCapabilities)]),
+      requires: unique([...need(nodeArtifacts), ...need(layerCapabilities)]),
+    };
+  }
+
+  if (
+    input.artifacts.includes('tsconfig.json') ||
+    /\btypescript compiler\b|компилятор typescript/.test(text)
+  )
+    return {
+      adapter: 'typescript',
+      action: null,
+      provides: give(['typescript.compiler']),
+      requires: unique([
+        ...need(['typescript.compiler']),
+        ...(owned ? ['node.package-manager', 'node.dependencies'] : []),
+      ]),
+    };
+
+  const quality = qualityCapabilities(text);
+  if (quality.length > 0)
+    return {
+      adapter: 'typescript-quality',
+      action: null,
+      provides: give(quality),
+      requires: unique([
+        ...need(quality),
+        ...(owned ? ['typescript.compiler', 'node.dependencies'] : []),
+      ]),
+    };
+
+  return { adapter: '', action: null, provides: [], requires: [] };
+}
+
 function parseSpec(ref: ProjectSpecRef): ParsedSpec {
   const section = extractSection(ref.content, 'BOOTSTRAP_REQUIREMENTS');
-  if (section.status !== 'ok') {
+  if (section.status !== 'ok')
     return {
       ok: false,
       finding: finding(
         ref.file,
         'SDD_PROJECT_BOOTSTRAP_SECTION_MISSING',
-        `Scope '${ref.scope}' has no single readable BOOTSTRAP_REQUIREMENTS section. Expected: a causal Bootstrap Requirements table before spec approval.`
+        `Scope '${ref.scope}' has no single readable BOOTSTRAP_REQUIREMENTS section.`
       ),
     };
-  }
   const rows = tableRows(section.content);
   const headerIndex = rows.findIndex((cells) => cells.includes('Requirement'));
   const header = headerIndex >= 0 ? rows[headerIndex] : undefined;
-  if (!header || !sameColumns(header)) {
-    const actual = header?.join(', ') ?? '(no table header)';
+  if (!header || !sameColumns(header))
     return {
       ok: false,
       finding: finding(
         ref.file,
         'SDD_PROJECT_BOOTSTRAP_FACTS_MISSING',
-        `Scope '${ref.scope}' Bootstrap Requirements columns [${actual}] cannot prove causal order. Expected: ${PROJECT_BOOTSTRAP_COLUMNS.join(', ')} before spec approval. Next: run evolve-scope from the external-dependencies audit and declare stable IDs plus adapter/provider/requirement facts.`
+        `Scope '${ref.scope}' uses unsupported V2 Bootstrap Requirements columns [${header?.join(', ') ?? '(no table header)'}]. Expected: ${PROJECT_BOOTSTRAP_COLUMNS.join(', ')}. Repair it in the owning scope/infra authoring step; scaffold never migrates specs.`
       ),
     };
-  }
   const index = Object.fromEntries(header.map((name, position) => [name, position])) as Record<
     (typeof PROJECT_BOOTSTRAP_COLUMNS)[number],
     number
   >;
   const requirements: ProjectBootstrapRequirement[] = [];
+  let ordinal = 0;
   for (const cells of rows.slice(headerIndex + 1)) {
     if (isSeparator(cells)) continue;
-    const id = cells[index.ID]?.replace(/`/g, '').trim() ?? '';
     const requirement = cells[index.Requirement]?.trim() ?? '';
-    if (!id && !requirement) continue;
+    if (!requirement) continue;
+    ordinal += 1;
+    const kind = cells[index.Kind]?.replace(/`/g, '').trim() ?? '';
+    const owner = cells[index.Owner]?.replace(/`/g, '').trim() ?? '';
+    const resolution = cells[index.Resolution]?.replace(/`/g, '').trim() ?? '';
+    const gates = splitList(cells[index['Readiness Gates']] ?? '');
+    const artifacts = splitList(cells[index['Gate Artifacts']] ?? '');
+    const facts = deriveFacts({ requirement, kind, owner, gates, artifacts });
     requirements.push({
       file: ref.file,
       scope: ref.scope,
       dependencies: [...ref.dependencies],
-      id,
+      ref: requirementRef(ref.file, ref.scope, ordinal, cells),
       requirement,
-      kind: cells[index.Kind]?.replace(/`/g, '').trim() ?? '',
-      owner: cells[index.Owner]?.replace(/`/g, '').trim() ?? '',
-      adapter: cells[index['Capability Adapter']]?.replace(/`/g, '').trim() ?? '',
-      provides: splitList(cells[index['Provides Capabilities']] ?? ''),
-      requires: splitList(cells[index['Requires Capabilities']] ?? ''),
-      artifacts: splitList(cells[index['Gate Artifacts']] ?? ''),
+      kind,
+      owner,
+      resolution,
+      gates,
+      artifacts,
+      ...facts,
     });
   }
   return { ok: true, requirements };
 }
 
-function reachesScope(
+function parseProject(refs: readonly ProjectSpecRef[]): {
+  findings: Finding[];
+  requirements: ProjectBootstrapRequirement[];
+} {
+  const findings: Finding[] = [];
+  const requirements: ProjectBootstrapRequirement[] = [];
+  for (const ref of refs) {
+    const parsed = parseSpec(ref);
+    if (!parsed.ok) findings.push(parsed.finding);
+    else requirements.push(...parsed.requirements);
+  }
+  return { findings, requirements };
+}
+
+function reaches(
   dependencies: ReadonlyMap<string, readonly string[]>,
   consumer: string,
   provider: string
@@ -198,232 +321,118 @@ function reachesScope(
   return false;
 }
 
-function adapterCapabilityIds(adapter: CapabilityAdapter): Set<string> {
-  return new Set([
-    ...adapter.artifacts.map((artifact) => artifact.id),
-    ...adapter.layers.map((layer) => layer.capability),
-  ]);
-}
-
-function requirementRef(requirement: ProjectBootstrapRequirement): string {
-  return `${requirement.scope}/${requirement.id || '(missing ID)'}`;
+function label(requirement: ProjectBootstrapRequirement): string {
+  return `${requirement.scope}/${requirement.ref}`;
 }
 
 /**
- * @purpose Stable digest binding one plan to the exact spec bytes it decomposes.
- * @param content Exact spec bytes.
- * @returns SHA-256 digest with its algorithm prefix.
+ * @purpose Bind scaffold planning to exact spec bytes.
+ * @param content Exact spec content.
+ * @returns SHA-256 digest with an algorithm prefix.
  */
 export function projectSpecDigest(content: string): string {
   return `sha256:${createHash('sha256').update(content).digest('hex')}`;
 }
 
-function parseProject(refs: readonly ProjectSpecRef[]): {
-  findings: Finding[];
-  requirements: ProjectBootstrapRequirement[];
-} {
+function declaredFindings(requirements: readonly ProjectBootstrapRequirement[]): Finding[] {
   const findings: Finding[] = [];
-  const requirements: ProjectBootstrapRequirement[] = [];
-  for (const ref of refs) {
-    const parsed = parseSpec(ref);
-    if (!parsed.ok) findings.push(parsed.finding);
-    else requirements.push(...parsed.requirements);
-  }
-  return { findings, requirements };
-}
-
-function declaredFactsFindings(
-  requirements: readonly ProjectBootstrapRequirement[],
-  registry: CapabilityAdapterRegistry
-): Finding[] {
-  const findings: Finding[] = [];
-  const ids = new Map<string, ProjectBootstrapRequirement[]>();
-  for (const requirement of requirements) {
-    const idOwners = ids.get(requirement.id) ?? [];
-    idOwners.push(requirement);
-    ids.set(requirement.id, idOwners);
-    if (!/^[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+$/.test(requirement.id)) {
+  const allowedOwners = new Set(['this-scope-task', 'external-prereq-scope', 'operator-action']);
+  for (const item of requirements) {
+    if (!item.kind || !item.resolution || !allowedOwners.has(item.owner))
       findings.push(
         finding(
-          requirement.file,
-          'SDD_PROJECT_BOOTSTRAP_ID_INVALID',
-          `${requirementRef(requirement)} needs a stable project-unique ID such as INFRA-NODE-RUNTIME.`
+          item.file,
+          'SDD_PROJECT_BOOTSTRAP_ROW_INCOMPLETE',
+          `${label(item)} must name Kind, a supported Owner, and Resolution.`
         )
       );
-    }
-    const adapterId = requirement.adapter === '—' ? '' : requirement.adapter;
-    const hasCapabilityFacts = requirement.provides.length > 0 || requirement.requires.length > 0;
-    if (!adapterId && !hasCapabilityFacts) continue;
-    const adapter = registry[adapterId];
-    if (!adapter) {
-      findings.push(
-        finding(
-          requirement.file,
-          'SDD_PROJECT_CAPABILITY_ADAPTER_UNKNOWN',
-          `${requirementRef(requirement)} names Capability Adapter '${requirement.adapter || '(empty)'}'. Expected: ${Object.keys(registry).sort().join(', ')}, or — only when Provides/Requires Capabilities are both —.`
-        )
+    if (item.owner === 'this-scope-task' && item.kind.toLowerCase() === 'package') {
+      const missing = ['package.json', 'package-lock.json'].filter(
+        (artifact) => !item.artifacts.includes(artifact)
       );
-      continue;
-    }
-    const known = adapterCapabilityIds(adapter);
-    if (
-      requirement.owner === 'this-scope-task' &&
-      requirement.kind === 'package' &&
-      adapter.dependencyBoundary &&
-      !requirement.provides.includes(adapter.dependencyBoundary.capability)
-    ) {
-      findings.push(
-        finding(
-          requirement.file,
-          'SDD_PROJECT_PACKAGE_CAPABILITY_MISSING',
-          `${requirementRef(requirement)} installs packages but does not provide '${adapter.dependencyBoundary.capability}'. Expected: declare the adapter dependency boundary so scaffold creates a dependency-install node.`
-        )
-      );
-    }
-    for (const capability of [...requirement.provides, ...requirement.requires]) {
-      if (known.has(capability)) continue;
-      findings.push(
-        finding(
-          requirement.file,
-          'SDD_PROJECT_CAPABILITY_NOT_DECLARED_BY_ADAPTER',
-          `${requirementRef(requirement)} uses '${capability}', which adapter '${adapter.id}' does not declare.`
-        )
-      );
-    }
-    for (const capability of requirement.provides) {
-      const artifact = adapter.artifacts.find((candidate) => candidate.id === capability);
-      if (!artifact || requirement.artifacts.includes(artifact.location.path)) continue;
-      findings.push(
-        finding(
-          requirement.file,
-          'SDD_PROJECT_CAPABILITY_ARTIFACT_MISSING',
-          `${requirementRef(requirement)} provides '${capability}' but Gate Artifacts omits '${artifact.location.path}'.`
-        )
-      );
-    }
-    for (const artifactPath of requirement.artifacts) {
-      const matching = adapter.artifacts.filter(
-        (artifact) => artifact.location.path === artifactPath
-      );
-      for (const artifact of matching) {
-        if (
-          requirement.provides.includes(artifact.id) ||
-          requirement.requires.includes(artifact.id)
-        )
-          continue;
+      if (missing.length > 0)
         findings.push(
           finding(
-            requirement.file,
-            'SDD_PROJECT_CAPABILITY_ARTIFACT_UNBOUND',
-            `${requirementRef(requirement)} names Gate Artifact '${artifactPath}' but neither Provides nor Requires '${artifact.id}'. Expected: bind every recognized adapter artifact to its causal role.`
+            item.file,
+            'SDD_PROJECT_PACKAGE_ARTIFACTS_MISSING',
+            `${label(item)} installs packages but omits ${missing.join(', ')} from Gate Artifacts. Both manifest and lockfile are required so writers can be ordered before Gate 1.`
           )
         );
-      }
     }
-    for (const layer of adapter.layers.filter((candidate) =>
-      requirement.provides.includes(candidate.capability)
-    )) {
-      for (const prerequisite of layer.requires) {
-        if (
-          requirement.provides.includes(prerequisite) ||
-          requirement.requires.includes(prerequisite)
-        )
-          continue;
-        findings.push(
-          finding(
-            requirement.file,
-            'SDD_PROJECT_CAPABILITY_LAYER_REQUIREMENT_MISSING',
-            `${requirementRef(requirement)} provides '${layer.capability}' without Requires Capabilities '${prerequisite}'.`
-          )
-        );
-      }
-    }
-    const boundary = adapter.dependencyBoundary;
-    if (boundary && requirement.provides.includes(boundary.capability)) {
-      const dependencyArtifact = adapter.artifacts.find(
-        (artifact) => artifact.id === boundary.capability
-      );
-      for (const prerequisite of adapter.artifacts.filter(
-        (artifact) => dependencyArtifact && artifact.order < dependencyArtifact.order
-      )) {
-        if (
-          requirement.provides.includes(prerequisite.id) ||
-          requirement.requires.includes(prerequisite.id)
-        )
-          continue;
-        findings.push(
-          finding(
-            requirement.file,
-            'SDD_PROJECT_CAPABILITY_ARTIFACT_REQUIREMENT_MISSING',
-            `${requirementRef(requirement)} materializes '${boundary.capability}' without declaring earlier artifact '${prerequisite.id}' in Provides or Requires Capabilities.`
-          )
-        );
-      }
-    }
-  }
-  for (const [id, owners] of ids) {
-    if (!id || owners.length < 2) continue;
-    findings.push(
-      finding(
-        owners[0]?.file ?? '(project specs)',
-        'SDD_PROJECT_BOOTSTRAP_ID_DUPLICATE',
-        `Bootstrap requirement ID '${id}' is declared by ${owners.map(requirementRef).join(', ')}. Expected: one project-wide owner.`
-      )
-    );
   }
   return findings;
 }
 
 /**
- * @purpose Reject scope specs whose combined bootstrap contract cannot be ordered project-wide.
- * @invariant A consumer sees providers only in its own scope or a transitive portal dependency.
- * @param refs Complete approved/draft scope-spec set with portal dependencies.
- * @param [registry] Platform adapter registry shared with scaffold feasibility.
- * @returns Causal findings; empty proves the spec set can be decomposed mechanically.
+ * @purpose Prove current-format V2 specs have reachable prerequisites and orderable writers.
+ * @param refs Complete portal scope-spec set and dependency edges.
+ * @returns Blocking causal findings; empty means the project can enter scaffold planning.
  */
-export function checkProjectFeasibility(
-  refs: readonly ProjectSpecRef[],
-  registry: CapabilityAdapterRegistry = DEFAULT_CAPABILITY_ADAPTER_REGISTRY
-): Finding[] {
+export function checkProjectFeasibility(refs: readonly ProjectSpecRef[]): Finding[] {
   const parsed = parseProject(refs);
   if (parsed.findings.length > 0) return parsed.findings;
-  const findings = declaredFactsFindings(parsed.requirements, registry);
+  const findings = declaredFindings(parsed.requirements);
   const dependencies = new Map(refs.map((ref) => [ref.scope, ref.dependencies] as const));
-  const providers = new Map<string, ProjectBootstrapRequirement[]>();
-  for (const requirement of parsed.requirements) {
-    for (const capability of requirement.provides) {
-      const current = providers.get(capability) ?? [];
-      current.push(requirement);
-      providers.set(capability, current);
-    }
+  const capabilityProviders = new Map<string, ProjectBootstrapRequirement[]>();
+  const artifactProviders = new Map<string, ProjectBootstrapRequirement[]>();
+  for (const item of parsed.requirements.filter((row) => row.owner === 'this-scope-task')) {
+    for (const capability of item.provides)
+      capabilityProviders.set(capability, [...(capabilityProviders.get(capability) ?? []), item]);
+    for (const artifact of item.artifacts)
+      artifactProviders.set(artifact, [...(artifactProviders.get(artifact) ?? []), item]);
   }
   for (const consumer of parsed.requirements) {
     for (const capability of consumer.requires) {
-      const owners = providers.get(capability) ?? [];
-      const reachable = owners.filter((provider) =>
-        reachesScope(dependencies, consumer.scope, provider.scope)
-      );
-      if (reachable.length > 0) continue;
+      const providers = capabilityProviders.get(capability) ?? [];
+      if (providers.some((provider) => reaches(dependencies, consumer.scope, provider.scope)))
+        continue;
       findings.push(
         finding(
           consumer.file,
-          owners.length > 0
+          providers.length > 0
             ? 'SDD_PROJECT_CAPABILITY_PREREQUISITE_ORDER'
             : 'SDD_PROJECT_CAPABILITY_PROVIDER_MISSING',
-          owners.length > 0
-            ? `${requirementRef(consumer)} requires '${capability}', but providers ${owners.map(requirementRef).join(', ')} are downstream. Expected: provider must be in the same scope or an upstream dependency before spec approval.`
-            : `${requirementRef(consumer)} requires '${capability}', but no Bootstrap Requirement provides it. Expected: one same-scope or upstream provider before spec approval.`
+          `${label(consumer)} requires '${capability}', but no same-scope or upstream Bootstrap Requirement provides it. ${providers.length > 0 ? `Known providers are downstream: ${providers.map(label).join(', ')}.` : ''}`
         )
       );
     }
+    if (consumer.owner !== 'external-prereq-scope') continue;
+    for (const artifact of consumer.artifacts) {
+      const providers = artifactProviders.get(artifact) ?? [];
+      if (providers.some((provider) => reaches(dependencies, consumer.scope, provider.scope)))
+        continue;
+      findings.push(
+        finding(
+          consumer.file,
+          'SDD_PROJECT_EXTERNAL_ARTIFACT_PROVIDER_MISSING',
+          `${label(consumer)} delegates '${artifact}' to an external prerequisite scope, but no upstream this-scope-task row owns that artifact.`
+        )
+      );
+    }
+  }
+  for (const [artifact, providers] of artifactProviders) {
+    for (let left = 0; left < providers.length; left += 1)
+      for (let right = left + 1; right < providers.length; right += 1) {
+        const a = providers[left] as ProjectBootstrapRequirement;
+        const b = providers[right] as ProjectBootstrapRequirement;
+        if (reaches(dependencies, a.scope, b.scope) || reaches(dependencies, b.scope, a.scope))
+          continue;
+        findings.push(
+          finding(
+            a.file,
+            'SDD_PROJECT_SHARED_WRITER_UNORDERED',
+            `Gate Artifact '${artifact}' has unordered owners ${label(a)} and ${label(b)}. Add a scope dependency or consolidate ownership before approval.`
+          )
+        );
+      }
   }
   return findings;
 }
 
 /**
- * @purpose Freeze the exact checked spec bytes and normalized causal rows for scaffold planning.
- * @param refs Same complete spec set passed to checkProjectFeasibility.
- * @returns Serializable proof context; callers emit it only after a clean check.
+ * @purpose Freeze checked spec bytes and derived row facts for scaffold planning.
+ * @param refs Same complete scope-spec set passed to project feasibility.
+ * @returns Serializable proof context emitted only after a clean check.
  */
 export function deriveProjectFeasibilityContext(
   refs: readonly ProjectSpecRef[]
@@ -435,16 +444,17 @@ export function deriveProjectFeasibilityContext(
       .map((ref) => ({ path: ref.file, digest: projectSpecDigest(ref.content) }))
       .sort((left, right) => left.path.localeCompare(right.path)),
     requirements: project.requirements
-      .map((requirement) => ({
-        id: requirement.id,
-        scope: requirement.scope,
-        owner: requirement.owner,
-        adapter: requirement.adapter,
-        provides: [...requirement.provides],
-        requires: [...requirement.requires],
-        artifacts: [...requirement.artifacts],
+      .map((item) => ({
+        ref: item.ref,
+        scope: item.scope,
+        owner: item.owner,
+        adapter: item.adapter,
+        action: item.action,
+        provides: [...item.provides],
+        requires: [...item.requires],
+        artifacts: [...item.artifacts],
       }))
-      .sort((left, right) => left.id.localeCompare(right.id)),
+      .sort((left, right) => left.ref.localeCompare(right.ref)),
   };
 }
 
@@ -466,26 +476,27 @@ function reachesPlanNode(
   return false;
 }
 
+function sameSet(left: readonly string[], right: readonly string[]): boolean {
+  const a = [...new Set(left)].sort();
+  const b = [...new Set(right)].sort();
+  return a.length === b.length && a.every((value, index) => value === b[index]);
+}
+
 /**
- * @purpose Prove the proposed pre-Gate-1 task/phase graph preserves every approved requirement once.
- * @invariant Requirement coverage and capability ordering are checked before ticket files exist.
- * @param refs Project specs already accepted by project feasibility.
- * @param plan Machine-readable proposed scaffold plan.
- * @param [registry] Same capability registry used by project and materialized-ticket checks.
- * @returns Mapping/order findings; empty authorizes presenting Gate 1.
+ * @purpose Prove the complete proposed DAG before Gate 1 and before ticket creation.
+ * @param refs Exact scope-spec set used to derive the plan.
+ * @param plan Proposed machine-readable phase graph.
+ * @returns Coverage, freshness, order, cycle, and writer findings.
  */
 export function checkScaffoldDraftPlan(
   refs: readonly ProjectSpecRef[],
-  plan: ScaffoldDraftPlan,
-  registry: CapabilityAdapterRegistry = DEFAULT_CAPABILITY_ADAPTER_REGISTRY
+  plan: ScaffoldDraftPlan
 ): Finding[] {
   const project = parseProject(refs);
   if (project.findings.length > 0) return project.findings;
-  const findings = [...declaredFactsFindings(project.requirements, registry)];
-  const expectedSpecs = new Map(
-    refs.map((ref) => [ref.file, projectSpecDigest(ref.content)] as const)
-  );
-  const observedSpecs = new Map(plan.specs.map((spec) => [spec.path, spec.digest] as const));
+  const findings = [...declaredFindings(project.requirements)];
+  const expectedSpecs = new Map(refs.map((ref) => [ref.file, projectSpecDigest(ref.content)]));
+  const observedSpecs = new Map(plan.specs.map((spec) => [spec.path, spec.digest]));
   for (const [path, digest] of expectedSpecs) {
     const observed = observedSpecs.get(path);
     if (observed === digest) continue;
@@ -494,302 +505,210 @@ export function checkScaffoldDraftPlan(
         path,
         observed === undefined ? 'SDD_SCAFFOLD_PLAN_SPEC_MISSING' : 'SDD_SCAFFOLD_PLAN_SPEC_STALE',
         observed === undefined
-          ? `The proposed plan omits checked spec '${path}'. Expected: copy the exact project-context spec roster before Gate 1.`
-          : `The proposed plan digest for '${path}' is '${observed}', expected '${digest}'. Next: rerun project feasibility and rebuild the plan from fresh bytes.`
+          ? `The proposed plan omits checked spec '${path}'.`
+          : `The proposed plan uses stale bytes for '${path}'. Rerun project-feasibility and rebuild the plan.`
       )
     );
   }
-  for (const path of observedSpecs.keys()) {
-    if (expectedSpecs.has(path)) continue;
-    findings.push(
-      finding(
-        '(scaffold plan)',
-        'SDD_SCAFFOLD_PLAN_SPEC_UNKNOWN',
-        `The proposed plan includes unchecked spec '${path}'. Expected: only paths from project-context.`
-      )
-    );
-  }
-  const ownedRequirements = project.requirements.filter(
-    (requirement) => requirement.owner === 'this-scope-task'
-  );
+  for (const path of observedSpecs.keys())
+    if (!expectedSpecs.has(path))
+      findings.push(
+        finding(
+          '(scaffold plan)',
+          'SDD_SCAFFOLD_PLAN_SPEC_UNKNOWN',
+          `Unchecked spec '${path}' is present in the plan.`
+        )
+      );
+
+  const owned = project.requirements.filter((item) => item.owner === 'this-scope-task');
+  const byRef = new Map(project.requirements.map((item) => [item.ref, item]));
   const mappings = new Map<string, ScaffoldDraftPlanNode[]>();
-  for (const node of plan.nodes) {
-    for (const id of node.requirementIds) {
-      const owners = mappings.get(id) ?? [];
-      owners.push(node);
-      mappings.set(id, owners);
-    }
-  }
-  for (const requirement of ownedRequirements) {
-    const nodes = mappings.get(requirement.id) ?? [];
-    if (nodes.length === 0) {
+  for (const node of plan.nodes)
+    for (const ref of node.requirementRefs) mappings.set(ref, [...(mappings.get(ref) ?? []), node]);
+  for (const item of owned) {
+    const nodes = mappings.get(item.ref) ?? [];
+    if (nodes.length !== 1)
       findings.push(
         finding(
-          requirement.file,
-          'SDD_SCAFFOLD_PLAN_REQUIREMENT_MISSING',
-          `${requirementRef(requirement)} is approved for this-scope-task but absent from the proposed scaffold plan. Expected: map it to exactly one pre-Gate-1 node.`
+          item.file,
+          nodes.length === 0
+            ? 'SDD_SCAFFOLD_PLAN_REQUIREMENT_MISSING'
+            : 'SDD_SCAFFOLD_PLAN_REQUIREMENT_DUPLICATE',
+          `${label(item)} must map to exactly one plan node; observed ${nodes.length}.`
         )
       );
-    } else if (nodes.length > 1) {
-      findings.push(
-        finding(
-          requirement.file,
-          'SDD_SCAFFOLD_PLAN_REQUIREMENT_DUPLICATE',
-          `${requirementRef(requirement)} is mapped by ${nodes.map((node) => node.id).join(', ')}. Expected: exactly one pre-Gate-1 owner.`
-        )
-      );
-    }
   }
-  const requirementById = new Map(
-    project.requirements.map((requirement) => [requirement.id, requirement])
-  );
+
   for (const node of plan.nodes) {
-    const mapped = node.requirementIds.flatMap((id) => {
-      const requirement = requirementById.get(id);
-      return requirement ? [requirement] : [];
+    const mapped = node.requirementRefs.flatMap((ref) => {
+      const item = byRef.get(ref);
+      return item ? [item] : [];
     });
-    for (const id of node.requirementIds) {
-      const requirement = requirementById.get(id);
-      if (!requirement) {
+    for (const ref of node.requirementRefs) {
+      const item = byRef.get(ref);
+      if (!item) {
         findings.push(
           finding(
             '(scaffold plan)',
             'SDD_SCAFFOLD_PLAN_REQUIREMENT_UNKNOWN',
-            `${node.id} maps unknown Bootstrap Requirement '${id}'. Expected: only IDs from the checked spec set.`
+            `${node.id} maps unknown row '${ref}'.`
           )
         );
         continue;
       }
-      if (requirement.owner !== 'this-scope-task') {
+      if (item.owner !== 'this-scope-task')
         findings.push(
           finding(
             '(scaffold plan)',
             'SDD_SCAFFOLD_PLAN_REQUIREMENT_NOT_TASK_OWNED',
-            `${node.id} maps '${id}' owned by '${requirement.owner}'. Expected: scaffold only this-scope-task requirements.`
+            `${node.id} maps '${ref}' owned by '${item.owner}'.`
           )
         );
-      }
-      if (requirement.scope !== node.scope) {
+      if (item.scope !== node.scope)
         findings.push(
           finding(
             '(scaffold plan)',
             'SDD_SCAFFOLD_PLAN_SCOPE_DRIFT',
-            `${node.id} maps ${requirementRef(requirement)} into scope '${node.scope}'. Expected: keep the approved requirement in scope '${requirement.scope}'.`
+            `${node.id} moves '${ref}' from '${item.scope}' to '${node.scope}'.`
           )
         );
-      }
-      if (requirement.adapter !== node.adapter) {
+    }
+    const adapters = unique(mapped.map((item) => item.adapter).filter(Boolean));
+    const expectedAdapter = adapters.length === 1 ? adapters[0] : '';
+    if (adapters.length > 1)
+      findings.push(
+        finding(
+          '(scaffold plan)',
+          'SDD_SCAFFOLD_PLAN_ADAPTER_AMBIGUOUS',
+          `${node.id} combines rows from adapters ${adapters.join(', ')}. Split the node.`
+        )
+      );
+    else if (node.adapter !== expectedAdapter)
+      findings.push(
+        finding(
+          '(scaffold plan)',
+          'SDD_SCAFFOLD_PLAN_ADAPTER_DRIFT',
+          `${node.id} adapter is '${node.adapter || '(empty)'}', expected '${expectedAdapter || '(empty)'}.`
+        )
+      );
+    const expectedTargets = unique(mapped.flatMap((item) => item.artifacts));
+    const expectedProvides = unique(mapped.flatMap((item) => item.provides));
+    const expectedRequires = unique(mapped.flatMap((item) => item.requires));
+    for (const [field, expected, actual] of [
+      ['targets', expectedTargets, node.targets],
+      ['provides', expectedProvides, node.provides],
+      ['requires', expectedRequires, node.requires],
+    ] as const)
+      if (!sameSet(expected, actual))
         findings.push(
           finding(
             '(scaffold plan)',
-            'SDD_SCAFFOLD_PLAN_ADAPTER_DRIFT',
-            `${node.id} maps ${requirementRef(requirement)} with adapter '${node.adapter || '(empty)'}', expected '${requirement.adapter || '(empty)'}'.`
+            `SDD_SCAFFOLD_PLAN_${field.toUpperCase()}_DRIFT`,
+            `${node.id} ${field} differ from its checked requirement rows.`
           )
         );
-      }
-    }
-    const expectedProvides = new Set(mapped.flatMap((requirement) => requirement.provides));
-    const expectedRequires = new Set(mapped.flatMap((requirement) => requirement.requires));
-    for (const capability of expectedProvides) {
-      if (node.provides.includes(capability)) continue;
-      findings.push(
-        finding(
-          '(scaffold plan)',
-          'SDD_SCAFFOLD_PLAN_PROVIDES_DRIFT',
-          `${node.id} maps approved requirements but drops provided capability '${capability}'.`
-        )
-      );
-    }
-    for (const capability of expectedRequires) {
-      if (node.requires.includes(capability) || node.provides.includes(capability)) continue;
-      findings.push(
-        finding(
-          '(scaffold plan)',
-          'SDD_SCAFFOLD_PLAN_REQUIRES_DRIFT',
-          `${node.id} maps approved requirements but drops required capability '${capability}'.`
-        )
-      );
-    }
-    for (const capability of node.provides) {
-      if (expectedProvides.has(capability)) continue;
-      findings.push(
-        finding(
-          '(scaffold plan)',
-          'SDD_SCAFFOLD_PLAN_PROVIDES_UNAPPROVED',
-          `${node.id} adds provided capability '${capability}' absent from its mapped requirements.`
-        )
-      );
-    }
-    for (const capability of node.requires) {
-      if (expectedRequires.has(capability)) continue;
-      findings.push(
-        finding(
-          '(scaffold plan)',
-          'SDD_SCAFFOLD_PLAN_REQUIRES_UNAPPROVED',
-          `${node.id} adds required capability '${capability}' absent from its mapped requirements.`
-        )
-      );
-    }
-    const expectsDependencyInstall = mapped.some((requirement) => {
-      const adapter = registry[requirement.adapter];
-      return requirement.kind === 'package' && adapter?.dependencyBoundary !== undefined;
-    });
-    if ((node.action === 'dependency-install') !== expectsDependencyInstall) {
+    const expectedAction = mapped.some((item) => item.action === 'dependency-install')
+      ? 'dependency-install'
+      : null;
+    if (node.action !== expectedAction)
       findings.push(
         finding(
           '(scaffold plan)',
           'SDD_SCAFFOLD_PLAN_ACTION_DRIFT',
-          `${node.id} action is '${node.action ?? 'null'}'; mapped package boundary requires ${expectsDependencyInstall ? "'dependency-install'" : 'null'}.`
+          `${node.id} action is '${node.action ?? 'null'}', expected '${expectedAction ?? 'null'}'.`
         )
       );
-    }
   }
-  const nodesById = new Map(plan.nodes.map((node) => [node.id, node]));
-  if (nodesById.size !== plan.nodes.length) {
+
+  const nodes = new Map(plan.nodes.map((node) => [node.id, node]));
+  if (nodes.size !== plan.nodes.length)
     findings.push(
       finding(
         '(scaffold plan)',
         'SDD_SCAFFOLD_PLAN_NODE_DUPLICATE',
-        'The proposed plan has duplicate node IDs. Expected: one globally unique <Task-ID>/<Phase-ID> per node.'
+        'Plan node IDs must be unique.'
       )
     );
-  }
-  for (const node of plan.nodes) {
-    for (const dependency of node.dependencies) {
-      if (nodesById.has(dependency)) continue;
-      findings.push(
-        finding(
-          '(scaffold plan)',
-          'SDD_SCAFFOLD_PLAN_DEPENDENCY_UNKNOWN',
-          `${node.id} depends on unknown node '${dependency}'. Expected: an exact node ID from this plan.`
-        )
-      );
-    }
-  }
-  for (const node of plan.nodes) {
-    const cycle = node.dependencies.some((dependency) => {
-      const predecessor = nodesById.get(dependency);
-      return predecessor ? reachesPlanNode(nodesById, predecessor, node) : false;
-    });
-    if (!cycle) continue;
-    findings.push(
-      finding(
-        '(scaffold plan)',
-        'SDD_SCAFFOLD_PLAN_CYCLE',
-        `${node.id} participates in a dependency cycle. Expected: an acyclic provider-to-consumer plan before Gate 1.`
-      )
-    );
-  }
-  const providers = new Map<string, ScaffoldDraftPlanNode[]>();
-  for (const node of plan.nodes) {
-    const hasCapabilityFacts =
-      node.action !== null || node.provides.length > 0 || node.requires.length > 0;
-    if (!node.adapter && !hasCapabilityFacts) continue;
-    const adapter = registry[node.adapter];
-    if (!adapter) {
-      findings.push(
-        finding(
-          '(scaffold plan)',
-          'SDD_SCAFFOLD_PLAN_ADAPTER_UNKNOWN',
-          `${node.id} names adapter '${node.adapter || '(empty)'}'. Expected: ${Object.keys(registry).sort().join(', ')}.`
-        )
-      );
-      continue;
-    }
-    for (const capability of node.provides) {
-      const owners = providers.get(capability) ?? [];
-      owners.push(node);
-      providers.set(capability, owners);
-      const artifact = adapter.artifacts.find((candidate) => candidate.id === capability);
-      if (artifact && !node.targets.includes(artifact.location.path)) {
+  for (const node of plan.nodes)
+    for (const dependency of node.dependencies)
+      if (!nodes.has(dependency))
         findings.push(
           finding(
             '(scaffold plan)',
-            'SDD_SCAFFOLD_PLAN_CAPABILITY_ARTIFACT_MISSING',
-            `${node.id} provides '${capability}' but omits Target File '${artifact.location.path}'.`
+            'SDD_SCAFFOLD_PLAN_DEPENDENCY_UNKNOWN',
+            `${node.id} depends on unknown node '${dependency}'.`
           )
         );
-      }
-    }
-  }
-  for (const consumer of plan.nodes) {
-    for (const capability of consumer.requires) {
-      if (consumer.provides.includes(capability)) continue;
-      const owners = providers.get(capability) ?? [];
-      const reachable = owners.filter((provider) => reachesPlanNode(nodesById, consumer, provider));
-      const current = reachable.filter(
-        (candidate) =>
-          !reachable.some(
-            (other) => other.id !== candidate.id && reachesPlanNode(nodesById, other, candidate)
-          )
-      );
-      if (current.length === 1) continue;
+  for (const node of plan.nodes) {
+    const cyclic = node.dependencies.some((dependency) => {
+      const predecessor = nodes.get(dependency);
+      return predecessor ? reachesPlanNode(nodes, predecessor, node) : false;
+    });
+    if (cyclic)
       findings.push(
         finding(
           '(scaffold plan)',
-          current.length === 0
-            ? 'SDD_SCAFFOLD_PLAN_CAPABILITY_PREREQUISITE_ORDER'
-            : 'SDD_SCAFFOLD_PLAN_CAPABILITY_PROVIDER_AMBIGUOUS',
-          current.length === 0
-            ? `${consumer.id} requires '${capability}', but providers ${owners.map((owner) => owner.id).join(', ') || '(none)'} do not precede it. Expected: add an explicit node dependency before Gate 1.`
-            : `${consumer.id} requires '${capability}' from multiple current providers ${current.map((owner) => owner.id).join(', ')}. Expected: one current provider before Gate 1.`
+          'SDD_SCAFFOLD_PLAN_CYCLE',
+          `${node.id} participates in a dependency cycle.`
+        )
+      );
+  }
+
+  const capabilityProviders = new Map<string, ScaffoldDraftPlanNode[]>();
+  const writers = new Map<string, ScaffoldDraftPlanNode[]>();
+  for (const node of plan.nodes) {
+    for (const capability of node.provides)
+      capabilityProviders.set(capability, [...(capabilityProviders.get(capability) ?? []), node]);
+    for (const target of node.targets) writers.set(target, [...(writers.get(target) ?? []), node]);
+  }
+  for (const consumer of plan.nodes)
+    for (const capability of consumer.requires) {
+      const providers = (capabilityProviders.get(capability) ?? []).filter((provider) =>
+        reachesPlanNode(nodes, consumer, provider)
+      );
+      if (providers.length > 0) continue;
+      findings.push(
+        finding(
+          '(scaffold plan)',
+          'SDD_SCAFFOLD_PLAN_CAPABILITY_PREREQUISITE_ORDER',
+          `${consumer.id} requires '${capability}', but no provider precedes it.`
         )
       );
     }
-  }
-  const writers = new Map<string, ScaffoldDraftPlanNode[]>();
-  for (const node of plan.nodes) {
-    for (const target of node.targets) {
-      const owners = writers.get(target) ?? [];
-      owners.push(node);
-      writers.set(target, owners);
-    }
-  }
   for (const [target, owners] of writers) {
     const unordered: string[] = [];
-    for (let left = 0; left < owners.length; left += 1) {
+    for (let left = 0; left < owners.length; left += 1)
       for (let right = left + 1; right < owners.length; right += 1) {
         const a = owners[left] as ScaffoldDraftPlanNode;
         const b = owners[right] as ScaffoldDraftPlanNode;
-        if (!reachesPlanNode(nodesById, a, b) && !reachesPlanNode(nodesById, b, a))
+        if (!reachesPlanNode(nodes, a, b) && !reachesPlanNode(nodes, b, a))
           unordered.push(`${a.id} ↔ ${b.id}`);
       }
-    }
-    if (unordered.length === 0) continue;
-    findings.push(
-      finding(
-        '(scaffold plan)',
-        'SDD_SCAFFOLD_PLAN_SHARED_WRITER_OVERLAP',
-        `Target '${target}' has unordered writers ${unordered.join(', ')}. Expected: serialize every shared writer before Gate 1.`
-      )
-    );
+    if (unordered.length > 0)
+      findings.push(
+        finding(
+          '(scaffold plan)',
+          'SDD_SCAFFOLD_PLAN_SHARED_WRITER_OVERLAP',
+          `Target '${target}' has unordered writers ${unordered.join(', ')}.`
+        )
+      );
   }
   return findings;
 }
 
-function sameStringSet(left: readonly string[], right: readonly string[]): boolean {
-  const sortedLeft = [...left].sort();
-  const sortedRight = [...right].sort();
-  return (
-    sortedLeft.length === sortedRight.length &&
-    sortedLeft.every((value, index) => value === sortedRight[index])
-  );
-}
-
 /**
- * @purpose Prove materialized ticket phases are byte-independent semantic copies of the approved plan.
- * @invariant Ticket authoring may add prose/BDD, never alter plan ownership, edges, targets, or capabilities.
- * @param plan Exact pre-Gate-1 plan approved by the operator.
- * @param materialized Nodes parsed from the complete ticket corpus.
- * @returns Drift findings; empty binds the materialized graph to the approved plan.
+ * @purpose Prove created ticket phases still match the approved technical plan.
+ * @param plan Exact plan approved at Gate 1.
+ * @param materialized Phase nodes parsed from created tickets.
+ * @returns Drift findings; empty preserves the approved technical graph.
  */
 export function checkScaffoldPlanMaterialization(
   plan: ScaffoldDraftPlan,
   materialized: readonly ScaffoldDraftPlanNode[]
 ): Finding[] {
   const findings: Finding[] = [];
-  const expected = new Map(plan.nodes.map((node) => [node.id, node] as const));
-  const observed = new Map(materialized.map((node) => [node.id, node] as const));
+  const expected = new Map(plan.nodes.map((node) => [node.id, node]));
+  const observed = new Map(materialized.map((node) => [node.id, node]));
   for (const [id, planned] of expected) {
     const actual = observed.get(id);
     if (!actual) {
@@ -797,7 +716,7 @@ export function checkScaffoldPlanMaterialization(
         finding(
           '(scaffold graph)',
           'SDD_SCAFFOLD_PLAN_NODE_NOT_MATERIALIZED',
-          `Approved plan node '${id}' has no materialized ticket phase.`
+          `Approved node '${id}' has no ticket phase.`
         )
       );
       continue;
@@ -808,32 +727,28 @@ export function checkScaffoldPlanMaterialization(
     if (planned.action !== actual.action) drift.push('action');
     for (const [name, left, right] of [
       ['dependencies', planned.dependencies, actual.dependencies],
-      ['requirementIds', planned.requirementIds, actual.requirementIds],
       ['targets', planned.targets, actual.targets],
       ['provides', planned.provides, actual.provides],
       ['requires', planned.requires, actual.requires],
-    ] as const) {
-      if (!sameStringSet(left, right)) drift.push(name);
-    }
-    if (drift.length > 0) {
+    ] as const)
+      if (!sameSet(left, right)) drift.push(name);
+    if (drift.length > 0)
       findings.push(
         finding(
           '(scaffold graph)',
           'SDD_SCAFFOLD_PLAN_MATERIALIZATION_DRIFT',
-          `${id} differs from the approved pre-Gate-1 plan in ${drift.join(', ')}. Expected: repair ticket authoring to match the plan; architecture changes require a new Gate 1 plan/digest.`
+          `${id} differs from the approved plan in ${drift.join(', ')}.`
         )
       );
-    }
   }
-  for (const id of observed.keys()) {
-    if (expected.has(id)) continue;
-    findings.push(
-      finding(
-        '(scaffold graph)',
-        'SDD_SCAFFOLD_PLAN_NODE_UNAPPROVED',
-        `Materialized ticket phase '${id}' was not present in the approved pre-Gate-1 plan.`
-      )
-    );
-  }
+  for (const id of observed.keys())
+    if (!expected.has(id))
+      findings.push(
+        finding(
+          '(scaffold graph)',
+          'SDD_SCAFFOLD_PLAN_NODE_UNAPPROVED',
+          `Ticket phase '${id}' was not in the approved plan.`
+        )
+      );
   return findings;
 }
