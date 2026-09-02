@@ -31,7 +31,7 @@
     |---|---|
     | `H_SPEC_NOT_APPROVED` | Target spec set has not passed operator approval #1 |
     | `H_V2_INVALID` | A target is invalid V2; return to its authoring owner, never migrate it |
-    | `H_TICKET_AUTHORING_INVALID` | Mechanical authoring check remains red after a bounded correction |
+    | `H_TICKET_AUTHORING_INVALID` | Mechanical authoring check remains red after one decomposition retreat |
     | `H_TICKET_REVIEW_FINDING` | Independent reviewer found an unresolved semantic conflict |
     | `H_OPERATOR_REJECT` | Operator rejected decomposition or test plan |
   </HaltConditions>
@@ -47,7 +47,9 @@
         stale approval stops with `H_SPEC_NOT_APPROVED`. Structurally invalid V2 stops with
         `H_V2_INVALID` and returns to the owning V2 authoring flow. Auto-detect `initial`
         or `extend-dag`; preserve existing IDs and
-        completed tickets in extend mode. Do not create a migration path, `.sdd-session.md`,
+        completed tickets in extend mode. Every runtime, package-manager, or configuration
+        prerequisite named by the approved set must resolve to exactly one Bootstrap Requirements row with a named Owner. Missing or ambiguous ownership returns to the owning spec before ticket derivation.
+        Do not create a migration path, `.sdd-session.md`,
         scaffold-plan JSON, digest, feasibility event, or critic journal (`AX_STATELESS_FLOW`).
       </Action>
     </Step>
@@ -102,11 +104,13 @@
       <Action>
         Run the authoring check on every created or changed ticket. It checks required sections,
         anchors, resolvable spec references, dependencies/phases, requirement-to-scenario-to-test
-        traceability, and required negative scenarios. Correct only named findings and rerun the same
-        check. If it remains red after that bounded correction, stop with
-        `H_TICKET_AUTHORING_INVALID`. Do not ask a reviewer to compensate for malformed artifacts.
+        traceability, and required negative scenarios. A red result is a decomposition defect: do not
+        patch the failed ticket locally. Use the retreat command `return to STEP_1_DERIVE`, rederive
+        the affected node boundaries/ownership from the specs, then rematerialize and check once. If
+        that remains red, stop with `H_TICKET_AUTHORING_INVALID`. Do not ask a reviewer to compensate
+        for malformed artifacts.
         <ToolCall owner="this-step" result="authoringGate">npx gennady sdd-check --task &lt;ticket-path&gt; --authoring</ToolCall>
-        Consume `authoringGate` and correct only its named findings.
+        Consume `authoringGate`; its findings explain why decomposition must retreat.
 
         Then run the complete structural check over actual specs, tickets, and indexes. It checks ID
         uniqueness, dependency resolution/acyclicity, tracker sync, and declared ownership/order.

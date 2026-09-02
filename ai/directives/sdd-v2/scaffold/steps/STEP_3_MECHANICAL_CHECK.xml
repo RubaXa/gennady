@@ -5,11 +5,13 @@
       <Action>
         Run the authoring check on every created or changed ticket. It checks required sections,
         anchors, resolvable spec references, dependencies/phases, requirement-to-scenario-to-test
-        traceability, and required negative scenarios. Correct only named findings and rerun the same
-        check. If it remains red after that bounded correction, stop with
-        `H_TICKET_AUTHORING_INVALID`. Do not ask a reviewer to compensate for malformed artifacts.
+        traceability, and required negative scenarios. A red result is a decomposition defect: do not
+        patch the failed ticket locally. Use the retreat command `return to STEP_1_DERIVE`, rederive
+        the affected node boundaries/ownership from the specs, then rematerialize and check once. If
+        that remains red, stop with `H_TICKET_AUTHORING_INVALID`. Do not ask a reviewer to compensate
+        for malformed artifacts.
         <ToolCall owner="this-step" result="authoringGate">npx gennady sdd-check --task &lt;ticket-path&gt; --authoring</ToolCall>
-        Consume `authoringGate` and correct only its named findings.
+        Consume `authoringGate`; its findings explain why decomposition must retreat.
 
         Then run the complete structural check over actual specs, tickets, and indexes. It checks ID
         uniqueness, dependency resolution/acyclicity, tracker sync, and declared ownership/order.

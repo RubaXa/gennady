@@ -46,6 +46,9 @@
       Ownership remains structural: infrastructure rows use `infrastructure-flat`; product/library
       bootstrap rows use `scope-bootstrap`; module work uses `module`. `external-prereq-scope` becomes a
       cross-scope dependency and `operator-action` becomes an explicit blocking prerequisite in the index.
+      Every runtime, package-manager, dependency, or configuration prerequisite named anywhere in the
+      approved spec set resolves to exactly one Bootstrap Requirements row with a non-empty allowed Owner.
+      Missing or ambiguous ownership returns to the owning spec; scaffold never guesses an owner.
 
       Express the implementation plan with ordinary ticket fields only: ordered phases, `Deps`, `Rules`,
       `Spec Refs`, `Target Files`, `Readiness Gates`, `Inputs`, `Exit`, BDD, and Verification. The semantic

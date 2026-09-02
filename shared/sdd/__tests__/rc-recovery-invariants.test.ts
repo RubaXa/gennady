@@ -107,6 +107,8 @@ test('RC invariant: Gate 1 follows materialized and mechanically checked task dr
   assert.match(materialize, /For each derived node call exactly one applicable `sdd-new` command/);
   assert.match(mechanical, /Run the authoring check on every created or changed ticket/);
   assert.match(mechanical, /npx gennady sdd-check --task &lt;ticket-path&gt; --authoring/);
+  assert.match(mechanical, /return to STEP_1_DERIVE/);
+  assert.doesNotMatch(mechanical, /Correct only named findings/);
   assert.match(approval, /based on actual tickets/);
   assert.doesNotMatch(approval, /approval for an abstract pre-ticket plan/);
 });

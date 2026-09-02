@@ -331,7 +331,7 @@
     |---|---|
     | `H_SPEC_NOT_APPROVED` | Target spec set has not passed operator approval #1 |
     | `H_V2_INVALID` | A target is invalid V2; return to its authoring owner, never migrate it |
-    | `H_TICKET_AUTHORING_INVALID` | Mechanical authoring check remains red after a bounded correction |
+    | `H_TICKET_AUTHORING_INVALID` | Mechanical authoring check remains red after one decomposition retreat |
     | `H_TICKET_REVIEW_FINDING` | Independent reviewer found an unresolved semantic conflict |
     | `H_OPERATOR_REJECT` | Operator rejected decomposition or test plan |
   </HaltConditions>

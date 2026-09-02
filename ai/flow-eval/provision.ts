@@ -106,7 +106,9 @@ function canonicalScope(
   document = replaceSection(
     document,
     'BOOTSTRAP_REQUIREMENTS',
-    '<details>\n<summary>Prerequisites</summary>\n\n| Requirement | Kind | Owner | Resolution | Readiness Gates | Gate Artifacts |\n|---|---|---|---|---|---|\n\n</details>'
+    slugify
+      ? '<details>\n<summary>Prerequisites</summary>\n\nNo external bootstrap required; the canonical execute fixture is already provisioned.\n\n</details>'
+      : '<details>\n<summary>Prerequisites</summary>\n\n| Requirement | Kind | Owner | Resolution | Readiness Gates | Gate Artifacts |\n|---|---|---|---|---|---|\n| Repository runtime, package manager, and configuration | file | this-scope-task | verify pre-provisioned fixture toolchain | — | package.json, tsconfig.json |\n\n</details>'
   );
   document = replaceSection(
     document,

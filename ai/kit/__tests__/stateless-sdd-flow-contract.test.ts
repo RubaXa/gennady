@@ -133,6 +133,10 @@ describe('two artifact approval boundaries', () => {
     assert.match(scaffold, /Requirement-ID → scenario → planned test/);
     assert.match(scaffold, /Happy-path-only is invalid/);
     assert.match(scaffold, /narrowest owning task index/);
+    assert.match(scaffold, /exactly one Bootstrap Requirements row with a named Owner/);
+    assert.match(scaffold, /return to STEP_1_DERIVE/);
+    assert.match(scaffold, /do not\s+patch the failed ticket locally/i);
+    assert.doesNotMatch(scaffold, /Correct only named findings and rerun the same check/);
     assert.doesNotMatch(scaffold, /--project-feasibility|--scaffold-feasibility|scaffold-plan\.json/);
   });
 });

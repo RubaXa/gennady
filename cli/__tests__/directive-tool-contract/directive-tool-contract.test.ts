@@ -642,7 +642,8 @@ describe('historical SDD agent-confusion regressions', () => {
       )?.length,
       1
     );
-    assert.match(mechanical, /Correct only named findings and rerun the same\s+check/s);
+    assert.match(mechanical, /return to STEP_1_DERIVE/);
+    assert.match(mechanical, /do not\s+patch the failed ticket locally/i);
     assert.match(mechanical, /H_TICKET_AUTHORING_INVALID/);
     assert.match(mechanical, /result="integrityGate">npx gennady sdd-check --all \.<\/ToolCall>/);
   });

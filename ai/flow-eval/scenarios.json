@@ -13,7 +13,8 @@
     "fixture": "tic-tac-toe",
     "phase": "scaffold",
     "mode": "actual-tickets-to-approval-2",
-    "intent": "Derive actual implementation tickets from the approved tic-tac-toe specification, with dependencies and executable acceptance criteria."
+    "intent": "Materialize actual implementation tickets from the approved tic-tac-toe specification, with dependencies and executable acceptance criteria.",
+    "acceptance": "The approved specs assign every runtime, package-manager, and configuration prerequisite to exactly one Bootstrap Requirements owner. Actual tickets and indexes exist and pass sdd-check --task --authoring plus sdd-check --all before review and Approval #2. A red ticket check returns to decomposition instead of being patched locally."
   },
   {
     "id": "slugify-toolchain",
