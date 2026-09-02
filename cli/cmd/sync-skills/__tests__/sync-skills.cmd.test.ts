@@ -14,7 +14,7 @@ import {
   readdirSync,
   statSync as fsStatSync,
   unlinkSync,
-  rmdirSync,
+  rmSync,
 } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -87,7 +87,7 @@ describe('run integration', () => {
       },
       resolvePackageDir: () => _sourceDir,
       unlink: unlinkSync,
-      rmdir: (p: string, opts?: { recursive: boolean }) => rmdirSync(p, opts),
+      rm: (p: string, opts?: { recursive: boolean; force: boolean }) => rmSync(p, opts),
       ...overrides,
     };
   }
@@ -197,7 +197,7 @@ describe('run --dry-run', () => {
       },
       resolvePackageDir: () => _sourceDir,
       unlink: unlinkSync,
-      rmdir: (p: string, opts?: { recursive: boolean }) => rmdirSync(p, opts),
+      rm: (p: string, opts?: { recursive: boolean; force: boolean }) => rmSync(p, opts),
       ...overrides,
     };
   }
@@ -279,7 +279,7 @@ describe('run filter', () => {
       },
       resolvePackageDir: () => _sourceDir,
       unlink: unlinkSync,
-      rmdir: (p: string, opts?: { recursive: boolean }) => rmdirSync(p, opts),
+      rm: (p: string, opts?: { recursive: boolean; force: boolean }) => rmSync(p, opts),
       ...overrides,
     };
   }
@@ -360,7 +360,7 @@ describe('run error paths', () => {
       },
       resolvePackageDir: () => _sourceDir,
       unlink: unlinkSync,
-      rmdir: (p: string, opts?: { recursive: boolean }) => rmdirSync(p, opts),
+      rm: (p: string, opts?: { recursive: boolean; force: boolean }) => rmSync(p, opts),
       ...overrides,
     };
   }
@@ -479,7 +479,7 @@ describe('run parseArgs', () => {
       },
       resolvePackageDir: () => _sourceDir,
       unlink: unlinkSync,
-      rmdir: (p: string, opts?: { recursive: boolean }) => rmdirSync(p, opts),
+      rm: (p: string, opts?: { recursive: boolean; force: boolean }) => rmSync(p, opts),
       stdout: stdout as unknown as NodeJS.WriteStream,
       stderr: stderr as unknown as NodeJS.WriteStream,
     };
@@ -513,7 +513,7 @@ describe('run parseArgs', () => {
       },
       resolvePackageDir: () => _sourceDir,
       unlink: unlinkSync,
-      rmdir: (p: string, opts?: { recursive: boolean }) => rmdirSync(p, opts),
+      rm: (p: string, opts?: { recursive: boolean; force: boolean }) => rmSync(p, opts),
       stdout: stdout as unknown as NodeJS.WriteStream,
     };
 

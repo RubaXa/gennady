@@ -193,14 +193,14 @@ describe('compareBytes', () => {
 });
 
 describe('SyncCmdDeps contract', () => {
-  it('has unlink and rmdir as optional fields', () => {
-    // contract: SyncCmdDeps type includes unlink and rmdir for sync-skills usage
+  it('has unlink and rm as optional fields', () => {
+    // contract: SyncCmdDeps type includes unlink and rm for sync-skills usage
     // this test verifies runtime assignability of a minimal deps object
     const deps: import('../sync-deps.type.ts').SyncCmdDeps = {
       unlink: (path: string) => {},
-      rmdir: (path: string, options?: { recursive: boolean }) => {},
+      rm: (path: string, options?: { recursive: boolean; force: boolean }) => {},
     };
     assert.strictEqual(typeof deps.unlink, 'function');
-    assert.strictEqual(typeof deps.rmdir, 'function');
+    assert.strictEqual(typeof deps.rm, 'function');
   });
 });

@@ -415,7 +415,7 @@ export function deleteOrphan(
   }
 
   const _unlink = deps.unlink ?? (() => {});
-  const _rmdir = deps.rmdir ?? (() => {});
+  const _rm = deps.rm ?? (() => {});
 
   let deleteFailed = false;
   let deleteErrorCode: string | undefined;
@@ -431,7 +431,7 @@ export function deleteOrphan(
   }
 
   try {
-    _rmdir(orphanDir, { recursive: true });
+    _rm(orphanDir, { recursive: true, force: true });
   } catch (err) {
     deleteFailed = true;
     deleteErrorCode = (err as NodeJS.ErrnoException).code ?? 'UNKNOWN';

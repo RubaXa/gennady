@@ -14,7 +14,7 @@ import {
   readdirSync,
   statSync,
   unlinkSync,
-  rmdirSync,
+  rmSync,
 } from 'node:fs';
 import { writeFileSync as _writeFileReal, mkdirSync as _mkdirReal } from 'node:fs';
 import { join } from 'node:path';
@@ -79,7 +79,7 @@ function createMockDeps(
       }
     },
     unlink: unlinkSync,
-    rmdir: (p: string, opts?: { recursive: boolean }) => rmdirSync(p, opts),
+    rm: (p: string, opts?: { recursive: boolean; force: boolean }) => rmSync(p, opts),
     ...overrides,
   };
 }
@@ -580,7 +580,7 @@ describe('collectAndCompareSkills manifest', () => {
     installed(_targetDir, 'sdd-old');
     createFile(_targetDir, '.gennady-synced', 'sdd-audit\nsdd-old\n');
 
-    const result = run(undefined, { unlink: refuse('EACCES'), rmdir: refuse('EACCES') });
+    const result = run(undefined, { unlink: refuse('EACCES'), rm: refuse('EACCES') });
 
     assert.equal(result.deleteFailed.length, 1);
     assert.ok(existsSync(join(_targetDir, 'sdd-old', 'SKILL.md')));
@@ -638,7 +638,7 @@ describe('collectAndCompareSkills manifest', () => {
     assert.deepEqual(manifestNames(), ['sdd-audit', 'sdd-check', 'sdd-old']);
 
     rmSync(join(_sourceDir, 'sdd-old'), { recursive: true });
-    const failed = run(undefined, { unlink: refuse('EBUSY'), rmdir: refuse('EBUSY') });
+    const failed = run(undefined, { unlink: refuse('EBUSY'), rm: refuse('EBUSY') });
     assert.deepEqual(
       failed.deleteFailed.map((e) => e.skillName),
       ['sdd-old']
@@ -802,7 +802,7 @@ describe('collectAndCompareSkills deleteFailed', () => {
     assert.equal(result.deleted.length, 0);
   });
 
-  it('marks dir as deleteFailed when rmdir throws EBUSY', () => {
+  it('marks dir as deleteFailed when rm throws EBUSY', () => {
     const sourceDir = join(_tmpDir, 'ai', 'skills');
     mkdirSync(sourceDir, { recursive: true });
     const targetDir = join(_tmpDir, '.claude', 'skills');
@@ -811,7 +811,7 @@ describe('collectAndCompareSkills deleteFailed', () => {
     createFile(targetDir, '.gennady-synced', 'sdd-old\n');
 
     const result = runDeps(sourceDir, targetDir, {
-      rmdir: () => {
+      rm: () => {
         const err = new Error('EBUSY: resource busy') as NodeJS.ErrnoException;
         err.code = 'EBUSY';
         throw err;

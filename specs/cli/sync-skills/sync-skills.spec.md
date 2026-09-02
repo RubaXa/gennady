@@ -136,7 +136,7 @@ _Это полный список сущностей модуля. Любое в
   - `unchanged` → `  = <skillName>/                                                   (unchanged)`
   - dryRun `added` → `      <relativePath>                                   (would add)`
   - dryRun `updated` → `      <relativePath>                                   (would update)`
-  - dryRun `deleted` → `  - <skillName>/                                            (would delete)` — файлы перечислены без суффикса (rmdir recursive — одна операция)
+  - dryRun `deleted` → `  - <skillName>/                                            (would delete)` — файлы перечислены без суффикса (`rm` recursive — одна операция)
   - dryRun `unchanged` → `  = <skillName>/                                   (unchanged, skip)`
   - Отступы в примерах иллюстративны (визуальное выравнивание). Реализатор вычисляет padding динамически по максимальной длине имени скила среди отображаемых.
   - Итоговая строка: `Synced: N added, M updated, K skipped, D deleted`. При наличии `deleteFailed`: `Synced: N added, M updated, K skipped, D deleted, F delete failed`
@@ -189,7 +189,7 @@ _Это полный список сущностей модуля. Любое в
   - `readFile: (path: string) => Buffer`
   - `writeFile: (path: string, data: Buffer) => void`
   - `unlink: (path: string) => void`
-  - `rmdir: (path: string, options?: { recursive: boolean }) => void`
+  - `rm: (path: string, options?: { recursive: boolean; force: boolean }) => void`
   - `mkdir: (path: string, options?: { recursive: boolean }) => void`
   - `stat: (path: string) => Stats`
   - `readdir: (path: string) => string[]`
@@ -205,7 +205,7 @@ _Это полный список сущностей модуля. Любое в
 
 ### `SyncCmdDeps` (Port)
 
-Shared с `sync`. Расширен полями `unlink`, `rmdir` для orphan-удаления.
+Shared с `sync`. Расширен полями `unlink`, `rm` для orphan-удаления.
 
 **Invariant:** `resolvePackageDir(cwd, 'ai/skills')` всегда возвращает путь, заканчивающийся на `ai/skills` (см. §3 SyncCmdDeps, shared core). Эта инварианта принадлежит shared-функции, не ядру.
 
@@ -220,13 +220,13 @@ Shared с `sync`. Расширен полями `unlink`, `rmdir` для orphan-
 **Contract (DbC):**
 
 - **Preconditions:**
-  - `deps.unlink` и `deps.rmdir` — не-null (обязательны для sync-skills; для sync эти поля присутствуют в типе, но не используются)
+  - `deps.unlink` и `deps.rm` — не-null (обязательны для sync-skills; для sync эти поля присутствуют в типе, но не используются)
   - `opts.sourceDir` — существующая директория с `ai/skills/`
   - `opts.targetDir` — корректный путь (может не существовать). Родительская директория (`.claude/`) должна быть либо отсутствующей, либо директорией. `mkdirSync({ recursive: true })` создаёт и `.claude/` и `.claude/skills/` за один вызов. Если `.claude` существует как файл — ошибка с anchor-сообщением `[sync-skills] .claude exists but is not a directory`
 - **Postconditions:**
-  - Если `dryRun` — ни один `writeFile` / `unlink` / `rmdir` не вызван; манифест не записывается, ни один скил не удаляется, ни одно имя не выбывает из владения
+  - Если `dryRun` — ни один `writeFile` / `unlink` / `rm` не вызван; манифест не записывается, ни один скил не удаляется, ни одно имя не выбывает из владения
   - Если не `dryRun` — для каждого `added`/`updated` файла вызван `writeFile` с **нормализованным** содержимым (dev-пути заменены на продуктовые)
-  - Если не `dryRun` — для каждого `deleted` файла/директории вызван `unlink`/`rmdir`
+  - Если не `dryRun` — для каждого `deleted` файла/директории вызван `unlink`/`rm`
   - Возвращённый `SyncSkillsResult.entries` отсортирован: скилы лексикографически, файлы внутри скила лексикографически
   - Скрытые файлы (`.`-префикс) и `.DS_Store` не попадают в результат
   - При фильтрации (`skillNames`) — orphan-удаление только для указанных скилов, и манифест обновляется merge'ем (владение остальными скилами сохраняется)
@@ -309,7 +309,7 @@ shared/common/sync/                    # shared с командой sync
 ├── sync-core.shared.ts               # resolvePackageDir(subdir), compareBytes (~30 lines)
 ├── sync-formatter.shared.ts          # formatSyncOutput(entries, opts) — базовые маркеры (~40 lines)
 ├── path-normalizer.ts                # PathNormalizer: замена dev-путей на продуктовые (~30 lines)
-└── sync-deps.type.ts                 # SyncCmdDeps (порт) — расширен unlink, rmdir (~15 lines)
+└── sync-deps.type.ts                 # SyncCmdDeps (порт) — расширен unlink, rm (~15 lines)
 
 ai/skills/                            # скилы — физические артефакты в репозитории (16 на момент записи)
 ├── agent-inbox/SKILL.md
@@ -343,7 +343,7 @@ plugins/<stack>/skills/               # скилы плагинов (plugin.skil
 | `cli/cmd/sync-skills/index.ts`                 | —                                                              | `import { run } from './sync-skills.cmd.ts'; run(process.argv)`                  |
 | `shared/common/sync/sync-core.shared.ts`       | `resolvePackageDir`, `compareBytes`                            | Shared: `sync` + `sync-skills`                                                   |
 | `shared/common/sync/sync-formatter.shared.ts`  | `formatSyncOutput`                                             | Shared: базовые маркеры `+`/`~`/`-`/`=`, dry-run, итоговая строка                |
-| `shared/common/sync/sync-deps.type.ts`         | `SyncCmdDeps`                                                  | Shared DI-порт, расширен `unlink`/`rmdir` для orphan-удаления                    |
+| `shared/common/sync/sync-deps.type.ts`         | `SyncCmdDeps`                                                  | Shared DI-порт, расширен `unlink`/`rm` для orphan-удаления                       |
 
 **Namespace:** `sync-skills` — единый префикс.
 
@@ -356,7 +356,7 @@ plugins/<stack>/skills/               # скилы плагинов (plugin.skil
 - **Status:** active
 - **Recorded:** session ModuleDecomposition, cli, sync-skills
 - **Why:** `sync` и `sync-skills` используют одинаковый механизм обнаружения пакета, побайтового сравнения и форматирования вывода. Вынос в `shared/common/sync/` предотвращает дублирование ~100 строк и гарантирует консистентность формата между командами.
-- **Risk accepted:** Изменение shared-кода влияет на обе команды. Смягчается тестами обеих команд. `SyncCmdDeps` расширен полями `unlink`, `rmdir` — для `sync` они опциональны (не используются), для `sync-skills` обязательны.
+- **Risk accepted:** Изменение shared-кода влияет на обе команды. Смягчается тестами обеих команд. `SyncCmdDeps` расширен полями `unlink`, `rm` — для `sync` они опциональны (не используются), для `sync-skills` обязательны.
 - **Supersedes:** sync.spec.md D-M001 (Pattern C) — не отменяет, но изменяет File Structure модуля `sync` (перенос `sync-formatter.ts` в shared)
 - **Rejected alternatives:**
   - Copypaste — дублирование кода, расхождение формата вывода
@@ -408,7 +408,7 @@ graph TD
   - `shared/common/sync/sync-core.shared.ts`
   - `shared/common/sync/sync-formatter.shared.ts`
   - `shared/common/sync/path-normalizer.ts` (D-M007)
-  - `shared/common/sync/sync-deps.type.ts` (расширить `unlink`/`rmdir`)
+  - `shared/common/sync/sync-deps.type.ts` (расширить `unlink`/`rm`)
   - `cli/cmd/sync-skills/sync-skills.types.ts`
   - `cli/cmd/sync-skills/sync-skills-core.ts`
   - `cli/cmd/sync-skills/sync-skills-formatter.ts`
@@ -439,8 +439,8 @@ graph TD
 - **Open risks & validation needs:**
   - `import.meta.resolve('gennady')` + `/ai/skills/` — поведение в разных рантаймах (tsx, npx, глобальная установка) требует проверки (общее с `sync`)
   - Интеграционные тесты sync-skills.cmd.test.ts требуют временной директории с мок-файлами — использовать `fs.mkdtempSync` + очистку
-  - Orphan-удаление директорий: `fs.rmdirSync` с `{ recursive: true }` доступен с Node.js 12 — OK для Node 22+
-  - `SyncCmdDeps` расширен `unlink`/`rmdir` — проверить что существующие тесты `sync` не ломаются (добавить поля в моки)
+  - Orphan-удаление директорий: `fs.rmSync` с `{ recursive: true, force: true }` доступен в Node.js 20+ и не использует удалённый recursive-контракт `rmdirSync`
+  - `SyncCmdDeps` расширен `unlink`/`rm` — проверить, что существующие тесты `sync` не ломаются (добавить поля в моки)
   - Нормализация путей (D-M007): проверить что регекс-правила не задевают пути в frontmatter или других структурных элементах, где замена нежелательна
   - Нормализация путей (D-M007): убедиться что `compareBytes` для нормализованного содержимого работает корректно — сравнение идёт ПОСЛЕ нормализации
   - `package.json#files` уже включает `"ai/**/*"` — `ai/skills/` попадёт в пакет автоматически. Проверить после публикации

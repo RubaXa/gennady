@@ -9,7 +9,7 @@ import {
   statSync,
   readdirSync,
   unlinkSync,
-  rmdirSync,
+  rmSync,
 } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -66,7 +66,7 @@ export function run(rawArgs: string[], deps?: SyncCmdDeps): number {
   const _stat = deps?.stat ?? statSync;
   const _readdir = deps?.readdir ?? readdirSync;
   const _unlink = deps?.unlink ?? unlinkSync;
-  const _rmdir = deps?.rmdir ?? rmdirSync;
+  const _rm = deps?.rm ?? rmSync;
   const _resolvePackageDir = deps?.resolvePackageDir ?? resolvePackageDir;
   const _stdout = deps?.stdout ?? process.stdout;
   const _stderr = deps?.stderr ?? process.stderr;
@@ -113,7 +113,7 @@ export function run(rawArgs: string[], deps?: SyncCmdDeps): number {
       stat: (p: string) => _stat(p),
       readdir: _readdir,
       unlink: _unlink,
-      rmdir: _rmdir as (p: string, opts?: { recursive: boolean }) => void,
+      rm: _rm as (p: string, opts?: { recursive: boolean; force: boolean }) => void,
       resolvePackageDir: _resolvePackageDir,
     };
 
