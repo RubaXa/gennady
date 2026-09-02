@@ -1,7 +1,7 @@
 <Contract id="ENTITY_SURFACE_FORMAT">
   ```markdown
   ### `<EntityName>`
-  - **Type:** Port | Adapter | Entity | Value Object | Service | Component | Command | Query | Event
+  - **Type:** Function | Port | Adapter | Entity | Value Object | Service | Component | Command | Query | Event
   - **Purpose:** <1 sentence>
   - **Presentation-Only:** <omit unless claiming the exemption — see `AX_PORTS_AND_ABSTRACTIONS_DISCIPLINE`> yes — props in, markup out, zero decisions; no Contract section follows
   - **Public Properties:** <list or N/A>

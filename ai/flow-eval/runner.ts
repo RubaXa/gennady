@@ -29,6 +29,7 @@ export const DEFAULT_SDD_EVAL_CONFIG: SddEvalConfig = {
   concurrency: 3,
   observeEveryMs: 5 * 60 * 1000,
   stuckAfter: 1,
+  maxObservations: 6,
   tailLimit: 20,
 };
 
@@ -48,6 +49,9 @@ export class SddEvalRunner {
     this.#evidence = evidence;
     this.#config = { ...DEFAULT_SDD_EVAL_CONFIG, ...config };
     if (this.#config.concurrency < 1) throw new Error('eval concurrency must be >= 1');
+    if (!Number.isInteger(this.#config.maxObservations) || this.#config.maxObservations < 1) {
+      throw new Error('eval maxObservations must be an integer >= 1');
+    }
     if (
       this.#config.runnerModel.providerID === this.#config.judgeModel.providerID &&
       this.#config.runnerModel.modelID === this.#config.judgeModel.modelID
@@ -82,7 +86,22 @@ export class SddEvalRunner {
         abort: (sessionId) => this.#runtime.abort?.(sessionId) ?? Promise.resolve(),
         onObservation: (_sessionId, observation) =>
           this.#config.onObservation?.(scenario.id, observation),
-      }).collect(session.id);
+      }).collect(session.id, this.#config.maxObservations);
+      const budgetEnd = observations.at(-1);
+      if (
+        observations.length >= this.#config.maxObservations &&
+        budgetEnd &&
+        budgetEnd.status !== 'completed' &&
+        budgetEnd.status !== 'error' &&
+        !budgetEnd.stuck
+      ) {
+        await this.#runtime.abort?.(session.id);
+        observations[observations.length - 1] = {
+          ...budgetEnd,
+          stuck: true,
+          errors: [...budgetEnd.errors, 'observation budget exceeded'],
+        };
+      }
     } catch (cause) {
       workerError = cause instanceof Error ? cause.message : String(cause);
       observations = [];
@@ -111,6 +130,13 @@ export class SddEvalRunner {
     if (workerError) return { worker };
     const judge = await this.#judge?.evaluate(scenario.id, scenario.directory, {
       intent: worker.intent,
+      acceptance: scenario.acceptance,
+      state: {
+        status: worker.status,
+        stuck: finalObservation?.stuck ?? false,
+        waiting: finalObservation?.waiting ?? false,
+        errors: finalObservation?.errors ?? [],
+      },
       diff: worker.diff,
       events: worker.events,
       tail: worker.tail,

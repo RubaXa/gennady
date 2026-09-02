@@ -2,9 +2,16 @@
 <Axiom id="AX_SCOPE_STAYS_THIN">
       A scope spec has a bounded role: Vision, Requirements, Architecture decisions, Decision Log, Module Map, composition Usage Example, Handoff, Bootstrap Requirements. Entity inventory, public surfaces, DbC contracts, and file layout are module-level — they live ONLY in module specs (`AX_HIERARCHICAL_SPECS`), never inline in the scope spec.
 
-      Two representations:
-      - **monolithic** — no modules yet; the scope spec may hold design inline (early / small scope).
-      - **index** — once decomposed, the scope spec is a thin composition over its modules: Module Map + Usage Example linking to each module's usage example; the detail lives in the modules.
+      Two lifecycle states:
+      - **draft under decomposition** — before Approval #1, a new product/library scope may briefly
+        carry design evidence only while the module owner moves it into canonical module specs. This
+        transient draft is never an approval or scaffold target.
+      - **index** — the reviewable scope spec is a thin composition over its modules: Module Map +
+        Usage Example linking to each module's usage example; the detail lives in the modules.
+
+      Small size is not a no-module exception for product/library scopes. A single cohesive
+      responsibility maps to one cohesive module; it does not justify invented adapter/service layers.
+      Infrastructure remains the sole standalone scope type.
 
       Growth is the decomposition signal, not a license to expand. When scope-level design reaches entity / contract / file granularity, that detail moves into a module — it does NOT accumulate in the scope spec. A scope converges to a thin index; it does not grow without bound.
 

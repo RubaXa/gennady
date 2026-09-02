@@ -194,7 +194,7 @@ npx gennady yagni /path/to/repo
 | `sdd-extract`       | Извлечение одной anchored-секции SDD-артефакта           |
 | `sdd-new`           | Scaffold одного SDD v2 артефакта                         |
 | `sdd-verify`        | Запуск verification ladder для тикета или профиля        |
-| `sdd-log`           | Append-only запись событий в Execution Log тикета        |
+| `sdd-log`           | События Execution Log + атомарное закрытие фазы          |
 | `sdd-sync`          | Синхронизация статуса тикета с tasks-трекерами           |
 | `sdd-task`          | Карта исполнения и фазовый контекст тикета               |
 | `sdd-migrate`       | Детерминированная миграция SDD v1 → v2                   |

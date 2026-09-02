@@ -4,6 +4,8 @@
     semantic coherence; the operator approves the reviewed artifacts. Resume uses only durable artifacts.
   </Mission>
   <BeliefState>
+    Inherited from the loading directive (already in context): AX_TOOL_INVOCATION
+
     <Axiom id="AX_STATELESS_FLOW" invariant="true">
       SDD orchestration owns no durable hidden control plane. Specs, ticket fields, task indexes,
       Execution Log, Git, and real command output are the complete continuation state. A scratch file
@@ -47,24 +49,6 @@
       канцелярит, устойчивые термины — применяется к заголовкам Ask, вариантам ответа и объяснениям
       в чате так же строго, как к спекам и тикетам. Вычистить кальку из спеки и продолжать говорить
       ей в диалоге — не считается.
-    </Axiom>
-    <Axiom id="AX_TOOL_INVOCATION">
-      The SDD mechanical tools are `gennady` CLI commands. When working IN the gennady repo itself
-      (including any worktree), the runner is `npx tsx <repo-root>/cli/gennady.ts`; in every other
-      project it is `npx gennady`. Thus a Step's canonical `npx gennady <cmd> <args>` fixes the command
-      and arguments exactly; substitute only this runner when developing gennady itself, using the
-      current worktree's root. Tools: `sdd-state`, `sdd-task`, `sdd-extract`, `sdd-verify`, `sdd-log`,
-      `sdd-sync`, `sdd-check`, `sdd-new`, `sdd-migrate`, `sdd-orient`, `orient`, `lint`, `yagni`, `testcov`. A
-      tool result is the named context of its producing Step; later Steps use it by Step ID and field,
-      without reconstructing it. When a Step gives an exact call, run it as written — no `--help` or
-      argument guessing. Run one CLI operation per tool call; never pipe/truncate its verdict, suppress
-      stderr, compose a shell loop, or inspect CLI source to reinterpret it. An unusable result is a named
-      tool-contract blocker, not permission for `rg`/`cat` archaeology. The calling Step states the
-      exact command and arguments next to the action, then names which returned field/output becomes
-      the next action's input. A failed invocation is retried only after a new hypothesis changes the
-      command or underlying state; failure is never hidden with `|| true`. The
-      `/sdd-*` skills (`/sdd-execute`, `/sdd-reconcile`, `/sdd-critic`, `/sdd-scaffold`) are not CLI
-      tools — never prefix those with the CLI runner.
     </Axiom>
     <Axiom id="AX_OPERATOR_AGREEMENT">
       Every fix must be operator-approved before execution. The plan is shown as a table.
@@ -152,7 +136,11 @@
         Dispatch one fresh reviewer with the exact bounded spec set. The reviewer reads but never
         edits. It checks requirements, negative/failure behavior, interfaces, dependencies,
         invariants, verification strategy, contradictions, and missing decisions. It returns
-        `CLEAN` or evidence-backed findings naming file and anchor.
+        `CLEAN` or at most five evidence-backed findings naming file and anchor. The reviewer reads
+        only the exact target specs plus the operator brief supplied in its prompt; it does not read
+        flow directives, examples, repository history, source code, or search the repository. It
+        performs one semantic pass and returns the verdict without restating the route or narrating
+        its internal analysis.
 
         The author may mentally inspect its own work before this dispatch, but that does not count as
         independent review. Do not serialize a plan into JSON, retain the reviewer, or create
@@ -164,8 +152,11 @@
       <Action>
         For each finding, either correct the owning spec or present a concrete disagreement to the
         operator. Run structural checks after edits. Any semantic edit resets the applicable approval
-        markers to `pending` and therefore requires one fresh STEP_2 review of the new complete target. This is a new bounded
-        verification, not continuation of a reviewer session.
+        markers to `pending` and therefore requires one fresh STEP_2 review of the new complete
+        target. Give that reviewer the prior findings and corrected target; it verifies those fixes
+        plus one contradiction sweep, then returns `CLEAN` or at most five remaining findings. This
+        is a new bounded verification, not continuation of a reviewer session and not a reason to
+        reload unrelated artifacts.
       </Action>
     </Step>
     <Step id="STEP_4_OPERATOR_APPROVAL_1">

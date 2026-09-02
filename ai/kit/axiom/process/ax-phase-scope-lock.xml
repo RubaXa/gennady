@@ -1,3 +1,7 @@
 <Axiom id="AX_PHASE_SCOPE_LOCK">
-Create or edit only this phase's `Target Files`; remove only exact paths declared under `Deleted Files` (exact `unlink` for an entry, then exact `rmdir` for a declared emptied directory). `Deleted Files` are tombstones, never repair targets. Reading other files (specs, sibling-phase code, rule files cited in this phase's Rules list) is allowed and expected. Any other write or deletion → `H_OUT_OF_PHASE_WRITE`. Operator decides via re-planning or a new task.
+Create or edit only this phase's `Target Files`; remove only exact paths declared under `Deleted Files` (exact `unlink` for an entry, then exact `rmdir` for a declared emptied directory). `Deleted Files` are tombstones, never repair targets. Reading other files (specs, sibling-phase code, rule files cited in this phase's Rules list) is allowed and expected.
+
+The ticket is orchestrator-owned state, not a phase Target File. The worker MUST NOT manually edit the ticket, `Phases Overview`, `Execution Log`, Handoff placeholder, or DONE line. The one permitted ticket mutation is the receipt written atomically by the exact `sdd-verify --task ... --phase ...` command. After that command passes, the worker returns a typed Handoff payload; the orchestrator validates it and closes the phase through `sdd-log complete`.
+
+Any other write or deletion → `H_OUT_OF_PHASE_WRITE`. An unusable CLI result is returned as a tool-contract blocker; it never authorizes reading bundled CLI source. Operator decides via re-planning or a new task.
 </Axiom>

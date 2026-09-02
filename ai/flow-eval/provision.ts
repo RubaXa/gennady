@@ -1,7 +1,16 @@
 // @file: Safe per-scenario workspace provisioner.
 // @consumers: CLI, SddEvalRunner tests; never removes existing directories.
 
-import { chmod, cp, mkdir, mkdtemp, readdir, readFile, writeFile } from 'node:fs/promises';
+import {
+  chmod,
+  cp,
+  mkdir,
+  mkdtemp,
+  readdir,
+  readFile,
+  realpath,
+  writeFile,
+} from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { execFile } from 'node:child_process';
 import { tmpdir } from 'node:os';
@@ -42,7 +51,7 @@ function canonicalScope(
   document = replaceSection(
     document,
     'OVERVIEW',
-    `## Overview\n\n\`\`\`mermaid\nflowchart TD\n  caller --> rules\n  rules --> result\n\`\`\`\n_Game rules are isolated behind one deterministic capability._`
+    `## Overview\n\n\`\`\`mermaid\nflowchart TD\n  caller --> rules\n  rules --> result\n\`\`\`\n_${slugify ? 'Slug normalization' : 'Game rules'} is isolated behind one deterministic capability._`
   );
   document = replaceSection(
     document,
@@ -79,7 +88,9 @@ function canonicalScope(
   document = replaceSection(
     document,
     'ARCHITECTURE',
-    '## High-Level Architecture\nA pure rules module owns validation and winner detection.\n\n### Rejected Alternatives\nA mutable global board was rejected.'
+    slugify
+      ? '## High-Level Architecture\nA pure rules module owns input validation and deterministic slug normalization.\n\n### Rejected Alternatives\nLocale-dependent transliteration was rejected.'
+      : '## High-Level Architecture\nA pure rules module owns validation and winner detection.\n\n### Rejected Alternatives\nA mutable global board was rejected.'
   );
   document = replaceSection(
     document,
@@ -160,6 +171,11 @@ function canonicalModule(
   );
   document = replaceSection(
     document,
+    'PUBLIC_OPTIONS',
+    `## Public Options & Policies\nBehavior is fixed by the approved contract; the fixture exposes no runtime options.\n\n<details>\n<summary>Options and policies</summary>\n\n- No configurable options.\n\n</details>`
+  );
+  document = replaceSection(
+    document,
     'FILE_STRUCTURE',
     `## File Structure\n\`\`\`text\n${module}/${module}.spec.md\n${sourceFile}\n\`\`\`\n\n**File Mapping:**\n- \`${sourceFile}\`: rule implementation`
   );
@@ -174,6 +190,11 @@ function canonicalModule(
     `## Module Decision Log\n\n<details>\n<summary>Approval records</summary>\n\n### Approval #1 — current specification set\n- **Status:** approved\n- **Reviewed set:** \`specs/${scope}/${scope}.spec.md\`, \`specs/${scope}/${module}/${module}.spec.md\`\n- **Independent review:** clean\n- **Operator decision:** approved\n- **Recorded:** 2026-09-02\n\n</details>`
   );
   document = replaceSection(document, 'RESEARCH', '## Research\n\nNo research documents.');
+  document = replaceSection(
+    document,
+    'IMPLEMENTATION_INSIGHTS',
+    `## Implementation Insights\nThe fixture has no non-trivial implementation caveats beyond its approved contracts.\n\n<details>\n<summary>Implementation notes</summary>\n\n- Keep validation deterministic and input immutable.\n\n</details>`
+  );
   return document;
 }
 
@@ -189,10 +210,14 @@ function canonicalTask(
 ): string {
   const testFile = sourceFile.replace(/\.ts$/, '.test.ts');
   const slugify = operation === 'slugify';
+  const taskTitle = slugify ? 'Normalize URL slug' : 'Normalize game state';
+  const semanticGoal = slugify
+    ? 'Implement deterministic URL slug normalization'
+    : 'Implement deterministic game-state normalization';
   let document = TEMPLATES.task.skeleton
     .replaceAll('<ACRONYM>', acronym)
     .replaceAll('<slug>', 'normalize')
-    .replaceAll('<Task Title>', 'Normalize game state')
+    .replaceAll('<Task Title>', taskTitle)
     .replaceAll('<scope-name>', scope)
     .replaceAll('<module-name or N/A>', module)
     .replaceAll('<infrastructure-flat | scope-bootstrap | module>', 'module')
@@ -202,16 +227,16 @@ function canonicalTask(
     .replaceAll('<AdapterName>', 'Rules')
     .replaceAll('<ConsumerName>', 'fixture-consumer')
     .replaceAll('<scope spec §>', `../${scope}.spec.md`)
-    .replaceAll('<semantic goal one-liner>', 'Implement deterministic game-state normalization')
+    .replaceAll('<semantic goal one-liner>', semanticGoal)
     .replaceAll('<comma-separated Task-IDs or None>', 'None')
     .replaceAll('<count> (<YYYY-MM-DD> — <last reason>)', '0')
-    .replaceAll('<Runtime Backing>', 'simulation')
+    .replaceAll('<Runtime Backing>', 'real-runtime')
     .replaceAll('<Verification Levels>', 'unit');
   document = document.replaceAll(`${acronym}-normalize`, id);
   document = replaceSection(
     document,
     'META',
-    `## Meta\n- **Task-ID:** ${id}\n- **Status:** [ ] TODO\n- **Purpose:** implement deterministic ${operation} behavior\n- **Scope:** ${scope}\n- **Module:** ${module}\n- **Structural Owner:** module\n- **Owning Spec:** [Owning spec](./${module}.spec.md)\n- **Dependencies:** None\n- **Spec References:**\n  - Contract: [${operation}](./${module}.spec.md#module-contracts)\n- **Runtime Backing:** simulation\n- **Verification Levels:** contract, unit\n- **Deferred Runtime Scope:** None`
+    `## Meta\n- **Task-ID:** ${id}\n- **Status:** [ ] TODO\n- **Purpose:** implement deterministic ${operation} behavior\n- **Scope:** ${scope}\n- **Module:** ${module}\n- **Structural Owner:** module\n- **Owning Spec:** [Owning spec](./${module}.spec.md)\n- **Dependencies:** None\n- **Spec References:**\n  - Contract: [${operation}](./${module}.spec.md#module-contracts)\n- **Runtime Backing:** real-runtime\n- **Verification Levels:** contract, unit\n- **Deferred Runtime Scope:** None`
   );
   document = replaceSection(
     document,
@@ -221,12 +246,12 @@ function canonicalTask(
   document = replaceSection(
     document,
     'PHASE_P1',
-    `### P1 — impl\n- **Objective:** implement ${operation}\n- **Rules:**\n  - none\n- **Spec Refs:**\n  - [${operation}](./${module}.spec.md#module-contracts)\n- **Target Files:**\n  - ${sourceFile}\n- **Deleted Files:**\n  - none\n- **Inputs:** none\n- **Exit:** implementation satisfies the approved contract`
+    `### P1 — impl\n- **Objective:** implement ${operation}\n- **Rules:**\n  - [typescript-rules](../../../ai/directives/coding/typescript-rules.xml)\n- **Spec Refs:**\n  - [${operation}](./${module}.spec.md#module-contracts)\n- **Target Files:**\n  - ${sourceFile}\n- **Deleted Files:**\n  - none\n- **Inputs:** none\n- **Exit:** implementation satisfies the approved contract`
   );
   document = replaceSection(
     document,
     'PHASE_P2',
-    `### P2 — test\n- **Objective:** verify normal and boundary inputs\n- **Rules:**\n  - none\n- **Target Files:**\n  - ${testFile}\n- **Deleted Files:**\n  - none\n- **Inputs:** P1 handoff\n- **Exit:** tests pass`
+    `### P2 — test\n- **Objective:** verify normal and boundary inputs\n- **Rules:**\n  - [testing-common](../../../ai/directives/testing/common.xml)\n  - [node-test](../../../ai/directives/testing/node-test.xml)\n- **Target Files:**\n  - ${testFile}\n- **Deleted Files:**\n  - none\n- **Inputs:** P1 handoff\n- **Exit:** tests pass`
   );
   document = replaceSection(
     document,
@@ -238,7 +263,7 @@ function canonicalTask(
   document = replaceSection(
     document,
     'VERIFICATION',
-    `## Verification\n- **Coverage Policy:** not-applicable\n- **Coverage Reason:** focused fixture has no coverage gate\n\n| Command | Required by | Role |\n|---------|-------------|------|\n| \`node --test ${testFile}\` | node-test | extra |`
+    `## Verification\n\n<!--PHASE_RECEIPTS:v1-->\n\n<!--COVERAGE_POLICY:v1-->\n- **Coverage Policy:** required\n- **Coverage Owner Phase:** P2\n\n| Command | Required by | Role |\n|---------|-------------|------|\n| \`npx gennady testcov --min=80 ${sourceFile}\` | node-test | coverage |`
   );
   document = replaceSection(
     document,
@@ -250,56 +275,191 @@ function canonicalTask(
   document = replaceSection(
     document,
     'EXECUTION_LOG',
-    '## Execution Log\nNo execution has started; this ticket is pickable after Approval #2.'
+    `## Execution Log
+*(Round = one execute-then-audit attempt; per-phase blocks within a Round. A checked line still carrying an unreplaced angle-bracket token is a fabricated DONE.)*
+
+### Round 1 — <YYYY-MM-DD>, initial
+
+#### P1
+- [ ] \`<ts>\` DONE
+**Handoff →** artifacts: [...]; decisions: [...]; open: [...]
+
+#### P2
+- [ ] \`<ts>\` DONE
+**Handoff →** artifacts: [...]; decisions: [...]; open: [...]
+
+#### Round close
+- [ ] \`<ts>\` DONE`
   );
   document = replaceSection(document, 'DECISION_LOG', '## Decision Log\n');
   return document;
 }
 
-function canonicalModuleIndex(scope: string, module: string, acronym: string, id: string): string {
-  return `# ${module} — Tasks\n\n## Tracker Index\n| Task-ID | Title | Dependencies | Status | Reopens |\n|---------|-------|--------------|--------|---------|\n| ${id} | Normalize game state | — | [ ] TODO | — |\n\n## Slug Registry\n- normalize\n\n## Intra-Module DAG\n\`\`\`mermaid\ngraph TD\n  normalize\n\`\`\`\n\n## Approval #2 — decomposition and test plan\n- **Status:** approved\n- **Reviewed tickets:** \`specs/${scope}/${module}/${module}.task.${id}.md\`\n- **Independent review:** clean\n- **Operator decision:** approved\n- **Recorded:** 2026-09-02\n\n## Decision Log (module-task level)\n- ${acronym}-DL-2 2026-09-02 — approved the actual ticket and test plan (${scope}/${module}).\n\n## Conventions\nProject-wide conventions are declared once in specs/3-tasks.md and inherited here.`;
+function canonicalModuleIndex(
+  scope: string,
+  module: string,
+  acronym: string,
+  id: string,
+  title = 'Normalize game state'
+): string {
+  return `# ${module} — Tasks\n\n## Tracker Index\n| Task-ID | Title | Dependencies | Status | Reopens |\n|---------|-------|--------------|--------|---------|\n| ${id} | ${title} | — | [ ] TODO | — |\n\n## Slug Registry\n- normalize\n\n## Intra-Module DAG\n\`\`\`mermaid\ngraph TD\n  normalize\n\`\`\`\n\n## Approval #2 — decomposition and test plan\n- **Status:** approved\n- **Reviewed tickets:** \`specs/${scope}/${module}/${module}.task.${id}.md\`\n- **Independent review:** clean\n- **Operator decision:** approved\n- **Recorded:** 2026-09-02\n\n## Decision Log (module-task level)\n- ${acronym}-DL-2 2026-09-02 — approved the actual ticket and test plan (${scope}/${module}).\n\n## Conventions\nProject-wide conventions are declared once in specs/3-tasks.md and inherited here.`;
 }
+
+const REAL_TS_CONFIG = `{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "types": ["node"],
+    "skipLibCheck": true
+  },
+  "include": ["src/**/*.ts"]
+}
+`;
+
+const REAL_GITIGNORE = `.claude/settings.local.json
+.env
+.env.local
+.env.*.local
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+*.swp
+.vscode/
+coverage/
+*.lcov
+.nyc_output/
+*.log
+npm-debug.log*
+yarn-error.log
+node_modules/
+dist/
+.cache/
+`;
+
+const REAL_COVERAGE_RUNNER = `import { spawn } from 'node:child_process';
+import { glob } from 'node:fs/promises';
+import { resolve } from 'node:path';
+
+const files = [];
+for await (const file of glob('src/**/*.test.ts')) files.push(file);
+files.sort();
+if (files.length === 0) process.exit(1);
+const exitCode = await new Promise((resolveExit) => {
+  const child = spawn(
+    process.execPath,
+    [
+      resolve('node_modules/c8/bin/c8.js'),
+      '--reporter=json',
+      '--reports-dir=coverage',
+      '--all',
+      '--extension=.ts',
+      '--include=src/**/*.ts',
+      '--exclude=src/**/*.test.ts',
+      process.execPath,
+      '--test',
+      ...files,
+    ],
+    { stdio: 'inherit' }
+  );
+  child.once('error', () => resolveExit(1));
+  child.once('exit', (code) => resolveExit(code ?? 1));
+});
+process.exitCode = exitCode;
+`;
+
+const REAL_TEST_RUNNER = `import { spawn } from 'node:child_process';
+import { glob } from 'node:fs/promises';
+
+const files = [];
+for await (const file of glob('src/**/*.test.ts')) files.push(file);
+files.sort();
+if (files.length === 0) process.exit(0);
+const exitCode = await new Promise((resolveExit) => {
+  const child = spawn(process.execPath, ['--test', ...files], { stdio: 'inherit' });
+  child.once('error', () => resolveExit(1));
+  child.once('exit', (code) => resolveExit(code ?? 1));
+});
+process.exitCode = exitCode;
+`;
 
 /** @purpose Minimal prepared source trees used by the three cheap SDD eval scenarios. */
 const FIXTURE_FILES: Record<SddEvalFixtureId, Record<string, string>> = {
   'fibonacci-library': {
+    '.gitignore': REAL_GITIGNORE,
     'inputs/brief.md':
-      '# Fibonacci brief\nProvide a reusable Fibonacci API with documented edge cases.\n',
-    'src/fibonacci.ts':
-      'export function fibonacci(n: number): number { return n < 2 ? n : fibonacci(n - 1) + fibonacci(n - 2); }\n',
+      '# Fibonacci brief\nProvide a reusable TypeScript `nth(n: number): number` API. Accept only integer indexes from 0 through 77, with F(0)=0 and F(1)=1. Reject negative, non-integer, and greater-than-77 inputs with explicit errors. Keep the API pure and document every edge case. Author specifications only; no product code.\n',
     'README.md': '# Fibonacci library\n\nImplement the requested API and tests.\n',
+    'scripts/test.mjs': REAL_TEST_RUNNER,
+    'scripts/test-coverage.mjs': REAL_COVERAGE_RUNNER,
+    'tsconfig.json': REAL_TS_CONFIG,
+    'package.json':
+      JSON.stringify(
+        {
+          name: 'fibonacci-library',
+          private: true,
+          type: 'module',
+          scripts: {
+            'type-check': 'tsc --noEmit',
+            test: 'node scripts/test.mjs',
+            'test:coverage': 'node scripts/test-coverage.mjs',
+            format: 'prettier --check "src/**/*.ts" package.json tsconfig.json',
+            'format:fix': 'prettier --write',
+            lint: './node_modules/.bin/gennady lint src/',
+            'lint:fix': './node_modules/.bin/gennady lint --autofix',
+            fix: 'npm run format:fix -- src && npm run lint:fix -- src',
+          },
+        },
+        null,
+        2
+      ) + '\n',
+    'specs/README.md':
+      '# Fixture Project\n\n## Scopes\n\n| Scope | Type | Spec | Description |\n|---|---|---|---|\n',
   },
   'tic-tac-toe': {
+    '.gitignore': REAL_GITIGNORE,
     'inputs/brief.md':
       '# Tic-tac-toe brief\nModel legal moves and winner detection for a deterministic game.\n',
     'specs/README.md':
-      '# Fixture Project\n\n## Scopes\n\n| Scope | Type | Status | Description |\n|---|---|---|---|\n| [`tic-tac-toe`](./tic-tac-toe/tic-tac-toe.spec.md) | product | ✅ | deterministic board rules |\n',
+      '# Fixture Project\n\n## Scopes\n\n| Scope | Type | Spec | Description |\n|---|---|---|---|\n| [`tic-tac-toe`](./tic-tac-toe/tic-tac-toe.spec.md) | product | ✅ | deterministic board rules |\n',
     'specs/tic-tac-toe/tic-tac-toe.spec.md': canonicalScope('tic-tac-toe', 'TTT', 'engine'),
     'specs/tic-tac-toe/engine/engine.spec.md': canonicalModule('tic-tac-toe', 'ENG', 'engine'),
     'src/game.ts': 'export type Mark = "X" | "O";\nexport type Board = Array<Mark | null>;\n',
+    'scripts/test.mjs': REAL_TEST_RUNNER,
+    'scripts/test-coverage.mjs': REAL_COVERAGE_RUNNER,
+    'tsconfig.json': REAL_TS_CONFIG,
     'package.json':
-      JSON.stringify({
-        name: 'tic-tac-toe',
-        private: true,
-        type: 'module',
-        scripts: {
-          'type-check': 'node -e "console.log(\'type-check\')"',
-          test: 'node -e "console.log(\'test\')"',
-          'test:coverage': 'node -e "console.log(\'coverage\')"',
-          format: 'node -e "console.log(\'format\')"',
-          'format:fix': 'prettier --write',
-          lint: './node_modules/.bin/gennady lint src/',
-          'lint:fix': './node_modules/.bin/gennady lint --autofix',
-          fix: 'npm run format:fix -- && npm run lint:fix --',
+      JSON.stringify(
+        {
+          name: 'tic-tac-toe',
+          private: true,
+          type: 'module',
+          scripts: {
+            'type-check': 'tsc --noEmit',
+            test: 'node scripts/test.mjs',
+            'test:coverage': 'node scripts/test-coverage.mjs',
+            format: 'prettier --check "src/**/*.ts" package.json tsconfig.json',
+            'format:fix': 'prettier --write',
+            lint: './node_modules/.bin/gennady lint src/',
+            'lint:fix': './node_modules/.bin/gennady lint --autofix',
+            fix: 'npm run format:fix -- src && npm run lint:fix -- src',
+          },
         },
-      }) + '\n',
+        null,
+        2
+      ) + '\n',
     'README.md': '# Tic-tac-toe\n\nImplement legal moves and winner detection.\n',
   },
   'slugify-toolchain': {
+    '.gitignore': REAL_GITIGNORE,
     'inputs/brief.md':
       '# Slugify brief\nCreate stable URL slugs and keep the test/toolchain command reproducible.\n',
     'specs/README.md':
-      '# Fixture Project\n\n## Scopes\n\n| Scope | Type | Status | Description |\n|---|---|---|---|\n| [`slugify`](./slugify/slugify.spec.md) | library | ✅ | stable URL slugs |\n',
+      '# Fixture Project\n\n## Scopes\n\n| Scope | Type | Spec | Description |\n|---|---|---|---|\n| [`slugify`](./slugify/slugify.spec.md) | library | ✅ | stable URL slugs |\n',
     'specs/3-tasks.md': '# Project Tasks\n\n## Entry Points\n- [Specs Portal](./README.md)\n',
     'specs/slugify/slugify.spec.md': canonicalScope('slugify', 'SLU', 'core', 'slugify'),
     'specs/slugify/core/core.spec.md': canonicalModule(
@@ -313,7 +473,8 @@ const FIXTURE_FILES: Record<SddEvalFixtureId, Record<string, string>> = {
       'slugify',
       'core',
       'SLG',
-      'SLG-slug'
+      'SLG-slug',
+      'Normalize URL slug'
     ),
     'specs/slugify/core/core.task.SLG-slug.md': canonicalTask(
       'slugify',
@@ -325,22 +486,29 @@ const FIXTURE_FILES: Record<SddEvalFixtureId, Record<string, string>> = {
       'src/slugify.ts'
     ),
     'src/slugify.ts': 'export function slugify(value: string): string { return value; }\n',
+    'scripts/test.mjs': REAL_TEST_RUNNER,
+    'scripts/test-coverage.mjs': REAL_COVERAGE_RUNNER,
+    'tsconfig.json': REAL_TS_CONFIG,
     'package.json':
-      JSON.stringify({
-        name: 'slugify-toolchain',
-        private: true,
-        type: 'module',
-        scripts: {
-          'type-check': 'node -e "console.log(\'type-check\')"',
-          test: 'node -e "console.log(\'test\')"',
-          'test:coverage': 'node -e "console.log(\'coverage\')"',
-          format: 'node -e "console.log(\'format\')"',
-          'format:fix': 'prettier --write',
-          lint: './node_modules/.bin/gennady lint src/',
-          'lint:fix': './node_modules/.bin/gennady lint --autofix',
-          fix: 'npm run format:fix -- && npm run lint:fix --',
+      JSON.stringify(
+        {
+          name: 'slugify-toolchain',
+          private: true,
+          type: 'module',
+          scripts: {
+            'type-check': 'tsc --noEmit',
+            test: 'node scripts/test.mjs',
+            'test:coverage': 'node scripts/test-coverage.mjs',
+            format: 'prettier --check "src/**/*.ts" package.json tsconfig.json',
+            'format:fix': 'prettier --write',
+            lint: './node_modules/.bin/gennady lint src/',
+            'lint:fix': './node_modules/.bin/gennady lint --autofix',
+            fix: 'npm run format:fix -- src && npm run lint:fix -- src',
+          },
         },
-      }) + '\n',
+        null,
+        2
+      ) + '\n',
   },
 };
 
@@ -389,8 +557,8 @@ async function materializeFlow(directory: string, gennadyRoot: string): Promise<
   const skillSource = join(gennadyRoot, 'ai/skills/sdd');
   const skillTarget = join(directory, 'ai/skills/sdd');
   await cp(skillSource, skillTarget, { recursive: true });
-  const directivesSource = join(gennadyRoot, 'ai/directives/sdd-v2');
-  const directivesTarget = join(directory, 'ai/directives/sdd-v2');
+  const directivesSource = join(gennadyRoot, 'ai/directives');
+  const directivesTarget = join(directory, 'ai/directives');
   await cp(directivesSource, directivesTarget, { recursive: true });
   const skillsSource = join(gennadyRoot, 'ai/skills');
   const skillsTarget = join(directory, '.claude/skills');
@@ -406,8 +574,83 @@ async function initGitRepository(directory: string): Promise<void> {
   await execFileAsync('git', ['init', '--quiet', '--initial-branch=main', directory]);
 }
 
+/** @purpose Commit the immutable fixture baseline so worker diffs and write-zone checks are real. */
+async function commitFixtureBaseline(directory: string): Promise<void> {
+  await execFileAsync('git', ['add', '--all'], { cwd: directory });
+  await execFileAsync(
+    'git',
+    [
+      '-c',
+      'user.name=SDD Eval',
+      '-c',
+      'user.email=sdd-eval@localhost',
+      'commit',
+      '--quiet',
+      '-m',
+      'chore: initialize eval fixture',
+    ],
+    { cwd: directory }
+  );
+}
+
+/** @purpose Enqueue every dependency declared by a package and its nested package tree. */
+async function enqueuePackageTreeDependencies(
+  packageDirectory: string,
+  dependencyQueue: string[],
+  copied: ReadonlySet<string>,
+  scanned: Set<string>
+): Promise<void> {
+  const canonicalDirectory = resolve(packageDirectory);
+  if (scanned.has(canonicalDirectory)) return;
+  scanned.add(canonicalDirectory);
+  try {
+    const manifest = JSON.parse(
+      await readFile(join(canonicalDirectory, 'package.json'), 'utf8')
+    ) as {
+      dependencies?: Record<string, string>;
+      optionalDependencies?: Record<string, string>;
+    };
+    for (const child of Object.keys({
+      ...manifest.dependencies,
+      ...manifest.optionalDependencies,
+    })) {
+      if (!copied.has(child) && !dependencyQueue.includes(child)) dependencyQueue.push(child);
+    }
+  } catch {
+    return;
+  }
+  const nestedRoot = join(canonicalDirectory, 'node_modules');
+  if (!existsSync(nestedRoot)) return;
+  for (const entry of await readdir(nestedRoot, { withFileTypes: true })) {
+    if (!entry.isDirectory() || entry.name === '.bin') continue;
+    if (entry.name.startsWith('@')) {
+      const scope = join(nestedRoot, entry.name);
+      for (const scopedEntry of await readdir(scope, { withFileTypes: true })) {
+        if (scopedEntry.isDirectory())
+          await enqueuePackageTreeDependencies(
+            join(scope, scopedEntry.name),
+            dependencyQueue,
+            copied,
+            scanned
+          );
+      }
+      continue;
+    }
+    await enqueuePackageTreeDependencies(
+      join(nestedRoot, entry.name),
+      dependencyQueue,
+      copied,
+      scanned
+    );
+  }
+}
+
 /** @purpose Bind the built local CLI without package installation or network access. */
-async function materializeLocalCli(directory: string, gennadyRoot: string): Promise<void> {
+async function materializeLocalCli(
+  directory: string,
+  gennadyRoot: string,
+  includeCoverageProducer: boolean
+): Promise<void> {
   const packageTarget = join(directory, 'node_modules/gennady');
   const binTarget = join(directory, 'node_modules/.bin/gennady');
   await mkdir(dirname(packageTarget), { recursive: true });
@@ -421,8 +664,18 @@ async function materializeLocalCli(directory: string, gennadyRoot: string): Prom
   // `sdd-check --all` loads the bundled XML/HTML checker, whose runtime dependency is jsdom. Copy
   // its local dependency closure from the already-installed checkout; no registry/network access
   // and no symlinks into the mutable source tree are allowed.
-  const dependencyQueue = ['jsdom', 'mermaid'];
+  const dependencyQueue = [
+    'jsdom',
+    'mermaid',
+    'tree-sitter',
+    'tree-sitter-typescript',
+    'typescript',
+    'prettier',
+    '@types/node',
+    ...(includeCoverageProducer ? ['c8'] : []),
+  ];
   const copied = new Set<string>();
+  const scanned = new Set<string>();
   while (dependencyQueue.length > 0) {
     const dependency = dependencyQueue.shift();
     if (!dependency || copied.has(dependency)) continue;
@@ -432,20 +685,7 @@ async function materializeLocalCli(directory: string, gennadyRoot: string): Prom
     if (!existsSync(sourcePackage))
       throw new Error(`required local dependency is missing: ${dependency}`);
     await cp(sourcePackage, targetPackage, { recursive: true });
-    try {
-      const manifest = JSON.parse(await readFile(join(sourcePackage, 'package.json'), 'utf8')) as {
-        dependencies?: Record<string, string>;
-        optionalDependencies?: Record<string, string>;
-      };
-      for (const child of Object.keys({
-        ...manifest.dependencies,
-        ...manifest.optionalDependencies,
-      })) {
-        if (!copied.has(child)) dependencyQueue.push(child);
-      }
-    } catch {
-      // A package without readable metadata is still usable when all imports are bundled.
-    }
+    await enqueuePackageTreeDependencies(sourcePackage, dependencyQueue, copied, scanned);
   }
   // The checked-in dist entrypoint is intentionally not executable in this checkout. Use a tiny
   // executable npm bin shim that invokes the immutable sandbox copy.
@@ -455,6 +695,14 @@ async function materializeLocalCli(directory: string, gennadyRoot: string): Prom
     'utf8'
   );
   await chmod(binTarget, 0o755);
+  for (const [name, entry] of [
+    ['tsc', '../typescript/bin/tsc'],
+    ['prettier', '../prettier/bin/prettier.cjs'],
+  ] as const) {
+    const target = join(directory, 'node_modules/.bin', name);
+    await writeFile(target, `#!/bin/sh\nexec node "$(dirname "$0")/${entry}" "$@"\n`, 'utf8');
+    await chmod(target, 0o755);
+  }
 }
 
 /** @purpose Materialize fixture files into isolated temp directories without deleting user data. */
@@ -463,10 +711,12 @@ export async function provisionScenarioDirectories(
   rootDirectoryOrOptions: string | SddEvalProvisionOptions = tmpdir(),
   gennadyRootOption?: string
 ): Promise<Array<SddEvalScenario & { directory: string }>> {
-  const rootDirectory =
+  const requestedRootDirectory =
     typeof rootDirectoryOrOptions === 'string'
       ? rootDirectoryOrOptions
       : (rootDirectoryOrOptions.rootDirectory ?? tmpdir());
+  const resolvedRootDirectory = resolve(requestedRootDirectory);
+  const rootDirectory = await realpath(resolvedRootDirectory).catch(() => resolvedRootDirectory);
   const gennadyRoot =
     typeof rootDirectoryOrOptions === 'string'
       ? gennadyRootOption
@@ -492,7 +742,8 @@ export async function provisionScenarioDirectories(
       }
     }
     await materializeFlow(directory, sourceRoot);
-    await materializeLocalCli(directory, sourceRoot);
+    await materializeLocalCli(directory, sourceRoot, scenario.fixture === 'slugify-toolchain');
+    if (generatedDirectory) await commitFixtureBaseline(directory);
     provisioned.push({ ...scenario, directory });
   }
   assertUniqueScenarioDirectories(provisioned);

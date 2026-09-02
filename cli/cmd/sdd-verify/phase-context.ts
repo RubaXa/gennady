@@ -331,6 +331,16 @@ export function resolvePhaseContext(
     profileOverride: profile,
   });
   if (!gatePlan) return failure(`phase '${phaseId}' gate plan cannot be resolved`);
+  const canonicalCommands = new Set(
+    gatePlan.gates.flatMap((gate) => (gate.required && gate.command ? [gate.command] : []))
+  );
+  const repeatedCanonicalGate = applicable.find(
+    (gate) => gate.role === 'coverage' && canonicalCommands.has(gate.command)
+  );
+  if (repeatedCanonicalGate)
+    return failure(
+      `Verification Role=${repeatedCanonicalGate.role ?? 'extra'} repeats the canonical phase gate '${repeatedCanonicalGate.command}'; §5 may contain only additional read/check commands. A Role=coverage row must read the report produced by test:coverage, not run the producer again`
+    );
   return {
     ok: true,
     context: {

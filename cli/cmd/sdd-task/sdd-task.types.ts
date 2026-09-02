@@ -107,7 +107,7 @@ function gatesForPhase(detail: PhaseDetail, gates: Gate[]): Gate[] {
  * @param detailsById Parsed phase bodies keyed by phase id (missing → omitted manifest detail).
  * @param gates All Verification gates.
  * @param [activeBlockers] Unresolved 🛑 BLOCKED line texts (shared/sdd/check.ts#scanBlockerTrail), oldest first; default empty.
- * @param [auditGroupLine] Precomputed `audit-group: <spec path> (<closed>/<total>)` line, or null when the ticket's filename doesn't resolve to an owning spec.
+ * @param [auditGroupLine] Precomputed group summary and copy-pasteable audit command, or null when the ticket's filename doesn't resolve to an owning spec.
  * @returns The formatted planning-surface text.
  */
 export function formatPlan(
@@ -150,7 +150,9 @@ export function formatPlan(
     if (d.objective) lines.push(`  objective:   ${d.objective}`);
     lines.push(`  READ rules:  ${d.rules.length ? d.rules.join(', ') : '—'}`);
     lines.push(`  READ specs:  ${specAnchors.length ? specAnchors.join(', ') : '—'}`);
-    lines.push(`  READ ticket: PHASE_${p.id}, BDD, VERIFICATION`);
+    lines.push(
+      `  READ ticket: PHASE_${p.id}, BDD, VERIFICATION${p.kind.trim().toLowerCase() === 'test' ? ', TEST_COVERAGE' : ''}`
+    );
     lines.push(`  READ files:  ${d.targetFiles.length ? d.targetFiles.join(', ') : '—'}`);
     const pg = gatesForPhase(d, gates);
     lines.push(`  gates:       ${pg.length ? pg.map((g) => g.command).join(' · ') : '—'}`);
@@ -266,13 +268,23 @@ export function formatPhase(
   lines.push('', 'lifecycle manifest (AX_READ_PER_MANIFEST):');
   lines.push(`  READ rules:  ${d.rules.length ? d.rules.join(', ') : '—'}`);
   lines.push(`  READ specs:  ${specAnchors.length ? specAnchors.join(', ') : '—'}`);
-  lines.push(`  READ ticket: PHASE_${p.id}, BDD, VERIFICATION`);
+  lines.push(
+    `  READ ticket: PHASE_${p.id}, BDD, VERIFICATION${p.kind.trim().toLowerCase() === 'test' ? ', TEST_COVERAGE' : ''}`
+  );
   const readFiles = fileLifecycle?.readFiles ?? d.targetFiles;
   const createFiles = fileLifecycle?.createFiles ?? [];
   lines.push(`  READ files:  ${readFiles.length ? readFiles.join(', ') : '—'}`);
   lines.push(`  CREATE files: ${createFiles.length ? createFiles.join(', ') : '—'}`);
   lines.push(
     '  DO NOT READ: other phase bodies · code outside READ files · specs beyond the anchors above'
+  );
+  lines.push(
+    '',
+    'worker contract (copy verbatim into dispatch):',
+    '  READ protocol: ai/directives/sdd-v2/phase-execution-protocol.directive.xml and its four step files',
+    '  NEVER READ: node_modules/gennady/** · dist/** · CLI source or bundles',
+    '  TOOL FAILURE: preserve the exact diagnostic, form at most one target-local hypothesis, then return a typed blocker; no implementation archaeology',
+    '  TICKET: only the exact sdd-verify may append its receipt; never edit status/DONE/Handoff and never call sdd-log'
   );
 
   const priorHandoffs = phases
@@ -298,7 +310,7 @@ export function formatPhase(
 
   lines.push(
     '',
-    'next: прочитай перечисленное, исполняй фазу по протоколу, по завершении sdd-log + Handoff-строка.'
+    'next: исполняй переданный worker contract без сокращений, запусти точный sdd-verify и верни typed Handoff оркестратору.'
   );
   return { ok: true, text: lines.join('\n') };
 }
@@ -623,11 +635,20 @@ export function ticketCorpusError(root: string, detail: string): TaskOutcome {
  * @param specPath The owning spec's path.
  * @param group The group's tickets.
  * @param root Absolute project root.
- * @returns The one-line summary.
+ * @param selector Copy-pasteable ticket path or Task-ID accepted by `--audit-group`.
+ * @returns The group summary plus the exact inspection command on the next line.
  */
-export function buildAuditGroupLine(specPath: string, group: TicketRef[], root: string): string {
+export function buildAuditGroupLine(
+  specPath: string,
+  group: TicketRef[],
+  root: string,
+  selector: string
+): string {
   const closed = group.filter((r) => /\bDONE\b/i.test(r.status ?? '')).length;
-  return `audit-group: ${groupRelative(root, specPath)} (${closed}/${group.length})`;
+  return [
+    `audit-group: ${groupRelative(root, specPath)} (${closed}/${group.length})`,
+    `audit-command: npx gennady sdd-task --audit-group ${selector}`,
+  ].join('\n');
 }
 
 /** @purpose Render the `spec:` line + one `<Task-ID> <status> → <path>` line per group ticket — shared by `--audit-group` and `--group-scope`. | @param specPath The owning spec's path. | @param group The group's tickets. | @param root Absolute project root (paths printed relative to it). | @returns The header lines (no trailing blank line). */

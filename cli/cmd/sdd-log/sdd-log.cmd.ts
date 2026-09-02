@@ -1,4 +1,4 @@
-// @file: SddLogCommand — CLI entry for gennady sdd-log: append-only round/line/close/phase/handoff/blocker/resolved into EXECUTION_LOG.
+// @file: SddLogCommand — append log events and atomically complete a verified phase.
 // @consumers: gennady.ts
 // @tasks: N/A
 
@@ -22,22 +22,36 @@ import {
   buildPhaseHeader,
   buildResolvedLine,
   buildRoundHeader,
+  closeCurrentRound,
+  completePhase,
   fileError,
   findPhaseBlockBounds,
   hasPlaceholder,
+  isCompleteHandoffPayload,
   missingFlag,
   nextRoundNumber,
   noLogSection,
   phaseNotOpenError,
   payloadFileError,
+  phaseCompletionError,
   placeholderError,
+  roundCloseError,
   setMetaStatus,
   unknownIdError,
   type LogOutcome,
 } from './sdd-log.types.ts';
 
 const LOG_SECTION = 'EXECUTION_LOG';
-const MODES = ['round', 'line', 'close', 'phase', 'handoff', 'blocker', 'resolved'] as const;
+const MODES = [
+  'round',
+  'line',
+  'close',
+  'phase',
+  'handoff',
+  'blocker',
+  'resolved',
+  'complete',
+] as const;
 const PHASE_ID_RE = /^P[0-9]+$/;
 const AXIOM_ID_RE = /^AX_[A-Z0-9_]+$/;
 
@@ -87,8 +101,8 @@ function parseBlockerPayload(content: string): BlockerPayload | { error: LogOutc
 }
 
 /**
- * @purpose Execute gennady sdd-log — append a round header, event/handoff line, phase header,
- *   blocker block, its paired resolved line, or close block into EXECUTION_LOG, append-only.
+ * @purpose Append an Execution Log event, or atomically complete one verified phase across its
+ *   current-Round skeleton and Phases Overview row.
  * @param rawArgs Raw command-line arguments (process.argv).
  * @param now Clock injected for deterministic timestamps (the CLI tail passes the real now).
  * @param [projectRoot] Canonical ticket-resolution root; defaults to cwd.
@@ -171,7 +185,8 @@ export async function run(
       mode === 'line' ||
       mode === 'handoff' ||
       mode === 'blocker' ||
-      mode === 'resolved') &&
+      mode === 'resolved' ||
+      mode === 'complete') &&
     payload.trim() === '' &&
     !blockerFile
   ) {
@@ -191,15 +206,24 @@ export async function run(
   // already-open phase block; round/close are ticket-wide events, and `phase` mode already takes
   // the phase id as its own positional.
   const phaseFlag = phaseFlagValue;
+  if (mode === 'complete' && phaseFlag === undefined) {
+    return badInvocation('mode "complete" requires --phase <PhaseID>');
+  }
   if ((mode === 'blocker' || mode === 'resolved') && phaseFlag === undefined) {
     return missingFlag(
       `mode "${mode}" requires --phase <PhaseID> so the blocker lifecycle stays phase-owned`
     );
   }
   if (phaseFlag !== undefined) {
-    if (mode !== 'line' && mode !== 'handoff' && mode !== 'blocker' && mode !== 'resolved') {
+    if (
+      mode !== 'line' &&
+      mode !== 'handoff' &&
+      mode !== 'blocker' &&
+      mode !== 'resolved' &&
+      mode !== 'complete'
+    ) {
       return badInvocation(
-        `--phase only applies to line | handoff | blocker | resolved (not "${mode}")`
+        `--phase only applies to line | handoff | blocker | resolved | complete (not "${mode}")`
       );
     }
     if (hasPlaceholder(phaseFlag)) return placeholderError(phaseFlag);
@@ -232,6 +256,36 @@ export async function run(
   const bounds = findSectionBounds(content, LOG_SECTION);
   if (!bounds) return noLogSection(displayPath);
 
+  const ts = now.toISOString();
+
+  // #region START_COMPLETE — invariant: receipt, current Round skeleton, typed Handoff, and overview
+  // status are all proved before one replacement write; a failed or repeated call changes no bytes.
+  if (mode === 'complete') {
+    const completionPayload = payload.trim();
+    if (hasPlaceholder(completionPayload) || !isCompleteHandoffPayload(completionPayload)) {
+      return badInvocation(
+        'complete payload must be exactly: artifacts: [...]; decisions: [...]; open: [...]; deviations: [...] with real values'
+      );
+    }
+    const completed = completePhase(content, phaseFlag ?? '', completionPayload, ts);
+    if (!completed.ok) return phaseCompletionError(completed.detail);
+    const written = writeProvenRepoFile(resolved.identity, completed.content);
+    if (!written.ok) return fileError(displayPath);
+    const cleanupFailure = scratch?.consume() ?? null;
+    const cleanupNote = cleanupFailure
+      ? `\n[sdd-log] payload was applied but cleanup failed: ${cleanupFailure}\n  next: remove that exact scratch file before handoff.`
+      : '';
+    logger.debug(`[SddLogCommand#run] completed ${phaseFlag} in ${ticket}`);
+    const body = [
+      `[sdd-log] completed ${phaseFlag}:`,
+      completed.doneLine,
+      completed.handoffLine,
+      `[sdd-log] phase status → [x]${cleanupNote}`,
+    ].join('\n');
+    return { ok: true, text: idBanner ? `${idBanner}\n${body}` : body };
+  }
+  // #endregion END_COMPLETE
+
   // #region START_PHASE_INSERT_POINT — invariant: --phase redirects the append target from
   // "end of EXECUTION_LOG" to "end of that phase's own #### <PhaseID> block". Phase attribution is
   // explicit even though phases execute sequentially: re-runs can leave several historical blocks.
@@ -243,7 +297,6 @@ export async function run(
   }
   // #endregion END_PHASE_INSERT_POINT
 
-  const ts = now.toISOString();
   const date = ts.slice(0, 10);
 
   // #region START_BUILD — invariant: content carrying <ts>/reason must carry no unreplaced placeholder;
@@ -308,6 +361,20 @@ export async function run(
       : '\n[sdd-log] META/Status не найден — статус не обновлён.';
   }
   // #endregion END_META_STATUS
+
+  // #region START_CLOSE — invariant: a scaffolded current-Round close skeleton is replaced in
+  // place. Dynamically opened rounds may receive one new close block, but repeated/ambiguous close
+  // state fails before any write, including the Meta Status rewrite prepared above.
+  if (mode === 'close') {
+    const closed = closeCurrentRound(workingContent, ts);
+    if (!closed.ok) return roundCloseError(closed.detail);
+    const written = writeProvenRepoFile(resolved.identity, closed.content);
+    if (!written.ok) return fileError(displayPath);
+    logger.debug(`[SddLogCommand#run] closed current Round in ${ticket}`);
+    const body = `[sdd-log] closed current Round:\n${closed.closeBlock}${metaStatusNote}`;
+    return { ok: true, text: idBanner ? `${idBanner}\n${body}` : body };
+  }
+  // #endregion END_CLOSE
 
   // #region START_APPEND — invariant: insert strictly before the close marker (append-only), or
   // before the requested phase's own next heading when --phase redirected the target (insertLine).

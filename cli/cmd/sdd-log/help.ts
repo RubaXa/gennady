@@ -6,7 +6,7 @@
  * @purpose Print CLI help for the sdd-log command.
  */
 export function printHelp(): void {
-  console.info('gennady sdd-log — Append-only writes into a ticket EXECUTION_LOG');
+  console.info('gennady sdd-log — Append events or atomically complete a verified ticket phase');
   console.info('');
   console.info('Usage:');
   console.info(
@@ -30,6 +30,9 @@ export function printHelp(): void {
   console.info(
     '  npx gennady sdd-log <ticket> resolved "<what removed it>" --phase P<N>   # paired close for blocker — ✅ RESOLVED marker'
   );
+  console.info(
+    '  npx gennady sdd-log <ticket> complete "artifacts: [...]; decisions: [...]; open: [...]; deviations: [...]" --phase P<N>'
+  );
   console.info('');
   console.info('File-backed form (required for agent-produced free text):');
   console.info('  npx gennady sdd-log <ticket> round --content-file .claude/tmp/<name>');
@@ -46,16 +49,28 @@ export function printHelp(): void {
     '  npx gennady sdd-log <ticket> resolved --content-file .claude/tmp/<name> --phase P<N>'
   );
   console.info(
+    '  npx gennady sdd-log <ticket> complete --content-file .claude/tmp/<name> --phase P<N>'
+  );
+  console.info(
     '  npx gennady sdd-log <ticket> blocker --payload-file .claude/tmp/<name>.json --phase P<N>'
   );
   console.info('  blocker JSON keys: {"reason":"...","axiom":"AX_...","unblock":"..."}');
   console.info('');
   console.info('Guarantees:');
   console.info(
-    '  - Append-only — content is inserted before the section close marker; prior lines are never touched.'
+    '  - Append modes insert before a section/block boundary and never rewrite prior event lines.'
   );
   console.info(
-    "  - --phase P<N> (line | handoff | blocker | resolved only) — insert at the end of THAT phase's own"
+    "  - complete requires this phase's CLI-owned sdd-verify receipt, the current-Round skeleton,"
+  );
+  console.info(
+    '    and a typed four-field Handoff; it checks all inputs before one write that closes DONE,'
+  );
+  console.info(
+    '    replaces the Handoff placeholder, and checks only this phase in Phases Overview.'
+  );
+  console.info(
+    "  - --phase P<N> (line | handoff | blocker | resolved | complete) identifies THAT phase's own"
   );
   console.info(
     '    #### <PhaseID> block instead of the end of EXECUTION_LOG. Required for blocker/resolved'
@@ -71,11 +86,11 @@ export function printHelp(): void {
     '  - Payload files are exact regular non-symlink UTF-8 files under .claude/tmp/, bounded to 32768 bytes.'
   );
   console.info(
-    '  - Payload bytes are never shell-interpreted; the exact file is deleted only after a successful append.'
+    '  - Payload bytes are never shell-interpreted; the exact file is deleted only after a successful write.'
   );
   console.info('');
   console.info('Exit codes:');
   console.info(
-    '  0 appended   1 file not found/unwritable   2 no EXECUTION_LOG / placeholder   4 bad invocation'
+    '  0 written   1 file not found/unwritable   2 missing receipt/phase state/section   4 bad invocation'
   );
 }

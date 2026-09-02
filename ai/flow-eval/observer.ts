@@ -17,6 +17,10 @@ export function fingerprintTail(tail: SddEvalTailEntry[]): string {
   return createHash('sha256').update(value).digest('hex').slice(0, 16);
 }
 
+function fingerprintDiff(diff: string): string {
+  return createHash('sha256').update(diff).digest('hex').slice(0, 16);
+}
+
 /** @purpose Observer dependency seam; avoids timers and real sessions in unit tests. */
 export type SddEvalObserverClock = {
   now(): number;
@@ -27,6 +31,36 @@ const realClock: SddEvalObserverClock = {
   now: () => Date.now(),
   sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
 };
+
+/** @purpose Detect forbidden attempts to reverse-engineer the installed Gennady implementation. */
+function implementationArchaeology(tail: readonly SddEvalTailEntry[]): string | null {
+  for (const entry of tail) {
+    for (const call of entry.toolCalls) {
+      const input = call.inputSummary ?? '';
+      if (/node_modules\/gennady\/|(?:^|["'\s/])dist\/chunks\//i.test(input)) {
+        return `forbidden implementation archaeology: ${call.tool} ${input.slice(0, 180)}`;
+      }
+    }
+  }
+  return null;
+}
+
+/** @purpose Detect probing or shell wrapping around an SDD CLI call whose shape/output must stay exact. */
+function cliInvocationViolation(tail: readonly SddEvalTailEntry[]): string | null {
+  for (const entry of tail) {
+    for (const call of entry.toolCalls) {
+      const input = call.inputSummary ?? '';
+      if (!/npx\s+(?:--no-install\s+)?gennady\b/i.test(input)) continue;
+      if (/(?:^|\s)2>(?:&1|\/dev\/null)(?:\s|[;"'}]|$)/.test(input)) {
+        return `forbidden CLI shell redirection: ${call.tool} ${input.slice(0, 180)}`;
+      }
+      if (/(?:^|\s)--(?:help|version)\b/.test(input)) {
+        return `forbidden CLI interface probe: ${call.tool} ${input.slice(0, 180)}`;
+      }
+    }
+  }
+  return null;
+}
 
 /** @purpose Options controlling one bounded observation loop. */
 export type SddEvalObserveOptions = {
@@ -72,12 +106,14 @@ export class SddEvalObserver {
     let tail: SddEvalTailEntry[] = [];
     let events = [] as SddEvalObservation['events'];
     let status: SddEvalObservation['status'] = 'unknown';
+    let diff = '';
     let readError: string | undefined;
     try {
-      [tail, events, status] = await Promise.all([
+      [tail, events, status, diff] = await Promise.all([
         this.#source.readTail(sessionId, this.#opts.tailLimit),
         this.#source.readEvents(sessionId),
         this.#source.readStatus(sessionId),
+        this.#source.readDiff(sessionId),
       ]);
     } catch (cause) {
       readError = cause instanceof Error ? cause.message : String(cause);
@@ -89,10 +125,22 @@ export class SddEvalObserver {
     const changed = previous === undefined || beforeFingerprint !== afterFingerprint;
     const repeated = previous !== undefined && !changed;
     const repeatCount = repeated ? previous.repeatCount + 1 : 0;
+    const artifactFingerprint = fingerprintDiff(diff);
+    const hasArtifactDiff = diff.trim().length > 0;
+    const artifactProgress =
+      previous === undefined
+        ? hasArtifactDiff
+        : artifactFingerprint !== previous.artifactFingerprint;
+    const artifactRepeatCount = artifactProgress ? 0 : (previous?.artifactRepeatCount ?? 0) + 1;
+    const toolCallCount = tail.reduce((sum, entry) => sum + entry.toolCalls.length, 0);
     const errors = events
       .filter((event) => event.type === 'session.error' || event.type.endsWith('.error'))
       .map((event) => event.summary ?? event.type);
     if (readError) errors.push(readError);
+    const policyViolations = [implementationArchaeology(tail), cliInvocationViolation(tail)].filter(
+      (violation): violation is string => violation !== null
+    );
+    errors.push(...policyViolations);
     const waiting =
       (repeated && previous?.waiting === true) ||
       (status === 'idle' && tail.at(-1)?.role === 'user') ||
@@ -102,13 +150,21 @@ export class SddEvalObserver {
           event.type === 'permission.asked' ||
           event.type === 'session.waiting'
       );
-    const stuck = previous?.stuck === true || (repeated && repeatCount >= this.#opts.stuckAfter);
+    const stuck =
+      previous?.stuck === true ||
+      policyViolations.length > 0 ||
+      (repeated && repeatCount >= this.#opts.stuckAfter);
     return {
       at: this.#clock.now(),
       status,
       tail,
       events,
       progress: changed,
+      artifactProgress,
+      hasArtifactDiff,
+      artifactFingerprint,
+      artifactRepeatCount,
+      toolCallCount,
       repeated,
       repeatCount,
       errors,
@@ -135,6 +191,7 @@ export class SddEvalObserver {
         if (this.#opts.abort) await this.#opts.abort(sessionId);
         break;
       }
+      if (observations.length >= maxObservations) break;
       if (this.#opts.everyMs > 0) await this.#clock.sleep(this.#opts.everyMs);
     }
     return observations;

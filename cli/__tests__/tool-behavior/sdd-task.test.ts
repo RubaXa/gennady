@@ -131,7 +131,11 @@ describe('sdd-task — live gate-queue diagnostic', () => {
       const result = runCli(['sdd-task', 'ticket.md', '--phase', 'P1'], root);
       assert.strictEqual(result.exitCode, 0, result.stdout + result.stderr);
       assert.match(result.stdout, /READ files:\s+src\/current\.ts/);
-      assert.match(result.stdout, /next: прочитай перечисленное, исполняй фазу/);
+      assert.match(result.stdout, /worker contract \(copy verbatim into dispatch\):/);
+      assert.match(
+        result.stdout,
+        /next: исполняй переданный worker contract без сокращений, запусти точный sdd-verify/
+      );
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

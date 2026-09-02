@@ -240,6 +240,7 @@ describe('derived lists match check.ts (block L1 parity requirement)', () => {
       'REQUIREMENTS_AND_CONSTRAINTS',
       'PUBLIC_API_SURFACE',
       'DECISION_LOG',
+      'MODULE_MAP',
     ],
     infrastructure: [
       'VISION',

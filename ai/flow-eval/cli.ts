@@ -67,6 +67,9 @@ function parseSddEvalCliArgs(argv: string[]): SddEvalCliOptions {
       case '--stuck-after':
         config.stuckAfter = Number(requiredValue(argv, index++, arg));
         break;
+      case '--max-observations':
+        config.maxObservations = Number(requiredValue(argv, index++, arg));
+        break;
       case '--tail-limit':
         config.tailLimit = Number(requiredValue(argv, index++, arg));
         break;
@@ -83,8 +86,16 @@ function parseSddEvalCliArgs(argv: string[]): SddEvalCliOptions {
   }
   if (!Number.isInteger(config.concurrency) || config.concurrency < 1)
     throw new Error('concurrency must be >= 1');
-  if (config.observeEveryMs < 0 || config.stuckAfter < 1 || config.tailLimit < 1) {
-    throw new Error('observe-every-ms must be >= 0; stuck-after/tail-limit must be >= 1');
+  if (
+    config.observeEveryMs < 0 ||
+    config.stuckAfter < 1 ||
+    !Number.isInteger(config.maxObservations) ||
+    config.maxObservations < 1 ||
+    config.tailLimit < 1
+  ) {
+    throw new Error(
+      'observe-every-ms must be >= 0; stuck-after/max-observations/tail-limit must be >= 1'
+    );
   }
   if (runnerModelValue) config.runnerModel = parseOpenCodeModel(runnerModelValue, defaultProvider);
   if (judgeModelValue) config.judgeModel = parseOpenCodeModel(judgeModelValue, defaultProvider);
@@ -95,6 +106,17 @@ async function loadScenarios(path: string): Promise<SddEvalScenario[]> {
   const value: unknown = JSON.parse(await readFile(path, 'utf8'));
   if (!Array.isArray(value) || value.some((item) => !item || typeof item !== 'object')) {
     throw new Error('scenario file must contain an array of scenario objects');
+  }
+  const scales = new Set(['product', 'module', 'function', 'fix']);
+  for (const item of value as Array<Record<string, unknown>>) {
+    if (item.scale !== undefined && !scales.has(String(item.scale))) {
+      throw new Error(`scenario ${String(item.id ?? '<unknown>')} has invalid SCALE`);
+    }
+    if (item.phase === 'spec-authoring' && item.scale === undefined) {
+      throw new Error(
+        `scenario ${String(item.id ?? '<unknown>')} must provide synthetic operator-confirmed SCALE`
+      );
+    }
   }
   return value as SddEvalScenario[];
 }
@@ -111,6 +133,8 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
       : 'no messages';
     console.log(
       `${scenarioId}: status=${observation.status} progress=${observation.progress} ` +
+        `artifact=${observation.artifactProgress ? 'changed' : observation.hasArtifactDiff ? 'same' : 'none'} ` +
+        `artifact-wait=${observation.artifactRepeatCount} tools=${observation.toolCallCount} ` +
         `repeat=${observation.repeatCount} stuck=${observation.stuck} tail=${activity}`
     );
   };

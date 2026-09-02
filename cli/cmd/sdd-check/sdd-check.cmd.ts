@@ -610,7 +610,25 @@ function checkTicketCoveragePolicy(file: string, content: string): Finding[] {
       ])
     );
     const coverageRows = table.gates.filter((gate) => gate.role === 'coverage');
-    if (!coverageRows[0]?.requiredBy.some((rule) => ownerRules.has(rule))) {
+    const coverageReader = coverageRows[0];
+    if (
+      coverageReader &&
+      /^(?:npm|pnpm|yarn|bun)(?:\s+run)?\s+test:coverage(?:\s|$)/.test(
+        coverageReader.command.trim()
+      )
+    ) {
+      return [
+        {
+          severity: 'error',
+          code: 'SDD_COVERAGE_READER_RERUNS_PRODUCER',
+          file,
+          ...(line === undefined ? {} : { line }),
+          message:
+            'Role=coverage must read/check the report produced by test:coverage; it must not invoke the test:coverage producer again.',
+        },
+      ];
+    }
+    if (!coverageReader?.requiredBy.some((rule) => ownerRules.has(rule))) {
       return [
         {
           severity: 'error',
@@ -1102,7 +1120,7 @@ export async function run(
       )
     );
     if (!authoringPhase) findings.push(...checkTicketBddCoverage(effectivePath, content, repoRoot));
-    if (!authoring) findings.push(...checkTicketCoveragePolicy(effectivePath, content));
+    if (!authoringPhase) findings.push(...checkTicketCoveragePolicy(effectivePath, content));
     if (!authoring && specFlowVersion(resolve(effectivePath)) === 'v2')
       findings.push(...checkSpecLanguage(effectivePath, content));
     if (!authoringPhase && isV2SpecsTicket(effectivePath))

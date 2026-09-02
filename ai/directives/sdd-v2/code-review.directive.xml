@@ -61,7 +61,7 @@
       ей в диалоге — не считается.
     </Axiom>
 
-    <Axiom id="AX_TOOL_INVOCATION">
+    <Axiom id="AX_TOOL_INVOCATION" cross-cutting="true">
       The SDD mechanical tools are `gennady` CLI commands. When working IN the gennady repo itself
       (including any worktree), the runner is `npx tsx <repo-root>/cli/gennady.ts`; in every other
       project it is `npx gennady`. Thus a Step's canonical `npx gennady <cmd> <args>` fixes the command
@@ -78,6 +78,10 @@
       command or underlying state; failure is never hidden with `|| true`. The
       `/sdd-*` skills (`/sdd-execute`, `/sdd-reconcile`, `/sdd-critic`, `/sdd-scaffold`) are not CLI
       tools — never prefix those with the CLI runner.
+
+      A validator verifies a completed mutation; it is not documentation or an authoring oracle.
+      Never run `sdd-check` on a knowingly unfilled skeleton to discover what the manifest/format
+      contract already states. Fill the artifact first, then run the owning Step's exact final check.
     </Axiom>
 
     <Axiom id="AX_OPERATOR_DIALOGUE_STYLE" cross-cutting="true">

@@ -2,6 +2,10 @@
 // @consumers: SddEvalObserver; delegates storage reads to the existing OpenCode server/session store.
 
 import type { OpencodeClient } from '@opencode-ai/sdk';
+import { execFile } from 'node:child_process';
+import { lstat, readFile, realpath } from 'node:fs/promises';
+import { isAbsolute, relative, resolve, sep } from 'node:path';
+import { promisify } from 'node:util';
 import { createSddEvalOpenCodeClient } from './opencode-client.ts';
 import { fingerprintTail } from './observer.ts';
 import { SddEvalSessionDirectoryMap } from './session-directory.ts';
@@ -32,10 +36,99 @@ function errorMessage(result: { error?: unknown }): string {
 
 const DIFF_FILE_CONTENT_LIMIT = 6_000;
 const DIFF_TOTAL_LIMIT = 24_000;
+const CHILD_SESSION_LIMIT = 8;
+const CHILD_TAIL_LIMIT = 2;
+const UNTRACKED_FILE_LIMIT = 24;
+const execFileAsync = promisify(execFile);
 
 function boundedFileContent(value: string): string {
   if (value.length <= DIFF_FILE_CONTENT_LIMIT) return value;
   return `${value.slice(0, DIFF_FILE_CONTENT_LIMIT)}\n… <truncated>`;
+}
+
+async function boundedUntrackedEvidence(directory?: string): Promise<string> {
+  if (!directory) return '';
+  try {
+    const root = await realpath(directory);
+    const { stdout } = await execFileAsync(
+      'git',
+      ['ls-files', '--others', '--exclude-standard', '-z'],
+      { cwd: root, encoding: 'utf8', maxBuffer: 512 * 1024 }
+    );
+    const paths = stdout.split('\0').filter(Boolean).slice(0, UNTRACKED_FILE_LIMIT);
+    const blocks: string[] = [];
+    for (const path of paths) {
+      if (isAbsolute(path) || path.split(/[\\/]/).includes('..')) continue;
+      const absolute = resolve(root, path);
+      const inside = relative(root, absolute);
+      if (!inside || inside.startsWith(`..${sep}`) || isAbsolute(inside)) continue;
+      const info = await lstat(absolute);
+      if (!info.isFile() || info.isSymbolicLink()) continue;
+      const content = await readFile(absolute, 'utf8');
+      blocks.push(
+        [
+          `FILE ${path} (untracked)`,
+          'BEFORE\n<empty>',
+          `AFTER\n${boundedFileContent(content)}`,
+        ].join('\n')
+      );
+    }
+    return blocks.join('\n\n');
+  } catch {
+    return '';
+  }
+}
+
+function boundedMessageEntries(
+  messages: readonly unknown[],
+  sourceSessionId: string,
+  sourceLabel?: string
+): SddEvalTailEntry[] {
+  const entries: SddEvalTailEntry[] = [];
+  for (const rawMessage of messages) {
+    const message = rawMessage as {
+      info?: { id?: unknown; role?: unknown; time?: { created?: unknown } };
+      parts?: unknown[];
+    };
+    const info = message.info;
+    const parts = message.parts ?? [];
+    const text = parts
+      .map((part) => {
+        const candidate = part as { type?: unknown; text?: unknown };
+        return candidate.type === 'text' && typeof candidate.text === 'string'
+          ? candidate.text
+          : '';
+      })
+      .filter(Boolean)
+      .join('\n');
+    const toolCalls = parts
+      .filter((part) => (part as { type?: unknown }).type === 'tool')
+      .map((part) => {
+        const tool = part as {
+          callID?: unknown;
+          tool?: unknown;
+          state?: { status?: unknown; input?: Record<string, unknown> };
+        };
+        const input = tool.state?.input;
+        return {
+          callId: typeof tool.callID === 'string' ? tool.callID : 'unknown',
+          tool: typeof tool.tool === 'string' ? tool.tool : 'unknown',
+          status: typeof tool.state?.status === 'string' ? tool.state.status : 'unknown',
+          inputSummary: input ? JSON.stringify(input).slice(0, 240) : undefined,
+        };
+      });
+    if ((!text && toolCalls.length === 0) || typeof info?.id !== 'string') continue;
+    const role = typeof info.role === 'string' ? info.role : 'unknown';
+    entries.push({
+      messageId: `${sourceSessionId}:${info.id}`,
+      role: sourceLabel ? `child:${sourceLabel}:${role}` : role,
+      createdAt: typeof info.time?.created === 'number' ? info.time.created : undefined,
+      text,
+      toolCalls,
+      fingerprint: '',
+    });
+  }
+  return entries;
 }
 
 /** @purpose Read only bounded evidence through the installed SDK; never mutates the session. */
@@ -64,44 +157,24 @@ export class SddEvalOpenCodeEvidenceSource implements SddEvalEvidenceSource {
       query: { directory, limit },
     });
     if (result.error || !result.data) throw new Error(errorMessage(result));
-    const entries: SddEvalTailEntry[] = [];
-    for (const message of result.data) {
-      const info = message.info as { id?: unknown; role?: unknown; time?: { created?: unknown } };
-      const text = message.parts
-        .map((part) => {
-          const candidate = part as { type?: unknown; text?: unknown };
-          return candidate.type === 'text' && typeof candidate.text === 'string'
-            ? candidate.text
-            : '';
-        })
-        .filter(Boolean)
-        .join('\n');
-      const toolCalls = message.parts
-        .filter((part) => (part as { type?: unknown }).type === 'tool')
-        .map((part) => {
-          const tool = part as {
-            callID?: unknown;
-            tool?: unknown;
-            state?: { status?: unknown; input?: Record<string, unknown> };
-          };
-          const input = tool.state?.input;
-          return {
-            callId: typeof tool.callID === 'string' ? tool.callID : 'unknown',
-            tool: typeof tool.tool === 'string' ? tool.tool : 'unknown',
-            status: typeof tool.state?.status === 'string' ? tool.state.status : 'unknown',
-            inputSummary: input ? JSON.stringify(input).slice(0, 240) : undefined,
-          };
+    const children = await this.#client.session.children({
+      path: { id: sessionId },
+      query: { directory },
+    });
+    if (children.error || !children.data) throw new Error(errorMessage(children));
+    const childEntries = await Promise.all(
+      children.data.slice(-CHILD_SESSION_LIMIT).map(async (child) => {
+        const messages = await this.#client.session.messages({
+          path: { id: child.id },
+          query: { directory, limit: CHILD_TAIL_LIMIT },
         });
-      if ((!text && toolCalls.length === 0) || typeof info.id !== 'string') continue;
-      entries.push({
-        messageId: info.id,
-        role: typeof info.role === 'string' ? info.role : 'unknown',
-        createdAt: typeof info.time?.created === 'number' ? info.time.created : undefined,
-        text,
-        toolCalls,
-        fingerprint: '',
-      });
-    }
+        if (messages.error || !messages.data) throw new Error(errorMessage(messages));
+        return boundedMessageEntries(messages.data, child.id, child.title ?? child.id);
+      })
+    );
+    const entries = [...boundedMessageEntries(result.data, sessionId), ...childEntries.flat()].sort(
+      (left, right) => (left.createdAt ?? 0) - (right.createdAt ?? 0)
+    );
     return entries.slice(-Math.max(1, limit)).map((entry) => ({
       ...entry,
       fingerprint: fingerprintTail([entry]),
@@ -119,7 +192,7 @@ export class SddEvalOpenCodeEvidenceSource implements SddEvalEvidenceSource {
       query: { directory },
     });
     if (result.error || !result.data) throw new Error(errorMessage(result));
-    const evidence = result.data
+    const trackedEvidence = result.data
       .map((diff) => {
         const before = boundedFileContent(diff.before);
         const after = boundedFileContent(diff.after);
@@ -130,6 +203,8 @@ export class SddEvalOpenCodeEvidenceSource implements SddEvalEvidenceSource {
         ].join('\n');
       })
       .join('\n\n');
+    const untrackedEvidence = await boundedUntrackedEvidence(directory);
+    const evidence = [trackedEvidence, untrackedEvidence].filter(Boolean).join('\n\n');
     return evidence.length <= DIFF_TOTAL_LIMIT
       ? evidence
       : `${evidence.slice(0, DIFF_TOTAL_LIMIT)}\n… <diff evidence truncated>`;
@@ -140,10 +215,10 @@ export class SddEvalOpenCodeEvidenceSource implements SddEvalEvidenceSource {
     const result = await this.#client.session.status({ query: { directory } });
     if (result.error || !result.data) throw new Error(errorMessage(result));
     const status = result.data[sessionId];
-    if (!status) return 'unknown';
-    if (status.type === 'busy' || status.type === 'retry') return 'running';
-    // OpenCode exposes an idle status for both an idle worker and a finished turn. The
-    // completed timestamp on the assistant message is the durable discriminator.
+    if (status?.type === 'busy' || status?.type === 'retry') return 'running';
+    // OpenCode omits completed sessions from the status map. For both an omitted entry
+    // and explicit idle, the completed timestamp on the last assistant message is the
+    // durable discriminator.
     const messages = await this.#client.session.messages({
       path: { id: sessionId },
       query: { directory, limit: 1 },
@@ -153,6 +228,6 @@ export class SddEvalOpenCodeEvidenceSource implements SddEvalEvidenceSource {
       | undefined;
     if (latest?.role === 'assistant' && typeof latest.time?.completed === 'number')
       return 'completed';
-    return 'idle';
+    return status ? 'idle' : 'unknown';
   }
 }

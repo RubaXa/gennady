@@ -50,7 +50,12 @@ const coverageProbe: CoverageProbe = {
   wroteFresh: () => {
     if (coverageIssue) return { ok: false, detail: coverageIssue };
     const read = coverageBoundary!.readReport();
-    return read.ok ? { ok: true } : read;
+    return read.ok
+      ? { ok: true }
+      : {
+          ok: false,
+          detail: `adapter=${coverageSelection.kind === 'selected' ? coverageSelection.adapter.id : 'unknown'} expected=${coverageBoundary!.reportRelative}: ${read.detail}`,
+        };
   },
 };
 

@@ -302,12 +302,17 @@ describe('sdd-verify — live gate ladder', { concurrency: 4 }, () => {
         .replace(
           '<!--SECTION:VERIFICATION-->',
           '<!--SECTION:VERIFICATION-->\n<!--PHASE_RECEIPTS:v1-->'
+        )
+        .replace(
+          '## Execution Log',
+          '## Execution Log\n### Round 1 — 2026-09-02, initial\n#### P1\n- [ ] `<ts>` DONE\n**Handoff →** artifacts: [...]; decisions: [...]; open: [...]\n#### Round close\n- [ ] `<ts>` DONE'
         );
       writeFileSync(ticket, content);
-      assert.strictEqual(
-        (await runCliAsync(['sdd-check', '--task', 'specs/app/app.task.TSK-1.md'], root)).exitCode,
-        0
+      const coherent = await runCliAsync(
+        ['sdd-check', '--task', 'specs/app/app.task.TSK-1.md'],
+        root
       );
+      assert.strictEqual(coherent.exitCode, 0, coherent.stdout + coherent.stderr);
       symlinkSync('missing-destination.ts', join(root, 'src/obsolete.ts'));
       const stale = await runCliAsync(['sdd-check', '--task', 'specs/app/app.task.TSK-1.md'], root);
       assert.match(stale.stdout, /SDD_PHASE_RECEIPT_STALE_TARGETS/);
@@ -917,6 +922,8 @@ describe('sdd-verify — live gate ladder', { concurrency: 4 }, () => {
       assert.notStrictEqual(r.exitCode, 0, r.stdout + r.stderr);
       assert.match(r.stdout, /❌ test:coverage/);
       assert.match(r.stdout, /не появился|не записал/);
+      assert.match(r.stdout, /adapter=istanbul-js/);
+      assert.match(r.stdout, /expected=coverage\/coverage-final\.json/);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

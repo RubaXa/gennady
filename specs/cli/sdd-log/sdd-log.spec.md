@@ -6,11 +6,13 @@
 
 ## 1. Module Vision
 
-Append-only запись в `EXECUTION_LOG` тикета. `execute` открывает/закрывает Round через `sdd-log`; фазовый агент добавляет event-строки, а также собственные форматные блоки — фазовый заголовок, `**Handoff →**` и BLOCKER — так, чтобы контракты `PHASE_BLOCK_FORMAT` / `HANDOFF_FORMAT` / `BLOCKER_FORMAT` (`ai/directives/sdd-v2/phase-execution-protocol.directive.xml`) собирались тулом, а не руками через `line` (который до этой итерации калечил `####`/`**…**`/эмодзи, оборачивая всё в `- [x] \`<ts>\` <content>`). Тул владеет механической+safety частью журналирования: ставит реальный timestamp где формат его требует, **структурно гарантирует append-only** (вставка строго перед close-маркером секции — прежние строки физически не трогаются) и **отклоняет фабрикованный DONE** (контент с неподставленным `<…>`-плейсхолдером). Семантику (что логировать) задаёт вызывающий.
+Запись событий в `EXECUTION_LOG` и единый переход проверенной фазы в завершённое состояние. `execute` открывает/закрывает Round через `sdd-log`; фазовый агент добавляет event-строки и форматные блоки. Append-режимы не меняют прошлые события. Режим `complete` после успешного `sdd-verify` проверяет CLI-owned receipt выбранной фазы, текущий Round, незакрытый skeleton и typed Handoff, затем одной записью: ставит реальный timestamp в DONE, заменяет Handoff-placeholder и отмечает только эту фазу `[x]` в `Phases Overview`. Так receipt и доступность зависимой фазы больше не расходятся из-за трёх ручных правок.
 
 **Key properties:**
 
-- Append-only by construction — `findSectionBounds` находит close-маркер, строки вставляются перед ним; редактировать прошлое тул не умеет
+- Append-only event modes — `findSectionBounds` находит close-маркер, новые события вставляются перед ним; прошлые event-строки не меняются. `close` — отдельный структурный переход: заменяет подготовленный Round-close skeleton, а для динамически открытого Round добавляет блок ровно один раз
+- Atomic phase close — `complete` сначала валидирует все предусловия в памяти и только затем одной записью меняет три CLI-owned точки текущей фазы
+- Receipt before completion — без существующего `SDD_PHASE_RECEIPT:<PhaseID>` завершение отклоняется без изменения файла
 - No fabricated DONE — `<…>`-плейсхолдер в контенте → отказ (exit 2); это audit-BLOCKER в ручном режиме
 - Timestamped where the format calls for it — `round`/`line`/`close`/`blocker` ставят реальное время; `phase`/`handoff` — без метки времени (формат этого не требует); часы инъектируются (детерминизм в тестах)
 - Human compatibility keeps positional content, but directives use one-shot `--content-file` / typed
@@ -20,9 +22,10 @@ Append-only запись в `EXECUTION_LOG` тикета. `execute` открыв
 
 **Invariants:**
 
-- Ровно один режим: `round` | `line` | `close` | `phase` | `handoff` | `blocker`
+- Ровно один режим: `round` | `line` | `close` | `phase` | `handoff` | `blocker` | `resolved` | `complete`
+- `complete` требует `--phase P<N>`, typed payload с `artifacts` / `decisions` / `open` / `deviations`, receipt этой фазы и ровно один её skeleton в последнем Round
 - Round-номер авто-инкремент по числу `### Round N`
-- exit `0` дописано · `1` файл · `2` нет EXECUTION_LOG / плейсхолдер · `4` плохой вызов / отсутствует `--axiom`/`--unblock` для `blocker`
+- exit `0` записано · `1` файл · `2` нет секции / receipt / согласованного phase-state · `4` плохой вызов / обязательный флаг
 <!--/SECTION:MODULE_VISION-->
 
 <!--SECTION:MODULE_USAGE_EXAMPLE-->
@@ -56,8 +59,15 @@ $ npx gennady sdd-log ticket.md blocker "network blocked" --axiom AX_BLOCKER_ESC
   - 🔗 axiom: AX_BLOCKER_ESCALATION
   - 💬 unblock: grant network access
 
+$ npx gennady sdd-log ticket.md complete \
+  "artifacts: [src/a.ts]; decisions: [api=stable]; open: [none]; deviations: []" --phase P1
+[sdd-log] completed P1:
+- [x] `2026-06-21T10:00:00.000Z` DONE
+**Handoff →** artifacts: [src/a.ts]; decisions: [api=stable]; open: [none]; deviations: []
+[sdd-log] phase status → [x]
+
 $ npx gennady sdd-log ticket.md close
-[sdd-log] appended to EXECUTION_LOG:
+[sdd-log] closed current Round:
 #### Round close
 - [x] `2026-06-21T10:00:00.000Z` DONE
 
@@ -74,21 +84,23 @@ $ npx gennady sdd-log ticket.md line 'ver `<cmd>` → pass'
 
 ## 3. Entity Inventory (Closed-World)
 
-| Name                                                                                | Type         | Purpose                                                         |
-| ----------------------------------------------------------------------------------- | ------------ | --------------------------------------------------------------- |
-| `run`                                                                               | Command      | Точка входа CLI: парс режима, чтение, валидация, append, запись |
-| `findSectionBounds`                                                                 | Utility      | (`shared/sdd/section`) индексы маркеров секции — точка вставки  |
-| `hasPlaceholder`                                                                    | Utility      | Детект неподставленного `<…>`-плейсхолдера                      |
-| `nextRoundNumber`                                                                   | Utility      | Следующий номер Round по существующим `### Round N`             |
-| `buildRoundHeader`                                                                  | Utility      | Текст заголовка Round                                           |
-| `buildEventLine`                                                                    | Utility      | Строка `- [x] \`<ts>\` <content>`                               |
-| `buildCloseBlock`                                                                   | Utility      | Блок `#### Round close` + DONE                                  |
-| `buildPhaseHeader`                                                                  | Utility      | `#### <PhaseID>` [+ ` — re-run: <reason>`], verbatim            |
-| `buildHandoffLine`                                                                  | Utility      | `**Handoff →** <payload>`, verbatim, без ts                     |
-| `buildBlockerBlock`                                                                 | Utility      | Полный BLOCKER_FORMAT блок (🛑/🔗/💬)                           |
-| `badInvocation` / `fileError` / `noLogSection` / `placeholderError` / `missingFlag` | Utility      | Билдеры диагностик                                              |
-| `PLACEHOLDER_RE`                                                                    | Value Object | `/<[^>\s]+>/` — паттерн плейсхолдера                            |
-| `LogOutcome`                                                                        | Type         | `{ok:true,text}` либо `{ok:false,code,exitCode,message}`        |
+| Name                                                                                | Type         | Purpose                                                        |
+| ----------------------------------------------------------------------------------- | ------------ | -------------------------------------------------------------- |
+| `run`                                                                               | Command      | Парс режима, чтение, валидация, append/complete, одна запись   |
+| `findSectionBounds`                                                                 | Utility      | (`shared/sdd/section`) индексы маркеров секции — точка вставки |
+| `hasPlaceholder`                                                                    | Utility      | Детект неподставленного `<…>`-плейсхолдера                     |
+| `nextRoundNumber`                                                                   | Utility      | Следующий номер Round по существующим `### Round N`            |
+| `buildRoundHeader`                                                                  | Utility      | Текст заголовка Round                                          |
+| `buildEventLine`                                                                    | Utility      | Строка `- [x] \`<ts>\` <content>`                              |
+| `buildCloseBlock` / `closeCurrentRound`                                             | Utility      | Блок Round-close и его одноразовый переход skeleton → DONE     |
+| `buildPhaseHeader`                                                                  | Utility      | `#### <PhaseID>` [+ ` — re-run: <reason>`], verbatim           |
+| `buildHandoffLine`                                                                  | Utility      | `**Handoff →** <payload>`, verbatim, без ts                    |
+| `completePhase`                                                                     | Utility      | Чистый all-or-nothing переход receipt+skeleton+overview        |
+| `isCompleteHandoffPayload`                                                          | Utility      | Проверка четырёх typed Handoff-полей                           |
+| `buildBlockerBlock`                                                                 | Utility      | Полный BLOCKER_FORMAT блок (🛑/🔗/💬)                          |
+| `badInvocation` / `fileError` / `noLogSection` / `placeholderError` / `missingFlag` | Utility      | Билдеры диагностик                                             |
+| `PLACEHOLDER_RE`                                                                    | Value Object | `/<[^>\s]+>/` — паттерн плейсхолдера                           |
+| `LogOutcome`                                                                        | Type         | `{ok:true,text}` либо `{ok:false,code,exitCode,message}`       |
 
 <!--/SECTION:ENTITY_INVENTORY-->
 
@@ -113,8 +125,46 @@ $ npx gennady sdd-log ticket.md line 'ver `<cmd>` → pass'
   - Round-номер = (число существующих Round) + 1
   - `phase`/`handoff`/`blocker` пишут контент байт-в-байт — без timestamp-обёртки `line`, без url-encoding/эскейпинга
 - Invariants:
-  - Append-only гарантируется конструкцией (вставка перед close-маркером)
+  - Append-режимы не меняют прошлые события (вставка перед close-маркером)
   - Timestamp детерминирован при инъекции часов
+
+### 4.2 Atomic Round Close
+
+- **Runtime Backing:** `real-runtime`
+- **Verification Levels:** `unit`, `integration`
+
+**Contract (DbC):**
+
+- Preconditions:
+  - текущий Round содержит не более одного `#### Round close`
+  - существующий блок содержит ровно `- [ ] \`<ts>\` DONE`; уже закрытый или повреждённый блок отклоняется
+- Postconditions:
+  - scaffolded skeleton заменён in-place реальным `[x]` timestamp без второго заголовка
+  - Round, открытый командой `round` без skeleton, получает ровно один close-блок
+  - повторный `close` отклоняется, файл byte-identical
+- Invariants:
+  - Meta Status и Round close меняются одной записью либо не меняются вовсе
+
+### 4.3 Verified Phase Completion
+
+- **Runtime Backing:** `real-runtime`
+- **Verification Levels:** `unit`, `integration`
+
+**Contract (DbC):**
+
+- Preconditions:
+  - режим `complete` получил `--phase P<N>` и canonical typed Handoff: `artifacts`, `decisions`, `open`, `deviations`
+  - в тикете есть валидный CLI-owned `SDD_PHASE_RECEIPT` этой фазы
+  - последний Round содержит ровно один блок фазы с незакрытыми DONE и Handoff skeleton
+  - `Phases Overview` содержит ровно одну строку фазы со статусом `[ ]`
+- Postconditions:
+  - в текущем блоке фазы DONE заменён на `[x]` с реальным timestamp
+  - Handoff-placeholder заменён canonical typed payload
+  - только status-cell выбранной фазы заменён на `[x]`; Meta, другие фазы и старые Round byte-identical
+  - все три изменения попадают в одну запись файла; при любой ошибке файл byte-identical
+- Invariants:
+  - повторный `complete` отклоняется до записи
+  - receipt не создаётся и не подделывается `sdd-log`; его владельцем остаётся `sdd-verify`
 
 <!--/SECTION:MODULE_CONTRACTS-->
 
@@ -127,10 +177,11 @@ $ npx gennady sdd-log ticket.md line 'ver `<cmd>` → pass'
 | `<ticket>`                                             | string | Путь к тикету                                                  |
 | `round "<reason>"`                                     | mode   | Открыть Round (авто-номер, дата)                               |
 | `line "<content>"`                                     | mode   | Дописать timestamped event-строку                              |
-| `close`                                                | mode   | Дописать блок Round-close                                      |
+| `close`                                                | mode   | Атомарно закрыть текущий Round без дублирования skeleton       |
 | `phase <P-ID> ["— re-run: <reason>"]`                  | mode   | Дописать заголовок фазы `#### <P-ID>` per `PHASE_BLOCK_FORMAT` |
 | `handoff "<payload>"`                                  | mode   | Дописать `**Handoff →** <payload>` per `HANDOFF_FORMAT`        |
 | `blocker "<reason>" --axiom <AX> --unblock "<action>"` | mode   | Human-compatible inline form                                   |
+| `complete "<typed payload>" --phase P<N>`              | mode   | Одной записью закрыть проверенную фазу                         |
 | `--content-file .claude/tmp/<name>`                    | flag   | One-shot literal payload for round/line/phase/handoff/resolved |
 | `--payload-file .claude/tmp/<name>.json`               | flag   | Strict `{reason,axiom,unblock}` blocker payload                |
 
@@ -198,7 +249,14 @@ cli/cmd/sdd-log/
 - **Blocker schema:** `--payload-file` accepts exactly JSON keys `reason`, `axiom`, `unblock`;
   `reason`/`unblock` are non-empty one-line strings and `axiom` matches `AX_[A-Z0-9_]+`.
 - **Risk accepted:** Inline forms remain for direct human use, but no SDD directive may interpolate
-free-form model text into them.
+  free-form model text into them.
+
+### D-SL006 — Receipt и закрытие фазы — два последовательных CLI-перехода
+
+- **Status:** active
+- **Why:** `sdd-verify` корректно и атомарно записывал доказательство, но статус фазы, DONE и Handoff оставались ручными независимыми правками. В живом прогоне receipt P1 существовал, однако P1 оставался `[ ]`, поэтому общий dependency preflight законно блокировал P2. `sdd-log complete` не совмещён с verifier: receipt остаётся отдельным наблюдаемым результатом реальных гейтов. Следующий вызов лишь проверяет этот receipt и одним fail-closed переходом закрывает три CLI-owned точки фазы.
+- **Rejected:** автоматически отмечать фазу внутри `sdd-verify` — это смешивает механическое доказательство с семантическим Handoff, которого verifier не знает.
+- **Risk accepted:** два CLI-вызова остаются, но между ними фаза честно остаётся незавершённой; второй вызов не может частично закрыть её.
 <!--/SECTION:MODULE_DECISION_LOG-->
 
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->

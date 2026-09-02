@@ -2,7 +2,7 @@
 // @consumers: sdd-check.cmd
 // @tasks: N/A
 
-import { extractMermaidBlocks, validateMermaid } from '../mermaid/mermaid.ts';
+import { extractMermaidBlockRefs, validateMermaid } from '../mermaid/mermaid.ts';
 import type { Finding } from './check.ts';
 
 /**
@@ -14,17 +14,19 @@ import type { Finding } from './check.ts';
  * @sideEffect Lazily loads mermaid + jsdom when at least one block is present.
  */
 export async function checkSpecMermaid(file: string, content: string): Promise<Finding[]> {
-  const blocks = extractMermaidBlocks(content);
+  const blocks = extractMermaidBlockRefs(content);
   if (blocks.length === 0) return [];
   const findings: Finding[] = [];
-  for (const body of blocks) {
+  for (const { body, line } of blocks) {
     const err = await validateMermaid(body);
     if (err !== null) {
+      const diagramLine = Number(/\bline\s+(\d+)\b/i.exec(err)?.[1] ?? '1');
       findings.push({
         severity: 'error',
         code: 'SDD_DIAGRAM_INVALID',
         file,
         message: `mermaid diagram does not parse: ${err}`,
+        line: line + Math.max(0, diagramLine - 1),
       });
     }
   }

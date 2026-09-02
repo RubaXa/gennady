@@ -85,10 +85,13 @@
     <Step id="STEP_3_DISPATCH">
       <Goal>Execute one declared phase through one bounded worker.</Goal>
       <Action>
-        Load `phase-execution-protocol.directive.xml` and dispatch a fresh worker with the current
-        phase block, exact resolved spec/rule excerpts, target files, prior Execution Log facts, and
-        current Git evidence. The worker edits only its declared targets, runs the phase's real
-        verification, and returns a typed handoff.
+        Load `phase-execution-protocol.directive.xml`, then obtain the canonical worker context:
+        <ToolCall owner="this-step" result="phaseContext">npx gennady sdd-task &lt;ticket&gt; --phase &lt;PhaseID&gt;</ToolCall>
+        Dispatch a fresh worker with the complete `phaseContext` output verbatim as the leading
+        prompt block, followed by exact resolved spec/rule excerpts and current Git evidence. Never
+        summarize, retype, or omit its lifecycle manifest and worker contract. The worker edits only its declared targets, runs the phase's real
+        verification, and returns a typed handoff. Apart from the receipt written by `sdd-verify`, the
+        worker never edits the ticket or invokes `sdd-log`.
 
         Evaluate the typed handoff per `AX_HANDOFF_TYPED` against repository evidence. Per
         `AX_HALT_VS_FAIL_DISTINCTION`, on a recoverable technical failure form one
@@ -101,21 +104,38 @@
     </Step>
 
     <Step id="STEP_4_RECORD">
-      <Goal>Persist only durable execution facts.</Goal>
+      <Goal>Prove the phase's task-visible mechanics, then atomically close it before any dependent dispatch.</Goal>
       <Action>
-        Update the ticket's Execution Log with actual files changed, commands and results, deviations,
-        decisions, and next phase, preserving plan-versus-fact per `AX_EXECUTION_LOG_PLAN_VS_FACT`.
-        Update phase status only after evidence agrees. Commit boundaries
-        follow repository policy. The Execution Log plus Git is sufficient for a fresh orchestrator to
-        continue; no worker ID or hidden NEXT token is recorded.
+        After the worker returns, verify its typed Handoff against Git, the declared Target Files, and
+        the successful CLI-owned receipt. Before closing the phase, run the ticket's mechanical check
+        against the worker's actual files:
+        <ToolCall owner="this-step" result="preCloseTaskGate">npx gennady sdd-check --task &lt;ticket&gt;</ToolCall>
+        Consume `preCloseTaskGate`. Existing future test files may still be absent, but any file this
+        worker created is checked immediately against its canonical Test Scenario Coverage names. A
+        red result is `RECOVERABLE_TECHNICAL`: correct and re-verify while the phase is still unchecked;
+        never persist DONE/Handoff for evidence already known to be inconsistent.
+
+        Only after that gate is green, perform exactly one structural transition owned by this step:
+        <ToolCall owner="this-step" result="phaseClose">npx gennady sdd-log &lt;ticket&gt; complete "&lt;handoff payload&gt;" --phase &lt;PhaseID&gt;</ToolCall>
+
+        Consume `phaseClose` per `AX_EXECUTION_LOG_PLAN_VS_FACT`. Success means the current phase's
+        skeleton DONE and Handoff placeholders were replaced with facts and only that phase's
+        `Phases Overview` status became `[x]`. Failure
+        keeps the phase incomplete and is handled as `RECOVERABLE_TECHNICAL`; never dispatch a
+        dependent phase and never inspect CLI source to guess how to repair the state. Commands and
+        exact exit evidence remain in the CLI-owned receipt; do not duplicate them as prose. Commit
+        boundaries follow repository policy. The Execution Log plus Git is sufficient for a fresh
+        orchestrator to continue; no worker ID or hidden NEXT token is recorded.
       </Action>
     </Step>
 
     <Step id="STEP_5_REAL_GATES">
-      <Goal>Prove the implemented ticket, including traceability.</Goal>
+      <Goal>Prove the implemented ticket, then make ticket and tracker state coherent before audit.</Goal>
       <Action>
-        Per `AX_VERIFICATION_BEFORE_HANDOFF`, after all phases run every exact verification command declared by the ticket/spec and the
-        mechanical task check. Never replace real test/type/lint/coverage output with reviewer prose.
+        Per `AX_VERIFICATION_BEFORE_HANDOFF`, after all phases confirm the durable post-transition
+        ticket state with the mechanical task check. Exact verification commands were already owned
+        by each phase receipt and MUST NOT be run again here. Never replace real test/type/lint/coverage
+        output with reviewer prose.
         <ToolCall owner="this-step" result="taskGate">npx gennady sdd-check --task &lt;ticket&gt;</ToolCall>
 
         Consume `taskGate`. The mechanical check must prove that every mandatory Requirement-ID appears in an implemented
@@ -124,6 +144,16 @@
         assertion actually demonstrates the requirement, but missing IDs or mappings stop with
         `H_REQUIREMENT_UNCOVERED`. If a declared real gate remains red after one evidence-based
         correction, stop with `H_REAL_GATE_RED`.
+
+        Once `taskGate` is green, close the current Round and synchronize the resulting ticket status
+        into its owning task indexes before any audit reads the group:
+        <ToolCall owner="this-step" result="roundClose">npx gennady sdd-log &lt;ticket&gt; close</ToolCall>
+        <ToolCall owner="this-step" result="trackerSync">npx gennady sdd-sync &lt;ticket&gt;</ToolCall>
+        <ToolCall owner="this-step" result="coherentTreeGate">npx gennady sdd-check --all .</ToolCall>
+        Consume all three results. `roundClose` replaces the scaffolded Round-close skeleton exactly
+        once; never edit or delete that block manually. `trackerSync` is required even for a single
+        ticket. A red `coherentTreeGate` is corrected before audit, so audit never receives a known
+        ticket/index status drift as an implementation finding.
       </Action>
     </Step>
 
@@ -144,7 +174,8 @@
     <Step id="STEP_7_CLOSE">
       <Goal>Close the ticket group and choose the next durable queue item.</Goal>
       <Action>
-        Mark DONE only after real gates, audit, and code-review are clean and tracker state matches.
+        The ticket and trackers were already transitioned to coherent DONE state in STEP_5 so audit
+        could inspect the actual final artifact graph. Do not repeat `sdd-log close` or `sdd-sync`.
         Emit the execute summary from actual tool results. For batch mode, refresh the execution map.
         <ToolCall owner="this-step" result="refreshedExecutionMap">npx gennady sdd-task</ToolCall>
         Consume `refreshedExecutionMap`

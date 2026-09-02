@@ -191,6 +191,39 @@ describe('resolvePhaseContext', () => {
     }
   });
 
+  it('rejects a §5 coverage reader that repeats the canonical test:coverage producer', () => {
+    const f = fixture('test', ['src/thing.test.ts'], false);
+    const path = join(f.root, f.ticket);
+    writeFileSync(
+      path,
+      [
+        readFileSync(path, 'utf-8').replace(
+          '- **Target Files:**',
+          '- **Rules:**\n  - [Coverage](RULE)\n- **Target Files:**'
+        ),
+        '<!--SECTION:VERIFICATION-->',
+        '<!--COVERAGE_POLICY:v1-->',
+        '- **Coverage Policy:** required',
+        '- **Coverage Owner Phase:** P1',
+        '| Command | Required by | Role |',
+        '|---|---|---|',
+        '| npm run test:coverage | RULE | coverage |',
+        '<!--/SECTION:VERIFICATION-->',
+      ].join('\n'),
+      'utf-8'
+    );
+    try {
+      const result = resolvePhaseContext(f.ticket, 'P1', f.root);
+      assert.strictEqual(result.ok, false);
+      if (!result.ok) {
+        assert.match(result.message, /repeats the canonical phase gate 'npm run test:coverage'/);
+        assert.match(result.message, /must read the report/);
+      }
+    } finally {
+      rmSync(f.root, { recursive: true, force: true });
+    }
+  });
+
   it('runs coverage producer and reader only in the declared owner among two test phases', () => {
     const f = fixture('test', ['src/one.test.ts'], false);
     const path = join(f.root, f.ticket);

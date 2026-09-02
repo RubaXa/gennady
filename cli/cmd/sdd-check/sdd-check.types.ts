@@ -50,13 +50,15 @@ export function formatFindings(
   const summary = `[sdd-check] ${errors} error(s), ${warns} warning(s) across ${fileCount} file(s)`;
   const omitted = findings.length - visible.length;
 
-  // next: two doors only, one per finding family present — the language calque and everything
-  // else (structure / anchors / links / DAG / trackers) fix through different channels.
+  // next: structural findings stay with the current artifact owner. Reconcile is reserved for
+  // drift in already-approved artifacts, not ordinary authoring/phase repair.
   const hasLanguage = findings.some((f) => f.code === 'SDD_LANGUAGE_CALQUE');
   const hasStructural = findings.some((f) => f.code !== 'SDD_LANGUAGE_CALQUE');
   const next: string[] = options.repairHint ? [`next: ${options.repairHint}`] : [];
   if (!options.repairHint && hasStructural)
-    next.push('next: структура/якоря — правь через `/sdd-reconcile`.');
+    next.push(
+      'next: исправь перечисленные файлы в текущем владеющем шаге и повтори ту же команду; `/sdd-reconcile` нужен только для drift уже утверждённых артефактов.'
+    );
   if (!options.repairHint && hasLanguage)
     next.push(
       'next: язык — калька за калькой, по месту (`file:line`) правь всё предложение целиком.'

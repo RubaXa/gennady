@@ -418,13 +418,18 @@ ${REQUIREMENTS_LIST_SKELETON}
 ${DATA_FLOW_SKELETON}
 <!--SECTION:PUBLIC_API_SURFACE-->
 ## Public API Surface
-[Ключевые exported interfaces, types, functions. Intent-level, без impl detail.]
+[Consumer-facing capabilities at composition level; link each to its owning module spec. Exact operations and signatures belong only to module Entity Surfaces/Contracts.]
 <!--/SECTION:PUBLIC_API_SURFACE-->
 
 <!--SECTION:ARCHITECTURE-->
 ## Architecture
 [Выбранный design pattern. Кратко — rejected alternatives.]
 <!--/SECTION:ARCHITECTURE-->
+
+<!--SECTION:MODULE_MAP-->
+## Module Map
+[Appended by \`module-decomposition\`. Initially: «Modules not yet decomposed — run \`module-decomposition <scope-name>\`».]
+<!--/SECTION:MODULE_MAP-->
 
 ${RESEARCH_REGISTRY_SKELETON_SCOPE}
 <!--SECTION:DECISION_LOG-->
@@ -514,7 +519,7 @@ const LIBRARY_SECTIONS: SectionManifestEntry[] = [
     required: true,
     loadBearing: true,
     fold: false,
-    fill: 'Key exported interfaces/types/functions, intent-level — no implementation detail.',
+    fill: 'Consumer-facing capabilities at composition level, each linked to its owning module; exact operations and signatures stay in module specs.',
   },
   {
     name: 'ARCHITECTURE',
@@ -522,6 +527,13 @@ const LIBRARY_SECTIONS: SectionManifestEntry[] = [
     loadBearing: false,
     fold: false,
     fill: 'Chosen design pattern, briefly, plus rejected alternatives.',
+  },
+  {
+    name: 'MODULE_MAP',
+    required: true,
+    loadBearing: true,
+    fold: false,
+    fill: 'Appended by module-decomposition; initially a placeholder pointing at that command.',
   },
   {
     name: 'RESEARCH',
@@ -1001,7 +1013,13 @@ _Что здесь главное, одной фразой._
 
 <!--SECTION:MODULE_REQUIREMENTS-->
 ## Requirements
-${REQUIREMENTS_LIST_SKELETON}
+[This section owns only observable obligations introduced or narrowed by THIS module. Do not copy
+the parent scope requirements and do not reuse their IDs. A genuinely module-specific requirement
+uses this module spec's own acronym per
+\`READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/requirement-entry-format.xml")\`; its
+explanation names the parent requirement ID(s) it refines. If this module adds no narrower
+obligation, write exactly: \`No module-specific requirements. Implements parent requirements:
+<SCOPE-REQ-N[, SCOPE-REQ-M]>.\` Tasks and tests then trace to those parent IDs directly.]
 <!--/SECTION:MODULE_REQUIREMENTS-->
 
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->
@@ -1147,7 +1165,7 @@ const MODULE_SECTIONS: SectionManifestEntry[] = [
     required: true,
     loadBearing: false,
     fold: false,
-    fill: 'Flat Requirements list per REQUIREMENT_ENTRY_FORMAT — module-level behavior and failure-mode requirements, distinct from the pre/post-condition contracts in Module Contracts.',
+    fill: 'Only module-owned behavioral refinements: use this module acronym and name parent Requirement-IDs in each explanation. If there is no narrower module obligation, explicitly list the parent Requirement-IDs implemented here; never copy scope requirements or reuse their IDs.',
   },
   {
     name: 'INTER_MODULE_DEPENDENCIES',

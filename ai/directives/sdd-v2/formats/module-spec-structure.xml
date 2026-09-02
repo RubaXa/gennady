@@ -31,18 +31,13 @@
 
   <!--SECTION:MODULE_REQUIREMENTS-->
   ## Requirements
-  [Плоский список требований: `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/requirement-entry-format.xml")`. Формат заменяет раздельные Functional Requirements / Non-Functional Constraints для НОВЫХ спек; спеки, уже написанные в старом раздельном формате, остаются валидными как есть. Пример — обычное требование и требование класса «нештатная»:]
-
-  ### <ACR>-REQ-1 [должен]
-  **Когда** пользователь отправляет форму с пустым обязательным полем, **сервис должен** вернуть ошибку валидации с именем поля.
-
-  > Пустое поле — самый частый пользовательский ввод; без явной ошибки пользователь не понимает, что делать дальше.
-
-  ### <ACR>-REQ-2 [должен · нештатная]
-  **Если** запись в журнал аудита не удалась, **то сервис должен** отклонить операцию и вернуть 503.
-
-  > Аудит — комплаенс-требование; без записи операция не легитимна, откат обязателен.
-
+  [This section owns only observable obligations introduced or narrowed by THIS module. Do not copy
+  the parent scope requirements and do not reuse their IDs. A genuinely module-specific requirement
+  uses this module spec's own acronym per
+  `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/requirement-entry-format.xml")`; its
+  explanation names the parent requirement ID(s) it refines. If this module adds no narrower
+  obligation, write exactly: `No module-specific requirements. Implements parent requirements:
+  <SCOPE-REQ-N[, SCOPE-REQ-M]>.` Tasks and tests then trace to those parent IDs directly.]
   <!--/SECTION:MODULE_REQUIREMENTS-->
 
   <!--SECTION:INTER_MODULE_DEPENDENCIES-->

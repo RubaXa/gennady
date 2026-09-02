@@ -30,7 +30,11 @@
         Dispatch one fresh reviewer with the exact bounded spec set. The reviewer reads but never
         edits. It checks requirements, negative/failure behavior, interfaces, dependencies,
         invariants, verification strategy, contradictions, and missing decisions. It returns
-        `CLEAN` or evidence-backed findings naming file and anchor.
+        `CLEAN` or at most five evidence-backed findings naming file and anchor. The reviewer reads
+        only the exact target specs plus the operator brief supplied in its prompt; it does not read
+        flow directives, examples, repository history, source code, or search the repository. It
+        performs one semantic pass and returns the verdict without restating the route or narrating
+        its internal analysis.
 
         The author may mentally inspect its own work before this dispatch, but that does not count as
         independent review. Do not serialize a plan into JSON, retain the reviewer, or create
@@ -42,8 +46,11 @@
       <Action>
         For each finding, either correct the owning spec or present a concrete disagreement to the
         operator. Run structural checks after edits. Any semantic edit resets the applicable approval
-        markers to `pending` and therefore requires one fresh STEP_2 review of the new complete target. This is a new bounded
-        verification, not continuation of a reviewer session.
+        markers to `pending` and therefore requires one fresh STEP_2 review of the new complete
+        target. Give that reviewer the prior findings and corrected target; it verifies those fixes
+        plus one contradiction sweep, then returns `CLEAN` or at most five remaining findings. This
+        is a new bounded verification, not continuation of a reviewer session and not a reason to
+        reload unrelated artifacts.
       </Action>
     </Step>
     <Step id="STEP_4_OPERATOR_APPROVAL_1">

@@ -525,13 +525,50 @@ describe('SddCheckCommand', () => {
     }
   });
 
+  it('--task and --authoring reject Role=coverage when it reruns the canonical producer', async () => {
+    const t = join(dir, 'coverage-reader-reruns-producer.md');
+    writeFileSync(
+      t,
+      [
+        CLEAN_TICKET,
+        '<!--SECTION:PHASES_OVERVIEW-->',
+        '| ID | Kind | Deps | Status |',
+        '|---|---|---|---|',
+        '| P1 | test | — | [ ] |',
+        '<!--/SECTION:PHASES_OVERVIEW-->',
+        '<!--SECTION:PHASE_P1-->',
+        '- **Rules:**',
+        '  - [Node test](node-test.xml)',
+        '- **Target Files:**',
+        '  - src/a.test.ts',
+        '<!--/SECTION:PHASE_P1-->',
+        '<!--SECTION:VERIFICATION-->',
+        '<!--COVERAGE_POLICY:v1-->',
+        '- **Coverage Policy:** required',
+        '- **Coverage Owner Phase:** P1',
+        '| Command | Required by | Role |',
+        '|---|---|---|',
+        '| npm run test:coverage | node-test | coverage |',
+        '<!--/SECTION:VERIFICATION-->',
+      ].join('\n'),
+      'utf-8'
+    );
+    for (const args of [argv('--task', t), argv('--task', t, '--authoring')]) {
+      const r = await mod.run(args);
+      assert.strictEqual(r.exitCode, 1, r.text);
+      assert.match(r.text, /SDD_COVERAGE_READER_RERUNS_PRODUCER/);
+      assert.match(r.text, /must not invoke the test:coverage producer again/);
+    }
+  });
+
   it('--task on a fabricated DONE → exit 1 with the finding', async () => {
     const t = join(dir, 'fab.md');
     writeFileSync(t, FABRICATED, 'utf-8');
     const r = await mod.run(argv(`--task=${t}`));
     assert.strictEqual(r.exitCode, 1);
     assert.match(r.text, /SDD_FABRICATED_DONE/);
-    assert.match(r.text, /next: структура\/якоря — правь через `\/sdd-reconcile`\./);
+    assert.match(r.text, /исправь перечисленные файлы в текущем владеющем шаге/);
+    assert.match(r.text, /`\/sdd-reconcile` нужен только для drift уже утверждённых артефактов/);
     assert.doesNotMatch(r.text, /next: язык/);
   });
 

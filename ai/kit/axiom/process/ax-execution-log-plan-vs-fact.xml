@@ -7,7 +7,11 @@
   - [ ] `<ts>` DONE
   ```
   No pre-filled `file` / `test` / `cov` / `rules` / `recon` / `sync` lines — those were noise (duplicated Target Files / Test Scenario Coverage / Rules: list / git diff). Event lines (`intro` / `decision` / `tried` / `discovery` / `insight` / `verified` / `BLOCKED`) are APPENDED by the phase agent only when the event actually happens.
-- **FACT** = the closing `[x]` lines have placeholders replaced with real values; preceding event lines exist only if their event happened.
+- **FACT** = after the CLI receipt exists and the orchestrator validates the returned Handoff,
+  `sdd-log complete <payload> --phase P<N>` atomically replaces that current phase's closing
+  placeholders with the timestamped `[x] DONE` + typed Handoff and sets only its `Phases Overview`
+  status to `[x]`. A worker never performs this transition manually. Preceding event lines exist only
+  if their event happened.
 - Each phase block ends with `**Handoff →** artifacts: [...]; decisions: [...]; open: [...]` line.
 - Round closes with `#### Round close` block (single `DONE`) emitted by orchestrator after the last phase.
 - **Forbidden**: `[x]` line containing any unreplaced `<…>` literal = fabricated done.

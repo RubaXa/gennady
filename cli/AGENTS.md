@@ -39,7 +39,7 @@
 | sdd-extract       | [cmd/sdd-extract/](cmd/sdd-extract/)             | Извлечение одной anchored-секции SDD-артефакта                                      |
 | sdd-new           | [cmd/sdd-new/](cmd/sdd-new/)                     | Scaffold одного SDD v2 артефакта                                                    |
 | sdd-verify        | [cmd/sdd-verify/](cmd/sdd-verify/)               | Запуск verification ladder для тикета или профиля                                   |
-| sdd-log           | [cmd/sdd-log/](cmd/sdd-log/)                     | Append-only запись событий в Execution Log тикета                                   |
+| sdd-log           | [cmd/sdd-log/](cmd/sdd-log/)                     | События Execution Log + атомарное закрытие проверенной фазы                         |
 | sdd-sync          | [cmd/sdd-sync/](cmd/sdd-sync/)                   | Синхронизация статуса тикета с tasks-трекерами                                      |
 | sdd-task          | [cmd/sdd-task/](cmd/sdd-task/)                   | Карта исполнения и фазовый контекст тикета                                          |
 | sdd-migrate       | [cmd/sdd-migrate/](cmd/sdd-migrate/)             | Детерминированная миграция SDD v1 → v2                                              |

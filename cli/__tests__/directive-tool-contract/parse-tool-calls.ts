@@ -296,7 +296,11 @@ const COMMAND_SCHEMAS: Readonly<Record<string, CommandSchema>> = {
     (p, f) => {
       if (p.length < 2) return 'requires ticket and operation';
       const op = p[1];
-      if (!['round', 'line', 'close', 'phase', 'handoff', 'blocker', 'resolved'].includes(op!))
+      if (
+        !['round', 'line', 'close', 'phase', 'handoff', 'blocker', 'resolved', 'complete'].includes(
+          op!
+        )
+      )
         return 'unknown log operation';
       if (op === 'close') return p.length === 2 && f.size === 0 ? null : 'close takes only ticket';
       if (op === 'blocker')

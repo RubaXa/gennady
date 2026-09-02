@@ -19,6 +19,13 @@ import { isAbsolute, join, relative } from 'node:path';
 import { tmpdir } from 'node:os';
 import { runCli } from '../../../__tests__/tool-behavior/run-cli.ts';
 import { readScratchPayloadFile } from '../../../../shared/common/scratch-payload-file.ts';
+import { checkPhaseDependencies } from '../../../../shared/sdd/phase-dependencies.ts';
+import {
+  formatPhaseReceipt,
+  phaseReceiptPlanState,
+  type PhaseReceipt,
+  type PhaseReceiptPlan,
+} from '../../../../shared/sdd/phase-receipt.ts';
 
 type LogModule = typeof import('../sdd-log.cmd.ts');
 
@@ -41,6 +48,64 @@ const BASE = [
   '## 7. Execution Log',
   '<!--/SECTION:EXECUTION_LOG-->',
 ].join('\n');
+
+function receipt(phase: string): PhaseReceipt {
+  const plan: PhaseReceiptPlan = {
+    ticket: 'ticket.md',
+    phase,
+    profile: 'code',
+    profileBasis: 'phase-kind',
+    targets: [`src/${phase}.ts`],
+    deletedFiles: [],
+    verification: [],
+    producesCoverage: false,
+    environmentState: `sha256:${'1'.repeat(64)}`,
+  };
+  return {
+    schema: 1,
+    ...plan,
+    planState: phaseReceiptPlanState(plan),
+    targetState: `sha256:${'2'.repeat(64)}`,
+    commands: [],
+  };
+}
+
+function completableTicket(receiptPhase: string | null = 'P1'): string {
+  return [
+    '# t',
+    '<!--SECTION:META-->',
+    '- **Task-ID:** cli-foo',
+    '- **Status:** [~] IN_PROGRESS',
+    '<!--/SECTION:META-->',
+    '',
+    '<!--SECTION:PHASES_OVERVIEW-->',
+    '## Phases Overview',
+    '| ID | Kind | Deps | Status |',
+    '|----|------|------|--------|',
+    '| P1 | impl | — | [ ] |',
+    '| P2 | test | P1 | [ ] |',
+    '<!--/SECTION:PHASES_OVERVIEW-->',
+    '',
+    '<!--SECTION:EXECUTION_LOG-->',
+    '## Execution Log',
+    '### Round 1 — 2026-06-20, initial',
+    '#### P1',
+    '- [x] `2026-06-20T10:00:00.000Z` DONE',
+    '**Handoff →** artifacts: [src/old.ts]; decisions: [none]; open: [none]; deviations: []',
+    '#### Round close',
+    '- [ ] `<ts>` DONE',
+    '',
+    '### Round 2 — 2026-06-21, retry',
+    '#### P1',
+    '- [ ] `<ts>` DONE',
+    '**Handoff →** artifacts: [...]; decisions: [...]; open: [...]',
+    '#### Round close',
+    '- [ ] `<ts>` DONE',
+    '<!--PHASE_RECEIPTS:v1-->',
+    ...(receiptPhase ? [formatPhaseReceipt(receipt(receiptPhase))] : []),
+    '<!--/SECTION:EXECUTION_LOG-->',
+  ].join('\n');
+}
 
 function argv(...rest: string[]): string[] {
   return [
@@ -138,6 +203,25 @@ describe('SddLogCommand', () => {
     );
   });
 
+  it('replaces one scaffolded Round-close skeleton and rejects a repeated close without mutation', async () => {
+    const scaffolded = completableTicket();
+    writeFileSync(ticket, scaffolded, 'utf-8');
+
+    const first = await mod.run(argv(ticket, 'close'), CLOCK);
+    assert.strictEqual(first.ok, true, first.ok ? '' : first.message);
+    const closed = readFileSync(ticket, 'utf-8');
+    const currentRound = closed.slice(closed.indexOf('### Round 2'));
+    assert.strictEqual(currentRound.match(/^#### Round close$/gm)?.length, 1);
+    assert.doesNotMatch(currentRound, /#### Round close\n- \[ \] `<ts>` DONE/);
+    assert.match(currentRound, /- \[x\] `2026-06-21T10:00:00\.000Z` DONE/);
+    assert.match(currentRound, /<!--PHASE_RECEIPTS:v1-->/);
+
+    const second = await mod.run(argv(ticket, 'close'), CLOCK);
+    assert.strictEqual(second.ok, false);
+    if (!second.ok) assert.match(second.message, /ERR_CLI_SDD_LOG_CLOSE_STATE/);
+    assert.strictEqual(readFileSync(ticket, 'utf-8'), closed);
+  });
+
   describe('META Status (round/close drive it; tolerant when Status line is absent)', () => {
     const withStatus = [
       '# t',
@@ -196,6 +280,115 @@ describe('SddLogCommand', () => {
       await mod.run(argv(ticket, 'line', 'DONE'), CLOCK);
       const body = readFileSync(ticket, 'utf-8');
       assert.match(body, /- \*\*Status:\*\* \[ \] TODO   <!--/);
+    });
+  });
+
+  describe('complete mode — one verified phase-state transition', () => {
+    const payload = 'artifacts: [src/P1.ts]; decisions: [api=stable]; open: [none]; deviations: []';
+
+    it('closes only P1 in the current Round and makes the P2 dependency gate pass', async () => {
+      writeFileSync(ticket, completableTicket(), 'utf-8');
+      const before = readFileSync(ticket, 'utf-8');
+      assert.match(
+        checkPhaseDependencies(before, 'P2', () => null) ?? '',
+        /dependency P1 is not checked complete/
+      );
+
+      const outcome = await mod.run(argv(ticket, 'complete', payload, '--phase', 'P1'), CLOCK);
+      assert.strictEqual(outcome.ok, true, outcome.ok ? '' : outcome.message);
+      const body = readFileSync(ticket, 'utf-8');
+      assert.strictEqual(
+        checkPhaseDependencies(body, 'P2', () => null),
+        null
+      );
+      assert.match(body, /\| P1 \| impl \| — \| \[x\] \|/);
+      assert.match(body, /\| P2 \| test \| P1 \| \[ \] \|/);
+      assert.match(body, /- \*\*Status:\*\* \[~\] IN_PROGRESS/);
+      assert.match(
+        body,
+        /### Round 1[\s\S]*- \[x\] `2026-06-20T10:00:00\.000Z` DONE[\s\S]*artifacts: \[src\/old\.ts\]/
+      );
+      assert.match(
+        body,
+        /### Round 2[\s\S]*#### P1\n- \[x\] `2026-06-21T10:00:00\.000Z` DONE\n\*\*Handoff →\*\* artifacts: \[src\/P1\.ts\]; decisions: \[api=stable\]; open: \[none\]; deviations: \[\]/
+      );
+      assert.strictEqual((body.match(/- \[ \] `<ts>` DONE/g) ?? []).length, 2);
+    });
+
+    it('fails without this phase receipt and leaves every byte untouched', async () => {
+      const original = completableTicket(null);
+      writeFileSync(ticket, original, 'utf-8');
+      const outcome = await mod.run(argv(ticket, 'complete', payload, '--phase', 'P1'), CLOCK);
+      assert.strictEqual(outcome.ok, false);
+      if (!outcome.ok) {
+        assert.strictEqual(outcome.code, 'ERR_CLI_SDD_LOG_COMPLETE_STATE');
+        assert.match(outcome.message, /P1 has no CLI-owned SDD_PHASE_RECEIPT/);
+      }
+      assert.strictEqual(readFileSync(ticket, 'utf-8'), original);
+    });
+
+    it('rejects a receipt owned by another phase', async () => {
+      const original = completableTicket('P2');
+      writeFileSync(ticket, original, 'utf-8');
+      const outcome = await mod.run(argv(ticket, 'complete', payload, '--phase', 'P1'), CLOCK);
+      assert.strictEqual(outcome.ok, false);
+      if (!outcome.ok) assert.match(outcome.message, /P1 has no CLI-owned SDD_PHASE_RECEIPT/);
+      assert.strictEqual(readFileSync(ticket, 'utf-8'), original);
+    });
+
+    it('rejects a second completion without changing the completed state', async () => {
+      writeFileSync(ticket, completableTicket(), 'utf-8');
+      const first = await mod.run(argv(ticket, 'complete', payload, '--phase', 'P1'), CLOCK);
+      assert.strictEqual(first.ok, true);
+      const completed = readFileSync(ticket, 'utf-8');
+      const repeated = await mod.run(argv(ticket, 'complete', payload, '--phase', 'P1'), CLOCK);
+      assert.strictEqual(repeated.ok, false);
+      if (!repeated.ok) assert.match(repeated.message, /status is not the incomplete \[ \] state/);
+      assert.strictEqual(readFileSync(ticket, 'utf-8'), completed);
+    });
+
+    it('requires --phase and the canonical four-field Handoff payload', async () => {
+      const original = completableTicket();
+      writeFileSync(ticket, original, 'utf-8');
+      const noPhase = await mod.run(argv(ticket, 'complete', payload), CLOCK);
+      assert.strictEqual(noPhase.ok, false);
+      if (!noPhase.ok) assert.strictEqual(noPhase.exitCode, 4);
+      const incompletePayload = await mod.run(
+        argv(
+          ticket,
+          'complete',
+          'artifacts: [src/P1.ts]; decisions: []; open: []',
+          '--phase',
+          'P1'
+        ),
+        CLOCK
+      );
+      assert.strictEqual(incompletePayload.ok, false);
+      if (!incompletePayload.ok) assert.strictEqual(incompletePayload.exitCode, 4);
+      assert.strictEqual(readFileSync(ticket, 'utf-8'), original);
+    });
+
+    it('accepts and consumes a newline-terminated agent-safe content file', async () => {
+      writeFileSync(ticket, completableTicket(), 'utf-8');
+      mkdirSync(join(dir, '.claude', 'tmp'), { recursive: true });
+      const payloadPath = join(dir, '.claude', 'tmp', 'complete.txt');
+      writeFileSync(payloadPath, `${payload}\n`, 'utf-8');
+      const outcome = await mod.run(
+        argv(ticket, 'complete', '--content-file', '.claude/tmp/complete.txt', '--phase', 'P1'),
+        CLOCK
+      );
+      assert.strictEqual(outcome.ok, true, outcome.ok ? '' : outcome.message);
+      assert.strictEqual(existsSync(payloadPath), false);
+      assert.match(readFileSync(ticket, 'utf-8'), /\*\*Handoff →\*\* artifacts: \[src\/P1\.ts\]/);
+    });
+
+    it('keeps meaningful nested brackets inside typed fields instead of forcing lossy retries', async () => {
+      writeFileSync(ticket, completableTicket(), 'utf-8');
+      const nested =
+        'artifacts: [src/P1.ts]; decisions: [error=[slugify] Input must be text, regex=[^a-z]]; open: []; deviations: []';
+      const outcome = await mod.run(argv(ticket, 'complete', nested, '--phase', 'P1'), CLOCK);
+      assert.strictEqual(outcome.ok, true, outcome.ok ? '' : outcome.message);
+      assert.match(readFileSync(ticket, 'utf-8'), /error=\[slugify\].*regex=\[\^a-z\]/);
     });
   });
 

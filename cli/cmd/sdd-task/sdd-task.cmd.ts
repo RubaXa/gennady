@@ -542,7 +542,7 @@ export async function run(rawArgs: string[], projectRoot = resolve('.')): Promis
   // convention (or whose owning spec is missing) simply omits the line, never fails the plan.
   const groupRes = resolveAuditGroup(ticket, root);
   const auditGroupLine = groupRes.ok
-    ? buildAuditGroupLine(groupRes.specPath, groupRes.group, root)
+    ? buildAuditGroupLine(groupRes.specPath, groupRes.group, root, meta.taskId ?? ticket)
     : null;
   return withResolutionLine(
     {

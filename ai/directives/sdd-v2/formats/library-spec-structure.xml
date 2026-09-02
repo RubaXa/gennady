@@ -76,13 +76,18 @@
 
   <!--SECTION:PUBLIC_API_SURFACE-->
   ## Public API Surface
-  [Ключевые exported interfaces, types, functions. Intent-level, без impl detail.]
+  [Consumer-facing capabilities at composition level; link each to its owning module spec. Exact operations and signatures belong only to module Entity Surfaces/Contracts.]
   <!--/SECTION:PUBLIC_API_SURFACE-->
 
   <!--SECTION:ARCHITECTURE-->
   ## Architecture
   [Выбранный design pattern. Кратко — rejected alternatives.]
   <!--/SECTION:ARCHITECTURE-->
+
+  <!--SECTION:MODULE_MAP-->
+  ## Module Map
+  [Appended by `module-decomposition`. Initially: «Modules not yet decomposed — run `module-decomposition <scope-name>`».]
+  <!--/SECTION:MODULE_MAP-->
 
   <!--SECTION:RESEARCH-->
   ## Research

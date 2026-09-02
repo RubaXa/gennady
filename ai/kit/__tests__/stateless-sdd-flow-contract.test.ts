@@ -30,6 +30,45 @@ describe('stateless SDD entry contract', () => {
     assert.match(router, /H_V2_INVALID/);
     assert.doesNotMatch(router, /sdd-session|SESSION_FILE_FORMAT/);
   });
+
+  it('keeps exact tool-result handling active in every authoring owner', () => {
+    for (const owner of ['scope', 'module', 'infra', 'interface']) {
+      const source = read('ai', 'kit', 'templates', 'sdd-v2', `${owner}.directive.hbs`);
+      assert.match(source, /AX_TOOL_INVOCATION/, owner);
+      assert.match(source, /axiom\/process\/ax-tool-invocation/, owner);
+    }
+  });
+
+  it('makes function-scale authoring bounded and greenfield orientation executable', () => {
+    const scope = read('ai', 'kit', 'templates', 'sdd-v2', 'scope.directive.hbs');
+    const module = read('ai', 'kit', 'templates', 'sdd-v2', 'module.directive.hbs');
+    const interview = read(
+      'ai',
+      'kit',
+      'axiom',
+      'interview',
+      'ax-coverage-map-closure.xml'
+    );
+    const placeholderAt = scope.indexOf('append exactly one canonical');
+    const orientAt = scope.indexOf('result="orientation"', placeholderAt);
+    assert.ok(placeholderAt >= 0 && placeholderAt < orientAt);
+    assert.match(scope, /operator-confirmed `scale:` retained by this owner/);
+    assert.match(scope, /ScalePath when="scale=function\|fix"/);
+    assert.match(scope, /classify the scope type and mode exactly once/);
+    assert.match(scope, /must not reopen the already-settled route/);
+    assert.doesNotMatch(scope, /session-file `scale:`|scale `product` \/ `library`/);
+    assert.match(scope, /brief that already names the consumer, happy path/);
+    assert.match(module, /ScalePath when="scale=function\|fix"/);
+    assert.match(module, /one Function\/Service module without invented Port/);
+    assert.match(module, /zero-new-information decision/);
+    assert.match(module, /scope owns its requirement IDs/);
+    assert.match(module, /No module-specific\s+requirements?/);
+    assert.match(
+      scope,
+      /Do NOT run `sdd-check --all specs\/<scope>` here:[\s\S]+guaranteed to report broken links/
+    );
+    assert.match(interview, /Explicit operator input is already\s+an answer/);
+  });
 });
 
 describe('two artifact approval boundaries', () => {
@@ -50,7 +89,27 @@ describe('two artifact approval boundaries', () => {
     assert.ok(freezeAt >= 0 && freezeAt < reviewAt && reviewAt < approvalAt);
     assert.match(review, /actual spec paths and their current content/);
     assert.match(review, /one fresh reviewer/);
+    assert.match(review, /at most five evidence-backed findings/);
+    assert.match(review, /does not read\s+flow directives, examples, repository history/);
     assert.doesNotMatch(review, /Critic Rounds|five-result|review journal|sdd-session/);
+  });
+
+  it('keeps product/library decomposition complete without fragmenting a small scope', () => {
+    const scope = read('ai', 'kit', 'templates', 'sdd-v2', 'scope.directive.hbs');
+    const boundary = read('ai', 'kit', 'axiom', 'spec', 'ax-scope-stays-thin.xml');
+    const handoff = read(
+      'ai',
+      'kit',
+      'axiom',
+      'spec',
+      'ax-handoff-to-module-decomposition.xml'
+    );
+    assert.match(scope, /small single-purpose scope normally becomes exactly one cohesive module/);
+    assert.match(boundary, /transient draft is never an approval or scaffold target/);
+    assert.match(boundary, /Small size is not a no-module exception/);
+    assert.match(handoff, /Decomposition is not fragmentation/);
+    assert.match(handoff, /exactly one module/);
+    assert.doesNotMatch(boundary, /\*\*monolithic\*\*/);
   });
 
   it('creates and checks actual tickets before independent review and operator approval #2', () => {
@@ -75,6 +134,9 @@ describe('stateless execution and specification format', () => {
     assert.match(execute, /ticket, Execution Log, Git, and current tool output/);
     assert.match(execute, /Requirement-ID appears in an implemented\s+test/);
     assert.match(execute, /fresh bounded worker/);
+    assert.match(execute, /sdd-task &lt;ticket&gt; --phase &lt;PhaseID&gt;/);
+    assert.match(execute, /complete `phaseContext` output verbatim/);
+    assert.match(execute, /Never\s+summarize, retype, or omit/);
     assert.match(execute, /approval #2 marker in the owning\s+task index/);
     assert.doesNotMatch(execute, /npx gennady sdd-session|--scaffold-feasibility/);
   });
@@ -90,11 +152,40 @@ describe('stateless execution and specification format', () => {
     const reconcile = read('ai', 'kit', 'templates', 'sdd-v2', 'reconcile.directive.hbs');
     assert.match(phase, /run the phase's exact declared commands/i);
     assert.match(phase, /Requirement-ID in the test source/);
+    assert.match(phase, /worker never closes the phase or edits the ticket/i);
+    assert.match(phase, /single `sdd-log complete` transition/i);
+    assert.doesNotMatch(phase, /update the\s+phase's durable Execution Log facts/i);
     assert.match(reconcile, /independent verdict and operator approval #1/);
     assert.ok(
       reconcile.indexOf('review-lifecycle.directive.xml') <
         reconcile.indexOf('scaffold.directive.xml')
     );
+  });
+
+  it('checks task-visible phase artifacts before persisting DONE and Handoff', () => {
+    const execute = read('ai', 'kit', 'templates', 'sdd-v2', 'execute.directive.hbs');
+    const recordAt = execute.indexOf('<Step id="STEP_4_RECORD">');
+    const preCloseCheckAt = execute.indexOf('result="preCloseTaskGate"', recordAt);
+    const completeAt = execute.indexOf('sdd-log &lt;ticket&gt; complete', recordAt);
+    const finalCheckAt = execute.indexOf('result="taskGate"', completeAt);
+    assert.ok(recordAt >= 0 && recordAt < preCloseCheckAt);
+    assert.ok(preCloseCheckAt < completeAt && completeAt < finalCheckAt);
+    assert.match(execute, /correct and re-verify while the phase is still unchecked/);
+    assert.match(execute, /Exact verification commands were already owned\s+by each phase receipt and MUST NOT be run again/);
+  });
+
+  it('closes and synchronizes ticket state before independent audit reads the group', () => {
+    const execute = read('ai', 'kit', 'templates', 'sdd-v2', 'execute.directive.hbs');
+    const finalGateAt = execute.indexOf('result="taskGate"');
+    const roundCloseAt = execute.indexOf('result="roundClose"', finalGateAt);
+    const trackerSyncAt = execute.indexOf('result="trackerSync"', roundCloseAt);
+    const coherentTreeAt = execute.indexOf('result="coherentTreeGate"', trackerSyncAt);
+    const auditAt = execute.indexOf('<Step id="STEP_6_AUDIT_REVIEW">', coherentTreeAt);
+    assert.ok(finalGateAt >= 0 && finalGateAt < roundCloseAt);
+    assert.ok(roundCloseAt < trackerSyncAt && trackerSyncAt < coherentTreeAt);
+    assert.ok(coherentTreeAt < auditAt);
+    assert.match(execute, /audit never receives a known\s+ticket\/index status drift/);
+    assert.match(execute, /Do not repeat `sdd-log close` or `sdd-sync`/);
   });
 
   it('keeps one durable V2 spec format and removes temporary review artifacts', () => {

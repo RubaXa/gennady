@@ -4,7 +4,9 @@
     "fixture": "fibonacci-library",
     "phase": "spec-authoring",
     "mode": "full-spec-to-approval-1",
-    "intent": "Author the complete canonical Fibonacci specification from inputs/brief.md, including behavior, edge cases, and acceptance criteria."
+    "scale": "function",
+    "intent": "Author the complete canonical Fibonacci specification from inputs/brief.md, including behavior, edge cases, and acceptance criteria.",
+    "acceptance": "Specifications only. Public API nth(n: number): number is pure. Integer n from 0 through 77 is accepted; F(0)=0 and F(1)=1. Negative, non-integer, and greater-than-77 inputs are rejected with explicit errors. Scope and one cohesive module spec exist, include Requirement IDs and negative scenarios, pass the mechanical check, receive one fresh semantic review, and leave Approval #1 pending."
   },
   {
     "id": "tic-tac-toe",

@@ -5,6 +5,9 @@
   Neither case depends on a session working set, temporary manifest, or bare approval label.
   Infrastructure remains the sole no-module scope type.
 
+  Decomposition is not fragmentation. A small cohesive scope may resolve to exactly one module;
+  never manufacture extra layers, adapters, or tickets merely to make the graph larger.
+
   The resulting complete scope+module spec set runs one independent semantic review and operator
   approval #1 before scaffold. A later semantic change repeats that boundary.
 </Axiom>

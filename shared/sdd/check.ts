@@ -3,7 +3,7 @@
 // @tasks: N/A
 
 import { dirname, basename, join, resolve } from 'node:path';
-import { extractSection, findSectionBounds } from './section.ts';
+import { collectHeadings, extractSection, findSectionBounds } from './section.ts';
 import type { Finding } from './finding.ts';
 import { parseMetaInfo, parsePhaseDetail, parsePhasesOverview } from './ticket.ts';
 import { legacyHeaderBody } from './anchor-inject.ts';
@@ -185,6 +185,37 @@ function sectionOverlaps(content: string): string[] {
  * @purpose A phase-heading line (`#### P<N>`, optional `— re-run:` suffix); group 1 is the bare id.
  */
 const PHASE_HEADING_RE = /^#{2,6}\s+(P[0-9]+)\b/;
+
+/** @purpose Existing schema marker that distinguishes current receipt-aware tickets from grandfathered V2 tickets. */
+const PHASE_RECEIPTS_SCHEMA_MARKER = '<!--PHASE_RECEIPTS:v1-->';
+
+/**
+ * @purpose Count exact phase blocks in the first Execution Log Round 1.
+ * @invariant Only level-4 P<N> headings inside the first level-3 Round 1 count; later rounds,
+ *   Round close, and heading-looking text inside fenced code do not affect the skeleton.
+ * @param logBody Extracted EXECUTION_LOG section body.
+ * @returns Phase id → block count, or null when Round 1 is absent.
+ */
+function firstRoundPhaseBlockCounts(logBody: string): Map<string, number> | null {
+  const headings = collectHeadings(logBody);
+  const roundIndex = headings.findIndex(
+    (heading) => heading.level === 3 && /^Round\s+1(?:\s|—|$)/i.test(heading.text)
+  );
+  if (roundIndex === -1) return null;
+
+  const round = headings[roundIndex] as (typeof headings)[number];
+  const nextRound = headings.slice(roundIndex + 1).find((heading) => heading.level <= round.level);
+  const roundBody = logBody.slice(round.lineEnd, nextRound?.start ?? logBody.length);
+  const counts = new Map<string, number>();
+  for (const heading of collectHeadings(roundBody)) {
+    if (heading.level !== 4) continue;
+    const match = /^(P[0-9]+)(?:\s|—|$)/.exec(heading.text);
+    if (!match) continue;
+    const phase = match[1] as string;
+    counts.set(phase, (counts.get(phase) ?? 0) + 1);
+  }
+  return counts;
+}
 
 /**
  * @purpose Scan an Execution Log for 🛑 BLOCKED / ✅ RESOLVED pairs, paired per phase — shared by
@@ -491,6 +522,37 @@ export function checkTicket(file: string, content: string): Finding[] {
     for (const s of sectionIds) {
       if (!ids.has(s))
         err('SDD_PHASE_SECTION_ORPHAN', `PHASE_${s} section has no row in the Phases Overview.`);
+    }
+
+    if (logSec.status === 'ok' && content.includes(PHASE_RECEIPTS_SCHEMA_MARKER)) {
+      const logPhaseCounts = firstRoundPhaseBlockCounts(logSec.content);
+      if (logPhaseCounts === null) {
+        err(
+          'SDD_EXECUTION_LOG_ROUND_MISSING',
+          'Current receipt-aware ticket has no `### Round 1` in Execution Log. Add the canonical initial round with exactly one `#### P<N>` block per Phases Overview row.'
+        );
+      } else {
+        for (const phase of phases) {
+          const count = logPhaseCounts.get(phase.id) ?? 0;
+          if (count === 0)
+            err(
+              'SDD_EXECUTION_LOG_PHASE_MISSING',
+              `Execution Log Round 1 has no \`#### ${phase.id}\` block for the matching Phases Overview row.`
+            );
+          else if (count > 1)
+            err(
+              'SDD_EXECUTION_LOG_PHASE_DUPLICATE',
+              `Execution Log Round 1 has ${count} \`#### ${phase.id}\` blocks; keep exactly one.`
+            );
+        }
+        for (const phase of logPhaseCounts.keys()) {
+          if (!ids.has(phase))
+            err(
+              'SDD_EXECUTION_LOG_PHASE_ORPHAN',
+              `Execution Log Round 1 has \`#### ${phase}\`, but Phases Overview has no ${phase} row.`
+            );
+        }
+      }
     }
 
     if (isDone) {

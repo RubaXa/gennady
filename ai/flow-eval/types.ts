@@ -15,6 +15,8 @@ export type SddEvalScenario = {
   phase: SddEvalPhase;
   /** @purpose Explicit execution mode within the selected SDD phase. */
   mode: SddEvalMode;
+  /** @purpose Synthetic operator-confirmed authoring depth; avoids silently inferred SCALE in headless runs. */
+  scale?: 'product' | 'module' | 'function' | 'fix';
   /** @purpose Optional acceptance signal the judge can use when interpreting the diff. */
   acceptance?: string;
 };
@@ -53,6 +55,8 @@ export type SddEvalConfig = {
   observeEveryMs: number;
   /** @purpose Number of unchanged observations before a scenario is marked stuck. */
   stuckAfter: number;
+  /** @purpose Hard observation budget; changing activity cannot keep a scenario alive forever. */
+  maxObservations: number;
   /** @purpose Maximum tail messages requested from OpenCode per observation. */
   tailLimit: number;
   /** @purpose Optional compact progress sink; receives bounded observations only. */
@@ -92,6 +96,16 @@ export type SddEvalObservation = {
   tail: SddEvalTailEntry[];
   events: SddEvalEvent[];
   progress: boolean;
+  /** @purpose True only when the repository diff changed; separates artifact work from new chatter/reads. */
+  artifactProgress: boolean;
+  /** @purpose Whether any repository diff exists at this snapshot. */
+  hasArtifactDiff: boolean;
+  /** @purpose Stable bounded digest of the diff, never the diff bytes themselves. */
+  artifactFingerprint: string;
+  /** @purpose Consecutive observations without a diff change. */
+  artifactRepeatCount: number;
+  /** @purpose Tool calls visible in the current bounded tail. */
+  toolCallCount: number;
   repeated: boolean;
   /** @purpose Consecutive unchanged snapshots, used for deterministic stuck detection. */
   repeatCount: number;
@@ -116,9 +130,17 @@ export type SddEvalWorkerResult = {
 /** @purpose Narrow judge input; worker prompt/response and unbounded session data are excluded. */
 export type SddEvalJudgeInput = {
   intent: string;
+  /** @purpose Exact bounded acceptance facts; unlike the intent, this carries numeric/negative edges. */
+  acceptance?: string;
   diff: string;
   events: SddEvalEvent[];
   tail: SddEvalTailEntry[];
+  state: {
+    status: SddEvalObservation['status'];
+    stuck: boolean;
+    waiting: boolean;
+    errors: string[];
+  };
 };
 
 /** @purpose Structured judge outcome. */

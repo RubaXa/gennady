@@ -17,10 +17,12 @@ describe('checkSpecMermaid', () => {
   });
 
   it('an invalid mermaid diagram → SDD_DIAGRAM_INVALID (error)', async () => {
-    const md = '```mermaid\nnotadiagram totally bogus\n```';
+    const md = '# Diagram\n\n```mermaid\nflowchart LR\n  A -->|bad(label)| B\n```';
     const findings = await checkSpecMermaid('s.md', md);
     const f = findings.find((x) => x.code === 'SDD_DIAGRAM_INVALID');
     assert.ok(f, 'expected SDD_DIAGRAM_INVALID');
     assert.strictEqual(f?.severity, 'error');
+    assert.strictEqual(f?.line, 5);
+    assert.match(f?.message ?? '', /near "A -->\|bad\(label\)\| B"/);
   });
 });

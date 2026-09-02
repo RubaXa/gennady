@@ -18,8 +18,8 @@
     bundler, ci, monorepo-tool, docs.
   </Mission>
 
-  <BeliefState deps="AX_OPERATOR_LANGUAGE, AX_OPERATOR_DIALOGUE_STYLE, AX_DIALOGUE_DISCIPLINE, AX_OPERATOR_SAFEGUARD, AX_NO_PROCESS_NARRATION, AX_STATELESS_ARTIFACT, AX_SCALE_PROPORTIONAL_DEPTH">
-    Inherited from the loading directive (already in context): AX_DIVERGE_BEFORE_RECOMMEND, QUESTION_RULE_SLIM
+  <BeliefState deps="AX_OPERATOR_LANGUAGE, AX_TOOL_INVOCATION, AX_OPERATOR_DIALOGUE_STYLE, AX_DIALOGUE_DISCIPLINE, AX_OPERATOR_SAFEGUARD, AX_NO_PROCESS_NARRATION, AX_STATELESS_ARTIFACT, AX_SCALE_PROPORTIONAL_DEPTH">
+    Inherited from the loading directive (already in context): AX_DIVERGE_BEFORE_RECOMMEND, AX_TOOL_INVOCATION, QUESTION_RULE_SLIM
 
     <Axiom id="AX_DIRECTIVE_MODE">
       Each directive runs in one of several modes, auto-detected from operator intake. Mode controls

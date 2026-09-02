@@ -683,6 +683,7 @@ describe('SddTaskCommand', () => {
       );
       assert.match(text, /exit:        all scenarios pass/);
       assert.match(text, /READ rules:  ai\/directives\/testing\/node-test\.xml/);
+      assert.match(text, /READ ticket: PHASE_P2, BDD, VERIFICATION, TEST_COVERAGE/);
       assert.match(text, /READ files:  src\/foo\.test\.ts/);
       assert.match(text, /DO NOT READ/);
     });
@@ -742,6 +743,8 @@ describe('SddTaskCommand', () => {
       assert.strictEqual(outcome.ok, true);
       if (!outcome.ok) return;
       assert.match(outcome.text, /READ specs:  specs\/cli\/core\/core\.spec\.md#fooport$/m);
+      assert.match(outcome.text, /READ ticket: PHASE_P1, BDD, VERIFICATION$/m);
+      assert.doesNotMatch(outcome.text, /PHASE_P1, BDD, VERIFICATION, TEST_COVERAGE/);
       assert.doesNotMatch(outcome.text, /fooadapter/);
     });
 
@@ -807,7 +810,7 @@ describe('SddTaskCommand', () => {
       );
     });
 
-    it('ends with the next: protocol + sdd-log + Handoff-line instruction', async () => {
+    it('ends with a worker-only instruction that leaves ticket closure to the orchestrator', async () => {
       const t = join(dir, 'phased.md');
       writeFileSync(t, PHASED_TICKET, 'utf-8');
       const outcome = await mod.run(argv(t, '--phase', 'P2'));
@@ -815,8 +818,13 @@ describe('SddTaskCommand', () => {
       if (!outcome.ok) return;
       assert.match(
         outcome.text,
-        /next: прочитай перечисленное, исполняй фазу по протоколу, по завершении sdd-log \+ Handoff-строка\./
+        /исполняй переданный worker contract без сокращений, запусти точный sdd-verify и верни typed Handoff оркестратору\./
       );
+      assert.match(outcome.text, /worker contract \(copy verbatim into dispatch\)/);
+      assert.match(outcome.text, /NEVER READ: node_modules\/gennady\/\*\* · dist\/\*\*/);
+      assert.match(outcome.text, /at most one target-local hypothesis/);
+      assert.match(outcome.text, /only the exact sdd-verify may append its receipt/);
+      assert.doesNotMatch(outcome.text, /по завершении sdd-log/);
     });
 
     it('unknown --phase → exit 2 naming the known phases', async () => {
@@ -1325,6 +1333,7 @@ describe('SddTaskCommand', () => {
         assert.strictEqual(r.ok, true);
         if (!r.ok) return;
         assert.match(r.text, /^audit-group: core\.spec\.md \(1\/2\)$/m);
+        assert.match(r.text, /^audit-command: npx gennady sdd-task --audit-group TSK-a$/m);
       } finally {
         rmSync(gDir, { recursive: true, force: true });
       }

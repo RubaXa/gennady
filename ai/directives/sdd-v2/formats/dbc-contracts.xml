@@ -159,3 +159,28 @@
 
   Same `Usage Waiver` rule as `DBC_PORT_FORMAT` — see there for the two forms and the citation requirement.
 </Contract>
+
+<Contract id="DBC_SERVICE_FORMAT">
+  Use this form when one Function or Service owns behavior directly and no confirmed variability
+  or test seam justifies a Port. Conditions are plain-language and testable, one per line.
+
+  ```markdown
+  #### Service: `<FunctionOrServiceName>`
+  - **Purpose:** <1 sentence>
+  - **Consumers:** <internal path or named external consumer>
+  - **Runtime Backing:** `not-implemented` | `simulation` | `real-runtime`
+  - **Verification Levels:** subset of `contract` | `unit` | `integration` | `e2e`
+  - **Deferred Runtime Scope:** None | <declared behavior without real runtime>
+
+  **Contract (DbC)** — one block per operation:
+  - `<operationName>`:
+    - Pre: <what must hold>
+    - Post: <what completion guarantees>
+    - On pre-violation: <observable error kind and mechanism>
+
+  **Invariants** (omit when none): <genuine lifetime-wide invariant>
+  ```
+
+  A pure function is represented directly by this form. Do not invent a Port, Adapter, class,
+  or directory layer merely to fit the contract notation.
+</Contract>

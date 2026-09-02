@@ -180,6 +180,18 @@ function ticket(options: TicketOptions): string {
     '<!--/SECTION:TEST_COVERAGE-->',
     '<!--SECTION:EXECUTION_LOG-->',
     '## Execution Log',
+    '### Round 1 — <YYYY-MM-DD>, initial',
+    '#### P1',
+    '- [ ] `<ts>` DONE',
+    '**Handoff →** artifacts: [...]; decisions: [...]; open: [...]',
+    '#### P2',
+    '- [ ] `<ts>` DONE',
+    '**Handoff →** artifacts: [...]; decisions: [...]; open: [...]',
+    '#### P3',
+    '- [ ] `<ts>` DONE',
+    '**Handoff →** artifacts: [...]; decisions: [...]; open: [...]',
+    '#### Round close',
+    '- [ ] `<ts>` DONE',
     '<!--/SECTION:EXECUTION_LOG-->',
     '<!--SECTION:DECISION_LOG-->',
     '## Decision Log',
@@ -273,23 +285,20 @@ function buildCompositionFixture(): string {
   return root;
 }
 
-function markPhaseDone(root: string, phase: string, kind: string): void {
-  const path = join(root, TICKET);
-  const previous = phase === 'P1' ? '—' : `P${Number(phase.slice(1)) - 1}`;
-  const content = readFileSync(path, 'utf8');
-  writeFileSync(
-    path,
-    content.replace(
-      `| ${phase} | ${kind} | ${previous} | [ ] |`,
-      `| ${phase} | ${kind} | ${previous} | [x] |`
-    ),
-    'utf8'
-  );
-}
-
 function verifyPhase(root: string, phase: string): void {
   const output = runOk(root, ['sdd-verify', '--task', TICKET, '--phase', phase]);
   assert.match(output, new RegExp(`receipt recorded: ${TICKET.replaceAll('.', '\\.')}#${phase}`));
+}
+
+function completePhase(root: string, phase: string, artifacts: string): void {
+  runOk(root, [
+    'sdd-log',
+    TICKET,
+    'complete',
+    `artifacts: [${artifacts}]; decisions: [none]; open: [none]; deviations: []`,
+    '--phase',
+    phase,
+  ]);
 }
 
 describe('clean-repo SDD composition harness', { concurrency: 1 }, () => {
@@ -313,8 +322,6 @@ describe('clean-repo SDD composition harness', { concurrency: 1 }, () => {
       runOk(root, ['sdd-check', '--task', TICKET, '--authoring']);
       assert.match(runOk(root, ['sdd-task']), /pickable \(ready now\):\s+IB-tool/i);
 
-      runOk(root, ['sdd-log', TICKET, 'round', 'composition']);
-      runOk(root, ['sdd-log', TICKET, 'phase', 'P1']);
       writeFileSync(join(root, '.nvmrc'), '22\n', 'utf8');
       writeFileSync(join(root, '.npmrc'), 'fund=false\n', 'utf8');
       const packagePath = join(root, 'package.json');
@@ -331,23 +338,25 @@ describe('clean-repo SDD composition harness', { concurrency: 1 }, () => {
         'utf8'
       );
       verifyPhase(root, 'P1');
-      markPhaseDone(root, 'P1', 'bootstrap');
+      completePhase(
+        root,
+        'P1',
+        'package.json, package-lock.json, .nvmrc, .npmrc, scripts/pass.mjs, scripts/fix.mjs, scripts/coverage.mjs'
+      );
 
       assert.match(
         runOk(root, ['sdd-task', TICKET, '--phase', 'P2']),
         /CREATE files:[^\n]*tsconfig\.json[^\n]*scripts\/typecheck\.mjs/
       );
-      runOk(root, ['sdd-log', TICKET, 'phase', 'P2']);
       writeFileSync(join(root, 'tsconfig.json'), '{"compilerOptions":{"noEmit":true}}\n', 'utf8');
       writeFileSync(join(root, 'scripts/typecheck.mjs'), 'process.exit(0);\n', 'utf8');
       verifyPhase(root, 'P2');
-      markPhaseDone(root, 'P2', 'config');
+      completePhase(root, 'P2', 'tsconfig.json, scripts/typecheck.mjs');
 
       assert.match(
         runOk(root, ['sdd-task', TICKET, '--phase', 'P3']),
         /CREATE files:[^\n]*test\/toolchain-smoke\.test\.js/
       );
-      runOk(root, ['sdd-log', TICKET, 'phase', 'P3']);
       const withTest = JSON.parse(readFileSync(packagePath, 'utf8')) as {
         scripts?: Record<string, string>;
       };
@@ -371,7 +380,7 @@ describe('clean-repo SDD composition harness', { concurrency: 1 }, () => {
         'utf8'
       );
       verifyPhase(root, 'P3');
-      markPhaseDone(root, 'P3', 'test');
+      completePhase(root, 'P3', 'package.json, test/toolchain-smoke.test.js');
       runOk(root, ['sdd-log', TICKET, 'close']);
 
       const receipts = parsePhaseReceipts(readFileSync(join(root, TICKET), 'utf8'));

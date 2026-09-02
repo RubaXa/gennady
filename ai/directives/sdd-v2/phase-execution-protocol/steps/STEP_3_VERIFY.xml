@@ -5,6 +5,9 @@
         Per `AX_VERIFICATION_BEFORE_HANDOFF`, run the phase's exact declared commands. Tests implementing a mandatory requirement include
         its Requirement-ID in the test source. Implement applicable negative/failure cases, not only
         the happy path. Report command, exit status, and concise result without suppressing errors.
+        A successful CLI-owned receipt is evidence to return, not permission to edit phase status,
+        DONE, or Handoff. If the tool rejects the transition, return its exact diagnostic to the
+        orchestrator; never inspect Gennady source or bundled chunks to reinterpret it.
       </Action>
     </Step>
 

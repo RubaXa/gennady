@@ -1,8 +1,9 @@
 <PhaseExecutionProtocol keywords="sdd, phase, worker, implementation, verification" type="directive" ver="2.3">
   <Mission>
-    Implement exactly one approved ticket phase, verify it with declared real commands, update the
-    phase's durable Execution Log facts, and return a typed handoff. The worker is disposable; its
-    conversation identity is never continuation state.
+    Implement exactly one approved ticket phase, verify it with declared real commands, and return a
+    typed handoff. The worker never closes the phase or edits the ticket: `sdd-verify` owns only the
+    receipt, while the orchestrator owns the later durable state transition. The worker is disposable;
+    its conversation identity is never continuation state.
   </Mission>
   <BeliefState>
     {{> "axiom/process/ax-stateless-flow"}}
@@ -34,13 +35,19 @@
         Per `AX_VERIFICATION_BEFORE_HANDOFF`, run the phase's exact declared commands. Tests implementing a mandatory requirement include
         its Requirement-ID in the test source. Implement applicable negative/failure cases, not only
         the happy path. Report command, exit status, and concise result without suppressing errors.
+        A successful CLI-owned receipt is evidence to return, not permission to edit phase status,
+        DONE, or Handoff. If the tool rejects the transition, return its exact diagnostic to the
+        orchestrator; never inspect Gennady source or bundled chunks to reinterpret it.
       </Action>
     </Step>
     <Step id="STEP_4_HANDOFF">
       <Action>
         Per `AX_HANDOFF_TYPED`, return `HANDOFF_FORMAT` with files changed, requirements demonstrated, commands/results,
-        deviations, and the next declared phase. The orchestrator validates this against Git and the
-        ticket. Do not write JSON checkpoints, worker IDs, session keys, or NEXT state.
+        deviations, and the next declared phase. Return the payload in the response only. Do not call
+        `sdd-log`, manually edit the ticket, remove its placeholders, or mark any checkbox. The
+        orchestrator validates the payload against Git plus the CLI-owned receipt and performs the
+        single `sdd-log complete` transition. Do not write JSON checkpoints, worker IDs, session keys,
+        or NEXT state.
       </Action>
     </Step>
   </ExecutionPlan>

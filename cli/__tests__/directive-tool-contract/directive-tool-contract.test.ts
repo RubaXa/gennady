@@ -279,7 +279,10 @@ describe('callable SDD-v2 action-call inventory', () => {
     const taskMap = calls.find((call) => call.result === 'taskMap');
     assert.strictEqual(taskMap?.owner, 'this-step');
     assert.strictEqual(taskMap?.raw, 'npx gennady sdd-task &lt;ticket&gt;');
-    assert.match(execute, /dispatch a fresh worker with the current\s+phase block/s);
+    assert.match(
+      execute,
+      /Dispatch a fresh worker with the complete `phaseContext` output verbatim as the leading\s+prompt block/s
+    );
     assert.match(execute, /Do not require continuation of the same worker/);
     assert.match(execute, /do not serialize a\s+checkpoint/);
   });
