@@ -150,8 +150,16 @@ export class SddEvalOpenCodeEvidenceSource implements SddEvalEvidenceSource {
     this.#readEvents = options.readEvents ?? (async () => []);
   }
 
-  async readTail(sessionId: string, limit: number): Promise<SddEvalTailEntry[]> {
+  /** @purpose Fail closed when evidence cannot be tied to one exact sandbox cwd. */
+  #sessionDirectory(sessionId: string): string {
     const directory = this.#registry.get(sessionId) ?? this.#directory;
+    if (!directory)
+      throw new Error(`OpenCode session ${sessionId} has no evidence directory binding`);
+    return resolve(directory);
+  }
+
+  async readTail(sessionId: string, limit: number): Promise<SddEvalTailEntry[]> {
+    const directory = this.#sessionDirectory(sessionId);
     const result = await this.#client.session.messages({
       path: { id: sessionId },
       query: { directory, limit },
@@ -182,11 +190,11 @@ export class SddEvalOpenCodeEvidenceSource implements SddEvalEvidenceSource {
   }
 
   async readEvents(sessionId: string): Promise<SddEvalEvent[]> {
-    return this.#readEvents(sessionId, this.#registry.get(sessionId) ?? this.#directory);
+    return this.#readEvents(sessionId, this.#sessionDirectory(sessionId));
   }
 
   async readDiff(sessionId: string): Promise<string> {
-    const directory = this.#registry.get(sessionId) ?? this.#directory;
+    const directory = this.#sessionDirectory(sessionId);
     const result = await this.#client.session.diff({
       path: { id: sessionId },
       query: { directory },
@@ -211,7 +219,7 @@ export class SddEvalOpenCodeEvidenceSource implements SddEvalEvidenceSource {
   }
 
   async readStatus(sessionId: string): Promise<SddEvalObservation['status']> {
-    const directory = this.#registry.get(sessionId) ?? this.#directory;
+    const directory = this.#sessionDirectory(sessionId);
     const result = await this.#client.session.status({ query: { directory } });
     if (result.error || !result.data) throw new Error(errorMessage(result));
     const status = result.data[sessionId];

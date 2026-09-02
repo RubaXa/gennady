@@ -75,6 +75,7 @@ export class SddEvalRunner {
     try {
       await this.#runtime.prompt({
         sessionId: session.id,
+        directory: scenario.directory,
         text: workerPrompt,
         model: this.#config.runnerModel,
         agent: this.#config.agent,

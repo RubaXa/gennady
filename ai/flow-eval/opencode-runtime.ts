@@ -5,6 +5,7 @@ import type { OpencodeClient } from '@opencode-ai/sdk';
 import { createSddEvalOpenCodeClient } from './opencode-client.ts';
 import { SddEvalSessionDirectoryMap } from './session-directory.ts';
 import type { OpenCodeModel, SddEvalRuntime, SddEvalSessionDirectoryRegistry } from './types.ts';
+import { resolve } from 'node:path';
 
 /** @purpose Options for connecting the harness to an already running OpenCode server. */
 type SddEvalOpenCodeRuntimeOptions = {
@@ -51,7 +52,7 @@ export class SddEvalOpenCodeRuntime implements SddEvalRuntime {
   readonly #registry: SddEvalSessionDirectoryRegistry;
 
   constructor(options: SddEvalOpenCodeRuntimeOptions = {}) {
-    this.#directory = options.directory;
+    this.#directory = options.directory ? resolve(options.directory) : undefined;
     this.#registry = options.registry ?? new SddEvalSessionDirectoryMap();
     this.#client =
       options.client ??
@@ -61,28 +62,49 @@ export class SddEvalOpenCodeRuntime implements SddEvalRuntime {
       });
   }
 
+  /** @purpose Resolve one mandatory session cwd and reject cross-sandbox requests. */
+  #sessionDirectory(sessionId: string, requestedDirectory?: string): string {
+    const bound = this.#registry.get(sessionId) ?? this.#directory;
+    if (!bound) throw new Error(`OpenCode session ${sessionId} has no working directory binding`);
+    const directory = requestedDirectory ? resolve(requestedDirectory) : bound;
+    if (directory !== bound) {
+      throw new Error(
+        `OpenCode session ${sessionId} is bound to ${bound}, not requested directory ${directory}`
+      );
+    }
+    return directory;
+  }
+
   async createSession(input: { title: string; directory: string }): Promise<{ id: string }> {
+    const requestedDirectory = input.directory || this.#directory;
+    if (!requestedDirectory) {
+      throw new Error('OpenCode session creation requires a working directory');
+    }
+    const directory = resolve(requestedDirectory);
     const result = await this.#client.session.create({
       body: { title: input.title },
-      query: { directory: input.directory || this.#directory },
+      query: { directory },
     });
     if (result.error || !result.data) {
       throw new Error(`OpenCode session creation failed: ${JSON.stringify(result.error)}`);
     }
-    this.#registry.set(result.data.id, input.directory || this.#directory || '');
+    this.#registry.set(result.data.id, directory);
     return { id: result.data.id };
   }
 
   async prompt(input: {
     sessionId: string;
+    directory: string;
     text: string;
     model: OpenCodeModel;
     agent?: string;
     system?: string;
   }): Promise<void> {
     const model = splitModel(input.model);
+    const directory = this.#sessionDirectory(input.sessionId, input.directory);
     const result = await this.#client.session.promptAsync({
       path: { id: input.sessionId },
+      query: { directory },
       body: {
         parts: [{ type: 'text', text: input.text }],
         model,
@@ -95,9 +117,10 @@ export class SddEvalOpenCodeRuntime implements SddEvalRuntime {
   }
 
   async abort(sessionId: string): Promise<void> {
+    const directory = this.#sessionDirectory(sessionId);
     const result = await this.#client.session.abort({
       path: { id: sessionId },
-      query: { directory: this.#registry.get(sessionId) ?? this.#directory },
+      query: { directory },
     });
     if (result.error)
       throw new Error(`OpenCode worker abort failed: ${JSON.stringify(result.error)}`);
@@ -111,6 +134,7 @@ export class SddEvalOpenCodeRuntime implements SddEvalRuntime {
     const model = splitModel(input.model);
     const result = await this.#client.session.prompt({
       path: { id: session.id },
+      query: { directory: this.#sessionDirectory(session.id, input.directory) },
       body: { parts: [{ type: 'text', text: input.prompt }], model },
     });
     if (result.error)

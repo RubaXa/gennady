@@ -70,7 +70,7 @@ class FakeEvidence implements SddEvalEvidenceSource {
 }
 
 class FakeRuntime implements SddEvalRuntime {
-  prompts: Array<{ sessionId: string; text: string; model: OpenCodeModel }> = [];
+  prompts: Array<{ sessionId: string; directory: string; text: string; model: OpenCodeModel }> = [];
   judgePrompts: string[] = [];
   active = 0;
   peak = 0;
@@ -79,7 +79,12 @@ class FakeRuntime implements SddEvalRuntime {
   async createSession() {
     return { id: `ses_${this.prompts.length + 1}` };
   }
-  async prompt(input: { sessionId: string; text: string; model: OpenCodeModel }) {
+  async prompt(input: {
+    sessionId: string;
+    directory: string;
+    text: string;
+    model: OpenCodeModel;
+  }) {
     this.prompts.push(input);
     this.active++;
     this.peak = Math.max(this.peak, this.active);
@@ -736,16 +741,19 @@ test('phase prompt selects the installed SDD flow and approval boundary', () => 
     mode: 'full-spec-to-approval-1',
     scale: 'function',
     intent: 'author spec',
+    directory: '/tmp/authoring-sandbox',
   });
   const scaffold = composeSddPhasePrompt({
     phase: 'scaffold',
     mode: 'actual-tickets-to-approval-2',
     intent: 'derive tickets',
+    directory: '/tmp/scaffold-sandbox',
   });
   const execute = composeSddPhasePrompt({
     phase: 'execute',
     mode: 'canonical-execute',
     intent: 'execute tickets',
+    directory: '/tmp/execute-sandbox',
   });
   assert.match(authoring, /Approval #1/);
   assert.match(scaffold, /actual implementation tickets|Approval #2/);
@@ -760,6 +768,10 @@ test('phase prompt selects the installed SDD flow and approval boundary', () => 
   assert.match(authoring, /never probe --help\/--version/);
   assert.match(authoring, /Do not narrate or pause at intermediate checkpoints/);
   assert.match(authoring, /leave Approval #1 pending/);
+  assert.match(authoring, /^WORKING_DIR=\/tmp\/authoring-sandbox$/m);
+  assert.match(authoring, /^TMP_DIR=\/tmp\/authoring-sandbox\/\.tmp$/m);
+  assert.match(authoring, /читать\/писать вне WORKING_DIR и TMP_DIR запрещено/);
+  assert.doesNotMatch(authoring, /messenger-mr241-negative|sdd-flow-eval-root/);
 });
 
 test('runner runs small scenarios in bounded parallel batches and sends isolated judge evidence', async () => {
@@ -832,18 +844,24 @@ test('judge parser accepts a labelled bold PASS even when rationale mentions an 
   assert.equal(result.verdict, 'pass');
 });
 
-test('SDK runtime and evidence preserve each parallel session cwd for messages/status/diff/abort', async () => {
+test('every SDK session call preserves its sandbox cwd and rejects a cross-sandbox prompt', async () => {
   const registry = new SddEvalSessionDirectoryMap();
   const calls: Array<{ operation: string; directory?: string }> = [];
   const sdk = {
     session: {
       create: async ({ query }: { query: { directory: string } }) => {
         calls.push({ operation: 'create', directory: query.directory });
-        const id =
-          calls.filter((call) => call.operation === 'create').length === 1 ? 'ses_a' : 'ses_b';
+        const id = `ses_${calls.filter((call) => call.operation === 'create').length}`;
         return { data: { id } };
       },
-      promptAsync: async () => ({ data: undefined }),
+      promptAsync: async ({ query }: { query: { directory: string } }) => {
+        calls.push({ operation: 'promptAsync', directory: query.directory });
+        return { data: undefined };
+      },
+      prompt: async ({ query }: { query: { directory: string } }) => {
+        calls.push({ operation: 'prompt', directory: query.directory });
+        return { data: { parts: [{ type: 'text', text: 'pass' }] } };
+      },
       abort: async ({ query }: { query: { directory?: string } }) => {
         calls.push({ operation: 'abort', directory: query.directory });
         return { data: true };
@@ -901,10 +919,25 @@ test('SDK runtime and evidence preserve each parallel session cwd for messages/s
   });
   await runtime.createSession({ title: 'case-a', directory: '/tmp/sdd-case-a' });
   await runtime.createSession({ title: 'case-b', directory: '/tmp/sdd-case-b' });
+  await assert.rejects(
+    runtime.prompt({
+      sessionId: 'ses_1',
+      directory: '/tmp/outside-case-a',
+      text: 'must not run',
+      model: { providerID: 'test', modelID: 'test' },
+    }),
+    /is bound to \/tmp\/sdd-case-a, not requested directory \/tmp\/outside-case-a/
+  );
   for (const [id, directory] of [
-    ['ses_a', '/tmp/sdd-case-a'],
-    ['ses_b', '/tmp/sdd-case-b'],
+    ['ses_1', '/tmp/sdd-case-a'],
+    ['ses_2', '/tmp/sdd-case-b'],
   ] as const) {
+    await runtime.prompt({
+      sessionId: id,
+      directory,
+      text: 'work only here',
+      model: { providerID: 'test', modelID: 'test' },
+    });
     await evidence.readTail(id, 2);
     assert.equal(await evidence.readStatus(id), 'completed');
     const diff = await evidence.readDiff(id);
@@ -920,11 +953,20 @@ test('SDK runtime and evidence preserve each parallel session cwd for messages/s
         (call) =>
           (call.operation === 'status' ||
             call.operation === 'diff' ||
-            call.operation === 'abort') &&
+            call.operation === 'abort' ||
+            call.operation === 'promptAsync') &&
           call.directory === directory
-      ).length >= 3
+      ).length >= 4
     );
   }
+  await runtime.judge({
+    directory: '/tmp/sdd-judge',
+    prompt: 'judge bounded evidence',
+    model: { providerID: 'test', modelID: 'judge' },
+  });
+  assert.ok(
+    calls.some((call) => call.operation === 'prompt' && call.directory === '/tmp/sdd-judge')
+  );
 });
 
 test('SDK evidence includes bounded untracked artifacts omitted by OpenCode session.diff', async () => {

@@ -2,6 +2,7 @@
 // @consumers: runner; prompts intentionally stop at the requested approval boundary.
 
 import type { SddEvalMode, SddEvalPhase, SddEvalScenario } from './types.ts';
+import { appendSddSessionBoundary } from '../../shared/sdd/session-boundary.ts';
 
 const PHASE_PROMPTS: Record<SddEvalPhase, string> = {
   'spec-authoring': `Run the installed SDD flow for full specification authoring.
@@ -20,8 +21,12 @@ Do not replace the canonical inputs with an ad-hoc coding plan.`,
 
 /** @purpose Compose the exact worker instruction for a phase/mode scenario. */
 export function composeSddPhasePrompt(
-  scenario: Pick<SddEvalScenario, 'phase' | 'mode' | 'intent' | 'acceptance' | 'scale'>
+  scenario: Pick<
+    SddEvalScenario,
+    'phase' | 'mode' | 'intent' | 'acceptance' | 'scale' | 'directory'
+  >
 ): string {
+  if (!scenario.directory) throw new Error('SDD eval worker prompt requires an isolated directory');
   const modeLine = `Selected phase: ${scenario.phase}; selected mode: ${scenario.mode}.`;
   const scaleLine = scenario.scale
     ? `Synthetic operator-confirmed SCALE: ${scenario.scale}. Do not reassess or debate SCALE.`
@@ -35,14 +40,17 @@ export function composeSddPhasePrompt(
 - Treat the scenario intent and acceptance criteria as the synthetic operator's answers and approval of intermediate interview checkpoints. When a minor answer is absent, choose the simplest conservative default. Do not narrate or pause at intermediate checkpoints; collect assumptions and state them once in the final approval-boundary summary, never as invented durable rationale.
 - Never waive a failed gate, accept a risk, or write an operator decision/Decision Log entry on the synthetic operator's behalf. A red required gate is a blocker and must remain visible.
 - Do not approve the target boundary on the operator's behalf. For spec-authoring leave Approval #1 pending; for scaffold leave Approval #2 pending. Present the actual artifacts and return normally at that boundary.`;
-  return [
-    PHASE_PROMPTS[scenario.phase],
-    headlessOperator,
-    modeLine,
-    scaleLine,
-    `Scenario intent:\n${scenario.intent}`,
-    acceptance,
-  ]
-    .filter(Boolean)
-    .join('\n\n');
+  return appendSddSessionBoundary(
+    [
+      PHASE_PROMPTS[scenario.phase],
+      headlessOperator,
+      modeLine,
+      scaleLine,
+      `Scenario intent:\n${scenario.intent}`,
+      acceptance,
+    ]
+      .filter(Boolean)
+      .join('\n\n'),
+    scenario.directory
+  );
 }

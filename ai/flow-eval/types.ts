@@ -156,6 +156,8 @@ export interface SddEvalRuntime {
   createSession(input: { title: string; directory: string }): Promise<{ id: string }>;
   prompt(input: {
     sessionId: string;
+    /** @purpose Exact sandbox cwd repeated on the worker prompt request. */
+    directory: string;
     text: string;
     model: OpenCodeModel;
     agent?: string;
