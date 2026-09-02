@@ -1,5 +1,8 @@
 # External SDD eval harness
 
+Operator handoff and safe-run instructions in Russian:
+[`RUNBOOK.ru.md`](./RUNBOOK.ru.md).
+
 This harness evaluates small SDD scenarios through an already running OpenCode server and the
 installed `@opencode-ai/sdk`. It never invokes the `codex` or `opencode` binaries and it does not
 write a hand-maintained TRACE/JSON artifact.
