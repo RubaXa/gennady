@@ -1,0 +1,29 @@
+{
+  "moduleEqualsScope": {
+    "scope": "fibonacci",
+    "module": "fibonacci",
+    "observedPath": "specs/fibonacci/fibonacci/fibonacci.spec.md",
+    "expectedStructure": "specs/<scope>/<module>/<module>.spec.md",
+    "expectedExamples": ["nth", "sequence"]
+  },
+  "checkerShellFilter": {
+    "inputSummary": "{\"command\":\"npx gennady sdd-check n.spec.md --authoring 2>&1 | rg \\\"ENTITY_SURFACES|NOT_FOLDED\\\"\"}"
+  },
+  "repeatedSpecWrites": {
+    "observedCount": 9,
+    "calls": [
+      "write:specs/fibonacci/fibonacci.spec.md",
+      "write:specs/fibonacci/fibonacci/fibonacci.spec.md",
+      "write:specs/fibonacci/fibonacci.spec.md",
+      "write:specs/fibonacci/fibonacci.spec.md",
+      "write:specs/fibonacci/fibonacci/fibonacci.spec.md",
+      "write:specs/fibonacci/fibonacci.spec.md",
+      "write:specs/fibonacci/fibonacci/fibonacci.spec.md",
+      "write:specs/fibonacci/fibonacci.spec.md",
+      "write:specs/fibonacci/fibonacci/fibonacci.spec.md"
+    ]
+  },
+  "leftoverSkeletonGuidance": {
+    "fixture": "shared/sdd/__tests__/fixtures/spec-authoring/distorted/p7-leftover-skeleton-guidance.spec.md"
+  }
+}

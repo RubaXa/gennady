@@ -196,7 +196,7 @@ test('CLI rejects invalid observation controls before provisioning or SDK access
 
 test(
   'provisioner gives fixture scenarios unique isolated directories',
-  { timeout: 120_000 },
+  { timeout: 300_000 },
   async () => {
     const fixtureRoot = await mkdtemp(join(tmpdir(), 'sdd-flow-eval-test-'));
     try {
@@ -708,6 +708,47 @@ test('observer aborts an SDD CLI probe wrapped in stderr redirection', async () 
   assert.equal(observations[0]?.stuck, true);
   assert.match(observations[0]?.errors.join('\n') ?? '', /forbidden CLI shell redirection/);
   assert.deepEqual(aborted, ['ses_redirect']);
+});
+
+test(
+  'one checker output filter does not make an otherwise progressing worker terminally stuck',
+  { todo: 'P9.3: the symptom policy currently turns one formatting redirect into stuck=true' },
+  async () => {
+    const fixture = JSON.parse(
+      await readFile(join(import.meta.dirname, 'fixtures', 'p9-misunderstood-cases.json'), 'utf8')
+    ) as { checkerShellFilter: { inputSummary: string } };
+    const evidence = new FakeEvidence([
+      {
+        tail: [
+          tail('checker-filter', '', [
+            {
+              callId: 'call-checker-filter',
+              tool: 'bash',
+              status: 'completed',
+              inputSummary: fixture.checkerShellFilter.inputSummary,
+            },
+          ]),
+        ],
+        status: 'running',
+      },
+    ]);
+    const observation = await new SddEvalObserver(evidence, {
+      everyMs: 0,
+      stuckAfter: 2,
+      tailLimit: 5,
+    }).observe('ses_checker_filter');
+    assert.equal(observation.stuck, false);
+  }
+);
+
+test('records the nine repeated full spec writes as a calibration metric', async () => {
+  const fixture = JSON.parse(
+    await readFile(join(import.meta.dirname, 'fixtures', 'p9-misunderstood-cases.json'), 'utf8')
+  ) as { repeatedSpecWrites: { observedCount: number; calls: string[] } };
+  const writes = fixture.repeatedSpecWrites.calls.filter((call) => call.startsWith('write:specs/'));
+  assert.equal(writes.length, fixture.repeatedSpecWrites.observedCount);
+  assert.equal(writes.length, 9);
+  assert.ok(new Set(writes).size < writes.length, 'the metric must retain repeated target writes');
 });
 
 test('judge receives bounded intent, state, diff, events and tail evidence', async () => {

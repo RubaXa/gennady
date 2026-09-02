@@ -242,6 +242,30 @@ describe('SddNewCommand', () => {
     }
   });
 
+  it(
+    'explains module responsibility and creates nothing when module equals scope',
+    { todo: 'P9.2: sdd-new currently creates specs/fibonacci/fibonacci/fibonacci.spec.md' },
+    async () => {
+      const cwd = mkdtempSync(join(tmpdir(), 'sdd-new-module-equals-scope-'));
+      const prevCwd = process.cwd();
+      try {
+        process.chdir(cwd);
+        const outcome = await mod.run(
+          argv('module', '--scope', 'fibonacci', '--module', 'fibonacci')
+        );
+        assert.strictEqual(outcome.ok, false);
+        if (!outcome.ok) {
+          assert.match(outcome.message, /specs\/<scope>\/<module>\/<module>\.spec\.md/);
+          assert.match(outcome.message, /nth|sequence/);
+        }
+        assert.strictEqual(existsSync(join(cwd, 'specs')), false);
+      } finally {
+        process.chdir(prevCwd);
+        rmSync(cwd, { recursive: true, force: true });
+      }
+    }
+  );
+
   it('creates a product spec at the conventional path via --out and writes the skeleton verbatim', async () => {
     const out = join(tmpDir, 'specs', 'backend', 'backend.spec.md');
     const outcome = await mod.run(argv('product', '--scope', 'backend', '--out', out));

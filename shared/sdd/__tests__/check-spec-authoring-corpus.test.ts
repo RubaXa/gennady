@@ -48,6 +48,12 @@ describe('spec authoring corpus — real documents and observed distortions', ()
     assert.ok(codes('distorted/leftover-guidance.spec.md').includes('SDD_AUTHORING_PLACEHOLDER'));
   });
 
+  it('detects the independently captured P7 skeleton hint after authored prose', () => {
+    assert.ok(
+      codes('distorted/p7-leftover-skeleton-guidance.spec.md').includes('SDD_AUTHORING_PLACEHOLDER')
+    );
+  });
+
   it('auto-fixes only trivial whitespace and preserves the authored content', () => {
     const fixer = (
       checkModule as typeof checkModule & {

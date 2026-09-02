@@ -10,6 +10,7 @@ shape so checker behavior stays attributable.
 - `distorted/prose-list.spec.md`: Out-of-Scope was flattened from bullets into prose.
 - `distorted/missing-requirement-ids.spec.md`: requirement headings lost their IDs.
 - `distorted/leftover-guidance.spec.md`: a skeleton guidance comment survived authoring.
+- `distorted/p7-leftover-skeleton-guidance.spec.md`: a second real-run shape where authored prose
+  is followed by an unremoved skeleton hint; kept separately so the regression corpus only grows.
 - `autofix/trivial-whitespace.input.spec.md`: extra heading spaces and list indentation.
 - `autofix/trivial-whitespace.expected.spec.md`: normalized document expected after auto-fix.
-
