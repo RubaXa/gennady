@@ -156,4 +156,29 @@ gennady verify --root=./pkg/client --all
       <Instead>Exit 1 = findings; anything else (or a `panic:` trace) = ENV_FAIL. The plugin declares this on the gate.</Instead>
     </AntiPattern>
   </AntiPatterns>
+
+  <VerificationHooks>
+    <Hook id="HOOK_GO_VERIFY_PLAN">
+      <Command>gennady verify --plan</Command>
+      <Expected>Exit 0; the plan names module roots, changed-package scope, toolchain diagnostics, config path, and exact non-mutating gate argv.</Expected>
+    </Hook>
+    <Hook id="HOOK_GO_VERIFY_CHANGED_SCOPE">
+      <Command>gennady verify</Command>
+      <Expected>Exit 0; build, vet, fmt, lint, and test gates run for the changed scope. ENV_FAIL remains distinct from code findings.</Expected>
+    </Hook>
+    <Hook id="HOOK_GO_VERIFY_ALL_ON_DEMAND">
+      <Command>gennady verify --all</Command>
+      <Expected>Exit 0 when full-repository verification is required; every nested module is either covered separately or reported explicitly.</Expected>
+    </Hook>
+  </VerificationHooks>
+
+  <RewardCriteria>
+    ✅ One `gennady verify` entry point selects deterministic Go gates from committed stack configuration.
+    ✅ Verification observes without rewriting source, module files, or generated artifacts.
+    ✅ Changed-package scope is the default; full and nested-module sweeps are explicit.
+    ✅ Tool/config/version failures report ENV_FAIL with remediation instead of becoming code findings.
+    ✅ Build, vet, fmt, lint, and bounded tests expose their exact argv and results.
+    ❌ `go fmt`, `go mod tidy`, or another mutating command runs as a verification gate.
+    ❌ Root-module success is presented as full coverage while nested modules were not checked.
+  </RewardCriteria>
 </GolangSetup>

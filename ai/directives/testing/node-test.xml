@@ -289,4 +289,13 @@
       <Expected>Empty on new/changed test files.</Expected>
     </Hook>
   </VerificationHooks>
+
+  <RewardCriteria>
+    ✅ Node tests use the narrowest diagnostic `node:assert/strict` API for the observed value shape.
+    ✅ Injected collaborators use native `mock.fn()` when interaction tracking is required.
+    ✅ `node --test` and TypeScript checks execute successfully; coverage runs when required by the ticket.
+    ✅ HTTP mock-agent and snapshot files follow their lifecycle and location contracts.
+    ❌ Manual try/catch flags, message `includes`, scalar snapshots, or unreviewed snapshot updates replace direct assertions.
+    ❌ A module mock replaces the SUT or the contract method being verified.
+  </RewardCriteria>
 </NodeTestRules>
