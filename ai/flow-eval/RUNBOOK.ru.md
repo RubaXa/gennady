@@ -46,14 +46,55 @@ npm run test:sdd-flow-eval
 
 Продолжать можно только при чистом рабочем дереве, успешной сборке и зелёном тесте харнесса.
 
-В отдельном терминале запустить локальный сервер OpenCode:
+До запуска убедиться, что окружение содержит интеграцию и учётные данные OpenCode, не печатая их
+значения:
 
 ```bash
-opencode serve --port 4096
+for name in \
+  OPENCODE_INTEGRATION \
+  OPENCODE_SERVER_PASSWORD \
+  OPENCODE_SERVER_USERNAME \
+  OPENCODE_SERVER_TOKEN
+do
+  test -n "$(printenv "$name")" || { echo "$name is missing" >&2; exit 1; }
+done
 ```
 
-Если сервер защищён паролем, перед запуском харнесса установить
-`OPENCODE_SERVER_PASSWORD`; пароль нельзя передавать аргументом командной строки.
+Если хотя бы одной переменной нет, остановиться и сообщить оператору: значения нельзя выдумывать.
+
+Выбрать свободный порт `4097` или выше, исключив `4096` и порт личного OpenCode Desktop оператора
+`58656`. Перед запуском проверить выбранный порт через `lsof`:
+
+```bash
+OPENCODE_EVAL_PORT=4097
+if lsof -nP -iTCP:"$OPENCODE_EVAL_PORT" -sTCP:LISTEN | grep -q .; then
+  echo "port $OPENCODE_EVAL_PORT is busy" >&2
+  exit 1
+fi
+```
+
+В отдельном терминале запустить собственный изолированный сервер. Флаг `--pure` обязателен: он
+изолирует конфигурацию и базу сессий eval от Desktop-инстанса оператора.
+
+```bash
+opencode serve --pure --hostname 127.0.0.1 --port "$OPENCODE_EVAL_PORT" &
+OPENCODE_EVAL_SERVER_PID=$!
+```
+
+Перед передачей запуска runner проверить `/health` и PID слушателя, чтобы подтвердить, что отвечает
+именно только что запущенный сервер:
+
+```bash
+curl --fail --silent --show-error "http://127.0.0.1:$OPENCODE_EVAL_PORT/health"
+lsof -nP -a -p "$OPENCODE_EVAL_SERVER_PID" \
+  -iTCP:"$OPENCODE_EVAL_PORT" -sTCP:LISTEN
+```
+
+После eval остановить только сохранённый PID собственного сервера:
+
+```bash
+kill "$OPENCODE_EVAL_SERVER_PID"
+```
 
 ## Живой прогон
 
@@ -65,7 +106,7 @@ npm run sdd-flow-eval -- \
   --scenario-file ./ai/flow-eval/scenarios.json \
   --directory "$SDD_EVAL_ROOT" \
   --gennady-root /Users/k.lebedev/Developer/gennady/.claude/worktrees/sdd-v2-rc52-followup \
-  --base-url http://127.0.0.1:4096 \
+  --base-url "http://127.0.0.1:$OPENCODE_EVAL_PORT" \
   --model llm-proxy/deepseek-v4-flash \
   --judge-model llm-proxy/deepseek-v4-flash \
   --concurrency 3 \
@@ -120,7 +161,8 @@ untracked-файлы, это дефект харнесса, а не дефект
 2. Не перезапускать автоматически после `fail` или `inconclusive`.
 3. При отсутствии изменений два наблюдения подряд проверить хвост; при `stuck=true` доверить остановку
    харнессу.
-4. После результата остановить сервер OpenCode, если он больше не нужен.
+4. После результата остановить только собственный сервер OpenCode по сохранённому
+   `OPENCODE_EVAL_SERVER_PID`; не трогать Desktop-инстанс оператора.
 5. В отчёте указать: сценарий, модель, worker-сессию, временную песочницу, хронологию по наблюдениям,
    итоговый diff, вердикт judge и собственный причинный вывод.
 6. Отдельно отметить, что было доказано, а что осталось непроверенным.
