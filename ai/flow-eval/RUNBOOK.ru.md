@@ -102,6 +102,11 @@ lsof -nP -a -p "$OPENCODE_EVAL_SERVER_PID" \
 kill "$OPENCODE_EVAL_SERVER_PID"
 ```
 
+Сервер и live runner должны работать в одной host/network-среде. В Codex их нужно запускать из одной
+основной задачи; оба live-процесса запускать с `sandbox_permissions: require_escalated`, чтобы им был
+доступен один локальный HTTP transport. Не делегировать live runner sandboxed-субагенту: его
+`127.0.0.1` может не видеть сервер основной задачи и завершиться `fetch failed` до создания worker.
+
 ## Живой прогон
 
 Команда запуска всех трёх подготовленных фаз:
