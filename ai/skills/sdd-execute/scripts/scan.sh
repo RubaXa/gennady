@@ -25,6 +25,11 @@ set -uo pipefail
 
 PROG="scan"
 VERSION="1"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Task-ID grammar and parsers come from the shared lib so scan and check cannot drift on
+# what counts as a Task-ID (whole token first, anchored grammar second).
+# shellcheck source=_sdd-lib.sh
+. "$SCRIPT_DIR/_sdd-lib.sh"
 
 # ---------------------------------------------------------------------------
 # Argument parsing
@@ -187,6 +192,10 @@ ticket_warnings() {
     local w=()
     # Required structural sections
     grep -q '^## 1\. Meta' "$f" 2>/dev/null || w+=("no-meta-section")
+    # Task-ID grammar: legacy TSK-NN, or path-based TSK-{PREFIX}-{NNN} with exactly three digits.
+    # sdd_lib_task_id takes the whole Meta token and validates it anchored, so a value whose
+    # valid prefix is a real ID (`TSK-IB-0012` -> `TSK-IB-001`) is unparseable, not a match.
+    [[ -n "$(sdd_lib_task_id "$f")" ]] || w+=("task-id-unparseable")
     grep -q '^## 7\. Execution Log' "$f" 2>/dev/null || w+=("no-execlog-section")
     # Anchor closure sanity
     local opens closes
@@ -219,7 +228,8 @@ else
         | sort || true)
     if [[ -z "$TASK_FILES" ]]; then
         printf '# (no ticket files with a Task-ID found under tasks/)\n'
-        emit_warn "INFO" "tasks/" "no markdown ticket with a Task-ID — project may be pre-scaffold"
+        # WARN, not INFO: an empty scope must not read as a clean snapshot.
+        emit_warn "WARN" "tasks/" "no markdown ticket with a Task-ID — project may be pre-scaffold"
     else
         while IFS= read -r f; do
             [[ -z "$f" ]] && continue
@@ -268,12 +278,27 @@ else
         while IFS= read -r tr; do
             [[ -z "$tr" ]] && continue
             rel="${tr#$ROOT_ABS/}"
-            # Match both legacy and prefixed Task-IDs, in bare or markdown-link form.
-            done_c=$(grep -E '\|[[:space:]]*\[?TSK-([A-Z][A-Z0-9]*-)?[0-9]+.*`?\[x\]`?[[:space:]]+DONE' "$tr" 2>/dev/null | wc -l | tr -d ' ')
-            todo_c=$(grep -E '\|[[:space:]]*\[?TSK-([A-Z][A-Z0-9]*-)?[0-9]+.*`?\[ \]`?[[:space:]]+TODO' "$tr" 2>/dev/null | wc -l | tr -d ' ')
-            inpg_c=$(grep -E '\|[[:space:]]*\[?TSK-([A-Z][A-Z0-9]*-)?[0-9]+.*`?\[~\]`?[[:space:]]+IN_PROGRESS' "$tr" 2>/dev/null | wc -l | tr -d ' ')
-            blkd_c=$(grep -E '\|[[:space:]]*\[?TSK-([A-Z][A-Z0-9]*-)?[0-9]+.*`?\[!\]`?[[:space:]]+BLOCKED' "$tr" 2>/dev/null | wc -l | tr -d ' ')
+            # Count tracker rows matching a Task-ID with a status cell.
+            # Both ID forms: legacy TSK-NN and path-based TSK-{PREFIX}-{NNN}.
+            # Bare and link form alike: `| TSK-NN |` or `| [TSK-IB-001](...) |`
+            # The ID cell must be the full grammar followed by the token boundary: a row
+            # whose cell reads `TSK-IB-0012` is NOT counted as a row of `TSK-IB-001`
+            # (it is reported below instead), and `TSK-IB-1` is not counted at all.
+            TSK_CELL="^[[:space:]]*\|[[:space:]]*\[?$SDD_TASK_ID_RE$SDD_TASK_ID_BOUNDARY"
+            done_c=$(grep -E "$TSK_CELL.*\`?\[x\]\`?[[:space:]]+DONE" "$tr" 2>/dev/null | wc -l | tr -d ' ')
+            todo_c=$(grep -E "$TSK_CELL.*\`?\[ \]\`?[[:space:]]+TODO" "$tr" 2>/dev/null | wc -l | tr -d ' ')
+            inpg_c=$(grep -E "$TSK_CELL.*\`?\[~\]\`?[[:space:]]+IN_PROGRESS" "$tr" 2>/dev/null | wc -l | tr -d ' ')
+            blkd_c=$(grep -E "$TSK_CELL.*\`?\[!\]\`?[[:space:]]+BLOCKED" "$tr" 2>/dev/null | wc -l | tr -d ' ')
             total=$((done_c + todo_c + inpg_c + blkd_c))
+            # Surface out-of-grammar IDs explicitly: an uncounted row would otherwise be
+            # indistinguishable from a tracker that legitimately has no ticket rows.
+            # `tr -cs` yields whole tokens (see check.sh); the grammar is applied to each.
+            bad_ids=$(tr -cs 'A-Z0-9-' '\n' < "$tr" 2>/dev/null \
+                        | grep -E '^TSK-.' | sort -u \
+                        | grep -vE "^$SDD_TASK_ID_RE\$" || true)
+            if [[ -n "$bad_ids" ]]; then
+                emit_warn "WARN" "$rel" "tracker Task-ID(s) outside the grammar, not counted as rows: $(printf '%s' "$bad_ids" | tr '\n' ' ')"
+            fi
             if [[ "$total" -eq 0 ]]; then
                 # Tracker README might be the top-level overview without ticket rows — fine, but mark with hint
                 emit_warn "INFO" "$rel" "no TSK rows detected (top-level overview tracker?)"

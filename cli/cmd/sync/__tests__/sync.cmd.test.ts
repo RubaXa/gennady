@@ -57,7 +57,7 @@ function makeDeps(sourceDir: string, targetDir: string): SyncCmdDeps {
     readdir: readdirSync,
     resolvePackageDir: (_projectRoot: string, _subdir: string) => sourceDir,
     unlink: () => {},
-    rmdir: () => {},
+    rm: () => {},
   };
 }
 

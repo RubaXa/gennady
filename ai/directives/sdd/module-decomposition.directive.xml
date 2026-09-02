@@ -327,8 +327,14 @@
     <Axiom id="AX_LANG_PASS_ON_WRITE">
       Module specs are not «written» until their language is checked. After assembling the files
       in STEP_6 and BEFORE operator review: read `ai/directives/language/examples.md` +
-      `ai/directives/language/lang-lint.directive.xml`, apply to each written/updated module spec,
-      fix in place. Report as one line («язык проверен: N правок по M файлам»). Never skipped.
+      `ai/directives/language/lang-lint.directive.xml` when present, apply to each written/updated
+      module spec, fix in place. Report as one line («язык проверен: N правок по M файлам»).
+
+      `ai/directives/language/` is optional: when the directory is absent — as it is in the
+      published package today — the pass still runs, calibrated by `AX_OPERATOR_DIALOGUE_STYLE`
+      instead (drift → «расходится со спекой», seam → «точка стыковки», no rare word where a common
+      one exists, no metaphor presented as a claim). The requirement on language never degrades; only
+      the source of the calibration does. Never skipped, never offered as an option.
     </Axiom>
 
     <Axiom id="AX_NEXT_STEP_MENU">

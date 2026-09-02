@@ -12,7 +12,9 @@
 #
 # Output sections (TSV, machine-readable, stable):
 #   [HEADERS]      — file \t has_file \t has_consumers \t has_tasks \t verdict(OK|PARTIAL|NONE)
-#   [TASKID]       — kind(orphan|collision|missing) \t id \t detail
+#   [TASKID]       — kind \t id \t detail
+#                    kinds: orphan | collision | missing | unreadable  (counted as findings)
+#                           unparseable-ref                           (informational: see below)
 #   [TRACKER_SYNC] — task_id \t ticket_status \t tracker_status \t match(YES|NO|NO_ROW)
 #   [REOPENS]      — task_id \t meta \t audit_triggered \t verdict(OK|PENDING|MISMATCH|UNVERIFIABLE)
 #   [RULES]        — file \t belief \t anti \t hooks \t reward \t verdict(OK|INCOMPLETE) \t missing
@@ -38,8 +40,23 @@
 # Exit codes:
 #   0 — all checks clean (zero findings)
 #   3 — one or more findings (desync / orphan / collision / partial-or-missing header / incomplete rule)
-#   2 — structural failure (bad root / not an SDD project)
-#   4 — bad invocation
+#   2 — structural failure: bad root, not an SDD project, NO_TICKETS_FOUND (empty scope),
+#       TICKET_ID_UNREADABLE (a ticket's Meta Task-ID is unparseable)
+#   4 — bad invocation (including a Task-ID outside the accepted grammar)
+#
+# A `findings=0` line is only ever emitted after something was actually checked: the
+# discovery gate turns "nothing to check" into exit 2, never into a clean report. An
+# absent `--task` id is a counted `missing` [TASKID] finding, so it exits 3, not 0.
+#
+# Task-ID parsing everywhere here follows the whole-token-then-anchored-grammar rule
+# documented in _sdd-lib.sh: an in-grammar *prefix* of an out-of-grammar token is never a
+# match. `unreadable` (ticket Meta carries a value outside the grammar) is machine truth
+# about the ticket tree and IS counted. `unparseable-ref` (an `@tasks:` comment in source
+# citing something like `TSK-XX` or `TSK-IB-0012`) is reported but NOT counted, on the same
+# grounds as [LOG]'s informational kinds: a source comment is hand-written prose that no
+# ticket's correctness depends on, and scaffold templates legitimately carry placeholder
+# IDs. The load-bearing guarantee is that such a token is never silently truncated into a
+# different, valid ID and matched against a real ticket.
 
 set -uo pipefail
 
@@ -63,12 +80,13 @@ case "${1:-}" in
         MODE="task"
         TASK_ID="${2:-}"
         ROOT="${3:-.}"
-        if [[ -z "$TASK_ID" || ! "$TASK_ID" =~ ^TSK-([A-Z][A-Z0-9]*-)?[0-9]+$ ]]; then
+        if [[ -z "$TASK_ID" || ! "$TASK_ID" =~ ^$SDD_TASK_ID_RE$ ]]; then
             cat <<EOF
 [$PROG] BAD_INVOCATION
   expected: $PROG --task TSK-NN|TSK-PREFIX-NNN [project-root]
   got:      $PROG --task '${TASK_ID:-}' ...
-Required action: pass a Task-ID of the form TSK-<number>.
+Required action: pass a Task-ID of the form TSK-<number> (legacy) or TSK-<PREFIX>-<NNN>
+  (path-based, exactly three digits — 'TSK-IB-1' is not a Task-ID).
 EOF
             exit 4
         fi
@@ -161,6 +179,43 @@ printf 'ROOT=%s\n' "$ROOT_ABS"
 TASK_FILES=$(find -L "$ROOT_ABS/tasks" -name '*.md' ! -name 'README.md' -type f 2>/dev/null | sort || true)
 
 # ---------------------------------------------------------------------------
+# Discovery gate — a green result must mean "checked clean", never "checked nothing".
+# ---------------------------------------------------------------------------
+
+if [[ -z "$TASK_FILES" ]]; then
+    cat <<EOF
+[$PROG] NO_TICKETS_FOUND
+  scope:  $ROOT_ABS/tasks
+  reason: no markdown ticket file under tasks/ (README.md trackers aside)
+Required action: run from the project that owns the tickets, or scaffold them first.
+  A zero-finding report over an empty scope would mean "checked nothing", not "clean".
+EOF
+    exit 2
+fi
+
+if [[ "$MODE" == "task" ]]; then
+    META_HIT=""
+    PATH_HIT=""
+    while IFS= read -r f; do
+        [[ -z "$f" ]] && continue
+        [[ "$(sdd_lib_task_id "$f")" == "$TASK_ID" ]] && META_HIT="${f#$ROOT_ABS/}"
+        [[ "$(sdd_lib_task_id_from_path "$f")" == "$TASK_ID" ]] && PATH_HIT="${f#$ROOT_ABS/}"
+    done <<< "$TASK_FILES"
+
+    if [[ -z "$META_HIT" && -n "$PATH_HIT" ]]; then
+        cat <<EOF
+[$PROG] TICKET_ID_UNREADABLE
+  ticket: $PATH_HIT
+  task:   $TASK_ID
+  reason: the filename claims this Task-ID but Meta carries no parseable
+          '- **Task-ID:** $TASK_ID' line
+Required action: repair the ticket Meta Task-ID line, then re-run.
+EOF
+        exit 2
+    fi
+fi
+
+# ---------------------------------------------------------------------------
 # [TASKID] — collisions (global) + orphan @tasks references
 # ---------------------------------------------------------------------------
 
@@ -184,7 +239,23 @@ trap 'rm -f "$COLLISION_TMP"' EXIT
 while IFS= read -r f; do
     [[ -z "$f" ]] && continue
     id=$(sdd_lib_task_id "$f")
-    [[ -z "$id" ]] && continue
+    if [[ -z "$id" ]]; then
+        # Unreadable Meta must not be silently skipped — a ticket the tree cannot identify
+        # is exactly the case an unanchored grammar match used to paper over. Tree mode only:
+        # task mode already exits 2 (TICKET_ID_UNREADABLE) when the requested ticket is the
+        # unreadable one, and every other ticket is outside its scope.
+        if [[ "$MODE" == "tree" ]]; then
+            raw=$(sdd_lib_task_id_raw "$f")
+            if [[ -n "$raw" ]]; then
+                detail="Meta Task-ID '$raw' is outside the grammar (TSK-NN | TSK-PREFIX-NNN)"
+            else
+                detail="Meta carries no parseable Task-ID line"
+            fi
+            printf 'unreadable\t%s\t%s: %s\n' "${raw:--}" "${f#$ROOT_ABS/}" "$detail"
+            FINDINGS=$((FINDINGS+1))
+        fi
+        continue
+    fi
     printf '%s\t%s\n' "$id" "${f#$ROOT_ABS/}" >> "$COLLISION_TMP"
 done <<< "$TASK_FILES"
 
@@ -204,12 +275,22 @@ if [[ "$MODE" == "tree" ]]; then
     # Collect @tasks references from source files (exclude heavy dirs).
     refs=$(grep -rhoE '@tasks:[^@]*' "$ROOT_ABS" \
               --include='*.ts' --include='*.js' --include='*.sh' --include='*.go' \
+              --include='*.swift' --include='*.m' --include='*.mm' --include='*.h' \
+              --include='*.kt' --include='*.java' --include='*.py' --include='*.rb' \
+              --include='*.rs' --include='*.cs' --include='*.php' \
               --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist \
               --exclude-dir=worktrees --exclude-dir=.claude 2>/dev/null \
-            | grep -oE 'TSK-([A-Z][A-Z0-9]*-)?[0-9]+' | sort -u || true)
+            | tr -cs 'A-Z0-9-' '\n' | grep -E '^TSK-.' | sort -u || true)
+    # `tr -cs` splits on every character an ID cannot contain, so each line is a WHOLE
+    # token as written in the comment — the boundary the grammar is then applied to.
+    # `TSK-IB-0012` stays `TSK-IB-0012` and fails the grammar; it can no longer arrive here
+    # truncated to `TSK-IB-001` and match a real ticket. (`tr`/`grep -E` only: BSD-portable.)
     while IFS= read -r rid; do
         [[ -z "$rid" ]] && continue
-        if ! echo "$known_ids" | grep -qx "$rid"; then
+        if ! sdd_lib_task_id_valid "$rid"; then
+            # Reported, not counted — see the [TASKID] note in the header.
+            printf 'unparseable-ref\t%s\t@tasks reference outside the Task-ID grammar (TSK-NN | TSK-PREFIX-NNN); not matched against any ticket\n' "$rid"
+        elif ! echo "$known_ids" | grep -qx "$rid"; then
             printf 'orphan\t%s\t@tasks reference with no ticket declaring this Meta Task-ID\n' "$rid"
             FINDINGS=$((FINDINGS+1))
         fi
@@ -364,8 +445,13 @@ rule_files_in_tree() {
 
 # Task mode: the rules this ticket's phases actually cite (the "activated" set).
 rule_files_for_task() {
-    local ticket
-    ticket=$(grep -l "^- \*\*Task-ID:\*\* $TASK_ID\$" $TASK_FILES 2>/dev/null | head -1)
+    local ticket="" f
+    # Resolve the ticket through sdd_lib_task_id rather than a fourth ad-hoc Meta regex:
+    # one parser, one grammar gate (and no word-splitting of ticket paths).
+    while IFS= read -r f; do
+        [[ -z "$f" ]] && continue
+        if [[ "$(sdd_lib_task_id "$f")" == "$TASK_ID" ]]; then ticket="$f"; break; fi
+    done <<< "$TASK_FILES"
     [[ -z "$ticket" ]] && return
     grep -ohE '(ai/directives|plugins/[a-z0-9-]+/directives)/[a-z0-9-]+/[a-z0-9._-]+\.xml' "$ticket" \
         | while IFS= read -r rel; do

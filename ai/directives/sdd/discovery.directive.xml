@@ -320,10 +320,16 @@
     <Axiom id="AX_LANG_PASS_ON_WRITE">
       A spec is not «written» until its language is checked. After assembling the spec file and
       BEFORE the final decision card, run the lang-lint pass on it: read
-      `ai/directives/language/examples.md` (calibration) + `ai/directives/language/lang-lint.directive.xml`,
-      apply its Execution_Plan to the just-written spec (comprehension first, then calques /
-      bookish words), fix in place. Report as one line in the final card («язык проверен: N правок»).
-      Never skipped, never offered as an option.
+      `ai/directives/language/examples.md` (calibration) + `ai/directives/language/lang-lint.directive.xml`
+      when present, apply its Execution_Plan to the just-written spec (comprehension first, then
+      calques / bookish words), fix in place. Report as one line in the final card («язык проверен:
+      N правок»).
+
+      `ai/directives/language/` is optional: when the directory is absent — as it is in the
+      published package today — the pass still runs, calibrated by `AX_OPERATOR_DIALOGUE_STYLE`
+      instead (drift → «расходится со спекой», seam → «точка стыковки», no rare word where a common
+      one exists, no metaphor presented as a claim). The requirement on language never degrades; only
+      the source of the calibration does. Never skipped, never offered as an option.
     </Axiom>
 
     <Axiom id="AX_NEXT_STEP_MENU">

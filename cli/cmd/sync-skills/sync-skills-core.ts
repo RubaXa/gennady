@@ -24,6 +24,106 @@ import type {
 /** @purpose Names never deployed into a project: hidden files, system artifacts, skill tests. */
 const EXCLUDED_NAMES = new Set(['.DS_Store', '__tests__']);
 
+/**
+ * @purpose Name of the file recording which skills this sync installed.
+ * @invariant Dot-prefixed on purpose: every readdir filter here already skips `.`-names,
+ *   so the manifest can never be mistaken for a skill directory.
+ */
+const MANIFEST_NAME = '.gennady-synced';
+
+/**
+ * @purpose Read the set of skill names a previous sync installed into the target.
+ * @invariant null means "no usable manifest": an unreadable one is treated as absent, so
+ *   ownership falls back to `adoptPackageInstalled`, which can only under-claim.
+ * @param targetDir Skills directory being synced into.
+ * @param deps Injectable IO.
+ * @returns The recorded names, or null when no manifest exists (never synced by this version).
+ */
+export function readSyncManifest(targetDir: string, deps: SyncCmdDeps): Set<string> | null {
+  try {
+    const raw = deps.readFile!(join(targetDir, MANIFEST_NAME)).toString('utf-8');
+    const names = raw
+      .split('\n')
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0 && !l.startsWith('#'));
+    return new Set(names);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * @purpose Record which skills this sync owns, so the next run can prune only those.
+ * @param targetDir Skills directory being synced into.
+ * @param names Owned skill names: the previous manifest merged with this run's, minus pruned.
+ * @param dryRun When true, nothing is written.
+ * @param deps Injectable IO.
+ */
+export function writeSyncManifest(
+  targetDir: string,
+  names: readonly string[],
+  dryRun: boolean,
+  deps: SyncCmdDeps
+): void {
+  if (dryRun) return;
+  const body =
+    '# Skills owned by `gennady sync-skills`. Only these are pruned when they\n' +
+    '# disappear from the package. Anything else in this directory is left alone.\n' +
+    '# A first sync adopts only the skills the package ships then; leftovers from\n' +
+    '# older versions cannot be told apart from your own skills and stay untouched.\n' +
+    [...names].sort().join('\n') +
+    '\n';
+  try {
+    deps.writeFile!(join(targetDir, MANIFEST_NAME), Buffer.from(body, 'utf-8'));
+  } catch {
+    // A missing manifest only means the next run prunes nothing — never fail the sync over it.
+  }
+}
+
+/**
+ * @purpose Migration policy for a target that has no manifest yet: which existing skill
+ *   directories this tool claims ownership of.
+ * @invariant Only names the package ships *now* are adopted: the sync writes skill files
+ *   verbatim, so nothing marks a directory as package-installed.
+ * @invariant A leftover from an older package version is indistinguishable from a
+ *   project-authored skill, so it is deliberately never claimed, never pruned.
+ * @invariant A same-named directory is overwritten by the sync anyway; recording the name only
+ *   makes pruning it possible later.
+ * @param targetSkillNames Skill directories currently in the target.
+ * @param shippedNames Every skill name the package ships this run (ignoring any name filter).
+ * @returns The adopted names.
+ */
+export function adoptPackageInstalled(
+  targetSkillNames: readonly string[],
+  shippedNames: ReadonlySet<string>
+): Set<string> {
+  return new Set(targetSkillNames.filter((name) => shippedNames.has(name)));
+}
+
+/**
+ * @purpose Compute the manifest for the next run: previous ownership merged with this run's.
+ * @invariant Merge, never replace: a filtered run (`gennady sync-skills sdd-execute`) must not
+ *   drop ownership of the skills it did not touch.
+ * @invariant A skill whose deletion failed stays owned, so the next run retries it; one whose
+ *   deletion succeeded, or whose directory is gone, is dropped.
+ * @param owned Ownership going into this run (manifest, or the adopted set on a first run).
+ * @param syncedNames Skills installed by this run.
+ * @param prunedNames Orphans this run deleted successfully.
+ * @param present Target skill directories seen before syncing, or null when unreadable.
+ * @returns Names to record.
+ */
+export function nextManifestNames(
+  owned: ReadonlySet<string>,
+  syncedNames: readonly string[],
+  prunedNames: ReadonlySet<string>,
+  present: readonly string[] | null
+): string[] {
+  const retained = [...owned].filter(
+    (name) => !prunedNames.has(name) && (present === null || present.includes(name))
+  );
+  return [...new Set([...retained, ...syncedNames])];
+}
+
 /** @purpose True for a test file that must stay in this repo rather than ship with the skill. */
 function isTestArtifact(name: string): boolean {
   return /\.(test|spec)\.[cm]?[jt]sx?$/.test(name);
@@ -44,6 +144,18 @@ export function scanSkillRoots(
   roots: readonly string[],
   skillNames?: string[]
 ): Map<string, Map<string, Buffer>> {
+  return selectSkills(scanAllSkillRoots(roots), skillNames);
+}
+
+/**
+ * @purpose Scan every root into one map, keeping all names — the set the package ships.
+ * @invariant Ownership is recorded per package, not per run, so a filtered sync still needs
+ *   every name; `selectSkills` applies the filter afterwards.
+ * @param roots Skill roots, base first; plugin roots may be absent, the base must be readable.
+ * @throws If a root exists but cannot be read.
+ * @returns Map of skill names to their file contents.
+ */
+export function scanAllSkillRoots(roots: readonly string[]): Map<string, Map<string, Buffer>> {
   const merged = new Map<string, Map<string, Buffer>>();
   for (const [index, root] of roots.entries()) {
     let scanned: Map<string, Map<string, Buffer>>;
@@ -68,6 +180,20 @@ export function scanSkillRoots(
     }
   }
 
+  return merged;
+}
+
+/**
+ * @purpose Narrow a scanned union to a requested subset.
+ * @param merged Scanned skills, unfiltered.
+ * @param [skillNames] Optional filter, checked against the union.
+ * @throws If a requested skill is in no root.
+ * @returns The subset, or `merged` when no filter was given.
+ */
+export function selectSkills(
+  merged: Map<string, Map<string, Buffer>>,
+  skillNames?: string[]
+): Map<string, Map<string, Buffer>> {
   if (skillNames === undefined || skillNames.length === 0) {
     return merged;
   }
@@ -289,7 +415,7 @@ export function deleteOrphan(
   }
 
   const _unlink = deps.unlink ?? (() => {});
-  const _rmdir = deps.rmdir ?? (() => {});
+  const _rm = deps.rm ?? (() => {});
 
   let deleteFailed = false;
   let deleteErrorCode: string | undefined;
@@ -305,7 +431,7 @@ export function deleteOrphan(
   }
 
   try {
-    _rmdir(orphanDir, { recursive: true });
+    _rm(orphanDir, { recursive: true, force: true });
   } catch (err) {
     deleteFailed = true;
     deleteErrorCode = (err as NodeJS.ErrnoException).code ?? 'UNKNOWN';
@@ -391,12 +517,13 @@ export function collectAndCompareSkills(
   const _mkdir = deps.mkdir!;
 
   // #region START_SCAN_SKILLS — invariants: scan source returns skill→files map; list target skills for orphan detection
-  const sourceSkills = scanSkillRoots(
-    [opts.sourceDir, ...(opts.extraSourceDirs ?? [])],
-    opts.skillNames
-  );
+  const shippedSkills = scanAllSkillRoots([opts.sourceDir, ...(opts.extraSourceDirs ?? [])]);
+  const sourceSkills = selectSkills(shippedSkills, opts.skillNames);
 
   let targetSkillNames: string[] = [];
+  // null = the listing is unknown, so it must not be read as "the directory is empty" when
+  // deciding which manifest entries are gone.
+  let installedNames: string[] | null = null;
   try {
     targetSkillNames = deps.readdir!(opts.targetDir).filter((name) => {
       if (name.startsWith('.') || EXCLUDED_NAMES.has(name)) return false;
@@ -406,6 +533,7 @@ export function collectAndCompareSkills(
         return false;
       }
     });
+    installedNames = [...targetSkillNames];
   } catch {
     // targetDir doesn't exist yet (created above), or readdir failed
   }
@@ -445,13 +573,32 @@ export function collectAndCompareSkills(
     targetSkillNames = targetSkillNames.filter((n) => n !== skillName);
   }
   const filterSkillNames = opts.skillNames;
-  const orphansToDelete = filterSkillNames
+  const orphanCandidates = filterSkillNames
     ? targetSkillNames.filter((n) => filterSkillNames.includes(n))
     : targetSkillNames;
 
+  // Prune only what this tool owns — the manifest, or the migration policy on a first run.
+  const manifest = readSyncManifest(opts.targetDir, deps);
+  const owned =
+    manifest ?? adoptPackageInstalled(installedNames ?? [], new Set(shippedSkills.keys()));
+  const orphansToDelete = orphanCandidates.filter((n) => owned.has(n));
+
+  const pruned = new Set<string>();
   for (const skillName of orphansToDelete.sort()) {
-    entries.push(...deleteOrphan(skillName, opts.targetDir, opts.dryRun ?? false, deps));
+    const orphanEntries = deleteOrphan(skillName, opts.targetDir, opts.dryRun ?? false, deps);
+    entries.push(...orphanEntries);
+    // A dry run deletes nothing, so it may never drop the name from the manifest.
+    if (!(opts.dryRun ?? false) && !orphanEntries.some((e) => e.status === 'deleteFailed')) {
+      pruned.add(skillName);
+    }
   }
+
+  writeSyncManifest(
+    opts.targetDir,
+    nextManifestNames(owned, [...sourceSkills.keys()], pruned, installedNames),
+    opts.dryRun ?? false,
+    deps
+  );
   // #endregion END_SYNC_AND_CLEAN
 
   return new SyncSkillsResult(entries);

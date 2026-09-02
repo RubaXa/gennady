@@ -22,12 +22,29 @@ const COMPLETE_RULE = `<Rule>
 </Rule>
 `;
 
+// check.sh exits 2 over a ticket-less scope, so every fixture needs one clean ticket
+// (plus its tracker row) for [RULES] to be reachable.
+const FILLER_TICKET: Record<string, string> = {
+  'tasks/demo/demo.task-01.md': [
+    '## 1. Meta',
+    '',
+    '- **Task-ID:** TSK-01',
+    '- **Status:** [ ] TODO',
+    '',
+  ].join('\n'),
+  'tasks/demo/README.md':
+    '| Task | Status |\n| --- | --- |\n| [TSK-01](demo.task-01.md) | `[ ]` TODO |\n',
+};
+
 /** @purpose Build a minimal SDD project tree, run check.sh in it, clean up. */
 function withProject<T>(files: Record<string, string>, fn: (dir: string) => T): T {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sdd-check-'));
+  const hasTicket = Object.keys(files).some((rel) => rel.startsWith('tasks/'));
   try {
     fs.mkdirSync(path.join(dir, 'tasks'), { recursive: true });
-    for (const [rel, content] of Object.entries(files)) {
+    for (const [rel, content] of Object.entries(
+      hasTicket ? files : { ...FILLER_TICKET, ...files }
+    )) {
       const target = path.join(dir, rel);
       fs.mkdirSync(path.dirname(target), { recursive: true });
       fs.writeFileSync(target, content);

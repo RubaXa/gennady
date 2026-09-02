@@ -91,6 +91,9 @@ SUBCOMMANDS
                                   row), and — in --files mode — [HEADERS] (@file/@consumers/
                                   @tasks presence on a caller-supplied in-scope file list).
                                   Exit 0 clean, 3 findings, 2 structural, 4 bad invocation.
+                                  <Task-ID> is TSK-NN (legacy) or TSK-PREFIX-NNN (exactly
+                                  three digits); anything else exits 4, and an empty scope
+                                  exits 2 — findings=0 never means "nothing was checked".
 
     check-blockers <ticket>     Scan ticket Execution Log for unresolved BLOCKER entries.
                                   A BLOCKER is considered RESOLVED if a later Round contains

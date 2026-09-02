@@ -5,7 +5,7 @@
 /**
  * @purpose Injectable dependencies for sync CLI commands.
  * @invariant All fields are optional to allow partial mocking in tests.
- * @invariant unlink and rmdir are no-op by default in the sync command; sync-skills provides real implementations.
+ * @invariant unlink and rm are no-op by default in the sync command; sync-skills provides real implementations.
  */
 export type SyncCmdDeps = {
   /**
@@ -55,9 +55,9 @@ export type SyncCmdDeps = {
    */
   unlink?: (path: string) => void;
   /**
-   * @purpose Delete a directory recursively (no-op in sync, used by sync-skills).
+   * @purpose Remove a directory tree (no-op in sync, used by sync-skills).
    * @param path Directory path.
    * @param [options] Options.
    */
-  rmdir?: (path: string, options?: { recursive: boolean }) => void;
+  rm?: (path: string, options?: { recursive: boolean; force: boolean }) => void;
 };
