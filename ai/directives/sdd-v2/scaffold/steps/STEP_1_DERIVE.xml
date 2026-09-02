@@ -14,6 +14,8 @@
         not fragmented without an independently verifiable outcome. Derive any necessary bootstrap
         work per `AX_BOOTSTRAP_TICKET_DERIVATION`. This pass needs no subagent and
         no intermediate JSON. It prepares the artifacts; it does not approve them.
+        Record a disputed autonomous ticket-boundary choice once in the narrowest task-index Decision
+        Log per `DEVIATION_RECORD_FORMAT`; do not pause the batch for it.
       </Action>
     </Step>
 
@@ -65,5 +67,21 @@
       If Bootstrap Requirements is absent, stop scaffold and return to the owning specification flow;
       scaffold must not invent infrastructure requirements.
     </Axiom>
+
+<Contract id="DEVIATION_RECORD_FORMAT">
+      A disputed autonomous decision is one durable line carrying what, why, and where. Record it once
+      in the artifact owner that a fresh agent already reads; never create a deviation sidecar or copy
+      the same fact into both logs.
+
+      - Spec authoring or architecture: append one canonical Decision Log entry:
+        `<ACR>-DL-N <date> — <what>; где: <path#section> (почему: <why>)`.
+      - Task decomposition: append that same Decision Log grammar to the narrowest owning task index.
+      - Phase execution: put `<what> ← <why> @ <path#anchor>` in the current phase Handoff
+        `deviations: [...]` field; `sdd-log complete` persists that Handoff line in the Execution Log.
+
+      Obvious/recoverable mechanics are not deviations. Record only a choice a fresh agent could not
+      re-derive from artifacts. Uncertainty does not pause an autonomous batch: record the smallest safe
+      choice and continue. Operator review happens once, after the whole batch and its audits.
+    </Contract>
 
 After completing this step, and only then, READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/scaffold/steps/STEP_2_MATERIALIZE.xml"). Do not preload later step packages.

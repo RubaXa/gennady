@@ -127,8 +127,8 @@ test('execute tools are captured without inventing executable directive calls fr
   const refs = deepRun(tree);
   assert.deepEqual(
     refs,
-    [],
-    'named worker protocols in prose are not executable READ_AND_USE calls'
+    ['ai/directives/sdd-v2/deviation-review.directive.xml'],
+    'only the post-batch deviation review is executable; named worker protocols remain prose'
   );
 });
 

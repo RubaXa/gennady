@@ -9,6 +9,10 @@
     {{> "axiom/process/ax-tool-invocation"}}
   </BeliefState>
 
+  <Contracts>
+    {{> "contract/process/deviation-record-format"}}
+  </Contracts>
+
   <ExecutionPlan>
     <Step id="STEP_0_CREATE">
       <Goal>Create actual module artifacts first.</Goal>
@@ -37,7 +41,8 @@
         only from the comments inside their owning sections, at the moment each section is filled.
         Remove every instructional comment. The scope owns its requirement IDs. With no narrower
         obligation write `No module-specific requirements. Implements parent requirements: <IDs>.`
-        A zero-new-information decision continues without a dialogue stop.
+        A disputed autonomous boundary choice is one module Decision Log line per
+        `DEVIATION_RECORD_FORMAT`; a zero-new-information decision continues without a dialogue stop.
       </Action>
     </Step>
 

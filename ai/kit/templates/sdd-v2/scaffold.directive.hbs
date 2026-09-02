@@ -24,6 +24,7 @@
     {{> "contract/scaffold/task-ticket-structure"}}
     {{> "contract/process/question-rule-slim"}}
     {{> "contract/spec/decision-log-entry-format"}}
+    {{> "contract/process/deviation-record-format"}}
   </Contracts>
 
   <HaltConditions>
@@ -68,6 +69,8 @@
         not fragmented without an independently verifiable outcome. Derive any necessary bootstrap
         work per `AX_BOOTSTRAP_TICKET_DERIVATION`. This pass needs no subagent and
         no intermediate JSON. It prepares the artifacts; it does not approve them.
+        Record a disputed autonomous ticket-boundary choice once in the narrowest task-index Decision
+        Log per `DEVIATION_RECORD_FORMAT`; do not pause the batch for it.
       </Action>
     </Step>
 

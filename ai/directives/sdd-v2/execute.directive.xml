@@ -106,6 +106,21 @@
       🧭 Deviations: `<ACR>-DL-N — <one-line>` · `<ACR>-DL-M — <one-line>` · …
       No deviations → omit the line entirely, no batched question fires.
     </Contract>
+    <Contract id="DEVIATION_RECORD_FORMAT">
+      A disputed autonomous decision is one durable line carrying what, why, and where. Record it once
+      in the artifact owner that a fresh agent already reads; never create a deviation sidecar or copy
+      the same fact into both logs.
+
+      - Spec authoring or architecture: append one canonical Decision Log entry:
+        `<ACR>-DL-N <date> — <what>; где: <path#section> (почему: <why>)`.
+      - Task decomposition: append that same Decision Log grammar to the narrowest owning task index.
+      - Phase execution: put `<what> ← <why> @ <path#anchor>` in the current phase Handoff
+        `deviations: [...]` field; `sdd-log complete` persists that Handoff line in the Execution Log.
+
+      Obvious/recoverable mechanics are not deviations. Record only a choice a fresh agent could not
+      re-derive from artifacts. Uncertainty does not pause an autonomous batch: record the smallest safe
+      choice and continue. Operator review happens once, after the whole batch and its audits.
+    </Contract>
   </Contracts>
 
   <HaltConditions>
@@ -208,6 +223,9 @@
         exact exit evidence remain in the CLI-owned receipt; do not duplicate them as prose. Commit
         boundaries follow repository policy. The Execution Log plus Git is sufficient for a fresh
         orchestrator to continue; no worker ID or hidden NEXT token is recorded.
+        When the phase made a disputed autonomous choice, its typed Handoff carries one
+        `deviations: [<what> ← <why> @ <path#anchor>]` value per `DEVIATION_RECORD_FORMAT`; `phaseClose`
+        persists it in the existing Execution Log rather than a second journal.
       </Action>
     </Step>
 
@@ -260,9 +278,11 @@
         could inspect the actual final artifact graph. Do not repeat `sdd-log close` or `sdd-sync`.
         Emit the execute summary from actual tool results. For batch mode, refresh the execution map.
         <ToolCall owner="this-step" result="refreshedExecutionMap">npx gennady sdd-task</ToolCall>
-        Consume `refreshedExecutionMap`
-        and continue with the next pickable ticket. Otherwise show the next concrete Task-ID/path or
-        state that the queue is complete. No session close operation exists.
+        Consume `refreshedExecutionMap` and continue with the next pickable ticket. Otherwise show the
+        next concrete Task-ID/path or state that the queue is complete. In batch mode only, once the
+        queue is complete after all selected tickets and audits, dynamically
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/deviation-review.directive.xml")`. Never pause for
+        this review between tickets. No session close operation exists.
       </Action>
     </Step>
   </ExecutionPlan>

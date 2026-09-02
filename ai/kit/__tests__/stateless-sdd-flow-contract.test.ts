@@ -225,6 +225,43 @@ describe('stateless execution and specification format', () => {
     assert.match(spec, /D-M004[\s\S]+Status:\*\* active/);
   });
 
+  it('records deviations in owning logs and reviews them only after the whole batch', () => {
+    const format = read(
+      'ai',
+      'kit',
+      'contract',
+      'process',
+      'deviation-record-format.xml'
+    );
+    const review = read(
+      'ai',
+      'kit',
+      'templates',
+      'sdd-v2',
+      'deviation-review.directive.hbs'
+    );
+    const execute = read('ai', 'kit', 'templates', 'sdd-v2', 'execute.directive.hbs');
+    for (const owner of ['scope', 'module', 'scaffold', 'execute']) {
+      assert.match(
+        read('ai', 'kit', 'templates', 'sdd-v2', `${owner}.directive.hbs`),
+        /contract\/process\/deviation-record-format/,
+        owner
+      );
+    }
+    assert.match(format, /Decision Log/);
+    assert.match(format, /Execution Log/);
+    assert.match(format, /what.*why.*where/i);
+    assert.match(format, /never.*sidecar/i);
+    assert.match(review, /deviations/i);
+    assert.match(review, /audit findings/i);
+    assert.match(review, /questions/i);
+    const refreshAt = execute.indexOf('result="refreshedExecutionMap"');
+    const reviewAt = execute.indexOf('deviation-review.directive.xml');
+    assert.ok(refreshAt >= 0 && refreshAt < reviewAt);
+    assert.match(execute, /batch[\s\S]+queue is complete[\s\S]+deviation-review\.directive\.xml/i);
+    assert.doesNotMatch(format + review + execute, /DEVIATIONS\.md/);
+  });
+
   it('keeps bootstrap planning semantic and removes capability-adapter fields', () => {
     const bootstrap = read(
       'ai',

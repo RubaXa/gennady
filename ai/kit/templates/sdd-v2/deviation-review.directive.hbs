@@ -1,0 +1,38 @@
+<SddDeviationReview keywords="deviation, final, batch, audit, operator" type="directive" ver="1.0">
+  <Mission>
+    Review disputed autonomous decisions once, after the whole batch is complete. This is a dynamic
+    final conversation over durable owner logs and completed audit evidence; it writes no sidecar.
+  </Mission>
+
+  <BeliefState>
+    {{> "axiom/process/ax-stateless-flow"}}
+  </BeliefState>
+
+  <Contracts>
+    {{> "contract/process/deviation-record-format"}}
+    {{> "contract/process/question-rule-slim"}}
+  </Contracts>
+
+  <ExecutionPlan>
+    <Step id="STEP_1_COLLECT">
+      <Goal>Build the bounded final review set.</Goal>
+      <Action>
+        From the completed batch's exact artifact paths, collect only its Decision Log entries and
+        Execution Log Handoff deviations recorded per `DEVIATION_RECORD_FORMAT`. Add the audit findings
+        returned for this batch. Per `AX_STATELESS_FLOW`, do not search unrelated history or
+        reconstruct transcript memory.
+      </Action>
+    </Step>
+
+    <Step id="STEP_2_REVIEW">
+      <Goal>Resolve every exceptional choice with the operator.</Goal>
+      <Action>
+        Present three compact lists: `Deviations` (what, why, where, source), `Audit findings`
+        (severity, evidence, owner), and `Questions` (one concrete accept/correct question for each
+        unresolved item). If all three are empty, say so and finish without a ceremony. Otherwise ask
+        once for the operator's decisions. Route corrections to their existing artifact owner and
+        invalidate the applicable approval marker; never patch code from this review directive.
+      </Action>
+    </Step>
+  </ExecutionPlan>
+</SddDeviationReview>
