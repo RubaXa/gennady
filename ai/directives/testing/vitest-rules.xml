@@ -327,4 +327,14 @@
       <Expected>No file declares more than one `createXxxContext` factory.</Expected>
     </Hook>
   </VerificationHooks>
+
+  <RewardCriteria>
+    ✅ The primary test command uses one-shot `vitest run` and terminates with an observable result.
+    ✅ Assertions use the narrowest diagnostic matcher for scalar, structural, string, and error shapes.
+    ✅ Injected collaborators prefer `vi.fn()`; any new module mock carries operator confirmation and a concrete injection constraint.
+    ✅ Fake timers, environment stubs, globals, spies, and mock history are reset by explicit lifecycle policy.
+    ✅ Vitest, TypeScript, and required coverage gates execute successfully.
+    ❌ Watch mode, leaked mock state, boolean-folded assertions, or autonomous snapshot updates can reach merge.
+    ❌ `vi.mock()` replaces the SUT or an in-process collaborator that has an available injection seam.
+  </RewardCriteria>
 </VitestRules>

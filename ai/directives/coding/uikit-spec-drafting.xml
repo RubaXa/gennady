@@ -220,6 +220,21 @@
     </AntiPattern>
   </AntiPatterns>
 
+  <VerificationHooks>
+    <Hook id="HOOK_EXTRACTION_HAS_REQUIRED_INPUT">
+      <Command>jq -e '.variants | length &gt; 0' &lt;extraction-result.json&gt;</Command>
+      <Expected>Exit 0; the extraction contains at least one variant before drafting starts.</Expected>
+    </Hook>
+    <Hook id="HOOK_DRAFT_PRESERVES_REVIEW_MARKER">
+      <Command>rg -n '&lt;!-- DRAFT: generated from figma-utils extract\.' &lt;component.ui.spec.md&gt;</Command>
+      <Expected>Exactly one DRAFT marker is present before operator review.</Expected>
+    </Hook>
+    <Hook id="HOOK_DRAFT_REQUIRED_SECTIONS">
+      <Command>rg -n '^## (Vision|Variants|Token Mapping|Element Structure|A11y Requirements|BDD Scenarios)$' &lt;component.ui.spec.md&gt;</Command>
+      <Expected>All six required section headings are present; missing extraction data is represented explicitly, not omitted.</Expected>
+    </Hook>
+  </VerificationHooks>
+
   <RewardCriteria>
     ✅ Draft содержит все 6 обязательных секций (Vision, Variants, Token Mapping, Element Structure, A11y, BDD).
     ✅ Variants — closed-world таблица, все комбинации size × appearance × mode перечислены.

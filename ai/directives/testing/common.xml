@@ -231,4 +231,39 @@
     <Step id="WF_5_CHOOSE_DIAGNOSTIC_ASSERTIONS">Simplest direct assertion first. Aggregate into OBSERVE only when one rich diff beats several isolated assertions.</Step>
     <Step id="WF_6_VERIFY_AND_FINALIZE">Re-check unified context, anchor pairing, snapshot placement, no ungated mocks. Run type-check + tests with coverage. Blocker → declared EXPLICITLY.</Step>
   </WorkflowOutline>
+
+  <AntiPatterns>
+    <AntiPattern id="AP_ASSERT_IMPLEMENTATION_STATE">
+      <Bad>Cast the SUT to bypass visibility and assert a private field, listener array, or internal call order.</Bad>
+      <WhyBad>The test binds to implementation shape and can pass while the public contract is broken.</WhyBad>
+      <Good>Trigger the public API and assert its returned value, emitted event, durable side effect, or documented error.</Good>
+    </AntiPattern>
+    <AntiPattern id="AP_SHARED_CASE_STATE">
+      <Bad>Populate mutable describe-scope variables once and let several cases mutate or reuse them.</Bad>
+      <WhyBad>Case order becomes observable and a previous case can manufacture the next case's setup.</WhyBad>
+      <Good>Create the unified context per case, or use one lifecycle context that is rebuilt and disposed by hooks.</Good>
+    </AntiPattern>
+    <AntiPattern id="AP_ACCEPT_OUTPUT_BY_REWRITING_EXPECTATION">
+      <Bad>Make a failure green by weakening the assertion, deleting the failure path, or updating an existing snapshot without operator review.</Bad>
+      <WhyBad>The test stops protecting the contract and records current output as desired behavior without evidence.</WhyBad>
+      <Good>Fix the implementation or present the contract change and snapshot diff to the operator.</Good>
+    </AntiPattern>
+  </AntiPatterns>
+
+  <VerificationHooks>
+    <Hook id="HOOK_RUN_PROJECT_VERIFICATION">
+      <Command>gennady verify</Command>
+      <Expected>At least one applicable test gate executes; all executed gates pass. Zero executed gates or an environment failure is reported as a blocker, never as test success.</Expected>
+    </Hook>
+  </VerificationHooks>
+
+  <RewardCriteria>
+    ✅ Tests exercise public contracts and fail when required behavior is removed or changed.
+    ✅ Every case owns isolated state and maps to one declared scenario.
+    ✅ Assertions preserve diagnostic values instead of collapsing failures to booleans.
+    ✅ Non-trivial phases expose paired intent anchors; trivial phases remain uncluttered.
+    ✅ Required test, type, and coverage gates execute with observable successful results.
+    ❌ A test passes because the SUT, collaborator under test, expected output, or existing snapshot was falsified.
+    ❌ Focused or skipped tests reach merge without a tracked deferred owner.
+  </RewardCriteria>
 </TestingCommon>

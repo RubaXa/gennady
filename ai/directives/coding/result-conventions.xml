@@ -59,6 +59,35 @@
     </Axiom>
   </BeliefState>
 
+  <AntiPatterns>
+    <AntiPattern id="AP_RESULT_AS_INTERNAL_BRANCHING">
+      <Bad>Return `Result` from every private helper and branch on `isErr` or `.ok` at each call site.</Bad>
+      <WhyBad>It mixes transport and control-flow concerns, duplicates error propagation, and bypasses the guarded public boundary.</WhyBad>
+      <Good>Private I/O helpers throw, pure helpers return honest scalar/error values, and the public boundary converts failures to `Result` once.</Good>
+    </AntiPattern>
+    <AntiPattern id="AP_UNGUARDED_MUST_AT_BOUNDARY">
+      <Bad>An exported `Result`-returning function calls `must()` outside a try/catch and lets the contained error escape.</Bad>
+      <WhyBad>The declared Result boundary can throw instead of returning `fail(error)`.</WhyBad>
+      <Good>Guard `must()` in the public boundary and return `fail(TessellError.cast(...))` from catch.</Good>
+    </AntiPattern>
+    <AntiPattern id="AP_MANUAL_RESULT_SHAPE">
+      <Bad>Construct `{ ok, data, error }` manually or pin a concrete second Result generic.</Bad>
+      <WhyBad>The code bypasses canonical constructors and promises an error surface the runtime cannot guarantee.</WhyBad>
+      <Good>Use `success(value)`, `fail(error)`, and `Result&lt;T&gt;`.</Good>
+    </AntiPattern>
+  </AntiPatterns>
+
+  <VerificationHooks>
+    <Hook id="HOOK_RESULT_LINT_RULES">
+      <Command>npm run lint</Command>
+      <Expected>Exit 0; R1–R7 report no violations in changed Result-bearing code.</Expected>
+    </Hook>
+    <Hook id="HOOK_RESULT_RULE_TESTS">
+      <Command>npm test</Command>
+      <Expected>Exit 0; each custom Result rule keeps positive, negative, and edge-case coverage.</Expected>
+    </Hook>
+  </VerificationHooks>
+
   <RewardCriteria>
     - R1 flags `Result<T, DataStorageError>`, autofixes to `Result<T>`. Does NOT flag `Result<T, E>` where E is a type parameter of the enclosing generic.
     - R2 flags `{ ok: true, data: x, error: null }`, autofixes to `success(x)`.
