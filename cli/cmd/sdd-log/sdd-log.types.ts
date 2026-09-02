@@ -6,6 +6,7 @@ import { relative, resolve } from 'node:path';
 import type { TicketRef } from '../../../shared/sdd/check.ts';
 import { parsePhaseReceipts } from '../../../shared/sdd/phase-receipt.ts';
 import { findSectionBounds } from '../../../shared/sdd/section.ts';
+import { deriveSpecAcronym } from '../../../shared/sdd/requirement-id.ts';
 import { unreadableTicketHint } from '../../../shared/sdd/ticket-resolve.ts';
 
 /** @purpose No ticket path, or not exactly one of --round / --line / --close. */
@@ -30,6 +31,8 @@ export const ERR_CLI_SDD_LOG_PAYLOAD_FILE = 'ERR_CLI_SDD_LOG_PAYLOAD_FILE' as co
 export const ERR_CLI_SDD_LOG_COMPLETE_STATE = 'ERR_CLI_SDD_LOG_COMPLETE_STATE' as const;
 /** @purpose `close` cannot prove one unclosed current-Round transition. */
 export const ERR_CLI_SDD_LOG_CLOSE_STATE = 'ERR_CLI_SDD_LOG_CLOSE_STATE' as const;
+/** @purpose `authoring-complete` cannot prove or record one completed scope/module draft. */
+export const ERR_CLI_SDD_LOG_AUTHORING_STATE = 'ERR_CLI_SDD_LOG_AUTHORING_STATE' as const;
 
 /**
  * @purpose Result of one sdd-log run.
@@ -160,6 +163,61 @@ export function closeCurrentRound(
   }
   lines[closeHead + 1] = `- [x] \`${ts}\` DONE`;
   return { ok: true, content: lines.join('\n'), closeBlock };
+}
+
+/** @purpose Completion kind inferred from the spec's load-bearing identity marker. */
+export type SpecAuthoringKind = 'scope' | 'module';
+
+/**
+ * @purpose Prepare one durable Decision Log receipt for a mechanically clean authoring draft.
+ * @invariant The next file-local DL number, completion record, and returned receipt are derived
+ *   before the caller performs its single proven-file write.
+ * @param content Full scope/module spec markdown before completion.
+ * @param specPath Repository-relative exact spec path.
+ * @param date Recording date in YYYY-MM-DD form.
+ * @returns Replacement content plus the exact receipt, or a fail-closed structural reason.
+ */
+export function completeSpecAuthoring(
+  content: string,
+  specPath: string,
+  date: string
+):
+  | { ok: true; content: string; receipt: string; kind: SpecAuthoringKind }
+  | { ok: false; detail: string } {
+  const moduleMarkers = content.match(/<!--SECTION:MODULE_VISION-->/g)?.length ?? 0;
+  const scopeMarkers = content.match(/<!--SECTION:SCOPE_TYPE-->/g)?.length ?? 0;
+  if (moduleMarkers + scopeMarkers !== 1) {
+    return {
+      ok: false,
+      detail: `spec kind must have exactly one MODULE_VISION or SCOPE_TYPE marker (module=${moduleMarkers}, scope=${scopeMarkers})`,
+    };
+  }
+  const kind: SpecAuthoringKind = moduleMarkers === 1 ? 'module' : 'scope';
+  if (new RegExp(`\\b${kind} draft complete\\b`).test(content)) {
+    return { ok: false, detail: `${kind} draft already has an authoring-complete receipt` };
+  }
+
+  const sectionName = kind === 'module' ? 'MODULE_DECISION_LOG' : 'DECISION_LOG';
+  const bounds = findSectionBounds(content, sectionName);
+  if (!bounds) return { ok: false, detail: `spec has no readable ${sectionName} section` };
+  const lines = content.split('\n');
+  let detailsClose = -1;
+  for (let i = bounds.openLine + 1; i < bounds.closeLine; i++) {
+    if ((lines[i] ?? '').trim() === '</details>') detailsClose = i;
+  }
+  if (detailsClose === -1) {
+    return { ok: false, detail: `${sectionName} must fold its full entries under <details>` };
+  }
+
+  const acr = deriveSpecAcronym(specPath);
+  let max = 0;
+  const escapedAcr = acr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  for (const match of content.matchAll(new RegExp(`\\b${escapedAcr}-DL-([0-9]+)\\b`, 'g'))) {
+    max = Math.max(max, Number(match[1] ?? 0));
+  }
+  const receipt = `${acr}-DL-${max + 1} ${date} — ${kind} draft complete (почему: sdd-check --spec ${specPath} --authoring прошёл без замечаний)`;
+  lines.splice(detailsClose, 0, receipt, '');
+  return { ok: true, content: lines.join('\n'), receipt, kind };
 }
 
 /**
@@ -529,13 +587,31 @@ export function badInvocation(detail: string): LogOutcome {
       '         phase <P-ID> ["— re-run: <reason>"] | handoff "<payload>" [--phase P<N>] |',
       '         blocker "<reason>" --axiom <AX_NAME> --unblock "<action>" --phase P<N> |',
       '         resolved "<what removed it>" --phase P<N>   # paired close for blocker |',
-      '         complete "artifacts: [...]; decisions: [...]; open: [...]; deviations: [...]" --phase P<N>',
+      '         complete "artifacts: [...]; decisions: [...]; open: [...]; deviations: [...]" --phase P<N> |',
+      '         authoring-complete   # exact scope/module *.spec.md path',
       '  agent free text: replace the quoted content with --content-file .claude/tmp/<safe-name>;',
       '  blocker uses --payload-file .claude/tmp/<safe-name>.json with reason/axiom/unblock keys.',
       '  --phase P<N> is only valid on line | handoff | blocker | resolved | complete.',
       '  For append modes it inserts at the end',
       "  of that phase's own block instead of the end of EXECUTION_LOG (phases execute sequentially).",
       '  content must carry no <…> placeholder.',
+    ].join('\n'),
+  };
+}
+
+/**
+ * @purpose Report why a spec authoring receipt could not be proved or recorded atomically.
+ * @param detail Incomplete draft, repeated receipt, or malformed spec state.
+ * @returns Outcome with exit 4.
+ */
+export function authoringCompletionError(detail: string): LogOutcome {
+  return {
+    ok: false,
+    code: ERR_CLI_SDD_LOG_AUTHORING_STATE,
+    exitCode: 4,
+    message: [
+      `[sdd-log] ${ERR_CLI_SDD_LOG_AUTHORING_STATE}: ${detail}`,
+      '  Fix every `sdd-check --spec <path> --authoring` hint, then record completion exactly once.',
     ].join('\n'),
   };
 }

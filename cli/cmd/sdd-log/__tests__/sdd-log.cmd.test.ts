@@ -129,11 +129,13 @@ describe('SddLogCommand', () => {
     const loaded = await import('../sdd-log.cmd.ts');
     mod = {
       ...loaded,
-      run: (rawArgs, now) =>
+      run: (rawArgs, now, projectRoot, checkAuthoring) =>
         loaded.run(
           rawArgs,
           now,
-          /^[A-Z][A-Z0-9]*-[A-Za-z0-9]/.test(rawArgs[3] ?? '') ? process.cwd() : dir
+          projectRoot ??
+            (/^[A-Z][A-Z0-9]*-[A-Za-z0-9]/.test(rawArgs[3] ?? '') ? process.cwd() : dir),
+          checkAuthoring
         ),
     };
   });
@@ -201,6 +203,84 @@ describe('SddLogCommand', () => {
       readFileSync(ticket, 'utf-8'),
       /#### Round close\n- \[x\] `2026-06-21T10:00:00\.000Z` DONE/
     );
+  });
+
+  describe('authoring-complete mode — one durable spec receipt', () => {
+    const scopeSpec = [
+      '# Demo: Scope Specification',
+      '<!--SECTION:SCOPE_TYPE-->',
+      '## scope-type',
+      'library',
+      '<!--/SECTION:SCOPE_TYPE-->',
+      '<!--SECTION:DECISION_LOG-->',
+      '## Decision Log',
+      '<details>',
+      '<summary>Полные записи Decision Log</summary>',
+      '',
+      'DEM-DL-1 2026-06-20 — выбрана библиотека (почему: минимальный API)',
+      '',
+      '</details>',
+      '<!--/SECTION:DECISION_LOG-->',
+    ].join('\n');
+
+    it('atomically records and echoes the next scope completion receipt', async () => {
+      const spec = join(dir, 'demo.spec.md');
+      writeFileSync(spec, scopeSpec, 'utf-8');
+
+      const outcome = await mod.run(argv(spec, 'authoring-complete'), CLOCK, dir, () => []);
+
+      assert.strictEqual(outcome.ok, true, outcome.ok ? '' : outcome.message);
+      if (outcome.ok) {
+        assert.match(
+          outcome.text,
+          /DEM-DL-2 2026-06-21 — scope draft complete \(почему: sdd-check --spec demo\.spec\.md --authoring прошёл без замечаний\)/
+        );
+      }
+      assert.match(readFileSync(spec, 'utf-8'), /DEM-DL-2 2026-06-21 — scope draft complete/);
+    });
+
+    it('uses the module Decision Log and records a module receipt', async () => {
+      const spec = join(dir, 'widget.spec.md');
+      writeFileSync(
+        spec,
+        [
+          '# Module: Widget',
+          '<!--SECTION:MODULE_VISION-->',
+          '## Module Vision',
+          'Widget owns one operation.',
+          '<!--/SECTION:MODULE_VISION-->',
+          '<!--SECTION:MODULE_DECISION_LOG-->',
+          '## Module Decision Log',
+          '<details>',
+          '<summary>Полные записи Decision Log</summary>',
+          '',
+          '</details>',
+          '<!--/SECTION:MODULE_DECISION_LOG-->',
+        ].join('\n'),
+        'utf-8'
+      );
+
+      const outcome = await mod.run(argv(spec, 'authoring-complete'), CLOCK, dir, () => []);
+
+      assert.strictEqual(outcome.ok, true, outcome.ok ? '' : outcome.message);
+      assert.match(readFileSync(spec, 'utf-8'), /WID-DL-1 2026-06-21 — module draft complete/);
+    });
+
+    it('rejects an incomplete draft and a repeated receipt without changing bytes', async () => {
+      const spec = join(dir, 'demo.spec.md');
+      writeFileSync(spec, scopeSpec, 'utf-8');
+      const incomplete = await mod.run(argv(spec, 'authoring-complete'), CLOCK, dir);
+      assert.strictEqual(incomplete.ok, false);
+      if (!incomplete.ok) assert.match(incomplete.message, /authoring hint\(s\) remain/);
+      assert.strictEqual(readFileSync(spec, 'utf-8'), scopeSpec);
+
+      const first = await mod.run(argv(spec, 'authoring-complete'), CLOCK, dir, () => []);
+      assert.strictEqual(first.ok, true);
+      const completed = readFileSync(spec, 'utf-8');
+      const repeated = await mod.run(argv(spec, 'authoring-complete'), CLOCK, dir, () => []);
+      assert.strictEqual(repeated.ok, false);
+      assert.strictEqual(readFileSync(spec, 'utf-8'), completed);
+    });
   });
 
   it('replaces one scaffolded Round-close skeleton and rejects a repeated close without mutation', async () => {

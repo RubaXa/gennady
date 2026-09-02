@@ -77,7 +77,15 @@
       manifest; the scope owns its requirement IDs and the module cites them instead of copying them.
     </ScalePath>
 
-    <Step id="STEP_4_HANDOFF">
+    <Step id="STEP_4_CLOSE">
+      <Goal>Make scope authoring completion durable.</Goal>
+      <Action>
+        Only after the final draftReceipt has no hints, close authoring atomically.
+        <ToolCall owner="this-step" result="scopeAuthoringReceipt">npx gennady sdd-log &lt;scope-spec-path&gt; authoring-complete</ToolCall> Inputs &lt;scope-spec-path&gt;: exact checked path from STEP_3_CHECK. Use scopeAuthoringReceipt.
+      </Action>
+    </Step>
+
+    <Step id="STEP_5_HANDOFF">
       <Goal>Leave a checked actual scope/module set.</Goal>
       <Action>
         Route incomplete decomposition to module authoring. When an operator is actually present and

@@ -63,7 +63,15 @@
       manifest, no repeated boundary discussion.
     </ScalePath>
 
-    <Step id="STEP_5_HANDOFF">
+    <Step id="STEP_5_CLOSE">
+      <Goal>Make module authoring completion durable.</Goal>
+      <Action>
+        Only after the final moduleReceipt has no hints, close authoring atomically.
+        <ToolCall owner="this-step" result="moduleAuthoringReceipt">npx gennady sdd-log &lt;module-spec-path&gt; authoring-complete</ToolCall> Inputs &lt;module-spec-path&gt;: exact checked path from STEP_4_CHECK. Use moduleAuthoringReceipt.
+      </Action>
+    </Step>
+
+    <Step id="STEP_6_HANDOFF">
       <Goal>Leave an actual checked hierarchy.</Goal>
       <Action>
         If an operator explicitly requested live interaction, lazily

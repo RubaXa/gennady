@@ -11,9 +11,15 @@ import {
 } from '../../../shared/common/scratch-payload-file.ts';
 import { findSectionBounds } from '../../../shared/sdd/section.ts';
 import { resolveTicketArg, resolutionLine } from '../../../shared/sdd/ticket-resolve.ts';
-import { writeProvenRepoFile } from '../../../shared/common/repo-file-identity.ts';
+import {
+  proveRepoFile,
+  readProvenRepoFile,
+  writeProvenRepoFile,
+} from '../../../shared/common/repo-file-identity.ts';
+import { checkSpecAuthoringDraft, type Finding } from '../../../shared/sdd/check.ts';
 import {
   ambiguousIdError,
+  authoringCompletionError,
   badInvocation,
   buildBlockerBlock,
   buildCloseBlock,
@@ -24,6 +30,7 @@ import {
   buildRoundHeader,
   closeCurrentRound,
   completePhase,
+  completeSpecAuthoring,
   fileError,
   findPhaseBlockBounds,
   hasPlaceholder,
@@ -51,6 +58,7 @@ const MODES = [
   'blocker',
   'resolved',
   'complete',
+  'authoring-complete',
 ] as const;
 const PHASE_ID_RE = /^P[0-9]+$/;
 const AXIOM_ID_RE = /^AX_[A-Z0-9_]+$/;
@@ -106,12 +114,14 @@ function parseBlockerPayload(content: string): BlockerPayload | { error: LogOutc
  * @param rawArgs Raw command-line arguments (process.argv).
  * @param now Clock injected for deterministic timestamps (the CLI tail passes the real now).
  * @param [projectRoot] Canonical ticket-resolution root; defaults to cwd.
+ * @param [checkAuthoring] Spec-draft validator injected only for deterministic command tests.
  * @returns LogOutcome — echo of the appended lines on success, else an actionable failure.
  */
 export async function run(
   rawArgs: string[],
   now: Date,
-  projectRoot = resolve('.')
+  projectRoot = resolve('.'),
+  checkAuthoring: (file: string, content: string) => Finding[] = checkSpecAuthoringDraft
 ): Promise<LogOutcome> {
   let args;
   try {
@@ -161,7 +171,7 @@ export async function run(
   if (mode !== 'blocker' && (axiomFlag || unblockFlag)) {
     return badInvocation('--axiom and --unblock apply only to blocker mode');
   }
-  if (contentFile && (mode === 'close' || mode === 'blocker')) {
+  if (contentFile && (mode === 'close' || mode === 'blocker' || mode === 'authoring-complete')) {
     return badInvocation(`--content-file does not apply to mode "${mode}"`);
   }
   if (contentFile && inlinePayload.trim() !== '') {
@@ -169,6 +179,9 @@ export async function run(
   }
   if (mode === 'close' && inlinePayload.trim() !== '') {
     return badInvocation('close mode takes no content');
+  }
+  if (mode === 'authoring-complete' && inlinePayload.trim() !== '') {
+    return badInvocation('authoring-complete mode takes no content');
   }
 
   let scratch: ScratchPayload | undefined;
@@ -230,6 +243,39 @@ export async function run(
     if (!PHASE_ID_RE.test(phaseFlag)) return badInvocation('--phase must match P<digits>');
   }
   // #endregion END_PHASE_FLAG
+
+  // #region START_AUTHORING_COMPLETE — invariant: a clean authoring check, next Decision Log id,
+  // and durable receipt are all proved before one identity-preserving replacement write.
+  if (mode === 'authoring-complete') {
+    const proven = proveRepoFile(root, ticket);
+    if (!proven.ok) return fileError(`${ticket} (${proven.detail})`);
+    if (!proven.identity.relative.endsWith('.spec.md')) {
+      return badInvocation('authoring-complete requires an exact *.spec.md path');
+    }
+    const observed = readProvenRepoFile(proven.identity);
+    if (!observed.ok) return fileError(`${ticket} (${observed.detail})`);
+    const findings = checkAuthoring(proven.identity.relative, observed.content);
+    if (findings.length > 0) {
+      const first = findings[0];
+      return authoringCompletionError(
+        `${findings.length} authoring hint(s) remain; first: ${first?.code ?? 'unknown'} — ${first?.message ?? 'unknown finding'}`
+      );
+    }
+    const completed = completeSpecAuthoring(
+      observed.content,
+      proven.identity.relative,
+      now.toISOString().slice(0, 10)
+    );
+    if (!completed.ok) return authoringCompletionError(completed.detail);
+    const written = writeProvenRepoFile(proven.identity, completed.content);
+    if (!written.ok) return fileError(`${ticket} (${written.detail})`);
+    logger.debug(`[SddLogCommand#run] completed ${completed.kind} authoring in ${ticket}`);
+    return {
+      ok: true,
+      text: `[sdd-log] ${completed.kind} authoring receipt:\n${completed.receipt}`,
+    };
+  }
+  // #endregion END_AUTHORING_COMPLETE
 
   // #region START_READ — invariant: path or Task-ID (AX_TASK_RESOLUTION) → resolved path + content
   const resolved = resolveTicketArg(ticket, root);

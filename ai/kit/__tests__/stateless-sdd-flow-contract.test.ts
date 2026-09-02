@@ -68,6 +68,13 @@ describe('stateless SDD entry contract', () => {
       /Do not run `sdd-check --all specs\/<scope>` here:[\s\S]+guaranteed to report broken links/i
     );
     assert.match(scope, /authoring-interactive\.directive\.xml/);
+    assert.match(scope, /sdd-log &lt;scope-spec-path&gt; authoring-complete/);
+    assert.match(module, /sdd-log &lt;module-spec-path&gt; authoring-complete/);
+    assert.ok(scope.indexOf('result="draftReceipt"') < scope.indexOf('result="scopeAuthoringReceipt"'));
+    assert.ok(
+      module.indexOf('result="moduleReceipt"') <
+        module.indexOf('result="moduleAuthoringReceipt"')
+    );
     assert.doesNotMatch(scope, /Approval Check\. STOP/);
     assert.match(interview, /Explicit operator input is already\s+an answer/);
   });

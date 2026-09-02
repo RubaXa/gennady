@@ -6,7 +6,9 @@
  * @purpose Print CLI help for the sdd-log command.
  */
 export function printHelp(): void {
-  console.info('gennady sdd-log — Append events or atomically complete a verified ticket phase');
+  console.info(
+    'gennady sdd-log — Append events or atomically complete a verified phase/spec draft'
+  );
   console.info('');
   console.info('Usage:');
   console.info(
@@ -32,6 +34,9 @@ export function printHelp(): void {
   );
   console.info(
     '  npx gennady sdd-log <ticket> complete "artifacts: [...]; decisions: [...]; open: [...]; deviations: [...]" --phase P<N>'
+  );
+  console.info(
+    '  npx gennady sdd-log <spec> authoring-complete   # verify and record scope/module draft completion once'
   );
   console.info('');
   console.info('File-backed form (required for agent-produced free text):');
@@ -59,6 +64,9 @@ export function printHelp(): void {
   console.info('Guarantees:');
   console.info(
     '  - Append modes insert before a section/block boundary and never rewrite prior event lines.'
+  );
+  console.info(
+    '  - authoring-complete requires zero sdd-check --spec --authoring hints, then writes and echoes one canonical Decision Log receipt.'
   );
   console.info(
     "  - complete requires this phase's CLI-owned sdd-verify receipt, the current-Round skeleton,"

@@ -302,12 +302,24 @@ const COMMAND_SCHEMAS: Readonly<Record<string, CommandSchema>> = {
       if (p.length < 2) return 'requires ticket and operation';
       const op = p[1];
       if (
-        !['round', 'line', 'close', 'phase', 'handoff', 'blocker', 'resolved', 'complete'].includes(
-          op!
-        )
+        ![
+          'round',
+          'line',
+          'close',
+          'phase',
+          'handoff',
+          'blocker',
+          'resolved',
+          'complete',
+          'authoring-complete',
+        ].includes(op!)
       )
         return 'unknown log operation';
       if (op === 'close') return p.length === 2 && f.size === 0 ? null : 'close takes only ticket';
+      if (op === 'authoring-complete')
+        return p.length === 2 && f.size === 0
+          ? null
+          : 'authoring-complete takes only the spec path';
       if (op === 'blocker')
         return has(f, '--phase') && has(f, '--payload-file') && p.length === 2
           ? null
