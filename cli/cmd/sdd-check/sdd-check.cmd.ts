@@ -1001,6 +1001,7 @@ export async function run(
         spec: { aliases: ['spec'], takesValue: true },
         authoring: ['authoring'],
         phase: { aliases: ['phase'], takesValue: true },
+        format: { aliases: ['format'], takesValue: true },
         all: ['all'],
         changed: ['changed'],
       },
@@ -1016,6 +1017,7 @@ export async function run(
     ['--task', args.task],
     ['--spec', args.spec],
     ['--phase', args.phase],
+    ['--format', args.format],
   ].find(([, value]) => value !== undefined && (typeof value !== 'string' || value.length === 0));
   if (invalidValue) return badInvocation(`${invalidValue[0]} requires exactly one value`);
   if (args.all !== undefined && args.all !== true)
@@ -1029,11 +1031,14 @@ export async function run(
   const specPath = typeof args.spec === 'string' ? args.spec : undefined;
   const authoring = args.authoring === true;
   const authoringPhase = typeof args.phase === 'string' ? args.phase : undefined;
+  const outputFormat = typeof args.format === 'string' ? args.format : 'text';
   const all = args.all === true;
   const changed = args.changed === true;
   const taskSelected = taskPath !== undefined;
   const specSelected = specPath !== undefined;
   const selectedModeCount = [taskSelected, specSelected, all, changed].filter(Boolean).length;
+  if (outputFormat !== 'text' && outputFormat !== 'json')
+    return badInvocation('--format must be text or json');
   if (
     selectedModeCount !== 1 ||
     (taskSelected && positional.length > 0) ||
@@ -1385,10 +1390,13 @@ export async function run(
           repairHint: specPath
             ? 'fill the named sections from their local comments, remove consumed comments, then rerun the same authoring command; trivial format is auto-fixed and draft hints do not block.'
             : 'fix only this ticket, then rerun the same authoring command.',
+          format: outputFormat,
         }
-      : {}
+      : { format: outputFormat }
   );
-  return taskBanner ? { text: `${taskBanner}\n${result.text}`, exitCode: result.exitCode } : result;
+  return taskBanner && outputFormat === 'text'
+    ? { text: `${taskBanner}\n${result.text}`, exitCode: result.exitCode }
+    : result;
 }
 
 // Self-executing for CLI: gennady sdd-check (--task <ticket> | --all [root])

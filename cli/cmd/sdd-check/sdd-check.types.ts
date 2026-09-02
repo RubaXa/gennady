@@ -24,6 +24,62 @@ export type CheckResult = {
   exitCode: number;
 };
 
+/** @purpose Stable machine-facing projection of one finding with repair guidance kept separate. */
+type StructuredFinding = {
+  severity: Finding['severity'];
+  code: string;
+  file: string;
+  line: number | null;
+  section: string;
+  reason: string;
+  next: string;
+  example: string;
+};
+
+/** @purpose Infer the owning document section from stable authoring codes/messages. */
+function findingSection(finding: Finding): string {
+  const explicit = /^\[([A-Z0-9_]+)\]/.exec(finding.message)?.[1];
+  const named = /\bSection ([A-Z0-9_]+)/.exec(finding.message)?.[1];
+  if (explicit || named) return explicit ?? named ?? 'DOCUMENT';
+  if (finding.code.includes('REQUIREMENT') || finding.code.includes('LIST_REQUIRED'))
+    return 'REQUIREMENTS_AND_CONSTRAINTS';
+  if (finding.code.includes('PLACEHOLDER')) return 'DOCUMENT';
+  if (finding.code.includes('AUTO_FIXED')) return 'DOCUMENT_FORMAT';
+  return 'DOCUMENT';
+}
+
+/** @purpose Supply one copy-ready example for common authoring findings without changing semantics. */
+function findingExample(finding: Finding, section: string): string {
+  const embedded = /\bExample:\s*([^\n]+)/.exec(finding.message)?.[1];
+  if (embedded) return embedded;
+  if (finding.code === 'SDD_REQUIREMENT_ID_MISSING') return '### FIB-REQ-1 [должен]';
+  if (finding.code === 'SDD_AUTHORING_LIST_REQUIRED') return '- Explicit excluded behavior';
+  if (finding.code === 'SDD_AUTHORING_PLACEHOLDER')
+    return 'Replace <!-- skeleton guidance --> with authored content and remove the comment.';
+  if (finding.code === 'SDD_AUTHORING_HEADING_LEVEL')
+    return `Use the heading level already present in the ${section} skeleton section.`;
+  if (finding.code === 'SDD_SPEC_SECTION_MISSING')
+    return `Keep <!--SECTION:${section}--> and replace its local guidance with authored content.`;
+  if (finding.code === 'SDD_AUTHORING_AUTO_FIXED')
+    return 'No action required; rerun the same check.';
+  return 'Apply the reported repair at the named file and section.';
+}
+
+/** @purpose Convert one prose finding into the stable JSON findings schema. */
+function structureFinding(finding: Finding): StructuredFinding {
+  const section = findingSection(finding);
+  return {
+    severity: finding.severity,
+    code: finding.code,
+    file: finding.file,
+    line: finding.line ?? null,
+    section,
+    reason: finding.message,
+    next: `Repair ${section} in ${finding.file}, then rerun the same sdd-check command.`,
+    example: findingExample(finding, section),
+  };
+}
+
 /**
  * @purpose Format findings ESLint-style and derive the exit code.
  * @invariant Exit 1 iff at least one error-severity finding is present; warnings alone exit 0.
@@ -35,8 +91,26 @@ export type CheckResult = {
 export function formatFindings(
   findings: Finding[],
   fileCount: number,
-  options: { maxFindings?: number; repairHint?: string } = {}
+  options: { maxFindings?: number; repairHint?: string; format?: 'text' | 'json' } = {}
 ): CheckResult {
+  const errors = findings.filter((f) => f.severity === 'error').length;
+  const warns = findings.length - errors;
+  if (options.format === 'json') {
+    return {
+      text: JSON.stringify(
+        {
+          schema: 'gennady.sdd-check.findings.v1',
+          ok: errors === 0,
+          fileCount,
+          summary: { errors, warnings: warns },
+          findings: findings.map(structureFinding),
+        },
+        null,
+        2
+      ),
+      exitCode: errors > 0 ? 1 : 0,
+    };
+  }
   if (findings.length === 0) {
     return { text: `[sdd-check] ✅ clean — ${fileCount} file(s) checked`, exitCode: 0 };
   }
@@ -45,8 +119,6 @@ export function formatFindings(
     (f) =>
       `${f.file}${f.line !== undefined ? `:${f.line}` : ''}: ${f.severity}: ${f.code}  ${f.message}`
   );
-  const errors = findings.filter((f) => f.severity === 'error').length;
-  const warns = findings.length - errors;
   const summary = `[sdd-check] ${errors} error(s), ${warns} warning(s) across ${fileCount} file(s)`;
   const omitted = findings.length - visible.length;
 

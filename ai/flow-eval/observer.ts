@@ -45,13 +45,13 @@ function implementationArchaeology(tail: readonly SddEvalTailEntry[]): string | 
   return null;
 }
 
-/** @purpose Detect probing or shell wrapping around an SDD CLI call whose shape/output must stay exact. */
+/** @purpose Detect interface probing or deliberately discarded SDD CLI diagnostics. */
 function cliInvocationViolation(tail: readonly SddEvalTailEntry[]): string | null {
   for (const entry of tail) {
     for (const call of entry.toolCalls) {
       const input = call.inputSummary ?? '';
       if (!/npx\s+(?:--no-install\s+)?gennady\b/i.test(input)) continue;
-      if (/(?:^|\s)2>(?:&1|\/dev\/null)(?:\s|[;"'}]|$)/.test(input)) {
+      if (/(?:^|\s)2>\/dev\/null(?:\s|[;"'}]|$)/.test(input)) {
         return `forbidden CLI shell redirection: ${call.tool} ${input.slice(0, 180)}`;
       }
       if (/(?:^|\s)--(?:help|version)\b/.test(input)) {

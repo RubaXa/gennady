@@ -13,7 +13,7 @@ export function printHelp(): void {
   console.info('Usage:');
   console.info('  npx gennady sdd-check --task <ticket>        # check one ticket');
   console.info(
-    '  npx gennady sdd-check --spec <created-spec-path> --authoring  # structural draft receipt + trivial auto-fix; hints never block'
+    '  npx gennady sdd-check --spec <created-spec-path> --authoring [--format json]  # structural draft receipt + trivial auto-fix; hints never block'
   );
   console.info(
     '  npx gennady sdd-check --task <created-ticket-path> --authoring  # pre-index ticket-only authoring gate'
@@ -35,6 +35,9 @@ export function printHelp(): void {
   );
   console.info(
     '  --spec --authoring: validates skeleton sections/headings/markers/lists/REQ IDs; auto-fixes only trivial whitespace and indentation; content gaps remain warn-only'
+  );
+  console.info(
+    '  --format json: machine-readable findings with code, file, section, reason, next step, and example; filter directly without a shell pipe'
   );
   console.info(
     '  --authoring --phase P<N>: only that phase plus overview dependency/Inputs, exact existing-READ/future-CREATE Target Files, and readable direct+transitive Rules closure; full --authoring is still required before moving on'
@@ -82,6 +85,7 @@ export function printHelp(): void {
   console.info('  insight backflow, stale-after-pivot, language quality (comprehension layer).');
   console.info('');
   console.info('Output: ESLint-style finding lines + summary.');
+  console.info('  --format json: `gennady.sdd-check.findings.v1` object on stdout.');
   console.info(
     '  --authoring: `repo-relative-file:line: severity: stable-code  [SECTION] Fix: …`.'
   );

@@ -710,36 +710,32 @@ test('observer aborts an SDD CLI probe wrapped in stderr redirection', async () 
   assert.deepEqual(aborted, ['ses_redirect']);
 });
 
-test(
-  'one checker output filter does not make an otherwise progressing worker terminally stuck',
-  { todo: 'P9.3: the symptom policy currently turns one formatting redirect into stuck=true' },
-  async () => {
-    const fixture = JSON.parse(
-      await readFile(join(import.meta.dirname, 'fixtures', 'p9-misunderstood-cases.json'), 'utf8')
-    ) as { checkerShellFilter: { inputSummary: string } };
-    const evidence = new FakeEvidence([
-      {
-        tail: [
-          tail('checker-filter', '', [
-            {
-              callId: 'call-checker-filter',
-              tool: 'bash',
-              status: 'completed',
-              inputSummary: fixture.checkerShellFilter.inputSummary,
-            },
-          ]),
-        ],
-        status: 'running',
-      },
-    ]);
-    const observation = await new SddEvalObserver(evidence, {
-      everyMs: 0,
-      stuckAfter: 2,
-      tailLimit: 5,
-    }).observe('ses_checker_filter');
-    assert.equal(observation.stuck, false);
-  }
-);
+test('one checker output filter does not make an otherwise progressing worker terminally stuck', async () => {
+  const fixture = JSON.parse(
+    await readFile(join(import.meta.dirname, 'fixtures', 'p9-misunderstood-cases.json'), 'utf8')
+  ) as { checkerShellFilter: { inputSummary: string } };
+  const evidence = new FakeEvidence([
+    {
+      tail: [
+        tail('checker-filter', '', [
+          {
+            callId: 'call-checker-filter',
+            tool: 'bash',
+            status: 'completed',
+            inputSummary: fixture.checkerShellFilter.inputSummary,
+          },
+        ]),
+      ],
+      status: 'running',
+    },
+  ]);
+  const observation = await new SddEvalObserver(evidence, {
+    everyMs: 0,
+    stuckAfter: 2,
+    tailLimit: 5,
+  }).observe('ses_checker_filter');
+  assert.equal(observation.stuck, false);
+});
 
 test('records the nine repeated full spec writes as a calibration metric', async () => {
   const fixture = JSON.parse(

@@ -178,6 +178,40 @@ describe('SddCheckCommand', () => {
     }
   });
 
+  it('--spec --authoring --format json returns filterable guidance without a shell pipe', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'sdd-check-spec-json-'));
+    try {
+      mkdirSync(join(root, 'specs', 'generic'), { recursive: true });
+      const path = 'specs/generic/generic.spec.md';
+      writeFileSync(
+        join(root, path),
+        TEMPLATES.library.skeleton.replaceAll('<scope-name>', 'generic')
+      );
+      const result = await mod.run(argv('--spec', path, '--authoring', '--format', 'json'), root);
+      const report = JSON.parse(result.text) as {
+        schema: string;
+        findings: Array<Record<string, unknown>>;
+      };
+      assert.strictEqual(result.exitCode, 0, result.text);
+      assert.strictEqual(report.schema, 'gennady.sdd-check.findings.v1');
+      assert.ok(report.findings.length > 0);
+      for (const finding of report.findings) {
+        assert.strictEqual(typeof finding.code, 'string');
+        assert.strictEqual(typeof finding.section, 'string');
+        assert.strictEqual(typeof finding.reason, 'string');
+        assert.strictEqual(typeof finding.next, 'string');
+        assert.strictEqual(typeof finding.example, 'string');
+      }
+      assert.ok(
+        report.findings.some(
+          (finding) => finding.code === 'SDD_SPEC_SECTION_MISSING' && finding.section === 'VISION'
+        )
+      );
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it('--spec --authoring writes only conservative format fixes before structural feedback', async () => {
     const root = mkdtempSync(join(tmpdir(), 'sdd-check-spec-autofix-'));
     try {
