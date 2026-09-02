@@ -46,21 +46,19 @@ npm run test:sdd-flow-eval
 
 Продолжать можно только при чистом рабочем дереве, успешной сборке и зелёном тесте харнесса.
 
-До запуска убедиться, что окружение содержит интеграцию и учётные данные OpenCode, не печатая их
-значения:
+До запуска убедиться, что окружение содержит адрес и ключ `llm-proxy`, не печатая их значения:
 
 ```bash
-for name in \
-  OPENCODE_INTEGRATION \
-  OPENCODE_SERVER_PASSWORD \
-  OPENCODE_SERVER_USERNAME \
-  OPENCODE_SERVER_TOKEN
+for name in LLM_PROXY_BASE_URL LLM_PROXY_API_KEY
 do
   test -n "$(printenv "$name")" || { echo "$name is missing" >&2; exit 1; }
 done
 ```
 
 Если хотя бы одной переменной нет, остановиться и сообщить оператору: значения нельзя выдумывать.
+Переменные `OPENCODE_INTEGRATION`, `OPENCODE_SERVER_PASSWORD`, `OPENCODE_SERVER_USERNAME` и
+`OPENCODE_SERVER_TOKEN` для flow-eval не требуются. Харнесс подключается к этому локальному серверу
+без пароля.
 
 Выбрать свободный порт `4097` или выше, исключив `4096` и порт личного OpenCode Desktop оператора
 `58656`. Перед запуском проверить выбранный порт через `lsof`:
@@ -73,19 +71,27 @@ if lsof -nP -iTCP:"$OPENCODE_EVAL_PORT" -sTCP:LISTEN | grep -q .; then
 fi
 ```
 
-В отдельном терминале запустить собственный изолированный сервер. Флаг `--pure` обязателен: он
-изолирует конфигурацию и базу сессий eval от Desktop-инстанса оператора.
+В отдельном терминале запустить собственный сервер с WARN-логом. Не использовать `--pure`: сервер
+должен прочитать `~/.config/opencode/opencode.json`, где определён провайдер
+`llm-proxy/deepseek-v4-flash`.
 
 ```bash
-opencode serve --pure --hostname 127.0.0.1 --port "$OPENCODE_EVAL_PORT" &
+OPENCODE_EVAL_LOG="$(mktemp "${TMPDIR:-/tmp}/opencode-flow-eval.XXXXXX.log")"
+opencode serve --hostname 127.0.0.1 --port "$OPENCODE_EVAL_PORT" --log-level WARN \
+  >"$OPENCODE_EVAL_LOG" 2>&1 &
 OPENCODE_EVAL_SERVER_PID=$!
 ```
 
-Перед передачей запуска runner проверить `/health` и PID слушателя, чтобы подтвердить, что отвечает
-именно только что запущенный сервер:
+Дождаться готовности. Перед передачей запуска runner проверить `/health` и PID слушателя, чтобы
+подтвердить, что отвечает именно только что запущенный сервер:
 
 ```bash
-curl --fail --silent --show-error "http://127.0.0.1:$OPENCODE_EVAL_PORT/health"
+until curl --fail --silent --show-error \
+  "http://127.0.0.1:$OPENCODE_EVAL_PORT/health" >/dev/null
+do
+  kill -0 "$OPENCODE_EVAL_SERVER_PID" || { cat "$OPENCODE_EVAL_LOG" >&2; exit 1; }
+  sleep 1
+done
 lsof -nP -a -p "$OPENCODE_EVAL_SERVER_PID" \
   -iTCP:"$OPENCODE_EVAL_PORT" -sTCP:LISTEN
 ```
