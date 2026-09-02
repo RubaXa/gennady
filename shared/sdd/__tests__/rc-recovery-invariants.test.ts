@@ -20,6 +20,7 @@ import {
 } from '../project-feasibility.ts';
 import { checkBddRequirementTraceability } from '../bdd-coverage.ts';
 import { checkBddNegativeScenario } from '../check.ts';
+import { TEMPLATES } from '../templates.ts';
 import { SddEvalOpenCodeEvidenceSource } from '../../../ai/flow-eval/evidence.ts';
 import { SddEvalObserver } from '../../../ai/flow-eval/observer.ts';
 import type { SddEvalEvidenceSource, SddEvalTailEntry } from '../../../ai/flow-eval/types.ts';
@@ -218,4 +219,26 @@ test('RC invariant: observation budget adds no wait after its final observation'
 test('RC invariant: generated coverage artifacts stay ignored', () => {
   const ignore = readFileSync(join(REPOSITORY_ROOT, '.gitignore'), 'utf8');
   assert.match(ignore, /^coverage\/?$/m);
+});
+
+test('RC invariant: authoring skeleton owns format and exposes only section-lazy references', () => {
+  const library = TEMPLATES.library.skeleton;
+  const module = TEMPLATES.module.skeleton;
+  const directiveSources = ['scope', 'module', 'root', 'discover-from-code']
+    .map((name) =>
+      readFileSync(join(REPOSITORY_ROOT, `ai/kit/templates/sdd-v2/${name}.directive.hbs`), 'utf8')
+    )
+    .join('\n');
+
+  assert.match(library, /УДАЛИ ПОСЛЕ ЗАПОЛНЕНИЯ/);
+  assert.match(library, /### <ACR>-REQ-1 \[должен · нештатная\]/);
+  assert.match(library, /\.\/<module>\/<module>\.spec\.md/);
+  assert.match(module, /ENTITY_INVENTORY[\s\S]*entity-inventory-format\.xml только сейчас/);
+  assert.match(module, /ENTITY_SURFACES[\s\S]*entity-surface-format\.xml только сейчас/);
+  assert.match(module, /MODULE_CONTRACTS[\s\S]*dbc-contracts\.xml только сейчас/);
+  assert.doesNotMatch(
+    directiveSources,
+    /READ_AND_USE_DIRECTIVE[^\n]*(?:library-spec-structure|module-spec-structure|requirement-entry-format|module-map-update|diagram-vocabulary|portal-structure)/
+  );
+  assert.doesNotMatch(directiveSources, /module-diagram-ladder\.example\.md/);
 });

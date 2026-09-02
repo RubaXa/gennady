@@ -75,8 +75,7 @@
         Before writing, run the self-check pass per `AX_ARTIFACT_STYLE_SELF_CHECK`. `specs/README.md`
         does not exist yet on this path — create its skeleton via portalManifest ToolCall below first (never
         overwrites, prints the section manifest). Assemble the
-        portal (Vision + Scope Graph + Scopes table) to it via
-        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/portal-structure.xml")` — do NOT re-enter
+        portal (Vision + Scope Graph + Scopes table) directly in that skeleton — do NOT re-enter
         `root` (it routed here — re-entry would loop). Recover the infra scope from the configs via
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/infra.directive.xml")`. The repo now has a portal —
         a valid place to stop.

@@ -131,14 +131,9 @@ const RESEARCH_REGISTRY_SKELETON_MODULE = `<!--SECTION:RESEARCH-->
 `;
 
 // DECISION (2026-08-20, ai-skills failure-elicitation research): new specs use ONE flat REQUIREMENT_ENTRY_FORMAT list; specs already in the old split Functional/Non-Functional format stay valid as-is.
-const REQUIREMENTS_LIST_SKELETON = `[Плоский список требований: \`READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/requirement-entry-format.xml")\`. Формат заменяет раздельные Functional Requirements / Non-Functional Constraints для НОВЫХ спек; спеки, уже написанные в старом раздельном формате, остаются валидными как есть. Пример — обычное требование и требование класса «нештатная»:]
+const REQUIREMENTS_LIST_SKELETON = `<!-- УДАЛИ ЭТУ ПОДСКАЗКУ ПОСЛЕ ЗАПОЛНЕНИЯ. Пиши плоский список: ### <ACR>-REQ-N [должен | должен · нештатная], затем одно наблюдаемое условие и обязательство, затем краткое rationale в цитате. Используй уникальные последовательные ID этой спеки. Обязательно покрой happy path, ограничения и хотя бы один негативный сценарий. Единственный образец: -->
 
-### <ACR>-REQ-1 [должен]
-**Когда** пользователь отправляет форму с пустым обязательным полем, **сервис должен** вернуть ошибку валидации с именем поля.
-
-> Пустое поле — самый частый пользовательский ввод; без явной ошибки пользователь не понимает, что делать дальше.
-
-### <ACR>-REQ-2 [должен · нештатная]
+### <ACR>-REQ-1 [должен · нештатная]
 **Если** запись в журнал аудита не удалась, **то сервис должен** отклонить операцию и вернуть 503.
 
 > Аудит — комплаенс-требование; без записи операция не легитимна, откат обязателен.
@@ -374,12 +369,12 @@ library
 
 <!--SECTION:VISION-->
 ## Vision & Primary Goal
-[Что library делает; главная проблема, которую решает.]
+<!-- УДАЛИ ПОСЛЕ ЗАПОЛНЕНИЯ: что делает library и какую главную проблему решает. -->
 <!--/SECTION:VISION-->
 
 <!--SECTION:OVERVIEW-->
 ## Overview
-[MANDATORY per \`AX_SPEC_MANDATORY_DIAGRAM\` — ≥1 diagram up top (checked by \`SDD_NO_DIAGRAM_BLOCK\` / \`SDD_DIAGRAM_BLOCK_EMPTY\`). The floor is one — how a consumer wires this library in; add more by author judgment. Fenced mermaid OR ASCII; pick the diagram type per \`formats/diagram-vocabulary.xml\`. Example:]
+<!-- УДАЛИ ПОСЛЕ ЗАПОЛНЕНИЯ: дай один fenced mermaid или ASCII diagram подключения consumer к library. Подпись сразу под fence: _<одна фраза>[ — <ACR>-REQ-N[, <ACR>-REQ-M]]._ Единственный образец: -->
 
 \`\`\`mermaid
 flowchart LR
@@ -391,13 +386,13 @@ _Что здесь главное, одной фразой._
 
 <!--SECTION:GOLDEN_DX-->
 ## Target Experience
-[Публичный API DX: init/setup + happy path + error path. Комментарии раскрывают намерение.]
+<!-- УДАЛИ ПОСЛЕ ЗАПОЛНЕНИЯ: публичный API DX — init/setup, happy path и error path; поясни намерение. -->
 <!--/SECTION:GOLDEN_DX-->
 
 <!--SECTION:SCOPE_DEPENDENCIES-->
 ## Scope Dependencies
-- **Depends on:** [infra-*, interface scopes]
-- **Provides to:** [consumer scopes]
+- **Depends on:** <!-- infra-* и interface scopes; «None», если нет -->
+- **Provides to:** <!-- consumer scopes; «None», если нет -->
 <!--/SECTION:SCOPE_DEPENDENCIES-->
 
 <!--SECTION:REQUIREMENTS_AND_CONSTRAINTS-->
@@ -408,7 +403,7 @@ ${REQUIREMENTS_LIST_SKELETON}
 ### Out-of-Scope
 
 ### Runtime & Deferred Scope
-[Per \`AX_RUNTIME_BACKING_EXPLICIT\`. Backing per major capability + deferred parts.]
+<!-- УДАЛИ ПОСЛЕ ЗАПОЛНЕНИЯ: runtime backing каждой крупной capability и явно deferred части. -->
 
 ### Rules
 | Rule | Category | Source |
@@ -418,17 +413,17 @@ ${REQUIREMENTS_LIST_SKELETON}
 ${DATA_FLOW_SKELETON}
 <!--SECTION:PUBLIC_API_SURFACE-->
 ## Public API Surface
-[Consumer-facing capabilities at composition level; link each to its owning module spec. Exact operations and signatures belong only to module Entity Surfaces/Contracts.]
+<!-- УДАЛИ ПОСЛЕ ЗАПОЛНЕНИЯ: composition-level capabilities для consumer; каждую свяжи с owning module spec. Operations/signatures остаются в Entity Surfaces/Contracts модуля. -->
 <!--/SECTION:PUBLIC_API_SURFACE-->
 
 <!--SECTION:ARCHITECTURE-->
 ## Architecture
-[Выбранный design pattern. Кратко — rejected alternatives.]
+<!-- УДАЛИ ПОСЛЕ ЗАПОЛНЕНИЯ: выбранный design pattern и кратко rejected alternatives. -->
 <!--/SECTION:ARCHITECTURE-->
 
 <!--SECTION:MODULE_MAP-->
 ## Module Map
-[Appended by \`module-decomposition\`. Initially: «Modules not yet decomposed — run \`module-decomposition <scope-name>\`».]
+<!-- УДАЛИ ПОСЛЕ ЗАПОЛНЕНИЯ: до декомпозиции напиши «Modules not yet decomposed». После неё перечисли каждый модуль один раз как \`- [<module>](./<module>/<module>.spec.md) — <purpose>\`, затем Inter-Module Dependency Map, Stack Dependencies и Handoff to Tasks. -->
 <!--/SECTION:MODULE_MAP-->
 
 ${RESEARCH_REGISTRY_SKELETON_SCOPE}
@@ -990,12 +985,12 @@ const MODULE_SKELETON = `# Module: <ModuleName>
 
 <!--SECTION:MODULE_VISION-->
 ## Module Vision
-[What this module owns. Link to parent scope spec → \`../../<scope>.spec.md\`. Links to parent/child modules if any.]
+<!-- УДАЛИ ПОСЛЕ ЗАПОЛНЕНИЯ: что принадлежит модулю; ссылка на ../../<scope>.spec.md и на parent/child modules, если есть. -->
 <!--/SECTION:MODULE_VISION-->
 
 <!--SECTION:OVERVIEW-->
 ## Overview
-[MANDATORY per \`AX_SPEC_MANDATORY_DIAGRAM\` — ≥1 diagram, checked by \`SDD_NO_DIAGRAM_BLOCK\` / \`SDD_DIAGRAM_BLOCK_EMPTY\`. One glance beats a paragraph. The floor is one; add more (sequence, data-flow, state) whenever a second view genuinely helps a reader understand this module — that call is the author's. Fenced mermaid OR ASCII; pick the diagram type per \`formats/diagram-vocabulary.xml\`. The \`Inter-Module Dependencies\` graph is separate (machine-parsed) and does NOT satisfy this floor. Example — the module's main happy-path flow:]
+<!-- УДАЛИ ПОСЛЕ ЗАПОЛНЕНИЯ: ≥1 fenced mermaid или ASCII diagram главного потока модуля. Inter-Module Dependencies не заменяет Overview. Подпись: _<одна фраза>[ — <ACR>-REQ-N[, <ACR>-REQ-M]]._ Единственный образец: -->
 
 \`\`\`mermaid
 flowchart LR
@@ -1008,18 +1003,17 @@ _Что здесь главное, одной фразой._
 
 <!--SECTION:MODULE_USAGE_EXAMPLE-->
 ## Module Usage Example
-[MANDATORY. Self-sufficient happy-path snippet — как потребитель использует этот модуль в изоляции. Пишется на таргет-языке проекта — единственное место для кода per \`AX_CONTRACTS_TEXTUAL_AGNOSTIC\`. Показывает публичную поверхность через реальный сценарий вызова: init / happy path / минимальный error path. Composition с соседними модулями — НЕ здесь, это уровень scope spec (link, не дублировать).]
+<!-- УДАЛИ ПОСЛЕ ЗАПОЛНЕНИЯ: self-sufficient snippet на target language — init, happy path, минимальный error path. Не дублируй composition соседних модулей. -->
 <!--/SECTION:MODULE_USAGE_EXAMPLE-->
 
 <!--SECTION:MODULE_REQUIREMENTS-->
 ## Requirements
-[This section owns only observable obligations introduced or narrowed by THIS module. Do not copy
+<!-- УДАЛИ ПОСЛЕ ЗАПОЛНЕНИЯ. This section owns only observable obligations introduced or narrowed by THIS module. Do not copy
 the parent scope requirements and do not reuse their IDs. A genuinely module-specific requirement
-uses this module spec's own acronym per
-\`READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/requirement-entry-format.xml")\`; its
+uses this module spec's own acronym and the \`### <ACR>-REQ-N [должен | должен · нештатная]\` grammar; its
 explanation names the parent requirement ID(s) it refines. If this module adds no narrower
 obligation, write exactly: \`No module-specific requirements. Implements parent requirements:
-<SCOPE-REQ-N[, SCOPE-REQ-M]>.\` Tasks and tests then trace to those parent IDs directly.]
+<SCOPE-REQ-N[, SCOPE-REQ-M]>.\` Tasks and tests then trace to those parent IDs directly. -->
 <!--/SECTION:MODULE_REQUIREMENTS-->
 
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->
@@ -1039,24 +1033,24 @@ graph TD
 
 <!--SECTION:ENTITY_INVENTORY-->
 ## Entity Inventory
-[Per \`ENTITY_INVENTORY_FORMAT\`.]
+<!-- УДАЛИ ПОСЛЕ ЗАПОЛНЕНИЯ: прочитай ai/directives/sdd-v2/formats/entity-inventory-format.xml только сейчас, при заполнении этой секции; создай закрытый Name/Type/Purpose inventory и владельца ошибок. -->
 <!--/SECTION:ENTITY_INVENTORY-->
 
 <!--SECTION:ENTITY_SURFACES-->
 ## Entity Surfaces
-[One-line human summary — what the surfaces cover; the reader sees this without expanding. Heavy per-entity detail folds per \`AX_SPEC_PROGRESSIVE_DISCLOSURE\` (checked by \`SDD_SECTION_NOT_FOLDED\`).]
+<!-- УДАЛИ ПОСЛЕ ЗАПОЛНЕНИЯ: прочитай ai/directives/sdd-v2/formats/entity-surface-format.xml только сейчас; оставь one-line summary, а per-entity detail помести в details. -->
 
 <details>
 <summary>Полные поверхности сущностей</summary>
 
-[Each entity per \`ENTITY_SURFACE_FORMAT\`.]
+<!-- Содержимое по прочитанному entity-surface-format.xml; эту подсказку тоже удали. -->
 
 </details>
 <!--/SECTION:ENTITY_SURFACES-->
 
 <!--SECTION:MODULE_CONTRACTS-->
 ## Module Contracts
-[One-line human summary — which Ports / Adapters / Services this module defines. The contract bodies fold per \`AX_SPEC_PROGRESSIVE_DISCLOSURE\` (checked by \`SDD_SECTION_NOT_FOLDED\`). Dependency graph per \`DBC_DEPENDENCY_GRAPH_FORMAT\` sits directly below this line, above the folded \`<details>\`. Right after it, MANDATORY whenever this module's inventory lists ≥2 abstractions (AX_SPEC_MANDATORY_DIAGRAM, rung 6, new per the 2026-08-20 visualization-chain decision): the Call Chain — a \`sequenceDiagram\`, or its table-of-steps equivalent (step / participant / action / data), per \`CALL_CHAIN_FORMAT\` (\`formats/dbc-contracts.xml\`) — both forms count equally. On \`refine-module\`/\`pivot\`, also the Delta rung per \`DELTA_DIAGRAM_FORMAT\` (\`formats/pivot-formats.xml\`): composition graph with the new node marked, plus the ADDED Call Chain steps — the unchanged part is NOT redrawn. Every diagram here carries a caption per \`DIAGRAM_CAPTION_FORMAT\`, e.g. \`_Путь списания за заказ — SHOP-REQ-6, SHOP-REQ-7._\` These new rungs are mandatory for NEW module specs only.]
+<!-- УДАЛИ ПОСЛЕ ЗАПОЛНЕНИЯ: прочитай ai/directives/sdd-v2/formats/dbc-contracts.xml только сейчас. Напиши one-line summary; dependency graph и Call Chain (при ≥2 абстракциях) поставь над details; DbC per operation — внутри. Подпись diagram: _<одна фраза>[ — <ACR>-REQ-N[, <ACR>-REQ-M]]._ -->
 
 <!-- Subsections: any subset of Ports / Adapters / Services / Patterns / Utilities / Module-level invariants.
      Unnumbered \`###\` headers (e.g. \`### Ports\`, \`### OperationDef Pattern\`). -->

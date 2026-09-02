@@ -16,8 +16,9 @@ describe('requirements amplifiers use the canonical flat model', () => {
   for (const name of AMPLIFIERS) {
     const source = read('ai', 'kit', 'templates', 'sdd-v2', `amplify-${name}.directive.hbs`);
 
-    it(`${name}: writes atomic IDs and traceable fields through REQUIREMENT_ENTRY_FORMAT`, () => {
-      assert.match(source, /formats\/requirement-entry-format\.xml/);
+    it(`${name}: writes atomic IDs through the skeleton-owned requirement grammar`, () => {
+      assert.doesNotMatch(source, /formats\/requirement-entry-format\.xml/);
+      assert.match(source, /Requirements section's embedded grammar/);
       assert.match(source, /next unused sequential `<ACR>-REQ-<N>` IDs/);
       assert.match(source, /`Constraint`, `Verification`, and `Trace` lines/);
       assert.match(source, /one ordinary flat\s+entry per accepted observable outcome/);

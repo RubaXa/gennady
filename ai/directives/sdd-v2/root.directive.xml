@@ -335,9 +335,8 @@
         When `specs/README.md` does not exist yet, create its skeleton via
         portalManifest ToolCall below first —
         it never overwrites and prints the section manifest (which sections are REQUIRED and what to
-        fill); when it already exists, edit it in place, skip `sdd-new`. Content guidance per
-        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/portal-structure.xml")` and assemble the
-        Portal to that format: the structured Vision block confirmed at STEP_1 (target-state paragraph
+        fill); when it already exists, edit it in place, skip `sdd-new`. The portal skeleton is its
+        format: fill the structured Vision block confirmed at STEP_1 (target-state paragraph
         plus Для кого / Боль / Успех / Принципы), and, per `AX_DECISION_LOG_REQUIRED`, a Decision Log row
         for every deferred or release-boundary decision routed there in the same step — the section is
         omitted only when STEP_1 routed no such decision. Scope status (✅ / 🚧) comes from `sdd-state`

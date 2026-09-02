@@ -233,7 +233,7 @@
     </Axiom>
 
     <Axiom id="AX_ENTITY_SURFACE_COMPLETENESS">
-      Entity surface is exhaustive per `ENTITY_SURFACE_FORMAT`: Type, Public Properties, Public Operations (intent-level, no language signatures), Lifecycle, Events, Errors & Degradation, Consumers. No private detail — that is Executor's job.
+      Entity surface is exhaustive in the shape linked by its skeleton section: Type, Public Properties, Public Operations (intent-level, no language signatures), Lifecycle, Events, Errors & Degradation, Consumers. No private detail — that is Executor's job.
     </Axiom>
 
     <Axiom id="AX_SPEC_MANDATORY_DIAGRAM">
@@ -241,8 +241,7 @@
       picture — the same discipline agent-inbox's `AX_COMPREHENSION_LADDER` applies to a review
       applies here to a design, at authoring time instead of review time. Six rungs plus a
       refine/pivot-only Delta rung, each answering ONE distinct question — no two rungs answer the
-      same thing; the worked example lives in
-      `ai/directives/sdd-v2/formats/module-diagram-ladder.example.md`:
+      same thing; the owning skeleton sections carry the required compact shapes:
       1. **Overview** (module spec) — WHAT this module does, main happy-path flow. Unconditional.
          Held by tooling: `sdd-check` fails a missing section (`SDD_NO_DIAGRAM_BLOCK`) or an empty
          one (`SDD_DIAGRAM_BLOCK_EMPTY`). The `Inter-Module Dependencies` graph is machine-parsed
@@ -262,7 +261,7 @@
       6. **Call Chain** (`STEP_4_CONTRACTS_DBC`, right after rung 5 — new per the 2026-08-20
          visualization-chain decision) — WHO calls WHOM, in what ORDER, for the module's one main
          scenario: a `sequenceDiagram`, or its table-of-steps equivalent (step / participant /
-         action / data, `CALL_CHAIN_FORMAT` in `formats/dbc-contracts.xml`) — both forms count
+         action / data, using the call-chain shape linked by the Module Contracts skeleton section) — both forms count
          equally, neither is a fallback for the other. Mandatory whenever the module's inventory
          lists ≥2 abstractions (entities and/or Ports/Adapters/Services combined); a module below
          that threshold states so explicitly.
@@ -315,7 +314,7 @@
       - Business logic depends on Ports, not Adapters, when a Port exists. Port is preferred: preconditions / postconditions / invariants live on the Port, and the Adapter references it and describes side effects + runtime backing + verification levels. When the module consciously forgoes a Port (single implementation, no confirmed variability or test seam), the same DbC contract lives directly on the Service / Adapter instead — the absence of a Port is not the absence of a contract; that choice is recorded in the Decision Log (`AX_DECISION_LOG_REQUIRED`).
       - Port introduced only with confirmed v1 variability (≥2 implementations) or explicit test seam. Single implementation without confirmed split → Service or Entity, not Port.
       - Every proposed abstraction requires justification: which current risk / constraint / consumer it closes.
-      - **Contract obligation follows BEHAVIOR, not entity type.** Any entity that owns behavior — its own state, a lifecycle, error handling, or direct user interaction — carries a DbC contract (Pre / Post / On-violation per operation, plus loading/empty/error states where they apply), a UI component included; "component" is not a free pass. Only a purely-rendering entity (props in, markup out, zero decisions) is exempt, and the exemption must be an explicit `Presentation-Only` marker on that entity's Entity Surface (`ENTITY_SURFACE_FORMAT`) — an entity with neither a contract nor that marker is a spec omission, not a legitimate style choice.
+      - **Contract obligation follows BEHAVIOR, not entity type.** Any entity that owns behavior — its own state, a lifecycle, error handling, or direct user interaction — carries a DbC contract (Pre / Post / On-violation per operation, plus loading/empty/error states where they apply), a UI component included; "component" is not a free pass. Only a purely-rendering entity (props in, markup out, zero decisions) is exempt, and the exemption must be an explicit `Presentation-Only` marker on that entity's Entity Surface — an entity with neither a contract nor that marker is a spec omission, not a legitimate style choice.
       - **DbC section shape is flexible.** `Module Contracts (DbC)` carries any subset of subsections drawn from the entity Type vocabulary (Port, Adapter, Service, Component, Pattern, Utility, Module-level invariants, …). Ports/Adapters are AVAILABLE, not mandatory: single-implementation modules legitimately use Service-only, Component-only, or Pattern-only DbC. Subsections are unnumbered `###` headers (e.g. `### Ports`, `### Components`, `### OperationDef Pattern`).
     </Axiom>
 
@@ -509,8 +508,8 @@
     <Step id="STEP_1_MODULE_MAP">
       <Goal>Lock module boundaries; update the scope Module Map.</Goal>
       <Action>
-        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/module-map-update.xml")` first — this
-        step's Approval Check asked before that read is `H_ASK_BEFORE_FORMAT`. Module decomposition
+        Use the Module Map section guidance printed by `sdd-new`; do not preload a separate format.
+        Module decomposition
         does not require external research by default (`AX_SCALE_PROPORTIONAL_DEPTH` — that gate
         lives in the scope flow's Architecture step); but if a decomposition pattern or approach
         proposed below WAS informed by a WebSearch / WebFetch pass this session, persist it per
@@ -522,8 +521,7 @@
         infrastructure; a shared core only once ≥2 consumers need it) — draw the decomposition as
         a diagram, not a bullet list of names: one tier per axis (data/domain · UI/presentation ·
         infrastructure), each candidate module placed under its axis, as an ASCII block in THIS
-        message (rung 2 of `AX_SPEC_MANDATORY_DIAGRAM`; worked shape in
-        `ai/directives/sdd-v2/formats/module-diagram-ladder.example.md`) — this diagram IS what the
+        message (rung 2 of `AX_SPEC_MANDATORY_DIAGRAM`) — this diagram IS what the
         operator confirms next, not a restatement of it. The operator confirms
         (`AX_MODULE_BOUNDARY_BY_OPERATOR`). With exactly one function-scale module, state its one
         responsibility and axis in the compact design packet; the Module Map diagram is required
@@ -551,8 +549,8 @@
     <Step id="STEP_2_ENTITY_INVENTORY">
       <Goal>Closed-world inventory per module.</Goal>
       <Action>
-        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/entity-inventory-format.xml")` first —
-        any delta Ask made before that read is `H_ASK_BEFORE_FORMAT`. List every entity
+        When filling Entity Inventory, follow its skeleton comment and only then read the linked
+        `formats/entity-inventory-format.xml`. List every entity
         of the module — the complete world (`AX_CLOSED_WORLD_INVENTORY`); anything an
         execution agent adds beyond it is drift. When the approved scope leaves inventory ownership
         unresolved, interview the operator via
@@ -573,9 +571,8 @@
         require behavior on an error whose owner is absent from this inventory — surface the gap
         here, before approval, not at scaffold time. Once ≥2 entities are relationally connected
         (one references, owns, or is composed of another), draw the ER sketch per
-        `ENTITY_INVENTORY_FORMAT` as an ASCII block in THIS message before any delta decision (rung
-        3 of `AX_SPEC_MANDATORY_DIAGRAM`; worked shape in
-        `ai/directives/sdd-v2/formats/module-diagram-ladder.example.md`) — a single entity or a set
+        the entity-inventory section's linked format as an ASCII block in THIS message before any delta decision (rung
+        3 of `AX_SPEC_MANDATORY_DIAGRAM`) — a single entity or a set
         with no real relation states that explicitly instead. **Diagram shown (or explicit
         skip-reason), this message, before any delta Ask and before final Approval** — its absence on a ≥2-related-entity
         inventory is the same class of violation as `H_ASK_BEFORE_FORMAT`. If a
@@ -591,8 +588,8 @@
     <Step id="STEP_3_ENTITY_SURFACE">
       <Goal>Public surface per entity.</Goal>
       <Action>
-        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/entity-surface-format.xml")` first —
-        any delta Ask made before that read is `H_ASK_BEFORE_FORMAT`. Define each
+        When filling Entity Surfaces, follow its skeleton comment and only then read the linked
+        `formats/entity-surface-format.xml`. Define each
         entity's public surface (`AX_ENTITY_SURFACE_COMPLETENESS`), including its `Errors &
         Degradation` field: which errors, by what mechanism (throw / Result / event / …), and who
         owns handling/display — do not leave it generic once the inventory named an owner. No
@@ -602,9 +599,8 @@
         multiSelect/confirmation is fine, but only after every entity in that batch was shown
         individually, never as a table skim. When an entity's Lifecycle is a real state machine (≥3
         distinct states/transitions, not just create→terminate), draw it as an ASCII state diagram
-        per `ENTITY_SURFACE_FORMAT` inside that entity's block, BEFORE the confirmation for that
-        entity (rung 4 of `AX_SPEC_MANDATORY_DIAGRAM`; worked shape in
-        `ai/directives/sdd-v2/formats/module-diagram-ladder.example.md`) — a 2-state lifecycle stays
+        per the entity-surface section's linked format inside that entity's block, BEFORE the confirmation for that
+        entity (rung 4 of `AX_SPEC_MANDATORY_DIAGRAM`) — a 2-state lifecycle stays
         the one-line bullet. **Diagram shown (or below-threshold, stated), this message, before
         any decision about that entity** — its absence on a ≥3-transition lifecycle is the same class
         of violation as `H_ASK_BEFORE_FORMAT`. Apply `AX_MODULE_DELTA_APPROVAL`: only a new public
@@ -615,8 +611,8 @@
     <Step id="STEP_4_CONTRACTS_DBC">
       <Goal>DbC contract per entity.</Goal>
       <Action>
-        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/dbc-contracts.xml")` first — any
-        delta Ask made before that read is `H_ASK_BEFORE_FORMAT`. Preconditions /
+        When filling Module Contracts, follow its skeleton comment and only then read the linked
+        `formats/dbc-contracts.xml`. Preconditions /
         postconditions per OPERATION — each operation gets its own pre/post lines, plus a mandatory
         line for what happens when the precondition is violated (e.g. a non-existent id): observable
         error behavior, not silence. A general block at entity/service level is for genuine
@@ -635,10 +631,9 @@
         Surface skips this block. Each
         abstraction carries its justification (`AX_CONTEXT_TO_CONTRACT`); runtime backing is stated
         per contract (`AX_RUNTIME_BACKING_IN_CONTRACTS`).
-        Draw the Port/Adapter/Service dependency graph per `DBC_DEPENDENCY_GRAPH_FORMAT` as an
+        Draw the Port/Adapter/Service dependency graph in the shape linked by Module Contracts as an
         ASCII block in THIS message before any contract delta decision (rung 5 of
-        `AX_SPEC_MANDATORY_DIAGRAM`; worked shape in
-        `ai/directives/sdd-v2/formats/module-diagram-ladder.example.md`): nodes = every Port /
+        `AX_SPEC_MANDATORY_DIAGRAM`): nodes = every Port /
         Adapter / Service this module defines, edges = `implements` (Adapter → Port) and `depends
         on` (Service → Port), arrows toward the more stable side. A Service-only module (no
         Port/Adapter at all) states that explicitly instead of a silently missing graph — floor,
@@ -649,7 +644,7 @@
         Right after the dependency graph, when this module's inventory lists ≥2 abstractions
         (entities and/or Ports/Adapters/Services combined), draw the Call Chain (rung 6 of
         `AX_SPEC_MANDATORY_DIAGRAM`, new per the 2026-08-20 visualization-chain decision, per
-        `CALL_CHAIN_FORMAT`): who calls whom, in order, for the module's one main scenario — a
+        the call-chain shape linked by Module Contracts): who calls whom, in order, for the module's one main scenario — a
         `sequenceDiagram` ASCII block, OR its table-of-steps equivalent (step / participant /
         action / data) when the scenario is linear — both count equally. A module below the
         ≥2-abstraction threshold states that explicitly instead of a silently missing rung.
@@ -694,13 +689,10 @@
         On `initial` / `add-module`, for each new module create its skeleton via
         moduleManifest ToolCall below — it never overwrites and prints the
         section manifest (which sections are REQUIRED and what to fill); on `refine-module` the file
-        already exists, edit it in place, skip `sdd-new`. Content guidance per
-        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/module-spec-structure.xml")` — read it
-        before assembling the spec; an Approval Check on the assembled hierarchy asked before that
-        read is `H_ASK_BEFORE_FORMAT`. Every mermaid diagram this spec carries must already have been
+        already exists, edit it in place, skip `sdd-new`. The skeleton and its section manifest are
+        the format; fill them in place and remove every instructional comment. Every mermaid diagram this spec carries must already have been
         shown to the operator as ASCII in chat at the step where that shape was decided, per
-        `AX_CHAT_BEFORE_SPEC` —
-        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/diagram-vocabulary.xml")`; a diagram
+        `AX_CHAT_BEFORE_SPEC`; use the caption grammar embedded in the skeleton. A diagram
         appearing here for the first time means the operator never saw the shape they are being
         asked to approve. Assemble
         each `specs/<scope>/<module>/<module>.spec.md` to it; link back to `../../<scope>.spec.md`;

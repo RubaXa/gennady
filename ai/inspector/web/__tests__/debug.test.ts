@@ -55,7 +55,7 @@ function driveUntil(skill: any, stop: (sim: any) => boolean, prefer: RegExp[] = 
 }
 
 test('regression: a formats/*.xml contract reference (not *.directive.xml) is offered as step-into', () => {
-  // STEP_4_PORTAL_WRITE's Action reads `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/portal-structure.xml")`.
+  // STEP_3_INFRA_BOOTSTRAP reads a content-only formats/*.xml contract.
   // formats/*.xml files are NOT *.directive.xml — the scanner used to miss them entirely, so this step
   // silently advanced past the reference instead of offering a descent. Pin the fix at both layers:
   // the ref is scanned as a 'run' node, resolved into a <Contract> leaf carrying its markdown body, and
@@ -63,26 +63,27 @@ test('regression: a formats/*.xml contract reference (not *.directive.xml) is of
   const sdd = loadSkill('sdd');
   const { sim, moves } = driveUntil(
     sdd,
-    (s) => s.current.unit.attrs?.id === 'STEP_4_PORTAL_WRITE',
+    (s) => s.current.unit.attrs?.id === 'STEP_3_INFRA_BOOTSTRAP',
     [/root\.directive\.xml/]
   );
-  assert.equal(sim.current.unit.attrs?.id, 'STEP_4_PORTAL_WRITE');
+  assert.equal(sim.current.unit.attrs?.id, 'STEP_3_INFRA_BOOTSTRAP');
 
   const into = sim.current.transitions.find(
-    (t: any) => t.run && /portal-structure\.xml/.test(t.run.ref)
+    (t: any) => t.run && /infra-base-minimal-spec\.xml/.test(t.run.ref)
   );
-  assert.ok(into, 'portal-structure.xml is offered as a step-into transition');
+  assert.ok(into, 'infra-base-minimal-spec.xml is offered as a step-into transition');
 
   const after = simulate(sdd, [...moves, { type: into.type, i: into.i }]);
   const loaded = after.log.find((e: any) => e.dir && e.dir.label === '<Contract>');
   assert.ok(loaded, 'entering the ref attaches the resolved <Contract> node for inspection');
   assert.match(
     loaded.dir.detail ?? '',
-    /Vision/,
+    /Tool Stack/,
     'the contract carries its markdown template body, not an empty leaf'
   );
-  // the contract has no <ExecutionPlan> (it is a format, not a directive with steps) — auto-unwind cascades
-  assert.ok(after.done, 'flow completes after the content-only contract immediately unwinds');
+  // the contract has no <ExecutionPlan> (it is a format, not a directive with steps), so it
+  // immediately unwinds and the parent root flow remains available.
+  assert.notEqual(after.current?.unit.label, '<Contract>');
 });
 
 test('/sdd skill exposes the stateless GATHER / EMBODY / ROUTE loader steps and embodies the router', () => {
