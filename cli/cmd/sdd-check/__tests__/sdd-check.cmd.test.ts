@@ -258,6 +258,21 @@ describe('SddCheckCommand', () => {
     }
   });
 
+  it('gives three typical command failures the common object/reason/next/example schema', async () => {
+    const outcomes = [
+      await mod.run(argv()),
+      await mod.run(argv('--task', join(dir, 'missing-ticket.md'))),
+      await mod.run(argv('--all', dir, '--format', 'yaml')),
+    ];
+    for (const outcome of outcomes) {
+      assert.notStrictEqual(outcome.exitCode, 0);
+      assert.match(outcome.text, /^\[sdd-check\] ERR_CLI_SDD_CHECK_/);
+      for (const field of ['object', 'reason', 'action', 'example']) {
+        assert.match(outcome.text, new RegExp(`^\\s*${field}:`, 'm'));
+      }
+    }
+  });
+
   it('--changed fails closed on a corrupt HEAD instead of reporting an empty clean set', async () => {
     const repo = join(dir, 'changed-corrupt-head');
     mkdirSync(repo, { recursive: true });

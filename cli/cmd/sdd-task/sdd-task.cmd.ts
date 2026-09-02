@@ -38,6 +38,7 @@ import {
 import { getChangedFiles } from '../../../shared/common/changed-files.ts';
 import { checkPhaseDependencies } from '../../../shared/sdd/phase-dependencies.ts';
 import { appendSddSessionBoundary } from '../../../shared/sdd/session-boundary.ts';
+import { normalizeSddToolFailure } from '../../../shared/sdd/tool-guidance.ts';
 import { phaseReceiptIssue } from '../sdd-verify/phase-receipt-validation.ts';
 import { isGennadyLintTarget } from '../lint/lint-source-policy.ts';
 import {
@@ -563,7 +564,20 @@ async function runCommand(rawArgs: string[], projectRoot: string): Promise<TaskO
 export async function run(rawArgs: string[], projectRoot = resolve('.')): Promise<TaskOutcome> {
   const root = resolve(projectRoot);
   const outcome = await runCommand(rawArgs, root);
-  return outcome.ok ? { ok: true, text: appendSddSessionBoundary(outcome.text, root) } : outcome;
+  if (outcome.ok) return { ok: true, text: appendSddSessionBoundary(outcome.text, root) };
+  return {
+    ...outcome,
+    message: normalizeSddToolFailure(
+      {
+        tool: 'sdd-task',
+        code: outcome.code,
+        object: rawArgs.slice(2).join(' ') || projectRoot,
+        action: 'repair the named ticket or phase evidence, then repeat the same state query',
+        example: 'npx gennady sdd-task specs/demo/core/core.task.DEM-work.md --phase P1',
+      },
+      outcome.message
+    ),
+  };
 }
 
 // Self-executing for CLI: gennady sdd-task <ticket-path|Task-ID>

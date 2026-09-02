@@ -17,6 +17,7 @@ import {
   writeProvenRepoFile,
 } from '../../../shared/common/repo-file-identity.ts';
 import { checkSpecAuthoringDraft, type Finding } from '../../../shared/sdd/check.ts';
+import { normalizeSddToolFailure } from '../../../shared/sdd/tool-guidance.ts';
 import {
   ambiguousIdError,
   authoringCompletionError,
@@ -117,7 +118,7 @@ function parseBlockerPayload(content: string): BlockerPayload | { error: LogOutc
  * @param [checkAuthoring] Spec-draft validator injected only for deterministic command tests.
  * @returns LogOutcome — echo of the appended lines on success, else an actionable failure.
  */
-export async function run(
+async function runCommand(
   rawArgs: string[],
   now: Date,
   projectRoot = resolve('.'),
@@ -439,6 +440,38 @@ export async function run(
     : '';
   const body = `[sdd-log] appended to ${LOG_SECTION}:\n${insertText.trim()}${metaStatusNote}${cleanupNote}`;
   return { ok: true, text: idBanner ? `${idBanner}\n${body}` : body };
+}
+
+/**
+ * @purpose Execute sdd-log and normalize every failure into the common actionable tool schema.
+ * @param rawArgs Raw command-line arguments.
+ * @param now Clock value used by deterministic log receipts.
+ * @param [projectRoot] Canonical ticket-resolution root.
+ * @param [checkAuthoring] Spec validator seam retained for deterministic tests.
+ * @returns Original success or a code/object/reason/next/example failure.
+ */
+export async function run(
+  rawArgs: string[],
+  now: Date,
+  projectRoot = resolve('.'),
+  checkAuthoring: (file: string, content: string) => Finding[] = checkSpecAuthoringDraft
+): Promise<LogOutcome> {
+  const outcome = await runCommand(rawArgs, now, projectRoot, checkAuthoring);
+  if (outcome.ok) return outcome;
+  return {
+    ...outcome,
+    message: normalizeSddToolFailure(
+      {
+        tool: 'sdd-log',
+        code: outcome.code,
+        object: rawArgs.slice(2).join(' ') || 'sdd-log transition',
+        action: 'repair the named ticket or log state, then repeat the same transition once',
+        example:
+          'npx gennady sdd-log specs/demo/core/core.task.DEM-work.md line "verified" --phase P1',
+      },
+      outcome.message
+    ),
+  };
 }
 
 // Self-executing for CLI: gennady sdd-log <ticket> <mode> [content] — see MODES above.

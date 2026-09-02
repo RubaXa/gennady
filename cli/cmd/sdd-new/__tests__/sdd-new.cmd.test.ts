@@ -86,6 +86,23 @@ describe('SddNewCommand', () => {
     }
   });
 
+  it('gives three typical failures the common object/reason/next/example schema', async () => {
+    const outcomes = [
+      await mod.run(argv()),
+      await mod.run(argv('widget', '--scope', 'demo')),
+      await mod.run(argv('module', '--scope', 'fibonacci', '--module', 'fibonacci')),
+    ];
+    for (const outcome of outcomes) {
+      assert.strictEqual(outcome.ok, false);
+      if (outcome.ok) continue;
+      assert.match(outcome.message, /^\[sdd-new\] ERR_CLI_SDD_NEW_/);
+      assert.match(outcome.message, /^\s*object:/m);
+      assert.match(outcome.message, /^\s*reason:/m);
+      assert.match(outcome.message, /^\s*(?:action|next):/m);
+      assert.match(outcome.message, /^\s*example(?:-name|-path)?:/m);
+    }
+  });
+
   it('rejects an unknown flag and prints canonical usage without requiring --help', async () => {
     const outcome = await mod.run(argv('product', '--scpoe', 'backend'));
     assert.strictEqual(outcome.ok, false);

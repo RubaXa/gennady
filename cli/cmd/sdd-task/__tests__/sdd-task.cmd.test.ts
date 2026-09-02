@@ -236,6 +236,22 @@ describe('SddTaskCommand', () => {
     assert.match(t, /DO NOT READ/);
   });
 
+  it('gives three typical failures the common object/reason/next/example schema', async () => {
+    const outcomes = [
+      await mod.run(argv('--typo')),
+      await mod.run(argv(join(dir, 'missing-ticket.md'))),
+      await mod.run(argv(ticket, '--phase', 'P9')),
+    ];
+    for (const outcome of outcomes) {
+      assert.strictEqual(outcome.ok, false);
+      if (outcome.ok) continue;
+      assert.match(outcome.message, /^\[sdd-task\] ERR_CLI_SDD_TASK_/);
+      for (const field of ['object', 'reason', 'action', 'example']) {
+        assert.match(outcome.message, new RegExp(`^\\s*${field}:`, 'm'));
+      }
+    }
+  });
+
   it('rejects unknown flags, missing value flags, extra positionals, and conflicting modes', async () => {
     const invalid = [
       argv('--typo'),

@@ -6,6 +6,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { logger } from '#logger';
 import { appendSddSessionBoundary } from '../../../shared/sdd/session-boundary.ts';
+import { normalizeSddToolFailure } from '../../../shared/sdd/tool-guidance.ts';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
 import {
   TEMPLATES,
@@ -549,9 +550,21 @@ async function runCommand(rawArgs: string[]): Promise<NewOutcome> {
 export async function run(rawArgs: string[]): Promise<NewOutcome> {
   const workingDir = resolve('.');
   const outcome = await runCommand(rawArgs);
-  return outcome.ok
-    ? { ...outcome, text: appendSddSessionBoundary(outcome.text, workingDir) }
-    : outcome;
+  if (outcome.ok) return { ...outcome, text: appendSddSessionBoundary(outcome.text, workingDir) };
+  return {
+    ...outcome,
+    message: normalizeSddToolFailure(
+      {
+        tool: 'sdd-new',
+        code: outcome.code,
+        object: rawArgs.slice(2).join(' ') || 'sdd-new invocation',
+        action:
+          'correct the named argument or repository object, then repeat the same creation intent',
+        example: 'npx gennady sdd-new module --scope fibonacci --module nth',
+      },
+      outcome.message
+    ),
+  };
 }
 
 // Self-executing for CLI: gennady sdd-new <kind> --scope <s> [--module <m>] [--id <ACR-slug>] [--out <path>] | gennady sdd-new --list

@@ -176,6 +176,22 @@ describe('SddLogCommand', () => {
     assert.match(body, /- \[x\] `2026-06-21T10:00:00\.000Z` ver `npm run check` → pass exit=0/);
   });
 
+  it('gives three typical failures the common object/reason/next/example schema', async () => {
+    const outcomes = [
+      await mod.run(argv(ticket, 'unknown-mode'), CLOCK),
+      await mod.run(argv(ticket, 'line', '<value>'), CLOCK),
+      await mod.run(argv('missing.md', 'line', 'verified'), CLOCK),
+    ];
+    for (const outcome of outcomes) {
+      assert.strictEqual(outcome.ok, false);
+      if (outcome.ok) continue;
+      assert.match(outcome.message, /^\[sdd-log\] ERR_CLI_SDD_LOG_/);
+      for (const field of ['object', 'reason', 'action', 'example']) {
+        assert.match(outcome.message, new RegExp(`^\\s*${field}:`, 'm'));
+      }
+    }
+  });
+
   it('rejects absolute/outside and symlink ticket paths without mutating the external victim', async () => {
     const victimDir = mkdtempSync(join(tmpdir(), 'sdd-log-victim-'));
     const victim = join(victimDir, 'ticket.md');

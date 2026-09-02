@@ -5,6 +5,7 @@
 import { relative, resolve } from 'node:path';
 import type { Finding, TicketRef } from '../../../shared/sdd/check.ts';
 import { unreadableTicketHint } from '../../../shared/sdd/ticket-resolve.ts';
+import { normalizeSddToolFailure } from '../../../shared/sdd/tool-guidance.ts';
 
 /** @purpose Neither --task nor --all was given. */
 export const ERR_CLI_SDD_CHECK_BAD_INVOCATION = 'ERR_CLI_SDD_CHECK_BAD_INVOCATION' as const;
@@ -23,6 +24,21 @@ export type CheckResult = {
   /** @purpose Exit code — 0 clean, 1 errors found, 4 bad invocation. */
   exitCode: number;
 };
+
+/** @purpose Wrap one sdd-check command failure in the common flow-tool schema. */
+function guidedCheckFailure(
+  code: string,
+  exitCode: number,
+  message: string,
+  object: string,
+  action: string,
+  example: string
+): CheckResult {
+  return {
+    text: normalizeSddToolFailure({ tool: 'sdd-check', code, object, action, example }, message),
+    exitCode,
+  };
+}
 
 /** @purpose Stable machine-facing projection of one finding with repair guidance kept separate. */
 type StructuredFinding = {
@@ -156,14 +172,18 @@ export function formatFindings(
  * @returns Result with exit 4.
  */
 export function badInvocation(detail = 'invalid arguments'): CheckResult {
-  return {
-    text: [
+  return guidedCheckFailure(
+    ERR_CLI_SDD_CHECK_BAD_INVOCATION,
+    4,
+    [
       `[sdd-check] ${ERR_CLI_SDD_CHECK_BAD_INVOCATION}`,
       `  problem: ${detail}`,
       '  usage: gennady sdd-check (--task <ticket> [--authoring [--phase P<N>]] | --spec <path> --authoring | --all [project-root] | --changed [project-root])',
     ].join('\n'),
-    exitCode: 4,
-  };
+    'sdd-check invocation',
+    'select one check mode and supply its exact path argument',
+    'npx gennady sdd-check --spec specs/fibonacci/fibonacci.spec.md --authoring --format json'
+  );
 }
 
 /**
@@ -178,14 +198,18 @@ export function gitEvidenceError(
   exitCode: number | null,
   stderr: string
 ): CheckResult {
-  return {
-    text: [
+  return guidedCheckFailure(
+    'ERR_CLI_SDD_CHECK_GIT_EVIDENCE',
+    1,
+    [
       '[sdd-check] ERR_CLI_SDD_CHECK_GIT_EVIDENCE',
       `  problem: git ${operation} failed (exit ${exitCode ?? 'spawn'}): ${stderr || 'no stderr'}`,
       '  repair the repository/HEAD evidence, then rerun the same sdd-check command; an empty clean result was not emitted.',
     ].join('\n'),
-    exitCode: 1,
-  };
+    `git ${operation}`,
+    'repair repository HEAD/index evidence, then repeat the same check',
+    'git status --short; npx gennady sdd-check --changed .'
+  );
 }
 
 /**
@@ -194,18 +218,26 @@ export function gitEvidenceError(
  * @returns Result with exit 1.
  */
 export function fileError(ticket: string): CheckResult {
-  return {
-    text: `[sdd-check] ${ERR_CLI_SDD_CHECK_FILE}: ${ticket}\n  ${unreadableTicketHint(ticket)}`,
-    exitCode: 1,
-  };
+  return guidedCheckFailure(
+    ERR_CLI_SDD_CHECK_FILE,
+    1,
+    `[sdd-check] ${ERR_CLI_SDD_CHECK_FILE}: ${ticket}\n  ${unreadableTicketHint(ticket)}`,
+    ticket,
+    'use the exact existing ticket path returned by sdd-new',
+    'npx gennady sdd-check --task specs/demo/core/core.task.DEM-work.md'
+  );
 }
 
 /** @purpose Build one fail-closed filesystem-observation result with the exact path and retained reason. | @param path Selected or in-scope path that could not be read. | @param reason Original filesystem diagnostic. | @returns Exit-1 result that cannot be mistaken for clean. */
 export function readFailed(path: string, reason: string): CheckResult {
-  return {
-    text: `[sdd-check] ${ERR_CLI_SDD_CHECK_READ_FAILED}: ${path}\n  reason: ${reason}`,
-    exitCode: 1,
-  };
+  return guidedCheckFailure(
+    ERR_CLI_SDD_CHECK_READ_FAILED,
+    1,
+    `[sdd-check] ${ERR_CLI_SDD_CHECK_READ_FAILED}: ${path}\n  ${reason}`,
+    path,
+    'restore readable regular repository evidence, then repeat the same check',
+    `npx gennady sdd-check --all ${path}`
+  );
 }
 
 /**
@@ -217,15 +249,19 @@ export function readFailed(path: string, reason: string): CheckResult {
  */
 export function unknownIdError(id: string, refs: TicketRef[]): CheckResult {
   const known = refs.map((r) => r.taskId).filter((t): t is string => t != null);
-  return {
-    text: [
+  return guidedCheckFailure(
+    ERR_CLI_SDD_CHECK_UNKNOWN_ID,
+    2,
+    [
       `[sdd-check] ${ERR_CLI_SDD_CHECK_UNKNOWN_ID}: ${id}`,
       known.length
         ? `  known Task-IDs: ${known.join(', ')}`
         : '  очередь пуста — тикетов с Task-ID в дереве не найдено.',
     ].join('\n'),
-    exitCode: 2,
-  };
+    id,
+    'select an exact known Task-ID or its existing ticket path',
+    known.length ? `npx gennady sdd-check --task ${known[0]}` : 'npx gennady sdd-check --all .'
+  );
 }
 
 /**
@@ -236,11 +272,15 @@ export function unknownIdError(id: string, refs: TicketRef[]): CheckResult {
  * @returns Result with exit 2.
  */
 export function ambiguousIdError(id: string, matches: TicketRef[], root: string): CheckResult {
-  return {
-    text: [
+  return guidedCheckFailure(
+    ERR_CLI_SDD_CHECK_AMBIGUOUS_ID,
+    2,
+    [
       `[sdd-check] ${ERR_CLI_SDD_CHECK_AMBIGUOUS_ID}: ${id} matches ${matches.length} tickets`,
       ...matches.map((m) => `  - ${relative(root, resolve(m.file))}`),
     ].join('\n'),
-    exitCode: 2,
-  };
+    id,
+    'resolve the duplicate Task-ID, then select one exact ticket path',
+    `npx gennady sdd-check --task ${relative(root, resolve(matches[0]?.file ?? 'ticket.md'))}`
+  );
 }
