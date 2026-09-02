@@ -37,6 +37,7 @@ import {
 } from '../../../shared/sdd/audit-group.ts';
 import { getChangedFiles } from '../../../shared/common/changed-files.ts';
 import { checkPhaseDependencies } from '../../../shared/sdd/phase-dependencies.ts';
+import { appendSddSessionBoundary } from '../../../shared/sdd/session-boundary.ts';
 import { phaseReceiptIssue } from '../sdd-verify/phase-receipt-validation.ts';
 import { isGennadyLintTarget } from '../lint/lint-source-policy.ts';
 import {
@@ -190,7 +191,7 @@ function withResolutionLine(outcome: TaskOutcome, line: string | null): TaskOutc
  * @param [projectRoot] Canonical ticket-resolution root; defaults to cwd (injectable for isolated tests).
  * @returns TaskOutcome — the planning surface on success, else an actionable failure.
  */
-export async function run(rawArgs: string[], projectRoot = resolve('.')): Promise<TaskOutcome> {
+async function runCommand(rawArgs: string[], projectRoot: string): Promise<TaskOutcome> {
   let args: Record<string, unknown> & { _: string[] };
   try {
     args = parseArgs(
@@ -551,6 +552,18 @@ export async function run(rawArgs: string[], projectRoot = resolve('.')): Promis
     },
     resolutionLine
   );
+}
+
+/**
+ * @purpose Execute sdd-task and append the mandatory workspace boundary to every successful state surface.
+ * @param rawArgs Raw command-line arguments (process.argv).
+ * @param [projectRoot] Canonical ticket-resolution and worker root; defaults to cwd.
+ * @returns Planning state ending with WORKING_DIR/TMP_DIR, or the original actionable failure.
+ */
+export async function run(rawArgs: string[], projectRoot = resolve('.')): Promise<TaskOutcome> {
+  const root = resolve(projectRoot);
+  const outcome = await runCommand(rawArgs, root);
+  return outcome.ok ? { ok: true, text: appendSddSessionBoundary(outcome.text, root) } : outcome;
 }
 
 // Self-executing for CLI: gennady sdd-task <ticket-path|Task-ID>

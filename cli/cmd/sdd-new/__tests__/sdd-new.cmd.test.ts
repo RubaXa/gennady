@@ -256,6 +256,10 @@ describe('SddNewCommand', () => {
       assert.match(outcome.text, /REQUIRED/);
       assert.match(outcome.text, /next:/);
       assert.match(outcome.text, /\/sdd/);
+      assert.ok(outcome.text.includes(`WORKING_DIR=${process.cwd()}`));
+      assert.ok(outcome.text.includes(`TMP_DIR=${join(process.cwd(), '.tmp')}`));
+      assert.match(outcome.text, /обязательные к запоминанию поля: WORKING_DIR, TMP_DIR/);
+      assert.match(outcome.text, /искать примеры вне них запрещено\.$/);
     }
   });
 

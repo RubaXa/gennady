@@ -5,6 +5,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { logger } from '#logger';
+import { appendSddSessionBoundary } from '../../../shared/sdd/session-boundary.ts';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
 import {
   TEMPLATES,
@@ -250,7 +251,7 @@ export function validateModulePath(module: string): string | null {
  * @param rawArgs Raw command-line arguments (process.argv).
  * @returns NewOutcome — created path + report on success, else an actionable failure.
  */
-export async function run(rawArgs: string[]): Promise<NewOutcome> {
+async function runCommand(rawArgs: string[]): Promise<NewOutcome> {
   // Fail before the permissive shared parser can erase an unknown flag or turn a missing value
   // into boolean `true`; badInvocation prints the complete canonical call, so no --help retry.
   const rawTokens = rawArgs.slice(2);
@@ -514,6 +515,19 @@ export async function run(rawArgs: string[]): Promise<NewOutcome> {
     text: renderCreated(kind, path, TEMPLATES[kind].sections, nextSteps, authoringLiterals),
     path,
   };
+}
+
+/**
+ * @purpose Execute sdd-new and append the mandatory workspace boundary to every successful report.
+ * @param rawArgs Raw command-line arguments (process.argv).
+ * @returns Creation/manifest state ending with WORKING_DIR/TMP_DIR, or the original failure.
+ */
+export async function run(rawArgs: string[]): Promise<NewOutcome> {
+  const workingDir = resolve('.');
+  const outcome = await runCommand(rawArgs);
+  return outcome.ok
+    ? { ...outcome, text: appendSddSessionBoundary(outcome.text, workingDir) }
+    : outcome;
 }
 
 // Self-executing for CLI: gennady sdd-new <kind> --scope <s> [--module <m>] [--id <ACR-slug>] [--out <path>] | gennady sdd-new --list

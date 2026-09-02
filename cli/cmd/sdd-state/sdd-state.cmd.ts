@@ -20,6 +20,7 @@ import { countModuleSpecs } from '../../../shared/sdd/module-specs.ts';
 import { sumRollupProgress } from '../../../shared/sdd/tracker.ts';
 import { renderLadder } from '../../../shared/sdd/ladder.ts';
 import { collectTicketCorpus } from '../../../shared/sdd/ticket-resolve.ts';
+import { appendSddSessionBoundary } from '../../../shared/sdd/session-boundary.ts';
 import {
   checkAuthoringReadiness,
   queuedInfraGateTicketIds,
@@ -235,7 +236,10 @@ export async function run(rawArgs: string[]): Promise<StateOutcome> {
   });
   // #endregion END_LADDER
 
-  return { ok: true, text: `${formatSnapshot(snapshot)}\n\n${ladder}` };
+  return {
+    ok: true,
+    text: appendSddSessionBoundary(`${formatSnapshot(snapshot)}\n\n${ladder}`, root),
+  };
 }
 
 // Self-executing for CLI: gennady sdd-state [project-root]

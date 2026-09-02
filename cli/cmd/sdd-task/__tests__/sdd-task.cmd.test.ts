@@ -686,6 +686,10 @@ describe('SddTaskCommand', () => {
       assert.match(text, /READ ticket: PHASE_P2, BDD, VERIFICATION, TEST_COVERAGE/);
       assert.match(text, /READ files:  src\/foo\.test\.ts/);
       assert.match(text, /DO NOT READ/);
+      assert.ok(text.includes(`WORKING_DIR=${dir}`));
+      assert.ok(text.includes(`TMP_DIR=${join(dir, '.tmp')}`));
+      assert.match(text, /обязательные к запоминанию поля: WORKING_DIR, TMP_DIR/);
+      assert.match(text, /искать примеры вне них запрещено\.$/);
     });
 
     it('rejects a raw pipeline/extra Verification cell before emitting phase context', async () => {

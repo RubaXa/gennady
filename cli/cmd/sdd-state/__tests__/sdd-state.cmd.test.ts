@@ -141,6 +141,10 @@ describe('SddStateCommand', () => {
       assert.match(o.text, /web\tproduct\twip\tReact SPA\tspecs\/web\/web\.spec\.md/);
       assert.match(o.text, /readiness=ready/);
       assert.doesNotMatch(o.text, /\[GRAPH\]/);
+      assert.ok(o.text.includes(`WORKING_DIR=${ready}`));
+      assert.ok(o.text.includes(`TMP_DIR=${join(ready, '.tmp')}`));
+      assert.match(o.text, /обязательные к запоминанию поля: WORKING_DIR, TMP_DIR/);
+      assert.match(o.text, /читать\/писать вне WORKING_DIR и TMP_DIR запрещено/);
     }
   });
 
