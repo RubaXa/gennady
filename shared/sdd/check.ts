@@ -115,6 +115,14 @@ function hasPlaceholder(text: string): boolean {
 }
 
 /**
+ * @purpose Detect scaffold placeholders in authored Markdown without mistaking the supported
+ * progressive-disclosure tags for placeholder tokens.
+ */
+function hasAuthoringPlaceholder(text: string): boolean {
+  return hasPlaceholder(text.replace(/<\/?(?:details|summary)(?:\s[^<>]*?)?>/gi, ''));
+}
+
+/**
  * @purpose True when a file looks like a ticket (carries both META and EXECUTION_LOG sections).
  * @param content Full file markdown.
  * @returns True when both section markers are present.
@@ -1934,7 +1942,7 @@ export function checkSpecAuthoringDraft(file: string, content: string): Finding[
               .replace(/^#{1,6}\s+.*$/gm, '')
               .trim()
           : '';
-      if (extracted.status !== 'ok' || body.length === 0 || hasPlaceholder(body)) {
+      if (extracted.status !== 'ok' || body.length === 0 || hasAuthoringPlaceholder(body)) {
         findings.push({
           severity: 'warn',
           code: 'SDD_SPEC_SECTION_MISSING',
@@ -1943,6 +1951,7 @@ export function checkSpecAuthoringDraft(file: string, content: string): Finding[
         });
       }
     }
+    findings.push(...checkSpecAuthoringShape(file, content, kind));
   }
 
   for (const match of content.matchAll(/<!--(?!\/?SECTION:)([\s\S]*?)-->/g)) {
@@ -1969,6 +1978,119 @@ export function checkSpecAuthoringDraft(file: string, content: string): Finding[
     }))
   );
   return findings;
+}
+
+/**
+ * @purpose Structural authoring feedback derived from the selected skeleton kind.
+ * @invariant Every finding is advisory: authoring gaps guide the next whole-document generation
+ * pass and never block the draft receipt.
+ */
+function checkSpecAuthoringShape(
+  file: string,
+  content: string,
+  kind: (typeof SCOPE_KINDS)[number] | 'module'
+): Finding[] {
+  const findings: Finding[] = [];
+  const template = TEMPLATES[kind];
+
+  for (const section of template.sections) {
+    const actual = extractSection(content, section.name);
+    if (actual.status !== 'ok') continue;
+    const expected = extractSection(template.skeleton, section.name);
+    if (expected.status !== 'ok') continue;
+    const expectedHeading = collectHeadings(expected.content)[0];
+    const actualHeading = collectHeadings(actual.content)[0];
+    if (!expectedHeading) continue;
+    if (!actualHeading || actualHeading.level !== expectedHeading.level) {
+      const bounds = findSectionBounds(content, section.name);
+      findings.push({
+        severity: 'warn',
+        code: 'SDD_AUTHORING_HEADING_LEVEL',
+        file,
+        line: bounds ? bounds.openLine + 2 : undefined,
+        message: `Section ${section.name} must start with a level-${expectedHeading.level} heading, matching its skeleton structure.`,
+      });
+    }
+  }
+
+  const requirements = requirementsBody(content);
+  if (
+    kind !== 'module' &&
+    requirements !== null &&
+    parseRequirementHeadings(requirements).length === 0
+  ) {
+    findings.push({
+      severity: 'warn',
+      code: 'SDD_REQUIREMENT_ID_MISSING',
+      file,
+      message:
+        'Requirements has no `### <ACR>-REQ-N [должен | должен · нештатная]` entries; add stable IDs to the authored requirements.',
+    });
+  }
+
+  if (kind !== 'module' && requirements !== null) {
+    const headings = collectHeadings(requirements);
+    const outOfScopeIndex = headings.findIndex((heading) => heading.text === 'Out-of-Scope');
+    if (outOfScopeIndex >= 0) {
+      const heading = headings[outOfScopeIndex]!;
+      const next = headings
+        .slice(outOfScopeIndex + 1)
+        .find((candidate) => candidate.level <= heading.level);
+      const body = requirements.slice(heading.lineEnd, next?.start ?? requirements.length).trim();
+      if (body.length > 0 && !/^\s*[-*+]\s+/m.test(body)) {
+        findings.push({
+          severity: 'warn',
+          code: 'SDD_AUTHORING_LIST_REQUIRED',
+          file,
+          message:
+            'Out-of-Scope is prose; keep this skeleton-defined enumeration as a Markdown list.',
+        });
+      }
+    }
+  }
+
+  return findings;
+}
+
+/**
+ * @purpose Auto-fix byte-level authoring noise without inventing or rewriting semantic content.
+ * @invariant Code fences are byte-preserved; only heading whitespace, trailing whitespace, and
+ * accidental indentation of Out-of-Scope bullets are normalized.
+ * @param content Full spec draft Markdown.
+ * @returns Normalized content plus stable names of the applied trivial repairs.
+ */
+export function autoFixSpecAuthoringDraft(content: string): { content: string; fixes: string[] } {
+  const fixes = new Set<string>();
+  let inFence = false;
+  let inOutOfScope = false;
+  const normalized = content
+    .replace(/\r\n?/g, '\n')
+    .split('\n')
+    .map((source) => {
+      if (/^\s*(?:```|~~~)/.test(source)) {
+        inFence = !inFence;
+        return source;
+      }
+      if (inFence) return source;
+
+      let line = source.replace(/[ \t]+$/g, '');
+      if (line !== source) fixes.add('trailing-whitespace');
+      const heading = /^(#{1,6})[ \t]+(.+)$/.exec(line);
+      if (heading) {
+        const fixed = `${heading[1]} ${heading[2]!.trim()}`;
+        if (fixed !== line) fixes.add('heading-whitespace');
+        line = fixed;
+        if (heading[1] === '###') inOutOfScope = heading[2]!.trim() === 'Out-of-Scope';
+        else if (heading[1]!.length <= 3) inOutOfScope = false;
+      } else if (inOutOfScope && /^[ \t]{1,3}[-*+]\s+/.test(line)) {
+        line = line.trimStart();
+        fixes.add('list-indentation');
+      }
+      return line;
+    })
+    .join('\n');
+  if (normalized !== content && /\r/.test(content)) fixes.add('line-endings');
+  return { content: normalized, fixes: [...fixes] };
 }
 
 /** @purpose True when a markdown table row line (starts/ends with `|`) is the header/data separator (`|---|---|`), not a content row. | @param line Trimmed line. | @returns Whether it is a separator row. */

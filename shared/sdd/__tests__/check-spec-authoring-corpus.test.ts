@@ -22,23 +22,23 @@ function codes(relative: string): string[] {
 }
 
 describe('spec authoring corpus — real documents and observed distortions', () => {
-  it.todo('accepts the real completed Fibonacci scope without structural false positives', () => {
+  it('accepts the real completed Fibonacci scope without structural false positives', () => {
     assert.deepStrictEqual(codes('valid/fibonacci.scope.spec.md'), []);
   });
 
-  it.todo('accepts the real completed nth module without structural false positives', () => {
+  it('accepts the real completed nth module without structural false positives', () => {
     assert.deepStrictEqual(codes('valid/nth.module.spec.md'), []);
   });
 
-  it.todo('detects a required section heading at the wrong level', () => {
+  it('detects a required section heading at the wrong level', () => {
     assert.ok(codes('distorted/wrong-heading.spec.md').includes('SDD_AUTHORING_HEADING_LEVEL'));
   });
 
-  it.todo('detects prose where the skeleton requires an Out-of-Scope list', () => {
+  it('detects prose where the skeleton requires an Out-of-Scope list', () => {
     assert.ok(codes('distorted/prose-list.spec.md').includes('SDD_AUTHORING_LIST_REQUIRED'));
   });
 
-  it.todo('detects requirement entries whose headings lost REQ IDs', () => {
+  it('detects requirement entries whose headings lost REQ IDs', () => {
     assert.ok(
       codes('distorted/missing-requirement-ids.spec.md').includes('SDD_REQUIREMENT_ID_MISSING')
     );
@@ -48,7 +48,7 @@ describe('spec authoring corpus — real documents and observed distortions', ()
     assert.ok(codes('distorted/leftover-guidance.spec.md').includes('SDD_AUTHORING_PLACEHOLDER'));
   });
 
-  it.todo('auto-fixes only trivial whitespace and preserves the authored content', () => {
+  it('auto-fixes only trivial whitespace and preserves the authored content', () => {
     const fixer = (
       checkModule as typeof checkModule & {
         autoFixSpecAuthoringDraft?: (content: string) => { content: string; fixes: string[] };

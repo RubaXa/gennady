@@ -7,7 +7,11 @@ import { spawnSync } from 'node:child_process';
 import { basename, isAbsolute, join, resolve, relative, dirname, sep } from 'node:path';
 import { logger } from '#logger';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
-import { proveRepoFile, readProvenRepoFile } from '../../../shared/common/repo-file-identity.ts';
+import {
+  proveRepoFile,
+  readProvenRepoFile,
+  writeProvenRepoFile,
+} from '../../../shared/common/repo-file-identity.ts';
 import {
   getChangedSourceFiles,
   getHeadContent,
@@ -24,6 +28,7 @@ import {
   checkTrackers,
   checkSpecStructure,
   checkSpecAuthoringDraft,
+  autoFixSpecAuthoringDraft,
   checkSpecLanguage,
   checkTaskIdGrammar,
   checkModuleGraph,
@@ -1074,7 +1079,18 @@ export async function run(
       return badInvocation('--spec requires an exact *.spec.md path');
     const observed = readProvenRepoFile(proven.identity);
     if (!observed.ok) return readFailed(specPath, observed.detail);
-    findings.push(...checkSpecAuthoringDraft(proven.identity.relative, observed.content));
+    const fixed = autoFixSpecAuthoringDraft(observed.content);
+    if (fixed.content !== observed.content) {
+      const write = writeProvenRepoFile(proven.identity, fixed.content);
+      if (!write.ok) return readFailed(specPath, write.detail);
+      findings.push({
+        severity: 'warn',
+        code: 'SDD_AUTHORING_AUTO_FIXED',
+        file: proven.identity.relative,
+        message: `Auto-fixed trivial format: ${fixed.fixes.join(', ')}.`,
+      });
+    }
+    findings.push(...checkSpecAuthoringDraft(proven.identity.relative, fixed.content));
     fileCount = 1;
   } else if (taskPath) {
     let repoRoot: string;
@@ -1367,7 +1383,7 @@ export async function run(
       ? {
           maxFindings: 12,
           repairHint: specPath
-            ? 'fill the named sections from their local comments, remove consumed comments, then rerun the same authoring command; draft hints do not block.'
+            ? 'fill the named sections from their local comments, remove consumed comments, then rerun the same authoring command; trivial format is auto-fixed and draft hints do not block.'
             : 'fix only this ticket, then rerun the same authoring command.',
         }
       : {}

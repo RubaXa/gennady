@@ -178,6 +178,30 @@ describe('SddCheckCommand', () => {
     }
   });
 
+  it('--spec --authoring writes only conservative format fixes before structural feedback', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'sdd-check-spec-autofix-'));
+    try {
+      mkdirSync(join(root, 'specs', 'generic'), { recursive: true });
+      const path = 'specs/generic/generic.spec.md';
+      const source = TEMPLATES.library.skeleton
+        .replaceAll('<scope-name>', 'generic')
+        .replace('## Vision & Primary Goal', '##  Vision & Primary Goal   ')
+        .replace('### Out-of-Scope\n', '### Out-of-Scope\n  - explicit exclusion\n');
+      writeFileSync(join(root, path), source);
+
+      const result = await mod.run(argv('--spec', path, '--authoring'), root);
+      const written = readFileSync(join(root, path), 'utf8');
+
+      assert.strictEqual(result.exitCode, 0, result.text);
+      assert.match(result.text, /SDD_AUTHORING_AUTO_FIXED/);
+      assert.match(written, /^## Vision & Primary Goal$/m);
+      assert.match(written, /^- explicit exclusion$/m);
+      assert.doesNotMatch(written, /^##  Vision & Primary Goal/m);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it('rejects unknown flags, missing values, illegal extra roots, and conflicting modes', async () => {
     const t = join(dir, 'strict-argv-clean.md');
     writeFileSync(t, CLEAN_TICKET, 'utf-8');

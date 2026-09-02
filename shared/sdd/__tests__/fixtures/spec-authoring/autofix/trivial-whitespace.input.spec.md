@@ -58,8 +58,8 @@ try {
 
 <!--SECTION:SCOPE_DEPENDENCIES-->
 ##  Scope Dependencies   
-  - **Depends on:** None
-  - **Provides to:** None
+- **Depends on:** None
+- **Provides to:** None
 <!--/SECTION:SCOPE_DEPENDENCIES-->
 
 <!--SECTION:REQUIREMENTS_AND_CONSTRAINTS-->
@@ -136,7 +136,7 @@ _Данные вызова nth: на входе индекс из домена [
 
 <!--SECTION:PUBLIC_API_SURFACE-->
 ##  Public API Surface   
-  - `nth(n): number` — единственная capability: вычислить `n`-е число Фибоначчи по целому
+- `nth(n): number` — единственная capability: вычислить `n`-е число Фибоначчи по целому
   индексу из `[0, 77]`. Владелец — [модуль nth](./nth/nth.spec.md). Точная сигнатура,
   предусловия и классы ошибок заданы в Entity Surfaces и Contracts модуля.
 <!--/SECTION:PUBLIC_API_SURFACE-->
@@ -148,31 +148,31 @@ _Данные вызова nth: на входе индекс из домена [
 сама валидирует вход и вычисляет результат; состояние между вызовами не хранится.
 
 Отвергнутые альтернативы:
-  - класс-обёртка или объект с кэшем — нарушает чистоту и не нужен при домене из одного
+- класс-обёртка или объект с кэшем — нарушает чистоту и не нужен при домене из одного
   вызова;
-  - формула Бине на числах с плавающей точкой — теряет точность на границе домена;
-  - возврат `NaN`/`undefined` вместо исключений — прячет программную ошибку;
-  - `bigint`-результат — выходит за согласованный домен и усложняет потребителю типы.
+- формула Бине на числах с плавающей точкой — теряет точность на границе домена;
+- возврат `NaN`/`undefined` вместо исключений — прячет программную ошибку;
+- `bigint`-результат — выходит за согласованный домен и усложняет потребителю типы.
 <!--/SECTION:ARCHITECTURE-->
 
 <!--SECTION:MODULE_MAP-->
 ##  Module Map   
 
 ### Modules
-  - [nth](./nth/nth.spec.md) — чистая функция `nth(n)`: валидация домена и вычисление F(n).
+- [nth](./nth/nth.spec.md) — чистая функция `nth(n)`: валидация домена и вычисление F(n).
 
 ### Inter-Module Dependency Map
 Модуль один, межмодульных зависимостей нет — граф не рисуется, рисовать нечего.
 
 ### Stack Dependencies
-  - Languages: TypeScript (ES2022, NodeNext)
-  - Test frameworks: `node:test` (`node --test`), см. `ai/directives/testing/node-test.xml`
+- Languages: TypeScript (ES2022, NodeNext)
+- Test frameworks: `node:test` (`node --test`), см. `ai/directives/testing/node-test.xml`
 
 ### Handoff to Tasks
-  - **Primary input:** `specs/fibonacci/fibonacci.spec.md` (этот файл).
-  - **Required directives:** `ai/directives/coding/typescript-rules.xml`,
+- **Primary input:** `specs/fibonacci/fibonacci.spec.md` (этот файл).
+- **Required directives:** `ai/directives/coding/typescript-rules.xml`,
   `ai/directives/testing/node-test.xml`, `ai/directives/testing/common.xml`.
-  - **Open risks & validation needs:** нет открытых рисков; полнота покрыта модулем nth.
+- **Open risks & validation needs:** нет открытых рисков; полнота покрыта модулем nth.
 <!--/SECTION:MODULE_MAP-->
 
 <!--SECTION:DECISION_LOG-->
@@ -187,11 +187,11 @@ _Данные вызова nth: на входе индекс из домена [
 ### FIB-DL-2 2026-09-02 — модуль реализован без Port/Adapter и состояния (почему: одна реализация без вариативности, контракт живёт на функции; отвергнуто: интерфейс и класс-обёртка — не дают тестового шва для чистой функции и добавляют пустой слой)
 
 ### Approval #1 — current specification set
-  - **Status:** pending
-  - **Reviewed set:** `specs/fibonacci/fibonacci.spec.md`, `specs/fibonacci/nth/nth.spec.md`
-  - **Independent review:** pending
-  - **Operator decision:** pending
-  - **Recorded:** 2026-09-02
+- **Status:** pending
+- **Reviewed set:** `specs/fibonacci/fibonacci.spec.md`, `specs/fibonacci/nth/nth.spec.md`
+- **Independent review:** pending
+- **Operator decision:** pending
+- **Recorded:** 2026-09-02
 
 </details>
 <!--/SECTION:DECISION_LOG-->
@@ -211,9 +211,8 @@ No external bootstrap required.
 
 <!--SECTION:HANDOFF-->
 ##  Handoff to Modules   
-  - **Areas requiring decomposition:** один модуль `nth`; дальнейшая декомпозиция не нужна.
-  - **Named abstractions:** функция `nth(n)` из Target Experience.
-  - **Bootstrap tickets ready for cascade:** не требуется (см. Prerequisites).
-  - **Open risks:** нет.
+- **Areas requiring decomposition:** один модуль `nth`; дальнейшая декомпозиция не нужна.
+- **Named abstractions:** функция `nth(n)` из Target Experience.
+- **Bootstrap tickets ready for cascade:** не требуется (см. Prerequisites).
+- **Open risks:** нет.
 <!--/SECTION:HANDOFF-->
-

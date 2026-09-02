@@ -190,7 +190,7 @@ npx gennady yagni /path/to/repo
 | `orient`            | Навигация по file-header и DBC-контрактам                |
 | `sdd-orient`        | Окрестность спеки или scope в SDD-графе                  |
 | `sdd-state`         | Детерминированный снимок SDD-состояния проекта           |
-| `sdd-check`         | Механическая проверка целостности SDD-артефактов         |
+| `sdd-check`         | Структурная проверка SDD; authoring авто-фиксит мелочи   |
 | `sdd-extract`       | Извлечение одной anchored-секции SDD-артефакта           |
 | `sdd-new`           | Scaffold одного SDD v2 артефакта                         |
 | `sdd-verify`        | Запуск verification ladder для тикета или профиля        |

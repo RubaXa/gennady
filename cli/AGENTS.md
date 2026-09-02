@@ -35,7 +35,7 @@
 | orient            | [cmd/orient/](cmd/orient/)                       | Навигация по file-header и DBC-контрактам — карта, поиск, граф зависимостей         |
 | sdd-orient        | [cmd/sdd-orient/](cmd/sdd-orient/)               | Окрестность спеки или scope в SDD-графе                                             |
 | sdd-state         | [cmd/sdd-state/](cmd/sdd-state/)                 | Детерминированный снимок SDD-состояния проекта                                      |
-| sdd-check         | [cmd/sdd-check/](cmd/sdd-check/)                 | Механическая проверка целостности SDD-артефактов                                    |
+| sdd-check         | [cmd/sdd-check/](cmd/sdd-check/)                 | Структурная проверка SDD; authoring авто-фиксит мелочи                              |
 | sdd-extract       | [cmd/sdd-extract/](cmd/sdd-extract/)             | Извлечение одной anchored-секции SDD-артефакта                                      |
 | sdd-new           | [cmd/sdd-new/](cmd/sdd-new/)                     | Scaffold одного SDD v2 артефакта                                                    |
 | sdd-verify        | [cmd/sdd-verify/](cmd/sdd-verify/)               | Запуск verification ladder для тикета или профиля                                   |

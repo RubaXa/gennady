@@ -13,7 +13,7 @@ export function printHelp(): void {
   console.info('Usage:');
   console.info('  npx gennady sdd-check --task <ticket>        # check one ticket');
   console.info(
-    '  npx gennady sdd-check --spec <created-spec-path> --authoring  # soft draft receipt; hints never block'
+    '  npx gennady sdd-check --spec <created-spec-path> --authoring  # structural draft receipt + trivial auto-fix; hints never block'
   );
   console.info(
     '  npx gennady sdd-check --task <created-ticket-path> --authoring  # pre-index ticket-only authoring gate'
@@ -32,6 +32,9 @@ export function printHelp(): void {
   console.info('Mechanical checks (per ticket):');
   console.info(
     '  --authoring: exact path returned by sdd-new; full ticket structure/owner/phase/BDD feedback before the next ticket; max 12 shown; no receipts, coverage execution, siblings, trackers, or global scan'
+  );
+  console.info(
+    '  --spec --authoring: validates skeleton sections/headings/markers/lists/REQ IDs; auto-fixes only trivial whitespace and indentation; content gaps remain warn-only'
   );
   console.info(
     '  --authoring --phase P<N>: only that phase plus overview dependency/Inputs, exact existing-READ/future-CREATE Target Files, and readable direct+transitive Rules closure; full --authoring is still required before moving on'

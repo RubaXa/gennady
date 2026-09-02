@@ -216,4 +216,3 @@ No external bootstrap required.
 - **Bootstrap tickets ready for cascade:** не требуется (см. Prerequisites).
 - **Open risks:** нет.
 <!--/SECTION:HANDOFF-->
-

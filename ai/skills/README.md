@@ -36,7 +36,7 @@ Log, Git и текущего вывода механических инстру�
 | `sdd-execute` | Исполнение одного тикета или очереди по `sdd-task`; реальные gates, audit, code-review |
 | `sdd-critic` | Одно on-demand независимое смысловое ревью bounded target-set; без автоправок |
 | `sdd-reconcile` | Восстановление треугольника spec ↔ task ↔ code по текущим артефактам |
-| `sdd-check` | Read-only механическая проверка |
+| `sdd-check` | Механическая проверка; `--spec --authoring` авто-фиксит только тривиальный формат |
 | `sdd-audit` | Проверка соответствия spec/task/diff/Execution Log |
 | `sdd-code-review` | Независимый поиск поведенческих ошибок после аудита |
 
