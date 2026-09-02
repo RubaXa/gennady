@@ -8,6 +8,7 @@ const PHASE_PROMPTS: Record<SddEvalPhase, string> = {
   'spec-authoring': `Run the installed SDD flow for full specification authoring.
 Read and follow the installed SDD skill and router/directive chain (starting at ai/skills/sdd/SKILL.md and ai/directives/sdd-v2/router.directive.xml).
 Perform discovery, interview/amplification, and write the complete canonical spec artifacts.
+For each authored spec, read its on-disk skeleton, compose the entire document, and overwrite it with exactly one Write. Edit/Patch and sectional writes are forbidden; no skeleton guidance comment may remain.
 Do not implement product code and do not invent a shortcut workflow. Stop at Approval #1 and clearly report the approval boundary.`,
   scaffold: `Run the installed SDD scaffold flow for actual ticket authoring.
 Read and follow the installed SDD skill and router/directive chain (starting at ai/skills/sdd/SKILL.md and ai/directives/sdd-v2/router.directive.xml).

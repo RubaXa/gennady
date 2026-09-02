@@ -1,7 +1,7 @@
-<SddModule keywords="module, authoring, decomposition, entity, dbc, sdd-new, sdd-check" type="directive" ver="2.2">
+<SddModule keywords="module, authoring, decomposition, entity, dbc, sdd-new, sdd-check" type="directive" ver="2.3">
   <Mission>
     Materialize the smallest cohesive module hierarchy from an actual scope draft. The autonomous
-    route is skeleton → orient → fill section-lazy contracts → soft check → handoff. Tasks belong to
+    route is skeleton → orient → one whole-document Write → soft check → handoff. Tasks belong to
     scaffold; dialogue ceremony belongs to the optional interactive profile.
   </Mission>
 
@@ -34,9 +34,13 @@
     </Step>
 
     <Step id="STEP_2_FILL">
-      <Goal>Fill the generated module skeleton.</Goal>
+      <Goal>Generate and write the complete module specification once.</Goal>
       <Action>
-        Keep a closed inventory, one owner for shared files/errors, public surfaces, per-operation DbC,
+        Read the on-disk skeleton once and compose the COMPLETE module document in memory. Replace
+        the skeleton with exactly ONE `Write` of the whole file. `Edit`, `Patch`, and per-section
+        writes are forbidden in authoring. Retain every SECTION marker and replace every
+        `<!-- ... -->` guidance comment with authored content; none may survive the Write. Keep a
+        closed inventory, one owner for shared files/errors, public surfaces, per-operation DbC,
         file structure, and negative behavior. Read entity-inventory, entity-surface, and DbC formats
         only from the comments inside their owning sections, at the moment each section is filled.
         Remove every instructional comment. The scope owns its requirement IDs. With no narrower
@@ -49,8 +53,9 @@
     <Step id="STEP_3_RECONCILE_MAP">
       <Goal>Make the scope Module Map match actual module files.</Goal>
       <Action>
-        Reconcile exact relative links and dependency direction in the scope skeleton's Module Map;
-        never use a separate format file or create two writers for the same map.
+        Validate that the scope's already generated whole document names the exact relative module
+        links and dependency direction. Do not patch its Module Map here: the scope writer owns that
+        map, and authoring never creates a second sectional writer.
       </Action>
     </Step>
 
@@ -58,7 +63,9 @@
       <Goal>Consume mechanical draft receipts.</Goal>
       <Action>
         <ToolCall owner="this-step" result="moduleReceipt">npx gennady sdd-check --spec <module-spec-path> --authoring</ToolCall> Inputs <module-spec-path>: exact path from moduleManifest. Use moduleReceipt.
-        Apply only named hints, then rerun once for the final receipt. For scale=function|fix, check
+        The receipt auto-fixes trivial format. If a content hint remains, report authoring incomplete;
+        never switch to sectional Edit/Patch repair. Rerun once only after checker auto-fix for the
+        final receipt. For scale=function|fix, check
         the scope and its one module in this same pass and treat both receipts as one manifest result.
       </Action>
     </Step>

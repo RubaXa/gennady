@@ -1,7 +1,7 @@
-<SddScope keywords="scope, authoring, product, library, sdd-new, sdd-check" type="directive" ver="2.2">
+<SddScope keywords="scope, authoring, product, library, sdd-new, sdd-check" type="directive" ver="2.3">
   <Mission>
     Author one product/library scope from durable artifacts, not transcript memory. The autonomous
-    route is skeleton → orient → fill → soft check → module handoff. The generated skeleton owns
+    route is skeleton → orient → one whole-document Write → soft check → module handoff. The generated skeleton owns
     section format. Module/entity/DbC detail belongs to the module owner.
   </Mission>
 
@@ -19,7 +19,8 @@
       <Action>
         Classify the scope type and mode exactly once from the request and disk. Preserve the
         operator-confirmed `scale:` retained by this owner; must not reopen the already-settled route.
-        Greenfield starts with exactly one applicable ToolCall. Existing specs are edited in place.
+        Greenfield starts with exactly one applicable ToolCall. Existing specs are read in full and
+        replaced as a whole; authoring never edits them section by section.
         <ToolCall owner="this-step" result="productManifest">npx gennady sdd-new product --scope <scope></ToolCall> Inputs <scope>: request scope classified in this step. Use productManifest.
         <ToolCall owner="this-step" result="libraryManifest">npx gennady sdd-new library --scope <scope></ToolCall> Inputs <scope>: request scope classified in this step. Use libraryManifest.
       </Action>
@@ -36,12 +37,16 @@
     </Step>
 
     <Step id="STEP_2_FILL">
-      <Goal>Replace skeleton guidance with the specification.</Goal>
+      <Goal>Generate and write the complete specification once.</Goal>
       <Action>
-        Fill each required section from its local comment and manifest; remove every consumed
-        instructional comment. Record each disputed autonomous choice once in the scope Decision Log
-        per `DEVIATION_RECORD_FORMAT`. Keep
-        scope ownership thin. Do not preload structure, requirement, caption, or portal formats.
+        Read the on-disk skeleton once, then compose the COMPLETE document in memory from its section
+        order, headings, local comments, and manifest. Replace the skeleton with exactly ONE `Write`
+        of the whole file. `Edit`, `Patch`, and per-section writes are forbidden in authoring. The
+        one Write must retain every SECTION marker, replace every `<!-- ... -->` guidance comment with
+        content, and leave no skeleton guidance behind. Run the structural self-check mentally before
+        that Write. Record each disputed autonomous choice once in the scope Decision Log per
+        `DEVIATION_RECORD_FORMAT`. Keep scope ownership thin. Do not preload structure, requirement,
+        caption, or portal formats.
       </Action>
     </Step>
 
@@ -49,8 +54,10 @@
       <Goal>Consume one mechanical draft receipt.</Goal>
       <Action>
         <ToolCall owner="this-step" result="draftReceipt">npx gennady sdd-check --spec <scope-spec-path> --authoring</ToolCall> Inputs <scope-spec-path>: exact path from the STEP_0_CREATE manifest. Use draftReceipt.
-        Apply only named hints to their sections, then rerun once for the final receipt. Never raise a
-        draft time limit to compensate for reading. Do not run `sdd-check --all specs/<scope>` here:
+        The receipt auto-fixes trivial format. If a content hint remains, report authoring incomplete;
+        never switch to sectional Edit/Patch repair after the whole-document Write. Rerun once only
+        after checker auto-fix to obtain the final receipt. Never raise a draft time limit to
+        compensate for reading. Do not run `sdd-check --all specs/<scope>` here:
         before module materialization it is guaranteed to report broken links.
       </Action>
     </Step>

@@ -768,6 +768,8 @@ test('phase prompt selects the installed SDD flow and approval boundary', () => 
   assert.match(authoring, /never probe --help\/--version/);
   assert.match(authoring, /Do not narrate or pause at intermediate checkpoints/);
   assert.match(authoring, /leave Approval #1 pending/);
+  assert.match(authoring, /overwrite it with exactly one Write/);
+  assert.match(authoring, /Edit\/Patch and sectional writes are forbidden/);
   assert.match(authoring, /^WORKING_DIR=\/tmp\/authoring-sandbox$/m);
   assert.match(authoring, /^TMP_DIR=\/tmp\/authoring-sandbox\/\.tmp$/m);
   assert.match(authoring, /читать\/писать вне WORKING_DIR и TMP_DIR запрещено/);

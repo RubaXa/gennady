@@ -244,3 +244,22 @@ test('RC invariant: authoring skeleton owns format and exposes only section-lazy
   );
   assert.doesNotMatch(directiveSources, /module-diagram-ladder\.example\.md/);
 });
+
+test('RC invariant: spec authoring is one whole-document Write with no sectional repair', () => {
+  const sources = ['scope', 'module', 'infra', 'interface', 'root'].map((name) =>
+    readFileSync(join(REPOSITORY_ROOT, `ai/kit/templates/sdd-v2/${name}.directive.hbs`), 'utf8')
+  );
+  const nextSteps = TEMPLATES.library.nextSteps;
+
+  for (const source of sources) {
+    assert.match(source, /exactly ONE|одним Write/);
+    assert.match(source, /whole-file|whole document|COMPLETE document|полный документ/);
+  }
+  assert.match(sources[0]!, /`Edit`, `Patch`, and per-section writes are forbidden/);
+  assert.match(sources[1]!, /`Edit`, `Patch`, and per-section\s+writes are forbidden/);
+  assert.doesNotMatch(sources[1]!, /Apply only named hints/);
+  assert.doesNotMatch(sources[2]!, /targeted `Edit` per changed passage/);
+  assert.ok(Array.isArray(nextSteps));
+  assert.match(nextSteps.join('\n'), /одним Write поверх файла/);
+  assert.match(nextSteps.join('\n'), /запрещает точечные Edit\/Patch/);
+});

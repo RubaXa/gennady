@@ -1878,7 +1878,8 @@ const RESEARCH_SECTIONS: SectionManifestEntry[] = [
 // #region START_NEXT_STEPS — "what happens after this skeleton exists", per kind (printed by sdd-new)
 // Shared by product/library/infrastructure/interface/module: fill the manifest, then a human decides.
 const SPEC_NEXT_STEPS: string[] = [
-  'Заполни секции по манифесту выше.',
+  'Прочитай скелет целиком, подготовь полный документ и замени скелет одним Write поверх файла.',
+  'Authoring запрещает точечные Edit/Patch: все подсказки <!-- ... --> должны быть заменены содержанием в этом единственном Write.',
   'Согласуй спеку с оператором.',
   'Дальше по флоу — `/sdd`.',
 ];

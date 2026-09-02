@@ -150,11 +150,14 @@
         In `greenfield`/`rewrite` mode, when `specs/<scope>/<scope>.spec.md` does not exist yet,
         create its skeleton via interfaceManifest ToolCall below — it never overwrites and prints
         the section manifest (which sections are REQUIRED and what to fill); in `refine`/`pivot` mode
-        the file already exists, edit it in place, skip `sdd-new`. Content guidance per
+        the file already exists: read it in full and skip `sdd-new`. In every authoring mode compose
+        the COMPLETE target document in memory and replace the file with exactly ONE whole-file
+        `Write`. `Edit`, `Patch`, and per-section writes are forbidden. Retain every SECTION marker
+        and replace every skeleton guidance comment; none may survive. Content guidance per
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/interface-spec-structure.xml")`.
         Before writing, run the self-check pass per
         `AX_ARTIFACT_STYLE_SELF_CHECK`. Write the ordinary V2 artifact per `AX_SPEC_LIFECYCLE` and
-        close with the declared integrity check per `AX_CLOSE_WITH_INTEGRITY_CHECK`. In `refine` mode update sections in place per
+        close with the declared integrity check per `AX_CLOSE_WITH_INTEGRITY_CHECK`. In `refine` mode preserve unchanged semantics while regenerating the whole document per
         `AX_LIVING_SPEC`. In `pivot` mode also
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/pivot-formats.xml")`
         (`AX_PIVOT_REQUIRES_SUPERSESSION`); in `rewrite` mode write fresh — no supersession. For a

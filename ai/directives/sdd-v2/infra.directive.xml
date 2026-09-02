@@ -440,12 +440,12 @@
         In `greenfield`/`rewrite` mode, when `specs/<scope>/<scope>.spec.md` does not exist yet,
         create its skeleton via infrastructureManifest ToolCall below — it never overwrites and
         prints the section manifest (which sections are REQUIRED and what to fill); in
-        `refine`/`pivot` mode the file already exists, edit it in place, skip `sdd-new`. Editing in
-        place means a targeted `Edit` per changed passage — never a bulk regex/`perl -0pi` pass over
-        the spec text. For SDD_LANGUAGE_CALQUE findings, `sdd-check` prints the exact location
-        (`file:line`) and the whole enclosing sentence for each calque — rewrite EVERY such sentence
-        in full with its own targeted `Edit`, preserving meaning; swapping the single flagged word
-        often breaks agreement/case, so rewrite the sentence, not the word. Content guidance per
+        `refine`/`pivot` mode the file already exists: read it in full and skip `sdd-new`. In every
+        authoring mode compose the COMPLETE target document in memory, then replace the file with
+        exactly ONE whole-file `Write`. `Edit`, `Patch`, regex rewrites, and per-section writes are
+        forbidden. Retain SECTION markers and replace every skeleton guidance comment; none may
+        survive. For SDD_LANGUAGE_CALQUE findings, rewrite the whole enclosing sentence while
+        composing that one replacement, never as a later point edit. Content guidance per
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/infrastructure-spec-structure.xml")`.
         Before writing, run the self-check pass per
         `AX_ARTIFACT_STYLE_SELF_CHECK`. Close with the declared integrity check per
