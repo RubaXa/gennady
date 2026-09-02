@@ -242,29 +242,49 @@ describe('SddNewCommand', () => {
     }
   });
 
-  it(
-    'explains module responsibility and creates nothing when module equals scope',
-    { todo: 'P9.2: sdd-new currently creates specs/fibonacci/fibonacci/fibonacci.spec.md' },
-    async () => {
-      const cwd = mkdtempSync(join(tmpdir(), 'sdd-new-module-equals-scope-'));
-      const prevCwd = process.cwd();
-      try {
-        process.chdir(cwd);
-        const outcome = await mod.run(
-          argv('module', '--scope', 'fibonacci', '--module', 'fibonacci')
-        );
+  it('explains module responsibility and creates nothing when module equals scope', async () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'sdd-new-module-equals-scope-'));
+    const prevCwd = process.cwd();
+    try {
+      process.chdir(cwd);
+      const outcome = await mod.run(
+        argv('module', '--scope', 'fibonacci', '--module', 'fibonacci')
+      );
+      assert.strictEqual(outcome.ok, false);
+      if (!outcome.ok) {
+        assert.match(outcome.code, /MODULE_STRUCTURE_INVALID/);
+        assert.match(outcome.message, /object: module "fibonacci" inside scope "fibonacci"/);
+        assert.match(outcome.message, /reason:/);
+        assert.match(outcome.message, /specs\/<scope>\/<module>\/<module>\.spec\.md/);
+        assert.match(outcome.message, /nth|sequence/);
+        assert.match(outcome.message, /next: npx gennady sdd-new module/);
+      }
+      assert.strictEqual(existsSync(join(cwd, 'specs')), false);
+    } finally {
+      process.chdir(prevCwd);
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  it('explains and rejects duplicated scope prefixes and adjacent module segments', async () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'sdd-new-duplicated-module-tree-'));
+    const prevCwd = process.cwd();
+    try {
+      process.chdir(cwd);
+      for (const module of ['catalog/search', 'search/search']) {
+        const outcome = await mod.run(argv('module', '--scope', 'catalog', '--module', module));
         assert.strictEqual(outcome.ok, false);
         if (!outcome.ok) {
-          assert.match(outcome.message, /specs\/<scope>\/<module>\/<module>\.spec\.md/);
-          assert.match(outcome.message, /nth|sequence/);
+          assert.match(outcome.code, /MODULE_STRUCTURE_INVALID/);
+          assert.match(outcome.message, /example-path: specs\/catalog\/core\/core\.spec\.md/);
         }
-        assert.strictEqual(existsSync(join(cwd, 'specs')), false);
-      } finally {
-        process.chdir(prevCwd);
-        rmSync(cwd, { recursive: true, force: true });
       }
+      assert.strictEqual(existsSync(join(cwd, 'specs')), false);
+    } finally {
+      process.chdir(prevCwd);
+      rmSync(cwd, { recursive: true, force: true });
     }
-  );
+  });
 
   it('creates a product spec at the conventional path via --out and writes the skeleton verbatim', async () => {
     const out = join(tmpDir, 'specs', 'backend', 'backend.spec.md');

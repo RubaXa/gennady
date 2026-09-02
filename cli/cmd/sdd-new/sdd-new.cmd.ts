@@ -40,6 +40,7 @@ import {
   scopeNotDecomposed,
   ruleRegistryInvalid,
   authoringLiteralsInvalid,
+  moduleStructureInvalid,
   renderCreated,
   renderManifestReport,
   type NewOutcome,
@@ -398,6 +399,29 @@ async function runCommand(rawArgs: string[]): Promise<NewOutcome> {
     if (reason) {
       logger.warn(`[SddNewCommand#run] bad --module: ${reason}`);
       return badInvocation(reason);
+    }
+  }
+
+  if (kind === 'module' && opts.scope && opts.module) {
+    const moduleSegments = opts.module.split('/');
+    if (moduleSegments[0] === opts.scope) {
+      return moduleStructureInvalid(
+        opts.scope,
+        opts.module,
+        moduleSegments.length === 1
+          ? 'the module name repeats the scope name'
+          : 'the module path starts by repeating the owning scope'
+      );
+    }
+    const repeatedAt = moduleSegments.findIndex(
+      (segment, index) => index > 0 && segment === moduleSegments[index - 1]
+    );
+    if (repeatedAt >= 0) {
+      return moduleStructureInvalid(
+        opts.scope,
+        opts.module,
+        `adjacent module segments repeat "${moduleSegments[repeatedAt]}"`
+      );
     }
   }
 

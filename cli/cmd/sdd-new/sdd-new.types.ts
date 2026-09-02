@@ -22,6 +22,9 @@ export const ERR_CLI_SDD_NEW_RULE_REGISTRY_INVALID =
 /** @purpose Owning-spec contract anchors cannot be emitted safely before task creation. */
 export const ERR_CLI_SDD_NEW_AUTHORING_LITERALS_INVALID =
   'ERR_CLI_SDD_NEW_AUTHORING_LITERALS_INVALID' as const;
+/** @purpose A requested module path repeats structural ownership instead of naming a cohesive part. */
+export const ERR_CLI_SDD_NEW_MODULE_STRUCTURE_INVALID =
+  'ERR_CLI_SDD_NEW_MODULE_STRUCTURE_INVALID' as const;
 
 /**
  * @purpose Result of one sdd-new run.
@@ -164,6 +167,32 @@ export function authoringLiteralsInvalid(path: string, cause: unknown): NewOutco
       `[sdd-new] ${ERR_CLI_SDD_NEW_AUTHORING_LITERALS_INVALID}: cannot derive copy-ready contract anchors.`,
       `  ${path}: ${detail}`,
       '  Repair the owning spec through its authoring flow, then repeat the same sdd-new task call; do not probe anchors with sdd-extract guesses.',
+    ].join('\n'),
+  };
+}
+
+/**
+ * @purpose Explain the module-within-scope model at the exact request that would duplicate ownership.
+ * @param scope Owning scope identity.
+ * @param module Requested module path.
+ * @param reason Concrete structural duplication found in the path.
+ * @returns Actionable structured outcome with a scope-specific example and no filesystem mutation.
+ */
+export function moduleStructureInvalid(scope: string, module: string, reason: string): NewOutcome {
+  const example = scope === 'fibonacci' ? 'nth' : 'core';
+  const alternative = scope === 'fibonacci' ? 'sequence' : 'api';
+  return {
+    ok: false,
+    code: ERR_CLI_SDD_NEW_MODULE_STRUCTURE_INVALID,
+    exitCode: 4,
+    message: [
+      `[sdd-new] ${ERR_CLI_SDD_NEW_MODULE_STRUCTURE_INVALID}`,
+      `  object: module "${module}" inside scope "${scope}"`,
+      `  reason: ${reason}; the resolved tree would repeat scope ownership as specs/${scope}/${module}/.`,
+      '  structure: a module is one cohesive part of its scope with its own responsibility; specs/<scope>/<module>/<module>.spec.md.',
+      `  example-name: for scope "${scope}", choose a responsibility such as "${example}" or "${alternative}".`,
+      `  example-path: specs/${scope}/${example}/${example}.spec.md`,
+      `  next: npx gennady sdd-new module --scope ${scope} --module ${example}`,
     ].join('\n'),
   };
 }
