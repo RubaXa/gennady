@@ -535,9 +535,26 @@ async function runCommand(rawArgs: string[]): Promise<NewOutcome> {
     module: opts.module,
     id: opts.id,
   });
+  const moduleConcept =
+    kind === 'module' && opts.scope && opts.module
+      ? [
+          `concept: module "${opts.module}" is one cohesive responsibility inside scope "${opts.scope}"; it is not a second copy of the scope.`,
+          ...(opts.scope === 'fibonacci'
+            ? [`examples for scope "fibonacci": nth, sequence`]
+            : [
+                `selection-rule: name the responsibility owned inside "${opts.scope}" (for example parser, storage, or transport), not the scope itself.`,
+              ]),
+          `canonical-path: ${path}`,
+        ].join('\n')
+      : '';
   return {
     ok: true,
-    text: renderCreated(kind, path, TEMPLATES[kind].sections, nextSteps, authoringLiterals),
+    text: [
+      renderCreated(kind, path, TEMPLATES[kind].sections, nextSteps, authoringLiterals),
+      moduleConcept,
+    ]
+      .filter(Boolean)
+      .join('\n\n'),
     path,
   };
 }

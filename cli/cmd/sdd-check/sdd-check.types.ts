@@ -107,7 +107,12 @@ function structureFinding(finding: Finding): StructuredFinding {
 export function formatFindings(
   findings: Finding[],
   fileCount: number,
-  options: { maxFindings?: number; repairHint?: string; format?: 'text' | 'json' } = {}
+  options: {
+    maxFindings?: number;
+    repairHint?: string;
+    format?: 'text' | 'json';
+    authoring?: boolean;
+  } = {}
 ): CheckResult {
   const errors = findings.filter((f) => f.severity === 'error').length;
   const warns = findings.length - errors;
@@ -119,6 +124,19 @@ export function formatFindings(
           ok: errors === 0,
           fileCount,
           summary: { errors, warnings: warns },
+          ...(options.authoring
+            ? {
+                authoring: {
+                  writeMode: 'whole-document',
+                  completion: findings.length === 0 ? 'ready' : 'blocked',
+                  requirement: 'sdd-log authoring-complete requires zero remaining findings',
+                  next:
+                    findings.length === 0
+                      ? 'run sdd-log authoring-complete for this exact spec path'
+                      : 'repair the named sections, rewrite the whole document once, then rerun this JSON check',
+                },
+              }
+            : {}),
           findings: findings.map(structureFinding),
         },
         null,
@@ -128,7 +146,15 @@ export function formatFindings(
     };
   }
   if (findings.length === 0) {
-    return { text: `[sdd-check] ✅ clean — ${fileCount} file(s) checked`, exitCode: 0 };
+    return {
+      text: [
+        `[sdd-check] ✅ clean — ${fileCount} file(s) checked`,
+        ...(options.authoring
+          ? ['authoring-boundary: ready — run sdd-log authoring-complete for this exact spec path']
+          : []),
+      ].join('\n'),
+      exitCode: 0,
+    };
   }
   const visible = findings.slice(0, options.maxFindings ?? findings.length);
   const lines = visible.map(

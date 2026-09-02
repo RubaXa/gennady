@@ -747,6 +747,30 @@ test('records the nine repeated full spec writes as a calibration metric', async
   assert.ok(new Set(writes).size < writes.length, 'the metric must retain repeated target writes');
 });
 
+test('maps every bounded P9 misunderstanding to an explicit tool signifier', async () => {
+  const fixture = JSON.parse(
+    await readFile(join(import.meta.dirname, 'fixtures', 'p9-misunderstood-cases.json'), 'utf8')
+  ) as {
+    understandingSignifiers: Array<{
+      concept: string;
+      session: string;
+      message: number;
+      observed: string;
+      signifier: string;
+    }>;
+  };
+  assert.deepEqual(
+    fixture.understandingSignifiers.map(({ concept }) => concept),
+    ['scope-vs-module', 'what-to-fill', 'authoring-boundary']
+  );
+  for (const item of fixture.understandingSignifiers) {
+    assert.match(item.session, /^ses_/);
+    assert.ok(item.message >= 0);
+    assert.ok(item.observed.length > 20);
+    assert.ok(item.signifier.length > 20);
+  }
+});
+
 test('judge receives bounded intent, state, diff, events and tail evidence', async () => {
   const runtime = new FakeRuntime();
   await new SddEvalJudge(runtime, { providerID: 'test', modelID: 'judge' }).evaluate(

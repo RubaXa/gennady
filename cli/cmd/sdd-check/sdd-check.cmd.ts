@@ -1388,9 +1388,10 @@ export async function run(
       ? {
           maxFindings: 12,
           repairHint: specPath
-            ? 'fill the named sections from their local comments, remove consumed comments, then rerun the same authoring command; trivial format is auto-fixed and draft hints do not block.'
+            ? "fill the named sections from their local comments, remove consumed comments, then rerun the same authoring command; draft hints do not block this check's exit code, but sdd-log authoring-complete requires zero remaining findings."
             : 'fix only this ticket, then rerun the same authoring command.',
           format: outputFormat,
+          authoring: true,
         }
       : { format: outputFormat }
   );

@@ -25,5 +25,28 @@
   },
   "leftoverSkeletonGuidance": {
     "fixture": "shared/sdd/__tests__/fixtures/spec-authoring/distorted/p7-leftover-skeleton-guidance.spec.md"
-  }
+  },
+  "understandingSignifiers": [
+    {
+      "concept": "scope-vs-module",
+      "session": "ses_f9d940ebbffeF2hYqFMV8BH3gx",
+      "message": 14,
+      "observed": "worker considered naming the only module fibonacci because the owning scope was fibonacci",
+      "signifier": "sdd-new module success names the scope, cohesive responsibility, canonical path, and fibonacci examples nth/sequence"
+    },
+    {
+      "concept": "what-to-fill",
+      "session": "ses_f9d940ebbffeF2hYqFMV8BH3gx",
+      "message": 28,
+      "observed": "worker guessed why authoring findings existed and repeatedly rewrote both documents",
+      "signifier": "sdd-check JSON states whole-document write mode and exposes section-local findings with examples"
+    },
+    {
+      "concept": "authoring-boundary",
+      "session": "ses_f9d940ebbffeF2hYqFMV8BH3gx",
+      "message": 60,
+      "observed": "worker treated zero errors with remaining warnings as ready, then sdd-log authoring-complete rejected it",
+      "signifier": "sdd-check explicitly reports whether authoring-complete is ready and requires zero remaining findings"
+    }
+  ]
 }

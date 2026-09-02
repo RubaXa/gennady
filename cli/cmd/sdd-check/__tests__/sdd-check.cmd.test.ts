@@ -190,10 +190,20 @@ describe('SddCheckCommand', () => {
       const result = await mod.run(argv('--spec', path, '--authoring', '--format', 'json'), root);
       const report = JSON.parse(result.text) as {
         schema: string;
+        authoring: {
+          writeMode: string;
+          completion: string;
+          requirement: string;
+          next: string;
+        };
         findings: Array<Record<string, unknown>>;
       };
       assert.strictEqual(result.exitCode, 0, result.text);
       assert.strictEqual(report.schema, 'gennady.sdd-check.findings.v1');
+      assert.strictEqual(report.authoring.writeMode, 'whole-document');
+      assert.strictEqual(report.authoring.completion, 'blocked');
+      assert.match(report.authoring.requirement, /zero remaining findings/);
+      assert.match(report.authoring.next, /repair the named sections/);
       assert.ok(report.findings.length > 0);
       for (const finding of report.findings) {
         assert.strictEqual(typeof finding.code, 'string');
@@ -207,6 +217,33 @@ describe('SddCheckCommand', () => {
           (finding) => finding.code === 'SDD_SPEC_SECTION_MISSING' && finding.section === 'VISION'
         )
       );
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('--spec --authoring clean output marks the authoring-complete boundary ready', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'sdd-check-spec-ready-'));
+    try {
+      const path = 'specs/fibonacci/fibonacci.spec.md';
+      mkdirSync(dirname(join(root, path)), { recursive: true });
+      writeFileSync(
+        join(root, path),
+        readFileSync(
+          join(
+            process.cwd(),
+            'shared/sdd/__tests__/fixtures/spec-authoring/valid/fibonacci.scope.spec.md'
+          ),
+          'utf8'
+        )
+      );
+      const result = await mod.run(argv('--spec', path, '--authoring', '--format', 'json'), root);
+      const report = JSON.parse(result.text) as {
+        authoring: { completion: string; next: string };
+      };
+      assert.strictEqual(result.exitCode, 0, result.text);
+      assert.strictEqual(report.authoring.completion, 'ready');
+      assert.match(report.authoring.next, /sdd-log authoring-complete/);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

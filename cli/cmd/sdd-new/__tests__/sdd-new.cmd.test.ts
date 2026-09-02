@@ -303,6 +303,26 @@ describe('SddNewCommand', () => {
     }
   });
 
+  it('teaches the scope/module relationship when a valid module skeleton is created', async () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'sdd-new-module-signifier-'));
+    const prevCwd = process.cwd();
+    try {
+      process.chdir(cwd);
+      const outcome = await mod.run(argv('module', '--scope', 'fibonacci', '--module', 'nth'));
+      assert.strictEqual(outcome.ok, true, outcome.ok ? '' : outcome.message);
+      if (!outcome.ok) return;
+      assert.match(
+        outcome.text,
+        /concept: module "nth" is one cohesive responsibility inside scope "fibonacci"/
+      );
+      assert.match(outcome.text, /examples for scope "fibonacci": nth, sequence/);
+      assert.match(outcome.text, /canonical-path: specs\/fibonacci\/nth\/nth\.spec\.md/);
+    } finally {
+      process.chdir(prevCwd);
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
   it('creates a product spec at the conventional path via --out and writes the skeleton verbatim', async () => {
     const out = join(tmpDir, 'specs', 'backend', 'backend.spec.md');
     const outcome = await mod.run(argv('product', '--scope', 'backend', '--out', out));
