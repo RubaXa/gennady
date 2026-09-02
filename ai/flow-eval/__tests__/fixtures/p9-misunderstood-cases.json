@@ -48,5 +48,28 @@
       "observed": "worker treated zero errors with remaining warnings as ready, then sdd-log authoring-complete rejected it",
       "signifier": "sdd-check explicitly reports whether authoring-complete is ready and requires zero remaining findings"
     }
-  ]
+  ],
+  "p9Verification": {
+    "scenario": "fibonacci-library",
+    "workerSession": "ses_f9d232730ffevJxLW1YcVZXPKC",
+    "judgeSession": "ses_f9d19fe3dffeLzvPTu1XTUPC7B",
+    "sandbox": "/private/tmp/p9-flow-eval-root.aR1ZsR/sdd-flow-eval-IeiW1Q",
+    "verdict": "pass",
+    "workerStatus": "completed",
+    "toolCalls": 50,
+    "previousToolCalls": 95,
+    "toolBreakdown": {
+      "bash": 20,
+      "edit": 1,
+      "grep": 1,
+      "read": 21,
+      "task": 2,
+      "write": 5
+    },
+    "modulePath": "specs/fibonacci/nth/nth.spec.md",
+    "duplicatedModulePathCount": 0,
+    "shellWorkaroundCount": 0,
+    "foreignTmpPathCount": 0,
+    "residualObservation": "one transient approval-marker edit was followed by a whole-document Write; judge classified the summary mismatch as cosmetic and non-blocking"
+  }
 }

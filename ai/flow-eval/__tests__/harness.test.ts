@@ -771,6 +771,38 @@ test('maps every bounded P9 misunderstanding to an explicit tool signifier', asy
   }
 });
 
+test('records the single P9.6 run as bounded calibration evidence', async () => {
+  const fixture = JSON.parse(
+    await readFile(join(import.meta.dirname, 'fixtures', 'p9-misunderstood-cases.json'), 'utf8')
+  ) as {
+    p9Verification: {
+      verdict: string;
+      workerStatus: string;
+      toolCalls: number;
+      previousToolCalls: number;
+      toolBreakdown: Record<string, number>;
+      modulePath: string;
+      duplicatedModulePathCount: number;
+      shellWorkaroundCount: number;
+      foreignTmpPathCount: number;
+      residualObservation: string;
+    };
+  };
+  const evidence = fixture.p9Verification;
+  assert.strictEqual(evidence.verdict, 'pass');
+  assert.strictEqual(evidence.workerStatus, 'completed');
+  assert.ok(evidence.toolCalls < evidence.previousToolCalls);
+  assert.strictEqual(
+    Object.values(evidence.toolBreakdown).reduce((sum, count) => sum + count, 0),
+    evidence.toolCalls
+  );
+  assert.strictEqual(evidence.modulePath, 'specs/fibonacci/nth/nth.spec.md');
+  assert.strictEqual(evidence.duplicatedModulePathCount, 0);
+  assert.strictEqual(evidence.shellWorkaroundCount, 0);
+  assert.strictEqual(evidence.foreignTmpPathCount, 0);
+  assert.match(evidence.residualObservation, /transient approval-marker edit/);
+});
+
 test('judge receives bounded intent, state, diff, events and tail evidence', async () => {
   const runtime = new FakeRuntime();
   await new SddEvalJudge(runtime, { providerID: 'test', modelID: 'judge' }).evaluate(
