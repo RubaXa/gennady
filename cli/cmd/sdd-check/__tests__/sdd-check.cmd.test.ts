@@ -19,6 +19,7 @@ import {
 import { dirname, join, relative, isAbsolute } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
+import { TEMPLATES } from '../../../../shared/sdd/templates.ts';
 type CheckModule = typeof import('../sdd-check.cmd.ts');
 
 let mod: CheckModule;
@@ -156,6 +157,27 @@ describe('SddCheckCommand', () => {
     assert.match(r.text, /✅ clean/);
   });
 
+  it('--spec --authoring returns non-blocking section-local hints for a fresh skeleton', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'sdd-check-spec-authoring-'));
+    try {
+      mkdirSync(join(root, 'specs', 'generic'), { recursive: true });
+      const path = 'specs/generic/generic.spec.md';
+      writeFileSync(
+        join(root, path),
+        TEMPLATES.library.skeleton.replaceAll('<scope-name>', 'generic')
+      );
+      const result = await mod.run(argv('--spec', path, '--authoring'), root);
+      assert.strictEqual(result.exitCode, 0, result.text);
+      assert.match(result.text, /warn: SDD_SPEC_SECTION_MISSING/);
+      assert.match(result.text, /warn: SDD_AUTHORING_PLACEHOLDER/);
+      assert.match(result.text, /local skeleton comment/);
+      assert.doesNotMatch(result.text, /MODULE_MAP is not filled/);
+      assert.match(result.text, /draft hints do not block/);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it('rejects unknown flags, missing values, illegal extra roots, and conflicting modes', async () => {
     const t = join(dir, 'strict-argv-clean.md');
     writeFileSync(t, CLEAN_TICKET, 'utf-8');
@@ -167,6 +189,8 @@ describe('SddCheckCommand', () => {
       argv('--all', dir, 'extra-root'),
       argv('--changed', dir, 'extra-root'),
       argv('--task', t, '--all'),
+      argv('--spec', t),
+      argv('--spec', t, '--authoring', '--phase', 'P1'),
       argv('--all=true'),
     ];
     for (const rawArgs of invalid) {

@@ -1907,6 +1907,70 @@ export function checkSpecStructure(
   return findings;
 }
 
+/**
+ * @purpose Advisory receipt for a scope/module draft created by `sdd-new`.
+ * @param file Repository-relative spec path used in findings and acronym checks.
+ * @param content Current draft markdown.
+ * @returns Non-blocking findings that point back to the owning skeleton section.
+ */
+export function checkSpecAuthoringDraft(file: string, content: string): Finding[] {
+  const module = content.includes('<!--SECTION:MODULE_VISION-->');
+  const scopeType = extractSection(content, 'SCOPE_TYPE');
+  const kind = module
+    ? 'module'
+    : scopeType.status === 'ok'
+      ? SCOPE_KINDS.find((candidate) => new RegExp(`\\b${candidate}\\b`).test(scopeType.content))
+      : undefined;
+  const findings: Finding[] = [];
+
+  if (kind) {
+    for (const section of TEMPLATES[kind].sections.filter((entry) => entry.required)) {
+      if (section.name === 'MODULE_MAP') continue;
+      const extracted = extractSection(content, section.name);
+      const body =
+        extracted.status === 'ok'
+          ? extracted.content
+              .replace(/<!--[\s\S]*?-->/g, '')
+              .replace(/^#{1,6}\s+.*$/gm, '')
+              .trim()
+          : '';
+      if (extracted.status !== 'ok' || body.length === 0 || hasPlaceholder(body)) {
+        findings.push({
+          severity: 'warn',
+          code: 'SDD_SPEC_SECTION_MISSING',
+          file,
+          message: `Section ${section.name} is not filled yet; replace its local skeleton comment with the draft content it requests.`,
+        });
+      }
+    }
+  }
+
+  for (const match of content.matchAll(/<!--(?!\/?SECTION:)([\s\S]*?)-->/g)) {
+    findings.push({
+      severity: 'warn',
+      code: 'SDD_AUTHORING_PLACEHOLDER',
+      file,
+      line: content.slice(0, match.index).split('\n').length,
+      message:
+        'Skeleton guidance remains; follow this local comment, then remove it from the filled spec.',
+    });
+  }
+
+  const semantic = [
+    ...checkSpecStructure(file, content, 'v2'),
+    ...checkRequirementIds(file, content),
+    ...checkRequirementUnhappyPath(file, content),
+  ];
+  findings.push(
+    ...semantic.map((finding) => ({
+      ...finding,
+      severity: 'warn' as const,
+      message: `Draft hint: ${finding.message}`,
+    }))
+  );
+  return findings;
+}
+
 /** @purpose True when a markdown table row line (starts/ends with `|`) is the header/data separator (`|---|---|`), not a content row. | @param line Trimmed line. | @returns Whether it is a separator row. */
 function isSeparatorRow(line: string): boolean {
   return /^\|[\s:|-]+\|$/.test(line);

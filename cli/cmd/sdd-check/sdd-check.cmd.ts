@@ -23,6 +23,7 @@ import {
   checkTaskGraph,
   checkTrackers,
   checkSpecStructure,
+  checkSpecAuthoringDraft,
   checkSpecLanguage,
   checkTaskIdGrammar,
   checkModuleGraph,
@@ -992,6 +993,7 @@ export async function run(
       rawArgs,
       {
         task: { aliases: ['task'], takesValue: true },
+        spec: { aliases: ['spec'], takesValue: true },
         authoring: ['authoring'],
         phase: { aliases: ['phase'], takesValue: true },
         all: ['all'],
@@ -1007,6 +1009,7 @@ export async function run(
     parsedPositionals[0] === 'sdd-check' ? parsedPositionals.slice(1) : parsedPositionals;
   const invalidValue = [
     ['--task', args.task],
+    ['--spec', args.spec],
     ['--phase', args.phase],
   ].find(([, value]) => value !== undefined && (typeof value !== 'string' || value.length === 0));
   if (invalidValue) return badInvocation(`${invalidValue[0]} requires exactly one value`);
@@ -1018,16 +1021,19 @@ export async function run(
     return badInvocation('--authoring does not take a value');
 
   const taskPath = typeof args.task === 'string' ? args.task : undefined;
+  const specPath = typeof args.spec === 'string' ? args.spec : undefined;
   const authoring = args.authoring === true;
   const authoringPhase = typeof args.phase === 'string' ? args.phase : undefined;
   const all = args.all === true;
   const changed = args.changed === true;
   const taskSelected = taskPath !== undefined;
-  const selectedModeCount = [taskSelected, all, changed].filter(Boolean).length;
+  const specSelected = specPath !== undefined;
+  const selectedModeCount = [taskSelected, specSelected, all, changed].filter(Boolean).length;
   if (
     selectedModeCount !== 1 ||
     (taskSelected && positional.length > 0) ||
-    (authoring && !taskSelected) ||
+    (authoring && !taskSelected && !specSelected) ||
+    (specSelected && !authoring) ||
     (authoringPhase !== undefined && (!taskSelected || !authoring)) ||
     ((all || changed) && positional.length > 1)
   )
@@ -1035,10 +1041,12 @@ export async function run(
       selectedModeCount !== 1
         ? 'choose exactly one mode'
         : authoring && !taskSelected
-          ? '--authoring requires --task <ticket>'
-          : authoringPhase !== undefined && (!taskSelected || !authoring)
-            ? '--phase requires --authoring and --task <ticket>'
-            : `unexpected positional argument(s): ${positional.join(' ')}`
+          ? '--authoring requires --task <ticket> or --spec <path>'
+          : specSelected && !authoring
+            ? '--spec requires --authoring'
+            : authoringPhase !== undefined && (!taskSelected || !authoring)
+              ? '--phase requires --authoring and --task <ticket>'
+              : `unexpected positional argument(s): ${positional.join(' ')}`
     );
 
   if (authoringPhase !== undefined && !/^P[1-9][0-9]*$/.test(authoringPhase))
@@ -1053,7 +1061,22 @@ export async function run(
   let fileCount = 0;
   let taskBanner: string | null = null;
 
-  if (taskPath) {
+  if (specPath) {
+    let repoRoot: string;
+    try {
+      repoRoot = realpathSync(resolve(ticketProjectRoot));
+    } catch (cause) {
+      return readFailed(ticketProjectRoot, readReason(cause));
+    }
+    const proven = proveRepoFile(repoRoot, specPath);
+    if (!proven.ok) return readFailed(specPath, proven.detail);
+    if (!/\.spec\.md$/.test(proven.identity.relative))
+      return badInvocation('--spec requires an exact *.spec.md path');
+    const observed = readProvenRepoFile(proven.identity);
+    if (!observed.ok) return readFailed(specPath, observed.detail);
+    findings.push(...checkSpecAuthoringDraft(proven.identity.relative, observed.content));
+    fileCount = 1;
+  } else if (taskPath) {
     let repoRoot: string;
     try {
       repoRoot = realpathSync(resolve(ticketProjectRoot));
@@ -1328,11 +1351,11 @@ export async function run(
   // locate the `specs`/`tasks` segment) — only the reported Finding.file is shortened, relative to
   // cwd, so hundreds of findings don't each repeat the worktree's absolute prefix. --task keeps the
   // caller's own path verbatim (its Finding.file is never touched below).
-  if (!taskPath) {
+  if (!taskPath && !specPath) {
     for (const f of findings) f.file = relative(process.cwd(), resolve(f.file)) || f.file;
   }
 
-  if (authoring) {
+  if (authoring && taskPath) {
     for (const finding of findings) finding.severity = 'error';
   }
 
@@ -1343,7 +1366,9 @@ export async function run(
     authoring
       ? {
           maxFindings: 12,
-          repairHint: 'fix only this ticket, then rerun the same authoring command.',
+          repairHint: specPath
+            ? 'fill the named sections from their local comments, remove consumed comments, then rerun the same authoring command; draft hints do not block.'
+            : 'fix only this ticket, then rerun the same authoring command.',
         }
       : {}
   );

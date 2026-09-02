@@ -13,6 +13,9 @@ export function printHelp(): void {
   console.info('Usage:');
   console.info('  npx gennady sdd-check --task <ticket>        # check one ticket');
   console.info(
+    '  npx gennady sdd-check --spec <created-spec-path> --authoring  # soft draft receipt; hints never block'
+  );
+  console.info(
     '  npx gennady sdd-check --task <created-ticket-path> --authoring  # pre-index ticket-only authoring gate'
   );
   console.info(
@@ -24,7 +27,7 @@ export function printHelp(): void {
   console.info(
     '  npx gennady sdd-check --changed [project-root]  # check @tasks/@consumers headers of changed files'
   );
-  console.info('  Choose exactly one mode: --task, --all, or --changed.');
+  console.info('  Choose exactly one mode: --task, --spec, --all, or --changed.');
   console.info('');
   console.info('Mechanical checks (per ticket):');
   console.info(
