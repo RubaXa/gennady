@@ -19,9 +19,15 @@
 #   [REOPENS]      — task_id \t meta \t audit_triggered \t verdict(OK|PENDING|MISMATCH|UNVERIFIABLE)
 #   [RULES]        — file \t belief \t anti \t hooks \t reward \t verdict(OK|INCOMPLETE) \t missing
 #   [LOG]          — ticket \t round \t line \t kind \t token \t detail
-#                    kinds: unknown-token | unclosed-round | fabricated-placeholder (findings)
+#                    kinds: unknown-token | unclosed-round | fabricated-placeholder |
+#                           bad-round-close | entry-after-close | extra-close-entry  (findings)
 #                           retired-token | round-close-no-timestamp (informational: append-only
 #                           history and cosmetics never fail a tree)
+#                    Post-close integrity — a round is append-only, so nothing may enter it after
+#                    its `Round close`:
+#                      entry-after-close — a ticked entry stamped LATER than that round's close
+#                      extra-close-entry — a ticked, timestamped live-token entry inside the close
+#                                          block, which carries only its single DONE line
 #   [SUMMARY]      — key=value totals + findings count
 #
 # [RULES] implements the mechanical half of AX_RULES_COMPLIANCE_AGAINST_ACTIVATED_RULES: a rule file
@@ -524,16 +530,43 @@ while IFS= read -r f; do
             # Blocker lifecycle markers are their own shape, not action tokens.
             valid["🛑"] = 1; valid["✅"] = 1
             round = "-"; inlog = 0; inclose = 0; closelines = 0; closebad = 0; roundwork = 0
+            maxts = ""; maxraw = ""; maxline = 0; closets = ""; closeraw = ""
         }
+        # Timestamps carry seconds in some projects and not in others: both `T09:00Z` and
+        # `T09:00:00Z` are in the wild. Compared as strings, `Z` (0x5A) sorts ABOVE `:` (0x3A),
+        # so `09:00Z` would read as later than `09:00:59Z` of the same minute, and every
+        # minute-precision entry in a second-precision round would be a false entry-after-close.
+        # Pad the absent seconds before any comparison; reported stamps stay verbatim.
+        function norm_ts(t) {
+            if (t ~ /T[0-9][0-9]:[0-9][0-9]Z$/) sub(/Z$/, ":00Z", t)
+            return t
+        }
+        # Region exit. `### Round N` is not unique to the Execution Log: critic.directive.xml
+        # STEP_4 RECORD writes the very same heading into a `## Critic Rounds` section of the same
+        # ticket file. That heading is unnumbered, so a numbered-only exit left the region open and
+        # let a critic round reset the parser round state — and with it the round attribution of
+        # every finding that followed. ANY `## ` ends the section, which is what markdown means.
+        #
+        # The ENTRY condition is deliberately unchanged. Widening it to any `## <n>. Execution Log`
+        # would also start parsing the logs of tickets that number the section 4, 5 or 6 and have
+        # therefore never been read at all — 49 counted `unknown-token` rows across this tree. Real
+        # machine truth, but a tree-wide event that does not belong in a post-close integrity change.
+        # The `<!--SECTION:EXECUTION_LOG-->` anchors are not used as delimiters for the same reason:
+        # tickets exist whose anchor pair wraps only the heading (`cli-sync-skills.task-57.md`), and
+        # honouring those would silently skip the log they mismark. `scan.sh` already reports that
+        # as `anchors-mismatch`.
         /^## 7\. Execution Log/ { inlog = 1; next }
-        /^## [0-9]+\./       { if (inlog) inlog = 0 }
+        /^## /               { if (inlog) inlog = 0 }
         inlog == 0           { next }
         /^### Round /        {
             if (inclose && closelines != 1 && closebad == 0 && roundwork == 1)
                 printf "%s\t%s\t%d\tbad-round-close\t-\texpected exactly one DONE line, found %d\n", ticket, round, closeline, closelines
             if ($0 ~ /<YYYY-MM-DD>/)
                 printf "%s\t-\t%d\tfabricated-placeholder\tRound\tround header retains a scaffold marker\n", ticket, NR
-            round = $3; inclose = 0; closelines = 0; closebad = 0; roundwork = 0; next
+            if (closets != "" && maxts != "" && maxts > closets)
+                printf "%s\t%s\t%d\tentry-after-close\t-\tentry stamped %s sits in a round closed at %s: the round was written to after it was closed\n", ticket, round, maxline, maxraw, closeraw
+            round = $3; inclose = 0; closelines = 0; closebad = 0; roundwork = 0
+            maxts = ""; maxraw = ""; maxline = 0; closets = ""; closeraw = ""; next
         }
         /^#### Round close/  { inclose = 1; closelines = 0; closebad = 0; closeline = NR; next }
         /^#### /             {
@@ -546,8 +579,30 @@ while IFS= read -r f; do
             rest = $0; sub(/^- \[[ x~!]\] `[^`]*` +/, "", rest)
             split(rest, w, " "); tok = w[1]
             sub(/:$/, "", tok)   # a trailing colon is cosmetic, not a different token
-            if (inclose) { if (tok == "DONE") closelines++ }
-            else if ($0 ~ /^- \[x\]/) roundwork = 1
+            ts = ""; raw = ""
+            # No interval expressions: this file avoids them, and mawk/BWK awk differ on
+            # support. Seconds are optional — both `T10:00Z` and `T10:00:00Z` occur.
+            if (match($0, /`[0-9][0-9-]*T[0-9][0-9:]*Z`/)) {
+                raw = substr($0, RSTART + 1, RLENGTH - 2)
+                ts = norm_ts(raw)
+            }
+            if (inclose) {
+                if (tok == "DONE") { closelines++; if (ts != "") { closets = ts; closeraw = raw } }
+                # The close block carries exactly one line: the DONE that closes the round. A ticked
+                # entry with a LIVE token was appended into the block after the fact — the structural
+                # twin of entry-after-close, and invisible to the timestamp comparison, because a
+                # close-block line is never a candidate for the round max. Retired and unknown tokens
+                # fall through to the vocabulary report below: an old round is append-only history,
+                # so its shape is not re-judged by a rule written later. A real timestamp is
+                # required: an unreplaced `<ts>` marker is a scaffold skeleton, which
+                # fabricated-placeholder already owns.
+                else if ((tok in valid) && ts != "" && $0 ~ /^- \[x\]/)
+                    printf "%s\t%s\t%d\textra-close-entry\t%s\tRound close carries only its DONE line; this ticked entry sits inside the close block\n", ticket, round, NR, tok
+            } else {
+                if ($0 ~ /^- \[x\]/) roundwork = 1
+                # Ticked lines only: an unticked skeleton item has no real timestamp yet.
+                if (ts != "" && $0 ~ /^- \[x\]/ && ts > maxts) { maxts = ts; maxraw = raw; maxline = NR }
+            }
             if ($0 ~ /^- \[x\]/ && has_scaffold_marker(tok, $0)) {
                 printf "%s\t%s\t%d\tfabricated-placeholder\t%s\tchecked protocol line retains a scaffold marker\n", ticket, round, NR, tok
                 next
@@ -584,6 +639,8 @@ while IFS= read -r f; do
         END {
             if (inclose && closelines != 1 && closebad == 0 && roundwork == 1)
                 printf "%s\t%s\t%d\tbad-round-close\t-\texpected exactly one DONE line, found %d\n", ticket, round, closeline, closelines
+            if (closets != "" && maxts != "" && maxts > closets)
+                printf "%s\t%s\t%d\tentry-after-close\t-\tentry stamped %s sits in a round closed at %s: the round was written to after it was closed\n", ticket, round, maxline, maxraw, closeraw
         }
     ' "$f" >> "$LOG_TMP"
 done <<< "$TASK_FILES"

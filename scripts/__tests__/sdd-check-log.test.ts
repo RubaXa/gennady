@@ -348,3 +348,203 @@ describe('check.sh [LOG]', () => {
     assert.equal(findings, '0');
   });
 });
+
+const EARLIER = '2026-01-01T08:00:00Z';
+const LATER = '2026-01-01T09:00:00Z';
+
+/**
+ * @purpose A two-round ticket whose second round's body and close block are caller-supplied.
+ * @param round2Entry The `#### P1` lines of Round 2.
+ * @param round2Close The `#### Round close` lines of Round 2.
+ * @returns The ticket text.
+ */
+function twoRoundTicket(round2Entry: string[], round2Close: string[]): string {
+  return [
+    '## 1. Meta',
+    '',
+    '- **Task-ID:** TSK-01',
+    '- **Status:** [x] DONE',
+    '',
+    '## 7. Execution Log',
+    '',
+    '### Round 1 — 2026-01-01, initial',
+    '',
+    '#### P1',
+    '',
+    `- [x] \`${EARLIER}\` DONE`,
+    '',
+    '#### Round close',
+    '',
+    `- [x] \`${EARLIER}\` DONE`,
+    '',
+    '### Round 2 — 2026-01-01, fix',
+    '',
+    '#### P1',
+    '',
+    ...round2Entry,
+    '',
+    '#### Round close',
+    '',
+    ...round2Close,
+    '',
+  ].join('\n');
+}
+
+/**
+ * @purpose A `## Critic Rounds` section exactly as critic.directive.xml STEP_4 RECORD writes it.
+ * @returns The section text, including its `### Round N` heading.
+ */
+function criticRounds(): string {
+  return [
+    '',
+    '## Critic Rounds',
+    '',
+    '### Round 9 — 2026-01-01',
+    '',
+    '- Mode: baseline',
+    '- Verdict: NEEDS_WORK',
+    `- [x] \`${LATER}\` frobnicate a critic entry shape that does not exist yet`,
+    '',
+  ].join('\n');
+}
+
+describe('check.sh [LOG] — post-close integrity', () => {
+  it('flags an entry stamped after its own Round close', () => {
+    const { rows, findings } = runLog(
+      twoRoundTicket(
+        [`- [x] \`${LATER}\` decision late=yes ← дописано после закрытия`],
+        [`- [x] \`${EARLIER}\` DONE`]
+      )
+    );
+
+    assert.equal(rows.length, 1, rows.join('\n'));
+    assert.match(rows[0], /entry-after-close/);
+    assert.match(rows[0], new RegExp(LATER));
+    assert.equal(findings, '1');
+  });
+
+  it('stays silent when every entry precedes the close', () => {
+    const { rows, findings } = runLog(
+      twoRoundTicket(
+        [`- [x] \`${EARLIER}\` decision ordered=yes ← по порядку`],
+        [`- [x] \`${LATER}\` DONE`]
+      )
+    );
+
+    assert.deepEqual(rows, []);
+    assert.equal(findings, '0');
+  });
+
+  // Some projects stamp seconds and some do not. As strings `Z` (0x5A) sorts above `:` (0x3A), so
+  // `09:00Z` compares as LATER than `09:00:59Z` of the same minute — a false finding on every
+  // minute-precision entry inside a second-precision round.
+  it('does not read a minute-precision entry as later than a close in the same minute', () => {
+    const { rows, findings } = runLog(
+      twoRoundTicket(
+        ['- [x] `2026-01-01T09:00Z` decision precision=mixed ← раньше закрытия'],
+        ['- [x] `2026-01-01T09:00:59Z` DONE']
+      )
+    );
+
+    assert.deepEqual(rows, []);
+    assert.equal(findings, '0');
+  });
+
+  it('still catches a genuinely later entry across the two precisions', () => {
+    const { rows, findings } = runLog(
+      twoRoundTicket(
+        ['- [x] `2026-01-01T09:01Z` decision late=yes ← дописано после закрытия'],
+        ['- [x] `2026-01-01T09:00:59Z` DONE']
+      )
+    );
+
+    assert.equal(rows.length, 1, rows.join('\n'));
+    assert.match(rows[0], /entry-after-close/);
+    // Stamps are reported verbatim, not in the padded form used for the comparison.
+    assert.match(rows[0], /2026-01-01T09:01Z/);
+    assert.equal(findings, '1');
+  });
+
+  // The structural twin: a line physically inside the close block is never a candidate for the
+  // round's max stamp, so a valid token parked there passed every timestamp comparison.
+  it('flags a live-token entry sitting inside the close block', () => {
+    const { rows, findings } = runLog(
+      twoRoundTicket(
+        [`- [x] \`${EARLIER}\` DONE`],
+        [
+          `- [x] \`${EARLIER}\` DONE`,
+          `- [x] \`${LATER}\` decision late=yes ← внутри блока закрытия`,
+        ]
+      )
+    );
+
+    assert.equal(rows.length, 1, rows.join('\n'));
+    assert.match(rows[0], /extra-close-entry\tdecision/);
+    assert.equal(findings, '1');
+  });
+
+  it('stays silent on a close block that carries only its DONE', () => {
+    const { rows, findings } = runLog(
+      twoRoundTicket([`- [x] \`${EARLIER}\` DONE`], [`- [x] \`${LATER}\` DONE`])
+    );
+
+    assert.deepEqual(rows, []);
+    assert.equal(findings, '0');
+  });
+
+  // Rounds are append-only, so a shape rule written later cannot retroactively fail an old round.
+  it('leaves a retired token in the close block informational', () => {
+    const { rows, findings } = runLog(
+      ticket([`- [x] \`${TS}\` DONE`], [`- [x] \`${TS}\` DONE`, `- [x] \`${TS}\` sync demo+root`])
+    );
+
+    assert.equal(rows.length, 1, rows.join('\n'));
+    assert.match(rows[0], /retired-token\tsync/);
+    assert.equal(findings, '0');
+  });
+});
+
+describe('check.sh [LOG] — the Execution Log region is scoped, not the whole file', () => {
+  // `### Round N` is not unique to the Execution Log: critic.directive.xml STEP_4 RECORD writes the
+  // same heading into `## Critic Rounds`. That heading is unnumbered, so a numbered-only region exit
+  // kept the parser inside the log and reset its round state on a critic round.
+  it('leaves the critic section out of the log parse', () => {
+    const { rows, findings } = runLog(`${ticket([`- [x] \`${TS}\` DONE`])}${criticRounds()}`);
+
+    assert.deepEqual(rows, []);
+    assert.equal(findings, '0');
+  });
+
+  it('ends the region at a numbered section too', () => {
+    const { rows, findings } = runLog(
+      [
+        ticket([`- [x] \`${TS}\` DONE`]),
+        '## 8. Notes',
+        '',
+        `- [x] \`${TS}\` frobnicate a shape that is not a log entry`,
+        '',
+      ].join('\n')
+    );
+
+    assert.deepEqual(rows, []);
+    assert.equal(findings, '0');
+  });
+
+  // A guard on the round attribution itself: the `round` column must come from the Execution Log,
+  // so a critic round trailing the log cannot renumber the finding that precedes it.
+  it('attributes a finding to its execution round, not to an intervening critic round', () => {
+    const { rows, findings } = runLog(
+      [
+        twoRoundTicket(
+          [`- [x] \`${LATER}\` decision late=yes ← после закрытия`],
+          [`- [x] \`${EARLIER}\` DONE`]
+        ),
+        criticRounds(),
+      ].join('\n')
+    );
+
+    assert.equal(rows.length, 1, rows.join('\n'));
+    assert.match(rows[0], /\t2\t\d+\tentry-after-close/);
+    assert.equal(findings, '1');
+  });
+});
