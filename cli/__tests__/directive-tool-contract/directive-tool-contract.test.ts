@@ -271,6 +271,14 @@ describe('callable SDD-v2 action-call inventory', () => {
       }),
       null
     );
+    assert.strictEqual(
+      validateToolCallSyntax({
+        raw: 'npx gennady sdd-check --spec specs/demo/demo.spec.md --authoring',
+        cmd: 'sdd-check',
+        argsRaw: '--spec specs/demo/demo.spec.md --authoring',
+      }),
+      null
+    );
   });
 
   it('keeps task-state resolution with the stateless orchestrator before worker dispatch', () => {

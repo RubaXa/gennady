@@ -1,513 +1,75 @@
-<SddModule keywords="module-decomposition, module-map, entity-inventory, dbc-contracts, ports-adapters, closed-world, file-structure, modes, add-module, refine-module, sdd-module" type="directive" ver="2.1">
+<SddModule keywords="module, authoring, decomposition, entity, dbc, sdd-new, sdd-check" type="directive" ver="2.2">
   <Mission>
-    Turn an `AX_HANDOFF_TO_MODULE_DECOMPOSITION`-valid `product` / `library` scope draft or approved
-    spec into a hierarchy of module specs: a
-    closed-world entity inventory, an explicit public surface per entity, strict DbC contracts
-    (Ports / Adapters / Services), and a designed file structure. Loaded lazily by the router;
-    inherits the router core (language, dialogue, safeguard, diverge, no-narration, stateless) —
-    not repeated here.
-
-    Input — `specs/<scope>/<scope>.spec.md`. Output — `specs/<scope>/<module>/<module>.spec.md`
-    (nesting allowed) + the scope spec Module Map updated (append-only per module). Only for
-    scope-type product / library.
-
-    Out of scope: task tickets, BDD, execution plans, rules linkage — those belong to scaffold.
-    The canonical worked example lives in the étalon (referenced at the write step), not inlined here.
-
-    **Glossary.** Modes: initial · add-module · refine-module. Port = abstraction introduced ONLY on
-    confirmed variability (≥2 impls) or an explicit test seam; a single impl without that is a
-    Service, not a Port.
+    Materialize the smallest cohesive module hierarchy from an actual scope draft. The autonomous
+    route is skeleton → orient → fill section-lazy contracts → soft check → handoff. Tasks belong to
+    scaffold; dialogue ceremony belongs to the optional interactive profile.
   </Mission>
 
-  <BeliefState deps="AX_OPERATOR_LANGUAGE, AX_TOOL_INVOCATION, AX_OPERATOR_DIALOGUE_STYLE, AX_DIALOGUE_DISCIPLINE, AX_OPERATOR_SAFEGUARD, AX_NO_PROCESS_NARRATION, AX_STATELESS_ARTIFACT, AX_SCALE_PROPORTIONAL_DEPTH">
+  <BeliefState deps="AX_TOOL_INVOCATION">
     {{> "axiom/process/ax-tool-invocation"}}
-
-    {{> "axiom/scaffold/ax-directive-mode"}}
-
-    {{> "axiom/scaffold/ax-mode-auto-detect-or-halt"}}
-
-    {{> "axiom/boundary/ax-scope-type-gate"}}
-
-    {{> "axiom/truth/ax-spec-is-sole-source"}}
-
-    {{> "axiom/scaffold/ax-rule-activation"}}
-
-    {{> "axiom/process/ax-diverge-before-recommend"}}
-
-    {{> "axiom/spec/ax-module-boundary-by-operator"}}
-
-    {{> "axiom/spec/ax-separation-of-concerns"}}
-
-    {{> "axiom/spec/ax-hierarchical-specs"}}
-
-    {{> "axiom/spec/ax-scope-spec-module-map-ownership"}}
-
-    {{> "axiom/spec/ax-scope-stays-thin"}}
-
-    {{> "axiom/scaffold/ax-append-only-module-add"}}
-
-    {{> "axiom/spec/ax-parallel-mechanism-requires-justification"}}
-
-    {{> "axiom/spec/ax-refine-module-preserves-contracts"}}
-
-    {{> "axiom/spec/ax-spec-lifecycle"}}
-
-    {{> "axiom/spec/ax-handoff-to-module-decomposition"}}
-
-    {{> "axiom/boundary/ax-closed-world-inventory"}}
-
-    {{> "axiom/boundary/ax-entity-surface-completeness"}}
-
-    <Axiom id="AX_SPEC_MANDATORY_DIAGRAM">
-      The diagram floor is a fixed ladder by decomposition stage, not one "when useful" Overview
-      picture — the same discipline agent-inbox's `AX_COMPREHENSION_LADDER` applies to a review
-      applies here to a design, at authoring time instead of review time. Six rungs plus a
-      refine/pivot-only Delta rung, each answering ONE distinct question — no two rungs answer the
-      same thing; the owning skeleton sections carry the required compact shapes:
-      1. **Overview** (module spec) — WHAT this module does, main happy-path flow. Unconditional.
-         Held by tooling: `sdd-check` fails a missing section (`SDD_NO_DIAGRAM_BLOCK`) or an empty
-         one (`SDD_DIAGRAM_BLOCK_EMPTY`). The `Inter-Module Dependencies` graph is machine-parsed
-         and does NOT satisfy this rung.
-      2. **Module Map** (scope spec, `STEP_1_MODULE_MAP`) — WHERE each module sits along the
-         decomposition axes (data/domain ↔ UI ↔ infrastructure, `AX_SEPARATION_OF_CONCERNS`).
-         Unconditional whenever ≥2 modules exist.
-      3. **Entity Inventory** (`STEP_2_ENTITY_INVENTORY`) — HOW entities relate (ER sketch).
-         Conditional: ≥2 entities in one module connected by reference/ownership/composition. A
-         single entity, or a set with no real relation, states that explicitly and skips it.
-      4. **Entity Surface** (`STEP_3_ENTITY_SURFACE`) — the entity's LIFECYCLE, when it is a real
-         state machine (≥3 distinct states/transitions, not just create→terminate). Conditional,
-         per entity.
-      5. **Module Contracts** (`STEP_4_CONTRACTS_DBC`) — the dependency GRAPH among Ports /
-         Adapters / Services. Mandatory whenever the module has ≥1 Port or Adapter; a Service-only
-         module states so explicitly instead of a silently missing graph — floor, never nothing.
-      6. **Call Chain** (`STEP_4_CONTRACTS_DBC`, right after rung 5 — new per the 2026-08-20
-         visualization-chain decision) — WHO calls WHOM, in what ORDER, for the module's one main
-         scenario: a `sequenceDiagram`, or its table-of-steps equivalent (step / participant /
-         action / data, using the call-chain shape linked by the Module Contracts skeleton section) — both forms count
-         equally, neither is a fallback for the other. Mandatory whenever the module's inventory
-         lists ≥2 abstractions (entities and/or Ports/Adapters/Services combined); a module below
-         that threshold states so explicitly.
-      Each rung is drawn as ASCII in chat at the step that owns it, before any delta decision that
-      depends on it and before the final hierarchy Approval — a diagram appearing for the first time
-      in the written spec means the operator never saw the shape being approved (`AX_CHAT_BEFORE_SPEC`).
-      A delta Ask or final Approval without its applicable rung is the same class of violation as
-      `H_ASK_BEFORE_FORMAT` (asked before shown), and the operator may reject and demand it. Every diagram carries a caption naming the requirement IDs it shows,
-      per `DIAGRAM_CAPTION_FORMAT` (`formats/diagram-vocabulary.xml`).
-
-      **Delta rung** (`STEP_6_FINAL_HIERARCHY`, `refine-module` / `pivot` only) — the diagram twin
-      of the Git diff: a composition graph carrying ONLY the changed corner
-      with the new node marked (`:::new` or a `(добавлено)` suffix) plus the ADDED Call Chain
-      steps, per `DELTA_DIAGRAM_FORMAT` (`formats/pivot-formats.xml`) — the unchanged part of the
-      module is NOT redrawn. Mandatory on every `refine-module` / `pivot` round.
-
-      This ladder (rungs 1–6 plus Delta) is the mandatory floor for NEW module specs only — a
-      module spec written before rungs 6 or Delta existed is not retroactively broken by their
-      absence. Beyond this floor, the author adds more views (data-flow, before/after) wherever a
-      further diagram genuinely helps a reader — that part stays judgment, never a gate.
-    </Axiom>
-
-    <Axiom id="AX_SPEC_PROGRESSIVE_DISCLOSURE">
-      A module spec reads top-down: a human-readable summary on top, heavy contract detail folded beneath. Entity Surfaces and Module Contracts wrap their body in `<details><summary>…</summary>` so a reader sees the shape without wading through every precondition. Held by tooling: `sdd-check` fails an unfolded heavy section (`SDD_SECTION_NOT_FOLDED`). This is the spec-artifact analogue of the chat-output `AX_PROGRESSIVE_DISCLOSURE` — summary first, detail on demand.
-    </Axiom>
-
-    <Axiom id="AX_MODULE_DELTA_APPROVAL">
-      Operator boundaries are decision-shaped, not step-shaped. STEP_1 always asks once because module
-      boundaries are architecture. STEP_2–STEP_5 build one evolving design packet and do not each demand
-      a ceremonial Approval: compare the step's result with already-approved scope/module facts. If it
-      only derives or formats settled facts, proceed without Ask. If it introduces a genuinely unsettled
-      product or architecture fork — entity ownership, public behavior/error semantics, Port-vs-Service,
-      or file ownership — show only that delta plus real alternatives and ask once before choosing; batch
-      related forks in one decision. Never re-ask a choice settled earlier in the same packet. STEP_6's
-      review lifecycle shows the exact final hierarchy and unsettled delta, dispatches one independent
-      semantic review, then asks for approval #1. A scaffold-discovered spec correction returns through
-      the same complete boundary before scaffold restarts.
-      Thus no semantic choice disappears, but zero-new-info steps cost zero operator turns.
-    </Axiom>
-
-    {{> "axiom/coding/ax-consumer-driven"}}
-
-    {{> "axiom/spec/ax-ports-and-abstractions-discipline"}}
-
-    {{> "axiom/spec/ax-context-to-contract"}}
-
-    {{> "axiom/spec/ax-contracts-textual-agnostic"}}
-
-    {{> "axiom/spec/ax-runtime-backing-in-contracts"}}
-
-    {{> "axiom/spec/ax-no-silent-option-drop"}}
-
-    {{> "axiom/coding/ax-namespace-naming"}}
-
-    {{> "axiom/coding/ax-modularity-limits"}}
-
-    {{> "axiom/coding/ax-yagni-overengineering-guard"}}
-
-    {{> "axiom/scaffold/ax-stack-based-flow"}}
-
-    {{> "axiom/spec/ax-decision-log-required"}}
-
-    {{> "axiom/truth/ax-evidence-hygiene"}}
-
-    {{> "axiom/truth/ax-research-persisted"}}
-
-    {{> "axiom/scaffold/ax-handoff-to-task-scaffolding"}}
-
-    {{> "axiom/process/ax-artifact-style-self-check"}}
-
-    {{> "axiom/process/ax-close-with-integrity-check"}}
   </BeliefState>
 
-  <HaltConditions>
-    | 🛑 ID | Trigger |
-    |---|---|
-    | `H_INVALID_SCOPE_TYPE` | scope-type = infrastructure or interface — module-decomposition not applicable |
-    | `H_SCOPE_SPEC_MISSING` | `specs/<scope>/<scope>.spec.md` does not exist — run the scope flow first |
-    | `H_INCOMPLETE_SCOPE_SPEC` | Scope spec missing required sections (Vision, Architecture, Golden DX) |
-    | `H_AMBIGUOUS_MODE` | Module specs exist + mode verb absent + no Pivot Invalidation List |
-    | `H_LOW_CONFIDENCE` | Confidence LOW at decomposition lock or final hierarchy |
-    | `H_INVENTORY_INCOMPLETE` | Entered the surface step before every module had a complete closed-world inventory |
-    | `H_SYSTEM_FIT_NOT_RUN` | `STEP_1_MODULE_MAP` entered before `STEP_0B_SYSTEM_FIT`'s checklist closed, or "вводим новое" recorded without the specific neighbour invariant/requirement ID it fails (`AX_PARALLEL_MECHANISM_REQUIRES_JUSTIFICATION`) |
-    | `H_REFINE_BREAKING_CHANGE_NO_LOG` | `refine-module` removes a public entity / weakens a postcondition without a Decision Log entry (`AX_DECISION_LOG_REQUIRED`) |
-    | `H_REFINE_BREAKING_NO_IMPACT_LIST` | breaking `refine-module` without a Pivot Invalidation List enumerating consumer modules (`AX_REFINE_MODULE_PRESERVES_CONTRACTS`) |
-    | `H_MISSING_RULE_FILE` | A module rule reference does not resolve to an existing file (and not `deferred`) |
-    | `H_OPERATOR_REJECT` | Operator refused the module boundary, an unsettled product/architecture delta, or the final hierarchy |
-    | `H_ASK_BEFORE_FORMAT` | A step's Approval Check fires before the step's own format contract (`READ_AND_USE_DIRECTIVE`) was read this turn — operator may reject and demand the step redone read-first |
-  </HaltConditions>
-
   <ExecutionPlan>
+    <Step id="STEP_0_CREATE">
+      <Goal>Create actual module artifacts first.</Goal>
+      <Action>
+        Resolve initial/add/refine from disk once. For each new cohesive module, call the ToolCall
+        before reading optional formats. A function/fix scope creates one Function/Service module
+        without invented Port or parallel owner.
+        <ToolCall owner="this-step" result="moduleManifest">npx gennady sdd-new module --scope <scope> --module <module></ToolCall> Inputs <scope>, <module>: scope and cohesive module name resolved in this step. Use moduleManifest.
+      </Action>
+    </Step>
+
+    <Step id="STEP_1_ORIENT">
+      <Goal>Reuse existing ownership and dependencies.</Goal>
+      <Action>
+        <ToolCall owner="this-step" result="orientation">npx gennady sdd-orient --scope <scope></ToolCall> Inputs <scope>: scope resolved in STEP_0_CREATE. Use orientation.
+        `sdd-orient` is the only unconditional foreign-context read. Do not load interview, research,
+        or registry protocols unless orientation exposes a real ambiguity.
+      </Action>
+    </Step>
+
+    <Step id="STEP_2_FILL">
+      <Goal>Fill the generated module skeleton.</Goal>
+      <Action>
+        Keep a closed inventory, one owner for shared files/errors, public surfaces, per-operation DbC,
+        file structure, and negative behavior. Read entity-inventory, entity-surface, and DbC formats
+        only from the comments inside their owning sections, at the moment each section is filled.
+        Remove every instructional comment. The scope owns its requirement IDs. With no narrower
+        obligation write `No module-specific requirements. Implements parent requirements: <IDs>.`
+        A zero-new-information decision continues without a dialogue stop.
+      </Action>
+    </Step>
+
+    <Step id="STEP_3_RECONCILE_MAP">
+      <Goal>Make the scope Module Map match actual module files.</Goal>
+      <Action>
+        Reconcile exact relative links and dependency direction in the scope skeleton's Module Map;
+        never use a separate format file or create two writers for the same map.
+      </Action>
+    </Step>
+
+    <Step id="STEP_4_CHECK">
+      <Goal>Consume mechanical draft receipts.</Goal>
+      <Action>
+        <ToolCall owner="this-step" result="moduleReceipt">npx gennady sdd-check --spec <module-spec-path> --authoring</ToolCall> Inputs <module-spec-path>: exact path from moduleManifest. Use moduleReceipt.
+        Apply only named hints, then rerun once for the final receipt. For scale=function|fix, check
+        the scope and its one module in this same pass and treat both receipts as one manifest result.
+      </Action>
+    </Step>
+
     <ScalePath when="scale=function|fix">
-      Steps 1–5 form one compact design packet, not five planning loops. Reuse the closed scope-draft
-      requirements as closed input. Read each exact format only when writing its section, once.
-      Do not load the full interview protocol when the scope already fixes the consumer, happy path,
-      negative behavior, constraints, and out-of-scope. Do not run `sdd-check` on skeletons. A
-      single cohesive responsibility becomes one Function/Service module without invented Port,
-      Adapter, layer, sub-module, or extra approval. Conditional diagrams use their explicit skip
-      statements; only genuinely unsettled product or architecture choices reopen operator dialogue.
-      The scope owns its requirement IDs. The module Requirements section never copies them or
-      reuses their acronym: either add a genuinely narrower module-owned obligation under the module
-      acronym and cite its parent ID in the explanation, or state that no module-specific requirement
-      exists and list the parent IDs that tasks and tests implement directly.
+      One Function/Service module without invented Port/Adapter; one authoring pass, one combined
+      manifest, no repeated boundary discussion.
     </ScalePath>
-    <Step id="STEP_0_INTAKE">
-      <Goal>Resolve scope, mode; gate scope-type.</Goal>
-      <Action>
-        Read `specs/<scope>/<scope>.spec.md` (sole source per `AX_SPEC_IS_SOLE_SOURCE`). Accept a
-        structurally complete current V2 scope draft or an already-approved current V2 scope per
-        `AX_HANDOFF_TO_MODULE_DECOMPOSITION`. Missing → `H_SCOPE_SPEC_MISSING`; incomplete →
-        `H_INCOMPLETE_SCOPE_SPEC`. scope-type must be
-        product / library (`AX_SCOPE_TYPE_GATE`, else `H_INVALID_SCOPE_TYPE`). Mode per
-        `AX_MODE_AUTO_DETECT_OR_HALT` — initial / add-module / refine-module; the mode picked here
-        controls step branching downstream (`AX_DIRECTIVE_MODE`). On `add-module` /
-        `refine-module`, run integrityCheck ToolCall below first — an over-budget module
-        (`SDD_MODULE_OVERSIZED` → decompose, `SDD_MODULE_SPEC_VERBOSE` → compress) is surfaced to the
-        operator BEFORE new work, per `AX_HIERARCHICAL_SPECS`.
-        <ToolCall owner="this-step" result="integrityCheck">npx gennady sdd-check --all specs/<scope></ToolCall> Use integrityCheck.
-      </Action>
-    </Step>
-    <Step id="STEP_0B_SYSTEM_FIT">
-      <Goal>Reconcile with the existing system before module boundaries lock.</Goal>
-      <Action>
-        FIRST action this step: run orientation ToolCall below and read its output in
-        full: the portal line, the one-hop neighbours with their
-        paths, entity/contract NAMES, requirement IDs + titles, the consumers list, and its closing
-        question. The scope spec's own Module Map is part of this extract's one-hop
-        neighbourhood — a decomposition that duplicates a sibling module's already-declared
-        responsibility, or a mechanism a neighbour SCOPE already owns, is exactly what this call
-        surfaces before boundaries lock, not after.
 
-        Then close, in THIS message, the fixed checklist — record every answer in the scope spec's
-        Decision Log when (a)/(b) lands on "new", inline note otherwise:
-        (a) Is the module / entity / mechanism we are about to carve out already an existing kind —
-        does the extract already name it (a sibling module, or a neighbour scope's mechanism)?
-        (b) If not: which existing module / mechanism the extract names are we EXTENDING instead of
-        introducing a new one?
-        (c) Which neighbour specs (paths, from the extract) will need work for this decomposition to
-        fit the system — each is recorded in the owning dependency/impact section or Pivot Invalidation List?
-        (d) Which neighbour requirements (IDs, from the extract) conflict with the boundaries we are
-        about to lock, and how is the conflict resolved?
-        "Вводим новое" answers (a)/(b) ONLY together with the specific neighbour invariant/requirement
-        ID the existing module/mechanism cannot satisfy, plus its own Decision Log entry
-        (`AX_PARALLEL_MECHANISM_REQUIRES_JUSTIFICATION`) — else `H_SYSTEM_FIT_NOT_RUN`. On a
-        genuinely greenfield project with no neighbours, `sdd-orient` degenerates to its one-line
-        "соседей нет" — the checklist still runs, (a) still gets an honest answer, (c)/(d) collapse to
-        "н/д"; the step itself is never skipped.
-
-        Continue mechanically when the answers only reuse/extend existing ownership or the project is
-        genuinely neighbour-free. When they introduce a parallel module/mechanism or leave a neighbour
-        conflict with more than one valid resolution, show one delta decision card and use
-        `AskUserQuestion` (`QUESTION_RULE_SLIM`): `REUSE/EXTEND <named existing owner>` versus
-        `INTRODUCE <new owner> — existing <requirement/invariant id> cannot satisfy <need>`, plus the
-        concrete conflict alternatives when applicable. Stop while waiting; no artifact mutation occurs.
-        The selected INTRODUCE branch appends one `<ACR>-DL-N` entry per
-        `DECISION_LOG_ENTRY_FORMAT`; a reuse/extend selection updates the boundary and continues.
-        Do not use an unconditional STOP as a substitute for this decision route.
-        <ToolCall owner="this-step" result="orientation">npx gennady sdd-orient --scope <scope></ToolCall> Inputs <scope>: <scope>=scope resolved in STEP_0. Use orientation.
-      </Action>
-    </Step>
-    <Step id="STEP_1_MODULE_MAP">
-      <Goal>Lock module boundaries; update the scope Module Map.</Goal>
+    <Step id="STEP_5_HANDOFF">
+      <Goal>Leave an actual checked hierarchy.</Goal>
       <Action>
-        Use the Module Map section guidance printed by `sdd-new`; do not preload a separate format.
-        Module decomposition
-        does not require external research by default (`AX_SCALE_PROPORTIONAL_DEPTH` — that gate
-        lives in the scope flow's Architecture step); but if a decomposition pattern or approach
-        proposed below WAS informed by a WebSearch / WebFetch pass this session, persist it per
-        `AX_RESEARCH_PERSISTED` — researchManifest ToolCall below,
-        filled — BEFORE presenting the boundaries, and link the document in this message; research
-        performed and left only in chat is the violation, not the research itself. Propose module
-        <ToolCall owner="this-step" result="researchManifest">npx gennady sdd-new research --scope <scope> --slug <slug></ToolCall> Inputs <scope>, <slug>: <scope>=scope resolved in STEP_0; <slug>=short restricted slug chosen for this STEP_1 decomposition research. Use researchManifest.
-        boundaries along `AX_SEPARATION_OF_CONCERNS` (data/domain ↔ UI/presentation ↔
-        infrastructure; a shared core only once ≥2 consumers need it) — draw the decomposition as
-        a diagram, not a bullet list of names: one tier per axis (data/domain · UI/presentation ·
-        infrastructure), each candidate module placed under its axis, as an ASCII block in THIS
-        message (rung 2 of `AX_SPEC_MANDATORY_DIAGRAM`) — this diagram IS what the
-        operator confirms next, not a restatement of it. The operator confirms
-        (`AX_MODULE_BOUNDARY_BY_OPERATOR`). With exactly one function-scale module, state its one
-        responsibility and axis in the compact design packet; the Module Map diagram is required
-        only when at least two modules exist. **Applicable diagram shown, this message, before the Approval
-        Check below** — its absence is the same class of violation as `H_ASK_BEFORE_FORMAT` (asked
-        before shown); the operator may reject and demand it. Update
-        the scope spec Module Map append-only (`AX_SCOPE_SPEC_MODULE_MAP_OWNERSHIP`), converting the
-        same shape to the mermaid `flowchart` grouped by axis (`AX_CHAT_BEFORE_SPEC`) — never a
-        diagram invented fresh at write time. `add-module`
-        appends only (`AX_APPEND_ONLY_MODULE_ADD`). On `initial` this is the monolith→index migration
-        (`AX_SCOPE_STAYS_THIN`): move entity / contract / file-level detail out of the scope spec into
-        the new module specs, leaving the scope spec as the thin index (Module Map + composition Golden
-        DX). Apply BOTH decomposition triggers while drawing any boundary here — size
-        (`AX_HIERARCHICAL_SPECS` budget, held by `sdd-check`) and behavior (an entity owning state, a
-        lifecycle, error handling, or user interaction) — and name explicitly, in this message, which
-        entities earn their own child spec and which stay a one-line index row. The two rules are one
-        seen from two steps: an entity that earns a spec here for owning behavior carries the full
-        per-operation DbC contract there (`AX_PORTS_AND_ABSTRACTIONS_DISCIPLINE`, `STEP_4_CONTRACTS_DBC`)
-        — the index itself holds only links to child specs plus one row per presentation-only leaf,
-        never an inlined contract. When a function-scale scope already fixes one cohesive module and
-        no alternative boundary exists, carry that zero-new-information decision into STEP_2 without
-        another Ask or STOP. Otherwise run the Approval Check and STOP.
-      </Action>
-    </Step>
-    <Step id="STEP_2_ENTITY_INVENTORY">
-      <Goal>Closed-world inventory per module.</Goal>
-      <Action>
-        When filling Entity Inventory, follow its skeleton comment and only then read the linked
-        `formats/entity-inventory-format.xml`. List every entity
-        of the module — the complete world (`AX_CLOSED_WORLD_INVENTORY`); anything an
-        execution agent adds beyond it is drift. When the approved scope leaves inventory ownership
-        unresolved, interview the operator via
-        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/interview-protocol.directive.xml")`, extending
-        its coverage map with the decomposition topics: «Пропущенная сущность» (what the inventory
-        still misses) and «Бесхозная ответственность» (a responsibility no listed entity owns).
-        At `function` / `fix`, do not load the protocol when the scope already resolves both; record
-        the single Function/Service and its error owner directly. A
-        dispute or tangent raised mid-interview opens a nested frame on the flow's stack — this
-        step's main path never silently stalls on it (`AX_STACK_BASED_FLOW`).
-        Size the interview to the SCALE confirmed for this invocation
-        (`AX_SCALE_PROPORTIONAL_DEPTH`). Keep evidence separated per `AX_EVIDENCE_HYGIENE`: entities
-        named by the scope spec are facts; entities inferred during the interview stay hypotheses
-        until the operator confirms them.
-        Errors are first-class inventory, not an afterthought: either one listed entity is the
-        explicit errors owner, or the inventory carries a module-level `Ошибки: <механизм> →
-        <владелец>` line (mechanism = throw / Result / event / …). A downstream BDD ticket cannot
-        require behavior on an error whose owner is absent from this inventory — surface the gap
-        here, before approval, not at scaffold time. Once ≥2 entities are relationally connected
-        (one references, owns, or is composed of another), draw the ER sketch per
-        the entity-inventory section's linked format as an ASCII block in THIS message before any delta decision (rung
-        3 of `AX_SPEC_MANDATORY_DIAGRAM`) — a single entity or a set
-        with no real relation states that explicitly instead. **Diagram shown (or explicit
-        skip-reason), this message, before any delta Ask and before final Approval** — its absence on a ≥2-related-entity
-        inventory is the same class of violation as `H_ASK_BEFORE_FORMAT`. If a
-        module's inventory outgrows cohesion (too many entities / unrelated responsibility clusters),
-        PROPOSE sub-module decomposition here per `AX_HIERARCHICAL_SPECS` — the split is a result of
-        weighing real alternatives, not the first typical cut (`AX_DIVERGE_BEFORE_RECOMMEND`); the
-        operator decides — do not silently let one module absorb a sub-system. All module
-        inventories must be complete before the surface step (else `H_INVENTORY_INCOMPLETE`). Apply
-        `AX_MODULE_DELTA_APPROVAL`: ask and STOP only when this inventory exposes a new product or
-        architecture fork; otherwise carry the derived inventory into STEP_3 without a no-op approval.
-      </Action>
-    </Step>
-    <Step id="STEP_3_ENTITY_SURFACE">
-      <Goal>Public surface per entity.</Goal>
-      <Action>
-        When filling Entity Surfaces, follow its skeleton comment and only then read the linked
-        `formats/entity-surface-format.xml`. Define each
-        entity's public surface (`AX_ENTITY_SURFACE_COMPLETENESS`), including its `Errors &
-        Degradation` field: which errors, by what mechanism (throw / Result / event / …), and who
-        owns handling/display — do not leave it generic once the inventory named an owner. No
-        consumer → no entity (`AX_CONSUMER_DRIVEN`): an entity without a confirmed v1 consumer is
-        dropped or `deferred`. Show each entity as its own compact block in chat (type / operations /
-        errors) BEFORE asking for confirmation — a batched approval across several entities in one
-        multiSelect/confirmation is fine, but only after every entity in that batch was shown
-        individually, never as a table skim. When an entity's Lifecycle is a real state machine (≥3
-        distinct states/transitions, not just create→terminate), draw it as an ASCII state diagram
-        per the entity-surface section's linked format inside that entity's block, BEFORE the confirmation for that
-        entity (rung 4 of `AX_SPEC_MANDATORY_DIAGRAM`) — a 2-state lifecycle stays
-        the one-line bullet. **Diagram shown (or below-threshold, stated), this message, before
-        any decision about that entity** — its absence on a ≥3-transition lifecycle is the same class
-        of violation as `H_ASK_BEFORE_FORMAT`. Apply `AX_MODULE_DELTA_APPROVAL`: only a new public
-        behavior/error/ownership fork opens a delta-only Ask and STOP; settled surfaces continue into
-        STEP_4, and related unsettled deltas may be batched rather than re-approved per entity.
-      </Action>
-    </Step>
-    <Step id="STEP_4_CONTRACTS_DBC">
-      <Goal>DbC contract per entity.</Goal>
-      <Action>
-        When filling Module Contracts, follow its skeleton comment and only then read the linked
-        `formats/dbc-contracts.xml`. Preconditions /
-        postconditions per OPERATION — each operation gets its own pre/post lines, plus a mandatory
-        line for what happens when the precondition is violated (e.g. a non-existent id): observable
-        error behavior, not silence. A general block at entity/service level is for genuine
-        class-level invariants only (what stays true across the whole lifetime, independent of any
-        single operation) — do not use it as a substitute for per-operation contracts. Written
-        textual and language-agnostic per `AX_CONTRACTS_TEXTUAL_AGNOSTIC` (target-language code
-        appears only in usage examples). A Port is introduced ONLY on confirmed
-        variability or a test seam (`AX_PORTS_AND_ABSTRACTIONS_DISCIPLINE`) — Port-vs-Service is a
-        design choice, so apply `AX_DIVERGE_BEFORE_RECOMMEND` (do not default to Port); when the
-        module consciously forgoes a Port, the same per-operation DbC lives directly on the Service /
-        Adapter and that choice is recorded in the Decision Log (`AX_DECISION_LOG_REQUIRED`,
-        `DECISION_LOG_ENTRY_FORMAT`). This is
-        entity-type-agnostic (`AX_PORTS_AND_ABSTRACTIONS_DISCIPLINE`) — a Component that owns state, a
-        lifecycle, error handling, or user interaction gets a `### Components` DbC subsection in the
-        same per-operation shape; only an entity explicitly marked `Presentation-Only` on its Entity
-        Surface skips this block. Each
-        abstraction carries its justification (`AX_CONTEXT_TO_CONTRACT`); runtime backing is stated
-        per contract (`AX_RUNTIME_BACKING_IN_CONTRACTS`).
-        Draw the Port/Adapter/Service dependency graph in the shape linked by Module Contracts as an
-        ASCII block in THIS message before any contract delta decision (rung 5 of
-        `AX_SPEC_MANDATORY_DIAGRAM`): nodes = every Port /
-        Adapter / Service this module defines, edges = `implements` (Adapter → Port) and `depends
-        on` (Service → Port), arrows toward the more stable side. A Service-only module (no
-        Port/Adapter at all) states that explicitly instead of a silently missing graph — floor,
-        never nothing. **Diagram shown (or explicit Service-only statement), this message, before
-        any contract delta Ask and before final Approval** — its absence is the same class of violation as
-        `H_ASK_BEFORE_FORMAT`.
-
-        Right after the dependency graph, when this module's inventory lists ≥2 abstractions
-        (entities and/or Ports/Adapters/Services combined), draw the Call Chain (rung 6 of
-        `AX_SPEC_MANDATORY_DIAGRAM`, new per the 2026-08-20 visualization-chain decision, per
-        the call-chain shape linked by Module Contracts): who calls whom, in order, for the module's one main scenario — a
-        `sequenceDiagram` ASCII block, OR its table-of-steps equivalent (step / participant /
-        action / data) when the scenario is linear — both count equally. A module below the
-        ≥2-abstraction threshold states that explicitly instead of a silently missing rung.
-        **Call Chain shown (or explicit below-threshold statement), this message, before any
-        contract delta Ask and before final Approval** — its absence is the same class of violation as
-        `H_ASK_BEFORE_FORMAT`.
-
-        On `refine-module` / `pivot`, the Delta rung (composition graph with the new node marked
-        plus the ADDED Call Chain steps, per `DELTA_DIAGRAM_FORMAT` in `formats/pivot-formats.xml`)
-        is drawn later, at `STEP_6_FINAL_HIERARCHY` alongside the textual delta — not here.
-
-        Close the step with two checks before presenting:
-        1. Every module / entity / Port in the contracts carries a confirmed v1 consumer or
-           near-term variability (`AX_YAGNI_OVERENGINEERING_GUARD`).
-        2. Every public option / flag / policy the scope spec mentions is bound to a concrete
-           Port / Adapter contract or explicitly marked `deferred / not consumed in v1` with a
-           pointer to the task or version that activates it (`AX_NO_SILENT_OPTION_DROP`).
-        3. Every entity from `STEP_2_ENTITY_INVENTORY` resolves one of two ways here: a DbC
-           subsection above, or an explicit `Presentation-Only` marker on its Entity Surface
-           (`AX_PORTS_AND_ABSTRACTIONS_DISCIPLINE`) — neither present is a spec omission, surfaced
-           now, not a silently accepted style choice.
-        Apply `AX_MODULE_DELTA_APPROVAL`: an unsettled Port-vs-Service, public contract, or error
-        semantics fork opens one delta-only Ask and STOP; deterministic DbC expansion of already-settled
-        behavior proceeds to STEP_5 without another approval.
-      </Action>
-    </Step>
-    <Step id="STEP_5_FILE_STRUCTURE">
-      <Goal>Design the file structure.</Goal>
-      <Action>
-        Repo layout. Physically split `ports/` (or `contracts/`) from `adapters/` (or `impl/`) only
-        when both sides actually exist; a Function/Service-only module uses the smallest direct
-        layout and invents neither directory. No God objects, file size ≤ 1500 lines
-        (`AX_MODULARITY_LIMITS`); single grep namespace
-        (`AX_NAMESPACE_NAMING`). Apply `AX_MODULE_DELTA_APPROVAL`: ask and STOP only if more than one
-        materially different file-ownership architecture remains; otherwise carry the derived layout
-        directly into STEP_6.
-      </Action>
-    </Step>
-    <Step id="STEP_6_FINAL_HIERARCHY">
-      <Goal>Emit the module spec hierarchy.</Goal>
-      <Action>
-        On `initial` / `add-module`, for each new module create its skeleton via
-        moduleManifest ToolCall below — it never overwrites and prints the
-        section manifest (which sections are REQUIRED and what to fill); on `refine-module` the file
-        already exists, edit it in place, skip `sdd-new`. The skeleton and its section manifest are
-        the format; fill them in place and remove every instructional comment. Every mermaid diagram this spec carries must already have been
-        shown to the operator as ASCII in chat at the step where that shape was decided, per
-        `AX_CHAT_BEFORE_SPEC`; use the caption grammar embedded in the skeleton. A diagram
-        appearing here for the first time means the operator never saw the shape they are being
-        asked to approve. Assemble
-        each `specs/<scope>/<module>/<module>.spec.md` to it; link back to `../../<scope>.spec.md`;
-        Requirements ownership is explicit: scope requirements remain owned by the scope and are not
-        duplicated in a module. A new module requirement exists only for a narrower observable
-        obligation, uses this module file's own acronym, and names its parent requirement IDs in the
-        explanation. With no narrower obligation, keep the section and state `No module-specific
-        requirements. Implements parent requirements: <IDs>.`; downstream task BDD and tests cite
-        those parent IDs. Never pause to choose between copying a scope ID and inventing a duplicate.
-        reconcile the scope Module Map as the exact non-empty member manifest: one explicit relative
-        markdown link per canonical `<module>/<module>.spec.md`, no duplicate, missing, ambiguous, or
-        undeclared module spec. In `pivot` / `refine-module`, draw the Delta rung
-        (`AX_SPEC_MANDATORY_DIAGRAM`, per `DELTA_DIAGRAM_FORMAT` in
-        `ai/directives/sdd-v2/formats/pivot-formats.xml`) alongside the textual Git delta: the
-        composition graph carrying ONLY the changed corner with the new node marked, plus the
-        ADDED Call Chain steps — the unchanged part of the module is NOT redrawn. As ASCII in
-        chat BEFORE this step's Approval Check, per `AX_CHAT_BEFORE_SPEC`; its absence on a
-        `refine-module` / `pivot` round is the same class of violation as `H_ASK_BEFORE_FORMAT`.
-        In `pivot` / breaking `refine-module` also
-        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/pivot-formats.xml")`
-        (`AX_REFINE_MODULE_PRESERVES_CONTRACTS`, else `H_REFINE_BREAKING_CHANGE_NO_LOG`). For a breaking
-        `refine-module`, derive consumer modules from the reverse edges of the module graph (siblings whose
-        `Inter-Module Dependencies` declares `--> this-module`) and emit a Pivot Invalidation List in the module spec — else
-        `H_REFINE_BREAKING_NO_IMPACT_LIST`. When a module needs rules beyond the scope-wide
-        baseline, fill Module Rules Additions in the Handoff section per `AX_RULE_ACTIVATION`
-        (shortlist + considered-skips, operator locks the list; architecture / infra rules get the
-        per-axiom walk-through); every referenced rule file must resolve, else
-        `H_MISSING_RULE_FILE`. Before writing, run the self-check pass per
-        `AX_ARTIFACT_STYLE_SELF_CHECK`. Write the ordinary V2 spec directly per
-        `AX_SPEC_LIFECYCLE`; Git diff carries the review delta. Record affected neighbours in the
-        owning dependency/impact fields rather than a temporary manifest. Then run
-        integrityCheck ToolCall below (anchor balance + required sections + links + size budget:
-        `SDD_MODULE_OVERSIZED` / `SDD_MODULE_SPEC_VERBOSE`) and resolve or consciously defer any finding
-        per `AX_CLOSE_WITH_INTEGRITY_CHECK`. Then hand the approved module set to task scaffolding per
-        `AX_HANDOFF_TO_TASK_SCAFFOLDING`.
-        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/preflight-protocol.directive.xml")` and run
-        its lazy active-domain checklist. The semantic review target-set is the parent scope spec plus
-        ALL module specs in that scope after decomposition; unchanged module specs are read-only members.
-
-        Whether entered directly or because scaffold exposed a spec inconsistency, load
-        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/review-lifecycle.directive.xml")` once for this
-        complete bundle. It runs structural checks, one fresh independent semantic review,
-        reconciliation, and operator approval #1 over the actual spec bytes. A scaffold-discovered
-        semantic change invalidates prior ticket work; after approval #1, restart scaffold from its
-        artifact preflight. Standalone module work likewise hands the approved bundle to scaffold.
-        No nested critic, retained worker, session journal, publication state machine, or hidden
-        return token exists.
-        <ToolCall owner="this-step" result="moduleManifest">npx gennady sdd-new module --scope <scope> --module <module></ToolCall> Use moduleManifest.
-        <ToolCall owner="this-step" result="integrityCheck">npx gennady sdd-check --all specs/<scope></ToolCall> Use integrityCheck.
+        If an operator explicitly requested live interaction, lazily
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/authoring-interactive.directive.xml")`.
+        Otherwise record deviations and continue to the mechanical close/scaffold route.
       </Action>
     </Step>
   </ExecutionPlan>
-
-  <ChatProtocol>
-    {{> "contract/process/question-rule-slim"}}
-  </ChatProtocol>
-
-  <ChatOutput>
-    Service line — dim, internal, never narrated (per `AX_NO_PROCESS_NARRATION`):
-    `🧩 DM_R<N> · <scope> · <mode> · conf=<LOW|MEDIUM|HIGH>`. Breadcrumb milestones (per
-    `BREADCRUMB_FORMAT`): Module Map · Inventory · Surface · Contracts · Files · Hierarchy. Disputes
-    and side-topics open a nested frame on the flow's stack per `AX_STACK_BASED_FLOW` (rendered per
-    `SIDE_DIVE_FORMAT`); the main path never silently stalls.
-
-    {{> "contract/process/message-layout"}}
-
-    {{> "contract/process/breadcrumb-format"}}
-
-    {{> "contract/process/side-dive-format"}}
-
-    {{> "axiom/process/ax-progressive-disclosure"}}
-  </ChatOutput>
-
-  <ArtifactOutput>
-    <!-- entity-inventory / entity-surface / dbc-contracts / module-spec-structure / module-map-update
-         load lazily at their steps (used only there) — see ExecutionPlan. decision-log stays inline. -->
-    {{> "contract/spec/decision-log-entry-format"}}
-  </ArtifactOutput>
 </SddModule>

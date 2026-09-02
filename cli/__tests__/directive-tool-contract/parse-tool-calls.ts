@@ -187,19 +187,24 @@ const COMMAND_SCHEMAS: Readonly<Record<string, CommandSchema>> = {
   'sdd-check': schema(
     {
       '--task': 'scalar',
+      '--spec': 'scalar',
       '--authoring': 'boolean',
       '--phase': 'scalar',
       '--all': 'boolean',
       '--changed': 'boolean',
     },
     (p, f) => {
-      const modes = ['--task', '--all', '--changed'].filter((x) => has(f, x));
+      const modes = ['--task', '--spec', '--all', '--changed'].filter((x) => has(f, x));
       if (modes.length !== 1) return 'requires exactly one mode';
-      if (has(f, '--authoring') && modes[0] !== '--task') return '--authoring requires --task';
+      if (has(f, '--authoring') && modes[0] !== '--task' && modes[0] !== '--spec')
+        return '--authoring requires --task or --spec';
+      if (modes[0] === '--spec' && !has(f, '--authoring')) return '--spec requires --authoring';
       if (has(f, '--phase') && !has(f, '--authoring')) return '--phase requires --authoring';
+      if (has(f, '--phase') && modes[0] !== '--task') return '--phase requires --task';
       if ((modes[0] === '--all' || modes[0] === '--changed') && p.length > 1)
         return `${modes[0]} accepts at most one root`;
-      if (modes[0] === '--task') return p.length === 0 ? null : '--task accepts no trailing paths';
+      if (modes[0] === '--task' || modes[0] === '--spec')
+        return p.length === 0 ? null : `${modes[0]} accepts no trailing paths`;
       return null;
     }
   ),

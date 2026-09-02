@@ -365,6 +365,8 @@
   </ChatOutput>
 
   <ArtifactOutput>
+    {{> "contract/process/artifact-approval-marker"}}
+
     <!-- spec-structure + pivot formats load lazily at STEP_7 (used only when writing) — see ExecutionPlan. -->
     {{> "contract/spec/decision-log-entry-format"}}
   </ArtifactOutput>

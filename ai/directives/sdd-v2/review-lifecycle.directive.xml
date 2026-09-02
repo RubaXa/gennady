@@ -4,52 +4,8 @@
     semantic coherence; the operator approves the reviewed artifacts. Resume uses only durable artifacts.
   </Mission>
   <BeliefState>
-    Inherited from the loading directive (already in context): AX_TOOL_INVOCATION
+    Inherited from the loading directive (already in context): ARTIFACT_APPROVAL_FLOW, ARTIFACT_APPROVAL_MARKER, AX_OPERATOR_LANGUAGE, AX_STATELESS_FLOW, AX_TOOL_INVOCATION
 
-    <Axiom id="AX_STATELESS_FLOW" invariant="true">
-      SDD orchestration owns no durable hidden control plane. Specs, ticket fields, task indexes,
-      Execution Log, Git, and real command output are the complete continuation state. A scratch file
-      may carry bytes between two adjacent tool calls, but it is disposable, never an approval record,
-      never a state machine, and never required to resume.
-    </Axiom>
-    <Axiom id="AX_OPERATOR_LANGUAGE" cross-cutting="true">
-      **Directive text (axioms, halt names, step procedures, contract identifiers, structural
-      section headings, action/status tokens) — English.**
-
-      **Operator-facing artifact text and operator-facing messages — Russian.** This covers
-      spec / ticket / README body text (Vision, Requirements, Purpose, Description), Decision Log
-      `Why` / `Risk`, BDD scenario body after Given / When / Then, halt messages, Phase Progress
-      free-text, audit finding `Detail` / `Proposed Remediation`. Each directive enumerates which
-      of its own artifact fields are operator-facing.
-
-      **English regardless of context:** code, JSDoc, intent comments, file paths, tool commands,
-      axiom IDs (`AX_*`), Trace anchors, IDs (`<ACR>-DL-N` / `TSK-NN` / `F-NNN` / `P<N>` / `H_*`),
-      severity / status / scope-type tokens, BDD keywords, field labels (`**Status:**`, `**Why:**`).
-
-      **Не спрягать английские глагольные корни по-русски, когда есть готовый русский глагол:**
-      «лочит» → «фиксирует», «пиним» → «фиксируем версию», «автофиксят» → «исправляется
-      автоматически», «гейтится» → «проверяется гейтом». Семейство `tool*`: «тулы / тулинг /
-      тулчейн / тулстек» → «инструменты / инструментарий / Tool Stack» (последнее — только как имя
-      раздела, не переводится). «Usage Example» — тоже имя раздела, не переводится (как Tool Stack).
-
-      **Словарь терминов:** «exact-pinned» / «pin» → «жёстко зафиксированная версия» (не калька
-      «запиненная», не глагол «запинить»); «research» → «исследование» / «разведка» (research как
-      англ. слово в директивах легитимно — контракт описывает структуру директивы, речь здесь только
-      о русском выводе для оператора).
-
-      **Терминологическая дисциплина.** Доменное понятие определяется при первом введении в owning
-      specification и дальше используется дословно. Спека — единственный долговечный источник
-      терминологии. Тикет ссылается на термин и spec anchor, но не создаёт параллельный словарь.
-
-      Автор или reviewer может предложить уточнение термина обычным finding. Принятое уточнение
-      редактирует owning specification и снова проходит semantic review. Никакой session glossary,
-      временный JSON или скрытая память агента не являются источником истины.
-
-      **Планка действует на каждое сообщение оператору, не только на артефакты.** Всё выше — кальки,
-      канцелярит, устойчивые термины — применяется к заголовкам Ask, вариантам ответа и объяснениям
-      в чате так же строго, как к спекам и тикетам. Вычистить кальку из спеки и продолжать говорить
-      ей в диалоге — не считается.
-    </Axiom>
     <Axiom id="AX_OPERATOR_AGREEMENT">
       Every fix must be operator-approved before execution. The plan is shown as a table.
       No edits are made before explicit operator "yes" / "go" / "ok".
@@ -57,67 +13,6 @@
     </Axiom>
   </BeliefState>
   <Contracts>
-    <Contract id="ARTIFACT_APPROVAL_FLOW">
-      SDD v2 has exactly two mandatory semantic approval boundaries.
-
-      1. **Spec approval.** The complete intended spec set exists as actual files, passes structural
-         checks, and receives one fresh independent semantic review of the current artifacts. The author
-         resolves findings. Any semantic edit invalidates the old review and requires one fresh review
-         of the changed set. The operator then approves the specs themselves and the canonical specs
-         record `ARTIFACT_APPROVAL_MARKER` approval #1.
-      2. **Ticket approval.** Actual tickets and indexes exist, each ticket passes the mechanical
-         authoring check, and one fresh independent reviewer checks the complete actual ticket set
-         against the approved specs. The operator then approves task decomposition and the test plan in
-         one decision. The owning task index records `ARTIFACT_APPROVAL_MARKER` approval #2. Any semantic
-         ticket or index edit invalidates the old review and approval.
-
-      Reviewers are bounded calls, not durable sessions. They never edit targets and do not exchange
-      JSON state with the orchestrator. The author may reason about its own draft before dispatch, but
-      self-review never substitutes for the independent review at either boundary.
-
-      Resume state is always reconstructible from human-readable approval markers, specs, tickets,
-      Execution Log, Git, and current tool output. Mechanical checks validate marker shape and membership;
-      the model uses Git evidence to judge semantic staleness. No `.sdd-session.md`, plan digest, critic
-      journal, content hash, or worker checkpoint is part of correctness.
-    </Contract>
-    <Contract id="ARTIFACT_APPROVAL_MARKER">
-      Approval evidence is ordinary, human-readable content in the canonical artifact. It is not a
-      session record, JSON sidecar, digest, fingerprint, or byte-level lock.
-
-      Approval #1 is a Decision Log entry in every specification in the reviewed set:
-
-      ```markdown
-      ### Approval #1 — current specification set
-      - **Status:** pending | approved
-      - **Reviewed set:** `specs/...`, `specs/...`
-      - **Independent review:** pending | clean | findings resolved
-      - **Operator decision:** pending | approved
-      - **Recorded:** YYYY-MM-DD
-      ```
-
-      Approval #2 is a section in the narrowest task index that owns the complete reviewed ticket set
-      (module, scope, or project index):
-
-      ```markdown
-      ## Approval #2 — decomposition and test plan
-      - **Status:** pending | approved
-      - **Reviewed tickets:** `specs/...task....md`, `specs/...task....md`
-      - **Independent review:** pending | clean | findings resolved
-      - **Operator decision:** pending | approved
-      - **Recorded:** YYYY-MM-DD
-      ```
-
-      Authoring starts with `pending`. A clean independent review updates only the review field. Operator
-      approval changes `Status` and `Operator decision` to `approved`. These metadata-only marker edits do
-      not require another review. Any later semantic edit to a listed spec, ticket, or owning index resets
-      the applicable marker to `pending`; for approval #1, reset every marker whose Reviewed set contains
-      the edited path. If staleness is uncertain, treat the marker as pending and repeat the boundary.
-
-      Mechanical checks own only marker presence, accepted field values, path existence, and membership.
-      The model owns the semantic question whether current Git changes make an apparently approved marker
-      stale. Git diff/history are evidence for that judgment, not a cryptographic gate. The agent never
-      computes or copies a content hash for approval.
-    </Contract>
   </Contracts>
   <ExecutionPlan>
     <Step id="STEP_1_FREEZE_TARGET">

@@ -49,24 +49,26 @@ describe('stateless SDD entry contract', () => {
       'interview',
       'ax-coverage-map-closure.xml'
     );
-    const placeholderAt = scope.indexOf('append exactly one canonical');
-    const orientAt = scope.indexOf('result="orientation"', placeholderAt);
-    assert.ok(placeholderAt >= 0 && placeholderAt < orientAt);
+    const createAt = scope.indexOf('result="productManifest"');
+    const orientAt = scope.indexOf('result="orientation"');
+    assert.ok(createAt >= 0 && createAt < orientAt);
     assert.match(scope, /operator-confirmed `scale:` retained by this owner/);
     assert.match(scope, /ScalePath when="scale=function\|fix"/);
-    assert.match(scope, /classify the scope type and mode exactly once/);
+    assert.match(scope, /classify the scope type and mode exactly once/i);
     assert.match(scope, /must not reopen the already-settled route/);
     assert.doesNotMatch(scope, /session-file `scale:`|scale `product` \/ `library`/);
-    assert.match(scope, /brief that already names the consumer, happy path/);
+    assert.match(scope, /brief that already\s+names the consumer, happy path/);
     assert.match(module, /ScalePath when="scale=function\|fix"/);
-    assert.match(module, /one Function\/Service module without invented Port/);
+    assert.match(module, /one Function\/Service module without invented Port/i);
     assert.match(module, /zero-new-information decision/);
     assert.match(module, /scope owns its requirement IDs/);
     assert.match(module, /No module-specific\s+requirements?/);
     assert.match(
       scope,
-      /Do NOT run `sdd-check --all specs\/<scope>` here:[\s\S]+guaranteed to report broken links/
+      /Do not run `sdd-check --all specs\/<scope>` here:[\s\S]+guaranteed to report broken links/i
     );
+    assert.match(scope, /authoring-interactive\.directive\.xml/);
+    assert.doesNotMatch(scope, /Approval Check\. STOP/);
     assert.match(interview, /Explicit operator input is already\s+an answer/);
   });
 });
@@ -104,7 +106,7 @@ describe('two artifact approval boundaries', () => {
       'spec',
       'ax-handoff-to-module-decomposition.xml'
     );
-    assert.match(scope, /small single-purpose scope normally becomes exactly one cohesive module/);
+    assert.match(scope, /small single-purpose scope normally[\s\S]+exactly one cohesive module/i);
     assert.match(boundary, /transient draft is never an approval or scaffold target/);
     assert.match(boundary, /Small size is not a no-module exception/);
     assert.match(handoff, /Decomposition is not fragmentation/);
