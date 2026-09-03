@@ -278,6 +278,7 @@
         Missing ticket → `TASK_ID_DRIFT` (`MAJOR`).
       - Two ticket files declaring same Task-ID → `TASK_ID_DRIFT` (`BLOCKER`).
       - Compare current `@tasks:` field values against pre-task git ref. Prior IDs removed → `TASK_ID_DRIFT` (`MAJOR`).
+      - **Spec-anchor references resolve (SSOT, advisory).** Per scaffold `AX_SSOT_TRACEABILITY` a ticket references spec facts by anchor rather than restating them. Each Markdown anchor link from the ticket into a spec must resolve to a real section/heading. A dangling reference (spec anchor renamed or removed) → `INFO` tagged `dangling-spec-ref`: the reader is sent to a fact that no longer exists. Structural check only — verify the anchor exists; never compare the referenced value against a restated copy (by design there is none).
       - **Ticket section-anchor coverage** (per scaffold `AX_TICKET_SECTION_NAMES_NORMATIVE`). For
         each anchor name templated in `TASK_TICKET_STRUCTURE` invoke
         `<sdd-path> extract <ticket> <NAME>`, using the exact absolute tool path supplied by the

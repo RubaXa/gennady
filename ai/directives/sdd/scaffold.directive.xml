@@ -142,6 +142,7 @@
       - At least one phase of kind `test` MUST exist whose Target Files contains the test file, unless every scenario has `Deferred Test Ownership`.
       - Canonical case names are normative: phase-subagent uses verbatim or updates the ticket before phase DONE.
       - BDD describes behavior, not language-specific syntax.
+      - A scenario's expected outcome REFERENCES the spec's canonical fact by anchor (e.g. "error per spec §Error Format"); it does not paste the literal message or value (per `AX_SSOT_TRACEABILITY`). The verifying test carries the literal; the BDD carries the intent and the reference. Concrete input instances in `Given` stay literal — they are the scenario's own data, not a restated spec fact.
       - For every DbC contract in Spec References (Port / Adapter / Value Object / branded type / discriminated union): one `contract`-level typing scenario MUST exist — covers input/output shape, branded-type rejection at boundary, union exhaustiveness. `Deferred Test Ownership` not allowed for typing scenarios — they ship with the types.
     </Axiom>
 
@@ -264,7 +265,20 @@
     </Axiom>
 
     <Axiom id="AX_SSOT_TRACEABILITY">
-      **No contract duplication.** Tickets link to spec sections via Markdown anchors. Module spec for contracts/consumers/invariants; scope spec 4 only for cross-cutting constraints.
+      **No duplication of a canonical fact — reference it, do not restate it.** A fact fixed in the
+      spec (error-message format, behavior rule, requirement text, signature, contract) has ONE home:
+      the spec. Tickets link to it by Markdown anchor; they never paste the literal. A BDD `Then` names
+      the spec fact ("error matches spec §Error Format"), it does not re-type the message string.
+      Module spec for contracts/consumers/invariants; scope spec 4 only for cross-cutting constraints.
+
+      The executable literal (the actual error string, the real signature) lives ONLY in the code and
+      its test — that pair is the executable projection, kept honest by the test run, not by hand. A
+      doc that restates such a literal is drift waiting to happen: an ordinary narrow edit updates the
+      spec and code but leaves the doc copy stale, silently contradicting both. Distinct projections
+      are NOT duplication and stay: a scenario's concrete input instance (`MISSING_VAR`), the BDD shape
+      itself, the diagram, each type's own test. Referencing carries one risk — a dangling anchor — so
+      a reference must resolve to a real spec section; that is checkable structurally (does the anchor
+      exist), never by matching the value string (matching templates against instances cries wolf).
     </Axiom>
 
     <Axiom id="AX_DIALOGUE_DISCIPLINE">
