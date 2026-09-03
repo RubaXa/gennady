@@ -30,7 +30,9 @@
     "paths": {
       "#logger": ["./services/logger/logger.ts"],
       "@shared/*": ["shared/*"],
-      "@services/*": ["services/*"]
+      "@services/*": ["services/*"],
+      "gennady": ["./index.ts"],
+      "gennady/stack": ["./services/stack/plugin-api.ts"]
     }
   },
   "include": [

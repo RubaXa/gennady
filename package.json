@@ -25,10 +25,14 @@
     "#logger": "./services/logger/logger.ts"
   },
   "exports": {
-    ".": "./services/agent-mon/index.ts",
-    "./stack": "./services/stack/plugin-api.ts",
-    "./providers/claude": "./services/agent-mon/providers/claude/index.ts",
-    "./providers/opencode": "./services/agent-mon/providers/opencode/index.ts"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./stack": {
+      "types": "./dist/services/stack/plugin-api.d.ts",
+      "import": "./dist/stack.js"
+    }
   },
   "files": [
     "dist/**/*",

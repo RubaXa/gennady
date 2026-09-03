@@ -61,14 +61,27 @@ export default defineConfig({
   define: {
     __GENNADY_VERSION__: JSON.stringify(pkg.version),
   },
+  resolve: {
+    alias: {
+      // Built-in plugins import the public `gennady/stack` specifier as a self-reference.
+      // package.json#exports now points that specifier at the built `dist/stack.js` (for external
+      // consumers), so resolve it back to source here for the bundle, otherwise Rollup cannot find
+      // the not-yet-built output during the build.
+      'gennady/stack': resolve(__dirname, 'services/stack/plugin-api.ts'),
+    },
+  },
   build: {
     lib: {
       entry: {
         cli: resolve(__dirname, 'cli/gennady.ts'),
         index: resolve(__dirname, 'index.ts'),
+        // Public library subpath `gennady/stack` (see package.json#exports): third-party stack
+        // plugins import real values from it (execFileTrimSafe, parseDuration, …), so it needs a
+        // built runtime bundle in the tarball, not just the source module.
+        stack: resolve(__dirname, 'services/stack/plugin-api.ts'),
       },
       formats: ['es'],
-      fileName: (_, name) => (name === 'cli' ? 'gennady.js' : 'index.js'),
+      fileName: (_, name) => (name === 'cli' ? 'gennady.js' : `${name}.js`),
     },
     rollupOptions: {
       external: [...nodeBuiltins, 'node:sqlite', 'tree-sitter', 'tree-sitter-typescript'],
