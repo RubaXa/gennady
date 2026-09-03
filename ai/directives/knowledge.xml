@@ -1,4 +1,10 @@
 <AiKnowledge ver="2.0">
+  <!--
+    PROJECT-OWNED. This registry lists the directives and rule files THIS project activates. A
+    non-Node project rewrites the rule set for its own stack (Python, Go, Swift, …). `gennady sync`
+    seeds this file when absent but never overwrites an existing one, so your edits survive upgrades.
+    The shipped copy is a TypeScript-oriented starting point, not a fixed contract.
+  -->
   <Directives>
     <Sdd>
       <SddSetup>

@@ -220,6 +220,36 @@ describe('collectAndCompare', () => {
     assert.equal(_writeCalls.length, 1);
   });
 
+  it('preserves a project-owned knowledge.xml that differs: status preserved, never written', () => {
+    const projectVersion = '<AiKnowledge ver="2.0"><!-- python stack --></AiKnowledge>';
+    writeFileSync(
+      join(_sourceDir, 'knowledge.xml'),
+      '<AiKnowledge ver="2.0"><!-- ts --></AiKnowledge>',
+      'utf-8'
+    );
+    writeFileSync(join(_targetDir, 'knowledge.xml'), projectVersion, 'utf-8');
+
+    const deps = createDeps(_tmpDir);
+    const result = collectAndCompare(deps, { sourceDir: _sourceDir, targetDir: _targetDir });
+
+    assert.equal(result.entries[0].status, 'preserved');
+    assert.equal(result.preserved.length, 1);
+    assert.equal(_writeCalls.length, 0);
+    // The project's version is untouched on disk.
+    assert.equal(readFileSync(join(_targetDir, 'knowledge.xml'), 'utf-8'), projectVersion);
+  });
+
+  it('seeds knowledge.xml when absent: status added, written', () => {
+    writeFileSync(join(_sourceDir, 'knowledge.xml'), '<AiKnowledge ver="2.0"/>', 'utf-8');
+
+    const deps = createDeps(_tmpDir);
+    const result = collectAndCompare(deps, { sourceDir: _sourceDir, targetDir: _targetDir });
+
+    assert.equal(result.entries[0].status, 'added');
+    assert.equal(result.preserved.length, 0);
+    assert.equal(_writeCalls.length, 1);
+  });
+
   it('dryRun skips writeFile for added files', () => {
     writeFileSync(join(_sourceDir, 'new.xml'), '<n/>', 'utf-8');
 

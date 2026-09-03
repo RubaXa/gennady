@@ -5,7 +5,7 @@
 /** @purpose Entry shape for the shared formatter: status discriminator and relative path. */
 export type SyncFormatEntry = {
   /** @purpose Sync status discriminator. */
-  status: 'added' | 'updated' | 'deleted' | 'unchanged';
+  status: 'added' | 'updated' | 'deleted' | 'unchanged' | 'preserved';
   /** @purpose File path relative to the sync root. */
   relativePath: string;
 };
@@ -20,12 +20,15 @@ const MARKER_ADDED = '+';
 const MARKER_UPDATED = '~';
 const MARKER_DELETED = '-';
 const MARKER_UNCHANGED = '=';
+const MARKER_PRESERVED = '•';
 
 const LABEL_UNCHANGED = '(unchanged)';
 const LABEL_WOULD_ADD = '(would add)';
 const LABEL_WOULD_UPDATE = '(would update)';
 const LABEL_WOULD_DELETE = '(would delete)';
 const LABEL_UNCHANGED_SKIP = '(unchanged, skip)';
+const LABEL_PRESERVED = '(project-owned, kept)';
+const LABEL_WOULD_PRESERVE = '(project-owned, would keep)';
 
 /**
  * @purpose Format a list of sync entries into stdout lines with markers and a summary.
@@ -53,6 +56,9 @@ export function formatSyncOutput(
     } else if (status === 'deleted') {
       marker = MARKER_DELETED;
       label = opts.dryRun ? LABEL_WOULD_DELETE : '';
+    } else if (status === 'preserved') {
+      marker = MARKER_PRESERVED;
+      label = opts.dryRun ? LABEL_WOULD_PRESERVE : LABEL_PRESERVED;
     } else {
       marker = MARKER_UNCHANGED;
       label = opts.dryRun ? LABEL_UNCHANGED_SKIP : LABEL_UNCHANGED;
@@ -70,6 +76,7 @@ export function formatSyncOutput(
   const updated = entries.filter((e) => e.status === 'updated').length;
   const unchanged = entries.filter((e) => e.status === 'unchanged').length;
   const deleted = entries.filter((e) => e.status === 'deleted').length;
+  const preserved = entries.filter((e) => e.status === 'preserved').length;
 
   if (opts.dryRun) {
     lines.push('Dry-run: no files written.');
@@ -77,6 +84,9 @@ export function formatSyncOutput(
     let summary = `Synced: ${added} added, ${updated} updated, ${unchanged} skipped (unchanged)`;
     if (deleted > 0) {
       summary += `, ${deleted} deleted`;
+    }
+    if (preserved > 0) {
+      summary += `, ${preserved} preserved (project-owned)`;
     }
     lines.push(summary);
   }

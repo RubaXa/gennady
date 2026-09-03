@@ -20,6 +20,12 @@ export const EXCLUDED_ENTRIES = new Set([
   'semantic-change-extractor.directive.xml',
 ]);
 
+// `knowledge.xml` is the rule registry: a non-Node project rewrites it for its own stack (Python,
+// Go, Swift, …), and blindly restoring the package's TypeScript registry silently wiped that work.
+// Keyed by path relative to ai/directives/ (knowledge.xml sits at the root).
+/** @purpose Files the project owns: sync seeds them when absent but never overwrites an existing one. */
+export const PROJECT_OWNED_ENTRIES = new Set(['knowledge.xml']);
+
 /** @purpose DI port for SyncCore — abstracts filesystem access for testability. @invariant All deps must be provided; no optional fields. */
 export interface SyncCoreDeps {
   /**
@@ -230,6 +236,9 @@ export function collectAndCompare(deps: SyncCoreDeps, opts: SyncOptions): SyncRe
       status = 'added';
     } else if (!compareBytes(normalizedData, targetData)) {
       status = 'unchanged';
+    } else if (PROJECT_OWNED_ENTRIES.has(relativePath)) {
+      // Present, differs, and project-owned: keep the project's version, never restore the package's.
+      status = 'preserved';
     } else {
       status = 'updated';
     }
@@ -241,7 +250,8 @@ export function collectAndCompare(deps: SyncCoreDeps, opts: SyncOptions): SyncRe
       targetSize: targetData?.length,
     });
 
-    if (!opts.dryRun && status !== 'unchanged') {
+    // `unchanged` needs no write; `preserved` must NOT be written (that is the whole point).
+    if (!opts.dryRun && status !== 'unchanged' && status !== 'preserved') {
       deps.mkdir(join(opts.targetDir, relativePath, '..'), { recursive: true });
       deps.writeFile(targetPath, normalizedData);
     }

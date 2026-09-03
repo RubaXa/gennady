@@ -2,8 +2,10 @@
 // @consumers: sync-core.ts, sync-formatter.ts, sync.cmd.ts
 // @tasks: TSK-53, TSK-54
 
-/** @purpose Discriminated status of a synced file: new, changed, or identical. */
-export type SyncFileStatus = 'added' | 'updated' | 'unchanged';
+// `preserved` = a project-owned file (e.g. knowledge.xml) that differs from the package and was
+// deliberately NOT overwritten, so the project keeps its own version.
+/** @purpose Discriminated status of a synced file: added, updated, unchanged, or preserved. */
+export type SyncFileStatus = 'added' | 'updated' | 'unchanged' | 'preserved';
 
 /** @purpose Options for the sync command. */
 export interface SyncOptions {
@@ -59,12 +61,19 @@ export class SyncResult {
     return this.entries.filter((e) => e.status === 'unchanged');
   }
 
-  /** @purpose Human-readable summary of added/updated/unchanged counts. | @returns Summary string. */
+  /** @purpose Project-owned files kept as-is (not overwritten). | @returns Array of preserved entries. */
+  get preserved(): SyncFileEntry[] {
+    return this.entries.filter((e) => e.status === 'preserved');
+  }
+
+  /** @purpose Human-readable summary of added/updated/unchanged/preserved counts. | @returns Summary string. */
   get summary(): string {
     const a = this.added.length;
     const u = this.updated.length;
     const s = this.unchanged.length;
-    return `Synced: ${a} added, ${u} updated, ${s} skipped (unchanged)`;
+    const p = this.preserved.length;
+    const base = `Synced: ${a} added, ${u} updated, ${s} skipped (unchanged)`;
+    return p > 0 ? `${base}, ${p} preserved (project-owned)` : base;
   }
 
   /** @purpose Dry-run summary message. | @returns Dry-run message. */
