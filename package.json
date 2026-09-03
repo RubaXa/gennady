@@ -50,7 +50,7 @@
     "type-check": "tsc --noEmit",
     "build:types": "tsc -p tsconfig.types.json && node --import tsx scripts/normalize-dts-imports.ts",
     "build:publish": "npm run build && npm run build:types && node --import tsx scripts/prepare-publish-artifacts.ts",
-    "test": "node --import tsx --test --experimental-test-module-mocks",
+    "test": "node --import tsx --test --experimental-test-module-mocks --test-concurrency=1",
     "test:cli-e2e": "GENNADY_E2E=1 node --import tsx --test --experimental-test-module-mocks cli/__tests__/e2e/*.test.ts",
     "test:stack-e2e": "node --import tsx scripts/stack-e2e.ts",
     "test:config-e2e": "node --import tsx scripts/stack-e2e.ts --suite=config",
