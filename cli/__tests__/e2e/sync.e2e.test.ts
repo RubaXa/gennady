@@ -70,7 +70,14 @@ export function registerSyncTests(): void {
         assert.ok(existsSync(auditPath), 'audit.directive.xml should exist after sync');
         const content = readFileSync(auditPath, 'utf-8');
         assert.ok(!content.includes('~/Developer/gennady'), 'should not contain dev-machine paths');
-        assert.ok(content.includes('npx gennady'), 'should contain production npx gennady');
+        // The SDD directives invoke the tool through the `<sdd-path>` placeholder, which the
+        // orchestrator resolves to the real absolute path at runtime — not a hardcoded `npx gennady`
+        // baked in at sync time. Assert the placeholder survives sync intact (an earlier assertion
+        // here expected `npx gennady`, from before the directives moved to `<sdd-path>`).
+        assert.ok(
+          content.includes('<sdd-path>'),
+          'should keep the runtime-resolved <sdd-path> token'
+        );
       });
     });
   });
