@@ -86,10 +86,18 @@ Parse `Dependencies:` from each task ticket planning surface. Topological sort. 
 From scan [TASKS], inspect `warnings` for `no-execlog-section` or `anchors-mismatch`. The raw
 `placeholders` count is triage only because untouched TODO skeletons legitimately contain markers.
 
-Token vocabulary, checked-placeholder detection, and Round-close shape come from `sdd check` [LOG] —
-do not re-read logs by hand. `fabricated-placeholder`, `unknown-token`, and `unclosed-round` → FAIL.
+Token vocabulary, checked-placeholder detection, Round-close shape, and post-close integrity come
+from `sdd check` [LOG] — do not re-read logs by hand. `fabricated-placeholder`, `unknown-token`,
+`unclosed-round`, `bad-round-close`, `entry-after-close` and `extra-close-entry` → FAIL.
 `retired-token` and `round-close-no-timestamp` → INFO: rounds are append-only, so history cannot be
 rewritten to satisfy a later rule.
+
+`entry-after-close` (a ticked entry stamped later than that round's `Round close`) and
+`extra-close-entry` (a ticked, timestamped live-token entry inside the close block, which carries
+only its single DONE line) are the mechanical half of round immutability: something entered a round
+after it was closed. Report the round and, for `entry-after-close`, the two stamps from the `detail`
+column. The fix is a new Round — never an edit of the closed one — so this is a protocol violation,
+not a code defect.
 
 Consume [REOPENS] from the same command as part of this lifecycle check. `MISMATCH` → FAIL;
 `PENDING` → INFO for a resumable latest audit FAIL; `UNVERIFIABLE` → INFO requiring legacy-history

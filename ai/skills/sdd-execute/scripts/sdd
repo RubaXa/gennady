@@ -88,8 +88,12 @@ SUBCOMMANDS
       check --task <Task-ID> [root] mechanical truth shared by sdd-check (whole tree) and
       check --files <f...>         sdd-audit (scoped). Emits [TASKID] (collisions, orphan
                                   @tasks refs), [TRACKER_SYNC] (ticket Meta.Status vs tracker
-                                  row), and — in --files mode — [HEADERS] (@file/@consumers/
-                                  @tasks presence on a caller-supplied in-scope file list).
+                                  row), [REOPENS] (Meta count vs persisted audit causation),
+                                  [RULES], [LOG] (Execution Log token vocabulary, Round-close
+                                  shape, and post-close integrity — entry-after-close /
+                                  extra-close-entry), and — in --files mode — [HEADERS]
+                                  (@file/@consumers/@tasks presence on a caller-supplied
+                                  in-scope file list).
                                   Exit 0 clean, 3 findings, 2 structural, 4 bad invocation.
                                   <Task-ID> is TSK-NN (legacy) or TSK-PREFIX-NNN (exactly
                                   three digits); anything else exits 4, and an empty scope
