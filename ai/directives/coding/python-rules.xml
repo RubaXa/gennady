@@ -1,0 +1,92 @@
+<PythonCodingRules keywords="python, type_hints, ruff, mypy, pytest, exceptions, pep8, ai_to_ai" type="coding-rules" ver="1.0">
+  <!--
+    Thin Python baseline. Inherits the language-agnostic coding + testing baselines; adds only the
+    Python idioms the community broadly agrees on. Not an exhaustive style guide — deliberately small.
+    Grounded in: PEP 8, Ruff/mypy docs, PyPA packaging guides (2025-2026 mainstream defaults).
+  -->
+  <DependsOn>
+    - ai/directives/coding/baseline-rules.xml
+    - ai/directives/testing/baseline-testing.xml
+  </DependsOn>
+
+  <BeliefState>
+    <Axiom id="AX_PY_TYPE_HINTS">
+      Public function and method signatures are type-annotated, and a checker (mypy or pyright) runs in
+      the project's gate. Typing is gradual, not strict, at baseline: annotate the surface, tighten over
+      time. Pick one checker per project; do not mix.
+    </Axiom>
+
+    <Axiom id="AX_PY_NARROW_EXCEPT">
+      Catch the narrowest exception you can actually handle (`FileNotFoundError`, `ValueError`), never a
+      bare `except:` or blanket `except Exception:` — those swallow `KeyboardInterrupt`/`SystemExit` and
+      hide bugs. Chain with `raise NewError(...) from err` to keep the cause; re-raise with a bare
+      `raise` after logging to keep the original traceback.
+    </Axiom>
+
+    <Axiom id="AX_PY_NO_MUTABLE_DEFAULT">
+      No mutable default arguments (`def f(x=[])` / `{}`): the default is shared across calls. Default to
+      `None` and construct inside the body.
+    </Axiom>
+
+    <Axiom id="AX_PY_FORMAT_AND_LINT">
+      Formatting and lint are tool-owned, not hand-argued: `ruff format` (Black-compatible, 88 columns)
+      plus `ruff check` with at least `F` (pyflakes), `E` (pycodestyle errors), `I` (import order), and
+      `B` (bugbear). All tool + packaging config lives in a single `pyproject.toml`.
+    </Axiom>
+  </BeliefState>
+
+  <AntiPatterns>
+    <AntiPattern id="AP_PY_MUTABLE_DEFAULT">
+      <Bad>`def append_to(item, target=[]):` — `target` persists and accumulates across calls.</Bad>
+      <Instead>`def append_to(item, target=None): target = [] if target is None else target`.</Instead>
+    </AntiPattern>
+    <AntiPattern id="AP_PY_BARE_EXCEPT">
+      <Bad>`try: … except: pass` or `except Exception:` as a catch-all that hides the failure.</Bad>
+      <Instead>Catch the specific type you handle; log-and-`raise` or `raise … from err` otherwise.</Instead>
+    </AntiPattern>
+    <AntiPattern id="AP_PY_WILDCARD_IMPORT">
+      <Bad>`from module import *` — pollutes the namespace and defeats static analysis (Ruff F403/F405).</Bad>
+      <Instead>Import the names you use explicitly.</Instead>
+    </AntiPattern>
+    <AntiPattern id="AP_PY_IDENTITY_COMPARE">
+      <Bad>`if x == None:` / `== True` — value comparison to a singleton (Ruff E711/E712).</Bad>
+      <Instead>`if x is None:` / `if flag:`.</Instead>
+    </AntiPattern>
+  </AntiPatterns>
+
+  <VerificationHooks>
+    <Hook id="HOOK_PY_FORMAT">
+      <Purpose>Code matches the canonical format.</Purpose>
+      <Command>ruff format --check &lt;target-files&gt;</Command>
+      <Expected>Exit 0; no files would be reformatted.</Expected>
+    </Hook>
+    <Hook id="HOOK_PY_LINT">
+      <Purpose>No lint findings from the baseline rule sets.</Purpose>
+      <Command>ruff check &lt;target-files&gt;</Command>
+      <Expected>Exit 0 (F/E/I/B clean).</Expected>
+    </Hook>
+    <Hook id="HOOK_PY_TYPES">
+      <Purpose>Annotations type-check.</Purpose>
+      <Command>mypy &lt;target-files&gt;</Command>
+      <Expected>Exit 0 (or the project's configured pyright equivalent).</Expected>
+    </Hook>
+    <Hook id="HOOK_PY_TESTS">
+      <Purpose>The behavior's tests pass under pytest.</Purpose>
+      <Command>pytest -q</Command>
+      <Expected>Exit 0.</Expected>
+    </Hook>
+  </VerificationHooks>
+
+  <RewardCriteria>
+    ✅ Public signatures are type-annotated; a checker runs in the gate.
+    ✅ Exceptions caught are the narrowest handled; re-raise preserves the cause (`raise … from`) or the traceback (bare `raise`).
+    ✅ No mutable default arguments; `None` + in-body construction.
+    ✅ `ruff format` clean at 88 cols; `ruff check` clean on F/E/I/B; single `pyproject.toml`.
+    ✅ Tests use pytest with `@pytest.mark.parametrize` for input variants (one behavior per test).
+    ❌ Bare `except:` / blanket `except Exception:` that swallows the error.
+    ❌ Mutable default argument.
+    ❌ Wildcard import (`from x import *`).
+    ❌ `== None` / `== True` singleton comparison.
+    ❌ Re-raising a new exception without `from`, losing the original cause.
+  </RewardCriteria>
+</PythonCodingRules>

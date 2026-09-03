@@ -1,0 +1,101 @@
+<BaselineCodingRules keywords="baseline, language_agnostic, contracts, error_handling, naming, yagni, ai_to_ai" type="coding-rules" ver="1.0">
+  <!--
+    Language-agnostic coding baseline. The few things that hold in ANY language. Language rule files
+    (python-rules, go-rules, typescript-rules, …) inherit this and add their own idioms; do not
+    restate these axioms there. Activated for source code files of a scope that declares no more
+    specific language rule, and as the transitive parent of the language rules that reference it.
+  -->
+
+  <BeliefState>
+    <Axiom id="AX_TELEOLOGICAL_NAMING">
+      A name states a goal, not a pattern. Forbidden semantic-noise names: `Manager`, `Handler`,
+      `Data`, `Info`, `Wrapper`, `Util`, `do…`, `process…`. `OrderFulfillmentPipeline` carries intent;
+      `OrderManager` tells the next reader nothing. Use precise verbs (`retrieve`, `verify`, `compose`)
+      over vague ones (`get`, `check`, `make`).
+    </Axiom>
+
+    <Axiom id="AX_EXPLICIT_FAILURE">
+      Failures are explicit and carry cause. Raise/return a specific, typed error with a message that
+      says what failed and with what input; when re-raising, preserve the original cause (do not
+      flatten a stack into a string). Never silently swallow an error or return a zero value that hides
+      one.
+    </Axiom>
+
+    <Axiom id="AX_CONTRACT_AT_SURFACE">
+      The public surface documents its contract: inputs, output, and failure modes, at the declaration
+      — not buried in the body. A caller must be able to use the function from its signature plus one
+      doc block, without reading the implementation.
+    </Axiom>
+
+    <Axiom id="AX_INTENT_COMMENTS">
+      Comments carry intent the code cannot: purpose, invariant, side effect, failure mode, non-goal,
+      or why-not. A comment that restates the syntax on the next line is noise and must be removed.
+    </Axiom>
+
+    <Axiom id="AX_YAGNI_NO_DEFENSE">
+      Build only what the task needs. No speculative abstraction (an interface/base class for a single
+      caller with no confirmed second one), no dead code, and no defensive branches against states the
+      types or invariants already exclude. Prefer the simplest shape that satisfies the contract.
+    </Axiom>
+
+    <Axiom id="AX_SINGLE_RESPONSIBILITY">
+      A unit does one thing at one level of abstraction. A function that mixes I/O, policy, and
+      formatting is split. Depth of nesting and length are symptoms; name the extracted piece by its
+      goal.
+    </Axiom>
+  </BeliefState>
+
+  <AntiPatterns>
+    <AntiPattern id="AP_SWALLOWED_ERROR">
+      <Bad>A caught error that is logged-and-ignored, discarded, or replaced by a generic message that
+      drops the original cause — so the failure surfaces later with no trace of its origin.</Bad>
+      <Instead>Handle it (recover with a documented fallback) or propagate it with the cause attached.
+      One or the other, never neither.</Instead>
+    </AntiPattern>
+
+    <AntiPattern id="AP_PATTERN_NAMING">
+      <Bad>`FooManager`, `DataHandler`, `RequestWrapper`, `doWork`, `processItem` — names that describe
+      a code pattern rather than a business goal.</Bad>
+      <Instead>Name the responsibility: `SubscriptionRenewal`, `parseVcsUrl`, `retryWithBackoff`.</Instead>
+    </AntiPattern>
+
+    <AntiPattern id="AP_SYNTAX_COMMENT">
+      <Bad>`// increment i` above `i++`; a doc block that repeats parameter names and types already in
+      the signature.</Bad>
+      <Instead>Comment the why, the invariant, or the non-obvious consequence — or nothing.</Instead>
+    </AntiPattern>
+
+    <AntiPattern id="AP_SPECULATIVE_ABSTRACTION">
+      <Bad>Extracting an interface, factory, or config option for one caller "in case we need it".</Bad>
+      <Instead>Inline it; abstract on the second real consumer, when the variance is known.</Instead>
+    </AntiPattern>
+  </AntiPatterns>
+
+  <VerificationHooks>
+    <Hook id="HOOK_PROJECT_GATE">
+      <Purpose>The scope's own quality gate (formatter + linter + type/compile check + tests, as the
+      project declares them) passes on the changed files.</Purpose>
+      <Command>&lt;sdd-path&gt; verify --wip &lt;target-files&gt;</Command>
+      <Expected>Exit 0. If the scope has not declared its gate yet, that is the finding to fix first.</Expected>
+    </Hook>
+    <Hook id="HOOK_NO_SCAFFOLD_LEFTOVER">
+      <Purpose>No placeholder/scaffold markers survive in shipped code.</Purpose>
+      <Command>rg --no-heading -n "TODO|FIXME|XXX|&lt;[A-Z_]+&gt;|placeholder" &lt;target-files&gt;</Command>
+      <Expected>Empty on changed lines; a real deferred item belongs in a ticket, not a bare marker.</Expected>
+    </Hook>
+  </VerificationHooks>
+
+  <RewardCriteria>
+    ✅ Names state a goal; precise verbs; no `Manager`/`Handler`/`Data`/`Util`/`do…`/`process…`.
+    ✅ Every failure path raises/returns a specific error with context and preserved cause.
+    ✅ Public entities document inputs, output, and failure modes at the declaration.
+    ✅ Comments carry intent (purpose / invariant / side effect / failure / non-goal), never restate syntax.
+    ✅ Only what the task needs: no speculative abstraction, no dead code, no defense against impossible states.
+    ✅ Each unit has one responsibility at one abstraction level.
+    ❌ An error caught and dropped, or re-raised with the cause lost.
+    ❌ Pattern-shaped names that hide the business goal.
+    ❌ Comments that restate the code, or doc blocks duplicating the signature.
+    ❌ An abstraction introduced for a single caller with no confirmed second consumer.
+    ❌ Placeholder/scaffold markers (`TODO`, `&lt;NAME&gt;`) left in shipped code.
+  </RewardCriteria>
+</BaselineCodingRules>

@@ -34,6 +34,9 @@ ai/directives/agent-inbox/code-interrogation.directive.xml
 ai/directives/agent-inbox/golden-chat-output.example.md
 ai/directives/agent-inbox/posting-rules.directive.xml
 ai/directives/coding/README.md
+ai/directives/coding/baseline-rules.xml
+ai/directives/coding/go-rules.xml
+ai/directives/coding/python-rules.xml
 ai/directives/coding/result-conventions.xml
 ai/directives/coding/svelte5-runes.xml
 ai/directives/coding/sveltekit-rules.xml
@@ -67,6 +70,7 @@ ai/directives/sdd/setup.directive.xml
 ai/directives/sdd/svelte-ui-discovery.directive.xml
 ai/directives/sdd/visual-vocabulary.xml
 ai/directives/testing/README.md
+ai/directives/testing/baseline-testing.xml
 ai/directives/testing/common.xml
 ai/directives/testing/node-test.xml
 ai/directives/testing/playwright-cli.xml

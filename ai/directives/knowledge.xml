@@ -64,14 +64,43 @@
         <CheckPhase>lint</CheckPhase>
         <RequiresVerification>check-command</RequiresVerification>
       </Rule>
+      <Rule id="baseline-rules">
+        <File>ai/directives/coding/baseline-rules.xml</File>
+        <Purpose>Language-agnostic coding baseline: teleological naming, explicit failures with cause, contract at the surface, intent comments, YAGNI, single responsibility. Parent of the language rule files.</Purpose>
+        <Triggers>Target Files include source code files (not config) of any language</Triggers>
+        <SkipWhen>Config-only task; a more specific language rule already covers the file and inherits this</SkipWhen>
+        <ActivationHint>Before editing any source file. Language rules (python-rules, go-rules, typescript-rules) inherit this — read the specific one too.</ActivationHint>
+        <CheckPhase>lint</CheckPhase>
+        <RequiresVerification>check-command</RequiresVerification>
+      </Rule>
       <Rule id="typescript-rules">
         <File>ai/directives/coding/typescript-rules.xml</File>
-        <Purpose>Writing code in the chosen language: typing, DbC, patterns, anti-patterns.</Purpose>
-        <Triggers>Target Files include source code files (not config)</Triggers>
-        <SkipWhen>Config-only task; infra-setup task without code files</SkipWhen>
-        <ActivationHint>Before editing or creating any source code file</ActivationHint>
+        <Purpose>Writing TypeScript: typing, DbC, patterns, anti-patterns. The TS language baseline.</Purpose>
+        <Triggers>Target Files include .ts / .tsx source files</Triggers>
+        <SkipWhen>Config-only task; non-TypeScript language (see python-rules / go-rules); infra-setup without code files</SkipWhen>
+        <ActivationHint>Before editing or creating any .ts / .tsx source file</ActivationHint>
         <CheckPhase>typecheck</CheckPhase>
         <RequiresVerification>check-command</RequiresVerification>
+      </Rule>
+      <Rule id="python-rules">
+        <File>ai/directives/coding/python-rules.xml</File>
+        <Purpose>Writing Python: type hints + checker, narrow exceptions with cause, no mutable defaults, ruff format/lint. Inherits baseline-rules.</Purpose>
+        <Triggers>Target Files include .py source files</Triggers>
+        <SkipWhen>Config-only task; non-Python language</SkipWhen>
+        <ActivationHint>Before editing or creating any .py file. Inherits baseline-rules — read both.</ActivationHint>
+        <CheckPhase>typecheck</CheckPhase>
+        <RequiresVerification>check-command</RequiresVerification>
+        <CrossRef id="baseline-rules">Parent directive: inherits the language-agnostic coding baseline.</CrossRef>
+      </Rule>
+      <Rule id="go-rules">
+        <File>ai/directives/coding/go-rules.xml</File>
+        <Purpose>Writing Go: gofmt/vet, check-and-wrap errors with %w, no panic in libraries, no stutter naming. Inherits baseline-rules.</Purpose>
+        <Triggers>Target Files include .go source files</Triggers>
+        <SkipWhen>Config-only task; non-Go language</SkipWhen>
+        <ActivationHint>Before editing or creating any .go file. Inherits baseline-rules — read both.</ActivationHint>
+        <CheckPhase>typecheck</CheckPhase>
+        <RequiresVerification>check-command</RequiresVerification>
+        <CrossRef id="baseline-rules">Parent directive: inherits the language-agnostic coding baseline.</CrossRef>
       </Rule>
       <Rule id="svelte5-runes">
         <File>ai/directives/coding/svelte5-runes.xml</File>
@@ -97,6 +126,15 @@
       </Rule>
     </Coding>
     <Testing>
+      <Rule id="baseline-testing">
+        <File>ai/directives/testing/baseline-testing.xml</File>
+        <Purpose>Language-agnostic testing baseline: one behavior per named test, determinism, isolation, arrange-act-assert, failure paths covered. Parent of runner-specific testing rules.</Purpose>
+        <Triggers>Target Files include test files of any language</Triggers>
+        <SkipWhen>no test files in scope; a runner-specific rule already covers them and inherits this</SkipWhen>
+        <ActivationHint>Before writing tests in any language. Runner-specific rules inherit this — read the specific one too.</ActivationHint>
+        <CheckPhase>test</CheckPhase>
+        <RequiresVerification>check-command</RequiresVerification>
+      </Rule>
       <Rule id="testing-common">
         <File>ai/directives/testing/common.xml</File>
         <Purpose>Shared testing core inherited by every runner-specific directive: contract boundary, case flow, phase anchors, unified context + factory, BDD mapping, snapshot operator-confirm, file budget.</Purpose>
