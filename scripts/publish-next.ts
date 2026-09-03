@@ -255,9 +255,16 @@ function calculatingVersion(): void {
   });
 
   try {
-    logger.info(`[main] [packageFilesUpdated → gitCommitTagging] Creating git commit and tag`, {
-      tag,
-    });
+    // Publish to npm FIRST. `npm publish` runs the prepublishOnly gate (lint, tests, build), so a
+    // failing gate must abort BEFORE any git side effect. Committing/tagging/pushing first — as this
+    // once did — turned every failed gate into a phantom release: a pushed commit and tag for a
+    // version that never reached npm, which then poisons the next run's version math.
+    logger.info(
+      `[main] [packageFilesUpdated → npmPublishing] Publishing package to npm with next tag`
+    );
+    run('npm', ['publish', '--tag', 'next']);
+
+    logger.info(`[main] [npmPublishing → gitCommitTagging] Creating git commit and tag`, { tag });
     run('git', ['add', 'package.json', 'package-lock.json']);
     run('git', ['commit', '-m', `chore(release): v${newVersion}`]);
     run('git', ['tag', tag]);
@@ -266,14 +273,12 @@ function calculatingVersion(): void {
     run('git', ['push']);
     run('git', ['push', '--tags']);
 
-    logger.info(`[main] [gitPushing → npmPublishing] Publishing package to npm with next tag`);
-    run('npm', ['publish', '--tag', 'next']);
-
-    logger.info(`[main] [npmPublishing → done] Next publish flow finished`, { newVersion, tag });
+    logger.info(`[main] [gitPushing → done] Next publish flow finished`, { newVersion, tag });
   } catch (error) {
-    throw new Error('[main] Release stopped. You may need to rollback commit/tag manually.', {
-      cause: error,
-    });
+    throw new Error(
+      '[main] Release stopped. If npm publish failed, no git commit/tag was made — discard the version bump with `git checkout package.json package-lock.json`. If a git step failed AFTER npm publish, the package is already on npm; finish the commit/tag/push by hand.',
+      { cause: error }
+    );
   }
 }
 
