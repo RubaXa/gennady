@@ -81,7 +81,8 @@ export default defineConfig({
         stack: resolve(__dirname, 'services/stack/plugin-api.ts'),
       },
       formats: ['es'],
-      fileName: (_, name) => (name === 'cli' ? 'gennady.js' : `${name}.js`),
+      // Entry filenames are decided by rollupOptions.output.entryFileNames below (the single
+      // source of truth for cli → gennady.js, index → index.js, stack → stack.js).
     },
     rollupOptions: {
       external: [...nodeBuiltins, 'node:sqlite', 'tree-sitter', 'tree-sitter-typescript'],
