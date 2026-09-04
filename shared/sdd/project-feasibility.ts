@@ -172,6 +172,11 @@ function parseSpec(ref: ProjectSpecRef): ParsedSpec {
     if (isSeparator(cells)) continue;
     const requirement = cells[index.Requirement]?.trim() ?? '';
     if (!requirement) continue;
+    // Explicit "no bootstrap" declaration the skeleton sanctions (templates.ts: "declare it
+    // explicitly: 'No external bootstrap required.'") — a valid empty list, not an incomplete row.
+    // Without this the checker rejects the exact wording it told the author to write and routes
+    // scaffold back into authoring (pure-function scopes like a Fibonacci `nth` need no bootstrap).
+    if (/^no external bootstrap required\.?$/i.test(requirement)) continue;
     ordinal += 1;
     const kind = cells[index.Kind]?.replace(/`/g, '').trim() ?? '';
     const owner = cells[index.Owner]?.replace(/`/g, '').trim() ?? '';

@@ -55,6 +55,18 @@ const PLACEHOLDER = /<(?![A-Z][a-z])[A-Za-z…][^>\s[\]]*>/;
 // from a real type signature that merely contains angle brackets (`` `Promise<TodoStore>` ``).
 const WHOLE_PLACEHOLDER = /^<(?![A-Z][a-z])[A-Za-z…][^>\s[\]]*>$/;
 
+/**
+ * @purpose True when a markdown link target still carries a scaffold placeholder token (e.g.
+ *   `<yyyy-mm-dd>`, `<slug>`, `<module>`) — an unfilled skeleton stub, never a real on-disk path.
+ * @invariant Link-resolution gates must skip such targets: an unfilled skeleton row means nothing
+ *   declared, not a broken reference. A real on-disk path never contains `<` or `>`.
+ * @param target Raw markdown link target.
+ * @returns Whether the target is an unfilled scaffold placeholder rather than a resolvable path.
+ */
+export function targetIsScaffoldPlaceholder(target: string): boolean {
+  return PLACEHOLDER.test(target);
+}
+
 // Inline-code span (`` `…` ``) — stripped before testing for a literal `[x]` checkbox so a prose
 // hint like "A `` `[x]` `` line…" (TASK_SKELETON's own Execution Log note) never reads as a checked
 // line.
@@ -1933,7 +1945,22 @@ export function checkSpecAuthoringDraft(file: string, content: string): Finding[
 
   if (kind) {
     for (const section of TEMPLATES[kind].sections.filter((entry) => entry.required)) {
-      if (section.name === 'MODULE_MAP') continue;
+      if (section.name === 'MODULE_MAP') {
+        // Module Map may legitimately be empty (single-module scope) so it is not "required-filled".
+        // But an UNREPLACED placeholder (e.g. `<module>`) is a real gap: the author created modules
+        // yet left the skeleton token, which later surfaces as a confusing decomposition error
+        // ("declared module <module> missing"). Flag it here, plainly, so a self-check catches it first.
+        const map = extractSection(content, section.name);
+        if (map.status === 'ok' && hasAuthoringPlaceholder(map.content))
+          findings.push({
+            severity: 'warn',
+            code: 'SDD_SPEC_SECTION_MISSING',
+            file,
+            message:
+              'Module Map still has an unreplaced placeholder (e.g. `<module>`); replace it with the real module name(s) you created, or leave the map empty for a single-module scope.',
+          });
+        continue;
+      }
       const extracted = extractSection(content, section.name);
       const body =
         extracted.status === 'ok'
@@ -2453,6 +2480,12 @@ export function checkDiagramCaptions(file: string, content: string): Finding[] {
   const isNewFormat = entries.length > 0;
   const severity: Finding['severity'] = isNewFormat ? 'error' : 'warn';
   const declaredIds = new Set(entries.map((e) => e.id));
+  // This spec's own requirement namespace(s) — the acronym prefix of every declared REQ (e.g. NTH
+  // for a `nth` module). A caption citing `NTH-REQ-9` that isn't declared here is a real typo; a
+  // caption citing a DIFFERENT acronym (e.g. the parent scope's `FIB-REQ-2`) is legitimate
+  // cross-scope traceability — a module narrows and references its parent's requirements — so it is
+  // not this spec's to declare and must not be flagged (chain10 clamp).
+  const ownAcronyms = new Set(entries.map((e) => e.id.split('-')[0]));
   const exampleId = entries[0]?.id ?? `${deriveSpecAcronym(file)}-REQ-1`;
 
   const findings: Finding[] = [];
@@ -2469,14 +2502,17 @@ export function checkDiagramCaptions(file: string, content: string): Finding[] {
     }
     for (const m of caption.matchAll(REQ_ID_TOKEN)) {
       const id = m[0];
-      if (!declaredIds.has(id)) {
-        findings.push({
-          severity,
-          code: 'SDD_DIAGRAM_CAPTION_REQ_UNKNOWN',
-          file,
-          message: `Diagram caption in section ${block.section} ссылается на "${id}", которого нет среди требований этой спеки — используй один из объявленных: ${entries.length ? entries.map((e) => e.id).join(', ') : '(спека пока не объявляет требований в формате <ACR>-REQ-<N>)'}.`,
-        });
-      }
+      if (declaredIds.has(id)) continue;
+      // Only a token in THIS spec's own acronym namespace can be a mistyped/undeclared local req; a
+      // different acronym is a cross-scope traceability reference (parent scope req), which this spec
+      // does not own and must not be forced to declare.
+      if (!ownAcronyms.has(id.split('-')[0] as string)) continue;
+      findings.push({
+        severity,
+        code: 'SDD_DIAGRAM_CAPTION_REQ_UNKNOWN',
+        file,
+        message: `Diagram caption in section ${block.section} ссылается на "${id}", которого нет среди требований этой спеки — используй один из объявленных: ${entries.length ? entries.map((e) => e.id).join(', ') : '(спека пока не объявляет требований в формате <ACR>-REQ-<N>)'}.`,
+      });
     }
   }
   return findings;

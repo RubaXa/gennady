@@ -24,7 +24,6 @@ const INCIDENT_TEST_LAYERS = {
     'ai/kit/__tests__/stateless-sdd-flow-contract.test.ts',
   ],
   local: [
-    'ai/flow-eval/__tests__/harness.test.ts',
     'cli/__tests__/tool-behavior/clean-repo-composition.test.ts',
     'cli/__tests__/tool-behavior/sdd-verify-repair-adapters.test.ts',
   ],
@@ -35,6 +34,7 @@ const EXCLUDED_NAMES = new Set([
   'reviewer.e2e.test.ts',
   'full-flow.blackbox.test.ts',
   'run-mode.test.ts',
+  'harness.test.ts',
 ]);
 const OPT_IN_KEYS = ['GENNADY_E2E', 'GENNADY_OPENCODE_INTEGRATION'] as const;
 const CREDENTIAL_KEYS = [

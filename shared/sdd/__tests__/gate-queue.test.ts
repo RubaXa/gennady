@@ -261,6 +261,43 @@ describe('checkAuthoringReadiness structural scaffold permission', () => {
     assert.doesNotMatch(result.diagnostics.join('\n'), /readiness gate '—'/);
   });
 
+  it('accepts the skeleton-sanctioned "No external bootstrap required." row as an empty gate list', () => {
+    const { root, scopes } = fixture(0);
+    const productDir = join(root, 'specs', 'app');
+    mkdirSync(productDir, { recursive: true });
+    writeFileSync(
+      join(productDir, 'app.spec.md'),
+      [
+        '<!--SECTION:SCOPE_TYPE-->',
+        'product',
+        '<!--/SECTION:SCOPE_TYPE-->',
+        '<!--SECTION:BOOTSTRAP_REQUIREMENTS-->',
+        '| Requirement | Kind | Owner | Resolution | Readiness Gates | Gate Artifacts |',
+        '|---|---|---|---|---|---|',
+        '| No external bootstrap required. | — | — | — | — | — |',
+        '<!--/SECTION:BOOTSTRAP_REQUIREMENTS-->',
+      ].join('\n')
+    );
+    const result = checkAuthoringReadiness(
+      [
+        ...scopes,
+        {
+          name: 'app',
+          type: 'product',
+          status: 'done' as const,
+          description: '',
+          specPath: './app/app.spec.md',
+        },
+      ],
+      { ...notReady, missingGates: [] },
+      { version: 'test', status: 'current' as const, findings: [] },
+      root
+    );
+    // Parity with project-feasibility.ts: the sanctioned row must not be read as an incomplete
+    // bootstrap row (no "has no Kind"/Owner/Resolution rejection of the exact skeleton wording).
+    assert.doesNotMatch(result.diagnostics.join('\n'), /No external bootstrap required.*has no/);
+  });
+
   const currentSchema = { version: 'test', status: 'current' as const, findings: [] };
 
   it('accepts a future platform gate alias when one complete infrastructure row owns it', () => {

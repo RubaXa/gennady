@@ -123,6 +123,11 @@ function bootstrapGateContracts(content: string): {
     if (line === headerLine || /^\|?\s*:?-{2,}/.test(line.trim())) continue;
     const cells = tableCells(line);
     const rowName = cells[requirementIndex] || '<unnamed>';
+    // The skeleton-sanctioned "no bootstrap" declaration (templates.ts: "No external bootstrap
+    // required.") is a valid empty gate list, not an incomplete row — project-feasibility.ts skips
+    // it identically. Without this parity gate-queue rejects the exact row the skeleton prints, so a
+    // pure-function scope (e.g. a Fibonacci `nth`) with em-dash cells never becomes authoring-ready.
+    if (/^no external bootstrap required\.?$/i.test(rowName.replace(/`/g, '').trim())) continue;
     for (const [label, index] of [
       ['Requirement', requirementIndex],
       ['Kind', kindIndex],

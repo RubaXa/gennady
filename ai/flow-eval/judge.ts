@@ -12,7 +12,10 @@ import type {
 function composeJudgePrompt(input: SddEvalJudgeInput): string {
   return [
     'Evaluate the SDD implementation using only the evidence below.',
-    'Return a concise verdict (pass, fail, or inconclusive) and rationale. A stuck or unfinished worker, cancelled required worker/tool, red required gate, or missing required approval-boundary artifact is a failure. A worker-authored risk acceptance never overrides a red gate. An explicit pending operator approval is valid only when that is the scenario target and the actual reviewed artifacts exist.',
+    // The first line must be machine-parseable so the verdict never has to be inferred from prose —
+    // scenarios about error handling legitimately fill the rationale with words like "error"/"ошибка",
+    // which a substring heuristic would misread as a failure.
+    'On the FIRST line output exactly one of `VERDICT: pass`, `VERDICT: fail`, or `VERDICT: inconclusive` — nothing else on that line. Then, from the second line on, give a concise rationale. A stuck or unfinished worker, cancelled required worker/tool, red required gate, or missing required approval-boundary artifact is a failure. A worker-authored risk acceptance never overrides a red gate. An explicit pending operator approval is valid only when that is the scenario target and the actual reviewed artifacts exist.',
     `INTENT\n${input.intent}`,
     input.acceptance ? `ACCEPTANCE\n${input.acceptance}` : '',
     `STATE\n${JSON.stringify(input.state)}`,
@@ -24,16 +27,20 @@ function composeJudgePrompt(input: SddEvalJudgeInput): string {
     .join('\n\n');
 }
 
-function parseVerdict(text: string): SddEvalJudgeResult['verdict'] {
+/**
+ * @purpose Read the judge's verdict from its rationale.
+ * @invariant The verdict is taken only from an explicit `VERDICT: <value>` / `<value>` line (the
+ *   prompt mandates one on the first line); when none exists the result is 'inconclusive', never a
+ *   prose-substring guess. A rationale that merely *describes* errors ("throws on invalid input",
+ *   "ошибка домена") must never be read as a failed run — the old `/ошиб|fail/` fallback did exactly
+ *   that and false-failed every error-handling scenario whose judge skipped the verdict line.
+ */
+export function parseVerdict(text: string): SddEvalJudgeResult['verdict'] {
   const normalized = text.toLowerCase();
   const explicit = normalized.match(
-    /^\s*(?:\*{0,2})?(?:(?:verdict|вердикт)\s*:\s*)?(pass|fail|inconclusive)\b/m
+    /^\s*(?:[*_`]{0,2})?(?:(?:verdict|вердикт)\s*[:：]\s*)?(pass|fail|inconclusive)\b/m
   )?.[1];
   if (explicit === 'pass' || explicit === 'fail' || explicit === 'inconclusive') return explicit;
-  // Failure wins when rationale mentions both the expected success condition and the
-  // actual failure. This prevents `FAIL ... cannot pass` from being parsed as success.
-  if (/\bfail\b|отклон|ошиб/.test(normalized)) return 'fail';
-  if (/\bpass\b|принято|успеш/.test(normalized)) return 'pass';
   return 'inconclusive';
 }
 

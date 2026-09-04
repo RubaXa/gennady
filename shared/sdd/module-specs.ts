@@ -224,13 +224,23 @@ export function resolveScopeDecomposition(scopeSpec: string): ScopeDecomposition
     };
   }
   const scopeDir = dirname(absoluteScope);
-  const declared = declaredModuleSpecs(absoluteScope, map.content);
+  // Semantic, not byte-exact: what matters is WHICH module specs the map covers, not that a module
+  // is listed once. Multiple aliases resolving to the SAME module spec are redundant, not a real
+  // decomposition error — dedup by resolved path instead of rejecting "duplicate members".
+  const declared = [...new Set(declaredModuleSpecs(absoluteScope, map.content))];
   const errors: string[] = [];
   if (declared.length === 0) errors.push('MODULE_MAP declares zero module specs');
-  if (new Set(declared).size !== declared.length)
-    errors.push('MODULE_MAP contains duplicate members');
   for (const path of declared) {
     const rel = relative(scopeDir, path);
+    // Unreplaced skeleton placeholder (e.g. `<module>/<module>.spec.md`): say so plainly instead of
+    // reporting it as a "missing declared module", which reads as a real, absent file and misleads
+    // the author into re-creating a module rather than filling the Module Map token.
+    if (/<(?![A-Z][a-z])[A-Za-z…][^>\s/]*>/.test(rel)) {
+      errors.push(
+        `Module Map has an unreplaced placeholder in "${rel}" — replace <module> with the real module name you created (e.g. nth)`
+      );
+      continue;
+    }
     if (
       rel.startsWith(`..${sep}`) ||
       rel === '..' ||

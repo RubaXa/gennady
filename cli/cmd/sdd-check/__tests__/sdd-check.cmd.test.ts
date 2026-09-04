@@ -1797,6 +1797,34 @@ describe('SddCheckCommand', () => {
       assert.match(r.text, /gone\.research\.md/);
     });
 
+    it('--all does NOT flag the untouched RESEARCH skeleton placeholder row as a broken ref', async () => {
+      // chain11 clamp: an OPTIONAL RESEARCH section left with its skeleton row
+      // `[<yyyy-mm-dd>-<slug>](./research/<yyyy-mm-dd>-<slug>.research.md)` is "no research declared",
+      // not an unresolved reference. A `<…>` placeholder target must be skipped, not reported.
+      const root = join(dir, 'research-placeholder-proj');
+      const scopeDir = join(root, 'specs', 'cli');
+      mkdirSync(scopeDir, { recursive: true });
+      writeFileSync(
+        join(scopeDir, 'cli.task-foo.md'),
+        `${CLEAN_TICKET.replace('cli-foo', 'CLI-foo')}\n\n## Research\n\n| Документ | Что ресёрчили | Что дал для спеки |\n|---|---|---|\n| [<yyyy-mm-dd>-<slug>](./research/<yyyy-mm-dd>-<slug>.research.md) | <тема> | <решение> |\n`,
+        'utf-8'
+      );
+      writeFileSync(
+        join(scopeDir, 'cli.3-tasks.md'),
+        [
+          '# cli — Tasks',
+          '## 1. Tracker Index',
+          '| Task-ID | Title | Dependencies | Status | Reopens |',
+          '|---------|-------|--------------|--------|---------|',
+          '| CLI-foo | Foo | — | [x] DONE | — |',
+        ].join('\n'),
+        'utf-8'
+      );
+
+      const r = await mod.run(argv('--all', root));
+      assert.doesNotMatch(r.text, /SDD_RESEARCH_REF_BROKEN/);
+    });
+
     it('--all flags a research doc with zero incoming references (SDD_RESEARCH_ORPHAN, error, exit 1)', async () => {
       const root = join(dir, 'research-orphan-proj');
       const researchDir = join(root, 'specs', 'demo', 'research');

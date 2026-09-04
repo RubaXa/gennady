@@ -44,6 +44,7 @@ import {
   checkModuleCallChain,
   findResearchLinks,
   findRegisteredResearchLinks,
+  targetIsScaffoldPlaceholder,
   moduleGraphEdges,
   ticketRef,
   legacyTicketRef,
@@ -222,6 +223,10 @@ function checkSpecLinks(file: string, content: string): Finding[] {
   for (const m of content.matchAll(/\]\(([^)`#]+\.spec\.md)(?:#[^)]*)?\)/g)) {
     const target = m[1];
     if (!target) continue;
+    // An unfilled skeleton placeholder (`[<module>](./<module>/<module>.spec.md)`) is a stub, not a
+    // broken link — the owning section's own gate reports it in context; a "does not resolve" here
+    // would be a false, misleading clamp.
+    if (targetIsScaffoldPlaceholder(target)) continue;
     if (!existsSync(resolve(dir, target))) {
       findings.push({
         severity: 'error',
@@ -239,6 +244,10 @@ function checkResearchRefs(file: string, content: string): Finding[] {
   const findings: Finding[] = [];
   const dir = dirname(file);
   for (const target of findResearchLinks(content)) {
+    // Skip the untouched RESEARCH skeleton row: `[<yyyy-mm-dd>-<slug>](./research/<…>.research.md)`
+    // is an unfilled placeholder in an OPTIONAL section (no research to declare), not a broken ref.
+    // Reporting it as unresolved is the false clamp that failed chain11 authoring.
+    if (targetIsScaffoldPlaceholder(target)) continue;
     if (!existsSync(resolve(dir, target))) {
       findings.push({
         severity: 'error',

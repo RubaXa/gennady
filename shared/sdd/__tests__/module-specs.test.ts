@@ -100,13 +100,39 @@ describe('countModuleSpecs', () => {
     writeMap('Modules not yet decomposed');
     assert.match(resolveScopeDecomposition(scope).reason ?? '', /zero module specs/);
     writeMap('- [x](./x/x.spec.md)\n- [x again](./x/x.spec.md)');
-    assert.match(resolveScopeDecomposition(scope).reason ?? '', /duplicate members/);
+    // Semantic dedup: duplicate aliases to the SAME module spec are redundant, not a duplicate-member
+    // error; the real error surfaces on the module's own state (here: missing), never "duplicate".
+    {
+      const dupReason = resolveScopeDecomposition(scope).reason ?? '';
+      assert.doesNotMatch(dupReason, /duplicate/);
+      assert.match(dupReason, /is missing/);
+    }
     writeMap('- [missing](./missing/missing.spec.md)');
     assert.match(resolveScopeDecomposition(scope).reason ?? '', /is missing/);
     mkdirSync(join(scopeDir, 'plain'), { recursive: true });
     writeFileSync(join(scopeDir, 'plain', 'plain.spec.md'), '# not a module');
     writeMap('- [plain](./plain/plain.spec.md)');
     assert.match(resolveScopeDecomposition(scope).reason ?? '', /is not a module spec/);
+  });
+
+  it('reports an unreplaced Module Map placeholder plainly, not as a missing module', () => {
+    const scopeDir = join(root, 'specs', 'ph');
+    mkdirSync(scopeDir, { recursive: true });
+    const scope = join(scopeDir, 'ph.spec.md');
+    writeFileSync(
+      scope,
+      [
+        '<!--SECTION:SCOPE_TYPE-->',
+        'library',
+        '<!--/SECTION:SCOPE_TYPE-->',
+        '<!--SECTION:MODULE_MAP-->',
+        '- [<module>](./<module>/<module>.spec.md)',
+        '<!--/SECTION:MODULE_MAP-->',
+      ].join('\n')
+    );
+    const reason = resolveScopeDecomposition(scope).reason ?? '';
+    assert.match(reason, /unreplaced placeholder/);
+    assert.doesNotMatch(reason, /is missing/);
   });
 
   it('makes infrastructure the sole flat result', () => {

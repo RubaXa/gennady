@@ -28,8 +28,21 @@ const V2_GATE_EXCLUDED_NAMES = new Set([
   'reviewer.e2e.test.ts',
   'full-flow.blackbox.test.ts',
   'run-mode.test.ts',
+  // Heavy integration test: provisions three fixture sandboxes and spawns the eval CLI + type-check
+  // in each (its own `{ timeout: 300_000 }`). Under c8 coverage instrumentation this deterministically
+  // exceeds the offline commit gate's per-test budget and cancels — not a real failure. It keeps its
+  // home in `npm run test:sdd-flow-eval` (own glob runner); like the other heavy integration tests
+  // above it must not block the offline gate.
+  'harness.test.ts',
 ]);
-const UNIT_ROOTS = ['ai/inspector/', 'cli/', 'services/', 'shared/', 'utils/'] as const;
+const UNIT_ROOTS = [
+  'ai/flow-eval/',
+  'ai/inspector/',
+  'cli/',
+  'services/',
+  'shared/',
+  'utils/',
+] as const;
 const EXTERNAL_TEST_OPT_IN_ENV_KEYS = ['GENNADY_E2E', 'GENNADY_OPENCODE_INTEGRATION'] as const;
 const SENSITIVE_TEST_ENV_KEYS = [
   'GITLAB_PERSONAL_TOKEN',

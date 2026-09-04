@@ -8,7 +8,7 @@
 
   <!--SECTION:MODULE_VISION-->
   ## Module Vision
-  <!-- УДАЛИ ПОСЛЕ ЗАПОЛНЕНИЯ: что принадлежит модулю; ссылка на ../../<scope>.spec.md и на parent/child modules, если есть. -->
+  <!-- УДАЛИ ПОСЛЕ ЗАПОЛНЕНИЯ: что принадлежит модулю; ссылка на спеку скоупа ../<scope>.spec.md (плоский модуль = один ../ ; на каждый лишний сегмент пути --module добавь ещё один ../) и на parent/child modules, если есть. -->
   <!--/SECTION:MODULE_VISION-->
 
   <!--SECTION:OVERVIEW-->

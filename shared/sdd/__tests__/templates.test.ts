@@ -20,6 +20,16 @@ import { extractMermaidBlocks, validateMermaid } from '../../mermaid/mermaid.ts'
 const sortedSet = (xs: string[]): string[] => Array.from(new Set(xs)).sort();
 
 describe('templates registry', () => {
+  it('module skeleton points the scope-spec backlink at the flat-module depth (../<scope>), not ../../', () => {
+    // chain10 clamp: the MODULE_VISION guidance instructed `../../<scope>.spec.md`, which resolves
+    // two levels up (specs/<scope>.spec.md — nonexistent) for a flat module, so a worker that
+    // followed it verbatim produced SDD_BROKEN_SPEC_LINK. The skeleton is the format: it must teach
+    // the correct default depth.
+    const skeleton = TEMPLATES.module.skeleton;
+    assert.doesNotMatch(skeleton, /\.\.\/\.\.\/<scope>\.spec\.md/);
+    assert.match(skeleton, /\.\.\/<scope>\.spec\.md/);
+  });
+
   it('keeps shared manifest/lock ownership DAG-serialized in source and generated infra format', () => {
     const source = readFileSync(fileURLToPath(new URL('../templates.ts', import.meta.url)), 'utf8');
     const generated = readFileSync(

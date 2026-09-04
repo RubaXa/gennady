@@ -1,9 +1,9 @@
 // @file: Runnable CLI entrypoint for the external SDD eval harness.
 // @consumers: npm run sdd-flow-eval; intentionally uses SDK only, never a provider binary.
 
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 import { SddEvalOpenCodeEvidenceSource } from './evidence.ts';
 import { parseOpenCodeModel, SddEvalOpenCodeRuntime } from './opencode-runtime.ts';
 import { provisionScenarioDirectories } from './provision.ts';
@@ -150,9 +150,22 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
     registry,
   });
   const results = await new SddEvalRunner(runtime, evidence, options.config).runAll(isolated);
+  const byId = new Map(isolated.map((scenario) => [scenario.id, scenario.directory]));
   for (const result of results) {
     const verdict = result.judge?.verdict ?? 'worker-error';
     console.log(`${result.worker.scenarioId}: ${verdict} (${result.worker.status})`);
+    // Persist the judge's full rationale next to the scenario sandbox: the terminal line carries
+    // only the verdict, so without this a 'fail'/'inconclusive' is undiagnosable after the run.
+    const directory = byId.get(result.worker.scenarioId);
+    if (result.judge?.rationale && directory) {
+      const target = join(directory, `.sdd-eval-judge.${result.worker.scenarioId}.md`);
+      await writeFile(
+        target,
+        `# ${result.worker.scenarioId} — ${verdict} (${result.worker.status})\n\n${result.judge.rationale}\n`,
+        'utf8'
+      ).catch(() => undefined);
+      console.log(`  judge rationale → ${target}`);
+    }
   }
 }
 

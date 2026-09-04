@@ -690,10 +690,11 @@ ${RESEARCH_REGISTRY_SKELETON_SCOPE}
 <summary>Таблица предусловий</summary>
 
 ${BOOTSTRAP_REQUIREMENTS_TABLE_HEADER}
+| No external bootstrap required. | — | — | — | — | — |
 
 <!-- Kind ∈ package | workspace-link | tool | file | external-type | env | service | structural -->
 <!-- Owner ∈ this-scope-task | external-prereq-scope | operator-action -->
-<!-- Empty list allowed only when STEP_7 audit produced zero external assumptions — declare it explicitly: "No external bootstrap required." -->
+<!-- NO external bootstrap (e.g. a pure function): KEEP the "No external bootstrap required." row above and the table — do not delete the table or replace it with prose. Otherwise REPLACE that row with real requirement rows. Always keep exactly one table with all six columns. -->
 <!-- Every shared manifest/lock write has an owning phase/task; all writers of the same file are strictly DAG-serialized. -->
 
 
@@ -985,7 +986,7 @@ const MODULE_SKELETON = `# Module: <ModuleName>
 
 <!--SECTION:MODULE_VISION-->
 ## Module Vision
-<!-- УДАЛИ ПОСЛЕ ЗАПОЛНЕНИЯ: что принадлежит модулю; ссылка на ../../<scope>.spec.md и на parent/child modules, если есть. -->
+<!-- УДАЛИ ПОСЛЕ ЗАПОЛНЕНИЯ: что принадлежит модулю; ссылка на спеку скоупа ../<scope>.spec.md (плоский модуль = один ../ ; на каждый лишний сегмент пути --module добавь ещё один ../) и на parent/child modules, если есть. -->
 <!--/SECTION:MODULE_VISION-->
 
 <!--SECTION:OVERVIEW-->
@@ -1281,7 +1282,7 @@ const TASK_SKELETON = `# Task: <ACRONYM>-<slug> — <Task Title>
   - <path>
 - **Deleted Files:**
   - none   <!-- or exact repo-local tracked paths already absent when verification runs -->
-- **Readiness Gates:**   <!-- bootstrap phase only: exact gates this phase creates, copied from the owning Bootstrap Requirements row; omit otherwise -->
+- **Readiness Gates:**   <!-- bootstrap phase only: exact gates this phase creates, copied verbatim from the owning spec's "## Prerequisites" section (its Bootstrap Requirements row); that spec is already materialized — read the value straight from it, no format docs needed; omit otherwise -->
   - <gate>
 - **Entities:** <ContractName, ...>   <!-- impl/refactor phases: the exported entities (verbatim from the module Entity Inventory) THIS phase implements — the structural, filename-independent ownership source a Deferred Implementation marker (pointing at this ticket) resolves against; omit for test/config/doc phases -->
 - **Inputs:** none   <!-- or "P1 handoff" -->
@@ -1334,9 +1335,10 @@ use-case → \`[<ACRONYM>-REQ-N]\` → vision chain the operator reviews at scaf
 
 | Command | Required by | Role |
 |---------|-------------|------|
-| \`<resolved invocation>\` | <rule-id>, <rule-id> | <coverage | probe | extra> |
+| \`<exact command; a coverage reader looks like \`npx gennady testcov <source>\` — take it from the project's test ladder, do not scan unrelated runners>\` | <owner-phase rule-id> | <coverage | probe | extra> |
 
 <!-- COMMAND CELL SERIALIZATION: wrap the exact runtime command in a Markdown code span. The outer backtick run MUST be strictly longer than every consecutive backtick run inside the command; do not escape or normalize inner bytes. The parser removes only that matching outer delimiter, so runtime bytes remain exact. Raw | outside the wrapper is a table separator. Do not XML-escape the command. -->
+<!-- PRODUCING coverage at execute: the coverage READER above only READS a coverage artifact; something must PRODUCE it first. Run the project's provisioned producer (e.g. the "test:coverage" npm script), which generates the artifact OFFLINE from the already-installed toolchain. NEVER npm-install a coverage tool or reach the registry — the toolchain is pre-provisioned and offline. A failing coverage command is a script/path issue to diagnose, not a missing dependency to install; installing prunes the sandbox and breaks the toolchain. -->
 <!-- NO sdd-verify row: STEP_5 invokes the CLI exactly once per attempt; the CLI runs the ladder plus applicable rows and writes their receipt. A failed attempt writes no receipt; retry after a fix is a new attempt. Coverage Policy is mandatory for COVERAGE_POLICY:v1. required → one test Coverage Owner Phase and exactly one resolved read/check command with Role=coverage whose Required-by is an owner-phase rule; not-applicable → concise reason, NO owner and NO coverage row. Every other resolved alias uses Role=extra; no rows → a single | — | — | extra | row. -->
 
 - **Task-specific Completion additions:** <list or "none beyond project baseline">

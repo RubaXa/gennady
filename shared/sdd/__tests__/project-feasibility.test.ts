@@ -87,6 +87,29 @@ describe('project feasibility before spec approval', () => {
     );
   });
 
+  it('accepts an explicit "No external bootstrap required." declaration as an empty list', () => {
+    // Pure-function scopes (e.g. a Fibonacci `nth`) legitimately have no external bootstrap; the
+    // skeleton tells the author to declare it verbatim. The checker must not reject that exact
+    // wording as an incomplete row (which routed scaffold back into authoring for chain-2).
+    const ref: ProjectSpecRef = {
+      file: 'specs/fibonacci/fibonacci.spec.md',
+      scope: 'fibonacci',
+      dependencies: [],
+      content: [
+        '<!--SECTION:BOOTSTRAP_REQUIREMENTS-->',
+        '| Requirement | Kind | Owner | Resolution | Readiness Gates | Gate Artifacts |',
+        '|---|---|---|---|---|---|',
+        '| No external bootstrap required. |  |  |  | — | — |',
+        '<!--/SECTION:BOOTSTRAP_REQUIREMENTS-->',
+      ].join('\n'),
+    };
+    const findings = checkProjectFeasibility([ref]);
+    assert.ok(
+      !findings.some((finding) => finding.code === 'SDD_PROJECT_BOOTSTRAP_ROW_INCOMPLETE'),
+      `unexpected bootstrap findings: ${JSON.stringify(findings)}`
+    );
+  });
+
   it('emits exact row fields without guessed adapter or capability facts', () => {
     const [requirement] = deriveProjectFeasibilityContext([
       spec(

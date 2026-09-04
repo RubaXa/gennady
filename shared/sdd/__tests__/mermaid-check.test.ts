@@ -24,5 +24,9 @@ describe('checkSpecMermaid', () => {
     assert.strictEqual(f?.severity, 'error');
     assert.strictEqual(f?.line, 5);
     assert.match(f?.message ?? '', /near "A -->\|bad\(label\)\| B"/);
+    // The error must also carry an actionable recheck list (compiler-style hints), so the model
+    // self-corrects from the error alone — no how-to-draw instructions in any directive.
+    assert.match(f?.message ?? '', /Топ причин перепроверить/);
+    assert.match(f?.message ?? '', /двойных кавычках/);
   });
 });

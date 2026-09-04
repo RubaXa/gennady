@@ -390,7 +390,7 @@ process.exitCode = exitCode;
 `;
 
 /** @purpose Minimal prepared source trees used by the three cheap SDD eval scenarios. */
-const FIXTURE_FILES: Record<SddEvalFixtureId, Record<string, string>> = {
+export const FIXTURE_FILES: Record<SddEvalFixtureId, Record<string, string>> = {
   'fibonacci-library': {
     '.gitignore': REAL_GITIGNORE,
     'inputs/brief.md':
@@ -408,6 +408,12 @@ const FIXTURE_FILES: Record<SddEvalFixtureId, Record<string, string>> = {
           scripts: {
             'type-check': 'tsc --noEmit',
             test: 'node scripts/test.mjs',
+            // Coverage runs through a `.mjs` wrapper, not an inline c8 command: the phase receipt
+            // fingerprints every path token in package.json verification scripts and rejects globs
+            // (shared/common/repo-path.ts), so an inline `c8 --include=src/**/*.ts … node --test
+            // src/*.test.ts` breaks `sdd-verify`. The wrapper keeps the script a single exact-file
+            // token, and the ticket's `gennady testcov <src>` check only needs the produced
+            // coverage-final.json — it does not re-detect the producer when the report exists.
             'test:coverage': 'node scripts/test-coverage.mjs',
             format: 'prettier --check "src/**/*.ts" package.json tsconfig.json',
             'format:fix': 'prettier --write',
@@ -415,6 +421,7 @@ const FIXTURE_FILES: Record<SddEvalFixtureId, Record<string, string>> = {
             'lint:fix': './node_modules/.bin/gennady lint --autofix',
             fix: 'npm run format:fix -- src && npm run lint:fix -- src',
           },
+          devDependencies: { c8: '^12.0.0' },
         },
         null,
         2
@@ -443,6 +450,12 @@ const FIXTURE_FILES: Record<SddEvalFixtureId, Record<string, string>> = {
           scripts: {
             'type-check': 'tsc --noEmit',
             test: 'node scripts/test.mjs',
+            // Coverage runs through a `.mjs` wrapper, not an inline c8 command: the phase receipt
+            // fingerprints every path token in package.json verification scripts and rejects globs
+            // (shared/common/repo-path.ts), so an inline `c8 --include=src/**/*.ts … node --test
+            // src/*.test.ts` breaks `sdd-verify`. The wrapper keeps the script a single exact-file
+            // token, and the ticket's `gennady testcov <src>` check only needs the produced
+            // coverage-final.json — it does not re-detect the producer when the report exists.
             'test:coverage': 'node scripts/test-coverage.mjs',
             format: 'prettier --check "src/**/*.ts" package.json tsconfig.json',
             'format:fix': 'prettier --write',
@@ -450,6 +463,7 @@ const FIXTURE_FILES: Record<SddEvalFixtureId, Record<string, string>> = {
             'lint:fix': './node_modules/.bin/gennady lint --autofix',
             fix: 'npm run format:fix -- src && npm run lint:fix -- src',
           },
+          devDependencies: { c8: '^12.0.0' },
         },
         null,
         2
@@ -500,6 +514,12 @@ const FIXTURE_FILES: Record<SddEvalFixtureId, Record<string, string>> = {
           scripts: {
             'type-check': 'tsc --noEmit',
             test: 'node scripts/test.mjs',
+            // Coverage runs through a `.mjs` wrapper, not an inline c8 command: the phase receipt
+            // fingerprints every path token in package.json verification scripts and rejects globs
+            // (shared/common/repo-path.ts), so an inline `c8 --include=src/**/*.ts … node --test
+            // src/*.test.ts` breaks `sdd-verify`. The wrapper keeps the script a single exact-file
+            // token, and the ticket's `gennady testcov <src>` check only needs the produced
+            // coverage-final.json — it does not re-detect the producer when the report exists.
             'test:coverage': 'node scripts/test-coverage.mjs',
             format: 'prettier --check "src/**/*.ts" package.json tsconfig.json',
             'format:fix': 'prettier --write',
@@ -507,6 +527,7 @@ const FIXTURE_FILES: Record<SddEvalFixtureId, Record<string, string>> = {
             'lint:fix': './node_modules/.bin/gennady lint --autofix',
             fix: 'npm run format:fix -- src && npm run lint:fix -- src',
           },
+          devDependencies: { c8: '^12.0.0' },
         },
         null,
         2
@@ -655,6 +676,10 @@ async function materializeLocalCli(
 ): Promise<void> {
   const packageTarget = join(directory, 'node_modules/gennady');
   const binTarget = join(directory, 'node_modules/.bin/gennady');
+  // Idempotent for reused sandboxes (phase chaining: scaffold/execute run on the authoring
+  // sandbox): if the local CLI is already materialized, re-copying over existing dependency
+  // symlinks (e.g. mermaid's nested marked .bin) fails with cp EINVAL. Skip when present.
+  if (existsSync(join(packageTarget, 'dist')) && existsSync(binTarget)) return;
   await mkdir(dirname(packageTarget), { recursive: true });
   await mkdir(dirname(binTarget), { recursive: true });
   // Copy the runnable package snapshot, never a symlink: worker writes in its sandbox must not
@@ -744,7 +769,12 @@ export async function provisionScenarioDirectories(
       }
     }
     await materializeFlow(directory, sourceRoot);
-    await materializeLocalCli(directory, sourceRoot, scenario.fixture === 'slugify-toolchain');
+    // Every fixture ships the c8-based coverage runner (scripts/test-coverage.mjs) and a scaffold
+    // whose coverage policy is `required`, so the coverage producer (c8 + its closure) must be
+    // present for all of them — not just slugify-toolchain. Without c8 the declared `npm run
+    // test:coverage` never writes coverage-final.json and the `gennady testcov` gate is
+    // structurally unsatisfiable offline, so execute fails through no fault of the worker.
+    await materializeLocalCli(directory, sourceRoot, true);
     if (generatedDirectory) await commitFixtureBaseline(directory);
     provisioned.push({ ...scenario, directory });
   }

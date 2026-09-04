@@ -152,10 +152,11 @@
 
   | Requirement | Kind | Owner | Resolution | Readiness Gates | Gate Artifacts |
   |---|---|---|---|---|---|
+  | No external bootstrap required. | — | — | — | — | — |
 
   <!-- Kind ∈ package | workspace-link | tool | file | external-type | env | service | structural -->
   <!-- Owner ∈ this-scope-task | external-prereq-scope | operator-action -->
-  <!-- Empty list allowed only when STEP_7 audit produced zero external assumptions — declare it explicitly: "No external bootstrap required." -->
+  <!-- NO external bootstrap (e.g. a pure function): KEEP the "No external bootstrap required." row above and the table — do not delete the table or replace it with prose. Otherwise REPLACE that row with real requirement rows. Always keep exactly one table with all six columns. -->
   <!-- Every shared manifest/lock write has an owning phase/task; all writers of the same file are strictly DAG-serialized. -->
 
 
