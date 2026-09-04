@@ -36,6 +36,7 @@ git-репозиторий). Runner поднимает worker-сессию OpenC
 - `spec-authoring` → `full-spec-to-approval-1` (написать спеки, остановиться перед Approval #1)
 - `scaffold` → `actual-tickets-to-approval-2` (создать задачи, остановиться перед Approval #2)
 - `execute` → `canonical-execute` (реализовать утверждённую задачу, подтвердить receipt-проверками)
+- `repair` → `fix-to-clean` (в воркспейсе спеки, которые падают `sdd-check`; довести проверку до clean, чиня каждую находку по её тексту)
 
 `phase`, `mode`, `SddEvalFixtureId` — **закрытые union-типы** в `types.ts`. Новое значение любого из
 них надо сначала добавить в тип, иначе TypeScript/сборка не пройдут.
@@ -67,11 +68,12 @@ git-репозиторий). Runner поднимает worker-сессию OpenC
 - `canonicalModule(scope, ACR, module, operation, sourceFile)` — модуль-спека.
 - `canonicalTask(...)` / `canonicalModuleIndex(...)` — тикет и трекер-индекс с записями Approval #2.
 
-Три эталонные фикстуры отличаются глубиной засева:
+Эталонные фикстуры отличаются глубиной засева:
 
 - **`fibonacci-library`** — минимум (только портал + бриф) → для `spec-authoring`.
 - **`tic-tac-toe`** — засеяны скоуп+модуль-спека → для `scaffold`.
 - **`slugify-toolchain`** — засеяны спеки + тикеты (с Approval #2) → для `execute`.
+- **`broken-specs`** — структурно полные спеки с одним намеренным дефектом (невалидный mermaid) → для `repair`: проверяет, чинит ли воркер по тексту ошибки валидатора (без инструкций «как писать» в промпте).
 
 Выбирай глубину засева под фазу: фаза проверяет ШАГ, а всё «до» него должно быть готово в фикстуре.
 

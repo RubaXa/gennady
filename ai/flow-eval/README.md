@@ -8,12 +8,13 @@ score its progress from a bounded session tail and the file diff.
 
 ## Documentation map
 
-| Read this                                      | For                                                                                                                       |
-| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| this file                                      | What it is, how it is wired, the one canonical command.                                                                   |
-| [`RUNBOOK.ru.md`](./RUNBOOK.ru.md)             | **How to run** — server setup, env, live-run procedure, reading observations, verdict rules, gotchas.                     |
-| [`WRITING-EVALS.ru.md`](./WRITING-EVALS.ru.md) | **How to add your own eval** — scenario shape, fixture anatomy, coverage-passability rules, judge contract, step-by-step. |
-| [`operator-approve.sh`](./operator-approve.sh) | Helper that simulates a complete operator approval between phases (portal + Decision Log).                                |
+| Read this                                          | For                                                                                                                       |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| this file                                          | What it is, how it is wired, the one canonical command.                                                                   |
+| [`RUNBOOK.ru.md`](./RUNBOOK.ru.md)                 | **How to run** — server setup, env, live-run procedure, reading observations, verdict rules, gotchas.                     |
+| [`WRITING-EVALS.ru.md`](./WRITING-EVALS.ru.md)     | **How to add your own eval** — scenario shape, fixture anatomy, coverage-passability rules, judge contract, step-by-step. |
+| [`operator-approve.sh`](./operator-approve.sh)     | Helper that simulates a complete operator approval between phases (portal + Decision Log).                                |
+| [`PROGRESS-REPORT.ru.md`](./PROGRESS-REPORT.ru.md) | **Before → after report** for colleagues: what was broken, what was fixed, the numbers, why it is progress.               |
 
 ## How it is wired
 
@@ -25,7 +26,7 @@ score its progress from a bounded session tail and the file diff.
 | `observer.ts`    | Every interval reads only a bounded tail + status + events + diff; derives progress, repeats, waiting/approval, and a `stuck` marker.          |
 | `judge.ts`       | In a separate session, scores final artifacts/state from a narrow evidence boundary.                                                           |
 | `evidence.ts`    | Reads the bounded evidence (tracked + untracked files) the observer/judge consume.                                                             |
-| `scenarios.json` | The three reference scenarios (authoring, scaffold, execute).                                                                                  |
+| `scenarios.json` | The reference scenarios (authoring, scaffold, execute, repair).                                                                                |
 | `types.ts`       | Source of truth for scenario / phase / mode / fixture / judge types.                                                                           |
 
 The harness never spawns `codex` or an `opencode` binary — it connects through `@opencode-ai/sdk` to

@@ -22,16 +22,25 @@ export type SddEvalScenario = {
 };
 
 /** @purpose Supported intellectual SDD flow phases exercised by the harness. */
-export type SddEvalPhase = 'spec-authoring' | 'scaffold' | 'execute';
+export type SddEvalPhase = 'spec-authoring' | 'scaffold' | 'execute' | 'repair';
 
 /** @purpose Human-auditable phase modes with approval boundaries. */
 export type SddEvalMode =
   | 'full-spec-to-approval-1'
   | 'actual-tickets-to-approval-2'
-  | 'canonical-execute';
+  | 'canonical-execute'
+  // Repair: the workspace already holds specs that fail `sdd-check`; drive the flow to a clean check.
+  | 'fix-to-clean';
 
 /** @purpose Prepared, small, deterministic fixture scenarios for cheap eval smoke runs. */
-export type SddEvalFixtureId = 'fibonacci-library' | 'tic-tac-toe' | 'slugify-toolchain';
+export type SddEvalFixtureId =
+  | 'fibonacci-library'
+  | 'tic-tac-toe'
+  | 'slugify-toolchain'
+  // A repository whose specs are structurally complete but carry deliberate, checker-visible defects
+  // (e.g. an invalid mermaid diagram). Exercises the repair trajectory: does the worker self-correct
+  // from the validator's own error, without any how-to guidance in the prompt/directive?
+  | 'broken-specs';
 
 /** @purpose Provider/model selection accepted by OpenCode's SDK. */
 export type OpenCodeModel = {

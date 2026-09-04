@@ -22,5 +22,13 @@
     "phase": "execute",
     "mode": "canonical-execute",
     "intent": "Execute the canonical slugify ticket against the canonical slugify specification, including tests and the declared toolchain."
+  },
+  {
+    "id": "broken-specs-repair",
+    "fixture": "broken-specs",
+    "phase": "repair",
+    "mode": "fix-to-clean",
+    "intent": "The workspace specs are structurally complete but `npx gennady sdd-check --all .` reports errors. Fix every reported error in its owning spec file until the check is clean. Do not disable or weaken any check.",
+    "acceptance": "`npx gennady sdd-check --all .` reports 0 errors; the invalid mermaid diagram is corrected to valid syntax, following the checker error message."
   }
 ]

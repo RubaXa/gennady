@@ -533,6 +533,55 @@ export const FIXTURE_FILES: Record<SddEvalFixtureId, Record<string, string>> = {
         2
       ) + '\n',
   },
+  'broken-specs': {
+    '.gitignore': REAL_GITIGNORE,
+    'inputs/brief.md':
+      '# Calc brief\nA deterministic `nth` calculation module. Specs already exist; they must pass the mechanical checker.\n',
+    'specs/README.md':
+      '# Fixture Project\n\n## Scopes\n\n| Scope | Type | Spec | Description |\n|---|---|---|---|\n| [`calc`](./calc/calc.spec.md) | product | ✅ | deterministic calculation |\n',
+    'specs/calc/calc.spec.md': canonicalScope('calc', 'CAL', 'nth'),
+    // Structurally complete module spec with ONE deliberate defect: an invalid mermaid diagram
+    // (unquoted parentheses in a node label) so `sdd-check` reports SDD_DIAGRAM_INVALID with its
+    // top-causes hint. The repair scenario checks the worker self-corrects from that error alone.
+    'specs/calc/nth/nth.spec.md': canonicalModule(
+      'calc',
+      'NTH',
+      'nth',
+      'compute',
+      'src/nth.ts'
+    ).replace(
+      'flowchart LR\n  caller --> Rules\n  Rules --> caller',
+      'flowchart LR\n  caller --> calc[compute F(n)]\n  calc --> caller'
+    ),
+    'src/nth.ts': 'export function nth(n: number): number {\n  return n;\n}\n',
+    'scripts/test.mjs': REAL_TEST_RUNNER,
+    'scripts/test-coverage.mjs': REAL_COVERAGE_RUNNER,
+    'tsconfig.json': REAL_TS_CONFIG,
+    'package.json':
+      JSON.stringify(
+        {
+          name: 'broken-specs',
+          private: true,
+          type: 'module',
+          scripts: {
+            'type-check': 'tsc --noEmit',
+            test: 'node scripts/test.mjs',
+            // Coverage runs through a `.mjs` wrapper, not an inline c8 command: the phase receipt
+            // fingerprints every path token in package.json verification scripts and rejects globs
+            // (shared/common/repo-path.ts). The wrapper keeps the script a single exact-file token.
+            'test:coverage': 'node scripts/test-coverage.mjs',
+            format: 'prettier --check "src/**/*.ts" package.json tsconfig.json',
+            'format:fix': 'prettier --write',
+            lint: './node_modules/.bin/gennady lint src/',
+            'lint:fix': './node_modules/.bin/gennady lint --autofix',
+            fix: 'npm run format:fix -- src && npm run lint:fix -- src',
+          },
+          devDependencies: { c8: '^12.0.0' },
+        },
+        null,
+        2
+      ) + '\n',
+  },
 };
 
 /** @purpose Check custom scenario directories are unique before any worker is launched. */

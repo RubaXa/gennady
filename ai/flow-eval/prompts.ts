@@ -18,6 +18,10 @@ Do not merely describe tickets and do not implement product code. Stop at Approv
 Read and follow the installed SDD skill and router/directive chain (starting at ai/skills/sdd/SKILL.md and ai/directives/sdd-v2/router.directive.xml).
 Execute the canonical tickets in dependency order, preserve the SDD evidence/artifact contracts, and verify the resulting implementation with tests.
 Do not replace the canonical inputs with an ad-hoc coding plan.`,
+  repair: `Run the installed SDD repair flow on a workspace whose specifications are structurally complete but fail the mechanical checker.
+Read and follow the installed SDD skill and router/directive chain (starting at ai/skills/sdd/SKILL.md and ai/directives/sdd-v2/router.directive.xml).
+Run \`npx --no-install gennady sdd-check --all .\`, then fix every reported error in its owning artifact using exactly one Write per file, guided by each finding's own message. Re-run the check and repeat until it is clean.
+Do not disable, weaken, or work around any check; do not author new scopes/modules or implement product code. Report the final clean check.`,
 };
 
 /** @purpose Compose the exact worker instruction for a phase/mode scenario. */
