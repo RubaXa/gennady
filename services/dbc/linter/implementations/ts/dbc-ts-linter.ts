@@ -459,8 +459,14 @@ export class DbcTsLinter implements DbcLinter {
 
         if (fixed !== original) {
           let result = fixed;
-          // When pipe is expanded to multi-line, fix indent to match source context
-          if (fixed.includes('\n') && !original.includes('\n')) {
+          // Re-indent ANY multi-line result to the block's real position in the source, so every
+          // JSDoc line's star sits at blockIndent+1 and the closing marker is ` */` — exactly
+          // Prettier's layout. This runs for both a freshly expanded single-line contract and an
+          // already-multi-line block: `block.text` drops the opening line's source indent, so the
+          // canonical indent cannot be recovered inside the block, only from where it sits in source.
+          // A bare `*/` or a star in column 0 here made `npm run fix` non-idempotent — lint --autofix
+          // produced a block that `prettier --check` then rejected.
+          if (fixed.includes('\n')) {
             const origIdx = source.indexOf(original);
             const lineStart = origIdx > 0 ? source.lastIndexOf('\n', origIdx - 1) : -1;
             const blockIndent = source.slice(lineStart + 1, origIdx);
@@ -468,7 +474,7 @@ export class DbcTsLinter implements DbcLinter {
             for (let i = 1; i < lines.length; i += 1) {
               lines[i] = blockIndent + ' ' + lines[i].trimStart();
             }
-            lines[lines.length - 1] = blockIndent + '*/';
+            lines[lines.length - 1] = blockIndent + ' */';
             result = lines.join('\n');
           }
           source = source.replace(original, result);
@@ -1281,14 +1287,18 @@ export class DbcTsLinter implements DbcLinter {
       lines.push(baseIndent + ' */');
     }
 
-    // Step 3: add * prefix to lines that lack it (preserves existing indent)
+    // Step 3: add a `*` prefix to lines that lack it, aligned to the block's canonical star indent —
+    // the opening `/**` indent plus one space, which is exactly Prettier's JSDoc layout. A line's own
+    // (possibly zero) indent must NOT drive the star position: reusing it put `*` in column 0, and a
+    // content-scan heuristic mis-indented nested blocks — both made `prettier --check` reject the
+    // output and `npm run fix` non-idempotent.
+    const openIndent = lines[0].match(/^(\s*)/)?.[1] ?? '';
+    const starIndent = openIndent + ' ';
     for (let i = 1; i < lines.length - 1; i += 1) {
       const line = lines[i];
       if (line.trim() === '') continue;
       if (!/^\s*\*\s/.test(line)) {
-        const indentMatch = line.match(/^(\s*)/);
-        const existingIndent = indentMatch ? indentMatch[1] : '';
-        lines[i] = existingIndent + '* ' + line.trimStart();
+        lines[i] = starIndent + '* ' + line.trimStart();
       }
     }
 
