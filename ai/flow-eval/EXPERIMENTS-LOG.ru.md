@@ -48,3 +48,22 @@ baseline: in≈83k). Отсюда приоритет — сокращать чт
   missing FAIL). Механизм R1 (sdd-check wrapper) — `quality-gate.ts`.
 - Дальше: прогнать реальный worker на E-infra-1 (проходит ли golden), затем E-infra-2/3, затем
   R2 golden для SDD-execute, R4, R5.
+
+## E-infra-1 (лог-саммари) — реальный прогон, объективная оценка
+
+- Worker: `bin/log-summary.sh` (executable), tools=10, total=32235 (in=20551, out=1708, reason=9976), msgs=8.
+- **Объективный грейд: независимый `golden/verify.sh` → PASS** (точный вывод + strict mode + missing-file
+  non-zero + идемпотентность). НЕ самооценка воркера.
+- Значимость: первый eval с объективной проверкой качества, реальный воркер проходит. Токен-цена инфра-
+  задачи (~32k) кратно ниже authoring (~136k). Both-way уже залочен infra-golden.test 3/3.
+
+## Инфра-набор (phase `task`) — все 3 прошли объективно (независимый golden)
+
+| Eval                  | golden | total | msgs |
+| --------------------- | ------ | ----- | ---- |
+| E-infra-1 log-summary | PASS   | 32235 | 8    |
+| E-infra-2 rotate-logs | PASS   | 13909 | 8    |
+| E-infra-3 makefile    | PASS   | 10653 | 7    |
+
+Both-way залочено (infra-golden.test 9/9: reference PASS, wrong/missing FAIL для каждой).
+Самая дешёвая — E-infra-3 (Makefile) → бед для оптимизации промпта (words↔examples, мерить input+output).

@@ -30,5 +30,29 @@
     "mode": "fix-to-clean",
     "intent": "The workspace specs are structurally complete but `npx gennady sdd-check --all .` reports errors. Fix every reported error in its owning spec file until the check is clean. Do not disable or weaken any check.",
     "acceptance": "`npx gennady sdd-check --all .` reports 0 errors; the invalid mermaid diagram is corrected to valid syntax, following the checker error message."
+  },
+  {
+    "id": "infra-log-summary",
+    "fixture": "infra-log-summary",
+    "phase": "task",
+    "mode": "brief-to-artifact",
+    "intent": "Complete inputs/brief.md: write bin/log-summary.sh to the exact output format.",
+    "acceptance": "golden/verify.sh exits 0."
+  },
+  {
+    "id": "infra-rotate-logs",
+    "fixture": "infra-rotate-logs",
+    "phase": "task",
+    "mode": "brief-to-artifact",
+    "intent": "Complete inputs/brief.md: write bin/rotate-logs.sh.",
+    "acceptance": "golden/verify.sh exits 0."
+  },
+  {
+    "id": "infra-makefile",
+    "fixture": "infra-makefile",
+    "phase": "task",
+    "mode": "brief-to-artifact",
+    "intent": "Complete inputs/brief.md: write a Makefile with build/test/clean/help.",
+    "acceptance": "golden/verify.sh exits 0."
   }
 ]

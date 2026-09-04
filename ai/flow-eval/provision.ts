@@ -455,6 +455,75 @@ got2="$("$script" "$root/sample/access.log")"
 echo "PASS"
 `;
 
+// ── infra-rotate-logs fixture (phase `task`) ─────────────────────────────────────────────────────
+const INFRA_ROTATE_BRIEF = `# Log rotation task
+
+Write \`bin/rotate-logs.sh <dir> <keep-days>\` — a bash script that, for the directory given as the
+first argument:
+- gzips every \`*.log\` file in it (each \`x.log\` becomes \`x.log.gz\`, the plain file removed);
+- deletes every \`*.gz\` file in it whose modification time is older than <keep-days> days.
+
+Rules:
+- shebang + \`set -euo pipefail\`. Operate ONLY inside the given directory; never touch paths outside
+  it and never run a destructive command on \`/\` or an unbounded path.
+- Missing directory argument or a non-existent directory: clear stderr message and non-zero exit.
+- Idempotent: a second run on the same directory must not error.
+- No package installation. Only the script under bin/.
+`;
+
+const INFRA_ROTATE_VERIFY = `#!/usr/bin/env bash
+set -euo pipefail
+root="$(cd "$(dirname "$0")/.." && pwd)"
+script="$root/bin/rotate-logs.sh"
+[ -x "$script" ] || { echo "FAIL: bin/rotate-logs.sh missing or not executable"; exit 1; }
+grep -q 'set -euo pipefail' "$script" || { echo "FAIL: script lacks 'set -euo pipefail'"; exit 1; }
+work="$(mktemp -d)"; trap 'rm -rf "$work"' EXIT
+: > "$work/app.log"
+: > "$work/keep.log.gz"
+: > "$work/old.log.gz"; touch -t 202601010000 "$work/old.log.gz"
+"$script" "$work" 14 >/dev/null 2>&1 || { echo "FAIL: nonzero exit on valid input"; exit 1; }
+[ -f "$work/app.log.gz" ] || { echo "FAIL: app.log was not gzipped"; exit 1; }
+[ ! -f "$work/app.log" ]  || { echo "FAIL: plain app.log left after gzip"; exit 1; }
+[ ! -f "$work/old.log.gz" ] || { echo "FAIL: old archive (>14d) not deleted"; exit 1; }
+[ -f "$work/keep.log.gz" ] || { echo "FAIL: recent archive wrongly deleted"; exit 1; }
+"$script" "$work" 14 >/dev/null 2>&1 || { echo "FAIL: not idempotent"; exit 1; }
+if "$script" "$work/does-not-exist" 14 >/dev/null 2>&1; then echo "FAIL: missing dir did not error"; exit 1; fi
+echo "PASS"
+`;
+
+// ── infra-makefile fixture (phase `task`) ────────────────────────────────────────────────────────
+const INFRA_MAKE_BRIEF = `# Makefile task
+
+Write a \`Makefile\` for this tiny project with these targets, all declared \`.PHONY\`:
+- \`build\` — create \`build/out.txt\` (any content).
+- \`test\` — run \`bash test/run.sh\` (already provided; it exits 0).
+- \`clean\` — remove the \`build/\` directory.
+- \`help\` — print the available targets (non-empty output).
+
+Rules: targets are idempotent; no package installation; \`make clean\` fully removes \`build/\`.
+`;
+
+const INFRA_MAKE_TESTRUN = `#!/usr/bin/env bash
+set -euo pipefail
+echo "test-ok"
+`;
+
+const INFRA_MAKE_VERIFY = `#!/usr/bin/env bash
+set -euo pipefail
+root="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$root"
+[ -f Makefile ] || { echo "FAIL: no Makefile"; exit 1; }
+grep -q '.PHONY' Makefile || { echo "FAIL: no .PHONY"; exit 1; }
+help_out="$(make help 2>&1)" || { echo "FAIL: make help errored"; exit 1; }
+[ -n "$help_out" ] || { echo "FAIL: make help printed nothing"; exit 1; }
+make build >/dev/null 2>&1 || { echo "FAIL: make build errored"; exit 1; }
+[ -f build/out.txt ] || { echo "FAIL: make build produced no build/out.txt"; exit 1; }
+make test >/dev/null 2>&1 || { echo "FAIL: make test not green"; exit 1; }
+make clean >/dev/null 2>&1 || { echo "FAIL: make clean errored"; exit 1; }
+[ ! -d build ] || { echo "FAIL: make clean left build/"; exit 1; }
+echo "PASS"
+`;
+
 /** @purpose Minimal prepared source trees used by the three cheap SDD eval scenarios. */
 export const FIXTURE_FILES: Record<SddEvalFixtureId, Record<string, string>> = {
   'fibonacci-library': {
@@ -654,6 +723,21 @@ export const FIXTURE_FILES: Record<SddEvalFixtureId, Record<string, string>> = {
     'sample/access.log': INFRA_LOG_SAMPLE,
     'golden/expected.txt': INFRA_LOG_EXPECTED,
     'golden/verify.sh': INFRA_LOG_VERIFY,
+    'README.md':
+      '# Infra task fixture\n\nComplete the task in `inputs/brief.md`. Graded by `golden/verify.sh`.\n',
+  },
+  'infra-rotate-logs': {
+    '.gitignore': 'node_modules/\n',
+    'inputs/brief.md': INFRA_ROTATE_BRIEF,
+    'golden/verify.sh': INFRA_ROTATE_VERIFY,
+    'README.md':
+      '# Infra task fixture\n\nComplete the task in `inputs/brief.md`. Graded by `golden/verify.sh`.\n',
+  },
+  'infra-makefile': {
+    '.gitignore': 'node_modules/\nbuild/\n',
+    'inputs/brief.md': INFRA_MAKE_BRIEF,
+    'test/run.sh': INFRA_MAKE_TESTRUN,
+    'golden/verify.sh': INFRA_MAKE_VERIFY,
     'README.md':
       '# Infra task fixture\n\nComplete the task in `inputs/brief.md`. Graded by `golden/verify.sh`.\n',
   },

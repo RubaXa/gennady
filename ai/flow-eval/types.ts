@@ -43,7 +43,11 @@ export type SddEvalFixtureId =
   // A repository whose specs are structurally complete but carry deliberate, checker-visible defects
   // (e.g. an invalid mermaid diagram). Exercises the repair trajectory: does the worker self-correct
   // from the validator's own error, without any how-to guidance in the prompt/directive?
-  | 'broken-specs';
+  | 'broken-specs'
+  // Infra `task` fixtures — banal, deterministic bash/Makefile jobs graded by their own golden set.
+  | 'infra-log-summary'
+  | 'infra-rotate-logs'
+  | 'infra-makefile';
 
 /** @purpose Provider/model selection accepted by OpenCode's SDK. */
 export type OpenCodeModel = {
