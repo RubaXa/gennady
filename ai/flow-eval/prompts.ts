@@ -30,6 +30,21 @@ First read the existing artifact named by the change-request to understand what 
 Follow the code's own conventions (shebang, strict mode, style). Do not rewrite unrelated parts, do not install packages, do not scaffold specs/tickets, and do not edit the fixture's sample inputs or its golden/ directory. Report the delta you made.`,
 };
 
+// The `brownfield` phase covers several distinct decision branches; the mode selects the instruction.
+// Delta modes (modify-code-delta/fix-code-delta) use PHASE_PROMPTS.brownfield above; the spec-facing
+// modes below recover or evolve a written specification and each isolate their own branch.
+const BROWNFIELD_MODE_PROMPTS: Partial<Record<SddEvalMode, string>> = {
+  'recover-spec': `Recover a module specification DIRECTLY from the code. Do NOT run discovery, interviews, or amplification, and do NOT read the router/directive chain — this is a code→spec extraction, not greenfield authoring.
+Steps: (1) read the tool's source (e.g. bin/report.sh); (2) list its observable behaviours — inputs, each output line, and error/edge handling; (3) with exactly one Write, create specs/<tool>/<tool>.spec.md containing a "## Behaviour" section and a "## Functional Requirements" section with one bullet per behaviour (include the error/edge). Then stop.
+Do not change the code and do not invent behaviour the code does not have. Report the spec file you wrote.`,
+  'delta-to-spec': `The code already carries a recent change (inputs/change.md describes what was added) but has NO specification. Write the spec DIRECTLY from the code — do NOT run discovery/interviews and do NOT read the router/directive chain.
+Steps: (1) read the tool's source and inputs/change.md; (2) with exactly one Write, create specs/<tool>/<tool>.spec.md with a "## Behaviour" section and a "## Functional Requirements" section (one bullet per behaviour, INCLUDING the change that already landed, plus the error/edge). Then stop.
+Do not change the code. Report the spec file you wrote.`,
+  'modify-via-spec': `Realise the change-request in inputs/change.md THROUGH the specification, directly — do NOT run discovery/interviews and do NOT read the router/directive chain.
+Steps: (1) read the existing specs/<tool>/<tool>.spec.md and the tool's source; (2) update the spec (one Write) to describe the new behaviour as a functional requirement; (3) change the code to match, keeping all unrelated behaviour, output format, and error contracts unchanged. Then stop.
+Report both the spec update and the code delta you made.`,
+};
+
 /** @purpose Compose the exact worker instruction for a phase/mode scenario. */
 export function composeSddPhasePrompt(
   scenario: Pick<
@@ -51,9 +66,13 @@ export function composeSddPhasePrompt(
 - Treat the scenario intent and acceptance criteria as the synthetic operator's answers and approval of intermediate interview checkpoints. When a minor answer is absent, choose the simplest conservative default. Do not narrate or pause at intermediate checkpoints; collect assumptions and state them once in the final approval-boundary summary, never as invented durable rationale.
 - Never waive a failed gate, accept a risk, or write an operator decision/Decision Log entry on the synthetic operator's behalf. A red required gate is a blocker and must remain visible.
 - Do not approve the target boundary on the operator's behalf. For spec-authoring leave Approval #1 pending; for scaffold leave Approval #2 pending. Present the actual artifacts and return normally at that boundary.`;
+  const basePrompt =
+    scenario.phase === 'brownfield'
+      ? (BROWNFIELD_MODE_PROMPTS[scenario.mode] ?? PHASE_PROMPTS.brownfield)
+      : PHASE_PROMPTS[scenario.phase];
   return appendSddSessionBoundary(
     [
-      PHASE_PROMPTS[scenario.phase],
+      basePrompt,
       headlessOperator,
       modeLine,
       scaleLine,

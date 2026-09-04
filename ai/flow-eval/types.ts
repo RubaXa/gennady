@@ -47,7 +47,16 @@ export type SddEvalMode =
   // Brownfield: existing spec-less code with a defect; a bug report drives the fix. Isolates the
   // "diagnose + repair existing behaviour" branch (distinct from adding a feature) — read the code,
   // find the wrong behaviour, correct it without breaking the rest. Golden-graded.
-  | 'fix-code-delta';
+  | 'fix-code-delta'
+  // Brownfield spec-recovery: working code, no spec; recover a canonical specification FROM the code.
+  // Isolates the "read behaviour out of code into a spec" branch.
+  | 'recover-spec'
+  // Brownfield path B, step 2: a code delta already landed; turn that delta into a spec (create/update)
+  // so the written spec reflects the new behaviour. Isolates the "reverse a delta into a spec" branch.
+  | 'delta-to-spec'
+  // Brownfield path A: code plus an existing (recovered) spec; a change-request is realised THROUGH the
+  // spec (update the spec, then the code follows). Isolates the "change via specification" branch.
+  | 'modify-via-spec';
 
 /** @purpose Prepared, small, deterministic fixture scenarios for cheap eval smoke runs. */
 export type SddEvalFixtureId =
@@ -67,7 +76,16 @@ export type SddEvalFixtureId =
   | 'brownfield-extend-cli'
   // A committed, spec-less tool with a behavioural defect plus a bug report. The golden set grades
   // that the reported behaviour is corrected AND the error contract is preserved.
-  | 'brownfield-fix-bug';
+  | 'brownfield-fix-bug'
+  // A committed, spec-less tool; the task is to recover a spec from it. Golden grades that a spec
+  // artifact exists and covers the observable behaviour.
+  | 'brownfield-recover-spec'
+  // A committed tool whose code already carries a delta but has no spec for it; the task is to turn
+  // that delta into a written spec. Golden grades that a spec exists and names the new behaviour.
+  | 'brownfield-delta-to-spec'
+  // A committed tool WITH an existing minimal spec plus a change-request; the change is made through
+  // the spec. Golden grades both the new behaviour in code AND that the spec was updated to match.
+  | 'brownfield-via-spec';
 
 /** @purpose Provider/model selection accepted by OpenCode's SDK. */
 export type OpenCodeModel = {

@@ -639,6 +639,103 @@ printf '%s' "$err" | grep -qi 'usage' || { echo "FAIL: missing-arg lost the usag
 echo "PASS"
 `;
 
+// ── brownfield spec-facing fixtures (phase `brownfield`, spec modes) ─────────────────────────────
+// These exercise the specification side of brownfield: recover a spec from code, reverse a code delta
+// into a spec, or change code through an existing spec. A spec is prose, so the golden set grades it
+// STRUCTURALLY + by behaviour coverage (a spec exists, is non-empty, names the tool and its observable
+// behaviours) — prose quality stays judge-side. Behaviour-changing branches also grade the code.
+const REPORT3_SCRIPT = `#!/usr/bin/env bash
+set -euo pipefail
+f="\${1:-}"
+[ -n "$f" ] && [ -f "$f" ] || { echo "usage: report.sh <file>" >&2; exit 1; }
+echo "lines: $(wc -l < "$f" | tr -d ' ')"
+echo "words: $(wc -w < "$f" | tr -d ' ')"
+echo "chars: $(wc -c < "$f" | tr -d ' ')"
+`;
+
+// Recover a spec from code: a spec must exist, name the tool, and cover >=2 observable behaviours.
+const BROWNFIELD_RECOVER_VERIFY = `#!/usr/bin/env bash
+set -euo pipefail
+root="$(cd "$(dirname "$0")/.." && pwd)"
+spec="$(find "$root" -name '*.spec.md' -not -path '*/ai/*' -not -path '*/node_modules/*' -not -path '*/.claude/*' 2>/dev/null | head -1)"
+[ -n "$spec" ] || { echo "FAIL: no *.spec.md was recovered"; exit 1; }
+[ -s "$spec" ] || { echo "FAIL: recovered spec is empty"; exit 1; }
+grep -qi 'report' "$spec" || { echo "FAIL: spec does not name the tool (report)"; exit 1; }
+hits=0
+for k in lines words chars; do grep -qi "$k" "$spec" && hits=$((hits + 1)); done
+[ "$hits" -ge 2 ] || { echo "FAIL: spec covers <2 observable behaviours (found $hits)"; exit 1; }
+# Adequacy, not just keyword presence: the spec must ENUMERATE functional requirements (a behaviour
+# list) AND cover the error/edge behaviour — otherwise it is prose about the tool, not a usable spec.
+bullets="$(grep -cE '^[[:space:]]*[-*] ' "$spec" || true)"
+[ "$bullets" -ge 3 ] || { echo "FAIL: spec does not enumerate functional requirements (>=3 list items, found $bullets)"; exit 1; }
+grep -qiE 'error|invalid|missing|non-zero|exit|usage|ошибк' "$spec" || { echo "FAIL: spec omits the error/edge behaviour (happy-path only)"; exit 1; }
+echo "PASS"
+`;
+
+const BROWNFIELD_DELTA_TO_SPEC_CHANGE = `# What already changed
+
+\`bin/report.sh\` recently gained a third output line \`chars: <N>\` (the \`wc -c\` byte count), in
+addition to the existing \`lines:\` and \`words:\`. There is no specification for the tool.
+
+Task: write a specification that reflects the tool's CURRENT behaviour, INCLUDING the \`chars\` line.
+Do not change the code.
+`;
+
+// Reverse a delta into a spec: a spec must exist and name the newly added behaviour (chars).
+const BROWNFIELD_DELTA_TO_SPEC_VERIFY = `#!/usr/bin/env bash
+set -euo pipefail
+root="$(cd "$(dirname "$0")/.." && pwd)"
+spec="$(find "$root" -name '*.spec.md' -not -path '*/ai/*' -not -path '*/node_modules/*' -not -path '*/.claude/*' 2>/dev/null | head -1)"
+[ -n "$spec" ] || { echo "FAIL: no *.spec.md was written"; exit 1; }
+[ -s "$spec" ] || { echo "FAIL: spec is empty"; exit 1; }
+grep -qi 'report' "$spec" || { echo "FAIL: spec does not name the tool (report)"; exit 1; }
+grep -qi 'chars' "$spec" || { echo "FAIL: spec does not describe the added 'chars' behaviour"; exit 1; }
+# Adequacy: enumerated functional requirements + error/edge coverage, not just the chars keyword.
+bullets="$(grep -cE '^[[:space:]]*[-*] ' "$spec" || true)"
+[ "$bullets" -ge 3 ] || { echo "FAIL: spec does not enumerate functional requirements (>=3 list items, found $bullets)"; exit 1; }
+grep -qiE 'error|invalid|missing|non-zero|exit|usage|ошибк' "$spec" || { echo "FAIL: spec omits the error/edge behaviour (happy-path only)"; exit 1; }
+echo "PASS"
+`;
+
+// A minimal pre-existing spec (lines/words only) that the via-spec change must extend to cover chars.
+const BROWNFIELD_VIA_SPEC_EXISTING = `# report.sh specification
+
+\`bin/report.sh <file>\` summarises a text file.
+
+## Behaviour
+
+- Prints \`lines: <N>\` — the number of lines in the file.
+- Prints \`words: <N>\` — the number of words in the file.
+- A missing or non-existent file argument prints a usage message to stderr and exits non-zero.
+`;
+
+const BROWNFIELD_VIA_SPEC_CHANGE = `# Change request: add a character count
+
+\`bin/report.sh\` should ALSO print \`chars: <N>\` (the \`wc -c\` byte count) after the existing lines.
+
+Realise this THROUGH the specification: update \`specs/report/report.spec.md\` to describe the new
+\`chars\` behaviour first, then bring the code into line. Keep the existing behaviour unchanged.
+`;
+
+// Change via spec: the code must print chars (and keep lines/words) AND the spec must be updated.
+const BROWNFIELD_VIA_SPEC_VERIFY = `#!/usr/bin/env bash
+set -euo pipefail
+root="$(cd "$(dirname "$0")/.." && pwd)"
+script="$root/bin/report.sh"
+[ -f "$script" ] || { echo "FAIL: bin/report.sh missing"; exit 1; }
+got="$(bash "$script" "$root/sample/input.txt")"
+printf '%s\\n' "$got" | grep -q '^lines: 2$' || { echo "FAIL: existing 'lines:' behaviour broken"; exit 1; }
+printf '%s\\n' "$got" | grep -q '^words: 5$' || { echo "FAIL: existing 'words:' behaviour broken"; exit 1; }
+printf '%s\\n' "$got" | grep -q '^chars: 24$' || { echo "FAIL: code does not print the new 'chars:' line"; exit 1; }
+spec="$(find "$root" -name '*.spec.md' -not -path '*/ai/*' -not -path '*/node_modules/*' -not -path '*/.claude/*' 2>/dev/null | head -1)"
+[ -n "$spec" ] || { echo "FAIL: spec missing"; exit 1; }
+grep -qi 'chars' "$spec" || { echo "FAIL: spec was not updated to describe 'chars'"; exit 1; }
+# Adequacy: the updated spec must still enumerate functional requirements (a behaviour list).
+bullets="$(grep -cE '^[[:space:]]*[-*] ' "$spec" || true)"
+[ "$bullets" -ge 3 ] || { echo "FAIL: spec does not enumerate functional requirements (>=3 list items, found $bullets)"; exit 1; }
+echo "PASS"
+`;
+
 /** @purpose Minimal prepared source trees used by the three cheap SDD eval scenarios. */
 export const FIXTURE_FILES: Record<SddEvalFixtureId, Record<string, string>> = {
   'fibonacci-library': {
@@ -875,6 +972,33 @@ export const FIXTURE_FILES: Record<SddEvalFixtureId, Record<string, string>> = {
     'golden/verify.sh': BROWNFIELD_BUG_VERIFY,
     'README.md':
       '# uniq-lines tool\n\n`bin/uniq-lines.sh <file>` prints distinct lines. There is no specification.\n',
+  },
+  'brownfield-recover-spec': {
+    '.gitignore': 'node_modules/\n',
+    'bin/report.sh': REPORT3_SCRIPT,
+    'sample/input.txt': BROWNFIELD_CLI_SAMPLE,
+    'golden/verify.sh': BROWNFIELD_RECOVER_VERIFY,
+    'README.md':
+      '# report tool\n\n`bin/report.sh <file>` summarizes a text file. There is no specification — recover one.\n',
+  },
+  'brownfield-delta-to-spec': {
+    '.gitignore': 'node_modules/\n',
+    'bin/report.sh': REPORT3_SCRIPT,
+    'sample/input.txt': BROWNFIELD_CLI_SAMPLE,
+    'inputs/change.md': BROWNFIELD_DELTA_TO_SPEC_CHANGE,
+    'golden/verify.sh': BROWNFIELD_DELTA_TO_SPEC_VERIFY,
+    'README.md':
+      '# report tool\n\n`bin/report.sh <file>` summarizes a text file. A delta already landed; write its spec.\n',
+  },
+  'brownfield-via-spec': {
+    '.gitignore': 'node_modules/\n',
+    'bin/report.sh': BROWNFIELD_CLI_SCRIPT,
+    'sample/input.txt': BROWNFIELD_CLI_SAMPLE,
+    'specs/report/report.spec.md': BROWNFIELD_VIA_SPEC_EXISTING,
+    'inputs/change.md': BROWNFIELD_VIA_SPEC_CHANGE,
+    'golden/verify.sh': BROWNFIELD_VIA_SPEC_VERIFY,
+    'README.md':
+      '# report tool\n\n`bin/report.sh <file>` summarizes a text file. See specs/report/report.spec.md.\n',
   },
 };
 

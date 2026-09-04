@@ -156,16 +156,20 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
     const verdict = result.judge?.verdict ?? 'worker-error';
     console.log(`${result.worker.scenarioId}: ${verdict} (${result.worker.status})`);
     const scenario = byId.get(result.worker.scenarioId);
-    // Objective quality rule R1 (structural integrity) for SDD-spec phases — the mechanical success
-    // signal alongside the stochastic judge (QUALITY-RULES.ru.md). Golden-graded phases (`task`,
-    // `brownfield`) carry no specs and are graded by their own golden set, not sdd-check, so R1 does
-    // not apply to them.
-    if (
-      scenario &&
-      scenario.directory &&
+    // Objective quality rule R1 (structural integrity) for phases that PRODUCE specs — the mechanical
+    // signal alongside the stochastic judge (QUALITY-RULES.ru.md). The pure golden-graded work carries
+    // no specs and is graded by its own golden set, not sdd-check: `task`, and the brownfield delta
+    // modes (modify-code-delta/fix-code-delta). The brownfield spec modes DO write specs, so R1 applies.
+    const brownfieldSpecMode =
+      scenario?.phase === 'brownfield' &&
+      (scenario.mode === 'recover-spec' ||
+        scenario.mode === 'delta-to-spec' ||
+        scenario.mode === 'modify-via-spec');
+    const producesSpecs =
+      !!scenario &&
       scenario.phase !== 'task' &&
-      scenario.phase !== 'brownfield'
-    ) {
+      (scenario.phase !== 'brownfield' || brownfieldSpecMode);
+    if (scenario && scenario.directory && producesSpecs) {
       const r1 = await checkR1Structure(scenario.directory);
       console.log(`  quality ${r1.rule}: ${r1.pass ? 'pass' : 'FAIL'} — ${r1.detail}`);
     }
