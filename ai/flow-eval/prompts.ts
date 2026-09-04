@@ -25,6 +25,9 @@ Do not disable, weaken, or work around any check; do not author new scopes/modul
   task: `Complete the single infrastructure task described in inputs/brief.md — an ordinary bash/Makefile job, no SDD ceremony and no heavy dependency installation.
 Produce exactly the artifact(s) the brief names (e.g. a script under bin/ or a Makefile), make scripts executable, and follow shell best practice: a shebang and strict mode (set -euo pipefail), clear errors on bad input, and idempotent, path-safe behaviour.
 Do not install packages, do not scaffold specs/tickets, and do not edit the fixture's sample inputs or its golden/ directory. Report what you produced.`,
+  brownfield: `Modify EXISTING code in this repository to satisfy the change-request in inputs/change.md. There is NO specification — the behaviour lives only in the code.
+First read the existing artifact named by the change-request to understand what it does; then make the smallest delta that adds the requested behaviour or corrects the reported defect, WITHOUT changing any UNRELATED behaviour, output format, or error contract.
+Follow the code's own conventions (shebang, strict mode, style). Do not rewrite unrelated parts, do not install packages, do not scaffold specs/tickets, and do not edit the fixture's sample inputs or its golden/ directory. Report the delta you made.`,
 };
 
 /** @purpose Compose the exact worker instruction for a phase/mode scenario. */

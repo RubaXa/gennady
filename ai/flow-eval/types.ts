@@ -22,7 +22,13 @@ export type SddEvalScenario = {
 };
 
 /** @purpose Supported intellectual SDD flow phases exercised by the harness. */
-export type SddEvalPhase = 'spec-authoring' | 'scaffold' | 'execute' | 'repair' | 'task';
+export type SddEvalPhase =
+  | 'spec-authoring'
+  | 'scaffold'
+  | 'execute'
+  | 'repair'
+  | 'task'
+  | 'brownfield';
 
 /** @purpose Human-auditable phase modes with approval boundaries. */
 export type SddEvalMode =
@@ -33,7 +39,15 @@ export type SddEvalMode =
   | 'fix-to-clean'
   // Task: a single banal infra task from a brief (bash/Makefile), graded by the fixture's golden set —
   // no SDD ceremony. Exercises the class of work the flow's infra problems originally came from.
-  | 'brief-to-artifact';
+  | 'brief-to-artifact'
+  // Brownfield: existing working code with NO specification; a change-request drives a direct code
+  // delta. Isolates the "modify existing code from scratch" branch — read code first, extend without
+  // breaking it. Graded by the fixture's golden set (preserved + new behaviour), not by SDD ceremony.
+  | 'modify-code-delta'
+  // Brownfield: existing spec-less code with a defect; a bug report drives the fix. Isolates the
+  // "diagnose + repair existing behaviour" branch (distinct from adding a feature) — read the code,
+  // find the wrong behaviour, correct it without breaking the rest. Golden-graded.
+  | 'fix-code-delta';
 
 /** @purpose Prepared, small, deterministic fixture scenarios for cheap eval smoke runs. */
 export type SddEvalFixtureId =
@@ -47,7 +61,13 @@ export type SddEvalFixtureId =
   // Infra `task` fixtures — banal, deterministic bash/Makefile jobs graded by their own golden set.
   | 'infra-log-summary'
   | 'infra-rotate-logs'
-  | 'infra-makefile';
+  | 'infra-makefile'
+  // Brownfield fixtures — a committed, working, spec-less tool plus a change-request. The golden set
+  // grades that the requested delta landed AND the original behaviour is preserved.
+  | 'brownfield-extend-cli'
+  // A committed, spec-less tool with a behavioural defect plus a bug report. The golden set grades
+  // that the reported behaviour is corrected AND the error contract is preserved.
+  | 'brownfield-fix-bug';
 
 /** @purpose Provider/model selection accepted by OpenCode's SDK. */
 export type OpenCodeModel = {

@@ -157,9 +157,15 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
     console.log(`${result.worker.scenarioId}: ${verdict} (${result.worker.status})`);
     const scenario = byId.get(result.worker.scenarioId);
     // Objective quality rule R1 (structural integrity) for SDD-spec phases — the mechanical success
-    // signal alongside the stochastic judge (QUALITY-RULES.ru.md). Infra `task` runs are graded by
-    // their own golden set, not sdd-check, so R1 does not apply there.
-    if (scenario && scenario.directory && scenario.phase !== 'task') {
+    // signal alongside the stochastic judge (QUALITY-RULES.ru.md). Golden-graded phases (`task`,
+    // `brownfield`) carry no specs and are graded by their own golden set, not sdd-check, so R1 does
+    // not apply to them.
+    if (
+      scenario &&
+      scenario.directory &&
+      scenario.phase !== 'task' &&
+      scenario.phase !== 'brownfield'
+    ) {
       const r1 = await checkR1Structure(scenario.directory);
       console.log(`  quality ${r1.rule}: ${r1.pass ? 'pass' : 'FAIL'} — ${r1.detail}`);
     }

@@ -524,6 +524,121 @@ make clean >/dev/null 2>&1 || { echo "FAIL: make clean errored"; exit 1; }
 echo "PASS"
 `;
 
+// ── brownfield-extend-cli fixture (phase `brownfield`) ───────────────────────────────────────────
+// A committed, WORKING, spec-less tool plus a change-request. Isolates the direct code-delta branch:
+// the worker must read the existing script, then add one behaviour without breaking the existing two.
+// The golden set is the objective success criterion — it grades preserved AND new behaviour.
+const BROWNFIELD_CLI_SCRIPT = `#!/usr/bin/env bash
+set -euo pipefail
+f="\${1:-}"
+[ -n "$f" ] && [ -f "$f" ] || { echo "usage: report.sh <file>" >&2; exit 1; }
+echo "lines: $(wc -l < "$f" | tr -d ' ')"
+echo "words: $(wc -w < "$f" | tr -d ' ')"
+`;
+
+// Fixed sample: 2 newline-terminated lines, 5 words, 24 bytes.
+const BROWNFIELD_CLI_SAMPLE = `hello world
+foo bar baz
+`;
+
+const BROWNFIELD_CLI_CHANGE = `# Change request: add a character count
+
+\`bin/report.sh <file>\` currently prints two lines: \`lines: <N>\` then \`words: <N>\`.
+
+Extend it so it ALSO prints a third line \`chars: <N>\` — the total number of characters in the file
+(as \`wc -c\` counts) — AFTER the existing two lines.
+
+Constraints:
+- Keep the two existing lines and their exact format and order unchanged.
+- Keep the existing behaviour for a missing or non-existent file argument (clear stderr message,
+  non-zero exit).
+- There is no specification; read the existing script first, then make the smallest delta.
+`;
+
+// Expected output on the fixed sample AFTER the change lands.
+const BROWNFIELD_CLI_EXPECTED = `lines: 2
+words: 5
+chars: 24
+`;
+
+// Independent golden verifier: new behaviour present AND original behaviour + error contract intact.
+const BROWNFIELD_CLI_VERIFY = `#!/usr/bin/env bash
+set -euo pipefail
+root="$(cd "$(dirname "$0")/.." && pwd)"
+script="$root/bin/report.sh"
+[ -f "$script" ] || { echo "FAIL: bin/report.sh missing"; exit 1; }
+grep -q 'set -euo pipefail' "$script" || { echo "FAIL: script lost 'set -euo pipefail'"; exit 1; }
+got="$(bash "$script" "$root/sample/input.txt")"
+exp="$(cat "$root/golden/expected.txt")"
+if [ "$got" != "$exp" ]; then
+  echo "FAIL: output mismatch"; echo "--- got ---"; printf '%s\\n' "$got"; echo "--- expected ---"; printf '%s\\n' "$exp"; exit 1
+fi
+# Preserved behaviour: the original two lines are unchanged and still first.
+printf '%s\\n' "$got" | sed -n 1p | grep -q '^lines: 2$' || { echo "FAIL: existing 'lines:' behaviour broken"; exit 1; }
+printf '%s\\n' "$got" | sed -n 2p | grep -q '^words: 5$' || { echo "FAIL: existing 'words:' behaviour broken"; exit 1; }
+# New behaviour: the third line is the char count.
+printf '%s\\n' "$got" | sed -n 3p | grep -q '^chars: 24$' || { echo "FAIL: 'chars:' line missing or wrong"; exit 1; }
+# Preserved error contract: missing argument exits non-zero AND still prints the usage message.
+if bash "$script" >/dev/null 2>&1; then echo "FAIL: missing-arg input did not exit non-zero"; exit 1; fi
+err="$(bash "$script" 2>&1 >/dev/null || true)"
+printf '%s' "$err" | grep -qi 'usage' || { echo "FAIL: missing-arg lost the usage message"; exit 1; }
+echo "PASS"
+`;
+
+// ── brownfield-fix-bug fixture (phase `brownfield`) ──────────────────────────────────────────────
+// A committed, spec-less tool with a behavioural DEFECT plus a bug report. Isolates the diagnose+fix
+// branch: the worker must read the code, locate the wrong behaviour, and correct it — keeping the
+// error contract. The golden set grades the corrected behaviour objectively.
+const BROWNFIELD_BUG_SCRIPT = `#!/usr/bin/env bash
+set -euo pipefail
+f="\${1:-}"
+[ -n "$f" ] && [ -f "$f" ] || { echo "usage: uniq-lines.sh <file>" >&2; exit 1; }
+# BUG: sorts the input, so distinct lines are emitted in sorted order, not first-appearance order.
+sort "$f" | uniq
+`;
+
+const BROWNFIELD_BUG_SAMPLE = `banana
+apple
+banana
+cherry
+apple
+`;
+
+const BROWNFIELD_BUG_CHANGE = `# Bug report: wrong ordering
+
+\`bin/uniq-lines.sh <file>\` should print each DISTINCT line exactly once, in the order the line first
+appears in the file. It currently reorders the output (it sorts the lines). Fix it so the original
+first-appearance order is preserved.
+
+Constraints:
+- Keep the missing / non-existent file behaviour (clear stderr message, non-zero exit).
+- There is no specification; read the existing script first, then make the smallest delta.
+`;
+
+// Expected output on the fixed sample: first-appearance order, each distinct line once.
+const BROWNFIELD_BUG_EXPECTED = `banana
+apple
+cherry
+`;
+
+const BROWNFIELD_BUG_VERIFY = `#!/usr/bin/env bash
+set -euo pipefail
+root="$(cd "$(dirname "$0")/.." && pwd)"
+script="$root/bin/uniq-lines.sh"
+[ -f "$script" ] || { echo "FAIL: bin/uniq-lines.sh missing"; exit 1; }
+grep -q 'set -euo pipefail' "$script" || { echo "FAIL: script lost 'set -euo pipefail'"; exit 1; }
+got="$(bash "$script" "$root/sample/input.txt")"
+exp="$(cat "$root/golden/expected.txt")"
+if [ "$got" != "$exp" ]; then
+  echo "FAIL: first-appearance order not preserved"; echo "--- got ---"; printf '%s\\n' "$got"; echo "--- expected ---"; printf '%s\\n' "$exp"; exit 1
+fi
+# Preserved error contract: missing argument exits non-zero AND still prints the usage message.
+if bash "$script" >/dev/null 2>&1; then echo "FAIL: missing-arg input did not exit non-zero"; exit 1; fi
+err="$(bash "$script" 2>&1 >/dev/null || true)"
+printf '%s' "$err" | grep -qi 'usage' || { echo "FAIL: missing-arg lost the usage message"; exit 1; }
+echo "PASS"
+`;
+
 /** @purpose Minimal prepared source trees used by the three cheap SDD eval scenarios. */
 export const FIXTURE_FILES: Record<SddEvalFixtureId, Record<string, string>> = {
   'fibonacci-library': {
@@ -740,6 +855,26 @@ export const FIXTURE_FILES: Record<SddEvalFixtureId, Record<string, string>> = {
     'golden/verify.sh': INFRA_MAKE_VERIFY,
     'README.md':
       '# Infra task fixture\n\nComplete the task in `inputs/brief.md`. Graded by `golden/verify.sh`.\n',
+  },
+  'brownfield-extend-cli': {
+    '.gitignore': 'node_modules/\n',
+    'bin/report.sh': BROWNFIELD_CLI_SCRIPT,
+    'sample/input.txt': BROWNFIELD_CLI_SAMPLE,
+    'inputs/change.md': BROWNFIELD_CLI_CHANGE,
+    'golden/expected.txt': BROWNFIELD_CLI_EXPECTED,
+    'golden/verify.sh': BROWNFIELD_CLI_VERIFY,
+    'README.md':
+      '# report tool\n\n`bin/report.sh <file>` summarizes a text file. There is no specification.\n',
+  },
+  'brownfield-fix-bug': {
+    '.gitignore': 'node_modules/\n',
+    'bin/uniq-lines.sh': BROWNFIELD_BUG_SCRIPT,
+    'sample/input.txt': BROWNFIELD_BUG_SAMPLE,
+    'inputs/change.md': BROWNFIELD_BUG_CHANGE,
+    'golden/expected.txt': BROWNFIELD_BUG_EXPECTED,
+    'golden/verify.sh': BROWNFIELD_BUG_VERIFY,
+    'README.md':
+      '# uniq-lines tool\n\n`bin/uniq-lines.sh <file>` prints distinct lines. There is no specification.\n',
   },
 };
 
@@ -974,6 +1109,11 @@ export async function provisionScenarioDirectories(
         const target = join(directory, relativePath);
         await mkdir(dirname(target), { recursive: true });
         await writeFile(target, contents, 'utf8');
+        // Provisioned shell scripts (a brownfield tool's baseline, a golden verifier) ship with the
+        // executable bit so the fixture is a faithful working repo — plain writeFile drops it.
+        if (relativePath.startsWith('bin/') || relativePath.endsWith('.sh')) {
+          await chmod(target, 0o755);
+        }
       }
     }
     await materializeFlow(directory, sourceRoot);
