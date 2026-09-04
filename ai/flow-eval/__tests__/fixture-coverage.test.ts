@@ -17,7 +17,10 @@ import { FIXTURE_FILES } from '../provision.ts';
 const GLOB_META = /[*?[\]{}]/;
 
 describe('SDD eval fixtures can satisfy the required coverage gate', () => {
-  for (const [fixture, files] of Object.entries(FIXTURE_FILES)) {
+  // Only node-project fixtures carry a coverage gate. Infra/bash fixtures (phase `task`) ship no
+  // package.json and are graded by their own golden/ set, not by testcov — they are out of scope here.
+  const nodeFixtures = Object.entries(FIXTURE_FILES).filter(([, files]) => files['package.json']);
+  for (const [fixture, files] of nodeFixtures) {
     it(`${fixture} declares c8 and a fingerprint-safe coverage runner`, () => {
       const raw = files['package.json'];
       assert.ok(raw, `${fixture} must ship a package.json`);

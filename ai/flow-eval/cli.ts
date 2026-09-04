@@ -7,6 +7,7 @@ import { join, resolve } from 'node:path';
 import { SddEvalOpenCodeEvidenceSource } from './evidence.ts';
 import { parseOpenCodeModel, SddEvalOpenCodeRuntime } from './opencode-runtime.ts';
 import { provisionScenarioDirectories } from './provision.ts';
+import { checkR1Structure } from './quality-gate.ts';
 import { DEFAULT_SDD_EVAL_CONFIG, SddEvalRunner } from './runner.ts';
 import { SddEvalSessionDirectoryMap } from './session-directory.ts';
 import type { SddEvalConfig, SddEvalScenario } from './types.ts';
@@ -150,10 +151,18 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
     registry,
   });
   const results = await new SddEvalRunner(runtime, evidence, options.config).runAll(isolated);
-  const byId = new Map(isolated.map((scenario) => [scenario.id, scenario.directory]));
+  const byId = new Map(isolated.map((scenario) => [scenario.id, scenario]));
   for (const result of results) {
     const verdict = result.judge?.verdict ?? 'worker-error';
     console.log(`${result.worker.scenarioId}: ${verdict} (${result.worker.status})`);
+    const scenario = byId.get(result.worker.scenarioId);
+    // Objective quality rule R1 (structural integrity) for SDD-spec phases — the mechanical success
+    // signal alongside the stochastic judge (QUALITY-RULES.ru.md). Infra `task` runs are graded by
+    // their own golden set, not sdd-check, so R1 does not apply there.
+    if (scenario && scenario.directory && scenario.phase !== 'task') {
+      const r1 = await checkR1Structure(scenario.directory);
+      console.log(`  quality ${r1.rule}: ${r1.pass ? 'pass' : 'FAIL'} — ${r1.detail}`);
+    }
     // A/B currency: per-run token + cost totals (independent of machine load), so runs on different
     // servers stay comparable. `msgs` is the assistant-message count (a coarse trajectory-length proxy).
     const u = result.worker.usage;
@@ -164,7 +173,7 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
     }
     // Persist the judge's full rationale next to the scenario sandbox: the terminal line carries
     // only the verdict, so without this a 'fail'/'inconclusive' is undiagnosable after the run.
-    const directory = byId.get(result.worker.scenarioId);
+    const directory = scenario?.directory;
     if (result.judge?.rationale && directory) {
       const target = join(directory, `.sdd-eval-judge.${result.worker.scenarioId}.md`);
       await writeFile(

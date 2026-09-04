@@ -22,6 +22,9 @@ Do not replace the canonical inputs with an ad-hoc coding plan.`,
 Read and follow the installed SDD skill and router/directive chain (starting at ai/skills/sdd/SKILL.md and ai/directives/sdd-v2/router.directive.xml).
 Run \`npx --no-install gennady sdd-check --all .\`, then fix every reported error in its owning artifact using exactly one Write per file, guided by each finding's own message. Re-run the check and repeat until it is clean.
 Do not disable, weaken, or work around any check; do not author new scopes/modules or implement product code. Report the final clean check.`,
+  task: `Complete the single infrastructure task described in inputs/brief.md — an ordinary bash/Makefile job, no SDD ceremony and no heavy dependency installation.
+Produce exactly the artifact(s) the brief names (e.g. a script under bin/ or a Makefile), make scripts executable, and follow shell best practice: a shebang and strict mode (set -euo pipefail), clear errors on bad input, and idempotent, path-safe behaviour.
+Do not install packages, do not scaffold specs/tickets, and do not edit the fixture's sample inputs or its golden/ directory. Report what you produced.`,
 };
 
 /** @purpose Compose the exact worker instruction for a phase/mode scenario. */

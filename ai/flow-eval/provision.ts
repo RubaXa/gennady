@@ -389,6 +389,72 @@ const exitCode = await new Promise((resolveExit) => {
 process.exitCode = exitCode;
 `;
 
+// ── infra-log-summary fixture (phase `task`) ─────────────────────────────────────────────────────
+// A banal, deterministic infra job — no node install. Fixed sample log + a golden expected output +
+// an independent verify script. Success criteria (per-eval golden) live in golden/, not in worker code.
+const INFRA_LOG_BRIEF = `# Log summary task
+
+Write \`bin/log-summary.sh\` — a bash script that reads an nginx-style access log whose path is its
+first argument and prints EXACTLY this format (nothing else):
+
+    total_requests: <N>
+    server_errors: <N>
+    top_ips:
+    <ip> <count>
+    <ip> <count>
+    <ip> <count>
+
+Rules:
+- \`total_requests\` = number of log lines. \`server_errors\` = lines whose HTTP status is 5xx.
+- \`top_ips\` = the 3 client IPs (first field of each line) with the most requests, most first,
+  each as \`<ip> <count>\`; ties broken by IP ascending.
+- Use a shebang and \`set -euo pipefail\`. If the file argument is missing or does not exist, print a
+  clear message to stderr and exit non-zero. Re-running on the same input must print the same output.
+- No package installation. Only the script under bin/.
+`;
+
+// Fixed sample: 7 lines. status 500 + 503 = 2 server errors. IP counts 10.0.0.1=4, 10.0.0.2=2, 10.0.0.3=1.
+const INFRA_LOG_SAMPLE = `10.0.0.1 - - [10/Oct/2026:13:55:36 +0000] "GET /a HTTP/1.1" 200 512
+10.0.0.1 - - [10/Oct/2026:13:55:37 +0000] "GET /b HTTP/1.1" 500 190
+10.0.0.2 - - [10/Oct/2026:13:55:38 +0000] "GET /a HTTP/1.1" 200 512
+10.0.0.1 - - [10/Oct/2026:13:55:39 +0000] "POST /c HTTP/1.1" 503 0
+10.0.0.3 - - [10/Oct/2026:13:55:40 +0000] "GET /a HTTP/1.1" 404 733
+10.0.0.2 - - [10/Oct/2026:13:55:41 +0000] "GET /d HTTP/1.1" 200 88
+10.0.0.1 - - [10/Oct/2026:13:55:42 +0000] "GET /e HTTP/1.1" 200 41
+`;
+
+const INFRA_LOG_EXPECTED = `total_requests: 7
+server_errors: 2
+top_ips:
+10.0.0.1 4
+10.0.0.2 2
+10.0.0.3 1
+`;
+
+// Independent golden verifier — the objective per-eval success criterion (R2 + R6 for this task).
+const INFRA_LOG_VERIFY = `#!/usr/bin/env bash
+set -euo pipefail
+root="$(cd "$(dirname "$0")/.." && pwd)"
+script="$root/bin/log-summary.sh"
+[ -x "$script" ] || { echo "FAIL: bin/log-summary.sh missing or not executable"; exit 1; }
+# R6: strict mode declared
+grep -q 'set -euo pipefail' "$script" || { echo "FAIL: script lacks 'set -euo pipefail'"; exit 1; }
+# R2: exact output on the fixed sample (command substitution strips trailing newlines on both sides)
+got="$("$script" "$root/sample/access.log")"
+exp="$(cat "$root/golden/expected.txt")"
+if [ "$got" != "$exp" ]; then
+  echo "FAIL: output mismatch"; echo "--- got ---"; printf '%s\\n' "$got"; echo "--- expected ---"; printf '%s\\n' "$exp"; exit 1
+fi
+# R6: missing file must fail (non-zero), not print a bogus summary
+if "$script" "$root/sample/does-not-exist.log" >/dev/null 2>&1; then
+  echo "FAIL: missing-file input did not exit non-zero"; exit 1
+fi
+# R2: idempotent — second run identical
+got2="$("$script" "$root/sample/access.log")"
+[ "$got" = "$got2" ] || { echo "FAIL: not idempotent"; exit 1; }
+echo "PASS"
+`;
+
 /** @purpose Minimal prepared source trees used by the three cheap SDD eval scenarios. */
 export const FIXTURE_FILES: Record<SddEvalFixtureId, Record<string, string>> = {
   'fibonacci-library': {
@@ -581,6 +647,15 @@ export const FIXTURE_FILES: Record<SddEvalFixtureId, Record<string, string>> = {
         null,
         2
       ) + '\n',
+  },
+  'infra-log-summary': {
+    '.gitignore': 'node_modules/\n',
+    'inputs/brief.md': INFRA_LOG_BRIEF,
+    'sample/access.log': INFRA_LOG_SAMPLE,
+    'golden/expected.txt': INFRA_LOG_EXPECTED,
+    'golden/verify.sh': INFRA_LOG_VERIFY,
+    'README.md':
+      '# Infra task fixture\n\nComplete the task in `inputs/brief.md`. Graded by `golden/verify.sh`.\n',
   },
 };
 

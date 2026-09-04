@@ -22,7 +22,7 @@ export type SddEvalScenario = {
 };
 
 /** @purpose Supported intellectual SDD flow phases exercised by the harness. */
-export type SddEvalPhase = 'spec-authoring' | 'scaffold' | 'execute' | 'repair';
+export type SddEvalPhase = 'spec-authoring' | 'scaffold' | 'execute' | 'repair' | 'task';
 
 /** @purpose Human-auditable phase modes with approval boundaries. */
 export type SddEvalMode =
@@ -30,7 +30,10 @@ export type SddEvalMode =
   | 'actual-tickets-to-approval-2'
   | 'canonical-execute'
   // Repair: the workspace already holds specs that fail `sdd-check`; drive the flow to a clean check.
-  | 'fix-to-clean';
+  | 'fix-to-clean'
+  // Task: a single banal infra task from a brief (bash/Makefile), graded by the fixture's golden set —
+  // no SDD ceremony. Exercises the class of work the flow's infra problems originally came from.
+  | 'brief-to-artifact';
 
 /** @purpose Prepared, small, deterministic fixture scenarios for cheap eval smoke runs. */
 export type SddEvalFixtureId =
