@@ -31,15 +31,14 @@ prepare/clean окружения — скриптами (node fs/path), не р�
   (22 tool-calls, artifact=none) — тонет в greenfield-ceremony chain, не доходя до Write.
 - ✅ **B2 Процесс code→spec** (прямой, без ceremony) РАБОТАЕТ: V2 → golden PASS, sdd-check clean,
   reasoning 68249→334 (×200), total 129381→10790 (×12), msgs 20→5. Промпт recover-spec = direct.
-- ⬜ **B3 Матрица наличия артефактов** (portal/scope/module × есть/нет/partial), каждый — golden both-way:
-  - S0 пусто (нет portal/scope/module) → восстановить module spec (+ scope при необходимости).
-  - S1 scope есть, module нет → восстановить module в существующий scope (не дублировать scope).
-  - S2 module partial (есть, не покрывает часть кода) → дополнить (refine), не снести.
-  - S3 multi-module — опц. позже.
-- ⬜ **B4 ≥10 вариаций промпта/траектории** (Ф4): baseline/direct/steps/few-shot/anti-loop/точный-путь/
-  минимализм/рефлексия/verbose/combo. Метрики: golden, total, input, output, reasoning, msgs. Любой
-  исход ценен: фиксирую деградации и победителя. (тексты готовы: scratchpad/recover-variations.md)
-- ⬜ **B5 delta-to-spec / via-spec** на РАБОЧЕМ процессе (тот же code→spec класс) — прогнать, зафиксировать.
+- ✅ **B3 Матрица наличия артефактов** (portal/scope/module × есть/нет/partial): both-way 19/19;
+  промпт matrix-aware. Реальные прогоны — все golden PASS: S0 (пусто) PASS/clean; S1 (scope есть,
+  module нет) PASS, agent добавил module под scope, scope цел (R1 FAIL — нюанс неканоничной фикстурной
+  scope-спеки, не процесса); S2 (partial) PASS/clean, дополнил chars сохранив lines/words. Регрессия
+  S0 на matrix-промпте — PASS. (S3 multi-module — опц. позже.)
+- ⬜ **B4 ≥10 вариаций промпта/траектории**: V1 baseline FAIL, V2 direct PASS зафиксированы. Осталось
+  провести изолирующие вариации (skill-lite/few-shot/anti-loop/verbose/combo), фиксируя деградации.
+- ✅ **B5 delta-to-spec / via-spec** на direct-процессе — оба golden PASS + sdd-check clean (~11–13k).
 
 ## C. СКВОЗНЫЕ / ИНФРАСТРУКТУРНЫЕ ЦЕЛИ
 

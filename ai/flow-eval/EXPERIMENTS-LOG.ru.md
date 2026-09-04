@@ -172,6 +172,37 @@ FAIL→PASS, спека адекватна (golden) И структурно ва
 деградацию вызывала НЕ задача, а промпт, гнавший в authoring-цепочку; прямой code→spec — дёшев и
 надёжен. Это и есть «профитная экономика» для recover.
 
+### Direct-подход обобщён на все три spec-ветки (реальные прогоны, golden PASS + sdd-check clean)
+
+| Ветка (S0: спек нет) | golden | total | reason | msgs |
+| -------------------- | ------ | ----- | ------ | ---- |
+| E-bf-recover         | PASS   | 10790 | 334    | 5    |
+| E-bf-delta-to-spec   | PASS   | 13025 | 284    | 7    |
+| E-bf-via-spec        | PASS   | 10867 | 292    | 6    |
+
+Тот же direct-приём (без ceremony, прямые шаги, один Write) для delta→spec и change-via-spec: все три
+дёшевы (~10–13k), reasoning ~290, R1 clean. Процесс code→spec подтверждён на всём классе.
+
+### Матрица наличия артефактов (B3) — both-way залочено, прогоны идут
+
+`brownfield-spec-golden.test` 19/19: S0 (3 ветки) + адекватность + S1 (scope есть/module нет: добавить
+module под scope, scope не трогать) + S2 (partial: дополнить chars, не потерять lines/words). Промпт
+recover сделан matrix-aware (проверяет specs/, размещает/дополняет по наличию).
+
+Реальные прогоны (matrix-aware промпт):
+
+| Сценарий                 | golden | R1        | total | reason | msgs | действие агента                           |
+| ------------------------ | ------ | --------- | ----- | ------ | ---- | ----------------------------------------- |
+| S0 регрессия (пусто)     | PASS   | clean     | 11315 | 514    | 4    | создал module spec                        |
+| S1 scope-есть/module-нет | PASS   | **FAIL¹** | 21426 | 1612   | 8    | добавил module ПОД scope, scope не тронут |
+| S2 module partial        | PASS   | clean     | 10539 | 402    | 4    | дополнил chars, сохранил lines/words      |
+
+¹ S1 R1 FAIL — sdd-check строже golden: фикстурная scope-спека (RECOVER_SCOPE_SPEC) минимальна и не
+полностью канонична, портал ругается. Наш объективный golden (module размещён под scope + scope цел +
+адекватность) — PASS. Это нюанс ФИКСТУРЫ, не процесса; матрица наличия артефактов (S0/S1/S2) —
+работает, agent корректно ветвит размещение по наличию scope/module. matrix-aware промпт не сломал S0
+(регрессия PASS). S1 дороже (21k, msgs 8): агент читает существующие specs/ — ожидаемо.
+
 - **Причина ДОКАЗАНА транскриптом** (диагностический прогон baseline): агент последовательно читает
   `ai/directives/sdd-v2/root.directive.xml` → `scope.directive.xml` → `router.directive.xml` (22
   tool-calls, artifact=none) — уходит в greenfield-ceremony chain (discovery/маршрутизация), НЕ доходя

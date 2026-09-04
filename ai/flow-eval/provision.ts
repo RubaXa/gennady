@@ -736,6 +736,73 @@ bullets="$(grep -cE '^[[:space:]]*[-*] ' "$spec" || true)"
 echo "PASS"
 `;
 
+// ── recover matrix S1: scope spec exists, module spec absent ─────────────────────────────────────
+const RECOVER_PORTAL = `# Project specs
+
+## Scopes
+
+| Scope | Spec |
+|---|---|
+| report | [report](./report/report.spec.md) |
+`;
+
+const RECOVER_SCOPE_SPEC = `# report scope
+
+The report scope owns the text-summary tool. Modules are decomposed under this scope.
+
+## Module Map
+
+- report — the summary tool (spec to be recovered from bin/report.sh).
+`;
+
+// The module spec must be ADDED under the scope, and the scope spec must be left intact.
+const BROWNFIELD_INSCOPE_VERIFY = `#!/usr/bin/env bash
+set -euo pipefail
+root="$(cd "$(dirname "$0")/.." && pwd)"
+scope="$root/specs/report/report.spec.md"
+[ -f "$scope" ] || { echo "FAIL: scope spec was removed or overwritten"; exit 1; }
+grep -qi 'scope' "$scope" || { echo "FAIL: scope spec content was clobbered"; exit 1; }
+module="$(find "$root/specs" -name '*.spec.md' 2>/dev/null | { grep -vxF "$scope" || true; } | head -1)"
+[ -n "$module" ] || { echo "FAIL: no module spec was added under the scope"; exit 1; }
+[ -s "$module" ] || { echo "FAIL: module spec is empty"; exit 1; }
+grep -qi 'report' "$module" || { echo "FAIL: module spec does not name the tool"; exit 1; }
+hits=0; for k in lines words chars; do grep -qi "$k" "$module" && hits=$((hits + 1)); done
+[ "$hits" -ge 2 ] || { echo "FAIL: module spec covers <2 observable behaviours"; exit 1; }
+bullets="$(grep -cE '^[[:space:]]*[-*] ' "$module" || true)"
+[ "$bullets" -ge 3 ] || { echo "FAIL: module spec does not enumerate functional requirements"; exit 1; }
+grep -qiE 'error|invalid|missing|non-zero|exit|usage|ошибк' "$module" || { echo "FAIL: module spec omits error/edge"; exit 1; }
+echo "PASS"
+`;
+
+// ── recover matrix S2: a partial module spec (missing the chars behaviour the code has) ───────────
+const RECOVER_PARTIAL_SPEC = `# report.sh specification
+
+\`bin/report.sh <file>\` summarises a text file.
+
+## Behaviour
+
+## Functional Requirements
+
+- Prints \`lines: <N>\` — the number of lines.
+- Prints \`words: <N>\` — the number of words.
+- A missing file argument prints a usage message to stderr and exits non-zero.
+`;
+
+// The partial spec must be EXTENDED to cover chars while keeping lines/words and the error contract.
+const BROWNFIELD_PARTIAL_VERIFY = `#!/usr/bin/env bash
+set -euo pipefail
+root="$(cd "$(dirname "$0")/.." && pwd)"
+spec="$(find "$root/specs" -name '*.spec.md' 2>/dev/null | head -1)"
+[ -n "$spec" ] || { echo "FAIL: spec disappeared"; exit 1; }
+grep -qi 'lines' "$spec" || { echo "FAIL: lost the existing lines behaviour"; exit 1; }
+grep -qi 'words' "$spec" || { echo "FAIL: lost the existing words behaviour"; exit 1; }
+grep -qi 'chars' "$spec" || { echo "FAIL: spec was not extended to cover chars"; exit 1; }
+bullets="$(grep -cE '^[[:space:]]*[-*] ' "$spec" || true)"
+[ "$bullets" -ge 3 ] || { echo "FAIL: spec does not enumerate functional requirements"; exit 1; }
+grep -qiE 'error|invalid|missing|non-zero|exit|usage|ошибк' "$spec" || { echo "FAIL: spec omits error/edge"; exit 1; }
+echo "PASS"
+`;
+
 /** @purpose Minimal prepared source trees used by the three cheap SDD eval scenarios. */
 export const FIXTURE_FILES: Record<SddEvalFixtureId, Record<string, string>> = {
   'fibonacci-library': {
@@ -999,6 +1066,25 @@ export const FIXTURE_FILES: Record<SddEvalFixtureId, Record<string, string>> = {
     'golden/verify.sh': BROWNFIELD_VIA_SPEC_VERIFY,
     'README.md':
       '# report tool\n\n`bin/report.sh <file>` summarizes a text file. See specs/report/report.spec.md.\n',
+  },
+  'brownfield-recover-in-scope': {
+    '.gitignore': 'node_modules/\n',
+    'bin/report.sh': REPORT3_SCRIPT,
+    'sample/input.txt': BROWNFIELD_CLI_SAMPLE,
+    'specs/README.md': RECOVER_PORTAL,
+    'specs/report/report.spec.md': RECOVER_SCOPE_SPEC,
+    'golden/verify.sh': BROWNFIELD_INSCOPE_VERIFY,
+    'README.md':
+      '# report tool\n\nWorking tool with a scope spec but no module spec — recover the module spec under the scope.\n',
+  },
+  'brownfield-recover-partial': {
+    '.gitignore': 'node_modules/\n',
+    'bin/report.sh': REPORT3_SCRIPT,
+    'sample/input.txt': BROWNFIELD_CLI_SAMPLE,
+    'specs/report/report.spec.md': RECOVER_PARTIAL_SPEC,
+    'golden/verify.sh': BROWNFIELD_PARTIAL_VERIFY,
+    'README.md':
+      '# report tool\n\nWorking tool with a partial spec (missing the chars behaviour) — extend it.\n',
   },
 };
 

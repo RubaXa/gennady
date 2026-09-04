@@ -85,7 +85,13 @@ export type SddEvalFixtureId =
   | 'brownfield-delta-to-spec'
   // A committed tool WITH an existing minimal spec plus a change-request; the change is made through
   // the spec. Golden grades both the new behaviour in code AND that the spec was updated to match.
-  | 'brownfield-via-spec';
+  | 'brownfield-via-spec'
+  // Recover matrix S1: a scope spec already exists but the module spec does not. Golden grades that a
+  // module spec was added UNDER the scope and the scope spec was left intact.
+  | 'brownfield-recover-in-scope'
+  // Recover matrix S2: a module spec exists but is partial (omits a behaviour the code has). Golden
+  // grades that the spec was EXTENDED to cover the missing behaviour without losing what was there.
+  | 'brownfield-recover-partial';
 
 /** @purpose Provider/model selection accepted by OpenCode's SDK. */
 export type OpenCodeModel = {

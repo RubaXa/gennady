@@ -193,3 +193,73 @@ describe('brownfield modify-via-spec golden gate (both outcomes reproducible)', 
     assert.match(out, /enumerate functional requirements/);
   });
 });
+
+// Matrix S1: a scope spec exists, the module spec does not → add module UNDER the scope, keep scope.
+const SPEC_NO_SCOPE_MARKER = `# report\n\nA plain overwritten document.\n`;
+
+describe('recover matrix S1 — scope exists, module absent (both outcomes)', () => {
+  it('ACCEPTS a module spec added under the scope, scope left intact (positive)', () => {
+    const { code, out } = verify(
+      layout('brownfield-recover-in-scope', {
+        'specs/report/summary/summary.spec.md': SPEC_WITH_FACTS,
+      })
+    );
+    assert.strictEqual(code, 0, `expected PASS, got:\n${out}`);
+    assert.match(out, /PASS/);
+  });
+
+  it('REJECTS when no module spec was added (negative)', () => {
+    const { code, out } = verify(layout('brownfield-recover-in-scope'));
+    assert.notStrictEqual(code, 0, `expected FAIL, got:\n${out}`);
+    assert.match(out, /no module spec/);
+  });
+
+  it('REJECTS when the scope spec was clobbered (negative)', () => {
+    const { code, out } = verify(
+      layout('brownfield-recover-in-scope', {
+        'specs/report/report.spec.md': SPEC_NO_SCOPE_MARKER,
+        'specs/report/summary/summary.spec.md': SPEC_WITH_FACTS,
+      })
+    );
+    assert.notStrictEqual(code, 0, `expected FAIL, got:\n${out}`);
+    assert.match(out, /scope spec/);
+  });
+});
+
+// Matrix S2: a partial module spec (no chars) → extend to chars, keep lines/words + error.
+const SPEC_CHARS_NO_LINES = `# report.sh specification
+
+## Functional Requirements
+
+- Prints \`words: <N>\` — word count.
+- Prints \`chars: <N>\` — byte count.
+- Missing file argument: usage on stderr, non-zero exit.
+`;
+
+describe('recover matrix S2 — partial module spec, extend it (both outcomes)', () => {
+  it('ACCEPTS a spec extended to cover chars, keeping lines/words (positive)', () => {
+    const { code, out } = verify(
+      layout('brownfield-recover-partial', {
+        'specs/report/report.spec.md': SPEC_WITH_FACTS,
+      })
+    );
+    assert.strictEqual(code, 0, `expected PASS, got:\n${out}`);
+    assert.match(out, /PASS/);
+  });
+
+  it('REJECTS the still-partial spec that never gained chars (negative)', () => {
+    const { code, out } = verify(layout('brownfield-recover-partial'));
+    assert.notStrictEqual(code, 0, `expected FAIL, got:\n${out}`);
+    assert.match(out, /chars/);
+  });
+
+  it('REJECTS an extension that dropped the existing lines behaviour (negative)', () => {
+    const { code, out } = verify(
+      layout('brownfield-recover-partial', {
+        'specs/report/report.spec.md': SPEC_CHARS_NO_LINES,
+      })
+    );
+    assert.notStrictEqual(code, 0, `expected FAIL, got:\n${out}`);
+    assert.match(out, /lines/);
+  });
+});
