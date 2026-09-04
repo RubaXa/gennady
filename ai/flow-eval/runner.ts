@@ -117,6 +117,12 @@ export class SddEvalRunner {
     }
     const tail = finalObservation?.tail ?? [];
     const events = finalObservation?.events ?? [];
+    let usage: SddEvalWorkerResult['usage'];
+    try {
+      usage = await this.#evidence.readUsage?.(session.id);
+    } catch {
+      // Usage is best-effort A/B telemetry; never fail a run because token totals could not be read.
+    }
     const worker: SddEvalWorkerResult = {
       scenarioId: scenario.id,
       sessionId: session.id,
@@ -126,6 +132,7 @@ export class SddEvalRunner {
       events,
       tail,
       status: finalObservation?.status ?? (workerError ? 'error' : 'unknown'),
+      ...(usage ? { usage } : {}),
       ...(workerError ? { error: workerError } : {}),
     };
     if (workerError) return { worker };

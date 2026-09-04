@@ -15,6 +15,7 @@ import type {
   SddEvalObservation,
   SddEvalTailEntry,
   SddEvalSessionDirectoryRegistry,
+  SddEvalUsage,
 } from './types.ts';
 
 /** @purpose Injectable event reader because OpenCode's global event endpoint is a long-lived SSE stream. */
@@ -237,5 +238,71 @@ export class SddEvalOpenCodeEvidenceSource implements SddEvalEvidenceSource {
     if (latest?.role === 'assistant' && typeof latest.time?.completed === 'number')
       return 'completed';
     return status ? 'idle' : 'unknown';
+  }
+
+  /**
+   * @purpose Sum token and cost usage across the worker session and its children — the whole run.
+   * @param sessionId Parent worker session id.
+   * @returns Total input/output/reasoning/cache tokens and cost across every assistant message.
+   */
+  // Each OpenCode assistant message carries info.tokens {input,output,reasoning,cache{read,write}}
+  // and info.cost; user messages carry none. Not bounded by the tail/child limits — the true total.
+  async readUsage(sessionId: string): Promise<SddEvalUsage> {
+    const directory = this.#sessionDirectory(sessionId);
+    const zero: SddEvalUsage = {
+      messages: 0,
+      input: 0,
+      output: 0,
+      reasoning: 0,
+      cacheRead: 0,
+      cacheWrite: 0,
+      total: 0,
+      cost: 0,
+    };
+    const add = (acc: SddEvalUsage, infos: unknown[]): SddEvalUsage => {
+      for (const raw of infos) {
+        const info = raw as {
+          role?: unknown;
+          cost?: unknown;
+          tokens?: {
+            input?: unknown;
+            output?: unknown;
+            reasoning?: unknown;
+            cache?: { read?: unknown; write?: unknown };
+          };
+        };
+        if (info.role !== 'assistant' || !info.tokens) continue;
+        const n = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
+        const input = n(info.tokens.input);
+        const output = n(info.tokens.output);
+        const reasoning = n(info.tokens.reasoning);
+        acc.messages += 1;
+        acc.input += input;
+        acc.output += output;
+        acc.reasoning += reasoning;
+        acc.cacheRead += n(info.tokens.cache?.read);
+        acc.cacheWrite += n(info.tokens.cache?.write);
+        acc.total += input + output + reasoning;
+        acc.cost += n(info.cost);
+      }
+      return acc;
+    };
+    const sessionIds = [sessionId];
+    const children = await this.#client.session.children({
+      path: { id: sessionId },
+      query: { directory },
+    });
+    if (!children.error && children.data)
+      sessionIds.push(...children.data.map((child) => child.id));
+    const usage = { ...zero };
+    for (const id of sessionIds) {
+      const messages = await this.#client.session.messages({ path: { id }, query: { directory } });
+      if (messages.error || !messages.data) continue;
+      add(
+        usage,
+        messages.data.map((message) => (message as { info?: unknown }).info)
+      );
+    }
+    return usage;
   }
 }

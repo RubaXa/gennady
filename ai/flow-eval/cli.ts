@@ -154,6 +154,14 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
   for (const result of results) {
     const verdict = result.judge?.verdict ?? 'worker-error';
     console.log(`${result.worker.scenarioId}: ${verdict} (${result.worker.status})`);
+    // A/B currency: per-run token + cost totals (independent of machine load), so runs on different
+    // servers stay comparable. `msgs` is the assistant-message count (a coarse trajectory-length proxy).
+    const u = result.worker.usage;
+    if (u) {
+      console.log(
+        `  usage: total=${u.total} (in=${u.input} out=${u.output} reason=${u.reasoning} cache r/w=${u.cacheRead}/${u.cacheWrite}) cost=${u.cost.toFixed(4)} msgs=${u.messages}`
+      );
+    }
     // Persist the judge's full rationale next to the scenario sandbox: the terminal line carries
     // only the verdict, so without this a 'fail'/'inconclusive' is undiagnosable after the run.
     const directory = byId.get(result.worker.scenarioId);

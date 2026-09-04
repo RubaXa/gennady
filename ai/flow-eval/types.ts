@@ -123,6 +123,23 @@ export type SddEvalObservation = {
   stuck: boolean;
 };
 
+/** @purpose Per-run token + cost totals, summed across the worker session and its children. The A/B
+ * currency: tokens and tool-calls are model input/output, independent of machine load, so runs on
+ * different servers are still comparable. */
+export type SddEvalUsage = {
+  /** @purpose Assistant messages counted (parent + children). */
+  messages: number;
+  input: number;
+  output: number;
+  reasoning: number;
+  cacheRead: number;
+  cacheWrite: number;
+  /** @purpose input + output + reasoning — the headline consumption figure. */
+  total: number;
+  /** @purpose Provider-reported cost, summed. */
+  cost: number;
+};
+
 /** @purpose Worker result plus the evidence needed by the judge. */
 export type SddEvalWorkerResult = {
   scenarioId: string;
@@ -133,6 +150,8 @@ export type SddEvalWorkerResult = {
   events: SddEvalEvent[];
   tail: SddEvalTailEntry[];
   status: SddEvalObservation['status'];
+  /** @purpose Token/cost totals for the run; absent when the evidence source cannot report them. */
+  usage?: SddEvalUsage;
   error?: string;
 };
 
@@ -189,4 +208,6 @@ export interface SddEvalEvidenceSource {
   readEvents(sessionId: string): Promise<SddEvalEvent[]>;
   readDiff(sessionId: string): Promise<string>;
   readStatus(sessionId: string): Promise<SddEvalObservation['status']>;
+  /** @purpose Sum token/cost usage across the session and its children; optional so fakes may omit it. */
+  readUsage?(sessionId: string): Promise<SddEvalUsage>;
 }
