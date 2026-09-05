@@ -41,3 +41,6 @@ test-results/
 
 # transient test fixtures accidentally written into the tree (belong in os.tmpdir)
 .tmp-*/
+
+# durable eval artifacts extracted from sandboxes before teardown (ai/flow-eval/cli.ts)
+ai/flow-eval/.results/

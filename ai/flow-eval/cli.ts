@@ -9,6 +9,12 @@ import { parseOpenCodeModel, SddEvalOpenCodeRuntime } from './opencode-runtime.t
 import { provisionScenarioDirectories } from './provision.ts';
 import { checkR1Structure } from './quality-gate.ts';
 import { DEFAULT_SDD_EVAL_CONFIG, SddEvalRunner } from './runner.ts';
+import {
+  collectSpecFiles,
+  persistRunArtifacts,
+  teardownSandboxDirectories,
+  type SddEvalRunArtifact,
+} from './sandbox-lifecycle.ts';
 import { SddEvalSessionDirectoryMap } from './session-directory.ts';
 import type { SddEvalConfig, SddEvalScenario } from './types.ts';
 
@@ -17,6 +23,10 @@ type SddEvalCliOptions = {
   scenarioFile: string;
   directory: string;
   gennadyRoot?: string;
+  /** Keep the sandboxes on disk after the run (debugging). Default: tear them down. */
+  keep: boolean;
+  /** Where to persist durable artifacts (specs/judge/summary); default under gennadyRoot/cwd. */
+  artifactsDir?: string;
   config: SddEvalConfig;
 };
 
@@ -35,6 +45,8 @@ function parseSddEvalCliArgs(argv: string[]): SddEvalCliOptions {
   let scenarioFile = resolve(new URL('./scenarios.json', import.meta.url).pathname);
   let directory = tmpdir();
   let gennadyRoot: string | undefined;
+  let keep = false;
+  let artifactsDir: string | undefined;
   for (let index = 0; index < argv.length; index++) {
     const arg = argv[index];
     switch (arg) {
@@ -46,6 +58,12 @@ function parseSddEvalCliArgs(argv: string[]): SddEvalCliOptions {
         break;
       case '--gennady-root':
         gennadyRoot = resolve(requiredValue(argv, index++, arg));
+        break;
+      case '--keep':
+        keep = true;
+        break;
+      case '--artifacts-dir':
+        artifactsDir = resolve(requiredValue(argv, index++, arg));
         break;
       case '--base-url':
         config.baseUrl = requiredValue(argv, index++, arg);
@@ -79,7 +97,10 @@ function parseSddEvalCliArgs(argv: string[]): SddEvalCliOptions {
         break;
       case '--help':
         throw new Error(
-          'usage: sdd-flow-eval --scenario-file FILE --directory DIR [--model PROVIDER/MODEL]'
+          'usage: sdd-flow-eval --scenario-file FILE --directory DIR [--model PROVIDER/MODEL] ' +
+            '[--artifacts-dir DIR] [--keep]\n' +
+            '  sandboxes are torn down after the run; durable artifacts are saved to --artifacts-dir; ' +
+            'pass --keep to retain sandboxes for debugging'
         );
       default:
         throw new Error(`unknown argument: ${arg}`);
@@ -100,7 +121,7 @@ function parseSddEvalCliArgs(argv: string[]): SddEvalCliOptions {
   }
   if (runnerModelValue) config.runnerModel = parseOpenCodeModel(runnerModelValue, defaultProvider);
   if (judgeModelValue) config.judgeModel = parseOpenCodeModel(judgeModelValue, defaultProvider);
-  return { scenarioFile, directory, gennadyRoot, config };
+  return { scenarioFile, directory, gennadyRoot, keep, artifactsDir, config };
 }
 
 async function loadScenarios(path: string): Promise<SddEvalScenario[]> {
@@ -140,10 +161,52 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
     );
   };
   const scenarios = await loadScenarios(options.scenarioFile);
+  // Only sandboxes THIS run provisioned (scenario had no pre-set directory) are ours to tear down;
+  // a caller-supplied scenario.directory is the caller's to manage.
+  const generatedIds = new Set(
+    scenarios.filter((scenario) => !scenario.directory).map((s) => s.id)
+  );
   const isolated = await provisionScenarioDirectories(scenarios, {
     rootDirectory: options.directory,
     gennadyRoot: options.gennadyRoot,
   });
+  const teardownDirs = isolated
+    .filter((scenario) => generatedIds.has(scenario.id))
+    .map((scenario) => scenario.directory);
+  // Best-effort teardown must also run if the process is interrupted mid-run, so a Ctrl-C can never
+  // leak ~500MB sandboxes. Guarded so the finally and a signal cannot both remove the same dirs.
+  let toreDown = false;
+  const teardown = async (): Promise<void> => {
+    if (toreDown || options.keep) return;
+    toreDown = true;
+    await teardownSandboxDirectories(teardownDirs);
+  };
+  for (const signal of ['SIGINT', 'SIGTERM'] as const) {
+    process.once(signal, () => {
+      void teardown().finally(() => process.exit(130));
+    });
+  }
+  const artifacts: SddEvalRunArtifact[] = [];
+  try {
+    await runAndReport(options, isolated, artifacts);
+    const artifactsRoot =
+      options.artifactsDir ?? join(options.gennadyRoot ?? process.cwd(), 'ai/flow-eval/.results');
+    const runStamp = `run-${new Date().toISOString().replace(/[:.]/g, '-')}`;
+    const runDir = await persistRunArtifacts(artifactsRoot, runStamp, artifacts);
+    console.log(`artifacts → ${runDir}`);
+  } finally {
+    await teardown();
+    if (!options.keep) console.log(`sandboxes removed: ${teardownDirs.length}`);
+    else console.log(`sandboxes kept (--keep): ${teardownDirs.length}`);
+  }
+}
+
+/** @purpose Run every scenario, print the per-run report lines, and collect durable artifacts. */
+async function runAndReport(
+  options: SddEvalCliOptions,
+  isolated: Array<SddEvalScenario & { directory: string }>,
+  artifacts: SddEvalRunArtifact[]
+): Promise<void> {
   const registry = new SddEvalSessionDirectoryMap();
   const runtime = new SddEvalOpenCodeRuntime({ baseUrl: options.config.baseUrl, registry });
   const evidence = new SddEvalOpenCodeEvidenceSource({
@@ -169,8 +232,10 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
       !!scenario &&
       scenario.phase !== 'task' &&
       (scenario.phase !== 'brownfield' || brownfieldSpecMode);
+    let quality: SddEvalRunArtifact['quality'];
     if (scenario && scenario.directory && producesSpecs) {
       const r1 = await checkR1Structure(scenario.directory);
+      quality = { rule: r1.rule, pass: r1.pass, detail: r1.detail };
       console.log(`  quality ${r1.rule}: ${r1.pass ? 'pass' : 'FAIL'} — ${r1.detail}`);
     }
     // A/B currency: per-run token + cost totals (independent of machine load), so runs on different
@@ -184,6 +249,7 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
     // Persist the judge's full rationale next to the scenario sandbox: the terminal line carries
     // only the verdict, so without this a 'fail'/'inconclusive' is undiagnosable after the run.
     const directory = scenario?.directory;
+    let judgeFile: string | undefined;
     if (result.judge?.rationale && directory) {
       const target = join(directory, `.sdd-eval-judge.${result.worker.scenarioId}.md`);
       await writeFile(
@@ -191,7 +257,21 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
         `# ${result.worker.scenarioId} — ${verdict} (${result.worker.status})\n\n${result.judge.rationale}\n`,
         'utf8'
       ).catch(() => undefined);
+      judgeFile = target;
       console.log(`  judge rationale → ${target}`);
+    }
+    // Collect this scenario's durable outcome so it survives the sandbox teardown below.
+    if (directory) {
+      artifacts.push({
+        scenarioId: result.worker.scenarioId,
+        verdict,
+        status: result.worker.status,
+        usage: u,
+        quality,
+        specFiles: producesSpecs ? await collectSpecFiles(directory) : [],
+        judgeFile,
+        directory,
+      });
     }
   }
 }

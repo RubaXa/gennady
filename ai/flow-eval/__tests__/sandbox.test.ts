@@ -39,7 +39,8 @@ describe('eval sandbox script (deterministic prepare/clean)', () => {
     const iso = isoRoot();
     const victim = join(iso, 'sdd-flow-eval-root.aaa');
     mkdirSync(victim);
-    const { code, out } = run(iso, ['clean', '--dry']);
+    // --root pins the sweep to the isolated dir so the test never touches the machine's real temp dirs.
+    const { code, out } = run(iso, ['clean', '--dry', '--root', iso]);
     assert.strictEqual(code, 0);
     assert.match(out, /would remove/);
     assert.ok(existsSync(victim), 'dry run must not delete');
@@ -49,16 +50,38 @@ describe('eval sandbox script (deterministic prepare/clean)', () => {
     const iso = isoRoot();
     const victim = join(iso, 'diag-recover.bbb');
     mkdirSync(join(victim, 'nested'), { recursive: true });
-    const { code } = run(iso, ['clean']);
+    const { code } = run(iso, ['clean', '--root', iso]);
     assert.strictEqual(code, 0);
     assert.ok(!existsSync(victim), 'clean must remove the sandbox root and its contents');
+  });
+
+  it('clean removes hand-created gen-* roots (the prefix that once leaked to /private/tmp)', () => {
+    const iso = isoRoot();
+    const victim = join(iso, 'gen-h2-baseline-1.ccc');
+    mkdirSync(join(victim, 'node_modules'), { recursive: true });
+    const { code } = run(iso, ['clean', '--root', iso]);
+    assert.strictEqual(code, 0);
+    assert.ok(!existsSync(victim), 'clean must remove gen-* experiment roots');
+  });
+
+  it('clean sweeps multiple --root directories in one pass', () => {
+    const isoA = isoRoot();
+    const isoB = isoRoot();
+    const victimA = join(isoA, 'sdd-flow-eval-root.a');
+    const victimB = join(isoB, 'gen-b');
+    mkdirSync(victimA);
+    mkdirSync(victimB);
+    const { code } = run(isoA, ['clean', '--root', isoA, '--root', isoB]);
+    assert.strictEqual(code, 0);
+    assert.ok(!existsSync(victimA), 'first root swept');
+    assert.ok(!existsSync(victimB), 'second root swept');
   });
 
   it('clean never touches non-sandbox directories', () => {
     const iso = isoRoot();
     const keep = join(iso, 'unrelated-project');
     mkdirSync(keep);
-    run(iso, ['clean']);
+    run(iso, ['clean', '--root', iso]);
     assert.ok(existsSync(keep), 'clean must not remove directories without a sandbox prefix');
   });
 
