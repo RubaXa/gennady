@@ -96,6 +96,19 @@ describe('SddMigrateCommand', () => {
     }
   });
 
+  it('--all finds tickets by content, not filename — `IB-NN` names are picked up', async () => {
+    const root = join(dir, 'proj-ib');
+    mkdirSync(join(root, 'tasks', 'scopeA'), { recursive: true });
+    // A ticket named in a repo's own way (not `*.task-NN.md`) — recognised by its Task-ID in Meta.
+    writeFileSync(join(root, 'tasks', 'scopeA', 'infra.IB-9.md'), V1, 'utf-8');
+    const o = await mod.run(argv('anchors', '--all', root));
+    assert.strictEqual(o.ok, true);
+    if (o.ok) {
+      assert.match(o.text, /1 ticket\(s\)/);
+      assert.match(o.text, /infra\.IB-9\.md/);
+    }
+  });
+
   it('exits 4 on an unknown mode', async () => {
     const o = await mod.run(argv('frobnicate', ticket));
     assert.strictEqual(o.ok, false);

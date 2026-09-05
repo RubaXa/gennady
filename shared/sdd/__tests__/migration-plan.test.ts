@@ -92,6 +92,20 @@ describe('migration-plan', () => {
     assert.deepStrictEqual(scanMigrationUnits(root), scanMigrationUnits(root));
   });
 
+  it('scan находит тикет по контенту (Task-ID в Meta), а не по имени файла — `IB-NN` тоже подхватывается', () => {
+    const IB_TICKET = [
+      '# Task: TSK-IB-9 — Свой формат имени',
+      '## 1. Meta',
+      '- **Task-ID:** TSK-IB-9 | **Status:** [ ] TODO | **Scope:** demo | **Module:** core',
+    ].join('\n');
+    writeFileSync(join(root, 'tasks', 'demo', 'core', 'core.IB-9.md'), IB_TICKET, 'utf-8');
+    const scan = scanMigrationUnits(root);
+    const core = scan.units.find((u) => u.module === 'core');
+    assert.ok(core);
+    const ids = core.tickets.map((t) => t.taskId);
+    assert.ok(ids.includes('TSK-IB-9'), `ожидал TSK-IB-9 среди [${ids.join(', ')}]`);
+  });
+
   it('unitFilePath зеркалит дерево specs/ под migration/', () => {
     const scan = scanMigrationUnits(root);
     const core = scan.units.find((u) => u.module === 'core');

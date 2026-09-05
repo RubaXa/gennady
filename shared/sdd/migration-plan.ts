@@ -257,11 +257,22 @@ export function scanMigrationUnits(repoRoot: string): MigrationScan {
     });
   }
 
+  // Discover tickets by CONTENT (a Task-ID in Meta), not filename: real repos name tickets their own
+  // way (e.g. `<scope>.IB-NN.md`), and a Task-ID is the one version-agnostic signal every ticket
+  // carries — anchored, plain v1, or even one that never had an Execution Log.
   // #region START_TICKET_ATTACH — the tasks/<scope>/ path is the physical truth; Meta only refines
   // the module pick (v1 Meta Scope/Module are loose — they may name a module or a spec-less sub-part).
-  const ticketFiles: string[] = [];
-  walkFiles(join(repoRoot, 'tasks'), (n) => /\.task-[0-9]+\.md$/.test(n), ticketFiles);
-  ticketFiles.sort();
+  const mdFiles: string[] = [];
+  walkFiles(join(repoRoot, 'tasks'), (n) => n.endsWith('.md'), mdFiles);
+  const ticketFiles = mdFiles
+    .filter((abs) => {
+      try {
+        return parseMeta(readFileSync(abs, 'utf-8')).taskId !== null;
+      } catch {
+        return false;
+      }
+    })
+    .sort();
 
   const orphanTickets: UnitTicket[] = [];
   for (const abs of ticketFiles) {
