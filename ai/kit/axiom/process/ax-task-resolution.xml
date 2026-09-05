@@ -6,5 +6,7 @@
   Task-ID is in the filename. Files matching `*.1-spec.md` / `*.spec.md` are spec files — linked to a
   scope, not a single task. Index files (`*.2-tasks.md` / `*.3-tasks.md`, `specs/2-tasks.md` /
   `specs/3-tasks.md`) are global artifacts, owned by no task. The resulting file → [Task-IDs] map is
-  what routes fixes per `AX_FIX_CLASSIFICATION`.
+  what routes fixes per `AX_FIX_CLASSIFICATION`. A resolvable code owner is binding: every code
+  finding routes to that ticket's new Round. Missing or ambiguous ownership does not mean
+  "direct-fix"; recover/create a ticket, or route a semantic ownership gap through authoring first.
 </Axiom>

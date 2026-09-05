@@ -1,8 +1,13 @@
 <!-- source: sdd-execute skill ProgressReporting -->
 <Contract id="ORCHESTRATOR_PROGRESS_FORMAT">
   Subagents are black boxes; emit one progress line per state transition so the operator sees the run.
+  Every progress message uses exactly this one-line grammar; do not introduce alternate service-line
+  prose or omit a field:
 
-  `[<bar>] <pct>% | <Task-ID> | <stage>`
+  `[<bar>] <pct>% | task=<Task-ID|selection> | phase=<P<N>|—> | stage=<stage>`
+
+  Before task selection use `task=selection` and `phase=—`. Worker identity and conversation reuse
+  are deliberately absent: progress is the durable ticket/phase transition, not the agent process.
 
   Stages: `⏳ resolving + planning` · `🔧 phase <P<N>> (<kind>, <model>) executing` · `✅ phase <P<N>> done → next` · `✅ all phases done → 🔍 audit` · `✅ audit PASS`.
   Retry path: `❌ audit FAIL → 🔄 re-run <phases> as fix` · `✅ re-run done → 🔍 audit R2`.

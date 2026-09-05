@@ -24,6 +24,10 @@ export const parseArgs = <T extends Record<string, unknown>>(
 
   for (let i = 0; i < argsList.length; i++) {
     const arg = argsList[i];
+    if (arg === '--') {
+      params._.push(...argsList.slice(i + 1));
+      break;
+    }
     if (arg.startsWith('-')) {
       const cleanArg = arg.replace(/^-+/, '');
       const [key, value] = cleanArg.split('=');

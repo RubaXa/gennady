@@ -1,4 +1,4 @@
-// @file: Tests for TsSymbolIndexAdapter — exercises the real tree-sitter-typescript grammar (same one services/dbc/linter already depends on in this repo); each test defensively no-ops if the native module fails to load, mirroring how dbc-ts-ast-adapter.test.ts treats the same dependency.
+// @file: Tree-sitter TypeScript symbol-index adapter tests; skips when the native grammar is unavailable.
 // @consumers: node:test runner
 // @tasks: N/A
 
@@ -36,6 +36,27 @@ describe('TsSymbolIndexAdapter#declaredSymbols', () => {
     assert.ok(names.includes('greet'));
     assert.ok(names.includes('Widget'));
     assert.ok(names.includes('render'));
+    assert.strictEqual(symbols.find((s) => s.name === 'greet')?.visibility, 'public');
+    assert.strictEqual(symbols.find((s) => s.name === 'Widget')?.visibility, 'public');
+    assert.strictEqual(symbols.find((s) => s.name === 'render')?.visibility, 'private');
+  });
+
+  it('keeps private-field names instead of inventing an unknown member', async (t) => {
+    if (!(await grammarLoads())) {
+      t.skip('tree-sitter native module unavailable in this environment');
+      return;
+    }
+    const adapter = new TsSymbolIndexAdapter();
+    const content = [
+      'export class Registry {',
+      '  #client: object;',
+      '  read(): object { return this.#client; }',
+      '}',
+    ].join('\n');
+    const symbols = await adapter.declaredSymbols('x.ts', content);
+    assert.ok(symbols.some((symbol) => symbol.name === '#client'));
+    assert.ok(symbols.every((symbol) => symbol.name !== 'unknown'));
+    assert.strictEqual((await adapter.countReferences('#client', 'x.ts', content)).count, 2);
   });
 
   it('includes non-exported top-level declarations', async (t) => {
@@ -45,9 +66,23 @@ describe('TsSymbolIndexAdapter#declaredSymbols', () => {
     }
     const adapter = new TsSymbolIndexAdapter();
     const content = 'function internalHelper() {}\nconst internalConst = 1;\n';
-    const names = (await adapter.declaredSymbols('x.ts', content)).map((s) => s.name);
+    const symbols = await adapter.declaredSymbols('x.ts', content);
+    const names = symbols.map((s) => s.name);
     assert.ok(names.includes('internalHelper'));
     assert.ok(names.includes('internalConst'));
+    assert.ok(symbols.every((symbol) => symbol.visibility === 'private'));
+  });
+
+  it('recognizes a structural export list without CLI regex inference', async (t) => {
+    if (!(await grammarLoads())) {
+      t.skip('tree-sitter native module unavailable in this environment');
+      return;
+    }
+    const symbols = await new TsSymbolIndexAdapter().declaredSymbols(
+      'x.ts',
+      'function listed() {}\nexport { listed };\n'
+    );
+    assert.strictEqual(symbols.find((s) => s.name === 'listed')?.visibility, 'public');
   });
 
   it('returns [] for unparseable content', async (t) => {
@@ -84,5 +119,24 @@ describe('TsSymbolIndexAdapter#countReferences', () => {
     const content = "// widget mentioned here\nconst s = 'widget';\nfunction other() {}\n";
     const result = await adapter.countReferences('widget', 'x.ts', content);
     assert.strictEqual(result.count, 0);
+  });
+
+  it('batch-counts several names with the same scalar semantics', async (t) => {
+    if (!(await grammarLoads())) {
+      t.skip('tree-sitter native module unavailable in this environment');
+      return;
+    }
+    const adapter = new TsSymbolIndexAdapter();
+    const content = [
+      'function alpha() {}',
+      'alpha();',
+      'const beta = { alpha };',
+      "const ignored = 'alpha beta';",
+    ].join('\n');
+    const names = new Set(['alpha', 'beta', 'missing']);
+    const batch = await adapter.countReferencesMany(names, 'x.ts', content);
+    for (const name of names) {
+      assert.deepStrictEqual(batch.get(name), await adapter.countReferences(name, 'x.ts', content));
+    }
   });
 });

@@ -45,4 +45,12 @@ describe('parseArgs', () => {
     assert.strictEqual(args.staged, true);
     assert.strictEqual(args.maxWords, '10');
   });
+
+  it('treats every token after -- as positional, including option-shaped file names', () => {
+    const args = parseArgs(['node', 'cmd', '--staged', '--', '-owned.ts', '--literal.ts'], {
+      staged: ['staged'],
+    });
+    assert.strictEqual(args.staged, true);
+    assert.deepStrictEqual(args._, ['-owned.ts', '--literal.ts']);
+  });
 });

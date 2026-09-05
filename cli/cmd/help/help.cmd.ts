@@ -27,7 +27,6 @@ console.info('  remote-console    Mirror browser console output into local stdou
 console.info(
   '  lint              Validate .ts files: headers, anchors, DBC contracts, invariants, disables'
 );
-console.info('  alt-opinion       Get alternative opinions from AI models with optional synthesis');
 console.info(
   '  sync              Synchronize ai/directives/ from npm package into current project'
 );
@@ -40,6 +39,16 @@ console.info(
 console.info(
   '  orient            Navigate file headers and DBC contracts — project map, search, dependency graph'
 );
+console.info('  sdd-orient        Show one spec or scope neighbourhood in the SDD graph');
+console.info('  sdd-state         Report deterministic project SDD state and readiness');
+console.info('  sdd-check         Run mechanical integrity checks over SDD artifacts');
+console.info('  sdd-extract       Extract one anchored section from an SDD artifact');
+console.info('  sdd-new           Scaffold one SDD v2 artifact');
+console.info('  sdd-verify        Run the ticket or profile verification ladder');
+console.info('  sdd-log           Append an event or atomically complete a verified ticket phase');
+console.info('  sdd-sync          Propagate ticket status into task trackers');
+console.info('  sdd-task          Show the execution map or one ticket phase context');
+console.info('  sdd-migrate       Run deterministic SDD v1-to-v2 migration steps');
 console.info(
   '  agents-rules      Print usage instructions for AI agents (navigate public entities, DBC contracts, file headers)'
 );

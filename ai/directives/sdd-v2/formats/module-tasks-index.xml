@@ -2,6 +2,9 @@
   `<module>.3-tasks.md` — the single per-module file holding everything shared across the module's
   tickets; tickets carry only their own content and link here. Anchor names normative.
 
+  For a module ticket set, this index contains approval #2 exactly as
+  `ARTIFACT_APPROVAL_MARKER` defines.
+
   ```markdown
   # <module> — Tasks
 

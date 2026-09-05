@@ -1,14 +1,18 @@
 <!-- source: ai/directives/sdd/phase-execution-protocol.xml -->
 <Axiom id="AX_TICKET_WRITE_SCOPE">
-      `npx gennady sdd-log <ticket> line|phase|handoff|blocker|resolved` is the sole writer for this phase's
-      block under `Execution Log` current Round — phase header, event lines, `ver` lines, `DONE`,
-      Handoff, blocker; append-only, anti-placeholder, timestamped by the tool. A manual `Edit` on that
-      section is out of scope for the phase agent, the tool covers it end to end. Everything else the
-      phase may touch is a direct `Edit`, scoped to:
-      - `Test Scenario Coverage` canonical case names (when test reality differs, phase kind = `test`);
-      - `Phases Overview` Status column for THIS phase ID only;
-      - `Decision Log` — append-only, new entries only, and only for a self-resolved spec/ticket
-        gap (`AX_DEVIATION_SELF_RESOLVE`); never edits or removes an existing entry.
+      The ticket is orchestrator-owned. During phase work the only ticket writer is the exact
+      `sdd-verify --task ... --phase ...` command, and it writes only its CLI-owned receipt. The worker
+      returns event facts, deviations, and typed Handoff in its response; it never calls `sdd-log` and
+      never manually edits any ticket section.
 
-      Anything else (Phases definitions, Rules lists, Target Files, BDD scenarios, Verification table, Dependencies, Meta) → `H_OUT_OF_PHASE_WRITE`. Operator decides via re-planning.
+      After validating the worker response against Git and the receipt, the orchestrator calls
+      `npx gennady sdd-log <ticket> complete "<handoff payload>" --phase P<N>`. That one atomic
+      transition replaces only the current phase's skeleton DONE/Handoff placeholders and changes only
+      that phase's `Phases Overview` Status to `[x]`. Other `sdd-log` modes remain orchestrator-owned
+      structured writes for Round/blocker events. Manual ticket edits are forbidden for both worker and
+      orchestrator when a structured mode exists.
+
+      Any change to Phases definitions, Rules lists, Target Files, BDD scenarios, Verification table,
+      Dependencies, or existing Decision Log facts → `H_OUT_OF_PHASE_WRITE` and returns to the owning
+      planning/approval boundary.
     </Axiom>

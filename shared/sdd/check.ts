@@ -3,13 +3,14 @@
 // @tasks: N/A
 
 import { dirname, basename, join, resolve } from 'node:path';
-import { extractSection } from './section.ts';
-import { parseMetaInfo, parsePhasesOverview } from './ticket.ts';
+import { collectHeadings, extractSection, findSectionBounds } from './section.ts';
+import type { Finding } from './finding.ts';
+import { parseMetaInfo, parsePhaseDetail, parsePhasesOverview } from './ticket.ts';
 import { legacyHeaderBody } from './anchor-inject.ts';
 import { parseGraphEdges } from './portal.ts';
 import type { Scope, GraphEdge } from './portal.ts';
 import type { FlowVersion } from './flow.ts';
-import { SCOPE_KINDS, loadBearingSections, foldSections } from './templates.ts';
+import { SCOPE_KINDS, TEMPLATES, loadBearingSections, foldSections } from './templates.ts';
 import { validateTaskId, findPrefixClashes, describeIdConflict } from './task-id.ts';
 import {
   deriveSpecAcronym,
@@ -23,23 +24,21 @@ import {
 // Pure text scan only (no jsdom/mermaid load — that lives behind loadMermaidParse, never imported
 // here) — safe to pull into this sync module for the call-chain rung's sequenceDiagram detection.
 import { extractMermaidBlocks } from '../mermaid/mermaid.ts';
+import {
+  checkBddRequirementTraceability,
+  matchingTestPhaseIds,
+  parseTestCoverage,
+} from './bdd-coverage.ts';
 
 /**
  * @purpose One audit finding.
  * @invariant `error` fails the gate; `warn` is advisory (reported, non-fatal).
  */
-export type Finding = {
-  /** @purpose Severity — error fails the gate, warn is advisory. */
-  severity: 'error' | 'warn';
-  /** @purpose Stable finding code token. */
-  code: string;
-  /** @purpose File the finding refers to. */
-  file: string;
-  /** @purpose Description with the issue and a location hint. */
-  message: string;
-  /** @purpose 1-based line the finding points at, when a precise location is known. */
-  line?: number;
-};
+export type { Finding } from './finding.ts';
+export {
+  checkRequirementBudgetsAgainstBaseline,
+  REQUIREMENT_ENTRY_MAX_LINES,
+} from './requirement-budget.ts';
 
 // Scaffold placeholder: `<` then a letter or ellipsis (e.g. <ts>, <cmd>, <TBD>, <…>) — NOT an HTML
 // comment/marker (`<!--…-->`) or closing tag (`</…>`), which start with `!` or `/`; NOT a markup tag
@@ -55,6 +54,18 @@ const PLACEHOLDER = /<(?![A-Z][a-z])[A-Za-z…][^>\s[\]]*>/;
 // surrounding text. Used to tell a bare scaffold token backticked on its own (`` `<ts>` ``) apart
 // from a real type signature that merely contains angle brackets (`` `Promise<TodoStore>` ``).
 const WHOLE_PLACEHOLDER = /^<(?![A-Z][a-z])[A-Za-z…][^>\s[\]]*>$/;
+
+/**
+ * @purpose True when a markdown link target still carries a scaffold placeholder token (e.g.
+ *   `<yyyy-mm-dd>`, `<slug>`, `<module>`) — an unfilled skeleton stub, never a real on-disk path.
+ * @invariant Link-resolution gates must skip such targets: an unfilled skeleton row means nothing
+ *   declared, not a broken reference. A real on-disk path never contains `<` or `>`.
+ * @param target Raw markdown link target.
+ * @returns Whether the target is an unfilled scaffold placeholder rather than a resolvable path.
+ */
+export function targetIsScaffoldPlaceholder(target: string): boolean {
+  return PLACEHOLDER.test(target);
+}
 
 // Inline-code span (`` `…` ``) — stripped before testing for a literal `[x]` checkbox so a prose
 // hint like "A `` `[x]` `` line…" (TASK_SKELETON's own Execution Log note) never reads as a checked
@@ -113,6 +124,14 @@ function hasPlaceholder(text: string): boolean {
   }
   outsideCode += text.slice(lastIndex);
   return PLACEHOLDER.test(outsideCode);
+}
+
+/**
+ * @purpose Detect scaffold placeholders in authored Markdown without mistaking the supported
+ * progressive-disclosure tags for placeholder tokens.
+ */
+function hasAuthoringPlaceholder(text: string): boolean {
+  return hasPlaceholder(text.replace(/<\/?(?:details|summary)(?:\s[^<>]*?)?>/gi, ''));
 }
 
 /**
@@ -186,6 +205,37 @@ function sectionOverlaps(content: string): string[] {
  * @purpose A phase-heading line (`#### P<N>`, optional `— re-run:` suffix); group 1 is the bare id.
  */
 const PHASE_HEADING_RE = /^#{2,6}\s+(P[0-9]+)\b/;
+
+/** @purpose Existing schema marker that distinguishes current receipt-aware tickets from grandfathered V2 tickets. */
+const PHASE_RECEIPTS_SCHEMA_MARKER = '<!--PHASE_RECEIPTS:v1-->';
+
+/**
+ * @purpose Count exact phase blocks in the first Execution Log Round 1.
+ * @invariant Only level-4 P<N> headings inside the first level-3 Round 1 count; later rounds,
+ *   Round close, and heading-looking text inside fenced code do not affect the skeleton.
+ * @param logBody Extracted EXECUTION_LOG section body.
+ * @returns Phase id → block count, or null when Round 1 is absent.
+ */
+function firstRoundPhaseBlockCounts(logBody: string): Map<string, number> | null {
+  const headings = collectHeadings(logBody);
+  const roundIndex = headings.findIndex(
+    (heading) => heading.level === 3 && /^Round\s+1(?:\s|—|$)/i.test(heading.text)
+  );
+  if (roundIndex === -1) return null;
+
+  const round = headings[roundIndex] as (typeof headings)[number];
+  const nextRound = headings.slice(roundIndex + 1).find((heading) => heading.level <= round.level);
+  const roundBody = logBody.slice(round.lineEnd, nextRound?.start ?? logBody.length);
+  const counts = new Map<string, number>();
+  for (const heading of collectHeadings(roundBody)) {
+    if (heading.level !== 4) continue;
+    const match = /^(P[0-9]+)(?:\s|—|$)/.exec(heading.text);
+    if (!match) continue;
+    const phase = match[1] as string;
+    counts.set(phase, (counts.get(phase) ?? 0) + 1);
+  }
+  return counts;
+}
 
 /**
  * @purpose Scan an Execution Log for 🛑 BLOCKED / ✅ RESOLVED pairs, paired per phase — shared by
@@ -331,16 +381,16 @@ function splitBddScenarios(body: string): string[] {
 /**
  * @purpose Flag a ticket's Acceptance Criteria (BDD) when it has only happy-path scenarios.
  * @invariant Pure. Mechanical marker match per scenario block (NEGATIVE_SCENARIO_MARKERS).
- * @invariant Severity mirrors checkBddCoverage's DONE-gates-existence shape: warn pre-DONE, error once DONE.
+ * @invariant Always an error: authoring must not approve a happy-path-only task.
  * @param file Ticket file path.
  * @param bddBody Extracted BDD section body (caller skips the call when BDD is absent).
- * @param isDone Whether the ticket's Meta Status is DONE.
+ * @param _isDone Retained for call-site compatibility; severity no longer depends on ticket status.
  * @returns One SDD_BDD_MISSING_NEGATIVE finding when no scenario matches a negative marker; else empty.
  */
 export function checkBddNegativeScenario(
   file: string,
   bddBody: string,
-  isDone: boolean
+  _isDone: boolean
 ): Finding[] {
   const scenarios = splitBddScenarios(bddBody);
   const hasNegative = scenarios.some((s) => NEGATIVE_SCENARIO_MARKERS.some((re) => re.test(s)));
@@ -348,7 +398,7 @@ export function checkBddNegativeScenario(
 
   return [
     {
-      severity: isDone ? 'error' : 'warn',
+      severity: 'error',
       code: 'SDD_BDD_MISSING_NEGATIVE',
       file,
       message:
@@ -419,6 +469,9 @@ export function checkTicket(file: string, content: string): Finding[] {
   const bddSec = extractSection(content, 'BDD');
   if (bddSec.status === 'ok') {
     findings.push(...checkBddNegativeScenario(file, bddSec.content, isDone));
+    const coverageSec = extractSection(content, 'TEST_COVERAGE');
+    if (coverageSec.status === 'ok')
+      findings.push(...checkBddRequirementTraceability(file, bddSec.content, coverageSec.content));
   }
   // #endregion END_BDD_NEGATIVE
 
@@ -491,6 +544,37 @@ export function checkTicket(file: string, content: string): Finding[] {
         err('SDD_PHASE_SECTION_ORPHAN', `PHASE_${s} section has no row in the Phases Overview.`);
     }
 
+    if (logSec.status === 'ok' && content.includes(PHASE_RECEIPTS_SCHEMA_MARKER)) {
+      const logPhaseCounts = firstRoundPhaseBlockCounts(logSec.content);
+      if (logPhaseCounts === null) {
+        err(
+          'SDD_EXECUTION_LOG_ROUND_MISSING',
+          'Current receipt-aware ticket has no `### Round 1` in Execution Log. Add the canonical initial round with exactly one `#### P<N>` block per Phases Overview row.'
+        );
+      } else {
+        for (const phase of phases) {
+          const count = logPhaseCounts.get(phase.id) ?? 0;
+          if (count === 0)
+            err(
+              'SDD_EXECUTION_LOG_PHASE_MISSING',
+              `Execution Log Round 1 has no \`#### ${phase.id}\` block for the matching Phases Overview row.`
+            );
+          else if (count > 1)
+            err(
+              'SDD_EXECUTION_LOG_PHASE_DUPLICATE',
+              `Execution Log Round 1 has ${count} \`#### ${phase.id}\` blocks; keep exactly one.`
+            );
+        }
+        for (const phase of logPhaseCounts.keys()) {
+          if (!ids.has(phase))
+            err(
+              'SDD_EXECUTION_LOG_PHASE_ORPHAN',
+              `Execution Log Round 1 has \`#### ${phase}\`, but Phases Overview has no ${phase} row.`
+            );
+        }
+      }
+    }
+
     if (isDone) {
       for (const p of phases) {
         if (!p.status.includes('[x]'))
@@ -499,6 +583,303 @@ export function checkTicket(file: string, content: string): Finding[] {
     }
   }
   // #endregion END_PHASES
+
+  return findings;
+}
+
+/**
+ * @purpose Fail closed on incomplete ticket authoring before scaffold indexes or repeats it.
+ * @invariant Required fixed sections come from the task template manifest; PHASE_P<N> is checked
+ * against each parseable overview row. Runtime receipts, file existence, and coverage results are out.
+ * @param file Ticket file reported in findings.
+ * @param content Full pre-index ticket markdown.
+ * @param [phaseId] Optional one-phase authoring slice; absent validates the complete ticket.
+ * @returns Copy-ready structural findings; empty only for a complete authored ticket.
+ */
+export function checkTicketAuthoringStructure(
+  file: string,
+  content: string,
+  phaseId?: string
+): Finding[] {
+  const findings: Finding[] = [];
+  const sectionLine = (section: string, includes?: string): number => {
+    const bounds = findSectionBounds(content, section);
+    if (!bounds) return 1;
+    if (includes) {
+      const lines = content.split('\n');
+      for (let index = bounds.openLine + 1; index < bounds.closeLine; index++) {
+        if ((lines[index] ?? '').includes(includes)) return index + 1;
+      }
+    }
+    return bounds.openLine + 1;
+  };
+  const add = (code: string, section: string, message: string, includes?: string): void => {
+    const actionable = /^(?:Fix|Example):/.test(message) ? message : `Fix: ${message}`;
+    findings.push({
+      severity: 'error',
+      code,
+      file,
+      line: sectionLine(section, includes),
+      message: `[${section}] ${actionable}`,
+    });
+  };
+  const required = TEMPLATES.task.sections.filter((section) => section.required);
+  const fixedRequired = phaseId
+    ? required.filter((section) => section.name === 'PHASES_OVERVIEW')
+    : required.filter((section) => section.name !== 'PHASE_P<N>');
+  const bodies = new Map<string, string>();
+
+  for (const section of fixedRequired) {
+    const extracted = extractSection(content, section.name);
+    if (extracted.status !== 'ok' || extracted.content.trim().length === 0) {
+      add(
+        'SDD_AUTHORING_SECTION_REQUIRED',
+        section.name,
+        `Add and fill the complete required ${section.name} section: <!--SECTION:${section.name}--> … <!--/SECTION:${section.name}-->.`
+      );
+      continue;
+    }
+    bodies.set(section.name, extracted.content);
+  }
+
+  const metaBody = phaseId ? undefined : bodies.get('META');
+  if (metaBody) {
+    const meta = parseMetaInfo(metaBody);
+    const inlineMetaValue = (label: string): string | null => {
+      const line = metaBody.match(
+        new RegExp(`^[ \\t]*-[ \\t]*\\*\\*${label}:\\*\\*[ \\t]*(.*)$`, 'm')
+      )?.[1];
+      return line?.trim() || null;
+    };
+    const requiredMeta = [
+      ['Task-ID', inlineMetaValue('Task-ID') && meta.taskId],
+      ['Status', inlineMetaValue('Status') && meta.status],
+      ['Purpose', inlineMetaValue('Purpose') && meta.purpose],
+      ['Scope', inlineMetaValue('Scope') && meta.scope],
+      ['Module', inlineMetaValue('Module') && meta.module],
+    ] as const;
+    const absent: string[] = requiredMeta
+      .filter(([, value]) => !value || hasPlaceholder(value))
+      .map(([name]) => name);
+    const literalFields = [
+      'Dependencies',
+      'Runtime Backing',
+      'Verification Levels',
+      'Deferred Runtime Scope',
+    ];
+    for (const label of literalFields) {
+      const value = inlineMetaValue(label);
+      if (!value || hasPlaceholder(value)) absent.push(label);
+    }
+    if (meta.specRefs.length === 0) absent.push('Spec References');
+    if (absent.length > 0)
+      add(
+        'SDD_AUTHORING_META_INCOMPLETE',
+        'META',
+        `Fix: replace the missing or placeholder Meta fields: ${absent.join(', ')}. Example: "- **Purpose:** validate the project toolchain".`,
+        `**${absent[0]}:**`
+      );
+  }
+
+  const overviewBody = bodies.get('PHASES_OVERVIEW');
+  const phases = overviewBody ? parsePhasesOverview(overviewBody) : [];
+  const usablePhases = phases.filter(
+    (phase) =>
+      /^P[0-9]+$/.test(phase.id) &&
+      /^(bootstrap|impl|test|config|doc|refactor)$/.test(phase.kind) &&
+      /^\[(?: |~|x|!)\](?:\s+[A-Z_]+)?$/.test(phase.status)
+  );
+  if (overviewBody && (phases.length === 0 || usablePhases.length !== phases.length))
+    add(
+      'SDD_AUTHORING_PHASES_INVALID',
+      'PHASES_OVERVIEW',
+      'Replace PHASES_OVERVIEW with at least one parseable row: | P1 | <bootstrap|impl|test|config|doc|refactor> | — | [ ] |.'
+    );
+
+  if (phaseId && !usablePhases.some((phase) => phase.id === phaseId)) {
+    add(
+      'SDD_AUTHORING_PHASE_NOT_FOUND',
+      'PHASES_OVERVIEW',
+      `Fix: add one canonical overview row for ${phaseId}, for example "| ${phaseId} | impl | — | [ ] |", or pass an existing PhaseID.`
+    );
+  }
+
+  const overviewIndex = new Map(usablePhases.map((phase, index) => [phase.id, index]));
+  const selectedPhases = phaseId
+    ? usablePhases.filter((phase) => phase.id === phaseId)
+    : usablePhases;
+  for (const phase of selectedPhases) {
+    const rowIndex = overviewIndex.get(phase.id) as number;
+    const invalidDeps = phase.deps.filter(
+      (dependency) =>
+        !overviewIndex.has(dependency) || (overviewIndex.get(dependency) as number) >= rowIndex
+    );
+    if (invalidDeps.length > 0) {
+      add(
+        'SDD_AUTHORING_PHASE_DEPENDENCY',
+        'PHASES_OVERVIEW',
+        `Fix: list only earlier PhaseIDs in ${phase.id} Deps; invalid: ${invalidDeps.join(', ')}. Example: "| ${phase.id} | ${phase.kind} | ${rowIndex === 0 ? '—' : usablePhases[rowIndex - 1]?.id} | [ ] |".`,
+        `| ${phase.id} |`
+      );
+    }
+  }
+
+  for (const phase of selectedPhases) {
+    const name = `PHASE_${phase.id}`;
+    const extracted = extractSection(content, name);
+    if (extracted.status !== 'ok' || extracted.content.trim().length === 0) {
+      add(
+        'SDD_AUTHORING_PHASE_REQUIRED',
+        name,
+        `Add and fill the phase declared by PHASES_OVERVIEW: <!--SECTION:${name}--> … <!--/SECTION:${name}-->.`
+      );
+      continue;
+    }
+    bodies.set(name, extracted.content);
+    const detail = parsePhaseDetail(extracted.content);
+    const missing = [
+      ['Objective', detail.objective],
+      ['Rules', detail.rules.length > 0 ? 'present' : null],
+      ['Target Files', detail.targetFiles.length > 0 ? 'present' : null],
+      ['Deleted Files', /\*\*Deleted Files:\*\*/.test(extracted.content) ? 'present' : null],
+      ['Inputs', detail.inputs],
+      ['Exit', detail.exit],
+    ]
+      .filter(([, value]) => !value || hasPlaceholder(value))
+      .map(([name]) => name);
+    if (missing.length > 0)
+      add(
+        'SDD_AUTHORING_PHASE_INCOMPLETE',
+        name,
+        `Fix: replace the missing or placeholder fields: ${missing.join(', ')}. Example: "- **Exit:** the phase verification command exits 0".`,
+        `**${missing[0]}:**`
+      );
+
+    const inputDeps = [...(detail.inputs ?? '').matchAll(/\b(P[0-9]+)\s+handoff\b/g)].map(
+      (match) => match[1] as string
+    );
+    const expectedDeps = [...phase.deps].sort();
+    const actualDeps = [...new Set(inputDeps)].sort();
+    const inputsMatch =
+      expectedDeps.length === 0
+        ? /^none$/i.test(detail.inputs ?? '')
+        : expectedDeps.length === actualDeps.length &&
+          expectedDeps.every((dependency, index) => dependency === actualDeps[index]);
+    if (!inputsMatch) {
+      add(
+        'SDD_AUTHORING_PHASE_DEPENDENCY',
+        'PHASES_OVERVIEW',
+        `Fix: make ${phase.id} Inputs mirror its overview Deps exactly. Example: "- **Inputs:** ${expectedDeps.length > 0 ? expectedDeps.map((dependency) => `${dependency} handoff`).join(', ') : 'none'}".`,
+        `| ${phase.id} |`
+      );
+    }
+  }
+
+  const bddBody = phaseId ? undefined : bodies.get('BDD');
+  if (
+    bddBody &&
+    !(
+      /^\*\*Scenario:\*\*.+$/m.test(bddBody) &&
+      /^- \*\*Given\*\*.+$/m.test(bddBody) &&
+      /^- \*\*When\*\*.+$/m.test(bddBody) &&
+      /^- \*\*Then\*\*.+$/m.test(bddBody)
+    )
+  )
+    add(
+      'SDD_AUTHORING_BDD_INCOMPLETE',
+      'BDD',
+      'Fill BDD with at least one complete **Scenario:** plus Given, When, and Then lines.'
+    );
+
+  const verificationBody = phaseId ? undefined : bodies.get('VERIFICATION');
+  if (
+    verificationBody &&
+    !/\*\*Coverage Policy:\*\*\s*(?:required|not-applicable)/.test(verificationBody)
+  )
+    add(
+      'SDD_AUTHORING_VERIFICATION_INCOMPLETE',
+      'VERIFICATION',
+      'Fill VERIFICATION with one explicit **Coverage Policy:** required or not-applicable and its applicable fields/table.'
+    );
+
+  const coverageBody = phaseId ? undefined : bodies.get('TEST_COVERAGE');
+  if (
+    coverageBody &&
+    !/^-[^\n]+(?:→\s*`[^`]+`\s*::\s*`[^`]+`|Deferred Test Ownership:)/m.test(coverageBody)
+  )
+    add(
+      'SDD_AUTHORING_TEST_COVERAGE_INCOMPLETE',
+      'TEST_COVERAGE',
+      "Fill TEST_COVERAGE with each scenario's complete `→ test-file :: case` row or canonical Deferred Test Ownership row."
+    );
+
+  if (bddBody && coverageBody && metaBody) {
+    const scenarios = bddBody.split('\n').flatMap((line) => {
+      const match = /^\*\*Scenario:\*\*\s*(.+?)\s+\[\`?(contract|unit|integration|e2e)\`?\]/.exec(
+        line.trim()
+      );
+      return match ? [{ name: (match[1] as string).trim(), level: match[2] as string }] : [];
+    });
+    const coverageEntries = parseTestCoverage(coverageBody);
+    const covered = new Set(coverageEntries.map((entry) => entry.scenario));
+    const unmapped = scenarios.filter((scenario) => !covered.has(scenario.name));
+    if (unmapped.length > 0) {
+      add(
+        'SDD_AUTHORING_BDD_MAPPING',
+        'BDD',
+        `Fix: add one TEST_COVERAGE row per BDD scenario. Example: "- ${unmapped[0]?.name} → \`test/example.test.ts\` :: \`${unmapped[0]?.name}\`".`,
+        `**Scenario:** ${unmapped[0]?.name}`
+      );
+    }
+
+    const contractRefs = parseMetaInfo(metaBody).specRefs.filter(
+      (reference) => reference.role.trim().toLowerCase() === 'contract'
+    );
+    const contractScenarios = scenarios.filter((scenario) => scenario.level === 'contract');
+    if (contractScenarios.length < contractRefs.length) {
+      add(
+        'SDD_AUTHORING_BDD_CONTRACT',
+        'BDD',
+        `Fix: add at least one [\`contract\`] typing scenario per Contract Spec Reference (${contractScenarios.length}/${contractRefs.length}). Example: "**Scenario:** ${contractRefs[contractScenarios.length]?.name ?? 'contract'} typing [\`contract\`] [\`<ACR>-REQ-N\`]".`,
+        '**Scenario:**'
+      );
+    }
+
+    const testPhases = usablePhases
+      .filter((phase) => phase.kind === 'test')
+      .map((phase) => {
+        const section = extractSection(content, `PHASE_${phase.id}`);
+        return {
+          phaseId: phase.id,
+          targets: section.status === 'ok' ? parsePhaseDetail(section.content).targetFiles : [],
+        };
+      });
+    const unowned = coverageEntries.find(
+      (entry) =>
+        entry.deferred === null && matchingTestPhaseIds(entry.testFile, testPhases).length === 0
+    );
+    if (unowned) {
+      const fix = unowned.probeCommand
+        ? `Command-probe "${unowned.probeCommand}" needs a test phase that owns a future CREATE smoke test Target File; map this row to that test file. ${unowned.testFile} is not test evidence.`
+        : `Add "${unowned.testFile}" to one test phase Target Files, or map the scenario to a file already owned by a test phase.`;
+      add('SDD_AUTHORING_BDD_PHASE', 'TEST_COVERAGE', `Fix: ${fix}`, unowned.testFile);
+    }
+  }
+
+  for (const [name, body] of bodies) {
+    if (name === 'EXECUTION_LOG') continue;
+    const authoredText = body.replace(/<!--[\s\S]*?-->/g, '');
+    if (hasPlaceholder(authoredText))
+      add(
+        'SDD_AUTHORING_PLACEHOLDER',
+        name,
+        `Fix: replace every unresolved <…> token in ${name}; use a concrete value or remove an optional field.`,
+        body
+          .split('\n')
+          .find((line) => hasPlaceholder(line))
+          ?.trim()
+      );
+  }
 
   return findings;
 }
@@ -650,17 +1031,35 @@ export function checkRequirementUnhappyPath(file: string, content: string): Find
  */
 type DecisionLogEntry = {
   id: string;
-  kind: 'new' | 'new-invalid' | 'legacy';
+  kind: 'new' | 'new-invalid' | 'legacy' | 'placeholder';
 };
 
-const DL_LEGACY_HEADING = /^###[ \t]+(D-[0-9]+)\b/;
-const DL_LEGACY_TABLE_ROW = /^\|[ \t]*(D-[0-9]+)[ \t]*\|/;
+/** @purpose Capture the id token of a Decision Log heading (`### <id> — …`). */
+const DL_HEADING_ID = /^###[ \t]+(\S+)/;
+/** @purpose Capture the first cell of a Decision Log table row (`| <id> | … |`). */
+const DL_ROW_ID = /^\|[ \t]*([^|\t ]+)[ \t]*\|/;
+/** @purpose Capture the first token of a plain line — new-format entries are written `<ACR>-DL-N <date> — …`. */
 const DL_FIRST_TOKEN = /^(\S+)/;
+/** @purpose A never-filled template stand-in in the number slot — invalid in EVERY format. */
+const DL_PLACEHOLDER = /<[^>]*>|X{2,}|N{2,}|ACRONYM|-[A-Za-z]+$/i;
 
 /**
- * @purpose Parse every Decision Log entry out of a section body — new, new-invalid, or legacy.
- * @invariant A new-format entry is a line whose first token carries `-DL-` (case-insensitive
- * candidate match, so a lowercase `acr-dl-3` still surfaces as a grammar violation).
+ * @purpose Classify one id token as a Decision Log entry — placeholder checked FIRST so `D-XXX` is
+ *   a hard error, not a legacy warn.
+ * @param id The candidate id token.
+ * @returns Entry kind, or null when not decision-log-shaped; a plain `D-…` non-placeholder is legacy.
+ */
+function classifyDlId(id: string): DecisionLogEntry['kind'] | null {
+  const isCandidate = /^D-/.test(id) || /-DL-/i.test(id);
+  if (!isCandidate) return null;
+  if (DL_PLACEHOLDER.test(id)) return 'placeholder';
+  if (/-DL-/i.test(id)) return DL_ID_GRAMMAR.test(id) ? 'new' : 'new-invalid';
+  return 'legacy';
+}
+
+/**
+ * @purpose Parse every Decision Log entry out of a section body — new, new-invalid, legacy, or placeholder.
+ * @invariant Placeholder ids (`D-XXX`, `<ACR>-DL-N`) are recognized and surfaced, never silently skipped.
  * @param body DECISION_LOG section body.
  * @returns One DecisionLogEntry per recognized line, in document order.
  */
@@ -669,22 +1068,11 @@ function parseDecisionLogEntries(body: string): DecisionLogEntry[] {
   for (const raw of body.split('\n')) {
     const line = raw.trim();
     if (!line) continue;
-
-    const headM = DL_LEGACY_HEADING.exec(line);
-    if (headM) {
-      out.push({ id: headM[1] as string, kind: 'legacy' });
-      continue;
-    }
-    const rowM = DL_LEGACY_TABLE_ROW.exec(line);
-    if (rowM) {
-      out.push({ id: rowM[1] as string, kind: 'legacy' });
-      continue;
-    }
-
-    // Candidate detection is case-insensitive; the strict grammar test right below decides new vs new-invalid.
-    const token = DL_FIRST_TOKEN.exec(line)?.[1] ?? '';
-    if (!/-DL-/i.test(token)) continue;
-    out.push({ id: token, kind: DL_ID_GRAMMAR.test(token) ? 'new' : 'new-invalid' });
+    const id =
+      DL_HEADING_ID.exec(line)?.[1] ?? DL_ROW_ID.exec(line)?.[1] ?? DL_FIRST_TOKEN.exec(line)?.[1];
+    if (!id) continue;
+    const kind = classifyDlId(id);
+    if (kind) out.push({ id, kind });
   }
   return out;
 }
@@ -705,6 +1093,16 @@ export function checkDecisionLogIds(file: string, content: string): Finding[] {
   const findings: Finding[] = [];
   const expectedAcr = deriveSpecAcronym(file);
 
+  // A placeholder id is a hard error in every format — `D-XXX` must never slip through as a warn.
+  for (const e of entries.filter((x) => x.kind === 'placeholder')) {
+    findings.push({
+      severity: 'error',
+      code: 'SDD_DL_ID_PLACEHOLDER',
+      file,
+      message: `Decision Log ID \`${e.id}\` — незаполненный плейсхолдер/шаблон. Замени на настоящий ID формата \`<ACR>-DL-<N>\` (например \`${expectedAcr}-DL-1\`) с уникальным номером; шаблонные XXX/NNN/<N>/<ACR> в коммит не уходят.`,
+    });
+  }
+
   const legacyCount = entries.filter((e) => e.kind === 'legacy').length;
   if (legacyCount > 0) {
     findings.push({
@@ -717,7 +1115,7 @@ export function checkDecisionLogIds(file: string, content: string): Finding[] {
 
   const byNumber = new Map<string, string[]>();
   for (const e of entries) {
-    if (e.kind === 'legacy') continue;
+    if (e.kind === 'legacy' || e.kind === 'placeholder') continue;
     if (e.kind === 'new-invalid') {
       findings.push({
         severity: 'error',
@@ -1130,8 +1528,10 @@ export const FOLD_REQUIRED_V2: string[] = Array.from(
 // FOLD_REQUIRED_V2 are exempt — folding is their containment mechanism, not a line count.
 // Calibrated against 210 non-folded top-level sections across specs/**/*.spec.md: median 15, P75 22,
 // P90 43, P95 55, P99 110, max 286. 120 sits just above P99 — it catches only the two genuine
-// outliers in the corpus today (REQUIREMENTS_AND_CONSTRAINTS at 286 lines in agent-inbox.spec.md,
-// MODULE_USAGE_EXAMPLE at 140 lines in cli/e2e/e2e.spec.md) without touching the routine tail.
+// outliers in the corpus today. New-format Requirements sections are deliberately excluded: their
+// cognitive size is checked by requirement count + per-entry budget
+// (`checkRequirementBudgetsAgainstBaseline`), so
+// line wrapping never pressures an agent to merge Markdown mechanically.
 const SECTION_LINE_HARD_LIMIT_V2 = 120;
 
 // Table-cell policy (AX_SPEC_TABLE_IS_INDEX, v2 only): a table is an index, not text — one short
@@ -1141,9 +1541,8 @@ const SECTION_LINE_HARD_LIMIT_V2 = 120;
 // TABLE_CELL_MAX_CHARS=120 — calibrated against every table cell in specs/**/*.spec.md (n=7078,
 // fence-aware): median 15, P75 42, P90 74, P95 101, P99 201. 120 flags 3.2% of cells (229/7078);
 // manual inspection of the flagged cells showed uniformly genuine paragraph-in-cell prose (e.g.
-// cli/cli.spec.md, mr-stats.spec.md, dbc/lint.spec.md — the same class of pain as messenger's
-// tessell-data FR table), not legitimate long single tokens (paths, commands). Both messenger pain
-// examples sit far above this (tessell-data P90=197, host P90=190) — the threshold catches the
+// cli/cli.spec.md, mr-stats.spec.md, dbc/lint.spec.md), not legitimate long single tokens (paths,
+// commands). The known pain examples sit far above this — the threshold catches the
 // examples that motivated this rule without touching this repo's already-short label/purpose cells.
 const TABLE_CELL_MAX_CHARS = 120;
 
@@ -1504,6 +1903,11 @@ export function checkSpecStructure(
         if (FOLD_REQUIRED_V2.includes(name)) continue;
         const sec = extractSection(content, name);
         if (sec.status !== 'ok') continue;
+        if (
+          (name === 'REQUIREMENTS_AND_CONSTRAINTS' || name === 'MODULE_REQUIREMENTS') &&
+          parseRequirementHeadings(sec.content).length > 0
+        )
+          continue;
         const lines = sec.content.split('\n').length;
         if (lines > SECTION_LINE_HARD_LIMIT_V2) {
           findings.push({
@@ -1521,6 +1925,199 @@ export function checkSpecStructure(
   }
 
   return findings;
+}
+
+/**
+ * @purpose Advisory receipt for a scope/module draft created by `sdd-new`.
+ * @param file Repository-relative spec path used in findings and acronym checks.
+ * @param content Current draft markdown.
+ * @returns Non-blocking findings that point back to the owning skeleton section.
+ */
+export function checkSpecAuthoringDraft(file: string, content: string): Finding[] {
+  const module = content.includes('<!--SECTION:MODULE_VISION-->');
+  const scopeType = extractSection(content, 'SCOPE_TYPE');
+  const kind = module
+    ? 'module'
+    : scopeType.status === 'ok'
+      ? SCOPE_KINDS.find((candidate) => new RegExp(`\\b${candidate}\\b`).test(scopeType.content))
+      : undefined;
+  const findings: Finding[] = [];
+
+  if (kind) {
+    for (const section of TEMPLATES[kind].sections.filter((entry) => entry.required)) {
+      if (section.name === 'MODULE_MAP') {
+        // Module Map may legitimately be empty (single-module scope) so it is not "required-filled".
+        // But an UNREPLACED placeholder (e.g. `<module>`) is a real gap: the author created modules
+        // yet left the skeleton token, which later surfaces as a confusing decomposition error
+        // ("declared module <module> missing"). Flag it here, plainly, so a self-check catches it first.
+        const map = extractSection(content, section.name);
+        if (map.status === 'ok' && hasAuthoringPlaceholder(map.content))
+          findings.push({
+            severity: 'warn',
+            code: 'SDD_SPEC_SECTION_MISSING',
+            file,
+            message:
+              'Module Map still has an unreplaced placeholder (e.g. `<module>`); replace it with the real module name(s) you created, or leave the map empty for a single-module scope.',
+          });
+        continue;
+      }
+      const extracted = extractSection(content, section.name);
+      const body =
+        extracted.status === 'ok'
+          ? extracted.content
+              .replace(/<!--[\s\S]*?-->/g, '')
+              .replace(/^#{1,6}\s+.*$/gm, '')
+              .trim()
+          : '';
+      if (extracted.status !== 'ok' || body.length === 0 || hasAuthoringPlaceholder(body)) {
+        findings.push({
+          severity: 'warn',
+          code: 'SDD_SPEC_SECTION_MISSING',
+          file,
+          message: `Section ${section.name} is not filled yet; replace its local skeleton comment with the draft content it requests.`,
+        });
+      }
+    }
+    findings.push(...checkSpecAuthoringShape(file, content, kind));
+  }
+
+  for (const match of content.matchAll(/<!--(?!\/?SECTION:)([\s\S]*?)-->/g)) {
+    findings.push({
+      severity: 'warn',
+      code: 'SDD_AUTHORING_PLACEHOLDER',
+      file,
+      line: content.slice(0, match.index).split('\n').length,
+      message:
+        'Skeleton guidance remains; follow this local comment, then remove it from the filled spec.',
+    });
+  }
+
+  const semantic = [
+    ...checkSpecStructure(file, content, 'v2'),
+    ...checkRequirementIds(file, content),
+    ...checkRequirementUnhappyPath(file, content),
+  ];
+  findings.push(
+    ...semantic.map((finding) => ({
+      ...finding,
+      severity: 'warn' as const,
+      message: `Draft hint: ${finding.message}`,
+    }))
+  );
+  return findings;
+}
+
+/**
+ * @purpose Structural authoring feedback derived from the selected skeleton kind.
+ * @invariant Every finding is advisory: authoring gaps guide the next whole-document generation
+ * pass and never block the draft receipt.
+ */
+function checkSpecAuthoringShape(
+  file: string,
+  content: string,
+  kind: (typeof SCOPE_KINDS)[number] | 'module'
+): Finding[] {
+  const findings: Finding[] = [];
+  const template = TEMPLATES[kind];
+
+  for (const section of template.sections) {
+    const actual = extractSection(content, section.name);
+    if (actual.status !== 'ok') continue;
+    const expected = extractSection(template.skeleton, section.name);
+    if (expected.status !== 'ok') continue;
+    const expectedHeading = collectHeadings(expected.content)[0];
+    const actualHeading = collectHeadings(actual.content)[0];
+    if (!expectedHeading) continue;
+    if (!actualHeading || actualHeading.level !== expectedHeading.level) {
+      const bounds = findSectionBounds(content, section.name);
+      findings.push({
+        severity: 'warn',
+        code: 'SDD_AUTHORING_HEADING_LEVEL',
+        file,
+        line: bounds ? bounds.openLine + 2 : undefined,
+        message: `Section ${section.name} must start with a level-${expectedHeading.level} heading, matching its skeleton structure.`,
+      });
+    }
+  }
+
+  const requirements = requirementsBody(content);
+  if (
+    kind !== 'module' &&
+    requirements !== null &&
+    parseRequirementHeadings(requirements).length === 0
+  ) {
+    findings.push({
+      severity: 'warn',
+      code: 'SDD_REQUIREMENT_ID_MISSING',
+      file,
+      message:
+        'Requirements has no `### <ACR>-REQ-N [должен | должен · нештатная]` entries; add stable IDs to the authored requirements.',
+    });
+  }
+
+  if (kind !== 'module' && requirements !== null) {
+    const headings = collectHeadings(requirements);
+    const outOfScopeIndex = headings.findIndex((heading) => heading.text === 'Out-of-Scope');
+    if (outOfScopeIndex >= 0) {
+      const heading = headings[outOfScopeIndex]!;
+      const next = headings
+        .slice(outOfScopeIndex + 1)
+        .find((candidate) => candidate.level <= heading.level);
+      const body = requirements.slice(heading.lineEnd, next?.start ?? requirements.length).trim();
+      if (body.length > 0 && !/^\s*[-*+]\s+/m.test(body)) {
+        findings.push({
+          severity: 'warn',
+          code: 'SDD_AUTHORING_LIST_REQUIRED',
+          file,
+          message:
+            'Out-of-Scope is prose; keep this skeleton-defined enumeration as a Markdown list.',
+        });
+      }
+    }
+  }
+
+  return findings;
+}
+
+/**
+ * @purpose Auto-fix byte-level authoring noise without inventing or rewriting semantic content.
+ * @invariant Code fences are byte-preserved; only heading whitespace, trailing whitespace, and
+ * accidental indentation of Out-of-Scope bullets are normalized.
+ * @param content Full spec draft Markdown.
+ * @returns Normalized content plus stable names of the applied trivial repairs.
+ */
+export function autoFixSpecAuthoringDraft(content: string): { content: string; fixes: string[] } {
+  const fixes = new Set<string>();
+  let inFence = false;
+  let inOutOfScope = false;
+  const normalized = content
+    .replace(/\r\n?/g, '\n')
+    .split('\n')
+    .map((source) => {
+      if (/^\s*(?:```|~~~)/.test(source)) {
+        inFence = !inFence;
+        return source;
+      }
+      if (inFence) return source;
+
+      let line = source.replace(/[ \t]+$/g, '');
+      if (line !== source) fixes.add('trailing-whitespace');
+      const heading = /^(#{1,6})[ \t]+(.+)$/.exec(line);
+      if (heading) {
+        const fixed = `${heading[1]} ${heading[2]!.trim()}`;
+        if (fixed !== line) fixes.add('heading-whitespace');
+        line = fixed;
+        if (heading[1] === '###') inOutOfScope = heading[2]!.trim() === 'Out-of-Scope';
+        else if (heading[1]!.length <= 3) inOutOfScope = false;
+      } else if (inOutOfScope && /^[ \t]{1,3}[-*+]\s+/.test(line)) {
+        line = line.trimStart();
+        fixes.add('list-indentation');
+      }
+      return line;
+    })
+    .join('\n');
+  if (normalized !== content && /\r/.test(content)) fixes.add('line-endings');
+  return { content: normalized, fixes: [...fixes] };
 }
 
 /** @purpose True when a markdown table row line (starts/ends with `|`) is the header/data separator (`|---|---|`), not a content row. | @param line Trimmed line. | @returns Whether it is a separator row. */
@@ -1582,7 +2179,7 @@ export function checkTableCells(file: string, content: string): Finding[] {
       }
       if (cell.length > TABLE_CELL_MAX_CHARS) {
         findings.push({
-          severity: 'error',
+          severity: 'warn',
           code: 'SDD_TABLE_CELL_TOO_LONG',
           file,
           message: `Table cell is ${cell.length} chars (> ${TABLE_CELL_MAX_CHARS}) — a cell is one short line; move the detail into a subsection below the table (AX_SPEC_TABLE_IS_INDEX): "${cell.slice(0, 60)}..."`,
@@ -1777,50 +2374,6 @@ export function checkSpecHierarchy(specs: SpecEntry[]): Finding[] {
   return findings;
 }
 
-// An orphaned change-mark: a line beginning with ✚ (new) + space. Only ✚ is matched — it is unambiguous;
-// ~ (changed) collides with legitimate markdown (file trees, diffs), so it is not used for detection.
-const CHANGE_MARK = /^[ \t]*✚ /m;
-
-/**
- * @purpose Track a spec's lifecycle state (master vs review-state) and flag broken or stuck review-states.
- * @invariant master = no CHANGE_MANIFEST and no ✚/~ marks; review-state = manifest (marks optional for greenfield). Mismatches surfaced per AX_SPEC_LIFECYCLE.
- * @param file Spec file path.
- * @param content Full spec markdown.
- * @returns Findings: SDD_REVIEW_INCONSISTENT (error) for a malformed review-state; SDD_REVIEW_STATE_STUCK (warn) for a lingering manifest.
- */
-export function checkReviewState(file: string, content: string): Finding[] {
-  const findings: Finding[] = [];
-  const manifest = extractSection(content, 'CHANGE_MANIFEST');
-  const hasManifest = manifest.status === 'ok';
-  const hasMarks = CHANGE_MARK.test(content);
-
-  if (hasMarks && !hasManifest) {
-    findings.push({
-      severity: 'error',
-      code: 'SDD_REVIEW_INCONSISTENT',
-      file,
-      message: `Found a ✚ change-mark but no CHANGE_MANIFEST — review-state is malformed (compress half-ran, or marks added without entering review-state). Add the manifest (CHANGE_MANIFEST_FORMAT) or strip the marks. AX_SPEC_LIFECYCLE.`,
-    });
-  }
-  if (hasManifest) {
-    if (!/ТИП ИЗМЕНЕНИЯ/.test(manifest.content)) {
-      findings.push({
-        severity: 'error',
-        code: 'SDD_REVIEW_INCONSISTENT',
-        file,
-        message: `CHANGE_MANIFEST is missing the «ТИП ИЗМЕНЕНИЯ» field — the manifest is incomplete and cannot be reviewed or compressed. Fill the required fields (CHANGE_MANIFEST_FORMAT). AX_SPEC_LIFECYCLE.`,
-      });
-    }
-    findings.push({
-      severity: 'warn',
-      code: 'SDD_REVIEW_STATE_STUCK',
-      file,
-      message: `Spec is in review-state (CHANGE_MANIFEST present). Finalize it: once external review approves («no comments»), run compress — remove the manifest + ✚/~ marks; if the change was abandoned, remove the manifest. A spec must not linger in review-state. AX_SPEC_LIFECYCLE.`,
-    });
-  }
-  return findings;
-}
-
 // Visualization-chain rungs beyond the OVERVIEW floor: caption, scope data-flow, module
 // call-chain, delta marking (see 2026-08-20-visualization-chain.research.md). Gate discipline
 // mirrors SDD_REQ_MISSING_UNHAPPY: dormant (or warn) for the pre-migration Requirements format,
@@ -1927,6 +2480,12 @@ export function checkDiagramCaptions(file: string, content: string): Finding[] {
   const isNewFormat = entries.length > 0;
   const severity: Finding['severity'] = isNewFormat ? 'error' : 'warn';
   const declaredIds = new Set(entries.map((e) => e.id));
+  // This spec's own requirement namespace(s) — the acronym prefix of every declared REQ (e.g. NTH
+  // for a `nth` module). A caption citing `NTH-REQ-9` that isn't declared here is a real typo; a
+  // caption citing a DIFFERENT acronym (e.g. the parent scope's `FIB-REQ-2`) is legitimate
+  // cross-scope traceability — a module narrows and references its parent's requirements — so it is
+  // not this spec's to declare and must not be flagged (chain10 clamp).
+  const ownAcronyms = new Set(entries.map((e) => e.id.split('-')[0]));
   const exampleId = entries[0]?.id ?? `${deriveSpecAcronym(file)}-REQ-1`;
 
   const findings: Finding[] = [];
@@ -1943,14 +2502,17 @@ export function checkDiagramCaptions(file: string, content: string): Finding[] {
     }
     for (const m of caption.matchAll(REQ_ID_TOKEN)) {
       const id = m[0];
-      if (!declaredIds.has(id)) {
-        findings.push({
-          severity,
-          code: 'SDD_DIAGRAM_CAPTION_REQ_UNKNOWN',
-          file,
-          message: `Diagram caption in section ${block.section} ссылается на "${id}", которого нет среди требований этой спеки — используй один из объявленных: ${entries.length ? entries.map((e) => e.id).join(', ') : '(спека пока не объявляет требований в формате <ACR>-REQ-<N>)'}.`,
-        });
-      }
+      if (declaredIds.has(id)) continue;
+      // Only a token in THIS spec's own acronym namespace can be a mistyped/undeclared local req; a
+      // different acronym is a cross-scope traceability reference (parent scope req), which this spec
+      // does not own and must not be forced to declare.
+      if (!ownAcronyms.has(id.split('-')[0] as string)) continue;
+      findings.push({
+        severity,
+        code: 'SDD_DIAGRAM_CAPTION_REQ_UNKNOWN',
+        file,
+        message: `Diagram caption in section ${block.section} ссылается на "${id}", которого нет среди требований этой спеки — используй один из объявленных: ${entries.length ? entries.map((e) => e.id).join(', ') : '(спека пока не объявляет требований в формате <ACR>-REQ-<N>)'}.`,
+      });
     }
   }
   return findings;
@@ -2054,35 +2616,6 @@ export function checkModuleCallChain(file: string, content: string): Finding[] {
   ];
 }
 
-// Marks a NEW node/step inside a diagram — mermaid's own `:::new` class-shorthand, or a prose tag
-// next to an added node. `\bNEW\b` requires word boundaries on BOTH sides so an all-caps identifier
-// merely containing "NEW" (e.g. "NEWTASK") does not false-positive.
-const NEW_NODE_MARK = /:::new\b|\(добавлено\)|\bNEW\b/;
-
-/**
- * @purpose Delta rung: a spec in review-state with ✚ additions must mark the added node/step in a
- * diagram; the unchanged system stays undrawn.
- * @invariant Always warn, no old/new-format split. Silent when CHANGE_MANIFEST is malformed —
- * checkReviewState already owns that finding.
- * @param file Spec file path.
- * @param content Full spec markdown.
- * @returns One SDD_DELTA_DIAGRAM_MISSING warn when ✚ exists but no diagram marks a new node.
- */
-export function checkDeltaDiagram(file: string, content: string): Finding[] {
-  if (!CHANGE_MARK.test(content)) return [];
-  const manifest = extractSection(content, 'CHANGE_MANIFEST');
-  if (manifest.status !== 'ok') return [];
-  if (NEW_NODE_MARK.test(content)) return [];
-  return [
-    {
-      severity: 'warn',
-      code: 'SDD_DELTA_DIAGRAM_MISSING',
-      file,
-      message: `Spec is in review-state with ✚ additions in CHANGE_MANIFEST, but no diagram marks a new node — add \`:::new\` (mermaid) or «(добавлено)» next to the added node/step in a diagram; leave the unchanged part unredrawn (AX_SPEC_MANDATORY_DIAGRAM, рунг «дельта»).`,
-    },
-  ];
-}
-
 /**
  * @purpose Extract every markdown-link target pointing at a `*.research.md` file (optionally
  *   anchored) — raw text for the research-doc connectivity gates.
@@ -2108,6 +2641,50 @@ export function findResearchLinks(content: string): string[] {
 export function findRegisteredResearchLinks(content: string): string[] {
   const sec = extractSection(content, 'RESEARCH');
   return sec.status === 'ok' ? findResearchLinks(sec.content) : [];
+}
+
+/**
+ * @purpose Enforce the hybrid research lifecycle: immutable candidate analysis plus an explicit final disposition linked to the accepted spec decision.
+ * @param file Research document path.
+ * @param content Full research markdown.
+ * @returns Lifecycle errors when accepted/superseded research still looks pending or lacks decision traceability.
+ */
+export function checkResearchLifecycle(file: string, content: string): Finding[] {
+  const status = extractSection(content, 'STATUS');
+  if (status.status !== 'ok') return [];
+  const state = /\*\*State:\*\*\s*([^\n]+)/i.exec(status.content)?.[1]?.trim() ?? '';
+  if (/^proposed\b/i.test(state)) return [];
+
+  const disposition = extractSection(content, 'FINAL_DISPOSITION');
+  if (disposition.status !== 'ok') {
+    return [
+      {
+        severity: 'error',
+        code: 'SDD_RESEARCH_DISPOSITION_MISSING',
+        file,
+        message:
+          'Research is no longer proposed but has no FINAL_DISPOSITION linking the immutable analysis to the actual spec decision.',
+      },
+    ];
+  }
+  const pending = /\*\*Outcome:\*\*\s*pending\b/i.test(disposition.content);
+  const traced = /(?:\.spec\.md|Decision Log|-[A-Z]*DL-\d+)/i.test(disposition.content);
+  const findings: Finding[] = [];
+  if (pending)
+    findings.push({
+      severity: 'error',
+      code: 'SDD_RESEARCH_DISPOSITION_PENDING',
+      file,
+      message: 'Research is accepted/superseded but FINAL_DISPOSITION is still pending.',
+    });
+  if (!traced)
+    findings.push({
+      severity: 'error',
+      code: 'SDD_RESEARCH_DECISION_UNTRACED',
+      file,
+      message: 'FINAL_DISPOSITION must link the actual spec or name its Decision Log entry.',
+    });
+  return findings;
 }
 
 /**

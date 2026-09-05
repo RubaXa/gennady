@@ -1,0 +1,24 @@
+<!-- source: stateless SDD v2 approval boundary -->
+<Contract id="ARTIFACT_APPROVAL_FLOW">
+  SDD v2 has exactly two mandatory semantic approval boundaries.
+
+  1. **Spec approval.** The complete intended spec set exists as actual files, passes structural
+     checks, and receives one fresh independent semantic review of the current artifacts. The author
+     resolves findings. Any semantic edit invalidates the old review and requires one fresh review
+     of the changed set. The operator then approves the specs themselves and the canonical specs
+     record `ARTIFACT_APPROVAL_MARKER` approval #1.
+  2. **Ticket approval.** Actual tickets and indexes exist, each ticket passes the mechanical
+     authoring check, and one fresh independent reviewer checks the complete actual ticket set
+     against the approved specs. The operator then approves task decomposition and the test plan in
+     one decision. The owning task index records `ARTIFACT_APPROVAL_MARKER` approval #2. Any semantic
+     ticket or index edit invalidates the old review and approval.
+
+  Reviewers are bounded calls, not durable sessions. They never edit targets and do not exchange
+  JSON state with the orchestrator. The author may reason about its own draft before dispatch, but
+  self-review never substitutes for the independent review at either boundary.
+
+  Resume state is always reconstructible from human-readable approval markers, specs, tickets,
+  Execution Log, Git, and current tool output. Mechanical checks validate marker shape and membership;
+  the model uses Git evidence to judge semantic staleness. No `.sdd-session.md`, plan digest, critic
+  journal, content hash, or worker checkpoint is part of correctness.
+</Contract>

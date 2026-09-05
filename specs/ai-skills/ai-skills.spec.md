@@ -12,7 +12,7 @@ library
 
 ## 1. Vision & Primary Goal
 
-Библиотека AI-навыков для агентов — переиспользуемые текстовые артефакты (`SKILL.md` + scripts + prompts). Навык = тонкий клиент над директивой: самодостаточный workflow, который агент (Claude Code, OpenCode) активирует по trigger-фразам оператора, загружает его body и следует процедуре.
+Библиотека AI-навыков для агентов — переиспользуемые текстовые артефакты (`SKILL.md` + scripts + prompts). Навык = тонкий клиент над директивой: самодостаточный workflow, который агент (Claude Code, OpenCode) активирует по trigger-фразам оператора, загружает его body и следует процедуре. Stateful public SDD entries сначала проходят через общий router с одним сохранённым state snapshot; router затем лениво загружает owner.
 
 Навыки разрабатываются в `ai/skills/`, деплоятся в проекты через `npx gennady sync-skills` в `.claude/skills/`. Директивы — в `ai/directives/`, переиспользуются между навыками.
 
@@ -32,7 +32,7 @@ library
 1. Extract intent → 2. Load & activate directive → 3. Execute plan
 ```
 
-Потребители: sdd (единая дверь-роутер), sdd-scaffold, sdd-audit, sdd-critic, sdd-reconcile, sdd-code-review.
+Потребители: sdd (единая дверь-роутер), sdd-audit, sdd-code-review. Stateful direct entries sdd-scaffold / sdd-critic / sdd-reconcile активируют свою owner-директиву через router с forced intent.
 
 ### Orchestrator: [`sdd-skills` → `OrchestratorProtocol`](./sdd-skills/sdd-skills.spec.md#orchestratorprotocol)
 
@@ -68,16 +68,16 @@ compatibility: opencode
 
   <ExecutionPlan>
     <Step id="GATHER">
-      Run `npx tsx ~/Developer/gennady/cli/gennady.ts sdd-state` AND read in full
-      `~/Developer/gennady/ai/directives/sdd-v2/execute.directive.xml`.
+      Run one `npx gennady sdd-state` AND read in full
+      `ai/directives/sdd-v2/router.directive.xml`; pass the saved snapshot with forced intent `execute`.
     </Step>
     <Step id="PREFLIGHT">
-      Gate on sdd-state: FLOW_VERSION=v1 or READINESS=not-ready → embody the matching
-      `ai/directives/sdd-v2/migration-v1-v2.directive.xml` / `readiness.directive.xml` first.
+      Router consumes the read-only snapshot and readiness once, then loads
+      `ai/directives/sdd-v2/execute.directive.xml` through its `LOGIC_SWITCH`.
     </Step>
     <Step id="EMBODY">
-      You ARE the execute orchestrator now. Task-ID (or "next" / "batch") from the operator
-      message. Follow the directive's ExecutionPlan; never skip the audit.
+      Preserve Task-ID (or "next" / "batch") as the execute owner's payload. Follow the owner
+      directive's ExecutionPlan; never skip the audit.
     </Step>
   </ExecutionPlan>
 </SddDoor>
@@ -223,8 +223,8 @@ ai/skills/<name>/
 
 | Паттерн | Навык делает | Примеры |
 |---|---|---|
-| **Directive activation** | Извлекает intent → читает директиву → активируется как она → выполняет план | sdd (единая дверь-роутер), sdd-scaffold, sdd-audit, sdd-critic, sdd-reconcile, sdd-code-review |
-| **Orchestrator** | Планирует → диспатчит subagent-фазы с typed Handoff → диспатчит audit. Сам код не пишет | sdd-execute (batch — ветка intent'а внутри того же навыка) |
+| **Directive activation** | Извлекает intent → читает директиву → активируется как она → выполняет план | sdd (router), sdd-audit, sdd-code-review; sdd-scaffold / sdd-critic / sdd-reconcile входят через router forced intent |
+| **Orchestrator** | Один snapshot → router forced intent=execute → owner планирует и диспатчит subagent-фазы с typed Handoff → audit. Сам код не пишет | sdd-execute (single/batch payload остаётся у execute owner) |
 | **CLI delegation** | Подготавливает артефакт → вызывает `npx gennady <cmd>` → показывает результат | sdd-check |
 
 **sdd-check** — read-only репортер: не загружает директиву, вся логика — в TypeScript-инструменте `shared/sdd/check.ts`, вызываемом через `npx gennady sdd-check --task <path>` / `--all`. Навык только запускает инструмент и релеит находки. Код не пишет, ничего не фиксит.
@@ -298,8 +298,8 @@ ai/skills/<name>/
 - **Status:** active
 - **Recorded:** operator request, полное удаление скилла-обёртки `alt-opinion`
 - **Was:** 14 навыков, включая `alt-opinion` (CLI-delegation модуль, обёртка над `npx gennady alt-opinion`).
-- **Now:** 13 навыков. `ai/skills/alt-opinion/` и деплой-копия `.claude/skills/alt-opinion/` удалены; модульная спека `specs/ai-skills/alt-opinion/` удалена. CLI-команда `gennady alt-opinion` (`cli/cmd/alt-opinion/`) НЕ затронута — она вне скоупа этой спеки (принадлежит скоупу `cli`) и продолжает существовать как самостоятельная команда.
-- **Why:** Скилл-обёртка признана избыточной по решению оператора; CLI-команда остаётся доступной напрямую через `npx gennady alt-opinion` без навыка-посредника.
+- **Now:** 13 навыков. `ai/skills/alt-opinion/` и деплой-копия `.claude/skills/alt-opinion/` удалены; модульная спека `specs/ai-skills/alt-opinion/` удалена. На момент этого решения CLI-команда `gennady alt-opinion` (`cli/cmd/alt-opinion/`) не затрагивалась (вне скоупа этой спеки). **Обновление:** позднее сама CLI-команда тоже удалена целиком — см. D-021 в [`specs/cli/cli.spec.md`](../cli/cli.spec.md); команды `gennady alt-opinion` больше нет.
+- **Why:** Скилл-обёртка признана избыточной по решению оператора. (Рассуждение на момент D-006: CLI-команда тогда оставалась доступной напрямую без навыка-посредника. Позднее её тоже удалили — см. `Now` выше и D-021; сейчас команды нет.)
 - **Risk accepted:** Отсутствует — паттерн CLI-delegation остаётся представлен `sdd-check`, четвёртый паттерн не требуется.
 
 ### D-007 — Скилл `sdd-hooks-install` удалён
@@ -310,6 +310,32 @@ ai/skills/<name>/
 - **Now:** 12 навыков. `ai/skills/sdd-hooks-install/` и деплой-копия `.claude/skills/sdd-hooks-install/` удалены. Модульная спека `sdd-skills` (`specs/ai-skills/sdd-skills/sdd-skills.spec.md`) и упоминания в `specs/cli/cli.spec.md`, `specs/cli/sync-skills/sync-skills.spec.md` очищены от ссылок на навык. Три execution-паттерна (Directive activation / Orchestrator / CLI delegation) снова покрывают весь набор навыков без исключений.
 - **Why:** Скилл-bootstrapper признан ненужным по решению оператора — механизм live-прогресса (хуки, `.claude/sdd-progress.ndjson`) как таковой не переносился этой правкой, удалён только сам навык-инсталлятор.
 - **Risk accepted:** Отсутствует — единичное исключение из паттернов активации (см. D-005) снято вместе с навыком; четвёртый паттерн больше не нужен ни по какой причине.
+
+### D-008 — Единый router-front для stateful public SDD entries
+
+- **Status:** superseded by D-009
+- **Recorded:** RC follow-up, session-entry coherence
+- **Why:** `sdd`, `sdd-scaffold`, `sdd-execute`, `sdd-critic`, `sdd-reconcile` должны были одинаково разрешать живую session и не повторять `sdd-state`.
+- **Why superseded:** живой flow показал, что session conflict/open, glossary journal, feasibility events и worker checkpoints не восстанавливают цель, а создают дополнительный control plane и ложные ветки. Возврат к persistent session отложен до отдельного доказательства необходимости.
+- **Risk accepted:** Router знает четыре public forced intents, но не знает их внутренний payload/ExecutionPlan.
+- **Rejected alternatives:**
+  - Дублировать session bootstrap в каждом SKILL — дешевле локально, но неизбежно расходится.
+  - Удалить direct entries — лишает оператора явных execute/scaffold/reconcile/critic дверей.
+
+### D-009 — Stateless SDD v2 с двумя semantic approval boundaries
+
+- **Status:** active
+- **Recorded:** RC follow-up after draft.64 degradation
+- **Why:** direct entries по-прежнему передают router один read-only `sdd-state` snapshot и forced
+  intent, но router не открывает session. Смысл проверяется один раз на фактических specs перед
+  operator approval #1 и один раз на фактических tickets перед operator approval #2. Execute
+  восстанавливается из ticket, Execution Log, Git и текущего tool output.
+- **Risk accepted:** semantic edit требует fresh review новых bytes; это дополнительный модельный
+  вызов, но не долговечная session и не ручной JSON-протокол.
+- **Rejected alternatives:**
+  - Сохранить session как необязательную подсказку — создаёт два конкурирующих источника истины.
+  - Утверждать абстрактный scaffold plan — оператор не видит реальные ticket bytes.
+  - Убрать model review полностью — механика не доказывает согласованность смысла.
 <!--/SECTION:DECISION_LOG-->
 
 <!--SECTION:SCOPE_DEPENDENCIES-->

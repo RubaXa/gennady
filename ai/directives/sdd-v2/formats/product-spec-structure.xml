@@ -45,14 +45,9 @@
   ## Requirements & Constraints
 
   ### Requirements
-  [Плоский список требований per `REQUIREMENT_ENTRY_FORMAT` (contract/spec/requirement-entry-format.xml) — заменяет раздельные Functional Requirements / Non-Functional Constraints для НОВЫХ спек; спеки, уже написанные в старом раздельном формате, остаются валидными как есть. Пример — обычное требование и требование класса «нештатная»:]
+  <!-- УДАЛИ ЭТУ ПОДСКАЗКУ ПОСЛЕ ЗАПОЛНЕНИЯ. Пиши плоский список: ### <ACR>-REQ-N [должен | должен · нештатная], затем одно наблюдаемое условие и обязательство, затем краткое rationale в цитате. Используй уникальные последовательные ID этой спеки. Обязательно покрой happy path, ограничения и хотя бы один негативный сценарий. Единственный образец: -->
 
-  ### <ACR>-REQ-1 [должен]
-  **Когда** пользователь отправляет форму с пустым обязательным полем, **сервис должен** вернуть ошибку валидации с именем поля.
-
-  > Пустое поле — самый частый пользовательский ввод; без явной ошибки пользователь не понимает, что делать дальше.
-
-  ### <ACR>-REQ-2 [должен · нештатная]
+  ### <ACR>-REQ-1 [должен · нештатная]
   **Если** запись в журнал аудита не удалась, **то сервис должен** отклонить операцию и вернуть 503.
 
   > Аудит — комплаенс-требование; без записи операция не легитимна, откат обязателен.
@@ -121,7 +116,7 @@
   <details>
   <summary>Полные записи Decision Log</summary>
 
-  [D-NNN entries.]
+  [<ACR>-DL-N entries per DECISION_LOG_ENTRY_FORMAT.]
 
   </details>
   <!--/SECTION:DECISION_LOG-->
@@ -133,8 +128,8 @@
   <details>
   <summary>Таблица предусловий</summary>
 
-  | Requirement | Kind | Owner | Resolution |
-  |---|---|---|---|
+  | Requirement | Kind | Owner | Resolution | Readiness Gates | Gate Artifacts |
+  |---|---|---|---|---|---|
   <!-- Empty list allowed only when STEP_7 audit produced zero external assumptions — declare explicitly. -->
 
   </details>

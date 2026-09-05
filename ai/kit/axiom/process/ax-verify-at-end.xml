@@ -1,4 +1,10 @@
 <Axiom id="AX_VERIFY_AT_END">
-After all tasks complete, run sdd-check. All checks must PASS.
-If sdd-check finds issues → classify them as new findings → ask operator → fix cycle repeats.
+Every reconcile branch ends with evidence owned by that branch, never a generic duplicate tail:
+- ordinary execute supplies its per-ticket sync, phase gates, per-group audit, and code-review results;
+- a semantic spec-only change supplies independent semantic review plus a current human-readable
+  approval #1 marker after operator approval;
+- a bounded direct metadata correction supplies `DIRECT_VERIFICATION_RECEIPT` for its frozen target-set
+  and exact dedicated command.
+Missing or red evidence routes back to its owning flow. Never dispatch a second audit/code-review or
+claim an unexecuted bare tool name as verification.
 </Axiom>

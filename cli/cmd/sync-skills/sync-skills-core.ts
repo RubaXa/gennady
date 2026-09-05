@@ -374,6 +374,20 @@ export function collectAndCompareSkills(
           _mkdir
         )
       );
+      targetFiles.delete(relativePath);
+    }
+
+    // Existing skill directories are mirrors too. Removing only whole orphan skills leaves stale
+    // files inside a still-supported skill, which is just as dangerous as a stale directive.
+    for (const relativePath of [...targetFiles.keys()].sort()) {
+      entries.push({
+        skillName,
+        relativePath,
+        status: 'deleted',
+      });
+      if (!opts.dryRun) {
+        deps.unlink!(join(targetSkillDir, relativePath));
+      }
     }
 
     // Remove processed skill from targetSkillNames so remainder = orphans

@@ -1,6 +1,6 @@
 <!-- source: ai/directives/infra/eslint-setup.xml -->
 <Hook id="HOOK_LINT_FIX_GREEN">
       <Purpose>Canonical green-gate check: unified pipeline exits 0.</Purpose>
-      <Command>npm run lint:fix</Command>
+      <Command>npm run lint:fix -- .</Command>
       <Expected>Exit 0. Because every rule is `'error'`, exit 0 means zero findings — including zero non-autofix findings.</Expected>
     </Hook>

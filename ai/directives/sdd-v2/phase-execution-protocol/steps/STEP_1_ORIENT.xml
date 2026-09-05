@@ -1,0 +1,26 @@
+0.8.4
+
+<Step id="STEP_1_ORIENT">
+      <Action>
+        Consume only the supplied phase block, referenced spec/rule excerpts, target files, Execution
+        Log facts, and Git evidence. Verify targets still match the ticket. Ask the orchestrator for a
+        missing required excerpt; do not explore unrelated repository areas or inspect CLI source.
+        Reconstruct state from these durable inputs per `AX_STATELESS_FLOW` and enforce the declared
+        phase boundary per `AX_PHASE_SCOPE_LOCK`.
+      </Action>
+    </Step>
+
+<Axiom id="AX_STATELESS_FLOW" invariant="true">
+      SDD orchestration owns no durable hidden control plane. Specs, ticket fields, task indexes,
+      Execution Log, Git, and real command output are the complete continuation state. A scratch file
+      may carry bytes between two adjacent tool calls, but it is disposable, never an approval record,
+      never a state machine, and never required to resume.
+    </Axiom>
+
+<Axiom id="AX_PHASE_SCOPE_LOCK">
+      Create or edit only this phase's `Target Files`; remove only exact paths declared under `Deleted Files` (exact `unlink` for an entry, then exact `rmdir` for a declared emptied directory). `Deleted Files` are tombstones, never repair targets. Reading other files (specs, sibling-phase code, rule files cited in this phase's Rules list) is allowed and expected.
+
+      The ticket is orchestrator-owned state, not a phase Target File. The worker MUST NOT manually edit the ticket, `Phases Overview`, `Execution Log`, Handoff placeholder, or DONE line. The one permitted ticket mutation is the receipt written atomically by the exact `sdd-verify --task ... --phase ...` command. After that command passes, the worker returns a typed Handoff payload; the orchestrator validates it and closes the phase through `sdd-log complete`.
+
+      Any other write or deletion → `H_OUT_OF_PHASE_WRITE`. An unusable CLI result is returned as a tool-contract blocker; it never authorizes reading bundled CLI source. Operator decides via re-planning or a new task.
+    </Axiom>

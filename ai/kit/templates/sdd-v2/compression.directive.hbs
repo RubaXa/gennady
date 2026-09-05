@@ -37,7 +37,7 @@
        or a later one that replaced an earlier one, collapse into one current statement.
     3. **Keep the audit trail.** Superseded content is marked superseded (`AX_PIVOT_REQUIRES_SUPERSESSION`),
        not erased — the history of why stays readable.
-    4. **References must keep resolving.** When a `D-NNN` is merged away, repoint every reference to it
+    4. **References must keep resolving.** When an `<ACR>-DL-N` is merged away, repoint every reference to it
        (specs AND code) to the surviving ID; leave nothing dangling.
     5. **Operator approves the merge set.** The agent drafts; nothing collapses without an approval check.
   </OperatingRules>
@@ -59,7 +59,7 @@
     <Step id="STEP_0_INVENTORY">
       <Goal>Collect the decisions and discussion threads in scope.</Goal>
       <Action>
-        Gather every decision (`D-NNN`) and discussion thread across the target artifact set, with its
+        Gather every decision (`<ACR>-DL-N`, plus immutable legacy `D-N` entries) and discussion thread across the target artifact set, with its
         location and the conclusion it reached. Read-only. Record the conclusions as written in the
         artifacts (facts) and keep your own reading of them separate per `AX_EVIDENCE_HYGIENE`.
       </Action>
@@ -81,7 +81,7 @@
         Per flagged cluster, draft one merged current statement that keeps every unique rationale, names
         which IDs collapse into which survivor, and marks the superseded ones. The survivor stays a
         complete Decision Log entry per `AX_DECISION_LOG_REQUIRED` (`DECISION_LOG_ENTRY_FORMAT`: one
-        line, stable D-NNN, the why/rejected/risk part in parentheses). Present the full merge set
+        line, stable `<ACR>-DL-N`, the why/rejected/risk part in parentheses). Present the full merge set
         (before → after) + Approval Check. `H_OPERATOR_REJECTS_MERGE` on decline. STOP.
       </Action>
     </Step>
@@ -89,15 +89,16 @@
       <Goal>Apply the approved merges and repoint references.</Goal>
       <Action>
         Rewrite the surviving entries; mark superseded ones per `AX_PIVOT_REQUIRES_SUPERSESSION`
-        (`status: superseded` on the old entry, the survivor names what it supersedes). Repoint every
-        reference to a collapsed `D-NNN` (specs AND code) to the survivor. Nothing dangling.
+        (the old entry remains immutable; the survivor names what it supersedes). Repoint every
+        reference to a collapsed Decision Log id (specs AND code) to the survivor. Nothing dangling.
       </Action>
     </Step>
     <Step id="STEP_4_VERIFY">
       <Goal>Prove nothing broke.</Goal>
       <Action>
-        `sdd-check` clean; no dangling decision references; the audit trail (superseded entries) is
+        Run exact integrityCheck ToolCall below; require it clean, no dangling decision references, and the audit trail (superseded entries) is
         present. Return control to the caller.
+        <ToolCall owner="this-step" result="integrityCheck">npx gennady sdd-check --all .</ToolCall> Use integrityCheck.
       </Action>
     </Step>
   </ExecutionPlan>

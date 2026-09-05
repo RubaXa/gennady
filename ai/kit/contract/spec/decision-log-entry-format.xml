@@ -9,7 +9,8 @@
 
   **ID.** `<ACR>-DL-<N>` — spec acronym first, exactly like a Task-ID and like `<ACR>-REQ-<N>`
   (`REQUIREMENT_ENTRY_FORMAT`); `<N>` is sequential within THIS spec only — the acronym gives global
-  uniqueness, not the number. Replaces the old file-local `D-NNN` (unique only inside one file);
+  uniqueness, not the number. This is the only grammar for NEW entries. Existing append-only
+  file-local `D-N` entries remain immutable and resolvable as legacy references; never create another;
   conflicts (a duplicate number inside one spec) are caught mechanically, the same way as for
   `<ACR>-REQ-<N>`.
 

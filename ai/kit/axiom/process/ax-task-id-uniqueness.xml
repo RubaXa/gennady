@@ -4,8 +4,9 @@
   1-2 words, ≤ 8 characters — not a sequence number, not a paragraph.
 
   - `sdd-new` generates and validates the ID — grammar, slug length, project-wide uniqueness (duplicate
-    or prefix-conflict against every existing Task-ID). Never hand-roll the format: run `sdd-new task
-    --id <ACR>-<slug>` and let it refuse with a concrete fix if the id is bad.
+    or prefix-conflict against every existing Task-ID). Never hand-roll the format: use the exhaustive
+    owner-specific `sdd-new task` ToolCall selected by STEP_3 and let it refuse with a concrete fix if
+    the id is bad.
   - Uniqueness is enforced by the **Slug Registry** in each `<module>.3-tasks.md`: the same slug in two
     branches collides on merge there, surfacing «same feature» instead of hiding it. Append-only.
   - The ID never changes — even if the ticket file moves between scopes.

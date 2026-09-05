@@ -1,6 +1,8 @@
 <!-- source: sdd/phase-execution-protocol.xml -->
 <Contract id="PHASE_BLOCK_FORMAT">
-      Event-driven: optional event lines (0+ each) appear ONLY when their event happened. Mandatory closing lines: `ver` + `DONE` + Handoff.
+      Event-driven: optional event lines (0+ each) appear ONLY when their event happened. STEP_5
+      atomically inserts the paired structured `SDD_PHASE_RECEIPT` block; the agent never authors it.
+      Semantic closing lines remain `DONE` + Handoff.
 
       ```markdown
       #### <PhaseID>                                 <!-- or "#### <PhaseID> — re-run: <reason>" -->
@@ -12,11 +14,11 @@
       - [x] `<ts>` discovery <fact>
       - [x] `<ts>` insight <observation> → <spec-section>, <change>
       - [x] `<ts>` verified <tool>@<version> <one-line summary>    <!-- config kind only -->
-      <!-- Closing lines (mandatory): -->
-      - [x] `<ts>` ver <cmd> → pass|fail exit=<N>
+      <!-- CLI-owned receipt appears here after successful STEP_5. -->
+      <!-- Semantic closing lines (mandatory): -->
       - [x] `<ts>` DONE
       **Handoff →** artifacts: [<paths>]; decisions: [<key=value, …>]; open: [<id: text, …>]
       ```
 
-      Trivial phase (no events worth logging): 2 lines (`ver` + `DONE`) + Handoff. That is valid and preferred over padding.
+      Trivial phase: one receipt + `DONE` + Handoff. That is valid and preferred over padding.
     </Contract>

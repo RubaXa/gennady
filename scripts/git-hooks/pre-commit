@@ -1,7 +1,19 @@
 #!/bin/sh
 # Pre-commit gate. Do NOT bypass. See the failure message below if a gate is red.
 
-echo "🔍 Pre-commit: format + type-check + lint"
+# Git exports GIT_DIR/GIT_INDEX_FILE into hooks. Tests spawned below shell out to git in their own
+# temp fixtures; inheriting these vars redirects those calls into THIS repository (observed live:
+# `git init` in a fixture re-initialized the shared .git as bare, and fixture commits landed on the
+# real branch). Unset them so every child git call resolves its repo from its own cwd.
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_OBJECT_DIRECTORY GIT_COMMON_DIR
+
+# VERIFY-ONLY, never mutate. A pre-commit hook that rewrites files (prettier --write, autofix) but
+# does not re-stage them lets the commit capture the pre-fix bytes while `prettier --check` passes
+# over the already-fixed working tree — a green hook over a dirty commit (this repo hit exactly that).
+# Repair belongs to the SDD phase flow (the task/phase context carries one exact-target repair rung); the
+# commit gate is the read-only final verdict, exactly what `sdd-verify --profile full` is. If a check
+# is red because something is unformatted, YOU run `npm run fix` and `git add -u`, then commit again.
+echo "🔍 Pre-commit: check (sdd-verify --profile full — read-only) + directive gates"
 
 fail() {
   # $1 = which gate failed
@@ -21,6 +33,10 @@ fail() {
 
 У тебя РОВНО ДВА пути:
   1. Починить причину падения (см. вывод гейта выше) и закоммитить честно.
+     Если красный гейт — это format/lint (код не отформатирован или есть
+     автофиксимые ошибки): прогони  npm run fix && git add -u  и повтори
+     commit. Хук намеренно НЕ чинит за тебя — иначе в коммит уходят
+     до-форматные байты, а рабочее дерево выглядит чистым.
   2. Если не можешь починить — ОСТАНОВИТЬСЯ и доложить оператору, что
      именно падает и почему. Дословно, с выводом гейта.
 
@@ -39,12 +55,25 @@ EOF
   exit 1
 }
 
-npm run format || fail "format (npm run format)"
-npm run type-check || fail "type-check (npm run type-check)"
-npm run lint:contracts || fail "lint:contracts (npm run lint:contracts)"
+# INDEX-AWARE GUARD. The gate runs over the WORKING TREE; `git commit` records the INDEX. For the
+# gate's green to actually mean "what gets committed is green", the working tree must EQUAL the index:
+# no unstaged tracked changes and no untracked files that could affect the build. `git status
+# --porcelain`: column 1 = index, column 2 = working tree. We ALLOW only cleanly-staged entries
+# (column 2 blank: `M `, `A `, `D `, `R ` — working tree == index for that file); we REFUSE anything
+# with a working-tree change (column 2 non-blank: ` M`, `MM`, `AM`, `MD`, …) OR an untracked file
+# (`??`), because those bytes are in the tree the gate checks but NOT in the commit (or vice-versa).
+dirty=$(git status --porcelain=v1 --untracked-files=all 2>/dev/null | awk '{ x=substr($0,1,1); y=substr($0,2,1); if (y != " " || x == "?") print $0 }')
+if [ -n "$dirty" ]; then
+  printf 'Рабочее дерево ≠ индекс (гейт проверил бы не то, что уйдёт в коммит):\n%s\n' "$dirty" >&2
+  fail "working tree ≠ index — есть unstaged-изменения tracked-файлов и/или untracked-файлы. Гейт проверяет рабочее дерево, а commit запишет ИНДЕКС. Сделай 'git add -A' (застейджи всё, что должно уйти в коммит) или убери/заигнорь лишнее (untracked → .gitignore), затем commit заново. Только полностью совпадающие дерево и индекс дают честный вердикт."
+fi
+
+
+npm run check || fail "check (npm run check) — sdd-verify --profile full: types, tests, lint, format, yagni. Если красное — format/lint: npm run fix && git add -u, затем commit заново"
 npm run check:directives-fresh || fail "directives-fresh (npm run check:directives-fresh) — ai/directives/** must match a fresh rebuild; see the message above for what to do"
 npm run audit:axioms || fail "audit:axioms (npm run audit:axioms) — see AUTHORING.md §10"
 npm run audit:contracts || fail "audit:contracts (npm run audit:contracts) — see the header of ai/kit/audit-contract-activation.mjs"
+npm run audit:halts || fail "audit:halts (npm run audit:halts) — see the header of ai/kit/audit-halt-activation.mjs"
 npm run check:directive-budgets || fail "directive-budgets (npm run check:directive-budgets) — a lazy skeleton/step package exceeds the 8000-token skeleton / 20000-char package / 2000-char-line budget; see the finding above for which directive, which artifact, and by how much"
 
 echo "✅ Pre-commit passed"

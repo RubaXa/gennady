@@ -4,6 +4,8 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import {
   TEMPLATES,
   ARTIFACT_KINDS,
@@ -18,6 +20,34 @@ import { extractMermaidBlocks, validateMermaid } from '../../mermaid/mermaid.ts'
 const sortedSet = (xs: string[]): string[] => Array.from(new Set(xs)).sort();
 
 describe('templates registry', () => {
+  it('module skeleton points the scope-spec backlink at the flat-module depth (../<scope>), not ../../', () => {
+    // chain10 clamp: the MODULE_VISION guidance instructed `../../<scope>.spec.md`, which resolves
+    // two levels up (specs/<scope>.spec.md — nonexistent) for a flat module, so a worker that
+    // followed it verbatim produced SDD_BROKEN_SPEC_LINK. The skeleton is the format: it must teach
+    // the correct default depth.
+    const skeleton = TEMPLATES.module.skeleton;
+    assert.doesNotMatch(skeleton, /\.\.\/\.\.\/<scope>\.spec\.md/);
+    assert.match(skeleton, /\.\.\/<scope>\.spec\.md/);
+  });
+
+  it('keeps shared manifest/lock ownership DAG-serialized in source and generated infra format', () => {
+    const source = readFileSync(fileURLToPath(new URL('../templates.ts', import.meta.url)), 'utf8');
+    const generated = readFileSync(
+      fileURLToPath(
+        new URL(
+          '../../../ai/directives/sdd-v2/formats/infrastructure-spec-structure.xml',
+          import.meta.url
+        )
+      ),
+      'utf8'
+    );
+    const contract =
+      /Every shared manifest\/lock write has an owning phase\/task; all writers of the same file are strictly DAG-serialized/;
+    assert.match(source, contract);
+    assert.match(generated, contract);
+    assert.doesNotMatch(source, /EXACTLY ONE owning task/);
+    assert.doesNotMatch(generated, /EXACTLY ONE owning task/);
+  });
   it('carries every artifact kind', () => {
     assert.deepStrictEqual(
       new Set(ARTIFACT_KINDS),
@@ -88,6 +118,7 @@ describe('templates registry', () => {
       'CRITERIA',
       'OPTIONS',
       'DECISION',
+      'FINAL_DISPOSITION',
       'CONSEQUENCES',
       'EVIDENCE',
       'RELATED',
@@ -97,7 +128,7 @@ describe('templates registry', () => {
     const required = new Set(tpl.sections.filter((s) => s.required).map((s) => s.name));
     assert.deepStrictEqual(
       required,
-      new Set(['STATUS', 'PROBLEM', 'OPTIONS', 'DECISION', 'EVIDENCE'])
+      new Set(['STATUS', 'PROBLEM', 'OPTIONS', 'DECISION', 'FINAL_DISPOSITION', 'EVIDENCE'])
     );
   });
 
@@ -181,9 +212,11 @@ describe('nextSteps — "what happens after this skeleton exists"', () => {
     }
   });
 
-  it('task points at sdd-task', () => {
+  it('task points at exact authoring then semantic review without --help', () => {
     const steps = resolveNextSteps('task', { path: 'irrelevant' });
-    assert.ok(steps.some((s) => s.includes('sdd-task')));
+    assert.ok(steps.some((s) => s.includes('sdd-check --task irrelevant --authoring')));
+    assert.ok(steps.some((s) => s.includes('семантическое ревью')));
+    assert.ok(steps.every((s) => !s.includes('--help')));
   });
 
   it('task echoes the created --id, telling the agent to use exactly that ID going forward', () => {
@@ -217,6 +250,7 @@ describe('derived lists match check.ts (block L1 parity requirement)', () => {
       'REQUIREMENTS_AND_CONSTRAINTS',
       'PUBLIC_API_SURFACE',
       'DECISION_LOG',
+      'MODULE_MAP',
     ],
     infrastructure: [
       'VISION',

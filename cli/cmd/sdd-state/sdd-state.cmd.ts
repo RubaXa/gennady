@@ -19,12 +19,21 @@ import { detectFlowVersion } from '../../../shared/sdd/flow.ts';
 import { countModuleSpecs } from '../../../shared/sdd/module-specs.ts';
 import { sumRollupProgress } from '../../../shared/sdd/tracker.ts';
 import { renderLadder } from '../../../shared/sdd/ladder.ts';
-import { collectTicketRefs } from '../../../shared/sdd/ticket-resolve.ts';
-import { queuedInfraGateTicketIds } from '../../../shared/sdd/gate-queue.ts';
+import { collectTicketCorpus } from '../../../shared/sdd/ticket-resolve.ts';
+import { appendSddSessionBoundary } from '../../../shared/sdd/session-boundary.ts';
+import {
+  checkAuthoringReadiness,
+  queuedInfraGateTicketIds,
+} from '../../../shared/sdd/gate-queue.ts';
+import {
+  diagnoseProjectSpecSchemas,
+  SPEC_SCHEMA_VERSION,
+} from '../../../shared/sdd/spec-schema.ts';
 import {
   badInvocation,
   badRoot,
   directivesMissing,
+  ticketCorpusError,
   formatSnapshot,
   KEY_DIRECTIVE_FILES,
   SDD_V2_SUBDIR,
@@ -77,15 +86,23 @@ function parseProjectName(portalContent: string): string | null {
 }
 
 /**
- * @purpose Execute gennady sdd-state — report flow version, readiness, portal scopes, and the session set.
+ * @purpose Execute gennady sdd-state — report flow version, readiness, and portal scopes.
  * @param rawArgs Raw command-line arguments (process.argv).
  * @returns StateOutcome — the formatted snapshot on success, else an actionable failure.
  */
 export async function run(rawArgs: string[]): Promise<StateOutcome> {
-  const args = parseArgs(rawArgs, { probe: ['probe'] });
-  const positional = (args._ as string[]).filter(
-    (a: string) => typeof a === 'string' && a !== 'sdd-state'
-  );
+  let args: Record<string, unknown> & { _: string[] };
+  try {
+    args = parseArgs(rawArgs, { probe: ['probe'] }, { strict: true });
+  } catch (cause) {
+    return badInvocation(cause instanceof Error ? cause.message : String(cause));
+  }
+  if (args.probe !== undefined && args.probe !== true) {
+    return badInvocation('--probe does not take a value');
+  }
+  const parsedPositionals = args._ as string[];
+  const positional =
+    parsedPositionals[0] === 'sdd-state' ? parsedPositionals.slice(1) : parsedPositionals;
 
   if (positional.length > 1) return badInvocation(positional.join(' '));
 
@@ -97,22 +114,19 @@ export async function run(rawArgs: string[]): Promise<StateOutcome> {
   }
 
   // #region START_DIRECTIVES_GATE — invariant: sdd-state is the ONLY command that checks the install is
-  // intact; skills/directives themselves carry no install/sync knowledge. Either location alone being
-  // complete is sufficient (self-hosting gennady keeps directives at the project root directly; a
-  // consumer project may have them only under node_modules/gennady/ before its first `sync`).
+  // intact. The project-root copy is the one skills actually read, so a complete package under
+  // node_modules must never mask a stale or absent materialized flow. Install, then `sync-skills`.
   const nodeModulesPkgDir = join(root, 'node_modules', 'gennady');
   const rootDirectivesStatus = checkDirectivesLocation(join(root, SDD_V2_SUBDIR));
   if (rootDirectivesStatus.missing.length > 0) {
     const nodeModulesDirectivesStatus = checkDirectivesLocation(
       join(nodeModulesPkgDir, SDD_V2_SUBDIR)
     );
-    if (nodeModulesDirectivesStatus.missing.length > 0) {
-      return directivesMissing(
-        existsSync(nodeModulesPkgDir),
-        rootDirectivesStatus,
-        nodeModulesDirectivesStatus
-      );
-    }
+    return directivesMissing(
+      existsSync(nodeModulesPkgDir),
+      rootDirectivesStatus,
+      nodeModulesDirectivesStatus
+    );
   }
   // #endregion END_DIRECTIVES_GATE
 
@@ -141,15 +155,6 @@ export async function run(rawArgs: string[]): Promise<StateOutcome> {
   const readiness = checkReadiness(readinessInput);
   // #endregion END_READINESS
 
-  // #region START_SESSION — the session scratch is optional flow-state; absent is normal
-  let sessionContent: string | null = null;
-  try {
-    sessionContent = readFileSync(join(root, 'specs', '.sdd-session.md'), 'utf-8').trim() || null;
-  } catch {
-    sessionContent = null;
-  }
-  // #endregion END_SESSION
-
   logger.debug(
     `[SddStateCommand#run] flow=${flowVersion} portal=${portalPresent} ready=${readiness.ready} scopes=${scopes.length}`
   );
@@ -158,6 +163,23 @@ export async function run(rawArgs: string[]): Promise<StateOutcome> {
   // `--probe` is still accepted as a no-op for older synced directives.
   const probe = probeRepo(root);
 
+  const ticketCorpus = collectTicketCorpus(root);
+  if (!ticketCorpus.ok) return ticketCorpusError(root, ticketCorpus.detail);
+  const gateQueue = queuedInfraGateTicketIds(ticketCorpus.refs, scopes, readiness, root);
+  // Legacy layout owns its separate v1→v2 migration. Applying v2 structural rules before that
+  // migration would misclassify valid v1 specs and obscure the actual router halt.
+  const specSchema =
+    flowVersion === 'v2'
+      ? diagnoseProjectSpecSchemas(root)
+      : { version: SPEC_SCHEMA_VERSION, status: 'current' as const, findings: [] };
+  const authoringReadiness =
+    flowVersion === 'v2'
+      ? checkAuthoringReadiness(scopes, readiness, specSchema, root, graphEdges)
+      : {
+          ready: false,
+          diagnostics: ['FLOW_VERSION=v1; migrate before v2 scaffold'],
+          scopes: [],
+        };
   const snapshot: StateSnapshot = {
     root,
     flowVersion,
@@ -166,8 +188,10 @@ export async function run(rawArgs: string[]): Promise<StateOutcome> {
     scopes,
     graphEdges,
     readiness,
-    queuedGateTicketIds: queuedInfraGateTicketIds(collectTicketRefs(root), scopes, readiness),
-    sessionContent,
+    authoringReadiness,
+    queuedGateTicketIds: gateQueue.ticketIds,
+    gateQueueDiagnostics: gateQueue.diagnostics,
+    specSchema,
     probe,
   };
 
@@ -197,6 +221,10 @@ export async function run(rawArgs: string[]): Promise<StateOutcome> {
     scopesTotal: scopes.length,
     scopesApproved: scopes.filter((s) => s.status === 'done').length,
     moduleSpecCount,
+    modulesRequired: scopes.some(
+      (scope) => scope.status === 'done' && (scope.type === 'product' || scope.type === 'library')
+    ),
+    authoringReady: authoringReadiness.ready,
     packageJsonPresent,
     gates: {
       typecheck: requiredPresence.get('type-check') ?? false,
@@ -208,7 +236,10 @@ export async function run(rawArgs: string[]): Promise<StateOutcome> {
   });
   // #endregion END_LADDER
 
-  return { ok: true, text: `${formatSnapshot(snapshot)}\n\n${ladder}` };
+  return {
+    ok: true,
+    text: appendSddSessionBoundary(`${formatSnapshot(snapshot)}\n\n${ladder}`, root),
+  };
 }
 
 // Self-executing for CLI: gennady sdd-state [project-root]

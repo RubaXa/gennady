@@ -60,6 +60,16 @@ describe('parseUsageWaiver', () => {
     });
   });
 
+  it('parses the active <ACR>-DL-N Usage Waiver citation', () => {
+    const content = ['### `alpha`', '- **Usage Waiver:** CLI-DL-42 — stable plugin surface'].join(
+      '\n'
+    );
+    assert.deepStrictEqual(parseUsageWaiver(content, 'alpha'), {
+      decision: 'CLI-DL-42',
+      reason: 'stable plugin surface',
+    });
+  });
+
   it('parses the external-consumer variant', () => {
     const w = parseUsageWaiver(spec, 'beta');
     assert.deepStrictEqual(w, {
@@ -209,6 +219,51 @@ describe('checkYagniUsage', () => {
     name,
     kind: 'function',
     file,
+    visibility: 'public',
+  });
+
+  it('a PRIVATE symbol with exactly one usage is ordinary decomposition — no finding', () => {
+    const findings = checkYagniUsage(
+      [{ ...sym('namedConstant'), visibility: 'private' }],
+      new Map([['namedConstant', 1]]),
+      new Map(),
+      new Set()
+    );
+    assert.deepStrictEqual(findings, []);
+  });
+
+  it('a PRIVATE symbol with zero usages is dead code — finding, message says private/dead', () => {
+    const findings = checkYagniUsage(
+      [{ ...sym('deadHelper'), visibility: 'private' }],
+      new Map([['deadHelper', 0]]),
+      new Map(),
+      new Set()
+    );
+    assert.strictEqual(findings.length, 1);
+    assert.strictEqual(findings[0]?.code, ERR_CLI_YAGNI_UNDERUSED);
+    assert.match(findings[0]?.message ?? '', /private.*dead code/s);
+  });
+
+  it('an EXPORTED symbol with one usage keeps the < 2 rule — finding', () => {
+    const findings = checkYagniUsage(
+      [sym('prematureApi')],
+      new Map([['prematureApi', 1]]),
+      new Map(),
+      new Set()
+    );
+    assert.strictEqual(findings.length, 1);
+    assert.strictEqual(findings[0]?.code, ERR_CLI_YAGNI_UNDERUSED);
+  });
+
+  it('UNKNOWN visibility with one usage is an explicit capability error, not a YAGNI accusation', () => {
+    const findings = checkYagniUsage(
+      [{ ...sym('ambiguous'), visibility: 'unknown' }],
+      new Map([['ambiguous', 1]]),
+      new Map(),
+      new Set()
+    );
+    assert.strictEqual(findings[0]?.code, 'ERR_CLI_YAGNI_VISIBILITY_UNKNOWN');
+    assert.match(findings[0]?.message ?? '', /No YAGNI accusation was made/);
   });
 
   it('>= 2 usages → no finding', () => {

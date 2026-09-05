@@ -21,25 +21,20 @@
   Used in `pivot` mode for each replaced decision. Self-contained: a future reader of the spec at this git ref must understand the rework without external context.
 
   ```markdown
-  ### <ACR>-DL-N — <short title> (rework)
-  - **Status:** active
-  - **Recorded:** session Discovery, <scope-name>, pivot
-  - **Supersedes:** <ACR>-DL-M
-  - **Pre-rework state:** git ref `<sha-or-tag>` (snapshot of spec immediately before this pivot)
-  - **Was:** <one-sentence summary of the prior decision>
-  - **Now:** <one-sentence summary of the replacement>
-  - **Why:** <operator's own wording — what forced the rework>
-  - **Risk accepted:** <if any>
-  - **Downstream invalidation:** see Pivot Invalidation List
+  <ACR>-DL-N <YYYY-MM-DD> — <new decision> (почему: <operator wording>; было → стало: <old> → <new>; supersedes: <prior-id>; pre-rework: <sha-or-tag>; риск: <if any>)
   ```
+
+  This is the same one-line `DECISION_LOG_ENTRY_FORMAT`, not a second grammar. `<prior-id>` may
+  be a legacy `D-N` only when referencing an existing immutable entry; all new ids use
+  `<ACR>-DL-N`. Omit an inapplicable risk clause; never add Status/Recorded fields.
 
   Paired with Pivot Invalidation List entries that enumerate concrete downstream artifacts (`refine-module` targets, ticket reopens, rule revisits) for `audit` (`AX_STALE_AFTER_PIVOT_VERIFICATION`).
 </Contract>
 
 <Contract id="DELTA_DIAGRAM_FORMAT">
   **Mandatory for any module under `refine`/`pivot`** — the diagram twin of the
-  `CHANGE_MANIFEST_FORMAT` text delta (`formats/change-manifest.xml`): the manifest's «ЧТО
-  МЕНЯЕТСЯ» already lists the delta in words, this rung makes the SAME delta a picture, right
+  textual Git diff: the changed specification sections list the delta in words, this rung makes
+  the SAME delta a picture, right
   next to it. Two parts, both scoped to what changed — the unchanged part of the module is NOT
   redrawn, per `AX_SPEC_MANDATORY_DIAGRAM`'s discipline of one rung per question:
 
@@ -67,7 +62,7 @@
      ```
 
   Caption per `DIAGRAM_CAPTION_FORMAT` (`formats/diagram-vocabulary.xml`) naming the requirement
-  IDs the delta closes. Drawn at `STEP_6_FINAL_HIERARCHY` alongside the `CHANGE_MANIFEST`, ASCII
+  IDs the delta closes. Drawn at `STEP_6_FINAL_HIERARCHY` alongside the textual delta, ASCII
   first in chat per `AX_CHAT_BEFORE_SPEC`. Mandatory for NEW pivot/refine rounds only — a rework
   that shipped before this rung existed is not retroactively broken by its absence (2026-08-20
   visualization-chain decision).

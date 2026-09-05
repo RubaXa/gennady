@@ -3,7 +3,7 @@
       Canon default for a NEW public surface: throw a typed `Error` subclass (`AX_ERROR_VIA_CLASS`);
       the caller wraps in mandatory try/catch (`AX_MANDATORY_TRY_CATCH_IN_BUSINESS_LOGIC`). `Result<T>`
       at the public / port boundary is a NARROW EXCEPTION, not the default — it applies only where the
-      surface already sits on an existing Result-typed contract (an existing `@tessell/core/result`
+      surface already sits on an existing Result-typed contract (the project's selected Result
       port/adapter this work extends), never as the first choice for a brand-new port. Where the
       exception applies, it still governs the same boundary as before: public surface (port interface
       methods, exported factory return types, closures returned from factories) returns `Result<T>`;

@@ -267,7 +267,7 @@ export function renderScopeIndex(scope: string, units: UnitTickets[]): string {
   lines.push(
     '',
     '## Decision Log (scope task level)',
-    '<!-- D-NNN scope-уровневых решений декомпозиции/планирования. -->',
+    '<!-- <ACR>-DL-N scope-уровневых решений декомпозиции/планирования. -->',
     ''
   );
   return lines.join('\n');

@@ -1,9 +1,9 @@
 <!-- source: sdd-v2 amplify-nfr -->
 <Contract id="NFR_BUDGETS_FORMAT">
-  Fills the `### Non-Functional Constraints` subsection of the scope spec (an empty header in
-  `PRODUCT_SPEC_STRUCTURE` / `LIBRARY_SPEC_STRUCTURE` until amplified). Every row per
-  `AX_BUDGETS_ARE_NUMBERS`; a consciously skipped dimension keeps its row with an explicit
-  «не бюджетируем, потому что …»:
+  Legacy read/migration shape only. Current amplifiers MUST NOT write this subsection: they load
+  `REQUIREMENT_ENTRY_FORMAT` and emit one flat requirement per observable outcome. This contract
+  remains solely so an old spec can be understood and migrated without inventing semantics. A
+  consciously skipped legacy dimension remains source evidence, never a new requirement by itself:
 
   ```markdown
   ### Non-Functional Constraints

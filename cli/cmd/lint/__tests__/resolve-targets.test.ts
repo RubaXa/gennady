@@ -4,10 +4,22 @@
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync, mkdirSync, rmSync, symlinkSync, chmodSync } from 'node:fs';
+import {
+  mkdtempSync,
+  writeFileSync,
+  mkdirSync,
+  rmSync,
+  symlinkSync,
+  chmodSync,
+  readdirSync,
+} from 'node:fs';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
-import { ERR_CLI_LINT_RESOLVE_FAILED } from '../lint.types.ts';
+import {
+  ERR_CLI_LINT_READ_FAILED,
+  ERR_CLI_LINT_RESOLVE_FAILED,
+  ERR_CLI_LINT_UNSUPPORTED_TARGET,
+} from '../lint.types.ts';
 
 type LintModule = typeof import('../lint.cmd.ts');
 
@@ -72,11 +84,14 @@ describe('resolveTargets', () => {
     assert.strictEqual(result.files[0], abs('component.tsx'));
   });
 
-  // ── UT-04: .js file silently ignored ──
-  it('should silently ignore a .js file', () => {
+  // ── UT-04: explicit unsupported source fails rather than creating vacuous evidence ──
+  it('should reject an explicitly requested .js file with a teaching diagnostic', () => {
     const filePath = writeFile('script.js');
     const result = mod.resolveTargets([filePath]);
-    assert.strictEqual(result.errors.length, 0);
+    assert.strictEqual(result.errors.length, 1);
+    assert.strictEqual(result.errors[0]?.code, ERR_CLI_LINT_UNSUPPORTED_TARGET);
+    assert.match(result.errors[0]?.message ?? '', /only \.ts and \.tsx/);
+    assert.match(result.errors[0]?.message ?? '', /containing directory/);
     assert.strictEqual(result.files.length, 0);
   });
 
@@ -189,27 +204,54 @@ describe('resolveTargets', () => {
     assert.strictEqual(result.errors[1].file, lockedTarget);
   });
 
-  // ── UT-13: symlink to directory is skipped ──
-  it('should skip a symlink pointing to a directory', () => {
+  // ── UT-13: an explicit symlink directory is rejected, never empty-clean ──
+  it('should reject an explicitly selected symlink directory', () => {
     const realDir = mkdir('real-dir');
     writeFile('real-dir/inside.ts');
     const symlinkPath = join(tmpDir, 'link-to-dir');
     symlinkSync(realDir, symlinkPath, 'dir');
 
     const result = mod.resolveTargets([symlinkPath]);
-    assert.strictEqual(result.errors.length, 0);
+    assert.strictEqual(result.errors.length, 1);
+    assert.strictEqual(result.errors[0]?.code, ERR_CLI_LINT_READ_FAILED);
+    assert.match(result.errors[0]?.message ?? '', /symlink/);
     assert.strictEqual(result.files.length, 0);
   });
 
-  // ── UT-14: symlink to .ts file is skipped ──
-  it('should skip a symlink pointing to a .ts file', () => {
+  // ── UT-14: an explicit symlink source is rejected, never empty-clean ──
+  it('should reject an explicitly selected symlink .ts file', () => {
     const realFile = writeFile('real.ts');
     const symlinkPath = join(tmpDir, 'link-to-file');
     symlinkSync(realFile, symlinkPath, 'file');
 
     const result = mod.resolveTargets([symlinkPath]);
-    assert.strictEqual(result.errors.length, 0);
+    assert.strictEqual(result.errors.length, 1);
+    assert.strictEqual(result.errors[0]?.code, ERR_CLI_LINT_READ_FAILED);
+    assert.match(result.errors[0]?.message ?? '', /symlink/);
     assert.strictEqual(result.files.length, 0);
+  });
+
+  it('should reject a symlinked production source encountered under a selected directory', () => {
+    const dir = mkdir('nested-source-link');
+    const victim = writeFile('external-victim.ts', '// untouched\n');
+    symlinkSync(victim, join(dir, 'selected.ts'), 'file');
+
+    const result = mod.resolveTargets([dir]);
+
+    assert.strictEqual(result.files.length, 0);
+    assert.strictEqual(result.errors.length, 1);
+    assert.strictEqual(result.errors[0]?.code, ERR_CLI_LINT_READ_FAILED);
+    assert.match(result.errors[0]?.message ?? '', /selected\.ts.*symlink/);
+  });
+
+  it('should deliberately ignore a nested unsupported symlink outside the lint source policy', () => {
+    const dir = mkdir('nested-unsupported-link');
+    const victim = writeFile('external-not-source.md', '# untouched\n');
+    symlinkSync(victim, join(dir, 'notes.md'), 'file');
+
+    const result = mod.resolveTargets([dir]);
+
+    assert.deepStrictEqual(result, { files: [], errors: [] });
   });
 
   // ── UT-15: cyclic symlink does not hang ──
@@ -230,6 +272,55 @@ describe('resolveTargets', () => {
     const result = mod.resolveTargets([abs('empty-dir')]);
     assert.strictEqual(result.errors.length, 0);
     assert.strictEqual(result.files.length, 0);
+  });
+
+  it('should fail closed when an explicit directory exists but cannot be read', (t) => {
+    const dirPath = mkdir('unreadable-dir');
+    writeFile('unreadable-dir/selected.ts');
+    chmodSync(dirPath, 0o000);
+    try {
+      try {
+        readdirSync(dirPath);
+        t.skip('platform/user can still read chmod 000 directories');
+        return;
+      } catch {
+        // Permission denial is enforceable on this platform; exercise the fail-closed path.
+      }
+      const result = mod.resolveTargets([dirPath]);
+      assert.strictEqual(result.files.length, 0);
+      assert.strictEqual(result.errors.length, 1);
+      assert.strictEqual(result.errors[0]?.code, ERR_CLI_LINT_READ_FAILED);
+      assert.strictEqual(result.errors[0]?.file, dirPath);
+      assert.match(result.errors[0]?.message ?? '', /Cannot read directory lint target/);
+      assert.match(result.errors[0]?.message ?? '', /Restore read permission/);
+    } finally {
+      chmodSync(dirPath, 0o755);
+    }
+  });
+
+  it('should fail closed when a selected nested subtree cannot be read', (t) => {
+    const root = mkdir('partially-unreadable');
+    mkdir('partially-unreadable/open');
+    const locked = mkdir('partially-unreadable/locked');
+    writeFile('partially-unreadable/open/visible.ts');
+    writeFile('partially-unreadable/locked/hidden.ts');
+    chmodSync(locked, 0o000);
+    try {
+      try {
+        readdirSync(locked);
+        t.skip('platform/user can still read chmod 000 directories');
+        return;
+      } catch {
+        // Permission denial is enforceable on this platform; exercise the fail-closed path.
+      }
+      const result = mod.resolveTargets([root]);
+      assert.deepStrictEqual(result.files, [abs('partially-unreadable/open/visible.ts')]);
+      assert.strictEqual(result.errors.length, 1);
+      assert.strictEqual(result.errors[0]?.code, ERR_CLI_LINT_READ_FAILED);
+      assert.strictEqual(result.errors[0]?.file, locked);
+    } finally {
+      chmodSync(locked, 0o755);
+    }
   });
 
   // ── UT-17: directory only with unsupported extensions ──

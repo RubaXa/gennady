@@ -1,131 +1,70 @@
-<SddReviewLifecycle keywords="review-lifecycle, master, review-state, compress, publish, MR, external-review, git, gh, sdd-review-lifecycle" type="directive" ver="2.2">
+<SddReviewLifecycle keywords="sdd, spec, semantic-review, operator-approval" type="directive" ver="2.3">
   <Mission>
-    Drive a spec from review-state to merged master through EXTERNAL review. Loaded lazily by an authoring
-    flow (scope / infra / interface / module) AFTER it has written the spec in review-state. I do NOT author
-    spec content — the authoring flow did; I run the internal critic, publish the change for review, wait for
-    the operator's verdict, and ONLY on approval compress + merge.
-
-    Git is native `git` + `gh` via bash — no separate VCS client. Per `AX_SPEC_LIFECYCLE`: compress fires
-    only on external-review approval («no comments»), never on internal CLEAN, never on a timer.
+    Establish approval #1 for the complete actual spec set. One fresh independent reviewer judges
+    semantic coherence; the operator approves the reviewed artifacts. Resume uses only durable artifacts.
   </Mission>
+  <BeliefState>
+    Inherited from the loading directive (already in context): ARTIFACT_APPROVAL_FLOW, ARTIFACT_APPROVAL_MARKER, AX_OPERATOR_LANGUAGE, AX_STATELESS_FLOW, AX_TOOL_INVOCATION
 
-  <BeliefState deps="AX_OPERATOR_LANGUAGE, AX_OPERATOR_DIALOGUE_STYLE">
-    Inherited from the loading directive (already in context): AX_SPEC_LIFECYCLE
-
-    <Axiom id="AX_PERMITTED_BASH_COMMANDS">
-      This role's bash commands stay within this list:
-      - **Must run:** `sdd-verify --profile <code|test|full>` — MANDATORY. Runs the fixed gate sequence (format · lint · type-check · test:coverage · yagni, subset by profile) for the WHOLE project — it takes no path arguments, and any extra positional argument is a hard error (`ERR_CLI_SDD_VERIFY_BAD_INVOCATION`), never a silent per-file scope. Runs before §5 commands. **RUN-ALL**: every gate executes regardless of previous failures; failures accumulate. Gate subprocess output is suppressed on success; the CLI prints `ALL PASS` plus one `✅ <gate>` line per passing gate. Failed gates dump their command, exit code, and captured output. Failing gate → fix and re-run before EMIT_HANDOFF. Log each passing gate on a separate `ver` line.
-      - **Must run:** verification commands from ticket §5 that match this phase's Rules (per `AX_VERIFICATION_BEFORE_HANDOFF`).
-      - **May run:** `ls <dir>` for targeted recon (NOT `-la` or recursive); `tsc --noEmit` after code changes; `node --test <specific test file>` for test-kind phases; `date -u +%Y-%m-%dT%H:%M:%SZ` for timestamps.
-      - **May run:** `sdd-extract <file> <NAME>` — extract anchored section from ticket/spec.
-      - **May run:** `gennady lint --spec=<module-spec> <paths>` — gennady DBC AST contract lint scoped to THIS phase's own files (closed-world inventory sync + cast safety); the one command in this list that actually accepts paths — use it, not `sdd-verify`, when the goal is "check only my own files".
-
-      Trust the context handed at dispatch — ticket, spec, manifest, diff — as current: it MUST be
-      used as-is, not re-derived through bash. When a step in this directive names a real gap beyond
-      what was handed (new commits since dispatch, a sibling branch, a file's history), `git`/`gh`
-      reads (`status`, `log`, `diff`, `show`, `blame`, `gh pr view`/`diff`) are the legal way to close
-      it. Mutating the repository (`git add`/`commit`/`push`/`rebase`/`reset`, `gh pr create`/`merge`)
-      stays reserved for the step that owns publish/commit.
-
-      Absent such a step, treat `git`/`gh` as off the table: re-deriving handed context costs
-      ~100-300ms per call for zero value, and full project recon / repository mutation belong to the
-      orchestrator or authoring flow, not this role.
-
-      All recon stays inside the project root. A fact that genuinely lives outside it — a global
-      `~/.npmrc`, a system-wide setting, anything outside this checkout — is not a gap this role closes
-      by reading it anyway, read-only or not: no bash command in this list reaches outside the project
-      root, and none should be improvised to. That fact is `H_BLOCKED` per `AX_BLOCKER_ESCALATION` with
-      the specific question named — the operator is the channel for what the sandbox cannot see, not a
-      last resort after trying anyway.
-
-      **Temp files stay under `.claude/tmp/`, nowhere else.** Any scratch or trial file this role
-      needs — a throwaway script, an intermediate probe output — is created ONLY under `.claude/tmp/`
-      inside the project root: create the directory when it does not yet exist, and remove what was
-      created once it stops being needed (shared, reused across roles and other purposes — not
-      this phase's private space to leave dirty). The system `/tmp`, `$TMPDIR`, and the repository
-      root are closed for this: a root-level scratch file pollutes the diff and gets caught by the
-      same inventory/lint gates meant for real `Target Files`, and `/tmp`/`$TMPDIR` sit outside the
-      checkout this role's recon is scoped to above.
-
-      **Forbidden:** `npm run lint` alone (overkill — use `sdd verify` or `tsc --noEmit` for narrower checks); `npm run format`; `prettier` directly; any recursive or project-wide file scan; any command that reads unrelated files for «context».
-
-      **Canonical-gate exception:** a ticket §5 command — `npm run format` included — that this phase
-      is required to run verbatim (`AX_VERIFICATION_BEFORE_HANDOFF`: its `Required by` rules overlap
-      this phase's `Rules`) is exempt from the Forbidden list above; the canon overrides the generic
-      ban. The ban still stands for any use OUTSIDE that §5 obligation — a self-initiated `npm run
-      format` or direct `prettier` call, not named in §5 or whose `Required by` does not match this
-      phase, stays forbidden. This exception does not relax `AX_VERIFICATION_BEFORE_HANDOFF`'s error-ownership
-      rule: if the §5 command reformats or fails on files outside this phase's Target Files, that is
-      `BLOCKER_FORMAT` with a remediation proposal, per the phase-execution protocol — never a mandate
-      to format another phase's files just because the canonical command touched them.
+    <Axiom id="AX_OPERATOR_AGREEMENT">
+      Every fix must be operator-approved before execution. The plan is shown as a table.
+      No edits are made before explicit operator "yes" / "go" / "ok".
+      Operator may edit the plan (remove items, change classification, add notes).
     </Axiom>
   </BeliefState>
-
-  <HaltConditions>
-    | 🛑 ID | Trigger |
-    |---|---|
-    | `H_AWAITING_EXTERNAL_REVIEW` | Change published — session waits for the operator's verdict (feedback or «no comments»). A PAUSE, not a failure. |
-    | `H_DIRTY_TREE_NOT_THIS_CHANGE` | The git working tree carries changes unrelated to this spec change — operator resolves before publish |
-  </HaltConditions>
-
+  <Contracts>
+  </Contracts>
   <ExecutionPlan>
-    <Step id="STEP_1_INTERNAL_CRITIC">
-      <Goal>Internal review until CLEAN — necessary, not sufficient.</Goal>
+    <Step id="STEP_1_FREEZE_TARGET">
+      <Goal>Identify the complete spec set whose meaning is being approved.</Goal>
       <Action>
-        Dispatch the critic (isolated), on a worker-tier model (`AX_CRITIC_MODEL_TIER`), on the review-state spec — `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/critic.directive.xml")`
-        (product / design lenses: completeness · implementation-autonomy · understanding · product-value). Apply
-        its findings in place (still review-state — manifest + `✚`/`~`); loop until CLEAN.
+        Use actual spec paths and their current content. Set approval #1 to `pending` in every member
+        of the reviewed set. Include every changed parent, child, interface,
+        infrastructure, or dependent spec needed to judge consistency. Do not review a prose plan or
+        a subset that hides cross-spec effects. Per `AX_STATELESS_FLOW`, this durable set is the whole
+        review state. Run the owning structural/integrity checks first.
       </Action>
     </Step>
-    <Step id="STEP_2_PUBLISH">
-      <Goal>Publish the change for external review.</Goal>
+    <Step id="STEP_2_INDEPENDENT_REVIEW">
+      <Goal>Obtain one semantic judgment independent from the author.</Goal>
       <Action>
-        Verify the working tree carries ONLY this spec change (`git status`; else `H_DIRTY_TREE_NOT_THIS_CHANGE`).
-        Commit the review-state spec on the working branch (`git add <spec>` → `git commit`), `git push`, open the
-        MR/PR (`gh pr create`) and capture its link — all via bash within `AX_PERMITTED_BASH_COMMANDS`. Present the MR link to the operator — the diff reads as a PR
-        (Change Manifest + `✚`/`~` marks make the delta legible).
-      </Action>
-    </Step>
-    <Step id="STEP_3_AWAIT">
-      <Goal>Wait for the external verdict.</Goal>
-      <Action>`H_AWAITING_EXTERNAL_REVIEW` — pause. The operator reviews the MR and returns with feedback or «no comments».</Action>
-    </Step>
-    <Step id="STEP_4_ON_RESUME">
-      <Goal>Branch on the verdict.</Goal>
-      <Action>
-        Feedback → apply edits in place (update the manifest + marks), `git push`, back to STEP_1 (re-critic →
-        re-publish → await again). «no comments» (approved) → STEP_5.
-      </Action>
-    </Step>
-    <Step id="STEP_5_COMPRESS">
-      <Goal>Compress to master and merge.</Goal>
-      <Action>
-        Compress per `AX_SPEC_LIFECYCLE`: remove the `CHANGE_MANIFEST` whole, strip the `✚`/`~` marks (lines stay),
-        resolve any ID collisions in one commit, `pivot` → mark superseded decisions.
+        Dispatch one fresh reviewer with the exact bounded spec set. The reviewer reads but never
+        edits. It checks requirements, negative/failure behavior, interfaces, dependencies,
+        invariants, verification strategy, contradictions, and missing decisions. It returns
+        `CLEAN` or at most five evidence-backed findings naming file and anchor. The reviewer reads
+        only the exact target specs plus the operator brief supplied in its prompt; it does not read
+        flow directives, examples, repository history, source code, or search the repository. It
+        performs one semantic pass and returns the verdict without restating the route or narrating
+        its internal analysis.
 
-        Decision Log semantic compression — the «Verdict → compress meaning» step, mandatory, runs over
-        the spec's ENTIRE Decision Log (entries from before this change AND ones this change added, not
-        only the new ones): classify every entry against `AX_DECISION_LOG_NON_OBVIOUS`'s test («could a
-        future agent re-derive this from the spec's own tables/prose alone?»). Three outcomes, applied
-        in the same commit as the rest of the compression: (a) **dissolve into the spec** — the entry is
-        obvious/derivable (a tool pick the Tool Stack table already states, etc.); fold its substance into
-        the section it belongs to if that section doesn't already carry it, then delete the DL entry; (b)
-        **keep as DL** — a genuine compromise, rejected alternative, accepted risk, or rule exception the
-        spec's tables/prose don't otherwise carry; leave it, unchanged; (c) **merge duplicates** — two or
-        more entries reaching the same conclusion collapse into the surviving `D-NNN`, per
-        `AX_PIVOT_REQUIRES_SUPERSESSION` when one supersedes another. Report the tally in the compression
-        summary shown to the operator: `Decision Log: <N> растворено, <M> оставлено, <K> слито`.
-
-        `git commit` → `gh pr merge`. Then `sdd-check` on the spec MUST be clean of `SDD_REVIEW_STATE_STUCK` /
-        `SDD_REVIEW_INCONSISTENT` (no manifest or marks remain). The spec is now master; return to the
-        authoring flow's downstream handoff.
+        The author may mentally inspect its own work before this dispatch, but that does not count as
+        independent review. Do not serialize a plan into JSON, retain the reviewer, or create
+        multi-round critic bookkeeping.
+      </Action>
+    </Step>
+    <Step id="STEP_3_RECONCILE">
+      <Goal>Make the proposed specs match accepted review conclusions.</Goal>
+      <Action>
+        For each finding, either correct the owning spec or present a concrete disagreement to the
+        operator. Run structural checks after edits. Any semantic edit resets the applicable approval
+        markers to `pending` and therefore requires one fresh STEP_2 review of the new complete
+        target. Give that reviewer the prior findings and corrected target; it verifies those fixes
+        plus one contradiction sweep, then returns `CLEAN` or at most five remaining findings. This
+        is a new bounded verification, not continuation of a reviewer session and not a reason to
+        reload unrelated artifacts.
+      </Action>
+    </Step>
+    <Step id="STEP_4_OPERATOR_APPROVAL_1">
+      <Goal>Ask the operator to approve the reviewed specifications.</Goal>
+      <Action>
+        Present a compact decision card: exact spec paths, key requirements and negative scenarios,
+        dependencies/interfaces, verification promises, independent verdict, and accepted risks.
+        Ask `Approve specs` or `Return for correction` per `AX_OPERATOR_AGREEMENT`. On approval, update the human-readable
+        approval #1 Decision Log markers exactly as `ARTIFACT_APPROVAL_MARKER` defines. Record durable
+        product/architecture decisions in the same specs; do not record workflow state outside those
+        artifacts. A new session checks marker shape mechanically and uses Git evidence plus semantic
+        judgment to detect staleness; it never computes a fingerprint.
       </Action>
     </Step>
   </ExecutionPlan>
-
-  <HardForbidden>
-    - Compressing on internal-critic CLEAN — compress waits for external approval (`AX_SPEC_LIFECYCLE`).
-    - Authoring spec content — the loading flow owns that; I only run critic / publish / compress.
-    - Merging with the `CHANGE_MANIFEST` or `✚`/`~` marks still present — that is stuck review-state.
-  </HardForbidden>
 </SddReviewLifecycle>

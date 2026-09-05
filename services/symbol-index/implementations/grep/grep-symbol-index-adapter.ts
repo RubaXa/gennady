@@ -2,7 +2,13 @@
 // @consumers: yagni.cmd (composition root)
 // @tasks: N/A
 
-import type { DeclaredSymbol, ReferenceCount, SymbolIndex } from '../../symbol-index.types.ts';
+import { extname } from 'node:path';
+import type {
+  DeclaredSymbol,
+  ReferenceCount,
+  SymbolIndex,
+  SymbolVisibility,
+} from '../../symbol-index.types.ts';
 
 // Best-effort top-level declaration patterns across common languages — approximate by
 // construction: no grammar, so nested/shadowed declarations, scoping, and language-specific edge
@@ -24,6 +30,19 @@ function lineAt(content: string, index: number): number {
   return line;
 }
 
+/** @purpose Language policy seam for visibility that does not belong in the YAGNI command. */
+type VisibilityPolicy = (name: string) => SymbolVisibility;
+
+const VISIBILITY_POLICIES = new Map<string, VisibilityPolicy>([
+  // Go exports top-level identifiers whose first Unicode code point is an uppercase letter.
+  ['.go', (name) => (/^\p{Lu}/u.test(name) ? 'public' : 'private')],
+]);
+
+/** @purpose Resolve visibility only when this fallback has an explicit language policy. */
+function declarationVisibility(filePath: string, name: string): SymbolVisibility {
+  return VISIBILITY_POLICIES.get(extname(filePath).toLowerCase())?.(name) ?? 'unknown';
+}
+
 /**
  * @purpose Approximate SymbolIndex — best-effort regex declarations, word-boundary reference count.
  *   Always `precision: 'approximate'`: matches inside comments/strings, no scope resolution.
@@ -31,7 +50,7 @@ function lineAt(content: string, index: number): number {
  */
 export class GrepSymbolIndexAdapter implements SymbolIndex {
   /** @see {SymbolIndex#declaredSymbols} in ../../symbol-index.types.ts */
-  async declaredSymbols(_filePath: string, content: string): Promise<DeclaredSymbol[]> {
+  async declaredSymbols(filePath: string, content: string): Promise<DeclaredSymbol[]> {
     const seen = new Map<string, number>();
     for (const pattern of DECLARATION_PATTERNS) {
       const re = new RegExp(pattern.source, pattern.flags);
@@ -45,14 +64,39 @@ export class GrepSymbolIndexAdapter implements SymbolIndex {
       name,
       kind: 'approximate-declaration',
       line,
+      visibility: declarationVisibility(filePath, name),
     }));
   }
 
   /** @see {SymbolIndex#countReferences} in ../../symbol-index.types.ts */
   async countReferences(name: string, _filePath: string, content: string): Promise<ReferenceCount> {
-    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const re = new RegExp(`\\b${escaped}\\b`, 'g');
-    const count = [...content.matchAll(re)].length;
-    return { count, precision: 'approximate' };
+    return (
+      (await this.countReferencesMany(new Set([name]), _filePath, content)).get(name) ?? {
+        count: 0,
+        precision: 'approximate',
+      }
+    );
+  }
+
+  /**
+   * @see {SymbolIndex#countReferencesMany} in ../../symbol-index.types.ts
+   * @remarks Applies the legacy word-boundary regex per name, preserving punctuation behavior
+   *   after the corpus owner reads the file once.
+   */
+  async countReferencesMany(
+    names: ReadonlySet<string>,
+    _filePath: string,
+    content: string
+  ): Promise<Map<string, ReferenceCount>> {
+    const counts = new Map<string, ReferenceCount>();
+    for (const name of names) {
+      const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const re = new RegExp(`\\b${escaped}\\b`, 'g');
+      counts.set(name, {
+        count: [...content.matchAll(re)].length,
+        precision: 'approximate',
+      });
+    }
+    return counts;
   }
 }

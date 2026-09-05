@@ -18,8 +18,8 @@
     bundler, ci, monorepo-tool, docs.
   </Mission>
 
-  <BeliefState deps="AX_OPERATOR_LANGUAGE, AX_OPERATOR_DIALOGUE_STYLE, AX_DIALOGUE_DISCIPLINE, AX_OPERATOR_SAFEGUARD, AX_NO_PROCESS_NARRATION, AX_STATELESS_ARTIFACT, AX_SCALE_PROPORTIONAL_DEPTH">
-    Inherited from the loading directive (already in context): AX_DIVERGE_BEFORE_RECOMMEND, AX_PROGRESSIVE_DISCLOSURE, MESSAGE_LAYOUT, QUESTION_RULE_SLIM
+  <BeliefState deps="AX_OPERATOR_LANGUAGE, AX_TOOL_INVOCATION, AX_OPERATOR_DIALOGUE_STYLE, AX_DIALOGUE_DISCIPLINE, AX_OPERATOR_SAFEGUARD, AX_NO_PROCESS_NARRATION, AX_STATELESS_ARTIFACT, AX_SCALE_PROPORTIONAL_DEPTH">
+    Inherited from the loading directive (already in context): ARTIFACT_APPROVAL_MARKER, AX_DIVERGE_BEFORE_RECOMMEND, AX_TOOL_INVOCATION, QUESTION_RULE_SLIM
 
     <Axiom id="AX_DIRECTIVE_MODE">
       Each directive runs in one of several modes, auto-detected from operator intake. Mode controls
@@ -40,17 +40,27 @@
     <Axiom id="AX_LIVING_SPEC">
       The scope spec is a living document. In `refine` mode any section may be updated in place. There is no frozen 7 Handoff — the Handoff section evolves as modules are added.
 
-      `pivot` uses Decision Log supersession: the old entry → `status: superseded`, body preserved; the new entry carries `Supersedes: D-NNN` and `Was → Now`. The spec body is rewritten in place; git history is the full predecessor.
+      `pivot` uses one-line Decision Log supersession: preserve the old entry; append a new
+      `<ACR>-DL-N` entry whose parenthetical carries the old→new delta, `supersedes: <prior-id>`, and
+      the pre-rework git ref. The spec body is rewritten in place; git history is the full predecessor.
     </Axiom>
 
     <Axiom id="AX_SPEC_LIFECYCLE">
-      A spec lives in two states. **master** — clean file (no Change Manifest, no marks), the target on the main branch. **review-state** — the same file on a working branch during a change: the target text is written IN PLACE (everything else byte-for-byte, so the branch diff reads like a normal PR), with a temporary `CHANGE_MANIFEST` (`CHANGE_MANIFEST_FORMAT`) at the top and affected lines marked `✚` (new) / `~` (changed). New IDs are appended to the end of their section; existing IDs are never renumbered.
+      A V2 specification has one durable format. Greenfield authoring creates that format directly;
+      refine/pivot edits it in place. Git diff shows changes for semantic judgment. Temporary Change Manifest,
+      per-line review marks, Critic Rounds, publication state, and migration between V2 subformats are
+      not part of the specification.
 
-      `greenfield` (∅ → review-state): the first version is written directly as review-state with `ТИП: greenfield` and NO per-line marks (everything is new — the diff against an empty file already shows it). `refine` / `pivot` edit an existing master in place WITH marks.
+      Before approval #1, run structural checks and one fresh independent semantic review of the
+      complete target set. Resolve findings in the owning specs. Any semantic edit invalidates the old
+      verdict, resets the human-readable approval marker to pending, and requires a fresh bounded review.
+      The operator then approves the current artifacts and the specs record approval #1 per
+      `ARTIFACT_APPROVAL_MARKER`. Implementation follows only after approval #1. Marker mechanics never
+      use a content hash; the model judges staleness from the artifacts and Git evidence.
 
-      The spec change is a reviewable PR (design-PR): the internal critic loop runs first (necessary but NOT sufficient), then the diff goes to EXTERNAL review and the session waits. **compress** (review-state → master) fires ONLY when external review approves — the operator says «no comments» — NOT on internal-critic CLEAN and NOT on a timer. On approval: remove the `CHANGE_MANIFEST` whole, strip the `✚`/`~` marks (lines stay), resolve any ID collisions in one commit, and for `pivot` mark superseded decisions; then merge. Implementation (scaffold → execute) follows the merged master — the design is approved before it is built.
-
-      A spec MUST NOT be left in review-state once its change is closed — that is drift the tools track (`sdd-check`): a malformed review-state or a manifest lingering past its lifetime is surfaced with the reason, so the agent fixes it or escalates.
+      An editorial correction may use its exact mechanical verifier only when it changes no requirement,
+      behavior, contract, inventory, architecture, dependency, BDD acceptance, risk, or Decision Log
+      meaning. Any such delta is semantic and returns to the lifecycle above.
     </Axiom>
 
     <Axiom id="AX_SPEC_IS_SOLE_SOURCE">
@@ -92,14 +102,19 @@
 
     <Axiom id="AX_DECISION_LOG_REQUIRED">
       Every non-obvious decision → a Decision Log entry in `DECISION_LOG_ENTRY_FORMAT` — one line,
-      the expanded part in parentheses: `D-NNN <date> — <decision> (почему: …; отвергнуто: …;
+      the expanded part in parentheses: `<ACR>-DL-N <date> — <decision> (почему: …; отвергнуто: …;
       риск: …)`; IDs are stable. Non-obvious only (`AX_DECISION_LOG_NON_OBVIOUS`): a pick already
       recorded in the spec's own tables is never duplicated as a DL row. Which decisions qualify
       and which Decision Log receives the entry are specified per directive.
     </Axiom>
 
     <Axiom id="AX_PIVOT_REQUIRES_SUPERSESSION">
-      In `pivot` mode every replaced decision: the old D-NNN → `status: superseded`. The new D-NNN carries `Was → Now` + `Supersedes: D-NNN` + a git ref pointing to the pre-rework state. Pivot Invalidation List enumerates downstream artifacts requiring `refine-module` / reopen — consumed by `audit` via `AX_STALE_AFTER_PIVOT_VERIFICATION`.
+      In `pivot` mode, preserve the prior entry byte-for-byte and append one new one-line
+      `<ACR>-DL-N <date> — <decision> (...)` entry; its parenthetical names the old→new delta,
+      `supersedes: <prior-id>`, and the git ref for the pre-rework state. The prior id may be a legacy
+      `D-N` only when it already existed; never rewrite append-only history just to rename it. Pivot
+      Invalidation List enumerates downstream artifacts requiring `refine-module` / reopen — consumed
+      by `audit` via `AX_STALE_AFTER_PIVOT_VERIFICATION`.
 
       `rewrite` mode is the exception: a pre-production / v0 scope with no production backing, whose old content was scratch that helps nothing going forward. It replaces the spec from a clean slate — NO supersession trail, NO Pivot Invalidation List (nothing downstream to keep coherent; git history is the only record). Use `pivot` (keep the trail) whenever the scope has any production backing or downstream consumers; use `rewrite` only for genuine v0 throwaway. Enforcement: a scope that already has downstream artifacts on disk (module specs or task tickets) is by definition NOT v0 — `rewrite` is forbidden there; halt and use `pivot`.
     </Axiom>
@@ -161,6 +176,12 @@
       `from model memory as of <knowledge date>`. A fact carrying neither is a document defect, not a
       style choice. A repeat question checks existing `specs/**/research/` first — supersede, never
       duplicate.
+
+      Prefer primary evidence: official documentation, repository/release notes, standards, or papers.
+      A secondary comparison may supplement but never solely support a tool/version/API decision. The
+      candidate analysis remains immutable after it is shown. Once the operator decides, update only
+      `FINAL_DISPOSITION`: outcome, the actual spec/Decision Log choice, and its delta from the research
+      recommendation. A later critic change updates the same disposition or marks the document superseded.
     </Axiom>
 
     <Axiom id="AX_BOOTSTRAP_NARROW_READ">
@@ -236,13 +257,14 @@
         not a decision they own. State the confirmed default SCALE inline in the plan text instead
         of a standalone question — `module` for a typical infra scope unless intake signals
         otherwise (`AX_SCALE_PROPORTIONAL_DEPTH`) — and let the operator correct it here or at the
-        next substantive Ask (STEP_2); it never burns a dedicated round. Approval Check. STOP.
+        next substantive Ask (STEP_2); it never burns a dedicated round. If state already resolves
+        every field, proceed without Ask.
       </Action>
     </Step>
     <Step id="STEP_1B_SYSTEM_FIT">
       <Goal>Reconcile with the existing system before tool categories are declared.</Goal>
       <Action>
-        FIRST action this step: run `npx gennady sdd-orient --scope <scope>` (this works even before
+        FIRST action this step: run orientation ToolCall below (this works even before
         `sdd-new` materializes the infra spec)
         and read its output in full: the portal line, the one-hop neighbours with their paths,
         entity/contract NAMES, requirement IDs + titles, the consumers list, and its closing question.
@@ -254,8 +276,7 @@
         (b) If not: which existing infra scope / mechanism the extract names are we EXTENDING instead
         of introducing a parallel pipeline / config / gate?
         (c) Which neighbour specs (paths, from the extract) will need work for this tool stack to fit
-        the system — each becomes its own «СОСЕДИ» line in the eventual `CHANGE_MANIFEST` / Pivot
-        Invalidation List sideways entry?
+        the system — each is recorded in the owning dependency/impact section or Pivot Invalidation List?
         (d) Which neighbour requirements (IDs, from the extract) conflict with the tool categories we
         are about to declare, and how is the conflict resolved?
         "Вводим новое" answers (a)/(b) ONLY together with the specific neighbour invariant/requirement
@@ -264,6 +285,7 @@
         genuinely greenfield project with no neighbours, `sdd-orient` degenerates to its one-line
         "соседей нет" — the checklist still runs, (a) still gets an honest answer, (c)/(d) collapse to
         "н/д"; the step itself is never skipped. STOP.
+        <ToolCall owner="this-step" result="orientation">npx gennady sdd-orient --scope <scope></ToolCall> Inputs <scope>: <scope>=operator-confirmed infrastructure scope retained by this flow. Use orientation.
       </Action>
     </Step>
     <Step id="STEP_2_TOOL_CATEGORIES">
@@ -272,8 +294,8 @@
         Propose a subset from intent per `AX_INFRASTRUCTURE_FLOW`, Facts / Assumptions / Hypotheses
         separated per `AX_EVIDENCE_HYGIENE`.
 
-        Already-approved categories are session input, not a question: a category+tool pair the
-        operator already locked earlier this session — root's `STEP_3_INFRA_BOOTSTRAP` Tool Stack
+        Already-approved categories are current authoring input, not a question: a category+tool pair the
+        operator already locked in root's `STEP_3_INFRA_BOOTSTRAP` Tool Stack
         table, or an earlier round of this very flow — is read from state and shown back as ONE
         reference line, e.g. «уже утверждено: npm, tsc, eslint+prettier, vitest, husky — не
         переспрашиваю», never re-run through research and never re-asked. Only categories still
@@ -292,7 +314,7 @@
 
         <LogicSwitch on="stack typicality">
         - WHEN every still-unlocked proposed category resolves to an already-known registry rule (`ai/directives/knowledge.xml` names a matching `<Rules>` entry for each — no exotic / novel tool named by the operator, no operator request for a detailed pass) -> EXPRESS branch below replaces the full interview for STEP_2/STEP_3
-        - WHEN a still-unlocked category has no registry match, or the operator asked for "подробно" / a detailed pass, or typicality is genuinely unclear -> run the full operator interview — `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/interview-protocol.directive.xml")` — passing scope-type `infrastructure` (selects the TopicCatalog block) and the confirmed `scale:` from the session file: per `AX_SCALE_PROPORTIONAL_DEPTH` `fix` / `function` → base topics + the triage minimum; `product` → the full scope-type block. The interview IS the substance of the step; STEP_3 then runs in full, over the still-unlocked categories only. Uncertain typicality defaults to THIS branch — never a silent EXPRESS guess.
+        - WHEN a still-unlocked category has no registry match, or the operator asked for "подробно" / a detailed pass, or typicality is genuinely unclear -> run the full operator interview — `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/interview-protocol.directive.xml")` — passing scope-type `infrastructure` and the SCALE confirmed for this invocation: per `AX_SCALE_PROPORTIONAL_DEPTH` `fix` / `function` → base topics + the triage minimum; `product` → the full scope-type block. The interview IS the substance of the step; STEP_3 then runs in full, over the still-unlocked categories only. Uncertain typicality defaults to THIS branch — never a silent EXPRESS guess.
         </LogicSwitch>
 
         If every category is already locked (the reference line above covers the whole set), STEP_2
@@ -301,24 +323,26 @@
         EXPRESS branch (typical stack): run the STEP_3 research gate now, for every still-unlocked
         category at once (2–3 targeted WebSearch queries per category — alive/current, AI-agent
         friendliness for the current year). Per `AX_RESEARCH_PERSISTED`, before the candidates table
-        below is shown, persist the findings — `npx gennady sdd-new research --scope <scope> --slug
-        <slug>`, filled (STATUS/PROBLEM/CRITERIA/OPTIONS/DECISION/CONSEQUENCES/EVIDENCE/RELATED), one
+        below is shown, persist the findings with researchManifest ToolCall below, filled
+        (STATUS/PROBLEM/CRITERIA/OPTIONS/DECISION/CONSEQUENCES/EVIDENCE/RELATED), one
         document per category or one covering the batch. Then present ONE batch Ask — a single
         candidates table, one row per still-unlocked category (an already-locked category never gets
         a row — it already had its reference line above), each row naming the recommended tool + a
         one-line rationale from the research (not recall) + a currency note, per
         `AX_DIVERGE_BEFORE_RECOMMEND`, plus a link to the research document backing it. The operator
-        confirms the whole table or names deviations in ONE reply. A SECOND Ask closes the round:
-        confirms any deviation the
-        first reply raised, plus the Tool Interaction Check (linter vs formatter, runner vs
-        type-check, CI vs package manager). Two Asks total replace the per-category STEP_2 / STEP_3
+        confirms the whole table or names deviations in ONE reply. Include the Tool Interaction
+        Check (linter vs formatter, runner vs type-check, CI vs package manager) in this first batch.
+        A deviation opens a follow-up only when its consequences create a new unresolved interaction;
+        otherwise apply it directly. One Ask normally replaces the per-category STEP_2 / STEP_3
         interview cycle — Mandatory Rationale Pull → Decision Log entry per `AX_DECISION_LOG_REQUIRED`
         still applies per tool (`H_TOOL_LOCKED_WITHOUT_DECISION`), its RELATED citing the research
         document in parentheses: the compression is in the NUMBER of
         operator round-trips, never in the Decision Log discipline. For any locked tool that is a
         GATE tool, the same Integration Detail concreteness bar as STEP_3 applies — no exemption for
         having taken the fast path. STEP_3 is done once this closes —
-        proceed to STEP_4. Approval Check. STOP.
+        proceed to STEP_4. STOP only when that Ask was needed.
+        Inputs <scope>, <slug>: this STEP_2 category context.
+        <ToolCall owner="this-step" result="researchManifest">npx gennady sdd-new research --scope <scope> --slug <slug></ToolCall> Use researchManifest.
       </Action>
     </Step>
     <Step id="STEP_3_TOOL_CHOICES">
@@ -331,7 +355,7 @@
         operator locked in root's bootstrap or an earlier round, and none of those get a row, research,
         or an Ask here. Research gate before candidates — applies to still-unlocked categories being
         picked NOW (`greenfield`, or `refine`/`pivot` touching a category not already locked in the
-        spec); skip it also for a `fix`/`module`-scale session where the category is already locked in
+        spec); skip it also for a `fix`/`module`-scale request where the category is already locked in
         the existing infra spec, per `AX_SCALE_PROPORTIONAL_DEPTH` — no revisit, no research. In every
         case, reopening a locked category requires a concrete conflict discovery surfaced, raised as its
         own named-reason question, never a silent re-confirm. Where it applies: run 2–3
@@ -339,7 +363,7 @@
         (not abandoned / superseded), and how it compares on AI-agent friendliness for the current year
         (text-configurable, autofix, machine-readable diagnostics) — before drafting candidates from
         memory. Per `AX_RESEARCH_PERSISTED`, before candidates are presented, persist the findings —
-        `npx gennady sdd-new research --scope <scope> --slug <slug>`, filled
+        researchManifest ToolCall below, filled
         (STATUS/PROBLEM/CRITERIA/OPTIONS/DECISION/CONSEQUENCES/EVIDENCE/RELATED). Then per category,
         2–3 candidates with trade-offs per `AX_DIVERGE_BEFORE_RECOMMEND`
         (reach past the obvious default; judge against THIS project); for each candidate presented,
@@ -368,6 +392,7 @@
         document in parentheses; no tool locked without one
         (`H_TOOL_LOCKED_WITHOUT_DECISION`). Tool Interaction Check (linter vs formatter, runner vs
         type-check, CI vs package manager). STOP.
+        <ToolCall owner="this-step" result="researchManifest">npx gennady sdd-new research --scope <scope> --slug <slug></ToolCall> Inputs <scope>, <slug>: <scope>=operator-confirmed infrastructure scope; <slug>=short restricted slug for this STEP_3 tool comparison. Use researchManifest.
       </Action>
     </Step>
     <Step id="STEP_4_DEV_WORKFLOW">
@@ -401,30 +426,45 @@
         (narrow read for inventory only, per `AX_BOOTSTRAP_NARROW_READ` and `AX_SPEC_IS_SOLE_SOURCE` —
         design stays sourced from specs); resolve with the operator; record confirmed cross-scope
         assumptions as `depends-on` edges per `AX_CROSS_SCOPE_DEPENDENCIES`;
-        materialize the Bootstrap Requirements table. Empty only if explicit «nothing to bootstrap»,
-        else `H_BOOTSTRAP_REQUIREMENTS_MISSING`.
+        materialize the canonical six-column Bootstrap Requirements table. Every task-owned `package`
+        row names exact `package.json, package-lock.json` Gate Artifacts. The infrastructure scope that
+        first installs dependencies must own Node/npm runtime artifacts (`.nvmrc`, Node fields in
+        `package.json`, `.npmrc`) before that install. For project-readiness work, record exact
+        `Readiness Gates` and repo-relative `Gate Artifacts`; use `—` for non-readiness rows. Empty
+        only if explicit «nothing to bootstrap», else `H_BOOTSTRAP_REQUIREMENTS_MISSING`.
       </Action>
     </Step>
     <Step id="STEP_7_FINAL_SPEC">
       <Goal>Emit the infrastructure spec.</Goal>
       <Action>
         In `greenfield`/`rewrite` mode, when `specs/<scope>/<scope>.spec.md` does not exist yet,
-        create its skeleton via `sdd-new infrastructure --scope <scope>` — it never overwrites and
+        create its skeleton via infrastructureManifest ToolCall below — it never overwrites and
         prints the section manifest (which sections are REQUIRED and what to fill); in
-        `refine`/`pivot` mode the file already exists, edit it in place, skip `sdd-new`. Editing in
-        place means a targeted `Edit` per changed passage — never a bulk regex/`perl -0pi` pass over
-        the spec text. For SDD_LANGUAGE_CALQUE findings, `sdd-check` prints the exact location
-        (`file:line`) and the whole enclosing sentence for each calque — rewrite EVERY such sentence
-        in full with its own targeted `Edit`, preserving meaning; swapping the single flagged word
-        often breaks agreement/case, so rewrite the sentence, not the word. Content guidance per
+        `refine`/`pivot` mode the file already exists: read it in full and skip `sdd-new`. In every
+        authoring mode compose the COMPLETE target document in memory, then replace the file with
+        exactly ONE whole-file `Write`. `Edit`, `Patch`, regex rewrites, and per-section writes are
+        forbidden. Retain SECTION markers and replace every skeleton guidance comment; none may
+        survive. For SDD_LANGUAGE_CALQUE findings, rewrite the whole enclosing sentence while
+        composing that one replacement, never as a later point edit. Content guidance per
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/infrastructure-spec-structure.xml")`.
         Before writing, run the self-check pass per
-        `AX_ARTIFACT_STYLE_SELF_CHECK`. In `refine` mode update sections in place per
+        `AX_ARTIFACT_STYLE_SELF_CHECK`. Close with the declared integrity check per
+        `AX_CLOSE_WITH_INTEGRITY_CHECK`. In `refine` mode update sections in place per
         `AX_LIVING_SPEC`. In `pivot` mode also
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/pivot-formats.xml")`
-        (`AX_PIVOT_REQUIRES_SUPERSESSION`); in `rewrite` mode write fresh — no supersession, no invalidation list. For a brand-new scope, append the `🚧 (awaiting root sync)` placeholder row to the portal Scopes table per `AX_PORTAL_READ_ONLY_WITH_PLACEHOLDER_EXCEPTION` — every other portal edit belongs to the root flow. Write in review-state per `AX_SPEC_LIFECYCLE` — prepend a `CHANGE_MANIFEST` (`READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/change-manifest.xml")`) and mark changed lines `✚`/`~` (greenfield → manifest only, no per-line marks) — its «СОСЕДИ» block carries the (c)/(d) answers `STEP_1B_SYSTEM_FIT` recorded, never left empty by omission; compress folds it to master downstream after the change ships. Then close with the integrity check per `AX_CLOSE_WITH_INTEGRITY_CHECK`: run `sdd-check --all specs/<scope>` (anchor balance + required sections + links) and resolve any finding.
+        (`AX_PIVOT_REQUIRES_SUPERSESSION`); in `rewrite` mode write fresh — no supersession, no
+        invalidation list. For a brand-new scope, append the `🚧 (awaiting root sync)` placeholder row
+        to the portal Scopes table per `AX_PORTAL_READ_ONLY_WITH_PLACEHOLDER_EXCEPTION`; every other
+        portal edit belongs to root. Write the ordinary V2 spec directly per `AX_SPEC_LIFECYCLE`.
+        Git diff carries the review delta; record affected neighbours in owning dependency/impact
+        fields, never a temporary manifest. During authoring run the exact `fix-command` recorded in
+        §Verification Commands once; its output becomes the input tree for the read-only gate. Then
+        run integrityCheck and use its findings as the remaining fix list. CI and approval never
+        invoke `fix-command`.
 
-        **Pre-critic checklist** — the critic is not the first line of defense on mechanics; run this
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/preflight-protocol.directive.xml")` and run
+        only the domain checklists whose triggers match the chosen stack. The critic is not the first
+        line of defense on mechanics; then run this
         self-check before dispatching it, catch here what four MAJOR rounds otherwise catch late:
         (a) Prerequisites completeness — every chosen tool's own plugins/loaders are named (a parser
         for `.ts`, a loader for the TS config), not just the tool itself; (b) internal consistency —
@@ -434,15 +474,24 @@
         and Verification Commands has a recorded Decision Log entry — no dangling "we'll figure this
         out" left implicit.
 
-        Git recon before publish is ONE combined call — `git status --porcelain -uno && git --no-pager diff --stat` —
-        never a sequence of separate `status` / `diff` / `log` invocations for the same check. Then
-        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/review-lifecycle.directive.xml")` — internal critic → publish (MR) → external review → compress + merge on approval. After the spec merges to master, render the continuity menu per `NEXT_STEP_MENU_FORMAT`:
-        recommended — «Продолжить спеки: discovery `<next scope per the Scope Graph>`»; the
-        scaffold option reads «Разбить готовые спеки на задачи (scaffold) — механическая нарезка
-        УТВЕРЖДЁННЫХ спек в тикеты; рекомендуется после того, как готовы ВСЕ спеки», never
-        «scaffold infra-base = материализовать конфиги» — materializing configs is execute's job
-        (writing code against a ticket), not scaffold's (which only decomposes specs into tickets).
-        Approval Check. STOP.
+        Publication context and VCS cleanliness are owned entirely by the review lifecycle; do not run
+        a pre-lifecycle `git status` / `git diff` probe here (it duplicates that owner and can hide
+        untracked publication files). `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/review-lifecycle.directive.xml")`
+        — structural check → one fresh independent semantic review → correction → operator approval
+        #1 of the exact actual bytes. The approval question stops normally while awaiting the answer;
+        no session state or publication state machine is required.
+
+        After the spec merges to master, render one continuity menu per `NEXT_STEP_MENU_FORMAT`. When
+        another scope in the Scope Graph still lacks a spec, recommend «Продолжить спеки: discovery
+        `<next scope per the Scope Graph>`»; selection returns to the router with that scope, which
+        loads its owner from current artifacts. When all
+        specs exist, the chained option is «Разбить готовые спеки на задачи (scaffold) — механическая
+        нарезка УТВЕРЖДЁННЫХ спек в тикеты; рекомендуется после того, как готовы ВСЕ спеки»; selection
+        returns `continue` to the router with forced intent `scaffold`. Never describe scaffold as
+        materializing configs — execute does that against a ticket. A pause selection prints the exact
+        next scope/skill; durable artifacts preserve context. When no work remains, report completion.
+        <ToolCall owner="this-step" result="infrastructureManifest">npx gennady sdd-new infrastructure --scope <scope></ToolCall> Use infrastructureManifest.
+        <ToolCall owner="this-step" result="integrityCheck">npx gennady sdd-check --all specs/<scope></ToolCall> Use integrityCheck.
       </Action>
     </Step>
   </ExecutionPlan>
@@ -456,6 +505,54 @@
     `BREADCRUMB_FORMAT`): Tool Categories · Tool Choices · Dev Workflow · File Structure · Spec.
     The step currently running ALWAYS carries `👷` — never a row of bare `◻️` with no active
     marker; a milestone is `✅` only once its STOP has been passed.
+
+    <Contract id="MESSAGE_LAYOUT">
+      A step-boundary / decision message (the decision card) is sectioned with markdown headers, in
+      this order. Skip any section empty for this step. During free dialogue inside a step the agent
+      does NOT print this layout — it just talks.
+
+      `<dim service line>`        — internal anchor + scope + mode + confidence (supplied by the branch)
+
+      `<breadcrumb>`              — per `BREADCRUMB_FORMAT`, its OWN paragraph (a blank line above it,
+      not just a `\n`) — markdown collapses a single newline into a space, so without the blank line
+      the breadcrumb visually fuses onto the service line
+
+      ## `<glyph>` `<scope>` — одной фразой, что делаем
+
+      ### 🤔 Как я понял задачу    — an italic blockquote (`> _…_`), 2–3 sentences max: the task retold
+      in the agent's own words plus the single riskiest assumption, linked by wording to the question
+      that resolves it; never a restate of already-settled content — only what is NEW or could be
+      misread (goes at the TOP)
+      ### 🎯 Главное решение       — the crux in plain words; if the decision is a flow (data moving,
+      state transitions, start/stop conditions), add a small ASCII diagram — the one place a fenced
+      block is allowed in this message, at most one per message
+      ### 💡 <О чём решаем>         — per `QUESTION_RULE_SLIM` (full format with worked examples lives in
+      `QUESTION_FORMAT`, in the interview / vision directives)
+      ### ↓ Детали — по желанию    — reasoning, full comparison, change-list (per `AX_PROGRESSIVE_DISCLOSURE`)
+
+      Glyph dictionary — closed inventory, one assigned meaning each, never a free pick. Every glyph
+      here is chosen to read clearly on BOTH a light and a dark terminal/chat theme — half-tone shading
+      characters (`░ ▒ ▓` and similar) are forbidden anywhere in this layout: they render as near-invisible
+      or vanish outright depending on theme.
+
+      Section-header glyphs (fixed, one per header, in the order above):
+      - `🤔` — the agent's own understanding check, at the top of a decision card
+      - `🎯` — the crux decision, in plain words
+      - `💡` — a decision the agent is proposing for the operator to confirm or pick between
+      - `↓` — folded detail, expand on demand
+
+      Step-TYPE glyphs (fixed, keyed by the step's TYPE, used in the service line / breadcrumb, never a free pick):
+      - `🏗` — creation / scaffold (new spec, new tickets, new files)
+      - `🔍` — audit / review (fresh-eyes read, no write)
+      - `🔧` — fix / reconcile (spec ⟷ code drift repair)
+      - `⚡` — execute (a task ticket's phases running)
+      - `🗺` — routing / overview (intent classification, project-level map)
+
+      Breadcrumb-status glyphs (per `BREADCRUMB_FORMAT`): `✅` done · `👷` active · `◻️` not yet.
+
+      No other emoji appear in message or section headers — the glyphs enumerated above are the only
+      ones this layout permits.
+    </Contract>
 
     <Contract id="BREADCRUMB_FORMAT">
       One line, its own paragraph below the service line — a blank line separates the two (per
@@ -471,34 +568,29 @@
     </Contract>
 
     <Contract id="NEXT_STEP_MENU_FORMAT">
-      Rendered by the CALLING step's final step, after its artifact is written and verified. Shape:
+      Render after the current artifact is written and verified:
 
-      1. One ✅ line — what was produced and what was checked
-         (`✅ Спека <path> записана · язык проверен · <N> диаграмм`).
-      2. `**Что дальше?**` + one `AskUserQuestion` call. Options (2–4) come from the caller's own
-         candidate table; CHAINED options are first-class («декомпозиция + критик следом», «scaffold +
-         сразу execute») — one pick launches the whole chain, the agent runs it without stopping
-         between links unless a link fails. Ordering and content, while ANY scope in the Scope Graph
-         still lacks a spec: the recommended option is ALWAYS «Продолжить спеки: discovery
-         `<следующий скоуп по графу зависимостей>`» (the next unspec'd scope in dependency order),
-         marked «(рекомендую)» — spec authoring stays the priority path while it is incomplete. The
-         scaffold option is included ONLY once no scope remains without a spec, and never marked
-         recommended over an outstanding spec — its description states the rationale plainly:
-         «Разбить готовые спеки на задачи (scaffold) — механическая нарезка утверждённых спек в
-         тикеты DAG; рекомендуется после готовности всех спек». The two are never interleaved as
-         equals: specs demand the operator's sustained attention on judgment calls (vision, scope
-         boundaries, trade-offs); scaffold is mechanical decomposition of what is already approved —
-         surfacing scaffold beside an incomplete spec set invites the operator to jump to the
-         mechanical step before the judgment work is done. «Закончить сессию» is always last; on pick,
-         print a short resume instruction (how to reopen this flow next session — which command/skill,
-         which scope or step to name) and stop; no directive loads.
-      3. On any other pick: invoke the corresponding skill(s) / directive flow(s) directly — never
-         answer with «запусти /sdd-X сам». An internal transition between branches loads its directive in
-         the CURRENT session via `READ_AND_USE_DIRECTIVE` (`DEF_READ_AND_USE_DIRECTIVE`); the skill
-         wrapper (`/sdd-X`) is the operator's own entry point, not the mechanism this step uses to move
-         between branches.
+      1. One concise line names the produced artifact paths and exact checks that passed.
+      2. `**Что дальше?**` with 2–4 concrete options derived from current repository artifacts. While a
+         scope in the dependency graph lacks an approved spec, recommend the next spec. Offer scaffold
+         only when all intended specs have approval #1. Scaffold means creation and validation of actual
+         tickets, not implementation.
+      3. A selected chained option loads its owner directly with exact artifact paths. No hidden session
+         context is transferred; the next owner reconstructs state from specs, tickets, Execution Log,
+         Git, and tool output.
+      4. «Пауза — продолжу позже» prints one short resume instruction containing the next skill and
+         scope/Task-ID. Pause is always safe because durable artifacts are complete enough to resume.
+      5. When no chained work remains, report completion. There is no terminal state token and no
+         session close command.
     </Contract>
 
+    <Axiom id="AX_PROGRESSIVE_DISCLOSURE" cross-cutting="true">
+      Decision first, reasoning on demand. The must-read top of a message is short: where we are + my
+      read + what to decide. Everything heavy — full option comparison, evidence, the change-list,
+      derivations — goes BELOW a `### ↓ Детали — по желанию` header. Never dump reasoning above the
+      questions. Facts already verified collapse to one line («сверился: …»); uncertainties that need
+      the operator BECOME the questions — never list them twice.
+    </Axiom>
   </ChatOutput>
 
   <ArtifactOutput>
@@ -513,7 +605,8 @@
 
       **ID.** `<ACR>-DL-<N>` — spec acronym first, exactly like a Task-ID and like `<ACR>-REQ-<N>`
       (`REQUIREMENT_ENTRY_FORMAT`); `<N>` is sequential within THIS spec only — the acronym gives global
-      uniqueness, not the number. Replaces the old file-local `D-NNN` (unique only inside one file);
+      uniqueness, not the number. This is the only grammar for NEW entries. Existing append-only
+      file-local `D-N` entries remain immutable and resolvable as legacy references; never create another;
       conflicts (a duplicate number inside one spec) are caught mechanically, the same way as for
       `<ACR>-REQ-<N>`.
 

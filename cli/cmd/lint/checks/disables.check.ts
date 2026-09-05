@@ -8,15 +8,15 @@ import {
   ERR_CLI_LINT_DISABLE_MISSING_PURPOSE,
 } from '../lint.types.ts';
 
-/** @purpose Minimum non-whitespace chars of purpose text after stripping marker and D-NNN token. Set to 8 — filters trivial placeholders (`fix`/`todo`/`.`) while accepting real rationales. */
+/** @purpose Minimum non-whitespace chars of purpose text after stripping marker and Decision Log token. Set to 8 — filters trivial placeholders (`fix`/`todo`/`.`) while accepting real rationales. */
 const MIN_PURPOSE_NON_WS_CHARS = 8;
 
 /** @purpose Regex matching one disable marker name (without comment opener). The opener is detected separately via a string-aware state machine. */
 const MARKER_RE =
   /@ts-ignore|@ts-nocheck|@ts-expect-error|eslint-disable(?:-next-line|-line)?(?:-[a-z-]+)?\b/;
 
-/** @purpose Regex matching a Decision Log reference. Case-insensitive on the `D` letter; requires `-` followed by ≥1 digit. */
-const D_REF_RE = /\bd-\d+\b/i;
+/** @purpose Match the active `<ACR>-DL-N` reference while retaining immutable legacy `D-N` citations. */
+const D_REF_RE = /\b(?:[A-Z][A-Z0-9]*-DL-\d+|D-\d+)\b/i;
 
 /**
  * @purpose Find the column where a `//` or `/*` comment opens on the given line, ignoring openers inside string literals.
@@ -46,14 +46,14 @@ function findCommentOpener(line: string): number {
 }
 
 /**
- * @purpose Validates that every TypeScript / linter disable marker in source is accompanied by a Decision Log reference (`D-\d+`) in the same comment line.
+ * @purpose Validates that every TypeScript / linter disable marker in source is accompanied by a Decision Log reference (`<ACR>-DL-N`, or immutable legacy `D-N`) in the same comment line.
  * @implements {DisablesCheck} in specs/cli/lint/lint.spec.md
  * @invariant Marker is counted ONLY when preceded by `//` or `/*` on the same line — string literals containing marker text are not flagged.
- * @invariant `D-\d+` is searched anywhere on the same line as the marker; multi-line block comments are NOT extended (MVP simplification — see lint.spec.md DisablesCheck DbC).
+ * @invariant The Decision Log id is searched anywhere on the same line as the marker; multi-line block comments are NOT extended (MVP simplification — see lint.spec.md DisablesCheck DbC).
  * @invariant Pure function — no I/O, no exceptions. Errors returned in ascending line order.
  * @param content Source text to validate.
  * @param filePath File path for error messages.
- * @returns List of lint errors in line order; empty when every disable carries a `D-\d+` reference or no disables exist.
+ * @returns List of lint errors in line order; empty when every disable carries a Decision Log reference or no disables exist.
  */
 export function check(content: string, filePath: string): LintError[] {
   const lines = content.split('\n');
@@ -81,12 +81,12 @@ export function check(content: string, filePath: string): LintError[] {
         col,
         severity: 'error',
         code: ERR_CLI_LINT_UNAUTHORIZED_DISABLE,
-        message: `Unauthorized disable: \`${marker}\` has no Decision Log reference. Add \`D-NNN\` (e.g., \`D-042\`) in the same comment line pointing to a Decision Log entry that authorizes this disable. Policy: see specs/cli/cli.spec.md#d-007.`,
+        message: `Unauthorized disable: \`${marker}\` has no Decision Log reference. Add \`<ACR>-DL-N\` (e.g., \`CLI-DL-42\`) in the same comment line pointing to a Decision Log entry that authorizes this disable. Policy: see specs/cli/cli.spec.md#d-007.`,
       });
       continue;
     }
 
-    // D-NNN present — verify purpose text length (>= MIN_PURPOSE_NON_WS_CHARS non-whitespace chars after stripping marker + D-NNN from the post-opener segment)
+    // Decision Log id present — verify purpose text length after stripping marker + id.
     const purposeNonWsCount = countPurposeChars(afterOpener, marker, dRefMatch[0]);
     if (purposeNonWsCount < MIN_PURPOSE_NON_WS_CHARS) {
       errors.push({
@@ -95,7 +95,7 @@ export function check(content: string, filePath: string): LintError[] {
         col,
         severity: 'error',
         code: ERR_CLI_LINT_DISABLE_MISSING_PURPOSE,
-        message: `Disable lacks purpose: \`${marker}\` cites \`${dRefMatch[0]}\` but the explanation is too short (${purposeNonWsCount} non-whitespace chars; need ≥ ${MIN_PURPOSE_NON_WS_CHARS}). Add a purpose after the D-NNN reference, e.g., \`${marker}: ${dRefMatch[0]} — <why this disable is necessary>\`. Policy: see specs/cli/cli.spec.md#d-007.`,
+        message: `Disable lacks purpose: \`${marker}\` cites \`${dRefMatch[0]}\` but the explanation is too short (${purposeNonWsCount} non-whitespace chars; need ≥ ${MIN_PURPOSE_NON_WS_CHARS}). Add a purpose after the Decision Log reference, e.g., \`${marker}: ${dRefMatch[0]} — <why this disable is necessary>\`. Policy: see specs/cli/cli.spec.md#d-007.`,
       });
     }
   }
@@ -104,12 +104,12 @@ export function check(content: string, filePath: string): LintError[] {
 }
 
 /**
- * @purpose Count non-whitespace characters of purpose text remaining after the marker and the D-NNN token are stripped from the comment segment.
- * @invariant Removes ONE occurrence of marker (first match) and ONE occurrence of D-NNN token (first match) — both required structural tokens, rest is purpose.
+ * @purpose Count non-whitespace characters of purpose text remaining after the marker and Decision Log id are stripped from the comment segment.
+ * @invariant Removes ONE occurrence of marker and ONE Decision Log id; both are required structural tokens, rest is purpose.
  * @invariant Counts non-whitespace chars in residual; does not distinguish punctuation from alphanum (acceptable MVP simplification — `:`/`—`/`--` separators count but realistic purposes always exceed threshold).
  * @param segment Comment content from the opener onwards (`//`-prefixed or `/*`-prefixed text).
  * @param marker The disable marker token found in this segment.
- * @param dRef The D-NNN token found in the source line.
+ * @param dRef The Decision Log token found in the source line.
  * @returns Count of non-whitespace characters in the residual.
  */
 function countPurposeChars(segment: string, marker: string, dRef: string): number {

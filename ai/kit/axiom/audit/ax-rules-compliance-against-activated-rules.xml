@@ -14,7 +14,7 @@
       **Per (artifact ∈ Round diff, rule ∈ union of all phases' Rules):**
       1. Apply rule's `<Triggers>` / `<ActivationHint>` from `knowledge.xml` to decide if the rule governs this artifact. No match → skip pair.
       2. Walk Reward_Criteria, Anti_Patterns, Verification_Hooks, then residual axioms (those not covered by the prior three). Each violation → `RULES_COMPLIANCE_VIOLATION` citing the specific ID (`AX_*` / `AP_*` / `HOOK_*` / Reward_Criteria line verbatim) + `Location: <path>:<line>`.
-      3. Decision Log overrides take precedence — adapted / overridden axiom → suppress finding, record `Override-honored: <D-NNN>`.
+      3. Decision Log overrides take precedence — adapted / overridden axiom → suppress finding, record `Override-honored: <ACR>-DL-N`.
 
       **Improper-skip.** Diff has artifact of a category while Execution Log shows `skip` for that category → `RULES_COMPLIANCE_VIOLATION` tagged `improper-skip` (`MAJOR`).
 

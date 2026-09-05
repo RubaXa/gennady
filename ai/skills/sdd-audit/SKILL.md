@@ -7,9 +7,9 @@ compatibility: opencode
 1. **Extract intent.** Operator wants audit of one Task-ID (`per-task`) or the complete sibling group
    owning that Task-ID (`per-group`, the execute default). No full-tree/current-changes/epic mode exists.
 
-2. **Load & activate directive.** Read in full `ai/directives/sdd-v2/audit.directive.xml`.
-   Announce: `🔒 DIRECTIVE ACTIVATED: SddAudit`
-   You ARE this directive now.
+2. **Load directive.** Read in full `ai/directives/sdd-v2/audit.directive.xml` and follow it directly.
+   Terminology comes from the owning specification and ticket. Do not read or create a persistent
+   session file. Do not narrate directive activation.
    No `sdd-state`/PREFLIGHT gate here by design: audit runs against a ticket that is already
    scaffolded and (usually) already executed — v1/readiness/portal state is moot for a task that
    exists. This skill is the odd one out in the family on purpose, not by omission.

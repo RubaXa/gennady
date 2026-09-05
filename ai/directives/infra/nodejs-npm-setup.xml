@@ -174,7 +174,19 @@
       Add primary scripts to `package.json`. Rules: (a) only add a script if the tool is in `devDependencies`; (b) every primary script MUST be one-shot — exits with code, no watch mode (see AX_AI_FIRST_SCRIPTS_ONE_SHOT). Watch variants live in separate `:watch`/`:dev` scripts. Conventional names: `build`, `test`, `lint`, `format`, `type-check`, `clean`.
     </Step>
     <Step id="STEP_7_COMPOSE_CHECK_SCRIPT">
-      Add `check` script to `package.json` — the single quality entry point called by all task tickets. Compose it from the `<CheckPhase>` values of every active rule in this scope, ordered by `CheckPhaseOrder` from `ai/directives/knowledge.xml` (typecheck → test → lint → format). Include only phases with at least one active rule. All sub-commands must be one-shot. Declare `check-command → npm run check` in infra-spec §Verification Commands.
+      Declare the eight mandatory script bricks (only among tools actually in the stack): `type-check`,
+      `test`, `test:coverage`, `format`, `lint` (read-only, `lint` reaching `gennady`), plus
+      `format:fix`, `lint:fix` — each MUST declare a target-forwarding command prefix whose final token
+      is its tool's write switch (`--write` / `--fix` / `--autofix`); no obvious broad root or glob is
+      baked into the brick. The eighth required entrypoint, whole-project `fix`, supplies broad roots
+      while calling both prefixes in formatter→linter order. Task tickets and phase agents never call `check`/`fix`/any single brick by
+      hand — they run `npx gennady sdd-verify --task <ticket-path> --phase <PhaseID>`; its
+      private repair formats and lint-autofixes only that exact set. `fix` is the REQUIRED human repair
+      entrypoint; `check` is an OPTIONAL read-only human / CI wrapper:
+      `"check": "npx gennady sdd-verify --profile full"`. Declare `check-command → npm run check`
+      and `fix-command → npm run fix` in infra-spec §Verification Commands as these wrappers — not as a
+      per-ticket verification alias (ticket §5 rows use the context-derived phase call
+      directly). Include only active phases among the eight bricks; all commands are one-shot.
     </Step>
     <Step id="STEP_8_VERIFY_REPRODUCIBILITY_TRIAD">
       Confirm three files committed: `.nvmrc`, `package.json`, `package-lock.json` (`npm ci` reads all three). Run HOOK_NVMRC_EXACT and HOOK_NPMRC_REGISTRY. Run each primary script — must exit within 2 minutes; hang = watch-mode violation.
@@ -356,7 +368,7 @@
     ✅ Module system declared once; not mixed. All Node built-in imports use `node:` prefix.
     ✅ Dev-tool packages exact-pinned. `.npmrc` committed with explicit `registry=` line.
     ✅ npm scripts call only tools in `devDependencies`. Primary scripts (`test`, `lint`, `build`, `type-check`) one-shot.
-    ✅ `check` script exists in `package.json`. Composed of all active rule phases in `CheckPhaseOrder` (typecheck → test → lint → format). `check-command` declared in infra-spec §Verification Commands.
+    ✅ The eight mandatory bricks (`type-check`, `test`, `test:coverage`, `format`, `lint`, `format:fix`, `lint:fix`, `fix`) are declared; repair leaves declare target-forwarding prefixes ending in a real write switch, and `fix` supplies broad roots in formatter→linter order. `check` remains optional; neither wrapper is a phase alias.
     ✅ Before adding a package: `engines` and module-system compatibility verified.
     ✅ Lock file present → install reads its registry as-is, no override. No lock yet → sandboxed agent
        forces the public registry via inline env-prefix.
@@ -371,9 +383,10 @@
     ❌ Node built-in imported without `node:` prefix.
     ❌ Dev-tool pinned to range; `.npmrc` absent or no `registry=` line.
     ❌ npm script calls a tool not in `devDependencies`.
-    ❌ `check` script missing from `package.json` when coding or testing rules are active in scope.
-    ❌ `check` script omits a phase covered by an active rule (e.g., lint active but not in `check`).
-    ❌ Any phase sub-command in `check` defaults to watch / persistent mode — agent invocations hang indefinitely.
+    ❌ Any of the eight mandatory bricks missing while its rule is active in scope.
+    ❌ `format:fix` / `lint:fix` declared with no terminal write switch, a shell hop, or an obvious broad root/glob — phase target forwarding is not credible. Static analysis does not claim to classify every tool-specific exact operand.
+    ❌ Any brick sub-command defaults to watch / persistent mode — agent invocations hang indefinitely.
+    ❌ A ticket §5 row aliases `check-command` or duplicates the phase-owned `sdd-verify --task … --phase …` gate.
     ❌ `npm install`/`npm ci` without env-prefix in sandbox when no lock file exists yet; overriding the
        registry on a command that already has a lock to read; modifying operator's `~/.npmrc`;
        committing project `.npmrc` with corp registry URL.

@@ -12,5 +12,5 @@
 
       Everything else stays ONLY: rules from sibling phases are NOT this phase's concern, do not
       pre-load them; a file that looks related but is not cited, and is not a declared base of a cited
-      file, stays unread. Read failure on a cited rule (or its declared base) → `H_RULE_FILE_MISSING`.
+      file, stays unread. Read failure on a cited rule (or its declared base) → `H_MISSING_RULE_FILE`.
     </Axiom>

@@ -5,6 +5,6 @@
   `contracts` or shared `library` scope), and platform / consumer scopes depend on it and add only
   their specifics. So author the shared scope FIRST, then detail each dependent scope — the order is
   the Scope Graph's dependency order (a dependency is authored before its dependents). Track the
-  working set of touched specs in the session so the change stays coherent across a pause; it is a
+  bounded list of touched spec paths so the change stays coherent across a pause; it is a
   mode of the normal flow, not a separate branch.
 </Axiom>

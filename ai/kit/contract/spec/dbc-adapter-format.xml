@@ -16,7 +16,7 @@
       - **Runtime Backing:** `not-implemented` | `simulation` | `real-runtime`
       - **Verification Levels:** subset of `contract` | `unit` | `integration` | `e2e`
       - **Deferred Runtime Scope:** None | <which declared behavior lacks real runtime>
-      - **Usage Waiver:** <omit when usage is >= 2 in production code> <why this entity exists despite few usages> [D-NNN — only when a Decision Log entry actually backs the reason]
+      - **Usage Waiver:** <omit when usage is >= 2 in production code> <why this entity exists despite few usages> [<ACR>-DL-N — only when a Decision Log entry actually backs the reason]
 
       **Contract (DbC)** — ONLY when this Adapter has no Port (else the contract lives there, see
       `DBC_PORT_FORMAT`); same per-operation Pre / Post / On-pre-violation shape, plus Invariants when

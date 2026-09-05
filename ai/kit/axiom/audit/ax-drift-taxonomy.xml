@@ -18,4 +18,5 @@
       | `LANGUAGE_QUALITY` | operator-facing text fails `AX_LANGUAGE_QUALITY_CHECK` — calques (from the `SDD_LANGUAGE_CALQUE` pre-filter) or literary/ornate style the deterministic lint cannot catch |
       | `YAGNI_WAIVER_INCOMPLETE` | a contract `Usage Waiver` label exists for a symbol, but the round's Execution Log has no matching `yagni <name> ← <reason>` line (`AX_AUDIT_YAGNI_CROSSCHECK`) |
       | `ENVIRONMENT_GATE_UNAVAILABLE` | a required gate command (`sdd-verify`, `gennady lint`, `gennady testcov`, or a ticket §5 command) could not execute at all — missing runner, missing script, no network, crashed before producing a pass/fail — as opposed to executing and reporting a red result |
+      | `DEAD_CODE_SUSPECT` | an incidental probe exposes apparently dead code outside the current ticket's bounded remediation scope; audit reports it for a separate task and does not widen this run |
     </Axiom>

@@ -17,15 +17,14 @@ import { TEMPLATES, type ArtifactKind } from '../templates.ts';
 import {
   checkSpecStructure,
   checkSpecLanguage,
-  checkReviewState,
   checkScopeDeps,
   checkRequirementIds,
+  checkRequirementBudgetsAgainstBaseline,
   checkDecisionLogIds,
   checkRequirementUnhappyPath,
   checkDiagramCaptions,
   checkScopeDataFlowDiagram,
   checkModuleCallChain,
-  checkDeltaDiagram,
   checkTicket,
   checkTaskIdGrammar,
   isTicket,
@@ -94,15 +93,14 @@ async function runCheckBattery(file: string, content: string): Promise<Finding[]
   const findings: Finding[] = [
     ...checkSpecStructure(file, content, 'v2'),
     ...checkSpecLanguage(file, content),
-    ...checkReviewState(file, content),
     ...checkScopeDeps(file, content, []),
     ...checkRequirementIds(file, content),
+    ...checkRequirementBudgetsAgainstBaseline(file, content, null),
     ...checkDecisionLogIds(file, content),
     ...checkRequirementUnhappyPath(file, content),
     ...checkDiagramCaptions(file, content),
     ...checkScopeDataFlowDiagram(file, content),
     ...checkModuleCallChain(file, content),
-    ...checkDeltaDiagram(file, content),
   ];
   if (isTicket(content)) {
     findings.push(...checkTicket(file, content));

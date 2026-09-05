@@ -35,11 +35,15 @@
     </Axiom>
 
     <Axiom id="AX_LINT_RUN_IS_MECHANICAL">
-      **The lint pipeline is exactly one command:** `eslint --fix .` (or the project wrapper). A clean run = exits with code 0. Because every rule is `'error'`, exit 0 means zero findings.
+      **Phase authoring repair is the private first rung of `sdd-verify --task … --phase …`.** It
+      runs formatter write mode before lint autofix over the structurally parsed exact Target Files;
+      lint receives the owning spec, rereads resulting bytes, and exit 0 means zero remaining
+      applicable findings. The project `fix` wrapper is for humans; full/CI stays read-only.
 
       For autofix-capable rules `--fix` resolves findings silently. For motivated non-autofix rules a remaining finding is hard failure — the agent MUST resolve it by editing code (with the explanatory comment as guidance), never by adding a disable comment.
 
-      Forbidden as normal workflow: running `eslint` without `--fix` and treating the report as a TODO list. The `--fix` form is the canonical entry point.
+      During a phase do not immediately repeat the public read-only lint after successful repair —
+      that would duplicate its postcondition. CI, audit, and approval run only the read-only form.
     </Axiom>
 
     <Axiom id="AX_NON_AUTOFIX_PREFER_DELEGATION">
@@ -64,9 +68,12 @@
 
       ESLint stylistic rules (`indent`, `quotes`, `semi`, `comma-dangle`, `max-len`, `space-*`, `arrow-spacing`, `keyword-spacing`, etc.) explicitly disabled in `eslint.config.ts` via `eslint-config-prettier` (flat-config equivalent), appended LAST in the config array so it overrides any rule that drifted in from a preset.
 
-      Formatter pipeline runs BEFORE `eslint --fix`: `prettier --write .` then `eslint --fix .`. Both must exit 0.
+      Formatter pipeline runs BEFORE lint autofix over the same scope. Both must exit 0.
 
-      The full mechanical quality pass is a fixed two-step sequence exposed as ONE script (`npm run lint:fix` or equivalent) so agents and humans run the same command. Pre-commit hook runs the same script on staged files; CI runs the read-only variant (`prettier --check . && eslint .`) and fails on any drift.
+      A phase gets that sequence privately from context-derived `sdd-verify`; humans may use the
+      whole-project `fix` wrapper. Exit 0 means formatter completed and lint re-read the exact
+      resulting bytes and found a clean post-state. Pre-commit and CI never repair; they run the
+      whole-project read-only `sdd-verify --profile full`.
 
       Choice of formatter is an architecture decision: Prettier recommended; alternatives (Biome, dprint) acceptable IF the project picks ONE. Two formatters or formatting rules duplicated between ESLint and the formatter = forbidden.
     </Axiom>
@@ -310,16 +317,17 @@
         ```json
         {
             "scripts": {
-                "format": "prettier --write .",
-                "lint": "eslint --fix .",
-                "lint:fix": "npm run format && npm run lint",
-                "lint:check": "prettier --check . && eslint .",
+                "format": "prettier --check .",
+                "format:fix": "prettier --write",
+                "lint": "eslint .",
+                "lint:fix": "eslint --fix",
+                "fix": "npm run format:fix -- . && npm run lint:fix -- .",
                 "typecheck": "tsc --noEmit"
             }
         }
         ```
       </Snippet>
-      <Why>`lint:fix` is agent's default (mechanical, mutating); `lint:check` is CI's default (read-only, fails on drift). `typecheck` is its own script — type-aware concerns are routed to TS, not lint.</Why>
+      <Why>Read-only and repair commands are separate. Each repair brick declares a target-forwarding prefix; required whole-project `fix` supplies `.` while phase verification supplies exact Target Files. Static checking rejects obvious broad operands, not arbitrary tool-specific operands. `typecheck` is its own script — type-aware concerns are routed to TS, not lint.</Why>
     </Pattern>
   </ConfigPatterns>
 
@@ -377,32 +385,32 @@
       Ref: AX_AUTOFIX_PREFERRED, AX_NO_DISABLE_COMMENTS_BY_AGENT.
     </Step>
     <Step id="STEP_5_DECLARE_SCRIPTS">
-      Add to `package.json`: `"lint": "eslint ."` (read-only, exit-code only) and `"lint:fix": "eslint --fix ."` (canonical agent action). Both are one-shot.
+      Add to `package.json`: `"lint": "eslint ."` (read-only, exit-code only) and `"lint:fix": "eslint --fix"` (declared target-forwarding repair prefix). Required whole-project `fix` calls `npm run lint:fix -- .`; a phase appends its exact Target Files. Both are one-shot.
       Ref: AX_LINT_RUN_IS_MECHANICAL.
     </Step>
     <Step id="STEP_6_DRY_RUN">
-      Run `npm run lint:fix` on the current codebase. Exit 0 = config valid and codebase clean. Non-zero = fix findings or adjust rules (never add disable comments).
+      Run `npm run lint:fix -- .` on the current codebase. Exit 0 = config valid and codebase clean. Non-zero = fix findings or adjust rules (never add disable comments).
       Ref: AX_LINT_RUN_IS_MECHANICAL, AX_NO_DISABLE_COMMENTS_BY_AGENT.
     </Step>
   </SetupSteps>
 
   <WorkflowOutline>
-    <Step id="WF_1_RUN_THE_PIPELINE">Default agent action when touching code: `npm run lint:fix`. Exit 0 means lint contract satisfied.</Step>
+    <Step id="WF_1_RUN_THE_PIPELINE">Whole-project manual action: `npm run lint:fix -- .`. Phase agents use the context-derived verifier, which passes exact targets to this same prefix. Exit 0 means lint contract satisfied.</Step>
     <Step id="WF_2_HANDLE_REMAINING_FINDINGS">Non-zero exit = finding remains after `--fix`. The finding belongs to a motivated non-autofix rule. Read the rule's explanatory comment in `eslint.config.ts`, fix the code accordingly, re-run. Disable comments NOT an option.</Step>
     <Step id="WF_3_PROPOSE_RULE_CHANGES_VIA_AUDIT">To add or remove a rule, run audit protocol (`PT_RULE_AUDIT_PROTOCOL`): inspect `meta.fixable`, route into autofix or motivated-non-autofix, draft explanatory comment, dry-run, present evidence + diff. Wait for explicit operator confirmation. Severity at registration always `'error'`.</Step>
     <Step id="WF_4_KEEP_THE_CONFIG_AUDITABLE">Editing `eslint.config.ts`: preserve one-block-per-concern shape. Every `'error'` rule trivially autofixable or carries explanatory comment; every `'off'` after preset spread carries one-line reason; no `'warn'` anywhere.</Step>
-    <Step id="WF_5_VERIFY_AND_FINALIZE">Before closing a task: `npm run lint:fix && npm run typecheck && npm test` all green AND `git diff` shows only the intended change. Any environment blocker → declared EXPLICITLY in the ticket.</Step>
+    <Step id="WF_5_VERIFY_AND_FINALIZE">Before closing a task: use the context-derived phase verifier; for a deliberate whole-project repair use `npm run lint:fix -- .`. Any environment blocker → declared EXPLICITLY in the ticket.</Step>
   </WorkflowOutline>
 
   <VerificationHooks>
     <Hook id="HOOK_LINT_FIX_GREEN">
       <Purpose>Canonical green-gate check: unified pipeline exits 0.</Purpose>
-      <Command>npm run lint:fix</Command>
+      <Command>npm run lint:fix -- .</Command>
       <Expected>Exit 0. Because every rule is `'error'`, exit 0 means zero findings — including zero non-autofix findings.</Expected>
     </Hook>
     <Hook id="HOOK_LINT_NO_DRIFT">
       <Purpose>Pipeline does not mutate the tree on subsequent runs (catches formatter ↔ ESLint conflicts and partial-autofix surprises).</Purpose>
-      <Command>npm run lint:fix && git diff --quiet</Command>
+      <Command>npm run lint:fix -- . && git diff --quiet</Command>
       <Expected>Both exit 0. Any non-zero from second indicates pipeline rewrites code on every run.</Expected>
     </Hook>
     <Hook id="HOOK_NO_WARN_LEVEL_IN_CONFIG">

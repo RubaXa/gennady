@@ -1,7 +1,12 @@
 <!-- source: ai/directives/sdd/fix.directive.xml -->
 <Axiom id="AX_FIX_CLASSIFICATION">
   A reported symptom is an entry point, never the class. Every finding MUST be classified BEFORE any
-  edit: bug vs spec-defect, action category (direct-fix / spec-update / task-reopen), the full problem
-  class and the blast radius. Triviality of a fix is confirmed by the blast-radius probe, never by
-  self-assessment. A fix applied without this classification is a symptom patch, not SDD.
+  edit: bug vs spec-defect, ownership, semantic vs editorial spec impact, action category
+  (bounded-direct / authoring-flow / task-reopen / ticket-create-or-recover), the full problem class,
+  and the blast radius. Code carrying a resolvable `@tasks:` owner ALWAYS routes to a newly appended
+  Round in that ticket, even for a one-line fix; size never authorizes a direct patch. A semantic spec
+  change ALWAYS routes through the artifact-kind authoring flow, independent semantic review, and operator approval #1
+  lifecycle before implementation. Direct editing is reserved for genuinely task-free, non-semantic
+  metadata with a frozen target-set and a known exact verifier. A fix applied without this
+  classification is a symptom patch, not SDD.
 </Axiom>

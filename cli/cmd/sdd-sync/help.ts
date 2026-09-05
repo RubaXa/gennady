@@ -10,6 +10,12 @@ export function printHelp(): void {
   console.info('');
   console.info('Usage:');
   console.info('  npx gennady sdd-sync <ticket> [index.3-tasks.md ...]');
+  console.info(
+    '  Paths are exact repository-relative regular files; absolute/../symlink paths fail.'
+  );
+  console.info(
+    '  Explicit indexes must be owning specs/3-tasks.md or specs/**/<owner>.3-tasks.md.'
+  );
   console.info('');
   console.info('Behaviour:');
   console.info('  Reads Task-ID + Status from the ticket Meta, then for each tracker:');
@@ -18,7 +24,7 @@ export function printHelp(): void {
   );
   console.info('    - verifies the write persisted before reporting "updated"');
   console.info(
-    '  With no explicit indexes, every *.3-tasks.md from the ticket dir upward is synced'
+    '  With no explicit indexes, owning *.3-tasks.md files under specs/ are discovered upward'
   );
   console.info('  (module → scope → project).');
   console.info('');

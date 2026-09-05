@@ -10,6 +10,7 @@ import type { DeclaredSymbol, ReferenceCount, SymbolIndex } from '../../symbol-i
 // which is exactly what separates `exact` (this adapter) from `approximate` (grep, plain text search).
 const REFERENCE_NODE_TYPES = new Set([
   'identifier',
+  'private_property_identifier',
   'property_identifier',
   'type_identifier',
   'shorthand_property_identifier',
@@ -36,12 +37,18 @@ export class TsSymbolIndexAdapter implements SymbolIndex {
     if (!result.ok) return [];
     const out: DeclaredSymbol[] = [];
     for (const e of result.exported) {
-      out.push({ name: e.name, kind: e.kind, line: e.contract?.startLine ?? 1 });
+      out.push({
+        name: e.name,
+        kind: e.kind,
+        line: e.contract?.startLine ?? 1,
+        visibility: 'public',
+      });
       for (const m of e.members) {
         out.push({
           name: m.name,
           kind: m.kind,
           line: m.contract?.startLine ?? e.contract?.startLine ?? 1,
+          visibility: 'private',
         });
       }
     }
@@ -51,20 +58,35 @@ export class TsSymbolIndexAdapter implements SymbolIndex {
 
   /** @see {SymbolIndex#countReferences} in ../../symbol-index.types.ts */
   async countReferences(name: string, _filePath: string, content: string): Promise<ReferenceCount> {
+    return (
+      (await this.countReferencesMany(new Set([name]), _filePath, content)).get(name) ?? {
+        count: 0,
+        precision: 'exact',
+      }
+    );
+  }
+
+  /** @see {SymbolIndex#countReferencesMany} in ../../symbol-index.types.ts */
+  async countReferencesMany(
+    names: ReadonlySet<string>,
+    _filePath: string,
+    content: string
+  ): Promise<Map<string, ReferenceCount>> {
+    const counts = new Map<string, ReferenceCount>(
+      [...names].map((name) => [name, { count: 0, precision: 'exact' as const }])
+    );
     let parser: Parser;
     try {
       parser = await this._initParser();
     } catch {
-      return { count: 0, precision: 'exact' };
+      return counts;
     }
     const tree = parser.parse(content);
-    let count = 0;
     const walk = (node: SyntaxNode): void => {
-      if (
-        REFERENCE_NODE_TYPES.has(node.type) &&
-        content.slice(node.startIndex, node.endIndex) === name
-      ) {
-        count++;
+      if (REFERENCE_NODE_TYPES.has(node.type)) {
+        const name = content.slice(node.startIndex, node.endIndex);
+        const current = counts.get(name);
+        if (current) counts.set(name, { ...current, count: current.count + 1 });
       }
       for (let i = 0; i < node.childCount; i++) {
         const c = node.child(i);
@@ -72,7 +94,7 @@ export class TsSymbolIndexAdapter implements SymbolIndex {
       }
     };
     walk(tree.rootNode);
-    return { count, precision: 'exact' };
+    return counts;
   }
 
   /**
@@ -90,15 +112,49 @@ export class TsSymbolIndexAdapter implements SymbolIndex {
     const tree = parser.parse(content);
     const out: DeclaredSymbol[] = [];
     const root = tree.rootNode;
+    const explicitlyExported = this._exportedNames(root, content);
     for (let i = 0; i < root.childCount; i++) {
       const child = root.child(i);
       if (!child || child.type === 'export_statement') continue;
       const kind = this._mapKind(child.type);
       if (!kind) continue;
       const name = this._name(child, content);
-      if (name) out.push({ name, kind, line: child.startPosition.row + 1 });
+      if (name) {
+        out.push({
+          name,
+          kind,
+          line: child.startPosition.row + 1,
+          visibility: explicitlyExported.has(name) ? 'public' : 'private',
+        });
+      }
     }
     return out;
+  }
+
+  /**
+   * @purpose Names exported through a structural `export { name }` clause.
+   * @param root Parsed TypeScript root node.
+   * @param content Original source used to slice identifier text.
+   * @returns Locally-declared names made public by an export clause.
+   */
+  private _exportedNames(root: SyntaxNode, content: string): Set<string> {
+    const names = new Set<string>();
+    const walk = (node: SyntaxNode): void => {
+      if (node.type === 'export_specifier') {
+        const name = node.childForFieldName?.('name') ?? node.child(0);
+        if (name) names.add(content.slice(name.startIndex, name.endIndex));
+        return;
+      }
+      for (let i = 0; i < node.childCount; i++) {
+        const child = node.child(i);
+        if (child) walk(child);
+      }
+    };
+    for (let i = 0; i < root.childCount; i++) {
+      const child = root.child(i);
+      if (child?.type === 'export_statement') walk(child);
+    }
+    return names;
   }
 
   /**

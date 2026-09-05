@@ -6,7 +6,7 @@ product
 
 ## 1. Vision & Primary Goal
 
-CLI-модуль с командами для AI-агентов. Команды: `lint` (трёхслойная валидация TypeScript-файлов и директорий с рекурсивным обходом), `alt-opinion` (альтернативные мнения от AI-моделей на переданный артефакт с опциональным синтезом), `cat` (сбор содержимого файлов в XML/MD для AI-агентов с поддержкой локальных файлов и удалённых через `--url`), `sync` (синхронизация `ai/directives/` из npm-пакета в текущий проект), `sync-skills` (синхронизация SDD-скилов из npm-пакета в `.claude/skills/` проекта с orphan-удалением), `orient` (ориентация по file-header и DBC-контрактам — карта проекта, поиск по задачам, потребителям, сущностям и ключевым словам, граф зависимостей), `agents-rules` (выводит инструкцию по использованию `orient` для AI-агентов — когда и какую команду вызывать для навигации по репозиторию), `review-issues` (по текущей ветке находит открытый MR на GitLab, скачивает дискуссии, выводит XML для AI-агентов), `inbox` (поверхность ассистента входящих GitLab MR: список со стадиями, дельта, `--pick`, `--reset` — см. scope agent-inbox), `vcs-worktree` (read-only git worktree head'а MR для код-ревью, с GC жизненного цикла), `vcs-reply` (постинг в MR: ответ в тред / новая дискуссия / комментарий на строку дифа + резолв/реопен дискуссий), `vcs-approve` (выставляет approve на GitLab MR через API, с авто-детектом ветки/проекта).
+CLI-модуль с командами для AI-агентов. Команды: `lint` (трёхслойная валидация TypeScript-файлов и директорий с рекурсивным обходом), `cat` (сбор содержимого файлов в XML/MD для AI-агентов с поддержкой локальных файлов и удалённых через `--url`), `sync` (синхронизация `ai/directives/` из npm-пакета в текущий проект), `sync-skills` (синхронизация SDD-скилов из npm-пакета в `.claude/skills/` проекта с orphan-удалением), `orient` (ориентация по file-header и DBC-контрактам — карта проекта, поиск по задачам, потребителям, сущностям и ключевым словам, граф зависимостей), `agents-rules` (выводит инструкцию по использованию `orient` для AI-агентов — когда и какую команду вызывать для навигации по репозиторию), `review-issues` (по текущей ветке находит открытый MR на GitLab, скачивает дискуссии, выводит XML для AI-агентов), `inbox` (поверхность ассистента входящих GitLab MR: список со стадиями, дельта, `--pick`, `--reset` — см. scope agent-inbox), `vcs-worktree` (read-only git worktree head'а MR для код-ревью, с GC жизненного цикла), `vcs-reply` (постинг в MR: ответ в тред / новая дискуссия / комментарий на строку дифа + резолв/реопен дискуссий), `vcs-approve` (выставляет approve на GitLab MR через API, с авто-детектом ветки/проекта).
 
 ## 2. Project Type
 
@@ -92,96 +92,6 @@ $ gennady lint --max-words 15 --max-region-comments 3 --max-invariants 5
 ```
 
 Файл читается один раз, контент передаётся во все три проверки. Сообщения об ошибках содержат: что сломано → указание на место → конкретное действие по исправлению. При передаче директорий — рекурсивный обход с фильтрацией по поддерживаемым расширениям (`.ts`, `.tsx`). Ошибки резолвинга целей (ENOENT, EACCES) выводятся в stderr и не прерывают линтинг остальных файлов.
-
-### alt-opinion DX
-
-```bash
-# --- без синтеза: stdin, 2 модели → все мнения ---
-$ cat specs/cli/cli.spec.md | gennady alt-opinion \
-    --model="openrouter/anthropic/claude-3.5-sonnet" \
-    --model="llmproxy/deepseek-v4-pro"
-
-<!--START_ALT_OPINION_openrouter-claude-3.5-sonnet-->
-### Мнение Claude 3.5 Sonnet
-...
-<!--END_ALT_OPINION_openrouter-claude-3.5-sonnet-->
-
-<!--START_ALT_OPINION_llmproxy-deepseek-v4-pro-->
-### Мнение DeepSeek V4 Pro
-...
-<!--END_ALT_OPINION_llmproxy-deepseek-v4-pro-->
-
-# exit 0
-
-# --- с синтезом: ТОЛЬКО синтез ---
-$ gennady alt-opinion --file=task.md \
-    --model="llmproxy/deepseek-v4-pro" \
-    --model="openrouter/anthropic/claude-3.5-sonnet" \
-    --synthModel="llmproxy/deepseek-v4-pro"
-
-<!--START_ALT_OPINION_SYNTH-->
-### Синтез
-...
-<!--END_ALT_OPINION_SYNTH-->
-
-# exit 0
-
-# --- одна модель (минимальный вызов) ---
-$ gennady alt-opinion --file=task.md --model="llmproxy/deepseek-v4-pro"
-
-# exit 0
-
-# --- custom prompts ---
-$ gennady alt-opinion --file=task.md \
-    --model="openrouter/anthropic/claude-3.5-sonnet" \
-    --model="llmproxy/deepseek-v4-pro" \
-    --modelPrompt="./prompts/critic.prompt.md"
-
-# exit 0
-
-# --- per-model prompt override ---
-$ gennady alt-opinion --file=task.md \
-    --model="openrouter/anthropic/claude-3.5-sonnet::./prompts/architect.prompt.md" \
-    --model="llmproxy/deepseek-v4-pro::./prompts/sec-auditor.prompt.md"
-
-# exit 0
-
-# --- degradation: модель недоступна ---
-$ gennady alt-opinion --file=task.md \
-    --model="llmproxy/deepseek-v4-pro" \
-    --model="openrouter/nonexistent-model"
-
-<!--START_ALT_OPINION_llmproxy-deepseek-v4-pro-->
-...
-<!--END_ALT_OPINION_llmproxy-deepseek-v4-pro-->
-
-<!--START_ALT_OPINION_openrouter-nonexistent-model-->
-Model error: timeout after 5m
-<!--END_ALT_OPINION_openrouter-nonexistent-model-->
-
-# exit 0 (одна модель ответила успешно, без --strict)
-
-# --- strict mode: любая ошибка → exit 1 ---
-$ gennady alt-opinion --file=task.md --strict \
-    --model="llmproxy/deepseek-v4-pro" \
-    --model="openrouter/nonexistent-model"
-
-# exit 1
-
-# --- ошибка: нет API-ключа ---
-$ gennady alt-opinion --file=task.md --model="llmproxy/deepseek-v4-pro"
-Error: GENNADY_LLM_PROXY_API_KEY is not set
-
-# exit 1
-
-# --- ошибка: и stdin, и --file ---
-$ cat task.md | gennady alt-opinion --file=task.md --model="llmproxy/dsv4"
-Error: --file and stdin are mutually exclusive
-
-# exit 1
-```
-
-Модели опрашиваются параллельно (`Promise.allSettled`). При отказе модели — описание ошибки в её блоке, остальные продолжаются. `--synthModel` → вывод только синтеза (без индивидуальных мнений).
 
 ### 3.1 Update Check DX
 
@@ -1104,63 +1014,31 @@ $ gennady vcs-approve                                          # merge conflict
 
 ### 4.1 Functional Requirements
 
-| ID                  | Требование                                                                                                                                       |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **File header**     |                                                                                                                                                  |
-| FR-01               | Проверить наличие `// @file:` в начале файла (до первого `import`). Отсутствие → ошибка `ERR_CLI_LINT_MISSING_FILE`                              |
-| FR-02               | Проверить наличие `// @consumers:` в начале файла. Отсутствие → ошибка `ERR_CLI_LINT_MISSING_CONSUMERS`                                          |
-| FR-03               | `// @tasks:` не проверяется                                                                                                                      |
-| **DBC-контракты**   |                                                                                                                                                  |
-| FR-04               | Запустить `DbcLinter` на каждом файле. Принимает путь ИЛИ контент через опцию (требует `refine` скоупа `dbc`)                                    |
-| FR-05               | Ошибки линтера транслировать в единый ESLint-формат                                                                                              |
-| **Anchor-разметка** |                                                                                                                                                  |
-| FR-06               | Проверить парность: каждый `START_<NAME>` имеет `END_<NAME>` в том же файле. Непарный START → `ERR_CLI_LINT_ANCHOR_UNPAIRED_START`               |
-| FR-07               | Проверить вложенность: стек открытых регионов. `END_X` закрывает последний открытый `START_X`; закрытие не того → `ERR_CLI_LINT_ANCHOR_NESTING`  |
-| FR-08               | Непарный `END` без `START` → `ERR_CLI_LINT_ANCHOR_UNPAIRED_END`                                                                                  |
-| **Интерфейс**       |                                                                                                                                                  |
-| FR-09               | Принимать список файлов и/или директорий позиционными аргументами. Директории обходятся рекурсивно, собираются `.ts`/`.tsx` файлы                |
-| FR-09a              | Рекурсивный обход — поведение по умолчанию, без дополнительного флага. Фильтр: только `.ts`/`.tsx` (регистро-независимо: `.TS` ≡ `.ts`)          |
-| FR-09b              | Дедупликация: файл, переданный явно и найденный в директории — линтится один раз. Результат — уникальный отсортированный список абсолютных путей |
-| FR-09c              | При рекурсивном обходе исключаются: `node_modules`, скрытые директории (`.`-префикс), `dist`, `coverage`, `build`, `out`. Symlink не обходятся   |
-| FR-09d              | Ошибки FS (ENOENT, EACCES) → `ERR_CLI_LINT_RESOLVE_FAILED` в stderr, цель пропускается. Команда продолжается                                     |
-| FR-09e              | `--staged` и позиционные цели — взаимоисключающие. Одновременная передача → ошибка, exit 1                                                       |
-| FR-10               | Режим `--staged` — автоматический сбор `.ts` файлов из `git diff --staged --name-only` + `git ls-files --others --exclude-standard`              |
-| FR-11               | Флаг `--autofix` — исправлять dbc-ошибки через `lintAndFix()`; anchor и header — только диагностика                                              |
-| **Вывод**           |                                                                                                                                                  |
-| FR-12               | ESLint-формат: `file:line:col: severity: code: message`. Каждое сообщение: описание проблемы + конкретное действие                               |
-| FR-13               | Exit code 0 при отсутствии ошибок, 1 при наличии                                                                                                 |
-
-### 4.1.2 alt-opinion Functional Requirements
-
-| ID             | Требование                                                                                                                                           |
-| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Вход**       |                                                                                                                                                      |
-| FR-ALT-01      | Принимать stdin ИЛИ `--file=<path>`. Если передано и то и другое — ошибка                                                                            |
-| FR-ALT-02      | Если stdin — терминал (TTY) и `--file` не указан — ошибка с подсказкой                                                                               |
-| **Модели**     |                                                                                                                                                      |
-| FR-ALT-03      | `--model="{provider}/{model}"` — повторяемый, минимум 1. Провайдер обязателен: `llmproxy` или `openrouter`                                           |
-| FR-ALT-04      | `--synthModel="{provider}/{model}"` — опционально. Если не указан — вывод всех мнений; если указан — вывод только синтеза                            |
-| FR-ALT-05      | При отсутствии API-ключа для провайдера — ошибка с указанием имени env-переменной: `GENNADY_LLM_PROXY_API_KEY`, `GENNADY_OPENROUTER_API_KEY`         |
-| **Промпты**    |                                                                                                                                                      |
-| FR-ALT-06      | `--modelPrompt=<path>` — общий промпт для всех моделей (читается из файла). `--synthPrompt=<path>` — промпт для синтеза                              |
-| FR-ALT-07      | Per-model override: `--model="{provider}/{model}::{path}"` — индивидуальный промпт для конкретной модели                                             |
-| FR-ALT-08      | Если промпт не указан — используется дефолтный из `cli/cmd/alt-opinion/prompts/`                                                                     |
-| FR-ALT-09      | Дефолтный промпт мнения: «Ты — эксперт... Верни независимое, критическое мнение...»                                                                  |
-| FR-ALT-10      | Дефолтный промпт синтеза: «Ниже — несколько независимых мнений... Синтезируй их в одно консолидированное мнение...»                                  |
-| **Выполнение** |                                                                                                                                                      |
-| FR-ALT-11      | Модели опрашиваются параллельно через `Promise.allSettled`; синтез — после сбора всех мнений                                                         |
-| FR-ALT-12      | Таймаут на вызов модели — 5 минут (через `AbortController`). При таймауте / ошибке — описание в блоке модели, остальные продолжаются                 |
-| FR-ALT-13      | Шаблон запроса к модели: `# GOAL:\n<prompt>\n\n# CONTEXT:\n<контент>`                                                                                |
-| FR-ALT-14      | `--strict` флаг: exit 1 при любой ошибке модели. Без `--strict`: exit 1 только если все модели упали                                                 |
-| **Вывод**      |                                                                                                                                                      |
-| FR-ALT-15      | Markdown с блоками `<!--START_ALT_OPINION_{PROVIDER}-{MODEL}-->...<!--END_ALT_OPINION_{PROVIDER}-{MODEL}-->`                                         |
-| FR-ALT-16      | При синтезе — блок `<!--START_ALT_OPINION_SYNTH-->...<!--END_ALT_OPINION_SYNTH-->` (без индивидуальных мнений)                                       |
-| FR-ALT-17      | Порядок блоков в выводе соответствует порядку `--model` в CLI                                                                                        |
-| **Телеметрия** |                                                                                                                                                      |
-| FR-ALT-18      | Каждый opinion-блок (включая синтез) завершается строкой `<!--TELEMETRY wall=<N>ms tokens=<prompt>/<completion> reason=<finishReason>-->`            |
-| FR-ALT-19      | `AltOpinionModelPort.generate()` возвращает `{ content: string; usage?: { promptTokens: number; completionTokens: number }; finishReason?: string }` |
-| FR-ALT-20      | Если порт не вернул `usage` — строка телеметрии содержит только `wall` и `reason`                                                                    |
-| FR-ALT-21      | `wall` — реальное время вызова модели в ms (через `performance.now()` до/после `port.generate()`)                                                    |
+| ID                  | Требование                                                                                                                                                                           |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **File header**     |                                                                                                                                                                                      |
+| FR-01               | Проверить наличие `// @file:` в начале файла (до первого `import`). Отсутствие → ошибка `ERR_CLI_LINT_MISSING_FILE`                                                                  |
+| FR-02               | Проверить наличие `// @consumers:` в начале файла. Отсутствие → ошибка `ERR_CLI_LINT_MISSING_CONSUMERS`                                                                              |
+| FR-03               | `// @tasks:` не проверяется                                                                                                                                                          |
+| **DBC-контракты**   |                                                                                                                                                                                      |
+| FR-04               | Запустить `DbcLinter` на каждом файле. Принимает путь ИЛИ контент через опцию (требует `refine` скоупа `dbc`)                                                                        |
+| FR-05               | Ошибки линтера транслировать в единый ESLint-формат                                                                                                                                  |
+| **Anchor-разметка** |                                                                                                                                                                                      |
+| FR-06               | Проверить парность: каждый `START_<NAME>` имеет `END_<NAME>` в том же файле. Непарный START → `ERR_CLI_LINT_ANCHOR_UNPAIRED_START`                                                   |
+| FR-07               | Проверить вложенность: стек открытых регионов. `END_X` закрывает последний открытый `START_X`; закрытие не того → `ERR_CLI_LINT_ANCHOR_NESTING`                                      |
+| FR-08               | Непарный `END` без `START` → `ERR_CLI_LINT_ANCHOR_UNPAIRED_END`                                                                                                                      |
+| **Интерфейс**       |                                                                                                                                                                                      |
+| FR-09               | Принимать список файлов и/или директорий позиционными аргументами. Директории обходятся рекурсивно, собираются `.ts`/`.tsx` файлы                                                    |
+| FR-09a              | Рекурсивный обход — поведение по умолчанию, без дополнительного флага. Фильтр: только `.ts`/`.tsx` (регистро-независимо: `.TS` ≡ `.ts`)                                              |
+| FR-09b              | Дедупликация: файл, переданный явно и найденный в директории — линтится один раз. Результат — уникальный отсортированный список абсолютных путей                                     |
+| FR-09c              | При рекурсивном обходе исключаются: `node_modules`, скрытые директории (`.`-префикс), `dist`, `coverage`, `build`, `out`. Symlink не обходятся                                       |
+| FR-09d              | Ошибки FS (ENOENT, EACCES) → `ERR_CLI_LINT_RESOLVE_FAILED` в stderr, цель пропускается. Команда продолжается                                                                         |
+| FR-09e              | `--staged` и позиционные цели — взаимоисключающие. Одновременная передача → ошибка, exit 1                                                                                           |
+| FR-10               | Режим `--staged` — NUL-safe сбор existing staged ACMR + untracked `.ts/.tsx` через argv-safe `git diff --cached ... -z --` и `git ls-files ... -z --`; staged deletions игнорируются |
+| FR-11               | Флаг `--autofix` — исправлять dbc-ошибки через `lintAndFix()`; anchor и header — только диагностика                                                                                  |
+| **Вывод**           |                                                                                                                                                                                      |
+| FR-12               | ESLint-формат: `file:line:col: severity: code: message`. Каждое сообщение: описание проблемы + конкретное действие                                                                   |
+| FR-13               | Exit code 0 при отсутствии ошибок, 1 при наличии                                                                                                                                     |
 
 ### 4.1.3 Update Check Functional Requirements
 
@@ -1190,30 +1068,34 @@ $ gennady vcs-approve                                          # merge conflict
 
 ### 4.1.4 sync Functional Requirements
 
-| ID                     | Требование                                                                                                                            |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| **Обнаружение пакета** |                                                                                                                                       |
-| FR-SYNC-01             | При наличии `<cwd>/node_modules/gennady/ai/directives/` — использовать локальную версию, независимо от способа запуска геннадия       |
-| FR-SYNC-02             | При отсутствии локальной установки — резолвить путь от запущенного процесса (глобальная / npx) через `import.meta.resolve('gennady')` |
-| FR-SYNC-03             | Если пакет не найден — ошибка с сообщением `gennady package not found. Install it locally: npm i -D gennady`                          |
-| **Копирование**        |                                                                                                                                       |
-| FR-SYNC-04             | Рекурсивно копировать `ai/directives/` из пакета-источника в `<cwd>/ai/directives/`                                                   |
-| FR-SYNC-05             | Целевая директория создаётся рекурсивно (`mkdirSync({ recursive: true })`), если отсутствует                                          |
-| FR-SYNC-06             | Существующие файлы перезаписываются молча. Команда идемпотентна                                                                       |
-| **Исключения**         |                                                                                                                                       |
-| FR-SYNC-07             | Из синхронизации исключены (захардкожены): `architecture/`                                                                            |
-| **Фильтрация**         |                                                                                                                                       |
-| FR-SYNC-08             | Без позиционных аргументов — синхронизируется вся `ai/directives/` (кроме исключённых)                                                |
-| FR-SYNC-09             | Позиционные аргументы — имена поддиректорий внутри `ai/directives/`. Синхронизируются только указанные поддиректории                  |
-| FR-SYNC-10             | Если указанная поддиректория не существует в источнике — ошибка с перечислением доступных поддиректорий                               |
-| **Сравнение**          |                                                                                                                                       |
-| FR-SYNC-11             | Файлы сравниваются побайтово (`Buffer.compare`). Изменение даже на 1 байт → `updated`                                                 |
-| **Вывод**              |                                                                                                                                       |
-| FR-SYNC-12             | Каждый файл выводится строкой: `  <маркер> <относительный_путь>` с маркером `+` (added), `~` (updated), `=` (unchanged)               |
-| FR-SYNC-13             | Итоговая строка: `Synced: N added, M updated, K skipped (unchanged)`                                                                  |
-| FR-SYNC-14             | `--dry-run` — выводит что БЫЛО БЫ скопировано (`(would add)` / `(would update)` / `(unchanged, skip)`), без фактической записи        |
-| FR-SYNC-15             | При `--dry-run` итоговая строка: `Dry-run: no files written.`                                                                         |
-| FR-SYNC-16             | Exit code 0 при успехе, 1 при ошибке (пакет не найден, несуществующая поддиректория)                                                  |
+| ID                     | Требование                                                                                                                                                                                                                                                                                                                   |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Обнаружение пакета** |                                                                                                                                                                                                                                                                                                                              |
+| FR-SYNC-01             | При наличии `<cwd>/node_modules/gennady/ai/directives/` — использовать локальную версию, независимо от способа запуска геннадия                                                                                                                                                                                              |
+| FR-SYNC-02             | При отсутствии локальной установки — резолвить путь от запущенного процесса (глобальная / npx) через `import.meta.resolve('gennady')`                                                                                                                                                                                        |
+| FR-SYNC-03             | Если пакет не найден — ошибка с сообщением `gennady package not found. Install it locally: npm i -D gennady`                                                                                                                                                                                                                 |
+| **Копирование**        |                                                                                                                                                                                                                                                                                                                              |
+| FR-SYNC-04             | Рекурсивно копировать `ai/directives/` из пакета-источника в `<cwd>/ai/directives/`                                                                                                                                                                                                                                          |
+| FR-SYNC-05             | Целевая директория создаётся рекурсивно (`mkdirSync({ recursive: true })`), если отсутствует                                                                                                                                                                                                                                 |
+| FR-SYNC-06             | Существующие файлы перезаписываются молча. Команда идемпотентна                                                                                                                                                                                                                                                              |
+| **Исключения**         |                                                                                                                                                                                                                                                                                                                              |
+| FR-SYNC-07             | Из синхронизации исключены (захардкожены): `architecture/`                                                                                                                                                                                                                                                                   |
+| **Фильтрация**         |                                                                                                                                                                                                                                                                                                                              |
+| FR-SYNC-08             | Без позиционных аргументов — синхронизируется вся `ai/directives/` (кроме исключённых)                                                                                                                                                                                                                                       |
+| FR-SYNC-09             | Позиционные аргументы — имена поддиректорий внутри `ai/directives/`. Синхронизируются только указанные поддиректории                                                                                                                                                                                                         |
+| FR-SYNC-10             | Если указанная поддиректория не существует в источнике — ошибка с перечислением доступных поддиректорий                                                                                                                                                                                                                      |
+| **Сравнение**          |                                                                                                                                                                                                                                                                                                                              |
+| FR-SYNC-11             | Файлы сравниваются побайтово (`Buffer.compare`). Изменение даже на 1 байт → `updated`                                                                                                                                                                                                                                        |
+| **Вывод**              |                                                                                                                                                                                                                                                                                                                              |
+| FR-SYNC-12             | Каждый файл выводится строкой: `  <маркер> <относительный_путь>` с маркером `+` (added), `~` (updated), `-` (deleted), `=` (unchanged)                                                                                                                                                                                       |
+| FR-SYNC-13             | Итоговая строка: `Synced: N added, M updated, K skipped (unchanged), D deleted`                                                                                                                                                                                                                                              |
+| FR-SYNC-14             | `--dry-run` — выводит что БЫЛО БЫ скопировано (`(would add)` / `(would update)` / `(unchanged, skip)`), без фактической записи                                                                                                                                                                                               |
+| FR-SYNC-15             | При `--dry-run` итоговая строка: `Dry-run: no files written.`                                                                                                                                                                                                                                                                |
+| FR-SYNC-16             | Exit code 0 при успехе, 1 при ошибке (пакет не найден, несуществующая поддиректория)                                                                                                                                                                                                                                         |
+| **Зеркалирование**     |                                                                                                                                                                                                                                                                                                                              |
+| FR-SYNC-17             | Sync — зеркало пространства, которым владеет пакет: файл цели, отсутствующий в источнике, удаляется (`deleted`), включая пользовательские файлы, положенные внутрь пакетной поддиректории                                                                                                                                    |
+| FR-SYNC-18             | Зона удаления — только поддиректории, существующие в пакете-источнике (плюс корневые файлы при нефильтрованном запуске); отсутствие поддиректории в цели — штатно, не ошибка                                                                                                                                                 |
+| FR-SYNC-19             | Верхнеуровневая поддиректория цели, неизвестная пакету, не удаляется; при нефильтрованном запуске о ней сообщает строка `Warning: unknown subdirectory in target (not owned by package, left untouched): <name>` — и в `sync`, и в директивной стадии `sync-skills`; при фильтрованном запуске она вне зоны и не упоминается |
 
 ### 4.1.5 orient Functional Requirements
 
@@ -1545,12 +1427,8 @@ $ gennady vcs-approve                                          # merge conflict
 - **NFC-01**: Файл читается один раз, контент передаётся во все три проверки
 - **NFC-02**: Anchor-парсер — чистая функция `(content: string) → LintError[]`, без внешних зависимостей
 - **NFC-03**: Коды ошибок — стабильные строковые константы c префиксом `ERR_CLI_LINT_`
-- **NFC-04**: Node.js 22+, TypeScript strict mode. `lint` и большинство команд — zero runtime dependencies. `alt-opinion` использует AI SDK (`ai` + `@ai-sdk/openai`) — бандлится Vite
+- **NFC-04**: Node.js 22+, TypeScript strict mode. `lint` и большинство команд — zero runtime dependencies
 - **NFC-05**: Каждое сообщение об ошибке содержит: что сломано → указание на место → конкретное действие. Формат: `<description>. <imperative action>.`
-- **NFC-06 (alt-opinion)**: AI-вызовы абстрагированы за DI-портом `AltOpinionModelPort` — позволяет мокать SDK в тестах без monkey-patching
-- **NFC-07 (alt-opinion)**: `run(rawArgs, deps)` отделён от self-executing блока — поддержка инжекции stdin/stdout в тестах
-- **NFC-08 (alt-opinion)**: Санитизация входного контента — экранирование `# CONTEXT:` и anchor-маркеров для предотвращения prompt injection
-- **NFC-09 (alt-opinion)**: Телеметрия опциональна — если `port.generate()` не вернул `usage`, блок содержит только `wall` и `reason`. Отсутствие телеметрии у одной модели не ломает вывод остальных
 - **NFC-10 (update-check)**: Zero runtime dependencies — только Node.js built-in модули (`child_process`, `https`, `fs`, `os`, `path`)
 - **NFC-11 (update-check)**: Проверка реестра — чистый HTTPS-запрос без npm CLI (не зависит от наличия `npm` в системе)
 - **NFC-12 (update-check)**: Кеш хранится в платформо-зависимой директории: `~/Library/Preferences/gennady/` (macOS), `~/.config/gennady/` (Linux), `%APPDATA%/gennady/` (Windows)
@@ -1583,17 +1461,6 @@ $ gennady vcs-approve                                          # merge conflict
 - Diff-стратегия (только full-file в v1)
 - `--watch` режим
 - Валидация содержимого `@file:` / `@consumers:` (только наличие)
-
-**alt-opinion (v2):**
-
-- Streaming (потоковый вывод)
-- `--dry-run` / `--prompt-only` (показать промпт без вызова)
-- `--out=<path>` / `--append` (запись в файл)
-- `--temperature`, `--max-tokens`, `--seed` (параметры генерации)
-- Кеширование ответов
-- История / лог запросов
-- Автоматический retry / fallback на другую модель
-- Concurrency limit (всегда параллельно)
 
 **update-check (v1):**
 
@@ -1641,7 +1508,6 @@ $ gennady vcs-approve                                          # merge conflict
 
 **e2e (v1):**
 
-- E2E для `alt-opinion` — требует API-ключей (`GENNADY_LLM_PROXY_API_KEY`), сетевое взаимодействие, нестабильное время ответа
 - E2E для `cat` — требует vcs-client (GitLab/GitHub), сетевое взаимодействие
 - E2E для `agents-rules` — команда проверяет наличие `README.md` в пакете, покрывается e2e-тестом (exit 0 + stdout содержит `npx gennady orient`)
 - E2E для `update-check` — требует сетевого доступа к npm registry
@@ -1686,16 +1552,6 @@ $ gennady vcs-approve                                          # merge conflict
 | Autofix (dbc)                   | `real-runtime`               |
 | Autofix (anchor, header)        | `not-implemented` (deferred) |
 | Поддержка других языков         | `not-implemented` (deferred) |
-
-**alt-opinion:**
-
-| Capability                 | Posture                      |
-| -------------------------- | ---------------------------- |
-| Чтение stdin / файлов (FS) | `real-runtime`               |
-| HTTP-вызовы к AI API       | `real-runtime`               |
-| Streaming вывод            | `not-implemented` (deferred) |
-| Кеширование ответов        | `not-implemented` (deferred) |
-| `--dry-run` / `--verbose`  | `not-implemented` (deferred) |
 
 **update-check:**
 
@@ -1830,37 +1686,7 @@ cli/cmd/lint/
 1. Один проход по файлу: `lint.cmd.ts` читает контент один раз → прокидывает в 3 проверки.
 2. Адаптер к dbc: `dbc-contract.check` создаёт `DbcTsLinter` и вызывает `lint()` / `lintAndFix()`.
 3. Формат ошибок: единый `LintError` — все 3 проверки возвращают один тип.
-4. Git-интеграция: сбор списка файлов через `git diff --staged --name-only` и `git ls-files --others --exclude-standard`.
-
-### 5.2 alt-opinion
-
-```
-
-cli/cmd/alt-opinion/
-├── index.ts # import './alt-opinion.cmd.ts'
-├── alt-opinion.cmd.ts # CLI-обвязка: парсинг args, чтение stdin/--file, вызов runner, вывод
-├── alt-opinion.types.ts # AltOpinionModel, AltOpinionResult, AltOpinionReport
-├── alt-opinion-runner.ts # Ядро: параллельный опрос моделей + опциональный синтез (Promise.allSettled)
-├── alt-opinion-parser.ts # Свой парсер аргументов (:: синтаксис не поддерживается parseArgs)
-├── prompts/
-│ ├── default-opinion.prompt.md # Дефолтный промпт мнения
-│ └── default-synth.prompt.md # Дефолтный промпт синтеза
-└── **tests**/
-├── alt-opinion-parser.test.ts # Unit: парсер (12+ кейсов)
-├── alt-opinion-runner.test.ts # Unit: runner с моками AI SDK через DI-порт
-└── alt-opinion.cmd.test.ts # Integration: CLI-обвязка
-
-```
-
-**Ключевые решения:**
-
-1. **Свой парсер** (`alt-opinion-parser.ts`): `--model="{provider}/{model}::{path}"` не влезает в `parseArgs` — специализированный парсер только для этой команды.
-2. **AI SDK напрямую**: используется `ai` + `@ai-sdk/openai` (через `createOpenAI` с custom baseURL для llmproxy/OpenRouter). Не через легаси `services/ai-client`.
-3. **DI-порт `AltOpinionModelPort`**: абстракция для AI-вызовов, инжектится в `runner`. Позволяет мокать SDK в тестах без monkey-patching.
-4. **`run(rawArgs, deps)` отделён от `process.exit`**: self-executing блок только при прямом запуске (`import.meta.url`). В тестах вызывается `run()` с инжектированными stdin/stdout.
-5. **`Promise.allSettled`**: модели опрашиваются параллельно, ошибка одной не прерывает остальные.
-6. **Логирование через `#logger`**: старт, прогресс (модель → ответ), ошибки, таймауты. Уровни: `info` для нормального флоу, `warn` для деградации, `error` для провала.
-7. **Регистрация в `cli/gennady.ts`**: добавить `case 'alt-opinion'` в switch + обновить help и таблицу в `cli/AGENTS.md`.
+4. Git-интеграция: NUL-safe сбор existing staged ACMR + untracked через argv-safe `git diff --cached --name-only --diff-filter=ACMR -z --` и `git ls-files --others --exclude-standard -z --`.
 
 ### 5.3 Rejected Alternatives
 
@@ -2019,9 +1845,8 @@ cli/cmd/sync-skills/ # новый модуль
 ├── sync-skills-formatter.test.ts
 └── sync-skills.cmd.test.ts
 
-ai/skills/ # 14 скилов (физические артефакты)
+ai/skills/ # 13 скилов (физические артефакты)
 ├── agent-inbox/SKILL.md
-├── alt-opinion/ # SKILL.md + opinion.prompt.md + synth.prompt.md
 ├── opencode-get-session/SKILL.md
 ├── prd-interview/ # SKILL.md + PRD_TEMPLATE.md
 ├── sdd/SKILL.md # единая дверь-роутер
@@ -2427,6 +2252,14 @@ cli/cmd/review/
 - **Risk accepted:** Сетевая операция (в отличие от FR-WT-07, чисто локальной) — время на подготовку worktree растёт при наличии submodules; приватные submodules без доступа токена тихо пропускаются (best-effort), а не превращаются в ошибку подготовки.
 - **Rejected alternatives:** Симлинк submodule-директории из клона-источника — отклонено (см. Why: риск неверной версии зависимости после смены SHA в MR). Всегда выполнять `submodule update` безусловно (без opt-in) — отклонено: ломало бы существующие вызывающие (`inbox-context.cmd.ts`, `context-builder.ts`, `mr-resolver.ts`) добавлением сетевой операции, которую они не запрашивали; сделано opt-in через тот же параметр композиции, что и FR-WT-07.
 
+### D-021 — Команда alt-opinion удалена
+
+- **Status:** active · **Supersedes:** D-003 (архитектура alt-opinion), FR-ALT-\*, NFC-06/07/08/09, §5.2 (file structure)
+- **Recorded:** operator request — тотальная чистка v2, «только необходимое»
+- **Why:** `alt-opinion` (мульти-модельные мнения от AI-моделей с синтезом) признана нерабочей/незадействованной конструкцией и удалена целиком. Снято: код `cli/cmd/alt-opinion/` (runner, cmd, types, parser, prompts, tests), модульная спека `specs/cli/alt-opinion/`, регистрация в `cli/gennady.ts` (help + dispatch), строки в `cli/cmd/help/help.cmd.ts`, `cli/AGENTS.md`, `cli/cmd/README.md`, портал (`specs/README.md`), live-упоминания в этой спеке (список команд, sub-module pointer, module graph). Побочно устранён нестабильный `wallMs >= delay` тест, флейкавший главный гейт под c8.
+- **Оставлено как история (append-only):** D-003, D-016 и task-таблицы §6, где alt-opinion фигурирует как построечная запись — они фиксируют, что было сделано, и не переписываются. То же для строк-примеров паттерна («Pattern C — как alt-opinion»): они документируют происхождение паттерна, а не живую команду.
+- **Update (RC-доводка):** мёртвые live-описания тела вычищены вручную — §4.1 alt-opinion DX, §4.1.2 FR-ALT-\*, §5.2 (file structure), NFC-06..09, capability-таблица и Out-of-Scope блоки alt-opinion, строка вывода `help`, README-секция. Requirement-id консистентность сохранена (удалены целые superseded-блоки, не отдельные строки внутри живых требований).
+
 ### 5.16 vcs-context-resolver (shared)
 
 ```
@@ -2625,7 +2458,6 @@ Spec hierarchy is materialized at `specs/cli/`. Module specs are at `specs/cli/<
 ### 9.1 Modules
 
 - [lint](./lint/lint.spec.md) — Команда `gennady lint`: file header + DBC-контракты + anchor-разметка
-- [alt-opinion](./alt-opinion/alt-opinion.spec.md) — Команда `gennady alt-opinion`: альтернативные мнения от AI-моделей с опциональным синтезом
 - [cat](./cat/cat.spec.md) — Команда `gennady cat`: сбор файлов (локальных и удалённых через --url) в XML/MD для AI-агентов
 - [review](./review/review.spec.md) — Команды `gennady review`/`review-issues`/`review-verify`: AI-ревью staged изменений и GitLab MR
 - [run](./run/run.spec.md) — Команда `gennady run`: тонкая обёртка над `@services/agent-run` — запуск внешнего AI-движка (opencode) с заданием/директориями/моделью в readonly
@@ -2647,7 +2479,6 @@ Spec hierarchy is materialized at `specs/cli/`. Module specs are at `specs/cli/<
 ```mermaid
 graph TD
     lint -. Scope Reference .-> dbc
-    alt-opinion -. Runtime .-> ai-sdk[AI SDK]
     cat -. Runtime .-> vcs[vcs-client]
     orient -. Scope Reference .-> dbc
     update-check -. Runtime .-> npm-registry[npm public registry]

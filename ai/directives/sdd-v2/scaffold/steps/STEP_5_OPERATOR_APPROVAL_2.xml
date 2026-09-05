@@ -1,0 +1,22 @@
+0.8.4
+
+<Step id="STEP_5_OPERATOR_APPROVAL_2">
+      <Goal>Approve decomposition and test plan in one decision.</Goal>
+      <Action>
+        Present a compact card based on actual tickets: ordered ticket list with dependencies and
+        outcomes; infrastructure provider/consumer order; Requirement-ID → scenario → planned test
+        mapping; negative/failure scenarios; declared real verification commands; independent verdict.
+        Ask `Approve tickets and test plan` or `Return for correction` per `AX_OPERATOR_AGREEMENT`. Do not ask approval for an
+        abstract pre-ticket plan. On approval, write approval #2 to the narrowest owning task index in
+        the human-readable `ARTIFACT_APPROVAL_MARKER` format. Any later semantic ticket/index edit
+        resets it to `pending`; no fingerprint, digest, or JSON approval record exists.
+      </Action>
+    </Step>
+
+<Axiom id="AX_OPERATOR_AGREEMENT">
+      Every fix must be operator-approved before execution. The plan is shown as a table.
+      No edits are made before explicit operator "yes" / "go" / "ok".
+      Operator may edit the plan (remove items, change classification, add notes).
+    </Axiom>
+
+After completing this step, and only then, READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/scaffold/steps/STEP_6_HANDOFF.xml"). Do not preload later step packages.

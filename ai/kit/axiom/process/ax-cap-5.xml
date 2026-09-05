@@ -1,1 +1,6 @@
-<Axiom id="AX_CAP_5">Max 5 rounds. Round 5 + edits + not CLEAN → stop, flag MAX_ROUNDS.</Axiom>
+<Axiom id="AX_CAP_5">Five critic results is the hard automatic cap. At the fifth result — regardless
+of sensor verdict — the operator must dispose the cycle before readiness or another dispatch. If that
+round made no edits, the choices are `CLEAN`, `CONTINUE THROUGH ROUND N` with an explicit higher cap,
+or `RESTART: reason`; if it made edits, CLEAN is unavailable because the changed bytes have not been
+reviewed, so only CONTINUE or RESTART are offered. A raised cap behaves identically when reached. The
+sensor cannot authorize continuation, and continuation is never readiness.</Axiom>

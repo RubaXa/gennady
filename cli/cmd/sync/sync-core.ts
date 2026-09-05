@@ -47,6 +47,11 @@ export interface SyncCoreDeps {
    * @returns File names.
    */
   readdir: (path: string) => string[];
+  /**
+   * @purpose Delete one stale target file during full mirror sync.
+   * @param path Absolute stale target file path.
+   */
+  unlink?: (path: string) => void;
   /** @purpose Current working directory. */
   cwd: string;
 }
@@ -95,6 +100,79 @@ export function scanDirectives(sourceDir: string, subdirs?: string[]): string[] 
   return files.sort();
 }
 
+/**
+ * @purpose List top-level subdirectory names the package (source) owns, for scoping mirror deletion.
+ * @param sourceDir Source directory to inspect.
+ * @returns Directory names directly under sourceDir, excluding EXCLUDED_ENTRIES and non-directories.
+ */
+function listOwnedSubdirs(sourceDir: string): string[] {
+  let entries: string[];
+  try {
+    entries = readdirSync(sourceDir);
+  } catch {
+    return [];
+  }
+  return entries.filter((name) => {
+    if (EXCLUDED_ENTRIES.has(name)) return false;
+    const st = statSync(join(sourceDir, name), { throwIfNoEntry: false });
+    return st?.isDirectory() ?? false;
+  });
+}
+
+/**
+ * @purpose Scan the target for mirror-deletion candidates, never throwing on a missing directory —
+ *   an absent target subdirectory simply has nothing to delete.
+ * @invariant Scans only package-owned subdirs: a project-added custom subdirectory is left
+ *   untouched and reported as a warning, never swept away.
+ * @param targetDir Target directory to scan.
+ * @param ownedSubdirs Top-level subdirectory names the package owns for this sync.
+ * @param filtered True when an explicit subdir filter was passed — root files and out-of-filter
+ *   directories are then out of scope, not warned about.
+ * @returns Relative file paths eligible for mirror deletion, plus warnings for target
+ *   subdirectories the package does not own.
+ */
+function scanTargetMirrorSpace(
+  targetDir: string,
+  ownedSubdirs: Set<string>,
+  filtered: boolean
+): { paths: string[]; warnings: string[] } {
+  let topEntries: string[];
+  try {
+    topEntries = readdirSync(targetDir);
+  } catch {
+    return { paths: [], warnings: [] };
+  }
+
+  const files: string[] = [];
+  const warnings: string[] = [];
+
+  for (const name of topEntries) {
+    if (name.startsWith('.') || EXCLUDED_ENTRIES.has(name)) continue;
+
+    const fullPath = join(targetDir, name);
+    const st = statSync(fullPath, { throwIfNoEntry: false });
+    if (!st) continue;
+
+    if (st.isDirectory()) {
+      if (ownedSubdirs.has(name)) {
+        collectRecursive(fullPath, name, files);
+      } else if (!filtered) {
+        warnings.push(
+          `unknown subdirectory in target (not owned by package, left untouched): ${name}`
+        );
+      }
+      // Filtered mode: a directory outside the requested filter is out of scope, not a warning.
+    } else if (st.isFile() && !filtered) {
+      // Root-level files are only mirror candidates when the whole package (not a subdir filter)
+      // is being synced — matches scanDirectives(sourceDir, subdirs), which excludes root files
+      // from relativePaths whenever a subdir filter is active.
+      files.push(name);
+    }
+  }
+
+  return { paths: files.sort(), warnings };
+}
+
 function collectRecursive(dir: string, relativePrefix: string, result: string[]): void {
   let entries: string[];
   try {
@@ -138,6 +216,32 @@ export function collectAndCompare(deps: SyncCoreDeps, opts: SyncOptions): SyncRe
 
   const relativePaths = scanDirectives(opts.sourceDir, opts.subdirs);
   const entries: SyncFileEntry[] = [];
+  const sourcePaths = new Set(relativePaths);
+
+  // Sync is a package-owned mirror, not an additive copy. A removed directive must disappear from
+  // the target too, otherwise an update can keep executing stale flow logic indefinitely. The
+  // mirror is scoped to what the package owns in the SOURCE — an absent target subdirectory is
+  // simply empty of stale files (not an error), and a target subdirectory the package never
+  // shipped is a project customization, left untouched and reported via `warnings`.
+  const filtered = Boolean(opts.subdirs && opts.subdirs.length > 0);
+  const ownedSubdirs = new Set(filtered ? opts.subdirs! : listOwnedSubdirs(opts.sourceDir));
+  const { paths: targetPaths, warnings } = scanTargetMirrorSpace(
+    opts.targetDir,
+    ownedSubdirs,
+    filtered
+  );
+  for (const relativePath of targetPaths) {
+    if (sourcePaths.has(relativePath)) continue;
+    entries.push({ relativePath, status: 'deleted' });
+    if (!opts.dryRun) {
+      if (!deps.unlink) {
+        throw new Error(
+          `[collectAndCompare] unlink dependency missing for stale file: ${relativePath}`
+        );
+      }
+      deps.unlink(join(opts.targetDir, relativePath));
+    }
+  }
 
   for (const relativePath of relativePaths) {
     const sourcePath = join(opts.sourceDir, relativePath);
@@ -176,5 +280,5 @@ export function collectAndCompare(deps: SyncCoreDeps, opts: SyncOptions): SyncRe
     }
   }
 
-  return new SyncResult(entries);
+  return new SyncResult(entries, warnings);
 }

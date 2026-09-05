@@ -34,14 +34,9 @@
   ## Requirements & Constraints
 
   ### Requirements
-  [Плоский список требований per `REQUIREMENT_ENTRY_FORMAT` (contract/spec/requirement-entry-format.xml) — заменяет раздельные Functional Requirements / Non-Functional Constraints для НОВЫХ спек; спеки, уже написанные в старом раздельном формате, остаются валидными как есть. Пример — обычное требование и требование класса «нештатная»:]
+  <!-- УДАЛИ ЭТУ ПОДСКАЗКУ ПОСЛЕ ЗАПОЛНЕНИЯ. Пиши плоский список: ### <ACR>-REQ-N [должен | должен · нештатная], затем одно наблюдаемое условие и обязательство, затем краткое rationale в цитате. Используй уникальные последовательные ID этой спеки. Обязательно покрой happy path, ограничения и хотя бы один негативный сценарий. Единственный образец: -->
 
-  ### <ACR>-REQ-1 [должен]
-  **Когда** пользователь отправляет форму с пустым обязательным полем, **сервис должен** вернуть ошибку валидации с именем поля.
-
-  > Пустое поле — самый частый пользовательский ввод; без явной ошибки пользователь не понимает, что делать дальше.
-
-  ### <ACR>-REQ-2 [должен · нештатная]
+  ### <ACR>-REQ-1 [должен · нештатная]
   **Если** запись в журнал аудита не удалась, **то сервис должен** отклонить операцию и вернуть 503.
 
   > Аудит — комплаенс-требование; без записи операция не легитимна, откат обязателен.
@@ -57,7 +52,7 @@
   ### Tool Choices
   | Category | Tool | Rationale |
   |---|---|---|
-  | <category> | <tool> | D-NNN |
+  | <category> | <tool> | <ACR>-DL-N |
 
   ### Integration Detail
   [Для каждого выбранного инструмента — поля интеграции ниже. Заполняются на стадии решения; если
@@ -89,7 +84,7 @@
 
   | Rule | Category | Source |
   |---|---|---|
-  | <rule-name> | coding | infra (D-NNN) |
+  | <rule-name> | coding | infra (<ACR>-DL-N) |
 
   </details>
   <!--/SECTION:EFFECTIVE_RULES-->
@@ -100,15 +95,25 @@
   | Command Name      | Invocation          |
   | typecheck-command | <actual invocation> |
   | test-command      | <actual invocation> |
-  | coverage-command  | <actual invocation — name the coverage provider too, e.g. `@vitest/coverage-v8`> |
+  | coverage-command  | <actual read/check invocation — name the coverage provider too, e.g. `@vitest/coverage-v8`; MUST NOT rerun the suite> |
   | lint-command      | <actual invocation> |
   | format-command    | <actual invocation> |
   | check-command     | <actual invocation> |
+  | fix-command       | <actual invocation> |
 
   Include only command names for tools present in the chosen stack. `coverage-command` is **required**
   whenever the project declares a coverage threshold gate — a threshold with no declared provider is a
-  gate nobody can run.
-  `check-command` is **always required** when the runtime setup rule (`nodejs-npm-setup` or equivalent) is active — it is the composed entry point that runs all active phases in `CheckPhaseOrder` order (typecheck → test → lint → format). Composition: chain invocations of each active phase command in that order. Task tickets use `check-command` as their single verification alias.
+  gate nobody can run. It reads/checks the report produced by the platform's phase/full verifier and
+  MUST NOT own a second test-suite run.
+  `check-command` and `fix-command` are wrappers for humans, CI, and the pre-commit hook — with the
+  runtime setup rule (`nodejs-npm-setup` or equivalent) active they resolve to the read-only
+  `npx gennady sdd-verify --profile full` and a whole-project wrapper that passes broad roots to the
+  declared argument-forwarding repair prefixes. The phase runtime boundary, not this static shape,
+  proves the actual write-zone. Task tickets do NOT cite them, and they do NOT put the phase
+  ladder line in §Verification either: STEP_5 already runs
+  `npx gennady sdd-verify --task <ticket-path> --phase <PhaseID>`, so a row for it would make every
+  phase run the ladder twice. §Verification carries ONLY the extra commands
+  beyond that gate — one row per additional alias here (e.g. `coverage-command`).
 
   [Инвариант: команды образуют конвейер, а не список — артефакты одной команды не должны ронять
   другую (типичный случай: `coverage/`, `dist/` попадают под lint/format и генерируют ложные findings).
@@ -133,7 +138,7 @@
   <details>
   <summary>Полные записи Decision Log</summary>
 
-  [D-NNN entries.]
+  [<ACR>-DL-N entries per DECISION_LOG_ENTRY_FORMAT.]
 
   </details>
   <!--/SECTION:DECISION_LOG-->
@@ -145,13 +150,14 @@
   <details>
   <summary>Таблица предусловий</summary>
 
-  | Requirement | Kind | Owner | Resolution |
-  |---|---|---|---|
+  | Requirement | Kind | Owner | Resolution | Readiness Gates | Gate Artifacts |
+  |---|---|---|---|---|---|
+  | No external bootstrap required. | — | — | — | — | — |
 
   <!-- Kind ∈ package | workspace-link | tool | file | external-type | env | service | structural -->
   <!-- Owner ∈ this-scope-task | external-prereq-scope | operator-action -->
-  <!-- Empty list allowed only when STEP_7 audit produced zero external assumptions — declare it explicitly: "No external bootstrap required." -->
-  <!-- A shared file (package.json scripts, .nvmrc, a tool config) has EXACTLY ONE owning task — the one whose Kind/Owner row creates it. Every other task that touches the same file references/extends it, never re-creates it. -->
+  <!-- NO external bootstrap (e.g. a pure function): KEEP the "No external bootstrap required." row above and the table — do not delete the table or replace it with prose. Otherwise REPLACE that row with real requirement rows. Always keep exactly one table with all six columns. -->
+  <!-- Every shared manifest/lock write has an owning phase/task; all writers of the same file are strictly DAG-serialized. -->
 
 
   </details>

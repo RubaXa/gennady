@@ -1,8 +1,7 @@
 <!-- source: ai/directives/sdd/phase-execution-protocol.xml -->
 <Axiom id="AX_THIRD_PARTY_TOOL_CURRENT_API">
-  Third-party tool config targets the CURRENT API of the actually-installed version — verified against
-  the installed package and its local docs, never assumed from training data. Every config artifact
-  MUST be backed by a `verified <tool>@<version>` log entry; audit (`audit` rules-compliance step)
-  flags a config artifact without one as `RULES_COMPLIANCE_VIOLATION` tagged
-  `stale-tool-api-not-verified`.
+  A `config` phase targets the CURRENT API of the verified installed tool through STEP_3B's declared
+  ToolDocAdapter, never training data. Only after verification, log
+  `verified <tool>@<version> <one-line summary>`; audit flags a config artifact without it as
+  `RULES_COMPLIANCE_VIOLATION` tagged `stale-tool-api-not-verified`.
 </Axiom>

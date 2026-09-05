@@ -98,6 +98,30 @@ describe('checkDiagramCaptions', () => {
     assert.match(unknown?.message ?? '', /IC-REQ-9/);
   });
 
+  it('caption citing a cross-scope parent requirement (different acronym) → allowed, not flagged', () => {
+    // chain10 clamp: a module narrows and references its parent scope's requirements; a caption may
+    // cite both its own req and the parent's (`FIB-REQ-2`). Only THIS spec's own acronym namespace
+    // is this spec's to declare — a foreign acronym is legitimate cross-scope traceability.
+    const content =
+      newFormatRequirements() +
+      '\n' +
+      overview(
+        [
+          '```mermaid',
+          'flowchart LR',
+          '  A --> B',
+          '```',
+          '_Сужает родительское — IC-REQ-1, FIB-REQ-2._',
+        ].join('\n')
+      );
+    const findings = checkDiagramCaptions(SPEC_FILE, content);
+    assert.deepStrictEqual(
+      findings.filter((f) => f.code === 'SDD_DIAGRAM_CAPTION_REQ_UNKNOWN'),
+      [],
+      'a foreign-acronym (parent scope) req must not be flagged as undeclared'
+    );
+  });
+
   it('caption citing a requirement ID this spec does declare → no findings', () => {
     const content =
       newFormatRequirements() +

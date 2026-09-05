@@ -15,6 +15,7 @@ let _port: number;
 let _serverHandler: ((req: IncomingMessage, res: ServerResponse) => void) | null = null;
 
 const _exitOriginal = process.exit.bind(process);
+const _argvOriginal = [...process.argv];
 let _exitCode: number | null = null;
 
 const _fetchOriginal = globalThis.fetch.bind(globalThis);
@@ -25,7 +26,34 @@ before(async () => {
     res.writeHead(500);
     res.end();
   });
-  await new Promise<void>((resolve) => _server.listen(0, resolve));
+  await new Promise<void>((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      _server.close(() => undefined);
+      reject(
+        new Error(
+          '[update-check-worker.test] local registry did not start within 1s; loopback access is required'
+        )
+      );
+    }, 1_000);
+    timeout.unref();
+
+    const onError = (cause: Error) => {
+      clearTimeout(timeout);
+      reject(
+        new Error(
+          '[update-check-worker.test] failed to listen on 127.0.0.1; run this integration test where loopback binds are permitted',
+          { cause }
+        )
+      );
+    };
+
+    _server.once('error', onError);
+    _server.listen(0, '127.0.0.1', () => {
+      clearTimeout(timeout);
+      _server.off('error', onError);
+      resolve();
+    });
+  });
   _port = (_server.address() as { port: number }).port;
 
   globalThis.fetch = ((url: string | URL | Request, init?: RequestInit) => {
@@ -33,7 +61,7 @@ before(async () => {
     if (urlStr.includes('registry.npmjs.org')) {
       const localUrl = urlStr.replace(
         /https:\/\/registry\.npmjs\.org/,
-        `http://localhost:${_port}`
+        `http://127.0.0.1:${_port}`
       );
       return _fetchOriginal(localUrl, init);
     }
@@ -45,10 +73,28 @@ before(async () => {
   }) as typeof process.exit;
 });
 
-after(() => {
-  _server?.close();
-  globalThis.fetch = _fetchOriginal;
-  process.exit = _exitOriginal;
+after(async () => {
+  try {
+    if (_server?.listening) {
+      await new Promise<void>((resolve, reject) => {
+        _server.close((cause) => {
+          if (cause) {
+            reject(
+              new Error('[update-check-worker.test] failed to close the local registry server', {
+                cause,
+              })
+            );
+            return;
+          }
+          resolve();
+        });
+      });
+    }
+  } finally {
+    globalThis.fetch = _fetchOriginal;
+    process.exit = _exitOriginal;
+    process.argv = _argvOriginal;
+  }
 });
 
 function resetExitMock(): void {
@@ -59,7 +105,7 @@ function tmpCacheDir(): string {
   return mkdtempSync(join(tmpdir(), 'update-check-test-'));
 }
 
-describe('update-check-worker', () => {
+describe('update-check-worker', { timeout: 3_000 }, () => {
   it('registry responds 200 with version', async () => {
     // purpose: when registry returns 200 with a valid version, worker writes atomic cache and exits 0
     // contract: cache file exists with lastCheck + latestVersion; temp file is removed; exit code 0

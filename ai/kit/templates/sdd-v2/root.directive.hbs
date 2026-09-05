@@ -101,7 +101,7 @@
           сейчас» → a `AX_DECISION_LOG_REQUIRED` entry in `DECISION_LOG_ENTRY_FORMAT`, marked deferred.
           Example: operator says «v1 строго local-only, без бэкенда» while the goal is full sync → Vision
           keeps «полная синхронизация между устройствами» as the target, and the Decision Log gets
-          `D-001 <date> — v1 без бэкенда (почему: быстрее показать локальный сценарий; отложено до: этап
+          `<ACR>-DL-1 <date> — v1 без бэкенда (почему: быстрее показать локальный сценарий; отложено до: этап
           синхронизации; риск: придётся менять модель хранения данных)`.
         - **Technical/stack preference** — a named framework, «готовый UIKit», a design-system pick →
           carried forward as intake for the step that actually owns implementation choices (STEP_2's
@@ -194,23 +194,26 @@
       <Action>
         No tooling declared → skip. Else, per `AX_INFRA_BASE_BOOTSTRAP`,
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/infra-base-minimal-spec.xml")`,
-        then scaffold the file via the CLI — `npx gennady sdd-new infrastructure --scope infra-base`
+        then scaffold the file via the CLI — infrastructureManifest ToolCall below
         (it creates directories itself and prints the section manifest; writing the spec from a blank
         Write instead of the scaffold is the same violation as hand-writing the portal skeleton) —
-        and fill the skeleton to that format (scope-type infrastructure,
+        then read it once and replace it with exactly ONE whole-file `Write` (no Edit/Patch or
+        per-section writes), filling the skeleton to that format (scope-type infrastructure,
         one-sentence Vision, Tool Stack table, note pointing to `discovery infra-base` for the full
         Decision Log — the bootstrap only locks the tool choice, the full `infra` flow comes later).
         Approval Check. STOP.
+
+        <ToolCall owner="this-step" result="infrastructureManifest">npx gennady sdd-new infrastructure --scope infra-base</ToolCall> Use infrastructureManifest.
       </Action>
     </Step>
     <Step id="STEP_4_PORTAL_WRITE">
       <Goal>Write / update `specs/README.md`.</Goal>
       <Action>
-        When `specs/README.md` does not exist yet, create its skeleton via `sdd-new portal` first —
+        When `specs/README.md` does not exist yet, create its skeleton via
+        portalManifest ToolCall below first —
         it never overwrites and prints the section manifest (which sections are REQUIRED and what to
-        fill); when it already exists, edit it in place, skip `sdd-new`. Content guidance per
-        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/portal-structure.xml")` and assemble the
-        Portal to that format: the structured Vision block confirmed at STEP_1 (target-state paragraph
+        fill); when it already exists, edit it in place, skip `sdd-new`. The portal skeleton is its
+        format: fill the structured Vision block confirmed at STEP_1 (target-state paragraph
         plus Для кого / Боль / Успех / Принципы), and, per `AX_DECISION_LOG_REQUIRED`, a Decision Log row
         for every deferred or release-boundary decision routed there in the same step — the section is
         omitted only when STEP_1 routed no such decision. Scope status (✅ / 🚧) comes from `sdd-state`
@@ -218,7 +221,7 @@
         `AX_SCOPE_TABLE_FORMAT`.
         Reconcile any placeholder rows left by the scope flow into full rows — root is the primary
         owner of `specs/README.md` and the only flow that rewrites it (`AX_PORTAL_PRIMARY_OWNER`).
-        Write the file. Then run `sdd-check --all .` to verify portal integrity —
+        Write the file. Then run integrityCheck ToolCall below to verify portal integrity —
         graph acyclicity, graph↔table↔spec coherence, no orphan specs or dangling scope references — and
         resolve any finding before finishing, per `AX_CLOSE_WITH_INTEGRITY_CHECK`.
 
@@ -239,15 +242,18 @@
         `AskUserQuestion`. Option 1, recommended while any scope still lacks a spec: «Продолжить
         спеки: discovery `<следующий скоуп по графу зависимостей>`» — the first UNSPEC'D scope in
         Scope Graph dependency order (the level-0 / foundation scope, e.g. `infra-base` when
-        present, else the lowest-level scope just added). On this pick, do NOT end the session —
-        hand control to that scope's branch of the router's own `LOGIC_SWITCH` immediately (the
-        `scope` or `infra` case, by that scope's scope-type), in the SAME session, exactly as
-        `LOGIC_SWITCH`'s multi-scope case already chains branches. A scaffold option is offered
+        present, else the lowest-level scope just added). On this pick, hand control to that scope's
+        branch of the router's own `LOGIC_SWITCH` immediately. The next owner reconstructs context
+        from the portal and specs; no session handoff is required.
+        A scaffold option is offered
         instead ONLY once every scope in the graph already has a spec — per `NEXT_STEP_MENU_FORMAT`
         it is never recommended over an outstanding spec (specs need the operator's judgment,
-        scaffold is mechanical decomposition of what is already approved). Last option always:
-        «Закончить сессию» — on this pick, print a short resume instruction instead (`/sdd` + name
-        the scope to design next) and stop; no directive loads. STOP.
+        scaffold decomposes only approved specs). Selecting it loads scaffold. «Пауза — продолжу
+        позже» stops after printing `/sdd` plus the next scope/step; durable files make that safe.
+        When no work remains, report completion. No terminal state machine or close command exists.
+
+        <ToolCall owner="this-step" result="portalManifest">npx gennady sdd-new portal</ToolCall> Use portalManifest.
+        <ToolCall owner="this-step" result="integrityCheck">npx gennady sdd-check --all .</ToolCall> Use integrityCheck.
       </Action>
     </Step>
   </ExecutionPlan>
@@ -266,6 +272,8 @@
     {{> "contract/process/flow-diagram-when"}}
 
     {{> "contract/process/next-step-menu-format"}}
+
+    {{> "contract/process/question-rule-slim"}}
 
     {{> "axiom/process/ax-progressive-disclosure"}}
   </ChatOutput>

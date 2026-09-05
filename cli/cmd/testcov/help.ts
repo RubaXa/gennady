@@ -6,32 +6,59 @@
  */
 export function printHelp(): void {
   console.info(
-    'gennady testcov — Visual test coverage tree for vitest / jest / node:test projects'
+    'gennady testcov — Adapter-backed coverage tree and gate for supported project platforms'
   );
   console.info('');
   console.info('Usage:');
   console.info('  npx gennady testcov [path] [options]');
+  console.info('  npx gennady testcov --min=<pct> [path...]');
   console.info('');
   console.info('Options:');
   console.info('  --files               Show source files in tree (default: dirs only)');
-  console.info('  --run                 Detect runner → run tests with coverage → show tree');
-  console.info('  --check               Diagnose configuration; exit 0 if OK, 1 on errors');
   console.info(
-    '  --min=<pct>           Coverage gate: exit 1 if aggregate line coverage < pct (0 on pass)'
+    '  --run                 Clear old report → run detected local producer → require its new report'
   );
+  console.info('  --check               Diagnose configuration; exit 0 if OK, 1 on errors');
+  console.info('  --min=<pct>           Coverage gate; finite 0..100, decimals allowed (exit 0/1)');
   console.info('  --json                Machine-readable output (for --check or --flat)');
   console.info('  --flat                Flat list instead of tree');
-  console.info('  --context, -c <N>     Context lines around uncovered code (default: 2)');
+  console.info('  --context, -c <N>     Nonnegative integer context lines (default: 2)');
   console.info('  --color               Enable ANSI color highlighting (red/yellow backgrounds)');
   console.info('  --help, -h            Show this help');
+  console.info('  Invalid/unknown arguments exit 4 and print canonical usage.');
+  console.info(
+    '  A failed producer remains failed even when it emits diagnostic coverage; its exit code is retained.'
+  );
+  console.info(
+    '  Platform selection is fail-closed: no matching adapter or several matches produce a capability diagnostic.'
+  );
+  console.info(
+    '  The selected adapter owns producer argv and repo-relative artifacts; report paths with any symlink component fail before delete/read/run.'
+  );
+  console.info(
+    '  --min targets are exact repo-relative regular files/directories below cwd; absolute, outside, missing, special, or symlink paths fail before adapter/report lookup.'
+  );
+  console.info(
+    '  Unreadable source subtrees fail closed in scoped and project-wide modes; no partial threshold/tree is rendered.'
+  );
+  console.info(
+    '  --min gates the complete adapter-owned production source-set (root-level + nested); every file needs one fresh, unambiguous report identity.'
+  );
   console.info('');
   console.info(
     'File detail: when a source file is targeted, shows line-by-line annotated coverage'
   );
+  console.info(
+    '  Detail and per-file test counts are adapter capabilities; unsupported adapters report a typed diagnostic instead of guessing a report schema.'
+  );
   console.info('  npx gennady testcov src/module.ts           full annotated view');
   console.info('  npx gennady testcov src/module.ts -c 3      ±3 context lines around uncovered');
   console.info('');
-  console.info('Supported runners (auto-detected from package.json):');
+  console.info('Installed coverage adapters:');
+  console.info('  istanbul-js — TypeScript/JavaScript/Vue/Svelte, coverage/coverage-final.json');
+  console.info('  iOS, Android, and Go adapters are not installed/supported yet.');
+  console.info('');
+  console.info('Supported Istanbul producers (auto-detected from package.json):');
   console.info(
     "  vitest   — requires @vitest/coverage-v8, coverage.reporter: ['json'], reportOnFailure: true"
   );

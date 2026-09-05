@@ -1,5 +1,5 @@
 <!-- source: ai/directives/coding/result-conventions.xml -->
 <Axiom id="AX_CONFIGURABLE_NAMES">
       Every rule that matches function or type names accepts an options object with configurable identifiers: resultTypeName, isErrFn, isOkFn, successFn, failFn, castFn.
-      Defaults match @tessell/core/result exports. On package rename — update config, not the rule.
+      Defaults match the selected Result implementation's exports. On package rename — update config, not the rule.
     </Axiom>

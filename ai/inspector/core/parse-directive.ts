@@ -195,10 +195,10 @@ function parseHalts(inner: string): TraceNode[] {
 /** Тело Action → структурный <LogicSwitch> (если есть) + тулы/порталы; метка только при РЕАЛЬНОМ текстовом ветвлении. */
 function parseAction(inner: string): TraceNode[] {
   const out: TraceNode[] = [];
-  const sw = /<LogicSwitch\b([^>]*)>([\s\S]*?)<\/LogicSwitch>/.exec(inner);
+  const sw = /<(LogicSwitch|LOGIC_SWITCH)\b([^>]*)>([\s\S]*?)<\/\1>/.exec(inner);
   let rest = inner;
   if (sw) {
-    out.push(parseLogicSwitch(sw[2] as string, parseAttrs(sw[1] as string).on));
+    out.push(parseLogicSwitch(sw[3] as string, parseAttrs(sw[2] as string).on));
     rest = inner.replace(sw[0], ' '); // не дублировать ссылки свича как плоские run
   }
   out.push(...scanRefsAndTools(rest));
@@ -221,9 +221,9 @@ function parseLogicSwitch(inner: string, onAttr?: string): TraceNode {
   const header = /LOGIC_SWITCH\s*\(([^)]*)\)/.exec(inner);
   const branches: TraceNode[] = [];
   for (const m of inner.matchAll(
-    /-\s*(WHEN|DEFAULT)\b([\s\S]*?)(?=\n\s*-\s*(?:WHEN|DEFAULT)\b|\n```|$)/g
+    /^[ \t]*(?:-[ \t]*)?(WHEN|DEFAULT|OTHERWISE)\b([\s\S]*?)(?=^[ \t]*(?:-[ \t]*)?(?:WHEN|DEFAULT|OTHERWISE)\b|\n```|(?![\s\S]))/gim
   )) {
-    const kind = m[1] as string;
+    const kind = (m[1] as string).toUpperCase();
     const rest = m[2] as string;
     const ai = rest.indexOf('->');
     const cond = ai >= 0 ? rest.slice(0, ai) : rest;
@@ -233,7 +233,7 @@ function parseLogicSwitch(inner: string, onAttr?: string): TraceNode {
       kids.push({ kind: 'text', label: '→ ' + firstSentence(clean(action)) });
     branches.push({
       kind: 'branch',
-      label: kind === 'DEFAULT' ? 'DEFAULT' : firstSentence(clean(cond)),
+      label: kind === 'WHEN' ? firstSentence(clean(cond)) : 'DEFAULT',
       detail: clean(rest),
       children: kids.length ? kids : undefined,
     });
@@ -264,7 +264,7 @@ function buildStepNode(attrsRaw: string, body: string): TraceNode {
   const action = /<Action>([\s\S]*?)<\/Action>/.exec(body);
   if (action) {
     const ai = action[1] as string;
-    const prose = ai.replace(/<LogicSwitch\b[^>]*>[\s\S]*?<\/LogicSwitch>/g, ' '); // switch shown as branches, not raw in detail
+    const prose = ai.replace(/<(LogicSwitch|LOGIC_SWITCH)\b[^>]*>[\s\S]*?<\/\1>/g, ' '); // switch shown as branches, not raw in detail
     children.push({
       kind: 'text',
       label: '<Action>',
@@ -286,11 +286,11 @@ function parseMonolithSteps(inner: string): TraceNode[] {
 }
 
 /** Одна bullet-строка списка шагов lazy-скелета:
- *  `- **STEP_ID** — gist. Full step text: \`ai/directives/sdd-v2/<name>/steps/<id>.xml\` (...).`
+ *  `- **STEP_ID** — gist. Before executing this step, READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/<name>/steps/<id>.xml").`
  *  (форма — buildStepListEntry в ai/kit/lazy-assembly.ts). Захватываем id + путь к пакету; gist —
  *  только как честный fallback-текст, если пакет физически не прочитался. */
 const LAZY_STEP_BULLET_RE =
-  /-\s*\*\*([A-Za-z0-9_]+)\*\*\s*[—-]\s*([^\n]*?)\s*Full step text:\s*`([^`]+)`[^\n]*/g;
+  /-\s*\*\*([A-Za-z0-9_]+)\*\*\s*[—-]\s*([^\n]*?)\s*Before executing this step,\s*READ_AND_USE_DIRECTIVE\("([^"]+)"\)\.[^\n]*/g;
 
 /** Top-level `<Axiom>`/`<Contract>` блоки, физически перенесённые lazy-сборкой в файл пакета шага
  *  (DA-REQ-9: аксиома/контракт, активирующийся только в ОДНОМ шаге, живёт только там — его больше
@@ -322,10 +322,22 @@ function parsePackageExtras(extras: string): TraceNode[] {
  */
 function parseLazySteps(inner: string, read: FileReader | undefined): TraceNode[] {
   const steps: TraceNode[] = [];
-  for (const m of inner.matchAll(LAZY_STEP_BULLET_RE)) {
+  const pending = [...inner.matchAll(LAZY_STEP_BULLET_RE)];
+  const visited = new Set<string>();
+  for (let cursor = 0; cursor < pending.length; cursor++) {
+    const m = pending[cursor] as RegExpMatchArray;
     const id = m[1] as string;
     const gist = clean(m[2] as string);
     const packagePath = m[3] as string;
+    if (visited.has(packagePath)) {
+      steps.push({
+        kind: 'unparsed',
+        label: 'цикл цепочки пакетов шагов',
+        note: packagePath,
+      });
+      break;
+    }
+    visited.add(packagePath);
     const content = read ? read(packagePath) : null;
     if (content == null) {
       steps.push({
@@ -366,6 +378,26 @@ function parseLazySteps(inner: string, read: FileReader | undefined): TraceNode[
     stepNode.attrs = { ...stepNode.attrs, source: packagePath };
     stepNode.note = `физически в пакете: ${packagePath}`;
     steps.push(stepNode);
+
+    // Chain-topology skeletons expose only their entry package. Each package names exactly the
+    // next package at its tail, so the inspector follows that bounded chain without changing the
+    // runtime's genuinely lazy loading contract.
+    const next = /After completing this step,[^\n]*READ_AND_USE_DIRECTIVE\("([^"]+)"\)/.exec(
+      extras
+    );
+    if (next) {
+      const nextPath = next[1] as string;
+      const nextId = /\/steps\/([A-Za-z0-9_]+)\.xml$/.exec(nextPath)?.[1];
+      if (!nextId) {
+        steps.push({
+          kind: 'unparsed',
+          label: 'некорректный путь следующего шага',
+          note: nextPath,
+        });
+        break;
+      }
+      pending.push([next[0], nextId, '', nextPath] as unknown as RegExpMatchArray);
+    }
   }
   return steps;
 }
@@ -442,7 +474,8 @@ export function parseDirective(path: string, xml: string, read?: FileReader): Tr
         note: 'процедура фазы',
         children: parseSteps(el.inner, path, read),
       });
-    else if (el.name === 'LogicSwitch') sections.push(parseLogicSwitch(el.inner, attrs.on));
+    else if (el.name === 'LogicSwitch' || el.name === 'LOGIC_SWITCH')
+      sections.push(parseLogicSwitch(el.inner, attrs.on));
     else
       sections.push({ kind: 'section', label: `<${el.name}>`, ...parseGenericSection(el.inner) });
   }

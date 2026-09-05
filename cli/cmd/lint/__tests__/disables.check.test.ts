@@ -54,6 +54,11 @@ describe('DisablesCheck', () => {
     assert.deepEqual(check(content, 'foo.ts'), []);
   });
 
+  it('DC-03b active <ACR>-DL-N reference → []', () => {
+    const content = `${S} @ts-expect-error: CLI-DL-42 — abstract class instantiation test\nclass _X {}\n`;
+    assert.deepEqual(check(content, 'foo.ts'), []);
+  });
+
   // --- TSK-52 additions: purpose enforcement (DC-21..DC-25) ---
 
   it('DC-21 D-NNN without purpose → MISSING_PURPOSE', () => {
@@ -101,7 +106,7 @@ describe('DisablesCheck', () => {
     assert.equal(errors[0].code, ERR_CLI_LINT_UNAUTHORIZED_DISABLE);
     assert.equal(errors[0].line, 1);
     assert.ok(errors[0].message.includes('@ts-expect-error'));
-    assert.ok(errors[0].message.includes('D-NNN'));
+    assert.ok(errors[0].message.includes('<ACR>-DL-N'));
   });
 
   it('DC-05 @ts-ignore without D-NNN → 1 error', () => {

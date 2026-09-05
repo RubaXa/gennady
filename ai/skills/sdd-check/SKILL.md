@@ -1,6 +1,6 @@
 ---
 name: sdd-check
-description: Verify SDD workflow integrity — run the mechanical checks over one ticket or the whole project and report findings (anchors, structure, Task-ID, fabricated DONE, broken spec links). Read-only, no edits. Use for "проверь sdd", "sdd-check", "verify workflow", "целостность спек/тасков", "/sdd-check".
+description: Verify SDD workflow integrity — run mechanical checks over one ticket, an authoring spec, or the whole project (anchors, structure, Task-ID, fabricated DONE, broken spec links). Read-only except conservative whitespace auto-fix in --spec --authoring. Use for "проверь sdd", "sdd-check", "verify workflow", "целостность спек/тасков", "/sdd-check".
 compatibility: opencode
 ---
 
@@ -10,7 +10,7 @@ compatibility: opencode
     tool (`shared/sdd/check.ts`). The skill runs the tool and surfaces its ESLint-style findings.
   </Priming>
 
-  <Mission>Run the deterministic mechanical audit and report. This skill has NO directive to embody — it is a thin reporter over the `sdd-check` tool. Read-only: it never edits artifacts (routing fixes to `/sdd-reconcile` is the operator's call).</Mission>
+  <Mission>Run the deterministic mechanical audit and report. This skill has NO directive to embody — it is a thin reporter over the `sdd-check` tool. It is read-only except that `--spec --authoring` conservatively normalizes trivial whitespace/indentation in the selected draft; it never invents content (routing semantic fixes to `/sdd-reconcile` is the operator's call).</Mission>
 
   <ExecutionPlan>
     <Step id="RUN">

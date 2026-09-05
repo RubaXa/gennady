@@ -19,67 +19,116 @@ const deepRun = (n: TraceNode): string[] =>
 
 test('root tag is the directive element', () => {
   assert.equal(tree.kind, 'directive');
-  assert.equal(tree.label, '<SddExecuteOrchestrator>');
-  assert.equal(tree.attrs?.ver, '2.1');
+  assert.equal(tree.label, '<SddExecute>');
+  assert.equal(tree.attrs?.ver, '2.3');
 });
 
 test('top-level sections appear in document order', () => {
   const labels = (tree.children ?? []).map((c) => c.label);
-  assert.deepEqual(labels, [
+  const requiredOrder = [
     '<Mission>',
     '<BeliefState>',
+    '<Contracts>',
     '<HaltConditions>',
-    '<ContextExpectation>',
     '<ExecutionPlan>',
-    '<HardForbidden>',
-    '<ChatProtocol>',
-    '<ChatOutput>',
-  ]);
+  ];
+  const positions = requiredOrder.map((label) => labels.indexOf(label));
+  assert.ok(
+    positions.every((position) => position >= 0),
+    'every execute section is present'
+  );
+  assert.deepEqual(
+    [...positions].sort((a, b) => a - b),
+    positions,
+    'required sections preserve their source order even when a new section is added'
+  );
 });
 
-test('BeliefState carries 19 axioms with id + summary', () => {
+test('BeliefState carries the execute-owned axioms with ids and readable bodies', () => {
   const bs = section('<BeliefState>');
-  assert.equal(bs?.children?.length, 19);
-  const tool = bs?.children?.find((a) => a.label === 'AX_TOOL_INVOCATION');
-  assert.ok(tool, 'AX_TOOL_INVOCATION present');
-  assert.ok((tool?.note?.length ?? 0) > 0, 'axiom has a short summary');
-  assert.ok((tool?.detail?.length ?? 0) > (tool?.note?.length ?? 0), 'axiom keeps full body');
+  const axioms = (bs?.children ?? []).filter((child) => child.kind === 'axiom');
+  const ids = axioms.map((axiom) => axiom.label);
+  assert.equal(new Set(ids).size, ids.length, 'axiom ids stay unique');
+  for (const id of [
+    'AX_OWNER',
+    'AX_EXECUTION_ORDER',
+    'AX_EXECUTION_LOG_PLAN_VS_FACT',
+    'AX_VERIFICATION_BEFORE_HANDOFF',
+    'AX_HALT_VS_FAIL_DISTINCTION',
+    'AX_HANDOFF_TYPED',
+    'AX_TASK_PARALLEL',
+  ]) {
+    assert.ok(ids.includes(id), `${id} remains owned by execute after delta assembly`);
+  }
+  assert.ok(
+    !ids.includes('AX_ENV_FIX_CHANNEL'),
+    'the removed operator-approved environment patch channel is not reintroduced'
+  );
+
+  const recoveryContract = axioms.find(
+    (axiom) => axiom.label === 'AX_HALT_VS_FAIL_DISTINCTION'
+  )?.detail;
+  assert.match(
+    recoveryContract ?? '',
+    /RECOVERABLE_TECHNICAL/,
+    'execute-owned axioms classify ordinary technical gaps for autonomous recovery'
+  );
+  assert.match(
+    recoveryContract ?? '',
+    /EXTERNAL_AUTHORITY_REQUIRED/,
+    'execute-owned axioms preserve the exact external-authority boundary'
+  );
+  for (const axiom of axioms) {
+    assert.ok((axiom.note?.length ?? 0) > 0, `${axiom.label} has a short summary`);
+    assert.ok(
+      (axiom.detail?.length ?? 0) >= (axiom.note?.length ?? 0),
+      `${axiom.label} keeps at least the summarized body`
+    );
+  }
 });
 
-test('HaltConditions carries the 6 halts', () => {
+test('HaltConditions carries the current stateless execute boundaries', () => {
   const h = section('<HaltConditions>');
   const ids = (h?.children ?? []).map((c) => c.label).sort();
   assert.deepEqual(ids, [
     'H_AMBIGUOUS_TASK',
-    'H_AUDIT_FAIL_AFTER_RETRY',
-    'H_CODE_REVIEW_BLOCKER',
-    'H_NO_TASKS',
-    'H_PAUSED_AWAITING_OPERATOR',
-    'H_WORKER_INTERRUPTED',
+    'H_PHASE_BLOCKED',
+    'H_REAL_GATE_RED',
+    'H_REQUIREMENT_UNCOVERED',
+    'H_TICKET_NOT_APPROVED',
   ]);
 });
 
-test('ExecutionPlan carries the 11 steps with ids', () => {
+test('ExecutionPlan carries the 8 stateless execute steps with exact ids', () => {
   const ep = section('<ExecutionPlan>');
-  assert.equal(ep?.children?.length, 11);
-  assert.equal(ep?.children?.[0]?.attrs?.id, 'STEP_0_RESOLVE');
-  assert.equal(ep?.children?.[1]?.attrs?.id, 'STEP_0B_PREFLIGHT');
-  assert.equal(ep?.children?.at(-1)?.attrs?.id, 'STEP_8_SUMMARY');
+  assert.deepEqual(
+    ep?.children?.map((step) => step.attrs?.id),
+    [
+      'STEP_0_RESOLVE',
+      'STEP_1_CONTEXT',
+      'STEP_2_PLAN',
+      'STEP_3_DISPATCH',
+      'STEP_4_RECORD',
+      'STEP_5_REAL_GATES',
+      'STEP_6_AUDIT_REVIEW',
+      'STEP_7_CLOSE',
+    ]
+  );
 });
 
-test('READ_AND_USE targets are captured as run nodes', () => {
+test('execute tools are captured without inventing executable directive calls from prose', () => {
+  const tools = (tree.children ?? []).flatMap(function collect(node): string[] {
+    return (node.children ?? []).flatMap((child) =>
+      (child.kind === 'tool' && child.label ? [child.label] : []).concat(collect(child))
+    );
+  });
+  assert.ok(tools.includes('sdd-task'));
+  assert.ok(tools.includes('sdd-check'));
   const refs = deepRun(tree);
-  assert.ok(
-    refs.some((r) => r.includes('phase-execution-protocol')),
-    'phase-execution'
-  );
-  assert.ok(
-    refs.some((r) => r.includes('audit.directive')),
-    'audit'
-  );
-  assert.ok(
-    refs.some((r) => r.includes('code-review.directive')),
-    'code-review'
+  assert.deepEqual(
+    refs,
+    ['ai/directives/sdd-v2/deviation-review.directive.xml'],
+    'only the post-batch deviation review is executable; named worker protocols remain prose'
   );
 });
 
@@ -99,64 +148,78 @@ test('firstSentence trims and strips comments', () => {
 
 const routerXml = readFileSync(join(repoRoot, 'ai/directives/sdd-v2/router.directive.xml'), 'utf8');
 const router = parseDirective('ai/directives/sdd-v2/router.directive.xml', routerXml);
-const routerSwitch = router.children?.find((c) => c.kind === 'switch');
+const routerPlan = router.children?.find((c) => c.label === '<ExecutionPlan>');
+const routerStep = (id: string) => routerPlan?.children?.find((c) => c.attrs?.id === id);
 
-test('the structured <LogicSwitch> is parsed into a switch node', () => {
-  assert.ok(routerSwitch, 'switch section present');
-  assert.match(routerSwitch?.note ?? '', /sdd-state|intent/);
+test('router exposes the three stateless steps in exact order', () => {
+  assert.deepEqual(
+    routerPlan?.children?.map((step) => step.attrs?.id),
+    ['STEP_0_STATE', 'STEP_1_CLASSIFY', 'STEP_2_ROUTE']
+  );
 });
 
-test('LogicSwitch yields one branch per WHEN/DEFAULT (9 total, incl. DEFAULT)', () => {
-  const branches = routerSwitch?.children ?? [];
-  assert.equal(branches.length, 9);
-  assert.equal(branches.at(-1)?.label, 'DEFAULT');
+test('classification makes V1→V2 the only migration and never creates session state', () => {
+  const classify = routerStep('STEP_1_CLASSIFY')?.children?.find((c) => c.label === '<Action>');
+  assert.match(classify?.detail ?? '', /never create a\s+session or migration branch/);
+  assert.match(classify?.detail ?? '', /`FLOW_VERSION=v2` never routes to migration/);
+  assert.match(classify?.detail ?? '', /`FLOW_VERSION=v1` may route to the explicit V1→V2/);
 });
 
-test('each routing branch descends via a run node to its directive', () => {
-  const first = routerSwitch?.children?.[0];
-  const run = first?.children?.find((c) => c.kind === 'run');
-  assert.equal(run?.ref, 'ai/directives/sdd-v2/root.directive.xml');
-});
-
-test('STEP_6_BRANCH LogicSwitch yields 5 branches — mechanical-fix path precedes the operator risk-ask', () => {
-  const ep = section('<ExecutionPlan>');
-  const step6 = ep?.children?.find((c) => c.attrs?.id === 'STEP_6_BRANCH');
-  const findSwitch = (n: TraceNode): TraceNode | null => {
-    if (n.kind === 'switch') return n;
-    for (const c of n.children ?? []) {
-      const r = findSwitch(c);
-      if (r) return r;
-    }
-    return null;
-  };
-  const sw = findSwitch(step6 as TraceNode);
-  assert.ok(sw, 'STEP_6_BRANCH carries a structured switch');
+test('STEP_2_ROUTE parses the current bare LOGIC_SWITCH lines into exact owner branches', () => {
+  const action = routerStep('STEP_2_ROUTE')?.children?.find((c) => c.label === '<Action>');
+  const sw = action?.children?.find((child) => child.kind === 'switch');
+  assert.ok(sw, 'uppercase LOGIC_SWITCH is a structured switch');
   const branches = sw?.children ?? [];
-  assert.equal(branches.length, 5);
-  assert.match(branches[1]?.detail ?? '', /concrete mechanical remediation/);
-  assert.match(branches[2]?.detail ?? '', /NO concrete mechanical remediation/);
+  const runs = branches
+    .slice(0, -1)
+    .map((branch) => branch.children?.find((child) => child.kind === 'run')?.ref);
+  assert.deepEqual(runs, [
+    'ai/directives/sdd-v2/migration-v1-v2.directive.xml',
+    'ai/directives/sdd-v2/scaffold.directive.xml',
+    'ai/directives/sdd-v2/execute.directive.xml',
+    'ai/directives/sdd-v2/critic.directive.xml',
+    'ai/directives/sdd-v2/reconcile.directive.xml',
+    'ai/directives/sdd-v2/root.directive.xml',
+    'ai/directives/sdd-v2/discover-from-code.directive.xml',
+    'ai/directives/sdd-v2/module.directive.xml',
+    'ai/directives/sdd-v2/infra.directive.xml',
+    'ai/directives/sdd-v2/interface.directive.xml',
+    'ai/directives/sdd-v2/scope.directive.xml',
+  ]);
+  assert.equal(branches.at(-1)?.label, 'DEFAULT', 'bare OTHERWISE is the default branch');
+  assert.equal(
+    action?.children?.some((child) => child.kind === 'unparsed' || child.kind === 'run'),
+    false,
+    'branch runs are nested under the switch, never flattened or marked unparsed'
+  );
 });
 
-test('a preflight step embeds a structured <LogicSwitch> (WHEN gates), not prose', () => {
-  const ep = router.children?.find((c) => c.label === '<ExecutionPlan>');
-  const step0 = ep?.children?.[0];
-  const findSwitch = (n: TraceNode): TraceNode | null => {
-    if (n.kind === 'switch') return n;
-    for (const c of n.children ?? []) {
-      const r = findSwitch(c);
-      if (r) return r;
-    }
-    return null;
-  };
-  const sw = findSwitch(step0 as TraceNode);
-  assert.ok(sw, 'STEP_0 carries a structured switch');
-  // 5 cases: migration (broad blast radius), the queue-exception (queued TODO tickets already
-  // build the missing gate), readiness (broad blast radius), the narrow-blast-radius carve-out
-  // (AX_PREFLIGHT_BLAST_RADIUS_SCOPED), DEFAULT.
-  assert.equal(sw?.children?.length, 5);
-  assert.equal(sw?.children?.at(-1)?.label, 'DEFAULT');
-  const run = sw?.children?.[0]?.children?.find((c) => c.kind === 'run');
-  assert.match(run?.ref ?? '', /migration-v1-v2/);
+test('camel-case LogicSwitch keeps markdown-list WHEN / DEFAULT compatibility', () => {
+  const parsed = parseDirective(
+    'synthetic.directive.xml',
+    [
+      '<Synthetic>',
+      '<ExecutionPlan><Step id="ROUTE"><Action>',
+      '<LogicSwitch on="intent">',
+      '- WHEN intent = execute -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/execute.directive.xml")',
+      '- DEFAULT -> H_AMBIGUOUS_INTENT',
+      '</LogicSwitch>',
+      '</Action></Step></ExecutionPlan>',
+      '</Synthetic>',
+    ].join('\n')
+  );
+  const action = parsed.children?.[0]?.children?.[0]?.children?.find(
+    (child) => child.label === '<Action>'
+  );
+  const sw = action?.children?.find((child) => child.kind === 'switch');
+  assert.deepEqual(
+    sw?.children?.map((branch) => branch.label),
+    ['intent = execute', 'DEFAULT']
+  );
+  assert.equal(
+    sw?.children?.[0]?.children?.find((child) => child.kind === 'run')?.ref,
+    'ai/directives/sdd-v2/execute.directive.xml'
+  );
 });
 
 // --- fallback branch (sections with no dedicated parser) must expand nested <Contract>/<Axiom> ---
@@ -165,17 +228,18 @@ test('a preflight step embeds a structured <LogicSwitch> (WHEN gates), not prose
 // <Contract> elements rendered as an empty leaf (note "(пусто)"), and a section mixing its own text
 // with a nested tag either showed a raw XML fragment or silently dropped the nested content.
 
-test('a section with ONLY nested <Contract> elements and no own text expands them as children', () => {
-  const chatProtocol = router.children?.find((c) => c.label === '<ChatProtocol>');
-  assert.ok(chatProtocol, '<ChatProtocol> section present');
-  assert.equal(
-    chatProtocol?.children?.length,
-    2,
-    'both nested <Contract> elements became children'
-  );
-  const ids = (chatProtocol?.children ?? []).map((c) => c.label);
-  assert.deepEqual(ids, ['QUESTION_RULE_SLIM', 'HALT_FORMAT']);
-  for (const child of chatProtocol?.children ?? []) {
+test('the current router Contracts section expands all nested contracts', () => {
+  const contracts = router.children?.find((c) => c.label === '<Contracts>');
+  assert.ok(contracts, '<Contracts> section present');
+  const ids = (contracts?.children ?? []).map((c) => c.label);
+  assert.deepEqual(ids, [
+    'ARTIFACT_APPROVAL_FLOW',
+    'ARTIFACT_APPROVAL_MARKER',
+    '<LogicSwitch>',
+    'QUESTION_RULE_SLIM',
+    'HALT_FORMAT',
+  ]);
+  for (const child of contracts?.children ?? []) {
     assert.ok((child.note?.length ?? 0) > 0, `${child.label} has a non-empty note`);
     assert.ok(
       (child.detail?.length ?? 0) >= (child.note?.length ?? 0),
@@ -183,34 +247,36 @@ test('a section with ONLY nested <Contract> elements and no own text expands the
     );
     assert.doesNotMatch(child.detail ?? '', /<Contract\b/, 'no raw tag markup leaks into detail');
   }
-  // no own text between the two <Contract> tags → a meaningful count note, never a blank "(пусто)"
-  assert.match(chatProtocol?.note ?? '', /вложенн/);
 });
 
 test('a section with its OWN text plus a nested <Contract> and <Axiom> keeps both', () => {
-  const chatOutput = router.children?.find((c) => c.label === '<ChatOutput>');
-  assert.ok(chatOutput, '<ChatOutput> section present');
+  const mixed = parseDirective(
+    'synthetic.directive.xml',
+    '<Synthetic><Mixed>Service line.<Contract id="MESSAGE_LAYOUT">decision card.</Contract><Axiom id="AX_PROGRESSIVE_DISCLOSURE">progressively.</Axiom></Mixed></Synthetic>'
+  ).children?.find((c) => c.label === '<Mixed>');
+  assert.ok(mixed, '<Mixed> section present');
   // the section's own prose (before the first nested tag) survives as its note/detail
-  assert.match(chatOutput?.note ?? '', /Service line/);
+  assert.match(mixed?.note ?? '', /Service line/);
   assert.doesNotMatch(
-    chatOutput?.detail ?? '',
+    mixed?.detail ?? '',
     /<Contract\b|<Axiom\b/,
     'own detail excludes nested tag markup'
   );
-  const labels = (chatOutput?.children ?? []).map((c) => ({ label: c.label, kind: c.kind }));
+  const labels = (mixed?.children ?? []).map((c) => ({ label: c.label, kind: c.kind }));
   assert.deepEqual(labels, [
     { label: 'MESSAGE_LAYOUT', kind: 'text' },
     { label: 'AX_PROGRESSIVE_DISCLOSURE', kind: 'axiom' },
   ]);
-  const contract = chatOutput?.children?.find((c) => c.label === 'MESSAGE_LAYOUT');
+  const contract = mixed?.children?.find((c) => c.label === 'MESSAGE_LAYOUT');
   assert.match(contract?.detail ?? '', /decision card/);
 });
 
 test('placeholder tokens inside `code spans` (e.g. `P<N>`, `` `<Task-ID>` ``) are not mistaken for nested tags', () => {
-  // execute.directive.xml's <ContextExpectation> has no dedicated parser and its markdown table is
-  // full of backticked placeholders shaped like a tag (<N>, <ticket>, <id>) — none of these may turn
-  // into a bogus child node, and the section's own text must stay intact.
-  const ctx = tree.children?.find((c) => c.label === '<ContextExpectation>');
+  const placeholderTree = parseDirective(
+    'synthetic.directive.xml',
+    '<Synthetic><ContextExpectation>Use `P<N>` and `<Task-ID>` with `sdd-task`.</ContextExpectation></Synthetic>'
+  );
+  const ctx = placeholderTree.children?.find((c) => c.label === '<ContextExpectation>');
   assert.ok(ctx, '<ContextExpectation> section present');
   assert.equal(
     ctx?.children,

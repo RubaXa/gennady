@@ -1,336 +1,46 @@
 0.8.4
 <!-- Step packages regenerate via: npm run build:directives -- --assembly=lazy. A missing file at a path below means the build or sync is stale — rebuild rather than guess. -->
 
-<SddPhaseExecution keywords="phase-execution, single-phase, scope-lock, narrow-recon, verify-gate, live-log, handoff, worker, isolated, sdd-task, resume" type="directive" ver="2.5">
+<PhaseExecutionProtocol keywords="sdd, phase, worker, implementation, verification" type="directive" ver="2.3">
   <Mission>
-    Execute ONE phase of ONE task ticket, on a minimal activation from the execute orchestrator —
-    this directive's path, the ticket path, the phase ID, and a reason. This directive plus the
-    output of `gennady sdd-task <ticket> --phase P<N>` (STEP_1, the FIRST action of every phase) are
-    the WHOLE working context: no other phase, code, or spec beyond the anchors the tool names.
-    Never inspect CLI internals. Follow actionable tool output; an error it does not explain and
-    that cannot map to `HaltConditions` is `H_BLOCKED` — log it and stop.
-
-    Read only what this phase needs; write only this phase's Target Files; run the verification gate;
-    emit a typed Handoff. A worker directive — runs in isolation on a cheaper model, returns to the
-    orchestrator, stays silent to the operator (no decision cards here).
-
-    The orchestrator owns all of: selecting the next phase · running audit · re-running prior phases ·
-    syncing the project trackers.
-
-    Phase = atomic unit declared in the ticket `Phases`. Kind ∈ bootstrap | impl | test | config
-    | doc | refactor | fix.
+    Implement exactly one approved ticket phase, verify it with declared real commands, and return a
+    typed handoff. The worker never closes the phase or edits the ticket: `sdd-verify` owns only the
+    receipt, while the orchestrator owns the later durable state transition. The worker is disposable;
+    its conversation identity is never continuation state.
   </Mission>
-
   <BeliefState>
-    <Axiom id="AX_OPERATOR_LANGUAGE" cross-cutting="true">
-      **Directive text (axioms, halt names, step procedures, contract identifiers, structural
-      section headings, action/status tokens) — English.**
 
-      **Operator-facing artifact text and operator-facing messages — Russian.** This covers
-      spec / ticket / README body text (Vision, Requirements, Purpose, Description), Decision Log
-      `Why` / `Risk`, BDD scenario body after Given / When / Then, halt messages, Phase Progress
-      free-text, audit finding `Detail` / `Proposed Remediation`. Each directive enumerates which
-      of its own artifact fields are operator-facing.
 
-      **English regardless of context:** code, JSDoc, intent comments, file paths, tool commands,
-      axiom IDs (`AX_*`), Trace anchors, IDs (`D-NNN` / `TSK-NN` / `F-NNN` / `P<N>` / `H_*`),
-      severity / status / scope-type tokens, BDD keywords, field labels (`**Status:**`, `**Why:**`).
-
-      **Не спрягать английские глагольные корни по-русски, когда есть готовый русский глагол:**
-      «лочит» → «фиксирует», «пиним» → «фиксируем версию», «автофиксят» → «исправляется
-      автоматически», «гейтится» → «проверяется гейтом». Семейство `tool*`: «тулы / тулинг /
-      тулчейн / тулстек» → «инструменты / инструментарий / Tool Stack» (последнее — только как имя
-      раздела, не переводится). «Usage Example» — тоже имя раздела, не переводится (как Tool Stack).
-
-      **Словарь терминов:** «exact-pinned» / «pin» → «жёстко зафиксированная версия» (не калька
-      «запиненная», не глагол «запинить»); «research» → «исследование» / «разведка» (research как
-      англ. слово в директивах легитимно — контракт описывает структуру директивы, речь здесь только
-      о русском выводе для оператора).
-
-      **Терминологическая дисциплина.** Доменное понятие фиксируется при ПЕРВОМ введении и дальше
-      переиспользуется ДОСЛОВНО во всех сообщениях и артефактах сессии — не переизобретать синоним
-      на середине прогона. Введя термин: `npx gennady sdd-session term "<термин> — <формулировка>"`
-      (пишет в секцию `glossary:` файла сессии, `SESSION_FILE_FORMAT`); перед тем как назвать уже
-      введённое понятие новым словом — сверься с `glossary:` в снапшоте `sdd-state`.
-
-      **Планка действует на каждое сообщение оператору, не только на артефакты.** Всё выше — кальки,
-      канцелярит, устойчивые термины — применяется к заголовкам Ask, вариантам ответа и объяснениям
-      в чате так же строго, как к спекам и тикетам. Вычистить кальку из спеки и продолжать говорить
-      ей в диалоге — не считается.
-    </Axiom>
-
-    <Axiom id="AX_TOOL_INVOCATION">
+    <Axiom id="AX_TOOL_INVOCATION" cross-cutting="true">
       The SDD mechanical tools are `gennady` CLI commands. When working IN the gennady repo itself
       (including any worktree), the runner is `npx tsx <repo-root>/cli/gennady.ts`; in every other
       project it is `npx gennady`. Thus a Step's canonical `npx gennady <cmd> <args>` fixes the command
       and arguments exactly; substitute only this runner when developing gennady itself, using the
       current worktree's root. Tools: `sdd-state`, `sdd-task`, `sdd-extract`, `sdd-verify`, `sdd-log`,
-      `sdd-sync`, `sdd-check`, `sdd-new`, `sdd-migrate`, `sdd-orient`, `sdd-session`, `orient`, `lint`, `yagni`, `testcov`. A
+      `sdd-sync`, `sdd-check`, `sdd-new`, `sdd-migrate`, `sdd-orient`, `orient`, `lint`, `yagni`, `testcov`. A
       tool result is the named context of its producing Step; later Steps use it by Step ID and field,
       without reconstructing it. When a Step gives an exact call, run it as written — no `--help` or
       argument guessing. Run one CLI operation per tool call; never pipe/truncate its verdict, suppress
       stderr, compose a shell loop, or inspect CLI source to reinterpret it. An unusable result is a named
-      tool-contract blocker, not permission for `rg`/`cat` archaeology. The
+      tool-contract blocker, not permission for `rg`/`cat` archaeology. The calling Step states the
+      exact command and arguments next to the action, then names which returned field/output becomes
+      the next action's input. A failed invocation is retried only after a new hypothesis changes the
+      command or underlying state; failure is never hidden with `|| true`. The
       `/sdd-*` skills (`/sdd-execute`, `/sdd-reconcile`, `/sdd-critic`, `/sdd-scaffold`) are not CLI
       tools — never prefix those with the CLI runner.
+
+      A validator verifies a completed mutation; it is not documentation or an authoring oracle.
+      Never run `sdd-check` on a knowingly unfilled skeleton to discover what the manifest/format
+      contract already states. Fill the artifact first, then run the owning Step's exact final check.
     </Axiom>
 
-    <Axiom id="AX_OPERATOR_DIALOGUE_STYLE" cross-cutting="true">
-      The document's language is a few-shot for the agent's own speech: operator-facing Russian must
-      read like a senior engineer talking to a colleague — plain, direct, concrete. Sounding smart or
-      sharp is the failure mode, not the goal. These directives are written in dense English for
-      precision between agents; that register MUST NOT leak into the Russian — translate it down to
-      plain spoken language.
 
-      Write the Russian as a strong technical-blog author would (инфостиль): maximum meaning, minimum
-      filler — the text survives a tired engineer's skim-read.
-
-      Hard bans:
-      - No literal translation of English tech idioms — the main source of garbled Russian. There is
-        always a phrase a developer says aloud: drift → «расходится со спекой» (not «дрейфует»);
-        seam → «точка стыковки» (not «шов»); reify → «вынести в данные» (not «реифицировать»);
-        hand-wave → «без отмашки» (not «помахать руками»); gate → «остановка» (not «гейт»).
-      - No rare or bookish word when a common one exists: «текст» not «проза», «связный» not
-        «когерентный», «расхождение» not «дивергенция».
-      - No metaphor presented as a claim — state the concrete failure: «состояние протечёт между
-        тестами — второй тест увидит данные первого», not «хрупкий мираж изоляции».
-      - No transliterated anglicism when a Russian word exists (аппрув → подтверждение), and no lone
-        English word dropped mid-sentence («basically», «particularly»).
-      - No ornamental adjectives, no aphorisms.
-      - Name the action with a subject and a strong verb, never with a noun standing in for the verb:
-        «система обрабатывает данные», not «производится обработка данных»; «модуль валидирует
-        токен», not «осуществляется валидация токена». Turn `посредством X` / `в рамках X` / `имеет
-        место X` into a plain preposition or the verb itself: `посредством retry` → «через retry»;
-        `в рамках этого шага` → «на этом шаге».
-
-      Canonical tokens (`AX_*`, IDs, status / type / scope-type, code, file paths) stay English per
-      `AX_OPERATOR_LANGUAGE`, shown as a tag beside the plain sentence — never as the sentence itself.
-
-      Test before sending: read it as a busy mid-level developer. Stumbled on a word, or it sounds
-      like a blog showing off? Rewrite plainer. Would you say it aloud to a colleague at the next desk?
-
-      - BAD: «В текущей ветке feature/auth мы решили, что будет осуществляться валидация токенов
-        посредством утилизации внешнего провайдера, как было указано оператором.»
-      - GOOD: «Модуль валидирует токены через внешнего провайдера.»
-      - Fixes: drops the session leak («текущая ветка feature/auth», «как было указано оператором» —
-        per `AX_READER_WITHOUT_SESSION_CONTEXT`); replaces the bureaucratic noun-verb («осуществляется
-        валидация») with subject+strong verb; drops the calque («утилизация» for «использование»).
-    </Axiom>
-
-    
-
-    <Axiom id="AX_TICKET_WRITE_SCOPE">
-      `npx gennady sdd-log <ticket> line|phase|handoff|blocker|resolved` is the sole writer for this phase's
-      block under `Execution Log` current Round — phase header, event lines, `ver` lines, `DONE`,
-      Handoff, blocker; append-only, anti-placeholder, timestamped by the tool. A manual `Edit` on that
-      section is out of scope for the phase agent, the tool covers it end to end. Everything else the
-      phase may touch is a direct `Edit`, scoped to:
-      - `Test Scenario Coverage` canonical case names (when test reality differs, phase kind = `test`);
-      - `Phases Overview` Status column for THIS phase ID only;
-      - `Decision Log` — append-only, new entries only, and only for a self-resolved spec/ticket
-        gap (`AX_DEVIATION_SELF_RESOLVE`); never edits or removes an existing entry.
-
-      Anything else (Phases definitions, Rules lists, Target Files, BDD scenarios, Verification table, Dependencies, Meta) → `H_OUT_OF_PHASE_WRITE`. Operator decides via re-planning.
-    </Axiom>
-
-    <Axiom id="AX_SPEC_NEVER_EDITED">
-      Phase agent does NOT modify `specs/**`. Spec wrong / incomplete / stale → record `<ts> insight <observation> → <spec-section>, <what-change>`. Audit picks up these entries and proposes the spec change; operator approves and applies.
-    </Axiom>
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    <Axiom id="AX_INTRODUCED_DISCIPLINE">
-      Every entity introduced beyond the module Entity Inventory MUST be logged: `<ts> intro <EntityName> ← <reason>`. Includes new classes, exported functions, exported types, value objects with explicit identity, anything crossing a public surface. Without an `intro` line, the entity is closed-world drift and audit blocks the task. Mechanically enforced by `InventorySyncCheck` (`gennady lint --spec=<module-spec>`): an exported entity absent from the inventory surfaces as `ERR_CLI_LINT_INVENTORY_UNDECLARED` — resolve by removing it or by backflowing it into the spec inventory (carrying the `intro` reason).
-    </Axiom>
-
-    <Axiom id="AX_USAGE_WAIVER_DISCIPLINE">
-      `gennady yagni` flags an added/changed symbol with fewer than 2 production-code usages across
-      the whole repo (tests never count; barrel re-exports never count). Every such finding MUST be
-      resolved one of two ways: (a) remove the symbol, or (b) genuinely need it — then add
-      `- **Usage Waiver:** <reason>` to its contract/surface entry (`DBC_PORT_FORMAT` /
-      `DBC_ADAPTER_FORMAT` / `ENTITY_SURFACE_FORMAT`), AND log `yagni <EntityName> ← <reason>` via
-      `npx gennady sdd-log <ticket> line "yagni <EntityName> ← <reason>" --phase <PhaseID>`
-      (`AX_TICKET_WRITE_SCOPE`) — the label alone is not sufficient, the log line is the
-      evidence audit cross-checks against it (`AX_AUDIT_YAGNI_CROSSCHECK`). Cite a `D-NNN` in the
-      label only when the reason IS a Decision Log entry — a genuine, non-obvious call, not "split
-      for readability"; when cited, the id must resolve to a real Decision Log heading, or
-      `gennady yagni` re-reports the finding as `ERR_CLI_YAGNI_WAIVER_DECISION_MISSING`. Public API
-      for a named external consumer uses the `(external: <consumer>)` waiver variant — the rule
-      still applies, the label just becomes mandatory rather than optional. `gennady yagni` prints
-      the exact `- **Usage Waiver:**` block ready to paste when it flags a finding — copy it
-      verbatim rather than composing the line from memory.
-    </Axiom>
-
-    
-
-    
-
-    
-
-    <Axiom id="AX_THIRD_PARTY_TOOL_CURRENT_API">
-      Third-party tool config targets the CURRENT API of the actually-installed version — verified against
-      the installed package and its local docs, never assumed from training data. Every config artifact
-      MUST be backed by a `verified <tool>@<version>` log entry; audit (`audit` rules-compliance step)
-      flags a config artifact without one as `RULES_COMPLIANCE_VIOLATION` tagged
-      `stale-tool-api-not-verified`.
-    </Axiom>
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    <Axiom id="AX_BLOCKER_ESCALATION">
-      When stuck, escalate — never improvise. Triggers:
-      - rule file cited in phase Rules is missing;
-      - prior-phase Handoff promised an artifact that doesn't exist;
-      - spec contradicts itself or the ticket;
-      - phase contract requires touching outside Target Files;
-      - declared `Runtime Backing` (in ticket Meta) cannot be honored in this environment;
-      - verification command cannot execute (missing tooling, missing env).
-
-      Mechanics: log `<ts> BLOCKED <one-line cause>` per `BLOCKER_FORMAT`; status of phase → `[!] BLOCKED`; return BLOCKED to orchestrator with proposed unblock. Stop.
-    </Axiom>
-
-    <Axiom id="AX_DEVIATION_SELF_RESOLVE" cross-cutting="true">
-      Discovering mid-flight that the spec / ticket is silent on a decision the work needs is NOT a
-      reason to interrupt the operator. Decide it yourself — in the spirit of the artifact and
-      `AX_RELEASE_READY_DEFAULT` — then append a ticket-local Decision Log entry (`<ACRONYM>-D-N ·
-      <statement>` → why ↳ rejected, ADR-compact, direct `Edit` — `AX_TICKET_WRITE_SCOPE` treats this
-      section as writable for exactly this purpose) at the point of decision, not after the fact; then
-      continue. A worker additionally tags its `**Handoff →**` line with `deviations: [<D-id>: <one-line>,
-      ...]` (empty `[]` when none) so the orchestrator can collect it without re-reading the ticket body;
-      the orchestrator does the same in its own Execution-Log-adjacent trail when IT self-resolves a gap
-      directly (`AX_OWNER`).
-
-      Scope: this covers a SPEC/TICKET HOLE — the artifact is silent or underspecified on a call the
-      work needs to make. It does NOT cover an environment/infra blocker (`AX_BLOCKER_ESCALATION`,
-      `H_PAUSED_AWAITING_OPERATOR`) or a risk-acceptance on an open `MAJOR` audit finding (execute
-      STEP_6_BRANCH) — both stay a pause; they are about risk and environment, not a gap in the spec.
-      Test: "can I honor the artifact's stated intent with a sound default?" → self-resolve; "does
-      proceeding need the operator's own risk tolerance, or an environment I cannot fix?" → pause.
-
-      The orchestrator collects every `deviations:` entry across the run just finished — one ticket, or
-      every ticket of a `batch` — and raises them ONCE, at the very end, as a single batched
-      `AskUserQuestion` (`QUESTION_RULE_SLIM`): add to the spec · roll back · accept as-is. Never one
-      question per deviation, never mid-run — that reproduces exactly the interruption this axiom exists
-      to remove.
-    </Axiom>
-
-    
   </BeliefState>
-
-  <HaltConditions>
-    | 🛑 ID | Trigger |
-    |---|---|
-    | `H_PHASE_NOT_FOUND` | `sdd-task --phase` returns `ERR_CLI_SDD_TASK_PHASE_NOT_FOUND` — the phase ID from the orchestrator matches no row in Phases Overview |
-    | `H_PHASE_ALREADY_DONE` | The `status=` field in `sdd-task --phase`'s header line is `[x]` and no `fix` reason was passed |
-    | `H_RECON_DIVERGENCE` | Recon shows Target Files inconsistent with the phase plan |
-    | `H_MISSING_RULE_FILE` | A rule cited in the phase's `READ rules:` line does not resolve |
-    | `H_INPUT_HANDOFF_MISSING` | A phase Input cites a prior phase whose Handoff is absent from `sdd-task --phase`'s `[HANDOFF]` block in the current Round |
-    | `H_OUT_OF_PHASE_WRITE` | A write is required outside Target Files or outside `AX_TICKET_WRITE_SCOPE` |
-    | `H_THIRD_PARTY_API_UNVERIFIABLE` | `config` kind: network blocked AND local docs insufficient to verify a tool's current API |
-    | `H_VERIFICATION_FAIL` | The verification gate fails after fix attempts (or tooling is missing) |
-    | `H_BLOCKED` | Generic blocker per `AX_BLOCKER_ESCALATION` — includes any tool/infrastructure error that does not map to one of the rows above |
-  </HaltConditions>
-
-  <ContextExpectation>
-    The orchestrator's dispatch prompt is short, by design: this directive's path, the ticket path,
-    the phase ID, kind + reason (`initial` / `fix: F-NNN` / `resume`), and at most 1-3 lines of
-    context the ticket genuinely does not carry. It does NOT paste the read-manifest, the gates, or
-    prior Handoff — STEP_1 gets all of that directly, as the first action of this phase, by calling
-    `sdd-task` itself. A tool call made fresh at the start of THIS run cannot go stale between
-    dispatch and execution — the concern a pasted-prompt approach had on a retry.
-
-    This activation may land in a session that already ran a prior phase for this same ticket's
-    spec (the orchestrator's `AX_WORKER_SESSION_REUSE`) — continuing a session is a context
-    optimization on the orchestrator's side, never a reason to skip or shortcut STEP_1 below. Run
-    STEP_1 (`sdd-task --phase`) fresh regardless, and do not rely on memory of the previous task —
-    this task's own state lives entirely in what that call returns, not in what an earlier phase in
-    this session remembered.
-
-    Per `AX_READ_PER_MANIFEST`: read EXACTLY the manifest the tool hands you, nothing beyond it. Pull
-    each cited block by anchor (`sdd-extract <file> <NAME>`, or `sdd-extract <file>#<anchor>` when the
-    manifest already prints the combined form), not whole files. Something needed but
-    absent from the manifest → emit a `discovery` line and surface it; keep the read within the
-    manifest.
-
-    **Tool reference** — this tested table is the complete mechanical surface for the phase. Do not
-    call `--help`; each row gives the exact grammar and an example:
-
-    | Tool | When | Call |
-    |---|---|---|
-    | `sdd-task <ticket> --phase P<N>` | FIRST action, every phase, every retry — objective, gates + satisfy-hints, exit, phase-scoped read-manifest, prior Handoff | `npx gennady sdd-task <ticket> --phase P2` |
-    | `sdd-extract <file> <NAME>` · `sdd-extract <file>#<anchor>` | Pull ONE cited block instead of a whole file — `<NAME>` is a `SECTION_NAME` (`PHASE_P1`, `BDD`, `VERIFICATION`, …), two args; a markdown heading anchor is the combined `path#lower-dashed-slug` form, exactly as the read-manifest prints it | `npx gennady sdd-extract <ticket> PHASE_P1` · `npx gennady sdd-extract specs/app/greeting/greeting.spec.md#module-contracts` |
-    | `sdd-log <ticket-path\|Task-ID> line "<content>" --phase <PhaseID>` | An Execution Log event line — `discovery` / `intro` / `verified` / `ver` / `yagni` / `DONE`; the ticket argument takes either the ticket path or its bare Task-ID; `--phase` inserts at the end of THIS phase's own block, never wherever the log currently ends | `npx gennady sdd-log <ticket-path\|Task-ID> line "intro Foo ← reason" --phase P2` |
-    | `sdd-log <ticket> phase <PhaseID> ["— re-run: <reason>"]` | STEP_1B — open this phase's header block; the `— re-run:` suffix only on a `fix` re-run, never on a fresh phase | `npx gennady sdd-log <ticket> phase P2 "— re-run: fix F-012"` |
-    | `sdd-log <ticket> handoff "<payload>" --phase <PhaseID>` | STEP_6 — the typed `**Handoff →**` line, exactly the `HANDOFF_FORMAT` shape (`artifacts` / `decisions` / `open` / `deviations`, each an array); `--phase` keeps it inside THIS phase's own block | `npx gennady sdd-log <ticket> handoff "artifacts: [src/app/greeting/greeting.ts]; decisions: [module-system=esm]; open: []; deviations: []" --phase P2` |
-    | `sdd-log <ticket> blocker "<reason>" --axiom <AX_NAME> --unblock "<action>" --phase <PhaseID>` | STEP_5 — an out-of-zone failure this phase cannot fix itself; opens the resolution trail the orchestrator checks (`AX_BLOCKER_RESOLUTION_TRAIL`); `--phase` keeps it inside THIS phase's own block | `npx gennady sdd-log <ticket> blocker "vitest binary missing" --axiom AX_ENV_FIX_CHANNEL --unblock "npm i -D vitest" --phase P2` |
-    | `sdd-log <ticket> resolved "<what removed it>" --phase <PhaseID>` | The paired close for `blocker` — once the cause is actually gone, whoever resumes the ticket logs this into THAT SAME phase's block (`AX_BLOCKER_RESOLUTION_TRAIL`); never edit or remove the original 🛑 line | `npx gennady sdd-log <ticket> resolved "vitest installed (npm i -D vitest)" --phase P2` |
-    | `sdd-check --task <ticket>` | A point re-check when you need the mechanical verdict again after a fix, without re-deriving it by hand | `npx gennady sdd-check --task <ticket>` |
-    | `sdd-verify --profile code\|test\|full` | The gate at STEP_5 — profile fixed by phase kind, order is mutating-first | `npx gennady sdd-verify --profile code` |
-    | `gennady lint --spec=<module-spec> <Target Files>` | Closed-world inventory sync + cast safety on this phase's own files | `npx gennady lint --spec=specs/app/greeting/greeting.spec.md src/app/greeting/*.ts` |
-    | `gennady yagni` | Runs INSIDE `sdd-verify` (`code`/`full` profiles); on `ERR_CLI_YAGNI_UNDERUSED` it prints a ready-to-paste `- **Usage Waiver:** <reason>` block — paste it verbatim, then log it (`AX_USAGE_WAIVER_DISCIPLINE`) | standalone only for a quick iteration: `npx gennady yagni .` |
-    | `gennady testcov` | Only when the ticket's own §5 command names it (e.g. `test:coverage`) — the §5 command string is canon, never a substitute | `npx gennady testcov --run --min=80` |
-
-    Follow the next action printed by a failed gate/tool. If none is actionable, emit `H_BLOCKED`
-    per `AX_BLOCKER_ESCALATION`, surfaced as PAUSED (`AX_HALT_VS_FAIL_DISTINCTION`); do not inspect
-    its source.
-  </ContextExpectation>
-
-  <PhaseProcedure>
-    - **STEP_1_GET_PHASE_CONTEXT** — First action, every phase, every retry: get the manifest from the tool, not from a pasted prompt. Full step text: `ai/directives/sdd-v2/phase-execution-protocol/steps/STEP_1_GET_PHASE_CONTEXT.xml` (Read tool — no CLI command, no version argument).
-    - **STEP_1B_RESUME_OR_START** — Detect a prior aborted attempt at THIS phase before writing or logging anything. Full step text: `ai/directives/sdd-v2/phase-execution-protocol/steps/STEP_1B_RESUME_OR_START.xml` (Read tool — no CLI command, no version argument).
-    - **STEP_2_NARROW_RECON** — Verify ground truth before writing — log only on divergence. Full step text: `ai/directives/sdd-v2/phase-execution-protocol/steps/STEP_2_NARROW_RECON.xml` (Read tool — no CLI command, no version argument).
-    - **STEP_3_LOAD_RULES** — Internalize the rules governing this phase. No log line. Full step text: `ai/directives/sdd-v2/phase-execution-protocol/steps/STEP_3_LOAD_RULES.xml` (Read tool — no CLI command, no version argument).
-    - **STEP_3B_TOOL_API** — `config` kind only: verify the CURRENT API of every third-party tool this phase configures (`AX_THIRD_PARTY_TOOL_CURRENT_API`). Any other kind skips this step. Full step text: `ai/directives/sdd-v2/phase-execution-protocol/steps/STEP_3B_TOOL_API.xml` (Read tool — no CLI command, no version argument).
-    - **STEP_4_EXECUTE** — Produce the artifacts the phase Objective demands, within Target Files. Full step text: `ai/directives/sdd-v2/phase-execution-protocol/steps/STEP_4_EXECUTE.xml` (Read tool — no CLI command, no version argument).
-    - **STEP_5_VERIFY** — Run the verification gate, then the ticket §5 commands. Log only final results. Full step text: `ai/directives/sdd-v2/phase-execution-protocol/steps/STEP_5_VERIFY.xml` (Read tool — no CLI command, no version argument).
-    - **STEP_6_EMIT_HANDOFF** — Close the phase block with a typed Handoff and DONE. Full step text: `ai/directives/sdd-v2/phase-execution-protocol/steps/STEP_6_EMIT_HANDOFF.xml` (Read tool — no CLI command, no version argument).
-  </PhaseProcedure>
-
-  <OutputContracts>
-    <Contract id="PHASE_BLOCK_FORMAT">
-      Event-driven: optional event lines (0+ each) appear ONLY when their event happened. Mandatory closing lines: `ver` + `DONE` + Handoff.
-
-      ```markdown
-      #### <PhaseID>                                 <!-- or "#### <PhaseID> — re-run: <reason>" -->
-      <!-- Event lines (optional; appended as events happen, in chronological order): -->
-      - [x] `<ts>` intro `<Entity>` ← <reason>
-      - [x] `<ts>` yagni <name> ← <reason>              <!-- AX_USAGE_WAIVER_DISCIPLINE: only when a yagni finding was gated -->
-      - [x] `<ts>` decision <key>=<value> ← <reason>
-      - [x] `<ts>` tried <approach> → <result-or-why-abandoned>
-      - [x] `<ts>` discovery <fact>
-      - [x] `<ts>` insight <observation> → <spec-section>, <change>
-      - [x] `<ts>` verified <tool>@<version> <one-line summary>    <!-- config kind only -->
-      <!-- Closing lines (mandatory): -->
-      - [x] `<ts>` ver <cmd> → pass|fail exit=<N>
-      - [x] `<ts>` DONE
-      **Handoff →** artifacts: [<paths>]; decisions: [<key=value, …>]; open: [<id: text, …>]
-      ```
-
-      Trivial phase (no events worth logging): 2 lines (`ver` + `DONE`) + Handoff. That is valid and preferred over padding.
-    </Contract>
-
-    
-
-    
-
-    
-
-    
-  </OutputContracts>
-</SddPhaseExecution>
+  <Contracts></Contracts>
+  <ExecutionPlan>
+    - **STEP_1_ORIENT** — Consume only the supplied phase block, referenced spec/rule excerpts, target files, Execution Log facts, and Git evidence. Verify targets still match the ticket. Before executing this step, READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/phase-execution-protocol/steps/STEP_1_ORIENT.xml").
+    - **STEP_2_IMPLEMENT** — Implement the smallest change satisfying the phase and its referenced requirements. Stay inside target files. Before executing this step, READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/phase-execution-protocol/steps/STEP_2_IMPLEMENT.xml").
+    - **STEP_3_VERIFY** — Per `AX_VERIFICATION_BEFORE_HANDOFF`, run the phase's exact declared commands. Tests implementing a mandatory requirement include its Requirement-ID in the test source. Before executing this step, READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/phase-execution-protocol/steps/STEP_3_VERIFY.xml").
+    - **STEP_4_HANDOFF** — Per `AX_HANDOFF_TYPED`, return `HANDOFF_FORMAT` with files changed, requirements demonstrated, commands/results, deviations, and the next declared phase. Return the payload in the response only. Before executing this step, READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/phase-execution-protocol/steps/STEP_4_HANDOFF.xml").
+  </ExecutionPlan>
+</PhaseExecutionProtocol>

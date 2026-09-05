@@ -197,14 +197,28 @@ describe('LazyDirectiveAssembler#assemble', () => {
     assert.equal(stepOne.relativePath, 'ai/directives/sdd-v2/fixture-directive/steps/STEP_ONE.xml');
   });
 
-  it('lists each step with a relative path to its package file readable by a plain Read, no CLI command and no version argument', () => {
+  it('makes loading each step package a runtime imperative, not a discoverable-only path', () => {
     const result = LazyDirectiveAssembler.assemble(createDirectiveFixture());
     const stepOneLine = result.skeleton.text.split('\n').find((line) => line.includes('**STEP_ONE**'))!;
     assert.match(
       stepOneLine,
-      /Full step text: `ai\/directives\/sdd-v2\/fixture-directive\/steps\/STEP_ONE\.xml` \(Read tool — no CLI command, no version argument\)/
+      /Before executing this step, READ_AND_USE_DIRECTIVE\("ai\/directives\/sdd-v2\/fixture-directive\/steps\/STEP_ONE\.xml"\)\./
     );
     assert.doesNotMatch(stepOneLine, /npx|gennady/);
+  });
+
+  it('chain topology exposes only the entry step and reveals each successor only after completion', () => {
+    const result = LazyDirectiveAssembler.assemble({
+      ...createDirectiveFixture(),
+      loadTopology: 'chain',
+    });
+    assert.match(result.skeleton.text, /STEP_ONE/);
+    assert.doesNotMatch(result.skeleton.text, /steps\/STEP_TWO\.xml/);
+    assert.match(
+      result.packages[0]?.text ?? '',
+      /After completing this step, and only then, READ_AND_USE_DIRECTIVE\("ai\/directives\/sdd-v2\/fixture-directive\/steps\/STEP_TWO\.xml"\)/
+    );
+    assert.doesNotMatch(result.packages[1]?.text ?? '', /Do not preload later step packages/);
   });
 
   it("stamps the same BuildFingerprint value into the skeleton header and the first line of every StepPackage", () => {
