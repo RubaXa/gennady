@@ -8,6 +8,12 @@ import { SddEvalOpenCodeEvidenceSource } from './evidence.ts';
 import { parseOpenCodeModel, SddEvalOpenCodeRuntime } from './opencode-runtime.ts';
 import { provisionScenarioDirectories } from './provision.ts';
 import { checkR1Structure } from './quality-gate.ts';
+import {
+  captureBaseline,
+  runMigrationChecks,
+  computeMigrationGrade,
+  type FindingHistogram,
+} from './migration-grade.ts';
 import { DEFAULT_SDD_EVAL_CONFIG, SddEvalRunner } from './runner.ts';
 import {
   collectSpecFiles,
@@ -186,9 +192,17 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
       void teardown().finally(() => process.exit(130));
     });
   }
+  // Migration is graded by baseline-diff: capture each migration fixture's pre-worker sdd-check
+  // histogram NOW, on the freshly provisioned v1 repo, so grading can tell migration-introduced
+  // findings from pre-existing v1 debt.
+  const migrationBaselines = new Map<string, FindingHistogram>();
+  for (const scenario of isolated) {
+    if (scenario.phase === 'migration')
+      migrationBaselines.set(scenario.id, await captureBaseline(scenario.directory));
+  }
   const artifacts: SddEvalRunArtifact[] = [];
   try {
-    await runAndReport(options, isolated, artifacts);
+    await runAndReport(options, isolated, artifacts, migrationBaselines);
     const artifactsRoot =
       options.artifactsDir ?? join(options.gennadyRoot ?? process.cwd(), 'ai/flow-eval/.results');
     const runStamp = `run-${new Date().toISOString().replace(/[:.]/g, '-')}`;
@@ -205,7 +219,8 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
 async function runAndReport(
   options: SddEvalCliOptions,
   isolated: Array<SddEvalScenario & { directory: string }>,
-  artifacts: SddEvalRunArtifact[]
+  artifacts: SddEvalRunArtifact[],
+  migrationBaselines: Map<string, FindingHistogram>
 ): Promise<void> {
   const registry = new SddEvalSessionDirectoryMap();
   const runtime = new SddEvalOpenCodeRuntime({ baseUrl: options.config.baseUrl, registry });
@@ -233,7 +248,17 @@ async function runAndReport(
       scenario.phase !== 'task' &&
       (scenario.phase !== 'brownfield' || brownfieldSpecMode);
     let quality: SddEvalRunArtifact['quality'];
-    if (scenario && scenario.directory && producesSpecs) {
+    if (scenario?.phase === 'migration' && scenario.directory) {
+      // Frozen deterministic bar: FLOW_VERSION=v2 + zero migration-introduced findings (baseline-diff).
+      const { stateOutput, checkOutput } = await runMigrationChecks(scenario.directory);
+      const g = computeMigrationGrade(
+        migrationBaselines.get(scenario.id) ?? {},
+        stateOutput,
+        checkOutput
+      );
+      quality = { rule: 'MIGRATION', pass: g.pass, detail: g.detail };
+      console.log(`  migration: ${g.pass ? 'PASS' : 'FAIL'} — ${g.detail}`);
+    } else if (scenario && scenario.directory && producesSpecs) {
       const r1 = await checkR1Structure(scenario.directory);
       quality = { rule: r1.rule, pass: r1.pass, detail: r1.detail };
       console.log(`  quality ${r1.rule}: ${r1.pass ? 'pass' : 'FAIL'} — ${r1.detail}`);
