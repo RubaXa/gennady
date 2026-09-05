@@ -148,7 +148,7 @@ describe('migration-plan', () => {
       .replace('**Status:** PLANNED', '**Status:** MAPPED')
       .replace(
         '| `tasks/demo/core/core.task-7.md` | TSK-7 | ? | ? |',
-        '| `tasks/demo/core/core.task-7.md` | TSK-7 | CORE-demo-feature | `specs/demo/core/core.task.CORE-demo-feature.md` |'
+        '| `tasks/demo/core/core.task-7.md` | TSK-7 | CORE-demo | `specs/demo/core/core.task.CORE-demo.md` |'
       )
       .replace(
         '- Overview-диаграмма: ?',
@@ -156,6 +156,28 @@ describe('migration-plan', () => {
       );
     const findings = verifyUnitFile('u.md', content, core);
     assert.deepStrictEqual(findings, [], JSON.stringify(findings, null, 2));
+  });
+
+  it('verify ловит слишком длинный slug (>8) на месте — MIG_BAD_SLUG, а не позже на sdd-check', () => {
+    const scan = scanMigrationUnits(root);
+    const core = scan.units.find((u) => u.module === 'core');
+    assert.ok(core);
+    // Грамматически валидный ID, но slug = "demo-feature" (12 символов > SLUG_MAX_LEN=8).
+    const content = scaffoldUnitFile(core)
+      .replace('**Status:** PLANNED', '**Status:** MAPPED')
+      .replace(
+        '| `tasks/demo/core/core.task-7.md` | TSK-7 | ? | ? |',
+        '| `tasks/demo/core/core.task-7.md` | TSK-7 | CORE-demo-feature | `specs/demo/core/core.task.CORE-demo-feature.md` |'
+      )
+      .replace(
+        '- Overview-диаграмма: ?',
+        '- Overview-диаграмма: существующий flowchart из Module Vision.'
+      );
+    const codes = verifyUnitFile('u.md', content, core).map((f) => f.code);
+    assert.ok(
+      codes.includes('MIG_BAD_SLUG'),
+      `нет MIG_BAD_SLUG на длинном slug: ${codes.join(',')}`
+    );
   });
 
   it('mapHeadingToSection: заголовки формата *-spec-structure.xml распознаются, номерация и хвостовые пометки не мешают', () => {
@@ -238,7 +260,7 @@ describe('migration-plan', () => {
     for (const unit of scan2.units) {
       const filled = scaffoldUnitFile(unit).replace(
         /\| (TSK-[0-9]+) \| \? \| \? \|/g,
-        '| $1 | DEMO-same-slug | ? |'
+        '| $1 | DEMO-dup | ? |'
       );
       writeFileSync(join(root, unitFilePath(unit)), filled, 'utf-8');
     }
@@ -267,7 +289,7 @@ describe('migration-plan', () => {
       .replace(
         '| `tasks/demo/core/core.task-7.md` | TSK-7 | ? | ? |',
         // destination nested one level deeper than the spec's own dir — still a legal co-located form
-        '| `tasks/demo/core/core.task-7.md` | TSK-7 | CORE-demo-feature | `specs/demo/core/sub/core.task.CORE-demo-feature.md` |'
+        '| `tasks/demo/core/core.task-7.md` | TSK-7 | CORE-demo | `specs/demo/core/sub/core.task.CORE-demo.md` |'
       )
       .replace(
         '- Overview-диаграмма: ?',
@@ -285,7 +307,7 @@ describe('migration-plan', () => {
       .replace('**Status:** PLANNED', '**Status:** MAPPED')
       .replace(
         '| `tasks/demo/core/core.task-7.md` | TSK-7 | ? | ? |',
-        '| `tasks/demo/core/core.task-7.md` | TSK-7 | CORE-demo-feature | `specs/other/core.task.CORE-demo-feature.md` |'
+        '| `tasks/demo/core/core.task-7.md` | TSK-7 | CORE-demo | `specs/other/core.task.CORE-demo.md` |'
       )
       .replace(
         '- Overview-диаграмма: ?',

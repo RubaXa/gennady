@@ -28,7 +28,10 @@ export type SddEvalPhase =
   | 'execute'
   | 'repair'
   | 'task'
-  | 'brownfield';
+  | 'brownfield'
+  // Migration: an OLD (pre-v2) SDD repo whose task layout must become v2. Exercises the v1→v2
+  // migration flow end-to-end on a real repo; graded objectively by sdd-state=v2 + sdd-check clean.
+  | 'migration';
 
 /** @purpose Human-auditable phase modes with approval boundaries. */
 export type SddEvalMode =
@@ -56,7 +59,10 @@ export type SddEvalMode =
   | 'delta-to-spec'
   // Brownfield path A: code plus an existing (recovered) spec; a change-request is realised THROUGH the
   // spec (update the spec, then the code follows). Isolates the "change via specification" branch.
-  | 'modify-via-spec';
+  | 'modify-via-spec'
+  // Migration: transform the whole v1 SDD layout to v2 (co-located specs, slug Task-IDs, anchored
+  // tickets), driven by the installed migration flow; the objective bar is sdd-state=v2 + sdd-check clean.
+  | 'v1-to-v2';
 
 /** @purpose Prepared, small, deterministic fixture scenarios for cheap eval smoke runs. */
 export type SddEvalFixtureId =

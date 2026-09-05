@@ -28,6 +28,10 @@ Do not install packages, do not scaffold specs/tickets, and do not edit the fixt
   brownfield: `Modify EXISTING code in this repository to satisfy the change-request in inputs/change.md. There is NO specification — the behaviour lives only in the code.
 First read the existing artifact named by the change-request to understand what it does; then make the smallest delta that adds the requested behaviour or corrects the reported defect, WITHOUT changing any UNRELATED behaviour, output format, or error contract.
 Follow the code's own conventions (shebang, strict mode, style). Do not rewrite unrelated parts, do not install packages, do not scaffold specs/tickets, and do not edit the fixture's sample inputs or its golden/ directory. Report the delta you made.`,
+  migration: `This repository holds an OLD SDD project whose task layout is not yet v2. Migrate it to v2 by running the installed migration flow — do not hand-improvise a bespoke conversion.
+Read and follow the installed SDD router/directive chain (start at ai/skills/sdd/SKILL.md and ai/directives/sdd-v2/router.directive.xml); the router preflight routes a v1 layout into ai/directives/sdd-v2/migration-v1-v2.directive.xml. Follow that directive's steps, using the sdd-migrate / sdd-state / sdd-check tools to gather facts mechanically and to verify final forms — you (the agent) resolve every judgement the tools leave open (unmapped sections, new slug Task-IDs, restructure, decision compression, flat-Russian comprehension), version-agnostically: the docs are simply old.
+Headless contract: no human UI is attached — do NOT call an interactive question/approval tool; where the flow asks the operator to acknowledge the plan, treat it as approved and proceed. Do not invent content a section lacks (mark it for later); preserve append-only decision history via supersession.
+The objective bar is exactly: sdd-state reports FLOW_VERSION=v2 and sdd-check --all is clean. Drive the flow until both hold, then report the final sdd-state and sdd-check result.`,
 };
 
 // The `brownfield` phase covers several distinct decision branches; the mode selects the instruction.
