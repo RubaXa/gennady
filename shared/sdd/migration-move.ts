@@ -321,6 +321,10 @@ export function rewriteMovedLinks(
   return { text: rewritten, count };
 }
 
+// v1 docs cite repo-root dirs via `../` from a nested location (`../../ai/directives/x.xml`); v2
+// sdd-check rejects any `..` segment in evidence paths, so migration rewrites them to repo-root-relative.
+const EVIDENCE_DOTDOT = /(?:\.\.\/)+((?:ai|specs|cli|shared|services|tasks|e2e)\/)/g;
+
 /** @purpose Recursively collect `.md` files under the given zone dirs, path-sorted. */
 function collectMdFiles(repoRoot: string, zones: string[]): string[] {
   const acc: string[] = [];
@@ -401,15 +405,18 @@ export function executeScopeMove(
     for (const abs of collectMdFiles(repoRoot, LINK_ZONES)) {
       const rel = relative(repoRoot, abs);
       const newRelPath = byOldPath.get(rel) ?? rel;
-      const { text, count } = rewriteMovedLinks(
-        readFileSync(abs, 'utf-8'),
-        rel,
-        newRelPath,
-        byOldPath
-      );
-      if (count > 0) {
+      const linkRes = rewriteMovedLinks(readFileSync(abs, 'utf-8'), rel, newRelPath, byOldPath);
+      let pathCount = 0;
+      const text = linkRes.text.replace(EVIDENCE_DOTDOT, (_w, tail: string) => {
+        pathCount++;
+        return tail;
+      });
+      if (linkRes.count > 0 || pathCount > 0) {
         if (write) writeFileSync(abs, text, 'utf-8');
-        report.push(`  ${verb}link  ${rel} — ${count} ссылк(и) на переезжающие тикеты`);
+        if (linkRes.count > 0)
+          report.push(`  ${verb}link  ${rel} — ${linkRes.count} ссылк(и) на переезжающие тикеты`);
+        if (pathCount > 0)
+          report.push(`  ${verb}path  ${rel} — ${pathCount} rule-путь(и) → repo-root`);
       }
     }
   }

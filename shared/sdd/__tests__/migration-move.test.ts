@@ -231,6 +231,23 @@ describe('migration-move', () => {
     assert.match(scopeIndex, /\| demo-alpha \| Первая фича \| — \|/);
   });
 
+  it('move нормализует `..`-ссылки на rule-файлы в repo-root-relative (v2 запрещает `..`)', () => {
+    writeFileSync(
+      join(root, 'tasks', 'demo', 'core', 'core.task-1.md'),
+      TICKET_A + '\n\nПравило: `../../ai/directives/infra/x.xml`.\n',
+      'utf-8'
+    );
+    fillPlanLayer();
+    const res = executeScopeMove(root, 'demo', true);
+    assert.ok(res.ok, JSON.stringify(res));
+    const moved = readFileSync(
+      join(root, 'specs', 'demo', 'core', 'core.task.demo-alpha.md'),
+      'utf-8'
+    );
+    assert.match(moved, /`ai\/directives\/infra\/x\.xml`/);
+    assert.doesNotMatch(moved, /\.\.\/ai\//);
+  });
+
   it('чужие тикеты вне плана блокируют удаление tasks/<scope>', () => {
     fillPlanLayer();
     writeFileSync(
