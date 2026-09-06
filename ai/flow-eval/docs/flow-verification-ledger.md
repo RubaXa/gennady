@@ -70,3 +70,22 @@ proven to IMPROVE or at least NOT REGRESS. Tracked per run: `tool_calls_total`, 
 rule: after a flow change, for the same scenario+model, `steps` and `tool_calls_total` must be ≤ baseline
 (or within a stated tolerance) AND completion signals (`ticket_status=DONE`, receipts present) must not
 regress. Baselines recorded in `.results/metrics-ledger.jsonl`.
+
+## E. LANDED (this session) + follow-on
+
+- **E1. Group-audit/review receipt mechanism LANDED & green.** `shared/sdd/group-receipt.ts`,
+  `sdd-log <group> audit-receipt|review-receipt <verdict>` (CLI-written on the owning spec, refuses unless
+  all members DONE, SHA-256 member-state signature ⇒ reopen-invalidation), check codes
+  `SDD_GROUP_AUDIT_MISSING`/`SDD_GROUP_REVIEW_MISSING` (WARN, grandfathered on `PHASE_RECEIPTS:v1`),
+  axioms `AX_GROUP_AUDIT_LEAVES_A_RECEIPT`/`AX_GROUP_REVIEW_LEAVES_A_RECEIPT`, and STEP_6 now carries real
+  `<ToolCall>`s for both receipts (no longer prose). `npm run check` = ALL PASS (5/5); unit tests cover
+  writer-refusal/valid-mint, forge+stale rejection, warn-missing/clean-valid/reopen-invalid, grandfather.
+  Commits `4bb00f4b` (feature) + `94164668` (durable snapshot of these docs + scripts).
+- **E2. RED-FIRST gate proven & wired.** `session-metrics.py gate` exits 1 on the abandoned-artifact state
+  (guard built, ticket TODO, round not closed, receipts absent) — deterministic, no LLM. Wired into
+  `roundtrip-eval.sh` execute summary (fixes H4). Baseline `fc2-baseline` recorded in metrics-ledger.jsonl.
+- **E3. FOLLOW-ON — migration must emit `PHASE_RECEIPTS:v1` (and full v2 ticket schema).** The migrated
+  infra-base tickets carry no `PHASE_RECEIPTS:v1` marker, so the new group enforcement is grandfathered
+  OFF for them (same family as the earlier 2-col verification-table + `SCOPE-TYPE`-vs-`SCOPE_TYPE` gaps).
+  For the enforcement to apply to a round-tripped ticket, migration must upgrade tickets to the full v2
+  schema (marker included). This is the migrator-completeness work, tracked separately.

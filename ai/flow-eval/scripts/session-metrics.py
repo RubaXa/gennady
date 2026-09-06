@@ -81,7 +81,9 @@ def _read(path):
 def state_metrics(fixture):
     guard = f"{fixture}/Tools/check-swiftlint-exceptions.sh"
     ticket = f"{fixture}/specs/infra-base/infra-base.task.IB-script.md"
+    spec = f"{fixture}/specs/infra-base/infra-base.spec.md"
     tx = _read(ticket)
+    sx = _read(spec)  # group audit/review receipts live on the OWNING SPEC (group-scoped)
     log = re.search(r"<!--SECTION:EXECUTION_LOG-->(.*?)<!--/SECTION:EXECUTION_LOG-->", tx, re.S)
     log_body = log.group(1) if log else ""
     status = re.search(r"\*\*Status:\*\*\s*\[[ xX]\]\s*\w+", tx)
@@ -92,8 +94,8 @@ def state_metrics(fixture):
         # a closed round has a checked DONE line inside the execution log
         "round_closed": bool(re.search(r"- \[x\]\s*`[^`]*`\s*DONE", log_body)),
         "impl_receipt": "SDD_PHASE_RECEIPT" in tx,
-        "audit_receipt": "SDD_AUDIT_RECEIPT" in tx,       # not yet implemented — future signal
-        "review_receipt": "SDD_REVIEW_RECEIPT" in tx,     # not yet implemented — future signal
+        "audit_receipt": "SDD_AUDIT_RECEIPT" in sx,   # CLI-written group receipt on the spec
+        "review_receipt": "SDD_REVIEW_RECEIPT" in sx,
     }
 
 
