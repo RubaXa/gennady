@@ -33,6 +33,8 @@ export const ERR_CLI_SDD_LOG_COMPLETE_STATE = 'ERR_CLI_SDD_LOG_COMPLETE_STATE' a
 export const ERR_CLI_SDD_LOG_CLOSE_STATE = 'ERR_CLI_SDD_LOG_CLOSE_STATE' as const;
 /** @purpose `authoring-complete` cannot prove or record one completed scope/module draft. */
 export const ERR_CLI_SDD_LOG_AUTHORING_STATE = 'ERR_CLI_SDD_LOG_AUTHORING_STATE' as const;
+/** @purpose `audit-receipt`/`review-receipt` cannot resolve the group, prove all members DONE, or own the spec write. */
+export const ERR_CLI_SDD_LOG_GROUP_RECEIPT_STATE = 'ERR_CLI_SDD_LOG_GROUP_RECEIPT_STATE' as const;
 
 /**
  * @purpose Result of one sdd-log run.
@@ -588,13 +590,33 @@ export function badInvocation(detail: string): LogOutcome {
       '         blocker "<reason>" --axiom <AX_NAME> --unblock "<action>" --phase P<N> |',
       '         resolved "<what removed it>" --phase P<N>   # paired close for blocker |',
       '         complete "artifacts: [...]; decisions: [...]; open: [...]; deviations: [...]" --phase P<N> |',
-      '         authoring-complete   # exact scope/module *.spec.md path',
+      '         authoring-complete   # exact scope/module *.spec.md path |',
+      '         audit-receipt <verdict> | review-receipt <verdict>   # group-completion receipt on the owning spec',
       '  agent free text: replace the quoted content with --content-file .claude/tmp/<safe-name>;',
       '  blocker uses --payload-file .claude/tmp/<safe-name>.json with reason/axiom/unblock keys.',
       '  --phase P<N> is only valid on line | handoff | blocker | resolved | complete.',
       '  For append modes it inserts at the end',
       "  of that phase's own block instead of the end of EXECUTION_LOG (phases execute sequentially).",
       '  content must carry no <…> placeholder.',
+    ].join('\n'),
+  };
+}
+
+/**
+ * @purpose Report why a group-completion (audit/review) receipt could not be minted or persisted.
+ * @param detail Unresolved group, a member still open at the group-completion boundary, or a failed spec write.
+ * @returns Outcome with exit 2; the owning spec remains byte-identical.
+ */
+export function groupReceiptError(detail: string): LogOutcome {
+  return {
+    ok: false,
+    code: ERR_CLI_SDD_LOG_GROUP_RECEIPT_STATE,
+    exitCode: 2,
+    message: [
+      `[sdd-log] ${ERR_CLI_SDD_LOG_GROUP_RECEIPT_STATE}: ${detail}`,
+      '  A group receipt is written ONLY at the group-completion boundary — every ticket owned by the',
+      '  spec must be [x] DONE, and the read-only audit/code-review must have already returned. The CLI',
+      '  re-derives the group and refuses a forged or premature receipt. No spec byte was changed.',
     ].join('\n'),
   };
 }

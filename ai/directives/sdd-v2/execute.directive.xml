@@ -54,6 +54,41 @@
 
       Phase kind `doc` typically has no verification — empty section is acceptable.
     </Axiom>
+    <Axiom id="AX_GROUP_AUDIT_LEAVES_A_RECEIPT">
+      A ticket group is not "audited" until the CLI has recorded ONE durable group-completion receipt
+      on the owning spec. Audit itself stays cross-ticket, post-close, read-only, and ephemeral-on-pass
+      (`AX_AUDIT_HOOK`, `AX_EPHEMERAL_OUTPUT`, `AX_REOPEN_ROUNDS_IN_TICKET`) — this axiom does NOT persist
+      findings and does NOT touch ticket files; it persists only the durable FACT "this group was audited,
+      verdict V, at git-ref R".
+
+      Enforcement point is the GROUP-COMPLETION boundary, never `sdd-log close` (close precedes audit —
+      requiring a receipt at close would deadlock). Once the group's LAST ticket is `[x] DONE` and the
+      read-only `sdd-audit` has returned, the execute orchestrator — never the read-only audit worker —
+      runs `sdd-log <group> audit-receipt <verdict>`. The CLI re-resolves the group via
+      `resolveAuditGroup`, REFUSES unless every re-derived member is `[x] DONE`, binds the fact to the
+      current HEAD ref, and writes a single CLI-owned `SDD_AUDIT_RECEIPT` block on the owning spec through
+      the atomic proven-file primitive — so a pasted block cannot forge it.
+
+      A reopen (a new Round on any member) invalidates the receipt until re-audit: `sdd-check` re-derives
+      the group and its member Round-count signature, and emits `SDD_GROUP_AUDIT_MISSING` when a group
+      whose members are all DONE has no valid, non-stale receipt. The check keys off the WHOLE group being
+      complete, never a lone ticket's `[x]`.
+    </Axiom>
+    <Axiom id="AX_GROUP_REVIEW_LEAVES_A_RECEIPT">
+      The same durable-fact rule holds for the behavioural `sdd-code-review` half of the group hook: a
+      group is not "reviewed" until the CLI has recorded ONE `SDD_REVIEW_RECEIPT` on the owning spec. A
+      skipped behavioural review is at least as dangerous as a skipped audit, so it leaves the same kind
+      of receipt — and only the ran+verdict FACT, never the findings (findings route per
+      `AX_EPHEMERAL_OUTPUT`).
+
+      After the group audit passes and the read-only `sdd-code-review` returns, the execute orchestrator —
+      never the review worker — runs `sdd-log <group> review-receipt <verdict>`. The CLI re-resolves the
+      group, refuses unless every member is `[x] DONE`, binds to the reviewed git ref, and writes the
+      CLI-owned block atomically on the owning spec. `sdd-check` re-derives the group and emits
+      `SDD_GROUP_REVIEW_MISSING` when a complete group has no valid, non-stale review receipt; a reopen
+      invalidates it until re-review. This is a second group invariant, distinct from
+      `AX_VERIFICATION_BEFORE_HANDOFF` (which stays the per-phase impl/test receipt and is unchanged).
+    </Axiom>
     <Axiom id="AX_HALT_VS_FAIL_DISTINCTION">
       A stop is evidence, not an automatic operator pause. Classify before routing:
       - `RECOVERABLE_TECHNICAL`: missing rules/config/packages, malformed task structure, gate/tool
@@ -258,7 +293,7 @@
     </Step>
 
     <Step id="STEP_6_AUDIT_REVIEW">
-      <Goal>Obtain independent post-implementation evidence.</Goal>
+      <Goal>Obtain independent post-implementation evidence, then leave a durable group receipt for each.</Goal>
       <Action>
         Dispatch a fresh `sdd-audit` over the completed sibling group, then a fresh
         `sdd-code-review` after audit passes. Audit checks spec/ticket/diff/log agreement. Code-review
@@ -268,6 +303,21 @@
         Findings route to the owning artifact: code bug reopens the ticket; spec contradiction returns
         to spec authoring and approval #1; decomposition/test-plan change returns to scaffold and
         approval #2. Rerun affected real gates after correction.
+
+        The read-only audit/code-review workers persist NOTHING (`AX_EPHEMERAL_OUTPUT`). Per
+        `AX_GROUP_AUDIT_LEAVES_A_RECEIPT`, once the read-only audit has returned with no open reopen,
+        THIS orchestrator step — not the worker — records the durable ran+verdict fact on the owning
+        spec at the group-completion boundary (never at `sdd-log close`). The CLI re-derives the group,
+        refuses unless every member is `[x] DONE`, and writes a forge-resistant receipt:
+        <ToolCall owner="this-step" result="auditReceipt">npx gennady sdd-log &lt;group&gt; audit-receipt &lt;verdict&gt;</ToolCall>
+        Then, per `AX_GROUP_REVIEW_LEAVES_A_RECEIPT`, after the code-review returns, record its receipt
+        the same way:
+        <ToolCall owner="this-step" result="reviewReceipt">npx gennady sdd-log &lt;group&gt; review-receipt &lt;verdict&gt;</ToolCall>
+        Consume `auditReceipt` then `reviewReceipt`. `&lt;group&gt;` is any member ticket path/Task-ID (it
+        resolves to the whole group); `&lt;verdict&gt;` is the terminal outcome (`PASS`, or `reopened-Round-N`
+        when the review reopened a member and it was re-executed and re-closed first). A refusal in either
+        `auditReceipt` or `reviewReceipt` means the group is not actually complete — resolve the still-open
+        member before retrying, never hand-write the block.
       </Action>
     </Step>
 
@@ -276,7 +326,13 @@
       <Action>
         The ticket and trackers were already transitioned to coherent DONE state in STEP_5 so audit
         could inspect the actual final artifact graph. Do not repeat `sdd-log close` or `sdd-sync`.
-        Emit the execute summary from actual tool results. For batch mode, refresh the execution map.
+        Before emitting the summary, assert that STEP_6 left both durable group receipts: a whole-project
+        check must be clean of `SDD_GROUP_AUDIT_MISSING` and `SDD_GROUP_REVIEW_MISSING` for this group
+        (a stale/absent receipt means the group was not actually audited/reviewed at its current state —
+        return to STEP_6 and record it; never close the group without them):
+        <ToolCall owner="this-step" result="groupReceiptGate">npx gennady sdd-check --all .</ToolCall>
+        Consume `groupReceiptGate`; it must carry no `SDD_GROUP_AUDIT_MISSING` / `SDD_GROUP_REVIEW_MISSING`
+        for this spec. Emit the execute summary from actual tool results. For batch mode, refresh the map.
         <ToolCall owner="this-step" result="refreshedExecutionMap">npx gennady sdd-task</ToolCall>
         Consume `refreshedExecutionMap` and continue with the next pickable ticket. Otherwise show the
         next concrete Task-ID/path or state that the queue is complete. In batch mode only, once the

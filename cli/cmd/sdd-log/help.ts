@@ -38,6 +38,12 @@ export function printHelp(): void {
   console.info(
     '  npx gennady sdd-log <spec> authoring-complete   # verify and record scope/module draft completion once'
   );
+  console.info(
+    '  npx gennady sdd-log <group> audit-receipt <verdict>   # record the durable group-audit fact on the owning spec'
+  );
+  console.info(
+    '  npx gennady sdd-log <group> review-receipt <verdict>  # record the durable group-code-review fact on the owning spec'
+  );
   console.info('');
   console.info('File-backed form (required for agent-produced free text):');
   console.info('  npx gennady sdd-log <ticket> round --content-file .claude/tmp/<name>');
@@ -67,6 +73,15 @@ export function printHelp(): void {
   );
   console.info(
     '  - authoring-complete requires zero sdd-check --spec --authoring hints, then writes and echoes one canonical Decision Log receipt.'
+  );
+  console.info(
+    '  - audit-receipt/review-receipt re-derive the audit group from <group> (member path/Task-ID), refuse unless every'
+  );
+  console.info(
+    '    member is [x] DONE (the group-completion boundary, never at close), bind the fact to HEAD, and write one'
+  );
+  console.info(
+    '    forge-resistant SDD_AUDIT_RECEIPT / SDD_REVIEW_RECEIPT block on the owning spec. A reopen invalidates it.'
   );
   console.info(
     "  - complete requires this phase's CLI-owned sdd-verify receipt, the current-Round skeleton,"

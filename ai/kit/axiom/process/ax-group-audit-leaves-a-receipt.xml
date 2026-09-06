@@ -1,0 +1,20 @@
+<Axiom id="AX_GROUP_AUDIT_LEAVES_A_RECEIPT">
+      A ticket group is not "audited" until the CLI has recorded ONE durable group-completion receipt
+      on the owning spec. Audit itself stays cross-ticket, post-close, read-only, and ephemeral-on-pass
+      (`AX_AUDIT_HOOK`, `AX_EPHEMERAL_OUTPUT`, `AX_REOPEN_ROUNDS_IN_TICKET`) — this axiom does NOT persist
+      findings and does NOT touch ticket files; it persists only the durable FACT "this group was audited,
+      verdict V, at git-ref R".
+
+      Enforcement point is the GROUP-COMPLETION boundary, never `sdd-log close` (close precedes audit —
+      requiring a receipt at close would deadlock). Once the group's LAST ticket is `[x] DONE` and the
+      read-only `sdd-audit` has returned, the execute orchestrator — never the read-only audit worker —
+      runs `sdd-log <group> audit-receipt <verdict>`. The CLI re-resolves the group via
+      `resolveAuditGroup`, REFUSES unless every re-derived member is `[x] DONE`, binds the fact to the
+      current HEAD ref, and writes a single CLI-owned `SDD_AUDIT_RECEIPT` block on the owning spec through
+      the atomic proven-file primitive — so a pasted block cannot forge it.
+
+      A reopen (a new Round on any member) invalidates the receipt until re-audit: `sdd-check` re-derives
+      the group and its member Round-count signature, and emits `SDD_GROUP_AUDIT_MISSING` when a group
+      whose members are all DONE has no valid, non-stale receipt. The check keys off the WHOLE group being
+      complete, never a lone ticket's `[x]`.
+    </Axiom>

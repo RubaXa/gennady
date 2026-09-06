@@ -2,9 +2,17 @@
 // @consumers: gennady.ts
 // @tasks: N/A
 
-import { relative, resolve } from 'node:path';
+import { relative, resolve, sep } from 'node:path';
+import { realpathSync } from 'node:fs';
 import { logger } from '#logger';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
+import { resolveAuditGroup } from '../../../shared/sdd/audit-group.ts';
+import { getHeadRef } from '../../../shared/common/changed-files.ts';
+import {
+  buildGroupReceipt,
+  upsertGroupReceipt,
+  type GroupReceiptKind,
+} from '../../../shared/sdd/group-receipt.ts';
 import {
   readScratchPayloadFile,
   type ScratchPayload,
@@ -34,6 +42,7 @@ import {
   completeSpecAuthoring,
   fileError,
   findPhaseBlockBounds,
+  groupReceiptError,
   hasPlaceholder,
   isCompleteHandoffPayload,
   missingFlag,
@@ -60,7 +69,11 @@ const MODES = [
   'resolved',
   'complete',
   'authoring-complete',
+  'audit-receipt',
+  'review-receipt',
 ] as const;
+/** @purpose Single-line verdict token accepted by the group-completion receipt modes. */
+const GROUP_VERDICT_RE = /^[^\r\n]{1,120}$/;
 const PHASE_ID_RE = /^P[0-9]+$/;
 const AXIOM_ID_RE = /^AX_[A-Z0-9_]+$/;
 
@@ -277,6 +290,74 @@ async function runCommand(
     };
   }
   // #endregion END_AUTHORING_COMPLETE
+
+  // #region START_GROUP_RECEIPT — invariant: the group-completion boundary (never close) re-resolves the group, refuses unless every member is DONE, and writes one CLI-owned durable fact on the owning spec
+  if (mode === 'audit-receipt' || mode === 'review-receipt') {
+    const kind: GroupReceiptKind = mode === 'audit-receipt' ? 'audit' : 'review';
+    if (contentFile) return badInvocation(`--content-file does not apply to mode "${mode}"`);
+    const verdict = inlinePayload.trim();
+    if (verdict === '') return badInvocation(`mode "${mode}" requires a <verdict>`);
+    if (hasPlaceholder(verdict)) return placeholderError(verdict);
+    if (!GROUP_VERDICT_RE.test(verdict)) {
+      return badInvocation('verdict must be a single line of at most 120 characters');
+    }
+    const resolution = resolveAuditGroup(ticket, root);
+    if (!resolution.ok) {
+      const detail =
+        resolution.reason === 'unknown-id'
+          ? `unknown Task-ID ${resolution.id}`
+          : resolution.reason === 'ambiguous-id'
+            ? `ambiguous Task-ID ${resolution.id} matches ${resolution.matches.length} tickets`
+            : resolution.reason === 'not-v2-ticket-name'
+              ? `${ticket} is not a v2 ticket name`
+              : resolution.reason === 'spec-missing'
+                ? `owning spec is missing: ${relative(root, resolution.specPath)}`
+                : resolution.reason === 'ticket-corpus-unreadable' ||
+                    resolution.reason === 'path-invalid'
+                  ? `${resolution.file}: ${resolution.detail}`
+                  : `${ticket} is unreadable`;
+      return groupReceiptError(detail);
+    }
+    const members = resolution.group.map((ref) => ({
+      file: ref.file,
+      content: resolution.ticketContents.get(resolve(ref.file)) ?? '',
+    }));
+    if (members.length === 0) return groupReceiptError('resolved group has no member tickets');
+    // Measure the spec against the canonical root; resolveAuditGroup already realpath-normalized it.
+    let canonicalRoot: string;
+    try {
+      canonicalRoot = realpathSync(resolve(root));
+    } catch {
+      canonicalRoot = resolve(root);
+    }
+    const specRel = relative(canonicalRoot, resolution.specPath);
+    const groupId = specRel.split(sep).join('/');
+    const gitRef = getHeadRef(root);
+    const built = buildGroupReceipt(kind, groupId, members, gitRef, verdict, now.toISOString());
+    if (!built.ok) {
+      return groupReceiptError(
+        `group is not complete — these member ticket(s) are not [x] DONE: ${built.notDone.join(', ')}`
+      );
+    }
+    const proven = proveRepoFile(root, specRel);
+    if (!proven.ok) return groupReceiptError(`owning spec ${specRel} (${proven.detail})`);
+    const observed = readProvenRepoFile(proven.identity);
+    if (!observed.ok) return groupReceiptError(`owning spec ${specRel} (${observed.detail})`);
+    const nextSpec = upsertGroupReceipt(observed.content, built.receipt);
+    const written = writeProvenRepoFile(proven.identity, nextSpec);
+    if (!written.ok) return groupReceiptError(`owning spec ${specRel} (${written.detail})`);
+    logger.debug(`[SddLogCommand#run] recorded ${kind} receipt on ${specRel}`);
+    return {
+      ok: true,
+      text: [
+        `[sdd-log] ${kind} receipt recorded on ${specRel}:`,
+        `  group: ${groupId} (${members.length} DONE ticket(s))`,
+        `  verdict: ${verdict}`,
+        `  git-ref: ${gitRef}`,
+      ].join('\n'),
+    };
+  }
+  // #endregion END_GROUP_RECEIPT
 
   // #region START_READ — invariant: path or Task-ID (AX_TASK_RESOLUTION) → resolved path + content
   const resolved = resolveTicketArg(ticket, root);

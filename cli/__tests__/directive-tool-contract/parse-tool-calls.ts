@@ -312,9 +312,13 @@ const COMMAND_SCHEMAS: Readonly<Record<string, CommandSchema>> = {
           'resolved',
           'complete',
           'authoring-complete',
+          'audit-receipt',
+          'review-receipt',
         ].includes(op!)
       )
         return 'unknown log operation';
+      if (op === 'audit-receipt' || op === 'review-receipt')
+        return p.length === 3 && f.size === 0 ? null : `${op} requires exactly a <verdict>`;
       if (op === 'close') return p.length === 2 && f.size === 0 ? null : 'close takes only ticket';
       if (op === 'authoring-complete')
         return p.length === 2 && f.size === 0

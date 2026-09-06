@@ -99,6 +99,11 @@ import {
 } from '../../../shared/sdd/module-specs.ts';
 import { resolveOwningSpec, validateTicketReviewPaths } from '../../../shared/sdd/audit-group.ts';
 import {
+  checkGroupReceipts,
+  type GroupMemberInput,
+  type GroupUnderCheck,
+} from '../../../shared/sdd/group-receipt.ts';
+import {
   ambiguousIdError,
   badInvocation,
   fileError,
@@ -120,6 +125,16 @@ const SKIP_DIRS = new Set([
   'coverage',
   '__tests__',
 ]);
+
+/** @purpose Canonical identity of a path, tolerating a missing target by falling back to its absolute form. */
+function realpathSafe(p: string): string {
+  const abs = resolve(p);
+  try {
+    return realpathSync(abs);
+  } catch {
+    return abs;
+  }
+}
 
 /** @purpose Exact failed filesystem observation retained by the general audit instead of being collapsed into absence. */
 type ReadIssue = { path: string; reason: string };
@@ -1268,6 +1283,7 @@ export async function run(
       else addReadIssue(findings, observed.issue);
     }
     const ticketRefs: TicketRef[] = [];
+    const groupTickets: GroupMemberInput[] = [];
     const trackerRowRefs: TrackerRowRef[] = [];
     const specEntries: SpecEntry[] = [];
     const moduleEdgesByScope = new Map<string, { edges: GraphEdge[]; scopeFile: string }>();
@@ -1357,6 +1373,7 @@ export async function run(
         if (specFlowVersion(file) === 'v2') findings.push(...checkSpecLanguage(file, content));
         if (isV2SpecsTicket(file)) findings.push(...checkTaskIdGrammar(file, content));
         ticketRefs.push(ticketRef(file, content, ticketFlowVersion(file, repoRoot)));
+        groupTickets.push({ file, content });
         fileCount++;
       } else if (isLegacyTicket(content)) {
         findings.push(...checkLegacyTicket(file));
@@ -1365,6 +1382,30 @@ export async function run(
       }
     }
     findings.push(...checkTaskGraph(ticketRefs));
+    // #region START_GROUP_RECEIPTS — invariant: group walked v2 tickets by owning spec, then WARN when a fully-DONE group lacks a valid receipt (grandfathered and graded inside checkGroupReceipts)
+    const specContentByCanonical = new Map<string, { file: string; content: string }>();
+    for (const entry of specEntries)
+      specContentByCanonical.set(realpathSafe(entry.file), {
+        file: entry.file,
+        content: entry.content,
+      });
+    const membersByCanonicalSpec = new Map<string, GroupMemberInput[]>();
+    for (const member of groupTickets) {
+      const owner = resolveOwningSpec(member.file);
+      if (!owner.ok) continue;
+      const key = realpathSafe(owner.specPath);
+      const list = membersByCanonicalSpec.get(key) ?? [];
+      list.push(member);
+      membersByCanonicalSpec.set(key, list);
+    }
+    const groupsUnderCheck: GroupUnderCheck[] = [];
+    for (const [key, members] of membersByCanonicalSpec) {
+      const spec = specContentByCanonical.get(key);
+      if (!spec) continue;
+      groupsUnderCheck.push({ specFile: spec.file, specContent: spec.content, members });
+    }
+    findings.push(...checkGroupReceipts(groupsUnderCheck));
+    // #endregion END_GROUP_RECEIPTS
     findings.push(...checkTrackers(ticketRefs, trackerRowRefs));
     findings.push(...checkSpecHierarchy(specEntries));
     findings.push(...checkResearchOrphans(researchFiles, referencedResearch, registeredResearch));

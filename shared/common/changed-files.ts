@@ -200,3 +200,17 @@ export function getHeadContent(root: string, relPath: string): string | null {
 export function hasGitHead(root: string): boolean {
   return headState(root).status === 'ok';
 }
+
+/**
+ * @purpose The current HEAD commit id — the durable git ref a group-completion receipt is bound to.
+ * @invariant Never throws: an unborn branch, a non-repository, or any git failure all collapse to
+ *   the literal `'no-head'` so a receipt still records provenance without a spurious commit id.
+ * @param root Repository root passed to git as one argv value.
+ * @returns The 40-char HEAD sha, or `'no-head'` when no commit can be proven.
+ */
+export function getHeadRef(root: string): string {
+  const state = headState(root);
+  if (state.status !== 'ok') return 'no-head';
+  const head = git(root, 'resolve HEAD commit id', ['rev-parse', 'HEAD']);
+  return head.ok ? head.stdout.trim() : 'no-head';
+}
