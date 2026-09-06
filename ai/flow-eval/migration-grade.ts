@@ -24,6 +24,16 @@ export type MigrationGrade = {
   detail: string;
 };
 
+// Structural-integrity codes a migration MUST NOT introduce: broken spec references/anchors and
+// unresolvable rule evidence mean relocation/rename lost a link — the migration's own mechanical job.
+// Everything else (BDD coverage, verification-table shape, language calques, long cells) is CONTENT
+// debt: pre-existing or authoring-level, addressed by a later reconcile/authoring pass, not migration.
+const MIGRATION_CRITICAL_CODES = new Set([
+  'SDD_BROKEN_SPEC_REF',
+  'SDD_BROKEN_SPEC_ANCHOR',
+  'ERR_CLI_SDD_CHECK_READ_FAILED',
+]);
+
 /** @purpose Parse an sdd-check run into a code→count histogram. */
 export function parseFindingHistogram(output: string): FindingHistogram {
   const hist: FindingHistogram = {};
@@ -83,18 +93,23 @@ export function computeMigrationGrade(
     parseFindingHistogram(checkOutput),
     parseSeverities(checkOutput)
   );
-  const introducedErrors = introduced.filter((i) => i.severity === 'error');
-  const pass = flowV2 && introducedErrors.length === 0;
-  const introSummary =
-    introduced.length === 0
-      ? 'no new findings'
-      : introduced.map((i) => `${i.code}+${i.delta}(${i.severity})`).join(', ');
+  const criticalIntroduced = introduced.filter((i) => MIGRATION_CRITICAL_CODES.has(i.code));
+  const pass = flowV2 && criticalIntroduced.length === 0;
+  const critSummary =
+    criticalIntroduced.length === 0
+      ? 'none'
+      : criticalIntroduced.map((i) => `${i.code}+${i.delta}`).join(', ');
+  const backlog = introduced
+    .filter((i) => !MIGRATION_CRITICAL_CODES.has(i.code))
+    .map((i) => `${i.code}+${i.delta}`);
   return {
     flowVersion,
     flowV2,
     introduced,
     pass,
-    detail: `FLOW_VERSION=${flowVersion || '?'} · migration-introduced: ${introSummary}`,
+    detail:
+      `FLOW_VERSION=${flowVersion || '?'} · critical-introduced: ${critSummary}` +
+      (backlog.length > 0 ? ` · backlog: ${backlog.join(', ')}` : ''),
   };
 }
 

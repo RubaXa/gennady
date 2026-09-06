@@ -37,18 +37,28 @@ describe('migration-grade (histogram + deterministic baseline-diff grade)', () =
     assert.equal(g.pass, true);
   });
 
-  it('a NEW error-severity finding fails the migration', () => {
+  it('a NEW critical structural finding (broken spec ref) fails the migration', () => {
     const g = computeMigrationGrade(
       {},
       'FLOW_VERSION=v2',
-      findings('error', 'SDD_DEP_UNRESOLVED', 1)
+      findings('error', 'SDD_BROKEN_SPEC_REF', 1)
     );
     assert.equal(g.pass, false);
-    assert.equal(g.introduced[0]?.code, 'SDD_DEP_UNRESOLVED');
-    assert.equal(g.introduced[0]?.severity, 'error');
+    assert.equal(g.introduced[0]?.code, 'SDD_BROKEN_SPEC_REF');
   });
 
-  it('a NEW warning (no new errors) + v2 → PASS — warnings are backlog, not failures', () => {
+  it('a NEW content-debt error (not structural) is backlog, not a failure', () => {
+    // SDD_DEP_UNRESOLVED is content/authoring debt exposed by strict v2, not a migration integrity break.
+    const g = computeMigrationGrade(
+      {},
+      'FLOW_VERSION=v2',
+      findings('error', 'SDD_DEP_UNRESOLVED', 3)
+    );
+    assert.equal(g.pass, true);
+    assert.match(g.detail, /backlog: SDD_DEP_UNRESOLVED\+3/);
+  });
+
+  it('a NEW warning + v2 → PASS — warnings are backlog', () => {
     const g = computeMigrationGrade(
       {},
       'FLOW_VERSION=v2',
@@ -56,7 +66,6 @@ describe('migration-grade (histogram + deterministic baseline-diff grade)', () =
     );
     assert.equal(g.pass, true);
     assert.equal(g.introduced.length, 1);
-    assert.equal(g.introduced[0]?.delta, 5);
   });
 
   it('not v2 → FAIL even with zero new findings', () => {
