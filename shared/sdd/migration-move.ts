@@ -284,12 +284,27 @@ function splitLinkTarget(target: string): { path: string; fragment: string } {
     : { path: target, fragment: '' };
 }
 
+// Top-level repo dirs: a link starting with one of these is repo-root-relative (v1 tickets wrote spec
+// refs as `specs/<scope>/…`); anything starting with `.` is author-relative to the referring file.
+const REPO_ROOT_SEGMENTS = new Set([
+  'specs',
+  'ai',
+  'tasks',
+  'cli',
+  'shared',
+  'services',
+  'e2e',
+  'docs',
+]);
+
 /**
- * @purpose Repoint markdown links in a file's text off a moved ticket's old path, onto its new one.
- * @invariant Skips empty targets, external URLs, and links whose resolved path is not in `byOldPath`.
+ * @purpose Re-express a moved file's markdown links from its new location — spec/rule refs and links to
+ *   other moved tickets alike — so v2 sdd-check, which resolves them from the ticket, still finds them.
+ * @invariant Skips empty/external targets, pure `#fragment`s, and paths resolving outside the repo. An
+ *   unmoved file only has links to moved tickets repointed.
  * @param text Full file content.
- * @param oldRefRelPath Path the file's existing links resolve against (where the author stood).
- * @param newRefRelPath Path to emit new links against — the file's destination, or itself if unmoved.
+ * @param oldRefRelPath File's old repo-relative path.
+ * @param newRefRelPath File's new repo-relative path (its destination, or itself if unmoved).
  * @param byOldPath Old repo-relative ticket path → new repo-relative ticket path.
  * @returns Rewritten text + count of links changed.
  */
@@ -299,31 +314,34 @@ export function rewriteMovedLinks(
   newRefRelPath: string,
   byOldPath: Map<string, string>
 ): { text: string; count: number } {
-  if (byOldPath.size === 0) return { text, count: 0 };
   const oldRefDir = posix.dirname(oldRefRelPath);
   const newRefDir = posix.dirname(newRefRelPath);
+  const moved = oldRefDir !== newRefDir;
+  if (byOldPath.size === 0 && !moved) return { text, count: 0 };
   let count = 0;
   const rewritten = text.replace(
     /\]\(([^)\s]+)([^)]*)\)/g,
     (whole: string, rawTarget: string, rest: string) => {
       if (rawTarget === '' || /^[a-z][a-z0-9+.-]*:\/\//i.test(rawTarget)) return whole;
       const { path, fragment } = splitLinkTarget(rawTarget);
-      if (path === '') return whole;
-      const resolved = posix.normalize(posix.join(oldRefDir, path));
-      const newPath = byOldPath.get(resolved);
-      if (!newPath) return whole;
-      count++;
-      let rel = posix.relative(newRefDir, newPath);
+      if (path === '') return whole; // pure #fragment — nothing to repoint
+      const rootRelative =
+        !path.startsWith('.') && REPO_ROOT_SEGMENTS.has(path.split('/')[0] ?? '');
+      const absOld = rootRelative
+        ? posix.normalize(path)
+        : posix.normalize(posix.join(oldRefDir, path));
+      if (absOld.startsWith('..')) return whole; // resolves outside the repo — leave untouched
+      const absNew = byOldPath.get(absOld) ?? absOld;
+      if (absNew === absOld && !moved) return whole; // referrer that did not move, target that did not move
+      let rel = posix.relative(newRefDir, absNew);
       if (!rel.startsWith('.')) rel = './' + rel;
-      return `](${rel}${fragment}${rest})`;
+      const out = `](${rel}${fragment}${rest})`;
+      if (out !== whole) count++;
+      return out;
     }
   );
   return { text: rewritten, count };
 }
-
-// v1 docs cite repo-root dirs via `../` from a nested location (`../../ai/directives/x.xml`); v2
-// sdd-check rejects any `..` segment in evidence paths, so migration rewrites them to repo-root-relative.
-const EVIDENCE_DOTDOT = /(?:\.\.\/)+((?:ai|specs|cli|shared|services|tasks|e2e)\/)/g;
 
 /** @purpose Recursively collect `.md` files under the given zone dirs, path-sorted. */
 function collectMdFiles(repoRoot: string, zones: string[]): string[] {
@@ -406,17 +424,11 @@ export function executeScopeMove(
       const rel = relative(repoRoot, abs);
       const newRelPath = byOldPath.get(rel) ?? rel;
       const linkRes = rewriteMovedLinks(readFileSync(abs, 'utf-8'), rel, newRelPath, byOldPath);
-      let pathCount = 0;
-      const text = linkRes.text.replace(EVIDENCE_DOTDOT, (_w, tail: string) => {
-        pathCount++;
-        return tail;
-      });
-      if (linkRes.count > 0 || pathCount > 0) {
-        if (write) writeFileSync(abs, text, 'utf-8');
-        if (linkRes.count > 0)
-          report.push(`  ${verb}link  ${rel} — ${linkRes.count} ссылк(и) на переезжающие тикеты`);
-        if (pathCount > 0)
-          report.push(`  ${verb}path  ${rel} — ${pathCount} rule-путь(и) → repo-root`);
+      if (linkRes.count > 0) {
+        if (write) writeFileSync(abs, linkRes.text, 'utf-8');
+        report.push(
+          `  ${verb}link  ${rel} — ${linkRes.count} ссылк(и) пересчитаны под новое место`
+        );
       }
     }
   }
