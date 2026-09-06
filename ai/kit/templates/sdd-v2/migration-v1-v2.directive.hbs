@@ -232,6 +232,16 @@
         `AX_MIGRATION_COMPREHENSION_PASS` — decode every empty label and code-only term from the
         actual code, replace every metaphor with the literal mechanism, never guess (code / IDs /
         status tokens / BDD keywords / paths stay English).
+        Reference integrity is the hard invariant of this step: any rename of a section anchor or
+        heading MUST rewrite every ticket→spec reference to it in the SAME pass — a rename that leaves
+        a `#slug` reference dangling (`SDD_BROKEN_SPEC_REF` / `SDD_BROKEN_SPEC_ANCHOR`) is forbidden. If
+        you cannot update all references, do NOT rename: a v1 hyphen anchor is tolerated, and leaving it
+        is strictly better than a broken reference. Never introduce `ERR_CLI_SDD_CHECK_READ_FAILED` —
+        rule links stay resolvable from the ticket's own location (`..`-relative is legal). Content the
+        source lacks or that needs authoring judgement (BDD coverage rows, a verification-table Role
+        column, flat-Russian rewrites) is best-effort here: if a clean fix is not possible, leave it and
+        record it for `reconcile`/`sdd-continue` as backlog — never half-apply a change that would break
+        a reference or add a structural finding.
         Gate per scope: integrityCheck ToolCall below — strict v2 structure, folds, real mermaid
         parse, and the language lint (`SDD_LANGUAGE_CALQUE`) that gates the comprehension pass above
         mechanically — clean. Set the unit `**Status:** DONE`.
