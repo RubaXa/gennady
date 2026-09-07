@@ -28,12 +28,12 @@
       owns the instinct; this one binds it to the map). A skip on a high-stakes topic goes through
       `H_HIGH_STAKES_SKIP`.
 
-      `🟡` (partial, `COVERAGE_MAP_FORMAT`) is NEVER read as closed — text the operator already
-      brought (intake, a pasted spec draft, a rich prior message) marks a topic `🟡` at most, never
-      `✅` on the strength of that text alone, no matter how detailed it reads. Only one of two things
-      promotes `🟡` to `✅`: a confirmed answer given IN the dialogue, or an explicit «принято как
-      есть» note the agent records in the spec itself. `STEP_4_CLOSE`-style gates treat `🟡` exactly
-      like `◻️`/`👷` — not closed, sends the flow back to closing rounds.
+      `🟡` (partial, `COVERAGE_MAP_FORMAT`) is NEVER read as closed. Explicit operator input is already
+      an answer: a topic stated completely and without contradiction in the intake or pasted brief may
+      start `✅`; incomplete or ambiguous text starts `🟡`. The agent may not promote its own inference.
+      A partial topic becomes `✅` only through a later operator answer or an explicit «принято как
+      есть» note recorded in the spec. `STEP_4_CLOSE`-style gates treat remaining `🟡` exactly like
+      `◻️`/`👷` — not closed, sends the flow back to closing rounds.
     </Axiom>
 
     <Axiom id="AX_DEFAULTS_FIRST">
@@ -51,6 +51,13 @@
       «усиления не нужны, потому что …» — it is a valid triage outcome, not a silent omission. A
       confirmed amplification becomes a map topic and its directive loads lazily via
       `READ_AND_USE_DIRECTIVE` at the moment its topic opens, never up front.
+    </Axiom>
+
+    <Axiom id="AX_DELTA_ONLY_ASK">
+      Ask only for a decision that is still open. Intake, portal/state output, and an earlier
+      operator answer are binding evidence: carry them forward by reference and never ask the
+      operator to confirm the same value again. A contradiction or genuinely new consequence
+      reopens only the affected decision, with the delta named explicitly.
     </Axiom>
 
     <Axiom id="AX_UNCOMFORTABLE_QUESTIONS">
@@ -212,20 +219,21 @@
         Assemble the map: base topics + «Категории отказов» + the scope-type block from
         `TopicCatalog`, narrowed / extended by the calling step's focus (не narrow «Категории
         отказов» — it stays whole on every map). Text the operator already brought (intake, a
-        pasted draft) marks a topic `🟡` (partial) AT MOST — never `✅`; rich, detailed intake text
-        earns no exception (`AX_COVERAGE_MAP_CLOSURE`). Render per `COVERAGE_MAP_FORMAT` with a
+        pasted draft) is a direct operator answer: mark a fully explicit, non-contradictory topic
+        `✅`, an incomplete or ambiguous one `🟡`, and never fill a gap by agent inference
+        (`AX_COVERAGE_MAP_CLOSURE`). Render per `COVERAGE_MAP_FORMAT` with a
         one-line plan («что осталось закрыть»); proceed straight to triage.
       </Action>
     </Step>
     <Step id="STEP_2_TRIAGE">
       <Goal>Decide which amplifications this task deserves.</Goal>
       <Action>
-        One compact block of 3–5 closed questions (yes / no / short pick), mandatory even when the
-        task looks small: external users or external data? load significant? state persisted?
-        must this be diagnosable in production? — plus at most one triage question specific to the
-        intake. From the answers, propose an amplification set per `AmplificationCatalog` with the
-        small-task default «none active» (`AX_AMPLIFICATION_OPT_IN`); operator confirms. Confirmed
-        amplifications become map topics on the «Усиления» line. STOP.
+        Evaluate the `AmplificationCatalog` triggers from already-known intake first. Ask one compact
+        closed batch only for triggers whose answer remains unknown; zero unknown triggers means
+        zero Ask. Propose the resulting amplification set with the small-task default «none active»
+        (`AX_AMPLIFICATION_OPT_IN`). A set fully implied by accepted answers is carried forward
+        without a second confirmation (`AX_DELTA_ONLY_ASK`). Confirmed amplifications become map
+        topics on the «Усиления» line.
       </Action>
     </Step>
     <Step id="STEP_3_ROUNDS">
@@ -238,7 +246,7 @@
            `QUESTION_MESSAGE_FORMAT`, answered before the next question is composed
            (`AX_ONE_QUESTION_SEQUENTIAL`); a default confirmation → collect it and batch up to 4
            per `BATCH_CONFIRM_FORMAT`.
-        3. Shape each question per `AX_DEFAULTS_FIRST` — a concrete default to confirm or correct —
+        3. Shape each question per `AX_DEFAULTS_FIRST` and `AX_DELTA_ONLY_ASK` — a concrete default to confirm or correct —
            and bind its chat message to the `AskUserQuestion` call per `AX_ASK_TOOL_BINDING`.
         4. After each answer, update the map and pull the thread per `AX_COVERAGE_MAP_CLOSURE`
            (new hole → new / reopened topic; a развилка whose premise the answer invalidated is
@@ -264,7 +272,8 @@
         Gate per `AX_COVERAGE_MAP_CLOSURE`: every topic `✅` or `✗ skip: <причина>` — an open
         (`◻️`), active (`👷`), or partial (`🟡`) topic sends the flow back to STEP_3. Show the final map + a compact digest of
         answers and decisions (Russian), including skips with reasons. Hand the digest to the
-        calling step — it owns the Approval Check, artifact writing, and any Decision Log entries.
+        calling step. The digest is evidence, not a new approval surface: the caller asks again only
+        for a newly introduced delta (`AX_DELTA_ONLY_ASK`).
       </Action>
     </Step>
   </ExecutionPlan>
@@ -371,7 +380,7 @@
       Усиления:  security 👷 · storage ✗ skip: прототип, данных нет
 
       4–6 topics per line; the «Усиления» line appears only when at least one amplification is
-      active or skipped. The map is session state for the dialogue — the calling step decides what
+      active or skipped. The map is ephemeral state for the current dialogue — the calling step decides what
       from the answers lands in the artifact; the map itself stays out of the spec.
     </Contract>
 

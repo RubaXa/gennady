@@ -3,7 +3,11 @@
   Before adding any dependency, verify four things:
   1. **Node compatibility:** `npm view <pkg> engines` — supports version in `.nvmrc`?
   2. **Module system compatibility:** package ESM-only / CJS-only / dual? Matches project's `"type"`?
-  3. **Pinning discipline:** dev tool → `--save-exact`; runtime dep → range acceptable.
+  3. **Pinning discipline:** request a verified version explicitly. Dev tool →
+     `npm install --save-dev --save-exact <pkg>@<verified-stable-version>` or
+     `npm add --save-dev --save-exact <pkg>@<verified-stable-version>`; runtime dep →
+     `npm install <pkg>@<verified-stable-version>` or
+     `npm add <pkg>@<verified-stable-version>` (the manifest's normal range remains acceptable).
   4. **Release channel:** the `latest` dist-tag is not guaranteed stable — it can point at a
      pre-release (`rc` / `beta` / `alpha`). Before pinning, compare `npm view <pkg> version` (what
      `latest` actually resolves to) against `npm view <pkg> dist-tags` (the full tag → version map)

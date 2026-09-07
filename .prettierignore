@@ -9,3 +9,7 @@ ai/skills/
 ai/kit/
 .claude/skills/
 e2e/inbox-serve/test-results/
+
+# Local inspector projection. `npm run inspector:gen` owns this Git-ignored
+# runtime artifact; formatting its ~45 MB JSON does not verify authored input.
+ai/inspector/web/trace.json

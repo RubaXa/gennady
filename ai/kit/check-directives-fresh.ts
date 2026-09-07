@@ -33,11 +33,24 @@
  *
  * Run: npm run check:directives-fresh
  */
-import { mkdtempSync, rmSync, cpSync, mkdirSync, existsSync, readdirSync, statSync } from 'node:fs';
+import {
+  mkdtempSync,
+  rmSync,
+  cpSync,
+  mkdirSync,
+  existsSync,
+  readdirSync,
+  statSync,
+  readFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, dirname } from 'node:path';
+import { join, dirname, basename } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import {
+  DIRECTIVE_ASSEMBLY_MARKER_FILE,
+  parseDirectiveAssemblyMarker,
+} from './directive-assembly-marker.ts';
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url));
 
@@ -65,28 +78,79 @@ function listFilesRelative(dir: string, base: string = dir): string[] {
  */
 export function checkDirectivesFresh(
   rootDir: string,
-  directivesDir: string = join(rootDir, 'ai/directives'),
+  directivesDir: string = join(rootDir, 'ai/directives')
 ): FreshnessResult {
+  const markerPath = join(directivesDir, DIRECTIVE_ASSEMBLY_MARKER_FILE);
+  if (!existsSync(markerPath)) {
+    return {
+      fresh: false,
+      diff:
+        `ERR_DIRECTIVE_ASSEMBLY_MARKER_MISSING: ${DIRECTIVE_ASSEMBLY_MARKER_FILE} is absent. ` +
+        'Next: rebuild with an explicit intended assembly: npm run build:directives -- --assembly=lazy or --assembly=monolith; use the ordinary command only for manifest-owned assembly.\n',
+    };
+  }
+  const parsedMarker = parseDirectiveAssemblyMarker(
+    readFileSync(markerPath, 'utf8')
+  );
+  if (!parsedMarker.ok) {
+    return {
+      fresh: false,
+      diff:
+        `ERR_DIRECTIVE_ASSEMBLY_MARKER_INVALID: ${parsedMarker.detail}. ` +
+        'Next: rebuild with an explicit intended assembly: npm run build:directives -- --assembly=lazy or --assembly=monolith; use the ordinary command only for manifest-owned assembly.\n',
+    };
+  }
   const scratch = mkdtempSync(join(tmpdir(), 'gennady-directives-scratch-'));
   const mirror = mkdtempSync(join(tmpdir(), 'gennady-directives-mirror-'));
   try {
+    const assemblyArgs =
+      parsedMarker.marker.selection === 'manifest'
+        ? []
+        : [`--assembly=${parsedMarker.marker.selection}`];
     const build = spawnSync(
       process.execPath,
-      ['--experimental-strip-types', join(rootDir, 'ai/kit/build-directives.ts'), `--out=${scratch}`],
-      { cwd: rootDir, encoding: 'utf8' },
+      [
+        '--experimental-strip-types',
+        join(rootDir, 'ai/kit/build-directives.ts'),
+        `--out=${scratch}`,
+        ...assemblyArgs,
+      ],
+      { cwd: rootDir, encoding: 'utf8' }
     );
     if (build.status !== 0) {
-      throw new Error(`build-directives.ts failed (exit ${build.status}):\n${build.stdout}\n${build.stderr}`);
+      throw new Error(
+        `build-directives.ts failed (exit ${build.status}):\n${build.stdout}\n${build.stderr}`
+      );
     }
+
+    const expected = new Set(listFilesRelative(scratch));
+    const generatedStepPrefixes = [...expected]
+      .filter((rel) => rel.endsWith('.directive.xml'))
+      .map((rel) =>
+        join(dirname(rel), basename(rel, '.directive.xml'), 'steps').replaceAll('\\', '/') + '/'
+      );
 
     // Mirror ONLY the exact relative paths the build produced, so a hand-authored file sitting
     // next to generated ones (ai/directives/coding/README.md) never enters the comparison, while
     // a hand-EDITED generated file, or one missing/untracked in the real tree, still does.
-    for (const rel of listFilesRelative(scratch)) {
+    for (const rel of expected) {
       const src = join(directivesDir, rel);
       if (existsSync(src)) {
         mkdirSync(dirname(join(mirror, rel)), { recursive: true });
         cpSync(src, join(mirror, rel));
+      }
+    }
+    // A step package belongs to the directive builder even when the selected assembly no longer
+    // emits it. Preserve such stale packages in the mirror so the directory diff reports them;
+    // unrelated hand-authored companions remain outside the builder-owned `*/steps/` boundary.
+    for (const rel of listFilesRelative(directivesDir)) {
+      const normalized = rel.replaceAll('\\', '/');
+      if (
+        !expected.has(rel) &&
+        generatedStepPrefixes.some((prefix) => normalized.startsWith(prefix))
+      ) {
+        mkdirSync(dirname(join(mirror, rel)), { recursive: true });
+        cpSync(join(directivesDir, rel), join(mirror, rel));
       }
     }
 
@@ -95,7 +159,9 @@ export function checkDirectivesFresh(
       encoding: 'utf8',
     });
     if (diff.status !== 0 && diff.status !== 1) {
-      throw new Error(`git diff --no-index failed (exit ${diff.status}):\n${diff.stdout}\n${diff.stderr}`);
+      throw new Error(
+        `git diff --no-index failed (exit ${diff.status}):\n${diff.stdout}\n${diff.stderr}`
+      );
     }
     return { fresh: diff.status === 0, diff: diff.stdout };
   } finally {

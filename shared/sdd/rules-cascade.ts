@@ -2,7 +2,7 @@
 // @consumers: sdd-check.cmd
 // @tasks: N/A
 
-import { dirname, relative, resolve, sep } from 'node:path';
+import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
 import type { Finding } from './check.ts';
 
 /**
@@ -12,17 +12,22 @@ export type RuleDepsMap = Map<string, string[]>;
 
 /**
  * @purpose Normalize a phase Rules: bullet's link target to a repo-root-relative POSIX path — the id space `<DependsOn>` entries already use.
- * @invariant Pure path math — no filesystem access, no existence check (that is `SDD_BROKEN_RULE_LINK`'s job).
+ * @invariant Pure path math only; the caller must pass the result to the shared strict repository
+ *   identity boundary before any existence/read assumption.
  * @param ticketFile Ticket file path; only its directory anchors the relative link target.
  * @param repoRoot Repository root (absolute or relative to the same base as `ticketFile`).
  * @param linkTarget The Rules: bullet's link target, as parsed by `parsePhaseDetail` (e.g. `../../ai/directives/coding/typescript-rules.xml`).
- * @returns The repo-root-relative path with `/` separators.
+ * @returns The repo-root-relative path with `/` separators; a forbidden absolute form is preserved
+ *   verbatim so the repository identity boundary can reject it without disguising it as traversal.
  */
 export function normalizeRulePath(
   ticketFile: string,
   repoRoot: string,
   linkTarget: string
 ): string {
+  // Preserve forbidden absolute forms so the shared repository-file boundary can teach the exact
+  // violation. Relativizing them first would disguise an absolute injection as traversal.
+  if (isAbsolute(linkTarget) || /^[A-Za-z]:[\\/]/.test(linkTarget)) return linkTarget;
   const abs = resolve(dirname(resolve(ticketFile)), linkTarget);
   return relative(resolve(repoRoot), abs).split(sep).join('/');
 }

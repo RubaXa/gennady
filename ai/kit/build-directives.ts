@@ -45,13 +45,17 @@
  * After rendering, the dangling-axiom lint (lint-axioms.ts) runs over the FINAL (post-delta)
  * output and prints warnings (never fails the build) — see AUTHORING.md §7.
  */
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, unlinkSync } from 'node:fs';
 import { join, dirname, basename, relative, sep } from 'node:path';
 import { createRenderer, walk, TEMPLATES, OUT_ROOT, KIT } from './render.ts';
 import { lintDanglingAxioms, formatDanglingReport, type RenderedDirective } from './lint-axioms.ts';
 import { buildDeltaPlan, excludedPartialsFor, applyDelta, type PlanNodeInput } from './delta-assembly.ts';
 import { resolveAssemblyMode, stampFingerprint, LazyDirectiveAssembler, type AssemblyMode } from './lazy-assembly.ts';
 import { check as checkStepBudgets } from './step-budget-gate.ts';
+import {
+  DIRECTIVE_ASSEMBLY_MARKER_FILE,
+  serializeDirectiveAssemblyMarker,
+} from './directive-assembly-marker.ts';
 
 const args = process.argv.slice(2);
 const checkOnly = args.includes('--check') || args.includes('--dry-run');
@@ -103,7 +107,11 @@ for (const e of pass1) {
   const id = 'ai/directives/' + e.rel;
   const isDirective = e.rel.endsWith('.directive.xml');
   const excluded = isDirective ? excludedPartialsFor(plan, id) : [];
-  const out = excluded.length === 0 ? e.renderedFull : render(applyDelta(e.hbsSource, excluded).source);
+  const assembled =
+    excluded.length === 0 ? e.renderedFull : render(applyDelta(e.hbsSource, excluded).source);
+  // Delta-elided standalone partials can leave their indentation behind on an otherwise empty
+  // line. Generated XML is canonical source output, so never emit whitespace-only diff noise.
+  const out = assembled.replace(/[ \t]+$/gm, '');
   rendered.push({ file: e.rel, text: out });
 
   const resolvedMode: AssemblyMode = isDirective ? resolveAssemblyMode(e.rel, assemblyFlag) : 'monolith';
@@ -153,6 +161,13 @@ if (buildFailures.length > 0) {
 }
 // #endregion END_FAIL_ON_LAZY_BUILD_FAILURES
 
+if (!checkOnly) {
+  writeFileSync(
+    join(outRoot, DIRECTIVE_ASSEMBLY_MARKER_FILE),
+    serializeDirectiveAssemblyMarker(assemblyFlag ?? 'manifest')
+  );
+}
+
 /**
  * Splits one delta-reduced directive into a skeleton + step packages (DA-REQ-3/4/10), measures the
  * result against `StepBudgetGate` (DA-REQ-6/14), and — only when within budget — writes the
@@ -171,6 +186,7 @@ function writeLazyDirective(rel: string, deltaReducedText: string, deltaSuffix: 
       directiveName,
       sourceText: deltaReducedText,
       fingerprint: buildFingerprint,
+      loadTopology: directiveName === 'scaffold' ? 'chain' : 'index',
     });
   } catch (cause) {
     failures.push(`${rel}: lazy split failed — ${cause instanceof Error ? cause.message : String(cause)}`);
@@ -216,7 +232,7 @@ function writeLazyDirective(rel: string, deltaReducedText: string, deltaSuffix: 
   for (const pkg of packages) {
     const packageDest = join(outRoot, pkg.relativePath.slice(ASSEMBLY_XML_ROOT_PREFIX.length));
     mkdirSync(dirname(packageDest), { recursive: true });
-    writeFileSync(packageDest, pkg.text);
+    writeFileSync(packageDest, pkg.text.replace(/[ \t]+$/gm, ''));
     if (!existsSync(packageDest)) {
       packageFailures.push(`${rel} (step ${pkg.stepId}): package file missing after write — ${packageDest}`);
     }
@@ -226,8 +242,20 @@ function writeLazyDirective(rel: string, deltaReducedText: string, deltaSuffix: 
     return; // never write a skeleton unless every path it would print was already confirmed present
   }
 
+  // A lazy directive may shrink or rename its Step set. Remove only generated XML siblings that
+  // are no longer promised by the freshly assembled skeleton; otherwise obsolete executable steps
+  // survive a successful rebuild and `check:directives-fresh` correctly reports drift.
+  const expectedPackages = new Set(
+    packages.map((pkg) => join(outRoot, pkg.relativePath.slice(ASSEMBLY_XML_ROOT_PREFIX.length)))
+  );
+  const packageDirectory = dirname(expectedPackages.values().next().value as string);
+  for (const file of readdirSync(packageDirectory)) {
+    const candidate = join(packageDirectory, file);
+    if (file.endsWith('.xml') && !expectedPackages.has(candidate)) unlinkSync(candidate);
+  }
+
   const dest = join(outRoot, rel);
   mkdirSync(dirname(dest), { recursive: true });
-  writeFileSync(dest, skeleton.text);
+  writeFileSync(dest, skeleton.text.replace(/[ \t]+$/gm, ''));
   // #endregion END_WRITE_PACKAGES_BEFORE_SKELETON
 }

@@ -407,7 +407,9 @@ graph TD
   | A5 | `happy/interface.ts` | `export interface` с контрактом, все члены (property, method) покрыты |
   | A6 | `happy/type.ts` | `export type` с контрактом |
   | A7 | `happy/enum.ts` | `export enum` с контрактом, все члены покрыты |
-  | A8 | `happy/export-default.ts` | `export default function/class` с контрактом |
+  | A8 | `happy/export-default.ts` | именованный `export default function/class` с контрактом |
+  | A8b | `happy/export-default-anon-fn.ts`, `happy/export-default-arrow.ts`, `happy/export-default-anon-class.ts` | АНОНИМНЫЙ `export default function/arrow/class` с контрактом — тоже контракт-сущность |
+  | A8c | `happy/export-default-expr.ts` | `export default <expr>` (object/call/identifier/literal) — module wiring, контракт НЕ нужен |
   | A9 | `happy/comment-before-export.ts` | Комментарий перед `export` (не перед сущностью) — должен найтись |
   | A10 | `happy/multi-export.ts` | Файл с несколькими экспортами, все покрыты |
 
@@ -420,7 +422,8 @@ graph TD
   | B4 | `missing-contract/interface.ts` | `export interface` без контракта |
   | B5 | `missing-contract/type.ts` | `export type` без контракта |
   | B6 | `missing-contract/enum.ts` | `export enum` без контракта |
-  | B7 | `missing-contract/export-default.ts` | `export default` без контракта |
+  | B7 | `missing-contract/export-default.ts` | именованный `export default function` без контракта |
+  | B7b | `missing-contract/export-default-anon-fn.ts`, `…-arrow.ts`, `…-anon-class.ts` | АНОНИМНЫЙ `export default function/arrow/class` без контракта — контракт обязателен (правило: function/arrow/class — контракт-поверхность даже без имени; чистое выражение — нет) |
   | B8 | `missing-contract/member-field.ts` | class: поле без контракта |
   | B9 | `missing-contract/member-method.ts` | class: метод без контракта |
   | B10 | `missing-contract/member-getter.ts` | class: геттер без контракта |

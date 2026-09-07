@@ -10,6 +10,7 @@ import { join, relative, sep, basename, dirname } from 'node:path';
 import { extractSection } from './section.ts';
 import { parseMeta } from './tracker.ts';
 import { REQUIRED_SECTIONS, MODULE_REQUIRED_V2, FOLD_REQUIRED_V2, type Finding } from './check.ts';
+import { validateTaskId } from './task-id.ts';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -257,11 +258,22 @@ export function scanMigrationUnits(repoRoot: string): MigrationScan {
     });
   }
 
+  // Discover tickets by CONTENT (a Task-ID in Meta), not filename: real repos name tickets their own
+  // way (e.g. `<scope>.IB-NN.md`), and a Task-ID is the one version-agnostic signal every ticket
+  // carries — anchored, plain v1, or even one that never had an Execution Log.
   // #region START_TICKET_ATTACH — the tasks/<scope>/ path is the physical truth; Meta only refines
   // the module pick (v1 Meta Scope/Module are loose — they may name a module or a spec-less sub-part).
-  const ticketFiles: string[] = [];
-  walkFiles(join(repoRoot, 'tasks'), (n) => /\.task-[0-9]+\.md$/.test(n), ticketFiles);
-  ticketFiles.sort();
+  const mdFiles: string[] = [];
+  walkFiles(join(repoRoot, 'tasks'), (n) => n.endsWith('.md'), mdFiles);
+  const ticketFiles = mdFiles
+    .filter((abs) => {
+      try {
+        return parseMeta(readFileSync(abs, 'utf-8')).taskId !== null;
+      } catch {
+        return false;
+      }
+    })
+    .sort();
 
   const orphanTickets: UnitTicket[] = [];
   for (const abs of ticketFiles) {
@@ -361,7 +373,7 @@ function renderTicketMap(unit: SpecUnit): string {
   const lines: string[] = [
     '## Ticket Map',
     '',
-    '<!-- Новый ID: `<ACR>-<slug>` — kebab-case, слаг из Meta.Purpose, уникален в рамках всего репо.',
+    '<!-- Новый ID: `<ACR>-<slug>` — kebab-case, слаг из Meta.Purpose, слаг ≤8 символов (дефисы включительно), уникален в рамках всего репо.',
     `     Назначение вычисляется из ID: \`${destDir}/${specBase}.task.<новый-ID>.md\`. -->`,
     '',
     '| Файл | Task-ID | Новый ID | Назначение |',
@@ -531,9 +543,6 @@ function unquote(cell: string): string {
   return cell.replace(/^`|`$/g, '').trim();
 }
 
-/** @purpose New-ID grammar: `<ACR>-<slug>` — uppercase acronym, kebab-case lowercase slug, ≥ 2 words. */
-const NEW_ID_REGEX = /^[A-Z][A-Z0-9]*(-[a-z0-9]+)+$/;
-
 /** @purpose Escape a literal for use inside a RegExp. */
 function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -668,11 +677,9 @@ export function verifyUnitFile(file: string, content: string, fresh: SpecUnit): 
       const newId = unquote(r[2] ?? '');
       const dest = unquote(r[3] ?? '');
       if (mapped) {
-        if (!NEW_ID_REGEX.test(newId)) {
-          err(
-            'MIG_BAD_SLUG',
-            `Новый ID «${newId}» не соответствует грамматике \`<ACR>-<slug>\` (ACR — верхний регистр, slug — kebab-case, ≥ 2 слова) — тикет \`${src}\`.`
-          );
+        const idReason = validateTaskId(newId);
+        if (idReason !== null) {
+          err('MIG_BAD_SLUG', `${idReason} Тикет \`${src}\`.`);
         } else {
           // The Ticket Map destination is agent-authoritative (AX_HIERARCHICAL_SPECS: a ticket may
           // land flat at the scope root, or nested under any module dir the agent chose) — verify
@@ -745,7 +752,7 @@ export function verifyMigrationPlan(repoRoot: string): Finding[] {
     if (tickMap.status === 'ok') {
       for (const r of tableRows(tickMap.content)) {
         const newId = unquote(r[2] ?? '');
-        if (!NEW_ID_REGEX.test(newId)) continue;
+        if (validateTaskId(newId) !== null) continue;
         const owner = idOwners.get(newId);
         if (owner && owner !== planPath) {
           findings.push({

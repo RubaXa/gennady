@@ -3,18 +3,28 @@
       JSON-like return to orchestrator:
       ```
       {
-        "status": "DONE" | "BLOCKED" | "FAIL",
+        "status": "DONE" | "NEEDS_ORCHESTRATOR",
+        "outcome": "CONTINUE" | "CONTEXT_ROTATION" | "RECOVERABLE_TECHNICAL" | "SPEC_GOAL_CONFLICT" | "EXTERNAL_AUTHORITY_REQUIRED" | "TECHNICAL_REPLAN_EXHAUSTED",
         "task_id": "<TSK-NN>",
         "phase_id": "<P<N>>",
         "kind": "<kind>",
+        "reason": "<specific observed cause>",
+        "attempt": { "current": <N>, "budget": <N> },
+        "evidence": ["<repo-relative ref>", ...],
+        "technical_plan": { "summary": "<bounded repair>", "task_edits": [], "dag_edits": [], "artifact_edits": [] } | null,
         "artifacts": ["<path>", ...],
         "decisions": ["<key=value>", ...],
         "open": ["<id: text>", ...],
         "deviations": ["<id: text>", ...],
-        "blocker_reason": "<if BLOCKED>"
+        "handoff": "<ticket#EXECUTION_LOG>"
       }
       ```
       `artifacts` / `decisions` / `open` / `deviations` mirror the **Handoff →** line — orchestrator
       threads `artifacts` / `decisions` / `open` into the next phase's prompt, and collects
       `deviations` across the run for the end-of-cycle batched report (`AX_DEVIATION_SELF_RESOLVE`).
+      The worker reports facts; the orchestrator owns technical replan and operator routing. Missing
+      `@types/node` or config, `eslint-config-prettier`, a repair-command contract mismatch, a missing
+      CREATE target, or a decomposition edge is `RECOVERABLE_TECHNICAL`. A worker does not repair
+      Gennady internals for a project failure. Only a proven spec-goal conflict, required external
+      authority, or exhausted bounded technical replan uses the corresponding escalation outcome.
     </Contract>

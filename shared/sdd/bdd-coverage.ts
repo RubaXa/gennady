@@ -4,6 +4,7 @@
 
 import type { Finding } from './check.ts';
 import type { FlowVersion } from './flow.ts';
+import { DEFERRED_TEST_OWNERSHIP_LITERAL } from './task-authoring-literals.ts';
 
 /**
  * @purpose One `## Test Scenario Coverage` row, parsed.
@@ -18,7 +19,99 @@ export type CoverageEntry = {
   caseNames: string[];
   /** @purpose Task-ID owning a deferred scenario, or null for a concrete (checkable) row. */
   deferred: string | null;
+  /** @purpose Exact executable command this scenario proves, or null for non-command behavior. */
+  probeCommand: string | null;
 };
+
+/** @purpose One BDD scenario's stable requirement links, derived without interpreting semantics. */
+type BddRequirementTrace = {
+  /** @purpose Scenario name with verification-level and requirement tags removed. */
+  scenario: string;
+  /** @purpose Exact `<ACR>-REQ-<N>` tokens declared on the Scenario heading. */
+  requirementIds: string[];
+};
+
+/** @purpose Extract scenario names and explicit Requirement-IDs from a BDD section. */
+function parseBddRequirementTraces(body: string): BddRequirementTrace[] {
+  return body.split('\n').flatMap((rawLine) => {
+    const match = /^\*\*Scenario:\*\*\s*(.+)$/.exec(rawLine.trim());
+    if (!match) return [];
+    const heading = match[1] as string;
+    const requirementIds = [...new Set(heading.match(/[A-Z][A-Z0-9]*-REQ-[0-9]+/g) ?? [])];
+    const scenario = heading.replace(/`?\[[^\]]+\]`?/g, '').trim();
+    return [{ scenario, requirementIds }];
+  });
+}
+
+/**
+ * @purpose Prove the mechanical BDD → Test Scenario Coverage part of requirement traceability.
+ * @invariant Each BDD Requirement-ID occurs verbatim in a canonical coverage case;
+ * `checkBddCoverage` requires that exact `it()`/`test()` name in the declared test file.
+ * @param file Ticket path used in findings.
+ * @param bddBody BDD section body.
+ * @param coverageBody Test Scenario Coverage section body.
+ * @returns One error per Requirement-ID whose scenario has no coverage case carrying that ID.
+ */
+export function checkBddRequirementTraceability(
+  file: string,
+  bddBody: string,
+  coverageBody: string
+): Finding[] {
+  const entries = parseTestCoverage(coverageBody);
+  const findings: Finding[] = [];
+  for (const trace of parseBddRequirementTraces(bddBody)) {
+    const caseRequirementIds = new Set(
+      entries
+        .filter((entry) => entry.scenario === trace.scenario)
+        .flatMap((entry) => entry.caseNames)
+        .flatMap((caseName) => caseName.match(/[A-Z][A-Z0-9]*-REQ-[0-9]+/g) ?? [])
+    );
+    for (const requirementId of trace.requirementIds) {
+      if (caseRequirementIds.has(requirementId)) continue;
+      findings.push({
+        severity: 'error',
+        code: 'SDD_BDD_REQUIREMENT_UNTRACED',
+        file,
+        message:
+          `BDD scenario "${trace.scenario}" declares ${requirementId}, but none of its Test Scenario Coverage case names contains that exact Requirement-ID. ` +
+          `Fix: map it as "- ${trace.scenario} → \`<test-file>\` :: \`[${requirementId}] <canonical case name>\`" and use that exact name in the real it()/test().`,
+      });
+    }
+  }
+  return findings;
+}
+
+/** @purpose One test phase's exact Target Files, used to bind BDD evidence and command probes to their execution owner. */
+type TestPhaseTargets = {
+  /** @purpose Phase identifier from Phases Overview. */
+  phaseId: string;
+  /** @purpose Exact Target Files declared by that test phase. */
+  targets: readonly string[];
+};
+
+/**
+ * @purpose Resolve which test phases own a declared Test Scenario Coverage file.
+ * @invariant Uses the same exact-or-path-suffix matching as authoring validation; callers decide
+ * whether zero or multiple owners are errors.
+ * @param testFile Declared test-file path from one coverage row.
+ * @param phases Test phases and their exact Target Files.
+ * @returns Matching phase IDs in input order.
+ */
+export function matchingTestPhaseIds(
+  testFile: string,
+  phases: readonly TestPhaseTargets[]
+): string[] {
+  const declared = testFile.replace(/\\/g, '/');
+  return phases.flatMap((phase) => {
+    const owns = phase.targets.some((rawTarget) => {
+      const target = rawTarget.replace(/\\/g, '/');
+      return (
+        target === declared || target.endsWith(`/${declared}`) || declared.endsWith(`/${target}`)
+      );
+    });
+    return owns ? [phase.phaseId] : [];
+  });
+}
 
 /**
  * @purpose Parse one trimmed `- ...` Test Scenario Coverage line.
@@ -31,7 +124,9 @@ function parseCoverageRow(line: string): CoverageEntry | null {
   const deferred = deferredM?.[1] ?? null;
   const rest = deferredM ? (deferredM[2] ?? '') : line.replace(/^-\s*/, '');
 
-  const m = /^(.+?)\s*→\s*`([^`]+)`\s*::\s*(.+?)\.?\s*$/.exec(rest);
+  const commandSuffix = /\s*::\s*command\s+`([^`]+)`\s*\.?\s*$/.exec(rest);
+  const mapping = commandSuffix ? rest.slice(0, commandSuffix.index).trimEnd() : rest;
+  const m = /^(.+?)\s*→\s*`([^`]+)`\s*::\s*(.+?)\.?\s*$/.exec(mapping);
   if (!m) return null;
 
   const scenario = (m[1] ?? '').replace(/`\[[^\]]+\]`|\[[^\]]+\]/g, '').trim();
@@ -39,7 +134,13 @@ function parseCoverageRow(line: string): CoverageEntry | null {
   const caseNames = [...(m[3] ?? '').matchAll(/`([^`]+)`/g)].map((x) => x[1] as string);
   if (!testFile || caseNames.length === 0) return null;
 
-  return { scenario, testFile, caseNames, deferred };
+  return {
+    scenario,
+    testFile,
+    caseNames,
+    deferred,
+    probeCommand: commandSuffix?.[1]?.trim() ?? null,
+  };
 }
 
 /**
@@ -189,7 +290,7 @@ export function checkUnparsedCoverageRows(file: string, body: string): Finding[]
       severity: 'warn',
       code: 'SDD_BDD_COVERAGE_ROW_UNPARSED',
       file,
-      message: `Test Scenario Coverage row could not be parsed — no "→ \\\`file\\\` :: \\\`case\\\`" and no valid "Deferred Test Ownership: <Task-ID>": "${raw}"`,
+      message: `Test Scenario Coverage row could not be parsed: "${raw}". Replace the whole row with either "- <scenario name> → \\\`<test-file>\\\` :: \\\`<canonical case name>\\\`" or "${DEFERRED_TEST_OWNERSHIP_LITERAL}".`,
     })
   );
 }

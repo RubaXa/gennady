@@ -1,0 +1,37 @@
+<Axiom id="AX_REVIEW_VCS_COMMANDS">
+      Review lifecycle owns this exact VCS surface. Resolve every placeholder to a literal argument
+      before one command call; never use shell substitution, variables, pipes, loops, `echo`,
+      redirection, or `--help`. A ref literal is valid only when it uses ASCII letters, digits, dot,
+      underscore, slash, or hyphen; starts with a letter or digit; is at most 128 characters; and has
+      no empty, dot, dot-dot, terminal-dot, terminal-slash, `.lock`, or `@{` component/form. A review
+      slug is derived from the primary spec's canonical scope segment and must match
+      `[a-z0-9]+(-[a-z0-9]+)*`. A PR number is a non-zero decimal integer.
+      Read/freeze: `git status --porcelain=v1 --untracked-files=all`,
+      `git diff --cached --name-only`, `git diff --exit-code -- <publication-files>`,
+      `git ls-files --stage -- <publication-files>`, `git rev-parse HEAD`,
+      `git branch --show-current`,
+      `gh repo view --json defaultBranchRef --jq .defaultBranchRef.name`.
+      Derive, validate, and freeze literal `<head-branch>`, `<base-branch>`, and `<review-slug>` before
+      mutation. Immediately before both staging and commit, rerun `git branch --show-current` and
+      require exact equality with frozen `<head-branch>`.
+      Write the complete PR body only through a file-write tool to
+      `.claude/tmp/sdd-review-<review-slug>.md`, freeze that literal as `<pr-body-path>`, and pass its
+      opaque bytes only by `--body-file <pr-body-path>`. Never place any PR-body text in a shell
+      command. Publish: `git add -- <publication-files>`,
+      `git commit -m "sdd(<review-slug>): publish specification"`,
+      `git push --set-upstream origin <head-branch>`,
+      `gh pr list --head <head-branch> --base <base-branch> --state open --json number,url --limit 2`,
+      `gh pr create --base <base-branch> --head <head-branch> --title "SDD <review-slug>: publish specification" --body-file <pr-body-path>`,
+      or `gh pr edit <pr-number> --base <base-branch> --title "SDD <review-slug>: publish specification" --body-file <pr-body-path>`.
+      After create, rerun the same head-plus-base list command; after create or reuse require exactly
+      one row, validate and freeze its literal `<pr-number>` and `<pr-url>`, and use that number for
+      every later PR operation. Prove publication with
+      `gh pr view <pr-number> --json number,url,headRefOid,baseRefName,state --jq '{number:.number,url:.url,headRefOid:.headRefOid,baseRefName:.baseRefName,state:.state}'`.
+      Merge/prove: `gh pr merge <pr-number> --merge --match-head-commit <reviewed-commit>`,
+      `gh pr view <pr-number> --json state,mergedAt,mergeCommit,baseRefName --jq '{state:.state,mergedAt:.mergedAt,mergeCommitOid:.mergeCommit.oid,baseRefName:.baseRefName}'`,
+      `git fetch origin <base-branch>`, and
+      `git merge-base --is-ancestor <reviewed-commit> FETCH_HEAD`.
+      Copy each command's literal output (or exact exit code for the ancestry check) into orchestration
+      state/report; never reconstruct or capture it through shell syntax. No other mutating VCS command,
+      squash, rebase, force-push, or implicit interactive prompt is allowed.
+    </Axiom>

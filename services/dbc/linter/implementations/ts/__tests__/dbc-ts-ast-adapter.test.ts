@@ -23,6 +23,23 @@ function setupTempFile(fileName: string, content: string): { dir: string; filePa
 }
 
 describe('DbcTsAstAdapter', () => {
+  it('ignores anonymous default expressions as module wiring rather than DbC entities', async () => {
+    const { dir, filePath } = setupTempFile(
+      'tool.config.ts',
+      'const defineConfig = <T>(value: T): T => value;\nexport default defineConfig({ strict: true });'
+    );
+    const adapter = new DbcTsAstAdapter();
+
+    try {
+      const result = await adapter.parseFile(filePath);
+      assert.strictEqual(result.ok, true);
+      if (!result.ok) throw new Error('expected ok: true');
+      assert.deepStrictEqual(result.exported, []);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   /** @purpose Valid TS file with all export kinds for multi-export parsing. */
   const allExportKindsSource = `
 /** A simple constant greeting. */

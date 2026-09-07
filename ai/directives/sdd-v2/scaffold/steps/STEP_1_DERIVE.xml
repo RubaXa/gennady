@@ -1,0 +1,87 @@
+0.8.4
+
+<Step id="STEP_1_DERIVE">
+      <Goal>Reason about a coherent ticket DAG before writing it.</Goal>
+      <Action>
+        Read the approved specs and derive the smallest useful tickets per
+        `AX_DAG_AND_TICKET_BOUNDARIES` and `AX_TICKET_DEDUPLICATION`. Each ticket has one observable
+        outcome, bounded target files, explicit dependencies, phase order, verification commands, and
+        requirement references. Infrastructure providers precede consumers: package manager and
+        dependency materialization precede scripts, configs, tests, or commands that consume them.
+
+        Perform a local coherence pass in reasoning: every requirement has an owner, dependencies are
+        acyclic, shared writers are serialized, no ticket invents requirements, and infrastructure is
+        not fragmented without an independently verifiable outcome. Derive any necessary bootstrap
+        work per `AX_BOOTSTRAP_TICKET_DERIVATION`. This pass needs no subagent and
+        no intermediate JSON. It prepares the artifacts; it does not approve them.
+        Record a disputed autonomous ticket-boundary choice once in the narrowest task-index Decision
+        Log per `DEVIATION_RECORD_FORMAT`; do not pause the batch for it.
+      </Action>
+    </Step>
+
+<Axiom id="AX_DAG_AND_TICKET_BOUNDARIES">
+      **Topological order, no cycles. Default: minimum tickets — one per coherent spec unit.** Product / library scope → one ticket per module-spec. Infrastructure / interface scope → one ticket per discrete capability.
+
+      DAG edges derive from real file-level dependencies, Bootstrap → consumers, and cross-scope `depends-on`. No «logical layer» phases — Ports → Adapters → Integrations is an analysis aid in discovery, NOT a ticket-multiplication rule. A Port and its single confirmed-v1 Adapter co-edit and live in one ticket.
+
+      **Split one ticket into N only when BOTH conditions hold:**
+      - **(P) Parallel sub-process potential** — N phase-subagents dispatched simultaneously; Target Files disjoint across all phases of each ticket; no Deps edge among the N.
+      - **(C) Context budget overflow** — combined cascade Rules + Spec References + Target Files exceed comfortable single-context for one phase-subagent's phase.
+
+      **NOT a reason to split:** audit milestone granularity (audit runs once per GROUP — every ticket of the spec, together, per `AX_AUDIT_HOOK` — regardless of ticket size or count, never once per ticket); logical layering (Port + Adapter ship together); partial shippability (consumer can't pick a half-module); human time-units (hours / days — irrelevant for AI execution bounded by context window).
+
+      Sequential split (A → B with hard Deps) without (C) = pure overhead: B's phase-subagent re-reads what A's already loaded; zero wall-clock gain.
+
+      Cross-scope: scope B DONE before A's tasks consuming B's outputs. Bootstrap tickets DONE before non-bootstrap of the same scope.
+    </Axiom>
+
+<Axiom id="AX_TICKET_DEDUPLICATION">
+      **Project-wide content lives ONCE in `specs/3-tasks.md`.** Declared there: file-header convention, baseline Completion Rule, Execution Log template, post-task audit hint. Per-scope Cascade Table lives in `specs/<scope>/<scope>.3-tasks.md`. Per ticket: only task-specific Meta, BDD, Test Scenario Coverage, Completion additions (if any), Execution Log instance (initially empty plan).
+    </Axiom>
+
+<Axiom id="AX_BOOTSTRAP_TICKET_DERIVATION">
+      Bootstrap Requirements with Owner=`this-scope-task` become the smallest coherent infrastructure
+      workstream needed by the approved specification. Prefer one ticket; split only for a real independent
+      outcome or the general `AX_DAG_AND_TICKET_BOUNDARIES` conditions. Do not manufacture one ticket per
+      runtime, package manager, dependency, compiler, quality tool, or application platform.
+
+      Ownership remains structural: infrastructure rows use `infrastructure-flat`; product/library
+      bootstrap rows use `scope-bootstrap`; module work uses `module`. `external-prereq-scope` becomes a
+      cross-scope dependency and `operator-action` becomes an explicit blocking prerequisite in the index.
+      Every runtime, package-manager, dependency, or configuration prerequisite named anywhere in the
+      approved spec set resolves to exactly one Bootstrap Requirements row with a non-empty allowed Owner.
+      Missing or ambiguous ownership returns to the owning spec; scaffold never guesses an owner.
+
+      Express the implementation plan with ordinary ticket fields only: ordered phases, `Deps`, `Rules`,
+      `Spec Refs`, `Target Files`, `Readiness Gates`, `Inputs`, `Exit`, BDD, and Verification. The semantic
+      DAG must put every prerequisite before its consumer. For example, a repository runtime/version
+      contract (`.nvmrc` or equivalent) and the selected package-manager contract precede dependency
+      installation; dependency materialization precedes scripts, configuration, tests, and commands that
+      consume those dependencies. Shared manifest/lock writers are serialized by phase/ticket dependencies.
+
+      `sdd-check --task ... --authoring` and `sdd-check --all .` validate structure, references, IDs, and
+      dependency shape. The independent actual-ticket review judges whether the declared order is
+      semantically sufficient and whether each real Verification command proves its requirement. No
+      synthetic provider/package field schema or feasibility pre-plan/tool mode is part of this flow.
+
+      If Bootstrap Requirements is absent, stop scaffold and return to the owning specification flow;
+      scaffold must not invent infrastructure requirements.
+    </Axiom>
+
+<Contract id="DEVIATION_RECORD_FORMAT">
+      A disputed autonomous decision is one durable line carrying what, why, and where. Record it once
+      in the artifact owner that a fresh agent already reads; never create a deviation sidecar or copy
+      the same fact into both logs.
+
+      - Spec authoring or architecture: append one canonical Decision Log entry:
+        `<ACR>-DL-N <date> — <what>; где: <path#section> (почему: <why>)`.
+      - Task decomposition: append that same Decision Log grammar to the narrowest owning task index.
+      - Phase execution: put `<what> ← <why> @ <path#anchor>` in the current phase Handoff
+        `deviations: [...]` field; `sdd-log complete` persists that Handoff line in the Execution Log.
+
+      Obvious/recoverable mechanics are not deviations. Record only a choice a fresh agent could not
+      re-derive from artifacts. Uncertainty does not pause an autonomous batch: record the smallest safe
+      choice and continue. Operator review happens once, after the whole batch and its audits.
+    </Contract>
+
+After completing this step, and only then, READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/scaffold/steps/STEP_2_MATERIALIZE.xml"). Do not preload later step packages.

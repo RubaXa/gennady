@@ -4,10 +4,20 @@
 
 import { realpathSync } from 'node:fs';
 import { relative, resolve } from 'node:path';
-import type { MetaInfo, PhaseOverview, PhaseDetail, Gate } from '../../../shared/sdd/ticket.ts';
+import type {
+  MetaInfo,
+  PhaseOverview,
+  PhaseDetail,
+  Gate,
+  TicketCoveragePolicy,
+} from '../../../shared/sdd/ticket.ts';
 import type { TicketRef } from '../../../shared/sdd/check.ts';
 import { unreadableTicketHint } from '../../../shared/sdd/ticket-resolve.ts';
 import type { AuditGroupResolution } from '../../../shared/sdd/audit-group.ts';
+import {
+  formatPhaseVerificationGatePlan,
+  type PhaseVerificationPlan,
+} from '../../../shared/sdd/phase-verification-plan.ts';
 
 /**
  * @purpose Realpath a path when possible — resolves symlinks (macOS `/var` → `/private/var`) so
@@ -50,6 +60,20 @@ export const ERR_CLI_SDD_TASK_AMBIGUOUS_ID = 'ERR_CLI_SDD_TASK_AMBIGUOUS_ID' as 
 export const ERR_CLI_SDD_TASK_NOT_V2_TICKET_NAME = 'ERR_CLI_SDD_TASK_NOT_V2_TICKET_NAME' as const;
 /** @purpose The owning spec derived from the ticket's filename convention does not exist on disk. */
 export const ERR_CLI_SDD_TASK_SPEC_MISSING = 'ERR_CLI_SDD_TASK_SPEC_MISSING' as const;
+/** @purpose --phase targets an impl/refactor/test phase while the project's verification infrastructure is stubs or missing — the phase would run against gates that verify nothing. */
+export const ERR_CLI_SDD_TASK_INFRA_NOT_READY = 'ERR_CLI_SDD_TASK_INFRA_NOT_READY' as const;
+/** @purpose Requested phase has an incomplete or stale dependency receipt. */
+export const ERR_CLI_SDD_TASK_DEPENDENCY_NOT_READY =
+  'ERR_CLI_SDD_TASK_DEPENDENCY_NOT_READY' as const;
+/** @purpose Ticket Verification table is malformed, so emitting worker/review context would omit gates. */
+export const ERR_CLI_SDD_TASK_VERIFICATION_INVALID =
+  'ERR_CLI_SDD_TASK_VERIFICATION_INVALID' as const;
+/** @purpose Group review context could not prove its ticket/path/git evidence without omission. */
+export const ERR_CLI_SDD_TASK_SCOPE_EVIDENCE = 'ERR_CLI_SDD_TASK_SCOPE_EVIDENCE' as const;
+/** @purpose Phase dispatch could not prove its Target/Deleted/Handoff path evidence. */
+export const ERR_CLI_SDD_TASK_PHASE_EVIDENCE = 'ERR_CLI_SDD_TASK_PHASE_EVIDENCE' as const;
+/** @purpose The complete ticket corpus could not be observed, so map/queue evidence is unavailable. */
+export const ERR_CLI_SDD_TASK_TICKET_CORPUS = 'ERR_CLI_SDD_TASK_TICKET_CORPUS' as const;
 
 /**
  * @purpose Result of one sdd-task run.
@@ -83,7 +107,7 @@ function gatesForPhase(detail: PhaseDetail, gates: Gate[]): Gate[] {
  * @param detailsById Parsed phase bodies keyed by phase id (missing → omitted manifest detail).
  * @param gates All Verification gates.
  * @param [activeBlockers] Unresolved 🛑 BLOCKED line texts (shared/sdd/check.ts#scanBlockerTrail), oldest first; default empty.
- * @param [auditGroupLine] Precomputed `audit-group: <spec path> (<closed>/<total>)` line, or null when the ticket's filename doesn't resolve to an owning spec.
+ * @param [auditGroupLine] Precomputed group summary and copy-pasteable audit command, or null when the ticket's filename doesn't resolve to an owning spec.
  * @returns The formatted planning-surface text.
  */
 export function formatPlan(
@@ -126,7 +150,9 @@ export function formatPlan(
     if (d.objective) lines.push(`  objective:   ${d.objective}`);
     lines.push(`  READ rules:  ${d.rules.length ? d.rules.join(', ') : '—'}`);
     lines.push(`  READ specs:  ${specAnchors.length ? specAnchors.join(', ') : '—'}`);
-    lines.push(`  READ ticket: PHASE_${p.id}, BDD, VERIFICATION`);
+    lines.push(
+      `  READ ticket: PHASE_${p.id}, BDD, VERIFICATION${p.kind.trim().toLowerCase() === 'test' ? ', TEST_COVERAGE' : ''}`
+    );
     lines.push(`  READ files:  ${d.targetFiles.length ? d.targetFiles.join(', ') : '—'}`);
     const pg = gatesForPhase(d, gates);
     lines.push(`  gates:       ${pg.length ? pg.map((g) => g.command).join(' · ') : '—'}`);
@@ -193,6 +219,8 @@ export function gateHint(command: string): string {
  * @param phaseId The requested phase id (e.g. `P2`).
  * @param [auditRounds] The ticket's `## Audit Rounds` section body, verbatim, or null when absent
  *   (never audited, or every audit passed clean).
+ * @param [fileLifecycle] Existing Target Files that may be read and absent exact Target Files reserved for creation.
+ * @param [verificationPlan] Canonical gate states, providers, and next actions for this phase.
  * @returns The compact phase context, or a not-found failure when `phaseId` has no Phases Overview row.
  */
 export function formatPhase(
@@ -202,7 +230,9 @@ export function formatPhase(
   gates: Gate[],
   handoffs: Record<string, string>,
   phaseId: string,
-  auditRounds: string | null = null
+  auditRounds: string | null = null,
+  fileLifecycle?: { readFiles: string[]; createFiles: string[] },
+  verificationPlan?: PhaseVerificationPlan
 ): TaskOutcome {
   const idx = phases.findIndex((p) => p.id === phaseId);
   if (idx === -1) return phaseNotFound(phaseId, phases);
@@ -222,21 +252,39 @@ export function formatPhase(
 
   const pg = gatesForPhase(d, gates);
   lines.push('', 'gates:');
-  if (pg.length === 0) lines.push("  — (none required by this phase's rules)");
+  if (pg.length === 0 && !verificationPlan) lines.push("  — (none required by this phase's rules)");
   for (const g of pg) lines.push(`  ${g.command} — ${gateHint(g.command)}`);
+  if (verificationPlan) {
+    for (const gate of verificationPlan.gates) {
+      lines.push(`  ${formatPhaseVerificationGatePlan(gate)}`);
+    }
+  }
 
   lines.push('', `exit:        ${d.exit ?? '—'}`);
 
   const specAnchors = d.specRefs.length
     ? d.specRefs
     : meta.specRefs.map((s) => s.anchor || s.name).filter(Boolean);
-  lines.push('', 'read-manifest (AX_READ_PER_MANIFEST):');
+  lines.push('', 'lifecycle manifest (AX_READ_PER_MANIFEST):');
   lines.push(`  READ rules:  ${d.rules.length ? d.rules.join(', ') : '—'}`);
   lines.push(`  READ specs:  ${specAnchors.length ? specAnchors.join(', ') : '—'}`);
-  lines.push(`  READ ticket: PHASE_${p.id}, BDD, VERIFICATION`);
-  lines.push(`  READ files:  ${d.targetFiles.length ? d.targetFiles.join(', ') : '—'}`);
+  lines.push(
+    `  READ ticket: PHASE_${p.id}, BDD, VERIFICATION${p.kind.trim().toLowerCase() === 'test' ? ', TEST_COVERAGE' : ''}`
+  );
+  const readFiles = fileLifecycle?.readFiles ?? d.targetFiles;
+  const createFiles = fileLifecycle?.createFiles ?? [];
+  lines.push(`  READ files:  ${readFiles.length ? readFiles.join(', ') : '—'}`);
+  lines.push(`  CREATE files: ${createFiles.length ? createFiles.join(', ') : '—'}`);
   lines.push(
     '  DO NOT READ: other phase bodies · code outside READ files · specs beyond the anchors above'
+  );
+  lines.push(
+    '',
+    'worker contract (copy verbatim into dispatch):',
+    '  READ protocol: ai/directives/sdd-v2/phase-execution-protocol.directive.xml and its four step files',
+    '  NEVER READ: node_modules/gennady/** · dist/** · CLI source or bundles',
+    '  TOOL FAILURE: preserve the exact diagnostic, form at most one target-local hypothesis, then return a typed blocker; no implementation archaeology',
+    '  TICKET: only the exact sdd-verify may append its receipt; never edit status/DONE/Handoff and never call sdd-log'
   );
 
   const priorHandoffs = phases
@@ -262,7 +310,7 @@ export function formatPhase(
 
   lines.push(
     '',
-    'next: прочитай перечисленное, исполняй фазу по протоколу, по завершении sdd-log + Handoff-строка.'
+    'next: исполняй переданный worker contract без сокращений, запусти точный sdd-verify и верни typed Handoff оркестратору.'
   );
   return { ok: true, text: lines.join('\n') };
 }
@@ -287,16 +335,20 @@ export function phaseNotFound(phaseId: string, phases: PhaseOverview[]): TaskOut
 
 /**
  * @purpose Build the bad-invocation diagnostic.
+ * @param [detail] Parser or grammar failure; defaults to a generic invalid-arguments detail.
  * @returns Outcome with exit 4.
  */
-export function badInvocation(): TaskOutcome {
+export function badInvocation(detail = 'invalid arguments'): TaskOutcome {
   return {
     ok: false,
     code: ERR_CLI_SDD_TASK_BAD_INVOCATION,
     exitCode: 4,
     message: [
       `[sdd-task] ${ERR_CLI_SDD_TASK_BAD_INVOCATION}`,
-      '  expected: gennady sdd-task <ticket-path|Task-ID>',
+      `  problem: ${detail}`,
+      '  usage: gennady sdd-task [project-root|ticket-path|Task-ID]',
+      '         gennady sdd-task <ticket-path|Task-ID> --phase <PhaseID>',
+      '         gennady sdd-task (--audit-group|--group-scope|--task-scope) <ticket-path|Task-ID>',
     ].join('\n'),
   };
 }
@@ -312,6 +364,86 @@ export function fileError(ticket: string): TaskOutcome {
     code: ERR_CLI_SDD_TASK_FILE,
     exitCode: 1,
     message: `[sdd-task] ${ERR_CLI_SDD_TASK_FILE}: ${ticket}\n  ${unreadableTicketHint(ticket)}`,
+  };
+}
+
+/**
+ * @purpose Announce the infra-queue exemption — this ticket builds the missing gates, so its phase
+ * proceeds under partial verification.
+ * @param level The readiness level (`provisional` or `not-ready`).
+ * @param detail Stubbed script names (provisional) or the missing list (not-ready).
+ * @returns A single warning line, prepended to the phase context.
+ */
+export function infraExemptionLine(level: string, detail: string[]): string {
+  return [
+    `⚠️  [sdd-task] INFRA_QUEUE_EXEMPTION: readiness=${level} (${detail.join(', ')}), но этот тикет сам строит недостающие гейты —`,
+    '  фаза исполняется. На STEP_5 используй канонический `npx gennady sdd-verify --task <ticket-path> --phase <PhaseID>`:',
+    '  он прочитает это исключение из той же GATE_QUEUE и сам выберет setup; профиль вручную не передавай.',
+    '  code/test потребуют те самые ступени, которых ещё нет, и вернут ⛔ — фаза встанет на том, что чинит.',
+    '  В `ver`-строку запиши именно выполненную команду и добавь `discovery`-строку про это исключение.',
+    '  Верификация здесь ЧАСТИЧНАЯ: перечисленные ступени пока ничего не проверяют. Не считай зелёный',
+    '  вердикт доказательством — оно появится, когда эти скрипты станут реальными и по коду пройдёт обычный гейт.',
+  ].join('\n');
+}
+
+/** @purpose Refuse worker dispatch until every declared dependency has current CLI evidence. | @param phaseId Requested phase id. | @param issue Structural dependency issue. | @returns Actionable failure before any worker starts. */
+export function dependencyNotReadyError(phaseId: string, issue: string): TaskOutcome {
+  return {
+    ok: false,
+    code: ERR_CLI_SDD_TASK_DEPENDENCY_NOT_READY,
+    exitCode: 1,
+    message: `[sdd-task] ${ERR_CLI_SDD_TASK_DEPENDENCY_NOT_READY}: phase ${phaseId} cannot be dispatched — ${issue}.\n  Rerun the stale dependency's canonical sdd-verify command, check it complete, then retry this exact sdd-task --phase call.`,
+  };
+}
+
+/**
+ * @purpose Refuse every task/group context when strict Verification parsing finds a malformed row.
+ * @param ticket Ticket path whose context would otherwise be emitted.
+ * @param issues Line-numbered structural parser findings.
+ * @returns Actionable failure before worker or reviewer dispatch.
+ */
+export function verificationTableError(ticket: string, issues: readonly string[]): TaskOutcome {
+  return {
+    ok: false,
+    code: ERR_CLI_SDD_TASK_VERIFICATION_INVALID,
+    exitCode: 1,
+    message: [
+      `[sdd-task] ${ERR_CLI_SDD_TASK_VERIFICATION_INVALID}: ${ticket}`,
+      ...issues.map((issue) => `  - ${issue}`),
+      '  Serialize each command as a Markdown code span whose backtick delimiter is longer than every backtick run inside the command; runtime bytes are unchanged after parsing.',
+    ].join('\n'),
+  };
+}
+
+/**
+ * @purpose Build the infra-not-ready diagnostic — an impl/refactor/test phase starting while the
+ * verification gates are stubs or missing, so any green verdict is vacuous.
+ * @param phaseId The requested phase id.
+ * @param kind The phase's kind (impl/refactor/test).
+ * @param level The readiness level found (`provisional` or `not-ready`).
+ * @param detail Stubbed script names (provisional) or the missing list (not-ready).
+ * @returns The failure outcome, exit 1.
+ */
+export function infraNotReadyError(
+  phaseId: string,
+  kind: string,
+  level: string,
+  detail: string[]
+): TaskOutcome {
+  const cause =
+    level === 'provisional'
+      ? `verification-скрипты — заглушки (${detail.join(', ')}): они выходят с кодом 0, ничего не проверяя`
+      : `readiness=not-ready (missing: ${detail.join(', ')})`;
+  return {
+    ok: false,
+    code: ERR_CLI_SDD_TASK_INFRA_NOT_READY,
+    exitCode: 1,
+    message: [
+      `[sdd-task] ${ERR_CLI_SDD_TASK_INFRA_NOT_READY}: фаза ${phaseId} (kind=${kind}) не может стартовать — ${cause}.`,
+      '  Зелёный sdd-verify на такой инфраструктуре не значит ничего: код прошёл бы фазу непроверенным.',
+      '  next: выполни infra-очередь (npx gennady sdd-task → GATE_QUEUE), замени заглушки реальными инструментами,',
+      '  затем повтори этот вызов. Bootstrap/config/doc-фазы этим гейтом не блокируются.',
+    ].join('\n'),
   };
 }
 
@@ -431,7 +563,71 @@ export function auditGroupError(
       return notV2TicketNameError(resolution.ticketPath, root);
     case 'spec-missing':
       return specMissingError(resolution.ticketPath, resolution.specPath, root);
+    case 'ticket-corpus-unreadable':
+      return scopeEvidenceError(
+        `${groupRelative(root, resolution.file)}: ${resolution.detail}; no partial ticket group was emitted.`
+      );
+    case 'path-invalid':
+      return scopeEvidenceError(
+        `${groupRelative(root, resolution.file)}: ${resolution.detail}; keep every group artifact inside the repository.`
+      );
   }
+}
+
+/**
+ * @purpose Build a fail-closed group-scope evidence error instead of a partial review context.
+ * @param detail Exact corpus/path/git evidence failure.
+ * @returns Exit-1 teaching outcome without partial scope data.
+ */
+export function scopeEvidenceError(detail: string): TaskOutcome {
+  return {
+    ok: false,
+    code: ERR_CLI_SDD_TASK_SCOPE_EVIDENCE,
+    exitCode: 1,
+    message: [
+      `[sdd-task] ${ERR_CLI_SDD_TASK_SCOPE_EVIDENCE}`,
+      `  problem: ${detail}`,
+      '  fix the named ticket/path/git evidence, then rerun the same --group-scope or --task-scope command.',
+    ].join('\n'),
+  };
+}
+
+/**
+ * @purpose Refuse phase dispatch before any worker context is emitted when path evidence is unsafe.
+ * @param detail Exact Target/Deleted/Handoff path failure.
+ * @returns Exit-1 teaching outcome without READ/next execution instructions.
+ */
+export function phaseEvidenceError(detail: string): TaskOutcome {
+  return {
+    ok: false,
+    code: ERR_CLI_SDD_TASK_PHASE_EVIDENCE,
+    exitCode: 1,
+    message: [
+      `[sdd-task] ${ERR_CLI_SDD_TASK_PHASE_EVIDENCE}`,
+      `  problem: ${detail}`,
+      '  fix the named Target Files, Deleted Files, or prior Handoff artifact, then rerun the same sdd-task --phase command.',
+    ].join('\n'),
+  };
+}
+
+/**
+ * @purpose Refuse a partial execution map or GATE_QUEUE derived from an unreadable ticket corpus.
+ * @param root Selected project root whose corpus is incomplete.
+ * @param detail Exact failed corpus observation.
+ * @returns Exit-1 teaching outcome without partial map or queue data.
+ */
+export function ticketCorpusError(root: string, detail: string): TaskOutcome {
+  return {
+    ok: false,
+    code: ERR_CLI_SDD_TASK_TICKET_CORPUS,
+    exitCode: 1,
+    message: [
+      `[sdd-task] ${ERR_CLI_SDD_TASK_TICKET_CORPUS}`,
+      `  root: ${root}`,
+      `  problem: ${detail}`,
+      '  fix the named ticket file/directory (or remove the unsafe symlink), then rerun the same command; no partial execution map or GATE_QUEUE was emitted.',
+    ].join('\n'),
+  };
 }
 
 /**
@@ -439,11 +635,20 @@ export function auditGroupError(
  * @param specPath The owning spec's path.
  * @param group The group's tickets.
  * @param root Absolute project root.
- * @returns The one-line summary.
+ * @param selector Copy-pasteable ticket path or Task-ID accepted by `--audit-group`.
+ * @returns The group summary plus the exact inspection command on the next line.
  */
-export function buildAuditGroupLine(specPath: string, group: TicketRef[], root: string): string {
+export function buildAuditGroupLine(
+  specPath: string,
+  group: TicketRef[],
+  root: string,
+  selector: string
+): string {
   const closed = group.filter((r) => /\bDONE\b/i.test(r.status ?? '')).length;
-  return `audit-group: ${groupRelative(root, specPath)} (${closed}/${group.length})`;
+  return [
+    `audit-group: ${groupRelative(root, specPath)} (${closed}/${group.length})`,
+    `audit-command: npx gennady sdd-task --audit-group ${selector}`,
+  ].join('\n');
 }
 
 /** @purpose Render the `spec:` line + one `<Task-ID> <status> → <path>` line per group ticket — shared by `--audit-group` and `--group-scope`. | @param specPath The owning spec's path. | @param group The group's tickets. | @param root Absolute project root (paths printed relative to it). | @returns The header lines (no trailing blank line). */
@@ -518,12 +723,24 @@ export function formatAuditGroup(
   return { ok: true, text: lines.join('\n') };
 }
 
-/** @purpose Result of a git-diff scan for `--group-scope` — always honest about whether HEAD exists (AX_GIT_DIFF_SCAN's own caveat). */
-export type GroupScopeGit = { available: true; files: string[] } | { available: false };
+/** @purpose Group-attributable changed paths with the exact Git baseline that produced them. */
+export type GroupScopeGit = {
+  /** @purpose Identifies whether changed paths were derived from HEAD or the unborn-branch index. */
+  baseline: 'head' | 'empty-tree';
+  /** @purpose Lists the project-relative changed paths attributed under that baseline. */
+  files: string[];
+};
+
+/** @purpose One ticket's verbatim coverage policy, labelled with its Task-ID for audit. */
+export type CoverageGate = TicketCoveragePolicy & {
+  /** @purpose The owning ticket's Task-ID. */
+  taskId: string;
+};
 
 /**
- * @purpose Format `sdd-task --group-scope` — the ready-made review scope (Target Files ∪ git diff, plus Handoff artifacts) instead of manual git archaeology.
- * @invariant Never fabricates a git range when HEAD is absent — `git:` states that plainly instead of guessing.
+ * @purpose Format `sdd-task --group-scope` — the ready-made review scope (Target Files ∪ group-attributable git diff, plus Handoff artifacts) instead of manual git archaeology.
+ * @invariant Never fabricates a git range when HEAD is absent: the typed empty-tree baseline uses
+ *   index entries plus untracked paths and `git:` states that scope plainly.
  * @param specPath The owning spec's path.
  * @param group The group's tickets.
  * @param root Absolute project root.
@@ -533,6 +750,7 @@ export type GroupScopeGit = { available: true; files: string[] } | { available: 
  * @param [contractAnchors] Project-relative spec anchors declared by the selected tickets.
  * @param [lintFiles] Source files ready to pass to `gennady lint` without extension guessing.
  * @param [codeRoots] Minimal non-nested roots ready for reverse-inventory checks.
+ * @param [coverageGates] Per-ticket ready-made coverage commands (own threshold + own files).
  * @returns The formatted review-scope report.
  */
 export function formatGroupScope(
@@ -544,12 +762,13 @@ export function formatGroupScope(
   git: GroupScopeGit,
   contractAnchors: string[] = [],
   lintFiles: string[] = [],
-  codeRoots: string[] = []
+  codeRoots: string[] = [],
+  coverageGates: CoverageGate[] = []
 ): TaskOutcome {
   const lines = renderGroupHeader(specPath, group, root);
 
   const files = new Set(targetFiles);
-  if (git.available) for (const f of git.files) files.add(f);
+  for (const f of git.files) files.add(f);
 
   lines.push('', 'files:');
   if (files.size === 0) {
@@ -562,9 +781,9 @@ export function formatGroupScope(
 
   lines.push(
     '',
-    git.available
-      ? `git: HEAD vs рабочее дерево (включая untracked, все типы файлов кроме node_modules) — ${git.files.length} файл(ов)`
-      : 'git: git-ссылок нет — область обзора построена по Target Files тикетов'
+    git.baseline === 'head'
+      ? `git: bounded HEAD vs рабочее дерево (exact group files + private target roots; включая untracked/deleted) — ${git.files.length} файл(ов)`
+      : `git: bounded empty tree vs индекс + рабочее дерево (exact group files + private target roots; включая staged/intent-to-add/untracked) — ${git.files.length} файл(ов)`
   );
 
   lines.push('', `contract-anchors: ${contractAnchors.length ? contractAnchors.join(', ') : '—'}`);
@@ -580,9 +799,28 @@ export function formatGroupScope(
     for (const a of handoffArtifacts) lines.push(`  ${a}`);
   }
 
+  // Per-ticket structured policy — audit executes a required command byte-for-byte or skips the
+  // explicit N/A/legacy state. No extension/path/default reconstruction and no blended group gate.
+  lines.push('', 'coverage-gates:');
+  if (coverageGates.length === 0) {
+    lines.push('  — группа не содержит тикетов.');
+  } else {
+    for (const g of coverageGates) {
+      if (g.status === 'required')
+        lines.push(`  ${g.taskId}: required (owner ${g.ownerPhase}) — ${g.command}`);
+      else if (g.status === 'not-applicable')
+        lines.push(`  ${g.taskId}: not-applicable — ${g.reason}`);
+      else if (g.status === 'legacy')
+        lines.push(
+          `  ${g.taskId}: legacy-unset — grandfathered pre-COVERAGE_POLICY:v1; no command inferred`
+        );
+      else lines.push(`  ${g.taskId}: INVALID — ${g.issues.join('; ')}`);
+    }
+  }
+
   lines.push(
     '',
-    'next: передай `files` + `handoff` аудит-/код-ревью-сабагенту как готовую область обзора группы — не выясняй git-диапазон вручную.'
+    'next: передай `files` + `handoff` аудит-/код-ревью-сабагенту как готовую область обзора группы — не выясняй git-диапазон вручную; в `coverage-gates` выполняй только `required` command verbatim, N/A/legacy пропускай, INVALID сначала исправь через scaffold/reconcile.'
   );
   return { ok: true, text: lines.join('\n') };
 }

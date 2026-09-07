@@ -1,0 +1,107 @@
+<Contract id="REQUIREMENT_ENTRY_FORMAT">
+  One requirement = one Markdown-hybrid entry: a heading carrying the ID + modality class (+
+  `нештатная` tag when it applies), one sentence built from a fixed trigger keyword, and a
+  non-empty blockquote explanation right under it.
+
+  ```markdown
+  ### <ACR>-REQ-<N> [<класс>]              ← обычное требование
+  ### <ACR>-REQ-<N> [<класс> · нештатная]  ← требование класса «нежелательное поведение»
+  **<Триггер>** <условие/событие/состояние>, **<субъект> <класс-глагол>** <реакция>.
+
+  > <почему это требование существует — на что опирается, что ломается без него>
+  ```
+
+  Replaces the old split Functional Requirements / Non-Functional Constraints and topic
+  subsections (`### Security`, `### Observability`, and similar) for specs written from now on.
+  Requirements is one flat sequence of entries: a writer or amplifier never adds a topic
+  heading or a detail table between entries.
+
+  A spec already holding old split/topic subsections stays valid while it is left in that
+  legacy representation. An author may read those sections as source material. When a write
+  introduces current-format entries, migrate the whole Requirements section in the same edit:
+  preserve every still-valid outcome, assign stable sequential IDs, and remove the old nested
+  representation. Never leave a mixed old/new Requirements section. This is an authoring rule,
+  not a request for a validator exception: unchanged legacy text remains grandfathered, while
+  every new or changed flat entry keeps the current checks.
+
+  **ID.** `<ACR>-REQ-<N>` — spec acronym first, exactly like a Task-ID; `<N>` is sequential
+  within THIS spec only (the acronym gives global uniqueness, not the number). A duplicate
+  number inside one spec is caught mechanically, the same way Task-ID collisions are.
+
+  **Trigger keyword — fixed set, pick exactly one:**
+
+  | Trigger | Shape | When |
+  |---|---|---|
+  | **Когда** \<событие\> | `**Когда** X, **<субъект> должен** Y.` | an event fires the reaction |
+  | **Если** … **то** | `**Если** X, **то <субъект> должен** Y.` | unwanted / off-nominal situation — MUST carry the `· нештатная` tag |
+  | **Пока** \<состояние\> | `**Пока** X, **<субъект> должен** Y.` | the reaction holds for as long as the state holds |
+  | **При** \<опциональная функция\> | `**При** X, **<субъект> должен** Y.` | the requirement only applies when an optional feature is on |
+  | unconditional | `**<субъект> должен** Y.` | always true, no trigger needed |
+
+  **Modality class — exactly one of three.** No official Russian analogue of RFC 2119 exists;
+  this contract declares the scale directly:
+  - **должен** — mandatory, no exceptions.
+  - **следует** — recommended; deviating is possible and not by itself a defect, but the
+    deviation's reason must be stated in the same explanation.
+  - **может** — permitted; an implementation is free to skip it.
+
+  **`· нештатная` tag.** Mandatory, and only used, on requirements shaped **Если … то** — the
+  EARS "unwanted behaviour" class. No other trigger shape carries this tag.
+
+  **Explanation.** A blockquote (`>`) directly under the requirement, mandatory and non-empty:
+  what backs the requirement — compliance, an incident, an economic reason — and what breaks
+  without it.
+
+  **Amplified outcome.** Security, performance/reliability, and observability amplifiers emit
+  the same ordinary requirement entry, never a private subsection schema. After the behaviour
+  sentence, each amplified entry carries three short one-line fields before the explanation:
+
+  ```markdown
+  **Constraint:** <numeric budget, security rule, signal/SLO boundary, or other falsifiable limit>
+  **Verification:** <one observable proof; method/tool detail stays outside Requirements>
+  **Trace:** <operator/default/research source and, when detail exists, its Architecture/supporting-section anchor>
+  ```
+
+  One observable outcome = one ID. If a topic needs a threat table, SLO matrix, telemetry
+  catalog, or benchmark method, put it in Architecture by default. Only when that would obscure
+  Architecture may the spec use one explicitly named supporting section outside Requirements;
+  the requirement's `Trace` line links to it. Create neither detail container speculatively.
+  Missing or unresolved outcomes stay on the interview map instead of becoming vague entries.
+
+  **Atomic size.** One entry has at most 10 non-empty body lines, excluding its heading. This
+  limit has no override: split independent observable behaviour into another requirement, or
+  move implementation and contract detail into Architecture / DbC. The list itself has a lazy
+  default budget of 20 entries: only `sdd-check` exceeding it asks for duplicate/merge/detail
+  review. If the larger list remains intentional, operator approval is persisted exactly as
+  `**Requirements budget:** <N> · operator-approved: <YYYY-MM-DD>` inside the section. Zero
+  markers is normal below the budget; duplicate, malformed, or non-increasing evidence never
+  authorizes a larger list.
+
+  **Action — active verb.** `должна обработать`, never `должна осуществлять обработку`:
+  nominalizations and passive voice are forbidden in the reaction slot (see `AX_OPERATOR_LANGUAGE`
+  for the wider register discipline this belongs to).
+
+  **Multiple conditions — say the logic.** "X И Y" / "X ИЛИ Y" is spelled out in the sentence
+  itself; a bare comma between two conditions never stands in for AND/OR.
+
+  **Measurability.** Unmeasurable adjectives ("быстро", "надёжно", "graceful", "интуитивно
+  понятный") are not allowed bare — either a numeric threshold sits right next to the claim, or
+  the requirement is rewritten around an observable effect instead of the adjective.
+
+  Two worked entries — ordinary requirement, then unwanted-behaviour requirement:
+
+  ```markdown
+  ### <ACR>-REQ-7 [должен]
+  **Когда** пользователь отправляет форму с пустым обязательным полем, **сервис должен**
+  вернуть ошибку валидации с именем поля.
+
+  > Пустое поле — самый частый пользовательский ввод; без явной ошибки пользователь не
+  > понимает, что делать дальше.
+
+  ### <ACR>-REQ-8 [должен · нештатная]
+  **Если** запись в журнал аудита не удалась, **то сервис должен** отклонить операцию и
+  вернуть 503.
+
+  > Аудит — комплаенс-требование; без записи операция не легитимна, откат обязателен.
+  ```
+</Contract>

@@ -1,0 +1,20 @@
+0.8.4
+
+<Step id="STEP_4_INDEPENDENT_TICKET_REVIEW">
+      <Goal>Judge the actual ticket set against approved specifications.</Goal>
+      <Action>
+        Dispatch one fresh read-only reviewer with exact paths and bytes of all changed tickets,
+        indexes, and their approved specs. The reviewer checks: coherent decomposition; provider before
+        consumer; no conflicting/shared writes; phases form an executable order; each requirement is
+        owned; negative/failure behavior is represented; test cases would demonstrate the declared
+        requirement; and no ticket adds product meaning absent from specs.
+
+        The reviewer returns `CLEAN` or concrete findings naming ticket, section, and spec anchor. The
+        reviewer does not edit. Do not retain it for execution and do not require it to consume a JSON
+        plan. If a finding changes ticket meaning, edit the actual ticket, repeat STEP_3, and obtain one
+        fresh review of the new actual set. An unresolved semantic conflict stops with
+        `H_TICKET_REVIEW_FINDING`.
+      </Action>
+    </Step>
+
+After completing this step, and only then, READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/scaffold/steps/STEP_5_OPERATOR_APPROVAL_2.xml"). Do not preload later step packages.

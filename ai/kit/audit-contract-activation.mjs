@@ -136,7 +136,7 @@ const REPO_ROOT = join(KIT_DIR, '..', '..');
 const TEMPLATES_DIR = join(KIT_DIR, 'templates', 'sdd-v2');
 const CONTRACT_DIR = join(KIT_DIR, 'contract');
 const DIRECTIVES_DIR = join(REPO_ROOT, 'ai', 'directives', 'sdd-v2');
-const STEP_PACKAGE_LINE_RE = /Full step text: `([^`]+)`/g;
+const STEP_PACKAGE_LINE_RE = /Before executing this step, READ_AND_USE_DIRECTIVE\("([^"]+)"\)\./g;
 
 /** `assembly-manifest.json` override key for a file under `DIRECTIVES_DIR` (mirrors `build-directives.ts`'s own `e.rel`). */
 function manifestKeyFor(absPath) {
@@ -316,10 +316,6 @@ const ALLOWLIST_PAIRS = new Set([
   // Same relationship for the worker's typed return: the orchestrator requires the line be
   // present and threads it verbatim, never composes it itself.
   'AX_HANDOFF_TYPED->RETURN_SUMMARY_FORMAT',
-  // AX_OPERATOR_LANGUAGE's terminology-discipline clause: the glossary entry is written by the
-  // `sdd-session term` CLI tool, mechanically, in SESSION_FILE_FORMAT shape — the agent invokes
-  // the tool, it does not compose the section by hand.
-  'AX_OPERATOR_LANGUAGE->SESSION_FILE_FORMAT',
   // AX_PERMITTED_BASH_COMMANDS (review-lifecycle): "BLOCKER_FORMAT … per the phase-execution
   // protocol" — the sentence itself names where the contract lives, same shape as the
   // QUESTION_RULE_SLIM pointer.

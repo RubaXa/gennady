@@ -40,7 +40,7 @@ export function badInvocation(detail: string): SyncOutcome {
     message: [
       `[sdd-sync] ${ERR_CLI_SDD_SYNC_BAD_INVOCATION}: ${detail}`,
       '  expected: gennady sdd-sync <ticket> [index.3-tasks.md ...]',
-      '  With no explicit indexes, every *.3-tasks.md from the ticket dir upward is synced.',
+      '  Paths must be exact repository-relative regular files; indexes must be owning specs indexes.',
     ].join('\n'),
   };
 }

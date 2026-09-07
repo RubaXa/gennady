@@ -1,0 +1,16 @@
+<!-- source: SDD v2 RC recovery P6 — one owner-log mechanism, no sidecar journal -->
+<Contract id="DEVIATION_RECORD_FORMAT">
+  A disputed autonomous decision is one durable line carrying what, why, and where. Record it once
+  in the artifact owner that a fresh agent already reads; never create a deviation sidecar or copy
+  the same fact into both logs.
+
+  - Spec authoring or architecture: append one canonical Decision Log entry:
+    `<ACR>-DL-N <date> — <what>; где: <path#section> (почему: <why>)`.
+  - Task decomposition: append that same Decision Log grammar to the narrowest owning task index.
+  - Phase execution: put `<what> ← <why> @ <path#anchor>` in the current phase Handoff
+    `deviations: [...]` field; `sdd-log complete` persists that Handoff line in the Execution Log.
+
+  Obvious/recoverable mechanics are not deviations. Record only a choice a fresh agent could not
+  re-derive from artifacts. Uncertainty does not pause an autonomous batch: record the smallest safe
+  choice and continue. Operator review happens once, after the whole batch and its audits.
+</Contract>

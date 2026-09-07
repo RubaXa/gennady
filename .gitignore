@@ -38,3 +38,9 @@ e2e/**/test-results/
 playwright-report/
 test-results/
 .sdd-session.md
+
+# transient test fixtures accidentally written into the tree (belong in os.tmpdir)
+.tmp-*/
+
+# durable eval artifacts extracted from sandboxes before teardown (ai/flow-eval/cli.ts)
+ai/flow-eval/.results/

@@ -1,162 +1,46 @@
-<SddCritic keywords="critic, orchestrator, spec-review, task-review, blind-spot, multi-round, reconcile, surgical-edit, sdd-critic" type="directive" ver="2.1">
+<SddCritic keywords="sdd, critic, semantic-review, bounded" type="directive" ver="2.3">
   <Mission>
-    Autonomous critique loop for SDD artifacts (spec / task / batch). I am the ORCHESTRATOR: per round
-    I dispatch one isolated critic-sensor, evaluate its findings against full project context, reconcile
-    every introduced entity against the existing surface via `orient` (reuse > extend > justify >
-    escalate), surgically edit the artifact, and re-dispatch if edits were applied (cap 5). Batch: the
-    scope spec first, then tasks in DAG layers (parallel within a layer, sequential between). On CLEAN:
-    delete the temporary `## Critic Rounds` scratch. I own the artifact: apply every `MECHANICAL` edit
-    directly, then ONE round checkpoint batches whatever needs the operator — `GOAL` findings as
-    questions, plus a confirm/correct block for any `CRITICAL` / `MAJOR` fix just applied
-    (`AX_GOAL_OWNER_GATE`). The sensor only reports; only the operator downgrades a `GOAL` tag.
-
-    A separate skill (`/sdd-critic`). Input — a spec / task / batch target. Output — the cleaned artifact
-    + the final verdict.
+    Perform one fresh, read-only semantic review of an explicit bounded artifact set and return
+    evidence-backed findings or CLEAN. This is a model judgment, not a state machine or editor.
   </Mission>
-
   <BeliefState>
+    {{> "axiom/process/ax-stateless-flow"}}
     {{> "axiom/process/ax-operator-language"}}
-
-    {{> "axiom/process/ax-operator-dialogue-style"}}
-
-    {{> "axiom/process/ax-preflight-blast-radius-scoped"}}
-
-    {{> "axiom/process/ax-owner"}}
-
-    {{> "axiom/boundary/ax-isolation-signal"}}
-
-    {{> "axiom/critic/ax-critic-model-tier"}}
-
-    {{> "axiom/truth/ax-reuse-first"}}
-
-    {{> "axiom/spec/ax-parallel-mechanism-requires-justification"}}
-
-    {{> "axiom/spec/ax-decision-log-required"}}
-
-    {{> "axiom/process/ax-surgical"}}
-
-    {{> "axiom/critic/ax-default-accept"}}
-
-    {{> "axiom/critic/ax-confusion-bug"}}
-
-    {{> "axiom/critic/ax-finding-addressee"}}
-
-    {{> "axiom/critic/ax-goal-owner-gate"}}
-
-    {{> "axiom/audit/ax-severity"}}
-
-    {{> "axiom/process/ax-rejection-reason"}}
-
-    {{> "axiom/process/ax-re-dispatch"}}
-
-    {{> "axiom/process/ax-stop-no-edits"}}
-
-    {{> "axiom/process/ax-cap-5"}}
-
-    {{> "axiom/process/ax-scratch-log"}}
-
-    {{> "axiom/process/ax-task-parallel"}}
+    {{> "axiom/spec/ax-spec-dimensions"}}
+    {{> "axiom/scaffold/ax-task-dimensions"}}
   </BeliefState>
-
   <HaltConditions>
-    | 🛑 ID | Trigger |
+    | ID | Trigger |
     |---|---|
-    | `H_NO_ARTIFACT` | The target spec / task does not exist |
-    | `H_PARENT_SPEC_MISSING` | A task's parent spec is missing — cannot critique a task without its spec |
-    | `H_DISPATCH_FAILED` | The sensor subagent failed to dispatch twice — surface to the operator, do not loop silently |
-    | `H_MAX_ROUNDS` | Cap of 5 rounds hit and still not CLEAN — escalate to the operator (`AX_CAP_5`) |
-    | `H_GOAL_BLOCKED` | `GOAL` findings block the round and the operator is unavailable to answer — stop, report the pending question block |
+    | `H_TARGET_AMBIGUOUS` | Exact target paths cannot be resolved from operator payload |
+    | `H_TARGET_TOO_BROAD` | Requested set cannot be reviewed with complete relevant context |
   </HaltConditions>
-
   <ExecutionPlan>
-    <Step id="STEP_0_RESOLVE">
-      <Goal>Resolve the target.</Goal>
-      <Action>Spec / task / batch (spec + its tasks — critiqued in DAG layers, parallel within a layer, per `AX_TASK_PARALLEL`). Missing → `H_NO_ARTIFACT`.</Action>
-    </Step>
-    <Step id="STEP_0B_PREFLIGHT">
-      <Goal>Clear the FLOW_VERSION/READINESS preflight gate before dispatching the sensor.</Goal>
+    <Step id="STEP_1_TARGET">
       <Action>
-        Use `FLOW_VERSION`, `READINESS`, and `GATE_QUEUE` from the already-gathered `sdd-state`
-        snapshot; do not enter task lifecycle merely to clear this gate. Size the gate to this request's own blast radius
-        (`AX_PREFLIGHT_BLAST_RADIUS_SCOPED`).
-
-        {{> "contract/process/readiness-preflight-gate"}}
+        Resolve exact artifact paths and owning references. Freeze this target for the call. Do not
+        add repository-wide guesses and do not create a write set. Per `AX_STATELESS_FLOW`, derive
+        the review context from these durable artifacts rather than prior reviewer state. If exact
+        paths cannot be resolved, stop with `H_TARGET_AMBIGUOUS`; if the requested set cannot be
+        bounded without losing required context, stop with `H_TARGET_TOO_BROAD`.
       </Action>
     </Step>
-    <Step id="STEP_1_DISPATCH">
-      <Goal>Dispatch the isolated sensor.</Goal>
-      <Action>One fresh subagent, on a worker-tier model — never stronger than the author's model (`AX_CRITIC_MODEL_TIER`): read `ai/directives/sdd-v2/critic-protocol.directive.xml` + the artifact + parent spec only (`AX_ISOLATION_SIGNAL`). Tell the sensor which round this is — `Round: <N>` in the dispatch — so it reads the artifact's `## Critic Rounds` history with the right expectation (`AX_SCRATCH_LOG`). Emit a round progress line (`ORCHESTRATOR_PROGRESS_FORMAT`).</Action>
-    </Step>
-    <Step id="STEP_2_EVALUATE">
-      <Goal>Weigh findings against full project context.</Goal>
-      <Action>Split by addressee (`AX_FINDING_ADDRESSEE`): `MECHANICAL` — accept by default (`AX_DEFAULT_ACCEPT`); `GOAL` — queue for STEP_3B, keep the touched sections intact (`AX_GOAL_OWNER_GATE`). The sensor's `GOAL` tag is a floor, not a ceiling: downgrading it to `MECHANICAL` is the operator's call alone (`AX_GOAL_OWNER_GATE`) — an orchestrator read that leans mechanical carries into STEP_3B as one more question, never a private reclassification. A rejection cites a specific file / section that resolves the concern (`AX_REJECTION_REASON`). Sensor confusion the full context resolves = an artifact bug — clarify by edit (`AX_CONFUSION_BUG`); confusion the project cannot answer = `GOAL`. Also carry each finding's severity (`AX_SEVERITY`) forward — STEP_3B gates on it. A finding that removes or weakens a quality gate is `GOAL` by definition, never a private `MECHANICAL` call (`AX_FINDING_ADDRESSEE`) — e.g. a sensor surfacing that pre-commit's staged-file `tsc` run cannot also be whole-project: which way to resolve that contradiction is the operator's call, not the orchestrator's, and the answer becomes its own Decision Log entry (`AX_GOAL_OWNER_GATE`).
-
-      Convergence brake from round 3 on: a NEW finding (not already carried in a prior `## Critic Rounds` entry) advances to STEP_3 / STEP_3B only if `CRITICAL`, or a regression — a defect a prior round's own edit introduced. A new `MINOR` / `MAJOR` finding that is neither stays out of this cycle's edit set — record it in this round's entry under `Out of cycle:` and carry it into the STEP_5 report as its own list, never silently dropped (AUTHORING.md §9 — a stop needs a named outlet, not a bare refusal).</Action>
-    </Step>
-    <Step id="STEP_2B_RECONCILE">
-      <Goal>Walk the graph from the artifact to the portal; reconcile every entity the WHOLE artifact introduces, not only this round's findings. (mechanical → tool)</Goal>
-      <Action>Run `npx gennady sdd-orient <artifact-path>` ONCE against the critiqued artifact itself — one hop from the artifact to its portal, its declared-dependency neighbours, and its consumers; this is the ORCHESTRATOR's own step, on full project context, not a widening of the sensor's bounded read (`AX_ISOLATION_SIGNAL` still governs STEP_1_DISPATCH — the sensor stays isolated). The sweep is proactive over EVERY entity/contract/mechanism the artifact introduces, never narrowed to only the entities this round's findings happen to name — a duplicate the sensor never flagged is still a duplicate. For each: reuse > extend > justify > escalate (`AX_REUSE_FIRST`); "justify" requires the specific neighbour invariant/requirement ID the existing mechanism could not satisfy, recorded as its own Decision Log entry (`AX_PARALLEL_MECHANISM_REQUIRES_JUSTIFICATION`, `AX_DECISION_LOG_REQUIRED`). Two outcomes route to `GOAL`, never a silent `MECHANICAL` fix: (1) the artifact duplicates a mechanism the `sdd-orient` extract already names on a neighbour, (2) the artifact's introduced entity conflicts with a neighbour requirement the extract surfaces. Do not let the critique invent a duplicate of an existing entity.</Action>
-    </Step>
-    <Step id="STEP_3_EDIT">
-      <Goal>Apply the round's `MECHANICAL` edits.</Goal>
-      <Action>Edit only what a finding requires (`AX_SURGICAL`); I apply the edits — the sensor never does (`AX_OWNER`). Apply every `MECHANICAL` finding directly, regardless of severity (`AX_DEFAULT_ACCEPT`) — a `CRITICAL` / `MAJOR` mechanical finding gets fixed now, confirmed with the operator next at STEP_3B, not gated before the fix. Leave `GOAL`-tagged sections untouched — their edit waits for the operator's answer at STEP_3B. The round's edits are recorded once, together, at STEP_3C — not here.</Action>
-    </Step>
-    <Step id="STEP_3B_ROUND_CHECKPOINT">
-      <Goal>One batch Ask per round for every operator-owned item (`AX_GOAL_OWNER_GATE`).</Goal>
+    <Step id="STEP_2_REVIEW">
       <Action>
-        Build ONE `AskUserQuestion` batch (`QUESTION_FORMAT` batching rule — independent questions ride
-        together) carrying, when present: (a) every `GOAL` finding from STEP_2 or STEP_2B as its own question,
-        including any orchestrator disagreement with a sensor's `GOAL` tag («critic tagged GOAL, I read
-        this as mechanical because …») — the tag stands until this answer says otherwise; (b) IF this
-        round carried any `CRITICAL` / `MAJOR` finding (mechanical or goal), one confirm block: «critic
-        found N problems this round, fixed as follows: <one line per fix> — confirm, or correct?».
-        Neither (a) nor (b) applies (the round was `MINOR` / `INFO` only, or carried zero findings) →
-        skip the Ask, go straight to STEP_3C (`AX_DEFAULT_ACCEPT`). WAIT for the answer
-        before touching any `GOAL`-tagged section. Apply `GOAL` edits exactly as answered, and any
-        correction the operator makes to a confirmed fix — recorded together at STEP_3C, not here.
-        When the answered `GOAL` finding weakened or removed a quality gate, additionally write the
-        operator's decision as its own Decision Log entry (`AX_GOAL_OWNER_GATE`). Operator unreachable
-        while `GOAL` findings block → `H_GOAL_BLOCKED`.
+        Read the full bounded target and only the references required to judge it. Check internal and
+        cross-artifact consistency, omitted requirements, negative/failure paths, untestable claims,
+        ownership/dependency conflicts, and whether verification could demonstrate the contract.
+        Apply `AX_SPEC_DIMENSIONS` to specifications and `AX_TASK_DIMENSIONS` to tickets. Structural
+        tool findings may be cited but never replaced by model speculation.
       </Action>
     </Step>
-    <Step id="STEP_3C_RECORD_ROUND">
-      <Goal>Append this round's memory to the artifact (`AX_SCRATCH_LOG`).</Goal>
+    <Step id="STEP_3_REPORT">
       <Action>
-        Append ONE entry to `## Critic Rounds` in the artifact — create the section (at the end of the
-        artifact) the first round that needs it; never rewrite a prior entry, this block is append-only:
-
-        ```
-        ### Round <N> — <YYYY-MM-DD>
-        - Verdict: <CLEAN|NEEDS_WORK|CRITICAL>
-        - Accepted: <count> — <list>
-        - Rejected: <count> — "<finding>" → <reason>
-        - Reconcile: <entity → REUSE <target> | EXTEND <target> | JUSTIFY <rationale> | ESCALATE>
-        - Changes: <list>
-        - Out of cycle: <new MINOR/MAJOR findings the round-3+ brake deferred, or "none">
-        ```
-
-        `Accepted` covers both the `MECHANICAL` edits applied at STEP_3 and the `GOAL` edits applied at
-        STEP_3B after the operator's answer. `Rejected` carries the exact reason per `AX_REJECTION_REASON`
-        — a later round, or a later session picking this up fresh, reads this entry before re-raising the
-        same ground. Even on a `CLEAN` round this entry is appended before STEP_5 deletes the whole block
-        — the verdict line is what STEP_5 quotes.
+        Return literal `CLEAN` or findings ordered by severity. Each finding names artifact, anchor,
+        violated requirement/invariant, concrete contradiction or omission, and a bounded remediation.
+        Separate unknown external facts from defects. Never edit, never persist a round journal, never
+        ask to continue the same reviewer, and never declare operator approval.
       </Action>
-    </Step>
-    <Step id="STEP_4_DECIDE">
-      <Goal>Loop or stop.</Goal>
-      <Action>Edits applied this round (STEP_3 or STEP_3B) → re-dispatch (`AX_RE_DISPATCH` — mandatory, no self-made exception for a fix judged trivial). Zero edits → stop (`AX_STOP_NO_EDITS`). Cap 5 (`AX_CAP_5`) → `H_MAX_ROUNDS`.</Action>
-    </Step>
-    <Step id="STEP_5_FINALIZE">
-      <Goal>Finalize.</Goal>
-      <Action>On CLEAN: delete the `## Critic Rounds` scratch; the artifact is clean with improvements integrated. Report the final verdict (CLEAN | NEEDS_WORK | CRITICAL) with a one-line-per-round summary of what changed, plus — when any round recorded an `Out of cycle` list — a merged `Out of cycle` section collecting every deferred finding across rounds, so nothing the brake held back is silently lost. The reported verdict MUST be the literal verdict text of the LAST sensor dispatch actually run (`AX_RE_DISPATCH`), shown as a direct quote, never a paraphrase and never an earlier round's verdict presented as current. A structural problem the critique cannot resolve by a surgical edit → escalate to the operator, do not loop.</Action>
     </Step>
   </ExecutionPlan>
-
-  <ChatOutput>
-    {{> "contract/process/question-format"}}
-
-    {{> "contract/process/halt-format"}}
-
-    {{> "contract/process/orchestrator-progress-format"}}
-  </ChatOutput>
 </SddCritic>

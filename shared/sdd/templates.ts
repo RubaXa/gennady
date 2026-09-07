@@ -2,6 +2,9 @@
 // @consumers: check.ts, sdd-new.cmd
 // @tasks: N/A
 
+import { BOOTSTRAP_REQUIREMENTS_TABLE_HEADER } from './spec-schema.ts';
+import { DEFERRED_TEST_OWNERSHIP_LITERAL } from './task-authoring-literals.ts';
+
 /**
  * @purpose Every artifact kind the registry knows how to scaffold.
  */
@@ -78,9 +81,9 @@ export type ArtifactTemplate = {
 
 // #region START_SHARED_SECTIONS — text shared verbatim by every scope-type template
 const DECISION_LOG_FILL =
-  'One-line human summary of how many decisions and what area; fold the full D-NNN entries under <details> per AX_SPEC_PROGRESSIVE_DISCLOSURE.';
+  'One-line human summary of how many decisions and what area; fold the full <ACR>-DL-N entries under <details> per AX_SPEC_PROGRESSIVE_DISCLOSURE.';
 const BOOTSTRAP_REQUIREMENTS_FILL =
-  'One-line human summary of outstanding prerequisites; fold the full Requirement/Kind/Owner/Resolution table under <details>. Declare explicitly ("No external bootstrap required.") when the STEP_7 audit found none — do not leave the table silently empty.';
+  'One-line human summary of outstanding prerequisites; fold the full table under <details>. Keep the canonical six V2 columns. Every task-owned package row must name package.json and package-lock.json; Node/npm runtime files must be owned by the same or an upstream scope. Name exact Readiness Gates and repo-relative Gate Artifacts; otherwise use —. Declare explicitly ("No external bootstrap required.") when the audit found none.';
 const OVERVIEW_FILL =
   'MANDATORY (AX_SPEC_MANDATORY_DIAGRAM): at least one fenced mermaid or ASCII diagram giving a reader the shape of this artifact at a glance, up top. Caption directly under the fence per DIAGRAM_CAPTION_FORMAT (formats/diagram-vocabulary.xml) — `_<что показывает одной фразой>[ — <ACR>-REQ-N[, <ACR>-REQ-M]]._`; the phrase itself stays mandatory always — the ID list is optional, add it when the diagram illustrates concrete requirements.';
 const DATA_FLOW_FILL =
@@ -128,14 +131,9 @@ const RESEARCH_REGISTRY_SKELETON_MODULE = `<!--SECTION:RESEARCH-->
 `;
 
 // DECISION (2026-08-20, ai-skills failure-elicitation research): new specs use ONE flat REQUIREMENT_ENTRY_FORMAT list; specs already in the old split Functional/Non-Functional format stay valid as-is.
-const REQUIREMENTS_LIST_SKELETON = `[Плоский список требований per \`REQUIREMENT_ENTRY_FORMAT\` (contract/spec/requirement-entry-format.xml) — заменяет раздельные Functional Requirements / Non-Functional Constraints для НОВЫХ спек; спеки, уже написанные в старом раздельном формате, остаются валидными как есть. Пример — обычное требование и требование класса «нештатная»:]
+const REQUIREMENTS_LIST_SKELETON = `<!-- УДАЛИ ЭТУ ПОДСКАЗКУ ПОСЛЕ ЗАПОЛНЕНИЯ. Пиши плоский список: ### <ACR>-REQ-N [должен | должен · нештатная], затем одно наблюдаемое условие и обязательство, затем краткое rationale в цитате. Используй уникальные последовательные ID этой спеки. Обязательно покрой happy path, ограничения и хотя бы один негативный сценарий. Единственный образец: -->
 
-### <ACR>-REQ-1 [должен]
-**Когда** пользователь отправляет форму с пустым обязательным полем, **сервис должен** вернуть ошибку валидации с именем поля.
-
-> Пустое поле — самый частый пользовательский ввод; без явной ошибки пользователь не понимает, что делать дальше.
-
-### <ACR>-REQ-2 [должен · нештатная]
+### <ACR>-REQ-1 [должен · нештатная]
 **Если** запись в журнал аудита не удалась, **то сервис должен** отклонить операцию и вернуть 503.
 
 > Аудит — комплаенс-требование; без записи операция не легитимна, откат обязателен.
@@ -232,7 +230,7 @@ ${RESEARCH_REGISTRY_SKELETON_SCOPE}
 <details>
 <summary>Полные записи Decision Log</summary>
 
-[D-NNN entries.]
+[<ACR>-DL-N entries per DECISION_LOG_ENTRY_FORMAT.]
 
 </details>
 <!--/SECTION:DECISION_LOG-->
@@ -244,8 +242,7 @@ ${RESEARCH_REGISTRY_SKELETON_SCOPE}
 <details>
 <summary>Таблица предусловий</summary>
 
-| Requirement | Kind | Owner | Resolution |
-|---|---|---|---|
+${BOOTSTRAP_REQUIREMENTS_TABLE_HEADER}
 <!-- Empty list allowed only when STEP_7 audit produced zero external assumptions — declare explicitly. -->
 
 </details>
@@ -372,12 +369,12 @@ library
 
 <!--SECTION:VISION-->
 ## Vision & Primary Goal
-[Что library делает; главная проблема, которую решает.]
+<!-- УДАЛИ ПОСЛЕ ЗАПОЛНЕНИЯ: что делает library и какую главную проблему решает. -->
 <!--/SECTION:VISION-->
 
 <!--SECTION:OVERVIEW-->
 ## Overview
-[MANDATORY per \`AX_SPEC_MANDATORY_DIAGRAM\` — ≥1 diagram up top (checked by \`SDD_NO_DIAGRAM_BLOCK\` / \`SDD_DIAGRAM_BLOCK_EMPTY\`). The floor is one — how a consumer wires this library in; add more by author judgment. Fenced mermaid OR ASCII; pick the diagram type per \`formats/diagram-vocabulary.xml\`. Example:]
+<!-- УДАЛИ ПОСЛЕ ЗАПОЛНЕНИЯ: дай один fenced mermaid или ASCII diagram подключения consumer к library. Подпись сразу под fence: _<одна фраза>[ — <ACR>-REQ-N[, <ACR>-REQ-M]]._ Единственный образец: -->
 
 \`\`\`mermaid
 flowchart LR
@@ -389,13 +386,13 @@ _Что здесь главное, одной фразой._
 
 <!--SECTION:GOLDEN_DX-->
 ## Target Experience
-[Публичный API DX: init/setup + happy path + error path. Комментарии раскрывают намерение.]
+<!-- УДАЛИ ПОСЛЕ ЗАПОЛНЕНИЯ: публичный API DX — init/setup, happy path и error path; поясни намерение. -->
 <!--/SECTION:GOLDEN_DX-->
 
 <!--SECTION:SCOPE_DEPENDENCIES-->
 ## Scope Dependencies
-- **Depends on:** [infra-*, interface scopes]
-- **Provides to:** [consumer scopes]
+- **Depends on:** <!-- infra-* и interface scopes; «None», если нет -->
+- **Provides to:** <!-- consumer scopes; «None», если нет -->
 <!--/SECTION:SCOPE_DEPENDENCIES-->
 
 <!--SECTION:REQUIREMENTS_AND_CONSTRAINTS-->
@@ -406,7 +403,7 @@ ${REQUIREMENTS_LIST_SKELETON}
 ### Out-of-Scope
 
 ### Runtime & Deferred Scope
-[Per \`AX_RUNTIME_BACKING_EXPLICIT\`. Backing per major capability + deferred parts.]
+<!-- УДАЛИ ПОСЛЕ ЗАПОЛНЕНИЯ: runtime backing каждой крупной capability и явно deferred части. -->
 
 ### Rules
 | Rule | Category | Source |
@@ -416,13 +413,18 @@ ${REQUIREMENTS_LIST_SKELETON}
 ${DATA_FLOW_SKELETON}
 <!--SECTION:PUBLIC_API_SURFACE-->
 ## Public API Surface
-[Ключевые exported interfaces, types, functions. Intent-level, без impl detail.]
+<!-- УДАЛИ ПОСЛЕ ЗАПОЛНЕНИЯ: composition-level capabilities для consumer; каждую свяжи с owning module spec. Operations/signatures остаются в Entity Surfaces/Contracts модуля. -->
 <!--/SECTION:PUBLIC_API_SURFACE-->
 
 <!--SECTION:ARCHITECTURE-->
 ## Architecture
-[Выбранный design pattern. Кратко — rejected alternatives.]
+<!-- УДАЛИ ПОСЛЕ ЗАПОЛНЕНИЯ: выбранный design pattern и кратко rejected alternatives. -->
 <!--/SECTION:ARCHITECTURE-->
+
+<!--SECTION:MODULE_MAP-->
+## Module Map
+<!-- УДАЛИ ПОСЛЕ ЗАПОЛНЕНИЯ: до декомпозиции напиши «Modules not yet decomposed». После неё перечисли каждый модуль один раз как \`- [<module>](./<module>/<module>.spec.md) — <purpose>\`, затем Inter-Module Dependency Map, Stack Dependencies и Handoff to Tasks. -->
+<!--/SECTION:MODULE_MAP-->
 
 ${RESEARCH_REGISTRY_SKELETON_SCOPE}
 <!--SECTION:DECISION_LOG-->
@@ -432,7 +434,7 @@ ${RESEARCH_REGISTRY_SKELETON_SCOPE}
 <details>
 <summary>Полные записи Decision Log</summary>
 
-[D-NNN entries.]
+[<ACR>-DL-N entries per DECISION_LOG_ENTRY_FORMAT.]
 
 </details>
 <!--/SECTION:DECISION_LOG-->
@@ -444,8 +446,7 @@ ${RESEARCH_REGISTRY_SKELETON_SCOPE}
 <details>
 <summary>Таблица предусловий</summary>
 
-| Requirement | Kind | Owner | Resolution |
-|---|---|---|---|
+${BOOTSTRAP_REQUIREMENTS_TABLE_HEADER}
 <!-- Empty list allowed only when STEP_7 audit produced zero external assumptions — declare explicitly. -->
 
 </details>
@@ -513,7 +514,7 @@ const LIBRARY_SECTIONS: SectionManifestEntry[] = [
     required: true,
     loadBearing: true,
     fold: false,
-    fill: 'Key exported interfaces/types/functions, intent-level — no implementation detail.',
+    fill: 'Consumer-facing capabilities at composition level, each linked to its owning module; exact operations and signatures stay in module specs.',
   },
   {
     name: 'ARCHITECTURE',
@@ -521,6 +522,13 @@ const LIBRARY_SECTIONS: SectionManifestEntry[] = [
     loadBearing: false,
     fold: false,
     fill: 'Chosen design pattern, briefly, plus rejected alternatives.',
+  },
+  {
+    name: 'MODULE_MAP',
+    required: true,
+    loadBearing: true,
+    fold: false,
+    fill: 'Appended by module-decomposition; initially a placeholder pointing at that command.',
   },
   {
     name: 'RESEARCH',
@@ -592,7 +600,7 @@ ${REQUIREMENTS_LIST_SKELETON}
 ### Tool Choices
 | Category | Tool | Rationale |
 |---|---|---|
-| <category> | <tool> | D-NNN |
+| <category> | <tool> | <ACR>-DL-N |
 
 ### Integration Detail
 [Для каждого выбранного инструмента — поля интеграции ниже. Заполняются на стадии решения; если
@@ -624,7 +632,7 @@ ${REQUIREMENTS_LIST_SKELETON}
 
 | Rule | Category | Source |
 |---|---|---|
-| <rule-name> | coding | infra (D-NNN) |
+| <rule-name> | coding | infra (<ACR>-DL-N) |
 
 </details>
 <!--/SECTION:EFFECTIVE_RULES-->
@@ -635,15 +643,25 @@ ${REQUIREMENTS_LIST_SKELETON}
 | Command Name      | Invocation          |
 | typecheck-command | <actual invocation> |
 | test-command      | <actual invocation> |
-| coverage-command  | <actual invocation — name the coverage provider too, e.g. \`@vitest/coverage-v8\`> |
+| coverage-command  | <actual read/check invocation — name the coverage provider too, e.g. \`@vitest/coverage-v8\`; MUST NOT rerun the suite> |
 | lint-command      | <actual invocation> |
 | format-command    | <actual invocation> |
 | check-command     | <actual invocation> |
+| fix-command       | <actual invocation> |
 
 Include only command names for tools present in the chosen stack. \`coverage-command\` is **required**
 whenever the project declares a coverage threshold gate — a threshold with no declared provider is a
-gate nobody can run.
-\`check-command\` is **always required** when the runtime setup rule (\`nodejs-npm-setup\` or equivalent) is active — it is the composed entry point that runs all active phases in \`CheckPhaseOrder\` order (typecheck → test → lint → format). Composition: chain invocations of each active phase command in that order. Task tickets use \`check-command\` as their single verification alias.
+gate nobody can run. It reads/checks the report produced by the platform's phase/full verifier and
+MUST NOT own a second test-suite run.
+\`check-command\` and \`fix-command\` are wrappers for humans, CI, and the pre-commit hook — with the
+runtime setup rule (\`nodejs-npm-setup\` or equivalent) active they resolve to the read-only
+\`npx gennady sdd-verify --profile full\` and a whole-project wrapper that passes broad roots to the
+declared argument-forwarding repair prefixes. The phase runtime boundary, not this static shape,
+proves the actual write-zone. Task tickets do NOT cite them, and they do NOT put the phase
+ladder line in §Verification either: STEP_5 already runs
+\`npx gennady sdd-verify --task <ticket-path> --phase <PhaseID>\`, so a row for it would make every
+phase run the ladder twice. §Verification carries ONLY the extra commands
+beyond that gate — one row per additional alias here (e.g. \`coverage-command\`).
 
 [Инвариант: команды образуют конвейер, а не список — артефакты одной команды не должны ронять
 другую (типичный случай: \`coverage/\`, \`dist/\` попадают под lint/format и генерируют ложные findings).
@@ -659,7 +677,7 @@ ${RESEARCH_REGISTRY_SKELETON_SCOPE}
 <details>
 <summary>Полные записи Decision Log</summary>
 
-[D-NNN entries.]
+[<ACR>-DL-N entries per DECISION_LOG_ENTRY_FORMAT.]
 
 </details>
 <!--/SECTION:DECISION_LOG-->
@@ -671,13 +689,13 @@ ${RESEARCH_REGISTRY_SKELETON_SCOPE}
 <details>
 <summary>Таблица предусловий</summary>
 
-| Requirement | Kind | Owner | Resolution |
-|---|---|---|---|
+${BOOTSTRAP_REQUIREMENTS_TABLE_HEADER}
+| No external bootstrap required. | — | — | — | — | — |
 
 <!-- Kind ∈ package | workspace-link | tool | file | external-type | env | service | structural -->
 <!-- Owner ∈ this-scope-task | external-prereq-scope | operator-action -->
-<!-- Empty list allowed only when STEP_7 audit produced zero external assumptions — declare it explicitly: "No external bootstrap required." -->
-<!-- A shared file (package.json scripts, .nvmrc, a tool config) has EXACTLY ONE owning task — the one whose Kind/Owner row creates it. Every other task that touches the same file references/extends it, never re-creates it. -->
+<!-- NO external bootstrap (e.g. a pure function): KEEP the "No external bootstrap required." row above and the table — do not delete the table or replace it with prose. Otherwise REPLACE that row with real requirement rows. Always keep exactly one table with all six columns. -->
+<!-- Every shared manifest/lock write has an owning phase/task; all writers of the same file are strictly DAG-serialized. -->
 
 
 </details>
@@ -732,7 +750,7 @@ const INFRASTRUCTURE_SECTIONS: SectionManifestEntry[] = [
     required: true,
     loadBearing: true,
     fold: false,
-    fill: 'Categories covered plus rationale for exclusions, the Category/Tool/Rationale (D-NNN) choices table, and per-tool Integration Detail (Version/API, needed methods, integration sketch, constraints — research if unknown at write time).',
+    fill: 'Categories covered plus rationale for exclusions, the Category/Tool/Rationale (<ACR>-DL-N) choices table, and per-tool Integration Detail (Version/API, needed methods, integration sketch, constraints — research if unknown at write time).',
   },
   {
     name: 'WORKFLOW_EXAMPLE',
@@ -760,7 +778,7 @@ const INFRASTRUCTURE_SECTIONS: SectionManifestEntry[] = [
     required: true,
     loadBearing: true,
     fold: false,
-    fill: 'Mandatory: Command Name/Invocation table for the active phases (typecheck/test/lint/format) plus the composed check-command alias.',
+    fill: 'Mandatory: Command Name/Invocation table for the active phases (typecheck/test/lint/format) plus the check/fix wrapper aliases.',
   },
   {
     name: 'RESEARCH',
@@ -859,7 +877,7 @@ ${RESEARCH_REGISTRY_SKELETON_SCOPE}
 <details>
 <summary>Полные записи Decision Log</summary>
 
-[D-NNN entries.]
+[<ACR>-DL-N entries per DECISION_LOG_ENTRY_FORMAT.]
 
 </details>
 <!--/SECTION:DECISION_LOG-->
@@ -871,8 +889,7 @@ ${RESEARCH_REGISTRY_SKELETON_SCOPE}
 <details>
 <summary>Таблица предусловий</summary>
 
-| Requirement | Kind | Owner | Resolution |
-|---|---|---|---|
+${BOOTSTRAP_REQUIREMENTS_TABLE_HEADER}
 <!-- Empty list allowed only when STEP_7 audit produced zero external assumptions — declare explicitly. -->
 
 </details>
@@ -969,12 +986,12 @@ const MODULE_SKELETON = `# Module: <ModuleName>
 
 <!--SECTION:MODULE_VISION-->
 ## Module Vision
-[What this module owns. Link to parent scope spec → \`../../<scope>.spec.md\`. Links to parent/child modules if any.]
+<!-- УДАЛИ ПОСЛЕ ЗАПОЛНЕНИЯ: что принадлежит модулю; ссылка на спеку скоупа ../<scope>.spec.md (плоский модуль = один ../ ; на каждый лишний сегмент пути --module добавь ещё один ../) и на parent/child modules, если есть. -->
 <!--/SECTION:MODULE_VISION-->
 
 <!--SECTION:OVERVIEW-->
 ## Overview
-[MANDATORY per \`AX_SPEC_MANDATORY_DIAGRAM\` — ≥1 diagram, checked by \`SDD_NO_DIAGRAM_BLOCK\` / \`SDD_DIAGRAM_BLOCK_EMPTY\`. One glance beats a paragraph. The floor is one; add more (sequence, data-flow, state) whenever a second view genuinely helps a reader understand this module — that call is the author's. Fenced mermaid OR ASCII; pick the diagram type per \`formats/diagram-vocabulary.xml\`. The \`Inter-Module Dependencies\` graph is separate (machine-parsed) and does NOT satisfy this floor. Example — the module's main happy-path flow:]
+<!-- УДАЛИ ПОСЛЕ ЗАПОЛНЕНИЯ: ≥1 fenced mermaid или ASCII diagram главного потока модуля. Inter-Module Dependencies не заменяет Overview. Подпись: _<одна фраза>[ — <ACR>-REQ-N[, <ACR>-REQ-M]]._ Единственный образец: -->
 
 \`\`\`mermaid
 flowchart LR
@@ -987,12 +1004,17 @@ _Что здесь главное, одной фразой._
 
 <!--SECTION:MODULE_USAGE_EXAMPLE-->
 ## Module Usage Example
-[MANDATORY. Self-sufficient happy-path snippet — как потребитель использует этот модуль в изоляции. Пишется на таргет-языке проекта — единственное место для кода per \`AX_CONTRACTS_TEXTUAL_AGNOSTIC\`. Показывает публичную поверхность через реальный сценарий вызова: init / happy path / минимальный error path. Composition с соседними модулями — НЕ здесь, это уровень scope spec (link, не дублировать).]
+<!-- УДАЛИ ПОСЛЕ ЗАПОЛНЕНИЯ: self-sufficient snippet на target language — init, happy path, минимальный error path. Не дублируй composition соседних модулей. -->
 <!--/SECTION:MODULE_USAGE_EXAMPLE-->
 
 <!--SECTION:MODULE_REQUIREMENTS-->
 ## Requirements
-${REQUIREMENTS_LIST_SKELETON}
+<!-- УДАЛИ ПОСЛЕ ЗАПОЛНЕНИЯ. This section owns only observable obligations introduced or narrowed by THIS module. Do not copy
+the parent scope requirements and do not reuse their IDs. A genuinely module-specific requirement
+uses this module spec's own acronym and the \`### <ACR>-REQ-N [должен | должен · нештатная]\` grammar; its
+explanation names the parent requirement ID(s) it refines. If this module adds no narrower
+obligation, write exactly: \`No module-specific requirements. Implements parent requirements:
+<SCOPE-REQ-N[, SCOPE-REQ-M]>.\` Tasks and tests then trace to those parent IDs directly. -->
 <!--/SECTION:MODULE_REQUIREMENTS-->
 
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->
@@ -1012,24 +1034,24 @@ graph TD
 
 <!--SECTION:ENTITY_INVENTORY-->
 ## Entity Inventory
-[Per \`ENTITY_INVENTORY_FORMAT\`.]
+<!-- УДАЛИ ПОСЛЕ ЗАПОЛНЕНИЯ: прочитай ai/directives/sdd-v2/formats/entity-inventory-format.xml только сейчас, при заполнении этой секции; создай закрытый Name/Type/Purpose inventory и владельца ошибок. -->
 <!--/SECTION:ENTITY_INVENTORY-->
 
 <!--SECTION:ENTITY_SURFACES-->
 ## Entity Surfaces
-[One-line human summary — what the surfaces cover; the reader sees this without expanding. Heavy per-entity detail folds per \`AX_SPEC_PROGRESSIVE_DISCLOSURE\` (checked by \`SDD_SECTION_NOT_FOLDED\`).]
+<!-- УДАЛИ ПОСЛЕ ЗАПОЛНЕНИЯ: прочитай ai/directives/sdd-v2/formats/entity-surface-format.xml только сейчас; оставь one-line summary, а per-entity detail помести в details. -->
 
 <details>
 <summary>Полные поверхности сущностей</summary>
 
-[Each entity per \`ENTITY_SURFACE_FORMAT\`.]
+<!-- Содержимое по прочитанному entity-surface-format.xml; эту подсказку тоже удали. -->
 
 </details>
 <!--/SECTION:ENTITY_SURFACES-->
 
 <!--SECTION:MODULE_CONTRACTS-->
 ## Module Contracts
-[One-line human summary — which Ports / Adapters / Services this module defines. The contract bodies fold per \`AX_SPEC_PROGRESSIVE_DISCLOSURE\` (checked by \`SDD_SECTION_NOT_FOLDED\`). Dependency graph per \`DBC_DEPENDENCY_GRAPH_FORMAT\` sits directly below this line, above the folded \`<details>\`. Right after it, MANDATORY whenever this module's inventory lists ≥2 abstractions (AX_SPEC_MANDATORY_DIAGRAM, rung 6, new per the 2026-08-20 visualization-chain decision): the Call Chain — a \`sequenceDiagram\`, or its table-of-steps equivalent (step / participant / action / data), per \`CALL_CHAIN_FORMAT\` (\`formats/dbc-contracts.xml\`) — both forms count equally. On \`refine-module\`/\`pivot\`, also the Delta rung per \`DELTA_DIAGRAM_FORMAT\` (\`formats/pivot-formats.xml\`): composition graph with the new node marked, plus the ADDED Call Chain steps — the unchanged part is NOT redrawn. Every diagram here carries a caption per \`DIAGRAM_CAPTION_FORMAT\`, e.g. \`_Путь списания за заказ — SHOP-REQ-6, SHOP-REQ-7._\` These new rungs are mandatory for NEW module specs only.]
+<!-- УДАЛИ ПОСЛЕ ЗАПОЛНЕНИЯ: прочитай ai/directives/sdd-v2/formats/dbc-contracts.xml только сейчас. Напиши one-line summary; dependency graph и Call Chain (при ≥2 абстракциях) поставь над details; DbC per operation — внутри. Подпись diagram: _<одна фраза>[ — <ACR>-REQ-N[, <ACR>-REQ-M]]._ -->
 
 <!-- Subsections: any subset of Ports / Adapters / Services / Patterns / Utilities / Module-level invariants.
      Unnumbered \`###\` headers (e.g. \`### Ports\`, \`### OperationDef Pattern\`). -->
@@ -1081,7 +1103,7 @@ ${RESEARCH_REGISTRY_SKELETON_MODULE}
 <details>
 <summary>Полные записи Decision Log</summary>
 
-[D-NNN entries at module level per \`DECISION_LOG_ENTRY_FORMAT\`. Cross-module or cross-scope → scope spec or contracts spec.]
+[<ACR>-DL-N entries at module level per \`DECISION_LOG_ENTRY_FORMAT\`. Cross-module or cross-scope → scope spec or contracts spec.]
 
 </details>
 <!--/SECTION:MODULE_DECISION_LOG-->
@@ -1138,7 +1160,7 @@ const MODULE_SECTIONS: SectionManifestEntry[] = [
     required: true,
     loadBearing: false,
     fold: false,
-    fill: 'Flat Requirements list per REQUIREMENT_ENTRY_FORMAT — module-level behavior and failure-mode requirements, distinct from the pre/post-condition contracts in Module Contracts.',
+    fill: 'Only module-owned behavioral refinements: use this module acronym and name parent Requirement-IDs in each explanation. If there is no narrower module obligation, explicitly list the parent Requirement-IDs implemented here; never copy scope requirements or reuse their IDs.',
   },
   {
     name: 'INTER_MODULE_DEPENDENCIES',
@@ -1194,7 +1216,7 @@ const MODULE_SECTIONS: SectionManifestEntry[] = [
     required: false,
     loadBearing: false,
     fold: true,
-    fill: 'One-line summary of recorded decisions; full D-NNN entries per DECISION_LOG_ENTRY_FORMAT fold under <details>.',
+    fill: 'One-line summary of recorded decisions; full <ACR>-DL-N entries per DECISION_LOG_ENTRY_FORMAT fold under <details>.',
   },
   {
     name: 'HANDOFF',
@@ -1223,6 +1245,8 @@ const TASK_SKELETON = `# Task: <ACRONYM>-<slug> — <Task Title>
 - **Purpose:** <semantic goal one-liner>
 - **Scope:** <scope-name>
 - **Module:** <module-name or N/A>
+- **Structural Owner:** <infrastructure-flat | scope-bootstrap | module>
+- **Owning Spec:** [Owning spec](<relative owning spec path>)
 - **Dependencies:** <comma-separated Task-IDs or None>
 - **Reopens:** <count> (<YYYY-MM-DD> — <last reason>)   <!-- omit when 0 -->
 - **Spec References:**   <!-- one anchor PER contract — makes the contract set enumerable for the typing-scenario check -->
@@ -1256,6 +1280,11 @@ const TASK_SKELETON = `# Task: <ACRONYM>-<slug> — <Task Title>
   - [<PortName>](<spec anchor>)
 - **Target Files:**
   - <path>
+- **Deleted Files:**
+  - none   <!-- or exact repo-local tracked paths already absent when verification runs -->
+- **Readiness Gates:**   <!-- bootstrap phase only: exact gates this phase creates, copied verbatim from the owning spec's "## Prerequisites" section (its Bootstrap Requirements row); that spec is already materialized — read the value straight from it, no format docs needed; omit otherwise -->
+  - <gate>
+- **Entities:** <ContractName, ...>   <!-- impl/refactor phases: the exported entities (verbatim from the module Entity Inventory) THIS phase implements — the structural, filename-independent ownership source a Deferred Implementation marker (pointing at this ticket) resolves against; omit for test/config/doc phases -->
 - **Inputs:** none   <!-- or "P1 handoff" -->
 - **Exit:** <verifiable criterion>
 <!--/SECTION:PHASE_P1-->
@@ -1269,6 +1298,10 @@ const TASK_SKELETON = `# Task: <ACRONYM>-<slug> — <Task Title>
   - [<PortName>](<spec anchor>)
 - **Target Files:**
   - <path>
+- **Deleted Files:**
+  - none   <!-- or exact repo-local tracked paths already absent when verification runs -->
+- **Readiness Gates:**   <!-- omit unless this exact phase creates declared readiness gates -->
+  - <gate>
 - **Inputs:** P1 handoff
 - **Exit:** <verifiable criterion>
 <!--/SECTION:PHASE_P2-->
@@ -1291,28 +1324,40 @@ use-case → \`[<ACRONYM>-REQ-N]\` → vision chain the operator reviews at scaf
 
 <!--SECTION:VERIFICATION-->
 ## Verification
-| Command | Required by |
-|---------|-------------|
-| <resolved invocation> | <rule-id>, <rule-id> |
+Гейт фазы — \`npx gennady sdd-verify --task <ticket-path> --phase <PhaseID>\` — выполняется на STEP_5; профиль и Target Files читаются из тикета, в таблицу не дублируется.
 
-<!-- One row per unique check-command alias. Phase-subagent runs only rows whose Required-by overlaps its phase Rules. -->
+<!--PHASE_RECEIPTS:v1-->
+
+<!--COVERAGE_POLICY:v1-->
+- **Coverage Policy:** <required | not-applicable>
+- **Coverage Owner Phase:** <P<N>; required only; omit for not-applicable>
+- **Coverage Reason:** <required only for not-applicable; omit this field for required>
+
+| Command | Required by | Role |
+|---------|-------------|------|
+| \`<exact command; a coverage reader looks like \`npx gennady testcov <source>\` — take it from the project's test ladder, do not scan unrelated runners>\` | <owner-phase rule-id> | <coverage | probe | extra> |
+
+<!-- COMMAND CELL SERIALIZATION: wrap the exact runtime command in a Markdown code span. The outer backtick run MUST be strictly longer than every consecutive backtick run inside the command; do not escape or normalize inner bytes. The parser removes only that matching outer delimiter, so runtime bytes remain exact. Raw | outside the wrapper is a table separator. Do not XML-escape the command. -->
+<!-- PRODUCING coverage at execute: the coverage READER above only READS a coverage artifact; something must PRODUCE it first. Run the project's provisioned producer (e.g. the "test:coverage" npm script), which generates the artifact OFFLINE from the already-installed toolchain. NEVER npm-install a coverage tool or reach the registry — the toolchain is pre-provisioned and offline. A failing coverage command is a script/path issue to diagnose, not a missing dependency to install; installing prunes the sandbox and breaks the toolchain. -->
+<!-- NO sdd-verify row: STEP_5 invokes the CLI exactly once per attempt; the CLI runs the ladder plus applicable rows and writes their receipt. A failed attempt writes no receipt; retry after a fix is a new attempt. Coverage Policy is mandatory for COVERAGE_POLICY:v1. required → one test Coverage Owner Phase and exactly one resolved read/check command with Role=coverage whose Required-by is an owner-phase rule; not-applicable → concise reason, NO owner and NO coverage row. Every other resolved alias uses Role=extra; no rows → a single | — | — | extra | row. -->
 
 - **Task-specific Completion additions:** <list or "none beyond project baseline">
 <!--/SECTION:VERIFICATION-->
 
 <!--SECTION:TEST_COVERAGE-->
 ## Test Scenario Coverage   <!-- BLOCKER: an unmapped scenario blocks task close -->
-- Scenario <name> → \`<test-file>\` :: \`<canonical case name>\`   <!-- or: Deferred Test Ownership: <Task-ID> -->
+- Scenario <name> → \`<test-file>\` :: \`<canonical case name>\`
+<!-- A scenario whose When invokes npm run appends exact executable evidence: - <name> → \`<test-file>\` :: \`<case>\` :: command \`npm run <script>\`; Verification repeats it once with Role=probe. -->
+<!-- Runtime-only delegation uses exactly: ${DEFERRED_TEST_OWNERSHIP_LITERAL}. It is forbidden for contract-level typing scenarios and scenarios owned by this ticket. -->
 <!--/SECTION:TEST_COVERAGE-->
 
 <!--SECTION:EXECUTION_LOG-->
 ## Execution Log
-*(Round = one execute-then-audit attempt; per-phase blocks within a Round. Skeleton is minimal — event lines appear only when the event happens. Token vocabulary lives in \`<module>.3-tasks.md\`. A \`[x]\` line with an unreplaced \`<…>\` placeholder is a fabricated DONE — forbidden.)*
+*(Round = one execute-then-audit attempt; per-phase blocks within a Round. Skeleton is minimal — event lines appear only when the event happens. Token vocabulary lives in \`<module>.3-tasks.md\`. A \`[x]\` line still carrying an unreplaced angle-bracket token is a fabricated DONE — forbidden.)*
 
 ### Round 1 — <YYYY-MM-DD>, initial
 
 #### P1
-- [ ] \`<ts>\` ver \`<cmd>\` → \`<pass|fail>\` exit=\`<code>\`
 - [ ] \`<ts>\` DONE
 **Handoff →** artifacts: [...]; decisions: [...]; open: [...]
 
@@ -1322,7 +1367,7 @@ use-case → \`[<ACRONYM>-REQ-N]\` → vision chain the operator reviews at scaf
 
 <!--SECTION:DECISION_LOG-->
 ## Decision Log
-<!-- local decisions taken during execution, ADR-compact (\`<ACRONYM>-D-N · <statement>\` → why ↳ rejected). Omit if none beyond the spec. -->
+<!-- local decisions taken during execution, one-line \`<ACR>-DL-N\` per DECISION_LOG_ENTRY_FORMAT. Omit if none beyond the spec. -->
 <!--/SECTION:DECISION_LOG-->
 
 <!-- AUDIT_ROUNDS appended only after the first reopen-triggering audit (per the audit directive). -->
@@ -1334,7 +1379,7 @@ const TASK_SECTIONS: SectionManifestEntry[] = [
     required: true,
     loadBearing: false,
     fold: false,
-    fill: 'Task-ID, Status, Purpose, Scope/Module, Dependencies, Spec References (one anchor per contract), Runtime Backing, Verification Levels, Deferred Runtime Scope.',
+    fill: 'Task-ID, Status, Purpose, Scope/Module, Structural Owner, Owning Spec, Dependencies, Spec References (one anchor per contract), Runtime Backing, Verification Levels, Deferred Runtime Scope.',
   },
   {
     name: 'PHASES_OVERVIEW',
@@ -1348,7 +1393,7 @@ const TASK_SECTIONS: SectionManifestEntry[] = [
     required: true,
     loadBearing: false,
     fold: false,
-    fill: 'One anchored PHASE_P<N> section per row in Phases Overview: Objective, Rules (links only), optional Spec Refs (per-phase subset of Meta Spec References; omit to fall back to the full set), Target Files, Inputs, Exit criterion.',
+    fill: 'One anchored PHASE_P<N> section per row in Phases Overview: Objective, Rules, optional Spec Refs, existing READ Target Files or future CREATE Target Files, Deleted Files (`none` or tracked tombstones), Inputs, Exit criterion.',
   },
   {
     name: 'BDD',
@@ -1362,7 +1407,7 @@ const TASK_SECTIONS: SectionManifestEntry[] = [
     required: true,
     loadBearing: false,
     fold: false,
-    fill: 'Command/Required-by table — one row per unique check-command alias — plus task-specific completion additions.',
+    fill: 'Command/Required-by table — EXTRA commands beyond the phase ladder, never an sdd-verify row; STEP_5 invokes the CLI exactly once per attempt and only a successful attempt writes the phase receipt.',
   },
   {
     name: 'TEST_COVERAGE',
@@ -1376,7 +1421,7 @@ const TASK_SECTIONS: SectionManifestEntry[] = [
     required: true,
     loadBearing: false,
     fold: false,
-    fill: 'Round/phase event log — timestamps, verification runs, DONE lines, handoffs. Never fabricate a [x] with a placeholder still in it.',
+    fill: 'Round/phase event log — semantic events, CLI-owned phase receipts, DONE lines, handoffs. Never fabricate a [x] with a placeholder still in it.',
   },
   {
     name: 'DECISION_LOG',
@@ -1479,7 +1524,7 @@ graph TD
 | <ACR>-<slug> | <title> | <module> | <deps> | [ ] TODO | — |
 
 ## Decision Log (scope task level)
-[D-NNN for scope-level decomposition / planning choices.]
+[<ACR>-DL-N for scope-level decomposition / planning choices.]
 `;
 
 const SCOPE_INDEX_SECTIONS: SectionManifestEntry[] = [
@@ -1516,7 +1561,7 @@ const SCOPE_INDEX_SECTIONS: SectionManifestEntry[] = [
     required: false,
     loadBearing: false,
     fold: false,
-    fill: 'Scope-level decomposition/planning decisions, D-NNN, ADR-compact.',
+    fill: 'Scope-level decomposition/planning decisions, <ACR>-DL-N, ADR-compact.',
   },
 ];
 // #endregion END_SCOPE_INDEX
@@ -1532,8 +1577,8 @@ const PROJECT_INDEX_SKELETON = `# Project Tasks
 
 ## Project-Wide Conventions (declared once, inherited)
 - **File-header:** owned by the coding rule (\`@file\` / \`@consumers\` / \`@tasks\`), enforced by \`sdd-verify\`.
-- **Baseline Completion Rule:** a Round cannot go \`[x] DONE\` until — every phase \`[x]\`; every BDD scenario mapped to a test or \`Deferred Test Ownership\`; verification commands run with exit recorded; every entity beyond the Inventory logged \`intro …\`; a Handoff line closes each phase.
-- **Execution-Log token vocabulary:** \`intro <Entity> ← <reason>\` · \`decision <key>=<value> ← <reason>\` · \`tried <approach> → <result>\` · \`discovery <fact>\` · \`insight <observation> → <spec-section>\` · \`verified <tool>@<version> <summary>\` · \`ver <cmd> → pass|fail exit=<N>\` · \`BLOCKED <cause>\` · \`DONE\`. A \`[x]\` line with an unreplaced \`<…>\` placeholder is fabricated (BLOCKER).
+- **Baseline Completion Rule:** a Round cannot go \`[x] DONE\` until — every phase \`[x]\` with a current CLI-owned verification receipt; every BDD scenario mapped to a test or \`Deferred Test Ownership\`; every entity beyond the Inventory logged \`intro …\`; a semantic Handoff line closes each phase.
+- **Execution-Log token vocabulary:** \`intro <Entity> ← <reason>\` · \`decision <key>=<value> ← <reason>\` · \`tried <approach> → <result>\` · \`discovery <fact>\` · \`insight <observation> → <spec-section>\` · \`verified <tool>@<version> <summary>\` · CLI-owned \`SDD_PHASE_RECEIPT\` · \`BLOCKED <cause>\` · \`DONE\`. A \`[x]\` line with an unreplaced \`<…>\` placeholder is fabricated (BLOCKER).
 - **Post-task hook:** after a Round closes the orchestrator runs audit; until PASS the round is closed-but-unverified and dependents are blocked.
 
 ## Cross-Scope DAG
@@ -1551,7 +1596,7 @@ graph TD
 | backend | product | [3-tasks](./backend/backend.3-tasks.md) | 12 | 0/12 |
 
 ## Decision Log (project task level)
-[D-NNN when the operator made non-default cross-scope choices.]
+[<ACR>-DL-N when the operator made non-default cross-scope choices.]
 `;
 
 const PROJECT_INDEX_SECTIONS: SectionManifestEntry[] = [
@@ -1588,7 +1633,7 @@ const PROJECT_INDEX_SECTIONS: SectionManifestEntry[] = [
     required: false,
     loadBearing: false,
     fold: false,
-    fill: 'Cross-scope decomposition/planning decisions, D-NNN, ADR-compact.',
+    fill: 'Cross-scope decomposition/planning decisions, <ACR>-DL-N, ADR-compact.',
   },
 ];
 // #endregion END_PROJECT_INDEX
@@ -1631,7 +1676,7 @@ graph TD
 Vision, а рядом: Vision держит целевое состояние целиком, здесь фиксируется что сознательно
 отложено/отвергнуто и почему.>
 
-- D-001 <date> — v1 без бэкенда (почему: быстрее показать локальный сценарий; отложено до: этап синхронизации; риск: придётся менять модель хранения данных)
+- <ACR>-DL-1 <date> — v1 без бэкенда (почему: быстрее показать локальный сценарий; отложено до: этап синхронизации; риск: придётся менять модель хранения данных)
 `;
 
 const PORTAL_SECTIONS: SectionManifestEntry[] = [
@@ -1733,6 +1778,13 @@ const RESEARCH_SKELETON = `# Research: <topic-title>
 - Ограничения: [<лимиты, quota, версийные требования, licensing>]
 <!--/SECTION:DECISION-->
 
+<!--SECTION:FINAL_DISPOSITION-->
+## Final disposition
+- **Outcome:** pending   <!-- pending | accepted | rejected | superseded -->
+- **Spec decision:** [После операторского выбора: фактическое решение спеки и ссылка на Decision Log. Исходный анализ выше не переписывать.]
+- **Delta from recommendation:** [совпало | чем и почему отличается]
+<!--/SECTION:FINAL_DISPOSITION-->
+
 <!--SECTION:CONSEQUENCES-->
 ## Consequences
 [Что теряем/принимаем этим выбором — прямое следствие DECISION, не повтор OPTIONS.]
@@ -1753,7 +1805,7 @@ const RESEARCH_SKELETON = `# Research: <topic-title>
 <!--SECTION:RELATED-->
 ## Related
 - **Scope spec:** [<scope>.spec.md](../<scope>.spec.md)
-- **Decision Log entry:** D-NNN
+- **Decision Log entry:** <ACR>-DL-N
 - **Superseded by:**   <!-- пусто при создании; заполняется при superseded-by -->
 <!--/SECTION:RELATED-->
 `;
@@ -1795,6 +1847,13 @@ const RESEARCH_SECTIONS: SectionManifestEntry[] = [
     fill: "The MADR-style formula: chose X over Y/Z to achieve G, accepting trade-off T — built only from already-sourced/marked facts in CRITERIA/OPTIONS, no new unverifiable claim introduced here. Followed by the chosen X's integration fields: Version/API, needed methods, integration sketch, constraints.",
   },
   {
+    name: 'FINAL_DISPOSITION',
+    required: true,
+    loadBearing: true,
+    fold: false,
+    fill: 'Immutable-analysis bridge: pending while proposed; after operator choice, actual outcome + spec/Decision Log link + delta from the research recommendation.',
+  },
+  {
     name: 'CONSEQUENCES',
     required: false,
     loadBearing: false,
@@ -1813,7 +1872,7 @@ const RESEARCH_SECTIONS: SectionManifestEntry[] = [
     required: false,
     loadBearing: false,
     fold: false,
-    fill: 'Links to the scope spec, the Decision Log entry (D-NNN), and superseded-by (present but empty at creation).',
+    fill: 'Links to the scope spec, the Decision Log entry (<ACR>-DL-N), and superseded-by (present but empty at creation).',
   },
 ];
 // #endregion END_RESEARCH
@@ -1821,7 +1880,8 @@ const RESEARCH_SECTIONS: SectionManifestEntry[] = [
 // #region START_NEXT_STEPS — "what happens after this skeleton exists", per kind (printed by sdd-new)
 // Shared by product/library/infrastructure/interface/module: fill the manifest, then a human decides.
 const SPEC_NEXT_STEPS: string[] = [
-  'Заполни секции по манифесту выше.',
+  'Прочитай скелет целиком, подготовь полный документ и замени скелет одним Write поверх файла.',
+  'Authoring запрещает точечные Edit/Patch: все подсказки <!-- ... --> должны быть заменены содержанием в этом единственном Write.',
   'Согласуй спеку с оператором.',
   'Дальше по флоу — `/sdd`.',
 ];
@@ -1834,7 +1894,8 @@ const NEXT_STEPS: Record<ArtifactKind, string[] | ((ctx: NextStepsContext) => st
   module: SPEC_NEXT_STEPS,
   task: (ctx: NextStepsContext): string[] => [
     'Заполни тикет по манифесту секций выше (Meta, фазы, BDD, Verification, Test Coverage).',
-    'Тикет попадёт в execution map автоматически — смотри `sdd-task` (pickable = TODO + все Dependencies DONE).',
+    `Проверь заполненный тикет: \`npx gennady sdd-check --task ${ctx.path} --authoring\`.`,
+    'После GREEN всех тикетов передай фактическое разбиение и тест-план на независимое семантическое ревью, затем оператору на утверждение.',
     `Task-ID: ${ctx.id ?? '<id>'} — во всех дальнейших ссылках используй ровно этот ID.`,
   ],
   'module-index': [
@@ -1858,6 +1919,7 @@ const NEXT_STEPS: Record<ArtifactKind, string[] | ((ctx: NextStepsContext) => st
     return [
       'Заполни секции по манифесту выше — каждое фактическое утверждение либо ведёт к EVIDENCE, либо помечено как вывод агента.',
       'Используй DECISION документа в том решении, ради которого делался этот ресёрч.',
+      'После решения не переписывай исходный анализ: заполни FINAL_DISPOSITION фактическим выбором и ссылкой на Decision Log.',
       `Зарегистрируй документ строкой в секции \`## Research\` спеки скоупа: \`specs/${scope}/${scope}.spec.md\`.`,
       '`sdd-check` проверит регистрацию (SDD_RESEARCH_UNREGISTERED).',
     ];

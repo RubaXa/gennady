@@ -92,6 +92,20 @@ describe('migration-plan', () => {
     assert.deepStrictEqual(scanMigrationUnits(root), scanMigrationUnits(root));
   });
 
+  it('scan находит тикет по контенту (Task-ID в Meta), а не по имени файла — `IB-NN` тоже подхватывается', () => {
+    const IB_TICKET = [
+      '# Task: TSK-IB-9 — Свой формат имени',
+      '## 1. Meta',
+      '- **Task-ID:** TSK-IB-9 | **Status:** [ ] TODO | **Scope:** demo | **Module:** core',
+    ].join('\n');
+    writeFileSync(join(root, 'tasks', 'demo', 'core', 'core.IB-9.md'), IB_TICKET, 'utf-8');
+    const scan = scanMigrationUnits(root);
+    const core = scan.units.find((u) => u.module === 'core');
+    assert.ok(core);
+    const ids = core.tickets.map((t) => t.taskId);
+    assert.ok(ids.includes('TSK-IB-9'), `ожидал TSK-IB-9 среди [${ids.join(', ')}]`);
+  });
+
   it('unitFilePath зеркалит дерево specs/ под migration/', () => {
     const scan = scanMigrationUnits(root);
     const core = scan.units.find((u) => u.module === 'core');
@@ -134,7 +148,7 @@ describe('migration-plan', () => {
       .replace('**Status:** PLANNED', '**Status:** MAPPED')
       .replace(
         '| `tasks/demo/core/core.task-7.md` | TSK-7 | ? | ? |',
-        '| `tasks/demo/core/core.task-7.md` | TSK-7 | CORE-demo-feature | `specs/demo/core/core.task.CORE-demo-feature.md` |'
+        '| `tasks/demo/core/core.task-7.md` | TSK-7 | CORE-demo | `specs/demo/core/core.task.CORE-demo.md` |'
       )
       .replace(
         '- Overview-диаграмма: ?',
@@ -142,6 +156,28 @@ describe('migration-plan', () => {
       );
     const findings = verifyUnitFile('u.md', content, core);
     assert.deepStrictEqual(findings, [], JSON.stringify(findings, null, 2));
+  });
+
+  it('verify ловит слишком длинный slug (>8) на месте — MIG_BAD_SLUG, а не позже на sdd-check', () => {
+    const scan = scanMigrationUnits(root);
+    const core = scan.units.find((u) => u.module === 'core');
+    assert.ok(core);
+    // Грамматически валидный ID, но slug = "demo-feature" (12 символов > SLUG_MAX_LEN=8).
+    const content = scaffoldUnitFile(core)
+      .replace('**Status:** PLANNED', '**Status:** MAPPED')
+      .replace(
+        '| `tasks/demo/core/core.task-7.md` | TSK-7 | ? | ? |',
+        '| `tasks/demo/core/core.task-7.md` | TSK-7 | CORE-demo-feature | `specs/demo/core/core.task.CORE-demo-feature.md` |'
+      )
+      .replace(
+        '- Overview-диаграмма: ?',
+        '- Overview-диаграмма: существующий flowchart из Module Vision.'
+      );
+    const codes = verifyUnitFile('u.md', content, core).map((f) => f.code);
+    assert.ok(
+      codes.includes('MIG_BAD_SLUG'),
+      `нет MIG_BAD_SLUG на длинном slug: ${codes.join(',')}`
+    );
   });
 
   it('mapHeadingToSection: заголовки формата *-spec-structure.xml распознаются, номерация и хвостовые пометки не мешают', () => {
@@ -157,7 +193,7 @@ describe('migration-plan', () => {
   });
 
   it('mapHeadingToSection: нераспознанный заголовок → UNMAPPED, не угадывает ближайшее', () => {
-    assert.strictEqual(mapHeadingToSection('## Critic Rounds'), UNMAPPED);
+    assert.strictEqual(mapHeadingToSection('## Unknown Section'), UNMAPPED);
     assert.strictEqual(mapHeadingToSection('## CLI Interface'), UNMAPPED);
     assert.strictEqual(mapHeadingToSection('## Emoji Mapping'), UNMAPPED);
   });
@@ -165,14 +201,14 @@ describe('migration-plan', () => {
   it('Section Map: нераспознанный заголовок помечен UNMAPPED и валит plan --verify', () => {
     writeFileSync(
       join(root, 'specs', 'demo', 'core', 'core.spec.md'),
-      MODULE_SPEC + '\n## 2. Critic Rounds\nтекст',
+      MODULE_SPEC + '\n## 2. Unknown Section\nтекст',
       'utf-8'
     );
     const scan = scanMigrationUnits(root);
     const core = scan.units.find((u) => u.module === 'core');
     assert.ok(core);
     const content = scaffoldUnitFile(core);
-    assert.ok(content.includes(`| \`## 2. Critic Rounds\` | ? | ${UNMAPPED} |`));
+    assert.ok(content.includes(`| \`## 2. Unknown Section\` | ? | ${UNMAPPED} |`));
     const codes = verifyUnitFile(unitFilePath(core), content, core).map((f) => f.code);
     assert.ok(codes.includes('MIG_SECTION_UNMAPPED_TARGET'), codes.join(','));
   });
@@ -224,7 +260,7 @@ describe('migration-plan', () => {
     for (const unit of scan2.units) {
       const filled = scaffoldUnitFile(unit).replace(
         /\| (TSK-[0-9]+) \| \? \| \? \|/g,
-        '| $1 | DEMO-same-slug | ? |'
+        '| $1 | DEMO-dup | ? |'
       );
       writeFileSync(join(root, unitFilePath(unit)), filled, 'utf-8');
     }
@@ -253,7 +289,7 @@ describe('migration-plan', () => {
       .replace(
         '| `tasks/demo/core/core.task-7.md` | TSK-7 | ? | ? |',
         // destination nested one level deeper than the spec's own dir — still a legal co-located form
-        '| `tasks/demo/core/core.task-7.md` | TSK-7 | CORE-demo-feature | `specs/demo/core/sub/core.task.CORE-demo-feature.md` |'
+        '| `tasks/demo/core/core.task-7.md` | TSK-7 | CORE-demo | `specs/demo/core/sub/core.task.CORE-demo.md` |'
       )
       .replace(
         '- Overview-диаграмма: ?',
@@ -271,7 +307,7 @@ describe('migration-plan', () => {
       .replace('**Status:** PLANNED', '**Status:** MAPPED')
       .replace(
         '| `tasks/demo/core/core.task-7.md` | TSK-7 | ? | ? |',
-        '| `tasks/demo/core/core.task-7.md` | TSK-7 | CORE-demo-feature | `specs/other/core.task.CORE-demo-feature.md` |'
+        '| `tasks/demo/core/core.task-7.md` | TSK-7 | CORE-demo | `specs/other/core.task.CORE-demo.md` |'
       )
       .replace(
         '- Overview-диаграмма: ?',

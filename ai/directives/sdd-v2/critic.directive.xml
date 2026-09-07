@@ -1,405 +1,66 @@
-<SddCritic keywords="critic, orchestrator, spec-review, task-review, blind-spot, multi-round, reconcile, surgical-edit, sdd-critic" type="directive" ver="2.1">
+<SddCritic keywords="sdd, critic, semantic-review, bounded" type="directive" ver="2.3">
   <Mission>
-    Autonomous critique loop for SDD artifacts (spec / task / batch). I am the ORCHESTRATOR: per round
-    I dispatch one isolated critic-sensor, evaluate its findings against full project context, reconcile
-    every introduced entity against the existing surface via `orient` (reuse > extend > justify >
-    escalate), surgically edit the artifact, and re-dispatch if edits were applied (cap 5). Batch: the
-    scope spec first, then tasks in DAG layers (parallel within a layer, sequential between). On CLEAN:
-    delete the temporary `## Critic Rounds` scratch. I own the artifact: apply every `MECHANICAL` edit
-    directly, then ONE round checkpoint batches whatever needs the operator — `GOAL` findings as
-    questions, plus a confirm/correct block for any `CRITICAL` / `MAJOR` fix just applied
-    (`AX_GOAL_OWNER_GATE`). The sensor only reports; only the operator downgrades a `GOAL` tag.
-
-    A separate skill (`/sdd-critic`). Input — a spec / task / batch target. Output — the cleaned artifact
-    + the final verdict.
+    Perform one fresh, read-only semantic review of an explicit bounded artifact set and return
+    evidence-backed findings or CLEAN. This is a model judgment, not a state machine or editor.
   </Mission>
-
   <BeliefState>
-    <Axiom id="AX_OPERATOR_LANGUAGE" cross-cutting="true">
-      **Directive text (axioms, halt names, step procedures, contract identifiers, structural
-      section headings, action/status tokens) — English.**
+    Inherited from the loading directive (already in context): AX_OPERATOR_LANGUAGE, AX_STATELESS_FLOW
 
-      **Operator-facing artifact text and operator-facing messages — Russian.** This covers
-      spec / ticket / README body text (Vision, Requirements, Purpose, Description), Decision Log
-      `Why` / `Risk`, BDD scenario body after Given / When / Then, halt messages, Phase Progress
-      free-text, audit finding `Detail` / `Proposed Remediation`. Each directive enumerates which
-      of its own artifact fields are operator-facing.
-
-      **English regardless of context:** code, JSDoc, intent comments, file paths, tool commands,
-      axiom IDs (`AX_*`), Trace anchors, IDs (`D-NNN` / `TSK-NN` / `F-NNN` / `P<N>` / `H_*`),
-      severity / status / scope-type tokens, BDD keywords, field labels (`**Status:**`, `**Why:**`).
-
-      **Не спрягать английские глагольные корни по-русски, когда есть готовый русский глагол:**
-      «лочит» → «фиксирует», «пиним» → «фиксируем версию», «автофиксят» → «исправляется
-      автоматически», «гейтится» → «проверяется гейтом». Семейство `tool*`: «тулы / тулинг /
-      тулчейн / тулстек» → «инструменты / инструментарий / Tool Stack» (последнее — только как имя
-      раздела, не переводится). «Usage Example» — тоже имя раздела, не переводится (как Tool Stack).
-
-      **Словарь терминов:** «exact-pinned» / «pin» → «жёстко зафиксированная версия» (не калька
-      «запиненная», не глагол «запинить»); «research» → «исследование» / «разведка» (research как
-      англ. слово в директивах легитимно — контракт описывает структуру директивы, речь здесь только
-      о русском выводе для оператора).
-
-      **Терминологическая дисциплина.** Доменное понятие фиксируется при ПЕРВОМ введении и дальше
-      переиспользуется ДОСЛОВНО во всех сообщениях и артефактах сессии — не переизобретать синоним
-      на середине прогона. Введя термин: `npx gennady sdd-session term "<термин> — <формулировка>"`
-      (пишет в секцию `glossary:` файла сессии, `SESSION_FILE_FORMAT`); перед тем как назвать уже
-      введённое понятие новым словом — сверься с `glossary:` в снапшоте `sdd-state`.
-
-      **Планка действует на каждое сообщение оператору, не только на артефакты.** Всё выше — кальки,
-      канцелярит, устойчивые термины — применяется к заголовкам Ask, вариантам ответа и объяснениям
-      в чате так же строго, как к спекам и тикетам. Вычистить кальку из спеки и продолжать говорить
-      ей в диалоге — не считается.
+    <Axiom id="AX_SPEC_DIMENSIONS">
+      Spec quality dimensions:
+      1. Boundary — explicit scope / out-of-scope statements.
+      2. Purpose — who uses this, for what. Use cases.
+      3. Entities — all named, public surfaces defined, relationships clear.
+      4. Contracts — Ports/Adapters/Services: pre/post conditions, invariants.
+      5. Dependencies — external deps named and versioned.
+      6. Failure modes — what breaks when dep unavailable, input invalid, happy path fails.
+      7. Non-goals — explicit exclusions.
+      8. Consistency — no internal contradictions.
+      9. Testability — claims verifiable, not vague ("should be fast").
+      10. Parsimony — every entity/type/contract traces to a requirement or use-case. Flag: unjustified (no driving requirement), redundant (two entities overlap WITHIN this spec), speculative (surface beyond stated boundary). Prefer reuse/extend over a new entity. Scope is intra-spec only — you cannot see the project, so never claim "X already exists elsewhere" (that is the orchestrator's check).
     </Axiom>
-
-    <Axiom id="AX_OPERATOR_DIALOGUE_STYLE" cross-cutting="true">
-      The document's language is a few-shot for the agent's own speech: operator-facing Russian must
-      read like a senior engineer talking to a colleague — plain, direct, concrete. Sounding smart or
-      sharp is the failure mode, not the goal. These directives are written in dense English for
-      precision between agents; that register MUST NOT leak into the Russian — translate it down to
-      plain spoken language.
-
-      Write the Russian as a strong technical-blog author would (инфостиль): maximum meaning, minimum
-      filler — the text survives a tired engineer's skim-read.
-
-      Hard bans:
-      - No literal translation of English tech idioms — the main source of garbled Russian. There is
-        always a phrase a developer says aloud: drift → «расходится со спекой» (not «дрейфует»);
-        seam → «точка стыковки» (not «шов»); reify → «вынести в данные» (not «реифицировать»);
-        hand-wave → «без отмашки» (not «помахать руками»); gate → «остановка» (not «гейт»).
-      - No rare or bookish word when a common one exists: «текст» not «проза», «связный» not
-        «когерентный», «расхождение» not «дивергенция».
-      - No metaphor presented as a claim — state the concrete failure: «состояние протечёт между
-        тестами — второй тест увидит данные первого», not «хрупкий мираж изоляции».
-      - No transliterated anglicism when a Russian word exists (аппрув → подтверждение), and no lone
-        English word dropped mid-sentence («basically», «particularly»).
-      - No ornamental adjectives, no aphorisms.
-      - Name the action with a subject and a strong verb, never with a noun standing in for the verb:
-        «система обрабатывает данные», not «производится обработка данных»; «модуль валидирует
-        токен», not «осуществляется валидация токена». Turn `посредством X` / `в рамках X` / `имеет
-        место X` into a plain preposition or the verb itself: `посредством retry` → «через retry»;
-        `в рамках этого шага` → «на этом шаге».
-
-      Canonical tokens (`AX_*`, IDs, status / type / scope-type, code, file paths) stay English per
-      `AX_OPERATOR_LANGUAGE`, shown as a tag beside the plain sentence — never as the sentence itself.
-
-      Test before sending: read it as a busy mid-level developer. Stumbled on a word, or it sounds
-      like a blog showing off? Rewrite plainer. Would you say it aloud to a colleague at the next desk?
-
-      - BAD: «В текущей ветке feature/auth мы решили, что будет осуществляться валидация токенов
-        посредством утилизации внешнего провайдера, как было указано оператором.»
-      - GOOD: «Модуль валидирует токены через внешнего провайдера.»
-      - Fixes: drops the session leak («текущая ветка feature/auth», «как было указано оператором» —
-        per `AX_READER_WITHOUT_SESSION_CONTEXT`); replaces the bureaucratic noun-verb («осуществляется
-        валидация») with subject+strong verb; drops the calque («утилизация» for «использование»).
+    <Axiom id="AX_TASK_DIMENSIONS">
+      Task quality dimensions:
+      1. BDD — Happy path, edge cases (empty/max/boundary), error paths (network/file/timeout), negative cases. Concrete GIVEN/WHEN/THEN required.
+      2. Spec alignment — entity names match spec. Contracts covered by phases. Verification refs correct.
+      3. Phases — ordered correctly, deps explicit, no gaps (impl without test), Target Files non-overlapping.
+      4. Clarity — fresh agent can build from this alone. Inputs/outputs specified.
+      5. Completeness — all sections filled, no <TBD> or <YYYY-MM-DD>.
+      6. Parsimony — task introduces NO entity/type/method absent from the parent spec inventory. New surface declared in a task without spec backing = finding. Spec entities are reused, not re-declared. Cross-project reuse is the orchestrator's check, not yours.
     </Axiom>
-
-    <Axiom id="AX_PREFLIGHT_BLAST_RADIUS_SCOPED">
-      The `FLOW_VERSION=v1` / `READINESS=not-ready` preflight gate protects scope-spanning work — a full
-      migration or readiness setup dwarfs a narrow request. Size the gate to the task's own blast radius
-      before firing it: when the requested change stays inside the entry point's own scope (a spec
-      paragraph, a single ticket) and never touches the legacy v1 `tasks/` layout or a missing gate script, record the
-      state in one line and proceed straight to the entry point's own work — offer migration / readiness
-      setup to the operator as a separate next step, not inside this run. A change whose blast radius does
-      reach the legacy v1 `tasks/` layout, task-ID rewriting, or a missing gate script fires the gate as before, ahead of
-      the entry point's own work.
-    </Axiom>
-
-    <Axiom id="AX_OWNER">Orchestrator owns artifact, applies edits. Critic is sensor — reports only, never edits.</Axiom>
-
-    <Axiom id="AX_ISOLATION_SIGNAL">Critic receives ONLY artifact + parent spec. Confusion = underspecification. Fix the artifact.</Axiom>
-
-    <Axiom id="AX_CRITIC_MODEL_TIER">
-      The dispatched critic runs on a model no stronger than the artifact's author — default the
-      worker tier (Sonnet-class), never a step up "to be thorough". The consumers of a spec are workers
-      on cheap models; a spec that only a stronger model can parse is not fit for execution
-      (`AX_READER_WITHOUT_SESSION_CONTEXT` carried from narrative text into tooling). The `understanding` and
-      `implementation-autonomy` lenses ARE the weak model's strength — it surfaces exactly what a
-      worker would trip on. Semantic depth beyond that is not the critic's job; it stays with external
-      review.
-    </Axiom>
-
-    <Axiom id="AX_REUSE_FIRST">Orchestrator holds full project context — the ONLY actor able to detect duplication against existing code/specs (the isolated critic cannot). For every entity/type/method/contract the artifact introduces, reconcile before accepting it: REUSE existing (adapt artifact to it) > EXTEND existing > JUSTIFY new (record one-line rationale in artifact: why existing surface is insufficient) > ESCALATE to operator. Unjustified new surface is a finding to resolve, not to wave through. Bias toward consolidation — do not let the system grow a duplicate entity each round.</Axiom>
-
-    <Axiom id="AX_PARALLEL_MECHANISM_REQUIRES_JUSTIFICATION">
-      Introducing a parallel mechanism where an existing one from a neighbour spec could be extended is a
-      decision at GOAL level, never a silent author call. "Вводим новое" is a valid answer ONLY when it
-      names the specific neighbour invariant / requirement ID the existing mechanism cannot satisfy, and
-      records the choice as its own Decision Log entry (`DECISION_LOG_ENTRY_FORMAT`) citing that ID. No
-      cited ID, no entry → the mechanism stays unjustified: route it back to the operator as an open
-      question, not a decision already made on their behalf. This governs the AUTHOR's system-fit check
-      (`STEP_*_SYSTEM_FIT` in `scope` / `module` / `interface` / `infra`); `AX_REUSE_FIRST` runs the same
-      bias against duplication from the CRITIC's reactive vantage, after the artifact already exists — the
-      two apply one belief at two different points in the lifecycle, not two competing rules.
-    </Axiom>
-
-    <Axiom id="AX_DECISION_LOG_REQUIRED">
-      Every non-obvious decision → a Decision Log entry in `DECISION_LOG_ENTRY_FORMAT` — one line,
-      the expanded part in parentheses: `D-NNN <date> — <decision> (почему: …; отвергнуто: …;
-      риск: …)`; IDs are stable. Non-obvious only (`AX_DECISION_LOG_NON_OBVIOUS`): a pick already
-      recorded in the spec's own tables is never duplicated as a DL row. Which decisions qualify
-      and which Decision Log receives the entry are specified per directive.
-    </Axiom>
-
-    <Axiom id="AX_SURGICAL">Close the gap only. No restructure, rewrite, restyle. Structural overhaul → suggest re-scaffold, stop.</Axiom>
-
-    <Axiom id="AX_DEFAULT_ACCEPT">Uncertain → ACCEPT. Cost of rejecting real finding > cost of accepting marginal one.</Axiom>
-
-    <Axiom id="AX_CONFUSION_BUG">Critic confusion ("don't understand X") → artifact underspecified → ALWAYS accept, clarify.</Axiom>
-
-    <Axiom id="AX_FINDING_ADDRESSEE">
-      Every finding carries an addressee — who owns its resolution:
-      - `MECHANICAL` — style, structure, consistency, a detail the spec already implies. Resolved by an artifact edit.
-      - `GOAL` — goal / scope shift ("goal drawn too narrow"), misunderstood intent, a missing requirement, an unanswered uncomfortable question. Resolved ONLY by the goal owner — the operator.
-
-      A finding that removes or weakens an existing quality gate — typecheck, lint, format, or tests run
-      from a hook, script, or CI — or steps back from an infra axiom's stated default, is `GOAL` by
-      definition, never `MECHANICAL`, no matter how small the edit looks. The operator owns the tradeoff
-      between gate strength and friction; the answer is recorded as its own Decision Log entry
-      (`AX_GOAL_OWNER_GATE`).
-    </Axiom>
-
-    <Axiom id="AX_GOAL_OWNER_GATE">
-      The operator owns the goal. A `GOAL` finding is resolved by an operator answer, and the edit follows
-      the answer — `AX_DEFAULT_ACCEPT` covers `MECHANICAL` findings only. The sensor's `GOAL` tag stands
-      until an operator answer says otherwise — downgrading it to `MECHANICAL` is the operator's call
-      alone; an orchestrator that reads a `GOAL`-tagged finding as mechanical carries that disagreement
-      into the SAME question block as one more question, never a private reclassification. Batch the
-      round's `GOAL` findings into ONE question block (`QUESTION_FORMAT`) BEFORE editing the sections they
-      touch. Goal / scope wording stays intact until an operator answer sanctions the change.
-
-      When the resolved `GOAL` finding weakened or removed a quality gate (`AX_FINDING_ADDRESSEE`), the
-      operator's answer is written as its own Decision Log entry, not folded into the round's edit
-      summary — a gate change is a standing decision that future rounds, and future sessions, must be able
-      to see without replaying this round's dialogue.
-    </Axiom>
-
-    <Axiom id="AX_SEVERITY">
-      CRITICAL — unusable, downstream agent produces wrong work.
-      MAJOR — gap requiring rework.
-      MINOR — improvement, vague wording.
-      INFO — observation.
-    </Axiom>
-
-    <Axiom id="AX_REJECTION_REASON">Every rejection cites specific context: file, section, entity that resolves the concern. No vague "more context."</Axiom>
-
-    <Axiom id="AX_RE_DISPATCH">Any edit → re-dispatch mandatory, no exception of the agent's own making — "the fix is trivial" does
-      not waive it; edits may create contradictions detectable only by a fresh isolated agent. The verdict
-      handed to the operator MUST be the literal verdict text of the LAST dispatch actually run, shown as a
-    direct quote — never a paraphrase, and never the verdict of a dispatch that was skipped.</Axiom>
-
-    <Axiom id="AX_STOP_NO_EDITS">Zero edits → stop. Unchanged input → unchanged verdict → infinite loop.</Axiom>
-
-    <Axiom id="AX_CAP_5">Max 5 rounds. Round 5 + edits + not CLEAN → stop, flag MAX_ROUNDS.</Axiom>
-
-    <Axiom id="AX_SCRATCH_LOG">
-      `## Critic Rounds` is memory that lives IN the artifact, not in the orchestrator's own context — it
-      survives a context reset, a crashed session, a fresh sensor dispatch that never saw a prior round.
-      Append-only: each round adds one dated entry (verdict, accepted, rejected-with-reason, reconcile
-      decisions, changes, out-of-cycle deferrals); a prior entry is never rewritten. This is what makes the
-      critique loop converge across rounds AND across sessions — the sensor reads the artifact end-to-end
-      (`AX_ISOLATION`), so it reads its own history for free: a rejected finding stays rejected absent new
-      grounds, an already-applied fix does not get re-proposed, no round re-litigates settled ground.
-      Deleted on final CLEAN — the artifact no longer owes anyone a memory of the path that cleaned it; kept
-      intact on any other verdict, where it is itself documentation of what the artifact still owes.
-    </Axiom>
-
-    <Axiom id="AX_TASK_PARALLEL">Tasks critiqued in DAG layers. Same layer (no inter-dependencies) → parallel dispatch. Different layers → sequential.</Axiom>
   </BeliefState>
-
   <HaltConditions>
-    | 🛑 ID | Trigger |
+    | ID | Trigger |
     |---|---|
-    | `H_NO_ARTIFACT` | The target spec / task does not exist |
-    | `H_PARENT_SPEC_MISSING` | A task's parent spec is missing — cannot critique a task without its spec |
-    | `H_DISPATCH_FAILED` | The sensor subagent failed to dispatch twice — surface to the operator, do not loop silently |
-    | `H_MAX_ROUNDS` | Cap of 5 rounds hit and still not CLEAN — escalate to the operator (`AX_CAP_5`) |
-    | `H_GOAL_BLOCKED` | `GOAL` findings block the round and the operator is unavailable to answer — stop, report the pending question block |
+    | `H_TARGET_AMBIGUOUS` | Exact target paths cannot be resolved from operator payload |
+    | `H_TARGET_TOO_BROAD` | Requested set cannot be reviewed with complete relevant context |
   </HaltConditions>
-
   <ExecutionPlan>
-    <Step id="STEP_0_RESOLVE">
-      <Goal>Resolve the target.</Goal>
-      <Action>Spec / task / batch (spec + its tasks — critiqued in DAG layers, parallel within a layer, per `AX_TASK_PARALLEL`). Missing → `H_NO_ARTIFACT`.</Action>
-    </Step>
-    <Step id="STEP_0B_PREFLIGHT">
-      <Goal>Clear the FLOW_VERSION/READINESS preflight gate before dispatching the sensor.</Goal>
+    <Step id="STEP_1_TARGET">
       <Action>
-        Use `FLOW_VERSION`, `READINESS`, and `GATE_QUEUE` from the already-gathered `sdd-state`
-        snapshot; do not enter task lifecycle merely to clear this gate. Size the gate to this request's own blast radius
-        (`AX_PREFLIGHT_BLAST_RADIUS_SCOPED`).
-
-        <LogicSwitch on="FLOW_VERSION · READINESS · GATE_QUEUE · blast radius">
-          - WHEN `FLOW_VERSION=v1` AND the request's blast radius reaches the legacy v1 `tasks/` layout or task-ID rewriting                                          -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/migration-v1-v2.directive.xml")   (live v1→v2 migration; returns when the repo is v2)
-          - WHEN `READINESS=not-ready` AND the already-fetched preflight input reports `GATE_QUEUE=<Task-ID,...>`                                    -> normal pre-execution state, continue your own flow; the readiness bootstrap does NOT load
-          - WHEN `READINESS=not-ready` AND the request needs a missing gate script                                                                       -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/readiness.directive.xml")        (live setup: forces missing scripts, hands proxy-blocked installs to the operator; returns once ready)
-          - WHEN (`FLOW_VERSION=v1` OR `READINESS=not-ready`) AND the request's blast radius stays inside its own scope (`AX_PREFLIGHT_BLAST_RADIUS_SCOPED`) -> record state in one line, continue your own flow; propose migration / readiness setup to the operator as a separate next step
-          - DEFAULT                                                                                                                                       -> repo is `v2` + ready — continue your own flow
-        </LogicSwitch>
+        Resolve exact artifact paths and owning references. Freeze this target for the call. Do not
+        add repository-wide guesses and do not create a write set. Per `AX_STATELESS_FLOW`, derive
+        the review context from these durable artifacts rather than prior reviewer state. If exact
+        paths cannot be resolved, stop with `H_TARGET_AMBIGUOUS`; if the requested set cannot be
+        bounded without losing required context, stop with `H_TARGET_TOO_BROAD`.
       </Action>
     </Step>
-    <Step id="STEP_1_DISPATCH">
-      <Goal>Dispatch the isolated sensor.</Goal>
-      <Action>One fresh subagent, on a worker-tier model — never stronger than the author's model (`AX_CRITIC_MODEL_TIER`): read `ai/directives/sdd-v2/critic-protocol.directive.xml` + the artifact + parent spec only (`AX_ISOLATION_SIGNAL`). Tell the sensor which round this is — `Round: <N>` in the dispatch — so it reads the artifact's `## Critic Rounds` history with the right expectation (`AX_SCRATCH_LOG`). Emit a round progress line (`ORCHESTRATOR_PROGRESS_FORMAT`).</Action>
-    </Step>
-    <Step id="STEP_2_EVALUATE">
-      <Goal>Weigh findings against full project context.</Goal>
-      <Action>Split by addressee (`AX_FINDING_ADDRESSEE`): `MECHANICAL` — accept by default (`AX_DEFAULT_ACCEPT`); `GOAL` — queue for STEP_3B, keep the touched sections intact (`AX_GOAL_OWNER_GATE`). The sensor's `GOAL` tag is a floor, not a ceiling: downgrading it to `MECHANICAL` is the operator's call alone (`AX_GOAL_OWNER_GATE`) — an orchestrator read that leans mechanical carries into STEP_3B as one more question, never a private reclassification. A rejection cites a specific file / section that resolves the concern (`AX_REJECTION_REASON`). Sensor confusion the full context resolves = an artifact bug — clarify by edit (`AX_CONFUSION_BUG`); confusion the project cannot answer = `GOAL`. Also carry each finding's severity (`AX_SEVERITY`) forward — STEP_3B gates on it. A finding that removes or weakens a quality gate is `GOAL` by definition, never a private `MECHANICAL` call (`AX_FINDING_ADDRESSEE`) — e.g. a sensor surfacing that pre-commit's staged-file `tsc` run cannot also be whole-project: which way to resolve that contradiction is the operator's call, not the orchestrator's, and the answer becomes its own Decision Log entry (`AX_GOAL_OWNER_GATE`).
-
-      Convergence brake from round 3 on: a NEW finding (not already carried in a prior `## Critic Rounds` entry) advances to STEP_3 / STEP_3B only if `CRITICAL`, or a regression — a defect a prior round's own edit introduced. A new `MINOR` / `MAJOR` finding that is neither stays out of this cycle's edit set — record it in this round's entry under `Out of cycle:` and carry it into the STEP_5 report as its own list, never silently dropped (AUTHORING.md §9 — a stop needs a named outlet, not a bare refusal).</Action>
-    </Step>
-    <Step id="STEP_2B_RECONCILE">
-      <Goal>Walk the graph from the artifact to the portal; reconcile every entity the WHOLE artifact introduces, not only this round's findings. (mechanical → tool)</Goal>
-      <Action>Run `npx gennady sdd-orient <artifact-path>` ONCE against the critiqued artifact itself — one hop from the artifact to its portal, its declared-dependency neighbours, and its consumers; this is the ORCHESTRATOR's own step, on full project context, not a widening of the sensor's bounded read (`AX_ISOLATION_SIGNAL` still governs STEP_1_DISPATCH — the sensor stays isolated). The sweep is proactive over EVERY entity/contract/mechanism the artifact introduces, never narrowed to only the entities this round's findings happen to name — a duplicate the sensor never flagged is still a duplicate. For each: reuse > extend > justify > escalate (`AX_REUSE_FIRST`); "justify" requires the specific neighbour invariant/requirement ID the existing mechanism could not satisfy, recorded as its own Decision Log entry (`AX_PARALLEL_MECHANISM_REQUIRES_JUSTIFICATION`, `AX_DECISION_LOG_REQUIRED`). Two outcomes route to `GOAL`, never a silent `MECHANICAL` fix: (1) the artifact duplicates a mechanism the `sdd-orient` extract already names on a neighbour, (2) the artifact's introduced entity conflicts with a neighbour requirement the extract surfaces. Do not let the critique invent a duplicate of an existing entity.</Action>
-    </Step>
-    <Step id="STEP_3_EDIT">
-      <Goal>Apply the round's `MECHANICAL` edits.</Goal>
-      <Action>Edit only what a finding requires (`AX_SURGICAL`); I apply the edits — the sensor never does (`AX_OWNER`). Apply every `MECHANICAL` finding directly, regardless of severity (`AX_DEFAULT_ACCEPT`) — a `CRITICAL` / `MAJOR` mechanical finding gets fixed now, confirmed with the operator next at STEP_3B, not gated before the fix. Leave `GOAL`-tagged sections untouched — their edit waits for the operator's answer at STEP_3B. The round's edits are recorded once, together, at STEP_3C — not here.</Action>
-    </Step>
-    <Step id="STEP_3B_ROUND_CHECKPOINT">
-      <Goal>One batch Ask per round for every operator-owned item (`AX_GOAL_OWNER_GATE`).</Goal>
+    <Step id="STEP_2_REVIEW">
       <Action>
-        Build ONE `AskUserQuestion` batch (`QUESTION_FORMAT` batching rule — independent questions ride
-        together) carrying, when present: (a) every `GOAL` finding from STEP_2 or STEP_2B as its own question,
-        including any orchestrator disagreement with a sensor's `GOAL` tag («critic tagged GOAL, I read
-        this as mechanical because …») — the tag stands until this answer says otherwise; (b) IF this
-        round carried any `CRITICAL` / `MAJOR` finding (mechanical or goal), one confirm block: «critic
-        found N problems this round, fixed as follows: <one line per fix> — confirm, or correct?».
-        Neither (a) nor (b) applies (the round was `MINOR` / `INFO` only, or carried zero findings) →
-        skip the Ask, go straight to STEP_3C (`AX_DEFAULT_ACCEPT`). WAIT for the answer
-        before touching any `GOAL`-tagged section. Apply `GOAL` edits exactly as answered, and any
-        correction the operator makes to a confirmed fix — recorded together at STEP_3C, not here.
-        When the answered `GOAL` finding weakened or removed a quality gate, additionally write the
-        operator's decision as its own Decision Log entry (`AX_GOAL_OWNER_GATE`). Operator unreachable
-        while `GOAL` findings block → `H_GOAL_BLOCKED`.
+        Read the full bounded target and only the references required to judge it. Check internal and
+        cross-artifact consistency, omitted requirements, negative/failure paths, untestable claims,
+        ownership/dependency conflicts, and whether verification could demonstrate the contract.
+        Apply `AX_SPEC_DIMENSIONS` to specifications and `AX_TASK_DIMENSIONS` to tickets. Structural
+        tool findings may be cited but never replaced by model speculation.
       </Action>
     </Step>
-    <Step id="STEP_3C_RECORD_ROUND">
-      <Goal>Append this round's memory to the artifact (`AX_SCRATCH_LOG`).</Goal>
+    <Step id="STEP_3_REPORT">
       <Action>
-        Append ONE entry to `## Critic Rounds` in the artifact — create the section (at the end of the
-        artifact) the first round that needs it; never rewrite a prior entry, this block is append-only:
-
-        ```
-        ### Round <N> — <YYYY-MM-DD>
-        - Verdict: <CLEAN|NEEDS_WORK|CRITICAL>
-        - Accepted: <count> — <list>
-        - Rejected: <count> — "<finding>" → <reason>
-        - Reconcile: <entity → REUSE <target> | EXTEND <target> | JUSTIFY <rationale> | ESCALATE>
-        - Changes: <list>
-        - Out of cycle: <new MINOR/MAJOR findings the round-3+ brake deferred, or "none">
-        ```
-
-        `Accepted` covers both the `MECHANICAL` edits applied at STEP_3 and the `GOAL` edits applied at
-        STEP_3B after the operator's answer. `Rejected` carries the exact reason per `AX_REJECTION_REASON`
-        — a later round, or a later session picking this up fresh, reads this entry before re-raising the
-        same ground. Even on a `CLEAN` round this entry is appended before STEP_5 deletes the whole block
-        — the verdict line is what STEP_5 quotes.
+        Return literal `CLEAN` or findings ordered by severity. Each finding names artifact, anchor,
+        violated requirement/invariant, concrete contradiction or omission, and a bounded remediation.
+        Separate unknown external facts from defects. Never edit, never persist a round journal, never
+        ask to continue the same reviewer, and never declare operator approval.
       </Action>
-    </Step>
-    <Step id="STEP_4_DECIDE">
-      <Goal>Loop or stop.</Goal>
-      <Action>Edits applied this round (STEP_3 or STEP_3B) → re-dispatch (`AX_RE_DISPATCH` — mandatory, no self-made exception for a fix judged trivial). Zero edits → stop (`AX_STOP_NO_EDITS`). Cap 5 (`AX_CAP_5`) → `H_MAX_ROUNDS`.</Action>
-    </Step>
-    <Step id="STEP_5_FINALIZE">
-      <Goal>Finalize.</Goal>
-      <Action>On CLEAN: delete the `## Critic Rounds` scratch; the artifact is clean with improvements integrated. Report the final verdict (CLEAN | NEEDS_WORK | CRITICAL) with a one-line-per-round summary of what changed, plus — when any round recorded an `Out of cycle` list — a merged `Out of cycle` section collecting every deferred finding across rounds, so nothing the brake held back is silently lost. The reported verdict MUST be the literal verdict text of the LAST sensor dispatch actually run (`AX_RE_DISPATCH`), shown as a direct quote, never a paraphrase and never an earlier round's verdict presented as current. A structural problem the critique cannot resolve by a surgical edit → escalate to the operator, do not loop.</Action>
     </Step>
   </ExecutionPlan>
-
-  <ChatOutput>
-    <Contract id="QUESTION_FORMAT">
-      Explain, then ask through the tool — a question never fires as bare free-form text. A
-      `### 💡 <О чём решаем>` section header names the decision in plain words, without numbering and
-      without semantic question IDs; under it, ordinary language explains the question BEFORE any tool
-      call fires — the context, the real options, and a recommendation gated by
-      `AX_DIVERGE_BEFORE_RECOMMEND` (low-stakes: a direct pick is fine; high-stakes / architecture: do
-      not pre-anchor one option — lay out the strongest candidates, a tail one included, or pair the
-      recommendation with its strongest rival and the reason it might win instead). Only once the
-      explanation stands does `AskUserQuestion` fire; its option list mirrors the printed order, short
-      labels only — the argument itself lives in the message, never moved into the tool call.
-
-      Batching rule: one `AskUserQuestion` call may carry several questions ONLY when they are mutually
-      independent — answering one does not change the meaning or the options of another (several facets
-      of one single complex decision qualify as one batched call). Dependent questions, and any interview
-      sequence, go one call at a time: compose the next question only after the previous answer is in.
-
-      Channel: use `AskUserQuestion` whenever the tool is available. When it is not, fall back to plain
-      text carrying the same shape — the explanation, then an explicit list of named options the operator
-      can answer by name; skipping the explanation and firing a bare list of options is itself the
-      violation this contract forbids (`H_UNFORMATTED_ASK`).
-
-      Low-stakes — a recommendation is allowed, but only as the result of `AX_DIVERGE_BEFORE_RECOMMEND`
-      (not the first typical answer):
-
-      Пример — иллюстрация формата, не задание:
-
-      ### 💡 Куда положить ресёрч-документ
-      Документ можно держать рядом со спекой — виден в контексте скоупа, проще найти, пока читаешь
-      её — или в общем каталоге ресёрчей, если он пригодится за пределами одного скоупа; для разового
-      ресёрча под конкретную спеку разница небольшая.
-      ✅ **Рядом со спекой** `[specs/<scope>/research/]` — виден в контексте скоупа, не потеряется.
-      Иначе:
-      - **Общий каталог** `[docs/research/]` — _за: виден без привязки к одному скоупу · против:
-        сложнее понять, к какой спеке относится_
-
-      (AskUserQuestion: «Рядом со спекой (рекомендую)» · «Общий каталог»)
-
-      High-stakes / architecture — do NOT pre-anchor one pick. List the strongest candidates (include a
-      non-obvious / tail one) with «за / против» and let the operator choose; or give a recommendation
-      only alongside its strongest alternative and the reason it might win:
-
-      Пример — иллюстрация формата, не задание:
-
-      ### 💡 Граница нового скоупа
-      Функциональность можно оформить отдельным скоупом или модулем внутри существующего — от этого
-      зависит, где заводить спеку и как считать её границы; пре-анкоринг здесь дороже, чем в
-      низкоставочном случае.
-      - **Отдельный скоуп** `[new-scope]` — _за: чистая граница, не тащит чужие инварианты · против:
-        больше координации между скоупами_
-      - **Модуль внутри существующего скоупа** `[module-in-scope]` — _за: меньше накладных расходов,
-        общий контекст уже есть · против: граница скоупа расползается со временем_
-      - **Отложить решение до следующей итерации** `[defer]` — нетипичный вариант, но снимает риск
-        закрепить границу раньше, чем видно реальное использование
-
-      (AskUserQuestion: «Отдельный скоуп» · «Модуль внутри существующего» · «Отложить (нетипичный)»)
-
-      A plain binary question needs no list — recommendation + inline alternative, still explained
-      before the call:
-
-      Пример — иллюстрация формата, не задание:
-
-      ### 💡 Нужен ли отдельный interface-скоуп
-      Все текущие потребители — web; про API и будущих клиентов явно не говорили.
-      ✅ **Пока не выделять** — можно добавить позже без миграции. _или сразу выделить, если API уже в
-      планах?_
-
-      (AskUserQuestion: «Пока не выделять (рекомендую)» · «Выделить сразу»)
-
-      A counter-question in reply to a gate is a side-dive, not a rejection: (a) answer the counter-question
-      in full, on its own merits, before returning to the gate; (b) bring the gate back exactly once,
-      marked as a repeat pass, enriched with whatever the counter-question surfaced — «повторяю вопрос»
-      plus a fact or option the side-dive added (e.g. operator asked "как ты делаешь ресёрч?" → the repeat
-      pass adds an option «сначала ресёрч, потом решаем»); a verbatim repeat of the first gate carries no
-      delta and is itself the violation. (c) if the operator answers the repeat pass with another
-      counter-question instead of a pick, do not fire a third pass — stop and ask directly what is blocking
-      the decision.
-    </Contract>
-
-    <Contract id="HALT_FORMAT">
-      A halt is a plain sentence first (what happened + what to do), with the token as a trailing tag:
-
-      🛑 <что случилось по-человечески> — <что сделать оператору>   `[H_*]`
-    </Contract>
-
-    <Contract id="ORCHESTRATOR_PROGRESS_FORMAT">
-      Subagents are black boxes; emit one progress line per state transition so the operator sees the run.
-
-      `[<bar>] <pct>% | <Task-ID> | <stage>`
-
-      Stages: `⏳ resolving + planning` · `🔧 phase <P<N>> (<kind>, <model>) executing` · `✅ phase <P<N>> done → next` · `✅ all phases done → 🔍 audit` · `✅ audit PASS`.
-      Retry path: `❌ audit FAIL → 🔄 re-run <phases> as fix` · `✅ re-run done → 🔍 audit R2`.
-      Pause path (NOT a failure — awaiting the operator): `✋ PAUSED — <unresolved blocker | phase BLOCKED>`; the operator marks resolution in the Execution Log, then re-runs.
-    </Contract>
-  </ChatOutput>
 </SddCritic>

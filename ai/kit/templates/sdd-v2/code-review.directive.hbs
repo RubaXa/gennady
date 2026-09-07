@@ -42,7 +42,6 @@
 
     {{> "axiom/audit/ax-no-auto-fix"}}
 
-    {{> "axiom/audit/ax-ephemeral-output"}}
   </BeliefState>
 
   <HaltConditions>
@@ -55,11 +54,13 @@
     <Step id="STEP_1_READ_DIFF">
       <Goal>See exactly what changed, across the whole group.</Goal>
       <Action>
-        Resolve `ReviewContext` FIRST: per-group → `npx gennady sdd-task --group-scope <id>`
-        (`AX_GIT_DIFF_SCAN`); per-task → `npx gennady sdd-task --task-scope <Task-ID>`. Read only the files and
+        Resolve `ReviewContext` FIRST: per-group → reviewContext ToolCall below
+        (`AX_GIT_DIFF_SCAN`); per-task → reviewContext ToolCall below. Read only the files and
         contract anchors this result returns (per
         `AX_READ_PER_MANIFEST` — the bounded artifacts list, not the whole repo; `AX_AUDIT_READS_CODE`).
         Empty scope → `H_NOTHING_TO_REVIEW`.
+        <ToolCall owner="review-worker" result="reviewContext">npx gennady sdd-task --group-scope <id></ToolCall> Inputs <id>: <id>=audit-group id supplied by execute dispatch. Use reviewContext.
+        <ToolCall owner="review-worker" result="reviewContext">npx gennady sdd-task --task-scope <Task-ID></ToolCall> Inputs <Task-ID>: <Task-ID>=single task id supplied by per-task dispatch. Use reviewContext.
       </Action>
     </Step>
     <Step id="STEP_2_HUNT">
@@ -76,11 +77,12 @@
     <Step id="STEP_3_ROUTE">
       <Goal>Route findings; return a verdict. (no edits)</Goal>
       <Action>
-        Emit each as a neutral proposal (`AX_FINDINGS_AS_PROPOSALS`, `AX_NEUTRAL_FINDINGS`, `FINDING_FORMAT`)
-        routed to a phase-fix — a phase may belong to ANY ticket in the group, name its owning ticket; leave
-        every fix to the phase-fix (`AX_NO_AUTO_FIX`). Present the ephemeral summary
-        (`AX_EPHEMERAL_OUTPUT`). Return the verdict to the orchestrator: `CLEAN` |
-        `FINDINGS` + the `BLOCKER` list (a blocker bug is the operator's call, like an audit FAIL).
+        Emit the one read-only `CODE_REVIEW_OUTPUT_FORMAT` block: neutral proposals only
+        (`AX_FINDINGS_AS_PROPOSALS`, `AX_NEUTRAL_FINDINGS`), as ephemeral chat output. A finding routes to `code-fix` and
+        names its owning ticket + phase — either may belong to ANY ticket in the group. Leave every
+        edit to that phase (`AX_NO_AUTO_FIX`). Return literal `verdict=CLEAN` when no finding exists;
+        otherwise `verdict=FINDINGS`. The orchestrator reads the same block: any `sev=B` pauses for
+        the operator; non-blocking findings ride in STEP_8's proposals.
       </Action>
     </Step>
   </ExecutionPlan>
@@ -92,8 +94,20 @@
   </HardForbidden>
 
   <OutputContracts>
-    {{> "contract/audit/finding-format"}}
-
-    {{> "contract/audit/audit-session-summary-format"}}
+    <Contract id="CODE_REVIEW_OUTPUT_FORMAT">
+      One EOL-terminated block, no preamble and no edits/applied-lines:
+      ```
+      @code-review task=<Task-ID|spec-path> mode=<per-task|per-group> verdict=<CLEAN|FINDINGS> counts=B<n>·M<n>·m<n>
+      F-<NN> | sev=<B|M|m> | conf=<H|M|L> | loc=<path:line|—> | ticket=<Task-ID|—> | phase=<P<N>|—> | src=<contract-anchor|—> | route=code-fix | act=<one-line action without pipe>
+      @glossary suggestions=[]
+      ```
+      Findings are ordered by severity then id. `CLEAN` requires zero finding lines and zero counts;
+      `FINDINGS` requires at least one. `mode=per-group` uses the owning spec path in `task` and each
+      finding names its ticket + phase; `mode=per-task` uses its Task-ID and may omit the redundant
+      ticket as `—`. `loc` is the repository-relative code location; `src` is the contract tested.
+      The final glossary line is mandatory: `[]` maps to no `GlossarySuggestions`; each
+      semicolon-delimited item maps byte-for-byte to one suggestion. This read-only worker never
+      persists it.
+    </Contract>
   </OutputContracts>
 </SddCodeReview>

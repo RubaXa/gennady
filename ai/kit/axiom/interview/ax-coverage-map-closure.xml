@@ -7,10 +7,10 @@
   owns the instinct; this one binds it to the map). A skip on a high-stakes topic goes through
   `H_HIGH_STAKES_SKIP`.
 
-  `🟡` (partial, `COVERAGE_MAP_FORMAT`) is NEVER read as closed — text the operator already
-  brought (intake, a pasted spec draft, a rich prior message) marks a topic `🟡` at most, never
-  `✅` on the strength of that text alone, no matter how detailed it reads. Only one of two things
-  promotes `🟡` to `✅`: a confirmed answer given IN the dialogue, or an explicit «принято как
-  есть» note the agent records in the spec itself. `STEP_4_CLOSE`-style gates treat `🟡` exactly
-  like `◻️`/`👷` — not closed, sends the flow back to closing rounds.
+  `🟡` (partial, `COVERAGE_MAP_FORMAT`) is NEVER read as closed. Explicit operator input is already
+  an answer: a topic stated completely and without contradiction in the intake or pasted brief may
+  start `✅`; incomplete or ambiguous text starts `🟡`. The agent may not promote its own inference.
+  A partial topic becomes `✅` only through a later operator answer or an explicit «принято как
+  есть» note recorded in the spec. `STEP_4_CLOSE`-style gates treat remaining `🟡` exactly like
+  `◻️`/`👷` — not closed, sends the flow back to closing rounds.
 </Axiom>

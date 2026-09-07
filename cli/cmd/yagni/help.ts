@@ -22,22 +22,36 @@ export function printHelp(): void {
     '  3. < 2 usages → finding, UNLESS its contract carries a Usage Waiver with a reason:'
   );
   console.info('       - **Usage Waiver:** <reason>');
-  console.info('     Cite a D-NNN only when a Decision Log entry backs the reason:');
-  console.info('       - **Usage Waiver:** D-NNN — <reason>');
-  console.info('     A cited D-NNN must have a Decision Log heading somewhere in specs/.');
+  console.info('     Cite an <ACR>-DL-N only when a Decision Log entry backs the reason:');
+  console.info('       - **Usage Waiver:** <ACR>-DL-N — <reason>');
+  console.info('     A cited id must have a Decision Log heading somewhere in specs/.');
   console.info('');
   console.info(
     'Symbol resolution: tree-sitter (exact) for .ts/.tsx — the only installed grammar —'
   );
-  console.info(
-    '  grep (approximate) for every other extension, so non-TS languages (Go, Python, ...)'
-  );
-  console.info('  still get a usage estimate.');
+  console.info('  grep (approximate) for .mts/.cts, JS variants, Python, Go, Ruby, and Java;');
+  console.info('  supported source extensions: ts/tsx/mts/cts/js/jsx/mjs/cjs/py/go/rb/java.');
+  console.info('  Visibility is structural for TypeScript and language-defined for Go (uppercase');
+  console.info('  top-level name = public). Other grep fallbacks report an explicit capability');
+  console.info('  error when one usage makes the public/private threshold ambiguous.');
   console.info('');
-  console.info('Exit code: 0 when clean, 1 when any finding is reported.');
+  console.info('Git scope: HEAD diff + untracked files. In a valid repo without HEAD,');
+  console.info(
+    '  the baseline is the empty tree and every cached/untracked source file is analyzed.'
+  );
+  console.info('  A non-git/corrupt root fails closed; it is never reported clean.');
+  console.info(
+    '  An unreadable production/spec corpus path also fails closed with its path/reason;'
+  );
+  console.info('  partial counts or waiver evidence are never evaluated.');
+  console.info('');
+  console.info(
+    'Exit code: 0 clean, 1 findings, 2 invalid/unavailable root or Git scope, 4 bad argv.'
+  );
   console.info('');
   console.info('Options:');
   console.info('  --help, -h            Show this help');
+  console.info('  Invalid/unknown arguments print canonical usage.');
   console.info('');
   console.info('Examples:');
   console.info('  npx gennady yagni');

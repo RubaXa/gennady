@@ -4,7 +4,7 @@
 
       | Listed item | Check | Severity if stale |
       |---|---|---|
-      | Module spec requiring `refine-module` | most recent Decision Log entry references the pivot D-NNN | `MAJOR` |
+      | Module spec requiring `refine-module` | most recent Decision Log entry references the pivot `<ACR>-DL-N` (or immutable legacy id) | `MAJOR` |
       | Task requiring reopen | Reopens counter incremented since pivot date | `MAJOR` |
       | Rule to revisit | rule file mtime > pivot date | `MINOR` |
 

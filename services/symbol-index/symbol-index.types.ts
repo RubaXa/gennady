@@ -2,6 +2,9 @@
 // @consumers: TsSymbolIndexAdapter, GrepSymbolIndexAdapter, selectSymbolIndex, gennady yagni (composition root)
 // @tasks: N/A
 
+/** @purpose Language-defined surface visibility attached by the adapter that understands it. */
+export type SymbolVisibility = 'public' | 'private' | 'unknown';
+
 /** @purpose One declared symbol found in a file — export, internal top-level declaration, or class/interface member. */
 export type DeclaredSymbol = {
   /** @purpose Symbol name as declared in source. */
@@ -10,6 +13,8 @@ export type DeclaredSymbol = {
   kind: string;
   /** @purpose 1-based line of the declaration — anchors the changed-symbol filter against diff hunks. */
   line: number;
+  /** @purpose Language-level visibility; `unknown` means the fallback cannot safely infer public versus private. */
+  visibility: SymbolVisibility;
 };
 
 /** @purpose Reference count for one name within one file, with the adapter's confidence in that count. */
@@ -42,4 +47,17 @@ export interface SymbolIndex {
    * @returns Match count and its precision.
    */
   countReferences(name: string, filePath: string, content: string): Promise<ReferenceCount>;
+
+  /**
+   * @purpose Count many candidate names in one already-read file without reparsing it per name.
+   * @param names Candidate symbol names; implementations return one entry for every requested name.
+   * @param filePath File path used for adapter selection/diagnostics, never re-read.
+   * @param content Source text with barrel re-exports already stripped by the caller.
+   * @returns Candidate name to count/precision, including zero-count entries.
+   */
+  countReferencesMany(
+    names: ReadonlySet<string>,
+    filePath: string,
+    content: string
+  ): Promise<Map<string, ReferenceCount>>;
 }

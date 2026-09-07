@@ -1,2 +1,2 @@
 <!-- source: sdd/critic-protocol.xml -->
-<Contract id="OC_STRUCTURED">Exact headers: "## What I understood", "## What I did NOT understand", "## Problems found", "## Verdict". No greetings, no sign-off. Machine-parseable.</Contract>
+<Contract id="OC_STRUCTURED">Exact headers: "## What I understood", "## What I did NOT understand", "## Problems found", "## Verdict". End with exactly `GlossarySuggestions: []` or `GlossarySuggestions: [<term> — <definition>; ...]`; this read-only sensor never persists them itself. No greetings, no sign-off. Machine-parseable.</Contract>

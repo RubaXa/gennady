@@ -2,6 +2,8 @@
 // @consumers: sdd-extract.cmd, sdd-orient.cmd
 // @tasks: N/A
 
+import { nextMarkdownFence, type MarkdownFence } from './markdown-fence.ts';
+
 /**
  * @purpose Canonical anchor-name grammar — uppercase, starts with a letter, then alnum + underscore.
  * @invariant Anchors are atomic identifiers — no quotes, spaces, or attributes inside the name.
@@ -67,15 +69,29 @@ export function collectHeadings(
   content: string
 ): { level: number; text: string; start: number; lineEnd: number }[] {
   const out: { level: number; text: string; start: number; lineEnd: number }[] = [];
-  const re = /^(#{1,6})[ \t]+(.+?)[ \t]*$/gm;
-  for (const m of content.matchAll(re)) {
-    const start = m.index ?? 0;
+  let offset = 0;
+  let fence: MarkdownFence | null = null;
+  for (const raw of content.split(/(?<=\n)/)) {
+    const line = raw.replace(/\r?\n$/, '');
+    const priorFence = fence;
+    fence = nextMarkdownFence(line, fence);
+    if (priorFence !== null || fence !== null) {
+      offset += raw.length;
+      continue;
+    }
+    const m = /^(#{1,6})[ \t]+(.+?)[ \t]*$/.exec(line);
+    if (!m) {
+      offset += raw.length;
+      continue;
+    }
+    const start = offset;
     out.push({
       level: (m[1] as string).length,
       text: (m[2] as string).trim(),
       start,
-      lineEnd: start + m[0].length,
+      lineEnd: start + line.length,
     });
+    offset += raw.length;
   }
   return out;
 }

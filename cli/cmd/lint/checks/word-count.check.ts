@@ -1,207 +1,185 @@
-// @file: Word count validation — checks that JSDoc tag descriptions and file-header lines do not exceed the word limit.
-// @consumers: LintCommand
+// @file: Semantic prose budgets for file headers and JSDoc contracts.
+// @consumers: LintCommand, WordCountCheck tests
 // @tasks: TSK-XX
 
 import type { LintError } from '../lint.types.ts';
 import { ERR_CLI_LINT_TAG_TOO_MANY_WORDS } from '../lint.types.ts';
 
-const JSDOC_TAG_RE =
-  /@(?:param|returns|purpose|implements|invariant|sideEffect|consumer|see|post|throws|pre|tasks)\b/;
+/** @purpose Default semantic-word budget for one file-header description. */
+export const DEFAULT_HEADER_WORDS = 24;
 
-const FILE_HEADER_RE = /^\/\/\s*@(?:file|consumers):/;
+/** @purpose Default semantic-word budget for one prose-bearing JSDoc contract description. */
+export const DEFAULT_CONTRACT_WORDS = 30;
 
-/**
- * @purpose Counts whitespace-delimited words in a text segment.
- * @param text Text to count words in.
- * @returns Number of non-empty tokens after splitting by whitespace.
- */
-function countWords(text: string): number {
-  return text.trim().split(/\s+/).filter(Boolean).length;
-}
+/** @purpose Typed word limits after CLI precedence has been resolved. */
+type WordBudgetLimits = {
+  /** @purpose File-header prose limit. */
+  header: number;
+  /** @purpose JSDoc contract prose limit. */
+  contract: number;
+};
 
-/**
- * @purpose Validates that JSDoc tag descriptions and file-header lines stay within the word count limit.
- * @implements {WordCountCheck} in specs/cli/lint/lint.spec.md
- * @invariant JSDoc tag description = text from the tag name to the next tag or closing star-slash.
- * @invariant File-header lines: counts words after the colon in // @file: and // @consumers:.
- * @invariant Pure function — no I/O, no exceptions.
- * @param content Source text to validate.
- * @param filePath File path for error messages.
- * @param maxWords Maximum allowed words per tag description or file-header line.
- * @returns List of lint errors, empty when all descriptions are within limit.
- */
-export function check(content: string, filePath: string, maxWords: number): LintError[] {
-  const lines = content.split('\n');
-  const errors: LintError[] = [];
+/** @purpose One measured description used by the checker. */
+type WordBudgetSample = {
+  /** @purpose Budget family owning this description. */
+  category: 'header' | 'contract';
+  /** @purpose Header or JSDoc tag name. */
+  tag: string;
+  /** @purpose One-based source line. */
+  line: number;
+  /** @purpose One-based source column. */
+  col: number;
+  /** @purpose Semantic prose-word count. */
+  words: number;
+  /** @purpose Normalized original description for calibration examples. */
+  description: string;
+};
 
-  // #region START_CHECK_JSDOC_TAGS — invariant: each JSDoc tag description within limit
-  let inJSDoc = false;
-  let jsdocBlockLines: string[] = [];
+const JSDOC_TAG =
+  /@(param|returns|purpose|implements|invariant|sideEffect|consumer|see|post|throws|pre|tasks)\b/g;
+const FILE_HEADER = /^\/\/\s*@(file|consumers):\s*(.*)$/;
 
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    const trimmed = line.trim();
-
-    if (trimmed.startsWith('/**')) {
-      inJSDoc = true;
-      jsdocBlockLines = [line];
-
-      if (trimmed.endsWith('*/')) {
-        inJSDoc = false;
-        errors.push(...checkJsDocBlock(jsdocBlockLines, filePath, i + 1, i + 1, maxWords));
-      }
+/** @purpose Count prose after discarding syntax/reference tokens. | @param text Description text. | @returns Semantic prose-word count. */
+function countSemanticWords(text: string): number {
+  const withoutBoilerplate = text
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/`[^`]*`/g, ' ')
+    .replace(/https?:\/\/\S+/gi, ' ')
+    .replace(/\{[^}]*\}/g, ' ');
+  let count = 0;
+  for (const raw of withoutBoilerplate.split(/\s+/)) {
+    const token = raw.replace(/^[\s|,.;:!?()[\]<>"'“”‘’]+|[\s|,.;:!?()[\]<>"'“”‘’]+$/g, '');
+    if (!token) continue;
+    if (
+      token.includes('/') ||
+      /\.[a-z0-9]{1,8}(?:#.*)?$/i.test(token) ||
+      /[_#]|::|\(\)|=>/.test(token) ||
+      /[a-z][A-Z]/.test(token) ||
+      /^[A-Z][A-Z0-9-]*$/.test(token) ||
+      /^[A-Z]+-\d+$/i.test(token)
+    )
       continue;
-    }
-
-    if (inJSDoc) {
-      jsdocBlockLines.push(line);
-
-      if (trimmed.includes('*/')) {
-        inJSDoc = false;
-        const startLine = i + 1 - jsdocBlockLines.length + 1;
-        const endLine = i + 1;
-        errors.push(...checkJsDocBlock(jsdocBlockLines, filePath, startLine, endLine, maxWords));
-      }
-    }
+    count += (token.match(/[\p{L}\p{N}]+(?:[-'’][\p{L}\p{N}]+)*/gu) ?? []).length;
   }
-  // #endregion END_CHECK_JSDOC_TAGS
-
-  // #region START_CHECK_FILE_HEADER — invariant: @file: and @consumers: lines within limit
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    const lineNum = i + 1;
-    const trimmed = line.trim();
-
-    if (trimmed.startsWith('import ')) {
-      break;
-    }
-
-    const headerMatch = trimmed.match(FILE_HEADER_RE);
-    if (headerMatch) {
-      const afterColon = trimmed.slice(trimmed.indexOf(':') + 1).trim();
-      const words = countWords(afterColon);
-      if (words > maxWords) {
-        const tagName = trimmed.startsWith('// @file:') ? '@file' : '@consumers';
-        const col = trimmed.indexOf(':') + 2;
-        errors.push({
-          file: filePath,
-          line: lineNum,
-          col,
-          severity: 'error',
-          code: ERR_CLI_LINT_TAG_TOO_MANY_WORDS,
-          message: `[WordCountCheck#check] ${tagName} has ${words} words (max ${maxWords}) — shorten the description`,
-        });
-      }
-    }
-  }
-  // #endregion END_CHECK_FILE_HEADER
-
-  errors.sort((a, b) => a.line - b.line || a.col - b.col);
-  return errors;
+  return count;
 }
 
-/**
- * @purpose Extracts text between a JSDoc tag and the next tag or closing star-slash.
- * @invariant Removes leading star and whitespace from each line.
- * @param lines Lines of a single JSDoc block.
- * @param tagIdx Index within the joined text where the tag starts.
- * @returns Cleaned description text.
- */
-function extractTagDescription(lines: string[], tagIdx: number): string {
-  const cleanedLines = lines.map((l) => {
-    let result = l.trim();
-    if (result.startsWith('/**')) result = result.slice(3);
-    if (result.endsWith('*/')) result = result.slice(0, result.length - 2).trim();
-    if (result.startsWith('*')) result = result.slice(1);
-    return result;
-  });
-
-  const fullText = cleanedLines.join('\n').slice(tagIdx);
-  const nextTag = fullText.slice(1).search(JSDOC_TAG_RE);
-
-  if (nextTag === -1) {
-    return fullText.slice(1);
+/** @purpose Remove tag-specific type/name syntax so only its prose description reaches counting. */
+function proseAfterTag(tag: string, raw: string): string {
+  let description = raw.trim().replace(/^\|\s*|\s*\|$/g, '');
+  if (tag === '@param') {
+    description = description.replace(/^\{[^}]*\}\s*/, '');
+    description = description.replace(/^\[?[A-Za-z_$][\w$]*(?:=[^\]]+)?\]?\s*[-–—:]?\s*/, '');
+  } else if (tag === '@returns' || tag === '@throws') {
+    description = description.replace(/^\{[^}]*\}\s*/, '');
   }
-
-  return fullText.slice(1, nextTag + 1);
+  return description.trim();
 }
 
-/**
- * @purpose Checks all JSDoc tags within a single JSDoc block for word count violations.
- * @param lines Lines of a single JSDoc block (including the opener and closer).
- * @param filePath File path for error messages.
- * @param startLine 1-based line of the JSDoc opener.
- * @param endLine 1-based line of the JSDoc closer.
- * @param maxWords Maximum allowed words per tag.
- * @returns List of lint errors for this block.
- */
-function checkJsDocBlock(
-  lines: string[],
-  filePath: string,
-  startLine: number,
-  _endLine: number,
-  maxWords: number
-): LintError[] {
-  const errors: LintError[] = [];
+/** @purpose Normalize one JSDoc line without losing line boundaries used for findings. */
+function cleanJsDocLine(line: string): string {
+  let clean = line.trim();
+  if (clean.startsWith('/**')) clean = clean.slice(3);
+  if (clean.endsWith('*/')) clean = clean.slice(0, -2);
+  if (clean.trimStart().startsWith('*')) clean = clean.trimStart().slice(1);
+  return clean.trim();
+}
 
-  const cleanedLines = lines.map((l) => {
-    let result = l.trim();
-    if (result.startsWith('/**')) result = result.slice(3);
-    if (result.endsWith('*/')) result = result.slice(0, result.length - 2).trim();
-    if (result.startsWith('*')) result = result.slice(1);
-    return result;
-  });
+/** @purpose Measure supported header/JSDoc descriptions. | @param content Source text. | @returns Calibration samples in source order. */
+function collectWordBudgetSamples(content: string): WordBudgetSample[] {
+  const sourceLines = content.split('\n');
+  const samples: WordBudgetSample[] = [];
 
-  const fullText = cleanedLines.join('\n');
+  for (let index = 0; index < sourceLines.length; index++) {
+    const trimmed = (sourceLines[index] ?? '').trim();
+    if (trimmed.startsWith('import ')) break;
+    const match = FILE_HEADER.exec(trimmed);
+    if (!match) continue;
+    const tag = `@${match[1] as string}`;
+    const description = (match[2] ?? '').trim();
+    samples.push({
+      category: 'header',
+      tag,
+      line: index + 1,
+      col: Math.max(1, trimmed.indexOf(':') + 2),
+      words: countSemanticWords(description),
+      description,
+    });
+  }
 
-  // #region START_FIND_TAGS — invariant: find each JSDoc tag, extract description, count words
-  let searchFrom = 0;
-
-  while (searchFrom < fullText.length) {
-    JSDOC_TAG_RE.lastIndex = 0;
-    const tagMatch = JSDOC_TAG_RE.exec(fullText.slice(searchFrom));
-    if (!tagMatch) break;
-
-    const tagName = tagMatch[0];
-    const tagIdx = searchFrom + (tagMatch.index ?? 0);
-    const description = extractTagDescription(lines, tagIdx);
-
-    const words = countWords(description);
-
-    if (words > maxWords) {
-      let charCount = 0;
-      let tagLine = startLine;
-      let tagCol = 1;
-
-      for (let li = 0; li < lines.length; li++) {
-        const lineChars = lines[li].length + 1;
-        if (charCount + lineChars > tagIdx) {
-          tagLine = startLine + li;
-          const offsetInLine = tagIdx - charCount;
-          tagCol = offsetInLine + 1;
-          break;
-        }
-        charCount += lineChars;
-      }
-
-      errors.push({
-        file: filePath,
-        line: tagLine,
-        col: tagCol,
-        severity: 'error',
-        code: ERR_CLI_LINT_TAG_TOO_MANY_WORDS,
-        message: `[WordCountCheck#check] ${tagName} has ${words} words (max ${maxWords}) — shorten the description`,
+  let blockStart = -1;
+  let blockLines: string[] = [];
+  const finishBlock = (): void => {
+    if (blockStart < 0) return;
+    const joined = blockLines.map(cleanJsDocLine).join('\n');
+    const matches = [...joined.matchAll(JSDOC_TAG)];
+    for (let index = 0; index < matches.length; index++) {
+      const match = matches[index] as RegExpMatchArray;
+      const start = match.index ?? 0;
+      const end = matches[index + 1]?.index ?? joined.length;
+      const tag = match[0] as string;
+      const description = proseAfterTag(tag, joined.slice(start + tag.length, end));
+      const before = joined.slice(0, start);
+      const relativeLine = before.split('\n').length - 1;
+      const cleanedColumn = start - (before.lastIndexOf('\n') + 1);
+      const originalLine = blockLines[relativeLine] ?? '';
+      samples.push({
+        category: 'contract',
+        tag,
+        line: blockStart + relativeLine + 1,
+        col: Math.max(1, originalLine.indexOf(tag, Math.max(0, cleanedColumn - 3)) + 1),
+        words: countSemanticWords(description),
+        description,
       });
     }
+    blockStart = -1;
+    blockLines = [];
+  };
 
-    searchFrom = tagIdx + tagName.length;
-    if (searchFrom >= fullText.length) break;
-
-    const nextTag = fullText.slice(searchFrom).search(JSDOC_TAG_RE);
-    if (nextTag === -1) break;
-    searchFrom += nextTag;
+  for (let index = 0; index < sourceLines.length; index++) {
+    const line = sourceLines[index] ?? '';
+    if (blockStart < 0 && line.includes('/**')) {
+      blockStart = index;
+      blockLines = [line];
+      if (line.includes('*/')) finishBlock();
+      continue;
+    }
+    if (blockStart < 0) continue;
+    blockLines.push(line);
+    if (line.includes('*/')) finishBlock();
   }
-  // #endregion END_FIND_TAGS
+  return samples;
+}
 
-  return errors;
+/**
+ * @purpose Enforce distinct semantic prose budgets for headers and JSDoc contracts.
+ * @implements {WordCountCheck} in specs/cli/lint/lint.spec.md
+ * @invariant Reference/path/type/name syntax does not consume prose budget.
+ * @param content Source text to validate.
+ * @param filePath File path for findings.
+ * @param limits Typed limits, or the legacy shared number used by direct callers.
+ * @returns One actionable error per over-budget description.
+ */
+export function check(
+  content: string,
+  filePath: string,
+  limits: WordBudgetLimits | number
+): LintError[] {
+  const resolved = typeof limits === 'number' ? { header: limits, contract: limits } : limits;
+  return collectWordBudgetSamples(content)
+    .filter((sample) => sample.words > resolved[sample.category])
+    .map((sample) => {
+      const limit = resolved[sample.category];
+      return {
+        file: filePath,
+        line: sample.line,
+        col: sample.col,
+        severity: 'error' as const,
+        code: ERR_CLI_LINT_TAG_TOO_MANY_WORDS,
+        message:
+          `[WordCountCheck#check] ${sample.category} ${sample.tag} has ${sample.words} semantic prose words ` +
+          `(limit ${limit}) — rewrite the whole contract coherently; do not truncate one word.`,
+      };
+    })
+    .sort((a, b) => a.line - b.line || a.col - b.col);
 }

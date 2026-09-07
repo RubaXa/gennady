@@ -231,6 +231,27 @@ describe('migration-move', () => {
     assert.match(scopeIndex, /\| demo-alpha \| Первая фича \| — \|/);
   });
 
+  it('move пересчитывает ссылки под новое место: rule `..`-путь сохраняет цель, spec-ref → co-located', () => {
+    // rule ref: `../../../ai/…` от tasks/demo/core (глуб.3) → repo-root ai/; после move в specs/demo/core
+    // (та же глуб.3) должен остаться `../../../ai/…` (резолвится в тот же файл, `..` в v2 легален).
+    // spec ref: repo-root-relative `specs/demo/core/core.spec.md` → co-located `./core.spec.md`.
+    writeFileSync(
+      join(root, 'tasks', 'demo', 'core', 'core.task-1.md'),
+      TICKET_A +
+        '\n\n- **Rules:** [r](../../../ai/directives/infra/x.xml)\n- **Spec:** [s](specs/demo/core/core.spec.md)\n',
+      'utf-8'
+    );
+    fillPlanLayer();
+    const res = executeScopeMove(root, 'demo', true);
+    assert.ok(res.ok, JSON.stringify(res));
+    const moved = readFileSync(
+      join(root, 'specs', 'demo', 'core', 'core.task.demo-alpha.md'),
+      'utf-8'
+    );
+    assert.match(moved, /\]\(\.\.\/\.\.\/\.\.\/ai\/directives\/infra\/x\.xml\)/);
+    assert.match(moved, /\]\(\.\/core\.spec\.md\)/);
+  });
+
   it('чужие тикеты вне плана блокируют удаление tasks/<scope>', () => {
     fillPlanLayer();
     writeFileSync(

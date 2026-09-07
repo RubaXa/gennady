@@ -5,7 +5,12 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { findResearchLinks, findRegisteredResearchLinks, checkResearchOrphans } from '../check.ts';
+import {
+  findResearchLinks,
+  findRegisteredResearchLinks,
+  checkResearchOrphans,
+  checkResearchLifecycle,
+} from '../check.ts';
 
 describe('findResearchLinks', () => {
   it('extracts a plain research-doc link target', () => {
@@ -113,5 +118,24 @@ describe('checkResearchOrphans', () => {
       findings.map((f) => f.code),
       ['SDD_RESEARCH_ORPHAN']
     );
+  });
+});
+
+describe('checkResearchLifecycle', () => {
+  const status = (state: string) =>
+    `<!--SECTION:STATUS-->\n## Status\n- **State:** ${state}\n<!--/SECTION:STATUS-->`;
+
+  it('proposed analysis may remain pending', () => {
+    assert.deepStrictEqual(checkResearchLifecycle('x.research.md', status('proposed')), []);
+  });
+
+  it('accepted research requires a traced final disposition', () => {
+    const findings = checkResearchLifecycle('x.research.md', status('accepted'));
+    assert.equal(findings[0]?.code, 'SDD_RESEARCH_DISPOSITION_MISSING');
+  });
+
+  it('accepted research with spec trace is clean', () => {
+    const content = `${status('accepted')}\n<!--SECTION:FINAL_DISPOSITION-->\n## Final disposition\n- **Outcome:** accepted\n- **Spec decision:** [spec](../x.spec.md), Decision Log X-DL-1\n- **Delta from recommendation:** отличается\n<!--/SECTION:FINAL_DISPOSITION-->`;
+    assert.deepStrictEqual(checkResearchLifecycle('x.research.md', content), []);
   });
 });

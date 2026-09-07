@@ -1,0 +1,32 @@
+0.8.4
+
+<Step id="STEP_4_HANDOFF">
+      <Action>
+        Per `AX_HANDOFF_TYPED`, return `HANDOFF_FORMAT` with files changed, requirements demonstrated, commands/results,
+        deviations, and the next declared phase. Return the payload in the response only. Do not call
+        `sdd-log`, manually edit the ticket, remove its placeholders, or mark any checkbox. The
+        orchestrator validates the payload against Git plus the CLI-owned receipt and performs the
+        single `sdd-log complete` transition. Do not write JSON checkpoints, worker IDs, session keys,
+        or NEXT state.
+      </Action>
+    </Step>
+
+<Axiom id="AX_HANDOFF_TYPED">
+      End every phase block with a typed Handoff line consumed by the next phase and the orchestrator. Format per `HANDOFF_FORMAT`. Free-form text forbidden — the next phase reads keys, not narrative.
+    </Axiom>
+
+<Contract id="HANDOFF_FORMAT">
+  Compact, typed, single line at end of phase block:
+  ```
+  **Handoff →** artifacts: [path1, path2]; decisions: [key=value, key=value]; open: [id: text, id: text]; deviations: [id: text, id: text]
+  ```
+  Fields:
+  - `artifacts` — files produced or modified by this phase (paths).
+  - `decisions` — key facts the next phase or audit needs (e.g. `IdempotencyKey=introduced`, `module-system=esm`).
+  - `open` — unresolved questions / risks / deferred sub-tasks (id + one-line). Empty list → `[]`.
+  - `deviations` — spec/ticket holes this phase self-resolved rather than asking the operator
+    (`AX_DEVIATION_SELF_RESOLVE`); each entry cites the ticket-local Decision Log id it produced
+    (e.g. `TSK-58-D-2: chose retry cap 3, spec silent on it`). Empty list → `[]`.
+
+  Free-form text forbidden. Each field is an array (possibly empty).
+</Contract>

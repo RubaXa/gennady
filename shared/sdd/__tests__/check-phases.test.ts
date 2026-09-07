@@ -11,6 +11,8 @@ function ticket(opts: {
   status?: string;
   rows: Array<{ id: string; deps?: string; status?: string }>;
   sections: string[];
+  receiptAware?: boolean;
+  executionLog?: string;
 }): string {
   const overview = [
     '| id | kind | deps | status |',
@@ -37,8 +39,10 @@ function ticket(opts: {
     '',
     phaseSections,
     '',
+    ...(opts.receiptAware ? ['<!--PHASE_RECEIPTS:v1-->', ''] : []),
     '<!--SECTION:EXECUTION_LOG-->',
     '## Execution Log',
+    opts.executionLog ?? '',
     '<!--/SECTION:EXECUTION_LOG-->',
   ].join('\n');
 }
@@ -106,5 +110,86 @@ describe('checkTicket — phase graph + exec-log completeness', () => {
       })
     );
     assert.ok(c.includes('SDD_DONE_PHASE_UNCHECKED'));
+  });
+
+  it('accepts exactly one Round 1 block per overview phase and ignores later rounds and fenced headings', () => {
+    const c = codes(
+      't.md',
+      ticket({
+        rows: [{ id: 'P1' }, { id: 'P2', deps: 'P1' }],
+        sections: ['P1', 'P2'],
+        receiptAware: true,
+        executionLog: [
+          '### Round 1 — 2026-09-02, initial',
+          '#### P1',
+          '```markdown',
+          '#### P9',
+          '```',
+          '#### P2',
+          '#### Round close',
+          '### Round 2 — 2026-09-03, fix',
+          '#### P1 — re-run: fix F-1',
+        ].join('\n'),
+      })
+    );
+    assert.ok(!c.some((code) => code.startsWith('SDD_EXECUTION_LOG_')), c.join(','));
+  });
+
+  it('flags a Round 1 phase block missing from the overview plan', () => {
+    const c = codes(
+      't.md',
+      ticket({
+        rows: [{ id: 'P1' }, { id: 'P2', deps: 'P1' }],
+        sections: ['P1', 'P2'],
+        receiptAware: true,
+        executionLog: '### Round 1 — 2026-09-02, initial\n#### P1',
+      })
+    );
+    assert.ok(c.includes('SDD_EXECUTION_LOG_PHASE_MISSING'));
+  });
+
+  it('flags duplicate and orphan Round 1 phase blocks', () => {
+    const c = codes(
+      't.md',
+      ticket({
+        rows: [{ id: 'P1' }, { id: 'P2', deps: 'P1' }],
+        sections: ['P1', 'P2'],
+        receiptAware: true,
+        executionLog: [
+          '### Round 1 — 2026-09-02, initial',
+          '#### P1',
+          '#### P1 — re-run: retry',
+          '#### P2',
+          '#### P3',
+        ].join('\n'),
+      })
+    );
+    assert.ok(c.includes('SDD_EXECUTION_LOG_PHASE_DUPLICATE'));
+    assert.ok(c.includes('SDD_EXECUTION_LOG_PHASE_ORPHAN'));
+  });
+
+  it('flags a missing Round 1 for the current receipt-aware contract', () => {
+    const c = codes(
+      't.md',
+      ticket({
+        rows: [{ id: 'P1' }],
+        sections: ['P1'],
+        receiptAware: true,
+        executionLog: '### Round 2 — 2026-09-03, fix\n#### P1',
+      })
+    );
+    assert.ok(c.includes('SDD_EXECUTION_LOG_ROUND_MISSING'));
+  });
+
+  it('grandfathers an older V2 ticket without the receipt schema marker', () => {
+    const c = codes(
+      't.md',
+      ticket({
+        rows: [{ id: 'P1' }, { id: 'P2', deps: 'P1' }],
+        sections: ['P1', 'P2'],
+        executionLog: '### Round 2 — 2026-09-03, historical\n#### P1',
+      })
+    );
+    assert.ok(!c.some((code) => code.startsWith('SDD_EXECUTION_LOG_')), c.join(','));
   });
 });

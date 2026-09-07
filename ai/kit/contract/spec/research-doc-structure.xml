@@ -3,15 +3,17 @@
       Every top-level `##` section is wrapped with `<!--SECTION:UPPER_SNAKE-->…<!--/SECTION:UPPER_SNAKE-->`
       markers so any agent can pull a single section via the `sdd-extract` CLI
       (`gennady sdd-extract <file> <NAME>`). Section order is normative: STATUS, PROBLEM, CRITERIA,
-      OPTIONS, DECISION, CONSEQUENCES, EVIDENCE, RELATED. `OPTIONS` carries three named sub-headings
+      OPTIONS, DECISION, FINAL_DISPOSITION, CONSEQUENCES, EVIDENCE, RELATED. `OPTIONS` carries three named sub-headings
       in fixed order — Академия (peer-reviewed / academic treatment), Лидеры рынка (how established
       players solve it in production), Готовые инструменты (off-the-shelf tools/libraries) — each a
       real candidate, not a placeholder, per `AX_DIVERGE_BEFORE_RECOMMEND`. `EVIDENCE` holds every
-      fact this document relies on, each re-verifiable — traced to a source (page, URL + access
+      fact this document relies on, each re-verifiable — traced primarily to official docs,
+      repository/release notes, a standard, or a paper (page, URL + access
       date; for code-derived facts, path + commit) or explicitly flagged `agent conclusion` /
       `from model memory as of <knowledge date>` (`AX_RESEARCH_PERSISTED`); a fact carrying neither
-      is a document defect. `DECISION` states the chosen option and why; `CONSEQUENCES` the
-      accepted trade-offs. `RELATED` links superseded research docs and the spec / ticket / Decision
+      is a document defect. `DECISION` preserves the research recommendation; `FINAL_DISPOSITION`
+      records the later operator choice and its delta without rewriting that analysis; `CONSEQUENCES`
+      records accepted trade-offs. `RELATED` links superseded research docs and the spec / ticket / Decision
       Log entry this research feeds.
 
       ```markdown

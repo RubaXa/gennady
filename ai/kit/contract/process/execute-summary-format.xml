@@ -11,6 +11,6 @@
 
   If the run self-resolved any spec/ticket hole (`AX_DEVIATION_SELF_RESOLVE`), one more line before
   the batched `AskUserQuestion`:
-  🧭 Deviations: `<ACR>-D-N — <one-line>` · `<ACR>-D-M — <one-line>` · …
+  🧭 Deviations: `<ACR>-DL-N — <one-line>` · `<ACR>-DL-M — <one-line>` · …
   No deviations → omit the line entirely, no batched question fires.
 </Contract>

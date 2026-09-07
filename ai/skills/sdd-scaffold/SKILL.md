@@ -1,35 +1,18 @@
 ---
 name: sdd-scaffold
-description: Decompose the approved spec tree into a DAG of compact task tickets (+ the task-index hierarchy) ready for the execute orchestrator. Use for "scaffold", "разбить спеки на задачи", "decompose specs to tickets", "generate tasks", "/sdd-scaffold". Modes auto-detected — initial · extend-dag.
+description: Convert operator-approved V2 specs into actual task tickets, validate them, independently review the actual ticket set, and obtain operator approval of breakdown plus test plan. Use for "scaffold", "разбить спеки на задачи", "generate tasks", "/sdd-scaffold". Modes auto-detected — initial · extend-dag.
 compatibility: opencode
 ---
 
 <SddSkill id="scaffold">
-  <Priming>
-    SDD skills are thin directive-loaders. Files under `ai/directives/sdd-v2/` are PROMPT directives, not
-    data: the XML-ish tags only mark sections — `<Mission>` goal, `<BeliefState>` axioms, `<ExecutionPlan>`
-    steps, `<HaltConditions>` stop-rules. The body is markdown read as instruction — you EMBODY the
-    directive, you do not parse it.
-  </Priming>
-
-  <Mission>Converge the approved specs into a DAG of self-contained task tickets + the task-index hierarchy. Gather state, embody the scaffold directive, hand off. No interview, no code — that is `/sdd` and execute.</Mission>
-
+  <Priming>SDD skills are thin directive-loaders. Embody the loaded prompt directive; do not parse its XML-ish markers.</Priming>
+  <Mission>Enter the stateless SDD router with forced intent `scaffold`. No interview, no code, no plan JSON, no feasibility state machine, and no persistent critic or SDD session.</Mission>
   <ExecutionPlan>
     <Step id="GATHER">
-      One parallel batch (do NOT serialize): run `npx gennady sdd-state`
-      (flow version · readiness · portal · scopes) AND read in full
-      `ai/directives/sdd-v2/scaffold.directive.xml`.
+      In one parallel batch, execute the exact read-only state call below and read
+      `ai/directives/sdd-v2/router.directive.xml` in full. The router consumes the exact bytes and does not repeat the call.
+      <ToolCall owner="entry-skill" result="routerState">npx gennady sdd-state</ToolCall>
     </Step>
-    <Step id="PREFLIGHT">
-      State is already gathered (GATHER, above). The directive's own `STEP_0B_PREFLIGHT` interprets
-      the snapshot's `FLOW_VERSION` / `READINESS` without another CLI call, including when to embody
-      the live migration or setup flow. Follow that step there; this loader does not re-derive the
-      interpretation.
-    </Step>
-    <Step id="EMBODY">
-      You ARE the scaffold directive now. Mode (initial / extend-dag) auto-detects from existing tickets.
-      Input is the approved `specs/` tree; converge it into tickets, surfacing only the two operator gates
-      (the breakdown and the test plan).
-    </Step>
+    <Step id="EMBODY">You are the router now. Pass exact `routerState`, literal forced intent `scaffold`, and the operator payload unchanged. The scaffold owner derives state from approved specs and existing tickets, creates real tickets, runs structural checks, reviews those actual bytes once, then asks for operator approval #2.</Step>
   </ExecutionPlan>
 </SddSkill>

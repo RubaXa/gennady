@@ -3,15 +3,6 @@
     <CheckPhaseOrder>typecheck test lint format</CheckPhaseOrder>
 
     <Coding>
-      <Rule id="result-conventions">
-        <File>ai/directives/coding/result-conventions.xml</File>
-        <Purpose>ESLint enforcement of Result pattern conventions: no second generic, no object literals, no isErr short-circuit, no bare throw unknown.</Purpose>
-        <Triggers>Target Files use Result from @tessell/core/result · task touches error-handling code · task adds new DML / service methods</Triggers>
-        <SkipWhen>Config-only task; no Result usage in target files</SkipWhen>
-        <ActivationHint>Before writing or reviewing any file that returns or propagates Result</ActivationHint>
-        <CheckPhase>lint</CheckPhase>
-        <RequiresVerification>check-command</RequiresVerification>
-      </Rule>
       <Rule id="typescript-rules">
         <File>ai/directives/coding/typescript-rules.xml</File>
         <Purpose>Writing code in the chosen language: typing, DbC, patterns, anti-patterns.</Purpose>

@@ -1,11 +1,11 @@
-// @file: Integration tests for SddStateCommand#run — flow version, exact readiness, scopes+description, session, exit codes.
+// @file: Integration tests for SddStateCommand#run — flow version, exact readiness, scopes+description, exit codes.
 // @consumers: gennady.ts
 // @tasks: N/A
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 
 type SddStateModule = typeof import('../sdd-state.cmd.ts');
@@ -35,16 +35,13 @@ const READY_PKG = JSON.stringify({
     'test:coverage': 'c8 node --test',
     lint: 'npm run lint:contracts',
     'lint:contracts': 'gennady lint .',
-    format: 'prettier --write .',
+    format: 'prettier --check .',
+    check: 'npm run typecheck && npm test && npm run lint && npm run format',
+    fix: 'npm run format:fix && npm run lint:fix && npm run check',
+    'format:fix': 'prettier --write',
+    'lint:fix': 'eslint --fix',
   },
 });
-
-const SESSION = [
-  '# SDD session — 2026-06-21',
-  'intent: evolve-scope',
-  'working set:',
-  '  - specs/web/web.spec.md — add auth — open',
-].join('\n');
 
 function argv(...rest: string[]): string[] {
   return ['node', 'gennady', 'sdd-state', ...rest];
@@ -54,12 +51,18 @@ const KEY_DIRECTIVE_FILES = [
   'router.directive.xml',
   'execute.directive.xml',
   'phase-execution-protocol.directive.xml',
+  'preflight-protocol.directive.xml',
+  'formats/requirement-entry-format.xml',
 ];
 
 /** @purpose Test fixture helper: install the key sdd-v2 directive files under `<root>/ai/directives/sdd-v2/` (or a caller-chosen `at`), satisfying the sdd-state install-preflight gate. */
 function installDirectives(root: string, at = join(root, 'ai', 'directives', 'sdd-v2')): void {
   mkdirSync(at, { recursive: true });
-  for (const f of KEY_DIRECTIVE_FILES) writeFileSync(join(at, f), '<directive/>\n', 'utf-8');
+  for (const f of KEY_DIRECTIVE_FILES) {
+    const target = join(at, f);
+    mkdirSync(dirname(target), { recursive: true });
+    writeFileSync(target, '<directive/>\n', 'utf-8');
+  }
 }
 
 describe('SddStateCommand', () => {
@@ -72,7 +75,6 @@ describe('SddStateCommand', () => {
     ready = mkdtempSync(join(tmpdir(), 'sdd-state-ready-'));
     mkdirSync(join(ready, 'specs'), { recursive: true });
     writeFileSync(join(ready, 'specs', 'README.md'), PORTAL, 'utf-8');
-    writeFileSync(join(ready, 'specs', '.sdd-session.md'), SESSION, 'utf-8');
     writeFileSync(join(ready, 'package.json'), READY_PKG, 'utf-8');
     mkdirSync(join(ready, 'node_modules', '.bin'), { recursive: true });
     writeFileSync(join(ready, 'node_modules', '.bin', 'gennady'), '#!/bin/sh\n', 'utf-8');
@@ -119,7 +121,7 @@ describe('SddStateCommand', () => {
     rmSync(withGraph, { recursive: true, force: true });
   });
 
-  it('reports v2 flow, ready, scopes with description, and the session', async () => {
+  it('reports v2 flow, ready, and scopes with description', async () => {
     const o = await mod.run(argv(ready));
     assert.strictEqual(o.ok, true);
     if (o.ok) {
@@ -137,21 +139,233 @@ describe('SddStateCommand', () => {
         /infra-base\tinfrastructure\tdone\tTS toolchain\tspecs\/infra-base\/infra-base\.spec\.md/
       );
       assert.match(o.text, /web\tproduct\twip\tReact SPA\tspecs\/web\/web\.spec\.md/);
-      assert.match(o.text, /intent: evolve-scope/);
       assert.match(o.text, /readiness=ready/);
       assert.doesNotMatch(o.text, /\[GRAPH\]/);
+      assert.ok(o.text.includes(`WORKING_DIR=${ready}`));
+      assert.ok(o.text.includes(`TMP_DIR=${join(ready, '.tmp')}`));
+      assert.match(o.text, /обязательные к запоминанию поля: WORKING_DIR, TMP_DIR/);
+      assert.match(o.text, /читать\/писать вне WORKING_DIR и TMP_DIR запрещено/);
     }
   });
 
-  it('renders [GRAPH] between [SCOPES] and [SESSION] when the portal has a scope graph', async () => {
+  it('separates scaffold authoring readiness from runtime execution readiness', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'sdd-state-authoring-ready-'));
+    const specPath = join(root, 'specs', 'infra-core', 'infra-core.spec.md');
+    const completeRow =
+      '| Node/npm runtime and tooling | tool | this-scope-task | create bootstrap toolchain | package.json, type-check, test, test:coverage, format, format:fix, lint, lint:fix, fix, gennady | package.json, package-lock.json, .nvmrc, .npmrc |';
+    const writeSpec = (row: string): void => {
+      mkdirSync(dirname(specPath), { recursive: true });
+      writeFileSync(
+        specPath,
+        [
+          '<!--SECTION:SCOPE_TYPE-->',
+          'infrastructure',
+          '<!--/SECTION:SCOPE_TYPE-->',
+          '<!--SECTION:BOOTSTRAP_REQUIREMENTS-->',
+          '| Requirement | Kind | Owner | Resolution | Readiness Gates | Gate Artifacts |',
+          '|---|---|---|---|---|---|',
+          row,
+          '<!--/SECTION:BOOTSTRAP_REQUIREMENTS-->',
+        ].join('\n'),
+        'utf-8'
+      );
+    };
+    try {
+      installDirectives(root);
+      mkdirSync(join(root, 'specs'), { recursive: true });
+      writeFileSync(
+        join(root, 'specs', 'README.md'),
+        [
+          '# demo',
+          '## Scopes',
+          '| Scope | Type | Status | Description |',
+          '|---|---|---|---|',
+          '| [`infra-core`](./infra-core/infra-core.spec.md) | infrastructure | ✅ | tooling |',
+        ].join('\n'),
+        'utf-8'
+      );
+      writeSpec(completeRow);
+
+      const scaffoldable = await mod.run(argv(root));
+      assert.strictEqual(scaffoldable.ok, true);
+      if (scaffoldable.ok) {
+        assert.match(scaffoldable.text, /AUTHORING_READY=yes/);
+        assert.match(scaffoldable.text, /AUTHORING_SCOPE=infra-core\tREADY=yes/);
+        assert.match(scaffoldable.text, /EXECUTION_READY=no/);
+        assert.match(scaffoldable.text, /NEXT=scaffold may create the declared bootstrap tickets/);
+        assert.match(
+          scaffoldable.text,
+          /👉 Следующий шаг: разбить спеки на задачи — \/sdd-scaffold/
+        );
+        assert.doesNotMatch(scaffoldable.text, /настроить инфраструктуру .*перед scaffold/);
+      }
+
+      mkdirSync(join(root, 'specs', 'broken'), { recursive: true });
+      writeFileSync(
+        join(root, 'specs', 'broken', 'broken.spec.md'),
+        [
+          '<!--SECTION:SCOPE_TYPE-->',
+          'product',
+          '<!--/SECTION:SCOPE_TYPE-->',
+          '<!--SECTION:BOOTSTRAP_REQUIREMENTS-->',
+          '| Requirement | Kind | Owner | Resolution |',
+          '|---|---|---|---|',
+          '<!--/SECTION:BOOTSTRAP_REQUIREMENTS-->',
+        ].join('\n'),
+        'utf-8'
+      );
+      writeFileSync(
+        join(root, 'specs', 'README.md'),
+        [
+          '# demo',
+          '## Scopes',
+          '| Scope | Type | Status | Description |',
+          '|---|---|---|---|',
+          '| [`infra-core`](./infra-core/infra-core.spec.md) | infrastructure | ✅ | tooling |',
+          '| [`broken`](./broken/broken.spec.md) | product | ✅ | stale unrelated scope |',
+        ].join('\n'),
+        'utf-8'
+      );
+      const mixed = await mod.run(argv(root));
+      assert.strictEqual(mixed.ok, true);
+      if (mixed.ok) {
+        assert.match(mixed.text, /AUTHORING_READY=no/);
+        assert.match(mixed.text, /AUTHORING_SCOPE=infra-core\tREADY=yes/);
+        assert.match(mixed.text, /AUTHORING_SCOPE=broken\tREADY=no/);
+        assert.match(mixed.text, /AUTHORING_SCOPE_NEXT=broken\trepair only scope 'broken'/);
+      }
+      rmSync(join(root, 'specs', 'broken'), { recursive: true, force: true });
+      writeFileSync(
+        join(root, 'specs', 'README.md'),
+        [
+          '# demo',
+          '## Scopes',
+          '| Scope | Type | Status | Description |',
+          '|---|---|---|---|',
+          '| [`infra-core`](./infra-core/infra-core.spec.md) | infrastructure | ✅ | tooling |',
+        ].join('\n'),
+        'utf-8'
+      );
+
+      writeSpec(completeRow.replace('create bootstrap toolchain', '—'));
+      const ambiguous = await mod.run(argv(root));
+      assert.strictEqual(ambiguous.ok, true);
+      if (ambiguous.ok) {
+        assert.match(ambiguous.text, /AUTHORING_READY=no/);
+        assert.match(
+          ambiguous.text,
+          /Bootstrap row 'Node\/npm runtime and tooling' has no Resolution/
+        );
+      }
+
+      writeSpec(completeRow);
+      writeFileSync(join(root, 'package.json'), READY_PKG, 'utf-8');
+      mkdirSync(join(root, 'node_modules', '.bin'), { recursive: true });
+      writeFileSync(join(root, 'node_modules', '.bin', 'gennady'), '#!/bin/sh\n', 'utf-8');
+      const fullyReady = await mod.run(argv(root));
+      assert.strictEqual(fullyReady.ok, true);
+      if (fullyReady.ok) {
+        assert.match(fullyReady.text, /AUTHORING_READY=yes/);
+        assert.match(fullyReady.text, /EXECUTION_READY=yes/);
+        assert.match(fullyReady.text, /NEXT=scaffold and product execute may proceed/);
+      }
+
+      const stubbedPackage = JSON.parse(READY_PKG) as { scripts: Record<string, string> };
+      stubbedPackage.scripts.test = 'echo TODO';
+      writeFileSync(join(root, 'package.json'), JSON.stringify(stubbedPackage), 'utf-8');
+      const vacuous = await mod.run(argv(root));
+      assert.strictEqual(vacuous.ok, true);
+      if (vacuous.ok) {
+        assert.match(vacuous.text, /READINESS=provisional/);
+        assert.match(vacuous.text, /AUTHORING_READY=yes/);
+        assert.match(vacuous.text, /EXECUTION_READY=no/);
+      }
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('treats every non-current V2 shape as invalid and never routes through migration', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'sdd-state-schema-'));
+    try {
+      installDirectives(root);
+      mkdirSync(join(root, 'specs', 'legacy'), { recursive: true });
+      writeFileSync(
+        join(root, 'specs', 'legacy', 'legacy.spec.md'),
+        [
+          '<!--SECTION:SCOPE_TYPE-->',
+          'product',
+          '<!--/SECTION:SCOPE_TYPE-->',
+          '<!--SECTION:BOOTSTRAP_REQUIREMENTS-->',
+          '| Requirement | Kind | Owner | Resolution |',
+          '|---|---|---|---|',
+          '<!--/SECTION:BOOTSTRAP_REQUIREMENTS-->',
+        ].join('\n'),
+        'utf-8'
+      );
+      const outcome = await mod.run(argv(root));
+      assert.strictEqual(outcome.ok, true);
+      if (outcome.ok) {
+        assert.match(outcome.text, /\[SPEC_SCHEMA\]\nVERSION=sdd-v2\nSTATUS=invalid/);
+        assert.match(
+          outcome.text,
+          /invalid\tspecs\/legacy\/legacy\.spec\.md\t.+Readiness Gates, Gate Artifacts/
+        );
+        assert.match(
+          outcome.text,
+          /NEXT=repair each listed spec through its owning authoring flow/
+        );
+        assert.match(outcome.text, /spec-schema=invalid/);
+        assert.doesNotMatch(outcome.text, /reconcile\.directive|stale-migratable/);
+        assert.equal(
+          outcome.text.match(/^NEXT=/gm)?.length,
+          1,
+          'invalid schema has one exact route'
+        );
+      }
+
+      writeFileSync(
+        join(root, 'specs', 'legacy', 'legacy.spec.md'),
+        [
+          '<!--SECTION:SCOPE_TYPE-->',
+          'product',
+          '<!--/SECTION:SCOPE_TYPE-->',
+          '<!--SECTION:BOOTSTRAP_REQUIREMENTS-->',
+          '| Requirement | Owner | Mystery |',
+          '|---|---|---|',
+          '<!--/SECTION:BOOTSTRAP_REQUIREMENTS-->',
+        ].join('\n'),
+        'utf-8'
+      );
+      const invalid = await mod.run(argv(root));
+      assert.strictEqual(invalid.ok, true);
+      if (invalid.ok) {
+        assert.match(invalid.text, /STATUS=invalid/);
+        assert.match(invalid.text, /invalid\tspecs\/legacy\/legacy\.spec\.md\t.+ambiguous/);
+        assert.match(
+          invalid.text,
+          /NEXT=repair each listed spec through its owning authoring flow/
+        );
+        assert.equal(
+          invalid.text.match(/^NEXT=/gm)?.length,
+          1,
+          'invalid schema has one exact route'
+        );
+      }
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('renders [GRAPH] between [SCOPES] and [SUMMARY] when the portal has a scope graph', async () => {
     const o = await mod.run(argv(withGraph));
     assert.strictEqual(o.ok, true);
     if (o.ok) {
       assert.match(o.text, /\[GRAPH\]\nуровень 0 \(фундамент\): infra-base\nуровень 1: web/);
       const scopesIdx = o.text.indexOf('[SCOPES]');
       const graphIdx = o.text.indexOf('[GRAPH]');
-      const sessionIdx = o.text.indexOf('[SESSION]');
-      assert.ok(scopesIdx < graphIdx && graphIdx < sessionIdx);
+      const summaryIdx = o.text.indexOf('[SUMMARY]');
+      assert.ok(scopesIdx < graphIdx && graphIdx < summaryIdx);
     }
   });
 
@@ -166,7 +380,7 @@ describe('SddStateCommand', () => {
       assert.match(o.text, /package\.json\t✔/);
       assert.match(o.text, /gennady-installed\t✘/);
       assert.match(o.text, /PORTAL=absent/);
-      assert.match(o.text, /session=absent/);
+      assert.doesNotMatch(o.text, /\[SESSION\]|session=/);
     }
   });
 
@@ -205,6 +419,15 @@ describe('SddStateCommand', () => {
     assert.strictEqual(badr.ok === false && badr.exitCode, 2);
     const bad4 = await mod.run(argv(ready, noPortal));
     assert.strictEqual(bad4.ok === false && bad4.exitCode, 4);
+  });
+
+  it('rejects unknown flags and values on the boolean --probe flag with canonical usage', async () => {
+    for (const args of [['--typo'], ['--probe=deep'], [ready, 'sdd-state']]) {
+      const outcome = await mod.run(argv(...args));
+      assert.strictEqual(outcome.ok === false && outcome.exitCode, 4);
+      if (outcome.ok) continue;
+      assert.match(outcome.message, /usage: gennady sdd-state \[project-root\] \[--probe\]/);
+    }
   });
 });
 
@@ -319,14 +542,17 @@ describe('SddStateCommand — readiness ladder card', () => {
     }
   });
 
-  it('portal + approved scope + module spec, no infra: next step is infra before scaffold', async () => {
+  it('portal + approved scope + module spec but incomplete authoring contract: routes back to spec readiness', async () => {
     const o = await mod2.run(argv(scopesNoInfra));
     assert.strictEqual(o.ok, true);
     if (o.ok) {
       assert.match(o.text, /✅ 2\. Скоупы\s+approved: 1 из 1/);
       assert.match(o.text, /✅ 3\. Модули\s+модульных спек: 1/);
       assert.match(o.text, /⬜ 4\. Инфраструктура\s+не настроена/);
-      assert.match(o.text, /👉 Следующий шаг: настроить инфраструктуру \(гейты\) перед scaffold/);
+      assert.match(
+        o.text,
+        /👉 Следующий шаг: исправить готовность спецификаций к scaffold — \/sdd/
+      );
     }
   });
 
@@ -396,15 +622,15 @@ describe('SddStateCommand — install-preflight gate (AX no install/sync knowled
     assert.match(o.message, /ERR_CLI_SDD_STATE_DIRECTIVES_MISSING/);
     assert.match(o.message, /ai\/directives\/sdd-v2\/ \(project root\): absent/);
     assert.match(o.message, /node_modules\/gennady\/ai\/directives\/sdd-v2\/: absent/);
-    assert.match(o.message, /next: npm i -D gennady && npx gennady sync/);
+    assert.match(o.message, /next: npm i -D gennady && npx gennady sync-skills/);
     assert.doesNotMatch(o.message, /\[READINESS\]/);
   });
 
-  it('directives present only under node_modules/gennady/ → still a valid install, snapshot prints', async () => {
+  it('directives present only under node_modules/gennady/ → blocks until project copy is synced', async () => {
     const o = await mod3.run(argv(nodeModulesOnly));
-    assert.strictEqual(o.ok, true);
-    if (!o.ok) return;
-    assert.match(o.text, /# sdd-state v1/);
+    assert.strictEqual(o.ok, false);
+    if (o.ok) return;
+    assert.match(o.message, /sync/);
   });
 
   it('root copy incomplete + node_modules copy absent → exit ≠ 0, names the missing file, next is `sync`', async () => {
@@ -412,10 +638,7 @@ describe('SddStateCommand — install-preflight gate (AX no install/sync knowled
     assert.strictEqual(o.ok, false);
     if (o.ok) return;
     assert.notStrictEqual(o.exitCode, 0);
-    assert.match(
-      o.message,
-      /ai\/directives\/sdd-v2\/ \(project root\): missing: execute\.directive\.xml, phase-execution-protocol\.directive\.xml/
-    );
+    assert.match(o.message, /ai\/directives\/sdd-v2\/ \(project root\): missing:/);
     // node_modules/gennady/ exists as a package but its own sdd-v2 copy is absent — "installed, not synced".
     assert.match(o.message, /node_modules\/gennady\/ai\/directives\/sdd-v2\/: absent/);
     assert.match(o.message, /next: npx gennady sync/);

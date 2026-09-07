@@ -7,6 +7,7 @@ import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseSkill } from '../parse-skill.ts';
 import { resolveTree } from '../resolve.ts';
+import { scanRefsAndTools } from '../scan.ts';
 import type { TraceNode } from '../model.ts';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
@@ -60,16 +61,16 @@ test('parseSkill is order-agnostic — it walks sections in whatever document or
   );
 });
 
-test('ExecutionPlan exposes GATHER / PREFLIGHT / EMBODY in order', () => {
+test('ExecutionPlan exposes the stateless GATHER / EMBODY loader in order', () => {
   const ids = (plan(skill)?.children ?? []).map((s) => s.attrs?.id);
-  assert.deepEqual(ids, ['GATHER', 'PREFLIGHT', 'EMBODY']);
+  assert.deepEqual(ids, ['GATHER', 'EMBODY']);
 });
 
-test('GATHER reads the main directive and runs sdd-state', () => {
+test('GATHER reads the single router entry and runs sdd-state', () => {
   const g = stepById(skill, 'GATHER');
   assert.ok(
-    refsOf(g).some((r) => r === 'ai/directives/sdd-v2/execute.directive.xml'),
-    'execute.directive ref normalized'
+    refsOf(g).some((r) => r === 'ai/directives/sdd-v2/router.directive.xml'),
+    'router.directive ref normalized'
   );
   assert.ok(
     (g?.children ?? []).some((c) => c.kind === 'tool' && c.label === 'sdd-state'),
@@ -77,13 +78,47 @@ test('GATHER reads the main directive and runs sdd-state', () => {
   );
 });
 
-test('PREFLIGHT no longer re-derives the FLOW_VERSION/READINESS interpretation — that moved into the directive itself (STEP_0B_PREFLIGHT), read via GATHER', () => {
-  const refs = refsOf(stepById(skill, 'PREFLIGHT'));
-  assert.deepEqual(
-    refs,
-    [],
-    'PREFLIGHT should carry no directive refs of its own — see ai/kit/__tests__/readiness-preflight-gate.test.ts for the project-wide guard'
+test('typed ToolCall is executable and preserves one exact command identity', () => {
+  const nodes = scanRefsAndTools(
+    [
+      'Use the `sdd-orient` extract produced here.',
+      '<ToolCall owner="this-step" result="orientation">npx gennady sdd-orient --scope demo</ToolCall>',
+    ].join('\n')
   );
+  assert.deepEqual(
+    nodes.filter((node) => node.kind === 'tool').map((node) => node.label),
+    ['sdd-orient'],
+    'one sdd-orient call must not be duplicated as the legacy orient shorthand'
+  );
+});
+
+test('ToolLiteral and raw prose are not executable surfaces', () => {
+  const nodes = scanRefsAndTools(
+    [
+      '<ToolLiteral role="delegated">`npx gennady sdd-check --all .`</ToolLiteral>',
+      'The caller may later mention npx gennady sdd-state in prose.',
+    ].join('\n')
+  );
+  assert.deepEqual(
+    nodes.filter((node) => node.kind === 'tool'),
+    [],
+    'documentation and prose must not appear as commands the current step executes'
+  );
+});
+
+test('legacy inline command remains executable during the typed migration', () => {
+  const nodes = scanRefsAndTools('Run `npx gennady sdd-state` once.');
+  assert.deepEqual(
+    nodes.filter((node) => node.kind === 'tool').map((node) => node.label),
+    ['sdd-state']
+  );
+});
+
+test('EMBODY delegates state interpretation to the router without a session preflight step', () => {
+  const embody = stepById(skill, 'EMBODY');
+  assert.match(embody?.detail ?? '', /You are the router now/);
+  assert.match(embody?.detail ?? '', /exact `routerState`/);
+  assert.doesNotMatch(embody?.detail ?? '', /session barrier|STEP_1B_PREFLIGHT/);
 });
 
 test('resolveTree expands a run node into the referenced directive tree', () => {

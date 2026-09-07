@@ -13,6 +13,7 @@ import { fsSpecSectionSource, type SpecSectionSource } from './spec-section-sour
 export type OrientResolution =
   | { ok: true; path: string; content: string; resolvedFrom: 'path' }
   | { ok: true; path: string; content: string; resolvedFrom: 'scope'; scope: string }
+  | { ok: true; path: string; content: string; resolvedFrom: 'scope-placeholder'; scope: string }
   | { ok: false; reason: 'no-portal' }
   | { ok: false; reason: 'unknown-scope'; name: string; scopes: Scope[] }
   | { ok: false; reason: 'unreadable-scope-spec'; name: string; specPath: string };
@@ -46,7 +47,17 @@ export function resolveOrientTarget(
   const scopePath = resolve(join(root, 'specs'), match.specPath);
   const scopeContent = source.read(scopePath);
   if (scopeContent === null) {
-    return { ok: false, reason: 'unreadable-scope-spec', name: arg, specPath: scopePath };
+    // A portal row is sufficient orientation evidence for a greenfield scope. Supply the smallest
+    // honest scope shape so buildNeighbourhood can still return its portal edges and consumers;
+    // no target-spec content is fabricated.
+    return {
+      ok: true,
+      path: scopePath,
+      content:
+        '<!--SECTION:SCOPE_TYPE-->\n## Scope-Type\npre-materialized\n<!--/SECTION:SCOPE_TYPE-->',
+      resolvedFrom: 'scope-placeholder',
+      scope: arg,
+    };
   }
   return { ok: true, path: scopePath, content: scopeContent, resolvedFrom: 'scope', scope: arg };
 }

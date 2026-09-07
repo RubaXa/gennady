@@ -1,4 +1,6 @@
-<Axiom id="AX_RE_DISPATCH">Any edit → re-dispatch mandatory, no exception of the agent's own making — "the fix is trivial" does
-not waive it; edits may create contradictions detectable only by a fresh isolated agent. The verdict
-handed to the operator MUST be the literal verdict text of the LAST dispatch actually run, shown as a
-direct quote — never a paraphrase, and never the verdict of a dispatch that was skipped.</Axiom>
+<Axiom id="AX_RE_DISPATCH">Any edit → another isolated post-edit review dispatch mandatory, no exception
+of the agent's own making — "the fix is trivial" does not waive it; edits may create contradictions
+detectable only by a post-edit sensor pass. Whether a dispatch continues an existing worker or starts a
+fresh one belongs to the owning review step, not this global rule. The verdict handed to the operator MUST
+be the literal verdict text of the LAST dispatch actually run, shown as a direct quote — never a
+paraphrase, and never the verdict of a dispatch that was skipped.</Axiom>

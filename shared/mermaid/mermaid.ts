@@ -5,6 +5,14 @@
 /** @purpose Cached mermaid `parse` fn — mermaid is a browser lib, so it (and its jsdom DOM shim) load once, lazily. */
 let _mermaidParse: ((text: string) => Promise<unknown>) | null = null;
 
+/** @purpose One fenced Mermaid body with the one-based Markdown line where its body starts. */
+export type MermaidBlock = {
+  /** @purpose Mermaid source without the surrounding Markdown fence. */
+  body: string;
+  /** @purpose One-based Markdown line where the Mermaid body starts. */
+  line: number;
+};
+
 /**
  * @purpose Lazily load mermaid + a jsdom DOM shim (both browser-oriented) only when a diagram is actually validated.
  * @invariant mermaid reads `window`/`document`/`navigator` from global scope at parse time; jsdom provides them. Loaded once, then cached.
@@ -29,26 +37,37 @@ export async function loadMermaidParse(): Promise<(text: string) => Promise<unkn
  * @param content Full document text.
  * @returns Block bodies (fence markers stripped); empty when the document has no mermaid block.
  */
-export function extractMermaidBlocks(content: string): string[] {
-  const blocks: string[] = [];
+export function extractMermaidBlockRefs(content: string): MermaidBlock[] {
+  const blocks: MermaidBlock[] = [];
   const lines = content.split('\n');
   let collecting = false;
   let current: string[] = [];
-  for (const line of lines) {
+  let bodyLine = 1;
+  for (const [index, line] of lines.entries()) {
     const trimmed = line.trim();
     if (!collecting && trimmed.startsWith('```mermaid')) {
       collecting = true;
       current = [];
+      bodyLine = index + 2;
       continue;
     }
     if (collecting && trimmed === '```') {
-      blocks.push(current.join('\n'));
+      blocks.push({ body: current.join('\n'), line: bodyLine });
       collecting = false;
       continue;
     }
     if (collecting) current.push(line);
   }
   return blocks;
+}
+
+/**
+ * @purpose Backward-compatible body-only view used by structural checks and template tests.
+ * @param content Full document text.
+ * @returns Mermaid block bodies without fence markers.
+ */
+export function extractMermaidBlocks(content: string): string[] {
+  return extractMermaidBlockRefs(content).map(({ body }) => body);
 }
 
 /**
@@ -63,6 +82,16 @@ export async function validateMermaid(text: string): Promise<string | null> {
     await parse(text);
     return null;
   } catch (cause) {
-    return cause instanceof Error ? (cause.message.split('\n')[0] ?? 'invalid') : String(cause);
+    const message = cause instanceof Error ? cause.message : String(cause);
+    const headline =
+      message
+        .split('\n')
+        .find((line) => line.trim())
+        ?.trim() ?? 'invalid';
+    const diagramLine = /\bline\s+(\d+)\b/i.exec(message)?.[1];
+    if (!diagramLine) return headline.replace(/\s+/g, ' ').slice(0, 240);
+    const source = text.split('\n')[Number(diagramLine) - 1]?.trim();
+    if (!source) return headline.replace(/\s+/g, ' ').slice(0, 240);
+    return `${headline} near ${JSON.stringify(source.slice(0, 180))}`;
   }
 }

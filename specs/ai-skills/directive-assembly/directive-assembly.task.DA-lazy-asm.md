@@ -602,7 +602,7 @@ directive-assembly only) — flagged for the operator, not blocking. -->
 
 ## Execution Log
 
-_(Round = one execute-then-audit attempt; per-phase blocks within a Round. Skeleton is minimal — event lines appear only when the event happens. Token vocabulary lives in `directive-assembly.3-tasks.md`. A `[x]` line with an unreplaced `<…>` placeholder is a fabricated DONE — forbidden.)_
+_(Round = one execute-then-audit attempt; per-phase blocks within a Round. Skeleton is minimal — event lines appear only when the event happens. Token vocabulary lives in `directive-assembly.3-tasks.md`. A `[x]` line still carrying an unreplaced angle-bracket token is a fabricated DONE — forbidden.)_
 
 ### Round 2 — 2026-08-22, execute DA-lazy-asm — lazy assembly per spec
 

@@ -2,9 +2,11 @@
 // @consumers: gennady.ts
 // @tasks: N/A
 
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
 import { logger } from '#logger';
+import { appendSddSessionBoundary } from '../../../shared/sdd/session-boundary.ts';
+import { normalizeSddToolFailure } from '../../../shared/sdd/tool-guidance.ts';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
 import {
   TEMPLATES,
@@ -20,11 +22,26 @@ import {
   suggestTaskId,
 } from '../../../shared/sdd/task-id.ts';
 import {
+  TASK_OWNER_KINDS,
+  resolveTaskOutputOwnership,
+  resolveTaskOwnership,
+  type TaskOwnerKind,
+} from '../../../shared/sdd/module-specs.ts';
+import {
+  loadRuleRegistry,
+  renderTaskAuthoringLiterals,
+  ticketRelativeHref,
+} from '../../../shared/sdd/task-authoring-literals.ts';
+import {
   badInvocation,
   unknownKind,
   fileExists,
   writeFailed,
   badTaskId,
+  scopeNotDecomposed,
+  ruleRegistryInvalid,
+  authoringLiteralsInvalid,
+  moduleStructureInvalid,
   renderCreated,
   renderManifestReport,
   type NewOutcome,
@@ -49,6 +66,40 @@ export function renderList(): string {
 function moduleName(module: string): string {
   const segments = module.split('/').filter((s) => s.length > 0);
   return segments[segments.length - 1] ?? module;
+}
+
+/**
+ * @purpose Materialize only the task identity and structural ownership facts already proved by
+ * `sdd-new`; semantic purpose, contracts, phases, and verification remain author-owned.
+ * @param template Canonical task skeleton from the template registry.
+ * @param context Exact CLI identity plus path-derived owning spec.
+ * @returns Task skeleton with known Meta values and owning-spec link filled.
+ */
+function renderTaskSkeleton(
+  template: string,
+  context: {
+    id: string;
+    scope: string;
+    module?: string;
+    owner: TaskOwnerKind;
+    ticketPath: string;
+    owningSpecPath: string;
+  }
+): string {
+  const owningHref = ticketRelativeHref(context.ticketPath, context.owningSpecPath);
+  return template
+    .replace('# Task: <ACRONYM>-<slug> —', `# Task: ${context.id} —`)
+    .replace('- **Task-ID:** <ACRONYM>-<slug>', `- **Task-ID:** ${context.id}`)
+    .replace('- **Scope:** <scope-name>', `- **Scope:** ${context.scope}`)
+    .replace('- **Module:** <module-name or N/A>', `- **Module:** ${context.module ?? 'N/A'}`)
+    .replace(
+      '- **Structural Owner:** <infrastructure-flat | scope-bootstrap | module>',
+      `- **Structural Owner:** ${context.owner}`
+    )
+    .replace(
+      '- **Owning Spec:** [Owning spec](<relative owning spec path>)',
+      `- **Owning Spec:** [Owning spec](${owningHref})`
+    );
 }
 
 /**
@@ -96,7 +147,7 @@ export function resolvePath(
 }
 
 /**
- * @purpose Which options are required for a kind, beyond --out (which always short-circuits path computation).
+ * @purpose List missing options for one artifact kind.
  * @invariant `task`/`module-index` skip --module (flat path via `resolvePath`); `module` always
  *   needs it. `research` needs --slug (kebab-case) — the tool, never the operator, supplies the date.
  * @param kind Artifact kind.
@@ -104,13 +155,25 @@ export function resolvePath(
  */
 function missingOptions(
   kind: ArtifactKind,
-  opts: { scope?: string; module?: string; id?: string; out?: string; slug?: string }
+  opts: {
+    scope?: string;
+    module?: string;
+    id?: string;
+    out?: string;
+    slug?: string;
+    owner?: string;
+  }
 ): string[] {
-  if (opts.out) return [];
   const missing: string[] = [];
+  if (kind === 'task') {
+    if (!opts.scope && !opts.out) missing.push('--scope');
+    if (!opts.id) missing.push('--id');
+    if (!opts.owner) missing.push('--owner');
+    return missing;
+  }
+  if (opts.out) return missing;
   if (kind !== 'portal' && kind !== 'project-index' && !opts.scope) missing.push('--scope');
   if (kind === 'module' && !opts.module) missing.push('--module');
-  if (kind === 'task' && !opts.id) missing.push('--id');
   if (kind === 'research' && !opts.slug) missing.push('--slug');
   return missing;
 }
@@ -119,6 +182,28 @@ function missingOptions(
 // `--scope` name follows. `--module` may nest to any depth (AX_HIERARCHICAL_SPECS); every segment
 // must satisfy this on its own.
 const SEGMENT_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+
+/** @purpose Value-bearing long options accepted by sdd-new's public CLI. */
+const VALUE_FLAGS = new Set(['scope', 'module', 'id', 'out', 'slug', 'owner']);
+/** @purpose Boolean long options accepted by sdd-new's public CLI. */
+const BOOLEAN_FLAGS = new Set(['list', 'manifest']);
+
+/**
+ * @purpose Validate a scope as one kebab-case identity segment, never a filesystem path.
+ * @invariant Scope, module segments, and research slug share the same SEGMENT_RE grammar.
+ * @param scope Raw --scope value, explicit or structurally inferred from task --out.
+ * @returns null when valid, else a human-readable reason.
+ */
+export function validateScope(scope: string): string | null {
+  if (scope.length === 0) return '--scope must not be empty';
+  if (scope === '.' || scope === '..' || scope.includes('/') || scope.includes('\\')) {
+    return `--scope must be one kebab-case name, not a path: "${scope}"`;
+  }
+  if (!SEGMENT_RE.test(scope)) {
+    return `--scope "${scope}" is not kebab-case (lowercase letters/digits, hyphen-separated)`;
+  }
+  return null;
+}
 
 /**
  * @purpose Validate a `research` --slug: same grammar as one `--module` segment (kebab-case,
@@ -168,13 +253,51 @@ export function validateModulePath(module: string): string | null {
  * @param rawArgs Raw command-line arguments (process.argv).
  * @returns NewOutcome — created path + report on success, else an actionable failure.
  */
-export async function run(rawArgs: string[]): Promise<NewOutcome> {
+async function runCommand(rawArgs: string[]): Promise<NewOutcome> {
+  // Fail before the permissive shared parser can erase an unknown flag or turn a missing value
+  // into boolean `true`; badInvocation prints the complete canonical call, so no --help retry.
+  const rawTokens = rawArgs.slice(2);
+  const seenFlags = new Set<string>();
+  for (let i = 0; i < rawTokens.length; i++) {
+    const token = rawTokens[i] as string;
+    if (token === '--') break;
+    if (!token.startsWith('-')) continue;
+    const match = token.match(/^--([^=]+)(?:=(.*))?$/);
+    if (!match) return badInvocation(`unknown flag "${token}"`);
+    const name = match[1] as string;
+    const inlineValue = match[2];
+    if (!VALUE_FLAGS.has(name) && !BOOLEAN_FLAGS.has(name)) {
+      return badInvocation(`unknown flag "--${name}"`);
+    }
+    if (seenFlags.has(name)) {
+      return badInvocation(`flag "--${name}" must be specified at most once`);
+    }
+    seenFlags.add(name);
+    if (BOOLEAN_FLAGS.has(name)) {
+      if (inlineValue !== undefined) {
+        return badInvocation(`flag "--${name}" does not take a value`);
+      }
+      continue;
+    }
+    if (inlineValue !== undefined) {
+      if (inlineValue.length === 0) {
+        return badInvocation(`flag "--${name}" requires a value`);
+      }
+      continue;
+    }
+    const next = rawTokens[i + 1];
+    if (next === undefined || next.length === 0 || next.startsWith('-')) {
+      return badInvocation(`flag "--${name}" requires a value`);
+    }
+    i++;
+  }
   const args = parseArgs(rawArgs, {
     scope: { aliases: ['scope'], takesValue: true },
     module: { aliases: ['module'], takesValue: true },
     id: { aliases: ['id'], takesValue: true },
     out: { aliases: ['out'], takesValue: true },
     slug: { aliases: ['slug'], takesValue: true },
+    owner: { aliases: ['owner'], takesValue: true },
     list: { aliases: ['list'] },
     manifest: { aliases: ['manifest'] },
   });
@@ -190,6 +313,9 @@ export async function run(rawArgs: string[]): Promise<NewOutcome> {
   if (!kindArg) {
     logger.warn('[SddNewCommand#run] bad invocation — missing <kind>');
     return badInvocation('missing <kind>');
+  }
+  if (positional.length > 1) {
+    return badInvocation(`unexpected positional argument "${positional[1]}" after <kind>`);
   }
   if (!(ARTIFACT_KINDS as string[]).includes(kindArg)) {
     logger.warn(`[SddNewCommand#run] unknown kind: ${kindArg}`);
@@ -209,13 +335,60 @@ export async function run(rawArgs: string[]): Promise<NewOutcome> {
     out?: string;
     slug?: string;
     date?: string;
+    owner?: TaskOwnerKind;
   } = {
     scope: typeof args.scope === 'string' ? args.scope : undefined,
     module: typeof args.module === 'string' ? args.module : undefined,
     id: typeof args.id === 'string' ? args.id : undefined,
     out: typeof args.out === 'string' ? args.out : undefined,
     slug: typeof args.slug === 'string' ? args.slug : undefined,
+    owner:
+      typeof args.owner === 'string' && (TASK_OWNER_KINDS as readonly string[]).includes(args.owner)
+        ? (args.owner as TaskOwnerKind)
+        : undefined,
   };
+
+  if (typeof args.owner === 'string' && !opts.owner) {
+    return badInvocation(
+      `--owner must be one of ${TASK_OWNER_KINDS.join(' | ')}, got "${args.owner}"`
+    );
+  }
+
+  if (opts.scope) {
+    const reason = validateScope(opts.scope);
+    if (reason) {
+      logger.warn(`[SddNewCommand#run] bad --scope: ${reason}`);
+      return badInvocation(reason);
+    }
+  }
+
+  if (kind === 'task' && opts.out) {
+    const inferred = resolveTaskOutputOwnership(opts.out);
+    if (!inferred.scope || inferred.reason) {
+      return badInvocation(
+        `cannot prove task --out ownership: ${inferred.reason ?? 'no canonical owner'}; --scope/--module may verify the proven owner but cannot replace ownership evidence`
+      );
+    }
+    if (opts.scope && opts.scope !== inferred.scope) {
+      return badInvocation(
+        `task --scope ${opts.scope} conflicts with --out owner ${inferred.scope}; use the owning scope or a different destination`
+      );
+    }
+    if (opts.module && opts.module !== inferred.module) {
+      return badInvocation(
+        `task --module ${opts.module} conflicts with --out module owner ${inferred.module ?? '(scope-level)'}; use the owning module subtree or omit --module`
+      );
+    }
+    opts.scope ??= inferred.scope;
+    opts.module ??= inferred.module;
+    if (opts.scope) {
+      const reason = validateScope(opts.scope);
+      if (reason) {
+        logger.warn(`[SddNewCommand#run] bad inferred --scope: ${reason}`);
+        return badInvocation(`task --out inferred an invalid owner; ${reason}`);
+      }
+    }
+  }
 
   const missing = missingOptions(kind, opts);
   if (missing.length > 0) {
@@ -227,6 +400,29 @@ export async function run(rawArgs: string[]): Promise<NewOutcome> {
     if (reason) {
       logger.warn(`[SddNewCommand#run] bad --module: ${reason}`);
       return badInvocation(reason);
+    }
+  }
+
+  if (kind === 'module' && opts.scope && opts.module) {
+    const moduleSegments = opts.module.split('/');
+    if (moduleSegments[0] === opts.scope) {
+      return moduleStructureInvalid(
+        opts.scope,
+        opts.module,
+        moduleSegments.length === 1
+          ? 'the module name repeats the scope name'
+          : 'the module path starts by repeating the owning scope'
+      );
+    }
+    const repeatedAt = moduleSegments.findIndex(
+      (segment, index) => index > 0 && segment === moduleSegments[index - 1]
+    );
+    if (repeatedAt >= 0) {
+      return moduleStructureInvalid(
+        opts.scope,
+        opts.module,
+        `adjacent module segments repeat "${moduleSegments[repeatedAt]}"`
+      );
     }
   }
 
@@ -262,6 +458,29 @@ export async function run(rawArgs: string[]): Promise<NewOutcome> {
   }
   // #endregion END_TASK_ID
 
+  // #region START_SCOPE_DECOMPOSITION — infrastructure is the sole flat-scope exception
+  if (kind === 'task' && opts.scope) {
+    const scopeDir = resolve('specs', opts.scope);
+    const scopeSpec = join(scopeDir, `${opts.scope}.spec.md`);
+    const ownership = resolveTaskOwnership(scopeSpec, opts.owner as TaskOwnerKind, opts.module);
+    if (ownership.status === 'invalid') {
+      logger.warn(
+        `[SddNewCommand#run] task ownership is not ready: ${opts.scope}/${opts.module ?? '(scope)'} `
+      );
+      return scopeNotDecomposed(opts.scope, ownership.reason);
+    }
+  }
+  // #endregion END_SCOPE_DECOMPOSITION
+
+  let taskRules: ReturnType<typeof loadRuleRegistry> = [];
+  if (kind === 'task') {
+    try {
+      taskRules = loadRuleRegistry(process.cwd());
+    } catch (cause) {
+      return ruleRegistryInvalid(cause);
+    }
+  }
+
   const path = resolvePath(kind, opts);
   const abs = resolve(path);
 
@@ -270,9 +489,40 @@ export async function run(rawArgs: string[]): Promise<NewOutcome> {
     return fileExists(path);
   }
 
+  const owningSpecPath =
+    kind === 'task' && opts.scope
+      ? opts.module
+        ? `specs/${opts.scope}/${opts.module}/${moduleName(opts.module)}.spec.md`
+        : `specs/${opts.scope}/${opts.scope}.spec.md`
+      : '';
+  let authoringLiterals = '';
+  if (kind === 'task' && owningSpecPath) {
+    try {
+      authoringLiterals = renderTaskAuthoringLiterals(
+        path,
+        owningSpecPath,
+        taskRules,
+        readFileSync(resolve(owningSpecPath), 'utf-8')
+      );
+    } catch (cause) {
+      return authoringLiteralsInvalid(owningSpecPath, cause);
+    }
+  }
+
   try {
     mkdirSync(dirname(abs), { recursive: true });
-    writeFileSync(abs, TEMPLATES[kind].skeleton, 'utf-8');
+    const skeleton =
+      kind === 'task' && opts.id && opts.scope && opts.owner
+        ? renderTaskSkeleton(TEMPLATES.task.skeleton, {
+            id: opts.id,
+            scope: opts.scope,
+            ...(opts.module ? { module: opts.module } : {}),
+            owner: opts.owner,
+            ticketPath: path,
+            owningSpecPath,
+          })
+        : TEMPLATES[kind].skeleton;
+    writeFileSync(abs, skeleton, 'utf-8');
   } catch (cause) {
     logger.warn(`[SddNewCommand#run] write failed: ${path}`);
     return writeFailed(path, cause);
@@ -285,7 +535,53 @@ export async function run(rawArgs: string[]): Promise<NewOutcome> {
     module: opts.module,
     id: opts.id,
   });
-  return { ok: true, text: renderCreated(kind, path, TEMPLATES[kind].sections, nextSteps), path };
+  const moduleConcept =
+    kind === 'module' && opts.scope && opts.module
+      ? [
+          `concept: module "${opts.module}" is one cohesive responsibility inside scope "${opts.scope}"; it is not a second copy of the scope.`,
+          ...(opts.scope === 'fibonacci'
+            ? [`examples for scope "fibonacci": nth, sequence`]
+            : [
+                `selection-rule: name the responsibility owned inside "${opts.scope}" (for example parser, storage, or transport), not the scope itself.`,
+              ]),
+          `canonical-path: ${path}`,
+        ].join('\n')
+      : '';
+  return {
+    ok: true,
+    text: [
+      renderCreated(kind, path, TEMPLATES[kind].sections, nextSteps, authoringLiterals),
+      moduleConcept,
+    ]
+      .filter(Boolean)
+      .join('\n\n'),
+    path,
+  };
+}
+
+/**
+ * @purpose Execute sdd-new and append the mandatory workspace boundary to every successful report.
+ * @param rawArgs Raw command-line arguments (process.argv).
+ * @returns Creation/manifest state ending with WORKING_DIR/TMP_DIR, or the original failure.
+ */
+export async function run(rawArgs: string[]): Promise<NewOutcome> {
+  const workingDir = resolve('.');
+  const outcome = await runCommand(rawArgs);
+  if (outcome.ok) return { ...outcome, text: appendSddSessionBoundary(outcome.text, workingDir) };
+  return {
+    ...outcome,
+    message: normalizeSddToolFailure(
+      {
+        tool: 'sdd-new',
+        code: outcome.code,
+        object: rawArgs.slice(2).join(' ') || 'sdd-new invocation',
+        action:
+          'correct the named argument or repository object, then repeat the same creation intent',
+        example: 'npx gennady sdd-new module --scope fibonacci --module nth',
+      },
+      outcome.message
+    ),
+  };
 }
 
 // Self-executing for CLI: gennady sdd-new <kind> --scope <s> [--module <m>] [--id <ACR-slug>] [--out <path>] | gennady sdd-new --list

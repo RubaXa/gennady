@@ -18,5 +18,12 @@
       | `DEAD_CODE_SUSPECT` (spotted incidentally during a probe) | spin out as a separate task (background task / new ticket) — never fixed inside the current task; keeps the current blast radius bounded |
       | operator-acknowledged risk | Decision Log entry in the scope spec |
 
-      The audit agent proposes a concrete edit (diff or instruction). The operator decides and applies. The audit agent does not modify code autonomously (per `AX_NO_AUTO_FIX`).
+      The audit agent proposes a concrete edit (diff or instruction). The operator decides; the
+      orchestrator routes an accepted proposal to the artifact owner. The audit/code-review worker stays
+      read-only throughout (`AX_NO_AUTO_FIX`).
+      When reconcile consumes the proposal, every semantic "spec edit" in this table means route to
+      the owning scope/module/infra/interface authoring flow, independent semantic review, and operator approval #1 before
+      implementation. Only an explicitly non-semantic editorial correction may use reconcile's bounded
+      task-free direct receipt. Every task-owned code action means a new Round with concrete fix/test
+      PhaseIDs; finding size never bypasses the ticket.
     </Axiom>

@@ -133,10 +133,6 @@ if (restArgs.some((a) => helpFlags.has(a))) {
       await import('./cmd/lint/help.ts').then((m) => m.printHelp());
       helpLoaded = true;
       break;
-    case 'alt-opinion':
-      await import('./cmd/alt-opinion/help.ts').then((m) => m.printHelp());
-      helpLoaded = true;
-      break;
     case 'agent-mon':
       await import('./cmd/agent-mon/help.ts').then((m) => m.printHelp());
       helpLoaded = true;
@@ -228,10 +224,6 @@ if (restArgs.some((a) => helpFlags.has(a))) {
       break;
     case 'sdd-log':
       await import('./cmd/sdd-log/help.ts').then((m) => m.printHelp());
-      helpLoaded = true;
-      break;
-    case 'sdd-session':
-      await import('./cmd/sdd-session/help.ts').then((m) => m.printHelp());
       helpLoaded = true;
       break;
     case 'sdd-sync':
@@ -329,10 +321,6 @@ switch (command) {
 
   case 'lint':
     await import('./cmd/lint/index.ts');
-    break;
-
-  case 'alt-opinion':
-    await import('./cmd/alt-opinion/index.ts');
     break;
 
   case 'agent-mon':
@@ -433,10 +421,6 @@ switch (command) {
 
   case 'sdd-log':
     await import('./cmd/sdd-log/index.ts');
-    break;
-
-  case 'sdd-session':
-    await import('./cmd/sdd-session/index.ts');
     break;
 
   case 'sdd-sync':

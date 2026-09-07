@@ -1,7 +1,10 @@
 <Axiom id="AX_BLOCKER_RESOLUTION_TRAIL">
       A BLOCKER entry in Execution Log (line containing `🛑` and `BLOCKED`) remains ACTIVE until a later Round entry explicitly marks it RESOLVED. Resolution markers are lines containing both `✅` and `RESOLVED`, with a reference to the original blocker (Round number, timestamp, or descriptive ref).
 
-      Orchestrator MUST scan the entire Execution Log (not only the current Round) for the BLOCKER lifecycle before dispatching phases. The source is the `[BLOCKERS]` section `sdd-task <ticket>` already returns as part of its one planning call — `blockers: none` or `blockers: ACTIVE <n>` with one line per active blocker, computed from the same `🛑 BLOCKED` / `✅ RESOLVED` pairing mechanically. Take that section as given: `blockers: ACTIVE <n>` halts as PAUSED awaiting operator (NOT failed, see `AX_HALT_VS_FAIL_DISTINCTION`); `blockers: none` is CLEAR to dispatch. Do NOT spend a separate `sdd-check --task` call re-deriving this at plan time — that tool remains available as a point-recheck for audit and other out-of-band verification, not as a second call on the orchestrator's hot path. If `sdd-task` is unavailable, fall back to scanning the log by hand for the same `🛑 BLOCKED` / `✅ RESOLVED` pairing.
+      Orchestrator consumes the `[BLOCKERS]` section already returned by `sdd-task <ticket>`.
+      `blockers: none` is clear; each `blockers: ACTIVE <n>` entry is classified through the typed
+      checkpoint as recoverable technical, spec-goal conflict, or external authority. Active history
+      never implies an operator pause by itself. Do not spend a second check call or reconstruct it.
 
       Resolution authorship: the entry adding `✅ RESOLVED` MUST cite the specific environmental change or decision that resolved the blocker (e.g. "tsconfig moduleResolution fixed", "operator chose option B"). Empty resolution text → audit treats as fabricated and may re-flag.
 

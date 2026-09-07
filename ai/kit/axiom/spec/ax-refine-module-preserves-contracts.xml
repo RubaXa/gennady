@@ -6,7 +6,7 @@
 
       A breaking change additionally emits a Pivot Invalidation List (`PIVOT_INVALIDATION_LIST_FORMAT`) in this module's spec: its consumer modules — the siblings whose `Inter-Module Dependencies` declares an edge `--> this-module` — listed as `refine-module` targets, plus their tasks to reopen. Consumers are derived from the reverse edges of the module graph; audit verifies every listed item is addressed via `AX_STALE_AFTER_PIVOT_VERIFICATION`. Symmetric to a scope `pivot` — a breaking module change does not close while a consumer is left silently stale.
 
-      Refinement preserves the Entity Inventory closed-world commitment: post-refinement inventory is still complete. New entities go into the inventory in the same session.
+      Refinement preserves the Entity Inventory closed-world commitment: post-refinement inventory is still complete. New entities go into the inventory in the same authoring change.
 
       Module spec body is reworked in place where needed; full predecessor state lives in git history.
     </Axiom>

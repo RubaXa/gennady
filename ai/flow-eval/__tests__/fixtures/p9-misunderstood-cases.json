@@ -1,0 +1,75 @@
+{
+  "moduleEqualsScope": {
+    "scope": "fibonacci",
+    "module": "fibonacci",
+    "observedPath": "specs/fibonacci/fibonacci/fibonacci.spec.md",
+    "expectedStructure": "specs/<scope>/<module>/<module>.spec.md",
+    "expectedExamples": ["nth", "sequence"]
+  },
+  "checkerShellFilter": {
+    "inputSummary": "{\"command\":\"npx gennady sdd-check n.spec.md --authoring 2>&1 | rg \\\"ENTITY_SURFACES|NOT_FOLDED\\\"\"}"
+  },
+  "repeatedSpecWrites": {
+    "observedCount": 9,
+    "calls": [
+      "write:specs/fibonacci/fibonacci.spec.md",
+      "write:specs/fibonacci/fibonacci/fibonacci.spec.md",
+      "write:specs/fibonacci/fibonacci.spec.md",
+      "write:specs/fibonacci/fibonacci.spec.md",
+      "write:specs/fibonacci/fibonacci/fibonacci.spec.md",
+      "write:specs/fibonacci/fibonacci.spec.md",
+      "write:specs/fibonacci/fibonacci/fibonacci.spec.md",
+      "write:specs/fibonacci/fibonacci.spec.md",
+      "write:specs/fibonacci/fibonacci/fibonacci.spec.md"
+    ]
+  },
+  "leftoverSkeletonGuidance": {
+    "fixture": "shared/sdd/__tests__/fixtures/spec-authoring/distorted/p7-leftover-skeleton-guidance.spec.md"
+  },
+  "understandingSignifiers": [
+    {
+      "concept": "scope-vs-module",
+      "session": "ses_f9d940ebbffeF2hYqFMV8BH3gx",
+      "message": 14,
+      "observed": "worker considered naming the only module fibonacci because the owning scope was fibonacci",
+      "signifier": "sdd-new module success names the scope, cohesive responsibility, canonical path, and fibonacci examples nth/sequence"
+    },
+    {
+      "concept": "what-to-fill",
+      "session": "ses_f9d940ebbffeF2hYqFMV8BH3gx",
+      "message": 28,
+      "observed": "worker guessed why authoring findings existed and repeatedly rewrote both documents",
+      "signifier": "sdd-check JSON states whole-document write mode and exposes section-local findings with examples"
+    },
+    {
+      "concept": "authoring-boundary",
+      "session": "ses_f9d940ebbffeF2hYqFMV8BH3gx",
+      "message": 60,
+      "observed": "worker treated zero errors with remaining warnings as ready, then sdd-log authoring-complete rejected it",
+      "signifier": "sdd-check explicitly reports whether authoring-complete is ready and requires zero remaining findings"
+    }
+  ],
+  "p9Verification": {
+    "scenario": "fibonacci-library",
+    "workerSession": "ses_f9d232730ffevJxLW1YcVZXPKC",
+    "judgeSession": "ses_f9d19fe3dffeLzvPTu1XTUPC7B",
+    "sandbox": "/private/tmp/p9-flow-eval-root.aR1ZsR/sdd-flow-eval-IeiW1Q",
+    "verdict": "pass",
+    "workerStatus": "completed",
+    "toolCalls": 50,
+    "previousToolCalls": 95,
+    "toolBreakdown": {
+      "bash": 20,
+      "edit": 1,
+      "grep": 1,
+      "read": 21,
+      "task": 2,
+      "write": 5
+    },
+    "modulePath": "specs/fibonacci/nth/nth.spec.md",
+    "duplicatedModulePathCount": 0,
+    "shellWorkaroundCount": 0,
+    "foreignTmpPathCount": 0,
+    "residualObservation": "one transient approval-marker edit was followed by a whole-document Write; judge classified the summary mismatch as cosmetic and non-blocking"
+  }
+}

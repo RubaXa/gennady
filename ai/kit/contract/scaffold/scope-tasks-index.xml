@@ -5,6 +5,9 @@
   for infra / interface scopes that have no modules). Project-wide conventions are inherited from
   `specs/3-tasks.md`, not repeated.
 
+  When this index is the narrowest owner of a reviewed ticket set, it contains approval #2 exactly as
+  `ARTIFACT_APPROVAL_MARKER` defines.
+
   ```markdown
   {{> "sdd-skeleton-scope-index"}}
   ```

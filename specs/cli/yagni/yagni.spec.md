@@ -10,10 +10,12 @@
 
 **Key properties:**
 
-- Языко-независимо на уровне порта: `SymbolIndex` (`services/symbol-index/`) — точный tree-sitter-адаптер для TypeScript (единственная установленная грамматика) и приблизительный grep-адаптер для остальных расширений. Framework целится и на не-Node потребителей (Go, Python) — TS-only решение не подходит.
+- Языко-независимо на уровне порта: `SymbolIndex` (`services/symbol-index/`) — точный tree-sitter-адаптер для `.ts`/`.tsx` (единственная установленная грамматика) и приблизительный grep-адаптер для `.mts/.cts`, JS-вариантов, Python, Go, Ruby и Java. Единый source-policy задаёт расширения `ts/tsx/mts/cts/js/jsx/mjs/cjs/py/go/rb/java` и test territory одновременно для diff-discovery и corpus index; JS/TS `.test/.spec`, Go `_test.go`, Python `test_`/`_test`, Ruby `_spec/_test`, Java `Test/Tests` и test directories исключаются симметрично, поэтому два множества не могут разойтись.
 - Тесты **никогда** не считаются использованием — файлы-тесты (`shared/common/files.ts#isTestFile`, тот же механизм, что у `git-core`) исключены из подсчёта.
 - Реэкспорт из barrel/index (`export { X } from '...'`, `export * from '...'`) не считается использованием — такие строки вычищаются перед подсчётом (`stripBarrelReexports`).
 - «Изменённый символ» — по имени: символ, объявленный в текущей версии файла, но отсутствующий среди имён, объявленных в версии файла на `HEAD`. Символ, чьё имя не поменялось, а изменилось лишь тело — вне периметра этого прохода (у него уже есть история использования).
+- Видимость принадлежит языковому адаптеру, а не JS-regex в CLI: TypeScript определяет exports по AST, Go — по правилу uppercase top-level identifier. Остальной grep-fallback возвращает `unknown`; при ровно одном использовании команда выдаёт `ERR_CLI_YAGNI_VISIBILITY_UNKNOWN` (ограничение адаптера, не YAGNI-обвинение), поэтому неизвестная видимость не превращается ни в ложный clean, ни в ложную underuse-находку.
+- Production/spec corpus индексируется fail-closed: любое существующее, но нечитаемое поддерево/файл возвращает `ERR_CLI_YAGNI_CORPUS_UNREADABLE` с путём и причиной до семантических находок. Отсутствующий optional `specs/` остаётся валидным пустым корпусом.
 - Погашение находки — метка `- **Usage Waiver:** <причина>` в контракте/поверхности сущности. Причина обязательна — пустая метка не гасит. Ссылка на `D-NNN` опциональна: её пишут только тогда, когда за меткой стоит настоящее решение из Decision Log; если ссылка есть, она обязана указывать на живую запись.
 - Формат вывода — ESLint-совместимый, как у `gennady lint` (`ERR_CLI_YAGNI_*`).
 
@@ -70,29 +72,38 @@ yagni: 1 finding(s) across 3 changed file(s)
 
 _Это полный список сущностей модуля `yagni`. Любое введение сущности execution-агентом помимо этого списка считается drift'ом и требует обновления spec._
 
-| Name                     | Type         | Purpose                                                                                                             |
-| ------------------------ | ------------ | ------------------------------------------------------------------------------------------------------------------- |
-| `run`                    | Command      | Точка входа CLI-команды: сбор изменённых символов, подсчёт использований, находки, отчёт                            |
-| `changedSymbolsForFile`  | Service      | Символы файла, объявленные сейчас, но не при `HEAD` — «добавлено/изменено по имени»                                 |
-| `findCandidateFiles`     | Utility      | grep-предфильтр: файлы репо, буквально содержащие имя символа (перед точным подсчётом адаптером)                    |
-| `usageCountFor`          | Service      | Сумма использований имени по прод-файлам репо минус собственное объявление                                          |
-| `findWaiver`             | Service      | Поиск `Usage Waiver` для имени по спекам (grep по `` `<name>` `` + `parseUsageWaiver`)                              |
-| `decisionLive`           | Service      | Есть ли где-то в specs/ заголовок Decision Log для данной `D-NNN` (вызывается только когда метка её цитирует)       |
-| `formatYagniReport`      | Utility      | ESLint-совместимое форматирование находок + сводная строка; exit 0/1                                                |
-| `YagniReport`            | Value Object | `{text, exitCode}` — результат одного прогона                                                                       |
-| `SymbolIndex`            | Port         | Языко-независимый порт: перечислить объявленные символы файла; сосчитать ссылки на имя                              |
-| `DeclaredSymbol`         | Value Object | `{name, kind, line}` — один объявленный символ                                                                      |
-| `ReferenceCount`         | Value Object | `{count, precision}` — результат подсчёта ссылок, `precision: 'exact' \| 'approximate'`                             |
-| `TsSymbolIndexAdapter`   | Adapter      | Точная реализация `SymbolIndex` через tree-sitter-typescript (`.ts`/`.tsx`)                                         |
-| `GrepSymbolIndexAdapter` | Adapter      | Приблизительная реализация `SymbolIndex` через regex-поиск — любое расширение                                       |
-| `selectSymbolIndex`      | Utility      | Чистый выбор адаптера по расширению файла — сборка адаптеров вне этой функции (composition root)                    |
-| `ChangedSymbol`          | Value Object | `{name, kind, file}` — символ диффа, кандидат на проверку                                                           |
-| `UsageWaiver`            | Value Object | `{decision?, reason, external?}` — разобранная метка `Usage Waiver`; `decision` есть только когда метка её цитирует |
-| `YagniFinding`           | Value Object | `{severity, code, file, symbol, message}` — одна находка YAGNI                                                      |
-| `checkYagniUsage`        | Service      | Чистая проверка: символ + счётчик использований + waiver + живые decisions → находки                                |
-| `stripBarrelReexports`   | Utility      | Вычищает строки `export {...} from '...'` / `export * from '...'` перед подсчётом                                   |
-| `parseUsageWaiver`       | Utility      | Разбор `- **Usage Waiver:** <причина>` (опционально `D-NNN — <причина>`) внутри блока `` ### `<Entity>` ``          |
-| `hasDecisionHeading`     | Utility      | Есть ли в тексте заголовок `### D-NNN — ...`                                                                        |
+| Name                         | Type         | Purpose                                                                                                             |
+| ---------------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------- |
+| `run`                        | Command      | Точка входа CLI-команды: сбор изменённых символов, подсчёт использований, находки, отчёт                            |
+| `runGit`                     | Utility      | argv-safe запуск git с сохранением exit/status/stderr; ошибка никогда не превращается в пустой stdout               |
+| `discoverChangedSourceFiles` | Service      | Fail-closed определение точного множества changed source files относительно `HEAD` или доказанного empty tree       |
+| `ChangedFileDiscovery`       | Value Object | `{ok, files, comparisonBase}` либо `{ok:false, problem}` — доказанный scope или причина отказа                      |
+| `changedSymbolsForFile`      | Service      | Символы regular файла сейчас минус `HEAD`; deleted → пусто, unreadable/symlink/outside-root → fail closed           |
+| `ChangedSymbolsRead`         | Value Object | `{ok:true,symbols}` либо `{ok:false,problem}` — отличает удаление от недоказанного чтения                           |
+| `YAGNI_SOURCE_EXTENSIONS`    | Policy       | Закрытое множество расширений exact/approximate адаптеров для diff и corpus                                         |
+| `isYagniSourceFile`          | Policy       | Проверяет расширение changed source по единому множеству                                                            |
+| `isYagniTestTerritory`       | Policy       | Единые JS/TS/Go/Python/Ruby/Java test conventions для declaration и usage sides                                     |
+| `indexUsageCounts`           | Service      | Один проход production corpus: counts + typed `ioIssues`; partial counts никогда не означают clean                  |
+| `indexSpecEvidence`          | Service      | Один проход optional specs corpus: waivers/decisions + typed `ioIssues`                                             |
+| `YagniIoIssue`               | Value Object | `{path, operation, reason}` — точная дыра полноты evidence                                                          |
+| `YagniFileListing`           | Value Object | `{files, ioIssues}` — traversal без silent skip                                                                     |
+| `YagniTextRead`              | Value Object | `{ok,content}` либо `{ok:false,issue}` — unreadable не смешивается с empty                                          |
+| `formatYagniReport`          | Utility      | ESLint-совместимое форматирование находок + сводная строка; exit 0/1                                                |
+| `YagniReport`                | Value Object | `{text, exitCode}` — результат одного прогона                                                                       |
+| `SymbolIndex`                | Port         | Языко-независимый порт: перечислить объявленные символы файла; сосчитать ссылки на имя                              |
+| `DeclaredSymbol`             | Value Object | `{name, kind, line, visibility}` — символ с языковой `public/private/unknown` политикой адаптера                    |
+| `SymbolVisibility`           | Value Object | `public \| private \| unknown` — portable visibility metadata                                                       |
+| `ReferenceCount`             | Value Object | `{count, precision}` — результат подсчёта ссылок, `precision: 'exact' \| 'approximate'`                             |
+| `TsSymbolIndexAdapter`       | Adapter      | Точная реализация `SymbolIndex` через tree-sitter-typescript (`.ts`/`.tsx`)                                         |
+| `GrepSymbolIndexAdapter`     | Adapter      | Приблизительная реализация `SymbolIndex` через regex-поиск — любое расширение                                       |
+| `selectSymbolIndex`          | Utility      | Чистый выбор адаптера по расширению файла — сборка адаптеров вне этой функции (composition root)                    |
+| `ChangedSymbol`              | Value Object | `{name, kind, file, visibility}` — символ диффа; порог выбирается только по adapter metadata                        |
+| `UsageWaiver`                | Value Object | `{decision?, reason, external?}` — разобранная метка `Usage Waiver`; `decision` есть только когда метка её цитирует |
+| `YagniFinding`               | Value Object | `{severity, code, file, symbol, message}` — одна находка YAGNI                                                      |
+| `checkYagniUsage`            | Service      | Чистая проверка: символ + счётчик использований + waiver + живые decisions → находки                                |
+| `stripBarrelReexports`       | Utility      | Вычищает строки `export {...} from '...'` / `export * from '...'` перед подсчётом                                   |
+| `parseUsageWaiver`           | Utility      | Разбор `- **Usage Waiver:** <причина>` (опционально `D-NNN — <причина>`) внутри блока `` ### `<Entity>` ``          |
+| `hasDecisionHeading`         | Utility      | Есть ли в тексте заголовок `### D-NNN — ...`                                                                        |
 
 <!--/SECTION:ENTITY_INVENTORY-->
 
@@ -108,14 +119,14 @@ _Это полный список сущностей модуля `yagni`. Лю�
 - **Type:** Command
 - **Purpose:** Точка входа CLI-команды `gennady yagni` — composition root порта `SymbolIndex`.
 - **Public Operations:**
-  - `getChangedSourceFiles(root)` (shared) → список изменённых файлов
+  - `discoverChangedSourceFiles(root)` → доказанный список изменённых файлов
   - `changedSymbolsForFile` на каждый файл → изменённые символы
-  - `usageCountFor` на каждое уникальное имя → счётчик использований
-  - `findWaiver` + `decisionLive` на не прошедшие порог символы → метки и живые decisions
+  - `indexUsageCounts` → счётчики + полнота production corpus
+  - `indexSpecEvidence` → метки/decisions + полнота optional specs corpus
   - `checkYagniUsage` (чистая) → находки
   - `formatYagniReport` → текст + exit code
 - **Lifecycle:** Self-executing; вызывается из `gennady.ts` при команде `yagni`.
-- **Errors & Degradation:** Нечитаемый файл/спека — пропускается (не фейлит прогон). Отсутствие `specs/` — метки не ищутся, находки не гасятся.
+- **Errors & Degradation:** Нечитаемый production/spec path → один fail-closed `ERR_CLI_YAGNI_CORPUS_UNREADABLE` до семантических находок; отсутствующий `specs/` → валидный пустой optional corpus.
 - **Consumers:** Internal `gennady.ts`; External — CLI, `sdd-verify` (гейт).
 
 ### `SymbolIndex`
@@ -125,6 +136,7 @@ _Это полный список сущностей модуля `yagni`. Лю�
 - **Public Operations:**
   - `declaredSymbols(filePath, content) -> DeclaredSymbol[]`
   - `countReferences(name, filePath, content) -> ReferenceCount`
+  - `countReferencesMany(names, filePath, content) -> Map<name, ReferenceCount>`
 - **Lifecycle:** Реализации конструируются один раз в `run` (composition root); выбор экземпляра — `selectSymbolIndex`.
 - **Errors & Degradation:** Никогда не бросает — разбор-неудача даёт `[]` / `{count: 0}`.
 - **Consumers:** Internal `TsSymbolIndexAdapter`, `GrepSymbolIndexAdapter`, `changedSymbolsForFile`, `usageCountFor`.
@@ -162,7 +174,7 @@ _Это полный список сущностей модуля `yagni`. Лю�
 - Preconditions:
   - `content` — валидный исходный текст файла по адресу `filePath`
 - Postconditions:
-  - `declaredSymbols` возвращает все объявленные на верхнем уровне и member-символы (для tree-sitter-адаптера — точно; для grep-адаптера — по regex-эвристике)
+  - `declaredSymbols` возвращает все объявленные на верхнем уровне и member-символы вместе с adapter-owned `visibility` (для tree-sitter-адаптера — точно; для grep-адаптера — по языковой policy или `unknown`)
   - `countReferences` возвращает число совпадений и `precision`
 - Invariants:
   - Ни одна операция не бросает исключение — ошибка разбора даёт пустой/нулевой результат
@@ -170,7 +182,7 @@ _Это полный список сущностей модуля `yagni`. Лю�
 ### 6.2 Adapter: `TsSymbolIndexAdapter`
 
 - **Implements:** `SymbolIndex` (`services/symbol-index/symbol-index.types.ts`)
-- **Purpose:** Точный разбор `.ts`/`.tsx` через tree-sitter-typescript (переиспользует `DbcTsAstAdapter` для экспортов+members, добавляет обход необъявленных-как-export top-level узлов).
+- **Purpose:** Точный разбор `.ts`/`.tsx` через tree-sitter-typescript: прямые exports и структурные `export { name }` получают `public`, внутренние top-level/member — `private`.
 - **Runtime Backing:** `real-runtime`
 - **Verification Levels:** `unit` (чистая логика без инициализации грамматики — фикстуры готовых AST-узлов недоступны, тестируется через реальный парсер, allow-skip если нативный модуль не грузится, как `dbc-contract.check.test.ts`)
 
@@ -181,7 +193,7 @@ _Это полный список сущностей модуля `yagni`. Лю�
 ### 6.3 Adapter: `GrepSymbolIndexAdapter`
 
 - **Implements:** `SymbolIndex` (`services/symbol-index/symbol-index.types.ts`)
-- **Purpose:** Приблизительный разбор для любого расширения без установленной грамматики — regex по общим паттернам объявления (`function`/`def`/`func`/`class`/`interface`/`struct`/`type`/`const`/`let`/`var`) + word-boundary подсчёт ссылок.
+- **Purpose:** Приблизительный разбор для расширений без грамматики — regex declarations + word-boundary references; отдельная language-policy определяет Go visibility, неизвестные политики возвращают `unknown`.
 - **Runtime Backing:** `real-runtime`
 - **Verification Levels:** `unit`
 
@@ -197,10 +209,18 @@ _Это полный список сущностей модуля `yagni`. Лю�
 **Contract (DbC):**
 
 - Preconditions:
+  - argv содержит ровно 0 или 1 positional `[root]`; unknown/repeated/value-bearing boolean flags и лишние positional → exit 4 с canonical usage
+  - `[root]` существует, является directory и совпадает с Git worktree top-level; иначе exit 2 с teaching diagnostic
+  - Git обязан доказать comparison base и changed-file set. При живом `HEAD` scope = `git diff HEAD` + untracked; любой git failure (включая exit 128) → exit 2, никогда не `[]`/clean
+  - Валидный git repo без `HEAD` разрешён только когда `git rev-list --all --count` доказывает ноль commits: comparison base = empty tree, scope = все cached + untracked non-ignored source files. Если HEAD отсутствует, но пустота repo не доказана → exit 2
   - `usageCounts` посчитан по прод-коду всего репо (тесты исключены), собственное объявление символа вычтено
 - Postconditions:
   - `count >= 2` → находки нет
-  - `count < 2` и нет `Usage Waiver` → `ERR_CLI_YAGNI_UNDERUSED`, **всегда `error`**, для любой сущности — экспорт, публичный метод, приватная функция, поле, константа (D-YG004: правило строгое без деления по `flowVersion` — диф всегда свежий код, легаси-шума тут нет по построению, в отличие от `SDD_BDD_SCENARIO_UNTESTED`, где скан шёл по старым тикетам)
+  - Публичная сущность (`ChangedSymbol.visibility === 'public'`), `count < 2` и нет `Usage Waiver` → `ERR_CLI_YAGNI_UNDERUSED`, всегда `error`
+  - Приватная сущность с `count === 1` → находки НЕТ — это обычная декомпозиция
+  - Приватная сущность с `count === 0` → находка `ERR_CLI_YAGNI_UNDERUSED` (мёртвый код — ни одного использования, включая собственное объявление) — тот же строгий porog, что для экспортов, но только на нуле, не на единице (D-YG005)
+  - Неизвестная visibility с `count === 1` → `ERR_CLI_YAGNI_VISIBILITY_UNKNOWN`; это capability diagnostic, не underuse verdict. На `count === 0` underuse не зависит от visibility, на `count >= 2` символ clean
+  - Любой `ioIssue` production/spec corpus → `ERR_CLI_YAGNI_CORPUS_UNREADABLE` до `checkYagniUsage`; partial evidence не оценивается
   - `count < 2`, `Usage Waiver` есть с причиной, но без ссылки на `D-NNN` → находки нет, причина одна достаточна для погашения
   - `count < 2`, `Usage Waiver` есть, ссылка на `D-NNN` указана, но не резолвится ни в одном Decision Log → `ERR_CLI_YAGNI_WAIVER_DECISION_MISSING`, всегда `error`
   - `count < 2`, `Usage Waiver` есть, ссылка на `D-NNN` указана и резолвится → находки нет, независимо от того, публична сущность или приватна (`findWaiver`/`parseUsageWaiver` ищут метку по имени в тексте спеки, не по строке Entity Inventory — метка гасит находку для ЛЮБОЙ сущности)
@@ -217,12 +237,12 @@ _Это полный список сущностей модуля `yagni`. Лю�
 
 ## 7. Public Options & Policies
 
-| Flag / Arg     | Type    | Default | Description                                                         |
-| -------------- | ------- | ------- | ------------------------------------------------------------------- |
-| `[root]`       | string  | `.`     | Корень репозитория для сканирования (positional, как у `sdd-check`) |
-| `--help`, `-h` | boolean | false   | Показать справку                                                    |
+| Flag / Arg     | Type    | Default | Description                                                                                        |
+| -------------- | ------- | ------- | -------------------------------------------------------------------------------------------------- |
+| `[root]`       | string  | `.`     | Существующий directory, совпадающий с Git worktree top-level; допускается ровно 0 или 1 positional |
+| `--help`, `-h` | boolean | false   | Показать справку                                                                                   |
 
-**Exit code:** `0` — чисто; `1` — есть хотя бы одна находка. Формат строк — `<file>:1:1: error: <ERR_CLI_YAGNI_*>: <message>` (символьная находка, не строковая — `1:1` всегда).
+**Exit code:** `0` — чисто; `1` — semantic/capability findings; `2` — invalid root / Git scope / corpus completeness нельзя доказать; `4` — invalid argv с canonical usage. Формат semantic/capability строк — `<file>:1:1: error: <ERR_CLI_YAGNI_*>: <message>`; corpus error печатает exact path/operation/reason один раз до findings.
 
 <!--/SECTION:PUBLIC_OPTIONS-->
 
@@ -234,6 +254,7 @@ _Это полный список сущностей модуля `yagni`. Лю�
 cli/cmd/yagni/
 ├── index.ts           # Entry point for dynamic import
 ├── yagni.cmd.ts        # Composition root: command logic + adapter construction
+├── yagni-index.ts      # Single-pass production/spec indexes + typed evidence completeness
 ├── yagni.types.ts       # Output formatting (ESLint-compatible)
 └── help.ts             # Help text output
 
@@ -261,7 +282,7 @@ services/symbol-index/
 
 ## 9. Module Decision Log
 
-Четыре решения о самом правиле: как определяется «изменённый символ» (D-YG001, active), как считаются использования (D-YG002, active), первая попытка градации severity по `flowVersion` (D-YG003, superseded), финальное строгое правило без деления (D-YG004, active). Остальные сущности модуля погашают собственные YAGNI-находки точечными записями `Usage Waiver` без Decision Log — их однократный вызов объясняется прямо у сущности.
+Шесть решений о правиле: D-YG001/002 задают diff и usage-count; D-YG003/004 — отменённые итерации severity; D-YG005 разделил public/private thresholds; D-YG006 перенёс visibility в языковой адаптер и сделал неполный I/O-корпус fail-closed.
 
 <details>
 <summary>Полные записи Decision Log</summary>
@@ -289,11 +310,28 @@ services/symbol-index/
 
 ### D-YG004 — `ERR_CLI_YAGNI_UNDERUSED` всегда `error`, для любой сущности, метка гасит независимо от публичности
 
-- **Status:** active
+- **Status:** superseded by D-YG005
 - **Supersedes:** D-YG003
 - **Recorded:** session ModuleDecomposition, yagni
-- **Why:** Правило строгое для всех сущностей — экспорты, публичные методы, приватные функции, поля, константы (уже так по построению, `checkYagniUsage` не различает видимость). Проверка идёт только по изменённому коду текущего диффа, а дифф — всегда свежая работа; легаси-шума здесь нет по построению, поэтому `flowVersion`-градация (D-YG003) неуместна — в отличие от `BDD_COVERAGE`, где скан шёл по старым тикетам. Метка `Usage Waiver` гасит находку для ЛЮБОЙ сущности независимо от того, публична она или приватна — `findWaiver` ищет по имени в тексте спеки (`` ### `<name>` ``), не по строке Entity Inventory, поэтому приватный хелпер без формальной записи в инвентаре тоже может получить метку.
+- **Why:** Правило строгое для всех сущностей — экспорты, публичные методы, приватные функции, поля, константы (уже так по построению, `checkYagniUsage` не различал видимость). Проверка идёт только по изменённому коду текущего диффа, а дифф — всегда свежая работа; легаси-шума здесь нет по построению, поэтому `flowVersion`-градация (D-YG003) неуместна — в отличие от `BDD_COVERAGE`, где скан шёл по старым тикетам. Метка `Usage Waiver` гасит находку для ЛЮБОЙ сущности независимо от того, публична она или приватна — `findWaiver` ищет по имени в тексте спеки (`` ### `<name>` ``), не по строке Entity Inventory, поэтому приватный хелпер без формальной записи в инвентаре тоже может получить метку.
 - **Risk accepted:** Каждый однократно вызываемый приватный хелпер/константа в composition-root файле теперь требует либо инлайна на место вызова, либо метки `Usage Waiver`. Разбор находок собственного диффа модуля показал: часть хелперов инлайнится без потери читаемости, часть — реальные читаемость-декомпозиции с явной меткой (см. записи ниже). Трение принято сознательно — это и есть цель правила (см. также `AX_USAGE_WAIVER_DISCIPLINE`).
+- **Superseded because:** Строгий порог `< 2` для КАЖДОГО приватного хелпера оказался избыточным трением на практике — приватная функция, вызванная ровно один раз внутри своего файла, это идиоматичная декомпозиция (разбить длинную функцию на именованные шаги), не спекулятивная поверхность; требовать `Usage Waiver` на каждую такую декомпозицию плодило метки-ритуалы без реального решения за ними. См. D-YG005.
+
+### D-YG005 — Строгий порог `< 2` — только для экспортируемых символов; приватный символ судится по нулю, не по единице
+
+- **Status:** superseded by D-YG006
+- **Supersedes:** D-YG004
+- **Recorded:** реформа верификации (сегодня)
+- **Why:** `ChangedSymbol` получил поле `exported: boolean`. Правило раздвоено по видимости: для экспортируемого символа порог остаётся строгим — `count < 2` без `Usage Waiver` → находка (экспорт — это заявленная публичная поверхность, один потребитель настолько же подозрителен, что и ноль). Для НЕ экспортируемого (приватного) символа `count === 1` больше не находка — это обычная декомпозиция тела на приватный именованный шаг, естественный стиль этого репо (см. смок-прогон в D-YG003: 23 находки почти все на таких хелперах); находка остаётся только при `count === 0` — приватный символ, который вообще ни разу не используется, это чистый мёртвый код, тот же диагноз, что и для экспорта на нуле. `Usage Waiver` продолжает гасить находку для любой сущности независимо от видимости (не изменилось).
+- **Risk accepted:** Приватный символ, добавленный «на будущее» и используемый ровно один раз внутри собственного файла-инициатора (например тестовый хелпер, вызванный только в одном сценарии), теперь проходит без метки — компенсируется тем, что порог для экспортов остаётся строгим, а обычный код-ревью всё равно видит разросшиеся приватные поверхности.
+
+### D-YG006 — Visibility принадлежит языковому адаптеру; неполный corpus не является evidence
+
+- **Status:** active
+- **Supersedes:** D-YG005 в части `exported: boolean`; сохраняет его public/private thresholds
+- **Recorded:** RC52 final audit
+- **Why:** JS-regex в composition root ошибочно классифицировал Go `func PublicThing` как private и превращал один production consumer в ложный clean. `DeclaredSymbol.visibility` теперь переносит `public | private | unknown` из language adapter: TypeScript использует AST exports, Go — спецификационное uppercase-name правило, а generic grep не притворяется знающим семантику будущего языка. Ровно один usage при `unknown` даёт отдельный `ERR_CLI_YAGNI_VISIBILITY_UNKNOWN`, который не обвиняет код в YAGNI, но не разрешает false clean. Одновременно single-pass indexes возвращают typed `ioIssues`: unreadable production/spec entry больше не превращается в нулевой count или отсутствие waiver; CLI останавливается с `ERR_CLI_YAGNI_CORPUS_UNREADABLE` до семантических findings.
+- **Risk accepted:** Generic grep-язык с одним usage блокируется capability diagnostic до появления маленькой visibility policy или grammar adapter. Это намеренное fail-safe трение: выбрать public или private без знания языка было бы либо ложным clean, либо ложным обвинением.
 
 ### `changedSymbolsForFile`
 
@@ -342,6 +380,14 @@ services/symbol-index/
 ### `ERR_CLI_YAGNI_WAIVER_DECISION_MISSING`
 
 - **Usage Waiver:** Публичный код ошибки — часть выходного контракта команды, тот же паттерн, что у `ERR_CLI_YAGNI_UNDERUSED`.
+
+### `ERR_CLI_YAGNI_VISIBILITY_UNKNOWN`
+
+- **Usage Waiver:** Публичный capability-код отличает недостающую language policy от семантической YAGNI-находки; нужен вызывающим гейтам и человеку для правильного remediation.
+
+### `corpusUnreadable`
+
+- **Usage Waiver:** Единая fail-closed граница форматирует все typed source/spec `ioIssues` до semantic gate; отдельно тестируется на path/reason и nonzero exit.
 
 ### `MIN_USAGE`
 

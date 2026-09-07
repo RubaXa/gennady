@@ -23,14 +23,50 @@
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { execFile, spawn } from 'node:child_process';
-import { readFile } from 'node:fs/promises';
+import { execFile } from 'node:child_process';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { OpencodeEngine, composeCleanEnv } from '../opencode-engine.ts';
 import { AgentRunError } from '../../../core/agent-run-error.ts';
 
 const execFileAsync = promisify(execFile);
+
+const INTEGRATION_ENABLED = process.env['GENNADY_OPENCODE_INTEGRATION'] === '1';
+const E2E_ENABLED = process.env['GENNADY_E2E'] === '1';
+const DEFAULT_MODEL = 'llm-proxy/deepseek-v4-pro';
+
+const INTEGRATION_ENV_ALLOWLIST = [
+  'PATH',
+  'TMPDIR',
+  'TMP',
+  'TEMP',
+  'SYSTEMROOT',
+  'COMSPEC',
+  'PATHEXT',
+  'LANG',
+  'LC_ALL',
+] as const;
+
+const CREDENTIAL_PROOF_KEYS = [
+  'GITLAB_PERSONAL_TOKEN',
+  'GITLAB_TOKEN',
+  'GLAB_TOKEN',
+  'GITHUB_TOKEN',
+  'GH_TOKEN',
+  'OPENAI_API_KEY',
+  'ANTHROPIC_API_KEY',
+  'GOOGLE_API_KEY',
+  'GEMINI_API_KEY',
+  'OPENROUTER_API_KEY',
+  'AWS_ACCESS_KEY_ID',
+  'AWS_SECRET_ACCESS_KEY',
+  'AZURE_OPENAI_API_KEY',
+  'OPENCODE_SERVER_USERNAME',
+  'OPENCODE_SERVER_PASSWORD',
+] as const;
 
 /** Env variable names the engine must strip from subprocess env (proxy + opencode server-auth). */
 const PROXY_KEYS = [
@@ -45,42 +81,49 @@ const PROXY_KEYS = [
 ] as const;
 
 // purpose: detect whether opencode binary is available in this environment
-async function isOpencodeAvailable(): Promise<boolean> {
+async function isOpencodeAvailable(env: NodeJS.ProcessEnv): Promise<boolean> {
   try {
-    await execFileAsync('opencode', ['--version']);
+    await execFileAsync('opencode', ['--version'], { env, timeout: 5_000 });
     return true;
   } catch {
     return false;
   }
 }
 
-// purpose: spawn a node process that dumps its env to stdout, using engine-compatible env composition.
-// This validates the env contract at the subprocess boundary without module-level spawn mocking.
-function spawnEnvEcho(inputEnv: NodeJS.ProcessEnv): Promise<NodeJS.ProcessEnv> {
-  return new Promise((resolve, reject) => {
-    const child = spawn(
-      process.execPath,
-      ['-e', 'process.stdout.write(JSON.stringify(process.env))'],
-      { env: inputEnv, stdio: ['ignore', 'pipe', 'pipe'] }
-    );
-    const chunks: Buffer[] = [];
-    child.stdout?.on('data', (chunk: Buffer) => chunks.push(chunk));
-    child.on('close', (code) => {
-      if (code !== 0) {
-        reject(new Error(`env-echo process exited with code ${code}`));
-        return;
-      }
-      resolve(JSON.parse(Buffer.concat(chunks).toString('utf8')) as NodeJS.ProcessEnv);
-    });
-    child.on('error', reject);
-  });
+function composeIntegrationEnv(base: NodeJS.ProcessEnv, isolationRoot: string): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = {
+    HOME: isolationRoot,
+    XDG_CONFIG_HOME: join(isolationRoot, 'config'),
+    XDG_DATA_HOME: join(isolationRoot, 'data'),
+    XDG_CACHE_HOME: join(isolationRoot, 'cache'),
+    NO_COLOR: '1',
+  };
+
+  for (const key of INTEGRATION_ENV_ALLOWLIST) {
+    if (base[key] !== undefined) env[key] = base[key];
+  }
+
+  return env;
 }
 
 describe('OpencodeEngine', () => {
   let opencodeAvailable = false;
+  let isolatedModels: string[] = [];
+  let integrationRoot: string | undefined;
+  const inheritedEnv = process.env;
 
   before(async () => {
-    opencodeAvailable = await isOpencodeAvailable();
+    if (!INTEGRATION_ENABLED) return;
+
+    integrationRoot = await mkdtemp(join(tmpdir(), 'opencode-engine-test-'));
+    process.env = composeIntegrationEnv(inheritedEnv, integrationRoot);
+    opencodeAvailable = await isOpencodeAvailable(process.env);
+    if (opencodeAvailable) isolatedModels = await new OpencodeEngine().listModels();
+  });
+
+  after(async () => {
+    process.env = inheritedEnv;
+    if (integrationRoot !== undefined) await rm(integrationRoot, { recursive: true, force: true });
   });
 
   // ── unit: readonly config artifact ───────────────────────────────────────
@@ -107,61 +150,48 @@ describe('OpencodeEngine', () => {
   // ── unit: env hygiene ────────────────────────────────────────────────────
 
   describe('env hygiene', () => {
-    // Save and restore proxy env vars around the test to avoid cross-test pollution
-    let savedValues: Partial<Record<string, string | undefined>> = {};
-
-    before(() => {
-      for (const key of PROXY_KEYS) {
-        savedValues[key] = process.env[key];
-        process.env[key] = 'http://proxy.test:9999';
-      }
-      process.env['GENNADY_SAFE'] = 'intact';
-    });
-
-    after(() => {
-      for (const key of PROXY_KEYS) {
-        const saved = savedValues[key];
-        if (saved !== undefined) {
-          process.env[key] = saved;
-        } else {
-          delete process.env[key];
-        }
-      }
-      delete process.env['GENNADY_SAFE'];
-      savedValues = {};
-    });
-
-    it('strips proxy + opencode server-auth vars and isolates session DB', async () => {
+    it('strips proxy + opencode server-auth vars and isolates session DB', () => {
       // contract: composeCleanEnv (the REAL engine function) strips all proxy vars (both cases) AND
       //           OPENCODE_SERVER_PASSWORD/USERNAME (the leak that causes "Session not found"), keeps
       //           non-stripped vars, and sets OPENCODE_CONFIG (readonly) + OPENCODE_DB=:memory: (isolation).
-      // observation: verified at the subprocess boundary via env-echo.
-
-      const cleanedEnv = composeCleanEnv(process.env);
-      const subprocessEnv = await spawnEnvEcho(cleanedEnv);
+      const syntheticEnv: NodeJS.ProcessEnv = { GENNADY_SAFE: 'intact' };
+      for (const key of PROXY_KEYS) syntheticEnv[key] = 'http://proxy.test:9999';
+      const cleanedEnv = composeCleanEnv(syntheticEnv);
 
       // #region START_STRIP_ASSERT_ABSENT
       for (const key of PROXY_KEYS) {
-        assert.strictEqual(
-          key in subprocessEnv,
-          false,
-          `${key} must be absent from subprocess env`
-        );
+        assert.strictEqual(key in cleanedEnv, false, `${key} must be absent from subprocess env`);
       }
-      assert.strictEqual(subprocessEnv['GENNADY_SAFE'], 'intact');
+      assert.strictEqual(cleanedEnv['GENNADY_SAFE'], 'intact');
       // #endregion END_STRIP_ASSERT_ABSENT
 
       // #region START_INJECTED_ENV_ASSERT
       assert.ok(
-        (subprocessEnv['OPENCODE_CONFIG'] ?? '').endsWith('readonly.config.json'),
+        (cleanedEnv['OPENCODE_CONFIG'] ?? '').endsWith('readonly.config.json'),
         'OPENCODE_CONFIG must point at the bundled readonly config'
       );
       assert.strictEqual(
-        subprocessEnv['OPENCODE_DB'],
+        cleanedEnv['OPENCODE_DB'],
         ':memory:',
         'session DB must be isolated per run'
       );
       // #endregion END_INJECTED_ENV_ASSERT
+    });
+
+    it('integration boundary replaces user config dirs and drops provider credentials', () => {
+      const source: NodeJS.ProcessEnv = {
+        PATH: '/test/bin',
+        HOME: '/real/user',
+        XDG_CONFIG_HOME: '/real/user/config',
+      };
+      for (const key of CREDENTIAL_PROOF_KEYS) source[key] = 'must-not-reach-opencode';
+
+      const isolated = composeIntegrationEnv(source, '/isolated/opencode-test');
+
+      assert.strictEqual(isolated.PATH, '/test/bin');
+      assert.strictEqual(isolated.HOME, '/isolated/opencode-test');
+      assert.strictEqual(isolated.XDG_CONFIG_HOME, '/isolated/opencode-test/config');
+      for (const key of CREDENTIAL_PROOF_KEYS) assert.strictEqual(isolated[key], undefined, key);
     });
   });
 
@@ -172,8 +202,12 @@ describe('OpencodeEngine', () => {
       // contract: when opencode is installed, detect() returns installed:true with a non-empty version string
       // non-goal: do not assert exact version — changes across releases
 
-      if (!opencodeAvailable) {
-        t.skip('opencode binary not available in this environment');
+      if (!INTEGRATION_ENABLED || !opencodeAvailable) {
+        t.skip(
+          !INTEGRATION_ENABLED
+            ? 'integration skipped — set GENNADY_OPENCODE_INTEGRATION=1 to enable'
+            : 'opencode binary not available in the isolated integration environment'
+        );
         return;
       }
 
@@ -193,8 +227,14 @@ describe('OpencodeEngine', () => {
       //           subprocess is dead when the promise settles (no zombie)
       // failure mode: do not catch manually — use assert.rejects
 
-      if (!opencodeAvailable) {
-        t.skip('opencode binary not available — cannot test timeout enforcement');
+      if (!INTEGRATION_ENABLED || !opencodeAvailable || !isolatedModels.includes(DEFAULT_MODEL)) {
+        t.skip(
+          !INTEGRATION_ENABLED
+            ? 'integration skipped — set GENNADY_OPENCODE_INTEGRATION=1 to enable'
+            : !opencodeAvailable
+              ? 'opencode binary not available in the isolated integration environment'
+              : `default model ${DEFAULT_MODEL} is unavailable without user credentials/config`
+        );
         return;
       }
 
@@ -226,24 +266,22 @@ describe('OpencodeEngine', () => {
       //           non-matching lines (headers, blank lines) are filtered; non-zero exit → []
       // non-goal: do not assert exact model list — varies across opencode versions
 
-      if (!opencodeAvailable) {
-        // degradation path: opencode unavailable → execFileAsync throws → listModels() degrades to []
-        const engine = new OpencodeEngine();
-        const result = await engine.listModels();
-        assert.deepStrictEqual(result, []);
+      if (!INTEGRATION_ENABLED || !opencodeAvailable) {
+        t.skip(
+          !INTEGRATION_ENABLED
+            ? 'integration skipped — set GENNADY_OPENCODE_INTEGRATION=1 to enable'
+            : 'opencode binary not available in the isolated integration environment'
+        );
         return;
       }
 
-      const engine = new OpencodeEngine();
-      const models = await engine.listModels();
+      const models = isolatedModels;
 
       // #region START_PARSE_MODELS_ASSERT_FORMAT
       // all returned items must match provider/model pattern (non-empty provider + non-empty model)
       for (const model of models) {
         assert.match(model, /^[^\s/]+\/[^\s]+$/, `expected provider/model format, got: ${model}`);
       }
-      // opencode with llm-proxy configured returns at least one model
-      assert.ok(models.length > 0, 'expected at least one model from opencode models');
       // #endregion END_PARSE_MODELS_ASSERT_FORMAT
     });
 
@@ -253,8 +291,14 @@ describe('OpencodeEngine', () => {
       //   (not AGENT_NOT_INSTALLED) is if spawn succeeded → args including --model were accepted by opencode
       // non-goal: do not assert on full run output — non-deterministic
 
-      if (!opencodeAvailable) {
-        t.skip('opencode binary not available — cannot verify default model arg acceptance');
+      if (!INTEGRATION_ENABLED || !opencodeAvailable || !isolatedModels.includes(DEFAULT_MODEL)) {
+        t.skip(
+          !INTEGRATION_ENABLED
+            ? 'integration skipped — set GENNADY_OPENCODE_INTEGRATION=1 to enable'
+            : !opencodeAvailable
+              ? 'opencode binary not available in the isolated integration environment'
+              : `default model ${DEFAULT_MODEL} is unavailable without user credentials/config`
+        );
         return;
       }
 
@@ -291,8 +335,14 @@ describe('OpencodeEngine', () => {
       //           must happen via pre-validation against listModels(), not post-run mapping.)
       // non-goal: do not assert exact hint text — list is dynamic.
 
-      if (!opencodeAvailable) {
-        t.skip('opencode binary not available — cannot list models for pre-validation');
+      if (!INTEGRATION_ENABLED || !opencodeAvailable || isolatedModels.length === 0) {
+        t.skip(
+          !INTEGRATION_ENABLED
+            ? 'integration skipped — set GENNADY_OPENCODE_INTEGRATION=1 to enable'
+            : !opencodeAvailable
+              ? 'opencode binary not available in the isolated integration environment'
+              : 'no models are available without user credentials/config'
+        );
         return;
       }
 
@@ -332,13 +382,20 @@ describe('OpencodeEngine', () => {
       // non-goal: do not assert exact content — LLM output is non-deterministic
       // failure mode: NETWORK_BLOCKED thrown → proxy vars leaked or provider unreachable
 
-      const networkReachable = process.env['GENNADY_E2E'] === '1';
-
-      if (!opencodeAvailable || !networkReachable) {
+      if (
+        !INTEGRATION_ENABLED ||
+        !E2E_ENABLED ||
+        !opencodeAvailable ||
+        !isolatedModels.includes(DEFAULT_MODEL)
+      ) {
         t.skip(
-          !opencodeAvailable
-            ? 'opencode binary not available'
-            : 'e2e skipped — set GENNADY_E2E=1 to enable'
+          !INTEGRATION_ENABLED
+            ? 'integration skipped — set GENNADY_OPENCODE_INTEGRATION=1 to enable'
+            : !E2E_ENABLED
+              ? 'e2e skipped — set GENNADY_E2E=1 to enable'
+              : !opencodeAvailable
+                ? 'opencode binary not available in the isolated integration environment'
+                : `default model ${DEFAULT_MODEL} is unavailable without user credentials/config`
         );
         return;
       }

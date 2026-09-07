@@ -24,6 +24,19 @@ describe('GrepSymbolIndexAdapter#declaredSymbols', () => {
       'func Serve(addr string) error {\n}\n'
     );
     assert.ok(symbols.some((s) => s.name === 'Serve'));
+    assert.strictEqual(symbols.find((s) => s.name === 'Serve')?.visibility, 'public');
+  });
+
+  it('uses Go visibility policy and leaves unsupported fallback visibility explicit', async () => {
+    const adapter = new GrepSymbolIndexAdapter();
+    const go = await adapter.declaredSymbols(
+      'main.go',
+      'func PublicThing() {}\nfunc privateThing() {}\n'
+    );
+    assert.strictEqual(go.find((s) => s.name === 'PublicThing')?.visibility, 'public');
+    assert.strictEqual(go.find((s) => s.name === 'privateThing')?.visibility, 'private');
+    const fallback = await adapter.declaredSymbols('service.java', 'class VisibleToJava {}');
+    assert.strictEqual(fallback[0]?.visibility, 'unknown');
   });
 
   it('finds class/interface/struct/type/const declarations', async () => {
@@ -75,5 +88,25 @@ describe('GrepSymbolIndexAdapter#countReferences', () => {
     const adapter = new GrepSymbolIndexAdapter();
     const result = await adapter.countReferences('a.b', 'x.ext', 'a.b is not aXb');
     assert.strictEqual(result.count, 1);
+  });
+
+  it('batch mode preserves scalar punctuation and foreign-language fallback semantics', async () => {
+    const adapter = new GrepSymbolIndexAdapter();
+    const content = [
+      'def handle_request(req): pass',
+      'handle_request(None)',
+      'a.b is not aXb',
+      'func Serve() {}',
+      'Serve()',
+      'обработать() обработать()',
+    ].join('\n');
+    const names = new Set(['handle_request', 'a.b', 'Serve', 'обработать']);
+    const batch = await adapter.countReferencesMany(names, 'mixed.py', content);
+    for (const name of names) {
+      assert.deepStrictEqual(
+        batch.get(name),
+        await adapter.countReferences(name, 'mixed.py', content)
+      );
+    }
   });
 });

@@ -447,7 +447,7 @@
         // purpose: stop retry fan-out before a degraded upstream turns one request into cascading load
         // failure mode: removing this guard converts transient upstream latency into duplicate pressure
         if (attempts > maxRetries) {
-            throw new TessellError(ErrKind.ERR_CHECKOUT_CHARGE_UPSTREAM_UNRESPONSIVE, "[Checkout#charge] Upstream provider unresponsive", {
+            throw new CheckoutError(CheckoutErrorKind.UPSTREAM_UNRESPONSIVE, "[Checkout#charge] Upstream provider unresponsive", {
               cause: { attempts, maxRetries }
             });
         }

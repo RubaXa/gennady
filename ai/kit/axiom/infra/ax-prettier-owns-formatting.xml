@@ -4,9 +4,12 @@
 
       ESLint stylistic rules (`indent`, `quotes`, `semi`, `comma-dangle`, `max-len`, `space-*`, `arrow-spacing`, `keyword-spacing`, etc.) explicitly disabled in `eslint.config.ts` via `eslint-config-prettier` (flat-config equivalent), appended LAST in the config array so it overrides any rule that drifted in from a preset.
 
-      Formatter pipeline runs BEFORE `eslint --fix`: `prettier --write .` then `eslint --fix .`. Both must exit 0.
+      Formatter pipeline runs BEFORE lint autofix over the same scope. Both must exit 0.
 
-      Formatting + lint is a fixed sequence exposed as ONE script (`npm run lint:fix` or equivalent) so agents and humans run the same command. `pre-commit` runs this script on staged files and additionally chains a whole-project typecheck in the same hook command (`AX_HOOKS_INTEGRATION` — `tsc --noEmit` cannot be staged-scoped, so it composes alongside this script rather than inside it). CI runs the read-only variant (`prettier --check . && eslint .`) and fails on any drift.
+      A phase gets that sequence privately from context-derived `sdd-verify`; humans may use the
+      whole-project `fix` wrapper. Exit 0 means formatter completed and lint re-read the exact
+      resulting bytes and found a clean post-state. `pre-commit` and CI never invoke repair: they run the
+      whole-project read-only `sdd-verify --profile full` and fail on drift (`AX_HOOKS_INTEGRATION`).
 
       Choice of formatter is an architecture decision: Prettier recommended; alternatives (Biome, dprint) acceptable IF the project picks ONE. Two formatters or formatting rules duplicated between ESLint and the formatter = forbidden.
     </Axiom>

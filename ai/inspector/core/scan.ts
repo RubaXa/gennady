@@ -5,7 +5,10 @@
 import type { TraceNode } from './model.ts';
 
 const PASCAL_OPEN = /<([A-Z][A-Za-z0-9]*)\b([^>]*?)(\/?)>/;
-const TOOL_RE = /\bsdd-(?:state|task|extract|verify|log|sync|check)\b|\borient\b/g;
+const TOOL_RE = /\bsdd-(?:state|task|extract|verify|log|sync|check|orient)\b|(?<![\w-])orient\b/g;
+const GENNADY_COMMAND_RE = /\bnpx\s+gennady\s+([a-z][\w-]*)\b/g;
+const TOOL_CALL_RE = /<ToolCall\b[^>]*>([\s\S]*?)<\/ToolCall>/g;
+const TOOL_LITERAL_RE = /<ToolLiteral\b[^>]*>[\s\S]*?<\/ToolLiteral>/g;
 // Sub-directive references are written inconsistently: READ_AND_USE_DIRECTIVE("path"), a backticked path,
 // or a ~/abs path. Every real reference is anchored under ai/directives/ (verified: no READ_AND_USE_DIRECTIVE
 // ref points elsewhere), so match any such .xml token — both *.directive.xml AND formats/*.xml contracts —
@@ -131,11 +134,30 @@ export function scanRefsAndTools(text: string): TraceNode[] {
   for (const m of text.matchAll(DIRECTIVE_REF_RE)) refs.add(normalizeDirectivePath(m[0]));
   for (const ref of refs)
     out.push({ kind: 'run', label: ref, ref, note: 'активировать директиву' });
-  // Тул считается ВЫЗОВОМ только внутри inline-code (`...`) — команды пишут в обратных кавычках;
-  // голое упоминание в прозе («state — from sdd-state») вызовом не является и не попадает в дерево.
-  const code = Array.from(text.matchAll(/`([^`]+)`/g), (m) => m[1] as string).join('\n');
+  // Тул считается ВЫЗОВОМ только на одной из двух исполняемых поверхностей: legacy inline-code
+  // (`...`) или типизированный `<ToolCall>...</ToolCall>`. Голое упоминание в прозе («state — from
+  // sdd-state») и `<ToolLiteral>` вызовом не являются. ToolCall-команды не обязаны быть обёрнуты в
+  // backticks: это намеренно raw command text внутри HTML-like prompt tag.
+  // A ToolLiteral is documentation/delegated output even when its example happens to use backticks.
+  // Remove it before the legacy inline-code scan so it cannot masquerade as an execution surface.
+  const legacyText = text.replace(TOOL_LITERAL_RE, ' ');
+  const executableSurfaces = [
+    ...Array.from(legacyText.matchAll(/`([^`]+)`/g), (m) => m[1] as string),
+    ...Array.from(text.matchAll(TOOL_CALL_RE), (m) => m[1] as string),
+  ];
   const tools = new Set<string>();
-  for (const m of code.matchAll(TOOL_RE)) tools.add(m[0]);
+  for (const surface of executableSurfaces) {
+    // A typed ToolCall carries the complete `npx gennady <command>` spelling. Capture its command
+    // generically so the inspector does not need another hard-coded edit every time the CLI grows.
+    // Mask that full spelling before the legacy shorthand scan: otherwise `sdd-orient` also exposes
+    // the substring `orient`, creating two misleading tool nodes for one exact command.
+    const withoutFullCommands = surface.replace(GENNADY_COMMAND_RE, (full, command: string) => {
+      tools.add(command);
+      return ' '.repeat(full.length);
+    });
+    // Keep legacy inline shorthand (`sdd-task`, `orient`) visible too.
+    for (const m of withoutFullCommands.matchAll(TOOL_RE)) tools.add(m[0]);
+  }
   for (const t of tools) out.push({ kind: 'tool', label: t });
   return out;
 }

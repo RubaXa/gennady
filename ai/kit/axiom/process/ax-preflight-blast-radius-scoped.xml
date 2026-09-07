@@ -1,11 +1,10 @@
 <!-- new for sdd-v2: size the FLOW_VERSION/READINESS preflight gate to the task, not the whole repo -->
 <Axiom id="AX_PREFLIGHT_BLAST_RADIUS_SCOPED">
-  The `FLOW_VERSION=v1` / `READINESS=not-ready` preflight gate protects scope-spanning work — a full
-  migration or readiness setup dwarfs a narrow request. Size the gate to the task's own blast radius
-  before firing it: when the requested change stays inside the entry point's own scope (a spec
-  paragraph, a single ticket) and never touches the legacy v1 `tasks/` layout or a missing gate script, record the
-  state in one line and proceed straight to the entry point's own work — offer migration / readiness
-  setup to the operator as a separate next step, not inside this run. A change whose blast radius does
-  reach the legacy v1 `tasks/` layout, task-ID rewriting, or a missing gate script fires the gate as before, ahead of
-  the entry point's own work.
+  `FLOW_VERSION=v1` migration and runtime `EXECUTION_READY=no` remediation can dwarf a narrow request.
+  Size only those broad actions to the task's own blast radius: a narrow owning spec edit may proceed
+  without migrating unrelated legacy tasks or installing unrelated runtime gates. Each `AUTHORING_SCOPE`
+  fact is different: it is a target-specific structural proof and is binding whenever scaffold would create
+  tickets. A red authoring fact blocks scaffold but never blocks the named owning spec flow that repairs
+  the evidence. Product execution always consumes `EXECUTION_READY`; only the exact active GATE_QUEUE
+  setup phase receives its typed exemption.
 </Axiom>

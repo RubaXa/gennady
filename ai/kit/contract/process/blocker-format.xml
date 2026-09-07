@@ -7,9 +7,11 @@
       ```
       After this entry: phase Status → `[!] BLOCKED`; return BLOCKED to orchestrator. Stop.
 
-      Paired close, once the cause is actually gone (`AX_BLOCKER_RESOLUTION_TRAIL`): `npx gennady
-      sdd-log <ticket> resolved "<what removed it>" --phase <PhaseID>`, into THIS SAME phase's
-      block — never a manual `Edit`, never the original 🛑 line touched. It writes:
+      Paired close, once the cause is actually gone (`AX_BLOCKER_RESOLUTION_TRAIL`): write the
+      literal remediation with the file-write tool to `.claude/tmp/<task-id>-<phase-id>-log.txt`,
+      then run `npx gennady sdd-log <ticket> resolved --content-file
+      .claude/tmp/<task-id>-<phase-id>-log.txt --phase <PhaseID>`, into THIS SAME phase's block —
+      never a manual `Edit`, never the original 🛑 line touched. It writes:
       ```markdown
       - [x] `<ts>` ✅ RESOLVED: <what removed it>
       ```

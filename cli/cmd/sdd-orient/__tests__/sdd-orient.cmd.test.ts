@@ -166,6 +166,20 @@ describe('SddOrientCommand#run', () => {
     if (!out.ok) assert.equal(out.exitCode, 4);
   });
 
+  it('a portal-declared greenfield scope succeeds before its spec is materialized', async () => {
+    const specPath = join(projectRoot, 'specs', 'infra-base', 'infra-base.spec.md');
+    rmSync(specPath, { force: true });
+    const out = await mod.run(
+      ['node', 'gennady', 'sdd-orient', '--scope', 'infra-base'],
+      projectRoot
+    );
+    assert.equal(out.ok, true);
+    if (out.ok) {
+      assert.match(out.text, /infra-base\.spec\.md/);
+      assert.match(out.text, /portal: infra-base \(infrastructure\)/);
+    }
+  });
+
   it('missing portal + --scope → dedicated no-portal error, exit 4', async () => {
     const noPortalRoot = mkdtempSync(join(tmpdir(), 'sdd-orient-no-portal-'));
     try {

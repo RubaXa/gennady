@@ -25,7 +25,7 @@ npx gennady commit --task=MAILCORE-123
 # Линтинг директории
 npx gennady lint ./src
 
-# Только staged .ts файлы
+# Existing staged ACMR + untracked .ts/.tsx; staged deletions ignored
 npx gennady lint --staged
 
 # Автофикс DbC-контрактов
@@ -114,18 +114,7 @@ npx gennady sync-skills
 npx gennady sync-skills --dry-run
 ```
 
-### 9. Мульти-модельный анализ
-
-```bash
-# Мнение двух моделей с синтезом
-npx gennady alt-opinion \
-  --model="llmproxy/kimi-k2.6" \
-  --model="llmproxy/glm-5.1" \
-  --synthModel="llmproxy/deepseek-v4-pro" \
-  --file="./spec.md"
-```
-
-### 10. Мониторинг AI-агентов
+### 9. Мониторинг AI-агентов
 
 ```bash
 # Live-дашборд
@@ -195,11 +184,20 @@ npx gennady yagni /path/to/repo
 | `remote-console`    | Зеркалирование браузерной консоли в stdout               |
 | `lint`              | Валидация .ts файлов: headers, anchors, DbC, invariants  |
 | `mr-stats`          | Статистика по GitLab MR: категории, строки, сущности     |
-| `alt-opinion`       | Мульти-модельные мнения с синтезом                       |
 | `sync`              | Синхронизация `ai/directives/` из npm-пакета             |
 | `sync-skills`       | Синхронизация SDD-навыков в `.claude/skills/`            |
 | `agent-mon`         | Интерактивный дашборд мониторинга AI-агентов             |
 | `orient`            | Навигация по file-header и DBC-контрактам                |
+| `sdd-orient`        | Окрестность спеки или scope в SDD-графе                  |
+| `sdd-state`         | Детерминированный снимок SDD-состояния проекта           |
+| `sdd-check`         | Структурная проверка SDD; authoring авто-фиксит мелочи   |
+| `sdd-extract`       | Извлечение одной anchored-секции SDD-артефакта           |
+| `sdd-new`           | Scaffold одного SDD v2 артефакта                         |
+| `sdd-verify`        | Запуск verification ladder для тикета или профиля        |
+| `sdd-log`           | События Execution Log + атомарное закрытие фазы          |
+| `sdd-sync`          | Синхронизация статуса тикета с tasks-трекерами           |
+| `sdd-task`          | Карта исполнения и фазовый контекст тикета               |
+| `sdd-migrate`       | Детерминированная миграция SDD v1 → v2                   |
 | `agents-rules`      | Инструкция по orient для AI-агентов                      |
 | `testcov`           | Визуальное дерево покрытия (vitest/jest/node:test)       |
 | `yagni`             | Символы диффа с < 2 использований, гейт по Usage Waiver  |
@@ -224,11 +222,20 @@ cli/cmd/<name>/
 
 - `specs/cli/cli.spec.md` — общая спека CLI
 - `specs/cli/lint/lint.spec.md` — линтинг
-- `specs/cli/alt-opinion/alt-opinion.spec.md` — alt-opinion
 - `specs/cli/cat/cat.spec.md` — cat
 - `specs/cli/sync/sync.spec.md` — sync
 - `specs/cli/sync-skills/sync-skills.spec.md` — sync-skills
 - `specs/cli/agents-rules/agents-rules.spec.md` — agents-rules
+- `specs/cli/sdd-orient/sdd-orient.spec.md` — sdd-orient
+- `specs/cli/sdd-state/sdd-state.spec.md` — sdd-state
+- `specs/cli/sdd-check/sdd-check.spec.md` — sdd-check
+- `specs/cli/sdd-extract/sdd-extract.spec.md` — sdd-extract
+- `specs/cli/sdd-new/sdd-new.spec.md` — sdd-new
+- `specs/cli/sdd-verify/sdd-verify.spec.md` — sdd-verify
+- `specs/cli/sdd-log/sdd-log.spec.md` — sdd-log
+- `specs/cli/sdd-sync/sdd-sync.spec.md` — sdd-sync
+- `specs/cli/sdd-task/sdd-task.spec.md` — sdd-task
+- `specs/cli/sdd-migrate/sdd-migrate.spec.md` — sdd-migrate
 - `specs/cli/e2e/e2e.spec.md` — e2e-тестирование
 - `specs/cli/testcov/testcov.spec.md` — testcov
 - `specs/cli/yagni/yagni.spec.md` — yagni

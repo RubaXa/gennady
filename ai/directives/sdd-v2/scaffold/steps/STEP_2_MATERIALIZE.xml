@@ -1,0 +1,69 @@
+0.8.4
+
+<Step id="STEP_2_MATERIALIZE">
+      <Goal>Create actual tickets and indexes.</Goal>
+      <Action>
+        For each derived node call exactly one applicable `sdd-new` command and fill the returned file.
+        <ToolCall owner="this-step" result="flatInfraTaskManifest">npx gennady sdd-new task --owner infrastructure-flat --scope &lt;scope&gt; --id &lt;ACR&gt;-&lt;slug&gt;</ToolCall>
+        <ToolCall owner="this-step" result="scopeBootstrapTaskManifest">npx gennady sdd-new task --owner scope-bootstrap --scope &lt;scope&gt; --id &lt;ACR&gt;-&lt;slug&gt;</ToolCall>
+        <ToolCall owner="this-step" result="moduleTaskManifest">npx gennady sdd-new task --owner module --scope &lt;scope&gt; --module &lt;module&gt; --id &lt;ACR&gt;-&lt;slug&gt;</ToolCall>
+        Consume exactly the applicable `flatInfraTaskManifest`, `scopeBootstrapTaskManifest`, or
+        `moduleTaskManifest`; never call the other owner variants for that node.
+
+        Preserve globally unique IDs per `AX_TASK_ID_UNIQUENESS` and the normative section names per
+        `AX_TICKET_SECTION_NAMES_NORMATIVE`. Fill every ticket from owning spec anchors. Per
+        `AX_TICKET_HAS_BDD_AND_TESTS`, the BDD/Test Plan must contain requirement IDs in
+        the scenarios and mapped test cases. Happy-path-only is invalid: every behavior-bearing
+        ticket contains at least one applicable negative/failure scenario, plus boundary or trust
+        scenarios required by the spec. A scenario without a test mapping or a mandatory requirement
+        without a scenario is incomplete.
+
+        Create missing index skeletons with the canonical commands, then fill their tracker and DAG
+        rows from the actual tickets.
+        <ToolCall owner="this-step" result="moduleIndexManifest">npx gennady sdd-new module-index --scope &lt;scope&gt; --module &lt;module&gt;</ToolCall>
+        <ToolCall owner="this-step" result="scopeIndexManifest">npx gennady sdd-new scope-index --scope &lt;scope&gt;</ToolCall>
+        <ToolCall owner="this-step" result="projectIndexManifest">npx gennady sdd-new project-index</ToolCall>
+        Consume each produced `moduleIndexManifest`, `scopeIndexManifest`, and
+        `projectIndexManifest` before filling its tracker and DAG rows.
+      </Action>
+    </Step>
+
+<Axiom id="AX_TASK_ID_UNIQUENESS">
+      **Task-ID `<ACR>-<slug>` is unique, semantic, and immutable.** The slug names the feature in
+      1-2 words, ≤ 8 characters — not a sequence number, not a paragraph.
+
+      - `sdd-new` generates and validates the ID — grammar, slug length, project-wide uniqueness (duplicate
+        or prefix-conflict against every existing Task-ID). Never hand-roll the format: use the exhaustive
+        owner-specific `sdd-new task` ToolCall selected by STEP_3 and let it refuse with a concrete fix if
+        the id is bad.
+      - Uniqueness is enforced by the **Slug Registry** in each `<module>.3-tasks.md`: the same slug in two
+        branches collides on merge there, surfacing «same feature» instead of hiding it. Append-only.
+      - The ID never changes — even if the ticket file moves between scopes.
+      - Code references via file headers (`@tasks:`) point to IDs, not paths.
+      - `sdd-check` cross-checks integrity (SDD_TASK_ID_GRAMMAR, SDD_TASK_ID_PREFIX_CLASH,
+        SDD_TASK_ID_COLLISION); a genuine collision → abort, operator resolves.
+    </Axiom>
+
+<Axiom id="AX_TICKET_SECTION_NAMES_NORMATIVE">
+      **Section anchor names templated in `TASK_TICKET_STRUCTURE` are normative, NOT illustrative** — the orchestrator (`sdd-execute`) and the auditor query them by exact string. Renaming or omitting a templated anchor breaks programmatic dispatch and traceability.
+    </Axiom>
+
+<Axiom id="AX_TICKET_HAS_BDD_AND_TESTS">
+      **Ticket carries BDD scenarios mapped to concrete tests.**
+
+      - Acceptance Criteria = strict BDD (Given/When/Then) translated from DbC pre/post + Requirements & Constraints + Decision Log. Negative scenarios, fallbacks, trust boundaries, platform limits pulled from spec, not inferred from component name.
+      - Each scenario gets a verification level marker: `contract` | `unit` | `integration` | `e2e`.
+      - Each scenario maps to `<test-file>::<canonical case name>` in Test Scenario Coverage, OR the complete Deferred Test Ownership row returned by that ticket's `sdd-new` call.
+      - When a scenario's `When` invokes an exact `npm run <script>` command, its coverage row appends
+        `:: command \`npm run <script>\`` and Verification carries that same exact command once with
+        Role=`probe`. A presence/config smoke is not evidence that the declared command executes.
+      - Role=`probe` runs only in the unique test phase owning its mapped Test Scenario Coverage file;
+        `Required-by` is traceability, not routing. Its prerequisites must exist in earlier phases of the
+        same ticket; cross-ticket project wrappers belong to readiness/full audit.
+      - At least one phase of kind `test` MUST exist whose Target Files contains the test file, unless every scenario has `Deferred Test Ownership`.
+      - Canonical case names are normative: phase-subagent uses verbatim or updates the ticket before phase DONE.
+      - BDD describes behavior, not language-specific syntax.
+      - For every DbC contract in Spec References (Port / Adapter / Value Object): one `contract`-level typing scenario MUST exist — derived from the textual surface (`AX_CONTRACTS_TEXTUAL_AGNOSTIC`): input/output shape, boundary rejection of invalid values, case exhaustiveness. `Deferred Test Ownership` not allowed for typing scenarios — they ship with the types.
+    </Axiom>
+
+After completing this step, and only then, READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/scaffold/steps/STEP_3_MECHANICAL_CHECK.xml"). Do not preload later step packages.

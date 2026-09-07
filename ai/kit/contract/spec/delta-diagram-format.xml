@@ -1,8 +1,8 @@
 <!-- source: TSK sdd-v2-readiness — module Delta rung (STEP_6_FINAL_HIERARCHY, refine/pivot only), 2026-08-20 visualization-chain decision -->
 <Contract id="DELTA_DIAGRAM_FORMAT">
       **Mandatory for any module under `refine`/`pivot`** — the diagram twin of the
-      `CHANGE_MANIFEST_FORMAT` text delta (`formats/change-manifest.xml`): the manifest's «ЧТО
-      МЕНЯЕТСЯ» already lists the delta in words, this rung makes the SAME delta a picture, right
+      textual Git diff: the changed specification sections list the delta in words, this rung makes
+      the SAME delta a picture, right
       next to it. Two parts, both scoped to what changed — the unchanged part of the module is NOT
       redrawn, per `AX_SPEC_MANDATORY_DIAGRAM`'s discipline of one rung per question:
 
@@ -30,7 +30,7 @@
          ```
 
       Caption per `DIAGRAM_CAPTION_FORMAT` (`formats/diagram-vocabulary.xml`) naming the requirement
-      IDs the delta closes. Drawn at `STEP_6_FINAL_HIERARCHY` alongside the `CHANGE_MANIFEST`, ASCII
+      IDs the delta closes. Drawn at `STEP_6_FINAL_HIERARCHY` alongside the textual delta, ASCII
       first in chat per `AX_CHAT_BEFORE_SPEC`. Mandatory for NEW pivot/refine rounds only — a rework
       that shipped before this rung existed is not retroactively broken by its absence (2026-08-20
       visualization-chain decision).

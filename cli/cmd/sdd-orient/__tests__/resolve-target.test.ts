@@ -64,11 +64,17 @@ describe('resolveOrientTarget', () => {
     }
   });
 
-  it('fails with unreadable-scope-spec when the portal lists a scope whose spec file is missing', () => {
+  it('resolves a portal-listed scope whose spec file does not exist yet as pre-materialized', () => {
+    // A portal row is enough orientation evidence for a greenfield scope: the neighbourhood still
+    // has portal edges and consumers to show, so this is a resolution, not a failure (df3771e2).
     const files = { [join(ROOT, 'specs', 'README.md')]: PORTAL };
     const got = resolveOrientTarget('todos-app', ROOT, fixtureSource(files));
-    assert.equal(got.ok, false);
-    if (!got.ok) assert.equal(got.reason, 'unreadable-scope-spec');
+    assert.equal(got.ok, true);
+    if (got.ok) {
+      assert.equal(got.resolvedFrom, 'scope-placeholder');
+      assert.equal(got.scope, 'todos-app');
+      assert.match(got.content, /pre-materialized/);
+    }
   });
 
   it('path wins even when a scope of the same name would also resolve via the portal', () => {

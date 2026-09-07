@@ -29,11 +29,20 @@
 | remote-console    | [cmd/remote-console/](cmd/remote-console/)       | Проксирование browser console в локальный stdout через HTTP sink                    |
 | lint              | [cmd/lint/](cmd/lint/)                           | Линтинг .ts файлов — file header, anchors, DbC контракты                            |
 | mr-stats          | [cmd/mr-stats/](cmd/mr-stats/)                   | Статистика по GitLab MR: категории, строки, сущности                                |
-| alt-opinion       | [cmd/alt-opinion/](cmd/alt-opinion/)             | Получение альтернативных мнений от AI-моделей с опциональным синтезом               |
 | sync              | [cmd/sync/](cmd/sync/)                           | Синхронизация ai/directives/ из npm-пакета в текущий проект                         |
 | sync-skills       | [cmd/sync-skills/](cmd/sync-skills/)             | Sync ai/directives/ (in full) then SDD skills from ai/skills/ to .claude/skills/    |
 | agent-mon         | [cmd/agent-mon/](cmd/agent-mon/)                 | Интерактивный терминальный дашборд для мониторинга AI-агентов                       |
 | orient            | [cmd/orient/](cmd/orient/)                       | Навигация по file-header и DBC-контрактам — карта, поиск, граф зависимостей         |
+| sdd-orient        | [cmd/sdd-orient/](cmd/sdd-orient/)               | Окрестность спеки или scope в SDD-графе                                             |
+| sdd-state         | [cmd/sdd-state/](cmd/sdd-state/)                 | Детерминированный снимок SDD-состояния проекта                                      |
+| sdd-check         | [cmd/sdd-check/](cmd/sdd-check/)                 | Структурная проверка SDD; authoring авто-фиксит мелочи                              |
+| sdd-extract       | [cmd/sdd-extract/](cmd/sdd-extract/)             | Извлечение одной anchored-секции SDD-артефакта                                      |
+| sdd-new           | [cmd/sdd-new/](cmd/sdd-new/)                     | Scaffold одного SDD v2 артефакта                                                    |
+| sdd-verify        | [cmd/sdd-verify/](cmd/sdd-verify/)               | Запуск verification ladder для тикета или профиля                                   |
+| sdd-log           | [cmd/sdd-log/](cmd/sdd-log/)                     | События Execution Log + атомарное закрытие проверенной фазы                         |
+| sdd-sync          | [cmd/sdd-sync/](cmd/sdd-sync/)                   | Синхронизация статуса тикета с tasks-трекерами                                      |
+| sdd-task          | [cmd/sdd-task/](cmd/sdd-task/)                   | Карта исполнения и фазовый контекст тикета                                          |
+| sdd-migrate       | [cmd/sdd-migrate/](cmd/sdd-migrate/)             | Детерминированная миграция SDD v1 → v2                                              |
 | agents-rules      | [cmd/agents-rules/](cmd/agents-rules/)           | Вывод инструкции по orient для AI-агентов                                           |
 | run               | [cmd/run/](cmd/run/)                             | Запуск задания через AI-движок (opencode) — тонкая обёртка над agent-run            |
 | testcov           | [cmd/testcov/](cmd/testcov/)                     | Визуальное дерево покрытия тестами с авто-детекцией раннера (vitest/jest/node:test) |

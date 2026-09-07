@@ -22,7 +22,7 @@
       ## 5. Effective Rules (cascade)
       | Rule | Category | File | Source |
       |---|---|---|---|
-      | <rule-id> | coding | ai/directives/coding/<rule>.xml | infra (D-NNN) |
-      | <rule-id> | infra | ai/directives/infra/<rule>.xml | infra (D-NNN) |
+      | <rule-id> | coding | ai/directives/coding/<rule>.xml | infra (<ACR>-DL-N) |
+      | <rule-id> | infra | ai/directives/infra/<rule>.xml | infra (<ACR>-DL-N) |
       ```
     </Pattern>

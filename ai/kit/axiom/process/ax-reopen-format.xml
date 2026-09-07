@@ -7,8 +7,14 @@
 
       | Phase | Kind  | Status | Target Files | Deps |
       |-------|-------|--------|-------------|------|
-      | P1    | fix   | [ ]    | <paths>     | —    |
+      | P<N>  | fix   | [ ]    | <code paths> | —    |
+      | P<N+1> | test | [ ]    | <regression test paths> | P<N> |
       ```
+
+      Allocate concrete next-unused PhaseIDs in the ticket; placeholders are not valid written
+      output. Every task-owned code finding, including a one-line bug, appends a new Round with at
+      least one concrete `fix` PhaseID and one dependent concrete `test` PhaseID. Multiple findings
+      sharing one owner may share that Round, but none may bypass it.
 
       Set ticket Meta Status → `[ ] TODO`. Update `Reopens: <new count>`.
       Sync tracker: the owning `*.3-tasks.md` row → `[ ] TODO`; parent rollups (scope and `specs/3-tasks.md`) → adjust counts.

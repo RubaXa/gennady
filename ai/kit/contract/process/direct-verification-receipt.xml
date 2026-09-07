@@ -1,0 +1,18 @@
+<Contract id="DIRECT_VERIFICATION_RECEIPT">
+  A direct reconcile edit returns this exact evidence block:
+
+  ```
+  DirectVerificationReceipt:
+    target-set: [<ordered literal repo-relative paths>]
+    command: npx gennady sdd-check --all <verification-root>
+    exit: 0
+    output: <literal unmodified command output>
+  ```
+
+  The target-set is frozen before editing and contains only canonical task-free SDD tracker/index
+  metadata paths, or one canonical spec path proven editorial. `<verification-root>` is
+  `specs/<scope>` for that editorial spec or `<project-root>` for tracker/index metadata. The command
+  is selected before editing and run exactly once after the edit. Missing
+  output, nonzero exit, a changed target-set, an edit outside it, or an artifact without this dedicated
+  verifier invalidates the direct path and routes to ticket recovery/creation instead.
+</Contract>

@@ -86,13 +86,26 @@ function createSkeletonBindingContext(): SkeletonBindingContext {
   return { pilots, fingerprint };
 }
 
-/** Every `Full step text: \`<path>\`` package path a skeleton's step list prints, in listed order. */
+/** Every runtime `READ_AND_USE_DIRECTIVE("<path>")` package path a skeleton prints, in listed order. */
 function extractPackagePaths(skeletonText: string): string[] {
-  const pattern = /Full step text: `([^`]+)`/g;
+  const pattern = /Before executing this step, READ_AND_USE_DIRECTIVE\("([^"]+)"\)\./g;
   const paths: string[] = [];
   let match: RegExpExecArray | null;
   while ((match = pattern.exec(skeletonText))) paths.push(match[1]!);
   return paths;
+}
+
+/** Follow a chain-lazy skeleton through each package's one successor edge. */
+function extractReachablePackagePaths(skeletonText: string): string[] {
+  const paths: string[] = [];
+  let text = skeletonText;
+  while (true) {
+    const next = /READ_AND_USE_DIRECTIVE\("([^"\n]+\/steps\/[^"\n]+\.xml)"\)/.exec(text)?.[1];
+    if (!next) return paths;
+    assert.equal(paths.includes(next), false, `step-package load cycle: ${next}`);
+    paths.push(next);
+    text = readFileSync(join(PROJECT_ROOT, next), 'utf8');
+  }
 }
 
 function escapeRegExp(value: string): string {
@@ -145,7 +158,11 @@ function extractSkeletonBody(skeletonText: string, fingerprint: string): string 
 /** Locates one Step's exact step-list-entry substring inside the skeleton body (DA-REQ-5 shape). */
 function extractStepListEntry(skeletonBody: string, pkg: StepPackage): string {
   const pattern = new RegExp(
-    '- \\*\\*' + escapeRegExp(pkg.stepId) + '\\*\\* — [\\s\\S]*?\\(Read tool — no CLI command, no version argument\\)\\.'
+    '- \\*\\*' +
+      escapeRegExp(pkg.stepId) +
+      '\\*\\* — [^\\n]*?Before executing this step, READ_AND_USE_DIRECTIVE\\("' +
+      escapeRegExp(pkg.relativePath) +
+      '"\\)\\.'
   );
   const match = pattern.exec(skeletonBody);
   assert.ok(match, `${pkg.stepId}: step-list entry not found in skeleton body`);
@@ -164,7 +181,10 @@ describe('SkeletonPackageBindingGuard', () => {
       );
 
       const skeletonText = readFileSync(join(OUT_ROOT, pilot.directiveKey), 'utf8');
-      const packagePaths = extractPackagePaths(skeletonText);
+      const packagePaths =
+        pilot.directiveName === 'scaffold'
+          ? extractReachablePackagePaths(skeletonText)
+          : extractPackagePaths(skeletonText);
       assert.ok(packagePaths.length > 0, `${pilot.directiveKey}: skeleton lists zero step packages`);
 
       // DA-REQ-12: every path the skeleton prints must resolve on disk — a dangling reference never ships.
@@ -183,7 +203,10 @@ describe('SkeletonPackageBindingGuard', () => {
     for (const pilot of ctx.pilots) {
       const skeletonText = readFileSync(join(OUT_ROOT, pilot.directiveKey), 'utf8');
       const skeletonFingerprint = skeletonText.split('\n', 1)[0]!;
-      const packagePaths = extractPackagePaths(skeletonText);
+      const packagePaths =
+        pilot.directiveName === 'scaffold'
+          ? extractReachablePackagePaths(skeletonText)
+          : extractPackagePaths(skeletonText);
       assert.ok(packagePaths.length > 0, `${pilot.directiveKey}: skeleton lists zero step packages`);
 
       const skeleton: DirectiveSkeleton = {
@@ -220,6 +243,7 @@ describe('SkeletonPackageBindingGuard', () => {
           directiveName: pilot.directiveName,
           sourceText: pilot.monolithText,
           fingerprint: ctx.fingerprint,
+          loadTopology: pilot.directiveName === 'scaffold' ? 'chain' : 'index',
         });
 
         const steps = extractNamedBlocks(pilot.monolithText, 'Step');
@@ -277,7 +301,9 @@ describe('SkeletonPackageBindingGuard', () => {
         ]);
 
         const skeletonBody = extractSkeletonBody(skeleton.text, ctx.fingerprint);
-        const stepListEntries = packages.map((pkg) => extractStepListEntry(skeletonBody, pkg));
+        const indexedPackages =
+          pilot.directiveName === 'scaffold' ? packages.slice(0, 1) : packages;
+        const stepListEntries = indexedPackages.map((pkg) => extractStepListEntry(skeletonBody, pkg));
         const skeletonResidual = removeAllOnce(skeletonBody, stepListEntries);
 
         assert.equal(
@@ -289,4 +315,32 @@ describe('SkeletonPackageBindingGuard', () => {
       }
     }
   );
+
+  it('scaffold exposes one strictly ordered lazy chain and never advertises later steps early', () => {
+    const root = readFileSync(join(OUT_ROOT, 'sdd-v2/scaffold.directive.xml'), 'utf8');
+    const reached = extractReachablePackagePaths(root);
+    const expected = [
+      'STEP_0_PREFLIGHT',
+      'STEP_1_DERIVE',
+      'STEP_2_MATERIALIZE',
+      'STEP_3_MECHANICAL_CHECK',
+      'STEP_4_INDEPENDENT_TICKET_REVIEW',
+      'STEP_5_OPERATOR_APPROVAL_2',
+      'STEP_6_HANDOFF',
+    ].map((step) => `ai/directives/sdd-v2/scaffold/steps/${step}.xml`);
+
+    assert.deepEqual(reached, expected);
+    assert.deepEqual(extractPackagePaths(root), [expected[0]]);
+    for (let index = 0; index < expected.length; index += 1) {
+      const text = readFileSync(join(PROJECT_ROOT, expected[index]!), 'utf8');
+      const advertised = [
+        ...text.matchAll(/READ_AND_USE_DIRECTIVE\("([^"\n]+\/steps\/[^"\n]+\.xml)"\)/g),
+      ].map((match) => match[1]!);
+      assert.deepEqual(
+        advertised,
+        index + 1 < expected.length ? [expected[index + 1]!] : [],
+        `${expected[index]} must advertise only its immediate successor`
+      );
+    }
+  });
 });

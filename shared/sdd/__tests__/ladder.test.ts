@@ -13,6 +13,8 @@ const BASE: LadderInput = {
   scopesTotal: 0,
   scopesApproved: 0,
   moduleSpecCount: 0,
+  modulesRequired: true,
+  authoringReady: false,
   packageJsonPresent: false,
   gates: { typecheck: false, test: false, lint: false },
   tasksTotal: null,
@@ -56,7 +58,7 @@ describe('renderLadder', () => {
     assert.match(text, /👉 Следующий шаг: написать и approve скоуп-спеку — \/sdd/);
   });
 
-  it('scopes approved, modules present, infra not configured: next step is infra before scaffold', () => {
+  it('scopes approved, modules present, authoring ready: missing runtime gates do not block scaffold', () => {
     const text = renderLadder({
       ...BASE,
       projectName: 'Acme',
@@ -64,12 +66,13 @@ describe('renderLadder', () => {
       scopesTotal: 2,
       scopesApproved: 2,
       moduleSpecCount: 4,
+      authoringReady: true,
       packageJsonPresent: false,
     });
     assert.match(text, /✅ 2\. Скоупы\s+approved: 2 из 2/);
     assert.match(text, /✅ 3\. Модули\s+модульных спек: 4/);
     assert.match(text, /⬜ 4\. Инфраструктура\s+не настроена/);
-    assert.match(text, /👉 Следующий шаг: настроить инфраструктуру \(гейты\) перед scaffold/);
+    assert.match(text, /👉 Следующий шаг: разбить спеки на задачи — \/sdd-scaffold/);
   });
 
   it('infra partially wired: per-gate ✅\\⬜, rung stays ⬜ overall', () => {
@@ -79,11 +82,12 @@ describe('renderLadder', () => {
       scopesTotal: 1,
       scopesApproved: 1,
       moduleSpecCount: 1,
+      authoringReady: true,
       packageJsonPresent: true,
       gates: { typecheck: true, test: true, lint: false },
     });
     assert.match(text, /⬜ 4\. Инфраструктура\s+гейты: type-check ✅ · test ✅ · lint ⬜/);
-    assert.match(text, /👉 Следующий шаг: настроить инфраструктуру \(гейты\) перед scaffold/);
+    assert.match(text, /👉 Следующий шаг: разбить спеки на задачи — \/sdd-scaffold/);
   });
 
   it('everything closed: all rungs ✅, next step points at the execute cycle', () => {
@@ -93,6 +97,8 @@ describe('renderLadder', () => {
       scopesTotal: 2,
       scopesApproved: 2,
       moduleSpecCount: 5,
+      modulesRequired: true,
+      authoringReady: true,
       packageJsonPresent: true,
       gates: { typecheck: true, test: true, lint: true },
       tasksTotal: 10,
@@ -113,6 +119,8 @@ describe('renderLadder', () => {
       scopesTotal: 1,
       scopesApproved: 1,
       moduleSpecCount: 1,
+      modulesRequired: true,
+      authoringReady: true,
       packageJsonPresent: true,
       gates: { typecheck: true, test: true, lint: true },
       tasksTotal: 6,
@@ -129,6 +137,8 @@ describe('renderLadder', () => {
       scopesTotal: 1,
       scopesApproved: 1,
       moduleSpecCount: 1,
+      modulesRequired: true,
+      authoringReady: true,
       packageJsonPresent: true,
       gates: { typecheck: true, test: true, lint: true },
       tasksTotal: null,
@@ -145,6 +155,8 @@ describe('renderLadder', () => {
       scopesTotal: 1,
       scopesApproved: 1,
       moduleSpecCount: 1,
+      modulesRequired: true,
+      authoringReady: true,
       packageJsonPresent: true,
       gates: { typecheck: true, test: true, lint: true },
       tasksTotal: 1,

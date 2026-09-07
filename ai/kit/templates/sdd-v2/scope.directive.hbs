@@ -1,364 +1,89 @@
-<SddScope keywords="scope, discovery, vision, usage-example, design-variants, decision-log, scope-rules, living-spec, product, library, runtime-backing, sdd-scope-discovery" type="directive" ver="2.1">
+<SddScope keywords="scope, authoring, product, library, sdd-new, sdd-check" type="directive" ver="2.3">
   <Mission>
-    Author or evolve a `product` / `library` scope spec — a self-contained living spec: Vision,
-    Usage Example, Requirements Gate, Architecture (Design Variants for product), Decision Log, Scope
-    Rules, Bootstrap Requirements, Handoff to the `module` flow. Loaded lazily by the router;
-    inherits the router core (language, dialogue, safeguard, diverge, no-narration, stateless) — not
-    repeated here.
-
-    Input — scope name + intent (raw idea, or an existing spec for refine / pivot). Output —
-    `specs/<scope>/<scope>.spec.md`. scope-type is already `product` or `library` (the router sends
-    `infrastructure` to the infra branch and `interface` to the interface branch).
-
-    Out of scope: module decomposition, entity inventory, DbC — those belong to
-    the `module` flow. The project portal belongs to the root branch.
-
-    **Glossary.** Scope = architecturally cohesive unit (own runtime / stack / deployment / UX
-    surface). Modes: greenfield (no spec) · refine (extend) · pivot (replace decisions, keep the trail) · rewrite (v0 clean-slate, no trail — `AX_PIVOT_REQUIRES_SUPERSESSION`).
+    Author one product/library scope from durable artifacts, not transcript memory. The autonomous
+    route is skeleton → orient → one whole-document Write → soft check → module handoff. The generated skeleton owns
+    section format. Module/entity/DbC detail belongs to the module owner.
   </Mission>
 
-  <BeliefState deps="AX_OPERATOR_LANGUAGE, AX_OPERATOR_DIALOGUE_STYLE, AX_DIALOGUE_DISCIPLINE, AX_OPERATOR_SAFEGUARD, AX_NO_PROCESS_NARRATION, AX_STATELESS_ARTIFACT, AX_SCALE_PROPORTIONAL_DEPTH">
-    {{> "axiom/scaffold/ax-directive-mode"}}
-
-    {{> "axiom/scaffold/ax-mode-auto-detect-or-halt"}}
-
-    {{> "axiom/process/ax-diverge-before-recommend"}}
-
-    {{> "axiom/boundary/ax-portal-read-only-with-placeholder-exception"}}
-
-    {{> "axiom/spec/ax-living-spec"}}
-
-    {{> "axiom/spec/ax-spec-lifecycle"}}
-
-    {{> "axiom/truth/ax-spec-is-sole-source"}}
-
-    {{> "axiom/spec/ax-dx-first"}}
-
-    <Axiom id="AX_SPEC_MANDATORY_DIAGRAM">
-      The diagram floor for a scope spec is a fixed ladder, not one "when useful" picture — the
-      same discipline agent-inbox's `AX_COMPREHENSION_LADDER` applies to a review applies here at
-      design time instead of review time. Four rungs, each answering ONE distinct question, drawn
-      in THIS order — requirements close BEFORE Use Cases and Data Flow are drawn, never the
-      reverse, per the 2026-08-20 visualization-chain decision
-      (`specs/ai-skills/research/2026-08-20-visualization-chain.research.md`): drawing the
-      scenario picture only once the failure-mode requirements are locked means a failure branch
-      on the diagram already traces to a real requirement ID, not a guess.
-      1. **Overview** — WHAT this scope is, system-context / high-level view. Unconditional. Held
-         by tooling: `sdd-check` fails a missing section (`SDD_NO_DIAGRAM_BLOCK`) or an empty one
-         (`SDD_DIAGRAM_BLOCK_EMPTY`).
-      2. **High-Level Architecture** — WHERE this scope sits AMONG its neighbours (C4-style
-         boundary: this scope as a box, confirmed dependencies/consumers as boxes outside it) —
-         distinct from Overview (Overview = the shape at a glance; this = the boundary, decided
-         once Architecture is locked). Unconditional, drawn at `STEP_5_ARCHITECTURE` — see that
-         step's Action for the concrete rule.
-      3. **Use Cases** — `product` scope-type only: actors → scenario, one line «зачем» each, the
-         worst-case scenario marked distinctly (⚠️) — harvested from the «Потребители» / «Худший
-         сценарий» topics closed during the `STEP_2_INTENT_CAPTURE` interview, but drawn only once
-         `STEP_3_REQUIREMENTS_GATE` closes — see that step's Action for the concrete rule.
-      4. **Data Flow** — `product` AND `library`: a `flowchart` built from exactly four node kinds
-         (external entity, process, store, labelled data-flow arrow) — NO conditions, NO loops,
-         this is a data diagram, not a control-flow chart. Unconditional for both scope-types,
-         drawn at `STEP_3_REQUIREMENTS_GATE` right after Use Cases — see that step's Action.
-      All four are drawn as ASCII in chat at the step that owns them, BEFORE that step's Approval
-      Check — a diagram appearing for the first time in the written spec means the operator never
-      saw the shape they are approving (`AX_CHAT_BEFORE_SPEC`, `formats/diagram-vocabulary.xml`);
-      an Approval Check without it is a show-before-ask violation the operator may reject and
-      demand, the same class as the router's `H_ASK_WITHOUT_CARD`. Every diagram carries a caption
-      naming the requirement IDs it shows, per `DIAGRAM_CAPTION_FORMAT`
-      (`formats/diagram-vocabulary.xml`) — Overview and High-Level Architecture, being
-      whole-scope pictures, may use the no-ID caption form the same contract allows. This ladder
-      (rungs 1–4) is the mandatory floor for NEW scope specs only — a scope spec written before
-      rungs 3–4 existed is not retroactively broken by their absence. Beyond this floor the author
-      adds more views (sequence, before/after) wherever a further diagram genuinely helps a
-      reader; that stays judgment, never a gate.
-    </Axiom>
-
-    {{> "axiom/spec/ax-runtime-backing-explicit"}}
-
-    {{> "axiom/spec/ax-product-library-flow"}}
-
-    {{> "axiom/scaffold/ax-stack-based-flow"}}
-
-    {{> "axiom/spec/ax-decision-log-required"}}
-
-    {{> "axiom/spec/ax-pivot-requires-supersession"}}
-
-    {{> "axiom/scaffold/ax-scope-rules-declaration"}}
-
-    {{> "axiom/scaffold/ax-rule-activation"}}
-
-    {{> "axiom/boundary/ax-cross-scope-dependencies"}}
-
-    {{> "axiom/spec/ax-parallel-mechanism-requires-justification"}}
-
-    {{> "axiom/truth/ax-evidence-hygiene"}}
-
-    {{> "axiom/truth/ax-research-persisted"}}
-
-    {{> "axiom/boundary/ax-bootstrap-narrow-read"}}
-
-    {{> "axiom/spec/ax-scope-stays-thin"}}
-
-    {{> "axiom/spec/ax-handoff-to-module-decomposition"}}
-
-    {{> "axiom/process/ax-artifact-style-self-check"}}
-
-    {{> "axiom/process/ax-close-with-integrity-check"}}
+  <BeliefState deps="AX_TOOL_INVOCATION">
+    {{> "axiom/process/ax-tool-invocation"}}
   </BeliefState>
 
-  <HaltConditions>
-    | 🛑 ID | Trigger |
-    |---|---|
-    | `H_NO_INTAKE` | Empty intake |
-    | `H_AMBIGUOUS_MODE` | Spec exists + mode verb absent (per `AX_MODE_AUTO_DETECT_OR_HALT`) |
-    | `H_AMBIGUOUS_PRODUCT_LIBRARY` | Operator intent leaves product vs library unclear after STEP_1_CONFIRM |
-    | `H_LOW_CONFIDENCE` | Confidence `LOW` while locking architecture |
-    | `H_REQ_NOT_APPROVED` | Design Variants attempted without a closed Requirements Gate |
-    | `H_GOLDEN_NOT_APPROVED` | Design Variants attempted without an approved Usage Example |
-    | `H_SYSTEM_FIT_NOT_RUN` | `STEP_5_ARCHITECTURE` entered before `STEP_4B_SYSTEM_FIT`'s checklist closed, or "вводим новое" recorded without the specific neighbour invariant/requirement ID it fails (`AX_PARALLEL_MECHANISM_REQUIRES_JUSTIFICATION`) |
-    | `H_MISSING_RULE_FILE` | A rule reference does not resolve to an existing file |
-    | `H_PIVOT_NO_INVALIDATION_LIST` | `pivot` mode without a Pivot Invalidation List |
-    | `H_REWRITE_WITH_DOWNSTREAM` | `rewrite` mode but the scope already has module specs / tickets — not v0, use `pivot` (`AX_PIVOT_REQUIRES_SUPERSESSION`) |
-    | `H_BOOTSTRAP_REQUIREMENTS_MISSING` | STEP_8 finished without a Bootstrap Requirements section |
-    | `H_OPERATOR_REJECT` | Operator rejected the spec |
-  </HaltConditions>
+  <Contracts>
+    {{> "contract/process/deviation-record-format"}}
+  </Contracts>
 
   <ExecutionPlan>
-    <Step id="STEP_0_INTAKE">
-      <Goal>Resolve scope name and mode; gather context.</Goal>
+    <Step id="STEP_0_CREATE">
+      <Goal>Create the working artifact before reading optional protocols.</Goal>
       <Action>
-        State from the router already gives the portal + scope-type (product / library). Resolve the
-        scope name from intake (or ask). Stat `specs/<scope>/<scope>.spec.md`: absent → `greenfield`;
-        present → detect the mode per `AX_DIRECTIVE_MODE` / `AX_MODE_AUTO_DETECT_OR_HALT`. Read the
-        rule registry for available rules (per `AX_SCOPE_RULES_DECLARATION`).
+        Classify the scope type and mode exactly once from the request and disk. Preserve the
+        operator-confirmed `scale:` retained by this owner; must not reopen the already-settled route.
+        Greenfield starts with exactly one applicable ToolCall. Existing specs are read in full and
+        replaced as a whole; authoring never edits them section by section.
+        <ToolCall owner="this-step" result="productManifest">npx gennady sdd-new product --scope <scope></ToolCall> Inputs <scope>: request scope classified in this step. Use productManifest.
+        <ToolCall owner="this-step" result="libraryManifest">npx gennady sdd-new library --scope <scope></ToolCall> Inputs <scope>: request scope classified in this step. Use libraryManifest.
       </Action>
     </Step>
-    <Step id="STEP_1_CONFIRM">
-      <Goal>Confirm product vs library and outline the section set.</Goal>
-      <Action>Confirm the scope-type, outline which sections the spec will carry. Approval Check. STOP.</Action>
-    </Step>
-    <Step id="STEP_2_INTENT_CAPTURE">
-      <Goal>Lock the scope's goal and primary constraints.</Goal>
-      <Action>
-        Intent Candidate (1–3 bullets). Evidence Hygiene per `AX_EVIDENCE_HYGIENE` (Facts /
-        Assumptions / Hypotheses, separated). Then run the operator interview —
-        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/interview-protocol.directive.xml")` — passing
-        the scope-type (product / library — selects the TopicCatalog block) and the confirmed
-        `scale:` from the session file: per `AX_SCALE_PROPORTIONAL_DEPTH` the map depth follows
-        scale — `fix` / `function` → base topics + the triage minimum; `product` → the full
-        scope-type block. The interview IS the substance of the step. A dispute or side-topic
-        raised mid-interview opens a nested frame on the flow's stack — this step's main path
-        never silently stalls on it (`AX_STACK_BASED_FLOW`). Capture the initial Runtime
-        Backing posture per `AX_RUNTIME_BACKING_EXPLICIT`.
 
-        For `product` scope-type, this step closes the «Потребители» and «Худший сценарий» topics
-        — the raw material for the Use Cases diagram. Per the 2026-08-20 visualization-chain
-        decision (requirements close BEFORE use cases are drawn, never the reverse), this step
-        does NOT draw that diagram — the drawing happens at `STEP_3_REQUIREMENTS_GATE`, once the
-        Requirements Gate closes (rung 3 of `AX_SPEC_MANDATORY_DIAGRAM`); see that step's Action.
-        Approval Check. STOP.
+    <Step id="STEP_1_ORIENT">
+      <Goal>Load only the bounded neighbouring context.</Goal>
+      <Action>
+        <ToolCall owner="this-step" result="orientation">npx gennady sdd-orient --scope <scope></ToolCall> Inputs <scope>: scope resolved in STEP_0_CREATE. Use orientation.
+        This is the only unconditional foreign-context read. Load interview-protocol, rule-registry,
+        or research-gate only when the brief or orientation names their trigger. A brief that already
+        names the consumer, happy path, negative path, constraints, and exclusions needs no interview.
       </Action>
     </Step>
-    <Step id="STEP_3_REQUIREMENTS_GATE">
-      <Goal>Close the requirements.</Goal>
-      <Action>
-        Functional · Non-Functional · Out-of-Scope. For product: + Runtime Backing (per
-        `AX_RUNTIME_BACKING_EXPLICIT`) + Project-Wide Rules (per `AX_SCOPE_RULES_DECLARATION`).
-        Close the remaining holes via
-        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/interview-protocol.directive.xml")` — focus:
-        only the topics the Requirements Gate still misses; map depth sized to the session-file
-        `scale:` per `AX_SCALE_PROPORTIONAL_DEPTH`.
 
-        Once the requirements list is drafted — including the нештатная entries, a failure branch
-        without a locked requirement ID has nothing to caption — draw the two diagrams the
-        2026-08-20 visualization-chain decision moves to this point, per
-        `AX_SPEC_MANDATORY_DIAGRAM`:
-        1. `product` scope-type ONLY — the Use Cases diagram (rung 3): actors → scenario nodes,
-           one line «зачем» each, harvested from the «Потребители» / «Худший сценарий» topics
-           closed at `STEP_2_INTENT_CAPTURE`, the worst-case scenario marked distinctly (⚠️) — as
-           its own ASCII block in chat; a bare bullet list of user types does not satisfy this
-           rung.
-        2. `product` AND `library` — the Data Flow diagram (rung 4, `DFD` type per
-           `formats/diagram-vocabulary.xml`): a `flowchart` built from exactly four node kinds
-           — external entity, process, store, labelled data-flow arrow — NO conditions, NO loops
-           (a data diagram, not a control-flow chart); ≤7 nodes; as its own ASCII block in chat.
-        Each diagram's caption names the requirement IDs it shows, per `DIAGRAM_CAPTION_FORMAT`
-        (`formats/diagram-vocabulary.xml`) — `_<что показывает> — <ACR>-REQ-<N>[,
-        <ACR>-REQ-<M>]._`. **Both diagrams shown (Data Flow always; Use Cases when
-        scope-type=product), this message, before the Approval Check below** — their absence is
-        a show-before-ask violation, the same class as the router's `H_ASK_WITHOUT_CARD`; the
-        operator may reject and demand them. Approval Check (this gate must close before Design
-        Variants, else `H_REQ_NOT_APPROVED`). STOP.
+    <Step id="STEP_2_FILL">
+      <Goal>Generate and write the complete specification once.</Goal>
+      <Action>
+        Read the on-disk skeleton once, then compose the COMPLETE document in memory from its section
+        order, headings, local comments, and manifest. Replace the skeleton with exactly ONE `Write`
+        of the whole file. `Edit`, `Patch`, and per-section writes are forbidden in authoring. The
+        one Write must retain every SECTION marker, replace every `<!-- ... -->` guidance comment with
+        content, and leave no skeleton guidance behind. Run the structural self-check mentally before
+        that Write. Record each disputed autonomous choice once in the scope Decision Log per
+        `DEVIATION_RECORD_FORMAT`. Keep scope ownership thin. Do not preload structure, requirement,
+        caption, or portal formats.
       </Action>
     </Step>
-    <Step id="STEP_4_GOLDEN_DX">
-      <Goal>Lock the Approved Usage Example (mandatory before architecture).</Goal>
-      <Action>
-        Per `AX_DX_FIRST`, write a real-code usage example: library → Public API DX; product →
-        UX-flow or CLI DX (depth per Project Type). Approval Check (else `H_GOLDEN_NOT_APPROVED`). STOP.
-      </Action>
-    </Step>
-    <Step id="STEP_4B_SYSTEM_FIT">
-      <Goal>Reconcile with the existing system before architecture locks.</Goal>
-      <Action>
-        FIRST action this step: run `npx gennady sdd-orient --scope <scope>` (this works even before
-        `sdd-new` materializes the spec — a
-        greenfield scope-type is not a reason to skip the call). Read its output in full: the portal
-        line, the one-hop neighbours with their paths, entity/contract NAMES, requirement IDs + titles,
-        the consumers list, and its closing question — the tool's bounded extract is the evidence, not
-        a repo scan (`AX_BOOTSTRAP_NARROW_READ` governs the LATER code-level narrow read at STEP_8; this
-        read is spec-level, via the tool, and comes first).
 
-        Then close, in THIS message, the fixed checklist — record every answer in the spec (Decision
-        Log entry when (a)/(b) lands on "new", inline note otherwise):
-        (a) Is this entity/mechanism already an existing kind — does the extract already name it?
-        (b) If not: which existing mechanism the extract names are we EXTENDING instead of introducing
-        a new one?
-        (c) Which neighbour specs (paths, from the extract) will need work for this to fit the system —
-        each becomes its own «СОСЕДИ» line in the eventual `CHANGE_MANIFEST` / Pivot Invalidation List
-        sideways entry?
-        (d) Which neighbour requirements (IDs, from the extract) conflict with what we are about to
-        lock, and how is the conflict resolved?
-        "Вводим новое" answers (a)/(b) ONLY together with the specific neighbour invariant/requirement
-        ID the existing mechanism cannot satisfy, plus its own Decision Log entry
-        (`AX_PARALLEL_MECHANISM_REQUIRES_JUSTIFICATION`) — "проще с нуля" is not a citation, else
-        `H_SYSTEM_FIT_NOT_RUN`. On a genuinely greenfield project with no neighbours, `sdd-orient`
-        degenerates to its one-line "соседей нет" — the checklist still runs, (a) still gets an honest
-        answer, (c)/(d) collapse to "н/д"; the step itself is never skipped. Approval Check. STOP.
+    <Step id="STEP_3_CHECK">
+      <Goal>Consume one mechanical draft receipt.</Goal>
+      <Action>
+        <ToolCall owner="this-step" result="draftReceipt">npx gennady sdd-check --spec <scope-spec-path> --authoring</ToolCall> Inputs <scope-spec-path>: exact path from the STEP_0_CREATE manifest. Use draftReceipt.
+        The receipt auto-fixes trivial format. If a content hint remains, report authoring incomplete;
+        never switch to sectional Edit/Patch repair after the whole-document Write. Rerun once only
+        after checker auto-fix to obtain the final receipt. Never raise a draft time limit to
+        compensate for reading. Do not run `sdd-check --all specs/<scope>` here:
+        before module materialization it is guaranteed to report broken links.
       </Action>
     </Step>
-    <Step id="STEP_5_ARCHITECTURE">
-      <Goal>Lock the architecture.</Goal>
-      <Action>
-        Research gate before drafting: at scale `product` / `library` — mandatory, 2–3 targeted
-        WebSearch queries on how market leaders solve THIS scope's requirements and how they
-        architect for them; at scale `module` / `function` — proportional per
-        `AX_SCALE_PROPORTIONAL_DEPTH` (light pass, or skip with a one-line rationale); at scale
-        `fix` — skipped, no research. Where it runs, persist it per `AX_RESEARCH_PERSISTED` before
-        the Design Variants / Architecture below are drafted — `npx gennady sdd-new research
-        --scope <scope> --slug <slug>`, filled
-        (STATUS/PROBLEM/CRITERIA/OPTIONS/DECISION/CONSEQUENCES/EVIDENCE/RELATED) — and link the
-        document in this message and in the Decision Log entry's RELATED (parentheses) once the
-        variant is picked at STEP_6.
 
-        library → Architecture: public surface structure, key patterns, briefly-rejected alternatives.
-        product → Design Variants per `AX_DIVERGE_BEFORE_RECOMMEND` — reach past the obvious
-        option into the tail; judge each against THIS scope, do not collapse to the modal design.
-        Variant count follows the session-file `scale:` per `AX_SCALE_PROPORTIONAL_DEPTH` (Project
-        Type refines it per `AX_PRODUCT_LIBRARY_FLOW`): scale `product` → 2–3 variants; scale
-        `module` / `function` → 1–2, or a single design with the skip rationale recorded in the
-        Decision Log. Under `LOW` confidence do not lock (`H_LOW_CONFIDENCE`).
+    <ScalePath when="scale=function|fix">
+      Continue directly into the module owner in the same pass. A small single-purpose scope normally
+      becomes exactly one cohesive module. Treat the scope and module manifests as one authoring
+      manifest; the scope owns its requirement IDs and the module cites them instead of copying them.
+    </ScalePath>
 
-        Before the Approval Check, draw the scope-boundary diagram (rung 2 of
-        `AX_SPEC_MANDATORY_DIAGRAM`, C4-style, per `formats/diagram-vocabulary.xml`): THIS scope as
-        a boundary box, its known neighbours as boxes outside it — depends-on (infra-base / other
-        scopes, from the Portal Scope Graph already in state) and provides-to (consumer scopes),
-        plus whatever Scope Dependencies are confirmed so far — ≤7 nodes, as an ASCII block in THIS
-        message. This IS the Overview system-context shape decided now, for THIS scope's place
-        among neighbours; `STEP_9_FINAL_SPEC` converts the same drawing to mermaid inside both
-        `## Overview` and `## High-Level Architecture` (`AX_CHAT_BEFORE_SPEC`) — never invented
-        fresh at write time. **Diagram shown, this message, before the Approval Check below** —
-        its absence is a show-before-ask violation, the same class as the router's
-        `H_ASK_WITHOUT_CARD`; the operator may reject and demand it. Approval Check. STOP.
+    <Step id="STEP_4_CLOSE">
+      <Goal>Make scope authoring completion durable.</Goal>
+      <Action>
+        Only after the final draftReceipt has no hints, close authoring atomically.
+        <ToolCall owner="this-step" result="scopeAuthoringReceipt">npx gennady sdd-log &lt;scope-spec-path&gt; authoring-complete</ToolCall> Inputs &lt;scope-spec-path&gt;: exact checked path from STEP_3_CHECK. Use scopeAuthoringReceipt.
       </Action>
     </Step>
-    <Step id="STEP_6_ARCHITECTURE_CHOICE">
-      <Goal>Product only: pick a variant.</Goal>
+
+    <Step id="STEP_5_HANDOFF">
+      <Goal>Leave a checked actual scope/module set.</Goal>
       <Action>
-        library → skip to STEP_7. product → operator picks a variant; record a Decision Log entry per
-        `AX_DECISION_LOG_REQUIRED` (`DECISION_LOG_ENTRY_FORMAT`). STOP.
-      </Action>
-    </Step>
-    <Step id="STEP_7_RULE_ACTIVATION">
-      <Goal>Lock the active rule set for this scope.</Goal>
-      <Action>
-        Run the rule activation per `AX_RULE_ACTIVATION` against the registry read at STEP_0:
-        1. Stage A — per category, shortlist «recommend activate» + «considered, recommend skip»,
-           each with a one-line rationale scoped to THIS scope. Operator agrees / expands /
-           contracts → list locked; deviations → Decision Log entry (`DECISION_LOG_ENTRY_FORMAT`).
-        2. Stage B — for `architecture/*` and `infra/*` rules on the locked list: read only
-           `Mission`, `Belief_State`, `Reward_Criteria` of the rule file; surface each axiom with a
-           rationale → operator Accept (default) / Adapt / Override — Adapt and Override each land
-           in the Decision Log. Keep it light on uncontroversial axioms. `coding/*` / `testing/*`
-           stay deferred to phase entry.
-        Record the locked list in Project-Wide Rules per `AX_SCOPE_RULES_DECLARATION`; a reference
-        that resolves to no file → `H_MISSING_RULE_FILE`. STOP.
-      </Action>
-    </Step>
-    <Step id="STEP_8_EXTERNAL_DEPENDENCIES_AUDIT">
-      <Goal>Reconcile the drafted spec with repository reality; materialize Bootstrap Requirements.</Goal>
-      <Action>
-        Walk the drafted spec; extract every external assumption (packages, workspace links, tools,
-        pre-existing files, cross-scope types, env / services, structural prerequisites). Classify each
-        `exists` | `missing` | `unknown` — narrow read for inventory only, per `AX_BOOTSTRAP_NARROW_READ`
-        and `AX_SPEC_IS_SOLE_SOURCE` (no reading app source for design). Resolve every `missing` /
-        `unknown` with the operator (source · version · owner), each a Decision Log entry. Record
-        every confirmed cross-scope assumption as a `depends-on` edge in Scope Dependencies per
-        `AX_CROSS_SCOPE_DEPENDENCIES` (cross-scope contracts come from `interface` scopes). Materialize
-        the Bootstrap Requirements table `| Requirement | Kind | Owner | Resolution |`. Gate: empty list
-        only if explicitly «nothing to bootstrap», else `H_BOOTSTRAP_REQUIREMENTS_MISSING`. An existing
-        mechanism this audit turns up feeds back into Architecture / Contracts now, in the SAME session
-        — per `AX_BOOTSTRAP_NARROW_READ`, pop back to the relevant earlier step, incorporate it, re-run
-        this audit once more; only a finding raised after the spec has already merged to master needs a
-        formal `pivot`.
-      </Action>
-    </Step>
-    <Step id="STEP_9_FINAL_SPEC">
-      <Goal>Emit the scope spec.</Goal>
-      <Action>
-        In `greenfield`/`rewrite` mode, when `specs/<scope>/<scope>.spec.md` does not exist yet, create
-        its skeleton via `sdd-new product --scope <scope>` (or `sdd-new library --scope <scope>`) —
-        the command never overwrites and prints the section manifest (which sections are REQUIRED and
-        what to fill); in `refine`/`pivot` mode the file already exists, edit it in place, skip
-        `sdd-new`. Content guidance per `READ_AND_USE_DIRECTIVE` the matching format —
-        `ai/directives/sdd-v2/formats/product-spec-structure.xml`
-        (product) or `ai/directives/sdd-v2/formats/library-spec-structure.xml` (library); Bootstrap
-        Requirements is part of every spec. Keep the
-        spec inside its bounded role per `AX_SCOPE_STAYS_THIN` — entity / contract / file-level detail
-        belongs to module specs. Before writing, run the self-check pass per
-        `AX_ARTIFACT_STYLE_SELF_CHECK`. In `refine` mode update sections in place per `AX_LIVING_SPEC`. In `pivot`
-        mode also `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/pivot-formats.xml")` (Pivot
-        Invalidation List + rework entries) per `AX_PIVOT_REQUIRES_SUPERSESSION`; in `rewrite` mode write
-        fresh — no supersession, no invalidation list. For a brand-new scope, append the
-        `🚧 (awaiting root sync)` placeholder row to the portal Scopes table per
-        `AX_PORTAL_READ_ONLY_WITH_PLACEHOLDER_EXCEPTION` — every other portal edit belongs to the
-        root flow. Write in review-state per `AX_SPEC_LIFECYCLE` —
-        prepend a `CHANGE_MANIFEST` (`READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/change-manifest.xml")`)
-        and mark changed lines `✚`/`~` (greenfield → manifest only, no per-line marks) — its «СОСЕДИ»
-        block carries the (c)/(d) answers `STEP_4B_SYSTEM_FIT` recorded, one line per neighbour path,
-        never left empty by omission; compress folds it to
-        master downstream after the change ships. Then close with the integrity check per
-        `AX_CLOSE_WITH_INTEGRITY_CHECK`: run `sdd-check --all specs/<scope>` (anchor
-        balance + required sections + links) and resolve any finding. Then
-        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/review-lifecycle.directive.xml")` — internal critic →
-        publish (MR) → external review → compress + merge on approval. Only after the spec merges to master,
-        hand off to the `module` flow per `AX_HANDOFF_TO_MODULE_DECOMPOSITION`. Approval Check. STOP.
+        Route incomplete decomposition to module authoring. When an operator is actually present and
+        explicitly requested interactive review, lazily
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/authoring-interactive.directive.xml")`.
+        Autonomous authoring records deviations and continues without Approval/STOP ceremony.
       </Action>
     </Step>
   </ExecutionPlan>
-
-  <ChatProtocol>
-    {{> "contract/process/question-rule-slim"}}
-  </ChatProtocol>
-
-  <ChatOutput>
-    Service line — dim, internal, never narrated (per `AX_NO_PROCESS_NARRATION`):
-    `🦾 DSC_R<N> · <scope> · <scope-type> · <mode> · conf=<LOW|MEDIUM|HIGH>`. Breadcrumb milestones
-    (per `BREADCRUMB_FORMAT`): Intent · Requirements · Usage Example · Architecture · Rules · Spec.
-    Disputes / dives open a nested frame on the main path per `AX_STACK_BASED_FLOW`; render the
-    dive per `SIDE_DIVE_FORMAT` and return to the parent frame.
-
-    {{> "contract/process/message-layout"}}
-
-    {{> "contract/process/breadcrumb-format"}}
-
-    {{> "contract/process/side-dive-format"}}
-
-    {{> "axiom/process/ax-progressive-disclosure"}}
-  </ChatOutput>
-
-  <ArtifactOutput>
-    <!-- spec-structure + pivot formats load lazily at STEP_9 (used only when writing) — see ExecutionPlan. -->
-    {{> "contract/spec/decision-log-entry-format"}}
-  </ArtifactOutput>
 </SddScope>

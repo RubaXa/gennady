@@ -13,6 +13,6 @@
   Усиления:  security 👷 · storage ✗ skip: прототип, данных нет
 
   4–6 topics per line; the «Усиления» line appears only when at least one amplification is
-  active or skipped. The map is session state for the dialogue — the calling step decides what
+  active or skipped. The map is ephemeral state for the current dialogue — the calling step decides what
   from the answers lands in the artifact; the map itself stays out of the spec.
 </Contract>

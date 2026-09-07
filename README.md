@@ -215,35 +215,6 @@ npx gennady lint ./src --autofix --verbose
 
 ---
 
-### 🗯️ `alt-opinion`
-
-Мульти-модельные мнения с опциональным синтезом.
-
-```bash
-# Мнение двух моделей с синтезом
-npx gennady alt-opinion \
-  --model="llmproxy/kimi-k2.6" \
-  --model="llmproxy/glm-5.1" \
-  --synthModel="llmproxy/deepseek-v4-pro" \
-  --file="./spec.md"
-
-# Через stdin
-cat spec.md | npx gennady alt-opinion \
-  --model="llmproxy/gpt-4o" \
-  --model="openrouter/claude-sonnet"
-```
-
-**Опции:**
-
-- `--model`: дескриптор модели `provider/model[::prompt.md]` (повторяемый)
-- `--synthModel`: модель-синтезатор
-- `--file`: путь к входному файлу
-- `--modelPrompt`: промпт для всех моделей
-- `--synthPrompt`: промпт для синтезатора
-- `--strict`: exit 1 при ошибке любой модели
-
----
-
 ### 🔄 `sync`
 
 Синхронизация `ai/directives/` из npm-пакета в текущий проект.
@@ -389,17 +360,7 @@ npx gennady sync
 npx gennady sync-skills
 ```
 
-### 9. Мульти-модельный анализ
-
-```bash
-npx gennady alt-opinion \
-  --model="llmproxy/kimi-k2.6" \
-  --model="llmproxy/glm-5.1" \
-  --synthModel="llmproxy/deepseek-v4-pro" \
-  --file="./spec.md"
-```
-
-### 10. Зеркалирование консоли браузера
+### 9. Зеркалирование консоли браузера
 
 ```bash
 npx gennady remote-console

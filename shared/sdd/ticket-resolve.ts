@@ -2,8 +2,13 @@
 // @consumers: sdd-task.cmd, sdd-log.cmd, sdd-check.cmd, sdd-sync.cmd
 // @tasks: N/A
 
-import { readFileSync, readdirSync } from 'node:fs';
+import { readdirSync, realpathSync } from 'node:fs';
 import { resolve, join, relative } from 'node:path';
+import {
+  proveRepoFile,
+  readProvenRepoFile,
+  type RepoFileIdentity,
+} from '../common/repo-file-identity.ts';
 import { isTicket, ticketRef, type TicketRef } from './check.ts';
 import { looksLikeTaskId } from './task-id.ts';
 
@@ -18,53 +23,122 @@ const SKIP_DIRS = new Set([
 ]);
 
 /**
- * @purpose Recursively collect every ticket's graph ref under a directory — the Task-ID resolution search space.
- * @invariant Skips node_modules/.git/dist/build/out/coverage/__tests__ and symlinks, mirrors sdd-check's own walk.
- * @param root Directory to walk (absolute).
- * @returns Every ticket found, in discovery order.
+ * @purpose One graph reference paired with the immutable bytes observed by the strict corpus scan.
  */
-export function collectTicketRefs(root: string): TicketRef[] {
-  const acc: TicketRef[] = [];
+export type TicketCorpusRef = TicketRef & {
+  /** @purpose Immutable content observed by the strict scan, reused by structural queue consumers. */
+  content: string;
+};
 
-  function walk(dir: string): void {
-    let entries;
-    try {
-      entries = readdirSync(dir, { withFileTypes: true });
-    } catch {
-      return;
-    }
-    for (const e of entries) {
-      if (e.name.startsWith('.') || SKIP_DIRS.has(e.name) || e.isSymbolicLink()) continue;
-      const full = join(dir, e.name);
-      if (e.isDirectory()) {
-        walk(full);
-        continue;
-      }
-      if (!e.isFile() || !e.name.endsWith('.md')) continue;
-      let content: string;
-      try {
-        content = readFileSync(full, 'utf-8');
-      } catch {
-        continue;
-      }
-      if (isTicket(content)) acc.push(ticketRef(full, content));
-    }
-  }
-
-  walk(root);
-  return acc;
-}
+/** @purpose Complete ticket corpus, or the first exact observation that prevents completeness. */
+export type TicketCorpusResult =
+  | { ok: true; refs: TicketCorpusRef[] }
+  | { ok: false; detail: string };
 
 /**
  * @purpose Outcome of resolving a CLI ticket argument.
  * @invariant `resolvedFrom: 'id'` carries the matched `id` for the resolution line; `'path'` never does.
  */
 export type TicketResolution =
-  | { ok: true; path: string; content: string; resolvedFrom: 'path' }
-  | { ok: true; path: string; content: string; resolvedFrom: 'id'; id: string }
+  | {
+      ok: true;
+      path: string;
+      content: string;
+      identity: RepoFileIdentity;
+      resolvedFrom: 'path';
+    }
+  | {
+      ok: true;
+      path: string;
+      content: string;
+      identity: RepoFileIdentity;
+      resolvedFrom: 'id';
+      id: string;
+    }
   | { ok: false; reason: 'unreadable' }
+  | { ok: false; reason: 'unsafe-path' | 'unsafe-corpus'; detail: string }
   | { ok: false; reason: 'unknown-id'; id: string; refs: TicketRef[] }
   | { ok: false; reason: 'ambiguous-id'; id: string; matches: TicketRef[] };
+
+type StrictTicketCorpus =
+  | { ok: true; refs: Array<TicketCorpusRef & { identity: RepoFileIdentity }> }
+  | { ok: false; detail: string };
+
+/** @purpose Scan the Task-ID corpus fail-closed: unreadable entries and non-skipped symlinks invalidate the lookup. */
+function collectTicketRefsStrict(root: string): StrictTicketCorpus {
+  let canonicalRoot: string;
+  try {
+    canonicalRoot = realpathSync(resolve(root));
+  } catch {
+    return { ok: false, detail: 'repository root is missing or unreadable' };
+  }
+  const refs: Array<TicketCorpusRef & { identity: RepoFileIdentity }> = [];
+
+  function walk(relativeDir: string): string | null {
+    const absoluteDir = relativeDir ? join(canonicalRoot, relativeDir) : canonicalRoot;
+    let entries;
+    try {
+      entries = readdirSync(absoluteDir, { withFileTypes: true });
+    } catch (cause) {
+      return `ticket corpus directory is unreadable: ${relativeDir || '.'} (${(cause as NodeJS.ErrnoException).code ?? 'I/O error'})`;
+    }
+    for (const entry of entries) {
+      if (entry.name.startsWith('.') || SKIP_DIRS.has(entry.name)) continue;
+      const rel = relativeDir ? join(relativeDir, entry.name) : entry.name;
+      if (entry.isSymbolicLink()) return `ticket corpus contains a symlink: ${rel}`;
+      if (entry.isDirectory()) {
+        const issue = walk(rel);
+        if (issue) return issue;
+        continue;
+      }
+      if (!entry.isFile() || !entry.name.endsWith('.md')) continue;
+      const proven = proveRepoFile(canonicalRoot, rel);
+      if (!proven.ok) return `ticket corpus file is unsafe: ${rel} (${proven.detail})`;
+      const read = readProvenRepoFile(proven.identity);
+      if (!read.ok) return `ticket corpus file is unreadable: ${rel} (${read.detail})`;
+      if (isTicket(read.content)) {
+        refs.push({
+          ...ticketRef(proven.identity.absolute, read.content),
+          content: read.content,
+          identity: proven.identity,
+        });
+      }
+    }
+    return null;
+  }
+
+  const issue = walk('');
+  return issue ? { ok: false, detail: issue } : { ok: true, refs };
+}
+
+/**
+ * @purpose Scan the complete ticket search space without ever returning partial graph evidence.
+ * @invariant A failed directory/file observation or non-skipped symlink yields `ok:false`; callers
+ * must not print an execution map or derive GATE_QUEUE from an incomplete corpus.
+ * @param root Repository root whose non-skipped Markdown tree is the ticket search space.
+ * @returns Every ticket plus its exact observed content, or one teaching corpus failure.
+ */
+export function collectTicketCorpus(root: string): TicketCorpusResult {
+  const corpus = collectTicketRefsStrict(root);
+  if (!corpus.ok) return corpus;
+  return {
+    ok: true,
+    refs: corpus.refs.map(({ identity: _identity, ...ref }) => ref),
+  };
+}
+
+/**
+ * @purpose Backward-compatible throwing facade for callers that still expect the former array API.
+ * @deprecated Prefer `collectTicketCorpus`; it makes incomplete evidence explicit in the type.
+ * @invariant A failed corpus observation throws instead of returning a partial ticket graph.
+ * @param root Repository root whose ticket corpus must be complete.
+ * @returns Every ticket reference, or throws when the corpus cannot be observed completely.
+ */
+export function collectTicketRefs(root: string): TicketRef[] {
+  const corpus = collectTicketCorpus(root);
+  if (!corpus.ok) throw new Error(`ticket corpus is incomplete: ${corpus.detail}`);
+  return corpus.refs;
+}
 
 /**
  * @purpose Resolve a CLI ticket argument — a path (unchanged), or, when unreadable and Task-ID-shaped,
@@ -75,39 +149,42 @@ export type TicketResolution =
  * @returns The resolved path + content (tagged by how it was found), or a typed failure reason.
  */
 export function resolveTicketArg(ticket: string, root: string): TicketResolution {
-  const directPath = resolve(ticket);
-  try {
+  const direct = proveRepoFile(root, ticket);
+  if (direct.ok) {
+    const read = readProvenRepoFile(direct.identity);
+    if (!read.ok) return { ok: false, reason: 'unsafe-path', detail: read.detail };
     return {
       ok: true,
-      path: directPath,
-      content: readFileSync(directPath, 'utf-8'),
+      path: direct.identity.absolute,
+      content: read.content,
+      identity: direct.identity,
       resolvedFrom: 'path',
     };
-  } catch {
-    // Not a readable path — fall through to Task-ID resolution below.
   }
 
-  if (!looksLikeTaskId(ticket)) return { ok: false, reason: 'unreadable' };
+  if (!looksLikeTaskId(ticket)) {
+    return { ok: false, reason: 'unsafe-path', detail: direct.detail };
+  }
 
-  const refs = collectTicketRefs(root);
+  const corpus = collectTicketRefsStrict(root);
+  if (!corpus.ok) return { ok: false, reason: 'unsafe-corpus', detail: corpus.detail };
+  const refs = corpus.refs;
   const matches = refs.filter((r) => r.taskId === ticket);
 
   if (matches.length === 0) return { ok: false, reason: 'unknown-id', id: ticket, refs };
   if (matches.length > 1) return { ok: false, reason: 'ambiguous-id', id: ticket, matches };
 
-  const match = matches[0] as TicketRef;
-  const matchPath = resolve(match.file);
-  try {
-    return {
-      ok: true,
-      path: matchPath,
-      content: readFileSync(matchPath, 'utf-8'),
-      resolvedFrom: 'id',
-      id: ticket,
-    };
-  } catch {
-    return { ok: false, reason: 'unreadable' };
-  }
+  const match = matches[0] as TicketCorpusRef & { identity: RepoFileIdentity };
+  const read = readProvenRepoFile(match.identity);
+  if (!read.ok) return { ok: false, reason: 'unsafe-corpus', detail: read.detail };
+  return {
+    ok: true,
+    path: match.identity.absolute,
+    content: read.content,
+    identity: match.identity,
+    resolvedFrom: 'id',
+    id: ticket,
+  };
 }
 
 /**

@@ -32,10 +32,10 @@ test('lists skills and descends the sdd-execute trace', async ({ page }) => {
   ).toBeVisible();
   await expect(page.locator('.structure .lab .tag', { hasText: '<Step GATHER>' })).toBeVisible();
 
-  // descend the flow: GATHER → run(execute.directive) → directive root → its BeliefState
+  // descend the public flow: GATHER → the single router entry → its BeliefState
   await page.locator('.structure .lab .tag', { hasText: '<Step GATHER>' }).click();
-  await page.locator('.structure .lab .tag', { hasText: 'execute.directive.xml' }).first().click();
-  await page.locator('.structure .lab .tag', { hasText: '<SddExecuteOrchestrator>' }).click();
+  await page.locator('.structure .lab .tag', { hasText: 'router.directive.xml' }).first().click();
+  await page.locator('.structure .lab .tag', { hasText: '<SddRouter>' }).click();
   await expect(
     page.locator('.structure .lab .tag', { hasText: '<BeliefState>' }).first()
   ).toBeVisible();
@@ -123,6 +123,10 @@ test('a lazy step shows its READ_AND_USE package and the loaded body', async ({ 
   const visibleTag = (text: string) =>
     page.locator('.structure .row:visible .tag', { hasText: text }).first();
   await visibleTag('<Step GATHER>').click();
+  await visibleTag('router.directive.xml').click();
+  await visibleTag('<SddRouter>').click();
+  await page.locator('.structure .row:visible .tag', { hasText: '<LogicSwitch>' }).last().click();
+  await visibleTag('forced intent = scaffold').click();
   await visibleTag('scaffold.directive.xml').click();
   await visibleTag('<SddScaffold>').click();
   await page.locator('.structure .row:visible .tag', { hasText: '<ExecutionPlan>' }).last().click();

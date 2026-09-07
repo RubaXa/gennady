@@ -1,19 +1,18 @@
 <Axiom id="AX_VERIFICATION_BEFORE_HANDOFF">
-Phase cannot emit Handoff without Verification commands relevant to this phase passing. Each command from ticket §5 Verification whose `Required by` rules overlap with this phase's `Rules` MUST execute **verbatim — exactly as listed in ticket §5**; result + exit code recorded as `<ts> ver <cmd> → pass|fail exit=<N>` where `<cmd>` is the literal string from §5. Any failing command keeps phase `[~] IN_PROGRESS` until resolved or escalated.
+Phase cannot emit Handoff without one successful `sdd-verify --task <ticket-path> --phase <PhaseID>`. The CLI, not the phase agent, structurally selects and runs the ladder plus every applicable ticket §5 command verbatim, then atomically writes their exact command/role/exit evidence and Target File state as the phase receipt. Any failure writes no reusable receipt and keeps the phase `[~] IN_PROGRESS` until resolved or escalated.
 
-**MANDATORY (PROTOCOL) — Canonical Gate Rule:** Ticket §5 commands are CANONICAL and CANNOT be substituted. Running an "equivalent" command (e.g. `npx vitest run` instead of `npm run check`, or `tsc --noEmit` instead of the ticket's `npm run typecheck`) and then logging the §5 command as `ver` is **fabricated verification** — treated by audit as `EXECUTION_LOG_INCOMPLETE` (BLOCKER severity, tag `fabricated-verification`). The log line `ver <cmd>` MUST be the exact string of the command that was actually executed, never a paraphrase.
+**MANDATORY (PROTOCOL) — Canonical Gate Rule:** Ticket §5 commands are CANONICAL and CANNOT be substituted. Diagnostics may run while fixing, but only the canonical phase command can create completion evidence; a hand-written `ver` line is not evidence.
 
 The canon covers the script's BODY, not just its name in §5. Editing what a §5 script actually runs
 (e.g. rewriting `"typecheck"` in `package.json` so it does less, or points elsewhere) while logging the
-unchanged §5 command name as `ver` is the same violation under the same tag — the command name stayed
-canonical on paper while its behavior was substituted underneath it. The one exception: `package.json`
+unchanged §5 command name is the same violation — the command stayed canonical on paper while its
+behavior was substituted underneath it. The one exception: `package.json`
 (or the script body) is itself among this phase's Target Files AND the change to that script IS the
 phase's stated Objective (a `bootstrap` / `config` phase whose job is exactly to define or rewire the
 script) — then the edit is legitimate work, not a gate dodge, and MUST be recorded as its own decision
-line in the Execution Log (`<ts> decision <script> rewritten ← <reason>`) before the gate is logged as
-passing.
+line in the Execution Log (`<ts> decision <script> rewritten ← <reason>`) before the gate runs.
 
-Supplemental tools (`sdd-verify`, `tsc --noEmit`, `npx vitest run <file>`) MAY run additionally for narrower diagnostics, but they NEVER replace ticket §5 commands. If a §5 command requires more time/scope than the supplemental tool, run the §5 command anyway — it is the contract.
+`sdd-verify --task <ticket-path> --phase <PhaseID>` is NOT supplemental — it owns STEP_5, including §5 extras (see `AX_PERMITTED_BASH_COMMANDS`). §5 therefore holds only EXTRA commands beyond the standard ladder and never repeats `sdd-verify`.
 
 Phase kind `doc` typically has no verification — empty section is acceptable.
 </Axiom>

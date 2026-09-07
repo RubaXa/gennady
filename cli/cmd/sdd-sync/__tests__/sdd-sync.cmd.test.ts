@@ -4,8 +4,8 @@
 
 import { describe, it, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, symlinkSync } from 'node:fs';
+import { isAbsolute, join, relative } from 'node:path';
 import { tmpdir } from 'node:os';
 
 type SyncModule = typeof import('../sdd-sync.cmd.ts');
@@ -14,6 +14,7 @@ let mod: SyncModule;
 let origExit: typeof process.exit;
 let origArgv: string[];
 let dir: string;
+let projectRoot: string;
 
 const TICKET = [
   '# t',
@@ -40,7 +41,12 @@ const SCOPE_INDEX = [
 ].join('\n');
 
 function argv(...rest: string[]): string[] {
-  return ['node', 'gennady', 'sdd-sync', ...rest];
+  return [
+    'node',
+    'gennady',
+    'sdd-sync',
+    ...rest.map((value) => (isAbsolute(value) ? relative(projectRoot, value) : value)),
+  ];
 }
 
 describe('SddSyncCommand', () => {
@@ -50,7 +56,12 @@ describe('SddSyncCommand', () => {
     process.exit = ((_code?: number) => undefined) as typeof process.exit;
     process.argv = ['node', 'gennady', 'sdd-sync'];
     dir = mkdtempSync(join(tmpdir(), 'sdd-sync-'));
-    mod = await import('../sdd-sync.cmd.ts');
+    projectRoot = dir;
+    const loaded = await import('../sdd-sync.cmd.ts');
+    mod = {
+      ...loaded,
+      run: (rawArgs) => loaded.run(rawArgs, projectRoot),
+    };
   });
 
   after(() => {
@@ -60,19 +71,21 @@ describe('SddSyncCommand', () => {
   });
 
   it('propagates Status into explicitly given trackers and verifies', async () => {
-    const t = join(dir, 'ticket.md');
-    const mi = join(dir, 'module.3-tasks.md');
-    const si = join(dir, 'scope.3-tasks.md');
+    const owner = join(dir, 'specs', 'demo', 'core');
+    mkdirSync(owner, { recursive: true });
+    const t = join(owner, 'ticket.md');
+    const mi = join(owner, 'core.3-tasks.md');
+    const si = join(dir, 'specs', 'demo', 'demo.3-tasks.md');
     writeFileSync(t, TICKET, 'utf-8');
     writeFileSync(mi, MODULE_INDEX, 'utf-8');
     writeFileSync(si, SCOPE_INDEX, 'utf-8');
 
     const outcome = await mod.run(argv(t, mi, si));
-    assert.strictEqual(outcome.ok, true);
+    assert.strictEqual(outcome.ok, true, outcome.ok ? '' : outcome.message);
     if (outcome.ok) {
       assert.match(outcome.text, /cli-foo → \[x\] DONE/);
-      assert.match(outcome.text, /updated:.*module\.3-tasks\.md/);
-      assert.match(outcome.text, /updated:.*scope\.3-tasks\.md/);
+      assert.match(outcome.text, /updated:.*core\.3-tasks\.md/);
+      assert.match(outcome.text, /updated:.*demo\.3-tasks\.md/);
     }
     assert.match(readFileSync(mi, 'utf-8'), /\| cli-foo \| Foo \| — \| \[x\] DONE \| — \|/);
     assert.match(readFileSync(si, 'utf-8'), /\| cli-foo \| Foo \| core \| — \| \[x\] DONE \| — \|/);
@@ -81,8 +94,10 @@ describe('SddSyncCommand', () => {
   });
 
   it('reports in-sync on a second run (idempotent)', async () => {
-    const t = join(dir, 't2.md');
-    const mi = join(dir, 'm2.3-tasks.md');
+    const owner = join(dir, 'specs', 'm2');
+    mkdirSync(owner, { recursive: true });
+    const t = join(owner, 't2.md');
+    const mi = join(owner, 'm2.3-tasks.md');
     writeFileSync(t, TICKET, 'utf-8');
     writeFileSync(mi, MODULE_INDEX, 'utf-8');
     await mod.run(argv(t, mi));
@@ -92,17 +107,64 @@ describe('SddSyncCommand', () => {
   });
 
   it('reports no-row when an index lacks the task', async () => {
-    const t = join(dir, 't3.md');
-    const mi = join(dir, 'm3.3-tasks.md');
+    const owner = join(dir, 'specs', 'm3');
+    mkdirSync(owner, { recursive: true });
+    const t = join(owner, 't3.md');
+    const mi = join(owner, 'm3.3-tasks.md');
     writeFileSync(t, TICKET, 'utf-8');
     writeFileSync(mi, MODULE_INDEX.replace(/cli-foo/g, 'cli-other'), 'utf-8');
     const outcome = await mod.run(argv(t, mi));
-    assert.strictEqual(outcome.ok, true);
+    assert.strictEqual(outcome.ok, true, outcome.ok ? '' : outcome.message);
     if (outcome.ok) assert.match(outcome.text, /no-row:.*m3\.3-tasks\.md/);
   });
 
+  it('rejects outside/symlink tickets and outside/arbitrary indexes before any victim mutation', async () => {
+    const owner = join(dir, 'specs', 'secure', 'core');
+    mkdirSync(owner, { recursive: true });
+    const ticketPath = join(owner, 'ticket.md');
+    const indexPath = join(owner, 'core.3-tasks.md');
+    const victimDir = mkdtempSync(join(tmpdir(), 'sdd-sync-victim-'));
+    const victimTicket = join(victimDir, 'ticket.md');
+    const victimIndex = join(victimDir, 'outside.3-tasks.md');
+    writeFileSync(ticketPath, TICKET, 'utf-8');
+    writeFileSync(indexPath, MODULE_INDEX, 'utf-8');
+    writeFileSync(victimTicket, TICKET, 'utf-8');
+    writeFileSync(victimIndex, MODULE_INDEX, 'utf-8');
+    symlinkSync(victimTicket, join(owner, 'linked-ticket.md'));
+
+    try {
+      const absoluteTicket = await mod.run([
+        'node',
+        'gennady',
+        'sdd-sync',
+        victimTicket,
+        'specs/secure/core/core.3-tasks.md',
+      ]);
+      const linkedTicket = await mod.run(argv('specs/secure/core/linked-ticket.md'));
+      const outsideIndex = await mod.run([
+        'node',
+        'gennady',
+        'sdd-sync',
+        'specs/secure/core/ticket.md',
+        victimIndex,
+      ]);
+      const arbitraryIndex = join(dir, 'specs', 'secure', 'core', 'arbitrary.md');
+      writeFileSync(arbitraryIndex, MODULE_INDEX, 'utf-8');
+      const arbitrary = await mod.run(
+        argv('specs/secure/core/ticket.md', 'specs/secure/core/arbitrary.md')
+      );
+
+      assert.ok([absoluteTicket, linkedTicket, outsideIndex, arbitrary].every((o) => !o.ok));
+      assert.strictEqual(readFileSync(victimTicket, 'utf-8'), TICKET);
+      assert.strictEqual(readFileSync(victimIndex, 'utf-8'), MODULE_INDEX);
+      assert.strictEqual(readFileSync(indexPath, 'utf-8'), MODULE_INDEX);
+    } finally {
+      rmSync(victimDir, { recursive: true, force: true });
+    }
+  });
+
   it('auto-discovers *.3-tasks.md from the ticket dir upward', async () => {
-    const scopeDir = join(dir, 'scopeX');
+    const scopeDir = join(dir, 'specs', 'scopeX');
     const moduleDir = join(scopeDir, 'moduleX');
     mkdirSync(moduleDir, { recursive: true });
     const t = join(moduleDir, 'ticket.md');
@@ -113,7 +175,7 @@ describe('SddSyncCommand', () => {
     writeFileSync(si, SCOPE_INDEX, 'utf-8');
 
     const outcome = await mod.run(argv(t)); // no explicit indexes → walk up
-    assert.strictEqual(outcome.ok, true);
+    assert.strictEqual(outcome.ok, true, outcome.ok ? '' : outcome.message);
     assert.match(readFileSync(mi, 'utf-8'), /\[x\] DONE/);
     assert.match(readFileSync(si, 'utf-8'), /\[x\] DONE/);
   });
@@ -123,11 +185,11 @@ describe('SddSyncCommand', () => {
     // otherwise be picked up by every other test's walk-up discovery from a ticket placed in `dir`.
     const root = mkdtempSync(join(tmpdir(), 'sdd-sync-progress-'));
     try {
-      const scopeDir = join(root, 'scopeP');
+      const scopeDir = join(root, 'specs', 'scopeP');
       mkdirSync(scopeDir, { recursive: true });
       const t = join(scopeDir, 'ticket.md');
       const mi = join(scopeDir, 'scopeP.3-tasks.md');
-      const projectIndex = join(root, '3-tasks.md');
+      const projectIndex = join(root, 'specs', '3-tasks.md');
 
       writeFileSync(t, TICKET, 'utf-8');
       writeFileSync(
@@ -151,8 +213,11 @@ describe('SddSyncCommand', () => {
         'utf-8'
       );
 
+      const previousRoot = projectRoot;
+      projectRoot = root;
       const outcome = await mod.run(argv(t));
-      assert.strictEqual(outcome.ok, true);
+      projectRoot = previousRoot;
+      assert.strictEqual(outcome.ok, true, outcome.ok ? '' : outcome.message);
       if (outcome.ok) assert.match(outcome.text, /progress:.*3-tasks\.md/);
       assert.match(
         readFileSync(projectIndex, 'utf-8'),
@@ -166,11 +231,11 @@ describe('SddSyncCommand', () => {
   it('leaves the Progress rollup untouched when the count already matches (idempotent)', async () => {
     const root = mkdtempSync(join(tmpdir(), 'sdd-sync-progress-'));
     try {
-      const scopeDir = join(root, 'scopeQ');
+      const scopeDir = join(root, 'specs', 'scopeQ');
       mkdirSync(scopeDir, { recursive: true });
       const t = join(scopeDir, 'ticket.md');
       const mi = join(scopeDir, 'scopeQ.3-tasks.md');
-      const projectIndex = join(root, '3-tasks.md');
+      const projectIndex = join(root, 'specs', '3-tasks.md');
 
       writeFileSync(t, TICKET, 'utf-8');
       writeFileSync(
@@ -194,8 +259,11 @@ describe('SddSyncCommand', () => {
         'utf-8'
       );
 
+      const previousRoot = projectRoot;
+      projectRoot = root;
       const outcome = await mod.run(argv(t));
-      assert.strictEqual(outcome.ok, true);
+      projectRoot = previousRoot;
+      assert.strictEqual(outcome.ok, true, outcome.ok ? '' : outcome.message);
       if (outcome.ok) assert.doesNotMatch(outcome.text, /progress:/);
     } finally {
       rmSync(root, { recursive: true, force: true });
@@ -238,8 +306,8 @@ describe('SddSyncCommand', () => {
     it('resolves to its ticket — output is prefixed with the `[sdd-sync] <id> → <path>` banner', async () => {
       const idDir = mkdtempSync(join(tmpdir(), 'sdd-sync-id-'));
       writeFileSync(join(idDir, 'ticket.md'), idTicket('TSK-foo'), 'utf-8');
-      const origCwd = process.cwd();
-      process.chdir(idDir);
+      const previousRoot = projectRoot;
+      projectRoot = idDir;
       try {
         const outcome = await mod.run(argv('TSK-foo'));
         assert.strictEqual(outcome.ok, true);
@@ -247,7 +315,7 @@ describe('SddSyncCommand', () => {
         assert.match(outcome.text, /^\[sdd-sync\] TSK-foo → ticket\.md\n/);
         assert.match(outcome.text, /TSK-foo → \[x\] DONE/);
       } finally {
-        process.chdir(origCwd);
+        projectRoot = previousRoot;
         rmSync(idDir, { recursive: true, force: true });
       }
     });
@@ -255,8 +323,8 @@ describe('SddSyncCommand', () => {
     it('an unknown but Task-ID-shaped argument → exit 2 listing known Task-IDs', async () => {
       const idDir = mkdtempSync(join(tmpdir(), 'sdd-sync-id-'));
       writeFileSync(join(idDir, 'ticket.md'), idTicket('TSK-foo'), 'utf-8');
-      const origCwd = process.cwd();
-      process.chdir(idDir);
+      const previousRoot = projectRoot;
+      projectRoot = idDir;
       try {
         const outcome = await mod.run(argv('NOPE-ghost'));
         assert.strictEqual(outcome.ok, false);
@@ -265,7 +333,7 @@ describe('SddSyncCommand', () => {
         assert.match(outcome.message, /ERR_CLI_SDD_SYNC_UNKNOWN_ID: NOPE-ghost/);
         assert.match(outcome.message, /known Task-IDs:.*TSK-foo/);
       } finally {
-        process.chdir(origCwd);
+        projectRoot = previousRoot;
         rmSync(idDir, { recursive: true, force: true });
       }
     });
@@ -274,8 +342,8 @@ describe('SddSyncCommand', () => {
       const dupDir = mkdtempSync(join(tmpdir(), 'sdd-sync-dup-'));
       writeFileSync(join(dupDir, 'a.md'), idTicket('TSK-dup'), 'utf-8');
       writeFileSync(join(dupDir, 'b.md'), idTicket('TSK-dup'), 'utf-8');
-      const origCwd = process.cwd();
-      process.chdir(dupDir);
+      const previousRoot = projectRoot;
+      projectRoot = dupDir;
       try {
         const outcome = await mod.run(argv('TSK-dup'));
         assert.strictEqual(outcome.ok, false);
@@ -285,7 +353,7 @@ describe('SddSyncCommand', () => {
         assert.match(outcome.message, /a\.md/);
         assert.match(outcome.message, /b\.md/);
       } finally {
-        process.chdir(origCwd);
+        projectRoot = previousRoot;
         rmSync(dupDir, { recursive: true, force: true });
       }
     });
@@ -294,7 +362,7 @@ describe('SddSyncCommand', () => {
       const t = join(dir, 'no-banner.md');
       writeFileSync(t, TICKET, 'utf-8');
       const outcome = await mod.run(argv(t));
-      assert.strictEqual(outcome.ok, true);
+      assert.strictEqual(outcome.ok, true, outcome.ok ? '' : outcome.message);
       if (!outcome.ok) return;
       // The `[sdd-sync] <id> → <status>` header is always first; a path-arg carries no extra
       // `[sdd-sync] <id> → <path>` resolution banner line ahead of it.

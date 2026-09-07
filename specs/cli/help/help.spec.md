@@ -75,7 +75,6 @@ Commands:
   vcs-worktree   Prepare read-only git worktree for code review
   vcs-reply      Post replies to GitLab MR discussions
   vcs-approve    Approve GitLab MR via API
-  alt-opinion    Get alternative opinions from AI models
   agents-rules   Print agent instructions for orient command
 
 Examples:
@@ -97,7 +96,7 @@ Usage: gennady lint [--autofix] [--staged] [--max-words <n>] [--max-region-comme
 
 Flags:
   --autofix         Auto-fix fixable errors
-  --staged          Lint only staged .ts files (mutually exclusive with positional targets)
+  --staged          Lint existing staged ACMR + untracked .ts/.tsx; ignore staged deletions
   --max-words <n>   Max words per file (default: 50)
   ...
 

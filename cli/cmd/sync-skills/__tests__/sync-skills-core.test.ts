@@ -14,7 +14,7 @@ import {
   readdirSync,
   statSync,
   unlinkSync,
-  rmdirSync,
+  rmSync,
 } from 'node:fs';
 import { writeFileSync as _writeFileReal, mkdirSync as _mkdirReal } from 'node:fs';
 import { join } from 'node:path';
@@ -59,7 +59,7 @@ function createMockDeps(
       }
     },
     unlink: unlinkSync,
-    rmdir: (p: string, opts?: { recursive: boolean }) => rmdirSync(p, opts),
+    rmdir: (p: string) => rmSync(p, { recursive: true, force: true }),
     ...overrides,
   };
 }

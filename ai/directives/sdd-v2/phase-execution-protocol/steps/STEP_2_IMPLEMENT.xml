@@ -1,0 +1,9 @@
+0.8.4
+
+<Step id="STEP_2_IMPLEMENT">
+      <Action>
+        Implement the smallest change satisfying the phase and its referenced requirements. Stay
+        inside target files. Do not alter task dependencies, phases, approved BDD/test plan, or spec
+        meaning. If such a change is necessary, return `APPROVAL_BOUNDARY_CHANGE` with evidence.
+      </Action>
+    </Step>

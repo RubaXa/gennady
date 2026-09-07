@@ -22,9 +22,10 @@ import {
   findRemainingOldIds,
 } from '../../../shared/sdd/id-replace.ts';
 import { executeScopeMove } from '../../../shared/sdd/migration-move.ts';
+import { parseMeta } from '../../../shared/sdd/tracker.ts';
 import { badInvocation, type MigrateOutcome } from './sdd-migrate.types.ts';
 
-/** @purpose Recursively collect v1 ticket files (`*.task-*.md`) under `<root>/tasks/`. | @param root Project root. | @returns Absolute ticket paths. */
+/** @purpose Recursively collect v1 ticket files under `<root>/tasks/`, detected by CONTENT (a Task-ID in Meta) rather than filename, so tickets named in a repo's own way (e.g. `<scope>.IB-NN.md`) are not silently dropped. | @param root Project root. | @returns Absolute ticket paths. */
 function findV1Tickets(root: string): string[] {
   const acc: string[] = [];
   const walk = (dir: string): void => {
@@ -38,7 +39,13 @@ function findV1Tickets(root: string): string[] {
       if (e.name.startsWith('.') || e.isSymbolicLink()) continue;
       const full = join(dir, e.name);
       if (e.isDirectory()) walk(full);
-      else if (e.isFile() && /\.task-[0-9]+\.md$/.test(e.name)) acc.push(full);
+      else if (e.isFile() && e.name.endsWith('.md')) {
+        try {
+          if (parseMeta(readFileSync(full, 'utf-8')).taskId !== null) acc.push(full);
+        } catch {
+          // unreadable file — not a ticket
+        }
+      }
     }
   };
   try {

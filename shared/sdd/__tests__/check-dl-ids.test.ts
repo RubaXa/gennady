@@ -22,6 +22,36 @@ describe('checkDecisionLogIds', () => {
     assert.deepStrictEqual(checkDecisionLogIds(SPEC_FILE, 'no sections here'), []);
   });
 
+  it('placeholder ids are a HARD ERROR in every shape — never a silent skip or a legacy warn', () => {
+    for (const id of ['D-XXX', 'D-NNN', 'IC-DL-N', 'IC-DL-<N>', '<ACR>-DL-1', '<ACR>-DL-N']) {
+      const content = spec(
+        [`### ${id} — placeholder left unfilled`, '', '- **Status:** active', ''].join('\n')
+      );
+      const findings = checkDecisionLogIds(SPEC_FILE, content);
+      const err = findings.find((f) => f.code === 'SDD_DL_ID_PLACEHOLDER');
+      assert.ok(err, `expected a placeholder error for ${id}, got ${JSON.stringify(findings)}`);
+      assert.strictEqual(err?.severity, 'error');
+    }
+  });
+
+  it('a placeholder in a table row is caught too', () => {
+    const content = spec(['| D-XXX | active | to be filled |'].join('\n'));
+    const err = checkDecisionLogIds(SPEC_FILE, content).find(
+      (f) => f.code === 'SDD_DL_ID_PLACEHOLDER'
+    );
+    assert.ok(err);
+    assert.strictEqual(err?.severity, 'error');
+  });
+
+  it('a real legacy id is NOT mistaken for a placeholder — stays a warn', () => {
+    const content = spec(
+      ['### D-042 — a real decision', '', '- **Status:** active', ''].join('\n')
+    );
+    const findings = checkDecisionLogIds(SPEC_FILE, content);
+    assert.ok(!findings.some((f) => f.code === 'SDD_DL_ID_PLACEHOLDER'));
+    assert.ok(findings.some((f) => f.code === 'SDD_DL_LEGACY_ID' && f.severity === 'warn'));
+  });
+
   it('legacy D-NNN heading entries → one warn, no errors', () => {
     const content = spec(
       ['### D-001 — some old decision', '', '- **Status:** active', '- **Why:** reasons', ''].join(

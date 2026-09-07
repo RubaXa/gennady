@@ -10,11 +10,13 @@ export type ChangedSymbol = {
   kind: string;
   /** @purpose File the symbol was declared in. */
   file: string;
+  /** @purpose Adapter-provided language visibility; `unknown` is never silently treated as private. */
+  visibility: 'public' | 'private' | 'unknown';
 };
 
-/** @purpose A parsed `- **Usage Waiver:** <reason>` (or `D-NNN — <reason>`, or the `(external: <consumer>)` variant). */
+/** @purpose A parsed `- **Usage Waiver:** <reason>` (or `<ACR>-DL-N — <reason>`, or the `(external: <consumer>)` variant). */
 export type UsageWaiver = {
-  /** @purpose Cited Decision Log id, e.g. `D-042` — present only when the label cites one; a waiver without a citation still gates. */
+  /** @purpose Cited Decision Log id, e.g. `PAY-DL-4` (legacy `D-042` remains readable) — present only when the label cites one; a waiver without a citation still gates. */
   decision?: string;
   /** @purpose Waiver reason text. */
   reason: string;
@@ -38,9 +40,11 @@ export type YagniFinding = {
 
 /** @purpose Symbol has < 2 production-code usages and no Usage Waiver gates it. */
 export const ERR_CLI_YAGNI_UNDERUSED = 'ERR_CLI_YAGNI_UNDERUSED' as const;
-/** @purpose Symbol has a Usage Waiver, but the cited D-NNN has no Decision Log heading anywhere in the repo. */
+/** @purpose Symbol has a Usage Waiver, but the cited Decision Log id has no heading anywhere in the repo. */
 export const ERR_CLI_YAGNI_WAIVER_DECISION_MISSING =
   'ERR_CLI_YAGNI_WAIVER_DECISION_MISSING' as const;
+/** @purpose The adapter cannot safely choose the public/private threshold for a one-use symbol. */
+const ERR_CLI_YAGNI_VISIBILITY_UNKNOWN = 'ERR_CLI_YAGNI_VISIBILITY_UNKNOWN' as const;
 
 /** @purpose Minimum production-code usage count before a changed/added symbol is YAGNI-suspect. */
 const MIN_USAGE = 2;
@@ -110,7 +114,7 @@ export function parseUsageWaiver(specContent: string, entityName: string): Usage
   const nextHeadingMatch = nextHeadingRe.exec(afterHeading);
   const block = afterHeading.slice(0, nextHeadingMatch ? nextHeadingMatch.index : undefined);
   const m =
-    /-\s*\*\*Usage Waiver(?:\s*\(external:\s*([^)]+)\))?:\*\*\s*(?:(D-[A-Za-z0-9]+)\s*[—-]\s*)?(.+)/.exec(
+    /-\s*\*\*Usage Waiver(?:\s*\(external:\s*([^)]+)\))?:\*\*\s*(?:((?:[A-Z][A-Z0-9]*-DL-\d+)|(?:D-\d+))\s*[—-]\s*)?(.+)/.exec(
       block
     );
   if (!m) return null;
@@ -123,9 +127,9 @@ export function parseUsageWaiver(specContent: string, entityName: string): Usage
 }
 
 /**
- * @purpose Whether a Decision Log heading for `decisionId` exists anywhere in `content` (``### D-NNN — ...``).
+ * @purpose Whether a Decision Log heading for `decisionId` exists anywhere in `content`.
  * @param content Markdown content to search.
- * @param decisionId Decision id, e.g. `D-042`.
+ * @param decisionId Decision id, e.g. `PAY-DL-4` (or an immutable legacy `D-042`).
  * @returns True when a matching heading is found.
  */
 export function hasDecisionHeading(content: string, decisionId: string): boolean {
@@ -136,8 +140,8 @@ export function hasDecisionHeading(content: string, decisionId: string): boolean
 /**
  * @purpose YAGNI usage check — an underused symbol is a finding unless a Usage Waiver gates it.
  * @invariant Tests never count as usage — callers exclude test files from `usageCounts`.
- * @invariant A waiver with no `D-NNN` citation gates unconditionally — the reason alone is enough.
- * @invariant An unresolvable `D-NNN` citation does NOT gate the finding — it downgrades to a more
+ * @invariant A waiver with no Decision Log citation gates unconditionally — the reason alone is enough.
+ * @invariant An unresolvable Decision Log citation does NOT gate the finding — it downgrades to a more
  *   specific finding instead of silently passing.
  * @param changed Symbols added/modified in the diff.
  * @param usageCounts Symbol name → usage count in production code across the whole repo (the symbol's own declaration occurrence already excluded).
@@ -155,6 +159,19 @@ export function checkYagniUsage(
   for (const sym of changed) {
     const count = usageCounts.get(sym.name) ?? 0;
     if (count >= MIN_USAGE) continue;
+    if (sym.visibility === 'unknown' && count === 1) {
+      findings.push({
+        severity: 'error',
+        code: ERR_CLI_YAGNI_VISIBILITY_UNKNOWN,
+        file: sym.file,
+        symbol: sym.name,
+        message: `\`${sym.name}\` (${sym.kind}) has 1 production usage, but the selected language adapter cannot determine whether it is public (< 2 is suspect) or private (1 is ordinary decomposition). No YAGNI accusation was made. Add visibility policy or a grammar-backed SymbolIndex adapter for this language, then retry.`,
+      });
+      continue;
+    }
+    // A private (non-exported) symbol used at least once is ordinary decomposition — a named
+    // constant or extracted helper, not speculative surface. Only a ZERO-usage private is dead code.
+    if (sym.visibility === 'private' && count >= 1) continue;
 
     const waiver = waivers.get(sym.name);
     if (!waiver) {
@@ -164,11 +181,11 @@ export function checkYagniUsage(
         file: sym.file,
         symbol: sym.name,
         message: [
-          `\`${sym.name}\` (${sym.kind}) has ${count} usage(s) in production code (< 2) — YAGNI suspect.`,
+          `\`${sym.name}\` (${sym.kind}${sym.visibility === 'private' ? ', private' : ''}) has ${count} usage(s) in production code${sym.visibility === 'public' ? ' (< 2)' : ' (dead code)'} — YAGNI suspect.`,
           `Fix: remove it — or, if genuinely needed, paste this under \`${sym.name}\`'s entity heading`,
           'in MODULE_CONTRACTS / ENTITY_SURFACES / PUBLIC_API_SURFACE (never Decision Log):',
           `  - **Usage Waiver:** <reason — почему \`${sym.name}\` нужен несмотря на < 2 использований>`,
-          '(cite `D-NNN — <reason>` only when a Decision Log entry backs it — and it must then exist;',
+          '(cite `<ACR>-DL-N — <reason>` only when a Decision Log entry backs it — and it must then exist;',
           'for a public API named to one external consumer, use the `(external: <consumer>)` variant instead.)',
           `Then log in the ticket's Execution Log: yagni ${sym.name} ← <reason>`,
         ].join('\n'),

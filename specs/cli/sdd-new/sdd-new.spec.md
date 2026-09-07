@@ -10,18 +10,21 @@
 
 **Key properties:**
 
-- Single source of truth — скелет пишется байт-в-байт из `TEMPLATES[<kind>].skeleton`; тот же реестр гонит derived-списки в `check.ts`
+- Single source of truth — скелет берётся из `TEMPLATES[<kind>].skeleton`; для `task` инструмент заменяет только уже доказанные identity/ownership placeholders, а тот же реестр гонит derived-списки в `check.ts`
 - Never-overwrite — существующий файл по вычисленному (или явному `--out`) пути никогда не перезаписывается
 - Manifest-on-create — успешный вызов возвращает не только путь, но и таблицу секций (имя · REQUIRED/OPTIONAL · FOLD · что заполнить) — контракт «что агенту делать дальше»
-- `--manifest` — та же таблица секций для `<kind>`, БЕЗ создания файла и БЕЗ требования `--scope`/`--module`/`--id`; способ агенту узнать состав секций до принятия решения создавать артефакт
-- `--out` всегда побеждает конвенцию путей
+- `--manifest` — та же таблица секций для `<kind>`, БЕЗ создания файла и БЕЗ требования `--scope`/`--owner`/`--module`/`--id`; для `task` дополнительно печатает закрытую owner-матрицу
+- `--out` побеждает только конвенцию пути; для `task` он repo-relative, остаётся внутри `specs/`, не проходит через symlink и обязан сам доказать ровно одного canonical owner; explicit `--scope`/`--module` только сверяют доказанное владение
+- `task` требует явный `--owner`: легальны только infrastructure flat, product/library scope bootstrap и product/library module; обычная product/library реализация без module и любой interface owner запрещены
+- Успешное создание `task` печатает path-aware copy-ready literals: ссылку на owning spec, bounded typed contract anchors, все канонические rule tuples (`id` + ticket-relative href) из `ai/directives/knowledge.xml` и полную строку Deferred Test Ownership; pathless `--manifest` только объясняет этот контракт и не выдумывает href
+- Созданный `task` уже содержит известные инструменту поля: точные Task-ID, TODO, Scope, Module/N/A, Structural Owner и относительную ссылку Owning Spec; Purpose, contracts и фазы остаются незаполненными, потому что CLI их не выдумывает
 
 **Invariants:**
 
 - `<kind>` ∈ `product | library | infrastructure | interface | module | task | module-index | scope-index | project-index | portal | research`
 - `--module` любой глубины (`foo/bar/qux`, `AX_HIERARCHICAL_SPECS`) — каждый сегмент kebab-case (как имя scope); пустой/абсолютный/`..`-сегмент → `BAD_INVOCATION` (exit 4) до вычисления пути
 - `project-index` не требует `--scope` (как `portal`) — путь фиксирован: `specs/3-tasks.md`
-- exit `0` создано / `--list` / `--manifest` · `1` файл существует / ошибка записи · `4` плохой вызов / неизвестный `<kind>` / невалидный `--module`
+- exit `0` создано / `--list` / `--manifest` · `1` файл существует / ошибка записи / `ERR_CLI_SDD_NEW_SCOPE_NOT_DECOMPOSED` / `ERR_CLI_SDD_NEW_RULE_REGISTRY_INVALID` · `4` плохой вызов / неизвестный `<kind>` / невалидный `--module`
 <!--/SECTION:MODULE_VISION-->
 
 <!--SECTION:MODULE_USAGE_EXAMPLE-->
@@ -41,7 +44,7 @@ VISION                        REQUIRED  -     Vision & primary goal — what thi
 $ npx gennady sdd-new module --scope backend --module auth
 [sdd-new] created module skeleton: specs/backend/auth/auth.spec.md
 
-$ npx gennady sdd-new task --scope backend --module auth --id AUTH-login-flow
+$ npx gennady sdd-new task --owner module --scope backend --module auth --id AUTH-login-flow
 [sdd-new] created task skeleton: specs/backend/auth/auth.task.AUTH-login-flow.md
 
 # --- вложенный модуль (AX_HIERARCHICAL_SPECS) — имя модуля = последний сегмент ---
@@ -98,19 +101,24 @@ $ npx gennady sdd-new --list
 
 ## 3. Entity Inventory (Closed-World)
 
-| Name                                                             | Type    | Purpose                                                                                                                            |
-| ---------------------------------------------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `run`                                                            | Command | Точка входа CLI: `--list` / `<kind> --manifest` (короткое замыкание) / `<kind>` → resolve path → no-overwrite → write → report     |
-| `resolvePath`                                                    | Utility | `<kind>` + `--scope`/`--module`/`--id`/`--out` → target path (pure); `--module` любой глубины — имя файла = последний сегмент      |
-| `validateModulePath`                                             | Utility | `--module` (любой глубины) → причина невалидности или `null` (пустой/абсолютный/`..`/не-kebab-case сегмент)                        |
-| `validateSlug`                                                   | Utility | `research`'s `--slug` (один сегмент) → причина невалидности или `null` (пустой/не-kebab-case)                                      |
-| `todayDateStamp`                                                 | Utility | Сегодняшняя дата `yyyy-mm-dd` (wall clock, переопределяема для тестов) — инструмент, не оператор, подставляет её в путь `research` |
-| `renderList`                                                     | Utility | `--list` output: every kind + its `pathPattern`                                                                                    |
-| `missingOptions`                                                 | Utility | Which required options are absent for `<kind>` (empty when `--out` given)                                                          |
-| `renderManifestTable` / `renderCreated` / `renderManifestReport` | Utility | (`sdd-new.types`) Section manifest table + success report text + `--manifest` report text (no path)                                |
-| `badInvocation` / `unknownKind` / `fileExists` / `writeFailed`   | Utility | Diagnostic builders                                                                                                                |
-| `NewOutcome`                                                     | Type    | `{ok:true,text,path}` либо `{ok:false,code,exitCode,message}`                                                                      |
-| `TEMPLATES` / `ARTIFACT_KINDS`                                   | Value   | (`shared/sdd/templates`) Реестр скелетов + манифестов, единый источник правды                                                      |
+| Name                                                                         | Type           | Purpose                                                                                                                                                                                               |
+| ---------------------------------------------------------------------------- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `run`                                                                        | Command        | Точка входа CLI: `--list` / `<kind> --manifest` (короткое замыкание) / `<kind>` → resolve path → no-overwrite → write → report                                                                        |
+| `resolvePath`                                                                | Utility        | `<kind>` + `--scope`/`--module`/`--id`/`--out` → target path (pure); `--module` любой глубины — имя файла = последний сегмент                                                                         |
+| `validateScope`                                                              | Utility        | Единая one-segment kebab grammar для explicit/inferred scope до path resolution/write                                                                                                                 |
+| `validateModulePath`                                                         | Utility        | `--module` (любой глубины) → причина невалидности или `null` (пустой/абсолютный/`..`/не-kebab-case сегмент)                                                                                           |
+| `validateSlug`                                                               | Utility        | `research`'s `--slug` (один сегмент) → причина невалидности или `null` (пустой/не-kebab-case)                                                                                                         |
+| `todayDateStamp`                                                             | Utility        | Сегодняшняя дата `yyyy-mm-dd` (wall clock, переопределяема для тестов) — инструмент, не оператор, подставляет её в путь `research`                                                                    |
+| `renderList`                                                                 | Utility        | `--list` output: every kind + its `pathPattern`                                                                                                                                                       |
+| `missingOptions` / `resolveTaskOutputOwnership`                              | Utility        | Для `task`: `--id` и `--owner` всегда обязательны; безопасный `--out` обязан доказать ровно одного SCOPE_TYPE-bearing owner                                                                           |
+| `resolveScopeDecomposition`                                                  | Utility        | (`shared/sdd/module-specs`) scope type + non-empty Module Map ↔ exact canonical module-spec closure                                                                                                   |
+| `TaskOwnerKind` / `resolveTaskOwnership`                                     | Type / Utility | Закрытые owner kinds + исчерпывающая проверка owner против scope type, decomposition и exact module                                                                                                   |
+| `renderTaskSkeleton`                                                         | Utility        | Подставляет в canonical task skeleton только механически доказанные identity/ownership поля; семантические placeholders не трогает                                                                    |
+| `renderManifestTable` / `renderCreated` / `renderManifestReport`             | Utility        | (`sdd-new.types`) Section manifest table + success report text + `--manifest` report text (no path)                                                                                                   |
+| `parseContractAnchors` / `parseRuleRegistry` / `renderTaskAuthoringLiterals` | Utility        | (`shared/sdd/task-authoring-literals`) Bounded typed contract anchors, канонические rule tuples, explicit empty-rule literal и copy-ready owning/deferred literals относительно реального ticket path |
+| `badInvocation` / `unknownKind` / `fileExists` / `writeFailed`               | Utility        | Diagnostic builders                                                                                                                                                                                   |
+| `NewOutcome`                                                                 | Type           | `{ok:true,text,path}` либо `{ok:false,code,exitCode,message}`                                                                                                                                         |
+| `TEMPLATES` / `ARTIFACT_KINDS`                                               | Value          | (`shared/sdd/templates`) Реестр скелетов + манифестов, единый источник правды                                                                                                                         |
 
 <!--/SECTION:ENTITY_INVENTORY-->
 
@@ -127,17 +135,19 @@ $ npx gennady sdd-new --list
 
 - Preconditions:
   - `<kind>` — один из `ARTIFACT_KINDS`
-  - Требуемые опции присутствуют: `--scope` для всех kind кроме `portal`/`project-index`; `--module` для `module`/`task`/`module-index`; `--id` для `task` — если только не задан `--out` (короткое замыкание) или `--manifest` (короткое замыкание — опции пути не проверяются вовсе)
+  - неизвестный, повторный или value-флаг без значения даёт `BAD_INVOCATION` с canonical usage до filesystem access; каждый scalar/boolean option single-use; `--scope`, explicit или выведенный из task `--out`, — ровно один kebab-case segment (не путь, не `.`/`..`, не absolute)
+  - Для `task` всегда присутствуют `--id` и ровно один `--owner` из `infrastructure-flat | scope-bootstrap | module`; task `--out` repo-relative, находится внутри `specs/`, не содержит symlink-компонентов и однозначно выводит единственного SCOPE_TYPE-bearing owner. Zero/multiple owners fail closed независимо от explicit `--scope`; `--scope`/`--module` только сверяют доказанного owner. Для остальных kind `--out` может заменить опции, нужные только для вычисления conventional path. `--manifest` остаётся отдельным read-only short circuit
   - `--module`, если задан, валиден: каждый `/`-сегмент непустой, не `.`/`..`, kebab-case (как имя scope) — иначе `BAD_INVOCATION` ДО вычисления пути
+  - Для `task` `specs/<scope>/<scope>.spec.md` читается fail-closed: отсутствующий/нечитаемый файл, malformed/ambiguous `SCOPE_TYPE`, `interface` или неполное product/library разложение блокируют создание. `infrastructure-flat` принимает только infrastructure без module; `scope-bootstrap` — только complete product/library без module; `module` — только complete product/library с exact declared module. Обычный product/library task без module не имеет legal owner
 - Postconditions:
-  - Целевой файл не существовал до вызова → создан с содержимым `TEMPLATES[<kind>].skeleton` байт-в-байт, недостающие родительские директории созданы
+  - Целевой файл не существовал до вызова → создан из `TEMPLATES[<kind>].skeleton`, недостающие родительские директории созданы; не-task kinds пишутся байт-в-байт, а task получает точные Task-ID/Scope/Module/Structural Owner/Owning Spec и исходный TODO до записи
   - Целевой файл уже существовал → ничего не записано, exit 1
   - Успех (без `--manifest`) → stdout содержит путь + таблицу секций (`Section | Required | Fold | Fill`) из `TEMPLATES[<kind>].sections`
-  - `--manifest` → stdout содержит ТОЛЬКО таблицу секций для `<kind>` (та же `TEMPLATES[<kind>].sections`), никакой файл не создаётся и не проверяется на существование
+  - `--manifest` → stdout содержит таблицу секций для `<kind>` (та же `TEMPLATES[<kind>].sections`); task manifest также содержит закрытую owner-матрицу, никакой файл не создаётся и не проверяется на существование
 - Invariants:
-  - `--out`, если задан, всегда переопределяет путь по конвенции
+  - `--out`, если задан, переопределяет только путь по конвенции и не отменяет task identity/decomposition preconditions; его scope inference структурный и fail-closed, не догадка по имени файла
   - `--manifest` проверяется ПОСЛЕ валидации `<kind>`, но ДО `missingOptions`/`resolvePath`/no-overwrite/записи — неизвестный `<kind>` с `--manifest` всё равно даёт `UNKNOWN_KIND`
-  - Скелет никогда не выдумывается по месту — только literal-копия из реестра
+  - Скелет никогда не выдумывается по месту — только шаблон из реестра; task-instantiation заменяет закрытый набор уже известных полей и не заполняет Purpose, contracts, phases или verification
 
 <!--/SECTION:MODULE_CONTRACTS-->
 
@@ -145,16 +155,20 @@ $ npx gennady sdd-new --list
 
 ## 5. Public Options & Policies
 
-| Argument          | Type    | Description                                                                                                                                 |
-| ----------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `<kind>`          | string  | `product \| library \| infrastructure \| interface \| module \| task \| module-index \| scope-index \| project-index \| portal \| research` |
-| `--scope <s>`     | string  | Имя scope. Обязателен для всех kind кроме `portal`/`project-index` (если не задан `--out`)                                                  |
-| `--module <m>`    | string  | Имя module, любой глубины (`foo/bar/qux`, `AX_HIERARCHICAL_SPECS`). Обязателен для `module`/`task`/`module-index`                           |
-| `--id <ACR-slug>` | string  | Task-ID slug. Обязателен для `task`                                                                                                         |
-| `--slug <slug>`   | string  | Человекочитаемый kebab-case слаг. Обязателен для `research`; дату (сегодняшнюю) подставляет инструмент, не оператор                         |
-| `--out <path>`    | string  | Явный целевой путь — переопределяет конвенцию                                                                                               |
-| `--list`          | boolean | Вывести все известные kind + их `pathPattern` и завершиться                                                                                 |
-| `--manifest`      | boolean | Вывести таблицу секций для `<kind>` и завершиться — без создания файла, `--scope`/`--module`/`--id` не требуются                            |
+| Argument          | Type    | Description                                                                                                                                                      |
+| ----------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `<kind>`          | string  | `product \| library \| infrastructure \| interface \| module \| task \| module-index \| scope-index \| project-index \| portal \| research`                      |
+| `--scope <s>`     | string  | Один kebab-case segment, не путь. Для `task` explicit либо структурно выведен из `--out`; для других scope-aware kinds `--out` может заменить его как path input |
+| `--module <m>`    | string  | Имя module любой глубины. Обязателен для kind `module` и task owner `module`; запрещён flat task owners; опционален для `module-index`                           |
+| `--id <ACR-slug>` | string  | Task-ID slug. Для `task` обязателен всегда, в том числе с `--out`                                                                                                |
+| `--owner <owner>` | enum    | Для `task` обязателен всегда: `infrastructure-flat \| scope-bootstrap \| module`; определяет один из трёх легальных ownership cases                              |
+| `--slug <slug>`   | string  | Человекочитаемый kebab-case слаг. Обязателен для `research`; дату (сегодняшнюю) подставляет инструмент, не оператор                                              |
+| `--out <path>`    | string  | Явный destination; для task — repo-relative non-symlink path внутри `specs/` с ровно одним structural owner; explicit identity только сверяет owner              |
+| `--list`          | boolean | Вывести все известные kind + их `pathPattern` и завершиться                                                                                                      |
+| `--manifest`      | boolean | Вывести таблицу секций для `<kind>` и завершиться — без создания файла, `--scope`/`--module`/`--id` не требуются                                                 |
+
+Каждая option допускается не более одного раза. Повтор scalar или boolean mode отклоняется exit `4`
+до `--list`/`--manifest` short circuit, path resolution и любой записи.
 
 <!--/SECTION:PUBLIC_OPTIONS-->
 
@@ -183,6 +197,25 @@ shared/sdd/templates.ts   # ArtifactKind registry: skeleton + section manifest +
 
 ## 7. Module Decision Log
 
+### D-NW008 — Task scaffold fail-closed до module decomposition
+
+- **Status:** superseded by D-NW009
+- **Why:** scaffold до module flow превращает незафиксированные границы в случайные task/file decisions. Проверка срабатывает при `sdd-new task`, требует `--scope` + `--id` независимо от `--out`, читает scope spec, принимает ровно один canonical `SCOPE_TYPE` и считает module specs. Отсутствующая, нечитаемая или неоднозначная evidence блокирует создание; `interface` реализуется owning product/library modules, а не прямыми interface tickets. Канонический `infrastructure` — единственный flat-scope exception.
+- **Risk accepted:** Минимальный floor — одна module spec; качество decomposition обеспечивает integrated critic, не этот структурный guard.
+
+### D-NW009 — Structural decomposition closure и fail-closed task ownership
+
+- **Status:** superseded by D-NW013
+- **Supersedes:** D-NW008
+- **Why:** Наличие одного module-файла не доказывает завершённую декомпозицию и позволяло `--out` обойти ownership. `resolveScopeDecomposition` требует непустой Module Map и точное равенство его unique canonical links всем MODULE_VISION module specs на диске; этот SSOT используют task scaffold и integrated review-state. Task без `--scope` допускается только когда путь `--out` имеет ровно один SCOPE_TYPE-bearing ancestor; иначе CLI просит явный `--scope`.
+- **Risk accepted:** Module identity задаётся явной markdown-ссылкой и canonical path `<module>/<module>.spec.md`; произвольные prose-упоминания намеренно не считаются членством.
+
+### D-NW010 — Task ownership включает exact declared module
+
+- **Status:** superseded by D-NW014 · **Extends:** D-NW009
+- **Why:** `--module` больше не является свободной строкой: допустим только exact canonical `<module>/<leaf>.spec.md`, входящий в `resolveScopeDecomposition(...).moduleSpecs`. `--out` под module subtree выводит и scope, и deepest declared module; конфликт explicit/inferred ownership, ghost или ambiguous module краснеет до создания файла. Осознанный scope-level task без `--module` остаётся допустимым после complete decomposition; infrastructure остаётся flat.
+- **Risk accepted:** Scope-level task внутри product/library — явная модель владения, не fallback для пути внутри объявленного module subtree.
+
 ### D-NW001 — Единый реестр шаблонов вместо трёх копий
 
 - **Status:** active
@@ -199,7 +232,7 @@ shared/sdd/templates.ts   # ArtifactKind registry: skeleton + section manifest +
 
 - **Status:** active
 - **Why:** `AX_HIERARCHICAL_SPECS` разрешает произвольную глубину под-модулей (`specs/<scope>/<a>/<b>/<b>.spec.md`), но `resolvePath` подставляла `--module` целиком в оба места пути — `--module foo/bar` давало битый `specs/<s>/foo/bar/foo/bar.spec.md`. Теперь имя файла = последний `/`-сегмент `--module`, директория = `--module` целиком; та же логика для `task`. Индексные kind (`module-index` → `<module>.3-tasks.md`, `scope-index` → `<scope>.3-tasks.md`) добавлены в реестр `shared/sdd/templates.ts` как обычные `ArtifactKind` — их скелеты 1:1 из `ai/kit/contract/scaffold/{module,scope}-tasks-index.xml`, которые теперь тянут скелет через `{{> "sdd-skeleton-<kind>"}}` вместо ручной копии (см. `ai/kit/render.ts`).
-- **Risk accepted:** Валидация сегментов — kebab-case (как у scope), непустой, не `.`/`..`, не абсолютный — только для `--module`; `--scope` валидация не расширена (вне периметра этого изменения).
+- **Risk accepted:** Вложенность разрешена только `--module`; `--scope` остаётся одной identity-единицей по D-NW011.
 
 ### D-NW005 — `--manifest`: манифест секций без создания файла
 
@@ -228,6 +261,59 @@ shared/sdd/templates.ts   # ArtifactKind registry: skeleton + section manifest +
 - **Status:** active
 - **Why:** Слияние существующего артефакта со свежим скелетом — риск тихой потери контента. `sdd-new` либо создаёт с нуля, либо отказывает (exit 1) — детерминированно и безопасно для повторных вызовов оператора/агента.
 - **Risk accepted:** Нет.
+
+### D-NW011 — Scope identity и CLI syntax fail closed до I/O
+
+- **Status:** active
+- **Why:** `--scope` задаёт identity-сегмент conventional path, а не произвольный путь: единая grammar принимает только kebab-case и отклоняет absolute, slash/backslash, `.`/`..` и пустое значение до `resolvePath`/write. То же правило применяется к owner, структурно выведенному для task `--out` после необходимого structural owner read. Raw option guard отдельно отклоняет unknown flags, лишний positional и value-флаги без значения, потому что permissive parser иначе стирал typo или превращал missing value в boolean `true`; diagnostic сразу печатает canonical invocation, без дополнительного `--help`.
+- **Risk accepted:** Для non-task kinds explicit `--out` остаётся произвольным destination по существующему контракту; task-исключение с D-NW013 fail closed.
+
+### D-NW012 — Option cardinality проверяется до short circuit и I/O
+
+- **Status:** active · **Extends:** D-NW011
+- **Why:** permissive argv parser упаковывает повторный scalar/boolean в массив, после чего команда могла молча выбрать неверную ветку или проигнорировать значение. Raw guard теперь принимает каждую option не более одного раза и возвращает exit 4 с canonical usage до `--list`/`--manifest`, ownership reads, path resolution и записи.
+- **Risk accepted:** Нет; у `sdd-new` нет repeatable options.
+
+### D-NW013 — Task `--out` доказывает owner и не проходит через symlink
+
+- **Status:** active · **Supersedes:** D-NW009 · **Extends:** D-NW010, D-NW011
+- **Why:** Explicit `--scope` раньше позволял task `--out` без owning ancestor записать файл вне `specs/`, а canonicalization следовала symlink-компонентам. Теперь task `--out` сам обязан быть exact repo-relative non-symlink path внутри `specs/` и иметь ровно одного SCOPE_TYPE-bearing ancestor; explicit `--scope`/`--module` только сверяют уже доказанное владение и не заменяют его. Absolute, `..`, zero/multiple owner и любой symlink component краснеют до `mkdir`/write; custom путь внутри доказанного scope/module subtree сохраняется.
+- **Risk accepted:** Ограничение относится только к `task`, где путь является ownership evidence; у остальных kind `--out` остаётся явным destination и не интерпретируется как task owner.
+
+### D-NW014 — Explicit exhaustive task owner
+
+- **Status:** active · **Supersedes:** D-NW010 · **Extends:** D-NW013
+- **Why:** Вывод owner только из наличия или отсутствия `--module` оставлял двусмысленный scope-level product/library task и расходился с DAG vocabulary. Task теперь всегда требует типизированный `--owner`; легальны ровно `infrastructure-flat` для infrastructure без module, `scope-bootstrap` для явного bootstrap complete product/library scope без module и `module` для обычной product/library работы с exact declared module. Interface и ordinary flat product/library fail closed; `--out` меняет путь, но не отменяет semantic owner.
+- **Risk accepted:** CLI доказывает структурную допустимость bootstrap owner, а семантическую необходимость bootstrap формулирует scaffold DAG и проверяет review.
+
+### D-NW015 — Path-aware task authoring literals принадлежат create output
+
+- **Status:** active · **Extends:** D-NW005, D-NW014
+- **Why:** Pathless manifest не способен честно назвать ticket-relative href, а агент, вычисляющий `../../../` или переводящий display-name правила в ID, воспроизводит ошибки `common` вместо registry ID `testing-common` и битые spec refs. После создания task команда уже знает фактический ticket path и typed owner: она печатает copy-ready owning-spec link, ID+href для каждого `<Rule>` из единственного registry `ai/directives/knowledge.xml`, полную допустимую Deferred Test Ownership row и bounded `contract-anchors` из структурных headings `Service|Port|Adapter|Component|Pattern|Value Object|Entity: <name>`. Slug вычисляет общий `headingSlug`; `<details>` не скрывает heading, fenced examples не считаются. Пустой набор печатается как explicit none. Duplicate slug или больше 40 anchors краснеет до записи task с owning-flow route. Scaffold выбирает применимые literals, но не сочиняет их байты и не перебирает `sdd-extract` guesses.
+- **Risk accepted:** typed heading vocabulary закрыт намеренно; новый contract kind добавляется в общий parser/tests, а не угадывается из произвольного заголовка.
+
+### D-NW016 — Task skeleton materializes proved identity and ownership
+
+- **Status:** active · **Extends:** D-NW014, D-NW015
+- **Why:** Возвращать Task-ID/owner/owning spec в stdout, но оставлять те же уже известные значения placeholders внутри созданного файла, заставляло scaffold повторно переносить механику и провоцировало файловую разведку в поиске примера. `sdd-new task` теперь до записи подставляет Task-ID, исходный TODO, Scope, Module либо N/A, явный Structural Owner и ticket-relative Owning Spec. Смысловые поля, contracts и фазы остаются placeholders: CLI не принимает решений за автора.
+- **Risk accepted:** Тикет больше не является байт-в-байт копией registry skeleton; закрытый набор замен проверяется behavior-тестами на module, scope-bootstrap и infrastructure-flat owners.
+
+### D-NW017 — Empty phase Rules has one copy-ready literal
+
+- **Status:** active · **Extends:** D-NW015
+- **Why:** the create manifest listed every registry rule but did not say how to serialize an intentionally empty candidate set, so agents searched for examples or invented a rule. Task create output now prints `empty-rule-set: - none` and states that it is used only when the phase has no applicable cascade candidate. The author still selects rules semantically; the CLI only owns the accepted literal.
+
+### D-NW018 — Task skeleton exposes capability and package ownership fields
+
+- **Status:** superseded by D-NW019 · **Extends:** D-NW016, D-NW017
+- **Why:** a blank ticket without adapter, capability, and package ownership fields pushes deterministic infrastructure boundaries into prose or execute-time discovery. Every phase skeleton now exposes optional `Capability Adapter`, capability provides/requires, bootstrap action, and package provides/requires. Task success prints the exact path-aware `sdd-check --task … --authoring` command and the later project `sdd-check --scaffold-feasibility` command, so happy-path authoring does not require `--help` or searching another repository.
+- **Risk accepted:** fields are optional for phases without capability/package responsibility; authoring and feasibility decide applicability.
+
+### D-NW019 — Task skeleton stays a semantic implementation plan
+
+- **Status:** active · **Supersedes:** D-NW018 · **Extends:** D-NW016, D-NW017
+- **Why:** capability adapters, package provides/requires and bootstrap actions turned ordinary ticket authoring into a second platform dependency program that duplicated the semantic phase plan. The task skeleton now keeps only operator-readable Objective, phase Deps, Rules, Spec Refs, Target/Deleted Files, Readiness Gates, Inputs, Exit, BDD, Verification and Requirement-ID traceability. Infrastructure ordering is approved by semantic ticket review; `sdd-verify` confirms real runnable commands and waits for downstream Readiness Gate owners through the declared phase dependency graph. Task success prints the exact path-aware `sdd-check --task … --authoring` command and routes the completed ticket set to independent semantic review instead of `--scaffold-feasibility`.
+- **Risk accepted:** mechanical authoring no longer proves a synthetic capability graph. Ambiguous infrastructure ordering must be rejected by semantic review, while missing or premature runtime gates still fail closed in `sdd-verify`.
 <!--/SECTION:MODULE_DECISION_LOG-->
 
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->

@@ -9,11 +9,19 @@ import { mkdtempSync, rmSync, readFileSync, writeFileSync, mkdirSync } from 'nod
 import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { configPath } from '../inbox/_core/logic/state-paths.logic.ts';
+import {
+  createIsolatedChildEnv,
+  NETWORK_GUARD_IMPORT,
+  SENSITIVE_ENV_PROOF_KEYS,
+  UNEXPECTED_NETWORK_MARKER,
+} from './__tests__/inbox-context-test-isolation.test-helper.ts';
 
 function spawnCmd(args: string[], stateDir: string, envExtra?: Record<string, string>) {
-  return spawnSync(
-    'node',
+  const result = spawnSync(
+    process.execPath,
     [
+      '--import',
+      NETWORK_GUARD_IMPORT,
       '--import',
       'tsx',
       'cli/cmd/inbox-context/inbox-context.cmd.ts',
@@ -23,9 +31,12 @@ function spawnCmd(args: string[], stateDir: string, envExtra?: Record<string, st
     {
       encoding: 'utf8',
       cwd: process.cwd(),
-      env: { ...process.env, ...envExtra },
+      env: createIsolatedChildEnv({ ...process.env, ...envExtra }),
     }
   );
+
+  assert.doesNotMatch(result.stderr, new RegExp(UNEXPECTED_NETWORK_MARKER));
+  return result;
 }
 
 function writeConfig(stateDir: string, content: string | object) {
@@ -47,6 +58,15 @@ after(() => {
 });
 
 describe('inbox-context CLI — error paths', () => {
+  it('child boundary drops inherited VCS/provider credentials', () => {
+    const sentinel = 'must-not-reach-child';
+    const source = Object.fromEntries(SENSITIVE_ENV_PROOF_KEYS.map((key) => [key, sentinel]));
+    const childEnv = createIsolatedChildEnv({ ...source, PATH: process.env.PATH });
+
+    for (const key of SENSITIVE_ENV_PROOF_KEYS) assert.strictEqual(childEnv[key], undefined, key);
+    assert.strictEqual(childEnv.PATH, process.env.PATH);
+  });
+
   it('exits 1 with stderr when --ref and --url are missing', () => {
     const r = spawnCmd(['--json'], tmpDir);
     assert.strictEqual(r.status, 1);
