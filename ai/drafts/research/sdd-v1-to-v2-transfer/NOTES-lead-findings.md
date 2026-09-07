@@ -34,3 +34,10 @@
 - **G4 предусловие «зелёного» R-COMPLETE**: (а) `sdd-migrate` должен эмитить `PHASE_RECEIPTS:v1` (и полную v2-схему тикета: 3-колоночные §5-таблицы, секция `SCOPE_TYPE`), иначе group-receipt enforcement grandfather-ится OFF на мигрированных тикетах; (б) sandbox воркера flow-eval должен использовать текущий собранный gennady (команда `sdd-log audit-receipt`) — RC-сессии разрешено сделать (б) внутри provision.ts / sandbox-lifecycle с детерминированным тестом.
 - RC HEAD после push: `95329c19` (R-COMPLETE quality rule). Разрешённый периметр RC до брифов: только flow-eval.
 - 2026-09-07: RC закоммитила `3d5f66a7 fix(flow-eval): sandbox always gets the fresh local dist` (предпосылка (б) G4 выполнена; тест `ai/flow-eval/__tests__/provision-gennady.test.ts` 2/2; `npm run check` 5/5). Ветка ahead 1 от origin — push ждёт решения оператора (вопрос в ближайший раунд). RC на паузе.
+
+## Перезапуск сессии (2026-09-07 ~12:53 MSK)
+
+- Предыдущий процесс Lead завершился на лимите API (сброс 12:50). Сохранено: все отчёты A1–A4, B1–B7, V-A1..V-A4, V-B1 в scratchpad; коммит `defe1058` (skeleton + docs 10/12/20 в raw-форме); чистый `20-ISSUES-VERDICTS.md` дописан и закоммичен; чистый `10-MAIN-DELTA.md` был оборван на §2 — дописывается; `11-V2-STATE.md` и чистый `12-SESSIONS-DIGEST.md` не были созданы — пишутся.
+- Запущены верификаторы V-B2..V-B7 (Opus/Sonnet) — до них треки 31–50 остаются ЧЕРНОВИКАМИ.
+- V-B1 (verify): рекомендация A′ выживает; но (1) без `package.json` receipt не пишется вовсе (`phase-receipt.ts:1127-1233`) → нужна задача V-04a «per-preset environmentState» до anystack/swift; (2) `--only/--skip` нельзя пускать в фазовый путь (ломает валидатор receipt); (3) `gennady fix`-фасад без `RepairMutationBoundary` делает receipt ложным; (4) steelman B: обязательный per-gate timeout/SIGKILL/`requires` есть только в main.
+- V-A2: A2 достоверен (117/26/4/5); материальный пропуск — `TEST_ROOTS` без `utils/` и `test/` → 25 тест-файлов вне `npm test`; `H_ASK_WITHOUT_CARD` не объявлен ни в одной директиве (обход аудита аллоулистом).
