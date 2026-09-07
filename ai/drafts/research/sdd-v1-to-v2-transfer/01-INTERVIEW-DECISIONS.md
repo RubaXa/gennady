@@ -74,3 +74,7 @@
 | D-10 | Трек 34 Q2+Q5: тест-конкурентность (main `=1` из-за IPC-краша, RC `=6`) | **Сначала понять причину**: не связан ли краш с agent-mon (которого не должно быть в v2) или agent-inbox (должен быть исключён из общих тестов v2); только потом решать про порт `51195c48`/`35a31942` и flake-прогон. → аналитическая задача REL-15 (до REL-7/12/13). |
 | D-11 | Трек 34 Q3: CI для RC | **Новый workflow вокруг `scripts/test-topology.ts`** (+ e2e/integration; stack-e2e после порта verify). |
 | D-12 | Трек 34 Q4: версионная стратегия | **Версия v2 = `2.0.0-draft.<N>`; всё ниже 2 — v1.** RC — база; main в RC не мержится, перенос позадачно. |
+| D-13 | Трек 30 Q1: публичные `gennady verify`/`gennady fix` рядом с фазовым `sdd-verify` | **(e)**: только read-only `gennady verify --plan --json` (планировщик/CI-репортёр); `gennady fix` не входит в релиз, пока не получит `RepairMutationBoundary`. **Открытый вопрос оператора:** должен ли `fix` быть отдельным глаголом или флагом `verify --fix` — вынести в трек 30 как Q8. |
+| D-14 | Трек 30 Q3: readiness-адаптер | **(a)** интерфейс + node-адаптер + тривиальный anystack сразу; V-04a (per-preset источник `environmentState`) — отдельная обязательная зависимость. |
+| D-15 | Трек 30 Q6: Swift | **(b)** отдельный плагин `swift` (маркеры, ладдер, readiness, coverage через `xccov`/`.xcresult`); `extraGates` из `gennady.yaml` работают поверх. |
+| D-16 | Трек 30 Q7: порядок стеков после node-parity | **(a)** anystack → golang → python → swift. |
