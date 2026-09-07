@@ -33,6 +33,10 @@ SCENARIO="${SCENARIO:-$GEN_ROOT/ai/flow-eval/.results/rt-execute.scenario.json}"
 
 log() { printf '[%s] %s\n' "$(date +%H:%M:%S)" "$*"; }
 
+# Enforce the ~/Developer/ rule BEFORE touching anything (prep/execute) — see
+# ai/flow-eval/docs/PREREQUISITES.ru.md. Fails fast and loud, not mid-operation.
+"$GEN_ROOT/ai/flow-eval/scripts/require-developer-repo.sh" "$REPO"
+
 prep() {
   log "prep regen worktree from base $RTBASE"
   git -C "$REPO" worktree remove --force "$RT" 2>/dev/null || true

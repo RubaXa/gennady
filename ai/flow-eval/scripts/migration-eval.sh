@@ -26,6 +26,10 @@ log() { printf '[%s] %s\n' "$(date +%H:%M:%S)" "$*"; }
 hist() { node "$GEN" sdd-check --all "$1" 2>&1 | grep -oE "error: [A-Z_]+|warn: [A-Z_]+" | sort | uniq -c | sort -rn || true; }
 flow() { node "$GEN" sdd-state "$1" 2>&1 | grep -E "^FLOW_VERSION" || echo "FLOW_VERSION=?"; }
 
+# Enforce the ~/Developer/ rule BEFORE touching anything (run/prep/execute) — see
+# ai/flow-eval/docs/PREREQUISITES.ru.md. Fails fast and loud, not mid-operation.
+"$GEN_ROOT/ai/flow-eval/scripts/require-developer-repo.sh" "$REPO"
+
 reset_fixture() {
   log "reset fixture → base $BASE"
   git -C "$REPO" worktree remove --force "$FX" 2>/dev/null || true

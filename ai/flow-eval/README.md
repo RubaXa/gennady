@@ -8,13 +8,25 @@ score its progress from a bounded session tail and the file diff.
 
 ## Documentation map
 
-| Read this                                          | For                                                                                                                       |
-| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| this file                                          | What it is, how it is wired, the one canonical command.                                                                   |
-| [`RUNBOOK.ru.md`](./RUNBOOK.ru.md)                 | **How to run** — server setup, env, live-run procedure, reading observations, verdict rules, gotchas.                     |
-| [`WRITING-EVALS.ru.md`](./WRITING-EVALS.ru.md)     | **How to add your own eval** — scenario shape, fixture anatomy, coverage-passability rules, judge contract, step-by-step. |
-| [`operator-approve.sh`](./operator-approve.sh)     | Helper that simulates a complete operator approval between phases (portal + Decision Log).                                |
-| [`PROGRESS-REPORT.ru.md`](./PROGRESS-REPORT.ru.md) | **Before → after report** for colleagues: what was broken, what was fixed, the numbers, why it is progress.               |
+Reading order for a newcomer: this file → `docs/ARCHITECTURE.ru.md` → `docs/PREREQUISITES.ru.md` →
+`WRITING-EVALS.ru.md` (+ `docs/WRITING-EVALS-EXTERNAL.ru.md` for external-repo evals) →
+`docs/METRICS.ru.md`. `docs/AGENT-BRIEF.ru.md` is a standalone copy-paste brief, not part of that chain.
+
+| Read this                                                                  | For                                                                                                                                                     |
+| -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| this file                                                                  | What it is, how it is wired, the one canonical command.                                                                                                 |
+| [`docs/ARCHITECTURE.ru.md`](./docs/ARCHITECTURE.ru.md)                     | **Read first after this file** — pipeline diagram, module-role table, what is deterministic vs judge.                                                   |
+| [`docs/PREREQUISITES.ru.md`](./docs/PREREQUISITES.ru.md)                   | OpenCode server, LLM-proxy, build, and the `~/Developer/` rule for external-repo evals.                                                                 |
+| [`RUNBOOK.ru.md`](./RUNBOOK.ru.md)                                         | **How to run** — server setup, env, live-run procedure, reading observations, verdict rules, gotchas.                                                   |
+| [`WRITING-EVALS.ru.md`](./WRITING-EVALS.ru.md)                             | **How to add your own eval** — scenario shape, fixture anatomy, coverage-passability rules, judge contract, step-by-step.                               |
+| [`docs/WRITING-EVALS-EXTERNAL.ru.md`](./docs/WRITING-EVALS-EXTERNAL.ru.md) | Eval on YOUR OWN external repository (round-trip pattern): git worktree, golden, `completion` targets.                                                  |
+| [`docs/METRICS.ru.md`](./docs/METRICS.ru.md)                               | The deterministic layer — quality-gate R1/R-COMPLETE, `session-metrics.py` record/gate/compare, telemetry.                                              |
+| [`docs/AGENT-BRIEF.ru.md`](./docs/AGENT-BRIEF.ru.md)                       | Copy-paste brief a developer hands their own agent to wire up an eval for their repository.                                                             |
+| [`QUALITY-RULES.ru.md`](./QUALITY-RULES.ru.md)                             | Backlog of mechanical success rules (R1…R6) and the both-outcomes discipline.                                                                           |
+| [`ROADMAP.ru.md`](./ROADMAP.ru.md)                                         | Where the harness is headed next.                                                                                                                       |
+| [`operator-approve.sh`](./operator-approve.sh)                             | Helper that simulates a complete operator approval between phases (portal + Decision Log).                                                              |
+| [`PROGRESS-REPORT.ru.md`](./PROGRESS-REPORT.ru.md)                         | **Before → after report** for colleagues: what was broken, what was fixed, the numbers, why it is progress.                                             |
+| `docs/*.md` (deep-dive cases)                                              | Real-run post-mortems: `swiftlint-toolchain-setup.md`, `roundtrip-wall3-assessment.md`, `flow-verification-redesign.md`, `flow-verification-ledger.md`. |
 
 ## How it is wired
 
