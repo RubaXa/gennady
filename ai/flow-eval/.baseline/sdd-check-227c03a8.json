@@ -1,0 +1,1838 @@
+{
+  "schema": "gennady.sdd-check.baseline.v1",
+  "commit": "227c03a83830124fe2aa22541dd5374beb8a53c6",
+  "tag": "rc-baseline-1",
+  "generatedBy": "node dist/gennady.js sdd-check --all . --format json",
+  "generatedAt": "2026-09-07T22:25:27.186Z",
+  "totals": {
+    "errors": 198,
+    "warnings": 431,
+    "files": 212
+  },
+  "countsByCode": {
+    "ERR_CLI_SDD_CHECK_READ_FAILED": {
+      "error": 4,
+      "warn": 0
+    },
+    "SDD_ANCHOR_UNBALANCED": {
+      "error": 3,
+      "warn": 0
+    },
+    "SDD_BDD_COVERAGE_ROW_UNPARSED": {
+      "error": 0,
+      "warn": 140
+    },
+    "SDD_BDD_MISSING_NEGATIVE": {
+      "error": 1,
+      "warn": 0
+    },
+    "SDD_BDD_REQUIREMENT_UNTRACED": {
+      "error": 37,
+      "warn": 0
+    },
+    "SDD_BDD_SCENARIO_UNTESTED": {
+      "error": 0,
+      "warn": 70
+    },
+    "SDD_BDD_TESTFILE_AMBIGUOUS": {
+      "error": 0,
+      "warn": 3
+    },
+    "SDD_BROKEN_SPEC_ANCHOR": {
+      "error": 0,
+      "warn": 11
+    },
+    "SDD_BROKEN_SPEC_REF": {
+      "error": 6,
+      "warn": 0
+    },
+    "SDD_DEP_UNRESOLVED": {
+      "error": 18,
+      "warn": 0
+    },
+    "SDD_DIAGRAM_CAPTION_MISSING": {
+      "error": 1,
+      "warn": 15
+    },
+    "SDD_DIAGRAM_INVALID": {
+      "error": 2,
+      "warn": 0
+    },
+    "SDD_DL_LEGACY_ID": {
+      "error": 0,
+      "warn": 4
+    },
+    "SDD_DONE_WITH_ACTIVE_BLOCKER": {
+      "error": 1,
+      "warn": 0
+    },
+    "SDD_DONE_WITH_PLACEHOLDERS": {
+      "error": 0,
+      "warn": 11
+    },
+    "SDD_FABRICATED_DONE": {
+      "error": 44,
+      "warn": 0
+    },
+    "SDD_LANGUAGE_CALQUE": {
+      "error": 0,
+      "warn": 9
+    },
+    "SDD_LEGACY_TICKET_UNANCHORED": {
+      "error": 0,
+      "warn": 76
+    },
+    "SDD_MISSING_TASK_ID": {
+      "error": 0,
+      "warn": 1
+    },
+    "SDD_MODULE_DAG_CYCLE": {
+      "error": 1,
+      "warn": 0
+    },
+    "SDD_MODULE_NOT_IN_INDEX": {
+      "error": 0,
+      "warn": 11
+    },
+    "SDD_MODULE_NO_CALL_CHAIN": {
+      "error": 0,
+      "warn": 26
+    },
+    "SDD_MODULE_OVERSIZED": {
+      "error": 0,
+      "warn": 9
+    },
+    "SDD_PHASE_DEP_UNRESOLVED": {
+      "error": 2,
+      "warn": 0
+    },
+    "SDD_PHASE_SECTION_MISSING": {
+      "error": 1,
+      "warn": 0
+    },
+    "SDD_PHASE_SECTION_ORPHAN": {
+      "error": 4,
+      "warn": 0
+    },
+    "SDD_RESEARCH_DISPOSITION_MISSING": {
+      "error": 6,
+      "warn": 0
+    },
+    "SDD_RESEARCH_UNREGISTERED": {
+      "error": 0,
+      "warn": 2
+    },
+    "SDD_RULES_CASCADE_UNRESOLVED": {
+      "error": 1,
+      "warn": 0
+    },
+    "SDD_SCOPE_DEP_UNDECLARED": {
+      "error": 0,
+      "warn": 3
+    },
+    "SDD_SECTION_OVERLAP": {
+      "error": 9,
+      "warn": 0
+    },
+    "SDD_SPEC_SECTION_MISSING": {
+      "error": 2,
+      "warn": 0
+    },
+    "SDD_STATUS_UNPARSEABLE": {
+      "error": 0,
+      "warn": 1
+    },
+    "SDD_TASK_ID_COLLISION": {
+      "error": 3,
+      "warn": 0
+    },
+    "SDD_TRACKER_MISSING_ROW": {
+      "error": 0,
+      "warn": 37
+    },
+    "SDD_TRACKER_ORPHAN_ROW": {
+      "error": 0,
+      "warn": 2
+    },
+    "SDD_TRACKER_STATUS_DRIFT": {
+      "error": 5,
+      "warn": 0
+    },
+    "SDD_VERIFICATION_TABLE_INVALID": {
+      "error": 47,
+      "warn": 0
+    }
+  },
+  "findings": [
+    {
+      "code": "ERR_CLI_SDD_CHECK_READ_FAILED",
+      "file": "tasks/ai/directives/coding/typescript-rules.xml",
+      "severity": "error"
+    },
+    {
+      "code": "ERR_CLI_SDD_CHECK_READ_FAILED",
+      "file": "tasks/ai/directives/testing/node-test.xml",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_ANCHOR_UNBALANCED",
+      "file": "specs/cli/sdd-verify/sdd-verify.spec.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_ANCHOR_UNBALANCED",
+      "file": "tasks/cli/sync-skills/cli-sync-skills.task-57.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_ANCHOR_UNBALANCED",
+      "file": "tasks/vcs/vcs-client/vcs-client.task-71.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_BDD_COVERAGE_ROW_UNPARSED",
+      "file": "tasks/agent-inbox/agent-inbox.task-157.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_BDD_COVERAGE_ROW_UNPARSED",
+      "file": "tasks/agent-inbox/agent-inbox.task-167.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_BDD_COVERAGE_ROW_UNPARSED",
+      "file": "tasks/agent-inbox/agent-inbox.task-169.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_BDD_COVERAGE_ROW_UNPARSED",
+      "file": "tasks/agent-inbox/inbox-eval/inbox-eval.task-183.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_BDD_COVERAGE_ROW_UNPARSED",
+      "file": "tasks/agent-inbox/inbox-mocks/inbox-mocks.task-180.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_BDD_COVERAGE_ROW_UNPARSED",
+      "file": "tasks/agent-run/agent-run.task-64.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_BDD_COVERAGE_ROW_UNPARSED",
+      "file": "tasks/agent-run/core/core.task-62.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_BDD_COVERAGE_ROW_UNPARSED",
+      "file": "tasks/agent-run/opencode/opencode.task-63.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_BDD_COVERAGE_ROW_UNPARSED",
+      "file": "tasks/cli/e2e/e2e.task-60.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_BDD_COVERAGE_ROW_UNPARSED",
+      "file": "tasks/cli/lint/cli-lint.task-50.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_BDD_COVERAGE_ROW_UNPARSED",
+      "file": "tasks/cli/lint/cli-lint.task-52.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_BDD_COVERAGE_ROW_UNPARSED",
+      "file": "tasks/cli/orient/orient.task-55.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_BDD_COVERAGE_ROW_UNPARSED",
+      "file": "tasks/cli/vcs-refactor/vcs-refactor.task-70.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_BDD_COVERAGE_ROW_UNPARSED",
+      "file": "tasks/cli/vcs-worktree/vcs-worktree.task-168.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_BDD_MISSING_NEGATIVE",
+      "file": "tasks/cli/testcov/cli-testcov.task-66.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_BDD_REQUIREMENT_UNTRACED",
+      "file": "specs/ai-skills/directive-assembly/directive-assembly.task.DA-lazy-asm.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_BDD_SCENARIO_UNTESTED",
+      "file": "specs/ai-skills/directive-assembly/directive-assembly.task.DA-lazy-asm.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_BDD_SCENARIO_UNTESTED",
+      "file": "tasks/agent-inbox/agent-inbox.task-158.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_BDD_SCENARIO_UNTESTED",
+      "file": "tasks/agent-inbox/agent-inbox.task-160.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_BDD_SCENARIO_UNTESTED",
+      "file": "tasks/agent-inbox/agent-inbox.task-162.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_BDD_SCENARIO_UNTESTED",
+      "file": "tasks/agent-inbox/agent-inbox.task-163.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_BDD_SCENARIO_UNTESTED",
+      "file": "tasks/agent-inbox/agent-inbox.task-164.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_BDD_SCENARIO_UNTESTED",
+      "file": "tasks/agent-inbox/agent-inbox.task-181.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_BDD_SCENARIO_UNTESTED",
+      "file": "tasks/agent-inbox/inbox-dashboard/inbox-dashboard.task-182.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_BDD_SCENARIO_UNTESTED",
+      "file": "tasks/agent-inbox/inbox-vcs/inbox-vcs.task-174.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_BDD_SCENARIO_UNTESTED",
+      "file": "tasks/agent-run/agent-run.task-64.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_BDD_SCENARIO_UNTESTED",
+      "file": "tasks/agent-run/core/core.task-62.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_BDD_SCENARIO_UNTESTED",
+      "file": "tasks/agent-run/opencode/opencode.task-63.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_BDD_SCENARIO_UNTESTED",
+      "file": "tasks/cli/lint/cli-lint.task-49.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_BDD_SCENARIO_UNTESTED",
+      "file": "tasks/cli/vcs-refactor/vcs-refactor.task-70.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_BDD_SCENARIO_UNTESTED",
+      "file": "tasks/mr-stats/mr-stats.task-138.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_BDD_SCENARIO_UNTESTED",
+      "file": "tasks/mr-stats/mr-stats.task-139.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_BDD_SCENARIO_UNTESTED",
+      "file": "tasks/vcs/vcs-client/vcs-client.task-71.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_BDD_TESTFILE_AMBIGUOUS",
+      "file": "tasks/agent-inbox/agent-inbox.task-156.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_BDD_TESTFILE_AMBIGUOUS",
+      "file": "tasks/agent-inbox/agent-inbox.task-158.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_BDD_TESTFILE_AMBIGUOUS",
+      "file": "tasks/agent-inbox/agent-inbox.task-165.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_BROKEN_SPEC_ANCHOR",
+      "file": "tasks/agent-inbox/inbox-pipeline/inbox-pipeline.task-176.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_BROKEN_SPEC_ANCHOR",
+      "file": "tasks/agent-run/opencode/opencode.task-63.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_BROKEN_SPEC_ANCHOR",
+      "file": "tasks/cli/lint/cli-lint.task-51.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_BROKEN_SPEC_ANCHOR",
+      "file": "tasks/cli/lint/cli-lint.task-52.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_BROKEN_SPEC_ANCHOR",
+      "file": "tasks/cli/orient/orient.task-55.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_BROKEN_SPEC_REF",
+      "file": "tasks/cli/e2e/e2e.task-60.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_DEP_UNRESOLVED",
+      "file": "tasks/agent-inbox/agent-inbox.task-169.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_DEP_UNRESOLVED",
+      "file": "tasks/agent-inbox/agent-inbox.task-170.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_DEP_UNRESOLVED",
+      "file": "tasks/cli/alt-opinion/cli-alt-opinion.task-23.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_DEP_UNRESOLVED",
+      "file": "tasks/cli/cat/cli-cat.task-31.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_DEP_UNRESOLVED",
+      "file": "tasks/cli/lint/cli-lint.task-15.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_DEP_UNRESOLVED",
+      "file": "tasks/cli/lint/cli-lint.task-32.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_DEP_UNRESOLVED",
+      "file": "tasks/cli/lint/cli-lint.task-51.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_DEP_UNRESOLVED",
+      "file": "tasks/cli/lint/cli-lint.task-52.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_DEP_UNRESOLVED",
+      "file": "tasks/cli/orient/orient.task-55.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_DEP_UNRESOLVED",
+      "file": "tasks/cli/sync-skills/cli-sync-skills.task-58.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_DEP_UNRESOLVED",
+      "file": "tasks/cli/sync/cli-sync.task-53.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_DEP_UNRESOLVED",
+      "file": "tasks/cli/testcov/cli-testcov.task-66.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_DEP_UNRESOLVED",
+      "file": "tasks/cli/vcs-discussions/vcs-discussions.task-93.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_DEP_UNRESOLVED",
+      "file": "tasks/mr-stats/mr-stats.task-138.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_DEP_UNRESOLVED",
+      "file": "tasks/vcs/vcs-client/vcs-client.task-67.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_DEP_UNRESOLVED",
+      "file": "tasks/vcs/vcs-mr-client/vcs-mr-client.task-88.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_DIAGRAM_CAPTION_MISSING",
+      "file": "specs/agent-inbox/agent-inbox.spec.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_DIAGRAM_CAPTION_MISSING",
+      "file": "specs/agent-inbox/inbox-pipeline/inbox-pipeline.spec.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_DIAGRAM_CAPTION_MISSING",
+      "file": "specs/agent-inbox/inbox-queue/inbox-queue.spec.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_DIAGRAM_CAPTION_MISSING",
+      "file": "specs/agent-run/agent-run.spec.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_DIAGRAM_CAPTION_MISSING",
+      "file": "specs/agent-run/core/core.spec.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_DIAGRAM_CAPTION_MISSING",
+      "file": "specs/agent-run/opencode/opencode.spec.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_DIAGRAM_CAPTION_MISSING",
+      "file": "specs/ai-skills/ai-skills.spec.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_DIAGRAM_CAPTION_MISSING",
+      "file": "specs/ai-skills/directive-assembly/directive-assembly.spec.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_DIAGRAM_CAPTION_MISSING",
+      "file": "specs/ai-skills/sdd-skills/sdd-skills.spec.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_DIAGRAM_CAPTION_MISSING",
+      "file": "specs/ai-skills/skill-contract/skill-contract.spec.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_DIAGRAM_CAPTION_MISSING",
+      "file": "specs/cli/e2e/e2e.spec.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_DIAGRAM_CAPTION_MISSING",
+      "file": "specs/mr-stats/mr-stats.spec.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_DIAGRAM_INVALID",
+      "file": "tasks/README.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_DIAGRAM_INVALID",
+      "file": "tasks/cli/README.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_DL_LEGACY_ID",
+      "file": "specs/agent-inbox/agent-inbox.spec.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_DL_LEGACY_ID",
+      "file": "specs/agent-run/agent-run.spec.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_DL_LEGACY_ID",
+      "file": "specs/ai-skills/ai-skills.spec.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_DL_LEGACY_ID",
+      "file": "specs/mr-stats/mr-stats.spec.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_DONE_WITH_ACTIVE_BLOCKER",
+      "file": "tasks/agent-inbox/agent-inbox.task-159.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_DONE_WITH_PLACEHOLDERS",
+      "file": "tasks/agent-inbox/agent-inbox.task-159.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_DONE_WITH_PLACEHOLDERS",
+      "file": "tasks/agent-inbox/agent-inbox.task-161.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_DONE_WITH_PLACEHOLDERS",
+      "file": "tasks/agent-inbox/agent-inbox.task-162.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_DONE_WITH_PLACEHOLDERS",
+      "file": "tasks/agent-inbox/agent-inbox.task-164.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_DONE_WITH_PLACEHOLDERS",
+      "file": "tasks/agent-inbox/inbox-pipeline/inbox-pipeline.task-176.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_DONE_WITH_PLACEHOLDERS",
+      "file": "tasks/cli/lint/cli-lint.task-50.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_DONE_WITH_PLACEHOLDERS",
+      "file": "tasks/cli/vcs-refactor/vcs-refactor.task-70.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_DONE_WITH_PLACEHOLDERS",
+      "file": "tasks/cli/vcs-reply-resolve/vcs-reply-resolve.task-72.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_DONE_WITH_PLACEHOLDERS",
+      "file": "tasks/mr-stats/mr-stats.task-138.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_DONE_WITH_PLACEHOLDERS",
+      "file": "tasks/mr-stats/mr-stats.task-139.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_DONE_WITH_PLACEHOLDERS",
+      "file": "tasks/vcs/vcs-client/vcs-client.task-71.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_FABRICATED_DONE",
+      "file": "tasks/agent-inbox/agent-inbox.task-162.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_FABRICATED_DONE",
+      "file": "tasks/cli/lint/cli-lint.task-50.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_FABRICATED_DONE",
+      "file": "tasks/cli/orient/orient.task-55.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_FABRICATED_DONE",
+      "file": "tasks/cli/vcs-refactor/vcs-refactor.task-70.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_FABRICATED_DONE",
+      "file": "tasks/cli/vcs-reply-resolve/vcs-reply-resolve.task-72.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_FABRICATED_DONE",
+      "file": "tasks/mr-stats/mr-stats.task-138.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_FABRICATED_DONE",
+      "file": "tasks/vcs/vcs-client/vcs-client.task-71.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_LANGUAGE_CALQUE",
+      "file": "tasks/agent-inbox/agent-inbox.task-158.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LANGUAGE_CALQUE",
+      "file": "tasks/agent-inbox/agent-inbox.task-161.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LANGUAGE_CALQUE",
+      "file": "tasks/agent-inbox/agent-inbox.task-163.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LANGUAGE_CALQUE",
+      "file": "tasks/agent-inbox/agent-inbox.task-169.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LANGUAGE_CALQUE",
+      "file": "tasks/agent-inbox/agent-inbox.task-170.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LANGUAGE_CALQUE",
+      "file": "tasks/cli/vcs-worktree/vcs-worktree.task-168.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/agent-mon-cli/bootstrap.task-48.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/agent-mon-cli/cmd/cmd.task-47.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/agent-mon-cli/state/state.task-45.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/agent-mon-cli/ui/ui.task-46.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/agent-mon/agent-mon.task-41.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/agent-mon/diff/diff.task-37.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/agent-mon/model/model.task-35.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/agent-mon/monitor/monitor.task-36.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/agent-mon/observe/observe.task-38.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/agent-mon/providers/claude/claude.task-39.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/agent-mon/providers/opencode/opencode.task-40.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/ai-skills/sdd-skills/sdd-skills.task-61.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/cli/agents-rules/agents-rules.task-59.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/cli/alt-opinion/cli-alt-opinion.task-23.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/cli/alt-opinion/cli-alt-opinion.task-24.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/cli/alt-opinion/cli-alt-opinion.task-25.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/cli/alt-opinion/cli-alt-opinion.task-26.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/cli/cat/cli-cat.task-31.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/cli/lint/cli-lint.task-12.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/cli/lint/cli-lint.task-13.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/cli/lint/cli-lint.task-14.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/cli/lint/cli-lint.task-15.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/cli/lint/cli-lint.task-16.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/cli/lint/cli-lint.task-17.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/cli/lint/cli-lint.task-18.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/cli/lint/cli-lint.task-32.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/cli/sync-skills/cli-sync-skills.task-56.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/cli/sync-skills/cli-sync-skills.task-58.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/cli/sync/cli-sync.task-53.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/cli/sync/cli-sync.task-54.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/cli/update-check/update-check.task-33.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/cli/update-check/update-check.task-34.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/cli/update-check/update-check.task-35.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/cli/vcs-approve/vcs-approve.task-74.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/cli/vcs-diff/vcs-diff.task-81.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/cli/vcs-discussions/vcs-discussions.task-93.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/cli/vcs-discussions/vcs-integration.task-94.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/cli/vcs-draft-note/vcs-draft-note.task-87.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/cli/vcs-job/vcs-job.task-85.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/cli/vcs-mr-create/vcs-mr-create.task-91.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/cli/vcs-mr-edit/vcs-mr-edit.task-92.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/cli/vcs-pipeline/vcs-pipeline.task-83.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/cli/vcs-reply-edit/vcs-reply-edit.task-78.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/cli/vcs-reply-suggestion/vcs-reply-suggestion.task-79.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/cli/vcs-todo/vcs-todo.task-76.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/dbc/dbc-linter/dbc-linter.task-04.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/dbc/dbc-linter/dbc-linter.task-05.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/dbc/dbc-linter/dbc-linter.task-06.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/dbc/dbc-linter/dbc-linter.task-07.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/dbc/dbc-linter/dbc-linter.task-08.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/dbc/dbc-linter/dbc-linter.task-09.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/dbc/dbc-linter/dbc-linter.task-10.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/dbc/dbc-linter/dbc-linter.task-11.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/dbc/dbc-linter/dbc-linter.task-19.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/dbc/dbc-linter/dbc-linter.task-20.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/dbc/dbc-linter/dbc-linter.task-21.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/dbc/dbc-parser/dbc-parser.task-01.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/dbc/dbc-parser/dbc-parser.task-02.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/dbc/dbc-parser/dbc-parser.task-03.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/infra-npm-publish/infra-npm-publish.task-42.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/infra-npm-publish/infra-npm-publish.task-43.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/infra-npm-publish/infra-npm-publish.task-44.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/infra-npm-publish/infra-npm-publish.task-45.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/vcs/vcs-client/vcs-client.task-22.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/vcs/vcs-client/vcs-client.task-27.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/vcs/vcs-client/vcs-client.task-28.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/vcs/vcs-client/vcs-client.task-29.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/vcs/vcs-client/vcs-client.task-30.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/vcs/vcs-client/vcs-client.task-73.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/vcs/vcs-client/vcs-client.task-75.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/vcs/vcs-client/vcs-client.task-77.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/vcs/vcs-client/vcs-client.task-82.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/vcs/vcs-client/vcs-client.task-84.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/vcs/vcs-client/vcs-client.task-86.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/vcs/vcs-mr-client/vcs-mr-client.task-89.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_LEGACY_TICKET_UNANCHORED",
+      "file": "tasks/vcs/vcs-mr-client/vcs-mr-client.task-90.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_MISSING_TASK_ID",
+      "file": "tasks/cli/sync-skills/cli-sync-skills.task-57.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_MODULE_DAG_CYCLE",
+      "file": "specs/agent-inbox/agent-inbox.spec.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_MODULE_NOT_IN_INDEX",
+      "file": "specs/cli/cli.spec.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_MODULE_NO_CALL_CHAIN",
+      "file": "specs/agent-inbox/inbox-api/inbox-api.spec.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_MODULE_NO_CALL_CHAIN",
+      "file": "specs/agent-inbox/inbox-chat/inbox-chat.spec.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_MODULE_NO_CALL_CHAIN",
+      "file": "specs/agent-inbox/inbox-core/inbox-core.spec.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_MODULE_NO_CALL_CHAIN",
+      "file": "specs/agent-inbox/inbox-dashboard/inbox-dashboard.spec.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_MODULE_NO_CALL_CHAIN",
+      "file": "specs/agent-inbox/inbox-eval/inbox-eval.spec.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_MODULE_NO_CALL_CHAIN",
+      "file": "specs/agent-inbox/inbox-mocks/inbox-mocks.spec.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_MODULE_NO_CALL_CHAIN",
+      "file": "specs/agent-inbox/inbox-opencode/inbox-opencode.spec.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_MODULE_NO_CALL_CHAIN",
+      "file": "specs/agent-inbox/inbox-pipeline/inbox-pipeline.spec.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_MODULE_NO_CALL_CHAIN",
+      "file": "specs/agent-inbox/inbox-queue/inbox-queue.spec.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_MODULE_NO_CALL_CHAIN",
+      "file": "specs/agent-inbox/inbox-vcs/inbox-vcs.spec.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_MODULE_NO_CALL_CHAIN",
+      "file": "specs/agent-run/core/core.spec.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_MODULE_NO_CALL_CHAIN",
+      "file": "specs/agent-run/opencode/opencode.spec.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_MODULE_NO_CALL_CHAIN",
+      "file": "specs/ai-skills/sdd-skills/sdd-skills.spec.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_MODULE_NO_CALL_CHAIN",
+      "file": "specs/ai-skills/skill-contract/skill-contract.spec.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_MODULE_NO_CALL_CHAIN",
+      "file": "specs/cli/e2e/e2e.spec.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_MODULE_NO_CALL_CHAIN",
+      "file": "specs/cli/sdd-check/sdd-check.spec.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_MODULE_NO_CALL_CHAIN",
+      "file": "specs/cli/sdd-extract/sdd-extract.spec.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_MODULE_NO_CALL_CHAIN",
+      "file": "specs/cli/sdd-log/sdd-log.spec.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_MODULE_NO_CALL_CHAIN",
+      "file": "specs/cli/sdd-migrate/sdd-migrate.spec.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_MODULE_NO_CALL_CHAIN",
+      "file": "specs/cli/sdd-new/sdd-new.spec.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_MODULE_NO_CALL_CHAIN",
+      "file": "specs/cli/sdd-state/sdd-state.spec.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_MODULE_NO_CALL_CHAIN",
+      "file": "specs/cli/sdd-sync/sdd-sync.spec.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_MODULE_NO_CALL_CHAIN",
+      "file": "specs/cli/sdd-task/sdd-task.spec.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_MODULE_NO_CALL_CHAIN",
+      "file": "specs/cli/sdd-verify/sdd-verify.spec.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_MODULE_NO_CALL_CHAIN",
+      "file": "specs/cli/testcov/testcov.spec.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_MODULE_NO_CALL_CHAIN",
+      "file": "specs/cli/yagni/yagni.spec.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_MODULE_OVERSIZED",
+      "file": "specs/agent-inbox/inbox-core/inbox-core.spec.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_MODULE_OVERSIZED",
+      "file": "specs/agent-inbox/inbox-pipeline/inbox-pipeline.spec.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_MODULE_OVERSIZED",
+      "file": "specs/agent-inbox/inbox-vcs/inbox-vcs.spec.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_MODULE_OVERSIZED",
+      "file": "specs/ai-skills/directive-assembly/directive-assembly.spec.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_MODULE_OVERSIZED",
+      "file": "specs/cli/sdd-check/sdd-check.spec.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_MODULE_OVERSIZED",
+      "file": "specs/cli/sdd-task/sdd-task.spec.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_MODULE_OVERSIZED",
+      "file": "specs/cli/sdd-verify/sdd-verify.spec.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_MODULE_OVERSIZED",
+      "file": "specs/cli/testcov/testcov.spec.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_MODULE_OVERSIZED",
+      "file": "specs/cli/yagni/yagni.spec.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_PHASE_DEP_UNRESOLVED",
+      "file": "tasks/agent-inbox/agent-inbox.task-169.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_PHASE_DEP_UNRESOLVED",
+      "file": "tasks/cli/e2e/e2e.task-60.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_PHASE_SECTION_MISSING",
+      "file": "tasks/cli/e2e/e2e.task-60.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_PHASE_SECTION_ORPHAN",
+      "file": "tasks/cli/e2e/e2e.task-60.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_PHASE_SECTION_ORPHAN",
+      "file": "tasks/cli/sync-skills/cli-sync-skills.task-57.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_RESEARCH_DISPOSITION_MISSING",
+      "file": "specs/ai-skills/research/2026-08-20-failure-elicitation.research.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_RESEARCH_DISPOSITION_MISSING",
+      "file": "specs/ai-skills/research/2026-08-20-visualization-chain.research.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_RESEARCH_DISPOSITION_MISSING",
+      "file": "specs/ai-skills/research/2026-08-22-lazy-directive-loading.research.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_RESEARCH_DISPOSITION_MISSING",
+      "file": "specs/ai-skills/research/2026-08-22-ponytail.research.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_RESEARCH_DISPOSITION_MISSING",
+      "file": "specs/ai-skills/research/2026-08-22-prompt-compression.research.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_RESEARCH_DISPOSITION_MISSING",
+      "file": "specs/ai-skills/research/2026-08-22-truncation-and-fingerprints.research.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_RESEARCH_UNREGISTERED",
+      "file": "specs/ai-skills/research/2026-08-20-failure-elicitation.research.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_RESEARCH_UNREGISTERED",
+      "file": "specs/ai-skills/research/2026-08-20-visualization-chain.research.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_RULES_CASCADE_UNRESOLVED",
+      "file": "tasks/agent-inbox/agent-inbox.task-164.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_SCOPE_DEP_UNDECLARED",
+      "file": "specs/mr-stats/mr-stats.spec.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_SECTION_OVERLAP",
+      "file": "specs/cli/sdd-verify/sdd-verify.spec.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_SECTION_OVERLAP",
+      "file": "tasks/cli/sync-skills/cli-sync-skills.task-57.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_SECTION_OVERLAP",
+      "file": "tasks/vcs/vcs-client/vcs-client.task-71.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_SPEC_SECTION_MISSING",
+      "file": "specs/agent-inbox/agent-inbox.spec.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_SPEC_SECTION_MISSING",
+      "file": "specs/mr-stats/mr-stats.spec.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_STATUS_UNPARSEABLE",
+      "file": "tasks/cli/sync-skills/cli-sync-skills.task-57.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_TASK_ID_COLLISION",
+      "file": "tasks/agent-mon-cli/state/state.task-45.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_TASK_ID_COLLISION",
+      "file": "tasks/agent-mon/model/model.task-35.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_TASK_ID_COLLISION",
+      "file": "tasks/dbc/dbc-linter/dbc-linter.task-88.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_TRACKER_MISSING_ROW",
+      "file": "tasks/agent-inbox/agent-inbox.task-156.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_TRACKER_MISSING_ROW",
+      "file": "tasks/agent-inbox/agent-inbox.task-157.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_TRACKER_MISSING_ROW",
+      "file": "tasks/agent-inbox/agent-inbox.task-158.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_TRACKER_MISSING_ROW",
+      "file": "tasks/agent-inbox/agent-inbox.task-159.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_TRACKER_MISSING_ROW",
+      "file": "tasks/agent-inbox/agent-inbox.task-160.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_TRACKER_MISSING_ROW",
+      "file": "tasks/agent-inbox/agent-inbox.task-161.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_TRACKER_MISSING_ROW",
+      "file": "tasks/agent-inbox/agent-inbox.task-162.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_TRACKER_MISSING_ROW",
+      "file": "tasks/agent-inbox/agent-inbox.task-163.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_TRACKER_MISSING_ROW",
+      "file": "tasks/agent-inbox/agent-inbox.task-164.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_TRACKER_MISSING_ROW",
+      "file": "tasks/agent-inbox/agent-inbox.task-165.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_TRACKER_MISSING_ROW",
+      "file": "tasks/agent-inbox/agent-inbox.task-166.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_TRACKER_MISSING_ROW",
+      "file": "tasks/agent-inbox/agent-inbox.task-167.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_TRACKER_MISSING_ROW",
+      "file": "tasks/agent-inbox/agent-inbox.task-169.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_TRACKER_MISSING_ROW",
+      "file": "tasks/agent-inbox/agent-inbox.task-170.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_TRACKER_MISSING_ROW",
+      "file": "tasks/ai-skills/sdd-skills/sdd-skills.task-61.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_TRACKER_MISSING_ROW",
+      "file": "tasks/cli/testcov/cli-testcov.task-66.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_TRACKER_MISSING_ROW",
+      "file": "tasks/cli/vcs-approve/vcs-approve.task-74.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_TRACKER_MISSING_ROW",
+      "file": "tasks/cli/vcs-diff/vcs-diff.task-81.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_TRACKER_MISSING_ROW",
+      "file": "tasks/cli/vcs-discussions/vcs-discussions.task-93.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_TRACKER_MISSING_ROW",
+      "file": "tasks/cli/vcs-discussions/vcs-integration.task-94.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_TRACKER_MISSING_ROW",
+      "file": "tasks/cli/vcs-draft-note/vcs-draft-note.task-87.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_TRACKER_MISSING_ROW",
+      "file": "tasks/cli/vcs-job/vcs-job.task-85.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_TRACKER_MISSING_ROW",
+      "file": "tasks/cli/vcs-mr-create/vcs-mr-create.task-91.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_TRACKER_MISSING_ROW",
+      "file": "tasks/cli/vcs-mr-edit/vcs-mr-edit.task-92.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_TRACKER_MISSING_ROW",
+      "file": "tasks/cli/vcs-pipeline/vcs-pipeline.task-83.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_TRACKER_MISSING_ROW",
+      "file": "tasks/cli/vcs-reply-edit/vcs-reply-edit.task-78.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_TRACKER_MISSING_ROW",
+      "file": "tasks/cli/vcs-reply-suggestion/vcs-reply-suggestion.task-79.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_TRACKER_MISSING_ROW",
+      "file": "tasks/cli/vcs-todo/vcs-todo.task-76.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_TRACKER_MISSING_ROW",
+      "file": "tasks/infra-npm-publish/infra-npm-publish.task-44.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_TRACKER_MISSING_ROW",
+      "file": "tasks/vcs/vcs-client/vcs-client.task-73.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_TRACKER_MISSING_ROW",
+      "file": "tasks/vcs/vcs-client/vcs-client.task-75.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_TRACKER_MISSING_ROW",
+      "file": "tasks/vcs/vcs-client/vcs-client.task-77.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_TRACKER_MISSING_ROW",
+      "file": "tasks/vcs/vcs-client/vcs-client.task-82.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_TRACKER_MISSING_ROW",
+      "file": "tasks/vcs/vcs-client/vcs-client.task-84.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_TRACKER_MISSING_ROW",
+      "file": "tasks/vcs/vcs-client/vcs-client.task-86.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_TRACKER_MISSING_ROW",
+      "file": "tasks/vcs/vcs-mr-client/vcs-mr-client.task-89.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_TRACKER_MISSING_ROW",
+      "file": "tasks/vcs/vcs-mr-client/vcs-mr-client.task-90.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_TRACKER_ORPHAN_ROW",
+      "file": "tasks/cli/README.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_TRACKER_ORPHAN_ROW",
+      "file": "tasks/infra-npm-publish/README.md",
+      "severity": "warn"
+    },
+    {
+      "code": "SDD_TRACKER_STATUS_DRIFT",
+      "file": "tasks/agent-mon-cli/README.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_TRACKER_STATUS_DRIFT",
+      "file": "tasks/cli/README.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_TRACKER_STATUS_DRIFT",
+      "file": "tasks/dbc/README.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_TRACKER_STATUS_DRIFT",
+      "file": "tasks/infra-npm-publish/README.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_VERIFICATION_TABLE_INVALID",
+      "file": "specs/ai-skills/directive-assembly/directive-assembly.task.DA-lazy-asm.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_VERIFICATION_TABLE_INVALID",
+      "file": "tasks/agent-inbox/agent-inbox.task-156.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_VERIFICATION_TABLE_INVALID",
+      "file": "tasks/agent-inbox/agent-inbox.task-157.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_VERIFICATION_TABLE_INVALID",
+      "file": "tasks/agent-inbox/agent-inbox.task-158.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_VERIFICATION_TABLE_INVALID",
+      "file": "tasks/agent-inbox/agent-inbox.task-159.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_VERIFICATION_TABLE_INVALID",
+      "file": "tasks/agent-inbox/agent-inbox.task-160.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_VERIFICATION_TABLE_INVALID",
+      "file": "tasks/agent-inbox/agent-inbox.task-161.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_VERIFICATION_TABLE_INVALID",
+      "file": "tasks/agent-inbox/agent-inbox.task-162.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_VERIFICATION_TABLE_INVALID",
+      "file": "tasks/agent-inbox/agent-inbox.task-163.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_VERIFICATION_TABLE_INVALID",
+      "file": "tasks/agent-inbox/agent-inbox.task-164.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_VERIFICATION_TABLE_INVALID",
+      "file": "tasks/agent-inbox/agent-inbox.task-165.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_VERIFICATION_TABLE_INVALID",
+      "file": "tasks/agent-inbox/agent-inbox.task-166.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_VERIFICATION_TABLE_INVALID",
+      "file": "tasks/agent-inbox/agent-inbox.task-167.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_VERIFICATION_TABLE_INVALID",
+      "file": "tasks/agent-inbox/agent-inbox.task-172.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_VERIFICATION_TABLE_INVALID",
+      "file": "tasks/agent-inbox/agent-inbox.task-181.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_VERIFICATION_TABLE_INVALID",
+      "file": "tasks/agent-inbox/inbox-api/inbox-api.task-179.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_VERIFICATION_TABLE_INVALID",
+      "file": "tasks/agent-inbox/inbox-chat/inbox-chat.task-178.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_VERIFICATION_TABLE_INVALID",
+      "file": "tasks/agent-inbox/inbox-core/inbox-core.task-173.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_VERIFICATION_TABLE_INVALID",
+      "file": "tasks/agent-inbox/inbox-dashboard/inbox-dashboard.task-182.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_VERIFICATION_TABLE_INVALID",
+      "file": "tasks/agent-inbox/inbox-eval/inbox-eval.task-183.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_VERIFICATION_TABLE_INVALID",
+      "file": "tasks/agent-inbox/inbox-mocks/inbox-mocks.task-180.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_VERIFICATION_TABLE_INVALID",
+      "file": "tasks/agent-inbox/inbox-opencode/inbox-opencode.task-175.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_VERIFICATION_TABLE_INVALID",
+      "file": "tasks/agent-inbox/inbox-pipeline/inbox-pipeline.task-176.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_VERIFICATION_TABLE_INVALID",
+      "file": "tasks/agent-inbox/inbox-queue/inbox-queue.task-177.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_VERIFICATION_TABLE_INVALID",
+      "file": "tasks/agent-inbox/inbox-vcs/inbox-vcs.task-174.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_VERIFICATION_TABLE_INVALID",
+      "file": "tasks/agent-run/agent-run.task-64.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_VERIFICATION_TABLE_INVALID",
+      "file": "tasks/agent-run/core/core.task-62.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_VERIFICATION_TABLE_INVALID",
+      "file": "tasks/agent-run/opencode/opencode.task-63.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_VERIFICATION_TABLE_INVALID",
+      "file": "tasks/cli/e2e/e2e.task-60.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_VERIFICATION_TABLE_INVALID",
+      "file": "tasks/cli/lint/cli-lint.task-49.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_VERIFICATION_TABLE_INVALID",
+      "file": "tasks/cli/lint/cli-lint.task-50.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_VERIFICATION_TABLE_INVALID",
+      "file": "tasks/cli/orient/orient.task-55.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_VERIFICATION_TABLE_INVALID",
+      "file": "tasks/cli/run/run.task-65.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_VERIFICATION_TABLE_INVALID",
+      "file": "tasks/cli/sync-skills/cli-sync-skills.task-57.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_VERIFICATION_TABLE_INVALID",
+      "file": "tasks/cli/testcov/cli-testcov.task-66.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_VERIFICATION_TABLE_INVALID",
+      "file": "tasks/cli/vcs-approve/vcs-approve.task-69.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_VERIFICATION_TABLE_INVALID",
+      "file": "tasks/cli/vcs-context-resolver/vcs-context-resolver.task-68.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_VERIFICATION_TABLE_INVALID",
+      "file": "tasks/cli/vcs-refactor/vcs-refactor.task-70.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_VERIFICATION_TABLE_INVALID",
+      "file": "tasks/cli/vcs-reply-resolve/vcs-reply-resolve.task-72.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_VERIFICATION_TABLE_INVALID",
+      "file": "tasks/cli/vcs-worktree/vcs-worktree.task-168.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_VERIFICATION_TABLE_INVALID",
+      "file": "tasks/cli/vcs-worktree/vcs-worktree.task-171.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_VERIFICATION_TABLE_INVALID",
+      "file": "tasks/dbc/dbc-linter/dbc-linter.task-88.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_VERIFICATION_TABLE_INVALID",
+      "file": "tasks/mr-stats/mr-stats.task-138.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_VERIFICATION_TABLE_INVALID",
+      "file": "tasks/mr-stats/mr-stats.task-139.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_VERIFICATION_TABLE_INVALID",
+      "file": "tasks/vcs/vcs-client/vcs-client.task-67.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_VERIFICATION_TABLE_INVALID",
+      "file": "tasks/vcs/vcs-client/vcs-client.task-71.md",
+      "severity": "error"
+    },
+    {
+      "code": "SDD_VERIFICATION_TABLE_INVALID",
+      "file": "tasks/vcs/vcs-mr-client/vcs-mr-client.task-88.md",
+      "severity": "error"
+    }
+  ]
+}

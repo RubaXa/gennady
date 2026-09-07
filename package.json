@@ -76,6 +76,8 @@
     "lint": "npm run lint:contracts",
     "lint:fix": "tsx cli/gennady.ts lint --autofix",
     "check": "tsx cli/gennady.ts sdd-verify --profile full",
+    "gate:sdd-check-baseline": "node --import tsx ai/flow-eval/scripts/sdd-check-zero-new-error.ts --baseline ai/flow-eval/.baseline/sdd-check-227c03a8.json",
+    "check:ci": "npm run check && npm run build && npm run gate:sdd-check-baseline",
     "fix": "npm run format:fix -- . && npm run lint:fix -- cli/ shared/ services/",
     "release": "release-it",
     "lint:contracts": "tsx cli/gennady.ts lint cli/ shared/ services/",
