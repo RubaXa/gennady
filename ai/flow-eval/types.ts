@@ -19,6 +19,11 @@ export type SddEvalScenario = {
   scale?: 'product' | 'module' | 'function' | 'fix';
   /** @purpose Optional acceptance signal the judge can use when interpreting the diff. */
   acceptance?: string;
+  /** @purpose Optional declared execute target for the mechanical completion rule (R-COMPLETE). When
+   *  present on an execute scenario, the quality gate reads these files from disk and fails the run if
+   *  the artifact was built but the ticket did not reach a real DONE (closed round + group receipts).
+   *  Opt-in: absent scenarios are unaffected. Paths are repo-relative to the scenario directory. */
+  completion?: { artifact: string; ticket: string; spec: string };
 };
 
 /** @purpose Supported intellectual SDD flow phases exercised by the harness. */

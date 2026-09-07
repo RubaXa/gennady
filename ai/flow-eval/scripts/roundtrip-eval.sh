@@ -89,7 +89,12 @@ write_scenario() {
     "mode": "canonical-execute",
     "directory": "$RT",
     "intent": "Execute ticket IB-script (specs/infra-base) with the installed sdd-execute flow to REBUILD its deliverables from scratch. This is a fresh regeneration: BOTH Tools/check-swiftlint-exceptions.sh AND its probe stand Tools/tests/ (probes.sh + harness.sh, the ticket §6 'permanent property') were removed and DO NOT exist yet — you create them. The ticket's §5 reference to ./Tools/tests/probes.sh means the stand you build, not a pre-existing file; build the guard first, then the stand. The spec (specs/infra-base/infra-base.spec.md, decisions D-010/D-013/D-015/D-016/D-017/D-018a) and the ticket's BDD + Test Scenario Coverage fully define the eight checks the guard must enforce. origin/master is set as the diff base. The golden/ directory is off-limits — never read it. Start writing the guard early; do not spend the budget only orienting. Environment facts (do not re-probe them): SwiftLint runs as mise exec -- swiftlint lint (from the MRCloudApp dir); the pin lives in .mise.toml; jq, git and python3 are on PATH; the GNU timeout command is NOT available on this macOS host (do not call it). Read the spec/ticket once, then WRITE Tools/check-swiftlint-exceptions.sh — orientation beyond ~10 tool calls is wasted budget.",
-    "acceptance": "Tools/check-swiftlint-exceptions.sh exists, is executable, aggregates all checks (does not stop at the first), compares the baseline as a JSON set (not byte-for-byte), and honours the exit-code contract 0=clean / 1=findings / 2=environment. A rebuilt Tools/tests/ stand demonstrates both the red and green side of the ticket's scenarios."
+    "acceptance": "Tools/check-swiftlint-exceptions.sh exists, is executable, aggregates all checks (does not stop at the first), compares the baseline as a JSON set (not byte-for-byte), and honours the exit-code contract 0=clean / 1=findings / 2=environment. A rebuilt Tools/tests/ stand demonstrates both the red and green side of the ticket's scenarios.",
+    "completion": {
+      "artifact": "Tools/check-swiftlint-exceptions.sh",
+      "ticket": "specs/infra-base/infra-base.task.IB-script.md",
+      "spec": "specs/infra-base/infra-base.spec.md"
+    }
   }
 ]
 JSON

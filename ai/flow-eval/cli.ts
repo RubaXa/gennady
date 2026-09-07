@@ -7,7 +7,7 @@ import { join, resolve } from 'node:path';
 import { SddEvalOpenCodeEvidenceSource } from './evidence.ts';
 import { parseOpenCodeModel, SddEvalOpenCodeRuntime } from './opencode-runtime.ts';
 import { provisionScenarioDirectories } from './provision.ts';
-import { checkR1Structure } from './quality-gate.ts';
+import { checkR1Structure, checkCompletion } from './quality-gate.ts';
 import {
   captureBaseline,
   runMigrationChecks,
@@ -262,6 +262,15 @@ async function runAndReport(
       const r1 = await checkR1Structure(scenario.directory);
       quality = { rule: r1.rule, pass: r1.pass, detail: r1.detail };
       console.log(`  quality ${r1.rule}: ${r1.pass ? 'pass' : 'FAIL'} — ${r1.detail}`);
+    }
+    // R-COMPLETE (opt-in): when an execute scenario DECLARES its completion targets, read them from disk
+    // and fail the run if the artifact was built but the ticket never reached a real DONE (closed round +
+    // group receipts). Mechanical answer to the abandoned-artifact blind spot; a failing R-COMPLETE is
+    // decisive over R1 (structure clean ≠ work finished). Scenarios without `completion` are unaffected.
+    if (scenario?.completion && scenario.directory) {
+      const rc = checkCompletion(scenario.directory, scenario.completion);
+      console.log(`  quality ${rc.rule}: ${rc.pass ? 'pass' : 'FAIL'} — ${rc.detail}`);
+      if (!rc.pass || !quality) quality = { rule: rc.rule, pass: rc.pass, detail: rc.detail };
     }
     // A/B currency: per-run token + cost totals (independent of machine load), so runs on different
     // servers stay comparable. `msgs` is the assistant-message count (a coarse trajectory-length proxy).
