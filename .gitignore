@@ -42,5 +42,9 @@ test-results/
 # transient test fixtures accidentally written into the tree (belong in os.tmpdir)
 .tmp-*/
 
+# sandbox/dev-environment npm-install marker (not a build artifact, not meant to be versioned;
+# pre-existing in this checkout — see REL-17 before-report.md)
+.npm-ci-done
+
 # durable eval artifacts extracted from sandboxes before teardown (ai/flow-eval/cli.ts)
 ai/flow-eval/.results/
