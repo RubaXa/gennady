@@ -106,6 +106,11 @@ case "${1:-prep}" in
   execute)
     mkdir -p "$(dirname "$LOG")"
     [ -f "$RT/$TICKET" ] || { echo "run prep first"; exit 2; }
+    # Rebuild the source dist so the worker's sandbox gets the CURRENT gennady (new sdd-log audit-receipt
+    # command, group-receipt checks). Provisioning (materializeLocalCli) then refreshes the fixture's
+    # node_modules/gennady/dist from this fresh dist — no stale CLI in a reused fixture.
+    log "rebuild gennady dist (fresh CLI for the sandbox)"
+    npm --prefix "$GEN_ROOT" run build >/dev/null 2>&1 || { echo "npm run build failed"; exit 2; }
     write_scenario
     local_root="$(node --import tsx "$GEN_ROOT/ai/flow-eval/scripts/sandbox.ts" prepare)"
     log "launch execute worker (model=$MODEL, max-obs=$MAX_OBS) → $LOG"

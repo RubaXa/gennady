@@ -1229,18 +1229,21 @@ async function materializeLocalCli(
 ): Promise<void> {
   const packageTarget = join(directory, 'node_modules/gennady');
   const binTarget = join(directory, 'node_modules/.bin/gennady');
-  // Idempotent for reused sandboxes (phase chaining: scaffold/execute run on the authoring
-  // sandbox): if the local CLI is already materialized, re-copying over existing dependency
-  // symlinks (e.g. mermaid's nested marked .bin) fails with cp EINVAL. Skip when present.
-  if (existsSync(join(packageTarget, 'dist')) && existsSync(binTarget)) return;
   await mkdir(dirname(packageTarget), { recursive: true });
   await mkdir(dirname(binTarget), { recursive: true });
-  // Copy the runnable package snapshot, never a symlink: worker writes in its sandbox must not
-  // reach the source checkout. Keep only metadata, dist, and assembled ai assets.
+  // ALWAYS refresh the CLI itself (dist + assembled ai + package.json + bin shim) from the source,
+  // even on a reused sandbox (phase chaining, or a pre-set fixture directory re-provisioned across
+  // runs). A blanket "skip when present" left a stale dist in reused sandboxes — the worker then ran
+  // an old gennady with none of the current build. dist/ai/package.json are plain files (no symlinks),
+  // so re-copying is safe; only the dependency closure below stays idempotent (re-copying mermaid's
+  // nested marked .bin symlink fails with cp EINVAL).
   await mkdir(packageTarget, { recursive: true });
   await cp(join(gennadyRoot, 'package.json'), join(packageTarget, 'package.json'));
-  await cp(join(gennadyRoot, 'dist'), join(packageTarget, 'dist'), { recursive: true });
-  await cp(join(gennadyRoot, 'ai'), join(packageTarget, 'ai'), { recursive: true });
+  await cp(join(gennadyRoot, 'dist'), join(packageTarget, 'dist'), {
+    recursive: true,
+    force: true,
+  });
+  await cp(join(gennadyRoot, 'ai'), join(packageTarget, 'ai'), { recursive: true, force: true });
   // `sdd-check --all` loads the bundled XML/HTML checker, whose runtime dependency is jsdom. Copy
   // its local dependency closure from the already-installed checkout; no registry/network access
   // and no symlinks into the mutable source tree are allowed.
@@ -1264,6 +1267,12 @@ async function materializeLocalCli(
     const targetPackage = join(directory, 'node_modules', dependency);
     if (!existsSync(sourcePackage))
       throw new Error(`required local dependency is missing: ${dependency}`);
+    // Idempotent: a dependency already materialized in a reused sandbox is left as-is — re-copying
+    // over its nested symlinks (e.g. mermaid's marked .bin) fails with cp EINVAL. Still walk its tree.
+    if (existsSync(targetPackage)) {
+      await enqueuePackageTreeDependencies(sourcePackage, dependencyQueue, copied, scanned);
+      continue;
+    }
     await cp(sourcePackage, targetPackage, { recursive: true });
     await enqueuePackageTreeDependencies(sourcePackage, dependencyQueue, copied, scanned);
   }
