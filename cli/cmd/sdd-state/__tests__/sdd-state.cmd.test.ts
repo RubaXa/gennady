@@ -126,6 +126,8 @@ describe('SddStateCommand', () => {
     assert.strictEqual(o.ok, true);
     if (o.ok) {
       assert.match(o.text, /FLOW_VERSION=v2/);
+      assert.match(o.text, /STACK=node/);
+      assert.match(o.text, /STACK_SOURCE=marker:package\.json/);
       assert.match(o.text, /READINESS=ready/);
       assert.match(o.text, /package\.json\t✔/);
       assert.match(o.text, /type-check\t✔/);
@@ -405,6 +407,15 @@ describe('SddStateCommand', () => {
     if (o.ok) {
       assert.match(o.text, /package\.json\t✘/);
       assert.match(o.text, /missing:[^)]*package\.json/);
+    }
+  });
+
+  it('a repo with no recognizable stack still resolves — STACK=anystack, never "no stack detected"', async () => {
+    const o = await mod.run(argv(bare));
+    assert.strictEqual(o.ok, true);
+    if (o.ok) {
+      assert.match(o.text, /STACK=anystack/);
+      assert.match(o.text, /STACK_SOURCE=marker:any repository/);
     }
   });
 

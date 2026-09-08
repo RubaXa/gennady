@@ -11,7 +11,8 @@
 **Key properties:**
 
 - Модуль **не имеет собственного CLI-входа** — это внутренний слой (`shared/verify/**`, `services/config/config-loader.ts`, `plugins/**`), потребляемый существующими командами `sdd-verify`/`sdd-state`/`sdd-task` по мере их подключения задачами V-03..V-09.
-- **V-04a закрыта:** `phase-receipt.ts` (`environmentState`, вне этого модуля) теперь резолвит пресет через `resolvePreset('node', …)` (`presets/node.ts`) и фейлится явно на этапе резолва для стека без реализованного источника (И-3) — реальный вызов из `gennady sdd-verify` в этот модуль есть. Неподключёнными остаются только перенесённые 0-1-вызовные примитивы волны V-05..V-09 (реестр стека, конфиг, golang/anystack-пресеты) — Overview (§2) рисует это явно: пунктирные рёбра = ещё не подключено.
+- **V-04a закрыта:** `phase-receipt.ts` (`environmentState`, вне этого модуля) теперь резолвит пресет через `resolvePreset('node', …)` (`presets/node.ts`) и фейлится явно на этапе резолва для стека без реализованного источника (И-3) — реальный вызов из `gennady sdd-verify` в этот модуль есть.
+- **V-05 закрыта:** новый `shared/verify/stack-detection.ts` (`detectRepoStack`) даёт один общий факт `StackDetection` вместо per-caller угадывания; `sdd-state.cmd.ts` подключает его и печатает `STACK=`/`STACK_SOURCE=` в `[READINESS]`. Реальный второй вызов `detectStacks` (`stack-registry.ts`) есть — его запись `Usage Waiver` снята. `BUILTIN_GATE_IDS` остаётся waived до V-07 (стек-конфиг ещё не подключён). Неподключёнными остаются только перенесённые 0-1-вызовные примитивы волны V-07..V-09 (конфиг, golang/anystack-пресеты) — Overview (§2) рисует это явно: пунктирные рёбра = ещё не подключено.
 - `Usage Waiver` в §8 (`Module Contracts`) — не постоянное освобождение, а расписание: у каждой записи есть задача-владелец, которая обязана либо провести реальный вызов и снять запись, либо явно пересмотреть её при своём закрытии (см. `Module Decision Log`, §11, для истории снятий).
 - Перенесённые файлы — MAIN `d37d5910`, минимальная правка импортов под путь RC (детали и построчные диффы — в `R-V-02.md`, не дублируются здесь).
 
@@ -32,8 +33,13 @@ flowchart LR
     NODE["presets/node.ts\nresolvePreset('node',…) — только node сегодня"]
   end
 
+  subgraph connected["Подключено этой волной (реальный вызов есть)"]
+    STATE["sdd-state.cmd.ts\ndetectRepoStack (V-05)"]
+    SD["stack-detection.ts\nRepoStackDetection — one shared fact"]
+  end
+
   subgraph ported["Перенесённые примитивы этого модуля — 0-1 вызовов до подключения"]
-    REG["stack-registry.ts\ndetectStacks, BUILTIN_GATE_IDS"]
+    REG["stack-registry.ts\ndetectStacks (V-05 connects it) · BUILTIN_GATE_IDS (still V-07)"]
     CFG["stack-config.ts\napplyStackConfig, loadStackConfig, …"]
     ENVF["env-fail.ts\nallOf, compileEnvFailRules"]
     TG["tree-guard.ts\nacquireTreeGuard"]
@@ -49,9 +55,10 @@ flowchart LR
   PLUGINS --> GO
   CFG -.-> ENVF
   REG -.-> PLUGINS
+  STATE --> SD
+  SD --> REG
 
   CMD -. "V-03 done: Gate.envFail/requires machinery in runGate; 0 GATES entries feed it yet" .-> ENVF
-  CMD -. "V-05: STACK=/STACK_SOURCE=" .-> REG
   CMD -. "V-07: gennady.yaml stack:" .-> CFG
   CMD -. "V-07: printing" .-> LOADER
   NODE -. "V-08: anystack preset (presets/anystack.ts)" .-> ANY
@@ -67,7 +74,17 @@ _Сплошные рёбра — уже связанный код (ничего 
 
 ## 3. Module Usage Example
 
-TODO(V-05, V-07, V-09): модуль пока не имеет собственного публичного входа — вызывающий код появляется по одной задаче за раз (детект стека — V-05, конфиг — V-07, golang-пресет — V-09). Пример наполняется первой задачей, которая реально импортирует `shared/verify/*` за пределами своего же файла.
+**V-05 (первый реальный внешний вызов):** `cli/cmd/sdd-state/sdd-state.cmd.ts` импортирует `detectRepoStack` и печатает его результат в `[READINESS]`:
+
+```ts
+import { detectRepoStack } from '../../../shared/verify/stack-detection.ts';
+
+const stack = detectRepoStack(root, null); // config wiring is V-07's job
+// stack.stacks === ['node'] | ['golang'] | ['golang','node'] | ['anystack']
+// stack.source  === 'marker:package.json' | 'config:stack.use' | …
+```
+
+TODO(V-07, V-09): конфиг (`gennady.yaml` `stack:`) и golang-пресет ещё не подключены — см. Overview (§2).
 
 <!--/SECTION:MODULE_USAGE_EXAMPLE-->
 
@@ -77,19 +94,20 @@ TODO(V-05, V-07, V-09): модуль пока не имеет собственн
 
 _Полный список файлов-сущностей, перенесённых задачей V-02. Функции/типы внутри них — в `Module Contracts` (§8), только там, где на них есть `Usage Waiver`._
 
-| Name                               | Type     | Purpose                                                                                           |
-| ---------------------------------- | -------- | ------------------------------------------------------------------------------------------------- |
-| `shared/verify/verify.types.ts`    | Types    | Общие типы стек-движка (`Gate`, `StackRun`, `VerifyReport`, …)                                    |
-| `shared/verify/env-fail.ts`        | Utility  | Компилятор env-fail предикатов (`allOf`, `exitCodeMatches`, …)                                    |
-| `shared/verify/tree-guard.ts`      | Port     | Лок рабочего дерева на время гейта (single-flight, ещё не подключён)                              |
-| `shared/verify/stack-registry.ts`  | Service  | Реестр builtin-стеков и их gate id, детект активных стеков                                        |
-| `shared/verify/plugin-api.ts`      | Port     | Публичная поверхность `gennady/stack` для авторов стек-плагинов                                   |
-| `shared/verify/stack-config.ts`    | Service  | Конфиг-контракт `gennady.yaml` секция `stack:` (deep-merge, провенанс)                            |
-| `services/config/config-loader.ts` | Service  | Универсальный загрузчик секции конфига + провенанс + форматирование                               |
-| `plugins/index.ts`                 | Registry | Список встроенных стек-плагинов (`BUILTIN_PLUGINS`)                                               |
-| `plugins/anystack/**`              | Adapter  | Read-only стек-плагин для произвольных гейтов из `gennady.yaml`                                   |
-| `plugins/golang/**`                | Adapter  | Стек-плагин Go: детект, scope, план (`gofmt`, `go vet`, `go generate`)                            |
-| `shared/verify/presets/node.ts`    | Service  | `resolvePreset('node', …)` — гейт-имена/команды node (V-04, единственный реальный пресет сегодня) |
+| Name                               | Type     | Purpose                                                                                            |
+| ---------------------------------- | -------- | -------------------------------------------------------------------------------------------------- |
+| `shared/verify/verify.types.ts`    | Types    | Общие типы стек-движка (`Gate`, `StackRun`, `VerifyReport`, …)                                     |
+| `shared/verify/env-fail.ts`        | Utility  | Компилятор env-fail предикатов (`allOf`, `exitCodeMatches`, …)                                     |
+| `shared/verify/tree-guard.ts`      | Port     | Лок рабочего дерева на время гейта (single-flight, ещё не подключён)                               |
+| `shared/verify/stack-registry.ts`  | Service  | Реестр builtin-стеков и их gate id, детект активных стеков                                         |
+| `shared/verify/plugin-api.ts`      | Port     | Публичная поверхность `gennady/stack` для авторов стек-плагинов                                    |
+| `shared/verify/stack-config.ts`    | Service  | Конфиг-контракт `gennady.yaml` секция `stack:` (deep-merge, провенанс)                             |
+| `services/config/config-loader.ts` | Service  | Универсальный загрузчик секции конфига + провенанс + форматирование                                |
+| `plugins/index.ts`                 | Registry | Список встроенных стек-плагинов (`BUILTIN_PLUGINS`)                                                |
+| `plugins/anystack/**`              | Adapter  | Read-only стек-плагин для произвольных гейтов из `gennady.yaml`                                    |
+| `plugins/golang/**`                | Adapter  | Стек-плагин Go: детект, scope, план (`gofmt`, `go vet`, `go generate`)                             |
+| `shared/verify/presets/node.ts`    | Service  | `resolvePreset('node', …)` — гейт-имена/команды node (V-04, единственный реальный пресет сегодня)  |
+| `shared/verify/stack-detection.ts` | Service  | `detectRepoStack(root, config)` — один общий факт `StackDetection`, подключён к `sdd-state` (V-05) |
 
 <!--/SECTION:ENTITY_INVENTORY-->
 
@@ -189,10 +207,6 @@ TODO(V-05, V-07, V-08, V-09): наполняется задачей, котор�
 
 - **Usage Waiver:** передаётся аргументом в `loadStackConfig(root, BUILTIN_GATE_IDS)` в MAIN (`verify.cmd.ts:20,108`); второй вызов — тот же путь подключения, что и у `loadStackConfig` — снимается в V-07.
 
-### `detectStacks`
-
-- **Usage Waiver:** детект активных стеков репозитория; второй вызов — новый `shared/verify/stack-detection.ts`, который V-05 подключает к `sdd-state`/`sdd-task`/`sdd-verify` (`STACK=`/`STACK_SOURCE=`) — снимается в V-05.
-
 ### `TreeGuard`
 
 - **Usage Waiver:** тип лока рабочего дерева. Не входит в набор задач этой волны (V-03..V-09) — по `30-TRACK-VERIFY.md` §6 подключение `tree-guard`-лока к фазовому пути явно отнесено к **V-18** («single-flight … `tree-guard`-lock переносится в V-02, но не подключается к фазовому пути»). Снимается в V-18 (вне текущей пачки — см. отклонения в `R-V-02.md`/сводном отчёте пачки).
@@ -282,12 +296,12 @@ plugins/
 
 - **Depends on:** None (перенесённый код пока изолирован — см. Overview, §2)
 - **Scope Reference (cross-scope):** None
-- **Provides to:** [sdd-verify](../sdd-verify/sdd-verify.spec.md) (V-03/V-04/V-04a/V-07/V-08/V-09 подключают по одному ребру за раз), [sdd-state](../sdd-state/sdd-state.spec.md) (V-05 — `STACK=`/`STACK_SOURCE=`)
+- **Provides to:** [sdd-verify](../sdd-verify/sdd-verify.spec.md) (V-03/V-04/V-04a/V-07/V-08/V-09 подключают по одному ребру за раз), [sdd-state](../sdd-state/sdd-state.spec.md) (V-05 закрыта — `STACK=`/`STACK_SOURCE=` реально подключены)
 
 ```mermaid
 graph TD
   verify["verify"] -. "V-03/V-04/V-04a/V-07/V-08/V-09" .-> sdd-verify["sdd-verify"]
-  verify -. "V-05" .-> sdd-state["sdd-state"]
+  verify -- "V-05: STACK=/STACK_SOURCE=" --> sdd-state["sdd-state"]
 ```
 
 _Кто подключит `verify` к своему ладдеру и какая задача проведёт это ребро._
@@ -298,7 +312,7 @@ _Кто подключит `verify` к своему ладдеру и какая
 
 ## 11. Handoff to Tasks
 
-- **Implementation files to be created:** `shared/verify/presets/{node,anystack,golang}.ts` (V-04/V-08/V-09), `shared/verify/stack-detection.ts` (V-05)
+- **Implementation files to be created:** `shared/verify/presets/{anystack,golang}.ts` (V-08/V-09) — `presets/node.ts` (V-04) and `shared/verify/stack-detection.ts` (V-05) already exist
 - **Test files to be created:** по каждой задаче-владельцу — см. `30-TRACK-VERIFY.md` §6, колонка «тесты, которые добавляются»
 - **Stack dependencies:**
   - Language: `typescript` (резолвится в `ai/directives/coding/typescript-rules.xml`)
