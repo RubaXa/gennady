@@ -4,7 +4,7 @@
 
 Рабочее дерево: `rc-v6` (`/private/tmp/claude-503/.../scratchpad/rc-v6`), ветка `lead/phase-agent-bounds`.
 
-**База ветки.** `origin/lead/kit-lint` @ `61b86fb8` (`fix(T-B6-23): critic-protocol restores the correct confusion triage`) — голова PR #30 (Пачка 5), на момент старта этой пачки ещё не влита в `codex/sdd-v2-rc52-followup`. Diff этой пачки формально включает всю историю PR #30 как базу; после мержа #30 ребейз сократит diff до 4 коммитов этой пачки.
+**База ветки (переписано по правке верификатора V-BATCH-17 — прежняя формулировка ошибочно утверждала, что PR #30 ещё не влит).** Ветка `lead/phase-agent-bounds` основана на `61b86fb8` (`fix(T-B6-23): critic-protocol restores the correct confusion triage` — голова PR #30, Пачка 5). PR #30 влит в `codex/sdd-v2-rc52-followup` **2026-09-08 19:21:19 UTC**, а первый коммит этой пачки (`70361d49`) датирован 19:42 UTC — то есть база уже была влита ДО старта пачки, а не после. Проверено: `git merge-base --is-ancestor 61b86fb8 origin/codex/sdd-v2-rc52-followup` → YES; `git diff --stat origin/codex/sdd-v2-rc52-followup...HEAD` уже даёт ровно 5 коммитов этой пачки (11 файлов, +224/−32 после довеска V-BATCH-17 ниже) без какого-либо ребейза. Ребейз перед PR НЕ ТРЕБУЕТСЯ и ничего не сократит — сокращать нечего.
 
 ---
 
@@ -146,4 +146,4 @@ gh pr create --base codex/sdd-v2-rc52-followup --head lead/phase-agent-bounds \
   --title "Пачка 17: фазовый агент не выходит за свои файлы и умеет остановиться" \
   --body-file ai/drafts/research/sdd-v1-to-v2-transfer/_raw/reports/R-BATCH-17-phase-agent-bounds.md
 ```
-(Ветка основана на головe PR #30, ещё не влитого на момент этой пачки — после мержа #30 в `codex/sdd-v2-rc52-followup`, `git rebase` сократит diff PR этой пачки до 4 коммитов.)
+(Ветка основана на `61b86fb8` — голове PR #30, влитого в `codex/sdd-v2-rc52-followup` ДО старта этой пачки (2026-09-08 19:21:19 UTC против первого коммита пачки в 19:42 UTC). Ребейз перед PR не требуется: `git diff --stat origin/codex/sdd-v2-rc52-followup...HEAD` уже даёт ровно 5 коммитов этой пачки. `git merge-tree` против `origin/codex/sdd-v2-rc52-followup` и всех открытых PR (#33, #36, #37) — конфликтов нет, пересечение файловых множеств пустое.)
