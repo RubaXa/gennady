@@ -11,7 +11,7 @@
 **Key properties:**
 
 - Модуль **не имеет собственного CLI-входа** — это внутренний слой (`shared/verify/**`, `services/config/config-loader.ts`, `plugins/**`), потребляемый существующими командами `sdd-verify`/`sdd-state`/`sdd-task` по мере их подключения задачами V-03..V-09.
-- Пока последняя связывающая задача (в этой волне — V-04a) не закрыта, ни одна строка этого модуля не вызывается из реального прогона `gennady sdd-verify` — Overview (§2) рисует это явно: пунктирные рёбра = ещё не подключено.
+- **V-04a закрыта:** `phase-receipt.ts` (`environmentState`, вне этого модуля) теперь резолвит пресет через `resolvePreset('node', …)` (`presets/node.ts`) и фейлится явно на этапе резолва для стека без реализованного источника (И-3) — реальный вызов из `gennady sdd-verify` в этот модуль есть. Неподключёнными остаются только перенесённые 0-1-вызовные примитивы волны V-05..V-09 (реестр стека, конфиг, golang/anystack-пресеты) — Overview (§2) рисует это явно: пунктирные рёбра = ещё не подключено.
 - `Usage Waiver` в §8 (`Module Contracts`) — не постоянное освобождение, а расписание: у каждой записи есть задача-владелец, которая обязана либо провести реальный вызов и снять запись, либо явно пересмотреть её при своём закрытии (см. `Module Decision Log`, §11, для истории снятий).
 - Перенесённые файлы — MAIN `d37d5910`, минимальная правка импортов под путь RC (детали и построчные диффы — в `R-V-02.md`, не дублируются здесь).
 
@@ -23,12 +23,12 @@
 
 ```mermaid
 flowchart LR
-  subgraph existing["Существующий ладдер (расширен V-03/V-04, не изменил поведение)"]
+  subgraph existing["Существующий ладдер (расширен V-03/V-04/V-04a, не изменил поведение)"]
     CMD["sdd-verify.cmd.ts\nrunGate: envFail/requires (V-03)"] --> PLAN["phase-verification-plan.ts\nverificationGateNames→resolvePreset (V-04)"]
-    PLAN --> RCPT["phase-receipt.ts"]
+    PLAN --> RCPT["phase-receipt.ts\nenvironmentState→resolvePreset, fail-closed (V-04a)"]
   end
 
-  subgraph presets["Пресеты — реальный вызов есть (V-04)"]
+  subgraph presets["Пресеты — реальный вызов есть (V-04/V-04a)"]
     NODE["presets/node.ts\nresolvePreset('node',…) — только node сегодня"]
   end
 
@@ -44,6 +44,7 @@ flowchart LR
   end
 
   PLAN --> NODE
+  RCPT --> NODE
   PLUGINS --> ANY
   PLUGINS --> GO
   CFG -.-> ENVF
