@@ -138,12 +138,14 @@ export function run(rawArgs: string[], deps?: SyncCmdDeps): number {
   const _stdout = deps?.stdout ?? process.stdout;
   const _stderr = deps?.stderr ?? process.stderr;
 
-  // #region START_PARSE — invariant: dryRun flag + positional skill names
+  // #region START_PARSE — invariant: dryRun/withDirectives flags + positional skill names
   const args = parseArgs(rawArgs, {
     dryRun: ['dry-run'],
+    withDirectives: ['with-directives'],
   });
 
   const dryRun = args.dryRun === true || args.dryRun === 'true';
+  const withDirectives = args.withDirectives === true || args.withDirectives === 'true';
   const positional = (args._ as string[]).filter(
     (f: string) => typeof f === 'string' && f !== 'sync-skills'
   );
@@ -151,22 +153,28 @@ export function run(rawArgs: string[], deps?: SyncCmdDeps): number {
 
   const cwd = process.cwd();
 
-  const directivesExitCode = syncDirectivesFirst(
-    {
-      readFile: _readFile,
-      writeFile: _writeFile,
-      mkdir: _mkdir,
-      stat: _stat,
-      readdir: _readdir,
-      unlink: _unlink,
-      resolvePackageDir: _resolvePackageDir,
-    },
-    cwd,
-    dryRun,
-    _stdout,
-    _stderr
-  );
-  if (directivesExitCode !== null) return directivesExitCode;
+  // SO-9: sync-skills is a narrow, filterable command; syncing ALL directives unconditionally —
+  // even for `gennady sync-skills sdd-execute` — is the widest action a narrow command can take,
+  // and it was doing it silently. Opt-in only, off by default (D-4 option 3); `gennady sync` on
+  // its own already covers directives, run it first when both are wanted.
+  if (withDirectives) {
+    const directivesExitCode = syncDirectivesFirst(
+      {
+        readFile: _readFile,
+        writeFile: _writeFile,
+        mkdir: _mkdir,
+        stat: _stat,
+        readdir: _readdir,
+        unlink: _unlink,
+        resolvePackageDir: _resolvePackageDir,
+      },
+      cwd,
+      dryRun,
+      _stdout,
+      _stderr
+    );
+    if (directivesExitCode !== null) return directivesExitCode;
+  }
 
   // #region START_RESOLVE_PACKAGE — invariant: local node_modules > import.meta.resolve
   const packageDir = _resolvePackageDir(cwd, 'ai/skills');

@@ -123,14 +123,16 @@ describe('run integration', () => {
     assert.ok(existsSync(join(targetDir, 'sdd-check', 'SKILL.md')));
   });
 
-  it('syncs directives before skills — both blocks present, directives block first', () => {
+  // SO-9: the directive stage is opt-in (--with-directives, off by default) — this test now
+  // exercises the flag explicitly. Default-off behavior is covered separately below.
+  it('--with-directives syncs directives before skills — both blocks present, directives block first', () => {
     createFile(_directivesDir, 'sdd/discovery.directive.xml', '<directive/>');
     createFile(join(_sourceDir, 'sdd-audit'), 'SKILL.md', '# Audit Skill');
 
     const stdout = captureStream();
     const deps = makeDeps({ stdout: stdout as unknown as NodeJS.WriteStream });
 
-    const exitCode = run(['node', 'gennady', 'sync-skills'], deps);
+    const exitCode = run(['node', 'gennady', 'sync-skills', '--with-directives'], deps);
 
     assert.equal(exitCode, 0);
 
@@ -154,7 +156,31 @@ describe('run integration', () => {
     );
   });
 
-  it('surfaces directive-mirror warnings — an unowned target subdirectory is reported, not deleted', () => {
+  it('by default (no --with-directives) sync-skills never touches ai/directives/ at all (SO-9)', () => {
+    createFile(_directivesDir, 'sdd/discovery.directive.xml', '<directive/>');
+    createFile(join(_sourceDir, 'sdd-audit'), 'SKILL.md', '# Audit Skill');
+    // A directive the package no longer ships, already in the project — a full mirror sync
+    // would delete it; sync-skills without the flag must never read ai/directives/ at all.
+    const staleDirective = join(_tmpDir, 'ai', 'directives', 'legacy', 'gone.directive.xml');
+    createFile(join(_tmpDir, 'ai', 'directives', 'legacy'), 'gone.directive.xml', '<stale/>');
+
+    const stdout = captureStream();
+    const deps = makeDeps({ stdout: stdout as unknown as NodeJS.WriteStream });
+
+    const exitCode = run(['node', 'gennady', 'sync-skills'], deps);
+
+    assert.equal(exitCode, 0);
+    const output = stdout._chunks.join('');
+    assert.ok(!output.includes('Sync (v'), 'no directives block header');
+    assert.ok(output.includes('Sync skills (v'), 'skills block still present');
+    assert.ok(existsSync(staleDirective), 'stale project directive survives untouched');
+    assert.ok(
+      existsSync(join(_tmpDir, '.claude', 'skills', 'sdd-audit', 'SKILL.md')),
+      'skill file still written to .claude/skills/'
+    );
+  });
+
+  it('--with-directives surfaces directive-mirror warnings — an unowned target subdirectory is reported, not deleted', () => {
     createFile(_directivesDir, 'sdd/discovery.directive.xml', '<directive/>');
     createFile(join(_sourceDir, 'sdd-audit'), 'SKILL.md', '# Audit Skill');
     const customDir = join(_tmpDir, 'ai', 'directives', 'my-custom');
@@ -163,7 +189,7 @@ describe('run integration', () => {
     const stdout = captureStream();
     const deps = makeDeps({ stdout: stdout as unknown as NodeJS.WriteStream });
 
-    const exitCode = run(['node', 'gennady', 'sync-skills'], deps);
+    const exitCode = run(['node', 'gennady', 'sync-skills', '--with-directives'], deps);
 
     assert.equal(exitCode, 0);
     const output = stdout._chunks.join('');
@@ -287,6 +313,8 @@ describe('run --dry-run', () => {
   it('dry-run with orphan does not delete files', () => {
     mkdirSync(join(_tmpDir, '.claude', 'skills', 'sdd-old'), { recursive: true });
     createFile(join(_tmpDir, '.claude', 'skills', 'sdd-old'), 'SKILL.md', '# Old');
+    // `sdd-old` was installed by an earlier sync, so it is ours to prune (SO-2).
+    createFile(join(_tmpDir, '.claude', 'skills'), '.gennady-synced', 'sdd-old\n');
 
     const stdout = captureStream();
     const deps = makeDeps({ stdout: stdout as unknown as NodeJS.WriteStream });
@@ -301,14 +329,17 @@ describe('run --dry-run', () => {
     assert.ok(existsSync(join(_tmpDir, '.claude', 'skills', 'sdd-old')));
   });
 
-  it('dry-run previews directives block too, without writing directive files', () => {
+  it('--with-directives --dry-run previews directives block too, without writing directive files', () => {
     createFile(_directivesDir, 'sdd/discovery.directive.xml', '<directive/>');
     createFile(join(_sourceDir, 'sdd-audit'), 'SKILL.md', '# New');
 
     const stdout = captureStream();
     const deps = makeDeps({ stdout: stdout as unknown as NodeJS.WriteStream });
 
-    const exitCode = run(['node', 'gennady', 'sync-skills', '--dry-run'], deps);
+    const exitCode = run(
+      ['node', 'gennady', 'sync-skills', '--with-directives', '--dry-run'],
+      deps
+    );
 
     assert.equal(exitCode, 0);
 
@@ -408,6 +439,29 @@ describe('run filter', () => {
     assert.ok(output.includes('sdd-audit'));
     assert.ok(output.includes('sdd-execute'));
     assert.ok(!output.includes('sdd-check'));
+  });
+
+  // SO-9 acceptance: the narrowest possible sync-skills call (one named skill) must not run the
+  // widest possible action (a full, unfiltered directive mirror-delete) — reproduced upstream on
+  // a real consumer tree, where this exact call pattern deleted registered Swift rule files.
+  it('sync-skills <name> does not mirror-delete directives', () => {
+    createFile(join(_sourceDir, 'sdd-execute'), 'SKILL.md', '# Execute');
+    // The package no longer ships this directive — a full sync would delete it as an orphan.
+    const registeredRule = join(_tmpDir, 'ai', 'directives', 'coding', 'swift-rules.xml');
+    createFile(join(_tmpDir, 'ai', 'directives', 'coding'), 'swift-rules.xml', '<swift/>');
+
+    const stdout = captureStream();
+    const deps = makeDeps({ stdout: stdout as unknown as NodeJS.WriteStream });
+
+    const exitCode = run(['node', 'gennady', 'sync-skills', 'sdd-execute'], deps);
+
+    assert.equal(exitCode, 0);
+    const output = stdout._chunks.join('');
+    assert.ok(!output.includes('Sync (v'), 'no directives block at all');
+    assert.ok(
+      existsSync(registeredRule),
+      'registered rule file was never touched, let alone deleted'
+    );
   });
 });
 

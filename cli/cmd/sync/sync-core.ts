@@ -74,6 +74,23 @@ export function resolvePackageDir(cwd: string, subdir = 'ai/directives'): string
  * @returns List of relative file paths.
  */
 export function scanDirectives(sourceDir: string, subdirs?: string[]): string[] {
+  return scanDirectivesChecked(sourceDir, subdirs).paths;
+}
+
+/**
+ * @purpose Like scanDirectives, but also reports which subtrees a read error cut short (SO-7):
+ *   a source subtree gennady failed to read must never be mistaken for one the source lacks.
+ * @param sourceDir Source directory to scan.
+ * @param [subdirs] Optional list of subdirectories to scan.
+ * @throws If subdir does not exist in sourceDir.
+ * @returns Relative file paths, plus the relative prefixes whose contents were cut short.
+ */
+function scanDirectivesChecked(
+  sourceDir: string,
+  subdirs?: string[]
+): { paths: string[]; incompletePrefixes: string[] } {
+  const incompletePrefixes: string[] = [];
+
   if (subdirs && subdirs.length > 0) {
     const available = readdirSync(sourceDir).filter(
       (name) => !EXCLUDED_ENTRIES.has(name) && statSync(join(sourceDir, name)).isDirectory()
@@ -90,14 +107,29 @@ export function scanDirectives(sourceDir: string, subdirs?: string[]): string[] 
 
     const files: string[] = [];
     for (const subdir of subdirs) {
-      collectRecursive(join(sourceDir, subdir), subdir, files);
+      collectRecursive(join(sourceDir, subdir), subdir, files, incompletePrefixes);
     }
-    return files.sort();
+    return { paths: files.sort(), incompletePrefixes };
   }
 
   const files: string[] = [];
-  collectRecursive(sourceDir, '', files);
-  return files.sort();
+  collectRecursive(sourceDir, '', files, incompletePrefixes);
+  return { paths: files.sort(), incompletePrefixes };
+}
+
+/**
+ * @purpose Whether relativePath falls under a subtree a read error cut short (SO-7).
+ * @param relativePath Candidate path, `/`-separated.
+ * @param incompletePrefixes Prefixes `collectRecursive` could not fully read; `''` is the root.
+ * @returns True when relativePath is inside (or equal to) one of the incomplete prefixes.
+ */
+function isUnderIncompletePrefix(
+  relativePath: string,
+  incompletePrefixes: readonly string[]
+): boolean {
+  return incompletePrefixes.some(
+    (prefix) => prefix === '' || relativePath === prefix || relativePath.startsWith(`${prefix}/`)
+  );
 }
 
 /**
@@ -173,11 +205,27 @@ function scanTargetMirrorSpace(
   return { paths: files.sort(), warnings };
 }
 
-function collectRecursive(dir: string, relativePrefix: string, result: string[]): void {
+/**
+ * @purpose Recursively list files under dir, `/`-separated relative to the original root.
+ * @invariant SO-7: a `readdirSync` failure records `relativePrefix` in `incomplete` (when given)
+ *   instead of silently returning as if the subtree were empty — the two are not the same thing
+ *   to a caller deciding what to delete.
+ * @param dir Directory to scan.
+ * @param relativePrefix Path prefix relative to the scan root, `/`-separated.
+ * @param result Accumulator for discovered file paths.
+ * @param [incomplete] Accumulator for prefixes whose contents could not be fully read.
+ */
+function collectRecursive(
+  dir: string,
+  relativePrefix: string,
+  result: string[],
+  incomplete?: string[]
+): void {
   let entries: string[];
   try {
     entries = readdirSync(dir);
   } catch {
+    incomplete?.push(relativePrefix.split(sep).join('/'));
     return;
   }
 
@@ -191,7 +239,7 @@ function collectRecursive(dir: string, relativePrefix: string, result: string[])
     if (!st) continue;
 
     if (st.isDirectory()) {
-      collectRecursive(fullPath, relativePath, result);
+      collectRecursive(fullPath, relativePath, result, incomplete);
     } else if (st.isFile()) {
       result.push(relativePath.split(sep).join('/'));
     }
@@ -214,7 +262,10 @@ export function collectAndCompare(deps: SyncCoreDeps, opts: SyncOptions): SyncRe
     throw error;
   }
 
-  const relativePaths = scanDirectives(opts.sourceDir, opts.subdirs);
+  const { paths: relativePaths, incompletePrefixes } = scanDirectivesChecked(
+    opts.sourceDir,
+    opts.subdirs
+  );
   const entries: SyncFileEntry[] = [];
   const sourcePaths = new Set(relativePaths);
 
@@ -230,8 +281,17 @@ export function collectAndCompare(deps: SyncCoreDeps, opts: SyncOptions): SyncRe
     ownedSubdirs,
     filtered
   );
+
+  // SO-7: a source subtree a read error cut short is NOT the same as a source subtree the
+  // package genuinely stopped shipping — treating the two alike turned one `EACCES` into the
+  // silent deletion of every target file underneath. Fail-safe: skip, warn, never guess.
+  for (const prefix of incompletePrefixes) {
+    warnings.push(`source could not be fully read, skipping deletion under: ${prefix || '(root)'}`);
+  }
+
   for (const relativePath of targetPaths) {
     if (sourcePaths.has(relativePath)) continue;
+    if (isUnderIncompletePrefix(relativePath, incompletePrefixes)) continue;
     entries.push({ relativePath, status: 'deleted' });
     if (!opts.dryRun) {
       if (!deps.unlink) {

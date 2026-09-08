@@ -16,7 +16,7 @@ and accepted decision lives here with its evidence, so no knowledge is lost betw
   (`phase-context.ts:98-129`); it never self-infers the phase. Confirmed operator principle — for gates.
 - **A4. The SwiftLint toolchain works headless (one-time).** Swift 6.2 toolchain in ~/Library + rpath
   shim; the SIGBUS was a trailing-slash `//` in TMPDIR. Artur's guard = 80/82 on the frozen bench.
-  (See swiftlint-toolchain-setup.md.)
+  (See swiftlint-setup.md.)
 - **A5. The round-trip CYCLE works.** Given a completable pass, flash regenerates a functioning guard +
   its own probe stand (rt4: 71/82, fc2: 70/82 soft).
 - **A6. Artur's edge-case knowledge was EMPIRICAL, discovered by the flow (execute+audit agents) against

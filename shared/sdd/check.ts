@@ -29,6 +29,7 @@ import {
   matchingTestPhaseIds,
   parseTestCoverage,
 } from './bdd-coverage.ts';
+import type { RuleRegistryEntry } from './task-authoring-literals.ts';
 
 /**
  * @purpose One audit finding.
@@ -2733,4 +2734,31 @@ export function checkResearchOrphans(
     }
   }
   return findings;
+}
+
+/**
+ * @purpose SO-11: `<Rule><File>` registry entries must resolve to a file that actually exists.
+ * @invariant Existence only — NOT the file's own 4-section contract (owner, id-uniqueness of the
+ *   registry itself, etc). That is T-3's job; this check is deliberately smaller and stands alone.
+ * @invariant Severity is `warn` (L-3): an `error` class here would fail every run against the
+ *   frozen baseline before the debt behind it (B2-15) is counted — escalation is a later decision.
+ * @param registryFile Registry file path (finding location).
+ * @param entries Registry entries (id + declared file), from parseRuleRegistry.
+ * @param fileExists Predicate: does entry.file exist on disk? Caller resolves the path first —
+ *   this function has no I/O and no opinion on what "resolves" means for a given registry.
+ * @returns One `SDD_RULE_FILE_MISSING` (warn) per entry whose file does not exist.
+ */
+export function checkRuleRegistryFilesExist(
+  registryFile: string,
+  entries: RuleRegistryEntry[],
+  fileExists: (entry: RuleRegistryEntry) => boolean
+): Finding[] {
+  return entries
+    .filter((entry) => !fileExists(entry))
+    .map((entry) => ({
+      severity: 'warn' as const,
+      code: 'SDD_RULE_FILE_MISSING',
+      file: registryFile,
+      message: `Registry rule "${entry.id}" declares <File>${entry.file}</File>, but that file does not exist on disk — sdd-new/scaffold will resolve this rule to a missing target.`,
+    }));
 }

@@ -208,4 +208,4 @@ untracked-файлы, это дефект харнесса, а не дефект
 - **Измеряй двумя измерениями:** вердикт judge (стохастичен) И механику (`gennady sdd-check --all .`,
   для execute — `gennady sdd-verify --task <ticket> --phase <P>`). Механика — источник истины.
 
-Добавить свой eval: [`WRITING-EVALS.ru.md`](./WRITING-EVALS.ru.md).
+Добавить свой eval: [`06-NEW-EVAL.md`](./06-NEW-EVAL.md).

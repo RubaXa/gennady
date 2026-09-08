@@ -11,7 +11,9 @@ import {
   isTicket,
   scanBlockerTrail,
   parsePhaseHandoffs,
+  checkRuleRegistryFilesExist,
 } from '../check.ts';
+import { parseRuleRegistry } from '../task-authoring-literals.ts';
 
 const AUTHORING_CORRECTED = readFileSync(
   new URL(
@@ -419,5 +421,64 @@ describe('parsePhaseHandoffs', () => {
     assert.deepStrictEqual(parsePhaseHandoffs(log), {
       P1: '**Handoff →** artifacts: [src/new.ts]; decisions: [none]; open: [none]',
     });
+  });
+});
+
+describe('checkRuleRegistryFilesExist (SO-11)', () => {
+  it('reports a registry rule whose file is missing', () => {
+    const registry = [
+      '<Rules>',
+      '<Rule id="typescript-rules"><File>ai/directives/coding/typescript-rules.xml</File></Rule>',
+      '<Rule id="swift-rules"><File>ai/directives/coding/swift-rules.xml</File></Rule>',
+      '</Rules>',
+    ].join('\n');
+    const entries = parseRuleRegistry(registry);
+    const present = new Set(['ai/directives/coding/typescript-rules.xml']);
+
+    const findings = checkRuleRegistryFilesExist('ai/directives/knowledge.xml', entries, (e) =>
+      present.has(e.file)
+    );
+
+    assert.deepStrictEqual(
+      findings.map((f) => f.code),
+      ['SDD_RULE_FILE_MISSING']
+    );
+    assert.match(findings[0]!.message, /swift-rules/);
+    assert.match(findings[0]!.message, /ai\/directives\/coding\/swift-rules\.xml/);
+  });
+
+  it('severity is warn, not error — new codes stay warn until the debt inventory (L-3)', () => {
+    const entries = parseRuleRegistry(
+      '<Rules><Rule id="r"><File>missing.xml</File></Rule></Rules>'
+    );
+
+    const findings = checkRuleRegistryFilesExist('knowledge.xml', entries, () => false);
+
+    assert.equal(findings.length, 1);
+    assert.equal(findings[0]!.severity, 'warn');
+  });
+
+  it('reports nothing when every declared file exists', () => {
+    const entries = parseRuleRegistry(
+      '<Rules><Rule id="r"><File>present.xml</File></Rule></Rules>'
+    );
+
+    const findings = checkRuleRegistryFilesExist('knowledge.xml', entries, () => true);
+
+    assert.deepStrictEqual(findings, []);
+  });
+
+  it('places the finding on the registry file, not the missing rule file', () => {
+    const entries = parseRuleRegistry(
+      '<Rules><Rule id="r"><File>missing.xml</File></Rule></Rules>'
+    );
+
+    const findings = checkRuleRegistryFilesExist(
+      'ai/directives/knowledge.xml',
+      entries,
+      () => false
+    );
+
+    assert.equal(findings[0]!.file, 'ai/directives/knowledge.xml');
   });
 });
