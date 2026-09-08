@@ -21,11 +21,14 @@ export type SddEvalResult = {
   judge?: SddEvalJudgeResult;
 };
 
-/** @purpose Default configuration requested for OpenCode-backed SDD evals. */
+/** @purpose Default configuration requested for OpenCode-backed SDD evals. Both models default to the
+ *   `llm-proxy` family (D-28/L-14: "only the llm-proxy family") so an operator who omits `--model`/
+ *   `--judge-model` still gets the mandated family instead of silently falling back to a different
+ *   provider; `--model`/`--judge-model` can still override the specific model within (or outside) it. */
 export const DEFAULT_SDD_EVAL_CONFIG: SddEvalConfig = {
   baseUrl: 'http://localhost:4096',
-  runnerModel: { providerID: 'openai', modelID: 'gpt-5.6-luna' },
-  judgeModel: { providerID: 'openai', modelID: 'gpt-5.6-sol' },
+  runnerModel: { providerID: 'llm-proxy', modelID: 'deepseek-v4-flash' },
+  judgeModel: { providerID: 'llm-proxy', modelID: 'deepseek-v4-flash' },
   concurrency: 3,
   observeEveryMs: 5 * 60 * 1000,
   stuckAfter: 1,
