@@ -133,8 +133,14 @@
       External Dependencies Audit once more before writing the final spec.
     </Axiom>
 
-    <Axiom id="AX_SPEC_MANDATORY_DIAGRAM">
-      Every interface spec carries at least one diagram in an `Overview` section, high up — who produces vs consumes the contract, or the version-transition flow, at a glance. The floor is one (mermaid or ASCII), held by tooling: `sdd-check` fails a missing section (`SDD_NO_DIAGRAM_BLOCK`) or an empty one (`SDD_DIAGRAM_BLOCK_EMPTY`). Beyond the floor the author adds more views by judgment; that is not a gate.
+    both carried a near-identical local copy differing only in the example view named) -->
+      <Axiom id="AX_SPEC_MANDATORY_DIAGRAM">
+            Every spec carries at least one diagram in an `Overview` section, high up — the shape of what
+            this spec describes, at a glance: for an interface spec, who produces vs consumes the
+            contract, or the version-transition flow; for an infra spec, the developer workflow or tool
+            pipeline. The floor is one (mermaid or ASCII), held by tooling: `sdd-check` fails a missing
+            section (`SDD_NO_DIAGRAM_BLOCK`) or an empty one (`SDD_DIAGRAM_BLOCK_EMPTY`). Beyond the
+            floor the author adds more views by judgment; that is not a gate.
     </Axiom>
 
     <Axiom id="AX_ARTIFACT_STYLE_SELF_CHECK">
@@ -253,6 +259,7 @@
         `Write`. `Edit`, `Patch`, and per-section writes are forbidden. Retain every SECTION marker
         and replace every skeleton guidance comment; none may survive. Content guidance per
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/interface-spec-structure.xml")`.
+        The `Overview` section carries at least one diagram per `AX_SPEC_MANDATORY_DIAGRAM`.
         Before writing, run the self-check pass per
         `AX_ARTIFACT_STYLE_SELF_CHECK`. Write the ordinary V2 artifact per `AX_SPEC_LIFECYCLE` and
         close with the declared integrity check per `AX_CLOSE_WITH_INTEGRITY_CHECK`. In `refine` mode preserve unchanged semantics while regenerating the whole document per

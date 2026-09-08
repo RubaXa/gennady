@@ -130,6 +130,11 @@
 
 
 
+    copy (T-B6-18) — the inline copy had evolved (sdd-check gained RULES_CASCADE_CLOSURE,
+           BDD_COVERAGE, TASKS_APPEND_ONLY, CONSUMERS_RESOLVABLE and the yagni checks; the closing
+           paragraph moved from claiming audit still owns those to citing AX_RULES_CASCADE_VERIFICATION
+           / AX_AUDIT_YAGNI_CROSSCHECK instead) while this file stayed on the older text; this file is
+           now the single home for AX_MECHANICAL_VIA_SDD_CHECK, matching the current, correct text. -->
 
 
 
@@ -170,31 +175,39 @@
 
 
 
-    <Axiom id="AX_FINDING_ROUTING">
-      Every finding is routed to the artifact that owns the remediation:
+    copy (T-B6-18) — merged the three finding types (RULE_FILE_INCOMPLETE, LANGUAGE_QUALITY,
+           YAGNI_WAIVER_INCOMPLETE) that had been added only inline with the closing reconcile/approval
+           paragraph that existed only here; this file is now the single home for AX_FINDING_ROUTING. -->
+      <Axiom id="AX_FINDING_ROUTING">
+            Every finding is routed to the artifact that owns the remediation:
 
-      | Finding type | Action |
-      |---|---|
-      | `CLOSED_WORLD_DRIFT` | spec edit (add entity to Inventory) OR ticket reopen |
-      | `COMPLETENESS_GAP` | ticket reopen — new Round N |
-      | `RUNTIME_BACKING_VIOLATION` | spec edit (Deferred Runtime Scope) OR ticket reopen |
-      | `RULES_COMPLIANCE_VIOLATION` | ticket reopen, new Round N |
-      | `RULES_CASCADE_MISMATCH` | ticket update (per-phase `Rules:` list) |
-      | `BDD_COVERAGE_MISMATCH` | ticket reopen OR ticket update (canonical case names) |
-      | `EXECUTION_LOG_INCOMPLETE` | ticket update / reopen |
-      | `INSIGHT_BACKFLOW` | spec edit (scope or module spec) |
-      | `STALE_AFTER_PIVOT` | reopen / refine the affected downstream artifact |
-      | `TASK_ID_DRIFT` | code-fix via ticket reopen |
-      | `RULE_FILE_INCOMPLETE` | ticket update to correct the declared Rules list OR a separate rule-maintenance task when the referenced rule itself is incomplete |
-      | `LANGUAGE_QUALITY` | spec edit or ticket update at the exact operator-facing sentence |
-      | `YAGNI_WAIVER_INCOMPLETE` | ticket update (add the missing Execution Log line) OR spec edit (remove the label if it was never actually decided) |
-      | `ENVIRONMENT_GATE_UNAVAILABLE` | operator escalation — NOT a phase fix and NOT something audit or the worker repairs itself; spin out as a separate infra/environment task if the fix is non-trivial |
-      | `DEAD_CODE_SUSPECT` (spotted incidentally during a probe) | spin out as a separate task (background task / new ticket) — never fixed inside the current task; keeps the current blast radius bounded |
-      | operator-acknowledged risk | Decision Log entry in the scope spec |
+            | Finding type | Action |
+            |---|---|
+            | `CLOSED_WORLD_DRIFT` | spec edit (add entity to Inventory) OR ticket reopen |
+            | `COMPLETENESS_GAP` | ticket reopen — new Round N |
+            | `RUNTIME_BACKING_VIOLATION` | spec edit (Deferred Runtime Scope) OR ticket reopen |
+            | `RULES_COMPLIANCE_VIOLATION` | ticket reopen, new Round N |
+            | `RULES_CASCADE_MISMATCH` | ticket update (per-phase `Rules:` list) |
+            | `BDD_COVERAGE_MISMATCH` | ticket reopen OR ticket update (canonical case names) |
+            | `EXECUTION_LOG_INCOMPLETE` | ticket update / reopen |
+            | `INSIGHT_BACKFLOW` | spec edit (scope or module spec) |
+            | `STALE_AFTER_PIVOT` | reopen / refine the affected downstream artifact |
+            | `TASK_ID_DRIFT` | code-fix via ticket reopen |
+            | `RULE_FILE_INCOMPLETE` | ticket update to correct the declared Rules list OR a separate rule-maintenance task when the referenced rule itself is incomplete |
+            | `LANGUAGE_QUALITY` | spec edit or ticket update at the exact operator-facing sentence |
+            | `YAGNI_WAIVER_INCOMPLETE` | ticket update (add the missing Execution Log line) OR spec edit (remove the label if it was never actually decided) |
+            | `ENVIRONMENT_GATE_UNAVAILABLE` | operator escalation — NOT a phase fix and NOT something audit or the worker repairs itself; spin out as a separate infra/environment task if the fix is non-trivial |
+            | `DEAD_CODE_SUSPECT` (spotted incidentally during a probe) | spin out as a separate task (background task / new ticket) — never fixed inside the current task; keeps the current blast radius bounded |
+            | operator-acknowledged risk | Decision Log entry in the scope spec |
 
-      The audit agent proposes a concrete edit (diff or instruction). The operator decides; the
-      orchestrator routes an accepted proposal to the artifact owner. The audit/code-review worker stays
-      read-only throughout (`AX_NO_AUTO_FIX`).
+            The audit agent proposes a concrete edit (diff or instruction). The operator decides; the
+            orchestrator routes an accepted proposal to the artifact owner. The audit/code-review worker stays
+            read-only throughout (`AX_NO_AUTO_FIX`).
+            When reconcile consumes the proposal, every semantic "spec edit" in this table means route to
+            the owning scope/module/infra/interface authoring flow, independent semantic review, and operator approval #1 before
+            implementation. Only an explicitly non-semantic editorial correction may use reconcile's bounded
+            task-free direct receipt. Every task-owned code action means a new Round with concrete fix/test
+            PhaseIDs; finding size never bypasses the ticket.
     </Axiom>
 
 

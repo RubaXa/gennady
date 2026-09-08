@@ -103,19 +103,19 @@
     </Step>
 
 <Axiom id="AX_MECHANICAL_VIA_SDD_CHECK">
-      Deterministic mechanical checks are NOT hand-coded in this directive — they live in one tool, `sdd-check`, which the whole-tree reporter and this directive both consume. Single source of mechanical truth → no drift between the SDD reviewers. Take its findings as given; do NOT hand-redo them.
+            Deterministic mechanical checks are NOT hand-coded in this directive — they live in one tool, `sdd-check`, which the whole-tree reporter and this directive both consume. Single source of mechanical truth → no drift between the SDD reviewers. Take its findings as given; do NOT hand-redo them.
 
-      - `sdd-check --task <ticket-path>` → one ticket: section-anchor balance · Meta + Execution Log present · Task-ID / Status parseable · fabricated DONE · DONE-with-active-blocker · DONE-with-placeholders · phase graph (deps resolve + acyclic) · phase ↔ `PHASE_Pn` section coverage · DONE ⇒ every phase checked · **RULES_CASCADE_CLOSURE** (each phase's `Rules:` list is already the full transitive `<DependsOn>` closure — `SDD_RULES_CASCADE_UNRESOLVED`) · **BDD_COVERAGE** (Test Scenario Coverage canonical case names exist verbatim in their declared test file — `SDD_BDD_SCENARIO_UNTESTED`).
-      - `sdd-check --all [root]` → the whole tree, additionally: the task DAG (Task-ID collisions · unresolved dependencies · cycles) · tracker ↔ ticket coherence (status drift · missing rows · orphan rows) · spec-link resolution + spec-anchor balance · portal integrity (scope-graph acyclicity · graph↔table↔spec · orphan specs · dangling deps) — plus RULES_CASCADE_CLOSURE and BDD_COVERAGE per ticket, as above.
-      - `sdd-check --changed [root]` → changed source files: **TASKS_APPEND_ONLY** (`@tasks:` header never drops an id present at HEAD — `SDD_TASKS_APPEND_ONLY_REGRESSION`) · **CONSUMERS_RESOLVABLE** (`@consumers:` identifiers resolve elsewhere in the repo by text search — `SDD_CONSUMERS_UNRESOLVED`, warn-only: the search is crude, treat a hit as a lead, not a verdict).
+            - `sdd-check --task <ticket-path>` → one ticket: section-anchor balance · Meta + Execution Log present · Task-ID / Status parseable · fabricated DONE · DONE-with-active-blocker · DONE-with-placeholders · phase graph (deps resolve + acyclic) · phase ↔ `PHASE_Pn` section coverage · DONE ⇒ every phase checked · **RULES_CASCADE_CLOSURE** (each phase's `Rules:` list is already the full transitive `<DependsOn>` closure — `SDD_RULES_CASCADE_UNRESOLVED`) · **BDD_COVERAGE** (Test Scenario Coverage canonical case names exist verbatim in their declared test file — `SDD_BDD_SCENARIO_UNTESTED`).
+            - `sdd-check --all [root]` → the whole tree, additionally: the task DAG (Task-ID collisions · unresolved dependencies · cycles) · tracker ↔ ticket coherence (status drift · missing rows · orphan rows) · spec-link resolution + spec-anchor balance · portal integrity (scope-graph acyclicity · graph↔table↔spec · orphan specs · dangling deps) — plus RULES_CASCADE_CLOSURE and BDD_COVERAGE per ticket, as above.
+            - `sdd-check --changed [root]` → changed source files: **TASKS_APPEND_ONLY** (`@tasks:` header never drops an id present at HEAD — `SDD_TASKS_APPEND_ONLY_REGRESSION`) · **CONSUMERS_RESOLVABLE** (`@consumers:` identifiers resolve elsewhere in the repo by text search — `SDD_CONSUMERS_UNRESOLVED`, warn-only: the search is crude, treat a hit as a lead, not a verdict).
 
-      `gennady yagni` (run as part of `sdd-verify --profile full`, STEP_1) is likewise taken as
-      given for its own two checks: usage count `< 2` (`ERR_CLI_YAGNI_UNDERUSED`) and, when the
-      Usage Waiver label cites an `<ACR>-DL-N` (or immutable legacy id), whether it resolves to a live Decision Log entry
-      (`ERR_CLI_YAGNI_WAIVER_DECISION_MISSING`) — do not re-count usages or re-search Decision Logs
-      by hand.
+            `gennady yagni` (run as part of `sdd-verify --profile full`, STEP_1) is likewise taken as
+            given for its own two checks: usage count `< 2` (`ERR_CLI_YAGNI_UNDERUSED`) and, when the
+            Usage Waiver label cites an `<ACR>-DL-N` (or immutable legacy id), whether it resolves to a live Decision Log entry
+            (`ERR_CLI_YAGNI_WAIVER_DECISION_MISSING`) — do not re-count usages or re-search Decision Logs
+            by hand.
 
-      Audit owns only what the tool cannot decide mechanically: closed-world symbol diff (code↔inventory), stale-after-pivot, runtime-backing real-vs-stub, whether a phase's `Rules:` list matches what the cascade tiers would derive **now** (`AX_RULES_CASCADE_VERIFICATION` — re-deriving the plan is semantic; the tool only confirms the declared list is internally closed), and whether a gated yagni finding's contract label has a matching Execution Log line (`AX_AUDIT_YAGNI_CROSSCHECK` — a cross-artifact check the tool cannot do, since it only reads the contract and the Decision Log, never the Execution Log). File-header presence (`@file`/`@consumers`/`@tasks`) is checked by `sdd-verify`, not here.
+            Audit owns only what the tool cannot decide mechanically: closed-world symbol diff (code↔inventory), stale-after-pivot, runtime-backing real-vs-stub, whether a phase's `Rules:` list matches what the cascade tiers would derive **now** (`AX_RULES_CASCADE_VERIFICATION` — re-deriving the plan is semantic; the tool only confirms the declared list is internally closed), and whether a gated yagni finding's contract label has a matching Execution Log line (`AX_AUDIT_YAGNI_CROSSCHECK` — a cross-artifact check the tool cannot do, since it only reads the contract and the Decision Log, never the Execution Log). File-header presence (`@file`/`@consumers`/`@tasks`) is checked by `sdd-verify`, not here.
     </Axiom>
 
 <Axiom id="AX_AUDIT_MODES">

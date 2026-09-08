@@ -44,9 +44,7 @@
 
     {{> "axiom/boundary/ax-bootstrap-narrow-read"}}
 
-    <Axiom id="AX_SPEC_MANDATORY_DIAGRAM">
-      Every interface spec carries at least one diagram in an `Overview` section, high up — who produces vs consumes the contract, or the version-transition flow, at a glance. The floor is one (mermaid or ASCII), held by tooling: `sdd-check` fails a missing section (`SDD_NO_DIAGRAM_BLOCK`) or an empty one (`SDD_DIAGRAM_BLOCK_EMPTY`). Beyond the floor the author adds more views by judgment; that is not a gate.
-    </Axiom>
+    {{> "axiom/spec/ax-spec-mandatory-diagram"}}
 
     {{> "axiom/process/ax-artifact-style-self-check"}}
 
@@ -155,6 +153,7 @@
         `Write`. `Edit`, `Patch`, and per-section writes are forbidden. Retain every SECTION marker
         and replace every skeleton guidance comment; none may survive. Content guidance per
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/interface-spec-structure.xml")`.
+        The `Overview` section carries at least one diagram per `AX_SPEC_MANDATORY_DIAGRAM`.
         Before writing, run the self-check pass per
         `AX_ARTIFACT_STYLE_SELF_CHECK`. Write the ordinary V2 artifact per `AX_SPEC_LIFECYCLE` and
         close with the declared integrity check per `AX_CLOSE_WITH_INTEGRITY_CHECK`. In `refine` mode preserve unchanged semantics while regenerating the whole document per

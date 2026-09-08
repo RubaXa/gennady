@@ -323,29 +323,39 @@ test('a bare unclosed placeholder tag in prose (<NAME>, <X>/<Y>/<Z>/<G>/<T>, <YY
 });
 
 // --- regression: nested <Axiom> inside <Axiom> truncated the outer and dropped the inner entirely ---
-// agent-inbox/{code-lens,security-lens,synthesize,track-review}.directive.xml quote one axiom verbatim
-// inside another instead of duplicating text: <Axiom id="AX_NO_DUPLICATION">...<Axiom
-// id="AX_TICKET_DEDUPLICATION">...</Axiom>...</Axiom>. The OLD lazy regex
-// `/<Axiom\b([^>]*)>([\s\S]*?)<\/Axiom>/g` stopped at the FIRST `</Axiom>` — the inner one's — so the
-// outer's body was cut off mid-sentence (everything after the nested axiom silently dropped) and the
-// inner axiom never became a node at all.
+// Some directives used to quote one axiom verbatim inside another instead of duplicating text:
+// <Axiom id="AX_OUTER">...<Axiom id="AX_INNER">...</Axiom>...</Axiom> (T-B6-18 later moved the
+// one live example of this shape, agent-inbox's AX_NO_DUPLICATION/AX_TICKET_DEDUPLICATION pair,
+// to two sibling partials instead — so this regression now uses a synthetic fixture reproducing
+// the same nested shape rather than depending on the live corpus still containing one). The OLD
+// lazy regex `/<Axiom\b([^>]*)>([\s\S]*?)<\/Axiom>/g` stopped at the FIRST `</Axiom>` — the inner
+// one's — so the outer's body was cut off mid-sentence (everything after the nested axiom
+// silently dropped) and the inner axiom never became a node at all.
 
-const codeLensXml = readFileSync(
-  join(repoRoot, 'ai/directives/sdd-v2/agent-inbox/code-lens.directive.xml'),
-  'utf8'
-);
-const codeLens = parseDirective(
-  'ai/directives/sdd-v2/agent-inbox/code-lens.directive.xml',
-  codeLensXml
-);
+const nestedAxiomXml = [
+  '<Directive type="directive" ver="2.0">',
+  '  <BeliefState>',
+  '    <Axiom id="AX_OUTER">',
+  '      Reuses the inner principle (single authoritative home for one piece of content) — no',
+  '      separate axiom is authored for this, the same principle',
+  '      is read verbatim below.',
+  '      <Axiom id="AX_INNER">',
+  '        Project-wide content lives ONCE in `specs/3-tasks.md`.',
+  '      </Axiom>',
+  '    </Axiom>',
+  '  </BeliefState>',
+  '</Directive>',
+  '',
+].join('\n');
+const nested = parseDirective('synthetic-nested-axiom.directive.xml', nestedAxiomXml);
 
 test('a nested <Axiom> inside <Axiom> becomes a child, not a truncation of the outer', () => {
-  const beliefState = codeLens.children?.find((c) => c.label === '<BeliefState>');
+  const beliefState = nested.children?.find((c) => c.label === '<BeliefState>');
   assert.ok(beliefState, '<BeliefState> present');
-  const outer = beliefState?.children?.find((a) => a.label === 'AX_NO_DUPLICATION');
-  assert.ok(outer, 'AX_NO_DUPLICATION present');
-  const inner = outer?.children?.find((a) => a.label === 'AX_TICKET_DEDUPLICATION');
-  assert.ok(inner, 'AX_TICKET_DEDUPLICATION is a child of AX_NO_DUPLICATION, not lost');
+  const outer = beliefState?.children?.find((a) => a.label === 'AX_OUTER');
+  assert.ok(outer, 'AX_OUTER present');
+  const inner = outer?.children?.find((a) => a.label === 'AX_INNER');
+  assert.ok(inner, 'AX_INNER is a child of AX_OUTER, not lost');
   assert.match(inner?.detail ?? '', /specs\/3-tasks\.md/);
   // the outer's own detail keeps its FULL text — including what came after the nested axiom in the
   // source — without leaking the nested element's raw XML markup into it

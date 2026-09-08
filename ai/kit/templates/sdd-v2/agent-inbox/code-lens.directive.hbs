@@ -59,13 +59,9 @@
 
     {{> "axiom/agent-inbox/ax-complexity-budget"}}
 
-    <Axiom id="AX_NO_DUPLICATION">
-      Applied to code, not ticket text: before accepting a new symbol, search the repo for an
-      existing equivalent. Reuses the `ax-ticket-deduplication` principle (single authoritative
-      home for one piece of content) — no separate axiom is authored for this, the same principle
-      is read verbatim below.
-      {{> "axiom/scaffold/ax-ticket-deduplication"}}
-    </Axiom>
+    {{> "axiom/agent-inbox/ax-no-duplication"}}
+
+    {{> "axiom/scaffold/ax-ticket-deduplication"}}
 
     <!-- TSK-136 (D-123/AI-44): mrShape-driven additive triggers — injected only when the
          orchestrator's statanalysis flagged the corresponding signal on this MR's diff. -->
