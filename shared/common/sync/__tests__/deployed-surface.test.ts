@@ -104,7 +104,18 @@ describe('deployed surface (SO-5)', () => {
   });
 
   it('npm pack --dry-run ships exactly the frozen tarball file list', () => {
-    assertGoldenList('deployed-surface.tarball.golden.txt', packFiles());
+    // `dist/**` is excluded from the frozen list: it is Vite's build OUTPUT, not a checked-in
+    // repository source. `dist/chunks/*` filenames carry a content hash chosen by Vite's internal
+    // chunk splitting (`dist/chunks/foo-<hash>.js`) — that hash, and even the chunk COUNT, can
+    // change between two builds of the identical source (a fresh `npm run build` regenerates them,
+    // and nothing in this repo pins either). Freezing those paths made this `it` fail
+    // deterministically after any build, on this tree and on any fresh clone that never built at
+    // all (`dist/` is gitignored — see `.gitignore:11` — so `npm pack --dry-run` on a fresh clone
+    // omits `dist/**` entirely, since `package.json`'s `files: ["dist/**/*", ...]` glob matches
+    // nothing). The stable, checked-in package surface is what this golden freezes; whether `dist/`
+    // exists, and what its build produced this run, is orthogonal to it.
+    const files = packFiles().filter((path) => path !== 'dist' && !path.startsWith('dist/'));
+    assertGoldenList('deployed-surface.tarball.golden.txt', files);
   });
 
   it('ships no file (directives ∪ skills ∪ tarball) with a developer home-directory path leak', () => {
