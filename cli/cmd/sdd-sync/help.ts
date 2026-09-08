@@ -8,6 +8,11 @@
 export function printHelp(): void {
   console.info('gennady sdd-sync — Propagate a ticket Status into the *.3-tasks.md trackers');
   console.info('');
+  console.info(
+    'Not `sync`/`sync-skills` (those mirror ai/directives/ai/skills from the npm package) —'
+  );
+  console.info('sdd-sync never touches package files, only tracker rows for one ticket.');
+  console.info('');
   console.info('Usage:');
   console.info('  npx gennady sdd-sync <ticket> [index.3-tasks.md ...]');
   console.info(

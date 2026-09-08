@@ -4,13 +4,24 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const ROOT = resolve(import.meta.dirname, '../../..');
 
 function read(...parts: string[]): string {
   return readFileSync(resolve(ROOT, ...parts), 'utf8');
+}
+
+/**
+ * @purpose Recursively list absolute file paths under `dir` (files only, no directories).
+ * @param dir Absolute directory to walk.
+ * @returns Absolute paths of every file found under `dir`.
+ */
+function walkFiles(dir: string): string[] {
+  return readdirSync(dir, { recursive: true, withFileTypes: true })
+    .filter((entry) => entry.isFile())
+    .map((entry) => resolve(entry.parentPath, entry.name));
 }
 
 describe('stateless SDD entry contract', () => {
@@ -277,5 +288,25 @@ describe('stateless execution and specification format', () => {
       bootstrap,
       /Capability Adapter|Provides Capabilities|Requires Capabilities|Provides Packages|Requires Packages|project-feasibility|scaffold-feasibility/
     );
+  });
+});
+
+// LOCK-1 (20-ISSUES-VERDICTS.md #9.5, ai/drafts/research/sdd-v1-to-v2-transfer/61-TASK-BOARD.md §1):
+// v1 fixed hardcoded `model: "sonnet"|"haiku"|"opus"` dispatch pins in 90b123e9 (#14) — a project
+// inheriting the caller's configured model no longer has to strip them after every sync. v2 never
+// had the pin (dispatch in execute.directive.xml leaves `model` unset), but had no regression lock.
+// This is that lock: any future dispatch/skill/template that reintroduces a hardcoded pin fails here.
+describe('model pin never returns (LOCK-1)', () => {
+  it('keeps every shipped skill, directive, and kit template free of a hardcoded model pin', () => {
+    const roots = ['ai/skills', 'ai/directives', 'ai/kit/templates'];
+    const pin = /model:\s*["']?(?:sonnet|haiku|opus)["']?/;
+    const offenders: string[] = [];
+    for (const root of roots) {
+      for (const file of walkFiles(resolve(ROOT, root))) {
+        const content = readFileSync(file, 'utf8');
+        if (pin.test(content)) offenders.push(file.replace(`${ROOT}/`, ''));
+      }
+    }
+    assert.deepEqual(offenders, []);
   });
 });
