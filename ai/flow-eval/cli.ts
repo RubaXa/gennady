@@ -295,10 +295,32 @@ async function runAndReport(
 ): Promise<void> {
   const registry = new SddEvalSessionDirectoryMap();
   const runtime = new SddEvalOpenCodeRuntime({ baseUrl: options.config.baseUrl, registry });
+  // GAP-E-1b: the default live event reader (evidence.ts) opens a real, long-lived SSE subscription
+  // to the OpenCode server; without an explicit abort it retries with backoff even after this batch
+  // is fully done, which would keep the CLI process alive indefinitely. This signal is aborted in the
+  // finally below so a finished run always exits promptly, independent of the OpenCode server's state.
+  const eventAbort = new AbortController();
   const evidence = new SddEvalOpenCodeEvidenceSource({
     baseUrl: options.config.baseUrl,
     registry,
+    eventSignal: eventAbort.signal,
   });
+  try {
+    await runAndReportBody(options, isolated, artifacts, migrationBaselines, runtime, evidence);
+  } finally {
+    eventAbort.abort();
+  }
+}
+
+/** @purpose The body of runAndReport, split out so the event-subscription abort above always runs. */
+async function runAndReportBody(
+  options: SddEvalCliOptions,
+  isolated: Array<SddEvalScenario & { directory: string }>,
+  artifacts: SddEvalRunArtifact[],
+  migrationBaselines: Map<string, FindingHistogram>,
+  runtime: SddEvalOpenCodeRuntime,
+  evidence: SddEvalOpenCodeEvidenceSource
+): Promise<void> {
   const results = await new SddEvalRunner(runtime, evidence, options.config).runAll(isolated);
   const byId = new Map(isolated.map((scenario) => [scenario.id, scenario]));
   for (const result of results) {

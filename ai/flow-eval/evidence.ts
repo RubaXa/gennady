@@ -21,6 +21,80 @@ import type {
 /** @purpose Injectable event reader because OpenCode's global event endpoint is a long-lived SSE stream. */
 export type SddEvalEventReader = (sessionId: string, directory?: string) => Promise<SddEvalEvent[]>;
 
+/**
+ * @purpose GAP-E-1b: connect readEvents to the real OpenCode event stream instead of the dead
+ *   `async () => []` default. `client.event.subscribe` (GET /event) is a single long-lived SSE
+ *   connection for the whole server, not one per session — so this opens it ONCE, lazily, on the
+ *   first call, and keeps appending every event it sees into a per-session buffer for the life of
+ *   the evidence source. `readEvents(sessionId)` then just returns whatever has accumulated for
+ *   that session; it never blocks waiting for a NEW event (observer.ts polls on an interval, so a
+ *   later poll picks up what a race missed on this one).
+ * @param sessionId Extracted from the raw event's `properties.sessionID` (or nested
+ *   `properties.info.id` for session.created/updated/deleted); events without either are dropped —
+ *   there is nowhere to file them.
+ * @param type Passed through VERBATIM from the raw event's `type` field, whatever string the server
+ *   sends (`permission.updated`, `session.idle`, ... or a future/synthetic name) — this reader does
+ *   not maintain its own allow-list; observer.ts owns which type strings it treats as "waiting".
+ * @param signal Optional external abort — without one, a server that starts refusing/dropping the
+ *   connection would otherwise retry with exponential backoff FOREVER (the SDK's SSE client has no
+ *   default retry cap), which is exactly the kind of lingering handle that keeps a process from
+ *   exiting after teardown. `sseMaxRetryAttempts` is ALSO capped independent of `signal`, so a dead
+ *   server still gives up (and readEvents keeps returning whatever was buffered before it died)
+ *   even when no caller supplied a signal.
+ * Not exported: its one production call site is this file's own constructor default below (YAGNI —
+ *   a private symbol used at least once is ordinary decomposition, not speculative surface). Tested
+ *   through the public `SddEvalOpenCodeEvidenceSource` class (its actual production interface), not
+ *   by importing this function directly — see __tests__/evidence-events.test.ts.
+ */
+function createSddEvalLiveEventReader(
+  client: OpencodeClient,
+  options: { signal?: AbortSignal } = {}
+): SddEvalEventReader {
+  const bySession = new Map<string, SddEvalEvent[]>();
+  let subscription: Promise<void> | undefined;
+
+  function extractSessionId(raw: unknown): string | undefined {
+    const event = raw as { properties?: Record<string, unknown> };
+    const props = event.properties;
+    if (!props) return undefined;
+    const direct = props.sessionID ?? props.sessionId;
+    if (typeof direct === 'string') return direct;
+    const info = props.info as { id?: unknown } | undefined;
+    return typeof info?.id === 'string' ? info.id : undefined;
+  }
+
+  async function subscribe(): Promise<void> {
+    const result = await client.event.subscribe({ signal: options.signal, sseMaxRetryAttempts: 3 });
+    for await (const raw of result.stream) {
+      const event = raw as { type?: unknown; properties?: Record<string, unknown> };
+      const sessionId = extractSessionId(raw);
+      if (!sessionId) continue;
+      const entry: SddEvalEvent = {
+        type: typeof event.type === 'string' ? event.type : 'unknown',
+        sessionId,
+        at: Date.now(),
+        summary: event.properties ? JSON.stringify(event.properties).slice(0, 200) : undefined,
+      };
+      const list = bySession.get(sessionId) ?? [];
+      list.push(entry);
+      bySession.set(sessionId, list);
+    }
+  }
+
+  return async (sessionId: string): Promise<SddEvalEvent[]> => {
+    if (!subscription) {
+      // Fire-and-forget: a broken/closed stream must not make readEvents reject forever — the
+      // observer keeps polling on whatever was buffered before the failure.
+      subscription = subscribe().catch((error) => {
+        console.error(
+          `[flow-eval] event stream error: ${error instanceof Error ? error.message : String(error)}`
+        );
+      });
+    }
+    return bySession.get(sessionId) ?? [];
+  };
+}
+
 /** @purpose SDK/storage options for production evidence reads and fake-backed tests. */
 type SddEvalEvidenceOptions = {
   baseUrl?: string;
@@ -29,6 +103,11 @@ type SddEvalEvidenceOptions = {
   readEvents?: SddEvalEventReader;
   /** @purpose Same registry populated by the runtime on session creation. */
   registry?: SddEvalSessionDirectoryRegistry;
+  /** @purpose Stops the default live event subscription (see createSddEvalLiveEventReader) on
+   *  teardown — pass the SAME signal used to tear down the rest of a run so the process can exit
+   *  once the batch is done, without waiting out the SSE client's retry backoff. Ignored when
+   *  `readEvents` is explicitly injected (fake-backed tests own their own lifecycle). */
+  eventSignal?: AbortSignal;
 };
 
 function errorMessage(result: { error?: unknown }): string {
@@ -148,7 +227,13 @@ export class SddEvalOpenCodeEvidenceSource implements SddEvalEvidenceSource {
         baseUrl: options.baseUrl ?? 'http://localhost:4096',
         directory: options.directory,
       });
-    this.#readEvents = options.readEvents ?? (async () => []);
+    // GAP-E-1b: the default used to be a dead `async () => []` — the judge/observer never saw a
+    // real permission/session event regardless of what the OpenCode server actually emitted. It now
+    // defaults to a live reader bound to THIS instance's own client (production path); an injected
+    // `options.readEvents` (fake-backed tests) still takes priority, unchanged.
+    this.#readEvents =
+      options.readEvents ??
+      createSddEvalLiveEventReader(this.#client, { signal: options.eventSignal });
   }
 
   /** @purpose Fail closed when evidence cannot be tied to one exact sandbox cwd. */
