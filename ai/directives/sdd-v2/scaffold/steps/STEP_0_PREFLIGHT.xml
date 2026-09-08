@@ -17,11 +17,4 @@
       </Action>
     </Step>
 
-<Axiom id="AX_STATELESS_FLOW" invariant="true">
-      SDD orchestration owns no durable hidden control plane. Specs, ticket fields, task indexes,
-      Execution Log, Git, and real command output are the complete continuation state. A scratch file
-      may carry bytes between two adjacent tool calls, but it is disposable, never an approval record,
-      never a state machine, and never required to resume.
-    </Axiom>
-
 After completing this step, and only then, READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/scaffold/steps/STEP_1_DERIVE.xml"). Do not preload later step packages.

@@ -109,6 +109,23 @@ describe('delta-assembly — graph shape', () => {
     }
   });
 
+  it('every top-level sdd-v2 directive is reachable from at least one router branch or explicit dispatch (T-B6-22)', () => {
+    const { pass1, plan } = buildPlan();
+    const topLevel = pass1.filter((e) => /^sdd-v2\/[^/]+\.directive\.xml$/.test(e.rel));
+    for (const e of topLevel) {
+      const id = 'ai/directives/' + e.rel;
+      const incoming = plan.graph.incoming.get(id) ?? new Set();
+      const isRouter = e.rel === 'sdd-v2/router.directive.xml';
+      const isClass1 = plan.class1.has(id);
+      const fileName = basename(e.rel);
+      const namedByDispatchText = pass1.some((o) => o.rel !== e.rel && o.renderedFull.includes(fileName));
+      assert.ok(
+        isRouter || isClass1 || incoming.size > 0 || namedByDispatchText,
+        `${e.rel} is unreachable — no router/directive edge, no SKILL.md entry point, and no other template names it by dispatch text`
+      );
+    }
+  });
+
   it('class 1 matches direct SKILL.md entry points after stateful entries converge on router', () => {
     const { plan } = buildPlan();
     const expected = ['audit', 'code-review', 'router'].map(

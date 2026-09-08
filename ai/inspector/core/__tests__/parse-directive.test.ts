@@ -180,7 +180,7 @@ test('STEP_2_ROUTE parses the current bare LOGIC_SWITCH lines into exact owner b
     'ai/directives/sdd-v2/critic.directive.xml',
     'ai/directives/sdd-v2/reconcile.directive.xml',
     'ai/directives/sdd-v2/root.directive.xml',
-    'ai/directives/sdd-v2/discover-from-code.directive.xml',
+    'ai/directives/sdd-v2/recover-from-code.directive.xml',
     'ai/directives/sdd-v2/module.directive.xml',
     'ai/directives/sdd-v2/infra.directive.xml',
     'ai/directives/sdd-v2/interface.directive.xml',
