@@ -1,6 +1,6 @@
 СВОДНЫЙ ОТЧЁТ — Пачка 6 «Эвал даёт честный исход, а не красивую картинку»
 
-СТАТУС: DONE, 5/5 задач приёмки, 1 доводящий коммит поверх незакрытой половины E-21, 0 стопов
+СТАТУС: DONE, 5/5 задач приёмки, 2 доводящих коммита (E-21 модель по умолчанию; E-01 правка по V-BATCH-06, см. §10), 0 стопов
 
 Рабочее дерево: `rc-w2` (`/private/tmp/.../scratchpad/rc-w2`). Ветка `lead/eval-honest-outcome`. Пачка была прервана перезапуском процесса Lead: предыдущий исполнитель успел закоммитить все 5 задач на старой базе (`f16d7f17`, голова `origin/lead/release-package` ДО мержа PR #27), но не написал отчёты, не сделал финальные прогоны и не ребейзнул на актуальную голову RC. Эта сессия завершила пачку: ребейз, доводка одного гэпа в E-21, отчёты, финальные прогоны.
 
@@ -91,9 +91,10 @@ flowchart TD
   SC["scenario (scenarios.json)"] --> LS["loadScenarios()\ncli.ts:144"]
   LS -->|"phase/mode невалидны\n(GAP-E-1)"| ERRLOAD["throw при ЗАГРУЗКЕ,\nдо провижининга песочницы"]
   LS -->|"валидны"| PROV["provisionScenarioDirectories"]
-  PROV --> RUN["SddEvalRunner.runAll()"]
+  PROV --> RUN["SddEvalRunner.runAll()\nrunner.ts (вызвана из runAndReport,\ncli.ts:285)"]
   RUN --> WORKER["worker-сессия\n(voice: composeSddPhasePrompt\nprompts.ts:67 resolveBasePrompt)"]
-  RUN --> QGATE["quality-gate.ts:\nR1 (parseSddCheckResult) / R-COMPLETE (checkCompletion)"]
+  RUN -->|"результаты runAll() возвращены,\nдалее runAndReport читает их построчно"| RAR["runAndReport()\ncli.ts:273-328"]
+  RAR --> QGATE["quality-gate.ts, вызвана ПОСЛЕ runAll():\nR1 checkR1Structure (cli.ts:316) /\nR-COMPLETE checkCompletion (cli.ts:325)"]
   QGATE -->|"E-01: errors===0 из реальной строки → pass"| QRESULT["QualityRuleResult{ rule, pass, detail }"]
   QGATE -->|"E-02: completion назван → R-COMPLETE проверяет диск"| QRESULT
   WORKER --> JUDGE["judge.ts: отдельная сессия,\nVERDICT: pass|fail|inconclusive"]
@@ -181,3 +182,76 @@ git -C rc-w2 push origin lead/eval-honest-outcome:lead/eval-honest-outcome
 2. **E-21, конфиг моделей был не закрыт исходным коммитом** — закрыт мной отдельным коммитом `4fcb8876`, см. §3.
 3. **Число «90/90» в приёмке E-00 устарело** — текущий размер суиты 120/120, зафиксировано в `R-E-00.md` §3 как факт, не как невыполнение.
 4. **Флаки под нагрузкой хоста** во время работы (не в финальном прогоне) — два независимых 30-секундных таймаута в тестах, не относящихся к этой пачке; оба воспроизведены изолированно как проходящие. См. §6.
+
+---
+
+## 10. Правки по V-BATCH-06 (верификатор `plan-verifier`, см. `_raw/V-BATCH-06.md`)
+
+Верификация вернула 1 блокирующее и 4 неблокирующих замечания. Ниже — что исправлено в этой сессии и новый SHA.
+
+### 10.1 Блокирующее — E-01: инверсия приоритета «clean» над «errors»
+
+Коммит `b34ffd8a` поставил `if (clean) return pass` ВЫШЕ проверки `errors > 0`, поэтому вывод, где рядом стоят `✅ clean`/`clean — N file` и `N error(s)`, давал R1 = pass — молчаливый успех на реально сломанном прогоне. Заявленный в `b34ffd8a` регрессионный guard был вакуумен: тест подавал `some unrelated "clean" mention`, не матчащийся ни одним из clean-паттернов, так что порядок веток вообще не был покрыт.
+
+**Правка** (новый коммит `1244e930`, `fix(e-01): errors win over a clean marker in parseSddCheckResult (V-BATCH-06)`):
+- `ai/flow-eval/quality-gate.ts` — `parseSddCheckResult` теперь сначала проверяет `errorMatch`/`errors > 0` (fail, побеждает всегда), затем `0 error(s), N warning(s)` (pass, без изменений в этой ветке), и только если ошибочный паттерн вообще не найден — голый `clean` (pass, теперь fallback).
+- `ai/flow-eval/__tests__/quality-gate.test.ts` — вакуумный тест заменён двумя реальными both-way кейсами: `"✅ clean" рядом с "2 error(s), 1 warning(s)"` → FAIL, `"clean — 6 file(s)"` рядом с `"3 error(s)"` → FAIL. Оба используют реальные строки обоих clean-паттернов (`/✅\s*clean/i` и `/\bclean\b\s+—\s+\d+\s+file/i`), не суррогат.
+- Доказательство: `npm --prefix rc-w2 run test:sdd-flow-eval` → `# tests 121 # pass 121 # fail 0`, EXIT=0 (было 120; +1 тест чистой заменой одного вакуумного на два реальных).
+
+### 10.2 Неблокирующее п.2-3 — `R-E-00.md` §4
+
+`R-E-00.md` §4 переписан (см. файл): признано отклонение от буквы `61-TASK-BOARD.md:181` (exit 1 на `fail`/`inconclusive`) в пользу D-28 (код выхода — детерминированный бар, судья не в формуле); названо, что часть `E-17` (код выхода по детерминированным гейтам) уже поставлена этой пачкой (коммиты `bd2adc45`, `caf51ec8`); указаны фактические файлы задачи (`ai/flow-eval/cli.ts`, `ai/flow-eval/__tests__/exit-code-aggregate.test.ts`) вместо доски́х `package.json`/`harness.test.ts`; предложена формулировка правки строк `E-00`/`E-17` доски (доска не редактировалась этим брифом). Отдельно зафиксировано: к моменту исполнения этого брифа доска (`61-TASK-BOARD.md`, коммит `87fc02c8` в дереве Lead) уже несёт формулировку «уточнено по V-BATCH-06» / «часть про код выхода уже поставлена E-00 (V-BATCH-06)» — предложение в `R-E-00.md` §4 совпадает с уже внесённой правкой и подтверждает её задним числом.
+
+### 10.3 Неблокирующее п.4 — mermaid §5, стрелка `runAll() → quality-gate`
+
+Схема в §5 выше исправлена: узел `RUN["SddEvalRunner.runAll()"]` больше не ведёт напрямую к `QGATE`. Реальный путь вызова: `runAndReport()` (`cli.ts:273-328`) сначала дожидается `runAll()` (`cli.ts:285`), затем ПОСЛЕ этого вызывает `checkR1Structure` (`cli.ts:316`) и `checkCompletion` (`cli.ts:325`) построчно на каждый результат. Добавлен промежуточный узел `RAR["runAndReport()"]` между `RUN` и `QGATE`, стрелка `RUN --> QGATE` убрана.
+
+### 10.4 Открытое следствие — события сессии в evidence всегда пусты (`readEvents`)
+
+Не блокирующий, но существенный факт, перепроверенный верификатором независимо: в ЖИВОМ прогоне события всегда пусты, а не просто «не покрыты тестом».
+- `evidence.ts:151` — `this.#readEvents = options.readEvents ?? (async () => [])`.
+- `cli.ts:281-284` — реальный `SddEvalOpenCodeEvidenceSource` конструируется БЕЗ опции `readEvents`, то есть дефолт `async () => []` активен всегда.
+- `runner.ts:152` передаёт `events: worker.events` судье; `judge.ts:23` рендерит промпт с `EVENTS\n[]`.
+- `observer.ts:146-152`: событийная эвристика — только ТРЕТИЙ дизъюнкт heuristики `waiting` (`repeated && previous.waiting` и `idle && последний role=user` работают без событий); мёртв именно событийный канал, не `waiting` целиком.
+
+**Рекомендация верификатора: подключить, не убирать.** Вариант «подключить» аддитивен и offline-проверяем — не требует живого OpenCode-сервера: реализовать `SddEvalEventReader` поверх SSE-эндпоинта OpenCode, протестировать против локального `node:http`-сервера, отдающего замороженный поток событий (без LLM, без настоящего OpenCode). Вариант «убрать» дороже (6 файлов кода + 4 дока, меняет контракт промпта судьи — поведение живых прогонов, перепроверяемое только живым прогоном, который в этой сессии запрещён), поэтому не выбран.
+
+**Заведено задачей `GAP-E-1b`** (доска Lead, `61-TASK-BOARD.md`, коммит `87fc02c8`, "GAP-E-1b (readEvents) added"): подключить `readEvents` к живому источнику evidence, приёмка both-way без живого LLM-прогона (замороженный SSE-поток → непустой `readEvents`; пустой поток → `[]`; `SddEvalObserver` даёт `waiting === true`/`false` соответственно; `npm run test:sdd-flow-eval` зелёный). Не в зоне этого брифа — файлы вне списка «трогать» (`ai/flow-eval/quality-gate.ts`, `__tests__/quality-gate.test.ts`, отчёты).
+
+### 10.5 Финальные прогоны на новом HEAD (`1244e930`)
+
+```
+$ npm --prefix rc-w2 run test:sdd-flow-eval
+# tests 121 # suites 21 # pass 121 # fail 0 # cancelled 0 # skipped 0
+EXIT=0
+```
+ВЫПОЛНЕНО.
+
+```
+$ npm --prefix rc-w2 test
+# tests 3597 # suites 601 # pass 3587 # fail 0 # cancelled 0 # skipped 10
+EXIT=0
+```
+ВЫПОЛНЕНО. (Первый прогон на этом HEAD дал 1 flaky fail под нагрузкой хоста — не в файлах пачки; повторный прогон сразу же чист, тот же паттерн, что описан в §6.)
+
+```
+$ npm --prefix rc-w2 run check
+[sdd-verify] ✅ ALL PASS (5/5)
+EXIT=0
+```
+ВЫПОЛНЕНО.
+
+```
+$ npm --prefix rc-w2 run gate:sdd-check-baseline
+[sdd-check-zero-new-error] OK — no error outside the baseline (baseline commit 227c03a8..., tag rc-baseline-1)
+EXIT=0
+```
+ВЫПОЛНЕНО.
+
+Рабочее дерево чистое (`git status` → `nothing to commit, working tree clean`) на HEAD `1244e930`.
+
+**Команда пуша для Lead (обновлённая, ветка выросла на 1 коммит):**
+```
+git -C rc-w2 push origin lead/eval-honest-outcome:lead/eval-honest-outcome
+```
+(ветка сейчас на `1244e930`, была `4fcb8876`; база по-прежнему `84eeec60` = конец «Пачки 2»/PR #28. Живые LLM-прогоны не запускались.)
