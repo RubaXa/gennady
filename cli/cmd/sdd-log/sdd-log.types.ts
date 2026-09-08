@@ -5,10 +5,9 @@
 import { relative, resolve } from 'node:path';
 import type { TicketRef } from '../../../shared/sdd/check.ts';
 import { parsePhaseReceipts } from '../../../shared/sdd/phase-receipt.ts';
-import { findSectionBounds } from '../../../shared/sdd/section.ts';
+import { extractSection, findSectionBounds } from '../../../shared/sdd/section.ts';
 import { deriveSpecAcronym } from '../../../shared/sdd/requirement-id.ts';
 import { unreadableTicketHint } from '../../../shared/sdd/ticket-resolve.ts';
-import { extractSection } from '../../../shared/sdd/section.ts';
 import {
   matchPhaseOverviewHeader,
   parsePhasesOverview,
@@ -79,12 +78,17 @@ export function hasPlaceholder(text: string): boolean {
 }
 
 /**
- * @purpose Compute the next round number from how many `### Round` headers already exist.
+ * @purpose Compute the next round number from `### Round` headers in the EXECUTION_LOG section
+ *   only (B2-02) — a legacy `## Critic Rounds` section can carry its own, unrelated ones.
+ * @invariant Falls back to a whole-file scan only when EXECUTION_LOG is unreadable (malformed
+ *   ticket) — same tolerance `sdd-log`'s other readers already extend to that case.
  * @param fileContent Full ticket markdown.
  * @returns Existing round count + 1 (1 for the first round).
  */
 export function nextRoundNumber(fileContent: string): number {
-  const matches = fileContent.match(/^#{3}\s+Round\s+\d+/gm);
+  const log = extractSection(fileContent, 'EXECUTION_LOG');
+  const body = log.status === 'ok' ? log.content : fileContent;
+  const matches = body.match(/^#{3}\s+Round\s+\d+/gm);
   return (matches?.length ?? 0) + 1;
 }
 

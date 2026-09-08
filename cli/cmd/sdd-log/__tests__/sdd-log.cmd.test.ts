@@ -169,6 +169,32 @@ describe('SddLogCommand', () => {
     assert.match(body, /### Round 2 — 2026-06-21, fix: F-001/);
   });
 
+  // B2-02: a legacy `## Critic Rounds` section (outside EXECUTION_LOG) can carry its own
+  // `### Round N` headings for a wholly different concept (audit/critic rounds) — those must not
+  // be double-counted into the execution-round sequence.
+  it('ignores a `### Round N` heading that lives outside EXECUTION_LOG, in a legacy `## Critic Rounds` section', async () => {
+    const withCriticRounds = [
+      '# t',
+      '<!--SECTION:META-->',
+      '- **Task-ID:** cli-foo',
+      '<!--/SECTION:META-->',
+      '',
+      '<!--SECTION:EXECUTION_LOG-->',
+      '## 7. Execution Log',
+      '### Round 1 — 2026-06-20, initial',
+      '<!--/SECTION:EXECUTION_LOG-->',
+      '',
+      '## Critic Rounds',
+      '### Round 3 — 2026-05-30',
+    ].join('\n');
+    writeFileSync(ticket, withCriticRounds, 'utf-8');
+    const outcome = await mod.run(argv(ticket, 'round', 'fix: F-002'), CLOCK);
+    assert.strictEqual(outcome.ok, true, outcome.ok ? '' : outcome.message);
+    const body = readFileSync(ticket, 'utf-8');
+    assert.match(body, /### Round 2 — 2026-06-21, fix: F-002/);
+    assert.doesNotMatch(body, /### Round 3 — 2026-06-21/);
+  });
+
   it('appends a timestamped event line and preserves = in content', async () => {
     const outcome = await mod.run(argv(ticket, 'line', 'ver `npm run check` → pass exit=0'), CLOCK);
     assert.strictEqual(outcome.ok, true);

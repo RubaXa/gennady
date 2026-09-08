@@ -73,6 +73,10 @@ $ npx gennady sdd-migrate anchors --all . --write  # применить + зат
   - идемпотентно (повторный прогон ничего не меняет)
   - `## 3. Phases`-контейнер не якорится; секции не вкладываются
 
+### `renameCriticRoundHeadings`
+
+- **Usage Waiver:** чистое переименование `### Round N` → `### Critic Round N` внутри легаси `## Critic Rounds` отделено от файловой записи в `executeScopeMove` — единственный способ протестировать разбор границы секции без git/файловой системы (B2-02).
+
 <!--/SECTION:MODULE_CONTRACTS-->
 
 <!--SECTION:PUBLIC_OPTIONS-->

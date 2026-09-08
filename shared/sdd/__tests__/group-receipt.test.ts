@@ -93,6 +93,41 @@ describe('deriveGroupState', () => {
     const after = deriveGroupState([member('core.task.T1.md', { rounds: 2 })]).signature;
     assert.notEqual(before, after);
   });
+
+  // B2-02/C7: memberRoundCount already scopes to EXECUTION_LOG (unlike the old nextRoundNumber) —
+  // a legacy `## Critic Rounds` section's own `### Round N` headings must not affect the signature.
+  it('ignores a `### Round N` heading in a legacy `## Critic Rounds` section outside EXECUTION_LOG', () => {
+    const withoutCritic: GroupMemberInput = {
+      file: 'specs/core/core.task.T1.md',
+      content: [
+        '<!--SECTION:META-->',
+        '- **Task-ID:** CORE-T1',
+        '- **Status:** [x] DONE',
+        '<!--/SECTION:META-->',
+        '<!--SECTION:EXECUTION_LOG-->',
+        '### Round 1 — 2026-01-01, initial',
+        '<!--/SECTION:EXECUTION_LOG-->',
+      ].join('\n'),
+    };
+    const withCritic: GroupMemberInput = {
+      file: 'specs/core/core.task.T1.md',
+      content: [
+        '<!--SECTION:META-->',
+        '- **Task-ID:** CORE-T1',
+        '- **Status:** [x] DONE',
+        '<!--/SECTION:META-->',
+        '<!--SECTION:EXECUTION_LOG-->',
+        '### Round 1 — 2026-01-01, initial',
+        '<!--/SECTION:EXECUTION_LOG-->',
+        '## Critic Rounds',
+        '### Round 3 — 2026-01-02',
+      ].join('\n'),
+    };
+    assert.equal(
+      deriveGroupState([withoutCritic]).signature,
+      deriveGroupState([withCritic]).signature
+    );
+  });
 });
 
 describe('buildGroupReceipt', () => {
