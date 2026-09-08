@@ -10,9 +10,34 @@ import {
   type VerificationProfile,
 } from '../../../shared/sdd/phase-verification-plan.ts';
 import type { Cmd, EnvFailPredicate, StackId } from '../../../shared/verify/verify.types.ts';
+import type { StackConfigError } from '../../../shared/verify/stack-config.ts';
+import { PROJECT_CONFIG_FILENAME } from '../../../services/config/config-loader.ts';
 
 /** @purpose CLI invocation carried an extra positional path, or a flag other than `--profile` — sdd-verify never silently narrows or ignores. */
 export const ERR_CLI_SDD_VERIFY_BAD_INVOCATION = 'ERR_CLI_SDD_VERIFY_BAD_INVOCATION' as const;
+
+/** @purpose `gennady.yaml`/`.gennadyrc` `stack:` section failed schema validation — verify never runs on an unusable config (V-07, config.spec §4.1). */
+export const ERR_CLI_SDD_VERIFY_STACK_CONFIG = 'ERR_CLI_SDD_VERIFY_STACK_CONFIG' as const;
+
+/**
+ * @purpose Build the `stack:` config gate's failure outcome from `loadStackConfig`'s errors.
+ * @param errors Non-empty validation/parse errors from `loadStackConfig`.
+ * @returns The structured outcome — `code`/`exitCode`/`message` ready for the CLI entry to act on.
+ */
+export function stackConfigError(errors: readonly StackConfigError[]): {
+  code: typeof ERR_CLI_SDD_VERIFY_STACK_CONFIG;
+  exitCode: 4;
+  message: string;
+} {
+  return {
+    code: ERR_CLI_SDD_VERIFY_STACK_CONFIG,
+    exitCode: 4,
+    message: [
+      `[sdd-verify] ${ERR_CLI_SDD_VERIFY_STACK_CONFIG}: ${PROJECT_CONFIG_FILENAME}'s stack config is invalid — fix it before verify runs:`,
+      ...errors.map((error) => `  ${error.path}: ${error.message}`),
+    ].join('\n'),
+  };
+}
 
 /**
  * @purpose One rung of the verification ladder — an exact project npm script, or a gennady-native
