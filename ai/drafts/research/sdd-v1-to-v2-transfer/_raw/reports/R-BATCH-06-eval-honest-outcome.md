@@ -198,6 +198,85 @@ git -C rc-w2 push origin lead/eval-honest-outcome:lead/eval-honest-outcome
 - `ai/flow-eval/__tests__/quality-gate.test.ts` — вакуумный тест заменён двумя реальными both-way кейсами: `"✅ clean" рядом с "2 error(s), 1 warning(s)"` → FAIL, `"clean — 6 file(s)"` рядом с `"3 error(s)"` → FAIL. Оба используют реальные строки обоих clean-паттернов (`/✅\s*clean/i` и `/\bclean\b\s+—\s+\d+\s+file/i`), не суррогат.
 - Доказательство: `npm --prefix rc-w2 run test:sdd-flow-eval` → `# tests 121 # pass 121 # fail 0`, EXIT=0 (было 120; +1 тест чистой заменой одного вакуумного на два реальных).
 
+---
+
+## 11. Ребейз на релизную ветку после мержа #28
+
+**Контекст:** PR #28 (см. §2 выше) слился в `origin/codex/sdd-v2-rc52-followup` (новая голова `4b14d781`, коммит `Merge pull request #28 from RubaXa/lead/release-package`), поверх которого также влились PR #29/#35 (`sync-skills`/`sync-core`/`sdd-check` фиксы). Ветка `origin/lead/eval-honest-outcome` (голова `1244e930`) после этого несла 14 коммитов над новой релизной головой: 7 патч-идентичных дублей PR #28 (уже влитых) + 7 собственных коммитов пачки 6.
+
+**Дерево:** третье свободное дерево `rc-w3` (было на `lead/sync-no-loss-review`, чистое) — переключено на новую ветку `lead/eval-honest-outcome-rebased` от `origin/lead/eval-honest-outcome`, затем ребейзнуто на `origin/codex/sdd-v2-rc52-followup`.
+
+**Процедура и результат:**
+```
+git -C rc-w3 fetch origin
+git -C rc-w3 switch -c lead/eval-honest-outcome-rebased origin/lead/eval-honest-outcome
+git -C rc-w3 rebase origin/codex/sdd-v2-rc52-followup
+```
+Git отбросил все 7 дублей автоматически по patch-id (`warning: skipped previously applied commit` ×7 для `52ab6b69`/`7e395f9a`/`d85784b3`/`f461c951`/`83b3b85e`/`76975d4e`/`84eeec60`) и перебазировал 7/7 собственных коммитов пачки **без единого конфликта** — ни `package.json`/lock, ни `ai/flow-eval/docs/README.md` конфликтов не возникло (упомянутый в брифе риск не материализовался: PR #27/#32 к моменту этого ребейза уже были учтены в предыдущем ребейзе §2, а PR #29/#35 не трогали файлы пачки 6). Разрешать вручную нечего было — сгенерированные файлы руками не сливались.
+
+**Новые SHA (после ребейза, поверх `4b14d781`):**
+```
+39ceef04 fix(GAP-E-1): fail-fast on unknown scenario phase/mode instead of a silent wrong-branch prompt   (было 65944dd1)
+74ee0834 fix(E-00): batch exit code is a mechanical fold over worker-error and quality gates               (было bd2adc45)
+e725709c fix(E-01): R1 parser recognizes sdd-check's real-repo "0 error(s), N warning(s)" as pass          (было b34ffd8a)
+1e04b660 feat(E-02): every canonical scenario declares completion or acceptance                            (было cd700214)
+212d5de9 docs(E-21): document and test that the judge's verdict never gates the exit code                  (было caf51ec8)
+e58f6f2b fix(E-21): default runner/judge model config fixes the llm-proxy family (L-14)                    (было 4fcb8876)
+ea6c2cfa fix(e-01): errors win over a clean marker in parseSddCheckResult (V-BATCH-06)                     (было 1244e930, новый HEAD)
+```
+`git log --oneline origin/codex/sdd-v2-rc52-followup..HEAD` → ровно 7 строк (проверено).
+
+**`git range-diff origin/lead/eval-honest-outcome~7..origin/lead/eval-honest-outcome HEAD~7..HEAD`** → все 7 пар помечены `=` (патч идентичен, сменилась только база):
+```
+1:  65944dd1 = 1:  39ceef04
+2:  bd2adc45 = 2:  74ee0834
+3:  b34ffd8a = 3:  e725709c
+4:  cd700214 = 4:  1e04b660
+5:  caf51ec8 = 5:  212d5de9
+6:  4fcb8876 = 6:  e58f6f2b
+7:  1244e930 = 7:  ea6c2cfa
+```
+
+**Побочная проверка:** `git diff origin/lead/eval-honest-outcome HEAD --stat` показывает 16 файлов, отличных от старого HEAD (`cli/cmd/sync-skills/**`, `cli/cmd/sync/**`, `shared/sdd/check.ts`, `specs/cli/**` и т.п.) — это НЕ ручное вмешательство, а честная разница релизной базы: `git log --oneline 84eeec60..origin/codex/sdd-v2-rc52-followup` показывает, что между старой базой (`84eeec60`, конец PR #28) и новой головой (`4b14d781`) влились PR #29 и #35 (`sync-skills`/`sync-core`/`sdd-check` фиксы), которые и правят эти файлы. Пачка 6 их не касается и не переносила руками ни строчки.
+
+**Прогоны на новом HEAD (`ea6c2cfa`, дерево `rc-w3`):**
+```
+$ npm --prefix rc-w3 run test:sdd-flow-eval
+# tests 121 # suites 21 # pass 121 # fail 0 # cancelled 0 # skipped 0 # todo 0
+EXIT=0
+```
+ВЫПОЛНЕНО.
+```
+$ npm --prefix rc-w3 test
+# tests 3627 # suites 607 # pass 3617 # fail 0 # cancelled 0 # skipped 10 # todo 0
+EXIT=0
+```
+ВЫПОЛНЕНО.
+```
+$ npm --prefix rc-w3 run check
+[sdd-verify] ✅ ALL PASS (5/5)
+  ✅ type-check (6.0s)  ✅ test:coverage (91.6s)  ✅ lint (11.1s)  ✅ format (3.3s)  ✅ yagni (1.2s)
+EXIT=0
+```
+ВЫПОЛНЕНО.
+```
+$ npm --prefix rc-w3 run gate:sdd-check-baseline
+[sdd-check-zero-new-error] OK — no error outside the baseline (baseline commit 227c03a83830124fe2aa22541dd5374beb8a53c6, tag rc-baseline-1).
+EXIT=0
+```
+ВЫПОЛНЕНО.
+
+**Ветка `lead/eval-honest-outcome-rebased` оставлена локально в `rc-w3`** (не запушена — пуш делает Lead). Старая ветка `lead/eval-honest-outcome` (голова `1244e930`) не тронута ни локально в `rc-w3` (осталась как обычная ветка, не текущая), ни на origin.
+
+**Команда пуша для Lead (force-with-lease, L-22):**
+```
+git -C rc-w3 push --force-with-lease=lead/eval-honest-outcome:1244e93062a6a9b56c035953c9d635fe35b950bd \
+  origin lead/eval-honest-outcome-rebased:lead/eval-honest-outcome
+```
+(ожидаемая старая голова удалённой `lead/eval-honest-outcome` — `1244e930`; если на origin к моменту пуша она уже сдвинулась, `--force-with-lease` откажет и нужно перечитать актуальный SHA перед повтором.)
+
+Живые LLM-прогоны не запускались.
+
 ### 10.2 Неблокирующее п.2-3 — `R-E-00.md` §4
 
 `R-E-00.md` §4 переписан (см. файл): признано отклонение от буквы `61-TASK-BOARD.md:181` (exit 1 на `fail`/`inconclusive`) в пользу D-28 (код выхода — детерминированный бар, судья не в формуле); названо, что часть `E-17` (код выхода по детерминированным гейтам) уже поставлена этой пачкой (коммиты `bd2adc45`, `caf51ec8`); указаны фактические файлы задачи (`ai/flow-eval/cli.ts`, `ai/flow-eval/__tests__/exit-code-aggregate.test.ts`) вместо доски́х `package.json`/`harness.test.ts`; предложена формулировка правки строк `E-00`/`E-17` доски (доска не редактировалась этим брифом). Отдельно зафиксировано: к моменту исполнения этого брифа доска (`61-TASK-BOARD.md`, коммит `87fc02c8` в дереве Lead) уже несёт формулировку «уточнено по V-BATCH-06» / «часть про код выхода уже поставлена E-00 (V-BATCH-06)» — предложение в `R-E-00.md` §4 совпадает с уже внесённой правкой и подтверждает её задним числом.
