@@ -208,7 +208,10 @@ describe('format dry-run', () => {
     assert.ok(lines[0].includes('(unchanged, skip)'));
   });
 
-  it('dry-run summary line is "Dry-run: no files written."', () => {
+  // SO-4: a dry-run summary that hides counts cannot serve as a preview. The trailing sentence
+  // "Dry-run: no files written." stays verbatim (other contracts still grep for it — FR-SS-15),
+  // but the line now leads with the same counts the real run's summary would show.
+  it('dry-run summary line carries counts, not just "no files written" (SO-4)', () => {
     const entries = [
       entry('a', 'f.md', 'added', { sourceSize: 10 }),
       entry('b', 'f.md', 'updated', { sourceSize: 10, targetSize: 5 }),
@@ -218,7 +221,10 @@ describe('format dry-run', () => {
     const lines = fmt(entries, { dryRun: true });
     const lastLine = lines[lines.length - 1];
 
-    assert.equal(lastLine, 'Dry-run: no files written.');
+    assert.equal(
+      lastLine,
+      'Would sync: 1 added, 1 updated, 0 skipped, 1 deleted. Dry-run: no files written.'
+    );
   });
 
   it('dry-run with all statuses shows correct labels', () => {
@@ -236,6 +242,74 @@ describe('format dry-run', () => {
     assert.ok(lines.some((l) => l.includes('(would delete)')));
     assert.ok(lines.some((l) => l.includes('(unchanged, skip)')));
     assert.ok(lines.some((l) => l.includes('Dry-run: no files written.')));
+  });
+});
+
+// #endregion
+
+// #region format — mixed group truthfulness (SO-4, S5-bis)
+
+describe('format mixed group (SO-2b makes this real)', () => {
+  // Bug 1: dominant `updated` used to filter to only added/updated entries, silently dropping
+  // any deleted file from the output entirely.
+  it('a deleted file is shown inside a dominant-updated group, not silently dropped', () => {
+    const entries = [
+      entry('sdd-execute', 'SKILL.md', 'updated', { sourceSize: 20, targetSize: 15 }),
+      entry('sdd-execute', 'scripts/stale.sh', 'deleted'),
+    ];
+
+    const lines = fmt(entries, { dryRun: true });
+
+    assert.ok(lines.some((l) => l.includes('scripts/stale.sh') && l.includes('(would delete)')));
+    assert.ok(lines.some((l) => l.includes('SKILL.md') && l.includes('(would update)')));
+  });
+
+  // Bug 2: dominant `added` used to print every entry in the group unconditionally, so a
+  // deleted file was labeled "(would add)" — actively wrong, not just hidden.
+  it('a deleted file inside a dominant-added group keeps its own true label, never (would add)', () => {
+    const entries = [
+      entry('sdd-check', 'NEW.md', 'added', { sourceSize: 10 }),
+      entry('sdd-check', 'PROJECT-NOTES.md', 'deleted'),
+    ];
+
+    const lines = fmt(entries, { dryRun: true });
+
+    const deletedLine = lines.find((l) => l.includes('PROJECT-NOTES.md'))!;
+    assert.ok(deletedLine.includes('(would delete)'));
+    assert.ok(!deletedLine.includes('(would add)'));
+    assert.ok(lines.some((l) => l.includes('NEW.md') && l.includes('(would add)')));
+  });
+
+  // Bug 3: dominant `deleted` (no whole-skill sentinel — the skill itself survives) used to
+  // print the WHOLE header as "(would delete)" and list every non-empty entry underneath,
+  // including untouched/unchanged files — announcing a surviving file as deleted.
+  it('a partial in-skill deletion never claims the whole skill, and never claims a surviving file is deleted', () => {
+    const entries = [
+      entry('sdd-audit', 'local.txt', 'deleted'),
+      entry('sdd-audit', 'SKILL.md', 'unchanged', { sourceSize: 30, targetSize: 30 }),
+    ];
+
+    const lines = fmt(entries, { dryRun: true });
+
+    // The header must NOT be the whole-skill "(would delete)" marker.
+    const header = lines.find((l) => l.includes('sdd-audit/'))!;
+    assert.ok(!header.includes('(would delete)'));
+
+    // local.txt is truthfully a deletion.
+    assert.ok(lines.some((l) => l.includes('local.txt') && l.includes('(would delete)')));
+
+    // SKILL.md — unchanged and untouched — must never appear labeled as deleted.
+    assert.ok(!lines.some((l) => l.includes('SKILL.md') && l.includes('(would delete)')));
+  });
+
+  it('a whole-skill orphan (sentinel relativePath) is still announced and listed as deleted', () => {
+    const entries = [entry('sdd-old', '', 'deleted'), entry('sdd-old', 'SKILL.md', 'deleted')];
+
+    const lines = fmt(entries, { dryRun: true });
+
+    assert.ok(lines[0].includes('- sdd-old/'));
+    assert.ok(lines[0].includes('(would delete)'));
+    assert.ok(lines.some((l) => l.includes('SKILL.md')));
   });
 });
 

@@ -110,11 +110,12 @@ _Это полный список сущностей модуля. Любое в
   - `unchanged` → `  = <skillName>/                                                   (unchanged)`
   - dryRun `added` → `      <relativePath>                                   (would add)`
   - dryRun `updated` → `      <relativePath>                                   (would update)`
-  - dryRun `deleted` → `  - <skillName>/                                            (would delete)` — файлы перечислены без суффикса (rmdir recursive — одна операция)
+  - dryRun, весь скилл удаляется (orphan-скилл, sentinel-запись `relativePath: ''`) → `  - <skillName>/                                            (would delete)` — файлы перечислены без суффикса (rmdir recursive — одна операция)
+  - dryRun, удаляется часть файлов ещё поддерживаемого скила (SO-2b — скилл переживает прогон) → заголовок несёт маркер `~`/`+` по остальным файлам группы, а каждый удаляемый файл печатается СВОЕЙ строкой `      <relativePath>                                   (would delete)` — ни один файл группы не помечается меткой чужого статуса, ни один живой файл не объявляется удалённым (SO-4, находка S5-bis)
   - dryRun `unchanged` → `  = <skillName>/                                   (unchanged, skip)`
   - Отступы в примерах иллюстративны (визуальное выравнивание). Реализатор вычисляет padding динамически по максимальной длине имени скила среди отображаемых.
   - Итоговая строка: `Synced: N added, M updated, K skipped, D deleted`. При наличии `deleteFailed`: `Synced: N added, M updated, K skipped, D deleted, F delete failed`
-  - dryRun итоговая: `Dry-run: no files written.`
+  - dryRun итоговая (SO-4 — несёт те же счётчики, что и реальная сводка, не только факт «ничего не записано»): `Would sync: N added, M updated, K skipped, D deleted. Dry-run: no files written.`
 - **Consumers:** `sync-skills.cmd.ts`
 - **Uses shared:** `SyncFormatter` базовые маркеры из `shared/common/sync/sync-formatter.shared.ts`
 
