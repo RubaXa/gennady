@@ -192,4 +192,44 @@ describe('checkTicket — phase graph + exec-log completeness', () => {
     );
     assert.ok(!c.some((code) => code.startsWith('SDD_EXECUTION_LOG_')), c.join(','));
   });
+
+  // B2-08/B2-09: a ticket anchor-injected from v1 keeps PHASES_OVERVIEW's original
+  // `| Phase | Kind | Status | Target Files | Deps |` column order. checkTicket must not read the
+  // header row `| Phase | ... |` as a phase named "Phase", and must not confuse the Status column
+  // (index 2 here) with the Deps column (index 4 here) on any real data row.
+  it('a v1-order PHASES_OVERVIEW header never becomes a phase, and Status/Deps are not swapped', () => {
+    const raw = [
+      '<!--SECTION:META-->',
+      '## 1. Meta',
+      '- **Task-ID:** `cli-foo`',
+      '- **Status:** [~] IN_PROGRESS',
+      '<!--/SECTION:META-->',
+      '',
+      '<!--SECTION:PHASES_OVERVIEW-->',
+      '## 2. Phases Overview',
+      '| Phase | Kind | Status | Target Files | Deps |',
+      '|-------|------|--------|--------------|------|',
+      '| P1 | impl | [x] | src/foo.ts | — |',
+      '| P2 | test | [ ] | src/foo.test.ts | P1 |',
+      '<!--/SECTION:PHASES_OVERVIEW-->',
+      '',
+      '<!--SECTION:PHASE_P1-->',
+      '### P1',
+      '- **Objective:** do P1',
+      '<!--/SECTION:PHASE_P1-->',
+      '',
+      '<!--SECTION:PHASE_P2-->',
+      '### P2',
+      '- **Objective:** do P2',
+      '<!--/SECTION:PHASE_P2-->',
+      '',
+      '<!--SECTION:EXECUTION_LOG-->',
+      '## Execution Log',
+      '<!--/SECTION:EXECUTION_LOG-->',
+    ].join('\n');
+    const c = codes('t.md', raw);
+    assert.ok(!c.includes('SDD_PHASE_DAG_CYCLE'), c.join(','));
+    assert.ok(!c.includes('SDD_PHASE_DEP_UNRESOLVED'), c.join(','));
+    assert.ok(!c.includes('SDD_PHASE_SECTION_ORPHAN'), c.join(','));
+  });
 });

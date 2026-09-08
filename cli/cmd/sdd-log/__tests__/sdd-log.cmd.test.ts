@@ -454,6 +454,44 @@ describe('SddLogCommand', () => {
       assert.match(body, /\| P2 \| test \| \[ \] \| src\/bar\.ts \| P1 \|/);
     });
 
+    // B2-08: a Round written exactly per AX_REOPEN_FORMAT (v2 4-column `| ID | Kind | Deps |
+    // Status |` PHASES_OVERVIEW, one row per new fix/test PhaseID, `[~] IN_PROGRESS` Meta Status)
+    // closes with `complete` the same as any other phase — the reopen path is not a special case
+    // completePhase needs to know about.
+    it('a Round written exactly per AX_REOPEN_FORMAT closes cleanly with complete', async () => {
+      const reopenedTicket = [
+        '# t',
+        '<!--SECTION:META-->',
+        '- **Task-ID:** cli-foo',
+        '- **Status:** [~] IN_PROGRESS',
+        '- **Reopens:** 1',
+        '<!--/SECTION:META-->',
+        '',
+        '<!--SECTION:PHASES_OVERVIEW-->',
+        '| ID | Kind | Deps | Status |',
+        '|----|------|------|--------|',
+        '| P1 | fix  | —    | [ ] |',
+        '| P2 | test | P1   | [ ] |',
+        '<!--/SECTION:PHASES_OVERVIEW-->',
+        '',
+        '<!--SECTION:EXECUTION_LOG-->',
+        '## Execution Log',
+        '### Round 1 — 2026-06-21, fix: regression in foo',
+        '#### P1',
+        '- [ ] `<ts>` DONE',
+        '**Handoff →** artifacts: [...]; decisions: [...]; open: [...]; deviations: [...]',
+        '#### Round close',
+        '- [ ] `<ts>` DONE',
+        '<!--PHASE_RECEIPTS:v1-->',
+        formatPhaseReceipt(receipt('P1')),
+        '<!--/SECTION:EXECUTION_LOG-->',
+      ].join('\n');
+      writeFileSync(ticket, reopenedTicket, 'utf-8');
+      const outcome = await mod.run(argv(ticket, 'complete', payload, '--phase', 'P1'), CLOCK);
+      assert.strictEqual(outcome.ok, true, outcome.ok ? '' : outcome.message);
+      assert.match(readFileSync(ticket, 'utf-8'), /\| P1 \| fix +\| — +\| \[x\] \|/);
+    });
+
     it('fails without this phase receipt and leaves every byte untouched', async () => {
       const original = completableTicket(null);
       writeFileSync(ticket, original, 'utf-8');

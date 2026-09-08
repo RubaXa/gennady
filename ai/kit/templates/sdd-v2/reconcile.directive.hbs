@@ -123,7 +123,7 @@
           missing test, BDD mismatch, or review finding. Always append a new Round per
           `AX_REOPEN_FORMAT`, even for a one-line fix. Allocate concrete next-unused PhaseIDs for at
           least one `fix` phase and its dependent regression `test` phase; set ticket Meta Status and
-          its owning tracker row to `[ ] TODO`, update `Reopens`, and hand ordinary execute the ticket.
+          its owning tracker row to `[~] IN_PROGRESS`, update `Reopens`, and hand ordinary execute the ticket.
           No task-owned code path may enter bounded-direct.
         - **semantic-spec-update** — any change to GOAL, requirements, observable behaviour, contracts,
           inventory, architecture, dependencies, BDD acceptance, risks, or Decision Log meaning. Route
@@ -147,7 +147,7 @@
         Group findings sharing one intent without crossing owners (`AX_GROUPING_REDUCES_NOISE`). The
         plan records, per item:
         - task-reopen: ticket path, new Round number, concrete fix/test PhaseIDs, exact Target Files,
-          dependency from test to fix, and tracker row changing to TODO;
+          dependency from test to fix, and tracker row changing to IN_PROGRESS;
         - semantic-spec-update: one artifact kind and authoring directive, the integrated bundle that
           must merge, then the post-merge disposition (`spec-only`, reopen existing tasks, or scaffold
           uncovered implementation);
@@ -179,7 +179,7 @@
         <LogicSwitch on="approved remediation category">
         - WHEN **task-reopen** → append the planned new Round to every owning ticket exactly per
           `AX_REOPEN_FORMAT`; write its concrete fix and dependent test PhaseIDs, set Meta Status and
-          tracker row to TODO, update parent rollups and `Reopens`, then
+          tracker row to IN_PROGRESS, update parent rollups and `Reopens`, then
           `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/execute.directive.xml")` for those tickets as
           an ordinary batch. Reconcile never edits the task-owned code itself and never requests a
           reconcile-only audit; execute owns phase work, tracker sync, audit, and code-review.
