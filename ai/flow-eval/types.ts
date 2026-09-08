@@ -26,48 +26,57 @@ export type SddEvalScenario = {
   completion?: { artifact: string; ticket: string; spec: string };
 };
 
+// Single source of truth for both the compile-time union AND the runtime validation set (GAP-E-1):
+// `loadScenarios` (cli.ts) rejects any scenario whose `phase`/`mode` is not in these arrays, fail-fast,
+// instead of silently falling back to a different (or empty) worker prompt (H-16).
 /** @purpose Supported intellectual SDD flow phases exercised by the harness. */
-export type SddEvalPhase =
-  | 'spec-authoring'
-  | 'scaffold'
-  | 'execute'
-  | 'repair'
-  | 'task'
-  | 'brownfield'
+export const SDD_EVAL_PHASES = [
+  'spec-authoring',
+  'scaffold',
+  'execute',
+  'repair',
+  'task',
+  'brownfield',
   // Migration: an OLD (pre-v2) SDD repo whose task layout must become v2. Exercises the v1→v2
   // migration flow end-to-end on a real repo; graded objectively by sdd-state=v2 + sdd-check clean.
-  | 'migration';
+  'migration',
+] as const;
+
+export type SddEvalPhase = (typeof SDD_EVAL_PHASES)[number];
 
 /** @purpose Human-auditable phase modes with approval boundaries. */
-export type SddEvalMode =
-  | 'full-spec-to-approval-1'
-  | 'actual-tickets-to-approval-2'
-  | 'canonical-execute'
+export const SDD_EVAL_MODES = [
+  'full-spec-to-approval-1',
+  'actual-tickets-to-approval-2',
+  'canonical-execute',
   // Repair: the workspace already holds specs that fail `sdd-check`; drive the flow to a clean check.
-  | 'fix-to-clean'
+  'fix-to-clean',
   // Task: a single banal infra task from a brief (bash/Makefile), graded by the fixture's golden set —
   // no SDD ceremony. Exercises the class of work the flow's infra problems originally came from.
-  | 'brief-to-artifact'
+  'brief-to-artifact',
   // Brownfield: existing working code with NO specification; a change-request drives a direct code
   // delta. Isolates the "modify existing code from scratch" branch — read code first, extend without
   // breaking it. Graded by the fixture's golden set (preserved + new behaviour), not by SDD ceremony.
-  | 'modify-code-delta'
+  'modify-code-delta',
   // Brownfield: existing spec-less code with a defect; a bug report drives the fix. Isolates the
   // "diagnose + repair existing behaviour" branch (distinct from adding a feature) — read the code,
   // find the wrong behaviour, correct it without breaking the rest. Golden-graded.
-  | 'fix-code-delta'
+  'fix-code-delta',
   // Brownfield spec-recovery: working code, no spec; recover a canonical specification FROM the code.
   // Isolates the "read behaviour out of code into a spec" branch.
-  | 'recover-spec'
+  'recover-spec',
   // Brownfield path B, step 2: a code delta already landed; turn that delta into a spec (create/update)
   // so the written spec reflects the new behaviour. Isolates the "reverse a delta into a spec" branch.
-  | 'delta-to-spec'
+  'delta-to-spec',
   // Brownfield path A: code plus an existing (recovered) spec; a change-request is realised THROUGH the
   // spec (update the spec, then the code follows). Isolates the "change via specification" branch.
-  | 'modify-via-spec'
+  'modify-via-spec',
   // Migration: transform the whole v1 SDD layout to v2 (co-located specs, slug Task-IDs, anchored
   // tickets), driven by the installed migration flow; the objective bar is sdd-state=v2 + sdd-check clean.
-  | 'v1-to-v2';
+  'v1-to-v2',
+] as const;
+
+export type SddEvalMode = (typeof SDD_EVAL_MODES)[number];
 
 /** @purpose Prepared, small, deterministic fixture scenarios for cheap eval smoke runs. */
 export type SddEvalFixtureId =

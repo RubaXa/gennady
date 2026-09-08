@@ -38,6 +38,12 @@ Drive the flow until FLOW_VERSION=v2 with no newly-introduced findings, then rep
 // The `brownfield` phase covers several distinct decision branches; the mode selects the instruction.
 // Delta modes (modify-code-delta/fix-code-delta) use PHASE_PROMPTS.brownfield above; the spec-facing
 // modes below recover or evolve a written specification and each isolate their own branch.
+// These are the ONLY two modes that are legitimately absent from BROWNFIELD_MODE_PROMPTS and fall
+// back to the generic brownfield prompt below (GAP-E-1/H-16) — any OTHER mode value reaching
+// composeSddPhasePrompt under phase 'brownfield' is a scenario-authoring mistake and must throw,
+// never silently reuse this same generic prompt (which used to make a typo look like a valid run).
+const BROWNFIELD_GENERIC_MODES = new Set<SddEvalMode>(['modify-code-delta', 'fix-code-delta']);
+
 const BROWNFIELD_MODE_PROMPTS: Partial<Record<SddEvalMode, string>> = {
   'recover-spec': `Recover a module specification DIRECTLY from the code. Do NOT run discovery, interviews, or amplification, and do NOT read the router/directive chain — this is a code→spec extraction, not greenfield authoring.
 Steps: (1) read the tool's source (e.g. bin/report.sh); (2) list its observable behaviours — inputs, each output line, and error/edge handling; (3) look at the existing specs/ tree and place the spec accordingly — if a scope spec already exists, add the MODULE spec UNDER that scope (specs/<scope>/<module>/<module>.spec.md) and never overwrite the scope spec; if a module spec already exists but omits some current behaviour, EXTEND it without deleting what is there; otherwise create specs/<tool>/<tool>.spec.md. (4) the spec has a "## Behaviour" section and a "## Functional Requirements" section with one bullet per behaviour (include the error/edge), written with exactly one Write per spec file. Then stop.
@@ -49,6 +55,26 @@ Do not change the code. Report the spec file you wrote.`,
 Steps: (1) read the existing specs/<tool>/<tool>.spec.md and the tool's source; (2) update the spec (one Write) to describe the new behaviour as a functional requirement; (3) change the code to match, keeping all unrelated behaviour, output format, and error contracts unchanged. Then stop.
 Report both the spec update and the code delta you made.`,
 };
+
+/**
+ * @purpose Resolve the phase's base worker instruction, fail-fast (GAP-E-1/H-16): a `brownfield`
+ *   scenario whose `mode` is neither a specific BROWNFIELD_MODE_PROMPTS branch nor one of the two
+ *   explicitly generic modes (BROWNFIELD_GENERIC_MODES) is a scenario-authoring mistake and throws,
+ *   naming both the phase and the unsupported mode — it must never silently reuse the generic
+ *   brownfield prompt for an unrelated mode (that used to make a typo look like a valid run measuring
+ *   the WRONG branch). Every other phase ignores `mode` when selecting its base prompt (unaffected).
+ */
+export function resolveBasePrompt(phase: SddEvalPhase, mode: SddEvalMode): string {
+  if (phase !== 'brownfield') return PHASE_PROMPTS[phase];
+  const specific = BROWNFIELD_MODE_PROMPTS[mode];
+  if (specific) return specific;
+  if (BROWNFIELD_GENERIC_MODES.has(mode)) return PHASE_PROMPTS.brownfield;
+  const supported = [...Object.keys(BROWNFIELD_MODE_PROMPTS), ...BROWNFIELD_GENERIC_MODES].sort();
+  throw new Error(
+    `phase 'brownfield' does not support mode ${JSON.stringify(mode)} ` +
+      `(expected one of: ${supported.join(', ')})`
+  );
+}
 
 /** @purpose Compose the exact worker instruction for a phase/mode scenario. */
 export function composeSddPhasePrompt(
@@ -71,10 +97,7 @@ export function composeSddPhasePrompt(
 - Treat the scenario intent and acceptance criteria as the synthetic operator's answers and approval of intermediate interview checkpoints. When a minor answer is absent, choose the simplest conservative default. Do not narrate or pause at intermediate checkpoints; collect assumptions and state them once in the final approval-boundary summary, never as invented durable rationale.
 - Never waive a failed gate, accept a risk, or write an operator decision/Decision Log entry on the synthetic operator's behalf. A red required gate is a blocker and must remain visible.
 - Do not approve the target boundary on the operator's behalf. For spec-authoring leave Approval #1 pending; for scaffold leave Approval #2 pending. Present the actual artifacts and return normally at that boundary.`;
-  const basePrompt =
-    scenario.phase === 'brownfield'
-      ? (BROWNFIELD_MODE_PROMPTS[scenario.mode] ?? PHASE_PROMPTS.brownfield)
-      : PHASE_PROMPTS[scenario.phase];
+  const basePrompt = resolveBasePrompt(scenario.phase, scenario.mode);
   return appendSddSessionBoundary(
     [
       basePrompt,
