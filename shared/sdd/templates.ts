@@ -4,6 +4,7 @@
 
 import { BOOTSTRAP_REQUIREMENTS_TABLE_HEADER } from './spec-schema.ts';
 import { DEFERRED_TEST_OWNERSHIP_LITERAL } from './task-authoring-literals.ts';
+import { formatTokenVocabulary } from './execution-log.ts';
 
 /**
  * @purpose Every artifact kind the registry knows how to scaffold.
@@ -1578,7 +1579,7 @@ const PROJECT_INDEX_SKELETON = `# Project Tasks
 ## Project-Wide Conventions (declared once, inherited)
 - **File-header:** owned by the coding rule (\`@file\` / \`@consumers\` / \`@tasks\`), enforced by \`sdd-verify\`.
 - **Baseline Completion Rule:** a Round cannot go \`[x] DONE\` until — every phase \`[x]\` with a current CLI-owned verification receipt; every BDD scenario mapped to a test or \`Deferred Test Ownership\`; every entity beyond the Inventory logged \`intro …\`; a semantic Handoff line closes each phase.
-- **Execution-Log token vocabulary:** \`intro <Entity> ← <reason>\` · \`decision <key>=<value> ← <reason>\` · \`tried <approach> → <result>\` · \`discovery <fact>\` · \`insight <observation> → <spec-section>\` · \`verified <tool>@<version> <summary>\` · CLI-owned \`SDD_PHASE_RECEIPT\` · \`BLOCKED <cause>\` · \`DONE\`. A \`[x]\` line with an unreplaced \`<…>\` placeholder is fabricated (BLOCKER).
+- **Execution-Log token vocabulary:** ${formatTokenVocabulary()}. A \`[x]\` line with an unreplaced \`<…>\` placeholder is fabricated (BLOCKER); a token outside this vocabulary is \`EXECUTION_LOG_INCOMPLETE\` (MINOR, padding).
 - **Post-task hook:** after a Round closes the orchestrator runs audit; until PASS the round is closed-but-unverified and dependents are blocked.
 
 ## Cross-Scope DAG

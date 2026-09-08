@@ -16,8 +16,30 @@ import {
 } from '../templates.ts';
 import { REQUIRED_SECTIONS, MODULE_REQUIRED_V2, FOLD_REQUIRED_V2 } from '../check.ts';
 import { extractMermaidBlocks, validateMermaid } from '../../mermaid/mermaid.ts';
+import { TOKEN_VOCABULARY, formatTokenVocabulary } from '../execution-log.ts';
 
 const sortedSet = (xs: string[]): string[] => Array.from(new Set(xs)).sort();
+
+describe('B2-03 — TOKEN_VOCABULARY is one home, project-index skeleton quotes it verbatim', () => {
+  it('the scaffolded specs/3-tasks.md skeleton contains exactly the module vocabulary, not a hand-typed copy', () => {
+    const skeleton = TEMPLATES['project-index'].skeleton;
+    assert.match(skeleton, /\*\*Execution-Log token vocabulary:\*\*/);
+    assert.ok(
+      skeleton.includes(formatTokenVocabulary()),
+      'project-index skeleton must embed execution-log.ts#formatTokenVocabulary() verbatim'
+    );
+  });
+
+  it('every canonical token from the single home appears in the generated line, including the ones that used to drift (ver/yagni/env-fix/correction)', () => {
+    const skeleton = TEMPLATES['project-index'].skeleton;
+    for (const entry of TOKEN_VOCABULARY) {
+      assert.ok(
+        skeleton.includes(entry.grammar),
+        `missing token grammar in skeleton: ${entry.token}`
+      );
+    }
+  });
+});
 
 describe('templates registry', () => {
   it('module skeleton points the scope-spec backlink at the flat-module depth (../<scope>), not ../../', () => {
