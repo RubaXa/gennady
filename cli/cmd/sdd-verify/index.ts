@@ -10,12 +10,14 @@ import {
   GATE_MAX_BUFFER_BYTES,
   type CoverageProbe,
 } from './sdd-verify.cmd.ts';
-import { parseInvocation } from './sdd-verify.types.ts';
+import { parseInvocation, stackConfigError } from './sdd-verify.types.ts';
 import { resolvePhaseContext } from './phase-context.ts';
 import { runPhaseVerification } from './phase-run.ts';
 import { createRepairMutationBoundary } from './workspace-mutation.ts';
 import { selectCoverageAdapter } from '../testcov/coverage-adapter-registry.ts';
 import { createCoverageArtifactBoundary } from '../testcov/coverage-artifact.ts';
+import { loadStackConfig, type StackConfigLoad } from '../../../shared/verify/stack-config.ts';
+import { BUILTIN_GATE_IDS } from '../../../shared/verify/stack-registry.ts';
 
 const invocation = parseInvocation(process.argv);
 if (!invocation.ok) {
@@ -27,6 +29,16 @@ if (!invocation.ok) {
 // dormant teaching failure until a test:coverage rung actually needs the probe; setup/code profiles
 // do not acquire an irrelevant coverage dependency.
 const projectRoot = resolve('.');
+
+// V-07: the `stack:` config section is a real gate here, ahead of any gate execution — a
+// malformed gennady.yaml/.gennadyrc must never let verify run on a config it cannot trust
+// (config.spec §4.1). No section present at all is not an error (config: null, errors: []).
+const stackConfigLoad: StackConfigLoad = loadStackConfig(projectRoot, BUILTIN_GATE_IDS);
+if (stackConfigLoad.errors.length > 0) {
+  const outcome = stackConfigError(stackConfigLoad.errors);
+  console.error(outcome.message);
+  process.exit(outcome.exitCode);
+}
 const coverageSelection = selectCoverageAdapter(projectRoot);
 const coverageBoundaryResult =
   coverageSelection.kind === 'selected'

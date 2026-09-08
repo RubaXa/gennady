@@ -12,7 +12,9 @@
 
 - Модуль **не имеет собственного CLI-входа** — это внутренний слой (`shared/verify/**`, `services/config/config-loader.ts`, `plugins/**`), потребляемый существующими командами `sdd-verify`/`sdd-state`/`sdd-task` по мере их подключения задачами V-03..V-09.
 - **V-04a закрыта:** `phase-receipt.ts` (`environmentState`, вне этого модуля) теперь резолвит пресет через `resolvePreset('node', …)` (`presets/node.ts`) и фейлится явно на этапе резолва для стека без реализованного источника (И-3) — реальный вызов из `gennady sdd-verify` в этот модуль есть.
-- **V-05 закрыта:** новый `shared/verify/stack-detection.ts` (`detectRepoStack`) даёт один общий факт `StackDetection` вместо per-caller угадывания; `sdd-state.cmd.ts` подключает его и печатает `STACK=`/`STACK_SOURCE=` в `[READINESS]`. Реальный второй вызов `detectStacks` (`stack-registry.ts`) есть — его запись `Usage Waiver` снята. `BUILTIN_GATE_IDS` остаётся waived до V-07 (стек-конфиг ещё не подключён). Неподключёнными остаются только перенесённые 0-1-вызовные примитивы волны V-07..V-09 (конфиг, golang/anystack-пресеты) — Overview (§2) рисует это явно: пунктирные рёбра = ещё не подключено.
+- **V-05 закрыта:** новый `shared/verify/stack-detection.ts` (`detectRepoStack`) даёт один общий факт `StackDetection` вместо per-caller угадывания; `sdd-state.cmd.ts` подключает его и печатает `STACK=`/`STACK_SOURCE=` в `[READINESS]`. Реальный второй вызов `detectStacks` (`stack-registry.ts`) есть — его запись `Usage Waiver` снята.
+- **V-07 закрыта:** `cli/cmd/sdd-verify/index.ts` подключает `loadStackConfig(root, BUILTIN_GATE_IDS)` как реальный preflight-гейт — любая ошибка схемы `stack:` (`gennady.yaml`/`.gennadyrc`) останавливает `sdd-verify` с exit 4 (`ERR_CLI_SDD_VERIFY_STACK_CONFIG`) до выполнения любого гейта; отсутствие секции — не ошибка. `loadStackConfig`/`BUILTIN_GATE_IDS`/`StackConfigError`/`StackConfigLoad` сняты (реальные вторые ссылки); `validateStackConfig`/`allOf`/`ConfigSectionLoad`/`formatDuration` остаются waived (уточнены по факту, см. §6); `pluginConfigOf`/`unmatchedGateOverrides`/`applyStackConfig` перенесены на **V-08** — им нужен построенный gate-план, которого V-07 не строит (V-07 — только загрузка+валидация). Доказано e2e (`cli/__tests__/tool-behavior/sdd-verify-stack-config.test.ts`): валидный `gennady.yaml` с 3 `extraGates` (id/argv/envFail/requires/fixer) не спотыкается о гейт; неизвестный ключ и неизвестный `stack.use` id → exit 4.
+- Неподключёнными остаются только перенесённые примитивы волны V-08/V-09 (golang/anystack-пресеты) — Overview (§2) рисует это явно: пунктирные рёбра = ещё не подключено.
 - `Usage Waiver` в §8 (`Module Contracts`) — не постоянное освобождение, а расписание: у каждой записи есть задача-владелец, которая обязана либо провести реальный вызов и снять запись, либо явно пересмотреть её при своём закрытии (см. `Module Decision Log`, §11, для истории снятий).
 - Перенесённые файлы — MAIN `d37d5910`, минимальная правка импортов под путь RC (детали и построчные диффы — в `R-V-02.md`, не дублируются здесь).
 
@@ -36,14 +38,15 @@ flowchart LR
   subgraph connected["Подключено этой волной (реальный вызов есть)"]
     STATE["sdd-state.cmd.ts\ndetectRepoStack (V-05)"]
     SD["stack-detection.ts\nRepoStackDetection — one shared fact"]
+    IDX["sdd-verify/index.ts\nloadStackConfig preflight, exit 4 (V-07)"]
   end
 
   subgraph ported["Перенесённые примитивы этого модуля — 0-1 вызовов до подключения"]
-    REG["stack-registry.ts\ndetectStacks (V-05 connects it) · BUILTIN_GATE_IDS (still V-07)"]
-    CFG["stack-config.ts\napplyStackConfig, loadStackConfig, …"]
+    REG["stack-registry.ts\ndetectStacks (V-05 connects it) · BUILTIN_GATE_IDS (V-07 connects it)"]
+    CFG["stack-config.ts\nvalidateStackConfig/allOf: exercised at runtime, no 2nd textual ref (V-07) · applyStackConfig/pluginConfigOf/unmatchedGateOverrides: V-08"]
     ENVF["env-fail.ts\nallOf, compileEnvFailRules"]
     TG["tree-guard.ts\nacquireTreeGuard"]
-    LOADER["config-loader.ts\nformatDuration, PROJECT_CONFIG_FILENAME"]
+    LOADER["config-loader.ts\nformatDuration (V-16), PROJECT_CONFIG_FILENAME (V-07 connects it), ConfigSectionLoad"]
     PLUGINS["plugins/index.ts\nBUILTIN_PLUGINS"]
     ANY["plugins/anystack/**"]
     GO["plugins/golang/**"]
@@ -57,11 +60,12 @@ flowchart LR
   REG -.-> PLUGINS
   STATE --> SD
   SD --> REG
+  IDX --> CFG
+  IDX --> LOADER
+  IDX --> REG
 
   CMD -. "V-03 done: Gate.envFail/requires machinery in runGate; 0 GATES entries feed it yet" .-> ENVF
-  CMD -. "V-07: gennady.yaml stack:" .-> CFG
-  CMD -. "V-07: printing" .-> LOADER
-  NODE -. "V-08: anystack preset (presets/anystack.ts)" .-> ANY
+  NODE -. "V-08: anystack preset (presets/anystack.ts) applies CFG for real" .-> ANY
   NODE -. "V-09: golang preset (presets/golang.ts)" .-> GO
   TG -. "V-18 (вне этой волны)" .-> PLAN
 ```
@@ -74,7 +78,7 @@ _Сплошные рёбра — уже связанный код (ничего 
 
 ## 3. Module Usage Example
 
-**V-05 (первый реальный внешний вызов):** `cli/cmd/sdd-state/sdd-state.cmd.ts` импортирует `detectRepoStack` и печатает его результат в `[READINESS]`:
+**V-05:** `cli/cmd/sdd-state/sdd-state.cmd.ts` импортирует `detectRepoStack` и печатает его результат в `[READINESS]`:
 
 ```ts
 import { detectRepoStack } from '../../../shared/verify/stack-detection.ts';
@@ -84,7 +88,22 @@ const stack = detectRepoStack(root, null); // config wiring is V-07's job
 // stack.source  === 'marker:package.json' | 'config:stack.use' | …
 ```
 
-TODO(V-07, V-09): конфиг (`gennady.yaml` `stack:`) и golang-пресет ещё не подключены — см. Overview (§2).
+**V-07:** `cli/cmd/sdd-verify/index.ts` loads and validates the `stack:` config section before any gate runs — a malformed `gennady.yaml`/`.gennadyrc` exits 4, never a partial run:
+
+```ts
+import { loadStackConfig, type StackConfigLoad } from '../../../shared/verify/stack-config.ts';
+import { BUILTIN_GATE_IDS } from '../../../shared/verify/stack-registry.ts';
+import { stackConfigError } from './sdd-verify.types.ts';
+
+const stackConfigLoad: StackConfigLoad = loadStackConfig(projectRoot, BUILTIN_GATE_IDS);
+if (stackConfigLoad.errors.length > 0) {
+  const outcome = stackConfigError(stackConfigLoad.errors);
+  console.error(outcome.message);
+  process.exit(outcome.exitCode); // 4
+}
+```
+
+TODO(V-08, V-09): anystack/golang-пресеты ещё не подключены — см. Overview (§2).
 
 <!--/SECTION:MODULE_USAGE_EXAMPLE-->
 
@@ -130,10 +149,10 @@ TODO(V-05, V-07, V-08, V-09): наполняется задачей, котор�
 
 ## 6. Module Contracts (DbC)
 
-Единственный наполненный контракт этого раздела сегодня — реестр `Usage Waiver` для 25 символов задачи V-02 (0-1 продакшн-вызовов на момент переноса, все — из `d37d5910` дословно). Каждая запись называет задачу-владельца, которая обязана провести реальный второй вызов и снять запись; форма/грамматика — по прецеденту `specs/shared/shared.spec.md`, `specs/cli/sdd-check/sdd-check.spec.md` (`cli/cmd/yagni/yagni.cmd.ts:228`).
+Единственный наполненный контракт этого раздела сегодня — реестр `Usage Waiver`, изначально 25 символов задачи V-02 (0-1 продакшн-вызовов на момент переноса, все — из `d37d5910` дословно); 20 записей остаются open после V-05 (`detectStacks` снят) и V-07 (`loadStackConfig`/`BUILTIN_GATE_IDS`/`StackConfigError`/`StackConfigLoad` сняты — реальные вторые ссылки). Каждая запись называет задачу-владельца, которая обязана провести реальный второй вызов и снять запись; форма/грамматика — по прецеденту `specs/shared/shared.spec.md`, `specs/cli/sdd-check/sdd-check.spec.md` (`cli/cmd/yagni/yagni.cmd.ts:228`).
 
 <details>
-<summary>Usage Waiver — 25 символов V-02, по задаче-владельцу</summary>
+<summary>Usage Waiver — 20 символов open (25 исходных V-02, минус 5 снятых V-05/V-07), по задаче-владельцу</summary>
 
 ### `ANYSTACK_GATE_IDS`
 
@@ -159,53 +178,33 @@ TODO(V-05, V-07, V-08, V-09): наполняется задачей, котор�
 
 - **Usage Waiver:** единственный вызов сегодня — внутри своего же файла (`golang-scope.logic.ts`); второй — из golang-пресета/e2e `go-broken-package-not-dropped` — снимается в V-09.
 
-### `PROJECT_CONFIG_FILENAME`
-
-- **Usage Waiver:** используется один раз внутри `config-loader.ts`; вторая ссылка ожидается там, где V-07 подключит `gennady.yaml`-специфичные сообщения (например, текст ошибки exit 4) — снимается в V-07.
-
 ### `ConfigSectionLoad`
 
-- **Usage Waiver:** тип результата `loadConfigSection`, сегодня потребляется без явной аннотации (`stack-config.ts:357`); явная вторая ссылка на имя типа ожидается при подключении обработки `configLoad` к реальному ладдеру — снимается в V-07 (пересмотреть по факту: неявное потребление не добавляет текстовую ссылку само по себе).
+- **Usage Waiver:** тип результата `loadConfigSection`, сегодня потребляется без явной аннотации (`stack-config.ts:357`). **Пересмотрено при закрытии V-07:** подключение (`loadStackConfig` → `sdd-verify/index.ts`) не задело этот тип напрямую — `sdd-verify` типизирует `StackConfigLoad` (снят) и `StackConfigError` (снят), а `ConfigSectionLoad` остаётся внутренним для `config-loader.ts`/`stack-config.ts`. Владелец не назначен; снимается, когда какой-то будущий потребитель секции конфига (не `stack`) явно затипизирует переменную этим именем.
 
 ### `formatDuration`
 
-- **Usage Waiver:** печать `timeoutMs` гейта в человекочитаемом виде; в MAIN вызывается при печати config-driven гейтов тем же путём, что подключает V-07 — снимается в V-07 (пересмотреть: если печать переедет в маркер `[gate] ` задачи V-14, владелец меняется).
+- **Usage Waiver:** печать `timeoutMs` гейта в человекочитаемом виде. **Пересмотрено при закрытии V-07:** V-07 добавляет только загрузку+валидацию (+exit 4), без печати самого гейт-плана — печать config-driven гейтов принадлежит `--plan`/`[gate] ` выводу (V-14/V-16, вне этой волны). Владелец — V-16 (если `gennady verify --plan --json` появится) или V-09 (если golang-пресет напечатает конфигурируемый timeout раньше).
 
 ### `allOf`
 
-- **Usage Waiver:** комбинатор env-fail предикатов, сегодня вызывается только внутри `compileEnvFailRules` (`env-fail.ts:248`); golang-плагин уже вызывает `exitCodeMatches`/`outputMatches` напрямую, но не комбинирует их через `allOf`. V-03 построила саму машину (`Gate.envFail`, `runGate` вычисляет предикаты, `verdict()` даёт статусу `env-fail` отдельную, не-FAILED рамку) и покрыла её юнит-тестами (`runGate` напрямую вызывает `allOf` в тестах) — но ни одна запись `GATES` по-прежнему не задаёт `envFail` в продакшен-коде (тесты не считаются использованием), поэтому текстовая ссылка на `allOf` в продакшене не появилась. Снимается тогда, когда какая-то задача впервые заполнит `envFail` реальному встроенному гейту или конфиг-driven гейту (V-07/V-08/V-09) — владелец пересмотрен с V-03 на V-07.
-
-### `StackConfigError`
-
-- **Usage Waiver:** тип ошибки валидации конфига; вторая явная ссылка появится, когда V-07 прокинет `configLoad.errors: StackConfigError[]` в вывод/exit 4 `sdd-verify` — снимается в V-07.
-
-### `StackConfigLoad`
-
-- **Usage Waiver:** тип результата `loadStackConfig`; та же вторая ссылка, что у `StackConfigError` — снимается в V-07.
+- **Usage Waiver:** комбинатор env-fail предикатов, сегодня вызывается только внутри `compileEnvFailRules` (`env-fail.ts:248`) — единственный call site, независимо от того, сколько раз сам `compileEnvFailRules` вызывается. **Пересмотрено при закрытии V-07:** `envFail`-правило на `extraGates` теперь реально валидируется по живому CLI-пути (`sdd-verify/index.ts` → `loadStackConfig` → `validateStackConfig` → `validateGateSpec` → `compileEnvFailRules` → `allOf`), доказано e2e-тестом (`cli/__tests__/tool-behavior/sdd-verify-stack-config.test.ts`, кейс с `envFail: [exitCodeMatches, stderrMatches]` на анистек-гейте) — но это **исполнение**, не новая **текстовая** ссылка на символ `allOf`, а гейт `yagni` считает именно текстовые ссылки. Снимается, когда появится второй прямой call site самого `allOf` (не через `compileEnvFailRules`) — открытый вопрос, владелец не назначен.
 
 ### `validateStackConfig`
 
-- **Usage Waiver:** единственный вызов сегодня — внутри `loadStackConfig` (`stack-config.ts:369`); подключение `loadStackConfig` к ладдеру (V-07) не гарантирует новую текстовую ссылку на `validateStackConfig` само по себе — снимается в V-07, если к его закрытию прямой второй вызов не появится, запись пересматривается явно (не переносится молча).
-
-### `loadStackConfig`
-
-- **Usage Waiver:** точка входа конфиг-контракта; второй вызов — прямое подключение к `sdd-verify.cmd.ts` (аналог MAIN `verify.cmd.ts:108`) — снимается в V-07.
+- **Usage Waiver:** единственный вызов сегодня — внутри `loadStackConfig` (`stack-config.ts:369`). **Подтверждено при закрытии V-07** (как и предполагала запись): подключение `loadStackConfig` к `sdd-verify/index.ts` не добавило прямой второй вызов `validateStackConfig` самого по себе — запись пересмотрена явно, не перенесена молча. Владелец не назначен.
 
 ### `pluginConfigOf`
 
-- **Usage Waiver:** срез конфигурации на плагин; второй вызов — там же, где V-07 подключает per-plugin конфиг к реальному циклу гейтов — снимается в V-07.
+- **Usage Waiver:** срез конфигурации на плагин. **Пересмотрено при закрытии V-07:** V-07 подключает только `loadStackConfig` (загрузка+валидация всей секции), не per-plugin срез — тот приходит вместе с построением gate-плана. Владелец — **V-08** (anystack-пресет читает `pluginConfigOf(config, 'anystack')` для своих `extraGates`).
 
 ### `unmatchedGateOverrides`
 
-- **Usage Waiver:** валидация `overrideGates` из `gennady.yaml`; второй вызов приходит вместе с подключением V-07 — снимается в V-07.
+- **Usage Waiver:** валидация `overrideGates` из `gennady.yaml` против уже спланированных гейтов — нужен построенный gate-план, которого V-07 не строит. Владелец — **V-08**.
 
 ### `applyStackConfig`
 
-- **Usage Waiver:** deep-merge применения конфига к гейтам — ядро конфиг-контракта; второй вызов приходит вместе с подключением V-07 — снимается в V-07.
-
-### `BUILTIN_GATE_IDS`
-
-- **Usage Waiver:** передаётся аргументом в `loadStackConfig(root, BUILTIN_GATE_IDS)` в MAIN (`verify.cmd.ts:20,108`); второй вызов — тот же путь подключения, что и у `loadStackConfig` — снимается в V-07.
+- **Usage Waiver:** deep-merge применения конфига к гейтам — нужен построенный gate-план, которого V-07 не строит (V-07 только загружает и валидирует секцию `stack:`, exit 4 на ошибку). Владелец — **V-08** (anystack-пресет применяет конфиг к своему пустому builtin-плану, добавляя `extraGates`).
 
 ### `TreeGuard`
 
@@ -243,7 +242,14 @@ TODO(V-05, V-07, V-08, V-09): наполняется задачей, котор�
 
 ## 7. Public Options & Policies
 
-TODO(V-07): секция `stack:` `gennady.yaml` (deep-merge, провенанс, `skipGates`/`overrideGates`/`extraGates`) описывается здесь, когда V-07 подключает конфиг-контракт к реальному ладдеру. До этого — см. перенесённые типы в §4/§6.
+**`stack:`** (`gennady.yaml`, `.gennadyrc`) — merged deep, repo `.gennadyrc` > `gennady.yaml` > `$HOME/.gennadyrc`, per-key provenance (`shared/verify/stack-config.ts`, `services/config/config-loader.ts`). Schema is strict: any unknown key, wrong type, or bad value is fatal — `sdd-verify` exits 4 (`ERR_CLI_SDD_VERIFY_STACK_CONFIG`) before any gate runs (V-07, `cli/cmd/sdd-verify/index.ts`). No section present at all is not an error.
+
+- `use: [<plugin-id>, …]` — restricts the candidate stack registry; never assigns an undetected stack.
+- `<pluginId>.skipGates: [<gate-id>, …]` — excludes builtin gates, visibly (skip entries, never silent drops).
+- `<pluginId>.overrideGates.<gate-id>: <GateSpec>` — overrides one builtin gate's `argv`/`cwd`/`env`/`timeout`/`outputMeansFailure`/`driftMeansFailure`/`envFail`/`requires`/`fixer`; unset fields inherit.
+- `<pluginId>.extraGates: [<GateSpec>, …]` — repo-specific gates appended after the builtins; `id`+`argv` mandatory; `anystack`'s entire gate list comes from here (its own builtin gate list is empty).
+
+TODO(V-08): applying this config to a real gate plan (`applyStackConfig`/`pluginConfigOf`/`unmatchedGateOverrides`) is the anystack preset's job — not yet connected (see Overview, §2, and Module Contracts, §6).
 
 <!--/SECTION:PUBLIC_OPTIONS-->
 
@@ -296,11 +302,12 @@ plugins/
 
 - **Depends on:** None (перенесённый код пока изолирован — см. Overview, §2)
 - **Scope Reference (cross-scope):** None
-- **Provides to:** [sdd-verify](../sdd-verify/sdd-verify.spec.md) (V-03/V-04/V-04a/V-07/V-08/V-09 подключают по одному ребру за раз), [sdd-state](../sdd-state/sdd-state.spec.md) (V-05 закрыта — `STACK=`/`STACK_SOURCE=` реально подключены)
+- **Provides to:** [sdd-verify](../sdd-verify/sdd-verify.spec.md) (V-03/V-04/V-04a закрыты; V-07 закрыта — `stack:` config preflight; V-08/V-09 подключают по одному ребру за раз), [sdd-state](../sdd-state/sdd-state.spec.md) (V-05 закрыта — `STACK=`/`STACK_SOURCE=` реально подключены)
 
 ```mermaid
 graph TD
-  verify["verify"] -. "V-03/V-04/V-04a/V-07/V-08/V-09" .-> sdd-verify["sdd-verify"]
+  verify["verify"] -. "V-08/V-09" .-> sdd-verify["sdd-verify"]
+  verify -- "V-03/V-04/V-04a/V-07 done" --> sdd-verify
   verify -- "V-05: STACK=/STACK_SOURCE=" --> sdd-state["sdd-state"]
 ```
 
@@ -325,7 +332,8 @@ _Кто подключит `verify` к своему ладдеру и какая
 
 - **Open risks & validation needs:**
   - `StackRun`/`VerifyReport` (§6) — предварительный владелец V-04 не подтверждён структурно; пересмотреть при закрытии V-04.
-  - `validateStackConfig`/`ConfigSectionLoad`/`allOf` (§6) — подключение вызывающей функции (V-07/V-03) не гарантирует новую текстовую ссылку на сам символ; пересмотреть при закрытии соответствующей задачи, а не считать снятым автоматически.
+  - `validateStackConfig`/`ConfigSectionLoad`/`allOf` (§6) — **закрыто по факту V-07:** подключение `loadStackConfig` не добавило новую текстовую ссылку на эти три символа (только исполняет их на реальном CLI-пути, доказано e2e); владелец не назначен — снимается, когда появится прямой второй call site.
+  - `pluginConfigOf`/`unmatchedGateOverrides`/`applyStackConfig` (§6) — владелец **V-08** (нужен построенный gate-план).
   - `C`/`I`/`Bad` (§6) — структурный false-positive source-policy `yagni` на `e2e/fixtures/**`; если V-09 не даст реального второго упоминания, нужна отдельная задача на сужение `yagni` (вне этой волны).
 
 <!--/SECTION:HANDOFF-->
