@@ -25,6 +25,17 @@ const STATUS_ORDER: Record<SyncSkillsFileStatus, number> = {
 };
 
 /**
+ * @purpose Whether a group's `deleted` entries mean the whole skill is gone, not just some files.
+ * @invariant SO-2b: the orphan sentinel (`relativePath: ''`, `status: 'deleted'`) is the only case
+ *   where the entire skill is gone — anything else is a surviving skill with files changed.
+ * @param entries One group's entries (same skillName).
+ * @returns True when the sentinel is present.
+ */
+function isWholeSkillDeletion(entries: readonly SyncSkillsFileEntry[]): boolean {
+  return entries.some((e) => e.relativePath === '' && e.status === 'deleted');
+}
+
+/**
  * @purpose Format sync-skills entries into stdout lines grouped by skill with markers.
  * @param entries List of sync-skills file entries.
  * @param [opts] Formatting options — dryRun enables preview labels.
@@ -79,60 +90,43 @@ export function format(
   // #region START_FORMAT_GROUPS — invariant: output each group with skill header and file lines
   for (const [skillName, group] of sortedGroups) {
     const dominant = group.dominantStatus;
+    const wholeSkillDeleted = isWholeSkillDeletion(group.entries);
 
-    if (dominant === 'added') {
-      const marker = '+';
-      const header = `  ${marker} ${skillName}/`;
-      lines.push(header);
-
-      for (const e of group.entries.sort((a, b) => a.relativePath.localeCompare(b.relativePath))) {
-        if (dryRun) {
-          lines.push(`      ${e.relativePath}`.padEnd(labelColumn) + LABEL_WOULD_ADD);
-        } else {
-          lines.push(`      ${e.relativePath}`);
-        }
-      }
-    } else if (dominant === 'updated') {
-      const marker = '~';
-      const header = `  ${marker} ${skillName}/`;
-      lines.push(header);
-
-      const changed = group.entries
-        .filter((e) => e.status === 'added' || e.status === 'updated')
-        .sort((a, b) => a.relativePath.localeCompare(b.relativePath));
-
-      for (const e of changed) {
-        if (dryRun) {
-          lines.push(`      ${e.relativePath}`.padEnd(labelColumn) + LABEL_WOULD_UPDATE);
-        } else {
-          lines.push(`      ${e.relativePath}`);
-        }
-      }
-    } else if (dominant === 'deleted') {
-      const marker = '-';
-      const header = `  ${marker} ${skillName}/`;
-      if (dryRun) {
-        lines.push(header.padEnd(labelColumn) + LABEL_WOULD_DELETE);
-      } else {
-        lines.push(header);
-      }
-
+    if (dominant === 'unchanged') {
+      const header = `  = ${skillName}/`;
+      lines.push(header.padEnd(labelColumn) + (dryRun ? LABEL_UNCHANGED_SKIP : LABEL_UNCHANGED));
+    } else if (dominant === 'deleteFailed') {
+      const code = group.entries.find((e) => e.errorCode)?.errorCode ?? 'UNKNOWN';
+      const header = `  ! ${skillName}/`;
+      lines.push(header.padEnd(labelColumn) + `(delete failed: ${code})`);
+    } else if (wholeSkillDeleted) {
+      const header = `  - ${skillName}/`;
+      lines.push(dryRun ? header.padEnd(labelColumn) + LABEL_WOULD_DELETE : header);
       for (const e of group.entries
         .filter((e) => e.relativePath !== '')
         .sort((a, b) => a.relativePath.localeCompare(b.relativePath))) {
         lines.push(`      ${e.relativePath}`);
       }
-    } else if (dominant === 'deleteFailed') {
-      const marker = '!';
-      const code = group.entries.find((e) => e.errorCode)?.errorCode ?? 'UNKNOWN';
-      const header = `  ${marker} ${skillName}/`;
-      lines.push(header.padEnd(labelColumn) + `(delete failed: ${code})`);
     } else {
-      // unchanged
-      const marker = '=';
-      const header = `  ${marker} ${skillName}/`;
-      const label = dryRun ? LABEL_UNCHANGED_SKIP : LABEL_UNCHANGED;
-      lines.push(header.padEnd(labelColumn) + label);
+      // Surviving skill (SO-4): every non-unchanged entry prints under its own true status.
+      const marker = dominant === 'added' ? '+' : '~';
+      lines.push(`  ${marker} ${skillName}/`);
+
+      const changed = group.entries
+        .filter((e) => e.status !== 'unchanged')
+        .sort((a, b) => a.relativePath.localeCompare(b.relativePath));
+
+      for (const e of changed) {
+        const label =
+          e.status === 'added'
+            ? LABEL_WOULD_ADD
+            : e.status === 'updated'
+              ? LABEL_WOULD_UPDATE
+              : LABEL_WOULD_DELETE;
+        lines.push(
+          dryRun ? `      ${e.relativePath}`.padEnd(labelColumn) + label : `      ${e.relativePath}`
+        );
+      }
     }
   }
   // #endregion END_FORMAT_GROUPS
@@ -145,7 +139,12 @@ export function format(
   const failed = entries.filter((e) => e.status === 'deleteFailed').length;
 
   if (dryRun) {
-    lines.push('Dry-run: no files written.');
+    // SO-4: a dry-run summary that hides counts cannot serve as a preview — the reader must be
+    // able to tell, from this one line, exactly what a real run would add/update/delete.
+    let summary = `Would sync: ${added} added, ${updated} updated, ${skipped} skipped, ${deleted} deleted`;
+    if (failed > 0) summary += `, ${failed} delete failed`;
+    summary += '. Dry-run: no files written.';
+    lines.push(summary);
   } else {
     let summary = `Synced: ${added} added, ${updated} updated, ${skipped} skipped, ${deleted} deleted`;
     if (failed > 0) summary += `, ${failed} delete failed`;
