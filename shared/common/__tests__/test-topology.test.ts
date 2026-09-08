@@ -8,6 +8,7 @@ import { spawnSync } from 'node:child_process';
 import { readdirSync, readFileSync } from 'node:fs';
 import { basename, join, relative, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { availableParallelism } from 'node:os';
 
 const ROOT = resolve(import.meta.dirname, '../../..');
 const RUNNER = join(ROOT, 'scripts/test-topology.ts');
@@ -51,7 +52,7 @@ const CREDENTIAL_KEYS = [
 ] as const;
 const NETWORK_MARKER = 'ERR_TEST_UNEXPECTED_NETWORK';
 const COVERAGE_CHILD_ENV_GUARD_MARKER = "process.env.NODE_V8_COVERAGE%20%3D%20''";
-const BOUNDED_OUTER_CONCURRENCY = '--test-concurrency=6';
+const BOUNDED_OUTER_CONCURRENCY = `--test-concurrency=${Math.min(10, Math.max(6, availableParallelism()))}`;
 
 type Layer = (typeof TEST_LAYERS)[number];
 type RunnerProbe = { args: string[]; env: NodeJS.ProcessEnv };
@@ -206,7 +207,10 @@ describe('test topology contract', () => {
       scripts: Record<string, string>;
     };
 
-    assert.deepStrictEqual(deterministic, expected);
+    // Order-insensitive on purpose: the runner dispatches heaviest-layer-first for makespan.
+    // Set identity + exactly-once are still asserted below and by the sorted comparison here.
+    assert.deepStrictEqual([...deterministic].sort(), expected);
+    assert.strictEqual(new Set(deterministic).size, deterministic.length);
     assert.deepStrictEqual([...coverage].sort(), expected);
     assert.strictEqual(new Set(coverage).size, coverage.length);
     assert.strictEqual(coverageSpawns.length, 2);
@@ -287,7 +291,7 @@ describe('test topology contract', () => {
     assert.strictEqual(help.status, 0);
     assert.match(help.stdout, /unit[\s\S]*deterministic[\s\S]*coverage[\s\S]*check[\s\S]*list/);
     assert.match(help.stdout, /npm test=deterministic/);
-    assert.match(help.stdout, /bounded outer concurrency=6/);
+    assert.match(help.stdout, /bounded outer concurrency=\d+/);
     const unknown = runRunner('not-a-command');
     assert.strictEqual(unknown.status, 2);
     assert.match(unknown.stderr, /unknown command: not-a-command/);
