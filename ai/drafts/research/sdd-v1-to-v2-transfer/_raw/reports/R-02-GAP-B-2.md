@@ -17,7 +17,7 @@
 | Путь | Тип | Смысловое изменение | Чем доказано |
 |---|---|---|---|
 | `scripts/git-hooks/pre-push` | новый, исполняемый | Новый хук: если `dist/gennady.js` отсутствует или устарел (mtime `cli/`,`shared/`,`services/`,`index.ts`,`vite.config.ts`,`package.json` новее) — `npm run build`, затем всегда `npm run gate:sdd-check-baseline`; при красном гейте печатает уже готовые строки `NEW ERROR: <code>  <file>` от самого гейта и роняет push тем же стилем баннера, что `pre-commit`. `pre-commit` НЕ тронут. | Прямой запуск хука (см. §3, пп. 2–4): build пропускается на свежем dist, срабатывает на touch'е `index.ts`, гейт даёт exit 0 на чистом дереве и exit 1 с именованием при повреждённом baseline. |
-| `package.json` | правка | Удалён `check:ci` (мёртвый скрипт — не вызывался ничем, `.github/workflows/` в дереве нет). `gate:sdd-check-baseline` и `sdd-check-zero-new-error.ts` НЕ тронуты (по прямому запрету брифа). `prepare` теперь пишет `core.hooksPath` через `git config --worktree ...` вместо простой (общей) записи. | `grep -rn "check:ci"` вне комментариев/README — 0 совпадений; `npm run check` 5/5 (см. §3, п.6); ручной прогон `npm run prepare` в `rc-w2` → `.git/worktrees/rc-w2/config.worktree` получил `hooksPath = scripts/git-hooks` (см. §3, п.1). |
+| `package.json` | правка | Удалён `check:ci` (мёртвый скрипт — не вызывался ничем, `.github/workflows/` в дереве нет). `gate:sdd-check-baseline` и `sdd-check-zero-new-error.ts` НЕ тронуты (по прямому запрету брифа). `prepare` пишет `core.hooksPath` через `git config --worktree ...`; условие-guard — `git rev-parse --git-dir >/dev/null 2>&1` (НЕ `[ -d .git ]` — в связанном worktree `.git` файл, а не директория, и `[ -d .git ]` там ложно, из-за чего первая редакция `prepare` была no-op в любом worktree, кроме основного клона; исправлено правкой V-R-02 поверх `85d2fed1`). | Правка verified фактом: временный worktree, созданный от нового коммита в `$TMPDIR` (`git worktree add --detach`), после `npm run prepare` (без `node_modules`) даёт `core.hooksPath` = `scripts/git-hooks` и `git rev-parse --git-path hooks` = `scripts/git-hooks` внутри самого этого worktree; временный worktree удалён `git worktree remove --force`, основной клон и `rc-v6` не тронуты. `grep -rn "check:ci"` вне комментариев/README — 0 совпадений; `npm run check` 5/5 (см. §3, п.6). |
 | `ai/flow-eval/.baseline/README.md` | правка | Раздел «Куда подключено» переписан: явно фиксирует «в репозитории нет CI», описывает новый `pre-push`, ссылается на smoke-скрипт; убран текст про `check:ci`/будущий workflow-файл как «открытый пункт» (закрыт этим брифом). | Диффом видно (`git diff`); согласованность проверена ручным вычитыванием финального файла. |
 | `ai/flow-eval/scripts/pre-push-gate.smoke.sh` | новый, исполняемый | Доказательный скрипт: копирует реальный baseline, удаляет одну error-находку, гоняет `sdd-check-zero-new-error.ts` — ждёт exit 1 с именем убранного `(code,file)`; затем гоняет тот же гейт на нетронутом baseline — ждёт exit 0. Не `*.test.ts` → не подхватывается `scripts/test-topology.ts` (`UNIT_ROOTS` матчит только `*.test.ts`) — тот же прецедент, что уже существующий `ai/flow-eval/scripts/require-developer-repo.test.sh` (тоже вручную вызываемый `.sh`, не в топологии). Не регистрировал в test-topology намеренно, факт зафиксирован ниже в «Отклонения». | Прогон скрипта, вывод в §3 п.4; повторный прогон после коммита — идентичный результат. |
 
@@ -52,7 +52,7 @@ flowchart LR
   style CI stroke-dasharray: 5 5
   style nothing fill:#eee,stroke:#999,color:#666
 ```
-Узлы стрелок: `scripts/git-hooks/pre-commit:63` (`npm run check`), `package.json` (`check:ci`, удалённая строка), `ai/flow-eval/scripts/sdd-check-zero-new-error.ts:1` (`main()`). Пунктир = путь, который никогда не проходил ни один процесс (CI-обвязки не существует).
+Узлы стрелок: `scripts/git-hooks/pre-commit:72` (`npm run check`), `package.json` (`check:ci`, удалённая строка), `ai/flow-eval/scripts/sdd-check-zero-new-error.ts:1` (`main()`). Пунктир = путь, который никогда не проходил ни один процесс (CI-обвязки не существует).
 
 ### Стало — гейт висит на push, единственная точка входа
 
@@ -61,8 +61,8 @@ flowchart LR
   subgraph push["git push"]
     PP["scripts/git-hooks/pre-push (новый)"]
   end
-  PP -->|"строки 55-63: dist stale? → npm run build"| BUILD["vite build → dist/gennady.js"]
-  PP -->|"строка 66: npm run gate:sdd-check-baseline"| GATE["ai/flow-eval/scripts/sdd-check-zero-new-error.ts:main()"]
+  PP -->|"строки 56-72: dist stale? (find -newer, :61) → npm run build"| BUILD["vite build → dist/gennady.js"]
+  PP -->|"строка 75: npm run gate:sdd-check-baseline"| GATE["ai/flow-eval/scripts/sdd-check-zero-new-error.ts:main()"]
   GATE -->|"runSddCheckJson() — предпочитает dist/gennady.js"| BUILD
   GATE --> BASE[("ai/flow-eval/.baseline/sdd-check-227c03a8.json")]
   GATE -->|"exit 1 + NEW ERROR: code file"| FAIL["fail() баннер в pre-push"]
@@ -71,7 +71,7 @@ flowchart LR
     PC["scripts/git-hooks/pre-commit"] -->|"npm run check"| SV["sdd-verify --profile full"]
   end
 ```
-Узлы: `scripts/git-hooks/pre-push:55-63` (build-if-stale), `:66` (`gate:sdd-check-baseline`), `ai/flow-eval/scripts/sdd-check-zero-new-error.ts:74` (`main()`), `ai/flow-eval/scripts/run-sdd-check-json.ts:35` (`existsSync(distEntry)` → предпочитает `dist/gennady.js`). Серым логически — `pre-commit`, он не изменился (тот же вызов `npm run check`, что и раньше).
+Узлы: `scripts/git-hooks/pre-push:56-72` (build-if-stale; `find … -newer` — `:61`), `:75` (`gate:sdd-check-baseline`), `ai/flow-eval/scripts/sdd-check-zero-new-error.ts:73` (`function main(): void`; вызов — `:103`; строка `NEW ERROR` — `:96`), `ai/flow-eval/scripts/run-sdd-check-json.ts:40-41` (`const distEntry = resolve(...)` / `existsSync(distEntry)` → предпочитает `dist/gennady.js`). Серым логически — `pre-commit`, он не изменился (тот же вызов `npm run check`, что и раньше).
 
 ---
 
@@ -205,7 +205,7 @@ exit 0. ВЫПОЛНЕНО.
 ## 4. Отклонения, открытые вопросы, команды пуша
 
 **Отклонения:**
-- Заголовок `ai/flow-eval/scripts/sdd-check-zero-new-error.ts` (строка 6, `@consumers`) всё ещё называет `check:ci` и говорит «CI-only by design» — файл по прямому запрету брифа НЕ трогался. README теперь явно указывает на это как на устаревший исторический комментарий (см. `ai/flow-eval/.baseline/README.md`, раздел «Гейт zero-new-error: что и куда подключено»). Не блокирует: комментарий описателен, поведение скрипта не изменилось.
+- Заголовок `ai/flow-eval/scripts/sdd-check-zero-new-error.ts` (строка 6, `@consumers`) в исходной редакции GAP-B-2 называл `check:ci` и говорил «CI-only by design» — файл по прямому запрету брифа НЕ трогался. Обновлено правкой V-R-02 (только строка 6, комментарий): теперь ссылается на «pre-push gate (D-54)» вместо `check:ci`/«CI-only». Не блокирует: комментарий описателен, поведение скрипта не изменилось.
 - Staleness-эвристика в `pre-push` — сравнение mtime (`find ... -newer dist/gennady.js`) по `cli/ shared/ services/ index.ts vite.config.ts package.json`, а не hash-based. Дешёвая и достаточная для локального git-хука; не обсуждалась явно в брифе как единственный вариант — если оператор хочет hash-based маркер, это отдельная правка `pre-push`.
 - Смоук-скрипт не зарегистрирован в `scripts/test-topology.ts` — по конструкции топологии (`UNIT_ROOTS` матчит только `*.test.ts`) `.sh`-файл туда попасть не может; решение — оставить его вызываемым по имени, как уже сделано для `ai/flow-eval/scripts/require-developer-repo.test.sh`. Открытый вопрос оператору, если это решение не устраивает: переписать smoke-проверку как `*.test.ts` (спавнящий реальный `sdd-check --all .` дважды — заметно медленнее, чем текущий чистый unit-тест `sdd-check-baseline-compare.test.ts`).
 - Прямая правка `core.hooksPath` главного клона была заблокирована classifier'ом окружения при попытке эмпирической проверки — не стал обходить, вместо этого выбрал архитектурно более безопасный `git config --worktree` (см. §3 п.2). Итоговое решение не требует трогать общий конфиг вообще.
@@ -218,3 +218,37 @@ git -C rc-w2 push origin lead/GAP-B-2:lead/GAP-B-2
 git -C rc-w2 push origin lead/GAP-B-2:codex/sdd-v2-rc52-followup
 ```
 Перед пушем стоит убедиться, что локальный `pre-push` хук у Lead резолвится в его собственное дерево (тот же факт, что в §3 п.2) — иначе пуш из другого worktree выполнит ЧУЖОЙ `pre-push`.
+
+---
+
+## § Правки по V-R-02
+
+Верификатор (`_raw/V-R-02-GAP-B-2.md`) нашёл одно блокирующее: `"prepare": "[ -d .git ] && git config --worktree core.hooksPath scripts/git-hooks || true"` — в связанном worktree `.git` это ФАЙЛ (`gitdir: …`), не директория, поэтому `[ -d .git ]` ложно и `prepare` вырождался в `|| true` — заявленный критерий приёмки GAP-B-2 («относительный `core.hooksPath` в свежем worktree») фактически не выполнялся, а `config.worktree` в `rc-w2` был выставлен ручной командой из §3 п.2, а не `prepare`.
+
+Новый коммит (НЕ amend), поверх `85d2fed1`:
+- **`d53a56f4c4c16d79e537e50ff72fc0e3f36d865a`** chore(gap-b-2): apply verifier fixes (V-R-02): prepare works in linked worktrees; docs
+
+**Правки:**
+1. `package.json`: `"prepare": "git rev-parse --git-dir >/dev/null 2>&1 && git config --worktree core.hooksPath scripts/git-hooks || true"` (без fallback — верификатор фактически подтвердил, что `--worktree` без `extensions.worktreeConfig` вырождается в `--local`).
+2. Ячейка §1 таблицы про `package.json` переписана — больше не утверждает, что ручной прогон `prepare` заполнил `config.worktree` (это сделала ручная команда, не `prepare`); вместо этого описывает исправленный guard и ссылается на факт ниже.
+3. Пять `file:line`-якорей в mermaid-подписях (§2) исправлены по таблице верификатора (E): `pre-commit:63`→`:72`; `pre-push:55-63`→`:56-72` (`find … -newer` — `:61`); `pre-push:66`→`:75`; `sdd-check-zero-new-error.ts:74 (main())`→`:73 (function main(): void)`, вызов `:103`, `NEW ERROR` — `:96`; `run-sdd-check-json.ts:35`→`:40-41`.
+4. `ai/flow-eval/scripts/sdd-check-zero-new-error.ts:6` (заголовок-комментарий, только эта строка): `"check:ci"`/«CI-only by design» → «run by the pre-push gate (D-54)» — дешёвый остаток REL-19, комментарий-only правка, поведение не задето.
+5. `ai/flow-eval/.baseline/README.md` (строки 62/64): переформулированы без литерала `check:ci` («GAP-B-1 завёл отдельный npm-скрипт "для будущего CI"… Поэтому тот npm-скрипт удалён»), чтобы grep-приёмка REL-19 по `check:ci` давала 0 и здесь.
+
+**Доказательство фикса `prepare` (факт, не декларация):** временный worktree создан **от главного клона** (`git -C /Users/k.lebedev/Developer/gennady worktree add --detach <tmp> d53a56f4...`, не от `rc-w2` — прямой `worktree add` от `rc-w2` копирует его собственный ручной `config.worktree` в новый worktree и маскирует эффект `prepare`, это отдельно проверено и отброшено):
+```
+BEFORE: core.hooksPath = /Users/k.lebedev/Developer/gennady/scripts/git-hooks   (унаследовано из общего .git/config)
+        config.worktree файла нет (чистый baseline)
+$ npm run prepare   # без node_modules — prepare их не требует
+PREPARE_EXIT=0
+AFTER:  core.hooksPath = scripts/git-hooks
+        git rev-parse --git-path hooks (внутри <tmp>) = scripts/git-hooks
+```
+Временный worktree удалён (`git worktree remove --force`); главный клон `/Users/k.lebedev/Developer/gennady` и `rc-v6` после этого по-прежнему резолвят `core.hooksPath` в абсолютный путь главного клона (не тронуты).
+
+**Прогоны перед завершением:**
+- `npm --prefix rc-w2 run check` → `[sdd-verify] ✅ ALL PASS (5/5)` (type-check, test:coverage, lint, format, yagni), `CHECK_EXIT=0`.
+- `bash rc-w2/ai/flow-eval/scripts/pre-push-gate.smoke.sh` → `1/2` эмулирует NEW ERROR (`ERR_CLI_SDD_CHECK_READ_FAILED tasks/ai/directives/coding/typescript-rules.xml`, exit 1 внутри проверки), `2/2` OK на чистом baseline, `SMOKE OK`, `SMOKE_EXIT=0`.
+- `grep -rn "check:ci" rc-w2 --include=*.md --include=*.json --include=*.ts | grep -v node_modules` → пусто (`GREP_EXIT=1`, совпадений нет).
+- `git -C rc-w2 status --porcelain` после коммита и всех прогонов — пусто.
+- Коммит прошёл `pre-commit` целиком (без `--no-verify`): `[sdd-verify] ✅ ALL PASS (5/5)`, `check:directives-fresh`, `audit:axioms`, `audit:contracts`, `audit:halts`, `check:directive-budgets` — все зелёные.
