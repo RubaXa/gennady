@@ -8,8 +8,10 @@ import { parsePhaseReceipts } from '../../../shared/sdd/phase-receipt.ts';
 import { findSectionBounds } from '../../../shared/sdd/section.ts';
 import { deriveSpecAcronym } from '../../../shared/sdd/requirement-id.ts';
 import { unreadableTicketHint } from '../../../shared/sdd/ticket-resolve.ts';
+import { extractSection } from '../../../shared/sdd/section.ts';
 import {
   matchPhaseOverviewHeader,
+  parsePhasesOverview,
   rowCells,
   isSeparator,
   type PhaseColumnMap,
@@ -118,11 +120,84 @@ export function buildCloseBlock(ts: string): string {
 const ROUND_CLOSE_SKELETON = '- [ ] `<ts>` DONE';
 /** @purpose A Round already closed by a previous successful `close`. */
 const ROUND_CLOSE_DONE_RE = /^- \[x\] `[^`]+` DONE$/;
+/** @purpose One checked `- [x] \`<ts>\` DONE` event line, verbatim. Mirrors check.ts's own copy. */
+const CLOSE_MARKED_DONE_LINE_RE = /^-\s*\[x\]\s*`[^`]+`\s*DONE\s*$/;
+
+/**
+ * @purpose Every phase id with an open `#### <PhaseID>` block inside one Round, and whether that
+ *   block carries a checked DONE event line — B2-07's input for the close-time completeness gate.
+ * @param lines Full ticket markdown, already split into lines.
+ * @param start First line index to scan (exclusive of the Round heading itself).
+ * @param end One-past-last line index to scan (exclusive).
+ * @returns Phase id → whether its block has a checked DONE line, in first-seen order.
+ */
+function phaseDoneStateInRange(lines: string[], start: number, end: number): Map<string, boolean> {
+  const out = new Map<string, boolean>();
+  let phase: string | null = null;
+  for (let i = start; i < end; i++) {
+    const line = (lines[i] ?? '').trim();
+    const heading = PHASE_HEADING_RE.exec(line);
+    if (heading) {
+      phase = heading[1] as string;
+      if (!out.has(phase)) out.set(phase, false);
+      continue;
+    }
+    if (/^#{1,6}\s+\S/.test(line)) {
+      phase = null;
+      continue;
+    }
+    if (phase && CLOSE_MARKED_DONE_LINE_RE.test(line)) out.set(phase, true);
+  }
+  return out;
+}
+
+/**
+ * @purpose Refuse to close a Round while any phase it opened is not proven complete (B2-07: closes
+ *   the `sdd-log complete` bypass at the close boundary too, not only at check-time).
+ * @invariant Skips entirely when PHASES_OVERVIEW is unreadable (legacy tickets keep today's
+ *   behavior — no regression); only phases with an open block IN THIS Round are checked.
+ * @param content Full ticket markdown.
+ * @param lines Same content, pre-split into lines.
+ * @param roundStart Line index just after the Round heading.
+ * @param roundEnd Line index of this Round's own close point (exclusive).
+ * @returns The first blocking phase id and reason, or null when every phase in the Round checks out.
+ */
+function firstUnfinishedPhaseInRound(
+  content: string,
+  lines: string[],
+  roundStart: number,
+  roundEnd: number
+): { phase: string; reason: string } | null {
+  const overview = extractSection(content, 'PHASES_OVERVIEW');
+  if (overview.status !== 'ok') return null; // legacy ticket — unchanged behavior
+  const overviewPhases = new Map(parsePhasesOverview(overview.content).map((p) => [p.id, p]));
+
+  const doneState = phaseDoneStateInRange(lines, roundStart, roundEnd);
+  for (const [phaseId, hasMarkedDone] of doneState) {
+    const overviewPhase = overviewPhases.get(phaseId);
+    if (!overviewPhase || !overviewPhase.status.includes('[x]')) {
+      return { phase: phaseId, reason: 'is not completed' };
+    }
+    if (hasMarkedDone) {
+      const receipts = parsePhaseReceipts(content);
+      const hasReceipt = receipts.ok && receipts.receipts.some((r) => r.phase === phaseId);
+      if (!hasReceipt) {
+        return {
+          phase: phaseId,
+          reason: 'is marked DONE in the Execution Log but has no CLI-owned SDD_PHASE_RECEIPT',
+        };
+      }
+    }
+  }
+  return null;
+}
 
 /**
  * @purpose Close the current Round without duplicating a scaffolded `#### Round close` block.
  * @invariant A scaffold placeholder is replaced in place; a missing block is appended once for
  *   rounds opened dynamically by `sdd-log round`; an already closed or ambiguous Round fails.
+ * @invariant B2-07: refuses when a phase this Round opened is not `[x]` complete in the Overview,
+ *   or is marked DONE with no CLI-owned receipt — closes `complete`'s bypass at the close boundary.
  * @param content Full ticket markdown, optionally with a scaffolded current-Round close block.
  * @param ts Real ISO timestamp owned by the CLI.
  * @returns Complete replacement content, or one fail-closed structural reason.
@@ -150,6 +225,16 @@ export function closeCurrentRound(
       ok: false,
       detail: `current Round must contain at most one Round close block (found ${closeHeads.length})`,
     };
+  }
+
+  const unfinished = firstUnfinishedPhaseInRound(
+    content,
+    lines,
+    searchStart,
+    closeHeads.length === 1 ? (closeHeads[0] as number) : log.closeLine
+  );
+  if (unfinished) {
+    return { ok: false, detail: `phase ${unfinished.phase} ${unfinished.reason}` };
   }
 
   const closeBlock = buildCloseBlock(ts).trim();

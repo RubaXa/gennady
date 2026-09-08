@@ -5,6 +5,12 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { checkTicket } from '../check.ts';
+import {
+  formatPhaseReceipt,
+  phaseReceiptPlanState,
+  type PhaseReceipt,
+  type PhaseReceiptPlan,
+} from '../phase-receipt.ts';
 
 /** Build a minimal ticket: META(status) + a Phases Overview + the named phase sections + EXECUTION_LOG. */
 function ticket(opts: {
@@ -308,5 +314,103 @@ describe('checkTicket — phase graph + exec-log completeness', () => {
     assert.ok(!c.includes('SDD_PHASE_DAG_CYCLE'), c.join(','));
     assert.ok(!c.includes('SDD_PHASE_DEP_UNRESOLVED'), c.join(','));
     assert.ok(!c.includes('SDD_PHASE_SECTION_ORPHAN'), c.join(','));
+  });
+});
+
+// B2-07: closing the `sdd-log complete` bypass — a phase logged DONE straight in the Execution Log
+// (`sdd-log line "DONE" --phase P<N>`) without ever proving a CLI-owned SDD_PHASE_RECEIPT.
+describe('checkTicket — SDD_EXECUTION_LOG_PHASE_UNRECEIPTED_DONE (B2-07)', () => {
+  function receipt(phase: string): PhaseReceipt {
+    const plan: PhaseReceiptPlan = {
+      ticket: 't.md',
+      phase,
+      profile: 'code',
+      profileBasis: 'phase-kind',
+      targets: [`src/${phase}.ts`],
+      deletedFiles: [],
+      verification: [],
+      producesCoverage: false,
+      environmentState: `sha256:${'1'.repeat(64)}`,
+    };
+    return {
+      schema: 1,
+      ...plan,
+      planState: phaseReceiptPlanState(plan),
+      targetState: `sha256:${'2'.repeat(64)}`,
+      commands: [],
+    };
+  }
+
+  it('WARNs when a phase block has a checked DONE line but no receipt', () => {
+    const c = codes(
+      't.md',
+      ticket({
+        rows: [{ id: 'P1' }],
+        sections: ['P1'],
+        executionLog: [
+          '### Round 1 — 2026-09-01, initial',
+          '#### P1',
+          '- [x] `2026-09-01T10:00:00.000Z` DONE',
+          '**Handoff →** artifacts: [...]; decisions: [...]; open: [...]; deviations: [...]',
+        ].join('\n'),
+      })
+    );
+    const finding = c.find((code) => code === 'SDD_EXECUTION_LOG_PHASE_UNRECEIPTED_DONE');
+    assert.ok(finding, c.join(','));
+  });
+
+  it('is clean when the receipted phase has a checked DONE line', () => {
+    const c = codes(
+      't.md',
+      ticket({
+        rows: [{ id: 'P1' }],
+        sections: ['P1'],
+        executionLog: [
+          '### Round 1 — 2026-09-01, initial',
+          '#### P1',
+          '- [x] `2026-09-01T10:00:00.000Z` DONE',
+          '**Handoff →** artifacts: [...]; decisions: [...]; open: [...]; deviations: [...]',
+          '',
+          formatPhaseReceipt(receipt('P1')),
+        ].join('\n'),
+      })
+    );
+    assert.ok(!c.includes('SDD_EXECUTION_LOG_PHASE_UNRECEIPTED_DONE'), c.join(','));
+  });
+
+  it('does not misattribute a DONE line inside Round close to the previous phase', () => {
+    const c = codes(
+      't.md',
+      ticket({
+        rows: [{ id: 'P1' }],
+        sections: ['P1'],
+        executionLog: [
+          '### Round 1 — 2026-09-01, initial',
+          '#### P1',
+          '- [ ] `<ts>` DONE',
+          '**Handoff →** artifacts: [...]; decisions: [...]; open: [...]; deviations: [...]',
+          '#### Round close',
+          '- [x] `2026-09-01T10:00:00.000Z` DONE',
+        ].join('\n'),
+      })
+    );
+    assert.ok(!c.includes('SDD_EXECUTION_LOG_PHASE_UNRECEIPTED_DONE'), c.join(','));
+  });
+
+  it('is silent when the DONE line is still the unfilled skeleton (not checked)', () => {
+    const c = codes(
+      't.md',
+      ticket({
+        rows: [{ id: 'P1' }],
+        sections: ['P1'],
+        executionLog: [
+          '### Round 1 — 2026-09-01, initial',
+          '#### P1',
+          '- [ ] `<ts>` DONE',
+          '**Handoff →** artifacts: [...]; decisions: [...]; open: [...]; deviations: [...]',
+        ].join('\n'),
+      })
+    );
+    assert.ok(!c.includes('SDD_EXECUTION_LOG_PHASE_UNRECEIPTED_DONE'), c.join(','));
   });
 });

@@ -302,6 +302,19 @@ describe('SddLogCommand', () => {
   it('replaces one scaffolded Round-close skeleton and rejects a repeated close without mutation', async () => {
     const scaffolded = completableTicket();
     writeFileSync(ticket, scaffolded, 'utf-8');
+    // B2-07: close now refuses while a phase this Round opened is not [x] complete — legitimately
+    // complete Round 2's only open phase (P1) first, exactly as a real orchestrator would.
+    const completed = await mod.run(
+      argv(
+        ticket,
+        'complete',
+        'artifacts: [src/P1.ts]; decisions: [none]; open: [none]; deviations: []',
+        '--phase',
+        'P1'
+      ),
+      CLOCK
+    );
+    assert.strictEqual(completed.ok, true, completed.ok ? '' : completed.message);
 
     const first = await mod.run(argv(ticket, 'close'), CLOCK);
     assert.strictEqual(first.ok, true, first.ok ? '' : first.message);
@@ -316,6 +329,62 @@ describe('SddLogCommand', () => {
     assert.strictEqual(second.ok, false);
     if (!second.ok) assert.match(second.message, /ERR_CLI_SDD_LOG_CLOSE_STATE/);
     assert.strictEqual(readFileSync(ticket, 'utf-8'), closed);
+  });
+
+  // B2-07: closing the `sdd-log complete` bypass at the close boundary too.
+  describe('close mode — refuses an incomplete or unreceipted phase (B2-07)', () => {
+    it('refuses when a phase this Round opened is not [x] complete in the Phases Overview', async () => {
+      writeFileSync(ticket, completableTicket(), 'utf-8');
+      const before = readFileSync(ticket, 'utf-8');
+      const outcome = await mod.run(argv(ticket, 'close'), CLOCK);
+      assert.strictEqual(outcome.ok, false);
+      if (!outcome.ok) {
+        assert.strictEqual(outcome.code, 'ERR_CLI_SDD_LOG_CLOSE_STATE');
+        assert.match(outcome.message, /phase P1 is not completed/);
+      }
+      assert.strictEqual(readFileSync(ticket, 'utf-8'), before);
+    });
+
+    it('refuses when the log shows a phase marked DONE via a bare `line` with no receipt', async () => {
+      const bypassed = [
+        '# t',
+        '<!--SECTION:META-->',
+        '- **Task-ID:** cli-foo',
+        '- **Status:** [~] IN_PROGRESS',
+        '<!--/SECTION:META-->',
+        '',
+        '<!--SECTION:PHASES_OVERVIEW-->',
+        '## Phases Overview',
+        '| ID | Kind | Deps | Status |',
+        '|----|------|------|--------|',
+        '| P1 | impl | — | [x] |',
+        '<!--/SECTION:PHASES_OVERVIEW-->',
+        '',
+        '<!--SECTION:EXECUTION_LOG-->',
+        '## Execution Log',
+        '### Round 1 — 2026-06-21, initial',
+        '#### P1',
+        '- [x] `2026-06-21T09:00:00.000Z` DONE',
+        '**Handoff →** artifacts: [...]; decisions: [...]; open: [...]; deviations: [...]',
+        '#### Round close',
+        '- [ ] `<ts>` DONE',
+        '<!--/SECTION:EXECUTION_LOG-->',
+      ].join('\n');
+      writeFileSync(ticket, bypassed, 'utf-8');
+      const outcome = await mod.run(argv(ticket, 'close'), CLOCK);
+      assert.strictEqual(outcome.ok, false);
+      if (!outcome.ok) {
+        assert.strictEqual(outcome.code, 'ERR_CLI_SDD_LOG_CLOSE_STATE');
+        assert.match(outcome.message, /phase P1 is marked DONE .* no CLI-owned SDD_PHASE_RECEIPT/);
+      }
+      assert.strictEqual(readFileSync(ticket, 'utf-8'), bypassed);
+    });
+
+    it('is tolerant of a legacy ticket with no readable PHASES_OVERVIEW (unchanged behavior)', async () => {
+      // BASE (the shared fixture) has no PHASES_OVERVIEW at all.
+      const outcome = await mod.run(argv(ticket, 'close'), CLOCK);
+      assert.strictEqual(outcome.ok, true, outcome.ok ? '' : outcome.message);
+    });
   });
 
   describe('META Status (round/close drive it; tolerant when Status line is absent)', () => {

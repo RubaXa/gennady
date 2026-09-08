@@ -12,6 +12,7 @@ import type { Scope, GraphEdge } from './portal.ts';
 import type { FlowVersion } from './flow.ts';
 import { SCOPE_KINDS, TEMPLATES, loadBearingSections, foldSections } from './templates.ts';
 import { validateTaskId, findPrefixClashes, describeIdConflict } from './task-id.ts';
+import { parsePhaseReceipts } from './phase-receipt.ts';
 import {
   deriveSpecAcronym,
   validateSpecEntryId,
@@ -333,6 +334,36 @@ export function parsePhaseHandoffs(logBody: string): Record<string, string> {
   return out;
 }
 
+/** @purpose One checked `- [x] \`<ts>\` DONE` event line, verbatim (no other content on the line). */
+const MARKED_DONE_LINE_RE = /^-\s*\[x\]\s*`[^`]+`\s*DONE\s*$/;
+
+/**
+ * @purpose Every phase id whose Execution Log block carries a checked `DONE` event line — a bare
+ *   `sdd-log line "DONE" --phase P<N>` bypasses `sdd-log complete` (B2-07).
+ * @invariant Any heading (Round, Round close, another phase) resets attribution — a checked DONE
+ *   line inside `#### Round close` itself is never misattributed to the last-seen phase.
+ * @param logBody Extracted EXECUTION_LOG section body.
+ * @returns Phase ids with ≥1 checked DONE line in their own block, across every Round.
+ */
+function phaseIdsWithMarkedDone(logBody: string): Set<string> {
+  const ids = new Set<string>();
+  let phase: string | null = null;
+  for (const rawLine of logBody.split('\n')) {
+    const line = rawLine.trim();
+    const heading = PHASE_HEADING_RE.exec(line);
+    if (heading) {
+      phase = heading[1] as string;
+      continue;
+    }
+    if (/^#{1,6}\s+\S/.test(line)) {
+      phase = null;
+      continue;
+    }
+    if (phase && MARKED_DONE_LINE_RE.test(line)) ids.add(phase);
+  }
+  return ids;
+}
+
 /**
  * @purpose Extract the `artifacts: [...]` file list from one verbatim Handoff line.
  * @invariant `none` / `n/a` / `—` inside the brackets means no real artifact — returns empty, same
@@ -597,6 +628,23 @@ export function checkTicket(file: string, content: string): Finding[] {
       for (const p of phases) {
         if (!p.status.includes('[x]'))
           err('SDD_DONE_PHASE_UNCHECKED', `Status is DONE but phase ${p.id} is not checked ([x]).`);
+      }
+    }
+
+    // B2-07: closes the `sdd-log complete` bypass (a bare `line "DONE" --phase`) — WARN per L-3,
+    // new codes stay warn pending the B2-15 debt inventory + DA-lazy-asm golden.
+    if (logSec.status === 'ok') {
+      const receipts = parsePhaseReceipts(content);
+      if (receipts.ok) {
+        const receiptedPhases = new Set(receipts.receipts.map((r) => r.phase));
+        for (const phase of phaseIdsWithMarkedDone(logSec.content)) {
+          if (!receiptedPhases.has(phase)) {
+            warn(
+              'SDD_EXECUTION_LOG_PHASE_UNRECEIPTED_DONE',
+              `Phase ${phase} has a checked DONE line in the Execution Log but no CLI-owned SDD_PHASE_RECEIPT. Run: npx gennady sdd-log <ticket> complete "…" --phase ${phase} (via sdd-verify + sdd-log complete, never a bare "line DONE").`
+            );
+          }
+        }
       }
     }
   }
