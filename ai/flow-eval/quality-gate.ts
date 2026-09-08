@@ -1,5 +1,5 @@
 // @file: Objective quality gate for eval runs — mechanical success rules, not the stochastic judge.
-// @consumers: cli; see QUALITY-RULES.ru.md for the rule backlog and the both-outcomes discipline.
+// @consumers: cli; see docs/10-QUALITY-RULES.md for the rule backlog and the both-outcomes discipline.
 
 import { execFile } from 'node:child_process';
 import { readFileSync } from 'node:fs';
@@ -10,7 +10,7 @@ const execFileAsync = promisify(execFile);
 
 /** @purpose One quality rule's objective outcome for a run. */
 export type QualityRuleResult = {
-  /** @purpose Rule id from QUALITY-RULES.ru.md (e.g. 'R1'). */
+  /** @purpose Rule id from docs/10-QUALITY-RULES.md (e.g. 'R1'). */
   rule: string;
   pass: boolean;
   /** @purpose Short objective evidence (e.g. error count, the checker's summary line). */

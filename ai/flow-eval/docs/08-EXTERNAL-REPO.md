@@ -1,10 +1,10 @@
 # Eval на своём внешнем репозитории (round-trip)
 
-Дополнение к [`WRITING-EVALS.ru.md`](../WRITING-EVALS.ru.md), которое описывает встроенные фикстуры
+Дополнение к [`06-NEW-EVAL.md`](./06-NEW-EVAL.md), которое описывает встроенные фикстуры
 (`FIXTURE_FILES`, живут внутри временной директории, создаются `provision.ts` с нуля). Здесь — другой
 паттерн: сценарий работает на **реальном внешнем репозитории** (не в gennady), уже лежащем на диске как
 git worktree. Предпосылка: репозиторий — под `$HOME/Developer/<repo>` (см.
-[PREREQUISITES.ru.md](./PREREQUISITES.ru.md#4-правило-developer-для-внешних-репозиториев)).
+[03-SETUP.md](./03-SETUP.md#4-правило-developer-для-внешних-репозиториев)).
 
 Живой пример — `ai/flow-eval/scripts/roundtrip-eval.sh` (round-trip для `cloud-ios`). Ниже — ключевые
 шаги без копипаста всего скрипта.
@@ -67,7 +67,7 @@ git worktree. Предпосылка: репозиторий — под `$HOME/D
    ```bash
    python3 ai/flow-eval/scripts/session-metrics.py gate --fixture "$RT"
    ```
-   Подробности метрик — [METRICS.ru.md](./METRICS.ru.md).
+   Подробности метрик — [05-METRICS.md](./05-METRICS.md).
 
 ### grade — сравнить с golden
 
@@ -100,4 +100,4 @@ git worktree. Предпосылка: репозиторий — под `$HOME/D
 подкоманды. Если целевой репозиторий не под `~/Developer/`, скрипт останавливается с понятной ошибкой,
 не тронув файловую систему. Не обходить эту проверку переносом кода мимо скрипта — она защищает от
 рассинхрона путей между этим прогоном и остальными eval-инструментами на машине (см.
-[PREREQUISITES.ru.md](./PREREQUISITES.ru.md#4-правило-developer-для-внешних-репозиториев)).
+[03-SETUP.md](./03-SETUP.md#4-правило-developer-для-внешних-репозиториев)).

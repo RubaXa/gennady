@@ -15,19 +15,19 @@ Copy-paste бриф. Разработчик отдаёт этот текст с�
 >
 > 1. Целевой репозиторий лежит под `$HOME/Developer/<ИМЯ_РЕПО>` — клоном или git worktree. Если нет —
 >    создай клон/worktree там или симлинкни: `ln -s <ПУТЬ_К_РЕПО> ~/Developer/<ИМЯ_РЕПО>`. Подробности
->    и почему это обязательно: `ai/flow-eval/docs/PREREQUISITES.ru.md`.
+>    и почему это обязательно: `ai/flow-eval/docs/03-SETUP.md`.
 > 2. OpenCode HTTP-сервер уже запущен на свободном порту ≥4097 (не 4096, не порт Desktop-инстанса) и
->    отвечает на `/health`. Если не запущен — подними по `ai/flow-eval/RUNBOOK.ru.md` («Подготовка»).
+>    отвечает на `/health`. Если не запущен — подними по `ai/flow-eval/docs/04-RUNNING.md` («Подготовка»).
 > 3. Переменные `LLM_PROXY_BASE_URL` и `LLM_PROXY_API_KEY` заданы в окружении (не печатай значения).
 > 4. В worktree `gennady`, из которого запускается харнесс: `git status --short` чистый,
 >    `npm run build` прошёл, `npm run test:sdd-flow-eval` зелёный.
 >
 > Дальше:
 >
-> 1. Прочитай `ai/flow-eval/README.md` (что это и как устроено) и
->    `ai/flow-eval/docs/ARCHITECTURE.ru.md` (пайплайн, роли модулей, что детерминировано).
-> 2. Реши: эвал использует встроенную фикстуру (`ai/flow-eval/WRITING-EVALS.ru.md`) или СВОЙ внешний
->    репозиторий (`ai/flow-eval/docs/WRITING-EVALS-EXTERNAL.ru.md`) — для round-trip/migration это
+> 1. Прочитай `ai/flow-eval/docs/00-INTRO.md` (что это и как устроено) и
+>    `ai/flow-eval/docs/02-ARCHITECTURE.md` (пайплайн, роли модулей, что детерминировано).
+> 2. Реши: эвал использует встроенную фикстуру (`ai/flow-eval/docs/06-NEW-EVAL.md`) или СВОЙ внешний
+>    репозиторий (`ai/flow-eval/docs/08-EXTERNAL-REPO.md`) — для round-trip/migration это
 >    почти всегда внешний репозиторий.
 > 3. Для внешнего репозитория заведи скрипт по образцу `ai/flow-eval/scripts/roundtrip-eval.sh` или
 >    `migration-eval.sh`: переменные `REPO`/`GEN_ROOT` в начале, вызов
@@ -36,11 +36,11 @@ Copy-paste бриф. Разработчик отдаёт этот текст с�
 > 4. Опиши сценарий: `phase`, `mode`, `directory` (путь prep-worktree), `intent`, `acceptance`, и, если
 >    это execute-сценарий с проверяемым завершением, — `completion: {artifact, ticket, spec}`.
 > 5. Прогони `npm run build` в `gennady`, затем сценарий через `npm run sdd-flow-eval -- ...`
->    (полная форма команды — в README «Canonical command» и в RUNBOOK «Живой прогон»).
+>    (полная форма команды — в `ai/flow-eval/docs/04-RUNNING.md`, раздел «Живой прогон»).
 > 6. После прогона проверь ДВА измерения, не только judge: `gennady sdd-check --all .` (R1) и, если
 >    заявлен `completion`, `python3 ai/flow-eval/scripts/session-metrics.py gate --fixture <dir>`
 >    (R-COMPLETE). Расхождение judge с механикой — это дефект харнесса/судьи, а не флоу
->    (`ai/flow-eval/RUNBOOK.ru.md`, раздел «Критерии результата»).
+>    (`ai/flow-eval/docs/04-RUNNING.md`, раздел «Критерии результата»).
 > 7. Не исправляй проверяемый flow во время живого прогона и не перезапускай автоматически после
 >    `fail`/`inconclusive`.
 
@@ -59,13 +59,14 @@ Copy-paste бриф. Разработчик отдаёт этот текст с�
 
 ## Ссылки
 
-| Документ                                                         | Когда нужен                                    |
-| ---------------------------------------------------------------- | ---------------------------------------------- |
-| [`README.md`](../README.md)                                      | Общая карта, каноническая команда.             |
-| [`ARCHITECTURE.ru.md`](./ARCHITECTURE.ru.md)                     | Устройство пайплайна, детерминизм vs judge.    |
-| [`PREREQUISITES.ru.md`](./PREREQUISITES.ru.md)                   | Сервер/прокси/сборка, правило `~/Developer/`.  |
-| [`WRITING-EVALS.ru.md`](../WRITING-EVALS.ru.md)                  | Свой eval на встроенной фикстуре.              |
-| [`WRITING-EVALS-EXTERNAL.ru.md`](./WRITING-EVALS-EXTERNAL.ru.md) | Свой eval на внешнем репозитории (round-trip). |
-| [`METRICS.ru.md`](./METRICS.ru.md)                               | Детерминированные метрики, non-regression.     |
-| [`RUNBOOK.ru.md`](../RUNBOOK.ru.md)                              | Полная процедура запуска и чтения наблюдений.  |
-| [`QUALITY-RULES.ru.md`](../QUALITY-RULES.ru.md)                  | Бэклог механических правил (R1…R6).            |
+| Документ                                       | Когда нужен                                    |
+| ---------------------------------------------- | ---------------------------------------------- |
+| [`README.md`](./README.md)                     | Оглавление и маршрут чтения.                   |
+| [`00-INTRO.md`](./00-INTRO.md)                 | Что такое eval, метод, прогон по шагам.        |
+| [`02-ARCHITECTURE.md`](./02-ARCHITECTURE.md)   | Устройство пайплайна, детерминизм vs judge.    |
+| [`03-SETUP.md`](./03-SETUP.md)                 | Сервер/прокси/сборка, правило `~/Developer/`.  |
+| [`06-NEW-EVAL.md`](./06-NEW-EVAL.md)           | Свой eval на встроенной фикстуре.              |
+| [`08-EXTERNAL-REPO.md`](./08-EXTERNAL-REPO.md) | Свой eval на внешнем репозитории (round-trip). |
+| [`05-METRICS.md`](./05-METRICS.md)             | Детерминированные метрики, non-regression.     |
+| [`04-RUNNING.md`](./04-RUNNING.md)             | Полная процедура запуска и чтения наблюдений.  |
+| [`10-QUALITY-RULES.md`](./10-QUALITY-RULES.md) | Бэклог механических правил (R1…R6).            |

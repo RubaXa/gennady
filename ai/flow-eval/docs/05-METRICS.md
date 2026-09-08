@@ -1,7 +1,7 @@
 # Метрики и детерминизм
 
 Слой проверки, который не зависит от LLM: механический quality-gate плюс детерминированные метрики
-сессии. Общая картина — [ARCHITECTURE.ru.md § 4](./ARCHITECTURE.ru.md#4-что-детерминировано-а-что--judge);
+сессии. Общая картина — [02-ARCHITECTURE.md § 4](./02-ARCHITECTURE.md#4-что-детерминировано-а-что--judge);
 здесь — как каждый инструмент устроен и что именно он читает.
 
 ## 1. Quality-gate (`quality-gate.ts`)
@@ -120,6 +120,6 @@ python3 ai/flow-eval/scripts/session-telemetry.py sdd-eval:RT-cloud-ios-IB-scrip
 
 ## 4. Где смотреть дальше
 
-- Как обе эти проверки встраиваются в pipeline — [ARCHITECTURE.ru.md](./ARCHITECTURE.ru.md).
-- Пример полного round-trip прогона, где используются `record`/`gate` — [WRITING-EVALS-EXTERNAL.ru.md](./WRITING-EVALS-EXTERNAL.ru.md).
-- Бэклог правил качества (R1…R6) и дисциплина both-outcomes — [QUALITY-RULES.ru.md](../QUALITY-RULES.ru.md).
+- Как обе эти проверки встраиваются в pipeline — [02-ARCHITECTURE.md](./02-ARCHITECTURE.md).
+- Пример полного round-trip прогона, где используются `record`/`gate` — [08-EXTERNAL-REPO.md](./08-EXTERNAL-REPO.md).
+- Бэклог правил качества (R1…R6) и дисциплина both-outcomes — [10-QUALITY-RULES.md](./10-QUALITY-RULES.md).
