@@ -48,11 +48,13 @@ import {
   moduleGraphEdges,
   ticketRef,
   legacyTicketRef,
+  checkRuleRegistryFilesExist,
   type Finding,
   type TicketRef,
   type TrackerRowRef,
   type SpecEntry,
 } from '../../../shared/sdd/check.ts';
+import { parseRuleRegistry } from '../../../shared/sdd/task-authoring-literals.ts';
 import { checkRequirementBudgetsAgainstBaseline } from '../../../shared/sdd/requirement-budget.ts';
 import type { GraphEdge } from '../../../shared/sdd/portal.ts';
 import { parseScopes, parseGraphEdges } from '../../../shared/sdd/portal.ts';
@@ -1409,6 +1411,19 @@ export async function run(
     findings.push(...checkTrackers(ticketRefs, trackerRowRefs));
     findings.push(...checkSpecHierarchy(specEntries));
     findings.push(...checkResearchOrphans(researchFiles, referencedResearch, registeredResearch));
+    // #region START_RULE_REGISTRY — invariant: SO-11, project registry only; parse failures are T-3's concern, not this existence-only check's
+    const projectRegistryFile = join(repoRoot, 'ai', 'directives', 'knowledge.xml');
+    if (existsSync(projectRegistryFile)) {
+      try {
+        const registryEntries = parseRuleRegistry(readFileSync(projectRegistryFile, 'utf-8'));
+        findings.push(
+          ...checkRuleRegistryFilesExist(projectRegistryFile, registryEntries, (entry) =>
+            existsSync(join(repoRoot, entry.file))
+          )
+        );
+      } catch {}
+    }
+    // #endregion END_RULE_REGISTRY
     for (const [scope, { edges, scopeFile }] of moduleEdgesByScope) {
       findings.push(...checkModuleGraph(scope, scopeFile, edges));
     }
