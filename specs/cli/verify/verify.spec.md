@@ -44,7 +44,7 @@ flowchart LR
   CFG -.-> ENVF
   REG -.-> PLUGINS
 
-  CMD -. "V-03: envFail/timeout/violation" .-> ENVF
+  CMD -. "V-03 done: Gate.envFail/requires machinery in runGate; 0 GATES entries feed it yet" .-> ENVF
   CMD -. "V-04/V-04a: resolvePreset + fingerprint" .-> PLAN
   CMD -. "V-05: STACK=/STACK_SOURCE=" .-> REG
   CMD -. "V-07: gennady.yaml stack:" .-> CFG
@@ -149,7 +149,7 @@ TODO(V-05, V-07, V-08, V-09): наполняется задачей, котор�
 
 ### `allOf`
 
-- **Usage Waiver:** комбинатор env-fail предикатов, сегодня вызывается только внутри `compileEnvFailRules` (`env-fail.ts:248`); golang-плагин уже вызывает `exitCodeMatches`/`outputMatches` напрямую, но не комбинирует их через `allOf` — второй прямой вызов ожидается, когда V-03 составит `envFail`-правило из нескольких условий для встроенного (не golang) гейта `GATES` — снимается в V-03.
+- **Usage Waiver:** комбинатор env-fail предикатов, сегодня вызывается только внутри `compileEnvFailRules` (`env-fail.ts:248`); golang-плагин уже вызывает `exitCodeMatches`/`outputMatches` напрямую, но не комбинирует их через `allOf`. V-03 построила саму машину (`Gate.envFail`, `runGate` вычисляет предикаты, `verdict()` даёт статусу `env-fail` отдельную, не-FAILED рамку) и покрыла её юнит-тестами (`runGate` напрямую вызывает `allOf` в тестах) — но ни одна запись `GATES` по-прежнему не задаёт `envFail` в продакшен-коде (тесты не считаются использованием), поэтому текстовая ссылка на `allOf` в продакшене не появилась. Снимается тогда, когда какая-то задача впервые заполнит `envFail` реальному встроенному гейту или конфиг-driven гейту (V-07/V-08/V-09) — владелец пересмотрен с V-03 на V-07.
 
 ### `StackConfigError`
 

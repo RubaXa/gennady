@@ -211,15 +211,44 @@ function verifyCoverageWritten(
 }
 
 /**
- * @purpose Run one resolvable gate and append its result.
- * @invariant The `test:coverage` rung only PRODUCES the report (exit code is the verdict); the
- *   coverage threshold is `gennady testcov`'s job, never here.
- * @param runner Command runner. | @param gate The gate. | @param scriptName Resolved npm script name (ignored for `via: 'gennady'`).
- * @param results Accumulator.
- * @returns The gate's final status.
+ * @purpose Run one resolvable gate and return its result.
+ * @invariant `test:coverage` only PRODUCES the report; the coverage threshold is `testcov`'s job.
+ * @invariant `requires`/`envFail`/`outputMeansFailure` are unused by any `GATES` entry (V-03 data
+ *   shape for future preset-resolved gates); existing `GATES` behavior stays byte-identical (V-01).
+ * @param runner Command runner.
+ * @param gate The gate.
+ * @param scriptName Resolved npm script name (ignored for `via: 'gennady'`).
+ * @returns The gate's final result.
  */
-async function runGate(runner: GateRunner, gate: Gate, scriptName: string): Promise<GateResult> {
+export async function runGate(
+  runner: GateRunner,
+  gate: Gate,
+  scriptName: string
+): Promise<GateResult> {
   const start = Date.now();
+
+  // Preconditions run BEFORE the gate command; the first failing one is env-fail with its hint and
+  // the gate command never runs (mirrors MAIN services/stack semantics). `GateRunner` has no cwd/env
+  // parameter, so a precondition's own `cwd`/`env` are not honored yet — a later task that populates
+  // real `requires` entries for a non-default cwd/env needs to widen `GateRunner` first.
+  if (gate.requires) {
+    for (const precondition of gate.requires) {
+      const [preCommand, ...preArgs] = precondition.argv;
+      const preResult = await runner(preCommand ?? '', preArgs);
+      if (preResult.exitCode !== 0) {
+        return {
+          name: gate.name,
+          status: 'env-fail',
+          exitCode: preResult.exitCode,
+          output: precondition.hint ?? preResult.output,
+          durationMs: Date.now() - start,
+          ranCommand: precondition.argv.join(' '),
+          mutates: gate.mutates,
+        };
+      }
+    }
+  }
+
   const { command, args } =
     gate.via === 'gennady'
       ? gennadyGateCommand(gate.name)
@@ -228,12 +257,39 @@ async function runGate(runner: GateRunner, gate: Gate, scriptName: string): Prom
   const durationMs = Date.now() - start;
   logger.debug(`[SddVerifyCommand#run] ${gate.name} → exit ${r.exitCode} (${durationMs}ms)`);
   const ranCommand = `${command} ${args.join(' ')}`;
-  const status: GateStatus = r.exitCode === 0 ? 'pass' : 'fail';
+  let status: GateStatus = r.exitCode === 0 ? 'pass' : 'fail';
+  let output = r.output;
+
+  // `outputMeansFailure` (gofmt -l contract): exit 0 with non-empty stdout is still a failure.
+  if (status === 'pass' && gate.outputMeansFailure && r.output.trim() !== '') {
+    status = 'fail';
+  }
+
+  // ENV_FAIL predicates classify the outcome as environment, never code — checked last so they can
+  // reclassify either a `pass` (a predicate matching successful-looking output) or a `fail`.
+  // `GateRunResult` has no separate stdout/stderr, so both streams collapse to the combined `output`
+  // — the same approximation the renderer already makes; a predicate keyed on one specific stream is
+  // unaffected in practice since `output` is stdout followed by stderr.
+  if (gate.envFail && gate.envFail.length > 0) {
+    const outcome = {
+      exitCode: r.exitCode,
+      timedOut: false,
+      stdout: r.output,
+      stderr: r.output,
+      output: r.output,
+    };
+    const matched = gate.envFail.find((predicate) => predicate(outcome));
+    if (matched) {
+      status = 'env-fail';
+      output = matched.hint ? [r.output, matched.hint].filter(Boolean).join('\n') : r.output;
+    }
+  }
+
   return {
     name: gate.name,
     status,
     exitCode: r.exitCode,
-    output: r.output,
+    output,
     durationMs,
     ranCommand,
     mutates: gate.mutates,
@@ -591,7 +647,14 @@ export async function run(
     results.push(gateResult);
     let status = gateResult.status;
     status = verifyCoverageWritten(gate, status, results, coverageProbe);
-    if (status === 'fail' && gate.haltsOnFailure) {
+    // env-fail always halts — it is an environment problem, not a reason to keep running gates
+    // against a proven-bad environment — regardless of this gate's own `haltsOnFailure` (mirrors the
+    // unconditional halt a `missing` required gate already gets above). fail/timeout/violation keep
+    // the existing `haltsOnFailure`-gated halt — no `GATES` entry produces timeout/violation today.
+    if (
+      status === 'env-fail' ||
+      ((status === 'fail' || status === 'timeout' || status === 'violation') && gate.haltsOnFailure)
+    ) {
       haltedAt = gate.name;
       break;
     }
