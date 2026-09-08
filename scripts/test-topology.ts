@@ -1,4 +1,9 @@
-// @file: Executable runner for hermetic unit and deterministic coverage test layers.
+// @file: Executable runner for hermetic unit and deterministic coverage test layers, plus the
+//   temporary `experimental` layer (agent-inbox, agent-mon) carved out by decision D-60. That
+//   layer is excluded from `npm test` / `npm run test:coverage` / pre-commit — it runs only via
+//   `npm run test:experimental` — because those two products are not release-ready for v2. This is
+//   a scoping decision, not a perf one: revert it after the v2 release (2.0.0-draft) by folding
+//   `experimental` back into the regular layers (see D-60).
 // @consumers: package.json test scripts
 // @tasks: N/A
 
@@ -8,7 +13,7 @@ import { spawnSync } from 'node:child_process';
 import { availableParallelism } from 'node:os';
 
 const PROJECT_ROOT = resolve(import.meta.dirname, '..');
-const TEST_LAYERS = ['unit', 'contract', 'local', 'external'] as const;
+const TEST_LAYERS = ['unit', 'contract', 'local', 'external', 'experimental'] as const;
 type TestLayer = (typeof TEST_LAYERS)[number];
 type TestTopology = Record<TestLayer, string[]>;
 type TestPartition = {
@@ -19,6 +24,22 @@ type TestPartition = {
 };
 const TEST_ROOTS = ['ai', 'cli', 'plugins', 'services', 'shared'] as const;
 const TEST_FILE = /\.test\.ts$/;
+// D-60: agent-inbox, agent-mon are experimental products not shipping in v2 yet. Their whole test
+// surface is carved into its own topology layer — still discovered and classified (so the
+// exhaustiveness contract holds), but excluded from `deterministic`/`coverage` and run only via
+// `npm run test:experimental`. Path-prefix match (not name-based) so it also catches the files that
+// `V2_GATE_EXCLUDED_NAMES` / the integration-name filters below used to blanket-exclude from the
+// corpus entirely. Revert after v2 release (2.0.0-draft): fold these roots back into their natural
+// unit/contract/local/external classification and delete this layer.
+const EXPERIMENTAL_ROOTS = [
+  'services/agent-inbox/',
+  'services/agent-mon/',
+  'cli/cmd/inbox/',
+  'cli/cmd/inbox-context/',
+  'cli/cmd/inbox-eval/',
+  'cli/cmd/inbox-review-plan/',
+  'cli/cmd/agent-mon/',
+] as const;
 // Several local suites launch real CLI/npm/git subprocesses, and sdd-verify already overlaps four
 // fixture CLIs internally, so the outer pool stays bounded rather than tracking the host's CPU
 // count. Ten (capped by available parallelism) keeps the heaviest-layer-first wave resident in one
@@ -35,6 +56,10 @@ const V2_GATE_EXCLUDED_NAMES = new Set([
   // exceeds the offline commit gate's per-test budget and cancels — not a real failure. It keeps its
   // home in `npm run test:sdd-flow-eval` (own glob runner); like the other heavy integration tests
   // above it must not block the offline gate.
+  //
+  // NOTE: this name also matches `services/agent-inbox/modules/inbox-eval/__tests__/harness.test.ts`,
+  // but that file is now claimed by `EXPERIMENTAL_ROOTS` first (checked before this set), so only the
+  // `ai/flow-eval/` one is actually excluded here — see `discoverTests`.
   'harness.test.ts',
 ]);
 const UNIT_ROOTS = [
@@ -156,16 +181,24 @@ function discoverUnder(dir: string): string[] {
   return files;
 }
 
+function isExperimental(file: string): boolean {
+  return EXPERIMENTAL_ROOTS.some((root) => file.startsWith(root));
+}
+
 function discoverTests(): string[] {
   return TEST_ROOTS.flatMap((root) => discoverUnder(join(PROJECT_ROOT, root)))
-    .filter(
-      (file) =>
-        !file.includes('/agent-inbox/') &&
+    .filter((file) => {
+      // D-60: the experimental contour is discovered and classified unconditionally — none of the
+      // legacy name/path exclusions below apply to it, since it must land in `experimental` rather
+      // than being silently dropped from the topology (exhaustiveness).
+      if (isExperimental(file)) return true;
+      return (
         !file.includes('/serve/__tests__/') &&
         !file.includes('.integration.test.') &&
         !file.includes('.real-integration.test.') &&
         !V2_GATE_EXCLUDED_NAMES.has(basename(file))
-    )
+      );
+    })
     .sort();
 }
 
@@ -176,6 +209,10 @@ function localBoundaryReasons(source: string): string[] {
 }
 
 function classifyTest(file: string): TestLayer[] {
+  // D-60: the experimental contour (agent-inbox, agent-mon) is classified first and exclusively —
+  // it never falls through to contract/local/unit even when a file also matches those signals
+  // (e.g. `*.contract.test.ts`, `*.integration.test.ts` names inside these roots).
+  if (isExperimental(file)) return ['experimental'];
   const source = readFileSync(join(PROJECT_ROOT, file), 'utf8');
   if (file.includes('/e2e/') || file.includes('.e2e.test.')) return ['external'];
   if (
@@ -188,7 +225,6 @@ function classifyTest(file: string): TestLayer[] {
   if (
     file.includes('/tool-behavior/') ||
     file.startsWith('services/remote-console/') ||
-    file === 'services/agent-mon/providers/claude/__tests__/ps.test.ts' ||
     /\.(?:integration|blackbox|observation)\.test\./.test(file) ||
     localBoundaryReasons(source).length > 0
   )
@@ -198,7 +234,13 @@ function classifyTest(file: string): TestLayer[] {
 }
 
 function assertTopology(): TestTopology {
-  const topology: TestTopology = { unit: [], contract: [], local: [], external: [] };
+  const topology: TestTopology = {
+    unit: [],
+    contract: [],
+    local: [],
+    external: [],
+    experimental: [],
+  };
   const issues: string[] = [];
   for (const file of discoverTests()) {
     const layers = classifyTest(file);
@@ -220,6 +262,7 @@ function assertTopology(): TestTopology {
 // the alphabetical union parked the corpus's heaviest suites (local: 51 files, ~50% of total work)
 // behind hundreds of sub-second unit files and left a long single-file tail. Longest-layer-first
 // keeps every worker busy to the end. Set membership is unchanged — only dispatch order.
+// `experimental` is deliberately absent (D-60): it never runs as part of `deterministic`/`coverage`.
 const DETERMINISTIC_LAYER_ORDER = ['local', 'contract', 'external', 'unit'] as const;
 
 function targetsFor(command: 'unit' | 'deterministic', topology: TestTopology): string[] {
@@ -309,9 +352,12 @@ function help(): string {
     '  unit      Run the fast hermetic unit layer.',
     '  deterministic  Run the complete deterministic v2 gate corpus.',
     '  coverage  Run the complete corpus once: unit+contract under c8; black-box local+external without c8.',
+    '  experimental  Run the D-60 experimental layer (agent-inbox, agent-mon). Excluded from',
+    '                deterministic/coverage/pre-commit until the v2 release (revert after 2.0.0-draft).',
     '  check     Validate disjoint and exhaustive classification.',
     '  list      Print each classified test path.',
-    '  Package aliases: npm test=deterministic; npm run test:coverage=coverage; npm run test:topology=check.',
+    '  Package aliases: npm test=deterministic; npm run test:coverage=coverage; npm run test:topology=check;',
+    '  npm run test:experimental=experimental.',
     `  All run modes use bounded outer concurrency=${OUTER_TEST_CONCURRENCY}; subprocess-heavy suites own inner bounds.`,
     '  --help    Show this help.',
   ].join('\n');
@@ -343,6 +389,14 @@ function main(argv: string[]): number {
     const targets = targetsFor(command, topology);
     process.stdout.write(`[test-topology] ${command}: ${targets.length} files\n`);
     return runNodeTests(targets, { coverage: false, networkGuard: command === 'unit' });
+  }
+  if (command === 'experimental') {
+    // D-60: agent-inbox/agent-mon — never part of npm test/test:coverage/pre-commit. No c8, no
+    // network guard: this layer's own suites (e2e/opencode/real-integration) need real subprocess
+    // and network access, same as `local`/`external` under `coverage`.
+    const targets = topology.experimental;
+    process.stdout.write(`[test-topology] experimental: ${targets.length} files\n`);
+    return runNodeTests(targets, { coverage: false, networkGuard: false });
   }
   if (command === 'coverage') {
     const partitions = coveragePartitions(topology);

@@ -51,6 +51,7 @@
     "test": "node --import tsx scripts/test-topology.ts deterministic",
     "test:coverage": "node --import tsx scripts/test-topology.ts coverage",
     "test:topology": "node --import tsx scripts/test-topology.ts check",
+    "test:experimental": "node --import tsx scripts/test-topology.ts experimental",
     "test:e2e": "GENNADY_E2E=1 node --import tsx --test --experimental-test-module-mocks cli/__tests__/e2e/*.test.ts",
     "test:integration": "node --import tsx --test --experimental-test-module-mocks --test-concurrency=2 services/agent-inbox/serve/__tests__/*.test.ts services/agent-inbox/modules/*/__tests__/*.integration.test.ts services/agent-inbox/modules/inbox-api/__tests__/http-server.test.ts services/agent-inbox/modules/inbox-roles/__tests__/reviewer.e2e.test.ts services/agent-inbox/modules/inbox-eval/__tests__/eval-driver.test.ts services/mr-stats/__tests__/*.integration.test.ts",
     "test:watch": "tsx --test-loader 'cli/**/*.test.ts' 'shared/**/*.test.ts' 'services/**/*.test.ts'",
