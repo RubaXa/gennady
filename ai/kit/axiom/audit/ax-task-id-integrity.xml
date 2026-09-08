@@ -1,4 +1,7 @@
 <!-- source: ai/directives/sdd/audit.directive.xml -->
+<!-- NOTE (B2-11): this brick is not included as a partial by any current .hbs (dangling brick, same
+     class as ax-mechanical-via-sdd-check.xml / ax-execution-log-verification.xml). Fixed on content
+     terms anyway so it does not teach the wrong `sdd-extract` invocation whenever it is wired up. -->
 <Axiom id="AX_TASK_ID_INTEGRITY">
       File-header task traceability must be structurally valid; Task-IDs in code must resolve; ticket files must not collide on IDs; ticket section anchors must cover the names orchestrator queries.
 
@@ -9,5 +12,5 @@
       - Each ID has a corresponding `specs/**/*.task.<ID>.md`. Orphan → `TASK_ID_DRIFT` (`MAJOR`).
       - Two ticket files declaring same Task-ID → `TASK_ID_DRIFT` (`BLOCKER`).
       - Compare current `@tasks:` field values against pre-task git ref. Prior IDs removed → `TASK_ID_DRIFT` (`MAJOR`).
-      - **Ticket section-anchor coverage** (per scaffold `AX_TICKET_SECTION_NAMES_NORMATIVE`). For each anchor name templated in `TASK_TICKET_STRUCTURE` invoke `npx gennady sdd-extract <ticket> <NAME>`. Exit `2` (ANCHOR_NOT_FOUND/EMPTY) → `EXECUTION_LOG_INCOMPLETE` (`MAJOR`) tagged `missing-section-anchor`. Exit `3` (UNBALANCED/DUPLICATED) → `EXECUTION_LOG_INCOMPLETE` (`MAJOR`) tagged `anchor-unbalanced`. Optional names (`AUDIT_ROUNDS`, `PIVOT_INVALIDATION_LIST`) — not flagged when absent. Ticket with ZERO required anchors found → escalate to `BLOCKER` (dispatch impossible). Spec section names are author-discretionary → balance is checked by the STEP_1 mechanical pre-pass; no per-name coverage is enforced on specs.
+      - **Ticket section-anchor coverage** (per scaffold `AX_TICKET_SECTION_NAMES_NORMATIVE`). For each `<!--SECTION:NAME-->`-anchored name templated in `TASK_TICKET_STRUCTURE` invoke `npx gennady sdd-extract <ticket> <NAME>`. `AUDIT_ROUNDS` is a bare `## Audit Rounds` markdown heading, not a `<!--SECTION-->`-anchored block (`TICKET_AUDIT_ROUND_FORMAT`) — check it with the heading-slug form `npx gennady sdd-extract <ticket>#audit-rounds` instead; the `<NAME>` form reports ANCHOR_NOT_FOUND even when the heading is genuinely present, because `sdd-extract` only matches `<!--SECTION:AUDIT_ROUNDS-->` markers for that form. Exit `2` (ANCHOR_NOT_FOUND/EMPTY) → `EXECUTION_LOG_INCOMPLETE` (`MAJOR`) tagged `missing-section-anchor`. Exit `3` (UNBALANCED/DUPLICATED) → `EXECUTION_LOG_INCOMPLETE` (`MAJOR`) tagged `anchor-unbalanced`. Optional names (`AUDIT_ROUNDS`, `PIVOT_INVALIDATION_LIST`) — not flagged when absent. Ticket with ZERO required anchors found → escalate to `BLOCKER` (dispatch impossible). Spec section names are author-discretionary → balance is checked by the STEP_1 mechanical pre-pass; no per-name coverage is enforced on specs.
     </Axiom>
