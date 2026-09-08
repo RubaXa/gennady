@@ -42,13 +42,23 @@
  * whole build, naming the directive (and step, where applicable) rather than writing quietly
  * (DA-REQ-12/14).
  *
- * After rendering, the dangling-axiom lint (lint-axioms.ts) runs over the FINAL (post-delta)
- * output and prints warnings (never fails the build) — see AUTHORING.md §7.
+ * After rendering, two axiom lints (lint-axioms.ts) run over the FINAL (post-delta) output:
+ *   - defined-but-unreferenced (AUTHORING.md §7) prints warnings, never fails the build.
+ *   - referenced-but-undefined (T-B6-08, AUTHORING.md §7) FAILS the build (exit 1) for any
+ *     `AX_*` mentioned with no `<Axiom id>` defined anywhere in the rendered set, except the
+ *     pairs named in `KNOWN_DANGLING_AXIOM_REFS` — a temporary, shrinking allowlist (L-10).
  */
 import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, unlinkSync } from 'node:fs';
 import { join, dirname, basename, relative, sep } from 'node:path';
 import { createRenderer, walk, TEMPLATES, OUT_ROOT, KIT } from './render.ts';
-import { lintDanglingAxioms, formatDanglingReport, type RenderedDirective } from './lint-axioms.ts';
+import {
+  lintDanglingAxioms,
+  formatDanglingReport,
+  lintUndefinedAxiomRefs,
+  formatUndefinedRefsReport,
+  KNOWN_DANGLING_AXIOM_REFS,
+  type RenderedDirective,
+} from './lint-axioms.ts';
 import { buildDeltaPlan, excludedPartialsFor, applyDelta, type PlanNodeInput } from './delta-assembly.ts';
 import { resolveAssemblyMode, stampFingerprint, LazyDirectiveAssembler, type AssemblyMode } from './lazy-assembly.ts';
 import { check as checkStepBudgets } from './step-budget-gate.ts';
@@ -152,6 +162,18 @@ if (skippedLazyNoSteps.length > 0) {
 
 const report = formatDanglingReport(lintDanglingAxioms(rendered));
 if (report) console.warn(`\n${report}`);
+
+// #region START_FAIL_ON_UNDEFINED_AXIOM_REFS — invariant (T-B6-08, AUTHORING.md §7): a mentioned
+// AX_* with no reachable <Axiom id> anywhere in the build is a lie told to the agent reading the
+// directive, not a style nit — it fails the build, minus the temporary, shrinking
+// KNOWN_DANGLING_AXIOM_REFS allowlist (L-10 / Q2 option b). This never grows silently: a NEW
+// dangling reference (not already in the allowlist) fails the build the moment it lands.
+const undefinedRefs = lintUndefinedAxiomRefs(rendered, { allowlist: KNOWN_DANGLING_AXIOM_REFS });
+if (undefinedRefs.length > 0) {
+  console.error(`\n${formatUndefinedRefsReport(undefinedRefs)}`);
+  process.exit(1);
+}
+// #endregion END_FAIL_ON_UNDEFINED_AXIOM_REFS
 
 // #region START_FAIL_ON_LAZY_BUILD_FAILURES — invariant: a budget overage or a missing package file never ships silently (DA-REQ-12/14); every accumulated failure is printed before the process exits non-zero
 if (buildFailures.length > 0) {
