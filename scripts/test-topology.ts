@@ -5,6 +5,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { basename, join, relative, resolve, sep } from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { availableParallelism } from 'node:os';
 
 const PROJECT_ROOT = resolve(import.meta.dirname, '..');
 const TEST_LAYERS = ['unit', 'contract', 'local', 'external'] as const;
@@ -19,9 +20,10 @@ type TestPartition = {
 const TEST_ROOTS = ['ai', 'cli', 'plugins', 'services', 'shared'] as const;
 const TEST_FILE = /\.test\.ts$/;
 // Several local suites launch real CLI/npm/git subprocesses, and sdd-verify already overlaps four
-// fixture CLIs internally. Bounding the outer runner at six preserves useful file-level overlap
-// without multiplying that inner fan-out by the host's (potentially much larger) CPU count.
-const OUTER_TEST_CONCURRENCY = 6;
+// fixture CLIs internally, so the outer pool stays bounded rather than tracking the host's CPU
+// count. Ten (capped by available parallelism) keeps the heaviest-layer-first wave resident in one
+// pass without letting the inner fan-out oversubscribe the machine.
+const OUTER_TEST_CONCURRENCY = Math.min(10, Math.max(6, availableParallelism()));
 const V2_GATE_EXCLUDED_NAMES = new Set([
   'http-server.test.ts',
   'eval-driver.test.ts',
@@ -214,10 +216,16 @@ function assertTopology(): TestTopology {
   return topology;
 }
 
+// Makespan ordering: node --test dispatches files in argument order under a fixed worker pool, so
+// the alphabetical union parked the corpus's heaviest suites (local: 51 files, ~50% of total work)
+// behind hundreds of sub-second unit files and left a long single-file tail. Longest-layer-first
+// keeps every worker busy to the end. Set membership is unchanged — only dispatch order.
+const DETERMINISTIC_LAYER_ORDER = ['local', 'contract', 'external', 'unit'] as const;
+
 function targetsFor(command: 'unit' | 'deterministic', topology: TestTopology): string[] {
   return command === 'unit'
     ? [...topology.unit]
-    : [...topology.unit, ...topology.contract, ...topology.local, ...topology.external].sort();
+    : DETERMINISTIC_LAYER_ORDER.flatMap((layer) => topology[layer]);
 }
 
 function coveragePartitions(topology: TestTopology): TestPartition[] {
