@@ -5,6 +5,9 @@
 
 import { readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
+import type { StackId } from '../verify/verify.types.ts';
+import { loadStackConfig, pluginConfigOf } from '../verify/stack-config.ts';
+import { BUILTIN_GATE_IDS } from '../verify/stack-registry.ts';
 
 /**
  * @purpose Exact npm scripts a v2-ready project declares: repair leaves, their public `fix`
@@ -60,6 +63,11 @@ export type ReadinessInput = {
   scripts: Record<string, string>;
   /** @purpose Whether the gennady CLI is installed for the project (node_modules/.bin/gennady). */
   gennadyAvailable: boolean;
+  /**
+   * @purpose For a stack with no fixed toolchain (anystack): the `extraGate` ids actually declared
+   * in `gennady.yaml`. Undefined for node/other stacks — they have their own bootstrap concept.
+   */
+  configuredExtraGates?: readonly string[];
 };
 
 /** @purpose Three-level readiness verdict — `provisional` means the bricks exist but some are echo-stubs. */
@@ -606,4 +614,108 @@ export function gatherReadinessInput(root: string): ReadinessInput {
     packageJsonPresent = false;
   }
   return { packageJsonPresent, scripts, gennadyAvailable: detectGennady(root) };
+}
+
+/**
+ * @purpose One stack's readiness facet — gather disk facts, then judge them (V-06 engine).
+ * @invariant `gather`+`evaluate` together must equal the node adapter's own byte-for-byte output
+ *   for a node project; `nodeReadinessAdapter` below IS `gatherReadinessInput`/`checkReadiness`,
+ *   not a reimplementation, so this invariant holds by construction, not by parity testing.
+ */
+export type ReadinessAdapter = {
+  /** @purpose Which built-in stack this adapter judges. */
+  readonly stack: StackId;
+  /**
+   * @purpose Read the on-disk facts `evaluate` needs.
+   * @param root Absolute project root.
+   * @returns Facts for this stack's `evaluate`.
+   */
+  gather(root: string): ReadinessInput;
+  /**
+   * @purpose Judge gathered facts into a verdict.
+   * @param input Facts from this adapter's own `gather`.
+   * @returns The readiness verdict.
+   */
+  evaluate(input: ReadinessInput): ReadinessResult;
+};
+
+/** @purpose The node adapter — verbatim `gatherReadinessInput`/`checkReadiness`, REQUIRED_SCRIPTS enforced. */
+export const nodeReadinessAdapter: ReadinessAdapter = {
+  stack: 'node',
+  gather: gatherReadinessInput,
+  evaluate: checkReadiness,
+};
+
+/**
+ * @purpose Gather anystack's readiness input: configured `extraGates` plus package.json presence.
+ * @param root Absolute project root.
+ * @returns Facts `evaluateAnystackReadiness` judges — `configuredExtraGates` is the load-bearing one.
+ */
+function gatherAnystackReadinessInput(root: string): ReadinessInput {
+  const stackConfigLoad = loadStackConfig(root, BUILTIN_GATE_IDS);
+  const pluginConfig =
+    stackConfigLoad.errors.length === 0 ? pluginConfigOf(stackConfigLoad.config, 'anystack') : null;
+  const configuredExtraGates = (pluginConfig?.extraGates ?? [])
+    .map((spec) => spec.id)
+    .filter((id): id is string => typeof id === 'string');
+  let packageJsonPresent = false;
+  try {
+    statSync(join(root, 'package.json'));
+    packageJsonPresent = true;
+  } catch {
+    packageJsonPresent = false;
+  }
+  return { packageJsonPresent, scripts: {}, gennadyAvailable: true, configuredExtraGates };
+}
+
+/**
+ * @purpose Judge anystack readiness: ready only with ≥1 configured `extraGates` (D-14, V-06).
+ * @invariant Never blocked on REQUIRED_SCRIPTS/`packageJsonPresent` — anystack has no fixed
+ *   toolchain; the fallback stack alone must never itself grant readiness.
+ * @param input Facts from `gatherAnystackReadinessInput`.
+ * @returns Ready with zero missing gates, or not-ready naming the one missing config gate.
+ */
+function evaluateAnystackReadiness(input: ReadinessInput): ReadinessResult {
+  const gates = input.configuredExtraGates ?? [];
+  const ready = gates.length > 0;
+  return {
+    packageJsonPresent: input.packageJsonPresent,
+    required: [],
+    lintHasGennady: true,
+    formatReadOnly: true,
+    lintReadOnly: true,
+    checkReadOnly: true,
+    formatFixMutates: true,
+    lintFixMutates: true,
+    formatFixDeclaredTargetPrefix: true,
+    lintFixDeclaredTargetPrefix: true,
+    fixHasCanonicalRepairs: true,
+    gennadyAvailable: true,
+    ready,
+    missing: ready ? [] : ['stack.anystack.extraGates (gennady.yaml)'],
+    stubbed: [],
+    missingGates: ready ? [] : ['stack.anystack.extraGates'],
+    level: ready ? 'ready' : 'not-ready',
+    executionReady: ready,
+  };
+}
+
+/**
+ * @purpose Config-authored stack (D-14): no fixed toolchain — ready iff `extraGates` is non-empty.
+ */
+export const anystackReadinessAdapter: ReadinessAdapter = {
+  stack: 'anystack',
+  gather: gatherAnystackReadinessInput,
+  evaluate: evaluateAnystackReadiness,
+};
+
+/**
+ * @purpose Resolve the readiness adapter for one stack — the engine's dispatch point (V-06).
+ * @param stack Stack id, e.g. from `detectRepoStack` (V-05).
+ * @returns The stack's adapter, or null when no adapter is implemented for it yet (golang: V-09).
+ */
+export function resolveReadinessAdapter(stack: StackId): ReadinessAdapter | null {
+  if (stack === 'node') return nodeReadinessAdapter;
+  if (stack === 'anystack') return anystackReadinessAdapter;
+  return null;
 }

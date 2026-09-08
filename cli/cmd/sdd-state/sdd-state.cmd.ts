@@ -7,7 +7,11 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { logger } from '#logger';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
-import { checkReadiness, gatherReadinessInput } from '../../../shared/sdd/readiness.ts';
+import {
+  anystackReadinessAdapter,
+  nodeReadinessAdapter,
+  resolveReadinessAdapter,
+} from '../../../shared/sdd/readiness.ts';
 import {
   parseScopes,
   parseScopeGraphEdges,
@@ -153,10 +157,19 @@ export async function run(rawArgs: string[]): Promise<StateOutcome> {
   // One shared detection fact (V-05); config wiring (gennady.yaml stack.use) is V-07's job.
   const stack = detectRepoStack(root, null);
 
-  // #region START_READINESS — exact-match required scripts; missing/broken package.json reads as not-ready
-  const readinessInput = gatherReadinessInput(root);
+  // #region START_READINESS — engine + adapter (V-06); node path is gatherReadinessInput/checkReadiness
+  // verbatim (byte-identical, И-1/И-2) — an unimplemented stack (golang: V-09) falls back to the
+  // node adapter too, so today's behavior for every repo this wave doesn't cover is unchanged.
+  const primaryStack = stack.stacks.includes('node') ? 'node' : (stack.stacks[0] ?? 'node');
+  const readinessAdapter =
+    primaryStack === 'node'
+      ? nodeReadinessAdapter
+      : primaryStack === 'anystack'
+        ? anystackReadinessAdapter
+        : (resolveReadinessAdapter(primaryStack) ?? nodeReadinessAdapter);
+  const readinessInput = readinessAdapter.gather(root);
   const { packageJsonPresent } = readinessInput;
-  const readiness = checkReadiness(readinessInput);
+  const readiness = readinessAdapter.evaluate(readinessInput);
   // #endregion END_READINESS
 
   logger.debug(

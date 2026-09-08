@@ -174,6 +174,11 @@ describe('SddStateCommand', () => {
     };
     try {
       installDirectives(root);
+      // V-05/V-06: stack detection needs a marker to route this fixture through the node adapter
+      // (matching this Bootstrap Requirements row's own node vocabulary: package.json/type-check/…).
+      // An empty package.json — no scripts wired up yet — is the realistic mid-bootstrap shape this
+      // test means to exercise: `npm init` ran, the toolchain scripts have not (execution not ready).
+      writeFileSync(join(root, 'package.json'), '{}', 'utf-8');
       mkdirSync(join(root, 'specs'), { recursive: true });
       writeFileSync(
         join(root, 'specs', 'README.md'),
@@ -406,7 +411,11 @@ describe('SddStateCommand', () => {
     assert.strictEqual(o.ok, true);
     if (o.ok) {
       assert.match(o.text, /package\.json\t✘/);
-      assert.match(o.text, /missing:[^)]*package\.json/);
+      // V-05/V-06: a repo with no node/golang marker resolves to the anystack fallback (STACK=anystack)
+      // — readiness there is judged on configured extraGates, not the node REQUIRED_SCRIPTS vocabulary,
+      // so the not-ready reason names the anystack gate, not literally "package.json".
+      assert.match(o.text, /STACK=anystack/);
+      assert.match(o.text, /missing: stack\.anystack\.extraGates/);
     }
   });
 
