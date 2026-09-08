@@ -124,7 +124,7 @@
           WHEN intent = project-setup
             -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/root.directive.xml")
           WHEN intent = recover-from-code
-            -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/discover-from-code.directive.xml")
+            -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/recover-from-code.directive.xml")
           WHEN intent = module-decomposition
             -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/module.directive.xml")
           WHEN intent in {new-scope, evolve-scope, multi-scope} AND scope-type = infrastructure

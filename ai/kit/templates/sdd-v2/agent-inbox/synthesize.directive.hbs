@@ -32,12 +32,10 @@
       rather than a silently picked number.
     </Axiom>
 
-    <Axiom id="AX_OPERATOR_LANGUAGE">
-      Directive text, axiom IDs, action tokens — English. Operator-facing report text — Russian,
-      unconditionally, matching the register the three source lenses already write in
-      (`arch-interrogation.directive.xml`'s `AX_OPERATOR_LANGUAGE`) — this node does not re-derive
-      the register, it inherits it from the inputs it reconciles.
-    </Axiom>
+    {{> "axiom/agent-inbox/ax-review-report-language"}}
+
+    This node does not re-derive the register — it inherits it from the three lenses it
+    reconciles, which already write in `AX_REVIEW_REPORT_LANGUAGE`'s register.
 
     <!-- TSK-136 (D-122/AI-43): mission-adequacy — always-included, judged over the reconciled
          findings, never in place of what the three lenses already judged. -->
@@ -47,13 +45,9 @@
 
     {{> "axiom/agent-inbox/ax-complexity-budget"}}
 
-    <Axiom id="AX_NO_DUPLICATION">
-      Applied here at the reconciliation layer itself: two lens findings about the same file:line
-      are ONE finding, not two duplicate `proposedActions` entries. Reuses the
-      `ax-ticket-deduplication` principle (single authoritative home for one piece of content) — no
-      separate axiom is authored for this, the same principle is read verbatim below.
-      {{> "axiom/scaffold/ax-ticket-deduplication"}}
-    </Axiom>
+    {{> "axiom/agent-inbox/ax-no-duplication"}}
+
+    {{> "axiom/scaffold/ax-ticket-deduplication"}}
 
     <!-- TSK-136 (D-123/AI-44): mrShape-driven additive triggers — injected only when the
          orchestrator's statanalysis flagged the corresponding signal on this MR's diff. Applied

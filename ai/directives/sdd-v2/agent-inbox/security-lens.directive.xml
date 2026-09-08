@@ -27,7 +27,7 @@
       never receives a file subset; vulnerabilities cross file-type boundaries.
     - **Optional (scout dossier):** entity inventory, changeset by category (deps/CI/config
       files matter here), `prior_threads` / `my_drafts` for de-duplication.
-    Operator-facing output language and register — per arch-interrogation `AX_OPERATOR_LANGUAGE`.
+    Operator-facing output language and register — per `AX_REVIEW_REPORT_LANGUAGE`.
   </InputContract>
 
   <BeliefState>
@@ -88,13 +88,17 @@
     </Axiom>
 
     <Axiom id="AX_NO_DUPLICATION">
-      Applied to code, not ticket text: before accepting a new symbol, search the repo for an
-      existing equivalent. Reuses the `ax-ticket-deduplication` principle (single authoritative
-      home for one piece of content) — no separate axiom is authored for this, the same principle
-      is read verbatim below.
-      <Axiom id="AX_TICKET_DEDUPLICATION">
-        **Project-wide content lives ONCE in `specs/3-tasks.md`.** Declared there: file-header convention, baseline Completion Rule, Execution Log template, post-task audit hint. Per-scope Cascade Table lives in `specs/<scope>/<scope>.3-tasks.md`. Per ticket: only task-specific Meta, BDD, Test Scenario Coverage, Completion additions (if any), Execution Log instance (initially empty plan).
-      </Axiom>
+      Before creating something new, search for an existing equivalent and reuse or merge rather
+      than duplicate. Applied to code, not ticket text: before accepting a new symbol, search the
+      repo for an existing equivalent. Applied at the reconciliation layer itself: two lens
+      findings about the same file:line are ONE finding, not two duplicate `proposedActions`
+      entries. Reuses the `ax-ticket-deduplication` principle (single authoritative home for one
+      piece of content, whether that content is spec text, a code symbol, or a reconciled finding)
+      — no separate axiom is authored for this, the same principle is read verbatim below.
+    </Axiom>
+
+    <Axiom id="AX_TICKET_DEDUPLICATION">
+      **Project-wide content lives ONCE in `specs/3-tasks.md`.** Declared there: file-header convention, baseline Completion Rule, Execution Log template, post-task audit hint. Per-scope Cascade Table lives in `specs/<scope>/<scope>.3-tasks.md`. Per ticket: only task-specific Meta, BDD, Test Scenario Coverage, Completion additions (if any), Execution Log instance (initially empty plan).
     </Axiom>
 
     <!-- TSK-136 (D-123/AI-44): mrShape-driven additive triggers — injected only when the

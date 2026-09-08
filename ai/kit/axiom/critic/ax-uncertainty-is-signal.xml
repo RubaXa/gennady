@@ -1,2 +1,2 @@
-<!-- source: ai/directives/sdd/critic-protocol.xml -->
-<Axiom id="AX_UNCERTAINTY_IS_SIGNAL">"I don't understand X" is valid output. Uncertainty = underspecification.</Axiom>
+<!-- source: ai/directives/sdd/critic-protocol.xml, corrected (T-B6-23) — "Uncertainty = underspecification" inverted v1's D3.4 rule (confusion alone never proves underspecification); this axiom's real job is validating "I don't understand" as legitimate output, not equating it with a defect — AX_CONFUSION_BUG owns the triage that decides whether it becomes a finding. -->
+<Axiom id="AX_UNCERTAINTY_IS_SIGNAL">"I don't understand X" is valid output — silence corrupts the review, so articulate confusion rather than guessing past it. But uncertainty alone is not a verdict: per `AX_CONFUSION_BUG`, triage it before deciding whether it is a defect.</Axiom>

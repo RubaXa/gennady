@@ -121,7 +121,7 @@
       For each non-trivial entity name the quality attribute it serves and what it trades off (sensitivity vs tradeoff point, lightweight ATAM). An entity that serves no nameable attribute, or whose tradeoff is unacknowledged, is a finding. Cross-cutting probes for any new service/store: is it observable, does it have a migration/rollback path, what happens on error.
     </Axiom>
 
-    <Axiom id="AX_OPERATOR_LANGUAGE">
+    <Axiom id="AX_REVIEW_REPORT_LANGUAGE">
       **Directive text (axioms, halt names, step procedures, axis IDs, structural section headings) — English.**
       **Operator-facing output — Russian, unconditionally.** Everything the operator sees is written in Russian regardless of the language of the MR, the diff, the discussion thread, or this directive's own text — that English context never carries over into the answer. Russian applies to: the per-step micro-summaries, the context briefing, per-entity card text (role, reconstructed rationale, verdict reason), relationship narrative, verdict summary, diagram captions and labels' descriptive text. When in doubt, write Russian.
       English regardless of context: file paths, axiom IDs (`AX_*`), axis IDs (`A`–`G`), halt IDs (`H_*`), `Вид`/`Ось` table tokens (`new-line-comment`, `SEC`, …), code symbols. Verdict and risk labels are DISPLAYED in Russian to the operator — ✅ обоснован · ⚠️ слабый · ❌ не обоснован; 🟢 низкий · 🟡 средний · 🔴 высокий (the `justified`/`weak`/`unjustified` tokens are internal reasoning in this directive's English text, NOT what the operator reads — «medium»/«justified» in a Russian report is суржик).
@@ -192,13 +192,17 @@
     </Axiom>
 
     <Axiom id="AX_NO_DUPLICATION">
-      Applied to code, not ticket text: before accepting a new symbol, search the repo for an
-      existing equivalent. Reuses the `ax-ticket-deduplication` principle (single authoritative
-      home for one piece of content, whether that content is spec text or a code symbol) — no
-      separate axiom is authored for this, the same principle is read verbatim below.
-      <Axiom id="AX_TICKET_DEDUPLICATION">
-        **Project-wide content lives ONCE in `specs/3-tasks.md`.** Declared there: file-header convention, baseline Completion Rule, Execution Log template, post-task audit hint. Per-scope Cascade Table lives in `specs/<scope>/<scope>.3-tasks.md`. Per ticket: only task-specific Meta, BDD, Test Scenario Coverage, Completion additions (if any), Execution Log instance (initially empty plan).
-      </Axiom>
+      Before creating something new, search for an existing equivalent and reuse or merge rather
+      than duplicate. Applied to code, not ticket text: before accepting a new symbol, search the
+      repo for an existing equivalent. Applied at the reconciliation layer itself: two lens
+      findings about the same file:line are ONE finding, not two duplicate `proposedActions`
+      entries. Reuses the `ax-ticket-deduplication` principle (single authoritative home for one
+      piece of content, whether that content is spec text, a code symbol, or a reconciled finding)
+      — no separate axiom is authored for this, the same principle is read verbatim below.
+    </Axiom>
+
+    <Axiom id="AX_TICKET_DEDUPLICATION">
+      **Project-wide content lives ONCE in `specs/3-tasks.md`.** Declared there: file-header convention, baseline Completion Rule, Execution Log template, post-task audit hint. Per-scope Cascade Table lives in `specs/<scope>/<scope>.3-tasks.md`. Per ticket: only task-specific Meta, BDD, Test Scenario Coverage, Completion additions (if any), Execution Log instance (initially empty plan).
     </Axiom>
 
     <!-- TSK-136 (D-123/AI-44): mrShape-driven additive triggers — injected only when the
@@ -346,7 +350,7 @@
   </ExecutionPlan>
 
   <OutputFormat>
-    ONE consolidated report document, assembled in `STEP_5` per `AX_REPORT_ASSEMBLY`. Operator-facing Russian in the register defined by `AX_OPERATOR_LANGUAGE`. Visual transport per `AX_VISUAL_TRANSPORT` mandatory precondition. Scannable structure per `AX_SCANNABLE_OUTPUT`: emoji verdict icons (✅⚠️❌), risk colours (🟢🟡🔴), `---` between sections, compact tables over free text, details only for critical. Stable IDs per `AX_STABLE_FINDING_IDS` ([E1], [R2], [Q3]). Cross-references per `AX_SAY_IT_ONCE` — reference IDs, never retell.
+    ONE consolidated report document, assembled in `STEP_5` per `AX_REPORT_ASSEMBLY`. Operator-facing Russian in the register defined by `AX_REVIEW_REPORT_LANGUAGE`. Visual transport per `AX_VISUAL_TRANSPORT` mandatory precondition. Scannable structure per `AX_SCANNABLE_OUTPUT`: emoji verdict icons (✅⚠️❌), risk colours (🟢🟡🔴), `---` between sections, compact tables over free text, details only for critical. Stable IDs per `AX_STABLE_FINDING_IDS` ([E1], [R2], [Q3]). Cross-references per `AX_SAY_IT_ONCE` — reference IDs, never retell.
 
     Document structure, top to bottom:
 
@@ -418,7 +422,7 @@
     - **needs an answer** — the reviewer is wrong, or it is a question / needs discussion → reply with text;
     - **agree** — the reviewer is right and the fix is clear → a 👍 reaction (`vcs-react`), no text.
 
-    Give me three things, Russian per `AX_OPERATOR_LANGUAGE` (the README artifact stays the standard
+    Give me three things, Russian per `AX_REVIEW_REPORT_LANGUAGE` (the README artifact stays the standard
     review report; this is the chat output):
     1. **Сводка** — what the reviewers wrote and my conclusion on each (согласен / не согласен /
        вопрос), plus the self-review headline (change map + ladder).

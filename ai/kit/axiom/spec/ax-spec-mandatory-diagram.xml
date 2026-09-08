@@ -1,0 +1,9 @@
+<!-- source: interface.directive.hbs + infra.directive.hbs (converged to principle, T-B6-18 — both carried a near-identical local copy differing only in the example view named) -->
+<Axiom id="AX_SPEC_MANDATORY_DIAGRAM">
+      Every spec carries at least one diagram in an `Overview` section, high up — the shape of what
+      this spec describes, at a glance: for an interface spec, who produces vs consumes the
+      contract, or the version-transition flow; for an infra spec, the developer workflow or tool
+      pipeline. The floor is one (mermaid or ASCII), held by tooling: `sdd-check` fails a missing
+      section (`SDD_NO_DIAGRAM_BLOCK`) or an empty one (`SDD_DIAGRAM_BLOCK_EMPTY`). Beyond the
+      floor the author adds more views by judgment; that is not a gate.
+    </Axiom>

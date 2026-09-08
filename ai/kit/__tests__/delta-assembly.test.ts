@@ -94,6 +94,38 @@ describe('delta-assembly — graph shape', () => {
     }
   });
 
+  it('every class-3 directive is named by dispatch text in at least one other template (T-B6-21) — never a READ_AND_USE_DIRECTIVE edge (that assertion is above), a literal "Load `<name>.directive.xml`" mention so the subagent world stays reachable', () => {
+    const { pass1 } = buildPlan();
+    for (const class3Id of CLASS_3_DIRECTIVES) {
+      const rel = class3Id.slice('ai/directives/'.length); // e.g. 'sdd-v2/critic-protocol.directive.xml'
+      const fileName = basename(rel); // e.g. 'critic-protocol.directive.xml'
+      const namedElsewhere = pass1.some(
+        (e) => e.rel !== rel && e.renderedFull.includes(fileName)
+      );
+      assert.ok(
+        namedElsewhere,
+        `${fileName} is not named by dispatch text in any other rendered directive — an orphaned subagent world`
+      );
+    }
+  });
+
+  it('every top-level sdd-v2 directive is reachable from at least one router branch or explicit dispatch (T-B6-22)', () => {
+    const { pass1, plan } = buildPlan();
+    const topLevel = pass1.filter((e) => /^sdd-v2\/[^/]+\.directive\.xml$/.test(e.rel));
+    for (const e of topLevel) {
+      const id = 'ai/directives/' + e.rel;
+      const incoming = plan.graph.incoming.get(id) ?? new Set();
+      const isRouter = e.rel === 'sdd-v2/router.directive.xml';
+      const isClass1 = plan.class1.has(id);
+      const fileName = basename(e.rel);
+      const namedByDispatchText = pass1.some((o) => o.rel !== e.rel && o.renderedFull.includes(fileName));
+      assert.ok(
+        isRouter || isClass1 || incoming.size > 0 || namedByDispatchText,
+        `${e.rel} is unreachable — no router/directive edge, no SKILL.md entry point, and no other template names it by dispatch text`
+      );
+    }
+  });
+
   it('class 1 matches direct SKILL.md entry points after stateful entries converge on router', () => {
     const { plan } = buildPlan();
     const expected = ['audit', 'code-review', 'router'].map(

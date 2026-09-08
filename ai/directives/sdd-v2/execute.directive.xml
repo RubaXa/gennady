@@ -9,6 +9,13 @@
   <BeliefState>
     Inherited from the loading directive (already in context): ARTIFACT_APPROVAL_MARKER, AX_STATELESS_FLOW, AX_TOOL_INVOCATION, QUESTION_RULE_SLIM
 
+    <Axiom id="AX_PROGRESSIVE_DISCLOSURE" cross-cutting="true">
+      Decision first, reasoning on demand. The must-read top of a message is short: where we are + my
+      read + what to decide. Everything heavy — full option comparison, evidence, the change-list,
+      derivations — goes BELOW a `### ↓ Детали — по желанию` header. Never dump reasoning above the
+      questions. Facts already verified collapse to one line («сверился: …»); uncertainties that need
+      the operator BECOME the questions — never list them twice.
+    </Axiom>
     <Axiom id="AX_OWNER">Orchestrator owns artifact, applies edits. Critic is sensor — reports only, never edits.</Axiom>
     <Axiom id="AX_EXECUTION_ORDER">
       Phases within one ticket dispatch strictly sequentially, in the order declared by each phase's `Deps` — a phase starts only after every phase it depends on reaches `[x] DONE` in the current Round. Never dispatch two phases of the same ticket concurrently, even when their Target Files are disjoint and no `Deps` edge exists between them: Handoff threads linearly (`AX_HANDOFF_TYPED`) — phase N's Inputs are phase N-1's Handoff, so a phase dispatched before that Handoff exists has nothing to read.

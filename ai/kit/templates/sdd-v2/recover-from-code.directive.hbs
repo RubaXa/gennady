@@ -33,20 +33,16 @@
       --inventory-reverse <module-dir>` (`AX_REVERSE_INVENTORY_GATE`).
     </Axiom>
 
-    <Axiom id="AX_EVIDENCE_HYGIENE">
-      Separate Facts / Assumptions / Hypotheses when presenting the survey and the proposal.
-      - **Facts** — directly read from the path: file layout, import edges, an existing test, a line
-        in a README that states purpose.
-      - **Assumptions** — a reasonable working read of code without a written purpose statement; mark
-        explicitly, invite correction.
-      - **Hypotheses** — guesses about intent that only the operator can confirm (why this exists,
-        who else depends on it).
+    {{> "axiom/truth/ax-evidence-hygiene"}}
 
-      Conflating the three lets a guess get written into the spec as if it were read from the code —
-      exactly the drift `--inventory-reverse` (`AX_REVERSE_INVENTORY_GATE`) later catches on the
-      inventory side, but the vision / purpose side has no mechanical check, so hygiene here is the
-      only guard.
-    </Axiom>
+    In this flow specifically: **Facts** are directly read from the path — file layout, import
+    edges, an existing test, a line in a README that states purpose; **Assumptions** are a
+    reasonable working read of code without a written purpose statement, marked explicitly and
+    inviting correction; **Hypotheses** are guesses about intent that only the operator can confirm
+    (why this exists, who else depends on it). Conflating the three lets a guess get written into
+    the spec as if it were read from the code — exactly the drift `--inventory-reverse`
+    (`AX_REVERSE_INVENTORY_GATE`) later catches on the inventory side, but the vision / purpose
+    side has no mechanical check, so hygiene here is the only guard.
 
     <Axiom id="AX_DOSED_SURVEY">
       Read the path incrementally, cheapest signal first, and STOP once there is enough to propose a

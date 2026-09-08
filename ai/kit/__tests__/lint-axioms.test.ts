@@ -4,7 +4,13 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { lintDanglingAxioms, formatDanglingReport, parseDirective } from '../lint-axioms.ts';
+import {
+  lintDanglingAxioms,
+  formatDanglingReport,
+  parseDirective,
+  lintUndefinedAxiomRefs,
+  formatUndefinedRefsReport,
+} from '../lint-axioms.ts';
 
 /** Minimal directive builder: BeliefState with given axioms + an arbitrary body after it. */
 function directive(opts: {
@@ -186,6 +192,80 @@ describe('formatDanglingReport', () => {
       { file: 'b.xml', id: 'AX_THREE' },
     ]);
     assert.match(report, /3 dangling axiom/);
+    assert.match(report, /a\.xml: AX_ONE, AX_TWO/);
+    assert.match(report, /b\.xml: AX_THREE/);
+  });
+});
+
+describe('lintUndefinedAxiomRefs — referenced-but-undefined (T-B6-08)', () => {
+  it('a reference with no <Axiom id> defined anywhere in the render set is dangling', () => {
+    const d = directive({
+      file: 'a.xml',
+      axioms: [],
+      body: '  <ExecutionPlan>per `AX_GHOST`</ExecutionPlan>',
+    });
+    assert.deepEqual(lintUndefinedAxiomRefs([d]), [{ file: 'a.xml', id: 'AX_GHOST' }]);
+  });
+
+  it('a reference satisfied by its OWN file defining the axiom is not dangling', () => {
+    const d = directive({
+      file: 'a.xml',
+      axioms: [{ id: 'AX_LOCAL' }],
+      body: '  <ExecutionPlan>per `AX_LOCAL`</ExecutionPlan>',
+    });
+    assert.deepEqual(lintUndefinedAxiomRefs([d]), []);
+  });
+
+  it('a reference satisfied by a DIFFERENT file in the same render set is not dangling (the check is corpus-wide, not per-file)', () => {
+    const definer = directive({ file: 'axiom-home.xml', axioms: [{ id: 'AX_SHARED' }], body: '  <ExecutionPlan/>' });
+    const user = directive({ file: 'consumer.xml', axioms: [], body: '  <ExecutionPlan>per `AX_SHARED`</ExecutionPlan>' });
+    assert.deepEqual(lintUndefinedAxiomRefs([definer, user]), []);
+  });
+
+  it('allowlisted `${file}::${id}` pairs stay accepted (temporary, shrinking KNOWN_DANGLING allowlist — L-10)', () => {
+    const d = directive({
+      file: 'legacy.xml',
+      axioms: [],
+      body: '  <ExecutionPlan>per `AX_NOT_YET_CONNECTED`</ExecutionPlan>',
+    });
+    assert.deepEqual(
+      lintUndefinedAxiomRefs([d], { allowlist: new Set(['legacy.xml::AX_NOT_YET_CONNECTED']) }),
+      []
+    );
+    // an allowlist entry for a DIFFERENT file does not rescue this one
+    assert.deepEqual(
+      lintUndefinedAxiomRefs([d], { allowlist: new Set(['other.xml::AX_NOT_YET_CONNECTED']) }),
+      [{ file: 'legacy.xml', id: 'AX_NOT_YET_CONNECTED' }]
+    );
+  });
+
+  it('prefix ids do not false-match (defining AX_FOO does not satisfy a reference to AX_FOO_BAR, or vice-versa)', () => {
+    const d = directive({
+      file: 'a.xml',
+      axioms: [{ id: 'AX_FOO' }],
+      body: '  <ExecutionPlan>per `AX_FOO` and per `AX_FOO_BAR`</ExecutionPlan>',
+    });
+    assert.deepEqual(lintUndefinedAxiomRefs([d]), [{ file: 'a.xml', id: 'AX_FOO_BAR' }]);
+  });
+
+  it('the `id="…"` attribute of an Axiom tag is a definition, not itself counted as a dangling reference', () => {
+    const d = { file: 'a.xml', text: '<Directive>\n  <BeliefState>\n    <Axiom id="AX_ONLY_DEFINED">Body.</Axiom>\n  </BeliefState>\n</Directive>\n' };
+    assert.deepEqual(lintUndefinedAxiomRefs([d]), []);
+  });
+});
+
+describe('formatUndefinedRefsReport', () => {
+  it('empty findings → empty string', () => {
+    assert.equal(formatUndefinedRefsReport([]), '');
+  });
+
+  it('groups by file, reports the total count, and reads as an error (not a warning)', () => {
+    const report = formatUndefinedRefsReport([
+      { file: 'a.xml', id: 'AX_ONE' },
+      { file: 'a.xml', id: 'AX_TWO' },
+      { file: 'b.xml', id: 'AX_THREE' },
+    ]);
+    assert.match(report, /^✗ 3 undefined axiom reference/);
     assert.match(report, /a\.xml: AX_ONE, AX_TWO/);
     assert.match(report, /b\.xml: AX_THREE/);
   });
