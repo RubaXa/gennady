@@ -73,7 +73,7 @@
     "pack-draft": "node --import tsx scripts/pack-draft.ts",
     "format": "prettier --check . --cache --cache-strategy content",
     "format:fix": "prettier --write",
-    "lint": "npm run lint:contracts",
+    "lint": "npm run format && npm run type-check && npm run lint:contracts",
     "lint:fix": "tsx cli/gennady.ts lint --autofix",
     "check": "tsx cli/gennady.ts sdd-verify --profile full",
     "gate:sdd-check-baseline": "node --import tsx ai/flow-eval/scripts/sdd-check-zero-new-error.ts --baseline ai/flow-eval/.baseline/sdd-check-227c03a8.json",
