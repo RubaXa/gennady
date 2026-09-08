@@ -108,6 +108,19 @@
       End every phase block with a typed Handoff line consumed by the next phase and the orchestrator. Format per `HANDOFF_FORMAT`. Free-form text forbidden — the next phase reads keys, not narrative.
     </Axiom>
     <Axiom id="AX_TASK_PARALLEL">Tasks critiqued in DAG layers. Same layer (no inter-dependencies) → parallel dispatch. Different layers → sequential.</Axiom>
+    <Axiom id="AX_RE_DISPATCH">Any edit → another isolated post-edit review dispatch mandatory, no exception
+      of the agent's own making — "the fix is trivial" does not waive it; edits may create contradictions
+      detectable only by a post-edit sensor pass. Whether a dispatch continues an existing worker or starts a
+      fresh one belongs to the owning review step, not this global rule. The verdict handed to the operator MUST
+      be the literal verdict text of the LAST dispatch actually run, shown as a direct quote — never a
+      paraphrase, and never the verdict of a dispatch that was skipped.
+
+      Re-dispatch is not unbounded, though. If a re-dispatch returns the SAME blocking finding set as the
+      immediately preceding attempt on this same artifact — same ids, same substance — with no new evidence
+      between the two attempts (no changed diff, no new tool output, no new fact the prior attempt did not
+      already have), that repetition is provable non-progress, not further review: halt `H_NO_PROGRESS`
+      instead of re-dispatching again on the identical set. A genuinely new edit, a new tool run, or a new
+    fact resets the count and earns a fresh dispatch as above.</Axiom>
   </BeliefState>
 
   <Contracts>
@@ -173,6 +186,7 @@
     | `H_PHASE_BLOCKED` | Worker names a concrete missing external decision/capability after bounded diagnosis |
     | `H_REAL_GATE_RED` | A declared real verification command remains red after one evidence-based correction |
     | `H_REQUIREMENT_UNCOVERED` | A mandatory Requirement-ID is absent from implemented tests |
+    | `H_NO_PROGRESS` | Per `AX_RE_DISPATCH`, a re-dispatch returns the same blocking finding set as the immediately preceding attempt on the same artifact, with no new evidence between the two attempts |
   </HaltConditions>
 
   <ExecutionPlan>
@@ -309,7 +323,11 @@
 
         Findings route to the owning artifact: code bug reopens the ticket; spec contradiction returns
         to spec authoring and approval #1; decomposition/test-plan change returns to scaffold and
-        approval #2. Rerun affected real gates after correction.
+        approval #2. Rerun affected real gates after correction. Per `AX_RE_DISPATCH`, a correction
+        earns another fresh isolated audit/code-review dispatch — never the prior verdict reused. If
+        that fresh dispatch returns the same blocking finding set as the immediately preceding one,
+        with no new evidence between the two attempts, halt `H_NO_PROGRESS` rather than re-dispatching
+        again on the identical set.
 
         The read-only audit/code-review workers persist NOTHING (`AX_EPHEMERAL_OUTPUT`). Per
         `AX_GROUP_AUDIT_LEAVES_A_RECEIPT`, once the read-only audit has returned with no open reopen,

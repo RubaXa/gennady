@@ -92,6 +92,7 @@ test('HaltConditions carries the current stateless execute boundaries', () => {
   const ids = (h?.children ?? []).map((c) => c.label).sort();
   assert.deepEqual(ids, [
     'H_AMBIGUOUS_TASK',
+    'H_NO_PROGRESS',
     'H_PHASE_BLOCKED',
     'H_REAL_GATE_RED',
     'H_REQUIREMENT_UNCOVERED',
