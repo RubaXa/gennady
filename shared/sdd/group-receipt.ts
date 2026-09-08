@@ -7,6 +7,7 @@ import { basename } from 'node:path';
 import { extractSection } from './section.ts';
 import { parseMetaInfo } from './ticket.ts';
 import type { Finding } from './finding.ts';
+import { nextRoundNumber, PHASE_RECEIPTS_SCHEMA_MARKER } from './execution-log.ts';
 
 /** @purpose The two group-completion review transitions — audit and behavioural code-review. */
 export type GroupReceiptKind = 'audit' | 'review';
@@ -24,9 +25,6 @@ const REVIEW_MISSING_CODE = 'SDD_GROUP_REVIEW_MISSING';
 /** @purpose WARN code emitted when a group is migrating — SOME but not all members carry the v2
  *   receipt-aware schema marker — so grading stays explicitly skipped rather than silent (B2-16). */
 const PARTIALLY_MARKED_CODE = 'SDD_GROUP_RECEIPT_PARTIALLY_MARKED';
-/** @purpose The v2 receipt-aware schema marker; a group is graded only when every member carries it (grandfathering). */
-const PHASE_RECEIPTS_SCHEMA_MARKER = '<!--PHASE_RECEIPTS:v1-->';
-
 /**
  * @purpose The durable FACT that one spec's ticket group was audited/reviewed — findings stay ephemeral.
  * @invariant `signature` binds the fact to re-derivable member state so a reopen invalidates it; `gitRef`
@@ -60,14 +58,13 @@ export type GroupMemberInput = {
 };
 
 /**
- * @purpose Count a member's Rounds — the mechanical reopen signal.
+ * @purpose Count a member's Rounds — the mechanical reopen signal (B2-01: derived from
+ *   execution-log.ts's shared `nextRoundNumber`, one home for this count instead of a second copy).
  * @param content Full member ticket markdown.
  * @returns The number of `### Round N` headers in its Execution Log (0 when none).
  */
 function memberRoundCount(content: string): number {
-  const log = extractSection(content, 'EXECUTION_LOG');
-  const body = log.status === 'ok' ? log.content : content;
-  return (body.match(/^#{3}\s+Round\s+\d+\b/gm) ?? []).length;
+  return nextRoundNumber(content) - 1;
 }
 
 /**

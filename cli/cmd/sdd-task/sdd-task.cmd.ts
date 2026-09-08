@@ -15,7 +15,8 @@ import {
   parseTicketCoveragePolicy,
   type PhaseDetail,
 } from '../../../shared/sdd/ticket.ts';
-import { pickableTasks, scanBlockerTrail, parsePhaseHandoffs } from '../../../shared/sdd/check.ts';
+import { pickableTasks } from '../../../shared/sdd/check.ts';
+import { scanBlockerTrail, parsePhaseHandoffs } from '../../../shared/sdd/execution-log.ts';
 import { checkReadiness, gatherReadinessInput } from '../../../shared/sdd/readiness.ts';
 import { parseScopes } from '../../../shared/sdd/portal.ts';
 import {

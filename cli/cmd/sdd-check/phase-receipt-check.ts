@@ -7,9 +7,8 @@ import { extractSection } from '../../../shared/sdd/section.ts';
 import { parsePhaseReceipts } from '../../../shared/sdd/phase-receipt.ts';
 import { parsePhasesOverview } from '../../../shared/sdd/ticket.ts';
 import type { Finding } from '../../../shared/sdd/check.ts';
+import { PHASE_RECEIPTS_SCHEMA_MARKER as SCHEMA_MARKER } from '../../../shared/sdd/execution-log.ts';
 import { phaseReceiptIssue } from '../sdd-verify/phase-receipt-validation.ts';
-
-const SCHEMA_MARKER = '<!--PHASE_RECEIPTS:v1-->';
 
 function finding(file: string, code: string, message: string): Finding {
   return { severity: 'error', code, file, message };

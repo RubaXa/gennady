@@ -77,20 +77,9 @@ export function hasPlaceholder(text: string): boolean {
   return PLACEHOLDER_RE.test(outsideCode);
 }
 
-/**
- * @purpose Compute the next round number from `### Round` headers in the EXECUTION_LOG section
- *   only (B2-02) — a legacy `## Critic Rounds` section can carry its own, unrelated ones.
- * @invariant Falls back to a whole-file scan only when EXECUTION_LOG is unreadable (malformed
- *   ticket) — same tolerance `sdd-log`'s other readers already extend to that case.
- * @param fileContent Full ticket markdown.
- * @returns Existing round count + 1 (1 for the first round).
- */
-export function nextRoundNumber(fileContent: string): number {
-  const log = extractSection(fileContent, 'EXECUTION_LOG');
-  const body = log.status === 'ok' ? log.content : fileContent;
-  const matches = body.match(/^#{3}\s+Round\s+\d+/gm);
-  return (matches?.length ?? 0) + 1;
-}
+// B2-01: nextRoundNumber now lives in shared/sdd/execution-log.ts (the one Execution Log module) —
+// re-exported here so this file's own callers (sdd-log.cmd.ts) keep importing it from this module.
+export { nextRoundNumber } from '../../../shared/sdd/execution-log.ts';
 
 /**
  * @purpose Build a Round header block (blank-line padded) to insert into EXECUTION_LOG.
