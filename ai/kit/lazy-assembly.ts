@@ -5,7 +5,9 @@
 // @tasks: DA-lazy-asm
 
 import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { logger } from '#logger';
+import { KIT } from './render.ts';
 
 /* ---------- Assembly mode resolution (DA-REQ-1) ---------- */
 
@@ -20,8 +22,14 @@ export type AssemblyManifest = {
   overrides: Record<string, AssemblyMode>;
 };
 
-/** @purpose Project-root-relative location of the real assembly manifest. */
-export const DEFAULT_ASSEMBLY_MANIFEST_PATH = 'ai/kit/assembly-manifest.json';
+/**
+ * @purpose Absolute location of the real assembly manifest, resolved from this module's own
+ *   directory (`render.ts`'s `KIT`, itself `import.meta.dirname`) rather than a bare relative
+ *   string — a relative default resolves against `process.cwd()`, which silently falls back to
+ *   "manifest missing" (built-in monolith default) when this script runs from any cwd other than
+ *   the package root (T-B6-09).
+ */
+export const DEFAULT_ASSEMBLY_MANIFEST_PATH = join(KIT, 'assembly-manifest.json');
 
 const BUILTIN_DEFAULT_MODE: AssemblyMode = 'monolith';
 
@@ -33,7 +41,8 @@ type RawAssemblyManifest = { defaultMode?: unknown; overrides?: Record<string, u
  * @invariant A missing manifest file is not an error — it resolves as `{ defaultMode: 'monolith', overrides: {} }`.
  * @param directiveManifestKey The directive's key as written under `overrides` (e.g. 'sdd-v2/audit.directive.xml').
  * @param [cliFlag] The `--assembly=<mode>` value from the current build invocation.
- * @param [manifestPath] Project-root-relative manifest path; defaults to the real one.
+ * @param [manifestPath] Manifest path (absolute, or relative to the caller's cwd); defaults to
+ *   the real one, resolved absolutely — never relative to `process.cwd()`.
  * @throws {Error} Malformed manifest JSON, or an `overrides` value outside `'monolith'`/`'lazy'` —
  *   never a silent monolith fallback.
  * @returns The mode this directive's build must use.

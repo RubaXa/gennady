@@ -10,6 +10,12 @@ import { ARTIFACT_KINDS, TEMPLATES as SDD_TEMPLATES } from '../../shared/sdd/tem
 export const KIT = import.meta.dirname; // ai/kit
 export const TEMPLATES = join(KIT, 'templates');
 export const OUT_ROOT = join(KIT, '..', 'directives'); // ai/directives
+// Package root, derived the same way KIT is (import.meta.dirname, never process.cwd()) — the one
+// place every kit script resolves an absolute default from, so a script invoked from an unrelated
+// cwd (a different worktree, a scratch directory) still finds its own manifest/tree files
+// (T-B6-09). Do not reintroduce a bare relative default path ('ai/kit/…') anywhere in ai/kit/ —
+// readFileSync/readdirSync resolve those against process.cwd(), not against this package.
+export const PROJECT_ROOT = join(KIT, '..', '..');
 export const UNIT = '  '; // one indent level — switch to "\t" to change the base
 
 export function walk(dir: string, ok: (p: string) => boolean): string[] {

@@ -32,6 +32,7 @@ import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { countTokens } from '../../shared/common/tokens.ts';
+import { PROJECT_ROOT } from './render.ts';
 
 /** @purpose Soft token target for one assembled lazy skeleton — exceeding it warns, never fails the build (DA-REQ-6, DA-DL-18). */
 export const SKELETON_TOKEN_TARGET = 6000;
@@ -146,7 +147,7 @@ if (isMain()) {
   const args = process.argv.slice(2);
   const sddV2Dir =
     args.find((a) => a.startsWith('--dir='))?.slice('--dir='.length) ??
-    join(fileURLToPath(new URL('../..', import.meta.url)), 'ai/directives/sdd-v2');
+    join(PROJECT_ROOT, 'ai/directives/sdd-v2');
 
   const LIMIT_KIND_LABEL: Record<StepBudgetFinding['limitKind'], string> = {
     'skeleton-tokens-target': 'skeleton tokens (soft target)',
