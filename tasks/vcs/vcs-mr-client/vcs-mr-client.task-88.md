@@ -1,10 +1,10 @@
-# Task: TSK-88 — API core: query types + abstract port for MR create/update
+# Task: TSK-186 — API core: query types + abstract port for MR create/update
 
 <!--SECTION:META-->
 
 ## 1. Meta
 
-- **Task-ID:** TSK-88
+- **Task-ID:** TSK-186
 - **Status:** [ ] TODO
 - **Purpose:** Добавить два новых метода `create`/`update` на абстрактный порт `VcsClientMergeRequests` и два value object'а `VcsMergeRequestCreateQuery` / `VcsMergeRequestUpdateQuery`. Общее ядро для обоих провайдеров (GitLab + GitHub) — без реализации адаптеров.
 - **Scope:** `vcs-mr-management`

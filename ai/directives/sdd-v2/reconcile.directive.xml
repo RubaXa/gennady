@@ -94,24 +94,36 @@
     </Axiom>
 
     <Axiom id="AX_REOPEN_FORMAT">
-      When reopening a task ticket, append to Execution Log:
+      Allocate concrete next-unused PhaseIDs; placeholders are not valid written output. Every
+      task-owned code finding, including a one-line bug, gets at least one concrete `fix` PhaseID
+      and one dependent concrete `test` PhaseID. Multiple findings sharing one owner may share one
+      Round, but none may bypass it.
+
+      **Two forms, chosen by whether the current Round is still open (D-20):**
+      - **Round still open** (no `#### Round close` written yet) — append `#### P<N> — re-run:
+        <reason>` blocks for the new fix/test phases inside that SAME `### Round N`.
+      - **Round already closed** — `— re-run:` is not valid there; append a brand new
+        `### Round N+1 — <YYYY-MM-DD>, fix: <one-line reason>` instead, with its own fix/test phase
+        blocks. A write into an already-closed Round is invalid input regardless of form.
+
+      Either way, `PHASES_OVERVIEW` MUST gain one row per new PhaseID — the Execution Log alone is
+      not read by the phase-graph/dependency checks:
 
       ```
-      ### Round N — <YYYY-MM-DD>, fix: <one-line reason>
-
-      | Phase | Kind  | Status | Target Files | Deps |
-      |-------|-------|--------|-------------|------|
-      | P<N>  | fix   | [ ]    | <code paths> | —    |
-      | P<N+1> | test | [ ]    | <regression test paths> | P<N> |
+      | ID     | Kind | Deps | Status |
+      |--------|------|------|--------|
+      | P<N>   | fix  | —    | [ ]    |
+      | P<N+1> | test | P<N> | [ ]    |
       ```
 
-      Allocate concrete next-unused PhaseIDs in the ticket; placeholders are not valid written
-      output. Every task-owned code finding, including a one-line bug, appends a new Round with at
-      least one concrete `fix` PhaseID and one dependent concrete `test` PhaseID. Multiple findings
-      sharing one owner may share that Round, but none may bypass it.
+      Set ticket Meta Status → `[~] IN_PROGRESS` — this is what `sdd-log round` already sets when
+      opening a new Round; do not write `[ ] TODO` instead, which reads as "not started" and would
+      drift from the tracker row `sdd-check` compares it against. Update `Reopens: <new count>`.
+      Sync tracker: the owning `*.3-tasks.md` row → `[~] IN_PROGRESS` (same value, not TODO); parent
+      rollups (scope and `specs/3-tasks.md`) → adjust counts.
 
-      Set ticket Meta Status → `[ ] TODO`. Update `Reopens: <new count>`.
-      Sync tracker: the owning `*.3-tasks.md` row → `[ ] TODO`; parent rollups (scope and `specs/3-tasks.md`) → adjust counts.
+      `✅ RESOLVED` after a blocker is a related but separate concern owned by the journal's
+      Blocker Trail work, not this axiom.
     </Axiom>
 
     <Axiom id="AX_VERIFY_AT_END">
@@ -188,11 +200,12 @@
 
         Classify every finding into exactly one category:
         - **task-reopen** — ANY code finding with a resolvable `@tasks:` owner: bug, contract violation,
-          missing test, BDD mismatch, or review finding. Always append a new Round per
-          `AX_REOPEN_FORMAT`, even for a one-line fix. Allocate concrete next-unused PhaseIDs for at
-          least one `fix` phase and its dependent regression `test` phase; set ticket Meta Status and
-          its owning tracker row to `[ ] TODO`, update `Reopens`, and hand ordinary execute the ticket.
-          No task-owned code path may enter bounded-direct.
+          missing test, BDD mismatch, or review finding. Follow `AX_REOPEN_FORMAT`'s two forms — a
+          `— re-run:` phase block inside the still-open Round, or a brand new Round once it is closed
+          (D-20) — even for a one-line fix; neither form may be skipped. Allocate concrete next-unused
+          PhaseIDs for at least one `fix` phase and its dependent regression `test` phase; set ticket
+          Meta Status and its owning tracker row to `[~] IN_PROGRESS`, update `Reopens`, and hand
+          ordinary execute the ticket. No task-owned code path may enter bounded-direct.
         - **semantic-spec-update** — any change to GOAL, requirements, observable behaviour, contracts,
           inventory, architecture, dependencies, BDD acceptance, risks, or Decision Log meaning. Route
           by artifact kind to authoring and complete independent semantic review plus approval #1 before any scaffold,
@@ -215,7 +228,7 @@
         Group findings sharing one intent without crossing owners (`AX_GROUPING_REDUCES_NOISE`). The
         plan records, per item:
         - task-reopen: ticket path, new Round number, concrete fix/test PhaseIDs, exact Target Files,
-          dependency from test to fix, and tracker row changing to TODO;
+          dependency from test to fix, and tracker row changing to IN_PROGRESS;
         - semantic-spec-update: one artifact kind and authoring directive, the integrated bundle that
           must merge, then the post-merge disposition (`spec-only`, reopen existing tasks, or scaffold
           uncovered implementation);
@@ -247,7 +260,7 @@
         <LogicSwitch on="approved remediation category">
         - WHEN **task-reopen** → append the planned new Round to every owning ticket exactly per
           `AX_REOPEN_FORMAT`; write its concrete fix and dependent test PhaseIDs, set Meta Status and
-          tracker row to TODO, update parent rollups and `Reopens`, then
+          tracker row to IN_PROGRESS, update parent rollups and `Reopens`, then
           `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/execute.directive.xml")` for those tickets as
           an ordinary batch. Reconcile never edits the task-owned code itself and never requests a
           reconcile-only audit; execute owns phase work, tracker sync, audit, and code-review.

@@ -157,6 +157,31 @@ describe('parsePhasesOverview', () => {
     assert.deepStrictEqual(phases[0], { id: 'P1', kind: 'impl', deps: [], status: '[ ]' });
     assert.deepStrictEqual(phases[1], { id: 'P2', kind: 'test', deps: ['P1'], status: '[x]' });
   });
+
+  // B2-09: a ticket anchor-injected from v1 (tasks/cli/lint/cli-lint.task-14.md:93) keeps its
+  // original `| Phase | Kind | Status | Target Files | Deps |` column order — Status and Deps are
+  // swapped relative to the canonical `| ID | Kind | Deps | Status |` order, and the header cell
+  // reads "Phase", not "ID". A shield keyed only on `cells[0] === 'id'` neither skips this header
+  // row nor reads Status/Deps by name, so it manufactures a fake phase called "Phase" and swaps
+  // every real row's status/deps.
+  const V1_ORDER_OVERVIEW = [
+    '| Phase | Kind | Status | Target Files | Deps |',
+    '|-------|------|--------|--------------|------|',
+    '| P1 | impl | [ ] | src/foo.ts | — |',
+    '| P2 | test | [x] | src/foo.test.ts | P1 |',
+  ].join('\n');
+
+  it('does not manufacture a phase named "Phase" from a legacy v1-order header row', () => {
+    const phases = parsePhasesOverview(V1_ORDER_OVERVIEW);
+    assert.ok(!phases.some((p) => p.id === 'Phase'), 'the header row must never become a data row');
+    assert.strictEqual(phases.length, 2);
+  });
+
+  it('reads Status and Deps by column name on a v1-order table, not by canonical position', () => {
+    const phases = parsePhasesOverview(V1_ORDER_OVERVIEW);
+    assert.deepStrictEqual(phases[0], { id: 'P1', kind: 'impl', deps: [], status: '[ ]' });
+    assert.deepStrictEqual(phases[1], { id: 'P2', kind: 'test', deps: ['P1'], status: '[x]' });
+  });
 });
 
 describe('parsePhaseDetail', () => {

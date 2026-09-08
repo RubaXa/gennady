@@ -9,7 +9,7 @@
 - **Purpose:** Реализовать CLI-команду `gennady vcs-mr-create` — создание GitLab MR из текущей ветки, с авто-детектом через `vcs-context-resolver`.
 - **Scope:** `vcs-mr-management`
 - **Module:** `cli/vcs-mr-create`
-- **Dependencies:** TSK-88, TSK-89
+- **Dependencies:** TSK-186, TSK-89
 - **Spec References:** FR-MR-10, FR-MR-11, FR-MR-12, FR-MR-10a, FR-MR-20, FR-MR-21, FR-MR-22, D-003
 - **Runtime Backing:** `real-runtime`
 - **Verification Levels:** `unit`

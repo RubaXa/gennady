@@ -9,7 +9,7 @@
 - **Purpose:** Реализовать `create`, `update`, `getList`, `getByIid` в GitHub-адаптере `VcsGithubMergeRequests` через REST API. Заменить stub-заглушки.
 - **Scope:** `vcs-mr-management`
 - **Module:** `vcs-mr-client`
-- **Dependencies:** TSK-88
+- **Dependencies:** TSK-186
 - **Reopens:** 0
 - **Spec References:**
   - FR-MR-03, FR-MR-07, FR-MR-09, FR-DEP-01, D-002

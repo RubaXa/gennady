@@ -21,7 +21,7 @@ export const ERR_CLI_SDD_CHECK_READ_FAILED = 'ERR_CLI_SDD_CHECK_READ_FAILED' as 
 export type CheckResult = {
   /** @purpose The ESLint-style report (findings + summary) for stdout. */
   text: string;
-  /** @purpose Exit code — 0 clean, 1 errors found, 4 bad invocation. */
+  /** @purpose Exit code — 0 clean, 1 errors found, 2 --all found zero tickets, 4 bad invocation. */
   exitCode: number;
 };
 

@@ -1,8 +1,8 @@
-# Task: TSK-35 — Fix: downgrade notification + --version flag
+# Task: TSK-184 — Fix: downgrade notification + --version flag
 
 ## 1. Meta
 
-- **Task-ID:** TSK-35
+- **Task-ID:** TSK-184
 - **Status:** [x] DONE
 - **Purpose:** Fix version comparison in UpdateCheck to prevent downgrade notifications (semver `>` instead of `!==`), add `--version` / `-v` flag to CLI
 - **Scope:** cli

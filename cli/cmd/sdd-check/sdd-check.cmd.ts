@@ -1123,6 +1123,11 @@ export async function run(
   const findings: Finding[] = [];
   let fileCount = 0;
   let taskBanner: string | null = null;
+  // `--all` over a tree with zero resolvable tickets (wrong root, or a specs-only tree with no
+  // tasks/ yet) is a misconfiguration, not a clean pass — SDD_NO_TICKETS_FOUND forces exit 2 so
+  // callers can tell "nothing to check" apart from "0 error(s)" (set near the end of the --all
+  // branch, only when no other finding already explains the empty result).
+  let noTicketsFound = false;
 
   if (specPath) {
     let repoRoot: string;
@@ -1184,43 +1189,57 @@ export async function run(
     if (resolved.resolvedFrom === 'id') {
       taskBanner = resolutionLine('sdd-check', resolved.id, resolved.path, repoRoot);
     }
-    if (!authoringPhase) findings.push(...checkTicket(effectivePath, content));
-    if (authoring)
-      findings.push(...checkTicketAuthoringStructure(effectivePath, content, authoringPhase));
-    if (authoring && !authoringPhase)
-      findings.push(...checkTicketOwnerMetadata(resolved.path, content, repoRoot));
-    if (authoring)
-      findings.push(...checkAuthoringTargetPaths(resolved.path, content, repoRoot, authoringPhase));
-    if (!authoring)
-      findings.push(...checkPhaseReceipts(effectivePath, resolved.path, content, repoRoot));
-    findings.push(
-      ...checkRuleLinks(
-        effectivePath,
-        content,
-        repoRoot,
-        authoring
-          ? { phaseIds: authoringPhase ? [authoringPhase] : undefined, authoring: true }
-          : undefined
-      )
-    );
-    if (!authoringPhase) findings.push(...checkSpecRefs(effectivePath, content));
+    // --task classifies a ticket exactly like --all (isTicket v2 vs isLegacyTicket) before running
+    // the marker-dependent v2 checks below, so the same file gives the same findings/exit code
+    // whether it is named directly or discovered by --all.
+    const legacy = !authoring && !isTicket(content) && isLegacyTicket(content);
+    if (legacy) {
+      findings.push(...checkLegacyTicket(effectivePath));
+    } else {
+      if (!authoringPhase) findings.push(...checkTicket(effectivePath, content));
+      if (authoring)
+        findings.push(...checkTicketAuthoringStructure(effectivePath, content, authoringPhase));
+      if (authoring && !authoringPhase)
+        findings.push(...checkTicketOwnerMetadata(resolved.path, content, repoRoot));
+      if (authoring)
+        findings.push(
+          ...checkAuthoringTargetPaths(resolved.path, content, repoRoot, authoringPhase)
+        );
+      if (!authoring)
+        findings.push(...checkPhaseReceipts(effectivePath, resolved.path, content, repoRoot));
+    }
+    if (!legacy)
+      findings.push(
+        ...checkRuleLinks(
+          effectivePath,
+          content,
+          repoRoot,
+          authoring
+            ? { phaseIds: authoringPhase ? [authoringPhase] : undefined, authoring: true }
+            : undefined
+        )
+      );
+    if (!legacy && !authoringPhase) findings.push(...checkSpecRefs(effectivePath, content));
     if (!authoring) findings.push(...checkResearchRefs(effectivePath, content));
     if (!authoring) findings.push(...(await checkSpecMermaid(effectivePath, content)));
-    findings.push(
-      ...checkTicketRulesCascade(
-        effectivePath,
-        content,
-        repoRoot,
-        authoring
-          ? { phaseIds: authoringPhase ? [authoringPhase] : undefined, authoring: true }
-          : undefined
-      )
-    );
-    if (!authoringPhase) findings.push(...checkTicketBddCoverage(effectivePath, content, repoRoot));
-    if (!authoringPhase) findings.push(...checkTicketCoveragePolicy(effectivePath, content));
-    if (!authoring && specFlowVersion(resolve(effectivePath)) === 'v2')
+    if (!legacy)
+      findings.push(
+        ...checkTicketRulesCascade(
+          effectivePath,
+          content,
+          repoRoot,
+          authoring
+            ? { phaseIds: authoringPhase ? [authoringPhase] : undefined, authoring: true }
+            : undefined
+        )
+      );
+    if (!legacy && !authoringPhase)
+      findings.push(...checkTicketBddCoverage(effectivePath, content, repoRoot));
+    if (!legacy && !authoringPhase)
+      findings.push(...checkTicketCoveragePolicy(effectivePath, content));
+    if (!legacy && !authoring && specFlowVersion(resolve(effectivePath)) === 'v2')
       findings.push(...checkSpecLanguage(effectivePath, content));
-    if (!authoringPhase && isV2SpecsTicket(effectivePath))
+    if (!legacy && !authoringPhase && isV2SpecsTicket(effectivePath))
       findings.push(...checkTaskIdGrammar(effectivePath, content));
     for (let index = firstTaskFinding; index < findings.length; index++) {
       const finding = findings[index] as Finding;
@@ -1410,6 +1429,7 @@ export async function run(
         fileCount++;
       }
     }
+    const ticketsWereZero = ticketRefs.length === 0;
     findings.push(...checkTaskGraph(ticketRefs));
     // #region START_GROUP_RECEIPTS — invariant: group walked v2 tickets by owning spec, then WARN when a fully-DONE group lacks a valid receipt (grandfathered and graded inside checkGroupReceipts)
     const specContentByCanonical = new Map<string, { file: string; content: string }>();
@@ -1449,6 +1469,17 @@ export async function run(
     for (const t of mermaidTargets) {
       findings.push(...(await checkSpecMermaid(t.file, t.content)));
     }
+    if (ticketsWereZero && findings.length === 0) {
+      noTicketsFound = true;
+      findings.push({
+        severity: 'error',
+        code: 'SDD_NO_TICKETS_FOUND',
+        file: relative(process.cwd(), root) || root,
+        message:
+          'sdd-check --all resolved zero v2 or legacy tickets under this root — check the ' +
+          '[project-root] argument, or scaffold at least one ticket before auditing.',
+      });
+    }
     // #endregion END_ALL
   }
 
@@ -1479,6 +1510,7 @@ export async function run(
         }
       : { format: outputFormat }
   );
+  if (noTicketsFound) result.exitCode = 2;
   return taskBanner && outputFormat === 'text'
     ? { text: `${taskBanner}\n${result.text}`, exitCode: result.exitCode }
     : result;

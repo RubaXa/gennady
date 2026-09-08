@@ -89,5 +89,10 @@ export function printHelp(): void {
   console.info(
     '  --authoring: `repo-relative-file:line: severity: stable-code  [SECTION] Fix: …`.'
   );
-  console.info('Exit codes: 0 clean (warnings allowed)   1 error(s) found   4 bad invocation');
+  console.info(
+    '  --all: zero resolvable tickets under [project-root] is SDD_NO_TICKETS_FOUND, not a clean pass'
+  );
+  console.info(
+    'Exit codes: 0 clean (warnings allowed)   1 error(s) found   2 --all found zero tickets (SDD_NO_TICKETS_FOUND) or --task named an unknown Task-ID (ERR_CLI_SDD_CHECK_UNKNOWN_ID)   4 bad invocation'
+  );
 }

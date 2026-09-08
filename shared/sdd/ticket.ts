@@ -155,8 +155,12 @@ export function parseMetaInfo(metaBody: string): MetaInfo {
   };
 }
 
-/** @purpose Split a simple non-Verification markdown table row into trimmed content cells. */
-function rowCells(line: string): string[] {
+/**
+ * @purpose Split a simple non-Verification markdown table row into trimmed content cells.
+ * @param line One `| a | b |`-shaped source line.
+ * @returns Trimmed cell contents, without the leading/trailing empty split artifacts.
+ */
+export function rowCells(line: string): string[] {
   return line
     .trim()
     .replace(/^\|/, '')
@@ -165,8 +169,12 @@ function rowCells(line: string): string[] {
     .map((c) => c.trim());
 }
 
-/** @purpose True for a table separator row like `|---|---|`. */
-function isSeparator(line: string): boolean {
+/**
+ * @purpose True for a table separator row like `|---|---|`.
+ * @param line One source line.
+ * @returns Whether the line is a markdown table separator, not a header or data row.
+ */
+export function isSeparator(line: string): boolean {
   return /^\|?\s*:?-{2,}/.test(line.trim());
 }
 
@@ -188,6 +196,46 @@ function unwrapInlineCode(value: string): string {
   return parseInlineCode(value).value;
 }
 
+/** @purpose Column indices of a PHASES_OVERVIEW row, learned from its header — not assumed by position. */
+export type PhaseColumnMap = {
+  /** @purpose Index (into rowCells output) of the phase-id column. */
+  id: number;
+  /** @purpose Index of the kind column, or -1 when the header did not name one. */
+  kind: number;
+  /** @purpose Index of the deps column, or -1 when the header did not name one. */
+  deps: number;
+  /** @purpose Index of the status column. */
+  status: number;
+};
+
+/** @purpose Header cell text (lowercased) → the PhaseColumnMap field it names. `phase` is the legacy v1 id-column name. */
+const PHASE_COLUMN_ALIASES: Record<string, keyof PhaseColumnMap> = {
+  id: 'id',
+  phase: 'id',
+  kind: 'kind',
+  deps: 'deps',
+  dependencies: 'deps',
+  status: 'status',
+};
+
+/**
+ * @purpose Map a PHASES_OVERVIEW header row to id/kind/deps/status column indices — tolerant of
+ *   both the canonical `| ID | Kind | Deps | Status |` order and the legacy v1
+ *   `| Phase | Kind | Status | Target Files | Deps |` order (`Phase` aliases `id`; a `Target
+ *   Files` or other unrecognized column is simply skipped, not mismapped).
+ * @param cells Trimmed cell contents of one row (see rowCells) — header or not.
+ * @returns The column map, or null when the row names neither a recognizable id nor status column.
+ */
+export function matchPhaseOverviewHeader(cells: string[]): PhaseColumnMap | null {
+  const map: Partial<PhaseColumnMap> = {};
+  cells.forEach((cell, i) => {
+    const key = PHASE_COLUMN_ALIASES[cell.toLowerCase()];
+    if (key && map[key] === undefined) map[key] = i;
+  });
+  if (map.id === undefined || map.status === undefined) return null;
+  return { id: map.id, kind: map.kind ?? -1, deps: map.deps ?? -1, status: map.status };
+}
+
 /**
  * @purpose Parse the Phases Overview table.
  * @param body Text of the PHASES_OVERVIEW section.
@@ -195,12 +243,23 @@ function unwrapInlineCode(value: string): string {
  */
 export function parsePhasesOverview(body: string): PhaseOverview[] {
   const out: PhaseOverview[] = [];
+  let columns: PhaseColumnMap | null = null;
+  let sawHeader = false;
   for (const line of body.split('\n')) {
     if (!line.trimStart().startsWith('|') || isSeparator(line)) continue;
     const cells = rowCells(line);
-    if (cells.length < 4 || cells[0]?.toLowerCase() === 'id') continue;
-    const [id, kind, deps, status] = cells;
+    if (cells.length < 2) continue;
+    if (!sawHeader) {
+      sawHeader = true;
+      columns = matchPhaseOverviewHeader(cells);
+      continue; // the header row itself is never a data row, matched or not
+    }
+    const cols = columns ?? { id: 0, kind: 1, deps: 2, status: 3 };
+    const id = cells[cols.id];
     if (!id) continue;
+    const kind = cols.kind >= 0 ? cells[cols.kind] : undefined;
+    const deps = cols.deps >= 0 ? cells[cols.deps] : undefined;
+    const status = cells[cols.status];
     out.push({
       id,
       kind: kind ?? '',

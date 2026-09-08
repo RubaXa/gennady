@@ -9,7 +9,7 @@
 - **Purpose:** CLI-команда `gennady vcs-mr-edit` — редактирование GitLab MR: title, description, draft↔ready, labels, assignee, reviewer, target branch.
 - **Scope:** `vcs-mr-management`
 - **Module:** `cli/vcs-mr-edit`
-- **Dependencies:** TSK-88, TSK-89
+- **Dependencies:** TSK-186, TSK-89
 - **Spec References:** FR-MR-13, FR-MR-14, FR-MR-15, FR-MR-16, FR-MR-30a, FR-MR-30b, FR-MR-31
 - **Runtime Backing:** `real-runtime`
 - **Verification Levels:** `unit`

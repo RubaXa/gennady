@@ -16,8 +16,62 @@ import {
 } from '../templates.ts';
 import { REQUIRED_SECTIONS, MODULE_REQUIRED_V2, FOLD_REQUIRED_V2 } from '../check.ts';
 import { extractMermaidBlocks, validateMermaid } from '../../mermaid/mermaid.ts';
+import { TOKEN_VOCABULARY, formatTokenVocabulary } from '../execution-log.ts';
 
 const sortedSet = (xs: string[]): string[] => Array.from(new Set(xs)).sort();
+
+describe('B2-03 — TOKEN_VOCABULARY is one home, project-index skeleton quotes it verbatim', () => {
+  it('the scaffolded specs/3-tasks.md skeleton contains exactly the module vocabulary, not a hand-typed copy', () => {
+    const skeleton = TEMPLATES['project-index'].skeleton;
+    assert.match(skeleton, /\*\*Execution-Log token vocabulary:\*\*/);
+    assert.ok(
+      skeleton.includes(formatTokenVocabulary()),
+      'project-index skeleton must embed execution-log.ts#formatTokenVocabulary() verbatim'
+    );
+  });
+
+  it('every canonical token from the single home appears in the generated line, including the ones that used to drift (ver/yagni/env-fix/correction)', () => {
+    const skeleton = TEMPLATES['project-index'].skeleton;
+    for (const entry of TOKEN_VOCABULARY) {
+      assert.ok(
+        skeleton.includes(entry.grammar),
+        `missing token grammar in skeleton: ${entry.token}`
+      );
+    }
+  });
+});
+
+describe("B2-15 — specs/3-tasks.md (this repo's own project index) matches the project-index generator", () => {
+  // specs/3-tasks.md is a real, committed artifact — not a fixture — that predates B2-03's fix to
+  // TOKEN_VOCABULARY and drifted from what `sdd-new`/scaffold would generate today: its own
+  // Baseline Completion Rule and Execution-Log token vocabulary bullets no longer matched
+  // TEMPLATES['project-index'].skeleton (the single generation source, per B2-03). Re-synced by
+  // hand (B2-15) since this file isn't rebuilt by `npm run build:directives` — nothing else keeps
+  // it honest going forward, hence this line-level parity test.
+  const REPO_PROJECT_INDEX = fileURLToPath(new URL('../../../specs/3-tasks.md', import.meta.url));
+
+  it('Baseline Completion Rule bullet is byte-identical to the generator', () => {
+    const repoFile = readFileSync(REPO_PROJECT_INDEX, 'utf-8');
+    const repoLine = repoFile
+      .split('\n')
+      .find((l) => l.startsWith('- **Baseline Completion Rule:**'));
+    const generatedLine = TEMPLATES['project-index'].skeleton
+      .split('\n')
+      .find((l) => l.startsWith('- **Baseline Completion Rule:**'));
+    assert.strictEqual(repoLine, generatedLine);
+  });
+
+  it('Execution-Log token vocabulary bullet is byte-identical to the generator (includes ver/yagni/env-fix/correction)', () => {
+    const repoFile = readFileSync(REPO_PROJECT_INDEX, 'utf-8');
+    const repoLine = repoFile
+      .split('\n')
+      .find((l) => l.startsWith('- **Execution-Log token vocabulary:**'));
+    const generatedLine = TEMPLATES['project-index'].skeleton
+      .split('\n')
+      .find((l) => l.startsWith('- **Execution-Log token vocabulary:**'));
+    assert.strictEqual(repoLine, generatedLine);
+  });
+});
 
 describe('templates registry', () => {
   it('module skeleton points the scope-spec backlink at the flat-module depth (../<scope>), not ../../', () => {
@@ -97,6 +151,20 @@ describe('templates registry', () => {
   it('task skeleton is anchored, and portal skeleton carries no SECTION anchors', () => {
     assert.ok(TEMPLATES.task.skeleton.includes('<!--SECTION:META-->'));
     assert.ok(!/<!--SECTION:/.test(TEMPLATES.portal.skeleton));
+  });
+
+  // B2-14: the task skeleton's illustrative Handoff line taught agents to write three fields
+  // (artifacts/decisions/open), but sdd-log `complete` (isCompleteHandoffPayload,
+  // cli/cmd/sdd-log/sdd-log.types.ts) requires all four, including `deviations`, rejecting the
+  // skeleton's own three-field form. All three copies of the skeleton (this one, the generated
+  // formats/task-ticket-structure.xml + scaffold.directive.xml via the shared sdd-skeleton-task
+  // build partial, and the disconnected ai/kit/contract/process/phase-block-format.xml) must agree
+  // with the runtime contract.
+  it('task skeleton Handoff placeholder carries all four fields sdd-log complete requires (artifacts/decisions/open/deviations)', () => {
+    assert.match(
+      TEMPLATES.task.skeleton,
+      /\*\*Handoff →\*\* artifacts: \[\.\.\.\]; decisions: \[\.\.\.\]; open: \[\.\.\.\]; deviations: \[\.\.\.\]/
+    );
   });
 
   it('project-index skeleton carries no SECTION anchors and matches specs/3-tasks.md', () => {
