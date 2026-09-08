@@ -28,7 +28,8 @@
   "exports": {
     ".": "./services/agent-mon/index.ts",
     "./providers/claude": "./services/agent-mon/providers/claude/index.ts",
-    "./providers/opencode": "./services/agent-mon/providers/opencode/index.ts"
+    "./providers/opencode": "./services/agent-mon/providers/opencode/index.ts",
+    "./stack": "./shared/verify/plugin-api.ts"
   },
   "files": [
     "dist/**/*",

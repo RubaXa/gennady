@@ -15,6 +15,7 @@ import {
   type Scope,
 } from '../../../shared/sdd/portal.ts';
 import { probeRepo } from '../../../shared/sdd/probe.ts';
+import { detectRepoStack } from '../../../shared/verify/stack-detection.ts';
 import { detectFlowVersion } from '../../../shared/sdd/flow.ts';
 import { countModuleSpecs } from '../../../shared/sdd/module-specs.ts';
 import { sumRollupProgress } from '../../../shared/sdd/tracker.ts';
@@ -149,6 +150,9 @@ export async function run(rawArgs: string[]): Promise<StateOutcome> {
   }
   // #endregion END_PORTAL
 
+  // One shared detection fact (V-05); config wiring (gennady.yaml stack.use) is V-07's job.
+  const stack = detectRepoStack(root, null);
+
   // #region START_READINESS — exact-match required scripts; missing/broken package.json reads as not-ready
   const readinessInput = gatherReadinessInput(root);
   const { packageJsonPresent } = readinessInput;
@@ -193,6 +197,7 @@ export async function run(rawArgs: string[]): Promise<StateOutcome> {
     gateQueueDiagnostics: gateQueue.diagnostics,
     specSchema,
     probe,
+    stack,
   };
 
   // #region START_LADDER — the readiness-ladder card the router shows verbatim; appended, never replaces [SUMMARY]
