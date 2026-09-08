@@ -48,34 +48,43 @@ node --import tsx ai/flow-eval/scripts/generate-sdd-check-baseline.ts \
 - Библиотека сравнения (чистая, без fs/process): `ai/flow-eval/scripts/sdd-check-baseline-compare.ts`.
 - Общий раннер sdd-check --format json (обходит известную усечённость stdout при пайпе — см. заголовок
   файла): `ai/flow-eval/scripts/run-sdd-check-json.ts`.
-- CLI-гейт: `ai/flow-eval/scripts/sdd-check-zero-new-error.ts` — точка входа в CI.
+- CLI-гейт: `ai/flow-eval/scripts/sdd-check-zero-new-error.ts` — точка входа гейта (вызывается из
+  `scripts/git-hooks/pre-push`; заголовок самого файла всё ещё называет её "CI-only" — исторический
+  комментарий, не трогался по прямому указанию брифа GAP-B-2, см. отчёт).
 - Юнит-тест с фикстурными baseline (identical → ok; new error → fail с именованием; new warning → ok):
   `ai/flow-eval/scripts/__tests__/sdd-check-baseline-compare.test.ts` (подхватывается `npm test`
   автоматически — `ai/flow-eval/` уже входит в `UNIT_ROOTS` в `scripts/test-topology.ts`, правка
   test-topology.ts не потребовалась; проверено `node --import tsx scripts/test-topology.ts list`).
 
-### Куда подключено — и куда НЕ подключено, и почему
+### Куда подключено — и куда НЕ подключено, и почему (обновлено D-54/GAP-B-2)
+
+**В этом репозитории нет CI** (нет `.github/workflows/`, нет другой автоматической обвязки — GAP-B-1
+завёл `check:ci` как npm-скрипт "для будущего CI", но его не запускал никто и ничто, что и зафиксировала
+предыдущая версия этого README как открытый пункт). По решению D-54 жёсткие проверки, для которых в этом
+проекте нет CI, живут в git-хуках. Поэтому `check:ci` **удалён**: сам гейт (`gate:sdd-check-baseline`)
+никуда не делся, но точка входа теперь — `scripts/git-hooks/pre-push`, а не несуществующий CI-этап.
 
 `package.json`:
 
 ```
 "gate:sdd-check-baseline": "node --import tsx ai/flow-eval/scripts/sdd-check-zero-new-error.ts --baseline ai/flow-eval/.baseline/sdd-check-227c03a8.json",
-"check:ci": "npm run check && npm run build && npm run gate:sdd-check-baseline"
 ```
 
-**НЕ добавлено** в `npm run check` (используемый `scripts/git-hooks/pre-commit` на каждый коммит) и
-**НЕ добавлено** в сам `scripts/git-hooks/pre-commit`. Причина — прямое указание брифа 0/5: разместить
-предикат там, где он не замедляет pre-commit. `sdd-check --all .` проходит 212+ файлов и занимает заметное
-время; pre-commit уже прогоняет полную лестницу (`sdd-verify --profile full` + четыре audit:\* гейта +
-directive-budgets) на каждый коммит. `check:ci` — отдельный, самостоятельный npm-скрипт, предназначенный
-для CI-стадии.
+`scripts/git-hooks/pre-push` (новый, D-54/GAP-B-2): на каждый `git push` сначала пересобирает `dist/`,
+если он отсутствует или устарел (сверка mtime `cli/`, `shared/`, `services/`, `index.ts`, `vite.config.ts`,
+`package.json` против `dist/gennady.js` — гейт сверяется именно со сборкой, а не с исходниками напрямую,
+см. `ai/flow-eval/scripts/run-sdd-check-json.ts`), затем прогоняет `npm run gate:sdd-check-baseline`.
+Красный гейт печатает каждую новую находку как `NEW ERROR: <code>  <file>` и роняет push с сообщением,
+объясняющим, что делать (чинить регрессию или просить оператора о пересборке baseline — см. D-38 выше).
+Доказательство обеих веток (регрессия ловится и named, чистый baseline проходит):
+`ai/flow-eval/scripts/pre-push-gate.smoke.sh`.
 
-На момент этой задачи в дереве RC (`codex/sdd-v2-rc52-followup`) каталога `.github/workflows/` НЕТ —
-проверено (`find .github` → not found). Значит, автоматического вызова `check:ci` пока не существует; сам
-факт добавления workflow-файла — за пределами ФАЙЛЫ этой задачи (никаких правок продукта/инфраструктуры
-CI сверх перечисленного в брифе). Это **отклонение/открытый пункт**, зафиксированный в отчёте: когда
-появится `.github/workflows/*.yml` (или другая CI-обвязка), туда нужно добавить шаг `npm run check:ci`
-(или напрямую `npm run gate:sdd-check-baseline` после отдельного `npm run build`).
+**НЕ добавлено** в `npm run check` (используемый `scripts/git-hooks/pre-commit` на каждый коммит) и
+**НЕ добавлено** в сам `scripts/git-hooks/pre-commit` — это осталось в силе и после D-54: `sdd-check --all .`
+проходит 212+ файлов и занимает заметное время, а pre-commit уже прогоняет полную лестницу
+(`sdd-verify --profile full` + четыре audit:\* гейта + directive-budgets) на каждый коммит. `push`
+происходит заметно реже, чем `commit` — именно поэтому дорогой, целостный гейт по всему репозиторию
+теперь висит там, а не размазан по каждому коммиту и не ждёт CI, которого нет.
 
 ## Инвариант: только error ломает гейт
 
