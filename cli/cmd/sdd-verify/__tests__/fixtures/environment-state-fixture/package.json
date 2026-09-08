@@ -1,0 +1,15 @@
+{
+  "name": "verify-golden-fixture",
+  "private": true,
+  "description": "Frozen node-preset fixture for V-01 golden tests (30-TRACK-VERIFY.md §3.1.3 п.9). Deliberately isolated from the RC repository's own package.json (I-3): this file's scripts are exactly shared/sdd/readiness.ts REQUIRED_SCRIPTS, byte-stable, never touched by REL-4/REL-6/REL-8. Do not add scripts here for unrelated tests — add a new fixture directory instead.",
+  "scripts": {
+    "type-check": "tsc --noEmit",
+    "test": "node --test",
+    "test:coverage": "c8 node --test",
+    "format": "prettier --check .",
+    "format:fix": "prettier --write",
+    "lint": "eslint .",
+    "lint:fix": "eslint --fix",
+    "fix": "npm run format:fix -- . && npm run lint:fix -- ."
+  }
+}

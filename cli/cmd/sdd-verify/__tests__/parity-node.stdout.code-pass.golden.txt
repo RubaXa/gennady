@@ -1,0 +1,4 @@
+[sdd-verify] ✅ ALL PASS (3/3)
+  🔧 fix (Ns) — мутирующий шаг
+  ✅ type-check (Ns)
+  ✅ test (Ns)

@@ -1,0 +1,7 @@
+[sdd-verify] 1/2 passed — 1 FAILED
+  🔧 fix (Ns) — мутирующий шаг
+  ❌ type-check — exit 1 (ran: npm run type-check)
+  --- output ---
+<<type-check failed>>
+  --- end ---
+[sdd-verify] ⛔ лестница остановлена на «type-check» — код не собирается — дальше нечего проверять и чинить, дальше не пошли

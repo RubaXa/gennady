@@ -1,0 +1,23 @@
+[
+  {
+    "kind": "run",
+    "name": "formatter",
+    "command": "npm",
+    "args": ["run", "format:fix", "--", "src/a.ts", "src/a.css"],
+    "evidence": "npm run format:fix -- src/a.ts src/a.css"
+  },
+  {
+    "kind": "run",
+    "name": "project-linter",
+    "command": "npm",
+    "args": ["run", "lint:fix", "--", "src/a.ts", "src/a.css"],
+    "evidence": "npm run lint:fix -- src/a.ts src/a.css"
+  },
+  {
+    "kind": "run",
+    "name": "gennady-contract",
+    "command": "npx",
+    "args": ["--no-install", "gennady", "lint", "--autofix", "--include-tests", "--", "src/a.ts"],
+    "evidence": "npx --no-install gennady lint --autofix --include-tests -- src/a.ts"
+  }
+]

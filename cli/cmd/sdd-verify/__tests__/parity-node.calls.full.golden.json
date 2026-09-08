@@ -1,0 +1,7 @@
+[
+  "npm run type-check",
+  "npm run test:coverage",
+  "npm run lint",
+  "npm run format",
+  "npx --no-install gennady yagni"
+]

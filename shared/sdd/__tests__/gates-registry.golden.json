@@ -1,0 +1,44 @@
+[
+  {
+    "name": "fix",
+    "mutates": true,
+    "haltsOnFailure": true,
+    "via": "target-repair"
+  },
+  {
+    "name": "type-check",
+    "mutates": false,
+    "haltsOnFailure": true,
+    "via": "npm"
+  },
+  {
+    "name": "test",
+    "mutates": false,
+    "haltsOnFailure": true,
+    "via": "npm"
+  },
+  {
+    "name": "test:coverage",
+    "mutates": false,
+    "haltsOnFailure": true,
+    "via": "npm"
+  },
+  {
+    "name": "lint",
+    "mutates": false,
+    "haltsOnFailure": false,
+    "via": "npm"
+  },
+  {
+    "name": "format",
+    "mutates": false,
+    "haltsOnFailure": false,
+    "via": "npm"
+  },
+  {
+    "name": "yagni",
+    "mutates": false,
+    "haltsOnFailure": false,
+    "via": "gennady"
+  }
+]

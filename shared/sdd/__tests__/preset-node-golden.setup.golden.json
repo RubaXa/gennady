@@ -1,0 +1,29 @@
+[
+  {
+    "name": "fix",
+    "state": "CONFIGURED",
+    "required": false,
+    "command": "target-repair",
+    "prerequisites": [],
+    "provider": null,
+    "next": "run target-repair"
+  },
+  {
+    "name": "type-check",
+    "state": "CONFIGURED",
+    "required": false,
+    "command": "npm run type-check",
+    "prerequisites": [],
+    "provider": null,
+    "next": "run npm run type-check"
+  },
+  {
+    "name": "test",
+    "state": "CONFIGURED",
+    "required": false,
+    "command": "npm run test",
+    "prerequisites": [],
+    "provider": null,
+    "next": "run npm run test"
+  }
+]

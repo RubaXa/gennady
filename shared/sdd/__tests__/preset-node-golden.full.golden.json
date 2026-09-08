@@ -1,0 +1,42 @@
+[
+  {
+    "name": "type-check",
+    "mutates": false,
+    "haltsOnFailure": true,
+    "via": "npm",
+    "required": true,
+    "command": "npm run type-check"
+  },
+  {
+    "name": "test:coverage",
+    "mutates": false,
+    "haltsOnFailure": true,
+    "via": "npm",
+    "required": true,
+    "command": "npm run test:coverage"
+  },
+  {
+    "name": "lint",
+    "mutates": false,
+    "haltsOnFailure": false,
+    "via": "npm",
+    "required": true,
+    "command": "npm run lint"
+  },
+  {
+    "name": "format",
+    "mutates": false,
+    "haltsOnFailure": false,
+    "via": "npm",
+    "required": true,
+    "command": "npm run format"
+  },
+  {
+    "name": "yagni",
+    "mutates": false,
+    "haltsOnFailure": false,
+    "via": "gennady",
+    "required": true,
+    "command": null
+  }
+]

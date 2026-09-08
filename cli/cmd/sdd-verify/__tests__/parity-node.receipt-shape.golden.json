@@ -1,0 +1,41 @@
+{
+  "commands": [
+    {
+      "gate": "fix",
+      "role": "repair",
+      "command": "npm run format:fix -- src/a.ts && npm run lint:fix -- src/a.ts && npx --no-install gennady lint --autofix --include-tests --spec=specs/app/app.spec.md -- src/a.ts",
+      "exitCode": 0
+    },
+    {
+      "gate": "type-check",
+      "role": "foundation",
+      "command": "npm run type-check",
+      "exitCode": 0
+    },
+    {
+      "gate": "test",
+      "role": "foundation",
+      "command": "npm run test",
+      "exitCode": 0
+    }
+  ],
+  "gateEvidence": [
+    {
+      "name": "fix",
+      "state": "PROVEN",
+      "provider": null
+    },
+    {
+      "name": "type-check",
+      "state": "PROVEN",
+      "provider": null
+    },
+    {
+      "name": "test",
+      "state": "PROVEN",
+      "provider": null
+    }
+  ],
+  "profile": "code",
+  "profileBasis": "phase-kind"
+}

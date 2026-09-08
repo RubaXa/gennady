@@ -1,0 +1,7 @@
+[
+  "npm run format:fix -- src/changed.ts",
+  "npm run lint:fix -- src/changed.ts",
+  "npx --no-install gennady lint --autofix --include-tests -- src/changed.ts",
+  "npm run type-check",
+  "npm run test"
+]
