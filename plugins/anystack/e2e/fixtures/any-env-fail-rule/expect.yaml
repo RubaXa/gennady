@@ -1,0 +1,9 @@
+notes: >
+  Config-authored gates get the same treatment as built-in ones: a declarative envFail rule turns
+  a missing toolchain into env-fail with its hint, not into a code failure (FR-STACK-15).
+argv: ['--all']
+exitCode: 1
+gates:
+  anystack:build:
+    status: env-fail
+    hintIncludes: 'install the exotic compiler'

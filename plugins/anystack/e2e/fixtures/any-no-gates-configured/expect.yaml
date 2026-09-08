@@ -1,0 +1,6 @@
+notes: >
+  Selected with no extraGates yet: a run that executed nothing is not a success, so this is
+  ZERO_GATES and exit 1 rather than a green run over zero checks.
+argv: ['--all']
+exitCode: 1
+noGatesRan: true

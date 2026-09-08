@@ -1,0 +1,12 @@
+notes: >
+  `vendor`, `testdata` and `node_modules` were pruned only at the top level, so an --all run handed
+  `internal` to gofmt whole and it walked into internal/testdata — a deliberately unformatted golden
+  file reported as a formatting failure. The walk now prunes at every depth: a directory is handed
+  over whole only when nothing excluded lives below it.
+requires: [go]
+argv: ['--all']
+exitCode: 0
+gates:
+  golang:fmt:
+    status: pass
+    outputExcludes: ['golden.go']

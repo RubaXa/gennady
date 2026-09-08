@@ -1,0 +1,9 @@
+stack:
+  use: [golang]
+  golang:
+    skipGates: [generate, build, vet, fmt, lint, test]
+    extraGates:
+      - id: codegen-drift
+        argv: [sh, -c, 'printf regenerated > artifact.txt']
+        timeout: 1m
+        driftMeansFailure: true

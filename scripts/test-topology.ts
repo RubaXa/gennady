@@ -16,7 +16,7 @@ type TestPartition = {
   layers: readonly TestLayer[];
   files: string[];
 };
-const TEST_ROOTS = ['ai', 'cli', 'services', 'shared'] as const;
+const TEST_ROOTS = ['ai', 'cli', 'plugins', 'services', 'shared'] as const;
 const TEST_FILE = /\.test\.ts$/;
 // Several local suites launch real CLI/npm/git subprocesses, and sdd-verify already overlaps four
 // fixture CLIs internally. Bounding the outer runner at six preserves useful file-level overlap
@@ -39,6 +39,7 @@ const UNIT_ROOTS = [
   'ai/flow-eval/',
   'ai/inspector/',
   'cli/',
+  'plugins/',
   'services/',
   'shared/',
   'utils/',

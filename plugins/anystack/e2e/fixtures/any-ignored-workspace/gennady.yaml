@@ -1,0 +1,5 @@
+stack:
+  anystack:
+    extraGates:
+      - id: needs-cache
+        argv: [sh, -c, 'test -f cache/data.txt && echo refresh > cache/tmp.txt']

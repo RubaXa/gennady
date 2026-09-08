@@ -1,0 +1,8 @@
+notes: >
+  Footgun guard (panel finding 15): a rule whose only condition matches every failure would make
+  FAIL unreachable, so it is a fatal config error reported before any gate executes.
+requires: [go]
+argv: ['--all']
+exitCode: 4
+config:
+  error: 'could never report FAIL'

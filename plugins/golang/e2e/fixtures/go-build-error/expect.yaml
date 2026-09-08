@@ -1,0 +1,10 @@
+notes: >
+  A compile error is a FAIL, never ENV_FAIL (review B4): build carries panic and module-fetch
+  predicates, and neither may capture an ordinary type error.
+requires: [go]
+argv: ['--all', '--only=golang:build']
+exitCode: 1
+gates:
+  golang:build:
+    status: fail
+    outputIncludes: ['cannot use']

@@ -31,7 +31,8 @@
       "#logger": ["./services/logger/logger.ts"],
       "#utils/*": ["./utils/*"],
       "@shared/*": ["shared/*"],
-      "@services/*": ["services/*"]
+      "@services/*": ["services/*"],
+      "gennady/stack": ["./shared/verify/plugin-api.ts"]
     }
   },
   "include": [

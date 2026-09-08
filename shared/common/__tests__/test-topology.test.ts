@@ -68,7 +68,7 @@ function discoverUnder(dir: string): string[] {
 }
 
 function legacyGateCorpus(): string[] {
-  return ['ai', 'cli', 'shared', 'services']
+  return ['ai', 'cli', 'plugins', 'shared', 'services']
     .flatMap((root) => discoverUnder(join(ROOT, root)))
     .filter(
       (file) =>

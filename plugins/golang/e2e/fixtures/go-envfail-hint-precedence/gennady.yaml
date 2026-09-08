@@ -1,0 +1,10 @@
+stack:
+  use: [golang]
+  golang:
+    skipGates: [generate, vet, fmt, lint, test]
+    overrideGates:
+      build:
+        argv: [sh, -c, 'echo "panic: boom" >&2; exit 1']
+        envFail:
+          - stderrMatches: '^panic: '
+            hint: 'REPO-SPECIFIC remediation wins over the plugin default'
