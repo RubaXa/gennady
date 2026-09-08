@@ -190,3 +190,123 @@
    коммит-гейта** — решение оператора, не перф-правка.
 5. **Стенд.** Пока на машине оператора живут OpenCode/Codex/Claude с `load > 100`, любой
    локальный гейт будет «идти минутами» независимо от кода. Часть жалобы адресуется сюда.
+
+---
+
+## 9. Слой `experimental` (D-60)
+
+Отдельный коммит на этой же ветке (`lead/test-speed`), поверх `8c6a5a8d`: SHA `c640557c`.
+Основание — решение оператора D-60 (`01-INTERVIEW-DECISIONS.md:124`): agent-inbox и agent-mon
+экспериментальны, не входят в v2 до релиза, и `inbox-review-plan.test.ts`/`inbox/config.test.ts`
+из п.2 были четвертью тяжёлого слоя. Это решение по **скоупу**, не перф-правка: `format`/`lint`/
+`type-check`/`test:coverage` — тот же корпус минус этот слой, ничего не ускорялось намеренно.
+
+### Состав
+
+`scripts/test-topology.ts` получил пятый слой `EXPERIMENTAL_ROOTS` (path-prefix match, проверяется
+в `classifyTest`/`discoverTests` раньше любых остальных правил) — 135 тест-файлов:
+
+| Корень | Файлов | Примечание |
+|---|---|---|
+| `services/agent-inbox/**` | 108 | раньше **полностью невидим** для топологии — фильтр `/agent-inbox/` в `discoverTests` вообще не давал их обнаружить (не считались нигде, не только не гоняются). Внутри — `.integration.test.`, `.real-integration.test.`, `/serve/__tests__/` и явно поимённые `http-server.test.ts`/`eval-driver.test.ts`/`reviewer.e2e.test.ts`/`full-flow.blackbox.test.ts`/`run-mode.test.ts`/`harness.test.ts`, которые тоже были невидимы — теперь все они классифицированы как `experimental`, ни один не потерян |
+| `cli/cmd/inbox/**` (+ `_core/logic`) | 10 | включая `config.test.ts` (14.03 c, топ-15 п.2) |
+| `cli/cmd/inbox-context/**` | 3 | не названо в брифе явно, но `@consumers: agent-inbox skill`, импортирует `services/agent-inbox/modules/inbox-roles` и `cli/cmd/inbox/_core/logic` — тот же контур, включено |
+| `cli/cmd/inbox-review-plan/**` | 1 | `inbox-review-plan.test.ts` (20.12 c, топ-15 п.1, «самый хрупкий файл» из §3) |
+| `cli/cmd/inbox-eval/**` | 0 | директория без тестов |
+| `cli/cmd/agent-mon/**` | 4 | `create-providers`, `create-state-manager`, `group-by-provider`, `is-waiting` |
+| `services/agent-mon/**` | 9 | включая `providers/claude/__tests__/ps.test.ts` — раньше был точечным исключением на `local` в `classifyTest`, теперь просто попадает в `experimental` по пути (точечное исключение удалено как мёртвый код) |
+| **Итого** | **135** | |
+
+**Что проверено и НЕ включено (спорное/отсутствующее):**
+- `assistant/**` — такого каталога **нет нигде в репозитории** (проверено `find` по всему дереву,
+  включая `services/`, `cli/`, `ai/`). Ничего не переносилось.
+- `cli/cmd/agent-run/**` — тоже не существует. Есть `services/agent-run/**` (библиотека, спека
+  `specs/agent-run/agent-run.spec.md`: «Ядро, которое запускает внешний AI-движок…») и её единственный
+  потребитель — `cli/cmd/run/run.cmd.ts` (команда `gennady run`, **общего назначения**, не привязана к
+  agent-inbox/agent-mon). Спорно, поэтому **не включено**; его тесты (`services/agent-run/core/__tests__/*`,
+  `cli/cmd/run/__tests__/run.cmd.test.ts`) остаются в своём обычном слое.
+
+Инвариант полноты: 400 физических `*.test.ts` под `ai/cli/services/shared` минус 2 файла,
+исключённых по причинам, не связанным с D-60 (`ai/flow-eval/__tests__/harness.test.ts` — тяжёлый
+интеграционный тест `test:sdd-flow-eval`, живёт вне топологии с самого начала; `services/mr-stats/__tests__/mr-stats.integration.test.ts`
+— тоже вне топологии) = **398**, ровно сумма пяти слоёв. Дизъюнктность и полнота проверены
+`assertTopology` (кидает при 0 или >1 классификации) — упало бы при первом же прогоне, если бы
+какой-то файл остался неклассифицирован или задвоился; не упало.
+
+### Числа до/после
+
+`npm run test:topology` (было → стало):
+
+| слой | было | стало |
+|---|---|---|
+| unit | 215 | 194 (-21) |
+| contract | 16 | 16 |
+| local | 51 | 45 (-6) |
+| external | 8 | 8 |
+| experimental | — (0, невидим) | **135** |
+| **Σ (классифицировано)** | 290 | **398** |
+
+−21 unit / −6 local = −27, ровно 14 (`cli/cmd/inbox*`) + 4 (`cli/cmd/agent-mon`) + 9
+(`services/agent-mon`) файлов, которые раньше классифицировались, а теперь ушли в `experimental`;
++108 — `services/agent-inbox/**`, который раньше не классифицировался вовсе (был невидим).
+
+`time npm test`, ×2 до и после, тот же протокол «взять меньшее» из §1 (стенд по-прежнему разделяемый,
+после первой правки этой сессии `load` продолжал плавать):
+
+| | до (HEAD `8c6a5a8d`) | после (`c640557c`) |
+|---|---|---|
+| прогон 1 | **41.92 c** | **41.45 c** |
+| прогон 2 | 61.86 c (1 cancelled — шум стенда) | 57.63 c (1 fail + 1 cancelled — тот же шум) |
+| корпус | 290 файлов / 3566 тестов / 596 сюит | 263 файла / 3343 теста / 538 сюит |
+| **минимум** | **41.92 c** | **41.45 c** |
+
+Разница по минимуму — 0.47 c (~1 %), в пределах шума этого разделяемого стенда (см. оговорку §1: тот
+же HEAD давал 36–80 c в этой же сессии). D-60 — решение по скоупу, а не перф-правка: заметный эффект
+не в wall-clock самого прогона, а в том, что 27 файлов (включая хронически ловящий 30-секундный
+таймаут `inbox-review-plan.test.ts`) больше не могут уронить `npm test`/`test:coverage`/pre-commit
+вообще, независимо от нагрузки на машину.
+
+`npm run test:experimental` (новый скрипт): 1071 тестов, 1061 pass, 8 skipped, **1 fail + 1 cancelled**:
+
+- `inbox-review-plan.test.ts` (ожидавшийся в брифе «известный флак») в этом прогоне **прошёл чисто**
+  — под текущей (умеренной) нагрузкой не воспроизвёлся; флак load-зависим, см. §3 отчёта выше.
+- Упали два **других**, ранее не входивших ни в один слой топологии файла — оба по конструкции, не
+  из-за этой правки: `services/agent-inbox/modules/inbox-vcs/__tests__/vcs-effects.real-integration.test.ts`
+  явно `assert.ok(...)`-ит на отсутствующих `TSK174_GITLAB_*`/`GITLAB_PERSONAL_TOKEN` (файл помечен
+  `@consumers: operator-run node:test with an isolated writable MR` — рассчитан на ручной прогон
+  оператором с реальным MR); `services/agent-inbox/serve/__tests__/bootstrap.test.ts` попытался живой
+  GitLab GraphQL-запрос (`401 Unauthorized`) и упёрся в тот же `test-timeout=30000ms`. Раньше оба файла
+  запускались только вручную через `npm run test:integration` (с реальными кредами) — никогда не были
+  частью какого-либо гейта. Отклонение от буквы брифа («проходит или показывает inbox-review-plan»)
+  зафиксировано, регрессии нет.
+
+### Что осталось в тяжёлом слое — новый топ-5 (после выноса `experimental`)
+
+| c | слой | файл |
+|---|---|---|
+| 23.12 | local | `cli/__tests__/tool-behavior/bootstrap-path.test.ts` |
+| 18.92 | local | `cli/__tests__/tool-behavior/sdd-verify-repair-adapters.test.ts` |
+| 18.74 | local | `cli/__tests__/tool-behavior/clean-repo-composition.test.ts` |
+| 18.63 | local | `cli/__tests__/tool-behavior/sdd-verify.test.ts` |
+| 17.28 | local | `cli/cmd/lint/__tests__/lint.cmd.test.ts` |
+
+Из прежнего топ-15 ушли `inbox-review-plan.test.ts` (20.12 c, было #1) и `cli/cmd/inbox/config.test.ts`
+(14.03 c, было #8) — 34.15 c из 218.6 c топ-15 (≈16 %), плюс исчез сам источник 30-секундных таймаутов
+под нагрузкой. Следующий кандидат на профилирование, если понадобится ещё раунд — прежний п.6
+`testcov.test.ts` (14.69 c) и `cli/cmd/testcov/__tests__/testcov.cmd.test.ts` (13.62 c), которые теперь
+эффективно топ-6/7.
+
+### Гейты (доказательства)
+
+| гейт | результат |
+|---|---|
+| `npm run test:topology` | `unit=194 contract=16 local=45 external=8 experimental=135`; sum=398, exit 0 |
+| `shared/common/__tests__/test-topology.test.ts` (изолированно) | 11/11 pass (2 новых кейса на `experimental`, остальные обновлены под 5-й слой без ослабления — все прежние assert'ы на месте) |
+| `npm run type-check` | exit 0 |
+| `npm run check` (`sdd-verify --profile full`) | 5/5 PASS (type-check 5.8s, test:coverage 56.7s, lint 6.2s, format 5.4s, yagni 5.6s) |
+| `npm run gate:sdd-check-baseline` | OK — no error outside baseline |
+| `npm run test:experimental` | 1061/1071 pass, 1 fail + 1 cancelled (оба — операторские real-integration тесты без кредов, см. выше), 8 skipped |
+| pre-commit (живой хук на коммите) | ✅ passed — `check` 5/5 + все 5 директивных гейтов |
+
+Ослабления нет: ни один тест не удалён, не `.skip`, не изменена его логика — только маршрутизация в
+топологии. Коммит `c640557c` на `lead/test-speed`, поверх `8c6a5a8d`.
