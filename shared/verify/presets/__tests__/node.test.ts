@@ -78,8 +78,14 @@ describe('resolvePreset', () => {
     assert.strictEqual(preset.commandForGate('type-check', {}, []), null);
   });
 
-  it('an unimplemented stack resolves to null (anystack/golang arrive in V-08/V-09)', () => {
-    assert.strictEqual(resolvePreset('anystack', 'full', '.'), null);
+  it('golang stays unimplemented (arrives in V-09)', () => {
     assert.strictEqual(resolvePreset('golang', 'full', '.'), null);
+  });
+
+  it("'anystack' resolves too (V-08) — a second preset, same shape as node's", () => {
+    const preset = resolvePreset('anystack', 'full', '.', null);
+    assert.ok(preset);
+    assert.strictEqual(preset.stack, 'anystack');
+    assert.ok(preset.environmentStateSource.length > 0);
   });
 });

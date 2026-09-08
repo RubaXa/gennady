@@ -10,7 +10,8 @@ import {
   resolveProjectScriptName,
 } from '../../sdd/readiness.ts';
 import type { VerificationProfile } from '../../sdd/phase-verification-plan.ts';
-import type { StackId } from '../verify.types.ts';
+import type { StackConfig, StackId } from '../verify.types.ts';
+import { resolveAnystackPreset } from './anystack.ts';
 
 /**
  * @purpose Node preset's canonical gate names for a profile and coverage-owner state.
@@ -70,20 +71,23 @@ export type StackPreset = {
 
 /**
  * @purpose Resolve the stack preset governing gate names/commands for one repository.
- * @invariant `profile`/`root`/`config` are accepted (V-04's declared shape) but unused by node —
- *   a config-aware preset (V-07+) uses them for real. Only `node` resolves today.
+ * @invariant `profile` is accepted (V-04's declared shape) but unused by node/anystack — a
+ *   profile-shaped preset (V-09+) uses it for real. `root`/`config` are used by anystack (V-08);
+ *   golang still resolves to null (arrives in V-09).
  * @param stack Which built-in stack to resolve.
  * @param _profile Selected verification profile; reserved for a future profile-shaped preset.
- * @param _root Absolute repository root; reserved for a future config/detection-aware preset.
- * @param [_config] Parsed `gennady.yaml` `stack:` section, when one exists; reserved for V-07+.
+ * @param root Absolute repository root; passed through to config-aware presets (anystack, V-08).
+ * @param [config] Merged `gennady.yaml` `stack:` section, when one exists (V-07's loader; anystack
+ *   reads its own slice via `pluginConfigOf`).
  * @returns The stack's preset, or null when no preset is implemented for that stack yet.
  */
 export function resolvePreset(
   stack: StackId,
   _profile: VerificationProfile,
-  _root: string,
-  _config?: unknown
+  root: string,
+  config?: StackConfig | null
 ): StackPreset | null {
+  if (stack === 'anystack') return resolveAnystackPreset(root, config);
   if (stack !== 'node') return null;
   return {
     stack: 'node',
