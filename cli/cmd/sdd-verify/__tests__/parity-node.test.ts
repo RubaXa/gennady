@@ -15,7 +15,15 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, writeFileSync, existsSync, mkdtempSync, mkdirSync, rmSync } from 'node:fs';
+import {
+  readFileSync,
+  writeFileSync,
+  existsSync,
+  mkdtempSync,
+  mkdirSync,
+  rmSync,
+  realpathSync,
+} from 'node:fs';
 import path, { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -33,6 +41,14 @@ import { formatPhaseVerificationGatePlan } from '../../../../shared/sdd/phase-ve
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, '..', '..', '..', '..');
 const FIXTURE_ROOT = path.join(HERE, 'fixtures', 'environment-state-fixture');
+// Frozen "old artifact" — a receipt actually produced by TODAY's runPhaseVerification, committed
+// once and never regenerated on an ordinary run (V-R-01 Б-5).
+const RECEIPT_FIXTURE_PATH = path.join(
+  HERE,
+  'fixtures',
+  'receipt-fixture',
+  'app.task.V01-PARITY.golden.md'
+);
 
 function updateGolden(): boolean {
   return process.env.UPDATE_VERIFY_GOLDEN === '1';
@@ -51,7 +67,8 @@ function assertGoldenText(goldenPath: string, actual: string): void {
   assert.strictEqual(
     actual,
     expected,
-    `${path.relative(REPO_ROOT, goldenPath)} drifted from the frozen rc-baseline-1 (227c03a8) shape.\n` +
+    `${path.relative(REPO_ROOT, goldenPath)} drifted from the frozen rc-baseline-1 (227c03a8) shape ` +
+      '(see GOLDEN-MANIFEST.md in this directory for the per-file owner).\n' +
       'Regenerate ONLY inside a named owning task (V-04/V-04a/V-12/V-14, 30-TRACK-VERIFY.md §6): ' +
       'UPDATE_VERIFY_GOLDEN=1 npm test'
   );
@@ -74,7 +91,8 @@ function assertGoldenJson(goldenPath: string, actual: unknown): void {
   assert.deepStrictEqual(
     actual,
     expected,
-    `${path.relative(REPO_ROOT, goldenPath)} drifted from the frozen rc-baseline-1 (227c03a8) shape.\n` +
+    `${path.relative(REPO_ROOT, goldenPath)} drifted from the frozen rc-baseline-1 (227c03a8) shape ` +
+      '(see GOLDEN-MANIFEST.md in this directory for the per-file owner).\n' +
       'Regenerate ONLY inside a named owning task (V-04/V-04a/V-12/V-14, 30-TRACK-VERIFY.md §6): ' +
       'UPDATE_VERIFY_GOLDEN=1 npm test'
   );
@@ -86,16 +104,20 @@ function normalizeDurations(text: string): string {
   return text.replace(/\(\d+(?:\.\d+)?s\)/g, '(Ns)');
 }
 
-const NODE_SCRIPTS: Record<string, string> = {
-  'type-check': 'tsc --noEmit',
-  test: 'node --test',
-  'test:coverage': 'c8 node --test',
-  format: 'prettier --check .',
-  'format:fix': 'prettier --write',
-  lint: 'eslint .',
-  'lint:fix': 'eslint --fix',
-  fix: 'npm run format:fix -- . && npm run lint:fix -- .',
-};
+// Read from the SAME committed, frozen fixture `preset-node-golden.test.ts` reads (I-3; V-R-01 Н-5)
+// instead of a second inline literal — today the two are byte-identical, but a hand-edited inline
+// copy here would silently fork from that fixture on the next edit and split the golden families
+// without either failing loudly.
+const NODE_SCRIPTS: Record<string, string> = JSON.parse(
+  readFileSync(path.join(FIXTURE_ROOT, 'package.json'), 'utf-8')
+).scripts;
+
+// Hoisted to module scope (was previously local to the exit-matrix `describe` below) so the
+// "exact substrings" suite (§6) can reuse the SAME missing-type-check fixture instead of
+// re-deriving it or inlining a duplicate — V-R-01 Б-2.
+const withoutTypeCheck: Record<string, string> = Object.fromEntries(
+  Object.entries(NODE_SCRIPTS).filter(([name]) => name !== 'type-check')
+);
 
 /** One throwaway directory whose package.json becomes `process.cwd()`'s for the duration of `fn`. */
 async function withScripts<T>(
@@ -194,11 +216,16 @@ describe('V-01 golden: byte-for-byte stdout render (durationMs normalized, NOT t
 // third machine exit code inside `run()` itself. Exit 4 (bad invocation) belongs to index.ts:23
 // (parseInvocation) and exit 1 to index.ts:67 (phase-context resolution failure); both are outside
 // `run()`'s surface and are not re-spawned here — this matrix is the `run()`-level part of the story.
+//
+// EXPLICIT SCOPE NOTE (V-R-01 Б-3): this matrix pins ONLY the run()-level shape — {ok:true} or
+// {ok:false, exitCode:1, code}. It does NOT re-verify exit code 4 or the process boundary; that is
+// already golden-pinned by the live-CLI suite `cli/__tests__/tool-behavior/sdd-verify.test.ts:214`
+// ("classifies bad argv as exit 4 and an invalid phase context as gate failure exit 1"), which spawns
+// a real `node`/`tsx` child process and survives this brief unmodified (not touched, not duplicated).
+// See R-01-V-01.md "§ Правки по V-R-01" (Б-3) and the follow-up dosadacha V-01a for e2e exit-code
+// coverage across the spawn boundary.
 
 describe('V-01 golden: gate-status matrix (profile × script-state)', () => {
-  const withoutTypeCheck: Record<string, string> = Object.fromEntries(
-    Object.entries(NODE_SCRIPTS).filter(([name]) => name !== 'type-check')
-  );
   const matrix: {
     name: string;
     profile: 'setup' | 'code' | 'test' | 'full';
@@ -286,7 +313,14 @@ const EXECUTION_READY_SCRIPTS: Record<string, string> = {
 };
 
 function receiptFixture(): { root: string; taskPath: string; context: PhaseVerifyContext } {
-  const root = mkdtempSync(join(tmpdir(), 'v01-parity-receipt-'));
+  // realpathSync: on macOS os.tmpdir() lives under a symlink (/var -> /private/var), and
+  // phaseReceiptTargetEvidence's hash embeds `relative(resolve(root), <realpath-resolved target>)`
+  // (shared/sdd/phase-receipt.ts:1304-1308 via shared/common/repo-path.ts:49,53-54). Left
+  // uncanonicalized, that relative path carries the symlink-vs-realpath prefix mismatch — which
+  // differs by mkdtemp's random suffix every run — into the target hash, making it non-reproducible
+  // across processes and defeating the frozen fixture below (V-R-01 Б-5). Canonicalizing here makes
+  // resolve(root) === realpathSync(resolve(root)), so the hash depends only on file CONTENT again.
+  const root = realpathSync(mkdtempSync(join(tmpdir(), 'v01-parity-receipt-')));
   mkdirSync(join(root, 'specs/app'), { recursive: true });
   mkdirSync(join(root, 'src'), { recursive: true });
   mkdirSync(join(root, 'node_modules/.bin'), { recursive: true });
@@ -374,6 +408,53 @@ describe("V-01 golden: a receipt written by today's code validates against today
         profile: receipt.profile,
         profileBasis: receipt.profileBasis,
       });
+    } finally {
+      process.chdir(previousCwd);
+      rmSync(f.root, { recursive: true, force: true });
+    }
+  });
+
+  // V-R-01 Б-5: §3.1.3 п.3 asks for a fixture-ticket carrying a receipt of TODAY's RC, validated by
+  // TODAY's validator — not a receipt regenerated at test time by the same validator generation
+  // (which passes by construction and proves nothing about drift). This test freezes the ticket
+  // content `runPhaseVerification` actually wrote as a committed file and, on an ordinary run, reads
+  // that FROZEN file back — never regenerating it — before validating it against today's code.
+  // Regenerate deliberately with `UPDATE_VERIFY_GOLDEN=1`.
+  it("a receipt frozen as a fixture (not regenerated on an ordinary run) still validates against today's code", async () => {
+    const f = receiptFixture();
+    const previousCwd = process.cwd();
+    process.chdir(f.root);
+    try {
+      if (updateGolden()) {
+        const result = await runPhaseVerification(
+          f.root,
+          f.context,
+          (command, args) => ({ exitCode: 0, output: `${command} ${args.join(' ')}` }),
+          () => ({ exitCode: 0, output: '' })
+        );
+        assert.strictEqual(result.ok, true, result.ok ? '' : result.message);
+        const generated = readFileSync(join(f.root, f.taskPath), 'utf-8');
+        mkdirSync(path.dirname(RECEIPT_FIXTURE_PATH), { recursive: true });
+        writeFileSync(RECEIPT_FIXTURE_PATH, generated);
+      }
+      assert.ok(
+        existsSync(RECEIPT_FIXTURE_PATH),
+        `missing ${path.relative(REPO_ROOT, RECEIPT_FIXTURE_PATH)} — regenerate with UPDATE_VERIFY_GOLDEN=1 npm test`
+      );
+      // Overwrite the throwaway ticket with the FROZEN fixture — the "old artifact" itself,
+      // committed once, never produced fresh by this test — and validate IT against today's
+      // validator, on the same on-disk workspace `receiptFixture()` builds every run (same
+      // src/a.ts / package.json content, so the frozen receipt's recorded hashes still match).
+      const frozen = readFileSync(RECEIPT_FIXTURE_PATH, 'utf-8');
+      writeFileSync(join(f.root, f.taskPath), frozen);
+      const parsed = parsePhaseReceipts(frozen);
+      assert.strictEqual(parsed.ok, true);
+      if (!parsed.ok) return;
+      const receipt = parsed.receipts.find((r) => r.phase === 'P1');
+      assert.ok(receipt);
+      assert.strictEqual(phaseReceiptCommandIssue(receipt, f.context.gatePlan), null);
+      const issue = phaseReceiptIssue(f.root, receipt, 'P1', join(f.root, f.taskPath));
+      assert.strictEqual(issue, null, issue ?? '');
     } finally {
       process.chdir(previousCwd);
       rmSync(f.root, { recursive: true, force: true });
@@ -557,23 +638,24 @@ describe('V-01: environmentState matrix — reacts to transitive hops, hooks, st
 // ── 6. Exact-substring contracts read by directives (30-TRACK-VERIFY.md §3.1.3 п.10) ─────────────
 
 describe('V-01: exact substrings that ai/kit/audit/steps/STEP_1_MECHANICAL.xml and sdd-task parse', () => {
-  it('a missing REQUIRED script renders the "⛔" + "обязательная ступень профиля" pair (sdd-verify.types.ts:305,519)', () => {
-    const results: GateResult[] = [
-      {
-        name: 'type-check',
-        status: 'missing',
-        exitCode: 1,
-        output: 'обязательная ступень профиля «code»: скрипта нет в package.json — verify нечем',
-        durationMs: 0,
-        ranCommand: '',
-        mutates: false,
-      },
-    ];
-    const outcome = verdict(results, undefined, 'code');
+  // V-R-01 Б-2: the previous version of this test supplied the "обязательная ступень профиля"
+  // string itself (as a hand-built GateResult.output) and then searched for that SAME string —
+  // tautological by construction, and it never touched the production string-builder at
+  // sdd-verify.cmd.ts:519/621. This version instead drives a REAL missing-REQUIRED-script run
+  // through `run()` (reusing the `withoutTypeCheck` fixture from the exit-matrix suite above) and
+  // asserts the pair against run()'s own rendered message — a wording change at sdd-verify.cmd.ts:519
+  // now fails this test instead of trivially passing.
+  it('a missing REQUIRED script renders the "⛔" + "обязательная ступень профиля" pair produced by run() (sdd-verify.cmd.ts:519)', async () => {
+    const { runner } = fakeRunner();
+    const outcome = await withScripts(withoutTypeCheck, () =>
+      run(runner, 'code', undefined, { targets: ['src/changed.ts'], producesCoverage: false })
+    );
     assert.strictEqual(outcome.ok, false);
     if (!outcome.ok) {
+      // Already behaviourally covered for profile=test by sdd-verify.cmd.test.ts:528 — this pins
+      // the same production line for profile=code as part of V-01's byte-for-byte golden set.
       assert.match(outcome.message, /⛔ type-check — /);
-      assert.match(outcome.message, /обязательная ступень профиля/);
+      assert.match(outcome.message, /обязательная ступень профиля «code»/);
     }
   });
 

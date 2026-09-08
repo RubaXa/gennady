@@ -49,8 +49,11 @@ function updateGolden(): boolean {
 
 /**
  * @purpose Compare `actual` against a committed golden JSON file, or (re)write it when the
- *   UPDATE_VERIFY_GOLDEN=1 convention (see scripts/__tests__/deployed-surface.test.ts for the
- *   established UPDATE_SURFACE_GOLDEN precedent this repeats) is set.
+ *   UPDATE_VERIFY_GOLDEN=1 convention is set. No prior `UPDATE_*_GOLDEN=1`-regenerate-on-demand
+ *   convention exists elsewhere in this tree today (checked: `grep -rn "UPDATE_.*_GOLDEN"` over the
+ *   repo, excluding node_modules, matches only this file and its sibling `parity-node.test.ts`) —
+ *   this convention is introduced here, per Бриф 1/5 (30-TRACK-VERIFY.md §6 V-01) and its
+ *   `UPDATE_*_GOLDEN=1` invariant (see R-01-V-01.md "§ Правки по V-R-01", Б-1).
  */
 // Compared by parsed VALUE, not raw bytes: the repo's own `format` gate (prettier) reformats a
 // committed `.golden.json` file's whitespace (e.g. collapsing short arrays onto one line) on the
@@ -69,7 +72,8 @@ function assertGoldenJson(goldenPath: string, actual: unknown): void {
   assert.deepStrictEqual(
     actual,
     expected,
-    `${path.relative(REPO_ROOT, goldenPath)} drifted from the frozen rc-baseline-1 (227c03a8) shape.\n` +
+    `${path.relative(REPO_ROOT, goldenPath)} drifted from the frozen rc-baseline-1 (227c03a8) shape ` +
+      '(see GOLDEN-MANIFEST.md in this directory for the per-file owner).\n' +
       'If the change is deliberate AND owned by a named task (V-04/V-04a/V-12/V-14 per ' +
       '30-TRACK-VERIFY.md §6), regenerate with: UPDATE_VERIFY_GOLDEN=1 npm test'
   );
