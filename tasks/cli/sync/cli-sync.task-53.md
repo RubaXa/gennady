@@ -7,7 +7,7 @@
 - **Purpose:** Реализовать команду `gennady sync`: типы (`SyncOptions`, `SyncFileEntry`, `SyncResult`), ядро (`SyncCore` — resolvePackageDir, scanDirectives, collectAndCompare), форматтер (`SyncFormatter`), CLI-обвязка (`run` с DI), регистрация в `gennady.ts`/`AGENTS.md`/`help.cmd.ts`.
 - **Scope:** cli
 - **Module:** sync
-- **Dependencies:** TSK-44, TSK-45 (infra-npm-publish: `ai/` в пакете)
+- **Dependencies:** TSK-44, TSK-185 (infra-npm-publish: `ai/` в пакете)
 - **Reopens:** 0
 - **Spec References:**
   - Module spec: [`sync.spec.md`](../../../specs/cli/sync/sync.spec.md)

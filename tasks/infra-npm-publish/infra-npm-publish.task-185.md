@@ -1,8 +1,8 @@
-# Task: TSK-45 — Копировать `ai/` в `dist/ai/` перед публикацией
+# Task: TSK-185 — Копировать `ai/` в `dist/ai/` перед публикацией
 
 ## 1. Meta
 
-- **Task-ID:** TSK-45
+- **Task-ID:** TSK-185
 - **Status:** [x] DONE
 - **Purpose:** Добавить копирование `ai/ → dist/ai/` в `scripts/prepare-publish-artifacts.ts`, чтобы вся директория `ai/` попадала в `dist/` и включалась в npm-пакет (уже покрывается `"files": ["dist/**/*"]`).
 - **Scope:** infra-npm-publish

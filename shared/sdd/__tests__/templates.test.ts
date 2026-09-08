@@ -41,6 +41,38 @@ describe('B2-03 — TOKEN_VOCABULARY is one home, project-index skeleton quotes 
   });
 });
 
+describe("B2-15 — specs/3-tasks.md (this repo's own project index) matches the project-index generator", () => {
+  // specs/3-tasks.md is a real, committed artifact — not a fixture — that predates B2-03's fix to
+  // TOKEN_VOCABULARY and drifted from what `sdd-new`/scaffold would generate today: its own
+  // Baseline Completion Rule and Execution-Log token vocabulary bullets no longer matched
+  // TEMPLATES['project-index'].skeleton (the single generation source, per B2-03). Re-synced by
+  // hand (B2-15) since this file isn't rebuilt by `npm run build:directives` — nothing else keeps
+  // it honest going forward, hence this line-level parity test.
+  const REPO_PROJECT_INDEX = fileURLToPath(new URL('../../../specs/3-tasks.md', import.meta.url));
+
+  it('Baseline Completion Rule bullet is byte-identical to the generator', () => {
+    const repoFile = readFileSync(REPO_PROJECT_INDEX, 'utf-8');
+    const repoLine = repoFile
+      .split('\n')
+      .find((l) => l.startsWith('- **Baseline Completion Rule:**'));
+    const generatedLine = TEMPLATES['project-index'].skeleton
+      .split('\n')
+      .find((l) => l.startsWith('- **Baseline Completion Rule:**'));
+    assert.strictEqual(repoLine, generatedLine);
+  });
+
+  it('Execution-Log token vocabulary bullet is byte-identical to the generator (includes ver/yagni/env-fix/correction)', () => {
+    const repoFile = readFileSync(REPO_PROJECT_INDEX, 'utf-8');
+    const repoLine = repoFile
+      .split('\n')
+      .find((l) => l.startsWith('- **Execution-Log token vocabulary:**'));
+    const generatedLine = TEMPLATES['project-index'].skeleton
+      .split('\n')
+      .find((l) => l.startsWith('- **Execution-Log token vocabulary:**'));
+    assert.strictEqual(repoLine, generatedLine);
+  });
+});
+
 describe('templates registry', () => {
   it('module skeleton points the scope-spec backlink at the flat-module depth (../<scope>), not ../../', () => {
     // chain10 clamp: the MODULE_VISION guidance instructed `../../<scope>.spec.md`, which resolves

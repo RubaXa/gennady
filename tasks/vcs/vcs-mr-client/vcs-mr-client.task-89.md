@@ -9,7 +9,7 @@
 - **Purpose:** Реализовать `create` и `update` методы в GitLab-адаптере `VcsGitlabMergeRequests` через REST API.
 - **Scope:** `vcs-mr-management`
 - **Module:** `vcs-mr-client`
-- **Dependencies:** TSK-88
+- **Dependencies:** TSK-186
 - **Reopens:** 0
 - **Spec References:**
   - Scope spec: [vcs-mr-management.spec.md §3](../../specs/vcs/vcs-mr-management/vcs-mr-management.spec.md) — `VcsGitlabMergeRequests.create`, `.update`
