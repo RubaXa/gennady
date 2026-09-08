@@ -11,6 +11,61 @@
   <BeliefState>
 
 
+    <Axiom id="AX_PERMITTED_BASH_COMMANDS">
+      This role's bash commands stay within this list:
+      - **Must run:** exact `sdd-verify --task <ticket-path> --phase <PhaseID>` exactly once per attempt at the phase
+        protocol's STEP_5. That step owns repair order, target derivation and foundation semantics;
+        this axiom only permits the invocation. Never wrap it in whole-project `npm run fix`, and
+        never run the audit-owned `sdd-verify --profile full` from a phase. Its receipt is the result;
+        do not copy it into prose log lines.
+      - **May run:** `ls <dir>` for targeted recon (NOT `-la` or recursive); `tsc --noEmit` after code changes; `node --test <specific test file>` for test-kind phases; `date -u +%Y-%m-%dT%H:%M:%SZ` for timestamps.
+      - **May run:** `sdd-extract <file> <NAME>` — extract anchored section from ticket/spec.
+      - **May run:** exact `unlink <declared Deleted File>` and `rmdir <declared Deleted File directory>` while implementing the phase; no glob, recursion, or undeclared deletion. A failed verification has no receipt, so a retry after the fix is a new attempt and invokes the canonical command once again.
+      - **May run:** `gennady lint --spec=<module-spec> <paths>` only for a genuinely additional explicit check outside phase verification. STEP_5 already passes the owning spec and exact phase targets internally; do not duplicate it there.
+      - **Bootstrap-only dependency addition:** ONLY when phase kind is `bootstrap`, its Objective names
+        adding that dependency, and Target Files contain `package.json` plus the active npm lock file,
+        may run exactly `npm view <pkg> engines`, `npm view <pkg> version`, and `npm view <pkg> dist-tags`,
+        then one-package `npm install --save-dev --save-exact <pkg>@<verified-stable-version>` or
+        `npm add --save-dev --save-exact <pkg>@<verified-stable-version>` for a dev tool; for a runtime
+        dependency, one-package `npm install <pkg>@<verified-stable-version>` or
+        `npm add <pkg>@<verified-stable-version>`. No other npm/network command, option, tag, unversioned
+        package, or multi-package install is permitted. Non-bootstrap phases have no dependency-addition
+        exemption.
+
+      Trust the context handed at dispatch — ticket, spec, manifest, diff — as current: it MUST be
+      used as-is, not re-derived through bash. When a step in this directive names a real gap beyond
+      what was handed (new commits since dispatch, a sibling branch, a file's history), `git`/`gh`
+      reads (`status`, `log`, `diff`, `show`, `blame`, `gh pr view`/`diff`) are the legal way to close
+      it. Mutating the repository (`git add`/`commit`/`push`/`rebase`/`reset`, `gh pr create`/`merge`)
+      stays reserved for the step that owns publish/commit.
+
+      Absent such a step, treat `git`/`gh` as off the table: re-deriving handed context costs
+      ~100-300ms per call for zero value, and full project recon / repository mutation belong to the
+      orchestrator or authoring flow, not this role.
+
+      All recon stays inside the project root. A fact that genuinely lives outside it — a global
+      `~/.npmrc`, a system-wide setting, anything outside this checkout — is not a gap this role closes
+      by reading it anyway, read-only or not: no bash command in this list reaches outside the project
+      root, and none should be improvised to. Return `EXTERNAL_AUTHORITY_REQUIRED` only when the exact
+      required fact needs permission outside the checkout; ordinary missing project configuration is
+      `RECOVERABLE_TECHNICAL`.
+
+      **Temp files stay under `.claude/tmp/`, nowhere else.** Any scratch or trial file this role
+      needs — a throwaway script, an intermediate probe output — is created ONLY under `.claude/tmp/`
+      inside the project root: create the directory when it does not yet exist, and remove what was
+      created once it stops being needed (shared, reused across roles and other purposes — not
+      this phase's private space to leave dirty). The system `/tmp`, `$TMPDIR`, and the repository
+      root are closed for this: a root-level scratch file pollutes the diff and gets caught by the
+      same inventory/lint gates meant for real `Target Files`, and `/tmp`/`$TMPDIR` sit outside the
+      checkout this role's recon is scoped to above.
+
+      **Forbidden:** any npm/network command outside the exact bootstrap-only forms above; `npm run fix`; `npm run check`; `npm run lint` alone (overkill — use `sdd-verify` or `tsc --noEmit` for narrower checks); `npm run format`; `prettier` directly — repair and verification both live INSIDE `sdd-verify`, never called piecemeal; any recursive or project-wide file scan; any command that reads unrelated files for «context».
+
+      Ticket §5 commands are not a phase-agent exemption: the one `sdd-verify --task ... --phase ...`
+      invocation runs applicable rows itself and owns their receipt (`AX_VERIFICATION_BEFORE_HANDOFF`).
+      `sdd-verify` remains the sole self-initiated mutator through its exact-target repair rung; a
+      standalone §5, format, lint or fix invocation remains forbidden.
+    </Axiom>
     <Axiom id="AX_TOOL_INVOCATION" cross-cutting="true">
       The SDD mechanical tools are `gennady` CLI commands. When working IN the gennady repo itself
       (including any worktree), the runner is `npx tsx <repo-root>/cli/gennady.ts`; in every other
@@ -52,10 +107,16 @@
 
   </BeliefState>
   <Contracts></Contracts>
+  <HaltConditions>
+    | ID | Trigger |
+    |---|---|
+    | `H_BLOCKED` | A trigger under `AX_BLOCKER_ESCALATION` fires: a rule file cited in phase Rules is missing, a prior-phase Handoff promised an artifact that doesn't exist, the spec contradicts itself or the ticket, the phase contract requires touching outside Target Files, a declared `Runtime Backing` cannot be honored in this environment, or a verification command cannot execute |
+    | `H_OUT_OF_PHASE_WRITE` | Per `AX_PHASE_SCOPE_LOCK`, the worker creates, edits, or deletes anything outside its declared `Target Files`/`Deleted Files`, or manually mutates the ticket, `Phases Overview`, `Execution Log`, Handoff placeholder, or DONE line instead of leaving that one mutation to the exact `sdd-verify --task ... --phase ...` receipt |
+  </HaltConditions>
   <ExecutionPlan>
     - **STEP_1_ORIENT** — Consume only the supplied phase block, referenced spec/rule excerpts, target files, Execution Log facts, and Git evidence. Verify targets still match the ticket. Before executing this step, READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/phase-execution-protocol/steps/STEP_1_ORIENT.xml").
     - **STEP_2_IMPLEMENT** — Implement the smallest change satisfying the phase and its referenced requirements. Stay inside target files. Before executing this step, READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/phase-execution-protocol/steps/STEP_2_IMPLEMENT.xml").
-    - **STEP_3_VERIFY** — Per `AX_VERIFICATION_BEFORE_HANDOFF`, run the phase's exact declared commands. Tests implementing a mandatory requirement include its Requirement-ID in the test source. Before executing this step, READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/phase-execution-protocol/steps/STEP_3_VERIFY.xml").
+    - **STEP_3_VERIFY** — Per `AX_VERIFICATION_BEFORE_HANDOFF`, run the phase's exact declared commands, staying within `AX_PERMITTED_BASH_COMMANDS`. Tests implementing a mandatory requirement include its Requirement-ID in the test source. Before executing this step, READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/phase-execution-protocol/steps/STEP_3_VERIFY.xml").
     - **STEP_4_HANDOFF** — Per `AX_HANDOFF_TYPED`, return `HANDOFF_FORMAT` with files changed, requirements demonstrated, commands/results, deviations, and the next declared phase. Return the payload in the response only. Before executing this step, READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/phase-execution-protocol/steps/STEP_4_HANDOFF.xml").
   </ExecutionPlan>
 </PhaseExecutionProtocol>

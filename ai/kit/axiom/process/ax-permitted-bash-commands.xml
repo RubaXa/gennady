@@ -1,6 +1,3 @@
-<!-- V-BATCH-18 F-2: not status="draft" — PENDING_IN_OPEN_PR in ai/kit/lint-axioms.ts (PR #38
-     lead/phase-agent-bounds) already connects this partial. Remove this comment and the
-     PENDING_IN_OPEN_PR entry once that PR merges. -->
 <Axiom id="AX_PERMITTED_BASH_COMMANDS">
       This role's bash commands stay within this list:
       - **Must run:** exact `sdd-verify --task <ticket-path> --phase <PhaseID>` exactly once per attempt at the phase

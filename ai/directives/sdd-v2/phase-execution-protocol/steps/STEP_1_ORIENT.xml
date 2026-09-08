@@ -6,7 +6,12 @@
         Log facts, and Git evidence. Verify targets still match the ticket. Ask the orchestrator for a
         missing required excerpt; do not explore unrelated repository areas or inspect CLI source.
         Reconstruct state from these durable inputs per `AX_STATELESS_FLOW` and enforce the declared
-        phase boundary per `AX_PHASE_SCOPE_LOCK`.
+        phase boundary per `AX_PHASE_SCOPE_LOCK`: a phase worker owns failures only inside its own
+        Target Files — a repo-wide gate failing inside ANOTHER phase's Target Files is not this
+        phase's failure to fix, while every other failure is, including a file this phase never opened
+        but whose build its own diff broke. When escalation is warranted instead — per
+        `AX_BLOCKER_ESCALATION` — halt `H_BLOCKED` with typed evidence for the orchestrator; never
+        improvise past it.
       </Action>
     </Step>
 
