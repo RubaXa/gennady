@@ -33,6 +33,8 @@ const CLEAN = [
   '#### P1',
   '- [x] `2026-06-21T10:00:00Z` ver `npm run check` → pass exit=0',
   '- [x] `2026-06-21T10:00:00Z` DONE',
+  '#### Round close',
+  '- [x] `2026-06-21T10:00:01Z` DONE',
   '<!--/SECTION:EXECUTION_LOG-->',
 ].join('\n');
 

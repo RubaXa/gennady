@@ -43,6 +43,8 @@ export const ERR_CLI_SDD_LOG_CLOSE_STATE = 'ERR_CLI_SDD_LOG_CLOSE_STATE' as cons
 export const ERR_CLI_SDD_LOG_AUTHORING_STATE = 'ERR_CLI_SDD_LOG_AUTHORING_STATE' as const;
 /** @purpose `audit-receipt`/`review-receipt` cannot resolve the group, prove all members DONE, or own the spec write. */
 export const ERR_CLI_SDD_LOG_GROUP_RECEIPT_STATE = 'ERR_CLI_SDD_LOG_GROUP_RECEIPT_STATE' as const;
+/** @purpose An append-owning mode (line/handoff/phase/blocker/resolved/complete) targets a Round already closed (B2-04). */
+export const ERR_CLI_SDD_LOG_ROUND_CLOSED = 'ERR_CLI_SDD_LOG_ROUND_CLOSED' as const;
 
 /**
  * @purpose Result of one sdd-log run.
@@ -256,6 +258,31 @@ export function closeCurrentRound(
   }
   lines[closeHead + 1] = `- [x] \`${ts}\` DONE`;
   return { ok: true, content: lines.join('\n'), closeBlock };
+}
+
+/**
+ * @purpose Whether the LAST `### Round <n>` in EXECUTION_LOG already has a completed (checked)
+ *   `#### Round close` — the B2-04 append-after-close gate every append-owning mode consults.
+ * @param content Full ticket markdown.
+ * @param logBounds EXECUTION_LOG's marker line indices.
+ * @returns True only when a real (checked) close exists for the current Round.
+ */
+export function isCurrentRoundClosed(
+  content: string,
+  logBounds: { openLine: number; closeLine: number }
+): boolean {
+  const lines = content.split('\n');
+  let currentRound = -1;
+  for (let i = logBounds.openLine + 1; i < logBounds.closeLine; i++) {
+    if (/^###\s+Round\s+\d+\b/.test((lines[i] ?? '').trim())) currentRound = i;
+  }
+  if (currentRound < 0) return false;
+  for (let i = currentRound + 1; i < logBounds.closeLine; i++) {
+    if ((lines[i] ?? '').trim() === '#### Round close') {
+      return ROUND_CLOSE_DONE_RE.test((lines[i + 1] ?? '').trim());
+    }
+  }
+  return false;
 }
 
 /** @purpose Completion kind inferred from the spec's load-bearing identity marker. */
@@ -551,6 +578,25 @@ export function roundCloseError(detail: string): LogOutcome {
       `[sdd-log] ${ERR_CLI_SDD_LOG_CLOSE_STATE}: ${detail}`,
       '  Close the current Round exactly once; a scaffolded Round close placeholder is replaced in place.',
       '  No Round-close line or Meta Status was changed.',
+    ].join('\n'),
+  };
+}
+
+/**
+ * @purpose Report why an append-owning mode refuses — the current Round is already closed
+ *   (B2-04: append-only means a fix goes into a NEW Round, never after a closed one).
+ * @param ticket The ticket path (display form).
+ * @returns Outcome with exit 2 and two concrete ways forward.
+ */
+export function roundClosedError(ticket: string): LogOutcome {
+  return {
+    ok: false,
+    code: ERR_CLI_SDD_LOG_ROUND_CLOSED,
+    exitCode: 2,
+    message: [
+      `[sdd-log] ${ERR_CLI_SDD_LOG_ROUND_CLOSED}: the current Round in ${ticket} is already closed`,
+      `  Open a new Round first: npx gennady sdd-log ${ticket} round "fix: F-NNN"`,
+      '  then log into the new Round (optionally --phase P<N> once that Round reopens it).',
     ].join('\n'),
   };
 }

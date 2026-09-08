@@ -45,6 +45,7 @@ import {
   groupReceiptError,
   hasPlaceholder,
   isCompleteHandoffPayload,
+  isCurrentRoundClosed,
   missingFlag,
   nextRoundNumber,
   noLogSection,
@@ -53,6 +54,7 @@ import {
   phaseCompletionError,
   placeholderError,
   roundCloseError,
+  roundClosedError,
   setMetaStatus,
   unknownIdError,
   type LogOutcome,
@@ -383,6 +385,12 @@ async function runCommand(
 
   const bounds = findSectionBounds(content, LOG_SECTION);
   if (!bounds) return noLogSection(displayPath);
+
+  // B2-04: append-only means a fix goes into a NEW Round, never after a closed one — round/close
+  // are the only modes exempt (round opens the escape hatch; close is the transition itself).
+  if (mode !== 'round' && mode !== 'close' && isCurrentRoundClosed(content, bounds)) {
+    return roundClosedError(displayPath);
+  }
 
   const ts = now.toISOString();
 

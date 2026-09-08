@@ -387,6 +387,59 @@ describe('SddLogCommand', () => {
     });
   });
 
+  // B2-04: append-only means a fix goes into a NEW Round, never after a closed one.
+  describe('append-owning modes refuse a closed Round (B2-04)', () => {
+    it('line without --phase refuses after close, with no mutation', async () => {
+      await mod.run(argv(ticket, 'round', 'initial'), CLOCK);
+      await mod.run(argv(ticket, 'close'), CLOCK);
+      const before = readFileSync(ticket, 'utf-8');
+      const outcome = await mod.run(argv(ticket, 'line', 'sneaked in'), CLOCK);
+      assert.strictEqual(outcome.ok, false);
+      if (!outcome.ok) {
+        assert.strictEqual(outcome.code, 'ERR_CLI_SDD_LOG_ROUND_CLOSED');
+        assert.match(outcome.message, /already closed/);
+        assert.match(outcome.message, /round "fix: F-NNN"/);
+      }
+      assert.strictEqual(readFileSync(ticket, 'utf-8'), before);
+    });
+
+    it('phase (opening a new block) refuses after close', async () => {
+      await mod.run(argv(ticket, 'round', 'initial'), CLOCK);
+      await mod.run(argv(ticket, 'close'), CLOCK);
+      const outcome = await mod.run(argv(ticket, 'phase', 'P1', '— re-run: fix'), CLOCK);
+      assert.strictEqual(outcome.ok, false);
+      if (!outcome.ok) assert.strictEqual(outcome.code, 'ERR_CLI_SDD_LOG_ROUND_CLOSED');
+    });
+
+    it('line --phase P<N> refuses after close even naming an already-open (but closed-round) phase', async () => {
+      await mod.run(argv(ticket, 'phase', 'P1'), CLOCK);
+      await mod.run(argv(ticket, 'round', 'initial'), CLOCK); // no-op if already opened; keep flow simple
+      await mod.run(argv(ticket, 'close'), CLOCK);
+      const outcome = await mod.run(argv(ticket, 'line', 'sneaked in', '--phase', 'P1'), CLOCK);
+      assert.strictEqual(outcome.ok, false);
+      if (!outcome.ok) assert.strictEqual(outcome.code, 'ERR_CLI_SDD_LOG_ROUND_CLOSED');
+    });
+
+    it('opening a new Round after close lets appends through again', async () => {
+      await mod.run(argv(ticket, 'round', 'initial'), CLOCK);
+      await mod.run(argv(ticket, 'close'), CLOCK);
+      await mod.run(argv(ticket, 'round', 'fix: F-001'), CLOCK);
+      const outcome = await mod.run(argv(ticket, 'line', 'now legal'), CLOCK);
+      assert.strictEqual(outcome.ok, true, outcome.ok ? '' : outcome.message);
+      const body = readFileSync(ticket, 'utf-8');
+      const round2At = body.indexOf('### Round 2');
+      const lineAt = body.indexOf('now legal');
+      assert.ok(round2At !== -1 && round2At < lineAt, body);
+    });
+
+    it('round mode itself is exempt — it is the escape hatch out of a closed Round', async () => {
+      await mod.run(argv(ticket, 'round', 'initial'), CLOCK);
+      await mod.run(argv(ticket, 'close'), CLOCK);
+      const outcome = await mod.run(argv(ticket, 'round', 'fix: F-002'), CLOCK);
+      assert.strictEqual(outcome.ok, true, outcome.ok ? '' : outcome.message);
+    });
+  });
+
   describe('META Status (round/close drive it; tolerant when Status line is absent)', () => {
     const withStatus = [
       '# t',

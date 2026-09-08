@@ -364,6 +364,130 @@ function phaseIdsWithMarkedDone(logBody: string): Set<string> {
   return ids;
 }
 
+/** @purpose One event-list line: whether checked `[x]`, its backtick-quoted timestamp (if any), raw text. */
+type ParsedEventLine = { checked: boolean; ts: string | null; raw: string };
+
+/** @purpose Matches any `- [ |x] ["<ts>"] <rest>` list-item line, checked or not, timestamped or not. */
+const EVENT_LINE_RE = /^-\s*\[( |x)\]\s*(?:`([^`]+)`\s*)?(.*)$/;
+
+/** @purpose Parse one trimmed line as an event-list item, or null when it is not one. */
+function parseEventLine(rawLine: string): ParsedEventLine | null {
+  const line = rawLine.trim();
+  const m = EVENT_LINE_RE.exec(line);
+  if (!m) return null;
+  return { checked: m[1] === 'x', ts: m[2] ?? null, raw: line };
+}
+
+/**
+ * @purpose Compare two timestamps by real instant when both parse (so `T09:00Z` and `T09:00:00Z`
+ *   are equal, not "later" — v1's rule), else fall back to an equal-length lexicographic compare.
+ * @param a First timestamp.
+ * @param b Second timestamp.
+ * @returns Negative/zero/positive per `a` being earlier/equal/later than `b`.
+ */
+function compareTimestamps(a: string, b: string): number {
+  const ma = Date.parse(a);
+  const mb = Date.parse(b);
+  if (!Number.isNaN(ma) && !Number.isNaN(mb)) return ma === mb ? 0 : ma < mb ? -1 : 1;
+  const len = Math.min(a.length, b.length);
+  const ta = a.slice(0, len);
+  const tb = b.slice(0, len);
+  return ta < tb ? -1 : ta > tb ? 1 : 0;
+}
+
+/** @purpose One Round's post-close integrity analysis (B2-04). */
+type RoundCloseAnalysis = {
+  /** @purpose The Round heading's verbatim text (e.g. `Round 2 — 2026-08-22, …`). */
+  roundLabel: string;
+  /** @purpose Checked event lines found AFTER this Round's own `#### Round close` block — append-after-close. */
+  trailingCount: number;
+  /** @purpose Checked event lines inside the close block itself, other than the one DONE line. */
+  closeExtraCount: number;
+  /** @purpose Checked, timestamped lines inside the round (before close) whose timestamp is later than the close DONE timestamp. */
+  laterThanClose: string[];
+  /** @purpose This Round has ≥1 checked phase-block line but no closed (checked DONE) `#### Round close`. */
+  unclosed: boolean;
+};
+
+/**
+ * @purpose Walk every `### Round <n>` heading in an Execution Log and diagnose its close integrity
+ *   (B2-04, ports v1's lost `entry-after-close`/`extra-close-entry`/`bad-round-close`/
+ *   `unclosed-round` checks — a live artifact was found with 35 lines appended after a real Round
+ *   close).
+ * @invariant `#### Round close` is itself a level-4 heading; anything at/after it inside the same
+ *   Round is the close block's own content or trailing content — never the preceding phase block.
+ * @param logBody Extracted EXECUTION_LOG section body.
+ * @returns One analysis per Round heading found, in document order.
+ */
+function analyzeRoundClosures(logBody: string): RoundCloseAnalysis[] {
+  const headings = collectHeadings(logBody);
+  const roundHeadings = headings
+    .map((heading, index) => ({ heading, index }))
+    .filter(({ heading }) => heading.level === 3 && /^Round\s+\d+(?:\s|—|$)/i.test(heading.text));
+
+  const out: RoundCloseAnalysis[] = [];
+  for (const { heading: round, index: roundIndex } of roundHeadings) {
+    const nextTop = headings.slice(roundIndex + 1).find((h) => h.level <= round.level);
+    const roundEnd = nextTop?.start ?? logBody.length;
+    const roundBody = logBody.slice(round.lineEnd, roundEnd);
+    const roundBodyHeadings = collectHeadings(roundBody);
+
+    const closeHeading = roundBodyHeadings.find(
+      (h) => h.level === 4 && /^Round\s+close\b/i.test(h.text)
+    );
+    if (!closeHeading) {
+      const hasCheckedLine = roundBody
+        .split('\n')
+        .some((line) => parseEventLine(line)?.checked === true);
+      out.push({
+        roundLabel: round.text,
+        trailingCount: 0,
+        closeExtraCount: 0,
+        laterThanClose: [],
+        unclosed: hasCheckedLine,
+      });
+      continue;
+    }
+
+    const nextHeadingAfterClose = roundBodyHeadings.find((h) => h.start > closeHeading.start);
+    const closeAreaEnd = nextHeadingAfterClose?.start ?? roundBody.length;
+    const closeAreaBody = roundBody.slice(closeHeading.lineEnd, closeAreaEnd);
+    const trailingBody = nextHeadingAfterClose ? roundBody.slice(nextHeadingAfterClose.start) : '';
+    const beforeCloseBody = roundBody.slice(0, closeHeading.start);
+
+    const closeLines = closeAreaBody
+      .split('\n')
+      .map(parseEventLine)
+      .filter((l): l is ParsedEventLine => l !== null);
+    const doneLine = closeLines.find((l) => l.checked && /DONE\s*$/.test(l.raw));
+    const closeExtraCount = closeLines.filter((l) => l.checked && l !== doneLine).length;
+
+    const trailingCount = trailingBody
+      .split('\n')
+      .map(parseEventLine)
+      .filter((l): l is ParsedEventLine => l !== null && l.checked).length;
+
+    const laterThanClose: string[] = [];
+    if (doneLine?.ts) {
+      for (const raw of beforeCloseBody.split('\n')) {
+        const parsed = parseEventLine(raw);
+        if (parsed?.checked && parsed.ts && compareTimestamps(parsed.ts, doneLine.ts) > 0) {
+          laterThanClose.push(parsed.raw);
+        }
+      }
+    }
+
+    out.push({
+      roundLabel: round.text,
+      trailingCount,
+      closeExtraCount,
+      laterThanClose,
+      unclosed: !doneLine && beforeCloseBody.split('\n').some((l) => parseEventLine(l)?.checked),
+    });
+  }
+  return out;
+}
+
 /**
  * @purpose Extract the `artifacts: [...]` file list from one verbatim Handoff line.
  * @invariant `none` / `n/a` / `—` inside the brackets means no real artifact — returns empty, same
@@ -546,6 +670,34 @@ export function checkTicket(file: string, content: string): Finding[] {
         warn(
           'SDD_BLOCKER_OPEN',
           'Execution Log ends with an unresolved 🛑 BLOCKED — no later ✅ RESOLVED. Resolve or explicitly reopen before the orchestrator relies on this ticket.'
+        );
+      }
+    }
+
+    // B2-04: post-close append integrity — WARN per L-3 (new codes stay warn until B2-15).
+    for (const round of analyzeRoundClosures(logSec.content)) {
+      if (round.trailingCount > 0) {
+        warn(
+          'SDD_EXECUTION_LOG_ENTRY_AFTER_CLOSE',
+          `### ${round.roundLabel}: ${round.trailingCount} checked event line(s) appended after this Round's own \`#### Round close\`. Open a new Round instead.`
+        );
+      }
+      if (round.closeExtraCount > 0) {
+        warn(
+          'SDD_EXECUTION_LOG_CLOSE_EXTRA_ENTRY',
+          `### ${round.roundLabel}: the \`#### Round close\` block has ${round.closeExtraCount} extra checked line(s) besides its one DONE line.`
+        );
+      }
+      for (const line of round.laterThanClose) {
+        warn(
+          'SDD_EXECUTION_LOG_ENTRY_LATER_THAN_CLOSE',
+          `### ${round.roundLabel}: entry "${line}" has a timestamp later than this Round's own close.`
+        );
+      }
+      if (round.unclosed) {
+        warn(
+          'SDD_EXECUTION_LOG_ROUND_UNCLOSED',
+          `### ${round.roundLabel} has a checked phase-block line but no closed \`#### Round close\`.`
         );
       }
     }
