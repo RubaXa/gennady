@@ -76,19 +76,26 @@ flowchart TD
 
 ## 4. Что детерминировано, а что — judge
 
-| Слой                           | Детерминизм | Источник вердикта                                                                                                     |
-| ------------------------------ | ----------- | --------------------------------------------------------------------------------------------------------------------- |
-| `judge.ts` (VERDICT)           | Нет (LLM)   | Отдельная сессия модели; стохастична по природе, узкая evidence снижает шум.                                          |
-| `quality-gate.ts` — R1         | Да          | `gennady sdd-check --all .`, парсинг вывода (`parseSddCheckResult`).                                                  |
-| `quality-gate.ts` — R-COMPLETE | Да          | Чтение артефакта/тикета/спеки с диска: `[x] DONE`, закрытый раунд, `SDD_AUDIT_RECEIPT`/`SDD_REVIEW_RECEIPT` на спеке. |
-| `session-metrics.py` record    | Да          | SQLite OpenCode (шаги/тулы/токены) + файлы фикстуры на диске — без LLM.                                               |
-| `session-metrics.py` gate      | Да          | RED, если артефакт есть, а тикет не завершён (см. [05-METRICS.md](./05-METRICS.md)).                                  |
-| `session-metrics.py` compare   | Да          | non-regression: `steps`/`tool_calls` не выросли, `completion`-сигналы не регрессировали.                              |
-| `session-telemetry.py`         | Да          | Обзервабилити (тулы/чтения/reasoning) — только для чтения, ничего не решает.                                          |
+| Слой                           | Детерминизм | Источник вердикта                                                                                                                       |
+| ------------------------------ | ----------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `judge.ts` (VERDICT)           | Нет (LLM)   | Отдельная сессия модели; стохастична по природе, узкая evidence снижает шум.                                                            |
+| `quality-gate.ts` — R1         | Да          | `gennady sdd-check --all .`, парсинг вывода (`parseSddCheckResult`).                                                                    |
+| `quality-gate.ts` — R-COMPLETE | Да          | Чтение артефакта/тикета/спеки с диска: `[x] DONE`, закрытый раунд, `SDD_AUDIT_RECEIPT`/`SDD_REVIEW_RECEIPT` на спеке.                   |
+| `session-metrics.py` record    | Да          | SQLite OpenCode (шаги/тулы/токены) + файлы фикстуры на диске — без LLM.                                                                 |
+| `session-metrics.py` gate      | Да          | RED, если артефакт есть, а тикет не завершён (см. [05-METRICS.md](./05-METRICS.md)).                                                    |
+| `session-metrics.py` compare   | Да          | non-regression: `steps`/`tool_calls` не выросли, `completion`-сигналы не регрессировали.                                                |
+| `session-telemetry.py`         | Да          | Обзервабилити (тулы/чтения/reasoning) — только для чтения, ничего не решает.                                                            |
+| `cli.ts` — код выхода батча    | Да          | Механический fold по `worker-error` и провалу детерминированных гейтов (R1/R-COMPLETE/MIGRATION); judge не участвует (D-28/L-14, E-21). |
 
 Практическое следствие: **вердикт judge не отменяет проверку фактов**. Если judge противоречит diff'у
 или показаниям quality-gate — это дефект харнесса/судьи, а не дефект проверяемого SDD-флоу (см.
 [04-RUNNING.md](./04-RUNNING.md#критерии-результата)).
+
+Вердикт judge — диагностика, а не гейт (D-28/L-14, E-21): `pass`/`fail`/`inconclusive` от judge
+никогда не меняет код выхода `cli.ts`. `fail` или `inconclusive` от judge не проваливает батч, если
+детерминированные гейты прошли; и наоборот, `pass` от judge не спасает батч, если `R1`/`R-COMPLETE`
+провалились. Это проверяется отдельным тестом —
+[`__tests__/judge-verdict-diagnostic.test.ts`](../__tests__/judge-verdict-diagnostic.test.ts).
 
 ## 5. Куда дальше
 
