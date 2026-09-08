@@ -210,3 +210,46 @@ d9a1534e feat(B2-03): TOKEN_VOCABULARY — one home in shared/sdd/execution-log.
 git -C rc-v6 push origin lead/specs-match-code:lead/specs-match-code
 ```
 `git ls-remote origin lead/specs-match-code` — пусто, ветка на `origin` ещё не существует, форс не нужен. История локально переписана ребейзом (старые SHA `e68ba8a0`…`585537ac` заменены новыми `8f94546c`…`32650cda`, плюс 3 новых коммита сверху) — если у Lead уже есть свой локальный клон этой ветки со СТАРЫМИ SHA, ему нужно будет пересоздать её от текущего `rc-v6`, а не мержить. Пуш не выполнялся — пуш делает Lead.
+
+## § Слияние с релизной веткой после мержа #28/#29/#35
+
+Контекст: GitHub показывал PR #31 (`lead/specs-match-code`, HEAD `4471eb7d`) как CONFLICTING против `codex/sdd-v2-rc52-followup` (голова `4b14d781`, после мержа #28 release-package, #29 sync-skills, #35 sync-no-loss-review). Задача — слить релизную ветку MERGE-коммитом (не rebase, чтобы push оставался fast-forward для уже существующей `origin/lead/specs-match-code`).
+
+**Выполнено**: `git -C rc-v6 fetch origin` → `git -C rc-v6 switch lead/specs-match-code` (HEAD `4471eb7d`, подтверждено `origin/lead/specs-match-code == 4471eb7d`) → `git -C rc-v6 merge origin/codex/sdd-v2-rc52-followup --no-edit`.
+
+### Конфликты и разрешение
+
+Единственный файл с реальными конфликт-маркерами — `cli/cmd/sdd-check/__tests__/sdd-check.cmd.test.ts` (строки 1480–1529 до правки). Сам `cli/cmd/sdd-check/sdd-check.cmd.ts` слился автоматически БЕЗ маркеров — обе смысловые линии сохранились без ручного вмешательства:
+- helper `checkProjectRuleRegistry` + код `SDD_RULE_REGISTRY_UNPARSEABLE` из #35 (сейчас строки 187–201, вызов на строке 1463);
+- `SDD_NO_TICKETS_FOUND` (B2-05, exit 2 на нуле тикетов) из этой ветки (строка 1476, комментарий 1127).
+
+В тестовом файле конфликт был не про поведение, а про порядок/название тестов: HEAD переименовал заголовок теста «--all before authoring…» в более описательный (`…но zero tickets is SDD_NO_TICKETS_FOUND (exit 2), not a clean pass`), а `codex/sdd-v2-rc52-followup` вставил перед этим же тестом НОВЫЙ тест B2-24 (`SDD_RULE_REGISTRY_UNPARSEABLE` на дублирующемся `id` в `knowledge.xml`) со старым (некороткое) названием финального теста. Тело финального теста было идентичным на обеих сторонах (маркеров внутри тела не было, весь диф — только в заголовках `it(...)`). Разрешено: оставлен новый тест B2-24 целиком (с комментарием про регрессию `catch {}` → `SDD_RULE_FILE_MISSING`), и сохранён более описательный заголовок HEAD для финального теста — смысл обеих сторон сохранён, тело теста не менялось.
+
+Сгенерированные `ai/directives/sdd-v2/**` руками НЕ трогались: после разрешения конфликта в исходниках прогнан `npm --prefix rc-v6 run build:directives` (55 сгенерированных файлов, только предупреждение о 35 dangling axioms — то же самое, что было и раньше, не новое) → `git status` / `git diff --stat -- ai/directives` показали 0 изменений, т.е. сгенерированный вывод уже совпадал с деревом после мержа исходников — ручной мерж генерируемых файлов не потребовался.
+
+`package.json`/`package-lock.json` в конфликт не попали вообще (0 diff в `git status`) — версия `2.0.0-draft.1` и скрипты (`build:directives`, `check:directives-fresh`, `audit:sdd-templates`, `gate:sdd-check-baseline`) уже были стороны RC до мержа; скрипты этой ветки (#31) в package.json не добавлялись, терять было нечего.
+
+Проверено отдельно: B2-11 (`ef9ed5a6`, `STEP_1_MECHANICAL` называет все code-family sdd-check) и waiver `AX_ENV_FIX_CHANNEL` (batch 5, `shared/sdd/execution-log.ts`, `ai/inspector/core/__tests__/parse-directive.test.ts`, `ai/kit/lint-axioms.ts`) в списке конфликтов не участвовали и остались нетронутыми.
+
+Merge-коммит: **`ade787e6`** (`Merge: 4471eb7d 4b14d781`, `Merge remote-tracking branch 'origin/codex/sdd-v2-rc52-followup' into lead/specs-match-code`), прошёл pre-commit хук целиком (без `--no-verify`).
+
+### Доказательства (после мержа, в `rc-v6` на `ade787e6`)
+
+| Команда | Факт | Exit | Статус |
+|---|---|---|---|
+| `npm --prefix rc-v6 test` | `# tests 3663 # pass 3653 # fail 0 # cancelled 0 # skipped 10` | 0 | ВЫПОЛНЕНО (первый прогон дал `cancelled 1` — таймаут `cli/__tests__/tool-behavior/bootstrap-path.test.ts` под параллельной нагрузкой; изолированный прогон этого файла — `12/12 pass` за 7.8с; второй полный прогон — чисто, `cancelled 0`) |
+| `npm --prefix rc-v6 run check` | `[sdd-verify] ✅ ALL PASS (5/5)` type-check/test:coverage/lint/format/yagni | 0 | ВЫПОЛНЕНО |
+| `npm --prefix rc-v6 run build` | `✓ built in 2.77s` | 0 | ВЫПОЛНЕНО |
+| `node rc-v6/dist/gennady.js sdd-check --all rc-v6` | `[sdd-check] 192 error(s), 434 warning(s) across 212 file(s)` | 1 (ожидаемо для sdd-check с ошибками) | ВЫПОЛНЕНО (192 ≤ 192 из брифа; baseline `227c03a8` = 198 ошибок → 6 меньше, не больше) |
+| `npm --prefix rc-v6 run gate:sdd-check-baseline` | `OK — no error outside the baseline (baseline commit 227c03a83830124fe2aa22541dd5374beb8a53c6, tag rc-baseline-1)` | 0 | ВЫПОЛНЕНО (0 новых ошибок относительно baseline) |
+| `npm --prefix rc-v6 run check:directives-fresh` | `✓ ai/directives/** matches a fresh rebuild.` | 0 | ВЫПОЛНЕНО |
+| `npm --prefix rc-v6 run audit:sdd-templates` | `✓ axiom-activation … 28 template(s)`; `✓ contract-activation … 28+33`; `✓ halt-activation … 33+33`; `✓ every lazy directive … within budget` | 0 | ВЫПОЛНЕНО |
+
+Ослаблений тестов не было — конфликт разрешён сохранением обоих тел тестов (B2-05 + B2-24), ни один assert не удалён и не смягчён.
+
+### Команда пуша для Lead (после мержа с релизной веткой)
+
+```
+git -C rc-v6 push origin lead/specs-match-code:lead/specs-match-code
+```
+Ветка на `origin` уже существует на `4471eb7d` (старый push этой же ветки), локальный `ade787e6` — на один merge-коммит впереди неё (fast-forward, форс не нужен). PR #30 (`lead/kit-lint`, база #31) в момент выполнения был OPEN и мержился оператором отдельно — эта работа его не затрагивала.
