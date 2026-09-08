@@ -8,6 +8,12 @@ import { parsePhaseReceipts } from '../../../shared/sdd/phase-receipt.ts';
 import { findSectionBounds } from '../../../shared/sdd/section.ts';
 import { deriveSpecAcronym } from '../../../shared/sdd/requirement-id.ts';
 import { unreadableTicketHint } from '../../../shared/sdd/ticket-resolve.ts';
+import {
+  matchPhaseOverviewHeader,
+  rowCells,
+  isSeparator,
+  type PhaseColumnMap,
+} from '../../../shared/sdd/ticket.ts';
 
 /** @purpose No ticket path, or not exactly one of --round / --line / --close. */
 export const ERR_CLI_SDD_LOG_BAD_INVOCATION = 'ERR_CLI_SDD_LOG_BAD_INVOCATION' as const;
@@ -293,10 +299,27 @@ export function completePhase(
   if (!log) return { ok: false, detail: 'ticket has no readable EXECUTION_LOG' };
   const lines = content.split('\n');
 
+  // Column positions are learned from the section's own header row (matchPhaseOverviewHeader),
+  // not assumed by position: a ticket anchored by anchor-inject but never rewritten to the
+  // canonical `| ID | Kind | Deps | Status |` order (e.g. legacy `| Phase | Kind | Status |
+  // Target Files | Deps |`) must still resolve the real id/status columns.
+  let columns: PhaseColumnMap | null = null;
+  for (let i = overview.openLine + 1; i < overview.closeLine; i++) {
+    const line = lines[i] ?? '';
+    if (!line.trimStart().startsWith('|') || isSeparator(line)) continue;
+    columns = matchPhaseOverviewHeader(rowCells(line));
+    break; // the first table row in the section is always the header, matched or not
+  }
+  const cols = columns ?? { id: 0, kind: 1, deps: 2, status: 3 };
+  // rowCells strips the leading `|`; raw split('|') keeps it, so raw index = rowCells index + 1.
+  const idRawIndex = cols.id + 1;
+  const statusRawIndex = cols.status + 1;
+
   const overviewRows: number[] = [];
   for (let i = overview.openLine + 1; i < overview.closeLine; i++) {
     const cells = (lines[i] ?? '').split('|');
-    if (cells.length >= 6 && cells[1]?.trim() === phaseId) overviewRows.push(i);
+    if (cells.length > statusRawIndex && cells[idRawIndex]?.trim() === phaseId)
+      overviewRows.push(i);
   }
   if (overviewRows.length !== 1) {
     return {
@@ -306,7 +329,7 @@ export function completePhase(
   }
   const overviewLine = overviewRows[0] as number;
   const overviewCells = (lines[overviewLine] ?? '').split('|');
-  const statusCell = overviewCells[4] ?? '';
+  const statusCell = overviewCells[statusRawIndex] ?? '';
   if (!/^\s*\[ \](?:\s+[A-Z_]+)?\s*$/.test(statusCell)) {
     return { ok: false, detail: `phase ${phaseId} status is not the incomplete [ ] state` };
   }
@@ -353,7 +376,7 @@ export function completePhase(
 
   const doneLine = `- [x] \`${ts}\` DONE`;
   const handoffLine = buildHandoffLine(payload);
-  overviewCells[4] = statusCell.replace('[ ]', '[x]');
+  overviewCells[statusRawIndex] = statusCell.replace('[ ]', '[x]');
   lines[overviewLine] = overviewCells.join('|');
   lines[doneLines[0] as number] = doneLine;
   lines[handoffLines[0] as number] = handoffLine;

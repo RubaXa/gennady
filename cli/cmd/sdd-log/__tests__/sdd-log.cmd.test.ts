@@ -411,6 +411,49 @@ describe('SddLogCommand', () => {
       assert.strictEqual((body.match(/- \[ \] `<ts>` DONE/g) ?? []).length, 2);
     });
 
+    // B2-09: a ticket anchor-injected from v1 (see tasks/cli/lint/cli-lint.task-14.md) can carry
+    // `<!--SECTION:PHASES_OVERVIEW-->` around its original `| Phase | Kind | Status | Target
+    // Files | Deps |` column order — Status is column 3, not the canonical column 4 (`| ID |
+    // Kind | Deps | Status |`). A hard-coded `overviewCells[4]` read/write reads the Deps cell
+    // and corrupts it instead of flipping Status.
+    it('closes the phase when PHASES_OVERVIEW keeps its legacy v1 column order (Status before Deps)', async () => {
+      const v1OrderTicket = [
+        '# t',
+        '<!--SECTION:META-->',
+        '- **Task-ID:** cli-foo',
+        '- **Status:** [~] IN_PROGRESS',
+        '<!--/SECTION:META-->',
+        '',
+        '<!--SECTION:PHASES_OVERVIEW-->',
+        '## Phases Overview',
+        '| Phase | Kind | Status | Target Files | Deps |',
+        '|-------|------|--------|--------------|------|',
+        '| P1 | impl | [ ] | src/foo.ts | — |',
+        '| P2 | test | [ ] | src/bar.ts | P1 |',
+        '<!--/SECTION:PHASES_OVERVIEW-->',
+        '',
+        '<!--SECTION:EXECUTION_LOG-->',
+        '## Execution Log',
+        '### Round 1 — 2026-06-21, initial',
+        '#### P1',
+        '- [ ] `<ts>` DONE',
+        '**Handoff →** artifacts: [...]; decisions: [...]; open: [...]',
+        '#### Round close',
+        '- [ ] `<ts>` DONE',
+        '<!--PHASE_RECEIPTS:v1-->',
+        formatPhaseReceipt(receipt('P1')),
+        '<!--/SECTION:EXECUTION_LOG-->',
+      ].join('\n');
+      writeFileSync(ticket, v1OrderTicket, 'utf-8');
+      const outcome = await mod.run(argv(ticket, 'complete', payload, '--phase', 'P1'), CLOCK);
+      assert.strictEqual(outcome.ok, true, outcome.ok ? '' : outcome.message);
+      const body = readFileSync(ticket, 'utf-8');
+      // P1's status flips to [x] and its Deps cell (—) is untouched — not swapped into Status.
+      assert.match(body, /\| P1 \| impl \| \[x\] \| src\/foo\.ts \| — \|/);
+      // P2's row — including its real Deps value P1 — is byte-identical, not corrupted.
+      assert.match(body, /\| P2 \| test \| \[ \] \| src\/bar\.ts \| P1 \|/);
+    });
+
     it('fails without this phase receipt and leaves every byte untouched', async () => {
       const original = completableTicket(null);
       writeFileSync(ticket, original, 'utf-8');
