@@ -23,9 +23,13 @@
 
 ```mermaid
 flowchart LR
-  subgraph existing["Существующий ладдер (не меняется в V-02)"]
-    CMD["sdd-verify.cmd.ts"] --> PLAN["phase-verification-plan.ts"]
+  subgraph existing["Существующий ладдер (расширен V-03/V-04, не изменил поведение)"]
+    CMD["sdd-verify.cmd.ts\nrunGate: envFail/requires (V-03)"] --> PLAN["phase-verification-plan.ts\nverificationGateNames→resolvePreset (V-04)"]
     PLAN --> RCPT["phase-receipt.ts"]
+  end
+
+  subgraph presets["Пресеты — реальный вызов есть (V-04)"]
+    NODE["presets/node.ts\nresolvePreset('node',…) — только node сегодня"]
   end
 
   subgraph ported["Перенесённые примитивы этого модуля — 0-1 вызовов до подключения"]
@@ -39,18 +43,18 @@ flowchart LR
     GO["plugins/golang/**"]
   end
 
+  PLAN --> NODE
   PLUGINS --> ANY
   PLUGINS --> GO
   CFG -.-> ENVF
   REG -.-> PLUGINS
 
   CMD -. "V-03 done: Gate.envFail/requires machinery in runGate; 0 GATES entries feed it yet" .-> ENVF
-  CMD -. "V-04/V-04a: resolvePreset + fingerprint" .-> PLAN
   CMD -. "V-05: STACK=/STACK_SOURCE=" .-> REG
   CMD -. "V-07: gennady.yaml stack:" .-> CFG
   CMD -. "V-07: printing" .-> LOADER
-  CMD -. "V-08: anystack read-only gates" .-> ANY
-  CMD -. "V-09: golang preset" .-> GO
+  NODE -. "V-08: anystack preset (presets/anystack.ts)" .-> ANY
+  NODE -. "V-09: golang preset (presets/golang.ts)" .-> GO
   TG -. "V-18 (вне этой волны)" .-> PLAN
 ```
 
@@ -72,18 +76,19 @@ TODO(V-05, V-07, V-09): модуль пока не имеет собственн
 
 _Полный список файлов-сущностей, перенесённых задачей V-02. Функции/типы внутри них — в `Module Contracts` (§8), только там, где на них есть `Usage Waiver`._
 
-| Name                               | Type     | Purpose                                                                |
-| ---------------------------------- | -------- | ---------------------------------------------------------------------- |
-| `shared/verify/verify.types.ts`    | Types    | Общие типы стек-движка (`Gate`, `StackRun`, `VerifyReport`, …)         |
-| `shared/verify/env-fail.ts`        | Utility  | Компилятор env-fail предикатов (`allOf`, `exitCodeMatches`, …)         |
-| `shared/verify/tree-guard.ts`      | Port     | Лок рабочего дерева на время гейта (single-flight, ещё не подключён)   |
-| `shared/verify/stack-registry.ts`  | Service  | Реестр builtin-стеков и их gate id, детект активных стеков             |
-| `shared/verify/plugin-api.ts`      | Port     | Публичная поверхность `gennady/stack` для авторов стек-плагинов        |
-| `shared/verify/stack-config.ts`    | Service  | Конфиг-контракт `gennady.yaml` секция `stack:` (deep-merge, провенанс) |
-| `services/config/config-loader.ts` | Service  | Универсальный загрузчик секции конфига + провенанс + форматирование    |
-| `plugins/index.ts`                 | Registry | Список встроенных стек-плагинов (`BUILTIN_PLUGINS`)                    |
-| `plugins/anystack/**`              | Adapter  | Read-only стек-плагин для произвольных гейтов из `gennady.yaml`        |
-| `plugins/golang/**`                | Adapter  | Стек-плагин Go: детект, scope, план (`gofmt`, `go vet`, `go generate`) |
+| Name                               | Type     | Purpose                                                                                           |
+| ---------------------------------- | -------- | ------------------------------------------------------------------------------------------------- |
+| `shared/verify/verify.types.ts`    | Types    | Общие типы стек-движка (`Gate`, `StackRun`, `VerifyReport`, …)                                    |
+| `shared/verify/env-fail.ts`        | Utility  | Компилятор env-fail предикатов (`allOf`, `exitCodeMatches`, …)                                    |
+| `shared/verify/tree-guard.ts`      | Port     | Лок рабочего дерева на время гейта (single-flight, ещё не подключён)                              |
+| `shared/verify/stack-registry.ts`  | Service  | Реестр builtin-стеков и их gate id, детект активных стеков                                        |
+| `shared/verify/plugin-api.ts`      | Port     | Публичная поверхность `gennady/stack` для авторов стек-плагинов                                   |
+| `shared/verify/stack-config.ts`    | Service  | Конфиг-контракт `gennady.yaml` секция `stack:` (deep-merge, провенанс)                            |
+| `services/config/config-loader.ts` | Service  | Универсальный загрузчик секции конфига + провенанс + форматирование                               |
+| `plugins/index.ts`                 | Registry | Список встроенных стек-плагинов (`BUILTIN_PLUGINS`)                                               |
+| `plugins/anystack/**`              | Adapter  | Read-only стек-плагин для произвольных гейтов из `gennady.yaml`                                   |
+| `plugins/golang/**`                | Adapter  | Стек-плагин Go: детект, scope, план (`gofmt`, `go vet`, `go generate`)                            |
+| `shared/verify/presets/node.ts`    | Service  | `resolvePreset('node', …)` — гейт-имена/команды node (V-04, единственный реальный пресет сегодня) |
 
 <!--/SECTION:ENTITY_INVENTORY-->
 
@@ -205,11 +210,15 @@ TODO(V-05, V-07, V-08, V-09): наполняется задачей, котор�
 
 ### `StackRun`
 
-- **Usage Waiver:** тип одного запуска стека; в MAIN потребляется движком `services/stack/gate-runner.ts`, который эта волна не переносит целиком (RC сохраняет свой существующий ладдер `phase-verification-plan.ts`/`phase-run.ts`). Предварительно отнесён к `resolvePreset` (V-04: «node-пресет + правки `phase-verification-plan.ts`»); если V-04 не примет эту форму для своего возвращаемого значения, владелец — CLI-фасад `gennady verify --plan --json` (V-16a, вне этой волны) — открытый вопрос, пересмотреть при закрытии V-04.
+- **Usage Waiver:** тип одного запуска стека; в MAIN потребляется движком `services/stack/gate-runner.ts`, который эта волна не переносит целиком. **Пересмотрено при закрытии V-04:** `resolvePreset`/`StackPreset` (`shared/verify/presets/node.ts`) сознательно НЕ импортируют `StackRun`/`VerifyReport` — RC's ладдер продолжает нести собственную форму результата (`GateResult[]`/`VerifyOutcome` в `sdd-verify.types.ts`), а не форму MAIN. Открытый вопрос снят отрицательно для V-04; новый предполагаемый владелец — CLI-фасад `gennady verify --plan --json` (V-16a, вне этой волны), если он когда-нибудь примет форму MAIN как свой JSON-контракт; в противном случае символ остаётся кандидатом на удаление вне этой волны.
 
 ### `VerifyReport`
 
-- **Usage Waiver:** итоговый отчёт прогона стека; тот же открытый вопрос и тот же предварительный владелец, что и `StackRun` — предварительно V-04, пересмотреть при закрытии.
+- **Usage Waiver:** итоговый отчёт прогона стека — тот же пересмотр при закрытии V-04, что и `StackRun`: `resolvePreset`/`StackPreset` не используют эту форму; новый предполагаемый владелец — V-16a (если возникнет), иначе кандидат на удаление вне этой волны.
+
+### `StackPreset`
+
+- **Usage Waiver:** тип формы, которую возвращает `resolvePreset` (`shared/verify/presets/node.ts`, V-04); сегодня — единственная аннотация возвращаемого типа самого `resolvePreset`. Второй прямой referансе появится, когда V-08/V-09 напишут anystack/golang-пресеты той же формы (`presets/{anystack,golang}.ts`), либо когда `sdd-verify.cmd.ts` явно затипизирует переменную-результат `resolvePreset(...)`, а не будет полагаться на inference — снимается в V-08 (первый второй пресет).
 
 </details>
 
