@@ -53,7 +53,7 @@ sequenceDiagram
   P->>D: chmodSync(dist/gennady.js, 0o755)
   Note over D: npm link / прямой запуск работает
 ```
-Узлы: `vite.config.ts:45-53` (`function executableBin(): Plugin { … closeBundle() { chmodSync(...) } }`), `vite.config.ts:56` (`plugins: [executableBin()]`).
+Узлы: `vite.config.ts:47-55` (`function executableBin(): Plugin { … closeBundle() { chmodSync(...) } }`), `vite.config.ts:60` (`plugins: [executableBin()]`).
 
 ---
 

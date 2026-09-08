@@ -60,7 +60,7 @@ sequenceDiagram
     S->>G: push / push --tags
   end
 ```
-Узлы: `scripts/publish-next.ts:257-278` (реордер `try{}`), `:270` (`run('npm', ['publish', '--tag', 'next'])` теперь первый вызов в блоке), `:273-277` (расширенное сообщение catch).
+Узлы: `scripts/publish-next.ts:257-282` (реордер `try{}`), `:265` (`run('npm', ['publish', '--tag', 'next'])` теперь первый вызов в блоке), `:273-277` (расширенное сообщение catch).
 
 ---
 
