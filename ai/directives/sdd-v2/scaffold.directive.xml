@@ -1,4 +1,4 @@
-0.8.4
+2.0.0-draft.1
 <!-- Step packages regenerate via: npm run build:directives -- --assembly=lazy. A missing file at a path below means the build or sync is stale — rebuild rather than guess. -->
 
 <SddScaffold keywords="sdd, scaffold, tickets, dag, test-plan, approval" type="directive" ver="2.3">

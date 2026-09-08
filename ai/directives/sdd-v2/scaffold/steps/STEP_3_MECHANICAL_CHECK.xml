@@ -1,4 +1,4 @@
-0.8.4
+2.0.0-draft.1
 
 <Step id="STEP_3_MECHANICAL_CHECK">
       <Goal>Prove actual ticket structure before semantic review.</Goal>
