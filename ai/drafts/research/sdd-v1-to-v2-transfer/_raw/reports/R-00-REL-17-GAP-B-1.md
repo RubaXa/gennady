@@ -201,3 +201,33 @@ git push origin lead/rel-17-baseline:codex/sdd-v2-rc52-followup
 ```
 
 Рабочее дерево: `/private/tmp/claude-503/-Users-k-lebedev-Developer-gennady--claude-worktrees-nice-panini-8aa14e/400aa5cc-7ed6-4bdd-aa81-d8e4a3003aaf/scratchpad/rc-v6` (ветка `lead/rel-17-baseline`, HEAD `48538019e76de2df3105dd59456fd12c546492a5`, поверх `origin/codex/sdd-v2-rc52-followup` = `227c03a83830124fe2aa22541dd5374beb8a53c6`, без расхождений по base — fast-forward push ожидается штатным).
+
+## § Архитектура было / стало (добавлено Lead по протоколу 70 §«Доказательство и визуализация»)
+
+Контур: полный гейт качества RC (`npm run check`) и его связь с корневым `sdd-check --all .`.
+
+```mermaid
+flowchart LR
+  subgraph БЫЛО["Было (227c03a8)"]
+    A1[npm run check] --> A2[sdd-verify --profile full]
+    A2 --> A3[format · type-check · lint · test]
+    A4[sdd-check --all .] -. "198 error / 431 warn,<br/>никем не читается" .-> A5((exit 1))
+  end
+```
+
+```mermaid
+flowchart LR
+  subgraph СТАЛО["Стало (48538019, тег rc-baseline-1 → 227c03a8)"]
+    B1[npm run check:ci] --> B2[npm run check]
+    B1 --> B3[npm run build]
+    B1 --> B4[gate:sdd-check-baseline<br/>scripts/sdd-check-zero-new-error.ts]
+    B4 --> B5[run-sdd-check-json.ts<br/>spawnSync dist/gennady.js sdd-check --all . --json → temp-file]
+    B4 --> B6[sdd-check-baseline-compare.ts<br/>diff по code,file для severity=error]
+    B6 --> B7[(.baseline/sdd-check-227c03a8.json<br/>334 строки · 38 кодов · before-report · environment)]
+    B6 --> B8{новый error<br/>вне baseline?}
+    B8 -- нет --> B9((exit 0))
+    B8 -- да --> B10((exit 1 + список code/file))
+  end
+```
+
+Стрелки «стало» соответствуют импортам: `sdd-check-zero-new-error.ts:13-19` → `sdd-check-baseline-compare.ts`, `run-sdd-check-json.ts`; `run-sdd-check-json.ts:14` `spawnSync`. Изменение baseline — только правка файла с решением оператора (D-38), см. `.baseline/README.md`. Пре-коммит не замедлён: гейт подключён в `check:ci`, не в `check`.
