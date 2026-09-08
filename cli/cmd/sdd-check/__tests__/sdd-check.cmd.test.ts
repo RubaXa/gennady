@@ -1477,7 +1477,7 @@ describe('SddCheckCommand', () => {
     assert.strictEqual(r.exitCode, 0);
   });
 
-  it('--all before authoring ignores unrelated Markdown when specs/ and tasks/ are absent', async () => {
+  it('--all before authoring ignores unrelated Markdown when specs/ and tasks/ are absent, but zero tickets is SDD_NO_TICKETS_FOUND (exit 2), not a clean pass', async () => {
     const root = join(dir, 'empty-pre-authoring-proj');
     mkdirSync(join(root, 'ai', 'directives'), { recursive: true });
     writeFileSync(
@@ -1489,11 +1489,70 @@ describe('SddCheckCommand', () => {
     try {
       process.chdir(root);
       const r = await mod.run(argv('--all'));
-      assert.strictEqual(r.exitCode, 0);
-      assert.match(r.text, /0 file\(s\) checked/);
+      assert.strictEqual(r.exitCode, 2);
+      assert.match(r.text, /SDD_NO_TICKETS_FOUND/);
+      // the unrelated bundled-example.md outside specs/tasks is still not walked/reported.
+      assert.doesNotMatch(r.text, /bundled-example/);
     } finally {
       process.chdir(previousCwd);
     }
+  });
+
+  it('--all: zero tickets is SDD_NO_TICKETS_FOUND (error, exit 2) even when specs/ exists with a spec but no ticket', async () => {
+    const root = join(dir, 'no-tickets-proj');
+    const scopeDir = join(root, 'specs', 'cli');
+    mkdirSync(scopeDir, { recursive: true });
+    writeFileSync(join(scopeDir, 'cli.spec.md'), '# cli\n\nno tickets scaffolded yet.\n', 'utf-8');
+    const r = await mod.run(argv('--all', root));
+    assert.strictEqual(r.exitCode, 2);
+    assert.match(r.text, /error: SDD_NO_TICKETS_FOUND/);
+  });
+
+  it('--all: at least one ticket resolved (even a legacy one) does not trigger SDD_NO_TICKETS_FOUND', async () => {
+    const root = join(dir, 'legacy-only-proj');
+    const scopeDir = join(root, 'tasks', 'cli');
+    mkdirSync(scopeDir, { recursive: true });
+    writeFileSync(
+      join(scopeDir, 'cli.task-foo.md'),
+      [
+        '# Task: TSK-1 — Demo',
+        '## 1. Meta & Traceability',
+        '- **Task-ID:** TSK-1',
+        '- **Status:** [x] DONE',
+        '## 4. Execution Log',
+        '### Round 1',
+        '- [x] DONE',
+      ].join('\n'),
+      'utf-8'
+    );
+    const r = await mod.run(argv('--all', root));
+    assert.doesNotMatch(r.text, /SDD_NO_TICKETS_FOUND/);
+  });
+
+  it('--task on a legacy (unanchored v1) ticket gives the same finding set and exit code as --all on the identical file (no more --task-only false SDD_MISSING_META/SDD_MISSING_EXECUTION_LOG)', async () => {
+    const root = join(dir, 'legacy-parity-proj');
+    const scopeDir = join(root, 'tasks', 'cli');
+    mkdirSync(scopeDir, { recursive: true });
+    const legacyPath = join(scopeDir, 'cli.task-bar.md');
+    writeFileSync(
+      legacyPath,
+      [
+        '# Task: TSK-2 — Demo',
+        '## 1. Meta & Traceability',
+        '- **Task-ID:** TSK-2',
+        '- **Status:** [x] DONE',
+        '## 4. Execution Log',
+        '### Round 1',
+        '- [x] DONE',
+      ].join('\n'),
+      'utf-8'
+    );
+    const viaAll = await mod.run(argv('--all', root));
+    const viaTask = await mod.run(argv('--task', legacyPath));
+    assert.strictEqual(viaTask.exitCode, viaAll.exitCode);
+    assert.strictEqual(viaTask.exitCode, 0);
+    assert.doesNotMatch(viaTask.text, /SDD_MISSING_META/);
+    assert.doesNotMatch(viaTask.text, /SDD_MISSING_EXECUTION_LOG/);
   });
 
   it('--all: a legacy tracker embedded in tasks/<scope>/README.md (no *.3-tasks.md file) is still cross-checked — the TSK-58 gap: tracker says DONE, ticket itself is still TODO', async () => {
