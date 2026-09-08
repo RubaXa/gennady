@@ -22,6 +22,10 @@ describe('TOKEN_VOCABULARY', () => {
     }
   });
 
+  it('includes "fix" — the board-named token backing 34 live corpus event lines (V-BATCH-04, B2-03)', () => {
+    assert.ok(TOKEN_VOCABULARY_TOKENS.includes('fix'), 'vocabulary is missing "fix"');
+  });
+
   it('still carries the original nine tokens (intro/decision/tried/discovery/insight/verified/SDD_PHASE_RECEIPT/BLOCKED/DONE)', () => {
     for (const token of [
       'intro',

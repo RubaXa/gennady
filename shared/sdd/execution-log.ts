@@ -15,7 +15,10 @@ export type TokenVocabularyEntry = {
 // table (`templates.ts:1581`) had dropped, and `correction` — the only legal way to fix a mistake
 // already written to an append-only log — had no home at all. `ver` is decision L-1
 // (`02-LEAD-DECISIONS.md`): a human-written note, but only a CLI-owned `SDD_PHASE_RECEIPT` —
-// never a hand-written `ver` line alone — may close a phase.
+// never a hand-written `ver` line alone — may close a phase. `fix` is a live corpus token (34
+// event lines across 6 tickets, e.g. `agent-inbox.task-161.md`, `directive-assembly.task.DA-lazy-
+// asm.md`) named on the task board alongside `ver`/`yagni`/`env-fix` — without it those 34
+// pre-existing lines would read as `EXECUTION_LOG_INCOMPLETE` under the closed-vocabulary rule.
 /** @purpose The complete, closed set of tokens an Execution Log event line may open with. */
 export const TOKEN_VOCABULARY: readonly TokenVocabularyEntry[] = [
   { token: 'intro', grammar: 'intro <Entity> ← <reason>' },
@@ -32,6 +35,7 @@ export const TOKEN_VOCABULARY: readonly TokenVocabularyEntry[] = [
     grammar: 'ver <cmd> → <result> — human note only, never closes a phase alone (L-1)',
   },
   { token: 'yagni', grammar: 'yagni <name> ← <reason>' },
+  { token: 'fix', grammar: 'fix <target> ← <reason>' },
   {
     token: 'env-fix',
     grammar: 'env-fix <file> ← <operator decision ref> (AX_ENV_FIX_CHANNEL)',

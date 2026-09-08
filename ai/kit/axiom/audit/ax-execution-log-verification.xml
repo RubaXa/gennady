@@ -9,9 +9,9 @@
       `decision <key>=<value> ← <reason>` · `tried <approach> → <result>` · `discovery <fact>` ·
       `insight <observation> → <spec-section>` · `verified <tool>@<version> <summary>` · `CLI-owned
       SDD_PHASE_RECEIPT:<PhaseID>` · `BLOCKED <cause>` · `DONE` · `ver <cmd> → <result> — human note
-      only, never closes a phase alone (L-1)` · `yagni <name> ← <reason>` · `env-fix <file> ←
-      <operator decision ref> (AX_ENV_FIX_CHANNEL)` · `correction[:] <round>/<phase> <field>: <old>
-      → <new> ← <reason>`.
+      only, never closes a phase alone (L-1)` · `yagni <name> ← <reason>` · `fix <target> ←
+      <reason>` · `env-fix <file> ← <operator decision ref> (AX_ENV_FIX_CHANNEL)` · `correction[:]
+      <round>/<phase> <field>: <old> → <new> ← <reason>`.
       Required per phase block: `ver` or CLI-owned `SDD_PHASE_RECEIPT` (one final result — only the
       receipt closes the phase, a hand-written `ver` line never does, L-1), `DONE`, `**Handoff →**`,
       `intro <X> ← <reason>` for every entity in code but not in module Inventory (cross-check via
