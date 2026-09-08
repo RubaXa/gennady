@@ -12,9 +12,21 @@ import { availableParallelism } from 'node:os';
 
 const ROOT = resolve(import.meta.dirname, '../../..');
 const RUNNER = join(ROOT, 'scripts/test-topology.ts');
-const TEST_LAYERS = ['unit', 'contract', 'local', 'external'] as const;
+const TEST_LAYERS = ['unit', 'contract', 'local', 'external', 'experimental'] as const;
 const SDD_COMMAND_NAVIGATION_TEST = 'cli/__tests__/sdd-command-navigation.test.ts';
 const YAGNI_SOURCE_POLICY_TEST = 'shared/common/__tests__/yagni-source-policy.test.ts';
+// D-60: agent-inbox/agent-mon test surface — independent mirror of the runner's own
+// `EXPERIMENTAL_ROOTS`. Kept as a separate constant (not imported) so this black-box contract can
+// catch drift between the runner and this test, same as EXCLUDED_NAMES/OPT_IN_KEYS below.
+const EXPERIMENTAL_ROOTS = [
+  'services/agent-inbox/',
+  'services/agent-mon/',
+  'cli/cmd/inbox/',
+  'cli/cmd/inbox-context/',
+  'cli/cmd/inbox-eval/',
+  'cli/cmd/inbox-review-plan/',
+  'cli/cmd/agent-mon/',
+] as const;
 const INCIDENT_TEST_LAYERS = {
   unit: [
     'shared/sdd/__tests__/spec-schema.test.ts',
@@ -27,6 +39,11 @@ const INCIDENT_TEST_LAYERS = {
   local: [
     'cli/__tests__/tool-behavior/clean-repo-composition.test.ts',
     'cli/__tests__/tool-behavior/sdd-verify-repair-adapters.test.ts',
+  ],
+  experimental: [
+    'cli/cmd/inbox-review-plan/inbox-review-plan.test.ts',
+    'services/agent-inbox/modules/inbox-core/__tests__/state-store.test.ts',
+    'services/agent-mon/monitor/__tests__/agent-monitor.test.ts',
   ],
 } as const;
 const EXCLUDED_NAMES = new Set([
@@ -68,18 +85,32 @@ function discoverUnder(dir: string): string[] {
   return files;
 }
 
+function isExperimental(file: string): boolean {
+  return EXPERIMENTAL_ROOTS.some((root) => file.startsWith(root));
+}
+
+// The full topology SSOT: every test file the runner is expected to discover and classify,
+// including the D-60 `experimental` layer (which used to be silently dropped by
+// `/agent-inbox/`/name-based exclusions — now it must land in `experimental` instead).
 function legacyGateCorpus(): string[] {
   return ['ai', 'cli', 'shared', 'services']
     .flatMap((root) => discoverUnder(join(ROOT, root)))
-    .filter(
-      (file) =>
-        !file.includes('/agent-inbox/') &&
+    .filter((file) => {
+      if (isExperimental(file)) return true;
+      return (
         !file.includes('/serve/__tests__/') &&
         !file.includes('.integration.test.') &&
         !file.includes('.real-integration.test.') &&
         !EXCLUDED_NAMES.has(basename(file))
-    )
+      );
+    })
     .sort();
+}
+
+// The subset that `deterministic`/`coverage` actually process — the full corpus minus the D-60
+// experimental layer, which those two modes must never touch (see requirement (б) in the brief).
+function deterministicGateCorpus(): string[] {
+  return legacyGateCorpus().filter((file) => !isExperimental(file));
 }
 
 function runRunner(command: string) {
@@ -93,7 +124,13 @@ function runRunner(command: string) {
 function listedTopology(): Record<Layer, string[]> {
   const result = runRunner('list');
   assert.strictEqual(result.status, 0, result.stderr);
-  const topology: Record<Layer, string[]> = { unit: [], contract: [], local: [], external: [] };
+  const topology: Record<Layer, string[]> = {
+    unit: [],
+    contract: [],
+    local: [],
+    external: [],
+    experimental: [],
+  };
   for (const line of result.stdout.trim().split('\n')) {
     const [layer, file, extra] = line.split('\t');
     assert.ok(TEST_LAYERS.includes(layer as Layer), line);
@@ -103,7 +140,7 @@ function listedTopology(): Record<Layer, string[]> {
   return topology;
 }
 
-function probeSpawns(mode: 'unit' | 'deterministic' | 'coverage'): RunnerProbe[] {
+function probeSpawns(mode: 'unit' | 'deterministic' | 'coverage' | 'experimental'): RunnerProbe[] {
   const probeMarker = '__TEST_TOPOLOGY_PROBE__';
   const source = `
 import { mock } from 'node:test';
@@ -193,8 +230,8 @@ describe('test topology contract', () => {
     );
   });
 
-  it('deterministic and partitioned coverage each own the complete corpus exactly once', () => {
-    const expected = legacyGateCorpus();
+  it('deterministic and partitioned coverage each own the complete corpus exactly once (minus D-60 experimental)', () => {
+    const expected = deterministicGateCorpus();
     const topology = listedTopology();
     const deterministic = probeSpawns('deterministic')[0].args.filter((arg) =>
       /\.test\.ts$/.test(arg)
@@ -213,6 +250,10 @@ describe('test topology contract', () => {
     assert.strictEqual(new Set(deterministic).size, deterministic.length);
     assert.deepStrictEqual([...coverage].sort(), expected);
     assert.strictEqual(new Set(coverage).size, coverage.length);
+    // D-60: neither mode may ever touch the experimental layer.
+    assert.ok(topology.experimental.length > 0);
+    assert.ok(!deterministic.some((file) => topology.experimental.includes(file)));
+    assert.ok(!coverage.some((file) => topology.experimental.includes(file)));
     assert.strictEqual(coverageSpawns.length, 2);
     assert.ok(coverageSpawns[0].args.some((arg) => arg.endsWith('/c8/bin/c8.js')));
     assert.ok(
@@ -247,10 +288,29 @@ describe('test topology contract', () => {
       pkg.scripts['test:topology'],
       'node --import tsx scripts/test-topology.ts check'
     );
+    assert.strictEqual(
+      pkg.scripts['test:experimental'],
+      'node --import tsx scripts/test-topology.ts experimental'
+    );
+  });
+
+  it('experimental owns exactly the D-60 layer, run in isolation with no coverage/network guard', () => {
+    const topology = listedTopology();
+    const [{ args }] = probeSpawns('experimental');
+    const files = args.filter((arg) => /\.test\.ts$/.test(arg));
+
+    assert.deepStrictEqual([...files].sort(), [...topology.experimental].sort());
+    assert.strictEqual(new Set(files).size, files.length);
+    assert.ok(!args.some((arg) => arg.endsWith('/c8/bin/c8.js')));
+    assert.ok(
+      !args.some(
+        (arg) => arg.startsWith('data:text/javascript,') && arg.includes('NODE_V8_COVERAGE')
+      )
+    );
   });
 
   it('pins one bounded outer concurrency for every runner mode', () => {
-    for (const mode of ['unit', 'deterministic', 'coverage'] as const) {
+    for (const mode of ['unit', 'deterministic', 'coverage', 'experimental'] as const) {
       for (const { args } of probeSpawns(mode)) {
         assert.strictEqual(
           args.filter((arg) => arg.startsWith('--test-concurrency=')).length,
@@ -277,13 +337,50 @@ describe('test topology contract', () => {
     assert.ok(topology.unit.every((file) => !file.includes('/tool-behavior/')));
   });
 
-  it('preserves intentional external and agent-inbox exclusions', () => {
+  it('preserves intentional external exclusions outside the D-60 experimental contour', () => {
+    // The D-60 experimental roots (agent-inbox, agent-mon) are excluded from `EXCLUDED_NAMES`/
+    // serve-tests/integration-name filtering everywhere: their files are meant to surface, just in
+    // the `experimental` layer (checked separately below). Everything else keeps the old behavior —
+    // these test files never appear in ANY layer, D-60 or not.
     const files = TEST_LAYERS.flatMap((layer) => listedTopology()[layer]);
-    assert.ok(files.every((file) => !file.includes('/agent-inbox/')));
-    assert.ok(files.every((file) => !file.includes('/serve/__tests__/')));
-    assert.ok(files.every((file) => !file.includes('.integration.test.')));
-    assert.ok(files.every((file) => !file.includes('.real-integration.test.')));
-    for (const name of EXCLUDED_NAMES) assert.ok(files.every((file) => !file.endsWith(`/${name}`)));
+    const nonExperimental = files.filter((file) => !isExperimental(file));
+    assert.ok(nonExperimental.every((file) => !file.includes('/agent-inbox/')));
+    assert.ok(nonExperimental.every((file) => !file.includes('/serve/__tests__/')));
+    assert.ok(nonExperimental.every((file) => !file.includes('.integration.test.')));
+    assert.ok(nonExperimental.every((file) => !file.includes('.real-integration.test.')));
+    for (const name of EXCLUDED_NAMES)
+      assert.ok(nonExperimental.every((file) => !file.endsWith(`/${name}`)));
+    // Genuinely unrelated exclusions (not D-60) must still vanish from every layer, experimental
+    // included — the flow-eval harness and the mr-stats integration probe are not agent-inbox/mon.
+    assert.ok(files.every((file) => file !== 'ai/flow-eval/__tests__/harness.test.ts'));
+    assert.ok(
+      files.every((file) => file !== 'services/mr-stats/__tests__/mr-stats.integration.test.ts')
+    );
+  });
+
+  it('D-60: experimental captures the agent-inbox/agent-mon contour instead of dropping it', () => {
+    const topology = listedTopology();
+    const experimental = topology.experimental;
+
+    assert.ok(experimental.length > 0);
+    assert.ok(experimental.every((file) => isExperimental(file)));
+    for (const layer of ['unit', 'contract', 'local', 'external'] as const) {
+      assert.ok(topology[layer].every((file) => !isExperimental(file)));
+    }
+    // Spot-check the files that used to be silently dropped entirely (agent-inbox path filter, or
+    // the name-based/serve/integration exclusions) — they must now surface here, unmodified.
+    for (const file of [
+      'services/agent-inbox/modules/inbox-api/__tests__/http-server.test.ts',
+      'services/agent-inbox/modules/inbox-eval/__tests__/eval-driver.test.ts',
+      'services/agent-inbox/modules/inbox-eval/__tests__/harness.test.ts',
+      'services/agent-inbox/modules/inbox-roles/__tests__/reviewer.e2e.test.ts',
+      'services/agent-inbox/serve/__tests__/full-flow.blackbox.test.ts',
+      'services/agent-inbox/serve/__tests__/run-mode.test.ts',
+      'services/agent-inbox/modules/inbox-vcs/__tests__/vcs-effects.integration.test.ts',
+      'services/agent-inbox/modules/inbox-vcs/__tests__/vcs-effects.real-integration.test.ts',
+    ]) {
+      assert.ok(experimental.includes(file), file);
+    }
   });
 
   it('help and unknown command keep a compact public interface', () => {
@@ -292,13 +389,15 @@ describe('test topology contract', () => {
     assert.match(help.stdout, /unit[\s\S]*deterministic[\s\S]*coverage[\s\S]*check[\s\S]*list/);
     assert.match(help.stdout, /npm test=deterministic/);
     assert.match(help.stdout, /bounded outer concurrency=\d+/);
+    assert.match(help.stdout, /experimental/);
+    assert.match(help.stdout, /D-60/);
     const unknown = runRunner('not-a-command');
     assert.strictEqual(unknown.status, 2);
     assert.match(unknown.stderr, /unknown command: not-a-command/);
   });
 
   it('every child mode drops opt-ins and credentials while preserving runtime env', () => {
-    for (const mode of ['unit', 'deterministic', 'coverage'] as const) {
+    for (const mode of ['unit', 'deterministic', 'coverage', 'experimental'] as const) {
       for (const { env } of probeSpawns(mode)) {
         for (const key of OPT_IN_KEYS) assert.strictEqual(env[key], undefined, `${mode}:${key}`);
         for (const key of CREDENTIAL_KEYS)
