@@ -1,5 +1,17 @@
 # AGENTS — Router
 
+## Directive markup — mandatory
+
+`ai/directives/**/*.xml` is prompt markup for an LLM to read, not an XML document. The `<Tag>…</Tag>`
+pairs are attention anchors — findable start/end boundaries for a model reading long context — not
+parser syntax; `id` values (`AX_*`, `STEP_*`, contract ids) are reference handles, not schema
+identifiers. Body text is ordinary markdown/prose: `&`, `<`, `>` are written as-is, never escaped.
+
+**Do not run an XML parser or validator (`xmllint` and analogues) against `ai/directives/**`.** A
+directive that "fails to parse" as XML is not broken — treating it as one and "fixing" its
+escaping corrupts the actual prompt text an agent reads. See `ai/kit/AUTHORING.md` §1 for the full
+authoring convention these files follow.
+
 ## Project description
 
 _(Обновляется по мере развития проекта; агент должен ориентироваться на этот блок.)_
