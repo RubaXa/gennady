@@ -839,6 +839,88 @@ describe('collectAndCompareSkills deleteFailed', () => {
     assert.equal(result.added.length, 1);
     assert.equal(result.deleteFailed.length, 1);
   });
+
+  // SO-2c: a file-level unlink inside a *surviving* skill (not the whole-skill deleteOrphan path)
+  // used to throw uncaught on EACCES/EBUSY — one unreadable file crashed the entire sync.
+  it('marks one file inside a supported skill as deleteFailed without crashing, and keeps syncing everything else', () => {
+    const sourceDir = join(_tmpDir, 'ai', 'skills');
+    mkdirSync(sourceDir, { recursive: true });
+    createFile(join(sourceDir, 'sdd-execute'), 'SKILL.md', '# Execute v2');
+
+    const targetDir = join(_tmpDir, '.claude', 'skills');
+    mkdirSync(join(targetDir, 'sdd-execute'), { recursive: true });
+    createFile(join(targetDir, 'sdd-execute'), 'SKILL.md', '# Execute v1');
+    createFile(join(targetDir, 'sdd-execute'), 'stale-a.sh', '#!/bin/bash\n');
+    createFile(join(targetDir, 'sdd-execute'), 'stale-b.sh', '#!/bin/bash\n');
+    // Both stale-* files were manifested by an earlier sync — both are ours to prune.
+    createFile(
+      targetDir,
+      '.gennady-synced',
+      'sdd-execute\nsdd-execute/SKILL.md\nsdd-execute/stale-a.sh\nsdd-execute/stale-b.sh\n'
+    );
+
+    const result = runDeps(sourceDir, targetDir, {
+      unlink: (p: string) => {
+        if (p.endsWith('stale-a.sh')) {
+          const err = new Error('EACCES: permission denied') as NodeJS.ErrnoException;
+          err.code = 'EACCES';
+          throw err;
+        }
+        unlinkSync(p);
+      },
+    });
+
+    assert.equal(result.deleteFailed.length, 1);
+    assert.equal(result.deleteFailed[0].skillName, 'sdd-execute');
+    assert.equal(result.deleteFailed[0].relativePath, 'stale-a.sh');
+    assert.equal(result.deleteFailed[0].errorCode, 'EACCES');
+    assert.ok(
+      existsSync(join(targetDir, 'sdd-execute', 'stale-a.sh')),
+      'the failed delete leaves the file in place'
+    );
+    assert.ok(
+      !existsSync(join(targetDir, 'sdd-execute', 'stale-b.sh')),
+      'the other orphan file in the same skill still deletes'
+    );
+    assert.equal(
+      result.entries.find((e) => e.relativePath === 'SKILL.md')?.status,
+      'updated',
+      'the rest of the skill still syncs after one file fails to delete'
+    );
+  });
+
+  // Regression (SO-2c): a rewritten manifest that dropped the undeletable file would mean the
+  // next run no longer owns it — mirrors the whole-skill retry guarantee (SO-2) at file grain.
+  it('keeps a failed file delete in the manifest so the next run retries it', () => {
+    const sourceDir = join(_tmpDir, 'ai', 'skills');
+    mkdirSync(sourceDir, { recursive: true });
+    createFile(join(sourceDir, 'sdd-execute'), 'SKILL.md', '# Execute');
+
+    const targetDir = join(_tmpDir, '.claude', 'skills');
+    mkdirSync(join(targetDir, 'sdd-execute'), { recursive: true });
+    createFile(join(targetDir, 'sdd-execute'), 'SKILL.md', '# Execute');
+    createFile(join(targetDir, 'sdd-execute'), 'stale.sh', '#!/bin/bash\n');
+    createFile(
+      targetDir,
+      '.gennady-synced',
+      'sdd-execute\nsdd-execute/SKILL.md\nsdd-execute/stale.sh\n'
+    );
+
+    runDeps(sourceDir, targetDir, {
+      unlink: () => {
+        const err = new Error('EBUSY: resource busy') as NodeJS.ErrnoException;
+        err.code = 'EBUSY';
+        throw err;
+      },
+    });
+
+    const manifest = readFileSync(join(targetDir, '.gennady-synced'), 'utf-8');
+    assert.ok(
+      manifest.includes('sdd-execute/stale.sh'),
+      'the failed path stays owned so the next run retries the delete'
+    );
+    assert.ok(existsSync(join(targetDir, 'sdd-execute', 'stale.sh')));
+  });
 });
 
 // #endregion
