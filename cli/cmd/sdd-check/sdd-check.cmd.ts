@@ -178,6 +178,33 @@ function addReadIssue(findings: Finding[], issue: ReadIssue): void {
   });
 }
 
+/**
+ * @purpose Load and check the project rule registry (SO-11); an unparseable registry warns
+ *   (B2-24) instead of vanishing silently, so SDD_RULE_FILE_MISSING never reports a false-clean
+ *   zero. Warning code is shared with T-3's own parse-failure reporting.
+ * @param projectRegistryFile Absolute path to the project's `ai/directives/knowledge.xml`.
+ * @param repoRoot Repository root, for resolving each registry entry's declared file.
+ * @returns SDD_RULE_FILE_MISSING findings per dangling entry, or one SDD_RULE_REGISTRY_UNPARSEABLE warning.
+ */
+function checkProjectRuleRegistry(projectRegistryFile: string, repoRoot: string): Finding[] {
+  if (!existsSync(projectRegistryFile)) return [];
+  try {
+    const registryEntries = parseRuleRegistry(readFileSync(projectRegistryFile, 'utf-8'));
+    return checkRuleRegistryFilesExist(projectRegistryFile, registryEntries, (entry) =>
+      existsSync(join(repoRoot, entry.file))
+    );
+  } catch (err) {
+    return [
+      {
+        severity: 'warn',
+        code: 'SDD_RULE_REGISTRY_UNPARSEABLE',
+        file: projectRegistryFile,
+        message: `ai/directives/knowledge.xml could not be parsed as a rule registry: ${(err as Error).message}`,
+      },
+    ];
+  }
+}
+
 /** @purpose Prove that one explicitly selected general-audit root is a real directory reached without a symlink alias. */
 function selectedRootIssue(path: string): ReadIssue | null {
   const absolute = resolve(path);
@@ -1411,18 +1438,10 @@ export async function run(
     findings.push(...checkTrackers(ticketRefs, trackerRowRefs));
     findings.push(...checkSpecHierarchy(specEntries));
     findings.push(...checkResearchOrphans(researchFiles, referencedResearch, registeredResearch));
-    // #region START_RULE_REGISTRY — invariant: SO-11, project registry only; parse failures are T-3's concern, not this existence-only check's
-    const projectRegistryFile = join(repoRoot, 'ai', 'directives', 'knowledge.xml');
-    if (existsSync(projectRegistryFile)) {
-      try {
-        const registryEntries = parseRuleRegistry(readFileSync(projectRegistryFile, 'utf-8'));
-        findings.push(
-          ...checkRuleRegistryFilesExist(projectRegistryFile, registryEntries, (entry) =>
-            existsSync(join(repoRoot, entry.file))
-          )
-        );
-      } catch {}
-    }
+    // #region START_RULE_REGISTRY — invariant: SO-11/B2-24, project registry only
+    findings.push(
+      ...checkProjectRuleRegistry(join(repoRoot, 'ai', 'directives', 'knowledge.xml'), repoRoot)
+    );
     // #endregion END_RULE_REGISTRY
     for (const [scope, { edges, scopeFile }] of moduleEdgesByScope) {
       findings.push(...checkModuleGraph(scope, scopeFile, edges));

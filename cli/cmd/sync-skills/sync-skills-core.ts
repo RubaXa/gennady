@@ -188,6 +188,8 @@ function isFileOwned(
  * @param sourceSkills Skills this run compared against the target.
  * @param prunedSkills Orphan skills this run deleted successfully.
  * @param installedNames Target skill directories seen before syncing, or null when unreadable.
+ * @param failedFileDeletions `skillName/relativePath` entries whose unlink threw this run (SO-2c)
+ *   — kept in the manifest so the next run still owns them and retries the delete.
  * @returns Entries to record in the manifest.
  */
 function computeNextManifestEntries(
@@ -195,7 +197,8 @@ function computeNextManifestEntries(
   owned: ReadonlySet<string>,
   sourceSkills: ReadonlyMap<string, ReadonlyMap<string, Buffer>>,
   prunedSkills: ReadonlySet<string>,
-  installedNames: readonly string[] | null
+  installedNames: readonly string[] | null,
+  failedFileDeletions: ReadonlySet<string> = new Set()
 ): string[] {
   const skillLevelEntries = nextManifestNames(
     owned,
@@ -219,7 +222,14 @@ function computeNextManifestEntries(
     }
   }
 
-  return [...new Set([...skillLevelEntries, ...retainedFileEntries, ...freshFileEntries])];
+  return [
+    ...new Set([
+      ...skillLevelEntries,
+      ...retainedFileEntries,
+      ...freshFileEntries,
+      ...failedFileDeletions,
+    ]),
+  ];
 }
 
 /**
@@ -494,6 +504,35 @@ export function deleteOrphan(
 }
 
 /**
+ * @purpose Delete one file inside a still-supported skill without letting an EACCES/EBUSY throw
+ *   crash the whole sync (SO-2c) — the single-file counterpart of deleteOrphan's whole-skill
+ *   delete-failure handling above.
+ * @param skillName Owning skill directory name.
+ * @param relativePath File path relative to the skill root.
+ * @param targetSkillDir Absolute path to this skill's directory in the target.
+ * @param deps Injectable filesystem dependencies (SyncCmdDeps).
+ * @returns 'deleted' on success, or 'deleteFailed' with the OS error code on a thrown unlink.
+ */
+function deleteSkillFile(
+  skillName: string,
+  relativePath: string,
+  targetSkillDir: string,
+  deps: SyncCmdDeps
+): SyncSkillsFileEntry {
+  try {
+    deps.unlink!(join(targetSkillDir, relativePath));
+    return { skillName, relativePath, status: 'deleted' };
+  } catch (err) {
+    return {
+      skillName,
+      relativePath,
+      status: 'deleteFailed',
+      errorCode: (err as NodeJS.ErrnoException).code ?? 'UNKNOWN',
+    };
+  }
+}
+
+/**
  * @purpose Main entry point: compare source skills with target, handle orphan deletion.
  * @param deps Injectable filesystem dependencies (SyncCmdDeps).
  * @param opts Sync-skills options.
@@ -583,6 +622,9 @@ export function collectAndCompareSkills(
   const previousManifest = readSyncManifest(opts.targetDir, deps);
 
   const entries: SyncSkillsFileEntry[] = [];
+  // SO-2c: file-level deletes that threw (EACCES/EBUSY) — kept out of the fresh manifest entries
+  // below so the next run still treats the path as owned and retries the delete.
+  const failedFileDeletions = new Set<string>();
 
   // #region START_SYNC_AND_CLEAN — invariants: iterate source skills, compare with target; delete target orphans
   for (const skillName of [...sourceSkills.keys()].sort()) {
@@ -618,13 +660,15 @@ export function collectAndCompareSkills(
     for (const relativePath of [...targetFiles.keys()].sort()) {
       if (incompleteSkills.has(skillName)) continue;
       if (!isFileOwned(previousManifest, skillName, relativePath)) continue;
-      entries.push({
-        skillName,
-        relativePath,
-        status: 'deleted',
-      });
-      if (!opts.dryRun) {
-        deps.unlink!(join(targetSkillDir, relativePath));
+
+      if (opts.dryRun) {
+        entries.push({ skillName, relativePath, status: 'deleted' });
+        continue;
+      }
+      const fileEntry = deleteSkillFile(skillName, relativePath, targetSkillDir, deps);
+      entries.push(fileEntry);
+      if (fileEntry.status === 'deleteFailed') {
+        failedFileDeletions.add(`${skillName}/${relativePath}`);
       }
     }
 
@@ -652,7 +696,14 @@ export function collectAndCompareSkills(
   // #region START_WRITE_MANIFEST — invariant: manifest reflects post-run ownership (SO-2/SO-2b)
   writeSyncManifest(
     opts.targetDir,
-    computeNextManifestEntries(previousManifest, owned, sourceSkills, prunedSkills, installedNames),
+    computeNextManifestEntries(
+      previousManifest,
+      owned,
+      sourceSkills,
+      prunedSkills,
+      installedNames,
+      failedFileDeletions
+    ),
     opts.dryRun ?? false,
     deps
   );

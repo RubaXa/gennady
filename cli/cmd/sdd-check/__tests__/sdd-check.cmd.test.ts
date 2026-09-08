@@ -1477,6 +1477,51 @@ describe('SddCheckCommand', () => {
     assert.strictEqual(r.exitCode, 0);
   });
 
+  // B2-24 regression: a broken registry used to vanish through a bare `catch {}`, and
+  // SDD_RULE_FILE_MISSING then reported a false-clean zero with no trace of why.
+  it('--all: a project knowledge.xml with a duplicate rule id warns SDD_RULE_REGISTRY_UNPARSEABLE instead of failing silently', async () => {
+    const root = join(dir, 'broken-registry-proj');
+    const scopeDir = join(root, 'specs', 'cli');
+    mkdirSync(scopeDir, { recursive: true });
+    writeFileSync(
+      join(scopeDir, 'cli.task-foo.md'),
+      CLEAN_TICKET.replace('cli-foo', 'CLI-foo'),
+      'utf-8'
+    );
+    writeFileSync(
+      join(scopeDir, 'cli.3-tasks.md'),
+      [
+        '# cli — Tasks',
+        '## 1. Tracker Index',
+        '| Task-ID | Title | Dependencies | Status | Reopens |',
+        '|---------|-------|--------------|--------|---------|',
+        '| CLI-foo | Foo | — | [x] DONE | — |',
+      ].join('\n'),
+      'utf-8'
+    );
+    mkdirSync(join(root, 'ai', 'directives'), { recursive: true });
+    writeFileSync(
+      join(root, 'ai', 'directives', 'knowledge.xml'),
+      [
+        '<Rules>',
+        '  <Rule id="R-1"><File>ai/directives/coding/r1.xml</File></Rule>',
+        '  <Rule id="R-1"><File>ai/directives/coding/r1-again.xml</File></Rule>',
+        '</Rules>',
+      ].join('\n'),
+      'utf-8'
+    );
+
+    const r = await mod.run(argv('--all', root));
+
+    const warnings = r.text.match(/SDD_RULE_REGISTRY_UNPARSEABLE/g) ?? [];
+    assert.strictEqual(warnings.length, 1, 'exactly one warning for the unparseable registry');
+    assert.match(r.text, /duplicate rule id "R-1"/);
+    // The registry never parsed, so the existence check can't have run either way — but that
+    // silence is now explained by the warning above, not a bare zero-findings false-clean.
+    assert.doesNotMatch(r.text, /SDD_RULE_FILE_MISSING/);
+    assert.strictEqual(r.exitCode, 0, 'a warning alone must not flip the exit code');
+  });
+
   it('--all before authoring ignores unrelated Markdown when specs/ and tasks/ are absent', async () => {
     const root = join(dir, 'empty-pre-authoring-proj');
     mkdirSync(join(root, 'ai', 'directives'), { recursive: true });
