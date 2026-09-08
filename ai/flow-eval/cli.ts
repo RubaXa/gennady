@@ -183,6 +183,21 @@ export async function loadScenarios(path: string): Promise<SddEvalScenario[]> {
   return value as SddEvalScenario[];
 }
 
+/**
+ * @purpose CI-suitable aggregate exit code for one batch (E-00). A `worker-error` (the harness/runtime
+ *   itself failed) or a failed DETERMINISTIC quality gate (R1/R-COMPLETE/MIGRATION `quality.pass ===
+ *   false`) is a hard batch failure. The judge's verdict (`pass`/`fail`/`inconclusive`) is diagnostic
+ *   only (D-28/L-14/E-21) and never appears in this computation — see `judge.ts`.
+ * @param artifacts Every scenario's durable outcome from this run.
+ * @returns 1 when the batch must fail CI, 0 otherwise.
+ */
+export function computeAggregateExitCode(artifacts: readonly SddEvalRunArtifact[]): 0 | 1 {
+  const failed = artifacts.some(
+    (artifact) => artifact.verdict === 'worker-error' || artifact.quality?.pass === false
+  );
+  return failed ? 1 : 0;
+}
+
 /** @purpose Execute the CLI; results are human-readable lines and no trace/JSON file is written. */
 export async function main(argv = process.argv.slice(2)): Promise<void> {
   const options = parseSddEvalCliArgs(argv);
@@ -242,6 +257,11 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
     const runStamp = `run-${new Date().toISOString().replace(/[:.]/g, '-')}`;
     const runDir = await persistRunArtifacts(artifactsRoot, runStamp, artifacts);
     console.log(`artifacts → ${runDir}`);
+    // Aggregate CI-suitable exit code (E-00): any worker-error or failed deterministic quality gate
+    // fails the batch. The judge's verdict never participates — see computeAggregateExitCode.
+    const exitCode = computeAggregateExitCode(artifacts);
+    console.log(`batch outcome: exit ${exitCode} (${artifacts.length} scenario(s) reported)`);
+    process.exitCode = exitCode;
   } finally {
     await teardown();
     if (!options.keep) console.log(`sandboxes removed: ${teardownDirs.length}`);
@@ -330,7 +350,7 @@ async function runAndReport(
     }
     // Collect this scenario's durable outcome so it survives the sandbox teardown below.
     if (directory) {
-      artifacts.push({
+      const artifact: SddEvalRunArtifact = {
         scenarioId: result.worker.scenarioId,
         verdict,
         status: result.worker.status,
@@ -339,7 +359,12 @@ async function runAndReport(
         specFiles: producesSpecs ? await collectSpecFiles(directory) : [],
         judgeFile,
         directory,
-      });
+      };
+      artifacts.push(artifact);
+      // Per-scenario gate preview (E-00): the same fold the final batch exit code uses, applied to
+      // this one scenario, so a mechanical FAIL is visible immediately next to its line instead of
+      // only in the trailing "batch outcome" summary once every scenario has finished.
+      console.log(`  gate: ${computeAggregateExitCode([artifact]) === 1 ? 'FAIL' : 'pass'}`);
     }
   }
 }
