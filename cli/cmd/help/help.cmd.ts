@@ -31,7 +31,7 @@ console.info(
   '  sync              Synchronize ai/directives/ from npm package into current project'
 );
 console.info(
-  '  sync-skills       Synchronize ai/directives/ (in full), then SDD skills from ai/skills/ to .claude/skills/'
+  '  sync-skills       Synchronize SDD skills from ai/skills/ to .claude/skills/ (add --with-directives to also sync ai/directives/ first, off by default — run `sync` on its own for that)'
 );
 console.info(
   '  agent-mon         Interactive terminal dashboard for monitoring active AI agent sessions'
