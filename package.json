@@ -37,7 +37,7 @@
     "cli/cmd/orient/README.md"
   ],
   "scripts": {
-    "prepare": "[ -d .git ] && git config --worktree core.hooksPath scripts/git-hooks || true",
+    "prepare": "git rev-parse --git-dir >/dev/null 2>&1 && git config --worktree core.hooksPath scripts/git-hooks || true",
     "type-check": "tsc --noEmit",
     "build:directives": "node --experimental-strip-types ai/kit/build-directives.ts",
     "check:directives-fresh": "node --experimental-strip-types ai/kit/check-directives-fresh.ts",

@@ -3,7 +3,7 @@
 //   (code, file), and fails ONLY when a genuinely new error appears. Warnings — known or new — never
 //   fail this gate; sdd-check's own exit code (1 whenever ANY error exists, baseline or not) is
 //   deliberately not propagated as-is.
-// @consumers: package.json "gate:sdd-check-baseline" / "check:ci" (CI-only by design — see
+// @consumers: package.json "gate:sdd-check-baseline", run by the pre-push gate (D-54) — see
 //   ai/flow-eval/.baseline/README.md: wiring this into the pre-commit-invoked `npm run check` would
 //   make every commit pay sdd-check's --all wall-clock cost, which D-38/GAP-B-1 explicitly avoids)
 // @tasks: N/A
