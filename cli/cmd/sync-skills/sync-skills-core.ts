@@ -221,6 +221,21 @@ export function scanSkills(
   sourceDir: string,
   skillNames?: string[]
 ): Map<string, Map<string, Buffer>> {
+  return scanSkillsChecked(sourceDir, skillNames).skills;
+}
+
+/**
+ * @purpose Like scanSkills, but also reports which skills a read error cut short (SO-7) — never
+ *   to be mistaken for a skill whose files the source genuinely dropped.
+ * @param sourceDir Source directory (ai/skills/).
+ * @param [skillNames] Optional filter: only scan these skill names.
+ * @throws If a requested skillName does not exist in sourceDir.
+ * @returns Skill file map, plus the names of skills a read error cut short.
+ */
+function scanSkillsChecked(
+  sourceDir: string,
+  skillNames?: string[]
+): { skills: Map<string, Map<string, Buffer>>; incompleteSkills: Set<string> } {
   const available = listAvailableSkillNames(sourceDir);
 
   const targetNames = skillNames && skillNames.length > 0 ? skillNames : available;
@@ -234,23 +249,37 @@ export function scanSkills(
     }
   }
 
-  const result = new Map<string, Map<string, Buffer>>();
+  const skills = new Map<string, Map<string, Buffer>>();
+  const incompleteSkills = new Set<string>();
 
   for (const name of targetNames) {
     const skillDir = join(sourceDir, name);
     const files = new Map<string, Buffer>();
-    collectSkillFiles(skillDir, '', undefined, files);
-    result.set(name, files);
+    const incomplete = { value: false };
+    collectSkillFiles(skillDir, '', undefined, files, incomplete);
+    if (incomplete.value) incompleteSkills.add(name);
+    skills.set(name, files);
   }
 
-  return result;
+  return { skills, incompleteSkills };
 }
 
+/**
+ * @purpose Recursively collect a skill directory's files into `result`.
+ * @invariant SO-7: a `readdir` failure marks `incomplete.value` (when given) instead of silently
+ *   returning as if this subtree were empty — read-failed and genuinely-empty must stay distinct.
+ * @param dir Directory to scan.
+ * @param relativePrefix Path prefix relative to the skill root, `/`-separated.
+ * @param depsOrFs Injectable IO, or undefined to use real fs (scanSkills' source-side reads).
+ * @param result Accumulator for discovered file paths → contents.
+ * @param [incomplete] Set to `{ value: true }` if any read under `dir` failed.
+ */
 function collectSkillFiles(
   dir: string,
   relativePrefix: string,
   depsOrFs: SyncCmdDeps | undefined,
-  result: Map<string, Buffer>
+  result: Map<string, Buffer>,
+  incomplete?: { value: boolean }
 ): void {
   const _readdir = depsOrFs ? depsOrFs.readdir! : readdirSync;
   const _stat = depsOrFs ? depsOrFs.stat! : statSync;
@@ -259,6 +288,7 @@ function collectSkillFiles(
   try {
     entries = _readdir(dir);
   } catch {
+    if (incomplete) incomplete.value = true;
     return;
   }
 
@@ -277,7 +307,7 @@ function collectSkillFiles(
     if (!st) continue;
 
     if (st.isDirectory()) {
-      collectSkillFiles(fullPath, relativePath, depsOrFs, result);
+      collectSkillFiles(fullPath, relativePath, depsOrFs, result, incomplete);
     } else if (st.isFile()) {
       const rawPath = relativePath.split(sep).join('/');
       result.set(rawPath, _readFile(fullPath));
@@ -512,7 +542,10 @@ export function collectAndCompareSkills(
 
   // #region START_SCAN_SKILLS — invariants: scan source returns skill→files map; list target skills for orphan detection
   const shippedNames = new Set(listAvailableSkillNames(opts.sourceDir));
-  const sourceSkills = scanSkills(opts.sourceDir, opts.skillNames);
+  const { skills: sourceSkills, incompleteSkills } = scanSkillsChecked(
+    opts.sourceDir,
+    opts.skillNames
+  );
 
   let targetSkillNames: string[] = [];
   // null = the listing is unknown, so it must not be read as "the directory is empty" when
@@ -568,8 +601,10 @@ export function collectAndCompareSkills(
       targetFiles.delete(relativePath);
     }
 
-    // SO-2b: delete only files this tool manifested before this run (isFileOwned) — see its doc.
+    // SO-2b/SO-7: delete only manifested files (isFileOwned) of a fully-read skill — a cut-short
+    // read (incompleteSkills) looks exactly like a dropped file otherwise, so it is skipped too.
     for (const relativePath of [...targetFiles.keys()].sort()) {
+      if (incompleteSkills.has(skillName)) continue;
       if (!isFileOwned(previousManifest, skillName, relativePath)) continue;
       entries.push({
         skillName,
