@@ -22,10 +22,12 @@
 
 **Invariants:**
 
-- Ровно один режим: `round` | `line` | `close` | `phase` | `handoff` | `blocker` | `resolved` | `complete`
+- Ровно один режим: `round` | `line` | `close` | `phase` | `handoff` | `blocker` | `resolved` | `complete` | `authoring-complete` | `audit-receipt` | `review-receipt` (11; см. `MODES`, `sdd-log.cmd.ts:62-74`)
 - `complete` требует `--phase P<N>`, typed payload с `artifacts` / `decisions` / `open` / `deviations`, receipt этой фазы и ровно один её skeleton в последнем Round
+- `authoring-complete` требует exact `*.spec.md` путь (не Task-ID), чистый `checkSpecAuthoringDraft` и записывает draft/final authoring receipt на саму спеку — `sdd-log` для тикетов и этот режим для спек делят одну команду, не парсер журнала
+- `audit-receipt`/`review-receipt` требуют single-line `<verdict>` (≤120 символов, без плейсхолдера) и группу, где каждый член резолвится и стоит `[x]` DONE; пишут group-completion receipt на владеющую спеку, не в `EXECUTION_LOG` тикета
 - Round-номер авто-инкремент по числу `### Round N`
-- exit `0` записано · `1` файл · `2` нет секции / receipt / согласованного phase-state · `4` плохой вызов / обязательный флаг
+- exit `0` записано · `1` файл · `2` нет секции / receipt / согласованного phase-state / group-receipt state · `4` плохой вызов / обязательный флаг / authoring state
 <!--/SECTION:MODULE_VISION-->
 
 <!--SECTION:MODULE_USAGE_EXAMPLE-->
@@ -84,23 +86,34 @@ $ npx gennady sdd-log ticket.md line 'ver `<cmd>` → pass'
 
 ## 3. Entity Inventory (Closed-World)
 
-| Name                                                                                | Type         | Purpose                                                        |
-| ----------------------------------------------------------------------------------- | ------------ | -------------------------------------------------------------- |
-| `run`                                                                               | Command      | Парс режима, чтение, валидация, append/complete, одна запись   |
-| `findSectionBounds`                                                                 | Utility      | (`shared/sdd/section`) индексы маркеров секции — точка вставки |
-| `hasPlaceholder`                                                                    | Utility      | Детект неподставленного `<…>`-плейсхолдера                     |
-| `nextRoundNumber`                                                                   | Utility      | Следующий номер Round по существующим `### Round N`            |
-| `buildRoundHeader`                                                                  | Utility      | Текст заголовка Round                                          |
-| `buildEventLine`                                                                    | Utility      | Строка `- [x] \`<ts>\` <content>`                              |
-| `buildCloseBlock` / `closeCurrentRound`                                             | Utility      | Блок Round-close и его одноразовый переход skeleton → DONE     |
-| `buildPhaseHeader`                                                                  | Utility      | `#### <PhaseID>` [+ ` — re-run: <reason>`], verbatim           |
-| `buildHandoffLine`                                                                  | Utility      | `**Handoff →** <payload>`, verbatim, без ts                    |
-| `completePhase`                                                                     | Utility      | Чистый all-or-nothing переход receipt+skeleton+overview        |
-| `isCompleteHandoffPayload`                                                          | Utility      | Проверка четырёх typed Handoff-полей                           |
-| `buildBlockerBlock`                                                                 | Utility      | Полный BLOCKER_FORMAT блок (🛑/🔗/💬)                          |
-| `badInvocation` / `fileError` / `noLogSection` / `placeholderError` / `missingFlag` | Utility      | Билдеры диагностик                                             |
-| `PLACEHOLDER_RE`                                                                    | Value Object | `/<[^>\s]+>/` — паттерн плейсхолдера                           |
-| `LogOutcome`                                                                        | Type         | `{ok:true,text}` либо `{ok:false,code,exitCode,message}`       |
+| Name                                                                                  | Type         | Purpose                                                                                                            |
+| ------------------------------------------------------------------------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------ |
+| `run`                                                                                 | Command      | Парс режима, чтение, валидация, append/complete, одна запись                                                       |
+| `findSectionBounds`                                                                   | Utility      | (`shared/sdd/section`) индексы маркеров секции — точка вставки                                                     |
+| `hasPlaceholder`                                                                      | Utility      | Детект неподставленного `<…>`-плейсхолдера                                                                         |
+| `nextRoundNumber`                                                                     | Utility      | Следующий номер Round по существующим `### Round N`                                                                |
+| `buildRoundHeader`                                                                    | Utility      | Текст заголовка Round                                                                                              |
+| `buildEventLine`                                                                      | Utility      | Строка `- [x] \`<ts>\` <content>`                                                                                  |
+| `buildCloseBlock` / `closeCurrentRound`                                               | Utility      | Блок Round-close и его одноразовый переход skeleton → DONE                                                         |
+| `buildPhaseHeader`                                                                    | Utility      | `#### <PhaseID>` [+ ` — re-run: <reason>`], verbatim                                                               |
+| `buildHandoffLine`                                                                    | Utility      | `**Handoff →** <payload>`, verbatim, без ts                                                                        |
+| `completePhase`                                                                       | Utility      | Чистый all-or-nothing переход receipt+skeleton+overview                                                            |
+| `isCompleteHandoffPayload`                                                            | Utility      | Проверка четырёх typed Handoff-полей                                                                               |
+| `buildBlockerBlock`                                                                   | Utility      | Полный BLOCKER_FORMAT блок (🛑/🔗/💬)                                                                              |
+| `buildResolvedLine`                                                                   | Utility      | Строка `resolved`: закрывает открытый блокер по фазе, verbatim, с ts                                               |
+| `findPhaseBlockBounds`                                                                | Utility      | Границы блока `#### <PhaseID>` для `--phase`-адресуемых режимов (`line`/`handoff`/`blocker`/`resolved`/`complete`) |
+| `setMetaStatus`                                                                       | Utility      | Синхронизирует `META/Status` при `round`/`close` (tolerant — нет строки ⇒ `changed:false`)                         |
+| `completeSpecAuthoring`                                                               | Utility      | (`sdd-log.types.ts`) заменяет draft-маркер спеки на final authoring receipt (режим `authoring-complete`)           |
+| `checkSpecAuthoringDraft`                                                             | Utility      | (`shared/sdd/check.ts`) precondition-проверка спеки перед `authoring-complete`; внедряема в тестах                 |
+| `resolveAuditGroup`                                                                   | Utility      | (`shared/sdd/audit-group.ts`) резолвит тикет к group-владельцу + спеке для `audit-receipt`/`review-receipt`        |
+| `buildGroupReceipt` / `upsertGroupReceipt`                                            | Utility      | (`shared/sdd/group-receipt.ts`) строит и записывает (upsert по `kind`) group-completion receipt на спеку           |
+| `GroupReceiptKind`                                                                    | Type         | `'audit' \| 'review'` — тип group-receipt режима                                                                   |
+| `badInvocation` / `fileError` / `noLogSection` / `placeholderError` / `missingFlag`   | Utility      | Билдеры диагностик (`ERR_CLI_SDD_LOG_BAD_INVOCATION`/`_FILE`/`_NO_LOG_SECTION`/`_PLACEHOLDER`/`_MISSING_FLAG`)     |
+| `phaseNotOpenError` / `payloadFileError` / `roundCloseError` / `phaseCompletionError` | Utility      | Билдеры диагностик (`_PHASE_NOT_OPEN`/`_PAYLOAD_FILE`/`_CLOSE_STATE`/`_COMPLETE_STATE`)                            |
+| `authoringCompletionError` / `groupReceiptError`                                      | Utility      | Билдеры диагностик (`_AUTHORING_STATE`/`_GROUP_RECEIPT_STATE`)                                                     |
+| `unknownIdError` / `ambiguousIdError`                                                 | Utility      | Билдеры диагностик Task-ID-резолва (`_UNKNOWN_ID`/`_AMBIGUOUS_ID`)                                                 |
+| `PLACEHOLDER_RE`                                                                      | Value Object | `/<[^>\s]+>/` — паттерн плейсхолдера                                                                               |
+| `LogOutcome`                                                                          | Type         | `{ok:true,text}` либо `{ok:false,code,exitCode,message}`                                                           |
 
 <!--/SECTION:ENTITY_INVENTORY-->
 
@@ -116,8 +129,8 @@ $ npx gennady sdd-log ticket.md line 'ver `<cmd>` → pass'
 **Contract (DbC):**
 
 - Preconditions:
-  - `<ticket>` + ровно один режим (`round`/`line`/`close`/`phase`/`handoff`/`blocker`); все режимы кроме `close` требуют контент
-  - `blocker` дополнительно требует `--axiom <AX_NAME>` и `--unblock "<action>"`
+  - `<ticket>` + ровно один append-режим (`round`/`line`/`close`/`phase`/`handoff`/`blocker`/`resolved`); все режимы кроме `close` требуют контент. `complete` (4.3), `authoring-complete` (4.4) и `audit-receipt`/`review-receipt` (4.5) — отдельные контракты, вне append-only секции журнала
+  - `blocker`/`resolved` дополнительно требуют `--phase P<N>`; `blocker` также требует `--axiom <AX_NAME>` и `--unblock "<action>"` (или строгий `--payload-file`)
   - Тикет содержит ровно одну чистую пару маркеров `EXECUTION_LOG`
 - Postconditions:
   - Новые строки вставлены строго перед `<!--/SECTION:EXECUTION_LOG-->`; прочие байты файла не изменены
@@ -166,24 +179,59 @@ $ npx gennady sdd-log ticket.md line 'ver `<cmd>` → pass'
   - повторный `complete` отклоняется до записи
   - receipt не создаётся и не подделывается `sdd-log`; его владельцем остаётся `sdd-verify`
 
+### 4.4 Spec Authoring Completion
+
+- **Runtime Backing:** `real-runtime`
+- **Verification Levels:** `unit`
+
+**Contract (DbC):**
+
+- Preconditions:
+  - режим `authoring-complete` получил exact `*.spec.md` путь (Task-ID не резолвится — файл может ещё не быть проиндексирован)
+  - `checkSpecAuthoringDraft` на текущем содержимом даёт ноль находок
+- Postconditions:
+  - `completeSpecAuthoring` заменяет draft-маркер на final authoring receipt одной identity-preserving записью (`writeProvenRepoFile`)
+  - при ≥1 находке — отказ (`ERR_CLI_SDD_LOG_AUTHORING_STATE`, exit 4) с текстом первой находки; файл не тронут
+- Invariants:
+  - Спека вне `EXECUTION_LOG`/тикетного журнала — этот режим не парсит и не пишет секцию `EXECUTION_LOG`
+
+### 4.5 Group Completion Receipt
+
+- **Runtime Backing:** `real-runtime`
+- **Verification Levels:** `unit`, `integration`
+
+**Contract (DbC):**
+
+- Preconditions:
+  - режим `audit-receipt` (kind `audit`) или `review-receipt` (kind `review`) получил single-line `<verdict>` (≤120 символов, без `<…>`-плейсхолдера)
+  - `resolveAuditGroup(ticket, root)` резолвит `<ticket>` к группе-владельцу и её спеке; каждый член группы — `[x]` DONE
+- Postconditions:
+  - `buildGroupReceipt` строит receipt (kind, groupId, git-ref, verdict, timestamp, участники); отказ, если хотя бы один член не DONE — файл не тронут
+  - `upsertGroupReceipt` пишет receipt на владеющую спеку (не на тикет и не в `EXECUTION_LOG`) одной записью
+- Invariants:
+  - Receipt воспроизводим: тот же verdict/участники/git-ref дают тот же текст блока (upsert заменяет предыдущий receipt того же kind, не дублирует)
+
 <!--/SECTION:MODULE_CONTRACTS-->
 
 <!--SECTION:PUBLIC_OPTIONS-->
 
 ## 5. Public Options & Policies
 
-| Argument                                               | Type   | Description                                                    |
-| ------------------------------------------------------ | ------ | -------------------------------------------------------------- |
-| `<ticket>`                                             | string | Путь к тикету                                                  |
-| `round "<reason>"`                                     | mode   | Открыть Round (авто-номер, дата)                               |
-| `line "<content>"`                                     | mode   | Дописать timestamped event-строку                              |
-| `close`                                                | mode   | Атомарно закрыть текущий Round без дублирования skeleton       |
-| `phase <P-ID> ["— re-run: <reason>"]`                  | mode   | Дописать заголовок фазы `#### <P-ID>` per `PHASE_BLOCK_FORMAT` |
-| `handoff "<payload>"`                                  | mode   | Дописать `**Handoff →** <payload>` per `HANDOFF_FORMAT`        |
-| `blocker "<reason>" --axiom <AX> --unblock "<action>"` | mode   | Human-compatible inline form                                   |
-| `complete "<typed payload>" --phase P<N>`              | mode   | Одной записью закрыть проверенную фазу                         |
-| `--content-file .claude/tmp/<name>`                    | flag   | One-shot literal payload for round/line/phase/handoff/resolved |
-| `--payload-file .claude/tmp/<name>.json`               | flag   | Strict `{reason,axiom,unblock}` blocker payload                |
+| Argument                                                            | Type   | Description                                                          |
+| ------------------------------------------------------------------- | ------ | -------------------------------------------------------------------- |
+| `<ticket>`                                                          | string | Путь к тикету (или Task-ID — резолвится через `resolveTicketArg`)    |
+| `round "<reason>"`                                                  | mode   | Открыть Round (авто-номер, дата)                                     |
+| `line "<content>" [--phase P<N>]`                                   | mode   | Дописать timestamped event-строку (в конец журнала либо в блок фазы) |
+| `close`                                                             | mode   | Атомарно закрыть текущий Round без дублирования skeleton             |
+| `phase <P-ID> ["— re-run: <reason>"]`                               | mode   | Дописать заголовок фазы `#### <P-ID>` per `PHASE_BLOCK_FORMAT`       |
+| `handoff "<payload>" [--phase P<N>]`                                | mode   | Дописать `**Handoff →** <payload>` per `HANDOFF_FORMAT`              |
+| `blocker "<reason>" --phase P<N> --axiom <AX> --unblock "<action>"` | mode   | Human-compatible inline form; фаза обязательна                       |
+| `resolved "<content>" --phase P<N>`                                 | mode   | Дописать timestamped строку закрытия блокера в блок фазы             |
+| `complete "<typed payload>" --phase P<N>`                           | mode   | Одной записью закрыть проверенную фазу                               |
+| `authoring-complete <spec.md>`                                      | mode   | Заменить draft-маркер спеки на final authoring receipt (см. 4.4)     |
+| `audit-receipt "<verdict>"` / `review-receipt "<verdict>"`          | mode   | Записать group-completion receipt на владеющую спеку (см. 4.5)       |
+| `--content-file .claude/tmp/<name>`                                 | flag   | One-shot literal payload for round/line/phase/handoff/resolved       |
+| `--payload-file .claude/tmp/<name>.json`                            | flag   | Strict `{reason,axiom,unblock}` blocker payload                      |
 
 <!--/SECTION:PUBLIC_OPTIONS-->
 
@@ -263,6 +311,6 @@ cli/cmd/sdd-log/
 
 ## 8. Inter-Module Dependencies
 
-- **Depends on:** `shared/common/parse-args.ts`, `shared/common/scratch-payload-file.ts`, `shared/sdd/section.ts`, `#logger`
-- **Provides to:** `gennady.ts`; вызывается из `execute` (open/close Round) и `phase-execution-protocol` (event-строки)
+- **Depends on:** `shared/common/parse-args.ts`, `shared/common/scratch-payload-file.ts`, `shared/sdd/section.ts`, `shared/sdd/ticket-resolve.ts`, `shared/sdd/audit-group.ts`, `shared/sdd/group-receipt.ts`, `shared/sdd/check.ts` (`checkSpecAuthoringDraft`), `shared/common/repo-file-identity.ts`, `shared/common/changed-files.ts` (`getHeadRef`), `shared/sdd/tool-guidance.ts`, `#logger`
+- **Provides to:** `gennady.ts`; вызывается из `execute` (open/close Round), `phase-execution-protocol` (event-строки), scaffold/close-скиллов (`authoring-complete`, `audit-receipt`/`review-receipt`)
 <!--/SECTION:INTER_MODULE_DEPENDENCIES-->
