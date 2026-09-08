@@ -207,6 +207,15 @@ export const KNOWN_DANGLING_AXIOM_REFS: ReadonlySet<string> = new Set(
       ['AX_CATCH_LOG_RECOVER', ['amplify-observability.directive.xml'], 'unassigned — 40-doc §4.1 row 16'],
       ['AX_GITIGNORE_BASELINE', ['amplify-security.directive.xml'], 'unassigned — 40-doc §4.1 row 17'],
       ['AX_E2E_PROOF_SCREENSHOT_ALWAYS', ['infra.directive.xml'], 'unassigned — 40-doc §4.1 row 18'],
+      // formats/project-tasks-index.xml cites AX_ENV_FIX_CHANNEL as a parenthetical pointer inside
+      // the `env-fix` token's grammar string (shared/sdd/execution-log.ts, single home) — prose
+      // documentation naming the governing axiom, not a {{> }} partial include; project-tasks-index
+      // is a rendered spec skeleton (no BeliefState) so there is no directive site to wire this
+      // into. Pre-existing since B2-03 (V-BATCH-04); only surfaced once T-B6-08's undefined-ref
+      // gate (Пачка 5) started scanning rendered format skeletons too, hit by the lead/specs-match-
+      // code × lead/kit-lint rebase. Unassigned — no task in this plan owns turning the citation
+      // into a real include.
+      ['AX_ENV_FIX_CHANNEL', ['formats/project-tasks-index.xml'], 'unassigned — surfaced by V-BATCH-04 rebase onto Пачка 5 (T-B6-08)'],
       // Class II (no library file anywhere — id referenced but never authored) — needs an axiom
       // AUTHORED first, not merely connected; unassigned in this plan as of Пачка 5.
       ['AX_USAGE_WAIVER_DISCIPLINE', ['audit.directive.xml', 'formats/dbc-contracts.xml', 'formats/entity-surface-format.xml'], 'unassigned (class II, no library source) — 40-doc §4.1 row 7'],
