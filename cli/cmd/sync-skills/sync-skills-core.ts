@@ -18,8 +18,20 @@ import type {
   SyncSkillsOptions,
 } from './sync-skills.types.ts';
 
-/** @purpose Filenames excluded from scan: hidden files and system artifacts. */
-const EXCLUDED_NAMES = new Set(['.DS_Store']);
+/** @purpose Names never deployed into a project: hidden files, system artifacts, skill tests. */
+const EXCLUDED_NAMES = new Set(['.DS_Store', '__tests__']);
+
+/**
+ * @purpose True for a test file that must stay in this repo rather than ship with the skill (SO-6).
+ * @invariant Regression: a skill's own `.test.ts`/`.spec.js` files were deployed into consumer
+ *   projects, where their imports of the gennady checkout (`shared/`, `services/`) do not
+ *   resolve — breaking the consumer's typecheck on a file they never wrote.
+ * @param name File name (basename), not a path.
+ * @returns True when name is a test/spec file that must not be deployed.
+ */
+function isTestArtifact(name: string): boolean {
+  return /\.(test|spec)\.[cm]?[jt]sx?$/.test(name);
+}
 
 /**
  * @purpose Name of the file recording which skills — and which files inside them — this sync installed.
@@ -308,7 +320,7 @@ function collectSkillFiles(
 
     if (st.isDirectory()) {
       collectSkillFiles(fullPath, relativePath, depsOrFs, result, incomplete);
-    } else if (st.isFile()) {
+    } else if (st.isFile() && !isTestArtifact(name)) {
       const rawPath = relativePath.split(sep).join('/');
       result.set(rawPath, _readFile(fullPath));
     }
