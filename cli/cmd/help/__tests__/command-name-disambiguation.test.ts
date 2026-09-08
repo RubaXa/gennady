@@ -19,6 +19,13 @@
 // It locks the two structural properties a wording review cannot: (1) each of the seven names is
 // listed, in both surfaces, described by exactly one line whose description text is not a
 // duplicate of any other listed name's; (2) `sdd-rules` is listed in neither.
+//
+// A third property locks the cross-ref prose itself, in its own file (not just the two surfaces
+// above): each of the four `help.ts` files that carries a "Not `X` (…)" disambiguation line is
+// checked for a literal, backtick-quoted reference to each look-alike name it names — and that
+// referenced name is itself one of NAMES (a real, currently-disambiguated command, not a stale or
+// misspelled one). Without this, deleting any of the four cross-ref lines left the test green: the
+// two `it`s above read `help.cmd.ts` and `cli.spec.md`, never `cli/cmd/*/help.ts`.
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -38,6 +45,17 @@ const NAMES = [
 ] as const;
 
 const DEFERRED_NAME = 'sdd-rules';
+
+// The four `help.ts` files that carry a "Not `X` (…)" disambiguation line, and the look-alike
+// name(s) each one's line must literally, verbatim cross-reference by name. `refs` targets must
+// each be a member of NAMES (asserted below) — a cross-ref to a name this lock does not itself
+// disambiguate would defeat the point.
+const CROSS_REFS: ReadonlyArray<{ file: string; refs: readonly string[] }> = [
+  { file: 'cli/cmd/orient/help.ts', refs: ['sdd-orient'] },
+  { file: 'cli/cmd/sdd-migrate/help.ts', refs: ['sync', 'sync-skills'] },
+  { file: 'cli/cmd/sdd-sync/help.ts', refs: ['sync', 'sync-skills'] },
+  { file: 'cli/cmd/sync/help.ts', refs: ['sync-skills', 'sdd-sync'] },
+];
 
 function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -116,5 +134,24 @@ describe('command name disambiguation (SO-14)', () => {
       new RegExp(`^- \\[${escapeRegExp(DEFERRED_NAME)}\\]`, 'm'),
       'sdd-rules is a deferred command (§3.1) — no module-map entry until it is actually built'
     );
+  });
+
+  it('cross-references each look-alike name by its literal, existing name in its own help.ts', () => {
+    for (const { file, refs } of CROSS_REFS) {
+      const content = readFileSync(resolve(ROOT, file), 'utf-8');
+      for (const ref of refs) {
+        assert.ok(
+          (NAMES as readonly string[]).includes(ref),
+          `${file}: cross-ref target \`${ref}\` is not one of this lock's own NAMES — update ` +
+            'both together if the name changed'
+        );
+        assert.match(
+          content,
+          new RegExp('`' + escapeRegExp(ref) + '`'),
+          `${file}: expected a literal cross-reference to \`${ref}\` (a "Not \`${ref}\`…" ` +
+            'disambiguation line) — it was removed or reworded away from the exact name'
+        );
+      }
+    }
   });
 });
