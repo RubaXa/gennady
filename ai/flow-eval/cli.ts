@@ -7,6 +7,7 @@ import { join, resolve } from 'node:path';
 import { SddEvalOpenCodeEvidenceSource } from './evidence.ts';
 import { parseOpenCodeModel, SddEvalOpenCodeRuntime } from './opencode-runtime.ts';
 import { provisionScenarioDirectories } from './provision.ts';
+import { resolveBasePrompt } from './prompts.ts';
 import { checkR1Structure, checkCompletion } from './quality-gate.ts';
 import {
   captureBaseline,
@@ -22,6 +23,7 @@ import {
   type SddEvalRunArtifact,
 } from './sandbox-lifecycle.ts';
 import { SddEvalSessionDirectoryMap } from './session-directory.ts';
+import { SDD_EVAL_PHASES, SDD_EVAL_MODES } from './types.ts';
 import type { SddEvalConfig, SddEvalScenario } from './types.ts';
 
 /** @purpose Parsed command-line options; all model values retain provider/model configurability. */
@@ -130,20 +132,52 @@ function parseSddEvalCliArgs(argv: string[]): SddEvalCliOptions {
   return { scenarioFile, directory, gennadyRoot, keep, artifactsDir, config };
 }
 
-async function loadScenarios(path: string): Promise<SddEvalScenario[]> {
+const SDD_EVAL_PHASE_SET = new Set<string>(SDD_EVAL_PHASES);
+const SDD_EVAL_MODE_SET = new Set<string>(SDD_EVAL_MODES);
+
+/**
+ * @purpose Parse and validate the scenario file, fail-fast (GAP-E-1/H-16). A typo in `phase` used to
+ *   compose a silently phase-less prompt (`prompts.ts` filters out the resulting `undefined`), and a
+ *   typo in `mode` used to silently fall back to a DIFFERENT valid prompt — both looked like a normal
+ *   run but measured the wrong branch. Both are now a load-time error naming the field and scenario id.
+ */
+export async function loadScenarios(path: string): Promise<SddEvalScenario[]> {
   const value: unknown = JSON.parse(await readFile(path, 'utf8'));
   if (!Array.isArray(value) || value.some((item) => !item || typeof item !== 'object')) {
     throw new Error('scenario file must contain an array of scenario objects');
   }
   const scales = new Set(['product', 'module', 'function', 'fix']);
   for (const item of value as Array<Record<string, unknown>>) {
+    const id = String(item.id ?? '<unknown>');
+    if (typeof item.phase !== 'string' || !SDD_EVAL_PHASE_SET.has(item.phase)) {
+      throw new Error(
+        `scenario ${id} has invalid PHASE: ${JSON.stringify(item.phase)} ` +
+          `(expected one of ${SDD_EVAL_PHASES.join(', ')})`
+      );
+    }
+    if (typeof item.mode !== 'string' || !SDD_EVAL_MODE_SET.has(item.mode)) {
+      throw new Error(
+        `scenario ${id} has invalid MODE: ${JSON.stringify(item.mode)} ` +
+          `(expected one of ${SDD_EVAL_MODES.join(', ')})`
+      );
+    }
     if (item.scale !== undefined && !scales.has(String(item.scale))) {
-      throw new Error(`scenario ${String(item.id ?? '<unknown>')} has invalid SCALE`);
+      throw new Error(`scenario ${id} has invalid SCALE`);
     }
     if (item.phase === 'spec-authoring' && item.scale === undefined) {
-      throw new Error(
-        `scenario ${String(item.id ?? '<unknown>')} must provide synthetic operator-confirmed SCALE`
+      throw new Error(`scenario ${id} must provide synthetic operator-confirmed SCALE`);
+    }
+    // `phase`/`mode` are each individually valid enum members at this point, but `brownfield` further
+    // restricts which modes it accepts (prompts.ts owns that mapping) — resolve it NOW, before any
+    // sandbox is provisioned or worker session started, so an unsupported combination fails the whole
+    // load instead of surfacing only once the runner reaches this particular scenario.
+    try {
+      resolveBasePrompt(
+        item.phase as SddEvalScenario['phase'],
+        item.mode as SddEvalScenario['mode']
       );
+    } catch (cause) {
+      throw new Error(`scenario ${id} ${cause instanceof Error ? cause.message : String(cause)}`);
     }
   }
   return value as SddEvalScenario[];
