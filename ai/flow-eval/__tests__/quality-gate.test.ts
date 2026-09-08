@@ -46,15 +46,25 @@ describe('parseSddCheckResult (R1, both outcomes)', () => {
     assert.strictEqual(r.pass, true);
   });
 
-  it('FAIL still wins over a stray "clean" substring when an error count is present and > 0', () => {
-    // Regression guard: a > 0 error count must never be masked by an unrelated "clean" token elsewhere
-    // in combined stdout+stderr (e.g. a tool banner). The explicit clean-summary regex is checked
-    // first, so this only matters if some other line happens to contain the word "clean".
+  // E-01 regression guard (both-way): errors must win even when a genuine "clean" marker sits right
+  // next to them in the combined stdout+stderr — e.g. a checker that prints a per-target "✅ clean"
+  // banner for one target and then a real error count for another in the same combined run. Before
+  // this fix `if (clean) return pass` was checked BEFORE `errors > 0`, so either clean pattern
+  // co-occurring with a real error count masked the failure entirely (silent pass on a broken run).
+  it('FAIL when "✅ clean" co-occurs with a real error count (clean must not mask errors)', () => {
     const r = parseSddCheckResult(
-      '[sdd-check] 2 error(s), 1 warning(s) across 5 file(s)\nsome unrelated "clean" mention'
+      '[sdd-check] ✅ clean — 6 file(s) checked\n[sdd-check] 2 error(s), 1 warning(s) across 5 file(s)'
     );
     assert.strictEqual(r.pass, false);
     assert.match(r.detail, /2/);
+  });
+
+  it('FAIL when "clean — N file(s)" co-occurs with a real error count (clean must not mask errors)', () => {
+    const r = parseSddCheckResult(
+      'clean — 6 file(s) checked\n[sdd-check] 3 error(s) across 5 file(s)'
+    );
+    assert.strictEqual(r.pass, false);
+    assert.match(r.detail, /3/);
   });
 
   it('FAIL (not a silent pass) when no verdict is present', () => {

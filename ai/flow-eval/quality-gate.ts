@@ -28,8 +28,6 @@ export type QualityRuleResult = {
  * @returns The R1 rule result.
  */
 export function parseSddCheckResult(output: string): QualityRuleResult {
-  const clean = /\bclean\b\s+—\s+\d+\s+file/i.test(output) || /✅\s*clean/i.test(output);
-  if (clean) return { rule: 'R1', pass: true, detail: 'sdd-check --all clean' };
   const errorMatch = /(\d+)\s+error\(s\)(?:,\s*(\d+)\s+warning\(s\))?/i.exec(output);
   if (errorMatch) {
     const errors = Number(errorMatch[1]);
@@ -44,6 +42,8 @@ export function parseSddCheckResult(output: string): QualityRuleResult {
           : '0 sdd-check error(s)',
     };
   }
+  const clean = /\bclean\b\s+—\s+\d+\s+file/i.test(output) || /✅\s*clean/i.test(output);
+  if (clean) return { rule: 'R1', pass: true, detail: 'sdd-check --all clean' };
   return { rule: 'R1', pass: false, detail: 'no sdd-check verdict parsed' };
 }
 
