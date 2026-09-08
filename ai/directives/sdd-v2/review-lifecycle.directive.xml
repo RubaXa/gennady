@@ -28,14 +28,15 @@
     <Step id="STEP_2_INDEPENDENT_REVIEW">
       <Goal>Obtain one semantic judgment independent from the author.</Goal>
       <Action>
-        Dispatch one fresh reviewer with the exact bounded spec set. The reviewer reads but never
-        edits. It checks requirements, negative/failure behavior, interfaces, dependencies,
-        invariants, verification strategy, contradictions, and missing decisions. It returns
-        `CLEAN` or at most five evidence-backed findings naming file and anchor. The reviewer reads
-        only the exact target specs plus the operator brief supplied in its prompt; it does not read
-        flow directives, examples, repository history, source code, or search the repository. It
-        performs one semantic pass and returns the verdict without restating the route or narrating
-        its internal analysis.
+        Load `critic-protocol.directive.xml`, then dispatch one fresh reviewer with its full
+        contents as the reviewer's own governing instructions, plus the exact bounded spec set. The
+        reviewer reads but never edits. It checks requirements, negative/failure behavior,
+        interfaces, dependencies, invariants, verification strategy, contradictions, and missing
+        decisions. It returns `CLEAN` or at most five evidence-backed findings naming file and
+        anchor. The reviewer reads only the exact target specs plus the operator brief supplied in
+        its prompt; it does not read flow directives, examples, repository history, source code, or
+        search the repository. It performs one semantic pass and returns the verdict without
+        restating the route or narrating its internal analysis.
 
         The author may mentally inspect its own work before this dispatch, but that does not count as
         independent review. Do not serialize a plan into JSON, retain the reviewer, or create

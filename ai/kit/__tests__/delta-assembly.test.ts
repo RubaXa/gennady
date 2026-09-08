@@ -94,6 +94,21 @@ describe('delta-assembly — graph shape', () => {
     }
   });
 
+  it('every class-3 directive is named by dispatch text in at least one other template (T-B6-21) — never a READ_AND_USE_DIRECTIVE edge (that assertion is above), a literal "Load `<name>.directive.xml`" mention so the subagent world stays reachable', () => {
+    const { pass1 } = buildPlan();
+    for (const class3Id of CLASS_3_DIRECTIVES) {
+      const rel = class3Id.slice('ai/directives/'.length); // e.g. 'sdd-v2/critic-protocol.directive.xml'
+      const fileName = basename(rel); // e.g. 'critic-protocol.directive.xml'
+      const namedElsewhere = pass1.some(
+        (e) => e.rel !== rel && e.renderedFull.includes(fileName)
+      );
+      assert.ok(
+        namedElsewhere,
+        `${fileName} is not named by dispatch text in any other rendered directive — an orphaned subagent world`
+      );
+    }
+  });
+
   it('class 1 matches direct SKILL.md entry points after stateful entries converge on router', () => {
     const { plan } = buildPlan();
     const expected = ['audit', 'code-review', 'router'].map(
