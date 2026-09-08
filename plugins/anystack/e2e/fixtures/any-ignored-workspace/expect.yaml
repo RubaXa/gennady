@@ -1,0 +1,13 @@
+notes: >
+  Gitignored paths are the gate's legal workspace (D-STACK-017): gates run in the real tree, so a
+  build cache is readable AND writable with no declarations — the reason repeat runs stay warm on
+  path-keyed toolchains (Xcode, Gradle). The gate here both reads the ignored cache and writes
+  into it; the write is a cache write, not a VIOLATION, and the guard never resets ignored paths.
+  Ignored-only dirt also does not trip the clean-tree precondition.
+dirty:
+  cache/data.txt: "warm\n"
+argv: ['--all']
+exitCode: 0
+ok: true
+gates:
+  anystack:needs-cache: { status: pass }

@@ -1,8 +1,8 @@
 // @file: Execute system command synchronously with safe error handling.
-// @consumers: git-core, resolve-conflicts-context-git-build.logic, sdd-check.cmd, changed-files, yagni.cmd
+// @consumers: git-core, resolve-conflicts-context-git-build.logic, sdd-check.cmd, changed-files, yagni.cmd, golang-scope.logic (V-02)
 // @tasks: N/A
 
-import { execSync as nodeExecSync } from 'node:child_process';
+import { execSync as nodeExecSync, execFileSync } from 'node:child_process';
 import { logger } from './logger.ts';
 
 /** @purpose Options for execSyncSafe. */
@@ -26,6 +26,23 @@ export const execSyncSafe = (cmd: string, options?: ExecSyncSafeOptions): string
     if (!expected) {
       logger.error(`[execSyncSafe] [running → failed] Command failed`, { cause });
     }
+    return '';
+  }
+};
+
+/**
+ * @purpose Execute a binary with argv (no shell, explicit cwd); trimmed stdout or empty string on failure.
+ * @sideEffect Process: launches the external binary.
+ * @consumer golang-scope.logic (ported verbatim from MAIN d37d5910 as part of V-02)
+ */
+export const execFileTrimSafe = (bin: string, args: readonly string[], cwd: string): string => {
+  try {
+    return execFileSync(bin, [...args], {
+      cwd,
+      encoding: 'utf-8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+  } catch {
     return '';
   }
 };

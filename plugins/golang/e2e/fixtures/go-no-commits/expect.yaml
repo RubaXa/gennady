@@ -1,0 +1,10 @@
+notes: >
+  A git repo without a single commit cannot be replicated, so a drift gate is ENV_FAIL rather than a
+  code finding: there is no baseline to diff drift against.
+requires: [go]
+noCommit: true
+argv: ['--all']
+exitCode: 1
+treeUnchanged: false
+gates:
+  golang:needs-replica: { status: env-fail }

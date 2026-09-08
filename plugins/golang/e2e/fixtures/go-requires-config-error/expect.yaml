@@ -1,0 +1,8 @@
+notes: >
+  A precondition without `hint` is a fatal config error: it would say no more to an agent than
+  the timeout it replaces. Reported before any gate executes (FR-STACK-12).
+requires: [go]
+argv: ['--all']
+exitCode: 4
+config:
+  error: 'requires[0].hint'

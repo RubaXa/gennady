@@ -13,9 +13,11 @@ import {
   verdict,
   parseInvocation,
   ERR_CLI_SDD_VERIFY_BAD_INVOCATION,
+  type Gate,
   type GateRunner,
   type GateResult,
 } from '../sdd-verify.types.ts';
+import { allOf, exitCodeMatches, outputMatches } from '../../../../shared/verify/env-fail.ts';
 
 /** Fake runner: fails the named gates, records the commands it was asked to run. */
 function fakeRunner(failNames: string[] = []): { runner: GateRunner; calls: string[] } {
@@ -83,6 +85,7 @@ mock.module('node:fs', {
 
 const {
   run,
+  runGate,
   isSelfHosting,
   defaultRunner,
   defaultAsyncRunner,
@@ -339,6 +342,69 @@ describe('verdict', () => {
       v.message,
       /… output truncated to last 120 lines — full transcript: npx --no-install tsx cli\/gennady\.ts yagni/
     );
+  });
+
+  // V-03: Gate/GateStatus carry env-fail/timeout/violation as data. env-fail halts the ladder but
+  // is not counted as gate-failure for the verdict (30-TRACK-VERIFY.md §6, V-03 acceptance).
+  it('env-fail halts the ladder without being counted as a code FAILED', () => {
+    const results = baseResults(['type-check']).map((r) => ({
+      ...r,
+      status: 'env-fail' as const,
+      exitCode: 1,
+      output: 'ENOSPC: no space left on device',
+    }));
+    const v = verdict(results, 'type-check');
+    assert.strictEqual(v.ok, false);
+    if (v.ok) return;
+    assert.strictEqual(v.code, 'ERR_CLI_SDD_VERIFY_ENV_FAIL');
+    assert.doesNotMatch(v.message, /FAILED/);
+    assert.match(v.message, /окружение остановило лестницу \(env-fail\), это не код/);
+    assert.match(v.message, /🌐 type-check — ENV_FAIL \(окружение, не код\): ENOSPC/);
+    assert.match(
+      v.message,
+      /лестница остановлена на «type-check» — проблема окружения \(env-fail\), это не код/
+    );
+  });
+
+  it('env-fail alongside a real code failure still counts only the real failure as FAILED', () => {
+    const results = [
+      ...baseResults(['type-check']).map((r) => ({
+        ...r,
+        status: 'fail' as const,
+        exitCode: 2,
+        output: 'TS2345',
+      })),
+      ...baseResults(['lint']).map((r) => ({
+        ...r,
+        status: 'env-fail' as const,
+        exitCode: 1,
+        output: 'network unreachable',
+      })),
+    ];
+    const v = verdict(results);
+    assert.strictEqual(v.ok, false);
+    if (v.ok) return;
+    assert.strictEqual(v.code, 'ERR_CLI_SDD_VERIFY_GATE_FAILED');
+    assert.match(v.message, /1 FAILED/);
+    assert.match(v.message, /❌ type-check — exit 2/);
+    assert.match(v.message, /🌐 lint — ENV_FAIL \(окружение, не код\): network unreachable/);
+  });
+
+  it('timeout/violation are data-only but rendered defensively, and DO count as FAILED', () => {
+    const results = [
+      ...baseResults(['type-check']).map((r) => ({
+        ...r,
+        status: 'timeout' as const,
+        exitCode: 1,
+      })),
+      ...baseResults(['lint']).map((r) => ({ ...r, status: 'violation' as const, exitCode: 1 })),
+    ];
+    const v = verdict(results);
+    assert.strictEqual(v.ok, false);
+    if (v.ok) return;
+    assert.match(v.message, /2 FAILED/);
+    assert.match(v.message, /⏱ type-check — превышен timeoutMs/);
+    assert.match(v.message, /⛔ lint — нарушение песочницы/);
   });
 });
 
@@ -962,6 +1028,102 @@ describe('run — via: gennady gate dispatch', () => {
     await run(runner, 'full');
     assert.ok(!calls.includes('npm run yagni'));
     assert.ok(calls.some((c) => c.endsWith(' yagni')));
+  });
+});
+
+// V-03: runGate's new envFail/requires/outputMeansFailure branches. No `GATES` entry sets these
+// fields today — these are direct unit tests of `runGate` against ad-hoc `Gate` literals, exercising
+// logic that only a future preset-resolved gate (V-04+) will drive through the real ladder.
+describe('runGate — env-fail/requires/outputMeansFailure (V-03, data-only in GATES)', () => {
+  const baseGate: Gate = { name: 'probe', mutates: false, haltsOnFailure: false };
+
+  it('no envFail/requires/outputMeansFailure set → exact same pass/fail as before', async () => {
+    const { runner } = fakeRunner();
+    const passResult = await runGate(runner, baseGate, 'probe');
+    assert.strictEqual(passResult.status, 'pass');
+
+    const { runner: failRunner } = fakeRunner(['probe']);
+    const failResult = await runGate(failRunner, baseGate, 'probe');
+    assert.strictEqual(failResult.status, 'fail');
+  });
+
+  it('an envFail predicate matching the outcome reclassifies fail → env-fail, with the hint appended', async () => {
+    const gate: Gate = {
+      ...baseGate,
+      envFail: [allOf([exitCodeMatches('==1')], 'диск закончился, это не код')],
+    };
+    const { runner } = fakeRunner(['probe']);
+    const result = await runGate(runner, gate, 'probe');
+    assert.strictEqual(result.status, 'env-fail');
+    assert.match(result.output, /диск закончился, это не код/);
+  });
+
+  it('an envFail predicate that does not match leaves a real failure as fail', async () => {
+    const gate: Gate = {
+      ...baseGate,
+      envFail: [allOf([exitCodeMatches('==99')], 'never matches exit 1')],
+    };
+    const { runner } = fakeRunner(['probe']);
+    const result = await runGate(runner, gate, 'probe');
+    assert.strictEqual(result.status, 'fail');
+  });
+
+  it('an envFail predicate can reclassify an exit-0 pass (output-based match)', async () => {
+    const gate: Gate = {
+      ...baseGate,
+      envFail: [allOf([outputMatches(/ENOSPC/)], 'no space left on device')],
+    };
+    const runner: GateRunner = () => ({ exitCode: 0, output: 'warning: ENOSPC near /tmp' });
+    const result = await runGate(runner, gate, 'probe');
+    assert.strictEqual(result.status, 'env-fail');
+    assert.match(result.output, /no space left on device/);
+  });
+
+  it('outputMeansFailure: exit 0 with non-empty stdout is a failure (gofmt -l contract)', async () => {
+    const gate: Gate = { ...baseGate, outputMeansFailure: true };
+    const runner: GateRunner = () => ({ exitCode: 0, output: 'unformatted/file.go' });
+    const result = await runGate(runner, gate, 'probe');
+    assert.strictEqual(result.status, 'fail');
+  });
+
+  it('outputMeansFailure: exit 0 with empty stdout stays a pass', async () => {
+    const gate: Gate = { ...baseGate, outputMeansFailure: true };
+    const runner: GateRunner = () => ({ exitCode: 0, output: '' });
+    const result = await runGate(runner, gate, 'probe');
+    assert.strictEqual(result.status, 'pass');
+  });
+
+  it('requires: a failing precondition is env-fail with its hint, and the gate command never runs', async () => {
+    const calls: string[] = [];
+    const gate: Gate = {
+      ...baseGate,
+      requires: [
+        { argv: ['check-network'], cwd: '/repo', timeoutMs: 5000, hint: 'сеть недоступна' },
+      ],
+    };
+    const runner: GateRunner = (command, args) => {
+      calls.push(`${command} ${args.join(' ')}`);
+      return { exitCode: 1, output: 'connection refused' };
+    };
+    const result = await runGate(runner, gate, 'probe');
+    assert.strictEqual(result.status, 'env-fail');
+    assert.strictEqual(result.output, 'сеть недоступна');
+    assert.deepStrictEqual(calls, ['check-network ']);
+  });
+
+  it('requires: a passing precondition lets the gate command run normally', async () => {
+    const calls: string[] = [];
+    const gate: Gate = {
+      ...baseGate,
+      requires: [{ argv: ['check-network'], cwd: '/repo', timeoutMs: 5000 }],
+    };
+    const runner: GateRunner = (command, args) => {
+      calls.push(`${command} ${args.join(' ')}`);
+      return { exitCode: 0, output: '' };
+    };
+    const result = await runGate(runner, gate, 'probe');
+    assert.strictEqual(result.status, 'pass');
+    assert.deepStrictEqual(calls, ['check-network ', 'npm run probe']);
   });
 });
 

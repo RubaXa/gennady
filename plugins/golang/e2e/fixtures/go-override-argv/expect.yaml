@@ -1,0 +1,6 @@
+notes: 'An argv override replaces the command and marks the gate as overridden, with provenance.'
+requires: [go]
+argv: ['--all', '--only=golang:test']
+exitCode: 0
+gates:
+  golang:test: { status: pass }

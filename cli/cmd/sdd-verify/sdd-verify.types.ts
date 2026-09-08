@@ -9,6 +9,7 @@ import {
   verificationGateNames,
   type VerificationProfile,
 } from '../../../shared/sdd/phase-verification-plan.ts';
+import type { Cmd, EnvFailPredicate, StackId } from '../../../shared/verify/verify.types.ts';
 
 /** @purpose CLI invocation carried an extra positional path, or a flag other than `--profile` — sdd-verify never silently narrows or ignores. */
 export const ERR_CLI_SDD_VERIFY_BAD_INVOCATION = 'ERR_CLI_SDD_VERIFY_BAD_INVOCATION' as const;
@@ -27,6 +28,41 @@ export type Gate = {
   haltsOnFailure: boolean;
   /** @purpose Dispatch: project npm script, gennady-native command, or exact-target phase repair. */
   via?: 'npm' | 'gennady' | 'target-repair';
+  /**
+   * @purpose Direct argv for a gate executed without an npm script (V-04+ preset-resolved gates).
+   *   Unused today; mirrors `shared/verify`'s shape without importing it, keeping this type independent.
+   */
+  argv?: readonly string[];
+  /** @purpose Working directory for `argv`-driven execution; ignored for `via: 'npm' | 'gennady'`. */
+  cwd?: string;
+  /** @purpose Environment variables merged over process.env for `argv`-driven execution. */
+  env?: Readonly<Record<string, string>>;
+  /**
+   * @purpose Per-gate timeout in ms. Data-only in V-03 — no `GATES` entry sets it, and `runGate`
+   *   does not enforce it yet (`GateRunner` itself has no timeout parameter).
+   */
+  timeoutMs?: number;
+  /**
+   * @purpose ENV_FAIL predicates evaluated against the gate's outcome; a match reclassifies an
+   *   otherwise `fail`/`pass` result as `env-fail` (environment, never a reason to edit sources) —
+   *   see `compileEnvFailRules`/`allOf` (`shared/verify/env-fail.ts`).
+   */
+  envFail?: readonly EnvFailPredicate[];
+  /**
+   * @purpose Preconditions run BEFORE the gate command; the first failing one is `env-fail` with its
+   *   `hint` and the gate command never runs (mirrors MAIN `services/stack` semantics).
+   */
+  requires?: readonly Cmd[];
+  /** @purpose Stack this gate belongs to; data-only tag for future filtering (V-05/V-12), not read by `runGate` yet. */
+  stack?: StackId;
+  /** @purpose When true, any stdout on exit 0 means failure (`gofmt -l` contract). */
+  outputMeansFailure?: boolean;
+  /**
+   * @purpose Run in an ephemeral working-tree replica; resulting drift = FAIL. Data-only in V-03 — no
+   *   `GATES` entry sets it, and enforcing it needs the replica/foundation-transaction machinery a
+   *   later task (V-09) wires for real.
+   */
+  driftMeansFailure?: boolean;
 };
 
 /**
@@ -197,8 +233,20 @@ export type GateRunner = (
   args: string[]
 ) => GateRunResult | Promise<GateRunResult>;
 
-/** @purpose Rung outcome: ran and passed, ran and failed, honestly skipped (optional script absent), or `missing` — a REQUIRED script that is absent or stubbed. */
-export type GateStatus = 'pass' | 'fail' | 'skipped' | 'missing';
+/**
+ * @purpose Rung outcome: passed, failed, honestly skipped, `missing` (required script absent or
+ *   stubbed), `env-fail` (environment, never the code), `timeout`, or `violation` (sandbox mutated).
+ *   Last three are V-03 data: `runGate` produces `env-fail` from `Gate.envFail`/`requires`; nothing
+ *   produces `timeout`/`violation` yet.
+ */
+export type GateStatus =
+  | 'pass'
+  | 'fail'
+  | 'skipped'
+  | 'missing'
+  | 'env-fail'
+  | 'timeout'
+  | 'violation';
 
 /** @purpose A gate's run result with wall-clock timing. */
 export type GateResult = {
@@ -304,6 +352,18 @@ function failBlock(r: GateResult): string {
   if (r.status === 'missing') {
     return `  ⛔ ${r.name} — ${r.output}`;
   }
+  // ENV_FAIL implicates the environment, never the code (Gate.envFail/Gate.requires, V-03) — no exit
+  // code framing, just the matched predicate's/precondition's hint.
+  if (r.status === 'env-fail') {
+    return `  🌐 ${r.name} — ENV_FAIL (окружение, не код): ${r.output}`;
+  }
+  // Data-only in V-03 — nothing produces these yet, but a future caller must not get a crash if it does.
+  if (r.status === 'timeout') {
+    return `  ⏱ ${r.name} — превышен timeoutMs (ran: ${r.ranCommand})`;
+  }
+  if (r.status === 'violation') {
+    return `  ⛔ ${r.name} — нарушение песочницы: гейт мутировал реплику вне write-zone (ran: ${r.ranCommand})`;
+  }
   const marker = r.mutates ? '🔧' : '❌';
   const haltNote = r.mutates ? ' — repair не завершён' : '';
   return [
@@ -352,13 +412,32 @@ export function verdict(
           '     профиль code/test на реальной инфраструктуре.',
         ]
       : [];
-  const failed = results.filter((r) => r.status === 'fail' || r.status === 'missing');
+  // `env-fail` (V-03) implicates the environment, never the code — it halts the ladder like a
+  // foundation failure would, but does not count toward "K FAILED": it gets its own headline and
+  // block, kept separate from `failed` so the arithmetic never blames the code for it.
+  // `timeout`/`violation` are data-only today (nothing produces them yet) and, unlike `env-fail`,
+  // the brief calls out no such carve-out for them — they count as ordinary gate-failures.
+  const failed = results.filter(
+    (r) =>
+      r.status === 'fail' ||
+      r.status === 'missing' ||
+      r.status === 'timeout' ||
+      r.status === 'violation'
+  );
+  const envFailed = results.filter((r) => r.status === 'env-fail');
   const passed = results.filter((r) => r.status === 'pass');
   const nonFailLines = results
-    .filter((r) => r.status !== 'fail' && r.status !== 'missing')
+    .filter(
+      (r) =>
+        r.status !== 'fail' &&
+        r.status !== 'missing' &&
+        r.status !== 'timeout' &&
+        r.status !== 'violation' &&
+        r.status !== 'env-fail'
+    )
     .map(lineFor);
 
-  if (failed.length === 0) {
+  if (failed.length === 0 && envFailed.length === 0) {
     return {
       ok: true,
       text: [
@@ -369,11 +448,31 @@ export function verdict(
     };
   }
 
+  const haltedRow = haltedAt ? results.find((r) => r.name === haltedAt) : undefined;
   const haltLine = haltedAt
     ? [
-        `[sdd-verify] ⛔ лестница остановлена на «${haltedAt}» — ${haltReason(haltedAt)}, дальше не пошли`,
+        `[sdd-verify] ⛔ лестница остановлена на «${haltedAt}» — ${
+          haltedRow?.status === 'env-fail'
+            ? 'проблема окружения (env-fail), это не код'
+            : haltReason(haltedAt)
+        }, дальше не пошли`,
       ]
     : [];
+
+  if (failed.length === 0) {
+    // Only env-fail stopped the ladder — no code gate actually failed.
+    return {
+      ok: false,
+      code: 'ERR_CLI_SDD_VERIFY_ENV_FAIL',
+      exitCode: 1,
+      message: [
+        `[sdd-verify] ${passed.length}/${results.length} passed — окружение остановило лестницу (env-fail), это не код`,
+        ...nonFailLines,
+        ...envFailed.map(failBlock),
+        ...haltLine,
+      ].join('\n'),
+    };
+  }
 
   return {
     ok: false,
@@ -383,6 +482,7 @@ export function verdict(
       `[sdd-verify] ${passed.length}/${results.length} passed — ${failed.length} FAILED`,
       ...nonFailLines,
       ...failed.map(failBlock),
+      ...envFailed.map(failBlock),
       ...haltLine,
     ].join('\n'),
   };

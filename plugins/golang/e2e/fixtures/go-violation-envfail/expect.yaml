@@ -1,0 +1,12 @@
+notes: >
+  D-STACK-015 precedence call: when the environment is broken AND the gate left debris, the
+  verdict is env-fail (an instruction) rather than VIOLATION (an accusation) — but the debris is
+  still listed so the contract breach is not hidden.
+requires: [go]
+argv: ['--all']
+exitCode: 1
+gates:
+  golang:dirty-and-broken:
+    status: env-fail
+    outputIncludes: ['junk.txt']
+    hintIncludes: 'start docker'

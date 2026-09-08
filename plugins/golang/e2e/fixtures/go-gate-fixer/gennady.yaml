@@ -1,0 +1,12 @@
+stack:
+  use: [golang]
+  golang:
+    skipGates: [generate, build, vet, fmt, lint, test]
+    extraGates:
+      # A drift gate plus its remedy, declared together: `fixer` belongs to the gate.
+      - id: codegen
+        argv: [sh, -c, 'printf fresh > generated.txt']
+        timeout: 1m
+        driftMeansFailure: true
+        fixer:
+          argv: [sh, -c, 'printf fresh > generated.txt']

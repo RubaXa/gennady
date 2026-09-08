@@ -1,0 +1,81 @@
+// @file: StackPlugin implementation for Go repositories — wires detect, scope and plan.
+// @consumers: stack-registry
+// @tasks: TSK-95
+
+import fs from 'node:fs';
+import path from 'node:path';
+import type { StackDetection, StackPlugin } from 'gennady/stack';
+import { detectGoProject, type GoProject } from './golang-detect.logic.ts';
+import { resolveGoScope, type GoScope } from './golang-scope.logic.ts';
+import { GO_GATE_ORDER, planGoGates } from './golang-plan.logic.ts';
+
+/**
+ * @purpose Build the `key: value` summary lines shown by `verify --plan` for a Go project.
+ * @param project Detected project.
+ * @returns Human-readable summary lines.
+ */
+function summarize(project: GoProject): string[] {
+  const primary = project.modules[0];
+  const lines = [
+    `module:    ${primary?.path ?? '(unknown)'} (go ${primary?.goVersion || '?'})`,
+    `workspace: ${project.workspace ?? '(none)'}`,
+    `vendored:  ${project.vendored}`,
+    `lint-cfg:  ${project.golangciConfig ?? '(none found — golangci-lint would use its defaults)'}`,
+  ];
+
+  if (project.modules.length > 1) {
+    const nested = project.modules
+      .slice(1)
+      .map((module) => path.relative(project.root, module.dir) || '.');
+    lines.splice(1, 0, `nested:    ${nested.join(', ')}`);
+  }
+  if (project.makeTargets.length > 0) {
+    const shown = project.makeTargets.slice(0, 8);
+    const more = project.makeTargets.length - shown.length;
+    lines.push(`make:      ${shown.join(', ')}${more > 0 ? ` … (+${more} more)` : ''}`);
+  }
+
+  return lines;
+}
+
+/**
+ * @purpose StackPlugin for Go repositories. Detection: `<root>/go.mod` exists (spec §3) —
+ *   deeper scanning only feeds informational diagnostics, never the detection decision.
+ * @implements {StackPlugin} in specs/stack/stack.spec.md
+ * @invariant detect() runs no processes: `verify --plan` must never execute repo-supplied code.
+ * @consumer stack-registry
+ */
+export const golangPlugin: StackPlugin = {
+  id: 'golang',
+  marker: 'go.mod',
+  description:
+    'go generate (drift check), go build, go vet, gofmt -l, golangci-lint, go test; changed-package scoping',
+
+  gateIds: GO_GATE_ORDER,
+
+  detect(root: string): StackDetection | null {
+    if (!fs.existsSync(path.join(root, 'go.mod'))) {
+      return null;
+    }
+
+    const project = detectGoProject(root);
+    return {
+      stack: 'golang',
+      root,
+      summary: summarize(project),
+      diagnostics: project.diagnostics,
+      details: project,
+    };
+  },
+
+  verify: {
+    resolveScope(detection, request) {
+      const scope = resolveGoScope(detection.details as GoProject, request);
+      return { mode: scope.mode, note: scope.note, details: scope };
+    },
+
+    planGates(detection, scope, options) {
+      return planGoGates(detection.details as GoProject, scope.details as GoScope, options);
+    },
+  },
+};

@@ -1,0 +1,12 @@
+notes: >
+  Changing go.mod alone touched no .go file, so the changed scope resolved to zero packages and
+  every compile gate skipped — a module-graph edit went unverified (review #3). Such a change now
+  widens the scope to ./..., because the packages that break are precisely the untouched ones.
+requires: [go]
+commit:
+  go.mod: "module example.com/m\n\ngo 1.22\n\n// touched\n"
+exitCode: 0
+gates:
+  golang:build: { status: pass }
+  golang:vet: { status: pass }
+outputIncludes: ['widened to ./...', 'go.mod']
