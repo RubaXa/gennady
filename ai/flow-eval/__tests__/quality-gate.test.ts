@@ -24,6 +24,39 @@ describe('parseSddCheckResult (R1, both outcomes)', () => {
     assert.match(r.detail, /3/);
   });
 
+  // E-01: on any real repository `sdd-check` almost never has literally zero findings — the common
+  // real-repo case is "0 error(s), N warning(s)", which is `sdd-check`'s OWN definition of clean
+  // (`cli/cmd/sdd-check/help.ts`: "0 clean (warnings allowed)"; `sdd-check.types.ts:164` is the exact
+  // summary-line format it prints). Before this fix the parser fell through to "no verdict parsed"
+  // (FAIL) on this line, so every warnings-only real run looked like "the eval failed" instead of
+  // "the rule was broken" (R4 digest §3.8).
+  it('PASS on the real-repo "0 error(s), N warning(s)" summary (sdd-check calls this clean)', () => {
+    const r = parseSddCheckResult(
+      'specs/x.spec.md:12: warning: SDD_LANGUAGE_CALQUE  some calque\n\n' +
+        '[sdd-check] 0 error(s), 1 warning(s) across 6 file(s)\n' +
+        'next: язык — калька за калькой, по месту (`file:line`) правь всё предложение целиком.'
+    );
+    assert.strictEqual(r.pass, true);
+    assert.strictEqual(r.rule, 'R1');
+    assert.match(r.detail, /0 sdd-check error\(s\), 1 warning\(s\)/);
+  });
+
+  it('PASS on "0 error(s), 0 warning(s)" too (same real-repo line shape, zero of both)', () => {
+    const r = parseSddCheckResult('[sdd-check] 0 error(s), 0 warning(s) across 4 file(s)');
+    assert.strictEqual(r.pass, true);
+  });
+
+  it('FAIL still wins over a stray "clean" substring when an error count is present and > 0', () => {
+    // Regression guard: a > 0 error count must never be masked by an unrelated "clean" token elsewhere
+    // in combined stdout+stderr (e.g. a tool banner). The explicit clean-summary regex is checked
+    // first, so this only matters if some other line happens to contain the word "clean".
+    const r = parseSddCheckResult(
+      '[sdd-check] 2 error(s), 1 warning(s) across 5 file(s)\nsome unrelated "clean" mention'
+    );
+    assert.strictEqual(r.pass, false);
+    assert.match(r.detail, /2/);
+  });
+
   it('FAIL (not a silent pass) when no verdict is present', () => {
     assert.strictEqual(parseSddCheckResult('some unrelated output').pass, false);
   });
