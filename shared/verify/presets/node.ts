@@ -62,8 +62,8 @@ export type StackPreset = {
     targets: readonly string[]
   ): string | null;
   /**
-   * @purpose Identity of this preset's environmentState (fingerprint) source. Not yet consumed
-   *   anywhere — V-04a wires the engine that reads it and fails closed when a preset has none.
+   * @purpose Declarative label of this preset's environmentState source. Not read yet: V-04a
+   *   fails closed via `resolvePreset(...) !== null`; a consumer arrives with non-node presets.
    */
   readonly environmentStateSource: string;
 };
