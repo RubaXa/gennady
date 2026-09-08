@@ -1,0 +1,35 @@
+# Defense-in-depth on top of the package.json "files" allowlist for ai/**.
+#
+# The ROOT .npmignore is inert here: npm does not apply a root-level
+# .npmignore when "files" is set in package.json (see R-REL-2a report).
+# A NESTED .npmignore under an allowlisted directory, however, is still
+# honored and subtracts matching paths from that subtree. This file lives
+# at ai/.npmignore for exactly that reason.
+#
+# scripts/prepare-publish-artifacts.ts copies the whole "ai" directory
+# (dotfiles included, cpSync recursive) into "dist/ai" before publish, so
+# this same file is mirrored to dist/ai/.npmignore and subtracts the same
+# paths from that mirror too — one file, both copies covered.
+
+# Test code and doubles
+*.test.*
+*.spec.*
+__tests__/
+__mocks__/
+__snapshots__/
+*.snap
+
+# Fixtures (test doubles/data, not "e2e/" by directory name — ai/kit ships
+# real directive content in folders literally named "e2e", e.g.
+# ai/kit/axiom/e2e/ax-e2e-role-locators-only.xml, so a directory-name
+# "e2e/" pattern is deliberately NOT used here; *.spec.* above already
+# catches the one real e2e test file under ai/, ai/inspector/e2e/inspector.spec.ts)
+fixtures/
+**/fixtures/
+
+# Eval harness: dev-only tooling, baselines and run results — never shipped
+flow-eval/
+.baseline/
+**/.baseline/
+.results/
+**/.results/
