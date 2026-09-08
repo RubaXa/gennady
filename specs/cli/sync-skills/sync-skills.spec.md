@@ -115,7 +115,7 @@ _Это полный список сущностей модуля. Любое в
   - dryRun `unchanged` → `  = <skillName>/                                   (unchanged, skip)`
   - Отступы в примерах иллюстративны (визуальное выравнивание). Реализатор вычисляет padding динамически по максимальной длине имени скила среди отображаемых.
   - Итоговая строка: `Synced: N added, M updated, K skipped, D deleted`. При наличии `deleteFailed`: `Synced: N added, M updated, K skipped, D deleted, F delete failed`
-  - dryRun итоговая (SO-4 — несёт те же счётчики, что и реальная сводка, не только факт «ничего не записано»): `Would sync: N added, M updated, K skipped, D deleted. Dry-run: no files written.`
+  - dryRun итоговая (SO-4 — печатает плановые счётчики того, что было бы сделано, а не только факт «ничего не записано»; числа планового и реального прогона могут расходиться, если реальный прогон меняет состояние манифеста): `Would sync: N added, M updated, K skipped, D deleted. Dry-run: no files written.`
 - **Consumers:** `sync-skills.cmd.ts`
 - **Uses shared:** `SyncFormatter` базовые маркеры из `shared/common/sync/sync-formatter.shared.ts`
 
