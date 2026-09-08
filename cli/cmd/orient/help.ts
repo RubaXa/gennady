@@ -9,6 +9,8 @@
 export function printHelp(): void {
   console.info('gennady orient — Navigate project structure via file headers and DBC contracts');
   console.info('');
+  console.info('Not `sdd-orient` (that one navigates specs/design, not code — .spec.md graphs).');
+  console.info('');
   console.info('Usage:');
   console.info('  npx gennady orient [options] [keyword]');
   console.info('');
