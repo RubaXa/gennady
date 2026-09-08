@@ -148,3 +148,9 @@ gh pr create --base codex/sdd-v2-rc52-followup --head lead/verify-core \
 ## 7. Открытые вопросы
 
 Нет.
+
+## § Правки по V-BATCH-10 (Lead, текстовые)
+
+- Фактическая база ветки после ребейза — голова RC (мердж #30 `f4b06aee`), коммиты `bba126a7` (V-02), `cc464504` (V-03), `02959f66` (V-04), `1756b8e5` (V-04a) + `docs(verify)` комментарий `presets/node.ts`; содержимое патчей идентично (range-diff), ветка запушена.
+- Числа доказательств на новой базе: `npm test` 3784/3774/0/10; `test:topology` unit=225 contract=20 local=52 external=8; `check` 5/5; `build` 0; `sdd-check --all` 198/433/213 (0 новых ошибок; +2 предупреждения от новой спеки verify: `SDD_MODULE_NO_CALL_CHAIN` на `specs/cli/verify/verify.spec.md`, `SDD_MODULE_NOT_IN_INDEX` на `specs/cli/cli.spec.md`); `gate:sdd-check-baseline` OK; эталон V-01 45/45 без обновления golden.
+- Уточнения по существу: И-3 закрыт проверкой `resolvePreset(...) !== null` до фингерпринта; строка `environmentStateSource` пока никем не читается (комментарий исправлен коммитом); матрица менеджеров пакетов: `pnpm` — `parity-node.test.ts:591`, `yarn` — `phase-receipt.test.ts:445,760`, `npm` — оба; V-03 добавил 11 тестов (75→86), не 19; `verdict()` живёт в `sdd-verify.types.ts:399-489`; стрелка `CMD2 → PLAN2` — импорт типа, не вызов.
