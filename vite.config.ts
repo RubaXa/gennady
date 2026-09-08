@@ -1,11 +1,11 @@
 // @file: Vite build configuration — lib mode, node22 target, external deps
 // @consumers: npm run build, npm run build:publish
 // @tasks: TSK-33
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { builtinModules } from 'node:module';
-import { readFileSync } from 'node:fs';
+import { chmodSync, readFileSync } from 'node:fs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -42,9 +42,22 @@ const nodeBuiltins = (() => {
 })();
 
 /**
+ * @purpose Restore the executable bit on the CLI entry after each build — Vite writes 644, which breaks `npm link` / direct execution.
+ */
+function executableBin(): Plugin {
+  return {
+    name: 'gennady:executable-bin',
+    closeBundle() {
+      chmodSync(resolve(__dirname, 'dist/gennady.js'), 0o755);
+    },
+  };
+}
+
+/**
  * @purpose Vite build configuration for the gennady CLI — lib mode, node22 target, chunked output.
  */
 export default defineConfig({
+  plugins: [executableBin()],
   define: {
     __GENNADY_VERSION__: JSON.stringify(pkg.version),
   },
