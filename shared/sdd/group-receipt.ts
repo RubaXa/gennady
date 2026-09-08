@@ -21,6 +21,9 @@ export const GROUP_RECEIPT_MARKER: Readonly<Record<GroupReceiptKind, string>> = 
 const AUDIT_MISSING_CODE = 'SDD_GROUP_AUDIT_MISSING';
 /** @purpose WARN code emitted when a complete group has no valid code-review receipt. */
 const REVIEW_MISSING_CODE = 'SDD_GROUP_REVIEW_MISSING';
+/** @purpose WARN code emitted when a group is migrating — SOME but not all members carry the v2
+ *   receipt-aware schema marker — so grading stays explicitly skipped rather than silent (B2-16). */
+const PARTIALLY_MARKED_CODE = 'SDD_GROUP_RECEIPT_PARTIALLY_MARKED';
 /** @purpose The v2 receipt-aware schema marker; a group is graded only when every member carries it (grandfathering). */
 const PHASE_RECEIPTS_SCHEMA_MARKER = '<!--PHASE_RECEIPTS:v1-->';
 
@@ -285,17 +288,30 @@ export type GroupUnderCheck = {
 };
 
 /**
- * @purpose Re-derive each complete group and WARN when its audit/review receipt is missing, forged, or stale.
- * @invariant Grandfathered on the v2 schema marker and keyed off the WHOLE group being DONE (never per-ticket
- *   isDone); WARN-only during the warn-then-error rollout.
+ * @purpose Re-derive each complete group and WARN when its audit/review receipt is missing, forged,
+ *   or stale — grandfathered on the v2 schema marker, keyed off the WHOLE group being DONE.
+ * @invariant Never per-ticket isDone. A SOME-but-not-all-marked group is an explicit
+ *   `SDD_GROUP_RECEIPT_PARTIALLY_MARKED` skip (B2-16), not silence; a fully-unmarked group stays
+ *   silently ungraded, same as before.
  * @param groups Every resolved group with its owning spec and live members.
- * @returns One WARN per complete v2 group lacking a valid audit or review receipt.
+ * @returns One WARN per complete v2 group lacking a valid audit or review receipt, plus one WARN per
+ *   partially-marked group.
  */
 export function checkGroupReceipts(groups: GroupUnderCheck[]): Finding[] {
   const findings: Finding[] = [];
   for (const group of groups) {
     if (group.members.length === 0) continue;
-    if (!group.members.every((m) => memberIsReceiptAware(m.content))) continue;
+    const markedCount = group.members.filter((m) => memberIsReceiptAware(m.content)).length;
+    if (markedCount === 0) continue;
+    if (markedCount < group.members.length) {
+      findings.push({
+        severity: 'warn',
+        code: PARTIALLY_MARKED_CODE,
+        file: group.specFile,
+        message: `Group has ${markedCount} of ${group.members.length} member ticket(s) marked \`<!--PHASE_RECEIPTS:v1-->\`; audit/code-review receipt grading stays skipped until every member is migrated.`,
+      });
+      continue;
+    }
     const derived = deriveGroupState(group.members);
     if (!derived.allDone) continue;
     for (const [kind, code, label] of [

@@ -251,4 +251,20 @@ describe('checkGroupReceipts — WARN gate', () => {
       []
     );
   });
+
+  // B2-16: a group where SOME but not all members carry the marker is an explicit, visible skip —
+  // not silence, and not the same as "fully legacy" above.
+  it('WARNs explicitly (does not silently skip) a partially-marked group', () => {
+    const partial = [
+      member('core.task.T1.md', { aware: true }),
+      member('core.task.T2.md', { aware: false }),
+    ];
+    const findings = checkGroupReceipts([{ specFile, specContent: SPEC_BASE, members: partial }]);
+    assert.deepEqual(
+      findings.map((f) => f.code),
+      ['SDD_GROUP_RECEIPT_PARTIALLY_MARKED']
+    );
+    assert.strictEqual(findings[0]?.severity, 'warn');
+    assert.strictEqual(findings[0]?.file, specFile);
+  });
 });

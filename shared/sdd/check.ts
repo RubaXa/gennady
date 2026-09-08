@@ -211,22 +211,39 @@ const PHASE_HEADING_RE = /^#{2,6}\s+(P[0-9]+)\b/;
 const PHASE_RECEIPTS_SCHEMA_MARKER = '<!--PHASE_RECEIPTS:v1-->';
 
 /**
- * @purpose Count exact phase blocks in the first Execution Log Round 1.
- * @invariant Only level-4 P<N> headings inside the first level-3 Round 1 count; later rounds,
- *   Round close, and heading-looking text inside fenced code do not affect the skeleton.
+ * @purpose Count exact phase blocks opened in the FIRST (earliest) Execution Log Round, strictly
+ *   before that Round's own `#### Round close` heading (B2-16, finding C).
+ * @invariant Only level-4 `P<N>` headings inside the FIRST level-3 `### Round <n>` heading count —
+ *   whichever occurs first, regardless of its literal number; later rounds, anything at/after
+ *   `#### Round close`, and fenced-code headings are excluded.
  * @param logBody Extracted EXECUTION_LOG section body.
- * @returns Phase id → block count, or null when Round 1 is absent.
+ * @returns Phase id → block count, or null when no `### Round <n>` heading exists at all.
  */
 function firstRoundPhaseBlockCounts(logBody: string): Map<string, number> | null {
   const headings = collectHeadings(logBody);
-  const roundIndex = headings.findIndex(
-    (heading) => heading.level === 3 && /^Round\s+1(?:\s|—|$)/i.test(heading.text)
-  );
-  if (roundIndex === -1) return null;
+  const roundHeadings = headings
+    .map((heading, index) => ({ heading, index }))
+    .filter(({ heading }) => heading.level === 3 && /^Round\s+\d+(?:\s|—|$)/i.test(heading.text));
+  if (roundHeadings.length === 0) return null;
+  const { heading: round, index: roundIndex } = roundHeadings[0] as {
+    heading: (typeof headings)[number];
+    index: number;
+  };
 
-  const round = headings[roundIndex] as (typeof headings)[number];
   const nextRound = headings.slice(roundIndex + 1).find((heading) => heading.level <= round.level);
-  const roundBody = logBody.slice(round.lineEnd, nextRound?.start ?? logBody.length);
+  let roundEnd = nextRound?.start ?? logBody.length;
+  // `#### Round close` is itself a level-4 heading inside the round body — anything at/after it is
+  // this Round's trailing content (append-after-close, B2-04's territory), never a fresh per-phase
+  // skeleton block, so it must not be counted here (else a legitimate pre-close re-run and an
+  // illegitimate post-close one become indistinguishable noise on the same code).
+  const roundBodyForClose = logBody.slice(round.lineEnd, roundEnd);
+  for (const heading of collectHeadings(roundBodyForClose)) {
+    if (heading.level === 4 && /^Round\s+close\b/i.test(heading.text)) {
+      roundEnd = round.lineEnd + heading.start;
+      break;
+    }
+  }
+  const roundBody = logBody.slice(round.lineEnd, roundEnd);
   const counts = new Map<string, number>();
   for (const heading of collectHeadings(roundBody)) {
     if (heading.level !== 4) continue;
@@ -550,7 +567,7 @@ export function checkTicket(file: string, content: string): Finding[] {
       if (logPhaseCounts === null) {
         err(
           'SDD_EXECUTION_LOG_ROUND_MISSING',
-          'Current receipt-aware ticket has no `### Round 1` in Execution Log. Add the canonical initial round with exactly one `#### P<N>` block per Phases Overview row.'
+          'Current receipt-aware ticket has no `### Round <n>` in Execution Log. Add the canonical current round with exactly one `#### P<N>` block per Phases Overview row.'
         );
       } else {
         for (const phase of phases) {
@@ -558,19 +575,19 @@ export function checkTicket(file: string, content: string): Finding[] {
           if (count === 0)
             err(
               'SDD_EXECUTION_LOG_PHASE_MISSING',
-              `Execution Log Round 1 has no \`#### ${phase.id}\` block for the matching Phases Overview row.`
+              `Execution Log current round has no \`#### ${phase.id}\` block for the matching Phases Overview row.`
             );
           else if (count > 1)
             err(
               'SDD_EXECUTION_LOG_PHASE_DUPLICATE',
-              `Execution Log Round 1 has ${count} \`#### ${phase.id}\` blocks; keep exactly one.`
+              `Execution Log current round has ${count} \`#### ${phase.id}\` blocks; keep exactly one.`
             );
         }
         for (const phase of logPhaseCounts.keys()) {
           if (!ids.has(phase))
             err(
               'SDD_EXECUTION_LOG_PHASE_ORPHAN',
-              `Execution Log Round 1 has \`#### ${phase}\`, but Phases Overview has no ${phase} row.`
+              `Execution Log current round has \`#### ${phase}\`, but Phases Overview has no ${phase} row.`
             );
         }
       }
