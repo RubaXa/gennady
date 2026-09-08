@@ -1,9 +1,4 @@
-<!-- source: ai/directives/sdd/audit.directive.xml, resynced with audit.directive.hbs's inline
-     copy (T-B6-18) — the inline copy had evolved (sdd-check gained RULES_CASCADE_CLOSURE,
-     BDD_COVERAGE, TASKS_APPEND_ONLY, CONSUMERS_RESOLVABLE and the yagni checks; the closing
-     paragraph moved from claiming audit still owns those to citing AX_RULES_CASCADE_VERIFICATION
-     / AX_AUDIT_YAGNI_CROSSCHECK instead) while this file stayed on the older text; this file is
-     now the single home for AX_MECHANICAL_VIA_SDD_CHECK, matching the current, correct text. -->
+<!-- source: ai/directives/sdd/audit.directive.xml, resynced with audit.directive.hbs's inline copy (T-B6-18) — the inline copy had evolved (sdd-check gained RULES_CASCADE_CLOSURE, BDD_COVERAGE, TASKS_APPEND_ONLY, CONSUMERS_RESOLVABLE and the yagni checks; the closing paragraph moved from claiming audit still owns those to citing AX_RULES_CASCADE_VERIFICATION / AX_AUDIT_YAGNI_CROSSCHECK instead) while this file stayed on the older text; this file is now the single home for AX_MECHANICAL_VIA_SDD_CHECK, matching the current, correct text. -->
 <Axiom id="AX_MECHANICAL_VIA_SDD_CHECK">
       Deterministic mechanical checks are NOT hand-coded in this directive — they live in one tool, `sdd-check`, which the whole-tree reporter and this directive both consume. Single source of mechanical truth → no drift between the SDD reviewers. Take its findings as given; do NOT hand-redo them.
 

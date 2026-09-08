@@ -1,2 +1,14 @@
-<!-- source: ai/directives/sdd/critic.directive.xml -->
-<Axiom id="AX_CONFUSION_BUG">Critic confusion ("don't understand X") → artifact underspecified → ALWAYS accept, clarify.</Axiom>
+<!-- source: ai/directives/sdd/critic.directive.xml, corrected (T-B6-23) — this file's prior text ("Critic confusion... → artifact underspecified → ALWAYS accept, clarify") itself carried the D3.4 inversion instead of the three-way triage v1 specified (40-TRACK-DIRECTIVES-SKILLS.md §1.3): "confusion alone never proves the artifact is underspecified"; "Only ARTIFACT_GAP may become a problem finding." Rewritten to restore that rule and connected into critic-protocol.directive.hbs, which previously carried the inverted claim inline (ax-isolation.xml, ax-uncertainty-is-signal.xml — both corrected alongside this). -->
+<Axiom id="AX_CONFUSION_BUG">
+      Critic confusion alone NEVER proves the artifact is underspecified — treating "I don't
+      understand X" as automatic evidence of a defect is the bug this axiom exists to catch.
+      Triage every point of confusion three ways before it can become a finding:
+      - **ARTIFACT_GAP** — the bounded target itself is missing what a competent reader would need
+        (an undefined term, an absent negative-path case, an internal contradiction). Only this
+        class may become a problem finding.
+      - **CONTEXT_MISSING** — the information exists, just outside the bounded target this review
+        was given (a sibling spec, a convention doc, prior discussion). Not a finding against the
+        artifact — note the gap in scope, never invent past it.
+      - **NON_BLOCKING_QUESTION** — genuine curiosity or a style preference with no artifact defect
+        behind it. Never becomes a finding.
+    </Axiom>

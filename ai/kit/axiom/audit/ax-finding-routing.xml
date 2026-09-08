@@ -1,7 +1,4 @@
-<!-- source: ai/directives/sdd/audit.directive.xml, reconciled with audit.directive.hbs's inline
-     copy (T-B6-18) — merged the three finding types (RULE_FILE_INCOMPLETE, LANGUAGE_QUALITY,
-     YAGNI_WAIVER_INCOMPLETE) that had been added only inline with the closing reconcile/approval
-     paragraph that existed only here; this file is now the single home for AX_FINDING_ROUTING. -->
+<!-- source: ai/directives/sdd/audit.directive.xml, reconciled with audit.directive.hbs's inline copy (T-B6-18) — merged the three finding types (RULE_FILE_INCOMPLETE, LANGUAGE_QUALITY, YAGNI_WAIVER_INCOMPLETE) that had been added only inline with the closing reconcile/approval paragraph that existed only here; this file is now the single home for AX_FINDING_ROUTING. -->
 <Axiom id="AX_FINDING_ROUTING">
       Every finding is routed to the artifact that owns the remediation:
 

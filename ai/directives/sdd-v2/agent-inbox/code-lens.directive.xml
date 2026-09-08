@@ -81,17 +81,14 @@
       linter measures — it is read from the diff against the stated problem, not from style rules.
     </Axiom>
 
-    principle, T-B6-18 — all four templates carried a near-identical local wrapper around
-           ax-ticket-deduplication; merged their two distinct application notes — code-symbol search and
-           reconciliation-layer finding merge — into one shared home) -->
-      <Axiom id="AX_NO_DUPLICATION">
-            Before creating something new, search for an existing equivalent and reuse or merge rather
-            than duplicate. Applied to code, not ticket text: before accepting a new symbol, search the
-            repo for an existing equivalent. Applied at the reconciliation layer itself: two lens
-            findings about the same file:line are ONE finding, not two duplicate `proposedActions`
-            entries. Reuses the `ax-ticket-deduplication` principle (single authoritative home for one
-            piece of content, whether that content is spec text, a code symbol, or a reconciled finding)
-            — no separate axiom is authored for this, the same principle is read verbatim below.
+    <Axiom id="AX_NO_DUPLICATION">
+      Before creating something new, search for an existing equivalent and reuse or merge rather
+      than duplicate. Applied to code, not ticket text: before accepting a new symbol, search the
+      repo for an existing equivalent. Applied at the reconciliation layer itself: two lens
+      findings about the same file:line are ONE finding, not two duplicate `proposedActions`
+      entries. Reuses the `ax-ticket-deduplication` principle (single authoritative home for one
+      piece of content, whether that content is spec text, a code symbol, or a reconciled finding)
+      — no separate axiom is authored for this, the same principle is read verbatim below.
     </Axiom>
 
     <Axiom id="AX_TICKET_DEDUPLICATION">
