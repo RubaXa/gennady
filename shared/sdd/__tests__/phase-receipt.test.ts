@@ -231,18 +231,9 @@ describe('phase receipt', () => {
           );
         }
 
-        const anystackResult = phaseVerificationEnvironmentState(
-          root,
-          'code',
-          false,
-          [],
-          true,
-          'anystack'
-        );
-        assert.strictEqual(anystackResult.ok, false);
-        if (!anystackResult.ok) {
-          assert.match(anystackResult.issue, /no environmentState source for stack 'anystack'/);
-        }
+        // 'anystack' no longer illustrates this contract: V-08 gave it a real preset
+        // (shared/verify/presets/anystack.ts), so it now passes the resolve-stage guard like
+        // 'node' does — 'golang' (still unimplemented, V-09) is this test's sole example.
       } finally {
         rmSync(root, { recursive: true, force: true });
       }
