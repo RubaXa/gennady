@@ -1,5 +1,5 @@
 // @file: Objective, frozen grade for the `migration` eval phase — deterministic, not the judge.
-// @consumers: cli (migration scenarios); see EXPERIMENTS-LOG.ru.md for why the bar is baseline-diff.
+// @consumers: cli (migration scenarios); see docs/journal/EXPERIMENTS-LOG.md for why the bar is baseline-diff.
 // The v1→v2 migration document varies in CONTENT run to run, so the bar is NOT "sdd-check clean". It is
 // deterministic and structural: the repo flipped to v2, AND the migration introduced no NEW sdd-check
 // findings vs the pre-migration baseline (pre-existing v1 debt is backlog, per the migration directive's

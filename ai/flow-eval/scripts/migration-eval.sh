@@ -27,7 +27,7 @@ hist() { node "$GEN" sdd-check --all "$1" 2>&1 | grep -oE "error: [A-Z_]+|warn: 
 flow() { node "$GEN" sdd-state "$1" 2>&1 | grep -E "^FLOW_VERSION" || echo "FLOW_VERSION=?"; }
 
 # Enforce the ~/Developer/ rule BEFORE touching anything (run/prep/execute) — see
-# ai/flow-eval/docs/PREREQUISITES.ru.md. Fails fast and loud, not mid-operation.
+# ai/flow-eval/docs/03-SETUP.md. Fails fast and loud, not mid-operation.
 "$GEN_ROOT/ai/flow-eval/scripts/require-developer-repo.sh" "$REPO"
 
 reset_fixture() {

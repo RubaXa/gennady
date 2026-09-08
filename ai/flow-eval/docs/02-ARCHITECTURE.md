@@ -1,7 +1,7 @@
 # Архитектура flow-eval-харнесса
 
-Читать первым после [`README.md`](../README.md). Здесь — устройство и принцип работы; как запустить —
-в [`RUNBOOK.ru.md`](../RUNBOOK.ru.md), как добавить eval — в [`WRITING-EVALS.ru.md`](../WRITING-EVALS.ru.md).
+Читать после [`00-INTRO.md`](./00-INTRO.md). Здесь — устройство и принцип работы; как запустить —
+в [`04-RUNNING.md`](./04-RUNNING.md), как добавить eval — в [`06-NEW-EVAL.md`](./06-NEW-EVAL.md).
 
 ## 1. Принцип работы
 
@@ -72,7 +72,7 @@ flowchart TD
 | `opencode-runtime.ts`  | Единственный адаптер к `@opencode-ai/sdk`: создание сессий, prompt, abort, judge — никакого субпроцесса.                          |
 | `types.ts`             | Источник истины для типов сценария/фазы/режима/фикстуры/judge-контракта.                                                          |
 | `scenarios.json`       | Эталонные сценарии (authoring, scaffold, execute, repair и др.).                                                                  |
-| `scripts/*.sh`, `*.py` | Внешние прогоны (round-trip/migration) и слой детерминированных метрик — см. [METRICS.ru.md](./METRICS.ru.md).                    |
+| `scripts/*.sh`, `*.py` | Внешние прогоны (round-trip/migration) и слой детерминированных метрик — см. [05-METRICS.md](./05-METRICS.md).                    |
 
 ## 4. Что детерминировано, а что — judge
 
@@ -82,22 +82,22 @@ flowchart TD
 | `quality-gate.ts` — R1         | Да          | `gennady sdd-check --all .`, парсинг вывода (`parseSddCheckResult`).                                                  |
 | `quality-gate.ts` — R-COMPLETE | Да          | Чтение артефакта/тикета/спеки с диска: `[x] DONE`, закрытый раунд, `SDD_AUDIT_RECEIPT`/`SDD_REVIEW_RECEIPT` на спеке. |
 | `session-metrics.py` record    | Да          | SQLite OpenCode (шаги/тулы/токены) + файлы фикстуры на диске — без LLM.                                               |
-| `session-metrics.py` gate      | Да          | RED, если артефакт есть, а тикет не завершён (см. [METRICS.ru.md](./METRICS.ru.md)).                                  |
+| `session-metrics.py` gate      | Да          | RED, если артефакт есть, а тикет не завершён (см. [05-METRICS.md](./05-METRICS.md)).                                  |
 | `session-metrics.py` compare   | Да          | non-regression: `steps`/`tool_calls` не выросли, `completion`-сигналы не регрессировали.                              |
 | `session-telemetry.py`         | Да          | Обзервабилити (тулы/чтения/reasoning) — только для чтения, ничего не решает.                                          |
 
 Практическое следствие: **вердикт judge не отменяет проверку фактов**. Если judge противоречит diff'у
 или показаниям quality-gate — это дефект харнесса/судьи, а не дефект проверяемого SDD-флоу (см.
-[RUNBOOK.ru.md](../RUNBOOK.ru.md#критерии-результата)).
+[04-RUNNING.md](./04-RUNNING.md#критерии-результата)).
 
 ## 5. Куда дальше
 
 - Как поднять окружение перед прогоном (сервер OpenCode, LLM-proxy, сборка, правило `~/Developer/`) —
-  [`PREREQUISITES.ru.md`](./PREREQUISITES.ru.md).
-- Как написать свой eval на встроенной фикстуре — [`WRITING-EVALS.ru.md`](../WRITING-EVALS.ru.md).
+  [`03-SETUP.md`](./03-SETUP.md).
+- Как написать свой eval на встроенной фикстуре — [`06-NEW-EVAL.md`](./06-NEW-EVAL.md).
 - Как завести eval на СВОЁМ внешнем репозитории (round-trip) —
-  [`WRITING-EVALS-EXTERNAL.ru.md`](./WRITING-EVALS-EXTERNAL.ru.md).
-- Слой метрик и non-regression — [`METRICS.ru.md`](./METRICS.ru.md).
-- Готовый бриф для агента разработчика — [`AGENT-BRIEF.ru.md`](./AGENT-BRIEF.ru.md).
-- Разбор реальных прогонов (глубокие кейсы) — `swiftlint-toolchain-setup.md`,
+  [`08-EXTERNAL-REPO.md`](./08-EXTERNAL-REPO.md).
+- Слой метрик и non-regression — [`05-METRICS.md`](./05-METRICS.md).
+- Готовый бриф для агента разработчика — [`09-AGENT-BRIEF.md`](./09-AGENT-BRIEF.md).
+- Разбор реальных прогонов (глубокие кейсы) — `swiftlint-setup.md`,
   `roundtrip-wall3-assessment.md`, `flow-verification-redesign.md`, `flow-verification-ledger.md`.
