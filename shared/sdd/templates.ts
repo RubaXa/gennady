@@ -1360,7 +1360,7 @@ use-case → \`[<ACRONYM>-REQ-N]\` → vision chain the operator reviews at scaf
 
 #### P1
 - [ ] \`<ts>\` DONE
-**Handoff →** artifacts: [...]; decisions: [...]; open: [...]
+**Handoff →** artifacts: [...]; decisions: [...]; open: [...]; deviations: [...]
 
 #### Round close
 - [ ] \`<ts>\` DONE

@@ -17,7 +17,7 @@
       <!-- CLI-owned receipt appears here after successful STEP_5. -->
       <!-- Semantic closing lines (mandatory): -->
       - [x] `<ts>` DONE
-      **Handoff →** artifacts: [<paths>]; decisions: [<key=value, …>]; open: [<id: text, …>]
+      **Handoff →** artifacts: [<paths>]; decisions: [<key=value, …>]; open: [<id: text, …>]; deviations: [<id: text, …>]
       ```
 
       Trivial phase: one receipt + `DONE` + Handoff. That is valid and preferred over padding.

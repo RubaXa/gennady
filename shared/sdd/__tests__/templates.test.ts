@@ -121,6 +121,20 @@ describe('templates registry', () => {
     assert.ok(!/<!--SECTION:/.test(TEMPLATES.portal.skeleton));
   });
 
+  // B2-14: the task skeleton's illustrative Handoff line taught agents to write three fields
+  // (artifacts/decisions/open), but sdd-log `complete` (isCompleteHandoffPayload,
+  // cli/cmd/sdd-log/sdd-log.types.ts) requires all four, including `deviations`, rejecting the
+  // skeleton's own three-field form. All three copies of the skeleton (this one, the generated
+  // formats/task-ticket-structure.xml + scaffold.directive.xml via the shared sdd-skeleton-task
+  // build partial, and the disconnected ai/kit/contract/process/phase-block-format.xml) must agree
+  // with the runtime contract.
+  it('task skeleton Handoff placeholder carries all four fields sdd-log complete requires (artifacts/decisions/open/deviations)', () => {
+    assert.match(
+      TEMPLATES.task.skeleton,
+      /\*\*Handoff →\*\* artifacts: \[\.\.\.\]; decisions: \[\.\.\.\]; open: \[\.\.\.\]; deviations: \[\.\.\.\]/
+    );
+  });
+
   it('project-index skeleton carries no SECTION anchors and matches specs/3-tasks.md', () => {
     assert.ok(!/<!--SECTION:/.test(TEMPLATES['project-index'].skeleton));
     assert.strictEqual(TEMPLATES['project-index'].pathPattern, 'specs/3-tasks.md');
