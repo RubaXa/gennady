@@ -16,15 +16,19 @@ set -euo pipefail
 export PATH="/opt/homebrew/bin:$PATH"
 export TMPDIR=/tmp                                            # no trailing slash: SwiftLint SIGBUS guard
 
+# GAP-E-4: same fix as migration-eval.sh — GEN_ROOT defaults to THIS script's own repo root (no
+# hardcoded author worktree name) and RT gains an env-override with a $HOME-relative default (no
+# literal /Users/<name> path), so a clean clone works with zero env vars beyond REPO.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="${REPO:-/Users/k.lebedev/Developer/cloud-ios}"
-GEN_ROOT="${GEN_ROOT:-/Users/k.lebedev/Developer/gennady/.claude/worktrees/sdd-v2-rc52-followup}"
+GEN_ROOT="${GEN_ROOT:-$(cd "$SCRIPT_DIR/../../.." && pwd)}"
 GEN="$GEN_ROOT/dist/gennady.js"
 RTBASE="${RTBASE:-d9de0f7c16}"                               # migrated v2 base (spec+tickets+guard+bench)
 BASEURL="${BASEURL:-http://127.0.0.1:4098}"
 MODEL="${MODEL:-llm-proxy/deepseek-v4-flash}"
 MAX_OBS="${MAX_OBS:-60}"
 RUNID="${2:-r$(date +%s)}"
-RT="/Users/k.lebedev/.gennady/eval/cloud-ios/rt-regen"
+RT="${RT:-$HOME/.gennady/eval/cloud-ios/rt-regen}"
 BR="eval/run/roundtrip/regen"
 GUARD="Tools/check-swiftlint-exceptions.sh"
 TICKET="specs/infra-base/infra-base.task.IB-script.md"

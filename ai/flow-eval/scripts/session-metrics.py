@@ -16,9 +16,16 @@ import sqlite3
 import sys
 from collections import Counter
 
-DB = os.path.expanduser("~/.local/share/opencode/opencode.db")
-GEN = "/Users/k.lebedev/Developer/gennady/.claude/worktrees/sdd-v2-rc52-followup"
-LEDGER = f"{GEN}/ai/flow-eval/.results/metrics-ledger.jsonl"
+# GAP-E-4: all three used to be (or resolve to) a specific author's absolute path — DB via a fixed
+# XDG-style guess, GEN as a literal worktree name that does not exist on a clean clone, and LEDGER
+# derived from it. Each is now overridable via env var, with a default computed relative to this
+# script's own location (three levels up: ai/flow-eval/scripts/ -> repo root) rather than hardcoded.
+DB = os.environ.get("OPENCODE_DB", os.path.expanduser("~/.local/share/opencode/opencode.db"))
+GEN = os.environ.get(
+    "GEN_ROOT",
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))),
+)
+LEDGER = os.environ.get("METRICS_LEDGER", f"{GEN}/ai/flow-eval/.results/metrics-ledger.jsonl")
 
 
 def resolve_session(con, arg):
