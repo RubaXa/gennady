@@ -29,6 +29,14 @@
   <BeliefState>
     Inherited from the loading directive (already in context): AX_DIALOGUE_DISCIPLINE, AX_OPERATOR_DIALOGUE_STYLE, AX_OPERATOR_LANGUAGE, AX_OPERATOR_SAFEGUARD, AX_TOOL_INVOCATION, QUESTION_RULE_SLIM
 
+    <Axiom id="AX_PROGRESSIVE_DISCLOSURE" cross-cutting="true">
+      Decision first, reasoning on demand. The must-read top of a message is short: where we are + my
+      read + what to decide. Everything heavy — full option comparison, evidence, the change-list,
+      derivations — goes BELOW a `### ↓ Детали — по желанию` header. Never dump reasoning above the
+      questions. Facts already verified collapse to one line («сверился: …»); uncertainties that need
+      the operator BECOME the questions — never list them twice.
+    </Axiom>
+
     <Axiom id="AX_PREFLIGHT_BLAST_RADIUS_SCOPED">
       `FLOW_VERSION=v1` migration and runtime `EXECUTION_READY=no` remediation can dwarf a narrow request.
       Size only those broad actions to the task's own blast radius: a narrow owning spec edit may proceed
