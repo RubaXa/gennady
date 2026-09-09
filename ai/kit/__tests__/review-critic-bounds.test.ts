@@ -1,10 +1,13 @@
-// @file: Guards T-B6-03 (Пачка 20, "Ревью и критик ограничены"): the STEP_2⇄STEP_3
-//   review⇄reconcile cycle is bounded by AX_CAP_5 with an explicit operator disposition instead of
-//   running forever, and the critic activates AX_DEFAULT_ACCEPT and AX_POLISH_MODE — both existed
-//   in the axiom library (ax-default-accept.xml, ax-polish-mode.xml) but were never connected to
-//   any template (40-TRACK-DIRECTIVES-SKILLS.md §1.3, D3.5/D3.6).
+// @file: Guards Пачка 20 ("Ревью и критик ограничены и читают владельца тикета"): the STEP_2⇄
+//   STEP_3 review⇄reconcile cycle is bounded by AX_CAP_5 with an explicit operator disposition
+//   instead of running forever, and the critic activates AX_DEFAULT_ACCEPT and AX_POLISH_MODE —
+//   both existed in the axiom library (ax-default-accept.xml, ax-polish-mode.xml) but were never
+//   connected to any template (40-TRACK-DIRECTIVES-SKILLS.md §1.3, D3.5/D3.6) — (T-B6-03). Also
+//   guards ISS-10: the critic reads the owning ticket's `## Conventions` and `## Decision Log`
+//   sections through sdd-extract's heading-anchor form, bounded to exactly those two sections and
+//   measured (extracted line count recorded), per akkrat issue #21 / 20-ISSUES-VERDICTS.md #21.
 // @consumers: node:test runner
-// @tasks: T-B6-03
+// @tasks: T-B6-03, ISS-10
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -68,5 +71,30 @@ describe('critic-protocol: AX_DEFAULT_ACCEPT and AX_POLISH_MODE are connected (T
     assert.match(report, /AX_POLISH_MODE/);
     assert.match(report, /polish: off/);
     assert.match(report, /MINOR\/INFO never drive the verdict/i);
+  });
+});
+
+describe('critic-protocol: reads the owning ticket Conventions/Decision Log by extraction (ISS-10)', () => {
+  const critic = readDirective('critic-protocol.directive.xml');
+  const read = () => step(critic, 'STEP_1_READ');
+
+  it('names both sections — Conventions and Decision Log — and nothing else of that document', () => {
+    const text = read();
+    assert.match(text, /## Conventions/);
+    assert.match(text, /## Decision Log/);
+    assert.match(text, /nothing else of that document/i);
+  });
+
+  it('extracts via sdd-extract heading-anchor form, one call per section', () => {
+    const text = read();
+    assert.match(text, /npx gennady sdd-extract <owning-tasks-index>#<heading-anchor>/);
+    assert.match(text, /one call per section/i);
+  });
+
+  it('is bounded and measured: records the extracted line count, does not reopen a settled decision', () => {
+    const text = read();
+    assert.match(text, /record the extracted line count/i);
+    assert.match(text, /bounded and measured/i);
+    assert.match(text, /already settled is not reopened/i);
   });
 });
