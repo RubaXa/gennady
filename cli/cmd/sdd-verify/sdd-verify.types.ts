@@ -10,7 +10,7 @@ import {
   type VerificationProfile,
 } from '../../../shared/sdd/phase-verification-plan.ts';
 import type { Cmd, EnvFailPredicate, StackId } from '../../../shared/verify/verify.types.ts';
-import type { StackConfigError } from '../../../shared/verify/stack-config.ts';
+import { matchesGlob, type StackConfigError } from '../../../shared/verify/stack-config.ts';
 import { PROJECT_CONFIG_FILENAME } from '../../../services/config/config-loader.ts';
 
 /** @purpose CLI invocation carried an extra positional path, or a flag other than `--profile` — sdd-verify never silently narrows or ignores. */
@@ -151,13 +151,13 @@ function badInvocationMessage(detail: string): string {
     `[sdd-verify] ${ERR_CLI_SDD_VERIFY_BAD_INVOCATION}: ${detail}`,
     '  Phase verification reads kind, Target Files, and owning spec from the ticket.',
     '  usage: npx gennady sdd-verify --task <ticket-path> --phase <PhaseID>',
-    '         npx gennady sdd-verify --profile full',
+    '         npx gennady sdd-verify --profile full [--only=<glob>[,<glob>…]] [--skip=<glob>[,<glob>…]]',
   ].join('\n');
 }
 
 /** @purpose Strict CLI shape: a phase context, or the global read-only full gate. */
 export type InvocationResult =
-  | { ok: true; mode: 'full'; profile: 'full' }
+  | { ok: true; mode: 'full'; profile: 'full'; only?: readonly string[]; skip?: readonly string[] }
   | { ok: true; mode: 'phase'; task: string; phase: string }
   | { ok: false; message: string };
 
@@ -175,6 +175,8 @@ export function parseInvocation(argv: string[]): InvocationResult {
         profile: { aliases: ['profile'], takesValue: true },
         task: { aliases: ['task'], takesValue: true },
         phase: { aliases: ['phase'], takesValue: true },
+        only: { aliases: ['only'], takesValue: true },
+        skip: { aliases: ['skip'], takesValue: true },
       },
       { strict: true }
     );
@@ -194,7 +196,7 @@ export function parseInvocation(argv: string[]): InvocationResult {
   }
 
   const scalar = (
-    key: 'profile' | 'task' | 'phase'
+    key: 'profile' | 'task' | 'phase' | 'only' | 'skip'
   ): { ok: true; value?: string } | { ok: false; message: string } => {
     const raw = parsed[key];
     if (raw === undefined) return { ok: true };
@@ -212,9 +214,34 @@ export function parseInvocation(argv: string[]): InvocationResult {
   if (!taskValue.ok) return taskValue;
   const phaseValue = scalar('phase');
   if (!phaseValue.ok) return phaseValue;
+  const onlyValue = scalar('only');
+  if (!onlyValue.ok) return onlyValue;
+  const skipValue = scalar('skip');
+  if (!skipValue.ok) return skipValue;
   const rawProfile = profileValue.value;
   const task = taskValue.value;
   const phase = phaseValue.value;
+  // V-13 (#20(iii)): `--only`/`--skip` select/exclude gates by name/glob — only meaningful on the
+  // read-only full profile, which writes no phase receipt. A phase run's `phaseReceiptCommandIssue`
+  // requires the ladder to exactly equal the canonical plan (И-2), so narrowing it here would break
+  // the receipt's own validator — reject explicitly rather than silently drop or silently apply.
+  if ((onlyValue.value !== undefined || skipValue.value !== undefined) && (task || phase)) {
+    return {
+      ok: false,
+      message: badInvocationMessage(
+        '--only/--skip are only valid with --profile full, never with --task/--phase'
+      ),
+    };
+  }
+  const splitSelectors = (value: string | undefined): readonly string[] | undefined =>
+    value === undefined
+      ? undefined
+      : value
+          .split(',')
+          .map((entry) => entry.trim())
+          .filter((entry) => entry.length > 0);
+  const only = splitSelectors(onlyValue.value);
+  const skip = splitSelectors(skipValue.value);
   if (rawProfile !== undefined && rawProfile !== 'full') {
     return {
       ok: false,
@@ -223,6 +250,12 @@ export function parseInvocation(argv: string[]): InvocationResult {
       ),
     };
   }
+  // Selector keys are added only when actually given — a bare/`--profile full` invocation returns
+  // the exact pre-V-13 object shape (no `only`/`skip` keys at all, not even `undefined`).
+  const selectors = {
+    ...(only !== undefined ? { only } : {}),
+    ...(skip !== undefined ? { skip } : {}),
+  };
   if (rawProfile === 'full') {
     if (task || phase) {
       return {
@@ -230,9 +263,9 @@ export function parseInvocation(argv: string[]): InvocationResult {
         message: badInvocationMessage("'--profile full' cannot be combined with --task/--phase"),
       };
     }
-    return { ok: true, mode: 'full', profile: 'full' };
+    return { ok: true, mode: 'full', profile: 'full', ...selectors };
   }
-  if (!task && !phase) return { ok: true, mode: 'full', profile: 'full' };
+  if (!task && !phase) return { ok: true, mode: 'full', profile: 'full', ...selectors };
   if (!task || !phase) {
     return {
       ok: false,
@@ -242,6 +275,28 @@ export function parseInvocation(argv: string[]): InvocationResult {
     };
   }
   return { ok: true, mode: 'phase', task, phase };
+}
+
+/**
+ * @purpose Resolve `--only`/`--skip` gate-name/glob selectors against one profile's real gate list
+ *   (V-13, #20(iii)) — the common resolver both flags share.
+ * @invariant An unknown selector (matches nothing) is a hard error, never a silent no-op: the
+ *   caller asked for a gate that is not there.
+ * @param names Gate names actually in this run, in ladder order.
+ * @param selectors Raw `--only`/`--skip` globs, already comma-split.
+ * @returns The matched subset of `names` (ladder order preserved), or the first unmatched selector.
+ */
+export function resolveGateSelectors(
+  names: readonly string[],
+  selectors: readonly string[]
+): { ok: true; matched: readonly string[] } | { ok: false; selector: string } {
+  const matched = new Set<string>();
+  for (const selector of selectors) {
+    const hits = names.filter((name) => matchesGlob(name, selector));
+    if (hits.length === 0) return { ok: false, selector };
+    hits.forEach((name) => matched.add(name));
+  }
+  return { ok: true, matched: names.filter((name) => matched.has(name)) };
 }
 
 /** @purpose Outcome of running one command — exit code + combined output. */
@@ -293,11 +348,12 @@ export type GateResult = {
 
 /**
  * @purpose Result of one sdd-verify run.
- * @invariant On failure `message` is never empty and lists only the failed gates' output; exit is always 1.
+ * @invariant On failure `message` is never empty; a gate failure is always exit 1, an unknown
+ *   `--only`/`--skip` selector (V-13) is exit 4 — a bad invocation, not a gate result.
  */
 export type VerifyOutcome =
   | { ok: true; text: string }
-  | { ok: false; code: string; exitCode: 1; message: string };
+  | { ok: false; code: string; exitCode: 1 | 4; message: string };
 
 /** @purpose Render a duration in seconds with one decimal. | @param ms Milliseconds. | @returns A `<n>s` label. */
 function secs(ms: number): string {

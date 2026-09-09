@@ -97,12 +97,19 @@ if (invocation.mode === 'phase') {
     coverageProbe
   );
 } else {
-  outcome = await run(defaultAsyncRunner, 'full', coverageProbe, { targets: [] }, undefined, {
-    // `full` never enters repair, but the complete project verdict is still runtime-enforced
-    // read-only. Coverage alone receives its narrow generated-artifact transaction.
-    repair: createRepairMutationBoundary(resolve('.')),
-    foundation: createRepairMutationBoundary(resolve('.'), 'full-profile gate'),
-  });
+  outcome = await run(
+    defaultAsyncRunner,
+    'full',
+    coverageProbe,
+    { targets: [], only: invocation.only, skip: invocation.skip },
+    undefined,
+    {
+      // `full` never enters repair, but the complete project verdict is still runtime-enforced
+      // read-only. Coverage alone receives its narrow generated-artifact transaction.
+      repair: createRepairMutationBoundary(resolve('.')),
+      foundation: createRepairMutationBoundary(resolve('.'), 'full-profile gate'),
+    }
+  );
 }
 console.log(outcome.ok ? outcome.text : outcome.message);
 process.exit(outcome.ok ? 0 : outcome.exitCode);

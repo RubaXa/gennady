@@ -463,6 +463,17 @@ function globToRegex(pattern: string): RegExp {
 }
 
 /**
+ * @purpose Whether one glob matches one string end to end (V-12/V-13: file-scope `when` and the
+ *   `--only`/`--skip` gate-name selector share this one compiler).
+ * @param text Path or gate name to test.
+ * @param pattern Glob pattern (`**`, `*`, `?`, `[...]`).
+ * @returns True when `pattern` matches `text` in full.
+ */
+export function matchesGlob(text: string, pattern: string): boolean {
+  return globToRegex(pattern).test(text);
+}
+
+/**
  * @purpose Whether a `when`-scoped gate applies to the phase's Target Files (V-12, #9-bonus).
  * @invariant No `when` at all (undefined/empty) always means in scope — the byte-parity default a
  *   repo without config never deviates from (D-17).
@@ -475,8 +486,7 @@ export function gateInScope(
   targets: readonly string[]
 ): boolean {
   if (when === undefined || when.length === 0) return true;
-  const regexes = when.map(globToRegex);
-  return targets.some((target) => regexes.some((re) => re.test(target)));
+  return targets.some((target) => when.some((glob) => matchesGlob(target, glob)));
 }
 
 /**
