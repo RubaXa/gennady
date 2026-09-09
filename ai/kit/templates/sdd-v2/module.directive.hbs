@@ -5,7 +5,7 @@
     scaffold; dialogue ceremony belongs to the optional interactive profile.
   </Mission>
 
-  <BeliefState deps="AX_TOOL_INVOCATION">
+  <BeliefState deps="AX_TOOL_INVOCATION, AX_SCALE_PROPORTIONAL_DEPTH">
     {{> "axiom/process/ax-tool-invocation"}}
 
     {{> "axiom/process/ax-progressive-disclosure"}}
@@ -34,8 +34,15 @@
       <Goal>Reuse existing ownership and dependencies.</Goal>
       <Action>
         <ToolCall owner="this-step" result="orientation">npx gennady sdd-orient --scope <scope></ToolCall> Inputs <scope>: scope resolved in STEP_0_CREATE. Use orientation.
-        `sdd-orient` is the only unconditional foreign-context read. Do not load interview, research,
-        or registry protocols unless orientation exposes a real ambiguity.
+        `sdd-orient` is the only unconditional foreign-context read. Depth here is proportional to
+        the confirmed SCALE, never self-assessed (`AX_SCALE_PROPORTIONAL_DEPTH`):
+        <LogicSwitch on="SCALE and orientation ambiguity">
+        - WHEN SCALE is `fix` or `function` AND orientation exposes no real ambiguity -> EXPRESS:
+          skip interview, research, and registry protocols entirely — no gate is dropped,
+          STEP_4_CHECK and STEP_5_CLOSE still run in full.
+        - WHEN SCALE is `product`, or orientation exposes a real ambiguity -> load interview,
+          research, or registry protocols as needed.
+        </LogicSwitch>
       </Action>
     </Step>
 

@@ -7,7 +7,7 @@
     **Modes:** greenfield · refine · pivot · rewrite.
   </Mission>
 
-  <BeliefState deps="AX_TOOL_INVOCATION">
+  <BeliefState deps="AX_TOOL_INVOCATION, AX_SCALE_PROPORTIONAL_DEPTH">
     {{> "axiom/process/ax-tool-invocation"}}
 
     {{> "axiom/process/ax-progressive-disclosure"}}
@@ -51,9 +51,17 @@
       <Goal>Load only the bounded neighbouring context.</Goal>
       <Action>
         <ToolCall owner="this-step" result="orientation">npx gennady sdd-orient --scope <scope></ToolCall> Inputs <scope>: scope resolved in STEP_0_CREATE. Use orientation.
-        This is the only unconditional foreign-context read. Load interview-protocol, rule-registry,
-        or research-gate only when the brief or orientation names their trigger. A brief that already
-        names the consumer, happy path, negative path, constraints, and exclusions needs no interview.
+        This is the only unconditional foreign-context read. Depth here is proportional to the
+        confirmed SCALE, never self-assessed (`AX_SCALE_PROPORTIONAL_DEPTH`):
+        <LogicSwitch on="SCALE and brief completeness">
+        - WHEN SCALE is `fix` or `function` AND a brief that already names the consumer, happy path,
+          negative path, constraints, and exclusions needs no interview -> EXPRESS: skip
+          interview-protocol, rule-registry, and research-gate entirely, straight into STEP_2_FILL —
+          no gate is dropped, STEP_3_CHECK and STEP_4_CLOSE still run in full.
+        - WHEN SCALE is `product`, or the brief is missing any of those five, or orientation exposes
+          a real ambiguity -> load interview-protocol, rule-registry, or research-gate per their own
+          trigger.
+        </LogicSwitch>
       </Action>
     </Step>
 
