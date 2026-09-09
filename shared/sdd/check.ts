@@ -27,6 +27,7 @@ import {
   parseExecutionLog,
   parseAuditRounds,
   META_REOPENS_RE,
+  unknownTokenLines,
 } from './execution-log.ts';
 import {
   deriveSpecAcronym,
@@ -425,6 +426,14 @@ export function checkTicket(file: string, content: string): Finding[] {
           `### ${round.roundLabel} has a checked phase-block line but no closed \`#### Round close\`.`
         );
       }
+    }
+
+    // E-05 (issue #23): closed token vocabulary — WARN per L-3, same as every sibling code above.
+    for (const line of unknownTokenLines(logSec.content)) {
+      warn(
+        'SDD_EXECUTION_LOG_UNKNOWN_TOKEN',
+        `Checked event line opens with a token outside the closed vocabulary: "${line}"`
+      );
     }
   }
   // #endregion END_EXEC_LOG

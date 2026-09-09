@@ -115,6 +115,31 @@ export function firstRoundPhaseBlockCounts(logBody: string): Map<string, number>
   return counts;
 }
 
+/**
+ * @purpose Every checked event line whose first-word token is outside the closed vocabulary
+ *   (issue #23) — phase blocks, Round close, and trailing content all count; a marker line never does.
+ * @param logBody Extracted EXECUTION_LOG section body.
+ * @returns Each offending line's raw text, in document order across every Round.
+ */
+export function unknownTokenLines(logBody: string): string[] {
+  const parsed = parseExecutionLog(wrapAsExecutionLogDocument(logBody));
+  if (!parsed) return [];
+  // A checked marker line (`- [x] \`ts\` ✅ RESOLVED: …`, the pre-B2-19 inline shape) parses its
+  // own marker emoji as `token` — real vocabulary violations never carry a marker, so excluding
+  // marker !== null here is what keeps legacy 🛑/✅ lines from misreading as unknown tokens.
+  const bad = (e: LogEvent): boolean => e.token !== null && !e.known && e.marker === null;
+  const out: string[] = [];
+  for (const round of parsed.rounds) {
+    for (const phase of round.phases) {
+      for (const e of phase.events) if (bad(e)) out.push(e.raw);
+    }
+    for (const e of round.close?.extra ?? []) if (bad(e)) out.push(e.raw);
+    if (round.close?.done && bad(round.close.done)) out.push(round.close.done.raw);
+    for (const e of round.trailing) if (bad(e)) out.push(e.raw);
+  }
+  return out;
+}
+
 /** @purpose Pull the `P<N>` phase id out of a Blocker Trail `✅ RESOLVED (Round <N> / P<M>): …` back-reference line. */
 const TRAIL_PHASE_RE = /\(Round\s+\d+\s*\/\s*(P[0-9]+)\)/;
 
