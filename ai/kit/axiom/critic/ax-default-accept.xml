@@ -1,2 +1,6 @@
-<!-- source: ai/directives/sdd/critic.directive.xml -->
-<Axiom id="AX_DEFAULT_ACCEPT">Uncertain → ACCEPT. Cost of rejecting real finding > cost of accepting marginal one.</Axiom>
+<!-- source: ai/directives/sdd/critic.directive.xml @ d37d5910, current v1 text after fix(sdd): bound critic convergence loop (d6065c36, 2026-08-31) — the prior text on this file ("Uncertain → ACCEPT. Cost of rejecting real finding > cost of accepting marginal one.") was v1's own pre-reform redaction, the one d6065c36 replaced because it kept the review⇄reconcile loop from converging (V-BATCH-20 B-2); this axiom classifies an orchestrator-level ACCEPT/REJECT of a returned finding, so it is activated in review-lifecycle.directive.hbs STEP_3_RECONCILE (the v2 analog of v1's 2_EVALUATE), not in the read-only critic-protocol worker where ACCEPT/REJECT are undefined. -->
+<Axiom id="AX_DEFAULT_ACCEPT">Uncertainty alone is NOT a blocking finding. ACCEPT only an artifact gap
+backed by concrete evidence — a cited requirement, invariant, or scenario, naming what concretely
+breaks, for whom, and when. A preference, alternative design, missing local convention, or question
+without concrete breakage → REJECT as blocking; when it originates in confusion, classify it through
+`AX_CONFUSION_BUG` first.</Axiom>
