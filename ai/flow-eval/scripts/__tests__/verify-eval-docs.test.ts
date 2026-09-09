@@ -1,9 +1,9 @@
-// @file: GAP-E-5 (D-46) both-way proof for verify-eval-docs.ts — the script that gates the unified
-//   eval spec on "every command/path is real, zero [UNVERIFIED] markers left". Drives the real CLI as
-//   a subprocess (same pattern as results-table.test.ts): a fixture doc with each kind of problem must
-//   fail with a non-zero exit and name the problem; a clean fixture (including placeholder-only paths
-//   that must NOT be false-flagged) must pass; and the real EVAL-SPEC.md/RUNBOOK.md in this checkout
-//   must pass right now, proving the acceptance claim, not just the mechanism.
+// @file: GAP-E-5 (D-46) both-way proof for verify-eval-docs.ts — the script that gates every doc
+//   under ai/flow-eval/docs/** on "every command/path/link is real, zero [UNVERIFIED] markers left".
+//   Drives the real CLI as a subprocess (same pattern as results-table.test.ts): a fixture doc with
+//   each kind of problem must fail with a non-zero exit and name the problem; a clean fixture
+//   (including placeholder-only paths that must NOT be false-flagged) must pass; and the real docs in
+//   this checkout must pass right now, proving the acceptance claim, not just the mechanism.
 // @consumers: N/A (test file)
 // @tasks: N/A
 
@@ -11,7 +11,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { promisify } from 'node:util';
 
@@ -51,6 +51,7 @@ function fakeRepoRoot(): string {
 
 function fixtureDoc(root: string, name: string, content: string): string {
   const file = join(root, name);
+  mkdirSync(dirname(file), { recursive: true });
   writeFileSync(file, content);
   return name;
 }
@@ -102,7 +103,63 @@ describe('GAP-E-5: verify-eval-docs.ts (both-way, real subprocess)', () => {
       );
       const { code, stdout } = await runVerifier(['--root', root, doc]);
       assert.equal(code, 0, stdout);
-      assert.match(stdout, /OK — 1 doc\(s\), 1 path\(s\) checked, 1 npm command\(s\) checked/);
+      assert.match(
+        stdout,
+        /OK — 1 doc\(s\), 1 path\(s\) checked, 0 link\(s\) checked, 1 npm command\(s\) checked/
+      );
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('fails when a markdown link target does not exist in the checkout (C-2 regression)', async () => {
+    const root = fakeRepoRoot();
+    try {
+      const doc = fixtureDoc(
+        root,
+        'DOC.md',
+        'See the [`PROGRESS-REPORT.md`](./PROGRESS-REPORT.md) for the long version.\n'
+      );
+      const { code, stderr } = await runVerifier(['--root', root, doc]);
+      assert.notEqual(code, 0);
+      assert.match(stderr, /link target does not exist: \(\.\/PROGRESS-REPORT\.md\)/);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('passes a markdown link that resolves relative to the doc, anchor and all', async () => {
+    const root = fakeRepoRoot();
+    try {
+      fixtureDoc(root, 'RUNBOOK.md', '# runbook\n');
+      const doc = fixtureDoc(
+        root,
+        'DOC.md',
+        'See [the runbook](./RUNBOOK.md#some-heading) for setup.\n'
+      );
+      const { code, stdout } = await runVerifier(['--root', root, doc]);
+      assert.equal(code, 0, stdout);
+      assert.match(stdout, /1 link\(s\) checked/);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('never flags a link that is a same-page anchor or an external/mailto URL', async () => {
+    const root = fakeRepoRoot();
+    try {
+      const doc = fixtureDoc(
+        root,
+        'DOC.md',
+        [
+          'See [above](#some-anchor) and [the site](https://example.com/x) and',
+          '[support](mailto:support@example.com).',
+          '',
+        ].join('\n')
+      );
+      const { code, stdout } = await runVerifier(['--root', root, doc]);
+      assert.equal(code, 0, stdout);
+      assert.match(stdout, /0 link\(s\) checked/);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
@@ -120,6 +177,8 @@ describe('GAP-E-5: verify-eval-docs.ts (both-way, real subprocess)', () => {
           'Nor a transient run dir `.results/run-<ISO>/summary.json`.',
           'Nor a URL `https://download.swift.org/swift-6.2.pkg`.',
           'A bare flag value like `4097` or `v2` is not a path either.',
+          'Nor a worker-sandbox fixture path `bin/log-summary.sh` or `golden/verify.sh`,',
+          'nor a script inside an external checkout `Tools/check-swiftlint-exceptions.sh`.',
           '',
         ].join('\n')
       );
@@ -131,9 +190,64 @@ describe('GAP-E-5: verify-eval-docs.ts (both-way, real subprocess)', () => {
     }
   });
 
-  it('the real EVAL-SPEC.md and RUNBOOK.md in this checkout pass right now', async () => {
+  it('strips a trailing `:line` reference before checking a backtick path exists', async () => {
+    const root = fakeRepoRoot();
+    try {
+      const doc = fixtureDoc(
+        root,
+        'DOC.md',
+        'See `ai/flow-eval/real-file.ts:15` and the range `ai/flow-eval/real-file.ts:15-20`.\n'
+      );
+      const { code, stdout } = await runVerifier(['--root', root, doc]);
+      assert.equal(code, 0, stdout);
+      assert.match(stdout, /2 path\(s\) checked/);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('still fails a `:line` reference whose underlying file does not exist', async () => {
+    const root = fakeRepoRoot();
+    try {
+      const doc = fixtureDoc(root, 'DOC.md', 'See `ai/flow-eval/missing-file.ts:15`.\n');
+      const { code, stderr } = await runVerifier(['--root', root, doc]);
+      assert.notEqual(code, 0);
+      assert.match(stderr, /path does not exist: `ai\/flow-eval\/missing-file\.ts:15`/);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('with no FILE args, discovers every .md under ai/flow-eval/docs/ recursively (not just two names)', async () => {
+    const root = fakeRepoRoot();
+    try {
+      fixtureDoc(root, 'ai/flow-eval/docs/EVAL-SPEC.md', '# spec\n');
+      fixtureDoc(root, 'ai/flow-eval/docs/RUNBOOK.md', '# runbook\n');
+      fixtureDoc(
+        root,
+        'ai/flow-eval/docs/journal/RESULTS.md',
+        'Dangling: [`GONE.md`](./GONE.md)\n'
+      );
+      const { code, stderr } = await runVerifier(['--root', root]);
+      // The nested journal/RESULTS.md must have been picked up by default (not just the two
+      // top-level docs) — its dangling link is what proves it was actually checked, not skipped.
+      assert.notEqual(code, 0);
+      assert.match(stderr, /journal\/RESULTS\.md.*link target does not exist/);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('the real docs under ai/flow-eval/docs/ (all of them, not just EVAL-SPEC/RUNBOOK) pass right now', async () => {
     const { code, stdout, stderr } = await runVerifier([]);
     assert.equal(code, 0, `${stdout}${stderr}`);
     assert.match(stdout, /0 \[UNVERIFIED\] markers/);
+    // At least the two top-level docs plus the three journal/ docs this batch also unified.
+    assert.match(stdout, /OK — 5 doc\(s\)/);
+    // Proves the new link-checking mechanism is actually exercised on the real corpus, not just
+    // passing vacuously because nothing in it uses a markdown link.
+    const linkCountMatch = stdout.match(/(\d+) link\(s\) checked/);
+    assert.ok(linkCountMatch, stdout);
+    assert.ok(Number(linkCountMatch![1]) > 0, 'expected at least one real markdown link checked');
   });
 });
