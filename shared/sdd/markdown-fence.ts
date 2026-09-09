@@ -10,12 +10,7 @@ export type MarkdownFence = {
   length: number;
 };
 
-/**
- * @purpose Advance a Markdown fence state for one line.
- * @param line Raw line.
- * @param active Current fence.
- * @returns Next fence state.
- */
+/** @purpose Advance a Markdown fence state for one line. | @param line Raw line. | @param active Current fence. | @returns Next fence state. */
 export function nextMarkdownFence(
   line: string,
   active: MarkdownFence | null

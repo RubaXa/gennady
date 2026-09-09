@@ -9,13 +9,7 @@ import { parsePhasesOverview } from './ticket.ts';
 /** @purpose Validate one parsed dependency receipt against its current project context. */
 type DependencyReceiptValidator = (receipt: PhaseReceipt, phaseId: string) => string | null;
 
-/**
- * @purpose Fail before dispatch or mutation unless the complete dependency closure is complete and currently attested.
- * @param content Ticket markdown.
- * @param phaseId Phase about to start.
- * @param validateReceipt Current-receipt validator owned by phase verification.
- * @returns Teaching issue, or null when dependencies are ready.
- */
+/** @purpose Fail before dispatch or mutation unless the complete dependency closure is complete and currently attested. | @param content Ticket markdown. | @param phaseId Phase about to start. | @param validateReceipt Current-receipt validator owned by phase verification. | @returns Teaching issue, or null when dependencies are ready. */
 export function checkPhaseDependencies(
   content: string,
   phaseId: string,

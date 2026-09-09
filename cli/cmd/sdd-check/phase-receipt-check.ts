@@ -33,14 +33,7 @@ function receiptIssueFinding(file: string, phase: string, issue: string): Findin
   return finding(file, 'SDD_PHASE_RECEIPT_INVALID', `Phase ${phase}: ${issue}.`);
 }
 
-/**
- * @purpose Reject completed phases whose CLI-owned proof is absent, incomplete, or stale.
- * @param file Finding display path.
- * @param ticketPath Actual ticket path.
- * @param content Full ticket content.
- * @param root Project root.
- * @returns Receipt findings.
- */
+/** @purpose Reject completed phases whose CLI-owned proof is absent, incomplete, or stale. | @param file Finding display path. | @param ticketPath Actual ticket path. | @param content Full ticket content. | @param root Project root. | @returns Receipt findings. */
 export function checkPhaseReceipts(
   file: string,
   ticketPath: string,
