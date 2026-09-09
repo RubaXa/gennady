@@ -7,11 +7,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { logger } from '#logger';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
-import {
-  anystackReadinessAdapter,
-  nodeReadinessAdapter,
-  resolveReadinessAdapter,
-} from '../../../shared/sdd/readiness.ts';
+import { nodeReadinessAdapter, resolveReadinessAdapter } from '../../../shared/sdd/readiness.ts';
 import {
   parseScopes,
   parseScopeGraphEdges,
@@ -19,7 +15,7 @@ import {
   type Scope,
 } from '../../../shared/sdd/portal.ts';
 import { probeRepo } from '../../../shared/sdd/probe.ts';
-import { detectRepoStack } from '../../../shared/verify/stack-detection.ts';
+import { detectRepoStack, primaryStackOf } from '../../../shared/verify/stack-detection.ts';
 import { detectFlowVersion } from '../../../shared/sdd/flow.ts';
 import { countModuleSpecs } from '../../../shared/sdd/module-specs.ts';
 import { sumRollupProgress } from '../../../shared/sdd/tracker.ts';
@@ -160,13 +156,8 @@ export async function run(rawArgs: string[]): Promise<StateOutcome> {
   // #region START_READINESS — engine + adapter (V-06); node path is gatherReadinessInput/checkReadiness
   // verbatim (byte-identical, И-1/И-2) — an unimplemented stack (golang: V-09) falls back to the
   // node adapter too, so today's behavior for every repo this wave doesn't cover is unchanged.
-  const primaryStack = stack.stacks.includes('node') ? 'node' : (stack.stacks[0] ?? 'node');
-  const readinessAdapter =
-    primaryStack === 'node'
-      ? nodeReadinessAdapter
-      : primaryStack === 'anystack'
-        ? anystackReadinessAdapter
-        : (resolveReadinessAdapter(primaryStack) ?? nodeReadinessAdapter);
+  // `primaryStackOf` (V-06b) is the one shared selection rule sdd-task/sdd-verify now use too.
+  const readinessAdapter = resolveReadinessAdapter(primaryStackOf(stack)) ?? nodeReadinessAdapter;
   const readinessInput = readinessAdapter.gather(root);
   const { packageJsonPresent } = readinessInput;
   const readiness = readinessAdapter.evaluate(readinessInput);
@@ -249,6 +240,7 @@ export async function run(rawArgs: string[]): Promise<StateOutcome> {
       test: requiredPresence.get('test') ?? false,
       lint: requiredPresence.get('lint') ?? false,
     },
+    ...(readinessAdapter.stack !== 'node' ? { otherStackReady: readiness.executionReady } : {}),
     tasksTotal,
     tasksDone,
   });

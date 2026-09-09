@@ -1869,6 +1869,39 @@ describe('SddTaskCommand', () => {
       }
     });
 
+    it('V-06b: anystack repo (no package.json, explicit stack.use + ≥1 extraGate) passes the gate — no ERR_CLI_SDD_TASK_INFRA_NOT_READY', async () => {
+      const gateDir = mkdtempSync(join(tmpdir(), 'sdd-task-gate-anystack-'));
+      writeDeclaredPhaseTargets(gateDir);
+      writeFileSync(join(gateDir, 'ticket.md'), TICKET, 'utf-8');
+      writeFileSync(
+        join(gateDir, 'gennady.yaml'),
+        'stack:\n  use: [anystack]\n  anystack:\n    extraGates:\n      - id: check\n        argv: [echo, ok]\n',
+        'utf-8'
+      );
+      // Deliberately no package.json anywhere in this root.
+      try {
+        const r = await withCwd(gateDir, () => mod.run(argv('ticket.md', '--phase', 'P1')));
+        assert.strictEqual(r.ok, true, r.ok ? '' : r.message);
+      } finally {
+        rmSync(gateDir, { recursive: true, force: true });
+      }
+    });
+
+    it('V-06b: anystack repo with zero configured extraGates stays not-ready, same as before', async () => {
+      const gateDir = mkdtempSync(join(tmpdir(), 'sdd-task-gate-anystack-empty-'));
+      writeDeclaredPhaseTargets(gateDir);
+      writeFileSync(join(gateDir, 'ticket.md'), TICKET, 'utf-8');
+      writeFileSync(join(gateDir, 'gennady.yaml'), 'stack:\n  use: [anystack]\n', 'utf-8');
+      try {
+        const r = await withCwd(gateDir, () => mod.run(argv('ticket.md', '--phase', 'P1')));
+        assert.strictEqual(r.ok, false);
+        if (r.ok) return;
+        assert.match(r.message, /ERR_CLI_SDD_TASK_INFRA_NOT_READY/);
+      } finally {
+        rmSync(gateDir, { recursive: true, force: true });
+      }
+    });
+
     it('an impl phase whose OWN ticket is in the infra gate queue is exempt — otherwise the flow deadlocks against its own remedy', async () => {
       const gateDir = mkdtempSync(join(tmpdir(), 'sdd-task-gate-'));
       writeDeclaredPhaseTargets(gateDir);
