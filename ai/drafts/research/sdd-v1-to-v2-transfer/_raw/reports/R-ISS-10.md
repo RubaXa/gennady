@@ -98,3 +98,19 @@ exit 0. ВЫПОЛНЕНО.
 **Открытые вопросы:** нет.
 
 **Команды пуша для Lead** — см. сводный отчёт `R-BATCH-20-review-critic-bounds.md`.
+
+---
+
+## 5. Правки по вердикту верификатора (`V-BATCH-20.md`, ВЕРНУТЬ)
+
+Коммит: `3cda13ba` `fix(ISS-10): critic read-set names anchors that exist in real tasks-index formats`.
+
+| Находка | Что сделано | Где |
+|---|---|---|
+| **B-1 (блокирующая).** Названные якоря `## Conventions`/`## Decision Log` не существуют ни в одном формате tasks-index буквально; 5/6 реальных вызовов `sdd-extract` падали `ERR_CLI_SDD_EXTRACT_ANCHOR_NOT_FOUND`, единственный успешный возвращал указатель, а не конвенции; `specs/3-tasks.md` не входил в read-set. | Вариант (а) из вердикта: `STEP_1_READ` теперь называет фактические якоря — `specs/3-tasks.md#project-wide-conventions-declared-once-inherited` (реальные конвенции, всегда) плюс собственный Decision Log владеющего индекса по квалификатору уровня — `#decision-log-module-task-level` / `#decision-log-scope-task-level` / `#decision-log-project-task-level`. Модульный `## Conventions` документирован как указатель-заглушка и НЕ является целью извлечения (избегает повторного «указатель вместо конвенций»). Добавлен исполняемый тест: синтетические фикстуры tasks-index трёх уровней в каталоге тестов (`ai/kit/__tests__/review-critic-bounds.test.ts`), якоря вытянуты регэкспом из самой отрендеренной директивы (не переписаны руками — не могут молча разойтись), `sdd-extract` реально вызван на каждом (`SddExtractCommand#run`, с нейтрализованными `process.argv`/`process.exit` по образцу `cli/cmd/sdd-extract/__tests__/sdd-extract.cmd.test.ts`), проверено `outcome.ok===true` и `content.length>30` (не одна строка-указатель). Плюс отдельная проверка «rendered critic-protocol содержит `3-tasks.md`». Логические якоря в `sdd-extract` (вариант б) НЕ введены — `cli/cmd/sdd-extract/**` вне зоны (пачка 15); записано в остатки. | `ai/kit/templates/sdd-v2/critic-protocol.directive.hbs` (`STEP_1_READ`); `ai/kit/__tests__/review-critic-bounds.test.ts` (describe «critic-protocol: reads the owning ticket Conventions/Decision Log by extraction (ISS-10 / V-BATCH-20 B-1)», вложенный describe «executable proof…» — 7 кейсов: 4 якоря × sdd-extract-вызов + сверка списка якорей + сетап/teardown фикстур). |
+| **N-1 (major).** `AX_ISOLATION` заканчивался «No other files, no full dependent specs» и противоречил расширенному `STEP_1_READ`. | Добавлено явное исключение прямо в тело аксиомы: пул двух секций владеющего тикета «Exception (ISS-10): when the target is a task ticket, the owning tasks-index's project-wide conventions and Decision Log sections named in `STEP_1_READ` are also in bounds — that pull is itself bounded … and measured …, not a route back to the whole owning tasks-index or a full dependent spec». Директива больше не противоречит сама себе. | `ai/kit/axiom/critic/ax-isolation.xml`. |
+
+**Остатки (не решались кодом в этом фиксе, согласно вердикту и решению Lead):**
+- Логические якоря `CONVENTIONS`/`DECISION_LOG` в `sdd-extract` (вариант б из B-1) — требует правки `cli/cmd/sdd-extract/**`, вне зоны этой пачки (владеет пачка 15); кандидат в отдельную задачу трека 40.
+
+**Доказательства:** `node --import tsx --test ai/kit/__tests__/review-critic-bounds.test.ts ai/kit/__tests__/deps.test.ts` — 52/52 pass, exit 0; `cli/__tests__/directive-tool-contract/directive-tool-contract.test.ts` — 45/45 pass; `check:directives-fresh` / `audit:sdd-templates` — все green; коммит прошёл pre-commit целиком (`ALL PASS 5/5`) после одного синхронного повтора (host-нагрузка, `cancelled`, не `failed`).
