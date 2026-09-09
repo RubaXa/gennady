@@ -45,8 +45,10 @@ export const ERR_CLI_SDD_LOG_CLOSE_STATE = 'ERR_CLI_SDD_LOG_CLOSE_STATE' as cons
 export const ERR_CLI_SDD_LOG_AUTHORING_STATE = 'ERR_CLI_SDD_LOG_AUTHORING_STATE' as const;
 /** @purpose `audit-receipt`/`review-receipt` cannot resolve the group, prove all members DONE, or own the spec write. */
 export const ERR_CLI_SDD_LOG_GROUP_RECEIPT_STATE = 'ERR_CLI_SDD_LOG_GROUP_RECEIPT_STATE' as const;
-/** @purpose An append-owning mode (line/handoff/phase/blocker/resolved/complete) targets a Round already closed (B2-04). */
+/** @purpose An append-owning mode (line/handoff/phase/blocker/complete) targets a Round already closed (B2-04); `resolved` is exempt — it writes `## Blocker Trail`, never the Execution Log (D-20, B2-19). */
 export const ERR_CLI_SDD_LOG_ROUND_CLOSED = 'ERR_CLI_SDD_LOG_ROUND_CLOSED' as const;
+/** @purpose `resolved --phase <PhaseID>` names a phase with no still-open 🛑 BLOCKED anywhere in the Execution Log (D-20, B2-19). */
+export const ERR_CLI_SDD_LOG_NO_ACTIVE_BLOCKER = 'ERR_CLI_SDD_LOG_NO_ACTIVE_BLOCKER' as const;
 
 /**
  * @purpose Result of one sdd-log run.
@@ -82,7 +84,11 @@ export function hasPlaceholder(text: string): boolean {
 
 // B2-01: nextRoundNumber now lives in shared/sdd/execution-log.ts (the one Execution Log module) —
 // re-exported here so this file's own callers (sdd-log.cmd.ts) keep importing it from this module.
-export { nextRoundNumber, isValidRoundReason } from '../../../shared/sdd/execution-log.ts';
+export {
+  nextRoundNumber,
+  isValidRoundReason,
+  oldestActiveBlockerRound,
+} from '../../../shared/sdd/execution-log.ts';
 
 /**
  * @purpose Build a Round header block (blank-line padded) to insert into EXECUTION_LOG.
@@ -513,13 +519,54 @@ export function buildBlockerBlock(
 
 /**
  * @purpose Build the paired close for BLOCKER_FORMAT — the `✅ RESOLVED` marker
- *   `AX_BLOCKER_RESOLUTION_TRAIL` and `scanBlockerTrail` (check.ts) key off, per-phase.
+ *   `AX_BLOCKER_RESOLUTION_TRAIL` and `scanBlockerTrail` key off. Written into `## Blocker Trail`,
+ *   never inline in the Execution Log (D-20, B2-19) — the back-reference names what it resolves.
  * @param reason The concrete environmental change or decision that removed the blocker (verbatim).
  * @param ts Timestamp string.
- * @returns A `- [x] \`<ts>\` ✅ RESOLVED: <reason>` line.
+ * @param round The Execution Round the resolved 🛑 BLOCKED entry was found in.
+ * @param phaseId The phase id the resolved 🛑 BLOCKED entry belongs to.
+ * @returns A `- [x] \`<ts>\` ✅ RESOLVED (Round <round> / <phaseId>): <reason>` line.
  */
-export function buildResolvedLine(reason: string, ts: string): string {
-  return `- [x] \`${ts}\` ✅ RESOLVED: ${reason}`;
+export function buildResolvedLine(
+  reason: string,
+  ts: string,
+  round: number,
+  phaseId: string
+): string {
+  return `- [x] \`${ts}\` ✅ RESOLVED (Round ${round} / ${phaseId}): ${reason}`;
+}
+
+/**
+ * @purpose Append one resolution line to `## Blocker Trail`, creating the heading right after
+ *   EXECUTION_LOG's close marker on first use (D-20, B2-19) — not part of the scaffolded skeleton,
+ *   matching `## Audit Rounds`'s own "created on first use" precedent.
+ * @invariant Crude but sufficient: `## Blocker Trail` is specific enough that a false match inside
+ *   an unrelated fenced code block is not a realistic corpus risk.
+ * @param content Full ticket markdown.
+ * @param execLogCloseLine 0-based line index of `<!--/SECTION:EXECUTION_LOG-->` (from `findSectionBounds`).
+ * @param line The verbatim resolution line to append (`buildResolvedLine`'s output).
+ * @returns The full ticket content with `line` appended into `## Blocker Trail`.
+ */
+export function appendToBlockerTrail(
+  content: string,
+  execLogCloseLine: number,
+  line: string
+): string {
+  const lines = content.split('\n');
+  const headingIdx = lines.findIndex((l) => l.trim() === '## Blocker Trail');
+  if (headingIdx === -1) {
+    lines.splice(execLogCloseLine + 1, 0, '', '## Blocker Trail', '', line);
+    return lines.join('\n');
+  }
+  let end = lines.length;
+  for (let i = headingIdx + 1; i < lines.length; i++) {
+    if (/^#{1,2}\s+\S/.test(lines[i] ?? '')) {
+      end = i;
+      break;
+    }
+  }
+  lines.splice(end, 0, line);
+  return lines.join('\n');
 }
 
 /**
@@ -884,6 +931,26 @@ export function phaseNotOpenError(
         ? `  phases with an open block: ${openPhases.join(', ')}`
         : '  no phase block is open yet.',
       `  Open it first: npx gennady sdd-log ${ticket} phase ${phaseId}`,
+    ].join('\n'),
+  };
+}
+
+/**
+ * @purpose Build the no-active-blocker diagnostic — `resolved --phase <PhaseID>` found no
+ *   still-open 🛑 BLOCKED for that phase anywhere in the Execution Log (D-20, B2-19).
+ * @param ticket The ticket path (display form).
+ * @param phaseId The requested phase pointer.
+ * @returns Outcome with exit 2.
+ */
+export function noActiveBlockerError(ticket: string, phaseId: string): LogOutcome {
+  return {
+    ok: false,
+    code: ERR_CLI_SDD_LOG_NO_ACTIVE_BLOCKER,
+    exitCode: 2,
+    message: [
+      `[sdd-log] ${ERR_CLI_SDD_LOG_NO_ACTIVE_BLOCKER}: ${phaseId}`,
+      `  No still-open "🛑 BLOCKED" for ${phaseId} anywhere in ${ticket}'s Execution Log.`,
+      '  Already resolved, or never blocked — nothing to write to Blocker Trail.',
     ].join('\n'),
   };
 }

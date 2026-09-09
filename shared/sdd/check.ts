@@ -3,7 +3,12 @@
 // @tasks: N/A
 
 import { dirname, basename, join, resolve } from 'node:path';
-import { collectHeadings, extractSection, findSectionBounds } from './section.ts';
+import {
+  collectHeadings,
+  extractHeadingSection,
+  extractSection,
+  findSectionBounds,
+} from './section.ts';
 import type { Finding } from './finding.ts';
 import { parseMetaInfo, parsePhaseDetail, parsePhasesOverview } from './ticket.ts';
 import { legacyHeaderBody } from './anchor-inject.ts';
@@ -373,7 +378,14 @@ export function checkTicket(file: string, content: string): Finding[] {
         );
       }
     }
-    if (hasActiveBlocker(logSec.content)) {
+    // B2-19: a resolution can live in `## Blocker Trail` too — pass its body through.
+    const blockerTrailSec = extractHeadingSection(content, 'blocker-trail');
+    if (
+      hasActiveBlocker(
+        logSec.content,
+        blockerTrailSec.status === 'ok' ? blockerTrailSec.content : ''
+      )
+    ) {
       if (isDone) {
         err(
           'SDD_DONE_WITH_ACTIVE_BLOCKER',

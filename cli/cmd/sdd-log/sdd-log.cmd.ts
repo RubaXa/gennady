@@ -17,7 +17,7 @@ import {
   readScratchPayloadFile,
   type ScratchPayload,
 } from '../../../shared/common/scratch-payload-file.ts';
-import { findSectionBounds } from '../../../shared/sdd/section.ts';
+import { extractHeadingSection, findSectionBounds } from '../../../shared/sdd/section.ts';
 import { resolveTicketArg, resolutionLine } from '../../../shared/sdd/ticket-resolve.ts';
 import {
   proveRepoFile,
@@ -28,6 +28,7 @@ import { checkSpecAuthoringDraft, type Finding } from '../../../shared/sdd/check
 import { normalizeSddToolFailure } from '../../../shared/sdd/tool-guidance.ts';
 import {
   ambiguousIdError,
+  appendToBlockerTrail,
   authoringCompletionError,
   badInvocation,
   buildBlockerBlock,
@@ -49,7 +50,9 @@ import {
   isValidRoundReason,
   missingFlag,
   nextRoundNumber,
+  noActiveBlockerError,
   noLogSection,
+  oldestActiveBlockerRound,
   phaseNotOpenError,
   payloadFileError,
   phaseCompletionError,
@@ -389,7 +392,15 @@ async function runCommand(
 
   // B2-04: append-only means a fix goes into a NEW Round, never after a closed one — round/close
   // are the only modes exempt (round opens the escape hatch; close is the transition itself).
-  if (mode !== 'round' && mode !== 'close' && isCurrentRoundClosed(content, bounds)) {
+  // `resolved` is ALSO exempt (D-20, B2-19): it writes `## Blocker Trail`, never the Execution Log
+  // itself, so a closed Round is never touched — this is exactly what makes a post-close blocker
+  // resolution possible without an append-only exception inside the log.
+  if (
+    mode !== 'round' &&
+    mode !== 'close' &&
+    mode !== 'resolved' &&
+    isCurrentRoundClosed(content, bounds)
+  ) {
     return roundClosedError(displayPath);
   }
 
@@ -422,6 +433,25 @@ async function runCommand(
     return { ok: true, text: idBanner ? `${idBanner}\n${body}` : body };
   }
   // #endregion END_COMPLETE
+
+  // #region START_RESOLVED — invariant: writes `## Blocker Trail`, never inline in the Execution
+  // Log (D-20, B2-19) — a phase's oldest still-open 🛑 BLOCKED (across every Round, closed or not)
+  // is looked up rather than requiring an open phase block to append into.
+  if (mode === 'resolved') {
+    if (hasPlaceholder(payload)) return placeholderError(payload);
+    const trailSection = extractHeadingSection(content, 'blocker-trail');
+    const trailBody = trailSection.status === 'ok' ? trailSection.content : '';
+    const round = oldestActiveBlockerRound(content, trailBody, phaseFlag ?? '');
+    if (round === null) return noActiveBlockerError(displayPath, phaseFlag ?? '');
+    const resolvedLine = buildResolvedLine(payload, ts, round, phaseFlag ?? '');
+    const nextContent = appendToBlockerTrail(content, bounds.closeLine, resolvedLine);
+    const written = writeProvenRepoFile(resolved.identity, nextContent);
+    if (!written.ok) return fileError(displayPath);
+    logger.debug(`[SddLogCommand#run] resolved blocker for ${phaseFlag} in ${ticket}`);
+    const body = `[sdd-log] resolved blocker for ${phaseFlag} (Round ${round}):\n${resolvedLine}`;
+    return { ok: true, text: idBanner ? `${idBanner}\n${body}` : body };
+  }
+  // #endregion END_RESOLVED
 
   // #region START_PHASE_INSERT_POINT — invariant: --phase redirects the append target from
   // "end of EXECUTION_LOG" to "end of that phase's own #### <PhaseID> block". Phase attribution is
@@ -478,9 +508,6 @@ async function runCommand(
       return placeholderError(payload);
     }
     insertText = buildBlockerBlock(reason, axiom, unblock, ts);
-  } else if (mode === 'resolved') {
-    if (hasPlaceholder(payload)) return placeholderError(payload);
-    insertText = buildResolvedLine(payload, ts);
   } else {
     insertText = buildCloseBlock(ts);
   }

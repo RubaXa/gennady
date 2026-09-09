@@ -1372,6 +1372,10 @@ use-case → \`[<ACRONYM>-REQ-N]\` → vision chain the operator reviews at scaf
 <!--/SECTION:DECISION_LOG-->
 
 <!-- AUDIT_ROUNDS appended only after the first reopen-triggering audit (per the audit directive). -->
+<!-- Blocker Trail appended only on the first sdd-log resolved — a "## Blocker Trail" heading with
+     "- [x] \`<ts>\` ✅ RESOLVED (Round <N> / P<M>): <what removed it>" lines, one per resolved
+     🛑 BLOCKED, never written inline in the Execution Log (D-20, B2-19: append-only survives a
+     Round close without an exception). -->
 `;
 
 const TASK_SECTIONS: SectionManifestEntry[] = [

@@ -115,16 +115,21 @@ export function firstRoundPhaseBlockCounts(logBody: string): Map<string, number>
   return counts;
 }
 
+/** @purpose Pull the `P<N>` phase id out of a Blocker Trail `✅ RESOLVED (Round <N> / P<M>): …` back-reference line. */
+const TRAIL_PHASE_RE = /\(Round\s+\d+\s*\/\s*(P[0-9]+)\)/;
+
 /**
  * @purpose Scan an Execution Log for 🛑 BLOCKED / ✅ RESOLVED pairs, paired per phase — shared by
  *   checkTicket and sdd-task's [BLOCKERS].
  * @invariant FIFO within one phase's own pool — a `— re-run:` block shares it; only 🛑/✅ counts,
- *   not the bare word.
+ *   not the bare word. A `## Blocker Trail` `RESOLVED (Round <N> / P<M>)` line (D-20, B2-19) shifts
+ *   that same pool like an inline ✅ would.
  * @param logBody The EXECUTION_LOG section body.
+ * @param [blockerTrailBody] The `## Blocker Trail` heading body, when the ticket has one.
  * @returns Unresolved 🛑 BLOCKED lines, oldest first across every phase's pool; empty when each has
- *   a later ✅ RESOLVED in its own pool.
+ *   a later ✅ RESOLVED (inline or in Blocker Trail) in its own pool.
  */
-export function scanBlockerTrail(logBody: string): string[] {
+export function scanBlockerTrail(logBody: string, blockerTrailBody?: string): string[] {
   // One pool per phase id, keyed by PHASE_HEADING_RE's capture — a `— re-run:` heading shares the
   // SAME key as the phase's earlier block, so a resolution logged there still closes an earlier
   // blocker. Pools never mix: a resolution can only shift its own phase's pool, never an older,
@@ -144,6 +149,12 @@ export function scanBlockerTrail(logBody: string): string[] {
       pools.get(phase)?.shift();
     }
   }
+  for (const rawLine of (blockerTrailBody ?? '').split('\n')) {
+    const line = rawLine.trim();
+    if (!line.includes('✅')) continue;
+    const targetPhase = TRAIL_PHASE_RE.exec(line)?.[1];
+    if (targetPhase) pools.get(targetPhase)?.shift();
+  }
   return [...pools.values()]
     .flat()
     .sort((a, b) => a.pos - b.pos)
@@ -151,12 +162,53 @@ export function scanBlockerTrail(logBody: string): string[] {
 }
 
 /**
+ * @purpose Find the oldest Execution Round whose `phaseId` block still carries an unresolved 🛑
+ *   BLOCKED — the round `sdd-log resolved` cites in its Blocker Trail back-reference (D-20, B2-19).
+ * @invariant Round-aware FIFO, line-based like `scanBlockerTrail`; a Blocker Trail resolution
+ *   already on file discounts one match too — a phase blocked more than once cites the right one.
+ * @param content Full ticket markdown.
+ * @param blockerTrailBody The `## Blocker Trail` heading body (empty string when absent).
+ * @param phaseId Phase id (e.g. `P3`).
+ * @returns The oldest unresolved occurrence's Round number, or null when `phaseId` has none.
+ */
+export function oldestActiveBlockerRound(
+  content: string,
+  blockerTrailBody: string,
+  phaseId: string
+): number | null {
+  const logSection = extractSection(content, 'EXECUTION_LOG');
+  if (logSection.status !== 'ok') return null;
+  // Line-based, same style as scanBlockerTrail — deliberately NOT `parseExecutionLog`-based: a
+  // phase block with no enclosing `### Round <n>` heading yet (a fresh ticket mid-scaffold, or a
+  // minimal fixture) still has a real citable round number of 0, not "no blocker found at all".
+  const queue: number[] = [];
+  let phase = '';
+  let round = 0;
+  for (const rawLine of logSection.content.split('\n')) {
+    const line = rawLine.trim();
+    const roundHeading = /^#{1,6}\s+Round\s+(\d+)\b/i.exec(line);
+    if (roundHeading?.[1]) round = Number(roundHeading[1]);
+    const phaseHeading = PHASE_HEADING_RE.exec(line);
+    if (phaseHeading) phase = phaseHeading[1] as string;
+    if (phase !== phaseId) continue;
+    if (line.includes('🛑')) queue.push(round);
+    else if (line.includes('✅')) queue.shift();
+  }
+  const trailResolutionCount = blockerTrailBody
+    .split('\n')
+    .filter((l) => l.includes('✅') && TRAIL_PHASE_RE.exec(l)?.[1] === phaseId).length;
+  for (let i = 0; i < trailResolutionCount; i++) queue.shift();
+  return queue[0] ?? null;
+}
+
+/**
  * @purpose Detect whether the Execution Log ends in an unresolved BLOCKED state.
  * @param logBody The EXECUTION_LOG section body.
- * @returns True when a 🛑 BLOCKED entry has no later ✅ RESOLVED.
+ * @param [blockerTrailBody] The `## Blocker Trail` heading body, when present (B2-19).
+ * @returns True when a 🛑 BLOCKED entry has no later ✅ RESOLVED (inline or in Blocker Trail).
  */
-export function hasActiveBlocker(logBody: string): boolean {
-  return scanBlockerTrail(logBody).length > 0;
+export function hasActiveBlocker(logBody: string, blockerTrailBody?: string): boolean {
+  return scanBlockerTrail(logBody, blockerTrailBody).length > 0;
 }
 
 /**
