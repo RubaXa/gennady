@@ -154,10 +154,12 @@ export function isSelfHosting(): boolean {
 // is meant to be checking, which would silently verify the wrong code.
 /**
  * @purpose Resolve the command + args to run for a `via: 'gennady'` gate.
+ * @invariant Exported for the read-only `gennady verify --plan --json` facade (V-16a) — the
+ *   one other place that must report this exact dispatch without running it.
  * @param gateName Gate name (e.g. `yagni`).
  * @returns `{ command, args }` to hand to the runner.
  */
-function gennadyGateCommand(gateName: string): { command: string; args: string[] } {
+export function gennadyGateCommand(gateName: string): { command: string; args: string[] } {
   if (isSelfHosting()) {
     return { command: 'npx', args: ['--no-install', 'tsx', 'cli/gennady.ts', gateName] };
   }
