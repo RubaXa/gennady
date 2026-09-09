@@ -8,6 +8,7 @@
     {{> "axiom/process/ax-operator-language"}}
     {{> "axiom/process/ax-tool-invocation"}}
     {{> "axiom/process/ax-operator-agreement"}}
+    {{> "axiom/process/ax-cap-5"}}
   </BeliefState>
   <Contracts>
     {{> "contract/process/artifact-approval-flow"}}
@@ -52,6 +53,14 @@
         plus one contradiction sweep, then returns `CLEAN` or at most five remaining findings. This
         is a new bounded verification, not continuation of a reviewer session and not a reason to
         reload unrelated artifacts.
+
+        Per `AX_CAP_5`, this STEP_2⇄STEP_3 review⇄reconcile cycle is bounded, not open-ended: count
+        every STEP_2 dispatch across the whole review. At the fifth result — regardless of that
+        result's verdict — stop dispatching and put an explicit disposition to the operator before
+        another STEP_2 call or STEP_4 approval: `CLEAN` only when that fifth round made no edits;
+        otherwise `CONTINUE THROUGH ROUND N` naming an explicit higher cap, or `RESTART: reason`. A
+        raised cap is bounded the same way when it is in turn reached. The reviewer's verdict never
+        authorizes continuation past the cap by itself.
       </Action>
     </Step>
     <Step id="STEP_4_OPERATOR_APPROVAL_1">
