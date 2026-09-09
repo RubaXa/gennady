@@ -105,6 +105,14 @@ export type SddEvalFixtureId =
   | 'infra-log-summary'
   | 'infra-rotate-logs'
   | 'infra-makefile'
+  // E-11 (D-46 track 50): a `task`-shaped Go fixture — no slugify.go shipped, only a brief + a
+  // pre-provisioned go.mod, graded by a hidden golden test compiled into an isolated temp module (so
+  // it never collides with the worker's own `go build ./...`/`go test ./...` at the fixture root).
+  // Deliberately NOT wired into an `execute`-phase scenario yet: `sdd-execute` readiness
+  // (shared/sdd/readiness.ts) is still hardcoded to the node gate profile — see
+  // docs/journal/flow-verification-ledger.md finding A7 — so a package.json-less repo cannot clear
+  // it. That wiring is E-12's scope (blocked on the golang readiness preset), not this one.
+  | 'golang-slugify'
   // Brownfield fixtures — a committed, working, spec-less tool plus a change-request. The golden set
   // grades that the requested delta landed AND the original behaviour is preserved.
   | 'brownfield-extend-cli'
