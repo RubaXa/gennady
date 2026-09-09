@@ -79,7 +79,8 @@ const REQUIRED_CONDUCT = ['AX_PROGRESSIVE_DISCLOSURE'] as const;
  * `reconcile.directive.xml` (T-B6-20) closes the one owner this list omitted: it is router-
  * dispatched exactly like scope/module/execute (router.directive.hbs `WHEN forced intent =
  * reconcile`), writes decision cards and questions straight to the operator, and had carried no
- * conduct include at all before this task. */
+ * `AX_PROGRESSIVE_DISCLOSURE` conduct include before this task (it already carried
+ * `AX_OPERATOR_DIALOGUE_STYLE`, one of D1's five, from before this batch). */
 const OPERATOR_FACING_OWNERS = [
   'infra.directive.xml',
   'root.directive.xml',
