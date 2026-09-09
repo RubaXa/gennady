@@ -12,7 +12,15 @@ export function printHelp(): void {
   console.info('');
   console.info('Usage:');
   console.info('  npx gennady sdd-verify --task <ticket-path> --phase <PhaseID>');
-  console.info('  npx gennady sdd-verify --profile full');
+  console.info(
+    '  npx gennady sdd-verify --profile full [--only=<glob>[,<glob>…]] [--skip=<glob>[,<glob>…]]'
+  );
+  console.info(
+    '    --only/--skip select or exclude gates by name/glob (e.g. --only=lint,format); full profile only —'
+  );
+  console.info(
+    '    rejected with --task/--phase, since a phase receipt requires the ladder to match the canonical plan.'
+  );
   console.info('');
   console.info(
     '  The ticket phase determines profile, exact Target Files, and owning spec; no globs or guessing.'
