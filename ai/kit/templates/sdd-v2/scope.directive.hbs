@@ -77,10 +77,10 @@
         Record each disputed autonomous choice once in the scope Decision Log per
         `DEVIATION_RECORD_FORMAT`. In `pivot` mode the same Write also appends the superseded Decision
         Log entry and a Pivot Invalidation List enumerating every downstream module spec/task ticket
-        needing `refine-module` or reopening — read
-        `ai/directives/sdd-v2/formats/pivot-formats.xml` for the exact entry/list format
-        (`H_PIVOT_NO_INVALIDATION_LIST` if the list is omitted). Keep scope ownership thin. Do not
-        preload structure, requirement, caption, or portal formats.
+        needing `refine-module` or reopening —
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/pivot-formats.xml")` for the exact
+        entry/list format (`H_PIVOT_NO_INVALIDATION_LIST` if the list is omitted). Keep scope
+        ownership thin. Do not preload structure, requirement, caption, or portal formats.
       </Action>
     </Step>
 
