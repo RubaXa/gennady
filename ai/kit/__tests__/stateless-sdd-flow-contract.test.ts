@@ -291,6 +291,46 @@ describe('stateless execution and specification format', () => {
   });
 });
 
+// LOCK-2/LOCK-3 (V-BATCH-19: T-B6-01 and T-B6-14 shipped in d0dde2cd/068c7080 with no regression
+// lock of their own — the independent verifier reran the corpus and found both accepted on grep
+// output quoted in the task reports, not on anything node:test would catch on a future regression.
+// These lock the same literal text against the GENERATED directives (not the .hbs source) because
+// that is what a router/audit/model actually reads at runtime.
+describe('pivot supersedes instead of overwriting (LOCK-2, T-B6-01, V-BATCH-19)', () => {
+  it('keeps the rewrite-vs-pivot halts and the byte-for-byte supersession text in the generated scope directive', () => {
+    const scope = read('ai', 'directives', 'sdd-v2', 'scope.directive.xml');
+    assert.match(scope, /H_REWRITE_WITH_DOWNSTREAM/);
+    assert.match(scope, /H_PIVOT_NO_INVALIDATION_LIST/);
+    assert.match(scope, /preserved byte-for-byte/);
+    assert.match(scope, /Pivot Invalidation List/);
+    assert.match(scope, /AX_PIVOT_REQUIRES_SUPERSESSION/);
+  });
+
+  it('keeps the consumer-module Pivot Invalidation List and Risk-accepted breaking-change text in the generated module directive', () => {
+    const module = read('ai', 'directives', 'sdd-v2', 'module.directive.xml');
+    assert.match(module, /Risk accepted/);
+    assert.match(module, /Pivot Invalidation List naming every consumer module/);
+    assert.match(module, /AX_REFINE_MODULE_PRESERVES_CONTRACTS/);
+  });
+});
+
+describe('every whole-document Write carries the style self-check (LOCK-3, T-B6-14, V-BATCH-19)', () => {
+  it('cites AX_ARTIFACT_STYLE_SELF_CHECK right before the one Write in every one of the 6 owners (grep-contract on generated directives)', () => {
+    for (const owner of [
+      'scope',
+      'module',
+      'infra',
+      'interface',
+      'discover-from-code',
+      'recover-from-code',
+    ]) {
+      const source = read('ai', 'directives', 'sdd-v2', `${owner}.directive.xml`);
+      assert.match(source, /<Axiom id="AX_ARTIFACT_STYLE_SELF_CHECK">/, owner);
+      assert.match(source, /run the self-check pass per\s+`AX_ARTIFACT_STYLE_SELF_CHECK`/, owner);
+    }
+  });
+});
+
 // LOCK-1 (20-ISSUES-VERDICTS.md #9.5, ai/drafts/research/sdd-v1-to-v2-transfer/61-TASK-BOARD.md §1):
 // v1 fixed hardcoded `model: "sonnet"|"haiku"|"opus"` dispatch pins in 90b123e9 (#14) — a project
 // inheriting the caller's configured model no longer has to strip them after every sync. v2 never
