@@ -16,6 +16,7 @@ import {
   SKELETON_TOKEN_LIMIT,
   PACKAGE_CHAR_LIMIT,
   PACKAGE_LINE_CHAR_LIMIT,
+  MONOLITH_HARD_LIMIT_WAIVER_ALLOWLIST,
   type StepPackageInput,
 } from '../step-budget-gate.ts';
 
@@ -205,6 +206,72 @@ describe('StepBudgetGate', () => {
         );
         assert.match(result.stdout, /within its hard limit \(see soft-target warning\(s\) above\)/);
         // #endregion END_CLI_OVER_TARGET_ASSERT_EXIT_AND_MESSAGE
+      } finally {
+        rmSync(fixture, { recursive: true, force: true });
+      }
+    });
+
+    it('measures a monolithic directive with no steps/ dir at all instead of skipping it (T-B6-10b)', () => {
+      // #region START_CLI_MONOLITH_MEASURED_SETUP_FIXTURE_TREE
+      // No sibling steps/ dir for this directive — before T-B6-10b the scan skipped it entirely
+      // (`if (!existsSync(stepsDir)) continue`), so a monolith over the hard cap never surfaced.
+      const fixture = mkdtempSync(join(tmpdir(), 'gennady-budget-fixture-'));
+      const tokenCount = SKELETON_TOKEN_LIMIT + 50;
+      writeFileSync(join(fixture, 'baz.directive.xml'), Array(tokenCount).fill('w').join(' '));
+      // #endregion END_CLI_MONOLITH_MEASURED_SETUP_FIXTURE_TREE
+
+      try {
+        const result = spawnSync(
+          process.execPath,
+          ['--experimental-strip-types', CLI_ENTRY, `--dir=${fixture}`],
+          { encoding: 'utf8' },
+        );
+
+        // #region START_CLI_MONOLITH_MEASURED_ASSERT_FIFTH_MONOLITH_FAILS
+        // "baz" is not on MONOLITH_HARD_LIMIT_WAIVER_ALLOWLIST — a monolith outside the allowlist
+        // that exceeds the hard limit still fails the build, exactly like a lazy one would. This is
+        // the both-way half of the allowlist test: it proves the waiver is a named exception, not a
+        // blanket "monoliths never fail" rule.
+        assert.ok(!MONOLITH_HARD_LIMIT_WAIVER_ALLOWLIST.includes('baz'));
+        assert.equal(result.status, 1);
+        assert.match(
+          result.stderr,
+          new RegExp(`✗ baz \\(skeleton\\): skeleton tokens \\(hard limit\\) = ${tokenCount} exceeds ${SKELETON_TOKEN_LIMIT} by 50 — build fails`),
+        );
+        // #endregion END_CLI_MONOLITH_MEASURED_ASSERT_FIFTH_MONOLITH_FAILS
+      } finally {
+        rmSync(fixture, { recursive: true, force: true });
+      }
+    });
+
+    it('warns instead of failing when an allowlisted monolith exceeds the hard limit, naming T-B6-10a as owner (T-B6-10b)', () => {
+      // #region START_CLI_WAIVED_MONOLITH_SETUP_FIXTURE_TREE
+      // Uses a real allowlisted name so the test exercises the actual production allowlist, not a
+      // stand-in — MONOLITH_HARD_LIMIT_WAIVER_ALLOWLIST is a named, shrink-only list (T-B6-10a owns
+      // removing entries as each is lazy-split), never a general "monolith" exemption.
+      const waivedName = MONOLITH_HARD_LIMIT_WAIVER_ALLOWLIST[0];
+      const fixture = mkdtempSync(join(tmpdir(), 'gennady-budget-fixture-'));
+      const tokenCount = SKELETON_TOKEN_LIMIT + 50;
+      writeFileSync(join(fixture, `${waivedName}.directive.xml`), Array(tokenCount).fill('w').join(' '));
+      // #endregion END_CLI_WAIVED_MONOLITH_SETUP_FIXTURE_TREE
+
+      try {
+        const result = spawnSync(
+          process.execPath,
+          ['--experimental-strip-types', CLI_ENTRY, `--dir=${fixture}`],
+          { encoding: 'utf8' },
+        );
+
+        // #region START_CLI_WAIVED_MONOLITH_ASSERT_WARNS_NOT_FAILS
+        assert.equal(result.status, 0);
+        assert.match(
+          result.stderr,
+          new RegExp(
+            `⚠ ${waivedName} \\(skeleton\\): skeleton tokens \\(hard limit\\) = ${tokenCount} exceeds ${SKELETON_TOKEN_LIMIT} by 50 — allowlisted monolith pending lazy-split \\(owner: T-B6-10a\\)`,
+          ),
+        );
+        assert.doesNotMatch(result.stderr, new RegExp(`✗ ${waivedName}`));
+        // #endregion END_CLI_WAIVED_MONOLITH_ASSERT_WARNS_NOT_FAILS
       } finally {
         rmSync(fixture, { recursive: true, force: true });
       }

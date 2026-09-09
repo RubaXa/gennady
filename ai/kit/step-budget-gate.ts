@@ -21,10 +21,25 @@
  * `check()` is a pure measurement over already-assembled text: it takes no directive identity,
  * only the skeleton text and its packages. The CLI entry point below (modeled on
  * `ai/kit/check-directives-fresh.ts`) is what walks the real `ai/directives/sdd-v2/**` tree and
- * attaches directive identity to each finding it reports. A directive counts as lazily assembled
- * only when its sibling `<name>/steps/` directory exists (DA-REQ-4) — the three pilots
- * (audit, scaffold, phase-execution-protocol) carry that layout today; every other directive stays
- * monolithic and is skipped by the scan.
+ * attaches directive identity to each finding it reports. A directive's packages are measured only
+ * when its sibling `<name>/steps/` directory exists (DA-REQ-4) — the three pilots (audit, scaffold,
+ * phase-execution-protocol) carry that layout today — but every directive's skeleton is measured
+ * regardless (T-B6-10b): the scan used to skip a directive entirely when it had no `steps/` dir,
+ * which meant a monolithic skeleton could grow past the hard ceiling with nothing to catch it. A
+ * directive without `steps/` is measured with `packages: []` — same pure `check()`, just no package
+ * findings possible.
+ *
+ * Four monoliths already exceed budget as of this change (`infra` 9633 > the 8000 hard ceiling;
+ * `root` 7572, `migration-v1-v2` 6741, `router` 6094 — all three over the 6000 soft target only).
+ * Failing the build on them today would block on an already-known, already-tracked debt with no
+ * fix landed yet. `MONOLITH_HARD_LIMIT_WAIVER_ALLOWLIST` below names exactly those four and downgrades
+ * what would otherwise be a hard-ceiling `error` to a `warning` naming the owning task (T-B6-10a,
+ * the lazy-split of these four monoliths) — never silently, and never for a directive not on the
+ * list: a fifth monolith found over the hard limit still fails the build (see the CLI test "a
+ * monolith outside the waiver allowlist still fails the build"). This is not a baseline: the
+ * measurement runs and is visible every time, the waiver only softens the severity, and the list is
+ * only ever meant to shrink — as T-B6-10a lazy-splits each name, remove it here rather than leaving
+ * a stale grant.
  *
  * Run: npm run check:directive-budgets
  */
@@ -44,6 +59,23 @@ export const SKELETON_TOKEN_LIMIT = 8000;
 export const PACKAGE_CHAR_LIMIT = 20_000;
 /** @purpose Hard character ceiling for one line inside a step package (DA-REQ-6). */
 export const PACKAGE_LINE_CHAR_LIMIT = 2000;
+
+/**
+ * @purpose Explicit, name-by-name allowlist of monolithic directives (no `<name>/steps/` yet)
+ *   permitted to warn — instead of fail the build — when their skeleton exceeds
+ *   `SKELETON_TOKEN_LIMIT`, until each is lazy-split. T-B6-10a owns splitting every name on this
+ *   list; T-B6-10b (this gate change) owns measuring them honestly in the meantime.
+ * @invariant This list only shrinks. A name is removed once T-B6-10a lazy-splits it (its skeleton
+ *   then measures under budget on its own merits, or its packages are what the gate checks next);
+ *   a name is never added for a newly-discovered monolith — a directive not on this list that
+ *   exceeds the hard ceiling fails the build like any other (see the CLI "fifth monolith" test).
+ */
+export const MONOLITH_HARD_LIMIT_WAIVER_ALLOWLIST: readonly string[] = [
+  'infra',
+  'root',
+  'migration-v1-v2',
+  'router',
+];
 
 /** @purpose One generated step package as measured input: the literal `<Step>` id plus its full rendered text. */
 export type StepPackageInput = {
@@ -139,10 +171,10 @@ function isMain(): boolean {
   return process.argv[1] === fileURLToPath(import.meta.url);
 }
 
-// #region START_CLI_SCAN_REAL_TREE — walks ai/directives/sdd-v2/** once; a directive counts as
-// lazy only when its sibling <name>/steps/ directory exists (DA-REQ-4) — a single, one-shot
-// caller, so this stays inline per AX_NO_PREMATURE_ABSTRACTIONS rather than a named export with
-// no second production consumer yet.
+// #region START_CLI_SCAN_REAL_TREE — walks ai/directives/sdd-v2/** once; every directive's
+// skeleton is measured (T-B6-10b), its step packages only when a sibling <name>/steps/ directory
+// exists (DA-REQ-4) — a single, one-shot caller, so this stays inline per
+// AX_NO_PREMATURE_ABSTRACTIONS rather than a named export with no second production consumer yet.
 if (isMain()) {
   const args = process.argv.slice(2);
   const sddV2Dir =
@@ -158,25 +190,45 @@ if (isMain()) {
 
   let hasErrorFindings = false;
   let hasWarningFindings = false;
+  const seenDirectiveIsLazy = new Map<string, boolean>();
   for (const entry of readdirSync(sddV2Dir)) {
     if (!entry.endsWith('.directive.xml')) continue;
 
     const directive = basename(entry, '.directive.xml');
     const stepsDir = join(sddV2Dir, directive, 'steps');
-    if (!existsSync(stepsDir)) continue; // not lazily assembled yet — nothing to measure
+    const isLazy = existsSync(stepsDir);
+    seenDirectiveIsLazy.set(directive, isLazy);
 
     const skeletonText = readFileSync(join(sddV2Dir, entry), 'utf8');
-    const packages: StepPackageInput[] = readdirSync(stepsDir)
-      .filter((step) => step.endsWith('.xml'))
-      .map((step) => ({ stepId: basename(step, '.xml'), text: readFileSync(join(stepsDir, step), 'utf8') }));
+    // Monolithic (no steps/ yet): no step packages exist to measure, only the skeleton itself.
+    const packages: StepPackageInput[] = isLazy
+      ? readdirSync(stepsDir)
+          .filter((step) => step.endsWith('.xml'))
+          .map((step) => ({ stepId: basename(step, '.xml'), text: readFileSync(join(stepsDir, step), 'utf8') }))
+      : [];
 
     for (const finding of check(skeletonText, packages)) {
       const artifactLabel = finding.artifact === 'skeleton' ? 'skeleton' : `step ${finding.artifact}`;
       const label = LIMIT_KIND_LABEL[finding.limitKind];
-      if (finding.severity === 'error') {
+      // Only a monolithic directive's own skeleton can be waived, and only when it is on the
+      // explicit, shrink-only allowlist (T-B6-10a owns lazy-splitting each name off it).
+      const isWaivedMonolith =
+        !isLazy && finding.artifact === 'skeleton' && MONOLITH_HARD_LIMIT_WAIVER_ALLOWLIST.includes(directive);
+
+      if (finding.severity === 'error' && isWaivedMonolith) {
+        hasWarningFindings = true;
+        console.error(
+          `⚠ ${directive} (${artifactLabel}): ${label} = ${finding.actual} exceeds ${finding.limit} by ${finding.overage} — allowlisted monolith pending lazy-split (owner: T-B6-10a); warns instead of failing until split, build still succeeds`,
+        );
+      } else if (finding.severity === 'error') {
         hasErrorFindings = true;
         console.error(
           `✗ ${directive} (${artifactLabel}): ${label} = ${finding.actual} exceeds ${finding.limit} by ${finding.overage} — build fails`,
+        );
+      } else if (isWaivedMonolith) {
+        hasWarningFindings = true;
+        console.error(
+          `⚠ ${directive} (${artifactLabel}): ${label} = ${finding.actual} exceeds ${finding.limit} by ${finding.overage} — allowlisted monolith pending lazy-split (owner: T-B6-10a), soft target, build still succeeds`,
         );
       } else {
         hasWarningFindings = true;
@@ -187,13 +239,25 @@ if (isMain()) {
     }
   }
 
+  // Mechanically enforces "this list only shrinks" (T-B6-10a removes a name once it lazy-splits
+  // that directive): flag any allowlist entry whose directive is now lazily assembled — the split
+  // already happened on disk, so the waiver is stale debt of its own and should be deleted here.
+  for (const waivedName of MONOLITH_HARD_LIMIT_WAIVER_ALLOWLIST) {
+    if (seenDirectiveIsLazy.get(waivedName) === true) {
+      hasWarningFindings = true;
+      console.error(
+        `⚠ ${waivedName}: stale allowlist entry — this directive is now lazily assembled (has steps/); remove it from MONOLITH_HARD_LIMIT_WAIVER_ALLOWLIST now that T-B6-10a has split it`,
+      );
+    }
+  }
+
   if (hasErrorFindings) {
     process.exit(1);
   }
   console.log(
     hasWarningFindings
-      ? '✓ every lazy directive under ai/directives/sdd-v2/** is within its hard limit (see soft-target warning(s) above).'
-      : '✓ every lazy directive under ai/directives/sdd-v2/** is within budget.',
+      ? '✓ every measured directive under ai/directives/sdd-v2/** is within its hard limit (see soft-target warning(s) above).'
+      : '✓ every measured directive under ai/directives/sdd-v2/** is within budget.',
   );
   process.exit(0);
 }
