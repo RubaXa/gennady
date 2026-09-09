@@ -193,8 +193,16 @@ export function parsePhaseHandoffs(logBody: string): Record<string, string> {
   return out;
 }
 
-/** @purpose One checked `- [x] \`<ts>\` DONE` event line, verbatim (no other content on the line). */
-const MARKED_DONE_LINE_RE = /^-\s*\[x\]\s*`[^`]+`\s*DONE\s*$/;
+// V-BATCH-14 nonblocking #5: exported — `sdd-log.types.ts` used to carry a byte-for-byte duplicate
+// (`CLOSE_MARKED_DONE_LINE_RE`, whose own JSDoc admitted "Mirrors check.ts's own copy"); that
+// caller now imports this one instead. The other 10 independent Execution Log traversals this
+// module's readers replaced check.ts/sdd-log.types.ts copies of are NOT deduplicated here — full
+// derivation onto `parseExecutionLog` is B2-01b, out of this batch's scope.
+/**
+ * @purpose One checked `- [x] \`<ts>\` DONE` event line, verbatim (no other content on the line).
+ * @invariant Exactly this pattern everywhere it is used — this module is its only home now.
+ */
+export const MARKED_DONE_LINE_RE = /^-\s*\[x\]\s*`[^`]+`\s*DONE\s*$/;
 
 /**
  * @purpose Every phase id whose Execution Log block carries a checked `DONE` event line — a bare

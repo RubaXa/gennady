@@ -5,6 +5,9 @@
 import { relative, resolve } from 'node:path';
 import type { TicketRef } from '../../../shared/sdd/check.ts';
 import { parsePhaseReceipts } from '../../../shared/sdd/phase-receipt.ts';
+// V-BATCH-14 nonblocking #5: this file used to carry its own byte-identical copy of the checked
+// `DONE` line matcher (`CLOSE_MARKED_DONE_LINE_RE`) — now imported from the one home instead.
+import { MARKED_DONE_LINE_RE } from '../../../shared/sdd/execution-log.ts';
 import { extractSection, findSectionBounds } from '../../../shared/sdd/section.ts';
 import { deriveSpecAcronym } from '../../../shared/sdd/requirement-id.ts';
 import { unreadableTicketHint } from '../../../shared/sdd/ticket-resolve.ts';
@@ -115,8 +118,6 @@ export function buildCloseBlock(ts: string): string {
 const ROUND_CLOSE_SKELETON = '- [ ] `<ts>` DONE';
 /** @purpose A Round already closed by a previous successful `close`. */
 const ROUND_CLOSE_DONE_RE = /^- \[x\] `[^`]+` DONE$/;
-/** @purpose One checked `- [x] \`<ts>\` DONE` event line, verbatim. Mirrors check.ts's own copy. */
-const CLOSE_MARKED_DONE_LINE_RE = /^-\s*\[x\]\s*`[^`]+`\s*DONE\s*$/;
 
 /**
  * @purpose Every phase id with an open `#### <PhaseID>` block inside one Round, and whether that
@@ -141,7 +142,7 @@ function phaseDoneStateInRange(lines: string[], start: number, end: number): Map
       phase = null;
       continue;
     }
-    if (phase && CLOSE_MARKED_DONE_LINE_RE.test(line)) out.set(phase, true);
+    if (phase && MARKED_DONE_LINE_RE.test(line)) out.set(phase, true);
   }
   return out;
 }
