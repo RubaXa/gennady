@@ -6,6 +6,6 @@
       The batch orchestrator will plan layers, run phases, close rounds, sync trackers, and keep its
       ordinary `sdd-task --audit-group` lifecycle unchanged. There is no reconcile-only audit flag:
       execute remains the sole owner of each affected spec group's audit and code-review. Reconcile
-      retains those returned per-group results and checks them at STEP_7; it never dispatches a second
-      review.
+      retains those returned per-group results and checks them at STEP_6_VERIFY; it never dispatches a
+      second review.
     </Axiom>

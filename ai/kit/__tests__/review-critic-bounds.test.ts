@@ -280,3 +280,19 @@ describe('reconcile: task-reopen dispatches as one execute batch (T-B6-05)', () 
     assert.match(apply, /no\s+reconcile-only audit flag/i);
   });
 });
+
+describe('AX_DISPATCH_VIA_BATCH cites the reconcile step that actually exists (V-BATCH-20 N-5)', () => {
+  it("the axiom brick's own body says STEP_6_VERIFY, not the nonexistent STEP_7", () => {
+    const brick = readFileSync(
+      join(OUT_ROOT, '..', 'kit', 'axiom', 'process', 'ax-dispatch-via-batch.xml'),
+      'utf8'
+    );
+    assert.match(brick, /checks them at STEP_6_VERIFY/);
+    assert.doesNotMatch(brick, /\bSTEP_7\b/);
+  });
+
+  it('the assembled reconcile directive actually has a STEP_6_VERIFY step (the axiom names a real anchor)', () => {
+    const reconcile = readDirective('reconcile.directive.xml');
+    assert.match(reconcile, /<Step id="STEP_6_VERIFY">/);
+  });
+});
