@@ -46,5 +46,7 @@ test-results/
 # pre-existing in this checkout — see REL-17 before-report.md)
 .npm-ci-done
 
-# durable eval artifacts extracted from sandboxes before teardown (ai/flow-eval/cli.ts)
+# TRANSIENT whole-batch artifacts, extracted from sandboxes before teardown (ai/flow-eval/cli.ts) —
+# note the leading dot: this is NOT ai/flow-eval/results/ (GAP-E-6/D-62), the PERMANENT per-scenario
+# result archive, which is intentionally NOT gitignored — its raw data belongs in the repository.
 ai/flow-eval/.results/
