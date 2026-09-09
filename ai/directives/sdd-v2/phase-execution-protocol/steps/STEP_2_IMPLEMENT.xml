@@ -5,5 +5,78 @@
         Implement the smallest change satisfying the phase and its referenced requirements. Stay
         inside target files. Do not alter task dependencies, phases, approved BDD/test plan, or spec
         meaning. If such a change is necessary, return `APPROVAL_BOUNDARY_CHANGE` with evidence.
+        Record real progress as it happens — one `PHASE_BLOCK_FORMAT` event line per
+        intro/decision/tried/discovery/insight, never batched from memory afterward:
+        <ToolCall owner="phase-agent" result="terminal">npx gennady sdd-log &lt;ticket&gt; line "&lt;event&gt;" --phase &lt;PhaseID&gt;</ToolCall>
+        Inputs &lt;ticket&gt;, &lt;event&gt;, &lt;PhaseID&gt;: this phase's own ticket path, the exact
+        event line per its token's grammar, this phase's id.
+        When stuck (`AX_BLOCKER_ESCALATION`'s triggers — a missing rule file, a broken Handoff
+        promise, a self-contradicting spec, a Target Files boundary, an unhonorable Runtime
+        Backing, a verification command that cannot run), write the reason/axiom/unblock JSON keys
+        with the file-write tool to `&lt;payload-path&gt;`, then open `BLOCKER_FORMAT` and stop:
+        <ToolCall owner="phase-agent" result="terminal">npx gennady sdd-log &lt;ticket&gt; blocker --payload-file &lt;payload-path&gt; --phase &lt;PhaseID&gt;</ToolCall>
+        Inputs &lt;ticket&gt;, &lt;payload-path&gt;, &lt;PhaseID&gt;: this phase's own ticket path, the
+        just-written `.claude/tmp/<task-id>-<phase-id>-log.json` payload, this phase's id. Once the
+        cause is actually gone, close it per `AX_BLOCKER_RESOLUTION_TRAIL` (`sdd-log resolved`,
+        never a manual edit).
       </Action>
     </Step>
+
+<Axiom id="AX_BLOCKER_RESOLUTION_TRAIL">
+      A BLOCKER entry in Execution Log (line containing `🛑` and `BLOCKED`) remains ACTIVE until
+      `## Blocker Trail` carries a matching resolution line — `✅ RESOLVED (Round <N> / <PhaseID>)`
+      (D-20, B2-19). The back-reference is what pairs it to the right occurrence; a resolution is
+      NEVER appended inline in the Execution Log itself, so it works whether or not that Round has
+      already closed.
+
+      Orchestrator consumes the `[BLOCKERS]` section already returned by `sdd-task <ticket>`.
+      `blockers: none` is clear; each `blockers: ACTIVE <n>` entry is classified through the typed
+      checkpoint as recoverable technical, spec-goal conflict, or external authority. Active history
+      never implies an operator pause by itself. Do not spend a second check call or reconstruct it.
+
+      Resolution authorship: the `## Blocker Trail` entry MUST cite the specific environmental
+      change or decision that resolved the blocker (e.g. "tsconfig moduleResolution fixed",
+      "operator chose option B"). Empty resolution text → audit treats as fabricated and may re-flag.
+
+      Append-only discipline: never edit or remove the original `🛑 BLOCKED` line, and never hand-edit
+      `## Blocker Trail` — only `npx gennady sdd-log <ticket> resolved` writes it. The blocker
+      history is part of the artifact.
+    </Axiom>
+
+<Contract id="PHASE_BLOCK_FORMAT">
+  Event-driven: optional event lines (0+ each) appear ONLY when their event happened, opening
+  with a token from the CLOSED vocabulary `sdd-check` enforces mechanically
+  (`SDD_EXECUTION_LOG_UNKNOWN_TOKEN` on anything else) — never hand-copy that list here, it has
+  exactly one home. STEP_5 atomically inserts the paired structured `SDD_PHASE_RECEIPT` block;
+  the agent never authors it. Semantic closing lines remain `DONE` + Handoff.
+
+  ```markdown
+  #### <PhaseID>                                 <!-- or "#### <PhaseID> — re-run: <reason>" -->
+  <!-- Event lines (optional; appended as events happen, in chronological order): -->
+  - [x] `<ts>` <token> <per the token's own grammar — e.g. `intro <Entity> ← <reason>`, `decision <key>=<value> ← <reason>`>
+  <!-- CLI-owned receipt appears here after successful STEP_5. -->
+  <!-- Semantic closing lines (mandatory): -->
+  - [x] `<ts>` DONE
+  **Handoff →** artifacts: [<paths>]; decisions: [<key=value, …>]; open: [<id: text, …>]; deviations: [<id: text, …>]
+  ```
+
+  Trivial phase: one receipt + `DONE` + Handoff. That is valid and preferred over padding.
+</Contract>
+
+<Contract id="BLOCKER_FORMAT">
+  ```markdown
+  - 🛑 `<ts>` BLOCKED: <one-line cause>
+    - 🔗 axiom: AX_<NAME>
+    - 💬 unblock: <concrete operator action>
+  ```
+  After this entry: phase Status → `[!] BLOCKED`; return BLOCKED to orchestrator. Stop.
+
+  Paired close, once the cause is actually gone (`AX_BLOCKER_RESOLUTION_TRAIL`): run `npx
+  gennady sdd-log <ticket> resolved "<what removed it>" --phase <PhaseID>` — never a manual
+  `Edit`, never the original 🛑 line touched. The CLI writes the resolution into `## Blocker
+  Trail`, a section of its own outside the Execution Log (D-20) — NOT back into this phase's
+  block, and it works even after the Round that raised the blocker has already closed:
+  ```markdown
+  - [x] `<ts>` ✅ RESOLVED (Round <N> / <PhaseID>): <what removed it>
+  ```
+</Contract>

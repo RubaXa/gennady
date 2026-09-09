@@ -11,8 +11,10 @@
     {{> "axiom/process/ax-tool-invocation"}}
     {{> "axiom/process/ax-verification-before-handoff"}}
     {{> "axiom/process/ax-handoff-typed"}}
+    {{> "axiom/process/ax-blocker-escalation"}}
+    {{> "axiom/process/ax-blocker-resolution-trail"}}
   </BeliefState>
-  <Contracts>{{> "contract/process/handoff-format"}}</Contracts>
+  <Contracts>{{> "contract/process/handoff-format"}}{{> "contract/process/phase-block-format"}}{{> "contract/process/blocker-format"}}{{> "contract/process/return-summary-format"}}</Contracts>
   <ExecutionPlan>
     <Step id="STEP_1_ORIENT">
       <Action>
@@ -28,6 +30,20 @@
         Implement the smallest change satisfying the phase and its referenced requirements. Stay
         inside target files. Do not alter task dependencies, phases, approved BDD/test plan, or spec
         meaning. If such a change is necessary, return `APPROVAL_BOUNDARY_CHANGE` with evidence.
+        Record real progress as it happens — one `PHASE_BLOCK_FORMAT` event line per
+        intro/decision/tried/discovery/insight, never batched from memory afterward:
+        <ToolCall owner="phase-agent" result="terminal">npx gennady sdd-log &lt;ticket&gt; line "&lt;event&gt;" --phase &lt;PhaseID&gt;</ToolCall>
+        Inputs &lt;ticket&gt;, &lt;event&gt;, &lt;PhaseID&gt;: this phase's own ticket path, the exact
+        event line per its token's grammar, this phase's id.
+        When stuck (`AX_BLOCKER_ESCALATION`'s triggers — a missing rule file, a broken Handoff
+        promise, a self-contradicting spec, a Target Files boundary, an unhonorable Runtime
+        Backing, a verification command that cannot run), write the reason/axiom/unblock JSON keys
+        with the file-write tool to `&lt;payload-path&gt;`, then open `BLOCKER_FORMAT` and stop:
+        <ToolCall owner="phase-agent" result="terminal">npx gennady sdd-log &lt;ticket&gt; blocker --payload-file &lt;payload-path&gt; --phase &lt;PhaseID&gt;</ToolCall>
+        Inputs &lt;ticket&gt;, &lt;payload-path&gt;, &lt;PhaseID&gt;: this phase's own ticket path, the
+        just-written `.claude/tmp/<task-id>-<phase-id>-log.json` payload, this phase's id. Once the
+        cause is actually gone, close it per `AX_BLOCKER_RESOLUTION_TRAIL` (`sdd-log resolved`,
+        never a manual edit).
       </Action>
     </Step>
     <Step id="STEP_3_VERIFY">
@@ -37,7 +53,9 @@
         the happy path. Report command, exit status, and concise result without suppressing errors.
         A successful CLI-owned receipt is evidence to return, not permission to edit phase status,
         DONE, or Handoff. If the tool rejects the transition, return its exact diagnostic to the
-        orchestrator; never inspect Gennady source or bundled chunks to reinterpret it.
+        orchestrator; never inspect Gennady source or bundled chunks to reinterpret it. A stop that
+        is NOT a simple retry-and-continue routes through `AX_BLOCKER_ESCALATION`'s typed outcome as
+        `RETURN_SUMMARY_FORMAT`, evidence attached — never silently downgraded to a plain diagnostic.
       </Action>
     </Step>
     <Step id="STEP_4_HANDOFF">
