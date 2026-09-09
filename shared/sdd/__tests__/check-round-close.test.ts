@@ -4,7 +4,14 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { checkTicket } from '../check.ts';
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const FIXTURE_DIR = path.join(HERE, 'fixtures', 'round-close');
+const DA_LAZY_ASM_GOLDEN = path.join(FIXTURE_DIR, 'DA-lazy-asm.execution-log.golden.json');
 
 /** @purpose Build a minimal ticket carrying only a META + EXECUTION_LOG (no Phases Overview — the
  *   B2-04 checks run unconditionally on any readable log, unlike the B2-07/B2-16 phase checks). */
@@ -170,6 +177,65 @@ describe('checkTicket — Execution Log post-close integrity (B2-04)', () => {
     assert.ok(
       b204.every((f) => f.severity === 'warn'),
       JSON.stringify(b204)
+    );
+  });
+});
+
+// V-BATCH-14 nonblocking #7: L-3 (variant 2) names a golden snapshot of the real corpus artifact
+// `directive-assembly.task.DA-lazy-asm.md` as the PRECONDITION for ever flipping these four B2-04
+// codes from warn to error — R-B2-04.md §4 had only verified the pattern by hand (no committed
+// fixture). This materializes that precondition: a frozen copy of the ticket's own EXECUTION_LOG
+// body (`fixtures/round-close/DA-lazy-asm.execution-log.frozen.md` — `#### Round close` on its own
+// line 167, followed by three post-close re-run blocks, matching the real file's lines 768/772/
+// 786/806) plus a committed golden of every SDD_EXECUTION_LOG_* finding `checkTicket` produces on
+// it today. A future warn→error flip (B2-20) that changes this golden's severities is exactly the
+// signal B2-20 needs to see; an unrelated code change that reddens it is a real regression.
+describe('golden: DA-lazy-asm real corpus artifact (V-BATCH-14 nonblocking #7, L-3 precondition)', () => {
+  function updateGolden(): boolean {
+    return process.env.UPDATE_ROUND_CLOSE_GOLDEN === '1';
+  }
+
+  it('checkTicket on the frozen DA-lazy-asm Execution Log matches the committed golden', () => {
+    const executionLog = readFileSync(
+      path.join(FIXTURE_DIR, 'DA-lazy-asm.execution-log.frozen.md'),
+      'utf-8'
+    );
+    const findings = checkTicket('t.md', ticket(executionLog))
+      .filter((f) => f.code.startsWith('SDD_EXECUTION_LOG_'))
+      // `line` omitted: none of the four B2-04 codes populate it today (verified against this very
+      // fixture) — including it as an explicit `undefined` would make deepStrictEqual disagree
+      // with the parsed-JSON golden, which drops `undefined` keys entirely on write.
+      .map((f) => ({ code: f.code, severity: f.severity, message: f.message }));
+
+    if (updateGolden()) {
+      writeFileSync(DA_LAZY_ASM_GOLDEN, `${JSON.stringify(findings, null, 2)}\n`);
+      return;
+    }
+
+    assert.ok(
+      existsSync(DA_LAZY_ASM_GOLDEN),
+      `missing ${DA_LAZY_ASM_GOLDEN} — regenerate with UPDATE_ROUND_CLOSE_GOLDEN=1 npm test`
+    );
+    const expected: unknown = JSON.parse(readFileSync(DA_LAZY_ASM_GOLDEN, 'utf-8'));
+    assert.deepStrictEqual(
+      findings,
+      expected,
+      'DA-lazy-asm golden drifted — if deliberate (e.g. B2-20 flipping warn→error), regenerate ' +
+        'with: UPDATE_ROUND_CLOSE_GOLDEN=1 npm test'
+    );
+  });
+
+  it('every finding in the golden is a warn (still L-3 variant 2 — pre-B2-20)', () => {
+    const executionLog = readFileSync(
+      path.join(FIXTURE_DIR, 'DA-lazy-asm.execution-log.frozen.md'),
+      'utf-8'
+    );
+    const findings = checkTicket('t.md', ticket(executionLog)).filter((f) =>
+      f.code.startsWith('SDD_EXECUTION_LOG_')
+    );
+    assert.ok(
+      findings.every((f) => f.severity === 'warn'),
+      JSON.stringify(findings)
     );
   });
 });
