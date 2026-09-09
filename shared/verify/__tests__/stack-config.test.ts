@@ -593,6 +593,60 @@ describe('applyStackConfig — skipped extraGates keep their declared shape (rev
   });
 });
 
+describe('applyStackConfig — when narrows extraGates by phase Target Files (V-12, #9-bonus)', () => {
+  it('a when that matches no target is a visible skipped-by-scope, argv zeroed', () => {
+    const effective = applyStackConfig(
+      [],
+      { extraGates: [{ id: 'swiftlint', argv: ['swiftlint'], when: ['ios/**/*.swift'] }] },
+      'golang',
+      '/repo',
+      new Map([['golang.extraGates', 'gennady.yaml']]),
+      undefined,
+      ['README.md']
+    );
+    assert.equal(effective[0]?.skipped, 'when (gennady.yaml)');
+    assert.deepEqual(effective[0]?.argv, []);
+  });
+
+  it('a when that matches a target keeps the gate runnable', () => {
+    const effective = applyStackConfig(
+      [],
+      { extraGates: [{ id: 'swiftlint', argv: ['swiftlint'], when: ['ios/**/*.swift'] }] },
+      'golang',
+      '/repo',
+      new Map([['golang.extraGates', 'gennady.yaml']]),
+      undefined,
+      ['ios/App/View.swift']
+    );
+    assert.equal(effective[0]?.skipped, null);
+    assert.deepEqual(effective[0]?.argv, ['swiftlint']);
+  });
+
+  it('no when at all is never narrowed, regardless of targets (D-17 default)', () => {
+    const effective = applyStackConfig(
+      [],
+      { extraGates: [{ id: 'always', argv: ['t'] }] },
+      'golang',
+      '/repo',
+      new Map(),
+      undefined,
+      []
+    );
+    assert.equal(effective[0]?.skipped, null);
+  });
+
+  it('omitting targets entirely defaults to empty, same as passing []', () => {
+    const effective = applyStackConfig(
+      [],
+      { extraGates: [{ id: 'always', argv: ['t'] }] },
+      'golang',
+      '/repo',
+      new Map()
+    );
+    assert.equal(effective[0]?.skipped, null);
+  });
+});
+
 describe('sandboxLinks removal (D-STACK-017)', () => {
   it('rejects the removed key as unknown, so an old config fails loudly', () => {
     withConfigs({ 'gennady.yaml': 'stack:\n  golang:\n    sandboxLinks: [cache]\n' }, (dir) => {
