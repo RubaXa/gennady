@@ -1,4 +1,4 @@
-<SddModule keywords="module, authoring, decomposition, entity, dbc, sdd-new, sdd-check" type="directive" ver="2.3">
+<SddModule keywords="module, authoring, decomposition, entity, dbc, sdd-new, sdd-check" type="directive" ver="2.4">
   <Mission>
     Materialize the smallest cohesive module hierarchy from an actual scope draft. The autonomous
     route is skeleton → orient → one whole-document Write → soft check → handoff. Tasks belong to
@@ -9,6 +9,8 @@
     {{> "axiom/process/ax-tool-invocation"}}
 
     {{> "axiom/process/ax-progressive-disclosure"}}
+
+    {{> "axiom/spec/ax-refine-module-preserves-contracts"}}
   </BeliefState>
 
   <Contracts>
@@ -49,6 +51,12 @@
         obligation write `No module-specific requirements. Implements parent requirements: <IDs>.`
         A disputed autonomous boundary choice is one module Decision Log line per
         `DEVIATION_RECORD_FORMAT`; a zero-new-information decision continues without a dialogue stop.
+        Per `AX_REFINE_MODULE_PRESERVES_CONTRACTS`, removing a public entity or weakening a
+        postcondition is a breaking change: it needs a Decision Log entry with operator-confirmed
+        `Risk accepted` plus a Pivot Invalidation List naming every consumer module (the siblings
+        whose Inter-Module Dependencies edge points at this one) as a `refine-module` target —
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/pivot-formats.xml")` for the list
+        format.
       </Action>
     </Step>
 

@@ -384,7 +384,6 @@ export const PENDING_IN_OPEN_PR: ReadonlyMap<string, string> = new Map([
   ['critic/ax-polish-mode', 'PR #45 (lead/review-critic-bounds) / PR #49 (lead/promises-not-wider)'],
   ['process/ax-dispatch-via-batch', 'PR #45 (lead/review-critic-bounds) / PR #49 (lead/promises-not-wider)'],
   ['process/ax-cap-5', 'PR #45 (lead/review-critic-bounds) / PR #49 (lead/promises-not-wider)'],
-  ['spec/ax-refine-module-preserves-contracts', 'PR #41 (lead/spec-authoring)'],
 ]);
 
 /**

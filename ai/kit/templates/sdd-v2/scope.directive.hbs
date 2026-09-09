@@ -1,19 +1,30 @@
-<SddScope keywords="scope, authoring, product, library, sdd-new, sdd-check" type="directive" ver="2.3">
+<SddScope keywords="scope, authoring, product, library, sdd-new, sdd-check" type="directive" ver="2.4">
   <Mission>
     Author one product/library scope from durable artifacts, not transcript memory. The autonomous
     route is skeleton → orient → one whole-document Write → soft check → module handoff. The generated skeleton owns
     section format. Module/entity/DbC detail belongs to the module owner.
+
+    **Modes:** greenfield · refine · pivot · rewrite.
   </Mission>
 
   <BeliefState deps="AX_TOOL_INVOCATION">
     {{> "axiom/process/ax-tool-invocation"}}
 
     {{> "axiom/process/ax-progressive-disclosure"}}
+
+    {{> "axiom/spec/ax-pivot-requires-supersession"}}
   </BeliefState>
 
   <Contracts>
     {{> "contract/process/deviation-record-format"}}
   </Contracts>
+
+  <HaltConditions>
+    | 🛑 ID | Trigger |
+    |---|---|
+    | `H_REWRITE_WITH_DOWNSTREAM` | `rewrite` mode but the scope already has module specs or task tickets on disk — not v0, use `pivot` (`AX_PIVOT_REQUIRES_SUPERSESSION`) |
+    | `H_PIVOT_NO_INVALIDATION_LIST` | `pivot` mode without a Pivot Invalidation List |
+  </HaltConditions>
 
   <ExecutionPlan>
     <Step id="STEP_0_CREATE">
@@ -21,8 +32,14 @@
       <Action>
         Classify the scope type and mode exactly once from the request and disk. Preserve the
         operator-confirmed `scale:` retained by this owner; must not reopen the already-settled route.
-        Greenfield starts with exactly one applicable ToolCall. Existing specs are read in full and
-        replaced as a whole; authoring never edits them section by section.
+        Greenfield starts with exactly one applicable ToolCall. Existing specs are read in full;
+        every mode still produces exactly one whole-document `Write`, authoring never edits them
+        section by section. `refine` extends the existing decisions in place. `pivot` replaces a
+        decision but never the history: the prior Decision Log entry is preserved byte-for-byte and
+        one new entry is appended naming the delta, per `AX_PIVOT_REQUIRES_SUPERSESSION`. `rewrite`
+        is the v0 exception — no supersession, no invalidation list — and is forbidden once the
+        scope already has module specs or task tickets on disk; halt (`H_REWRITE_WITH_DOWNSTREAM`)
+        and use `pivot` instead.
         <ToolCall owner="this-step" result="productManifest">npx gennady sdd-new product --scope <scope></ToolCall> Inputs <scope>: request scope classified in this step. Use productManifest.
         <ToolCall owner="this-step" result="libraryManifest">npx gennady sdd-new library --scope <scope></ToolCall> Inputs <scope>: request scope classified in this step. Use libraryManifest.
       </Action>
@@ -47,8 +64,12 @@
         one Write must retain every SECTION marker, replace every `<!-- ... -->` guidance comment with
         content, and leave no skeleton guidance behind. Run the structural self-check mentally before
         that Write. Record each disputed autonomous choice once in the scope Decision Log per
-        `DEVIATION_RECORD_FORMAT`. Keep scope ownership thin. Do not preload structure, requirement,
-        caption, or portal formats.
+        `DEVIATION_RECORD_FORMAT`. In `pivot` mode the same Write also appends the superseded Decision
+        Log entry and a Pivot Invalidation List enumerating every downstream module spec/task ticket
+        needing `refine-module` or reopening — read
+        `ai/directives/sdd-v2/formats/pivot-formats.xml` for the exact entry/list format
+        (`H_PIVOT_NO_INVALIDATION_LIST` if the list is omitted). Keep scope ownership thin. Do not
+        preload structure, requirement, caption, or portal formats.
       </Action>
     </Step>
 
