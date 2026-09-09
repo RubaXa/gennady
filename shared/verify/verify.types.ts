@@ -254,6 +254,11 @@ export type GateSpec = {
   readonly requires?: readonly Readonly<Record<string, unknown>>[];
   /** @purpose Mutating remedy for this gate as a CmdSpec (spec §4.4). */
   readonly fixer?: Readonly<Record<string, unknown>>;
+  /**
+   * @purpose File-scope globs (V-12, #9-bonus): the gate applies only once a phase Target File
+   *   matches. Absent/empty means "always in scope" — today's default (D-17). extraGates only.
+   */
+  readonly when?: readonly string[];
 };
 
 /**
