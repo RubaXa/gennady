@@ -13,6 +13,7 @@ import {
 } from './ticket.ts';
 import type { TicketCorpusRef } from './ticket-resolve.ts';
 import { resolvePreset } from '../verify/presets/node.ts';
+import type { StackConfig, StackId } from '../verify/verify.types.ts';
 
 /** @purpose One canonical verify profile; full belongs only to the project-level verdict. */
 export type VerificationProfile = 'setup' | 'code' | 'test' | 'full';
@@ -32,31 +33,42 @@ export function phaseProfileForKind(kind: string): Exclude<VerificationProfile, 
 
 /**
  * @purpose Select exact canonical gate names for one profile and coverage-owner state.
- * @invariant V-04: delegates to `resolvePreset('node', …)`, byte-identical to the pre-V-04 hardcoded
- *   lists (V-01 golden). `root` has no real value here (a ticket corpus, not a live repo).
+ * @invariant V-04: delegates to `resolvePreset(stack, …)`, byte-identical to the pre-V-04 hardcoded
+ *   lists for `stack === 'node'` (V-01 golden — every caller that omits `stack` keeps that default).
+ *   `root` has no real value here (a ticket corpus, not a live repo).
+ * @invariant V-08b: `stack` is the detected repo stack (V-05), not the literal `'node'` — this is
+ *   what makes the anystack preset reachable from the phase model at all.
  * @param profile Structurally derived phase profile or explicit project-level full profile.
  * @param [producesCoverage] Whether this test phase owns the coverage producer.
+ * @param [stack] Detected primary stack (V-05); defaults to `'node'`, the pre-V-08b behavior.
+ * @param [config] Merged `stack:` config (V-07) a config-authored preset (anystack) needs.
  * @returns Gate names in execution order.
  */
 export function verificationGateNames(
   profile: VerificationProfile,
-  producesCoverage = profile === 'test'
+  producesCoverage = profile === 'test',
+  stack: StackId = 'node',
+  config?: StackConfig | null
 ): readonly string[] {
-  return resolvePreset('node', profile, '.')!.gateNames(profile, producesCoverage);
+  return resolvePreset(stack, profile, '.', config)!.gateNames(profile, producesCoverage);
 }
 
 /**
  * @purpose Select gates whose absence makes the selected ladder fail closed.
- * @invariant V-04: delegates to `resolvePreset('node', …)`, same as `verificationGateNames`.
+ * @invariant V-04: delegates to `resolvePreset(stack, …)`, same as `verificationGateNames`.
  * @param profile Structurally derived phase profile or explicit full profile.
  * @param [producesCoverage] Whether this test phase owns the coverage producer.
+ * @param [stack] Detected primary stack (V-05); defaults to `'node'`, the pre-V-08b behavior.
+ * @param [config] Merged `stack:` config (V-07) a config-authored preset (anystack) needs.
  * @returns Required gate names in canonical order.
  */
 export function requiredVerificationGateNames(
   profile: VerificationProfile,
-  producesCoverage = profile === 'test'
+  producesCoverage = profile === 'test',
+  stack: StackId = 'node',
+  config?: StackConfig | null
 ): readonly string[] {
-  return resolvePreset('node', profile, '.')!.requiredGateNames(profile, producesCoverage);
+  return resolvePreset(stack, profile, '.', config)!.requiredGateNames(profile, producesCoverage);
 }
 
 /** @purpose Exact pre-run and post-run state of one canonical phase gate. */
@@ -112,6 +124,13 @@ type PhaseVerificationPlanInput = {
   registry?: unknown;
   mode?: 'planning' | 'runtime';
   profileOverride?: Exclude<VerificationProfile, 'full'>;
+  /** @purpose Detected primary stack (V-05) this plan resolves gates for; defaults to `'node'` —
+   *   every caller that omits it (scaffold critic context, planning-only) keeps the exact pre-V-08b
+   *   behavior byte for byte. */
+  stack?: StackId;
+  /** @purpose Merged `stack:` config section (V-07); only a config-authored preset (anystack)
+   *   reads it. */
+  config?: StackConfig | null;
 };
 
 /**
@@ -171,13 +190,17 @@ function planNodes(refs: readonly TicketCorpusRef[]): PlanNode[] {
   });
 }
 
-function ownedVerificationGateNames(current: PlanNode): string[] {
+function ownedVerificationGateNames(
+  current: PlanNode,
+  stack: StackId,
+  config?: StackConfig | null
+): string[] {
   const gateOrder = [
     ...new Set([
-      ...verificationGateNames('code'),
-      ...verificationGateNames('test', true),
-      ...verificationGateNames('test', false),
-      ...verificationGateNames('full'),
+      ...verificationGateNames('code', undefined, stack, config),
+      ...verificationGateNames('test', true, stack, config),
+      ...verificationGateNames('test', false, stack, config),
+      ...verificationGateNames('full', undefined, stack, config),
     ]),
   ];
   const direct = current.readinessGates.flatMap((gate) => {
@@ -245,14 +268,18 @@ export function phaseVerificationNodeReaches(
   return Boolean(fromNode && targetNode && nodeReaches(nodes, fromNode, targetNode));
 }
 
-// V-04: delegates to the node preset's own command resolution — byte-identical to the pre-V-04
-// inline logic (V-01 golden). `resolvePreset('node', …)` never returns null.
+// V-04: delegates to the resolved stack preset's own command resolution — byte-identical to the
+// pre-V-04 inline logic (V-01 golden) for `stack === 'node'` (the default every existing caller
+// keeps). V-08b: a live `stack`/`config` makes anystack's config-authored gates resolvable too.
+// `resolvePreset('node', …)`/`resolvePreset('anystack', …)` never return null.
 function commandForGate(
   name: string,
   scripts: Readonly<Record<string, string>>,
-  targets: readonly string[]
+  targets: readonly string[],
+  stack: StackId = 'node',
+  config?: StackConfig | null
 ): string | null {
-  return resolvePreset('node', 'full', '.')!.commandForGate(name, scripts, targets);
+  return resolvePreset(stack, 'full', '.', config)!.commandForGate(name, scripts, targets);
 }
 
 function coverageProducer(current: PlanNode, profile: PhaseVerificationPlan['profile']): boolean {
@@ -282,10 +309,12 @@ function readinessOwnerRelation(
 function selectReadinessOwner(
   nodes: readonly PlanNode[],
   current: PlanNode,
-  gate: string
+  gate: string,
+  stack: StackId,
+  config: StackConfig | null
 ): { node: PlanNode; relation: ReadinessOwnerRelation } | null {
   const owners = nodes
-    .filter((node) => ownedVerificationGateNames(node).includes(gate))
+    .filter((node) => ownedVerificationGateNames(node, stack, config).includes(gate))
     .map((node) => ({ node, relation: readinessOwnerRelation(nodes, current, node) }));
   return (
     owners.find((candidate) => candidate.relation === 'current') ??
@@ -312,19 +341,21 @@ export function resolvePhaseVerificationPlan(
   if (!current) return null;
   const profile = input.profileOverride ?? phaseProfileForKind(current.kind);
   if (!profile) return null;
+  const stack = input.stack ?? 'node';
+  const config = input.config ?? null;
   const producesCoverage = coverageProducer(current, profile);
-  const ownedNames = ownedVerificationGateNames(current);
+  const ownedNames = ownedVerificationGateNames(current, stack, config);
   const requiredNames = new Set([
-    ...requiredVerificationGateNames(profile, producesCoverage),
+    ...requiredVerificationGateNames(profile, producesCoverage, stack, config),
     ...ownedNames,
   ]);
   const gateNames = [
-    ...new Set([...verificationGateNames(profile, producesCoverage), ...ownedNames]),
+    ...new Set([...verificationGateNames(profile, producesCoverage, stack, config), ...ownedNames]),
   ];
   const gates = gateNames.map((name): PhaseVerificationGatePlan => {
-    const command = commandForGate(name, input.scripts, current.targets);
+    const command = commandForGate(name, input.scripts, current.targets, stack, config);
     const planning = (input.mode ?? 'runtime') === 'planning';
-    const owner = selectReadinessOwner(nodes, current, name);
+    const owner = selectReadinessOwner(nodes, current, name, stack, config);
     const waitsForOwner = owner?.relation === 'downstream';
     const state: PhaseVerificationGateState = waitsForOwner
       ? 'PREREQUISITE_PENDING'

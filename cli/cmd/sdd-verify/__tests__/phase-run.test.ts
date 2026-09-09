@@ -21,7 +21,10 @@ import { runPhaseVerification } from '../phase-run.ts';
 import { resolvePhaseContext, type PhaseVerifyContext } from '../phase-context.ts';
 import { phaseReceiptCommandIssue, phaseReceiptIssue } from '../phase-receipt-validation.ts';
 import { collectTicketCorpus } from '../../../../shared/sdd/ticket-resolve.ts';
-import { phaseVerificationNodeReaches } from '../../../../shared/sdd/phase-verification-plan.ts';
+import {
+  phaseVerificationNodeReaches,
+  type PhaseVerificationGatePlan,
+} from '../../../../shared/sdd/phase-verification-plan.ts';
 import { checkPhaseReceipts } from '../../sdd-check/phase-receipt-check.ts';
 
 function fixture(): { root: string; context: PhaseVerifyContext } {
@@ -1170,5 +1173,215 @@ describe('runPhaseVerification', () => {
     } finally {
       rmSync(f.root, { recursive: true, force: true });
     }
+  });
+
+  describe('V-08b: anystack gate plan runs verbatim, in gatePlan order, with no npm ladder', () => {
+    it('a 3-gate anystack phase (no package.json) writes a receipt whose commands match gatePlan order', async () => {
+      const root = mkdtempSync(join(tmpdir(), 'sdd-phase-run-anystack-'));
+      mkdirSync(join(root, 'specs/app'), { recursive: true });
+      writeFileSync(join(root, 'specs/app/app.spec.md'), '# App');
+      writeFileSync(join(root, 'README.md'), '# anystack project');
+      // Deliberately no package.json anywhere in this root.
+      const taskPath = 'specs/app/app.task.TSK-ANY.md';
+      writeFileSync(
+        join(root, taskPath),
+        [
+          '<!--SECTION:META-->',
+          '- **Task-ID:** TSK-ANY',
+          '<!--/SECTION:META-->',
+          '<!--SECTION:PHASES_OVERVIEW-->',
+          '| ID | Kind | Deps | Status |',
+          '|---|---|---|---|',
+          '| P1 | impl | — | [ ] |',
+          '<!--/SECTION:PHASES_OVERVIEW-->',
+          '<!--SECTION:PHASE_P1-->',
+          '- **Rules:**',
+          '  - none',
+          '- **Target Files:**',
+          '  - README.md',
+          '- **Deleted Files:**',
+          '  - none',
+          '<!--/SECTION:PHASE_P1-->',
+          '<!--SECTION:VERIFICATION-->',
+          '| Command | Required by | Role |',
+          '|---|---|---|',
+          '| — | — | extra |',
+          '<!--/SECTION:VERIFICATION-->',
+          '<!--SECTION:EXECUTION_LOG-->',
+          '## Execution Log',
+          '<!--/SECTION:EXECUTION_LOG-->',
+        ].join('\n')
+      );
+      const anystackGate = (name: string, command: string): PhaseVerificationGatePlan => ({
+        name,
+        state: 'CONFIGURED',
+        required: false,
+        command,
+        prerequisites: [],
+        provider: null,
+        next: `run ${command}`,
+      });
+      const context: PhaseVerifyContext = {
+        profile: 'code',
+        profileBasis: 'phase-kind',
+        targets: ['README.md'],
+        deletedFiles: [],
+        specPath: 'specs/app/app.spec.md',
+        taskPath,
+        phaseId: 'P1',
+        producesCoverage: false,
+        verification: [],
+        stack: 'anystack',
+        gatePlan: {
+          ticket: 'TSK-ANY',
+          phase: 'P1',
+          profile: 'code',
+          producesCoverage: false,
+          gates: [
+            anystackGate('lint-go', 'golangci-lint run'),
+            anystackGate('build', 'go build ./...'),
+            anystackGate('unit', 'go test ./...'),
+          ],
+        },
+      };
+      const ladderCalls: string[] = [];
+      const verbatimCalls: string[] = [];
+      try {
+        const result = await runPhaseVerification(
+          root,
+          context,
+          (command, args) => {
+            ladderCalls.push(`${command} ${args.join(' ')}`);
+            return { exitCode: 0, output: '' };
+          },
+          (command) => {
+            verbatimCalls.push(command);
+            return { exitCode: 0, output: '' };
+          }
+        );
+        assert.strictEqual(result.ok, true, result.ok ? '' : result.message);
+        // The npm ladder never runs for a non-node stack — there is no npm script vocabulary to
+        // dispatch through; every configured gate runs via the verbatim runner instead.
+        assert.deepStrictEqual(ladderCalls, []);
+        assert.deepStrictEqual(verbatimCalls, [
+          'golangci-lint run',
+          'go build ./...',
+          'go test ./...',
+        ]);
+        const parsed = parsePhaseReceipts(readFileSync(join(root, taskPath), 'utf-8'));
+        assert.strictEqual(parsed.ok, true);
+        if (!parsed.ok) return;
+        const receipt = parsed.receipts.find((candidate) => candidate.phase === 'P1');
+        assert.ok(receipt);
+        // И-2 п.а: receipt.commands order matches gatePlan.gates declaration order exactly.
+        assert.deepStrictEqual(
+          receipt?.commands.map(({ gate, role, command }) => ({ gate, role, command })),
+          [
+            { gate: 'lint-go', role: 'foundation', command: 'golangci-lint run' },
+            { gate: 'build', role: 'foundation', command: 'go build ./...' },
+            { gate: 'unit', role: 'foundation', command: 'go test ./...' },
+          ]
+        );
+        assert.strictEqual(phaseReceiptCommandIssue(receipt, context.gatePlan), null);
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+      }
+    });
+
+    it('halts on the first failing anystack gate — no receipt is written', async () => {
+      const root = mkdtempSync(join(tmpdir(), 'sdd-phase-run-anystack-fail-'));
+      mkdirSync(join(root, 'specs/app'), { recursive: true });
+      writeFileSync(join(root, 'specs/app/app.spec.md'), '# App');
+      writeFileSync(join(root, 'README.md'), '# anystack project');
+      const taskPath = 'specs/app/app.task.TSK-ANY2.md';
+      writeFileSync(
+        join(root, taskPath),
+        [
+          '<!--SECTION:META-->',
+          '- **Task-ID:** TSK-ANY2',
+          '<!--/SECTION:META-->',
+          '<!--SECTION:PHASES_OVERVIEW-->',
+          '| ID | Kind | Deps | Status |',
+          '|---|---|---|---|',
+          '| P1 | impl | — | [ ] |',
+          '<!--/SECTION:PHASES_OVERVIEW-->',
+          '<!--SECTION:PHASE_P1-->',
+          '- **Rules:**',
+          '  - none',
+          '- **Target Files:**',
+          '  - README.md',
+          '- **Deleted Files:**',
+          '  - none',
+          '<!--/SECTION:PHASE_P1-->',
+          '<!--SECTION:VERIFICATION-->',
+          '| Command | Required by | Role |',
+          '|---|---|---|',
+          '| — | — | extra |',
+          '<!--/SECTION:VERIFICATION-->',
+          '<!--SECTION:EXECUTION_LOG-->',
+          '## Execution Log',
+          '<!--/SECTION:EXECUTION_LOG-->',
+        ].join('\n')
+      );
+      const context: PhaseVerifyContext = {
+        profile: 'code',
+        profileBasis: 'phase-kind',
+        targets: ['README.md'],
+        deletedFiles: [],
+        specPath: 'specs/app/app.spec.md',
+        taskPath,
+        phaseId: 'P1',
+        producesCoverage: false,
+        verification: [],
+        stack: 'anystack',
+        gatePlan: {
+          ticket: 'TSK-ANY2',
+          phase: 'P1',
+          profile: 'code',
+          producesCoverage: false,
+          gates: [
+            {
+              name: 'lint-go',
+              state: 'CONFIGURED',
+              required: false,
+              command: 'golangci-lint run',
+              prerequisites: [],
+              provider: null,
+              next: 'run golangci-lint run',
+            },
+            {
+              name: 'build',
+              state: 'CONFIGURED',
+              required: false,
+              command: 'go build ./...',
+              prerequisites: [],
+              provider: null,
+              next: 'run go build ./...',
+            },
+          ],
+        },
+      };
+      const verbatimCalls: string[] = [];
+      try {
+        const result = await runPhaseVerification(
+          root,
+          context,
+          () => ({ exitCode: 0, output: '' }),
+          (command) => {
+            verbatimCalls.push(command);
+            return { exitCode: 1, output: 'lint failure output' };
+          }
+        );
+        assert.strictEqual(result.ok, false);
+        if (!result.ok) assert.match(result.message, /lint-go/);
+        // Halted at the first gate — build never ran.
+        assert.deepStrictEqual(verbatimCalls, ['golangci-lint run']);
+        const parsed = parsePhaseReceipts(readFileSync(join(root, taskPath), 'utf-8'));
+        assert.strictEqual(parsed.ok, true);
+        if (parsed.ok) assert.strictEqual(parsed.receipts.length, 0);
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+      }
+    });
   });
 });

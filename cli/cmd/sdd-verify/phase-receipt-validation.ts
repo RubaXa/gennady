@@ -41,14 +41,16 @@ export function expectedPhaseReceiptPlan(
     profileBasis === 'infra-queue-exemption' ? ('setup' as const) : context.context.profile;
   const gatePlan = context.context.gatePlan;
   if (!gatePlan) return { ok: false, issue: 'current phase has no canonical gate plan' };
+  const stack = context.context.stack ?? 'node';
   const environment = receipt.gateEvidence
-    ? phaseVerificationPlanEnvironmentState(root, gatePlan, context.context.verification)
+    ? phaseVerificationPlanEnvironmentState(root, gatePlan, context.context.verification, stack)
     : phaseVerificationEnvironmentState(
         root,
         profile,
         context.context.producesCoverage,
         context.context.verification,
-        context.context.targets.length > 0
+        context.context.targets.length > 0,
+        stack
       );
   if (!environment.ok) return { ok: false, issue: environment.issue };
   return {

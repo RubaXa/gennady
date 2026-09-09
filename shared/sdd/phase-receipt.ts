@@ -1265,6 +1265,25 @@ export function phaseVerificationPlanEnvironmentState(
       issue: `no environmentState source for stack '${stack}' — no preset is implemented for it yet`,
     };
   }
+  if (stack !== 'node') {
+    // V-08b: a non-node preset (anystack today) has no npm lifecycle to expand into a fingerprint
+    // — it declares its own environmentStateSource as its config-authored gate commands (see
+    // `presets/anystack.ts`), so THOSE commands (config-authored, therefore able to drift without
+    // ever touching the ticket) are the fingerprinted input, not a `package.json` read node owns.
+    // No `obviousLocalInputs`-style local-file detection here either — that adapter only knows the
+    // node-tooling command shapes (`node`, `npx`, `eslint`, …); an arbitrary anystack command would
+    // hit its closed-world "no receipt input adapter" refusal for the common case (D-14, spec §2).
+    const configuredCommands = plan.gates
+      .filter((gate) => ['CONFIGURED', 'PROVEN'].includes(gate.state) && gate.command !== null)
+      .map((gate) => gate.command as string);
+    return {
+      ok: true,
+      state: sha([
+        JSON.stringify(configuredCommands),
+        JSON.stringify(verification.map((gate) => gate.command)),
+      ]),
+    };
+  }
   const roots = plan.gates.flatMap((gate) => {
     if (!['CONFIGURED', 'PROVEN'].includes(gate.state) || gate.command === null) return [];
     if (gate.name === 'fix') return ['format:fix', 'lint:fix'];
