@@ -358,7 +358,7 @@ async function runAndReportBody(
     }
     const scenario = byId.get(result.worker.scenarioId);
     // Objective quality rule R1 (structural integrity) for phases that PRODUCE specs — the mechanical
-    // signal alongside the stochastic judge (docs/10-QUALITY-RULES.md). The pure golden-graded work carries
+    // signal alongside the stochastic judge (docs/EVAL-SPEC.md). The pure golden-graded work carries
     // no specs and is graded by its own golden set, not sdd-check: `task`, and the brownfield delta
     // modes (modify-code-delta/fix-code-delta). The brownfield spec modes DO write specs, so R1 applies.
     const brownfieldSpecMode =

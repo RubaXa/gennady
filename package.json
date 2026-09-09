@@ -61,6 +61,7 @@
     "eval:migration:portal": "mkdir -p \"$HOME/.gennady/eval/mig-sandboxes\" && node --import tsx ai/flow-eval/cli.ts --scenario-file ai/flow-eval/scenarios-migration-portal.json --directory \"$HOME/.gennady/eval/mig-sandboxes\" --base-url http://127.0.0.1:4100 --model llm-proxy/deepseek-v4-flash --keep --observe-every-ms 45000 --stuck-after 3 --max-observations 12 --max-wall-clock-ms 300000",
     "results:table": "node --import tsx ai/flow-eval/scripts/results-table.ts",
     "results:table:check": "node --import tsx ai/flow-eval/scripts/results-table.ts --check",
+    "flow-eval:docs-check": "node --import tsx ai/flow-eval/scripts/verify-eval-docs.ts",
     "dev": "tsx cli/gennady.ts",
     "inspector": "tsx ai/inspector/generate.ts && tsx ai/inspector/serve.ts",
     "inspector:gen": "tsx ai/inspector/generate.ts",

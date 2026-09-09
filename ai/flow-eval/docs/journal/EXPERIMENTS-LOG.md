@@ -63,7 +63,7 @@ baseline: in≈83k). Отсюда приоритет — сокращать чт
 - Dist-level A/B (H1/few-shot/attention: разница в директивах/шаблонах) — нужна **модель worktree-на-
   вариант** (свой `--gennady-root` + свой build/dist на дорожку), main-worktree = абсорбер победителей.
 
-## Правила качества (10-QUALITY-RULES.md) — итерации
+## Правила качества (историческое; текущий словарь — R1/MIGRATION/R-COMPLETE в ../EVAL-SPEC.md) — итерации
 
 - **Итерация 1 (R1+R3) + инфра E-infra-1**: объективный golden-гейт для инфра-задачи (лог-саммари)
   построен и **доказан в обе стороны** (`infra-golden.test.ts` 3/3: reference PASS, wrong FAIL,

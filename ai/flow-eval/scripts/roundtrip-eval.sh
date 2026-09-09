@@ -10,7 +10,7 @@
 #   roundtrip-eval.sh grade   [runid]   — run the frozen 82-probe bench on the regenerated guard + factors
 #   roundtrip-eval.sh status  [runid]   — one-line progress of a run in flight
 # The bench + Artur's guard are kept in $RT/golden (agent must never read/edit golden per the phase prompt).
-# TMPDIR is normalised WITHOUT a trailing slash — see ai/flow-eval/docs/journal/swiftlint-setup.md.
+# TMPDIR is normalised WITHOUT a trailing slash — see ai/flow-eval/docs/RUNBOOK.md ("Host-setup для SwiftLint-бенча").
 set -euo pipefail
 
 export PATH="/opt/homebrew/bin:$PATH"
@@ -38,7 +38,7 @@ SCENARIO="${SCENARIO:-$GEN_ROOT/ai/flow-eval/.results/rt-execute.scenario.json}"
 log() { printf '[%s] %s\n' "$(date +%H:%M:%S)" "$*"; }
 
 # Enforce the ~/Developer/ rule BEFORE touching anything (prep/execute) — see
-# ai/flow-eval/docs/03-SETUP.md. Fails fast and loud, not mid-operation.
+# ai/flow-eval/docs/RUNBOOK.md. Fails fast and loud, not mid-operation.
 "$GEN_ROOT/ai/flow-eval/scripts/require-developer-repo.sh" "$REPO"
 
 prep() {
@@ -72,7 +72,7 @@ prep() {
 
   # Wall 1 — upgrade every migrated ticket's §5 table to the 3-column v2 schema (sdd-task rejects the
   # old 2-column form). Wall 3 — readiness shim so this node-hardcoded branch lets a Swift repo reach
-  # EXECUTION_READY (see docs/journal/roundtrip-wall3-assessment.md; the adaptive verify lives unmerged on main).
+  # EXECUTION_READY (see docs/journal/flow-verification-ledger.md, finding A7; the adaptive verify lives unmerged on main).
   log "wall-1: upgrade verification tables to v2 3-column schema"
   python3 "$GEN_ROOT/ai/flow-eval/scripts/upgrade-verification-tables.py" "$RT/specs" | sed 's/^/    /'
   log "wall-3: write readiness shim package.json"

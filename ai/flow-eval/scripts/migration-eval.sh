@@ -47,7 +47,7 @@ render_scenario() {
 }
 
 # Enforce the ~/Developer/ rule BEFORE touching anything (run/prep/execute) — see
-# ai/flow-eval/docs/03-SETUP.md. Fails fast and loud, not mid-operation.
+# ai/flow-eval/docs/RUNBOOK.md. Fails fast and loud, not mid-operation.
 "$GEN_ROOT/ai/flow-eval/scripts/require-developer-repo.sh" "$REPO"
 
 reset_fixture() {
