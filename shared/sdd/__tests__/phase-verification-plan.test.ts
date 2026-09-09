@@ -376,4 +376,73 @@ describe('resolvePhaseVerificationPlan', () => {
       assert.deepStrictEqual(withDefault.gates, withExplicitNode.gates);
     });
   });
+
+  describe('V-12 (#9-bonus): `when` narrows an anystack extraGate by phase Target Files', () => {
+    it('a when that matches no phase Target File is SKIPPED_BY_SCOPE, visible with command=null', () => {
+      const ref = ticket('SCOPED-OUT', [{ id: 'P1', kind: 'impl', targets: ['README.md'] }]);
+      const plan = resolvePhaseVerificationPlan({
+        refs: [ref],
+        ticketFile: ref.file,
+        phaseId: 'P1',
+        scripts: {},
+        availableArtifacts: new Set(),
+        mode: 'runtime',
+        stack: 'anystack',
+        config: {
+          anystack: {
+            extraGates: [
+              { id: 'swiftlint', argv: ['swiftlint'], when: ['ios/**/*.swift'] },
+              { id: 'build', argv: ['go', 'build', './...'] },
+            ],
+          },
+        },
+      });
+      assert.ok(plan);
+      assert.deepStrictEqual(
+        plan.gates.map(({ name, state, required, command }) => ({
+          name,
+          state,
+          required,
+          command,
+        })),
+        [
+          { name: 'swiftlint', state: 'SKIPPED_BY_SCOPE', required: false, command: null },
+          { name: 'build', state: 'CONFIGURED', required: false, command: 'go build ./...' },
+        ]
+      );
+      assert.match(plan.gates[0]?.next ?? '', /skipped-by-scope.*when:.*ios\/\*\*\/\*\.swift/);
+    });
+
+    it('a when that matches a phase Target File keeps the gate CONFIGURED', () => {
+      const ref = ticket('SCOPED-IN', [
+        { id: 'P1', kind: 'impl', targets: ['ios/App/View.swift'] },
+      ]);
+      const plan = resolvePhaseVerificationPlan({
+        refs: [ref],
+        ticketFile: ref.file,
+        phaseId: 'P1',
+        scripts: {},
+        availableArtifacts: new Set(),
+        mode: 'runtime',
+        stack: 'anystack',
+        config: {
+          anystack: {
+            extraGates: [{ id: 'swiftlint', argv: ['swiftlint'], when: ['ios/**/*.swift'] }],
+          },
+        },
+      });
+      assert.ok(plan);
+      const gate = plan.gates.find((candidate) => candidate.name === 'swiftlint');
+      assert.deepStrictEqual(
+        { state: gate?.state, command: gate?.command },
+        { state: 'CONFIGURED', command: 'swiftlint' }
+      );
+    });
+
+    it('D-17 byte parity: a node plan (no config, no when) is unaffected by scope resolution', () => {
+      const ref = ticket('NODE-UNCHANGED', [{ id: 'P1', kind: 'impl', targets: ['src/app.ts'] }]);
+      const before = resolve(ref, 'P1', { 'type-check': 'tsc --noEmit' });
+      assert.ok(before.gates.every((gate) => gate.state !== 'SKIPPED_BY_SCOPE'));
+    });
+  });
 });

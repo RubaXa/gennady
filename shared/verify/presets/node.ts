@@ -63,6 +63,17 @@ export type StackPreset = {
     targets: readonly string[]
   ): string | null;
   /**
+   * @purpose Why a `when`-scoped gate does not apply given the phase's Target Files (V-12,
+   *   #9-bonus), or null when it applies (or carries no `when` at all).
+   * @invariant Optional — node/golang have no file-scope concept and omit it, so
+   *   `scopeReason?.(...) ?? null` always resolves to "in scope" for them, a byte-for-byte parity
+   *   requirement (D-17): a repo without config never sees a gate scoped out.
+   * @param name Canonical gate/script name.
+   * @param targets Exact phase Target Files.
+   * @returns A human-readable reason the gate is out of scope, or null when it applies.
+   */
+  scopeReason?(name: string, targets: readonly string[]): string | null;
+  /**
    * @purpose Declarative label of this preset's environmentState source. Not read yet: V-04a
    *   fails closed via `resolvePreset(...) !== null`; a consumer arrives with non-node presets.
    */

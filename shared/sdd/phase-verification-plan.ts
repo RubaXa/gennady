@@ -78,7 +78,10 @@ export type PhaseVerificationGateState =
   | 'PREREQUISITE_MISSING'
   | 'COMMAND_MISSING'
   | 'CONFIGURED'
-  | 'PROVEN';
+  | 'PROVEN'
+  /** @purpose A `when`-scoped gate whose globs matched no phase Target File — visible in the
+   *   plan/receipt, never a silent drop (V-12, #9-bonus). */
+  | 'SKIPPED_BY_SCOPE';
 
 /** @purpose One canonical gate plus its structural provider and next action. */
 export type PhaseVerificationGatePlan = {
@@ -282,6 +285,18 @@ function commandForGate(
   return resolvePreset(stack, 'full', '.', config)!.commandForGate(name, scripts, targets);
 }
 
+// V-12 (#9-bonus): mirrors `commandForGate` above — delegates to the resolved preset's own
+// file-scope narrowing. node/golang presets carry no `scopeReason`, so this always resolves to
+// null (in scope) for them — the byte-parity baseline (D-17) a repo without `when` never leaves.
+function scopeReasonForGate(
+  name: string,
+  targets: readonly string[],
+  stack: StackId = 'node',
+  config?: StackConfig | null
+): string | null {
+  return resolvePreset(stack, 'full', '.', config)!.scopeReason?.(name, targets) ?? null;
+}
+
 function coverageProducer(current: PlanNode, profile: PhaseVerificationPlan['profile']): boolean {
   if (profile !== 'test') return false;
   const verification = extractSection(current.content, 'VERIFICATION');
@@ -353,23 +368,30 @@ export function resolvePhaseVerificationPlan(
     ...new Set([...verificationGateNames(profile, producesCoverage, stack, config), ...ownedNames]),
   ];
   const gates = gateNames.map((name): PhaseVerificationGatePlan => {
-    const command = commandForGate(name, input.scripts, current.targets, stack, config);
+    const scopeReason = scopeReasonForGate(name, current.targets, stack, config);
+    const command = scopeReason
+      ? null
+      : commandForGate(name, input.scripts, current.targets, stack, config);
     const planning = (input.mode ?? 'runtime') === 'planning';
     const owner = selectReadinessOwner(nodes, current, name, stack, config);
     const waitsForOwner = owner?.relation === 'downstream';
     const state: PhaseVerificationGateState = waitsForOwner
       ? 'PREREQUISITE_PENDING'
-      : command
-        ? 'CONFIGURED'
-        : planning
-          ? 'DECLARED'
-          : 'COMMAND_MISSING';
+      : scopeReason
+        ? 'SKIPPED_BY_SCOPE'
+        : command
+          ? 'CONFIGURED'
+          : planning
+            ? 'DECLARED'
+            : 'COMMAND_MISSING';
     const provider = owner ? `${owner.node.ticket}/${owner.node.phase}` : null;
     const next = waitsForOwner
       ? `complete readiness owner ${provider} before running '${name}'`
-      : command
-        ? `run ${command}`
-        : `declare a real '${name}' script before this gate becomes required`;
+      : scopeReason
+        ? `skipped-by-scope: ${scopeReason} — touch a matching file to include it`
+        : command
+          ? `run ${command}`
+          : `declare a real '${name}' script before this gate becomes required`;
     return {
       name,
       state,
