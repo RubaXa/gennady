@@ -19,6 +19,9 @@ import {
   hasActiveBlocker,
   analyzeRoundClosures,
   phaseIdsWithMarkedDone,
+  parseExecutionLog,
+  parseAuditRounds,
+  META_REOPENS_RE,
 } from './execution-log.ts';
 import {
   deriveSpecAcronym,
@@ -413,6 +416,37 @@ export function checkTicket(file: string, content: string): Finding[] {
     }
   }
   // #endregion END_EXEC_LOG
+
+  // #region START_REOPENS — Meta Reopens causally honest, per issue #13 / D-20 (B2-06).
+  // WARN per L-3 (new codes stay warn until the B2-15/B2-20 flip) — same severity as every sibling
+  // Execution Log code above (SDD_EXECUTION_LOG_ENTRY_AFTER_CLOSE and neighbors).
+  const auditRounds = parseAuditRounds(content);
+  if (auditRounds.length > 0) {
+    const declaredReopens =
+      metaSec.status === 'ok' ? Number(META_REOPENS_RE.exec(metaSec.content)?.[1] ?? 0) : 0;
+    const triggeringRounds = auditRounds.filter((r) => r.triggeredReopen !== null);
+    if (declaredReopens !== triggeringRounds.length) {
+      warn(
+        'SDD_REOPENS_MISMATCH',
+        `Meta Reopens: ${declaredReopens}, но \`## Audit Rounds\` содержит ${triggeringRounds.length} запись(ей) с triggered-reopen≠none — обнови Reopens под фактический причинный счёт.`
+      );
+    }
+    const executedRounds = new Set(
+      (parseExecutionLog(content)?.rounds ?? [])
+        .map((r) => r.n)
+        .filter((n): n is number => n !== null)
+    );
+    for (const record of triggeringRounds) {
+      const target = record.triggeredReopen as number;
+      if (!executedRounds.has(target)) {
+        warn(
+          'SDD_REOPENS_PENDING',
+          `Audit Round ${record.n} объявил triggered-reopen=Round-${target}, но Round ${target} ещё не создан в Execution Log — реопен объявлен, но не исполнен.`
+        );
+      }
+    }
+  }
+  // #endregion END_REOPENS
 
   // #region START_DONE_PLACEHOLDERS — a DONE ticket has no scaffold placeholders left
   if (isDone && hasPlaceholder(content)) {

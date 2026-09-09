@@ -169,6 +169,16 @@ describe('SddLogCommand', () => {
     assert.match(body, /### Round 2 — 2026-06-21, fix: F-001/);
   });
 
+  // B2-06 (D-20, issue #13): a reopen's reason is a closed vocabulary, not free text — otherwise
+  // Meta Reopens / `## Audit Rounds` causation has no reliable cause to point back to.
+  it('rejects a round reason outside the closed vocabulary — exit 4', async () => {
+    const outcome = await mod.run(argv(ticket, 'round', 'because it seemed broken'), CLOCK);
+    assert.strictEqual(outcome.ok, false);
+    if (!outcome.ok) assert.strictEqual(outcome.exitCode, 4);
+    const body = readFileSync(ticket, 'utf-8');
+    assert.doesNotMatch(body, /### Round 1/);
+  });
+
   // B2-02: a legacy `## Critic Rounds` section (outside EXECUTION_LOG) can carry its own
   // `### Round N` headings for a wholly different concept (audit/critic rounds) — those must not
   // be double-counted into the execution-round sequence.

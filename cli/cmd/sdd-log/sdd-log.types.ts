@@ -82,13 +82,14 @@ export function hasPlaceholder(text: string): boolean {
 
 // B2-01: nextRoundNumber now lives in shared/sdd/execution-log.ts (the one Execution Log module) —
 // re-exported here so this file's own callers (sdd-log.cmd.ts) keep importing it from this module.
-export { nextRoundNumber } from '../../../shared/sdd/execution-log.ts';
+export { nextRoundNumber, isValidRoundReason } from '../../../shared/sdd/execution-log.ts';
 
 /**
  * @purpose Build a Round header block (blank-line padded) to insert into EXECUTION_LOG.
  * @param n Round number.
  * @param date `YYYY-MM-DD` date string.
- * @param reason Short reason (`initial`, `fix: F-NNN`, `resume`).
+ * @param reason Short reason from the closed vocabulary (`isValidRoundReason` — `initial`,
+ *   `fix: F-NNN`, `resume`, `new-audit-session`); the caller validates before building the header.
  * @returns The header text to splice before the section close marker.
  */
 export function buildRoundHeader(n: number, date: string, reason: string): string {

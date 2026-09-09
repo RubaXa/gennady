@@ -5,7 +5,7 @@
 //   audit-group.ts, group-receipt.ts, templates.ts (scaffolded specs/3-tasks.md)
 // @tasks: N/A
 
-import { collectHeadings, extractSection } from './section.ts';
+import { collectHeadings, extractHeadingSection, extractSection } from './section.ts';
 
 /** @purpose One legal first-word token of an Execution Log event line, plus its exact grammar. */
 export type TokenVocabularyEntry = {
@@ -514,3 +514,79 @@ export function parseExecutionLog(content: string): ExecutionLog | null {
   return { rounds };
 }
 // #endregion END_PARSE_EXECUTION_LOG
+
+// #region START_REOPEN_BY_CAUSE — invariant: Meta Reopens is causally honest (issue #13, D-20, B2-06)
+
+/**
+ * @purpose True when `reason` matches the closed round-reason vocabulary (D-20 / issue #13) — free
+ *   text is no longer accepted for a reopen's cause.
+ * @param reason The verbatim `sdd-log <ticket> round "<reason>"` payload.
+ * @returns Whether `reason` (trimmed) matches the closed vocabulary.
+ */
+export function isValidRoundReason(reason: string): boolean {
+  return /^(?:initial|resume|new-audit-session|fix:\s*F-\d+)$/.test(reason.trim());
+}
+
+/** @purpose One parsed `### Audit Round <N>` entry from a ticket's `## Audit Rounds` heading (TICKET_AUDIT_ROUND_FORMAT). */
+export type AuditRoundRecord = {
+  /** @purpose The heading's own Audit Round number (monotonic across the ticket's lifetime). */
+  n: number;
+  /** @purpose The Execution Round this audit ran after (`after-exec-round=<M>`), or 0 when unparseable. */
+  afterExecRound: number;
+  /** @purpose The Execution Round number this audit declared a reopen into (`triggered-reopen=Round-<M+1>`), or null for `triggered-reopen=none`. */
+  triggeredReopen: number | null;
+  /** @purpose The `@audit` line's `status=` value (`FAIL` / `PASS_RISK`), or empty when unparseable. */
+  verdict: string;
+};
+
+/** @purpose Matches the fenced `@audit …` inline-grammar line inside one Audit Round block. */
+const AUDIT_LINE_RE = /^@audit\s+(.*)$/m;
+
+/** @purpose Extract one `key=value` field's value from an `@audit` line, or undefined. */
+function auditField(line: string, name: string): string | undefined {
+  return new RegExp(`\\b${name}=(\\S+)`).exec(line)?.[1];
+}
+
+/**
+ * @purpose Parse every `### Audit Round <N>` entry from a ticket's bare `## Audit Rounds` heading
+ *   section (not a `<!--SECTION-->`-anchored block — `TICKET_AUDIT_ROUND_FORMAT`).
+ * @invariant Reads only inside that heading's own body — `## Critic Rounds`, the EXECUTION_LOG
+ *   section, and `## Decision Log` are invisible by construction.
+ * @param content Full ticket markdown.
+ * @returns Every Audit Round entry found, in document order (empty when the heading is absent).
+ */
+export function parseAuditRounds(content: string): AuditRoundRecord[] {
+  const section = extractHeadingSection(content, 'audit-rounds');
+  if (section.status !== 'ok') return [];
+  const body = section.content;
+  const headings = collectHeadings(body);
+  const roundHeadings = headings
+    .map((heading, index) => ({ heading, index }))
+    .filter(({ heading }) => heading.level === 3 && /^Audit\s+Round\s+\d+\b/i.test(heading.text));
+
+  const out: AuditRoundRecord[] = [];
+  for (const { heading, index } of roundHeadings) {
+    const nextTop = headings.slice(index + 1).find((h) => h.level <= heading.level);
+    const blockEnd = nextTop?.start ?? body.length;
+    const block = body.slice(heading.lineEnd, blockEnd);
+    const nMatch = /^Audit\s+Round\s+(\d+)/i.exec(heading.text);
+    const auditLine = AUDIT_LINE_RE.exec(block)?.[1];
+    if (!nMatch?.[1] || auditLine === undefined) continue;
+
+    const afterExecRound = Number(auditField(auditLine, 'after-exec-round') ?? '0');
+    const reopenRaw = auditField(auditLine, 'triggered-reopen');
+    const reopenMatch = reopenRaw ? /^Round-(\d+)$/.exec(reopenRaw) : null;
+
+    out.push({
+      n: Number(nMatch[1]),
+      afterExecRound: Number.isNaN(afterExecRound) ? 0 : afterExecRound,
+      triggeredReopen: reopenMatch?.[1] ? Number(reopenMatch[1]) : null,
+      verdict: auditField(auditLine, 'status') ?? '',
+    });
+  }
+  return out;
+}
+
+/** @purpose Matches the Meta `**Reopens:** <count>` field (omitted entirely from the skeleton when 0). */
+export const META_REOPENS_RE = /\*\*Reopens:\*\*\s*(\d+)/;
+// #endregion END_REOPEN_BY_CAUSE

@@ -46,6 +46,7 @@ import {
   hasPlaceholder,
   isCompleteHandoffPayload,
   isCurrentRoundClosed,
+  isValidRoundReason,
   missingFlag,
   nextRoundNumber,
   noLogSection,
@@ -440,6 +441,13 @@ async function runCommand(
   let insertText: string;
   if (mode === 'round') {
     if (hasPlaceholder(payload)) return placeholderError(payload);
+    // B2-06 (D-20, issue #13): a reopen's cause is a closed vocabulary, not free text — otherwise
+    // Meta Reopens/`## Audit Rounds` causation (checkReopens) has no reliable reason to cite back.
+    if (!isValidRoundReason(payload)) {
+      return badInvocation(
+        `round reason must be one of the closed vocabulary: initial | fix: F-NNN | resume | new-audit-session (got "${payload}")`
+      );
+    }
     insertText = buildRoundHeader(nextRoundNumber(content), date, payload);
   } else if (mode === 'line') {
     if (hasPlaceholder(payload)) return placeholderError(payload);
