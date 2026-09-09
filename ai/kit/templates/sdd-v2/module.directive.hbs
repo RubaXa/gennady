@@ -11,6 +11,8 @@
     {{> "axiom/process/ax-progressive-disclosure"}}
 
     {{> "axiom/spec/ax-refine-module-preserves-contracts"}}
+
+    {{> "axiom/process/ax-artifact-style-self-check"}}
   </BeliefState>
 
   <Contracts>
@@ -40,7 +42,8 @@
     <Step id="STEP_2_FILL">
       <Goal>Generate and write the complete module specification once.</Goal>
       <Action>
-        Read the on-disk skeleton once and compose the COMPLETE module document in memory. Replace
+        Read the on-disk skeleton once and compose the COMPLETE module document in memory. Before
+        writing, run the self-check pass per `AX_ARTIFACT_STYLE_SELF_CHECK`. Replace
         the skeleton with exactly ONE `Write` of the whole file. `Edit`, `Patch`, and per-section
         writes are forbidden in authoring. Retain every SECTION marker and replace every
         `<!-- ... -->` guidance comment with authored content; none may survive the Write. Keep a

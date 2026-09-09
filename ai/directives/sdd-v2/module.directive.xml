@@ -27,6 +27,15 @@
 
       Module spec body is reworked in place where needed; full predecessor state lives in git history.
     </Axiom>
+
+    <Axiom id="AX_ARTIFACT_STYLE_SELF_CHECK">
+      Before writing any operator-facing artifact, recall the language rules —
+      `AX_OPERATOR_DIALOGUE_STYLE` (bureaucratic noun-for-verb phrasing, literal calque, bookish word)
+      and `AX_READER_WITHOUT_SESSION_CONTEXT` (a branch name, «как обсуждали», a session-plan label) —
+      and hold the text about to be written to them. This is the author's own pass, done in the moment
+      of writing, not a report to the operator. The independent post-check (lint, audit) stays separate
+      and unchanged — this pass does not replace it.
+    </Axiom>
   </BeliefState>
 
   <Contracts>
@@ -70,7 +79,8 @@
     <Step id="STEP_2_FILL">
       <Goal>Generate and write the complete module specification once.</Goal>
       <Action>
-        Read the on-disk skeleton once and compose the COMPLETE module document in memory. Replace
+        Read the on-disk skeleton once and compose the COMPLETE module document in memory. Before
+        writing, run the self-check pass per `AX_ARTIFACT_STYLE_SELF_CHECK`. Replace
         the skeleton with exactly ONE `Write` of the whole file. `Edit`, `Patch`, and per-section
         writes are forbidden in authoring. Retain every SECTION marker and replace every
         `<!-- ... -->` guidance comment with authored content; none may survive the Write. Keep a

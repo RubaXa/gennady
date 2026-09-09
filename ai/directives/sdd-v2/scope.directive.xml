@@ -28,6 +28,15 @@
 
       `rewrite` mode is the exception: a pre-production / v0 scope with no production backing, whose old content was scratch that helps nothing going forward. It replaces the spec from a clean slate — NO supersession trail, NO Pivot Invalidation List (nothing downstream to keep coherent; git history is the only record). Use `pivot` (keep the trail) whenever the scope has any production backing or downstream consumers; use `rewrite` only for genuine v0 throwaway. Enforcement: a scope that already has downstream artifacts on disk (module specs or task tickets) is by definition NOT v0 — `rewrite` is forbidden there; halt and use `pivot`.
     </Axiom>
+
+    <Axiom id="AX_ARTIFACT_STYLE_SELF_CHECK">
+      Before writing any operator-facing artifact, recall the language rules —
+      `AX_OPERATOR_DIALOGUE_STYLE` (bureaucratic noun-for-verb phrasing, literal calque, bookish word)
+      and `AX_READER_WITHOUT_SESSION_CONTEXT` (a branch name, «как обсуждали», a session-plan label) —
+      and hold the text about to be written to them. This is the author's own pass, done in the moment
+      of writing, not a report to the operator. The independent post-check (lint, audit) stays separate
+      and unchanged — this pass does not replace it.
+    </Axiom>
   </BeliefState>
 
   <Contracts>
@@ -91,8 +100,9 @@
         order, headings, local comments, and manifest. Replace the skeleton with exactly ONE `Write`
         of the whole file. `Edit`, `Patch`, and per-section writes are forbidden in authoring. The
         one Write must retain every SECTION marker, replace every `<!-- ... -->` guidance comment with
-        content, and leave no skeleton guidance behind. Run the structural self-check mentally before
-        that Write. Record each disputed autonomous choice once in the scope Decision Log per
+        content, and leave no skeleton guidance behind. Before writing, run the self-check pass per
+        `AX_ARTIFACT_STYLE_SELF_CHECK`, then the structural self-check, mentally before that Write.
+        Record each disputed autonomous choice once in the scope Decision Log per
         `DEVIATION_RECORD_FORMAT`. In `pivot` mode the same Write also appends the superseded Decision
         Log entry and a Pivot Invalidation List enumerating every downstream module spec/task ticket
         needing `refine-module` or reopening — read
