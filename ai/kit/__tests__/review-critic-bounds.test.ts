@@ -3,9 +3,16 @@
 //   instead of running forever, and the critic activates AX_DEFAULT_ACCEPT and AX_POLISH_MODE —
 //   both existed in the axiom library (ax-default-accept.xml, ax-polish-mode.xml) but were never
 //   connected to any template (40-TRACK-DIRECTIVES-SKILLS.md §1.3, D3.5/D3.6) — (T-B6-03). Also
-//   guards ISS-10: the critic reads the owning ticket's `## Conventions` and `## Decision Log`
-//   sections through sdd-extract's heading-anchor form, bounded to exactly those two sections and
-//   measured (extracted line count recorded), per akkrat issue #21 / 20-ISSUES-VERDICTS.md #21.
+//   guards ISS-10: the critic reads two sections when its target is a task ticket — the
+//   project-wide conventions from `specs/3-tasks.md` and the owning tasks-index's own Decision Log,
+//   by the level-qualified heading anchor each tasks-index format actually uses (project / scope /
+//   module) — through sdd-extract's heading-anchor form, bounded to exactly those two documents and
+//   measured (extracted line count recorded in STEP_3_REPORT), per issue #21 /
+//   20-ISSUES-VERDICTS.md #21. V-BATCH-20 B-1 found the first redaction of this fix named anchors
+//   (`## Conventions` / `## Decision Log`) that exist in none of the three real tasks-index formats
+//   — this suite now extracts the anchors straight out of the rendered directive and proves each
+//   one actually resolves, on a synthetic fixture of every format level, to real content rather than
+//   an error or a one-line pointer (V-BATCH-20 N-4 adds the STEP_3_REPORT accounting-line lock).
 //   Also guards T-B6-05: reconcile activates AX_DISPATCH_VIA_BATCH so a task-reopen dispatches
 //   through execute as one batch, with execute remaining the sole owner of audit/code-review.
 // @consumers: node:test runner
@@ -13,8 +20,9 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { OUT_ROOT } from '../render.ts';
 
 function readDirective(name: string): string {
@@ -76,20 +84,40 @@ describe('critic-protocol: AX_DEFAULT_ACCEPT and AX_POLISH_MODE are connected (T
   });
 });
 
-describe('critic-protocol: reads the owning ticket Conventions/Decision Log by extraction (ISS-10)', () => {
+describe('critic-protocol: STEP_3_REPORT carries a measured read-set accounting line (ISS-10 / V-BATCH-20 N-4)', () => {
+  const critic = readDirective('critic-protocol.directive.xml');
+
+  it("requires one 'read-set: <file>#<anchor> — N lines' line per extracted section", () => {
+    const report = step(critic, 'STEP_3_REPORT');
+    assert.match(report, /`read-set: <file>#<anchor> — N lines`/);
+  });
+});
+
+describe('critic-protocol: reads the owning ticket Conventions/Decision Log by extraction (ISS-10 / V-BATCH-20 B-1)', () => {
   const critic = readDirective('critic-protocol.directive.xml');
   const read = () => step(critic, 'STEP_1_READ');
 
-  it('names both sections — Conventions and Decision Log — and nothing else of that document', () => {
+  it('names the real project-wide-conventions anchor in specs/3-tasks.md — not a generic ## Conventions/## Decision Log that exists in no format', () => {
     const text = read();
-    assert.match(text, /## Conventions/);
-    assert.match(text, /## Decision Log/);
-    assert.match(text, /nothing else of that document/i);
+    assert.match(text, /specs\/3-tasks\.md#project-wide-conventions-declared-once-inherited/);
+    assert.match(text, /nothing else of either document/i);
+  });
+
+  it('names the three level-qualified Decision Log anchors — module / scope / project — matching each real tasks-index format', () => {
+    const text = read();
+    assert.match(text, /#decision-log-module-task-level/);
+    assert.match(text, /#decision-log-scope-task-level/);
+    assert.match(text, /#decision-log-project-task-level/);
+  });
+
+  it('the module-level ## Conventions heading is documented as a pointer stub, never an extraction target', () => {
+    const text = read();
+    assert.match(text, /never itself an extraction target/i);
   });
 
   it('extracts via sdd-extract heading-anchor form, one call per section', () => {
     const text = read();
-    assert.match(text, /npx gennady sdd-extract <owning-tasks-index>#<heading-anchor>/);
+    assert.match(text, /npx gennady sdd-extract <file>#<heading-anchor>/);
     assert.match(text, /one call per section/i);
   });
 
@@ -98,6 +126,104 @@ describe('critic-protocol: reads the owning ticket Conventions/Decision Log by e
     assert.match(text, /record the extracted line count/i);
     assert.match(text, /bounded and measured/i);
     assert.match(text, /already settled is not reopened/i);
+  });
+
+  describe('executable proof: every anchor the directive names actually resolves on a real tasks-index of its level', () => {
+    // Extract the literal `#<anchor>` tokens straight out of the rendered directive's own prose —
+    // this suite tracks whatever STEP_1_READ actually says, not a hand-copied list that could drift
+    // from it silently (the failure mode V-BATCH-20 B-1 found: the first redaction named anchors
+    // that exist in no real format, and the prior test only compared prose to itself).
+    const anchors = [...new Set([...read().matchAll(/#([a-z][a-z0-9-]+)/g)].map((m) => m[1]!))];
+
+    const PROJECT_LEVEL = [
+      '# Project Tasks',
+      '',
+      '## Project-Wide Conventions (declared once, inherited)',
+      '- Fixture convention: file-header owned by the coding rule.',
+      '- Fixture convention: baseline completion rule.',
+      '',
+      '## Decision Log (project task level)',
+      '- PROJ-DL-1 — fixture cross-scope decision, recorded for this test only.',
+    ].join('\n');
+
+    const SCOPE_LEVEL = [
+      '# Tasks: fixture-scope',
+      '',
+      '## Decision Log (scope task level)',
+      '- SCOPE-DL-1 — fixture scope-level decomposition decision, recorded for this test only.',
+    ].join('\n');
+
+    const MODULE_LEVEL = [
+      '# fixture-module — Tasks',
+      '',
+      '## Decision Log (module-task level)',
+      '- MOD-DL-1 — fixture module-level decision, recorded for this test only.',
+      '',
+      '## Conventions',
+      'Project-wide conventions are declared once in `specs/3-tasks.md` and inherited here — not repeated.',
+    ].join('\n');
+
+    // Maps each anchor literally named in the directive to the fixture level whose real format
+    // (ai/directives/sdd-v2/formats/{project,scope,module}-tasks-index.xml) actually defines it.
+    const LEVEL_BY_ANCHOR: Record<string, { file: string; label: string }> = {
+      'project-wide-conventions-declared-once-inherited': { file: 'project.3-tasks.md', label: PROJECT_LEVEL },
+      'decision-log-project-task-level': { file: 'project.3-tasks.md', label: PROJECT_LEVEL },
+      'decision-log-scope-task-level': { file: 'scope.3-tasks.md', label: SCOPE_LEVEL },
+      'decision-log-module-task-level': { file: 'module.3-tasks.md', label: MODULE_LEVEL },
+    };
+
+    it('the directive names exactly the four anchors this suite knows how to fixture', () => {
+      assert.deepEqual([...anchors].sort(), Object.keys(LEVEL_BY_ANCHOR).sort());
+    });
+
+    let tmpDir: string;
+    const paths: Record<string, string> = {};
+    // SddExtractCommand#run's own module (sdd-extract.cmd.ts) self-executes against the real
+    // `process.argv`/`process.exit` at import time (its last two lines: `const outcome = await
+    // run(process.argv); ...; process.exit(...)`) — the exact reason its own dedicated test file
+    // (cli/cmd/sdd-extract/__tests__/sdd-extract.cmd.test.ts) neuters both before the one dynamic
+    // import it performs. Do the same here: mock before the import (module init runs once, on
+    // first import, and is cached for every call below), restore after.
+    let mod: typeof import('../../../cli/cmd/sdd-extract/sdd-extract.cmd.ts');
+    let origExit: typeof process.exit;
+    let origArgv: string[];
+
+    it('sets up one synthetic tasks-index fixture per level, and loads sdd-extract with argv/exit neutered', async () => {
+      tmpDir = mkdtempSync(join(tmpdir(), 'iss-10-read-set-'));
+      paths['project.3-tasks.md'] = join(tmpDir, 'project.3-tasks.md');
+      paths['scope.3-tasks.md'] = join(tmpDir, 'scope.3-tasks.md');
+      paths['module.3-tasks.md'] = join(tmpDir, 'module.3-tasks.md');
+      writeFileSync(paths['project.3-tasks.md']!, PROJECT_LEVEL, 'utf8');
+      writeFileSync(paths['scope.3-tasks.md']!, SCOPE_LEVEL, 'utf8');
+      writeFileSync(paths['module.3-tasks.md']!, MODULE_LEVEL, 'utf8');
+
+      origExit = process.exit;
+      origArgv = process.argv;
+      process.exit = ((_code?: number) => undefined) as typeof process.exit;
+      process.argv = ['node', 'gennady', 'sdd-extract'];
+      mod = await import('../../../cli/cmd/sdd-extract/sdd-extract.cmd.ts');
+      process.exit = origExit;
+      process.argv = origArgv;
+    });
+
+    for (const anchor of Object.keys(LEVEL_BY_ANCHOR)) {
+      it(`sdd-extract <fixture>#${anchor} returns a real section, not an error or a one-line pointer`, async () => {
+        const { file } = LEVEL_BY_ANCHOR[anchor]!;
+        const outcome = await mod.run(['node', 'gennady', 'sdd-extract', `${paths[file]}#${anchor}`]);
+        assert.equal(outcome.ok, true, `expected ok for #${anchor}, got: ${JSON.stringify(outcome)}`);
+        if (outcome.ok) {
+          assert.ok(
+            outcome.content.length > 30,
+            `#${anchor} returned only ${outcome.content.length} chars — looks like a one-line pointer, not real content: ${outcome.content}`
+          );
+          assert.match(outcome.content, /fixture/i);
+        }
+      });
+    }
+
+    it('tears down the fixture directory', () => {
+      rmSync(tmpDir, { recursive: true, force: true });
+    });
   });
 });
 
