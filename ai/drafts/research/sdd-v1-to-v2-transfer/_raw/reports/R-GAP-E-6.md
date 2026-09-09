@@ -61,7 +61,7 @@ flowchart LR
 
 | Пункт приёмки | Команда | Вывод | Статус |
 |---|---|---|---|
-| both-way на замороженном summary.json: генератор даёт ожидаемую таблицу, изменение числа → дифф | `node --import tsx --test ai/flow-eval/scripts/__tests__/results-table.test.ts` | 7/7 зелёных (см. лог этой сессии: `ok 51`, 7 кейсов) | ВЫПОЛНЕНО |
+| both-way на замороженном summary.json: генератор даёт ожидаемую таблицу, изменение числа → дифф | `node --import tsx --test ai/flow-eval/scripts/__tests__/results-table.test.ts` | **8/8** зелёных (правка по V-BATCH-07: было заявлено «7/7», фактически 8 кейсов — перепроверено повторным прогоном) | ВЫПОЛНЕНО |
 | регенерация без диффа как тест свежести | `npm run results:table:check` | `[results-table] up to date (no diff)` | ВЫПОЛНЕНО |
 
 ## 4. Отклонения и открытые вопросы

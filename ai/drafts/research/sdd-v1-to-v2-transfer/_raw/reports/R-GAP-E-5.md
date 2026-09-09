@@ -29,13 +29,13 @@ readiness,ticket-resolve}.ts`). Ветка `lead/eval-reproducible`, база `5
 | `ai/flow-eval/scripts/{migration-eval.sh,require-developer-repo.sh,roundtrip-eval.sh}`, `roundtrip-readiness-shim.package.json` | правка (комментарии/строки) | Указатели на удалённые `docs/03-SETUP.md`/`docs/journal/swiftlint-setup.md`/`docs/roundtrip-wall3-assessment.md` заменены на `docs/RUNBOOK.md`/`docs/journal/flow-verification-ledger.md` (finding A7) | `grep` по репо (см. §4) |
 | `ai/flow-sim/README.md` | правка (2 ссылки) | Ссылки на удалённые `flow-eval/docs/00-INTRO.md`/`docs/README.md` заменены на `flow-eval/README.md` — файл технически вне зоны батча (`ai/flow-sim`), правка — необходимое следствие удаления файла, на который он ссылался (см. §4) | визуальное чтение |
 | `package.json` | правка | Добавлен `flow-eval:docs-check` скрипт | `npm run flow-eval:docs-check` существует и работает |
-| 20 удалённых файлов (`docs/00-INTRO.md`…`10-QUALITY-RULES.md`, `docs/README.md`, `docs/journal/README.md`, `docs/journal/{ROADMAP,PROGRESS-REPORT,flow-verification-redesign,infra-tasks-research,p9-signifiers,p9-verification,roundtrip-wall3-assessment,swiftlint-setup}.md`) | удалён | Живой контент перенесён (см. таблицу «док → судьба» в сводном отчёте); чисто исторические снимки/постмортемы — не перенесены, их выводы уже задокументированы в ledger (разделы C/E) или в сгенерированной `RESULTS.md` | `git log --diff-filter=D` на эти пути в этом коммите; ни одна оставшаяся ссылка на них не найдена (см. выше) |
+| **21** удалённых файлов (`docs/00-INTRO.md`…`10-QUALITY-RULES.md`, `docs/README.md`, `docs/journal/README.md`, `docs/journal/{ROADMAP,PROGRESS-REPORT,flow-verification-redesign,infra-tasks-research,p9-signifiers,p9-verification,roundtrip-wall3-assessment,swiftlint-setup}.md`) | удалён | Живой контент перенесён (см. таблицу «док → судьба» в сводном отчёте); чисто исторические снимки/постмортемы — не перенесены, их выводы уже задокументированы в ledger (разделы C/E) или в сгенерированной `RESULTS.md` | `git log --diff-filter=D` на эти пути в этом коммите (правка по V-BATCH-07: было заявлено «20», `git diff --diff-filter=D --name-only b964a235 a157b903 -- 'ai/flow-eval/**.md'` даёт 21 — перечень в списке слева верный, счётчик был неверным); ни одна оставшаяся ссылка на них не найдена (см. выше) |
 
 ## 2. Архитектура — было / стало
 
 ```mermaid
 flowchart TD
-  subgraph before["Было: 24 .md-файла, 3 словаря правил"]
+  subgraph before["Было: 25 .md-файлов, 3 словаря правил"]
     N00["docs/00-INTRO.md … 10-QUALITY-RULES.md\n(11 файлов, взаимные ссылки,\nустаревшие числа: '3 сценария',\n--concurrency 3 в канон-команде\nпротив совета 'нужен 1')"]
     N09["docs/09-AGENT-BRIEF.md\n(бриф агенту, не самодостаточен)"]
     NJ["docs/journal/*.md (12 файлов:\nledger + EXPERIMENTS-LOG + RESULTS\n+ 9 чисто исторических)"]
