@@ -20,3 +20,12 @@ Regenerate ONLY inside a named owning task, via `UPDATE_VERIFY_GOLDEN=1 npm test
 
 None of these files carry the baseline SHA in their own bytes — it lives here and in the drift
 assertion message (`preset-node-golden.test.ts`'s `assertGoldenJson`), which names this manifest.
+
+## `fixtures/round-close/` — B2-02/B2-04 malformed-anchor + post-close integrity (V-BATCH-14)
+
+Separate from the `rc-baseline-1` set above — not tied to that baseline SHA, but to the named
+tickets it freezes a copy of. Regenerate via `UPDATE_ROUND_CLOSE_GOLDEN=1 npm test`.
+
+| File                                | Produced by                                                                                                                                                                                                                                                                                                              | Owner of intentional drift                                                                                                              |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `cli-sync-skills.task-57.frozen.md` | frozen copy of `tasks/cli/sync-skills/cli-sync-skills.task-57.md` at the time of the V-BATCH-14 regression (`execution-log.test.ts`'s `nextRoundNumber` regression test) — a malformed EXECUTION_LOG close marker, kept byte-for-byte so a later corpus-wide anchor cleanup doesn't silently un-arm this regression test | B2-02 owns the code; do not "fix" this file's anchors in place — copy a newly-fixed version here instead if the real ticket is repaired |

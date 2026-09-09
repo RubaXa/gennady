@@ -4,6 +4,9 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   TOKEN_VOCABULARY,
   TOKEN_VOCABULARY_TOKENS,
@@ -12,6 +15,14 @@ import {
   parseExecutionLog,
   nextRoundNumber,
 } from '../execution-log.ts';
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const FROZEN_TASK_57 = path.join(
+  HERE,
+  'fixtures',
+  'round-close',
+  'cli-sync-skills.task-57.frozen.md'
+);
 
 /** @purpose Build a minimal ticket carrying only META + EXECUTION_LOG, for parseExecutionLog tests. */
 function ticket(executionLog: string): string {
@@ -116,6 +127,50 @@ describe('parseExecutionLog', () => {
       ticket('### Round 1 — 2026-06-20, initial') + '\n\n## Critic Rounds\n### Round 7 — old';
     assert.strictEqual(nextRoundNumber(content), 2);
   });
+
+  it('V-BATCH-14 blocking #1 (frozen fixture): never repeats the existing `### Round 1` on cli-sync-skills.task-57.md, whose EXECUTION_LOG close marker sits right after the "## 7. Execution Log" heading — before the real Round content, not after it', () => {
+    const content = readFileSync(FROZEN_TASK_57, 'utf-8');
+    // Sanity on the frozen fixture itself: the section parses `ok` and (misleadingly) empty of
+    // Round headings — this is exactly the regression's precondition, not an incidental detail.
+    assert.strictEqual(
+      /^#{3}\s+Round\s+\d+/m.test(content.split('<!--/SECTION:EXECUTION_LOG-->')[0] ?? ''),
+      false,
+      'fixture drifted: EXECUTION_LOG now contains a Round heading before its own close marker'
+    );
+    assert.strictEqual(
+      nextRoundNumber(content),
+      2,
+      'must never re-emit the `### Round 1` this ticket already has'
+    );
+  });
+
+  it(
+    'general case: a `### Round N` heading leaked past a well-formed close marker (misplaced anchor) is still counted, but a later unrelated `## Critic Rounds`' +
+      ' Round is still ignored',
+    () => {
+      const content = [
+        '<!--SECTION:META-->',
+        '- **Task-ID:** cli-foo',
+        '<!--/SECTION:META-->',
+        '<!--SECTION:EXECUTION_LOG-->',
+        '',
+        '## 7. Execution Log',
+        '',
+        '<!--/SECTION:EXECUTION_LOG-->',
+        '',
+        '### Round 1 — 2026-01-01, initial',
+        '#### P1',
+        '- [x] `<ts>` DONE',
+        '#### Round close',
+        '- [x] `<ts>` DONE',
+        '',
+        '## Critic Rounds',
+        '',
+        '### Round 9 — old',
+      ].join('\n');
+      assert.strictEqual(nextRoundNumber(content), 2);
+    }
+  );
 
   it('case 2: a checked line appended after Round close → trailing.length === 1', () => {
     const log = parseExecutionLog(

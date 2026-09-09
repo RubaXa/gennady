@@ -310,19 +310,41 @@ export function parseHandoffArtifacts(handoffLine: string): string[] {
     .filter(Boolean);
 }
 
+/** @purpose The highest `### Round N` heading number in `body`, or null when there is none. */
+function maxRoundNumber(body: string): number | null {
+  const matches = [...body.matchAll(/^#{3}\s+Round\s+(\d+)/gm)];
+  if (matches.length === 0) return null;
+  return Math.max(...matches.map((m) => Number(m[1])));
+}
+
+// V-BATCH-14 blocking #1: a malformed ticket's `<!--/SECTION:EXECUTION_LOG-->` can be anchored too
+// early — right after the section's own heading, before its actual `### Round N` content (real
+// corpus artifact: `cli-sync-skills.task-57.md`). The primary section extract then reads as `ok`
+// and empty, and the old count-based return re-emitted an already-existing Round heading. When the
+// primary extract carries no Round heading, fall back to scanning the raw document from the close
+// marker onward, stopping at the next real level-1/2 heading — a following `## Critic Rounds`
+// section is NOT part of this Execution Log and must stay excluded either way.
 /**
  * @purpose Compute the next round number from `### Round` headers in the EXECUTION_LOG section
  *   only (B2-02) — a legacy `## Critic Rounds` section can carry its own, unrelated ones.
- * @invariant Falls back to a whole-file scan only when EXECUTION_LOG is unreadable (malformed
- *   ticket) — same tolerance every other reader here already extends to that case.
+ * @invariant Always one past the highest existing `### Round N` heading — never a re-emitted one.
  * @param fileContent Full ticket markdown.
- * @returns Existing round count + 1 (1 for the first round).
+ * @returns One past the highest existing Round number (1 when there is none at all).
  */
 export function nextRoundNumber(fileContent: string): number {
   const log = extractSection(fileContent, 'EXECUTION_LOG');
-  const body = log.status === 'ok' ? log.content : fileContent;
-  const matches = body.match(/^#{3}\s+Round\s+\d+/gm);
-  return (matches?.length ?? 0) + 1;
+  const primaryBody = log.status === 'ok' ? log.content : fileContent;
+  const primaryMax = maxRoundNumber(primaryBody);
+  if (primaryMax !== null) return primaryMax + 1;
+
+  const closeMarker = '<!--/SECTION:EXECUTION_LOG-->';
+  const closeIdx = fileContent.indexOf(closeMarker);
+  const scanStart = closeIdx === -1 ? 0 : closeIdx + closeMarker.length;
+  const rest = fileContent.slice(scanStart);
+  const nextTopHeading = rest.match(/^#{1,2}\s+\S/m);
+  const scanBody = nextTopHeading?.index !== undefined ? rest.slice(0, nextTopHeading.index) : rest;
+  const fallbackMax = maxRoundNumber(scanBody);
+  return (fallbackMax ?? 0) + 1;
 }
 
 // #region START_PARSE_EXECUTION_LOG — invariant: the one structural parser (B2-01); every focused reader above derives from it.
