@@ -174,10 +174,17 @@ describe('checkTicket — phase graph + exec-log completeness', () => {
     assert.ok(c.includes('SDD_EXECUTION_LOG_PHASE_ORPHAN'));
   });
 
-  // B2-16 (finding C fix): the check targets the CURRENT (latest) Round, not the literal heading
-  // text "Round 1" — a receipt-aware ticket whose only/current Round happens to be numbered 2 (as
-  // on the real corpus's directive-assembly.task.DA-lazy-asm.md) must NOT false-positive.
-  it('does not flag a missing round when the current (sole) round is not literally numbered 1', () => {
+  // B2-16 (finding C fix): the check targets the FIRST (earliest) Round, not the literal heading
+  // text "Round 1" — a receipt-aware ticket whose only Round happens to be numbered 2 (as on the
+  // real corpus's directive-assembly.task.DA-lazy-asm.md) must NOT false-positive. (V-BATCH-14
+  // nonblocking #6: this comment previously said "CURRENT (latest)", contradicting both the code
+  // — `execution-log.ts`'s `firstRoundPhaseBlockCounts` reads `parsed?.rounds[0]` — and the test
+  // right below, "picks the FIRST round … ignoring later narrower fix rounds". "First" is the
+  // deliberate choice, not "current": Phases Overview completeness is checked against the Round
+  // that first ran every phase; a later Round created by `sdd-log round "fix: …"` (B2-04) is
+  // expected to touch only the phase(s) being fixed, and checking THAT one against the full
+  // Phases Overview would flag every untouched phase as falsely missing.)
+  it('does not flag a missing round when the sole round is not literally numbered 1', () => {
     const c = codes(
       't.md',
       ticket({
