@@ -39,6 +39,8 @@
 
     {{> "axiom/audit/ax-closed-world-primary-check"}}
 
+    {{> "axiom/audit/ax-stale-after-pivot-verification"}}
+
     {{> "axiom/audit/ax-rules-cascade-verification"}}
 
     <Axiom id="AX_AUDIT_YAGNI_CROSSCHECK">
@@ -199,7 +201,9 @@
         inventory must now be exported by some file (`ERR_CLI_LINT_INVENTORY_UNIMPLEMENTED` = declared-but-unbuilt
         / renamed-away). Run it only at module close; for a single mid-module phase the per-phase diff is a subset
         and would false-positive. Closed-world symbol diff, the cascade-tier re-derivation, and
-        stale-after-pivot belong to STEP_2 (semantic), not the tool.
+        stale-after-pivot (`AX_STALE_AFTER_PIVOT_VERIFICATION` — Pivot Invalidation List rows,
+        including the causal `[REOPENS]` row `sdd-check` now backs mechanically per B2-06) belong to
+        STEP_2 (semantic), not the tool.
         <ToolCall owner="audit-worker" result="auditContext">npx gennady sdd-task --group-scope <id></ToolCall> Inputs <id>: <id>=audit-group id supplied by execute dispatch. Use auditContext.
         <ToolCall owner="audit-worker" result="auditContext">npx gennady sdd-task --task-scope <Task-ID></ToolCall> Inputs <Task-ID>: <Task-ID>=single task id supplied by per-task dispatch. Use auditContext.
         <ToolCall owner="audit-worker" result="ticketCheck">npx gennady sdd-check --task <ticket-path></ToolCall> Inputs <ticket-path>: <ticket-path>=each exact AuditContext.tickets item, one call per item. Use ticketCheck.
