@@ -37,6 +37,7 @@ export const GATE_SPEC_KEYS = [
   'cwd',
   'env',
   'timeout',
+  'when',
   'outputMeansFailure',
   'driftMeansFailure',
   'envFail',
@@ -182,6 +183,7 @@ function validateGateSpec(
     cwd,
     env,
     timeout,
+    when,
     outputMeansFailure,
     driftMeansFailure,
     envFail,
@@ -209,11 +211,41 @@ function validateGateSpec(
   ) {
     errors.push({ path: `${keyPath}.env`, message: 'must be a map of string to string' });
   }
-  if (timeout !== undefined && (typeof timeout !== 'string' || parseDuration(timeout) === null)) {
+  const timeoutIsValid =
+    timeout === undefined || (typeof timeout === 'string' && parseDuration(timeout) !== null);
+  if (!timeoutIsValid) {
     errors.push({
       path: `${keyPath}.timeout`,
       message: 'must be a duration string: <int>(s|m|h), e.g. "90s", "5m"',
     });
+  }
+  const hasWhen = Array.isArray(when) && when.length > 0;
+  if (when !== undefined) {
+    if (
+      !Array.isArray(when) ||
+      when.length === 0 ||
+      when.some((glob) => typeof glob !== 'string' || glob.length === 0)
+    ) {
+      errors.push({
+        path: `${keyPath}.when`,
+        message: 'must be a non-empty array of non-empty glob strings',
+      });
+    }
+  }
+  // V-19 (D-18): an unscoped long gate pays its full cost on every touch; extraGates-only —
+  // an override narrows an existing built-in gate, which already has its own applicability.
+  if (requireIdArgv && timeoutIsValid) {
+    const effectiveTimeoutMs =
+      typeof timeout === 'string' ? parseDuration(timeout)! : EXTRA_GATE_DEFAULT_TIMEOUT_MS;
+    if (effectiveTimeoutMs > EXTRA_GATE_DEFAULT_TIMEOUT_MS && !hasWhen) {
+      errors.push({
+        path: `${keyPath}.when`,
+        message:
+          `a gate with timeout over 10m must declare "when" (file-scope globs) — otherwise every ` +
+          `phase pays its full cost regardless of what it touched; add when: ["<glob>", …] or lower ` +
+          `timeout to 10m or less`,
+      });
+    }
   }
   if (outputMeansFailure !== undefined && typeof outputMeansFailure !== 'boolean') {
     errors.push({ path: `${keyPath}.outputMeansFailure`, message: 'must be a boolean' });
