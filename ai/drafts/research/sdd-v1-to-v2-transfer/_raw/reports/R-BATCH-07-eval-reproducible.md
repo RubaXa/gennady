@@ -143,6 +143,102 @@ flowchart LR
    оператор хотел именно первую формулировку — открыт вопрос.
 5. **E-11's golang-slugify сознательно не подключена к `scenarios.json`/`execute`** — блокер
    (`readiness.ts` хардкожен на node) зафиксирован явно, это работа `E-12`, не этой задачи.
+6. **GAP-E-4's «шелл-тест виден гейту» — критерий доски выполнен не буквально (C-5).** См.
+   `R-GAP-E-4.md` §4: `require-developer-repo.test.sh` подключён только к `npm run test:sdd-flow-eval`,
+   не к `npm test`/`check`/хукам, хотя строка доски называет зоной `scripts/test-topology.ts`. Открыт
+   вопрос Lead/оператору: завести `GAP-E-7` (включить `test:sdd-flow-eval` в слой топологии/`check`).
+   Не блокирует пуш — шелл-тест реален и доказан, просто подключён не так, как записано на доске.
+
+## § Правки по V-BATCH-07 и ребейз
+
+Независимая верификация (`V-BATCH-07.md`) нашла 2 блокирующих находки (обе — дешёвые правки кода/доков,
+не по существу задач) и ряд неблокирующих числовых/формулировочных правок. Все применены в этой сессии,
+тремя отдельными коммитами поверх `a157b903`, затем branch перебазирован на новую голову RC.
+
+### Применённые правки (код)
+
+1. **C-2 (блокирующее) — висячая ссылка + немеханизированная приёмка.**
+   `ai/flow-eval/docs/journal/RESULTS.md:111` ссылалась на `PROGRESS-REPORT.md`, удалённый этой же
+   пачкой (`37da3e6d`) — единственная висячая ссылка во всём корпусе. Переписана (контент уже свёрнут
+   в таблицу «Что дали провалы на cloud-ios» прямо над ней, отдельного документа для него больше нет).
+   `verify-eval-docs.ts` по умолчанию проверял только `EVAL-SPEC.md`/`RUNBOOK.md` — расширен до ВСЕХ
+   `ai/flow-eval/docs/**/*.md` (рекурсивный обход) и научен разбирать markdown-ссылки
+   `[text](target)`, не только inline-код в обратных кавычках (сама висячая ссылка была именно такой
+   ссылкой, не backtick-путём). Расширение области вскрыло 4 ложных срабатывания на замороженной/
+   внешней прозе (`bin/`, `golden/`, `Tools/`-пути, `file.ts:NN`-ссылка) — исключены конструктивно, по
+   аналогии с уже существующим исключением `.results/`. +8 both-way тестов.
+   Коммит: `3fe364be` `fix(flow-eval): close C-2 dangling link and mechanize doc-wide link checking`.
+2. **C-1 (неблокирующее, SO-5) — абсолютный путь в коммиченном журнале.**
+   `results-archive.ts::appendExperimentLogStub` писал в `EXPERIMENTS-LOG.md` ровно ту строку, что ему
+   передал `cli.ts` — а тот передавал АБСОЛЮТНЫЙ `resultDir` (`persistDurableResult` возвращает
+   `join(gennadyRoot ?? cwd(), 'ai/flow-eval/results')/…`), хотя шаблон самого файла обещает
+   репо-относительный путь. Первый же живой прогон дописал бы в git `/Users/<имя>/…` — класс утечки
+   SO-5, который сканер поставляемой поверхности не ловит (`ai/flow-eval` вне неё). Добавлена
+   `relativeResultDir(gennadyRoot, resultDir)`; `cli.ts` теперь релятивизирует путь перед вызовом
+   `appendExperimentLogStub` (console.log остаётся абсолютным — это для оператора, не в git). Тесты
+   `results-archive.test.ts`: юнит на сам хелпер (прямой + end-to-end через реальный
+   `persistDurableResult`), плюс два существующих фикстур-теста переведены с `/tmp/...` на
+   репо-относительный вид, чтобы не закреплять абсолютный путь как норму, и добавлен assert «никогда
+   не содержит `/Users/`».
+   Коммит: `80ab7326` `fix(flow-eval): write a repo-relative result dir into EXPERIMENTS-LOG.md (SO-5)`.
+3. **C-3 (неблокирующее) — противоречие D-28 по `budget-exhausted`.**
+   `EVAL-SPEC.md:93` (часть A) утверждала «исчерпанный бюджет автоматически даёт `fail`», хотя часть B
+   (:265), `RUNBOOK.md` и сам код (`results-archive.ts`'s `SddEvalDurableOutcome`) фиксируют отдельный
+   исход `budget-exhausted` (D-28). Переформулировано, со ссылкой на D-28/часть B/`RUNBOOK.md`.
+   Коммит: `cb19e910` `docs(flow-eval): align EVAL-SPEC.md Part A with D-28 on budget-exhausted (C-3)`.
+
+### Применённые правки (отчёты)
+
+- **C-5 → `R-GAP-E-4.md`**: §3 «шелл-тест виден гейту» смягчено до «ВЫПОЛНЕНО частично»; §4 «Отклонений
+  нет» заменено на честное описание расхождения (критерий доски называет зоной
+  `scripts/test-topology.ts`, фактически подключено только к `test:sdd-flow-eval`) + открытый вопрос
+  про новую задачу `GAP-E-7`.
+- **`R-GAP-E-6.md`**: `results-table.test.ts` «7/7» → **8/8** (перепроверено повторным прогоном).
+- **`R-GAP-E-5.md`**: «20 удалённых файлов» → **21**, «Было: 24 .md-файла» → **25** (оба числа
+  перепроверены `git`-командами независимо от верификатора).
+- **Этот отчёт**: «9 коммитов» (оба упоминания) → **10**; «было 24 `.md`-файла под `ai/flow-eval/`» →
+  **25**; mermaid `B --> E` → `C --> E` (`appendExperimentLogStub` вызывается из `cli.ts:465` внутри
+  `if (resultDir)`, т.е. зависит от узла C, не от B, напрямую); «`inbox-review-plan` консистентно
+  34/35 упавших изолированно» — убрано как опровергнутое (независимый изолированный прогон:
+  35/35 pass, exit 0; падение — файловый таймаут 30с под нагрузкой, не провал ассертов); «`npm run
+  check` — ALL PASS 5/5» смягчено до «зелёный без параллельной нагрузки, под нагрузкой красный на
+  `test:coverage` на файлах вне зоны батча».
+
+### Ребейз
+
+`git fetch origin` → `git rebase origin/codex/sdd-v2-rc52-followup`. Старая база `b964a235`
+(merge-base подтверждён `git merge-base`), новая голова — `c9b58636` (включает PR #39: `test:experimental`
+скрипт + `EXPERIMENTAL_ROOTS` в `scripts/test-topology.ts`, куда попал `cli/cmd/inbox-review-plan/` —
+именно он снимает падение из «Стопы» п.1). **0 конфликтов** — все 13 коммитов (10 из исходной пачки +
+3 правки V-BATCH-07 выше) переехали чисто, включая `package.json` (проверено: `test:experimental` из
+новой базы и наши `test:sdd-flow-eval`/`results:table`/`results:table:check`/`flow-eval:docs-check`/
+`gate:sdd-check-baseline` — все на месте одновременно) и `.gitignore` (`ai/flow-eval/.results/`
+транзиент vs `ai/flow-eval/results/` постоянно — оба смысла сохранены).
+
+### Проверка после ребейза
+
+| Команда | Результат | Exit |
+|---|---|---|
+| `npm --prefix <tree> test` (×3 подряд) | все три прогона: **3678/3686 pass, 0 fail**, 8 skipped | 0 (×3) |
+| `npm --prefix <tree> run check` (×2 подряд) | оба прогона: **ALL PASS (5/5)** — type-check/test:coverage/lint/format/yagni | 0 (×2) |
+| `npm --prefix <tree> run test:sdd-flow-eval` | **185/185** тестов (было 177 — +8 из C-2 both-way), 40 suites, `SELF-TEST: PASS` | 0 |
+| `npm --prefix <tree> run gate:sdd-check-baseline` | «no error outside the baseline» | 0 |
+| `npm --prefix <tree> run flow-eval:docs-check` | `OK — 5 doc(s), 23 path(s) checked, 9 link(s) checked, 14 npm command(s) checked, 0 [UNVERIFIED] markers` | 0 |
+| `npm --prefix <tree> run results:table:check` | `up to date (no diff)` | 0 |
+
+**Флейк, названный по имени (по инструкции брифа):** `bootstrap-path.test.ts`
+(`cli/__tests__/tool-behavior/bootstrap-path.test.ts`) — известный ресурсный флейк из
+`R-PERF-test-speed.md`/V-BATCH-07 §B, НЕ воспроизведён ни в одном из 2 постребейзных прогонов `check`
+в этой сессии. Другой флейк того же класса (файловый таймаут 30с под нагрузкой pre-commit хука)
+воспроизвёлся ОДИН раз при коммите правки C-2 — `cli/cmd/lint/__tests__/lint.cmd.test.ts`, `not ok`
+под `npm run check`; изолированный повторный прогон — **31/31 pass, exit 0**, файл этой пачкой не
+тронут; повторный `commit` без изменений кода прошёл (`ALL PASS 5/5`). Ни `bootstrap-path`, ни
+`lint.cmd.test.ts`, ни ранее диагностированные `inbox-review-plan`/`testcov`/`deployed-surface` не
+задеты этой пачкой — все вне зоны (`cli/**`/`shared/**`).
+
+Новые SHA (после ребейза, `origin/codex/sdd-v2-rc52-followup..HEAD`, 13 коммитов):
+`6d38e5a1 c44bca04 67ca3203 f78341a4 d4cb5aba a62b0e32 e674edff 2fd0b94a c18022ff 596ff1cc 3fe364be
+80ab7326 cb19e910` (HEAD = `cb19e910`).
 
 ## Команды пуша для Lead
 
