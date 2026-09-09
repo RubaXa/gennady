@@ -268,6 +268,50 @@ describe('phase receipt', () => {
       }
     });
 
+    it("V-08b: anystack succeeds without ever touching package.json — restores the fail-closed contract's other half (a stack WITH its own source is fingerprinted on its own terms, not node's)", () => {
+      const root = mkdtempSync(join(tmpdir(), 'phase-receipt-anystack-env-state-'));
+      const anystackPlan: PhaseVerificationPlan = {
+        ticket: 'specs/app/app.task.TSK-1.md',
+        phase: 'P1',
+        profile: 'code',
+        producesCoverage: false,
+        gates: [
+          {
+            name: 'lint-go',
+            state: 'CONFIGURED',
+            required: false,
+            command: 'golangci-lint run',
+            prerequisites: [],
+            provider: null,
+            next: 'run golangci-lint run',
+          },
+        ],
+      };
+      try {
+        // No package.json in this root at all — a node-shaped read here would throw ENOENT.
+        const result = phaseVerificationPlanEnvironmentState(root, anystackPlan, [], 'anystack');
+        assert.strictEqual(result.ok, true);
+        if (!result.ok) return;
+        // The fingerprint is sensitive to the config-authored command — a config edit that changes
+        // the resolved command must invalidate a previously-written receipt.
+        const changedPlan: PhaseVerificationPlan = {
+          ...anystackPlan,
+          gates: [{ ...anystackPlan.gates[0]!, command: 'golangci-lint run --fast' }],
+        };
+        const changedResult = phaseVerificationPlanEnvironmentState(
+          root,
+          changedPlan,
+          [],
+          'anystack'
+        );
+        assert.strictEqual(changedResult.ok, true);
+        if (!changedResult.ok) return;
+        assert.notStrictEqual(result.state, changedResult.state);
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+      }
+    });
+
     it('defaulting `stack` to node is byte-identical to passing it explicitly (И-1/И-2: no behavior change for node)', () => {
       const root = mkdtempSync(join(tmpdir(), 'phase-receipt-preset-default-'));
       try {

@@ -1,7 +1,7 @@
 // @file: One repo-wide stack detection — the single fact `sdd-state`/`sdd-task`/`sdd-verify` share
 //   instead of each re-guessing "what stack is this?" on its own.
-// @consumers: sdd-state.cmd
-// @tasks: V-05
+// @consumers: sdd-state.cmd, sdd-task.cmd, sdd-verify/phase-context
+// @tasks: V-05, V-06b, V-08b
 
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
@@ -79,4 +79,15 @@ export function detectRepoStack(root: string, config: StackConfig | null): RepoS
       ? 'config:stack.use'
       : sorted.map((entry) => `marker:${entry.marker}`).join(','),
   };
+}
+
+/**
+ * @purpose Pick the one primary stack every readiness/gate-plan consumer on a root must share
+ *   (V-06b): node wins when detected (byte-identical node behavior), else the first detected
+ *   stack, else `'node'` (every caller's pre-existing default).
+ * @param detection Repo-wide stack detection (V-05).
+ * @returns The stack id every phase/readiness/gate-plan consumer on this root must share.
+ */
+export function primaryStackOf(detection: RepoStackDetection): StackId {
+  return detection.stacks.includes('node') ? 'node' : (detection.stacks[0] ?? 'node');
 }

@@ -48,6 +48,7 @@ import { phaseReceiptIssue } from './phase-receipt-validation.ts';
 import {
   formatPhaseVerificationGatePlan,
   markPhaseVerificationProven,
+  type PhaseVerificationPlan,
 } from '../../../shared/sdd/phase-verification-plan.ts';
 
 /** @purpose Execute one ticket-owned command byte-for-byte and return its process result. */
@@ -183,14 +184,16 @@ function updateReceipt(
 }
 
 function planFor(root: string, context: PhaseVerifyContext): PhaseReceiptPlan | string {
+  const stack = context.stack ?? 'node';
   const environment = context.gatePlan
-    ? phaseVerificationPlanEnvironmentState(root, context.gatePlan, context.verification)
+    ? phaseVerificationPlanEnvironmentState(root, context.gatePlan, context.verification, stack)
     : phaseVerificationEnvironmentState(
         root,
         context.profile,
         context.producesCoverage,
         context.verification,
-        context.targets.length > 0
+        context.targets.length > 0,
+        stack
       );
   if (!environment.ok) return environment.issue;
   return {
@@ -216,6 +219,55 @@ function ladderCommands(results: GateResult[]): PhaseReceiptCommand[] {
       command: result.ranCommand,
       exitCode: result.exitCode,
     }));
+}
+
+/**
+ * @purpose Run a non-node stack's gate plan verbatim, in `gatePlan.gates` order (V-08b) — no npm
+ *   ladder exists, so each CONFIGURED gate's command runs via the §5 verbatim runner.
+ * @invariant `resultSink` order matches `gatePlan.gates` declaration order; every gate is
+ *   `mutates: false` — anystack gates are read-only by design (V-08).
+ * @param verbatimRunner Injectable command runner.
+ * @param gatePlan Canonical gate plan already resolved for the detected stack.
+ * @param resultSink Evidence sink mirroring the node ladder's own GateResult shape.
+ * @returns Ok once every configured gate has passed; the first failure halts and is reported.
+ */
+async function runConfiguredGatePlan(
+  verbatimRunner: VerbatimRunner,
+  gatePlan: PhaseVerificationPlan,
+  resultSink: GateResult[]
+): Promise<VerifyOutcome> {
+  for (const gate of gatePlan.gates) {
+    if (gate.state !== 'CONFIGURED' || gate.command === null) continue;
+    const outcome = verbatimRunner(gate.command);
+    resultSink.push({
+      name: gate.name,
+      status: outcome.exitCode === 0 ? 'pass' : 'fail',
+      exitCode: outcome.exitCode,
+      output: outcome.output,
+      durationMs: 0,
+      ranCommand: gate.command,
+      mutates: false,
+    });
+    if (outcome.exitCode !== 0) {
+      return {
+        ok: false,
+        code: 'ERR_CLI_SDD_VERIFY_GATE_FAILED',
+        exitCode: 1,
+        message: [
+          `[sdd-verify] ❌ ${gate.name} — exit ${outcome.exitCode} (ran: ${gate.command})`,
+          outcome.output.trim(),
+        ]
+          .filter(Boolean)
+          .join('\n'),
+      };
+    }
+  }
+  return {
+    ok: true,
+    text:
+      resultSink.map((result) => `  ✅ ${result.name}: ${result.ranCommand}`).join('\n') ||
+      '  (no configured gates)',
+  };
 }
 
 /**
@@ -303,23 +355,30 @@ export async function runPhaseVerification(
   }
 
   const ladderResults: GateResult[] = [];
-  const ladder = await run(
-    ladderRunner,
-    plan.profile,
-    coverageProbe,
-    {
-      targets: plan.targets,
-      ...(frozenContext.specPath ? { specPath: frozenContext.specPath } : {}),
-      producesCoverage: plan.producesCoverage,
-      deletionOnly: plan.targets.length === 0 && plan.deletedFiles.length > 0,
-      ...(frozenContext.gatePlan ? { gatePlan: frozenContext.gatePlan } : {}),
-    },
-    ladderResults,
-    {
-      repair: createRepairMutationBoundary(root),
-      foundation: createRepairMutationBoundary(root, 'foundation'),
-    }
-  );
+  // V-08b: a non-node stack (anystack today) has no npm ladder to dispatch through — its own
+  // config-authored gates run verbatim, in gatePlan order, via the same runner §5 Verification
+  // commands already use. `run()`'s GATES filter is closed-world npm/gennady vocabulary and would
+  // silently select nothing for these gate names.
+  const ladder =
+    (frozenContext.stack ?? 'node') !== 'node' && frozenContext.gatePlan
+      ? await runConfiguredGatePlan(verbatimRunner, frozenContext.gatePlan, ladderResults)
+      : await run(
+          ladderRunner,
+          plan.profile,
+          coverageProbe,
+          {
+            targets: plan.targets,
+            ...(frozenContext.specPath ? { specPath: frozenContext.specPath } : {}),
+            producesCoverage: plan.producesCoverage,
+            deletionOnly: plan.targets.length === 0 && plan.deletedFiles.length > 0,
+            ...(frozenContext.gatePlan ? { gatePlan: frozenContext.gatePlan } : {}),
+          },
+          ladderResults,
+          {
+            repair: createRepairMutationBoundary(root),
+            foundation: createRepairMutationBoundary(root, 'foundation'),
+          }
+        );
   if (!ladder.ok) return ladder;
 
   const commands = ladderCommands(ladderResults);

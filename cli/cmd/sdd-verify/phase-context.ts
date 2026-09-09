@@ -12,7 +12,11 @@ import {
   queuedInfraGateTicketIds,
 } from '../../../shared/sdd/gate-queue.ts';
 import { parseScopes } from '../../../shared/sdd/portal.ts';
-import { checkReadiness, gatherReadinessInput } from '../../../shared/sdd/readiness.ts';
+import { nodeReadinessAdapter, resolveReadinessAdapter } from '../../../shared/sdd/readiness.ts';
+import { detectRepoStack, primaryStackOf } from '../../../shared/verify/stack-detection.ts';
+import { loadStackConfig } from '../../../shared/verify/stack-config.ts';
+import { BUILTIN_GATE_IDS } from '../../../shared/verify/stack-registry.ts';
+import type { StackId } from '../../../shared/verify/verify.types.ts';
 import { ticketRef } from '../../../shared/sdd/check.ts';
 import { matchingTestPhaseIds, parseTestCoverage } from '../../../shared/sdd/bdd-coverage.ts';
 import { extractSection } from '../../../shared/sdd/section.ts';
@@ -56,6 +60,9 @@ export type PhaseVerifyContext = {
   producesCoverage: boolean;
   /** @purpose Canonical gate states shared byte-for-byte with sdd-task and feasibility. */
   gatePlan?: PhaseVerificationPlan;
+  /** @purpose Detected primary stack (V-08b) the gate plan/environmentState resolved for. Optional
+   *   so a hand-built test context still type-checks; absence defaults to `'node'` everywhere. */
+  stack?: StackId;
 };
 
 /** @purpose Valid phase context, or a ready-to-print teaching failure. */
@@ -249,11 +256,25 @@ export function resolvePhaseContext(
       return failure(`Deleted File has no tracked VCS baseline: ${deleted}`);
     deletedFiles.push(inspected.relative);
   }
+  // V-08b: the one shared stack detection (V-05) this phase's gate plan and readiness both resolve
+  // against — an invalid `stack:` section degrades to no config (auto-detect, unnarrowed) here
+  // rather than failing the phase; sdd-verify's own entry gate (index.ts, V-07) already refuses to
+  // run at all on a broken config, so this path only matters for phase-receipt-validation's re-check
+  // of an already-written receipt, where a stricter failure would needlessly break sdd-check/sdd-task.
+  // Bootstrap-sensitive (mirrors sdd-task.cmd's `resolveProjectReadiness`, V-06b): `package.json`
+  // itself is a listed Readiness Gate an infra TODO ticket can build, so a repo with none YET is not
+  // necessarily anystack — leave node only when the operator explicitly opted in via `stack.use`.
+  const stackConfigLoad = loadStackConfig(projectRoot, BUILTIN_GATE_IDS);
+  const stackConfig = stackConfigLoad.errors.length === 0 ? stackConfigLoad.config : null;
+  const stack = stackConfig?.use
+    ? primaryStackOf(detectRepoStack(projectRoot, stackConfig))
+    : 'node';
   // A queued infra builder cannot require the gates it creates. Every non-ready code/test phase
   // must prove that exact exception; unreadable ownership context never falls back to normal work.
   let readiness;
   try {
-    readiness = checkReadiness(gatherReadinessInput(projectRoot));
+    const readinessAdapter = resolveReadinessAdapter(stack) ?? nodeReadinessAdapter;
+    readiness = readinessAdapter.evaluate(readinessAdapter.gather(projectRoot));
   } catch (error) {
     return failure(
       `project readiness cannot be read: ${error instanceof Error ? error.message : String(error)}`
@@ -329,6 +350,8 @@ export function resolvePhaseContext(
     ),
     mode: 'runtime',
     profileOverride: profile,
+    stack,
+    config: stackConfig,
   });
   if (!gatePlan) return failure(`phase '${phaseId}' gate plan cannot be resolved`);
   const canonicalCommands = new Set(
@@ -357,6 +380,7 @@ export function resolvePhaseContext(
       ...(coveragePolicy.status === 'required' ? { coverageOwner: coveragePolicy.ownerPhase } : {}),
       producesCoverage: gatePlan.producesCoverage,
       gatePlan,
+      stack,
       ...(spec.ok ? { specPath: relative(projectRoot, spec.specPath) } : {}),
     },
   };
