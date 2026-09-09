@@ -6,8 +6,10 @@
 //   guards ISS-10: the critic reads the owning ticket's `## Conventions` and `## Decision Log`
 //   sections through sdd-extract's heading-anchor form, bounded to exactly those two sections and
 //   measured (extracted line count recorded), per akkrat issue #21 / 20-ISSUES-VERDICTS.md #21.
+//   Also guards T-B6-05: reconcile activates AX_DISPATCH_VIA_BATCH so a task-reopen dispatches
+//   through execute as one batch, with execute remaining the sole owner of audit/code-review.
 // @consumers: node:test runner
-// @tasks: T-B6-03, ISS-10
+// @tasks: T-B6-03, ISS-10, T-B6-05
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -96,5 +98,26 @@ describe('critic-protocol: reads the owning ticket Conventions/Decision Log by e
     assert.match(text, /record the extracted line count/i);
     assert.match(text, /bounded and measured/i);
     assert.match(text, /already settled is not reopened/i);
+  });
+});
+
+describe('reconcile: task-reopen dispatches as one execute batch (T-B6-05)', () => {
+  const reconcile = readDirective('reconcile.directive.xml');
+
+  it('defines AX_DISPATCH_VIA_BATCH in BeliefState', () => {
+    assert.match(reconcile, /<Axiom id="AX_DISPATCH_VIA_BATCH">/);
+  });
+
+  it('activates it in the task-reopen branch of STEP_5_APPLY: one BATCH, execute is the sole audit/code-review owner', () => {
+    const apply = step(reconcile, 'STEP_5_APPLY');
+    assert.match(apply, /AX_DISPATCH_VIA_BATCH/);
+    assert.match(apply, /as one BATCH/);
+    assert.match(apply, /sole owner of each affected group's audit\s+and code-review/i);
+    assert.match(apply, /never dispatches a\s+second review/i);
+  });
+
+  it('there is no reconcile-only audit flag', () => {
+    const apply = step(reconcile, 'STEP_5_APPLY');
+    assert.match(apply, /no\s+reconcile-only audit flag/i);
   });
 });

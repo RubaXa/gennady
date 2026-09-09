@@ -126,6 +126,15 @@
       Blocker Trail work, not this axiom.
     </Axiom>
 
+    <Axiom id="AX_DISPATCH_VIA_BATCH">
+      After all reopens are prepared, dispatch the reopened tasks through execute as one BATCH.
+      The batch orchestrator will plan layers, run phases, close rounds, sync trackers, and keep its
+      ordinary `sdd-task --audit-group` lifecycle unchanged. There is no reconcile-only audit flag:
+      execute remains the sole owner of each affected spec group's audit and code-review. Reconcile
+      retains those returned per-group results and checks them at STEP_7; it never dispatches a second
+      review.
+    </Axiom>
+
     <Axiom id="AX_VERIFY_AT_END">
       Every reconcile branch ends with evidence owned by that branch, never a generic duplicate tail:
       - ordinary execute supplies its per-ticket sync, phase gates, per-group audit, and code-review results;
@@ -260,10 +269,15 @@
         <LogicSwitch on="approved remediation category">
         - WHEN **task-reopen** → append the planned new Round to every owning ticket exactly per
           `AX_REOPEN_FORMAT`; write its concrete fix and dependent test PhaseIDs, set Meta Status and
-          tracker row to IN_PROGRESS, update parent rollups and `Reopens`, then
-          `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/execute.directive.xml")` for those tickets as
-          an ordinary batch. Reconcile never edits the task-owned code itself and never requests a
-          reconcile-only audit; execute owns phase work, tracker sync, audit, and code-review.
+          tracker row to IN_PROGRESS, update parent rollups and `Reopens`, then dispatch every
+          reopened ticket through
+          `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/execute.directive.xml")` as one BATCH per
+          `AX_DISPATCH_VIA_BATCH`: the batch orchestrator plans layers, runs phases, closes rounds,
+          and syncs trackers under its own unchanged `sdd-task --audit-group` lifecycle. There is no
+          reconcile-only audit flag — execute remains the sole owner of each affected group's audit
+          and code-review; reconcile never edits the task-owned code itself and never dispatches a
+          second review. It only retains each group's returned result and checks it at
+          STEP_6_VERIFY.
 
         - WHEN **semantic-spec-update** → route the approved delta to exactly one owning authoring flow:
           canonical product/library scope →
