@@ -7,7 +7,7 @@
 import { existsSync } from 'node:fs';
 import { appendFile, cp, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { execFile } from 'node:child_process';
-import { join } from 'node:path';
+import { join, relative } from 'node:path';
 import { promisify } from 'node:util';
 
 const execFileAsync = promisify(execFile);
@@ -89,6 +89,15 @@ async function nextResultDirName(
   }
 }
 
+/** @purpose Repo-relative form of an absolute result directory, for writing into a COMMITTED doc
+ *  (EXPERIMENTS-LOG.md) without leaking the operator's home-directory path — the class of leak SO-5
+ *  is written against. `resultDir` is always an absolute, resolved path (cli.ts passes it through
+ *  `join(gennadyRoot ?? process.cwd(), ...)`/`resolve()`); this turns it back into the
+ *  `ai/flow-eval/results/<date>-<scenario>/` shape EXPERIMENTS-LOG.md's own template promises. */
+export function relativeResultDir(gennadyRoot: string, resultDir: string): string {
+  return relative(gennadyRoot, resultDir);
+}
+
 /**
  * @purpose Write ONE scenario's durable result — summary.json always, judge.md when given. Never
  *   overwrites a same-day same-scenario directory; disambiguates with a `-N` suffix instead.
@@ -145,8 +154,13 @@ function formatMinutes(durationMs: number | undefined): string {
 /**
  * @purpose GAP-E-6/D-62: append ONE append-only stub entry per run to EXPERIMENTS-LOG.md, following
  *   the template documented at the top of that file. This is a DRAFT, not analysis — the mechanical
- *   fields (model, budget, numbers) are filled in; "Гипотеза/зачем" and "Итог" are left as
+ *   fields (model, budget, numbers) are filled in; "Гипотеза/зачем" и "Итог" are left as
  *   `_(заполнить)_` placeholders for a person to complete. Never overwrites a prior entry.
+ * @param resultDir Written verbatim into the committed log as `` **Сырые данные:** `${resultDir}` ``
+ *   — the CALLER must pass a repo-relative path (see relativeResultDir() above), never the absolute,
+ *   machine-specific path persistDurableResult() returns: this function does no path math itself, it
+ *   only formats whatever string it is given (SO-5 — an absolute `/Users/<name>/…` path written into
+ *   this doc by the first live run would be exactly the class of home-directory leak SO-5 forbids).
  * @returns The appended markdown block (for tests/logging), or undefined if the log file is missing
  *   (the log is a docs file that could legitimately not exist in some non-standard checkout — this
  *   must never fail a real run over an append the operator can always redo by hand).

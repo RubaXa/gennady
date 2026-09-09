@@ -15,6 +15,7 @@ import {
   appendExperimentLogStub,
   persistDurableResult,
   readAllDurableSummaries,
+  relativeResultDir,
   resolveGitSha,
   type SddEvalDurableSummary,
 } from '../results-archive.ts';
@@ -160,10 +161,14 @@ describe('GAP-E-6: appendExperimentLogStub (one append-only stub per run)', () =
     const logPath = join(root, 'EXPERIMENTS-LOG.md');
     writeFileSync(logPath, '# Журнал экспериментов\n\nexisting content\n');
     try {
+      // resultDir here is REPO-RELATIVE (`ai/flow-eval/results/...`), matching what cli.ts actually
+      // passes in production (relativeResultDir() applied to the absolute persistDurableResult()
+      // return value) — SO-5: an absolute `/Users/<name>/...` path must never land in this committed
+      // doc, so the fixture must not cement that shape as normal (see relativeResultDir tests below).
       const block = await appendExperimentLogStub(
         logPath,
         fakeSummary(),
-        '/tmp/results/2026-09-08-x'
+        'ai/flow-eval/results/2026-09-08-x'
       );
       assert.ok(block);
       assert.match(block!, /## 2026-09-08 — `fibonacci-library` \(pass\/pass\)/);
@@ -171,6 +176,8 @@ describe('GAP-E-6: appendExperimentLogStub (one append-only stub per run)', () =
       assert.match(block!, /токены=191000/);
       assert.match(block!, /- \*\*Гипотеза\/зачем:\*\* _\(заполнить\)_/);
       assert.match(block!, /- \*\*Итог:\*\* _\(заполнить\)_/);
+      assert.match(block!, /- \*\*Сырые данные:\*\* `ai\/flow-eval\/results\/2026-09-08-x`/);
+      assert.doesNotMatch(block!, /\/Users\//, 'never an absolute home-directory path (SO-5)');
       const written = await readFile(logPath, 'utf8');
       assert.match(written, /existing content/, 'append-only: prior content is preserved');
       assert.match(written, /## 2026-09-08 — `fibonacci-library`/);
@@ -184,8 +191,16 @@ describe('GAP-E-6: appendExperimentLogStub (one append-only stub per run)', () =
     const logPath = join(root, 'EXPERIMENTS-LOG.md');
     writeFileSync(logPath, '# log\n');
     try {
-      await appendExperimentLogStub(logPath, fakeSummary({ actions: 74 }), '/tmp/r/1');
-      await appendExperimentLogStub(logPath, fakeSummary({ actions: 90 }), '/tmp/r/2');
+      await appendExperimentLogStub(
+        logPath,
+        fakeSummary({ actions: 74 }),
+        'ai/flow-eval/results/1'
+      );
+      await appendExperimentLogStub(
+        logPath,
+        fakeSummary({ actions: 90 }),
+        'ai/flow-eval/results/2'
+      );
       const written = await readFile(logPath, 'utf8');
       const firstIndex = written.indexOf('действий=74');
       const secondIndex = written.indexOf('действий=90');
@@ -200,6 +215,34 @@ describe('GAP-E-6: appendExperimentLogStub (one append-only stub per run)', () =
 
   it('returns undefined (never throws) when the log file does not exist', async () => {
     const missing = join(tmpdir(), 'does-not-exist-experiments-log.md');
-    assert.equal(await appendExperimentLogStub(missing, fakeSummary(), '/tmp/x'), undefined);
+    assert.equal(
+      await appendExperimentLogStub(missing, fakeSummary(), 'ai/flow-eval/results/x'),
+      undefined
+    );
+  });
+});
+
+describe('GAP-E-6/SO-5: relativeResultDir (never leak the operator home-directory path)', () => {
+  it('turns an absolute result dir into a path relative to gennadyRoot', () => {
+    assert.equal(
+      relativeResultDir(
+        '/Users/alice/dev/gennady',
+        '/Users/alice/dev/gennady/ai/flow-eval/results/2026-09-08-fibonacci-library'
+      ),
+      'ai/flow-eval/results/2026-09-08-fibonacci-library'
+    );
+  });
+
+  it('matches what cli.ts actually does end to end: persistDurableResult + relativize', async () => {
+    const root = tempDir();
+    try {
+      const dir = await persistDurableResult(join(root, 'ai/flow-eval/results'), fakeSummary());
+      const forLog = relativeResultDir(root, dir);
+      assert.equal(forLog, 'ai/flow-eval/results/2026-09-08-fibonacci-library');
+      assert.doesNotMatch(forLog, /^\//, 'never absolute');
+      assert.doesNotMatch(forLog, new RegExp(root.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 });

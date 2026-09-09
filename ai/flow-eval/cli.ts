@@ -34,6 +34,7 @@ import {
 import {
   appendExperimentLogStub,
   persistDurableResult,
+  relativeResultDir,
   resolveGitSha,
   type SddEvalDurableSummary,
 } from './results-archive.ts';
@@ -523,7 +524,10 @@ async function runAndReportBody(
       // top of EXPERIMENTS-LOG.md. Best-effort: a missing/moved log file must never fail a real run.
       if (resultDir) {
         const logPath = join(gennadyRootForResults, 'ai/flow-eval/docs/journal/EXPERIMENTS-LOG.md');
-        await appendExperimentLogStub(logPath, durableSummary, resultDir).catch(
+        // SO-5: never write the absolute, machine-specific resultDir into this COMMITTED doc —
+        // relativize it against gennadyRoot first (see relativeResultDir()'s own doc-comment).
+        const resultDirForLog = relativeResultDir(gennadyRootForResults, resultDir);
+        await appendExperimentLogStub(logPath, durableSummary, resultDirForLog).catch(
           (cause: unknown) => {
             console.error(
               `  results: could not append experiments-log stub — ${cause instanceof Error ? cause.message : String(cause)}`
