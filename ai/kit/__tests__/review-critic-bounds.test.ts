@@ -1,9 +1,16 @@
 // @file: Guards Пачка 20 ("Ревью и критик ограничены и читают владельца тикета"): the STEP_2⇄
 //   STEP_3 review⇄reconcile cycle is bounded by AX_CAP_5 with an explicit operator disposition
-//   instead of running forever, and the critic activates AX_DEFAULT_ACCEPT and AX_POLISH_MODE —
-//   both existed in the axiom library (ax-default-accept.xml, ax-polish-mode.xml) but were never
-//   connected to any template (40-TRACK-DIRECTIVES-SKILLS.md §1.3, D3.5/D3.6) — (T-B6-03). Also
-//   guards ISS-10: the critic reads two sections when its target is a task ticket — the
+//   instead of running forever (T-B6-03), and STEP_3_RECONCILE classifies each returned finding
+//   ACCEPT/REJECT per AX_DEFAULT_ACCEPT — the v1 d37d5910 redaction ("uncertainty alone is NOT a
+//   blocking finding"), restored after V-BATCH-20 B-2 found the axiom had instead collected v1's own
+//   PRE-REFORM text ("Uncertain → ACCEPT"), the one v1 commit d6065c36 replaced because it kept the
+//   loop from converging; activated in review-lifecycle (the orchestrator, where ACCEPT/REJECT are
+//   defined), not in the read-only critic-protocol worker. critic-protocol separately activates
+//   AX_POLISH_MODE, and review-lifecycle's STEP_2 dispatch now carries an explicit `Polish: <on|off>`
+//   field (V-BATCH-20 N-2) — both existed in the axiom library (ax-default-accept.xml,
+//   ax-polish-mode.xml) but were never connected to any template (40-TRACK-DIRECTIVES-SKILLS.md
+//   §1.3, D3.5/D3.6).
+//   Also guards ISS-10: the critic reads two sections when its target is a task ticket — the
 //   project-wide conventions from `specs/3-tasks.md` and the owning tasks-index's own Decision Log,
 //   by the level-qualified heading anchor each tasks-index format actually uses (project / scope /
 //   module) — through sdd-extract's heading-anchor form, bounded to exactly those two documents and
@@ -60,20 +67,46 @@ describe('review-lifecycle: STEP_2⇄STEP_3 is bounded by AX_CAP_5 (T-B6-03)', (
     const reconcile = step(review, 'STEP_3_RECONCILE');
     assert.match(reconcile, /never\s+authorizes continuation past the cap/i);
   });
-});
 
-describe('critic-protocol: AX_DEFAULT_ACCEPT and AX_POLISH_MODE are connected (T-B6-03)', () => {
-  const critic = readDirective('critic-protocol.directive.xml');
-
-  it('defines both axioms in BeliefState', () => {
-    assert.match(critic, /<Axiom id="AX_DEFAULT_ACCEPT">/);
-    assert.match(critic, /<Axiom id="AX_POLISH_MODE">/);
+  it('STEP_2 dispatch carries an explicit Polish field, not just an internal default (N-2)', () => {
+    const independentReview = step(review, 'STEP_2_INDEPENDENT_REVIEW');
+    assert.match(independentReview, /`Polish: <on\|off>`/);
   });
 
-  it('activates AX_DEFAULT_ACCEPT in STEP_2_JUDGE: uncertain finding defaults to ACCEPT', () => {
-    const judge = step(critic, 'STEP_2_JUDGE');
-    assert.match(judge, /AX_DEFAULT_ACCEPT/);
-    assert.match(judge, /defaults to ACCEPT/i);
+  it("STEP_2's 'no bookkeeping' ban does not contradict AX_CAP_5's own round count (N-3)", () => {
+    const independentReview = step(review, 'STEP_2_INDEPENDENT_REVIEW');
+    assert.match(independentReview, /beyond the bare `AX_CAP_5` count STEP_3_RECONCILE keeps/i);
+  });
+});
+
+describe('review-lifecycle: AX_DEFAULT_ACCEPT is activated in the orchestrator, not the worker (T-B6-03 / V-BATCH-20 B-2)', () => {
+  const review = readDirective('review-lifecycle.directive.xml');
+  const critic = readDirective('critic-protocol.directive.xml');
+
+  it('review-lifecycle defines AX_DEFAULT_ACCEPT in BeliefState with the canonical v1 (post-d6065c36) text', () => {
+    assert.match(review, /<Axiom id="AX_DEFAULT_ACCEPT">/);
+    assert.match(review, /Uncertainty alone is NOT a blocking finding/);
+    // The pre-reform text d6065c36 replaced must not have come back.
+    assert.doesNotMatch(review, /Uncertain\s*→\s*ACCEPT\./);
+  });
+
+  it('activates AX_DEFAULT_ACCEPT inside STEP_3_RECONCILE as an ACCEPT/REJECT classification of findings', () => {
+    const reconcile = step(review, 'STEP_3_RECONCILE');
+    assert.match(reconcile, /AX_DEFAULT_ACCEPT/);
+    assert.match(reconcile, /ACCEPT only an\s+artifact gap backed by concrete evidence/i);
+    assert.match(reconcile, /REJECT a\s+preference, alternative design, missing local convention, or unevidenced question/i);
+  });
+
+  it('critic-protocol (the read-only worker) no longer declares or activates AX_DEFAULT_ACCEPT', () => {
+    assert.doesNotMatch(critic, /AX_DEFAULT_ACCEPT/);
+  });
+});
+
+describe('critic-protocol: AX_POLISH_MODE is connected (T-B6-03)', () => {
+  const critic = readDirective('critic-protocol.directive.xml');
+
+  it('defines AX_POLISH_MODE in BeliefState', () => {
+    assert.match(critic, /<Axiom id="AX_POLISH_MODE">/);
   });
 
   it('activates AX_POLISH_MODE in STEP_3_REPORT: polish off by default, MINOR/INFO never drive the verdict', () => {
