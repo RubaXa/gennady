@@ -30,6 +30,10 @@
     "./providers/claude": "./services/agent-mon/providers/claude/index.ts",
     "./providers/opencode": "./services/agent-mon/providers/opencode/index.ts"
   },
+  "overrides": {
+    "undici": "7.29.1",
+    "esbuild": "0.28.2"
+  },
   "files": [
     "dist/**/*",
     "README.md",
