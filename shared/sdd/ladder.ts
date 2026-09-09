@@ -37,6 +37,11 @@ export type LadderInput = {
   packageJsonPresent: boolean;
   /** @purpose Exact-name presence of the three gate scripts. */
   gates: LadderGates;
+  /**
+   * @purpose Non-node adapter's `executionReady` verdict (V-06b). `true` overrides the rung to
+   *   done; `false`/undefined leaves the node-shaped formula untouched (byte-identical default).
+   */
+  otherStackReady?: boolean;
   /** @purpose Total tickets across the project task rollup (specs/3-tasks.md), or null when absent/unparseable. */
   tasksTotal: number | null;
   /** @purpose Done tickets across the rollup; meaningful only when tasksTotal is non-null. */
@@ -65,7 +70,14 @@ export function renderLadder(s: LadderInput): string {
   const portalDone = s.portalPresent;
   const scopesDone = s.scopesTotal > 0 && s.scopesApproved === s.scopesTotal;
   const modulesDone = s.scopesTotal > 0 && (!s.modulesRequired || s.moduleSpecCount > 0);
-  const infraDone = s.packageJsonPresent && s.gates.typecheck && s.gates.test && s.gates.lint;
+  // V-06b only overrides the node-shaped formula when a non-node adapter reports READY — that is
+  // the one case the formula gets wrong (a config-only stack has no type-check/test/lint gates to
+  // show done). When it reports not-ready, the node-shaped formula already agrees (⬜, unconfigured)
+  // byte for byte with every repo this wave doesn't newly cover, so it is left untouched here.
+  const infraDone =
+    s.otherStackReady === true
+      ? true
+      : s.packageJsonPresent && s.gates.typecheck && s.gates.test && s.gates.lint;
   const tasksDone =
     s.tasksTotal !== null &&
     s.tasksTotal > 0 &&
@@ -86,9 +98,12 @@ export function renderLadder(s: LadderInput): string {
         ? `модульных спек: ${s.moduleSpecCount}`
         : '—';
 
-  const step4 = !s.packageJsonPresent
-    ? 'не настроена'
-    : `гейты: type-check ${mark(s.gates.typecheck)} · test ${mark(s.gates.test)} · lint ${mark(s.gates.lint)}`;
+  const step4 =
+    s.otherStackReady === true
+      ? 'готово (не-node стек, детали — блок [READINESS])'
+      : !s.packageJsonPresent
+        ? 'не настроена'
+        : `гейты: type-check ${mark(s.gates.typecheck)} · test ${mark(s.gates.test)} · lint ${mark(s.gates.lint)}`;
 
   const step5 =
     s.tasksTotal === null

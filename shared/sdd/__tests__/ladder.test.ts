@@ -169,4 +169,35 @@ describe('renderLadder', () => {
     const allowed = new Set(['✅', '⬜', '🏗', '👉']);
     for (const ch of other) assert.ok(allowed.has(ch), `unexpected icon: ${ch}`);
   });
+
+  describe('V-06b: otherStackReady does not contradict [READINESS]', () => {
+    it('anystack ready (otherStackReady: true) closes rung 4 even with no package.json/gates', () => {
+      const text = renderLadder({
+        ...BASE,
+        projectName: 'Acme',
+        portalPresent: true,
+        scopesTotal: 1,
+        scopesApproved: 1,
+        moduleSpecCount: 1,
+        otherStackReady: true,
+      });
+      assert.match(text, /✅ 4\. Инфраструктура\s+готово \(не-node стек/);
+    });
+
+    it('anystack not-ready (otherStackReady: false) renders exactly like the pre-V-06b default', () => {
+      const withFlag = renderLadder({ ...BASE, otherStackReady: false });
+      const withoutFlag = renderLadder(BASE);
+      assert.strictEqual(withFlag, withoutFlag);
+      assert.match(withFlag, /⬜ 4\. Инфраструктура\s+не настроена/);
+    });
+
+    it('node repo (otherStackReady undefined) is untouched by V-06b regardless of gate state', () => {
+      const text = renderLadder({
+        ...BASE,
+        packageJsonPresent: true,
+        gates: { typecheck: true, test: true, lint: true },
+      });
+      assert.match(text, /✅ 4\. Инфраструктура\s+гейты: type-check ✅ · test ✅ · lint ✅/);
+    });
+  });
 });

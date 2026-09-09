@@ -17,7 +17,14 @@ import {
 } from '../../../shared/sdd/ticket.ts';
 import { pickableTasks } from '../../../shared/sdd/check.ts';
 import { scanBlockerTrail, parsePhaseHandoffs } from '../../../shared/sdd/execution-log.ts';
-import { checkReadiness, gatherReadinessInput } from '../../../shared/sdd/readiness.ts';
+import {
+  nodeReadinessAdapter,
+  resolveReadinessAdapter,
+  type ReadinessResult,
+} from '../../../shared/sdd/readiness.ts';
+import { detectRepoStack, primaryStackOf } from '../../../shared/verify/stack-detection.ts';
+import { loadStackConfig } from '../../../shared/verify/stack-config.ts';
+import { BUILTIN_GATE_IDS } from '../../../shared/verify/stack-registry.ts';
 import { parseScopes } from '../../../shared/sdd/portal.ts';
 import {
   phaseOwnsMissingReadinessGate,
@@ -72,6 +79,23 @@ import {
 } from './sdd-task.types.ts';
 
 /**
+ * @purpose Resolve one root's readiness through the engine + adapter dispatch (V-06b), replacing
+ *   the node-only `checkReadiness(gatherReadinessInput(root))` this used to call directly.
+ * @invariant Bootstrap-sensitive: a missing `package.json` may mean a node project mid-bootstrap,
+ *   not anystack — unlike `sdd-state`'s snapshot, this leaves node absent an explicit `stack.use`,
+ *   the same opt-in V-07's config gate requires.
+ * @param root Absolute project root.
+ * @returns The resolved adapter's readiness verdict for this root.
+ */
+function resolveProjectReadiness(root: string): ReadinessResult {
+  const stackConfigLoad = loadStackConfig(root, BUILTIN_GATE_IDS);
+  const stackConfig = stackConfigLoad.errors.length === 0 ? stackConfigLoad.config : null;
+  const stack = stackConfig?.use ? primaryStackOf(detectRepoStack(root, stackConfig)) : 'node';
+  const adapter = resolveReadinessAdapter(stack) ?? nodeReadinessAdapter;
+  return adapter.evaluate(adapter.gather(root));
+}
+
+/**
  * @purpose Named infra-scope TODO tickets already building the missing gate scripts, plus queue diagnostics.
  * @param refs Every ticket's graph ref (Task-ID, status, owning scope).
  * @param root Absolute project root — reads `package.json` and `specs/README.md`.
@@ -80,7 +104,7 @@ import {
 function infraGateQueue(
   refs: TicketCorpusRef[],
   root: string,
-  readiness: ReturnType<typeof checkReadiness>
+  readiness: ReadinessResult
 ): GateQueueResult {
   let portalContent: string;
   try {
@@ -105,7 +129,7 @@ function infraGateQueue(
  * @param refs Every ticket's graph ref. | @param root Absolute project root (readiness + portal reads). | @returns A human + agent readable map. */
 function formatMap(refs: TicketCorpusRef[], root: string): string {
   const canonicalRoot = realpathSync(root);
-  const readiness = checkReadiness(gatherReadinessInput(canonicalRoot));
+  const readiness = resolveProjectReadiness(canonicalRoot);
   const gateQueue = infraGateQueue(refs, canonicalRoot, readiness);
   const graphPickable = pickableTasks(refs);
   const gateTicketFiles = new Set(gateQueue.owners.map((owner) => owner.ticketFile));
@@ -460,7 +484,7 @@ async function runCommand(rawArgs: string[], projectRoot: string): Promise<TaskO
     const phaseKind = phases.find((p) => p.id === phaseId)?.kind?.toLowerCase() ?? '';
     const UNGATED_KINDS = ['bootstrap', 'config', 'doc'];
     if (!UNGATED_KINDS.includes(phaseKind)) {
-      const readiness = checkReadiness(gatherReadinessInput(root));
+      const readiness = resolveProjectReadiness(root);
       if (!readiness.executionReady) {
         // The infra tickets BUILDING the missing gates are exempt — they are the way out of this
         // state, and blocking them would deadlock the flow against its own remedy (an infra ticket
