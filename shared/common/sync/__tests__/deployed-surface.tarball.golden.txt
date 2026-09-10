@@ -780,17 +780,13 @@ ai/kit/contract/process/halt-format.xml
 ai/kit/contract/process/handoff-format.xml
 ai/kit/contract/process/message-layout.xml
 ai/kit/contract/process/next-step-menu-format.xml
-ai/kit/contract/process/orchestrator-progress-format.xml
 ai/kit/contract/process/phase-block-format.xml
-ai/kit/contract/process/phase-progress-format.xml
 ai/kit/contract/process/plan-table-format.xml
 ai/kit/contract/process/question-format.xml
 ai/kit/contract/process/question-rule-slim.xml
 ai/kit/contract/process/readiness-preflight-gate.xml
 ai/kit/contract/process/return-summary-format.xml
 ai/kit/contract/process/round-close-format.xml
-ai/kit/contract/process/side-dive-format.xml
-ai/kit/contract/process/trace-header-format.xml
 ai/kit/contract/process/understanding-block-format.xml
 ai/kit/contract/scaffold/module-tasks-index.xml
 ai/kit/contract/scaffold/project-tasks-index.xml
