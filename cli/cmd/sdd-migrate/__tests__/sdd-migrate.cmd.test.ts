@@ -157,6 +157,73 @@ describe('SddMigrateCommand', () => {
     assert.doesNotMatch(body, /migrated from v1 — no rounds\/phases recorded/);
   });
 
+  // B2-10: real corpus shape (tasks/cli/lint/cli-lint.task-14.md) — "### Phase P1 — …" under
+  // "## 3. Phases" with NO "## N. Phases Overview" header at all. The migrator must call this out
+  // explicitly (WARN), not silently anchor PHASE_P1 while leaving phase IDs undiscoverable.
+  const V1_PHASE_NO_OVERVIEW = [
+    '# Task: TSK-14 — AnchorCheck',
+    '## 1. Meta & Traceability',
+    '- **Task-ID:** TSK-14',
+    '## 2. Acceptance Criteria (BDD)',
+    '**Scenario:** x [`unit`]',
+    '## 3. Phases',
+    '### Phase P1 — implementation',
+    '- **Objective:** do it',
+    '## 4. Execution Log',
+    '### Round 1 — 2026-05-15, initial',
+    '- [x] DONE',
+  ].join('\n');
+
+  it('B2-10: dry-run WARNs — phase section found but no Phases Overview — instead of silently skipping it', async () => {
+    const noOverviewTicket = join(dir, 'nooverview.task-14.md');
+    writeFileSync(noOverviewTicket, V1_PHASE_NO_OVERVIEW, 'utf-8');
+
+    const o = await mod.run(argv('anchors', noOverviewTicket));
+    assert.strictEqual(o.ok, true);
+    if (o.ok) {
+      assert.match(o.text, /DRY-RUN/);
+      assert.match(o.text, /WARN\s+.*nooverview\.task-14\.md.*no Phases Overview/);
+    }
+    // dry-run by default — file untouched (D-39)
+    assert.strictEqual(readFileSync(noOverviewTicket, 'utf-8'), V1_PHASE_NO_OVERVIEW);
+  });
+
+  it('B2-10: "### Phase P1" is anchored to PHASE_P1 by --write (word "Phase" prefix recognized)', async () => {
+    const t = join(dir, 'phaseword.task-14.md');
+    writeFileSync(t, V1_PHASE_NO_OVERVIEW, 'utf-8');
+
+    const o = await mod.run(argv('anchors', t, '--write'));
+    assert.strictEqual(o.ok, true);
+    const body = readFileSync(t, 'utf-8');
+    assert.match(body, /<!--SECTION:PHASE_P1-->/);
+    assert.match(body, /### Phase P1 — implementation/);
+  });
+
+  it('B2-10: a ticket with no Phases at all (dbc-linter.task-08 shape) does NOT trigger the warning', async () => {
+    const noPhases = [
+      '# Task: TSK-8 — NoPhases',
+      '## 1. Meta',
+      '- **Task-ID:** TSK-8',
+      '## 2. Acceptance Criteria (BDD)',
+      '**Scenario:** x [`unit`]',
+      '## 3. Verification',
+      '| Command | Required by |',
+      '|---|---|',
+      '| npm run typecheck | ts |',
+      '## 4. Test Scenario Coverage',
+      '- Scenario x → file::case',
+      '## 5. Execution Log',
+      '### Round 1 — 2026-05-15, initial',
+      '- [x] DONE',
+    ].join('\n');
+    const t = join(dir, 'nophases.task-8.md');
+    writeFileSync(t, noPhases, 'utf-8');
+
+    const o = await mod.run(argv('anchors', t));
+    assert.strictEqual(o.ok, true);
+    if (o.ok) assert.doesNotMatch(o.text, /WARN/);
+  });
+
   describe('plan mode', () => {
     let root: string;
 

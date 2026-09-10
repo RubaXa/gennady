@@ -5,6 +5,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  hasPhasesWithoutOverview,
   injectAnchors,
   scaffoldExecutionLog,
   scaffoldFirstRound,
@@ -83,6 +84,114 @@ describe('injectAnchors', () => {
     const twice = injectAnchors(once);
     assert.deepStrictEqual(twice.injected, []);
     assert.strictEqual(twice.text, once);
+  });
+
+  // B2-10: the real corpus (e.g. tasks/cli/lint/cli-lint.task-14.md, tasks/cli/alt-opinion/*) spells
+  // phase headers "### Phase P1 — …", not just "### P1 — …" — both must anchor to PHASE_P<N>.
+  it('B2-10: recognizes "### Phase P1 — …" (word "Phase" prefix), not just "### P1"', () => {
+    const v1WithPhaseWord = V1.replace('### P1 — impl', '### Phase P1 — impl').replace(
+      '### P2 — test',
+      '### Phase P2 — test'
+    );
+    const { injected, text } = injectAnchors(v1WithPhaseWord);
+    assert.ok(injected.includes('PHASE_P1'), 'PHASE_P1 must be injected for "Phase P1"');
+    assert.ok(injected.includes('PHASE_P2'), 'PHASE_P2 must be injected for "Phase P2"');
+    const p1 = extractSection(text, 'PHASE_P1');
+    assert.strictEqual(p1.status, 'ok');
+    if (p1.status === 'ok') assert.match(p1.content, /do it/);
+  });
+
+  it('B2-10: "Phase P1_FIX" still carries the _FIX suffix', () => {
+    const withFix = V1.replace('### P1 — impl', '### Phase P1_FIX — hotfix');
+    const { injected } = injectAnchors(withFix);
+    assert.ok(injected.includes('PHASE_P1_FIX'));
+  });
+
+  it('B2-10: "### Phases Overview" at the ### level is also recognized (defensive — v1 authoring is inconsistent)', () => {
+    const content = [
+      '# Task: TSK-3 — Nested overview',
+      '## 1. Meta',
+      '- **Task-ID:** TSK-3',
+      '## 2. Phases',
+      '### Phases Overview',
+      '| ID | Kind | Deps | Status |',
+      '|----|------|------|--------|',
+      '| P1 | impl | — | [x] |',
+      '### P1 — impl',
+      '- **Objective:** do it',
+    ].join('\n');
+    const { injected, text } = injectAnchors(content);
+    assert.ok(injected.includes('PHASES_OVERVIEW'));
+    const overview = extractSection(text, 'PHASES_OVERVIEW');
+    assert.strictEqual(overview.status, 'ok');
+    if (overview.status === 'ok') assert.match(overview.content, /\| P1 \| impl/);
+  });
+
+  // Patch invariant (06 §5.2 п.36 / D-38): anchoring only inserts marker lines — every original
+  // line survives byte-for-byte outside the inserted markers. Proven by reconstruction: stripping
+  // every inserted `<!--SECTION...-->`/`<!--/SECTION...-->` line from the output must reproduce the
+  // exact original content, not merely "look similar".
+  it('PATCH invariant: stripping the inserted anchor lines reconstructs the original byte-for-byte', () => {
+    const { text, injected } = injectAnchors(V1);
+    assert.ok(injected.length > 0, 'sanity: this fixture must actually inject anchors');
+    const reconstructed = text
+      .split('\n')
+      .filter((line) => !/^<!--\/?SECTION:[A-Z0-9_]+-->$/.test(line))
+      .join('\n');
+    assert.strictEqual(reconstructed, V1);
+  });
+});
+
+describe('hasPhasesWithoutOverview (B2-10)', () => {
+  it('phase anchors present, no Phases Overview anchor → true (explicit warning case)', () => {
+    const content = [
+      '<!--SECTION:META-->',
+      '## Meta',
+      '<!--/SECTION:META-->',
+      '<!--SECTION:PHASE_P1-->',
+      '### Phase P1 — implementation',
+      '<!--/SECTION:PHASE_P1-->',
+    ].join('\n');
+    assert.strictEqual(hasPhasesWithoutOverview(content), true);
+  });
+
+  it('phase anchors + Phases Overview anchor both present → false', () => {
+    const content = [
+      '<!--SECTION:PHASES_OVERVIEW-->',
+      '| ID | Kind | Deps | Status |',
+      '<!--/SECTION:PHASES_OVERVIEW-->',
+      '<!--SECTION:PHASE_P1-->',
+      '### P1 — impl',
+      '<!--/SECTION:PHASE_P1-->',
+    ].join('\n');
+    assert.strictEqual(hasPhasesWithoutOverview(content), false);
+  });
+
+  it('no phase anchors at all (a ticket that genuinely has no Phases, e.g. dbc-linter.task-08 shape) → false', () => {
+    const content = [
+      '<!--SECTION:META-->',
+      '## Meta',
+      '<!--/SECTION:META-->',
+      '<!--SECTION:VERIFICATION-->',
+      '| Command | Required by |',
+      '<!--/SECTION:VERIFICATION-->',
+    ].join('\n');
+    assert.strictEqual(hasPhasesWithoutOverview(content), false);
+  });
+
+  it('real end-to-end: injectAnchors on a ticket with "### Phase P1" but no Phases Overview header flags true', () => {
+    const content = [
+      '# Task: TSK-14 — AnchorCheck',
+      '## 1. Meta',
+      '- **Task-ID:** TSK-14',
+      '## 2. Acceptance Criteria (BDD)',
+      '**Scenario:** x [`unit`]',
+      '## 3. Phases',
+      '### Phase P1 — implementation',
+      '- **Objective:** do it',
+    ].join('\n');
+    const { text } = injectAnchors(content);
+    assert.strictEqual(hasPhasesWithoutOverview(text), true);
   });
 });
 

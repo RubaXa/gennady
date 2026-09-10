@@ -8,6 +8,7 @@ import { join, resolve, relative, dirname } from 'node:path';
 import { logger } from '#logger';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
 import {
+  hasPhasesWithoutOverview,
   injectAnchors,
   scaffoldExecutionLog,
   scaffoldFirstRound,
@@ -303,6 +304,15 @@ export async function run(rawArgs: string[]): Promise<MigrateOutcome> {
       ? scaffoldFirstRound(upgradedText, phaseIds, migrationDate)
       : { text: upgradedText, scaffolded: false };
     // #endregion END_TABLE_UPGRADE
+
+    // B2-10: phase sections with no Phases Overview anchor lose their derivable phase IDs — an
+    // explicit warning, never a silent skip (checked on final `text`, fresh or already-anchored).
+    if (hasPhasesWithoutOverview(text)) {
+      report.push(
+        `  WARN  ${rel} — phase sections found but no Phases Overview section/anchor; phase IDs cannot be derived (migrate manually, then re-run)`
+      );
+    }
+
     if (injected.length === 0 && !scaffolded && tableChanges.length === 0) {
       report.push(`  skip  ${rel} — already anchored / no canonical sections`);
       continue;

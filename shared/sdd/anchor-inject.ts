@@ -7,19 +7,25 @@ import { parsePhasesOverview } from './ticket.ts';
 
 /**
  * @purpose Map a markdown header (level + text) to its canonical v2 section name, or null when it is not a section.
- * @invariant `## 3. Phases` (the container header) maps to null — only its `### P<N>` children are anchored.
+ * @invariant `## 3. Phases` (the container header) maps to null — only its `### P<N>`/`### Phase P<N>`
+ *   children are anchored (B2-10: the real corpus uses both spellings). `Phases Overview` is also
+ *   recognized at `###` (defensive — v1 authoring is inconsistent about its header level).
  * @param level Header level (2 for `##`, 3 for `###`).
  * @param text Header text without the leading `#`s.
  * @returns The canonical SECTION name, or null when the header is not a canonical section.
  */
 function canonicalName(level: number, text: string): string | null {
   const t = text.trim();
+  const lower = t.toLowerCase();
 
-  const phase = /^P(\d+)(\b|_FIX\b)/i.exec(t);
-  if (level === 3 && phase) return `PHASE_P${phase[1]}${/_FIX/i.test(t) ? '_FIX' : ''}`;
+  if (level === 3) {
+    const phase = /^(?:Phase\s+)?P(\d+)(\b|_FIX\b)/i.exec(t);
+    if (phase) return `PHASE_P${phase[1]}${/_FIX/i.test(t) ? '_FIX' : ''}`;
+    if (/phases overview/.test(lower)) return 'PHASES_OVERVIEW';
+    return null;
+  }
 
   if (level !== 2) return null;
-  const lower = t.toLowerCase();
   if (/\bmeta\b/.test(lower)) return 'META';
   if (/phases overview/.test(lower)) return 'PHASES_OVERVIEW';
   if (/acceptance criteria|\bbdd\b/.test(lower)) return 'BDD';
@@ -113,6 +119,20 @@ export function injectAnchors(content: string): { text: string; injected: string
   // #endregion END_EMIT
 
   return { text: out.join('\n'), injected };
+}
+
+/**
+ * @purpose Detect phase sections with no Phases Overview anchor — phase IDs then can't be derived,
+ *   and this must be called out explicitly, never silently skipped (B2-10).
+ * @invariant Pure; checks canonical anchors, so also flags an already-migrated ticket missing one
+ *   (call after `injectAnchors` to see just-injected anchors too).
+ * @param content Ticket markdown, already anchored.
+ * @returns true when ≥1 `PHASE_P<N>` anchor exists but no `PHASES_OVERVIEW` anchor does.
+ */
+export function hasPhasesWithoutOverview(content: string): boolean {
+  const hasPhaseAnchor = /<!--SECTION:PHASE_P\d+(?:_FIX)?-->/.test(content);
+  const hasOverviewAnchor = content.includes('<!--SECTION:PHASES_OVERVIEW-->');
+  return hasPhaseAnchor && !hasOverviewAnchor;
 }
 
 /**
