@@ -1288,6 +1288,116 @@ describe('runPhaseVerification', () => {
       }
     });
 
+    it('a SKIPPED_BY_SCOPE extraGate is written into the receipt and survives re-validation (V-BATCH-13 Н-2)', async () => {
+      const root = mkdtempSync(join(tmpdir(), 'sdd-phase-run-anystack-scoped-'));
+      mkdirSync(join(root, 'specs/app'), { recursive: true });
+      writeFileSync(join(root, 'specs/app/app.spec.md'), '# App');
+      writeFileSync(join(root, 'README.md'), '# anystack project');
+      const taskPath = 'specs/app/app.task.TSK-ANY3.md';
+      writeFileSync(
+        join(root, taskPath),
+        [
+          '<!--SECTION:META-->',
+          '- **Task-ID:** TSK-ANY3',
+          '<!--/SECTION:META-->',
+          '<!--SECTION:PHASES_OVERVIEW-->',
+          '| ID | Kind | Deps | Status |',
+          '|---|---|---|---|',
+          '| P1 | impl | — | [ ] |',
+          '<!--/SECTION:PHASES_OVERVIEW-->',
+          '<!--SECTION:PHASE_P1-->',
+          '- **Rules:**',
+          '  - none',
+          '- **Target Files:**',
+          '  - README.md',
+          '- **Deleted Files:**',
+          '  - none',
+          '<!--/SECTION:PHASE_P1-->',
+          '<!--SECTION:VERIFICATION-->',
+          '| Command | Required by | Role |',
+          '|---|---|---|',
+          '| — | — | extra |',
+          '<!--/SECTION:VERIFICATION-->',
+          '<!--SECTION:EXECUTION_LOG-->',
+          '## Execution Log',
+          '<!--/SECTION:EXECUTION_LOG-->',
+        ].join('\n')
+      );
+      const context: PhaseVerifyContext = {
+        profile: 'code',
+        profileBasis: 'phase-kind',
+        targets: ['README.md'],
+        deletedFiles: [],
+        specPath: 'specs/app/app.spec.md',
+        taskPath,
+        phaseId: 'P1',
+        producesCoverage: false,
+        verification: [],
+        stack: 'anystack',
+        gatePlan: {
+          ticket: 'TSK-ANY3',
+          phase: 'P1',
+          profile: 'code',
+          producesCoverage: false,
+          gates: [
+            {
+              name: 'build',
+              state: 'CONFIGURED',
+              required: false,
+              command: 'go build ./...',
+              prerequisites: [],
+              provider: null,
+              next: 'run go build ./...',
+            },
+            // Out-of-scope extraGate (its `when` glob does not match this phase's Target Files) —
+            // never runs, but must still surface in the receipt so a re-reader sees it was
+            // considered and deliberately skipped, not silently absent.
+            {
+              name: 'swiftlint',
+              state: 'SKIPPED_BY_SCOPE',
+              required: false,
+              command: null,
+              prerequisites: [],
+              provider: null,
+              next: 'skipped-by-scope: ios/**/*.swift — touch a matching file to include it',
+            },
+          ],
+        },
+      };
+      const verbatimCalls: string[] = [];
+      try {
+        const result = await runPhaseVerification(
+          root,
+          context,
+          () => ({ exitCode: 0, output: '' }),
+          (command) => {
+            verbatimCalls.push(command);
+            return { exitCode: 0, output: '' };
+          }
+        );
+        assert.strictEqual(result.ok, true, result.ok ? '' : result.message);
+        // The scoped-out gate's command never runs — only the in-scope CONFIGURED gate does.
+        assert.deepStrictEqual(verbatimCalls, ['go build ./...']);
+
+        // Re-read the persisted receipt from disk — this is the actual write+reread round trip,
+        // not just an in-memory assertion on what runPhaseVerification returned.
+        const parsed = parsePhaseReceipts(readFileSync(join(root, taskPath), 'utf-8'));
+        assert.strictEqual(parsed.ok, true);
+        if (!parsed.ok) return;
+        const receipt = parsed.receipts.find((candidate) => candidate.phase === 'P1');
+        assert.ok(receipt);
+        assert.deepStrictEqual(receipt?.gateEvidence, [
+          { name: 'build', state: 'PROVEN', command: 'go build ./...', provider: null },
+          { name: 'swiftlint', state: 'SKIPPED_BY_SCOPE', command: null, provider: null },
+        ]);
+        // Re-validation against the (re-derived) canonical plan accepts the persisted receipt as-is
+        // — a SKIPPED_BY_SCOPE entry is not treated as a completeness gap.
+        assert.strictEqual(phaseReceiptCommandIssue(receipt, context.gatePlan), null);
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+      }
+    });
+
     it('halts on the first failing anystack gate — no receipt is written', async () => {
       const root = mkdtempSync(join(tmpdir(), 'sdd-phase-run-anystack-fail-'));
       mkdirSync(join(root, 'specs/app'), { recursive: true });
