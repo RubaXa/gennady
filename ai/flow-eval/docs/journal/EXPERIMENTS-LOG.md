@@ -707,3 +707,30 @@ router/skill-цепочки. Подтверждает: де-ceremony-плейб�
 - **Гипотеза/зачем:** _(заполнить)_
 - **Итог:** _(заполнить)_
 - **Сырые данные:** `ai/flow-eval/results/2026-09-10-infra-log-summary-3`
+
+## 2026-09-10 — `slugify-toolchain` (fail/fail)
+
+- **Модель:** llm-proxy/deepseek-v4-flash / судья llm-proxy/deepseek-v4-flash — бюджет: concurrency=1 max-observations=20
+- **Числа:** действий=21, время=~5 мин, токены=97531
+- **Гипотеза/зачем:** E-09 — первый живой прогон, где нужен MECHANICAL `R-COMPLETE` pass (артефакт + `[x] DONE` +
+  закрытый раунд + group-квитанции аудита/ревью), а не вердикт судьи (D-45: судья — диагностика, не гейт).
+- **Итог:** `quality R1: pass` (`sdd-check --all` чист) и `quality R-COMPLETE: pass` (артефакт собран, тикет DONE,
+  раунд закрыт, обе квитанции на месте) — `gate: pass`, `batch outcome: exit 0`. Вердикт судьи `fail` —
+  диагностика: судья указывает на self-attested аудит/ревью в том же воркер-сеансе (не отдельным
+  под-агентом) и на несовпадение состава DIFF с заявленными файлами; это наблюдение за качеством процесса,
+  но по D-45/L-14 оно не входит в агрегированный exit-код и не блокирует приёмку E-09.
+- **Сырые данные:** `ai/flow-eval/results/2026-09-10-slugify-toolchain`
+
+## 2026-09-10 — `slugify-toolchain` (fail/fail)
+
+- **Модель:** llm-proxy/deepseek-v4-flash / судья llm-proxy/deepseek-v4-flash — бюджет: concurrency=1 max-observations=30
+- **Числа:** действий=19, время=~5 мин, токены=81141
+- **Гипотеза/зачем:** Повторный (второй) прогон того же сценария — реплика для «2 pass» из приёмки E-09
+  (`50-TRACK-EVAL.md` §4.1: `R-COMPLETE pass; R1 чист; 2 pass`), на том же SHA `5fcf286a`, тем же `opencode
+serve` (порт 4097, `llm-proxy/deepseek-v4-flash`).
+- **Итог:** Тот же механический результат, что и в первом прогоне — `quality R1: pass`, `quality R-COMPLETE:
+pass`, `gate: pass`, `batch outcome: exit 0`. Вердикт судьи снова `fail` (тот же self-audit паттерн,
+  диагностика, не гейт). Два прогона подряд с `R-COMPLETE pass` + `R1` чист закрывают требование «2 pass» —
+  это первый живой прогон в журнале, где механический бар `R-COMPLETE` вообще проходит (до этого момента
+  ledger `fc2-baseline` не знал ни одного такого прогона).
+- **Сырые данные:** `ai/flow-eval/results/2026-09-10-slugify-toolchain-2`
