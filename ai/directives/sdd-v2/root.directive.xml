@@ -169,6 +169,7 @@
     | 🛑 ID | Trigger |
     |---|---|
     | `H_NO_INTENT` | Operator invoked the root flow with empty intake against an existing Portal |
+    | `H_ASK_WITHOUT_CARD` | The Vision interview question precedes the router's `sdd-state` card, or restates it instead of the router having shown it verbatim — the same gate the router itself enforces at its own entry |
     | `H_CYCLE_IN_GRAPH` | Scope Graph contains a cycle (detected by `sdd-check`) |
     | `H_SCOPE_VS_MODULE_AMBIGUITY` | Operator labels as «scope» something that resembles a module |
     | `H_OPERATOR_REJECT` | Operator rejected Vision, Scope Graph, or the final Portal |

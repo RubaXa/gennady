@@ -337,3 +337,24 @@ describe('audit severity verdict restored (T-B6-11, D4.4-D4.7)', () => {
     );
   });
 });
+
+// GAP-3 (40-TRACK-DIRECTIVES-SKILLS.md / 05-SUMMARY.md:308, 06-ADEQUACY-GAP.md §5.3 п.29):
+// `H_ASK_WITHOUT_CARD` used to be declared NOWHERE — `audit-halt-activation.mjs`'s own
+// ALLOWLIST_CROSS_DIRECTIVE_REFS claimed it was "declared and fires only in router.directive.hbs",
+// but router's own <HaltConditions> table never actually had that row. Fixed by declaring it for
+// real in both router.directive.hbs (its own entry Ask) and root.directive.hbs (its own Vision
+// interview ask) — the identical rule, two independent entry points. This lock guards against the
+// allowlist regressing back to a pointer-to-nothing.
+describe('H_ASK_WITHOUT_CARD is a real declared halt, not an allowlisted pointer (GAP-3)', () => {
+  it('router.directive.xml and root.directive.xml each declare their own H_ASK_WITHOUT_CARD row', () => {
+    const router = read('ai', 'directives', 'sdd-v2', 'router.directive.xml');
+    const root = read('ai', 'directives', 'sdd-v2', 'root.directive.xml');
+    assert.match(router, /\|\s*`H_ASK_WITHOUT_CARD`\s*\|/);
+    assert.match(root, /\|\s*`H_ASK_WITHOUT_CARD`\s*\|/);
+  });
+
+  it('audit-halt-activation.mjs no longer allowlists H_ASK_WITHOUT_CARD as a cross-directive pointer', () => {
+    const script = read('ai', 'kit', 'audit-halt-activation.mjs');
+    assert.doesNotMatch(script, /'(root|scope)\.directive::H_ASK_WITHOUT_CARD'/);
+  });
+});

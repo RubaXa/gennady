@@ -21,14 +21,18 @@
  *
  * ONE verified exception: a directive may cite ANOTHER directive's already-declared halt as a
  * named cross-reference to explain an analogous local rule, without re-declaring it locally —
- * e.g. `scope.directive.hbs` / `root.directive.hbs` write "the same class as the router's
- * `H_ASK_WITHOUT_CARD`" / "violates the same gate the router enforces (`H_ASK_WITHOUT_CARD`)".
- * `H_ASK_WITHOUT_CARD` is declared and fires only in `router.directive.hbs`; the citing files are
- * not claiming to raise it themselves. Verified by reading each site — this is a deliberate,
- * explicit pointer-to-primary-source (same shape as the contract script's
- * `QUESTION_RULE_SLIM->QUESTION_FORMAT`), not a forgotten row. Listed explicitly below
- * (`ALLOWLIST_CROSS_DIRECTIVE_REFS`) — any OTHER unresolved mention is a real violation, exactly
- * like the scaffold case.
+ * e.g. `critic.directive.hbs` / `interview-protocol.directive.hbs` / `root.directive.hbs` inherit
+ * "skipping the explanation … is itself the violation this contract forbids (`H_UNFORMATTED_ASK`)"
+ * verbatim from the shared `question-format` contract partial; `H_UNFORMATTED_ASK` is declared and
+ * fires only in `router.directive.hbs`, and the inheriting files are not claiming to raise it
+ * themselves. Verified by reading each site — this is a deliberate, explicit
+ * pointer-to-primary-source (same shape as the contract script's `QUESTION_RULE_SLIM->
+ * QUESTION_FORMAT`), not a forgotten row. Listed explicitly below (`ALLOWLIST_CROSS_DIRECTIVE_REFS`)
+ * — any OTHER unresolved mention is a real violation, exactly like the scaffold case. (GAP-3, Пачка
+ * 18: `H_ASK_WITHOUT_CARD` used to be exactly this shape too — root.directive.hbs citing a
+ * declaration that, on inspection, did not actually exist anywhere. Fixed by declaring the halt for
+ * real in both directives that can raise it — see the allowlist's own note below — rather than by
+ * leaving the false pointer in this allowlist.)
  *
  * === (b) "declared → used" ====================================================================
  *
@@ -117,12 +121,16 @@ const HALT_ROW_RE = /\|\s*`?(H_[A-Z0-9_]+)`?\s*\|([^\n]*)\|/g;
  * sentence, not guessed.
  */
 const ALLOWLIST_CROSS_DIRECTIVE_REFS = new Set([
-  // root.directive.hbs: "violates the same gate the router enforces (`H_ASK_WITHOUT_CARD`)" — the
-  // halt is declared and fires only in router.directive.hbs's own <HaltConditions>.
-  'root.directive::H_ASK_WITHOUT_CARD',
-  // scope.directive.hbs: three sites, all "the same class as the router's `H_ASK_WITHOUT_CARD`" /
-  // a bare citation of the same pointer — same reasoning.
-  'scope.directive::H_ASK_WITHOUT_CARD',
+  // GAP-3 (Пачка 18): `H_ASK_WITHOUT_CARD` used to be declared NOWHERE — router.directive.hbs's own
+  // <HaltConditions> table never actually had the row this comment (and this allowlist) claimed it
+  // did; root.directive.hbs's "violates the same gate the router enforces" was a pointer to a
+  // declaration that did not exist (05-SUMMARY.md:308 / 06-ADEQUACY-GAP.md §5.3 п.29 — "владельца
+  // задачи нет"). Fixed by declaring the halt for real in BOTH owners that can actually raise it:
+  // router.directive.hbs's own entry Ask (STEP_0_STATE) and root.directive.hbs's own Vision
+  // interview (STEP_1_VISION) — the identical rule, enforced at two independent entry points, each
+  // with its own local row. Neither citer needs a cross-directive-pointer entry here anymore; both
+  // rows removed (verified: `npm run audit:halts` stays green with the two rows absent — the
+  // opposite of what an allowlist-masked violation would do).
   // The next three all inherit the SAME pointer through a shared partial rather than hand-written
   // prose: `ai/kit/contract/process/question-format.xml` (QUESTION_FORMAT) itself names
   // `H_UNFORMATTED_ASK` ("skipping the explanation … is itself the violation this contract forbids
