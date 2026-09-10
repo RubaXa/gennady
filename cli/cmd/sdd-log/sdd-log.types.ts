@@ -270,6 +270,13 @@ export function isCompleteHandoffPayload(payload: string): boolean {
   return COMPLETE_HANDOFF_PAYLOAD_RE.test(payload) && !payload.includes('[...]');
 }
 
+// HANDOFF_FORMAT provenance grammar (ISS-11): `decisions`/`open` entries may carry a trailing
+// `(measured|reported|assumed)` tag — and `open` entries an additional `; extent` qualifier — per
+// `ai/kit/contract/process/handoff-format.xml`. `COMPLETE_HANDOFF_PAYLOAD_RE` above already accepts
+// this grammar unchanged, as ordinary free text inside its field brackets; a dedicated parser/warn
+// step for untagged (⇒ `assumed`) entries belongs with the actual consumer (`sdd-log.cmd.ts`
+// `complete`, and the audit `STEP_2_SEMANTIC` rule), not here.
+
 /**
  * @purpose Prepare the all-or-nothing phase completion transition in memory.
  * @invariant Only the selected phase row and its two skeleton lines in the latest Round change.
