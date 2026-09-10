@@ -1,5 +1,8 @@
 <!-- source: sdd-opt-v1 AX_POLISH_MODE (risk-first critique) -->
-<Axiom id="AX_POLISH_MODE" status="draft">
+<!-- V-BATCH-18 F-2: not status="draft" — PENDING_IN_OPEN_PR in ai/kit/lint-axioms.ts (PR #45
+     lead/review-critic-bounds / PR #49 lead/promises-not-wider) already connects this partial.
+     Remove this comment and the PENDING_IN_OPEN_PR entry once either PR merges. -->
+<Axiom id="AX_POLISH_MODE">
   Default dispatch is `polish: off` — report only CRITICAL and MAJOR (production-threatening logic /
   security / contract / alignment defects). MINOR / INFO never drive the loop or the verdict; they ride
   along in a separate non-blocking list ONLY when the operator asks for nits ("шлифуй" / "polish"). A

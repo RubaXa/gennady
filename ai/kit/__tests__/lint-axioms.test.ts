@@ -13,6 +13,7 @@ import {
   collectStaticDirectiveFiles,
   lintUncollectedAxiomFiles,
   formatUncollectedAxiomsReport,
+  PENDING_IN_OPEN_PR,
 } from '../lint-axioms.ts';
 
 /** Minimal directive builder: BeliefState with given axioms + an arbitrary body after it. */
@@ -324,11 +325,46 @@ describe('lintUncollectedAxiomFiles — every axiom is referenced or marked draf
 
   it('an unconnected axiom file with no draft marker is a violation', () => {
     const f = { file: 'audit/ax-foo.xml', text: '<Axiom id="AX_FOO">Body.</Axiom>\n' };
-    assert.deepEqual(lintUncollectedAxiomFiles([f], new Set()), [{ file: 'audit/ax-foo.xml', id: 'AX_FOO' }]);
+    assert.deepEqual(lintUncollectedAxiomFiles([f], new Set()), [
+      { file: 'audit/ax-foo.xml', id: 'AX_FOO', reason: 'uncollected' },
+    ]);
   });
 
   it('a file with no <Axiom id> tag at all is not this check\'s concern', () => {
     const f = { file: 'formats/f.xml', text: '<Format>A table.</Format>\n' };
+    assert.deepEqual(lintUncollectedAxiomFiles([f], new Set()), []);
+  });
+
+  // V-BATCH-18 verifier F-2: the gate used to check "connected OR draft" and silently accept the
+  // fourth state "connected AND draft" (reproduced in the verdict via ax-audit-hook.xml). A file's
+  // draft label must be a lie the moment some directive actually collects it.
+  it('a CONNECTED axiom file still marked status="draft" is a violation (F-2: draft label is now stale)', () => {
+    const f = { file: 'audit/ax-foo.xml', text: '<Axiom id="AX_FOO" status="draft">Body.</Axiom>\n' };
+    assert.deepEqual(lintUncollectedAxiomFiles([f], new Set(['audit/ax-foo'])), [
+      { file: 'audit/ax-foo.xml', id: 'AX_FOO', reason: 'draft-but-connected' },
+    ]);
+  });
+
+  // F-2's second half: PENDING_IN_OPEN_PR is a named, PR-scoped stand-in for draft — it must obey
+  // the identical two rules as draft: accepted while NOT connected, a violation once it IS.
+  it('an unconnected axiom file listed in a pendingInOpenPr map is not a violation', () => {
+    const f = { file: 'critic/ax-bar.xml', text: '<Axiom id="AX_BAR">Body.</Axiom>\n' };
+    const pending = new Map([['critic/ax-bar', 'PR #99 (some-open-branch)']]);
+    assert.deepEqual(lintUncollectedAxiomFiles([f], new Set(), pending), []);
+  });
+
+  it('a CONNECTED axiom file still listed in pendingInOpenPr is a violation (its PR merged; entry is stale)', () => {
+    const f = { file: 'critic/ax-bar.xml', text: '<Axiom id="AX_BAR">Body.</Axiom>\n' };
+    const pending = new Map([['critic/ax-bar', 'PR #99 (some-open-branch)']]);
+    assert.deepEqual(lintUncollectedAxiomFiles([f], new Set(['critic/ax-bar']), pending), [
+      { file: 'critic/ax-bar.xml', id: 'AX_BAR', reason: 'pending-but-connected' },
+    ]);
+  });
+
+  it('the module-level PENDING_IN_OPEN_PR is the default third argument', () => {
+    const [firstKey] = PENDING_IN_OPEN_PR.keys();
+    const f = { file: `${firstKey}.xml`, text: '<Axiom id="AX_WHATEVER">Body.</Axiom>\n' };
+    // Not connected, not draft, but listed in the real default allowlist → accepted without passing it explicitly.
     assert.deepEqual(lintUncollectedAxiomFiles([f], new Set()), []);
   });
 });
@@ -338,14 +374,16 @@ describe('formatUncollectedAxiomsReport', () => {
     assert.equal(formatUncollectedAxiomsReport([]), '');
   });
 
-  it('reports the total count and each file:id', () => {
+  it('reports the total count and each file:id with its reason', () => {
     const report = formatUncollectedAxiomsReport([
-      { file: 'audit/ax-foo.xml', id: 'AX_FOO' },
-      { file: 'process/ax-bar.xml', id: 'AX_BAR' },
+      { file: 'audit/ax-foo.xml', id: 'AX_FOO', reason: 'uncollected' },
+      { file: 'process/ax-bar.xml', id: 'AX_BAR', reason: 'draft-but-connected' },
+      { file: 'critic/ax-baz.xml', id: 'AX_BAZ', reason: 'pending-but-connected' },
     ]);
-    assert.match(report, /^✗ 2 axiom file\(s\)/);
-    assert.match(report, /audit\/ax-foo\.xml: AX_FOO/);
-    assert.match(report, /process\/ax-bar\.xml: AX_BAR/);
+    assert.match(report, /^✗ 3 axiom file\(s\)/);
+    assert.match(report, /audit\/ax-foo\.xml: AX_FOO — neither collected/);
+    assert.match(report, /process\/ax-bar\.xml: AX_BAR — connected .* marked status="draft"/);
+    assert.match(report, /critic\/ax-baz\.xml: AX_BAZ — connected .* PENDING_IN_OPEN_PR/);
   });
 });
 

@@ -1,2 +1,6 @@
 <!-- source: ai/directives/sdd/critic.directive.xml -->
-<Axiom id="AX_DEFAULT_ACCEPT" status="draft">Uncertain → ACCEPT. Cost of rejecting real finding > cost of accepting marginal one.</Axiom>
+<!-- V-BATCH-18 F-2: not status="draft" — PENDING_IN_OPEN_PR in ai/kit/lint-axioms.ts (PR #45
+     lead/review-critic-bounds / PR #49 lead/promises-not-wider) already connects this partial;
+     also known (L-25/пачка 20) to carry pre-reform v1 text pending the canonical rewrite those
+     PRs bring. Remove this comment and the PENDING_IN_OPEN_PR entry once either PR merges. -->
+<Axiom id="AX_DEFAULT_ACCEPT">Uncertain → ACCEPT. Cost of rejecting real finding > cost of accepting marginal one.</Axiom>

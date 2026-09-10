@@ -261,13 +261,20 @@ const SDD_V2_DANGLING_REFS = (
 // directly under `ai/directives/<dir>/…`, never under `ai/directives/sdd-v2/`.
 const STATIC_TREE_DANGLING_REFS = (
   [
-    // ai/directives/agent-inbox is a DIFFERENT product's directive tree, unrelated to the SDD
-    // v1→v2 transfer this plan covers (not templated from ai/kit/templates/sdd-v2/agent-inbox,
-    // which is a separate directive set that happens to share the "agent-inbox" name). Its own
-    // mention names a rule file (`typescript-rules.xml`) that does not exist anywhere in this
-    // repo — a pre-existing defect in that unrelated tree, surfaced only because T-B6-24 widened
-    // this lint's scope to see it at all. Out of this plan's zone; unassigned.
-    ['AX_CONTRACT_BUDGET', ['agent-inbox/contract-interrogation.directive.xml'], 'unassigned — pre-existing defect in a non-SDD directive tree, surfaced by T-B6-24 scope widening'],
+    // Corrected motivation (V-BATCH-18 verifier F-4 — the original comment here was itself wrong
+    // in the same way GAP-3, in this same batch, fixed elsewhere): `agent-inbox/contract-
+    // interrogation.directive.xml:33` cites two ids from `typescript-rules.xml` in one breath —
+    // `typescript-rules.xml` DOES exist (`ai/directives/coding/typescript-rules.xml`, and `coding`
+    // is one of STATIC_DIRECTIVE_DIRS below, so it is inside this lint's scope), and it DOES define
+    // the neighboring id cited on the same line, `AX_BASE_CONTRACT_SHAPE` (`typescript-rules.xml:187`)
+    // — that one is not dangling. Only `AX_CONTRACT_BUDGET` itself is genuinely undefined anywhere
+    // in this repo (`grep -rn AX_CONTRACT_BUDGET ai` → this citation + this allowlist line, nothing
+    // else). Its owner is the shared `coding/` rule file the citer expects it to live in, not the
+    // citing `agent-inbox/` tree (a different product's directives that merely happens to share the
+    // "agent-inbox" name with the templated `sdd-v2/agent-inbox/`). Unassigned in this plan: fixing
+    // it means authoring `AX_CONTRACT_BUDGET` in `coding/typescript-rules.xml`, which belongs to
+    // that rule file's own owner, not to the SDD v1→v2 transfer.
+    ['AX_CONTRACT_BUDGET', ['agent-inbox/contract-interrogation.directive.xml'], 'unassigned — AX_CONTRACT_BUDGET is genuinely undefined; owned by coding/typescript-rules.xml, not by agent-inbox/'],
   ] as const
 ).flatMap(([id, files]) => files.map((file) => `${file}::${id}`));
 
@@ -347,19 +354,61 @@ export interface UncollectedAxiomFile {
   /** Path relative to `ai/kit/axiom/`, e.g. `audit/ax-severity.xml`. */
   file: string;
   id: string;
+  /**
+   * Which of the four states tripped the gate (V-BATCH-18 verifier F-2 — a fourth, previously
+   * silent state, "connected AND draft", is now a violation too):
+   * - `uncollected` — neither connected, marked draft, nor pending: the original T-B6-19 case.
+   * - `draft-but-connected` — some directive's `{{> }}` collects it, yet its tag still claims
+   *   `status="draft"` (a collected axiom is not a draft; the label is now a lie).
+   * - `pending-but-connected` — it is connected, yet still listed in `PENDING_IN_OPEN_PR` (the PR
+   *   that was going to connect it already merged; the entry is stale and must be deleted).
+   */
+  reason: 'uncollected' | 'draft-but-connected' | 'pending-but-connected';
 }
 
 const AXIOM_TAG_WITH_STATUS = /<Axiom\s+id="(AX_[A-Z0-9_]+)"([^>]*)>/;
 const STATUS_DRAFT_ATTR = /\bstatus="draft"/;
 
 /**
- * L-9 (hybrid option c): every axiom FILE in the library either (a) is CONNECTED — its
- * `{{> "axiom/<dir>/<name>"}}` partial appears at least once across the template corpus, so some
- * directive actually collects it — or (b) is explicitly labeled `status="draft"` on its own
- * `<Axiom id>` tag, a recorded decision that this invariant is a library snapshot not yet wired
- * into any v2 directive. A file that is NEITHER is indistinguishable from an invariant nobody
- * remembered to collect — exactly the failure mode AUTHORING.md §7 already names for the
- * referenced-but-undefined direction, one layer earlier (library file, not yet a reference at all).
+ * PENDING_IN_OPEN_PR (V-BATCH-18 verifier F-2 / Lead decision on the batch-18 return): an
+ * alternative to `status="draft"` for an axiom file that ANOTHER, already-open branch is about to
+ * connect with its own `{{> "axiom/<dir>/<name>"}}` include. `status="draft"` asserts "nobody has
+ * wired this in, on purpose" — false for a file whose connecting include already exists, just on a
+ * branch not yet merged here; T-B6-19 marked these 7 files draft anyway because at the time that
+ * was the only alternative to a hard build failure, silently mis-describing them as abandoned
+ * snapshots. Key = partial key (identical shape to `connectedPartials`, e.g.
+ * `critic/ax-default-accept` — no leading `axiom/`, no `.xml`); value = which open PR(s) carry the
+ * connecting include, for a human to verify against.
+ *
+ * This is a NAMED, SHRINKING list (same discipline as `KNOWN_DANGLING_AXIOM_REFS`, L-10): once a
+ * listed PR merges, this repo's own `connectedPartials` starts containing that key, and
+ * `lintUncollectedAxiomFiles` turns "connected AND still listed here" into a build error
+ * (`pending-but-connected`) until the entry below is deleted — the gate forces the shrink, not
+ * memory or good faith.
+ */
+export const PENDING_IN_OPEN_PR: ReadonlyMap<string, string> = new Map([
+  ['critic/ax-default-accept', 'PR #45 (lead/review-critic-bounds) / PR #49 (lead/promises-not-wider)'],
+  ['critic/ax-polish-mode', 'PR #45 (lead/review-critic-bounds) / PR #49 (lead/promises-not-wider)'],
+  ['process/ax-dispatch-via-batch', 'PR #45 (lead/review-critic-bounds) / PR #49 (lead/promises-not-wider)'],
+  ['process/ax-cap-5', 'PR #45 (lead/review-critic-bounds) / PR #49 (lead/promises-not-wider)'],
+  ['spec/ax-refine-module-preserves-contracts', 'PR #41 (lead/spec-authoring)'],
+  ['process/ax-re-dispatch', 'PR #38 (lead/phase-agent-bounds)'],
+  ['process/ax-permitted-bash-commands', 'PR #38 (lead/phase-agent-bounds)'],
+]);
+
+/**
+ * L-9 (hybrid option c): every axiom FILE in the library is in exactly one of three legitimate
+ * states — (a) CONNECTED — its `{{> "axiom/<dir>/<name>"}}` partial appears at least once across
+ * the template corpus, so some directive actually collects it, and it carries neither `draft` nor
+ * a `PENDING_IN_OPEN_PR` entry (both would misdescribe it as not-yet-wired-in); (b) explicitly
+ * labeled `status="draft"` on its own `<Axiom id>` tag while NOT connected — a recorded decision
+ * that this invariant is a library snapshot not yet wired into any v2 directive; or (c) NOT
+ * connected but listed in `PENDING_IN_OPEN_PR` — a recorded decision that it is about to be wired
+ * in by a specific, named, already-open PR. A file in none of these three shapes is indistinguishable
+ * from an invariant nobody remembered to collect — exactly the failure mode AUTHORING.md §7 already
+ * names for the referenced-but-undefined direction, one layer earlier (library file, not yet a
+ * reference at all) — and a file in MORE than one of them (connected yet still marked draft or still
+ * pending) is a stale, misleading label on a file the gate can already see is connected.
  *
  * `axiomFiles` is the caller-selected SDD-relevant subset (L-9's own criterion — the plan's
  * §4.1 headcount is `process/spec/audit/scaffold/boundary/critic/truth/interview`, 181 axioms
@@ -370,11 +419,13 @@ const STATUS_DRAFT_ATTR = /\bstatus="draft"/;
  * omission — this function never walks them itself, the caller decides what "the library" means
  * here). `connectedPartials` is the caller-collected set of every `{{> "axiom/<dir>/<name>"}}`
  * token seen anywhere in the template corpus (same partial-id shape as the include itself, e.g.
- * `audit/ax-severity-tagging`, no leading `axiom/` and no `.xml`).
+ * `audit/ax-severity-tagging`, no leading `axiom/` and no `.xml`). `pendingInOpenPr` defaults to
+ * the module-level `PENDING_IN_OPEN_PR` allowlist; callers may override it in tests.
  */
 export function lintUncollectedAxiomFiles(
   axiomFiles: RenderedDirective[],
-  connectedPartials: ReadonlySet<string>
+  connectedPartials: ReadonlySet<string>,
+  pendingInOpenPr: ReadonlyMap<string, string> = PENDING_IN_OPEN_PR
 ): UncollectedAxiomFile[] {
   const violations: UncollectedAxiomFile[] = [];
   for (const f of axiomFiles) {
@@ -383,20 +434,33 @@ export function lintUncollectedAxiomFiles(
     const id = m[1] as string;
     const attrs = m[2] as string;
     const partialKey = f.file.replace(/\.xml$/, '');
-    if (connectedPartials.has(partialKey)) continue;
-    if (STATUS_DRAFT_ATTR.test(attrs)) continue;
-    violations.push({ file: f.file, id });
+    const isConnected = connectedPartials.has(partialKey);
+    const isDraft = STATUS_DRAFT_ATTR.test(attrs);
+    const isPending = pendingInOpenPr.has(partialKey);
+    if (isConnected) {
+      if (isDraft) violations.push({ file: f.file, id, reason: 'draft-but-connected' });
+      else if (isPending) violations.push({ file: f.file, id, reason: 'pending-but-connected' });
+      continue;
+    }
+    if (isDraft || isPending) continue;
+    violations.push({ file: f.file, id, reason: 'uncollected' });
   }
   return violations;
 }
+
+const UNCOLLECTED_REASON_HINT: Record<UncollectedAxiomFile['reason'], string> = {
+  'uncollected': 'neither collected by any directive, marked status="draft", nor listed in PENDING_IN_OPEN_PR',
+  'draft-but-connected': 'connected by a {{> }} include AND marked status="draft" — a collected axiom is not a draft; remove the status attribute',
+  'pending-but-connected': 'connected by a {{> }} include AND still listed in PENDING_IN_OPEN_PR — its PR merged; delete the stale entry in lint-axioms.ts',
+};
 
 /** Format uncollected-axiom-file findings as build-output error lines (empty array → empty string). */
 export function formatUncollectedAxiomsReport(violations: UncollectedAxiomFile[]): string {
   if (violations.length === 0) return '';
   const lines = [
-    `✗ ${violations.length} axiom file(s) neither collected by any directive nor marked draft`,
-    `  (connect it with {{> "axiom/<dir>/<name>"}}, or add status="draft" to its <Axiom id> tag if it is a deliberately uncollected library snapshot — L-9, T-B6-19)`,
+    `✗ ${violations.length} axiom file(s) fail the collected-or-draft-or-pending invariant (L-9, T-B6-19; gate widened per V-BATCH-18 F-2)`,
+    `  (connect it with {{> "axiom/<dir>/<name>"}}; mark status="draft" only while genuinely uncollected; use PENDING_IN_OPEN_PR only while a named open PR is about to connect it)`,
   ];
-  for (const v of violations) lines.push(`  ${v.file}: ${v.id}`);
+  for (const v of violations) lines.push(`  ${v.file}: ${v.id} — ${UNCOLLECTED_REASON_HINT[v.reason]}`);
   return lines.join('\n');
 }
