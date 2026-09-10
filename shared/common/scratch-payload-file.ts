@@ -19,7 +19,10 @@ export type ScratchPayload = {
   content: string;
   /** @purpose Canonical repository-relative scratch path. */
   relativePath: string;
-  /** @purpose Unlink the exact inode read, never a later replacement at the same path. | @returns Null on success, else an actionable path/error. */
+  /**
+   * @purpose Unlink the exact inode read, never a later replacement at the same path.
+   * @returns Null on success, else an actionable path/error.
+   */
   consume: () => string | null;
 };
 

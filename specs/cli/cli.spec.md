@@ -2466,7 +2466,9 @@ Spec hierarchy is materialized at `specs/cli/`. Module specs are at `specs/cli/<
 - [sdd-orient](./sdd-orient/sdd-orient.spec.md) — Команда `gennady sdd-orient`: навигация по ДИЗАЙНУ (спекам) — окрестность спеки глубиной 1 (портал + соседние модули/сущности/контракты/требования), в отличие от `orient` (навигатор по коду)
 - [sdd-step](./sdd-step/sdd-step.spec.md) — DEFERRED (2026-08-22, DEFERRED_DECISION): выдача одного пакета шага lazy-директивы (скелет + пакеты, см. scope `ai-skills` → `directive-assembly`) с версийной сверкой; доставка реализована путём+Read, инструмент не строится, пока живые прогоны не покажут потерю агентов на сырых ошибках чтения
 - [sync](./sync/sync.spec.md) — Команда `gennady sync`: синхронизация `ai/directives/` из npm-пакета в текущий проект
-- [sync-skills](./sync-skills/sync-skills.spec.md) — Команда `gennady sync-skills`: синхронизация 13 SDD-скилов из npm-пакета в `.claude/skills/` проекта с orphan-удалением
+- [sync-skills](./sync-skills/sync-skills.spec.md) — Команда `gennady sync-skills`: синхронизация `ai/directives/` (целиком), затем 13 SDD-скилов из npm-пакета в `.claude/skills/` проекта с orphan-удалением — не путать с `sync` (только directives, без скилов) и с `sdd-sync` (ниже; трекеры, не пакет)
+- [sdd-sync](./sdd-sync/sdd-sync.spec.md) — Команда `gennady sdd-sync`: распространяет Status одного тикета в трекеры `*.3-tasks.md` (rollup) — не пакетная синхронизация, файлов из npm-пакета не трогает
+- [sdd-migrate](./sdd-migrate/sdd-migrate.spec.md) — Команда `gennady sdd-migrate`: детерминированные шаги миграции SDD v1→v2 артефактов этого репозитория (`anchors`/`plan`/`ids`/`move`) — не пакетная синхронизация и не откат/back-sync
 - [agents-rules](./agents-rules/agents-rules.spec.md) — Команда `gennady agents-rules`: выводит инструкцию по orient для AI-агентов
 - [update-check](./update-check/update-check.spec.md) — Shared-модуль: неблокирующий детект обновлений через npm-реестр на старте CLI
 - [e2e](./e2e/e2e.spec.md) — E2E-тесты CLI-команд: `npm pack` → установка в fixture-проект → spawn реальных команд (lint, sync, orient, sync-skills)

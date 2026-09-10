@@ -137,10 +137,81 @@ Judge — изолированная сессия, видит **только** �
    Механика — источник истины; расхождение judge с механикой = дефект харнесса/судьи, не флоу.
 6. **Залочь детерминированное** юнит-тестом там, где фиксишь инструмент/фикстуру (пример:
    `fixture-coverage.test.ts`).
+7. **(Опционально) Траектория:** если надо проверять не только итог, а ПУТЬ агента (порядок чекпоинтов,
+   бюджеты тулов, запрещённые действия) — добавь `checkpoints` в сценарий и напиши `*.trajectory.test.ts`.
+   Полностью — в §6 ниже, с примерами.
 
 ---
 
-## 6. Частые грабли (проверено на практике)
+## 6. Траектория — детерминированный тест пути агента (опционально)
+
+Сессия агента эфемерна. Чтобы проверять КАК агент шёл (а не только итог), харнесс делает выжимку сессии
+в durable-артефакт `trajectory.json`, а офлайн-тест `*.trajectory.test.ts` ассертит по нему свойства пути —
+детерминированно, сколько угодно раз, без повторного (стохастичного, медленного) прогона агента.
+
+**1. Включить — добавь `checkpoints` в сценарий.** Каждый checkpoint = `{ id, cmd }`, где `cmd` —
+фиксированная CLI-команда, а её exit-код и есть вердикт (чистая функция от файлов песочницы, без LLM):
+
+```json
+"checkpoints": [
+  { "id": "flow-v2", "cmd": "npx --no-install gennady sdd-state . | grep -q '^FLOW_VERSION=v2'" },
+  { "id": "specs-clean", "cmd": "npx --no-install gennady sdd-check --all ." }
+]
+```
+
+После прогона cli пишет `.sdd-eval-trajectory.<scenario-id>.json` в песочницу (сохраняется при `--keep`).
+
+**2. Что внутри `trajectory.json`** — нормализованный, упорядоченный по времени список событий:
+tool-вызовы (`{type:"tool", tool, arg, i, t}`) вперемешку с checkpoint-событиями
+(`{type:"checkpoint", id, cmd, exit, green}`). Tool-события берутся из того же tail, что читает observer;
+checkpoint-события — из прогона `cmd` в песочнице. Модель и эмиссия — `ai/flow-eval/trajectory.ts`.
+
+**3. Написать тест `*.trajectory.test.ts`.** Грузишь трассу через `loadTrajectory` из
+`__tests__/trajectory-assert.ts` (там же матчеры) и ассертишь путь:
+
+```ts
+import { loadTrajectory } from './trajectory-assert.ts';
+const t = loadTrajectory(readFileSync(fixture, 'utf8'));
+t.checkpoints().green('flow-v2'); // конкретный чекпоинт зелёный (end-state)
+t.atMost(25, (e) => e.type === 'tool'); // бюджет тулов на весь прогон
+t.never((e) => /golden\//.test(e.arg ?? '')); // запрещённое действие
+```
+
+Матчеры (все бросают `TrajectoryError`, чейнятся):
+
+- `.checkpoints()` → `.green(id)` · `.order([ids])` · `.allGreen()`
+- `.between(fromId, toId)` → `.maxTools(n)` · `.onlyTools([...])` · `.denyTools([...])` — окно тулов
+  между двумя чекпоинтами
+- `.atMost(n, pred, label)` · `.never(pred, label)` — по всему прогону
+- сырые `.events` — для кастомных ассертов
+
+Расширять просто: новый матчер = новый маленький метод в `trajectory-assert.ts`. Большой DSL не строй —
+только нужное под текущие задачи.
+
+**4. Критерий победы — end-state, не промежуток.** Ассерть чекпоинт КОНЕЧНОГО состояния (напр. `flow-v2` =
+`FLOW_VERSION=v2`), а не внутренний слой: `plan-verified` зеленеет и на непроведённой миграции (см.
+`journal/EXPERIMENTS-LOG.md` §H8-diag). Промежуточные чекпоинты держи как диагностику, не как гейт победы.
+
+**5. Оба исхода.** Матчеры проверь both-ways в `trajectory.test.ts` (зелёная трасса проходит, красная —
+падает), как любую другую механику.
+
+**Примеры (читать первыми):**
+
+- [`__tests__/migration-ladder.trajectory.test.ts`](../__tests__/migration-ladder.trajectory.test.ts) —
+  лестница миграции: `flow-v2` green + бюджеты тулов + never-golden + лимит vocab-грепов, поверх записанных
+  baseline-трасс (`__tests__/fixtures/MIG-*.baseline.trajectory.json`).
+- [`__tests__/mig-cloud-ios.trajectory.test.ts`](../__tests__/mig-cloud-ios.trajectory.test.ts) —
+  `assertMigrationTrajectory` (набор правил, который живой прогон переиспользует) + фикстуры.
+- [`__tests__/trajectory.test.ts`](../__tests__/trajectory.test.ts) — both-outcomes на сами матчеры +
+  emission-glue (`toolEventsFrom`/`runCheckpoints`/`buildTrajectory`).
+- [`scenarios-migration.json`](../scenarios-migration.json) — как объявить `checkpoints` в сценарии;
+  [`scenarios-node-closure.json`](../scenarios-node-closure.json) — checkpoint `flow-done` для execute.
+- Код: [`trajectory.ts`](../trajectory.ts) (модель+эмиссия, крутится в cli) ·
+  [`__tests__/trajectory-assert.ts`](../__tests__/trajectory-assert.ts) (матчеры, test-территория).
+
+---
+
+## 7. Частые грабли (проверено на практике)
 
 - **Пересборка dist обязательна** после правок кода перед прогоном; переиспользуемая песочница держит
   свой dist с момента провижна (идемпотентный skip не перезальёт его) — для свежего кода бери свежий

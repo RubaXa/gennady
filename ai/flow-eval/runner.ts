@@ -21,11 +21,14 @@ export type SddEvalResult = {
   judge?: SddEvalJudgeResult;
 };
 
-/** @purpose Default configuration requested for OpenCode-backed SDD evals. */
+/** @purpose Default configuration requested for OpenCode-backed SDD evals. Both models default to the
+ *   `llm-proxy` family (D-28/L-14: "only the llm-proxy family") so an operator who omits `--model`/
+ *   `--judge-model` still gets the mandated family instead of silently falling back to a different
+ *   provider; `--model`/`--judge-model` can still override the specific model within (or outside) it. */
 export const DEFAULT_SDD_EVAL_CONFIG: SddEvalConfig = {
   baseUrl: 'http://localhost:4096',
-  runnerModel: { providerID: 'openai', modelID: 'gpt-5.6-luna' },
-  judgeModel: { providerID: 'openai', modelID: 'gpt-5.6-sol' },
+  runnerModel: { providerID: 'llm-proxy', modelID: 'deepseek-v4-flash' },
+  judgeModel: { providerID: 'llm-proxy', modelID: 'deepseek-v4-flash' },
   concurrency: 3,
   observeEveryMs: 5 * 60 * 1000,
   stuckAfter: 1,
@@ -61,6 +64,34 @@ export class SddEvalRunner {
     this.#judge = new SddEvalJudge(runtime, this.#config.judgeModel);
   }
 
+  /**
+   * @purpose Enforce the hard wall-clock budget: race the worker work against a deadline; if it fires
+   * first, abort the worker session and rethrow so the scenario fails as budget-exceeded — a thrashing
+   * worker is killed, never left to burn the full observation budget. No budget configured → passthrough.
+   * @param work The in-flight worker (prompt + observation loop).
+   * @param sessionId Worker session to abort on timeout.
+   * @returns The observations if the work finished within budget.
+   */
+  async #withWallClock(
+    work: Promise<SddEvalObservation[]>,
+    sessionId: string,
+    ms: number | undefined
+  ): Promise<SddEvalObservation[]> {
+    if (!ms || ms <= 0) return work;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const deadline = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new Error(`wall-clock budget ${ms}ms exceeded`)), ms);
+    });
+    try {
+      return await Promise.race([work, deadline]);
+    } catch (cause) {
+      await this.#runtime.abort?.(sessionId).catch(() => undefined);
+      throw cause;
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+  }
+
   /** @purpose Launch one worker session, then observe only through the external evidence source. */
   async runScenario(scenario: SddEvalScenario): Promise<SddEvalResult> {
     if (!scenario.directory) throw new Error(`scenario ${scenario.id} has no isolated directory`);
@@ -73,21 +104,28 @@ export class SddEvalRunner {
     let observations: SddEvalObservation[];
     let workerError: string | undefined;
     try {
-      await this.#runtime.prompt({
-        sessionId: session.id,
-        directory: scenario.directory,
-        text: workerPrompt,
-        model: this.#config.runnerModel,
-        agent: this.#config.agent,
-      });
-      observations = await new SddEvalObserver(this.#evidence, {
-        everyMs: this.#config.observeEveryMs,
-        stuckAfter: this.#config.stuckAfter,
-        tailLimit: this.#config.tailLimit,
-        abort: (sessionId) => this.#runtime.abort?.(sessionId) ?? Promise.resolve(),
-        onObservation: (_sessionId, observation) =>
-          this.#config.onObservation?.(scenario.id, observation),
-      }).collect(session.id, this.#config.maxObservations);
+      const work = (async (): Promise<SddEvalObservation[]> => {
+        await this.#runtime.prompt({
+          sessionId: session.id,
+          directory: scenario.directory,
+          text: workerPrompt,
+          model: this.#config.runnerModel,
+          agent: this.#config.agent,
+        });
+        return new SddEvalObserver(this.#evidence, {
+          everyMs: this.#config.observeEveryMs,
+          stuckAfter: this.#config.stuckAfter,
+          tailLimit: this.#config.tailLimit,
+          abort: (sessionId) => this.#runtime.abort?.(sessionId) ?? Promise.resolve(),
+          onObservation: (_sessionId, observation) =>
+            this.#config.onObservation?.(scenario.id, observation),
+        }).collect(session.id, this.#config.maxObservations);
+      })();
+      observations = await this.#withWallClock(
+        work,
+        session.id,
+        scenario.budgetMs ?? this.#config.maxWallClockMs
+      );
       const budgetEnd = observations.at(-1);
       if (
         observations.length >= this.#config.maxObservations &&

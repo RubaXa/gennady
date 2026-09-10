@@ -1,0 +1,2 @@
+linters:
+  enable: [this-linter-does-not-exist]

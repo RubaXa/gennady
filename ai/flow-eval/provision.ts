@@ -1086,6 +1086,41 @@ export const FIXTURE_FILES: Record<SddEvalFixtureId, Record<string, string>> = {
     'README.md':
       '# report tool\n\nWorking tool with a partial spec (missing the chars behaviour) — extend it.\n',
   },
+
+  // ── Migration ladder (v1→v2). v1 marker = a `tasks/` dir; specs carry plain `##` headings with NO
+  // <!--SECTION:--> markers. Each rung adds spec depth (portal → +scope → +scope+module) to localise
+  // where the migration worker starts thrashing. Headings use names `mapHeadingToSection` recognises,
+  // so `sdd-migrate plan --write` pre-fills the Section Map — a worker that greps the vocabulary is
+  // the defect, not a missing fact. ──
+  'migration-portal': {
+    '.gitignore': REAL_GITIGNORE,
+    'specs/README.md':
+      '# Demo Project\n\n## Vision\n\nA tiny project that exercises the v1→v2 migration flow.\n\n## Scope Graph\n\n```mermaid\ngraph TD\n  demo\n```\n\n## Scopes\n\n| Scope | Type | Spec | Description |\n|---|---|---|---|\n| [`demo`](./demo/demo.spec.md) | library | ✅ | Demo scope |\n',
+    'specs/demo/demo.spec.md':
+      '# Demo scope\n\n## Vision & Primary Goal\n\nDemo provides a deterministic greeting.\n\n## Requirements & Constraints\n\n- DEMO-REQ-1: `greet(name)` returns `Hello, <name>`.\n\n## Decision Log\n\n- D-001: greeting is ASCII-only.\n',
+    'tasks/demo/demo.DEMO-1.md':
+      '# DEMO-1 — implement greet\n\n## Meta\n- Task-ID: DEMO-1\n- Status: [ ] TODO\n\n## Goal\n\nImplement `greet(name)` per DEMO-REQ-1.\n',
+  },
+  'migration-portal-scope': {
+    '.gitignore': REAL_GITIGNORE,
+    'specs/README.md':
+      '# Demo Project\n\n## Vision\n\nA project that exercises v1→v2 migration of a real scope spec.\n\n## Scope Graph\n\n```mermaid\ngraph TD\n  demo\n```\n\n## Scopes\n\n| Scope | Type | Spec | Description |\n|---|---|---|---|\n| [`demo`](./demo/demo.spec.md) | library | ✅ | Demo scope |\n',
+    'specs/demo/demo.spec.md':
+      '# Demo scope\n\n## Vision & Primary Goal\n\nDemo provides deterministic text helpers.\n\n## Golden DX\n\nOne import, one call: `import { greet } from "demo"`.\n\n## Requirements & Constraints\n\n- DEMO-REQ-1: `greet(name)` returns `Hello, <name>`.\n- DEMO-REQ-2: empty `name` throws `EmptyName`.\n\n## Architecture\n\nA single pure function module; no I/O.\n\n## Decision Log\n\n- D-001: greeting is ASCII-only.\n- D-002: errors are typed, never strings.\n\n## Critic Rounds\n\n### Round 1 — 2026-01-02\n- Verdict: CRITICAL\n- Accepted: 1 — added DEMO-REQ-2 (empty name).\n',
+    'tasks/demo/demo.DEMO-1.md':
+      '# DEMO-1 — implement greet\n\n## Meta\n- Task-ID: DEMO-1\n- Status: [ ] TODO\n\n## Goal\n\nImplement `greet(name)` per DEMO-REQ-1 and DEMO-REQ-2.\n',
+  },
+  'migration-portal-scope-module': {
+    '.gitignore': REAL_GITIGNORE,
+    'specs/README.md':
+      '# Demo Project\n\n## Vision\n\nA project that exercises v1→v2 migration down to a module spec.\n\n## Scope Graph\n\n```mermaid\ngraph TD\n  demo\n```\n\n## Scopes\n\n| Scope | Type | Spec | Description |\n|---|---|---|---|\n| [`demo`](./demo/demo.spec.md) | library | ✅ | Demo scope |\n',
+    'specs/demo/demo.spec.md':
+      '# Demo scope\n\n## Vision & Primary Goal\n\nDemo provides deterministic text helpers.\n\n## Golden DX\n\nOne import, one call.\n\n## Requirements & Constraints\n\n- DEMO-REQ-1: `greet(name)` returns `Hello, <name>`.\n\n## Architecture\n\nComposed of one module: `greet`.\n\n## Decision Log\n\n- D-001: greeting is ASCII-only.\n\n## Module Map\n\n| Module | Spec |\n|---|---|\n| greet | [`greet/greet.spec.md`](./greet/greet.spec.md) |\n',
+    'specs/demo/greet/greet.spec.md':
+      '# greet module\n\n## Module Vision\n\nPure greeting function.\n\n## Entity Inventory\n\n| Entity | Kind | Source |\n|---|---|---|\n| greet | function | src/greet.ts |\n\n## Entity Surfaces\n\n- `greet(name: string): string`\n\n## Module Contracts\n\n- Precondition: `name` non-empty.\n- Postcondition: returns `Hello, <name>`.\n',
+    'tasks/demo/demo.GREET-1.md':
+      '# GREET-1 — implement greet module\n\n## Meta\n- Task-ID: GREET-1\n- Status: [ ] TODO\n\n## Goal\n\nImplement the `greet` module per its contracts.\n',
+  },
 };
 
 /** @purpose Check custom scenario directories are unique before any worker is launched. */

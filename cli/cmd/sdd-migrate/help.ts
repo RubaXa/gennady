@@ -8,6 +8,9 @@
 export function printHelp(): void {
   console.info('gennady sdd-migrate — Migrate v1 SDD artifacts to v2 (deterministic steps)');
   console.info('');
+  console.info('Not `sync`/`sync-skills` (unrelated: those mirror the npm package into the');
+  console.info("current project) — sdd-migrate rewrites this repository's own SDD artifacts.");
+  console.info('');
   console.info('Usage:');
   console.info('  npx gennady sdd-migrate anchors <ticket>         # one v1 ticket (dry-run)');
   console.info(

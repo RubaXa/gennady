@@ -1,0 +1,14 @@
+notes: >
+  A newly ADDED generator directive whose output is missing must FAIL the drift gate, not skip —
+  hiding exactly the codegen a change introduces. Under the clean-tree precondition (D-STACK-017)
+  new files arrive as commits, so the directive lives in a committed file on the work branch; the
+  gate writes gen.out in the real tree and the guard rolls it back after the verdict.
+requires: [go]
+commit:
+  gen.go: "package main\n\n//go:generate sh -c \"printf fresh > gen.out\"\n"
+argv: ['--all']
+exitCode: 1
+gates:
+  golang:generate:
+    status: fail
+    outputIncludes: ['gen.out']

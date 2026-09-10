@@ -1,0 +1,11 @@
+notes: >
+  D-STACK-012 through the installed CLI: a generator binary that is not in PATH is a broken
+  environment, not a code finding, and the hint must name the fix. Gitignored binaries are
+  deliberately not replicated into the run replica, which is what makes this reachable.
+requires: [go]
+argv: ['--all']
+exitCode: 1
+gates:
+  golang:generate:
+    status: env-fail
+    hintIncludes: 'go install'

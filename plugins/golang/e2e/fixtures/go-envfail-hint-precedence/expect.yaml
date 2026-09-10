@@ -1,0 +1,10 @@
+notes: >
+  Panel finding 5: config rules PREPEND. The plugin's panic predicate also matches here but
+  carries no hint, so appending would silently discard the config author's remediation.
+requires: [go]
+argv: ['--all', '--only=golang:build']
+exitCode: 1
+gates:
+  golang:build:
+    status: env-fail
+    hintIncludes: 'REPO-SPECIFIC remediation wins'

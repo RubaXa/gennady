@@ -1126,3 +1126,34 @@ test('SDK evidence includes bounded child-worker progress in the parent fingerpr
   assert.ok(first.some((entry) => entry.role.startsWith('child:independent-auditor')));
   assert.notEqual(fingerprintTail(first), fingerprintTail(second));
 });
+
+test('runner physically kills a worker that blows the wall-clock budget', async () => {
+  class HangingRuntime extends FakeRuntime {
+    async prompt(input: {
+      sessionId: string;
+      directory: string;
+      text: string;
+      model: OpenCodeModel;
+    }) {
+      this.prompts.push(input);
+      await new Promise<void>(() => {}); // never resolves — a thrashing worker that ignores the observer
+    }
+  }
+  const runtime = new HangingRuntime();
+  const evidence = new FakeEvidence([{ tail: [tail('m', 'x')], status: 'running' }]);
+  const result = await new SddEvalRunner(runtime, evidence, {
+    observeEveryMs: 0,
+    stuckAfter: 10,
+    maxObservations: 5,
+    maxWallClockMs: 20,
+  }).runScenario({
+    id: 'slow',
+    phase: 'execute',
+    mode: 'canonical-execute',
+    intent: 'x',
+    directory: '/tmp/isolated-slow',
+  });
+  assert.deepEqual(runtime.aborts, ['ses_1']);
+  assert.match(result.worker.error ?? '', /wall-clock budget 20ms exceeded/);
+  assert.equal(result.worker.status, 'error');
+});

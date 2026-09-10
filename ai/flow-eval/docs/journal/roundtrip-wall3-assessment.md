@@ -1,5 +1,15 @@
 # Round-trip wall 3 — independent assessment (readiness / adaptive verify)
 
+> ⚠️ **STATUS (подтверждено послойной диагностикой, см. EXPERIMENTS-LOG.md §H-iOS): iOS round-trip НЕ
+> доказывает полный флоу.** Кодовая половина (регенерация guard) честная и работает. Closure-половина
+> (TODO→DONE + phase/audit/review receipts) заблокирована на самом глубоком слое: собственный verify-гейт
+> фазы P1 — это `sdd verify --wip --only=swiftlint`, у которого на этой ветке нет receipt-адаптера
+> (`runner sdd has no receipt input adapter`). Это НЕ чинится readiness-шиммом — гейт фазы и есть swiftlint.
+> **Честный фикс = портировать adaptive/anystack verify из `main` (option 3 ниже).** До этого closure на
+> Swift доказывается только подделкой гейта. Полный lifecycle доказан отдельно на node-фикстуре (H-node).
+> Побочно найдены реальные баги: `upgrade-verification-tables.py:role_for` метит impl-стенд `probe` вместо
+> `extra`; readiness-шим стабит гейты инлайновым `node -e`, который verify не фингерпринтит (нужен файл-ноуп).
+
 ## What actually blocks the cloud-ios round-trip
 
 Regenerating Artur's guard via `sdd-execute` stalls a real worker at three walls; the worker (flash) hit

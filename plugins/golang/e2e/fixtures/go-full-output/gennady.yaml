@@ -1,0 +1,8 @@
+stack:
+  use: [golang]
+  golang:
+    skipGates: [generate, build, vet, fmt, lint, test]
+    extraGates:
+      - id: noisy
+        argv: [sh, -c, 'seq 1 300; exit 1']
+        timeout: 1m

@@ -236,7 +236,11 @@ export function captureTicketContainment(root: string, path: string): TicketCont
   };
 }
 
-/** @purpose Fail closed if a command replaced or retargeted the receipt-owning ticket. | @param snapshot Expected ticket identity. | @returns Teaching issue, or null while identity is unchanged. */
+/**
+ * @purpose Fail closed if a command replaced or retargeted the receipt-owning ticket.
+ * @param snapshot Expected ticket identity.
+ * @returns Teaching issue, or null while identity is unchanged.
+ */
 export function ticketContainmentIssue(snapshot: TicketContainmentSnapshot): string | null {
   try {
     const lexical = resolve(snapshot.root, snapshot.path);
@@ -258,7 +262,15 @@ export function ticketContainmentIssue(snapshot: TicketContainmentSnapshot): str
   }
 }
 
-/** @purpose Advance expected ticket bytes to this transaction's exact atomic-write payload, then prove those bytes occupy the canonical path. | @param snapshot Mutable transaction-owned ticket identity. | @param content Exact UTF-8 receipt payload passed to writeFile. | @param mode Regular-file mode of the temporary file. | @param dev Device of the exclusively created temporary file. | @param ino Inode of the exclusively created temporary file. | @returns Teaching issue, or null after the expected owned write is observed. */
+/**
+ * @purpose Advance expected ticket bytes to this transaction's exact atomic-write payload, then prove those bytes occupy the canonical path.
+ * @param snapshot Mutable transaction-owned ticket identity.
+ * @param content Exact UTF-8 receipt payload passed to writeFile.
+ * @param mode Regular-file mode of the temporary file.
+ * @param dev Device of the exclusively created temporary file.
+ * @param ino Inode of the exclusively created temporary file.
+ * @returns Teaching issue, or null after the expected owned write is observed.
+ */
 export function acceptTicketOwnedWrite(
   snapshot: TicketContainmentSnapshot,
   content: string,

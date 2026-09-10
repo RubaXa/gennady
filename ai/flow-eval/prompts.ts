@@ -14,10 +14,10 @@ Do not implement product code and do not invent a shortcut workflow. Stop at App
 Read and follow the installed SDD skill and router/directive chain (starting at ai/skills/sdd/SKILL.md and ai/directives/sdd-v2/router.directive.xml).
 Use the approved canonical specification in the workspace, derive real implementation tickets with dependencies and acceptance criteria, and write the canonical task artifacts.
 Do not merely describe tickets and do not implement product code. Stop at Approval #2 and clearly report the approval boundary.`,
-  execute: `Run the installed SDD execute flow against the prepared canonical specification and tickets.
-Read and follow the installed SDD skill and router/directive chain (starting at ai/skills/sdd/SKILL.md and ai/directives/sdd-v2/router.directive.xml).
-Execute the canonical tickets in dependency order, preserve the SDD evidence/artifact contracts, and verify the resulting implementation with tests.
-Do not replace the canonical inputs with an ad-hoc coding plan.`,
+  execute: `Run the installed SDD execute flow against the prepared canonical specification and tickets to drive each ticket to DONE.
+Go straight to the execute directive: read ONLY ai/directives/sdd-v2/execute.directive.xml and the phase-execution-protocol it references, and follow their steps in order. Do NOT traverse the router/skill chain (do NOT read ai/skills/sdd/SKILL.md or ai/directives/sdd-v2/router.directive.xml or the scope/module directive chain) — the phase is already execute. Do NOT reverse-engineer the v2 contracts by grepping the codebase — run the sdd tools and act on their findings; the check/verify messages are self-explanatory.
+Execute the canonical tickets in dependency order. For each ticket the closure spine is NOT optional: implement the artifact per the ticket's Target Files, run \`sdd-verify --task <ticket> --phase <P>\` for the phase gate, close the execution-log round, and — once every group member is [x] DONE — record the group audit and code-review receipts (\`sdd-log <group> audit-receipt\` / \`review-receipt\`).
+Done = the ticket Status is [x] DONE with a closed round AND the group audit + code-review receipts recorded — NOT merely "artifact written". Preserve the SDD evidence/artifact contracts; do not replace the canonical inputs with an ad-hoc coding plan. Report the final sdd-state and ticket status.`,
   repair: `Run the installed SDD repair flow on a workspace whose specifications are structurally complete but fail the mechanical checker.
 Read and follow the installed SDD skill and router/directive chain (starting at ai/skills/sdd/SKILL.md and ai/directives/sdd-v2/router.directive.xml).
 Run \`npx --no-install gennady sdd-check --all .\`, then fix every reported error in its owning artifact using exactly one Write per file, guided by each finding's own message. Re-run the check and repeat until it is clean.
@@ -28,16 +28,22 @@ Do not install packages, do not scaffold specs/tickets, and do not edit the fixt
   brownfield: `Modify EXISTING code in this repository to satisfy the change-request in inputs/change.md. There is NO specification — the behaviour lives only in the code.
 First read the existing artifact named by the change-request to understand what it does; then make the smallest delta that adds the requested behaviour or corrects the reported defect, WITHOUT changing any UNRELATED behaviour, output format, or error contract.
 Follow the code's own conventions (shebang, strict mode, style). Do not rewrite unrelated parts, do not install packages, do not scaffold specs/tickets, and do not edit the fixture's sample inputs or its golden/ directory. Report the delta you made.`,
-  migration: `This repository holds an OLD SDD project whose task layout is not yet v2. Migrate it to v2 by running the installed migration flow — do not hand-improvise a bespoke conversion.
-Read and follow the installed SDD router/directive chain (start at ai/skills/sdd/SKILL.md and ai/directives/sdd-v2/router.directive.xml); the router preflight routes a v1 layout into ai/directives/sdd-v2/migration-v1-v2.directive.xml. Follow that directive's steps, using the sdd-migrate / sdd-state / sdd-check tools to gather facts mechanically and to verify final forms — you (the agent) resolve every judgement the tools leave open (unmapped sections, new slug Task-IDs, restructure, decision compression, flat-Russian comprehension), version-agnostically: the docs are simply old.
+  migration: `This repository holds an OLD SDD project (v1) whose task layout is not yet v2. Migrate it to v2 using the installed migration directive and tools — do not hand-improvise a bespoke conversion, and do NOT traverse the router/skill chain to get there.
+Go straight to the migration directive: read ONLY ai/directives/sdd-v2/migration-v1-v2.directive.xml and follow its steps in order. Do NOT read the router/root/scope directive chain or SKILL.md — the phase is already migration. Do NOT reverse-engineer the v2 rules by grepping the codebase (never grep for REQUIRED_SECTIONS or SDD_ tokens): run the tools and act on their findings. Do NOT explore the repo tree by hand (no "git status"/"git log", no "find", no "ls" sweeps) — the plan unit and the tools' output are your map; trust them. Go straight to the --write form of each mechanical step: do NOT run "sdd-migrate plan"/"anchors" in dry mode first and then again with --write — run --write once. \`sdd-migrate plan --all . --write\` builds one plan unit per spec — fill each unit's SECTION_MAP by mapping EVERY source heading to keep/move/drop, and DROP process-log sections that are not part of a v2 spec (Critic Rounds, per-line review marks, temporary change manifests, publication state). Fill the SECTION_MAP (and the Ticket Map) in ONE Write per plan unit: read the scaffolded unit once, decide ALL rows, then rewrite the whole file in a single Write. Do NOT edit the map row-by-row with many small point-edits — that churns tool calls and risks desyncing the map. The same applies to a scaffolded spec/ticket template: read it whole, then write it back once with every field filled, not one edit per field. Then APPLY the plan by editing the specs. Next FLIP the repo to v2 — this is STEP_5/STEP_6 and it is NOT optional: run \`sdd-migrate ids --from-plan --write\` to assign the v2 IDs, then \`sdd-migrate move --scope <scope> --write\` for EACH scope — this builds the v2 tracker (\`<scope>.3-tasks.md\`) and removes \`tasks/\`; WITHOUT move the repo stays v1. Then run \`sdd-migrate plan --verify .\` and \`sdd-check --all .\`; fix exactly what they report. The check messages are self-explanatory — act on them, don't inspect the tool internals (node_modules/gennady/**, dist/**).
 Headless contract: no human UI is attached — do NOT call an interactive question/approval tool; where the flow asks the operator to acknowledge the plan, treat it as approved and proceed. Do NOT read gennady's own internals (node_modules/gennady/**, dist/**) — the check messages are self-explanatory; act on them, don't inspect the tool.
-The objective bar is baseline-diff, NOT a globally clean check: migration must reach FLOW_VERSION=v2 AND introduce ZERO NEW sdd-check findings versus the pre-migration state. Pre-existing v1 debt (calques, unparsed coverage rows, long cells, prose dependencies that were already failing before you touched anything) is BACKLOG — leave it, do not try to fix it, and never half-fix it. Be conservative: prefer preserving the old spec structure over a restructure that would break a spec reference or add any finding; do not invent content a section lacks (mark it for later); preserve append-only decision history via supersession. A restructure that turns 0 findings into new broken references is a FAILURE, worse than leaving the section as-is.
-Drive the flow until FLOW_VERSION=v2 with no newly-introduced findings, then report the final sdd-state and the delta of sdd-check findings vs the start.`,
+The objective bar is baseline-diff, NOT a globally clean check: migration must reach FLOW_VERSION=v2 AND introduce ZERO NEW sdd-check findings versus the pre-migration state. Pre-existing v1 debt (calques, unparsed coverage rows, long cells, prose dependencies that were already failing before you touched anything) is BACKLOG — leave it, do not try to fix it, and never half-fix it. Be conservative: prefer preserving the old spec structure over a restructure that would break a spec reference or add any finding; do not invent content a section lacks (mark it for later); preserve append-only decision history via supersession. A restructure that turns 0 findings into new broken references is a FAILURE, worse than leaving the section as-is. In particular, AFTER the v2 flip \`sdd-check\` will report \`SDD_SPEC_SECTION_MISSING\` for sections that v2 requires but the v1 source never contained (e.g. GOLDEN_DX / Target Experience, PUBLIC_API_SURFACE, MODULE_MAP) — these are BACKLOG (author-later), NOT migration-introduced defects; do NOT invent content for them and do NOT keep working to make \`sdd-check\` globally clean. Once FLOW_VERSION=v2 with zero NEWLY-INTRODUCED findings vs the pre-migration baseline, the migration is COMPLETE — STOP.
+Done = \`sdd-state\` reports FLOW_VERSION=v2 — NOT \`sdd-check\` passing. A v1 repo is lenient: \`sdd-check\` goes clean while the repo is still v1, so a green check is NOT the finish line and never your stop condition. Keep executing the directive's steps (through STEP_6 move and STEP_8 verify) until \`sdd-state\` shows FLOW_VERSION=v2 with no newly-introduced findings; then report the final sdd-state and the delta of sdd-check findings vs the start.`,
 };
 
 // The `brownfield` phase covers several distinct decision branches; the mode selects the instruction.
 // Delta modes (modify-code-delta/fix-code-delta) use PHASE_PROMPTS.brownfield above; the spec-facing
 // modes below recover or evolve a written specification and each isolate their own branch.
+// These are the ONLY two modes that are legitimately absent from BROWNFIELD_MODE_PROMPTS and fall
+// back to the generic brownfield prompt below (GAP-E-1/H-16) — any OTHER mode value reaching
+// composeSddPhasePrompt under phase 'brownfield' is a scenario-authoring mistake and must throw,
+// never silently reuse this same generic prompt (which used to make a typo look like a valid run).
+const BROWNFIELD_GENERIC_MODES = new Set<SddEvalMode>(['modify-code-delta', 'fix-code-delta']);
+
 const BROWNFIELD_MODE_PROMPTS: Partial<Record<SddEvalMode, string>> = {
   'recover-spec': `Recover a module specification DIRECTLY from the code. Do NOT run discovery, interviews, or amplification, and do NOT read the router/directive chain — this is a code→spec extraction, not greenfield authoring.
 Steps: (1) read the tool's source (e.g. bin/report.sh); (2) list its observable behaviours — inputs, each output line, and error/edge handling; (3) look at the existing specs/ tree and place the spec accordingly — if a scope spec already exists, add the MODULE spec UNDER that scope (specs/<scope>/<module>/<module>.spec.md) and never overwrite the scope spec; if a module spec already exists but omits some current behaviour, EXTEND it without deleting what is there; otherwise create specs/<tool>/<tool>.spec.md. (4) the spec has a "## Behaviour" section and a "## Functional Requirements" section with one bullet per behaviour (include the error/edge), written with exactly one Write per spec file. Then stop.
@@ -49,6 +55,26 @@ Do not change the code. Report the spec file you wrote.`,
 Steps: (1) read the existing specs/<tool>/<tool>.spec.md and the tool's source; (2) update the spec (one Write) to describe the new behaviour as a functional requirement; (3) change the code to match, keeping all unrelated behaviour, output format, and error contracts unchanged. Then stop.
 Report both the spec update and the code delta you made.`,
 };
+
+/**
+ * @purpose Resolve the phase's base worker instruction, fail-fast (GAP-E-1/H-16): a `brownfield`
+ *   scenario whose `mode` is neither a specific BROWNFIELD_MODE_PROMPTS branch nor one of the two
+ *   explicitly generic modes (BROWNFIELD_GENERIC_MODES) is a scenario-authoring mistake and throws,
+ *   naming both the phase and the unsupported mode — it must never silently reuse the generic
+ *   brownfield prompt for an unrelated mode (that used to make a typo look like a valid run measuring
+ *   the WRONG branch). Every other phase ignores `mode` when selecting its base prompt (unaffected).
+ */
+export function resolveBasePrompt(phase: SddEvalPhase, mode: SddEvalMode): string {
+  if (phase !== 'brownfield') return PHASE_PROMPTS[phase];
+  const specific = BROWNFIELD_MODE_PROMPTS[mode];
+  if (specific) return specific;
+  if (BROWNFIELD_GENERIC_MODES.has(mode)) return PHASE_PROMPTS.brownfield;
+  const supported = [...Object.keys(BROWNFIELD_MODE_PROMPTS), ...BROWNFIELD_GENERIC_MODES].sort();
+  throw new Error(
+    `phase 'brownfield' does not support mode ${JSON.stringify(mode)} ` +
+      `(expected one of: ${supported.join(', ')})`
+  );
+}
 
 /** @purpose Compose the exact worker instruction for a phase/mode scenario. */
 export function composeSddPhasePrompt(
@@ -71,10 +97,7 @@ export function composeSddPhasePrompt(
 - Treat the scenario intent and acceptance criteria as the synthetic operator's answers and approval of intermediate interview checkpoints. When a minor answer is absent, choose the simplest conservative default. Do not narrate or pause at intermediate checkpoints; collect assumptions and state them once in the final approval-boundary summary, never as invented durable rationale.
 - Never waive a failed gate, accept a risk, or write an operator decision/Decision Log entry on the synthetic operator's behalf. A red required gate is a blocker and must remain visible.
 - Do not approve the target boundary on the operator's behalf. For spec-authoring leave Approval #1 pending; for scaffold leave Approval #2 pending. Present the actual artifacts and return normally at that boundary.`;
-  const basePrompt =
-    scenario.phase === 'brownfield'
-      ? (BROWNFIELD_MODE_PROMPTS[scenario.mode] ?? PHASE_PROMPTS.brownfield)
-      : PHASE_PROMPTS[scenario.phase];
+  const basePrompt = resolveBasePrompt(scenario.phase, scenario.mode);
   return appendSddSessionBoundary(
     [
       basePrompt,

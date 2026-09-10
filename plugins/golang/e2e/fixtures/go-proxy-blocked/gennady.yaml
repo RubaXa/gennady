@@ -1,0 +1,9 @@
+stack:
+  use: [golang]
+  golang:
+    skipGates: [generate, vet, fmt, lint, test]
+    overrideGates:
+      build:
+        # -mod=mod makes Go attempt the lookup; the harness runs with GOPROXY=off, so the
+        # failure is "cannot fetch", not "dependency not declared" (§5.2).
+        env: { GOFLAGS: '-mod=mod' }

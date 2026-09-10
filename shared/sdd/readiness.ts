@@ -31,7 +31,12 @@ const SCRIPT_ALIASES: Partial<Record<(typeof REQUIRED_SCRIPTS)[number], readonly
   'type-check': ['type-check', 'typecheck'],
 };
 
-/** @purpose Resolve the exact declared project script a canonical verification gate executes. | @param scripts Project scripts map. | @param canonical Canonical gate/script name. | @returns Declared executable name, preferring the canonical spelling, or undefined. */
+/**
+ * @purpose Resolve the exact declared project script a canonical verification gate executes.
+ * @param scripts Project scripts map.
+ * @param canonical Canonical gate/script name.
+ * @returns Declared executable name, preferring the canonical spelling, or undefined.
+ */
 export function resolveProjectScriptName(
   scripts: Record<string, string>,
   canonical: string
@@ -409,12 +414,12 @@ export function isStubScript(scripts: Record<string, string>, entry: string): bo
 }
 
 /**
-// Scope is DELIBERATELY narrow — the echo-stubs the readiness directive prescribes at bootstrap, NOT
-// adversarially-crafted exit-code masks (`tsc || true`, `tsc | cat`). We are not in a hostile
-// environment; a deliberately silenced exit code is the author's own choice, and the real net for
-// genuine fictitiousness is the audit + real-toolchain e2e (observed behaviour), never a shell
-// heuristic. Best-effort: a green here means "not an obvious stub", not "the gate is proven real".
-/**
+ * // Scope is DELIBERATELY narrow — the echo-stubs the readiness directive prescribes at bootstrap, NOT
+ * // adversarially-crafted exit-code masks (`tsc || true`, `tsc | cat`). We are not in a hostile
+ * // environment; a deliberately silenced exit code is the author's own choice, and the real net for
+ * // genuine fictitiousness is the audit + real-toolchain e2e (observed behaviour), never a shell
+ * // heuristic. Best-effort: a green here means "not an obvious stub", not "the gate is proven real".
+ * /**
  * @purpose Whether a green result from `entry` proves nothing — a classic bootstrap placeholder
  *   (echo/`:`/`true`/empty) standing in for a real tool.
  * @invariant Narrow by design — bootstrap echo-stubs only, not crafted exit-code masks (see above).

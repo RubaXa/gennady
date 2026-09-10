@@ -12,11 +12,7 @@ import {
   parseTicketCoveragePolicy,
 } from './ticket.ts';
 import type { TicketCorpusRef } from './ticket-resolve.ts';
-import {
-  isDeclaredArgumentForwardingRepairBrick,
-  isVacuousScript,
-  resolveProjectScriptName,
-} from './readiness.ts';
+import { resolvePreset } from '../verify/presets/node.ts';
 
 /** @purpose One canonical verify profile; full belongs only to the project-level verdict. */
 export type VerificationProfile = 'setup' | 'code' | 'test' | 'full';
@@ -36,6 +32,8 @@ export function phaseProfileForKind(kind: string): Exclude<VerificationProfile, 
 
 /**
  * @purpose Select exact canonical gate names for one profile and coverage-owner state.
+ * @invariant V-04: delegates to `resolvePreset('node', …)`, byte-identical to the pre-V-04 hardcoded
+ *   lists (V-01 golden). `root` has no real value here (a ticket corpus, not a live repo).
  * @param profile Structurally derived phase profile or explicit project-level full profile.
  * @param [producesCoverage] Whether this test phase owns the coverage producer.
  * @returns Gate names in execution order.
@@ -44,13 +42,12 @@ export function verificationGateNames(
   profile: VerificationProfile,
   producesCoverage = profile === 'test'
 ): readonly string[] {
-  if (profile === 'full') return ['type-check', 'test:coverage', 'lint', 'format', 'yagni'];
-  if (profile === 'test' && producesCoverage) return ['fix', 'type-check', 'test:coverage'];
-  return ['fix', 'type-check', 'test'];
+  return resolvePreset('node', profile, '.')!.gateNames(profile, producesCoverage);
 }
 
 /**
  * @purpose Select gates whose absence makes the selected ladder fail closed.
+ * @invariant V-04: delegates to `resolvePreset('node', …)`, same as `verificationGateNames`.
  * @param profile Structurally derived phase profile or explicit full profile.
  * @param [producesCoverage] Whether this test phase owns the coverage producer.
  * @returns Required gate names in canonical order.
@@ -59,8 +56,7 @@ export function requiredVerificationGateNames(
   profile: VerificationProfile,
   producesCoverage = profile === 'test'
 ): readonly string[] {
-  if (profile === 'setup') return [];
-  return verificationGateNames(profile, producesCoverage);
+  return resolvePreset('node', profile, '.')!.requiredGateNames(profile, producesCoverage);
 }
 
 /** @purpose Exact pre-run and post-run state of one canonical phase gate. */
@@ -249,25 +245,14 @@ export function phaseVerificationNodeReaches(
   return Boolean(fromNode && targetNode && nodeReaches(nodes, fromNode, targetNode));
 }
 
+// V-04: delegates to the node preset's own command resolution — byte-identical to the pre-V-04
+// inline logic (V-01 golden). `resolvePreset('node', …)` never returns null.
 function commandForGate(
   name: string,
   scripts: Readonly<Record<string, string>>,
   targets: readonly string[]
 ): string | null {
-  if (name === 'fix') {
-    if (targets.length === 0) return null;
-    const leaves = ['format:fix', 'lint:fix'];
-    return leaves.every(
-      (leaf) =>
-        scripts[leaf] !== undefined &&
-        !isVacuousScript(scripts, leaf) &&
-        isDeclaredArgumentForwardingRepairBrick(scripts, leaf)
-    )
-      ? 'target-repair'
-      : null;
-  }
-  const script = resolveProjectScriptName(scripts as Record<string, string>, name);
-  return script ? `npm run ${script}` : null;
+  return resolvePreset('node', 'full', '.')!.commandForGate(name, scripts, targets);
 }
 
 function coverageProducer(current: PlanNode, profile: PhaseVerificationPlan['profile']): boolean {

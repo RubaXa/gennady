@@ -13,9 +13,11 @@ import {
   phaseReceiptPlanState,
   phaseReceiptTargetState,
   phaseVerificationEnvironmentState,
+  phaseVerificationPlanEnvironmentState,
   type PhaseReceipt,
   type PhaseReceiptPlan,
 } from '../phase-receipt.ts';
+import type { PhaseVerificationPlan } from '../phase-verification-plan.ts';
 
 const plan: PhaseReceiptPlan = {
   ticket: 'specs/app/app.task.TSK-1.md',
@@ -196,6 +198,106 @@ describe('phase receipt', () => {
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
+  });
+
+  describe("V-04a: environmentState source is a preset's responsibility (И-3)", () => {
+    it('phaseVerificationEnvironmentState fails at resolve stage for a stack with no preset, before ever touching package.json', () => {
+      // No package.json in this root at all. For 'node' (default), that is a deep fingerprint
+      // failure (proves the guard does NOT short-circuit node — engine still runs for it).
+      // For an unimplemented stack, resolvePreset(...) returns null and refusal must happen
+      // BEFORE the node-specific package.json read is ever attempted — a distinct issue message
+      // proves which stage produced the failure.
+      const root = mkdtempSync(join(tmpdir(), 'phase-receipt-preset-resolve-'));
+      try {
+        const nodeResult = phaseVerificationEnvironmentState(root, 'code', false, [], true, 'node');
+        assert.strictEqual(nodeResult.ok, false);
+        if (!nodeResult.ok)
+          assert.match(nodeResult.issue, /cannot fingerprint project verification scripts/);
+
+        const golangResult = phaseVerificationEnvironmentState(
+          root,
+          'code',
+          false,
+          [],
+          true,
+          'golang'
+        );
+        assert.strictEqual(golangResult.ok, false);
+        if (!golangResult.ok) {
+          assert.match(golangResult.issue, /no environmentState source for stack 'golang'/);
+          assert.doesNotMatch(
+            golangResult.issue,
+            /cannot fingerprint project verification scripts/
+          );
+        }
+
+        const anystackResult = phaseVerificationEnvironmentState(
+          root,
+          'code',
+          false,
+          [],
+          true,
+          'anystack'
+        );
+        assert.strictEqual(anystackResult.ok, false);
+        if (!anystackResult.ok) {
+          assert.match(anystackResult.issue, /no environmentState source for stack 'anystack'/);
+        }
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+      }
+    });
+
+    it('phaseVerificationPlanEnvironmentState fails at resolve stage for a stack with no preset, before ever touching package.json', () => {
+      const root = mkdtempSync(join(tmpdir(), 'phase-receipt-plan-preset-resolve-'));
+      const plan: PhaseVerificationPlan = {
+        ticket: 'specs/app/app.task.TSK-1.md',
+        phase: 'P1',
+        profile: 'code',
+        producesCoverage: false,
+        gates: [],
+      };
+      try {
+        const nodeResult = phaseVerificationPlanEnvironmentState(root, plan, [], 'node');
+        assert.strictEqual(nodeResult.ok, false);
+        if (!nodeResult.ok)
+          assert.match(nodeResult.issue, /cannot fingerprint project verification scripts/);
+
+        const golangResult = phaseVerificationPlanEnvironmentState(root, plan, [], 'golang');
+        assert.strictEqual(golangResult.ok, false);
+        if (!golangResult.ok) {
+          assert.match(golangResult.issue, /no environmentState source for stack 'golang'/);
+          assert.doesNotMatch(
+            golangResult.issue,
+            /cannot fingerprint project verification scripts/
+          );
+        }
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+      }
+    });
+
+    it('defaulting `stack` to node is byte-identical to passing it explicitly (И-1/И-2: no behavior change for node)', () => {
+      const root = mkdtempSync(join(tmpdir(), 'phase-receipt-preset-default-'));
+      try {
+        writeFileSync(
+          join(root, 'package.json'),
+          JSON.stringify({
+            scripts: {
+              'format:fix': 'prettier --write',
+              'lint:fix': 'gennady lint --autofix',
+              'type-check': 'tsc --noEmit',
+              test: 'node --test',
+            },
+          })
+        );
+        const implicit = phaseVerificationEnvironmentState(root, 'code', false, []);
+        const explicit = phaseVerificationEnvironmentState(root, 'code', false, [], true, 'node');
+        assert.deepStrictEqual(implicit, explicit);
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+      }
+    });
   });
 
   it('fingerprints npm lifecycle hooks, shortcut commands and bounded recursive script hops', () => {

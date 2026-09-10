@@ -1769,6 +1769,21 @@ export function checkSpecStructure(
       [...content.matchAll(/<!--SECTION:([A-Z_]+)-->/g)].map((m) => m[1] as string)
     );
 
+    // Critic Rounds is a per-round review log, not part of the durable V2 specification
+    // (AX_SPEC_LIFECYCLE). MUST stay inside the v2 gate: legacy v1 specs (e.g. gennady's own specs)
+    // legitimately carry a review log and are never judged by a v2 rule — do not hoist this out.
+    for (const h of collectHeadings(content)) {
+      if (/^critic\s+rounds$/i.test(h.text)) {
+        findings.push({
+          severity: 'error',
+          code: 'SDD_SPEC_HAS_CRITIC_ROUNDS',
+          file,
+          line: content.slice(0, h.start).split('\n').length,
+          message: `Spec carries a "Critic Rounds" section — a per-round review log is not part of the V2 specification (AX_SPEC_LIFECYCLE). Fix: resolve the critic's findings into the spec body (Decision Log / requirements) and delete the section.`,
+        });
+      }
+    }
+
     // Module-spec floor: modules were never section-checked in v1. Under v2 a module spec must carry
     // its load-bearing sections (AX_MODULE_SPEC_FLOOR).
     if (isModuleSpec) {

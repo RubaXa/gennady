@@ -129,10 +129,10 @@ export function collectTicketCorpus(root: string): TicketCorpusResult {
 
 /**
  * @purpose Backward-compatible throwing facade for callers that still expect the former array API.
- * @deprecated Prefer `collectTicketCorpus`; it makes incomplete evidence explicit in the type.
  * @invariant A failed corpus observation throws instead of returning a partial ticket graph.
  * @param root Repository root whose ticket corpus must be complete.
  * @returns Every ticket reference, or throws when the corpus cannot be observed completely.
+ * @deprecated Prefer `collectTicketCorpus`; it makes incomplete evidence explicit in the type.
  */
 export function collectTicketRefs(root: string): TicketRef[] {
   const corpus = collectTicketCorpus(root);

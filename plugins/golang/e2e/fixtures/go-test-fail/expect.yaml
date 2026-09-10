@@ -1,0 +1,6 @@
+notes: A failing test is a code FAIL.
+requires: [go]
+argv: ['--all', '--only=golang:test']
+exitCode: 1
+gates:
+  golang:test: { status: fail }

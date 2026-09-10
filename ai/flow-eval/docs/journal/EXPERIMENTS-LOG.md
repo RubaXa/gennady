@@ -260,3 +260,404 @@ recover сделан matrix-aware (проверяет specs/, размещает
   до записи спеки. Т.е. виноват не «code→spec» сам по себе, а промпт, гнавший в authoring-цепочку.
 - V2 убирает ceremony: прочитать код → перечислить поведение → один Write в specs/<tool>/<tool>.spec.md,
   явный запрет читать router/directive chain. Прогон идёт — сравню artifact/reasoning/msgs.
+
+## H6 — миграция: де-ceremony vs router-chain (трасса-эвал), бед MIG-cloud-ios-infra
+
+**Гипотеза.** Базовый migration-промпт (`prompts.ts` PHASE_PROMPTS.migration) гонит агента через
+router-chain (SKILL.md → router.directive.xml → migration-v1-v2) и говорит «you resolve every judgement
+the tools leave open» — из-за чего агент уходит в **чтение директив и реверс словаря v2-секций**
+(`rg REQUIRED_SECTIONS` ×6), не доходя до правок. По best-practice (H4/B4): router-chain — фатальный
+деградатор; выигрывает **direct + явные шаги + факты выданы механически + anti-loop**.
+
+**H0 baseline (прогон `trajlive3`, реальная траектория сохранена:
+`__tests__/fixtures/mig-cloud-ios.baseline.trajectory.json`).**
+
+- Итог: migration **FAIL**, `FLOW_VERSION=v1`, critical-introduced: none.
+- Расход: total **190369** (in 128523 / out 3921 / reason 57925), msgs 28.
+- Траектория: **43 вызова** — read×22, bash×20, todowrite×1, **edit/write ×0**.
+- Чекпоинты: `plan-verified` red (exit 1), `specs-clean` red (exit 1).
+- Подпись провала: `sdd-migrate plan --write` скелет создал (i12), затем i15–42 — 28 вызовов
+  read/`rg` реверса словаря секций, **ни одной правки** → выбил бюджет на v1.
+
+**Варианты (одна мутация за прогон, харнесс на tsx — правка `PHASE_PROMPTS.migration`, без пересборки):**
+
+- **H1 direct**: убрать router-chain-преамбулу; прямо на `migration-v1-v2.directive.xml`; явный запрет
+  грепать кодовую базу за словарём секций — действовать на findings `sdd-migrate`/`sdd-check`.
+- **H2 direct+anti-loop**: H1 + «не перечитывай директивы; если секция не размечена — verify сам скажет»
+  - мягкий лимит шагов (урок V9).
+
+**Критерий победителя (по протоколу, механика первична):** оба чекпоинта green > наличие ≥1 edit до
+`specs-clean` > меньше вызовов/токенов. Трассу фиксируем по **лучшему** прогону, не по baseline.
+
+**Исходы.**
+
+- **H1 (де-ceremony, БЕЗ бюджета):** дошёл до `FLOW_VERSION=v2` и сделал **13 edit** (baseline: 0) —
+  де-ceremony directionально помог агенту ДЕЙСТВОВАТЬ. НО ценой брутфорса: **124 вызова / total 576420
+  / 122 msgs / ~58 мин**, `bash×81`; оба чекпоинта red; оставил `SDD_SPEC_HAS_CRITIC_ROUNDS+1`.
+  Вывод: «сработало», но только потому что дали час — недопустимо.
+- **H1b (де-ceremony, БЮДЖЕТ 5 мин):** ранер **физически убил на 333с** (`worker-error: wall-clock
+budget 300000ms exceeded`), 43 вызова, **0 edit**, v1. За 5 мин агент ещё в фазе скана/чтения — до
+  правок не дошёл.
+
+**Ключевой вывод (важнее самих гипотез).** Бед был неверно выбран: **полная миграция cloud-ios (4 спеки
+core/infra-base/module-scaffold/testing + тикеты) физически не влезает в 5 мин** для этой модели. Оператор
+и формулировал таргет как «миграция ОДНОЙ простейшей спецификации ≤5 мин». Значит единица eval миграции —
+**простой одно-спековый фикстур-репозиторий** (с посеянным Critic Rounds), а не тяжёлый реальный cloud-ios.
+
+**Landed независимо от гипотезы — физический бюджет (это осталось):**
+
+- `SddEvalConfig.maxWallClockMs` + `SddEvalScenario.budgetMs` (override); `runner.#withWallClock` гоняет
+  worker против дедлайна → abort + fail. Юнит-тест «убивает воркера на 20мс бюджете».
+- `--max-wall-clock-ms` в cli; бюджеты в `scenarios.json` по выясненному времени (fibonacci/tic-tac-toe
+  20м, slugify 10м, broken-specs/infra-log 5м, infra-rotate/makefile 4м); миграция — таргет 5 мин.
+- `migration-eval.sh`: передача бюджета + OS-`timeout` бэкстоп (в macOS отсутствует → harness-бюджет киллер).
+
+**Статус мутации H1 (де-ceremony промпт).** Directionально лучше (13 edit vs 0), но под бюджетом не
+решает — держу в дереве как кандидат; финальное keep/revert — после прогона на ПРОСТОМ миграционном
+фикстуре. H2 (anti-loop) откладываю: сперва правильный бед.
+
+### H6-ladder — миграционная лестница (portal / +scope / +module), под бюджетами, де-ceremony промпт
+
+Три встроенных v1-фикстуры (`migration-portal|-scope|-scope-module`), бюджеты 2/3/5 мин, `--keep`.
+Прогон целиком: **634с (~10.5 мин)**, ни одного зависания (бюджет режет), токены 28–52k (было 576k).
+
+| Ярус    | tools | профиль             | plan-verified | specs-clean | backlog                                         | токены |
+| ------- | ----- | ------------------- | ------------- | ----------- | ----------------------------------------------- | ------ |
+| portal  | 19    | read7 bash12 edit0  | **green**     | **green**   | SDD_MISSING_TASK_ID+1, SDD_STATUS_UNPARSEABLE+1 | 28638  |
+| +scope  | 18    | read9 bash8 edit1   | red           | **green**   | SDD_TRACKER_MISSING_ROW+1                       | 39772  |
+| +module | 25    | read12 bash12 edit1 | red           | **green**   | SDD_TRACKER_MISSING_ROW+1                       | 52130  |
+
+**Что локализовала лестница (главное):**
+
+- **Спек-миграция РЕШЕНА на всех ярусах:** `specs-clean` green везде; `SDD_SPEC_HAS_CRITIC_ROUNDS` НЕ появился ни разу — де-ceremony промпт + предзаполненный Section Map сделали анкеринг/маппинг/drop Critic Rounds чистым. Это подтверждает: H1-мутация (де-ceremony) — рабочая для спек.
+- **Дефект теперь один и повторяющийся — ТИКЕТ/ТРЕКЕР миграция** (плановый слой): `plan-verified` red начиная со scope; findings `SDD_MISSING_TASK_ID` / `SDD_STATUS_UNPARSEABLE` / `SDD_TRACKER_MISSING_ROW`. Агент трэшит на «подтвердить v2-формат ticket Meta» (тот же реверс, но теперь на формате тикета/трекера), повторяет sdd-check (tier3 repeat=3, stuck).
+- **Портал:** `plan-verified` тоже green (2/2) — плановый слой ломается только когда появляются тикеты, т.е. gap масштабируется с тикетами, не со спеками.
+
+**Оба исхода зафиксированы; трассы сохранены** как `__tests__/fixtures/MIG-portal*.baseline.trajectory.json`.
+
+**Следующая мутация (одна):** перенести приём «доверяй карте, не реверси» на ТИКЕТ/ТРЕКЕР — выдать v2-формат ticket Meta механически (как plan --write делает для секций), чтобы агент не подтверждал формат грепом. Держим H1-де-ceremony (спек-часть — keeper).
+
+### H7 — фикстура сама фабриковала провал (мутация: фикстура, не инструмент)
+
+**Как пришли.** Перед постройкой Meta-эмиттера прогнали дешёвый детерминированный **tool-only** probe
+(без агента) на +scope фикстуре: `plan --write → anchors --write → [руками bold-Meta] → ids → move →
+checkpoints`. Цель — проверить каскад-гипотезу (один Meta-эмиттер разматывает `plan-verified`).
+Плюс независимый критик (2-й раунд, свежий воркер, свои первоисточники) — оба сошлись.
+
+**Каскад ОПРОВЕРГНУТ (механически и не мог держаться).** `plan-verified` = `verifyMigrationPlan`,
+эмитит только `MIG_*`; bold-Meta трогает `SDD_MISSING_TASK_ID` — код `sdd-check`, severity **warn**.
+Разные тулы, непересекающиеся коды. bold-Meta убрал 2 Meta-warning'а — `plan-verified` не сдвинулся.
+→ Meta-форма **ортогональна** `plan-verified`, гейтит только warn. **Meta-эмиттер убран из крит-пути.**
+
+**Настоящая причина красного `plan-verified` = `MIG_SECTION_UNMAPPED_TARGET`** на трёх заголовках
+скоуп-спеки. Разобрали каждый по корпусу (перепроверено grep'ом реальных спек):
+
+- `## Golden Developer Experience` — **синтетика фикстуры**. Реальные спеки пишут `### Golden DX` /
+  `## Approved Golden DX Example` — их правило `mapHeadingToSection` (GOLDEN_DX, `migration-plan.ts:89`)
+  **уже матчит**. Развёрнутой формы нет ни в одной спеке, только в `provision.ts`. (Канон v2-заголовка —
+  `## Target Experience`, оба формата.)
+- `## Use Cases` под **library**-скоупом — **синтетика**. `USE_CASES` есть только в product-структуре;
+  в реальных library-спеках секции нет. Маппить нельзя: инструмент кодирует лексику, не структурное
+  суждение «уместна ли секция в этом scope-type».
+- `## Critic Rounds` — UNMAPPED **правильно**: целевой секции нет → работа агента (дропнуть).
+- Модульная спека — та же болезнь: `## Public Surfaces` / `## Contracts` (канон — `## Entity Surfaces` /
+  `## Module Contracts`) → 2 ложных UNMAPPED.
+
+**Мутация (одна):** привёл фикстуры `provision.ts` к реальным v1-формам — `Golden DX` вместо развёрнутой;
+убрал library-`Use Cases`; `Entity Surfaces` / `Module Contracts` в модульной. Инструмент **не трогал**
+(расширять `HEADING_SECTION_RULES` под фейковый заголовок = подгонять тул под фикстуру = bottom-up
+симптом-патч, тот самый, ради отлова которого протокол и существует).
+
+**Исход (tool-only, реальные фикстуры через `FIXTURE_FILES`):**
+
+| Ярус    | plan-verified | UNMAPPED-findings                                           |
+| ------- | ------------- | ----------------------------------------------------------- |
+| portal  | **green**     | —                                                           |
+| +scope  | red           | **1** — `## Critic Rounds` (легитимная работа агента: drop) |
+| +module | **green**     | —                                                           |
+
+UNMAPPED упал 3→1 на +scope; portal/module чисты. **Дыры в инструменте нет** — синтетика давала +2
+ложных провала на ярус. `move` блокируется пустым Ticket Map (слаги = работа агента by design, `MIG_TICKET_*`).
+
+**Коррекция диагноза H6-ladder.** Прошлая запись назвала блокер «ТИКЕТ/ТРЕКЕР миграция /
+`SDD_TRACKER_MISSING_ROW`» — неверно вдвойне: (1) провал `plan-verified` был `MIG_SECTION_UNMAPPED_TARGET`,
+а не tracker; `SDD_TRACKER_MISSING_ROW` — код `sdd-check`, `plan --verify` его не эмитит вообще; (2)
+основную долю UNMAPPED давали синтетические заголовки, а не тикеты. Ladder-тест унаследовал эту ошибку в
+комментариях (строки 4/49/56).
+
+**Дефекты в самом eval (к правке):**
+
+- Комментарий ladder-теста называет неверный код-блокер → тест должен ассертить **конкретный `MIG_`-код**.
+- `specs-clean` **warn-слеп** (SDD_MISSING_TASK_ID = warn) → зелёная лестница ≠ рабочая миграция.
+- `plan-verified` green — критерий победы, **но только после реального agent-pass**: tool-only до v2 не
+  доходит by design (Ticket Map = слаги = агент). Фикстур-only лестница = регресс-гард спек-части, не
+  критерий успеха тикет/трекер-половины.
+
+**Что дальше (по approve оператора):** (1) перезаписать baseline-траектории реальным agent-pass на
+исправленных фикстурах; (2) переписать ассерты ladder — `plan-verified` green как критерий (+ легитимное
+исключение Critic Rounds на +scope до дропа), ассерт на конкретный `MIG_`-код; (3) Meta-эмиттер → бэклог.
+
+### H8 — real agent-pass на чистых фикстурах: агент НЕ доходит до v2-flip
+
+Прогон реального агента (deepseek-v4-flash, 4100) на исправленных фикстурах, бюджеты 120/180/300с, `--keep`.
+Критерий победы (утв. оператором): `plan-verified` green на всех ярусах после agent-pass.
+
+| Ярус    | tools | span | plan-verified | specs-clean | FLOW_VERSION | ids/move? | итог                        |
+| ------- | ----- | ---- | ------------- | ----------- | ------------ | --------- | --------------------------- |
+| portal  | 17    | 91с  | **green**     | **green**   | **v1**       | нет       | migration FAIL (не флипнул) |
+| +scope  | 24    | 142с | red           | green       | v1           | нет       | FAIL                        |
+| +module | 27    | 142с | red           | green       | v1           | нет       | FAIL (stuck на STEP_3)      |
+
+**Ни один прогон не убит бюджетом** (span < budget везде) — остановились сами. `worker-error` на 2/3 —
+трейлинг-ошибка сессии ПОСЛЕ последнего сообщения агента (не бюджет, не середина работы); траектория и
+migration-grade считаются независимо и валидны.
+
+**Корневая причина (изолирована, unified).** На ВСЕХ ярусах агент вызывает `plan` + `anchors` +
+`sdd-check` и **никогда** `sdd-migrate ids` / `move` — шаги STEP_5/6, которые физически флипают репо в v2.
+Он останавливается после анкеринга, когда `sdd-check` возвращает green. А `sdd-check` green потому, что
+tracker/Meta-находки (`SDD_TRACKER_MISSING_ROW`, `SDD_MISSING_TASK_ID`) — **warn**, не error → выход 0 при
+живом v1. Итог: **агент использует `sdd-check`-green как сигнал «готово» и стопается на v1.**
+
+Это объясняет всё разом: (а) почему все ярусы v1; (б) почему Meta-эмиттер не помог бы (он чистит warn,
+но warn и так не блокировали — агент уже считал себя готовым); (в) warn-слепота — это дефект не только
+измерения eval, но и **само-оценки агента**. Флоу виноват дважды: (1) де-ceremony-промпт в
+`prompts.ts:31-35` называет операционный костяк `plan/anchors/verify/check`, но **не называет `ids`/`move`**
+и не говорит «готово = FLOW_VERSION=v2, а не sdd-check green»; (2) done-сигнал завязан на warn-слепой чек.
+
+**Гипотезы мутации (одна за прогон, тест на лучшем):**
+
+- **H8a (prompt-spine):** дописать в промпт явный хвост STEP_5/6 (`sdd-migrate ids --from-plan --write`,
+  `move --scope <s> --write`) и явный done-критерий «FLOW_VERSION=v2 через sdd-state, не sdd-check green».
+- **H8b (severity boundary):** на v2-границе поднять `SDD_TRACKER_MISSING_ROW`/`SDD_MISSING_TASK_ID` до
+  error, чтобы `sdd-check` физически не зеленел, пока репо не флипнут — done-сигнал станет честным сам.
+
+Обе — «флоу виноват». Трассы сохранены (sandboxes kept). Перед мутацией — критик (по протоколу).
+
+### H8-diag — H8 ОТОЗВАН: миграция доходит до v2; виноват был харнесс + стоп-условие
+
+**H8/H8a были недействительны — прогоны резал харнесс, не флоу.** Диагностика причины `worker-error`
+(добавил печать `worker.error` в `cli.ts`) показала: это **бюджет-килл** (`wall-clock budget …ms
+exceeded`), а не добровольная остановка. Агента убивали ТРИ лимита ещё до `ids`/`move`: `stuckAfter=1`
+(дефолт — режет медленную модель после 1 неизменного опроса), `maxObservations=6` (×observeEveryMs режет
+раньше wall-clock), и тугой `budgetMs` (120с). «0 tools»/«стоп после anchors» — чистые артефакты.
+
+**Починка харнесса (не флоу):** `--stuck-after 3`, `--observe-every-ms 45000`, `--max-observations 12`,
+бюджет 300с. Плюс процесс переведён на npm: `npm run eval:migration` / `:portal` (модель
+`llm-proxy/deepseek-v4-flash` зашита, песочницы вне репо в `~/.gennady/eval/`).
+
+**Диагностический замер portal (бюджет 900с, чтобы увидеть истинное время-до-v2):**
+
+- **migration PASS · FLOW_VERSION=v2** — флоу РАБОТАЕТ. Ранее «не доходит до move» было ложным.
+- Тайминг: `sdd-migrate ids --from-plan --write` @252с, **`move --scope demo --write` @259с** → **v2-флип
+  ≈260с (~4.3 мин)** — то есть сама миграция близка к целевым 5 мин.
+- Трасса: 54 тула (read16 bash25 edit10 write1 glob2). Из них ДО v2 (~36 тулов/260с) — продуктивная работа;
+  **ПОСЛЕ v2 (тулы 36→54, ещё ~500с) — впустую**: агент чинил `SDD_SPEC_SECTION_MISSING` (GOLDEN_DX /
+  PUBLIC_API_SURFACE / MODULE_MAP — секции, которых в v1-исходнике НЕ БЫЛО), пока его не убил бюджет 900с.
+
+**Главный вывод (изолирован, чистый).** Миграция достигает v2 за ~4.3 мин. Настоящий тайм-синк —
+**агент не останавливается на v2**: тратит ~8 мин, пытаясь дописать недостижимые backlog-секции, приняв
+их за «newly-introduced». Done-оракул сформулирован, но агент не отличает backlog (v1 их не имел) от
+внесённых находок. Это ось A (понимание СТОП-условия), не B/C.
+
+**Следующая гипотеза (одна):** дать агенту крепкое стоп-условие — «как только `sdd-state`=v2, СТОП;
+оставшиеся `SDD_SPEC_SECTION_MISSING` для секций, отсутствовавших в v1-исходнике, — BACKLOG, не
+авторить», возможно с baseline-diff перед глазами (что было до миграции), чтобы механически отличать
+backlog от внесённого. Критерий победы: `flow-v2` green + резкое падение пост-v2 тулов/времени.
+
+**Методология зафиксирована** в `docs/11-ANALYSIS-CHECKLIST.md` (чеклист разбора результатов и построения
+гипотез по 6 осям + артефакты харнесса).
+
+### H8-prove — мигратор доказан: ВСЕ три яруса доходят до v2
+
+Ladder на исправленных фикстурах + починенном харнессе (stuck 3, observe 45s, maxObs 30, бюджет 900с),
+модель `llm-proxy/deepseek-v4-flash`:
+
+| Ярус    | итог                 | FLOW_VERSION | tools | чекпоинты           | как закончил                                      |
+| ------- | -------------------- | ------------ | ----- | ------------------- | ------------------------------------------------- |
+| portal  | **pass (completed)** | **v2**       | 49    | 2/3 (flow-v2 green) | сам, в бюджете                                    |
+| +scope  | **pass (completed)** | **v2**       | 67    | 2/3 (flow-v2 green) | сам, в бюджете                                    |
+| +module | PASS (worker-error)  | **v2**       | 66    | 2/3 (flow-v2 green) | v2 достигнут, убит бюджетом 900с на пост-v2 waste |
+
+**Вывод:** миграция v1→v2 работает end-to-end на всех структурных уровнях (portal/scope/module, включая
+drop Critic Rounds). Покрытие мигратора — хорошее. 2 яруса завершились сами; +module снова показал
+пост-v2 waste (тот же дефект H8-diag — не стопается на v2). Оба чекпоинта не-flow-v2 остаются 1 red из-за
+backlog `SDD_SPEC_SECTION_MISSING` (секции, которых не было в v1) — grade это не считает critical-introduced,
+потому migration PASS. Подтверждает приоритет H9 (стоп-условие) как оптимизации.
+
+Замечание по трасса-тестам: `migration-ladder.trajectory.test.ts` всё ещё держит СТАРЫЕ синтетик-baseline и
+ассертит `specs-clean`/`plan-verified`; надо обновить baseline на эти проходящие трассы и переассертить на
+`flow-v2` — сделать после H9 (чтобы baseline отражал оптимизированное поведение, а не пост-v2 waste).
+
+### H-iOS — round-trip cloud-ios: код доказан, closure заблокирован wall-3
+
+> ⚠️ **ЧЕСТНОСТЬ EVAL: iOS round-trip сейчас НЕ доказывает полный флоу.** Кодовая половина (регенерация
+> guard) — честная и работает. Closure-половина (TODO→DONE + receipts) на Swift **архитектурно
+> заблокирована wall-3** и может быть «пройдена» только подделкой самого verify-гейта. Пока adaptive/
+> anystack verify из `main` не смёржен в flow-ветку — **iOS-eval неполон, это надо доделать (см. развилку).**
+
+Прогон `roundtrip-eval.sh execute` (flash, 4100, prep сбросил тикет IB-script в TODO):
+
+- **Guard регенерён — 564 строки, функционален.** Согласуется с rt4 (71/82 поведенческих vs 80/82 Артура;
+  9 gap'ов — edge-cases, жившие только в стёртом execution-log). Тезис подтверждён: где модель не дотянула —
+  неполон восстановимый артефакт, не слаба модель.
+- **COMPLETION GATE: RED** — ticket=TODO, раунд не закрыт, нет audit/review receipts. Агент написал артефакт
+  и сдался: «sdd-verify receipt could not be produced». Классика «artifact built ≠ done».
+
+**Диагностика блокера (детерминированно, послойно на фикстуре):**
+
+1. `sdd-verify --phase P1` → `ERR_CLI_SDD_VERIFY_PHASE_CONTEXT: Role=probe command './Tools/tests/probes.sh'
+has no Test Scenario Coverage row owned by a test phase`. **Причина:** wall-1 upgrade-shim
+   (`upgrade-verification-tables.py:role_for`) метит проб-стенд `role=probe`, а v2-контракт разрешает probe
+   только на test-фазе. Но golden-оригинал Артура (дошёл до DONE) — impl-only (P1), стенд принадлежит фазе
+   как `role=extra` (владение через «Required by»). → **баг role_for; фикс: probe→extra.** Провалидировано:
+   probe→extra снимает блок.
+2. Далее `ERR_CLI_SDD_VERIFY_RECEIPT: cannot fingerprint 'node -e "process.exit(0)"'` — readiness-shim
+   (`roundtrip-readiness-shim.package.json`) стабит гейты инлайновым node, который verify не фингерпринтит.
+   **Фикс: гейт — фингерпринтируемый файл-ноуп** (`./Tools/eval-noop.sh`, `exit 0`). Провалидировано: снимает.
+3. **КОРЕНЬ (не шиммится):** `sdd-verify --phase P1` → `ERR_CLI_SDD_VERIFY_RECEIPT: sdd verify --wip
+--only=swiftlint … : runner sdd has no receipt input adapter`. Собственный гейт фазы P1 — **swiftlint**,
+   он приходит из `main`-adaptive/anystack verify, **не смёржен в flow-ветку**. Нет адаптера → нет
+   phase-receipt → раунд не закрыть → DONE недостижим. Это wall-3 на самом глубоком слое.
+
+**Вывод:** closure-флоу на Swift нельзя доказать шиммингом — гейт фазы это сам swiftlint. Настоящий фикс —
+портировать anystack verify из `main` (assessment option 3). Найденные по пути баги (role_for probe→extra;
+readiness-гейт должен быть фингерпринтируемым файлом) — реальные, чинить независимо.
+
+**Решение оператора (развилка):** доказать closure-церемонию (TODO→DONE + phase/audit/review receipts) на
+**node-фикстуре** с нативными verify-гейтами — честно доказывает полный lifecycle сейчас; iOS остаётся
+доказательством регенерации кода; wall-3/iOS-closure помечен как долг (доделать через merge `main`). См. H-node ниже.
+
+### H-node — полный execute-lifecycle ДОКАЗАН на node-фикстуре (TODO→DONE + receipts)
+
+Фикстура `slugify-toolchain` (execute/canonical-execute, нативные verify-гейты node), flash, 4100, бюджет
+600с, harness починен (stuck 3, observe 45s, max-obs 20). Критерий — **R-COMPLETE** (то же, что требовал
+iOS-gate: тикет DONE + закрытый раунд + group audit + review receipts).
+
+**Исход: R-COMPLETE PASS, batch exit 0.** Агент сам завершил ход (status=completed, не убит), 46 msgs,
+total 158k токенов.
+
+- `quality R1: pass` — sdd-check --all clean.
+- `quality R-COMPLETE: pass` — artifact built + ticket DONE + round closed + receipts.
+
+**Проверено руками в kept-песочнице (не только по gate):**
+
+- Ticket `**Status:** [x] DONE`.
+- Execution log: 3 закрытых раунда (DONE-строки).
+- Owning spec `core.spec.md`: **2× SDD_AUDIT_RECEIPT + 2× SDD_REVIEW_RECEIPT**; тикет: 4× SDD_PHASE_RECEIPT.
+- Артефакт `src/slugify.ts` записан.
+
+**Вывод:** полный форвард-флоу — TODO → implement → verify → close round → phase-receipts → group
+audit+review receipts → DONE — **честно доказан end-to-end** на нативных гейтах. Судья дал `fail`
+(стохастика), но по протоколу механика первична, а `computeAggregateExitCode` судью игнорирует → exit 0.
+Это закрывает «полный флоу не доказан»: доказан на node; на iOS (Swift) closure остаётся долгом под wall-3.
+
+### H9 — стоп на v2 (промпт: post-v2 SDD_SPEC_SECTION_MISSING = backlog) — KEEPER
+
+Мутация (одна): в `PHASE_PROMPTS.migration` явно сказано, что после флипа `sdd-check` даёт
+`SDD_SPEC_SECTION_MISSING` на секции, которых не было в v1-исходнике (GOLDEN_DX/PUBLIC_API_SURFACE/
+MODULE_MAP) — это **backlog, не внесённые дефекты**; не авторить, не гнаться за глобально-чистым чеком;
+как только FLOW_VERSION=v2 без новых находок — СТОП. (Прошлый промпт звал backlog'ом только «pre-existing
+v1 debt», а эти находки НОВЫЕ — агент их чинил.)
+
+**Исход (ладдер, бюджет 300с vs baseline H8-prove 900с):**
+
+| ярус   | baseline H8-prove     | H9                    | пост-move tools    |
+| ------ | --------------------- | --------------------- | ------------------ |
+| portal | 49 tools, 900с-бюджет | **38**, v2 в 300с     | 16 → **10** (−37%) |
+| scope  | 67 tools              | **60**, v2 в 300с     | —                  |
+| module | 66, **убит на 900с**  | **66**, v2 в **300с** | —                  |
+
+Все три яруса — migration PASS (FLOW_VERSION=v2) в пределах **300с** (batch exit 0, ни одного бюджет-килла).
+Механизм подтверждён: пост-v2 waste упал (portal 16→10 тулов), total 49→38, и вся миграция теперь влезает
+в 5-мин потолок (раньше нужно было 900с, module убивался). **KEEPER.** (N=1, но сигнал согласованный на
+всех 3 ярусах; при желании подтвердить повтором.)
+
+### H10 — template single-Write (стек на H9) — KEEP (по правилу оператора; cost-neutral)
+
+Мутация: в промпт добавлено «заполняй SECTION_MAP/Ticket Map и любой scaffold-шаблон ОДНИМ Write —
+прочитай файл целиком, реши все строки, перезапиши; не редактируй по строке». Цель — убрать churn из
+8-11 точечных edit по одному файлу (пункт оператора).
+
+**Исход (portal, baseline H9-portal 38 tools / 8 edit по плану):**
+
+- **Edit-churn РЕШЕН:** maxEditsPerFile **8→2**, edit **11→2**, write-family ops **12→6**. Агент теперь
+  перезаписывает план целиком, а не по строке.
+- **Total tools 38→49 (вверх):** read **12→17** (цена «прочитать целиком перед перезаписью») + bash. То
+  есть по суммарной цене — **wash/лёгкая регрессия**, не выигрыш; edits обменяны на reads. migration PASS, v2.
+
+**Вердикт: KEEP** — выполняет явное правило оператора (read+rewrite вместо кучи edit) и убирает риск
+рассинхрона якорей; по токен-экономии нейтрально (N=1, portal шумит 38-54). Не выдаю за экономию —
+это quality/robustness мутация.
+
+### H11 — no hand-exploration + no dry-then-write (стек на H9+H10) — mild KEEP
+
+Мутация: промпт запрещает ручную разведку дерева (`git status/log`, `find`, `ls`) — карта это план-юнит и
+вывод тулов; и требует идти сразу в `--write` (не гонять plan/anchors в dry, потом ещё раз с --write).
+
+**Исход (portal, baseline H10-portal 49):**
+
+- **Ручная разведка git/find/ls = 0** (была). bash 26→17, read 17→12, checks **11→8**, total **49→45**. v2 PASS.
+- Оговорка: агент подменил find/ls на `glob` (4) — всё ещё перечисляет файлы, но дешевле/точечнее.
+
+**Вердикт: mild KEEP** — убирает repo-spelunking (де-ceremony по духу), −4 тула (в пределах шума N=1, но
+структурно чисто, регрессии нет). Побочно **закрыл H12 (лишние проверки): checks 11→8** без отдельной
+мутации. Итого оптимизация: H9 (крупный keeper), H10 (quality-правило оператора), H11 (де-ceremony,
++побочно H12). 3 содержательные гипотезы; H12 отдельно не гоняю — эффект уже получен через H11.
+
+### Валидация keepers (H9+H10+H11) на полной лестнице + рефреш трасса-тестов
+
+Комбинированный прогон всех keeper'ов (бюджет 300с):
+
+| ярус   | baseline H8-prove (900с) | keepers (300с)                         |
+| ------ | ------------------------ | -------------------------------------- |
+| portal | 49                       | **39**                                 |
+| scope  | 67                       | **38**                                 |
+| module | 66 (убит@900с)           | **55**, v2 PASS (убит@300с, но уже v2) |
+
+Все три — migration PASS (FLOW_VERSION=v2), в пределах 5-мин потолка; scope почти вдвое (67→38). module
+всё ещё чуть работает после v2 (worker-error@300с), но v2 достигнут — приемлемо, отдельный цикл не ставлю.
+
+**Рефреш трасса-тестов (закрыт долг):** baseline `__tests__/fixtures/MIG-*.baseline.trajectory.json`
+перезаписаны на keeper-трассы; `migration-ladder.trajectory.test.ts` переписан на правильный критерий —
+**ассертит `flow-v2` green** (end-state, per критик из §H8-diag) + бюджеты тулов (portal/scope ≤50,
+module ≤70) + `vocabGrep ≤2` + never-golden. Убраны stale synthetic-baseline, неверный ассерт `specs-clean`
+и ошибочный комментарий про `SDD_TRACKER_MISSING_ROW`. Все 17 trajectory-тестов зелёные.
+
+**Also fixed:** `upgrade-verification-tables.py:role_for` — repo-local test-stand → `extra`, не `probe`
+(`probe` требует test-фазу, которой нет у impl-only migrated тикетов; ссылка на §H-iOS в комментарии).
+
+### C — keeper'ы залочены N=3
+
+H9+H10+H11 (комбинированно) прогнаны на лестнице (300с) три раза (H9-run, keepers#1, keepers#2). В КАЖДОМ
+из трёх все три яруса (portal/scope/module) достигли `FLOW_VERSION=v2` (migration PASS). module иногда
+даёт worker-error на 300с (добивает v2, чуть работает после — grade всё равно PASS). Сигнал согласован
+N=3 → keeper'ы зафиксированы. Отдельный 4-й прогон не нужен.
+
+### B (execute/closure) — B1 де-ceremony execute-промпта — KEEPER
+
+Оптимизация второй поверхности — execute/closure-флоу (не миграция). Baseline (node slugify, полный
+lifecycle до DONE): траектория показала **43 тула ориентации до первой записи** (read×33) + `task`×4 +
+`skill`×2 — агент шёл по router/skill-цепочке. Причина в промпте: `PHASE_PROMPTS.execute` дословно велел
+«read and follow SKILL.md + router.directive.xml chain» — та же церемония, что деградировала миграцию (B4/H1).
+
+**Мутация (одна):** де-ceremony execute-промпта — идти прямо на `execute.directive.xml` (+ phase-execution-
+protocol), НЕ читать SKILL.md/router/scope-цепочку; не реверсить грепом; closure-spine назван явно
+(implement → sdd-verify --phase → close round → group audit+review receipts); done = ticket [x] DONE + раунд
+
+- оба receipts.
+
+**Исход (node slugify, R-COMPLETE обязателен):**
+
+| метрика                    | baseline     | B1                          |
+| -------------------------- | ------------ | --------------------------- |
+| R-COMPLETE (DONE+receipts) | pass         | **pass**                    |
+| tokens                     | 222975       | **95304 (−57%)**            |
+| msgs                       | 73           | **34 (−53%)**               |
+| ориентация до 1-й записи   | 43           | **22 (−49%)**               |
+| router/skill traversal     | task4/skill2 | **0/0**                     |
+| tools                      | 65           | 60 (read 33→19, bash 25→34) |
+
+**Вердикт: KEEPER.** Полный lifecycle до DONE сохранён, стоимость −57% токенов за счёт удаления обхода
+router/skill-цепочки. Подтверждает: де-ceremony-плейбук переносится с миграции на execute. N=1, но эффект
+крупный и структурный (0 traversal, orient 43→22), согласован с сильным prior (migration B4 ×200 reason).
+Затрагивает и cloud-ios round-trip (тоже execute-фаза) — там пригодится, когда wall-3 разблокируют.

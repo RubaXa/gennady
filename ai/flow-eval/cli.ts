@@ -1,12 +1,22 @@
 // @file: Runnable CLI entrypoint for the external SDD eval harness.
 // @consumers: npm run sdd-flow-eval; intentionally uses SDK only, never a provider binary.
 
+import { execSync } from 'node:child_process';
 import { readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import {
+  toolEventsFrom,
+  runCheckpoints,
+  buildTrajectory,
+  type CheckpointSpec,
+  type Exec,
+  type Trajectory,
+} from './trajectory.ts';
 import { SddEvalOpenCodeEvidenceSource } from './evidence.ts';
 import { parseOpenCodeModel, SddEvalOpenCodeRuntime } from './opencode-runtime.ts';
 import { provisionScenarioDirectories } from './provision.ts';
+import { resolveBasePrompt } from './prompts.ts';
 import { checkR1Structure, checkCompletion } from './quality-gate.ts';
 import {
   captureBaseline,
@@ -22,6 +32,7 @@ import {
   type SddEvalRunArtifact,
 } from './sandbox-lifecycle.ts';
 import { SddEvalSessionDirectoryMap } from './session-directory.ts';
+import { SDD_EVAL_PHASES, SDD_EVAL_MODES } from './types.ts';
 import type { SddEvalConfig, SddEvalScenario } from './types.ts';
 
 /** @purpose Parsed command-line options; all model values retain provider/model configurability. */
@@ -95,6 +106,9 @@ function parseSddEvalCliArgs(argv: string[]): SddEvalCliOptions {
       case '--max-observations':
         config.maxObservations = Number(requiredValue(argv, index++, arg));
         break;
+      case '--max-wall-clock-ms':
+        config.maxWallClockMs = Number(requiredValue(argv, index++, arg));
+        break;
       case '--tail-limit':
         config.tailLimit = Number(requiredValue(argv, index++, arg));
         break;
@@ -125,28 +139,80 @@ function parseSddEvalCliArgs(argv: string[]): SddEvalCliOptions {
       'observe-every-ms must be >= 0; stuck-after/max-observations/tail-limit must be >= 1'
     );
   }
+  if (
+    config.maxWallClockMs !== undefined &&
+    (!Number.isFinite(config.maxWallClockMs) || config.maxWallClockMs < 0)
+  )
+    throw new Error('max-wall-clock-ms must be a finite number >= 0 (0 disables)');
   if (runnerModelValue) config.runnerModel = parseOpenCodeModel(runnerModelValue, defaultProvider);
   if (judgeModelValue) config.judgeModel = parseOpenCodeModel(judgeModelValue, defaultProvider);
   return { scenarioFile, directory, gennadyRoot, keep, artifactsDir, config };
 }
 
-async function loadScenarios(path: string): Promise<SddEvalScenario[]> {
+const SDD_EVAL_PHASE_SET = new Set<string>(SDD_EVAL_PHASES);
+const SDD_EVAL_MODE_SET = new Set<string>(SDD_EVAL_MODES);
+
+/**
+ * @purpose Parse and validate the scenario file, fail-fast (GAP-E-1/H-16). A typo in `phase` used to
+ *   compose a silently phase-less prompt (`prompts.ts` filters out the resulting `undefined`), and a
+ *   typo in `mode` used to silently fall back to a DIFFERENT valid prompt — both looked like a normal
+ *   run but measured the wrong branch. Both are now a load-time error naming the field and scenario id.
+ */
+export async function loadScenarios(path: string): Promise<SddEvalScenario[]> {
   const value: unknown = JSON.parse(await readFile(path, 'utf8'));
   if (!Array.isArray(value) || value.some((item) => !item || typeof item !== 'object')) {
     throw new Error('scenario file must contain an array of scenario objects');
   }
   const scales = new Set(['product', 'module', 'function', 'fix']);
   for (const item of value as Array<Record<string, unknown>>) {
+    const id = String(item.id ?? '<unknown>');
+    if (typeof item.phase !== 'string' || !SDD_EVAL_PHASE_SET.has(item.phase)) {
+      throw new Error(
+        `scenario ${id} has invalid PHASE: ${JSON.stringify(item.phase)} ` +
+          `(expected one of ${SDD_EVAL_PHASES.join(', ')})`
+      );
+    }
+    if (typeof item.mode !== 'string' || !SDD_EVAL_MODE_SET.has(item.mode)) {
+      throw new Error(
+        `scenario ${id} has invalid MODE: ${JSON.stringify(item.mode)} ` +
+          `(expected one of ${SDD_EVAL_MODES.join(', ')})`
+      );
+    }
     if (item.scale !== undefined && !scales.has(String(item.scale))) {
-      throw new Error(`scenario ${String(item.id ?? '<unknown>')} has invalid SCALE`);
+      throw new Error(`scenario ${id} has invalid SCALE`);
     }
     if (item.phase === 'spec-authoring' && item.scale === undefined) {
-      throw new Error(
-        `scenario ${String(item.id ?? '<unknown>')} must provide synthetic operator-confirmed SCALE`
+      throw new Error(`scenario ${id} must provide synthetic operator-confirmed SCALE`);
+    }
+    // `phase`/`mode` are each individually valid enum members at this point, but `brownfield` further
+    // restricts which modes it accepts (prompts.ts owns that mapping) — resolve it NOW, before any
+    // sandbox is provisioned or worker session started, so an unsupported combination fails the whole
+    // load instead of surfacing only once the runner reaches this particular scenario.
+    try {
+      resolveBasePrompt(
+        item.phase as SddEvalScenario['phase'],
+        item.mode as SddEvalScenario['mode']
       );
+    } catch (cause) {
+      throw new Error(`scenario ${id} ${cause instanceof Error ? cause.message : String(cause)}`);
     }
   }
   return value as SddEvalScenario[];
+}
+
+/**
+ * @purpose CI-suitable aggregate exit code for one batch (E-00). A `worker-error` (the harness/runtime
+ *   itself failed) or a failed DETERMINISTIC quality gate (R1/R-COMPLETE/MIGRATION `quality.pass ===
+ *   false`) is a hard batch failure. The judge's verdict (`pass`/`fail`/`inconclusive`) is diagnostic
+ *   only (D-28/L-14/E-21) and never appears in this computation — see `judge.ts`.
+ * @param artifacts Every scenario's durable outcome from this run.
+ * @returns 1 when the batch must fail CI, 0 otherwise.
+ */
+export function computeAggregateExitCode(artifacts: readonly SddEvalRunArtifact[]): 0 | 1 {
+  const failed = artifacts.some(
+    (artifact) => artifact.verdict === 'worker-error' || artifact.quality?.pass === false
+  );
+  return failed ? 1 : 0;
 }
 
 /** @purpose Execute the CLI; results are human-readable lines and no trace/JSON file is written. */
@@ -208,6 +274,11 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
     const runStamp = `run-${new Date().toISOString().replace(/[:.]/g, '-')}`;
     const runDir = await persistRunArtifacts(artifactsRoot, runStamp, artifacts);
     console.log(`artifacts → ${runDir}`);
+    // Aggregate CI-suitable exit code (E-00): any worker-error or failed deterministic quality gate
+    // fails the batch. The judge's verdict never participates — see computeAggregateExitCode.
+    const exitCode = computeAggregateExitCode(artifacts);
+    console.log(`batch outcome: exit ${exitCode} (${artifacts.length} scenario(s) reported)`);
+    process.exitCode = exitCode;
   } finally {
     await teardown();
     if (!options.keep) console.log(`sandboxes removed: ${teardownDirs.length}`);
@@ -233,6 +304,14 @@ async function runAndReport(
   for (const result of results) {
     const verdict = result.judge?.verdict ?? 'worker-error';
     console.log(`${result.worker.scenarioId}: ${verdict} (${result.worker.status})`);
+    if (result.worker.error) console.log(`  [diag] worker.error: ${result.worker.error}`);
+    {
+      const lastAsst = [...result.worker.tail].reverse().find((e) => e.role === 'assistant');
+      if (lastAsst)
+        console.log(
+          `  [diag] last assistant: ${(lastAsst.text || lastAsst.toolCalls.at(-1)?.inputSummary || '').replace(/\s+/g, ' ').slice(0, 200)}`
+        );
+    }
     const scenario = byId.get(result.worker.scenarioId);
     // Objective quality rule R1 (structural integrity) for phases that PRODUCE specs — the mechanical
     // signal alongside the stochastic judge (docs/10-QUALITY-RULES.md). The pure golden-graded work carries
@@ -294,9 +373,45 @@ async function runAndReport(
       judgeFile = target;
       console.log(`  judge rationale → ${target}`);
     }
+    // Trajectory (opt-in via scenario.checkpoints): the worker session is ephemeral, so normalize it
+    // into a durable, testable `trajectory.json` — tool events (from the same tail the observer reads)
+    // interleaved with deterministic checkpoint exit codes — that a `*.trajectory.test.ts` asserts over
+    // offline, as many times as needed, without re-running the (stochastic, slow) agent.
+    if (scenario?.checkpoints && directory && result.worker.sessionId) {
+      try {
+        const tail = await evidence.readTail(result.worker.sessionId, 100_000);
+        const tools = toolEventsFrom(tail);
+        const ticket = scenario.completion?.ticket ?? '';
+        const specs: CheckpointSpec[] = scenario.checkpoints.map((c) => ({
+          id: c.id,
+          cmd: c.cmd.replaceAll('<ticket>', ticket),
+        }));
+        const runCheckpointCmd: Exec = (cmd) => {
+          try {
+            execSync(cmd, { cwd: directory, stdio: 'ignore' });
+            return { exit: 0 };
+          } catch (cause) {
+            const status = (cause as { status?: number }).status;
+            return { exit: typeof status === 'number' ? status : 1 };
+          }
+        };
+        const checkpoints = runCheckpoints(specs, runCheckpointCmd, Date.now());
+        const traj: Trajectory = buildTrajectory(result.worker.scenarioId, tools, checkpoints);
+        const target = join(directory, `.sdd-eval-trajectory.${result.worker.scenarioId}.json`);
+        await writeFile(target, `${JSON.stringify(traj, null, 2)}\n`, 'utf8');
+        const greens = checkpoints.filter((c) => c.green).length;
+        console.log(
+          `  trajectory → ${target} (${tools.length} tools · ${greens}/${checkpoints.length} checkpoints green)`
+        );
+      } catch (cause) {
+        console.log(
+          `  trajectory: skipped (${cause instanceof Error ? cause.message : String(cause)})`
+        );
+      }
+    }
     // Collect this scenario's durable outcome so it survives the sandbox teardown below.
     if (directory) {
-      artifacts.push({
+      const artifact: SddEvalRunArtifact = {
         scenarioId: result.worker.scenarioId,
         verdict,
         status: result.worker.status,
@@ -305,7 +420,12 @@ async function runAndReport(
         specFiles: producesSpecs ? await collectSpecFiles(directory) : [],
         judgeFile,
         directory,
-      });
+      };
+      artifacts.push(artifact);
+      // Per-scenario gate preview (E-00): the same fold the final batch exit code uses, applied to
+      // this one scenario, so a mechanical FAIL is visible immediately next to its line instead of
+      // only in the trailing "batch outcome" summary once every scenario has finished.
+      console.log(`  gate: ${computeAggregateExitCode([artifact]) === 1 ? 'FAIL' : 'pass'}`);
     }
   }
 }

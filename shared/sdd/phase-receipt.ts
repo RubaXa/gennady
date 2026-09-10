@@ -11,6 +11,8 @@ import type {
   PhaseVerificationGateState,
   PhaseVerificationPlan,
 } from './phase-verification-plan.ts';
+import { resolvePreset } from '../verify/presets/node.ts';
+import type { StackId } from '../verify/verify.types.ts';
 
 /** @purpose One command proven by the phase verifier. */
 export type PhaseReceiptCommand = {
@@ -87,7 +89,11 @@ function sha(parts: (string | Buffer)[]): string {
   return `sha256:${hash.digest('hex')}`;
 }
 
-/** @purpose Fingerprint the exact structured verification plan without prose or receipt bytes. | @param plan Structured phase plan. | @returns Stable SHA-256 label. */
+/**
+ * @purpose Fingerprint the exact structured verification plan without prose or receipt bytes.
+ * @param plan Structured phase plan.
+ * @returns Stable SHA-256 label.
+ */
 export function phaseReceiptPlanState(plan: PhaseReceiptPlan): string {
   return sha([JSON.stringify(plan)]);
 }
@@ -1199,14 +1205,33 @@ function phaseVerificationEnvironmentFromScripts(
   }
 }
 
-/** @purpose Fingerprint the exact project script definitions reachable from this phase's mechanical plan. | @param root Project root. | @param profile Derived phase profile. | @param producesCoverage Coverage producer choice. | @param verification Ticket-owned extra commands. | @param [hasRepairTargets] Whether repair script bodies belong to this plan. | @returns Stable environment state or a manifest error. */
+/**
+ * @purpose Fingerprint the exact project script definitions reachable from this phase's mechanical plan.
+ * @param root Project root.
+ * @param profile Derived phase profile.
+ * @param producesCoverage Coverage producer choice.
+ * @param verification Ticket-owned extra commands.
+ * @param [hasRepairTargets] Whether repair script bodies belong to this plan.
+ * @param [stack] Stack whose environmentState source runs this fingerprint (V-04a); defaults to `node`, RC's only implemented source.
+ * @returns Stable environment state or a manifest error.
+ */
 export function phaseVerificationEnvironmentState(
   root: string,
   profile: PhaseReceiptPlan['profile'],
   producesCoverage: boolean,
   verification: readonly { command: string }[],
-  hasRepairTargets = true
+  hasRepairTargets = true,
+  stack: StackId = 'node'
 ): { ok: true; state: string } | { ok: false; issue: string } {
+  // V-04a: environmentState is a preset's responsibility (И-3) — a stack with no preset (hence no
+  // `environmentStateSource`) is refused HERE, at resolve time, rather than falling through to a
+  // node-specific fingerprint that would silently misrepresent a non-node repo's honesty.
+  if (!resolvePreset(stack, profile, root)) {
+    return {
+      ok: false,
+      issue: `no environmentState source for stack '${stack}' — no preset is implemented for it yet`,
+    };
+  }
   let scripts: Record<string, string> = {};
   try {
     scripts =
@@ -1237,13 +1262,22 @@ export function phaseVerificationEnvironmentState(
  * @param root Project root containing package scripts and command dependencies.
  * @param plan Canonical applicable gate plan.
  * @param verification Exact additional verification commands.
+ * @param [stack] Stack whose environmentState source runs this fingerprint; defaults to `node`.
  * @returns Stable environment state, or a fail-closed fingerprint issue.
  */
 export function phaseVerificationPlanEnvironmentState(
   root: string,
   plan: PhaseVerificationPlan,
-  verification: readonly { command: string }[]
+  verification: readonly { command: string }[],
+  stack: StackId = 'node'
 ): { ok: true; state: string } | { ok: false; issue: string } {
+  // V-04a: same resolve-time fail-closed guard as phaseVerificationEnvironmentState.
+  if (!resolvePreset(stack, plan.profile, root)) {
+    return {
+      ok: false,
+      issue: `no environmentState source for stack '${stack}' — no preset is implemented for it yet`,
+    };
+  }
   const roots = plan.gates.flatMap((gate) => {
     if (!['CONFIGURED', 'PROVEN'].includes(gate.state) || gate.command === null) return [];
     if (gate.name === 'fix') return ['format:fix', 'lint:fix'];
@@ -1253,7 +1287,13 @@ export function phaseVerificationPlanEnvironmentState(
   return phaseVerificationEnvironmentFromScripts(root, roots, verification);
 }
 
-/** @purpose Fingerprint exact target paths and bytes after every command has passed. | @param root Project root. | @param targets Exact project-relative Target Files. | @param [deletedFiles] Exact project-relative tombstones whose absence is verified. | @returns Stable state or a read failure. */
+/**
+ * @purpose Fingerprint exact target paths and bytes after every command has passed.
+ * @param root Project root.
+ * @param targets Exact project-relative Target Files.
+ * @param [deletedFiles] Exact project-relative tombstones whose absence is verified.
+ * @returns Stable state or a read failure.
+ */
 export function phaseReceiptTargetState(
   root: string,
   targets: readonly string[],
@@ -1382,7 +1422,11 @@ function isReceipt(value: unknown, phase: string): value is PhaseReceipt {
   );
 }
 
-/** @purpose Parse every paired receipt block; any malformed/duplicate marker fails closed. | @param content Full ticket content. | @returns Receipts or one structural issue. */
+/**
+ * @purpose Parse every paired receipt block; any malformed/duplicate marker fails closed.
+ * @param content Full ticket content.
+ * @returns Receipts or one structural issue.
+ */
 export function parsePhaseReceipts(content: string): PhaseReceiptParseResult {
   const receipts: PhaseReceipt[] = [];
   const consumed: string[] = [];
@@ -1409,7 +1453,11 @@ export function parsePhaseReceipts(content: string): PhaseReceiptParseResult {
   return { ok: true, receipts };
 }
 
-/** @purpose Render one readable paired receipt block for atomic insertion into Execution Log. | @param receipt Complete successful phase evidence. | @returns Paired HTML-like block with JSON body. */
+/**
+ * @purpose Render one readable paired receipt block for atomic insertion into Execution Log.
+ * @param receipt Complete successful phase evidence.
+ * @returns Paired HTML-like block with JSON body.
+ */
 export function formatPhaseReceipt(receipt: PhaseReceipt): string {
   return [
     `<!--SDD_PHASE_RECEIPT:${receipt.phase}-->`,

@@ -339,3 +339,30 @@ describe('checkTableCells — table is an index, not text (F2, mechanical)', () 
     assert.ok(!sectionCodes(md).includes('SDD_TABLE_CELL_TOO_LONG'));
   });
 });
+
+describe('checkSpecStructure — Critic Rounds is v2-only (AX_SPEC_LIFECYCLE)', () => {
+  const withCriticRounds =
+    '<!--SECTION:VISION-->\n## Vision\nx\n<!--/SECTION:VISION-->\n\n## Critic Rounds\n\n### Round 1\n- Verdict: OK\n';
+
+  it('flags a Critic Rounds section in a v2 spec', () => {
+    assert.ok(
+      checkSpecStructure('s.spec.md', withCriticRounds, 'v2')
+        .map((f) => f.code)
+        .includes('SDD_SPEC_HAS_CRITIC_ROUNDS')
+    );
+  });
+
+  it('stays silent on a v1 spec — legacy specs legitimately carry a review log', () => {
+    assert.ok(
+      !checkSpecStructure('s.spec.md', withCriticRounds, 'v1')
+        .map((f) => f.code)
+        .includes('SDD_SPEC_HAS_CRITIC_ROUNDS')
+    );
+    // default flowVersion is v1 → also silent
+    assert.ok(
+      !checkSpecStructure('s.spec.md', withCriticRounds)
+        .map((f) => f.code)
+        .includes('SDD_SPEC_HAS_CRITIC_ROUNDS')
+    );
+  });
+});

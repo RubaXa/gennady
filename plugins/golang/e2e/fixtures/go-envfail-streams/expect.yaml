@@ -1,0 +1,12 @@
+notes: >
+  Stream split (reviewer's API change): stderrMatches fires on a tool that writes only to stderr,
+  while the same pattern on stdoutMatches does NOT match — so the gate stays a code FAIL.
+requires: [go]
+argv: ['--all']
+exitCode: 1
+gates:
+  golang:stderr-only:
+    status: env-fail
+    hintIncludes: 'colima start'
+  golang:wrong-stream:
+    status: fail

@@ -16,6 +16,13 @@ export function printHelp(): void {
   console.info('  Specify subdirectories to sync only those parts of ai/directives/.');
   console.info('  Requires gennady as a local dev dependency (npm i -D gennady).');
   console.info('');
+  console.info(
+    'Not `sync-skills` (also mirrors ai/directives/, then SDD skills into .claude/skills/) and'
+  );
+  console.info(
+    'not `sdd-sync` (unrelated: propagates one ticket Status into *.3-tasks.md trackers).'
+  );
+  console.info('');
   console.info('Examples:');
   console.info('  npx gennady sync');
   console.info('  npx gennady sync --dry-run');

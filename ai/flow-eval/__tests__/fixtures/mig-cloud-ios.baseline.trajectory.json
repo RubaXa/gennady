@@ -1,0 +1,324 @@
+{
+  "scenario": "MIG-cloud-ios-infra",
+  "events": [
+    {
+      "type": "tool",
+      "i": 0,
+      "t": 1788962446135,
+      "tool": "read",
+      "arg": "{\"filePath\":\"<sandbox>/ai/skills/sdd/SKILL.md\"}"
+    },
+    {
+      "type": "tool",
+      "i": 1,
+      "t": 1788962446135,
+      "tool": "bash",
+      "arg": "{\"command\":\"ls -la <sandbox>/\"}"
+    },
+    {
+      "type": "tool",
+      "i": 2,
+      "t": 1788962527340,
+      "tool": "bash",
+      "arg": "{\"command\":\"npx gennady sdd-state 2>&1\"}"
+    },
+    {
+      "type": "tool",
+      "i": 3,
+      "t": 1788962527340,
+      "tool": "read",
+      "arg": "{\"filePath\":\"<sandbox>/ai/directives/sdd-v2/router.directive.xml\"}"
+    },
+    {
+      "type": "tool",
+      "i": 4,
+      "t": 1788962531769,
+      "tool": "read",
+      "arg": "{\"filePath\":\"<sandbox>/ai/directives/sdd-v2/migration-v1-v2.directive.xml\"}"
+    },
+    {
+      "type": "tool",
+      "i": 5,
+      "t": 1788962535747,
+      "tool": "bash",
+      "arg": "{\"command\":\"npx gennady sdd-migrate plan --all . 2>&1\"}"
+    },
+    {
+      "type": "tool",
+      "i": 6,
+      "t": 1788962535747,
+      "tool": "bash",
+      "arg": "{\"command\":\"npx gennady sdd-migrate anchors --all . 2>&1\"}"
+    },
+    {
+      "type": "tool",
+      "i": 7,
+      "t": 1788962535747,
+      "tool": "bash",
+      "arg": "{\"command\":\"npx gennady sdd-check --all . 2>&1\"}"
+    },
+    {
+      "type": "tool",
+      "i": 8,
+      "t": 1788962547480,
+      "tool": "bash",
+      "arg": "{\"command\":\"git status --short 2>&1; echo \\\"---\\\"; git log --oneline -3 2>&1\"}"
+    },
+    {
+      "type": "tool",
+      "i": 9,
+      "t": 1788962547480,
+      "tool": "read",
+      "arg": "{\"filePath\":\"<sandbox>/specs/README.md\"}"
+    },
+    {
+      "type": "tool",
+      "i": 10,
+      "t": 1788962547480,
+      "tool": "bash",
+      "arg": "{\"command\":\"find <sandbox>/specs <sandbox>/tasks -type f | sort\"}"
+    },
+    {
+      "type": "tool",
+      "i": 11,
+      "t": 1788962557177,
+      "tool": "todowrite",
+      "arg": "{\"todos\":[{\"content\":\"STEP_0 SCAN — dry-runs (plan/anchors) + baseline sdd-check\",\"status\":\"completed\",\"priority\":\"high\"},{\"content\":\"STEP_1 LAYER — write migration/ layer\",\"status\":\"in_progress\",\"priority\":\"high\"},{\"content\":\"STEP_2 ANCHOR"
+    },
+    {
+      "type": "tool",
+      "i": 12,
+      "t": 1788962569897,
+      "tool": "bash",
+      "arg": "{\"command\":\"npx gennady sdd-migrate plan --all . --write 2>&1\"}"
+    },
+    {
+      "type": "tool",
+      "i": 13,
+      "t": 1788962575655,
+      "tool": "bash",
+      "arg": "{\"command\":\"npx gennady sdd-migrate anchors --all . --write 2>&1\"}"
+    },
+    {
+      "type": "tool",
+      "i": 14,
+      "t": 1788962578390,
+      "tool": "bash",
+      "arg": "{\"command\":\"npx gennady sdd-check --all . 2>&1\"}"
+    },
+    {
+      "type": "tool",
+      "i": 15,
+      "t": 1788962588396,
+      "tool": "read",
+      "arg": "{\"filePath\":\"<sandbox>/migration/README.md\"}"
+    },
+    {
+      "type": "tool",
+      "i": 16,
+      "t": 1788962588396,
+      "tool": "read",
+      "arg": "{\"filePath\":\"<sandbox>/migration/core/core.spec.migration.md\"}"
+    },
+    {
+      "type": "tool",
+      "i": 17,
+      "t": 1788962588396,
+      "tool": "read",
+      "arg": "{\"filePath\":\"<sandbox>/migration/testing/testing.spec.migration.md\"}"
+    },
+    {
+      "type": "tool",
+      "i": 18,
+      "t": 1788962588396,
+      "tool": "read",
+      "arg": "{\"filePath\":\"<sandbox>/migration/module-scaffold/module-scaffold.spec.migration.md\"}"
+    },
+    {
+      "type": "tool",
+      "i": 19,
+      "t": 1788962588396,
+      "tool": "read",
+      "arg": "{\"filePath\":\"<sandbox>/migration/infra-base/infra-base.spec.migration.md\"}"
+    },
+    {
+      "type": "tool",
+      "i": 20,
+      "t": 1788962593539,
+      "tool": "bash",
+      "arg": "{\"command\":\"ls <sandbox>/ai/directives/sdd-v2/ <sandbox>/ai/directives/sdd-v2/formats/ 2>&1\"}"
+    },
+    {
+      "type": "tool",
+      "i": 21,
+      "t": 1788962608175,
+      "tool": "read",
+      "arg": "{\"filePath\":\"<sandbox>/ai/directives/sdd-v2/formats/infrastructure-spec-structure.xml\"}"
+    },
+    {
+      "type": "tool",
+      "i": 22,
+      "t": 1788962608175,
+      "tool": "read",
+      "arg": "{\"filePath\":\"<sandbox>/ai/directives/sdd-v2/formats/library-spec-structure.xml\"}"
+    },
+    {
+      "type": "tool",
+      "i": 23,
+      "t": 1788962611340,
+      "tool": "read",
+      "arg": "{\"filePath\":\"<sandbox>/specs/core/core.spec.md\"}"
+    },
+    {
+      "type": "tool",
+      "i": 24,
+      "t": 1788962621246,
+      "tool": "bash",
+      "arg": "{\"command\":\"rg -l \\\"REQUIRED_SECTIONS\\\" <sandbox>/ai/ 2>/dev/null\"}"
+    },
+    {
+      "type": "tool",
+      "i": 25,
+      "t": 1788962621246,
+      "tool": "read",
+      "arg": "{\"filePath\":\"<sandbox>/specs/testing/testing.spec.md\"}"
+    },
+    {
+      "type": "tool",
+      "i": 26,
+      "t": 1788962636393,
+      "tool": "read",
+      "arg": "{\"filePath\":\"<sandbox>/specs/infra-base/infra-base.spec.md\"}"
+    },
+    {
+      "type": "tool",
+      "i": 27,
+      "t": 1788962659567,
+      "tool": "read",
+      "arg": "{\"filePath\":\"<sandbox>/specs/infra-base/infra-base.spec.md\",\"offset\":186}"
+    },
+    {
+      "type": "tool",
+      "i": 28,
+      "t": 1788962663312,
+      "tool": "read",
+      "arg": "{\"filePath\":\"<sandbox>/specs/module-scaffold/module-scaffold.spec.md\"}"
+    },
+    {
+      "type": "tool",
+      "i": 29,
+      "t": 1788962667923,
+      "tool": "bash",
+      "arg": "{\"command\":\"rg -n \\\"REQUIRED_SECTIONS|required.section|required section\\\" <sandbox>/ai/directives/sdd-v2/ 2>/dev/null\"}"
+    },
+    {
+      "type": "tool",
+      "i": 30,
+      "t": 1788962667923,
+      "tool": "read",
+      "arg": "{\"filePath\":\"<sandbox>/ai/directives/sdd-v2/formats/scope-tasks-index.xml\"}"
+    },
+    {
+      "type": "tool",
+      "i": 31,
+      "t": 1788962693062,
+      "tool": "read",
+      "arg": "{\"filePath\":\"<sandbox>/ai/directives/sdd-v2/formats/module-tasks-index.xml\"}"
+    },
+    {
+      "type": "tool",
+      "i": 32,
+      "t": 1788962693062,
+      "tool": "read",
+      "arg": "{\"filePath\":\"<sandbox>/ai/directives/sdd-v2/formats/task-ticket-structure.xml\"}"
+    },
+    {
+      "type": "tool",
+      "i": 33,
+      "t": 1788962698299,
+      "tool": "read",
+      "arg": "{\"filePath\":\"<sandbox>/tasks/infra-base/infra-base.IB-001.md\"}"
+    },
+    {
+      "type": "tool",
+      "i": 34,
+      "t": 1788962711140,
+      "tool": "bash",
+      "arg": "{\"command\":\"ls <sandbox>/ai/directives/sdd-v2/guides/ <sandbox>/ai/directives/sdd-v2/scaffold/ 2>&1\"}"
+    },
+    {
+      "type": "tool",
+      "i": 35,
+      "t": 1788962711140,
+      "tool": "read",
+      "arg": "{\"filePath\":\"<sandbox>/ai/directives/sdd-v2/compression.directive.xml\"}"
+    },
+    {
+      "type": "tool",
+      "i": 36,
+      "t": 1788962745938,
+      "tool": "read",
+      "arg": "{\"filePath\":\"<sandbox>/ai/directives/sdd-v2/guides/v1-to-v2-migration.md\"}"
+    },
+    {
+      "type": "tool",
+      "i": 37,
+      "t": 1788962751165,
+      "tool": "bash",
+      "arg": "{\"command\":\"cd <sandbox> && rg -n \\\"spec\\\\.md#\\\" tasks/ specs/ --no-heading 2>/dev/null | sort\"}"
+    },
+    {
+      "type": "tool",
+      "i": 38,
+      "t": 1788962836853,
+      "tool": "bash",
+      "arg": "{\"command\":\"cd <sandbox> && rg -o \\\"SDD_[A-Z_]+\\\" ai/ | sort -u\"}"
+    },
+    {
+      "type": "tool",
+      "i": 39,
+      "t": 1788962836853,
+      "tool": "bash",
+      "arg": "{\"command\":\"cd <sandbox> && rg -n \\\"REQUIRED_SECTIONS|required-section|required_section\\\" ai/directives/sdd-v2/*.xml ai/directives/sdd-v2/formats/*.xml ai/directives/sdd-v2/guides/*.md 2>/dev/n"
+    },
+    {
+      "type": "tool",
+      "i": 40,
+      "t": 1788962851844,
+      "tool": "bash",
+      "arg": "{\"command\":\"cd <sandbox> && rg -n \\\"REQUIRED|required|SCOPE_TYPE|CRITIC_ROUNDS|Section\\\" ai/directives/sdd-v2/infra.directive.xml | head -60\"}"
+    },
+    {
+      "type": "tool",
+      "i": 41,
+      "t": 1788962914764,
+      "tool": "bash",
+      "arg": "{\"command\":\"cd <sandbox> && rg -n \\\"TSK-IB-[0-9]+|IB-00[0-9]\\\" tasks/ specs/ ai/ CODEOWNERS gennady.yaml 2>/dev/null | rg -v \\\"spec\\\\.md#|\\\\.migration\\\\.md\\\" | head -80\"}"
+    },
+    {
+      "type": "tool",
+      "i": 42,
+      "t": 1788962983620,
+      "tool": "bash",
+      "arg": "{\"command\":\"cd <sandbox> && rg -n \\\"\\\\]\\\\([^)]*\\\\.md[^)]*\\\\)|\\\\[[^]]*\\\\]\\\\(#[^)]*\\\\)\\\" specs/core/core.spec.md specs/testing/testing.spec.md specs/module-scaffold/module-scaffold.spec.md specs/"
+    },
+    {
+      "type": "checkpoint",
+      "i": 43,
+      "t": 1788963197076,
+      "id": "plan-verified",
+      "cmd": "npx --no-install gennady sdd-migrate plan --verify .",
+      "exit": 1,
+      "green": false
+    },
+    {
+      "type": "checkpoint",
+      "i": 44,
+      "t": 1788963197076,
+      "id": "specs-clean",
+      "cmd": "npx --no-install gennady sdd-check --all .",
+      "exit": 1,
+      "green": false
+    }
+  ]
+}
