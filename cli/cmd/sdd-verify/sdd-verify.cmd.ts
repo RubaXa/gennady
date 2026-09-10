@@ -460,6 +460,19 @@ export async function run(
       }
       selectedGates = selectedGates.filter((gate) => !resolved.matched.includes(gate.name));
     }
+    // Н-1 (V-BATCH-13 verdict): a combination like `--only=x --skip=x` (or `--skip=*`) resolves
+    // every individual selector `ok`, yet the intersection is empty — without this check that
+    // reads as a vacuous `ALL PASS (0/0)`, which a CI reader cannot tell apart from a real green
+    // run. An empty post-resolution selection is always a hard error, never a silent no-op.
+    if (selectedGates.length === 0) {
+      return {
+        ok: false,
+        code: 'ERR_CLI_SDD_VERIFY_EMPTY_SELECTION',
+        exitCode: 4,
+        message:
+          '[sdd-verify] ERR_CLI_SDD_VERIFY_EMPTY_SELECTION: --only/--skip selectors select no gate — nothing would run.',
+      };
+    }
   }
   const qualityTail =
     profile === 'full'
