@@ -343,7 +343,8 @@ if (allViolations.length === 0) {
       `with it, the table never declared it). Fix: add the row, worded from the actual halting site.\n` +
       `A deliberate reference to ANOTHER directive's own already-declared halt (a pointer, not a local\n` +
       `re-raise) belongs in ALLOWLIST_CROSS_DIRECTIVE_REFS instead, documented like the existing\n` +
-      `root/scope -> router H_ASK_WITHOUT_CARD entries.\n` +
+      `critic/interview-protocol/root -> H_UNFORMATTED_ASK entries (a halt declared once, fired from\n` +
+      `several directives via a shared contract partial).\n` +
       `\nA row in <HaltConditions> that appears nowhere else is either a boundary precondition or a\n` +
       `continuously-checked meta-condition (see this script's header) — genuinely fine, verified, and\n` +
       `belongs in ALLOWLIST_UNUSED_HALT_IDS with a reason — or it is dead weight nobody wires up; check\n` +
