@@ -310,3 +310,30 @@ describe('model pin never returns (LOCK-1)', () => {
     assert.deepEqual(offenders, []);
   });
 });
+
+// T-B6-11 (40-TRACK-DIRECTIVES-SKILLS.md §1.4, D4.4/D4.5/D4.6/D4.7): restored the v1 audit invariants
+// that had regressed to a 13-line snapshot — LOW confidence never causing FAIL, the printed
+// first-matching-row verdict table, the claimed-verification-without-evidence rule, and the
+// project-scope finding cap routed to `rule-file-fix`, never this task's own FAIL. Assembly
+// (lazy-split) currently lands ax-severity-tagging's body inside STEP_2_SEMANTIC.xml, not
+// STEP_3_ROUTE.xml as an earlier draft of the plan assumed — assert on the rendered assembled
+// output wherever the partial actually lands, not on a fixed step file name that could silently
+// stop matching after the next lazy-assembly rebalance.
+describe('audit severity verdict restored (T-B6-11, D4.4-D4.7)', () => {
+  it('the assembled audit directive computes its verdict from a printed severity table, never judges it', () => {
+    const assembled = walkFiles(resolve(ROOT, 'ai/directives/sdd-v2/audit')).map((f) => readFileSync(f, 'utf8'));
+    const whole = [read('ai', 'directives', 'sdd-v2', 'audit.directive.xml'), ...assembled].join('\n');
+    assert.match(whole, /First matching row wins; print which row matched/);
+    assert.match(whole, /`LOW` finding never causes `FAIL`, opens an Execution Round, or authorizes an artifact change/);
+    assert.match(whole, /A claimed verification result with no executed evidence is not paper drift/);
+    assert.match(whole, /project-scope finding enters this table capped at `MINOR`/);
+  });
+
+  it('routes a project-scope RULE_FILE_INCOMPLETE finding to rule-file-fix, never a phase owner or this task\'s own FAIL', () => {
+    const audit = read('ai', 'directives', 'sdd-v2', 'audit.directive.xml');
+    assert.match(
+      audit,
+      /`RULE_FILE_INCOMPLETE` \| `rule-file-fix` — the rule file is shared project infrastructure, outside every phase's Target Files\. Never `ticket-update`, never a phase owner, never `FAIL` for this task/
+    );
+  });
+});

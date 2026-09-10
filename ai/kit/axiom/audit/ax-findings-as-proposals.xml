@@ -1,7 +1,11 @@
-<!-- source: ai/directives/sdd/audit.directive.xml -->
+<!-- source: ai/directives/sdd/audit.directive.xml (v1 `rule-file-fix` restored, T-B6-11 — needed
+     as soon as AX_FINDING_ROUTING's RULE_FILE_INCOMPLETE row (D4.7) names that same literal
+     remediation type; without it here the vocabulary this axiom enumerates would not cover the
+     route the routing table sends that finding to). -->
 <Axiom id="AX_FINDINGS_AS_PROPOSALS">
-      Every finding contains a proposed remediation. Agent does not modify code. Three remediation types:
+      Every finding contains a proposed remediation. Agent does not modify code. Remediation types:
       - `code-fix` — concrete change in code (with location).
       - `spec-update` — concrete spec update (module or scope) with proposed diff.
       - `ticket-update` — ticket update (canonical case names, deferred scope, etc.).
+      - `rule-file-fix` — shared rule/directive/tooling artifact; outside any task, goes to its own ticket.
     </Axiom>
