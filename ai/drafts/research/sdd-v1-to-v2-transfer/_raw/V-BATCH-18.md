@@ -230,3 +230,102 @@ git show 2f726c3a:ai/kit/axiom/audit/ax-severity-tagging.xml   # 13-строчн
 **Подтверждено:** все числа пачки пересчитаны мной независимым скриптом и совпали — 181 всего, 97 → 98 подключено, 84 → 0 неразмеченных, 0 → 83 черновиков, dangling 35 → 35, аллоулист `H_ASK_WITHOUT_CARD` 2 → 0, `KNOWN_DANGLING_AXIOM_REFS` 39 → 35 (только сокращение по L-10). Все 13 перезапущенных команд зелёные и совпали с отчётом дословно, включая `npm test` `3732/3724/0 fail/8 skipped` и `npm run check` `ALL PASS (5/5)`. Все 101 файл `git diff --stat` покрыты таблицами отчётов; таблица 83 файлов совпадает с диффом побайтово. Текст `AX_SEVERITY_TAGGING` побайтово равен актуальной редакции v1 и на `d37d5910`, и на типе `main` — отменённых редакций нет (L-25 выполнено). GAP-3 — настоящая декларация: гейт зелёный без записи аллоулиста и красный при удалении любой из двух строк. Расширение области линта доказано чистой мутацией «до/после». Бюджеты (L-23) не задеты. `ai/kit/audit-halt-activation.mjs` с PR #38 сливается чисто.
 
 **Вердикт: ВЕРНУТЬ** — на одну правку (B-1) с решением Lead и, желательно в том же заходе, правку F-2, которая иначе обесценивает главный инвариант пачки уже на ближайших трёх слияниях.
+
+---
+
+## Повторная проверка
+
+Проверяющий: `plan-verifier` (свежие глаза, только чтение). Дата: 2026-09-10.
+Проверяемое: ветка `lead/axioms-one-home`, **9** коммитов поверх `2f726c3a` (PR #48); правки по вердикту — `d06bd5e5` (B-1/L-27), `764e7f42` (F-2, F-4), `682d338e` (F-3), `86fe23f4` (F-5). Дерево `rc-v6` чистое на `682d338e`, мною не изменялось; все мутации — в `--shared`-клонах `mut-v6`/`base-v6` с восстановлением (`git status --porcelain` пуст после каждой).
+Основание: решение Lead **L-27** (`02-LEAD-DECISIONS.md:40`) — `[x] DONE` пишет `sdd-log complete` фазового агента, вердикт аудита записывается отдельно в `## Audit Rounds`; абзац v1 «orchestrator sets `[x] DONE` on PASS» не переносится.
+
+# ВЕРДИКТ ПОВТОРНОЙ ПРОВЕРКИ: ПРИНЯТЬ
+
+Блокирующая B-1 закрыта по существу и защищена работающим замком. Все четыре заявленные правки подтверждены. Открыты две новые МИНОРНЫЕ находки (F-10, F-11) — документационные, слияние не держат.
+
+### Таблица «находка → статус»
+
+| Находка | Статус | Доказательство (перезапущено мной) |
+|---|---|---|
+| **B-1** (блокирующая) | **ЗАКРЫТА** | `grep -rn 'sets \`\[x\] DONE\` on' ai/directives/` → **0 совпадений** (exit 1). Во всех трёх собранных файлах (`audit/steps/STEP_2_SEMANTIC.xml:185`, `code-review.directive.xml:227`, `audit/steps/STEP_1_MECHANICAL.xml:108`) осталось одно правило, и оно согласовано: «`[x] DONE` is already the phase's mechanical close» ⟷ «`[x] DONE` is mechanical close, not verification». Взаимоисключающих правил больше нет. |
+| B-1 — соответствие L-27 | **ПОДТВЕРЖДЕНО** | Формулировка кирпича: «on PASS the audit records the round verdict; `[x] DONE` is already the phase's mechanical close» — дословно модель L-27. Помечена `<!-- v2 close model (L-27) -->` в теле и абзацем-исключением в шапке `ai/kit/axiom/audit/ax-severity-tagging.xml`. |
+| B-1 — дословность остального (L-25) | **ПОДТВЕРЖДЕНО** | `diff -w` тела аксиомы против `d37d5910:ai/directives/sdd/audit.directive.xml:88-130` (строки 1–38, т.е. всё, кроме переписанного абзаца) — **пуст**. Задет ровно один абзац, как и заявлено. |
+| B-1 — регресс-тест держит | **ПОДТВЕРЖДЕНО (мутация M7)** | В клоне вернул v1-фразу в кирпич → `build:directives` → `not ok 3 - the assembled audit directive no longer claims the orchestrator sets \`[x] DONE\` on PASS (L-27)`, `# fail 1`, exit 1. На немутированном клоне те же файлы: `# tests 56 / # pass 56 / # fail 0`. Замок двусторонний (`doesNotMatch` v1-фразы + `match` новой). |
+| **F-2** — гейт красный на «подключена И `draft`» | **ЗАКРЫТА (мутация M5′)** | `status="draft"` на подключённой `ax-audit-hook.xml` → `build-directives.ts --check` **exit 1**: `✗ 1 axiom file(s) fail the collected-or-draft-or-pending invariant … process/ax-audit-hook.xml: AX_AUDIT_HOOK — connected by a {{> }} include AND marked status="draft"`. До правки на этом же входе было exit 0. |
+| **F-2** — гейт красный на «подключена И в `PENDING_IN_OPEN_PR`» | **ЗАКРЫТА (мутация M6)** | Добавил `{{> "axiom/critic/ax-default-accept"}}` в `critic-protocol.directive.hbs` (имитация слияния PR #45/#49) → **exit 1**: `critic/ax-default-accept.xml: AX_DEFAULT_ACCEPT — connected by a {{> }} include AND still listed in PENDING_IN_OPEN_PR — its PR merged; delete the stale entry`. Сокращение списка обеспечено механически, не памятью. |
+| **F-2** — список `PENDING_IN_OPEN_PR` = ровно 7 файлов открытых веток | **ПОДТВЕРЖДЕНО** | Вывел независимо: объединение `{{> "axiom/…"}}` по `ai/kit/templates/sdd-v2` для веток минус набор HEAD (114 партиалов). Результат — ровно те же 7 ключей, что в `lint-axioms.ts`. Атрибуция по PR совпадает построчно: #45 `lead/review-critic-bounds` и #49 `lead/promises-not-wider` → `critic/ax-default-accept`, `critic/ax-polish-mode`, `process/ax-cap-5`, `process/ax-dispatch-via-batch`; #41 `lead/spec-authoring` → `spec/ax-refine-module-preserves-contracts`; #38 `lead/phase-agent-bounds` → `process/ax-re-dispatch`, `process/ax-permitted-bash-commands`. Локальные вершины веток **побитово равны** `headRefOid` из `gh pr view` для всех четырёх PR. Проверены и **все остальные 7 открытых PR** (#48, #46, #43, #42, #40, #26, #25) — ни один не подключает новых аксиом, список полон. |
+| **F-3** — `ax-default-accept.xml` побайтово равен базе | **ПОДТВЕРЖДЕНО** | `md5` файла на `2f726c3a` и на HEAD — `e2674702d3888722eb7f419795d7f480` в обоих случаях, `cmp` чист. Файл не входит в `git diff --name-only 2f726c3a HEAD`. Мотивировка вынесена в значение карты `PENDING_IN_OPEN_PR`, как заявлено. |
+| **F-3** — `git merge-tree` чист | **ПОДТВЕРЖДЕНО** | `merge-tree --write-tree HEAD lead/promises-not-wider` → exit 0 **CLEAN**; то же для `lead/review-critic-bounds` → exit 0 **CLEAN**. Оба новых конфликта, внесённых пачкой, сняты; поведение совпало с базой `2f726c3a`. Предсуществующие конфликты не изменились: #41 — `ai/kit/lint-axioms.ts`, #38 — `STEP_2_IMPLEMENT.xml` + `phase-execution-protocol.directive.hbs`, одинаково на базе и на HEAD. |
+| **F-4** | **ЗАКРЫТА** | Каждое утверждение нового комментария (`lint-axioms.ts:262-277`) перепроверено: `ai/directives/coding/typescript-rules.xml` существует; `AX_BASE_CONTRACT_SHAPE` определён там же (`:187`); `coding` входит в `STATIC_DIRECTIVE_DIRS` (`:309`); `AX_CONTRACT_BUDGET` во всём репозитории встречается только в цитате `agent-inbox/contract-interrogation.directive.xml:33` и в самой строке аллоулиста. Ложная квалификация «дефект дерева `agent-inbox`» снята и в коде, и в `R-T-B6-24.md:49`. |
+| **F-5** | **ЗАКРЫТА ФОРМАЛЬНО / ЧАСТИЧНО** | Мёртвая самоссылка снята: подсказка `audit-halt-activation.mjs:346` указывает на `critic/interview-protocol/root -> H_UNFORMATTED_ASK`, и эти три записи в `ALLOWLIST_CROSS_DIRECTIVE_REFS` действительно существуют (`:143-145`). Но пример выбран неудачно — см. **F-10**. |
+| **F-8** | **ЧАСТИЧНО** | Три названные подписи исправлены и сверены с кодом: `execute.directive.xml:67` ✓, `audit.directive.hbs:24` ✓, `lint-axioms.ts:332` (`collectStaticDirectiveFiles`) ✓. Но в той же диаграмме остались другие неточности — см. **F-11**. |
+| F-6, F-7, F-9 | **НЕ ИСПРАВЛЕНЫ, ЧЕСТНО ОБЪЯВЛЕНО** | `R-BATCH-18-axioms-one-home.md` §7 помечает их «НЕ исправлено» с причиной; F-6 и остатки перенесены в §9. Претензий нет: все три — правки доски/трека, вне зоны `rc-v6`. |
+
+### Числа — пересчитаны своим скриптом (`scratchpad/probe2.mjs`), не на глаз
+
+Скрипт независимо обходит `ai/kit/axiom/{process,spec,audit,scaffold,boundary,critic,truth,interview}/**/*.xml`, собирает `{{> "axiom/…"}}` из всего корпуса шаблонов и разбирает список `PENDING_IN_OPEN_PR` прямо из исходника `lint-axioms.ts`.
+
+| Метрика | Заявлено | Измерено мной | Вердикт |
+|---|---|---|---|
+| SDD-релевантных аксиом всего | 181 | **181** | ПОДТВЕРЖДЕНО |
+| подключено (`{{> }}`) | 98 | **98** | ПОДТВЕРЖДЕНО |
+| `status="draft"` и не подключено | 76 | **76** | ПОДТВЕРЖДЕНО |
+| в `PENDING_IN_OPEN_PR` и не подключено | 7 | **7** | ПОДТВЕРЖДЕНО |
+| сумма | 181 | **98 + 76 + 7 = 181** | ПОДТВЕРЖДЕНО |
+| ни в одном из трёх состояний | 0 | **0** | ПОДТВЕРЖДЕНО |
+| пересечения («подключена И draft», «подключена И pending») | 0 | **0 / 0** | ПОДТВЕРЖДЕНО |
+| размер карты `PENDING_IN_OPEN_PR` | 7 | **7** | ПОДТВЕРЖДЕНО |
+| дублей id среди 181 | нет | **нет** | ПОДТВЕРЖДЕНО |
+| `dangling axiom(s)` база → HEAD | 35 → 35 | **35 → 35** | ПОДТВЕРЖДЕНО (`build-directives.ts --check` в клоне базы и в `rc-v6`) |
+| файлов `git diff --name-only 2f726c3a..HEAD` | — | **100** = 85 аксиом + 7 сгенерированных + 3 `.hbs` + 3 `ai/kit/*.{ts,mjs}` + 2 теста | было 101; стало 100 ровно потому, что `ax-default-accept.xml` вернулся к базе (F-3) — согласовано |
+| файлов в 4 правочных коммитах | — | **16**, каждый имеет строку в `R-BATCH-18-axioms-one-home.md` §7 | ПОДТВЕРЖДЕНО |
+
+### Гейты — перезапущены мной синхронно в `rc-v6`, exit-коды мои
+
+| Команда | Результат | Exit |
+|---|---|---|
+| `npm test` | `# tests 3737 / # pass 3729 / # fail 0 / # skipped 8` (было 3732/3724/0/8 — ровно +5 новых кейсов: 1 замок B-1 + 4 кейса F-2) | **0** |
+| `npm run check:directives-fresh` | `✓ ai/directives/** matches a fresh rebuild.` — сгенерированные файлы синхронны с кирпичами | **0** |
+| `npm run audit:sdd-templates` | все 5 подгейтов зелёные (`check:directives-fresh`, `audit:axioms` 28 шаблонов, `audit:contracts` 28+33+54, `audit:halts` 33+33, `check:directive-budgets`) | **0** |
+| `npm run audit:contracts` | `✓ contract-activation audit clean` | **0** |
+| `npm run gate:sdd-check-baseline` | `OK — no error outside the baseline (rc-baseline-1)` | **0** |
+| `git status --porcelain` в `rc-v6` | пусто, HEAD = `682d338e` | — |
+
+### Новые находки (обе МИНОРНЫЕ, неблокирующие)
+
+**F-10 (MINOR). Правка F-5 заменила мёртвый пример на пример того же класса: `H_UNFORMATTED_ASK` не объявлен ни одной строкой `<HaltConditions>` нигде в репозитории.**
+
+`ai/kit/audit-halt-activation.mjs:344-347` объясняет, что `ALLOWLIST_CROSS_DIRECTIVE_REFS` — для «a deliberate reference to ANOTHER directive's own **already-declared** halt», и приводит образцом `critic/interview-protocol/root -> H_UNFORMATTED_ASK`. Записи аллоулиста существуют (`:143-145`), поэтому формально F-5 закрыта. Но самого объявления нет:
+
+```
+grep -rn 'H_UNFORMATTED_ASK' ai | grep -v audit-halt-activation.mjs
+  ai/directives/sdd-v2/root.directive.xml:108              # предложение из контракта
+  ai/directives/sdd-v2/interview-protocol.directive.xml:301 # то же предложение
+  ai/kit/contract/process/question-format.xml:21            # источник предложения
+grep -rn '^\s*| *`H_UNFORMATTED_ASK`' ai   # → пусто: строки-объявления нет
+grep -c 'H_UNFORMATTED_ASK' ai/directives/sdd-v2/critic.directive.xml   # → 0
+```
+
+То есть: (а) образец указывает на halt, которого не объявляет ни одна директива — ровно та форма, которую GAP-3 в этой же пачке устраняла для `H_ASK_WITHOUT_CARD`; (б) запись `critic.directive::H_UNFORMATTED_ASK` мертва — в `critic.directive.xml` этого id нет вовсе; (в) пояснение «a halt declared once, **fired from several directives** via a shared contract partial» противоречит и шапке самого скрипта (`:26-27` «declared and fires only in `router.directive.hbs`» — что тоже неверно: в таблице роутера этого id нет), и смыслу аллоулиста («a pointer, **not** a local re-raise»). Читатель, поверив подсказке, добавит в аллоулист halt, который директива поднимает у себя — то есть ровно то, что гейт обязан ловить.
+
+Смягчающее: сама несогласованность **предсуществующая** — записи `:143-145` и `ALLOWLIST_UNUSED_HALT_IDS`-запись `H_UNFORMATTED_ASK` есть и на базе `2f726c3a`; пачка 18 её не вносила, а лишь выбрала в качестве образца. Правка: либо взять живым образцом действительно объявленный halt (например, `review-lifecycle.directive::H_BLOCKED` — `H_BLOCKED` объявлен в `phase-execution-protocol.directive.hbs`), либо завести отдельную строку доски на разбор `H_UNFORMATTED_ASK` (класс V14-2a).
+
+**F-11 (MINOR). В mermaid «СТАЛО» `R-T-B6-24.md` §2 два узла называют `ai/kit/lint-axioms.ts` с номерами строк, принадлежащими `ai/kit/build-directives.ts`; ещё два числа устарели относительно HEAD.**
+
+| Узел | Написано | Факт |
+|---|---|---|
+| `B2` («БЫЛО») | `lintUndefinedAxiomRefs`, `ai/kit/lint-axioms.ts:171 (до правки)` | `:171` — это `build-directives.ts:171` на базе `2f726c3a` (вызов). Определение в `lint-axioms.ts` на базе — `:157` |
+| `A3` | `build-directives.ts:178`, `[...rendered, ...staticDirectiveFiles]` | верно на `edeb71c3`; на HEAD это `build-directives.ts:181` (`:180` — вызов `collectStaticDirectiveFiles`) |
+| `A4` | `lintUndefinedAxiomRefs`, `ai/kit/lint-axioms.ts:180 (build-directives.ts)` | не совпадает ни с чем: определение — `lint-axioms.ts:172`, вызов — `build-directives.ts:181`; `lint-axioms.ts:180` — пустая строка |
+
+Узел `A2` (`lint-axioms.ts:332`) при этом верен, поэтому диаграмма смешивает два файла под одной подписью. Стрелки как связи (вызов/включение) верны — неверны только координаты. Правка: привести все подписи к одному файлу и к состоянию `682d338e`.
+
+### Итог повторной проверки
+
+**Блокирующее — 0.** B-1 закрыта: взаимоисключающих правил о `[x] DONE` в собранных `STEP_2_SEMANTIC.xml`, `code-review.directive.xml`, `STEP_1_MECHANICAL.xml` больше нет; формулировка дословно соответствует L-27; остальной текст аксиомы остался побайтово v1 (`diff -w` пуст); регресс-замок проверен мутацией и падает при возврате v1-фразы.
+
+**Неблокирующее — 2 новых:** F-10 (образец в подсказке `audit-halt-activation.mjs:346` указывает на halt `H_UNFORMATTED_ASK`, не объявленный ни одной `<HaltConditions>`; несогласованность предсуществующая, но выбрана образцом этой правкой), F-11 (четыре неточных `file:line` в mermaid `R-T-B6-24.md` §2). Обе — документационные, слияние не держат. Ранее открытые F-6, F-7, F-9 остаются как есть и честно объявлены в отчёте §7/§9 как правки доски/трека.
+
+**Подтверждено:** F-2 закрыта в обе стороны воспроизводимыми мутациями (гейт красный и на «подключена И draft», и на «подключена И pending»); список `PENDING_IN_OPEN_PR` выведен мной независимо и совпал ровно — 7 файлов, атрибуция по PR #45/#49/#41/#38 построчно верна, локальные вершины веток равны `headRefOid` этих PR, остальные 7 открытых PR аксиом не подключают. F-3 закрыта: `ax-default-accept.xml` побайтово равен базе (`md5 e2674702…`), `merge-tree` против `lead/promises-not-wider` и `lead/review-critic-bounds` — чист, как и на базе; предсуществующие конфликты #41/#38 не изменились. F-4 закрыта в коде и в отчёте, каждое утверждение новой мотивировки перепроверено. Числа сошлись: 181 = 98 + 76 + 7, пересечений и дублей нет, dangling 35 → 35. Все пять гейтов (`npm test` 3737/3729/0 fail/8 skipped, `check:directives-fresh`, `audit:sdd-templates`, `audit:contracts`, `gate:sdd-check-baseline`) зелёные, дерево `rc-v6` чисто на `682d338e`.
+
+**Вердикт: ПРИНЯТЬ** — пачка 18 готова к PR. F-10 и F-11 закрыть попутно или отдельной строкой доски; слияние они не держат. Обязательное условие §8 отчёта (снятие записей `PENDING_IN_OPEN_PR` после слияния PR #45/#49, #41, #38) обеспечено механически — гейт покраснеет `pending-but-connected`, проверено мутацией M6.

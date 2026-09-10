@@ -2,7 +2,8 @@
 
 Ветка `lead/migrator-red-first` (от `lead/eval-reproducible` = PR #43, `c51cab65`). Задачи в порядке
 L-15 (red-first): **E-03 → E-07 → E-06 → E-09**. Полные таблицы/доказательства — в `R-E-03.md`,
-`R-E-07.md`, `R-E-06.md`, `R-E-09.md`.
+`R-E-07.md`, `R-E-06.md`, `R-E-09.md`. Все четыре задачи пачки закрыты; коммиты по порядку —
+`58aba32f` (E-03) → `03d661d5` (E-07) → `5fcf286a` (E-06) → `bc2e8d34` (E-09, HEAD ветки).
 
 ## Черновик описания PR (простым языком)
 
@@ -78,7 +79,7 @@ flowchart TD
 | E-07 | `node --test ai/flow-eval/__tests__/migration-grade.test.ts` | 11/11 pass (было 7/7) | 0 |
 | E-06 | `node --test ai/flow-eval/__tests__/fixture-detmig.test.ts` | 4/4 pass (RED→мигратор→GREEN→grade PASS) | 0 |
 | E-06 | `node --test cli/cmd/sdd-migrate/__tests__/sdd-migrate.cmd.test.ts shared/sdd/__tests__/anchor-inject.test.ts` | 39/39 pass | 0 |
-| E-09 | 2× живой execute-прогон `slugify-toolchain` (см. R-E-09.md) | R-COMPLETE: pass оба раза (на диске: DONE, receipts, реальный код) | см. R-E-09.md |
+| E-09 | 2× живой execute-прогон `slugify-toolchain` (см. R-E-09.md) | R-COMPLETE: pass оба раза (на диске: DONE, receipts, реальный код); `gate: pass`, `batch outcome: exit 0` оба раза | 0 |
 | batch | `npm --prefix <tree> run test:sdd-flow-eval` | 206-211/207-211 pass, 1 известный предсуществующий (`harness.test.ts`, R-BATCH-07) | 1 (не блокирует) |
 | batch | `npm --prefix <tree> run type-check` | чисто | 0 |
 | batch | `npm --prefix <tree> run flow-eval:docs-check` | OK, 0 [UNVERIFIED] | 0 |

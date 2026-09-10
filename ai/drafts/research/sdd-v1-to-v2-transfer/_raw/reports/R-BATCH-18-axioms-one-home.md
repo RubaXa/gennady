@@ -90,6 +90,38 @@ flowchart TD
 4. `H_ASK_WITHOUT_CARD` объявлен в ДВУХ директивах (router и root), не в одной — обе реально могут поднять этот halt на своём entry-вопросе; альтернатива («объявить только в router, оставить root ссылкой») не позволяла безопасно снять allowlist-запись root'а.
 5. `ax-default-accept.xml` (уже несущий дореформенный v1-текст, известный по L-25/пачке 20) помечен `status="draft"` этой задачей как часть общего множества 83 — не противоречит будущей работе пачки 20 по каноническому тексту и активации в `review-lifecycle`.
 
+## 7. Правки по вердикту верификатора (V-BATCH-18.md, `ВЕРНУТЬ`)
+
+Вердикт: 1 блокирующая (B-1) + 8 неблокирующих (F-2…F-9), все обработаны в дереве `rc-v6` тремя дополнительными коммитами (`d06bd5e5`, `764e7f42` + `682d338e` для F-3, `86fe23f4`) поверх пяти исходных. Таблица «находка → что сделано → где» (детали и mermaid — в соответствующих `R-T-B6-*.md`):
+
+| Находка | Что сделано | Где (файлы) | Коммит |
+|---|---|---|---|
+| **B-1** (блокирующая, решение Lead L-27) — v1-фраза «orchestrator sets `[x] DONE` on PASS» подключена в ту же директиву, что v2's `AX_AUDIT_HOOK` group-audit | Переписан последний абзац `AX_SEVERITY_TAGGING` под v2-модель («on PASS the audit records the round verdict; `[x] DONE` is already the phase's mechanical close»), помечен `<!-- v2 close model (L-27) -->`; D4.1/D4.4-D4.7 не задеты | `ai/kit/axiom/audit/ax-severity-tagging.xml`, 3 сгенерированных файла, +1 тест в `stateless-sdd-flow-contract.test.ts` | `d06bd5e5` |
+| **F-2** (серьёзная) — гейт молча принимал «подключена И `draft`» | `lintUncollectedAxiomFiles` проверяет все 3 легитимных состояния явно; добавлен именованный сокращающийся `PENDING_IN_OPEN_PR` для 7 файлов, которые открытые PR уже подключают | `ai/kit/lint-axioms.ts`, `ai/kit/build-directives.ts`, 6 из 7 axiom-файлов (см. F-3 про 7-й), `lint-axioms.test.ts` (+4 кейса) | `764e7f42` |
+| **F-3** (серьёзная) — правка F-2 внесла НОВЫЙ конфликт слияния на `ax-default-accept.xml` против PR #45/#49 | Файл возвращён байт-в-байт к содержанию до пачки 18; мотивировка перенесена в значение карты `PENDING_IN_OPEN_PR` | `ai/kit/axiom/critic/ax-default-accept.xml`, `ai/kit/lint-axioms.ts` | `682d338e` |
+| **F-4** (минорная) — недостоверная мотивировка записи `AX_CONTRACT_BUDGET` («typescript-rules.xml не существует» — неправда) | Комментарий переписан честно: файл существует, определяет соседний `AX_BASE_CONTRACT_SHAPE`; висит только `AX_CONTRACT_BUDGET`, владелец — `coding/`, не `agent-inbox/` | `ai/kit/lint-axioms.ts` (`STATIC_TREE_DANGLING_REFS`) | `764e7f42` (тот же коммит, что F-2 — общий файл) |
+| **F-5** (минорная) — устаревшая самоссылка в `audit-halt-activation.mjs` на удалённые GAP-3 allowlist-записи | Подсказка указывает на живой пример (`H_UNFORMATTED_ASK`) вместо снятых `root/scope -> router H_ASK_WITHOUT_CARD` | `ai/kit/audit-halt-activation.mjs` | `86fe23f4` |
+| **F-6 / D4.1** (минорная) — таблица строгости не доезжает до `STEP_3_ROUTE.xml` | НЕ исправлено — размещение в lazy-сборке вне зоны решения L-27 (правка B-1 ограничена текстом абзаца). Остаётся ЧАСТИЧНО, см. §9 | — | — |
+| **F-7** (минорная) — жёсткий список `STATIC_DIRECTIVE_DIRS` вместо обхода `ai/directives/**` | НЕ исправлено — вне брифа правок верификатора (сегодня безвредно: `ai/directives/knowledge.xml` пуст по `AX_*`); зафиксировано как остаток | — | — |
+| **F-8** (минорная) — 3 неточных `file:line` в mermaid отчётов | Исправлены в `R-T-B6-25.md` (`execute.directive.xml:67`, `audit.directive.hbs:24`) и `R-T-B6-24.md` (`lint-axioms.ts:332`, актуально на коммит `682d338e`) | документы `_raw/reports/*.md` (не код) | — |
+| **F-9** (к перечитыванию доски) — `draft` легитимизировал сироту GAP-K-3 | НЕ исправлено — вне зоны `rc-v6` (доска — файл Lead); зафиксировано в R-T-B6-19.md §5 для перечитывания | — | — |
+
+## 8. Порядок слияния (обязательное условие для снятия `PENDING_IN_OPEN_PR`)
+
+`PENDING_IN_OPEN_PR` (F-2/F-3) — временный, ПО КОНСТРУКЦИИ сокращающийся аллоулист. После слияния каждого из перечисленных PR его запись(и) ОБЯЗАНЫ быть удалены из `ai/kit/lint-axioms.ts`, иначе гейт `lintUncollectedAxiomFiles` покраснеет с диагнозом `pending-but-connected`:
+
+1. **PR #45 (`lead/review-critic-bounds`) и/или PR #49 (`lead/promises-not-wider`)** — снимают 4 записи: `critic/ax-default-accept`, `critic/ax-polish-mode`, `process/ax-dispatch-via-batch`, `process/ax-cap-5`. Оба PR подключают одни и те же 4 партиала — запись можно снять после ПЕРВОГО из двух, слившегося раньше (второй тогда просто рабазируется на уже подключённый партиал).
+2. **PR #41 (`lead/spec-authoring`)** — снимает `spec/ax-refine-module-preserves-contracts` (и разблокирует отложенную `T-B6-02`, чей файл `module.directive.hbs` тоже принадлежит этому PR).
+3. **PR #38 (`lead/phase-agent-bounds`)** — снимает `process/ax-re-dispatch`, `process/ax-permitted-bash-commands`.
+
+После всех трёх слияний `PENDING_IN_OPEN_PR` должен быть пуст (или содержать только записи, добавленные ПОСЛЕ этого брифа) — это самостоятельно проверяемо: `lintUncollectedAxiomFiles` на слитом дереве вернёт находки `pending-but-connected` для любой забытой записи.
+
+## 9. Остатки
+
+1. **D4.1 частично (F-6).** Таблица вычисления вердикта живёт в `audit/steps/STEP_2_SEMANTIC.xml`, не доезжает до `STEP_3_ROUTE.xml`, как предполагал план. Решение L-27 (B-1) намеренно ограничено текстом одного абзаца и не трогает место в lazy-сборке — перенос партиала или явное признание ослабленного замка остаются задачей `40-TRACK-DIRECTIVES-SKILLS.md` §1.4 (правка доски, вне зоны `rc-v6`).
+2. **V14-2a — доказательство пустое.** `61-TASK-BOARD.md:256` ссылается на удаление записи `'root.directive::H_ASK_WITHOUT_CARD'`, которую GAP-3 уже удалила совсем — формулировку нужно заменить на «зелёный БЕЗ записи `…::H_ASK_WITHOUT_CARD` в аллоулисте» (правка доски, вне зоны `rc-v6`; см. `V-BATCH-18.md` §5 п.1).
+3. **T-B6-02 — ждёт PR #41.** `module.directive.hbs` принадлежит `lead/spec-authoring`; после его слияния T-B6-02 запускается, а заодно снимается запись `spec/ax-refine-module-preserves-contracts` из `PENDING_IN_OPEN_PR` (см. §8 п.2).
+
 ## Команды пуша для Lead
 
 ```
@@ -100,5 +132,6 @@ gh pr create --base codex/sdd-v2-rc52-followup --head lead/axioms-one-home \
   --body-file <путь к этому отчёту или его краткая версия>
 ```
 
-Пять коммитов от `2f726c3a` (голова `lead/reopen-by-cause` / PR #48) до `7db7e1de`:
-`edeb71c3` (T-B6-24) → `ae42e356` (T-B6-25) → `40935c63` (T-B6-11) → `15b10585` (GAP-3) → `7db7e1de` (T-B6-19).
+Восемь коммитов от `2f726c3a` (голова `lead/reopen-by-cause` / PR #48) до `86fe23f4`:
+`edeb71c3` (T-B6-24) → `ae42e356` (T-B6-25) → `40935c63` (T-B6-11) → `15b10585` (GAP-3) → `7db7e1de` (T-B6-19) →
+`d06bd5e5` (правка B-1/L-27) → `764e7f42` (правка F-2/F-4) → `682d338e` (правка F-3) → `86fe23f4` (правка F-5).
