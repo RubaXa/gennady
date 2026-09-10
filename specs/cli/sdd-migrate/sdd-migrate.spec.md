@@ -41,14 +41,17 @@ $ npx gennady sdd-migrate anchors --all . --write  # применить + зат
 
 ## 3. Entity Inventory (Closed-World)
 
-| Name                   | Type    | Purpose                                                                                                      |
-| ---------------------- | ------- | ------------------------------------------------------------------------------------------------------------ |
-| `run`                  | Command | Точка входа CLI: режим `anchors`, dry-run/`--write`, single/`--all`                                          |
-| `findV1Tickets`        | Utility | Рекурсивный сбор `tasks/**/*.task-*.md`                                                                      |
-| `injectAnchors`        | Utility | (`shared/sdd/anchor-inject`) обёртка канонических секций маркерами                                           |
-| `scaffoldExecutionLog` | Utility | (`shared/sdd/anchor-inject`) скаффолдит `## Execution Log`, если у v1-тикета (Meta-сигнатура) его нет вообще |
-| `badInvocation`        | Utility | Билдер диагностики (exit 4)                                                                                  |
-| `MigrateOutcome`       | Type    | `{ok:true,text}` либо `{ok:false,code,exitCode,message}`                                                     |
+| Name                       | Type    | Purpose                                                                                                                                                                              |
+| -------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `run`                      | Command | Точка входа CLI: режим `anchors`, dry-run/`--write`, single/`--all`                                                                                                                  |
+| `findV1Tickets`            | Utility | Рекурсивный сбор `tasks/**/*.task-*.md`                                                                                                                                              |
+| `injectAnchors`            | Utility | (`shared/sdd/anchor-inject`) обёртка канонических секций маркерами                                                                                                                   |
+| `scaffoldExecutionLog`     | Utility | (`shared/sdd/anchor-inject`) скаффолдит `## Execution Log`, если у v1-тикета (Meta-сигнатура) его нет вообще                                                                         |
+| `hasPhasesWithoutOverview` | Utility | (`shared/sdd/anchor-inject`, B2-10) `true`, когда есть ≥1 `PHASE_P<N>`-якорь, но нет `PHASES_OVERVIEW` — фазовые ID недобываемы; ведёт к `refused` (см. D-MG011)                     |
+| `upgradeVerificationTable` | Utility | (`shared/sdd/anchor-inject`, унаследовано от пачки 22/E-06 — не документировано раньше) апгрейд 2-колоночной таблицы Verification в 3-колоночную (Role) + `PHASE_RECEIPTS:v1`-маркер |
+| `scaffoldFirstRound`       | Utility | (`shared/sdd/anchor-inject`, унаследовано от пачки 22/E-06 — не документировано раньше) скаффолдит `### Round 1` со всеми `#### P<N>`-блоками при апгрейде таблицы                   |
+| `badInvocation`            | Utility | Билдер диагностики (exit 4)                                                                                                                                                          |
+| `MigrateOutcome`           | Type    | `{ok:true,text}` либо `{ok:false,code,exitCode,message}`                                                                                                                             |
 
 <!--/SECTION:ENTITY_INVENTORY-->
 
@@ -68,10 +71,13 @@ $ npx gennady sdd-migrate anchors --all . --write  # применить + зат
 - Postconditions:
   - dry-run (без `--write`) — репорт `would <file> — <sections>`; файлы не тронуты
   - `--write` — каждая голая каноническая секция обёрнута маркерами; уже-заякоренные — `skip`
+  - тикет с `hasPhasesWithoutOverview` (фазы есть, `Phases Overview` нет) — **refused**: ни dry-run, ни `--write` его не трогают вообще (не только фазовый якорь — весь тикет), строка `REFUSED <file> — …` в отчёте, запись `{file, reason: 'PHASES_OVERVIEW_MISSING'}` в `refused[]`, футер `refused: N (no Phases Overview)`; exit остаётся 0 и в dry-run, и в `--write` (см. D-MG011)
+  - `--format json` — `text` несёт `JSON.stringify({mode:'anchors', write, ticketsScanned, written, would, skip, refused, summary:{refused}})`; тот же `refused[]`/счётчик, машиночитаемо для `E-14`/CI
   - результат проходит `sdd-check` (баланс якорей) и `sdd-extract` по секциям
 - Invariants:
   - идемпотентно (повторный прогон ничего не меняет)
   - `## 3. Phases`-контейнер не якорится; секции не вкладываются
+  - refusal детерминирован (чистая функция `hasPhasesWithoutOverview` от финального текста) и не зависит от `--write`/`--format`
 
 ### `renameCriticRoundHeadings`
 
@@ -177,6 +183,12 @@ shared/sdd/anchor-inject.ts  (injectAnchors)  + __tests__/anchor-inject.test.ts
 ### D-MG010 — `anchors --write` скаффолдит недостающий Execution Log для v1-тикетов
 
 - **Status:** active · **Was:** `isTicket()` (`shared/sdd/check.ts`) требует и META, и EXECUTION*LOG; `injectAnchors` только оборачивает *существующие\_ заголовки маркерами. Реальный v1-тикет с Meta-заголовком, но без `## Execution Log` вообще (не голый заголовок — секции физически нет), после `anchors --write` остаётся без EXECUTION_LOG-якоря — механически невидим для `isTicket()` → `SDD_TRACKER_ORPHAN_ROW`, STEP_7 гейт красный навсегда, обычный прогон `anchors` его не лечит. **Now:** новая чистая функция `scaffoldExecutionLog` (`shared/sdd/anchor-inject.ts`) — когда текст несёт Meta-заголовок/якорь, но не несёт `<!--SECTION:EXECUTION_LOG-->`, дописывает в конец файла заголовок `## Execution Log`, обёрнутый якорями, с одной честной строкой `- <дата миграции> migrated from v1 — no rounds/phases recorded in v1 format`. `sdd-migrate anchors --write` вызывает её сразу после `injectAnchors`; отчёт помечает такие тикеты `EXECUTION_LOG (scaffolded — v1 ticket had none)`. Идемпотентно — второй прогон видит существующий якорь и не трогает файл (`skip`). **Risk:** нет — тикеты, у которых Execution Log уже был (голый заголовок или уже заякоренный), не затрагиваются; скаффолд активен только при Meta-сигнатуре без единого EXECUTION_LOG-якоря.
+
+### D-MG011 — `hasPhasesWithoutOverview` → полный refusal тикета + машиночитаемый сигнал (`--format json`)
+
+- **Status:** active · **Was (B2-10, до `V-BATCH-16`):** `hasPhasesWithoutOverview` только печатала `WARN <file> — …` в текстовый отчёт; сам тикет всё равно писался целиком (`--write` анкорил `PHASE_P<N>`, апгрейдил Verification-таблицу и т.д.) — WARN был виден только человеку, читающему текст отчёта, а не автомату (`E-14`/CI), у которого нет иного способа отличить такой прогон от чистого. Формулировка доски (`61-TASK-BOARD.md:84` «явный отказ») и трека (`31-TRACK-CHECK-LOG.md:632` «явный отказ/предупреждение») допускала оба прочтения — верификация `V-BATCH-16` (Q2) вынесла это оператору.
+- **Now (решение Lead L-28):** тикет, для которого `hasPhasesWithoutOverview(text) === true` на финальном (после `injectAnchors`/`scaffoldExecutionLog`/`upgradeVerificationTable`) тексте, **refused целиком** — ни dry-run, ни `--write` не применяют к нему ни одного изменения (не только фазовый якорь: PHASE_P1/META/BDD/EXECUTION_LOG — ничего). Отчёт получает per-file строку `REFUSED <file> — …` и футер `refused: N (no Phases Overview)`; `--format json` (новый флаг режима `anchors`) даёт машиночитаемый `refused: [{file, reason: 'PHASES_OVERVIEW_MISSING'}]` + `summary.refused` — то, на что реально может смотреть `E-14`/CI, вместо парсинга текстового WARN. Exit остаётся `0` в обоих режимах (`--write` без записи такого тикета — это не ошибка инструмента, это корректный, видимый отказ по одному файлу).
+- **Risk accepted:** 19 реальных тикетов корпуса (см. журнал прогона `sdd-migrate anchors --all`) теперь не получают НИКАКИХ изменений от `anchors --write` (раньше получали частичные — PHASE_P<N> и т.д. анкорились, только Phases Overview недоставало) — это преднамеренно более консервативно, чем было: до ручного дописывания `Phases Overview` эти тикеты не двигаются вообще. Их полный список — остаток для доски (ручная миграция, вне этой задачи).
 <!--/SECTION:MODULE_DECISION_LOG-->
 
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->
