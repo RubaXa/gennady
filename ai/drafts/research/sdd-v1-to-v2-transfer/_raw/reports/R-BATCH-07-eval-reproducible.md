@@ -240,9 +240,79 @@ flowchart LR
 `6d38e5a1 c44bca04 67ca3203 f78341a4 d4cb5aba a62b0e32 e674edff 2fd0b94a c18022ff 596ff1cc 3fe364be
 80ab7326 cb19e910` (HEAD = `cb19e910`).
 
+## § Перебазирование на e7b5ba1e (вторая сессия, довершение)
+
+Ветка `lead/eval-reproducible` была перебазирована повторно: старая база `origin/codex/sdd-v2-rc52-followup@c9b58636` →
+новая `@e7b5ba1e` (апстрим продвинулся на 7 коммитов между базами — `git log --oneline c9b58636..e7b5ba1e`:
+`ca814454`/`ea5303fa`/`905df299` — PR #44 `journal/guard-verification`; `cbd31fe2` — trajectory evals + migration
+ladder + eval-history report + `harness.test.ts`/`cli.ts`/`provision.ts` правки; `ca2c00c3` — de-ceremony B1;
+`5d262ea8` — `06-NEW-EVAL.md` §6; `e7b5ba1e` — прозa eval-history-отчёта). Все 13 коммитов пачки переехали чисто
+(0 leftover conflict-markers, проверено `git grep '<<<<<<<'`), но 3 из них требовали ручного слияния с апстримом
+(идентифицировано `git range-diff c9b58636..cb19e910 e7b5ba1e..HEAD~1` — совпадающие patch-id помечены `=`,
+изменившиеся `!`):
+
+| # | Коммит пачки | Файл(ы) конфликта | Апстрим-сторона конфликта | Как разрешено (проверено в файле на HEAD) |
+|---|---|---|---|---|
+| 1 | `feat(GAP-E-4)` (`183379c6`→`6d38e5a1`) | `ai/flow-eval/scripts/migration-eval.sh` | `cbd31fe2` добавил `WALLCLOCK`/`TIMEOUT_S`/`gtimeout` (физический wall-clock) | Обе стороны сохранены: `TIMEOUT_S`/`gtimeout`/`WALLCLOCK` (апстрим) **и** `scenario_file="$(render_scenario)"` вместо `$SCENARIO` (наш GAP-E-4) — обе группы строк рядом (`grep -n "WALLCLOCK\|scenario_file" migration-eval.sh` — обе присутствуют, строки 70-80) |
+| 2 | `feat(GAP-E-6)` (`32fff33b`→`f78341a4`) | `ai/flow-eval/cli.ts`, `package.json` | `cbd31fe2` добавил CLI-парсинг `--max-wall-clock-ms` и новые npm-скрипты `eval:migration`/`eval:migration:portal` | Обе стороны сохранены: `cli.ts` содержит и наш results-archive хук, и апстримную валидацию `max-wall-clock-ms must be a finite number >= 0`; `package.json` содержит и нашу расширенную `test:sdd-flow-eval` (+`scripts/__tests__/*.test.ts`), и апстримные `eval:migration`/`eval:migration:portal` — оба набора одновременно present (проверено `grep` по факту) |
+| 3 | `feat(GAP-E-5)` (`f76f728a`→`d4cb5aba`) | `ai/flow-eval/docs/**` (20 удалённых нашей пачкой файлов, 7 из них апстрим успел расширить: `02-ARCHITECTURE.md`, `03-SETUP.md`, `06-NEW-EVAL.md`, `07-EXPERIMENTS.md`, `docs/README.md`, `journal/README.md`, `journal/roundtrip-wall3-assessment.md`) | `ca814454`/`905df299` (guard-verification), `cbd31fe2` (trajectory/ladder + `11-ANALYSIS-CHECKLIST.md` + `journal/eval-history*` + `docs/eval-history.html`), `5d262ea8` (`06-NEW-EVAL.md` §6) | Rebase разрешил modify/delete-конфликт в пользу удаления (сохранён принцип «единый источник истины»), но апстримная проза **осталась несведённой** — исправлено ОТДЕЛЬНЫМ коммитом **после** завершения ребейза: `c51cab65` `docs(flow-eval): reconcile unified eval docs with upstream trajectory/eval-history additions` (эта же сессия, до начала данной проверки). Свёл: «Жёсткое правило модели» → `RUNBOOK.md`; секция «Траектория» (checkpoints) + строка `trajectory.ts` в таблицах + `11-ANALYSIS-CHECKLIST.md` кросс-ссылка + mermaid-узел → `EVAL-SPEC.md`; finding A7 (layered H-iOS) → `flow-verification-ledger.md`; список новых доков → `README.md`; висячая ссылка `guard-verification.md`→`swiftlint-setup.md` → редирект на `RUNBOOK.md`; 3 пути без префикса `ai/flow-eval/` в `EXPERIMENTS-LOG.md`/`eval-history-gaps.md` → исправлены; `verify-eval-docs.test.ts` счётчик «OK — 5 doc(s)» → **8 doc(s)** (рекурсивный корпус вырос на 3 апстримных документа) |
+
+Коммиты 2,3,6,7,8,9,10,11,12,13 (`be7b4608`,`9f39a469`,`878cbc65`,`f9fe3cca`,`d42fbb8e`,`aea10934`,`44c462b5`,`022b5225`,
+`5dfdc125`,`65099272`) переехали **без** изменений (patch-id идентичен дореобейзной версии) — конфликтов не было.
+
+**Проверка «ничего не потеряно» (файлы релизной ветки `cbd31fe2..e7b5ba1e`):**
+`git diff e7b5ba1e HEAD --name-status -- ai/flow-eval | grep '^D'` даёт ровно те же 20 legacy-доков, что и до этого
+ребейза (`00-INTRO.md` … `swiftlint-setup.md` — уже были в списке «удалено GAP-E-5» этого отчёта выше), **ни один
+файл, добавленный апстримом в `cbd31fe2..e7b5ba1e`, не удалён**. Присутствуют на HEAD: `ai/flow-eval/trajectory.ts`,
+`ai/flow-eval/scripts/build-history-report.ts`, `ai/flow-eval/scenarios-migration.json`,
+`ai/flow-eval/scenarios-migration-portal.json`, `ai/flow-eval/docs/eval-history.html`,
+`ai/flow-eval/docs/journal/eval-history.json`, `ai/flow-eval/docs/journal/eval-history-gaps.md` (все — `find`
+подтверждён путём). `EVAL-SPEC.md` содержит секцию «Траектория» (§222-242) и упоминания `trajectory.ts` (проверено).
+
+**Новый HEAD:** `c51cab65463363a9601da71e0908532d71b1a84a` — 14 коммитов над новой базой `e7b5ba1e`
+(`git log --oneline e7b5ba1e..HEAD`: `183379c6 be7b4608 9f39a469 32fff33b f76f728a 878cbc65 f9fe3cca d42fbb8e
+aea10934 44c462b5 022b5225 5dfdc125 65099272 c51cab65` — те же 13 SHA, что и после первого ребейза (рабочее
+дерево их не переписывало повторно, второй ребейз прогнала предыдущая сессия и они сохранили свои SHA из
+диапазона `e7b5ba1e..HEAD~1`, поверх которых легла одна новая доп. reconciliation-коммита `c51cab65`).
+
+### Повторные доказательства (эта сессия, после второго ребейза, HEAD = `c51cab65`)
+
+| Команда | Результат | Exit |
+|---|---|---|
+| `npm --prefix <tree> test` (deterministic layer) | **3697/3705 pass**, 0 fail, 8 skipped, 618 suites (число тестов выросло относительно «3678/3686» из первого ребейза — апстрим добавил тесты между `c9b58636` и `e7b5ba1e`, это не регрессия) | 0 |
+| `npm --prefix <tree> run check` | **ALL PASS (5/5)**: type-check 26.7s, test:coverage 93.3s, lint 9.1s, format 2.2s, yagni 0.6s | 0 |
+| `npm --prefix <tree> run build` | `vite build` — ✓ built in 2.74s, все чанки собраны | 0 |
+| `npm --prefix <tree> run gate:sdd-check-baseline` | `[sdd-check-zero-new-error] OK — no error outside the baseline (baseline commit 227c03a8…, tag rc-baseline-1)` | 0 |
+| `npm --prefix <tree> run flow-eval:docs-check` | `[verify-eval-docs] OK — 8 doc(s), 40 path(s) checked, 12 link(s) checked, 15 npm command(s) checked, 0 [UNVERIFIED] markers` (было 5/23/9/14 до `c51cab65` — рост от свёрнутых апстримных доков) | 0 |
+| `npm --prefix <tree> run results:table:check` | `[results-table] up to date (no diff)` | 0 |
+| `npm --prefix <tree> run test:sdd-flow-eval` | **202/203 pass**, 45 suites — см. «Находка» ниже | **1** |
+
+**Находка (не регрессия этой пачки, не чинилась — вне брифа и вне зоны):** единственный красный тест —
+`ai/flow-eval/__tests__/harness.test.ts`, `not ok 20/6 — provisioner gives fixture scenarios unique isolated
+directories`. Причина: внутри теста `npx --no-install gennady sdd-check --all .` на `tic-tac-toe`/`scaffold`-фикстуре
+(сценарий `'scaffold'`/`'actual-tickets-to-approval-2'`) возвращает `error: SDD_NO_TICKETS_FOUND` (exit 2) вместо
+ожидаемого `✅ clean` — сама фикстура в `provision.ts` (блок `'tic-tac-toe'`, строки ~936-976) не содержит НИ ОДНОГО
+тикета (`specs/3-tasks.md`/`*.task.*.md` отсутствуют), а `sdd-check --all` c нулём тикетов намеренно (по коду
+`cli/cmd/sdd-check/sdd-check.cmd.ts:1476`) считается ошибкой, не «чисто». **Независимо перепроверено на чистом
+апстриме**: `git worktree add --detach e7b5ba1e` (без единого коммита этой пачки) + тот же `node_modules` →
+`npm run build` → тот же самый единственный failing-тест с той же ошибкой — баг **предсуществует** этой пачке и
+рабейзу, никак не связан с 14 коммитами `lead/eval-reproducible`. Дополнительно: `harness.test.ts` (файл целиком)
+явно и по имени исключён из офлайн-гейтов `npm test`/`npm run check` — `scripts/test-topology.ts`'s
+`V2_GATE_EXCLUDED_NAMES` содержит `'harness.test.ts'` с комментарием «heavy integration test… must not block the
+offline gate» — т.е. этот красный тест НЕ виден и НЕ влияет ни на один обязательный гейт пуша, только на прямой
+запуск `npm run test:sdd-flow-eval`. Не почищено в этой сессии: файл-владелец бага (`provision.ts`'s `tic-tac-toe`
+фикстура или ожидание самого теста) не входит в список «трогать» брифа пачки 7 и не относится ни к одной из её
+задач (GAP-E-4/E-16/GAP-E-1b/GAP-E-6/GAP-E-5/GAP-E-2/E-11/E-15). Отдельная фоновая задача заведена (см. чат) —
+рекомендация Lead/оператору: завести таск на `ai/flow-eval/provision.ts`'s `tic-tac-toe`-фикстуру или экспектацию
+`harness.test.ts:198`.
+
 ## Команды пуша для Lead
 
+**Важно: история переписана вторым ребейзом — `origin/lead/eval-reproducible` (`cb19e910`) НЕ является предком
+нового HEAD (`git merge-base --is-ancestor cb19e910 c51cab65` → false).** Обычный `git push` будет отклонён
+(non-fast-forward). Требуется force-push с проверкой (Lead выполняет сам, эта сессия `git push` не делала):
+
 ```
-git push origin lead/eval-reproducible
+git push --force-with-lease=lead/eval-reproducible:cb19e910 origin lead/eval-reproducible
 ```
 (после независимой верификации `plan-verifier` по всей пачке, как того требует протокол.)
