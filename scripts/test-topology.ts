@@ -23,7 +23,12 @@ type TestPartition = {
   layers: readonly TestLayer[];
   files: string[];
 };
-const TEST_ROOTS = ['ai', 'cli', 'plugins', 'services', 'shared'] as const;
+// GAP-2: `test/` and `utils/` each hold real, currently-unowned `*.test.ts` suites (`test/agent-inbox/`
+// — 23 files — and `utils/test/__tests__/` — 2 files) that predate this fix and were invisible to
+// `discoverTests()` below (and therefore absent from `npm test`, `test:coverage`, and pre-commit)
+// simply because their root wasn't listed here. Adding them makes the runner see and classify every
+// test file those two roots contain; see EXPERIMENTAL_ROOTS and UNIT_ROOTS below for where each lands.
+const TEST_ROOTS = ['ai', 'cli', 'plugins', 'services', 'shared', 'test', 'utils'] as const;
 const TEST_FILE = /\.test\.ts$/;
 // D-60: agent-inbox, agent-mon are experimental products not shipping in v2 yet. Their whole test
 // surface is carved into its own topology layer — still discovered and classified (so the
@@ -32,6 +37,12 @@ const TEST_FILE = /\.test\.ts$/;
 // `V2_GATE_EXCLUDED_NAMES` / the integration-name filters below used to blanket-exclude from the
 // corpus entirely. Revert after v2 release (2.0.0-draft): fold these roots back into their natural
 // unit/contract/local/external classification and delete this layer.
+// GAP-2: `test/agent-inbox/` (23 files, TSK-176/TSK-177) exercises `services/agent-inbox` modules
+// exactly like the roots below — it's the same product, just staged in a top-level `test/` tree
+// instead of a co-located `__tests__/`. Folding it into the D-60 carve-out keeps one rule ("agent-inbox
+// test surface is experimental, not release-ready for v2") instead of inventing a second one; it is
+// discovered/classified like every other root here (exhaustiveness) and runs only via
+// `npm run test:experimental`.
 const EXPERIMENTAL_ROOTS = [
   'services/agent-inbox/',
   'services/agent-mon/',
@@ -40,6 +51,7 @@ const EXPERIMENTAL_ROOTS = [
   'cli/cmd/inbox-eval/',
   'cli/cmd/inbox-review-plan/',
   'cli/cmd/agent-mon/',
+  'test/agent-inbox/',
 ] as const;
 // Several local suites launch real CLI/npm/git subprocesses, and sdd-verify already overlaps four
 // fixture CLIs internally, so the outer pool stays bounded rather than tracking the host's CPU
@@ -73,6 +85,58 @@ const V2_GATE_EXCLUDED_NAMES = new Set([
   // `ai/flow-eval/` one is actually excluded here — see `discoverTests`.
   'harness.test.ts',
 ]);
+// GAP-2: every test-shaped file in the repo that `assertTopology()`'s classified layers deliberately
+// never contain — whether because it's not a `node --test` target at all (the `.sh` self-test below),
+// or because `discoverTests()` filters it out by name/`.integration.test.` pattern before
+// `classifyTest()` ever runs on it (the two pre-existing entries below), or because it's a real,
+// currently-unowned test outside GAP-2's declared 25-file scope (the e2e/ pair). Each entry names who
+// owns the file and why it stays outside every layer, so `assertExhaustiveOwnership()` can tell "known
+// and deliberately excluded" apart from "orphaned" instead of only ever seeing silence either way.
+const EXPLICITLY_EXCLUDED_TEST_FILES: ReadonlyArray<{
+  readonly file: string;
+  readonly owner: string;
+  readonly reason: string;
+}> = [
+  {
+    file: 'ai/flow-eval/scripts/require-developer-repo.test.sh',
+    owner: 'ai/flow-eval (coordinate with GAP-E-4: this file also sits in the pre-commit gate)',
+    reason:
+      "bash self-test for require-developer-repo.sh; its own header says 'Bash self-test, outside " +
+      "`npm run check`; run directly' — not a `.test.ts` file, so `classifyTest()`/`node --test` " +
+      'never touch it. Run manually: `bash ai/flow-eval/scripts/require-developer-repo.test.sh`.',
+  },
+  {
+    file: 'ai/flow-eval/__tests__/harness.test.ts',
+    owner: 'ai/flow-eval',
+    reason:
+      "name-excluded by V2_GATE_EXCLUDED_NAMES (see that const's comment): a heavy integration test " +
+      '(three fixture sandboxes + eval CLI + type-check, its own 300s timeout) that deterministically ' +
+      "exceeds the offline gate's per-test budget under c8. Lives in `npm run test:sdd-flow-eval` " +
+      'instead — a real, intentionally-dropped node:test file, not a silent gap.',
+  },
+  {
+    file: 'services/mr-stats/__tests__/mr-stats.integration.test.ts',
+    owner: 'services/mr-stats',
+    reason:
+      'name-matches `.integration.test.` — discoverTests() drops every such file from the classified ' +
+      'topology on purpose (real network/CLI integration probe, not part of the offline v2 gate). ' +
+      'Run via its own script, not `npm test`.',
+  },
+  {
+    file: 'e2e/inbox-serve/helpers/__tests__/aria-snapshot.helper.test.ts',
+    owner: 'unowned — needs its own follow-up task, not silently folded into GAP-2',
+    reason:
+      'real `node:test` unit test for a Playwright helper (mocked Locator, no browser), but `e2e/` is ' +
+      "outside GAP-2's declared scope (the 25 orphaned files are exactly test/ + utils/). Recorded " +
+      'here instead of left silent; a follow-up should decide whether `e2e/` joins TEST_ROOTS or gets ' +
+      'its own runner entry.',
+  },
+  {
+    file: 'e2e/inbox-serve/helpers/__tests__/layout.helper.test.ts',
+    owner: 'unowned — needs its own follow-up task, not silently folded into GAP-2',
+    reason: 'same as aria-snapshot.helper.test.ts above.',
+  },
+] as const;
 const UNIT_ROOTS = [
   'ai/flow-eval/',
   'ai/inspector/',
@@ -269,6 +333,55 @@ function assertTopology(): TestTopology {
   return topology;
 }
 
+// GAP-2 lock: a repo-wide scan of anything shaped like a test file (`*.test.ts/js/mjs/cjs/sh`),
+// deliberately NOT anchored to TEST_ROOTS — that anchor is exactly what let `test/` and `utils/` go
+// unowned for so long. `.spec.ts` (Playwright, under e2e/) is out of scope on purpose: that's a
+// separate runner/track, not a node:test topology gap.
+const REPO_SCAN_EXCLUDED_DIRS = new Set(['node_modules', 'dist', 'coverage']);
+const REPO_TEST_FILE = /\.test\.(?:ts|js|mjs|cjs|sh)$/;
+
+function discoverAllRepoTestFiles(): string[] {
+  const files: string[] = [];
+  const walk = (dir: string): void => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      if (entry.name.startsWith('.')) continue;
+      if (entry.isDirectory()) {
+        if (REPO_SCAN_EXCLUDED_DIRS.has(entry.name)) continue;
+        walk(join(dir, entry.name));
+      } else if (REPO_TEST_FILE.test(entry.name)) {
+        files.push(testId(join(dir, entry.name)));
+      }
+    }
+  };
+  walk(PROJECT_ROOT);
+  return files.sort();
+}
+
+// GAP-2: "topology sees all test files" as an executable contract, not just a discovery-root list —
+// every file the independent repo-wide scan above finds must be either (a) in the classified
+// topology, or (b) named in EXPLICITLY_EXCLUDED_TEST_FILES with an owner and a reason. Anything else is
+// an orphan: a test file nobody's runner, gate, or exclusion list has ever heard of. Runs before every
+// command (see `main`), same fail-fast placement as `assertTopology()`.
+function assertExhaustiveOwnership(topology: TestTopology): {
+  readonly scanned: readonly string[];
+  readonly excluded: readonly string[];
+} {
+  const classified = new Set(TEST_LAYERS.flatMap((layer) => topology[layer]));
+  const excluded = EXPLICITLY_EXCLUDED_TEST_FILES.map((entry) => entry.file);
+  const excludedSet = new Set(excluded);
+  const scanned = discoverAllRepoTestFiles();
+  const orphans = scanned.filter((file) => !classified.has(file) && !excludedSet.has(file));
+  if (orphans.length > 0) {
+    throw new Error(
+      '[test-topology] orphaned test file(s) — neither classified by the runner nor named in ' +
+        `EXPLICITLY_EXCLUDED_TEST_FILES:\n${orphans.join('\n')}\n` +
+        'Either bring the file(s) under TEST_ROOTS + classifyTest(), or add an explicit ' +
+        'EXPLICITLY_EXCLUDED_TEST_FILES entry with an owner and a reason — never leave a test file silent.'
+    );
+  }
+  return { scanned, excluded };
+}
+
 // Makespan ordering: node --test dispatches files in argument order under a fixed worker pool, so
 // the alphabetical union parked the corpus's heaviest suites (local: 51 files, ~50% of total work)
 // behind hundreds of sub-second unit files and left a long single-file tail. Longest-layer-first
@@ -390,8 +503,10 @@ function help(): string {
     '  coverage  Run the complete corpus once: unit+contract under c8; black-box local+external without c8.',
     '  experimental  Run the D-60 experimental layer (agent-inbox, agent-mon). Excluded from',
     '                deterministic/coverage/pre-commit until the v2 release (revert after 2.0.0-draft).',
-    '  check     Validate disjoint and exhaustive classification.',
+    '  check     Validate disjoint and exhaustive classification, plus the GAP-2 ownership lock',
+    '            (every *.test.ts/js/mjs/cjs/sh file in the repo is classified or explicitly excluded).',
     '  list      Print each classified test path.',
+    '  excluded  Print each EXPLICITLY_EXCLUDED_TEST_FILES entry (file, owner, reason) — GAP-2.',
     '  Package aliases: npm test=deterministic; npm run test:coverage=coverage; npm run test:topology=check;',
     '  npm run test:experimental=experimental.',
     `  unit/coverage/experimental use bounded outer concurrency=${OUTER_TEST_CONCURRENCY}.`,
@@ -408,18 +523,30 @@ function main(argv: string[]): number {
     return 0;
   }
   const topology = assertTopology();
+  // GAP-2: enforced before every command dispatches (same fail-fast placement as assertTopology()
+  // above) — a repo test file nobody classified or explicitly excluded must stop every mode, not just
+  // `check`.
+  const ownership = assertExhaustiveOwnership(topology);
   if (command === 'check') {
     const partitions = coveragePartitions(topology);
     process.stdout.write(
       `${TEST_LAYERS.map((layer) => `${layer}=${topology[layer].length}`).join(' ')}\n` +
         `coverage observed=${partitions[0].files.length}[${partitions[0].layers.join('+')}] ` +
-        `black-box=${partitions[1].files.length}[${partitions[1].layers.join('+')}]\n`
+        `black-box=${partitions[1].files.length}[${partitions[1].layers.join('+')}]\n` +
+        `excluded=${ownership.excluded.length} (external/non-node, outside npm test; ` +
+        `see EXPLICITLY_EXCLUDED_TEST_FILES / \`excluded\` command)\n`
     );
     return 0;
   }
   if (command === 'list') {
     for (const layer of TEST_LAYERS) {
       for (const file of topology[layer]) process.stdout.write(`${layer}\t${file}\n`);
+    }
+    return 0;
+  }
+  if (command === 'excluded') {
+    for (const entry of EXPLICITLY_EXCLUDED_TEST_FILES) {
+      process.stdout.write(`${entry.file}\t${entry.owner}\t${entry.reason}\n`);
     }
     return 0;
   }

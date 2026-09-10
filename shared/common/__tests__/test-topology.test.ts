@@ -5,7 +5,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { readdirSync, readFileSync } from 'node:fs';
+import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, join, relative, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { availableParallelism } from 'node:os';
@@ -18,6 +18,9 @@ const YAGNI_SOURCE_POLICY_TEST = 'shared/common/__tests__/yagni-source-policy.te
 // D-60: agent-inbox/agent-mon test surface — independent mirror of the runner's own
 // `EXPERIMENTAL_ROOTS`. Kept as a separate constant (not imported) so this black-box contract can
 // catch drift between the runner and this test, same as EXCLUDED_NAMES/OPT_IN_KEYS below.
+// GAP-2: `test/agent-inbox/` joined this list alongside the runner's own change — same product
+// (services/agent-inbox), just staged under a top-level `test/` tree instead of a co-located
+// `__tests__/`.
 const EXPERIMENTAL_ROOTS = [
   'services/agent-inbox/',
   'services/agent-mon/',
@@ -26,7 +29,41 @@ const EXPERIMENTAL_ROOTS = [
   'cli/cmd/inbox-eval/',
   'cli/cmd/inbox-review-plan/',
   'cli/cmd/agent-mon/',
+  'test/agent-inbox/',
 ] as const;
+// GAP-2: independent mirror of the runner's `EXPLICITLY_EXCLUDED_TEST_FILES` — every test-shaped file
+// that stays outside every classified layer on purpose, with its owner and reason. Kept separate (not
+// imported) for the same drift-catching reason as EXPERIMENTAL_ROOTS above.
+const EXPLICITLY_EXCLUDED_TEST_FILES = [
+  'ai/flow-eval/scripts/require-developer-repo.test.sh',
+  'ai/flow-eval/__tests__/harness.test.ts',
+  'services/mr-stats/__tests__/mr-stats.integration.test.ts',
+  'e2e/inbox-serve/helpers/__tests__/aria-snapshot.helper.test.ts',
+  'e2e/inbox-serve/helpers/__tests__/layout.helper.test.ts',
+] as const;
+// GAP-2: repo-wide scan mirroring the runner's `discoverAllRepoTestFiles()` — deliberately NOT
+// anchored to TEST_ROOTS, so it can catch a test file landing in a root the runner doesn't scan yet
+// (the exact bug this task fixes for `test/` and `utils/`).
+const REPO_SCAN_EXCLUDED_DIRS = new Set(['node_modules', 'dist', 'coverage']);
+const REPO_TEST_FILE = /\.test\.(?:ts|js|mjs|cjs|sh)$/;
+
+function discoverAllRepoTestFiles(root: string): string[] {
+  const files: string[] = [];
+  const walk = (dir: string): void => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      if (entry.name.startsWith('.')) continue;
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) {
+        if (REPO_SCAN_EXCLUDED_DIRS.has(entry.name)) continue;
+        walk(path);
+      } else if (REPO_TEST_FILE.test(entry.name)) {
+        files.push(relative(root, path).split(sep).join('/'));
+      }
+    }
+  };
+  walk(root);
+  return files.sort();
+}
 const INCIDENT_TEST_LAYERS = {
   unit: [
     'shared/sdd/__tests__/spec-schema.test.ts',
@@ -39,11 +76,19 @@ const INCIDENT_TEST_LAYERS = {
   local: [
     'cli/__tests__/tool-behavior/clean-repo-composition.test.ts',
     'cli/__tests__/tool-behavior/sdd-verify-repair-adapters.test.ts',
+    // GAP-2: real child_process (git-fixture) / setupMockAgent (mock-http) boundary signals put
+    // both previously-unowned utils/test/__tests__ files in `local`, same heuristic as everything
+    // else in this layer.
+    'utils/test/__tests__/git-fixture.test.ts',
+    'utils/test/__tests__/mock-http.test.ts',
   ],
   experimental: [
     'cli/cmd/inbox-review-plan/inbox-review-plan.test.ts',
     'services/agent-inbox/modules/inbox-core/__tests__/state-store.test.ts',
     'services/agent-mon/monitor/__tests__/agent-monitor.test.ts',
+    // GAP-2: test/agent-inbox/ folds into the D-60 carve-out (see EXPERIMENTAL_ROOTS above).
+    'test/agent-inbox/inbox-queue/review-automation-policy.test.ts',
+    'test/agent-inbox/inbox-pipeline/review-types.contract.test.ts',
   ],
 } as const;
 const EXCLUDED_NAMES = new Set([
@@ -97,7 +142,10 @@ function isExperimental(file: string): boolean {
 // including the D-60 `experimental` layer (which used to be silently dropped by
 // `/agent-inbox/`/name-based exclusions — now it must land in `experimental` instead).
 function legacyGateCorpus(): string[] {
-  return ['ai', 'cli', 'plugins', 'shared', 'services']
+  // GAP-2: 'test' and 'utils' joined this list alongside the runner's own TEST_ROOTS — see that
+  // const's comment for the 25 previously-unowned files (test/agent-inbox/ + utils/test/__tests__/)
+  // this makes visible.
+  return ['ai', 'cli', 'plugins', 'shared', 'services', 'test', 'utils']
     .flatMap((root) => discoverUnder(join(ROOT, root)))
     .filter((file) => {
       if (isExperimental(file)) return true;
@@ -232,6 +280,67 @@ describe('test topology contract', () => {
       `coverage observed=${topology.unit.length + topology.contract.length}[unit+contract] ` +
         `black-box=${topology.local.length + topology.external.length}[local+external]`
     );
+    // GAP-2: check also reports the explicit-exclusion count — never silent about what's left out.
+    assert.strictEqual(
+      lines[2],
+      `excluded=${EXPLICITLY_EXCLUDED_TEST_FILES.length} (external/non-node, outside npm test; ` +
+        'see EXPLICITLY_EXCLUDED_TEST_FILES / `excluded` command)'
+    );
+  });
+
+  it('GAP-2: excluded prints every explicit exclusion with an owner and a reason', () => {
+    const result = runRunner('excluded');
+    assert.strictEqual(result.status, 0, result.stderr);
+    const lines = result.stdout.trim().split('\n');
+    assert.strictEqual(lines.length, EXPLICITLY_EXCLUDED_TEST_FILES.length);
+    const files = lines.map((line) => line.split('\t')[0]);
+    assert.deepStrictEqual([...files].sort(), [...EXPLICITLY_EXCLUDED_TEST_FILES].sort());
+    for (const line of lines) {
+      const [file, owner, reason] = line.split('\t');
+      assert.ok(file && owner && reason, line);
+    }
+    // None of these ever leak into a classified layer — that's the whole point of the list.
+    const topology = listedTopology();
+    const classified = new Set(TEST_LAYERS.flatMap((layer) => topology[layer]));
+    for (const file of EXPLICITLY_EXCLUDED_TEST_FILES) assert.ok(!classified.has(file), file);
+  });
+
+  it('GAP-2 lock: every test-shaped file in the repo is classified or explicitly excluded, and an unlisted one turns check red', () => {
+    // Non-mutated: today's real repo already satisfies the invariant.
+    const topology = listedTopology();
+    const classified = new Set(TEST_LAYERS.flatMap((layer) => topology[layer]));
+    const excluded = new Set(EXPLICITLY_EXCLUDED_TEST_FILES);
+    const scanned = discoverAllRepoTestFiles(ROOT);
+    const orphans = scanned.filter((file) => !classified.has(file) && !excluded.has(file));
+    assert.deepStrictEqual(orphans, []);
+    assert.strictEqual(runRunner('check').status, 0);
+
+    // Mutation: drop a new test file in a directory TEST_ROOTS has never heard of — the exact shape
+    // of bug this task fixes for `test/`/`utils/`. The independent scan above must catch it too, and
+    // the runner's own `check` must turn red rather than silently ignoring it.
+    const fixtureDir = join(ROOT, '__gap2_lock_fixture__');
+    const fixtureFile = join(fixtureDir, 'x.test.ts');
+    mkdirSync(fixtureDir, { recursive: true });
+    writeFileSync(
+      fixtureFile,
+      "import { it } from 'node:test';\nit('gap2 lock fixture noop', () => {});\n"
+    );
+    try {
+      const mutatedScan = discoverAllRepoTestFiles(ROOT);
+      assert.ok(mutatedScan.includes('__gap2_lock_fixture__/x.test.ts'));
+      const mutatedResult = runRunner('check');
+      assert.notStrictEqual(
+        mutatedResult.status,
+        0,
+        'an unclassified, unexcluded test file must turn check red'
+      );
+      assert.match(mutatedResult.stderr, /__gap2_lock_fixture__\/x\.test\.ts/);
+      assert.match(mutatedResult.stderr, /orphaned test file/);
+    } finally {
+      rmSync(fixtureDir, { recursive: true, force: true });
+    }
+    // Cleaned up: back to green.
+    assert.strictEqual(runRunner('check').status, 0);
   });
 
   it('deterministic and partitioned coverage each own the complete corpus exactly once (minus D-60 experimental)', () => {
