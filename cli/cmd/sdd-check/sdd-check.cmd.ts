@@ -557,7 +557,7 @@ function getTestCaseNames(absPath: string): string[] {
 function checkTicketBddCoverage(file: string, content: string, repoRoot: string): Finding[] {
   const sec = extractSection(content, 'TEST_COVERAGE');
   if (sec.status !== 'ok') return [];
-  const findings = checkUnparsedCoverageRows(file, sec.content);
+  const findings = checkUnparsedCoverageRows(file, sec.content, ticketFlowVersion(file, repoRoot));
   const entries = parseTestCoverage(sec.content);
   if (entries.length === 0) return findings;
 

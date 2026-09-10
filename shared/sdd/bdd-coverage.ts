@@ -176,16 +176,22 @@ export function findUnparsedCoverageRows(body: string): string[] {
 }
 
 /**
- * @purpose Extract `it(...)`/`test(...)` canonical case-name string literals from a test file.
- * @invariant Regex-based (no AST) — matches `it`/`test` calls including `.only`/`.skip`/`.todo` modifiers; `describe` blocks are not tracked, only the leaf case name matters for BDD matching.
+ * @purpose Extract canonical case names from ACTIVE `it(...)`/`test(...)` calls only — a name is
+ *   "observed" iff it could actually run.
+ * @invariant Regex-based (no AST). Any modifier chain counts as active EXCEPT one containing
+ *   `skip`/`todo` (`it.skip`, `test.todo`, `it.skip.each`) — excluded, so it can't silently satisfy
+ *   a claimed scenario (B2-22). Runtime `t.skip()` inside a test body is not detected.
  * @param content Full test-file source.
- * @returns Case names in file order (duplicates possible across separate `it`/`test` calls).
+ * @returns Case names of active calls only, in file order (duplicates possible).
  */
 export function extractTestCaseNames(content: string): string[] {
   const out: string[] = [];
-  const re = /\b(?:it|test)(?:\.\w+)?\s*\(\s*(['"`])((?:\\.|(?!\1).)*)\1/g;
+  const re = /\b(?:it|test)((?:\.\w+)*)\s*\(\s*(['"`])((?:\\.|(?!\2).)*)\2/g;
   for (const m of content.matchAll(re)) {
-    if (m[2] !== undefined) out.push(m[2]);
+    if (m[3] === undefined) continue;
+    const modifiers = (m[1] ?? '').split('.').filter(Boolean);
+    if (modifiers.some((mod) => mod === 'skip' || mod === 'todo')) continue; // inactive — not observed
+    out.push(m[3]);
   }
   return out;
 }
@@ -278,16 +284,24 @@ export function checkBddCoverage(
 }
 
 /**
- * @purpose Flag rows `findUnparsedCoverageRows` could not parse — else an unmapped scenario silently stops being checkable.
- * @invariant Pure. Always `warn` — one real row-shaped-but-malformed line, not graded by `flowVersion`.
+ * @purpose Flag rows `findUnparsedCoverageRows` could not parse — else the scenario silently drops
+ *   out of `parseTestCoverage` and no check ever looks at it again (B2-22: unknown, not closed).
+ * @invariant Pure. Graded by `flowVersion` like `checkBddCoverage`: `v1` warn (keeps the existing
+ *   140-row baseline `GAP-B-1` warn, zero new errors), `v2` error (fail-closed post-migration).
  * @param file Ticket path (finding location).
  * @param body Section markdown (TEST_COVERAGE anchor content).
+ * @param [flowVersion] Ticket's own flow version — `'v1'` default, the baseline-safe choice.
  * @returns One `SDD_BDD_COVERAGE_ROW_UNPARSED` per unparseable row, in document order.
  */
-export function checkUnparsedCoverageRows(file: string, body: string): Finding[] {
+export function checkUnparsedCoverageRows(
+  file: string,
+  body: string,
+  flowVersion: FlowVersion = 'v1'
+): Finding[] {
+  const severity = flowVersion === 'v2' ? 'error' : 'warn';
   return findUnparsedCoverageRows(body).map(
     (raw): Finding => ({
-      severity: 'warn',
+      severity,
       code: 'SDD_BDD_COVERAGE_ROW_UNPARSED',
       file,
       message: `Test Scenario Coverage row could not be parsed: "${raw}". Replace the whole row with either "- <scenario name> → \\\`<test-file>\\\` :: \\\`<canonical case name>\\\`" or "${DEFERRED_TEST_OWNERSHIP_LITERAL}".`,
