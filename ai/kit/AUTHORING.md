@@ -269,9 +269,11 @@ a caption cites a real ID, a section is present), пишем это прямо �
 
 **Уровень доказательства сканера объявляется по языку**, а не молчаливо предполагается одним для
 всех: `exact` — там, где адаптер основан на грамматике/AST (сегодня — `.ts`/`.tsx` через
-`TsSymbolIndexAdapter`, `services/symbol-index/select-symbol-index.ts`); `approximate` — там, где
-адаптер текстовый/grep-based (`GrepSymbolIndexAdapter`, все остальные языки). Формат находки:
-называть, каким адаптером получен результат, когда это влияет на доверие к находке.
+`TsSymbolIndexAdapter`, `services/symbol-index/implementations/tree-sitter/ts-symbol-index-adapter.ts`);
+`approximate` — там, где адаптер текстовый/grep-based (`GrepSymbolIndexAdapter`, все остальные
+языки). Уровень (`precision: 'exact' | 'approximate'`, `services/symbol-index/symbol-index.types.ts`)
+вычисляется на каждый адаптер, но находки `gennady yagni` его пока не печатают — задача-остаток, не
+раздел этого словаря.
 
 Слова-обещания вне этого словаря без объявленного уровня — находка ревью, а не украшение прозы.
 
