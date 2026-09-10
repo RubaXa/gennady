@@ -122,3 +122,26 @@ git -C <lead-worktree> push origin lead/verify-gate-scope
 
 Коммиты пачки 13 (все на `lead/verify-gate-scope`, база `f83a4733` = голова `lead/verify-stacks`,
 PR #42): `ccee2da8` (V-19) → `0c34c8e0` (V-12) → `f68ea25e` (V-13) → `27a1a2a8` (V-16a, HEAD).
+
+## 6. Правки по вердикту верификатора (`V-BATCH-13.md`, применены `rc-executor` на этой же ветке, поверх `27a1a2a8`)
+
+- **Б-1 (высокая):** `--help` (`cli/cmd/verify/help.ts`) утверждал «`stack` auto-detected only when
+  `stack.use` is set» — неправда: `resolveVerifyPlan` (`verify.cmd.ts`) всегда пишет литерал
+  `'node'`, никогда не читает `stack.use`. Строка переписана на честную: «`stack` is always `node`
+  … does not read `stack:`/`extraGates` (they reach only the phase path, V-08/V-08b) — `--plan`
+  reports what will actually run». Коммит `a9d7ad75`.
+- **Б-3 (средняя):** приёмочный пункт V-16 «явно маркирует вывод как не-evidence» был выполнен
+  только в прозе `--help`, не в самом JSON. `VerifyPlanDocument` (`verify.types.ts`) получил
+  документ-уровневые поля `kind: 'plan'` и `evidence: false` (с DbC `@invariant`),
+  `resolveVerifyPlan` их печатает; проверено юнит-тестом и живым CLI
+  (`cli/__tests__/tool-behavior/verify.test.ts`). Коммиты `a9d7ad75` (тип+код), `f1abfb5a` (тесты).
+- **Н-5:** комментарий `verify.cmd.ts`'s `@invariant` ссылался на «30-TRACK-VERIFY.md §3.0»,
+  который об этом не говорит — заменено на ссылку на L-24 + факт `gatesFor`. Коммит `a9d7ad75`.
+- **Б-2 (реестр Usage Waiver):** записи `StackRun`/`VerifyReport`/`formatDuration` в
+  `specs/cli/verify/verify.spec.md` пересмотрены при закрытии V-16a (владелец исчерпан, форму MAIN
+  не принял — см. `R-V-12.md §6` для деталей и `applyStackConfig`); успешник назван
+  («extraGates/anystack вживляются в полный профиль»). Коммит `a501929e`.
+
+Живьём подтверждено (в дереве RC-исполнителя): `gennady verify --plan --json` теперь печатает
+`{"kind":"plan","evidence":false,"profile":"full","stack":"node",...}`; `gennady verify --help`
+больше не утверждает детект стека.
