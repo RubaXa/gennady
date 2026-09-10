@@ -1403,6 +1403,30 @@ describe('run — --only/--skip narrow the full profile (V-13, #20(iii))', () =>
     assert.strictEqual(o.exitCode, 4);
   });
 
+  it('mutually-cancelling --only/--skip select no gate — exit 4, never a vacuous ALL PASS (0/0) (V-BATCH-13 Н-1)', async () => {
+    const { runner, calls } = fakeRunner();
+    const o = await run(runner, 'full', undefined, {
+      targets: [],
+      only: ['yagni'],
+      skip: ['yagni'],
+    });
+    assert.strictEqual(o.ok, false);
+    if (o.ok) return;
+    assert.strictEqual(o.exitCode, 4);
+    assert.match(o.message, /selectors select no gate/);
+    assert.deepStrictEqual(calls, []);
+  });
+
+  it('--skip=* selecting every gate is also an empty-selection error, not a green no-op (V-BATCH-13 Н-1)', async () => {
+    const { runner, calls } = fakeRunner();
+    const o = await run(runner, 'full', undefined, { targets: [], skip: ['*'] });
+    assert.strictEqual(o.ok, false);
+    if (o.ok) return;
+    assert.strictEqual(o.exitCode, 4);
+    assert.match(o.message, /selectors select no gate/);
+    assert.deepStrictEqual(calls, []);
+  });
+
   it('only/skip are ignored whenever a phase gatePlan is present — a phase ladder can never drift', async () => {
     const { runner, calls } = fakeRunner();
     const gatePlan = {

@@ -35,6 +35,10 @@ describe('gennady verify --plan --json (V-16a)', () => {
         const result = await runCliAsync(['verify', '--plan', '--json'], dir);
         assert.strictEqual(result.exitCode, 0, result.stderr);
         const doc = JSON.parse(result.stdout);
+        // V-BATCH-13 Б-3: the document itself is marked not-evidence — a CI reporter reading only
+        // this JSON (never the --help prose) must be able to tell it apart from a receipt.
+        assert.strictEqual(doc.kind, 'plan');
+        assert.strictEqual(doc.evidence, false);
         assert.strictEqual(doc.profile, 'full');
         assert.strictEqual(doc.stack, 'node');
         assert.deepStrictEqual(

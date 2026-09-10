@@ -95,6 +95,8 @@ describe('resolveVerifyPlan — read-only, exactly what sdd-verify --profile ful
       },
       (dir) => {
         const plan = resolveVerifyPlan(dir);
+        assert.strictEqual(plan.kind, 'plan');
+        assert.strictEqual(plan.evidence, false);
         assert.strictEqual(plan.profile, 'full');
         assert.strictEqual(plan.stack, 'node');
         assert.deepStrictEqual(
