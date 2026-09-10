@@ -7,7 +7,14 @@ import { readFileSync, writeFileSync, readdirSync, statSync, mkdirSync, existsSy
 import { join, resolve, relative, dirname } from 'node:path';
 import { logger } from '#logger';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
-import { injectAnchors, scaffoldExecutionLog } from '../../../shared/sdd/anchor-inject.ts';
+import {
+  injectAnchors,
+  scaffoldExecutionLog,
+  scaffoldFirstRound,
+  upgradeVerificationTable,
+} from '../../../shared/sdd/anchor-inject.ts';
+import { extractSection } from '../../../shared/sdd/section.ts';
+import { parsePhasesOverview } from '../../../shared/sdd/ticket.ts';
 import {
   scanMigrationUnits,
   scaffoldUnitFile,
@@ -286,13 +293,27 @@ export async function run(rawArgs: string[]): Promise<MigrateOutcome> {
       continue;
     }
     const { text: anchored, injected } = injectAnchors(content);
-    const { text, scaffolded } = scaffoldExecutionLog(anchored, migrationDate);
-    if (injected.length === 0 && !scaffolded) {
+    const { text: scaffoldedText, scaffolded } = scaffoldExecutionLog(anchored, migrationDate);
+    // #region START_TABLE_UPGRADE — E-06: table/marker upgrade, then the Round-1 shape it requires
+    const { text: upgradedText, changed: tableChanges } = upgradeVerificationTable(scaffoldedText);
+    const overview = extractSection(upgradedText, 'PHASES_OVERVIEW');
+    const phaseIds =
+      overview.status === 'ok' ? parsePhasesOverview(overview.content).map((p) => p.id) : [];
+    const { text, scaffolded: roundScaffolded } = tableChanges.includes('phase-receipts')
+      ? scaffoldFirstRound(upgradedText, phaseIds, migrationDate)
+      : { text: upgradedText, scaffolded: false };
+    // #endregion END_TABLE_UPGRADE
+    if (injected.length === 0 && !scaffolded && tableChanges.length === 0) {
       report.push(`  skip  ${rel} — already anchored / no canonical sections`);
       continue;
     }
     const parts = [...injected];
     if (scaffolded) parts.push('EXECUTION_LOG (scaffolded — v1 ticket had none)');
+    if (tableChanges.includes('table'))
+      parts.push('VERIFICATION table (2-col → 3-col, Role added)');
+    if (tableChanges.includes('phase-receipts')) parts.push('PHASE_RECEIPTS:v1 marker');
+    if (roundScaffolded) parts.push('Execution Log Round 1 (scaffolded, all unchecked)');
+    if (tableChanges.includes('coverage-policy')) parts.push('COVERAGE_POLICY:v1 (required)');
     if (write) {
       writeFileSync(t, text, 'utf-8');
       changed++;
