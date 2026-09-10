@@ -177,7 +177,12 @@
 
             `RULE_FILE_INCOMPLETE` and every other project-scope finding enters this table capped at `MINOR` (per `AX_FINDING_ROUTING`): shared infrastructure no task owns cannot decide that task's verdict. The `sev` field still reports the finding's own severity — the cap applies to the computation, not to the record.
 
-            This matters because the status is consumed mechanically: the orchestrator sets `[x] DONE` on
-            PASS, remediates a progressing FAIL, and blocks only on evidenced no-progress or a real external
-            decision. An unspecified verdict here makes those transitions arbitrary.
+            <!-- v2 close model (L-27, see this file's header comment for the full rationale): each
+                 phase already closes `[x] DONE` mechanically via `sdd-log complete` (AX_AUDIT_HOOK)
+                 before the group audit ever runs; PASS/FAIL is the round's own audit verdict, recorded
+                 separately (`## Audit Rounds`, batches 14/15) — never a trigger that sets `[x] DONE`. -->
+            This matters because the status is consumed mechanically: on PASS the audit records the round
+            verdict; `[x] DONE` is already the phase's mechanical close. The audit remediates a progressing
+            FAIL, and blocks only on evidenced no-progress or a real external decision. An unspecified
+            verdict here makes those transitions arbitrary.
     </Axiom>

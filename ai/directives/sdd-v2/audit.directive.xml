@@ -182,7 +182,18 @@
            §1.4. Table `Meaning` column, confidence rule (D4.4), verdict-computation table + project-scope
            cap (D4.1/D4.7) and the claimed-verification-without-evidence sentence (D4.6) had been dropped
            to a 13-line snapshot before this restoration; git log on the v1 file shows no revert of this
-           text between its introduction (ac2e9d73) and d37d5910 — nothing to reconcile per L-25. -->
+           text between its introduction (ac2e9d73) and d37d5910 — nothing to reconcile per L-25.
+
+           EXCEPTION to verbatim (L-27, V-BATCH-18 verifier B-1): v1's closing sentence named the v1
+           close model this file's Axiom body used to quote — a model that does not exist in v2. Group-
+           audit (AX_AUDIT_HOOK, T-B6-25, ai/kit/axiom/process/ax-audit-hook.xml) fires only AFTER every
+           ticket of the group is already closed; `sdd-log complete` closes each phase mechanically per
+           phase gate, is not verification, and does not wait on this audit's verdict. Assembling both
+           sentences verbatim into the same audit.directive produced two contradictory claims about who
+           performs that close and when — see the inline marker on the last paragraph below for the
+           rewritten sentence. This is the one paragraph in this file NOT carried over verbatim; every
+           other paragraph (severity table, confidence rule, verdict table, project-scope cap) is
+           untouched. -->
 
 
     as soon as AX_FINDING_ROUTING's RULE_FILE_INCOMPLETE row (D4.7) names that same literal

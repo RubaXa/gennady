@@ -336,6 +336,22 @@ describe('audit severity verdict restored (T-B6-11, D4.4-D4.7)', () => {
       /`RULE_FILE_INCOMPLETE` \| `rule-file-fix` — the rule file is shared project infrastructure, outside every phase's Target Files\. Never `ticket-update`, never a phase owner, never `FAIL` for this task/
     );
   });
+
+  // V-BATCH-18 verifier B-1 / Lead decision L-27: T-B6-11 (this same batch) had carried v1's
+  // closing sentence — "the orchestrator sets `[x] DONE` on PASS" — verbatim into
+  // ax-severity-tagging.xml, landing it in the SAME assembled audit.directive that T-B6-25 (also
+  // this batch) had just given AX_AUDIT_HOOK's v2 group-audit model: a ticket's `[x] DONE` is its
+  // OWN phase gates' mechanical close, already true before the audit ever runs. Two contradictory
+  // claims about who closes `[x] DONE`, both introduced by this batch. L-27 rewrites the sentence
+  // to the v2 model instead of carrying the L-25 verbatim-transfer rule past its breaking point.
+  it('the assembled audit directive no longer claims the orchestrator sets `[x] DONE` on PASS (L-27)', () => {
+    const assembled = walkFiles(resolve(ROOT, 'ai/directives/sdd-v2/audit')).map((f) => readFileSync(f, 'utf8'));
+    const audit = read('ai', 'directives', 'sdd-v2', 'audit.directive.xml');
+    const codeReview = read('ai', 'directives', 'sdd-v2', 'code-review.directive.xml');
+    const whole = [audit, codeReview, ...assembled].join('\n');
+    assert.doesNotMatch(whole, /orchestrator sets `\[x\] DONE` on/);
+    assert.match(whole, /on PASS the audit records the round\s+verdict; `\[x\] DONE` is already the phase's mechanical close/);
+  });
 });
 
 // GAP-3 (40-TRACK-DIRECTIVES-SKILLS.md / 05-SUMMARY.md:308, 06-ADEQUACY-GAP.md §5.3 п.29):

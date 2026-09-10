@@ -3,7 +3,18 @@
      §1.4. Table `Meaning` column, confidence rule (D4.4), verdict-computation table + project-scope
      cap (D4.1/D4.7) and the claimed-verification-without-evidence sentence (D4.6) had been dropped
      to a 13-line snapshot before this restoration; git log on the v1 file shows no revert of this
-     text between its introduction (ac2e9d73) and d37d5910 — nothing to reconcile per L-25. -->
+     text between its introduction (ac2e9d73) and d37d5910 — nothing to reconcile per L-25.
+
+     EXCEPTION to verbatim (L-27, V-BATCH-18 verifier B-1): v1's closing sentence named the v1
+     close model this file's Axiom body used to quote — a model that does not exist in v2. Group-
+     audit (AX_AUDIT_HOOK, T-B6-25, ai/kit/axiom/process/ax-audit-hook.xml) fires only AFTER every
+     ticket of the group is already closed; `sdd-log complete` closes each phase mechanically per
+     phase gate, is not verification, and does not wait on this audit's verdict. Assembling both
+     sentences verbatim into the same audit.directive produced two contradictory claims about who
+     performs that close and when — see the inline marker on the last paragraph below for the
+     rewritten sentence. This is the one paragraph in this file NOT carried over verbatim; every
+     other paragraph (severity table, confidence rule, verdict table, project-scope cap) is
+     untouched. -->
 <Axiom id="AX_SEVERITY_TAGGING">
       Every finding carries a severity:
 
@@ -43,7 +54,12 @@
 
       `RULE_FILE_INCOMPLETE` and every other project-scope finding enters this table capped at `MINOR` (per `AX_FINDING_ROUTING`): shared infrastructure no task owns cannot decide that task's verdict. The `sev` field still reports the finding's own severity — the cap applies to the computation, not to the record.
 
-      This matters because the status is consumed mechanically: the orchestrator sets `[x] DONE` on
-      PASS, remediates a progressing FAIL, and blocks only on evidenced no-progress or a real external
-      decision. An unspecified verdict here makes those transitions arbitrary.
+      <!-- v2 close model (L-27, see this file's header comment for the full rationale): each
+           phase already closes `[x] DONE` mechanically via `sdd-log complete` (AX_AUDIT_HOOK)
+           before the group audit ever runs; PASS/FAIL is the round's own audit verdict, recorded
+           separately (`## Audit Rounds`, batches 14/15) — never a trigger that sets `[x] DONE`. -->
+      This matters because the status is consumed mechanically: on PASS the audit records the round
+      verdict; `[x] DONE` is already the phase's mechanical close. The audit remediates a progressing
+      FAIL, and blocks only on evidenced no-progress or a real external decision. An unspecified
+      verdict here makes those transitions arbitrary.
     </Axiom>
