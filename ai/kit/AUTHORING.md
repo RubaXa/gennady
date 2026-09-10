@@ -68,7 +68,9 @@ DONE) · `sdd-sync` (трекеры) · `sdd-check` (целостность) · 
 промпте и протекает в речь агента.)
 
 - **Жаргон IT-культуры оставляем** — он и есть прайминг нужных паттернов: `drift`, `blast radius`,
-  `closed-world`, `fresh-eyes`, `idempotent`, `gate`, `dispatch`, `back-sync`, `DAG`, `handoff`. Это сигнал, не украшение.
+  `closed-world`, `fresh-eyes`, `idempotent`, `gate`, `dispatch`, `DAG`, `handoff`. Это сигнал, не украшение.
+  (Термин «back-sync» из списка исключён: `sdd-sync` механически делает только tracker-status/rollup —
+  нет обратной синхронизации кода из спеки.)
 - **Литературщину режем:** метафоры, афоризмы, нарратив («the heart is not the patch — it is the
   probe», «lifeblood», «the dance of»). Говорим прямо.
 - **Усиление — аффирмативным императивом:** `MUST <do X>`, `Always <do X>`, `<do X> FIRST`. RFC-2119

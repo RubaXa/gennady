@@ -1,4 +1,4 @@
-<SddReconcile keywords="reconcile, fix, sync-from-code, drift, spec-probe, bug-vs-spec-defect, problem-class, blast-radius, back-sync, sdd-reconcile" type="directive" ver="2.2">
+<SddReconcile keywords="reconcile, fix, from-code, drift, spec-probe, bug-vs-spec-defect, problem-class, blast-radius, sdd-reconcile" type="directive" ver="2.2">
   <Mission>
     Restore the spec ⟷ code ⟷ task triangle after it desynced, then prove the repaired path. A separate
     skill (`/sdd-reconcile`) activates one of two modes:
