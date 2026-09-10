@@ -74,12 +74,16 @@ describe('migration-grade (histogram + deterministic baseline-diff grade)', () =
     assert.equal(g.pass, false);
   });
 
-  it('baseline-diff: a code that only shrank vs baseline is not introduced', () => {
-    const baseline = { SDD_VERIFICATION_TABLE_INVALID: 7 };
+  it('baseline-diff: a STRUCTURAL code that only shrank vs baseline is not introduced', () => {
+    // SDD_BROKEN_SPEC_REF is structural, not executability — baseline-diffed on purpose (pre-existing
+    // v1 broken refs are content debt, not this migration's job). Contrast with the executability
+    // (SDD_VERIFICATION_TABLE_INVALID/SDD_COVERAGE_POLICY_INVALID) case below, which the V-BATCH-22
+    // fix (B-2) grades on what REMAINS instead.
+    const baseline = { SDD_BROKEN_SPEC_REF: 7 };
     const g = computeMigrationGrade(
       baseline,
       'FLOW_VERSION=v2',
-      findings('error', 'SDD_VERIFICATION_TABLE_INVALID', 3)
+      findings('error', 'SDD_BROKEN_SPEC_REF', 3)
     );
     assert.deepEqual(g.introduced, []);
     assert.equal(g.pass, true);
@@ -108,7 +112,8 @@ describe('E-07 (batch 22, red-first per L-15): SDD_VERIFICATION_TABLE_INVALID / 
     const g = computeMigrationGrade({}, 'FLOW_VERSION=v2', FROZEN_2COL_TABLE_OUTPUT);
     assert.equal(g.pass, false);
     assert.equal(g.introduced[0]?.code, 'SDD_VERIFICATION_TABLE_INVALID');
-    assert.match(g.detail, /critical-introduced: SDD_VERIFICATION_TABLE_INVALID\+1/);
+    assert.match(g.detail, /executability-remaining: SDD_VERIFICATION_TABLE_INVALID×1/);
+    assert.equal(g.executabilityRemaining[0]?.code, 'SDD_VERIFICATION_TABLE_INVALID');
   });
 
   it('RED — a migrator that half-applies the coverage schema (marker present, fields wrong) also fails the bar', () => {
@@ -125,7 +130,11 @@ describe('E-07 (batch 22, red-first per L-15): SDD_VERIFICATION_TABLE_INVALID / 
     assert.deepEqual(g.introduced, []);
   });
 
-  it('pre-existing (baseline) occurrences of either code are backlog, not a NEW migration failure', () => {
+  // V-BATCH-22 verdict B-2 (the fix this both-way pair proves): baseline-diffing the executability
+  // codes let a migration that fixes NOTHING pass, as long as the count never rose above what the
+  // v1 repo already had. On E-14 (full self-migration) that means "0 tables upgraded" would still be
+  // `pass:true`. Executability is graded on what REMAINS, not on the delta.
+  it('RED (fixed by B-2) — pre-existing (baseline) occurrences of either code are NOT backlog: unfixed means unusable', () => {
     const baseline = { SDD_VERIFICATION_TABLE_INVALID: 2, SDD_COVERAGE_POLICY_INVALID: 1 };
     const g = computeMigrationGrade(
       baseline,
@@ -135,7 +144,33 @@ describe('E-07 (batch 22, red-first per L-15): SDD_VERIFICATION_TABLE_INVALID / 
         findings('error', 'SDD_COVERAGE_POLICY_INVALID', 1),
       ].join('\n')
     );
-    assert.deepEqual(g.introduced, []);
+    assert.deepEqual(g.introduced, []); // not NEW vs baseline...
+    assert.equal(g.pass, false); // ...but still fails: executability isn't baseline-relative.
+    assert.deepEqual(g.executabilityRemaining.map((i) => i.code).sort(), [
+      'SDD_COVERAGE_POLICY_INVALID',
+      'SDD_VERIFICATION_TABLE_INVALID',
+    ]);
+  });
+
+  it('GREEN counterpart — the same baseline, but `after` is truly clean of both codes → PASS', () => {
+    const baseline = { SDD_VERIFICATION_TABLE_INVALID: 2, SDD_COVERAGE_POLICY_INVALID: 1 };
+    const g = computeMigrationGrade(
+      baseline,
+      'FLOW_VERSION=v2',
+      '[sdd-check] 0 error(s), 0 warning(s)'
+    );
     assert.equal(g.pass, true);
+    assert.deepEqual(g.executabilityRemaining, []);
+  });
+
+  it('a SHRUNK-but-nonzero executability count still fails — partial fixes are not fixes', () => {
+    const baseline = { SDD_VERIFICATION_TABLE_INVALID: 7 };
+    const g = computeMigrationGrade(
+      baseline,
+      'FLOW_VERSION=v2',
+      findings('error', 'SDD_VERIFICATION_TABLE_INVALID', 3)
+    );
+    assert.deepEqual(g.introduced, []); // count fell 7 → 3, so not "introduced"...
+    assert.equal(g.pass, false); // ...but 3 tickets are still not sdd-task-executable.
   });
 });
