@@ -7,8 +7,15 @@
 // `reconcile.directive.hbs` keywords (`sync-from-code`, `back-sync`) and `AUTHORING.md`'s jargon-keep
 // list promised a "back-sync" mechanism that reconcile does not implement: the real mode is named
 // `from-code` in the directive body, and remediation always goes through ordinary authoring/execute,
-// never an automatic code→spec sync. This is the regression lock: `back-sync` may only appear as an
-// explicit negation ("нет обратной синхронизации"), never as a bare keyword/promise.
+// never an automatic code→spec sync. This is the regression lock: `back-sync`/`sync-from-code` may
+// only appear as an explicit negation ("нет обратной синхронизации"), never as a bare keyword/promise.
+//
+// V-BATCH-21 B1/N1/N2: the root list was `ai/kit`, `ai/directives/sdd-v2`, `ai/skills` — a promise
+// living in a hand-authored directive outside `sdd-v2` (e.g. `ai/directives/testing/**`) was
+// structurally invisible to this lock. Widened to all of `ai/directives`. `sync-from-code` is added
+// to the banned-word set alongside `back-sync` — the track/board named both words as the residual
+// drift this lock guards (40-TRACK-DIRECTIVES-SKILLS.md §"reconcile.directive.hbs:1 (sync-from-code,
+// back-sync)"), but the lock previously checked only one of the two.
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -18,6 +25,7 @@ import { resolve } from 'node:path';
 const ROOT = resolve(import.meta.dirname, '../../..');
 const NEGATION = 'нет обратной синхронизации';
 const WINDOW = 200;
+const BANNED_WORDS = ['back-sync', 'sync-from-code'] as const;
 
 function walkFiles(dir: string): string[] {
   return readdirSync(dir, { recursive: true, withFileTypes: true })
@@ -27,22 +35,24 @@ function walkFiles(dir: string): string[] {
 
 function findUnguardedOccurrences(content: string): number[] {
   const hits: number[] = [];
-  const re = /back-sync/gi;
-  let match: RegExpExecArray | null;
-  while ((match = re.exec(content)) !== null) {
-    const start = Math.max(0, match.index - WINDOW);
-    const end = Math.min(content.length, match.index + WINDOW);
-    const nearby = content.slice(start, end);
-    if (!nearby.includes(NEGATION)) {
-      hits.push(match.index);
+  for (const word of BANNED_WORDS) {
+    const re = new RegExp(word.replace(/-/g, '[-_]'), 'gi');
+    let match: RegExpExecArray | null;
+    while ((match = re.exec(content)) !== null) {
+      const start = Math.max(0, match.index - WINDOW);
+      const end = Math.min(content.length, match.index + WINDOW);
+      const nearby = content.slice(start, end);
+      if (!nearby.includes(NEGATION)) {
+        hits.push(match.index);
+      }
     }
   }
   return hits;
 }
 
 describe('back-sync is never a promised mechanism (T-B6-28)', () => {
-  it('keeps ai/kit/** and ai/directives/sdd-v2/** free of unguarded `back-sync` promises', () => {
-    const roots = ['ai/kit', 'ai/directives/sdd-v2', 'ai/skills'];
+  it('keeps ai/kit/**, ai/directives/** and ai/skills/** free of unguarded `back-sync`/`sync-from-code` promises', () => {
+    const roots = ['ai/kit', 'ai/directives', 'ai/skills'];
     const offenders: string[] = [];
     for (const root of roots) {
       const abs = resolve(ROOT, root);
