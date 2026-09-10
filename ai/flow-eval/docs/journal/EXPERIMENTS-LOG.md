@@ -683,3 +683,27 @@ protocol), НЕ читать SKILL.md/router/scope-цепочку; не реве
 router/skill-цепочки. Подтверждает: де-ceremony-плейбук переносится с миграции на execute. N=1, но эффект
 крупный и структурный (0 traversal, orient 43→22), согласован с сильным prior (migration B4 ×200 reason).
 Затрагивает и cloud-ios round-trip (тоже execute-фаза) — там пригодится, когда wall-3 разблокируют.
+
+## 2026-09-10 — `infra-log-summary` (pass/pass)
+
+- **Модель:** llm-proxy/deepseek-v4-flash / судья llm-proxy/deepseek-v4-flash — бюджет: concurrency=1 max-observations=6
+- **Числа:** действий=11, время=~2 мин, токены=16328
+- **Гипотеза/зачем:** _(заполнить)_
+- **Итог:** _(заполнить)_
+- **Сырые данные:** `ai/flow-eval/results/2026-09-10-infra-log-summary`
+
+## 2026-09-10 — `infra-log-summary` (pass/pass)
+
+- **Модель:** llm-proxy/deepseek-v4-flash / судья llm-proxy/deepseek-v4-flash — бюджет: concurrency=1 max-observations=6
+- **Числа:** действий=10, время=~2 мин, токены=14327
+- **Гипотеза/зачем:** _(заполнить)_
+- **Итог:** _(заполнить)_
+- **Сырые данные:** `ai/flow-eval/results/2026-09-10-infra-log-summary-2`
+
+## 2026-09-10 — `infra-log-summary` (pass/pass)
+
+- **Модель:** llm-proxy/deepseek-v4-flash / судья llm-proxy/deepseek-v4-flash — бюджет: concurrency=1 max-observations=6
+- **Числа:** действий=11, время=~2 мин, токены=15114
+- **Гипотеза/зачем:** _(заполнить)_
+- **Итог:** _(заполнить)_
+- **Сырые данные:** `ai/flow-eval/results/2026-09-10-infra-log-summary-3`

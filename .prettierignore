@@ -13,3 +13,10 @@ e2e/inbox-serve/test-results/
 # Local inspector projection. `npm run inspector:gen` owns this Git-ignored
 # runtime artifact; formatting its ~45 MB JSON does not verify authored input.
 ai/inspector/web/trace.json
+
+# E-03 (batch 22): the GAP-E-6:GENERATED table in this file is machine-written by
+# `npm run results:table` from real summary.json data — its own header says "the table IS the
+# data, not a hand-maintained copy that can drift" (results-table.ts, results-table.test.ts).
+# Column widths follow the real cell content, not prettier's GFM padding; the freshness gate is
+# `npm run results:table:check` (byte-identical regeneration), not prettier.
+ai/flow-eval/docs/journal/RESULTS.md

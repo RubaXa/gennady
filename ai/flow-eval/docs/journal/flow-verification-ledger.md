@@ -101,7 +101,7 @@ proven to IMPROVE or at least NOT REGRESS. Tracked per run: `tool_calls_total`, 
 `round_closed`, `impl_receipt`, `audit_receipt`, `review_receipt`, `bench_soft`, `stuck`. Non-regression
 rule: after a flow change, for the same scenario+model, `steps` and `tool_calls_total` must be ≤ baseline
 (or within a stated tolerance) AND completion signals (`ticket_status=DONE`, receipts present) must not
-regress. Baselines recorded in `.results/metrics-ledger.jsonl`.
+regress. Baselines recorded in `ai/flow-eval/results/metrics-ledger.jsonl` (permanent, D-62; moved from the gitignored `.results/` in E-03/batch 22).
 
 ## E. LANDED (this session) + follow-on
 

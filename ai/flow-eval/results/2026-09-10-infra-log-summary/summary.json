@@ -1,0 +1,38 @@
+{
+  "scenarioId": "infra-log-summary",
+  "date": "2026-09-10",
+  "timestamp": "2026-09-10T15:04:08.860Z",
+  "sha": "c51cab65463363a9601da71e0908532d71b1a84a",
+  "model": {
+    "providerID": "llm-proxy",
+    "modelID": "deepseek-v4-flash"
+  },
+  "judgeModel": {
+    "providerID": "llm-proxy",
+    "modelID": "deepseek-v4-flash"
+  },
+  "budget": {
+    "concurrency": 1,
+    "maxObservations": 6,
+    "observeEveryMs": 30000,
+    "stuckAfter": 4,
+    "tailLimit": 20
+  },
+  "verdict": "pass",
+  "status": "completed",
+  "outcome": "pass",
+  "actions": 11,
+  "durationMs": 90149,
+  "usage": {
+    "messages": 8,
+    "input": 13542,
+    "output": 1703,
+    "reasoning": 1083,
+    "cacheRead": 103808,
+    "cacheWrite": 0,
+    "total": 16328,
+    "cost": 0
+  },
+  "hasJudge": true,
+  "specFiles": []
+}

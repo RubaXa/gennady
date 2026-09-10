@@ -1,9 +1,16 @@
 #!/usr/bin/env python3
 """Deterministic per-session metrics for the SDD execute flow — the improvement/non-regression proof the
 operator requires at the end of every session. Given a run id, the OpenCode session, and the fixture dir,
-it emits ONE machine-readable JSON record and appends it to .results/metrics-ledger.jsonl. Purely
+it emits ONE machine-readable JSON record and appends it to results/metrics-ledger.jsonl. Purely
 deterministic (no LLM): session-side counts come from the OpenCode SQLite DB; state-side signals come from
 reading the fixture on disk. Compare two runs with `--compare <runA> <runB>` to assert non-regression.
+
+E-03 (batch 22): the ledger moved from the gitignored `ai/flow-eval/.results/` to the permanent
+`ai/flow-eval/results/` (D-62 — every eval run and its result belongs in the repository, raw). Entries
+recorded before this move (pre-2026-09-07, before the dist-freshness fix `3d5f66a7`) lived only on the
+recording machine's local disk and are gone — the board's own framing ("числа прогонов до 07.09
+относятся к неизвестной сборке") already treats them as an unknown build's numbers, not a baseline to
+carry forward.
 
 Usage:
   session-metrics.py record --run <id> --session <ses_...|title-frag> --fixture <dir> [--bench-out <file>]
@@ -25,7 +32,7 @@ GEN = os.environ.get(
     "GEN_ROOT",
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))),
 )
-LEDGER = os.environ.get("METRICS_LEDGER", f"{GEN}/ai/flow-eval/.results/metrics-ledger.jsonl")
+LEDGER = os.environ.get("METRICS_LEDGER", f"{GEN}/ai/flow-eval/results/metrics-ledger.jsonl")
 
 
 def resolve_session(con, arg):
@@ -85,10 +92,14 @@ def _read(path):
         return ""
 
 
-def state_metrics(fixture):
-    guard = f"{fixture}/Tools/check-swiftlint-exceptions.sh"
-    ticket = f"{fixture}/specs/infra-base/infra-base.task.IB-script.md"
-    spec = f"{fixture}/specs/infra-base/infra-base.spec.md"
+def state_metrics(fixture, ticket=None, spec=None, guard=None):
+    # E-03 (batch 22): defaults preserve the original infra-base/cloud-ios round-trip fixture shape;
+    # --ticket/--spec/--guard let `record` target ANY fixture (e.g. a built-in scenarios.json fixture
+    # with no SDD ticket at all) without hardcoding one repo's paths, per RUNBOOK's own note that
+    # porting to another repo means adapting this function.
+    guard = guard or f"{fixture}/Tools/check-swiftlint-exceptions.sh"
+    ticket = ticket or f"{fixture}/specs/infra-base/infra-base.task.IB-script.md"
+    spec = spec or f"{fixture}/specs/infra-base/infra-base.spec.md"
     tx = _read(ticket)
     sx = _read(spec)  # group audit/review receipts live on the OWNING SPEC (group-scoped)
     log = re.search(r"<!--SECTION:EXECUTION_LOG-->(.*?)<!--/SECTION:EXECUTION_LOG-->", tx, re.S)
@@ -119,7 +130,11 @@ def record(args):
     run = args["run"]
     rec = {"run": run}
     rec.update(session_metrics(args["session"]))
-    rec.update(state_metrics(args["fixture"]))
+    rec.update(
+        state_metrics(
+            args["fixture"], args.get("ticket"), args.get("spec"), args.get("guard")
+        )
+    )
     b = bench_soft(args.get("bench_out"))
     if b:
         rec["bench_soft"] = b
@@ -168,11 +183,11 @@ def compare(a, b):
     sys.exit(0 if ok else 1)
 
 
-def gate(fixture):
+def gate(fixture, ticket=None, spec=None, guard=None):
     """Deterministic completion gate (red-first). If an artifact was built, the ticket MUST have reached
     a real DONE via a closed round; once the receipt mechanism lands, audit+review receipts too. Exits
     non-zero (RED) when the artifact exists but the ticket was abandoned — the exact fc2 defect."""
-    s = state_metrics(fixture)
+    s = state_metrics(fixture, ticket, spec, guard)
     reasons = []
     if s["guard_written"]:
         if "[x]" not in s["ticket_status"]:
@@ -197,14 +212,25 @@ def main():
     if len(sys.argv) < 2:
         sys.exit(__doc__)
     if sys.argv[1] == "gate":
-        fx = next((sys.argv[i + 1] for i, x in enumerate(sys.argv) if x == "--fixture"), None)
-        if not fx:
+        a = {}
+        for i, x in enumerate(sys.argv):
+            if x in ("--fixture", "--ticket", "--spec", "--guard") and i + 1 < len(sys.argv):
+                a[x.lstrip("-")] = sys.argv[i + 1]
+        if "fixture" not in a:
             sys.exit("gate needs --fixture <dir>")
-        gate(fx)
+        gate(a["fixture"], a.get("ticket"), a.get("spec"), a.get("guard"))
     elif sys.argv[1] == "record":
         a = {}
         for i, x in enumerate(sys.argv):
-            if x in ("--run", "--session", "--fixture", "--bench-out") and i + 1 < len(sys.argv):
+            if x in (
+                "--run",
+                "--session",
+                "--fixture",
+                "--bench-out",
+                "--ticket",
+                "--spec",
+                "--guard",
+            ) and i + 1 < len(sys.argv):
                 a[x.lstrip("-").replace("-", "_")] = sys.argv[i + 1]
         for req in ("run", "session", "fixture"):
             if req not in a:
