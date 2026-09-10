@@ -70,6 +70,10 @@ const CREDENTIAL_KEYS = [
 const NETWORK_MARKER = 'ERR_TEST_UNEXPECTED_NETWORK';
 const COVERAGE_CHILD_ENV_GUARD_MARKER = "process.env.NODE_V8_COVERAGE%20%3D%20''";
 const BOUNDED_OUTER_CONCURRENCY = `--test-concurrency=${Math.min(10, Math.max(6, availableParallelism()))}`;
+// REL-7: `deterministic` runs `local` as its own partition at a reduced, fixed concurrency —
+// independent of `availableParallelism()` — to cut IPC pressure from local's subprocess-heavy
+// suites (see R-REL-15.md / V-BATCH-03.md finding F6).
+const LOCAL_PARTITION_CONCURRENCY = '--test-concurrency=4';
 
 type Layer = (typeof TEST_LAYERS)[number];
 type RunnerProbe = { args: string[]; env: NodeJS.ProcessEnv };
@@ -233,8 +237,9 @@ describe('test topology contract', () => {
   it('deterministic and partitioned coverage each own the complete corpus exactly once (minus D-60 experimental)', () => {
     const expected = deterministicGateCorpus();
     const topology = listedTopology();
-    const deterministic = probeSpawns('deterministic')[0].args.filter((arg) =>
-      /\.test\.ts$/.test(arg)
+    const deterministicSpawns = probeSpawns('deterministic');
+    const deterministic = deterministicSpawns.flatMap(({ args }) =>
+      args.filter((arg) => /\.test\.ts$/.test(arg))
     );
     const coverageSpawns = probeSpawns('coverage');
     const coverage = coverageSpawns.flatMap(({ args }) =>
@@ -248,6 +253,19 @@ describe('test topology contract', () => {
     // Set identity + exactly-once are still asserted below and by the sorted comparison here.
     assert.deepStrictEqual([...deterministic].sort(), expected);
     assert.strictEqual(new Set(deterministic).size, deterministic.length);
+    // REL-7: `deterministic` is two sequential partitions — `local` alone, then the rest — same
+    // shape as `coverage`'s observed/black-box split below.
+    assert.strictEqual(deterministicSpawns.length, 2, 'local partition + rest partition');
+    assert.deepStrictEqual(
+      deterministicSpawns[0].args.filter((arg) => /\.test\.ts$/.test(arg)),
+      [...topology.local]
+    );
+    assert.ok(deterministicSpawns[0].args.includes(LOCAL_PARTITION_CONCURRENCY));
+    assert.deepStrictEqual(
+      deterministicSpawns[1].args.filter((arg) => /\.test\.ts$/.test(arg)),
+      [...topology.contract, ...topology.external, ...topology.unit]
+    );
+    assert.ok(deterministicSpawns[1].args.includes(BOUNDED_OUTER_CONCURRENCY));
     assert.deepStrictEqual([...coverage].sort(), expected);
     assert.strictEqual(new Set(coverage).size, coverage.length);
     // D-60: neither mode may ever touch the experimental layer.
@@ -309,8 +327,10 @@ describe('test topology contract', () => {
     );
   });
 
-  it('pins one bounded outer concurrency for every runner mode', () => {
-    for (const mode of ['unit', 'deterministic', 'coverage', 'experimental'] as const) {
+  it("pins one bounded outer concurrency for every runner mode except deterministic's local partition", () => {
+    // REL-7: `deterministic` is deliberately excluded here — its two partitions run at different
+    // concurrencies, locked separately below.
+    for (const mode of ['unit', 'coverage', 'experimental'] as const) {
       for (const { args } of probeSpawns(mode)) {
         assert.strictEqual(
           args.filter((arg) => arg.startsWith('--test-concurrency=')).length,
@@ -320,6 +340,30 @@ describe('test topology contract', () => {
         assert.ok(args.includes(BOUNDED_OUTER_CONCURRENCY), `${mode}: ${JSON.stringify(args)}`);
       }
     }
+  });
+
+  it('REL-7: deterministic runs the local layer at concurrency 4 as its own partition, the rest unchanged', () => {
+    const spawns = probeSpawns('deterministic');
+    assert.strictEqual(spawns.length, 2, 'local partition + rest partition');
+    for (const { args } of spawns) {
+      assert.strictEqual(
+        args.filter((arg) => arg.startsWith('--test-concurrency=')).length,
+        1,
+        JSON.stringify(args)
+      );
+    }
+    assert.ok(
+      spawns[0].args.includes(LOCAL_PARTITION_CONCURRENCY),
+      `local partition: ${JSON.stringify(spawns[0].args)}`
+    );
+    assert.ok(
+      !spawns[0].args.includes(BOUNDED_OUTER_CONCURRENCY),
+      'local partition must not also carry the unpartitioned outer concurrency'
+    );
+    assert.ok(
+      spawns[1].args.includes(BOUNDED_OUTER_CONCURRENCY),
+      `rest partition: ${JSON.stringify(spawns[1].args)}`
+    );
   });
 
   it('unit is a strict hermetic subset with no declared local boundary', () => {

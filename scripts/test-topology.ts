@@ -17,8 +17,9 @@ const TEST_LAYERS = ['unit', 'contract', 'local', 'external', 'experimental'] as
 type TestLayer = (typeof TEST_LAYERS)[number];
 type TestTopology = Record<TestLayer, string[]>;
 type TestPartition = {
-  name: 'observed' | 'black-box';
+  name: 'observed' | 'black-box' | 'local' | 'rest';
   coverage: boolean;
+  concurrency: number;
   layers: readonly TestLayer[];
   files: string[];
 };
@@ -45,6 +46,16 @@ const EXPERIMENTAL_ROOTS = [
 // count. Ten (capped by available parallelism) keeps the heaviest-layer-first wave resident in one
 // pass without letting the inner fan-out oversubscribe the machine.
 const OUTER_TEST_CONCURRENCY = Math.min(10, Math.max(6, availableParallelism()));
+// REL-7 (V-BATCH-03 finding F6): the `local` layer's subprocess-heavy suites (real `git`/CLI
+// children via `execFileSync`/`spawnSync`) put the most IPC pressure on `node --test`'s parent<->
+// child structured-clone pipe, which manifests under load either as an `uncaughtException`
+// ("Unable to deserialize cloned data...") or as a `testTimeoutFailure` cascade — see R-REL-15.md
+// and V-BATCH-03.md §5/§6. Running `local` as its own partition at a lower concurrency (variant
+// (б), not a blanket `=1`) cuts that pressure precisely where it originates while leaving
+// contract/external/unit — which carry no comparable subprocess fan-out — at the existing bounded
+// concurrency. 4 matches the archived precedent (`51195c48`, `--test-concurrency=4`) and keeps
+// wall time close to the pre-PR#36 baseline instead of paying the ×4.4–8.0 cost of `=1` everywhere.
+const LOCAL_PARTITION_CONCURRENCY = 4;
 const V2_GATE_EXCLUDED_NAMES = new Set([
   'http-server.test.ts',
   'eval-driver.test.ts',
@@ -265,10 +276,8 @@ function assertTopology(): TestTopology {
 // `experimental` is deliberately absent (D-60): it never runs as part of `deterministic`/`coverage`.
 const DETERMINISTIC_LAYER_ORDER = ['local', 'contract', 'external', 'unit'] as const;
 
-function targetsFor(command: 'unit' | 'deterministic', topology: TestTopology): string[] {
-  return command === 'unit'
-    ? [...topology.unit]
-    : DETERMINISTIC_LAYER_ORDER.flatMap((layer) => topology[layer]);
+function unitTargets(topology: TestTopology): string[] {
+  return [...topology.unit];
 }
 
 function coveragePartitions(topology: TestTopology): TestPartition[] {
@@ -276,14 +285,41 @@ function coveragePartitions(topology: TestTopology): TestPartition[] {
     {
       name: 'observed',
       coverage: true,
+      concurrency: OUTER_TEST_CONCURRENCY,
       layers: ['unit', 'contract'],
       files: [...topology.unit, ...topology.contract].sort(),
     },
     {
       name: 'black-box',
       coverage: false,
+      concurrency: OUTER_TEST_CONCURRENCY,
       layers: ['local', 'external'],
       files: [...topology.local, ...topology.external].sort(),
+    },
+  ];
+}
+
+// REL-7: `deterministic` splits into two sequential partitions, the same pattern already used by
+// `coveragePartitions()` above — `local` runs alone at the reduced `LOCAL_PARTITION_CONCURRENCY`,
+// then the rest of `DETERMINISTIC_LAYER_ORDER` (contract, external, unit — order unchanged) runs at
+// the existing `OUTER_TEST_CONCURRENCY`. Local-first dispatch (the PR #36 makespan win) is
+// preserved since `local` is now the first partition to run, not merely first in a single list.
+function deterministicPartitions(topology: TestTopology): TestPartition[] {
+  const restLayers = DETERMINISTIC_LAYER_ORDER.filter((layer) => layer !== 'local');
+  return [
+    {
+      name: 'local',
+      coverage: false,
+      concurrency: LOCAL_PARTITION_CONCURRENCY,
+      layers: ['local'],
+      files: [...topology.local],
+    },
+    {
+      name: 'rest',
+      coverage: false,
+      concurrency: OUTER_TEST_CONCURRENCY,
+      layers: restLayers,
+      files: restLayers.flatMap((layer) => topology[layer]),
     },
   ];
 }
@@ -310,11 +346,11 @@ function createTestEnvironment(): NodeJS.ProcessEnv {
 
 function runNodeTests(
   files: string[],
-  options: { coverage: boolean; networkGuard: boolean }
+  options: { coverage: boolean; networkGuard: boolean; concurrency: number }
 ): number {
   const nodeArgs = [
     '--test',
-    `--test-concurrency=${OUTER_TEST_CONCURRENCY}`,
+    `--test-concurrency=${options.concurrency}`,
     '--import',
     'tsx',
     ...(options.coverage ? ['--import', COVERAGE_CHILD_ENV_GUARD_IMPORT] : []),
@@ -358,7 +394,9 @@ function help(): string {
     '  list      Print each classified test path.',
     '  Package aliases: npm test=deterministic; npm run test:coverage=coverage; npm run test:topology=check;',
     '  npm run test:experimental=experimental.',
-    `  All run modes use bounded outer concurrency=${OUTER_TEST_CONCURRENCY}; subprocess-heavy suites own inner bounds.`,
+    `  unit/coverage/experimental use bounded outer concurrency=${OUTER_TEST_CONCURRENCY}.`,
+    `  deterministic runs local as its own partition at concurrency=${LOCAL_PARTITION_CONCURRENCY} (REL-7),`,
+    `  then contract+external+unit at bounded outer concurrency=${OUTER_TEST_CONCURRENCY}. Subprocess-heavy suites own inner bounds.`,
     '  --help    Show this help.',
   ].join('\n');
 }
@@ -385,10 +423,35 @@ function main(argv: string[]): number {
     }
     return 0;
   }
-  if (command === 'unit' || command === 'deterministic') {
-    const targets = targetsFor(command, topology);
-    process.stdout.write(`[test-topology] ${command}: ${targets.length} files\n`);
-    return runNodeTests(targets, { coverage: false, networkGuard: command === 'unit' });
+  if (command === 'unit') {
+    const targets = unitTargets(topology);
+    process.stdout.write(`[test-topology] unit: ${targets.length} files\n`);
+    return runNodeTests(targets, {
+      coverage: false,
+      networkGuard: true,
+      concurrency: OUTER_TEST_CONCURRENCY,
+    });
+  }
+  if (command === 'deterministic') {
+    // REL-7: run as two sequential partitions — `local` alone at the reduced concurrency, then the
+    // rest at the existing bounded concurrency — instead of one spawn over the whole corpus.
+    const partitions = deterministicPartitions(topology);
+    process.stdout.write(
+      `[test-topology] deterministic: ${partitions.reduce((sum, part) => sum + part.files.length, 0)} files\n`
+    );
+    for (const partition of partitions) {
+      process.stdout.write(
+        `[test-topology] ${partition.name}: ${partition.files.length} files ` +
+          `(${partition.layers.join('+')}; concurrency=${partition.concurrency})\n`
+      );
+      const status = runNodeTests(partition.files, {
+        coverage: false,
+        networkGuard: false,
+        concurrency: partition.concurrency,
+      });
+      if (status !== 0) return status;
+    }
+    return 0;
   }
   if (command === 'experimental') {
     // D-60: agent-inbox/agent-mon — never part of npm test/test:coverage/pre-commit. No c8, no
@@ -396,7 +459,11 @@ function main(argv: string[]): number {
     // and network access, same as `local`/`external` under `coverage`.
     const targets = topology.experimental;
     process.stdout.write(`[test-topology] experimental: ${targets.length} files\n`);
-    return runNodeTests(targets, { coverage: false, networkGuard: false });
+    return runNodeTests(targets, {
+      coverage: false,
+      networkGuard: false,
+      concurrency: OUTER_TEST_CONCURRENCY,
+    });
   }
   if (command === 'coverage') {
     const partitions = coveragePartitions(topology);
@@ -411,6 +478,7 @@ function main(argv: string[]): number {
       const status = runNodeTests(partition.files, {
         coverage: partition.coverage,
         networkGuard: false,
+        concurrency: partition.concurrency,
       });
       if (status !== 0) return status;
     }
