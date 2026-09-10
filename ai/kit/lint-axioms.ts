@@ -208,7 +208,11 @@ const SDD_V2_DANGLING_REFS = (
       // Class I (library file exists under ai/kit/axiom/**, never connected with {{> }}) — owner
       // named where a later task in the plan explicitly claims the id; "unassigned" otherwise
       // (still recorded in 40-TRACK-DIRECTIVES-SKILLS.md §4.1 for the next triage pass).
-      ['AX_AUDIT_HOOK', ['audit.directive.xml', 'code-review.directive.xml', 'execute.directive.xml', 'scaffold.directive.xml'], 'T-B6-25'],
+      // AX_AUDIT_HOOK connected (T-B6-25, Пачка 18): now {{> "axiom/process/ax-audit-hook"}} in
+      // audit.directive.hbs (the most-cited dangling axiom in 40-TRACK-DIRECTIVES-SKILLS.md §4.1 —
+      // 5 references) — a real <Axiom id> definition exists in the rendered build, so its mentions
+      // in code-review.directive.xml, execute.directive.xml, scaffold.directive.xml (and its own
+      // second citation inside audit.directive.xml itself) are no longer dangling. Row removed.
       // AX_STALE_AFTER_PIVOT_VERIFICATION connected (T-B6-17, Пачка 15): now {{> "axiom/audit/ax-
       // stale-after-pivot-verification"}} in audit.directive.hbs — a real <Axiom id> definition
       // exists in the rendered build, so its mentions in formats/pivot-formats.xml,

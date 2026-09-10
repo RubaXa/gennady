@@ -24,6 +24,8 @@
   </Mission>
 
   <BeliefState>
+
+
     <Axiom id="AX_OPERATOR_LANGUAGE" cross-cutting="true">
       **Directive text (axioms, halt names, step procedures, contract identifiers, structural
       section headings, action/status tokens) — English.**
