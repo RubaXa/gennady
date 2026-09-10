@@ -1,6 +1,6 @@
 ---
 name: sdd-execute
-description: Execute approved task tickets end-to-end from ticket, Execution Log, Git, and real verification output. Supports one ticket or a deterministic `sdd-task` batch, bounded phase workers, audit, and code-review. Use for a Task-ID, "next", "pick", "batch"/"all", "выполни очередь", "/sdd-execute".
+description: Execute approved task tickets end-to-end from ticket, Execution Log, Git, and real verification output. Supports one ticket or a deterministic `sdd-task` batch, bounded phase workers, audit, and code-review. Use for a Task-ID, "next", "pick", "batch"/"all", "выполни очередь", "/sdd-execute". Also the v2 destination for the retired v1 skill name "/sdd-execute-batch".
 compatibility: opencode
 ---
 
