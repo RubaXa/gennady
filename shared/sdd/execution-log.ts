@@ -115,27 +115,49 @@ export function firstRoundPhaseBlockCounts(logBody: string): Map<string, number>
   return counts;
 }
 
+/** @purpose One checked event line that fails the token-vocabulary grammar, plus which of the two distinct shapes it is (V-BATCH-15 F-4). */
+export type TokenVocabularyIssue = {
+  /** @purpose The offending line, verbatim. */
+  raw: string;
+  /**
+   * @purpose `unquoted-timestamp`: no backtick-wrapped timestamp, so `parseLogEvent` misreads the
+   *   timestamp text as `token` — not proof the real token, one word later, is illegal.
+   *   `unknown-token`: a real backtick timestamp followed by a first word outside `TOKEN_VOCABULARY`.
+   */
+  issue: 'unquoted-timestamp' | 'unknown-token';
+};
+
 /**
- * @purpose Every checked event line whose first-word token is outside the closed vocabulary
- *   (issue #23) — phase blocks, Round close, and trailing content all count; a marker line never does.
+ * @purpose Every checked event line that fails the token-vocabulary grammar (issue #23), classified
+ *   into its two distinct shapes (V-BATCH-15 F-4) — phase blocks, Round close, and trailing content
+ *   all count; a marker line never does.
+ * @invariant `ts === null && token !== null` is `unquoted-timestamp`, never `unknown-token` — the
+ *   captured `token` in that case is the mis-parsed timestamp itself, not evidence about the real
+ *   token one word further along (which this parser never inspects).
  * @param logBody Extracted EXECUTION_LOG section body.
- * @returns Each offending line's raw text, in document order across every Round.
+ * @returns Each offending line's raw text plus its issue kind, in document order across every Round.
  */
-export function unknownTokenLines(logBody: string): string[] {
+export function tokenVocabularyIssues(logBody: string): TokenVocabularyIssue[] {
   const parsed = parseExecutionLog(wrapAsExecutionLogDocument(logBody));
   if (!parsed) return [];
   // A checked marker line (`- [x] \`ts\` ✅ RESOLVED: …`, the pre-B2-19 inline shape) parses its
-  // own marker emoji as `token` — real vocabulary violations never carry a marker, so excluding
-  // marker !== null here is what keeps legacy 🛑/✅ lines from misreading as unknown tokens.
-  const bad = (e: LogEvent): boolean => e.token !== null && !e.known && e.marker === null;
-  const out: string[] = [];
+  // own marker emoji as `token` — excluding marker !== null here is what keeps legacy 🛑/✅ lines
+  // from misreading as either issue shape.
+  const classify = (e: LogEvent): TokenVocabularyIssue['issue'] | null => {
+    if (e.token === null || e.marker !== null) return null;
+    if (e.ts === null) return 'unquoted-timestamp';
+    return e.known ? null : 'unknown-token';
+  };
+  const out: TokenVocabularyIssue[] = [];
+  const record = (e: LogEvent): void => {
+    const issue = classify(e);
+    if (issue) out.push({ raw: e.raw, issue });
+  };
   for (const round of parsed.rounds) {
-    for (const phase of round.phases) {
-      for (const e of phase.events) if (bad(e)) out.push(e.raw);
-    }
-    for (const e of round.close?.extra ?? []) if (bad(e)) out.push(e.raw);
-    if (round.close?.done && bad(round.close.done)) out.push(round.close.done.raw);
-    for (const e of round.trailing) if (bad(e)) out.push(e.raw);
+    for (const phase of round.phases) for (const e of phase.events) record(e);
+    for (const e of round.close?.extra ?? []) record(e);
+    if (round.close?.done) record(round.close.done);
+    for (const e of round.trailing) record(e);
   }
   return out;
 }

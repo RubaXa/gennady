@@ -53,6 +53,38 @@ describe('E-05 group 1 — unknown token (issue #23)', () => {
     ].join('\n');
     assert.ok(!codes(ticket('[~] IN_PROGRESS', log)).includes('SDD_EXECUTION_LOG_UNKNOWN_TOKEN'));
   });
+
+  // V-BATCH-15 F-4: an unquoted timestamp is a distinct grammar defect, not a vocabulary
+  // violation — the real token (`decision`, legal) sits one word past the misread "token"
+  // (the bare timestamp itself). Verified against the exact live-corpus shape
+  // (agent-inbox.task-159.md:174): `- [x] 2026-08-06T12:15:00Z decision priority_tiers = …`.
+  it('TRIGGER: an unquoted timestamp is flagged as SDD_EXECUTION_LOG_TIMESTAMP_UNQUOTED, not SDD_EXECUTION_LOG_UNKNOWN_TOKEN', () => {
+    const log = [
+      '### Round 1 — 2026-06-21, initial',
+      '#### P1',
+      '- [x] 2026-06-21T10:00:00Z decision priority_tiers = high ← operator call',
+      '- [x] `2026-06-21T10:00:01Z` DONE',
+      '#### Round close',
+      '- [x] `2026-06-21T10:00:02Z` DONE',
+    ].join('\n');
+    const found = codes(ticket('[~] IN_PROGRESS', log));
+    assert.ok(found.includes('SDD_EXECUTION_LOG_TIMESTAMP_UNQUOTED'));
+    assert.ok(!found.includes('SDD_EXECUTION_LOG_UNKNOWN_TOKEN'));
+  });
+
+  it('CLEAN: the same event, timestamp backtick-wrapped, triggers neither code', () => {
+    const log = [
+      '### Round 1 — 2026-06-21, initial',
+      '#### P1',
+      '- [x] `2026-06-21T10:00:00Z` decision priority_tiers = high ← operator call',
+      '- [x] `2026-06-21T10:00:01Z` DONE',
+      '#### Round close',
+      '- [x] `2026-06-21T10:00:02Z` DONE',
+    ].join('\n');
+    const found = codes(ticket('[~] IN_PROGRESS', log));
+    assert.ok(!found.includes('SDD_EXECUTION_LOG_TIMESTAMP_UNQUOTED'));
+    assert.ok(!found.includes('SDD_EXECUTION_LOG_UNKNOWN_TOKEN'));
+  });
 });
 
 describe('E-05 group 2 — edit appended after Round close (D-8/B2-04)', () => {

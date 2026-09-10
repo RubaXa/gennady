@@ -27,7 +27,7 @@ import {
   parseExecutionLog,
   parseAuditRounds,
   META_REOPENS_RE,
-  unknownTokenLines,
+  tokenVocabularyIssues,
 } from './execution-log.ts';
 import {
   deriveSpecAcronym,
@@ -428,12 +428,20 @@ export function checkTicket(file: string, content: string): Finding[] {
       }
     }
 
-    // E-05 (issue #23): closed token vocabulary — WARN per L-3, same as every sibling code above.
-    for (const line of unknownTokenLines(logSec.content)) {
-      warn(
-        'SDD_EXECUTION_LOG_UNKNOWN_TOKEN',
-        `Checked event line opens with a token outside the closed vocabulary: "${line}"`
-      );
+    // E-05 (issue #23), split by grammar shape (V-BATCH-15 F-4) — WARN per L-3, both codes.
+    for (const { raw, issue } of tokenVocabularyIssues(logSec.content)) {
+      if (issue === 'unquoted-timestamp') {
+        warn(
+          'SDD_EXECUTION_LOG_TIMESTAMP_UNQUOTED',
+          `Checked event line's timestamp is not backtick-wrapped, so the first word after ` +
+            `"- [x]" is read as the token, not the real one further along: "${raw}"`
+        );
+      } else {
+        warn(
+          'SDD_EXECUTION_LOG_UNKNOWN_TOKEN',
+          `Checked event line opens with a token outside the closed vocabulary: "${raw}"`
+        );
+      }
     }
   }
   // #endregion END_EXEC_LOG
