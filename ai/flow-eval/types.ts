@@ -24,6 +24,20 @@ export type SddEvalScenario = {
    *  the artifact was built but the ticket did not reach a real DONE (closed round + group receipts).
    *  Opt-in: absent scenarios are unaffected. Paths are repo-relative to the scenario directory. */
   completion?: { artifact: string; ticket: string; spec: string };
+  /**
+   * @purpose Deterministic trajectory checkpoints — each an id + a command run against the sandbox
+   * whose exit code is the verdict (no LLM). When present, the harness emits `trajectory.json` and a
+   * `*.trajectory.test.ts` asserts path properties over it. `<ticket>` in a cmd is substituted from
+   * `completion.ticket`. Structural type (not imported) to avoid a cycle with `trajectory.ts`.
+   */
+  checkpoints?: Array<{ id: string; cmd: string }>;
+  /**
+   * @purpose Per-scenario hard wall-clock budget in ms — overrides `SddEvalConfig.maxWallClockMs`.
+   * For EXISTING evals set it to the established time this task is known to need; for NEW evals set it
+   * as the target it must hit. Exceed it and the runner aborts the worker and fails the scenario — a
+   * simple migration is minutes, not an hour. Omit to fall back to the batch-level budget.
+   */
+  budgetMs?: number;
 };
 
 // Single source of truth for both the compile-time union AND the runtime validation set (GAP-E-1):
@@ -111,7 +125,12 @@ export type SddEvalFixtureId =
   | 'brownfield-recover-in-scope'
   // Recover matrix S2: a module spec exists but is partial (omits a behaviour the code has). Golden
   // grades that the spec was EXTENDED to cover the missing behaviour without losing what was there.
-  | 'brownfield-recover-partial';
+  | 'brownfield-recover-partial'
+  // Migration ladder (v1→v2): a v1 repo (has `tasks/`, specs use plain `##` headings) migrated to v2.
+  // Rungs add spec depth to localise where the migration worker thrashes: portal → +scope → +module.
+  | 'migration-portal'
+  | 'migration-portal-scope'
+  | 'migration-portal-scope-module';
 
 /** @purpose Provider/model selection accepted by OpenCode's SDK. */
 export type OpenCodeModel = {
@@ -137,6 +156,13 @@ export type SddEvalConfig = {
   stuckAfter: number;
   /** @purpose Hard observation budget; changing activity cannot keep a scenario alive forever. */
   maxObservations: number;
+  /**
+   * @purpose Hard WALL-CLOCK budget per scenario in ms. Independent of observation cadence: when the
+   * total elapsed time (worker prompt + observation loop) exceeds it, the runner aborts the worker
+   * session and fails the scenario with `wall-clock budget … exceeded`. A simple task must finish fast;
+   * a thrashing worker is killed, not left to burn an hour. Omit/0 disables (observation budget only).
+   */
+  maxWallClockMs?: number;
   /** @purpose Maximum tail messages requested from OpenCode per observation. */
   tailLimit: number;
   /** @purpose Optional compact progress sink; receives bounded observations only. */

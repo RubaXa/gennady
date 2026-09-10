@@ -1,0 +1,15 @@
+[
+  {
+    "id": "slugify-toolchain",
+    "fixture": "slugify-toolchain",
+    "phase": "execute",
+    "mode": "canonical-execute",
+    "intent": "Execute the canonical slugify ticket against the canonical slugify specification, including tests and the declared toolchain.",
+    "completion": {
+      "artifact": "src/slugify.ts",
+      "ticket": "specs/slugify/core/core.task.SLG-slug.md",
+      "spec": "specs/slugify/core/core.spec.md"
+    },
+    "budgetMs": 600000
+  }
+]

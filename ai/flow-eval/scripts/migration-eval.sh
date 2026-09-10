@@ -45,11 +45,18 @@ case "${1:-run}" in
     reset_fixture
     log "v1 baseline (pre-worker):"; flow "$FX"; hist "$FX" | sed 's/^/    /'
     local_root="$(node --import tsx "$GEN_ROOT/ai/flow-eval/scripts/sandbox.ts" prepare)"
-    log "launch worker (model=$MODEL, max-obs=$MAX_OBS) → $LOG"
-    npm --prefix "$GEN_ROOT" run sdd-flow-eval -- \
+    # Budget: harness aborts the worker at WALLCLOCK ms (scenario.budgetMs also enforces per-scenario);
+    # the OS `timeout` is a hard backstop that SIGKILLs the whole tree if the harness itself hangs.
+    WALLCLOCK="${WALLCLOCK:-300000}"                       # 5 min harness wall-clock
+    TIMEOUT_S="${TIMEOUT_S:-390}"                          # OS hard kill = budget + cleanup margin
+    TO=""; command -v gtimeout >/dev/null 2>&1 && TO="gtimeout -k 15 ${TIMEOUT_S}s"
+    [ -z "$TO" ] && command -v timeout >/dev/null 2>&1 && TO="timeout -k 15 ${TIMEOUT_S}s"
+    log "launch worker (model=$MODEL, max-obs=$MAX_OBS, wall-clock=${WALLCLOCK}ms, os-timeout=${TO:-none}) → $LOG"
+    $TO npm --prefix "$GEN_ROOT" run sdd-flow-eval -- \
       --scenario-file "$SCENARIO" --directory "$local_root" --gennady-root "$GEN_ROOT" \
       --base-url "$BASEURL" --model "$MODEL" --judge-model "$MODEL" --concurrency 1 \
-      --observe-every-ms 90000 --stuck-after 4 --max-observations "$MAX_OBS" > "$LOG" 2>&1 || true
+      --observe-every-ms 45000 --stuck-after 4 --max-observations "$MAX_OBS" \
+      --max-wall-clock-ms "$WALLCLOCK" > "$LOG" 2>&1 || true
     node -e "require('fs').rmSync('$local_root',{recursive:true,force:true})" 2>/dev/null || true
     echo "──────── SUMMARY ($RUNID) ────────"
     grep -E "migration: (PASS|FAIL)" "$LOG" | tail -1 || echo "no grade line (worker did not finish)"

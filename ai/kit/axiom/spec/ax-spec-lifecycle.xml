@@ -3,7 +3,10 @@
   A V2 specification has one durable format. Greenfield authoring creates that format directly;
   refine/pivot edits it in place. Git diff shows changes for semantic judgment. Temporary Change Manifest,
   per-line review marks, Critic Rounds, publication state, and migration between V2 subformats are
-  not part of the specification.
+  not part of the specification: never write them into a V2 spec. Resolve every review finding into the
+  spec body (Decision Log, requirements) and leave no per-round review log — a `Critic Rounds` section
+  in a V2 spec is a defect (sdd-check: SDD_SPEC_HAS_CRITIC_ROUNDS). This binds V2 only; legacy v1 specs
+  are not judged by it.
 
   Before approval #1, run structural checks and one fresh independent semantic review of the
   complete target set. Resolve findings in the owning specs. Any semantic edit invalidates the old

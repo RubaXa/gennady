@@ -57,6 +57,8 @@
     "test:watch": "tsx --test-loader 'cli/**/*.test.ts' 'shared/**/*.test.ts' 'services/**/*.test.ts'",
     "test:sdd-flow-eval": "node --import tsx --test ai/flow-eval/__tests__/*.test.ts",
     "sdd-flow-eval": "node --import tsx ai/flow-eval/cli.ts",
+    "eval:migration": "mkdir -p \"$HOME/.gennady/eval/mig-sandboxes\" && node --import tsx ai/flow-eval/cli.ts --scenario-file ai/flow-eval/scenarios-migration.json --directory \"$HOME/.gennady/eval/mig-sandboxes\" --base-url http://127.0.0.1:4100 --model llm-proxy/deepseek-v4-flash --keep --observe-every-ms 45000 --stuck-after 3 --max-observations 12 --max-wall-clock-ms 300000",
+    "eval:migration:portal": "mkdir -p \"$HOME/.gennady/eval/mig-sandboxes\" && node --import tsx ai/flow-eval/cli.ts --scenario-file ai/flow-eval/scenarios-migration-portal.json --directory \"$HOME/.gennady/eval/mig-sandboxes\" --base-url http://127.0.0.1:4100 --model llm-proxy/deepseek-v4-flash --keep --observe-every-ms 45000 --stuck-after 3 --max-observations 12 --max-wall-clock-ms 300000",
     "dev": "tsx cli/gennady.ts",
     "inspector": "tsx ai/inspector/generate.ts && tsx ai/inspector/serve.ts",
     "inspector:gen": "tsx ai/inspector/generate.ts",

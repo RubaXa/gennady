@@ -3,8 +3,10 @@
 adding the `Role` column. This is the migration-completeness transformation the v1→v2 flow currently
 skips: v1 tickets predate the `Role` column, so migrated tickets carry `| Command | Required by |`, which
 `sdd-task`/`sdd-execute` reject with SDD_VERIFICATION_TABLE_INVALID — the exact wall a real execute run
-hit. Role is assigned mechanically: a coverage reader (`testcov`) → coverage; an `npm run`/probe test →
-probe; everything else → extra (the conservative default the schema prescribes for non-coverage rows).
+hit. Role is assigned mechanically: a coverage reader (`testcov`) → coverage; an explicit test runner
+(`npm test`) → probe; everything else → extra (the conservative default the schema prescribes). A
+repo-local test-stand owned by the impl phase (e.g. `Tools/tests/probes.sh`) is `extra`, not `probe`:
+`probe` requires an owning test phase (sdd-verify enforces it), which impl-only migrated tickets lack.
 
 Usage: upgrade-verification-tables.py <ticket.md | dir> [...]   (edits in place; prints what changed)
 """
@@ -20,7 +22,13 @@ ROW = re.compile(r"^\|(?P<cmd>.+?)\|(?P<req>.+?)\|\s*$")
 def role_for(cmd: str) -> str:
     if "testcov" in cmd or "test:coverage" in cmd or "--coverage" in cmd:
         return "coverage"
-    if "npm run" in cmd or "probe" in cmd.lower() or "tests/" in cmd:
+    # `probe` is valid ONLY when an owning TEST phase maps the command in §6 Test Scenario Coverage
+    # (sdd-verify enforces this). This mechanical shim cannot see phases, and its migrated targets are
+    # impl-only, so a repo-local test-stand that is the impl phase's own evidence (e.g. Tools/tests/
+    # probes.sh, Required-by "этот тикет") must be `extra`, NOT `probe` — mislabelling it `probe`
+    # hard-blocks sdd-verify with ERR_CLI_SDD_VERIFY_PHASE_CONTEXT (confirmed on the cloud-ios round-trip,
+    # EXPERIMENTS-LOG §H-iOS). Reserve `probe` for an explicit test-runner invocation.
+    if re.search(r"\bnpm (run )?test\b", cmd):
         return "probe"
     return "extra"
 

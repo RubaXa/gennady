@@ -1,9 +1,18 @@
 // @file: Runnable CLI entrypoint for the external SDD eval harness.
 // @consumers: npm run sdd-flow-eval; intentionally uses SDK only, never a provider binary.
 
+import { execSync } from 'node:child_process';
 import { readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import {
+  toolEventsFrom,
+  runCheckpoints,
+  buildTrajectory,
+  type CheckpointSpec,
+  type Exec,
+  type Trajectory,
+} from './trajectory.ts';
 import { SddEvalOpenCodeEvidenceSource } from './evidence.ts';
 import { parseOpenCodeModel, SddEvalOpenCodeRuntime } from './opencode-runtime.ts';
 import { provisionScenarioDirectories } from './provision.ts';
@@ -97,6 +106,9 @@ function parseSddEvalCliArgs(argv: string[]): SddEvalCliOptions {
       case '--max-observations':
         config.maxObservations = Number(requiredValue(argv, index++, arg));
         break;
+      case '--max-wall-clock-ms':
+        config.maxWallClockMs = Number(requiredValue(argv, index++, arg));
+        break;
       case '--tail-limit':
         config.tailLimit = Number(requiredValue(argv, index++, arg));
         break;
@@ -127,6 +139,11 @@ function parseSddEvalCliArgs(argv: string[]): SddEvalCliOptions {
       'observe-every-ms must be >= 0; stuck-after/max-observations/tail-limit must be >= 1'
     );
   }
+  if (
+    config.maxWallClockMs !== undefined &&
+    (!Number.isFinite(config.maxWallClockMs) || config.maxWallClockMs < 0)
+  )
+    throw new Error('max-wall-clock-ms must be a finite number >= 0 (0 disables)');
   if (runnerModelValue) config.runnerModel = parseOpenCodeModel(runnerModelValue, defaultProvider);
   if (judgeModelValue) config.judgeModel = parseOpenCodeModel(judgeModelValue, defaultProvider);
   return { scenarioFile, directory, gennadyRoot, keep, artifactsDir, config };
@@ -287,6 +304,14 @@ async function runAndReport(
   for (const result of results) {
     const verdict = result.judge?.verdict ?? 'worker-error';
     console.log(`${result.worker.scenarioId}: ${verdict} (${result.worker.status})`);
+    if (result.worker.error) console.log(`  [diag] worker.error: ${result.worker.error}`);
+    {
+      const lastAsst = [...result.worker.tail].reverse().find((e) => e.role === 'assistant');
+      if (lastAsst)
+        console.log(
+          `  [diag] last assistant: ${(lastAsst.text || lastAsst.toolCalls.at(-1)?.inputSummary || '').replace(/\s+/g, ' ').slice(0, 200)}`
+        );
+    }
     const scenario = byId.get(result.worker.scenarioId);
     // Objective quality rule R1 (structural integrity) for phases that PRODUCE specs — the mechanical
     // signal alongside the stochastic judge (docs/10-QUALITY-RULES.md). The pure golden-graded work carries
@@ -347,6 +372,42 @@ async function runAndReport(
       ).catch(() => undefined);
       judgeFile = target;
       console.log(`  judge rationale → ${target}`);
+    }
+    // Trajectory (opt-in via scenario.checkpoints): the worker session is ephemeral, so normalize it
+    // into a durable, testable `trajectory.json` — tool events (from the same tail the observer reads)
+    // interleaved with deterministic checkpoint exit codes — that a `*.trajectory.test.ts` asserts over
+    // offline, as many times as needed, without re-running the (stochastic, slow) agent.
+    if (scenario?.checkpoints && directory && result.worker.sessionId) {
+      try {
+        const tail = await evidence.readTail(result.worker.sessionId, 100_000);
+        const tools = toolEventsFrom(tail);
+        const ticket = scenario.completion?.ticket ?? '';
+        const specs: CheckpointSpec[] = scenario.checkpoints.map((c) => ({
+          id: c.id,
+          cmd: c.cmd.replaceAll('<ticket>', ticket),
+        }));
+        const runCheckpointCmd: Exec = (cmd) => {
+          try {
+            execSync(cmd, { cwd: directory, stdio: 'ignore' });
+            return { exit: 0 };
+          } catch (cause) {
+            const status = (cause as { status?: number }).status;
+            return { exit: typeof status === 'number' ? status : 1 };
+          }
+        };
+        const checkpoints = runCheckpoints(specs, runCheckpointCmd, Date.now());
+        const traj: Trajectory = buildTrajectory(result.worker.scenarioId, tools, checkpoints);
+        const target = join(directory, `.sdd-eval-trajectory.${result.worker.scenarioId}.json`);
+        await writeFile(target, `${JSON.stringify(traj, null, 2)}\n`, 'utf8');
+        const greens = checkpoints.filter((c) => c.green).length;
+        console.log(
+          `  trajectory → ${target} (${tools.length} tools · ${greens}/${checkpoints.length} checkpoints green)`
+        );
+      } catch (cause) {
+        console.log(
+          `  trajectory: skipped (${cause instanceof Error ? cause.message : String(cause)})`
+        );
+      }
     }
     // Collect this scenario's durable outcome so it survives the sandbox teardown below.
     if (directory) {

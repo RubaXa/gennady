@@ -89,7 +89,11 @@ function sha(parts: (string | Buffer)[]): string {
   return `sha256:${hash.digest('hex')}`;
 }
 
-/** @purpose Fingerprint the exact structured verification plan without prose or receipt bytes. | @param plan Structured phase plan. | @returns Stable SHA-256 label. */
+/**
+ * @purpose Fingerprint the exact structured verification plan without prose or receipt bytes.
+ * @param plan Structured phase plan.
+ * @returns Stable SHA-256 label.
+ */
 export function phaseReceiptPlanState(plan: PhaseReceiptPlan): string {
   return sha([JSON.stringify(plan)]);
 }
@@ -1201,7 +1205,16 @@ function phaseVerificationEnvironmentFromScripts(
   }
 }
 
-/** @purpose Fingerprint the exact project script definitions reachable from this phase's mechanical plan. | @param root Project root. | @param profile Derived phase profile. | @param producesCoverage Coverage producer choice. | @param verification Ticket-owned extra commands. | @param [hasRepairTargets] Whether repair script bodies belong to this plan. | @param [stack] Stack whose environmentState source runs this fingerprint (V-04a); defaults to `node`, RC's only implemented source. | @returns Stable environment state or a manifest error. */
+/**
+ * @purpose Fingerprint the exact project script definitions reachable from this phase's mechanical plan.
+ * @param root Project root.
+ * @param profile Derived phase profile.
+ * @param producesCoverage Coverage producer choice.
+ * @param verification Ticket-owned extra commands.
+ * @param [hasRepairTargets] Whether repair script bodies belong to this plan.
+ * @param [stack] Stack whose environmentState source runs this fingerprint (V-04a); defaults to `node`, RC's only implemented source.
+ * @returns Stable environment state or a manifest error.
+ */
 export function phaseVerificationEnvironmentState(
   root: string,
   profile: PhaseReceiptPlan['profile'],
@@ -1274,7 +1287,13 @@ export function phaseVerificationPlanEnvironmentState(
   return phaseVerificationEnvironmentFromScripts(root, roots, verification);
 }
 
-/** @purpose Fingerprint exact target paths and bytes after every command has passed. | @param root Project root. | @param targets Exact project-relative Target Files. | @param [deletedFiles] Exact project-relative tombstones whose absence is verified. | @returns Stable state or a read failure. */
+/**
+ * @purpose Fingerprint exact target paths and bytes after every command has passed.
+ * @param root Project root.
+ * @param targets Exact project-relative Target Files.
+ * @param [deletedFiles] Exact project-relative tombstones whose absence is verified.
+ * @returns Stable state or a read failure.
+ */
 export function phaseReceiptTargetState(
   root: string,
   targets: readonly string[],
@@ -1403,7 +1422,11 @@ function isReceipt(value: unknown, phase: string): value is PhaseReceipt {
   );
 }
 
-/** @purpose Parse every paired receipt block; any malformed/duplicate marker fails closed. | @param content Full ticket content. | @returns Receipts or one structural issue. */
+/**
+ * @purpose Parse every paired receipt block; any malformed/duplicate marker fails closed.
+ * @param content Full ticket content.
+ * @returns Receipts or one structural issue.
+ */
 export function parsePhaseReceipts(content: string): PhaseReceiptParseResult {
   const receipts: PhaseReceipt[] = [];
   const consumed: string[] = [];
@@ -1430,7 +1453,11 @@ export function parsePhaseReceipts(content: string): PhaseReceiptParseResult {
   return { ok: true, receipts };
 }
 
-/** @purpose Render one readable paired receipt block for atomic insertion into Execution Log. | @param receipt Complete successful phase evidence. | @returns Paired HTML-like block with JSON body. */
+/**
+ * @purpose Render one readable paired receipt block for atomic insertion into Execution Log.
+ * @param receipt Complete successful phase evidence.
+ * @returns Paired HTML-like block with JSON body.
+ */
 export function formatPhaseReceipt(receipt: PhaseReceipt): string {
   return [
     `<!--SDD_PHASE_RECEIPT:${receipt.phase}-->`,

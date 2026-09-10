@@ -19,12 +19,21 @@
 | 08  | [Свой внешний репозиторий](./08-EXTERNAL-REPO.md) | Eval на реальном репо (round-trip): worktree, golden, completion.           |
 | 09  | [Бриф агенту](./09-AGENT-BRIEF.md)                | Готовый текст, который разработчик отдаёт своему агенту.                    |
 | 10  | [Правила качества](./10-QUALITY-RULES.md)         | Справочник механических правил (R1…R6) и дисциплина both-outcomes.          |
+| 11  | [Чеклист анализа](./11-ANALYSIS-CHECKLIST.md)     | Разбор результата (артефакт vs поведение) и построение гипотез по осям.     |
 
 ## Журналы и разборы
 
 История экспериментов, постмортемы и roadmap — в [`journal/`](./journal/README.md). Это записи, а не
 инструкции; там же сказано, что нужно поддерживать, а что заморожено. Сводка результатов «было → стало» —
 [`journal/RESULTS.md`](./journal/RESULTS.md).
+
+**Визуальная хроника изменений** — [`eval-history.html`](./eval-history.html) (открывается в браузере,
+самодостаточный): каждое изменение инструмента/директивы/промпта через две сессии (Codex RCv5 → Claude
+RC v6) — before→после дифф, решение (приняли/отвергли) и почему, и три дельты (время / токены /
+траектория). Данные — [`journal/eval-history.json`](./journal/eval-history.json) (источник истины),
+отчёт сверки — [`journal/eval-history-gaps.md`](./journal/eval-history-gaps.md), генератор —
+[`../scripts/build-history-report.ts`](../scripts/build-history-report.ts) (`node --import tsx …build-history-report.ts`
+перегенерит HTML из JSON).
 
 ## Смежное: два контура проверки флоу
 
