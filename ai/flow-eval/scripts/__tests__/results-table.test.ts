@@ -104,9 +104,11 @@ describe('GAP-E-6: results-table.ts generator (both-way, frozen fixtures, no liv
       assert.equal(code, 0, stderr);
       const written = await readFile(outFile, 'utf8');
       assert.match(written, /`fibonacci-library`/);
+      // `quality: { rule: 'R1', pass: true }` (fakeSummary's default) → mechanical "Состояние" is
+      // Проходит; the judge column is reported separately (V-BATCH-22 B-6).
       assert.match(
         written,
-        /\| `fibonacci-library` \| 1 \| 74 \| ~15 мин \| ~191 000 \| Проходит \(1\/1\) \|/
+        /\| `fibonacci-library` \| 1 \| 74 \| ~15 мин \| ~191 000 \| Проходит \(1\/1\) \| pass \(1\/1\) \|/
       );
     } finally {
       rmSync(root, { recursive: true, force: true });
@@ -156,7 +158,11 @@ describe('GAP-E-6: results-table.ts generator (both-way, frozen fixtures, no liv
     }
   });
 
-  it('a mixed pass/fail scenario reports the mechanical outcome split, never invented prose', async () => {
+  it('a JUDGE split with an UNCHANGED mechanical gate reports "Проходит" mechanically, "Смешанно" only in the judge column (V-BATCH-22 B-6)', async () => {
+    // Both runs mechanically PASS (quality.pass: true, the fakeSummary default) — only the judge's
+    // own verdict differs. Before the fix, "Состояние" counted `run.outcome` (judge-derived), so this
+    // exact case rendered "Смешанно: pass 1/2" in the ONE column that's supposed to be the gate —
+    // contradicting D-28/D-45 ("судья не отменяет проверку фактов").
     const root = tempResultsDir();
     const outFile = tempOutFile(EMPTY_DOC);
     try {
@@ -165,7 +171,42 @@ describe('GAP-E-6: results-table.ts generator (both-way, frozen fixtures, no liv
       const { code, stderr } = await runResultsTable(['--results-dir', root, '--out', outFile]);
       assert.equal(code, 0, stderr);
       const written = await readFile(outFile, 'utf8');
-      assert.match(written, /Смешанно: pass 1\/2/);
+      assert.match(written, /Проходит \(2\/2\)/); // mechanical: both `quality.pass === true`
+      assert.match(written, /Смешанно: pass 1\/2/); // judge column: verdicts genuinely disagree
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+      cleanupOutFile(outFile);
+    }
+  });
+
+  it('a mechanical gate FAIL (quality.pass: false) reports "Не проходит" regardless of the judge', async () => {
+    const root = tempResultsDir();
+    const outFile = tempOutFile(EMPTY_DOC);
+    try {
+      await persistDurableResult(
+        root,
+        fakeSummary({ outcome: 'pass', quality: { rule: 'R1', pass: false, detail: '1 error' } })
+      );
+      const { code, stderr } = await runResultsTable(['--results-dir', root, '--out', outFile]);
+      assert.equal(code, 0, stderr);
+      const written = await readFile(outFile, 'utf8');
+      assert.match(written, /Не проходит \(1\/1\)/); // mechanical gate fails...
+      assert.match(written, /pass \(1\/1\)/); // ...even though the judge said pass.
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+      cleanupOutFile(outFile);
+    }
+  });
+
+  it('a golden-fixture run with no recorded `quality` reports "нет мех. гейта", never a fabricated pass/fail', async () => {
+    const root = tempResultsDir();
+    const outFile = tempOutFile(EMPTY_DOC);
+    try {
+      await persistDurableResult(root, fakeSummary({ quality: undefined }));
+      const { code, stderr } = await runResultsTable(['--results-dir', root, '--out', outFile]);
+      assert.equal(code, 0, stderr);
+      const written = await readFile(outFile, 'utf8');
+      assert.match(written, /нет мех\. гейта \(1\) — см\. golden\/verify\.sh вручную/);
     } finally {
       rmSync(root, { recursive: true, force: true });
       cleanupOutFile(outFile);

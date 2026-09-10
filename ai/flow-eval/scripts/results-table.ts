@@ -66,17 +66,62 @@ function usageTotal(usage: unknown): number {
   return typeof total === 'number' && Number.isFinite(total) ? total : 0;
 }
 
-/** @purpose Mechanical outcome summary — never invented prose, just the recorded outcome counts. */
-function formatState(runs: readonly SddEvalDurableSummary[]): string {
+/** @purpose One run's MECHANICAL gate bucket — the SAME fold `cli.ts`'s `computeAggregateExitCode`
+ *  uses per scenario (worker-error or `quality.pass === false` → fail), plus `budget-exhausted`
+ *  (itself a mechanical fact — an observation-budget counter, not a judge opinion) and `undetermined`
+ *  for a run that recorded no `quality` at all (golden-fixture phases: the strongest bar there,
+ *  `golden/verify.sh`, is not currently wired into a persisted mechanical signal — see EVAL-SPEC.md). */
+type GateBucket = 'pass' | 'fail' | 'budget-exhausted' | 'undetermined';
+
+function gateBucket(run: SddEvalDurableSummary): GateBucket {
+  if (run.outcome === 'budget-exhausted') return 'budget-exhausted';
+  if (run.verdict === 'worker-error') return 'fail';
+  if (run.quality) return run.quality.pass ? 'pass' : 'fail';
+  return 'undetermined';
+}
+
+/**
+ * @purpose "Состояние" column — V-BATCH-22 verdict B-6: the prior version counted `run.outcome`,
+ *   which `cli.ts` sets straight from the JUDGE's verdict (`outcome = verdict === 'pass' ? 'pass' :
+ *   …`), contradicting D-28/D-45 ("судья — диагностика, не гейт"). This counts the MECHANICAL gate
+ *   instead — `quality.pass` / the aggregate-exit-code fold — so this column can never disagree with
+ *   `gate: pass|FAIL` in the run's own terminal log. The judge's verdict is reported separately by
+ *   `formatJudgeDiagnostic`, never folded in here.
+ */
+function formatMechanicalState(runs: readonly SddEvalDurableSummary[]): string {
+  const total = runs.length;
+  const buckets = runs.map(gateBucket);
+  const pass = buckets.filter((b) => b === 'pass').length;
+  const fail = buckets.filter((b) => b === 'fail').length;
+  const budgetExhausted = buckets.filter((b) => b === 'budget-exhausted').length;
+  const undetermined = buckets.filter((b) => b === 'undetermined').length;
+
+  if (undetermined === total) return `нет мех. гейта (${total}) — см. golden/verify.sh вручную`;
+  if (budgetExhausted === total) return `budget-exhausted (${budgetExhausted}/${total})`;
+  if (pass === total) return `Проходит (${pass}/${total})`;
+  if (pass === 0 && undetermined === 0) return `Не проходит (${fail}/${total})`;
+  const parts = [
+    `pass ${pass}`,
+    fail > 0 ? `fail ${fail}` : null,
+    budgetExhausted > 0 ? `budget-exhausted ${budgetExhausted}` : null,
+    undetermined > 0 ? `н/д ${undetermined}` : null,
+  ].filter((p): p is string => p !== null);
+  return `Смешанно: ${parts.join(', ')}/${total}`;
+}
+
+/** @purpose "Судья (диагностика)" column — the judge's own verdict tally (D-45: diagnosis, never the
+ *  gate). Kept as its own column so a disagreement between judge and mechanical gate (a known,
+ *  expected pattern — see EXPERIMENTS-LOG.md's `slugify-toolchain` runs) is visible, not hidden. */
+function formatJudgeDiagnostic(runs: readonly SddEvalDurableSummary[]): string {
   const counts = new Map<SddEvalDurableOutcome, number>();
   for (const run of runs) counts.set(run.outcome, (counts.get(run.outcome) ?? 0) + 1);
   const pass = counts.get('pass') ?? 0;
   const total = runs.length;
-  if (pass === total) return `Проходит (${pass}/${total})`;
+  if (pass === total) return `pass (${pass}/${total})`;
   if (pass === 0) {
     const budgetExhausted = counts.get('budget-exhausted') ?? 0;
     if (budgetExhausted === total) return `budget-exhausted (${budgetExhausted}/${total})`;
-    return `Не проходит (0/${total})`;
+    return `fail (0/${total})`;
   }
   return `Смешанно: pass ${pass}/${total}`;
 }
@@ -89,8 +134,8 @@ function renderTable(groups: ScenarioGroup[]): string {
     );
   }
   const header =
-    '| Сценарий | Прогонов | Действий (медиана) | Время (медиана) | Токенов (медиана) | Состояние |\n' +
-    '| -------- | -------: | ------------------: | ---------------- | -----------------: | --------- |';
+    '| Сценарий | Прогонов | Действий (медиана) | Время (медиана) | Токенов (медиана) | Состояние (мех.) | Судья (диагностика) |\n' +
+    '| -------- | -------: | ------------------: | ---------------- | -----------------: | --------------- | -------------------- |';
   const rows = groups.map((group) => {
     const actions = median(group.runs.map((run) => run.actions));
     const duration = median(
@@ -99,7 +144,8 @@ function renderTable(groups: ScenarioGroup[]): string {
     const tokens = median(group.runs.map((run) => usageTotal(run.usage)));
     return (
       `| \`${group.scenarioId}\` | ${group.runs.length} | ${Math.round(actions)} | ` +
-      `${formatDurationMs(duration)} | ${formatTokens(tokens)} | ${formatState(group.runs)} |`
+      `${formatDurationMs(duration)} | ${formatTokens(tokens)} | ${formatMechanicalState(group.runs)} | ` +
+      `${formatJudgeDiagnostic(group.runs)} |`
     );
   });
   return [header, ...rows].join('\n') + '\n';
@@ -118,7 +164,10 @@ async function renderGeneratedBlock(resultsDir: string): Promise<string> {
     '',
     '**Постоянные результаты** — числа ниже посчитаны СКРИПТОМ из ' +
       '`ai/flow-eval/results/<дата>-<сценарий>/summary.json` (медиана по всем прогонам этого ' +
-      'сценария; действий = число вызовов инструментов на последнем наблюдении). Регенерация: ' +
+      'сценария; действий = число вызовов инструментов на последнем наблюдении). «Состояние (мех.)» ' +
+      '— механический гейт (`quality.pass`/aggregate exit code, D-28/D-45); «Судья (диагностика)» — ' +
+      'вердикт LLM-судьи, диагностика, НЕ гейт (может расходиться со «Состояние (мех.)» — это ожидаемо ' +
+      'и не блокирует приёмку, см. EXPERIMENTS-LOG.md). Регенерация: ' +
       '`node --import tsx ai/flow-eval/scripts/results-table.ts`.',
     '',
     body.trimEnd(),
