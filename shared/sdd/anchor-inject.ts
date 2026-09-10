@@ -156,7 +156,9 @@ const PHASE_RECEIPTS_SCHEMA_MARKER = '<!--PHASE_RECEIPTS:v1-->';
  *   makes `sdd-check` require a Round-1 phase-block shape (`SDD_EXECUTION_LOG_ROUND_MISSING`) — this
  *   scaffolds it in the same write. Every box stays `[ ]`: the shape, never a fabricated DONE.
  * @invariant Idempotent — a body that already has a `### Round <N>` heading (any number) is left
- *   untouched; only a v1-migrated placeholder body (no Round heading at all) is replaced.
+ *   untouched.
+ * @invariant PATCH, never rewrite (V-BATCH-22 B-1): any existing body is preserved byte-for-byte;
+ *   the Round-1 scaffold is appended after it, never substituted for it.
  * @param content Full ticket markdown (already anchored).
  * @param phaseIds Phase ids from Phases Overview, in row order (e.g. `['P1', 'P2']`).
  * @param dateStr Migration date stamp for the Round heading.
@@ -176,6 +178,12 @@ export function scaffoldFirstRound(
   const endIdx = lines.findIndex((l, i) => i > startIdx && l.trim() === EXECUTION_LOG_CLOSE);
   if (startIdx === -1 || endIdx === -1) return { text: content, scaffolded: false };
 
+  // The existing body, PRESERVED byte-for-byte — never discarded, only appended to. `existingBody`
+  // may be empty (a v1-migrated placeholder with no history) or carry real prior content; either way
+  // it survives unchanged in `nextLines` below.
+  const existingBody = lines.slice(startIdx + 1, endIdx);
+  const hasExistingContent = existingBody.some((l) => l.trim() !== '');
+
   const round = [
     `### Round 1 — ${dateStr}, initial`,
     '',
@@ -188,7 +196,9 @@ export function scaffoldFirstRound(
     '#### Round close',
     '- [ ] `<ts>` DONE',
   ];
-  const nextLines = [...lines.slice(0, startIdx + 1), '', ...round, ...lines.slice(endIdx)];
+  const nextLines = hasExistingContent
+    ? [...lines.slice(0, startIdx + 1), ...existingBody, '', ...round, ...lines.slice(endIdx)]
+    : [...lines.slice(0, startIdx + 1), '', ...round, ...lines.slice(endIdx)];
   return { text: nextLines.join('\n'), scaffolded: true };
 }
 
