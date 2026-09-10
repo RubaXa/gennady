@@ -387,7 +387,14 @@ const STATUS_DRAFT_ATTR = /\bstatus="draft"/;
  * memory or good faith.
  */
 export const PENDING_IN_OPEN_PR: ReadonlyMap<string, string> = new Map([
-  ['critic/ax-default-accept', 'PR #45 (lead/review-critic-bounds) / PR #49 (lead/promises-not-wider)'],
+  // No explanatory comment lives inside ax-default-accept.xml itself (unlike the other 6 entries
+  // below) — deliberately: it is a 2-line file, and PR #45 / PR #49 each rewrite BOTH of its lines
+  // to the canonical L-25 text (V-BATCH-20). Any edit to those same lines, including a comment,
+  // produces a real 3-way merge conflict against either PR (verified: `git merge-tree` was clean
+  // before this note was moved here, conflicting after a comment was added directly above the
+  // <Axiom> tag — V-BATCH-18 verifier F-3 fix). Keeping this file byte-identical to its
+  // pre-batch-18 content (module rationale lives HERE instead) is what keeps both merges clean.
+  ['critic/ax-default-accept', 'PR #45 (lead/review-critic-bounds) / PR #49 (lead/promises-not-wider) — also known (L-25/пачка 20) to carry pre-reform v1 text pending the canonical rewrite those PRs bring'],
   ['critic/ax-polish-mode', 'PR #45 (lead/review-critic-bounds) / PR #49 (lead/promises-not-wider)'],
   ['process/ax-dispatch-via-batch', 'PR #45 (lead/review-critic-bounds) / PR #49 (lead/promises-not-wider)'],
   ['process/ax-cap-5', 'PR #45 (lead/review-critic-bounds) / PR #49 (lead/promises-not-wider)'],
