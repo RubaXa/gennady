@@ -42,9 +42,8 @@ function planCommandForGate(gate: Gate, scripts: Readonly<Record<string, string>
 
 /**
  * @purpose Resolve the read-only `full` profile plan for one repository — no execution, no mutation.
- * @invariant The `full` profile is node-only today (`GATES`/`gatesFor`, unaffected by
- *   `stack:`/extraGates) — this facade reports exactly that, not an aspirational per-stack plan;
- *   see 30-TRACK-VERIFY.md §3.0 for why `stack.use` does not reach the full profile yet.
+ * @invariant The `full` profile is node-only today (`gatesFor`'s fixed ladder); this facade
+ *   reports exactly that, not `stack:`/extraGates — see L-24, they reach only the phase path.
  * @param root Absolute repository root.
  * @returns The plan document, in canonical ladder order.
  */
@@ -52,6 +51,8 @@ export function resolveVerifyPlan(root: string): VerifyPlanDocument {
   const scripts = readProjectScripts(root);
   const required = new Set(requiredGatesFor('full', false));
   return {
+    kind: 'plan',
+    evidence: false,
     profile: 'full',
     stack: 'node',
     gates: gatesFor('full', false).map(

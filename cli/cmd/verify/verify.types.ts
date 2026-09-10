@@ -75,8 +75,16 @@ export type VerifyPlanGate = {
   readonly required: boolean;
 };
 
-/** @purpose The whole read-only plan document `gennady verify --plan --json` prints. */
+/**
+ * @purpose The whole read-only plan document `gennady verify --plan --json` prints.
+ * @invariant `kind` is always `'plan'`, `evidence` always `false` — never a `SDD_PHASE_RECEIPT`
+ *   nor proof a gate ran (D-13, V-16). A JSON-only CI reader must still see this marker.
+ */
 export type VerifyPlanDocument = {
+  /** @purpose Always `'plan'` — machine-readable marker that this is a plan document, not a receipt. */
+  readonly kind: 'plan';
+  /** @purpose Always `false` — this output is never evidence a gate ran; see `@invariant` above. */
+  readonly evidence: false;
   /** @purpose Always `'full'` — the one profile this read-only facade reports (D-13). */
   readonly profile: 'full';
   /** @purpose Resolved primary stack; always `'node'` today (the full profile is node-only). */
