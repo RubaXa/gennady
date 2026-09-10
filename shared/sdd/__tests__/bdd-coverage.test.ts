@@ -143,6 +143,51 @@ describe('extractTestCaseNames', () => {
     const src = `it.only('focused case', () => {});\ntest.concurrent('parallel case', () => {});`;
     assert.deepStrictEqual(extractTestCaseNames(src), ['focused case', 'parallel case']);
   });
+
+  // B2-24 (V-BATCH-16 B-2): a container modifier (`describe.skip`/`describe.todo`/`suite.skip`) is
+  // the same class of inactivity as a leaf `it.skip` — every `it`/`test` nested inside it, at any
+  // depth and regardless of its OWN modifiers, must not be "observed" either. Before this fix the
+  // extractor only read modifiers on `it`/`test` themselves, so a `describe.skip(...)` block's case
+  // names were extracted as if the tests had run.
+  it('B2-24: describe.skip(...) — nested it() names are NOT observed even though `it` itself has no modifier', () => {
+    const src = `
+      describe.skip('DbcContractCheck', () => {
+        it('should return no errors for valid content', () => {});
+        it('should mutate file on disk when autofix is true', () => {});
+      });
+    `;
+    assert.deepStrictEqual(extractTestCaseNames(src), []);
+  });
+
+  it('B2-24: describe.todo(...) — same exclusion as describe.skip', () => {
+    const src = `describe.todo('not written yet', () => { it('placeholder case', () => {}); });`;
+    assert.deepStrictEqual(extractTestCaseNames(src), []);
+  });
+
+  it('B2-24: suite.skip(...) — the mocha-style alias is recognized too', () => {
+    const src = `suite.skip('legacy suite', () => { test('legacy case', () => {}); });`;
+    assert.deepStrictEqual(extractTestCaseNames(src), []);
+  });
+
+  it('B2-24: a sibling describe() (no skip) is unaffected by an unrelated describe.skip() block', () => {
+    const src = `
+      describe.skip('Skipped', () => { it('skipped case', () => {}); });
+      describe('Active', () => { it('active case', () => {}); });
+    `;
+    assert.deepStrictEqual(extractTestCaseNames(src), ['active case']);
+  });
+
+  it('B2-24 both-way: live fixture cli/cmd/lint/__tests__/dbc-contract.check.test.ts — 4 case names, 0 ran', async () => {
+    const { readFileSync } = await import('node:fs');
+    const { fileURLToPath } = await import('node:url');
+    const path = fileURLToPath(
+      new URL('../../../cli/cmd/lint/__tests__/dbc-contract.check.test.ts', import.meta.url)
+    );
+    const src = readFileSync(path, 'utf-8');
+    // Old regex (pre-B2-24, leaf-only modifiers) would report all 4 names as observed — a false
+    // closure, since `# tests 0 / # pass 0` is what this file actually runs (it's all describe.skip).
+    assert.deepStrictEqual(extractTestCaseNames(src), []);
+  });
 });
 
 describe('checkBddCoverage', () => {
@@ -270,11 +315,14 @@ describe('checkBddCoverage', () => {
       assert.strictEqual(findings[0]?.severity, 'error');
     });
 
-    // Unsatisfiability guard (20:505 inverse): a scenario whose claimed case is a REAL, ACTIVE test
-    // (the normal, well-formed "swift-тикет"-style row — any correctly-covered ticket, not just
-    // Swift) must still close cleanly. B2-22's fail-closed tightening must only bite inactive/malformed
-    // rows, never regress an already-satisfied scenario into an unclosable one.
-    it('unsatisfiability guard: a correct row naming a real ACTIVE test still closes with zero findings', () => {
+    // Regression guard (NOT an unsatisfiability/Swift test — renamed per V-BATCH-16 B-3/Q1, which
+    // found the old name "unsatisfiability guard" misleading: this only proves B2-22's fail-closed
+    // tightening doesn't regress an already-satisfied .ts scenario into an unclosable one. The real
+    // Swift-unsatisfiability case (`getTestFileIndex` never indexes `.swift` files at all) is locked,
+    // honestly labeled, by an integration test in
+    // `cli/cmd/sdd-check/__tests__/sdd-check.cmd.test.ts` ("B2-25 lock") — fixing the index itself is
+    // out of this batch's zone (board item B2-25).
+    it('a correct row naming a real ACTIVE .ts test still closes with zero findings (regression guard, not a Swift test)', () => {
       const entries = parseTestCoverage('- scenario → `f.test.ts` :: `does the real thing`');
       const map = new Map([
         ['f.test.ts', extractTestCaseNames("it('does the real thing', () => {});")],
