@@ -10,6 +10,13 @@
       "ticket": "specs/slugify/core/core.task.SLG-slug.md",
       "spec": "specs/slugify/core/core.spec.md"
     },
-    "budgetMs": 600000
+    "budgetMs": 600000,
+    "checkpoints": [
+      {
+        "id": "flow-done",
+        "cmd": "grep -qE '\\*\\*Status:\\*\\*[[:space:]]*\\[x\\][[:space:]]*DONE' specs/slugify/core/core.task.SLG-slug.md"
+      },
+      { "id": "specs-clean", "cmd": "npx --no-install gennady sdd-check --all ." }
+    ]
   }
 ]

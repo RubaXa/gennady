@@ -14,10 +14,10 @@ Do not implement product code and do not invent a shortcut workflow. Stop at App
 Read and follow the installed SDD skill and router/directive chain (starting at ai/skills/sdd/SKILL.md and ai/directives/sdd-v2/router.directive.xml).
 Use the approved canonical specification in the workspace, derive real implementation tickets with dependencies and acceptance criteria, and write the canonical task artifacts.
 Do not merely describe tickets and do not implement product code. Stop at Approval #2 and clearly report the approval boundary.`,
-  execute: `Run the installed SDD execute flow against the prepared canonical specification and tickets.
-Read and follow the installed SDD skill and router/directive chain (starting at ai/skills/sdd/SKILL.md and ai/directives/sdd-v2/router.directive.xml).
-Execute the canonical tickets in dependency order, preserve the SDD evidence/artifact contracts, and verify the resulting implementation with tests.
-Do not replace the canonical inputs with an ad-hoc coding plan.`,
+  execute: `Run the installed SDD execute flow against the prepared canonical specification and tickets to drive each ticket to DONE.
+Go straight to the execute directive: read ONLY ai/directives/sdd-v2/execute.directive.xml and the phase-execution-protocol it references, and follow their steps in order. Do NOT traverse the router/skill chain (do NOT read ai/skills/sdd/SKILL.md or ai/directives/sdd-v2/router.directive.xml or the scope/module directive chain) — the phase is already execute. Do NOT reverse-engineer the v2 contracts by grepping the codebase — run the sdd tools and act on their findings; the check/verify messages are self-explanatory.
+Execute the canonical tickets in dependency order. For each ticket the closure spine is NOT optional: implement the artifact per the ticket's Target Files, run \`sdd-verify --task <ticket> --phase <P>\` for the phase gate, close the execution-log round, and — once every group member is [x] DONE — record the group audit and code-review receipts (\`sdd-log <group> audit-receipt\` / \`review-receipt\`).
+Done = the ticket Status is [x] DONE with a closed round AND the group audit + code-review receipts recorded — NOT merely "artifact written". Preserve the SDD evidence/artifact contracts; do not replace the canonical inputs with an ad-hoc coding plan. Report the final sdd-state and ticket status.`,
   repair: `Run the installed SDD repair flow on a workspace whose specifications are structurally complete but fail the mechanical checker.
 Read and follow the installed SDD skill and router/directive chain (starting at ai/skills/sdd/SKILL.md and ai/directives/sdd-v2/router.directive.xml).
 Run \`npx --no-install gennady sdd-check --all .\`, then fix every reported error in its owning artifact using exactly one Write per file, guided by each finding's own message. Re-run the check and repeat until it is clean.

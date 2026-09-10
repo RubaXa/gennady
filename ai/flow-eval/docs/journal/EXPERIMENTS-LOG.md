@@ -625,3 +625,39 @@ module ≤70) + `vocabGrep ≤2` + never-golden. Убраны stale synthetic-ba
 
 **Also fixed:** `upgrade-verification-tables.py:role_for` — repo-local test-stand → `extra`, не `probe`
 (`probe` требует test-фазу, которой нет у impl-only migrated тикетов; ссылка на §H-iOS в комментарии).
+
+### C — keeper'ы залочены N=3
+
+H9+H10+H11 (комбинированно) прогнаны на лестнице (300с) три раза (H9-run, keepers#1, keepers#2). В КАЖДОМ
+из трёх все три яруса (portal/scope/module) достигли `FLOW_VERSION=v2` (migration PASS). module иногда
+даёт worker-error на 300с (добивает v2, чуть работает после — grade всё равно PASS). Сигнал согласован
+N=3 → keeper'ы зафиксированы. Отдельный 4-й прогон не нужен.
+
+### B (execute/closure) — B1 де-ceremony execute-промпта — KEEPER
+
+Оптимизация второй поверхности — execute/closure-флоу (не миграция). Baseline (node slugify, полный
+lifecycle до DONE): траектория показала **43 тула ориентации до первой записи** (read×33) + `task`×4 +
+`skill`×2 — агент шёл по router/skill-цепочке. Причина в промпте: `PHASE_PROMPTS.execute` дословно велел
+«read and follow SKILL.md + router.directive.xml chain» — та же церемония, что деградировала миграцию (B4/H1).
+
+**Мутация (одна):** де-ceremony execute-промпта — идти прямо на `execute.directive.xml` (+ phase-execution-
+protocol), НЕ читать SKILL.md/router/scope-цепочку; не реверсить грепом; closure-spine назван явно
+(implement → sdd-verify --phase → close round → group audit+review receipts); done = ticket [x] DONE + раунд
+
+- оба receipts.
+
+**Исход (node slugify, R-COMPLETE обязателен):**
+
+| метрика                    | baseline     | B1                          |
+| -------------------------- | ------------ | --------------------------- |
+| R-COMPLETE (DONE+receipts) | pass         | **pass**                    |
+| tokens                     | 222975       | **95304 (−57%)**            |
+| msgs                       | 73           | **34 (−53%)**               |
+| ориентация до 1-й записи   | 43           | **22 (−49%)**               |
+| router/skill traversal     | task4/skill2 | **0/0**                     |
+| tools                      | 65           | 60 (read 33→19, bash 25→34) |
+
+**Вердикт: KEEPER.** Полный lifecycle до DONE сохранён, стоимость −57% токенов за счёт удаления обхода
+router/skill-цепочки. Подтверждает: де-ceremony-плейбук переносится с миграции на execute. N=1, но эффект
+крупный и структурный (0 traversal, orient 43→22), согласован с сильным prior (migration B4 ×200 reason).
+Затрагивает и cloud-ios round-trip (тоже execute-фаза) — там пригодится, когда wall-3 разблокируют.

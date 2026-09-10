@@ -768,11 +768,11 @@
     <div class="lineage">
       <span class="lin-node n1"><span class="dot"></span><b>Codex RCv5</b> · 31</span>
       <span class="lin-arw">→</span>
-      <span class="lin-node n2"><span class="dot"></span><b>Claude RC v6</b> · 14</span>
+      <span class="lin-node n2"><span class="dot"></span><b>Claude RC v6</b> · 16</span>
     </div>
     <div class="stats">
-      <div class="stat"><span class="s-n">45</span><span class="s-l">изменений всего</span></div>
-      <div class="stat k"><span class="s-n">24</span><span class="s-l">принято</span></div>
+      <div class="stat"><span class="s-n">47</span><span class="s-l">изменений всего</span></div>
+      <div class="stat k"><span class="s-n">26</span><span class="s-l">принято</span></div>
       <div class="stat"><span class="s-n">8</span><span class="s-l">нейтрально</span></div>
       <div class="stat"><span class="s-n">13</span><span class="s-l">не agent-прогон</span></div>
       <div class="stat f">
@@ -3021,7 +3021,7 @@ training evals + 2 real-project (cloud-ios) tables with tool-calls/time/tokens p
           <h2>Claude RC v6</h2>
           <span class="ses-dates">2026-09-09T13:02:09Z .. 2026-09-10T07:10:01Z UTC</span>
         </div>
-        <span class="ses-count">14 изменений</span>
+        <span class="ses-count">16 изменений</span>
       </div>
       <article
         class="entry"
@@ -4137,6 +4137,145 @@ baselines rewritten to keeper (H9+H10+H11) traces; tests assert flow-v2 green as
           </div>
         </div>
       </article>
+      <article
+        class="entry"
+        data-session="Claude RC v6"
+        data-axis="G-methodology"
+        data-verdict="KEPT"
+      >
+        <div class="rail">
+          <span class="seq">46</span><span class="rail-date">2026-09-10</span
+          ><span class="tick tick-2" title="Claude RC v6"></span>
+        </div>
+        <div class="body">
+          <header class="e-head">
+            <h3>C — keepers locked at N=3</h3>
+            <div class="tags">
+              <span class="axis ax-G">G · Методология eval</span>
+              <span class="verdict v-kept">Оставлено</span>
+              <span class="kind">method</span>
+            </div>
+          </header>
+          <p class="what">
+            H9+H10+H11 combined ran three times on the ladder at the 300s budget (H9-run, keepers#1,
+            keepers#2). Every run reached FLOW_VERSION=v2 (migration PASS) on all three tiers
+            (portal/scope/module); module occasionally worker-errors at 300s after already flipping
+            to v2 (grade still PASS). Consistent across N=3 → keepers statistically locked; no 4th
+            run needed.
+          </p>
+          <p class="why">
+            <span class="why-lab">почему</span>Three independent 300s runs all reach v2 on every
+            tier — the keeper set is reproducible, not a single-run fluke.
+          </p>
+          <div class="deltas">
+            <div class="delta">
+              <span class="d-ic">⏱</span><span class="d-lab">время</span
+              ><span class="d-val">все ярусы v2 в пределах 300с (N=3)</span>
+            </div>
+            <div class="delta dim">
+              <span class="d-ic">◈</span><span class="d-lab">токены</span
+              ><span class="d-val">не измерялось (per-run varies)</span>
+            </div>
+            <div class="delta">
+              <span class="d-ic">⟿</span><span class="d-lab">траектория</span
+              ><span class="d-val"
+                >portal ~38-49, scope ~38-60, module ~55-66 tools across runs</span
+              >
+            </div>
+          </div>
+          <div class="diff">
+            <div class="diff-col diff-before">
+              <span class="diff-tag">было</span>
+              <pre>N=1 (single ladder run per keeper)</pre>
+            </div>
+            <div class="diff-col diff-after">
+              <span class="diff-tag">стало</span>
+              <pre>N=3, all-tiers-v2 in every run</pre>
+            </div>
+          </div>
+          <footer class="e-foot">
+            <span class="files"
+              ><code>ai/flow-eval/scenarios-migration.json</code>
+              <code>ai/flow-eval/prompts.ts</code></span
+            >
+            <span class="meta"
+              ><span class="jref">§C</span><span class="commit">cbd31fe2</span></span
+            >
+          </footer>
+        </div>
+      </article>
+      <article
+        class="entry"
+        data-session="Claude RC v6"
+        data-axis="B-flow-simplification"
+        data-verdict="KEPT"
+      >
+        <div class="rail">
+          <span class="seq">47</span><span class="rail-date">2026-09-10</span
+          ><span class="tick tick-2" title="Claude RC v6"></span>
+        </div>
+        <div class="body">
+          <header class="e-head">
+            <h3>B1 — de-ceremony the execute prompt (KEEPER)</h3>
+            <div class="tags">
+              <span class="axis ax-B">B · Упрощение флоу</span>
+              <span class="verdict v-kept">Оставлено</span>
+              <span class="kind">eval-prompt</span>
+            </div>
+          </header>
+          <p class="what">
+            Second optimization surface: the execute/closure flow (not migration). Baseline node
+            slugify run reached DONE but spent 43 tools orienting before the first write (read x33)
+            plus task x4 + skill x2 — the agent walked the router/skill chain because
+            PHASE_PROMPTS.execute literally instructed reading SKILL.md + router.directive.xml.
+            Mutation: go straight to execute.directive.xml (+ phase-execution-protocol), skip the
+            chain, name the closure spine explicitly (verify, close round, group audit+review
+            receipts), done = ticket DONE with receipts. Same de-ceremony lever proven on migration.
+          </p>
+          <p class="why">
+            <span class="why-lab">почему</span>Full lifecycle to DONE preserved (R-COMPLETE pass)
+            while cost dropped sharply — the router/skill chain-walk was pure orientation overhead
+            the phase does not need.
+          </p>
+          <div class="deltas">
+            <div class="delta dim">
+              <span class="d-ic">⏱</span><span class="d-lab">время</span
+              ><span class="d-val">не измерялось</span>
+            </div>
+            <div class="delta">
+              <span class="d-ic">◈</span><span class="d-lab">токены</span
+              ><span class="d-val">222975 → 95304 (−57%)</span>
+            </div>
+            <div class="delta">
+              <span class="d-ic">⟿</span><span class="d-lab">траектория</span
+              ><span class="d-val"
+                >orientation 43 → 22 tools; router/skill traversal task4/skill2 → 0/0; total 65 →
+                60</span
+              >
+            </div>
+          </div>
+          <div class="diff">
+            <div class="diff-col diff-before">
+              <span class="diff-tag">было</span>
+              <pre>
+Read and follow the installed SDD skill and router/directive chain (SKILL.md + router.directive.xml)</pre
+              >
+            </div>
+            <div class="diff-col diff-after">
+              <span class="diff-tag">стало</span>
+              <pre>
+Go straight to execute.directive.xml; do NOT traverse the router/skill chain; closure spine + done-oracle named</pre
+              >
+            </div>
+          </div>
+          <footer class="e-foot">
+            <span class="files"><code>ai/flow-eval/prompts.ts</code></span>
+            <span class="meta"
+              ><span class="jref">§B (B1)</span><span class="commit">uncommitted</span></span
+            >
+          </footer>
+        </div>
+      </article>
     </section>
     <div class="empty" id="empty">Ничего не подходит под фильтры.</div>
   </main>
@@ -4146,7 +4285,7 @@ baselines rewritten to keeper (H9+H10+H11) traces; tests assert flow-v2 green as
       >Сгенерировано 2026-09-10 · источники: git (c84aff31→working tree), журнал eval, транскрипты
       RCv5/RC&nbsp;v6</span
     >
-    <span>45 записей · 2 сессии</span>
+    <span>47 записей · 2 сессии</span>
   </footer>
 </div>
 
