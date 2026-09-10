@@ -20,7 +20,22 @@
  * (AUTHORING.md §7) — so `build-directives.ts` treats it as a build error, subject to
  * `KNOWN_DANGLING_AXIOM_REFS`, a temporary, named-owner allowlist (L-10 / Q2 option b) that only
  * shrinks as the axioms it lists get connected by their owning tasks.
+ *
+ * **Scope (T-B6-24): `ai/directives/**`, not only `sdd-v2/**`.** `build-directives.ts` only ever
+ * renders templates under `ai/kit/templates/sdd-v2/**`, so its own in-memory `rendered` array never
+ * sees the static, hand-authored directive trees that live alongside it in `ai/directives/`
+ * (`infra/`, `testing/`, `architecture/`, `coding/`, the top-level `agent-inbox/` — a DIFFERENT tree
+ * from the templated `sdd-v2/agent-inbox/`) — a dangling `AX_*` reference there was invisible to
+ * this lint by construction, not by policy (40-TRACK-DIRECTIVES-SKILLS.md §4.1/§4.2: "область по
+ * умолчанию — `ai/directives/**`"). `collectStaticDirectiveFiles` below reads those static trees
+ * straight off disk (they are never written by this build, so reading them is always safe,
+ * `--check` or not) so the caller can merge them into the same `rendered`/`lintUndefinedAxiomRefs`
+ * call and widen the corpus `lintUndefinedAxiomRefs` already treats as one undifferentiated
+ * definition/reference space — no change to that function itself, only to what is fed into it.
  */
+
+import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { join, relative, sep } from 'node:path';
 
 export interface RenderedDirective {
   /** Path (relative or absolute) used only for reporting. */
@@ -186,9 +201,10 @@ export function lintUndefinedAxiomRefs(
  * an entry for a NEW dangling reference introduced after this commit — that is exactly what the
  * gate below exists to refuse.
  */
-export const KNOWN_DANGLING_AXIOM_REFS: ReadonlySet<string> = new Set(
-  (
-    [
+// Entries below the sdd-v2/ templated tree, keyed with that literal prefix (matches the `file`
+// values build-directives.ts's own `rendered` array reports — see the flatMap below).
+const SDD_V2_DANGLING_REFS = (
+  [
       // Class I (library file exists under ai/kit/axiom/**, never connected with {{> }}) — owner
       // named where a later task in the plan explicitly claims the id; "unassigned" otherwise
       // (still recorded in 40-TRACK-DIRECTIVES-SKILLS.md §4.1 for the next triage pass).
@@ -204,7 +220,11 @@ export const KNOWN_DANGLING_AXIOM_REFS: ReadonlySet<string> = new Set(
       ['AX_SCOPE_SPEC_MODULE_MAP_OWNERSHIP', ['formats/module-map-update.xml'], 'T-B6-02'],
       ['AX_PERMITTED_BASH_COMMANDS', ['audit.directive.xml', 'execute.directive.xml', 'infra.directive.xml', 'phase-execution-protocol.directive.xml'], 'ISS-8 / T-B6-12'],
       ['AX_SSOT_TRACEABILITY', ['formats/task-ticket-structure.xml', 'scaffold.directive.xml'], 'T-B6-13'],
-      ['AX_REACTION_IS_A_TOOL_CALL', ['agent-inbox/track-review.directive.xml'], 'T-B6-24 (cross-tree, class III — defined under ai/directives/agent-inbox, out of this lint\'s default scope until then)'],
+      // AX_REACTION_IS_A_TOOL_CALL resolved (T-B6-24, Пачка 18): widening this lint's scanned
+      // corpus to the static ai/directives/agent-inbox/** tree (collectStaticDirectiveFiles) means
+      // its real definition — ai/directives/agent-inbox/posting-rules.directive.xml:27 — is now
+      // part of the same corpus as sdd-v2/agent-inbox/track-review.directive.xml's mention of it.
+      // No longer dangling; row removed (was "out of this lint's default scope until then").
       ['AX_RULES_COMPLIANCE_AGAINST_ACTIVATED_RULES', ['audit.directive.xml'], 'unassigned — 40-doc §4.1 row 12'],
       ['AX_RUNTIME_BACKING_EXPLICIT', ['formats/product-spec-structure.xml'], 'unassigned — 40-doc §4.1 row 13'],
       ['AX_YAGNI_OVERENGINEERING_GUARD', ['root.directive.xml'], 'unassigned — 40-doc §4.1 row 15'],
@@ -230,8 +250,27 @@ export const KNOWN_DANGLING_AXIOM_REFS: ReadonlySet<string> = new Set(
       // plan's Волна 0 to connect.
       ['AX_DEVIATION_SELF_RESOLVE', ['execute.directive.xml', 'phase-execution-protocol.directive.xml'], 'deferred — V14-2a umbrella'],
     ] as const
-  ).flatMap(([id, files]) => files.map((file) => `sdd-v2/${file}::${id}`))
-);
+  ).flatMap(([id, files]) => files.map((file) => `sdd-v2/${file}::${id}`));
+
+// Entries below the STATIC (non-templated) trees T-B6-24 added to this lint's scope
+// (`collectStaticDirectiveFiles`) — keyed WITHOUT the `sdd-v2/` prefix, since these files live
+// directly under `ai/directives/<dir>/…`, never under `ai/directives/sdd-v2/`.
+const STATIC_TREE_DANGLING_REFS = (
+  [
+    // ai/directives/agent-inbox is a DIFFERENT product's directive tree, unrelated to the SDD
+    // v1→v2 transfer this plan covers (not templated from ai/kit/templates/sdd-v2/agent-inbox,
+    // which is a separate directive set that happens to share the "agent-inbox" name). Its own
+    // mention names a rule file (`typescript-rules.xml`) that does not exist anywhere in this
+    // repo — a pre-existing defect in that unrelated tree, surfaced only because T-B6-24 widened
+    // this lint's scope to see it at all. Out of this plan's zone; unassigned.
+    ['AX_CONTRACT_BUDGET', ['agent-inbox/contract-interrogation.directive.xml'], 'unassigned — pre-existing defect in a non-SDD directive tree, surfaced by T-B6-24 scope widening'],
+  ] as const
+).flatMap(([id, files]) => files.map((file) => `${file}::${id}`));
+
+export const KNOWN_DANGLING_AXIOM_REFS: ReadonlySet<string> = new Set([
+  ...SDD_V2_DANGLING_REFS,
+  ...STATIC_TREE_DANGLING_REFS,
+]);
 
 /** Format referenced-but-undefined findings as build-output error lines (empty array → empty string). */
 export function formatUndefinedRefsReport(dangling: UndefinedAxiomRef[]): string {
@@ -249,3 +288,50 @@ export function formatUndefinedRefsReport(dangling: UndefinedAxiomRef[]): string
   for (const [file, ids] of byFile) lines.push(`  ${file}: ${ids.join(', ')}`);
   return lines.join('\n');
 }
+
+/* -------------------------------------------------------------------------------------------- */
+/* scope widening (T-B6-24) — read the STATIC (non-templated) directive trees straight off disk   */
+/* -------------------------------------------------------------------------------------------- */
+
+/** Directories under `ai/directives/` that `build-directives.ts` never writes (no `.hbs` source
+ * under `ai/kit/templates/` produces them) — hand-authored, static XML, read directly for lint. */
+const STATIC_DIRECTIVE_DIRS = ['infra', 'testing', 'architecture', 'coding', 'agent-inbox'] as const;
+
+function walkXml(dir: string): string[] {
+  const out: string[] = [];
+  for (const name of readdirSync(dir)) {
+    const p = join(dir, name);
+    const st = statSync(p);
+    if (st.isDirectory()) out.push(...walkXml(p));
+    else if (p.endsWith('.xml')) out.push(p);
+  }
+  return out;
+}
+
+/**
+ * Reads every static (non-templated) `.xml` directive file under `ai/directives/<STATIC_DIRECTIVE_DIRS>`
+ * — the part of `ai/directives/**` that `build-directives.ts`'s own template walk never sees — and
+ * returns it in the same `RenderedDirective` shape the rest of this module already consumes, so the
+ * caller can simply concatenate this with its own templated `rendered` array before calling
+ * `lintUndefinedAxiomRefs` (T-B6-24). `file` is the path relative to `ai/directives/` (e.g.
+ * `infra/nodejs-npm-setup.xml`, `agent-inbox/contract-interrogation.directive.xml`) — deliberately
+ * WITHOUT the `sdd-v2/` prefix `KNOWN_DANGLING_AXIOM_REFS` uses for the templated tree, so an
+ * allowlist entry for a static file reads unambiguously as "outside sdd-v2".
+ */
+export function collectStaticDirectiveFiles(directivesRoot: string): RenderedDirective[] {
+  const out: RenderedDirective[] = [];
+  for (const dir of STATIC_DIRECTIVE_DIRS) {
+    const dirPath = join(directivesRoot, dir);
+    let files: string[];
+    try {
+      files = walkXml(dirPath);
+    } catch {
+      continue; // directory absent on this checkout — nothing to scan
+    }
+    for (const p of files) {
+      out.push({ file: relative(directivesRoot, p).split(sep).join('/'), text: readFileSync(p, 'utf8') });
+    }
+  }
+  return out;
+}
+

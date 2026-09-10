@@ -57,6 +57,7 @@ import {
   lintUndefinedAxiomRefs,
   formatUndefinedRefsReport,
   KNOWN_DANGLING_AXIOM_REFS,
+  collectStaticDirectiveFiles,
   type RenderedDirective,
 } from './lint-axioms.ts';
 import { buildDeltaPlan, excludedPartialsFor, applyDelta, type PlanNodeInput } from './delta-assembly.ts';
@@ -168,7 +169,15 @@ if (report) console.warn(`\n${report}`);
 // directive, not a style nit — it fails the build, minus the temporary, shrinking
 // KNOWN_DANGLING_AXIOM_REFS allowlist (L-10 / Q2 option b). This never grows silently: a NEW
 // dangling reference (not already in the allowlist) fails the build the moment it lands.
-const undefinedRefs = lintUndefinedAxiomRefs(rendered, { allowlist: KNOWN_DANGLING_AXIOM_REFS });
+// T-B6-24: the scanned corpus is `rendered` (templated sdd-v2/**) PLUS every static, non-templated
+// directive file under ai/directives/{infra,testing,architecture,coding,agent-inbox}/** — read from
+// the real ai/directives root (OUT_ROOT), never the --out= override, since those static trees only
+// exist in the actual checkout. This is what makes a dangling AX_* mentioned OUTSIDE sdd-v2/** (the
+// gap 40-TRACK-DIRECTIVES-SKILLS.md §4.1 named) visible to this same gate.
+const staticDirectiveFiles = collectStaticDirectiveFiles(OUT_ROOT);
+const undefinedRefs = lintUndefinedAxiomRefs([...rendered, ...staticDirectiveFiles], {
+  allowlist: KNOWN_DANGLING_AXIOM_REFS,
+});
 if (undefinedRefs.length > 0) {
   console.error(`\n${formatUndefinedRefsReport(undefinedRefs)}`);
   process.exit(1);

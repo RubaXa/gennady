@@ -10,6 +10,7 @@ import {
   parseDirective,
   lintUndefinedAxiomRefs,
   formatUndefinedRefsReport,
+  collectStaticDirectiveFiles,
 } from '../lint-axioms.ts';
 
 /** Minimal directive builder: BeliefState with given axioms + an arbitrary body after it. */
@@ -268,5 +269,42 @@ describe('formatUndefinedRefsReport', () => {
     assert.match(report, /^✗ 3 undefined axiom reference/);
     assert.match(report, /a\.xml: AX_ONE, AX_TWO/);
     assert.match(report, /b\.xml: AX_THREE/);
+  });
+});
+
+describe('collectStaticDirectiveFiles — T-B6-24 scope widening', () => {
+  it('reads .xml files under the static (non-templated) dirs, relative to the given root, without an sdd-v2/ prefix', async () => {
+    const { mkdtempSync, mkdirSync, writeFileSync, rmSync } = await import('node:fs');
+    const { tmpdir } = await import('node:os');
+    const { join } = await import('node:path');
+    const root = mkdtempSync(join(tmpdir(), 'lint-axioms-static-'));
+    try {
+      mkdirSync(join(root, 'infra'), { recursive: true });
+      writeFileSync(join(root, 'infra', 'git-setup.xml'), '<Directive>per `AX_SOMETHING`</Directive>\n');
+      mkdirSync(join(root, 'sdd-v2'), { recursive: true }); // must NOT be picked up — templated tree
+      writeFileSync(join(root, 'sdd-v2', 'router.directive.xml'), '<Directive/>\n');
+      const { collectStaticDirectiveFiles } = await import('../lint-axioms.ts');
+      const files = collectStaticDirectiveFiles(root);
+      assert.deepEqual(
+        files.map((f) => f.file),
+        ['infra/git-setup.xml']
+      );
+      assert.match(files[0]!.text, /AX_SOMETHING/);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('tolerates a missing static dir (fresh checkout without e.g. testing/)', async () => {
+    const { mkdtempSync, rmSync } = await import('node:fs');
+    const { tmpdir } = await import('node:os');
+    const { join } = await import('node:path');
+    const root = mkdtempSync(join(tmpdir(), 'lint-axioms-static-empty-'));
+    try {
+      const { collectStaticDirectiveFiles } = await import('../lint-axioms.ts');
+      assert.deepEqual(collectStaticDirectiveFiles(root), []);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 });
