@@ -210,6 +210,22 @@ describe('checkTicket', () => {
     assert.ok(!codes(c).includes('SDD_DONE_WITH_ACTIVE_BLOCKER'));
   });
 
+  // V-BATCH-15 F-2: checkTicket must read a `## Blocker Trail` resolution too — the mutation
+  // that drops the section's body from hasActiveBlocker left 217/217 tests green (no lock at
+  // all), because no existing case fed `## Blocker Trail` through checkTicket. Both directions:
+  it('a ## Blocker Trail resolution with a Round/phase back-reference clears an active blocker whose Round is already closed', () => {
+    const c =
+      CLEAN.replace('#### P1', '#### P1\n- 🛑 BLOCKED waiting on operator') +
+      '\n\n## Blocker Trail\n\n- [x] `2026-06-22T10:00:00Z` ✅ RESOLVED (Round 1 / P1): fixed\n';
+    assert.ok(!codes(c).includes('SDD_DONE_WITH_ACTIVE_BLOCKER'));
+    assert.ok(!codes(c).includes('SDD_BLOCKER_OPEN'));
+  });
+
+  it('the same ticket without a ## Blocker Trail section still flags the active blocker', () => {
+    const c = CLEAN.replace('#### P1', '#### P1\n- 🛑 BLOCKED waiting on operator');
+    assert.ok(codes(c).includes('SDD_DONE_WITH_ACTIVE_BLOCKER'));
+  });
+
   it('warns (not errors) on an open blocker while Status is not DONE', () => {
     const c = CLEAN.replace('- **Status:** [x] DONE', '- **Status:** [~] IN_PROGRESS').replace(
       '#### P1',
