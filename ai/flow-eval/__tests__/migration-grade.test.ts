@@ -85,3 +85,57 @@ describe('migration-grade (histogram + deterministic baseline-diff grade)', () =
     assert.equal(g.pass, true);
   });
 });
+
+describe('E-07 (batch 22, red-first per L-15): SDD_VERIFICATION_TABLE_INVALID / SDD_COVERAGE_POLICY_INVALID are migration-critical', () => {
+  // Frozen, REALLY-CAPTURED `sdd-check --task` output — not synthesized — from a ticket that already
+  // carries every v2 SECTION anchor (as `sdd-migrate anchors` produces today) but whose Verification
+  // table is still the v1 2-column shape (`| Command | Required by |`, no `Role`, no
+  // `PHASE_RECEIPTS:v1`/`COVERAGE_POLICY:v1` markers) — exactly the migrator-completeness gap E-06
+  // closes (docs/journal/flow-verification-ledger.md finding A7). Captured via
+  // `gennady sdd-check --task core.task.DEMO-1.md` against a hand-built fixture with this exact shape;
+  // reproducible with the same fixture at any time, not dependent on live state.
+  const FROZEN_2COL_TABLE_OUTPUT =
+    'core.task.DEMO-1.md:66: error: SDD_VERIFICATION_TABLE_INVALID  Verification table line 1: expected header Command | Required by | Role';
+
+  // Frozen, REALLY-CAPTURED output from a ticket that DOES carry the v2 3-column table AND the
+  // `PHASE_RECEIPTS:v1`/`COVERAGE_POLICY:v1` markers (schema-aware), but a migrator that copies the
+  // `Coverage Policy: required` field forward mechanically without also assigning a real coverage row
+  // and owner phase — the same family of defect, one step later in the migration.
+  const FROZEN_COVERAGE_POLICY_OUTPUT =
+    'core.task.DEMO-2.md:66: error: SDD_COVERAGE_POLICY_INVALID  required coverage needs exactly one table row with Role=coverage (found 0); required coverage needs exactly one Coverage Owner Phase (`P<N>`)';
+
+  it('RED — on the un-migrated (anchors-only) corpus, the bar fails BEFORE the migrator gains table-upgrade capability (E-06)', () => {
+    const g = computeMigrationGrade({}, 'FLOW_VERSION=v2', FROZEN_2COL_TABLE_OUTPUT);
+    assert.equal(g.pass, false);
+    assert.equal(g.introduced[0]?.code, 'SDD_VERIFICATION_TABLE_INVALID');
+    assert.match(g.detail, /critical-introduced: SDD_VERIFICATION_TABLE_INVALID\+1/);
+  });
+
+  it('RED — a migrator that half-applies the coverage schema (marker present, fields wrong) also fails the bar', () => {
+    const g = computeMigrationGrade({}, 'FLOW_VERSION=v2', FROZEN_COVERAGE_POLICY_OUTPUT);
+    assert.equal(g.pass, false);
+    assert.equal(g.introduced[0]?.code, 'SDD_COVERAGE_POLICY_INVALID');
+  });
+
+  it('GREEN would follow once the migrator upgrades the table (not this task — proves the bar is not a tautology)', () => {
+    // Frozen "after" shape: `sdd-check` on the SAME ticket, its table upgraded to 3-column with a real
+    // coverage row (the transformation E-06 adds) — 0 findings for either code.
+    const g = computeMigrationGrade({}, 'FLOW_VERSION=v2', '[sdd-check] 0 error(s), 0 warning(s)');
+    assert.equal(g.pass, true);
+    assert.deepEqual(g.introduced, []);
+  });
+
+  it('pre-existing (baseline) occurrences of either code are backlog, not a NEW migration failure', () => {
+    const baseline = { SDD_VERIFICATION_TABLE_INVALID: 2, SDD_COVERAGE_POLICY_INVALID: 1 };
+    const g = computeMigrationGrade(
+      baseline,
+      'FLOW_VERSION=v2',
+      [
+        findings('error', 'SDD_VERIFICATION_TABLE_INVALID', 2),
+        findings('error', 'SDD_COVERAGE_POLICY_INVALID', 1),
+      ].join('\n')
+    );
+    assert.deepEqual(g.introduced, []);
+    assert.equal(g.pass, true);
+  });
+});

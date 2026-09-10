@@ -26,12 +26,26 @@ export type MigrationGrade = {
 
 // Structural-integrity codes a migration MUST NOT introduce: broken spec references/anchors and
 // unresolvable rule evidence mean relocation/rename lost a link — the migration's own mechanical job.
-// Everything else (BDD coverage, verification-table shape, language calques, long cells) is CONTENT
-// debt: pre-existing or authoring-level, addressed by a later reconcile/authoring pass, not migration.
+// Everything else (BDD coverage, language calques, long cells) is CONTENT debt: pre-existing or
+// authoring-level, addressed by a later reconcile/authoring pass, not migration.
+//
+// E-07 (batch 22, red-first per L-15): a v1 ticket's Verification table is 2-column
+// (`| Command | Required by |`) — the v2 schema is 3-column with `Role`, and v1 never carried the
+// `PHASE_RECEIPTS:v1`/`COVERAGE_POLICY:v1` markers at all. `sdd-check`/`sdd-task`/`sdd-verify` reject
+// the 2-column shape with SDD_VERIFICATION_TABLE_INVALID (`cli/cmd/sdd-check/sdd-check.cmd.ts`) — this
+// is the exact wall a real execute run hits on a migrated-but-not-table-upgraded ticket
+// (`docs/journal/flow-verification-ledger.md` finding A7). This code (and its schema-aware sibling,
+// which fires once a ticket claims the v1 marker but gets a required field wrong) are now migration
+// bars: a migration that only injects SECTION anchors (`sdd-migrate anchors`) without upgrading the
+// table produces a ticket `sdd-task`/`sdd-verify` refuse — proven RED by the test below on a frozen,
+// really-captured `sdd-check` run, BEFORE the migrator gains that capability (E-06 — deliberately
+// ordered after this task, so the bar is not "already green" when it lands).
 const MIGRATION_CRITICAL_CODES = new Set([
   'SDD_BROKEN_SPEC_REF',
   'SDD_BROKEN_SPEC_ANCHOR',
   'ERR_CLI_SDD_CHECK_READ_FAILED',
+  'SDD_VERIFICATION_TABLE_INVALID',
+  'SDD_COVERAGE_POLICY_INVALID',
 ]);
 
 /** @purpose Parse an sdd-check run into a code→count histogram. */
