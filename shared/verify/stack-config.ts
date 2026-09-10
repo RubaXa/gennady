@@ -476,7 +476,8 @@ export function matchesGlob(text: string, pattern: string): boolean {
 /**
  * @purpose Whether a `when`-scoped gate applies to the phase's Target Files (V-12, #9-bonus).
  * @invariant No `when` at all (undefined/empty) always means in scope — the byte-parity default a
- *   repo without config never deviates from (D-17).
+ *   repo without config never deviates from (D-17). An empty `targets` list scopes every `when`
+ *   gate out; `deletedFiles` is never consulted here.
  * @param when Gate's `when` globs, or undefined/empty.
  * @param targets Exact phase Target Files, repo-relative.
  * @returns True when the gate has no `when`, or at least one target matches at least one glob.
