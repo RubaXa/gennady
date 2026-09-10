@@ -162,3 +162,71 @@ AX_READER_WITHOUT_SESSION_CONTEXT нет у: migration-v1-v2 readiness scope mod
 **Неблокирующее (9).** N-1 `AX_ISOLATION` не расширен и противоречит `STEP_1_READ`; N-2 `polish` — обещание без канала в диспетче; N-3 счётчик `AX_CAP_5` без долговечного дома и против `AX_STATELESS_FLOW`; N-4 «измерено» без выходного слота; N-5 `STEP_7` вместо `STEP_6_VERIFY` в теле `AX_DISPATCH_VIA_BATCH`; N-6 два ложных ребра и битая строка `:196` в mermaid «стало»; N-7 ложное обоснование в комментарии `deps.test.ts`; N-8 `reconcile` закрыт на 2 из 5 conduct-аксиомов при доступной зоне; N-9 `readiness` потерял собственное определение аксиомы (описано в отчёте неполно).
 
 **Подтверждено.** `AX_CAP_5` собран и применён с явной операторской диспозицией (T-B6-03 в этой части выполнен); T-B6-05 выполнен — reconcile диспетчит reopen одним execute-BATCH и нигде не заводит собственный аудит; T-B6-20 выполнен в объявленном суженном объёме, сужение обосновано и мной перепроверено измерением (расширение действительно упёрлось бы в PR #38/#41); форма вызова `sdd-extract <file>#<anchor>` существует и работает; все четыре аксиомы до пачки были висячими; конфликтов по файлам с PR #38/#40/#41/#42/#43 — ноль; таблица «файл → смысл» покрывает все 9 файлов диффа; восемь команд-доказательств перезапущены мной и воспроизвелись (`npm test` — 3645/3637/0/8, `check:directives-fresh`, `audit:sdd-templates`, `gate:sdd-check-baseline` — все зелёные с первой попытки, дерево чисто).
+
+---
+
+## 7. Повторная проверка (после правок `3cda13ba`, `ef3136ec`, `0ea38e5f`, `f0c1703f`)
+
+Проверяющий: `plan-verifier`, свежий прогон. Дата: 2026-09-09.
+Проверяемое: та же ветка `lead/review-critic-bounds`, теперь **8 коммитов** поверх `c9b58636`, HEAD `f0c1703f`, дерево `rc-w3`. Диапазон правок — `467ab3f3..HEAD` (11 файлов), вся пачка — `c9b58636..HEAD` (12 файлов, было 9: добавились `ax-default-accept.xml`, `ax-isolation.xml`, `ax-dispatch-via-batch.xml`).
+Опорное решение: `02-LEAD-DECISIONS.md` §L-25.
+
+# ВЕРДИКТ ПОВТОРНОЙ ПРОВЕРКИ: ПРИНЯТЬ
+
+Обе блокирующие находки закрыты **по существу, а не формально**: якоря ISS-10 теперь разрешаются на реальных файлах репозитория (6/6 против прежних 1/6), и замок стал исполняемым — он действительно вызывает `sdd-extract`. `AX_DEFAULT_ACCEPT` приведён к канонической редакции L-25 и переехал к оркестратору. Все восемь названных неблокирующих пунктов сделаны. Найдены два новых остатка косметического уровня (§7.4) — ни один не блокирует.
+
+### 7.1. Находка → статус
+
+| Находка | Статус | Доказательство (перезапущено мной) |
+|---|---|---|
+| **B-1** ISS-10 не работает на реальных артефактах | **ЗАКРЫТО** | Директива называет 4 реальных якоря (`#project-wide-conventions-declared-once-inherited`, `#decision-log-{module,scope,project}-task-level`) — сверено с `## `-заголовками всех трёх tasks-index репозитория. Мой прежний перебор повторён по фактическим файлам: **`TOTAL ok=6 fail=0`** (было `ok=1 fail=5`), rc=0 у всех. Конвенции возвращают 4 реальных правила (file-header, Baseline Completion Rule, словарь Execution-Log, post-task hook), а не указатель. `3-tasks.md` присутствует в собранном `critic-protocol.directive.xml` и в `.hbs` (было 0 совпадений) |
+| **B-1**, исполняемость замка | **ЗАКРЫТО** | `review-critic-bounds.test.ts:164-260`: якоря вынимаются регуляркой **из прозы собранной директивы** (`:169`), `deepEqual`-замок `:208-210` не даёт директиве назвать якорь без фикстуры, `:242-255` вызывает настоящий `mod.run(...)` `sdd-extract` на синтетических фикстурах трёх уровней и требует `outcome.ok`, `content.length > 30` и совпадения с содержимым — то есть секцию, а не ошибку и не однострочный указатель. Прогон: 59/59 pass |
+| **B-2** отменённая редакция `AX_DEFAULT_ACCEPT` у read-only-воркера | **ЗАКРЫТО** | Текст кирпича = v1 `d37d5910` после `d6065c36` («Uncertainty alone is NOT a blocking finding… REJECT as blocking»). Две подстановки имён вынужденные и верные: `AX_FINDING_EVIDENCE` раскрыт прозой, `AX_CONFUSION_TRIAGE` → `AX_CONFUSION_BUG` — обоих v1-имён в v2 нет (`grep -rln` по `ai/kit`, `ai/directives` → пусто). Активация — `review-lifecycle.directive.xml:20` (объявление) и `:61-64` (`STEP_3_RECONCILE`, классификация ACCEPT/REJECT). Из `critic-protocol` убрана целиком: `grep -c AX_DEFAULT_ACCEPT` → 0, замок `:100-102` (`doesNotMatch`). Противоречие с `AX_CONFUSION_BUG`/`AX_UNCERTAINTY_IS_SIGNAL` снято тем, что аксиомы больше не живут в одном `<Action>`; обе остались в `critic-protocol` нетронутыми. Замок `:86-91` отдельно запрещает возврат дореформенного текста. Соответствует L-25 дословно |
+| **N-1** `AX_ISOLATION` противоречит `STEP_1_READ` | **СДЕЛАНО** | `ai/kit/axiom/critic/ax-isolation.xml` + `critic-protocol.directive.xml:4`: исключение «Exception (ISS-10)… bounded to those two named sections and measured» |
+| **N-2** `polish` — обещание без канала | **СДЕЛАНО** | `review-lifecycle.directive.xml:44` — `Polish: <on\|off>` в перечне того, что STEP_2 передаёт ревьюеру; замок `:71-74` |
+| **N-3** противоречие формулировок | **СНЯТО** | `review-lifecycle.directive.xml:55`: «track anything about prior rounds **beyond the bare `AX_CAP_5` count STEP_3_RECONCILE keeps**»; замок `:76-79`. Долговечный носитель счётчика остаётся остатком для доски — как и было решено, кодом не закрывался |
+| **N-4** «измерено» без выходного слота | **СДЕЛАНО** | `critic-protocol.directive.xml:37` (`STEP_3_REPORT`) требует строку `read-set: <file>#<anchor> — N lines` на каждую извлечённую секцию; замок `:120-127`. Приёмка `06 §5.2 п.46a` в части «измерено» теперь наблюдаема |
+| **N-5** `STEP_7` вместо `STEP_6_VERIFY` | **СДЕЛАНО** | `ax-dispatch-via-batch.xml` → `STEP_6_VERIFY`; `grep -c STEP_7 reconcile.directive.xml` → **0**; последний шаг действительно `STEP_6_VERIFY` (`:324`); замок `:284-297` проверяет обе стороны |
+| **N-7** ложный комментарий в `deps.test.ts` | **СДЕЛАНО** | `deps.test.ts:82-83` теперь называет конкретный пробел `AX_PROGRESSIVE_DISCLOSURE` и признаёт наличие `AX_OPERATOR_DIALOGUE_STYLE` до пачки |
+| **N-8** `reconcile` закрыт на 2 из 5 | **СДЕЛАНО (4/5, остаток обоснован)** | Мой замер по собранному `reconcile.directive.xml`: было `467ab3f3` → 2/5, стало `HEAD` → **4/5** (добавлены `AX_NO_PROCESS_NARRATION` инклюдом, `AX_READER_WITHOUT_SESSION_CONTEXT` через `<BeliefState deps=…>` — прецедент `root.directive.hbs:20` подтверждён). Отказ от `AX_DIVERGE_BEFORE_RECOMMEND` проверен и обоснован фактически: его нет в `ALLOWLIST_BASENAMES` (`ai/kit/audit-axiom-activation.mjs:39-47`), значит он потребовал бы отдельной пошаговой активации |
+| **N-6** ложные рёбра mermaid | **ИСПРАВЛЕНО** (с нитом, см. §7.4) | Ребро `ScopeEtAl → RL` и строка `:196` убраны; `Rec → CP` больше не выдаётся за вызов — стало пунктирным `STEP_2_PROBE (не менялось)` к критику-подагенту, что верно. `RL -->|…critic-protocol.directive.xml:42|` сверено: `review-lifecycle.directive.xml:42` — единственный загрузчик `critic-protocol` во всём `ai/directives/sdd-v2`. `router.directive.hbs:122-123` сверено дословно |
+| **N-9** неполная формулировка про `readiness` | **ИСПРАВЛЕНО** | Строка таблицы «файл → смысл» теперь говорит, что `readiness` не просто переименован в «Inherited», а потерял собственное определение |
+
+### 7.2. Гейты и команды (все перезапущены мной, дерево `rc-w3`)
+
+| Команда | Мой фактический вывод | Exit |
+|---|---|---|
+| `npm --prefix <tree> test` (прогон 3, чистовой) | `# tests 3662 # pass 3654 # fail 0 # cancelled 0 # skipped 8`, `not ok` — 0 | 0 |
+| `npm --prefix <tree> run check:directives-fresh` | `✓ ai/directives/** matches a fresh rebuild.` | 0 |
+| `npm --prefix <tree> run audit:sdd-templates` | `✓ axiom-activation audit clean — 28 template(s)`, `✓ halt-activation audit clean — 33+33`, `✓ every lazy directive … within budget.` | 0 |
+| `npm --prefix <tree> run gate:sdd-check-baseline` | `OK — no error outside the baseline (227c03a8…, tag rc-baseline-1)` | 0 |
+| `node --import tsx --test ai/kit/__tests__/review-critic-bounds.test.ts ai/kit/__tests__/deps.test.ts` | `# tests 59 # pass 59 # fail 0` | 0 |
+| `node --import tsx --test ai/kit/__tests__/*.test.ts` | `# tests 262 # pass 261 # fail 0 # skipped 1` — совпадает со строкой 1b отчёта | 0 |
+| `node --import tsx --test cli/__tests__/directive-tool-contract/directive-tool-contract.test.ts` | `# tests 45 # pass 45 # fail 0` | 0 |
+| перебор `sdd-extract` × 3 уровня × 2 секции по реальным tasks-index | `TOTAL ok=6 fail=0` | 0 |
+| `git -C <tree> status --porcelain` | пусто | 0 |
+
+**Про флаки — проверено, не регрессия.** Прогон 1 дал `fail 0 # cancelled 8` (exit 0), прогон 2 — `fail 1`: `cli/cmd/lint/__tests__/lint.cmd.test.ts`, `failureType: uncaughtException`, `error: 'Unable to deserialize cloned data due to invalid or unsupported version.'`, стек целиком в `node:internal/test_runner/runner` — это отказ IPC-слоя самого раннера, а не ассерт. Отдельный прогон файла: **31/31 pass, exit 0**. Файл не входит в 12 файлов пачки. Прогон 3 — начисто. Раздел «Стопы» отчёта описывает ровно эту картину честно, ничего не скрыто.
+
+**Сходимость счётчика тестов.** 3645 (прошлая проверка) → 3662 = **+17**, ровно прирост `review-critic-bounds.test.ts` (13 → 30 кейсов: 59 − 29 `deps`). Цифры отчётов по фикс-коммитам (42 → 52 → 56 → 59) монотонны и сходятся с финалом.
+
+**Конфликтов с открытыми PR нет — перепроверено на новом составе файлов.** 12 файлов пачки против `gh pr view <n> --json files` для #38 (11 файлов), #40 (22), #41 (9), #42 (28), #43 (54): `comm -12` даёт **пустое пересечение для всех пяти**, включая три новых кирпича.
+
+**Таблица «файл → смысл» покрывает все 12 файлов** `git diff --stat` (три собранных `.xml` свёрнуты в одну строку `ai/directives/sdd-v2/{review-lifecycle,critic-protocol,reconcile}.directive.xml`). §5 присутствует во всех четырёх `R-*.md`.
+
+### 7.3. Что изменилось в оценке против §2
+
+`B-1` и `B-2` из §2 снимаются полностью. `N-1`, `N-2`, `N-4`, `N-5`, `N-7`, `N-9` закрыты кодом/текстом. `N-3` и `N-8` закрыты в согласованной части, их остатки корректно перенесены в раздел «Остатки» отчёта и на доску. `N-6` закрыта по существу (ложных рёбер больше нет).
+
+### 7.4. Новые остатки (не блокируют, к записи на доску)
+
+1. **`AX_CONFUSION_BUG` — висячая ссылка в оркестраторе.** Тело `AX_DEFAULT_ACCEPT` на `review-lifecycle.directive.xml:24` ссылается на `AX_CONFUSION_BUG`, но `review-lifecycle` эту аксиому не объявляет и не наследует: строка `:7` («Inherited from the loading directive») перечисляет `ARTIFACT_APPROVAL_FLOW, ARTIFACT_APPROVAL_MARKER, AX_OPERATOR_LANGUAGE, AX_STATELESS_FLOW, AX_TOOL_INVOCATION` — её там нет; сама она живёт только в `critic-protocol`. В v1 обе аксиомы были в одном файле, при разделении оркестратор/воркер ссылка осталась без адресата. Машинной проверкой не ловится (`lint-axioms.ts` молчит — прозаические ссылки он не разбирает). Правка XS: либо подключить кирпич к `review-lifecycle`, либо раскрыть условие прозой в теле аксиомы.
+2. **Три подписи узлов mermaid называют `.hbs`, а номер строки принадлежит `.xml`.** `Infra["infra.directive.hbs:485"]`, `Iface["interface.directive.hbs:271"]`, ребро `Rec -->|"STEP_5_APPLY:298"|`: фактические загрузчики — `infra.directive.xml:485`, `interface.directive.xml:271`, `reconcile.directive.xml:298` (сверено `grep -rn "review-lifecycle.directive.xml" ai/directives/sdd-v2/` — ровно эти три). В `infra.directive.hbs` строки 485 не существует. Правка только в отчёте, на код не влияет. Мелко: `STEP_5_APPLY:189` — дисптеч `execute` фактически на `reconcile.directive.hbs:190-191`.
+
+### 7.5. Итог повторной проверки
+
+**Блокирующее: нет.** Обе находки §2 (`B-1`, `B-2`) закрыты по существу и подтверждены перезапуском: перебор якорей на реальных файлах даёт `ok=6 fail=0` вместо `ok=1 fail=5`; замок ISS-10 стал исполняемым и вызывает настоящий `sdd-extract` на фикстурах трёх уровней; `AX_DEFAULT_ACCEPT` несёт каноническую редакцию по L-25 и активирован у оркестратора, из read-only-воркера удалён.
+
+**Неблокирующее: 2 новых остатка** — висячая ссылка на `AX_CONFUSION_BUG` в `review-lifecycle` (§7.4 п.1) и три подписи `.hbs`/`.xml` в mermaid отчёта (§7.4 п.2); плюс ранее согласованные остатки для доски (долговечный носитель счётчика `AX_CAP_5`, `AX_DIVERGE_BEFORE_RECOMMEND` у `reconcile`, логические якоря `CONVENTIONS`/`DECISION_LOG` в `sdd-extract`, полное закрытие D1 после #38/#41).
+
+**Подтверждено.** Все восемь заявленных пунктов (`N-1`, `N-2`, `N-3`, `N-4`, `N-5`, `N-7`, `N-8`, а также `N-6`/`N-9` в отчётах) сделаны как заявлено; `npm test` 3662/3654/fail 0 (exit 0), `check:directives-fresh`, `audit:sdd-templates`, `gate:sdd-check-baseline` — зелёные; дерево чисто; пересечений по файлам с PR #38/#40/#41/#42/#43 — ноль на новом составе из 12 файлов; таблица «файл → смысл» покрывает весь дифф; отказ от `AX_DIVERGE_BEFORE_RECOMMEND` обоснован фактически проверенным допущением аудита. Пачка 20 готова к PR.
