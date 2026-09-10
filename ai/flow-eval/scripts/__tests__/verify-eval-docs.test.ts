@@ -242,8 +242,11 @@ describe('GAP-E-5: verify-eval-docs.ts (both-way, real subprocess)', () => {
     const { code, stdout, stderr } = await runVerifier([]);
     assert.equal(code, 0, `${stdout}${stderr}`);
     assert.match(stdout, /0 \[UNVERIFIED\] markers/);
-    // At least the two top-level docs plus the three journal/ docs this batch also unified.
-    assert.match(stdout, /OK — 5 doc\(s\)/);
+    // At least the two top-level docs (EVAL-SPEC/RUNBOOK) plus the journal/ docs this batch unified
+    // (ledger/EXPERIMENTS-LOG/RESULTS) plus the docs a later upstream rebase (fix/sdd-check-v2-critic-rounds)
+    // added on top (11-ANALYSIS-CHECKLIST.md, journal/guard-verification.md, journal/eval-history-gaps.md) —
+    // the recursive discovery must pick up all of them, not a frozen count from this batch alone.
+    assert.match(stdout, /OK — 8 doc\(s\)/);
     // Proves the new link-checking mechanism is actually exercised on the real corpus, not just
     // passing vacuously because nothing in it uses a markdown link.
     const linkCountMatch = stdout.match(/(\d+) link\(s\) checked/);

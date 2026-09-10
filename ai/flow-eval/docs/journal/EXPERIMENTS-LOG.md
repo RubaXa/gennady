@@ -292,7 +292,7 @@ the tools leave open» — из-за чего агент уходит в **чт�
 деградатор; выигрывает **direct + явные шаги + факты выданы механически + anti-loop**.
 
 **H0 baseline (прогон `trajlive3`, реальная траектория сохранена:
-`__tests__/fixtures/mig-cloud-ios.baseline.trajectory.json`).**
+`ai/flow-eval/__tests__/fixtures/mig-cloud-ios.baseline.trajectory.json`).**
 
 - Итог: migration **FAIL**, `FLOW_VERSION=v1`, critical-introduced: none.
 - Расход: total **190369** (in 128523 / out 3921 / reason 57925), msgs 28.
@@ -486,7 +486,7 @@ exceeded`), а не добровольная остановка. Агента у
 авторить», возможно с baseline-diff перед глазами (что было до миграции), чтобы механически отличать
 backlog от внесённого. Критерий победы: `flow-v2` green + резкое падение пост-v2 тулов/времени.
 
-**Методология зафиксирована** в `docs/11-ANALYSIS-CHECKLIST.md` (чеклист разбора результатов и построения
+**Методология зафиксирована** в `ai/flow-eval/docs/11-ANALYSIS-CHECKLIST.md` (чеклист разбора результатов и построения
 гипотез по 6 осям + артефакты харнесса).
 
 ### H8-prove — мигратор доказан: ВСЕ три яруса доходят до v2
@@ -535,7 +535,7 @@ has no Test Scenario Coverage row owned by a test phase`. **Причина:** wa
    probe→extra снимает блок.
 2. Далее `ERR_CLI_SDD_VERIFY_RECEIPT: cannot fingerprint 'node -e "process.exit(0)"'` — readiness-shim
    (`roundtrip-readiness-shim.package.json`) стабит гейты инлайновым node, который verify не фингерпринтит.
-   **Фикс: гейт — фингерпринтируемый файл-ноуп** (`./Tools/eval-noop.sh`, `exit 0`). Провалидировано: снимает.
+   **Фикс: гейт — фингерпринтируемый файл-ноуп** (`Tools/eval-noop.sh` в cloud-ios, `exit 0`). Провалидировано: снимает.
 3. **КОРЕНЬ (не шиммится):** `sdd-verify --phase P1` → `ERR_CLI_SDD_VERIFY_RECEIPT: sdd verify --wip
 --only=swiftlint … : runner sdd has no receipt input adapter`. Собственный гейт фазы P1 — **swiftlint**,
    он приходит из `main`-adaptive/anystack verify, **не смёржен в flow-ветку**. Нет адаптера → нет
@@ -566,7 +566,7 @@ total 158k токенов.
 - Ticket `**Status:** [x] DONE`.
 - Execution log: 3 закрытых раунда (DONE-строки).
 - Owning spec `core.spec.md`: **2× SDD_AUDIT_RECEIPT + 2× SDD_REVIEW_RECEIPT**; тикет: 4× SDD_PHASE_RECEIPT.
-- Артефакт `src/slugify.ts` записан.
+- Артефакт `<sandbox>/src/slugify.ts` записан.
 
 **Вывод:** полный форвард-флоу — TODO → implement → verify → close round → phase-receipts → group
 audit+review receipts → DONE — **честно доказан end-to-end** на нативных гейтах. Судья дал `fail`

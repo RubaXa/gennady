@@ -15,8 +15,8 @@ Two entries had a `verdict` that didn't match what the journal actually says hap
   retraction belongs to seq 32's conclusion, not to a code change.
 - **seq 33 (H8-diag)**: `REVERTED` → **`KEPT`**. This entry's actual content is a harness fix
   (`--stuck-after 3`, `--observe-every-ms 45000`, `--max-observations 12`, budget 300s, new npm
-  scripts) that landed and is still present in the working tree today (`cli.ts`,
-  `scripts/migration-eval.sh`, `package.json` all show as modified in `git status`). The old `REVERTED`
+  scripts) that landed and is still present in the working tree today (`ai/flow-eval/cli.ts`,
+  `ai/flow-eval/scripts/migration-eval.sh`, `package.json` all show as modified in `git status`). The old `REVERTED`
   verdict conflated "H8's diagnosis was retracted" (true, but that's seq 32's story) with "this entry's
   own change was reverted" (false — the harness fix was kept).
 

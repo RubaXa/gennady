@@ -45,8 +45,8 @@ architectural finding is folded in as A7.
   here so the finding is not lost with the retired assessment doc.
   **Update (layered diagnosis, `EXPERIMENTS-LOG.md` §H-iOS): the readiness workaround above unblocks
   readiness, not closure.** `sdd-verify --phase P1`'s own gate for the P1 phase IS `sdd verify --wip
-  --only=swiftlint`, which has no receipt adapter on this flow branch (`runner sdd has no receipt input
-  adapter`) — no readiness shim fixes this, because the phase gate itself is swiftlint. The full closure
+--only=swiftlint`, which has no receipt adapter on this flow branch (`runner sdd has no receipt input
+adapter`) — no readiness shim fixes this, because the phase gate itself is swiftlint. The full closure
   ceremony (TODO→DONE + phase/audit/review receipts) on Swift therefore stays architecturally blocked at
   this deepest layer; it can only be "passed" by faking the verify gate. The honest fix is unchanged:
   port `main`'s adaptive/anystack verify into this branch. Full execute-lifecycle IS proven, but on the
