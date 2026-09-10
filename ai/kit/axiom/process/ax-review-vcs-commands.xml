@@ -1,4 +1,4 @@
-<Axiom id="AX_REVIEW_VCS_COMMANDS">
+<Axiom id="AX_REVIEW_VCS_COMMANDS" status="draft">
       Review lifecycle owns this exact VCS surface. Resolve every placeholder to a literal argument
       before one command call; never use shell substitution, variables, pipes, loops, `echo`,
       redirection, or `--help`. A ref literal is valid only when it uses ASCII letters, digits, dot,

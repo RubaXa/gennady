@@ -1,5 +1,5 @@
 <!-- source: sdd-opt-v1 AX_POLISH_MODE (risk-first critique) -->
-<Axiom id="AX_POLISH_MODE">
+<Axiom id="AX_POLISH_MODE" status="draft">
   Default dispatch is `polish: off` — report only CRITICAL and MAJOR (production-threatening logic /
   security / contract / alignment defects). MINOR / INFO never drive the loop or the verdict; they ride
   along in a separate non-blocking list ONLY when the operator asks for nits ("шлифуй" / "polish"). A

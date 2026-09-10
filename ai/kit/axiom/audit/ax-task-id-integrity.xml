@@ -2,7 +2,7 @@
 <!-- NOTE (B2-11): this brick is not included as a partial by any current .hbs (dangling brick, same
      class as ax-mechanical-via-sdd-check.xml / ax-execution-log-verification.xml). Fixed on content
      terms anyway so it does not teach the wrong `sdd-extract` invocation whenever it is wired up. -->
-<Axiom id="AX_TASK_ID_INTEGRITY">
+<Axiom id="AX_TASK_ID_INTEGRITY" status="draft">
       File-header task traceability must be structurally valid; Task-IDs in code must resolve; ticket files must not collide on IDs; ticket section anchors must cover the names orchestrator queries.
 
       Checks:

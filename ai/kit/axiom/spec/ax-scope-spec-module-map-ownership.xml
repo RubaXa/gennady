@@ -1,5 +1,5 @@
 <!-- source: ai/directives/sdd/module-decomposition.directive.xml -->
-<Axiom id="AX_SCOPE_SPEC_MODULE_MAP_OWNERSHIP">
+<Axiom id="AX_SCOPE_SPEC_MODULE_MAP_OWNERSHIP" status="draft">
   The `module` flow owns TWO sections in the scope spec (`specs/<scope>/<scope>.spec.md`):
 
   - **Module Map** (`Module Map`) — append-only rows per module.

@@ -1,4 +1,4 @@
-<Axiom id="AX_PERMITTED_BASH_COMMANDS">
+<Axiom id="AX_PERMITTED_BASH_COMMANDS" status="draft">
       This role's bash commands stay within this list:
       - **Must run:** exact `sdd-verify --task <ticket-path> --phase <PhaseID>` exactly once per attempt at the phase
         protocol's STEP_5. That step owns repair order, target derivation and foundation semantics;

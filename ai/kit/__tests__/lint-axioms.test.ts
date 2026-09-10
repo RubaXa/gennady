@@ -11,6 +11,8 @@ import {
   lintUndefinedAxiomRefs,
   formatUndefinedRefsReport,
   collectStaticDirectiveFiles,
+  lintUncollectedAxiomFiles,
+  formatUncollectedAxiomsReport,
 } from '../lint-axioms.ts';
 
 /** Minimal directive builder: BeliefState with given axioms + an arbitrary body after it. */
@@ -306,5 +308,83 @@ describe('collectStaticDirectiveFiles — T-B6-24 scope widening', () => {
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
+  });
+});
+
+describe('lintUncollectedAxiomFiles — every axiom is referenced or marked draft (T-B6-19, L-9)', () => {
+  it('a connected axiom file (its partial id is in connectedPartials) is not a violation, draft or not', () => {
+    const f = { file: 'audit/ax-foo.xml', text: '<Axiom id="AX_FOO">Body.</Axiom>\n' };
+    assert.deepEqual(lintUncollectedAxiomFiles([f], new Set(['audit/ax-foo'])), []);
+  });
+
+  it('an unconnected axiom file marked status="draft" is not a violation', () => {
+    const f = { file: 'audit/ax-foo.xml', text: '<Axiom id="AX_FOO" status="draft">Body.</Axiom>\n' };
+    assert.deepEqual(lintUncollectedAxiomFiles([f], new Set()), []);
+  });
+
+  it('an unconnected axiom file with no draft marker is a violation', () => {
+    const f = { file: 'audit/ax-foo.xml', text: '<Axiom id="AX_FOO">Body.</Axiom>\n' };
+    assert.deepEqual(lintUncollectedAxiomFiles([f], new Set()), [{ file: 'audit/ax-foo.xml', id: 'AX_FOO' }]);
+  });
+
+  it('a file with no <Axiom id> tag at all is not this check\'s concern', () => {
+    const f = { file: 'formats/f.xml', text: '<Format>A table.</Format>\n' };
+    assert.deepEqual(lintUncollectedAxiomFiles([f], new Set()), []);
+  });
+});
+
+describe('formatUncollectedAxiomsReport', () => {
+  it('empty findings → empty string', () => {
+    assert.equal(formatUncollectedAxiomsReport([]), '');
+  });
+
+  it('reports the total count and each file:id', () => {
+    const report = formatUncollectedAxiomsReport([
+      { file: 'audit/ax-foo.xml', id: 'AX_FOO' },
+      { file: 'process/ax-bar.xml', id: 'AX_BAR' },
+    ]);
+    assert.match(report, /^✗ 2 axiom file\(s\)/);
+    assert.match(report, /audit\/ax-foo\.xml: AX_FOO/);
+    assert.match(report, /process\/ax-bar\.xml: AX_BAR/);
+  });
+});
+
+describe('every SDD-relevant axiom file is connected or draft, on the real tree (T-B6-19 lock)', () => {
+  it('zero axiom files under the SDD-relevant dirs are neither connected nor marked draft', async () => {
+    const { readdirSync, statSync, readFileSync } = await import('node:fs');
+    const { join, relative, resolve, sep } = await import('node:path');
+    const ROOT = resolve(import.meta.dirname, '../../..');
+    const AXIOM_ROOT = join(ROOT, 'ai/kit/axiom');
+    const TEMPLATES_ROOT = join(ROOT, 'ai/kit/templates/sdd-v2');
+    const SDD_RELEVANT_DIRS = ['process', 'spec', 'audit', 'scaffold', 'boundary', 'critic', 'truth', 'interview'];
+
+    function walk(dir: string, ext: string): string[] {
+      const out: string[] = [];
+      for (const name of readdirSync(dir)) {
+        const p = join(dir, name);
+        const st = statSync(p);
+        if (st.isDirectory()) out.push(...walk(p, ext));
+        else if (p.endsWith(ext)) out.push(p);
+      }
+      return out;
+    }
+
+    let templateText = '';
+    for (const p of walk(TEMPLATES_ROOT, '.hbs')) templateText += readFileSync(p, 'utf8') + '\n';
+    const includeRe = /\{\{>\s*"axiom\/([^"]+)"\s*\}\}/g;
+    const connectedPartials = new Set<string>();
+    for (const m of templateText.matchAll(includeRe)) connectedPartials.add(m[1] as string);
+
+    const axiomFiles = [];
+    let total = 0;
+    for (const dir of SDD_RELEVANT_DIRS) {
+      for (const p of walk(join(AXIOM_ROOT, dir), '.xml')) {
+        total++;
+        axiomFiles.push({ file: relative(AXIOM_ROOT, p).split(sep).join('/'), text: readFileSync(p, 'utf8') });
+      }
+    }
+    const violations = lintUncollectedAxiomFiles(axiomFiles, connectedPartials);
+    assert.deepEqual(violations, [], `every SDD-relevant axiom file must be connected or draft; ${total} scanned`);
+    assert.ok(total > 0, 'sanity: the walk actually found axiom files');
   });
 });

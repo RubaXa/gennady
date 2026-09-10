@@ -1,5 +1,5 @@
 <!-- source: ai/directives/sdd/module-decomposition.directive.xml -->
-<Axiom id="AX_APPEND_ONLY_MODULE_ADD">
+<Axiom id="AX_APPEND_ONLY_MODULE_ADD" status="draft">
       In `add-module` mode the invariant is that the new module must not break its siblings — not a
       blanket freeze on every sibling file. Default shape:
       - new `specs/<scope>/<new-module>/<new-module>.spec.md`;

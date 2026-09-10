@@ -1,5 +1,5 @@
 <!-- source: ai/directives/sdd/scaffold.directive.xml -->
-<Axiom id="AX_PHASES_DECLARED_IN_HEADER">
+<Axiom id="AX_PHASES_DECLARED_IN_HEADER" status="draft">
       Every ticket declares its work as an ordered list of phases in `Phases Overview` (compact table) and `Phases` (block per phase). Phase kinds are a closed vocabulary: `bootstrap | impl | test | config | doc | refactor`. (`fix` is reserved for re-runs at execution time, not for scaffolding.)
 
       One phase = one focused unit of work for one subagent. Cross-phase dependencies (`Deps:`) are explicit. The orchestrator dispatches phases sequentially; the phase-subagent reads ONLY its phase's block, its phase's Rules, and prior-phase Handoff payloads.

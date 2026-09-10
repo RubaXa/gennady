@@ -1,4 +1,4 @@
-<Axiom id="AX_ENV_FIX_CHANNEL">
+<Axiom id="AX_ENV_FIX_CHANNEL" status="draft">
       The orchestrator does not write code or specs (`HardForbidden`). This axiom carves one narrow,
       opt-in exception for infrastructure noise that blocks the gate itself — not for the codebase the
       task is about.

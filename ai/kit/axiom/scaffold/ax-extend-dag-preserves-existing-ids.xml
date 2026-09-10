@@ -1,5 +1,5 @@
 <!-- source: ai/directives/sdd/scaffold.directive.xml -->
-<Axiom id="AX_EXTEND_DAG_PRESERVES_EXISTING_IDS">
+<Axiom id="AX_EXTEND_DAG_PRESERVES_EXISTING_IDS" status="draft">
       **In `extend-dag`, existing Task-IDs and ticket files are immutable.**
 
       - New tasks get next sequential `TSK-NN` after max existing.

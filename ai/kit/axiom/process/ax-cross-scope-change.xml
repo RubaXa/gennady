@@ -1,5 +1,5 @@
 <!-- new for sdd-v2: cross-scope / cross-platform changes are normal; structure shared-first -->
-<Axiom id="AX_CROSS_SCOPE_CHANGE">
+<Axiom id="AX_CROSS_SCOPE_CHANGE" status="draft">
   A single change may legitimately span several scopes or modules — this is normal, especially for
   cross-platform work. The shape: the shared / cross-cutting part lives in the scope it belongs to (a
   `contracts` or shared `library` scope), and platform / consumer scopes depend on it and add only

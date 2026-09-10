@@ -1,4 +1,4 @@
-<Axiom id="AX_HANDOFF_TO_MODULE_DECOMPOSITION">
+<Axiom id="AX_HANDOFF_TO_MODULE_DECOMPOSITION" status="draft">
   Module decomposition accepts a structurally complete `product` or `library` scope draft as the
   next authoring step before approval #1. It creates/updates the module specs needed to make the
   complete spec set reviewable. For an already-approved scope, add/refine module work is also valid.

@@ -1,5 +1,5 @@
 <!-- source: ai/directives/sdd/phase-execution-protocol.xml -->
-<Axiom id="AX_TICKET_WRITE_SCOPE">
+<Axiom id="AX_TICKET_WRITE_SCOPE" status="draft">
       The ticket is orchestrator-owned. During phase work the only ticket writer is the exact
       `sdd-verify --task ... --phase ...` command, and it writes only its CLI-owned receipt. The worker
       returns event facts, deviations, and typed Handoff in its response; it never calls `sdd-log` and

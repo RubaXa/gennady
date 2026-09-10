@@ -1,5 +1,5 @@
 <!-- source: ai/directives/sdd/scaffold.directive.xml -->
-<Axiom id="AX_RULES_CASCADE_RESOLUTION">
+<Axiom id="AX_RULES_CASCADE_RESOLUTION" status="draft">
       **Effective rule-set per task = union of 4 tiers; later tier overrides earlier on collision.**
 
       Tier order (low → high):

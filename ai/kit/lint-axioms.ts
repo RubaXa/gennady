@@ -339,3 +339,64 @@ export function collectStaticDirectiveFiles(directivesRoot: string): RenderedDir
   return out;
 }
 
+/* -------------------------------------------------------------------------------------------- */
+/* every axiom is referenced or marked draft (T-B6-19, L-9 hybrid option c)                       */
+/* -------------------------------------------------------------------------------------------- */
+
+export interface UncollectedAxiomFile {
+  /** Path relative to `ai/kit/axiom/`, e.g. `audit/ax-severity.xml`. */
+  file: string;
+  id: string;
+}
+
+const AXIOM_TAG_WITH_STATUS = /<Axiom\s+id="(AX_[A-Z0-9_]+)"([^>]*)>/;
+const STATUS_DRAFT_ATTR = /\bstatus="draft"/;
+
+/**
+ * L-9 (hybrid option c): every axiom FILE in the library either (a) is CONNECTED — its
+ * `{{> "axiom/<dir>/<name>"}}` partial appears at least once across the template corpus, so some
+ * directive actually collects it — or (b) is explicitly labeled `status="draft"` on its own
+ * `<Axiom id>` tag, a recorded decision that this invariant is a library snapshot not yet wired
+ * into any v2 directive. A file that is NEITHER is indistinguishable from an invariant nobody
+ * remembered to collect — exactly the failure mode AUTHORING.md §7 already names for the
+ * referenced-but-undefined direction, one layer earlier (library file, not yet a reference at all).
+ *
+ * `axiomFiles` is the caller-selected SDD-relevant subset (L-9's own criterion — the plan's
+ * §4.1 headcount is `process/spec/audit/scaffold/boundary/critic/truth/interview`, 181 axioms
+ * today; the other library categories — `coding/testing/e2e/storybook/infra/uikit/error/
+ * typescript/perf/logging/agent-inbox` — are per-rule-file rule libraries consumed through a
+ * completely different mechanism (`AX_RULES_COMPLIANCE_AGAINST_ACTIVATED_RULES`'s cascade, not
+ * `{{> "axiom/…"}}` template includes) and are out of this check's scope by construction, not by
+ * omission — this function never walks them itself, the caller decides what "the library" means
+ * here). `connectedPartials` is the caller-collected set of every `{{> "axiom/<dir>/<name>"}}`
+ * token seen anywhere in the template corpus (same partial-id shape as the include itself, e.g.
+ * `audit/ax-severity-tagging`, no leading `axiom/` and no `.xml`).
+ */
+export function lintUncollectedAxiomFiles(
+  axiomFiles: RenderedDirective[],
+  connectedPartials: ReadonlySet<string>
+): UncollectedAxiomFile[] {
+  const violations: UncollectedAxiomFile[] = [];
+  for (const f of axiomFiles) {
+    const m = f.text.match(AXIOM_TAG_WITH_STATUS);
+    if (!m) continue; // not an axiom-shaped file — nothing for this check to say
+    const id = m[1] as string;
+    const attrs = m[2] as string;
+    const partialKey = f.file.replace(/\.xml$/, '');
+    if (connectedPartials.has(partialKey)) continue;
+    if (STATUS_DRAFT_ATTR.test(attrs)) continue;
+    violations.push({ file: f.file, id });
+  }
+  return violations;
+}
+
+/** Format uncollected-axiom-file findings as build-output error lines (empty array → empty string). */
+export function formatUncollectedAxiomsReport(violations: UncollectedAxiomFile[]): string {
+  if (violations.length === 0) return '';
+  const lines = [
+    `✗ ${violations.length} axiom file(s) neither collected by any directive nor marked draft`,
+    `  (connect it with {{> "axiom/<dir>/<name>"}}, or add status="draft" to its <Axiom id> tag if it is a deliberately uncollected library snapshot — L-9, T-B6-19)`,
+  ];
+  for (const v of violations) lines.push(`  ${v.file}: ${v.id}`);
+  return lines.join('\n');
+}

@@ -1,5 +1,5 @@
 <!-- source: ai/directives/sdd/svelte-ui-discovery.directive.xml -->
-<Axiom id="AX_SPEC_STRUCTURE">
+<Axiom id="AX_SPEC_STRUCTURE" status="draft">
       Формат `.ui.spec.md` — секции SPEC_STRUCTURE:
       1. Vision &amp; Purpose — назначение компонента
       2. Anatomy — ASCII-дерево слотов + таблица (имя, назначение, обязательность)
