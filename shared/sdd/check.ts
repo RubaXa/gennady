@@ -309,10 +309,20 @@ export function checkBddNegativeScenario(
  * @invariant Pure — no I/O; cross-file checks (spec-link resolution, walking) live in the command.
  * @param file Path used in finding locations.
  * @param content Full ticket markdown.
+ * @param [flowVersion] The ticket's owning scope flow version. Callers that know the repository
+ *   layout must supply it; the v2 default preserves the standalone checker contract.
  * @returns Findings (possibly empty); errors fail the gate.
  */
-export function checkTicket(file: string, content: string): Finding[] {
+export function checkTicket(
+  file: string,
+  content: string,
+  flowVersion: FlowVersion = 'v2'
+): Finding[] {
   const findings: Finding[] = [];
+  // One migration boundary governs every journal/reopen/vocabulary rule introduced in #40/#48.
+  // Content markers cannot classify the boundary: the anchors migration deliberately creates
+  // anchored v1 tickets, while `flowVersion` comes from the owning scope's layout.
+  const enforceV2JournalContract = flowVersion === 'v2';
   const err = (code: string, message: string): void =>
     void findings.push({ severity: 'error', code, file, message });
   const warn = (code: string, message: string): void =>
@@ -400,47 +410,49 @@ export function checkTicket(file: string, content: string): Finding[] {
       }
     }
 
-    // B2-04: post-close append integrity — WARN per L-3 (new codes stay warn until B2-15).
-    for (const round of analyzeRoundClosures(logSec.content)) {
-      if (round.trailingCount > 0) {
-        warn(
-          'SDD_EXECUTION_LOG_ENTRY_AFTER_CLOSE',
-          `### ${round.roundLabel}: ${round.trailingCount} checked event line(s) appended after this Round's own \`#### Round close\`. Open a new Round instead.`
-        );
+    if (enforceV2JournalContract) {
+      // B2-04: post-close append integrity — WARN per L-3 (new codes stay warn until B2-15).
+      for (const round of analyzeRoundClosures(logSec.content)) {
+        if (round.trailingCount > 0) {
+          warn(
+            'SDD_EXECUTION_LOG_ENTRY_AFTER_CLOSE',
+            `### ${round.roundLabel}: ${round.trailingCount} checked event line(s) appended after this Round's own \`#### Round close\`. Open a new Round instead.`
+          );
+        }
+        if (round.closeExtraCount > 0) {
+          warn(
+            'SDD_EXECUTION_LOG_CLOSE_EXTRA_ENTRY',
+            `### ${round.roundLabel}: the \`#### Round close\` block has ${round.closeExtraCount} extra checked line(s) besides its one DONE line.`
+          );
+        }
+        for (const line of round.laterThanClose) {
+          warn(
+            'SDD_EXECUTION_LOG_ENTRY_LATER_THAN_CLOSE',
+            `### ${round.roundLabel}: entry "${line}" has a timestamp later than this Round's own close.`
+          );
+        }
+        if (round.unclosed) {
+          warn(
+            'SDD_EXECUTION_LOG_ROUND_UNCLOSED',
+            `### ${round.roundLabel} has a checked phase-block line but no closed \`#### Round close\`.`
+          );
+        }
       }
-      if (round.closeExtraCount > 0) {
-        warn(
-          'SDD_EXECUTION_LOG_CLOSE_EXTRA_ENTRY',
-          `### ${round.roundLabel}: the \`#### Round close\` block has ${round.closeExtraCount} extra checked line(s) besides its one DONE line.`
-        );
-      }
-      for (const line of round.laterThanClose) {
-        warn(
-          'SDD_EXECUTION_LOG_ENTRY_LATER_THAN_CLOSE',
-          `### ${round.roundLabel}: entry "${line}" has a timestamp later than this Round's own close.`
-        );
-      }
-      if (round.unclosed) {
-        warn(
-          'SDD_EXECUTION_LOG_ROUND_UNCLOSED',
-          `### ${round.roundLabel} has a checked phase-block line but no closed \`#### Round close\`.`
-        );
-      }
-    }
 
-    // E-05 (issue #23), split by grammar shape (V-BATCH-15 F-4) — WARN per L-3, both codes.
-    for (const { raw, issue } of tokenVocabularyIssues(logSec.content)) {
-      if (issue === 'unquoted-timestamp') {
-        warn(
-          'SDD_EXECUTION_LOG_TIMESTAMP_UNQUOTED',
-          `Checked event line's timestamp is not backtick-wrapped, so the first word after ` +
-            `"- [x]" is read as the token, not the real one further along: "${raw}"`
-        );
-      } else {
-        warn(
-          'SDD_EXECUTION_LOG_UNKNOWN_TOKEN',
-          `Checked event line opens with a token outside the closed vocabulary: "${raw}"`
-        );
+      // E-05 (issue #23), split by grammar shape (V-BATCH-15 F-4) — WARN per L-3, both codes.
+      for (const { raw, issue } of tokenVocabularyIssues(logSec.content)) {
+        if (issue === 'unquoted-timestamp') {
+          warn(
+            'SDD_EXECUTION_LOG_TIMESTAMP_UNQUOTED',
+            `Checked event line's timestamp is not backtick-wrapped, so the first word after ` +
+              `"- [x]" is read as the token, not the real one further along: "${raw}"`
+          );
+        } else {
+          warn(
+            'SDD_EXECUTION_LOG_UNKNOWN_TOKEN',
+            `Checked event line opens with a token outside the closed vocabulary: "${raw}"`
+          );
+        }
       }
     }
   }
@@ -449,7 +461,7 @@ export function checkTicket(file: string, content: string): Finding[] {
   // #region START_REOPENS — Meta Reopens causally honest, per issue #13 / D-20 (B2-06).
   // WARN per L-3 (new codes stay warn until the B2-15/B2-20 flip) — same severity as every sibling
   // Execution Log code above (SDD_EXECUTION_LOG_ENTRY_AFTER_CLOSE and neighbors).
-  const auditRounds = parseAuditRounds(content);
+  const auditRounds = enforceV2JournalContract ? parseAuditRounds(content) : [];
   if (auditRounds.length > 0) {
     const declaredReopens =
       metaSec.status === 'ok' ? Number(META_REOPENS_RE.exec(metaSec.content)?.[1] ?? 0) : 0;
@@ -558,7 +570,7 @@ export function checkTicket(file: string, content: string): Finding[] {
 
     // B2-07: closes the `sdd-log complete` bypass (a bare `line "DONE" --phase`) — WARN per L-3,
     // new codes stay warn pending the B2-15 debt inventory + DA-lazy-asm golden.
-    if (logSec.status === 'ok') {
+    if (logSec.status === 'ok' && enforceV2JournalContract) {
       const receipts = parsePhaseReceipts(content);
       if (receipts.ok) {
         const receiptedPhases = new Set(receipts.receipts.map((r) => r.phase));
