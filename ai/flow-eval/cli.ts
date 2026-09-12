@@ -31,6 +31,13 @@ import {
   teardownSandboxDirectories,
   type SddEvalRunArtifact,
 } from './sandbox-lifecycle.ts';
+import {
+  appendExperimentLogStub,
+  persistDurableResult,
+  relativeResultDir,
+  resolveGitSha,
+  type SddEvalDurableSummary,
+} from './results-archive.ts';
 import { SddEvalSessionDirectoryMap } from './session-directory.ts';
 import { SDD_EVAL_PHASES, SDD_EVAL_MODES } from './types.ts';
 import type { SddEvalConfig, SddEvalScenario } from './types.ts';
@@ -44,6 +51,10 @@ type SddEvalCliOptions = {
   keep: boolean;
   /** Where to persist durable artifacts (specs/judge/summary); default under gennadyRoot/cwd. */
   artifactsDir?: string;
+  /** GAP-E-6/D-62: where each scenario's PERMANENT result record lands (summary.json + judge.md),
+   *  never gitignored; default `<gennadyRoot|cwd>/ai/flow-eval/results`. Distinct from artifactsDir
+   *  (the whole-batch transient .results/run-<ISO>/ tree) — this one dir per scenario per day. */
+  resultsDir?: string;
   config: SddEvalConfig;
 };
 
@@ -64,6 +75,7 @@ function parseSddEvalCliArgs(argv: string[]): SddEvalCliOptions {
   let gennadyRoot: string | undefined;
   let keep = false;
   let artifactsDir: string | undefined;
+  let resultsDir: string | undefined;
   for (let index = 0; index < argv.length; index++) {
     const arg = argv[index];
     switch (arg) {
@@ -81,6 +93,9 @@ function parseSddEvalCliArgs(argv: string[]): SddEvalCliOptions {
         break;
       case '--artifacts-dir':
         artifactsDir = resolve(requiredValue(argv, index++, arg));
+        break;
+      case '--results-dir':
+        resultsDir = resolve(requiredValue(argv, index++, arg));
         break;
       case '--base-url':
         config.baseUrl = requiredValue(argv, index++, arg);
@@ -118,9 +133,11 @@ function parseSddEvalCliArgs(argv: string[]): SddEvalCliOptions {
       case '--help':
         throw new Error(
           'usage: sdd-flow-eval --scenario-file FILE --directory DIR [--model PROVIDER/MODEL] ' +
-            '[--artifacts-dir DIR] [--keep]\n' +
-            '  sandboxes are torn down after the run; durable artifacts are saved to --artifacts-dir; ' +
-            'pass --keep to retain sandboxes for debugging'
+            '[--artifacts-dir DIR] [--results-dir DIR] [--keep]\n' +
+            '  sandboxes are torn down after the run; whole-batch artifacts are saved to ' +
+            '--artifacts-dir (default .results/); one permanent per-scenario record (GAP-E-6) is ' +
+            'always saved to --results-dir (default ai/flow-eval/results/); pass --keep to retain ' +
+            'sandboxes for debugging'
         );
       default:
         throw new Error(`unknown argument: ${arg}`);
@@ -146,7 +163,7 @@ function parseSddEvalCliArgs(argv: string[]): SddEvalCliOptions {
     throw new Error('max-wall-clock-ms must be a finite number >= 0 (0 disables)');
   if (runnerModelValue) config.runnerModel = parseOpenCodeModel(runnerModelValue, defaultProvider);
   if (judgeModelValue) config.judgeModel = parseOpenCodeModel(judgeModelValue, defaultProvider);
-  return { scenarioFile, directory, gennadyRoot, keep, artifactsDir, config };
+  return { scenarioFile, directory, gennadyRoot, keep, artifactsDir, resultsDir, config };
 }
 
 const SDD_EVAL_PHASE_SET = new Set<string>(SDD_EVAL_PHASES);
@@ -295,10 +312,38 @@ async function runAndReport(
 ): Promise<void> {
   const registry = new SddEvalSessionDirectoryMap();
   const runtime = new SddEvalOpenCodeRuntime({ baseUrl: options.config.baseUrl, registry });
+  // GAP-E-1b: the default live event reader (evidence.ts) opens a real, long-lived SSE subscription
+  // to the OpenCode server; without an explicit abort it retries with backoff even after this batch
+  // is fully done, which would keep the CLI process alive indefinitely. This signal is aborted in the
+  // finally below so a finished run always exits promptly, independent of the OpenCode server's state.
+  const eventAbort = new AbortController();
   const evidence = new SddEvalOpenCodeEvidenceSource({
     baseUrl: options.config.baseUrl,
     registry,
+    eventSignal: eventAbort.signal,
   });
+  try {
+    await runAndReportBody(options, isolated, artifacts, migrationBaselines, runtime, evidence);
+  } finally {
+    eventAbort.abort();
+  }
+}
+
+/** @purpose The body of runAndReport, split out so the event-subscription abort above always runs. */
+async function runAndReportBody(
+  options: SddEvalCliOptions,
+  isolated: Array<SddEvalScenario & { directory: string }>,
+  artifacts: SddEvalRunArtifact[],
+  migrationBaselines: Map<string, FindingHistogram>,
+  runtime: SddEvalOpenCodeRuntime,
+  evidence: SddEvalOpenCodeEvidenceSource
+): Promise<void> {
+  // GAP-E-6/D-62: one durable record per scenario, always — under ai/flow-eval/results/, never
+  // gitignored (unlike the transient .results/ persistRunArtifacts writes below). sha/root are the
+  // same for every scenario in this batch, so resolved once rather than per scenario.
+  const gennadyRootForResults = options.gennadyRoot ?? process.cwd();
+  const resultsRoot = options.resultsDir ?? join(gennadyRootForResults, 'ai/flow-eval/results');
+  const sha = await resolveGitSha(gennadyRootForResults);
   const results = await new SddEvalRunner(runtime, evidence, options.config).runAll(isolated);
   const byId = new Map(isolated.map((scenario) => [scenario.id, scenario]));
   for (const result of results) {
@@ -314,7 +359,7 @@ async function runAndReport(
     }
     const scenario = byId.get(result.worker.scenarioId);
     // Objective quality rule R1 (structural integrity) for phases that PRODUCE specs — the mechanical
-    // signal alongside the stochastic judge (docs/10-QUALITY-RULES.md). The pure golden-graded work carries
+    // signal alongside the stochastic judge (docs/EVAL-SPEC.md). The pure golden-graded work carries
     // no specs and is graded by its own golden set, not sdd-check: `task`, and the brownfield delta
     // modes (modify-code-delta/fix-code-delta). The brownfield spec modes DO write specs, so R1 applies.
     const brownfieldSpecMode =
@@ -426,6 +471,70 @@ async function runAndReport(
       // this one scenario, so a mechanical FAIL is visible immediately next to its line instead of
       // only in the trailing "batch outcome" summary once every scenario has finished.
       console.log(`  gate: ${computeAggregateExitCode([artifact]) === 1 ? 'FAIL' : 'pass'}`);
+
+      // GAP-E-6/D-62: the permanent record — written even when --keep is set or the run is later
+      // interrupted, unlike persistRunArtifacts below (which only runs once the whole batch finishes).
+      const finishedAt = new Date();
+      const lastObservation = result.worker.observations.at(-1);
+      const firstObservation = result.worker.observations[0];
+      const budgetExhausted =
+        lastObservation?.errors.includes('observation budget exceeded') ?? false;
+      const outcome: SddEvalDurableSummary['outcome'] = budgetExhausted
+        ? 'budget-exhausted'
+        : verdict === 'pass' || verdict === 'fail' || verdict === 'worker-error'
+          ? verdict
+          : 'unknown';
+      const durableSummary: SddEvalDurableSummary = {
+        scenarioId: result.worker.scenarioId,
+        date: finishedAt.toISOString().slice(0, 10),
+        timestamp: finishedAt.toISOString(),
+        sha,
+        model: options.config.runnerModel,
+        judgeModel: options.config.judgeModel,
+        budget: {
+          concurrency: options.config.concurrency,
+          maxObservations: options.config.maxObservations,
+          observeEveryMs: options.config.observeEveryMs,
+          stuckAfter: options.config.stuckAfter,
+          tailLimit: options.config.tailLimit,
+        },
+        verdict,
+        status: result.worker.status,
+        outcome,
+        actions: lastObservation?.toolCallCount ?? 0,
+        durationMs:
+          firstObservation && lastObservation && lastObservation !== firstObservation
+            ? lastObservation.at - firstObservation.at
+            : undefined,
+        usage: u,
+        quality,
+        hasJudge: Boolean(judgeFile),
+        specFiles: artifact.specFiles,
+      };
+      const resultDir = await persistDurableResult(resultsRoot, durableSummary, {
+        judgeFile,
+      }).catch((cause: unknown) => {
+        console.error(
+          `  results: could not persist durable result — ${cause instanceof Error ? cause.message : String(cause)}`
+        );
+        return undefined;
+      });
+      if (resultDir) console.log(`  results → ${resultDir}`);
+      // GAP-E-6/D-62 (в): a stub entry per run, append-only — see the template documented at the
+      // top of EXPERIMENTS-LOG.md. Best-effort: a missing/moved log file must never fail a real run.
+      if (resultDir) {
+        const logPath = join(gennadyRootForResults, 'ai/flow-eval/docs/journal/EXPERIMENTS-LOG.md');
+        // SO-5: never write the absolute, machine-specific resultDir into this COMMITTED doc —
+        // relativize it against gennadyRoot first (see relativeResultDir()'s own doc-comment).
+        const resultDirForLog = relativeResultDir(gennadyRootForResults, resultDir);
+        await appendExperimentLogStub(logPath, durableSummary, resultDirForLog).catch(
+          (cause: unknown) => {
+            console.error(
+              `  results: could not append experiments-log stub — ${cause instanceof Error ? cause.message : String(cause)}`
+            );
+          }
+        );
+      }
     }
   }
 }

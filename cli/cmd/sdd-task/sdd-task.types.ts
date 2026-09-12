@@ -386,12 +386,7 @@ export function infraExemptionLine(level: string, detail: string[]): string {
   ].join('\n');
 }
 
-/**
- * @purpose Refuse worker dispatch until every declared dependency has current CLI evidence.
- * @param phaseId Requested phase id.
- * @param issue Structural dependency issue.
- * @returns Actionable failure before any worker starts.
- */
+/** @purpose Refuse worker dispatch until every declared dependency has current CLI evidence. | @param phaseId Requested phase id. | @param issue Structural dependency issue. | @returns Actionable failure before any worker starts. */
 export function dependencyNotReadyError(phaseId: string, issue: string): TaskOutcome {
   return {
     ok: false,

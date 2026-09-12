@@ -1,8 +1,11 @@
 # Flow-verification ledger — durable record (nothing lost)
 
 Append-only knowledge base for the flow-result-verification redesign. Every finding, rejected approach,
-and accepted decision lives here with its evidence, so no knowledge is lost between sessions. Companion to
-`flow-verification-redesign.md` (the plan) and `roundtrip-wall3-assessment.md` (the round-trip findings).
+and accepted decision lives here with its evidence, so no knowledge is lost between sessions. Originally
+a companion to two now-retired docs (GAP-E-5, D-46: the flow-eval doc corpus was consolidated to
+`EVAL-SPEC.md` + `RUNBOOK.md` + this ledger) — the redesign plan they were paired with is superseded by
+sections C/E below (the decisions it proposed, landed), and the round-trip findings doc's one still-open
+architectural finding is folded in as A7.
 
 ## A. CONFIRMED — works / true (file:line-backed)
 
@@ -16,12 +19,41 @@ and accepted decision lives here with its evidence, so no knowledge is lost betw
   (`phase-context.ts:98-129`); it never self-infers the phase. Confirmed operator principle — for gates.
 - **A4. The SwiftLint toolchain works headless (one-time).** Swift 6.2 toolchain in ~/Library + rpath
   shim; the SIGBUS was a trailing-slash `//` in TMPDIR. Artur's guard = 80/82 on the frozen bench.
-  (See swiftlint-setup.md.)
+  (Host-setup procedure now lives in [`../RUNBOOK.md`](../RUNBOOK.md), § "Host-setup для SwiftLint-бенча".)
 - **A5. The round-trip CYCLE works.** Given a completable pass, flash regenerates a functioning guard +
   its own probe stand (rt4: 71/82, fc2: 70/82 soft).
 - **A6. Artur's edge-case knowledge was EMPIRICAL, discovered by the flow (execute+audit agents) against
   the real swiftlint, not written up-front; it reached the spec late and only at altitude.** Confirmed
   from the RCA pack (01/03-\*.md): 6 rounds + 3 audits; checks 6/7/8 not in the initial 5-check spec.
+- **A7. Round-trip wall 3 is an unreconciled branch divergence, not a migration loss (GAP-E-5 — folded
+  in from the retired `roundtrip-wall3-assessment.md`).** Regenerating the cloud-ios guard via
+  `sdd-execute` hard-blocks on `EXECUTION_READY=no`: `shared/sdd/readiness.ts:15`'s
+  `REQUIRED_SCRIPTS` is a literal node-script-name list, and `executionReady` (`:498-510`) requires a
+  `package.json` with all 8 of them — a package.json-less Swift repo can never satisfy it
+  (`sdd-task.cmd.ts:123,459-487` hard-blocks impl/test/fix phases on `!executionReady`). The
+  language-adaptive verify (`StackPlugin`, `plugins/{node,golang,anystack}`, `gennady.yaml`
+  `stack.use`/`extraGates`) exists on `main` (matured Aug 2026) but diverged from this flow branch at
+  2026-06-29 and was never merged in — cloud-ios's own `gennady.yaml` (`stack.use: [anystack]`,
+  swiftlint/xcodebuild extraGates) targets a mechanism absent here. Proven workaround (smallest,
+  0 source changes): shim `package.json` in the fixture so `type-check`/`test`/`lint`/… shell out to
+  swiftlint/xcodebuild — `phase-verification-plan.ts:252` runs `npm run <script>` verbatim, so
+  readiness goes green and execute proceeds on the real ticket. Two other walls on the same round-trip
+  were migration-format gaps, not architecture (ticket §5 verification tables 2-column instead of the
+  v2 form → `SDD_VERIFICATION_TABLE_INVALID` ×7; spec using `<!--SCOPE-TYPE: x-->` instead of the
+  `SCOPE_TYPE` section). Open: reconcile `main`'s adaptive verify into this flow branch, or make this
+  branch's readiness/verify derive its gate list from `gennady.yaml` directly — not yet decided, tracked
+  here so the finding is not lost with the retired assessment doc.
+  **Update (layered diagnosis, `EXPERIMENTS-LOG.md` §H-iOS): the readiness workaround above unblocks
+  readiness, not closure.** `sdd-verify --phase P1`'s own gate for the P1 phase IS `sdd verify --wip
+--only=swiftlint`, which has no receipt adapter on this flow branch (`runner sdd has no receipt input
+adapter`) — no readiness shim fixes this, because the phase gate itself is swiftlint. The full closure
+  ceremony (TODO→DONE + phase/audit/review receipts) on Swift therefore stays architecturally blocked at
+  this deepest layer; it can only be "passed" by faking the verify gate. The honest fix is unchanged:
+  port `main`'s adaptive/anystack verify into this branch. Full execute-lifecycle IS proven, but on the
+  node fixture instead (`EXPERIMENTS-LOG.md` §H-node). Two independent real bugs found along the way:
+  `upgrade-verification-tables.py:role_for` tags the probe stand `probe` instead of `extra`; the
+  readiness shim stubs gates with inline `node -e`, which `verify` cannot fingerprint (needs a
+  file-backed no-op instead).
 
 ## B. REFUTED / REJECTED — does NOT work, with WHY (so we never retry these)
 

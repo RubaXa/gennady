@@ -18,14 +18,7 @@ import { phaseVerificationNodeReaches } from '../../../shared/sdd/phase-verifica
 import { collectTicketCorpus } from '../../../shared/sdd/ticket-resolve.ts';
 import { resolvePhaseContext } from './phase-context.ts';
 
-/**
- * @purpose Reconstruct the exact current mechanical plan for one persisted receipt.
- * @param root Project root.
- * @param receipt Persisted receipt.
- * @param phase Phase id.
- * @param taskPath Absolute ticket path.
- * @returns Current plan or a structural issue.
- */
+/** @purpose Reconstruct the exact current mechanical plan for one persisted receipt. | @param root Project root. | @param receipt Persisted receipt. | @param phase Phase id. | @param taskPath Absolute ticket path. | @returns Current plan or a structural issue. */
 export function expectedPhaseReceiptPlan(
   root: string,
   receipt: PhaseReceipt,
@@ -78,12 +71,7 @@ export function expectedPhaseReceiptPlan(
   };
 }
 
-/**
- * @purpose Validate that persisted successful commands exactly attest the receipt plan.
- * @param receipt Persisted phase receipt.
- * @param [gatePlan] Canonical applicable gates used to validate modern receipts.
- * @returns Completeness issue or null.
- */
+/** @purpose Validate that persisted successful commands exactly attest the receipt plan. | @param receipt Persisted phase receipt. | @param [gatePlan] Canonical applicable gates used to validate modern receipts. | @returns Completeness issue or null. */
 export function phaseReceiptCommandIssue(
   receipt: PhaseReceipt,
   gatePlan?: PhaseVerificationPlan
@@ -219,15 +207,7 @@ function supersededTargets(
   return superseded;
 }
 
-/**
- * @purpose Validate one receipt against current plan, command evidence, target bytes and tombstones.
- * @param root Project root.
- * @param receipt Persisted receipt.
- * @param phase Phase id.
- * @param taskPath Absolute ticket path.
- * @param [pendingWriter] Current ordered downstream writer allowed to supersede shared targets.
- * @returns Currentness issue or null.
- */
+/** @purpose Validate one receipt against current plan, command evidence, target bytes and tombstones. | @param root Project root. | @param receipt Persisted receipt. | @param phase Phase id. | @param taskPath Absolute ticket path. | @param [pendingWriter] Current ordered downstream writer allowed to supersede shared targets. | @returns Currentness issue or null. */
 export function phaseReceiptIssue(
   root: string,
   receipt: PhaseReceipt,

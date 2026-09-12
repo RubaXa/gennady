@@ -524,6 +524,96 @@ make clean >/dev/null 2>&1 || { echo "FAIL: make clean errored"; exit 1; }
 echo "PASS"
 `;
 
+// ── golang-slugify fixture (phase `task`, E-11) ──────────────────────────────────────────────────
+// A `task`-shaped fixture in a non-Node stack: the fixture ships `go.mod` + the brief but NO
+// `slugify.go` — the worker writes it from scratch, same shape as the infra-* fixtures above. The
+// golden test lives as a `.tmpl` (never a bare `.go` file) so it is never itself compiled in place —
+// `golden/verify.sh` copies it into an isolated temp module alongside the worker's own `slugify.go`
+// and grades there, which is what lets `go build ./...`/`go test ./...` run clean at the fixture
+// root for a correct submission (nothing under `golden/` is part of that build).
+const GOLANG_SLUGIFY_BRIEF = `# Go slugify brief
+
+Create \`slugify.go\` at the repository root implementing stable URL slugs:
+
+\`\`\`go
+package slugify
+
+func Slugify(value string) (string, error)
+\`\`\`
+
+Rules:
+- Lowercase the result; collapse any run of whitespace/punctuation into a single \`-\`; trim leading
+  and trailing \`-\`.
+- An empty or whitespace-only input is rejected with a non-nil error (never a panic).
+- No package installation beyond the Go standard library. \`go.mod\` already declares the module —
+  do not rename it or add a \`go.sum\`/third-party dependency.
+`;
+
+const GOLANG_SLUGIFY_GOLDEN_TEST_TMPL = `package slugify
+
+import "testing"
+
+func TestSlugifyGolden(t *testing.T) {
+	cases := []struct {
+		in      string
+		want    string
+		wantErr bool
+	}{
+		{"Hello World", "hello-world", false},
+		{"  Multiple   Spaces  ", "multiple-spaces", false},
+		{"Already-Slugged", "already-slugged", false},
+		{"Trailing punctuation!!!", "trailing-punctuation", false},
+		{"", "", true},
+		{"   ", "", true},
+	}
+	for _, c := range cases {
+		got, err := Slugify(c.in)
+		if c.wantErr {
+			if err == nil {
+				t.Fatalf("Slugify(%q): expected error, got nil (result=%q)", c.in, got)
+			}
+			continue
+		}
+		if err != nil {
+			t.Fatalf("Slugify(%q): unexpected error: %v", c.in, err)
+		}
+		if got != c.want {
+			t.Fatalf("Slugify(%q) = %q, want %q", c.in, got, c.want)
+		}
+	}
+}
+`;
+
+const GOLANG_SLUGIFY_VERIFY = `#!/usr/bin/env bash
+set -euo pipefail
+root="$(cd "$(dirname "$0")/.." && pwd)"
+src="$root/slugify.go"
+[ -f "$src" ] || { echo "FAIL: slugify.go missing"; exit 1; }
+grep -q '^package slugify' "$src" || { echo "FAIL: slugify.go must declare 'package slugify'"; exit 1; }
+
+work="$(mktemp -d)"
+trap 'rm -rf "$work"' EXIT
+cp "$src" "$work/slugify.go"
+cp "$root/golden/golden_test.go.tmpl" "$work/golden_test.go"
+cat > "$work/go.mod" <<'GOMOD'
+module goldencheck
+
+go 1.21
+GOMOD
+
+if ! ( cd "$work" && go vet ./... ) > "$work/vet.out" 2>&1; then
+  echo "FAIL: go vet reported problems"
+  cat "$work/vet.out"
+  exit 1
+fi
+if ! ( cd "$work" && go test ./... -run TestSlugifyGolden ) > "$work/test.out" 2>&1; then
+  echo "FAIL: golden test did not pass"
+  cat "$work/test.out"
+  exit 1
+fi
+echo "PASS"
+`;
+
 // ── brownfield-extend-cli fixture (phase `brownfield`) ───────────────────────────────────────────
 // A committed, WORKING, spec-less tool plus a change-request. Isolates the direct code-delta branch:
 // the worker must read the existing script, then add one behaviour without breaking the existing two.
@@ -1019,6 +1109,16 @@ export const FIXTURE_FILES: Record<SddEvalFixtureId, Record<string, string>> = {
     'golden/verify.sh': INFRA_MAKE_VERIFY,
     'README.md':
       '# Infra task fixture\n\nComplete the task in `inputs/brief.md`. Graded by `golden/verify.sh`.\n',
+  },
+  'golang-slugify': {
+    'go.mod': 'module golang-slugify\n\ngo 1.21\n',
+    'inputs/brief.md': GOLANG_SLUGIFY_BRIEF,
+    'golden/golden_test.go.tmpl': GOLANG_SLUGIFY_GOLDEN_TEST_TMPL,
+    'golden/verify.sh': GOLANG_SLUGIFY_VERIFY,
+    'README.md':
+      '# Go slugify fixture\n\nComplete the task in `inputs/brief.md`. Graded by `golden/verify.sh` ' +
+      '(copies your `slugify.go` and the hidden golden test into an isolated temp Go module — never ' +
+      'run in place, so it never collides with your own `go build ./...`/`go test ./...` here).\n',
   },
   'brownfield-extend-cli': {
     '.gitignore': 'node_modules/\n',

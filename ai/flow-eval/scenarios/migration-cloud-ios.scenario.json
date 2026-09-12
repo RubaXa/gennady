@@ -1,0 +1,10 @@
+[
+  {
+    "id": "MIG-cloud-ios-infra",
+    "phase": "migration",
+    "mode": "v1-to-v2",
+    "directory": "__FX__",
+    "intent": "Migrate this v1 SDD project (infra-base scope) to the installed v2 layout end-to-end using the router/migration directive chain, mechanically verified by sdd-state/sdd-check.",
+    "acceptance": "sdd-state reports FLOW_VERSION=v2; sdd-check --all introduces ZERO new error/warn findings versus the pre-migration baseline captured before the run (pre-existing v1 debt is BACKLOG, left as-is, not fixed)."
+  }
+]

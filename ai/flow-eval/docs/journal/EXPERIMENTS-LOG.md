@@ -3,6 +3,28 @@
 Дисциплина: каждый эксперимент — реальными прогонами; фиксируем оба исхода (положительный И
 отрицательный воспроизводимы). Токены = per-run usage из харнесса (см. `SddEvalUsage`).
 
+## Правило записи на прогон (GAP-E-6, D-62)
+
+С этого решения `npm run sdd-flow-eval` сам дописывает сюда ЗАГОТОВКУ на каждый прогон (см.
+`ai/flow-eval/results-archive.ts` → `appendExperimentLogStub`, вызывается из `cli.ts` сразу после
+записи `ai/flow-eval/results/<дата>-<сценарий>/summary.json`). Заготовка — не анализ: числа в ней
+механические, поля «Гипотеза/зачем» и «Итог» размечены `_(заполнить)_` и ждут человека. Формат одной
+записи:
+
+```
+## <дата> — `<сценарий>` (<verdict>/<outcome>)
+
+- **Модель:** <воркер> / судья <судья> — бюджет: concurrency=<N> max-observations=<N>
+- **Числа:** действий=<N>, время=<~N мин>, токены=<usage.total>
+- **Гипотеза/зачем:** _(заполнить)_
+- **Итог:** _(заполнить)_
+- **Сырые данные:** `ai/flow-eval/results/<дата>-<сценарий>/`
+```
+
+Записи по этому шаблону — **append-only** (не редактировать задним числом; новое наблюдение — новая
+запись, ссылающаяся на старую). Свободные разборы гипотез ниже (H1…, V1…) — предшествующий,
+замороженный формат этого же журнала до GAP-E-6; их сохранили как есть, не переписывая под шаблон.
+
 ## Разбор токенов (базовый факт)
 
 На прогонах repair/authoring **~93–95% токенов — это ВХОД (чтение директив/контекста) + reasoning,
@@ -41,7 +63,7 @@ baseline: in≈83k). Отсюда приоритет — сокращать чт
 - Dist-level A/B (H1/few-shot/attention: разница в директивах/шаблонах) — нужна **модель worktree-на-
   вариант** (свой `--gennady-root` + свой build/dist на дорожку), main-worktree = абсорбер победителей.
 
-## Правила качества (10-QUALITY-RULES.md) — итерации
+## Правила качества (историческое; текущий словарь — R1/MIGRATION/R-COMPLETE в ../EVAL-SPEC.md) — итерации
 
 - **Итерация 1 (R1+R3) + инфра E-infra-1**: объективный golden-гейт для инфра-задачи (лог-саммари)
   построен и **доказан в обе стороны** (`infra-golden.test.ts` 3/3: reference PASS, wrong FAIL,
@@ -270,7 +292,7 @@ the tools leave open» — из-за чего агент уходит в **чт�
 деградатор; выигрывает **direct + явные шаги + факты выданы механически + anti-loop**.
 
 **H0 baseline (прогон `trajlive3`, реальная траектория сохранена:
-`__tests__/fixtures/mig-cloud-ios.baseline.trajectory.json`).**
+`ai/flow-eval/__tests__/fixtures/mig-cloud-ios.baseline.trajectory.json`).**
 
 - Итог: migration **FAIL**, `FLOW_VERSION=v1`, critical-introduced: none.
 - Расход: total **190369** (in 128523 / out 3921 / reason 57925), msgs 28.
@@ -464,7 +486,7 @@ exceeded`), а не добровольная остановка. Агента у
 авторить», возможно с baseline-diff перед глазами (что было до миграции), чтобы механически отличать
 backlog от внесённого. Критерий победы: `flow-v2` green + резкое падение пост-v2 тулов/времени.
 
-**Методология зафиксирована** в `docs/11-ANALYSIS-CHECKLIST.md` (чеклист разбора результатов и построения
+**Методология зафиксирована** в `ai/flow-eval/docs/11-ANALYSIS-CHECKLIST.md` (чеклист разбора результатов и построения
 гипотез по 6 осям + артефакты харнесса).
 
 ### H8-prove — мигратор доказан: ВСЕ три яруса доходят до v2
@@ -513,7 +535,7 @@ has no Test Scenario Coverage row owned by a test phase`. **Причина:** wa
    probe→extra снимает блок.
 2. Далее `ERR_CLI_SDD_VERIFY_RECEIPT: cannot fingerprint 'node -e "process.exit(0)"'` — readiness-shim
    (`roundtrip-readiness-shim.package.json`) стабит гейты инлайновым node, который verify не фингерпринтит.
-   **Фикс: гейт — фингерпринтируемый файл-ноуп** (`./Tools/eval-noop.sh`, `exit 0`). Провалидировано: снимает.
+   **Фикс: гейт — фингерпринтируемый файл-ноуп** (`Tools/eval-noop.sh` в cloud-ios, `exit 0`). Провалидировано: снимает.
 3. **КОРЕНЬ (не шиммится):** `sdd-verify --phase P1` → `ERR_CLI_SDD_VERIFY_RECEIPT: sdd verify --wip
 --only=swiftlint … : runner sdd has no receipt input adapter`. Собственный гейт фазы P1 — **swiftlint**,
    он приходит из `main`-adaptive/anystack verify, **не смёржен в flow-ветку**. Нет адаптера → нет
@@ -544,7 +566,7 @@ total 158k токенов.
 - Ticket `**Status:** [x] DONE`.
 - Execution log: 3 закрытых раунда (DONE-строки).
 - Owning spec `core.spec.md`: **2× SDD_AUDIT_RECEIPT + 2× SDD_REVIEW_RECEIPT**; тикет: 4× SDD_PHASE_RECEIPT.
-- Артефакт `src/slugify.ts` записан.
+- Артефакт `<sandbox>/src/slugify.ts` записан.
 
 **Вывод:** полный форвард-флоу — TODO → implement → verify → close round → phase-receipts → group
 audit+review receipts → DONE — **честно доказан end-to-end** на нативных гейтах. Судья дал `fail`

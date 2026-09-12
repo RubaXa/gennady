@@ -254,12 +254,7 @@ export function fileError(ticket: string): CheckResult {
   );
 }
 
-/**
- * @purpose Build one fail-closed filesystem-observation result with the exact path and retained reason.
- * @param path Selected or in-scope path that could not be read.
- * @param reason Original filesystem diagnostic.
- * @returns Exit-1 result that cannot be mistaken for clean.
- */
+/** @purpose Build one fail-closed filesystem-observation result with the exact path and retained reason. | @param path Selected or in-scope path that could not be read. | @param reason Original filesystem diagnostic. | @returns Exit-1 result that cannot be mistaken for clean. */
 export function readFailed(path: string, reason: string): CheckResult {
   return guidedCheckFailure(
     ERR_CLI_SDD_CHECK_READ_FAILED,

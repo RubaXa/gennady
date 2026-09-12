@@ -10,21 +10,25 @@
 #   roundtrip-eval.sh grade   [runid]   — run the frozen 82-probe bench on the regenerated guard + factors
 #   roundtrip-eval.sh status  [runid]   — one-line progress of a run in flight
 # The bench + Artur's guard are kept in $RT/golden (agent must never read/edit golden per the phase prompt).
-# TMPDIR is normalised WITHOUT a trailing slash — see ai/flow-eval/docs/journal/swiftlint-setup.md.
+# TMPDIR is normalised WITHOUT a trailing slash — see ai/flow-eval/docs/RUNBOOK.md ("Host-setup для SwiftLint-бенча").
 set -euo pipefail
 
 export PATH="/opt/homebrew/bin:$PATH"
 export TMPDIR=/tmp                                            # no trailing slash: SwiftLint SIGBUS guard
 
+# GAP-E-4: same fix as migration-eval.sh — GEN_ROOT defaults to THIS script's own repo root (no
+# hardcoded author worktree name) and RT gains an env-override with a $HOME-relative default (no
+# literal /Users/<name> path), so a clean clone works with zero env vars beyond REPO.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="${REPO:-/Users/k.lebedev/Developer/cloud-ios}"
-GEN_ROOT="${GEN_ROOT:-/Users/k.lebedev/Developer/gennady/.claude/worktrees/sdd-v2-rc52-followup}"
+GEN_ROOT="${GEN_ROOT:-$(cd "$SCRIPT_DIR/../../.." && pwd)}"
 GEN="$GEN_ROOT/dist/gennady.js"
 RTBASE="${RTBASE:-d9de0f7c16}"                               # migrated v2 base (spec+tickets+guard+bench)
 BASEURL="${BASEURL:-http://127.0.0.1:4098}"
 MODEL="${MODEL:-llm-proxy/deepseek-v4-flash}"
 MAX_OBS="${MAX_OBS:-60}"
 RUNID="${2:-r$(date +%s)}"
-RT="/Users/k.lebedev/.gennady/eval/cloud-ios/rt-regen"
+RT="${RT:-$HOME/.gennady/eval/cloud-ios/rt-regen}"
 BR="eval/run/roundtrip/regen"
 GUARD="Tools/check-swiftlint-exceptions.sh"
 TICKET="specs/infra-base/infra-base.task.IB-script.md"
@@ -34,7 +38,7 @@ SCENARIO="${SCENARIO:-$GEN_ROOT/ai/flow-eval/.results/rt-execute.scenario.json}"
 log() { printf '[%s] %s\n' "$(date +%H:%M:%S)" "$*"; }
 
 # Enforce the ~/Developer/ rule BEFORE touching anything (prep/execute) — see
-# ai/flow-eval/docs/03-SETUP.md. Fails fast and loud, not mid-operation.
+# ai/flow-eval/docs/RUNBOOK.md. Fails fast and loud, not mid-operation.
 "$GEN_ROOT/ai/flow-eval/scripts/require-developer-repo.sh" "$REPO"
 
 prep() {
@@ -68,7 +72,7 @@ prep() {
 
   # Wall 1 — upgrade every migrated ticket's §5 table to the 3-column v2 schema (sdd-task rejects the
   # old 2-column form). Wall 3 — readiness shim so this node-hardcoded branch lets a Swift repo reach
-  # EXECUTION_READY (see docs/journal/roundtrip-wall3-assessment.md; the adaptive verify lives unmerged on main).
+  # EXECUTION_READY (see docs/journal/flow-verification-ledger.md, finding A7; the adaptive verify lives unmerged on main).
   log "wall-1: upgrade verification tables to v2 3-column schema"
   python3 "$GEN_ROOT/ai/flow-eval/scripts/upgrade-verification-tables.py" "$RT/specs" | sed 's/^/    /'
   log "wall-3: write readiness shim package.json"

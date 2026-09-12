@@ -5,7 +5,7 @@
 #   Exit non-zero with a Russian explanation (why / what stopped / how to fix) otherwise.
 # @consumers: roundtrip-eval.sh, migration-eval.sh — called at the start of every subcommand that
 #   touches an external repo (prep/run/execute), so a misplaced repo fails BEFORE anything is created
-#   or modified. See ai/flow-eval/docs/03-SETUP.md for the full rationale.
+#   or modified. See ai/flow-eval/docs/RUNBOOK.md ("Правило ~/Developer/ для внешних репозиториев") for the full rationale.
 set -euo pipefail
 
 repo="${1:-}"
