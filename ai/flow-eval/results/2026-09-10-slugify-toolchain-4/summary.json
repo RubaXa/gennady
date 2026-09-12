@@ -1,0 +1,46 @@
+{
+  "scenarioId": "slugify-toolchain",
+  "date": "2026-09-10",
+  "timestamp": "2026-09-10T19:06:51.183Z",
+  "sha": "bc2e8d34e3237ea42be6e318ca2e6becb19290c1",
+  "model": {
+    "providerID": "llm-proxy",
+    "modelID": "deepseek-v4-flash"
+  },
+  "judgeModel": {
+    "providerID": "llm-proxy",
+    "modelID": "deepseek-v4-flash"
+  },
+  "budget": {
+    "concurrency": 1,
+    "maxObservations": 20,
+    "observeEveryMs": 60000,
+    "stuckAfter": 4,
+    "tailLimit": 20
+  },
+  "verdict": "pass",
+  "status": "completed",
+  "outcome": "pass",
+  "actions": 21,
+  "durationMs": 300166,
+  "usage": {
+    "messages": 50,
+    "input": 85631,
+    "output": 10290,
+    "reasoning": 9569,
+    "cacheRead": 3058048,
+    "cacheWrite": 0,
+    "total": 105490,
+    "cost": 0
+  },
+  "quality": {
+    "rule": "R1",
+    "pass": true,
+    "detail": "sdd-check --all clean"
+  },
+  "hasJudge": true,
+  "specFiles": [
+    "/private/tmp/claude-503/-Users-k-lebedev-Developer-gennady--claude-worktrees-nice-panini-8aa14e/6bba198d-7bf3-4cf3-97b7-328c67565acc/scratchpad/e09-sandboxes/run2/sdd-flow-eval-uh6pTD/specs/slugify/core/core.spec.md",
+    "/private/tmp/claude-503/-Users-k-lebedev-Developer-gennady--claude-worktrees-nice-panini-8aa14e/6bba198d-7bf3-4cf3-97b7-328c67565acc/scratchpad/e09-sandboxes/run2/sdd-flow-eval-uh6pTD/specs/slugify/slugify.spec.md"
+  ]
+}

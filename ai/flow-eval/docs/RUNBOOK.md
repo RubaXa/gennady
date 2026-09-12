@@ -224,15 +224,17 @@ ai/flow-eval/scripts/migration-eval.sh grade [runid]
 ### Детерминированные метрики сессии (обе внешние процедуры)
 
 ```bash
-python3 ai/flow-eval/scripts/session-metrics.py record --run <runid> --session <session> --fixture <dir> [--bench-out <file>]
-python3 ai/flow-eval/scripts/session-metrics.py gate --fixture <dir>       # COMPLETION GATE: RED/GREEN
+python3 ai/flow-eval/scripts/session-metrics.py record --run <runid> --session <session> --fixture <dir> [--bench-out <file>] [--ticket <file>] [--spec <file>] [--guard <file>]
+python3 ai/flow-eval/scripts/session-metrics.py gate --fixture <dir> [--ticket <file>] [--spec <file>] [--guard <file>]       # COMPLETION GATE: RED/GREEN
 python3 ai/flow-eval/scripts/session-metrics.py compare <run_before> <run_after>   # non-regression
 python3 ai/flow-eval/scripts/session-telemetry.py <session|фрагмент>       # обзервабилити, ничего не решает
 ```
 
-`record` пишет одну JSON-строку в `ai/flow-eval/.results/metrics-ledger.jsonl`. `gate`/`compare`
-завязаны на конкретную фикстуру (`state_metrics()` в `session-metrics.py`) — при переносе на другой
-репозиторий адаптировать эту функцию.
+`record` пишет одну JSON-строку в `ai/flow-eval/results/metrics-ledger.jsonl` (постоянно, D-62). `gate`/`compare`
+опираются на `state_metrics()` в `session-metrics.py`, чьи пути по умолчанию — infra-base/cloud-ios
+round-trip фикстура; `--ticket`/`--spec`/`--guard` (E-03) переопределяют эти пути под ЛЮБУЮ фикстуру
+(включая встроенные `scenarios.json`-фикстуры без единого тикета — для них `ticket_status`/`round_closed`/
+`*_receipt` останутся `?`/`false`, что верно отражает «не применимо», а не дефект).
 
 ### Host-setup для SwiftLint-бенча (одноразово, только для round-trip cloud-ios)
 

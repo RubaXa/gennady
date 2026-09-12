@@ -114,7 +114,7 @@ PASS|FAIL — …`), затем `usage: total=… cost=…`, затем (GAP-E-6
 | `npm run results:table`                                                 | регенерирует таблицу в `journal/RESULTS.md` из `results/**/summary.json`                          | правит `journal/RESULTS.md`                                                                                                                                |
 | `npm run results:table:check`                                           | та же регенерация, но только проверка (freshness-гейт, exit 1 при дифф)                           | ничего                                                                                                                                                     |
 | `ai/flow-eval/operator-approve.sh <sandbox>`                            | симулирует полное одобрение оператора (портал + Decision Log)                                     | правки в `<sandbox>/specs/**`                                                                                                                              |
-| `python3 ai/flow-eval/scripts/session-metrics.py record\|gate\|compare` | детерминированные метрики сессии и completion-гейт                                                | `.results/metrics-ledger.jsonl`                                                                                                                            |
+| `python3 ai/flow-eval/scripts/session-metrics.py record\|gate\|compare` | детерминированные метрики сессии и completion-гейт                                                | `ai/flow-eval/results/metrics-ledger.jsonl`                                                                                                                |
 | `python3 ai/flow-eval/scripts/session-telemetry.py <session>`           | разбор траектории воркера постфактум (только чтение)                                              | ничего                                                                                                                                                     |
 | `node --import tsx ai/flow-eval/scripts/sandbox.ts clean [--dry]`       | подчищает осиротевшие песочницы                                                                   | удаляет `sdd-flow-eval-*`, `gen-*`, `diag-*`                                                                                                               |
 | `ai/flow-eval/scripts/check-fixture-hygiene.sh <fixture>`               | E-16: воспроизводимость + отсутствие файлов класса секретов во внешней фикстуре                   | ничего (диагностика)                                                                                                                                       |
@@ -138,8 +138,8 @@ flowchart TD
   G -->|"отдельная сессия, узкая evidence"| H["VERDICT: pass|fail|inconclusive"]
   B1 --> I["quality-gate.ts / migration-grade.ts"]
   I -->|"R1: sdd-check --all clean"| J["QualityRuleResult"]
-  I -->|"R-COMPLETE: артефакт+DONE+раунд+receipts с диска"| J
-  I -->|"MIGRATION: FLOW_VERSION=v2 + 0 новых критических находок"| J
+  I -->|"R-COMPLETE: артефакт изменён vs корневой коммит+DONE+раунд+валидные receipts (verdict+подпись)"| J
+  I -->|"MIGRATION: FLOW_VERSION=v2 + 0 новых структурных + 0 ОСТАВШИХСЯ исполнимости"| J
   H --> K["cli.ts: отчёт"]
   J --> K
   K --> L["results-archive.ts: results/<дата>-<сценарий>/ (постоянно)"]
@@ -184,13 +184,27 @@ flowchart TD
   только со строкой `quality R1`. Применяется к сценариям, производящим спеки (все фазы кроме `task`,
   для `brownfield` — только режимы `recover-spec`/`delta-to-spec`/`modify-via-spec`).
 - **`R-COMPLETE`** (реальное завершение; opt-in, требует поле `completion` в сценарии): pass iff
-  артефакт существует И тикет `**Status:** [x]` И внутри `<!--SECTION:EXECUTION_LOG-->` есть строка
-  `- [x] … DONE` И на владеющей спеке есть `SDD_AUDIT_RECEIPT` И `SDD_REVIEW_RECEIPT`. Решающий над
-  `R1` (чистая структура ≠ доведённая до конца работа).
-- **`MIGRATION`** (оценка миграции, фаза `migration`): pass iff `FLOW_VERSION=v2` И прогон не внёс
-  новых находок `SDD_BROKEN_SPEC_REF` / `SDD_BROKEN_SPEC_ANCHOR` / `ERR_CLI_SDD_CHECK_READ_FAILED`
-  относительно baseline, снятого ДО воркера; предсуществующие v1-находки — бэклог, не провал. (Ровно
-  эти три кода, не «любая новая ERROR-находка».)
+  артефакт РЕАЛЬНО ПРОИЗВЕДЁН (отличается от корневого коммита песочницы `chore: initialize eval
+fixture`, а не просто «файл непуст» — V-BATCH-22 verdict B-3: фикстура `slugify-toolchain` коммитит
+  заглушку артефакта при провижининге, так что «непусто» было бы истинно и без единой правки воркера)
+  И тикет `**Status:** [x]` И внутри `<!--SECTION:EXECUTION_LOG-->` есть строка `- [x] … DONE` И на
+  владеющей спеке есть валидная квитанция аудита И ревью — валидная значит: разбираемый JSON, `kind`
+  совпадает с маркером (аудит ≠ ревью — не одна и та же вставленная не туда квитанция), явный
+  `"verdict":"PASS"` (не любая непустая строка), и подпись (`signature`) всё ещё совпадает с живым
+  переисчисленным состоянием тикета — той же защитой от подделки/протухания
+  (`shared/sdd/group-receipt.ts`'s `groupReceiptIssue`), которой `sdd-check`'s `checkGroupReceipts`
+  уже пользуется. Решающий над `R1` (чистая структура ≠ доведённая до конца работа).
+- **`MIGRATION`** (оценка миграции, фаза `migration`): pass iff `FLOW_VERSION=v2` И (а) прогон не внёс
+  новых находок среди СТРУКТУРНЫХ кодов `SDD_BROKEN_SPEC_REF` / `SDD_BROKEN_SPEC_ANCHOR` /
+  `ERR_CLI_SDD_CHECK_READ_FAILED` относительно baseline, снятого ДО воркера (предсуществующие
+  v1-находки этого класса — бэклог, не провал; вне зоны ответственности миграции) И (б) НИ ОДНОЙ
+  находки среди кодов ИСПОЛНИМОСТИ `SDD_VERIFICATION_TABLE_INVALID` / `SDD_COVERAGE_POLICY_INVALID` НЕ
+  ОСТАЁТСЯ в `after` — независимо от baseline (V-BATCH-22 verdict B-2: baseline-diff по (б) пропускал
+  миграцию, которая не чинит вообще ничего, пока счётчик не рос; на E-14 «0 починенных таблиц» дал бы
+  `pass:true`). Ровно эти пять кодов, не «любая новая ERROR-находка». Коды исполнимости — бар,
+  добавленный E-07/batch 22, red-first по L-15: тикет, доведённый только до анкоров v1→v2 без апгрейда
+  таблицы Verification/маркеров `PHASE_RECEIPTS:v1`/`COVERAGE_POLICY:v1`, красный на этом баре ДО того,
+  как мигратор получает эту возможность — E-06.
 - **Golden фикстуры** (`task`, `brownfield`): pass iff `<sandbox>/golden/verify.sh` exit 0 — самый
   сильный доступный бар, где он есть.
 
@@ -212,7 +226,7 @@ flowchart TD
   вариант — в отдельном worktree, прогони baseline и treatment на одном сценарии/модели несколько раз,
   сравнивай по приоритету — механика (бинарна) → расход (токены/вызовы) → `session-metrics.py compare`
   (non-regression: `steps`/`tool_calls_total` не выросли, completion-сигналы не регрессировали). Оба
-  исхода — удачный и неудачный — фиксируются: числа прогона в `.results/metrics-ledger.jsonl`, гипотеза
+  исхода — удачный и неудачный — фиксируются: числа прогона в `ai/flow-eval/results/metrics-ledger.jsonl`, гипотеза
   и итог в [`journal/EXPERIMENTS-LOG.md`](./journal/EXPERIMENTS-LOG.md), принятое/отклонённое решение —
   в [`journal/flow-verification-ledger.md`](./journal/flow-verification-ledger.md). При разборе прогона
   и выборе, ЧТО именно мутировать, держи рядом [`11-ANALYSIS-CHECKLIST.md`](./11-ANALYSIS-CHECKLIST.md) —
@@ -286,9 +300,13 @@ Authoring batches run sequentially (`--concurrency 1`) — parallel authoring wo
 
 **Quality rules.** See "Единый словарь правил качества" above (`R1`, `R-COMPLETE`, `MIGRATION`,
 golden) — same three rules, same english summary: `R1` = `sdd-check --all` clean (false-FAIL on
-`0 error(s), N warning(s)` — read the error count yourself); `R-COMPLETE` = artifact + DONE + closed
-round + both receipts, decisive over `R1`; `MIGRATION` = `FLOW_VERSION=v2` + zero new findings among
-exactly `SDD_BROKEN_SPEC_REF`/`SDD_BROKEN_SPEC_ANCHOR`/`ERR_CLI_SDD_CHECK_READ_FAILED`.
+`0 error(s), N warning(s)` — read the error count yourself); `R-COMPLETE` = artifact CHANGED vs the
+sandbox's root commit (not merely present) + DONE + closed round + both receipts VALID (parsed JSON,
+`kind` matching its marker, explicit `"verdict":"PASS"`, signature current against the live
+re-derived ticket state — V-BATCH-22 B-3), decisive over `R1`; `MIGRATION` = `FLOW_VERSION=v2` + zero
+new findings among the three STRUCTURAL codes (`SDD_BROKEN_SPEC_REF`/`SDD_BROKEN_SPEC_ANCHOR`/
+`ERR_CLI_SDD_CHECK_READ_FAILED`, baseline-diffed) + zero REMAINING findings (baseline or not) among the
+two EXECUTABILITY codes (`SDD_VERIFICATION_TABLE_INVALID`/`SDD_COVERAGE_POLICY_INVALID` — V-BATCH-22 B-2).
 
 **Stop conditions — halt and report; never retry automatically.**
 

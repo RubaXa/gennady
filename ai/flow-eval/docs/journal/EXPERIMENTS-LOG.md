@@ -683,3 +683,108 @@ protocol), НЕ читать SKILL.md/router/scope-цепочку; не реве
 router/skill-цепочки. Подтверждает: де-ceremony-плейбук переносится с миграции на execute. N=1, но эффект
 крупный и структурный (0 traversal, orient 43→22), согласован с сильным prior (migration B4 ×200 reason).
 Затрагивает и cloud-ios round-trip (тоже execute-фаза) — там пригодится, когда wall-3 разблокируют.
+
+## 2026-09-10 — `infra-log-summary` (pass/pass)
+
+- **Модель:** llm-proxy/deepseek-v4-flash / судья llm-proxy/deepseek-v4-flash — бюджет: concurrency=1 max-observations=6
+- **Числа:** действий=11, время=~2 мин, токены=16328
+- **Гипотеза/зачем:** E-03 — первый живой прогон ПОСЛЕ фикса свежести dist (`3d5f66a7`): нужно доказать,
+  что механизм эвала (golden-фикстура + judge) вообще жив на пересобранном CLI, прежде чем переносить
+  `metrics-ledger.jsonl` из gitignore'нного `.results/` в постоянный `results/` (D-62). Без `--keep` —
+  сырой прогон на выброс, ручная golden-верификация не проводилась (её делают прогоны 2/3 ниже).
+- **Итог:** `verdict: pass`, `outcome: pass` — механизм жив на пересобранном CLI. Без `--keep` песочница
+  не сохранена, поэтому `golden/verify.sh` вручную не перепроверялся для этого конкретного прогона;
+  считается разведочным, не входит в «2 golden-подтверждённых прогона» приёмки E-03.
+- **Сырые данные:** `ai/flow-eval/results/2026-09-10-infra-log-summary`
+
+## 2026-09-10 — `infra-log-summary` (pass/pass)
+
+- **Модель:** llm-proxy/deepseek-v4-flash / судья llm-proxy/deepseek-v4-flash — бюджет: concurrency=1 max-observations=6
+- **Числа:** действий=10, время=~2 мин, токены=14327
+- **Гипотеза/зачем:** E-03, прогон 1/2 «golden exit 0» приёмки — с `--keep`, чтобы песочницу можно было
+  вручную прогнать через `golden/verify.sh` и записать сессию в `metrics-ledger.jsonl` (первая
+  реальная запись после переноса ledger в постоянный `results/`).
+- **Итог:** `bash golden/verify.sh` в сохранённой песочнице → `PASS`, exit 0. Записано в
+  `metrics-ledger.jsonl` под `E-03-golden-infra-log-summary-2` (`session-metrics.py record`,
+  `tool_calls_total=10`) — см. R-E-03 §4 п. «отклонения» на путаницу меток -2/-3, исправленную этой
+  правкой (V-BATCH-22 verdict B-5).
+- **Сырые данные:** `ai/flow-eval/results/2026-09-10-infra-log-summary-2`
+
+## 2026-09-10 — `infra-log-summary` (pass/pass)
+
+- **Модель:** llm-proxy/deepseek-v4-flash / судья llm-proxy/deepseek-v4-flash — бюджет: concurrency=1 max-observations=6
+- **Числа:** действий=11, время=~2 мин, токены=15114
+- **Гипотеза/зачем:** E-03, прогон 2/2 «golden exit 0» приёмки — реплика прогона выше на том же
+  сценарии, тем же `--keep`, чтобы приёмка «2 golden-прогона» опиралась на два независимых сеанса, а
+  не на один.
+- **Итог:** `bash golden/verify.sh` в сохранённой песочнице → `PASS`, exit 0. Записано в
+  `metrics-ledger.jsonl` под `E-03-golden-infra-log-summary-3` (`session-metrics.py record`,
+  `tool_calls_total=11`).
+- **Сырые данные:** `ai/flow-eval/results/2026-09-10-infra-log-summary-3`
+
+## 2026-09-10 — `slugify-toolchain` (fail/fail)
+
+- **Модель:** llm-proxy/deepseek-v4-flash / судья llm-proxy/deepseek-v4-flash — бюджет: concurrency=1 max-observations=20
+- **Числа:** действий=21, время=~5 мин, токены=97531
+- **Гипотеза/зачем:** E-09 — первый живой прогон, где нужен MECHANICAL `R-COMPLETE` pass (артефакт + `[x] DONE` +
+  закрытый раунд + group-квитанции аудита/ревью), а не вердикт судьи (D-45: судья — диагностика, не гейт).
+- **Итог:** `quality R1: pass` (`sdd-check --all` чист) и `quality R-COMPLETE: pass` (артефакт собран, тикет DONE,
+  раунд закрыт, обе квитанции на месте) — `gate: pass`, `batch outcome: exit 0`. Вердикт судьи `fail` —
+  диагностика: судья указывает на self-attested аудит/ревью в том же воркер-сеансе (не отдельным
+  под-агентом) и на несовпадение состава DIFF с заявленными файлами; это наблюдение за качеством процесса,
+  но по D-45/L-14 оно не входит в агрегированный exit-код и не блокирует приёмку E-09.
+- **Сырые данные:** `ai/flow-eval/results/2026-09-10-slugify-toolchain`
+
+## 2026-09-10 — `slugify-toolchain` (fail/fail)
+
+- **Модель:** llm-proxy/deepseek-v4-flash / судья llm-proxy/deepseek-v4-flash — бюджет: concurrency=1 max-observations=30
+- **Числа:** действий=19, время=~5 мин, токены=81141
+- **Гипотеза/зачем:** Повторный (второй) прогон того же сценария — реплика для «2 pass» из приёмки E-09
+  (`50-TRACK-EVAL.md` §4.1: `R-COMPLETE pass; R1 чист; 2 pass`), на том же SHA `5fcf286a`, тем же `opencode
+serve` (порт 4097, `llm-proxy/deepseek-v4-flash`).
+- **Итог:** Тот же механический результат, что и в первом прогоне — `quality R1: pass`, `quality R-COMPLETE:
+pass`, `gate: pass`, `batch outcome: exit 0`. Вердикт судьи снова `fail` (тот же self-audit паттерн,
+  диагностика, не гейт). Два прогона подряд с `R-COMPLETE pass` + `R1` чист закрывают требование «2 pass» —
+  это первый живой прогон в журнале, где механический бар `R-COMPLETE` вообще проходит (до этого момента
+  ledger `fc2-baseline` не знал ни одного такого прогона).
+- **Сырые данные:** `ai/flow-eval/results/2026-09-10-slugify-toolchain-2`
+
+## 2026-09-10 — `slugify-toolchain` (fail/fail)
+
+- **Модель:** llm-proxy/deepseek-v4-flash / судья llm-proxy/deepseek-v4-flash — бюджет: concurrency=1 max-observations=20
+- **Числа:** действий=20, время=~5 мин, токены=118839
+- **Гипотеза/зачем:** V-BATCH-22 verdict (B-3) required RE-running E-09 live, TWICE, after `checkCompletion`
+  stopped accepting a bare `SDD_AUDIT_RECEIPT`/`SDD_REVIEW_RECEIPT` substring and started requiring a
+  parsed receipt with `kind` matching its marker, an explicit `"verdict":"PASS"`, and a signature
+  current against the ticket's live re-derived state (`groupReceiptIssue`) — honestly re-checking
+  whether the ORIGINAL two E-09 "pass" runs would still pass under the hardened rule, per the operator's
+  instruction not to force a green result.
+- **Итог:** `quality R1: pass` but `quality R-COMPLETE: FAIL` — `artifact built but no group audit
+receipt on spec (no receipt recorded); no group code-review receipt on spec (no receipt recorded)`.
+  Inspected the kept sandbox directly: the ticket genuinely reached `[x] DONE` with a closed Round 1
+  (all three checkboxes checked) and `<sandbox>/src/slugify.ts` genuinely changed (26 lines vs. the sandbox's root
+  commit), but the worker's observation window ended (stuck-detected during the group-audit subagent
+  dispatch) before `sdd-log <group> audit-receipt`/`review-receipt` ran — the spec file has NO receipt
+  block at all, of either kind. This is a genuine "abandoned before the receipt step" outcome, not an
+  artifact of the hardened parsing: the OLD naive `spec.includes(...)` check would have failed identically
+  here (there is no substring to find either). `gate: FAIL`, `batch outcome: exit 1`. Judge verdict:
+  `fail` (also diagnostic, not the gate).
+- **Сырые данные:** `ai/flow-eval/results/2026-09-10-slugify-toolchain-3`
+
+## 2026-09-10 — `slugify-toolchain` (pass/pass)
+
+- **Модель:** llm-proxy/deepseek-v4-flash / судья llm-proxy/deepseek-v4-flash — бюджет: concurrency=1 max-observations=20
+- **Числа:** действий=21, время=~5 мин, токены=105490
+- **Гипотеза/зачем:** Same re-run as above, second of two — the operator's instruction was "twice", so
+  a second independent session was needed either way, whichever way the first one landed.
+- **Итог:** `quality R1: pass` (`sdd-check --all` clean) and `quality R-COMPLETE: pass` — `artifact built
+  - ticket DONE + round closed + receipts (verdict + provenance checked)`. This time verified the
+STRENGTHENED way: both `SDD_AUDIT_RECEIPT`/`SDD_REVIEW_RECEIPT`blocks are well-formed JSON,`kind`matches their marker,`verdict`is an explicit`"PASS"`, and the signature matches the ticket's live
+re-derived state (`deriveGroupState`/`groupReceiptIssue`— the SAME check`sdd-check`'s
+`checkGroupReceipts`uses).`gate: pass`, `batch outcome: exit 0`. Judge verdict: `pass`too (unlike
+every earlier`slugify-toolchain`run, where the judge flagged a self-audit pattern) — first time judge
+and mechanical gate agree on this scenario. Note:`summary.json`'s persisted `quality.rule`reads`R1`,
+not `R-COMPLETE`— a pre-existing`cli.ts` quirk (`quality`is only overwritten by R-COMPLETE when it
+fails or no quality was set yet,`cli.ts:397`), unrelated to this batch's fix; the terminal log line
+(`quality R-COMPLETE: pass`) is the authoritative record of what actually ran.
+- **Сырые данные:** `ai/flow-eval/results/2026-09-10-slugify-toolchain-4`

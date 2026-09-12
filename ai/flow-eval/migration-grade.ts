@@ -20,18 +20,49 @@ export type MigrationGrade = {
   flowV2: boolean;
   /** @purpose Codes whose count rose vs baseline — the findings the migration itself introduced. */
   introduced: Array<{ code: string; delta: number; severity: 'error' | 'warn' }>;
+  /** @purpose Executability codes (`MIGRATION_EXECUTABILITY_CODES`) still present in `after`, at all —
+   *  regardless of baseline (V-BATCH-22 fix, B-2): empty only when the migrated ticket is truly usable. */
+  executabilityRemaining: Array<{ code: string; count: number; severity: 'error' | 'warn' }>;
   pass: boolean;
   detail: string;
 };
 
 // Structural-integrity codes a migration MUST NOT introduce: broken spec references/anchors and
 // unresolvable rule evidence mean relocation/rename lost a link — the migration's own mechanical job.
-// Everything else (BDD coverage, verification-table shape, language calques, long cells) is CONTENT
-// debt: pre-existing or authoring-level, addressed by a later reconcile/authoring pass, not migration.
-const MIGRATION_CRITICAL_CODES = new Set([
+// Everything else (BDD coverage, language calques, long cells) is CONTENT debt: pre-existing or
+// authoring-level, addressed by a later reconcile/authoring pass, not migration.
+//
+// E-07 (batch 22, red-first per L-15): a v1 ticket's Verification table is 2-column
+// (`| Command | Required by |`) — the v2 schema is 3-column with `Role`, and v1 never carried the
+// `PHASE_RECEIPTS:v1`/`COVERAGE_POLICY:v1` markers at all. `sdd-check`/`sdd-task`/`sdd-verify` reject
+// the 2-column shape with SDD_VERIFICATION_TABLE_INVALID (`cli/cmd/sdd-check/sdd-check.cmd.ts`) — this
+// is the exact wall a real execute run hits on a migrated-but-not-table-upgraded ticket
+// (`docs/journal/flow-verification-ledger.md` finding A7). This code (and its schema-aware sibling,
+// which fires once a ticket claims the v1 marker but gets a required field wrong) are now migration
+// bars: a migration that only injects SECTION anchors (`sdd-migrate anchors`) without upgrading the
+// table produces a ticket `sdd-task`/`sdd-verify` refuse — proven RED by the test below on a frozen,
+// really-captured `sdd-check` run, BEFORE the migrator gains that capability (E-06 — deliberately
+// ordered after this task, so the bar is not "already green" when it lands).
+//
+// Two tiers, deliberately graded differently (V-BATCH-22 verdict B-2 — the fix this comment
+// documents): STRUCTURAL codes stay baseline-diffed (a migration must not introduce NEW ones; a v1
+// repo's own pre-existing broken spec refs are out of migration's scope — content debt, per STEP_8).
+// EXECUTABILITY codes are the migration's OWN mechanical job (the table/marker upgrade) — baseline-
+// diffing them let a migration that fixes NOTHING pass, as long as the count never rose (see the
+// "shrank but nonzero" / "unchanged vs baseline" cases this used to wave through). Executability is
+// binary: any occurrence in `after`, AT ALL, fails the bar — REMAINING, not just introduced.
+const MIGRATION_STRUCTURAL_CODES = new Set([
   'SDD_BROKEN_SPEC_REF',
   'SDD_BROKEN_SPEC_ANCHOR',
   'ERR_CLI_SDD_CHECK_READ_FAILED',
+]);
+const MIGRATION_EXECUTABILITY_CODES = new Set([
+  'SDD_VERIFICATION_TABLE_INVALID',
+  'SDD_COVERAGE_POLICY_INVALID',
+]);
+const MIGRATION_CRITICAL_CODES = new Set([
+  ...MIGRATION_STRUCTURAL_CODES,
+  ...MIGRATION_EXECUTABILITY_CODES,
 ]);
 
 /** @purpose Parse an sdd-check run into a code→count histogram. */
@@ -88,17 +119,28 @@ export function computeMigrationGrade(
 ): MigrationGrade {
   const flowVersion = parseFlowVersion(stateOutput);
   const flowV2 = flowVersion === 'v2';
-  const introduced = diffIntroduced(
-    baseline,
-    parseFindingHistogram(checkOutput),
-    parseSeverities(checkOutput)
-  );
-  const criticalIntroduced = introduced.filter((i) => MIGRATION_CRITICAL_CODES.has(i.code));
-  const pass = flowV2 && criticalIntroduced.length === 0;
+  const afterHist = parseFindingHistogram(checkOutput);
+  const severities = parseSeverities(checkOutput);
+  const introduced = diffIntroduced(baseline, afterHist, severities);
+  const criticalIntroduced = introduced.filter((i) => MIGRATION_STRUCTURAL_CODES.has(i.code));
+
+  // V-BATCH-22 fix (B-2): executability codes are graded on what REMAINS in `after`, not on the
+  // baseline delta — a migration that fixes nothing (or only partially) must not pass just because
+  // the count didn't rise. See the module-level comment on MIGRATION_EXECUTABILITY_CODES.
+  const executabilityRemaining = Object.entries(afterHist)
+    .filter(([code, count]) => MIGRATION_EXECUTABILITY_CODES.has(code) && count > 0)
+    .map(([code, count]) => ({ code, count, severity: severities[code] ?? ('error' as const) }))
+    .sort((a, b) => b.count - a.count);
+
+  const pass = flowV2 && criticalIntroduced.length === 0 && executabilityRemaining.length === 0;
   const critSummary =
     criticalIntroduced.length === 0
       ? 'none'
       : criticalIntroduced.map((i) => `${i.code}+${i.delta}`).join(', ');
+  const remainingSummary =
+    executabilityRemaining.length === 0
+      ? 'none'
+      : executabilityRemaining.map((i) => `${i.code}×${i.count}`).join(', ');
   const backlog = introduced
     .filter((i) => !MIGRATION_CRITICAL_CODES.has(i.code))
     .map((i) => `${i.code}+${i.delta}`);
@@ -106,9 +148,11 @@ export function computeMigrationGrade(
     flowVersion,
     flowV2,
     introduced,
+    executabilityRemaining,
     pass,
     detail:
       `FLOW_VERSION=${flowVersion || '?'} · critical-introduced: ${critSummary}` +
+      ` · executability-remaining: ${remainingSummary}` +
       (backlog.length > 0 ? ` · backlog: ${backlog.join(', ')}` : ''),
   };
 }
