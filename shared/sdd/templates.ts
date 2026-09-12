@@ -658,7 +658,7 @@ MUST NOT own a second test-suite run.
 runtime setup rule (\`nodejs-npm-setup\` or equivalent) active they resolve to the read-only
 \`npx gennady sdd-verify --profile full\` and a whole-project wrapper that passes broad roots to the
 declared argument-forwarding repair prefixes. The phase runtime boundary, not this static shape,
-proves the actual write-zone. Task tickets do NOT cite them, and they do NOT put the phase
+enforces the actual write-zone. Task tickets do NOT cite them, and they do NOT put the phase
 ladder line in §Verification either: STEP_5 already runs
 \`npx gennady sdd-verify --task <ticket-path> --phase <PhaseID>\`, so a row for it would make every
 phase run the ladder twice. §Verification carries ONLY the extra commands
@@ -1309,7 +1309,7 @@ const TASK_SKELETON = `# Task: <ACRONYM>-<slug> — <Task Title>
 
 <!--SECTION:BDD-->
 ## Acceptance Criteria (BDD)
-Each scenario is tagged with the requirement it proves and its verification level — this is the
+Each scenario is tagged with the requirement it exercises and its verification level — this is the
 use-case → \`[<ACRONYM>-REQ-N]\` → vision chain the operator reviews at scaffold.
 
 **Feature:** <component behavior>

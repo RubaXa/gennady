@@ -59,7 +59,7 @@
 
       ```markdown
       **Constraint:** <numeric budget, security rule, signal/SLO boundary, or other falsifiable limit>
-      **Verification:** <one observable proof; method/tool detail stays outside Requirements>
+      **Verification:** <one observable check; method/tool detail stays outside Requirements>
       **Trace:** <operator/default/research source and, when detail exists, its Architecture/supporting-section anchor>
       ```
 
