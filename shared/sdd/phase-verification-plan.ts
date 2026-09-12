@@ -1,6 +1,6 @@
 // @file: Canonical structural phase profile and verify-ladder selection shared by planning and execution.
 // @consumers: sdd-verify phase context, sdd-verify ladder, scaffold critic context
-// @tasks: N/A
+// @tasks: V-08b, V-08c
 
 import { resolve } from 'node:path';
 import { realpathSync } from 'node:fs';
@@ -13,10 +13,33 @@ import {
 } from './ticket.ts';
 import type { TicketCorpusRef } from './ticket-resolve.ts';
 import { resolvePreset } from '../verify/presets/node.ts';
+import type { StackPreset } from '../verify/presets/node.ts';
 import type { StackConfig, StackId } from '../verify/verify.types.ts';
 
 /** @purpose One canonical verify profile; full belongs only to the project-level verdict. */
 export type VerificationProfile = 'setup' | 'code' | 'test' | 'full';
+
+/**
+ * @purpose Resolve the selected stack preset or refuse before any partial gate plan can escape.
+ * @param stack Detected primary stack.
+ * @param profile Selected phase/full profile.
+ * @param config Merged stack configuration, when present.
+ * @returns The implemented preset for this stack.
+ * @throws Error with a stable diagnostic when the detected stack has no implemented preset.
+ */
+function requiredPreset(
+  stack: StackId,
+  profile: VerificationProfile,
+  config?: StackConfig | null
+): StackPreset {
+  const preset = resolvePreset(stack, profile, '.', config);
+  if (!preset) {
+    throw new Error(
+      `no verification preset is implemented for detected stack '${stack}' (profile '${profile}')`
+    );
+  }
+  return preset;
+}
 
 /**
  * @purpose Derive the canonical phase verify profile from its ticket kind.
@@ -50,7 +73,7 @@ export function verificationGateNames(
   stack: StackId = 'node',
   config?: StackConfig | null
 ): readonly string[] {
-  return resolvePreset(stack, profile, '.', config)!.gateNames(profile, producesCoverage);
+  return requiredPreset(stack, profile, config).gateNames(profile, producesCoverage);
 }
 
 /**
@@ -68,7 +91,7 @@ export function requiredVerificationGateNames(
   stack: StackId = 'node',
   config?: StackConfig | null
 ): readonly string[] {
-  return resolvePreset(stack, profile, '.', config)!.requiredGateNames(profile, producesCoverage);
+  return requiredPreset(stack, profile, config).requiredGateNames(profile, producesCoverage);
 }
 
 /** @purpose Exact pre-run and post-run state of one canonical phase gate. */
@@ -271,7 +294,7 @@ export function phaseVerificationNodeReaches(
 // V-04: delegates to the resolved stack preset's own command resolution — byte-identical to the
 // pre-V-04 inline logic (V-01 golden) for `stack === 'node'` (the default every existing caller
 // keeps). V-08b: a live `stack`/`config` makes anystack's config-authored gates resolvable too.
-// `resolvePreset('node', …)`/`resolvePreset('anystack', …)` never return null.
+// Missing presets refuse through `requiredPreset` before a partial plan can escape (V-08c).
 function commandForGate(
   name: string,
   scripts: Readonly<Record<string, string>>,
@@ -279,7 +302,7 @@ function commandForGate(
   stack: StackId = 'node',
   config?: StackConfig | null
 ): string | null {
-  return resolvePreset(stack, 'full', '.', config)!.commandForGate(name, scripts, targets);
+  return requiredPreset(stack, 'full', config).commandForGate(name, scripts, targets);
 }
 
 function coverageProducer(current: PlanNode, profile: PhaseVerificationPlan['profile']): boolean {

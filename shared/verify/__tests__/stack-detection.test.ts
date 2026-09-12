@@ -1,7 +1,7 @@
 // @file: Unit tests for repo-wide stack detection — determinism, node inclusion, `use` narrowing,
 //   multi-stack repos, and the anystack-last-resort rule.
 // @consumers: CI
-// @tasks: V-05
+// @tasks: V-05, V-05b
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -55,11 +55,19 @@ describe('detectRepoStack', () => {
     });
   });
 
-  it('a repo matching nothing else still resolves to anystack — never "no stack detected"', () => {
+  it('a marker-less repo keeps the historical node bootstrap default without stack.use', () => {
     withRepo({}, (dir) => {
       const result = detectRepoStack(dir, null);
+      assert.deepEqual(result.stacks, ['node']);
+      assert.equal(result.source, 'fallback:node');
+    });
+  });
+
+  it('anystack remains reachable on a marker-less repo through explicit stack.use', () => {
+    withRepo({}, (dir) => {
+      const result = detectRepoStack(dir, { use: ['anystack'] });
       assert.deepEqual(result.stacks, ['anystack']);
-      assert.equal(result.source, 'marker:any repository');
+      assert.equal(result.source, 'config:stack.use');
     });
   });
 

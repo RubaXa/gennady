@@ -1,6 +1,6 @@
 // @file: SddTaskCommand — CLI entry for gennady sdd-task: emit the ticket planning surface (Meta + phases + manifests + gates).
 // @consumers: gennady.ts
-// @tasks: N/A
+// @tasks: V-05b
 
 import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { resolve, relative, join, dirname } from 'node:path';
@@ -79,18 +79,34 @@ import {
 } from './sdd-task.types.ts';
 
 /**
- * @purpose Resolve one root's readiness through the engine + adapter dispatch (V-06b), replacing
- *   the node-only `checkReadiness(gatherReadinessInput(root))` this used to call directly.
+ * @purpose Resolve the primary stack and effective config shared by readiness and phase planning.
  * @invariant Bootstrap-sensitive: a missing `package.json` may mean a node project mid-bootstrap,
- *   not anystack — unlike `sdd-state`'s snapshot, this leaves node absent an explicit `stack.use`,
- *   the same opt-in V-07's config gate requires.
+ *   not anystack; `detectRepoStack` owns that fallback for every command (V-05b/L-24).
  * @param root Absolute project root.
- * @returns The resolved adapter's readiness verdict for this root.
+ * @returns The selected primary stack plus valid merged config (or null after config errors).
  */
-function resolveProjectReadiness(root: string): ReadinessResult {
+function resolveProjectStack(root: string): {
+  stack: ReturnType<typeof primaryStackOf>;
+  config: ReturnType<typeof loadStackConfig>['config'];
+} {
   const stackConfigLoad = loadStackConfig(root, BUILTIN_GATE_IDS);
   const stackConfig = stackConfigLoad.errors.length === 0 ? stackConfigLoad.config : null;
-  const stack = stackConfig?.use ? primaryStackOf(detectRepoStack(root, stackConfig)) : 'node';
+  return {
+    stack: primaryStackOf(detectRepoStack(root, stackConfig)),
+    config: stackConfig,
+  };
+}
+
+/**
+ * @purpose Resolve one root's readiness through the stack resolution shared with phase planning.
+ * @param root Absolute project root.
+ * @param [stack] Already-resolved primary stack when the caller also builds a phase plan.
+ * @returns The resolved adapter's readiness verdict for this root.
+ */
+function resolveProjectReadiness(
+  root: string,
+  stack = resolveProjectStack(root).stack
+): ReadinessResult {
   const adapter = resolveReadinessAdapter(stack) ?? nodeReadinessAdapter;
   return adapter.evaluate(adapter.gather(root));
 }
@@ -483,8 +499,9 @@ async function runCommand(rawArgs: string[], projectRoot: string): Promise<TaskO
     // kind, which writes production code) must fall on the GATED side, not slip through.
     const phaseKind = phases.find((p) => p.id === phaseId)?.kind?.toLowerCase() ?? '';
     const UNGATED_KINDS = ['bootstrap', 'config', 'doc'];
+    const projectStack = resolveProjectStack(root);
     if (!UNGATED_KINDS.includes(phaseKind)) {
-      const readiness = resolveProjectReadiness(root);
+      const readiness = resolveProjectReadiness(root, projectStack.stack);
       if (!readiness.executionReady) {
         // The infra tickets BUILDING the missing gates are exempt — they are the way out of this
         // state, and blocking them would deadlock the flow against its own remedy (an infra ticket
@@ -528,16 +545,25 @@ async function runCommand(rawArgs: string[], projectRoot: string): Promise<TaskO
     } catch {
       scripts = {};
     }
-    const verificationPlan = resolvePhaseVerificationPlan({
-      refs: corpus.refs,
-      ticketFile: resolved.path,
-      phaseId,
-      scripts,
-      availableArtifacts: new Set(
-        phaseVerificationArtifactPaths().filter((path) => existsSync(join(root, path)))
-      ),
-      mode: 'runtime',
-    });
+    let verificationPlan: ReturnType<typeof resolvePhaseVerificationPlan>;
+    try {
+      verificationPlan = resolvePhaseVerificationPlan({
+        refs: corpus.refs,
+        ticketFile: resolved.path,
+        phaseId,
+        scripts,
+        availableArtifacts: new Set(
+          phaseVerificationArtifactPaths().filter((path) => existsSync(join(root, path)))
+        ),
+        mode: 'runtime',
+        stack: projectStack.stack,
+        config: projectStack.config,
+      });
+    } catch (cause) {
+      return phaseEvidenceError(
+        `phase '${phaseId}' verification plan cannot be resolved: ${cause instanceof Error ? cause.message : String(cause)}`
+      );
+    }
     const phaseOutcome = formatPhase(
       meta,
       phases,

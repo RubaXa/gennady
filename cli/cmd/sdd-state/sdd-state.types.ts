@@ -74,7 +74,7 @@ export type StateSnapshot = {
   specSchema: SpecSchemaReport;
   /** @purpose Code/infra heuristics — always gathered: one snapshot carries everything any router branch needs. */
   probe?: RepoProbe;
-  /** @purpose The one shared stack detection fact (V-05) — sdd-state/sdd-task/sdd-verify must see the same value on the same root. */
+  /** @purpose The one shared stack detection fact (V-05/V-05b) — including config narrowing and the marker-less node fallback all three commands must see identically. */
   stack: RepoStackDetection;
 };
 

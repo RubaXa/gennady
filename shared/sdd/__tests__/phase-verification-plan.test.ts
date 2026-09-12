@@ -8,6 +8,7 @@ import {
   markPhaseVerificationProven,
   phaseVerificationArtifactPaths,
   resolvePhaseVerificationPlan,
+  verificationGateNames,
 } from '../phase-verification-plan.ts';
 import type { TicketCorpusRef } from '../ticket-resolve.ts';
 
@@ -318,6 +319,21 @@ describe('resolvePhaseVerificationPlan', () => {
   });
 
   describe('V-08b: resolves the preset by detected stack, not the literal node', () => {
+    it('fails closed with a stable diagnostic when the detected stack has no preset', () => {
+      assert.throws(
+        () => verificationGateNames('code', false, 'golang'),
+        (cause: unknown) => {
+          assert.ok(cause instanceof Error);
+          assert.strictEqual(cause.name, 'Error');
+          assert.match(
+            cause.message,
+            /no verification preset is implemented for detected stack 'golang'/
+          );
+          return true;
+        }
+      );
+    });
+
     it("an anystack plan (root has no package.json) is CONFIGURED with the config's extraGates, in declared order", () => {
       const ref = ticket('ANYSTACK', [{ id: 'P1', kind: 'impl', targets: ['README.md'] }]);
       const plan = resolvePhaseVerificationPlan({
