@@ -682,6 +682,35 @@ describe('SddTaskCommand', () => {
       '<!--/SECTION:EXECUTION_LOG-->',
     ].join('\n');
 
+    it('auto-detects golang without stack.use and returns a teaching preset refusal', async () => {
+      const goRoot = mkdtempSync(join(tmpdir(), 'sdd-task-go-stack-'));
+      const goTicket = join(goRoot, 'specs', 'cli', 'core', 'core.task.cli-foo.md');
+      try {
+        mkdirSync(join(goRoot, 'specs', 'cli', 'core'), { recursive: true });
+        mkdirSync(join(goRoot, 'src'), { recursive: true });
+        writeFileSync(join(goRoot, 'go.mod'), 'module example.com/fixture\n\ngo 1.22\n', 'utf-8');
+        writeFileSync(join(goRoot, 'src', 'foo.ts'), 'export const foo = true;\n', 'utf-8');
+        writeFileSync(join(goRoot, 'specs', 'cli', 'core', 'core.spec.md'), '# Core\n', 'utf-8');
+        writeFileSync(
+          goTicket,
+          PHASED_TICKET.replace('| P1 | impl | — | [x] |', '| P1 | config | — | [ ] |'),
+          'utf-8'
+        );
+
+        const outcome = await mod.run(argv(goTicket, '--phase', 'P1'));
+        assert.strictEqual(outcome.ok, false);
+        if (!outcome.ok) {
+          assert.match(
+            outcome.message,
+            /no verification preset is implemented for detected stack 'golang'/
+          );
+          assert.doesNotMatch(outcome.message, /TypeError/);
+        }
+      } finally {
+        rmSync(goRoot, { recursive: true, force: true });
+      }
+    });
+
     it('emits a compact single-phase context: objective, gates+hint, exit, filtered read-manifest', async () => {
       const t = join(dir, 'phased.md');
       writeFileSync(t, PHASED_TICKET, 'utf-8');
@@ -1864,6 +1893,39 @@ describe('SddTaskCommand', () => {
       try {
         const r = await withCwd(gateDir, () => mod.run(argv('ticket.md', '--phase', 'P1')));
         assert.strictEqual(r.ok, true, r.ok ? '' : r.message);
+      } finally {
+        rmSync(gateDir, { recursive: true, force: true });
+      }
+    });
+
+    it('V-06b: anystack repo (no package.json, explicit stack.use + ≥1 extraGate) passes the gate — no ERR_CLI_SDD_TASK_INFRA_NOT_READY', async () => {
+      const gateDir = mkdtempSync(join(tmpdir(), 'sdd-task-gate-anystack-'));
+      writeDeclaredPhaseTargets(gateDir);
+      writeFileSync(join(gateDir, 'ticket.md'), TICKET, 'utf-8');
+      writeFileSync(
+        join(gateDir, 'gennady.yaml'),
+        'stack:\n  use: [anystack]\n  anystack:\n    extraGates:\n      - id: check\n        argv: [echo, ok]\n',
+        'utf-8'
+      );
+      // Deliberately no package.json anywhere in this root.
+      try {
+        const r = await withCwd(gateDir, () => mod.run(argv('ticket.md', '--phase', 'P1')));
+        assert.strictEqual(r.ok, true, r.ok ? '' : r.message);
+      } finally {
+        rmSync(gateDir, { recursive: true, force: true });
+      }
+    });
+
+    it('V-06b: anystack repo with zero configured extraGates stays not-ready, same as before', async () => {
+      const gateDir = mkdtempSync(join(tmpdir(), 'sdd-task-gate-anystack-empty-'));
+      writeDeclaredPhaseTargets(gateDir);
+      writeFileSync(join(gateDir, 'ticket.md'), TICKET, 'utf-8');
+      writeFileSync(join(gateDir, 'gennady.yaml'), 'stack:\n  use: [anystack]\n', 'utf-8');
+      try {
+        const r = await withCwd(gateDir, () => mod.run(argv('ticket.md', '--phase', 'P1')));
+        assert.strictEqual(r.ok, false);
+        if (r.ok) return;
+        assert.match(r.message, /ERR_CLI_SDD_TASK_INFRA_NOT_READY/);
       } finally {
         rmSync(gateDir, { recursive: true, force: true });
       }

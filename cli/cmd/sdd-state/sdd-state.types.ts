@@ -11,6 +11,7 @@ import type {
   GateQueueDiagnostic,
 } from '../../../shared/sdd/gate-queue.ts';
 import type { SpecSchemaReport } from '../../../shared/sdd/spec-schema.ts';
+import type { RepoStackDetection } from '../../../shared/verify/stack-detection.ts';
 
 /** @purpose More than one positional argument was passed. */
 export const ERR_CLI_SDD_STATE_BAD_INVOCATION = 'ERR_CLI_SDD_STATE_BAD_INVOCATION' as const;
@@ -73,6 +74,8 @@ export type StateSnapshot = {
   specSchema: SpecSchemaReport;
   /** @purpose Code/infra heuristics — always gathered: one snapshot carries everything any router branch needs. */
   probe?: RepoProbe;
+  /** @purpose The one shared stack detection fact (V-05/V-05b) — including config narrowing and the marker-less node fallback all three commands must see identically. */
+  stack: RepoStackDetection;
 };
 
 /**
@@ -109,6 +112,8 @@ export function formatSnapshot(s: StateSnapshot): string {
     `PORTAL=${s.portalPresent ? 'present' : 'absent'}\t${s.portalPath}`,
     '',
     '[READINESS]',
+    `STACK=${s.stack.stacks.length > 0 ? s.stack.stacks.join(',') : 'none'}`,
+    `STACK_SOURCE=${s.stack.source || 'none'}`,
     `package.json\t${s.readiness.packageJsonPresent ? '✔' : '✘'}`,
     '# required-script\tdeclared',
   ];

@@ -8,6 +8,7 @@ import {
   markPhaseVerificationProven,
   phaseVerificationArtifactPaths,
   resolvePhaseVerificationPlan,
+  verificationGateNames,
 } from '../phase-verification-plan.ts';
 import type { TicketCorpusRef } from '../ticket-resolve.ts';
 
@@ -315,5 +316,80 @@ describe('resolvePhaseVerificationPlan', () => {
     const proven = markPhaseVerificationProven(plan, new Set(['type-check']));
     assert.strictEqual(proven.gates.find((gate) => gate.name === 'type-check')?.state, 'PROVEN');
     assert.strictEqual(proven.gates.find((gate) => gate.name === 'test')?.state, 'CONFIGURED');
+  });
+
+  describe('V-08b: resolves the preset by detected stack, not the literal node', () => {
+    it('fails closed with a stable diagnostic when the detected stack has no preset', () => {
+      assert.throws(
+        () => verificationGateNames('code', false, 'golang'),
+        (cause: unknown) => {
+          assert.ok(cause instanceof Error);
+          assert.strictEqual(cause.name, 'Error');
+          assert.match(
+            cause.message,
+            /no verification preset is implemented for detected stack 'golang'/
+          );
+          return true;
+        }
+      );
+    });
+
+    it("an anystack plan (root has no package.json) is CONFIGURED with the config's extraGates, in declared order", () => {
+      const ref = ticket('ANYSTACK', [{ id: 'P1', kind: 'impl', targets: ['README.md'] }]);
+      const plan = resolvePhaseVerificationPlan({
+        refs: [ref],
+        ticketFile: ref.file,
+        phaseId: 'P1',
+        scripts: {},
+        availableArtifacts: new Set(),
+        mode: 'runtime',
+        stack: 'anystack',
+        config: {
+          anystack: {
+            extraGates: [
+              { id: 'lint-go', argv: ['golangci-lint', 'run'] },
+              { id: 'build', argv: ['go', 'build', './...'] },
+              { id: 'unit', argv: ['go', 'test', './...'] },
+            ],
+          },
+        },
+      });
+      assert.ok(plan);
+      // Fixed order (И-2 §3.0): declared order, not sorted, not the node vocabulary.
+      assert.deepStrictEqual(
+        plan.gates.map(({ name, state, required, command }) => ({
+          name,
+          state,
+          required,
+          command,
+        })),
+        [
+          {
+            name: 'lint-go',
+            state: 'CONFIGURED',
+            required: false,
+            command: 'golangci-lint run',
+          },
+          { name: 'build', state: 'CONFIGURED', required: false, command: 'go build ./...' },
+          { name: 'unit', state: 'CONFIGURED', required: false, command: 'go test ./...' },
+        ]
+      );
+    });
+
+    it('every caller that omits stack/config still resolves the node preset (byte-identical default)', () => {
+      const ref = ticket('DEFAULT-STACK', [{ id: 'P1', kind: 'impl', targets: ['src/app.ts'] }]);
+      const withDefault = resolve(ref, 'P1', { 'type-check': 'tsc --noEmit' });
+      const withExplicitNode = resolvePhaseVerificationPlan({
+        refs: [ref],
+        ticketFile: ref.file,
+        phaseId: 'P1',
+        scripts: { 'type-check': 'tsc --noEmit' },
+        availableArtifacts: new Set(),
+        mode: 'runtime',
+        stack: 'node',
+      });
+      assert.ok(withExplicitNode);
+      assert.deepStrictEqual(withDefault.gates, withExplicitNode.gates);
+    });
   });
 });

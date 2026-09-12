@@ -4,7 +4,32 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { checkReadiness, isStubScript, isVacuousScript, REQUIRED_SCRIPTS } from '../readiness.ts';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import {
+  checkReadiness,
+  gatherReadinessInput,
+  isStubScript,
+  isVacuousScript,
+  nodeReadinessAdapter,
+  anystackReadinessAdapter,
+  resolveReadinessAdapter,
+  REQUIRED_SCRIPTS,
+} from '../readiness.ts';
+
+/** @purpose Create a temp dir with the given root-level files, run fn, clean up. */
+function withRepo<T>(files: Record<string, string>, fn: (dir: string) => T): T {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'readiness-anystack-'));
+  try {
+    for (const [name, content] of Object.entries(files)) {
+      fs.writeFileSync(path.join(dir, name), content);
+    }
+    return fn(dir);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+}
 
 /** Check `scripts` with package.json present and gennady installed unless overridden. */
 function check(scripts: Record<string, string>, opts?: { pkg?: boolean; gennady?: boolean }) {
@@ -508,5 +533,76 @@ describe('readiness levels (not-ready / provisional / ready)', () => {
     assert.strictEqual(r.level, 'ready');
     assert.strictEqual(r.executionReady, true);
     assert.deepStrictEqual(r.stubbed, []);
+  });
+});
+
+describe('readiness engine — adapters (V-06)', () => {
+  it('nodeReadinessAdapter IS gatherReadinessInput/checkReadiness — byte-identical by construction', () => {
+    assert.strictEqual(nodeReadinessAdapter.gather, gatherReadinessInput);
+    assert.strictEqual(nodeReadinessAdapter.evaluate, checkReadiness);
+    assert.strictEqual(nodeReadinessAdapter.stack, 'node');
+  });
+
+  it('anystackReadinessAdapter with no configured extraGates is NOT ready — the fallback stack alone proves nothing', () => {
+    const result = anystackReadinessAdapter.evaluate({
+      packageJsonPresent: true,
+      scripts: {},
+      gennadyAvailable: true,
+      configuredExtraGates: [],
+    });
+    assert.strictEqual(result.level, 'not-ready');
+    assert.strictEqual(result.executionReady, false);
+    assert.strictEqual(result.ready, false);
+    assert.ok(result.missing.length > 0);
+  });
+
+  it('anystackReadinessAdapter with ≥1 configured extraGate is ready — no REQUIRED_SCRIPTS bootstrap concept applies', () => {
+    const result = anystackReadinessAdapter.evaluate({
+      packageJsonPresent: true,
+      scripts: {},
+      gennadyAvailable: true,
+      configuredExtraGates: ['syntax', 'style'],
+    });
+    assert.strictEqual(result.level, 'ready');
+    assert.strictEqual(result.executionReady, true);
+    assert.strictEqual(result.ready, true);
+    assert.deepStrictEqual(result.missing, []);
+    assert.deepStrictEqual(result.missingGates, []);
+    assert.deepStrictEqual(result.required, []);
+  });
+
+  it('anystackReadinessAdapter.gather reads real extraGates from gennady.yaml — end to end, not ready without any', () => {
+    withRepo({}, (dir) => {
+      const input = anystackReadinessAdapter.gather(dir);
+      assert.deepStrictEqual(input.configuredExtraGates, []);
+      assert.strictEqual(anystackReadinessAdapter.evaluate(input).level, 'not-ready');
+    });
+  });
+
+  it('anystackReadinessAdapter.gather reads real extraGates from gennady.yaml — ready with ≥1', () => {
+    withRepo(
+      {
+        'gennady.yaml': [
+          'stack:',
+          '  use: [anystack]',
+          '  anystack:',
+          '    extraGates:',
+          '      - id: syntax',
+          "        argv: [sh, -c, 'true']",
+          '',
+        ].join('\n'),
+      },
+      (dir) => {
+        const input = anystackReadinessAdapter.gather(dir);
+        assert.deepStrictEqual(input.configuredExtraGates, ['syntax']);
+        assert.strictEqual(anystackReadinessAdapter.evaluate(input).level, 'ready');
+      }
+    );
+  });
+
+  it('resolveReadinessAdapter dispatches node/anystack, null for an unimplemented stack (golang: V-09)', () => {
+    assert.strictEqual(resolveReadinessAdapter('node'), nodeReadinessAdapter);
+    assert.strictEqual(resolveReadinessAdapter('anystack'), anystackReadinessAdapter);
+    assert.strictEqual(resolveReadinessAdapter('golang'), null);
   });
 });

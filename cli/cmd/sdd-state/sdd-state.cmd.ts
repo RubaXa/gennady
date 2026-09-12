@@ -7,7 +7,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { logger } from '#logger';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
-import { checkReadiness, gatherReadinessInput } from '../../../shared/sdd/readiness.ts';
+import { nodeReadinessAdapter, resolveReadinessAdapter } from '../../../shared/sdd/readiness.ts';
 import {
   parseScopes,
   parseScopeGraphEdges,
@@ -15,6 +15,9 @@ import {
   type Scope,
 } from '../../../shared/sdd/portal.ts';
 import { probeRepo } from '../../../shared/sdd/probe.ts';
+import { detectRepoStack, primaryStackOf } from '../../../shared/verify/stack-detection.ts';
+import { loadStackConfig } from '../../../shared/verify/stack-config.ts';
+import { BUILTIN_GATE_IDS } from '../../../shared/verify/stack-registry.ts';
 import { detectFlowVersion } from '../../../shared/sdd/flow.ts';
 import { countModuleSpecs } from '../../../shared/sdd/module-specs.ts';
 import { sumRollupProgress } from '../../../shared/sdd/tracker.ts';
@@ -149,10 +152,20 @@ export async function run(rawArgs: string[]): Promise<StateOutcome> {
   }
   // #endregion END_PORTAL
 
-  // #region START_READINESS — exact-match required scripts; missing/broken package.json reads as not-ready
-  const readinessInput = gatherReadinessInput(root);
+  // One shared detection fact (V-05/V-05b): config narrows auto-detection, while the detector owns
+  // the marker-less node bootstrap fallback every command must apply identically.
+  const stackConfigLoad = loadStackConfig(root, BUILTIN_GATE_IDS);
+  const stackConfig = stackConfigLoad.errors.length === 0 ? stackConfigLoad.config : null;
+  const stack = detectRepoStack(root, stackConfig);
+
+  // #region START_READINESS — engine + adapter (V-06); node path is gatherReadinessInput/checkReadiness
+  // verbatim (byte-identical, И-1/И-2) — an unimplemented stack (golang: V-09) falls back to the
+  // node adapter too, so today's behavior for every repo this wave doesn't cover is unchanged.
+  // `primaryStackOf` (V-06b) is the one shared selection rule sdd-task/sdd-verify now use too.
+  const readinessAdapter = resolveReadinessAdapter(primaryStackOf(stack)) ?? nodeReadinessAdapter;
+  const readinessInput = readinessAdapter.gather(root);
   const { packageJsonPresent } = readinessInput;
-  const readiness = checkReadiness(readinessInput);
+  const readiness = readinessAdapter.evaluate(readinessInput);
   // #endregion END_READINESS
 
   logger.debug(
@@ -193,6 +206,7 @@ export async function run(rawArgs: string[]): Promise<StateOutcome> {
     gateQueueDiagnostics: gateQueue.diagnostics,
     specSchema,
     probe,
+    stack,
   };
 
   // #region START_LADDER — the readiness-ladder card the router shows verbatim; appended, never replaces [SUMMARY]
@@ -231,6 +245,7 @@ export async function run(rawArgs: string[]): Promise<StateOutcome> {
       test: requiredPresence.get('test') ?? false,
       lint: requiredPresence.get('lint') ?? false,
     },
+    ...(readinessAdapter.stack !== 'node' ? { otherStackReady: readiness.executionReady } : {}),
     tasksTotal,
     tasksDone,
   });

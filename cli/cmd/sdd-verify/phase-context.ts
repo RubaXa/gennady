@@ -1,6 +1,6 @@
 // @file: Resolve a phase verification context from one structurally parsed SDD ticket.
 // @consumers: sdd-verify/index.ts, tests
-// @tasks: N/A
+// @tasks: V-05b, V-08c
 
 import { spawnSync } from 'node:child_process';
 import { existsSync, lstatSync, readFileSync, realpathSync, statSync } from 'node:fs';
@@ -12,7 +12,11 @@ import {
   queuedInfraGateTicketIds,
 } from '../../../shared/sdd/gate-queue.ts';
 import { parseScopes } from '../../../shared/sdd/portal.ts';
-import { checkReadiness, gatherReadinessInput } from '../../../shared/sdd/readiness.ts';
+import { nodeReadinessAdapter, resolveReadinessAdapter } from '../../../shared/sdd/readiness.ts';
+import { detectRepoStack, primaryStackOf } from '../../../shared/verify/stack-detection.ts';
+import { loadStackConfig } from '../../../shared/verify/stack-config.ts';
+import { BUILTIN_GATE_IDS } from '../../../shared/verify/stack-registry.ts';
+import type { StackId } from '../../../shared/verify/verify.types.ts';
 import { ticketRef } from '../../../shared/sdd/check.ts';
 import { matchingTestPhaseIds, parseTestCoverage } from '../../../shared/sdd/bdd-coverage.ts';
 import { extractSection } from '../../../shared/sdd/section.ts';
@@ -56,6 +60,9 @@ export type PhaseVerifyContext = {
   producesCoverage: boolean;
   /** @purpose Canonical gate states shared byte-for-byte with sdd-task and feasibility. */
   gatePlan?: PhaseVerificationPlan;
+  /** @purpose Detected primary stack (V-08b) the gate plan/environmentState resolved for. Optional
+   *   so a hand-built test context still type-checks; absence defaults to `'node'` everywhere. */
+  stack?: StackId;
 };
 
 /** @purpose Valid phase context, or a ready-to-print teaching failure. */
@@ -249,11 +256,23 @@ export function resolvePhaseContext(
       return failure(`Deleted File has no tracked VCS baseline: ${deleted}`);
     deletedFiles.push(inspected.relative);
   }
+  // V-08b: the one shared stack detection (V-05) this phase's gate plan and readiness both resolve
+  // against — an invalid `stack:` section degrades to no config (auto-detect, unnarrowed) here
+  // rather than failing the phase; sdd-verify's own entry gate (index.ts, V-07) already refuses to
+  // run at all on a broken config, so this path only matters for phase-receipt-validation's re-check
+  // of an already-written receipt, where a stricter failure would needlessly break sdd-check/sdd-task.
+  // Bootstrap-sensitive (V-05b/L-24): `detectRepoStack` owns the one safe fallback for a root with
+  // no concrete marker, so every consumer detects unconditionally instead of reimplementing a
+  // local "stack.use or node" policy.
+  const stackConfigLoad = loadStackConfig(projectRoot, BUILTIN_GATE_IDS);
+  const stackConfig = stackConfigLoad.errors.length === 0 ? stackConfigLoad.config : null;
+  const stack = primaryStackOf(detectRepoStack(projectRoot, stackConfig));
   // A queued infra builder cannot require the gates it creates. Every non-ready code/test phase
   // must prove that exact exception; unreadable ownership context never falls back to normal work.
   let readiness;
   try {
-    readiness = checkReadiness(gatherReadinessInput(projectRoot));
+    const readinessAdapter = resolveReadinessAdapter(stack) ?? nodeReadinessAdapter;
+    readiness = readinessAdapter.evaluate(readinessAdapter.gather(projectRoot));
   } catch (error) {
     return failure(
       `project readiness cannot be read: ${error instanceof Error ? error.message : String(error)}`
@@ -319,17 +338,26 @@ export function resolvePhaseContext(
   } catch {
     scripts = {};
   }
-  const gatePlan = resolvePhaseVerificationPlan({
-    refs: planRefs,
-    ticketFile: taskPath,
-    phaseId,
-    scripts,
-    availableArtifacts: new Set(
-      phaseVerificationArtifactPaths().filter((path) => existsSync(join(projectRoot, path)))
-    ),
-    mode: 'runtime',
-    profileOverride: profile,
-  });
+  let gatePlan: ReturnType<typeof resolvePhaseVerificationPlan>;
+  try {
+    gatePlan = resolvePhaseVerificationPlan({
+      refs: planRefs,
+      ticketFile: taskPath,
+      phaseId,
+      scripts,
+      availableArtifacts: new Set(
+        phaseVerificationArtifactPaths().filter((path) => existsSync(join(projectRoot, path)))
+      ),
+      mode: 'runtime',
+      profileOverride: profile,
+      stack,
+      config: stackConfig,
+    });
+  } catch (cause) {
+    return failure(
+      `phase '${phaseId}' gate plan cannot be resolved: ${cause instanceof Error ? cause.message : String(cause)}`
+    );
+  }
   if (!gatePlan) return failure(`phase '${phaseId}' gate plan cannot be resolved`);
   const canonicalCommands = new Set(
     gatePlan.gates.flatMap((gate) => (gate.required && gate.command ? [gate.command] : []))
@@ -357,6 +385,7 @@ export function resolvePhaseContext(
       ...(coveragePolicy.status === 'required' ? { coverageOwner: coveragePolicy.ownerPhase } : {}),
       producesCoverage: gatePlan.producesCoverage,
       gatePlan,
+      stack,
       ...(spec.ok ? { specPath: relative(projectRoot, spec.specPath) } : {}),
     },
   };
