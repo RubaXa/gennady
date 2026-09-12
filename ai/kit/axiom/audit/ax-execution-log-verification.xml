@@ -4,7 +4,7 @@
      debt B2-18 tracks). It stays a plain-text mirror of the vocabulary rather than a partial
      reference so it reads correctly on disk even unrendered; keep it byte-consistent with
      `shared/sdd/execution-log.ts` (single home) by hand until it is wired into a directive. -->
-<Axiom id="AX_EXECUTION_LOG_VERIFICATION">
+<Axiom id="AX_EXECUTION_LOG_VERIFICATION" status="draft">
       Token vocabulary (single home, `shared/sdd/execution-log.ts`): `intro <Entity> ← <reason>` ·
       `decision <key>=<value> ← <reason>` · `tried <approach> → <result>` · `discovery <fact>` ·
       `insight <observation> → <spec-section>` · `verified <tool>@<version> <summary>` · `CLI-owned

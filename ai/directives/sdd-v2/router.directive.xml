@@ -323,6 +323,7 @@
     | ID | Trigger |
     |---|---|
     | `H_AMBIGUOUS_INTENT` | Repository state and operator message support several materially different routes |
+    | `H_ASK_WITHOUT_CARD` | An interview question is asked before the `sdd-state` card was shown as its own fenced block, or restates the card instead of showing it verbatim |
     | `H_SPEC_NOT_APPROVED` | Scaffold targets specs that have not passed approval #1 |
     | `H_V2_INVALID` | A V2 artifact is structurally invalid; return to its authoring owner, never migrate it |
     | `H_WRONG_REPO` | Operator says this is the wrong repository |
@@ -333,10 +334,12 @@
       <Action>
         Consume exact result alias `routerState` from the entry skill. Do not repeat `sdd-state`.
         Show its card as a fenced block before the first question. Do not summarize the card into an
-        Ask. Emit operator-visible results as live text per `AX_OPERATOR_OUTPUT_LIVE_TEXT`, without
-        narrating internal mechanics per `AX_NO_PROCESS_NARRATION`. Per `AX_STATELESS_FLOW`, this step
-        performs no write and creates no hidden resume state. If the operator identifies this as the
-        wrong repository, stop with `H_WRONG_REPO`.
+        Ask — an Ask that precedes the card, or that restates it instead of showing it verbatim, is
+        `H_ASK_WITHOUT_CARD`, not a shortcut. Emit operator-visible results as live text per
+        `AX_OPERATOR_OUTPUT_LIVE_TEXT`, without narrating internal mechanics per
+        `AX_NO_PROCESS_NARRATION`. Per `AX_STATELESS_FLOW`, this step performs no write and creates no
+        hidden resume state. If the operator identifies this as the wrong repository, stop with
+        `H_WRONG_REPO`.
       </Action>
     </Step>
     <Step id="STEP_1_CLASSIFY">

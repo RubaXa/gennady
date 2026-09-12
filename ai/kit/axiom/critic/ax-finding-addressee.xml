@@ -1,5 +1,5 @@
 <!-- source: SDD v2 — question channel: findings routed by who owns the resolution -->
-<Axiom id="AX_FINDING_ADDRESSEE">
+<Axiom id="AX_FINDING_ADDRESSEE" status="draft">
   Every finding carries an addressee — who owns its resolution:
   - `MECHANICAL` — style, structure, consistency, a detail the spec already implies. Resolved by an artifact edit.
   - `GOAL` — goal / scope shift ("goal drawn too narrow"), misunderstood intent, a missing requirement, an unanswered uncomfortable question. Resolved ONLY by the goal owner — the operator.

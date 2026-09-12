@@ -1,5 +1,5 @@
 <!-- source: ai/directives/coding/uikit-spec-drafting.xml -->
-<Axiom id="AX_NO_DATA_LOSS">
+<Axiom id="AX_NO_DATA_LOSS" status="draft">
       The draft MUST preserve ALL data from `ExtractionResult`:
       - All `variants[]` are reflected in the Variants table.
       - All unique `(element, metric)` pairs from all `Measurements` are reflected in Token Mapping.

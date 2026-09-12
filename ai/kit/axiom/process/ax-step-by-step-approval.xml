@@ -1,5 +1,5 @@
 <!-- source: ai/directives/sdd/svelte-ui-discovery.directive.xml -->
-<Axiom id="AX_STEP_BY_STEP_APPROVAL">
+<Axiom id="AX_STEP_BY_STEP_APPROVAL" status="draft">
       Многоступенчатый flow. Каждый шаг завершается Approval Check — оператор подтверждает или поправляет. Без подтверждения следующий шаг не начинается.
 
       Шаги:

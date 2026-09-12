@@ -1,4 +1,4 @@
-<Axiom id="AX_NARROW_RECON">
+<Axiom id="AX_NARROW_RECON" status="draft">
 Before any Edit / Write: one quick recon scoped to THIS phase only.
 1. Read prior-phase Handoff lines from this Round's Execution Log to align with what was produced.
 2. Do not list every Target File parent. Run one bounded `ls <nearest existing declared ancestor>`

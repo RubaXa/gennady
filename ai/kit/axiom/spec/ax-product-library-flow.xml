@@ -1,5 +1,5 @@
 <!-- source: ai/directives/sdd/discovery.directive.xml -->
-<Axiom id="AX_PRODUCT_LIBRARY_FLOW">
+<Axiom id="AX_PRODUCT_LIBRARY_FLOW" status="draft">
       For scope-type=product and scope-type=library:
 
       **Requirements gate before design.** Architecture variants are forbidden until REQUIREMENTS_GATE is closed. Required: Functional Requirements, Non-Functional Constraints, Out-of-Scope, Project-Wide Rules (Rules).

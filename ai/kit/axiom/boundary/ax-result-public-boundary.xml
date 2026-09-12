@@ -1,5 +1,5 @@
 <!-- source: ai/directives/coding/result-conventions.xml -->
-<Axiom id="AX_RESULT_PUBLIC_BOUNDARY" enforcement="convention">
+<Axiom id="AX_RESULT_PUBLIC_BOUNDARY" enforcement="convention" status="draft">
       Canon default for a NEW public surface: throw a typed `Error` subclass (`AX_ERROR_VIA_CLASS`);
       the caller wraps in mandatory try/catch (`AX_MANDATORY_TRY_CATCH_IN_BUSINESS_LOGIC`). `Result<T>`
       at the public / port boundary is a NARROW EXCEPTION, not the default — it applies only where the

@@ -1,3 +1,6 @@
+<!-- V-BATCH-18 F-2: not status="draft" — PENDING_IN_OPEN_PR in ai/kit/lint-axioms.ts (PR #45
+     lead/review-critic-bounds / PR #49 lead/promises-not-wider) already connects this partial.
+     Remove this comment and the PENDING_IN_OPEN_PR entry once either PR merges. -->
 <Axiom id="AX_DISPATCH_VIA_BATCH">
       After all reopens are prepared, dispatch the reopened tasks through execute as one BATCH.
       The batch orchestrator will plan layers, run phases, close rounds, sync trackers, and keep its

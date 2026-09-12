@@ -1,5 +1,5 @@
 <!-- source: ai/directives/sdd/phase-execution-protocol.xml -->
-<Axiom id="AX_RULES_LOAD_FROM_PHASE_BLOCK">
+<Axiom id="AX_RULES_LOAD_FROM_PHASE_BLOCK" status="draft">
       Open ONLY rule files listed under this phase's `Rules:` bullet list. Use the absolute-or-cwd-relative path verbatim. Read end-to-end (Mission + Belief_State + Reward_Criteria + Anti_Patterns + Verification_Hooks).
 
       One legal extension: when a cited rule file itself declares a transitive base — an explicit

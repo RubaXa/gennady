@@ -28,10 +28,14 @@ export function walk(dir: string, ok: (p: string) => boolean): string[] {
   return out;
 }
 
-/** Strip `<!-- source -->` and normalize a brick to base level 0 (open tag col 0, body one unit). */
+/** Strip complete leading service comments and normalize a brick to base level 0. */
 export function normalizeBrick(raw: string): string {
-  let lines = raw.replace(/\n+$/, '').split('\n');
-  while (lines.length && lines[0].trim().startsWith('<!--')) lines = lines.slice(1);
+  let normalized = raw.replace(/\n+$/, '');
+  const leadingServiceComment = /^\s*<!--[\s\S]*?-->\s*/;
+  while (leadingServiceComment.test(normalized)) {
+    normalized = normalized.replace(leadingServiceComment, '');
+  }
+  const lines = normalized.split('\n');
   if (!lines.length) return '';
   const open = lines[0].trimStart();
   if (lines.length === 1) return open; // self-closing brick

@@ -19,16 +19,12 @@
  * packages) must be a row in THAT SAME directive's table. This is the actual target defect class
  * — `H_SCAFFOLD_NOT_EXECUTABLE` fires from `STEP_3B_FEASIBILITY_CRITIC` but was never a row.
  *
- * ONE verified exception: a directive may cite ANOTHER directive's already-declared halt as a
- * named cross-reference to explain an analogous local rule, without re-declaring it locally —
- * e.g. `scope.directive.hbs` / `root.directive.hbs` write "the same class as the router's
- * `H_ASK_WITHOUT_CARD`" / "violates the same gate the router enforces (`H_ASK_WITHOUT_CARD`)".
- * `H_ASK_WITHOUT_CARD` is declared and fires only in `router.directive.hbs`; the citing files are
- * not claiming to raise it themselves. Verified by reading each site — this is a deliberate,
- * explicit pointer-to-primary-source (same shape as the contract script's
- * `QUESTION_RULE_SLIM->QUESTION_FORMAT`), not a forgotten row. Listed explicitly below
- * (`ALLOWLIST_CROSS_DIRECTIVE_REFS`) — any OTHER unresolved mention is a real violation, exactly
- * like the scaffold case.
+ * A genuine pointer to ANOTHER directive's already-declared halt may be allowlisted only after the
+ * primary declaration and every citing site have been verified. There are no such exceptions in the
+ * current assembled corpus: a directive that receives a shared contract's halt rule owns a local
+ * row. This is deliberate. `H_ASK_WITHOUT_CARD` and `H_UNFORMATTED_ASK` both used to be masked as
+ * cross-directive pointers to declarations that did not exist; their actual consumers now declare
+ * them locally instead.
  *
  * === (b) "declared → used" ====================================================================
  *
@@ -50,7 +46,7 @@
  *   2. A meta-condition true continuously across the whole flow, not owned by one Step
  *      (`H_OPERATOR_REJECT` and its `_DEFAULTS`/`_SETUP` siblings fire at ANY approval STOP;
  *      `H_LOW_CONFIDENCE`, `H_ID_COLLISION`, `H_DISPATCH_FAILED`, `H_AMBIGUOUS_INTENT`,
- *      `H_UNFORMATTED_ASK`, `H_AMBIGUOUS_PRODUCT_LIBRARY`, `H_PIVOT_NO_INVALIDATION_LIST`,
+ *      `H_AMBIGUOUS_PRODUCT_LIBRARY`, `H_PIVOT_NO_INVALIDATION_LIST`,
  *      `H_NO_REVIEW_PLAN`, and `module.directive.hbs`'s own `H_AMBIGUOUS_MODE` row, whose Trigger
  *      text — unlike its siblings in infra/interface/scope/reconcile/scaffold — does not even cite
  *      the governing axiom).
@@ -116,39 +112,7 @@ const HALT_ROW_RE = /\|\s*`?(H_[A-Z0-9_]+)`?\s*\|([^\n]*)\|/g;
  * (.xml) mirrors of the same source line share one entry. Every entry checked against the actual
  * sentence, not guessed.
  */
-const ALLOWLIST_CROSS_DIRECTIVE_REFS = new Set([
-  // root.directive.hbs: "violates the same gate the router enforces (`H_ASK_WITHOUT_CARD`)" — the
-  // halt is declared and fires only in router.directive.hbs's own <HaltConditions>.
-  'root.directive::H_ASK_WITHOUT_CARD',
-  // scope.directive.hbs: three sites, all "the same class as the router's `H_ASK_WITHOUT_CARD`" /
-  // a bare citation of the same pointer — same reasoning.
-  'scope.directive::H_ASK_WITHOUT_CARD',
-  // The next three all inherit the SAME pointer through a shared partial rather than hand-written
-  // prose: `ai/kit/contract/process/question-format.xml` (QUESTION_FORMAT) itself names
-  // `H_UNFORMATTED_ASK` ("skipping the explanation … is itself the violation this contract forbids
-  // (H_UNFORMATTED_ASK)") — a halt declared and fired only from router.directive.hbs. Every
-  // directive that inlines the FULL contract (not the trimmed QUESTION_RULE_SLIM, which only
-  // points at it by name) inherits this same sentence verbatim in its assembled output. Verified
-  // consumers of the full contract: critic, interview-protocol, root (the 4 amplify-* directives
-  // also include it, but delta-assembly reduces their copy to an "Inherited from the loading
-  // directive" pointer with no inlined text, so they never trip this check at all).
-  'critic.directive::H_UNFORMATTED_ASK',
-  'interview-protocol.directive::H_UNFORMATTED_ASK',
-  'root.directive::H_UNFORMATTED_ASK',
-  // review-lifecycle.directive.hbs includes `axiom/process/ax-permitted-bash-commands`, whose own
-  // body names `H_BLOCKED` ("no bash command in this list reaches outside the project root …
-  // That fact is `H_BLOCKED` per `AX_BLOCKER_ESCALATION`"). `H_BLOCKED` is declared and fires only
-  // in phase-execution-protocol.directive.hbs's own <HaltConditions> (the other of this axiom's
-  // exactly two consumers) — review-lifecycle inherits the sentence, not the halt itself.
-  'review-lifecycle.directive::H_BLOCKED',
-  // phase-execution-protocol.directive.hbs includes `axiom/process/ax-deviation-self-resolve`,
-  // whose own body draws the boundary between a self-resolvable spec/ticket hole and "an
-  // environment/infra blocker (`AX_BLOCKER_ESCALATION`, `H_PAUSED_AWAITING_OPERATOR`) … [that]
-  // stays a pause". `H_PAUSED_AWAITING_OPERATOR` is declared and fires only in
-  // execute.directive.hbs's own <HaltConditions> (the orchestrator's own pause on a phase's
-  // blocker) — the OTHER of this axiom's two consumers, where it IS a real local row.
-  'phase-execution-protocol.directive::H_PAUSED_AWAITING_OPERATOR',
-]);
+const ALLOWLIST_CROSS_DIRECTIVE_REFS = new Set();
 
 /**
  * Verified-generic/boundary halt ids (direction b) — see the header comment's EMPIRICAL FINDING
@@ -179,7 +143,6 @@ const ALLOWLIST_UNUSED_HALT_IDS = new Set([
   'H_ID_COLLISION',
   'H_DISPATCH_FAILED',
   'H_AMBIGUOUS_INTENT',
-  'H_UNFORMATTED_ASK',
   'H_AMBIGUOUS_PRODUCT_LIBRARY',
   'H_PIVOT_NO_INVALIDATION_LIST',
   'H_NO_REVIEW_PLAN',
@@ -240,7 +203,7 @@ function splitFragment(text) {
  * skeleton+step-packages for the assembled scan) and returns `{ mentionedNotDeclared,
  * declaredNotUsed }` violations, already filtered through both allowlists.
  */
-function auditDirective(fragments, fileStem) {
+export function auditDirective(fragments, fileStem) {
   const declaredRows = new Map(); // id -> trigger (first occurrence, normally the skeleton's own table)
   const bodyMentioned = new Set();
   const bodyAxCited = new Set();
@@ -334,8 +297,8 @@ if (allViolations.length === 0) {
       `fixed in scaffold.directive.hbs for H_SCAFFOLD_NOT_EXECUTABLE (STEP_3B_FEASIBILITY_CRITIC halted\n` +
       `with it, the table never declared it). Fix: add the row, worded from the actual halting site.\n` +
       `A deliberate reference to ANOTHER directive's own already-declared halt (a pointer, not a local\n` +
-      `re-raise) belongs in ALLOWLIST_CROSS_DIRECTIVE_REFS instead, documented like the existing\n` +
-      `root/scope -> router H_ASK_WITHOUT_CARD entries.\n` +
+      `re-raise) may enter ALLOWLIST_CROSS_DIRECTIVE_REFS only after the primary declaration and every\n` +
+      `citing site are verified and documented; there are no current examples to copy blindly.\n` +
       `\nA row in <HaltConditions> that appears nowhere else is either a boundary precondition or a\n` +
       `continuously-checked meta-condition (see this script's header) — genuinely fine, verified, and\n` +
       `belongs in ALLOWLIST_UNUSED_HALT_IDS with a reason — or it is dead weight nobody wires up; check\n` +

@@ -1,2 +1,2 @@
 <!-- source: ai/directives/dev-review.directive.xml -->
-<Axiom id="AX_REAL_RUN_OVER_PING">No separate ping stages. Availability is confirmed by the actual review-command run.</Axiom>
+<Axiom id="AX_REAL_RUN_OVER_PING" status="draft">No separate ping stages. Availability is confirmed by the actual review-command run.</Axiom>

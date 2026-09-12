@@ -17,6 +17,9 @@
     **Single-fork fast path.** When the caller hands the protocol exactly one named fork (not a
     whole authoring step), skip `STEP_1_INIT_MAP` and `STEP_2_TRIAGE`; enter `STEP_3_ROUNDS` with a
     one-item map (the fork), close it per `AX_STAKES_SPLIT` / `AX_ASK_TOOL_BINDING`, return.
+
+    Every question this protocol emits is governed by the full `QUESTION_FORMAT` contract. Skipping
+    that format halts locally as `H_UNFORMATTED_ASK`; the interview protocol owns the violation.
   </Mission>
 
   <BeliefState deps="AX_OPERATOR_LANGUAGE, AX_OPERATOR_SAFEGUARD, AX_DIALOGUE_DISCIPLINE, AX_DIVERGE_BEFORE_RECOMMEND, AX_NO_PROCESS_NARRATION">
@@ -173,6 +176,7 @@
     | 🛑 ID | Trigger |
     |---|---|
     | `H_HIGH_STAKES_SKIP` | Operator insists on skipping an unclosed high-stakes topic — name the concrete cost (per `AX_OPERATOR_SAFEGUARD`); on a confirmed skip record `✗ skip: <причина>` in the map and proceed |
+    | `H_UNFORMATTED_ASK` | An interview question skips `QUESTION_FORMAT`: no explanation before the tool call, or a bare option list in the plain-text fallback |
   </HaltConditions>
 
   <ExecutionPlan>

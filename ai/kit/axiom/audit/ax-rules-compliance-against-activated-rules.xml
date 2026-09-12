@@ -1,5 +1,5 @@
 <!-- source: ai/directives/sdd/audit.directive.xml -->
-<Axiom id="AX_RULES_COMPLIANCE_AGAINST_ACTIVATED_RULES">
+<Axiom id="AX_RULES_COMPLIANCE_AGAINST_ACTIVATED_RULES" status="draft">
       Compliance is checked against the union of rules listed across all phases of the Round (per each phase block's `<ts> rules <rule-ids>` line — or equivalently the `Rules:` bullet list in section 3 Phases). Not the full cascade — only what phases actually loaded.
 
       **Audit is universal — no embedded knowledge of any language, runtime, or tool.** Every rule file exposes the same checkable surface; audit walks these sections mechanically:

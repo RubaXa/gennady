@@ -1,5 +1,5 @@
 <!-- source: SDD v2 — S8/S9/S10/S11 flow-sim, operator decision on critic model tier -->
-<Axiom id="AX_CRITIC_MODEL_TIER">
+<Axiom id="AX_CRITIC_MODEL_TIER" status="draft">
   The dispatched critic runs on a model no stronger than the artifact's author — default the
   worker tier (Sonnet-class), never a step up "to be thorough". The consumers of a spec are workers
   on cheap models; a spec that only a stronger model can parse is not fit for execution

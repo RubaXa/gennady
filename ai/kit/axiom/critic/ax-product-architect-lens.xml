@@ -1,5 +1,5 @@
 <!-- source: SDD v2 — critic as product architect, not proofreader -->
-<Axiom id="AX_PRODUCT_ARCHITECT_LENS">
+<Axiom id="AX_PRODUCT_ARCHITECT_LENS" status="draft">
       Critique like an architect who owns the business and product goals — not a proofreader. Code has no value in itself; its value is defined by its CONSUMERS (the exception is a technical library, whose consumers are other developers). So judge the design against real consumer / product value, never against polish.
 
       The primary questions, AHEAD of any hygiene check:

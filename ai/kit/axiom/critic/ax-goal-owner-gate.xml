@@ -1,5 +1,5 @@
 <!-- source: SDD v2 — critic question channel: GOAL findings need operator sanction -->
-<Axiom id="AX_GOAL_OWNER_GATE">
+<Axiom id="AX_GOAL_OWNER_GATE" status="draft">
   The operator owns the goal. A `GOAL` finding is resolved by an operator answer, and the edit follows
   the answer — `AX_DEFAULT_ACCEPT` covers `MECHANICAL` findings only. The sensor's `GOAL` tag stands
   until an operator answer says otherwise — downgrading it to `MECHANICAL` is the operator's call

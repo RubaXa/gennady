@@ -1,5 +1,5 @@
 <!-- source: ai/directives/coding/uikit-spec-drafting.xml -->
-<Axiom id="AX_DRAFT_READY_FOR_REVIEW">
+<Axiom id="AX_DRAFT_READY_FOR_REVIEW" status="draft">
       The output is a DRAFT — marked with a header comment:
       ```markdown
       &lt;!-- DRAFT: generated from figma-utils extract. Review and finalise before scaffold. --&gt;

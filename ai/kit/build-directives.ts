@@ -48,7 +48,7 @@
  *     `AX_*` mentioned with no `<Axiom id>` defined anywhere in the rendered set, except the
  *     pairs named in `KNOWN_DANGLING_AXIOM_REFS` — a temporary, shrinking allowlist (L-10).
  */
-import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, unlinkSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, statSync, unlinkSync } from 'node:fs';
 import { join, dirname, basename, relative, sep } from 'node:path';
 import { createRenderer, walk, TEMPLATES, OUT_ROOT, KIT } from './render.ts';
 import {
@@ -57,6 +57,10 @@ import {
   lintUndefinedAxiomRefs,
   formatUndefinedRefsReport,
   KNOWN_DANGLING_AXIOM_REFS,
+  collectStaticDirectiveFiles,
+  lintUncollectedAxiomFiles,
+  formatUncollectedAxiomsReport,
+  PENDING_IN_OPEN_PR,
   type RenderedDirective,
 } from './lint-axioms.ts';
 import { buildDeltaPlan, excludedPartialsFor, applyDelta, type PlanNodeInput } from './delta-assembly.ts';
@@ -168,12 +172,64 @@ if (report) console.warn(`\n${report}`);
 // directive, not a style nit — it fails the build, minus the temporary, shrinking
 // KNOWN_DANGLING_AXIOM_REFS allowlist (L-10 / Q2 option b). This never grows silently: a NEW
 // dangling reference (not already in the allowlist) fails the build the moment it lands.
-const undefinedRefs = lintUndefinedAxiomRefs(rendered, { allowlist: KNOWN_DANGLING_AXIOM_REFS });
+// T-B6-24: the scanned corpus is `rendered` (templated sdd-v2/**) PLUS every static `.xml` anywhere
+// under ai/directives/** except generated sdd-v2/** itself. Static files are read from the real
+// directive root (OUT_ROOT), never the --out= override. This makes root-level files, existing static
+// trees, and future static directories visible to the same referenced-but-undefined gate.
+const staticDirectiveFiles = collectStaticDirectiveFiles(OUT_ROOT);
+const undefinedRefs = lintUndefinedAxiomRefs([...rendered, ...staticDirectiveFiles], {
+  allowlist: KNOWN_DANGLING_AXIOM_REFS,
+});
 if (undefinedRefs.length > 0) {
   console.error(`\n${formatUndefinedRefsReport(undefinedRefs)}`);
   process.exit(1);
 }
 // #endregion END_FAIL_ON_UNDEFINED_AXIOM_REFS
+
+// #region START_FAIL_ON_UNCOLLECTED_AXIOM_FILES — invariant (T-B6-19, L-9 hybrid option c): every
+// axiom file in the SDD-relevant library subset (process/spec/audit/scaffold/boundary/critic/truth/
+// interview — the criterion 40-TRACK-DIRECTIVES-SKILLS.md §4.1 fixes; the other library categories
+// are per-language rule files consumed through a different mechanism and out of this check by
+// construction) is either (a) connected by some template's {{> "axiom/<dir>/<name>"}} include and
+// carries NEITHER status="draft" NOR a PENDING_IN_OPEN_PR entry, (b) explicitly marked
+// status="draft" while NOT connected, or (c) NOT connected but named in PENDING_IN_OPEN_PR (an
+// already-open branch is about to connect it). Any file outside these three shapes — including
+// "connected AND still labeled draft/pending", the silent fourth state V-BATCH-18 verifier F-2
+// found this gate missing — fails the build: a stale or absent label is indistinguishable from an
+// invariant nobody remembered.
+const SDD_RELEVANT_AXIOM_DIRS = ['process', 'spec', 'audit', 'scaffold', 'boundary', 'critic', 'truth', 'interview'];
+const AXIOM_ROOT = join(KIT, 'axiom');
+function walkAxiomXml(dir: string): string[] {
+  const out: string[] = [];
+  for (const name of readdirSync(dir)) {
+    const p = join(dir, name);
+    const st = statSync(p);
+    if (st.isDirectory()) out.push(...walkAxiomXml(p));
+    else if (p.endsWith('.xml')) out.push(p);
+  }
+  return out;
+}
+const axiomFiles: RenderedDirective[] = [];
+for (const dir of SDD_RELEVANT_AXIOM_DIRS) {
+  const dirPath = join(AXIOM_ROOT, dir);
+  if (!existsSync(dirPath)) continue;
+  for (const p of walkAxiomXml(dirPath)) {
+    axiomFiles.push({ file: relative(AXIOM_ROOT, p).split(sep).join('/'), text: readFileSync(p, 'utf8') });
+  }
+}
+const connectedPartials = new Set<string>();
+const PARTIAL_INCLUDE_RE = /\{\{>\s*"axiom\/([^"]+)"\s*\}\}/g;
+for (const e of pass1) for (const m of e.hbsSource.matchAll(PARTIAL_INCLUDE_RE)) connectedPartials.add(m[1] as string);
+// PENDING_IN_OPEN_PR passed explicitly (not relied on as the default 3rd argument) — the gate that
+// enforces every SDD-relevant axiom file's collected-or-draft-or-pending invariant should read as
+// wiring THIS allowlist in, the same way KNOWN_DANGLING_AXIOM_REFS is wired into lintUndefinedAxiomRefs
+// above, not as leaning on a fallback the caller happens not to override.
+const uncollectedAxioms = lintUncollectedAxiomFiles(axiomFiles, connectedPartials, PENDING_IN_OPEN_PR);
+if (uncollectedAxioms.length > 0) {
+  console.error(`\n${formatUncollectedAxiomsReport(uncollectedAxioms)}`);
+  process.exit(1);
+}
+// #endregion END_FAIL_ON_UNCOLLECTED_AXIOM_FILES
 
 // #region START_FAIL_ON_LAZY_BUILD_FAILURES — invariant: a budget overage or a missing package file never ships silently (DA-REQ-12/14); every accumulated failure is printed before the process exits non-zero
 if (buildFailures.length > 0) {

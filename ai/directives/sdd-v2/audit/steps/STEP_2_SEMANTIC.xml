@@ -144,9 +144,45 @@
       | Severity | Meaning |
       |---|---|
       | `BLOCKER` | task cannot be considered complete; merge forbidden |
-      | `MAJOR` | protocol violation; requires fix; allows merge only with explicit operator acceptance + Decision Log entry |
-      | `MINOR` | stylistic or secondary discrepancy |
+      | `MAJOR` | behavior, required scope, remediation ownership, or verification is broken or cannot be proved; requires fix; allows merge only with explicit operator acceptance + Decision Log entry |
+      | `MINOR` | mechanically fixable documentation, protocol, or style discrepancy that does not make behavior, scope, ownership, or verification ambiguous |
       | `INFO` | observation without mandatory action (often `INSIGHT_BACKFLOW`) |
 
-      Severity does not depend on agent's mood. Closed-world drift = `BLOCKER` by default; coding-rules violation = `MAJOR`; stylistic deviation = `MINOR`.
+      Confidence constrains what severity may decide. `HIGH` and `MEDIUM` may participate in the
+      verdict table. `LOW` is an unconfirmed observation: before summary, run one bounded independent
+      check that can raise it to `MEDIUM`/`HIGH`; if it remains `LOW`, emit it only as `INFO`. A
+      `LOW` finding never causes `FAIL`, opens an Execution Round, or authorizes an artifact change.
+      It remains visible to the operator instead of becoming an interactive halt.
+
+      Severity does not depend on agent's mood or on whether the mismatch is in code or prose.
+      Closed-world drift = `BLOCKER` by default; a coding-rules violation that can change behavior or
+      verification = `MAJOR`; stylistic deviation = `MINOR`. A protocol or documentation mismatch is
+      `MAJOR` only when it makes required behavior, scope, remediation ownership, or verification
+      ambiguous or unprovable. Otherwise it is `MINOR` and cannot force another execution round.
+      Distinguish that from new knowledge: a sound execution choice that preserves current
+      requirements but suggests enriching canonical text is `INSIGHT_BACKFLOW` `INFO`, presented for
+      optional operator review. A known canonical fact copied incorrectly into another artifact is
+      documentation mismatch and remains `MINOR`.
+      A claimed verification result with no executed evidence is not paper drift: it leaves required
+      behavior unproved and is `MAJOR`.
+
+      **Overall status is computed from severities, never judged.** First matching row wins; print which row matched:
+
+      | Condition | Status |
+      |---|---|
+      | any open `BLOCKER` | `FAIL` |
+      | any open `MAJOR` without operator acknowledgement | `FAIL` |
+      | every open `MAJOR` acknowledged + Decision Log entry, and no `BLOCKER` | `PASS_WITH_ACKNOWLEDGED_RISKS` |
+      | only `MINOR` / `INFO`, or nothing | `PASS` |
+
+      `RULE_FILE_INCOMPLETE` and every other project-scope finding enters this table capped at `MINOR` (per `AX_FINDING_ROUTING`): shared infrastructure no task owns cannot decide that task's verdict. The `sev` field still reports the finding's own severity — the cap applies to the computation, not to the record.
+
+      <!-- v2 close model (L-27, see this file's header comment for the full rationale): each
+           phase already closes `[x] DONE` mechanically via `sdd-log complete` (AX_AUDIT_HOOK)
+           before the group audit ever runs; PASS/FAIL is the round's own audit verdict, recorded
+           separately (`## Audit Rounds`, batches 14/15) — never a trigger that sets `[x] DONE`. -->
+      This matters because the status is consumed mechanically: on PASS the audit records the round
+      verdict; `[x] DONE` is already the phase's mechanical close. The audit remediates a progressing
+      FAIL, and blocks only on evidenced no-progress or a real external decision. An unspecified
+      verdict here makes those transitions arbitrary.
     </Axiom>

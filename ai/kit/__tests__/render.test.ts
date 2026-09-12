@@ -70,6 +70,18 @@ describe('normalizeBrick — re-bases real extraction artifacts to canonical', (
     const raw = '<!-- source: x -->\n<Axiom id="A">\n      line one\n      line two\n    </Axiom>';
     assert.equal(normalizeBrick(raw), '<Axiom id="A">\n  line one\n  line two\n</Axiom>');
   });
+  it('strips a complete multiline leading service comment', () => {
+    const raw = '<!-- source: x\n     transfer rationale\n     final note -->\n<Axiom id="A">\n  body\n</Axiom>';
+    assert.equal(normalizeBrick(raw), '<Axiom id="A">\n  body\n</Axiom>');
+  });
+  it('strips multiple leading service comments', () => {
+    const raw = '<!-- source: x -->\n<!-- migration:\n     kept verbatim -->\n<Axiom id="A">\n  body\n</Axiom>';
+    assert.equal(normalizeBrick(raw), '<Axiom id="A">\n  body\n</Axiom>');
+  });
+  it('preserves comments inside the brick body', () => {
+    const raw = '<Axiom id="A">\n  before\n  <!-- semantic marker stays -->\n  after\n</Axiom>';
+    assert.equal(normalizeBrick(raw), raw);
+  });
   it('preserves relative nesting while re-basing', () => {
     const raw = '<Axiom id="A">\n      intro\n        deeper\n    </Axiom>';
     assert.equal(normalizeBrick(raw), '<Axiom id="A">\n  intro\n    deeper\n</Axiom>');

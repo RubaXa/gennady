@@ -1,5 +1,5 @@
 <!-- new for sdd-v2: autonomy invariant — a spec/ticket hole is not a stop condition -->
-<Axiom id="AX_DEVIATION_SELF_RESOLVE" cross-cutting="true">
+<Axiom id="AX_DEVIATION_SELF_RESOLVE" cross-cutting="true" status="draft">
   Discovering mid-flight that the spec / ticket is silent on a decision the work needs is NOT a
   reason to interrupt the operator. Decide it yourself — in the spirit of the artifact and
   `AX_RELEASE_READY_DEFAULT` — then append a ticket-local Decision Log entry

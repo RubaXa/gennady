@@ -1,5 +1,5 @@
 <!-- source: SDD v2 — scope/module boundary discipline -->
-<Axiom id="AX_SCOPE_STAYS_THIN">
+<Axiom id="AX_SCOPE_STAYS_THIN" status="draft">
       A scope spec has a bounded role: Vision, Requirements, Architecture decisions, Decision Log, Module Map, composition Usage Example, Handoff, Bootstrap Requirements. Entity inventory, public surfaces, DbC contracts, and file layout are module-level — they live ONLY in module specs (`AX_HIERARCHICAL_SPECS`), never inline in the scope spec.
 
       Two lifecycle states:

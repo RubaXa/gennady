@@ -1,5 +1,5 @@
 <!-- source: ai/directives/sdd/discovery.directive.xml -->
-<Axiom id="AX_SCOPE_TYPE_BRANCH">
+<Axiom id="AX_SCOPE_TYPE_BRANCH" status="draft">
       scope-type drives the flow of the directive:
 
       | scope-type | STEP_3 | STEP_4 | STEP_5 | STEP_6 |

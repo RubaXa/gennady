@@ -310,3 +310,67 @@ describe('model pin never returns (LOCK-1)', () => {
     assert.deepEqual(offenders, []);
   });
 });
+
+// T-B6-11 (40-TRACK-DIRECTIVES-SKILLS.md §1.4, D4.4/D4.5/D4.6/D4.7): restored the v1 audit invariants
+// that had regressed to a 13-line snapshot — LOW confidence never causing FAIL, the printed
+// first-matching-row verdict table, the claimed-verification-without-evidence rule, and the
+// project-scope finding cap routed to `rule-file-fix`, never this task's own FAIL. Assembly
+// (lazy-split) currently lands ax-severity-tagging's body inside STEP_2_SEMANTIC.xml, not
+// STEP_3_ROUTE.xml as an earlier draft of the plan assumed — assert on the rendered assembled
+// output wherever the partial actually lands, not on a fixed step file name that could silently
+// stop matching after the next lazy-assembly rebalance.
+describe('audit severity verdict restored (T-B6-11, D4.4-D4.7)', () => {
+  it('the assembled audit directive computes its verdict from a printed severity table, never judges it', () => {
+    const assembled = walkFiles(resolve(ROOT, 'ai/directives/sdd-v2/audit')).map((f) => readFileSync(f, 'utf8'));
+    const whole = [read('ai', 'directives', 'sdd-v2', 'audit.directive.xml'), ...assembled].join('\n');
+    assert.match(whole, /First matching row wins; print which row matched/);
+    assert.match(whole, /`LOW` finding never causes `FAIL`, opens an Execution Round, or authorizes an artifact change/);
+    assert.match(whole, /A claimed verification result with no executed evidence is not paper drift/);
+    assert.match(whole, /project-scope finding enters this table capped at `MINOR`/);
+  });
+
+  it('routes a project-scope RULE_FILE_INCOMPLETE finding to rule-file-fix, never a phase owner or this task\'s own FAIL', () => {
+    const audit = read('ai', 'directives', 'sdd-v2', 'audit.directive.xml');
+    assert.match(
+      audit,
+      /`RULE_FILE_INCOMPLETE` \| `rule-file-fix` — the rule file is shared project infrastructure, outside every phase's Target Files\. Never `ticket-update`, never a phase owner, never `FAIL` for this task/
+    );
+  });
+
+  // V-BATCH-18 verifier B-1 / Lead decision L-27: T-B6-11 (this same batch) had carried v1's
+  // closing sentence — "the orchestrator sets `[x] DONE` on PASS" — verbatim into
+  // ax-severity-tagging.xml, landing it in the SAME assembled audit.directive that T-B6-25 (also
+  // this batch) had just given AX_AUDIT_HOOK's v2 group-audit model: a ticket's `[x] DONE` is its
+  // OWN phase gates' mechanical close, already true before the audit ever runs. Two contradictory
+  // claims about who closes `[x] DONE`, both introduced by this batch. L-27 rewrites the sentence
+  // to the v2 model instead of carrying the L-25 verbatim-transfer rule past its breaking point.
+  it('the assembled audit directive no longer claims the orchestrator sets `[x] DONE` on PASS (L-27)', () => {
+    const assembled = walkFiles(resolve(ROOT, 'ai/directives/sdd-v2/audit')).map((f) => readFileSync(f, 'utf8'));
+    const audit = read('ai', 'directives', 'sdd-v2', 'audit.directive.xml');
+    const codeReview = read('ai', 'directives', 'sdd-v2', 'code-review.directive.xml');
+    const whole = [audit, codeReview, ...assembled].join('\n');
+    assert.doesNotMatch(whole, /orchestrator sets `\[x\] DONE` on/);
+    assert.match(whole, /on PASS the audit records the round\s+verdict; `\[x\] DONE` is already the phase's mechanical close/);
+  });
+});
+
+// GAP-3 (40-TRACK-DIRECTIVES-SKILLS.md / 05-SUMMARY.md:308, 06-ADEQUACY-GAP.md §5.3 п.29):
+// `H_ASK_WITHOUT_CARD` used to be declared NOWHERE — `audit-halt-activation.mjs`'s own
+// ALLOWLIST_CROSS_DIRECTIVE_REFS claimed it was "declared and fires only in router.directive.hbs",
+// but router's own <HaltConditions> table never actually had that row. Fixed by declaring it for
+// real in both router.directive.hbs (its own entry Ask) and root.directive.hbs (its own Vision
+// interview ask) — the identical rule, two independent entry points. This lock guards against the
+// allowlist regressing back to a pointer-to-nothing.
+describe('H_ASK_WITHOUT_CARD is a real declared halt, not an allowlisted pointer (GAP-3)', () => {
+  it('router.directive.xml and root.directive.xml each declare their own H_ASK_WITHOUT_CARD row', () => {
+    const router = read('ai', 'directives', 'sdd-v2', 'router.directive.xml');
+    const root = read('ai', 'directives', 'sdd-v2', 'root.directive.xml');
+    assert.match(router, /\|\s*`H_ASK_WITHOUT_CARD`\s*\|/);
+    assert.match(root, /\|\s*`H_ASK_WITHOUT_CARD`\s*\|/);
+  });
+
+  it('audit-halt-activation.mjs no longer allowlists H_ASK_WITHOUT_CARD as a cross-directive pointer', () => {
+    const script = read('ai', 'kit', 'audit-halt-activation.mjs');
+    assert.doesNotMatch(script, /'(root|scope)\.directive::H_ASK_WITHOUT_CARD'/);
+  });
+});

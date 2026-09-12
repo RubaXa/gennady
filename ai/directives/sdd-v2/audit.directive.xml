@@ -24,6 +24,8 @@
   </Mission>
 
   <BeliefState>
+
+
     <Axiom id="AX_OPERATOR_LANGUAGE" cross-cutting="true">
       **Directive text (axioms, halt names, step procedures, contract identifiers, structural
       section headings, action/status tokens) — English.**
@@ -195,7 +197,7 @@
       | `INSIGHT_BACKFLOW` | spec edit (scope or module spec) |
       | `STALE_AFTER_PIVOT` | reopen / refine the affected downstream artifact |
       | `TASK_ID_DRIFT` | code-fix via ticket reopen |
-      | `RULE_FILE_INCOMPLETE` | ticket update to correct the declared Rules list OR a separate rule-maintenance task when the referenced rule itself is incomplete |
+      | `RULE_FILE_INCOMPLETE` | `rule-file-fix` — the rule file is shared project infrastructure, outside every phase's Target Files. Never `ticket-update`, never a phase owner, never `FAIL` for this task |
       | `LANGUAGE_QUALITY` | spec edit or ticket update at the exact operator-facing sentence |
       | `YAGNI_WAIVER_INCOMPLETE` | ticket update (add the missing Execution Log line) OR spec edit (remove the label if it was never actually decided) |
       | `ENVIRONMENT_GATE_UNAVAILABLE` | operator escalation — NOT a phase fix and NOT something audit or the worker repairs itself; spin out as a separate infra/environment task if the fix is non-trivial |

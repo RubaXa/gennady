@@ -1,5 +1,5 @@
 <!-- source: ai/directives/sdd/scaffold.directive.xml -->
-<Axiom id="AX_SCOPE_GRAPH_DETECTION">
+<Axiom id="AX_SCOPE_GRAPH_DETECTION" status="draft">
       Scope names, types, and statuses come from the `sdd-state` snapshot already in context
       (its `[SCOPES]` section). Portal absent → no specs → HALT.
 

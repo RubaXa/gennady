@@ -1,4 +1,4 @@
 <!-- source: ai/directives/sdd/module-decomposition.directive.xml -->
-<Axiom id="AX_ENTITY_SURFACE_COMPLETENESS">
+<Axiom id="AX_ENTITY_SURFACE_COMPLETENESS" status="draft">
       Entity surface is exhaustive in the shape linked by its skeleton section: Type, Public Properties, Public Operations (intent-level, no language signatures), Lifecycle, Events, Errors & Degradation, Consumers. No private detail — that is Executor's job.
     </Axiom>

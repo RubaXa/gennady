@@ -39,12 +39,16 @@
 
   <ChatProtocol>
     {{> "contract/process/question-format"}}
+    Any root-flow question that skips this contract halts as `H_UNFORMATTED_ASK`; the root owns the
+    violation because it receives the full contract rather than a name-only inherited hint.
   </ChatProtocol>
 
   <HaltConditions>
     | 🛑 ID | Trigger |
     |---|---|
     | `H_NO_INTENT` | Operator invoked the root flow with empty intake against an existing Portal |
+    | `H_ASK_WITHOUT_CARD` | The Vision interview question precedes the router's `sdd-state` card, or restates it instead of the router having shown it verbatim — the same gate the router itself enforces at its own entry |
+    | `H_UNFORMATTED_ASK` | A root-flow question skips `QUESTION_FORMAT`: no explanation before the tool call, or a bare option list in the plain-text fallback |
     | `H_CYCLE_IN_GRAPH` | Scope Graph contains a cycle (detected by `sdd-check`) |
     | `H_SCOPE_VS_MODULE_AMBIGUITY` | Operator labels as «scope» something that resembles a module |
     | `H_OPERATOR_REJECT` | Operator rejected Vision, Scope Graph, or the final Portal |

@@ -1,5 +1,5 @@
 <!-- reinstates v1 DbC-agnosticism (ex AX_AGNOSTICISM), supersedes AX_CONTRACTS_REAL_LANGUAGE (real-language signatures) per operator decision -->
-<Axiom id="AX_CONTRACTS_TEXTUAL_AGNOSTIC">
+<Axiom id="AX_CONTRACTS_TEXTUAL_AGNOSTIC" status="draft">
   DbC contracts are textual and language-agnostic. Write preconditions / postconditions /
   invariants and public operations as plain intent-level statements in the shared vocabulary
   (Port, Adapter, Entity, Command, Query, Event) — one testable statement per line, readable,
