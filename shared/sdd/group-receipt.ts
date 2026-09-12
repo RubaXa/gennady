@@ -7,6 +7,7 @@ import { basename } from 'node:path';
 import { extractSection } from './section.ts';
 import { parseMetaInfo } from './ticket.ts';
 import type { Finding } from './finding.ts';
+import { nextRoundNumber, PHASE_RECEIPTS_SCHEMA_MARKER } from './execution-log.ts';
 
 /** @purpose The two group-completion review transitions — audit and behavioural code-review. */
 export type GroupReceiptKind = 'audit' | 'review';
@@ -21,9 +22,9 @@ export const GROUP_RECEIPT_MARKER: Readonly<Record<GroupReceiptKind, string>> = 
 const AUDIT_MISSING_CODE = 'SDD_GROUP_AUDIT_MISSING';
 /** @purpose WARN code emitted when a complete group has no valid code-review receipt. */
 const REVIEW_MISSING_CODE = 'SDD_GROUP_REVIEW_MISSING';
-/** @purpose The v2 receipt-aware schema marker; a group is graded only when every member carries it (grandfathering). */
-const PHASE_RECEIPTS_SCHEMA_MARKER = '<!--PHASE_RECEIPTS:v1-->';
-
+/** @purpose WARN code emitted when a group is migrating — SOME but not all members carry the v2
+ *   receipt-aware schema marker — so grading stays explicitly skipped rather than silent (B2-16). */
+const PARTIALLY_MARKED_CODE = 'SDD_GROUP_RECEIPT_PARTIALLY_MARKED';
 /**
  * @purpose The durable FACT that one spec's ticket group was audited/reviewed — findings stay ephemeral.
  * @invariant `signature` binds the fact to re-derivable member state so a reopen invalidates it; `gitRef`
@@ -57,14 +58,13 @@ export type GroupMemberInput = {
 };
 
 /**
- * @purpose Count a member's Rounds — the mechanical reopen signal.
+ * @purpose Count a member's Rounds — the mechanical reopen signal (B2-01: derived from
+ *   execution-log.ts's shared `nextRoundNumber`, one home for this count instead of a second copy).
  * @param content Full member ticket markdown.
  * @returns The number of `### Round N` headers in its Execution Log (0 when none).
  */
 function memberRoundCount(content: string): number {
-  const log = extractSection(content, 'EXECUTION_LOG');
-  const body = log.status === 'ok' ? log.content : content;
-  return (body.match(/^#{3}\s+Round\s+\d+\b/gm) ?? []).length;
+  return nextRoundNumber(content) - 1;
 }
 
 /**
@@ -285,17 +285,30 @@ export type GroupUnderCheck = {
 };
 
 /**
- * @purpose Re-derive each complete group and WARN when its audit/review receipt is missing, forged, or stale.
- * @invariant Grandfathered on the v2 schema marker and keyed off the WHOLE group being DONE (never per-ticket
- *   isDone); WARN-only during the warn-then-error rollout.
+ * @purpose Re-derive each complete group and WARN when its audit/review receipt is missing, forged,
+ *   or stale — grandfathered on the v2 schema marker, keyed off the WHOLE group being DONE.
+ * @invariant Never per-ticket isDone. A SOME-but-not-all-marked group is an explicit
+ *   `SDD_GROUP_RECEIPT_PARTIALLY_MARKED` skip (B2-16), not silence; a fully-unmarked group stays
+ *   silently ungraded, same as before.
  * @param groups Every resolved group with its owning spec and live members.
- * @returns One WARN per complete v2 group lacking a valid audit or review receipt.
+ * @returns One WARN per complete v2 group lacking a valid audit or review receipt, plus one WARN per
+ *   partially-marked group.
  */
 export function checkGroupReceipts(groups: GroupUnderCheck[]): Finding[] {
   const findings: Finding[] = [];
   for (const group of groups) {
     if (group.members.length === 0) continue;
-    if (!group.members.every((m) => memberIsReceiptAware(m.content))) continue;
+    const markedCount = group.members.filter((m) => memberIsReceiptAware(m.content)).length;
+    if (markedCount === 0) continue;
+    if (markedCount < group.members.length) {
+      findings.push({
+        severity: 'warn',
+        code: PARTIALLY_MARKED_CODE,
+        file: group.specFile,
+        message: `Group has ${markedCount} of ${group.members.length} member ticket(s) marked \`<!--PHASE_RECEIPTS:v1-->\`; audit/code-review receipt grading stays skipped until every member is migrated.`,
+      });
+      continue;
+    }
     const derived = deriveGroupState(group.members);
     if (!derived.allDone) continue;
     for (const [kind, code, label] of [

@@ -113,6 +113,10 @@ specs/infra-base/infra-base.task.INF-gate.md:38: error: SDD_AUTHORING_TARGET_PAT
 
 **Deferred (audit-агент, семантика):** closed-world symbol-diff (код↔Inventory), BDD↔test substance, rules-cascade resolution, stale-after-pivot, runtime-backing real-vs-stub. Требуют AST / запуска тестов / суждения — не механика. (Task-DAG, tracker-sync, граф фаз, exec-log completeness, anchors `.spec.md` — теперь механически в туле; см. постусловия.)
 
+### `ExecutionLog`
+
+- **Usage Waiver:** возвращаемый тип единого структурного парсера `parseExecutionLog` (`shared/sdd/execution-log.ts`, B2-01) — потребители деструктурируют результат (`.rounds`), не именуя тип отдельно; сама функция несёт ≥2 продакшен-вызова (`firstRoundPhaseBlockCounts`, `analyzeRoundClosures`).
+
 <!--/SECTION:MODULE_CONTRACTS-->
 
 <!--SECTION:PUBLIC_OPTIONS-->

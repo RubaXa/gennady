@@ -7,13 +7,8 @@ import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'nod
 import { inspectRepoPath } from '../common/repo-path.ts';
 import { extractSection } from './section.ts';
 import { parsePhasesOverview, parsePhaseDetail } from './ticket.ts';
-import {
-  isTicket,
-  parsePhaseHandoffs,
-  parseHandoffArtifacts,
-  ticketRef,
-  type TicketRef,
-} from './check.ts';
+import { isTicket, ticketRef, type TicketRef } from './check.ts';
+import { parsePhaseHandoffs, parseHandoffArtifacts } from './execution-log.ts';
 import { readHeadContent } from '../common/changed-files.ts';
 import { looksLikeTaskId } from './task-id.ts';
 

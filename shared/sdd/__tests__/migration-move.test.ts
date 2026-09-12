@@ -7,7 +7,12 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { planScopeMove, executeScopeMove, rewriteMovedLinks } from '../migration-move.ts';
+import {
+  planScopeMove,
+  executeScopeMove,
+  rewriteMovedLinks,
+  renameCriticRoundHeadings,
+} from '../migration-move.ts';
 import { scanMigrationUnits, scaffoldUnitFile, unitFilePath } from '../migration-plan.ts';
 
 let root: string;
@@ -140,6 +145,36 @@ describe('migration-move', () => {
     assert.match(scopeIndex, /## Cascade Table/);
   });
 
+  // B2-02: a v1 ticket's legacy `## Critic Rounds` section is normalized at the exact moment it is
+  // actively moved — never as a separate blanket corpus rewrite.
+  it("--write: a moved ticket's legacy `## Critic Rounds` Round headings are renamed to `Critic Round`", () => {
+    writeFileSync(
+      join(root, 'tasks', 'demo', 'core', 'core.task-1.md'),
+      [
+        TICKET_A,
+        '',
+        '<!--SECTION:EXECUTION_LOG-->',
+        '### Round 1 — 2026-05-31, initial',
+        '#### Round close',
+        '<!--/SECTION:EXECUTION_LOG-->',
+        '',
+        '## Critic Rounds',
+        '### Round 2 — 2026-05-30',
+      ].join('\n'),
+      'utf-8'
+    );
+    fillPlanLayer();
+    const r = executeScopeMove(root, 'demo', true);
+    assert.ok(r.ok, JSON.stringify(r));
+
+    const moved = readFileSync(
+      join(root, 'specs', 'demo', 'core', 'core.task.demo-alpha.md'),
+      'utf-8'
+    );
+    assert.match(moved, /### Round 1 — 2026-05-31, initial/);
+    assert.match(moved, /### Critic Round 2 — 2026-05-30/);
+  });
+
   it('rewriteMovedLinks: относительная ссылка пересчитывается на новый путь, внешние URL и якоря без пути не трогаются', () => {
     const byOldPath = new Map([
       ['tasks/demo/core/core.task-1.md', 'specs/demo/core/core.task.demo-alpha.md'],
@@ -262,5 +297,55 @@ describe('migration-move', () => {
     // stray-тикет попал в scan → он прикрепится к scope-юниту и заблокирует план (нет строки в Ticket Map)
     const p = planScopeMove(root, 'demo');
     assert.ok(!p.ok);
+  });
+});
+
+// B2-02: rename a legacy `## Critic Rounds` section's own `### Round N` headings so they can never
+// again be confused with EXECUTION_LOG's own Rounds by any whole-file-scanning reader.
+describe('renameCriticRoundHeadings', () => {
+  it('renames every `### Round N` heading inside `## Critic Rounds`, leaving EXECUTION_LOG untouched', () => {
+    const before = [
+      '<!--SECTION:EXECUTION_LOG-->',
+      '### Round 1 — 2026-06-20, initial',
+      '<!--/SECTION:EXECUTION_LOG-->',
+      '',
+      '## Critic Rounds',
+      '### Round 2 — 2026-05-30',
+      'some notes',
+      '### Round 3 — 2026-05-31',
+    ].join('\n');
+    const after = renameCriticRoundHeadings(before);
+    assert.match(after, /### Round 1 — 2026-06-20, initial/);
+    assert.match(after, /### Critic Round 2 — 2026-05-30/);
+    assert.match(after, /### Critic Round 3 — 2026-05-31/);
+    assert.doesNotMatch(after, /## Critic Rounds\n### Round/);
+  });
+
+  it('stops renaming at the next same-or-higher-level heading after Critic Rounds', () => {
+    const before = [
+      '## Critic Rounds',
+      '### Round 1 — 2026-05-30',
+      '## Decision Log',
+      '### Round 9 — unrelated heading, not a real Round',
+    ].join('\n');
+    const after = renameCriticRoundHeadings(before);
+    assert.match(after, /### Critic Round 1 — 2026-05-30/);
+    assert.match(after, /### Round 9 — unrelated heading, not a real Round/);
+  });
+
+  it('is a no-op when there is no `## Critic Rounds` section', () => {
+    const before = [
+      '<!--SECTION:EXECUTION_LOG-->',
+      '### Round 1 — 2026-06-20, initial',
+      '<!--/SECTION:EXECUTION_LOG-->',
+    ].join('\n');
+    assert.strictEqual(renameCriticRoundHeadings(before), before);
+  });
+
+  it('is idempotent — already-renamed content comes back byte-identical', () => {
+    const once = renameCriticRoundHeadings(
+      ['## Critic Rounds', '### Round 1 — 2026-05-30'].join('\n')
+    );
+    assert.strictEqual(renameCriticRoundHeadings(once), once);
   });
 });

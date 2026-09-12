@@ -15,7 +15,7 @@ import {
 } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join, dirname, basename, sep, relative, posix } from 'node:path';
-import { extractSection } from './section.ts';
+import { collectHeadings, extractSection } from './section.ts';
 import { parseMeta } from './tracker.ts';
 import { scanMigrationUnits, unitFilePath, type SpecUnit } from './migration-plan.ts';
 
@@ -64,6 +64,29 @@ function ticketTitle(content: string): string {
   const rest = m[1].trim();
   const dash = rest.split('—');
   return (dash.length > 1 ? dash.slice(1).join('—') : rest).trim() || '—';
+}
+
+/**
+ * @purpose Rename every `### Round N` heading inside a legacy `## Critic Rounds` section to
+ *   `### Critic Round N` (B2-02) — called by `executeScopeMove` at the exact moment a ticket is
+ *   actively migrated, never as a blanket corpus rewrite.
+ * @invariant Idempotent and scoped strictly to the `## Critic Rounds` section body — a ticket with
+ *   no such section, or one already renamed, comes back byte-identical; EXECUTION_LOG's own Round
+ *   headings are never touched.
+ * @param content Full ticket markdown.
+ * @returns Renamed content (or the original, unchanged).
+ */
+export function renameCriticRoundHeadings(content: string): string {
+  const headings = collectHeadings(content);
+  const criticIndex = headings.findIndex((h) => h.level === 2 && h.text.trim() === 'Critic Rounds');
+  if (criticIndex === -1) return content;
+  const critic = headings[criticIndex] as (typeof headings)[number];
+  const next = headings.slice(criticIndex + 1).find((h) => h.level <= critic.level);
+  const end = next?.start ?? content.length;
+  const body = content.slice(critic.lineEnd, end);
+  const renamedBody = body.replace(/^(#{3})[ \t]+Round[ \t]+(\d+)\b/gm, '$1 Critic Round $2');
+  if (renamedBody === body) return content;
+  return content.slice(0, critic.lineEnd) + renamedBody + content.slice(end);
 }
 
 /**
@@ -435,7 +458,15 @@ export function executeScopeMove(
   // #endregion END_LINK_REWRITE
 
   for (const m of plan.moves) {
-    if (write) moveFile(repoRoot, m.from, m.to);
+    if (write) {
+      moveFile(repoRoot, m.from, m.to);
+      // B2-02: normalize a legacy `## Critic Rounds` section's own `### Round N` headings at the
+      // exact moment this ticket is actively being migrated — never a blanket corpus rewrite.
+      const movedAbs = join(repoRoot, m.to);
+      const movedContent = readFileSync(movedAbs, 'utf-8');
+      const renamed = renameCriticRoundHeadings(movedContent);
+      if (renamed !== movedContent) writeFileSync(movedAbs, renamed, 'utf-8');
+    }
     report.push(`  ${verb}mv    ${m.from} → ${m.to}`);
   }
 

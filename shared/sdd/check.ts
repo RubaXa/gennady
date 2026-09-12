@@ -12,6 +12,14 @@ import type { Scope, GraphEdge } from './portal.ts';
 import type { FlowVersion } from './flow.ts';
 import { SCOPE_KINDS, TEMPLATES, loadBearingSections, foldSections } from './templates.ts';
 import { validateTaskId, findPrefixClashes, describeIdConflict } from './task-id.ts';
+import { parsePhaseReceipts } from './phase-receipt.ts';
+import {
+  PHASE_RECEIPTS_SCHEMA_MARKER,
+  firstRoundPhaseBlockCounts,
+  hasActiveBlocker,
+  analyzeRoundClosures,
+  phaseIdsWithMarkedDone,
+} from './execution-log.ts';
 import {
   deriveSpecAcronym,
   validateSpecEntryId,
@@ -40,6 +48,10 @@ export {
   checkRequirementBudgetsAgainstBaseline,
   REQUIREMENT_ENTRY_MAX_LINES,
 } from './requirement-budget.ts';
+// B2-01: scanBlockerTrail/parsePhaseHandoffs/parseHandoffArtifacts now live in execution-log.ts —
+// re-exported here so this module's existing consumers (sdd-task.cmd, audit-group.ts, this file's
+// own tests) keep importing from './check.ts' unchanged.
+export { scanBlockerTrail, parsePhaseHandoffs, parseHandoffArtifacts } from './execution-log.ts';
 
 // Scaffold placeholder: `<` then a letter or ellipsis (e.g. <ts>, <cmd>, <TBD>, <…>) — NOT an HTML
 // comment/marker (`<!--…-->`) or closing tag (`</…>`), which start with `!` or `/`; NOT a markup tag
@@ -200,136 +212,6 @@ function sectionOverlaps(content: string): string[] {
     }
   }
   return issues;
-}
-
-/**
- * @purpose A phase-heading line (`#### P<N>`, optional `— re-run:` suffix); group 1 is the bare id.
- */
-const PHASE_HEADING_RE = /^#{2,6}\s+(P[0-9]+)\b/;
-
-/** @purpose Existing schema marker that distinguishes current receipt-aware tickets from grandfathered V2 tickets. */
-const PHASE_RECEIPTS_SCHEMA_MARKER = '<!--PHASE_RECEIPTS:v1-->';
-
-/**
- * @purpose Count exact phase blocks in the first Execution Log Round 1.
- * @invariant Only level-4 P<N> headings inside the first level-3 Round 1 count; later rounds,
- *   Round close, and heading-looking text inside fenced code do not affect the skeleton.
- * @param logBody Extracted EXECUTION_LOG section body.
- * @returns Phase id → block count, or null when Round 1 is absent.
- */
-function firstRoundPhaseBlockCounts(logBody: string): Map<string, number> | null {
-  const headings = collectHeadings(logBody);
-  const roundIndex = headings.findIndex(
-    (heading) => heading.level === 3 && /^Round\s+1(?:\s|—|$)/i.test(heading.text)
-  );
-  if (roundIndex === -1) return null;
-
-  const round = headings[roundIndex] as (typeof headings)[number];
-  const nextRound = headings.slice(roundIndex + 1).find((heading) => heading.level <= round.level);
-  const roundBody = logBody.slice(round.lineEnd, nextRound?.start ?? logBody.length);
-  const counts = new Map<string, number>();
-  for (const heading of collectHeadings(roundBody)) {
-    if (heading.level !== 4) continue;
-    const match = /^(P[0-9]+)(?:\s|—|$)/.exec(heading.text);
-    if (!match) continue;
-    const phase = match[1] as string;
-    counts.set(phase, (counts.get(phase) ?? 0) + 1);
-  }
-  return counts;
-}
-
-/**
- * @purpose Scan an Execution Log for 🛑 BLOCKED / ✅ RESOLVED pairs, paired per phase — shared by
- *   checkTicket and sdd-task's [BLOCKERS].
- * @invariant FIFO within one phase's own pool — a `— re-run:` block shares it; only 🛑/✅ counts,
- *   not the bare word.
- * @param logBody The EXECUTION_LOG section body.
- * @returns Unresolved 🛑 BLOCKED lines, oldest first across every phase's pool; empty when each has
- *   a later ✅ RESOLVED in its own pool.
- */
-export function scanBlockerTrail(logBody: string): string[] {
-  // One pool per phase id, keyed by PHASE_HEADING_RE's capture — a `— re-run:` heading shares the
-  // SAME key as the phase's earlier block, so a resolution logged there still closes an earlier
-  // blocker. Pools never mix: a resolution can only shift its own phase's pool, never an older,
-  // unrelated phase's — the fix for the old global-FIFO scan's cross-phase mispairing.
-  const pools = new Map<string, { line: string; pos: number }[]>();
-  let phase = '';
-  const lines = logBody.split('\n');
-  for (let i = 0; i < lines.length; i++) {
-    const line = (lines[i] ?? '').trim();
-    const heading = PHASE_HEADING_RE.exec(line);
-    if (heading) phase = heading[1] as string;
-    if (line.includes('🛑')) {
-      const pool = pools.get(phase) ?? [];
-      pool.push({ line, pos: i });
-      pools.set(phase, pool);
-    } else if (line.includes('✅')) {
-      pools.get(phase)?.shift();
-    }
-  }
-  return [...pools.values()]
-    .flat()
-    .sort((a, b) => a.pos - b.pos)
-    .map((entry) => entry.line);
-}
-
-/**
- * @purpose Detect whether the Execution Log ends in an unresolved BLOCKED state.
- * @param logBody The EXECUTION_LOG section body.
- * @returns True when a 🛑 BLOCKED entry has no later ✅ RESOLVED.
- */
-function hasActiveBlocker(logBody: string): boolean {
-  return scanBlockerTrail(logBody).length > 0;
-}
-
-/**
- * @purpose Matches the skeleton's unfilled Handoff line (`templates.ts`'s Round 1 block) — every
- *   field still holds the literal placeholder ellipsis, never real content.
- * @invariant A real Handoff line never contains a bracketed `...` — empty fields use `none`/`n/a`/
- *   `—` instead, so this can't misfire on genuine empty fields.
- */
-const HANDOFF_PLACEHOLDER_RE = /\[\.\.\.\]/;
-
-/**
- * @purpose Parse each phase's verbatim Handoff line from the Execution Log — the compact context
- * `sdd-task --phase` hands a worker.
- * @invariant One line per phase — the LAST non-placeholder Handoff, so a later Round overrides an
- *   earlier skeleton placeholder or a fix-repeat's earlier close.
- * @param logBody The EXECUTION_LOG section body.
- * @returns Phase id → its verbatim Handoff line (trimmed), for every phase with a real
- *   (non-placeholder) Handoff recorded; a never-closed phase carries no entry.
- */
-export function parsePhaseHandoffs(logBody: string): Record<string, string> {
-  const out: Record<string, string> = {};
-  let current: string | null = null;
-  for (const rawLine of logBody.split('\n')) {
-    const line = rawLine.trim();
-    const heading = PHASE_HEADING_RE.exec(line);
-    if (heading) {
-      current = heading[1] as string;
-      continue;
-    }
-    if (current && /^\*\*Handoff\s*→\*\*/.test(line) && !HANDOFF_PLACEHOLDER_RE.test(line)) {
-      out[current] = line;
-    }
-  }
-  return out;
-}
-
-/**
- * @purpose Extract the `artifacts: [...]` file list from one verbatim Handoff line.
- * @invariant `none` / `n/a` / `—` inside the brackets means no real artifact — returns empty, same
- *   placeholder convention as Meta Dependencies.
- * @param handoffLine One verbatim `**Handoff →**` line (`parsePhaseHandoffs`'s output).
- * @returns Artifact paths in declared order (possibly empty).
- */
-export function parseHandoffArtifacts(handoffLine: string): string[] {
-  const inner = /artifacts:\s*\[([^\]]*)\]/.exec(handoffLine)?.[1]?.trim();
-  if (!inner || /^(none|n\/a|[—-])$/i.test(inner)) return [];
-  return inner
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
 }
 
 // #region START_BDD_NEGATIVE_HELPERS — invariant: BDD carries ≥1 negative/failure scenario
@@ -501,6 +383,34 @@ export function checkTicket(file: string, content: string): Finding[] {
         );
       }
     }
+
+    // B2-04: post-close append integrity — WARN per L-3 (new codes stay warn until B2-15).
+    for (const round of analyzeRoundClosures(logSec.content)) {
+      if (round.trailingCount > 0) {
+        warn(
+          'SDD_EXECUTION_LOG_ENTRY_AFTER_CLOSE',
+          `### ${round.roundLabel}: ${round.trailingCount} checked event line(s) appended after this Round's own \`#### Round close\`. Open a new Round instead.`
+        );
+      }
+      if (round.closeExtraCount > 0) {
+        warn(
+          'SDD_EXECUTION_LOG_CLOSE_EXTRA_ENTRY',
+          `### ${round.roundLabel}: the \`#### Round close\` block has ${round.closeExtraCount} extra checked line(s) besides its one DONE line.`
+        );
+      }
+      for (const line of round.laterThanClose) {
+        warn(
+          'SDD_EXECUTION_LOG_ENTRY_LATER_THAN_CLOSE',
+          `### ${round.roundLabel}: entry "${line}" has a timestamp later than this Round's own close.`
+        );
+      }
+      if (round.unclosed) {
+        warn(
+          'SDD_EXECUTION_LOG_ROUND_UNCLOSED',
+          `### ${round.roundLabel} has a checked phase-block line but no closed \`#### Round close\`.`
+        );
+      }
+    }
   }
   // #endregion END_EXEC_LOG
 
@@ -550,7 +460,7 @@ export function checkTicket(file: string, content: string): Finding[] {
       if (logPhaseCounts === null) {
         err(
           'SDD_EXECUTION_LOG_ROUND_MISSING',
-          'Current receipt-aware ticket has no `### Round 1` in Execution Log. Add the canonical initial round with exactly one `#### P<N>` block per Phases Overview row.'
+          'Current receipt-aware ticket has no `### Round <n>` in Execution Log. Add the canonical current round with exactly one `#### P<N>` block per Phases Overview row.'
         );
       } else {
         for (const phase of phases) {
@@ -558,19 +468,19 @@ export function checkTicket(file: string, content: string): Finding[] {
           if (count === 0)
             err(
               'SDD_EXECUTION_LOG_PHASE_MISSING',
-              `Execution Log Round 1 has no \`#### ${phase.id}\` block for the matching Phases Overview row.`
+              `Execution Log current round has no \`#### ${phase.id}\` block for the matching Phases Overview row.`
             );
           else if (count > 1)
             err(
               'SDD_EXECUTION_LOG_PHASE_DUPLICATE',
-              `Execution Log Round 1 has ${count} \`#### ${phase.id}\` blocks; keep exactly one.`
+              `Execution Log current round has ${count} \`#### ${phase.id}\` blocks; keep exactly one.`
             );
         }
         for (const phase of logPhaseCounts.keys()) {
           if (!ids.has(phase))
             err(
               'SDD_EXECUTION_LOG_PHASE_ORPHAN',
-              `Execution Log Round 1 has \`#### ${phase}\`, but Phases Overview has no ${phase} row.`
+              `Execution Log current round has \`#### ${phase}\`, but Phases Overview has no ${phase} row.`
             );
         }
       }
@@ -580,6 +490,23 @@ export function checkTicket(file: string, content: string): Finding[] {
       for (const p of phases) {
         if (!p.status.includes('[x]'))
           err('SDD_DONE_PHASE_UNCHECKED', `Status is DONE but phase ${p.id} is not checked ([x]).`);
+      }
+    }
+
+    // B2-07: closes the `sdd-log complete` bypass (a bare `line "DONE" --phase`) — WARN per L-3,
+    // new codes stay warn pending the B2-15 debt inventory + DA-lazy-asm golden.
+    if (logSec.status === 'ok') {
+      const receipts = parsePhaseReceipts(content);
+      if (receipts.ok) {
+        const receiptedPhases = new Set(receipts.receipts.map((r) => r.phase));
+        for (const phase of phaseIdsWithMarkedDone(logSec.content)) {
+          if (!receiptedPhases.has(phase)) {
+            warn(
+              'SDD_EXECUTION_LOG_PHASE_UNRECEIPTED_DONE',
+              `Phase ${phase} has a checked DONE line in the Execution Log but no CLI-owned SDD_PHASE_RECEIPT. Run: npx gennady sdd-log <ticket> complete "…" --phase ${phase} (via sdd-verify + sdd-log complete, never a bare "line DONE").`
+            );
+          }
+        }
       }
     }
   }

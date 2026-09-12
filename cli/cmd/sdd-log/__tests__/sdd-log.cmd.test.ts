@@ -169,6 +169,32 @@ describe('SddLogCommand', () => {
     assert.match(body, /### Round 2 — 2026-06-21, fix: F-001/);
   });
 
+  // B2-02: a legacy `## Critic Rounds` section (outside EXECUTION_LOG) can carry its own
+  // `### Round N` headings for a wholly different concept (audit/critic rounds) — those must not
+  // be double-counted into the execution-round sequence.
+  it('ignores a `### Round N` heading that lives outside EXECUTION_LOG, in a legacy `## Critic Rounds` section', async () => {
+    const withCriticRounds = [
+      '# t',
+      '<!--SECTION:META-->',
+      '- **Task-ID:** cli-foo',
+      '<!--/SECTION:META-->',
+      '',
+      '<!--SECTION:EXECUTION_LOG-->',
+      '## 7. Execution Log',
+      '### Round 1 — 2026-06-20, initial',
+      '<!--/SECTION:EXECUTION_LOG-->',
+      '',
+      '## Critic Rounds',
+      '### Round 3 — 2026-05-30',
+    ].join('\n');
+    writeFileSync(ticket, withCriticRounds, 'utf-8');
+    const outcome = await mod.run(argv(ticket, 'round', 'fix: F-002'), CLOCK);
+    assert.strictEqual(outcome.ok, true, outcome.ok ? '' : outcome.message);
+    const body = readFileSync(ticket, 'utf-8');
+    assert.match(body, /### Round 2 — 2026-06-21, fix: F-002/);
+    assert.doesNotMatch(body, /### Round 3 — 2026-06-21/);
+  });
+
   it('appends a timestamped event line and preserves = in content', async () => {
     const outcome = await mod.run(argv(ticket, 'line', 'ver `npm run check` → pass exit=0'), CLOCK);
     assert.strictEqual(outcome.ok, true);
@@ -302,6 +328,19 @@ describe('SddLogCommand', () => {
   it('replaces one scaffolded Round-close skeleton and rejects a repeated close without mutation', async () => {
     const scaffolded = completableTicket();
     writeFileSync(ticket, scaffolded, 'utf-8');
+    // B2-07: close now refuses while a phase this Round opened is not [x] complete — legitimately
+    // complete Round 2's only open phase (P1) first, exactly as a real orchestrator would.
+    const completed = await mod.run(
+      argv(
+        ticket,
+        'complete',
+        'artifacts: [src/P1.ts]; decisions: [none]; open: [none]; deviations: []',
+        '--phase',
+        'P1'
+      ),
+      CLOCK
+    );
+    assert.strictEqual(completed.ok, true, completed.ok ? '' : completed.message);
 
     const first = await mod.run(argv(ticket, 'close'), CLOCK);
     assert.strictEqual(first.ok, true, first.ok ? '' : first.message);
@@ -316,6 +355,115 @@ describe('SddLogCommand', () => {
     assert.strictEqual(second.ok, false);
     if (!second.ok) assert.match(second.message, /ERR_CLI_SDD_LOG_CLOSE_STATE/);
     assert.strictEqual(readFileSync(ticket, 'utf-8'), closed);
+  });
+
+  // B2-07: closing the `sdd-log complete` bypass at the close boundary too.
+  describe('close mode — refuses an incomplete or unreceipted phase (B2-07)', () => {
+    it('refuses when a phase this Round opened is not [x] complete in the Phases Overview', async () => {
+      writeFileSync(ticket, completableTicket(), 'utf-8');
+      const before = readFileSync(ticket, 'utf-8');
+      const outcome = await mod.run(argv(ticket, 'close'), CLOCK);
+      assert.strictEqual(outcome.ok, false);
+      if (!outcome.ok) {
+        assert.strictEqual(outcome.code, 'ERR_CLI_SDD_LOG_CLOSE_STATE');
+        assert.match(outcome.message, /phase P1 is not completed/);
+      }
+      assert.strictEqual(readFileSync(ticket, 'utf-8'), before);
+    });
+
+    it('refuses when the log shows a phase marked DONE via a bare `line` with no receipt', async () => {
+      const bypassed = [
+        '# t',
+        '<!--SECTION:META-->',
+        '- **Task-ID:** cli-foo',
+        '- **Status:** [~] IN_PROGRESS',
+        '<!--/SECTION:META-->',
+        '',
+        '<!--SECTION:PHASES_OVERVIEW-->',
+        '## Phases Overview',
+        '| ID | Kind | Deps | Status |',
+        '|----|------|------|--------|',
+        '| P1 | impl | — | [x] |',
+        '<!--/SECTION:PHASES_OVERVIEW-->',
+        '',
+        '<!--SECTION:EXECUTION_LOG-->',
+        '## Execution Log',
+        '### Round 1 — 2026-06-21, initial',
+        '#### P1',
+        '- [x] `2026-06-21T09:00:00.000Z` DONE',
+        '**Handoff →** artifacts: [...]; decisions: [...]; open: [...]; deviations: [...]',
+        '#### Round close',
+        '- [ ] `<ts>` DONE',
+        '<!--/SECTION:EXECUTION_LOG-->',
+      ].join('\n');
+      writeFileSync(ticket, bypassed, 'utf-8');
+      const outcome = await mod.run(argv(ticket, 'close'), CLOCK);
+      assert.strictEqual(outcome.ok, false);
+      if (!outcome.ok) {
+        assert.strictEqual(outcome.code, 'ERR_CLI_SDD_LOG_CLOSE_STATE');
+        assert.match(outcome.message, /phase P1 is marked DONE .* no CLI-owned SDD_PHASE_RECEIPT/);
+      }
+      assert.strictEqual(readFileSync(ticket, 'utf-8'), bypassed);
+    });
+
+    it('is tolerant of a legacy ticket with no readable PHASES_OVERVIEW (unchanged behavior)', async () => {
+      // BASE (the shared fixture) has no PHASES_OVERVIEW at all.
+      const outcome = await mod.run(argv(ticket, 'close'), CLOCK);
+      assert.strictEqual(outcome.ok, true, outcome.ok ? '' : outcome.message);
+    });
+  });
+
+  // B2-04: append-only means a fix goes into a NEW Round, never after a closed one.
+  describe('append-owning modes refuse a closed Round (B2-04)', () => {
+    it('line without --phase refuses after close, with no mutation', async () => {
+      await mod.run(argv(ticket, 'round', 'initial'), CLOCK);
+      await mod.run(argv(ticket, 'close'), CLOCK);
+      const before = readFileSync(ticket, 'utf-8');
+      const outcome = await mod.run(argv(ticket, 'line', 'sneaked in'), CLOCK);
+      assert.strictEqual(outcome.ok, false);
+      if (!outcome.ok) {
+        assert.strictEqual(outcome.code, 'ERR_CLI_SDD_LOG_ROUND_CLOSED');
+        assert.match(outcome.message, /already closed/);
+        assert.match(outcome.message, /round "fix: F-NNN"/);
+      }
+      assert.strictEqual(readFileSync(ticket, 'utf-8'), before);
+    });
+
+    it('phase (opening a new block) refuses after close', async () => {
+      await mod.run(argv(ticket, 'round', 'initial'), CLOCK);
+      await mod.run(argv(ticket, 'close'), CLOCK);
+      const outcome = await mod.run(argv(ticket, 'phase', 'P1', '— re-run: fix'), CLOCK);
+      assert.strictEqual(outcome.ok, false);
+      if (!outcome.ok) assert.strictEqual(outcome.code, 'ERR_CLI_SDD_LOG_ROUND_CLOSED');
+    });
+
+    it('line --phase P<N> refuses after close even naming an already-open (but closed-round) phase', async () => {
+      await mod.run(argv(ticket, 'phase', 'P1'), CLOCK);
+      await mod.run(argv(ticket, 'round', 'initial'), CLOCK); // no-op if already opened; keep flow simple
+      await mod.run(argv(ticket, 'close'), CLOCK);
+      const outcome = await mod.run(argv(ticket, 'line', 'sneaked in', '--phase', 'P1'), CLOCK);
+      assert.strictEqual(outcome.ok, false);
+      if (!outcome.ok) assert.strictEqual(outcome.code, 'ERR_CLI_SDD_LOG_ROUND_CLOSED');
+    });
+
+    it('opening a new Round after close lets appends through again', async () => {
+      await mod.run(argv(ticket, 'round', 'initial'), CLOCK);
+      await mod.run(argv(ticket, 'close'), CLOCK);
+      await mod.run(argv(ticket, 'round', 'fix: F-001'), CLOCK);
+      const outcome = await mod.run(argv(ticket, 'line', 'now legal'), CLOCK);
+      assert.strictEqual(outcome.ok, true, outcome.ok ? '' : outcome.message);
+      const body = readFileSync(ticket, 'utf-8');
+      const round2At = body.indexOf('### Round 2');
+      const lineAt = body.indexOf('now legal');
+      assert.ok(round2At !== -1 && round2At < lineAt, body);
+    });
+
+    it('round mode itself is exempt — it is the escape hatch out of a closed Round', async () => {
+      await mod.run(argv(ticket, 'round', 'initial'), CLOCK);
+      await mod.run(argv(ticket, 'close'), CLOCK);
+      const outcome = await mod.run(argv(ticket, 'round', 'fix: F-002'), CLOCK);
+      assert.strictEqual(outcome.ok, true, outcome.ok ? '' : outcome.message);
+    });
   });
 
   describe('META Status (round/close drive it; tolerant when Status line is absent)', () => {

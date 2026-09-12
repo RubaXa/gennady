@@ -5,11 +5,15 @@
 import { relative, resolve } from 'node:path';
 import type { TicketRef } from '../../../shared/sdd/check.ts';
 import { parsePhaseReceipts } from '../../../shared/sdd/phase-receipt.ts';
-import { findSectionBounds } from '../../../shared/sdd/section.ts';
+// V-BATCH-14 nonblocking #5: this file used to carry its own byte-identical copy of the checked
+// `DONE` line matcher (`CLOSE_MARKED_DONE_LINE_RE`) — now imported from the one home instead.
+import { MARKED_DONE_LINE_RE } from '../../../shared/sdd/execution-log.ts';
+import { extractSection, findSectionBounds } from '../../../shared/sdd/section.ts';
 import { deriveSpecAcronym } from '../../../shared/sdd/requirement-id.ts';
 import { unreadableTicketHint } from '../../../shared/sdd/ticket-resolve.ts';
 import {
   matchPhaseOverviewHeader,
+  parsePhasesOverview,
   rowCells,
   isSeparator,
   type PhaseColumnMap,
@@ -41,6 +45,8 @@ export const ERR_CLI_SDD_LOG_CLOSE_STATE = 'ERR_CLI_SDD_LOG_CLOSE_STATE' as cons
 export const ERR_CLI_SDD_LOG_AUTHORING_STATE = 'ERR_CLI_SDD_LOG_AUTHORING_STATE' as const;
 /** @purpose `audit-receipt`/`review-receipt` cannot resolve the group, prove all members DONE, or own the spec write. */
 export const ERR_CLI_SDD_LOG_GROUP_RECEIPT_STATE = 'ERR_CLI_SDD_LOG_GROUP_RECEIPT_STATE' as const;
+/** @purpose An append-owning mode (line/handoff/phase/blocker/resolved/complete) targets a Round already closed (B2-04). */
+export const ERR_CLI_SDD_LOG_ROUND_CLOSED = 'ERR_CLI_SDD_LOG_ROUND_CLOSED' as const;
 
 /**
  * @purpose Result of one sdd-log run.
@@ -74,15 +80,9 @@ export function hasPlaceholder(text: string): boolean {
   return PLACEHOLDER_RE.test(outsideCode);
 }
 
-/**
- * @purpose Compute the next round number from how many `### Round` headers already exist.
- * @param fileContent Full ticket markdown.
- * @returns Existing round count + 1 (1 for the first round).
- */
-export function nextRoundNumber(fileContent: string): number {
-  const matches = fileContent.match(/^#{3}\s+Round\s+\d+/gm);
-  return (matches?.length ?? 0) + 1;
-}
+// B2-01: nextRoundNumber now lives in shared/sdd/execution-log.ts (the one Execution Log module) —
+// re-exported here so this file's own callers (sdd-log.cmd.ts) keep importing it from this module.
+export { nextRoundNumber } from '../../../shared/sdd/execution-log.ts';
 
 /**
  * @purpose Build a Round header block (blank-line padded) to insert into EXECUTION_LOG.
@@ -120,9 +120,80 @@ const ROUND_CLOSE_SKELETON = '- [ ] `<ts>` DONE';
 const ROUND_CLOSE_DONE_RE = /^- \[x\] `[^`]+` DONE$/;
 
 /**
+ * @purpose Every phase id with an open `#### <PhaseID>` block inside one Round, and whether that
+ *   block carries a checked DONE event line — B2-07's input for the close-time completeness gate.
+ * @param lines Full ticket markdown, already split into lines.
+ * @param start First line index to scan (exclusive of the Round heading itself).
+ * @param end One-past-last line index to scan (exclusive).
+ * @returns Phase id → whether its block has a checked DONE line, in first-seen order.
+ */
+function phaseDoneStateInRange(lines: string[], start: number, end: number): Map<string, boolean> {
+  const out = new Map<string, boolean>();
+  let phase: string | null = null;
+  for (let i = start; i < end; i++) {
+    const line = (lines[i] ?? '').trim();
+    const heading = PHASE_HEADING_RE.exec(line);
+    if (heading) {
+      phase = heading[1] as string;
+      if (!out.has(phase)) out.set(phase, false);
+      continue;
+    }
+    if (/^#{1,6}\s+\S/.test(line)) {
+      phase = null;
+      continue;
+    }
+    if (phase && MARKED_DONE_LINE_RE.test(line)) out.set(phase, true);
+  }
+  return out;
+}
+
+/**
+ * @purpose Refuse to close a Round while any phase it opened is not proven complete (B2-07: closes
+ *   the `sdd-log complete` bypass at the close boundary too, not only at check-time).
+ * @invariant Skips entirely when PHASES_OVERVIEW is unreadable (legacy tickets keep today's
+ *   behavior — no regression); only phases with an open block IN THIS Round are checked.
+ * @param content Full ticket markdown.
+ * @param lines Same content, pre-split into lines.
+ * @param roundStart Line index just after the Round heading.
+ * @param roundEnd Line index of this Round's own close point (exclusive).
+ * @returns The first blocking phase id and reason, or null when every phase in the Round checks out.
+ */
+function firstUnfinishedPhaseInRound(
+  content: string,
+  lines: string[],
+  roundStart: number,
+  roundEnd: number
+): { phase: string; reason: string } | null {
+  const overview = extractSection(content, 'PHASES_OVERVIEW');
+  if (overview.status !== 'ok') return null; // legacy ticket — unchanged behavior
+  const overviewPhases = new Map(parsePhasesOverview(overview.content).map((p) => [p.id, p]));
+
+  const doneState = phaseDoneStateInRange(lines, roundStart, roundEnd);
+  for (const [phaseId, hasMarkedDone] of doneState) {
+    const overviewPhase = overviewPhases.get(phaseId);
+    if (!overviewPhase || !overviewPhase.status.includes('[x]')) {
+      return { phase: phaseId, reason: 'is not completed' };
+    }
+    if (hasMarkedDone) {
+      const receipts = parsePhaseReceipts(content);
+      const hasReceipt = receipts.ok && receipts.receipts.some((r) => r.phase === phaseId);
+      if (!hasReceipt) {
+        return {
+          phase: phaseId,
+          reason: 'is marked DONE in the Execution Log but has no CLI-owned SDD_PHASE_RECEIPT',
+        };
+      }
+    }
+  }
+  return null;
+}
+
+/**
  * @purpose Close the current Round without duplicating a scaffolded `#### Round close` block.
  * @invariant A scaffold placeholder is replaced in place; a missing block is appended once for
  *   rounds opened dynamically by `sdd-log round`; an already closed or ambiguous Round fails.
+ * @invariant B2-07: refuses when a phase this Round opened is not `[x]` complete in the Overview,
+ *   or is marked DONE with no CLI-owned receipt — closes `complete`'s bypass at the close boundary.
  * @param content Full ticket markdown, optionally with a scaffolded current-Round close block.
  * @param ts Real ISO timestamp owned by the CLI.
  * @returns Complete replacement content, or one fail-closed structural reason.
@@ -152,6 +223,16 @@ export function closeCurrentRound(
     };
   }
 
+  const unfinished = firstUnfinishedPhaseInRound(
+    content,
+    lines,
+    searchStart,
+    closeHeads.length === 1 ? (closeHeads[0] as number) : log.closeLine
+  );
+  if (unfinished) {
+    return { ok: false, detail: `phase ${unfinished.phase} ${unfinished.reason}` };
+  }
+
   const closeBlock = buildCloseBlock(ts).trim();
   if (closeHeads.length === 0) {
     lines.splice(log.closeLine, 0, ...buildCloseBlock(ts).split('\n'));
@@ -171,6 +252,31 @@ export function closeCurrentRound(
   }
   lines[closeHead + 1] = `- [x] \`${ts}\` DONE`;
   return { ok: true, content: lines.join('\n'), closeBlock };
+}
+
+/**
+ * @purpose Whether the LAST `### Round <n>` in EXECUTION_LOG already has a completed (checked)
+ *   `#### Round close` — the B2-04 append-after-close gate every append-owning mode consults.
+ * @param content Full ticket markdown.
+ * @param logBounds EXECUTION_LOG's marker line indices.
+ * @returns True only when a real (checked) close exists for the current Round.
+ */
+export function isCurrentRoundClosed(
+  content: string,
+  logBounds: { openLine: number; closeLine: number }
+): boolean {
+  const lines = content.split('\n');
+  let currentRound = -1;
+  for (let i = logBounds.openLine + 1; i < logBounds.closeLine; i++) {
+    if (/^###\s+Round\s+\d+\b/.test((lines[i] ?? '').trim())) currentRound = i;
+  }
+  if (currentRound < 0) return false;
+  for (let i = currentRound + 1; i < logBounds.closeLine; i++) {
+    if ((lines[i] ?? '').trim() === '#### Round close') {
+      return ROUND_CLOSE_DONE_RE.test((lines[i + 1] ?? '').trim());
+    }
+  }
+  return false;
 }
 
 /** @purpose Completion kind inferred from the spec's load-bearing identity marker. */
@@ -466,6 +572,25 @@ export function roundCloseError(detail: string): LogOutcome {
       `[sdd-log] ${ERR_CLI_SDD_LOG_CLOSE_STATE}: ${detail}`,
       '  Close the current Round exactly once; a scaffolded Round close placeholder is replaced in place.',
       '  No Round-close line or Meta Status was changed.',
+    ].join('\n'),
+  };
+}
+
+/**
+ * @purpose Report why an append-owning mode refuses — the current Round is already closed
+ *   (B2-04: append-only means a fix goes into a NEW Round, never after a closed one).
+ * @param ticket The ticket path (display form).
+ * @returns Outcome with exit 2 and two concrete ways forward.
+ */
+export function roundClosedError(ticket: string): LogOutcome {
+  return {
+    ok: false,
+    code: ERR_CLI_SDD_LOG_ROUND_CLOSED,
+    exitCode: 2,
+    message: [
+      `[sdd-log] ${ERR_CLI_SDD_LOG_ROUND_CLOSED}: the current Round in ${ticket} is already closed`,
+      `  Open a new Round first: npx gennady sdd-log ${ticket} round "fix: F-NNN"`,
+      '  then log into the new Round (optionally --phase P<N> once that Round reopens it).',
     ].join('\n'),
   };
 }

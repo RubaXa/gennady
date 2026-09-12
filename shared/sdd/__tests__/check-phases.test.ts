@@ -5,6 +5,12 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { checkTicket } from '../check.ts';
+import {
+  formatPhaseReceipt,
+  phaseReceiptPlanState,
+  type PhaseReceipt,
+  type PhaseReceiptPlan,
+} from '../phase-receipt.ts';
 
 /** Build a minimal ticket: META(status) + a Phases Overview + the named phase sections + EXECUTION_LOG. */
 function ticket(opts: {
@@ -168,7 +174,17 @@ describe('checkTicket — phase graph + exec-log completeness', () => {
     assert.ok(c.includes('SDD_EXECUTION_LOG_PHASE_ORPHAN'));
   });
 
-  it('flags a missing Round 1 for the current receipt-aware contract', () => {
+  // B2-16 (finding C fix): the check targets the FIRST (earliest) Round, not the literal heading
+  // text "Round 1" — a receipt-aware ticket whose only Round happens to be numbered 2 (as on the
+  // real corpus's directive-assembly.task.DA-lazy-asm.md) must NOT false-positive. (V-BATCH-14
+  // nonblocking #6: this comment previously said "CURRENT (latest)", contradicting both the code
+  // — `execution-log.ts`'s `firstRoundPhaseBlockCounts` reads `parsed?.rounds[0]` — and the test
+  // right below, "picks the FIRST round … ignoring later narrower fix rounds". "First" is the
+  // deliberate choice, not "current": Phases Overview completeness is checked against the Round
+  // that first ran every phase; a later Round created by `sdd-log round "fix: …"` (B2-04) is
+  // expected to touch only the phase(s) being fixed, and checking THAT one against the full
+  // Phases Overview would flag every untouched phase as falsely missing.)
+  it('does not flag a missing round when the sole round is not literally numbered 1', () => {
     const c = codes(
       't.md',
       ticket({
@@ -178,7 +194,81 @@ describe('checkTicket — phase graph + exec-log completeness', () => {
         executionLog: '### Round 2 — 2026-09-03, fix\n#### P1',
       })
     );
+    assert.ok(!c.includes('SDD_EXECUTION_LOG_ROUND_MISSING'), c.join(','));
+  });
+
+  it('flags a missing round when receipt-aware and Execution Log has no `### Round <n>` at all', () => {
+    const c = codes(
+      't.md',
+      ticket({
+        rows: [{ id: 'P1' }],
+        sections: ['P1'],
+        receiptAware: true,
+        executionLog: 'no round header here',
+      })
+    );
     assert.ok(c.includes('SDD_EXECUTION_LOG_ROUND_MISSING'));
+  });
+
+  it('picks the FIRST round when several exist, ignoring later narrower fix rounds', () => {
+    const c = codes(
+      't.md',
+      ticket({
+        rows: [{ id: 'P1' }, { id: 'P2', deps: 'P1' }],
+        sections: ['P1', 'P2'],
+        receiptAware: true,
+        executionLog: [
+          '### Round 1 — 2026-09-01, initial',
+          '#### P1',
+          '#### P2',
+          '#### Round close',
+          '### Round 3 — 2026-09-05, fix',
+          '#### P1 — re-run: fix',
+        ].join('\n'),
+      })
+    );
+    assert.ok(!c.some((code) => code.startsWith('SDD_EXECUTION_LOG_')), c.join(','));
+  });
+
+  // B2-16: a phase block re-opened AFTER the round's own `#### Round close` heading is trailing
+  // (post-close) content, not a second per-phase skeleton block — it must not double-count into
+  // SDD_EXECUTION_LOG_PHASE_DUPLICATE (that append-after-close case is B2-04's own code instead).
+  it('does not count a phase block reopened after Round close as a duplicate', () => {
+    const c = codes(
+      't.md',
+      ticket({
+        rows: [{ id: 'P1' }],
+        sections: ['P1'],
+        receiptAware: true,
+        executionLog: [
+          '### Round 1 — 2026-09-01, initial',
+          '#### P1',
+          '#### Round close',
+          '#### P1 — re-run: post-close fix',
+        ].join('\n'),
+      })
+    );
+    assert.ok(!c.includes('SDD_EXECUTION_LOG_PHASE_DUPLICATE'), c.join(','));
+  });
+
+  // B2-16/L-2 (variant 3) names a second predicate — "a v2-named `*.task.<ID>.md` file is ALWAYS
+  // receipt-aware, even with no literal marker" — NOT implemented in this batch: measured against
+  // the real test-fixture corpus, 31 unrelated `.test.ts` files already use v2-shaped ticket names
+  // in fixtures that predate this predicate and carry no Round/receipt scaffold, so wiring it in
+  // here would redden ~9 unrelated suites outside this batch's file zone (bootstrap-path,
+  // clean-repo-composition, sdd-verify, inbox-review-plan, testcov, directive-tool-contract, …).
+  // Left as a literal-marker-only gate (pre-existing behavior) — see the batch report's Deviations.
+  it('stays grandfathered on the literal marker for a v2-named ticket file with no marker (deviation from L-2)', () => {
+    const c = codes(
+      'specs/demo/core/core.task.DEM-work.md',
+      ticket({
+        rows: [{ id: 'P1' }],
+        sections: ['P1'],
+        receiptAware: false,
+        executionLog: 'no round header here',
+      })
+    );
+    assert.ok(!c.includes('SDD_EXECUTION_LOG_ROUND_MISSING'), c.join(','));
   });
 
   it('grandfathers an older V2 ticket without the receipt schema marker', () => {
@@ -231,5 +321,103 @@ describe('checkTicket — phase graph + exec-log completeness', () => {
     assert.ok(!c.includes('SDD_PHASE_DAG_CYCLE'), c.join(','));
     assert.ok(!c.includes('SDD_PHASE_DEP_UNRESOLVED'), c.join(','));
     assert.ok(!c.includes('SDD_PHASE_SECTION_ORPHAN'), c.join(','));
+  });
+});
+
+// B2-07: closing the `sdd-log complete` bypass — a phase logged DONE straight in the Execution Log
+// (`sdd-log line "DONE" --phase P<N>`) without ever proving a CLI-owned SDD_PHASE_RECEIPT.
+describe('checkTicket — SDD_EXECUTION_LOG_PHASE_UNRECEIPTED_DONE (B2-07)', () => {
+  function receipt(phase: string): PhaseReceipt {
+    const plan: PhaseReceiptPlan = {
+      ticket: 't.md',
+      phase,
+      profile: 'code',
+      profileBasis: 'phase-kind',
+      targets: [`src/${phase}.ts`],
+      deletedFiles: [],
+      verification: [],
+      producesCoverage: false,
+      environmentState: `sha256:${'1'.repeat(64)}`,
+    };
+    return {
+      schema: 1,
+      ...plan,
+      planState: phaseReceiptPlanState(plan),
+      targetState: `sha256:${'2'.repeat(64)}`,
+      commands: [],
+    };
+  }
+
+  it('WARNs when a phase block has a checked DONE line but no receipt', () => {
+    const c = codes(
+      't.md',
+      ticket({
+        rows: [{ id: 'P1' }],
+        sections: ['P1'],
+        executionLog: [
+          '### Round 1 — 2026-09-01, initial',
+          '#### P1',
+          '- [x] `2026-09-01T10:00:00.000Z` DONE',
+          '**Handoff →** artifacts: [...]; decisions: [...]; open: [...]; deviations: [...]',
+        ].join('\n'),
+      })
+    );
+    const finding = c.find((code) => code === 'SDD_EXECUTION_LOG_PHASE_UNRECEIPTED_DONE');
+    assert.ok(finding, c.join(','));
+  });
+
+  it('is clean when the receipted phase has a checked DONE line', () => {
+    const c = codes(
+      't.md',
+      ticket({
+        rows: [{ id: 'P1' }],
+        sections: ['P1'],
+        executionLog: [
+          '### Round 1 — 2026-09-01, initial',
+          '#### P1',
+          '- [x] `2026-09-01T10:00:00.000Z` DONE',
+          '**Handoff →** artifacts: [...]; decisions: [...]; open: [...]; deviations: [...]',
+          '',
+          formatPhaseReceipt(receipt('P1')),
+        ].join('\n'),
+      })
+    );
+    assert.ok(!c.includes('SDD_EXECUTION_LOG_PHASE_UNRECEIPTED_DONE'), c.join(','));
+  });
+
+  it('does not misattribute a DONE line inside Round close to the previous phase', () => {
+    const c = codes(
+      't.md',
+      ticket({
+        rows: [{ id: 'P1' }],
+        sections: ['P1'],
+        executionLog: [
+          '### Round 1 — 2026-09-01, initial',
+          '#### P1',
+          '- [ ] `<ts>` DONE',
+          '**Handoff →** artifacts: [...]; decisions: [...]; open: [...]; deviations: [...]',
+          '#### Round close',
+          '- [x] `2026-09-01T10:00:00.000Z` DONE',
+        ].join('\n'),
+      })
+    );
+    assert.ok(!c.includes('SDD_EXECUTION_LOG_PHASE_UNRECEIPTED_DONE'), c.join(','));
+  });
+
+  it('is silent when the DONE line is still the unfilled skeleton (not checked)', () => {
+    const c = codes(
+      't.md',
+      ticket({
+        rows: [{ id: 'P1' }],
+        sections: ['P1'],
+        executionLog: [
+          '### Round 1 — 2026-09-01, initial',
+          '#### P1',
+          '- [ ] `<ts>` DONE',
+          '**Handoff →** artifacts: [...]; decisions: [...]; open: [...]; deviations: [...]',
+        ].join('\n'),
+      })
+    );
+    assert.ok(!c.includes('SDD_EXECUTION_LOG_PHASE_UNRECEIPTED_DONE'), c.join(','));
   });
 });
