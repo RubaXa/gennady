@@ -71,8 +71,16 @@ describe('directive deps are satisfied by the router core', () => {
 const REQUIRED_CONDUCT = ['AX_PROGRESSIVE_DISCLOSURE'] as const;
 
 /** The top-level sdd-v2 directives whose prose an operator directly reads/acts on — router's
- * stateful branches (spec/task authoring, execute, the two review workers) — as opposed to
- * formats/*, agent-inbox/*, or class-3 subagent-world directives. */
+ * stateful branches (spec/task authoring, execute, the two review workers, and reconcile) — as
+ * opposed to formats/*, agent-inbox/*, or class-3 subagent-world directives (e.g.
+ * review-lifecycle/critic-protocol, which are loaded BY these owners to govern a dispatched
+ * subagent rather than read directly by the operator — T-B6-21).
+ *
+ * `reconcile.directive.xml` (T-B6-20) closes the one owner this list omitted: it is router-
+ * dispatched exactly like scope/module/execute (router.directive.hbs `WHEN forced intent =
+ * reconcile`), writes decision cards and questions straight to the operator, and had carried no
+ * `AX_PROGRESSIVE_DISCLOSURE` conduct include before this task (it already carried
+ * `AX_OPERATOR_DIALOGUE_STYLE`, one of D1's five, from before this batch). */
 const OPERATOR_FACING_OWNERS = [
   'infra.directive.xml',
   'root.directive.xml',
@@ -88,6 +96,7 @@ const OPERATOR_FACING_OWNERS = [
   'critic.directive.xml',
   'audit.directive.xml',
   'code-review.directive.xml',
+  'reconcile.directive.xml',
 ] as const;
 
 describe('every operator-facing owner declares the REQUIRED_CONDUCT set (T-B6-26)', () => {

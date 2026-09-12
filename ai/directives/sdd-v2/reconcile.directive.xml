@@ -26,8 +26,16 @@
     argument inference is allowed.
   </ContextExpectation>
 
-  <BeliefState>
-    Inherited from the loading directive (already in context): AX_DIALOGUE_DISCIPLINE, AX_OPERATOR_DIALOGUE_STYLE, AX_OPERATOR_LANGUAGE, AX_OPERATOR_SAFEGUARD, AX_TOOL_INVOCATION, QUESTION_RULE_SLIM
+  <BeliefState deps="AX_READER_WITHOUT_SESSION_CONTEXT">
+    Inherited from the loading directive (already in context): AX_DIALOGUE_DISCIPLINE, AX_NO_PROCESS_NARRATION, AX_OPERATOR_DIALOGUE_STYLE, AX_OPERATOR_LANGUAGE, AX_OPERATOR_SAFEGUARD, AX_TOOL_INVOCATION, QUESTION_RULE_SLIM
+
+    <Axiom id="AX_PROGRESSIVE_DISCLOSURE" cross-cutting="true">
+      Decision first, reasoning on demand. The must-read top of a message is short: where we are + my
+      read + what to decide. Everything heavy — full option comparison, evidence, the change-list,
+      derivations — goes BELOW a `### ↓ Детали — по желанию` header. Never dump reasoning above the
+      questions. Facts already verified collapse to one line («сверился: …»); uncertainties that need
+      the operator BECOME the questions — never list them twice.
+    </Axiom>
 
     <Axiom id="AX_PREFLIGHT_BLAST_RADIUS_SCOPED">
       `FLOW_VERSION=v1` migration and runtime `EXECUTION_READY=no` remediation can dwarf a narrow request.
@@ -131,6 +139,15 @@
 
       `✅ RESOLVED` after a blocker is a related but separate concern owned by the journal's
       Blocker Trail work, not this axiom.
+    </Axiom>
+
+    <Axiom id="AX_DISPATCH_VIA_BATCH">
+      After all reopens are prepared, dispatch the reopened tasks through execute as one BATCH.
+      The batch orchestrator will plan layers, run phases, close rounds, sync trackers, and keep its
+      ordinary `sdd-task --audit-group` lifecycle unchanged. There is no reconcile-only audit flag:
+      execute remains the sole owner of each affected spec group's audit and code-review. Reconcile
+      retains those returned per-group results and checks them at STEP_6_VERIFY; it never dispatches a
+      second review.
     </Axiom>
 
     <Axiom id="AX_VERIFY_AT_END">
@@ -267,10 +284,15 @@
         <LogicSwitch on="approved remediation category">
         - WHEN **task-reopen** → append the planned new Round to every owning ticket exactly per
           `AX_REOPEN_FORMAT`; write its concrete fix and dependent test PhaseIDs, set Meta Status and
-          tracker row to IN_PROGRESS, update parent rollups and `Reopens`, then
-          `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/execute.directive.xml")` for those tickets as
-          an ordinary batch. Reconcile never edits the task-owned code itself and never requests a
-          reconcile-only audit; execute owns phase work, tracker sync, audit, and code-review.
+          tracker row to IN_PROGRESS, update parent rollups and `Reopens`, then dispatch every
+          reopened ticket through
+          `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/execute.directive.xml")` as one BATCH per
+          `AX_DISPATCH_VIA_BATCH`: the batch orchestrator plans layers, runs phases, closes rounds,
+          and syncs trackers under its own unchanged `sdd-task --audit-group` lifecycle. There is no
+          reconcile-only audit flag — execute remains the sole owner of each affected group's audit
+          and code-review; reconcile never edits the task-owned code itself and never dispatches a
+          second review. It only retains each group's returned result and checks it at
+          STEP_6_VERIFY.
 
         - WHEN **semantic-spec-update** → route the approved delta to exactly one owning authoring flow:
           canonical product/library scope →

@@ -11,6 +11,17 @@
       No edits are made before explicit operator "yes" / "go" / "ok".
       Operator may edit the plan (remove items, change classification, add notes).
     </Axiom>
+    <Axiom id="AX_CAP_5">Five critic results is the hard automatic cap. At the fifth result — regardless
+      of sensor verdict — the operator must dispose the cycle before readiness or another dispatch. If that
+      round made no edits, the choices are `CLEAN`, `CONTINUE THROUGH ROUND N` with an explicit higher cap,
+      or `RESTART: reason`; if it made edits, CLEAN is unavailable because the changed bytes have not been
+      reviewed, so only CONTINUE or RESTART are offered. A raised cap behaves identically when reached. The
+    sensor cannot authorize continuation, and continuation is never readiness.</Axiom>
+    <Axiom id="AX_DEFAULT_ACCEPT">Uncertainty alone is NOT a blocking finding. ACCEPT only an artifact gap
+      backed by concrete evidence — a cited requirement, invariant, or scenario, naming what concretely
+      breaks, for whom, and when. A preference, alternative design, missing local convention, or question
+      without concrete breakage → REJECT as blocking; when it originates in confusion, classify it through
+    `AX_CONFUSION_BUG` first.</Axiom>
   </BeliefState>
   <Contracts>
   </Contracts>
@@ -29,30 +40,42 @@
       <Goal>Obtain one semantic judgment independent from the author.</Goal>
       <Action>
         Load `critic-protocol.directive.xml`, then dispatch one fresh reviewer with its full
-        contents as the reviewer's own governing instructions, plus the exact bounded spec set. The
-        reviewer reads but never edits. It checks requirements, negative/failure behavior,
-        interfaces, dependencies, invariants, verification strategy, contradictions, and missing
-        decisions. It returns `CLEAN` or at most five evidence-backed findings naming file and
+        contents as the reviewer's own governing instructions, plus the exact bounded spec set and
+        `Polish: <on|off>` (on only when the operator explicitly asked for polish/nits this round;
+        off by default). The reviewer reads but never edits. It checks requirements, negative/failure
+        behavior, interfaces, dependencies, invariants, verification strategy, contradictions, and
+        missing decisions. It returns `CLEAN` or at most five evidence-backed findings naming file and
         anchor. The reviewer reads only the exact target specs plus the operator brief supplied in
         its prompt; it does not read flow directives, examples, repository history, source code, or
         search the repository. It performs one semantic pass and returns the verdict without
         restating the route or narrating its internal analysis.
 
         The author may mentally inspect its own work before this dispatch, but that does not count as
-        independent review. Do not serialize a plan into JSON, retain the reviewer, or create
-        multi-round critic bookkeeping.
+        independent review. Do not serialize a plan into JSON, retain the reviewer, or track anything
+        about prior rounds beyond the bare `AX_CAP_5` count STEP_3_RECONCILE keeps.
       </Action>
     </Step>
     <Step id="STEP_3_RECONCILE">
       <Goal>Make the proposed specs match accepted review conclusions.</Goal>
       <Action>
-        For each finding, either correct the owning spec or present a concrete disagreement to the
-        operator. Run structural checks after edits. Any semantic edit resets the applicable approval
+        Per `AX_DEFAULT_ACCEPT`, classify each returned finding before acting on it: ACCEPT only an
+        artifact gap backed by concrete evidence naming what breaks, for whom, and when; REJECT a
+        preference, alternative design, missing local convention, or unevidenced question — uncertainty
+        alone never blocks. For each ACCEPTed finding, correct the owning spec; for each REJECTed one,
+        present a concrete disagreement to the operator instead of editing. Run structural checks after edits. Any semantic edit resets the applicable approval
         markers to `pending` and therefore requires one fresh STEP_2 review of the new complete
         target. Give that reviewer the prior findings and corrected target; it verifies those fixes
         plus one contradiction sweep, then returns `CLEAN` or at most five remaining findings. This
         is a new bounded verification, not continuation of a reviewer session and not a reason to
         reload unrelated artifacts.
+
+        Per `AX_CAP_5`, this STEP_2⇄STEP_3 review⇄reconcile cycle is bounded, not open-ended: count
+        every STEP_2 dispatch across the whole review. At the fifth result — regardless of that
+        result's verdict — stop dispatching and put an explicit disposition to the operator before
+        another STEP_2 call or STEP_4 approval: `CLEAN` only when that fifth round made no edits;
+        otherwise `CONTINUE THROUGH ROUND N` naming an explicit higher cap, or `RESTART: reason`. A
+        raised cap is bounded the same way when it is in turn reached. The reviewer's verdict never
+        authorizes continuation past the cap by itself.
       </Action>
     </Step>
     <Step id="STEP_4_OPERATOR_APPROVAL_1">

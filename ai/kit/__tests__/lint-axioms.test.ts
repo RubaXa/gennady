@@ -366,11 +366,14 @@ describe('lintUncollectedAxiomFiles — every axiom is referenced or marked draf
     ]);
   });
 
-  it('the module-level PENDING_IN_OPEN_PR is the default third argument', () => {
-    const [firstKey] = PENDING_IN_OPEN_PR.keys();
-    const f = { file: `${firstKey}.xml`, text: '<Axiom id="AX_WHATEVER">Body.</Axiom>\n' };
-    // Not connected, not draft, but listed in the real default allowlist → accepted without passing it explicitly.
-    assert.deepEqual(lintUncollectedAxiomFiles([f], new Set()), []);
+  it('the module-level PENDING_IN_OPEN_PR is empty after its final four owners connect (PR #45)', () => {
+    assert.deepEqual([...PENDING_IN_OPEN_PR], []);
+    const f = { file: 'critic/ax-uncollected.xml', text: '<Axiom id="AX_UNCOLLECTED">Body.</Axiom>\n' };
+    // The empty default list must fail closed: no stale entry remains to mask a genuinely
+    // uncollected axiom after PR #45 connects the final pending partials.
+    assert.deepEqual(lintUncollectedAxiomFiles([f], new Set()), [
+      { file: 'critic/ax-uncollected.xml', id: 'AX_UNCOLLECTED', reason: 'uncollected' },
+    ]);
   });
 });
 
