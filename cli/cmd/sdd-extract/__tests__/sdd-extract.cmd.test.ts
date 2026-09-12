@@ -139,6 +139,39 @@ describe('SddExtractCommand', () => {
       }
     });
 
+    // V-BATCH-15 §B.2/remainder: B2-19's board line names `sdd-extract <ticket>#blocker-trail` as
+    // the anchor for reading a resolution back out, and it already works "out of the box"
+    // (extractHeadingSection resolves any slug, no new code needed) — but no report or test had
+    // ever locked it. Add the missing regression lock.
+    it('resolves ## Blocker Trail by its anchor — the form B2-19 names for reading a resolution back out', async () => {
+      const withTrail = join(tmpDir, 'blocker-trail.md');
+      writeFileSync(
+        withTrail,
+        [
+          '<!--SECTION:META-->',
+          '- **Task-ID:** cli-foo',
+          '<!--/SECTION:META-->',
+          '<!--SECTION:EXECUTION_LOG-->',
+          '### Round 1',
+          '#### P1',
+          '- 🛑 BLOCKED waiting on operator decision',
+          '#### Round close',
+          '<!--/SECTION:EXECUTION_LOG-->',
+          '',
+          '## Blocker Trail',
+          '',
+          '- [x] `2026-09-10T13:47:34.170Z` ✅ RESOLVED (Round 1 / P1): token provisioned by operator',
+        ].join('\n'),
+        'utf-8'
+      );
+      const outcome = await mod.run(argv(`${withTrail}#blocker-trail`));
+      assert.strictEqual(outcome.ok, true);
+      if (outcome.ok) {
+        assert.match(outcome.content, /token provisioned by operator/);
+        assert.doesNotMatch(outcome.content, /## Blocker Trail/);
+      }
+    });
+
     it('resolves a typed contract heading inside details by its copy-ready canonical anchor', async () => {
       const spec = join(tmpDir, 'contracts.spec.md');
       writeFileSync(

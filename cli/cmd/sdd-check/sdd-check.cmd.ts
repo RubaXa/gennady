@@ -993,10 +993,11 @@ function isV2SpecsTicket(file: string): boolean {
 }
 
 /**
- * @purpose Flow version governing ONE ticket file — per-scope, from its `tasks/<scope>/` segment.
- * @invariant Unlike `specFlowVersion`, `repoRoot` is caller-supplied (see `findRepoRoot`), not
- *   re-derived from the ticket's path — a ticket has no `specs` segment to anchor on.
- * @param file Ticket path (absolute or relative — only the `tasks/<scope>/` segment matters).
+ * @purpose Flow version governing ONE ticket file — per-scope, from its `tasks/<scope>/` or
+ *   co-located `specs/<scope>/` segment.
+ * @invariant `repoRoot` is caller-supplied (see `findRepoRoot`), so both legacy and migrated ticket
+ *   paths resolve against the same mixed-migration layout.
+ * @param file Ticket path (absolute or relative).
  * @param repoRoot The repository root.
  * @returns The ticket's scope flow version; falls back to repo-level detection with no `tasks` segment.
  */
@@ -1005,6 +1006,10 @@ function ticketFlowVersion(file: string, repoRoot: string): FlowVersion {
   const ti = parts.lastIndexOf('tasks');
   if (ti >= 0 && parts.length - ti >= 2) {
     return detectScopeFlowVersion(repoRoot, parts[ti + 1] as string);
+  }
+  const si = parts.lastIndexOf('specs');
+  if (si >= 0 && parts.length - si >= 2) {
+    return detectScopeFlowVersion(repoRoot, parts[si + 1] as string);
   }
   return detectFlowVersion(repoRoot);
 }
@@ -1196,7 +1201,10 @@ export async function run(
     if (legacy) {
       findings.push(...checkLegacyTicket(effectivePath));
     } else {
-      if (!authoringPhase) findings.push(...checkTicket(effectivePath, content));
+      if (!authoringPhase)
+        findings.push(
+          ...checkTicket(effectivePath, content, ticketFlowVersion(effectivePath, repoRoot))
+        );
       if (authoring)
         findings.push(...checkTicketAuthoringStructure(effectivePath, content, authoringPhase));
       if (authoring && !authoringPhase)
@@ -1411,7 +1419,8 @@ export async function run(
           });
         fileCount++;
       } else if (isTicket(content)) {
-        findings.push(...checkTicket(file, content));
+        const flowVersion = ticketFlowVersion(file, repoRoot);
+        findings.push(...checkTicket(file, content, flowVersion));
         findings.push(...checkPhaseReceipts(file, file, content, repoRoot));
         findings.push(...checkRuleLinks(file, content, repoRoot));
         findings.push(...checkSpecRefs(file, content));
@@ -1420,7 +1429,7 @@ export async function run(
         findings.push(...checkTicketCoveragePolicy(file, content));
         if (specFlowVersion(file) === 'v2') findings.push(...checkSpecLanguage(file, content));
         if (isV2SpecsTicket(file)) findings.push(...checkTaskIdGrammar(file, content));
-        ticketRefs.push(ticketRef(file, content, ticketFlowVersion(file, repoRoot)));
+        ticketRefs.push(ticketRef(file, content, flowVersion));
         groupTickets.push({ file, content });
         fileCount++;
       } else if (isLegacyTicket(content)) {

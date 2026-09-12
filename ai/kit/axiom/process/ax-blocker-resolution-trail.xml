@@ -1,12 +1,20 @@
 <Axiom id="AX_BLOCKER_RESOLUTION_TRAIL">
-      A BLOCKER entry in Execution Log (line containing `🛑` and `BLOCKED`) remains ACTIVE until a later Round entry explicitly marks it RESOLVED. Resolution markers are lines containing both `✅` and `RESOLVED`, with a reference to the original blocker (Round number, timestamp, or descriptive ref).
+      A BLOCKER entry in Execution Log (line containing `🛑` and `BLOCKED`) remains ACTIVE until
+      `## Blocker Trail` carries a matching resolution line — `✅ RESOLVED (Round <N> / <PhaseID>)`
+      (D-20, B2-19). The back-reference is what pairs it to the right occurrence; a resolution is
+      NEVER appended inline in the Execution Log itself, so it works whether or not that Round has
+      already closed.
 
       Orchestrator consumes the `[BLOCKERS]` section already returned by `sdd-task <ticket>`.
       `blockers: none` is clear; each `blockers: ACTIVE <n>` entry is classified through the typed
       checkpoint as recoverable technical, spec-goal conflict, or external authority. Active history
       never implies an operator pause by itself. Do not spend a second check call or reconstruct it.
 
-      Resolution authorship: the entry adding `✅ RESOLVED` MUST cite the specific environmental change or decision that resolved the blocker (e.g. "tsconfig moduleResolution fixed", "operator chose option B"). Empty resolution text → audit treats as fabricated and may re-flag.
+      Resolution authorship: the `## Blocker Trail` entry MUST cite the specific environmental
+      change or decision that resolved the blocker (e.g. "tsconfig moduleResolution fixed",
+      "operator chose option B"). Empty resolution text → audit treats as fabricated and may re-flag.
 
-      Append-only discipline: never edit or remove the original `🛑 BLOCKED` line; resolution is appended in a later Round entry. The blocker history is part of the artifact.
+      Append-only discipline: never edit or remove the original `🛑 BLOCKED` line, and never hand-edit
+      `## Blocker Trail` — only `npx gennady sdd-log <ticket> resolved` writes it. The blocker
+      history is part of the artifact.
     </Axiom>

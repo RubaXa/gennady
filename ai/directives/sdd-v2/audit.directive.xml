@@ -154,6 +154,8 @@
 
 
 
+
+
     <Axiom id="AX_AUDIT_YAGNI_CROSSCHECK">
       Every symbol `gennady yagni` reports as gated (a Usage Waiver present, per
       `AX_MECHANICAL_VIA_SDD_CHECK`) MUST have both: (1) the `- **Usage Waiver:** <reason>` label

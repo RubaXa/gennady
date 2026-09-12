@@ -35,6 +35,21 @@
     </Axiom>
 
 
+    <Axiom id="AX_BLOCKER_ESCALATION">
+      When stuck, escalate — never improvise. Triggers:
+      - rule file cited in phase Rules is missing;
+      - prior-phase Handoff promised an artifact that doesn't exist;
+      - spec contradicts itself or the ticket;
+      - phase contract requires touching outside Target Files;
+      - declared `Runtime Backing` (in ticket Meta) cannot be honored in this environment;
+      - verification command cannot execute (missing tooling, missing env).
+
+      Mechanics: return evidence plus one typed outcome. Missing tooling/config/artifact/phase
+      ownership is `RECOVERABLE_TECHNICAL`; a contradiction with approved goals is
+      `SPEC_GOAL_CONFLICT`; unavailable permission is `EXTERNAL_AUTHORITY_REQUIRED`. The
+      orchestrator checkpoints and routes it.
+    </Axiom>
+
   </BeliefState>
   <Contracts></Contracts>
   <ExecutionPlan>

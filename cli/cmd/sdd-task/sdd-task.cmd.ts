@@ -459,7 +459,16 @@ async function runCommand(rawArgs: string[], projectRoot: string): Promise<TaskO
   const gates = verificationTable.gates;
 
   const logSec = extractSection(content, 'EXECUTION_LOG');
-  const activeBlockers = logSec.status === 'ok' ? scanBlockerTrail(logSec.content) : [];
+  // B2-19/V-BATCH-15 F-1: a resolution can live in `## Blocker Trail` too — pass its body through,
+  // matching check.ts's checkTicket so the two tools agree on which blockers are still active.
+  const blockerTrailSec = extractHeadingSection(content, 'blocker-trail');
+  const activeBlockers =
+    logSec.status === 'ok'
+      ? scanBlockerTrail(
+          logSec.content,
+          blockerTrailSec.status === 'ok' ? blockerTrailSec.content : ''
+        )
+      : [];
   const handoffs = logSec.status === 'ok' ? parsePhaseHandoffs(logSec.content) : {};
 
   // #region START_PHASE_DETAILS — invariant: extract only each phase's own section, never the whole body

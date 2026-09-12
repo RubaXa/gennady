@@ -1,19 +1,15 @@
-<!-- source: sdd/phase-execution-protocol.xml -->
+<!-- source: sdd/phase-execution-protocol.xml; token list de-hardcoded (B2-03: shared/sdd/execution-log.ts TOKEN_VOCABULARY is the one home, cited here rather than copied) -->
 <Contract id="PHASE_BLOCK_FORMAT">
-      Event-driven: optional event lines (0+ each) appear ONLY when their event happened. STEP_5
-      atomically inserts the paired structured `SDD_PHASE_RECEIPT` block; the agent never authors it.
-      Semantic closing lines remain `DONE` + Handoff.
+      Event-driven: optional event lines (0+ each) appear ONLY when their event happened, opening
+      with a token from the CLOSED vocabulary `sdd-check` enforces mechanically
+      (`SDD_EXECUTION_LOG_UNKNOWN_TOKEN` on anything else) — never hand-copy that list here, it has
+      exactly one home. STEP_5 atomically inserts the paired structured `SDD_PHASE_RECEIPT` block;
+      the agent never authors it. Semantic closing lines remain `DONE` + Handoff.
 
       ```markdown
       #### <PhaseID>                                 <!-- or "#### <PhaseID> — re-run: <reason>" -->
       <!-- Event lines (optional; appended as events happen, in chronological order): -->
-      - [x] `<ts>` intro `<Entity>` ← <reason>
-      - [x] `<ts>` yagni <name> ← <reason>              <!-- AX_USAGE_WAIVER_DISCIPLINE: only when a yagni finding was gated -->
-      - [x] `<ts>` decision <key>=<value> ← <reason>
-      - [x] `<ts>` tried <approach> → <result-or-why-abandoned>
-      - [x] `<ts>` discovery <fact>
-      - [x] `<ts>` insight <observation> → <spec-section>, <change>
-      - [x] `<ts>` verified <tool>@<version> <one-line summary>    <!-- config kind only -->
+      - [x] `<ts>` <token> <per the token's own grammar — e.g. `intro <Entity> ← <reason>`, `decision <key>=<value> ← <reason>`>
       <!-- CLI-owned receipt appears here after successful STEP_5. -->
       <!-- Semantic closing lines (mandatory): -->
       - [x] `<ts>` DONE
