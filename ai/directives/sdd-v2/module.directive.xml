@@ -1,11 +1,11 @@
-<SddModule keywords="module, authoring, decomposition, entity, dbc, sdd-new, sdd-check" type="directive" ver="2.3">
+<SddModule keywords="module, authoring, decomposition, entity, dbc, sdd-new, sdd-check" type="directive" ver="2.4">
   <Mission>
     Materialize the smallest cohesive module hierarchy from an actual scope draft. The autonomous
     route is skeleton → orient → one whole-document Write → soft check → handoff. Tasks belong to
     scaffold; dialogue ceremony belongs to the optional interactive profile.
   </Mission>
 
-  <BeliefState deps="AX_TOOL_INVOCATION">
+  <BeliefState deps="AX_TOOL_INVOCATION, AX_SCALE_PROPORTIONAL_DEPTH">
     Inherited from the loading directive (already in context): AX_TOOL_INVOCATION
 
     <Axiom id="AX_PROGRESSIVE_DISCLOSURE" cross-cutting="true">
@@ -14,6 +14,27 @@
       derivations — goes BELOW a `### ↓ Детали — по желанию` header. Never dump reasoning above the
       questions. Facts already verified collapse to one line («сверился: …»); uncertainties that need
       the operator BECOME the questions — never list them twice.
+    </Axiom>
+
+    <Axiom id="AX_REFINE_MODULE_PRESERVES_CONTRACTS">
+      In `refine-module` mode existing public surface is preserved unless explicitly retired with operator approval.
+
+      Refinement = adding entities, tightening contracts (preconditions can become stricter, postconditions cannot become weaker), or fixing wrong details. Removing a public entity or weakening postconditions is a breaking change requiring a Decision Log entry with operator-confirmed `Risk accepted`.
+
+      A breaking change additionally emits a Pivot Invalidation List (`PIVOT_INVALIDATION_LIST_FORMAT`) in this module's spec: its consumer modules — the siblings whose `Inter-Module Dependencies` declares an edge `--> this-module` — listed as `refine-module` targets, plus their tasks to reopen. Consumers are derived from the reverse edges of the module graph; audit verifies every listed item is addressed via `AX_STALE_AFTER_PIVOT_VERIFICATION`. Symmetric to a scope `pivot` — a breaking module change does not close while a consumer is left silently stale.
+
+      Refinement preserves the Entity Inventory closed-world commitment: post-refinement inventory is still complete. New entities go into the inventory in the same authoring change.
+
+      Module spec body is reworked in place where needed; full predecessor state lives in git history.
+    </Axiom>
+
+    <Axiom id="AX_ARTIFACT_STYLE_SELF_CHECK">
+      Before writing any operator-facing artifact, recall the language rules —
+      `AX_OPERATOR_DIALOGUE_STYLE` (bureaucratic noun-for-verb phrasing, literal calque, bookish word)
+      and `AX_READER_WITHOUT_SESSION_CONTEXT` (a branch name, «как обсуждали», a session-plan label) —
+      and hold the text about to be written to them. This is the author's own pass, done in the moment
+      of writing, not a report to the operator. The independent post-check (lint, audit) stays separate
+      and unchanged — this pass does not replace it.
     </Axiom>
   </BeliefState>
 
@@ -50,15 +71,23 @@
       <Goal>Reuse existing ownership and dependencies.</Goal>
       <Action>
         <ToolCall owner="this-step" result="orientation">npx gennady sdd-orient --scope <scope></ToolCall> Inputs <scope>: scope resolved in STEP_0_CREATE. Use orientation.
-        `sdd-orient` is the only unconditional foreign-context read. Do not load interview, research,
-        or registry protocols unless orientation exposes a real ambiguity.
+        `sdd-orient` is the only unconditional foreign-context read. Depth here is proportional to
+        the confirmed SCALE, never self-assessed (`AX_SCALE_PROPORTIONAL_DEPTH`):
+        <LogicSwitch on="SCALE and orientation ambiguity">
+        - WHEN SCALE is `fix` or `function` AND orientation exposes no real ambiguity -> EXPRESS:
+          skip interview, research, and registry protocols entirely — no gate is dropped,
+          STEP_4_CHECK and STEP_5_CLOSE still run in full.
+        - WHEN SCALE is `product`, or orientation exposes a real ambiguity -> load interview,
+          research, or registry protocols as needed.
+        </LogicSwitch>
       </Action>
     </Step>
 
     <Step id="STEP_2_FILL">
       <Goal>Generate and write the complete module specification once.</Goal>
       <Action>
-        Read the on-disk skeleton once and compose the COMPLETE module document in memory. Replace
+        Read the on-disk skeleton once and compose the COMPLETE module document in memory. Before
+        writing, run the self-check pass per `AX_ARTIFACT_STYLE_SELF_CHECK`. Replace
         the skeleton with exactly ONE `Write` of the whole file. `Edit`, `Patch`, and per-section
         writes are forbidden in authoring. Retain every SECTION marker and replace every
         `<!-- ... -->` guidance comment with authored content; none may survive the Write. Keep a
@@ -69,6 +98,12 @@
         obligation write `No module-specific requirements. Implements parent requirements: <IDs>.`
         A disputed autonomous boundary choice is one module Decision Log line per
         `DEVIATION_RECORD_FORMAT`; a zero-new-information decision continues without a dialogue stop.
+        Per `AX_REFINE_MODULE_PRESERVES_CONTRACTS`, removing a public entity or weakening a
+        postcondition is a breaking change: it needs a Decision Log entry with operator-confirmed
+        `Risk accepted` plus a Pivot Invalidation List naming every consumer module (the siblings
+        whose Inter-Module Dependencies edge points at this one) as a `refine-module` target —
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/pivot-formats.xml")` for the list
+        format.
       </Action>
     </Step>
 
