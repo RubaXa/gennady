@@ -222,6 +222,10 @@ if (restArgs.some((a) => helpFlags.has(a))) {
       await import('./cmd/sdd-verify/help.ts').then((m) => m.printHelp());
       helpLoaded = true;
       break;
+    case 'verify':
+      await import('./cmd/verify/help.ts').then((m) => m.printHelp());
+      helpLoaded = true;
+      break;
     case 'sdd-log':
       await import('./cmd/sdd-log/help.ts').then((m) => m.printHelp());
       helpLoaded = true;
@@ -417,6 +421,10 @@ switch (command) {
 
   case 'sdd-verify':
     await import('./cmd/sdd-verify/index.ts');
+    break;
+
+  case 'verify':
+    await import('./cmd/verify/index.ts');
     break;
 
   case 'sdd-log':

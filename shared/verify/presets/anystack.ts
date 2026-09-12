@@ -5,7 +5,7 @@
 // @tasks: V-08
 
 import { ANYSTACK_GATE_IDS } from '../../../plugins/anystack/anystack-plugin.ts';
-import { pluginConfigOf } from '../stack-config.ts';
+import { gateInScope, pluginConfigOf } from '../stack-config.ts';
 import type { StackConfig, GateSpec } from '../verify.types.ts';
 import type { StackPreset } from './node.ts';
 
@@ -46,6 +46,15 @@ export function resolveAnystackPreset(
     commandForGate: (name) => {
       const spec = extraGates.find((entry) => entry.id === name);
       return spec ? spec.argv!.map(quoteToken).join(' ') : null;
+    },
+    // V-12 (#9-bonus): a gate declaring `when` only applies once the phase actually touches a
+    // matching Target File — visible in the plan/receipt as SKIPPED_BY_SCOPE, never a silent drop.
+    scopeReason: (name, targets) => {
+      const spec = extraGates.find((entry) => entry.id === name);
+      if (!spec?.when || spec.when.length === 0) return null;
+      return gateInScope(spec.when, targets)
+        ? null
+        : `no Target File matches when: [${spec.when.join(', ')}]`;
     },
     environmentStateSource:
       'shared/verify/presets/anystack.ts#config-extraGates (no fingerprint — read-only)',

@@ -15,6 +15,7 @@ import {
   gatesFor,
   verdict,
   requiredGatesFor,
+  resolveGateSelectors,
   type Gate,
   type GateResult,
   type GateRunResult,
@@ -153,10 +154,12 @@ export function isSelfHosting(): boolean {
 // is meant to be checking, which would silently verify the wrong code.
 /**
  * @purpose Resolve the command + args to run for a `via: 'gennady'` gate.
+ * @invariant Exported for the read-only `gennady verify --plan --json` facade (V-16a) — the
+ *   one other place that must report this exact dispatch without running it.
  * @param gateName Gate name (e.g. `yagni`).
  * @returns `{ command, args }` to hand to the runner.
  */
-function gennadyGateCommand(gateName: string): { command: string; args: string[] } {
+export function gennadyGateCommand(gateName: string): { command: string; args: string[] } {
   if (isSelfHosting()) {
     return { command: 'npx', args: ['--no-install', 'tsx', 'cli/gennady.ts', gateName] };
   }
@@ -397,6 +400,12 @@ export async function run(
     producesCoverage?: boolean;
     deletionOnly?: boolean;
     gatePlan?: PhaseVerificationPlan;
+    /** @purpose V-13 (#20(iii)): `--only` gate-name/glob selectors — full profile only, ignored
+     *  (never applied) whenever `gatePlan` is set, so a phase run can never be narrowed by them. */
+    only?: readonly string[];
+    /** @purpose V-13 (#20(iii)): `--skip` gate-name/glob selectors — same full-profile-only scope
+     *  as `only`. */
+    skip?: readonly string[];
   } = { targets: [] },
   resultSink?: GateResult[],
   mutationBoundaries?: {
@@ -415,13 +424,56 @@ export async function run(
       ? phaseContext.gatePlan.gates.filter((gate) => gate.required).map((gate) => gate.name)
       : requiredGatesFor(profile, producesCoverage)
   );
-  const selectedGates = phaseContext.gatePlan
+  const fullGates = phaseContext.gatePlan
     ? GATES.filter((gate) =>
         phaseContext.gatePlan?.gates.some(
           (planned) => planned.name === gate.name && planned.state === 'CONFIGURED'
         )
       )
     : gatesFor(profile, producesCoverage);
+  // V-13 (#20(iii)): `--only`/`--skip` narrow the read-only full profile only — a phase run
+  // (gatePlan set) ignores both, so a phase's ladder can never drift from its canonical plan (И-2).
+  let selectedGates = fullGates;
+  if (!phaseContext.gatePlan && (phaseContext.only || phaseContext.skip)) {
+    const names = fullGates.map((gate) => gate.name);
+    if (phaseContext.only) {
+      const resolved = resolveGateSelectors(names, phaseContext.only);
+      if (!resolved.ok) {
+        return {
+          ok: false,
+          code: 'ERR_CLI_SDD_VERIFY_UNKNOWN_SELECTOR',
+          exitCode: 4,
+          message: `[sdd-verify] ERR_CLI_SDD_VERIFY_UNKNOWN_SELECTOR: --only selector "${resolved.selector}" matches no gate — known gates: ${names.join(', ')}`,
+        };
+      }
+      selectedGates = fullGates.filter((gate) => resolved.matched.includes(gate.name));
+    }
+    if (phaseContext.skip) {
+      const resolved = resolveGateSelectors(names, phaseContext.skip);
+      if (!resolved.ok) {
+        return {
+          ok: false,
+          code: 'ERR_CLI_SDD_VERIFY_UNKNOWN_SELECTOR',
+          exitCode: 4,
+          message: `[sdd-verify] ERR_CLI_SDD_VERIFY_UNKNOWN_SELECTOR: --skip selector "${resolved.selector}" matches no gate — known gates: ${names.join(', ')}`,
+        };
+      }
+      selectedGates = selectedGates.filter((gate) => !resolved.matched.includes(gate.name));
+    }
+    // Н-1 (V-BATCH-13 verdict): a combination like `--only=x --skip=x` (or `--skip=*`) resolves
+    // every individual selector `ok`, yet the intersection is empty — without this check that
+    // reads as a vacuous `ALL PASS (0/0)`, which a CI reader cannot tell apart from a real green
+    // run. An empty post-resolution selection is always a hard error, never a silent no-op.
+    if (selectedGates.length === 0) {
+      return {
+        ok: false,
+        code: 'ERR_CLI_SDD_VERIFY_EMPTY_SELECTION',
+        exitCode: 4,
+        message:
+          '[sdd-verify] ERR_CLI_SDD_VERIFY_EMPTY_SELECTION: --only/--skip selectors select no gate — nothing would run.',
+      };
+    }
+  }
   const qualityTail =
     profile === 'full'
       ? selectedGates.filter((gate) => ['lint', 'format', 'yagni'].includes(gate.name))
@@ -660,11 +712,16 @@ export async function run(
     }
   }
 
+  // V-13: only judge the foundation names actually selected this run — `--only`/`--skip` can
+  // narrow the ladder to just the quality tail, and an unselected foundation gate is not a reason
+  // to withhold it (vacuously green when neither foundation gate is in `sequentialGates` at all).
   const fullFoundationGreen =
     profile === 'full' &&
-    ['type-check', 'test:coverage'].every((name) =>
-      results.some((result) => result.name === name && result.status === 'pass')
-    );
+    sequentialGates
+      .filter((gate) => ['type-check', 'test:coverage'].includes(gate.name))
+      .every((gate) =>
+        results.some((result) => result.name === gate.name && result.status === 'pass')
+      );
   if (fullFoundationGreen && closeFoundationTransaction([])) {
     const tailResults = await Promise.all(
       qualityTail.map(async (gate): Promise<GateResult> => {

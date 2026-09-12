@@ -37,6 +37,7 @@ export const GATE_SPEC_KEYS = [
   'cwd',
   'env',
   'timeout',
+  'when',
   'outputMeansFailure',
   'driftMeansFailure',
   'envFail',
@@ -182,6 +183,7 @@ function validateGateSpec(
     cwd,
     env,
     timeout,
+    when,
     outputMeansFailure,
     driftMeansFailure,
     envFail,
@@ -209,11 +211,41 @@ function validateGateSpec(
   ) {
     errors.push({ path: `${keyPath}.env`, message: 'must be a map of string to string' });
   }
-  if (timeout !== undefined && (typeof timeout !== 'string' || parseDuration(timeout) === null)) {
+  const timeoutIsValid =
+    timeout === undefined || (typeof timeout === 'string' && parseDuration(timeout) !== null);
+  if (!timeoutIsValid) {
     errors.push({
       path: `${keyPath}.timeout`,
       message: 'must be a duration string: <int>(s|m|h), e.g. "90s", "5m"',
     });
+  }
+  const hasWhen = Array.isArray(when) && when.length > 0;
+  if (when !== undefined) {
+    if (
+      !Array.isArray(when) ||
+      when.length === 0 ||
+      when.some((glob) => typeof glob !== 'string' || glob.length === 0)
+    ) {
+      errors.push({
+        path: `${keyPath}.when`,
+        message: 'must be a non-empty array of non-empty glob strings',
+      });
+    }
+  }
+  // V-19 (D-18): an unscoped long gate pays its full cost on every touch; extraGates-only —
+  // an override narrows an existing built-in gate, which already has its own applicability.
+  if (requireIdArgv && timeoutIsValid) {
+    const effectiveTimeoutMs =
+      typeof timeout === 'string' ? parseDuration(timeout)! : EXTRA_GATE_DEFAULT_TIMEOUT_MS;
+    if (effectiveTimeoutMs > EXTRA_GATE_DEFAULT_TIMEOUT_MS && !hasWhen) {
+      errors.push({
+        path: `${keyPath}.when`,
+        message:
+          `a gate with timeout over 10m must declare "when" (file-scope globs) — otherwise every ` +
+          `phase pays its full cost regardless of what it touched; add when: ["<glob>", …] or lower ` +
+          `timeout to 10m or less`,
+      });
+    }
   }
   if (outputMeansFailure !== undefined && typeof outputMeansFailure !== 'boolean') {
     errors.push({ path: `${keyPath}.outputMeansFailure`, message: 'must be a boolean' });
@@ -387,6 +419,78 @@ export function pluginConfigOf(
 }
 
 /**
+ * @purpose Compile one `when` glob to a RegExp matching a repo-relative path (V-12, #9-bonus).
+ * @invariant Same shape as the lint `--exclude` matcher (`cli/cmd/lint/checks/utils/glob-match.ts`)
+ *   — duplicated locally, not imported, so `shared/` never depends on `cli/`. Supports `**`
+ *   (any depth), `*` (one segment), `?` (one char), `[...]` (char class).
+ * @param pattern Glob pattern string.
+ * @returns RegExp matching a path end to end.
+ */
+function globToRegex(pattern: string): RegExp {
+  let out = '';
+  for (let i = 0; i < pattern.length; ) {
+    const ch = pattern[i]!;
+    const next = pattern[i + 1];
+    if (ch === '*' && next === '*') {
+      if (pattern[i + 2] === '/') {
+        out += '(?:.*\\/)?';
+        i += 3;
+      } else {
+        out += '.*';
+        i += 2;
+      }
+    } else if (ch === '*') {
+      out += '[^/]*';
+      i += 1;
+    } else if (ch === '?') {
+      out += '[^/]';
+      i += 1;
+    } else if (ch === '[') {
+      const close = pattern.indexOf(']', i);
+      if (close === -1) {
+        out += '\\[';
+        i += 1;
+      } else {
+        out += pattern.slice(i, close + 1);
+        i = close + 1;
+      }
+    } else {
+      out += /[.^$+(){}|\\/]/.test(ch) ? `\\${ch}` : ch;
+      i += 1;
+    }
+  }
+  return new RegExp(`^${out}$`);
+}
+
+/**
+ * @purpose Whether one glob matches one string end to end (V-12/V-13: file-scope `when` and the
+ *   `--only`/`--skip` gate-name selector share this one compiler).
+ * @param text Path or gate name to test.
+ * @param pattern Glob pattern (`**`, `*`, `?`, `[...]`).
+ * @returns True when `pattern` matches `text` in full.
+ */
+export function matchesGlob(text: string, pattern: string): boolean {
+  return globToRegex(pattern).test(text);
+}
+
+/**
+ * @purpose Whether a `when`-scoped gate applies to the phase's Target Files (V-12, #9-bonus).
+ * @invariant No `when` at all (undefined/empty) always means in scope — the byte-parity default a
+ *   repo without config never deviates from (D-17). An empty `targets` list scopes every `when`
+ *   gate out; `deletedFiles` is never consulted here.
+ * @param when Gate's `when` globs, or undefined/empty.
+ * @param targets Exact phase Target Files, repo-relative.
+ * @returns True when the gate has no `when`, or at least one target matches at least one glob.
+ */
+export function gateInScope(
+  when: readonly string[] | undefined,
+  targets: readonly string[]
+): boolean {
+  if (when === undefined || when.length === 0) return true;
+  return targets.some((target) => when.some((glob) => matchesGlob(target, glob)));
+}
+
+/**
  * @purpose Overrides naming a gate the plugin never planned — valid id, no effect.
  * @invariant Load-time validation knows only the id vocabulary; which gates exist is known
  *   after planning, so the silent-drop case is caught here.
@@ -423,6 +527,9 @@ export function unmatchedGateOverrides(
  * @param root Absolute repository root.
  * @param provenance Per-key provenance map from loadStackConfig.
  * @param [unskipIds] Gate ids named by `--only` — config skipGates does not apply to them.
+ * @param [targets] Exact phase Target Files (V-12, #9-bonus): an extraGate's `when` that matches
+ *   none of them is a visible `skipped-by-scope`, same shape as a `skipGates` skip. Omitted/empty
+ *   never narrows a `when`-less gate — the byte-parity default (D-17).
  * @returns The effective gate list.
  */
 export function applyStackConfig(
@@ -431,7 +538,8 @@ export function applyStackConfig(
   stack: StackId,
   root: string,
   provenance: ReadonlyMap<string, string>,
-  unskipIds?: readonly string[]
+  unskipIds?: readonly string[],
+  targets: readonly string[] = []
 ): Gate[] {
   if (pluginConfig === null) {
     return [...gates];
@@ -508,11 +616,12 @@ export function applyStackConfig(
       spec.timeout !== undefined
         ? (parseDuration(spec.timeout) ?? EXTRA_GATE_DEFAULT_TIMEOUT_MS)
         : EXTRA_GATE_DEFAULT_TIMEOUT_MS;
+    const inScope = gateInScope(spec.when, targets);
     const gate: Gate = {
       id: spec.id!,
       stack,
       label: `${spec.argv!.join(' ')} (from ${extraSource})`,
-      argv: spec.argv!,
+      argv: inScope ? spec.argv! : [],
       cwd: spec.cwd !== undefined ? path.resolve(root, spec.cwd) : root,
       env: spec.env,
       timeoutMs: extraTimeoutMs,
@@ -537,9 +646,11 @@ export function applyStackConfig(
               extraTimeoutMs
             )[0]
           : undefined,
-      skipped: null,
+      skipped: inScope ? null : `when (${extraSource})`,
     };
     // extraGates can be declared project-wide and skipped personally — same visibility rule.
+    // skipGates takes precedence in the label when both apply — it is the more specific,
+    // person-level override over the project-wide file-scope declaration.
     effective.push(
       skip.has(gate.id) ? { ...gate, argv: [], skipped: `skipGates (${skipSource})` } : gate
     );

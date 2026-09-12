@@ -98,48 +98,51 @@ $ npx gennady sdd-verify --task specs/app/app.task.TSK-1.md --phase P2
 
 ## 3. Entity Inventory (Closed-World)
 
-| Name                                | Type         | Purpose                                                                                                                                |
-| ----------------------------------- | ------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `run`                               | Command      | Прогон фиксированного repair-first phase либо read-only full профиля, тайминг и вердикт                                                |
-| `runPhaseVerification`              | Command      | Одна фазовая транзакция: ladder + applicable Verification rows + atomic receipt                                                        |
-| `createRepairMutationBoundary`      | Utility      | Before/after workspace proof: actual repair writes остаются внутри canonical Target Files                                              |
-| `planTargetRepair`                  | Utility      | Extensible adapter registry: formatter → project linter → Gennady contract linter, exact capability-filtered targets и named skips     |
-| `RepairAction`                      | Type         | Одна adapter invocation либо honest zero-applicable skip; stable evidence попадает в receipt                                           |
-| `RepairMutationBoundary`            | Type         | Injectable capture/inspect boundary around the mutating repair rung                                                                    |
-| `CoverageProbe`                     | Type         | Shared-adapter-backed, identity-safe clear/read proof for the selected producer artifact                                               |
-| `captureTicketContainment`          | Utility      | Fail-closed identity proof для regular non-symlink receipt-owning ticket path                                                          |
-| `PhaseReceipt`                      | Value Object | CLI-owned schema-v1 evidence: plan, target state и exact successful commands/roles                                                     |
-| `PhaseReceiptCommand`               | Value Object | Одна реально выполненная команда receipt: gate/role/command/exitCode                                                                   |
-| `PhaseReceiptPlan`                  | Value Object | Структурные ticket/phase/profile/targets/Verification inputs receipt                                                                   |
-| `PhaseReceiptParseResult`           | Value Object | Fail-closed результат разбора paired receipt blocks                                                                                    |
-| `VerbatimRunner`                    | Type         | Инъектируемый исполнитель одной ticket-owned Verification команды                                                                      |
-| `phaseReceiptPlanState`             | Utility      | SHA-256 детерминированного структурного phase plan                                                                                     |
-| `phaseReceiptTargetState`           | Utility      | SHA-256 exact target paths, canonical destinations и текущих bytes                                                                     |
-| `parsePhaseReceipts`                | Utility      | Строгий разбор paired JSON receipt blocks; malformed/duplicate markers краснеют                                                        |
-| `formatPhaseReceipt`                | Utility      | Human-readable paired HTML-like prompt block с JSON evidence                                                                           |
-| `defaultRunner`                     | Utility      | Раннер по умолчанию через `spawnSync` (без shell), exit + output                                                                       |
-| `verdict`                           | Utility      | Свёртка результатов: кратко на успехе, детали упавших, halt-строка при остановке лестницы, дайджест обрезанных «not ok»-строк          |
-| `GATES`                             | Value Object | Реестр ступеней: fix · type-check · test · test:coverage · lint · format · yagni                                                       |
-| `Gate`                              | Value Object | name + mutates + `haltsOnFailure` (fix/type-check/test/test:coverage) + `via?`                                                         |
-| `GateRunResult`                     | Value Object | exitCode + output                                                                                                                      |
-| `GateResult`                        | Value Object | name · exitCode · output · durationMs · `status: 'pass' \| 'fail' \| 'skipped' \| 'missing'` · mutates · ranCommand                    |
-| `requiredGatesFor`                  | Utility      | Required ladder: setup none; code ordinary test; test selects test/test:coverage from `producesCoverage`; full unchanged               |
-| `GateRunner`                        | Type         | `(command, args) => GateRunResult` — инъектируемый                                                                                     |
-| `VerifyOutcome`                     | Type         | `{ok:true,text}` либо `{ok:false,code,exitCode,message}`                                                                               |
-| `Profile`                           | Type         | Профиль гейтов: `setup` \| `code` \| `test` \| `full` (D-SV006)                                                                        |
-| `gatesFor`                          | Utility      | Гейты профиля в каноническом порядке GATES (подмножество)                                                                              |
-| `isProfile`                         | Utility      | Type-guard токена профиля из CLI-ввода                                                                                                 |
-| `resolveNpmScriptName`              | Utility      | Резолв имени npm-скрипта для gate; не найден → gate `skipped` (для `type-check` — alias `typecheck`, D-SV009)                          |
-| `tailCap`                           | Utility      | Обрезка output упавшего gate по лимиту строк (120) и байт (16KB); восстанавливает до 10 потерянных «not ok»-строк в отдельный дайджест |
-| `GateStatus`                        | Type         | Исход ступени: `pass` \| `fail` \| `skipped` (необязательная, скрипта нет) \| `missing` (обязательная, скрипта нет или он фиктивный)   |
-| `InvocationResult`                  | Type         | Разбор CLI-вызова: phase identity либо global full; ошибка содержит обучающую диагностику                                              |
-| `parseInvocation`                   | Utility      | Строгий разбор argv: `--task+--phase` либо `--profile full`; иначе bad-invocation с exit 4                                             |
-| `resolvePhaseContext`               | Utility      | Структурно выводит kind→profile, точные существующие in-project Target Files, owning spec и test-owner для command probes              |
-| `ERR_CLI_SDD_VERIFY_BAD_INVOCATION` | Value Object | Код ошибки неверного вызова: лишний путь или неизвестный флаг — sdd-verify никогда не сужает область молча                             |
-| `isSelfHosting`                     | Utility      | Self-hosting-детект по `package.json#name === 'gennady'` — определяет, как запускать `via: 'gennady'` гейты (D-SV008)                  |
-| `runWithMaxBuffer`                  | Utility      | Spawn с явным `maxBuffer`; переполнение репортится честной ошибкой (exit 127), а не молча обрезанным вердиктом                         |
-| `GATE_MAX_BUFFER_BYTES`             | Value Object | Потолок захвата stdout+stderr одной ступени (64MB) — запас над реально измеренным TAP-выводом                                          |
-| `printHelp`                         | Utility      | Справка команды (`--help` / `-h`)                                                                                                      |
+| Name                                  | Type         | Purpose                                                                                                                                                                             |
+| ------------------------------------- | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `run`                                 | Command      | Прогон фиксированного repair-first phase либо read-only full профиля, тайминг и вердикт                                                                                             |
+| `runPhaseVerification`                | Command      | Одна фазовая транзакция: ladder + applicable Verification rows + atomic receipt                                                                                                     |
+| `createRepairMutationBoundary`        | Utility      | Before/after workspace proof: actual repair writes остаются внутри canonical Target Files                                                                                           |
+| `planTargetRepair`                    | Utility      | Extensible adapter registry: formatter → project linter → Gennady contract linter, exact capability-filtered targets и named skips                                                  |
+| `RepairAction`                        | Type         | Одна adapter invocation либо honest zero-applicable skip; stable evidence попадает в receipt                                                                                        |
+| `RepairMutationBoundary`              | Type         | Injectable capture/inspect boundary around the mutating repair rung                                                                                                                 |
+| `CoverageProbe`                       | Type         | Shared-adapter-backed, identity-safe clear/read proof for the selected producer artifact                                                                                            |
+| `captureTicketContainment`            | Utility      | Fail-closed identity proof для regular non-symlink receipt-owning ticket path                                                                                                       |
+| `PhaseReceipt`                        | Value Object | CLI-owned schema-v1 evidence: plan, target state и exact successful commands/roles                                                                                                  |
+| `PhaseReceiptCommand`                 | Value Object | Одна реально выполненная команда receipt: gate/role/command/exitCode                                                                                                                |
+| `PhaseReceiptPlan`                    | Value Object | Структурные ticket/phase/profile/targets/Verification inputs receipt                                                                                                                |
+| `PhaseReceiptParseResult`             | Value Object | Fail-closed результат разбора paired receipt blocks                                                                                                                                 |
+| `VerbatimRunner`                      | Type         | Инъектируемый исполнитель одной ticket-owned Verification команды                                                                                                                   |
+| `phaseReceiptPlanState`               | Utility      | SHA-256 детерминированного структурного phase plan                                                                                                                                  |
+| `phaseReceiptTargetState`             | Utility      | SHA-256 exact target paths, canonical destinations и текущих bytes                                                                                                                  |
+| `parsePhaseReceipts`                  | Utility      | Строгий разбор paired JSON receipt blocks; malformed/duplicate markers краснеют                                                                                                     |
+| `formatPhaseReceipt`                  | Utility      | Human-readable paired HTML-like prompt block с JSON evidence                                                                                                                        |
+| `defaultRunner`                       | Utility      | Раннер по умолчанию через `spawnSync` (без shell), exit + output                                                                                                                    |
+| `verdict`                             | Utility      | Свёртка результатов: кратко на успехе, детали упавших, halt-строка при остановке лестницы, дайджест обрезанных «not ok»-строк                                                       |
+| `GATES`                               | Value Object | Реестр ступеней: fix · type-check · test · test:coverage · lint · format · yagni                                                                                                    |
+| `Gate`                                | Value Object | name + mutates + `haltsOnFailure` (fix/type-check/test/test:coverage) + `via?`                                                                                                      |
+| `GateRunResult`                       | Value Object | exitCode + output                                                                                                                                                                   |
+| `GateResult`                          | Value Object | name · exitCode · output · durationMs · `status: 'pass' \| 'fail' \| 'skipped' \| 'missing'` · mutates · ranCommand                                                                 |
+| `requiredGatesFor`                    | Utility      | Required ladder: setup none; code ordinary test; test selects test/test:coverage from `producesCoverage`; full unchanged                                                            |
+| `GateRunner`                          | Type         | `(command, args) => GateRunResult` — инъектируемый                                                                                                                                  |
+| `VerifyOutcome`                       | Type         | `{ok:true,text}` либо `{ok:false,code,exitCode,message}`; `exitCode` — `1` (gate/env failure) либо `4` (bad invocation, unknown/empty `--only`/`--skip` selection, V-13/V-BATCH-13) |
+| `Profile`                             | Type         | Профиль гейтов: `setup` \| `code` \| `test` \| `full` (D-SV006)                                                                                                                     |
+| `gatesFor`                            | Utility      | Гейты профиля в каноническом порядке GATES (подмножество)                                                                                                                           |
+| `isProfile`                           | Utility      | Type-guard токена профиля из CLI-ввода                                                                                                                                              |
+| `resolveNpmScriptName`                | Utility      | Резолв имени npm-скрипта для gate; не найден → gate `skipped` (для `type-check` — alias `typecheck`, D-SV009)                                                                       |
+| `tailCap`                             | Utility      | Обрезка output упавшего gate по лимиту строк (120) и байт (16KB); восстанавливает до 10 потерянных «not ok»-строк в отдельный дайджест                                              |
+| `GateStatus`                          | Type         | Исход ступени: `pass` \| `fail` \| `skipped` (необязательная, скрипта нет) \| `missing` (обязательная, скрипта нет или он фиктивный)                                                |
+| `InvocationResult`                    | Type         | Разбор CLI-вызова: phase identity либо global full; ошибка содержит обучающую диагностику                                                                                           |
+| `parseInvocation`                     | Utility      | Строгий разбор argv: `--task+--phase` либо `--profile full` (опционально с `--only`/`--skip`, V-13); иначе bad-invocation с exit 4                                                  |
+| `resolvePhaseContext`                 | Utility      | Структурно выводит kind→profile, точные существующие in-project Target Files, owning spec и test-owner для command probes                                                           |
+| `ERR_CLI_SDD_VERIFY_BAD_INVOCATION`   | Value Object | Код ошибки неверного вызова: лишний путь или неизвестный флаг — sdd-verify никогда не сужает область молча                                                                          |
+| `resolveGateSelectors`                | Utility      | Общий резолвер `--only`/`--skip` (V-13): glob/имя против `full`-профиля; несматчивший selector — `{ok:false}`, никогда тихий no-op                                                  |
+| `ERR_CLI_SDD_VERIFY_UNKNOWN_SELECTOR` | Value Object | Код ошибки: `--only`/`--skip` selector не матчит ни один gate (exit 4) — известные gates перечисляются в сообщении                                                                  |
+| `ERR_CLI_SDD_VERIFY_EMPTY_SELECTION`  | Value Object | Код ошибки (V-BATCH-13 Н-1): резолв `--only`/`--skip` дал пустое пересечение (напр. `--only=x --skip=x`, `--skip=*`) — exit 4, никогда `ALL PASS (0/0)`                             |
+| `isSelfHosting`                       | Utility      | Self-hosting-детект по `package.json#name === 'gennady'` — определяет, как запускать `via: 'gennady'` гейты (D-SV008)                                                               |
+| `runWithMaxBuffer`                    | Utility      | Spawn с явным `maxBuffer`; переполнение репортится честной ошибкой (exit 127), а не молча обрезанным вердиктом                                                                      |
+| `GATE_MAX_BUFFER_BYTES`               | Value Object | Потолок захвата stdout+stderr одной ступени (64MB) — запас над реально измеренным TAP-выводом                                                                                       |
+| `printHelp`                           | Utility      | Справка команды (`--help` / `-h`)                                                                                                                                                   |
 
 <!--/SECTION:ENTITY_INVENTORY-->
 
@@ -175,16 +178,20 @@ $ npx gennady sdd-verify --task specs/app/app.task.TSK-1.md --phase P2
 
 ## 5. Public Options & Policies
 
-| Argument               | Type   | Description                                                         |
-| ---------------------- | ------ | ------------------------------------------------------------------- |
-| `--task <ticket-path>` | string | Путь v2 ticket; используется только вместе с `--phase`.             |
-| `--phase <PhaseID>`    | string | Структурная фаза, из которой выводятся kind/profile и Target Files. |
-| `--profile full`       | string | Отдельный глобальный read-only режим для audit/CI/human.            |
-| `--help` / `-h`        | —      | Справка.                                                            |
+| Argument                    | Type   | Description                                                                                                                                  |
+| --------------------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--task <ticket-path>`      | string | Путь v2 ticket; используется только вместе с `--phase`.                                                                                      |
+| `--phase <PhaseID>`         | string | Структурная фаза, из которой выводятся kind/profile и Target Files.                                                                          |
+| `--profile full`            | string | Отдельный глобальный read-only режим для audit/CI/human.                                                                                     |
+| `--only <name-or-glob[,…]>` | string | (V-13) Сужает `full`-профиль до матчащих gate-имён/glob'ов, в каноническом порядке; только с `--profile full`, никогда с `--task`/`--phase`. |
+| `--skip <name-or-glob[,…]>` | string | (V-13) Исключает матчащие gate-имена/glob'ы из `full`-профиля; та же область действия, что и `--only`, комбинируется с ним.                  |
+| `--help` / `-h`             | —      | Справка.                                                                                                                                     |
 
 Профили — фикс-наборы в каноническом порядке лестницы; setup/code/test выбираются только структурным `--task … --phase …`, `full` — явным флагом:
 
 Каждый scalar-флаг обязан присутствовать не более одного раза и иметь ровно одно непустое значение. Повтор, отсутствие значения, конфликт режимов или extra positional — bad invocation (exit 4), а не fallback в default `full`. После успешного разбора semantic phase-context ошибки (`ticket`/`phase`/targets/owner/readiness) относятся к механическому gate и возвращают exit 1.
+
+**`--only`/`--skip` (V-13, #20(iii)):** сужают только read-only `full`-профиль — фазовый путь (`--task`/`--phase`) их не принимает вовсе (bad invocation, exit 4): фазовая лестница обязана совпадать с canonical-планом фазы (И-2), а не дрейфовать от CLI-флагов. Оба флага резолвятся общим `resolveGateSelectors` — имя или glob (`matchesGlob`, тот же компилятор, что и file-scope `when`, §6 `verify.spec.md`) против списка gate-имён `full`-профиля. Несматчивший selector — жёсткая ошибка (`ERR_CLI_SDD_VERIFY_UNKNOWN_SELECTOR`, exit 4, перечисляет known gates), никогда тихий no-op. Если `--only` и `--skip` заданы вместе, `--skip` применяется поверх результата `--only`; когда итоговое пересечение после обоих флагов пусто (например, `--only=x --skip=x` или `--skip=*`) — тоже жёсткая ошибка (`ERR_CLI_SDD_VERIFY_EMPTY_SELECTION`, exit 4, «selectors select no gate»), а не зелёный `ALL PASS (0/0)` (V-BATCH-13 Н-1). Сегодня ни один `--only`/`--skip` не способен выбрать config-authored `extraGates` — они достижимы только фазовым путём (V-08/V-08b), которого эти флаги не касаются; см. `verify.spec.md` §6, запись-преемник «extraGates/anystack вживляются в полный профиль».
 
 - `setup` — `fix · type-check · test`, всё optional для bootstrap
 - `code` — `fix · type-check · test`, всё required
