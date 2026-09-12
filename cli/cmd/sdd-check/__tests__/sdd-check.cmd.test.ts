@@ -1655,6 +1655,45 @@ describe('SddCheckCommand', () => {
     assert.doesNotMatch(r.text, /old-scope[\\/]mod[\\/]mod\.spec\.md/);
   });
 
+  it('--all на смешанном репо: новые journal findings пропускают anchored v1 ticket и проверяют эквивалентный v2 ticket', async () => {
+    const root = join(dir, 'mixed-journal-proj');
+    const oldTicket = join(root, 'tasks', 'old-scope', 'old.task.md');
+    const newTicket = join(root, 'specs', 'new-scope', 'new.task.md');
+    const drift = CLEAN_TICKET.replace(
+      '- [x] `2026-06-21T10:00:00Z` DONE',
+      [
+        '### Round 1 — 2026-06-21, initial',
+        '#### P1',
+        '- [x] `2026-06-21T10:00:00Z` fabricatedToken detail',
+        '#### Round close',
+        '- [x] `2026-06-21T10:00:01Z` DONE',
+      ].join('\n')
+    );
+    mkdirSync(join(root, 'tasks', 'old-scope'), { recursive: true });
+    mkdirSync(join(root, 'specs', 'new-scope'), { recursive: true });
+    writeFileSync(oldTicket, drift.replace('cli-foo', 'old-scope-ticket'), 'utf-8');
+    writeFileSync(
+      join(root, 'specs', 'new-scope', 'new-scope.3-tasks.md'),
+      '# Tasks: new-scope\n',
+      'utf-8'
+    );
+    writeFileSync(newTicket, drift.replace('cli-foo', 'new-scope-ticket'), 'utf-8');
+
+    const r = await mod.run(argv('--all', root));
+    const vocabularyLines = r.text
+      .split('\n')
+      .filter((line) => line.includes('SDD_EXECUTION_LOG_UNKNOWN_TOKEN'));
+    assert.strictEqual(vocabularyLines.length, 1, r.text);
+    assert.match(vocabularyLines[0] ?? '', /new\.task\.md/);
+    assert.doesNotMatch(vocabularyLines[0] ?? '', /old\.task\.md/);
+
+    const oldViaTask = await mod.run(argv('--task', relative(root, oldTicket)), root);
+    assert.doesNotMatch(oldViaTask.text, /SDD_EXECUTION_LOG_UNKNOWN_TOKEN/);
+
+    const newViaTask = await mod.run(argv('--task', relative(root, newTicket)), root);
+    assert.match(newViaTask.text, /SDD_EXECUTION_LOG_UNKNOWN_TOKEN/);
+  });
+
   it('--all: SDD_TASK_ID_GRAMMAR fires for a bad Task-ID in a migrated (v2) scope ticket', async () => {
     const root = join(dir, 'grammar-v2-proj');
     mkdirSync(join(root, 'specs', 'new-scope', 'mod'), { recursive: true });

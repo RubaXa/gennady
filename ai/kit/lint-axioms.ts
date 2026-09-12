@@ -193,7 +193,11 @@ export const KNOWN_DANGLING_AXIOM_REFS: ReadonlySet<string> = new Set(
       // named where a later task in the plan explicitly claims the id; "unassigned" otherwise
       // (still recorded in 40-TRACK-DIRECTIVES-SKILLS.md §4.1 for the next triage pass).
       ['AX_AUDIT_HOOK', ['audit.directive.xml', 'code-review.directive.xml', 'execute.directive.xml', 'scaffold.directive.xml'], 'T-B6-25'],
-      ['AX_STALE_AFTER_PIVOT_VERIFICATION', ['formats/pivot-formats.xml', 'infra.directive.xml', 'interface.directive.xml', 'migration-v1-v2.directive.xml'], 'T-B6-17'],
+      // AX_STALE_AFTER_PIVOT_VERIFICATION connected (T-B6-17, Пачка 15): now {{> "axiom/audit/ax-
+      // stale-after-pivot-verification"}} in audit.directive.hbs — a real <Axiom id> definition
+      // exists in the rendered build, so its mentions in formats/pivot-formats.xml,
+      // infra.directive.xml, interface.directive.xml, migration-v1-v2.directive.xml are no longer
+      // dangling. Row removed.
       ['AX_CLOSED_WORLD_INVENTORY', ['audit.directive.xml', 'code-review.directive.xml'], 'T-B6-02'],
       ['AX_CONTRACTS_TEXTUAL_AGNOSTIC', ['formats/dbc-contracts.xml', 'scaffold.directive.xml'], 'T-B6-02'],
       ['AX_PORTS_AND_ABSTRACTIONS_DISCIPLINE', ['formats/dbc-contracts.xml', 'formats/entity-surface-format.xml', 'formats/module-spec-structure.xml'], 'T-B6-02'],

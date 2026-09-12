@@ -67,16 +67,38 @@
  *
  * NOT allowlisted, deliberately, despite also showing up unanchored in several templates:
  * `FLOW_DIAGRAM_WHEN` (the exact contract AUTHORING.md's backlog note already names as
- * over-spread), `BREADCRUMB_FORMAT`, `SIDE_DIVE_FORMAT`, `NEXT_STEP_MENU_FORMAT`,
- * `UNDERSTANDING_BLOCK_FORMAT` — each of these needs directive-specific content or a
- * directive-specific mechanism to mean anything (named milestones, an `AX_STACK_BASED_FLOW` nested
- * frame, a candidate-options table, an actual misread-risk callout), so a bare inclusion with zero
- * anchor is exactly the copy-paste-dead-weight shape this script exists to catch. Any violation
- * reported for one of these is a real finding, not a criterion bug — do not paper over it by
- * widening the allowlist without checking usage the way the entries above were checked.
+ * over-spread), `BREADCRUMB_FORMAT`, `NEXT_STEP_MENU_FORMAT`, `UNDERSTANDING_BLOCK_FORMAT` — each
+ * of these needs directive-specific content or a directive-specific mechanism to mean anything
+ * (named milestones, an `AX_STACK_BASED_FLOW` nested frame, a candidate-options table, an actual
+ * misread-risk callout), so a bare inclusion with zero anchor is exactly the copy-paste-dead-weight
+ * shape this script exists to catch. Any violation reported for one of these is a real finding, not
+ * a criterion bug — do not paper over it by widening the allowlist without checking usage the way
+ * the entries above were checked. (`SIDE_DIVE_FORMAT`, once a fifth example in this list, was
+ * deleted outright by B2-18/V-BATCH-15 — replaced by a different prose mechanism, not merely left
+ * unanchored — so it no longer belongs here at all.)
  *
  * Scanned set: same as audit-axiom-activation.mjs — top-level `*.directive.hbs` files directly
  * under `templates/sdd-v2/` (not `agent-inbox/`, not `formats/`).
+ *
+ * === PART 3 — "file exists → included" ====================================================
+ *
+ * Parts 1-2 both start from a template's own `{{> }}` include; neither one notices a contract/*
+ * library file that no template includes AT ALL — no self-activating block, no checked block, not
+ * even a dead bare-id mention Part 2 could flag. Mutation-proven (V-BATCH-15 F-3, verifier's M4b):
+ * a brand-new file dropped under ai/kit/contract/process/ with zero `{{> }}` include anywhere
+ * passed this script, `build:directives`, and `check:directives-fresh` all clean — the "each brick
+ * connected" gate B2-18's board line named did not, in fact, exist before this Part.
+ *
+ * CRITERION: every ai/kit/contract/**\/*.xml file's own partial path (`contract/<dir>/<name>`, no
+ * extension) must appear in a `{{> "contract/<dir>/<name>"}}` include somewhere under
+ * ai/kit/templates/sdd-v2/** (recursive — formats/*.hbs and agent-inbox/*.hbs each genuinely wire
+ * contracts in too, unlike Part 1's deliberately non-recursive top-level-only `listTemplates`).
+ *
+ * ALLOWLIST — a shrinking, named-owner list, same discipline as lint-axioms.ts's
+ * `KNOWN_DANGLING_AXIOM_REFS`: a file stays here only until the task that owns wiring it in (or
+ * deleting it) actually does so. Never widen this to paper over a genuinely new orphan.
+ *
+ * Scanned set: every `*.hbs` under `templates/sdd-v2/**`, recursive.
  *
  * === PART 2 — "mentioned → available" =====================================================
  *
@@ -472,14 +494,68 @@ function auditAssembledFile(file) {
 const assembled = listAssembledDirectives();
 const part2Violations = assembled.flatMap(auditAssembledFile);
 
+// === PART 3 — "file exists → included" ======================================================
+
+/**
+ * Shrinking, named-owner allowlist (see header comment) — each entry is a real orphan, verified
+ * by grepping the templates tree for its partial path with zero hits before being added here.
+ */
+const KNOWN_DANGLING_CONTRACT_FILES = new Map([
+  // Spec-authoring contract for the uikit scope-type. No uikit-scope-type template exists yet to
+  // include it from — 61-TASK-BOARD.md T-11 tracks registering `uikit-*` in the scope registry;
+  // wiring this contract in (or retiring it) is the natural follow-up once that lands. unassigned.
+  [
+    'contract/uikit/spec-structure',
+    'unassigned — see 61-TASK-BOARD.md T-11 (uikit scope registration)',
+  ],
+  // Critic's own structured-output contract (`## What I did NOT understand`, …): read by the
+  // dispatching orchestrator off the returned subagent text, never rendered through a template
+  // `{{> }}` include. V-BATCH-15 §J flags this as overlapping Пачка 20 (critic-convergence-
+  // bounds) — address there, not here. unassigned.
+  ['contract/critic/oc-structured', 'unassigned — overlaps Пачка 20 (critic), see V-BATCH-15 §J'],
+]);
+
+/** Every `ai/kit/contract/**\/*.xml` file, absolute path. */
+function allContractFiles() {
+  return walk(CONTRACT_DIR).filter((p) => p.endsWith('.xml'));
+}
+
+/** Every `*.hbs` under `templates/sdd-v2/**`, read once — reused for both the check and the report. */
+const allTemplateTexts = walk(TEMPLATES_DIR)
+  .filter((p) => p.endsWith('.hbs'))
+  .map((p) => readFileSync(p, 'utf8'));
+
+function escapeRegExp(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+const part3Violations = [];
+for (const file of allContractFiles()) {
+  // `ai/kit/contract/process/blocker-format.xml` → `contract/process/blocker-format`.
+  const partialPath = relative(KIT_DIR, file).replace(/\.xml$/, '').split(sep).join('/');
+  if (
+    allTemplateTexts.some((text) =>
+      new RegExp(`\\{\\{>\\s*"${escapeRegExp(partialPath)}"\\s*\\}\\}`).test(text)
+    )
+  )
+    continue;
+  if (KNOWN_DANGLING_CONTRACT_FILES.has(partialPath)) continue;
+  part3Violations.push({
+    file: relative(REPO_ROOT, file),
+    partialPath,
+    reason: 'no template under templates/sdd-v2/** includes this contract/* file at all',
+  });
+}
+
 // === Combined report =========================================================================
 
-const allViolations = [...part1Violations, ...part2Violations];
+const allViolations = [...part1Violations, ...part2Violations, ...part3Violations];
 
 if (allViolations.length === 0) {
   console.log(
     `✓ contract-activation audit clean — ${templates.length} template(s) + ${assembled.length} ` +
-      `assembled directive(s) checked.`
+      `assembled directive(s) + ${allContractFiles().length} contract file(s), against ` +
+      `${allTemplateTexts.length} template file(s) (recursive), checked.`
   );
   process.exit(0);
 }
@@ -528,6 +604,19 @@ if (part2Violations.length > 0) {
       `QUESTION_RULE_SLIM->QUESTION_FORMAT). Fix: make the sentence self-sufficient (repeat the\n` +
       `gist inline, the way message-layout.xml now does for UNDERSTANDING_BLOCK_FORMAT /\n` +
       `FLOW_DIAGRAM_WHEN), add the missing include, or add a checked allowlist entry with a reason.`
+  );
+}
+
+if (part3Violations.length > 0) {
+  console.error(`⚠ ${part3Violations.length} contract-activation violation(s) — file exists → included:\n`);
+  for (const v of part3Violations) console.error(`  ${v.file} (${v.partialPath}) — ${v.reason}`);
+  console.error(
+    `\nEvery ai/kit/contract/**/*.xml file must be reachable from at least one template under\n` +
+      `templates/sdd-v2/** via {{> "contract/<dir>/<name>"}} — a library file nobody includes is\n` +
+      `dead weight that Parts 1-2 cannot see (neither started from this file, so neither one's\n` +
+      `"unanchored" or "unresolved" checks ever ran against it). Fix: wire it into the template\n` +
+      `that needs it, delete it if nothing does, or add a named-owner KNOWN_DANGLING_CONTRACT_FILES\n` +
+      `entry in this script (documented, shrinking only) if a real task will connect it later.`
   );
 }
 

@@ -5,8 +5,19 @@
       | Listed item | Check | Severity if stale |
       |---|---|---|
       | Module spec requiring `refine-module` | most recent Decision Log entry references the pivot `<ACR>-DL-N` (or immutable legacy id) | `MAJOR` |
-      | Task requiring reopen | Reopens counter incremented since pivot date | `MAJOR` |
+      | Task requiring reopen | Reopens counter incremented since pivot date, AND causally honest | `MAJOR` |
       | Rule to revisit | rule file mtime > pivot date | `MINOR` |
+
+      **"Causally honest" for the reopen row (`[REOPENS]`, B2-06) is now mechanical, not hand-
+      counted** — take it as given, per `AX_MECHANICAL_VIA_SDD_CHECK`: `sdd-check --task` compares
+      Meta `Reopens` against the number of persisted `@audit … triggered-reopen=Round-N` records in
+      `## Audit Rounds`, and separately confirms every declared `triggered-reopen=Round-N` has a
+      matching `### Round N` actually created in the Execution Log. A ticket whose ticket carries an
+      audit round with `triggered-reopen=Round-2` while its Meta still reads `Reopens: 0` is exactly
+      this: a reopen the audit process announced but the orchestrator never executed — the tool
+      reports it as `SDD_REOPENS_MISMATCH` (Meta count wrong) and/or `SDD_REOPENS_PENDING` (Round 2
+      itself absent). Do not hand-re-derive this from the raw ticket text; the stale-pivot row above
+      folds these tool findings in as its own evidence rather than re-counting `### Round` headers.
 
       Epic-mode audit aggregates stale items into one summary finding. Greenfield/extension scopes without Pivot Invalidation List → check skipped silently.
     </Axiom>

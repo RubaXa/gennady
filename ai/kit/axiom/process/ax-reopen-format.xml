@@ -24,7 +24,14 @@
 
       Set ticket Meta Status → `[~] IN_PROGRESS` — this is what `sdd-log round` already sets when
       opening a new Round; do not write `[ ] TODO` instead, which reads as "not started" and would
-      drift from the tracker row `sdd-check` compares it against. Update `Reopens: <new count>`.
+      drift from the tracker row `sdd-check` compares it against. Update `Reopens: <new count>` —
+      count of persisted `@audit … triggered-reopen=Round-N` records, not "how many times I hand-
+      counted `### Round` headers"; `sdd-check` verifies the two agree (`SDD_REOPENS_MISMATCH`) and
+      that every declared `triggered-reopen=Round-N` actually got a matching Round created
+      (`SDD_REOPENS_PENDING` — an announced reopen the orchestrator never executed). Reason string
+      for the new Round comes from a closed vocabulary the CLI itself enforces (`initial |
+      fix: F-NNN | resume | new-audit-session`, `isValidRoundReason` in `execution-log.ts`) —
+      `sdd-log round "<free text>"` now refuses (exit 4) instead of accepting anything.
       Sync tracker: the owning `*.3-tasks.md` row → `[~] IN_PROGRESS` (same value, not TODO); parent
       rollups (scope and `specs/3-tasks.md`) → adjust counts.
 

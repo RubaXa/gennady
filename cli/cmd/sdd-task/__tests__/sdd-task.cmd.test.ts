@@ -326,6 +326,35 @@ describe('SddTaskCommand', () => {
     assert.match(outcome.text, /\[BLOCKERS\]\nblockers: none/);
   });
 
+  // V-BATCH-15 F-1: sdd-task's own scanBlockerTrail call used to run one-arg (no `## Blocker
+  // Trail` body), so it disagreed with sdd-check on the very same ticket — a blocker closed via
+  // `sdd-log resolved` (which writes `## Blocker Trail`, not an inline ✅) stayed "ACTIVE" here
+  // forever, even though `sdd-check --task` already reported clean.
+  it('a blocker closed via ## Blocker Trail (not inline) reports blockers: none, matching sdd-check', async () => {
+    const t = join(dir, 'trail-resolved.md');
+    writeFileSync(
+      t,
+      [
+        TICKET,
+        '<!--SECTION:EXECUTION_LOG-->',
+        '### Round 1',
+        '#### P1',
+        '- 🛑 BLOCKED waiting on operator decision',
+        '#### Round close',
+        '<!--/SECTION:EXECUTION_LOG-->',
+        '',
+        '## Blocker Trail',
+        '',
+        '- [x] `2026-09-10T13:47:34.170Z` ✅ RESOLVED (Round 1 / P1): token provisioned by operator',
+      ].join('\n'),
+      'utf-8'
+    );
+    const outcome = await mod.run(argv(t));
+    assert.strictEqual(outcome.ok, true);
+    if (!outcome.ok) return;
+    assert.match(outcome.text, /\[BLOCKERS\]\nblockers: none/);
+  });
+
   it('matches gates to a phase by rule-id (Required-by ∩ phase rules)', async () => {
     const outcome = await mod.run(argv(ticket));
     assert.strictEqual(outcome.ok, true);

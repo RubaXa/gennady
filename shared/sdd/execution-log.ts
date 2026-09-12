@@ -5,7 +5,7 @@
 //   audit-group.ts, group-receipt.ts, templates.ts (scaffolded specs/3-tasks.md)
 // @tasks: N/A
 
-import { collectHeadings, extractSection } from './section.ts';
+import { collectHeadings, extractHeadingSection, extractSection } from './section.ts';
 
 /** @purpose One legal first-word token of an Execution Log event line, plus its exact grammar. */
 export type TokenVocabularyEntry = {
@@ -115,16 +115,68 @@ export function firstRoundPhaseBlockCounts(logBody: string): Map<string, number>
   return counts;
 }
 
+/** @purpose One checked event line that fails the token-vocabulary grammar, plus which of the two distinct shapes it is (V-BATCH-15 F-4). */
+export type TokenVocabularyIssue = {
+  /** @purpose The offending line, verbatim. */
+  raw: string;
+  /**
+   * @purpose `unquoted-timestamp`: no backtick-wrapped timestamp, so `parseLogEvent` misreads the
+   *   timestamp text as `token` — not proof the real token, one word later, is illegal.
+   *   `unknown-token`: a real backtick timestamp followed by a first word outside `TOKEN_VOCABULARY`.
+   */
+  issue: 'unquoted-timestamp' | 'unknown-token';
+};
+
+/**
+ * @purpose Every checked event line that fails the token-vocabulary grammar (issue #23), classified
+ *   into its two distinct shapes (V-BATCH-15 F-4) — phase blocks, Round close, and trailing content
+ *   all count; a marker line never does.
+ * @invariant `ts === null && token !== null` is `unquoted-timestamp`, never `unknown-token` — the
+ *   captured `token` in that case is the mis-parsed timestamp itself, not evidence about the real
+ *   token one word further along (which this parser never inspects).
+ * @param logBody Extracted EXECUTION_LOG section body.
+ * @returns Each offending line's raw text plus its issue kind, in document order across every Round.
+ */
+export function tokenVocabularyIssues(logBody: string): TokenVocabularyIssue[] {
+  const parsed = parseExecutionLog(wrapAsExecutionLogDocument(logBody));
+  if (!parsed) return [];
+  // A checked marker line (`- [x] \`ts\` ✅ RESOLVED: …`, the pre-B2-19 inline shape) parses its
+  // own marker emoji as `token` — excluding marker !== null here is what keeps legacy 🛑/✅ lines
+  // from misreading as either issue shape.
+  const classify = (e: LogEvent): TokenVocabularyIssue['issue'] | null => {
+    if (e.token === null || e.marker !== null) return null;
+    if (e.ts === null) return 'unquoted-timestamp';
+    return e.known ? null : 'unknown-token';
+  };
+  const out: TokenVocabularyIssue[] = [];
+  const record = (e: LogEvent): void => {
+    const issue = classify(e);
+    if (issue) out.push({ raw: e.raw, issue });
+  };
+  for (const round of parsed.rounds) {
+    for (const phase of round.phases) for (const e of phase.events) record(e);
+    for (const e of round.close?.extra ?? []) record(e);
+    if (round.close?.done) record(round.close.done);
+    for (const e of round.trailing) record(e);
+  }
+  return out;
+}
+
+/** @purpose Pull the `P<N>` phase id out of a Blocker Trail `✅ RESOLVED (Round <N> / P<M>): …` back-reference line. */
+const TRAIL_PHASE_RE = /\(Round\s+\d+\s*\/\s*(P[0-9]+)\)/;
+
 /**
  * @purpose Scan an Execution Log for 🛑 BLOCKED / ✅ RESOLVED pairs, paired per phase — shared by
  *   checkTicket and sdd-task's [BLOCKERS].
  * @invariant FIFO within one phase's own pool — a `— re-run:` block shares it; only 🛑/✅ counts,
- *   not the bare word.
+ *   not the bare word. A `## Blocker Trail` `RESOLVED (Round <N> / P<M>)` line (D-20, B2-19) shifts
+ *   that same pool like an inline ✅ would.
  * @param logBody The EXECUTION_LOG section body.
+ * @param [blockerTrailBody] The `## Blocker Trail` heading body, when the ticket has one.
  * @returns Unresolved 🛑 BLOCKED lines, oldest first across every phase's pool; empty when each has
- *   a later ✅ RESOLVED in its own pool.
+ *   a later ✅ RESOLVED (inline or in Blocker Trail) in its own pool.
  */
-export function scanBlockerTrail(logBody: string): string[] {
+export function scanBlockerTrail(logBody: string, blockerTrailBody?: string): string[] {
   // One pool per phase id, keyed by PHASE_HEADING_RE's capture — a `— re-run:` heading shares the
   // SAME key as the phase's earlier block, so a resolution logged there still closes an earlier
   // blocker. Pools never mix: a resolution can only shift its own phase's pool, never an older,
@@ -144,6 +196,12 @@ export function scanBlockerTrail(logBody: string): string[] {
       pools.get(phase)?.shift();
     }
   }
+  for (const rawLine of (blockerTrailBody ?? '').split('\n')) {
+    const line = rawLine.trim();
+    if (!line.includes('✅')) continue;
+    const targetPhase = TRAIL_PHASE_RE.exec(line)?.[1];
+    if (targetPhase) pools.get(targetPhase)?.shift();
+  }
   return [...pools.values()]
     .flat()
     .sort((a, b) => a.pos - b.pos)
@@ -151,12 +209,53 @@ export function scanBlockerTrail(logBody: string): string[] {
 }
 
 /**
+ * @purpose Find the oldest Execution Round whose `phaseId` block still carries an unresolved 🛑
+ *   BLOCKED — the round `sdd-log resolved` cites in its Blocker Trail back-reference (D-20, B2-19).
+ * @invariant Round-aware FIFO, line-based like `scanBlockerTrail`; a Blocker Trail resolution
+ *   already on file discounts one match too — a phase blocked more than once cites the right one.
+ * @param content Full ticket markdown.
+ * @param blockerTrailBody The `## Blocker Trail` heading body (empty string when absent).
+ * @param phaseId Phase id (e.g. `P3`).
+ * @returns The oldest unresolved occurrence's Round number, or null when `phaseId` has none.
+ */
+export function oldestActiveBlockerRound(
+  content: string,
+  blockerTrailBody: string,
+  phaseId: string
+): number | null {
+  const logSection = extractSection(content, 'EXECUTION_LOG');
+  if (logSection.status !== 'ok') return null;
+  // Line-based, same style as scanBlockerTrail — deliberately NOT `parseExecutionLog`-based: a
+  // phase block with no enclosing `### Round <n>` heading yet (a fresh ticket mid-scaffold, or a
+  // minimal fixture) still has a real citable round number of 0, not "no blocker found at all".
+  const queue: number[] = [];
+  let phase = '';
+  let round = 0;
+  for (const rawLine of logSection.content.split('\n')) {
+    const line = rawLine.trim();
+    const roundHeading = /^#{1,6}\s+Round\s+(\d+)\b/i.exec(line);
+    if (roundHeading?.[1]) round = Number(roundHeading[1]);
+    const phaseHeading = PHASE_HEADING_RE.exec(line);
+    if (phaseHeading) phase = phaseHeading[1] as string;
+    if (phase !== phaseId) continue;
+    if (line.includes('🛑')) queue.push(round);
+    else if (line.includes('✅')) queue.shift();
+  }
+  const trailResolutionCount = blockerTrailBody
+    .split('\n')
+    .filter((l) => l.includes('✅') && TRAIL_PHASE_RE.exec(l)?.[1] === phaseId).length;
+  for (let i = 0; i < trailResolutionCount; i++) queue.shift();
+  return queue[0] ?? null;
+}
+
+/**
  * @purpose Detect whether the Execution Log ends in an unresolved BLOCKED state.
  * @param logBody The EXECUTION_LOG section body.
- * @returns True when a 🛑 BLOCKED entry has no later ✅ RESOLVED.
+ * @param [blockerTrailBody] The `## Blocker Trail` heading body, when present (B2-19).
+ * @returns True when a 🛑 BLOCKED entry has no later ✅ RESOLVED (inline or in Blocker Trail).
  */
-export function hasActiveBlocker(logBody: string): boolean {
-  return scanBlockerTrail(logBody).length > 0;
+export function hasActiveBlocker(logBody: string, blockerTrailBody?: string): boolean {
+  return scanBlockerTrail(logBody, blockerTrailBody).length > 0;
 }
 
 /**
@@ -514,3 +613,79 @@ export function parseExecutionLog(content: string): ExecutionLog | null {
   return { rounds };
 }
 // #endregion END_PARSE_EXECUTION_LOG
+
+// #region START_REOPEN_BY_CAUSE — invariant: Meta Reopens is causally honest (issue #13, D-20, B2-06)
+
+/**
+ * @purpose True when `reason` matches the closed round-reason vocabulary (D-20 / issue #13) — free
+ *   text is no longer accepted for a reopen's cause.
+ * @param reason The verbatim `sdd-log <ticket> round "<reason>"` payload.
+ * @returns Whether `reason` (trimmed) matches the closed vocabulary.
+ */
+export function isValidRoundReason(reason: string): boolean {
+  return /^(?:initial|resume|new-audit-session|fix:\s*F-\d+)$/.test(reason.trim());
+}
+
+/** @purpose One parsed `### Audit Round <N>` entry from a ticket's `## Audit Rounds` heading (TICKET_AUDIT_ROUND_FORMAT). */
+export type AuditRoundRecord = {
+  /** @purpose The heading's own Audit Round number (monotonic across the ticket's lifetime). */
+  n: number;
+  /** @purpose The Execution Round this audit ran after (`after-exec-round=<M>`), or 0 when unparseable. */
+  afterExecRound: number;
+  /** @purpose The Execution Round number this audit declared a reopen into (`triggered-reopen=Round-<M+1>`), or null for `triggered-reopen=none`. */
+  triggeredReopen: number | null;
+  /** @purpose The `@audit` line's `status=` value (`FAIL` / `PASS_RISK`), or empty when unparseable. */
+  verdict: string;
+};
+
+/** @purpose Matches the fenced `@audit …` inline-grammar line inside one Audit Round block. */
+const AUDIT_LINE_RE = /^@audit\s+(.*)$/m;
+
+/** @purpose Extract one `key=value` field's value from an `@audit` line, or undefined. */
+function auditField(line: string, name: string): string | undefined {
+  return new RegExp(`\\b${name}=(\\S+)`).exec(line)?.[1];
+}
+
+/**
+ * @purpose Parse every `### Audit Round <N>` entry from a ticket's bare `## Audit Rounds` heading
+ *   section (not a `<!--SECTION-->`-anchored block — `TICKET_AUDIT_ROUND_FORMAT`).
+ * @invariant Reads only inside that heading's own body — `## Critic Rounds`, the EXECUTION_LOG
+ *   section, and `## Decision Log` are invisible by construction.
+ * @param content Full ticket markdown.
+ * @returns Every Audit Round entry found, in document order (empty when the heading is absent).
+ */
+export function parseAuditRounds(content: string): AuditRoundRecord[] {
+  const section = extractHeadingSection(content, 'audit-rounds');
+  if (section.status !== 'ok') return [];
+  const body = section.content;
+  const headings = collectHeadings(body);
+  const roundHeadings = headings
+    .map((heading, index) => ({ heading, index }))
+    .filter(({ heading }) => heading.level === 3 && /^Audit\s+Round\s+\d+\b/i.test(heading.text));
+
+  const out: AuditRoundRecord[] = [];
+  for (const { heading, index } of roundHeadings) {
+    const nextTop = headings.slice(index + 1).find((h) => h.level <= heading.level);
+    const blockEnd = nextTop?.start ?? body.length;
+    const block = body.slice(heading.lineEnd, blockEnd);
+    const nMatch = /^Audit\s+Round\s+(\d+)/i.exec(heading.text);
+    const auditLine = AUDIT_LINE_RE.exec(block)?.[1];
+    if (!nMatch?.[1] || auditLine === undefined) continue;
+
+    const afterExecRound = Number(auditField(auditLine, 'after-exec-round') ?? '0');
+    const reopenRaw = auditField(auditLine, 'triggered-reopen');
+    const reopenMatch = reopenRaw ? /^Round-(\d+)$/.exec(reopenRaw) : null;
+
+    out.push({
+      n: Number(nMatch[1]),
+      afterExecRound: Number.isNaN(afterExecRound) ? 0 : afterExecRound,
+      triggeredReopen: reopenMatch?.[1] ? Number(reopenMatch[1]) : null,
+      verdict: auditField(auditLine, 'status') ?? '',
+    });
+  }
+  return out;
+}
+
+/** @purpose Matches the Meta `**Reopens:** <count>` field (omitted entirely from the skeleton when 0). */
+export const META_REOPENS_RE = /\*\*Reopens:\*\*\s*(\d+)/;
+// #endregion END_REOPEN_BY_CAUSE

@@ -1,4 +1,4 @@
-<!-- source: sdd/phase-execution-protocol.xml -->
+<!-- source: sdd/phase-execution-protocol.xml; RESOLVED mechanic updated per D-20/B2-19 -->
 <Contract id="BLOCKER_FORMAT">
       ```markdown
       - 🛑 `<ts>` BLOCKED: <one-line cause>
@@ -7,12 +7,12 @@
       ```
       After this entry: phase Status → `[!] BLOCKED`; return BLOCKED to orchestrator. Stop.
 
-      Paired close, once the cause is actually gone (`AX_BLOCKER_RESOLUTION_TRAIL`): write the
-      literal remediation with the file-write tool to `.claude/tmp/<task-id>-<phase-id>-log.txt`,
-      then run `npx gennady sdd-log <ticket> resolved --content-file
-      .claude/tmp/<task-id>-<phase-id>-log.txt --phase <PhaseID>`, into THIS SAME phase's block —
-      never a manual `Edit`, never the original 🛑 line touched. It writes:
+      Paired close, once the cause is actually gone (`AX_BLOCKER_RESOLUTION_TRAIL`): run `npx
+      gennady sdd-log <ticket> resolved "<what removed it>" --phase <PhaseID>` — never a manual
+      `Edit`, never the original 🛑 line touched. The CLI writes the resolution into `## Blocker
+      Trail`, a section of its own outside the Execution Log (D-20) — NOT back into this phase's
+      block, and it works even after the Round that raised the blocker has already closed:
       ```markdown
-      - [x] `<ts>` ✅ RESOLVED: <what removed it>
+      - [x] `<ts>` ✅ RESOLVED (Round <N> / <PhaseID>): <what removed it>
       ```
     </Contract>
