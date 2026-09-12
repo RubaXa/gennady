@@ -276,36 +276,41 @@ describe('formatUndefinedRefsReport', () => {
 });
 
 describe('collectStaticDirectiveFiles — T-B6-24 scope widening', () => {
-  it('reads .xml files under the static (non-templated) dirs, relative to the given root, without an sdd-v2/ prefix', async () => {
+  it('reads root-level and future-directory XML while excluding only generated sdd-v2/**', async () => {
     const { mkdtempSync, mkdirSync, writeFileSync, rmSync } = await import('node:fs');
     const { tmpdir } = await import('node:os');
     const { join } = await import('node:path');
     const root = mkdtempSync(join(tmpdir(), 'lint-axioms-static-'));
     try {
-      mkdirSync(join(root, 'infra'), { recursive: true });
-      writeFileSync(join(root, 'infra', 'git-setup.xml'), '<Directive>per `AX_SOMETHING`</Directive>\n');
-      mkdirSync(join(root, 'sdd-v2'), { recursive: true }); // must NOT be picked up — templated tree
-      writeFileSync(join(root, 'sdd-v2', 'router.directive.xml'), '<Directive/>\n');
+      writeFileSync(join(root, 'knowledge.xml'), '<Directive>per `AX_ROOT`</Directive>\n');
+      mkdirSync(join(root, 'future-tree', 'nested'), { recursive: true });
+      writeFileSync(join(root, 'future-tree', 'nested', 'future.xml'), '<Directive>per `AX_FUTURE`</Directive>\n');
+      mkdirSync(join(root, 'sdd-v2', 'nested'), { recursive: true });
+      writeFileSync(join(root, 'sdd-v2', 'router.directive.xml'), '<Directive>per `AX_GENERATED`</Directive>\n');
+      writeFileSync(join(root, 'sdd-v2', 'nested', 'step.xml'), '<Directive>per `AX_GENERATED_NESTED`</Directive>\n');
       const { collectStaticDirectiveFiles } = await import('../lint-axioms.ts');
       const files = collectStaticDirectiveFiles(root);
       assert.deepEqual(
         files.map((f) => f.file),
-        ['infra/git-setup.xml']
+        ['future-tree/nested/future.xml', 'knowledge.xml']
       );
-      assert.match(files[0]!.text, /AX_SOMETHING/);
+      assert.deepEqual(
+        lintUndefinedAxiomRefs(files).map((finding) => finding.id),
+        ['AX_FUTURE', 'AX_ROOT']
+      );
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
   });
 
-  it('tolerates a missing static dir (fresh checkout without e.g. testing/)', async () => {
+  it('tolerates a missing directives root', async () => {
     const { mkdtempSync, rmSync } = await import('node:fs');
     const { tmpdir } = await import('node:os');
     const { join } = await import('node:path');
     const root = mkdtempSync(join(tmpdir(), 'lint-axioms-static-empty-'));
     try {
       const { collectStaticDirectiveFiles } = await import('../lint-axioms.ts');
-      assert.deepEqual(collectStaticDirectiveFiles(root), []);
+      assert.deepEqual(collectStaticDirectiveFiles(join(root, 'absent')), []);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

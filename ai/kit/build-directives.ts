@@ -172,11 +172,10 @@ if (report) console.warn(`\n${report}`);
 // directive, not a style nit — it fails the build, minus the temporary, shrinking
 // KNOWN_DANGLING_AXIOM_REFS allowlist (L-10 / Q2 option b). This never grows silently: a NEW
 // dangling reference (not already in the allowlist) fails the build the moment it lands.
-// T-B6-24: the scanned corpus is `rendered` (templated sdd-v2/**) PLUS every static, non-templated
-// directive file under ai/directives/{infra,testing,architecture,coding,agent-inbox}/** — read from
-// the real ai/directives root (OUT_ROOT), never the --out= override, since those static trees only
-// exist in the actual checkout. This is what makes a dangling AX_* mentioned OUTSIDE sdd-v2/** (the
-// gap 40-TRACK-DIRECTIVES-SKILLS.md §4.1 named) visible to this same gate.
+// T-B6-24: the scanned corpus is `rendered` (templated sdd-v2/**) PLUS every static `.xml` anywhere
+// under ai/directives/** except generated sdd-v2/** itself. Static files are read from the real
+// directive root (OUT_ROOT), never the --out= override. This makes root-level files, existing static
+// trees, and future static directories visible to the same referenced-but-undefined gate.
 const staticDirectiveFiles = collectStaticDirectiveFiles(OUT_ROOT);
 const undefinedRefs = lintUndefinedAxiomRefs([...rendered, ...staticDirectiveFiles], {
   allowlist: KNOWN_DANGLING_AXIOM_REFS,

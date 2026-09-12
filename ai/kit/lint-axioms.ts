@@ -23,18 +23,17 @@
  *
  * **Scope (T-B6-24): `ai/directives/**`, not only `sdd-v2/**`.** `build-directives.ts` only ever
  * renders templates under `ai/kit/templates/sdd-v2/**`, so its own in-memory `rendered` array never
- * sees the static, hand-authored directive trees that live alongside it in `ai/directives/`
- * (`infra/`, `testing/`, `architecture/`, `coding/`, the top-level `agent-inbox/` — a DIFFERENT tree
- * from the templated `sdd-v2/agent-inbox/`) — a dangling `AX_*` reference there was invisible to
- * this lint by construction, not by policy (40-TRACK-DIRECTIVES-SKILLS.md §4.1/§4.2: "область по
- * умолчанию — `ai/directives/**`"). `collectStaticDirectiveFiles` below reads those static trees
- * straight off disk (they are never written by this build, so reading them is always safe,
- * `--check` or not) so the caller can merge them into the same `rendered`/`lintUndefinedAxiomRefs`
- * call and widen the corpus `lintUndefinedAxiomRefs` already treats as one undifferentiated
- * definition/reference space — no change to that function itself, only to what is fed into it.
+ * sees the static, hand-authored directive files that live alongside it anywhere under
+ * `ai/directives/` — a dangling `AX_*` reference there was invisible to this lint by construction,
+ * not by policy (40-TRACK-DIRECTIVES-SKILLS.md §4.1/§4.2: "область по умолчанию —
+ * `ai/directives/**`"). `collectStaticDirectiveFiles` below reads the whole directive tree straight
+ * off disk while excluding only generated `sdd-v2/**` (already supplied through `rendered`). Static
+ * files are never written by this build, so reading them is safe in either write or `--check` mode.
+ * The caller merges both sources into the same `rendered`/`lintUndefinedAxiomRefs` corpus — no
+ * change to that function itself, only to what is fed into it.
  */
 
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 
 export interface RenderedDirective {
@@ -304,46 +303,33 @@ export function formatUndefinedRefsReport(dangling: UndefinedAxiomRef[]): string
 /* scope widening (T-B6-24) — read the STATIC (non-templated) directive trees straight off disk   */
 /* -------------------------------------------------------------------------------------------- */
 
-/** Directories under `ai/directives/` that `build-directives.ts` never writes (no `.hbs` source
- * under `ai/kit/templates/` produces them) — hand-authored, static XML, read directly for lint. */
-const STATIC_DIRECTIVE_DIRS = ['infra', 'testing', 'architecture', 'coding', 'agent-inbox'] as const;
-
-function walkXml(dir: string): string[] {
+function walkXml(dir: string, excludedDir: string): string[] {
   const out: string[] = [];
   for (const name of readdirSync(dir)) {
     const p = join(dir, name);
     const st = statSync(p);
-    if (st.isDirectory()) out.push(...walkXml(p));
-    else if (p.endsWith('.xml')) out.push(p);
+    if (st.isDirectory()) {
+      if (p !== excludedDir) out.push(...walkXml(p, excludedDir));
+    } else if (p.endsWith('.xml')) {
+      out.push(p);
+    }
   }
   return out;
 }
 
 /**
- * Reads every static (non-templated) `.xml` directive file under `ai/directives/<STATIC_DIRECTIVE_DIRS>`
- * — the part of `ai/directives/**` that `build-directives.ts`'s own template walk never sees — and
- * returns it in the same `RenderedDirective` shape the rest of this module already consumes, so the
- * caller can simply concatenate this with its own templated `rendered` array before calling
- * `lintUndefinedAxiomRefs` (T-B6-24). `file` is the path relative to `ai/directives/` (e.g.
- * `infra/nodejs-npm-setup.xml`, `agent-inbox/contract-interrogation.directive.xml`) — deliberately
- * WITHOUT the `sdd-v2/` prefix `KNOWN_DANGLING_AXIOM_REFS` uses for the templated tree, so an
- * allowlist entry for a static file reads unambiguously as "outside sdd-v2".
+ * Reads every static `.xml` file under `ai/directives/**`, including root-level files and future
+ * subdirectories, while excluding only generated `ai/directives/sdd-v2/**` (already represented by
+ * the builder's in-memory render set). Returns the same `RenderedDirective` shape used by
+ * `lintUndefinedAxiomRefs` (T-B6-24); `file` stays relative to `ai/directives/`.
  */
 export function collectStaticDirectiveFiles(directivesRoot: string): RenderedDirective[] {
-  const out: RenderedDirective[] = [];
-  for (const dir of STATIC_DIRECTIVE_DIRS) {
-    const dirPath = join(directivesRoot, dir);
-    let files: string[];
-    try {
-      files = walkXml(dirPath);
-    } catch {
-      continue; // directory absent on this checkout — nothing to scan
-    }
-    for (const p of files) {
-      out.push({ file: relative(directivesRoot, p).split(sep).join('/'), text: readFileSync(p, 'utf8') });
-    }
-  }
-  return out;
+  if (!existsSync(directivesRoot)) return [];
+  const files = walkXml(directivesRoot, join(directivesRoot, 'sdd-v2'));
+  return files.map((p) => ({
+    file: relative(directivesRoot, p).split(sep).join('/'),
+    text: readFileSync(p, 'utf8'),
+  }));
 }
 
 /* -------------------------------------------------------------------------------------------- */

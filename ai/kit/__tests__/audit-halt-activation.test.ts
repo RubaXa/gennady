@@ -3,9 +3,10 @@
 
 import { afterEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
+import { auditDirective } from '../audit-halt-activation.mjs';
 import { readAssembledFragments } from '../audit-halt-fragments.mjs';
 
 const roots: string[] = [];
@@ -88,5 +89,34 @@ describe('halt audit lazy package traversal', () => {
       () => readAssembledFragments(skeleton, { repoRoot: root, lazy: true }),
       /step-package ref escapes its directive package/
     );
+  });
+});
+
+describe('H_UNFORMATTED_ASK ownership', () => {
+  const templatesRoot = resolve(import.meta.dirname, '../templates/sdd-v2');
+
+  for (const name of ['root', 'interview-protocol']) {
+    it(`${name} owns the shared QUESTION_FORMAT violation; deleting its row is detected`, () => {
+      const source = readFileSync(join(templatesRoot, `${name}.directive.hbs`), 'utf8');
+      assert.deepEqual(auditDirective([source], `${name}.directive`), {
+        mentionedNotDeclared: [],
+        declaredNotUsed: [],
+      });
+
+      const withoutOwnedRow = source.replace(
+        /^\s*\| `H_UNFORMATTED_ASK` \|.*\n/m,
+        ''
+      );
+      assert.notEqual(withoutOwnedRow, source, 'mutation must remove the owned halt row');
+      assert.deepEqual(
+        auditDirective([withoutOwnedRow], `${name}.directive`).mentionedNotDeclared,
+        ['H_UNFORMATTED_ASK']
+      );
+    });
+  }
+
+  it('does not mask H_UNFORMATTED_ASK through a cross-directive allowlist entry', () => {
+    const script = readFileSync(resolve(import.meta.dirname, '../audit-halt-activation.mjs'), 'utf8');
+    assert.doesNotMatch(script, /\.directive::H_UNFORMATTED_ASK/);
   });
 });

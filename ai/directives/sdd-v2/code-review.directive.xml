@@ -164,80 +164,61 @@
       Files the tool's diff surfaces but that are absent from ticket declaration + Execution Log → candidates for `CLOSED_WORLD_DRIFT` (public entities) or `EXECUTION_LOG_INCOMPLETE` (utility-only changes).
     </Axiom>
 
-    lines 88-130 — restored verbatim, T-B6-11 / D4.1, D4.4-D4.7 per 40-TRACK-DIRECTIVES-SKILLS.md
-           §1.4. Table `Meaning` column, confidence rule (D4.4), verdict-computation table + project-scope
-           cap (D4.1/D4.7) and the claimed-verification-without-evidence sentence (D4.6) had been dropped
-           to a 13-line snapshot before this restoration; git log on the v1 file shows no revert of this
-           text between its introduction (ac2e9d73) and d37d5910 — nothing to reconcile per L-25.
+    <Axiom id="AX_SEVERITY_TAGGING">
+      Every finding carries a severity:
 
-           EXCEPTION to verbatim (L-27, V-BATCH-18 verifier B-1): v1's closing sentence named the v1
-           close model this file's Axiom body used to quote — a model that does not exist in v2. Group-
-           audit (AX_AUDIT_HOOK, T-B6-25, ai/kit/axiom/process/ax-audit-hook.xml) fires only AFTER every
-           ticket of the group is already closed; `sdd-log complete` closes each phase mechanically per
-           phase gate, is not verification, and does not wait on this audit's verdict. Assembling both
-           sentences verbatim into the same audit.directive produced two contradictory claims about who
-           performs that close and when — see the inline marker on the last paragraph below for the
-           rewritten sentence. This is the one paragraph in this file NOT carried over verbatim; every
-           other paragraph (severity table, confidence rule, verdict table, project-scope cap) is
-           untouched. -->
-      <Axiom id="AX_SEVERITY_TAGGING">
-            Every finding carries a severity:
+      | Severity | Meaning |
+      |---|---|
+      | `BLOCKER` | task cannot be considered complete; merge forbidden |
+      | `MAJOR` | behavior, required scope, remediation ownership, or verification is broken or cannot be proved; requires fix; allows merge only with explicit operator acceptance + Decision Log entry |
+      | `MINOR` | mechanically fixable documentation, protocol, or style discrepancy that does not make behavior, scope, ownership, or verification ambiguous |
+      | `INFO` | observation without mandatory action (often `INSIGHT_BACKFLOW`) |
 
-            | Severity | Meaning |
-            |---|---|
-            | `BLOCKER` | task cannot be considered complete; merge forbidden |
-            | `MAJOR` | behavior, required scope, remediation ownership, or verification is broken or cannot be proved; requires fix; allows merge only with explicit operator acceptance + Decision Log entry |
-            | `MINOR` | mechanically fixable documentation, protocol, or style discrepancy that does not make behavior, scope, ownership, or verification ambiguous |
-            | `INFO` | observation without mandatory action (often `INSIGHT_BACKFLOW`) |
+      Confidence constrains what severity may decide. `HIGH` and `MEDIUM` may participate in the
+      verdict table. `LOW` is an unconfirmed observation: before summary, run one bounded independent
+      check that can raise it to `MEDIUM`/`HIGH`; if it remains `LOW`, emit it only as `INFO`. A
+      `LOW` finding never causes `FAIL`, opens an Execution Round, or authorizes an artifact change.
+      It remains visible to the operator instead of becoming an interactive halt.
 
-            Confidence constrains what severity may decide. `HIGH` and `MEDIUM` may participate in the
-            verdict table. `LOW` is an unconfirmed observation: before summary, run one bounded independent
-            check that can raise it to `MEDIUM`/`HIGH`; if it remains `LOW`, emit it only as `INFO`. A
-            `LOW` finding never causes `FAIL`, opens an Execution Round, or authorizes an artifact change.
-            It remains visible to the operator instead of becoming an interactive halt.
+      Severity does not depend on agent's mood or on whether the mismatch is in code or prose.
+      Closed-world drift = `BLOCKER` by default; a coding-rules violation that can change behavior or
+      verification = `MAJOR`; stylistic deviation = `MINOR`. A protocol or documentation mismatch is
+      `MAJOR` only when it makes required behavior, scope, remediation ownership, or verification
+      ambiguous or unprovable. Otherwise it is `MINOR` and cannot force another execution round.
+      Distinguish that from new knowledge: a sound execution choice that preserves current
+      requirements but suggests enriching canonical text is `INSIGHT_BACKFLOW` `INFO`, presented for
+      optional operator review. A known canonical fact copied incorrectly into another artifact is
+      documentation mismatch and remains `MINOR`.
+      A claimed verification result with no executed evidence is not paper drift: it leaves required
+      behavior unproved and is `MAJOR`.
 
-            Severity does not depend on agent's mood or on whether the mismatch is in code or prose.
-            Closed-world drift = `BLOCKER` by default; a coding-rules violation that can change behavior or
-            verification = `MAJOR`; stylistic deviation = `MINOR`. A protocol or documentation mismatch is
-            `MAJOR` only when it makes required behavior, scope, remediation ownership, or verification
-            ambiguous or unprovable. Otherwise it is `MINOR` and cannot force another execution round.
-            Distinguish that from new knowledge: a sound execution choice that preserves current
-            requirements but suggests enriching canonical text is `INSIGHT_BACKFLOW` `INFO`, presented for
-            optional operator review. A known canonical fact copied incorrectly into another artifact is
-            documentation mismatch and remains `MINOR`.
-            A claimed verification result with no executed evidence is not paper drift: it leaves required
-            behavior unproved and is `MAJOR`.
+      **Overall status is computed from severities, never judged.** First matching row wins; print which row matched:
 
-            **Overall status is computed from severities, never judged.** First matching row wins; print which row matched:
+      | Condition | Status |
+      |---|---|
+      | any open `BLOCKER` | `FAIL` |
+      | any open `MAJOR` without operator acknowledgement | `FAIL` |
+      | every open `MAJOR` acknowledged + Decision Log entry, and no `BLOCKER` | `PASS_WITH_ACKNOWLEDGED_RISKS` |
+      | only `MINOR` / `INFO`, or nothing | `PASS` |
 
-            | Condition | Status |
-            |---|---|
-            | any open `BLOCKER` | `FAIL` |
-            | any open `MAJOR` without operator acknowledgement | `FAIL` |
-            | every open `MAJOR` acknowledged + Decision Log entry, and no `BLOCKER` | `PASS_WITH_ACKNOWLEDGED_RISKS` |
-            | only `MINOR` / `INFO`, or nothing | `PASS` |
+      `RULE_FILE_INCOMPLETE` and every other project-scope finding enters this table capped at `MINOR` (per `AX_FINDING_ROUTING`): shared infrastructure no task owns cannot decide that task's verdict. The `sev` field still reports the finding's own severity — the cap applies to the computation, not to the record.
 
-            `RULE_FILE_INCOMPLETE` and every other project-scope finding enters this table capped at `MINOR` (per `AX_FINDING_ROUTING`): shared infrastructure no task owns cannot decide that task's verdict. The `sev` field still reports the finding's own severity — the cap applies to the computation, not to the record.
-
-            <!-- v2 close model (L-27, see this file's header comment for the full rationale): each
-                 phase already closes `[x] DONE` mechanically via `sdd-log complete` (AX_AUDIT_HOOK)
-                 before the group audit ever runs; PASS/FAIL is the round's own audit verdict, recorded
-                 separately (`## Audit Rounds`, batches 14/15) — never a trigger that sets `[x] DONE`. -->
-            This matters because the status is consumed mechanically: on PASS the audit records the round
-            verdict; `[x] DONE` is already the phase's mechanical close. The audit remediates a progressing
-            FAIL, and blocks only on evidenced no-progress or a real external decision. An unspecified
-            verdict here makes those transitions arbitrary.
+      <!-- v2 close model (L-27, see this file's header comment for the full rationale): each
+           phase already closes `[x] DONE` mechanically via `sdd-log complete` (AX_AUDIT_HOOK)
+           before the group audit ever runs; PASS/FAIL is the round's own audit verdict, recorded
+           separately (`## Audit Rounds`, batches 14/15) — never a trigger that sets `[x] DONE`. -->
+      This matters because the status is consumed mechanically: on PASS the audit records the round
+      verdict; `[x] DONE` is already the phase's mechanical close. The audit remediates a progressing
+      FAIL, and blocks only on evidenced no-progress or a real external decision. An unspecified
+      verdict here makes those transitions arbitrary.
     </Axiom>
 
-    as soon as AX_FINDING_ROUTING's RULE_FILE_INCOMPLETE row (D4.7) names that same literal
-           remediation type; without it here the vocabulary this axiom enumerates would not cover the
-           route the routing table sends that finding to). -->
-      <Axiom id="AX_FINDINGS_AS_PROPOSALS">
-            Every finding contains a proposed remediation. Agent does not modify code. Remediation types:
-            - `code-fix` — concrete change in code (with location).
-            - `spec-update` — concrete spec update (module or scope) with proposed diff.
-            - `ticket-update` — ticket update (canonical case names, deferred scope, etc.).
-            - `rule-file-fix` — shared rule/directive/tooling artifact; outside any task, goes to its own ticket.
+    <Axiom id="AX_FINDINGS_AS_PROPOSALS">
+      Every finding contains a proposed remediation. Agent does not modify code. Remediation types:
+      - `code-fix` — concrete change in code (with location).
+      - `spec-update` — concrete spec update (module or scope) with proposed diff.
+      - `ticket-update` — ticket update (canonical case names, deferred scope, etc.).
+      - `rule-file-fix` — shared rule/directive/tooling artifact; outside any task, goes to its own ticket.
     </Axiom>
 
     <Axiom id="AX_NEUTRAL_FINDINGS">
