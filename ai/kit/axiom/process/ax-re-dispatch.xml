@@ -1,9 +1,13 @@
-<!-- V-BATCH-18 F-2: not status="draft" — PENDING_IN_OPEN_PR in ai/kit/lint-axioms.ts (PR #38
-     lead/phase-agent-bounds) already connects this partial. Remove this comment and the
-     PENDING_IN_OPEN_PR entry once that PR merges. -->
 <Axiom id="AX_RE_DISPATCH">Any edit → another isolated post-edit review dispatch mandatory, no exception
 of the agent's own making — "the fix is trivial" does not waive it; edits may create contradictions
 detectable only by a post-edit sensor pass. Whether a dispatch continues an existing worker or starts a
 fresh one belongs to the owning review step, not this global rule. The verdict handed to the operator MUST
 be the literal verdict text of the LAST dispatch actually run, shown as a direct quote — never a
-paraphrase, and never the verdict of a dispatch that was skipped.</Axiom>
+paraphrase, and never the verdict of a dispatch that was skipped.
+
+Re-dispatch is not unbounded, though. If a re-dispatch returns the SAME blocking finding set as the
+immediately preceding attempt on this same artifact — same ids, same substance — with no new evidence
+between the two attempts (no changed diff, no new tool output, no new fact the prior attempt did not
+already have), that repetition is provable non-progress, not further review: halt `H_NO_PROGRESS`
+instead of re-dispatching again on the identical set. A genuinely new edit, a new tool run, or a new
+fact resets the count and earns a fresh dispatch as above.</Axiom>

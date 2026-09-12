@@ -5,6 +5,8 @@
         Implement the smallest change satisfying the phase and its referenced requirements. Stay
         inside target files. Do not alter task dependencies, phases, approved BDD/test plan, or spec
         meaning. If such a change is necessary, return `APPROVAL_BOUNDARY_CHANGE` with evidence.
+        The phase protocol defines the permitted command list per `AX_PERMITTED_BASH_COMMANDS`; every
+        bash invocation while implementing stays within it.
         Record real progress as it happens — one `PHASE_BLOCK_FORMAT` event line per
         intro/decision/tried/discovery/insight, never batched from memory afterward:
         <ToolCall owner="phase-agent" result="terminal">npx gennady sdd-log &lt;ticket&gt; line "&lt;event&gt;" --phase &lt;PhaseID&gt;</ToolCall>

@@ -1,6 +1,3 @@
-<!-- V-BATCH-18 F-2: not status="draft" — PENDING_IN_OPEN_PR in ai/kit/lint-axioms.ts (PR #38
-     lead/phase-agent-bounds) already connects this partial. Remove this comment and the
-     PENDING_IN_OPEN_PR entry once that PR merges. -->
 <Axiom id="AX_PERMITTED_BASH_COMMANDS">
       This role's bash commands stay within this list:
       - **Must run:** exact `sdd-verify --task <ticket-path> --phase <PhaseID>` exactly once per attempt at the phase
@@ -33,6 +30,11 @@
       ~100-300ms per call for zero value, and full project recon / repository mutation belong to the
       orchestrator or authoring flow, not this role.
 
+      One narrower git read needs no named gap at all: exact `git status --porcelain -- <Target
+      Files>` may run at any point as a cheap, deterministic, read-only self-check that the phase
+      has not drifted outside its own `Target Files` boundary. Every other git/gh read stays gated
+      behind a step naming a real gap, per the paragraph above.
+
       All recon stays inside the project root. A fact that genuinely lives outside it — a global
       `~/.npmrc`, a system-wide setting, anything outside this checkout — is not a gap this role closes
       by reading it anyway, read-only or not: no bash command in this list reaches outside the project
@@ -51,8 +53,24 @@
 
       **Forbidden:** any npm/network command outside the exact bootstrap-only forms above; `npm run fix`; `npm run check`; `npm run lint` alone (overkill — use `sdd-verify` or `tsc --noEmit` for narrower checks); `npm run format`; `prettier` directly — repair and verification both live INSIDE `sdd-verify`, never called piecemeal; any recursive or project-wide file scan; any command that reads unrelated files for «context».
 
-      Ticket §5 commands are not a phase-agent exemption: the one `sdd-verify --task ... --phase ...`
-      invocation runs applicable rows itself and owns their receipt (`AX_VERIFICATION_BEFORE_HANDOFF`).
-      `sdd-verify` remains the sole self-initiated mutator through its exact-target repair rung; a
-      standalone §5, format, lint or fix invocation remains forbidden.
+      **Named exception — throwaway fixture repository for a guard-test phase.** A phase whose
+      Objective is to prove a guard script, lint gate, or CI step against real Git plumbing may
+      create exactly ONE throwaway repository strictly under `.claude/tmp/<fixture>/`: `mkdir -p
+      .claude/tmp/<fixture>` is this role's `mktemp` equivalent, scoped to the project's own scratch
+      area rather than the closed system `/tmp`/`$TMPDIR`; then `git init`, `git add`, and `git
+      commit` inside that path ONLY — never the checkout's own `.git`, never a path outside
+      `.claude/tmp/`. Record the fixture path in the phase's Handoff so the orchestrator and audit
+      can find it, and remove the fixture directory before returning Handoff: it is scratch, not a
+      Target File, and does not survive the phase. This is the one case where `git init`/`add`/`commit`
+      is legal outside the step that owns publish/commit; it does not relax the ban on mutating the
+      checkout's own repository, and it does not touch what the read-only `sdd-verify` snapshot
+      observes about real `Target Files`.
+
+      Ticket §5 commands are not a phase-agent exemption, and the fixture-repository exception above
+      does not create one: the one `sdd-verify --task ... --phase ...` invocation runs applicable
+      rows itself and owns their receipt (`AX_VERIFICATION_BEFORE_HANDOFF`); `sdd-verify` remains the
+      sole self-initiated mutator through its exact-target repair rung; a standalone §5, format, lint
+      or fix invocation remains forbidden. The fixture repo lets this role prove a guard script's own
+      behavior on synthetic history it fully owns — it does not let this role run the ticket's own §5
+      commands, which stay `sdd-verify`'s alone to execute and receipt.
     </Axiom>

@@ -100,8 +100,20 @@ const REPO_ROOT = join(KIT_DIR, '..', '..');
 const TEMPLATES_DIR = join(KIT_DIR, 'templates', 'sdd-v2');
 const DIRECTIVES_DIR = join(REPO_ROOT, 'ai', 'directives', 'sdd-v2');
 
-const H_ID_RE = /(?<![A-Za-z0-9_])H_[A-Z0-9_]+/g;
-const AX_ID_RE = /(?<![A-Za-z0-9_])AX_[A-Z0-9_]+/g;
+// NOTE: `H_ID_RE` (non-global, used ONLY for the `.test()` line-scan gates below) is kept separate
+// from `H_ID_G_RE` (global, used ONLY for `matchAll` inside `auditDirective`) rather than sharing
+// one `/g` instance for both. A `/g` regex's `.test()` call mutates its OWN `lastIndex`, and
+// `String.prototype.matchAll` copies the CURRENT `lastIndex` of the regex object passed to it into
+// the fresh matcher it constructs (it clones the regex, but not the position) — so a single shared
+// `/g` instance used for both `.test()` and `matchAll` let an earlier `.test()` call leave
+// `lastIndex` non-zero, silently truncating the START of the next `matchAll` scan on a fresh,
+// unrelated body string. Two mentions of the same kind of id back-to-back in one fragment could
+// see only the second one register. A non-global regex never tracks `lastIndex`, so `H_ID_RE` is
+// always safe for `.test()`; `AX_[A-Z0-9_]+` has no `.test()` call site (only `matchAll`), so it
+// keeps a single `/g` instance, `AX_ID_G_RE`.
+const H_ID_RE = /(?<![A-Za-z0-9_])H_[A-Z0-9_]+/;
+const H_ID_G_RE = /(?<![A-Za-z0-9_])H_[A-Z0-9_]+/g;
+const AX_ID_G_RE = /(?<![A-Za-z0-9_])AX_[A-Z0-9_]+/g;
 const HALT_SECTION_RE = /<HaltConditions>([\s\S]*?)<\/HaltConditions>/;
 const HALT_ROW_RE = /\|\s*`?(H_[A-Z0-9_]+)`?\s*\|([^\n]*)\|/g;
 
@@ -211,8 +223,8 @@ export function auditDirective(fragments, fileStem) {
   for (const fragmentText of fragments) {
     const { rows, body } = splitFragment(fragmentText);
     for (const { id, trigger } of rows) if (!declaredRows.has(id)) declaredRows.set(id, trigger);
-    for (const id of body.matchAll(H_ID_RE)) bodyMentioned.add(id[0]);
-    for (const ax of body.matchAll(AX_ID_RE)) bodyAxCited.add(ax[0]);
+    for (const id of body.matchAll(H_ID_G_RE)) bodyMentioned.add(id[0]);
+    for (const ax of body.matchAll(AX_ID_G_RE)) bodyAxCited.add(ax[0]);
   }
 
   const mentionedNotDeclared = [];
@@ -225,7 +237,7 @@ export function auditDirective(fragments, fileStem) {
   const declaredNotUsed = [];
   for (const [id, trigger] of declaredRows) {
     if (bodyMentioned.has(id)) continue;
-    const axInTrigger = [...trigger.matchAll(AX_ID_RE)].map((m) => m[0]);
+    const axInTrigger = [...trigger.matchAll(AX_ID_G_RE)].map((m) => m[0]);
     if (axInTrigger.some((ax) => bodyAxCited.has(ax))) continue;
     if (ALLOWLIST_UNUSED_HALT_IDS.has(id)) continue;
     declaredNotUsed.push(id);

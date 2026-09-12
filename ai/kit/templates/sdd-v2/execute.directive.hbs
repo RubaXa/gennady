@@ -19,6 +19,7 @@
     {{> "axiom/process/ax-halt-vs-fail-distinction"}}
     {{> "axiom/process/ax-handoff-typed"}}
     {{> "axiom/process/ax-task-parallel"}}
+    {{> "axiom/process/ax-re-dispatch"}}
   </BeliefState>
 
   <Contracts>
@@ -38,6 +39,7 @@
     | `H_PHASE_BLOCKED` | Worker names a concrete missing external decision/capability after bounded diagnosis |
     | `H_REAL_GATE_RED` | A declared real verification command remains red after one evidence-based correction |
     | `H_REQUIREMENT_UNCOVERED` | A mandatory Requirement-ID is absent from implemented tests |
+    | `H_NO_PROGRESS` | Per `AX_RE_DISPATCH`, a re-dispatch returns the same blocking finding set as the immediately preceding attempt on the same artifact, with no new evidence between the two attempts |
   </HaltConditions>
 
   <ExecutionPlan>
@@ -174,7 +176,11 @@
 
         Findings route to the owning artifact: code bug reopens the ticket; spec contradiction returns
         to spec authoring and approval #1; decomposition/test-plan change returns to scaffold and
-        approval #2. Rerun affected real gates after correction.
+        approval #2. Rerun affected real gates after correction. Per `AX_RE_DISPATCH`, a correction
+        earns another fresh isolated audit/code-review dispatch — never the prior verdict reused. If
+        that fresh dispatch returns the same blocking finding set as the immediately preceding one,
+        with no new evidence between the two attempts, halt `H_NO_PROGRESS` rather than re-dispatching
+        again on the identical set.
 
         The read-only audit/code-review workers persist NOTHING (`AX_EPHEMERAL_OUTPUT`). Per
         `AX_GROUP_AUDIT_LEAVES_A_RECEIPT`, once the read-only audit has returned with no open reopen,
