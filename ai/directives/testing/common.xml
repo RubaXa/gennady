@@ -196,7 +196,7 @@
   <AntiPatterns>
     <AntiPattern id="AP_TEST_CONTRACT_BYPASS">
       <Bad>A test reads protected SUT state, mutates private fields, or mocks the SUT method it claims to verify.</Bad>
-      <WhyBad>It proves an implementation detail or a test double rather than the public contract, so a behavior-preserving refactor becomes a false regression or fabricated green result.</WhyBad>
+      <WhyBad>It exercises an implementation detail or a test double rather than the public contract, so a behavior-preserving refactor becomes a false regression or fabricated green result.</WhyBad>
       <Good>Drive the SUT through its public surface and observe returned values, emitted events, or collaborator calls at an injected boundary.</Good>
     </AntiPattern>
     <AntiPattern id="AP_UNDECLARED_TEST_GATE">

@@ -93,7 +93,7 @@
 
   <!--SECTION:BDD-->
   ## Acceptance Criteria (BDD)
-  Each scenario is tagged with the requirement it proves and its verification level — this is the
+  Each scenario is tagged with the requirement it exercises and its verification level — this is the
   use-case → `[<ACRONYM>-REQ-N]` → vision chain the operator reviews at scaffold.
 
   **Feature:** <component behavior>

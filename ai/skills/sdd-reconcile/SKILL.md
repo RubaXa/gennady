@@ -1,6 +1,6 @@
 ---
 name: sdd-reconcile
-description: Restore the spec ⟷ code ⟷ task triangle after drift, then verify. Modes — fix and from-code. Uses current artifacts and Git, never a persistent SDD session. Use for findings, bugs, reviews, "исправь", "формализуй код", "/sdd-reconcile".
+description: Restore the spec ⟷ code ⟷ task triangle after drift, then verify. Modes — fix and from-code. Uses current artifacts and Git, never a persistent SDD session. Use for findings, bugs, reviews, "исправь", "формализуй код", "/sdd-reconcile". Also the v2 destination for the retired v1 skill name "/sdd-fix".
 compatibility: opencode
 ---
 

@@ -21,7 +21,7 @@
 
   `sdd-check --task ... --authoring` and `sdd-check --all .` validate structure, references, IDs, and
   dependency shape. The independent actual-ticket review judges whether the declared order is
-  semantically sufficient and whether each real Verification command proves its requirement. No
+  semantically sufficient and whether each real Verification command exercises its requirement. No
   synthetic provider/package field schema or feasibility pre-plan/tool mode is part of this flow.
 
   If Bootstrap Requirements is absent, stop scaffold and return to the owning specification flow;

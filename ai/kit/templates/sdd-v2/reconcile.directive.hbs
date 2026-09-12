@@ -1,4 +1,4 @@
-<SddReconcile keywords="reconcile, fix, sync-from-code, drift, spec-probe, bug-vs-spec-defect, problem-class, blast-radius, back-sync, sdd-reconcile" type="directive" ver="2.2">
+<SddReconcile keywords="reconcile, fix, from-code, drift, spec-probe, bug-vs-spec-defect, problem-class, blast-radius, sdd-reconcile" type="directive" ver="2.2">
   <Mission>
     Restore the spec ⟷ code ⟷ task triangle after it desynced, then prove the repaired path. A separate
     skill (`/sdd-reconcile`) activates one of two modes:
@@ -248,8 +248,9 @@
 
         Then report the outer result. If task recovery or implementation remains, hand the exact
         ticket/spec paths to the next ordinary owner. Any blocker, red evidence, unresolved proposal,
-        or operator deferral stops with a concrete resume command. A fully verified spec-only or
-        bounded-direct branch reports completion. All continuation state is in artifacts and Git.
+        or operator deferral stops with a concrete resume command. A spec-only branch that cleared
+        review plus operator approval #1, or a bounded-direct branch with its `DIRECT_VERIFICATION_RECEIPT`,
+        reports completion. All continuation state is in artifacts and Git.
       </Action>
     </Step>
   </ExecutionPlan>

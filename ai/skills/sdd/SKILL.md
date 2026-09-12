@@ -1,6 +1,6 @@
 ---
 name: sdd
-description: Stateless SDD entry point. Reads current repository state and routes authoring, recovery, scaffolding, or execution from durable artifacts. Use for "new project", "new scope", "design or evolve a spec", "pivot", "module decomposition", "воссоздай спеку для services/foo по коду", "/sdd".
+description: Stateless SDD entry point. Reads current repository state and routes authoring, recovery, scaffolding, or execution from durable artifacts. Use for "new project", "new scope", "design or evolve a spec", "pivot", "module decomposition", "воссоздай спеку для services/foo по коду", "/sdd". Also the v2 destination for the retired v1 skill names "/sdd-setup", "/sdd-discover", "/sdd-continue", "/sdd-infra", "/sdd-module-decomposition" — v2 has no separate skill for these; this router classifies the intent from ordinary text instead.
 compatibility: opencode
 ---
 
