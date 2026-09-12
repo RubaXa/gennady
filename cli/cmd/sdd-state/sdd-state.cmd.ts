@@ -16,6 +16,8 @@ import {
 } from '../../../shared/sdd/portal.ts';
 import { probeRepo } from '../../../shared/sdd/probe.ts';
 import { detectRepoStack, primaryStackOf } from '../../../shared/verify/stack-detection.ts';
+import { loadStackConfig } from '../../../shared/verify/stack-config.ts';
+import { BUILTIN_GATE_IDS } from '../../../shared/verify/stack-registry.ts';
 import { detectFlowVersion } from '../../../shared/sdd/flow.ts';
 import { countModuleSpecs } from '../../../shared/sdd/module-specs.ts';
 import { sumRollupProgress } from '../../../shared/sdd/tracker.ts';
@@ -150,8 +152,11 @@ export async function run(rawArgs: string[]): Promise<StateOutcome> {
   }
   // #endregion END_PORTAL
 
-  // One shared detection fact (V-05); config wiring (gennady.yaml stack.use) is V-07's job.
-  const stack = detectRepoStack(root, null);
+  // One shared detection fact (V-05/V-05b): config narrows auto-detection, while the detector owns
+  // the marker-less node bootstrap fallback every command must apply identically.
+  const stackConfigLoad = loadStackConfig(root, BUILTIN_GATE_IDS);
+  const stackConfig = stackConfigLoad.errors.length === 0 ? stackConfigLoad.config : null;
+  const stack = detectRepoStack(root, stackConfig);
 
   // #region START_READINESS — engine + adapter (V-06); node path is gatherReadinessInput/checkReadiness
   // verbatim (byte-identical, И-1/И-2) — an unimplemented stack (golang: V-09) falls back to the

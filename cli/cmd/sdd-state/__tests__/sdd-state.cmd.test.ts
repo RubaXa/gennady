@@ -411,20 +411,53 @@ describe('SddStateCommand', () => {
     assert.strictEqual(o.ok, true);
     if (o.ok) {
       assert.match(o.text, /package\.json\t✘/);
-      // V-05/V-06: a repo with no node/golang marker resolves to the anystack fallback (STACK=anystack)
-      // — readiness there is judged on configured extraGates, not the node REQUIRED_SCRIPTS vocabulary,
-      // so the not-ready reason names the anystack gate, not literally "package.json".
-      assert.match(o.text, /STACK=anystack/);
-      assert.match(o.text, /missing: stack\.anystack\.extraGates/);
+      // V-05b: a repo with no concrete marker keeps node bootstrap behavior until stack.use opts
+      // into anystack, so every command reports the same safe default.
+      assert.match(o.text, /STACK=node/);
+      assert.match(o.text, /missing: package\.json/);
     }
   });
 
-  it('a repo with no recognizable stack still resolves — STACK=anystack, never "no stack detected"', async () => {
+  it('a repo with no recognizable stack reports the shared node bootstrap fallback', async () => {
     const o = await mod.run(argv(bare));
     assert.strictEqual(o.ok, true);
     if (o.ok) {
-      assert.match(o.text, /STACK=anystack/);
-      assert.match(o.text, /STACK_SOURCE=marker:any repository/);
+      assert.match(o.text, /STACK=node/);
+      assert.match(o.text, /STACK_SOURCE=fallback:node/);
+    }
+  });
+
+  it('applies stack.use through the same detector and reports explicit anystack', async () => {
+    const configPath = join(bare, 'gennady.yaml');
+    writeFileSync(
+      configPath,
+      'stack:\n  use: [anystack]\n  anystack:\n    extraGates:\n      - id: smoke\n        argv: [echo, ok]\n',
+      'utf-8'
+    );
+    try {
+      const o = await mod.run(argv(bare));
+      assert.strictEqual(o.ok, true);
+      if (o.ok) {
+        assert.match(o.text, /STACK=anystack/);
+        assert.match(o.text, /STACK_SOURCE=config:stack\.use/);
+      }
+    } finally {
+      rmSync(configPath, { force: true });
+    }
+  });
+
+  it('auto-detects golang from go.mod without stack.use', async () => {
+    const markerPath = join(bare, 'go.mod');
+    writeFileSync(markerPath, 'module example.com/fixture\n\ngo 1.22\n', 'utf-8');
+    try {
+      const o = await mod.run(argv(bare));
+      assert.strictEqual(o.ok, true);
+      if (o.ok) {
+        assert.match(o.text, /STACK=golang/);
+        assert.match(o.text, /STACK_SOURCE=marker:go\.mod/);
+      }
+    } finally {
+      rmSync(markerPath, { force: true });
     }
   });
 

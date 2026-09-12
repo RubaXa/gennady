@@ -1,7 +1,7 @@
 // @file: One repo-wide stack detection — the single fact `sdd-state`/`sdd-task`/`sdd-verify` share
 //   instead of each re-guessing "what stack is this?" on its own.
 // @consumers: sdd-state.cmd, sdd-task.cmd, sdd-verify/phase-context
-// @tasks: V-05, V-06b, V-08b
+// @tasks: V-05, V-05b, V-06b, V-08b
 
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
@@ -45,9 +45,8 @@ export type RepoStackDetection = {
 
 /**
  * @purpose Detect which stack(s) govern a repository — one function, no per-caller re-guessing.
- * @invariant `stack.use` narrows candidates, never assigns an undetected stack. `anystack`
- *   (matches every repository) is a last resort, used only when nothing else matched — never
- *   "no stack detected", but node/go stay noise-free.
+ * @invariant `stack.use` only narrows. Without it, no concrete marker selects node bootstrap;
+ *   marker-less `anystack` requires explicit opt-in (V-05b/L-24).
  * @param root Absolute repository root.
  * @param config Merged `stack` config section, or null for pure auto-detection (gennady.yaml
  *   wiring is V-07's job — this function accepts config so its narrowing behavior is testable today).
@@ -63,12 +62,27 @@ export function detectRepoStack(root: string, config: StackConfig | null): RepoS
     ...(node ? [{ detection: node, marker: NODE_MARKER }] : []),
     ...nonAnystack.map((entry) => ({ detection: entry.detection, marker: entry.plugin.marker })),
   ];
+  const bootstrapNode =
+    matched.length === 0 && !config?.use
+      ? {
+          detection: {
+            stack: 'node' as const,
+            root,
+            summary: ['fallback:   node bootstrap (no concrete stack marker)'],
+            diagnostics: [],
+            details: null,
+          },
+          marker: '',
+        }
+      : null;
   const chosen =
     matched.length > 0
       ? matched
-      : anystack
-        ? [{ detection: anystack.detection, marker: anystack.plugin.marker }]
-        : [];
+      : bootstrapNode
+        ? [bootstrapNode]
+        : anystack
+          ? [{ detection: anystack.detection, marker: anystack.plugin.marker }]
+          : [];
 
   const sorted = [...chosen].sort((a, b) => a.detection.stack.localeCompare(b.detection.stack));
 
@@ -77,7 +91,9 @@ export function detectRepoStack(root: string, config: StackConfig | null): RepoS
     detections: sorted.map((entry) => entry.detection),
     source: config?.use
       ? 'config:stack.use'
-      : sorted.map((entry) => `marker:${entry.marker}`).join(','),
+      : bootstrapNode
+        ? 'fallback:node'
+        : sorted.map((entry) => `marker:${entry.marker}`).join(','),
   };
 }
 

@@ -79,6 +79,25 @@ function fixture(
 }
 
 describe('resolvePhaseContext', () => {
+  it('auto-detects golang without stack.use and returns a teaching preset refusal, not TypeError', () => {
+    const f = fixture('config', ['src/thing.ts']);
+    rmSync(join(f.root, 'package.json'));
+    writeFileSync(join(f.root, 'go.mod'), 'module example.com/fixture\n\ngo 1.22\n', 'utf-8');
+    try {
+      const result = resolvePhaseContext(f.ticket, 'P1', f.root);
+      assert.strictEqual(result.ok, false);
+      if (!result.ok) {
+        assert.match(
+          result.message,
+          /no verification preset is implemented for detected stack 'golang'/
+        );
+        assert.doesNotMatch(result.message, /TypeError/);
+      }
+    } finally {
+      rmSync(f.root, { recursive: true, force: true });
+    }
+  });
+
   it('rejects an in-project ticket symlink before an atomic receipt can replace the alias', () => {
     const f = fixture('impl', ['src/thing.ts']);
     const lexical = join(f.root, f.ticket);
