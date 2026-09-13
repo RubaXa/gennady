@@ -136,20 +136,111 @@ describe('resolveVerifyPlan — read-only, exactly what sdd-verify --profile ful
     });
   });
 
-  it('`stack.use` config does not narrow or replace the ladder — full is node-only today (30-…md §3.0)', () => {
+  it('D-64: a detected secondary stack follows node as a qualified non-blocking tail in both plan consumers', () => {
     withProject(
       {
+        'package.json': '{}',
+        'go.mod': 'module example.com/x\n\ngo 1.22\n',
         'gennady.yaml':
-          'stack:\n  use: [anystack]\n  anystack:\n    extraGates:\n      - id: swiftlint\n        argv: [swiftlint]\n',
+          'stack:\n  use: [node, golang]\n  golang:\n    extraGates:\n      - id: govulncheck\n        argv: [govulncheck]\n',
       },
       (dir) => {
-        const plan = resolveVerifyPlan(dir);
+        const plan = resolveVerifyPlan(dir, {
+          use: ['node', 'golang'],
+          golang: { extraGates: [{ id: 'govulncheck', argv: ['govulncheck'] }] },
+        });
         assert.strictEqual(plan.stack, 'node');
         assert.deepStrictEqual(
           plan.gates.map((g) => g.name),
-          ['type-check', 'test:coverage', 'lint', 'format', 'yagni']
+          ['type-check', 'test:coverage', 'lint', 'format', 'yagni', 'golang:govulncheck']
         );
+        assert.deepEqual(plan.stacks, ['node', 'golang']);
+        assert.deepEqual(plan.gates.at(-1), {
+          name: 'golang:govulncheck',
+          stack: 'golang',
+          command: 'govulncheck',
+          required: false,
+          blocking: false,
+        });
       }
     );
+  });
+
+  it('D-64: stack.use can prioritize explicit always-match anystack; absent Swift never becomes primary', () => {
+    withProject({ 'package.json': '{}' }, (dir) => {
+      const explicit = resolveVerifyPlan(dir, {
+        use: ['anystack', 'node'],
+        anystack: { extraGates: [{ id: 'syntax', argv: ['check', 'syntax'] }] },
+      });
+      assert.strictEqual(explicit.stack, 'anystack');
+      assert.deepEqual(explicit.stacks, ['anystack', 'node']);
+      assert.deepEqual(
+        explicit.gates.map((gate) => gate.name),
+        [
+          'syntax',
+          'node:type-check',
+          'node:test:coverage',
+          'node:lint',
+          'node:format',
+          'node:yagni',
+        ]
+      );
+      assert.equal(explicit.gates[0]?.blocking, true);
+      assert.ok(explicit.gates.slice(1).every((gate) => gate.stack === 'node'));
+      assert.ok(explicit.gates.slice(1).every((gate) => gate.blocking === false));
+
+      const absent = resolveVerifyPlan(dir, { use: ['swift', 'node'] });
+      assert.strictEqual(absent.stack, 'node');
+      assert.deepEqual(absent.stacks, ['node']);
+
+      assert.throws(
+        () => resolveVerifyPlan(dir, { use: ['swift'] }),
+        /SDD_VERIFY_NO_STACK_DETECTED/
+      );
+    });
+  });
+
+  it('D-64: explicit markerless anystack owns its own blocking full profile, never a Node ladder', () => {
+    withProject({}, (dir) => {
+      const plan = resolveVerifyPlan(dir, {
+        use: ['anystack'],
+        anystack: { extraGates: [{ id: 'syntax', argv: ['check', 'syntax'] }] },
+      });
+      assert.strictEqual(plan.stack, 'anystack');
+      assert.deepEqual(plan.stacks, ['anystack']);
+      assert.deepEqual(plan.gates, [
+        {
+          name: 'syntax',
+          stack: 'anystack',
+          command: 'check syntax',
+          required: false,
+          blocking: true,
+        },
+      ]);
+    });
+  });
+
+  it('D-64: markerless bootstrap and single-stack node retain the historical full ladder', () => {
+    withProject({}, (dir) => {
+      const plan = resolveVerifyPlan(dir);
+      assert.strictEqual(plan.stack, 'node');
+      assert.deepEqual(plan.stacks, ['node']);
+      assert.deepEqual(
+        plan.gates.map(({ name, blocking }) => ({ name, blocking })),
+        ['type-check', 'test:coverage', 'lint', 'format', 'yagni'].map((name) => ({
+          name,
+          blocking: true,
+        }))
+      );
+    });
+  });
+
+  it('D-64 keeps the package-12 dependency fail-closed for a detected primary without a preset', () => {
+    withProject({ 'go.mod': 'module example.com/x\n\ngo 1.22\n' }, (dir) => {
+      assert.throws(
+        () => resolveVerifyPlan(dir),
+        /primary stack "golang" has no full-profile preset/
+      );
+    });
   });
 });

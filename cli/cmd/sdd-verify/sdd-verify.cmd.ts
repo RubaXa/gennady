@@ -27,6 +27,7 @@ import {
 import type { RepairMutationBoundary } from './workspace-mutation.ts';
 import { describeRepairAction, planTargetRepair } from './repair-adapters.ts';
 import type { PhaseVerificationPlan } from '../../../shared/sdd/phase-verification-plan.ts';
+import type { AssembledFullProfile } from './full-profile-plan.ts';
 
 /**
  * @purpose Read the project's `package.json` `scripts` map once per run — decides which rungs skip.
@@ -197,17 +198,17 @@ function verifyCoverageWritten(
   results: GateResult[],
   probe?: CoverageProbe
 ): GateStatus {
-  if (gate.name !== 'test:coverage' || status !== 'pass' || !probe) {
+  if (!(gate.coverageProducer ?? gate.name === 'test:coverage') || status !== 'pass' || !probe) {
     return status;
   }
   const fresh = probe.wroteFresh();
   if (fresh.ok) return status;
-  const last = results[results.length - 1];
-  if (last && last.name.startsWith('test:coverage')) {
-    last.status = 'fail';
-    last.exitCode = last.exitCode || 1;
-    last.output =
-      (last.output ? last.output + '\n' : '') +
+  const result = [...results].reverse().find((entry) => entry.name === gate.name);
+  if (result) {
+    result.status = 'fail';
+    result.exitCode = result.exitCode || 1;
+    result.output =
+      (result.output ? result.output + '\n' : '') +
       `test:coverage завершился с кодом 0, но свежий безопасный отчёт выбранного coverage adapter не появился: ${fresh.detail}. Зелёный вердикт был бы фикцией. Исправь artifact path/producer выбранного adapter и повтори.`;
   }
   return 'fail';
@@ -247,13 +248,15 @@ export async function runGate(
           durationMs: Date.now() - start,
           ranCommand: precondition.argv.join(' '),
           mutates: gate.mutates,
+          ...(gate.nonBlocking ? { nonBlocking: true } : {}),
         };
       }
     }
   }
 
-  const { command, args } =
-    gate.via === 'gennady'
+  const { command, args } = gate.argv?.length
+    ? { command: gate.argv[0]!, args: [...gate.argv.slice(1)] }
+    : gate.via === 'gennady'
       ? gennadyGateCommand(gate.name)
       : { command: 'npm', args: ['run', scriptName] };
   const r = await runner(command, args);
@@ -296,6 +299,7 @@ export async function runGate(
     durationMs,
     ranCommand,
     mutates: gate.mutates,
+    ...(gate.nonBlocking ? { nonBlocking: true } : {}),
   };
 }
 
@@ -400,6 +404,8 @@ export async function run(
     producesCoverage?: boolean;
     deletionOnly?: boolean;
     gatePlan?: PhaseVerificationPlan;
+    /** @purpose D-64 shared full-profile model; absent keeps unit/phase byte parity. */
+    fullPlan?: AssembledFullProfile;
     /** @purpose V-13 (#20(iii)): `--only` gate-name/glob selectors — full profile only, ignored
      *  (never applied) whenever `gatePlan` is set, so a phase run can never be narrowed by them. */
     only?: readonly string[];
@@ -422,7 +428,9 @@ export async function run(
   const required = new Set<string>(
     phaseContext.gatePlan
       ? phaseContext.gatePlan.gates.filter((gate) => gate.required).map((gate) => gate.name)
-      : requiredGatesFor(profile, producesCoverage)
+      : phaseContext.fullPlan
+        ? phaseContext.fullPlan.gates.filter((gate) => gate.required).map((gate) => gate.name)
+        : requiredGatesFor(profile, producesCoverage)
   );
   const fullGates = phaseContext.gatePlan
     ? GATES.filter((gate) =>
@@ -430,7 +438,9 @@ export async function run(
           (planned) => planned.name === gate.name && planned.state === 'CONFIGURED'
         )
       )
-    : gatesFor(profile, producesCoverage);
+    : profile === 'full' && phaseContext.fullPlan
+      ? phaseContext.fullPlan.gates
+      : gatesFor(profile, producesCoverage);
   // V-13 (#20(iii)): `--only`/`--skip` narrow the read-only full profile only — a phase run
   // (gatePlan set) ignores both, so a phase's ladder can never drift from its canonical plan (И-2).
   let selectedGates = fullGates;
@@ -474,13 +484,20 @@ export async function run(
       };
     }
   }
-  const qualityTail =
+  const primaryQualityTail =
     profile === 'full'
-      ? selectedGates.filter((gate) => ['lint', 'format', 'yagni'].includes(gate.name))
+      ? selectedGates.filter(
+          (gate) =>
+            !gate.nonBlocking && (gate.tail ?? ['lint', 'format', 'yagni'].includes(gate.name))
+        )
       : [];
+  const secondaryTail = profile === 'full' ? selectedGates.filter((gate) => gate.nonBlocking) : [];
   const sequentialGates =
     profile === 'full'
-      ? selectedGates.filter((gate) => !['lint', 'format', 'yagni'].includes(gate.name))
+      ? selectedGates.filter(
+          (gate) =>
+            !gate.nonBlocking && !(gate.tail ?? ['lint', 'format', 'yagni'].includes(gate.name))
+        )
       : selectedGates;
   let haltedAt: string | undefined;
   let foundationSnapshot: ReturnType<RepairMutationBoundary['before']> | undefined;
@@ -611,9 +628,9 @@ export async function run(
     const scriptName =
       gate.via === 'gennady'
         ? gate.name
-        : (plannedScript ?? resolveProjectScriptName(scripts, gate.name));
+        : (gate.scriptName ?? plannedScript ?? resolveProjectScriptName(scripts, gate.name));
 
-    if (gate.via !== 'gennady') {
+    if (gate.via !== 'gennady' && !gate.argv?.length) {
       const isMissing = scriptName === undefined;
       const isVacuous = !isMissing && isVacuousScript(scripts, scriptName);
       if ((isMissing || isVacuous) && required.has(gate.name)) {
@@ -645,8 +662,10 @@ export async function run(
       }
     }
 
-    const gateArtifactDirectories =
-      gate.name === 'test:coverage' ? (coverageProbe?.writableArtifactDirectories ?? []) : [];
+    const coverageProducer = gate.coverageProducer ?? gate.name === 'test:coverage';
+    const gateArtifactDirectories = coverageProducer
+      ? (coverageProbe?.writableArtifactDirectories ?? [])
+      : [];
     const sameFoundationAllowance =
       foundationArtifactDirectories.length === gateArtifactDirectories.length &&
       foundationArtifactDirectories.every(
@@ -678,7 +697,7 @@ export async function run(
 
     // Single-producer freshness: clear the stale report inside the explicit coverage-artifact
     // transaction so a leftover one cannot pass, while source and unrelated files remain read-only.
-    if (gate.name === 'test:coverage' && coverageProbe) {
+    if (coverageProducer && coverageProbe) {
       const cleared = coverageProbe.clear();
       if (!cleared.ok) {
         results.push({
@@ -722,12 +741,59 @@ export async function run(
       .every((gate) =>
         results.some((result) => result.name === gate.name && result.status === 'pass')
       );
-  if (fullFoundationGreen && closeFoundationTransaction([])) {
+  const runTailGroup = async (gates: readonly Gate[]): Promise<boolean> => {
+    if (gates.length === 0) return true;
+    const tailCoverageProducers = gates.filter(
+      (gate) => gate.coverageProducer ?? gate.name === 'test:coverage'
+    );
+    const tailArtifactDirectories =
+      tailCoverageProducers.length > 0 ? (coverageProbe?.writableArtifactDirectories ?? []) : [];
+    if (!closeFoundationTransaction(tailArtifactDirectories)) return false;
+    if (mutationBoundaries?.foundation && !foundationSnapshot) {
+      try {
+        foundationArtifactDirectories = [...tailArtifactDirectories];
+        foundationSnapshot = mutationBoundaries.foundation.before([], tailArtifactDirectories);
+      } catch (cause) {
+        results.push({
+          name: 'foundation write-zone',
+          status: 'fail',
+          exitCode: 1,
+          output: `runtime foundation write-zone could not snapshot the quality tail: ${cause instanceof Error ? cause.message : String(cause)}`,
+          durationMs: 0,
+          ranCommand: 'foundation transaction',
+          mutates: false,
+        });
+        return false;
+      }
+    }
+    const unavailableCoverage = new Map<string, string>();
+    if (tailCoverageProducers.length > 0 && coverageProbe) {
+      const cleared = coverageProbe.clear();
+      if (!cleared.ok) {
+        for (const gate of tailCoverageProducers)
+          unavailableCoverage.set(gate.name, cleared.detail);
+      }
+    }
     const tailResults = await Promise.all(
-      qualityTail.map(async (gate): Promise<GateResult> => {
+      gates.map(async (gate): Promise<GateResult> => {
+        const coverageUnavailable = unavailableCoverage.get(gate.name);
+        if (coverageUnavailable !== undefined) {
+          return {
+            name: gate.name,
+            status: 'fail',
+            exitCode: 1,
+            output: `coverage producer не запущен: выбранный adapter не смог безопасно очистить прежний report: ${coverageUnavailable}`,
+            durationMs: 0,
+            ranCommand: '',
+            mutates: gate.mutates,
+            ...(gate.nonBlocking ? { nonBlocking: true } : {}),
+          };
+        }
         const scriptName =
-          gate.via === 'gennady' ? gate.name : resolveProjectScriptName(scripts, gate.name);
-        if (gate.via !== 'gennady') {
+          gate.via === 'gennady'
+            ? gate.name
+            : (gate.scriptName ?? resolveProjectScriptName(scripts, gate.name));
+        if (gate.via !== 'gennady' && !gate.argv?.length) {
           const isMissing = scriptName === undefined;
           const isVacuous = !isMissing && isVacuousScript(scripts, scriptName);
           if ((isMissing || isVacuous) && required.has(gate.name)) {
@@ -761,10 +827,23 @@ export async function run(
     );
     // Promise.all preserves input order, so reports remain canonical even when completion order differs.
     results.push(...tailResults);
+    for (const gate of tailCoverageProducers) {
+      const result = tailResults.find((entry) => entry.name === gate.name);
+      if (result && !unavailableCoverage.has(gate.name)) {
+        verifyCoverageWritten(gate, result.status, results, coverageProbe);
+      }
+    }
     foundationCommands.push(
       ...tailResults.filter((result) => result.ranCommand).map((result) => result.name)
     );
-    closeFoundationTransaction();
+    return closeFoundationTransaction();
+  };
+
+  // D-64 ordering is semantic, not just presentational: complete the primary stack's full profile
+  // before starting any secondary stack. Gates within each independent read-only group still run
+  // concurrently and Promise.all preserves their assembled order in the report.
+  if (fullFoundationGreen && (await runTailGroup(primaryQualityTail))) {
+    await runTailGroup(secondaryTail);
   }
 
   closeFoundationTransaction();

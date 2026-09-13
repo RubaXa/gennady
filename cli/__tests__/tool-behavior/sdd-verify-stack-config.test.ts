@@ -51,6 +51,10 @@ describe('sdd-verify — stack config gate (V-07)', { concurrency: 4 }, () => {
         /ERR_CLI_SDD_VERIFY_STACK_CONFIG/,
         result.stdout + result.stderr
       );
+      assert.strictEqual(result.exitCode, 0, result.stdout + result.stderr);
+      assert.match(result.stdout, /✅ syntax/);
+      assert.match(result.stdout, /✅ style/);
+      assert.match(result.stdout, /✅ build/);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
@@ -103,6 +107,35 @@ describe('sdd-verify — stack config gate (V-07)', { concurrency: 4 }, () => {
         /ERR_CLI_SDD_VERIFY_STACK_CONFIG/,
         result.stdout + result.stderr
       );
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('D-64: a selected extra-stack tail failure is executed and reported without blocking primary', async () => {
+    const { root } = buildRepoFixture({ scripts: {} });
+    try {
+      writeFileSync(
+        join(root, 'gennady.yaml'),
+        [
+          'stack:',
+          '  use: [node, golang]',
+          '  golang:',
+          '    extraGates:',
+          '      - id: tail-fail',
+          '        argv: [node, -e, "process.exit(7)"]',
+          '',
+        ].join('\n'),
+        'utf-8'
+      );
+      writeFileSync(join(root, 'go.mod'), 'module example.com/x\n\ngo 1.22\n', 'utf-8');
+      const result = await runCliAsync(
+        ['sdd-verify', '--profile', 'full', '--only=golang:tail-fail'],
+        root
+      );
+      assert.strictEqual(result.exitCode, 0, result.stdout + result.stderr);
+      assert.match(result.stdout, /PRIMARY PASS/);
+      assert.match(result.stdout, /⚠ golang:tail-fail.*non-blocking/);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

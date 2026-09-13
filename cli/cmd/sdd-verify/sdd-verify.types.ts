@@ -78,10 +78,18 @@ export type Gate = {
    *   `hint` and the gate command never runs (mirrors MAIN `services/stack` semantics).
    */
   requires?: readonly Cmd[];
-  /** @purpose Stack this gate belongs to; data-only tag for future filtering (V-05/V-12), not read by `runGate` yet. */
+  /** @purpose Stack this gate belongs to; D-64 plan/qualification reads it, execution stays stack-agnostic. */
   stack?: StackId;
   /** @purpose When true, any stdout on exit 0 means failure (`gofmt -l` contract). */
   outputMeansFailure?: boolean;
+  /** @purpose D-64: belongs to the concurrent read-only full-profile tail. */
+  tail?: boolean;
+  /** @purpose D-64: a visible failure that does not change the primary stack verdict. */
+  nonBlocking?: boolean;
+  /** @purpose Underlying project script when a qualified tail name differs from its dispatch id. */
+  scriptName?: string;
+  /** @purpose Preserves coverage-producer semantics when D-64 qualifies the public gate name. */
+  coverageProducer?: boolean;
   /**
    * @purpose Run in an ephemeral working-tree replica; resulting drift = FAIL. Data-only in V-03 — no
    *   `GATES` entry sets it, and enforcing it needs the replica/foundation-transaction machinery a
@@ -344,6 +352,8 @@ export type GateResult = {
   ranCommand: string;
   /** @purpose Carried from `Gate.mutates`; the phase repair rung is mutating. */
   mutates: boolean;
+  /** @purpose Failure is reported but excluded from the primary verdict (D-64 extra-stack tail). */
+  nonBlocking?: boolean;
 };
 
 /**
@@ -423,6 +433,11 @@ function lineFor(r: GateResult): string {
   return `  ${marker} ${r.name} (${secs(r.durationMs)})${note}`;
 }
 
+/** @purpose Render a D-64 extra-stack failure without misreporting the primary verdict as failed. */
+function nonBlockingFailLine(r: GateResult): string {
+  return `  ⚠ ${r.name} — non-blocking extra-stack ${r.status} (ran: ${r.ranCommand || 'not run'})`;
+}
+
 /**
  * @purpose Render one failed rung's full block — marker, exit code, ran command, capped output.
  * @param r The failed rung's result.
@@ -500,12 +515,16 @@ export function verdict(
   // the brief calls out no such carve-out for them — they count as ordinary gate-failures.
   const failed = results.filter(
     (r) =>
-      r.status === 'fail' ||
-      r.status === 'missing' ||
-      r.status === 'timeout' ||
-      r.status === 'violation'
+      !r.nonBlocking &&
+      (r.status === 'fail' ||
+        r.status === 'missing' ||
+        r.status === 'timeout' ||
+        r.status === 'violation')
   );
-  const envFailed = results.filter((r) => r.status === 'env-fail');
+  const envFailed = results.filter((r) => !r.nonBlocking && r.status === 'env-fail');
+  const nonBlockingFailed = results.filter(
+    (r) => r.nonBlocking && !['pass', 'skipped'].includes(r.status)
+  );
   const passed = results.filter((r) => r.status === 'pass');
   const nonFailLines = results
     .filter(
@@ -522,8 +541,11 @@ export function verdict(
     return {
       ok: true,
       text: [
-        `[sdd-verify] ✅ ALL PASS (${passed.length}/${results.length})`,
+        nonBlockingFailed.length > 0
+          ? `[sdd-verify] ✅ PRIMARY PASS · ${nonBlockingFailed.length} NON-BLOCKING EXTRA-STACK FINDING`
+          : `[sdd-verify] ✅ ALL PASS (${passed.length}/${results.length})`,
         ...nonFailLines,
+        ...nonBlockingFailed.map(nonBlockingFailLine),
         ...setupNote,
       ].join('\n'),
     };
@@ -550,6 +572,7 @@ export function verdict(
         `[sdd-verify] ${passed.length}/${results.length} passed — окружение остановило лестницу (env-fail), это не код`,
         ...nonFailLines,
         ...envFailed.map(failBlock),
+        ...nonBlockingFailed.map(nonBlockingFailLine),
         ...haltLine,
       ].join('\n'),
     };
@@ -564,6 +587,7 @@ export function verdict(
       ...nonFailLines,
       ...failed.map(failBlock),
       ...envFailed.map(failBlock),
+      ...nonBlockingFailed.map(nonBlockingFailLine),
       ...haltLine,
     ].join('\n'),
   };

@@ -3,7 +3,7 @@
 // @tasks: TSK-95
 
 /** Identifier of a built-in stack plugin. */
-export type StackId = 'node' | 'golang' | 'anystack';
+export type StackId = 'swift' | 'golang' | 'node' | 'anystack';
 
 /**
  * @purpose An environment problem surfaced before any gate runs — actionable, never silent.

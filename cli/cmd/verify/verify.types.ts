@@ -3,6 +3,7 @@
 // @tasks: N/A
 
 import { parseArgs } from '../../../shared/common/parse-args.ts';
+import type { StackId } from '../../../shared/verify/verify.types.ts';
 
 /** @purpose CLI invocation carried an extra positional path, or a flag other than `--plan --json` — verify never silently narrows or ignores. */
 const ERR_CLI_VERIFY_BAD_INVOCATION = 'ERR_CLI_VERIFY_BAD_INVOCATION' as const;
@@ -73,6 +74,10 @@ export type VerifyPlanGate = {
   readonly command: string | null;
   /** @purpose Whether an absent/vacuous script would fail the full-profile ladder. */
   readonly required: boolean;
+  /** @purpose Stack owning this gate; tail names are qualified as `stack:gate`. */
+  readonly stack: StackId;
+  /** @purpose False only for D-64 extra-stack tail gates. */
+  readonly blocking: boolean;
 };
 
 /**
@@ -87,8 +92,10 @@ export type VerifyPlanDocument = {
   readonly evidence: false;
   /** @purpose Always `'full'` — the one profile this read-only facade reports (D-13). */
   readonly profile: 'full';
-  /** @purpose Resolved primary stack; always `'node'` today (the full profile is node-only). */
-  readonly stack: string;
+  /** @purpose Resolved D-64 primary stack after marker detection and stack.use intersection. */
+  readonly stack: StackId;
+  /** @purpose Every actually detected stack in primary-then-tail order. */
+  readonly stacks: readonly StackId[];
   /** @purpose Gates in canonical ladder order. */
   readonly gates: readonly VerifyPlanGate[];
 };

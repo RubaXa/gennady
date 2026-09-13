@@ -53,9 +53,11 @@ export function printHelp(): void {
   console.info('          the ticket §5 testcov row and audit’s job)');
   console.info('  other test / coverage N-A → fix · type-check · test  (still profile=test)');
   console.info(
-    '  full  → type-check · test:coverage · lint · format · yagni          (read-only, no fix steps — a verdict must not mutate what'
+    '  full  → detected primary full-profile, then qualified read-only gates of every other detected stack.'
   );
-  console.info('          it is judging; group close / default)');
+  console.info(
+    '          Primary is blocking; extra-stack failures stay visible but non-blocking (D-64).'
+  );
   console.info('');
   console.info('Phase ladder, in order:');
   console.info(

@@ -18,6 +18,10 @@ import {
   type GateResult,
 } from '../sdd-verify.types.ts';
 import { allOf, exitCodeMatches, outputMatches } from '../../../../shared/verify/env-fail.ts';
+import { resolveAssembledFullProfile } from '../full-profile-plan.ts';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 
 /** Fake runner: fails the named gates, records the commands it was asked to run. */
 function fakeRunner(failNames: string[] = []): { runner: GateRunner; calls: string[] } {
@@ -1252,6 +1256,192 @@ describe('run', () => {
     const o = await run(runner);
     assert.strictEqual(o.ok === false && o.exitCode, 1);
     assert.strictEqual(calls.length, 5);
+  });
+
+  it('D-64: --only selects a qualified extra-stack tail gate and its failure stays visible but non-blocking', async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sdd-full-plan-'));
+    try {
+      fs.writeFileSync(path.join(root, 'package.json'), '{}');
+      fs.writeFileSync(path.join(root, 'go.mod'), 'module example.com/x\n\ngo 1.22\n');
+      const fullPlan = resolveAssembledFullProfile(root, {
+        use: ['node', 'golang'],
+        golang: { extraGates: [{ id: 'govulncheck', argv: ['govulncheck', '--strict'] }] },
+      });
+      const calls: string[] = [];
+      const evidence: GateResult[] = [];
+      const outcome = await run(
+        (command, args) => {
+          calls.push([command, ...args].join(' '));
+          return { exitCode: 9, output: 'tail finding' };
+        },
+        'full',
+        undefined,
+        { targets: [], only: ['golang:govulncheck'], fullPlan },
+        evidence
+      );
+
+      assert.strictEqual(outcome.ok, true);
+      assert.deepEqual(calls, ['govulncheck --strict']);
+      assert.deepEqual(
+        evidence.map(({ name, status, nonBlocking }) => ({ name, status, nonBlocking })),
+        [{ name: 'golang:govulncheck', status: 'fail', nonBlocking: true }]
+      );
+      if (outcome.ok) assert.match(outcome.text, /⚠ golang:govulncheck.*non-blocking/);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('D-64: qualified node:test:coverage keeps its producer freshness and artifact boundary', async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sdd-qualified-coverage-'));
+    try {
+      fs.writeFileSync(
+        path.join(root, 'package.json'),
+        JSON.stringify({ scripts: { 'test:coverage': 'c8 node --test' } })
+      );
+      const fullPlan = resolveAssembledFullProfile(root, {
+        use: ['anystack', 'node'],
+        anystack: { extraGates: [{ id: 'syntax', argv: ['check', 'syntax'] }] },
+      });
+      const coverageGate = fullPlan.gates.find((gate) => gate.name === 'node:test:coverage');
+      assert.equal(coverageGate?.coverageProducer, true);
+      assert.equal(coverageGate?.nonBlocking, true);
+
+      const boundaryCalls: { stage: string; artifacts: readonly string[] }[] = [];
+      const boundary = {
+        before: (_targets: readonly string[], artifacts: readonly string[] = []) => {
+          boundaryCalls.push({ stage: 'before', artifacts: [...artifacts] });
+          return {} as never;
+        },
+        after: (
+          _snapshot: unknown,
+          _targets: readonly string[],
+          artifacts: readonly string[] = []
+        ) => {
+          boundaryCalls.push({ stage: 'after', artifacts: [...artifacts] });
+          return { ok: true as const };
+        },
+        checkpoint: () => {
+          throw new Error('no checkpoint expected for a tail-only selection');
+        },
+      };
+      let clears = 0;
+      let freshnessChecks = 0;
+      const coverageProbe = {
+        writableArtifactDirectories: ['coverage'],
+        clear: () => {
+          clears++;
+          return { ok: true as const };
+        },
+        wroteFresh: () => {
+          freshnessChecks++;
+          return { ok: true as const };
+        },
+      };
+      const { runner, calls } = fakeRunner();
+      const evidence: GateResult[] = [];
+      const outcome = await run(
+        runner,
+        'full',
+        coverageProbe,
+        { targets: [], only: ['node:test:coverage'], fullPlan },
+        evidence,
+        { repair: boundary, foundation: boundary }
+      );
+
+      assert.strictEqual(outcome.ok, true);
+      assert.deepEqual(calls, ['npm run test:coverage']);
+      assert.equal(clears, 1);
+      assert.equal(freshnessChecks, 1);
+      assert.deepEqual(boundaryCalls, [
+        { stage: 'before', artifacts: ['coverage'] },
+        { stage: 'after', artifacts: ['coverage'] },
+      ]);
+      assert.deepEqual(
+        evidence.map(({ name, status, nonBlocking }) => ({ name, status, nonBlocking })),
+        [{ name: 'node:test:coverage', status: 'pass', nonBlocking: true }]
+      );
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('D-64: an extra-stack precondition ENV_FAIL remains a visible non-blocking finding', async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sdd-tail-requires-'));
+    try {
+      fs.writeFileSync(path.join(root, 'package.json'), '{}');
+      fs.writeFileSync(path.join(root, 'go.mod'), 'module example.com/x\n\ngo 1.22\n');
+      const fullPlan = resolveAssembledFullProfile(root, {
+        use: ['node', 'golang'],
+        golang: {
+          extraGates: [
+            {
+              id: 'govulncheck',
+              argv: ['govulncheck'],
+              requires: [{ argv: ['go', 'env'], hint: 'Go toolchain unavailable' }],
+            },
+          ],
+        },
+      });
+      const evidence: GateResult[] = [];
+      const calls: string[] = [];
+      const outcome = await run(
+        (command, args) => {
+          calls.push([command, ...args].join(' '));
+          return { exitCode: 2, output: 'missing toolchain' };
+        },
+        'full',
+        undefined,
+        { targets: [], only: ['golang:govulncheck'], fullPlan },
+        evidence
+      );
+
+      assert.strictEqual(outcome.ok, true);
+      assert.deepEqual(calls, ['go env']);
+      assert.deepEqual(
+        evidence.map(({ name, status, nonBlocking }) => ({ name, status, nonBlocking })),
+        [{ name: 'golang:govulncheck', status: 'env-fail', nonBlocking: true }]
+      );
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('D-64: execution finishes the primary full-profile group before starting the secondary tail', async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sdd-primary-before-tail-'));
+    try {
+      fs.writeFileSync(
+        path.join(root, 'package.json'),
+        JSON.stringify({ scripts: { 'type-check': 'tsc' } })
+      );
+      const fullPlan = resolveAssembledFullProfile(root, {
+        use: ['anystack', 'node'],
+        anystack: { extraGates: [{ id: 'syntax', argv: ['check', 'syntax'] }] },
+      });
+      const events: string[] = [];
+      const outcome = await run(
+        async (command, args) => {
+          const name = command === 'check' ? 'syntax' : (args.at(-1) ?? command);
+          events.push(`start:${name}`);
+          if (name === 'syntax') await new Promise((resolve) => setTimeout(resolve, 10));
+          events.push(`end:${name}`);
+          return { exitCode: 0, output: '' };
+        },
+        'full',
+        undefined,
+        { targets: [], only: ['syntax', 'node:type-check'], fullPlan }
+      );
+
+      assert.strictEqual(outcome.ok, true);
+      assert.deepEqual(events, [
+        'start:syntax',
+        'end:syntax',
+        'start:type-check',
+        'end:type-check',
+      ]);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
   });
 
   it('overlaps the independent quality tail but renders results in canonical order', async () => {

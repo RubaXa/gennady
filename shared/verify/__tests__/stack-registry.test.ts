@@ -54,10 +54,15 @@ describe('detectStacks', () => {
 });
 
 describe('registry composition', () => {
-  it('orders built-ins by id and derives the gate vocabulary from the plugins', () => {
+  it('orders plugin detectors by id and exposes the full config vocabulary', () => {
     const ids = BUILTIN_STACK_PLUGINS.map((p) => p.id);
     assert.deepStrictEqual(ids, [...ids].sort(), 'report order must not depend on readdir order');
-    assert.deepStrictEqual(Object.keys(BUILTIN_GATE_IDS).sort(), [...ids].sort());
+    assert.deepStrictEqual(Object.keys(BUILTIN_GATE_IDS).sort(), [
+      'anystack',
+      'golang',
+      'node',
+      'swift',
+    ]);
     assert.deepStrictEqual(
       BUILTIN_GATE_IDS.anystack,
       [],

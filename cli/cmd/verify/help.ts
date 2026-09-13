@@ -12,19 +12,21 @@ export function printHelp(): void {
   console.info('  npx gennady verify --plan --json');
   console.info('');
   console.info(
-    '  Prints the resolved full-profile plan as JSON: { profile, stack, gates: [{ name, command, required }] }.'
+    '  Prints the resolved full-profile plan as JSON: { profile, stack, stacks, gates: [{ name, stack, command, required, blocking }] }.'
   );
   console.info(
-    '  `stack` is always `node`: the full profile is a fixed node ladder today and does not read'
+    '  `stack` is the detected primary; `stacks` is the primary-then-tail detected order (D-64).'
   );
   console.info(
-    '  `stack:`/`extraGates` (they reach only the phase path, V-08/V-08b) — `--plan` reports what'
+    '  The primary full profile is blocking; qualified extra-stack gates form a read-only,'
   );
-  console.info('  will actually run, not the declared stack.');
+  console.info('  non-blocking tail. `stack.use` only reorders/narrows stacks that really detect.');
   console.info(
     '  No mutating facade exists in this release (D-13/O-2) — to actually run gates, use'
   );
   console.info('  npx gennady sdd-verify --profile full [--only=<glob>] [--skip=<glob>].');
   console.info('');
-  console.info('Exit codes: 0 plan printed · 4 bad invocation (only --plan --json is public)');
+  console.info(
+    'Exit codes: 0 plan printed · 1 detected primary has no preset · 4 bad invocation/config'
+  );
 }

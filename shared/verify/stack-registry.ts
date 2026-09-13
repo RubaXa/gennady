@@ -17,9 +17,23 @@ export const BUILTIN_STACK_PLUGINS: readonly StackPlugin[] = [...BUILTIN_PLUGINS
  * Built-in gate ids per plugin — the vocabulary strict config validation checks against.
  * Derived from the plugins themselves: the registry must not reach into plugin internals.
  */
-export const BUILTIN_GATE_IDS = Object.fromEntries(
+const PLUGIN_GATE_IDS = Object.fromEntries(
   BUILTIN_STACK_PLUGINS.map((plugin) => [plugin.id, plugin.gateIds])
-) as Readonly<Record<StackId, readonly string[]>>;
+) as Partial<Record<StackId, readonly string[]>>;
+
+/**
+ * Closed config vocabulary also includes the RC-native node preset and the forthcoming Swift
+ * preset. Swift has no detector/preset in this batch: accepting its id lets `stack.use` express a
+ * future priority without ever assigning an absent stack (D-64).
+ */
+export const BUILTIN_GATE_IDS: Readonly<Record<StackId, readonly string[]>> = {
+  swift: [],
+  golang: PLUGIN_GATE_IDS.golang ?? [],
+  // Node's RC-native preset is not a StackPlugin: `use` may name it, while plugin-style
+  // override/skip of its blocking ladder stays outside D-64/Variant-C convergence.
+  node: [],
+  anystack: PLUGIN_GATE_IDS.anystack ?? [],
+};
 
 /**
  * @purpose One active plugin paired with its detection.
