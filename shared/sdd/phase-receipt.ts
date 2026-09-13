@@ -1413,7 +1413,7 @@ function isReceipt(value: unknown, phase: string): value is PhaseReceipt {
             typeof gate === 'object' &&
             gate !== null &&
             typeof gate.name === 'string' &&
-            /^(DECLARED|PREREQUISITE_PENDING|PREREQUISITE_MISSING|COMMAND_MISSING|CONFIGURED|PROVEN)$/.test(
+            /^(DECLARED|PREREQUISITE_PENDING|PREREQUISITE_MISSING|COMMAND_MISSING|CONFIGURED|PROVEN|SKIPPED_BY_SCOPE)$/.test(
               gate.state ?? ''
             ) &&
             (gate.command === null || typeof gate.command === 'string') &&

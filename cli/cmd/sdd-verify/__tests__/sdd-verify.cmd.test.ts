@@ -18,6 +18,10 @@ import {
   type GateResult,
 } from '../sdd-verify.types.ts';
 import { allOf, exitCodeMatches, outputMatches } from '../../../../shared/verify/env-fail.ts';
+import { resolveAssembledFullProfile } from '../full-profile-plan.ts';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 
 /** Fake runner: fails the named gates, records the commands it was asked to run. */
 function fakeRunner(failNames: string[] = []): { runner: GateRunner; calls: string[] } {
@@ -953,6 +957,51 @@ describe('parseInvocation', () => {
       }
     }
   });
+
+  describe('--only/--skip (V-13, #20(iii))', () => {
+    it('are parsed as comma-split arrays on the full profile', () => {
+      const r = parseInvocation(argv('--only', 'lint,format', '--skip', 'yagni'));
+      assert.deepStrictEqual(r, {
+        ok: true,
+        mode: 'full',
+        profile: 'full',
+        only: ['lint', 'format'],
+        skip: ['yagni'],
+      });
+    });
+
+    it('a bare invocation with neither flag returns the exact pre-V-13 shape', () => {
+      const r = parseInvocation(argv());
+      assert.deepStrictEqual(r, { ok: true, mode: 'full', profile: 'full' });
+      assert.ok(!('only' in r) && !('skip' in r));
+    });
+
+    it('--only with --task/--phase is an explicit error, not a silent drop', () => {
+      const r = parseInvocation(
+        argv('--task', 'specs/app/app.task.TSK-1.md', '--phase', 'P1', '--only', 'lint')
+      );
+      assert.strictEqual(r.ok, false);
+      if (r.ok) return;
+      assert.match(r.message, new RegExp(ERR_CLI_SDD_VERIFY_BAD_INVOCATION));
+      assert.match(r.message, /--only\/--skip are only valid with --profile full/);
+    });
+
+    it('--skip with --task/--phase is an explicit error, not a silent drop', () => {
+      const r = parseInvocation(
+        argv('--task', 'specs/app/app.task.TSK-1.md', '--phase', 'P1', '--skip', 'yagni')
+      );
+      assert.strictEqual(r.ok, false);
+      if (r.ok) return;
+      assert.match(r.message, /--only\/--skip are only valid with --profile full/);
+    });
+
+    it('--only with just --task (already-invalid partial phase context) still rejects on --only first', () => {
+      const r = parseInvocation(argv('--task', 'a.md', '--only', 'lint'));
+      assert.strictEqual(r.ok, false);
+      if (r.ok) return;
+      assert.match(r.message, /--only\/--skip are only valid with --profile full/);
+    });
+  });
 });
 
 describe('isSelfHosting', () => {
@@ -1209,6 +1258,192 @@ describe('run', () => {
     assert.strictEqual(calls.length, 5);
   });
 
+  it('D-64: --only selects a qualified extra-stack tail gate and its failure stays visible but non-blocking', async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sdd-full-plan-'));
+    try {
+      fs.writeFileSync(path.join(root, 'package.json'), '{}');
+      fs.writeFileSync(path.join(root, 'go.mod'), 'module example.com/x\n\ngo 1.22\n');
+      const fullPlan = resolveAssembledFullProfile(root, {
+        use: ['node', 'golang'],
+        golang: { extraGates: [{ id: 'govulncheck', argv: ['govulncheck', '--strict'] }] },
+      });
+      const calls: string[] = [];
+      const evidence: GateResult[] = [];
+      const outcome = await run(
+        (command, args) => {
+          calls.push([command, ...args].join(' '));
+          return { exitCode: 9, output: 'tail finding' };
+        },
+        'full',
+        undefined,
+        { targets: [], only: ['golang:govulncheck'], fullPlan },
+        evidence
+      );
+
+      assert.strictEqual(outcome.ok, true);
+      assert.deepEqual(calls, ['govulncheck --strict']);
+      assert.deepEqual(
+        evidence.map(({ name, status, nonBlocking }) => ({ name, status, nonBlocking })),
+        [{ name: 'golang:govulncheck', status: 'fail', nonBlocking: true }]
+      );
+      if (outcome.ok) assert.match(outcome.text, /⚠ golang:govulncheck.*non-blocking/);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('D-64: qualified node:test:coverage keeps its producer freshness and artifact boundary', async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sdd-qualified-coverage-'));
+    try {
+      fs.writeFileSync(
+        path.join(root, 'package.json'),
+        JSON.stringify({ scripts: { 'test:coverage': 'c8 node --test' } })
+      );
+      const fullPlan = resolveAssembledFullProfile(root, {
+        use: ['anystack', 'node'],
+        anystack: { extraGates: [{ id: 'syntax', argv: ['check', 'syntax'] }] },
+      });
+      const coverageGate = fullPlan.gates.find((gate) => gate.name === 'node:test:coverage');
+      assert.equal(coverageGate?.coverageProducer, true);
+      assert.equal(coverageGate?.nonBlocking, true);
+
+      const boundaryCalls: { stage: string; artifacts: readonly string[] }[] = [];
+      const boundary = {
+        before: (_targets: readonly string[], artifacts: readonly string[] = []) => {
+          boundaryCalls.push({ stage: 'before', artifacts: [...artifacts] });
+          return {} as never;
+        },
+        after: (
+          _snapshot: unknown,
+          _targets: readonly string[],
+          artifacts: readonly string[] = []
+        ) => {
+          boundaryCalls.push({ stage: 'after', artifacts: [...artifacts] });
+          return { ok: true as const };
+        },
+        checkpoint: () => {
+          throw new Error('no checkpoint expected for a tail-only selection');
+        },
+      };
+      let clears = 0;
+      let freshnessChecks = 0;
+      const coverageProbe = {
+        writableArtifactDirectories: ['coverage'],
+        clear: () => {
+          clears++;
+          return { ok: true as const };
+        },
+        wroteFresh: () => {
+          freshnessChecks++;
+          return { ok: true as const };
+        },
+      };
+      const { runner, calls } = fakeRunner();
+      const evidence: GateResult[] = [];
+      const outcome = await run(
+        runner,
+        'full',
+        coverageProbe,
+        { targets: [], only: ['node:test:coverage'], fullPlan },
+        evidence,
+        { repair: boundary, foundation: boundary }
+      );
+
+      assert.strictEqual(outcome.ok, true);
+      assert.deepEqual(calls, ['npm run test:coverage']);
+      assert.equal(clears, 1);
+      assert.equal(freshnessChecks, 1);
+      assert.deepEqual(boundaryCalls, [
+        { stage: 'before', artifacts: ['coverage'] },
+        { stage: 'after', artifacts: ['coverage'] },
+      ]);
+      assert.deepEqual(
+        evidence.map(({ name, status, nonBlocking }) => ({ name, status, nonBlocking })),
+        [{ name: 'node:test:coverage', status: 'pass', nonBlocking: true }]
+      );
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('D-64: an extra-stack precondition ENV_FAIL remains a visible non-blocking finding', async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sdd-tail-requires-'));
+    try {
+      fs.writeFileSync(path.join(root, 'package.json'), '{}');
+      fs.writeFileSync(path.join(root, 'go.mod'), 'module example.com/x\n\ngo 1.22\n');
+      const fullPlan = resolveAssembledFullProfile(root, {
+        use: ['node', 'golang'],
+        golang: {
+          extraGates: [
+            {
+              id: 'govulncheck',
+              argv: ['govulncheck'],
+              requires: [{ argv: ['go', 'env'], hint: 'Go toolchain unavailable' }],
+            },
+          ],
+        },
+      });
+      const evidence: GateResult[] = [];
+      const calls: string[] = [];
+      const outcome = await run(
+        (command, args) => {
+          calls.push([command, ...args].join(' '));
+          return { exitCode: 2, output: 'missing toolchain' };
+        },
+        'full',
+        undefined,
+        { targets: [], only: ['golang:govulncheck'], fullPlan },
+        evidence
+      );
+
+      assert.strictEqual(outcome.ok, true);
+      assert.deepEqual(calls, ['go env']);
+      assert.deepEqual(
+        evidence.map(({ name, status, nonBlocking }) => ({ name, status, nonBlocking })),
+        [{ name: 'golang:govulncheck', status: 'env-fail', nonBlocking: true }]
+      );
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('D-64: execution finishes the primary full-profile group before starting the secondary tail', async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sdd-primary-before-tail-'));
+    try {
+      fs.writeFileSync(
+        path.join(root, 'package.json'),
+        JSON.stringify({ scripts: { 'type-check': 'tsc' } })
+      );
+      const fullPlan = resolveAssembledFullProfile(root, {
+        use: ['anystack', 'node'],
+        anystack: { extraGates: [{ id: 'syntax', argv: ['check', 'syntax'] }] },
+      });
+      const events: string[] = [];
+      const outcome = await run(
+        async (command, args) => {
+          const name = command === 'check' ? 'syntax' : (args.at(-1) ?? command);
+          events.push(`start:${name}`);
+          if (name === 'syntax') await new Promise((resolve) => setTimeout(resolve, 10));
+          events.push(`end:${name}`);
+          return { exitCode: 0, output: '' };
+        },
+        'full',
+        undefined,
+        { targets: [], only: ['syntax', 'node:type-check'], fullPlan }
+      );
+
+      assert.strictEqual(outcome.ok, true);
+      assert.deepEqual(events, [
+        'start:syntax',
+        'end:syntax',
+        'start:type-check',
+        'end:type-check',
+      ]);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it('overlaps the independent quality tail but renders results in canonical order', async () => {
     let activeQuality = 0;
     let peakQuality = 0;
@@ -1312,5 +1547,102 @@ describe('run', () => {
     assert.match(outcome.message, /foundation segment lint → format → yagni/);
     assert.match(outcome.message, /src\/drift\.ts/);
     assert.doesNotMatch(outcome.message, /(?:lint|format|yagni) mutated paths/);
+  });
+});
+
+describe('run — --only/--skip narrow the full profile (V-13, #20(iii))', () => {
+  it('--only runs exactly the matched gates, in canonical order', async () => {
+    const { runner, calls } = fakeRunner();
+    const o = await run(runner, 'full', undefined, { targets: [], only: ['lint', 'format'] });
+    assert.strictEqual(o.ok, true);
+    assert.deepStrictEqual(calls, ['npm run lint', 'npm run format']);
+  });
+
+  it('--skip removes exactly the matched gates, keeping the rest in canonical order', async () => {
+    const { runner, calls } = fakeRunner();
+    const o = await run(runner, 'full', undefined, {
+      targets: [],
+      skip: ['test:coverage', 'yagni'],
+    });
+    assert.strictEqual(o.ok, true);
+    assert.deepStrictEqual(calls, ['npm run type-check', 'npm run lint', 'npm run format']);
+  });
+
+  it('a glob selector matches by prefix (e.g. a `swiftlint*`-shaped name)', async () => {
+    const { runner, calls } = fakeRunner();
+    const o = await run(runner, 'full', undefined, { targets: [], only: ['type*'] });
+    assert.strictEqual(o.ok, true);
+    assert.deepStrictEqual(calls, ['npm run type-check']);
+  });
+
+  it('an unknown selector is exit 4, not a silent empty run', async () => {
+    const { runner } = fakeRunner();
+    const o = await run(runner, 'full', undefined, { targets: [], only: ['swiftlint'] });
+    assert.strictEqual(o.ok, false);
+    if (o.ok) return;
+    assert.strictEqual(o.exitCode, 4);
+    assert.match(o.message, /ERR_CLI_SDD_VERIFY_UNKNOWN_SELECTOR/);
+    assert.match(o.message, /swiftlint/);
+  });
+
+  it('an unknown --skip selector is also exit 4', async () => {
+    const { runner } = fakeRunner();
+    const o = await run(runner, 'full', undefined, { targets: [], skip: ['nonexistent'] });
+    assert.strictEqual(o.ok, false);
+    if (o.ok) return;
+    assert.strictEqual(o.exitCode, 4);
+  });
+
+  it('mutually-cancelling --only/--skip select no gate — exit 4, never a vacuous ALL PASS (0/0) (V-BATCH-13 Н-1)', async () => {
+    const { runner, calls } = fakeRunner();
+    const o = await run(runner, 'full', undefined, {
+      targets: [],
+      only: ['yagni'],
+      skip: ['yagni'],
+    });
+    assert.strictEqual(o.ok, false);
+    if (o.ok) return;
+    assert.strictEqual(o.exitCode, 4);
+    assert.match(o.message, /selectors select no gate/);
+    assert.deepStrictEqual(calls, []);
+  });
+
+  it('--skip=* selecting every gate is also an empty-selection error, not a green no-op (V-BATCH-13 Н-1)', async () => {
+    const { runner, calls } = fakeRunner();
+    const o = await run(runner, 'full', undefined, { targets: [], skip: ['*'] });
+    assert.strictEqual(o.ok, false);
+    if (o.ok) return;
+    assert.strictEqual(o.exitCode, 4);
+    assert.match(o.message, /selectors select no gate/);
+    assert.deepStrictEqual(calls, []);
+  });
+
+  it('only/skip are ignored whenever a phase gatePlan is present — a phase ladder can never drift', async () => {
+    const { runner, calls } = fakeRunner();
+    const gatePlan = {
+      ticket: 'T',
+      phase: 'P1',
+      profile: 'code' as const,
+      producesCoverage: false,
+      gates: [
+        {
+          name: 'type-check',
+          state: 'CONFIGURED' as const,
+          required: true,
+          command: 'tsc --noEmit',
+          prerequisites: [],
+          provider: null,
+          next: 'run tsc --noEmit',
+        },
+      ],
+    };
+    const o = await run(runner, 'code', undefined, {
+      targets: PHASE_TARGETS,
+      gatePlan,
+      // A caller bug would try to narrow a phase run — it must have no effect at all.
+      only: ['nonexistent-selector-that-would-otherwise-error'],
+    });
+    assert.strictEqual(o.ok, true);
+    assert.ok(calls.some((call) => call.includes('type-check')));
   });
 });

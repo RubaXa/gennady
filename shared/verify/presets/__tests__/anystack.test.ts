@@ -56,4 +56,36 @@ describe('resolveAnystackPreset', () => {
     const preset = resolveAnystackPreset('.', null);
     assert.ok(preset.environmentStateSource.length > 0);
   });
+
+  describe('scopeReason (V-12, #9-bonus)', () => {
+    it('null (in scope) for a gate with no when at all', () => {
+      const config = configWith([{ id: 'style', argv: ['sh', '-c', 'true'] }]);
+      const preset = resolveAnystackPreset('.', config);
+      assert.equal(preset.scopeReason?.('style', ['README.md']), null);
+      assert.equal(preset.scopeReason?.('style', []), null);
+    });
+
+    it('a reason string when when globs match no target', () => {
+      const config = configWith([
+        { id: 'swiftlint', argv: ['swiftlint'], when: ['ios/**/*.swift'] },
+      ]);
+      const preset = resolveAnystackPreset('.', config);
+      const reason = preset.scopeReason?.('swiftlint', ['README.md']);
+      assert.ok(typeof reason === 'string' && reason.length > 0);
+      assert.match(reason ?? '', /when/);
+    });
+
+    it('null (in scope) once a target matches the when glob', () => {
+      const config = configWith([
+        { id: 'swiftlint', argv: ['swiftlint'], when: ['ios/**/*.swift'] },
+      ]);
+      const preset = resolveAnystackPreset('.', config);
+      assert.equal(preset.scopeReason?.('swiftlint', ['ios/App/View.swift']), null);
+    });
+
+    it('null for a name with no matching extraGate at all', () => {
+      const preset = resolveAnystackPreset('.', null);
+      assert.equal(preset.scopeReason?.('nonexistent', []), null);
+    });
+  });
 });

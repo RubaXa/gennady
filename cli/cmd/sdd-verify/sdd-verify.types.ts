@@ -10,7 +10,7 @@ import {
   type VerificationProfile,
 } from '../../../shared/sdd/phase-verification-plan.ts';
 import type { Cmd, EnvFailPredicate, StackId } from '../../../shared/verify/verify.types.ts';
-import type { StackConfigError } from '../../../shared/verify/stack-config.ts';
+import { matchesGlob, type StackConfigError } from '../../../shared/verify/stack-config.ts';
 import { PROJECT_CONFIG_FILENAME } from '../../../services/config/config-loader.ts';
 
 /** @purpose CLI invocation carried an extra positional path, or a flag other than `--profile` — sdd-verify never silently narrows or ignores. */
@@ -78,10 +78,18 @@ export type Gate = {
    *   `hint` and the gate command never runs (mirrors MAIN `services/stack` semantics).
    */
   requires?: readonly Cmd[];
-  /** @purpose Stack this gate belongs to; data-only tag for future filtering (V-05/V-12), not read by `runGate` yet. */
+  /** @purpose Stack this gate belongs to; D-64 plan/qualification reads it, execution stays stack-agnostic. */
   stack?: StackId;
   /** @purpose When true, any stdout on exit 0 means failure (`gofmt -l` contract). */
   outputMeansFailure?: boolean;
+  /** @purpose D-64: belongs to the concurrent read-only full-profile tail. */
+  tail?: boolean;
+  /** @purpose D-64: a visible failure that does not change the primary stack verdict. */
+  nonBlocking?: boolean;
+  /** @purpose Underlying project script when a qualified tail name differs from its dispatch id. */
+  scriptName?: string;
+  /** @purpose Preserves coverage-producer semantics when D-64 qualifies the public gate name. */
+  coverageProducer?: boolean;
   /**
    * @purpose Run in an ephemeral working-tree replica; resulting drift = FAIL. Data-only in V-03 — no
    *   `GATES` entry sets it, and enforcing it needs the replica/foundation-transaction machinery a
@@ -151,13 +159,13 @@ function badInvocationMessage(detail: string): string {
     `[sdd-verify] ${ERR_CLI_SDD_VERIFY_BAD_INVOCATION}: ${detail}`,
     '  Phase verification reads kind, Target Files, and owning spec from the ticket.',
     '  usage: npx gennady sdd-verify --task <ticket-path> --phase <PhaseID>',
-    '         npx gennady sdd-verify --profile full',
+    '         npx gennady sdd-verify --profile full [--only=<glob>[,<glob>…]] [--skip=<glob>[,<glob>…]]',
   ].join('\n');
 }
 
 /** @purpose Strict CLI shape: a phase context, or the global read-only full gate. */
 export type InvocationResult =
-  | { ok: true; mode: 'full'; profile: 'full' }
+  | { ok: true; mode: 'full'; profile: 'full'; only?: readonly string[]; skip?: readonly string[] }
   | { ok: true; mode: 'phase'; task: string; phase: string }
   | { ok: false; message: string };
 
@@ -175,6 +183,8 @@ export function parseInvocation(argv: string[]): InvocationResult {
         profile: { aliases: ['profile'], takesValue: true },
         task: { aliases: ['task'], takesValue: true },
         phase: { aliases: ['phase'], takesValue: true },
+        only: { aliases: ['only'], takesValue: true },
+        skip: { aliases: ['skip'], takesValue: true },
       },
       { strict: true }
     );
@@ -194,7 +204,7 @@ export function parseInvocation(argv: string[]): InvocationResult {
   }
 
   const scalar = (
-    key: 'profile' | 'task' | 'phase'
+    key: 'profile' | 'task' | 'phase' | 'only' | 'skip'
   ): { ok: true; value?: string } | { ok: false; message: string } => {
     const raw = parsed[key];
     if (raw === undefined) return { ok: true };
@@ -212,9 +222,34 @@ export function parseInvocation(argv: string[]): InvocationResult {
   if (!taskValue.ok) return taskValue;
   const phaseValue = scalar('phase');
   if (!phaseValue.ok) return phaseValue;
+  const onlyValue = scalar('only');
+  if (!onlyValue.ok) return onlyValue;
+  const skipValue = scalar('skip');
+  if (!skipValue.ok) return skipValue;
   const rawProfile = profileValue.value;
   const task = taskValue.value;
   const phase = phaseValue.value;
+  // V-13 (#20(iii)): `--only`/`--skip` select/exclude gates by name/glob — only meaningful on the
+  // read-only full profile, which writes no phase receipt. A phase run's `phaseReceiptCommandIssue`
+  // requires the ladder to exactly equal the canonical plan (И-2), so narrowing it here would break
+  // the receipt's own validator — reject explicitly rather than silently drop or silently apply.
+  if ((onlyValue.value !== undefined || skipValue.value !== undefined) && (task || phase)) {
+    return {
+      ok: false,
+      message: badInvocationMessage(
+        '--only/--skip are only valid with --profile full, never with --task/--phase'
+      ),
+    };
+  }
+  const splitSelectors = (value: string | undefined): readonly string[] | undefined =>
+    value === undefined
+      ? undefined
+      : value
+          .split(',')
+          .map((entry) => entry.trim())
+          .filter((entry) => entry.length > 0);
+  const only = splitSelectors(onlyValue.value);
+  const skip = splitSelectors(skipValue.value);
   if (rawProfile !== undefined && rawProfile !== 'full') {
     return {
       ok: false,
@@ -223,6 +258,12 @@ export function parseInvocation(argv: string[]): InvocationResult {
       ),
     };
   }
+  // Selector keys are added only when actually given — a bare/`--profile full` invocation returns
+  // the exact pre-V-13 object shape (no `only`/`skip` keys at all, not even `undefined`).
+  const selectors = {
+    ...(only !== undefined ? { only } : {}),
+    ...(skip !== undefined ? { skip } : {}),
+  };
   if (rawProfile === 'full') {
     if (task || phase) {
       return {
@@ -230,9 +271,9 @@ export function parseInvocation(argv: string[]): InvocationResult {
         message: badInvocationMessage("'--profile full' cannot be combined with --task/--phase"),
       };
     }
-    return { ok: true, mode: 'full', profile: 'full' };
+    return { ok: true, mode: 'full', profile: 'full', ...selectors };
   }
-  if (!task && !phase) return { ok: true, mode: 'full', profile: 'full' };
+  if (!task && !phase) return { ok: true, mode: 'full', profile: 'full', ...selectors };
   if (!task || !phase) {
     return {
       ok: false,
@@ -242,6 +283,28 @@ export function parseInvocation(argv: string[]): InvocationResult {
     };
   }
   return { ok: true, mode: 'phase', task, phase };
+}
+
+/**
+ * @purpose Resolve `--only`/`--skip` gate-name/glob selectors against one profile's real gate list
+ *   (V-13, #20(iii)) — the common resolver both flags share.
+ * @invariant An unknown selector (matches nothing) is a hard error, never a silent no-op: the
+ *   caller asked for a gate that is not there.
+ * @param names Gate names actually in this run, in ladder order.
+ * @param selectors Raw `--only`/`--skip` globs, already comma-split.
+ * @returns The matched subset of `names` (ladder order preserved), or the first unmatched selector.
+ */
+export function resolveGateSelectors(
+  names: readonly string[],
+  selectors: readonly string[]
+): { ok: true; matched: readonly string[] } | { ok: false; selector: string } {
+  const matched = new Set<string>();
+  for (const selector of selectors) {
+    const hits = names.filter((name) => matchesGlob(name, selector));
+    if (hits.length === 0) return { ok: false, selector };
+    hits.forEach((name) => matched.add(name));
+  }
+  return { ok: true, matched: names.filter((name) => matched.has(name)) };
 }
 
 /** @purpose Outcome of running one command — exit code + combined output. */
@@ -289,15 +352,18 @@ export type GateResult = {
   ranCommand: string;
   /** @purpose Carried from `Gate.mutates`; the phase repair rung is mutating. */
   mutates: boolean;
+  /** @purpose Failure is reported but excluded from the primary verdict (D-64 extra-stack tail). */
+  nonBlocking?: boolean;
 };
 
 /**
  * @purpose Result of one sdd-verify run.
- * @invariant On failure `message` is never empty and lists only the failed gates' output; exit is always 1.
+ * @invariant On failure `message` is never empty; a gate failure is always exit 1, an unknown
+ *   `--only`/`--skip` selector (V-13) is exit 4 — a bad invocation, not a gate result.
  */
 export type VerifyOutcome =
   | { ok: true; text: string }
-  | { ok: false; code: string; exitCode: 1; message: string };
+  | { ok: false; code: string; exitCode: 1 | 4; message: string };
 
 /** @purpose Render a duration in seconds with one decimal. | @param ms Milliseconds. | @returns A `<n>s` label. */
 function secs(ms: number): string {
@@ -365,6 +431,11 @@ function lineFor(r: GateResult): string {
   const marker = r.mutates ? '🔧' : '✅';
   const note = r.mutates ? ' — мутирующий шаг' : '';
   return `  ${marker} ${r.name} (${secs(r.durationMs)})${note}`;
+}
+
+/** @purpose Render a D-64 extra-stack failure without misreporting the primary verdict as failed. */
+function nonBlockingFailLine(r: GateResult): string {
+  return `  ⚠ ${r.name} — non-blocking extra-stack ${r.status} (ran: ${r.ranCommand || 'not run'})`;
 }
 
 /**
@@ -444,12 +515,16 @@ export function verdict(
   // the brief calls out no such carve-out for them — they count as ordinary gate-failures.
   const failed = results.filter(
     (r) =>
-      r.status === 'fail' ||
-      r.status === 'missing' ||
-      r.status === 'timeout' ||
-      r.status === 'violation'
+      !r.nonBlocking &&
+      (r.status === 'fail' ||
+        r.status === 'missing' ||
+        r.status === 'timeout' ||
+        r.status === 'violation')
   );
-  const envFailed = results.filter((r) => r.status === 'env-fail');
+  const envFailed = results.filter((r) => !r.nonBlocking && r.status === 'env-fail');
+  const nonBlockingFailed = results.filter(
+    (r) => r.nonBlocking && !['pass', 'skipped'].includes(r.status)
+  );
   const passed = results.filter((r) => r.status === 'pass');
   const nonFailLines = results
     .filter(
@@ -466,8 +541,11 @@ export function verdict(
     return {
       ok: true,
       text: [
-        `[sdd-verify] ✅ ALL PASS (${passed.length}/${results.length})`,
+        nonBlockingFailed.length > 0
+          ? `[sdd-verify] ✅ PRIMARY PASS · ${nonBlockingFailed.length} NON-BLOCKING EXTRA-STACK FINDING`
+          : `[sdd-verify] ✅ ALL PASS (${passed.length}/${results.length})`,
         ...nonFailLines,
+        ...nonBlockingFailed.map(nonBlockingFailLine),
         ...setupNote,
       ].join('\n'),
     };
@@ -494,6 +572,7 @@ export function verdict(
         `[sdd-verify] ${passed.length}/${results.length} passed — окружение остановило лестницу (env-fail), это не код`,
         ...nonFailLines,
         ...envFailed.map(failBlock),
+        ...nonBlockingFailed.map(nonBlockingFailLine),
         ...haltLine,
       ].join('\n'),
     };
@@ -508,6 +587,7 @@ export function verdict(
       ...nonFailLines,
       ...failed.map(failBlock),
       ...envFailed.map(failBlock),
+      ...nonBlockingFailed.map(nonBlockingFailLine),
       ...haltLine,
     ].join('\n'),
   };

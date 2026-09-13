@@ -18,6 +18,7 @@ import { selectCoverageAdapter } from '../testcov/coverage-adapter-registry.ts';
 import { createCoverageArtifactBoundary } from '../testcov/coverage-artifact.ts';
 import { loadStackConfig, type StackConfigLoad } from '../../../shared/verify/stack-config.ts';
 import { BUILTIN_GATE_IDS } from '../../../shared/verify/stack-registry.ts';
+import { resolveAssembledFullProfile } from './full-profile-plan.ts';
 
 const invocation = parseInvocation(process.argv);
 if (!invocation.ok) {
@@ -97,12 +98,26 @@ if (invocation.mode === 'phase') {
     coverageProbe
   );
 } else {
-  outcome = await run(defaultAsyncRunner, 'full', coverageProbe, { targets: [] }, undefined, {
-    // `full` never enters repair, but the complete project verdict is still runtime-enforced
-    // read-only. Coverage alone receives its narrow generated-artifact transaction.
-    repair: createRepairMutationBoundary(resolve('.')),
-    foundation: createRepairMutationBoundary(resolve('.'), 'full-profile gate'),
-  });
+  let fullPlan;
+  try {
+    fullPlan = resolveAssembledFullProfile(projectRoot, stackConfigLoad.config);
+  } catch (cause) {
+    console.error(`[sdd-verify] ${cause instanceof Error ? cause.message : String(cause)}`);
+    process.exit(1);
+  }
+  outcome = await run(
+    defaultAsyncRunner,
+    'full',
+    coverageProbe,
+    { targets: [], only: invocation.only, skip: invocation.skip, fullPlan },
+    undefined,
+    {
+      // `full` never enters repair, but the complete project verdict is still runtime-enforced
+      // read-only. Coverage alone receives its narrow generated-artifact transaction.
+      repair: createRepairMutationBoundary(resolve('.')),
+      foundation: createRepairMutationBoundary(resolve('.'), 'full-profile gate'),
+    }
+  );
 }
 console.log(outcome.ok ? outcome.text : outcome.message);
 process.exit(outcome.ok ? 0 : outcome.exitCode);

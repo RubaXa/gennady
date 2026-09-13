@@ -12,7 +12,15 @@ export function printHelp(): void {
   console.info('');
   console.info('Usage:');
   console.info('  npx gennady sdd-verify --task <ticket-path> --phase <PhaseID>');
-  console.info('  npx gennady sdd-verify --profile full');
+  console.info(
+    '  npx gennady sdd-verify --profile full [--only=<glob>[,<glob>…]] [--skip=<glob>[,<glob>…]]'
+  );
+  console.info(
+    '    --only/--skip select or exclude gates by name/glob (e.g. --only=lint,format); full profile only —'
+  );
+  console.info(
+    '    rejected with --task/--phase, since a phase receipt requires the ladder to match the canonical plan.'
+  );
   console.info('');
   console.info(
     '  The ticket phase determines profile, exact Target Files, and owning spec; no globs or guessing.'
@@ -45,9 +53,11 @@ export function printHelp(): void {
   console.info('          the ticket §5 testcov row and audit’s job)');
   console.info('  other test / coverage N-A → fix · type-check · test  (still profile=test)');
   console.info(
-    '  full  → type-check · test:coverage · lint · format · yagni          (read-only, no fix steps — a verdict must not mutate what'
+    '  full  → detected primary full-profile, then qualified read-only gates of every other detected stack.'
   );
-  console.info('          it is judging; group close / default)');
+  console.info(
+    '          Primary is blocking; extra-stack failures stay visible but non-blocking (D-64).'
+  );
   console.info('');
   console.info('Phase ladder, in order:');
   console.info(

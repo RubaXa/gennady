@@ -8,7 +8,12 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { detectRepoStack } from '../stack-detection.ts';
+import {
+  DEFAULT_STACK_PRIORITY,
+  detectRepoStack,
+  orderDetectedStacks,
+  primaryStackOf,
+} from '../stack-detection.ts';
 
 /** @purpose Create a temp repo dir with the given root-level marker files, run fn, clean up. */
 function withRepo<T>(files: Record<string, string>, fn: (dir: string) => T): T {
@@ -40,11 +45,27 @@ describe('detectRepoStack', () => {
     });
   });
 
-  it('a multi-stack repo (package.json + go.mod) reports both, sorted', () => {
+  it('a multi-stack repo applies the D-64 default priority (golang before node)', () => {
     withRepo({ 'package.json': '{}', 'go.mod': 'module example.com/x\n\ngo 1.22\n' }, (dir) => {
       const result = detectRepoStack(dir, null);
       assert.deepEqual(result.stacks, ['golang', 'node']);
       assert.equal(result.source, 'marker:go.mod,marker:package.json');
+    });
+  });
+
+  it('stack.use reorders only the detected intersection', () => {
+    withRepo({ 'package.json': '{}', 'go.mod': 'module example.com/x\n\ngo 1.22\n' }, (dir) => {
+      const result = detectRepoStack(dir, { use: ['swift', 'node', 'golang'] });
+      assert.deepEqual(result.stacks, ['node', 'golang']);
+      assert.equal(primaryStackOf(result), 'node');
+    });
+  });
+
+  it('explicit anystack participates as an always-match and stack.use can make it primary', () => {
+    withRepo({ 'package.json': '{}' }, (dir) => {
+      const result = detectRepoStack(dir, { use: ['anystack', 'node'] });
+      assert.deepEqual(result.stacks, ['anystack', 'node']);
+      assert.equal(primaryStackOf(result), 'anystack');
     });
   });
 
@@ -78,6 +99,7 @@ describe('detectRepoStack', () => {
       const result = detectRepoStack(dir, { use: ['golang'] });
       assert.deepEqual(result.stacks, []);
       assert.equal(result.source, 'config:stack.use');
+      assert.throws(() => primaryStackOf(result), /SDD_VERIFY_NO_STACK_DETECTED/);
     });
   });
 
@@ -96,5 +118,21 @@ describe('detectRepoStack', () => {
       assert.deepEqual(first.stacks, second.stacks);
       assert.equal(first.source, second.source);
     });
+  });
+});
+
+describe('D-64 stack priority', () => {
+  it('declares swift > golang > node > anystack and applies it to a synthetic future set', () => {
+    assert.deepEqual(DEFAULT_STACK_PRIORITY, ['swift', 'golang', 'node', 'anystack']);
+    assert.deepEqual(orderDetectedStacks(['node', 'anystack', 'swift', 'golang']), [
+      'swift',
+      'golang',
+      'node',
+      'anystack',
+    ]);
+  });
+
+  it('never assigns an absent stack from stack.use', () => {
+    assert.deepEqual(orderDetectedStacks(['node', 'golang'], ['swift', 'node']), ['node']);
   });
 });

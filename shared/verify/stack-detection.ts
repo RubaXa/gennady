@@ -35,13 +35,33 @@ function detectNode(root: string, use: readonly string[] | undefined): StackDete
  *   see identically (30-TRACK-VERIFY.md §4.4: sdd-state/sdd-task/sdd-verify share one StackDetection).
  */
 export type RepoStackDetection = {
-  /** @purpose Detected stack ids, in deterministic (alphabetical) order. */
+  /** @purpose Detected stack ids, in D-64 primary order (config intersection or default priority). */
   readonly stacks: readonly StackId[];
   /** @purpose Full detection payloads backing `stacks`, same order. */
   readonly detections: readonly StackDetection[];
   /** @purpose Rendered `STACK_SOURCE=` value: comma-joined `marker:<file>` entries, or `config:stack.use` when `use` narrowed the candidates. */
   readonly source: string;
 };
+
+/** D-64's stable default primary/tail order, including Swift before its detector arrives. */
+export const DEFAULT_STACK_PRIORITY: readonly StackId[] = ['swift', 'golang', 'node', 'anystack'];
+
+/**
+ * @purpose Order an already detected set without ever adding a stack.
+ * @invariant `stack.use` is an ordering/filtering instruction over the detected intersection, not
+ *   an assignment mechanism; ids absent from `detected` never appear in the result (D-64).
+ * @param detected Stack ids already recognized from repository evidence.
+ * @param [use] Optional operator ordering and filter.
+ * @returns Detected intersection in config or D-64 default order.
+ */
+export function orderDetectedStacks(
+  detected: readonly StackId[],
+  use?: readonly string[]
+): StackId[] {
+  const detectedSet = new Set(detected);
+  const priority = use ?? DEFAULT_STACK_PRIORITY;
+  return priority.filter((stack): stack is StackId => detectedSet.has(stack as StackId));
+}
 
 /**
  * @purpose Detect which stack(s) govern a repository — one function, no per-caller re-guessing.
@@ -77,14 +97,24 @@ export function detectRepoStack(root: string, config: StackConfig | null): RepoS
       : null;
   const chosen =
     matched.length > 0
-      ? matched
+      ? [
+          ...matched,
+          // Anystack is the default last-resort, but an explicit stack.use makes its always-match
+          // detection participate at the operator-chosen position (D-64).
+          ...(config?.use?.includes('anystack') && anystack
+            ? [{ detection: anystack.detection, marker: anystack.plugin.marker }]
+            : []),
+        ]
       : bootstrapNode
         ? [bootstrapNode]
         : anystack
           ? [{ detection: anystack.detection, marker: anystack.plugin.marker }]
           : [];
 
-  const sorted = [...chosen].sort((a, b) => a.detection.stack.localeCompare(b.detection.stack));
+  const byStack = new Map(chosen.map((entry) => [entry.detection.stack, entry]));
+  const sorted = orderDetectedStacks([...byStack.keys()], config?.use).map(
+    (stack) => byStack.get(stack)!
+  );
 
   return {
     stacks: sorted.map((entry) => entry.detection.stack),
@@ -98,12 +128,15 @@ export function detectRepoStack(root: string, config: StackConfig | null): RepoS
 }
 
 /**
- * @purpose Pick the one primary stack every readiness/gate-plan consumer on a root must share
- *   (V-06b): node wins when detected (byte-identical node behavior), else the first detected
- *   stack, else `'node'` (every caller's pre-existing default).
+ * @purpose Select the shared primary stack from an ordered D-64 repository detection.
+ * @invariant An empty configured intersection fails closed instead of assigning Node.
  * @param detection Repo-wide stack detection (V-05).
  * @returns The stack id every phase/readiness/gate-plan consumer on this root must share.
  */
 export function primaryStackOf(detection: RepoStackDetection): StackId {
-  return detection.stacks.includes('node') ? 'node' : (detection.stacks[0] ?? 'node');
+  const primary = detection.stacks[0];
+  if (!primary) {
+    throw new Error('SDD_VERIFY_NO_STACK_DETECTED: stack.use matched no detected repository stack');
+  }
+  return primary;
 }

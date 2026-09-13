@@ -290,6 +290,119 @@ describe('loadStackConfig — strict validation (fatal errors)', () => {
   });
 });
 
+describe('loadStackConfig — GateSpec.when (V-12, #9-bonus)', () => {
+  it('accepts a well-formed when glob array on an extraGate', () => {
+    withConfigs(
+      {
+        'gennady.yaml':
+          'stack:\n  golang:\n    extraGates:\n      - id: swiftlint\n        argv: [swiftlint]\n        when: ["ios/**/*.swift"]\n',
+      },
+      (dir) => {
+        assert.deepEqual(loadStackConfig(dir, GATE_IDS).errors, []);
+      }
+    );
+  });
+
+  it('rejects an empty when array', () => {
+    withConfigs(
+      {
+        'gennady.yaml':
+          'stack:\n  golang:\n    extraGates:\n      - id: x\n        argv: [t]\n        when: []\n',
+      },
+      (dir) => {
+        const load = loadStackConfig(dir, GATE_IDS);
+        assert.ok(
+          load.errors.some((error) => error.path.endsWith('.when')),
+          JSON.stringify(load.errors)
+        );
+      }
+    );
+  });
+
+  it('rejects a when entry that is not a string', () => {
+    withConfigs(
+      {
+        'gennady.yaml':
+          'stack:\n  golang:\n    extraGates:\n      - id: x\n        argv: [t]\n        when: [1]\n',
+      },
+      (dir) => {
+        const load = loadStackConfig(dir, GATE_IDS);
+        assert.ok(
+          load.errors.some((error) => error.path.endsWith('.when')),
+          JSON.stringify(load.errors)
+        );
+      }
+    );
+  });
+});
+
+describe('loadStackConfig — V-19: a long extraGate without `when` is a validation error (D-18)', () => {
+  it('rejects timeout over 10m with no when, with a hint naming `when`', () => {
+    withConfigs(
+      {
+        'gennady.yaml':
+          'stack:\n  golang:\n    extraGates:\n      - id: slow\n        argv: [make, slow]\n        timeout: 15m\n',
+      },
+      (dir) => {
+        const load = loadStackConfig(dir, GATE_IDS);
+        const error = load.errors.find((candidate) => candidate.path.endsWith('.when'));
+        assert.ok(error, JSON.stringify(load.errors));
+        assert.match(error!.message, /when/);
+      }
+    );
+  });
+
+  it('accepts timeout over 10m once `when` is declared', () => {
+    withConfigs(
+      {
+        'gennady.yaml':
+          'stack:\n  golang:\n    extraGates:\n      - id: slow\n        argv: [make, slow]\n        timeout: 15m\n        when: ["generated/**"]\n',
+      },
+      (dir) => {
+        assert.deepEqual(loadStackConfig(dir, GATE_IDS).errors, []);
+      }
+    );
+  });
+
+  it('accepts the exact 10m default timeout with no when (boundary: not "over" 10m)', () => {
+    withConfigs(
+      {
+        'gennady.yaml':
+          'stack:\n  golang:\n    extraGates:\n      - id: exact\n        argv: [make, exact]\n        timeout: 10m\n',
+      },
+      (dir) => {
+        assert.deepEqual(loadStackConfig(dir, GATE_IDS).errors, []);
+      }
+    );
+  });
+
+  it('never fires when timeout is omitted (implicit default is exactly 10m)', () => {
+    withConfigs(
+      {
+        'gennady.yaml':
+          'stack:\n  golang:\n    extraGates:\n      - id: plain\n        argv: [make, plain]\n',
+      },
+      (dir) => {
+        assert.deepEqual(loadStackConfig(dir, GATE_IDS).errors, []);
+      }
+    );
+  });
+
+  it('does not double-report an already-invalid timeout string', () => {
+    withConfigs(
+      {
+        'gennady.yaml':
+          'stack:\n  golang:\n    extraGates:\n      - id: bad\n        argv: [make, bad]\n        timeout: not-a-duration\n',
+      },
+      (dir) => {
+        const load = loadStackConfig(dir, GATE_IDS);
+        assert.ok(load.errors.some((candidate) => candidate.path.endsWith('.timeout')));
+        assert.ok(!load.errors.some((candidate) => candidate.path.endsWith('.when')));
+      }
+    );
+  });
+});
+
 describe('applyStackConfig', () => {
   const provenance = new Map([
     ['golang.skipGates', 'gennady.yaml'],
@@ -477,6 +590,60 @@ describe('applyStackConfig — skipped extraGates keep their declared shape (rev
     assert.deepEqual(drift.env, { A: '1' });
     assert.equal(drift.timeoutMs, 90_000);
     assert.equal(drift.outputMeansFailure, true);
+  });
+});
+
+describe('applyStackConfig — when narrows extraGates by phase Target Files (V-12, #9-bonus)', () => {
+  it('a when that matches no target is a visible skipped-by-scope, argv zeroed', () => {
+    const effective = applyStackConfig(
+      [],
+      { extraGates: [{ id: 'swiftlint', argv: ['swiftlint'], when: ['ios/**/*.swift'] }] },
+      'golang',
+      '/repo',
+      new Map([['golang.extraGates', 'gennady.yaml']]),
+      undefined,
+      ['README.md']
+    );
+    assert.equal(effective[0]?.skipped, 'when (gennady.yaml)');
+    assert.deepEqual(effective[0]?.argv, []);
+  });
+
+  it('a when that matches a target keeps the gate runnable', () => {
+    const effective = applyStackConfig(
+      [],
+      { extraGates: [{ id: 'swiftlint', argv: ['swiftlint'], when: ['ios/**/*.swift'] }] },
+      'golang',
+      '/repo',
+      new Map([['golang.extraGates', 'gennady.yaml']]),
+      undefined,
+      ['ios/App/View.swift']
+    );
+    assert.equal(effective[0]?.skipped, null);
+    assert.deepEqual(effective[0]?.argv, ['swiftlint']);
+  });
+
+  it('no when at all is never narrowed, regardless of targets (D-17 default)', () => {
+    const effective = applyStackConfig(
+      [],
+      { extraGates: [{ id: 'always', argv: ['t'] }] },
+      'golang',
+      '/repo',
+      new Map(),
+      undefined,
+      []
+    );
+    assert.equal(effective[0]?.skipped, null);
+  });
+
+  it('omitting targets entirely defaults to empty, same as passing []', () => {
+    const effective = applyStackConfig(
+      [],
+      { extraGates: [{ id: 'always', argv: ['t'] }] },
+      'golang',
+      '/repo',
+      new Map()
+    );
+    assert.equal(effective[0]?.skipped, null);
   });
 });
 
