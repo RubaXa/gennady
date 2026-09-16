@@ -288,17 +288,117 @@ describe('Go V-09 runtime semantics', () => {
             "require('node:fs').writeFileSync('junk.txt','junk'); process.exit(7)",
           ],
           envFail: [allOf([exitCodeMatches('==7')], 'synthetic environment failure')],
+          driftMeansFailure: true,
         };
-        const stillViolation = await runGate(
+        const environmentWins = await runGate(
           defaultAsyncRunner,
           envFailingMutator,
           'env-mutator',
           tree
         );
-        assert.equal(stillViolation.status, 'violation');
-        assert.match(stillViolation.output, /junk\.txt/);
-        assert.match(stillViolation.output, /synthetic environment failure/);
+        assert.equal(environmentWins.status, 'env-fail');
+        assert.match(environmentWins.output, /junk\.txt/);
+        assert.match(environmentWins.output, /synthetic environment failure/);
         assert.equal(existsSync(join(root, 'junk.txt')), false);
+        const afterEnvironment = await runGate(defaultAsyncRunner, observer, 'observer', tree);
+        assert.equal(afterEnvironment.status, 'pass', afterEnvironment.output);
+        assert.equal(treeStatus(root), '');
+      } finally {
+        tree.guard.release();
+      }
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('guards each requires process, rolls back its drift, and never runs main argv', async () => {
+    const root = realpathSync(mkdtempSync(join(tmpdir(), 'go-runtime-requires-')));
+    try {
+      writeFileSync(join(root, 'go.mod'), 'module example.com/runtime\n\ngo 1.22\n');
+      writeFileSync(join(root, 'main.go'), 'package runtime\n');
+      initCommittedRepo(root);
+      const tree = resolveTreeGuard(root);
+      assert.equal(tree.kind, 'guard');
+      if (tree.kind !== 'guard') return;
+      const mainMarker = join(root, 'MAIN_RAN');
+      const observer: Gate = {
+        name: 'golang:observer',
+        stack: 'golang',
+        argv: [
+          process.execPath,
+          '-e',
+          "process.exit(require('node:fs').existsSync('requires-junk.txt') ? 9 : 0)",
+        ],
+        cwd: root,
+        mutates: false,
+        haltsOnFailure: false,
+      };
+      try {
+        const failedRequires: Gate = {
+          name: 'golang:failed-requires',
+          stack: 'golang',
+          argv: [process.execPath, '-e', "require('node:fs').writeFileSync('MAIN_RAN','x')"],
+          cwd: root,
+          requires: [
+            {
+              argv: [
+                process.execPath,
+                '-e',
+                "require('node:fs').writeFileSync('requires-junk.txt','junk'); process.exit(7)",
+              ],
+              cwd: root,
+              hint: 'install the missing environment dependency',
+            },
+          ],
+          mutates: false,
+          haltsOnFailure: false,
+        };
+        const envFailure = await runGate(
+          defaultAsyncRunner,
+          failedRequires,
+          'failed-requires',
+          tree
+        );
+        assert.equal(envFailure.status, 'env-fail');
+        assert.match(envFailure.output, /requires-junk\.txt/);
+        assert.match(envFailure.output, /install the missing environment dependency/);
+        assert.equal(existsSync(join(root, 'requires-junk.txt')), false);
+        assert.equal(existsSync(mainMarker), false);
+        assert.equal(
+          (await runGate(defaultAsyncRunner, observer, 'observer', tree)).status,
+          'pass'
+        );
+
+        const successfulMutatingRequires: Gate = {
+          ...failedRequires,
+          name: 'golang:mutating-requires',
+          driftMeansFailure: true,
+          requires: [
+            {
+              argv: [
+                process.execPath,
+                '-e',
+                "require('node:fs').writeFileSync('requires-junk.txt','junk')",
+              ],
+              cwd: root,
+              hint: 'must stay observe-only',
+            },
+          ],
+        };
+        const violation = await runGate(
+          defaultAsyncRunner,
+          successfulMutatingRequires,
+          'mutating-requires',
+          tree
+        );
+        assert.equal(violation.status, 'violation');
+        assert.match(violation.output, /requires-junk\.txt/);
+        assert.equal(existsSync(join(root, 'requires-junk.txt')), false);
+        assert.equal(existsSync(mainMarker), false);
+        assert.equal(
+          (await runGate(defaultAsyncRunner, observer, 'observer', tree)).status,
+          'pass'
+        );
         assert.equal(treeStatus(root), '');
       } finally {
         tree.guard.release();

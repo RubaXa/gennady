@@ -330,11 +330,16 @@ export async function runGate(
       ...(gate.nonBlocking ? { nonBlocking: true } : {}),
     };
   }
+  const guard = tree?.kind === 'guard' ? tree.guard : null;
+  const collectDrift = (): string => {
+    const drift = guard?.drift() ?? '';
+    if (drift) guard?.reset();
+    return drift;
+  };
 
-  // Preconditions run BEFORE the gate command; the first failing one is env-fail with its hint and
-  // the gate command never runs (mirrors MAIN services/stack semantics). `GateRunner` has no cwd/env
-  // parameter, so a precondition's own `cwd`/`env` are not honored yet — a later task that populates
-  // real `requires` entries for a non-default cwd/env needs to widen `GateRunner` first.
+  // Each precondition is part of the guarded gate transaction. A failed precondition is ENV_FAIL
+  // even when it left drift (D-STACK-015), but the exact debris is listed and rolled back. A
+  // successful precondition that mutates is a contract VIOLATION; main argv never sees that state.
   if (gate.requires) {
     for (const precondition of gate.requires) {
       const [preCommand, ...preArgs] = precondition.argv;
@@ -343,12 +348,35 @@ export async function runGate(
         env: precondition.env,
         timeoutMs: precondition.timeoutMs,
       });
+      const drift = collectDrift();
       if (preResult.exitCode !== 0) {
         return {
           name: gate.name,
           status: 'env-fail',
           exitCode: preResult.exitCode,
-          output: precondition.hint ?? preResult.output,
+          output: drift
+            ? [preResult.output, `precondition changed files:\n${drift}`, precondition.hint ?? '']
+                .filter(Boolean)
+                .join('\n')
+            : (precondition.hint ?? preResult.output),
+          durationMs: Date.now() - start,
+          ranCommand: precondition.argv.join(' '),
+          mutates: gate.mutates,
+          ...(gate.nonBlocking ? { nonBlocking: true } : {}),
+        };
+      }
+      if (drift) {
+        return {
+          name: gate.name,
+          status: 'violation',
+          exitCode: preResult.exitCode,
+          output: [
+            `successful precondition mutated the tree — files:\n${drift}`,
+            'requires commands must be observe-only; move mutation into an explicit fixer (D-STACK-015)',
+            preResult.output,
+          ]
+            .filter(Boolean)
+            .join('\n'),
           durationMs: Date.now() - start,
           ranCommand: precondition.argv.join(' '),
           mutates: gate.mutates,
@@ -368,9 +396,7 @@ export async function runGate(
     env: gate.env,
     timeoutMs: gate.timeoutMs,
   });
-  const guard = tree?.kind === 'guard' ? tree.guard : null;
-  const drift = guard?.drift() ?? '';
-  if (drift) guard?.reset();
+  const drift = collectDrift();
   const durationMs = Date.now() - start;
   logger.debug(`[SddVerifyCommand#run] ${gate.name} → exit ${r.exitCode} (${durationMs}ms)`);
   const ranCommand = `${command} ${args.join(' ')}`;
@@ -389,6 +415,7 @@ export async function runGate(
   // `GateRunResult` has no separate stdout/stderr, so both streams collapse to the combined `output`
   // — the same approximation the renderer already makes; a predicate keyed on one specific stream is
   // unaffected in practice since `output` is stdout followed by stderr.
+  let matchedEnvironment = false;
   if (gate.envFail && gate.envFail.length > 0) {
     const outcome = {
       exitCode: r.exitCode,
@@ -399,6 +426,7 @@ export async function runGate(
     };
     const matched = gate.envFail.find((predicate) => predicate(outcome));
     if (matched) {
+      matchedEnvironment = true;
       status = 'env-fail';
       output = [r.output, drift ? `gate changed files:\n${drift}` : '', matched.hint ?? '']
         .filter(Boolean)
@@ -406,7 +434,7 @@ export async function runGate(
     }
   }
 
-  if (drift) {
+  if (drift && !matchedEnvironment) {
     if (gate.driftMeansFailure) {
       const qualifiedName = gate.name.includes(':')
         ? gate.name
