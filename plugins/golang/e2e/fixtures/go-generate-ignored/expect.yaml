@@ -1,6 +1,6 @@
 notes: >
   §4.4: when generated output is gitignored the drift gate PASSES — ignored paths never appear in
-  the replica's status — and materialization is the fixer's job. Half of "works whether generated
+  clean-tree guard status — and materialization is the fixer's job. Half of "works whether generated
   code is committed or not"; go-generate-stale is the committed half.
 requires: [go]
 argv: ['--all']

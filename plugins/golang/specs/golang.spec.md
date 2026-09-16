@@ -2,7 +2,7 @@
 
 ## 1. Module Vision
 
-`StackPlugin` для Go-репозиториев: детекция по `go.mod` в корне, скоуп по изменённым пакетам, гейты `generate → build → vet → fmt → lint → test`, fixer `generate` (материализация кодогенерации через `gennady fix`). Термины (Gate, Scope, Capability, ENV_FAIL, VIOLATION, Run replica) — [stack.spec.md §2](../../../specs/stack/stack.spec.md).
+`StackPlugin` для Go-репозиториев: детекция по `go.mod` в корне, скоуп по изменённым пакетам, гейты `generate → build → vet → fmt → lint → test`, fixer `generate` (материализация кодогенерации через `gennady fix`). Термины (Gate, Scope, Capability, ENV_FAIL, VIOLATION, Clean-tree guard) — [stack.spec.md §2](../../../specs/stack/stack.spec.md).
 
 **Parent scope:** [`stack`](../../../specs/stack/stack.spec.md) · **E2E-механизм:** [`stack/e2e`](../../../specs/stack/e2e/e2e.spec.md) · **Доктрина E2E:** [`infra-e2e`](../../../specs/infra-e2e/infra-e2e.spec.md)
 
@@ -54,18 +54,18 @@
 
 Порядок фиксирован: **кодогенерация — пререквизит сборки**, поэтому `generate` стоит до `build` (D-STACK-011).
 
-| Гейт       | argv                                       | Таймаут | Контракт вывода            | `envFail`                                       | Особенности                                                                                                                                                                                 |
-| ---------- | ------------------------------------------ | ------- | -------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `generate` | `go generate <flags> <packages>`           | 5m      | drift реплики = FAIL       | module-fetch + `executable file not found`↦hint | `driftMeansFailure: true`; skip без `//go:generate` в скоупе                                                                                                                                |
-| `build`    | `go build -o /dev/null <flags> <packages>` | 5m      | exit-код                   | panic + module-fetch                            | `-o /dev/null` (§5.1)                                                                                                                                                                       |
-| `vet`      | `go vet <flags> <packages>`                | 5m      | exit-код                   | panic + module-fetch                            | —                                                                                                                                                                                           |
-| `fmt`      | `gofmt -l <files>`                         | 1m      | **exit 0 + stdout = FAIL** | —                                               | никогда `go fmt` (мутирует, D-STACK-005); цели обходятся с отсечением `vendor`/`testdata`/`node_modules` на **любой** глубине — каталог отдаётся целиком только когда ниже нет исключённого |
-| `lint`     | `golangci-lint run -c <config> <packages>` | 5m      | exit-код                   | `exit > 1` + panic + module-fetch               | конфиг ищется автоматически, передаётся через `-c`                                                                                                                                          |
-| `test`     | `go test -timeout=<t> <flags> <packages>`  | 10m     | exit-код                   | module-fetch **без** panic-предиката            | `-timeout` рендерится из эффективного `timeoutMs`                                                                                                                                           |
+| Гейт       | argv                                       | Таймаут | Контракт вывода               | `envFail`                                       | Особенности                                                                                                                                                                                 |
+| ---------- | ------------------------------------------ | ------- | ----------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `generate` | `go generate <flags> <packages>`           | 5m      | drift clean-tree guard = FAIL | module-fetch + `executable file not found`↦hint | `driftMeansFailure: true`; skip без `//go:generate` в скоупе                                                                                                                                |
+| `build`    | `go build -o /dev/null <flags> <packages>` | 5m      | exit-код                      | panic + module-fetch                            | `-o /dev/null` (§5.1)                                                                                                                                                                       |
+| `vet`      | `go vet <flags> <packages>`                | 5m      | exit-код                      | panic + module-fetch                            | —                                                                                                                                                                                           |
+| `fmt`      | `gofmt -l <files>`                         | 1m      | **exit 0 + stdout = FAIL**    | —                                               | никогда `go fmt` (мутирует, D-STACK-005); цели обходятся с отсечением `vendor`/`testdata`/`node_modules` на **любой** глубине — каталог отдаётся целиком только когда ниже нет исключённого |
+| `lint`     | `golangci-lint run -c <config> <packages>` | 5m      | exit-код                      | `exit > 1` + panic + module-fetch               | конфиг ищется автоматически, передаётся через `-c`                                                                                                                                          |
+| `test`     | `go test -timeout=<t> <flags> <packages>`  | 10m     | exit-код                      | module-fetch **без** panic-предиката            | `-timeout` рендерится из эффективного `timeoutMs`                                                                                                                                           |
 
 ### 5.1 Почему `build` обязан отбрасывать вывод
 
-`go build <pkg>` записывает исполняемый файл в cwd, когда собирается **ровно один** main-пакет — и делает это даже для шаблона `./...`, если в репозитории один main-пакет. В реплике прогона это непустой `git status`, то есть **VIOLATION** контракта «гейт наблюдает» на полностью чистом репозитории. Дефект нашла E2E-фикстура `go-clean-full` при первом же прогоне: на библиотечных пакетах и на монорепозиториях с несколькими пакетами он не проявляется, поэтому живые прогоны его не показывали. Форма `-o /dev/null` проверена и на одиночном main-пакете, и на наборе из нескольких пакетов.
+`go build <pkg>` записывает исполняемый файл в cwd, когда собирается **ровно один** main-пакет — и делает это даже для шаблона `./...`, если в репозитории один main-пакет. Под clean-tree guard это непустой `git status`, то есть **VIOLATION** контракта «гейт наблюдает» на полностью чистом репозитории. Дефект нашла E2E-фикстура `go-clean-full` при первом же прогоне: на библиотечных пакетах и на монорепозиториях с несколькими пакетами он не проявляется, поэтому живые прогоны его не показывали. Форма `-o /dev/null` проверена и на одиночном main-пакете, и на наборе из нескольких пакетов.
 
 ### 5.2 Проблемы модулей: где граница FAIL и ENV_FAIL
 
@@ -135,15 +135,15 @@ Go сообщает об одной и той же причине то стро�
 | `go-generate-ignored`  | `golang:generate`     | сгенерированное в `.gitignore`                | `pass`; `fix` материализует            |
 | `go-generate-fix-loop` | verify → fix → verify | stale → `fix` → повтор                        | `fail` → мутация → `pass`              |
 
-### 7.4 Контракт «гейт наблюдает» и реплика прогона
+### 7.4 Контракт «гейт наблюдает» и clean-tree guard
 
-| Фикстура           | Гейт              | Состояние                                  | Ожидание                               |
-| ------------------ | ----------------- | ------------------------------------------ | -------------------------------------- |
-| `go-mutating-gate` | extra             | гейт пишет файл, без `driftMeansFailure`   | `violation` + список файлов            |
-| `go-sandbox-drift` | extra             | `driftMeansFailure: true`, гейт пишет файл | `fail` + drift-список                  |
-| `go-dirty-tree`    | весь план         | незакоммиченные правки + untracked         | гейты видят правки; дерево не изменено |
-| `go-hang`          | extra             | скрипт спит дольше `timeout: 2s`           | `timeout` + note «не правь код»        |
-| `go-no-commits`    | `golang:generate` | git-репозиторий без коммитов               | `env-fail` (реплике нужен HEAD)        |
+| Фикстура           | Гейт              | Состояние                                  | Ожидание                          |
+| ------------------ | ----------------- | ------------------------------------------ | --------------------------------- |
+| `go-mutating-gate` | extra             | гейт пишет файл, без `driftMeansFailure`   | `violation` + список файлов       |
+| `go-sandbox-drift` | extra             | `driftMeansFailure: true`, гейт пишет файл | `fail` + drift-список             |
+| `go-dirty-tree`    | весь план         | незакоммиченные правки + untracked         | `DIRTY_TREE`, exit 4; ноль гейтов |
+| `go-hang`          | extra             | скрипт спит дольше `timeout: 2s`           | `timeout` + note «не правь код»   |
+| `go-no-commits`    | `golang:generate` | git-репозиторий без коммитов               | `env-fail` (drift требует HEAD)   |
 
 ### 7.5 Конфиг стека: skip, override, extra, requires, envFail
 
@@ -192,7 +192,7 @@ Go сообщает об одной и той же причине то стро�
 
 ## 9. Inter-Module Dependencies
 
-- **Depends on:** [`stack`](../../../specs/stack/stack.spec.md) (типы, раннер, реестр), `shared/common/exec` (probe-вызовы), git (скоуп и реплика)
+- **Depends on:** [`stack`](../../../specs/stack/stack.spec.md) (типы, раннер, реестр), `shared/common/exec` (probe-вызовы), git (скоуп и clean-tree guard)
 - **Sibling:** [`plugins/node`](../../node/specs/node.spec.md) — независимая зона ответственности; общее только в scope-спеке
 - **Verified by:** [`stack/e2e`](../../../specs/stack/e2e/e2e.spec.md) по матрице §7
 - **External:** `go` (обязателен, кроме гейта `fmt`), `gofmt`, `golangci-lint` (опционален — без него `lint` скипается с причиной)

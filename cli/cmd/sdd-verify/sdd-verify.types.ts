@@ -81,7 +81,7 @@ export type Gate = {
   stack?: StackId;
   /** @purpose When true, any stdout on exit 0 means failure (`gofmt -l` contract). */
   outputMeansFailure?: boolean;
-  /** @purpose D-64: belongs to the concurrent read-only full-profile tail. */
+  /** @purpose D-64: belongs to the ordered read-only full-profile tail. */
   tail?: boolean;
   /** @purpose D-64: a visible failure that does not change the primary stack verdict. */
   nonBlocking?: boolean;
@@ -89,10 +89,7 @@ export type Gate = {
   scriptName?: string;
   /** @purpose Preserves coverage-producer semantics when D-64 qualifies the public gate name. */
   coverageProducer?: boolean;
-  /**
-   * @purpose Run in an ephemeral working-tree replica; resulting drift = FAIL without mutating the
-   *   source workspace (V-09).
-   */
+  /** @purpose Treat non-ignored real-tree drift as this gate's FAIL verdict (D-STACK-011/017). */
   driftMeansFailure?: boolean;
   /** @purpose Visible plugin-owned reason this gate is intentionally not executable. */
   skipped?: string | null;
@@ -340,9 +337,8 @@ export type GateRunner = (
 
 /**
  * @purpose Rung outcome: passed, failed, honestly skipped, `missing` (required script absent or
- *   stubbed), `env-fail` (environment, never the code), `timeout`, or `violation` (sandbox mutated).
- *   Last three are V-03 data: `runGate` produces `env-fail` from `Gate.envFail`/`requires`; nothing
- *   produces `timeout`/`violation` yet.
+ *   stubbed), `env-fail` (environment, never the code), `timeout`, or `violation` (a supposedly
+ *   observing gate mutated the guarded tree).
  */
 export type GateStatus =
   | 'pass'
@@ -475,7 +471,12 @@ function failBlock(r: GateResult): string {
     return `  ⏱ ${r.name} — превышен timeoutMs (ran: ${r.ranCommand})`;
   }
   if (r.status === 'violation') {
-    return `  ⛔ ${r.name} — нарушение песочницы: гейт мутировал реплику вне write-zone (ran: ${r.ranCommand})`;
+    return [
+      `  ⛔ ${r.name} — нарушение observe-only: гейт мутировал guarded tree (ran: ${r.ranCommand})`,
+      '  --- output ---',
+      tailCap(r.output, r.ranCommand),
+      '  --- end ---',
+    ].join('\n');
   }
   const marker = r.mutates ? '🔧' : '❌';
   const haltNote = r.mutates ? ' — repair не завершён' : '';

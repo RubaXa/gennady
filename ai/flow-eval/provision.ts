@@ -641,7 +641,13 @@ function canonicalGoTask(): string {
     'GSL-slug',
     'slugify',
     'slugify.go'
-  ).replaceAll('typescript-rules', 'go-rules');
+  )
+    .replaceAll('typescript-rules', 'go-rules')
+    .replace('### Round 1 — <YYYY-MM-DD>, initial', '### Round 1 — 2026-09-16, initial')
+    .replace(
+      '"- [x] `<ts>` ✅ RESOLVED (Round <N> / P<M>): <what removed it>" lines',
+      'checked `✅ RESOLVED` entries with their phase-owned resolution evidence'
+    );
   document = replaceSection(
     document,
     'PHASE_P2',

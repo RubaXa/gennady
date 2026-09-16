@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { execFileSync, spawnSync } from 'node:child_process';
 import {
   existsSync,
   mkdtempSync,
@@ -8,11 +9,17 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { describe, it } from 'node:test';
 import { golangPluginGates } from '../../../../shared/verify/presets/golang.ts';
+import { resolveTreeGuard, treeStatus } from '../../../../shared/verify/tree-guard.ts';
+import { allOf, exitCodeMatches } from '../../../../shared/verify/env-fail.ts';
 import { defaultAsyncRunner, runGate } from '../sdd-verify.cmd.ts';
 import type { Gate, GateRunner } from '../sdd-verify.types.ts';
+
+const REPO_ROOT = resolve(import.meta.dirname, '../../../..');
+const TSX_IMPORT = join(REPO_ROOT, 'node_modules/tsx/dist/loader.mjs');
+const GENNADY = join(REPO_ROOT, 'cli/gennady.ts');
 
 function cliGate(gate: ReturnType<typeof golangPluginGates>[number]): Gate {
   return {
@@ -32,7 +39,59 @@ function cliGate(gate: ReturnType<typeof golangPluginGates>[number]): Gate {
   };
 }
 
+function git(root: string, args: readonly string[]): string {
+  return execFileSync('git', [...args], { cwd: root, encoding: 'utf-8' }).trim();
+}
+
+function initCommittedRepo(root: string): void {
+  git(root, ['init', '-q']);
+  git(root, ['config', 'user.email', 'tests@example.com']);
+  git(root, ['config', 'user.name', 'Tests']);
+  git(root, ['add', '-A']);
+  git(root, ['commit', '-qm', 'baseline']);
+}
+
 describe('Go V-09 runtime semantics', () => {
+  it('public dirty CLI refuses while internal pre-commit mode accepts only a synchronized index', () => {
+    const root = realpathSync(mkdtempSync(join(tmpdir(), 'go-runtime-cli-index-')));
+    try {
+      writeFileSync(join(root, 'go.mod'), 'module example.com/runtime\n\ngo 1.22\n');
+      writeFileSync(join(root, 'main.go'), 'package runtime\n');
+      initCommittedRepo(root);
+      writeFileSync(join(root, 'main.go'), 'package runtime\n// staged candidate\n');
+      git(root, ['add', 'main.go']);
+      const argv = [
+        '--import',
+        TSX_IMPORT,
+        GENNADY,
+        'sdd-verify',
+        '--profile',
+        'full',
+        '--only',
+        'generate',
+      ];
+
+      const direct = spawnSync(process.execPath, argv, {
+        cwd: root,
+        encoding: 'utf-8',
+        env: { ...process.env, GENNADY_INTERNAL_PRECOMMIT_INDEX: undefined },
+      });
+      assert.equal(direct.status, 4, `${direct.stdout}${direct.stderr}`);
+      assert.match(`${direct.stdout}${direct.stderr}`, /DIRTY_TREE/);
+
+      const preCommit = spawnSync(process.execPath, argv, {
+        cwd: root,
+        encoding: 'utf-8',
+        env: { ...process.env, GENNADY_INTERNAL_PRECOMMIT_INDEX: '1' },
+      });
+      assert.equal(preCommit.status, 0, `${preCommit.stdout}${preCommit.stderr}`);
+      assert.match(preCommit.stdout, /ALL PASS/);
+      assert.match(git(root, ['diff', '--cached', '--name-only']), /main\.go/);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it('classifies module fetch failures as environment failures', async () => {
     const root = mkdtempSync(join(tmpdir(), 'go-runtime-env-'));
     try {
@@ -69,58 +128,182 @@ describe('Go V-09 runtime semantics', () => {
     }
   });
 
-  it('detects generate drift in a disposable replica and leaves the source tree unchanged', async () => {
-    const root = mkdtempSync(join(tmpdir(), 'go-runtime-drift-'));
+  it('passes real go generate when it creates only ignored output, and preserves that output', async () => {
+    const root = realpathSync(mkdtempSync(join(tmpdir(), 'go-runtime-ignored-')));
     try {
       writeFileSync(join(root, 'go.mod'), 'module example.com/runtime\n\ngo 1.22\n');
-      writeFileSync(join(root, 'main.go'), '//go:generate generator\npackage runtime\n');
+      writeFileSync(join(root, '.gitignore'), 'gen.out\n');
+      writeFileSync(
+        join(root, 'main.go'),
+        '//go:generate sh -c "echo generated > gen.out"\npackage runtime\n'
+      );
+      initCommittedRepo(root);
       const generate = golangPluginGates(root, null).find((gate) => gate.id === 'generate');
       assert.ok(generate);
-      let replica = '';
-      const runner: GateRunner = (_command, _args, options) => {
-        replica = options?.cwd ?? '';
-        writeFileSync(join(replica || root, 'generated.go'), 'package runtime\n');
-        return { exitCode: 0, output: '' };
-      };
-      const result = await runGate(runner, cliGate(generate), 'generate');
-      assert.equal(result.status, 'fail');
-      assert.match(result.output, /ephemeral replica/);
-      assert.equal(
-        readFileSync(join(root, 'main.go'), 'utf-8'),
-        '//go:generate generator\npackage runtime\n'
-      );
-      assert.throws(() => readFileSync(join(root, 'generated.go')));
-      assert.ok(replica);
-      assert.equal(existsSync(replica), false);
+      const tree = resolveTreeGuard(root);
+      assert.equal(tree.kind, 'guard');
+      if (tree.kind !== 'guard') return;
+      try {
+        const result = await runGate(defaultAsyncRunner, cliGate(generate), 'generate', tree);
+        assert.equal(result.status, 'pass', result.output);
+        assert.equal(readFileSync(join(root, 'gen.out'), 'utf-8'), 'generated\n');
+        assert.equal(treeStatus(root), '', 'ignored output is not guarded drift');
+      } finally {
+        tree.guard.release();
+      }
+      assert.equal(readFileSync(join(root, 'gen.out'), 'utf-8'), 'generated\n');
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
   });
 
-  it('runs real go generate in the replica and fails only because that replica drifted', async () => {
-    const created = mkdtempSync(join(realpathSync(tmpdir()), 'go-runtime-real-drift-'));
-    const root = realpathSync(created);
-    const previousCwd = process.cwd();
+  it('fails real go generate on tracked drift, names the file/fixer, and rolls back', async () => {
+    const root = realpathSync(mkdtempSync(join(tmpdir(), 'go-runtime-tracked-drift-')));
     try {
       writeFileSync(join(root, 'go.mod'), 'module example.com/runtime\n\ngo 1.22\n');
-      const source = '//go:generate sh -c "echo package runtime > generated.go"\npackage runtime\n';
-      writeFileSync(join(root, 'main.go'), source);
+      writeFileSync(
+        join(root, 'main.go'),
+        '//go:generate sh -c "echo fresh > gen.out"\npackage runtime\n'
+      );
+      writeFileSync(join(root, 'gen.out'), 'stale\n');
+      initCommittedRepo(root);
       const generate = golangPluginGates(root, null).find((gate) => gate.id === 'generate');
       assert.ok(generate);
-      assert.equal(generate.skipped, null);
-
-      // Match the production CLI shape where process.cwd() and gate.cwd are the same canonical root.
-      process.chdir(root);
-      const result = await runGate(defaultAsyncRunner, cliGate(generate), 'generate');
-
-      assert.equal(result.status, 'fail');
-      assert.equal(result.exitCode, 0, result.output);
-      assert.match(result.output, /gate changed files in its ephemeral replica/);
-      assert.doesNotMatch(result.output, /unknown command/);
-      assert.equal(readFileSync(join(root, 'main.go'), 'utf-8'), source);
-      assert.equal(existsSync(join(root, 'generated.go')), false);
+      const tree = resolveTreeGuard(root);
+      assert.equal(tree.kind, 'guard');
+      if (tree.kind !== 'guard') return;
+      try {
+        const result = await runGate(defaultAsyncRunner, cliGate(generate), 'generate', tree);
+        assert.equal(result.status, 'fail');
+        assert.equal(result.exitCode, 0, result.output);
+        assert.match(result.output, /gen\.out/);
+        assert.match(result.output, /gennady fix golang:generate/);
+        assert.equal(readFileSync(join(root, 'gen.out'), 'utf-8'), 'stale\n');
+        assert.equal(treeStatus(root), '');
+      } finally {
+        tree.guard.release();
+      }
     } finally {
-      process.chdir(previousCwd);
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  for (const baseline of ['no-git', 'no-HEAD'] as const) {
+    it(`returns ENV_FAIL without execution when a drift gate has ${baseline}`, async () => {
+      const root = realpathSync(mkdtempSync(join(tmpdir(), `go-runtime-${baseline}-`)));
+      try {
+        writeFileSync(join(root, 'go.mod'), 'module example.com/runtime\n\ngo 1.22\n');
+        writeFileSync(join(root, 'main.go'), '//go:generate generator\npackage runtime\n');
+        if (baseline === 'no-HEAD') git(root, ['init', '-q']);
+        const generate = golangPluginGates(root, null).find((gate) => gate.id === 'generate');
+        assert.ok(generate);
+        const tree = resolveTreeGuard(root);
+        assert.equal(tree.kind, 'unsandboxed');
+        let calls = 0;
+        const result = await runGate(
+          () => {
+            calls++;
+            return { exitCode: 0, output: '' };
+          },
+          cliGate(generate),
+          'generate',
+          tree
+        );
+        assert.equal(result.status, 'env-fail');
+        assert.equal(calls, 0);
+        assert.match(result.output, /git repository|committed HEAD/);
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+      }
+    });
+  }
+
+  it('refuses a dirty tree before any gate and leaves tracked/untracked WIP untouched', () => {
+    const root = realpathSync(mkdtempSync(join(tmpdir(), 'go-runtime-dirty-')));
+    try {
+      writeFileSync(join(root, 'go.mod'), 'module example.com/runtime\n\ngo 1.22\n');
+      writeFileSync(join(root, 'main.go'), 'package runtime\n');
+      initCommittedRepo(root);
+      writeFileSync(join(root, 'main.go'), 'package runtime\n// WIP\n');
+      writeFileSync(join(root, 'untracked.txt'), 'WIP\n');
+
+      const tree = resolveTreeGuard(root);
+      assert.equal(tree.kind, 'error');
+      if (tree.kind !== 'error') return;
+      assert.match(tree.message, /DIRTY_TREE/);
+      assert.match(tree.message, /main\.go/);
+      assert.match(tree.message, /untracked\.txt/);
+      assert.equal(readFileSync(join(root, 'main.go'), 'utf-8'), 'package runtime\n// WIP\n');
+      assert.equal(readFileSync(join(root, 'untracked.txt'), 'utf-8'), 'WIP\n');
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('classifies non-drift mutation as VIOLATION, rolls back, then runs the next gate clean', async () => {
+    const root = realpathSync(mkdtempSync(join(tmpdir(), 'go-runtime-violation-')));
+    try {
+      writeFileSync(join(root, 'go.mod'), 'module example.com/runtime\n\ngo 1.22\n');
+      writeFileSync(join(root, 'main.go'), 'package runtime\n');
+      initCommittedRepo(root);
+      const tree = resolveTreeGuard(root);
+      assert.equal(tree.kind, 'guard');
+      if (tree.kind !== 'guard') return;
+      try {
+        const mutator: Gate = {
+          name: 'golang:mutator',
+          stack: 'golang',
+          argv: [process.execPath, '-e', "require('node:fs').writeFileSync('junk.txt','junk')"],
+          cwd: root,
+          mutates: false,
+          haltsOnFailure: false,
+        };
+        const violation = await runGate(defaultAsyncRunner, mutator, 'mutator', tree);
+        assert.equal(violation.status, 'violation');
+        assert.match(violation.output, /junk\.txt/);
+        assert.equal(existsSync(join(root, 'junk.txt')), false);
+
+        const observer: Gate = {
+          name: 'golang:observer',
+          stack: 'golang',
+          argv: [
+            process.execPath,
+            '-e',
+            "process.exit(require('node:fs').existsSync('junk.txt') ? 9 : 0)",
+          ],
+          cwd: root,
+          mutates: false,
+          haltsOnFailure: false,
+        };
+        const next = await runGate(defaultAsyncRunner, observer, 'observer', tree);
+        assert.equal(next.status, 'pass', next.output);
+        assert.equal(treeStatus(root), '');
+
+        const envFailingMutator: Gate = {
+          ...mutator,
+          name: 'golang:env-mutator',
+          argv: [
+            process.execPath,
+            '-e',
+            "require('node:fs').writeFileSync('junk.txt','junk'); process.exit(7)",
+          ],
+          envFail: [allOf([exitCodeMatches('==7')], 'synthetic environment failure')],
+        };
+        const stillViolation = await runGate(
+          defaultAsyncRunner,
+          envFailingMutator,
+          'env-mutator',
+          tree
+        );
+        assert.equal(stillViolation.status, 'violation');
+        assert.match(stillViolation.output, /junk\.txt/);
+        assert.match(stillViolation.output, /synthetic environment failure/);
+        assert.equal(existsSync(join(root, 'junk.txt')), false);
+        assert.equal(treeStatus(root), '');
+      } finally {
+        tree.guard.release();
+      }
+    } finally {
       rmSync(root, { recursive: true, force: true });
     }
   });

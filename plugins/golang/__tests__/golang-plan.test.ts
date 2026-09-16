@@ -130,7 +130,7 @@ describe('planGoGates', () => {
     );
 
     // `go build` writes the executable into cwd when exactly one main package is built,
-    // which the run replica reports as a VIOLATION of the observe-only contract.
+    // which the clean-tree guard reports as a VIOLATION of the observe-only contract.
     const flags = build?.argv ?? [];
     assert.ok(flags.includes('-o'), `build must discard its output, got: ${flags.join(' ')}`);
     assert.equal(flags[flags.indexOf('-o') + 1], '/dev/null');

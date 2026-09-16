@@ -17,6 +17,10 @@ function git(dir: string, ...args: string[]): void {
   });
 }
 
+function gitOutput(dir: string, ...args: string[]): string {
+  return execFileSync('git', ['-C', dir, ...args], { encoding: 'utf-8' }).trim();
+}
+
 function withRepo<T>(fn: (dir: string) => T): T {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'tree-guard-'));
   try {
@@ -156,6 +160,127 @@ describe('treeStatus', () => {
       assert.equal(treeStatus(dir), '');
       fs.writeFileSync(path.join(dir, 'new.txt'), 'x\n');
       assert.match(treeStatus(dir), /new\.txt/);
+    });
+  });
+});
+
+describe('acquireTreeGuard — staged pre-commit mode', () => {
+  it('keeps ordinary direct verification fail-closed on a cleanly staged dirty tree', () => {
+    withRepo((dir) => {
+      fs.writeFileSync(path.join(dir, 'a.txt'), 'staged candidate\n');
+      git(dir, 'add', 'a.txt');
+
+      const direct = acquireTreeGuard(dir);
+      assert.equal(direct.kind, 'error');
+      if (direct.kind === 'error') assert.match(direct.message, /DIRTY_TREE/);
+    });
+  });
+
+  it('accepts worktree == index, preserves staged edits, and marks crash recovery unsafe', () => {
+    withRepo((dir) => {
+      fs.writeFileSync(path.join(dir, 'a.txt'), 'staged candidate\n');
+      git(dir, 'add', 'a.txt');
+      const baseline = gitOutput(dir, 'write-tree');
+
+      const acquisition = acquireTreeGuard(dir, undefined, { staged: true });
+      assert.equal(acquisition.kind, 'guard', JSON.stringify(acquisition));
+      if (acquisition.kind !== 'guard') return;
+      assert.equal(acquisition.guard.drift(), '');
+      const payload = JSON.parse(fs.readFileSync(lockPathOf(dir), 'utf-8')) as {
+        cleanAtStart: boolean;
+      };
+      assert.equal(payload.cleanAtStart, false);
+      acquisition.guard.release();
+
+      assert.equal(gitOutput(dir, 'write-tree'), baseline);
+      assert.equal(fs.readFileSync(path.join(dir, 'a.txt'), 'utf-8'), 'staged candidate\n');
+      assert.match(gitOutput(dir, 'diff', '--cached', '--name-only'), /a\.txt/);
+    });
+  });
+
+  it('detects gate index/worktree mutations and restores exactly to the captured index', () => {
+    withRepo((dir) => {
+      fs.writeFileSync(path.join(dir, 'a.txt'), 'staged candidate\n');
+      git(dir, 'add', 'a.txt');
+      const baseline = gitOutput(dir, 'write-tree');
+
+      const acquisition = acquireTreeGuard(dir, undefined, { staged: true });
+      assert.equal(acquisition.kind, 'guard', JSON.stringify(acquisition));
+      if (acquisition.kind !== 'guard') return;
+
+      fs.writeFileSync(path.join(dir, 'a.txt'), 'gate mutation\n');
+      fs.writeFileSync(path.join(dir, 'junk.txt'), 'gate mutation\n');
+      git(dir, 'add', '-A');
+      const drift = acquisition.guard.drift();
+      assert.match(drift, /INDEX M\s+a\.txt/);
+      assert.match(drift, /INDEX A\s+junk\.txt/);
+
+      acquisition.guard.reset();
+      assert.equal(acquisition.guard.drift(), '');
+      assert.equal(gitOutput(dir, 'write-tree'), baseline, 'index bytes remain the candidate');
+      assert.equal(fs.readFileSync(path.join(dir, 'a.txt'), 'utf-8'), 'staged candidate\n');
+      assert.equal(fs.existsSync(path.join(dir, 'junk.txt')), false);
+      acquisition.guard.release();
+    });
+  });
+
+  it('refuses unstaged and untracked paths instead of trusting the hook', () => {
+    for (const kind of ['unstaged', 'untracked'] as const) {
+      withRepo((dir) => {
+        fs.writeFileSync(path.join(dir, 'a.txt'), 'staged candidate\n');
+        git(dir, 'add', 'a.txt');
+        if (kind === 'unstaged') fs.writeFileSync(path.join(dir, 'a.txt'), 'not staged\n');
+        else fs.writeFileSync(path.join(dir, 'untracked.txt'), 'not staged\n');
+
+        const acquisition = acquireTreeGuard(dir, undefined, { staged: true });
+        assert.equal(acquisition.kind, 'error');
+        if (acquisition.kind === 'error') {
+          assert.match(acquisition.message, /DIRTY_INDEX_WORKTREE/);
+          assert.match(acquisition.message, kind === 'unstaged' ? /a\.txt/ : /untracked\.txt/);
+        }
+        assert.equal(fs.existsSync(lockPathOf(dir)), false);
+      });
+    }
+  });
+
+  it('allows ignored gate output and preserves it on release', () => {
+    withRepo((dir) => {
+      fs.writeFileSync(path.join(dir, '.gitignore'), 'cache/\n');
+      git(dir, 'add', '.gitignore');
+      const acquisition = acquireTreeGuard(dir, undefined, { staged: true });
+      assert.equal(acquisition.kind, 'guard', JSON.stringify(acquisition));
+      if (acquisition.kind !== 'guard') return;
+
+      fs.mkdirSync(path.join(dir, 'cache'));
+      fs.writeFileSync(path.join(dir, 'cache', 'generated'), 'ignored\n');
+      assert.equal(acquisition.guard.drift(), '');
+      acquisition.guard.release();
+      assert.equal(fs.readFileSync(path.join(dir, 'cache', 'generated'), 'utf-8'), 'ignored\n');
+    });
+  });
+
+  it('never crash-recovers a stale staged lock by resetting user work', () => {
+    withRepo((dir) => {
+      fs.writeFileSync(path.join(dir, 'a.txt'), 'staged candidate\n');
+      git(dir, 'add', 'a.txt');
+      fs.writeFileSync(
+        lockPathOf(dir),
+        JSON.stringify({
+          pid: 999999999,
+          startedAt: 'x',
+          cleanAtStart: false,
+          mode: 'staged',
+        })
+      );
+
+      const acquisition = acquireTreeGuard(dir, () => {}, { staged: true });
+      assert.equal(acquisition.kind, 'error');
+      if (acquisition.kind === 'error')
+        assert.match(acquisition.message, /stale staged verify lock/);
+      assert.equal(fs.readFileSync(path.join(dir, 'a.txt'), 'utf-8'), 'staged candidate\n');
+      assert.match(gitOutput(dir, 'diff', '--cached', '--name-only'), /a\.txt/);
+      assert.equal(fs.existsSync(lockPathOf(dir)), true, 'operator must explicitly inspect/remove');
+      fs.rmSync(lockPathOf(dir), { force: true });
     });
   });
 });

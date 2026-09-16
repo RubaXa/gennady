@@ -8,10 +8,18 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { buildRepoFixture } from './fixture.ts';
 import { runCliAsync } from './run-cli.ts';
+
+function commitFixture(root: string): void {
+  const env = { ...process.env };
+  for (const key of Object.keys(env)) if (key.startsWith('GIT_')) delete env[key];
+  execFileSync('git', ['add', '-A'], { cwd: root, env });
+  execFileSync('git', ['commit', '-qm', 'fixture state'], { cwd: root, env });
+}
 
 describe('sdd-verify — stack config gate (V-07)', { concurrency: 4 }, () => {
   it('a valid gennady.yaml with 3 extraGates (id/argv/envFail/requires/fixer) never trips the config gate', async () => {
@@ -43,6 +51,7 @@ describe('sdd-verify — stack config gate (V-07)', { concurrency: 4 }, () => {
         ].join('\n'),
         'utf-8'
       );
+      commitFixture(root);
       const result = await runCliAsync(['sdd-verify', '--profile', 'full'], root);
       // The config gate must not be what stops this run — its own error code names it explicitly,
       // so absence of that code is sufficient proof the 3 extraGates parsed clean.
@@ -129,6 +138,7 @@ describe('sdd-verify — stack config gate (V-07)', { concurrency: 4 }, () => {
         'utf-8'
       );
       writeFileSync(join(root, 'go.mod'), 'module example.com/x\n\ngo 1.22\n', 'utf-8');
+      commitFixture(root);
       const result = await runCliAsync(
         ['sdd-verify', '--profile', 'full', '--only=golang:tail-fail'],
         root

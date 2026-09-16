@@ -3,11 +3,7 @@
 // @tasks: N/A
 
 import { execFile, spawnSync } from 'node:child_process';
-import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
-import * as fs from 'node:fs';
-import { tmpdir } from 'node:os';
-import { isAbsolute, relative, resolve, sep } from 'node:path';
 import { logger } from '#logger';
 import {
   isDeclaredArgumentForwardingRepairBrick,
@@ -33,6 +29,7 @@ import type { RepairMutationBoundary } from './workspace-mutation.ts';
 import { describeRepairAction, planTargetRepair } from './repair-adapters.ts';
 import type { PhaseVerificationPlan } from '../../../shared/sdd/phase-verification-plan.ts';
 import type { AssembledFullProfile } from './full-profile-plan.ts';
+import type { TreeGuardResolution } from '../../../shared/verify/tree-guard.ts';
 
 /**
  * @purpose Read the project's `package.json` `scripts` map once per run — decides which rungs skip.
@@ -193,70 +190,6 @@ export function defaultAsyncRunner(
   return runAsyncWithMaxBuffer(command, args, maxBuffer, runOptions);
 }
 
-function treeState(root: string): string {
-  const entries: string[] = [];
-  const walk = (directory: string): void => {
-    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
-      if (['.git', 'node_modules'].includes(entry.name)) continue;
-      const absolute = resolve(directory, entry.name);
-      const name = relative(root, absolute);
-      if (entry.isDirectory()) walk(absolute);
-      else if (entry.isFile()) {
-        entries.push(
-          `${name}\0${createHash('sha256').update(readFileSync(absolute)).digest('hex')}`
-        );
-      }
-    }
-  };
-  walk(root);
-  return createHash('sha256').update(entries.sort().join('\0')).digest('hex');
-}
-
-async function runDriftGate(
-  runner: GateRunner,
-  gate: Gate,
-  command: string,
-  args: string[]
-): Promise<GateRunResult & { drifted: boolean }> {
-  const source = fs.realpathSync(resolve(gate.cwd ?? '.'));
-  const temp = fs.mkdtempSync(resolve(tmpdir(), 'gennady-go-drift-'));
-  const replica = resolve(temp, 'repo');
-  try {
-    fs.cpSync(source, replica, {
-      recursive: true,
-      filter: (candidate) => {
-        const rel = relative(source, candidate);
-        return !rel.split(/[\\/]/).some((part) => ['.git', 'node_modules'].includes(part));
-      },
-    });
-    const before = treeState(replica);
-    const remap = (token: string): string => {
-      // Relative argv is already interpreted against `cwd: replica`. Treating a bare subcommand
-      // such as `generate` as `<source>/generate` corrupts `go generate ./...`; only an explicit
-      // absolute source-owned path needs its prefix replaced.
-      if (!isAbsolute(token)) return token;
-      let absolute: string;
-      try {
-        absolute = fs.realpathSync(token);
-      } catch {
-        absolute = resolve(token);
-      }
-      const rel = relative(source, absolute);
-      const contained =
-        rel === '' || (rel !== '..' && !rel.startsWith(`..${sep}`) && !isAbsolute(rel));
-      return contained ? resolve(replica, rel) : token;
-    };
-    const result = await runner(remap(command), args.map(remap), {
-      cwd: replica,
-      env: gate.env,
-      timeoutMs: gate.timeoutMs,
-    });
-    return { ...result, drifted: before !== treeState(replica) };
-  } finally {
-    fs.rmSync(temp, { recursive: true, force: true });
-  }
-}
-
 // Read the project's own package.json `name` honestly — never infer self-hosting from the
 // directory path, since a worktree checkout can be named anything.
 /**
@@ -349,12 +282,14 @@ function verifyCoverageWritten(
  * @param runner Command runner.
  * @param gate The gate.
  * @param scriptName Resolved npm script name (ignored for `via: 'gennady'`).
+ * @param [tree] Full-profile D-STACK-017 tree transaction; omitted for phase/unit execution.
  * @returns The gate's final result.
  */
 export async function runGate(
   runner: GateRunner,
   gate: Gate,
-  scriptName: string
+  scriptName: string,
+  tree?: TreeGuardResolution
 ): Promise<GateResult> {
   const start = Date.now();
 
@@ -365,6 +300,31 @@ export async function runGate(
       exitCode: 0,
       output: gate.skipped,
       durationMs: 0,
+      ranCommand: '',
+      mutates: gate.mutates,
+      ...(gate.nonBlocking ? { nonBlocking: true } : {}),
+    };
+  }
+
+  if (tree?.kind === 'unsandboxed' && gate.driftMeansFailure) {
+    return {
+      name: gate.name,
+      status: 'env-fail',
+      exitCode: 1,
+      output: tree.message,
+      durationMs: Date.now() - start,
+      ranCommand: '',
+      mutates: gate.mutates,
+      ...(gate.nonBlocking ? { nonBlocking: true } : {}),
+    };
+  }
+  if (tree?.kind === 'error') {
+    return {
+      name: gate.name,
+      status: 'env-fail',
+      exitCode: 1,
+      output: `clean-tree guard unavailable, refusing to execute: ${tree.message}`,
+      durationMs: Date.now() - start,
       ranCommand: '',
       mutates: gate.mutates,
       ...(gate.nonBlocking ? { nonBlocking: true } : {}),
@@ -403,13 +363,14 @@ export async function runGate(
     : gate.via === 'gennady'
       ? gennadyGateCommand(gate.name)
       : { command: 'npm', args: ['run', scriptName] };
-  const r = gate.driftMeansFailure
-    ? await runDriftGate(runner, gate, command, args)
-    : await runner(command, args, {
-        cwd: gate.cwd,
-        env: gate.env,
-        timeoutMs: gate.timeoutMs,
-      });
+  const r = await runner(command, args, {
+    cwd: gate.cwd,
+    env: gate.env,
+    timeoutMs: gate.timeoutMs,
+  });
+  const guard = tree?.kind === 'guard' ? tree.guard : null;
+  const drift = guard?.drift() ?? '';
+  if (drift) guard?.reset();
   const durationMs = Date.now() - start;
   logger.debug(`[SddVerifyCommand#run] ${gate.name} → exit ${r.exitCode} (${durationMs}ms)`);
   const ranCommand = `${command} ${args.join(' ')}`;
@@ -423,11 +384,6 @@ export async function runGate(
   if (status === 'pass' && gate.outputMeansFailure && failureOutput.trim() !== '') {
     status = 'fail';
   }
-  if ('drifted' in r && r.drifted) {
-    status = 'fail';
-    output = [output, 'gate changed files in its ephemeral replica'].filter(Boolean).join('\n');
-  }
-
   // ENV_FAIL predicates classify the outcome as environment, never code — checked last so they can
   // reclassify either a `pass` (a predicate matching successful-looking output) or a `fail`.
   // `GateRunResult` has no separate stdout/stderr, so both streams collapse to the combined `output`
@@ -444,7 +400,36 @@ export async function runGate(
     const matched = gate.envFail.find((predicate) => predicate(outcome));
     if (matched) {
       status = 'env-fail';
-      output = matched.hint ? [r.output, matched.hint].filter(Boolean).join('\n') : r.output;
+      output = [r.output, drift ? `gate changed files:\n${drift}` : '', matched.hint ?? '']
+        .filter(Boolean)
+        .join('\n');
+    }
+  }
+
+  if (drift) {
+    if (gate.driftMeansFailure) {
+      const qualifiedName = gate.name.includes(':')
+        ? gate.name
+        : gate.stack
+          ? `${gate.stack}:${gate.name}`
+          : gate.name;
+      status = 'fail';
+      output = [
+        `generated code drifted from its sources — files:\n${drift}`,
+        `run \`gennady fix ${qualifiedName}\` to materialize, then commit`,
+        output,
+      ]
+        .filter(Boolean)
+        .join('\n');
+    } else {
+      status = 'violation';
+      output = [
+        `gate mutated the tree — files:\n${drift}`,
+        "declare `driftMeansFailure: true` if drift is this gate's verdict, or move the mutation to `gennady fix` fixers (D-STACK-005)",
+        output,
+      ]
+        .filter(Boolean)
+        .join('\n');
     }
   }
 
@@ -549,6 +534,7 @@ async function runTargetRepair(
  * @param [phaseContext] Exact phase targets, owning spec, and producer applicability; empty for global full.
  * @param [resultSink] Optional caller-owned evidence sink; receives the exact rung results once.
  * @param [mutationBoundaries] Canonical phase owner injects separate repair/foundation write-zones.
+ * @param [tree] Full-profile D-STACK-017 tree transaction; production passes exactly one per run.
  * @returns VerifyOutcome — ✅ per gate on success, else the failed gates' details.
  */
 export async function run(
@@ -576,7 +562,8 @@ export async function run(
     repair: RepairMutationBoundary;
     /** @purpose Empty write-zone except an explicitly declared coverage artifact directory. */
     foundation: RepairMutationBoundary;
-  }
+  },
+  tree?: TreeGuardResolution
 ): Promise<VerifyOutcome> {
   const scripts = readProjectScripts();
   const results: GateResult[] = [];
@@ -871,7 +858,7 @@ export async function run(
       }
     }
     foundationCommands.push(gate.name);
-    const gateResult = await runGate(runner, gate, scriptName as string);
+    const gateResult = await runGate(runner, gate, scriptName as string, tree);
     results.push(gateResult);
     let status = gateResult.status;
     status = verifyCoverageWritten(gate, status, results, coverageProbe);
@@ -931,58 +918,59 @@ export async function run(
           unavailableCoverage.set(gate.name, cleared.detail);
       }
     }
-    const tailResults = await Promise.all(
-      gates.map(async (gate): Promise<GateResult> => {
-        const coverageUnavailable = unavailableCoverage.get(gate.name);
-        if (coverageUnavailable !== undefined) {
-          return {
+    const tailResults: GateResult[] = [];
+    for (const gate of gates) {
+      const coverageUnavailable = unavailableCoverage.get(gate.name);
+      if (coverageUnavailable !== undefined) {
+        tailResults.push({
+          name: gate.name,
+          status: 'fail',
+          exitCode: 1,
+          output: `coverage producer не запущен: выбранный adapter не смог безопасно очистить прежний report: ${coverageUnavailable}`,
+          durationMs: 0,
+          ranCommand: '',
+          mutates: gate.mutates,
+          ...(gate.nonBlocking ? { nonBlocking: true } : {}),
+        });
+        continue;
+      }
+      const scriptName =
+        gate.via === 'gennady'
+          ? gate.name
+          : (gate.scriptName ?? resolveProjectScriptName(scripts, gate.name));
+      if (gate.via !== 'gennady' && !gate.argv?.length) {
+        const isMissing = scriptName === undefined;
+        const isVacuous = !isMissing && isVacuousScript(scripts, scriptName);
+        if ((isMissing || isVacuous) && required.has(gate.name)) {
+          const reason = isMissing
+            ? `скрипта нет в package.json — verify нечем`
+            : `скрипт — заглушка (no-op), он выходит с кодом 0, ничего не проверяя — зелёный вердикт был бы фикцией`;
+          tailResults.push({
             name: gate.name,
-            status: 'fail',
+            status: 'missing',
             exitCode: 1,
-            output: `coverage producer не запущен: выбранный adapter не смог безопасно очистить прежний report: ${coverageUnavailable}`,
+            output: `обязательная ступень профиля «${profile}»: ${reason}. Остальные независимые quality-гейты всё равно выполнены. Прогони infra flow (npx gennady sdd-state → GATE_QUEUE) и повтори.`,
             durationMs: 0,
             ranCommand: '',
             mutates: gate.mutates,
-            ...(gate.nonBlocking ? { nonBlocking: true } : {}),
-          };
+          });
+          continue;
         }
-        const scriptName =
-          gate.via === 'gennady'
-            ? gate.name
-            : (gate.scriptName ?? resolveProjectScriptName(scripts, gate.name));
-        if (gate.via !== 'gennady' && !gate.argv?.length) {
-          const isMissing = scriptName === undefined;
-          const isVacuous = !isMissing && isVacuousScript(scripts, scriptName);
-          if ((isMissing || isVacuous) && required.has(gate.name)) {
-            const reason = isMissing
-              ? `скрипта нет в package.json — verify нечем`
-              : `скрипт — заглушка (no-op), он выходит с кодом 0, ничего не проверяя — зелёный вердикт был бы фикцией`;
-            return {
-              name: gate.name,
-              status: 'missing',
-              exitCode: 1,
-              output: `обязательная ступень профиля «${profile}»: ${reason}. Остальные независимые quality-гейты всё равно выполнены. Прогони infra flow (npx gennady sdd-state → GATE_QUEUE) и повтори.`,
-              durationMs: 0,
-              ranCommand: '',
-              mutates: gate.mutates,
-            };
-          }
-          if (isMissing) {
-            return {
-              name: gate.name,
-              status: 'skipped',
-              exitCode: 0,
-              output: '',
-              durationMs: 0,
-              ranCommand: '',
-              mutates: gate.mutates,
-            };
-          }
+        if (isMissing) {
+          tailResults.push({
+            name: gate.name,
+            status: 'skipped',
+            exitCode: 0,
+            output: '',
+            durationMs: 0,
+            ranCommand: '',
+            mutates: gate.mutates,
+          });
+          continue;
         }
-        return runGate(runner, gate, scriptName as string);
-      })
-    );
-    // Promise.all preserves input order, so reports remain canonical even when completion order differs.
+      }
+      tailResults.push(await runGate(runner, gate, scriptName as string, tree));
+    }
     results.push(...tailResults);
     for (const gate of tailCoverageProducers) {
       const result = tailResults.find((entry) => entry.name === gate.name);
@@ -997,8 +985,8 @@ export async function run(
   };
 
   // D-64 ordering is semantic, not just presentational: complete the primary stack's full profile
-  // before starting any secondary stack. Gates within each independent read-only group still run
-  // concurrently and Promise.all preserves their assembled order in the report.
+  // before starting any secondary stack. D-STACK-017 serialises gates sharing the real tree so
+  // each mutation is attributed and rolled back before the next gate starts.
   if (fullFoundationGreen && (await runTailGroup(primaryQualityTail))) {
     await runTailGroup(secondaryTail);
   }
