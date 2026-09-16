@@ -7,7 +7,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import * as fs from 'node:fs';
 import { tmpdir } from 'node:os';
-import { relative, resolve } from 'node:path';
+import { isAbsolute, relative, resolve, sep } from 'node:path';
 import { logger } from '#logger';
 import {
   isDeclaredArgumentForwardingRepairBrick,
@@ -218,7 +218,7 @@ async function runDriftGate(
   command: string,
   args: string[]
 ): Promise<GateRunResult & { drifted: boolean }> {
-  const source = resolve(gate.cwd ?? '.');
+  const source = fs.realpathSync(resolve(gate.cwd ?? '.'));
   const temp = fs.mkdtempSync(resolve(tmpdir(), 'gennady-go-drift-'));
   const replica = resolve(temp, 'repo');
   try {
@@ -231,9 +231,20 @@ async function runDriftGate(
     });
     const before = treeState(replica);
     const remap = (token: string): string => {
-      const absolute = resolve(token);
+      // Relative argv is already interpreted against `cwd: replica`. Treating a bare subcommand
+      // such as `generate` as `<source>/generate` corrupts `go generate ./...`; only an explicit
+      // absolute source-owned path needs its prefix replaced.
+      if (!isAbsolute(token)) return token;
+      let absolute: string;
+      try {
+        absolute = fs.realpathSync(token);
+      } catch {
+        absolute = resolve(token);
+      }
       const rel = relative(source, absolute);
-      return rel === '' || (!rel.startsWith('..') && rel !== '..') ? resolve(replica, rel) : token;
+      const contained =
+        rel === '' || (rel !== '..' && !rel.startsWith(`..${sep}`) && !isAbsolute(rel));
+      return contained ? resolve(replica, rel) : token;
     };
     const result = await runner(remap(command), args.map(remap), {
       cwd: replica,
