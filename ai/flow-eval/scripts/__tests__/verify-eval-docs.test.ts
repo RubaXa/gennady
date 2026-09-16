@@ -112,6 +112,66 @@ describe('GAP-E-5: verify-eval-docs.ts (both-way, real subprocess)', () => {
     }
   });
 
+  it('passes absent generated outputs only when package.json declares them and a build script', async () => {
+    const root = fakeRepoRoot();
+    try {
+      writeFileSync(
+        join(root, 'package.json'),
+        JSON.stringify(
+          {
+            scripts: { build: 'vite build' },
+            bin: './dist/tool.js',
+            main: 'dist/index.js',
+            types: 'dist/index.d.ts',
+          },
+          null,
+          2
+        )
+      );
+      const doc = fixtureDoc(
+        root,
+        'DOC.md',
+        'Build output lives in `dist/`; entrypoints are `dist/tool.js`, `dist/index.js`, and `dist/index.d.ts`.\n'
+      );
+      const { code, stdout, stderr } = await runVerifier(['--root', root, doc]);
+      assert.equal(code, 0, `${stdout}${stderr}`);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('still fails an absent sibling under a declared generated directory', async () => {
+    const root = fakeRepoRoot();
+    try {
+      writeFileSync(
+        join(root, 'package.json'),
+        JSON.stringify({ scripts: { build: 'vite build' }, bin: './dist/tool.js' }, null, 2)
+      );
+      const doc = fixtureDoc(root, 'DOC.md', 'Wrong output: `dist/typo.js`.\n');
+      const { code, stderr } = await runVerifier(['--root', root, doc]);
+      assert.notEqual(code, 0);
+      assert.match(stderr, /path does not exist: `dist\/typo\.js`/);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('does not trust package output declarations without a build script', async () => {
+    const root = fakeRepoRoot();
+    try {
+      writeFileSync(
+        join(root, 'package.json'),
+        JSON.stringify({ scripts: {}, bin: './dist/tool.js' }, null, 2)
+      );
+      const doc = fixtureDoc(root, 'DOC.md', 'Undeliverable output: `dist/tool.js`.\n');
+      const { code, stderr } = await runVerifier(['--root', root, doc]);
+      assert.notEqual(code, 0);
+      assert.match(stderr, /path does not exist: `dist\/tool\.js`/);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it('fails when a markdown link target does not exist in the checkout (C-2 regression)', async () => {
     const root = fakeRepoRoot();
     try {
