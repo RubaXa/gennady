@@ -1,9 +1,9 @@
 // @file: SDD flow-version detection — the v1/v2 layout marker, shared by sdd-state and sdd-check.
-// @consumers: sdd-check.cmd, sdd-state.cmd
+// @consumers: sdd-check.cmd, sdd-state.cmd, ticket-resolve
 // @tasks: N/A
 
 import { statSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve, sep } from 'node:path';
 
 /**
  * @purpose SDD flow generation — v1 (`tasks/` layout) or v2 (co-located specs + `*.3-tasks.md`).
@@ -45,4 +45,25 @@ export function detectScopeFlowVersion(repoRoot: string, scope: string): FlowVer
   } catch {
     return 'v1';
   }
+}
+
+/**
+ * @purpose Detect the flow version governing one ticket from its owning scope path.
+ * @invariant Both CLI checks and execution-map scans use this single mixed-migration classifier;
+ *   a check may not invent its own V1/V2 boundary.
+ * @param file Absolute or repo-relative ticket path.
+ * @param repoRoot Repository root containing `tasks/` and `specs/`.
+ * @returns The ticket's scope flow version, or the repository version when no scope segment exists.
+ */
+export function ticketFlowVersion(file: string, repoRoot: string): FlowVersion {
+  const parts = resolve(file).split(sep);
+  const ti = parts.lastIndexOf('tasks');
+  if (ti >= 0 && parts.length - ti >= 2) {
+    return detectScopeFlowVersion(repoRoot, parts[ti + 1] as string);
+  }
+  const si = parts.lastIndexOf('specs');
+  if (si >= 0 && parts.length - si >= 2) {
+    return detectScopeFlowVersion(repoRoot, parts[si + 1] as string);
+  }
+  return detectFlowVersion(repoRoot);
 }

@@ -10,6 +10,7 @@ import {
   checkGroupReceipts,
   deriveGroupState,
   groupReceiptIssue,
+  hasValidGroupReceipt,
   upsertGroupReceipt,
   type GroupMemberInput,
   type GroupReceipt,
@@ -205,6 +206,22 @@ describe('upsertGroupReceipt', () => {
     const broken = `${SPEC_BASE}\n<!--${GROUP_RECEIPT_MARKER.audit}-->\n\`\`\`json\n{ not json\n\`\`\`\n<!--/${GROUP_RECEIPT_MARKER.audit}-->\n`;
     const findings = checkGroupReceipts([{ specFile: 'x', specContent: broken, members }]);
     assert.ok(findings.some((f) => f.code === AUDIT_CODE));
+  });
+});
+
+describe('hasValidGroupReceipt', () => {
+  it('accepts only a current receipt re-derived against the live group', () => {
+    const members = [member('core.task.T1.md')];
+    const receipt = receiptOf(
+      buildGroupReceipt('audit', 'specs/core/core.spec.md', members, 'ref', 'PASS', 'ts')
+    );
+    const spec = upsertGroupReceipt(SPEC_BASE, receipt);
+    assert.equal(hasValidGroupReceipt(spec, members, 'audit'), true);
+    assert.equal(
+      hasValidGroupReceipt(spec, [member('core.task.T1.md', { rounds: 2 })], 'audit'),
+      false
+    );
+    assert.equal(hasValidGroupReceipt(SPEC_BASE, members, 'audit'), false);
   });
 });
 

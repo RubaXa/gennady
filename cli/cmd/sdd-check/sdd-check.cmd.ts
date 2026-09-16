@@ -61,6 +61,7 @@ import { parseScopes, parseGraphEdges } from '../../../shared/sdd/portal.ts';
 import {
   detectFlowVersion,
   detectScopeFlowVersion,
+  ticketFlowVersion,
   type FlowVersion,
 } from '../../../shared/sdd/flow.ts';
 import { checkSpecMermaid } from '../../../shared/sdd/mermaid-check.ts';
@@ -557,7 +558,7 @@ function getTestCaseNames(absPath: string): string[] {
 function checkTicketBddCoverage(file: string, content: string, repoRoot: string): Finding[] {
   const sec = extractSection(content, 'TEST_COVERAGE');
   if (sec.status !== 'ok') return [];
-  const findings = checkUnparsedCoverageRows(file, sec.content);
+  const findings = checkUnparsedCoverageRows(file, sec.content, ticketFlowVersion(file, repoRoot));
   const entries = parseTestCoverage(sec.content);
   if (entries.length === 0) return findings;
 
@@ -990,28 +991,6 @@ function specFlowVersion(file: string): FlowVersion {
  */
 function isV2SpecsTicket(file: string): boolean {
   return resolve(file).split(sep).includes('specs') && specFlowVersion(file) === 'v2';
-}
-
-/**
- * @purpose Flow version governing ONE ticket file — per-scope, from its `tasks/<scope>/` or
- *   co-located `specs/<scope>/` segment.
- * @invariant `repoRoot` is caller-supplied (see `findRepoRoot`), so both legacy and migrated ticket
- *   paths resolve against the same mixed-migration layout.
- * @param file Ticket path (absolute or relative).
- * @param repoRoot The repository root.
- * @returns The ticket's scope flow version; falls back to repo-level detection with no `tasks` segment.
- */
-function ticketFlowVersion(file: string, repoRoot: string): FlowVersion {
-  const parts = resolve(file).split(sep);
-  const ti = parts.lastIndexOf('tasks');
-  if (ti >= 0 && parts.length - ti >= 2) {
-    return detectScopeFlowVersion(repoRoot, parts[ti + 1] as string);
-  }
-  const si = parts.lastIndexOf('specs');
-  if (si >= 0 && parts.length - si >= 2) {
-    return detectScopeFlowVersion(repoRoot, parts[si + 1] as string);
-  }
-  return detectFlowVersion(repoRoot);
 }
 
 /** @purpose True when content is a Tracker Index (a Task-ID/Status table) — content-based, not filename-based, so a legacy `tasks/<scope>/README.md` tracker is not silently dropped. | @param content File markdown. | @returns Whether it parses as a tracker index. */

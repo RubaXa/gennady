@@ -18,9 +18,16 @@
 //   --root (default: three levels up from this script, i.e. the repo root).
 
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
-import { dirname, resolve, sep } from 'node:path';
+import { dirname, normalize, resolve, sep } from 'node:path';
 
 type Problem = { file: string; detail: string };
+
+type PackageContract = {
+  scripts?: Record<string, string>;
+  bin?: string | Record<string, string>;
+  main?: string;
+  types?: string;
+};
 
 /** @purpose True for a backtick span worth existence-checking: a repo-relative path with a real
  *  extension or a known top-level prefix, and none of the placeholder/shell markers (`<...>`, `$VAR`,
@@ -107,6 +114,32 @@ function stripLineSuffix(span: string): string {
   return span.replace(/:\d+(?:-\d+)?$/, '');
 }
 
+/** @purpose Normalize a package output to the repo-relative form used in documentation spans. */
+function normalizePackageOutput(path: string): string {
+  return normalize(path).replace(/^\.\//, '').split(sep).join('/').replace(/\/$/, '');
+}
+
+/** @purpose Exact generated files declared by the checked-in package contract, plus their parent
+ *  directories. An absent path is accepted only from this set and only when the package has a real
+ *  build script; arbitrary siblings under the same generated directory remain errors. */
+function declaredGeneratedPaths(pkg: PackageContract): Set<string> {
+  if (!pkg.scripts?.build) return new Set();
+  const binValues =
+    typeof pkg.bin === 'string' ? [pkg.bin] : Object.values(pkg.bin ?? {}).filter(Boolean);
+  const files = [...binValues, pkg.main, pkg.types]
+    .filter((path): path is string => Boolean(path))
+    .map(normalizePackageOutput);
+  const declared = new Set(files);
+  for (const file of files) {
+    let parent = dirname(file).split(sep).join('/');
+    while (parent !== '.' && parent !== '/') {
+      declared.add(parent);
+      parent = dirname(parent).split(sep).join('/');
+    }
+  }
+  return declared;
+}
+
 /** @purpose Run the full check over one doc's text; returns every problem found (empty = clean). A
  *  path is accepted if it resolves either against the doc's OWN directory (an ordinary markdown
  *  relative link, e.g. `journal/RESULTS.md` from inside `docs/`) or against the repo root (a
@@ -117,7 +150,8 @@ function verifyDocText(
   docAbsPath: string,
   text: string,
   repoRoot: string,
-  npmScripts: Set<string>
+  npmScripts: Set<string>,
+  generatedPaths: Set<string>
 ): Problem[] {
   const problems: Problem[] = [];
 
@@ -135,7 +169,8 @@ function verifyDocText(
     const target = stripLineSuffix(span);
     const existsRelativeToDoc = existsSync(resolve(docDir, target));
     const existsRelativeToRoot = existsSync(resolve(repoRoot, target));
-    if (!existsRelativeToDoc && !existsRelativeToRoot) {
+    const isDeclaredGeneratedPath = generatedPaths.has(normalizePackageOutput(target));
+    if (!existsRelativeToDoc && !existsRelativeToRoot && !isDeclaredGeneratedPath) {
       problems.push({ file: fileLabel, detail: `path does not exist: \`${span}\`` });
     }
   }
@@ -169,11 +204,8 @@ function verifyDocText(
   return problems;
 }
 
-function loadNpmScripts(repoRoot: string): Set<string> {
-  const pkg = JSON.parse(readFileSync(resolve(repoRoot, 'package.json'), 'utf8')) as {
-    scripts?: Record<string, string>;
-  };
-  return new Set(Object.keys(pkg.scripts ?? {}));
+function loadPackageContract(repoRoot: string): PackageContract {
+  return JSON.parse(readFileSync(resolve(repoRoot, 'package.json'), 'utf8')) as PackageContract;
 }
 
 /** @purpose Default file list when none given on the CLI: every `.md` under `ai/flow-eval/docs/`,
@@ -206,7 +238,9 @@ function parseArgs(argv: readonly string[]): { root: string; files: string[] } {
 
 async function main(argv: readonly string[]): Promise<void> {
   const { root, files } = parseArgs(argv);
-  const npmScripts = loadNpmScripts(root);
+  const pkg = loadPackageContract(root);
+  const npmScripts = new Set(Object.keys(pkg.scripts ?? {}));
+  const generatedPaths = declaredGeneratedPaths(pkg);
   const allProblems: Problem[] = [];
   let checkedPaths = 0;
   let checkedLinks = 0;
@@ -222,7 +256,7 @@ async function main(argv: readonly string[]): Promise<void> {
     checkedPaths += new Set(extractInlineCodeSpans(text).filter(isCheckablePath)).size;
     checkedLinks += new Set(extractMarkdownLinkTargets(text).filter(isCheckableLinkTarget)).size;
     checkedCommands += new Set(extractNpmRunCommands(text)).size;
-    allProblems.push(...verifyDocText(relFile, abs, text, root, npmScripts));
+    allProblems.push(...verifyDocText(relFile, abs, text, root, npmScripts, generatedPaths));
   }
 
   if (allProblems.length > 0) {

@@ -176,16 +176,110 @@ export function findUnparsedCoverageRows(body: string): string[] {
 }
 
 /**
- * @purpose Extract `it(...)`/`test(...)` canonical case-name string literals from a test file.
- * @invariant Regex-based (no AST) — matches `it`/`test` calls including `.only`/`.skip`/`.todo` modifiers; `describe` blocks are not tracked, only the leaf case name matters for BDD matching.
+ * @purpose Advance past one quoted string literal (`'`/`"`/`` ` ``, backslash-escaped) starting at
+ *   `content[idx]` (the opening quote).
+ * @invariant Pure. No `${...}` template-interpolation awareness — walked char-by-char like plain
+ *   text, so braces inside still balance out, only by accident, not by real parsing.
+ * @param content Full source.
+ * @param idx Index of the opening quote character.
+ * @returns Index of the matching closing quote (or the last index, if unterminated).
+ */
+function skipStringLiteral(content: string, idx: number): number {
+  const quote = content[idx];
+  let i = idx + 1;
+  for (; i < content.length; i++) {
+    if (content[i] === '\\') {
+      i++;
+      continue;
+    }
+    if (content[i] === quote) return i;
+  }
+  return content.length - 1;
+}
+
+/**
+ * @purpose Find the `}` matching an already-known `{` at `content[openBraceIdx]`, skipping braces
+ *   inside string literals and `//`/`/* *\/` comments.
+ * @invariant Pure. Depth-counting, not an AST — a `{`/`}` inside a regex literal is not specially
+ *   handled (regex literals are rare inside a `describe`/`suite` container body in this corpus).
+ * @param content Full source.
+ * @param openBraceIdx Index of the opening `{`.
+ * @returns Index of the matching `}`, or -1 if unterminated (unbalanced source).
+ */
+function findMatchingBrace(content: string, openBraceIdx: number): number {
+  let depth = 0;
+  for (let i = openBraceIdx; i < content.length; i++) {
+    const c = content[i];
+    if (c === '"' || c === "'" || c === '`') {
+      i = skipStringLiteral(content, i);
+      continue;
+    }
+    if (c === '/' && content[i + 1] === '/') {
+      const nl = content.indexOf('\n', i);
+      i = nl === -1 ? content.length : nl;
+      continue;
+    }
+    if (c === '/' && content[i + 1] === '*') {
+      const end = content.indexOf('*/', i + 2);
+      i = end === -1 ? content.length : end + 1;
+      continue;
+    }
+    if (c === '{') depth++;
+    else if (c === '}') {
+      depth--;
+      if (depth === 0) return i;
+    }
+  }
+  return -1;
+}
+
+/**
+ * @purpose Find `[start, end)` ranges of every `describe`/`suite` container carrying `skip`/`todo`
+ *   — any nested `it`/`test`, at any depth, is inactive regardless of its own modifiers (B2-24).
+ * @invariant Regex finds the container call + modifiers; `findMatchingBrace` locates the body span
+ *   from its first `{`. Only `describe`/`suite` are recognized, not `context`/`fdescribe`. A
+ *   bodyless or unterminated container is skipped — "unknown", not closed.
  * @param content Full test-file source.
- * @returns Case names in file order (duplicates possible across separate `it`/`test` calls).
+ * @returns Inactive container ranges, in file order (may overlap for nested inactive containers).
+ */
+function findInactiveContainerRanges(content: string): Array<[number, number]> {
+  const ranges: Array<[number, number]> = [];
+  const re = /\b(?:describe|suite)((?:\.\w+)*)\s*\(/g;
+  for (const m of content.matchAll(re)) {
+    const modifiers = (m[1] ?? '').split('.').filter(Boolean);
+    if (!modifiers.some((mod) => mod === 'skip' || mod === 'todo')) continue;
+    const afterCall = m.index + m[0].length;
+    const braceIdx = content.indexOf('{', afterCall);
+    if (braceIdx === -1) continue; // no body found — unknown, not a false closure
+    const end = findMatchingBrace(content, braceIdx);
+    if (end === -1) continue; // unterminated — unknown, not a false closure
+    ranges.push([m.index, end + 1]);
+  }
+  return ranges;
+}
+
+/**
+ * @purpose Extract canonical case names from ACTIVE `it(...)`/`test(...)` calls only — a name is
+ *   "observed" iff it could actually run.
+ * @invariant Regex-based (no AST). A `skip`/`todo` modifier chain (`it.skip`, `it.skip.each`) is
+ *   excluded (B2-22); so is any case inside a `skip`/`todo` `describe`/`suite` container,
+ *   regardless of the case's own modifiers (B2-24).
+ * @invariant Supported subset: `it`/`test`/`describe`/`suite` + `skip`/`todo`/`only` anywhere in
+ *   the chain. NOT supported: computed names, template interpolation, `.each(...)`, runtime
+ *   `t.skip()`, aliases (`context`, `fdescribe`) — an unmatched form stays unknown, never closed.
+ * @param content Full test-file source.
+ * @returns Case names of active calls only, in file order (duplicates possible).
  */
 export function extractTestCaseNames(content: string): string[] {
+  const inactiveRanges = findInactiveContainerRanges(content);
   const out: string[] = [];
-  const re = /\b(?:it|test)(?:\.\w+)?\s*\(\s*(['"`])((?:\\.|(?!\1).)*)\1/g;
+  const re = /\b(?:it|test)((?:\.\w+)*)\s*\(\s*(['"`])((?:\\.|(?!\2).)*)\2/g;
   for (const m of content.matchAll(re)) {
-    if (m[2] !== undefined) out.push(m[2]);
+    if (m[3] === undefined) continue;
+    const modifiers = (m[1] ?? '').split('.').filter(Boolean);
+    if (modifiers.some((mod) => mod === 'skip' || mod === 'todo')) continue; // inactive — not observed
+    if (inactiveRanges.some(([start, end]) => m.index >= start && m.index < end)) continue; // B2-24
+    out.push(m[3]);
   }
   return out;
 }
@@ -278,16 +372,24 @@ export function checkBddCoverage(
 }
 
 /**
- * @purpose Flag rows `findUnparsedCoverageRows` could not parse — else an unmapped scenario silently stops being checkable.
- * @invariant Pure. Always `warn` — one real row-shaped-but-malformed line, not graded by `flowVersion`.
+ * @purpose Flag rows `findUnparsedCoverageRows` could not parse — else the scenario silently drops
+ *   out of `parseTestCoverage` and no check ever looks at it again (B2-22: unknown, not closed).
+ * @invariant Pure. Graded by `flowVersion` like `checkBddCoverage`: `v1` warn (keeps the existing
+ *   140-row baseline `GAP-B-1` warn, zero new errors), `v2` error (fail-closed post-migration).
  * @param file Ticket path (finding location).
  * @param body Section markdown (TEST_COVERAGE anchor content).
+ * @param [flowVersion] Ticket's own flow version — `'v1'` default, the baseline-safe choice.
  * @returns One `SDD_BDD_COVERAGE_ROW_UNPARSED` per unparseable row, in document order.
  */
-export function checkUnparsedCoverageRows(file: string, body: string): Finding[] {
+export function checkUnparsedCoverageRows(
+  file: string,
+  body: string,
+  flowVersion: FlowVersion = 'v1'
+): Finding[] {
+  const severity = flowVersion === 'v2' ? 'error' : 'warn';
   return findUnparsedCoverageRows(body).map(
     (raw): Finding => ({
-      severity: 'warn',
+      severity,
       code: 'SDD_BDD_COVERAGE_ROW_UNPARSED',
       file,
       message: `Test Scenario Coverage row could not be parsed: "${raw}". Replace the whole row with either "- <scenario name> → \\\`<test-file>\\\` :: \\\`<canonical case name>\\\`" or "${DEFERRED_TEST_OWNERSHIP_LITERAL}".`,

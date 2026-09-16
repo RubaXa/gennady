@@ -8,6 +8,7 @@ import { join, resolve, relative, dirname } from 'node:path';
 import { logger } from '#logger';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
 import {
+  hasPhasesWithoutOverview,
   injectAnchors,
   scaffoldExecutionLog,
   scaffoldFirstRound,
@@ -217,6 +218,7 @@ export async function run(rawArgs: string[]): Promise<MigrateOutcome> {
     map: { aliases: ['map'], takesValue: true },
     scope: { aliases: ['scope'], takesValue: true },
     'from-plan': ['from-plan'],
+    format: { aliases: ['format'], takesValue: true },
   });
   const positional = (args._ as string[]).filter(
     (a: string) => typeof a === 'string' && a !== 'sdd-migrate'
@@ -269,6 +271,9 @@ export async function run(rawArgs: string[]): Promise<MigrateOutcome> {
 
   const write = args.write === true || args.write === 'true';
   const all = args.all === true || args.all === 'true';
+  const outputFormat = typeof args.format === 'string' ? args.format : 'text';
+  if (outputFormat !== 'text' && outputFormat !== 'json')
+    return badInvocation('--format must be text or json');
 
   let targets: string[];
   if (all) {
@@ -283,6 +288,9 @@ export async function run(rawArgs: string[]): Promise<MigrateOutcome> {
   const migrationDate = new Date().toISOString().slice(0, 10);
   const report: string[] = [];
   let changed = 0;
+  let wouldCount = 0;
+  let skipCount = 0;
+  const refused: Array<{ file: string; reason: string }> = [];
   for (const t of targets) {
     const rel = relative(process.cwd(), t);
     let content: string;
@@ -303,7 +311,20 @@ export async function run(rawArgs: string[]): Promise<MigrateOutcome> {
       ? scaffoldFirstRound(upgradedText, phaseIds, migrationDate)
       : { text: upgradedText, scaffolded: false };
     // #endregion END_TABLE_UPGRADE
+
+    // B2-10/L-28: phase sections with no Phases Overview anchor lose their derivable phase IDs —
+    // the migrator refuses this ticket outright (neither dry-run nor --write touches it), surfaced
+    // to a human (REFUSED line) and to automation (`refused[]` in --format json, for E-14/CI).
+    if (hasPhasesWithoutOverview(text)) {
+      refused.push({ file: rel, reason: 'PHASES_OVERVIEW_MISSING' });
+      report.push(
+        `  REFUSED ${rel} — phase sections found but no Phases Overview section/anchor; phase IDs cannot be derived — ticket left untouched (migrate manually, then re-run)`
+      );
+      continue;
+    }
+
     if (injected.length === 0 && !scaffolded && tableChanges.length === 0) {
+      skipCount++;
       report.push(`  skip  ${rel} — already anchored / no canonical sections`);
       continue;
     }
@@ -319,6 +340,7 @@ export async function run(rawArgs: string[]): Promise<MigrateOutcome> {
       changed++;
       report.push(`  +     ${rel} — ${parts.join(', ')}`);
     } else {
+      wouldCount++;
       report.push(`  would ${rel} — ${parts.join(', ')}`);
     }
   }
@@ -327,10 +349,25 @@ export async function run(rawArgs: string[]): Promise<MigrateOutcome> {
   logger.debug(
     `[SddMigrateCommand#run] anchors ${write ? 'write' : 'dry-run'} over ${targets.length} ticket(s)`
   );
+
+  if (outputFormat === 'json') {
+    const jsonReport = {
+      mode: 'anchors' as const,
+      write,
+      ticketsScanned: targets.length,
+      written: changed,
+      would: wouldCount,
+      skip: skipCount,
+      refused,
+      summary: { refused: refused.length },
+    };
+    return { ok: true, text: JSON.stringify(jsonReport, null, 2) };
+  }
+
   const header = `[sdd-migrate anchors] ${write ? 'WRITE' : 'DRY-RUN'} · ${targets.length} ticket(s)`;
   const footer = write
-    ? `\n${changed} written. Verify: gennady sdd-check --all`
-    : '\n(dry-run — re-run with --write to apply)';
+    ? `\n${changed} written. Verify: gennady sdd-check --all\nrefused: ${refused.length} (no Phases Overview)`
+    : `\n(dry-run — re-run with --write to apply)\nrefused: ${refused.length} (no Phases Overview)`;
   return { ok: true, text: [header, ...report, footer].join('\n') };
 }
 

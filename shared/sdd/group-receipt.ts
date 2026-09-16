@@ -227,6 +227,26 @@ function parseGroupReceipts(content: string, kind: GroupReceiptKind): GroupRecei
 }
 
 /**
+ * @purpose Decide whether an owning spec carries a current, re-derived receipt for its live group.
+ * @invariant Uses the same parser and forge/stale check as `checkGroupReceipts`; execution-map
+ *   pickability cannot accept a weaker receipt than the mechanical checker.
+ * @param specContent Full owning-spec markdown.
+ * @param members Every live member of the owning spec's ticket group.
+ * @param kind Receipt kind to validate.
+ * @returns True only when at least one persisted receipt is structurally valid and current.
+ */
+export function hasValidGroupReceipt(
+  specContent: string,
+  members: GroupMemberInput[],
+  kind: GroupReceiptKind
+): boolean {
+  const parsed = parseGroupReceipts(specContent, kind);
+  if (!parsed.ok) return false;
+  const derived = deriveGroupState(members);
+  return parsed.receipts.some((receipt) => groupReceiptIssue(receipt, derived) === null);
+}
+
+/**
  * @purpose Render one group receipt as a paired HTML-comment-fenced block for atomic insertion.
  * @param receipt The complete group-completion fact.
  * @returns The paired block with a pretty JSON body.
@@ -316,8 +336,7 @@ export function checkGroupReceipts(groups: GroupUnderCheck[]): Finding[] {
       ['review', REVIEW_MISSING_CODE, 'code-review'],
     ] as const) {
       const parsed = parseGroupReceipts(group.specContent, kind);
-      const valid =
-        parsed.ok && parsed.receipts.some((r) => groupReceiptIssue(r, derived) === null);
+      const valid = hasValidGroupReceipt(group.specContent, group.members, kind);
       if (valid) continue;
       const detail = !parsed.ok
         ? parsed.issue

@@ -157,6 +157,150 @@ describe('SddMigrateCommand', () => {
     assert.doesNotMatch(body, /migrated from v1 — no rounds\/phases recorded/);
   });
 
+  // B2-10: real corpus shape (tasks/cli/lint/cli-lint.task-14.md) — "### Phase P1 — …" under
+  // "## 3. Phases" with NO "## N. Phases Overview" header at all. L-28 (Q2, verifier V-BATCH-16):
+  // the migrator REFUSES such a ticket outright — neither dry-run nor --write touches it — rather
+  // than silently anchoring PHASE_P1 while phase IDs stay undiscoverable.
+  const V1_PHASE_NO_OVERVIEW = [
+    '# Task: TSK-14 — AnchorCheck',
+    '## 1. Meta & Traceability',
+    '- **Task-ID:** TSK-14',
+    '## 2. Acceptance Criteria (BDD)',
+    '**Scenario:** x [`unit`]',
+    '## 3. Phases',
+    '### Phase P1 — implementation',
+    '- **Objective:** do it',
+    '## 4. Execution Log',
+    '### Round 1 — 2026-05-15, initial',
+    '- [x] DONE',
+  ].join('\n');
+
+  it('B2-10/L-28: dry-run REFUSES — phase section found but no Phases Overview — instead of silently skipping it', async () => {
+    const noOverviewTicket = join(dir, 'nooverview.task-14.md');
+    writeFileSync(noOverviewTicket, V1_PHASE_NO_OVERVIEW, 'utf-8');
+
+    const o = await mod.run(argv('anchors', noOverviewTicket));
+    assert.strictEqual(o.ok, true);
+    if (o.ok) {
+      assert.match(o.text, /DRY-RUN/);
+      assert.match(o.text, /REFUSED\s+.*nooverview\.task-14\.md.*no Phases Overview/);
+      assert.match(o.text, /refused: 1 \(no Phases Overview\)/);
+    }
+    // dry-run by default — file untouched (D-39)
+    assert.strictEqual(readFileSync(noOverviewTicket, 'utf-8'), V1_PHASE_NO_OVERVIEW);
+  });
+
+  it('B2-10/L-28: --write also leaves a refused ticket completely untouched (not a partial anchor)', async () => {
+    const t = join(dir, 'nooverview-write.task-14.md');
+    writeFileSync(t, V1_PHASE_NO_OVERVIEW, 'utf-8');
+
+    const o = await mod.run(argv('anchors', t, '--write'));
+    assert.strictEqual(o.ok, true);
+    if (o.ok) {
+      assert.match(o.text, /REFUSED\s+.*nooverview-write\.task-14\.md.*no Phases Overview/);
+      assert.match(o.text, /refused: 1 \(no Phases Overview\)/);
+      assert.doesNotMatch(o.text, /\+ {5}.*nooverview-write/);
+    }
+    // exit 0 (write mode still succeeds overall) but the file itself is byte-for-byte untouched —
+    // no PHASE_P1 anchor, no Meta/BDD/Execution Log anchors either.
+    assert.strictEqual(readFileSync(t, 'utf-8'), V1_PHASE_NO_OVERVIEW);
+  });
+
+  it('B2-10: --format json reports `refused: [{file, reason}]` and a summary count (both-way: dry-run and --write)', async () => {
+    const t = join(dir, 'nooverview-json.task-14.md');
+    writeFileSync(t, V1_PHASE_NO_OVERVIEW, 'utf-8');
+
+    const dry = await mod.run(argv('anchors', t, '--format', 'json'));
+    assert.strictEqual(dry.ok, true);
+    if (dry.ok) {
+      const parsed = JSON.parse(dry.text) as {
+        write: boolean;
+        refused: Array<{ file: string; reason: string }>;
+        summary: { refused: number };
+      };
+      assert.strictEqual(parsed.write, false);
+      assert.strictEqual(parsed.refused.length, 1);
+      assert.match(parsed.refused[0]?.file ?? '', /nooverview-json\.task-14\.md/);
+      assert.strictEqual(parsed.refused[0]?.reason, 'PHASES_OVERVIEW_MISSING');
+      assert.strictEqual(parsed.summary.refused, 1);
+    }
+    assert.strictEqual(readFileSync(t, 'utf-8'), V1_PHASE_NO_OVERVIEW);
+
+    const wr = await mod.run(argv('anchors', t, '--write', '--format', 'json'));
+    assert.strictEqual(wr.ok, true);
+    if (wr.ok) {
+      const parsed = JSON.parse(wr.text) as {
+        write: boolean;
+        written: number;
+        refused: Array<{ file: string; reason: string }>;
+        summary: { refused: number };
+      };
+      assert.strictEqual(parsed.write, true);
+      assert.strictEqual(parsed.written, 0);
+      assert.strictEqual(parsed.refused.length, 1);
+      assert.strictEqual(parsed.refused[0]?.reason, 'PHASES_OVERVIEW_MISSING');
+      assert.strictEqual(parsed.summary.refused, 1);
+    }
+    // still untouched after the --write run above
+    assert.strictEqual(readFileSync(t, 'utf-8'), V1_PHASE_NO_OVERVIEW);
+  });
+
+  // Same "Phase P1" word-form, but WITH a Phases Overview section present — so this ticket is not
+  // refused, and anchoring proceeds normally (recognizing the "Phase" word prefix, B2-10).
+  const V1_PHASE_WITH_OVERVIEW = [
+    '# Task: TSK-15 — AnchorCheck2',
+    '## 1. Meta & Traceability',
+    '- **Task-ID:** TSK-15',
+    '## 2. Acceptance Criteria (BDD)',
+    '**Scenario:** x [`unit`]',
+    '## 3. Phases',
+    '### Phases Overview',
+    '- P1 — implementation',
+    '### Phase P1 — implementation',
+    '- **Objective:** do it',
+    '## 4. Execution Log',
+    '### Round 1 — 2026-05-15, initial',
+    '- [x] DONE',
+  ].join('\n');
+
+  it('B2-10: "### Phase P1" is anchored to PHASE_P1 by --write (word "Phase" prefix recognized) when a Phases Overview is present', async () => {
+    const t = join(dir, 'phaseword.task-15.md');
+    writeFileSync(t, V1_PHASE_WITH_OVERVIEW, 'utf-8');
+
+    const o = await mod.run(argv('anchors', t, '--write'));
+    assert.strictEqual(o.ok, true);
+    if (o.ok) assert.doesNotMatch(o.text, /REFUSED/);
+    const body = readFileSync(t, 'utf-8');
+    assert.match(body, /<!--SECTION:PHASE_P1-->/);
+    assert.match(body, /<!--SECTION:PHASES_OVERVIEW-->/);
+    assert.match(body, /### Phase P1 — implementation/);
+  });
+
+  it('B2-10: a ticket with no Phases at all (dbc-linter.task-08 shape) does NOT trigger the warning', async () => {
+    const noPhases = [
+      '# Task: TSK-8 — NoPhases',
+      '## 1. Meta',
+      '- **Task-ID:** TSK-8',
+      '## 2. Acceptance Criteria (BDD)',
+      '**Scenario:** x [`unit`]',
+      '## 3. Verification',
+      '| Command | Required by |',
+      '|---|---|',
+      '| npm run typecheck | ts |',
+      '## 4. Test Scenario Coverage',
+      '- Scenario x → file::case',
+      '## 5. Execution Log',
+      '### Round 1 — 2026-05-15, initial',
+      '- [x] DONE',
+    ].join('\n');
+    const t = join(dir, 'nophases.task-8.md');
+    writeFileSync(t, noPhases, 'utf-8');
+
+    const o = await mod.run(argv('anchors', t));
+    assert.strictEqual(o.ok, true);
+    if (o.ok) assert.doesNotMatch(o.text, /WARN/);
+  });
+
   describe('plan mode', () => {
     let root: string;
 

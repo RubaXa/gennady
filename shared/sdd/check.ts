@@ -1343,24 +1343,66 @@ function isDone(status: string | null | undefined): boolean {
   return status != null && /\bDONE\b/i.test(status);
 }
 
+/** @purpose Cross-spec audit evidence used while deriving the V2 execution map. */
+export type PickableAuditContext = {
+  /** @purpose Exact owning-spec identity for each resolvable V2 Task-ID. */
+  ownerByTaskId: ReadonlyMap<string, string>;
+  /** @purpose Owning specs whose live group has a current valid audit receipt. */
+  validAuditOwners: ReadonlySet<string>;
+};
+
+/**
+ * @purpose Explain why one TODO ticket is not graph-pickable.
+ * @invariant V1 remains status-only. V2 fails closed when either the candidate or a DONE dependency
+ *   has no resolvable owning spec; a resolved cross-spec dependency additionally requires that
+ *   owning spec's current audit receipt (D-21/B2-13).
+ * @param ref Candidate ticket.
+ * @param refs Complete ticket graph.
+ * @param [audit] Re-derived V2 owner/receipt evidence; omitted callers preserve status-only behavior.
+ * @returns Dependency ids, qualified with `group audit receipt` when DONE is not yet audited.
+ */
+export function pickabilityBlockers(
+  ref: TicketRef,
+  refs: TicketRef[],
+  audit?: PickableAuditContext
+): string[] {
+  const byId = new Map(
+    refs.filter((item) => item.taskId).map((item) => [item.taskId as string, item])
+  );
+  const owner = ref.taskId ? audit?.ownerByTaskId.get(ref.taskId) : undefined;
+  if (audit && ref.flowVersion === 'v2' && !owner) {
+    return [`${ref.taskId ?? '(missing Task-ID)'} (owning spec)`];
+  }
+  const realDeps = ref.dependencies.filter(
+    (dependency) => !/^(none|n\/a|[—-])\b/i.test(dependency.trim())
+  );
+  return realDeps.flatMap((dependency) => {
+    const target = byId.get(dependency);
+    if (!isDone(target?.status)) return [dependency];
+    if (!audit || ref.flowVersion !== 'v2' || target?.flowVersion !== 'v2') return [];
+    const dependencyOwner = audit.ownerByTaskId.get(dependency);
+    if (!dependencyOwner) return [`${dependency} (owning spec)`];
+    if (owner === dependencyOwner) return [];
+    return audit.validAuditOwners.has(dependencyOwner)
+      ? []
+      : [`${dependency} (group audit receipt)`];
+  });
+}
+
 /**
  * @purpose Compute the pickable task set — the deterministic execution map: which tickets are ready to run now.
- * @invariant Pickable = Status TODO (not DONE / not blocked) AND every dependency is DONE. Pure — derived from the gathered TicketRefs, never eyeballed.
+ * @invariant Pickable = Status TODO AND every dependency is mechanically satisfied; V2 cross-spec
+ *   dependencies additionally require the dependency owner's valid group-audit receipt.
  * @param refs Every ticket's graph fields (taskId, status, dependencies).
+ * @param [audit] Re-derived owner/receipt evidence for D-21; omitted for legacy/status-only callers.
  * @returns The TicketRefs ready to execute, in input order.
  */
-export function pickableTasks(refs: TicketRef[]): TicketRef[] {
-  const statusById = new Map(
-    refs.filter((r) => r.taskId).map((r) => [r.taskId as string, r.status])
-  );
-  // A placeholder "None" / "N/A" / "—" dependencies value means no real dependency.
-  const realDeps = (deps: string[]): string[] =>
-    deps.filter((d) => !/^(none|n\/a|[—-])\b/i.test(d.trim()));
+export function pickableTasks(refs: TicketRef[], audit?: PickableAuditContext): TicketRef[] {
   return refs.filter(
     (r) =>
       r.taskId != null &&
       /\bTODO\b/i.test(r.status ?? '') &&
-      realDeps(r.dependencies).every((d) => isDone(statusById.get(d)))
+      pickabilityBlockers(r, refs, audit).length === 0
   );
 }
 
