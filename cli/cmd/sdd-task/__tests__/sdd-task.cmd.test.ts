@@ -203,6 +203,12 @@ function writeCrossSpecMapFixture(root: string, flow: 'v1' | 'v2', withAudit: bo
   writeFileSync(join(bDir, 'b.spec.md'), '# B\n', 'utf-8');
 }
 
+/** @purpose Mark generic root-level ticket fixtures as legacy so V2 owning-spec rules are not
+ *  accidentally exercised by tests whose subject is map formatting or runtime readiness. */
+function markLegacyFlow(root: string): void {
+  mkdirSync(join(root, 'tasks'), { recursive: true });
+}
+
 function argv(...rest: string[]): string[] {
   return ['node', 'gennady', 'sdd-task', ...rest];
 }
@@ -250,6 +256,7 @@ describe('SddTaskCommand', () => {
     process.exit = ((_code?: number) => undefined) as typeof process.exit;
     process.argv = ['node', 'gennady', 'sdd-task'];
     dir = mkdtempSync(join(tmpdir(), 'sdd-task-'));
+    markLegacyFlow(dir);
     ticket = join(dir, 'ticket.md');
     writeFileSync(ticket, TICKET, 'utf-8');
     writeExecutionReadyInfra(dir);
@@ -480,6 +487,36 @@ describe('SddTaskCommand', () => {
     }
   });
 
+  it('B2-13: a V2 dependency whose owning spec is missing blocks its dependent', async () => {
+    const mapDir = mkdtempSync(join(tmpdir(), 'sdd-task-v2-dependency-owner-missing-'));
+    writeCrossSpecMapFixture(mapDir, 'v2', false);
+    rmSync(join(mapDir, 'specs', 'a', 'a.spec.md'));
+    try {
+      const r = await mod.run(argv(mapDir));
+      assert.strictEqual(r.ok, true);
+      if (!r.ok) return;
+      assert.match(r.text, /pickable \(ready now\): — none/);
+      assert.match(r.text, /blocked: B-one ← A-one \(owning spec\)/);
+    } finally {
+      rmSync(mapDir, { recursive: true, force: true });
+    }
+  });
+
+  it('B2-13: a V2 candidate whose own spec is missing fails closed', async () => {
+    const mapDir = mkdtempSync(join(tmpdir(), 'sdd-task-v2-candidate-owner-missing-'));
+    writeCrossSpecMapFixture(mapDir, 'v2', true);
+    rmSync(join(mapDir, 'specs', 'b', 'b.spec.md'));
+    try {
+      const r = await mod.run(argv(mapDir));
+      assert.strictEqual(r.ok, true);
+      if (!r.ok) return;
+      assert.match(r.text, /pickable \(ready now\): — none/);
+      assert.match(r.text, /blocked: B-one ← B-one \(owning spec\)/);
+    } finally {
+      rmSync(mapDir, { recursive: true, force: true });
+    }
+  });
+
   it('B2-13: the equivalent V1 dependency remains grandfathered without an audit receipt', async () => {
     const mapDir = mkdtempSync(join(tmpdir(), 'sdd-task-v1-audit-grandfathered-'));
     writeCrossSpecMapFixture(mapDir, 'v1', false);
@@ -496,6 +533,7 @@ describe('SddTaskCommand', () => {
 
   it('map emits a root line and per-line path for a graph-ready ticket blocked by runtime readiness', async () => {
     const mapDir = mkdtempSync(join(tmpdir(), 'sdd-task-map-'));
+    markLegacyFlow(mapDir);
     writeFileSync(
       join(mapDir, 'ticket.md'),
       [TICKET, '<!--SECTION:EXECUTION_LOG-->', '<!--/SECTION:EXECUTION_LOG-->'].join('\n'),
@@ -521,6 +559,7 @@ describe('SddTaskCommand', () => {
 
   it("a positional project root (no chdir needed) applies that root's readiness to its map", async () => {
     const mapDir = mkdtempSync(join(tmpdir(), 'sdd-task-map-root-'));
+    markLegacyFlow(mapDir);
     writeFileSync(
       join(mapDir, 'ticket.md'),
       [TICKET, '<!--SECTION:EXECUTION_LOG-->', '<!--/SECTION:EXECUTION_LOG-->'].join('\n'),
@@ -600,6 +639,7 @@ describe('SddTaskCommand', () => {
 
   it('map emits a path on blocked lines too', async () => {
     const blkDir = mkdtempSync(join(tmpdir(), 'sdd-task-map-blocked-'));
+    markLegacyFlow(blkDir);
     const blockedTicket = [
       '# Task: TSK-blocked — Blocked',
       '<!--SECTION:META-->',

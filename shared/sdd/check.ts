@@ -1353,8 +1353,9 @@ export type PickableAuditContext = {
 
 /**
  * @purpose Explain why one TODO ticket is not graph-pickable.
- * @invariant V1 remains status-only. For V2, a DONE dependency owned by another resolvable spec is
- *   satisfied only when that owning spec has a current audit receipt (D-21/B2-13).
+ * @invariant V1 remains status-only. V2 fails closed when either the candidate or a DONE dependency
+ *   has no resolvable owning spec; a resolved cross-spec dependency additionally requires that
+ *   owning spec's current audit receipt (D-21/B2-13).
  * @param ref Candidate ticket.
  * @param refs Complete ticket graph.
  * @param [audit] Re-derived V2 owner/receipt evidence; omitted callers preserve status-only behavior.
@@ -1368,6 +1369,10 @@ export function pickabilityBlockers(
   const byId = new Map(
     refs.filter((item) => item.taskId).map((item) => [item.taskId as string, item])
   );
+  const owner = ref.taskId ? audit?.ownerByTaskId.get(ref.taskId) : undefined;
+  if (audit && ref.flowVersion === 'v2' && !owner) {
+    return [`${ref.taskId ?? '(missing Task-ID)'} (owning spec)`];
+  }
   const realDeps = ref.dependencies.filter(
     (dependency) => !/^(none|n\/a|[—-])\b/i.test(dependency.trim())
   );
@@ -1375,9 +1380,9 @@ export function pickabilityBlockers(
     const target = byId.get(dependency);
     if (!isDone(target?.status)) return [dependency];
     if (!audit || ref.flowVersion !== 'v2' || target?.flowVersion !== 'v2') return [];
-    const owner = ref.taskId ? audit.ownerByTaskId.get(ref.taskId) : undefined;
     const dependencyOwner = audit.ownerByTaskId.get(dependency);
-    if (!owner || !dependencyOwner || owner === dependencyOwner) return [];
+    if (!dependencyOwner) return [`${dependency} (owning spec)`];
+    if (owner === dependencyOwner) return [];
     return audit.validAuditOwners.has(dependencyOwner)
       ? []
       : [`${dependency} (group audit receipt)`];

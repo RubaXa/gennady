@@ -76,6 +76,36 @@ describe('pickableTasks', () => {
     ]);
   });
 
+  it('B2-13: a V2 candidate without a resolvable owning spec fails closed', () => {
+    const refs = [
+      { ...ref('A', '[x] DONE'), flowVersion: 'v2' as const },
+      { ...ref('B', '[ ] TODO', ['A']), flowVersion: 'v2' as const },
+    ];
+    const audit: PickableAuditContext = {
+      ownerByTaskId: new Map([['A', '/repo/specs/a/a.spec.md']]),
+      validAuditOwners: new Set(['/repo/specs/a/a.spec.md']),
+    };
+    assert.deepStrictEqual(ids(pickableTasks(refs, audit)), []);
+    assert.deepStrictEqual(pickabilityBlockers(refs[1] as TicketRef, refs, audit), [
+      'B (owning spec)',
+    ]);
+  });
+
+  it('B2-13: a DONE V2 dependency without a resolvable owning spec fails closed', () => {
+    const refs = [
+      { ...ref('A', '[x] DONE'), flowVersion: 'v2' as const },
+      { ...ref('B', '[ ] TODO', ['A']), flowVersion: 'v2' as const },
+    ];
+    const audit: PickableAuditContext = {
+      ownerByTaskId: new Map([['B', '/repo/specs/b/b.spec.md']]),
+      validAuditOwners: new Set(),
+    };
+    assert.deepStrictEqual(ids(pickableTasks(refs, audit)), []);
+    assert.deepStrictEqual(pickabilityBlockers(refs[1] as TicketRef, refs, audit), [
+      'A (owning spec)',
+    ]);
+  });
+
   it('B2-13: V1 remains grandfathered and status-only without a group audit receipt', () => {
     const refs = [
       { ...ref('A', '[x] DONE'), flowVersion: 'v1' as const },

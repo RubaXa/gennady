@@ -292,7 +292,8 @@ shared/sdd/ticket.ts     # parseMetaInfo / parsePhasesOverview / parsePhaseDetai
 
 - **Status:** active · **Extends:** D-TK004 · **Source:** D-21/B2-13
 - **Why:** `[x] DONE` in V2 is the mechanical close before group audit. Treating it as sufficient let another spec consume an unaudited result, contradicting `AX_AUDIT_HOOK`. The map now resolves exact owning specs, re-derives the dependency group from the same immutable ticket snapshot, and accepts only the same structurally valid, non-stale `SDD_AUDIT_RECEIPT` used by `sdd-check`.
-- **Grandfathering:** the shared per-ticket flow classifier applies this only when both the candidate and dependency are V2 and have different resolvable owning specs. V1 remains status-only until self-migration; no current V1 ticket or baseline is rewritten or newly graded.
+- **Fail-closed ownership:** with audit context, every V2 candidate must have a resolvable owning spec. A DONE V2 dependency without one blocks as `<Task-ID> (owning spec)`; when both owners resolve, same-spec remains status-only and cross-spec requires the dependency owner's current receipt. An unresolved owner is never evidence that the dependency is satisfied.
+- **Grandfathering:** the shared per-ticket flow classifier applies this only to V2 candidates and V2 dependencies. V1 remains status-only until self-migration; no current V1 ticket or baseline is rewritten or newly graded.
 <!--/SECTION:MODULE_DECISION_LOG-->
 
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->
