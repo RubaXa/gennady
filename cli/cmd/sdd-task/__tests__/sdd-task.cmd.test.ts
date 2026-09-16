@@ -26,6 +26,7 @@ import {
   type PhaseReceipt,
   type PhaseReceiptPlan,
 } from '../../../../shared/sdd/phase-receipt.ts';
+import { buildGroupReceipt, upsertGroupReceipt } from '../../../../shared/sdd/group-receipt.ts';
 
 type TaskModule = typeof import('../sdd-task.cmd.ts');
 
@@ -153,6 +154,54 @@ const TICKET = [
   '| npm run test | node-test | extra |',
   '<!--/SECTION:VERIFICATION-->',
 ].join('\n');
+
+function mapTicket(id: string, scope: string, status: string, dependencies = 'None'): string {
+  return [
+    `# Task: ${id}`,
+    '<!--SECTION:META-->',
+    `- **Task-ID:** ${id}`,
+    `- **Status:** ${status}`,
+    `- **Scope:** ${scope}`,
+    `- **Dependencies:** ${dependencies}`,
+    '<!--/SECTION:META-->',
+    '<!--SECTION:EXECUTION_LOG-->',
+    '### Round 1 — 2026-09-16, initial',
+    '<!--PHASE_RECEIPTS:v1-->',
+    '<!--/SECTION:EXECUTION_LOG-->',
+  ].join('\n');
+}
+
+function writeCrossSpecMapFixture(root: string, flow: 'v1' | 'v2', withAudit: boolean): void {
+  writeExecutionReadyInfra(root);
+  const aDir = join(root, 'specs', 'a');
+  const bDir = join(root, 'specs', 'b');
+  mkdirSync(aDir, { recursive: true });
+  mkdirSync(bDir, { recursive: true });
+  if (flow === 'v1') {
+    mkdirSync(join(root, 'tasks', 'a'), { recursive: true });
+    mkdirSync(join(root, 'tasks', 'b'), { recursive: true });
+  }
+  const aFile = join(aDir, 'a.task.A-one.md');
+  const aContent = mapTicket('A-one', 'a', '[x] DONE');
+  writeFileSync(aFile, aContent, 'utf-8');
+  writeFileSync(join(bDir, 'b.task.B-one.md'), mapTicket('B-one', 'b', '[ ] TODO', 'A-one'));
+
+  let aSpec = '# A\n';
+  if (withAudit) {
+    const built = buildGroupReceipt(
+      'audit',
+      'specs/a/a.spec.md',
+      [{ file: aFile, content: aContent }],
+      'fixture-head',
+      'PASS',
+      '2026-09-16T00:00:00.000Z'
+    );
+    assert.strictEqual(built.ok, true);
+    if (built.ok) aSpec = upsertGroupReceipt(aSpec, built.receipt);
+  }
+  writeFileSync(join(aDir, 'a.spec.md'), aSpec, 'utf-8');
+  writeFileSync(join(bDir, 'b.spec.md'), '# B\n', 'utf-8');
+}
 
 function argv(...rest: string[]): string[] {
   return ['node', 'gennady', 'sdd-task', ...rest];
@@ -400,6 +449,48 @@ describe('SddTaskCommand', () => {
       assert.match(r.text, /next: возьми Task-ID из pickable и вызови `sdd-task <id>`/);
     } finally {
       process.chdir(origCwd);
+    }
+  });
+
+  it('B2-13: a V2 cross-spec dependency without a valid group audit receipt is not pickable', async () => {
+    const mapDir = mkdtempSync(join(tmpdir(), 'sdd-task-v2-audit-missing-'));
+    writeCrossSpecMapFixture(mapDir, 'v2', false);
+    try {
+      const r = await mod.run(argv(mapDir));
+      assert.strictEqual(r.ok, true);
+      if (!r.ok) return;
+      assert.match(r.text, /pickable \(ready now\): — none/);
+      assert.match(r.text, /blocked: B-one ← A-one \(group audit receipt\)/);
+    } finally {
+      rmSync(mapDir, { recursive: true, force: true });
+    }
+  });
+
+  it('B2-13: the equivalent V2 dependency becomes pickable with a valid group audit receipt', async () => {
+    const mapDir = mkdtempSync(join(tmpdir(), 'sdd-task-v2-audit-valid-'));
+    writeCrossSpecMapFixture(mapDir, 'v2', true);
+    try {
+      const r = await mod.run(argv(mapDir));
+      assert.strictEqual(r.ok, true);
+      if (!r.ok) return;
+      assert.match(r.text, /pickable \(ready now\):\n  B-one → specs\/b\/b\.task\.B-one\.md/);
+      assert.doesNotMatch(r.text, /blocked: B-one/);
+    } finally {
+      rmSync(mapDir, { recursive: true, force: true });
+    }
+  });
+
+  it('B2-13: the equivalent V1 dependency remains grandfathered without an audit receipt', async () => {
+    const mapDir = mkdtempSync(join(tmpdir(), 'sdd-task-v1-audit-grandfathered-'));
+    writeCrossSpecMapFixture(mapDir, 'v1', false);
+    try {
+      const r = await mod.run(argv(mapDir));
+      assert.strictEqual(r.ok, true);
+      if (!r.ok) return;
+      assert.match(r.text, /pickable \(ready now\):\n  B-one → specs\/b\/b\.task\.B-one\.md/);
+      assert.doesNotMatch(r.text, /group audit receipt/);
+    } finally {
+      rmSync(mapDir, { recursive: true, force: true });
     }
   });
 

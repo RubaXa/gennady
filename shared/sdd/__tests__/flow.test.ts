@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { detectFlowVersion, detectScopeFlowVersion } from '../flow.ts';
+import { detectFlowVersion, detectScopeFlowVersion, ticketFlowVersion } from '../flow.ts';
 
 describe('detectFlowVersion', () => {
   let root: string;
@@ -57,5 +57,28 @@ describe('detectScopeFlowVersion', () => {
     mkdirSync(join(v2, 'specs', 'any'), { recursive: true });
     assert.strictEqual(detectScopeFlowVersion(v2, 'any'), 'v2');
     rmSync(v2, { recursive: true, force: true });
+  });
+});
+
+describe('ticketFlowVersion', () => {
+  it('uses the same per-scope boundary for legacy tasks and migrated co-located tickets', () => {
+    const mixed = mkdtempSync(join(tmpdir(), 'sdd-ticket-flow-'));
+    mkdirSync(join(mixed, 'tasks', 'old-scope'), { recursive: true });
+    mkdirSync(join(mixed, 'specs', 'old-scope'), { recursive: true });
+    mkdirSync(join(mixed, 'specs', 'migrated'), { recursive: true });
+    writeFileSync(
+      join(mixed, 'specs', 'migrated', 'migrated.3-tasks.md'),
+      '# Tasks: migrated\n',
+      'utf-8'
+    );
+    assert.strictEqual(
+      ticketFlowVersion(join(mixed, 'tasks', 'old-scope', 'old.task.md'), mixed),
+      'v1'
+    );
+    assert.strictEqual(
+      ticketFlowVersion(join(mixed, 'specs', 'migrated', 'migrated.task.M-new.md'), mixed),
+      'v2'
+    );
+    rmSync(mixed, { recursive: true, force: true });
   });
 });

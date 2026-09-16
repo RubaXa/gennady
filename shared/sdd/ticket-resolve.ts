@@ -10,6 +10,7 @@ import {
   type RepoFileIdentity,
 } from '../common/repo-file-identity.ts';
 import { isTicket, ticketRef, type TicketRef } from './check.ts';
+import { ticketFlowVersion } from './flow.ts';
 import { looksLikeTaskId } from './task-id.ts';
 
 const SKIP_DIRS = new Set([
@@ -98,7 +99,11 @@ function collectTicketRefsStrict(root: string): StrictTicketCorpus {
       if (!read.ok) return `ticket corpus file is unreadable: ${rel} (${read.detail})`;
       if (isTicket(read.content)) {
         refs.push({
-          ...ticketRef(proven.identity.absolute, read.content),
+          ...ticketRef(
+            proven.identity.absolute,
+            read.content,
+            ticketFlowVersion(proven.identity.absolute, canonicalRoot)
+          ),
           content: read.content,
           identity: proven.identity,
         });

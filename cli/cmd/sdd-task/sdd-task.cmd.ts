@@ -15,7 +15,11 @@ import {
   parseTicketCoveragePolicy,
   type PhaseDetail,
 } from '../../../shared/sdd/ticket.ts';
-import { pickableTasks } from '../../../shared/sdd/check.ts';
+import {
+  pickabilityBlockers,
+  pickableTasks,
+  type PickableAuditContext,
+} from '../../../shared/sdd/check.ts';
 import { scanBlockerTrail, parsePhaseHandoffs } from '../../../shared/sdd/execution-log.ts';
 import {
   nodeReadinessAdapter,
@@ -40,9 +44,11 @@ import {
 import {
   boundGroupChangedFiles,
   resolveAuditGroup,
+  resolveOwningSpec,
   validateTicketReviewPaths,
   validateTicketTargetClaims,
 } from '../../../shared/sdd/audit-group.ts';
+import { hasValidGroupReceipt } from '../../../shared/sdd/group-receipt.ts';
 import { getChangedFiles } from '../../../shared/common/changed-files.ts';
 import { checkPhaseDependencies } from '../../../shared/sdd/phase-dependencies.ts';
 import { appendSddSessionBoundary } from '../../../shared/sdd/session-boundary.ts';
@@ -140,6 +146,39 @@ function infraGateQueue(
   return queuedInfraGateTicketIds(refs, parseScopes(portalContent), readiness, root);
 }
 
+/**
+ * @purpose Re-derive V2 cross-spec audit evidence for the execution map from one corpus snapshot.
+ * @invariant V1 refs never enter the owner/receipt model; their dependency semantics stay status-only.
+ * @param refs Complete immutable ticket corpus from `collectTicketCorpus`.
+ * @returns Exact owner identities plus owners carrying a current valid audit receipt.
+ */
+function pickableAuditContext(refs: TicketCorpusRef[]): PickableAuditContext {
+  const ownerByTaskId = new Map<string, string>();
+  const membersByOwner = new Map<string, TicketCorpusRef[]>();
+  for (const ref of refs) {
+    if (ref.flowVersion !== 'v2' || !ref.taskId) continue;
+    const owner = resolveOwningSpec(ref.file);
+    if (!owner.ok) continue;
+    const canonicalOwner = realpathSync(owner.specPath);
+    ownerByTaskId.set(ref.taskId, canonicalOwner);
+    const members = membersByOwner.get(canonicalOwner) ?? [];
+    members.push(ref);
+    membersByOwner.set(canonicalOwner, members);
+  }
+
+  const validAuditOwners = new Set<string>();
+  for (const [owner, members] of membersByOwner) {
+    let specContent: string;
+    try {
+      specContent = readFileSync(owner, 'utf-8');
+    } catch {
+      continue;
+    }
+    if (hasValidGroupReceipt(specContent, members, 'audit')) validAuditOwners.add(owner);
+  }
+  return { ownerByTaskId, validAuditOwners };
+}
+
 /** @purpose Render the execution map — tickets ready now and those still blocked, by which deps.
  * @invariant Every pickable/blocked line carries the ticket's relative path, so the map is self-sufficient without a follow-up lookup.
  * @param refs Every ticket's graph ref. | @param root Absolute project root (readiness + portal reads). | @returns A human + agent readable map. */
@@ -147,19 +186,14 @@ function formatMap(refs: TicketCorpusRef[], root: string): string {
   const canonicalRoot = realpathSync(root);
   const readiness = resolveProjectReadiness(canonicalRoot);
   const gateQueue = infraGateQueue(refs, canonicalRoot, readiness);
-  const graphPickable = pickableTasks(refs);
+  const auditContext = pickableAuditContext(refs);
+  const graphPickable = pickableTasks(refs, auditContext);
   const gateTicketFiles = new Set(gateQueue.owners.map((owner) => owner.ticketFile));
-  const doneIds = new Set(
-    refs.filter((r) => /\bDONE\b/i.test(r.status ?? '')).map((r) => r.taskId)
-  );
   const queuePickable = refs.filter(
     (ref) =>
       gateTicketFiles.has(ref.file) &&
       !/\bDONE\b/i.test(ref.status ?? '') &&
-      ref.dependencies.every(
-        (dependency) =>
-          /^(?:none|n\/a)\b|^[—-]$/i.test(dependency.trim()) || doneIds.has(dependency)
-      )
+      pickabilityBlockers(ref, refs, auditContext).length === 0
   );
   const pickable = readiness.executionReady ? graphPickable : queuePickable;
   const pickableIds = new Set(pickable.map((r) => r.taskId));
@@ -179,9 +213,7 @@ function formatMap(refs: TicketCorpusRef[], root: string): string {
     for (const r of pickable) lines.push(`  ${r.taskId} → ${relPath(r.file)}`);
   }
   for (const b of blocked) {
-    const unmet = b.dependencies.filter(
-      (d) => !/^(none|n\/a|[—-])\b/i.test(d.trim()) && !doneIds.has(d)
-    );
+    const unmet = pickabilityBlockers(b, refs, auditContext);
     if (!readiness.executionReady && graphPickableIds.has(b.taskId))
       unmet.push('EXECUTION_READY=no');
     lines.push(`blocked: ${b.taskId} ← ${unmet.join(', ')}  →  ${relPath(b.file)}`);

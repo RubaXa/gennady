@@ -8,6 +8,8 @@
 
 Планировочная поверхность тикета для оркестратора `execute`. `sdd-task <ticket-path|Task-ID>` извлекает ТОЛЬКО планировочные секции (Meta + Phases Overview + тело каждой фазы + Verification) и собирает per-phase read-manifest (`AX_READ_PER_MANIFEST`): что фаза читает (rules / specs / ticket-секции / target-файлы / gates) и **что НЕ читает**. В `--phase` этот manifest становится lifecycle-aware: существующие targets остаются в `READ files`, а отсутствующие exact repo-local targets отделяются в `CREATE files`. Аргумент — путь ИЛИ голый Task-ID (резолвится сканом по Meta, `AX_TASK_RESOLUTION`, D-TK006). Оркестратор читает этот вывод вместо всего тикета и не лезет в тела фаз, BDD, спеки, код. **Без Task-ID** `sdd-task` отдаёт **карту исполнения** — детерминированный pickable-набор + заблокированные + строка `root:`. При `EXECUTION_READY=yes` pickable совпадает с graph-ready (`pickableTasks`); при `no` он fail-closed сужается до dependency-ready exact active owners из единого `GATE_QUEUE`, поэтому unrelated graph-ready ticket не может стать `next` (D-TK019). Карта печатает все `GATE_QUEUE_DIAG`, включая отсутствующий/неоднозначный owner и неполный Bootstrap contract. Парсеры тикета вынесены в `shared/sdd/ticket.ts` (переиспользует `sdd-check`).
 
+По D-21/B2-13 V2 cross-spec dependency считается graph-ready только после валидной текущей групповой audit-квитанции владеющей спеки. Та же зависимость в V1 остаётся status-only до самомиграции; same-spec dependency не требует групповой квитанции между тикетами одной группы.
+
 `--group-scope <Task-ID>` выдаёт готовый review-context всей sibling-группы (ровно тикеты одного
 owning spec, а не все тикеты его каталога), а
 `--task-scope <Task-ID>` — те же поля для одного тикета: `spec`, tickets, bounded `files`,
@@ -126,6 +128,7 @@ Gates (all):
   - Каждая фаза извлекается своей секцией `PHASE_P<n>`
   - Отсутствие секции фазы помечается, не падает
   - Verification принимает ровно `Command | Required by | Role`; raw shell pipe must be inside a code span whose outer backtick run is longer than every inner run
+  - V2-тикет другой спеки не становится pickable через DONE-зависимость, пока её owning spec не несёт валидный текущий `SDD_AUDIT_RECEIPT`; V1-граф остаётся status-only
 
 <!--/SECTION:MODULE_CONTRACTS-->
 
@@ -140,6 +143,8 @@ Gates (all):
 | _(без аргумента)_                     | —      | **Карта исполнения**: pickable-набор + заблокированные (детерминированно из трекеров) |
 
 `<ticket-path|Task-ID>` → поверхность одного тикета. Путь читается как раньше; голый Task-ID (грамматика `shared/sdd/task-id.ts`) резолвится сканом дерева по Meta Task-ID (`AX_TASK_RESOLUTION`, D-TK006) — ровно один матч печатает строку резолва `[sdd-task] <id> → <относительный путь>` и продолжает как обычно; несколько матчей → exit 2 со списком кандидатов+путей; ноль → exit 2 со списком известных Task-ID (или «очередь пуста»). Без аргумента → карта исполнения. Graph-ready вычисляет `pickableTasks` (D-TK004), а runtime pickable дополнительно фильтруется тем же readiness/owner snapshot: `EXECUTION_READY=yes` оставляет graph-ready; `no` оставляет только dependency-ready IDs из accepted `GATE_QUEUE` и помечает unrelated ticket `EXECUTION_READY=no`. Каждая строка несёт относительный путь и общую `root:`. Карта печатает каждую advisory или blocking `GATE_QUEUE_DIAG`; zero/ambiguous/mismatched owner оставляет runtime pickable пустым.
+
+Для D-TK021 обычная незакрытая зависимость печатается своим Task-ID; завершённая V2 cross-spec dependency без текущего audit receipt печатается как `<Task-ID> (group audit receipt)`. V1 и same-spec dependencies остаются status-only.
 
 ### 5.1 `--phase P<n>` — компактный контекст одной фазы
 
@@ -282,6 +287,12 @@ shared/sdd/ticket.ts     # parseMetaInfo / parsePhasesOverview / parsePhaseDetai
 
 - **Status:** active · **Extends:** D-TK007/D-TK019
 - **Why:** the map printed “unblock blocked” before scaffold, contradicting its own `infra-spec-no-tickets` diagnostic and `sdd-state`. The final hint now gives that typed diagnostic priority and routes to `/sdd-scaffold`; a genuinely non-empty blocked set without the diagnostic keeps the dependency repair hint, while no active TODO and no scaffold diagnostic routes back to `sdd-state`.
+
+### D-TK021 — V2 cross-spec DONE dependency requires a current group audit receipt
+
+- **Status:** active · **Extends:** D-TK004 · **Source:** D-21/B2-13
+- **Why:** `[x] DONE` in V2 is the mechanical close before group audit. Treating it as sufficient let another spec consume an unaudited result, contradicting `AX_AUDIT_HOOK`. The map now resolves exact owning specs, re-derives the dependency group from the same immutable ticket snapshot, and accepts only the same structurally valid, non-stale `SDD_AUDIT_RECEIPT` used by `sdd-check`.
+- **Grandfathering:** the shared per-ticket flow classifier applies this only when both the candidate and dependency are V2 and have different resolvable owning specs. V1 remains status-only until self-migration; no current V1 ticket or baseline is rewritten or newly graded.
 <!--/SECTION:MODULE_DECISION_LOG-->
 
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->
