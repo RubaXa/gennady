@@ -3,7 +3,11 @@
 // @tasks: N/A
 
 import { execFile, spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
+import * as fs from 'node:fs';
+import { tmpdir } from 'node:os';
+import { relative, resolve } from 'node:path';
 import { logger } from '#logger';
 import {
   isDeclaredArgumentForwardingRepairBrick,
@@ -20,6 +24,7 @@ import {
   type GateResult,
   type GateRunResult,
   type GateRunner,
+  type GateRunOptions,
   type GateStatus,
   type Profile,
   type VerifyOutcome,
@@ -61,26 +66,54 @@ export const GATE_MAX_BUFFER_BYTES = 64 * 1024 * 1024;
  * @param command Executable to spawn.
  * @param args Arguments for the executable.
  * @param maxBuffer Maximum combined stdout+stderr size, in bytes.
+ * @param [options] Plugin-owned cwd, environment, and timeout boundary.
  * @returns Exit code (127 when the command cannot be spawned, including on buffer overflow) and combined stdout/stderr.
  */
 export function runWithMaxBuffer(
   command: string,
   args: string[],
-  maxBuffer: number
+  maxBuffer: number,
+  options: GateRunOptions = {}
 ): GateRunResult {
-  const r = spawnSync(command, args, { encoding: 'utf-8', maxBuffer });
-  if (r.error) return { exitCode: 127, output: `${command}: ${r.error.message}` };
-  return { exitCode: r.status ?? 1, output: `${r.stdout ?? ''}${r.stderr ?? ''}` };
+  const r = spawnSync(command, args, {
+    encoding: 'utf-8',
+    maxBuffer,
+    cwd: options.cwd,
+    env: options.env ? { ...process.env, ...options.env } : undefined,
+    timeout: options.timeoutMs,
+  });
+  if (r.error)
+    return {
+      exitCode: 127,
+      output: `${command}: ${r.error.message}`,
+      timedOut: (r.error as NodeJS.ErrnoException).code === 'ETIMEDOUT',
+      stdout: `${r.stdout ?? ''}`,
+      stderr: `${r.stderr ?? ''}`,
+    };
+  const stdout = `${r.stdout ?? ''}`;
+  const stderr = `${r.stderr ?? ''}`;
+  return {
+    exitCode: r.status ?? 1,
+    output: `${stdout}${stderr}`,
+    stdout,
+    stderr,
+    timedOut: r.signal === 'SIGTERM' && options.timeoutMs !== undefined,
+  };
 }
 
 /**
  * @purpose Default gate runner — spawn `command args` without a shell, capturing exit code and combined output.
  * @param command Executable to spawn.
  * @param args Arguments for the executable.
+ * @param [options] Plugin-owned cwd, environment, and timeout boundary.
  * @returns Exit code (127 when the command cannot be spawned) and combined stdout/stderr.
  */
-export function defaultRunner(command: string, args: string[]): GateRunResult {
-  return runWithMaxBuffer(command, args, GATE_MAX_BUFFER_BYTES);
+export function defaultRunner(
+  command: string,
+  args: string[],
+  options?: GateRunOptions
+): GateRunResult {
+  return runWithMaxBuffer(command, args, GATE_MAX_BUFFER_BYTES, options);
 }
 
 /**
@@ -89,29 +122,52 @@ export function defaultRunner(command: string, args: string[]): GateRunResult {
  * @param command Executable to spawn.
  * @param args Exact argument vector.
  * @param maxBuffer Bounded combined-output ceiling.
+ * @param [options] Plugin-owned cwd, environment, and timeout boundary.
  * @returns Exit code plus stdout/stderr; spawn/overflow errors are honest exit 127 diagnostics.
  */
 function runAsyncWithMaxBuffer(
   command: string,
   args: string[],
-  maxBuffer: number
+  maxBuffer: number,
+  options: GateRunOptions = {}
 ): Promise<GateRunResult> {
   return new Promise((resolve) => {
-    execFile(command, args, { encoding: 'utf-8', maxBuffer }, (error, stdout, stderr) => {
-      const output = `${stdout ?? ''}${stderr ?? ''}`;
-      if (!error) {
-        resolve({ exitCode: 0, output });
-        return;
+    execFile(
+      command,
+      args,
+      {
+        encoding: 'utf-8',
+        maxBuffer,
+        cwd: options.cwd,
+        env: options.env ? { ...process.env, ...options.env } : undefined,
+        timeout: options.timeoutMs,
+      },
+      (error, stdout, stderr) => {
+        const output = `${stdout ?? ''}${stderr ?? ''}`;
+        if (!error) {
+          resolve({ exitCode: 0, output, stdout: `${stdout ?? ''}`, stderr: `${stderr ?? ''}` });
+          return;
+        }
+        if (error.killed) {
+          resolve({
+            exitCode: 1,
+            output,
+            stdout: `${stdout ?? ''}`,
+            stderr: `${stderr ?? ''}`,
+            timedOut: true,
+          });
+          return;
+        }
+        if (typeof error.code === 'number') {
+          resolve({ exitCode: error.code, output });
+          return;
+        }
+        resolve({
+          exitCode: 127,
+          output: `${output}${output ? '\n' : ''}${command}: ${error.message}`,
+        });
       }
-      if (typeof error.code === 'number') {
-        resolve({ exitCode: error.code, output });
-        return;
-      }
-      resolve({
-        exitCode: 127,
-        output: `${output}${output ? '\n' : ''}${command}: ${error.message}`,
-      });
-    });
+    );
   });
 }
 
@@ -119,15 +175,75 @@ function runAsyncWithMaxBuffer(
  * @purpose Production async runner with the canonical gate-output ceiling.
  * @param command Executable to spawn without a shell.
  * @param args Exact argument vector.
- * @param [maxBuffer] Bounded combined-output ceiling; tests may lower it to prove overflow handling.
+ * @param [optionsOrMaxBuffer] Plugin-owned execution boundary, or a bounded output ceiling used by
+ *   tests to prove overflow handling.
+ * @param [options] Plugin-owned execution boundary when the preceding compatibility argument is a
+ *   numeric test ceiling.
  * @returns Exit code plus captured stdout/stderr, or honest exit 127 on spawn/overflow failure.
  */
 export function defaultAsyncRunner(
   command: string,
   args: string[],
-  maxBuffer = GATE_MAX_BUFFER_BYTES
+  optionsOrMaxBuffer: GateRunOptions | number = GATE_MAX_BUFFER_BYTES,
+  options?: GateRunOptions
 ): Promise<GateRunResult> {
-  return runAsyncWithMaxBuffer(command, args, maxBuffer);
+  const maxBuffer =
+    typeof optionsOrMaxBuffer === 'number' ? optionsOrMaxBuffer : GATE_MAX_BUFFER_BYTES;
+  const runOptions = typeof optionsOrMaxBuffer === 'number' ? options : optionsOrMaxBuffer;
+  return runAsyncWithMaxBuffer(command, args, maxBuffer, runOptions);
+}
+
+function treeState(root: string): string {
+  const entries: string[] = [];
+  const walk = (directory: string): void => {
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      if (['.git', 'node_modules'].includes(entry.name)) continue;
+      const absolute = resolve(directory, entry.name);
+      const name = relative(root, absolute);
+      if (entry.isDirectory()) walk(absolute);
+      else if (entry.isFile()) {
+        entries.push(
+          `${name}\0${createHash('sha256').update(readFileSync(absolute)).digest('hex')}`
+        );
+      }
+    }
+  };
+  walk(root);
+  return createHash('sha256').update(entries.sort().join('\0')).digest('hex');
+}
+
+async function runDriftGate(
+  runner: GateRunner,
+  gate: Gate,
+  command: string,
+  args: string[]
+): Promise<GateRunResult & { drifted: boolean }> {
+  const source = resolve(gate.cwd ?? '.');
+  const temp = fs.mkdtempSync(resolve(tmpdir(), 'gennady-go-drift-'));
+  const replica = resolve(temp, 'repo');
+  try {
+    fs.cpSync(source, replica, {
+      recursive: true,
+      filter: (candidate) => {
+        const rel = relative(source, candidate);
+        return !rel.split(/[\\/]/).some((part) => ['.git', 'node_modules'].includes(part));
+      },
+    });
+    const before = treeState(replica);
+    const remap = (token: string): string => {
+      const absolute = resolve(token);
+      const rel = relative(source, absolute);
+      return rel === '' || (!rel.startsWith('..') && rel !== '..') ? resolve(replica, rel) : token;
+    };
+    const result = await runner(remap(command), args.map(remap), {
+      cwd: replica,
+      env: gate.env,
+      timeoutMs: gate.timeoutMs,
+    });
+    return { ...result, drifted: before !== treeState(replica) };
+  } finally {
+    fs.rmSync(temp, { recursive: true, force: true });
+  }
 }
 
 // Read the project's own package.json `name` honestly — never infer self-hosting from the
@@ -231,6 +347,19 @@ export async function runGate(
 ): Promise<GateResult> {
   const start = Date.now();
 
+  if (gate.skipped) {
+    return {
+      name: gate.name,
+      status: 'skipped',
+      exitCode: 0,
+      output: gate.skipped,
+      durationMs: 0,
+      ranCommand: '',
+      mutates: gate.mutates,
+      ...(gate.nonBlocking ? { nonBlocking: true } : {}),
+    };
+  }
+
   // Preconditions run BEFORE the gate command; the first failing one is env-fail with its hint and
   // the gate command never runs (mirrors MAIN services/stack semantics). `GateRunner` has no cwd/env
   // parameter, so a precondition's own `cwd`/`env` are not honored yet — a later task that populates
@@ -238,7 +367,11 @@ export async function runGate(
   if (gate.requires) {
     for (const precondition of gate.requires) {
       const [preCommand, ...preArgs] = precondition.argv;
-      const preResult = await runner(preCommand ?? '', preArgs);
+      const preResult = await runner(preCommand ?? '', preArgs, {
+        cwd: precondition.cwd,
+        env: precondition.env,
+        timeoutMs: precondition.timeoutMs,
+      });
       if (preResult.exitCode !== 0) {
         return {
           name: gate.name,
@@ -259,16 +392,26 @@ export async function runGate(
     : gate.via === 'gennady'
       ? gennadyGateCommand(gate.name)
       : { command: 'npm', args: ['run', scriptName] };
-  const r = await runner(command, args);
+  const r = gate.driftMeansFailure
+    ? await runDriftGate(runner, gate, command, args)
+    : await runner(command, args, {
+        cwd: gate.cwd,
+        env: gate.env,
+        timeoutMs: gate.timeoutMs,
+      });
   const durationMs = Date.now() - start;
   logger.debug(`[SddVerifyCommand#run] ${gate.name} → exit ${r.exitCode} (${durationMs}ms)`);
   const ranCommand = `${command} ${args.join(' ')}`;
-  let status: GateStatus = r.exitCode === 0 ? 'pass' : 'fail';
+  let status: GateStatus = r.timedOut ? 'timeout' : r.exitCode === 0 ? 'pass' : 'fail';
   let output = r.output;
 
   // `outputMeansFailure` (gofmt -l contract): exit 0 with non-empty stdout is still a failure.
   if (status === 'pass' && gate.outputMeansFailure && r.output.trim() !== '') {
     status = 'fail';
+  }
+  if ('drifted' in r && r.drifted) {
+    status = 'fail';
+    output = [output, 'gate changed files in its ephemeral replica'].filter(Boolean).join('\n');
   }
 
   // ENV_FAIL predicates classify the outcome as environment, never code — checked last so they can
@@ -279,9 +422,9 @@ export async function runGate(
   if (gate.envFail && gate.envFail.length > 0) {
     const outcome = {
       exitCode: r.exitCode,
-      timedOut: false,
-      stdout: r.output,
-      stderr: r.output,
+      timedOut: r.timedOut ?? false,
+      stdout: r.stdout ?? r.output,
+      stderr: r.stderr ?? r.output,
       output: r.output,
     };
     const matched = gate.envFail.find((predicate) => predicate(outcome));

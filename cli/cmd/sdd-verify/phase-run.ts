@@ -225,7 +225,7 @@ function ladderCommands(results: GateResult[]): PhaseReceiptCommand[] {
  * @purpose Run a non-node stack's gate plan verbatim, in `gatePlan.gates` order (V-08b) — no npm
  *   ladder exists, so each CONFIGURED gate's command runs via the §5 verbatim runner.
  * @invariant `resultSink` order matches `gatePlan.gates` declaration order; every gate is
- *   `mutates: false` — anystack gates are read-only by design (V-08).
+ *   `mutates` is true only for the Go preset's logical `fix`; anystack gates stay read-only.
  * @param verbatimRunner Injectable command runner.
  * @param gatePlan Canonical gate plan already resolved for the detected stack.
  * @param resultSink Evidence sink mirroring the node ladder's own GateResult shape.
@@ -234,7 +234,8 @@ function ladderCommands(results: GateResult[]): PhaseReceiptCommand[] {
 async function runConfiguredGatePlan(
   verbatimRunner: VerbatimRunner,
   gatePlan: PhaseVerificationPlan,
-  resultSink: GateResult[]
+  resultSink: GateResult[],
+  stack: PhaseVerifyContext['stack']
 ): Promise<VerifyOutcome> {
   for (const gate of gatePlan.gates) {
     if (gate.state !== 'CONFIGURED' || gate.command === null) continue;
@@ -246,7 +247,7 @@ async function runConfiguredGatePlan(
       output: outcome.output,
       durationMs: 0,
       ranCommand: gate.command,
-      mutates: false,
+      mutates: stack === 'golang' && gate.name === 'fix',
     });
     if (outcome.exitCode !== 0) {
       return {
@@ -361,7 +362,12 @@ export async function runPhaseVerification(
   // silently select nothing for these gate names.
   const ladder =
     (frozenContext.stack ?? 'node') !== 'node' && frozenContext.gatePlan
-      ? await runConfiguredGatePlan(verbatimRunner, frozenContext.gatePlan, ladderResults)
+      ? await runConfiguredGatePlan(
+          verbatimRunner,
+          frozenContext.gatePlan,
+          ladderResults,
+          frozenContext.stack
+        )
       : await run(
           ladderRunner,
           plan.profile,

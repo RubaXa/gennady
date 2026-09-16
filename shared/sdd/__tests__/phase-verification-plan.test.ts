@@ -321,17 +321,25 @@ describe('resolvePhaseVerificationPlan', () => {
   describe('V-08b: resolves the preset by detected stack, not the literal node', () => {
     it('fails closed with a stable diagnostic when the detected stack has no preset', () => {
       assert.throws(
-        () => verificationGateNames('code', false, 'golang'),
+        () => verificationGateNames('code', false, 'swift'),
         (cause: unknown) => {
           assert.ok(cause instanceof Error);
           assert.strictEqual(cause.name, 'Error');
           assert.match(
             cause.message,
-            /no verification preset is implemented for detected stack 'golang'/
+            /no verification preset is implemented for detected stack 'swift'/
           );
           return true;
         }
       );
+    });
+
+    it('resolves the V-09 Go phase ladder', () => {
+      assert.deepEqual(verificationGateNames('code', false, 'golang'), [
+        'fix',
+        'type-check',
+        'test',
+      ]);
     });
 
     it("an anystack plan (root has no package.json) is CONFIGURED with the config's extraGates, in declared order", () => {

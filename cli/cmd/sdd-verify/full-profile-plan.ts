@@ -109,6 +109,30 @@ function assembleStackGates(
       nonBlocking: true,
     }));
   }
+  const literalGates = preset.fullGates?.();
+  if (literalGates) {
+    const required = new Set(preset.requiredGateNames('full', false));
+    return literalGates.map((gate) => ({
+      name: primary ? gate.id : `${stack}:${gate.id}`,
+      stack,
+      command: gate.skipped === null ? gate.argv.map(quoteToken).join(' ') : null,
+      argv: gate.argv,
+      cwd: gate.cwd,
+      env: gate.env,
+      timeoutMs: gate.timeoutMs,
+      envFail: gate.envFail,
+      requires: gate.requires,
+      outputMeansFailure: gate.outputMeansFailure,
+      driftMeansFailure: gate.driftMeansFailure,
+      skipped: gate.skipped,
+      mutates: false,
+      haltsOnFailure: primary && required.has(gate.id),
+      required: primary && required.has(gate.id),
+      primary,
+      tail: !primary || !required.has(gate.id),
+      nonBlocking: !primary,
+    }));
+  }
   const required = new Set(preset.requiredGateNames('full', false));
   const presetNames = preset.gateNames('full', false);
   const names = [

@@ -599,6 +599,7 @@ async function runCommand(rawArgs: string[], projectRoot: string): Promise<TaskO
         mode: 'runtime',
         stack: projectStack.stack,
         config: projectStack.config,
+        root,
       });
     } catch (cause) {
       return phaseEvidenceError(

@@ -13,6 +13,7 @@ import type {
 } from './phase-verification-plan.ts';
 import { resolvePreset } from '../verify/presets/node.ts';
 import type { StackId } from '../verify/verify.types.ts';
+import { golangVerificationEnvironmentState } from '../verify/presets/golang.ts';
 
 /** @purpose One command proven by the phase verifier. */
 export type PhaseReceiptCommand = {
@@ -1219,6 +1220,7 @@ export function phaseVerificationEnvironmentState(
       issue: `no environmentState source for stack '${stack}' — no preset is implemented for it yet`,
     };
   }
+  if (stack === 'golang') return golangVerificationEnvironmentState(root);
   let scripts: Record<string, string> = {};
   try {
     scripts =
@@ -1265,6 +1267,7 @@ export function phaseVerificationPlanEnvironmentState(
       issue: `no environmentState source for stack '${stack}' — no preset is implemented for it yet`,
     };
   }
+  if (stack === 'golang') return golangVerificationEnvironmentState(root);
   if (stack !== 'node') {
     // V-08b: a non-node preset (anystack today) has no npm lifecycle to expand into a fingerprint
     // — it declares its own environmentStateSource as its config-authored gate commands (see

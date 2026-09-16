@@ -842,30 +842,42 @@ describe('SddTaskCommand', () => {
       '<!--/SECTION:EXECUTION_LOG-->',
     ].join('\n');
 
-    it('auto-detects golang without stack.use and returns a teaching preset refusal', async () => {
+    it('auto-detects golang without stack.use and emits the V-09 Go phase ladder', async () => {
       const goRoot = mkdtempSync(join(tmpdir(), 'sdd-task-go-stack-'));
       const goTicket = join(goRoot, 'specs', 'cli', 'core', 'core.task.cli-foo.md');
       try {
         mkdirSync(join(goRoot, 'specs', 'cli', 'core'), { recursive: true });
         mkdirSync(join(goRoot, 'src'), { recursive: true });
         writeFileSync(join(goRoot, 'go.mod'), 'module example.com/fixture\n\ngo 1.22\n', 'utf-8');
-        writeFileSync(join(goRoot, 'src', 'foo.ts'), 'export const foo = true;\n', 'utf-8');
+        writeFileSync(join(goRoot, 'src', 'foo.go'), 'package fixture\n', 'utf-8');
         writeFileSync(join(goRoot, 'specs', 'cli', 'core', 'core.spec.md'), '# Core\n', 'utf-8');
         writeFileSync(
           goTicket,
-          PHASED_TICKET.replace('| P1 | impl | — | [x] |', '| P1 | config | — | [ ] |'),
+          PHASED_TICKET.replace('| P1 | impl | — | [x] |', '| P1 | impl | — | [ ] |').replace(
+            '  - src/foo.ts',
+            '  - src/foo.go'
+          ),
           'utf-8'
         );
 
         const outcome = await mod.run(argv(goTicket, '--phase', 'P1'));
-        assert.strictEqual(outcome.ok, false);
-        if (!outcome.ok) {
-          assert.match(
-            outcome.message,
-            /no verification preset is implemented for detected stack 'golang'/
-          );
-          assert.doesNotMatch(outcome.message, /TypeError/);
-        }
+        assert.strictEqual(outcome.ok, true);
+        if (!outcome.ok) return;
+        assert.match(outcome.text, /\[sdd-task\] cli-foo — P1 impl  status=\[ \]/);
+        const fix = outcome.text.match(
+          /^ {2}gate-state: fix CONFIGURED provider=none next=run .*gofmt -w .*\/src\/foo\.go$/m
+        );
+        const types = outcome.text.match(
+          /^ {2}gate-state: type-check CONFIGURED provider=none next=run .*go build -o \/dev\/null \.\/src && .*go vet \.\/src$/m
+        );
+        const test = outcome.text.match(
+          /^ {2}gate-state: test CONFIGURED provider=none next=run .*go test -timeout=540s \.\/src$/m
+        );
+        assert.ok(fix, outcome.text);
+        assert.ok(types, outcome.text);
+        assert.ok(test, outcome.text);
+        assert.ok((fix.index ?? -1) < (types.index ?? -1));
+        assert.ok((types.index ?? -1) < (test.index ?? -1));
       } finally {
         rmSync(goRoot, { recursive: true, force: true });
       }

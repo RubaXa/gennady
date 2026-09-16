@@ -63,8 +63,7 @@ export type Gate = {
   /** @purpose Environment variables merged over process.env for `argv`-driven execution. */
   env?: Readonly<Record<string, string>>;
   /**
-   * @purpose Per-gate timeout in ms. Data-only in V-03 — no `GATES` entry sets it, and `runGate`
-   *   does not enforce it yet (`GateRunner` itself has no timeout parameter).
+   * @purpose Per-gate timeout in ms, enforced by the production runners.
    */
   timeoutMs?: number;
   /**
@@ -91,11 +90,12 @@ export type Gate = {
   /** @purpose Preserves coverage-producer semantics when D-64 qualifies the public gate name. */
   coverageProducer?: boolean;
   /**
-   * @purpose Run in an ephemeral working-tree replica; resulting drift = FAIL. Data-only in V-03 — no
-   *   `GATES` entry sets it, and enforcing it needs the replica/foundation-transaction machinery a
-   *   later task (V-09) wires for real.
+   * @purpose Run in an ephemeral working-tree replica; resulting drift = FAIL without mutating the
+   *   source workspace (V-09).
    */
   driftMeansFailure?: boolean;
+  /** @purpose Visible plugin-owned reason this gate is intentionally not executable. */
+  skipped?: string | null;
 };
 
 /**
@@ -313,12 +313,29 @@ export type GateRunResult = {
   exitCode: number;
   /** @purpose Combined stdout + stderr. */
   output: string;
+  /** @purpose True when the runner killed the command after its gate-owned timeout. */
+  timedOut?: boolean;
+  /** @purpose Uncombined stdout, when the production runner can preserve it. */
+  stdout?: string;
+  /** @purpose Uncombined stderr, when the production runner can preserve it. */
+  stderr?: string;
+};
+
+/** @purpose Per-command execution boundary supplied by plugin-owned gate data. */
+export type GateRunOptions = {
+  /** @purpose Working directory used for the child process. */
+  cwd?: string;
+  /** @purpose Environment entries merged over the parent process environment. */
+  env?: Readonly<Record<string, string>>;
+  /** @purpose Maximum wall-clock duration before the child is terminated. */
+  timeoutMs?: number;
 };
 
 /** @purpose Runs one gate command and returns its result — sync fakes and async production runners are both injectable. */
 export type GateRunner = (
   command: string,
-  args: string[]
+  args: string[],
+  options?: GateRunOptions
 ) => GateRunResult | Promise<GateRunResult>;
 
 /**

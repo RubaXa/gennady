@@ -600,9 +600,27 @@ describe('readiness engine — adapters (V-06)', () => {
     );
   });
 
-  it('resolveReadinessAdapter dispatches node/anystack, null for an unimplemented stack (golang: V-09)', () => {
+  it('resolveReadinessAdapter dispatches every implemented release stack', () => {
     assert.strictEqual(resolveReadinessAdapter('node'), nodeReadinessAdapter);
     assert.strictEqual(resolveReadinessAdapter('anystack'), anystackReadinessAdapter);
-    assert.strictEqual(resolveReadinessAdapter('golang'), null);
+    assert.strictEqual(resolveReadinessAdapter('golang')?.stack, 'golang');
+  });
+
+  it('golang readiness maps literal tool detection to fix/type-check/test without package.json', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'readiness-golang-'));
+    try {
+      fs.writeFileSync(path.join(root, 'go.mod'), 'module example.com/ready\n\ngo 1.22\n');
+      const adapter = resolveReadinessAdapter('golang');
+      assert.ok(adapter);
+      const result = adapter.evaluate(adapter.gather(root));
+      assert.equal(result.packageJsonPresent, false);
+      assert.deepEqual(
+        result.required.map((gate) => gate.name),
+        ['fix', 'type-check', 'test']
+      );
+      assert.equal(result.executionReady, true);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
   });
 });

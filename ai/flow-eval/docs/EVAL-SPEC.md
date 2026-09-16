@@ -27,8 +27,9 @@
 
 - **Сценарий** — JSON-объект: фаза/режим, фикстура (или готовый `directory` для внешнего репозитория),
   `intent`, `acceptance`, опционально `completion` и `scale`; форма — `ai/flow-eval/types.ts`, примеры —
-  `ai/flow-eval/scenarios.json` (7 сценариев: `fibonacci-library` spec-authoring, `tic-tac-toe`
-  scaffold, `slugify-toolchain` execute, `broken-specs-repair` repair, три `infra-*` task).
+  `ai/flow-eval/scenarios.json` (8 сценариев: `fibonacci-library` spec-authoring, `tic-tac-toe`
+  scaffold, `slugify-toolchain` и `golang-slugify` execute, `broken-specs-repair` repair, три
+  `infra-*` task).
 - **Прогон** — один сценарий = одна сессия OpenCode в своей песочнице `sdd-flow-eval-*` с бюджетом
   наблюдений; после прогона песочница удаляется (если не передан `--keep`).
 - **Evidence** — ограниченный срез, который видят наблюдатель и судья: хвост сообщений, статус сессии,

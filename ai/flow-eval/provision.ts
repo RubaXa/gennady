@@ -614,6 +614,74 @@ fi
 echo "PASS"
 `;
 
+const GOLANG_SLUGIFY_TEST = `package slugify
+
+import "testing"
+
+func TestSlugifyBasic(t *testing.T) {
+	got, err := Slugify("Hello World")
+	if err != nil || got != "hello-world" {
+		t.Fatalf("Slugify returned %q, %v", got, err)
+	}
+}
+`;
+
+function canonicalGoModule(): string {
+  return canonicalModule('golang-slugify', 'GSL', 'core', 'slugify', 'slugify.go')
+    .replaceAll('node-test', 'baseline-testing')
+    .replace('slugify.go\n```', 'slugify.go\nslugify_test.go\n```');
+}
+
+function canonicalGoTask(): string {
+  let document = canonicalTask(
+    'golang-slugify',
+    'GSL',
+    'GSL',
+    'core',
+    'GSL-slug',
+    'slugify',
+    'slugify.go'
+  ).replaceAll('typescript-rules', 'go-rules');
+  document = replaceSection(
+    document,
+    'PHASE_P2',
+    `### P2 — test
+- **Objective:** verify normal and boundary inputs
+- **Rules:**
+  - [baseline-testing](../../../ai/directives/testing/baseline-testing.xml)
+- **Target Files:**
+  - slugify_test.go
+- **Deleted Files:**
+  - none
+- **Inputs:** P1 handoff
+- **Exit:** tests pass`
+  );
+  document = replaceSection(
+    document,
+    'VERIFICATION',
+    `## Verification
+
+<!--PHASE_RECEIPTS:v1-->
+
+<!--COVERAGE_POLICY:v1-->
+- **Coverage Policy:** not-applicable
+- **Coverage Reason:** deterministic standard-library fixture has no release coverage adapter
+
+| Command | Required by | Role |
+|---------|-------------|------|`
+  );
+  document = replaceSection(
+    document,
+    'TEST_COVERAGE',
+    `## Test Scenario Coverage
+- slugify contract → \`slugify_test.go\` :: \`[GSL-REQ-1] slugify contract\`
+- normal text → \`slugify_test.go\` :: \`[GSL-REQ-1] normal text\`
+- repeated separators → \`slugify_test.go\` :: \`[GSL-REQ-2] repeated separators\`
+- rejects invalid input → \`slugify_test.go\` :: \`[GSL-REQ-3] rejects invalid input\``
+  );
+  return document;
+}
+
 // ── brownfield-extend-cli fixture (phase `brownfield`) ───────────────────────────────────────────
 // A committed, WORKING, spec-less tool plus a change-request. Isolates the direct code-delta branch:
 // the worker must read the existing script, then add one behaviour without breaking the existing two.
@@ -1111,10 +1179,30 @@ export const FIXTURE_FILES: Record<SddEvalFixtureId, Record<string, string>> = {
       '# Infra task fixture\n\nComplete the task in `inputs/brief.md`. Graded by `golden/verify.sh`.\n',
   },
   'golang-slugify': {
+    '.gitignore': 'node_modules/\n',
     'go.mod': 'module golang-slugify\n\ngo 1.21\n',
     'inputs/brief.md': GOLANG_SLUGIFY_BRIEF,
     'golden/golden_test.go.tmpl': GOLANG_SLUGIFY_GOLDEN_TEST_TMPL,
     'golden/verify.sh': GOLANG_SLUGIFY_VERIFY,
+    'slugify_test.go': GOLANG_SLUGIFY_TEST,
+    'specs/README.md':
+      '# Fixture Project\n\n## Scopes\n\n| Scope | Type | Spec | Description |\n|---|---|---|---|\n| [`golang-slugify`](./golang-slugify/golang-slugify.spec.md) | library | ✅ | stable URL slugs |\n',
+    'specs/3-tasks.md': '# Project Tasks\n\n## Entry Points\n- [Specs Portal](./README.md)\n',
+    'specs/golang-slugify/golang-slugify.spec.md': canonicalScope(
+      'golang-slugify',
+      'GSL',
+      'core',
+      'slugify'
+    ).replaceAll('node-test', 'baseline-testing'),
+    'specs/golang-slugify/core/core.spec.md': canonicalGoModule(),
+    'specs/golang-slugify/core/core.3-tasks.md': canonicalModuleIndex(
+      'golang-slugify',
+      'core',
+      'GSL',
+      'GSL-slug',
+      'Normalize URL slug'
+    ),
+    'specs/golang-slugify/core/core.task.GSL-slug.md': canonicalGoTask(),
     'README.md':
       '# Go slugify fixture\n\nComplete the task in `inputs/brief.md`. Graded by `golden/verify.sh` ' +
       '(copies your `slugify.go` and the hidden golden test into an isolated temp Go module — never ' +

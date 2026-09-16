@@ -30,9 +30,10 @@ export type VerificationProfile = 'setup' | 'code' | 'test' | 'full';
 function requiredPreset(
   stack: StackId,
   profile: VerificationProfile,
-  config?: StackConfig | null
+  config?: StackConfig | null,
+  root = '.'
 ): StackPreset {
-  const preset = resolvePreset(stack, profile, '.', config);
+  const preset = resolvePreset(stack, profile, root, config);
   if (!preset) {
     throw new Error(
       `no verification preset is implemented for detected stack '${stack}' (profile '${profile}')`
@@ -157,6 +158,8 @@ type PhaseVerificationPlanInput = {
   /** @purpose Merged `stack:` config section (V-07); only a config-authored preset (anystack)
    *   reads it. */
   config?: StackConfig | null;
+  /** @purpose Live project root for repository-aware preset commands (Go V-09). */
+  root?: string;
 };
 
 /**
@@ -303,9 +306,10 @@ function commandForGate(
   scripts: Readonly<Record<string, string>>,
   targets: readonly string[],
   stack: StackId = 'node',
-  config?: StackConfig | null
+  config?: StackConfig | null,
+  root = '.'
 ): string | null {
-  return requiredPreset(stack, 'full', config).commandForGate(name, scripts, targets);
+  return requiredPreset(stack, 'full', config, root).commandForGate(name, scripts, targets);
 }
 
 // V-12 (#9-bonus): mirrors `commandForGate` above — delegates to the resolved preset's own
@@ -315,9 +319,10 @@ function scopeReasonForGate(
   name: string,
   targets: readonly string[],
   stack: StackId = 'node',
-  config?: StackConfig | null
+  config?: StackConfig | null,
+  root = '.'
 ): string | null {
-  return resolvePreset(stack, 'full', '.', config)!.scopeReason?.(name, targets) ?? null;
+  return resolvePreset(stack, 'full', root, config)!.scopeReason?.(name, targets) ?? null;
 }
 
 function coverageProducer(current: PlanNode, profile: PhaseVerificationPlan['profile']): boolean {
@@ -391,10 +396,10 @@ export function resolvePhaseVerificationPlan(
     ...new Set([...verificationGateNames(profile, producesCoverage, stack, config), ...ownedNames]),
   ];
   const gates = gateNames.map((name): PhaseVerificationGatePlan => {
-    const scopeReason = scopeReasonForGate(name, current.targets, stack, config);
+    const scopeReason = scopeReasonForGate(name, current.targets, stack, config, input.root);
     const command = scopeReason
       ? null
-      : commandForGate(name, input.scripts, current.targets, stack, config);
+      : commandForGate(name, input.scripts, current.targets, stack, config, input.root);
     const planning = (input.mode ?? 'runtime') === 'planning';
     const owner = selectReadinessOwner(nodes, current, name, stack, config);
     const waitsForOwner = owner?.relation === 'downstream';

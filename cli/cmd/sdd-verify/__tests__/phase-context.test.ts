@@ -79,19 +79,16 @@ function fixture(
 }
 
 describe('resolvePhaseContext', () => {
-  it('auto-detects golang without stack.use and returns a teaching preset refusal, not TypeError', () => {
+  it('auto-detects golang without stack.use and resolves the V-09 setup plan', () => {
     const f = fixture('config', ['src/thing.ts']);
     rmSync(join(f.root, 'package.json'));
     writeFileSync(join(f.root, 'go.mod'), 'module example.com/fixture\n\ngo 1.22\n', 'utf-8');
     try {
       const result = resolvePhaseContext(f.ticket, 'P1', f.root);
-      assert.strictEqual(result.ok, false);
-      if (!result.ok) {
-        assert.match(
-          result.message,
-          /no verification preset is implemented for detected stack 'golang'/
-        );
-        assert.doesNotMatch(result.message, /TypeError/);
+      assert.strictEqual(result.ok, true);
+      if (result.ok) {
+        assert.equal(result.context.stack, 'golang');
+        assert.deepEqual(result.context.gatePlan?.gates, []);
       }
     } finally {
       rmSync(f.root, { recursive: true, force: true });

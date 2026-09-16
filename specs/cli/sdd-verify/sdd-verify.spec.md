@@ -474,6 +474,13 @@ shared/sdd/phase-receipt.ts # paired receipt schema, parser, renderer and state 
 - **Status:** active · **Extends:** D-SV018
 - **Why:** `Required-by` is requirement/rule traceability and does not identify a phase. Selecting a `Role=probe` row through phase Rules could execute a project command during bootstrap/config or execute it in no phase at all. Phase context now resolves the row's exact command-bearing Test Scenario Coverage entry, requires one owning `test` phase, and adds the probe only to that phase. Zero or multiple test owners fail before tools run; ordinary `extra` and `coverage` rows keep their existing routing.
 
+### D-SV039 — Go uses the shared phase ladder and literal full-profile gates
+
+- **Status:** active · **Extends:** D-SV018/D-SV028 and VERIFY-DL-3
+- **Phase:** Go maps `fix` to `gofmt -w` over exact `.go` Target Files, `type-check` to the literal plugin's `go build` then `go vet`, and `test` to `go test`. No package.json/npm readiness is inferred. Receipt environment state binds Go manifests and the preset-named Makefile recipes.
+- **Full:** `generate`, `build`, `vet`, `fmt`, `lint`, `test` come from the unchanged Go plugin after the standard stack-config transform. The runner honors plugin cwd/env/timeout/ENV_FAIL; `gofmt -l` output is a failure; `go generate` runs only in an ephemeral replica and any drift is a failure without mutating the caller tree.
+- **Eval:** Go acceptance uses isolated migrated/V2 fixtures. Judge/LLM verdict remains diagnostic and cannot change aggregate exit code; no live LLM is required for mechanical acceptance.
+
 <!--SECTION:OPEN_RISKS-->
 
 ## 8. Open Risks
