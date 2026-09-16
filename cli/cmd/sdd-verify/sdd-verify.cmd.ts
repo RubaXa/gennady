@@ -417,7 +417,10 @@ export async function runGate(
   let output = r.output;
 
   // `outputMeansFailure` (gofmt -l contract): exit 0 with non-empty stdout is still a failure.
-  if (status === 'pass' && gate.outputMeansFailure && r.output.trim() !== '') {
+  // Legacy injected runners expose only combined `output`; production runners preserve stdout so
+  // a diagnostic written only to stderr cannot masquerade as gofmt's file list.
+  const failureOutput = r.stdout ?? r.output;
+  if (status === 'pass' && gate.outputMeansFailure && failureOutput.trim() !== '') {
     status = 'fail';
   }
   if ('drifted' in r && r.drifted) {

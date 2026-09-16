@@ -1128,9 +1128,33 @@ describe('runGate — env-fail/requires/outputMeansFailure (V-03, data-only in G
     assert.match(result.output, /no space left on device/);
   });
 
-  it('outputMeansFailure: exit 0 with non-empty stdout is a failure (gofmt -l contract)', async () => {
+  it('outputMeansFailure: legacy combined output falls back to stdout semantics', async () => {
     const gate: Gate = { ...baseGate, outputMeansFailure: true };
     const runner: GateRunner = () => ({ exitCode: 0, output: 'unformatted/file.go' });
+    const result = await runGate(runner, gate, 'probe');
+    assert.strictEqual(result.status, 'fail');
+  });
+
+  it('outputMeansFailure: exit 0 with empty stdout and diagnostic stderr stays a pass', async () => {
+    const gate: Gate = { ...baseGate, outputMeansFailure: true };
+    const runner: GateRunner = () => ({
+      exitCode: 0,
+      output: 'diagnostic only\n',
+      stdout: '',
+      stderr: 'diagnostic only\n',
+    });
+    const result = await runGate(runner, gate, 'probe');
+    assert.strictEqual(result.status, 'pass');
+  });
+
+  it('outputMeansFailure: exit 0 with preserved non-empty stdout is a failure', async () => {
+    const gate: Gate = { ...baseGate, outputMeansFailure: true };
+    const runner: GateRunner = () => ({
+      exitCode: 0,
+      output: 'unformatted/file.go\nwarning\n',
+      stdout: 'unformatted/file.go\n',
+      stderr: 'warning\n',
+    });
     const result = await runGate(runner, gate, 'probe');
     assert.strictEqual(result.status, 'fail');
   });
