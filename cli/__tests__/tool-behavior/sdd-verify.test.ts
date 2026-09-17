@@ -62,7 +62,9 @@ const FIXTURE_RUNNERS = {
 function buildRepoFixture(state: RepoFixtureState = {}): { root: string } {
   return buildBaseRepoFixture({
     ...state,
-    files: { ...FIXTURE_RUNNERS, ...state.files },
+    // Coverage is a generated adapter artifact. D-STACK-017 permits ignored output to survive;
+    // non-ignored project content remains an exact gate mutation and is rolled back.
+    files: { '.gitignore': 'coverage\n', ...FIXTURE_RUNNERS, ...state.files },
   });
 }
 
@@ -879,9 +881,13 @@ describe('sdd-verify — live gate ladder', { concurrency: 4 }, () => {
     try {
       const r = await runCliAsync(['sdd-verify', '--profile', 'full'], root);
       assert.notStrictEqual(r.exitCode, 0, r.stdout + r.stderr);
-      assert.match(r.stdout, /full-profile gate mutated paths outside its permitted write-set/);
+      assert.match(r.stdout, /gate mutated the tree/);
       assert.match(r.stdout, /src\.ts/);
-      assert.strictEqual(readFileSync(join(root, 'src.ts'), 'utf-8'), 'mutated by lint');
+      assert.strictEqual(
+        readFileSync(join(root, 'src.ts'), 'utf-8'),
+        'original\n',
+        'guard restores the committed baseline before returning the violation'
+      );
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

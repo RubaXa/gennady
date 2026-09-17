@@ -8,6 +8,8 @@ import { join } from 'node:path';
 import type { StackId } from '../verify/verify.types.ts';
 import { loadStackConfig, pluginConfigOf } from '../verify/stack-config.ts';
 import { BUILTIN_GATE_IDS } from '../verify/stack-registry.ts';
+import { golangPlugin } from '../../plugins/golang/golang-plugin.ts';
+import type { GoProject } from '../../plugins/golang/golang-detect.logic.ts';
 
 /**
  * @purpose Exact npm scripts a v2-ready project declares: repair leaves, their public `fix`
@@ -68,6 +70,8 @@ export type ReadinessInput = {
    * in `gennady.yaml`. Undefined for node/other stacks — they have their own bootstrap concept.
    */
   configuredExtraGates?: readonly string[];
+  /** @purpose Go preset tool availability gathered by the literal plugin detector. */
+  golangTools?: { readonly go: boolean; readonly gofmt: boolean };
 };
 
 /** @purpose Three-level readiness verdict — `provisional` means the bricks exist but some are echo-stubs. */
@@ -709,6 +713,58 @@ export const anystackReadinessAdapter: ReadinessAdapter = {
   evaluate: evaluateAnystackReadiness,
 };
 
+function gatherGolangReadinessInput(root: string): ReadinessInput {
+  const detection = golangPlugin.detect(root);
+  const project = detection?.details as GoProject | undefined;
+  return {
+    packageJsonPresent: false,
+    scripts: {},
+    gennadyAvailable: true,
+    golangTools: {
+      go: project?.tools.go.bin !== null && project?.tools.go.bin !== undefined,
+      gofmt: project?.tools.gofmt.bin !== null && project?.tools.gofmt.bin !== undefined,
+    },
+  };
+}
+
+function evaluateGolangReadiness(input: ReadinessInput): ReadinessResult {
+  const tools = input.golangTools ?? { go: false, gofmt: false };
+  const missing = [...(tools.go ? [] : ['go toolchain']), ...(tools.gofmt ? [] : ['gofmt'])];
+  const required = [
+    { name: 'fix', present: tools.gofmt },
+    { name: 'type-check', present: tools.go },
+    { name: 'test', present: tools.go },
+  ];
+  const ready = missing.length === 0;
+  return {
+    packageJsonPresent: false,
+    required,
+    lintHasGennady: true,
+    formatReadOnly: true,
+    lintReadOnly: true,
+    checkReadOnly: true,
+    formatFixMutates: tools.gofmt,
+    lintFixMutates: true,
+    formatFixDeclaredTargetPrefix: true,
+    lintFixDeclaredTargetPrefix: true,
+    fixHasCanonicalRepairs: tools.gofmt,
+    gennadyAvailable: true,
+    ready,
+    missing,
+    stubbed: [],
+    missingGates: required.filter((gate) => !gate.present).map((gate) => gate.name),
+    level: ready ? 'ready' : 'not-ready',
+    executionReady: ready,
+  };
+}
+
+/** @purpose Go readiness adapter: literal plugin detection mapped onto phase ladder duties. */
+const golangReadinessAdapter: ReadinessAdapter = {
+  stack: 'golang',
+  gather: gatherGolangReadinessInput,
+  evaluate: evaluateGolangReadiness,
+};
+
 /**
  * @purpose Resolve the readiness adapter for one stack — the engine's dispatch point (V-06).
  * @param stack Stack id, e.g. from `detectRepoStack` (V-05).
@@ -716,6 +772,7 @@ export const anystackReadinessAdapter: ReadinessAdapter = {
  */
 export function resolveReadinessAdapter(stack: StackId): ReadinessAdapter | null {
   if (stack === 'node') return nodeReadinessAdapter;
+  if (stack === 'golang') return golangReadinessAdapter;
   if (stack === 'anystack') return anystackReadinessAdapter;
   return null;
 }

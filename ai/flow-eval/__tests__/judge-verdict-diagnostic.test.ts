@@ -47,4 +47,27 @@ describe('E-21: the judge verdict is diagnostic only and never participates in t
       1
     );
   });
+
+  it('E-13: the Go execute scenario obeys the same diagnostic-only judge boundary', () => {
+    assert.strictEqual(
+      computeAggregateExitCode([
+        artifact({
+          scenarioId: 'golang-slugify',
+          verdict: 'fail',
+          quality: { rule: 'R-COMPLETE', pass: true, detail: 'Go receipt and golden are clean' },
+        }),
+      ]),
+      0
+    );
+    assert.strictEqual(
+      computeAggregateExitCode([
+        artifact({
+          scenarioId: 'golang-slugify',
+          verdict: 'pass',
+          quality: { rule: 'R-COMPLETE', pass: false, detail: 'Go receipt is missing' },
+        }),
+      ]),
+      1
+    );
+  });
 });

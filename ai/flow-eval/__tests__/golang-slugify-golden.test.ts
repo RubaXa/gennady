@@ -7,7 +7,7 @@
 import { describe, it, before } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { FIXTURE_FILES } from '../provision.ts';
@@ -91,36 +91,52 @@ describe('golang-slugify golden gate (both outcomes reproducible, E-11)', () => 
   it('ACCEPTS a correct reference implementation (positive)', (t) => {
     if (skip) return t.skip('go toolchain not available');
     const dir = layout();
-    install(dir, REFERENCE_SLUGIFY);
-    const { code, out } = verify(dir);
-    assert.strictEqual(code, 0, `expected PASS, got:\n${out}`);
-    assert.match(out, /PASS/);
+    try {
+      install(dir, REFERENCE_SLUGIFY);
+      const { code, out } = verify(dir);
+      assert.strictEqual(code, 0, `expected PASS, got:\n${out}`);
+      assert.match(out, /PASS/);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   it('REJECTS a wrong implementation (negative)', (t) => {
     if (skip) return t.skip('go toolchain not available');
     const dir = layout();
-    install(dir, BROKEN_SLUGIFY);
-    const { code, out } = verify(dir);
-    assert.notStrictEqual(code, 0, `expected FAIL, got:\n${out}`);
-    assert.match(out, /FAIL/);
+    try {
+      install(dir, BROKEN_SLUGIFY);
+      const { code, out } = verify(dir);
+      assert.notStrictEqual(code, 0, `expected FAIL, got:\n${out}`);
+      assert.match(out, /FAIL/);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   it('REJECTS a missing slugify.go (negative)', (t) => {
     if (skip) return t.skip('go toolchain not available');
     const dir = layout();
-    const { code, out } = verify(dir);
-    assert.notStrictEqual(code, 0, 'expected FAIL for missing artifact');
-    assert.match(out, /FAIL: slugify\.go missing/);
+    try {
+      const { code, out } = verify(dir);
+      assert.notStrictEqual(code, 0, 'expected FAIL for missing artifact');
+      assert.match(out, /FAIL: slugify\.go missing/);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   it('the fixture root itself stays a clean, buildable Go module (golden/*.tmpl never collides)', (t) => {
     if (skip) return t.skip('go toolchain not available');
     const dir = layout();
-    install(dir, REFERENCE_SLUGIFY);
-    const build = spawnSync('go', ['build', '-C', dir, './...'], { encoding: 'utf8' });
-    assert.strictEqual(build.status, 0, `go build failed:\n${build.stdout}${build.stderr}`);
-    const vet = spawnSync('go', ['vet', '-C', dir, './...'], { encoding: 'utf8' });
-    assert.strictEqual(vet.status, 0, `go vet failed:\n${vet.stdout}${vet.stderr}`);
+    try {
+      install(dir, REFERENCE_SLUGIFY);
+      const build = spawnSync('go', ['build', '-C', dir, './...'], { encoding: 'utf8' });
+      assert.strictEqual(build.status, 0, `go build failed:\n${build.stdout}${build.stderr}`);
+      const vet = spawnSync('go', ['vet', '-C', dir, './...'], { encoding: 'utf8' });
+      assert.strictEqual(vet.status, 0, `go vet failed:\n${vet.stdout}${vet.stderr}`);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

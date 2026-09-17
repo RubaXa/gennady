@@ -394,7 +394,7 @@ describe('verdict', () => {
     assert.match(v.message, /🌐 lint — ENV_FAIL \(окружение, не код\): network unreachable/);
   });
 
-  it('timeout/violation are data-only but rendered defensively, and DO count as FAILED', () => {
+  it('timeout/violation are rendered distinctly and DO count as FAILED', () => {
     const results = [
       ...baseResults(['type-check']).map((r) => ({
         ...r,
@@ -408,7 +408,7 @@ describe('verdict', () => {
     if (v.ok) return;
     assert.match(v.message, /2 FAILED/);
     assert.match(v.message, /⏱ type-check — превышен timeoutMs/);
-    assert.match(v.message, /⛔ lint — нарушение песочницы/);
+    assert.match(v.message, /⛔ lint — нарушение observe-only/);
   });
 });
 
@@ -920,6 +920,14 @@ describe('parseInvocation', () => {
     assert.match(r.message, /profil/);
   });
 
+  it('has no public staged/dirty-tree bypass flag', () => {
+    const r = parseInvocation(argv('--profile', 'full', '--staged'));
+    assert.strictEqual(r.ok, false);
+    if (r.ok) return;
+    assert.match(r.message, new RegExp(ERR_CLI_SDD_VERIFY_BAD_INVOCATION));
+    assert.match(r.message, /staged/);
+  });
+
   it('phase profiles cannot be selected manually', () => {
     const r = parseInvocation(argv('--profile', 'bogus'));
     assert.strictEqual(r.ok, false);
@@ -1128,9 +1136,33 @@ describe('runGate — env-fail/requires/outputMeansFailure (V-03, data-only in G
     assert.match(result.output, /no space left on device/);
   });
 
-  it('outputMeansFailure: exit 0 with non-empty stdout is a failure (gofmt -l contract)', async () => {
+  it('outputMeansFailure: legacy combined output falls back to stdout semantics', async () => {
     const gate: Gate = { ...baseGate, outputMeansFailure: true };
     const runner: GateRunner = () => ({ exitCode: 0, output: 'unformatted/file.go' });
+    const result = await runGate(runner, gate, 'probe');
+    assert.strictEqual(result.status, 'fail');
+  });
+
+  it('outputMeansFailure: exit 0 with empty stdout and diagnostic stderr stays a pass', async () => {
+    const gate: Gate = { ...baseGate, outputMeansFailure: true };
+    const runner: GateRunner = () => ({
+      exitCode: 0,
+      output: 'diagnostic only\n',
+      stdout: '',
+      stderr: 'diagnostic only\n',
+    });
+    const result = await runGate(runner, gate, 'probe');
+    assert.strictEqual(result.status, 'pass');
+  });
+
+  it('outputMeansFailure: exit 0 with preserved non-empty stdout is a failure', async () => {
+    const gate: Gate = { ...baseGate, outputMeansFailure: true };
+    const runner: GateRunner = () => ({
+      exitCode: 0,
+      output: 'unformatted/file.go\nwarning\n',
+      stdout: 'unformatted/file.go\n',
+      stderr: 'warning\n',
+    });
     const result = await runGate(runner, gate, 'probe');
     assert.strictEqual(result.status, 'fail');
   });
@@ -1444,7 +1476,7 @@ describe('run', () => {
     }
   });
 
-  it('overlaps the independent quality tail but renders results in canonical order', async () => {
+  it('serializes the quality tail in canonical order for exact per-gate tree attribution', async () => {
     let activeQuality = 0;
     let peakQuality = 0;
     const completed: string[] = [];
@@ -1463,18 +1495,18 @@ describe('run', () => {
     const outcome = await run(runner, 'full');
 
     assert.strictEqual(outcome.ok, true);
-    assert.strictEqual(peakQuality, 3, 'all three independent quality commands overlap');
+    assert.strictEqual(peakQuality, 1, 'one real tree has exactly one active gate');
     assert.deepStrictEqual(
       completed,
-      ['format', 'yagni', 'lint'],
-      'fixture proves out-of-order finish'
+      ['lint', 'format', 'yagni'],
+      'guarded gates finish in canonical order'
     );
     if (!outcome.ok) return;
     assert.ok(outcome.text.indexOf('✅ lint') < outcome.text.indexOf('✅ format'));
     assert.ok(outcome.text.indexOf('✅ format') < outcome.text.indexOf('✅ yagni'));
   });
 
-  it('accumulates multiple concurrent quality failures instead of short-circuiting', async () => {
+  it('accumulates multiple serialized quality failures instead of short-circuiting', async () => {
     const evidence: GateResult[] = [];
     const runner: GateRunner = async (command, args) => {
       const name = command === 'npm' ? (args[1] ?? '') : (args.at(-1) ?? '');

@@ -8,8 +8,8 @@ import { execFileSync } from 'node:child_process';
 
 /**
  * @purpose Guard over one git toplevel: gates run in the real tree, mutations show up in
- *   `git status` and roll back to HEAD (D-STACK-017).
- * @invariant `reset()` is exact because acquisition refused a dirty tree: pre-run state IS HEAD.
+ *   `git status` and roll back to the acquired HEAD/index baseline (D-STACK-017).
+ * @invariant `reset()` is exact because acquisition proves worktree equals its chosen baseline.
  * @consumer gate-runner
  */
 export type TreeGuard = {
@@ -39,6 +39,12 @@ export type TreeGuardOptions = {
    * @invariant No `reset` under any exit path — the dirt is the caller's unsaved work.
    */
   readonly wip?: boolean;
+  /**
+   * @purpose Internal pre-commit mode: the staged index is the immutable baseline while the
+   *   working tree is required to match it exactly.
+   * @invariant This is not a dirty-tree bypass: unstaged and untracked paths are refused.
+   */
+  readonly staged?: boolean;
   /** @purpose Milliseconds to wait for a held lock before giving up; 0 fails immediately. */
   readonly lockWaitMs?: number;
 };
@@ -51,11 +57,17 @@ export type GuardAcquisition =
   | { readonly kind: 'guard'; readonly guard: TreeGuard }
   | { readonly kind: 'error'; readonly message: string };
 
+/** @purpose Full-profile tree boundary: guarded committed tree, or an honest no-git/no-HEAD state. */
+export type TreeGuardResolution =
+  | GuardAcquisition
+  | { readonly kind: 'unsandboxed'; readonly message: string };
+
 /** Lockfile payload; `cleanAtStart` gates crash recovery (reset is only safe after the check). */
 type LockPayload = {
   readonly pid: number;
   readonly startedAt: string;
   readonly cleanAtStart: boolean;
+  readonly mode?: 'pending' | 'head' | 'staged' | 'wip';
 };
 
 /**
@@ -80,6 +92,67 @@ function git(args: readonly string[], cwd: string): string {
  */
 export function treeStatus(toplevel: string): string {
   return git(['status', '--porcelain'], toplevel).trim();
+}
+
+/** Working-tree delta from the index; cleanly staged HEAD deltas are deliberately excluded. */
+function worktreeStatus(toplevel: string): string {
+  return git(['status', '--porcelain=v1', '--untracked-files=all'], toplevel)
+    .split('\n')
+    .filter((line) => line.length > 0 && (line.startsWith('??') || line[1] !== ' '))
+    .join('\n');
+}
+
+/** Exact index tree used as the pre-commit candidate baseline. */
+function writeIndexTree(toplevel: string): string {
+  return git(['write-tree'], toplevel).trim();
+}
+
+/** Gate-created index/worktree delta from the captured pre-commit candidate. */
+function stagedDrift(toplevel: string, baselineTree: string): string {
+  const currentTree = writeIndexTree(toplevel);
+  const indexDelta =
+    currentTree === baselineTree
+      ? ''
+      : git(['diff', '--cached', '--name-status', '--no-renames', baselineTree], toplevel)
+          .trim()
+          .split('\n')
+          .filter(Boolean)
+          .map((line) => `INDEX ${line}`)
+          .join('\n');
+  return [indexDelta, worktreeStatus(toplevel)].filter(Boolean).join('\n');
+}
+
+/**
+ * @purpose Resolve and acquire the one D-STACK-017 clean-tree transaction for a full verify run.
+ * @param root Project root from which Git ownership is resolved.
+ * @param [notice] Sink for crash-recovery diagnostics.
+ * @param [options] Guard mode; staged mode is reserved for the index-aware pre-commit integration.
+ * @returns Guard/error for a repository with HEAD; `unsandboxed` when Git or HEAD is absent.
+ * @sideEffect IO: a successful guarded result owns a lock that the caller must release.
+ */
+export function resolveTreeGuard(
+  root: string,
+  notice?: (message: string) => void,
+  options: TreeGuardOptions = {}
+): TreeGuardResolution {
+  let toplevel: string;
+  try {
+    toplevel = git(['rev-parse', '--show-toplevel'], root).trim();
+  } catch {
+    return {
+      kind: 'unsandboxed',
+      message: 'drift gate requires a git repository (no toplevel found)',
+    };
+  }
+  try {
+    git(['rev-parse', '--verify', '--quiet', 'HEAD'], toplevel);
+  } catch {
+    return {
+      kind: 'unsandboxed',
+      message: 'drift gate requires a git repository with a committed HEAD',
+    };
+  }
+  return acquireTreeGuard(toplevel, notice, options);
 }
 
 /**
@@ -143,6 +216,10 @@ export function acquireTreeGuard(
   options: TreeGuardOptions = {}
 ): GuardAcquisition {
   const wip = options.wip === true;
+  const staged = options.staged === true;
+  if (wip && staged) {
+    return { kind: 'error', message: 'tree guard cannot combine wip and staged modes' };
+  }
   const lock = lockPath(toplevel);
 
   // #region START_LOCK — one verify per worktree; a leftover lock is a crash marker
@@ -159,6 +236,7 @@ export function acquireTreeGuard(
     pid: process.pid,
     startedAt: new Date().toISOString(),
     cleanAtStart: false,
+    mode: staged ? 'staged' : wip ? 'wip' : 'pending',
   });
   if (first !== true && first.code !== 'EEXIST') {
     // Unwritable gitdir: the guard cannot arm, and running unguarded would drop observe-only.
@@ -182,6 +260,13 @@ export function acquireTreeGuard(
       };
     }
 
+    if (!outlasted && previous?.mode === 'staged') {
+      return {
+        kind: 'error',
+        message: `stale staged verify lock at ${lock} (dead pid ${previous.pid}) — refusing crash recovery because staged user work may have changed; inspect the index/worktree and remove the lock explicitly`,
+      };
+    }
+
     // Only a DEAD holder leaves debris; one that finished while we waited cleaned up after itself.
     if (!outlasted && previous !== null && previous.cleanAtStart) {
       notice(
@@ -195,6 +280,7 @@ export function acquireTreeGuard(
       pid: process.pid,
       startedAt: new Date().toISOString(),
       cleanAtStart: false,
+      mode: staged ? 'staged' : wip ? 'wip' : 'pending',
     });
     if (retaken !== true) {
       return { kind: 'error', message: `lost the race for the tree lock: ${lock}` };
@@ -202,7 +288,26 @@ export function acquireTreeGuard(
   }
   // #endregion END_LOCK
 
-  if (!wip) {
+  let baselineTree: string | null = null;
+  if (staged) {
+    const status = worktreeStatus(toplevel);
+    if (status.length > 0) {
+      fs.rmSync(lock, { force: true });
+      return {
+        kind: 'error',
+        message: `DIRTY_INDEX_WORKTREE: pre-commit staged mode requires working tree == index; stage or remove these paths:\n${status}`,
+      };
+    }
+    try {
+      baselineTree = writeIndexTree(toplevel);
+    } catch (cause) {
+      fs.rmSync(lock, { force: true });
+      return {
+        kind: 'error',
+        message: `cannot capture the staged index baseline: ${cause instanceof Error ? cause.message : String(cause)}`,
+      };
+    }
+  } else if (!wip) {
     const status = treeStatus(toplevel);
     if (status.length > 0) {
       fs.rmSync(lock, { force: true });
@@ -217,8 +322,21 @@ export function acquireTreeGuard(
   // uncommitted work when we took the lock, so a later run must never "recover" it by resetting.
   fs.writeFileSync(
     lock,
-    JSON.stringify({ pid: process.pid, startedAt: new Date().toISOString(), cleanAtStart: !wip })
+    JSON.stringify({
+      pid: process.pid,
+      startedAt: new Date().toISOString(),
+      // Staged mode can restore only while its process owns the in-memory baseline tree. A later
+      // process must never infer permission to reset staged user work from a stale lock.
+      cleanAtStart: !wip && !staged,
+      mode: staged ? 'staged' : wip ? 'wip' : 'head',
+    })
   );
+
+  const drift = (): string => {
+    if (wip) return '';
+    if (staged) return stagedDrift(toplevel, baselineTree as string);
+    return treeStatus(toplevel);
+  };
 
   const reset = (): void => {
     if (wip) {
@@ -226,7 +344,14 @@ export function acquireTreeGuard(
       // delete exactly what is being verified.
       return;
     }
-    git(['reset', '--hard', '--quiet'], toplevel);
+    if (staged) {
+      // Restore both index and worktree to the captured candidate. This preserves every staged
+      // user edit while undoing even a gate that ran `git add` itself.
+      git(['read-tree', baselineTree as string], toplevel);
+      git(['checkout-index', '--all', '--force'], toplevel);
+    } else {
+      git(['reset', '--hard', '--quiet'], toplevel);
+    }
     git(['clean', '-fdq'], toplevel);
   };
 
@@ -237,7 +362,7 @@ export function acquireTreeGuard(
     }
     released = true;
     try {
-      if (!wip && treeStatus(toplevel).length > 0) {
+      if (!wip && drift().length > 0) {
         reset();
       }
     } finally {
@@ -261,6 +386,6 @@ export function acquireTreeGuard(
     kind: 'guard',
     // Drift means "a gate mutated a clean tree". With a dirty tree there is no baseline to
     // compare against, so wip reports no drift rather than reporting the caller's own edits.
-    guard: { toplevel, drift: () => (wip ? '' : treeStatus(toplevel)), reset, release },
+    guard: { toplevel, drift, reset, release },
   };
 }

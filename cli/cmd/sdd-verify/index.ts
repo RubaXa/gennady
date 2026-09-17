@@ -13,12 +13,17 @@ import {
 import { parseInvocation, stackConfigError } from './sdd-verify.types.ts';
 import { resolvePhaseContext } from './phase-context.ts';
 import { runPhaseVerification } from './phase-run.ts';
-import { createRepairMutationBoundary } from './workspace-mutation.ts';
 import { selectCoverageAdapter } from '../testcov/coverage-adapter-registry.ts';
 import { createCoverageArtifactBoundary } from '../testcov/coverage-artifact.ts';
 import { loadStackConfig, type StackConfigLoad } from '../../../shared/verify/stack-config.ts';
 import { BUILTIN_GATE_IDS } from '../../../shared/verify/stack-registry.ts';
 import { resolveAssembledFullProfile } from './full-profile-plan.ts';
+import { resolveTreeGuard } from '../../../shared/verify/tree-guard.ts';
+
+// Consume this one-process hook channel before any gate subprocess is created. Nested commands and
+// tests must not inherit permission to select an index baseline in their own repositories.
+const preCommitIndexMode = process.env.GENNADY_INTERNAL_PRECOMMIT_INDEX === '1';
+delete process.env.GENNADY_INTERNAL_PRECOMMIT_INDEX;
 
 const invocation = parseInvocation(process.argv);
 if (!invocation.ok) {
@@ -105,19 +110,33 @@ if (invocation.mode === 'phase') {
     console.error(`[sdd-verify] ${cause instanceof Error ? cause.message : String(cause)}`);
     process.exit(1);
   }
-  outcome = await run(
-    defaultAsyncRunner,
-    'full',
-    coverageProbe,
-    { targets: [], only: invocation.only, skip: invocation.skip, fullPlan },
-    undefined,
-    {
-      // `full` never enters repair, but the complete project verdict is still runtime-enforced
-      // read-only. Coverage alone receives its narrow generated-artifact transaction.
-      repair: createRepairMutationBoundary(resolve('.')),
-      foundation: createRepairMutationBoundary(resolve('.'), 'full-profile gate'),
+  // The hook proves and the guard independently re-proves that worktree == index. This internal
+  // channel lets pre-commit verify the exact staged candidate; it is intentionally not a CLI flag.
+  const tree = resolveTreeGuard(projectRoot, undefined, {
+    staged: preCommitIndexMode,
+  });
+  if (tree.kind === 'error') {
+    outcome = {
+      ok: false as const,
+      code: 'ERR_CLI_SDD_VERIFY_TREE_GUARD',
+      exitCode: 4 as const,
+      message: `[sdd-verify] ${tree.message}`,
+    };
+  } else {
+    try {
+      outcome = await run(
+        defaultAsyncRunner,
+        'full',
+        coverageProbe,
+        { targets: [], only: invocation.only, skip: invocation.skip, fullPlan },
+        undefined,
+        undefined,
+        tree
+      );
+    } finally {
+      if (tree.kind === 'guard') tree.guard.release();
     }
-  );
+  }
 }
 console.log(outcome.ok ? outcome.text : outcome.message);
 process.exit(outcome.ok ? 0 : outcome.exitCode);

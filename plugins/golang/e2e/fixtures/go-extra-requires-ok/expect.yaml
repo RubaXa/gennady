@@ -1,6 +1,6 @@
 notes: >
   requires must not break the normal path: every precondition holds, so the gate command runs
-  and passes. Preconditions also resolve cwd inside the run replica, which `test -f` proves.
+  and passes. Preconditions resolve cwd in the guarded repository tree, which `test -f` proves.
 requires: [go]
 argv: ['--all']
 exitCode: 0

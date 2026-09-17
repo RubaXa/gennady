@@ -80,9 +80,9 @@ export type GateOutcome = {
   readonly exitCode: number | null;
   /** @purpose True when the gate exceeded its own timeoutMs. */
   readonly timedOut: boolean;
-  /** @purpose Standard output, replica paths already rewritten. */
+  /** @purpose Standard output captured from the real-tree gate process. */
   readonly stdout: string;
-  /** @purpose Standard error, replica paths already rewritten. */
+  /** @purpose Standard error captured from the real-tree gate process. */
   readonly stderr: string;
   /** @purpose stdout followed by stderr — the stream-agnostic form. */
   readonly output: string;
@@ -151,7 +151,7 @@ export type Gate = {
   readonly timeoutMs: number;
   /** @purpose When true, any stdout on exit 0 means failure (gofmt -l contract). */
   readonly outputMeansFailure: boolean;
-  /** @purpose Run in an ephemeral working-tree replica; resulting drift = FAIL (spec §2, D-STACK-011). */
+  /** @purpose Treat non-ignored clean-tree drift as FAIL (spec §2, D-STACK-011/017). */
   readonly driftMeansFailure?: boolean;
   /** @purpose ENV_FAIL predicates; absent/empty means every failure implicates the code. */
   readonly envFail?: readonly EnvFailPredicate[];
@@ -177,7 +177,7 @@ export type Gate = {
 export type GateResult = {
   /** @purpose The gate that produced this result. */
   readonly gate: Gate;
-  /** @purpose Verdict of the execution; `violation` = a non-sandbox gate mutated the replica (§2). */
+  /** @purpose Verdict; `violation` = an observing gate mutated the guarded real tree (§2). */
   readonly status: 'pass' | 'fail' | 'env-fail' | 'skipped' | 'timeout' | 'violation';
   /** @purpose Process exit code, or null when skipped or killed. */
   readonly exitCode: number | null;
@@ -246,7 +246,7 @@ export type GateSpec = {
   readonly timeout?: string;
   /** @purpose Stdout contract; extraGates default: false. */
   readonly outputMeansFailure?: boolean;
-  /** @purpose Drift gate (spec §2): mutation expected, replica drift is the FAIL verdict. Rejected in fixers. */
+  /** @purpose Drift gate (spec §2): mutation expected, guarded-tree drift is FAIL. Rejected in fixers. */
   readonly driftMeansFailure?: boolean;
   /** @purpose ENV_FAIL rules (config.spec §3.4): conditions AND within a rule, rules OR. */
   readonly envFail?: readonly Readonly<Record<string, unknown>>[];

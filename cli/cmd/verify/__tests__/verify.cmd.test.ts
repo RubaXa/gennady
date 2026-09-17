@@ -152,7 +152,20 @@ describe('resolveVerifyPlan — read-only, exactly what sdd-verify --profile ful
         assert.strictEqual(plan.stack, 'node');
         assert.deepStrictEqual(
           plan.gates.map((g) => g.name),
-          ['type-check', 'test:coverage', 'lint', 'format', 'yagni', 'golang:govulncheck']
+          [
+            'type-check',
+            'test:coverage',
+            'lint',
+            'format',
+            'yagni',
+            'golang:generate',
+            'golang:build',
+            'golang:vet',
+            'golang:fmt',
+            'golang:lint',
+            'golang:test',
+            'golang:govulncheck',
+          ]
         );
         assert.deepEqual(plan.stacks, ['node', 'golang']);
         assert.deepEqual(plan.gates.at(-1), {
@@ -235,12 +248,16 @@ describe('resolveVerifyPlan — read-only, exactly what sdd-verify --profile ful
     });
   });
 
-  it('D-64 keeps the package-12 dependency fail-closed for a detected primary without a preset', () => {
+  it('D-64 makes Go primary and blocking once V-09 supplies its preset', () => {
     withProject({ 'go.mod': 'module example.com/x\n\ngo 1.22\n' }, (dir) => {
-      assert.throws(
-        () => resolveVerifyPlan(dir),
-        /primary stack "golang" has no full-profile preset/
+      const plan = resolveVerifyPlan(dir);
+      assert.equal(plan.stack, 'golang');
+      assert.deepEqual(plan.stacks, ['golang']);
+      assert.deepEqual(
+        plan.gates.map((gate) => gate.name),
+        ['generate', 'build', 'vet', 'fmt', 'lint', 'test']
       );
+      assert.ok(plan.gates.every((gate) => gate.blocking));
     });
   });
 });

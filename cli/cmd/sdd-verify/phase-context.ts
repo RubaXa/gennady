@@ -352,6 +352,7 @@ export function resolvePhaseContext(
       profileOverride: profile,
       stack,
       config: stackConfig,
+      root: projectRoot,
     });
   } catch (cause) {
     return failure(

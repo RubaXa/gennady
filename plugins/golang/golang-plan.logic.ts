@@ -25,7 +25,7 @@ export const GO_GATE_ORDER: readonly GoGateId[] = [
 
 /** Human labels for each gate id. */
 const GATE_LABELS: Readonly<Record<GoGateId, string>> = {
-  generate: 'go generate (sandboxed drift check)',
+  generate: 'go generate (guarded drift check)',
   build: 'go build',
   vet: 'go vet',
   fmt: 'gofmt -l (check only)',
@@ -178,7 +178,7 @@ const GO_GENERATE_ENV_FAIL: readonly EnvFailPredicate[] = [
   outputMatches(MODULE_RESOLVE_RE),
   outputMatches(
     /executable file not found/,
-    'the generator binary is not in PATH — `go install` it or declare it as a go.mod `tool` directive; gitignored binaries are not replicated into the sandbox (D-STACK-012)'
+    'the generator binary is not in PATH — `go install` it or declare it as a go.mod `tool` directive'
   ),
 ];
 

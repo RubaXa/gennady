@@ -66,5 +66,19 @@
     "intent": "Complete inputs/brief.md: write a Makefile with build/test/clean/help.",
     "acceptance": "golden/verify.sh exits 0.",
     "budgetMs": 240000
+  },
+  {
+    "id": "golang-slugify",
+    "fixture": "golang-slugify",
+    "phase": "execute",
+    "mode": "canonical-execute",
+    "intent": "Execute the migrated V2 Go slugify ticket using the detected golang preset and its deterministic mechanical gates.",
+    "acceptance": "The Go stack is detected, the ticket is pickable, phase receipts are written only after gofmt/build/vet/test pass, the hidden golden verifier passes, and the repository remains clean. Judge output is diagnostic only and never changes the mechanical exit code.",
+    "completion": {
+      "artifact": "slugify.go",
+      "ticket": "specs/golang-slugify/core/core.task.GSL-slug.md",
+      "spec": "specs/golang-slugify/core/core.spec.md"
+    },
+    "budgetMs": 600000
   }
 ]

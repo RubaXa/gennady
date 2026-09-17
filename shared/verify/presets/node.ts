@@ -10,8 +10,9 @@ import {
   resolveProjectScriptName,
 } from '../../sdd/readiness.ts';
 import type { VerificationProfile } from '../../sdd/phase-verification-plan.ts';
-import type { StackConfig, StackId } from '../verify.types.ts';
+import type { Gate as StackGate, StackConfig, StackId } from '../verify.types.ts';
 import { resolveAnystackPreset } from './anystack.ts';
+import { resolveGolangPreset } from './golang.ts';
 
 /**
  * @purpose Node preset's canonical gate names for a profile and coverage-owner state.
@@ -63,6 +64,11 @@ export type StackPreset = {
     targets: readonly string[]
   ): string | null;
   /**
+   * @purpose Literal plugin gates for a project-level full profile, when this preset has them.
+   * @returns Plugin-owned gates in their canonical full-profile order.
+   */
+  fullGates?(): readonly StackGate[];
+  /**
    * @purpose Why a `when`-scoped gate does not apply given the phase's Target Files (V-12,
    *   #9-bonus), or null when it applies (or carries no `when` at all).
    * @invariant Optional — node/golang have no file-scope concept and omit it, so
@@ -84,7 +90,7 @@ export type StackPreset = {
  * @purpose Resolve the stack preset governing gate names/commands for one repository.
  * @invariant `profile` is accepted (V-04's declared shape) but unused by node/anystack — a
  *   profile-shaped preset (V-09+) uses it for real. `root`/`config` are used by anystack (V-08);
- *   golang still resolves to null (arrives in V-09).
+ *   golang resolves through its literal plugin adapter (V-09).
  * @param stack Which built-in stack to resolve.
  * @param _profile Selected verification profile; reserved for a future profile-shaped preset.
  * @param root Absolute repository root; passed through to config-aware presets (anystack, V-08).
@@ -99,6 +105,7 @@ export function resolvePreset(
   config?: StackConfig | null
 ): StackPreset | null {
   if (stack === 'anystack') return resolveAnystackPreset(root, config);
+  if (stack === 'golang') return resolveGolangPreset(root, config);
   if (stack !== 'node') return null;
   return {
     stack: 'node',

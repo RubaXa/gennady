@@ -201,7 +201,7 @@ describe('phase receipt', () => {
   });
 
   describe("V-04a: environmentState source is a preset's responsibility (И-3)", () => {
-    it('phaseVerificationEnvironmentState fails at resolve stage for a stack with no preset, before ever touching package.json', () => {
+    it('phaseVerificationEnvironmentState uses the Go manifest source without package.json', () => {
       // No package.json in this root at all. For 'node' (default), that is a deep fingerprint
       // failure (proves the guard does NOT short-circuit node — engine still runs for it).
       // For an unimplemented stack, resolvePreset(...) returns null and refusal must happen
@@ -214,6 +214,7 @@ describe('phase receipt', () => {
         if (!nodeResult.ok)
           assert.match(nodeResult.issue, /cannot fingerprint project verification scripts/);
 
+        writeFileSync(join(root, 'go.mod'), 'module example.com/receipt\n\ngo 1.22\n');
         const golangResult = phaseVerificationEnvironmentState(
           root,
           'code',
@@ -222,24 +223,13 @@ describe('phase receipt', () => {
           true,
           'golang'
         );
-        assert.strictEqual(golangResult.ok, false);
-        if (!golangResult.ok) {
-          assert.match(golangResult.issue, /no environmentState source for stack 'golang'/);
-          assert.doesNotMatch(
-            golangResult.issue,
-            /cannot fingerprint project verification scripts/
-          );
-        }
-
-        // 'anystack' no longer illustrates this contract: V-08 gave it a real preset
-        // (shared/verify/presets/anystack.ts), so it now passes the resolve-stage guard like
-        // 'node' does — 'golang' (still unimplemented, V-09) is this test's sole example.
+        assert.strictEqual(golangResult.ok, true);
       } finally {
         rmSync(root, { recursive: true, force: true });
       }
     });
 
-    it('phaseVerificationPlanEnvironmentState fails at resolve stage for a stack with no preset, before ever touching package.json', () => {
+    it('phaseVerificationPlanEnvironmentState uses Go manifests without package.json', () => {
       const root = mkdtempSync(join(tmpdir(), 'phase-receipt-plan-preset-resolve-'));
       const plan: PhaseVerificationPlan = {
         ticket: 'specs/app/app.task.TSK-1.md',
@@ -254,15 +244,9 @@ describe('phase receipt', () => {
         if (!nodeResult.ok)
           assert.match(nodeResult.issue, /cannot fingerprint project verification scripts/);
 
+        writeFileSync(join(root, 'go.mod'), 'module example.com/receipt\n\ngo 1.22\n');
         const golangResult = phaseVerificationPlanEnvironmentState(root, plan, [], 'golang');
-        assert.strictEqual(golangResult.ok, false);
-        if (!golangResult.ok) {
-          assert.match(golangResult.issue, /no environmentState source for stack 'golang'/);
-          assert.doesNotMatch(
-            golangResult.issue,
-            /cannot fingerprint project verification scripts/
-          );
-        }
+        assert.strictEqual(golangResult.ok, true);
       } finally {
         rmSync(root, { recursive: true, force: true });
       }

@@ -78,8 +78,8 @@ describe('resolvePreset', () => {
     assert.strictEqual(preset.commandForGate('type-check', {}, []), null);
   });
 
-  it('golang stays unimplemented (arrives in V-09)', () => {
-    assert.strictEqual(resolvePreset('golang', 'full', '.'), null);
+  it('golang resolves to its V-09 preset', () => {
+    assert.strictEqual(resolvePreset('golang', 'full', '.')?.stack, 'golang');
   });
 
   it("'anystack' resolves too (V-08) — a second preset, same shape as node's", () => {
