@@ -3,9 +3,13 @@
 
 import type { CoverageAdapter, CoverageAdapterSelection } from './coverage-adapter.types.ts';
 import { istanbulCoverageAdapter } from './istanbul-coverage-adapter.ts';
+import { xccovCoverageAdapter } from './xccov-coverage-adapter.ts';
 
 /** @purpose Sole registration point; add future platform adapters without changing orchestration. */
-const COVERAGE_ADAPTERS: readonly CoverageAdapter[] = [istanbulCoverageAdapter];
+const COVERAGE_ADAPTERS: readonly CoverageAdapter[] = [
+  istanbulCoverageAdapter,
+  xccovCoverageAdapter,
+];
 
 /**
  * @purpose Select exactly one adapter from concrete project/report evidence.

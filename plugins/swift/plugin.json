@@ -1,0 +1,7 @@
+{
+  "id": "swift",
+  "kind": "stack",
+  "entry": "swift-plugin.ts",
+  "marker": "Package.swift|Project.swift|*.xcodeproj|*.xcworkspace",
+  "description": "Swift Package/Xcode/Tuist verification with config-owned Xcode commands"
+}

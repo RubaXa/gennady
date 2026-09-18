@@ -188,7 +188,7 @@ if (adapterSelection.kind !== 'selected') {
           .join('; ')}`;
   const fix =
     adapterSelection.kind === 'unsupported'
-      ? `configure a supported coverage report adapter (available: ${adapterSelection.available.join(', ') || 'none registered'}); iOS, Android, and Go are not supported yet`
+      ? `configure a supported coverage report adapter (available: ${adapterSelection.available.join(', ') || 'none registered'}); Android and Go are not supported yet`
       : 'remove the conflicting report/platform evidence; testcov refuses to guess which adapter owns the gate';
   if (CHECK_ONLY && JSON_OUT) {
     process.stdout.write(

@@ -319,19 +319,12 @@ describe('resolvePhaseVerificationPlan', () => {
   });
 
   describe('V-08b: resolves the preset by detected stack, not the literal node', () => {
-    it('fails closed with a stable diagnostic when the detected stack has no preset', () => {
-      assert.throws(
-        () => verificationGateNames('code', false, 'swift'),
-        (cause: unknown) => {
-          assert.ok(cause instanceof Error);
-          assert.strictEqual(cause.name, 'Error');
-          assert.match(
-            cause.message,
-            /no verification preset is implemented for detected stack 'swift'/
-          );
-          return true;
-        }
-      );
+    it('resolves the V-11 Swift phase ladder', () => {
+      assert.deepEqual(verificationGateNames('code', false, 'swift'), [
+        'fix',
+        'type-check',
+        'test',
+      ]);
     });
 
     it('resolves the V-09 Go phase ladder', () => {

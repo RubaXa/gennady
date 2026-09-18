@@ -4,6 +4,7 @@
 import { afterEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  chmodSync,
   mkdirSync,
   mkdtempSync,
   existsSync,
@@ -16,9 +17,11 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { spawnSync } from 'node:child_process';
 import type { CoverageAdapter } from '../coverage-adapter.types.ts';
 import { selectCoverageAdapter } from '../coverage-adapter-registry.ts';
 import { istanbulCoverageAdapter } from '../istanbul-coverage-adapter.ts';
+import { xccovCoverageAdapter } from '../xccov-coverage-adapter.ts';
 import { createCoverageArtifactBoundary } from '../coverage-artifact.ts';
 import { aggregateLineCoverage, describeCoverageGate } from '../coverage-threshold.ts';
 
@@ -56,7 +59,10 @@ describe('selectCoverageAdapter', () => {
   it('rejects an unknown platform instead of silently assuming Istanbul', () => {
     const selection = selectCoverageAdapter(fixture());
 
-    assert.deepStrictEqual(selection, { kind: 'unsupported', available: ['istanbul-js'] });
+    assert.deepStrictEqual(selection, {
+      kind: 'unsupported',
+      available: ['istanbul-js', 'xccov-swift'],
+    });
   });
 
   it('rejects ambiguous platform evidence instead of picking by registry order', () => {
@@ -405,6 +411,262 @@ describe('istanbulCoverageAdapter', () => {
     assert.deepStrictEqual(istanbulCoverageAdapter.resolveSource(root, report, source), {
       kind: 'ambiguous',
       keys: ['/old/a/src/feature.ts', '/old/b/src/feature.ts'],
+    });
+  });
+});
+
+describe('xccovCoverageAdapter', () => {
+  it('does not select Swift from a nested dependency Package.swift alone', () => {
+    const root = fixture();
+    writeFileSync(join(root, 'package.json'), '{"name":"node-app"}');
+    mkdirSync(join(root, 'Dependencies', 'Some'), { recursive: true });
+    writeFileSync(
+      join(root, 'Dependencies', 'Some', 'Package.swift'),
+      '// swift-tools-version: 6.0\n'
+    );
+
+    assert.deepStrictEqual(xccovCoverageAdapter.detect(root), { matched: false, evidence: [] });
+    const selection = selectCoverageAdapter(root);
+    assert.strictEqual(selection.kind, 'selected');
+    if (selection.kind === 'selected') assert.strictEqual(selection.adapter.id, 'istanbul-js');
+  });
+
+  it('detects Swift/Xcode evidence but requires a config-produced result bundle', () => {
+    const root = fixture();
+    const bin = join(root, 'bin');
+    mkdirSync(bin);
+    mkdirSync(join(root, 'App.xcodeproj'));
+    writeFileSync(join(root, 'App.xcodeproj', 'project.pbxproj'), '// project\n');
+    writeFileSync(join(bin, 'xcrun'), '#!/bin/sh\nprintf "/tool/xccov\\n"\n');
+    chmodSync(join(bin, 'xcrun'), 0o755);
+    const previous = process.env['PATH'];
+    process.env['PATH'] = `${bin}:/usr/bin:/bin`;
+
+    try {
+      const selection = selectCoverageAdapter(root);
+
+      assert.strictEqual(selection.kind, 'selected');
+      if (selection.kind === 'selected') assert.strictEqual(selection.adapter.id, 'xccov-swift');
+      const capability = xccovCoverageAdapter.producerCapability(root);
+      assert.strictEqual(capability.kind, 'unsupported');
+      if (capability.kind === 'unsupported') {
+        assert.strictEqual(capability.code, 'XCCOV_RESULT_MISSING');
+        assert.match(capability.fix, /Swift test gate/);
+      }
+    } finally {
+      process.env['PATH'] = previous;
+    }
+  });
+
+  it('selects from a bounded *.xcresult probe without traversing DerivedData', () => {
+    const root = fixture();
+    mkdirSync(join(root, 'build', 'App.xcresult'), { recursive: true });
+    mkdirSync(join(root, 'DerivedData', 'huge', 'nested'), { recursive: true });
+    writeFileSync(join(root, 'DerivedData', 'huge', 'nested', 'not-an-xcresult'), 'ignored');
+
+    const selection = selectCoverageAdapter(root);
+
+    assert.strictEqual(selection.kind, 'selected');
+    if (selection.kind === 'selected') {
+      assert.strictEqual(selection.adapter.id, 'xccov-swift');
+      assert.deepStrictEqual(selection.adapter.detect(root).evidence, ['build/App.xcresult']);
+    }
+  });
+
+  it('rejects regular files and symlinks whose names merely end in .xcresult', () => {
+    const root = fixture();
+    writeFileSync(join(root, 'fake.xcresult'), 'not a bundle');
+    mkdirSync(join(root, 'real-bundle'));
+    symlinkSync(join(root, 'real-bundle'), join(root, 'linked.xcresult'));
+
+    assert.deepStrictEqual(xccovCoverageAdapter.detect(root), { matched: false, evidence: [] });
+    const capability = xccovCoverageAdapter.producerCapability(root);
+    assert.strictEqual(capability.kind, 'unsupported');
+    if (capability.kind === 'unsupported') {
+      assert.strictEqual(capability.code, 'XCCOV_RESULT_MISSING');
+    }
+  });
+
+  it('distinguishes a missing xccov tool from missing project export config', () => {
+    const root = fixture();
+    const bin = join(root, 'bin');
+    mkdirSync(bin);
+    mkdirSync(join(root, 'build', 'TestResults.xcresult'), { recursive: true });
+    writeFileSync(join(bin, 'xcrun'), '#!/bin/sh\nexit 1\n');
+    chmodSync(join(bin, 'xcrun'), 0o755);
+    const previous = process.env['PATH'];
+    process.env['PATH'] = `${bin}:/usr/bin:/bin`;
+    try {
+      const capability = xccovCoverageAdapter.producerCapability(root);
+      assert.strictEqual(capability.kind, 'unsupported');
+      if (capability.kind === 'unsupported') {
+        assert.strictEqual(capability.code, 'XCCOV_TOOL_MISSING');
+        assert.match(capability.fix, /Xcode toolchain/);
+      }
+    } finally {
+      process.env['PATH'] = previous;
+    }
+  });
+
+  it('fails closed when bounded discovery finds multiple result bundles', () => {
+    const root = fixture();
+    mkdirSync(join(root, 'First.xcresult'));
+    mkdirSync(join(root, 'build', 'Second.xcresult'), { recursive: true });
+
+    const capability = xccovCoverageAdapter.producerCapability(root);
+
+    assert.strictEqual(capability.kind, 'unsupported');
+    if (capability.kind === 'unsupported') {
+      assert.strictEqual(capability.code, 'XCCOV_RESULT_AMBIGUOUS');
+      assert.match(capability.message, /First\.xcresult.*build\/Second\.xcresult/);
+    }
+  });
+
+  it('selects the canonical current bundle and ignores its previous sibling', () => {
+    const root = fixture();
+    const bin = join(root, 'bin');
+    const current = join(root, 'build', 'xcresult', 'TestResults.xcresult');
+    mkdirSync(current, { recursive: true });
+    mkdirSync(join(root, 'build', 'xcresult', 'TestResults.previous.xcresult'));
+    mkdirSync(bin);
+    writeFileSync(join(bin, 'xcrun'), '#!/bin/sh\nprintf "/tool/xccov\\n"\n');
+    chmodSync(join(bin, 'xcrun'), 0o755);
+    const previous = process.env['PATH'];
+    process.env['PATH'] = `${bin}:/usr/bin:/bin`;
+    try {
+      const capability = xccovCoverageAdapter.producerCapability(root);
+      assert.strictEqual(capability.kind, 'available');
+      if (capability.kind === 'available') {
+        assert.equal(capability.producers[0].invocation('unused').args[4], current);
+      }
+    } finally {
+      process.env['PATH'] = previous;
+    }
+  });
+
+  it('exports one exact bundle through positional shell args and preserves bundle freshness', () => {
+    const root = fixture();
+    const bin = join(root, 'tool bin');
+    const xccov = join(bin, 'xccov fake');
+    const bundle = join(root, 'build', 'xcresult', 'Result With Space.xcresult');
+    const source = join(root, 'Sources', 'Feature.swift');
+    mkdirSync(bin, { recursive: true });
+    mkdirSync(bundle, { recursive: true });
+    mkdirSync(join(root, 'Sources'));
+    writeFileSync(source, 'struct Feature {}\n');
+    writeFileSync(
+      xccov,
+      '#!/bin/sh\nprintf \'{"targets":[{"files":[{"path":"Sources/Feature.swift","coveredLines":1,"executableLines":1}]}]}\n\'\n'
+    );
+    chmodSync(xccov, 0o755);
+    writeFileSync(join(bin, 'xcrun'), `#!/bin/sh\nprintf '%s\\n' '${xccov}'\n`);
+    chmodSync(join(bin, 'xcrun'), 0o755);
+    const bundleTime = new Date('2026-01-01T00:00:00.000Z');
+    const sourceTime = new Date('2026-01-02T00:00:00.000Z');
+    utimesSync(bundle, bundleTime, bundleTime);
+    utimesSync(source, sourceTime, sourceTime);
+    const previous = process.env['PATH'];
+    process.env['PATH'] = `${bin}:/usr/bin:/bin`;
+    try {
+      const capability = xccovCoverageAdapter.producerCapability(root);
+      assert.strictEqual(capability.kind, 'available');
+      if (capability.kind !== 'available') return;
+      const invocation = capability.producers[0].invocation(join(root, 'unused results.json'));
+      assert.deepStrictEqual(invocation, {
+        command: '/bin/sh',
+        args: [
+          '-c',
+          'mkdir -p "$(dirname "$3")" && "$1" view --report --json "$2" > "$3" && touch -r "$2" "$3"',
+          'xccov-export',
+          xccov,
+          bundle,
+          join(root, 'build', 'xcresult', 'coverage.json'),
+        ],
+      });
+      const result = spawnSync(invocation.command, invocation.args, { cwd: root });
+      assert.strictEqual(result.status, 0, result.stderr?.toString());
+      const report = join(root, 'build', 'xcresult', 'coverage.json');
+      assert.match(readFileSync(report, 'utf-8'), /coveredLines/);
+      const reportMtime = lstatSync(report).mtimeMs;
+      assert.equal(reportMtime, lstatSync(bundle).mtimeMs);
+      assert.deepStrictEqual(xccovCoverageAdapter.staleSources(reportMtime, [source]), [source]);
+    } finally {
+      process.env['PATH'] = previous;
+    }
+  });
+
+  it('parses xccov line counters and preserves full source identity', () => {
+    const root = fixture();
+    const source = join(root, 'Sources', 'Feature.swift');
+    mkdirSync(join(root, 'Sources'));
+    writeFileSync(source, 'struct Feature {}\n');
+    const report = xccovCoverageAdapter.parseReport(
+      JSON.stringify({
+        targets: [
+          {
+            name: 'App',
+            files: [{ path: source, coveredLines: 7, executableLines: 10 }],
+          },
+        ],
+      })
+    );
+
+    assert.deepStrictEqual(report.metrics[source], {
+      sT: 10,
+      sH: 7,
+      bT: 0,
+      bH: 0,
+      fT: 0,
+      fH: 0,
+    });
+    assert.deepStrictEqual(xccovCoverageAdapter.resolveSource(root, report, source), {
+      kind: 'found',
+      key: source,
+    });
+  });
+
+  it('rejects malformed counters and duplicate source identities instead of guessing', () => {
+    assert.throws(
+      () =>
+        xccovCoverageAdapter.parseReport(
+          JSON.stringify({
+            targets: [{ files: [{ path: 'A.swift', coveredLines: 4, executableLines: 3 }] }],
+          })
+        ),
+      /invalid line counters/
+    );
+    assert.throws(
+      () =>
+        xccovCoverageAdapter.parseReport(
+          JSON.stringify({
+            targets: [
+              { name: 'A', files: [{ path: 'A.swift', coveredLines: 1, executableLines: 1 }] },
+              { name: 'B', files: [{ path: 'A.swift', coveredLines: 1, executableLines: 1 }] },
+            ],
+          })
+        ),
+      /more than once/
+    );
+  });
+
+  it('collects production Swift only and exposes optional presentation limits explicitly', () => {
+    const root = fixture();
+    mkdirSync(join(root, 'Sources'));
+    mkdirSync(join(root, 'Tests'));
+    mkdirSync(join(root, 'DerivedData'));
+    writeFileSync(join(root, 'Sources', 'Feature.swift'), 'struct Feature {}\n');
+    writeFileSync(join(root, 'Tests', 'FeatureTests.swift'), 'struct FeatureTests {}\n');
+    writeFileSync(join(root, 'DerivedData', 'Generated.swift'), 'struct Generated {}\n');
+    writeFileSync(join(root, 'Project.swift'), 'import ProjectDescription\n');
+
+    assert.deepStrictEqual(xccovCoverageAdapter.collectProductionFiles(root), [
+      join(root, 'Sources', 'Feature.swift'),
+    ]);
+    assert.strictEqual(xccovCoverageAdapter.isTestSource('Tests/FeatureTests.swift'), true);
+    assert.deepStrictEqual(xccovCoverageAdapter.fileDetail('', '', {}), {
+      kind: 'unsupported',
+      code: 'ERR_XCCOV_LINE_DETAIL_UNSUPPORTED',
+      message: 'xccov report summaries do not expose adapter-stable per-line hit locations',
     });
   });
 });

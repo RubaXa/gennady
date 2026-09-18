@@ -498,6 +498,66 @@ describe('applyStackConfig', () => {
     assert.deepEqual(effective[0]?.argv, ['mylint']);
   });
 
+  it('runs an override only when a phase target matches its when scope', () => {
+    const effective = applyStackConfig(
+      [gate('build')],
+      { overrideGates: { build: { argv: ['xcodebuild', 'build'], when: ['MRCloudApp/**'] } } },
+      'swift',
+      '/repo',
+      new Map([['swift.overrideGates.build.when', 'gennady.yaml']]),
+      undefined,
+      ['MRCloudApp/App.swift']
+    );
+
+    assert.deepEqual(effective[0]?.argv, ['xcodebuild', 'build']);
+    assert.equal(effective[0]?.skipped, null);
+  });
+
+  it('keeps a scoped-out override visible and non-runnable', () => {
+    const effective = applyStackConfig(
+      [gate('build')],
+      { overrideGates: { build: { argv: ['xcodebuild', 'build'], when: ['MRCloudApp/**'] } } },
+      'swift',
+      '/repo',
+      new Map([['swift.overrideGates.build.when', 'gennady.yaml']]),
+      undefined,
+      ['specs/app/app.spec.md']
+    );
+
+    assert.deepEqual(effective[0]?.argv, []);
+    assert.equal(effective[0]?.skipped, 'when (gennady.yaml)');
+  });
+
+  it('keeps a when-less override byte-compatible for an empty phase target set', () => {
+    const effective = applyStackConfig(
+      [gate('build')],
+      { overrideGates: { build: { argv: ['make', 'build'] } } },
+      'golang',
+      '/repo',
+      new Map(),
+      undefined,
+      []
+    );
+
+    assert.deepEqual(effective[0]?.argv, ['make', 'build']);
+    assert.equal(effective[0]?.skipped, null);
+  });
+
+  it('preserves a scoped override command in the explicit readiness capability view', () => {
+    const effective = applyStackConfig(
+      [gate('build')],
+      { overrideGates: { build: { argv: ['xcodebuild', 'build'], when: ['MRCloudApp/**'] } } },
+      'swift',
+      '/repo',
+      new Map(),
+      undefined,
+      null
+    );
+
+    assert.deepEqual(effective[0]?.argv, ['xcodebuild', 'build']);
+    assert.equal(effective[0]?.skipped, null);
+  });
+
   it('an argv override drops inherited exit-code predicates but keeps output ones', () => {
     // golang:lint ships an exit-code predicate — true for golangci-lint, false for `make lint`,
     // which returns 2 for ANY failed recipe and would report genuine findings as ENV_FAIL.
