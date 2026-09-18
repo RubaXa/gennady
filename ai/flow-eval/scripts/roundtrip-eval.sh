@@ -23,7 +23,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="${REPO:-/Users/k.lebedev/Developer/cloud-ios}"
 GEN_ROOT="${GEN_ROOT:-$(cd "$SCRIPT_DIR/../../.." && pwd)}"
 GEN="$GEN_ROOT/dist/gennady.js"
-RTBASE="${RTBASE:-80366331747e7d9914bf6cdaafe0099b5e12319d}" # V-19-valid migrated v2 fixture
+# Immutable published cloud-ios base; V-19 scope is applied only as a deterministic isolated overlay.
+RTBASE="${RTBASE:-d9de0f7c16824aff043be8332818154d9ed00960}"
 BASEURL="${BASEURL:-http://127.0.0.1:4098}"
 MODEL="${MODEL:-llm-proxy/deepseek-v4-flash}"
 MAX_OBS="${MAX_OBS:-60}"

@@ -29,14 +29,40 @@ const MOVE = {
   'unit-tests': 'test',
 } as const;
 
+const V19_SCOPE = [
+  'MRCloudApp/**',
+  'Tools/**',
+  'Tuist/**',
+  'Project.swift',
+  'Tuist.swift',
+  '.mise.toml',
+  '.xcode-version',
+  '.gitmodules',
+] as const;
+
+function ensureLegacyV19Scope(gate: GateRecord, id: 'build' | 'unit-tests'): void {
+  if (gate.when === undefined) {
+    gate.when = [...V19_SCOPE];
+    return;
+  }
+  if (
+    !Array.isArray(gate.when) ||
+    gate.when.length === 0 ||
+    gate.when.some((glob) => typeof glob !== 'string' || glob.length === 0)
+  ) {
+    throw new Error(`legacy cloud-ios gate '${id}' has an invalid when scope`);
+  }
+}
+
 function gateWithoutId(gate: GateRecord): GateRecord {
   const { id: _id, ...spec } = gate;
   return structuredClone(spec);
 }
 
 /**
- * @purpose Move the three real legacy cloud-ios gates under Swift without changing their literals.
- * @invariant `anystack` remains a detected secondary stack; absent/misnamed gates fail closed.
+ * @purpose Apply the isolated V-19 overlay, then move the three real legacy cloud-ios gates under Swift.
+ * @invariant Existing valid project-owned scope is preserved; `anystack` remains a detected secondary
+ *   stack; absent/misnamed gates fail closed.
  * @param source Existing gennady.yaml bytes from an isolated fixture copy.
  * @returns Deterministic prepared YAML with Swift as explicit primary.
  */
@@ -79,6 +105,8 @@ function prepareSwiftRoundtripConfig(source: string): string {
         .join(', ')}`
     );
   }
+  ensureLegacyV19Scope(byId.get('build')!, 'build');
+  ensureLegacyV19Scope(byId.get('unit-tests')!, 'unit-tests');
   for (const [legacyId, swiftId] of Object.entries(MOVE)) {
     const literal = gateWithoutId(byId.get(legacyId)!);
     const existing = overrideGates[swiftId];

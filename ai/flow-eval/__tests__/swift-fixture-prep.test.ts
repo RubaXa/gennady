@@ -35,17 +35,33 @@ stack:
           timeout: 10m
           argv: [sh, -c, "printf '%s\\n' changed.swift | xargs swiftlint --fix"]
       - id: build
-        when: [MRCloudApp/**, Tools/**, Tuist/**, Project.swift, Tuist.swift, .mise.toml, .xcode-version, .gitmodules]
         requires:
           - argv: [test, -d, MRCloudApp/TuistCloudApp.xcworkspace]
             hint: generate workspace
         argv: [sh, -c, "xcodebuild build -workspace MRCloudApp/TuistCloudApp.xcworkspace"]
         timeout: 90m
       - id: unit-tests
-        when: [MRCloudApp/**, Tools/**, Tuist/**, Project.swift, Tuist.swift, .mise.toml, .xcode-version, .gitmodules]
         argv: [sh, -c, "xcodebuild test -resultBundlePath build/xcresult/TestResults.xcresult"]
         timeout: 90m
 `;
+
+const CANONICAL_V19_SCOPE = [
+  'MRCloudApp/**',
+  'Tools/**',
+  'Tuist/**',
+  'Project.swift',
+  'Tuist.swift',
+  '.mise.toml',
+  '.xcode-version',
+  '.gitmodules',
+] as const;
+const E10_SCOPED_CONFIG = LEGACY_CONFIG.replace(
+  '      - id: build\n',
+  `      - id: build\n        when: [${CANONICAL_V19_SCOPE.join(', ')}]\n`
+).replace(
+  '      - id: unit-tests\n',
+  `      - id: unit-tests\n        when: [${CANONICAL_V19_SCOPE.join(', ')}]\n`
+);
 
 const roots: string[] = [];
 const GENNADY = path.resolve('cli/gennady.ts');
@@ -131,7 +147,7 @@ afterEach(() => {
 
 describe('E-10 immutable legacy anystack compatibility', () => {
   it('keeps all three real gate literals and reaches readiness without a package shim', () => {
-    const root = rootWithConfig();
+    const root = rootWithConfig(E10_SCOPED_CONFIG);
     const loaded = loadStackConfig(root, BUILTIN_GATE_IDS);
     assert.deepEqual(loaded.errors, []);
     const plan = resolveAssembledFullProfile(root, loaded.config);
@@ -157,7 +173,7 @@ describe('E-10 immutable legacy anystack compatibility', () => {
 
   it('keeps a when-scoped gate visible as skipped and rejects unknown config keys', () => {
     const root = rootWithConfig(
-      LEGACY_CONFIG.replace(
+      E10_SCOPED_CONFIG.replace(
         '      - id: swiftlint',
         '      - id: swiftlint\n        when: [MRCloudApp/**/*.swift]'
       )
@@ -181,7 +197,7 @@ describe('E-10 immutable legacy anystack compatibility', () => {
 
     fs.writeFileSync(
       path.join(root, 'gennady.yaml'),
-      LEGACY_CONFIG.replace('extraGates:', 'extraGatez:')
+      E10_SCOPED_CONFIG.replace('extraGates:', 'extraGatez:')
     );
     const invalid = loadStackConfig(root, BUILTIN_GATE_IDS);
     assert.ok(invalid.errors.some((error) => error.path === 'stack.anystack.extraGatez'));
@@ -224,8 +240,12 @@ describe('E-18 isolated Swift-primary preparation', () => {
     ] as const) {
       const original = legacy.stack.anystack.extraGates.find((gate) => gate.id === legacyId)!;
       const { id: _id, ...literal } = original;
-      assert.deepEqual(prepared.stack.swift.overrideGates[swiftId], literal);
+      const expected =
+        legacyId === 'swiftlint' ? literal : { ...literal, when: [...CANONICAL_V19_SCOPE] };
+      assert.deepEqual(prepared.stack.swift.overrideGates[swiftId], expected);
     }
+    assert.deepEqual(prepared.stack.swift.overrideGates.build?.when, CANONICAL_V19_SCOPE);
+    assert.deepEqual(prepared.stack.swift.overrideGates.test?.when, CANONICAL_V19_SCOPE);
 
     withFakeSwiftTools(() => {
       const loaded = loadStackConfig(isolated, BUILTIN_GATE_IDS);
