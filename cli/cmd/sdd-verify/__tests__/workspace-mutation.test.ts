@@ -5,7 +5,15 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
+import {
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  symlinkSync,
+  truncateSync,
+  unlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -167,6 +175,90 @@ describe('createRepairMutationBoundary', () => {
     } finally {
       rmSync(root, { recursive: true, force: true });
       rmSync(outside, { recursive: true, force: true });
+    }
+  });
+
+  it('excludes only gitignored DerivedData and xcresult outputs from the write-zone scan', () => {
+    const root = fixture();
+    try {
+      writeFileSync(join(root, '.gitignore'), 'DerivedData/\n*.xcresult/\n');
+      execFileSync('git', ['add', '.gitignore'], { cwd: root });
+      const boundary = createRepairMutationBoundary(root);
+      const before = boundary.before(['src/target.ts']);
+      mkdirSync(join(root, 'DerivedData'), { recursive: true });
+      writeFileSync(join(root, 'DerivedData', 'cache.bin'), 'generated');
+      mkdirSync(join(root, 'App.xcresult'), { recursive: true });
+      writeFileSync(join(root, 'App.xcresult', 'Info.plist'), 'generated');
+
+      assert.deepStrictEqual(boundary.after(before, ['src/target.ts']), { ok: true });
+      assert.doesNotThrow(() => writeFileSync(join(root, 'App.xcresult', 'still-there'), 'yes'));
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('still fails closed on identically named nonignored Swift/Xcode output', () => {
+    const root = fixture();
+    try {
+      const boundary = createRepairMutationBoundary(root);
+      const before = boundary.before(['src/target.ts']);
+      mkdirSync(join(root, 'DerivedData'), { recursive: true });
+      writeFileSync(join(root, 'DerivedData', 'cache.bin'), 'not ignored');
+      mkdirSync(join(root, 'App.xcresult'), { recursive: true });
+      writeFileSync(join(root, 'App.xcresult', 'Info.plist'), 'not ignored');
+
+      const result = boundary.after(before, ['src/target.ts']);
+      assert.strictEqual(result.ok, false);
+      if (!result.ok) {
+        assert.deepStrictEqual(result.paths, [
+          'App.xcresult',
+          'App.xcresult/Info.plist',
+          'DerivedData',
+          'DerivedData/cache.bin',
+        ]);
+      }
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('does not read a sparse 10 GiB sentinel inside ignored DerivedData', () => {
+    const root = fixture();
+    try {
+      writeFileSync(join(root, '.gitignore'), 'DerivedData/\n');
+      execFileSync('git', ['add', '.gitignore'], { cwd: root });
+      mkdirSync(join(root, 'DerivedData'));
+      const sentinel = join(root, 'DerivedData', 'ten-gibibytes.sparse');
+      writeFileSync(sentinel, '');
+      truncateSync(sentinel, 10 * 1024 ** 3);
+
+      const boundary = createRepairMutationBoundary(root);
+      const before = boundary.before(['src/target.ts']);
+      writeFileSync(join(root, 'DerivedData', 'small-output'), 'generated');
+
+      assert.deepStrictEqual(boundary.after(before, ['src/target.ts']), { ok: true });
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('observes every path when git ignore classification is unavailable', () => {
+    const root = mkdtempSync(join(tmpdir(), 'sdd-write-zone-no-git-'));
+    try {
+      mkdirSync(join(root, 'src'));
+      writeFileSync(join(root, 'src', 'target.ts'), 'target');
+      const boundary = createRepairMutationBoundary(root);
+      const before = boundary.before(['src/target.ts']);
+      mkdirSync(join(root, 'App.xcresult'));
+      writeFileSync(join(root, 'App.xcresult', 'Info.plist'), 'observable');
+
+      const result = boundary.after(before, ['src/target.ts']);
+      assert.strictEqual(result.ok, false);
+      if (!result.ok) {
+        assert.deepStrictEqual(result.paths, ['App.xcresult', 'App.xcresult/Info.plist']);
+      }
+    } finally {
+      rmSync(root, { recursive: true, force: true });
     }
   });
 });

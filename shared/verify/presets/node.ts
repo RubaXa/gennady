@@ -13,6 +13,7 @@ import type { VerificationProfile } from '../../sdd/phase-verification-plan.ts';
 import type { Gate as StackGate, StackConfig, StackId } from '../verify.types.ts';
 import { resolveAnystackPreset } from './anystack.ts';
 import { resolveGolangPreset } from './golang.ts';
+import { resolveSwiftPreset } from './swift.ts';
 
 /**
  * @purpose Node preset's canonical gate names for a profile and coverage-owner state.
@@ -106,6 +107,7 @@ export function resolvePreset(
 ): StackPreset | null {
   if (stack === 'anystack') return resolveAnystackPreset(root, config);
   if (stack === 'golang') return resolveGolangPreset(root, config);
+  if (stack === 'swift') return resolveSwiftPreset(root, config);
   if (stack !== 'node') return null;
   return {
     stack: 'node',

@@ -10,6 +10,9 @@ import { loadStackConfig, pluginConfigOf } from '../verify/stack-config.ts';
 import { BUILTIN_GATE_IDS } from '../verify/stack-registry.ts';
 import { golangPlugin } from '../../plugins/golang/golang-plugin.ts';
 import type { GoProject } from '../../plugins/golang/golang-detect.logic.ts';
+import { swiftPluginGates } from '../verify/presets/swift.ts';
+import { swiftPlugin } from '../../plugins/swift/swift-plugin.ts';
+import { probeSwiftToolchain, type SwiftProject } from '../../plugins/swift/swift-detect.logic.ts';
 
 /**
  * @purpose Exact npm scripts a v2-ready project declares: repair leaves, their public `fix`
@@ -72,6 +75,13 @@ export type ReadinessInput = {
   configuredExtraGates?: readonly string[];
   /** @purpose Go preset tool availability gathered by the literal plugin detector. */
   golangTools?: { readonly go: boolean; readonly gofmt: boolean };
+  /** @purpose Swift phase duties after applying the project's config-owned gate overrides. */
+  swiftReadiness?: {
+    readonly fix: boolean;
+    readonly build: boolean;
+    readonly test: boolean;
+    readonly missing: readonly string[];
+  };
 };
 
 /** @purpose Three-level readiness verdict — `provisional` means the bricks exist but some are echo-stubs. */
@@ -765,6 +775,90 @@ const golangReadinessAdapter: ReadinessAdapter = {
   evaluate: evaluateGolangReadiness,
 };
 
+function gatherSwiftReadinessInput(root: string): ReadinessInput {
+  const detection = swiftPlugin.detect(root);
+  const project = detection?.details as SwiftProject | undefined;
+  const loaded = loadStackConfig(root, BUILTIN_GATE_IDS);
+  const config = loaded.errors.length === 0 ? loaded.config : null;
+  const gates = project ? swiftPluginGates(root, config, null) : [];
+  const format = gates.find((gate) => gate.id === 'format');
+  const build = gates.find((gate) => gate.id === 'build');
+  const test = gates.find((gate) => gate.id === 'test');
+  const missing: string[] = [];
+  if (!project) missing.push('Swift/Xcode/Tuist project marker');
+  if (project) {
+    const toolchain = probeSwiftToolchain(project);
+    if (!toolchain.ok) {
+      for (const issue of toolchain.issues) {
+        missing.push(
+          issue.kind === 'missing'
+            ? `${issue.tool} toolchain`
+            : `${issue.tool} toolchain found but unusable: ${issue.detail}`
+        );
+      }
+    }
+  }
+  if (loaded.errors.length > 0) missing.push('valid stack.swift config');
+  if (!format?.fixer || format.skipped !== null) {
+    missing.push('stack.swift format check + fixer');
+  }
+  if (!build || build.skipped !== null) missing.push('stack.swift build argv');
+  if (!test || test.skipped !== null) missing.push('stack.swift test argv');
+  return {
+    packageJsonPresent: false,
+    scripts: {},
+    gennadyAvailable: true,
+    swiftReadiness: {
+      fix: Boolean(format?.fixer) && format?.skipped === null,
+      build: build?.skipped === null,
+      test: test?.skipped === null,
+      missing,
+    },
+  };
+}
+
+function evaluateSwiftReadiness(input: ReadinessInput): ReadinessResult {
+  const facts = input.swiftReadiness ?? {
+    fix: false,
+    build: false,
+    test: false,
+    missing: ['Swift readiness facts'],
+  };
+  const required = [
+    { name: 'fix', present: facts.fix },
+    { name: 'type-check', present: facts.build },
+    { name: 'test', present: facts.test },
+  ];
+  const ready = facts.missing.length === 0 && required.every((gate) => gate.present);
+  return {
+    packageJsonPresent: false,
+    required,
+    lintHasGennady: true,
+    formatReadOnly: true,
+    lintReadOnly: true,
+    checkReadOnly: true,
+    formatFixMutates: facts.fix,
+    lintFixMutates: true,
+    formatFixDeclaredTargetPrefix: true,
+    lintFixDeclaredTargetPrefix: true,
+    fixHasCanonicalRepairs: facts.fix,
+    gennadyAvailable: true,
+    ready,
+    missing: [...facts.missing],
+    stubbed: [],
+    missingGates: required.filter((gate) => !gate.present).map((gate) => gate.name),
+    level: ready ? 'ready' : 'not-ready',
+    executionReady: ready,
+  };
+}
+
+/** @purpose Swift readiness adapter: literal configured gates mapped to phase duties. */
+const swiftReadinessAdapter: ReadinessAdapter = {
+  stack: 'swift',
+  gather: gatherSwiftReadinessInput,
+  evaluate: evaluateSwiftReadiness,
+};
+
 /**
  * @purpose Resolve the readiness adapter for one stack — the engine's dispatch point (V-06).
  * @param stack Stack id, e.g. from `detectRepoStack` (V-05).
@@ -773,6 +867,7 @@ const golangReadinessAdapter: ReadinessAdapter = {
 export function resolveReadinessAdapter(stack: StackId): ReadinessAdapter | null {
   if (stack === 'node') return nodeReadinessAdapter;
   if (stack === 'golang') return golangReadinessAdapter;
+  if (stack === 'swift') return swiftReadinessAdapter;
   if (stack === 'anystack') return anystackReadinessAdapter;
   return null;
 }

@@ -256,7 +256,8 @@ export type GateSpec = {
   readonly fixer?: Readonly<Record<string, unknown>>;
   /**
    * @purpose File-scope globs (V-12, #9-bonus): the gate applies only once a phase Target File
-   *   matches. Absent/empty means "always in scope" — today's default (D-17). extraGates only.
+   *   matches. Absent/empty means "always in scope" — today's default (D-17). Applies to
+   *   extraGates and overrideGates.
    */
   readonly when?: readonly string[];
 };

@@ -604,6 +604,7 @@ describe('readiness engine — adapters (V-06)', () => {
     assert.strictEqual(resolveReadinessAdapter('node'), nodeReadinessAdapter);
     assert.strictEqual(resolveReadinessAdapter('anystack'), anystackReadinessAdapter);
     assert.strictEqual(resolveReadinessAdapter('golang')?.stack, 'golang');
+    assert.strictEqual(resolveReadinessAdapter('swift')?.stack, 'swift');
   });
 
   it('golang readiness maps literal tool detection to fix/type-check/test without package.json', () => {
@@ -620,6 +621,102 @@ describe('readiness engine — adapters (V-06)', () => {
       );
       assert.equal(result.executionReady, true);
     } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('SwiftPM readiness maps real formatter/build/test capabilities without package.json', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'readiness-swift-package-'));
+    const bin = path.join(root, 'bin');
+    fs.mkdirSync(bin);
+    fs.writeFileSync(path.join(root, 'Package.swift'), '// swift-tools-version: 6.0\n');
+    for (const tool of ['swift', 'swiftformat', 'xcodebuild']) {
+      const executable = path.join(bin, tool);
+      fs.writeFileSync(executable, `#!/bin/sh\nprintf '%s\\n' '${tool} version'\n`);
+      fs.chmodSync(executable, 0o755);
+    }
+    const previous = process.env['PATH'];
+    process.env['PATH'] = `${bin}:/usr/bin:/bin`;
+    try {
+      const adapter = resolveReadinessAdapter('swift');
+      assert.ok(adapter);
+      const result = adapter.evaluate(adapter.gather(root));
+      assert.equal(result.executionReady, true);
+      assert.deepEqual(result.missing, []);
+      assert.deepEqual(
+        result.required.map((gate) => gate.name),
+        ['fix', 'type-check', 'test']
+      );
+    } finally {
+      process.env['PATH'] = previous;
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('Xcode readiness distinguishes installed tools from missing project-owned commands', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'readiness-swift-xcode-'));
+    const bin = path.join(root, 'bin');
+    fs.mkdirSync(bin);
+    fs.mkdirSync(path.join(root, 'App.xcodeproj'));
+    fs.writeFileSync(path.join(root, 'App.xcodeproj', 'project.pbxproj'), '// project\n');
+    for (const tool of ['swift', 'swiftformat', 'xcodebuild']) {
+      const executable = path.join(bin, tool);
+      fs.writeFileSync(executable, `#!/bin/sh\nprintf '%s\\n' '${tool} version'\n`);
+      fs.chmodSync(executable, 0o755);
+    }
+    const previous = process.env['PATH'];
+    process.env['PATH'] = `${bin}:/usr/bin:/bin`;
+    try {
+      const adapter = resolveReadinessAdapter('swift');
+      assert.ok(adapter);
+      const result = adapter.evaluate(adapter.gather(root));
+      assert.equal(result.executionReady, false);
+      assert.ok(!result.missing.includes('swift toolchain'));
+      assert.ok(!result.missing.includes('xcodebuild toolchain'));
+      assert.ok(result.missing.includes('stack.swift build argv'));
+      assert.ok(result.missing.includes('stack.swift test argv'));
+    } finally {
+      process.env['PATH'] = previous;
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('Swift readiness distinguishes a missing tool from a found but broken version command', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'readiness-swift-broken-'));
+    const bin = path.join(root, 'bin');
+    fs.mkdirSync(bin);
+    fs.writeFileSync(path.join(root, 'Package.swift'), '// swift-tools-version: 6.0\n');
+    for (const tool of ['swift', 'swiftformat']) {
+      const executable = path.join(bin, tool);
+      fs.writeFileSync(executable, `#!/bin/sh\nprintf '%s\\n' '${tool} version'\n`);
+      fs.chmodSync(executable, 0o755);
+    }
+    const xcodebuild = path.join(bin, 'xcodebuild');
+    fs.writeFileSync(xcodebuild, '#!/bin/sh\nprintf "stub toolchain\\n" >&2\nexit 72\n');
+    fs.chmodSync(xcodebuild, 0o755);
+    const previous = process.env['PATH'];
+    process.env['PATH'] = `${bin}:/usr/bin:/bin`;
+    try {
+      const adapter = resolveReadinessAdapter('swift');
+      assert.ok(adapter);
+      const broken = adapter.evaluate(adapter.gather(root));
+      assert.equal(broken.executionReady, false);
+      assert.ok(
+        broken.missing.some((issue) => issue.startsWith('xcodebuild toolchain found but unusable:'))
+      );
+      assert.ok(!broken.missing.includes('xcodebuild toolchain'));
+
+      fs.writeFileSync(
+        path.join(bin, 'which'),
+        '#!/bin/sh\nif [ "$1" = xcodebuild ]; then exit 1; fi\ncommand -v "$1"\n'
+      );
+      fs.chmodSync(path.join(bin, 'which'), 0o755);
+      const missing = adapter.evaluate(adapter.gather(root));
+      assert.equal(missing.executionReady, false);
+      assert.ok(missing.missing.includes('xcodebuild toolchain'));
+      assert.ok(!missing.missing.some((issue) => issue.startsWith('xcodebuild toolchain found')));
+    } finally {
+      process.env['PATH'] = previous;
       fs.rmSync(root, { recursive: true, force: true });
     }
   });

@@ -23,7 +23,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="${REPO:-/Users/k.lebedev/Developer/cloud-ios}"
 GEN_ROOT="${GEN_ROOT:-$(cd "$SCRIPT_DIR/../../.." && pwd)}"
 GEN="$GEN_ROOT/dist/gennady.js"
-RTBASE="${RTBASE:-d9de0f7c16}"                               # migrated v2 base (spec+tickets+guard+bench)
+RTBASE="${RTBASE:-80366331747e7d9914bf6cdaafe0099b5e12319d}" # V-19-valid migrated v2 fixture
 BASEURL="${BASEURL:-http://127.0.0.1:4098}"
 MODEL="${MODEL:-llm-proxy/deepseek-v4-flash}"
 MAX_OBS="${MAX_OBS:-60}"
@@ -71,12 +71,13 @@ prep() {
   python3 "$GEN_ROOT/ai/flow-eval/scripts/reset-ticket.py" "$RT/$TICKET"
 
   # Wall 1 — upgrade every migrated ticket's §5 table to the 3-column v2 schema (sdd-task rejects the
-  # old 2-column form). Wall 3 — readiness shim so this node-hardcoded branch lets a Swift repo reach
-  # EXECUTION_READY (see docs/journal/flow-verification-ledger.md, finding A7; the adaptive verify lives unmerged on main).
+  # old 2-column form). V-11 prep then promotes the real project-owned gates from legacy anystack to
+  # Swift overrides inside THIS isolated worktree. The immutable source and RTBASE stay untouched;
+  # no package.json/readiness shim is created.
   log "wall-1: upgrade verification tables to v2 3-column schema"
   python3 "$GEN_ROOT/ai/flow-eval/scripts/upgrade-verification-tables.py" "$RT/specs" | sed 's/^/    /'
-  log "wall-3: write readiness shim package.json"
-  cp "$GEN_ROOT/ai/flow-eval/scripts/roundtrip-readiness-shim.package.json" "$RT/package.json"
+  log "V-11: prepare Swift primary from the real legacy gate literals"
+  node --import tsx "$GEN_ROOT/ai/flow-eval/scripts/prepare-swift-roundtrip.ts" "$RT"
 
   git -C "$RT" add -A
   git -C "$RT" -c user.email=eval@local -c user.name=eval commit -q \

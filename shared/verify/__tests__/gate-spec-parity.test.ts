@@ -27,10 +27,11 @@ const DERIVED_FIELDS = ['stack', 'skipped', 'label'] as const;
  */
 const FIELD_ALIASES: Readonly<Record<string, string>> = { timeoutMs: 'timeout' };
 
-/** @purpose Plan real gates from both plugins so the key set comes from runtime, not a literal. */
+/** @purpose Plan real gates from every plugin so the key set comes from runtime, not a literal. */
 function planEveryBuiltinGate(): Gate[] {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'parity-'));
   fs.writeFileSync(path.join(dir, 'go.mod'), 'module example.com/p\n\ngo 1.21\n');
+  fs.writeFileSync(path.join(dir, 'Package.swift'), '// swift-tools-version: 6.0\n');
   fs.writeFileSync(
     path.join(dir, 'main.go'),
     'package main\n\n//go:generate true\n\nfunc main() {}\n'
@@ -54,6 +55,20 @@ function planEveryBuiltinGate(): Gate[] {
 }
 
 describe('GateSpec parity with built-in gates (FR-STACK-15)', () => {
+  it('keeps every built-in plugin manifest connected to its literal entrypoint', () => {
+    for (const plugin of BUILTIN_PLUGINS) {
+      const directory = path.resolve('plugins', plugin.id);
+      const manifest = JSON.parse(
+        fs.readFileSync(path.join(directory, 'plugin.json'), 'utf-8')
+      ) as { id?: unknown; kind?: unknown; entry?: unknown };
+      assert.deepEqual(
+        { id: manifest.id, kind: manifest.kind, entry: manifest.entry },
+        { id: plugin.id, kind: 'stack', entry: `${plugin.id}-plugin.ts` }
+      );
+      assert.equal(fs.existsSync(path.join(directory, String(manifest.entry))), true);
+    }
+  });
+
   it('exposes every runner-visible gate field in the config schema', () => {
     const gates = planEveryBuiltinGate();
     assert.ok(gates.length > 0, 'the fixture must yield gates from both plugins');

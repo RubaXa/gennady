@@ -61,7 +61,8 @@ describe('testcov --check', () => {
       assert.strictEqual(parsed.adapter, null);
       assert.strictEqual(parsed.diagnostics[0]?.code, 'ERR_CLI_TESTCOV_ADAPTER_NOT_FOUND');
       assert.match(parsed.diagnostics[0]?.message ?? '', /no coverage platform\/report adapter/);
-      assert.match(parsed.diagnostics[0]?.fix ?? '', /iOS, Android, and Go are not supported yet/);
+      assert.match(parsed.diagnostics[0]?.fix ?? '', /Android and Go are not supported yet/);
+      assert.doesNotMatch(parsed.diagnostics[0]?.fix ?? '', /iOS.*not supported/);
       assert.doesNotMatch(parsed.diagnostics[0]?.fix ?? '', /--help/);
     } finally {
       rmSync(unknown, { recursive: true, force: true });

@@ -439,7 +439,8 @@ function tailCap(output: string, ranCommand: string): string {
  */
 function lineFor(r: GateResult): string {
   if (r.status === 'skipped') {
-    return `  ⏭ ${r.name} — скрипта нет в package.json, пропущено`;
+    const reason = r.output.trim() || 'скрипта нет в package.json';
+    return `  ⏭ ${r.name} — ${reason}, пропущено`;
   }
   const marker = r.mutates ? '🔧' : '✅';
   const note = r.mutates ? ' — мутирующий шаг' : '';
