@@ -345,6 +345,36 @@ describe('SddNewCommand', () => {
     }
   });
 
+  it('refuses a duplicate derived Spec ID before writing a new scaffold', async () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'sdd-new-spec-id-collision-'));
+    const prevCwd = process.cwd();
+    try {
+      const existing = join(cwd, 'specs', 'legacy', 'legacy.spec.md');
+      const out = join(cwd, 'custom', 'backend.spec.md');
+      mkdirSync(join(cwd, 'specs', 'legacy'), { recursive: true });
+      writeFileSync(existing, '<!--SECTION:SPEC_ID-->\nBACKEND\n<!--/SECTION:SPEC_ID-->', 'utf8');
+      process.chdir(cwd);
+
+      const outcome = await mod.run(argv('product', '--scope', 'backend', '--out', out));
+
+      assert.strictEqual(outcome.ok, false);
+      if (!outcome.ok) {
+        assert.strictEqual(outcome.exitCode, 4);
+        assert.match(outcome.code, /BAD_INVOCATION/);
+        assert.match(outcome.message, /Spec ID BACKEND already resolves/);
+        assert.match(outcome.message, /no file was written/);
+      }
+      assert.strictEqual(existsSync(out), false);
+      assert.strictEqual(
+        readFileSync(existing, 'utf8'),
+        '<!--SECTION:SPEC_ID-->\nBACKEND\n<!--/SECTION:SPEC_ID-->'
+      );
+    } finally {
+      process.chdir(prevCwd);
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
   it('creates an infrastructure spec with DAG-serialized shared-writer guidance', async () => {
     const out = join(tmpDir, 'specs', 'infra-contract', 'infra-contract.spec.md');
     const outcome = await mod.run(

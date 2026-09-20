@@ -3,7 +3,7 @@
 // @tasks: N/A
 
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
@@ -68,6 +68,31 @@ describe('canonical Spec ID', () => {
       assert.deepStrictEqual(collectSpecIdEntries(specs), [
         { id: 'CLI-ORIENT', path: 'specs/cli/orient/orient.spec.md' },
         { id: 'CLI-ORIENT', path: 'specs/other/other.spec.md' },
+      ]);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('keeps the explicit ID stable when its spec path moves', () => {
+    const root = mkdtempSync(join(tmpdir(), 'spec-id-move-'));
+    try {
+      const specs = join(root, 'specs');
+      const originalDir = join(specs, 'cli', 'orient');
+      const movedDir = join(specs, 'cli', 'navigation');
+      const original = join(originalDir, 'orient.spec.md');
+      const moved = join(movedDir, 'navigation.spec.md');
+      mkdirSync(originalDir, { recursive: true });
+      mkdirSync(movedDir, { recursive: true });
+      writeFileSync(original, '<!--SECTION:SPEC_ID-->\nCLI-ORIENT\n<!--/SECTION:SPEC_ID-->');
+      assert.deepStrictEqual(collectSpecIdEntries(specs), [
+        { id: 'CLI-ORIENT', path: 'specs/cli/orient/orient.spec.md' },
+      ]);
+
+      renameSync(original, moved);
+
+      assert.deepStrictEqual(collectSpecIdEntries(specs), [
+        { id: 'CLI-ORIENT', path: 'specs/cli/navigation/navigation.spec.md' },
       ]);
     } finally {
       rmSync(root, { recursive: true, force: true });

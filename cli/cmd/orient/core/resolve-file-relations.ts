@@ -9,7 +9,7 @@ import {
   resolveFileRelations,
 } from '../../../../shared/sdd/file-relations.ts';
 import { collectSpecIdEntries } from '../../../../shared/sdd/spec-id.ts';
-import { ticketFlowVersion } from '../../../../shared/sdd/flow.ts';
+import { detectFlowVersion, ticketFlowVersion } from '../../../../shared/sdd/flow.ts';
 import type {
   FileRelationsResult,
   FileRelationTicketInput,
@@ -110,7 +110,8 @@ export function resolveOrientFileRelations(
   header: FileHeader
 ): FileRelationsResult {
   const specId = header.spec ?? '';
-  const flow = specId || (header.specCount ?? 0) > 0 ? 'v2' : 'v1';
+  const flow =
+    detectFlowVersion(root) === 'v2' || specId || (header.specCount ?? 0) > 0 ? 'v2' : 'v1';
   const entries = collectSpecIdEntries(resolve(root, 'specs'));
   return resolveFileRelations({
     repoRoot: root,

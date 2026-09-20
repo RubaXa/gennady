@@ -32,7 +32,7 @@ import {
   renderTaskAuthoringLiterals,
   ticketRelativeHref,
 } from '../../../shared/sdd/task-authoring-literals.ts';
-import { deriveInitialSpecId } from '../../../shared/sdd/spec-id.ts';
+import { collectSpecIdEntries, deriveInitialSpecId } from '../../../shared/sdd/spec-id.ts';
 import {
   badInvocation,
   unknownKind,
@@ -518,6 +518,16 @@ async function runCommand(rawArgs: string[]): Promise<NewOutcome> {
     ? deriveInitialSpecId(resolve('specs'), resolve(canonicalSpecPath))
     : null;
   if (createsSpec && !specId) return badInvocation(`cannot derive canonical Spec ID from ${path}`);
+  if (specId) {
+    const existingSpec = collectSpecIdEntries(resolve('specs')).find(
+      (entry) => entry.id === specId
+    );
+    if (existingSpec) {
+      return badInvocation(
+        `Spec ID ${specId} already resolves to ${existingSpec.path}; choose a distinct scope/module; no file was written`
+      );
+    }
+  }
 
   try {
     mkdirSync(dirname(abs), { recursive: true });

@@ -149,6 +149,7 @@ describe('orient file relations', () => {
 
   it('keeps a legacy @tasks-only file V1-lenient', () => {
     fixture((root, source) => {
+      mkdirSync(join(root, 'tasks', 'cli'), { recursive: true });
       const result = resolveOrientFileRelations(root, source, {
         file: 'query',
         tasks: ['TSK-01'],
@@ -156,6 +157,37 @@ describe('orient file relations', () => {
       });
       assert.strictEqual(result.flow, 'v1');
       assert.deepStrictEqual(result.findings, []);
+    });
+  });
+
+  it('fails closed for a missing @spec in a fully V2 repository', () => {
+    fixture((root, source) => {
+      const result = resolveOrientFileRelations(root, source, {
+        file: 'query',
+        tasks: [],
+        consumers: [],
+      });
+      assert.strictEqual(result.flow, 'v2');
+      assert.deepStrictEqual(
+        result.findings.map((finding) => finding.code),
+        ['SDD_FILE_SPEC_OWNER_UNRESOLVED']
+      );
+    });
+  });
+
+  it('keeps malformed and duplicate @spec declarations strict and unresolved', () => {
+    fixture((root, source) => {
+      for (const header of [
+        { file: 'query', spec: '', specCount: 1, tasks: [], consumers: [] },
+        { file: 'query', spec: '', specCount: 2, tasks: [], consumers: [] },
+      ]) {
+        const result = resolveOrientFileRelations(root, source, header);
+        assert.strictEqual(result.flow, 'v2');
+        assert.deepStrictEqual(
+          result.findings.map((finding) => finding.code),
+          ['SDD_FILE_SPEC_OWNER_UNRESOLVED']
+        );
+      }
     });
   });
 
