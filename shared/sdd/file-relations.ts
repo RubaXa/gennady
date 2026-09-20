@@ -191,7 +191,9 @@ function hasUnserializedWriters(
       const first = writers[left];
       const second = writers[right];
       if (!first || !second) continue;
-      if (!dependsOn(first, second, tickets) && !dependsOn(second, first, tickets)) return true;
+      const firstDependsOnSecond = dependsOn(first, second, tickets);
+      const secondDependsOnFirst = dependsOn(second, first, tickets);
+      if (firstDependsOnSecond === secondDependsOnFirst) return true;
     }
   }
   return false;

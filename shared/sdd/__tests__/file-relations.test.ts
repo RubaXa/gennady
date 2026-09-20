@@ -344,6 +344,24 @@ describe('resolveFileRelations exact matching and findings', () => {
     });
   });
 
+  it('fails closed when active writers form a direct dependency cycle', () => {
+    isolatedRoot((root) => {
+      const first = ticket('APP-a', [phase({ state: 'in-progress' })], {
+        status: 'in-progress',
+        dependencies: ['APP-b'],
+      });
+      const second = ticket('APP-b', [phase({ state: 'in-progress' })], {
+        status: 'in-progress',
+        dependencies: ['APP-a'],
+      });
+      const result = resolveFileRelations(input(root, [first, second]));
+      const collision = result.findings.find(
+        (finding) => finding.code === 'SDD_FILE_ACTIVE_WRITERS_COLLISION'
+      );
+      assert.strictEqual(collision?.blocking, true);
+    });
+  });
+
   it('warns only for active/planned overlap across distinct tickets', () => {
     isolatedRoot((root) => {
       const sameTicket = ticket(
