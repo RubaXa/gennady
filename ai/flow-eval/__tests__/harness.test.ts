@@ -293,12 +293,18 @@ test(
       });
       assert.match(scaffoldState.stdout, /FLOW_VERSION=v2/);
       assert.match(scaffoldState.stdout, /AUTHORING_READY=yes/);
-      const scaffoldCheck = await execFileAsync(
-        'npx',
-        ['--no-install', 'gennady', 'sdd-check', '--all', '.'],
-        { cwd: scaffoldDirectory, env: { ...process.env, NO_COLOR: '1' } }
+      await assert.rejects(
+        execFileAsync('npx', ['--no-install', 'gennady', 'sdd-check', '--all', '.'], {
+          cwd: scaffoldDirectory,
+          env: { ...process.env, NO_COLOR: '1' },
+        }),
+        (cause: unknown) => {
+          const error = cause as Error & { code?: number; stdout?: string };
+          assert.equal(error.code, 2);
+          assert.match(error.stdout ?? '', /SDD_NO_TICKETS_FOUND/);
+          return true;
+        }
       );
-      assert.match(scaffoldCheck.stdout, /✅ clean/);
 
       const executeDirectory = scenarios[2]?.directory;
       const executionEnv = { ...process.env, NO_COLOR: '1' };
@@ -372,6 +378,29 @@ test(
         /npx gennady testcov --min=80 src\/slugify\.ts` \| node-test \| coverage/
       );
       assert.doesNotMatch(executionTicket, /`npm run test:coverage` \| node-test \| coverage/);
+      const roundDatePlaceholder = '### Round 1 — <YYYY-MM-DD>, initial';
+      const blockerTrailScaffold = [
+        '<!-- Blocker Trail appended only on the first sdd-log resolved — a "## Blocker Trail" heading with',
+        '     "- [x] `<ts>` ✅ RESOLVED (Round <N> / P<M>): <what removed it>" lines, one per resolved',
+        '     🛑 BLOCKED, never written inline in the Execution Log (D-20, B2-19: append-only survives a',
+        '     Round close without an exception). -->',
+      ].join('\n');
+      assert.equal(executionTicket.split(roundDatePlaceholder).length - 1, 1);
+      assert.equal(executionTicket.split(blockerTrailScaffold).length - 1, 1);
+      await writeFile(
+        join(executeDirectory ?? '', 'specs/slugify/core/core.task.SLG-slug.md'),
+        executionTicket
+          .replace(roundDatePlaceholder, '### Round 1 — 2026-09-20, initial')
+          .replace(blockerTrailScaffold, ''),
+        'utf8'
+      );
+      assert.doesNotMatch(
+        await readFile(
+          join(executeDirectory ?? '', 'specs/slugify/core/core.task.SLG-slug.md'),
+          'utf8'
+        ),
+        /<(?:YYYY-MM-DD|N|M|what removed it)>/
+      );
       const authoringCheck = await execFileAsync(
         'npx',
         [
@@ -559,7 +588,9 @@ test(
         ],
         { cwd: executeDirectory, env: { ...process.env, NO_COLOR: '1' } }
       );
-      assert.match(p2PreClose.stdout, /✅ clean/);
+      assert.match(p2PreClose.stdout, /SDD_EXECUTION_LOG_ROUND_UNCLOSED/);
+      assert.match(p2PreClose.stdout, /\[sdd-check\] 0 error\(s\), 1 warning\(s\)/);
+      assert.doesNotMatch(p2PreClose.stdout, /✅ clean/);
       await execFileAsync(
         'npx',
         [
@@ -573,6 +604,19 @@ test(
           'P2',
         ],
         { cwd: executeDirectory, env: { ...process.env, NO_COLOR: '1' } }
+      );
+      const roundClose = await execFileAsync(
+        'npx',
+        ['--no-install', 'gennady', 'sdd-log', 'specs/slugify/core/core.task.SLG-slug.md', 'close'],
+        { cwd: executeDirectory, env: { ...process.env, NO_COLOR: '1' } }
+      );
+      assert.match(roundClose.stdout, /\[sdd-log\] closed current Round:/);
+      assert.doesNotMatch(
+        await readFile(
+          join(executeDirectory ?? '', 'specs/slugify/core/core.task.SLG-slug.md'),
+          'utf8'
+        ),
+        /<(?:YYYY-MM-DD|ts|N|M|what removed it)>/
       );
       const finalTaskCheck = await execFileAsync(
         'npx',
