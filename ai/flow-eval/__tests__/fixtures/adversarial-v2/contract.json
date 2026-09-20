@@ -1,0 +1,50 @@
+{
+  "schema": "gennady.flow-eval.adversarial-v2.v1",
+  "batch": "23A",
+  "acceptance": ["E-23", "V14-3"],
+  "cases": [
+    {
+      "id": "task-id-collision",
+      "expected": [{ "code": "SDD_TASK_ID_COLLISION", "severity": "error" }],
+      "exit": 1
+    },
+    {
+      "id": "ambiguous-legacy-reference",
+      "expected": [{ "code": "ERR_CLI_SDD_CHECK_AMBIGUOUS_ID", "severity": "unknown" }],
+      "exit": 2
+    },
+    {
+      "id": "malformed-coverage-row",
+      "expected": [{ "code": "SDD_BDD_COVERAGE_ROW_UNPARSED", "severity": "error" }],
+      "exit": 1
+    },
+    {
+      "id": "inactive-skip-todo-test",
+      "expected": [
+        { "code": "SDD_BDD_SCENARIO_UNTESTED", "severity": "error" },
+        { "code": "SDD_BDD_SCENARIO_UNTESTED", "severity": "error" }
+      ],
+      "exit": 1
+    },
+    {
+      "id": "stale-phase-receipt",
+      "expected": [{ "code": "SDD_PHASE_RECEIPT_STALE_PLAN", "severity": "error" }],
+      "exit": 1
+    },
+    {
+      "id": "stale-group-receipt",
+      "expected": [
+        { "code": "SDD_GROUP_AUDIT_MISSING", "severity": "warn" },
+        { "code": "SDD_GROUP_REVIEW_MISSING", "severity": "warn" }
+      ],
+      "exit": 0
+    }
+  ],
+  "injection": {
+    "id": "duplicate-second-task-id",
+    "baselineExit": 0,
+    "injectedExit": 1,
+    "onlyOutcome": { "code": "SDD_TASK_ID_COLLISION", "severity": "error" }
+  },
+  "deferred": ["E-17", "E-18"]
+}

@@ -121,3 +121,21 @@ regress. Baselines recorded in `ai/flow-eval/results/metrics-ledger.jsonl` (perm
   OFF for them (same family as the earlier 2-col verification-table + `SCOPE-TYPE`-vs-`SCOPE_TYPE` gaps).
   For the enforcement to apply to a round-tripped ticket, migration must upgrade tickets to the full v2
   schema (marker included). This is the migrator-completeness work, tracked separately.
+
+## F. Batch 23 split — acceptance status
+
+- **23A — E-22 + E-23 + V14-3: implemented by deterministic corpora.**
+  `ai/flow-eval/__tests__/fixtures/golden-v1/contract.json` pins the complete immutable
+  `rc-baseline-1^{}` tree (`227c03a83830124fe2aa22541dd5374beb8a53c6`), expected red exit, and
+  warning movement separately from the zero-new-error predicate. The test extracts that local Git
+  object into an isolated root, reconstructs its unchanged `HEAD`, and compares findings by
+  `(code,file,severity)` against the versioned baseline — no V1 edits and no rebaseline.
+  `ai/flow-eval/__tests__/fixtures/adversarial-v2/contract.json` binds collision, ambiguous legacy
+  lookup, malformed coverage, skipped/todo tests, and stale phase/group receipts to their explicit
+  outcomes, with valid and V1 counterparts. Its single V14-3 injection changes only the second
+  Task-ID and flips exactly `SDD_TASK_ID_COLLISION` plus exit `0→1`.
+- **23B — E-17: DEFERRED.** Starts only after V14-2; 23A does not claim or exercise FO/@spec.
+- **23C — exact E-18: DEFERRED to release validation.** The Swift runtime smoke accepted for Batch 12
+  is not relabelled as the exact cloud-ios E-18 round-trip, and 23A makes no live-LLM/eval claim.
+- **Batch 23 as a whole remains OPEN** until 23B and 23C are discharged; 23A also does not perform E-14
+  self-migration, remove `tasks/`, regrade warnings as errors, or alter the V1 corpus.

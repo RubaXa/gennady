@@ -1,0 +1,23 @@
+{
+  "schema": "gennady.flow-eval.golden-v1.v1",
+  "batch": "23A",
+  "acceptance": "E-22",
+  "source": {
+    "tag": "rc-baseline-1",
+    "commit": "227c03a83830124fe2aa22541dd5374beb8a53c6",
+    "expectedExit": 1,
+    "expectedFileCount": 212
+  },
+  "baseline": "ai/flow-eval/.baseline/sdd-check-227c03a8.json",
+  "warningDelta": {
+    "new": [
+      {
+        "code": "SDD_BDD_SCENARIO_UNTESTED",
+        "file": "tasks/cli/vcs-context-resolver/vcs-context-resolver.task-68.md",
+        "severity": "warn"
+      }
+    ],
+    "resolved": []
+  },
+  "deferred": ["E-17", "E-18"]
+}
