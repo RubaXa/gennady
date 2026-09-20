@@ -168,6 +168,34 @@ FO-2 и каждый последующий потребитель должны 
 |  15 | `orient --json`                                                            | Детерминированная версионируемая схема.                                    |
 |  16 | Повторное применение миграции шапки                                        | При втором применении ничего не меняется.                                  |
 
+<!--SECTION:MODULE_CONTRACTS-->
+
+## Контракты модуля FO-2
+
+FO-2 сознательно публикует детерминированный resolver до подключения CLI и проверок в FO-3/FO-4. Resolver не
+вводит отдельный bypass для cross-spec работы: активная фаза обязана перечислить canonical spec ID
+файла среди уже разрешённых `Spec References`, даже если вместе с ним перечислены другие
+спецификации.
+
+### `resolveFileRelations`
+
+- **Contract:** Строит детерминированные `semantic-owner`, `planned`, `active`, `blocked`, `history`
+  и findings из структурированного входа. Он не пишет файлы, не обходит корпус, не вызывает
+  Git/process и не создаёт кэш; для нормализации и repo-path policy использует канонический
+  read-only inspector `inspectRepoPath`.
+- **Usage Waiver:** FO-2 намеренно поставляет единое ядро до его производственных
+  потребителей; FO-3 подключает `orient`, FO-4 подключает `sdd-check`, после чего waiver должен быть
+  снят, а не продлён молча.
+
+### `fileRelationTicketFromContent`
+
+- **Contract:** Адаптирует bytes одного тикета через действующие канонические parsers; registry,
+  receipt validation, Git evidence и обход корпуса остаются обязанностью вызывающей стороны.
+- **Usage Waiver:** FO-2 фиксирует общий parser-boundary заранее, чтобы FO-3/FO-4 не создали второй
+  regex parser; первый производственный adapter в FO-3 или FO-4 обязан снять waiver.
+
+<!--/SECTION:MODULE_CONTRACTS-->
+
 ## Последствия и владельцы следующих шагов
 
 - **FO-2** реализует чистый resolver и исполняемые тесты связей/evidence.
