@@ -815,6 +815,15 @@ function checkFileOwnership(
 }
 
 /**
+ * @purpose Preserve the exact pre-B2-12 V1 `--changed` source surface.
+ * @param path Repository-relative changed path.
+ * @returns True only for production ts/tsx/js files that legacy checks already observed.
+ */
+function isLegacyChangedSource(path: string): boolean {
+  return /\.(?:ts|tsx|js)$/.test(path) && !/\.(?:test|spec)\.[jt]sx?$/.test(path);
+}
+
+/**
  * @purpose Walk supported source files, including tests, without following links or generated roots.
  * @param dir Directory currently visited.
  * @param acc Mutable absolute-file accumulator.
@@ -1352,6 +1361,7 @@ export async function run(
             ownershipContext
           );
           if (ownership.flow === 'v1') {
+            if (!isLegacyChangedSource(rel)) continue;
             findings.push(...checkTasksAppendOnly(rel, '', baseline.content));
           }
           findings.push(...ownership.findings);
@@ -1368,6 +1378,7 @@ export async function run(
         ownershipContext
       );
       if (ownership.flow === 'v1') {
+        if (!isLegacyChangedSource(rel)) continue;
         findings.push(
           ...checkTasksAppendOnly(rel, content, baseline.status === 'ok' ? baseline.content : null)
         );

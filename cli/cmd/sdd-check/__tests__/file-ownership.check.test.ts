@@ -236,6 +236,47 @@ describe('sdd-check file ownership', () => {
     }
   });
 
+  it('keeps expanded changed extensions/tests outside V1 while checking equivalent V2 files', async () => {
+    const legacyHeader = '// @file: legacy\n// @consumers: MissingConsumer\n// @tasks: TSK-01';
+    const legacy = fixture({
+      sourceHeader: '// @file: value\n// @tasks: TSK-01',
+      baselineSource: '// @file: value\n// @tasks: TSK-01\nexport const value = 0;\n',
+      legacy: true,
+    });
+    try {
+      const before = await mod.run(argv('--changed', legacy.root));
+      writeFileSync(join(legacy.root, 'src', 'legacy.go'), `${legacyHeader}\npackage demo\n`);
+      writeFileSync(join(legacy.root, 'src', 'FooTests.swift'), `${legacyHeader}\n`);
+      const after = await mod.run(argv('--changed', legacy.root));
+
+      assert.deepEqual(after, before);
+      assert.doesNotMatch(after.text, /SDD_FILE_|SDD_CONSUMERS_UNRESOLVED/);
+    } finally {
+      rmSync(legacy.root, { recursive: true, force: true });
+    }
+
+    const migrated = fixture({
+      sourceHeader: '// @file: value\n// @spec: APP',
+    });
+    try {
+      writeFileSync(
+        join(migrated.root, 'src', 'migrated.go'),
+        '// @file: migrated\n// @spec: APP\n// @consumers: MissingGoConsumer\npackage demo\n'
+      );
+      writeFileSync(
+        join(migrated.root, 'src', 'MigratedTests.swift'),
+        '// @file: migrated tests\n// @spec: APP\n// @consumers: MissingSwiftConsumer\n'
+      );
+      const result = await mod.run(argv('--changed', migrated.root));
+
+      assert.strictEqual(result.exitCode, 0, result.text);
+      assert.match(result.text, /src\/migrated\.go: warn: SDD_CONSUMERS_UNRESOLVED/);
+      assert.match(result.text, /src\/MigratedTests\.swift: warn: SDD_CONSUMERS_UNRESOLVED/);
+    } finally {
+      rmSync(migrated.root, { recursive: true, force: true });
+    }
+  });
+
   it('treats an exact target of a co-located V2 ticket as strict inside a mixed repository', async () => {
     const { root } = fixture({
       sourceHeader: '// @file: value',
