@@ -38,10 +38,18 @@ describe('extractHeader', () => {
     assert.deepStrictEqual(header.tasks, ['TSK-01', 'TSK-02']);
   });
 
-  it('filters non-TSK task IDs', () => {
-    const content = '// @tasks: TSK-01, invalid-id, TSK-02, other\n\nimport { foo } from "bar";';
+  it('accepts canonical semantic IDs plus legacy TSK-NN and rejects malformed lookalikes', () => {
+    const content =
+      '// @tasks: TSK-01, ORIENT-nav, invalid-id, TSK-02, ORIENT_Nav, other\n\nimport { foo } from "bar";';
     const header = extractHeader(content);
-    assert.deepStrictEqual(header.tasks, ['TSK-01', 'TSK-02']);
+    assert.deepStrictEqual(header.tasks, ['TSK-01', 'ORIENT-nav', 'TSK-02']);
+  });
+
+  it('parses one canonical @spec ID without accepting a path or malformed literal', () => {
+    assert.strictEqual(extractHeader('// @spec: CLI-ORIENT').spec, 'CLI-ORIENT');
+    assert.strictEqual(extractHeader('// @spec: specs/cli/orient/orient.spec.md').spec, '');
+    assert.strictEqual(extractHeader('// @spec: cli-orient').spec, '');
+    assert.strictEqual(extractHeader('// @spec: CLI-ORIENT\n// @spec: CLI-OTHER').spec, '');
   });
 
   it('parses @consumers: with multiple names', () => {
@@ -60,6 +68,7 @@ describe('extractHeader', () => {
     const content = 'import { foo } from "bar";';
     const header = extractHeader(content);
     assert.strictEqual(header.file, '');
+    assert.strictEqual(header.spec, '');
     assert.deepStrictEqual(header.tasks, []);
     assert.deepStrictEqual(header.consumers, []);
   });

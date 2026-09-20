@@ -94,6 +94,12 @@ describe('parseOrientArgs', () => {
     assert.strictEqual(args.maxResults, 30);
   });
 
+  it('parses --history and --json file-relation flags', () => {
+    const args = parseOrientArgs(argv('--file=a.ts', '--history', '--json'));
+    assert.strictEqual(args.history, true);
+    assert.strictEqual(args.json, true);
+  });
+
   it('collects positional keywords in _ array', () => {
     const args = parseOrientArgs(argv('contract', 'parser'));
     assert.deepStrictEqual(args._, ['contract', 'parser']);
@@ -209,6 +215,8 @@ describe('parseOrientArgs edge cases', () => {
   it('--max-results with non-numeric value defaults to Infinity', () => {
     const args = parseOrientArgs(argv('--max-results=abc'));
     assert.strictEqual(args.maxResults, Infinity);
+    assert.strictEqual(args.history, false);
+    assert.strictEqual(args.json, false);
   });
 
   it('defaults are correctly initialized', () => {

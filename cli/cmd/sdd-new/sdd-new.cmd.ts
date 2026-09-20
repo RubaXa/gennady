@@ -32,6 +32,7 @@ import {
   renderTaskAuthoringLiterals,
   ticketRelativeHref,
 } from '../../../shared/sdd/task-authoring-literals.ts';
+import { deriveInitialSpecId } from '../../../shared/sdd/spec-id.ts';
 import {
   badInvocation,
   unknownKind,
@@ -509,9 +510,18 @@ async function runCommand(rawArgs: string[]): Promise<NewOutcome> {
     }
   }
 
+  const createsSpec = ['product', 'library', 'infrastructure', 'interface', 'module'].includes(
+    kind
+  );
+  const canonicalSpecPath = createsSpec ? resolvePath(kind, { ...opts, out: undefined }) : '';
+  const specId = createsSpec
+    ? deriveInitialSpecId(resolve('specs'), resolve(canonicalSpecPath))
+    : null;
+  if (createsSpec && !specId) return badInvocation(`cannot derive canonical Spec ID from ${path}`);
+
   try {
     mkdirSync(dirname(abs), { recursive: true });
-    const skeleton =
+    let skeleton =
       kind === 'task' && opts.id && opts.scope && opts.owner
         ? renderTaskSkeleton(TEMPLATES.task.skeleton, {
             id: opts.id,
@@ -522,6 +532,7 @@ async function runCommand(rawArgs: string[]): Promise<NewOutcome> {
             owningSpecPath,
           })
         : TEMPLATES[kind].skeleton;
+    if (specId) skeleton = skeleton.replace('<SPEC-ID>', specId);
     writeFileSync(abs, skeleton, 'utf-8');
   } catch (cause) {
     logger.warn(`[SddNewCommand#run] write failed: ${path}`);

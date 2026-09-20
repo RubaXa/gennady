@@ -40,6 +40,27 @@ registry/resolver однозначно разрешает ID в путь спе�
 репозитория относится к сопоставлению `Target Files`/`Deleted Files`, а не к значению `@spec`.
 Шапка не копирует историю тикетов. Новый исходный файл V2 не добавляет `@tasks`.
 
+Каждая V2-спека хранит ровно один стабильный ID в отдельном машинно-читаемом разделе:
+
+```text
+<!--SECTION:SPEC_ID-->
+CLI-ORIENT
+<!--/SECTION:SPEC_ID-->
+```
+
+Literal состоит из одного или нескольких upper-alnum сегментов через `-`
+(`^[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*$`). Resolver при каждом запросе строит `ID → path` чтением
+канонических V2 `*.spec.md`; отдельного registry/sidecar нет. Ноль совпадений означает unresolved,
+несколько — ambiguous; оба исхода fail-closed. ID не меняется при перемещении или переименовании
+spec path. V1-спека до миграции не обязана иметь `SPEC_ID` и не получает новый diagnostic.
+
+Новый V2 scaffold создаёт `SPEC_ID`. Миграция предлагает initial ID механически из canonical path:
+повторяющийся stem `*.spec.md` отбрасывается, оставшиеся сегменты под `specs/` переводятся в upper
+case и соединяются `-` (`specs/cli/orient/orient.spec.md` → `CLI-ORIENT`). Это только одноразовое
+предложение, не продолжающаяся path-derived authority. Если предложения сталкиваются или дают
+неоднозначность, миграция ничего не угадывает и останавливается. После миграции source headers
+хранят ID, а не path.
+
 Устаревшее V1-поле `@tasks` остаётся допустимым, побайтово сохраняемым входом миграции. В V1 оно
 может давать кандидатов доказательств для миграции. В V2 оно не является ни семантическим владельцем, ни
 источником маршрутизации, а историческая запись `@tasks` сама по себе не может переоткрыть
@@ -183,16 +204,26 @@ FO-2 сознательно публикует детерминированны�
   и findings из структурированного входа. Он не пишет файлы, не обходит корпус, не вызывает
   Git/process и не создаёт кэш; для нормализации и repo-path policy использует канонический
   read-only inspector `inspectRepoPath`.
-- **Usage Waiver:** FO-2 намеренно поставляет единое ядро до его производственных
-  потребителей; FO-3 подключает `orient`, FO-4 подключает `sdd-check`, после чего waiver должен быть
-  снят, а не продлён молча.
 
 ### `fileRelationTicketFromContent`
 
 - **Contract:** Адаптирует bytes одного тикета через действующие канонические parsers; registry,
   receipt validation, Git evidence и обход корпуса остаются обязанностью вызывающей стороны.
-- **Usage Waiver:** FO-2 фиксирует общий parser-boundary заранее, чтобы FO-3/FO-4 не создали второй
-  regex parser; первый производственный adapter в FO-3 или FO-4 обязан снять waiver.
+
+### `ParsedSpecId`
+
+- **Contract:** Типизированно различает отсутствие V2-поля, malformed-секцию и один валидный
+  canonical Spec ID; V1-отсутствие не превращается в diagnostic само по себе.
+- **Usage Waiver:** Публичный parser boundary нужен следующему FO-4 adapter для раздельной
+  диагностики malformed/unresolved/ambiguous состояний; FO-3 уже использует его через on-demand
+  index, прямой второй production consumer появляется в следующем PR этой ownership-волны.
+
+### `parseSpecId`
+
+- **Contract:** Читает ровно один literal из ровно одной `SPEC_ID`-секции и не выводит ID из пути.
+- **Usage Waiver:** Функция экспортирована для следующего FO-4 corpus-validator; до подключения
+  этого adapter её единственный production consumer — `collectSpecIdEntries`, а targeted tests
+  фиксируют grammar/uniqueness отдельно от filesystem scan.
 
 <!--/SECTION:MODULE_CONTRACTS-->
 

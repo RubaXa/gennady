@@ -1,7 +1,7 @@
 # Agent Rules: orient
 
 `orient` — команда для навигации по репозиторию через file-header разметку
-(`@file:`, `@tasks:`, `@consumers:`) и публичные сущности с их DBC-контрактами
+(`@file:`, V2 `@spec:`, legacy `@tasks:`, `@consumers:`) и публичные сущности с их DBC-контрактами
 (экспортируемые функции, классы, типы, интерфейсы).
 
 ## Когда использовать
@@ -12,7 +12,9 @@
 | Найти файлы, связанные с конкретной задачей (TSK-XX)    | `npx gennady orient --task=TSK-03`              |
 | Узнать, кто потребляет модуль (зависимости снизу-вверх) | `npx gennady orient --consumer=DbcTsLinter`     |
 | Найти файлы по ключевому слову в `@file:` описании      | `npx gennady orient "keyword"`                  |
-| Посмотреть хедер и DBC-контракты конкретного файла      | `npx gennady orient --file=path/to/file.ts`     |
+| Посмотреть owner, работу и DBC-контракты файла          | `npx gennady orient --file=path/to/file.ts`     |
+| Развернуть только исторические relations                | `npx gennady orient --file=path --history`      |
+| Получить versioned machine result                       | `npx gennady orient --file=path --json`         |
 | Найти экспортируемую сущность (fuzzy)                   | `npx gennady orient --entity=MyService --fuzzy` |
 | Увидеть граф зависимостей (кто что потребляет)          | `npx gennady orient --graph`                    |
 | Обзор всех спек и их задач                              | `npx gennady orient --specs`                    |
@@ -41,7 +43,9 @@ npx gennady orient --task=TSK-04
 npx gennady orient --file=services/dbc/parser/dbc-parser.types.ts
 ```
 
-Вывод: хедер (`@file:`, `@tasks:`, `@consumers:`) + все экспортируемые сущности с DBC-контрактами.
+Вывод: canonical `@spec`, bounded active/planned/blocked/history relations, findings, затем хедер и
+экспортируемые сущности с DBC-контрактами. `--history` разворачивает history, не меняя
+классификацию; `--json` возвращает schema `gennady.orient.file-relations`, version `1`.
 
 ## Как встроить в AGENTS.md
 

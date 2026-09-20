@@ -139,10 +139,22 @@ const REQUIREMENTS_LIST_SKELETON = `<!-- УДАЛИ ЭТУ ПОДСКАЗКУ П
 
 > Аудит — комплаенс-требование; без записи операция не легитимна, откат обязателен.
 `;
+const SPEC_ID_SECTION: SectionManifestEntry = {
+  name: 'SPEC_ID',
+  // Generic load-bearing sections also validate untouched V1 specs. FO-4 enforces this only for V2.
+  required: false,
+  loadBearing: false,
+  fold: false,
+  fill: 'V2 REQUIRED: one stable canonical Spec ID; generated once and retained across path moves. FO-4 enforces it only for V2.',
+};
 // #endregion END_SHARED_SECTIONS
 
 // #region START_PRODUCT — specs/<scope>/<scope>.spec.md, scope-type=product
 const PRODUCT_SKELETON = `# <scope-name>: Scope Specification
+
+<!--SECTION:SPEC_ID-->
+<SPEC-ID>
+<!--/SECTION:SPEC_ID-->
 
 <!--SECTION:SCOPE_TYPE-->
 ## scope-type
@@ -262,6 +274,7 @@ ${BOOTSTRAP_REQUIREMENTS_TABLE_HEADER}
 `;
 
 const PRODUCT_SECTIONS: SectionManifestEntry[] = [
+  SPEC_ID_SECTION,
   {
     name: 'SCOPE_TYPE',
     required: true,
@@ -362,6 +375,10 @@ const PRODUCT_SECTIONS: SectionManifestEntry[] = [
 
 // #region START_LIBRARY — specs/<scope>/<scope>.spec.md, scope-type=library
 const LIBRARY_SKELETON = `# <scope-name>: Library Specification
+
+<!--SECTION:SPEC_ID-->
+<SPEC-ID>
+<!--/SECTION:SPEC_ID-->
 
 <!--SECTION:SCOPE_TYPE-->
 ## scope-type
@@ -465,6 +482,7 @@ ${BOOTSTRAP_REQUIREMENTS_TABLE_HEADER}
 `;
 
 const LIBRARY_SECTIONS: SectionManifestEntry[] = [
+  SPEC_ID_SECTION,
   {
     name: 'SCOPE_TYPE',
     required: true,
@@ -558,6 +576,10 @@ const LIBRARY_SECTIONS: SectionManifestEntry[] = [
 
 // #region START_INFRASTRUCTURE — specs/<scope>/<scope>.spec.md, scope-type=infrastructure
 const INFRASTRUCTURE_SKELETON = `# <scope-name>: Infrastructure Specification
+
+<!--SECTION:SPEC_ID-->
+<SPEC-ID>
+<!--/SECTION:SPEC_ID-->
 
 <!--SECTION:SCOPE_TYPE-->
 ## scope-type
@@ -715,6 +737,7 @@ ${BOOTSTRAP_REQUIREMENTS_TABLE_HEADER}
 `;
 
 const INFRASTRUCTURE_SECTIONS: SectionManifestEntry[] = [
+  SPEC_ID_SECTION,
   {
     name: 'SCOPE_TYPE',
     required: true,
@@ -808,6 +831,10 @@ const INFRASTRUCTURE_SECTIONS: SectionManifestEntry[] = [
 
 // #region START_INTERFACE — specs/<scope>/<scope>.spec.md, scope-type=interface
 const INTERFACE_SKELETON = `# <scope-name>: Interface Specification
+
+<!--SECTION:SPEC_ID-->
+<SPEC-ID>
+<!--/SECTION:SPEC_ID-->
 
 <!--SECTION:SCOPE_TYPE-->
 ## scope-type
@@ -905,6 +932,7 @@ ${BOOTSTRAP_REQUIREMENTS_TABLE_HEADER}
 `;
 
 const INTERFACE_SECTIONS: SectionManifestEntry[] = [
+  SPEC_ID_SECTION,
   {
     name: 'SCOPE_TYPE',
     required: true,
@@ -984,6 +1012,10 @@ const INTERFACE_SECTIONS: SectionManifestEntry[] = [
 
 // #region START_MODULE — specs/<scope>/<module>/<module>.spec.md
 const MODULE_SKELETON = `# Module: <ModuleName>
+
+<!--SECTION:SPEC_ID-->
+<SPEC-ID>
+<!--/SECTION:SPEC_ID-->
 
 <!--SECTION:MODULE_VISION-->
 ## Module Vision
@@ -1140,6 +1172,7 @@ ${RESEARCH_REGISTRY_SKELETON_MODULE}
 `;
 
 const MODULE_SECTIONS: SectionManifestEntry[] = [
+  SPEC_ID_SECTION,
   {
     name: 'MODULE_VISION',
     required: true,

@@ -329,6 +329,7 @@ describe('SddNewCommand', () => {
     assert.strictEqual(outcome.ok, true);
     assert.ok(existsSync(out), 'expected the skeleton file to be created');
     const written = readFileSync(out, 'utf-8');
+    assert.match(written, /<!--SECTION:SPEC_ID-->\nBACKEND\n<!--\/SECTION:SPEC_ID-->/);
     assert.match(written, /<!--SECTION:SCOPE_TYPE-->/);
     assert.match(written, /^product$/m);
     if (outcome.ok) {
@@ -365,6 +366,10 @@ describe('SddNewCommand', () => {
     );
     assert.strictEqual(outcome.ok, true);
     assert.ok(existsSync(out));
+    assert.match(
+      readFileSync(out, 'utf8'),
+      /<!--SECTION:SPEC_ID-->\nDEEP-NESTED\n<!--\/SECTION:SPEC_ID-->/
+    );
   });
 
   it('accepts a nested module with an explicit --out destination', async () => {
@@ -374,6 +379,10 @@ describe('SddNewCommand', () => {
     );
     assert.strictEqual(outcome.ok, true);
     assert.ok(existsSync(out));
+    assert.match(
+      readFileSync(out, 'utf8'),
+      /<!--SECTION:SPEC_ID-->\nDEEP-SCOPE-AUTH-TOKENS\n<!--\/SECTION:SPEC_ID-->/
+    );
   });
 
   it('refuses to overwrite an existing file with exit 1 / FILE_EXISTS', async () => {

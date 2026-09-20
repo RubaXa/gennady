@@ -4,6 +4,10 @@
   ```markdown
   # <scope-name>: Infrastructure Specification
 
+  <!--SECTION:SPEC_ID-->
+  <SPEC-ID>
+  <!--/SECTION:SPEC_ID-->
+
   <!--SECTION:SCOPE_TYPE-->
   ## scope-type
   infrastructure
