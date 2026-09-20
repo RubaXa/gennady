@@ -1,4 +1,4 @@
-// @file: Pure SDD v2 file-relations resolver over caller-supplied spec, ticket, receipt and Git evidence.
+// @file: Deterministic read-only SDD v2 file-relations resolver over caller-supplied evidence.
 // @consumers: FO-3 orient adapter, FO-4 sdd-check integration, FO-5 workflow consumers
 // @tasks: N/A
 

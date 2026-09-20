@@ -1,4 +1,4 @@
-// @file: FO-2 pure file-relations contract tests over isolated V2/V1 inputs.
+// @file: FO-2 file-relations contract tests over isolated V2/V1 inputs.
 // @consumers: N/A
 // @tasks: N/A
 
