@@ -8,13 +8,14 @@
       the design.
 
     The probe (`AX_PROBLEM_PROBES_SPEC`) classifies ownership, problem class, blast radius, and whether
-    a spec delta is semantic. Remediation then follows its real owner: task-owned code always becomes a
-    new ticket Round; semantic design changes go through the artifact-kind authoring flow, independent
+    a spec delta is semantic. Remediation then follows resolver state: one active ticket may continue
+    under its state policy; otherwise the semantic-owner spec creates new work, while history stays
+    read-only context. Semantic design changes go through the artifact-kind authoring flow, independent
     semantic review, and operator approval #1 before implementation; only genuinely task-free non-semantic metadata with an
     exact verifier may use the bounded direct path.
 
     Input — findings / a bug / a review, OR "I changed code, formalize it". Output — merged design when
-    design changed, reopened/created tasks when code must move, tracker state owned by ordinary execute,
+    design changed, continued/selected/created tasks when code must move, tracker state owned by ordinary execute,
     and one non-duplicated evidence chain for the chosen path.
   </Mission>
 
@@ -68,27 +69,62 @@
     </Axiom>
 
     <Axiom id="AX_TASK_RESOLUTION">
-      Every fix routes through the task that owns the affected file — ownership is resolved from the
-      artifacts, before classification. `@tasks: <ACR>-<slug>[, ...]` in a file header names the owning
-      task(s). Files matching `*.task.<ACR>-<slug>.md` (co-located under `specs/`) are tickets — the
-      Task-ID is in the filename. Files matching `*.1-spec.md` / `*.spec.md` are spec files — linked to a
-      scope, not a single task. Index files (`*.2-tasks.md` / `*.3-tasks.md`, `specs/2-tasks.md` /
-      `specs/3-tasks.md`) are global artifacts, owned by no task. The resulting file → [Task-IDs] map is
-      what routes fixes per `AX_FIX_CLASSIFICATION`. A resolvable code owner is binding: every code
-      finding routes to that ticket's new Round. Missing or ambiguous ownership does not mean
-      "direct-fix"; recover/create a ticket, or route a semantic ownership gap through authoring first.
+      Every workflow consumer resolves each affected file with
+      `npx gennady orient --file <repo-relative-path> --json` before classification. The versioned result
+      separates one `semantic-owner` (`@spec`) from `planned`, `active`, `blocked`, and `history` ticket
+      relations. Continue or recover a ticket only from one unambiguous `active` relation and only when
+      its state policy permits it. `history` explains prior work but never authorizes automatic reopen.
+      When no active relation exists, route through the resolved semantic-owner spec to select, create,
+      or recover maintenance work; `planned`, `blocked`, and `history` may inform that selection but are
+      never direct routing authority. Unresolved/ambiguous ownership fails closed. Legacy `@tasks` is
+      migration evidence only and never routing authority for V2.
     </Axiom>
 
     <Axiom id="AX_FIX_CLASSIFICATION">
       A reported symptom is an entry point, never the class. Every finding MUST be classified BEFORE any
       edit: bug vs spec-defect, ownership, semantic vs editorial spec impact, action category
-      (bounded-direct / authoring-flow / task-reopen / ticket-create-or-recover), the full problem class,
-      and the blast radius. Code carrying a resolvable `@tasks:` owner ALWAYS routes to a newly appended
-      Round in that ticket, even for a one-line fix; size never authorizes a direct patch. A semantic spec
+      (bounded-direct / authoring-flow / task-continue / ticket-create-or-recover), the full problem class,
+      and the blast radius. Code with one resolver-confirmed `active` relation may continue/recover only
+      that ticket under its state policy. With no active relation, route through the resolved `@spec`
+      owner to select, create, or recover maintenance work; `planned`, `blocked`, and `history` are
+      evidence for that spec-level selection, never direct routing authority. A semantic spec
       change ALWAYS routes through the artifact-kind authoring flow, independent semantic review, and operator approval #1
       lifecycle before implementation. Direct editing is reserved for genuinely task-free, non-semantic
       metadata with a frozen target-set and a known exact verifier. A fix applied without this
       classification is a symptom patch, not SDD.
+    </Axiom>
+
+    <Axiom id="AX_FILE_HEADER_TASK_TRACEABILITY">
+      **V2 files carry one semantic owner; task relations come from the deterministic resolver.**
+
+      Required file-level fields in execution profile:
+      - `@file` — mandatory; what the file holds.
+      - `@spec` — mandatory; exactly one stable canonical Spec ID, never a path.
+      - `@consumers` — mandatory; one or more named consumers from the owning spec.
+
+      `@tasks` is legacy V1 migration evidence and is forbidden in a new or migrated V2 header.
+      `planned`, `active`, `blocked`, and `history` task relations are resolved from exact ticket
+      targets and lifecycle state; none is copied into the header. Only an `active` relation may
+      continue/recover under task state policy. `history` is context, never routing authority.
+
+      Canonical header shape:
+      ```
+      // @file: <what the file holds>
+      // @spec: <CANONICAL-SPEC-ID>
+      // @consumers: <consumer-1, consumer-2, ...>
+      ```
+    </Axiom>
+
+    <Axiom id="AX_FILE_HEADER_APPEND_ONLY">
+      Touching a V2 file preserves its semantic-owner header; task history stays in tickets and Git.
+
+      - Required V2 fields, in order: `@file:`, one canonical `@spec:` ID, `@consumers:`.
+      - New V2 file: create all three from the resolved owner spec and its named consumers.
+      - Existing V2 file: preserve `@file:` and `@consumers:`; keep `@spec:` on the resolved semantic
+        owner. A real ownership transfer is a semantic spec change and routes through authoring.
+      - Existing V1 file remains byte-preserved until its migration owns the header rewrite.
+      - Never add a Task-ID to a V2 source header; re-dispatch and later rounds change resolver state,
+        not header history.
     </Axiom>
 
     <Axiom id="AX_GROUPING_REDUCES_NOISE">Multiple scattered changes with one shared intent (a mass rename, a parameter added across call sites) MUST be grouped into a single logical task. Per-item entries are noise.</Axiom>
@@ -102,6 +138,8 @@
     </Axiom>
 
     <Axiom id="AX_REOPEN_FORMAT">
+      This format applies only after an independent state policy has authorized the named ticket.
+      A historical relation or legacy `@tasks` header never supplies that authorization.
       Allocate concrete next-unused PhaseIDs; placeholders are not valid written output. Every
       task-owned code finding, including a one-line bug, gets at least one concrete `fix` PhaseID
       and one dependent concrete `test` PhaseID. Multiple findings sharing one owner may share one
@@ -217,19 +255,20 @@
     <Step id="STEP_2B_CLASSIFY">
       <Goal>Resolve ownership and choose the only legal remediation class before editing (`AX_FIX_CLASSIFICATION`).</Goal>
       <Action>
-        Build the ownership map first (`AX_TASK_RESOLUTION`): for every affected code file, read its
-        header and resolve every `@tasks: <ACR>-<slug>[, ...]` to exactly one ticket path. For every
-        spec, resolve its canonical artifact kind and scope. Missing or ambiguous code ownership is
-        never permission for a direct edit.
+        Build the ownership map first (`AX_TASK_RESOLUTION`): for every affected code file call the
+        ownershipQuery ToolCall below and consume its versioned `semantic-owner`, `planned`, `active`,
+        `blocked`, and `history` fields. For every spec, resolve its canonical artifact kind and
+        scope. Missing or ambiguous code ownership is never permission for a direct edit.
+        <ToolCall owner="this-step" result="ownershipQuery">npx gennady orient --file &lt;repo-relative-path&gt; --json</ToolCall>
+        Inputs &lt;repo-relative-path&gt;: one exact affected code path. Use ownershipQuery; do not infer
+        routing from a historical `@tasks` header.
 
         Classify every finding into exactly one category:
-        - **task-reopen** — ANY code finding with a resolvable `@tasks:` owner: bug, contract violation,
-          missing test, BDD mismatch, or review finding. Follow `AX_REOPEN_FORMAT`'s two forms — a
-          `— re-run:` phase block inside the still-open Round, or a brand new Round once it is closed
-          (D-20) — even for a one-line fix; neither form may be skipped. Allocate concrete next-unused
-          PhaseIDs for at least one `fix` phase and its dependent regression `test` phase; set ticket
-          Meta Status and its owning tracker row to `[~] IN_PROGRESS`, update `Reopens`, and hand
-          ordinary execute the ticket. No task-owned code path may enter bounded-direct.
+        - **task-continue** — a code finding with exactly one resolver-confirmed `active` ticket and a
+          state policy that permits continuation/recovery. Add a `— re-run:` phase block inside its
+          still-open Round per `AX_REOPEN_FORMAT`, allocate concrete next-unused `fix` and dependent
+          regression `test` PhaseIDs, and hand ordinary execute the ticket. A `history` relation never
+          selects this category and never opens a new Round automatically.
         - **semantic-spec-update** — any change to GOAL, requirements, observable behaviour, contracts,
           inventory, architecture, dependencies, BDD acceptance, risks, or Decision Log meaning. Route
           by artifact kind to authoring and complete independent semantic review plus approval #1 before any scaffold,
@@ -241,9 +280,11 @@
           spec correction above, when a literal target-set and the dedicated `sdd-check --all` command
           can be frozen before editing. Code, tickets, semantic content, and unowned executable
           artifacts are forbidden here.
-        - **ticket-create-or-recover** — unowned code, a missing/ambiguous owner, or any no-task artifact
-          without the bounded-direct contract. Recover a matching ticket when one exists; otherwise
-          create/scaffold one from the owning merged spec. Never patch it directly.
+        - **ticket-create-or-recover** — no active ticket for a file with a resolved semantic-owner,
+          or any task-free artifact without the bounded-direct contract. Route through that owning
+          merged spec to select, create, or recover maintenance work. `planned`/`blocked` relations
+          are evidence for that spec-level selection, not routing authority. Unresolved/ambiguous `@spec` routes through semantic
+          authoring first. Never patch it directly and never promote `history` to an owner.
       </Action>
     </Step>
     <Step id="STEP_3_PLAN">
@@ -251,8 +292,8 @@
       <Action>
         Group findings sharing one intent without crossing owners (`AX_GROUPING_REDUCES_NOISE`). The
         plan records, per item:
-        - task-reopen: ticket path, new Round number, concrete fix/test PhaseIDs, exact Target Files,
-          dependency from test to fix, and tracker row changing to IN_PROGRESS;
+        - task-continue: resolver-confirmed active ticket path, current open Round, concrete fix/test
+          PhaseIDs, exact Target Files, and dependency from test to fix;
         - semantic-spec-update: one artifact kind and authoring directive, the integrated bundle that
           must merge, then the post-merge disposition (`spec-only`, reopen existing tasks, or scaffold
           uncovered implementation);
@@ -261,7 +302,7 @@
           <ToolLiteral role="future">npx gennady sdd-check --all <verification-root></ToolLiteral>, where `<verification-root>` is
           `specs/<scope>` for one editorial spec correction or `<project-root>` for canonical tracker/index
           metadata. Freeze both before editing; no other direct verifier is implied;
-        - ticket-create-or-recover: owning merged spec plus recovered/new ticket identity.
+        - ticket-create-or-recover: resolver-confirmed semantic-owner spec plus recovered/new ticket identity.
 
         Reconcile any genuinely new entity through the existing orient result (`AX_REUSE_FIRST`) and
         fill the plan's Reuse rationale when the result is JUSTIFY. Present only this delta in
@@ -282,10 +323,9 @@
       <Goal>Apply through the remediation owner, preserving design-before-code order.</Goal>
       <Action>
         <LogicSwitch on="approved remediation category">
-        - WHEN **task-reopen** → append the planned new Round to every owning ticket exactly per
-          `AX_REOPEN_FORMAT`; write its concrete fix and dependent test PhaseIDs, set Meta Status and
-          tracker row to IN_PROGRESS, update parent rollups and `Reopens`, then dispatch every
-          reopened ticket through
+        - WHEN **task-continue** → append the planned `— re-run:` block to each resolver-confirmed active
+          ticket's still-open Round exactly per `AX_REOPEN_FORMAT`; write its concrete fix and dependent
+          test PhaseIDs, then dispatch every affected ticket through
           `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/execute.directive.xml")` as one BATCH per
           `AX_DISPATCH_VIA_BATCH`: the batch orchestrator plans layers, runs phases, closes rounds,
           and syncs trackers under its own unchanged `sdd-task --audit-group` lifecycle. There is no
@@ -315,7 +355,8 @@
         - WHEN **bounded-direct** → recheck that every frozen path is genuinely task-free and the
           approved edit remains editorial/mechanical. Edit only `<direct-target-set>`, then run the
           one frozen exact command integrityCheck ToolCall below once. Preserve its
-          literal output and exit code in `DIRECT_VERIFICATION_RECEIPT`. Any path drift, semantic delta,
+          literal output and exit code in `DIRECT_VERIFICATION_RECEIPT`. Preserve V2 source headers
+          per `AX_FILE_HEADER_TASK_TRACEABILITY` and `AX_FILE_HEADER_APPEND_ONLY`. Any path drift, semantic delta,
           nonzero exit, or missing literal output is `H_DIRECT_VERIFICATION_UNAVAILABLE`; restore the
           plan to ticket-create-or-recover rather than substituting a lighter command.
           <ToolCall owner="this-step" result="integrityCheck">npx gennady sdd-check --all <verification-root></ToolCall> Inputs <verification-root>: <verification-root>=exact dedicated root frozen for the bounded-direct target-set in STEP_3. Use integrityCheck.
@@ -332,7 +373,7 @@
       <Goal>Consume exactly one evidence chain (`AX_VERIFY_AT_END`).</Goal>
       <Action>
         <LogicSwitch on="completed remediation branch">
-        - task-reopen or ticket-create-or-recover → consume ordinary execute's per-ticket sync and phase
+        - task-continue or ticket-create-or-recover → consume ordinary execute's per-ticket sync and phase
           gates plus each affected group's audit `PASS` / `PASS_WITH_ACKNOWLEDGED_RISKS` and code-review
           outcome. Missing group evidence returns to ordinary execute for that group.
         - semantic spec-only → consume independent review plus operator approval #1 evidence.

@@ -1,5 +1,7 @@
 <!-- source: ai/directives/sdd/fix.directive.xml -->
 <Axiom id="AX_REOPEN_FORMAT">
+      This format applies only after an independent state policy has authorized the named ticket.
+      A historical relation or legacy `@tasks` header never supplies that authorization.
       Allocate concrete next-unused PhaseIDs; placeholders are not valid written output. Every
       task-owned code finding, including a one-line bug, gets at least one concrete `fix` PhaseID
       and one dependent concrete `test` PhaseID. Multiple findings sharing one owner may share one

@@ -12,6 +12,13 @@
         but whose build its own diff broke. When escalation is warranted instead — per
         `AX_BLOCKER_ESCALATION` — halt `H_BLOCKED` with typed evidence for the orchestrator; never
         improvise past it.
+        For every existing Target File or Deleted File call ownershipQuery and consume the shared
+        resolver result per `AX_TASK_RESOLUTION`. The selected ticket must appear as the applicable
+        `planned` or `active` relation and its `semantic-owner` must match the referenced spec; a
+        `blocked` relation stops with `H_BLOCKED`, while `history` alone grants no write authority.
+        A not-yet-created exact target takes its owner Spec ID from the ticket's resolved spec.
+        <ToolCall owner="phase-agent" result="ownershipQuery">npx gennady orient --file &lt;existing-target&gt; --json</ToolCall>
+        Inputs &lt;existing-target&gt;: one exact existing Target File or Deleted File. Use ownershipQuery.
       </Action>
     </Step>
 
@@ -28,4 +35,16 @@
       The ticket is orchestrator-owned state, not a phase Target File. The worker MUST NOT manually edit the ticket, `Phases Overview`, `Execution Log`, Handoff placeholder, or DONE line. The one permitted ticket mutation is the receipt written atomically by the exact `sdd-verify --task ... --phase ...` command. After that command passes, the worker returns a typed Handoff payload; the orchestrator validates it and closes the phase through `sdd-log complete`.
 
       Any other write or deletion → `H_OUT_OF_PHASE_WRITE`. An unusable CLI result is returned as a tool-contract blocker; it never authorizes reading bundled CLI source. Operator decides via re-planning or a new task.
+    </Axiom>
+
+<Axiom id="AX_TASK_RESOLUTION">
+      Every workflow consumer resolves each affected file with
+      `npx gennady orient --file <repo-relative-path> --json` before classification. The versioned result
+      separates one `semantic-owner` (`@spec`) from `planned`, `active`, `blocked`, and `history` ticket
+      relations. Continue or recover a ticket only from one unambiguous `active` relation and only when
+      its state policy permits it. `history` explains prior work but never authorizes automatic reopen.
+      When no active relation exists, route through the resolved semantic-owner spec to select, create,
+      or recover maintenance work; `planned`, `blocked`, and `history` may inform that selection but are
+      never direct routing authority. Unresolved/ambiguous ownership fails closed. Legacy `@tasks` is
+      migration evidence only and never routing authority for V2.
     </Axiom>

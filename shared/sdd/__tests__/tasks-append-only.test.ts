@@ -24,7 +24,7 @@ describe('parseTasksHeader', () => {
   });
 });
 
-describe('checkTasksAppendOnly', () => {
+describe('checkTasksAppendOnly — untouched V1 compatibility only', () => {
   it('новый файл (нет версии в HEAD) → без findings', () => {
     const findings = checkTasksAppendOnly('f.ts', '// @tasks: TSK-1', null);
     assert.deepStrictEqual(findings, []);

@@ -1,10 +1,12 @@
 <!-- source: ai/directives/sdd/phase-execution-protocol.xml -->
 <Axiom id="AX_FILE_HEADER_APPEND_ONLY">
-      Touching a file → ensure file-level header satisfies the execution contract; append your Task-ID to `@tasks`; never remove existing IDs.
+      Touching a V2 file preserves its semantic-owner header; task history stays in tickets and Git.
 
-      - Required fields: `@file:`, `@consumers:`, `@tasks:`.
-      - New file: create header with all three; populate from ticket context. `@consumers:` derives from spec, never a file path.
-      - Existing file with header: preserve `@file:` and `@consumers:`; append Task-ID to `@tasks:`.
-      - Existing file without header: do NOT add unless this phase explicitly requires header migration.
-      - Re-running same task (e.g., `fix` phase): do NOT add duplicate ID.
+      - Required V2 fields, in order: `@file:`, one canonical `@spec:` ID, `@consumers:`.
+      - New V2 file: create all three from the resolved owner spec and its named consumers.
+      - Existing V2 file: preserve `@file:` and `@consumers:`; keep `@spec:` on the resolved semantic
+        owner. A real ownership transfer is a semantic spec change and routes through authoring.
+      - Existing V1 file remains byte-preserved until its migration owns the header rewrite.
+      - Never add a Task-ID to a V2 source header; re-dispatch and later rounds change resolver state,
+        not header history.
     </Axiom>

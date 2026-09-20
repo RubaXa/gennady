@@ -121,6 +121,17 @@
       already have), that repetition is provable non-progress, not further review: halt `H_NO_PROGRESS`
       instead of re-dispatching again on the identical set. A genuinely new edit, a new tool run, or a new
     fact resets the count and earns a fresh dispatch as above.</Axiom>
+    <Axiom id="AX_TASK_RESOLUTION">
+      Every workflow consumer resolves each affected file with
+      `npx gennady orient --file <repo-relative-path> --json` before classification. The versioned result
+      separates one `semantic-owner` (`@spec`) from `planned`, `active`, `blocked`, and `history` ticket
+      relations. Continue or recover a ticket only from one unambiguous `active` relation and only when
+      its state policy permits it. `history` explains prior work but never authorizes automatic reopen.
+      When no active relation exists, route through the resolved semantic-owner spec to select, create,
+      or recover maintenance work; `planned`, `blocked`, and `history` may inform that selection but are
+      never direct routing authority. Unresolved/ambiguous ownership fails closed. Legacy `@tasks` is
+      migration evidence only and never routing authority for V2.
+    </Axiom>
   </BeliefState>
 
   <Contracts>
@@ -232,6 +243,13 @@
         repository evidence agree. Resume from the first incomplete/invalid phase. Do not infer
         progress from agent memory or hidden scratch state (`AX_STATELESS_FLOW`). The ticket/index
         ownership boundary remains authoritative per `AX_OWNER`.
+        For each existing Target File/Deleted File in `taskMap`, call ownershipQuery and consume the
+        shared relation model per `AX_TASK_RESOLUTION`. The selected ticket must be the applicable
+        `planned` or `active` relation; a `blocked` relation follows its state policy, and `history`
+        alone never authorizes dispatch or automatic reopen. The resolved semantic-owner must match
+        the ticket's referenced spec before a worker receives the target.
+        <ToolCall owner="this-step" result="ownershipQuery">npx gennady orient --file &lt;existing-target&gt; --json</ToolCall>
+        Inputs &lt;existing-target&gt;: one exact existing target from taskMap. Use ownershipQuery.
       </Action>
     </Step>
 

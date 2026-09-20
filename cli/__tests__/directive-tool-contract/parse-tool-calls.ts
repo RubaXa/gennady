@@ -169,6 +169,34 @@ const COMMAND_SCHEMAS: Readonly<Record<string, CommandSchema>> = {
       ? null
       : 'requires one spec path or --scope <name>'
   ),
+  orient: schema(
+    {
+      '--file': 'scalar',
+      '--dir': 'scalar',
+      '--task': 'scalar',
+      '--consumer': 'scalar',
+      '--entity': 'scalar',
+      '--graph': 'boolean',
+      '--recursive': 'boolean',
+      '--specs': 'boolean',
+      '--spec': 'scalar',
+      '--detail': 'boolean',
+      '--fuzzy': 'boolean',
+      '--depth': 'scalar',
+      '--max-results': 'scalar',
+      '--history': 'boolean',
+      '--json': 'boolean',
+    },
+    (p, f) => {
+      if (has(f, '--file') && has(f, '--dir')) return '--file and --dir are mutually exclusive';
+      if ((has(f, '--history') || has(f, '--json')) && !has(f, '--file'))
+        return '--history/--json require --file';
+      if ((has(f, '--history') || has(f, '--json')) && p.length > 0)
+        return '--history/--json accept no positional keyword';
+      return p.length <= 1 ? null : 'accepts at most one positional keyword';
+    },
+    ['--file', '--task', '--consumer', '--entity']
+  ),
   'sdd-task': schema(
     {
       '--phase': 'scalar',
