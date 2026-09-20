@@ -3,6 +3,7 @@
 // @tasks: N/A
 
 import { spawnSync } from 'node:child_process';
+import { isSddSourceFile } from '../sdd/source-extensions.ts';
 
 /** @purpose Stable diagnostic from one failed git subprocess. */
 export type GitCommandError = {
@@ -130,7 +131,7 @@ export function getChangedFiles(root: string): ChangedFilesResult {
 }
 
 /**
- * @purpose Changed production source files, retaining the parent scan's typed git state.
+ * @purpose Changed files in the shared SDD source registry, including test sources.
  * @param root Repository root passed to getChangedFiles.
  * @returns The typed parent result with its file list source-filtered.
  */
@@ -139,12 +140,7 @@ export function getChangedSourceFiles(root: string): ChangedFilesResult {
   if (result.status === 'error') return result;
   return {
     ...result,
-    files: result.files.filter(
-      (path) =>
-        /\.(ts|tsx|js)$/.test(path) &&
-        !/\.(test|spec)\.[jt]sx?$/.test(path) &&
-        !path.includes('node_modules/')
-    ),
+    files: result.files.filter((path) => isSddSourceFile(path) && !path.includes('node_modules/')),
   };
 }
 

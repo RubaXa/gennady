@@ -35,6 +35,10 @@ const PORTAL = [
 const SPEC = [
   '# Demo — Module Spec',
   '',
+  '<!--SECTION:SPEC_ID-->',
+  'DEMO',
+  '<!--/SECTION:SPEC_ID-->',
+  '',
   '## Module Contracts',
   '',
   '### Greeter',
@@ -125,8 +129,8 @@ function tracker(): string {
 
 const GREETER_TS = [
   '// @file: Greeter — builds a friendly greeting for a person by name.',
+  '// @spec: DEMO',
   '// @consumers: DemoApp',
-  '// @tasks: DEMO-greet',
   '',
   '/**',
   ' * @purpose Build a greeting for the given name.',
@@ -141,8 +145,8 @@ const GREETER_TS = [
 
 const GREETER_TEST_TS = [
   '// @file: Tests for greet() — basic greeting shape.',
+  '// @spec: DEMO',
   '// @consumers: greeter.ts',
-  '// @tasks: DEMO-greet',
   '',
   "import { describe, it } from 'node:test';",
   "import assert from 'node:assert/strict';",
@@ -210,10 +214,30 @@ export function buildFixture(): Fixture {
   writeFileSync(join(root, 'src', 'greeter.ts'), GREETER_TS, 'utf-8');
   writeFileSync(join(root, 'src', 'greeter.test.ts'), GREETER_TEST_TS, 'utf-8');
   writeFileSync(join(root, 'tsconfig.json'), '{"compilerOptions":{"noEmit":true}}\n', 'utf-8');
-  writeFileSync(join(root, 'scripts', 'pass.mjs'), 'process.exit(0);\n', 'utf-8');
+  writeFileSync(
+    join(root, 'scripts', 'pass.mjs'),
+    [
+      '// @file: Successful verification command for the minimal V2 fixture.',
+      '// @spec: DEMO',
+      '// @consumers: package.json scripts',
+      '',
+      'process.exit(0);',
+      '',
+    ].join('\n'),
+    'utf-8'
+  );
   writeFileSync(
     join(root, 'scripts', 'coverage.mjs'),
-    "import { mkdirSync, writeFileSync } from 'node:fs';\nmkdirSync('coverage', { recursive: true });\nwriteFileSync('coverage/coverage-final.json', '{}');\n",
+    [
+      '// @file: Coverage artifact producer for the minimal V2 fixture.',
+      '// @spec: DEMO',
+      '// @consumers: package.json test:coverage script',
+      '',
+      "import { mkdirSync, writeFileSync } from 'node:fs';",
+      "mkdirSync('coverage', { recursive: true });",
+      "writeFileSync('coverage/coverage-final.json', '{}');",
+      '',
+    ].join('\n'),
     'utf-8'
   );
   for (const name of ['gennady', 'prettier']) {

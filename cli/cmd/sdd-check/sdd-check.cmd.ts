@@ -118,6 +118,18 @@ import {
   type CheckResult,
 } from './sdd-check.types.ts';
 import { checkPhaseReceipts } from './phase-receipt-check.ts';
+import { extractHeader } from '../orient/core/extract-header.ts';
+import {
+  prepareOrientFileRelationsContext,
+  resolveOrientFileRelations,
+  type OrientFileRelationsContext,
+} from '../orient/core/resolve-file-relations.ts';
+import {
+  isSddSourceFile,
+  isSddTestFile,
+  SDD_SOURCE_EXTENSIONS,
+  sourceEvidenceLevel,
+} from '../../../shared/sdd/source-extensions.ts';
 
 const SKIP_DIRS = new Set([
   'node_modules',
@@ -530,7 +542,7 @@ function getTestFileIndex(repoRoot: string): TestFileIndex {
         continue;
       const full = join(dir, entry.name);
       if (entry.isDirectory()) walk(full);
-      else if (entry.isFile() && /\.(test|spec)\.(ts|tsx|js)$/.test(entry.name)) files.push(full);
+      else if (entry.isFile() && isSddTestFile(full)) files.push(full);
     }
   };
   walk(repoRoot);
@@ -550,6 +562,11 @@ function getTestCaseNames(absPath: string): string[] {
     // fall through with empty content
   }
   const names = extractTestCaseNames(content);
+  if (sourceEvidenceLevel(absPath) === 'approximate' && absPath.endsWith('.swift')) {
+    for (const match of content.matchAll(/^\s*func\s+(test[A-Za-z0-9_]+)\s*\(/gm)) {
+      if (match[1]) names.push(match[1]);
+    }
+  }
   testCaseNamesCache.set(absPath, names);
   return names;
 }
@@ -726,9 +743,9 @@ function checkFileConsumersResolvable(
       'grep',
       [
         '-rlF',
-        '--include=*.ts',
-        '--include=*.tsx',
-        '--include=*.js',
+        ...[...SDD_SOURCE_EXTENSIONS]
+          .sort((left, right) => (left < right ? -1 : left > right ? 1 : 0))
+          .map((extension) => `--include=*${extension}`),
         '--exclude-dir=node_modules',
         '--exclude-dir=dist',
         '--exclude-dir=.git',
@@ -755,6 +772,74 @@ function checkFileConsumersResolvable(
     if (files.some((f) => resolve(f) !== absPath)) resolved.add(e.name);
   }
   return checkConsumersResolvable(relPath, entries, resolved);
+}
+
+/**
+ * @purpose Adapt shared file-relations findings to sdd-check without changing their policy.
+ * @param repoRoot Canonical repository root.
+ * @param absPath Absolute queried source path (it may be a deleted potential path).
+ * @param content Current or baseline source bytes used to parse its header.
+ * @param baselineContent HEAD bytes whose prior @spec is positive V2 evidence, when available.
+ * @param [prepared] Optional invocation-local ownership corpus reused across source files.
+ * @returns Detected source flow plus FO-1 stable findings from the shared orient adapter.
+ */
+function checkFileOwnership(
+  repoRoot: string,
+  absPath: string,
+  content: string,
+  baselineContent: string | null = null,
+  prepared?: OrientFileRelationsContext
+): { flow: FlowVersion; findings: Finding[] } {
+  if (!existsSync(join(repoRoot, 'specs'))) return { flow: 'v1', findings: [] };
+  const relPath = relative(repoRoot, absPath).split(sep).join('/');
+  const header = extractHeader(content);
+  const baselineHeader = baselineContent === null ? null : extractHeader(baselineContent);
+  const result = resolveOrientFileRelations(
+    repoRoot,
+    absPath,
+    header,
+    {
+      hadSpecInBaseline: (baselineHeader?.specCount ?? 0) > 0,
+    },
+    prepared
+  );
+  return {
+    flow: result.flow,
+    findings: result.findings.map((finding) => ({
+      severity: finding.blocking ? 'error' : 'warn',
+      code: finding.code,
+      file: relPath,
+      message: finding.message,
+    })),
+  };
+}
+
+/**
+ * @purpose Walk supported source files, including tests, without following links or generated roots.
+ * @param dir Directory currently visited.
+ * @param acc Mutable absolute-file accumulator.
+ * @param issues Mutable fail-closed read-issue accumulator.
+ * @returns Nothing; appends files and issues deterministically at the caller boundary.
+ */
+function walkSources(dir: string, acc: string[], issues: ReadIssue[]): void {
+  let entries;
+  try {
+    entries = readdirSync(dir, { withFileTypes: true });
+  } catch (cause) {
+    issues.push({ path: dir, reason: readReason(cause) });
+    return;
+  }
+  for (const entry of entries) {
+    if (entry.name.startsWith('.') || entry.isSymbolicLink()) continue;
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      if (!SKIP_DIRS.has(entry.name) || entry.name === '__tests__') {
+        walkSources(full, acc, issues);
+      }
+    } else if (entry.isFile() && isSddSourceFile(entry.name)) {
+      acc.push(full);
+    }
+  }
 }
 
 /** @purpose Walk up from `start` to the nearest `package.json` — the real repo root, since `--all`'s scanned root may be a scoped subtree. | @param start Directory to start from. | @returns Ancestor with `package.json`, or `start`. */
@@ -1236,7 +1321,7 @@ export async function run(
     }
     fileCount = 1;
   } else if (changed) {
-    // #region START_CHANGED — invariant: TASKS_APPEND_ONLY + CONSUMERS_RESOLVABLE run over changed source files, not the full spec/ticket tree
+    // #region START_CHANGED — invariant: V1 TASKS_APPEND_ONLY plus ownership/consumer checks run over changed source files
     const selectedRoot = positional[0] ?? '.';
     const root = resolve(selectedRoot);
     const rootIssue = selectedRootIssue(selectedRoot);
@@ -1248,6 +1333,7 @@ export async function run(
         changedSources.exitCode,
         changedSources.stderr
       );
+    const ownershipContext = prepareOrientFileRelationsContext(root);
     for (const rel of changedSources.files) {
       const abs = join(root, rel);
       const baseline = readHeadContent(root, rel);
@@ -1258,15 +1344,35 @@ export async function run(
         content = readFileSync(abs, 'utf-8');
       } catch (cause) {
         if ((cause as NodeJS.ErrnoException).code === 'ENOENT' && baseline.status === 'ok') {
-          findings.push(...checkTasksAppendOnly(rel, '', baseline.content));
+          const ownership = checkFileOwnership(
+            root,
+            abs,
+            baseline.content,
+            baseline.content,
+            ownershipContext
+          );
+          if (ownership.flow === 'v1') {
+            findings.push(...checkTasksAppendOnly(rel, '', baseline.content));
+          }
+          findings.push(...ownership.findings);
           fileCount++;
           continue;
         }
         return readFailed(abs, readReason(cause));
       }
-      findings.push(
-        ...checkTasksAppendOnly(rel, content, baseline.status === 'ok' ? baseline.content : null)
+      const ownership = checkFileOwnership(
+        root,
+        abs,
+        content,
+        baseline.status === 'ok' ? baseline.content : null,
+        ownershipContext
       );
+      if (ownership.flow === 'v1') {
+        findings.push(
+          ...checkTasksAppendOnly(rel, content, baseline.status === 'ok' ? baseline.content : null)
+        );
+      }
+      findings.push(...ownership.findings);
       findings.push(...checkFileConsumersResolvable(rel, content, root, resolve(abs)));
       fileCount++;
     }
@@ -1456,6 +1562,30 @@ export async function run(
     }
     for (const t of mermaidTargets) {
       findings.push(...(await checkSpecMermaid(t.file, t.content)));
+    }
+    const sourceFiles: string[] = [];
+    const sourceIssues: ReadIssue[] = [];
+    const ownershipContext = prepareOrientFileRelationsContext(repoRoot);
+    walkSources(root === repoRoot ? repoRoot : root, sourceFiles, sourceIssues);
+    for (const issue of sourceIssues) addReadIssue(findings, issue);
+    for (const source of sourceFiles.sort((left, right) =>
+      left < right ? -1 : left > right ? 1 : 0
+    )) {
+      const observed = readUtf8(source);
+      if (!observed.ok) addReadIssue(findings, observed.issue);
+      else {
+        const ownership = checkFileOwnership(
+          repoRoot,
+          source,
+          observed.value,
+          null,
+          ownershipContext
+        );
+        if (ownership.flow === 'v2') {
+          findings.push(...ownership.findings);
+          fileCount++;
+        }
+      }
     }
     if (ticketsWereZero && findings.length === 0) {
       noTicketsFound = true;

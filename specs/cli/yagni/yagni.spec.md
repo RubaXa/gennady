@@ -10,7 +10,7 @@
 
 **Key properties:**
 
-- Языко-независимо на уровне порта: `SymbolIndex` (`services/symbol-index/`) — точный tree-sitter-адаптер для `.ts`/`.tsx` (единственная установленная грамматика) и приблизительный grep-адаптер для `.mts/.cts`, JS-вариантов, Python, Go, Ruby и Java. Единый source-policy задаёт расширения `ts/tsx/mts/cts/js/jsx/mjs/cjs/py/go/rb/java` и test territory одновременно для diff-discovery и corpus index; JS/TS `.test/.spec`, Go `_test.go`, Python `test_`/`_test`, Ruby `_spec/_test`, Java `Test/Tests` и test directories исключаются симметрично, поэтому два множества не могут разойтись.
+- Языко-независимо на уровне порта: `SymbolIndex` (`services/symbol-index/`) — точный tree-sitter-адаптер для `.ts`/`.tsx` (единственная установленная грамматика) и приблизительный grep-адаптер для остальных расширений из общего `shared/sdd/source-extensions.ts` (JS variants, Python, Go, Ruby, Java, Swift, Objective-C/C/C++ и Kotlin). Этот registry задаёт extensions и test territory одновременно для diff-discovery и corpus index; JS/TS `.test/.spec`, Swift/Java/Kotlin `Test/Tests`, Go `_test.go`, Python `test_`/`_test`, Ruby `_spec/_test` и test directories исключаются симметрично, поэтому два множества не могут разойтись. Уровень evidence — `exact` только для `.ts/.tsx`, `approximate` для остальных поддержанных языков.
 - Тесты **никогда** не считаются использованием — файлы-тесты (`shared/common/files.ts#isTestFile`, тот же механизм, что у `git-core`) исключены из подсчёта.
 - Реэкспорт из barrel/index (`export { X } from '...'`, `export * from '...'`) не считается использованием — такие строки вычищаются перед подсчётом (`stripBarrelReexports`).
 - «Изменённый символ» — по имени: символ, объявленный в текущей версии файла, но отсутствующий среди имён, объявленных в версии файла на `HEAD`. Символ, чьё имя не поменялось, а изменилось лишь тело — вне периметра этого прохода (у него уже есть история использования).
@@ -80,9 +80,9 @@ _Это полный список сущностей модуля `yagni`. Лю�
 | `ChangedFileDiscovery`       | Value Object | `{ok, files, comparisonBase}` либо `{ok:false, problem}` — доказанный scope или причина отказа                      |
 | `changedSymbolsForFile`      | Service      | Символы regular файла сейчас минус `HEAD`; deleted → пусто, unreadable/symlink/outside-root → fail closed           |
 | `ChangedSymbolsRead`         | Value Object | `{ok:true,symbols}` либо `{ok:false,problem}` — отличает удаление от недоказанного чтения                           |
-| `YAGNI_SOURCE_EXTENSIONS`    | Policy       | Закрытое множество расширений exact/approximate адаптеров для diff и corpus                                         |
+| `YAGNI_SOURCE_EXTENSIONS`    | Policy       | Совместимое имя общего `SDD_SOURCE_EXTENSIONS`: закрытый набор exact/approximate расширений для diff и corpus       |
 | `isYagniSourceFile`          | Policy       | Проверяет расширение changed source по единому множеству                                                            |
-| `isYagniTestTerritory`       | Policy       | Единые JS/TS/Go/Python/Ruby/Java test conventions для declaration и usage sides                                     |
+| `isYagniTestTerritory`       | Policy       | Единые JS/TS/Go/Python/Ruby/Java/Swift/Kotlin test conventions для declaration и usage sides                        |
 | `indexUsageCounts`           | Service      | Один проход production corpus: counts + typed `ioIssues`; partial counts никогда не означают clean                  |
 | `indexSpecEvidence`          | Service      | Один проход optional specs corpus: waivers/decisions + typed `ioIssues`                                             |
 | `YagniIoIssue`               | Value Object | `{path, operation, reason}` — точная дыра полноты evidence                                                          |

@@ -21,10 +21,14 @@ describe('YAGNI source policy', () => {
       'go',
       'rb',
       'java',
+      'swift',
+      'm',
+      'mm',
+      'kt',
     ]) {
       assert.strictEqual(isYagniSourceFile(`src/file.${extension}`), true, extension);
     }
-    assert.strictEqual(isYagniSourceFile('src/file.swift'), false);
+    assert.strictEqual(isYagniSourceFile('src/file.md'), false);
   });
 
   it('recognizes test territory for every supported language family without broad substrings', () => {
@@ -36,6 +40,8 @@ describe('YAGNI source policy', () => {
       'src/unit_test.py',
       'spec/unit_spec.rb',
       'src/UnitTest.java',
+      'src/UnitTests.swift',
+      'src/UnitTests.kt',
       'src/__tests__/helper.go',
     ]) {
       assert.strictEqual(isYagniTestTerritory(path), true, path);
