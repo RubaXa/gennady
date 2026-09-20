@@ -22,12 +22,11 @@ const PLUGIN_GATE_IDS = Object.fromEntries(
 ) as Partial<Record<StackId, readonly string[]>>;
 
 /**
- * Closed config vocabulary also includes the RC-native node preset and the forthcoming Swift
- * preset. Swift has no detector/preset in this batch: accepting its id lets `stack.use` express a
- * future priority without ever assigning an absent stack (D-64).
+ * Closed config vocabulary also includes the RC-native node preset. Plugin gate vocabularies are
+ * derived from their literal implementations, including Swift (V-11).
  */
 export const BUILTIN_GATE_IDS: Readonly<Record<StackId, readonly string[]>> = {
-  swift: [],
+  swift: PLUGIN_GATE_IDS.swift ?? [],
   golang: PLUGIN_GATE_IDS.golang ?? [],
   // Node's RC-native preset is not a StackPlugin: `use` may name it, while plugin-style
   // override/skip of its blocking ladder stays outside D-64/Variant-C convergence.

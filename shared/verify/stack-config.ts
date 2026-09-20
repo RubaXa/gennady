@@ -527,9 +527,9 @@ export function unmatchedGateOverrides(
  * @param root Absolute repository root.
  * @param provenance Per-key provenance map from loadStackConfig.
  * @param [unskipIds] Gate ids named by `--only` — config skipGates does not apply to them.
- * @param [targets] Exact phase Target Files (V-12, #9-bonus): an extraGate's `when` that matches
- *   none of them is a visible `skipped-by-scope`, same shape as a `skipGates` skip. Omitted/empty
- *   never narrows a `when`-less gate — the byte-parity default (D-17).
+ * @param [targets] Exact phase Target Files (V-12, #9-bonus): a gate's `when` that matches none
+ *   of them is a visible `skipped-by-scope`, same shape as a `skipGates` skip. Omitted/empty scopes
+ *   `when` gates out; null is the explicit readiness/capability view that preserves declarations.
  * @returns The effective gate list.
  */
 export function applyStackConfig(
@@ -539,7 +539,7 @@ export function applyStackConfig(
   root: string,
   provenance: ReadonlyMap<string, string>,
   unskipIds?: readonly string[],
-  targets: readonly string[] = []
+  targets: readonly string[] | null = []
 ): Gate[] {
   if (pluginConfig === null) {
     return [...gates];
@@ -558,6 +558,9 @@ export function applyStackConfig(
 
     if (override !== undefined) {
       const source = provenanceOf(provenance, `${stack}.overrideGates.${gate.id}`) ?? 'config';
+      const whenSource =
+        provenanceOf(provenance, `${stack}.overrideGates.${gate.id}.when`) ?? source;
+      const inScope = targets === null || gateInScope(override.when, targets);
       const timeoutMs =
         override.timeout !== undefined ? parseDuration(override.timeout)! : gate.timeoutMs;
       // requires/fixer must run in the OVERRIDDEN cwd, not the gate's original one (review P3).
@@ -565,7 +568,7 @@ export function applyStackConfig(
         override.cwd !== undefined ? path.resolve(root, override.cwd) : gate.cwd;
       result = {
         ...gate,
-        argv: override.argv ?? gate.argv,
+        argv: inScope ? (override.argv ?? gate.argv) : [],
         cwd: overriddenCwd,
         env: override.env ?? gate.env,
         timeoutMs,
@@ -596,9 +599,13 @@ export function applyStackConfig(
             : gate.envFail) ?? []),
         ],
         label: `${gate.label} (overridden by ${source})`,
-        // An explicit argv override supersedes a planner skip: the config author
-        // states the command is runnable in this repo.
-        skipped: override.argv !== undefined ? null : gate.skipped,
+        // An explicit argv override supersedes a planner skip only while its phase scope matches.
+        // A scoped-out override stays visible, and skipGates below remains the stronger reason.
+        skipped: !inScope
+          ? `when (${whenSource})`
+          : override.argv !== undefined
+            ? null
+            : gate.skipped,
       };
     }
 
@@ -616,7 +623,7 @@ export function applyStackConfig(
       spec.timeout !== undefined
         ? (parseDuration(spec.timeout) ?? EXTRA_GATE_DEFAULT_TIMEOUT_MS)
         : EXTRA_GATE_DEFAULT_TIMEOUT_MS;
-    const inScope = gateInScope(spec.when, targets);
+    const inScope = targets === null || gateInScope(spec.when, targets);
     const gate: Gate = {
       id: spec.id!,
       stack,

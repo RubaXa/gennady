@@ -166,6 +166,7 @@ function assembleStackGates(
             requires: configured.requires,
             outputMeansFailure: configured.outputMeansFailure,
             driftMeansFailure: configured.driftMeansFailure,
+            skipped: configured.skipped,
           }
         : {}),
       required: primary && required.has(name),

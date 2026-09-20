@@ -3,6 +3,7 @@
 // @tasks: N/A
 
 import { createHash } from 'node:crypto';
+import { spawnSync } from 'node:child_process';
 import { lstatSync, readFileSync, readdirSync, readlinkSync, realpathSync } from 'node:fs';
 import { isAbsolute, relative, resolve, sep } from 'node:path';
 import { inspectRepoPath } from '../../../shared/common/repo-path.ts';
@@ -131,13 +132,35 @@ function regularFileState(path: string): string {
   return `file:${stat.mode}:${createHash('sha256').update(readFileSync(path)).digest('hex')}`;
 }
 
+function ignoredChildren(root: string, directory: string, names: readonly string[]): Set<string> {
+  if (names.length === 0) return new Set();
+  const candidates = names.map((name) => repoPath(root, resolve(directory, name)));
+  const checked = spawnSync('git', ['-C', root, 'check-ignore', '-z', '--stdin'], {
+    encoding: 'utf-8',
+    input: `${candidates.join('\0')}\0`,
+    stdio: ['pipe', 'pipe', 'ignore'],
+  });
+  if (checked.error || (checked.status !== 0 && checked.status !== 1)) {
+    // Unknown ignore state may cost a false red, never a hidden mutation: observe every path.
+    return new Set();
+  }
+  return new Set(checked.stdout.split('\0').filter(Boolean));
+}
+
 function snapshotWorkspace(root: string): WorkspaceSnapshot {
   const entries: WorkspaceSnapshot = new Map();
   const visit = (directory: string): void => {
-    for (const dirent of readdirSync(directory, { withFileTypes: true })) {
+    const dirents = readdirSync(directory, { withFileTypes: true });
+    const ignored = ignoredChildren(
+      root,
+      directory,
+      dirents.filter((dirent) => !EXCLUDED_TOOL_DIRS.has(dirent.name)).map((dirent) => dirent.name)
+    );
+    for (const dirent of dirents) {
       if (dirent.isDirectory() && EXCLUDED_TOOL_DIRS.has(dirent.name)) continue;
       const absolute = resolve(directory, dirent.name);
       const lexical = repoPath(root, absolute);
+      if (ignored.has(lexical)) continue;
       const stat = lstatSync(absolute);
       if (stat.isDirectory()) {
         entries.set(lexical, {
@@ -280,8 +303,8 @@ function changedPaths(before: WorkspaceSnapshot, after: WorkspaceSnapshot): stri
 
 /**
  * @purpose Create a before/after filesystem boundary around phase repair.
- * @invariant The only excluded trees are VCS metadata and installed dependencies; generated,
- *   ignored and untracked project files remain observable.
+ * @invariant VCS metadata, installed dependencies, and paths ignored by the repository's active
+ *   gitignore rules are excluded. Every non-ignored tracked/untracked project path is observable.
  * @param root Canonical project root.
  * @param [operation] Human-readable transaction stage named by a failure diagnostic.
  * @returns Boundary that fails closed on every final workspace mutation outside canonical targets.

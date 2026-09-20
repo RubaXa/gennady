@@ -802,7 +802,7 @@ export async function run(
         ? gate.name
         : (gate.scriptName ?? plannedScript ?? resolveProjectScriptName(scripts, gate.name));
 
-    if (gate.via !== 'gennady' && !gate.argv?.length) {
+    if (!gate.skipped && gate.via !== 'gennady' && !gate.argv?.length) {
       const isMissing = scriptName === undefined;
       const isVacuous = !isMissing && isVacuousScript(scripts, scriptName);
       if ((isMissing || isVacuous) && required.has(gate.name)) {
@@ -966,7 +966,7 @@ export async function run(
         gate.via === 'gennady'
           ? gate.name
           : (gate.scriptName ?? resolveProjectScriptName(scripts, gate.name));
-      if (gate.via !== 'gennady' && !gate.argv?.length) {
+      if (!gate.skipped && gate.via !== 'gennady' && !gate.argv?.length) {
         const isMissing = scriptName === undefined;
         const isVacuous = !isMissing && isVacuousScript(scripts, scriptName);
         if ((isMissing || isVacuous) && required.has(gate.name)) {

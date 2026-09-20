@@ -247,7 +247,7 @@ async function runConfiguredGatePlan(
       output: outcome.output,
       durationMs: 0,
       ranCommand: gate.command,
-      mutates: stack === 'golang' && gate.name === 'fix',
+      mutates: (stack === 'golang' || stack === 'swift') && gate.name === 'fix',
     });
     if (outcome.exitCode !== 0) {
       return {
