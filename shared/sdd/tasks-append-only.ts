@@ -3,6 +3,7 @@
 // @tasks: N/A
 
 import type { Finding } from './check.ts';
+import { parseSourceOwnershipHeader } from './source-ownership-header.ts';
 
 /**
  * @purpose Parse a file's `@tasks:` header comment into its declared Task-IDs / Decision-IDs.
@@ -11,10 +12,11 @@ import type { Finding } from './check.ts';
  * @returns Declared ids; empty when the header lists only `N/A` or is absent.
  */
 export function parseTasksHeader(content: string): string[] {
-  const m = /@tasks:\s*(.+)/.exec(content);
-  if (!m?.[1]) return [];
-  return m[1]
-    .split(',')
+  const values = parseSourceOwnershipHeader(content)
+    .blocks.filter((block) => block.tag === 'tasks')
+    .map((block) => block.value);
+  return values
+    .flatMap((value) => value.split(','))
     .map((s) => s.trim())
     .filter((s) => s.length > 0 && !/^n\/a$/i.test(s));
 }
