@@ -6,13 +6,14 @@
 
 ## 1. Module Vision
 
-Миграция v1 SDD-артефактов в v2 — детерминированные, верифицируемые шаги. Текущий режим — **`anchors`**: v1-тикеты идут без `<!--SECTION:-->`-якорей (голые `## N.`), а v2-тулы (`sdd-extract`/`sdd-task`/`sdd-check`) их требуют; `anchors` оборачивает канонические секции маркерами по карте header→name. Dry-run по умолчанию; `--write` применяет. Ядро `shared/sdd/anchor-inject.ts` (`injectAnchors`), идемпотентно. Будущие режимы (план архивирован): `ids` (`TSK-NN`→slug по map, курируемые паттерны) + структурный move `tasks/`→`specs/`.
+Миграция v1 SDD-артефактов в v2 — детерминированные, верифицируемые шаги. `anchors`, `plan`, `ids` и `move` сохраняют dry-run по умолчанию. `move` выполняет один whole-scope fail-closed preflight для ticket relocation, stable Spec IDs и source ownership headers; только после зелёного preflight фактически переводит scope в V2.
 
 **Key properties:**
 
 - Deterministic + verifiable — после `--write` результат проверяется `sdd-check --all` (баланс якорей) и `sdd-extract` по секциям
 - Dry-run-first — без `--write` только репорт «что бы изменил»; на боевом репо вскрыл 56 голых / 12 уже-заякоренных из 68
 - Idempotent — секция с уже-имеющимся маркером пропускается; покрывает оба v1-суб-формата (голые / newer-с-якорями)
+- Whole-scope preflight — malformed/duplicate Spec ID, unrecoverable legacy relation или ambiguous semantic owner блокируют relocation и все header writes до первой мутации
 
 **Invariants:**
 
@@ -50,6 +51,8 @@ $ npx gennady sdd-migrate anchors --all . --write  # применить + зат
 | `hasPhasesWithoutOverview` | Utility | (`shared/sdd/anchor-inject`, B2-10) `true`, когда есть ≥1 `PHASE_P<N>`-якорь, но нет `PHASES_OVERVIEW` — фазовые ID недобываемы; ведёт к `refused` (см. D-MG011)                     |
 | `upgradeVerificationTable` | Utility | (`shared/sdd/anchor-inject`, унаследовано от пачки 22/E-06 — не документировано раньше) апгрейд 2-колоночной таблицы Verification в 3-колоночную (Role) + `PHASE_RECEIPTS:v1`-маркер |
 | `scaffoldFirstRound`       | Utility | (`shared/sdd/anchor-inject`, унаследовано от пачки 22/E-06 — не документировано раньше) скаффолдит `### Round 1` со всеми `#### P<N>`-блоками при апгрейде таблицы                   |
+| `executeScopeMove`         | Utility | Единый dry-run/write orchestration для ticket relocation, indexes и FO-6 whole-scope preflight                                                                                       |
+| `planMigrationFileHeaders` | Utility | Read-only Spec-ID/source-header plan: repo-wide evidence, scope-local writes, fail-closed blockers                                                                                   |
 | `badInvocation`            | Utility | Билдер диагностики (exit 4)                                                                                                                                                          |
 | `MigrateOutcome`           | Type    | `{ok:true,text}` либо `{ok:false,code,exitCode,message}`                                                                                                                             |
 
@@ -83,18 +86,28 @@ $ npx gennady sdd-migrate anchors --all . --write  # применить + зат
 
 - **Usage Waiver:** чистое переименование `### Round N` → `### Critic Round N` внутри легаси `## Critic Rounds` отделено от файловой записи в `executeScopeMove` — единственный способ протестировать разбор границы секции без git/файловой системы (B2-02).
 
+### `planMigrationFileHeaders`
+
+- **Contract:** Whole-scope FO-6 preflight читает repo-wide Spec-ID/ticket evidence, но планирует записи
+  только для фактически мигрируемого scope. Valid explicit ID сохраняется; absent ID получает только
+  collision-checked migration proposal. Canonical source rewrite разрешён лишь при одном owning spec
+  и полном восстановлении legacy relations через exact ticket targets. Любой blocker возвращает
+  полный список ошибок и запрещает move/header writes. Второй apply после успешного move — no-op.
+
 <!--/SECTION:MODULE_CONTRACTS-->
 
 <!--SECTION:PUBLIC_OPTIONS-->
 
 ## 5. Public Options & Policies
 
-| Argument       | Type   | Description                                         |
-| -------------- | ------ | --------------------------------------------------- |
-| `anchors`      | mode   | Инжект `<!--SECTION:-->` в v1-тикеты                |
-| `<ticket>`     | string | Один тикет (если не `--all`)                        |
-| `--all [root]` | flag   | Все `tasks/**/*.task-*.md` под root (по умолч. cwd) |
-| `--write`      | flag   | Применить (иначе dry-run)                           |
+| Argument       | Type   | Description                                                       |
+| -------------- | ------ | ----------------------------------------------------------------- |
+| `anchors`      | mode   | Инжект `<!--SECTION:-->` в v1-тикеты                              |
+| `<ticket>`     | string | Один тикет (если не `--all`)                                      |
+| `--all [root]` | flag   | Все `tasks/**/*.task-*.md` под root (по умолч. cwd)               |
+| `--write`      | flag   | Применить (иначе dry-run)                                         |
+| `move`         | mode   | Перевести один scope: tickets, indexes, Spec IDs и source headers |
+| `--scope <s>`  | string | Scope для whole-scope move preflight                              |
 
 <!--/SECTION:PUBLIC_OPTIONS-->
 
@@ -105,6 +118,7 @@ $ npx gennady sdd-migrate anchors --all . --write  # применить + зат
 ```
 cli/cmd/sdd-migrate/  index.ts · sdd-migrate.cmd.ts · sdd-migrate.types.ts · help.ts · __tests__/sdd-migrate.cmd.test.ts
 shared/sdd/anchor-inject.ts  (injectAnchors)  + __tests__/anchor-inject.test.ts
+shared/sdd/migration-move.ts + migration-file-headers.ts + __tests__/migration-move.test.ts
 ```
 
 **Registration points (4 files):** `cli/gennady.ts` · `cli/cmd/help/help.cmd.ts` · `cli/AGENTS.md` · `cli/cmd/README.md`.
@@ -189,6 +203,15 @@ shared/sdd/anchor-inject.ts  (injectAnchors)  + __tests__/anchor-inject.test.ts
 - **Status:** active · **Was (B2-10, до `V-BATCH-16`):** `hasPhasesWithoutOverview` только печатала `WARN <file> — …` в текстовый отчёт; сам тикет всё равно писался целиком (`--write` анкорил `PHASE_P<N>`, апгрейдил Verification-таблицу и т.д.) — WARN был виден только человеку, читающему текст отчёта, а не автомату (`E-14`/CI), у которого нет иного способа отличить такой прогон от чистого. Формулировка доски (`61-TASK-BOARD.md:84` «явный отказ») и трека (`31-TRACK-CHECK-LOG.md:632` «явный отказ/предупреждение») допускала оба прочтения — верификация `V-BATCH-16` (Q2) вынесла это оператору.
 - **Now (решение Lead L-28):** тикет, для которого `hasPhasesWithoutOverview(text) === true` на финальном (после `injectAnchors`/`scaffoldExecutionLog`/`upgradeVerificationTable`) тексте, **refused целиком** — ни dry-run, ни `--write` не применяют к нему ни одного изменения (не только фазовый якорь: PHASE_P1/META/BDD/EXECUTION_LOG — ничего). Отчёт получает per-file строку `REFUSED <file> — …` и футер `refused: N (no Phases Overview)`; `--format json` (новый флаг режима `anchors`) даёт машиночитаемый `refused: [{file, reason: 'PHASES_OVERVIEW_MISSING'}]` + `summary.refused` — то, на что реально может смотреть `E-14`/CI, вместо парсинга текстового WARN. Exit остаётся `0` в обоих режимах (`--write` без записи такого тикета — это не ошибка инструмента, это корректный, видимый отказ по одному файлу).
 - **Risk accepted:** 19 реальных тикетов корпуса (см. журнал прогона `sdd-migrate anchors --all`) теперь не получают НИКАКИХ изменений от `anchors --write` (раньше получали частичные — PHASE_P<N> и т.д. анкорились, только Phases Overview недоставало) — это преднамеренно более консервативно, чем было: до ручного дописывания `Phases Overview` эти тикеты не двигаются вообще. Их полный список — остаток для доски (ручная миграция, вне этой задачи).
+
+### D-MG012 — FO-6 ownership migration является частью whole-scope preflight `move`
+
+- **Status:** active · **Why:** только `move` фактически удаляет `tasks/<scope>/` и включает строгий
+V2 scope; отдельная header-команда могла бы создать полумигрированный V1. Поэтому dry-run показывает
+ticket moves + Spec-ID/header plan вместе, а `--write` сначала завершает repo-wide preflight и при
+любом blocker не пишет ничего. Path-derived Spec ID используется один раз как migration proposal;
+после материализации explicit ID остаётся authority при rename/move spec path. **Risk:** полный
+ticket corpus читается на preflight без persistent cache (FO-7 остаётся deferred).
 <!--/SECTION:MODULE_DECISION_LOG-->
 
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->

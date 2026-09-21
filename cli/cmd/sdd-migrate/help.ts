@@ -25,7 +25,7 @@ export function printHelp(): void {
   console.info('  npx gennady sdd-migrate ids [root] --map <tsv>   # Task-ID replace (dry-run)');
   console.info('  npx gennady sdd-migrate ids [root] --from-plan   # map derived from Ticket Maps');
   console.info(
-    '  npx gennady sdd-migrate move [root] --scope <s>  # relocate tickets + indexes (dry-run)'
+    '  npx gennady sdd-migrate move [root] --scope <s>  # tickets + Spec IDs + headers (dry-run)'
   );
   console.info('');
   console.info('anchors mode:');
@@ -58,7 +58,13 @@ export function printHelp(): void {
     "  Relocates one scope's tickets to their co-located destinations from the approved"
   );
   console.info('  Ticket Maps (git mv), scaffolds <module>.3-tasks.md + <scope>.3-tasks.md from');
-  console.info('  ticket Meta, and removes the emptied tasks/<scope>/ — flipping the scope to v2.');
+  console.info(
+    '  ticket Meta, materializes collision-checked SPEC_ID fields, and replaces recoverable'
+  );
+  console.info(
+    '  source @tasks with canonical @spec headers. The whole preflight is all-or-nothing;'
+  );
+  console.info('  then the emptied tasks/<scope>/ is removed, flipping the scope to v2.');
   console.info('');
   console.info(
     'Exit codes: 0 report · 1 verify findings / invalid map / blocked move · 4 bad invocation'

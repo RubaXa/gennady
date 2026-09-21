@@ -239,8 +239,14 @@ FO-2 сознательно публикует детерминированны�
   resolver-confirmed `active` relation может продолжить/recover тикет по его state policy;
   `history` не переоткрывает DONE автоматически, а отсутствие active route идёт через semantic-owner
   spec к новому scaffold work.
-- **FO-6** мигрирует устаревшие шапки только при однозначном сопоставлении и сообщает о неоднозначности,
-  а не угадывает.
+- **FO-6** входит в единый preflight/apply `sdd-migrate move --scope`: до первой записи строит
+  полный план переезда, Spec ID и source headers. Existing valid `SPEC_ID` сохраняется; absent ID
+  получает одноразовый proposal через `deriveInitialSpecId` с repo-wide collision check. Legacy
+  `@tasks` — только evidence candidate: каждый relation обязан восстановиться через versioned ticket
+  и exact `Target Files`/`Deleted Files`, а все evidence — дать одну owning spec. Missing,
+  malformed, duplicate, unrecoverable или ambiguous mapping блокирует весь scope без partial move.
+  Новый header имеет порядок `@file` → `@spec` → `@consumers`, повторный apply byte-preserving no-op,
+  untouched V1 scopes не переписываются и не получают новых diagnostics.
 - **FO-7** явно отложена: проектирование кэша требует измерений и детерминированной инвалидации.
 - **Самомиграция E-14** остаётся заблокированной до FO-6; этот ADR не меняет текущие продуктовые
   данные V1.
