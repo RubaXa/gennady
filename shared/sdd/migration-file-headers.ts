@@ -42,6 +42,7 @@ type OwnedTicket = {
   taskId: string;
   ticketFile: string;
   specFile: string;
+  status: 'todo' | 'in-progress' | 'blocked' | 'done' | 'unknown';
   targets: string[];
   targetError: string | null;
 };
@@ -335,17 +336,34 @@ function ownedTickets(repoRoot: string, units: readonly SpecUnit[]): OwnedTicket
   for (const unit of units) {
     for (const ticket of unit.tickets) {
       if (!ticket.taskId) continue;
+      const content = readFileSync(join(repoRoot, ticket.file), 'utf8');
+      const anchored = injectAnchors(content).text;
+      const meta = extractSection(anchored, 'META');
+      const status =
+        meta.status === 'ok'
+          ? normalizeTicketStatus(parseMetaInfo(meta.content).status)
+          : 'unknown';
       const parsed = ticketTargets(repoRoot, ticket.file);
       tickets.push({
         taskId: ticket.taskId,
         ticketFile: ticket.file,
         specFile: unit.specFile.split(sep).join('/'),
+        status,
         targets: parsed.targets,
         targetError: parsed.error,
       });
     }
   }
   return tickets.sort((a, b) => compareText(a.taskId, b.taskId));
+}
+
+function normalizeTicketStatus(status: string | null): OwnedTicket['status'] {
+  if (!status) return 'unknown';
+  if (/\bDONE\b/.test(status)) return 'done';
+  if (/\bIN_PROGRESS\b/.test(status)) return 'in-progress';
+  if (/\bBLOCKED\b/.test(status)) return 'blocked';
+  if (/\bTODO\b/.test(status)) return 'todo';
+  return 'unknown';
 }
 
 function v2OwnedTickets(repoRoot: string, errors: string[]): OwnedTicket[] {
@@ -434,6 +452,7 @@ function v2OwnedTickets(repoRoot: string, errors: string[]): OwnedTicket[] {
           taskId: parsed.ticket.taskId,
           ticketFile,
           specFile,
+          status: parsed.ticket.status,
           targets: [...new Set(targets)].sort(compareText),
           targetError,
         });
@@ -581,15 +600,6 @@ export function planMigrationFileHeaders(
     for (const ticket of [...allDirectTickets, ...referencedScopeTickets]) addEvidence(ticket);
     for (const legacyId of legacyIds) {
       const matches = ticketsById.get(legacyId) ?? [];
-      const targetErrors = matches
-        .map((ticket) => ticket.targetError)
-        .filter((error): error is string => error !== null);
-      if (targetErrors.length > 0) {
-        errors.push(
-          `${file}: ticket ${legacyId} не даёт проверяемый target (${targetErrors.join('; ')})`
-        );
-        continue;
-      }
       const claiming = matches.filter((ticket) => resolverClaimsFile(repoRoot, file, ticket));
       const claimingFiles = [...new Set(claiming.map((ticket) => ticket.ticketFile))];
       if (claimingFiles.length > 1) {
@@ -602,27 +612,45 @@ export function planMigrationFileHeaders(
         for (const ticket of claiming) addEvidence(ticket);
         continue;
       }
+      if (matches.length > 0 && matches.every((ticket) => ticket.status === 'done')) {
+        // A current DONE ticket plus the versioned legacy header is recoverable declared history.
+        // It must not enter owner evidence; an exact target from another ticket selects the owner.
+        continue;
+      }
 
       const historicalCorpus = history();
       if (!historicalCorpus.ok) {
-        errors.push(`${file}: legacy @tasks relation ${legacyId}: ${historicalCorpus.error}`);
-        continue;
-      }
-      const historicalMatches = historicalCorpus.ticketsById.get(legacyId) ?? [];
-      const historicalErrors = historicalMatches
-        .map((ticket) => ticket.targetError)
-        .filter((error): error is string => error !== null);
-      if (historicalErrors.length > 0) {
         errors.push(
-          `${file}: historical ticket ${legacyId} не даёт проверяемый target (${historicalErrors.join('; ')})`
+          matches.length > 0
+            ? `${file}: legacy @tasks relation ${legacyId} не разрешается exact current target`
+            : `${file}: legacy @tasks relation ${legacyId}: ${historicalCorpus.error}`
         );
         continue;
       }
+      const historicalMatches = historicalCorpus.ticketsById.get(legacyId) ?? [];
       const historicalClaiming = historicalMatches.filter((ticket) =>
         ticket.targets.includes(file)
       );
       const historicalFiles = [...new Set(historicalClaiming.map((ticket) => ticket.ticketFile))];
       if (historicalFiles.length === 0) {
+        const uniqueHistoricalFiles = [
+          ...new Set(historicalMatches.map((ticket) => ticket.ticketFile)),
+        ];
+        if (
+          uniqueHistoricalFiles.length === 1 &&
+          historicalMatches.every((ticket) => ticket.successorTaskId === null)
+        ) {
+          // The versioned header and one uniquely resolved deleted DONE ticket prove history even
+          // when the old prose target list predates the exact-path contract. History stays
+          // non-authoritative and can never select the semantic owner.
+          continue;
+        }
+        if (historicalMatches.length === 0 && matches.length > 0) {
+          errors.push(
+            `${file}: legacy @tasks relation ${legacyId} не разрешается exact current target`
+          );
+          continue;
+        }
         errors.push(
           `${file}: legacy @tasks relation ${legacyId} не разрешается exact current/historical target`
         );

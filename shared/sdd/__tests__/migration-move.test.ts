@@ -553,6 +553,83 @@ describe('migration-move', () => {
     assert.doesNotMatch(migrated, /@tasks:/);
   });
 
+  it('FO-6: current declared-only DONE relation сохраняется как history и не становится owner', () => {
+    mkdirSync(join(root, 'shared'), { recursive: true });
+    const source = join(root, 'shared', 'demo.ts');
+    writeFileSync(
+      source,
+      '// @file: declared history\n// @tasks: demo-alpha\n// @consumers: DemoCommand\n',
+      'utf8'
+    );
+    writeFileSync(
+      join(root, 'tasks', 'demo', 'core', 'core.task-2.md'),
+      ticketWithTarget(TICKET_B, 'shared/demo.ts'),
+      'utf8'
+    );
+    fillPlanLayer();
+
+    const result = executeScopeMove(root, 'demo', true);
+    assert.ok(result.ok, JSON.stringify(result));
+    assert.match(readFileSync(source, 'utf8'), /\/\/ @spec: DEMO-CORE/);
+    assert.doesNotMatch(readFileSync(source, 'utf8'), /@tasks:/);
+  });
+
+  it('FO-6: current non-DONE relation без exact target остаётся fail-closed', () => {
+    mkdirSync(join(root, 'shared'), { recursive: true });
+    const source = join(root, 'shared', 'demo.ts');
+    const sourceBytes =
+      '// @file: live unresolved relation\n// @tasks: demo-beta\n// @consumers: DemoCommand\n';
+    writeFileSync(source, sourceBytes, 'utf8');
+    writeFileSync(
+      join(root, 'tasks', 'demo', 'core', 'core.task-1.md'),
+      ticketWithTarget(TICKET_A, 'shared/demo.ts'),
+      'utf8'
+    );
+    fillPlanLayer();
+
+    const result = executeScopeMove(root, 'demo', true);
+    assert.ok(!result.ok, JSON.stringify(result));
+    if (!result.ok) assert.match(result.errors.join('\n'), /demo-beta.*exact current target/);
+    assert.strictEqual(readFileSync(source, 'utf8'), sourceBytes);
+  });
+
+  it('FO-6 P3: unique deleted DONE relation с legacy prose target остаётся history-only', () => {
+    mkdirSync(join(root, 'shared'), { recursive: true });
+    mkdirSync(join(root, 'tasks', 'archive'), { recursive: true });
+    const source = join(root, 'shared', 'demo.ts');
+    const historicalTicket = join(root, 'tasks', 'archive', 'archive.task-prose.md');
+    writeFileSync(
+      source,
+      '// @file: prose history\n// @tasks: TSK-PROSE\n// @consumers: DemoCommand\n',
+      'utf8'
+    );
+    writeFileSync(
+      join(root, 'tasks', 'demo', 'core', 'core.task-1.md'),
+      ticketWithTarget(TICKET_A, 'shared/demo.ts'),
+      'utf8'
+    );
+    writeFileSync(
+      historicalTicket,
+      ticketWithTarget(
+        TICKET_A.replace(/demo-alpha/g, 'TSK-PROSE').replace(
+          '**Scope:** demo',
+          '**Scope:** archive'
+        ),
+        'shared/demo.ts — old prose description'
+      ),
+      'utf8'
+    );
+    initHistory();
+    commitAll('historical prose ticket exists');
+    rmSync(historicalTicket);
+    commitAll('delete historical prose ticket');
+    fillPlanLayer();
+
+    const result = executeScopeMove(root, 'demo', true);
+    assert.ok(result.ok, JSON.stringify(result));
+    assert.match(readFileSync(source, 'utf8'), /\/\/ @spec: DEMO-CORE/);
+  });
+
   it('FO-6 P3: duplicate historical/current Task-ID выбирается exact target, не глобально', () => {
     mkdirSync(join(root, 'shared'), { recursive: true });
     mkdirSync(join(root, 'tasks', 'other'), { recursive: true });

@@ -244,11 +244,13 @@ FO-2 сознательно публикует детерминированны�
   получает одноразовый proposal через `deriveInitialSpecId` с repo-wide collision check. Legacy
   `@tasks` — только evidence candidate из canonical leading source header: body/prose examples не
   читаются как relation, declaration JSDoc после границы header не становится continuation, а
-  shebang/license и доказуемые multiline blocks сохраняются побайтово. Каждый relation обязан
-  восстановиться через versioned ticket и exact `Target Files`/`Deleted Files`, а все текущие
-  evidence — дать одну owning spec. Удалённый DONE-тикет может быть прочитан из Git history,
-  ограниченной frozen/base commit: он классифицируется только как `history` и никогда не становится
-  semantic owner. Git-proven rename делает старый ID только alias к exact-target current successor;
+  shebang/license и доказуемые multiline blocks сохраняются побайтово. Exact
+  `Target Files`/`Deleted Files` дают owner authority; versioned declaration DONE-тикета без exact
+  target остаётся только `history`, а все текущие owner evidence обязаны дать одну owning spec.
+  Удалённый DONE-тикет может быть прочитан из Git history, ограниченной frozen/base commit: exact
+  target разрешает collision, а единственный однозначный versioned ticket сохраняет malformed
+  legacy target только как `history`; он никогда не становится semantic owner. Git-proven rename
+  делает старый ID только alias к exact-target current successor;
   authority остаётся у successor. Historical/current ID collision разрешается exact target/path
   evidence, не глобальным совпадением Task-ID; missing/shallow Git object приводит к fail-closed
   blocker без ручного registry/cache. Missing,
