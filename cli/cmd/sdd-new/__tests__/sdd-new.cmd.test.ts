@@ -329,6 +329,7 @@ describe('SddNewCommand', () => {
     assert.strictEqual(outcome.ok, true);
     assert.ok(existsSync(out), 'expected the skeleton file to be created');
     const written = readFileSync(out, 'utf-8');
+    assert.match(written, /<!--SECTION:SPEC_ID-->\nBACKEND\n<!--\/SECTION:SPEC_ID-->/);
     assert.match(written, /<!--SECTION:SCOPE_TYPE-->/);
     assert.match(written, /^product$/m);
     if (outcome.ok) {
@@ -341,6 +342,36 @@ describe('SddNewCommand', () => {
       assert.ok(outcome.text.includes(`TMP_DIR=${join(process.cwd(), '.tmp')}`));
       assert.match(outcome.text, /обязательные к запоминанию поля: WORKING_DIR, TMP_DIR/);
       assert.match(outcome.text, /искать примеры вне них запрещено\.$/);
+    }
+  });
+
+  it('refuses a duplicate derived Spec ID before writing a new scaffold', async () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'sdd-new-spec-id-collision-'));
+    const prevCwd = process.cwd();
+    try {
+      const existing = join(cwd, 'specs', 'legacy', 'legacy.spec.md');
+      const out = join(cwd, 'custom', 'backend.spec.md');
+      mkdirSync(join(cwd, 'specs', 'legacy'), { recursive: true });
+      writeFileSync(existing, '<!--SECTION:SPEC_ID-->\nBACKEND\n<!--/SECTION:SPEC_ID-->', 'utf8');
+      process.chdir(cwd);
+
+      const outcome = await mod.run(argv('product', '--scope', 'backend', '--out', out));
+
+      assert.strictEqual(outcome.ok, false);
+      if (!outcome.ok) {
+        assert.strictEqual(outcome.exitCode, 4);
+        assert.match(outcome.code, /BAD_INVOCATION/);
+        assert.match(outcome.message, /Spec ID BACKEND already resolves/);
+        assert.match(outcome.message, /no file was written/);
+      }
+      assert.strictEqual(existsSync(out), false);
+      assert.strictEqual(
+        readFileSync(existing, 'utf8'),
+        '<!--SECTION:SPEC_ID-->\nBACKEND\n<!--/SECTION:SPEC_ID-->'
+      );
+    } finally {
+      process.chdir(prevCwd);
+      rmSync(cwd, { recursive: true, force: true });
     }
   });
 
@@ -365,6 +396,10 @@ describe('SddNewCommand', () => {
     );
     assert.strictEqual(outcome.ok, true);
     assert.ok(existsSync(out));
+    assert.match(
+      readFileSync(out, 'utf8'),
+      /<!--SECTION:SPEC_ID-->\nDEEP-NESTED\n<!--\/SECTION:SPEC_ID-->/
+    );
   });
 
   it('accepts a nested module with an explicit --out destination', async () => {
@@ -374,6 +409,10 @@ describe('SddNewCommand', () => {
     );
     assert.strictEqual(outcome.ok, true);
     assert.ok(existsSync(out));
+    assert.match(
+      readFileSync(out, 'utf8'),
+      /<!--SECTION:SPEC_ID-->\nDEEP-SCOPE-AUTH-TOKENS\n<!--\/SECTION:SPEC_ID-->/
+    );
   });
 
   it('refuses to overwrite an existing file with exit 1 / FILE_EXISTS', async () => {

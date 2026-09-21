@@ -8,6 +8,10 @@ import type { DbcSchema } from '../../../services/dbc/parser/dbc-parser.types.ts
 export type FileHeader = {
   /** @purpose Value of // @file: directive */
   file: string;
+  /** @purpose Stable canonical Spec ID from // @spec:, or empty for legacy V1 files. */
+  spec?: string;
+  /** @purpose Number of @spec declarations, used to fail closed on malformed/duplicate V2 headers. */
+  specCount?: number;
   /** @purpose Task IDs from // @tasks: directive */
   tasks: string[];
   /** @purpose Consumer names from // @consumers: directive */
@@ -76,6 +80,10 @@ export type OrientArgs = {
   depth: number;
   /** @purpose Maximum files shown before overflow indicator */
   maxResults: number;
+  /** @purpose Expand historical file relations without changing classification. */
+  history: boolean;
+  /** @purpose Emit the versioned deterministic file-relations document. */
+  json: boolean;
 };
 
 /** @purpose Query result from a task search (S2). */
@@ -166,6 +174,8 @@ export function parseOrientArgs(rawArgs: string[]): OrientArgs {
     fuzzy: false,
     depth: Infinity,
     maxResults: Infinity,
+    history: false,
+    json: false,
   };
 
   for (let i = 2; i < rawArgs.length; i++) {
@@ -212,6 +222,10 @@ export function parseOrientArgs(rawArgs: string[]): OrientArgs {
       args.maxResults = parseInt(rawArgs[++i] ?? '', 10) || Infinity;
     } else if (a.startsWith('--max-results=')) {
       args.maxResults = parseInt(a.slice(14), 10) || Infinity;
+    } else if (a === '--history') {
+      args.history = true;
+    } else if (a === '--json') {
+      args.json = true;
     } else if (a && !a.startsWith('-') && a !== 'orient') {
       args._.push(a);
     }

@@ -2,6 +2,10 @@
   ```markdown
   # <scope-name>: Scope Specification
 
+  <!--SECTION:SPEC_ID-->
+  <SPEC-ID>
+  <!--/SECTION:SPEC_ID-->
+
   <!--SECTION:SCOPE_TYPE-->
   ## scope-type
   product
