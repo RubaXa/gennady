@@ -29,8 +29,8 @@ export function printHelp(): void {
   console.info(
     'Symbol resolution: tree-sitter (exact) for .ts/.tsx — the only installed grammar —'
   );
-  console.info('  grep (approximate) for .mts/.cts, JS variants, Python, Go, Ruby, and Java;');
-  console.info('  supported source extensions: ts/tsx/mts/cts/js/jsx/mjs/cjs/py/go/rb/java.');
+  console.info('  grep (approximate) for .mts/.cts, JS variants, Python, Go, Ruby, Java, Swift,');
+  console.info('  Objective-C/C/C++ and Kotlin source extensions from the shared SDD registry.');
   console.info('  Visibility is structural for TypeScript and language-defined for Go (uppercase');
   console.info('  top-level name = public). Other grep fallbacks report an explicit capability');
   console.info('  error when one usage makes the public/private threshold ambiguous.');
