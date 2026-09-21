@@ -1,6 +1,6 @@
 // @file: SyncSkills formatter — format entries grouped by skill with markers and padding
+// @spec: CLI-SYNC-SKILLS
 // @consumers: SyncSkillsCmd, sync-skills-formatter.test.ts
-// @tasks: TSK-57
 
 import type { SyncSkillsFileEntry, SyncSkillsFileStatus } from './sync-skills.types.ts';
 

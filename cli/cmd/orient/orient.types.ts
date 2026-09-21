@@ -1,6 +1,6 @@
 // @file: Shared types for the orient command — file scans, headers, query results, render data.
+// @spec: CLI-ORIENT
 // @consumers: OrientCommand
-// @tasks: TSK-55
 
 import type { DbcSchema } from '../../../services/dbc/parser/dbc-parser.types.ts';
 

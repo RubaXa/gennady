@@ -1,6 +1,6 @@
 // @file: Deterministic read-only SDD v2 file-relations resolver over caller-supplied evidence.
+// @spec: SHARED
 // @consumers: FO-3 orient adapter, FO-4 sdd-check integration, FO-5 workflow consumers
-// @tasks: N/A
 
 import { inspectRepoPath } from '../common/repo-path.ts';
 import { hasActiveBlocker } from './execution-log.ts';

@@ -1,6 +1,6 @@
 // @file: Complete accumulated delta derivation with explicit full-review fallback.
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: ReviewOrchestrator, queue triggers, chat manual verification
-// @tasks: TSK-176
 
 import type { ReviewEvidence } from '../types/review-evidence.type.ts';
 import type { ReviewIntent, ReviewManifestKey } from '../types/review-intent.type.ts';

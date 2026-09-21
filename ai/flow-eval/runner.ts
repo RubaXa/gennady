@@ -1,4 +1,5 @@
 // @file: Parallel external SDD evaluation runner.
+// @spec: AI-SKILLS
 // @consumers: sdd-flow-eval command, fake-backed tests
 
 import { SddEvalJudge } from './judge.ts';

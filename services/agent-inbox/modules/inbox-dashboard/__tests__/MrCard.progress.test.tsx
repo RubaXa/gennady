@@ -1,7 +1,7 @@
 // @file: Unit tests for MrCard's review-progress informer (TSK-155) — stage/track-counter/timer
 //   render only when `card.progress` is present; helpers are non-exported so assertions go via DOM text.
+// @spec: AGENT-INBOX-INBOX-DASHBOARD
 // @consumers: node:test runner
-// @tasks: TSK-155
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

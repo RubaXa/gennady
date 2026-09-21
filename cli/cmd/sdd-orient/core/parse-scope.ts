@@ -1,4 +1,5 @@
 // @file: Parse a scope's Module Map: module list + dependency graph edges — source of truth for neighbours, since per-module prose is inconsistent.
+// @spec: CLI-SDD-ORIENT
 // @consumers: buildNeighbourhood
 
 import { parseScopeGraphEdges, type GraphEdge } from '../../../../shared/sdd/portal.ts';

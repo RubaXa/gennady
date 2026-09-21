@@ -1,6 +1,6 @@
 // @file: Mapping from logical node IDs to AIKit directive names.
+// @spec: SHARED
 // @consumers: compile.ts (buildNodePrompt)
-// @tasks: TSK-116, TSK-113, TSK-136
 
 /**
  * @purpose Maps node identifiers used by the role engine to their directive file names.

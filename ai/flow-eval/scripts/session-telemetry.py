@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# @file: ai/flow-eval/scripts/session-telemetry.py
+# @spec: AI-SKILLS
+# @consumers: N/A
 """Extract full worker telemetry from an OpenCode session — the observability layer every flow-eval run
 must produce automatically. Given a session id (or a title fragment to resolve one), it reports: every
 tool call in order with its input and a head/tail of its output, a breakdown by tool, the files the worker

@@ -1,3 +1,6 @@
+// @file: utils/test/__tests__/mock-http.test.ts
+// @spec: SHARED
+// @consumers: N/A
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupMockAgent } from '#utils/test/mock-http.ts';

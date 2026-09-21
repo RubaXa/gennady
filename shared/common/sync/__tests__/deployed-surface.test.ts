@@ -4,8 +4,8 @@
 //   carry an absolute developer home-directory path (the class of leak found and fixed in this same
 //   task at `ai/directives/agent-inbox/golden-chat-output.example.md:176` — a real chat example
 //   that baked in the report author's own `/Users/<name>/.gennady/...` path).
+// @spec: SHARED
 // @consumers: release regression suite
-// @tasks: N/A
 
 // SO-5 (ai/drafts/research/sdd-v1-to-v2-transfer/32-TRACK-SYNC-OWNERSHIP.md §4.1, 61-TASK-BOARD.md
 //   §1): none of `scanDirectives`/`scanSkills`/`npm pack` is touched here — only observed. This

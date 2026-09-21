@@ -1,6 +1,6 @@
 // @file: Domain errors for agent-mon provider registry
+// @spec: AGENT-MON-MODEL
 // @consumers: monitor
-// @tasks: TSK-35
 
 /** @purpose Raised when attempting to register a provider with a key already in use. */
 export class DuplicateProviderError extends Error {

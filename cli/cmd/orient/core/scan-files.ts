@@ -1,6 +1,6 @@
 // @file: Recursive .ts/.tsx file scanner with system dir exclusion and EACCES handling.
+// @spec: CLI-ORIENT
 // @consumers: OrientCommand
-// @tasks: TSK-55
 
 import { lstatSync, readdirSync } from 'node:fs';
 import { extname, join, resolve } from 'node:path';

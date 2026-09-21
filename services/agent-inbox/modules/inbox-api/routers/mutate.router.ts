@@ -1,6 +1,6 @@
 // @file: MutateRouter — thin HTTP bridge over inbox-chat's MutationApplier: revision-CAS apply, broadcasts mutation+refresh to every SSE subscriber of the MR (D-99, D-100, D-111).
+// @spec: AGENT-INBOX-INBOX-CHAT
 // @consumers: HttpServer
-// @tasks: TSK-129, TSK-162, TSK-163
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { logger } from '#logger';

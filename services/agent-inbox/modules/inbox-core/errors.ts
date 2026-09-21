@@ -1,6 +1,6 @@
 // @file: Structured error codes and error-response types for the agent-inbox scope (AI-22).
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: inbox-core, inbox-api, inbox-roles, CLI
-// @tasks: TSK-109
 
 import { logger } from '#logger';
 

@@ -1,6 +1,6 @@
 // @file: Pure classification + resolution check for a file's `@consumers:` header — CONSUMERS_RESOLVABLE (SDD_CONSUMERS_UNRESOLVED). Codebase text search stays in the adapter.
+// @spec: SHARED
 // @consumers: sdd-check.cmd
-// @tasks: N/A
 
 import type { Finding } from './check.ts';
 

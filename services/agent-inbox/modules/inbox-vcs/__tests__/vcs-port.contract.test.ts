@@ -1,6 +1,6 @@
 // @file: Closed-world contract proof for unified VCS read, effect, action, and outcome variants.
+// @spec: AGENT-INBOX-INBOX-VCS
 // @consumers: node:test runner
-// @tasks: TSK-174
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -152,28 +152,38 @@ describe('unified VCS contracts', () => {
     { name: 'real-gitlab', writable: true, create: createRealRuntime },
   ];
 
-  for (const contractCase of cases) {
-    it(`${contractCase.name} runtime passes the common read/effect port contract`, async () => {
-      const context = contractCase.create();
-      assert.strictEqual(typeof context.runtime.read.getInbox, 'function');
-      assert.strictEqual(typeof context.runtime.read.readSnapshot, 'function');
-      assert.strictEqual(typeof context.runtime.read.probeCapabilities, 'function');
-      assert.strictEqual(typeof context.runtime.effects.postDiscussion, 'function');
-      assert.strictEqual(typeof context.runtime.effects.requestChanges, 'function');
-      assert.deepStrictEqual(await context.runtime.read.getInbox(), []);
+  const runRuntimeContract = async (contractCase: RuntimeContractCase): Promise<void> => {
+    const context = contractCase.create();
+    assert.strictEqual(typeof context.runtime.read.getInbox, 'function');
+    assert.strictEqual(typeof context.runtime.read.readSnapshot, 'function');
+    assert.strictEqual(typeof context.runtime.read.probeCapabilities, 'function');
+    assert.strictEqual(typeof context.runtime.effects.postDiscussion, 'function');
+    assert.strictEqual(typeof context.runtime.effects.requestChanges, 'function');
+    assert.deepStrictEqual(await context.runtime.read.getInbox(), []);
 
-      if (contractCase.writable) {
-        await context.runtime.effects.postDiscussion('group/project', '42', 'contract body');
-        assert.deepStrictEqual(context.mutationCalls, ['comment']);
-      } else {
-        await assert.rejects(
-          context.runtime.effects.postDiscussion('group/project', '42', 'contract body'),
-          (error: unknown) => error instanceof ReadonlyVcsEffectError
-        );
-        assert.deepStrictEqual(context.mutationCalls, []);
-      }
-    });
-  }
+    if (contractCase.writable) {
+      await context.runtime.effects.postDiscussion('group/project', '42', 'contract body');
+      assert.deepStrictEqual(context.mutationCalls, ['comment']);
+    } else {
+      await assert.rejects(
+        context.runtime.effects.postDiscussion('group/project', '42', 'contract body'),
+        (error: unknown) => error instanceof ReadonlyVcsEffectError
+      );
+      assert.deepStrictEqual(context.mutationCalls, []);
+    }
+  };
+
+  it('memory runtime passes the common read/effect port contract', async () => {
+    await runRuntimeContract(cases[0]!);
+  });
+
+  it('readonly runtime passes the common read/effect port contract', async () => {
+    await runRuntimeContract(cases[1]!);
+  });
+
+  it('real-gitlab runtime passes the common read/effect port contract', async () => {
+    await runRuntimeContract(cases[2]!);
+  });
 
   it('real GitLab reopen and unapprove preserve provider failures behind adapter errors', async () => {
     const reopenCause = new Error('provider reopen failure');

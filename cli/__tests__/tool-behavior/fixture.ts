@@ -1,8 +1,8 @@
 // @file: General-purpose repo fixture for tool-behavior tests — a temp git repo whose package.json
 //   scripts, gennady install, sdd-v2 directive stubs, and extra files (portal/tickets/coverage) are
 //   all caller-supplied, so each test builds only the state its scenario actually needs.
+// @spec: CLI
 // @consumers: tool-behavior/*.test.ts
-// @tasks: N/A
 
 import { execFileSync } from 'node:child_process';
 import { chmodSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';

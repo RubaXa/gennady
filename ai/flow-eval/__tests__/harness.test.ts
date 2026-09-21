@@ -1,3 +1,6 @@
+// @file: ai/flow-eval/__tests__/harness.test.ts
+// @spec: AI-SKILLS
+// @consumers: N/A
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { execFile } from 'node:child_process';
@@ -293,6 +296,20 @@ test(
       });
       assert.match(scaffoldState.stdout, /FLOW_VERSION=v2/);
       assert.match(scaffoldState.stdout, /AUTHORING_READY=yes/);
+      assert.match(
+        await readFile(
+          join(scaffoldDirectory ?? '', 'specs/tic-tac-toe/tic-tac-toe.spec.md'),
+          'utf8'
+        ),
+        /<!--SECTION:SPEC_ID-->\s*TTT\s*<!--\/SECTION:SPEC_ID-->/
+      );
+      assert.match(
+        await readFile(
+          join(scaffoldDirectory ?? '', 'specs/tic-tac-toe/engine/engine.spec.md'),
+          'utf8'
+        ),
+        /<!--SECTION:SPEC_ID-->\s*ENG\s*<!--\/SECTION:SPEC_ID-->/
+      );
       await assert.rejects(
         execFileAsync('npx', ['--no-install', 'gennady', 'sdd-check', '--all', '.'], {
           cwd: scaffoldDirectory,

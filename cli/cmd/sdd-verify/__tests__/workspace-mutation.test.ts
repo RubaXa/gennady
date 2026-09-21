@@ -1,6 +1,6 @@
 // @file: Runtime exact-target write-zone regressions for phase repair.
+// @spec: CLI-SDD-VERIFY
 // @consumers: N/A
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

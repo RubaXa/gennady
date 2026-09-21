@@ -1,6 +1,6 @@
 // @file: E2E tests for the orient command — 6 scenarios.
+// @spec: CLI-E2E
 // @consumers: E2eContext
-// @tasks: TSK-60
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -16,7 +16,7 @@ export function registerOrientTests(): void {
 
     it('should search by task', async () => {
       const { spawn } = getContext();
-      const result = await spawn(['orient', '--task=TSK-60']);
+      const result = await spawn(['orient', '--task=E2E-harness']);
       assert.strictEqual(result.exitCode, 0);
       assert.match(result.stdout, /service\.ts|helper\.ts/);
     });

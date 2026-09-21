@@ -1,6 +1,6 @@
 // @file: Indentation + templating tests for the kit Handlebars renderer.
+// @spec: AI-SKILLS-DIRECTIVE-ASSEMBLY
 // @consumers: node:test runner
-// @tasks: ai-kit-templating
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

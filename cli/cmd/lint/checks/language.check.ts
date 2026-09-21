@@ -1,6 +1,6 @@
 // @file: Language validation — detects Cyrillic characters in JSDoc contracts and file headers.
+// @spec: CLI-LINT
 // @consumers: LintCommand
-// @tasks: TSK-32
 
 import type { LintError } from '../lint.types.ts';
 import { ERR_CLI_LINT_NON_ENGLISH } from '../lint.types.ts';

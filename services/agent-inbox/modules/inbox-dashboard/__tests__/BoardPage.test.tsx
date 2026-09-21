@@ -1,7 +1,7 @@
 // @file: Unit tests for BoardPage — "Ждут меня" queue aggregation + role Kanban blocks, read-only
 //   (no drag-and-drop affordances in the rendered markup).
+// @spec: AGENT-INBOX-INBOX-DASHBOARD
 // @consumers: node:test runner
-// @tasks: TSK-107
 
 import { describe, it, mock, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,6 +1,6 @@
 // @file: Contract for artifact extraction + sandbox teardown (specs survive, sandboxes never leak).
+// @spec: AI-SKILLS
 // @consumers: ai/flow-eval/sandbox-lifecycle.ts
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,3 +1,6 @@
+// @file: ai/kit/build-directives.ts
+// @spec: AI-SKILLS-DIRECTIVE-ASSEMBLY
+// @consumers: N/A
 /**
  * Build ai/directives/*.xml from Handlebars templates under ai/kit/templates/.
  * Static build: each template rendered with empty data. Dynamic tools call render() with params.

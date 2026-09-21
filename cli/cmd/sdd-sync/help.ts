@@ -1,6 +1,6 @@
 // @file: sdd-sync command help output.
+// @spec: CLI-SDD-SYNC
 // @consumers: help command
-// @tasks: N/A
 
 /**
  * @purpose Print CLI help for the sdd-sync command.

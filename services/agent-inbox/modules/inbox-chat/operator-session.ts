@@ -1,6 +1,6 @@
 // @file: Durable read-only operator conversation projected from MR journal turns.
+// @spec: AGENT-INBOX-INBOX-CHAT
 // @consumers: ChatRouter
-// @tasks: TSK-163
 
 import { randomUUID } from 'node:crypto';
 import type { JournalPort } from '../inbox-core/event-journal.ts';

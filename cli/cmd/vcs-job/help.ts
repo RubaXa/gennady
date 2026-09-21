@@ -1,6 +1,6 @@
 // @file: vcs-job command help output.
+// @spec: CLI
 // @consumers: help command
-// @tasks: TSK-85
 
 /**
  * @purpose Print CLI help for the vcs-job command.

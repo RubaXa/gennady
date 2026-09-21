@@ -2,8 +2,8 @@
 //   findings or an explicit no-findings statement), tool-call cross-check (telemetry vs Scope),
 //   injection-coverage-ledger grounding for review_needed lens sessions (D-86 override, TSK-137),
 //   and real mermaid parsing (valid diagram passes, malformed diagram is rejected).
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: node:test runner
-// @tasks: TSK-113, TSK-137
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

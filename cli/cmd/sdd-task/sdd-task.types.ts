@@ -1,6 +1,6 @@
 // @file: Types, error codes, and planning-surface formatting for the sdd-task command.
+// @spec: CLI-SDD-TASK
 // @consumers: SddTaskCommand
-// @tasks: N/A
 
 import { realpathSync } from 'node:fs';
 import { relative, resolve } from 'node:path';

@@ -1,4 +1,5 @@
 // @file: Port + fs adapter for reading a spec/portal file's content by path — the one point of variability tests substitute (AX_PORTS_AND_ABSTRACTIONS_DISCIPLINE).
+// @spec: CLI-SDD-ORIENT
 // @consumers: buildNeighbourhood, SddOrientCommand
 
 import { readFileSync } from 'node:fs';

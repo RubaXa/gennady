@@ -1,6 +1,6 @@
 // @file: Unit tests for parseTrackerRows + the tracker↔ticket cross-check.
+// @spec: SHARED
 // @consumers: tracker, check
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -58,7 +58,7 @@ describe('checkTrackers', () => {
     );
   });
 
-  it('flags drift when the tracker row says DONE but the ticket itself is still TODO — the TSK-58 gap: a tracker can drift ahead of the ticket, not just fall behind it', () => {
+  it('flags drift when the tracker row says DONE but the ticket itself is still TODO — the SS-skills gap: a tracker can drift ahead of the ticket, not just fall behind it', () => {
     assert.ok(
       codes([ticket('cli-a', '[ ] TODO')], [row('cli-a', '[x] DONE')]).includes(
         'SDD_TRACKER_STATUS_DRIFT'

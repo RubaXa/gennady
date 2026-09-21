@@ -1,8 +1,8 @@
 // @file: v1→v2 structural move for one scope — relocate tickets to their co-located destinations
 //   (from the approved migration layer's Ticket Maps), scaffold the `*.3-tasks.md` indexes from
 //   ticket Meta, and remove the emptied `tasks/<scope>/` (which mechanically flips the scope to v2).
+// @spec: SHARED
 // @consumers: sdd-migrate.cmd
-// @tasks: N/A
 
 import {
   readFileSync,
@@ -443,12 +443,6 @@ export function executeScopeMove(
   const report: string[] = [];
   const scopeTasksDir = join(repoRoot, 'tasks', scope);
 
-  // A successful scope move removes its v1 ticket tree. Repeating the exact operation must not
-  // recreate indexes or re-derive stable IDs from paths: the already-materialized V2 state wins.
-  if (plan.moves.length === 0 && !existsSync(scopeTasksDir)) {
-    return { ok: true, report: [`  no-op scope ${scope} — уже мигрирован в v2`] };
-  }
-
   const headerPlan = planMigrationFileHeaders(
     repoRoot,
     plan.units.map(({ unit }) => unit)
@@ -463,6 +457,14 @@ export function executeScopeMove(
   for (const rewrite of allRewrites) {
     if (write) writeFileSync(join(repoRoot, rewrite.file), rewrite.after, 'utf8');
     report.push(`  ${verb}${rewrite.report}`);
+  }
+
+  // An already-migrated scope is still preflighted above: interrupted/older FO-6 runs must not
+  // hide incomplete ownership headers behind the structural no-op. Once headers are clean, the
+  // repeat remains byte-preserving and never recreates indexes or re-derives IDs from paths.
+  if (plan.moves.length === 0 && !existsSync(scopeTasksDir)) {
+    report.push(`  no-op scope ${scope} — уже мигрирован в v2`);
+    return { ok: true, report };
   }
 
   // #region START_LINK_REWRITE — relative markdown links to a moved ticket, fixed before the git mv

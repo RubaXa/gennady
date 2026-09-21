@@ -1,7 +1,7 @@
 // @file: VerifyCommand — the read-only `gennady verify` planner/CI-reporter (V-16a, D-13). Never
 //   runs a gate; reports the exact same dispatch `sdd-verify --profile full` would run today.
+// @spec: CLI-VERIFY
 // @consumers: gennady.ts
-// @tasks: N/A
 
 import type { StackConfig } from '../../../shared/verify/verify.types.ts';
 import { resolveAssembledFullProfile } from '../sdd-verify/full-profile-plan.ts';

@@ -1,6 +1,6 @@
 // @file: Accumulated MR event delta with deterministic debounce, quiet and manual verification rules.
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: ReviewState, inbox-pipeline, inbox-queue
-// @tasks: TSK-173
 
 import { ReviewConfig } from '../review-config.ts';
 import { ReviewEvent } from '../types/review-event.type.ts';

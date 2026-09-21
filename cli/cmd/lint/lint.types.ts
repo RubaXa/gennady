@@ -1,6 +1,6 @@
 // @file: Types and error codes for the lint command module.
+// @spec: CLI-LINT
 // @consumers: LintCommand, FileHeaderCheck, AnchorCheck, DbcContractCheck, LanguageCheck, DisablesCheck
-// @tasks: TSK-12, TSK-49, TSK-51, TSK-52
 
 /** @purpose Single lint error in ESLint-compatible format. */
 export type LintError = {
@@ -141,7 +141,7 @@ export const ERR_CLI_LINT_STAGED_CONFLICT = 'ERR_CLI_LINT_STAGED_CONFLICT' as co
 /** @purpose TypeScript / linter disable comment without a Decision Log reference in the same line. | @invariant Implements policy D-007: every disable must cite `<ACR>-DL-N` (legacy `D-N` remains readable). */
 export const ERR_CLI_LINT_UNAUTHORIZED_DISABLE = 'ERR_CLI_LINT_UNAUTHORIZED_DISABLE' as const;
 
-/** @purpose TypeScript / linter disable comment has a Decision Log reference but lacks a purpose explanation. | @invariant Implements D-007 tightening (TSK-52): >= 8 non-whitespace chars of purpose remain after stripping opener, marker, and id. */
+/** @purpose TypeScript / linter disable comment has a Decision Log reference but lacks a purpose explanation. | @invariant Implements D-007 tightening (LIN-purpose): >= 8 non-whitespace chars of purpose remain after stripping opener, marker, and id. */
 export const ERR_CLI_LINT_DISABLE_MISSING_PURPOSE = 'ERR_CLI_LINT_DISABLE_MISSING_PURPOSE' as const;
 
 /** @purpose Entity has more invariants than the configured threshold — contract may be overloaded. | @invariant Counts both @invariant JSDoc tags and invariant: in region comments. */

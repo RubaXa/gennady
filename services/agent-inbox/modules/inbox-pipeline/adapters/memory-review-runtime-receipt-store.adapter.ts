@@ -1,6 +1,6 @@
 // @file: Isolated deterministic memory backing for trusted receipt contract tests.
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: ReviewRuntimeReceiptStorePort contract kit, inbox-eval
-// @tasks: TSK-176
 
 import { createHash } from 'node:crypto';
 import type { ReviewReceiptConsumption } from '../model/review-receipt-consumption.ts';

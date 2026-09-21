@@ -1,6 +1,8 @@
 // @file: ai/inspector — parse a SKILL.md (frontmatter + <SddSkill>) into a TraceNode tree.
-// The skill is a thin loader: its steps name the tools it runs and the directives it reads — those
-// directive refs become 'run' nodes that resolve.ts expands into the directive's own tree.
+//   The skill is a thin loader: its steps name the tools it runs and the directives it reads — those
+//   directive refs become 'run' nodes that resolve.ts expands into the directive's own tree.
+// @spec: AI-SKILLS
+// @consumers: N/A
 
 import type { TraceNode } from './model.ts';
 import {

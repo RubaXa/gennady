@@ -1,4 +1,5 @@
 // @file: Runnable CLI entrypoint for the external SDD eval harness.
+// @spec: AI-SKILLS
 // @consumers: npm run sdd-flow-eval; intentionally uses SDK only, never a provider binary.
 
 import { execSync } from 'node:child_process';
@@ -22,7 +23,7 @@ import {
   captureBaseline,
   runMigrationChecks,
   computeMigrationGrade,
-  type FindingHistogram,
+  type MigrationFindingBaseline,
 } from './migration-grade.ts';
 import { DEFAULT_SDD_EVAL_CONFIG, SddEvalRunner } from './runner.ts';
 import {
@@ -275,10 +276,9 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
       void teardown().finally(() => process.exit(130));
     });
   }
-  // Migration is graded by baseline-diff: capture each migration fixture's pre-worker sdd-check
-  // histogram NOW, on the freshly provisioned v1 repo, so grading can tell migration-introduced
-  // findings from pre-existing v1 debt.
-  const migrationBaselines = new Map<string, FindingHistogram>();
+  // Migration is graded by literal A1 baseline-diff: capture each pre-worker code+file+severity
+  // identity NOW, on the freshly provisioned v1 repo.
+  const migrationBaselines = new Map<string, MigrationFindingBaseline>();
   for (const scenario of isolated) {
     if (scenario.phase === 'migration')
       migrationBaselines.set(scenario.id, await captureBaseline(scenario.directory));
@@ -308,7 +308,7 @@ async function runAndReport(
   options: SddEvalCliOptions,
   isolated: Array<SddEvalScenario & { directory: string }>,
   artifacts: SddEvalRunArtifact[],
-  migrationBaselines: Map<string, FindingHistogram>
+  migrationBaselines: Map<string, MigrationFindingBaseline>
 ): Promise<void> {
   const registry = new SddEvalSessionDirectoryMap();
   const runtime = new SddEvalOpenCodeRuntime({ baseUrl: options.config.baseUrl, registry });
@@ -334,7 +334,7 @@ async function runAndReportBody(
   options: SddEvalCliOptions,
   isolated: Array<SddEvalScenario & { directory: string }>,
   artifacts: SddEvalRunArtifact[],
-  migrationBaselines: Map<string, FindingHistogram>,
+  migrationBaselines: Map<string, MigrationFindingBaseline>,
   runtime: SddEvalOpenCodeRuntime,
   evidence: SddEvalOpenCodeEvidenceSource
 ): Promise<void> {
@@ -376,7 +376,7 @@ async function runAndReportBody(
       // Frozen deterministic bar: FLOW_VERSION=v2 + zero migration-introduced findings (baseline-diff).
       const { stateOutput, checkOutput } = await runMigrationChecks(scenario.directory);
       const g = computeMigrationGrade(
-        migrationBaselines.get(scenario.id) ?? {},
+        migrationBaselines.get(scenario.id) ?? [],
         stateOutput,
         checkOutput
       );

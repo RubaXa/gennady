@@ -1,7 +1,7 @@
 // @file: LOCK-3 contract test — SKILL.md and rendered ai/directives/sdd-v2/** dispatch templates
 //   never ask the agent to announce DIRECTIVE ACTIVATED.
+// @spec: AI-SKILLS-DIRECTIVE-ASSEMBLY
 // @consumers: release regression suite
-// @tasks: N/A
 
 // LOCK-3 (20-ISSUES-VERDICTS.md #16, ai/drafts/research/sdd-v1-to-v2-transfer/61-TASK-BOARD.md §1):
 // v1 shipped nine skills whose `SKILL.md` instructed `Announce: 🔒 DIRECTIVE ACTIVATED: Sdd…`, while

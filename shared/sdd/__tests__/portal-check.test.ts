@@ -1,6 +1,6 @@
 // @file: Unit tests for portal Scope-Graph parsing + portal integrity checks.
+// @spec: SHARED
 // @consumers: portal, check
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

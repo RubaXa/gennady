@@ -3,8 +3,8 @@
 //   only the undici transport faked. Complements vcs-inbox.real.blackbox.test.ts and
 //   opencode.real.blackbox.test.ts (each adapter alone, D-212) by proving the SAME network seam
 //   holds when both are wired together through the real reviewer graph, not a hand-built one.
+// @spec: AGENT-INBOX
 // @consumers: node:test runner
-// @tasks: TSK-150, TSK-167, TSK-170, TSK-174
 
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';

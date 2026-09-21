@@ -1,4 +1,6 @@
 // @file: ai/inspector — parse a rendered SDD v2 directive XML into a TraceNode tree.
+// @spec: AI-SKILLS
+// @consumers: N/A
 
 import type { FileReader, TraceNode } from './model.ts';
 import {

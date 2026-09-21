@@ -1,7 +1,7 @@
 // @file: Unit tests for checkModuleCallChain — a module spec with ≥2 entities needs a sequence
-// diagram or an equivalent step table for its main scenario.
+//   diagram or an equivalent step table for its main scenario.
+// @spec: SHARED
 // @consumers: check
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

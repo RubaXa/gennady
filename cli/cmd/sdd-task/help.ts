@@ -1,6 +1,6 @@
 // @file: sdd-task command help output.
+// @spec: CLI-SDD-TASK
 // @consumers: help command
-// @tasks: N/A
 
 /**
  * @purpose Print CLI help for the sdd-task command.

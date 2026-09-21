@@ -1,6 +1,6 @@
 // @file: Pure parsers for SDD ticket sections (Meta, Phases Overview, phase bodies, Verification) — shared by sdd-task/sdd-check.
+// @spec: SHARED
 // @consumers: sdd-task.cmd
-// @tasks: N/A
 
 import { lexMarkdownTableRow, unescapeMarkdownTablePipes } from './markdown-table.ts';
 
@@ -99,9 +99,9 @@ function bulletsUnder(body: string, label: string): string[] {
   const out: string[] = [];
   let active = false;
   for (const line of lines) {
-    const boldField = /^\s*-?\s*\*\*([^:*]+):\*\*/.exec(line);
+    const boldField = /^\s*-\s+\*\*([^*]+)\*\*/.exec(line);
     if (boldField) {
-      active = boldField[1]?.trim().toLowerCase() === label.toLowerCase();
+      active = boldField[1]?.replace(/:\s*$/, '').trim().toLowerCase() === label.toLowerCase();
       continue;
     }
     if (!active) continue;

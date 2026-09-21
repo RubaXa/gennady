@@ -1,6 +1,6 @@
 // @file: E2E tests for the sync command — 5 scenarios (first run + repeat in same sub-describe).
+// @spec: CLI-E2E
 // @consumers: E2eContext
-// @tasks: TSK-60
 
 import { describe, it, afterEach } from 'node:test';
 import assert from 'node:assert/strict';

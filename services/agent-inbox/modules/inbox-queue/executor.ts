@@ -1,6 +1,6 @@
 // @file: Executor — per-MR queue loop: priority+FIFO+aging, exclusive mode (effects sequential), waiting_dep/cancelled states, crash recovery (running→queued, effects by marker), journal-backed visibility events
+// @spec: AGENT-INBOX-INBOX-QUEUE
 // @consumers: inbox-roles (role scheduler), inbox-api (inbox serve)
-// @tasks: TSK-159, TSK-161
 
 import { logger } from '#logger';
 import type { JournalPort } from '../inbox-core/event-journal.ts';

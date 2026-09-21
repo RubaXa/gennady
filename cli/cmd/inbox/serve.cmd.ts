@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // @file: CLI command: inbox serve — start the agent-inbox HTTP server + AI engine, or (with
 //   --mrs) run a one-shot dry-run pass over a fixed MR list through the real role graph.
+// @spec: AGENT-INBOX
 // @consumers: gennady.ts (served via `gennady inbox serve`)
-// @tasks: TSK-115, TSK-121, TSK-122
 
 import { style } from '../../../shared/common/style.ts';
 import { existsSync, readFileSync, readdirSync, unlinkSync } from 'node:fs';

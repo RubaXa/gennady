@@ -1,6 +1,6 @@
 // @file: Unit tests for detectFlowVersion / detectScopeFlowVersion (v1/v2 layout markers).
+// @spec: SHARED
 // @consumers: flow
-// @tasks: N/A
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';

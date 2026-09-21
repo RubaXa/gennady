@@ -1,6 +1,6 @@
 // @file: VcsGitlabPort — production adapter from inbox-vcs VcsPort to the concrete GitLab client.
+// @spec: AGENT-INBOX-INBOX-VCS
 // @consumers: agent-inbox serve composition root
-// @tasks: TSK-158, TSK-174
 
 import { VcsGitlabClient } from '../../../vcs-client/gitlab/vcs-gitlab-client.ts';
 import type { VcsActionableMr } from '../../../vcs-client/entities/vcs-actionable-mr.type.ts';

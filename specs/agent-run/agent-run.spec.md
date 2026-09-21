@@ -1,5 +1,25 @@
 # agent-run: Library Specification
 
+<!--SECTION:SPEC_ID-->
+
+AGENT-RUN
+
+<!--/SECTION:SPEC_ID-->
+
+<!--SECTION:OVERVIEW-->
+
+## Обзор
+
+```mermaid
+flowchart LR
+  Contract[Контракт] --> Implementation[Реализация]
+  Implementation --> Verification[Проверка]
+```
+
+_Обзор пути от контракта к реализации и проверке._
+
+<!--/SECTION:OVERVIEW-->
+
 <!--SECTION:SCOPE_TYPE-->
 
 ## scope-type
@@ -225,6 +245,8 @@ interface AgentEngine {
 
 ## 6. Decision Log
 
+<details><summary>Подробности</summary>
+
 ### D-001 — Свежий scope, agent-cli как донор идей
 
 - **Status:** active
@@ -291,6 +313,8 @@ interface AgentEngine {
 - **Why:** оператор: по умолчанию `llm-proxy/deepseek-v4-pro`; если модель недоступна — не подменять молча, а вернуть список доступных, чтобы агент/человек выбрал.
 - **Risk accepted:** список тянется через `opencode models` только на ветке ошибки `MODEL_UNAVAILABLE` (вне горячего пути — скорость сохранена).
 - **Rejected alternatives:** pre-flight проверка модели на каждый запуск (медленно); молчаливый фолбэк на другую модель (скрывает проблему); переиспользовать `MODEL_FORBIDDEN` (другая семантика — 403 vs не-в-списке).
+
+</details>
 <!--/SECTION:DECISION_LOG-->
 
 <!--SECTION:SCOPE_DEPENDENCIES-->
@@ -305,6 +329,8 @@ interface AgentEngine {
 
 ## 8. Bootstrap Requirements
 
+<details><summary>Подробности</summary>
+
 | Requirement                              | Kind       | Owner           | Resolution                                                                    |
 | ---------------------------------------- | ---------- | --------------- | ----------------------------------------------------------------------------- |
 | opencode CLI в PATH                      | tool       | operator-action | оператор ставит opencode; отсутствие обрабатывается как `AGENT_NOT_INSTALLED` |
@@ -312,6 +338,7 @@ interface AgentEngine {
 
 Новых npm-пакетов не требуется: запуск через встроенный `node:child_process`, типы — TypeScript, тесты — `node --import tsx --test` (всё уже в стеке).
 
+</details>
 <!--/SECTION:BOOTSTRAP_REQUIREMENTS-->
 
 <!--SECTION:HANDOFF-->

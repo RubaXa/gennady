@@ -1,6 +1,6 @@
 // @file: SDD flow-version detection — the v1/v2 layout marker, shared by sdd-state and sdd-check.
+// @spec: SHARED
 // @consumers: sdd-check.cmd, sdd-state.cmd, ticket-resolve
-// @tasks: N/A
 
 import { statSync } from 'node:fs';
 import { join, resolve, sep } from 'node:path';

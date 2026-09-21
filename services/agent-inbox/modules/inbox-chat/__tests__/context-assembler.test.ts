@@ -1,8 +1,8 @@
 // @file: Unit tests for inbox-chat ContextAssembler — untrusted-data wrapping of MR-derived
 //   content (D-98), empty-report degrade (CH-14), stale-chip re-resolution (D-101), and
 //   origin-in-untrusted-block coverage (D-115, TSK-132).
+// @spec: AGENT-INBOX-INBOX-CHAT
 // @consumers: node:test runner
-// @tasks: TSK-126, TSK-132
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

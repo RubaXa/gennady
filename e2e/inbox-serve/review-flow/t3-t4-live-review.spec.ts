@@ -5,8 +5,8 @@
 //   node_code_review → node_synthesize) serves both assertions — re-running it per test would double
 //   the LLM cost for no signal. Per-tick state/currentNode is logged so a stall is localized to a
 //   node, not hidden behind a timeout.
+// @spec: AGENT-INBOX
 // @consumers: npx playwright test --config=e2e/inbox-serve/playwright.review-flow.config.ts
-// @tasks: TSK-131
 
 import { test, expect } from '@playwright/test';
 import { existsSync, readFileSync } from 'node:fs';

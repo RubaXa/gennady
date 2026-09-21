@@ -1,8 +1,8 @@
 // @file: Live-CLI behavior of `testcov --min` — a real run against a synthetic coverage-final.json
 //   with one 100%-covered file and one 0%-covered file, checked both scoped-to-a-path and aggregated
 //   project-wide.
+// @spec: CLI
 // @consumers: N/A
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

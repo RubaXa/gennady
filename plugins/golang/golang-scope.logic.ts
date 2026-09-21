@@ -1,6 +1,6 @@
 // @file: Narrow a golang verify run to the packages actually under change, instead of the whole repo.
+// @spec: CLI-VERIFY
 // @consumers: golang-plugin, golang-plan.logic
-// @tasks: TSK-95
 
 import fs from 'node:fs';
 import path from 'node:path';

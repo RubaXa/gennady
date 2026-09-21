@@ -1,6 +1,6 @@
 // @file: GitHub-specific implementation of repository content operations.
+// @spec: VCS-VCS-CLIENT
 // @consumers: VcsGithubClient
-// @tasks: TSK-30
 
 import { VcsClientRepositoryFiles } from '../abstract/vcs-client-repository-files.ts';
 import type { VcsFileContent, VcsFileContentQuery } from '../entities/vcs-file-content.type.ts';

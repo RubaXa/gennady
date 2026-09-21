@@ -1,6 +1,6 @@
 // @file: Unit tests for inbox registry — candidateHeadSha, lastReviewedHeadSha, promoteReviewedHead.
+// @spec: AGENT-INBOX
 // @consumers: node:test runner
-// @tasks: TSK-94
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';

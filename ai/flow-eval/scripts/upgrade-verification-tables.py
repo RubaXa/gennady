@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# @file: ai/flow-eval/scripts/upgrade-verification-tables.py
+# @spec: AI-SKILLS
+# @consumers: N/A
 """Mechanically upgrade a v1 (2-column) SDD Verification table to the current v2 (3-column) schema by
 adding the `Role` column. This is the migration-completeness transformation the v1→v2 flow currently
 skips: v1 tickets predate the `Role` column, so migrated tickets carry `| Command | Required by |`, which

@@ -1,6 +1,6 @@
 // @file: Observable execution plan projected from review contract slots.
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: ReviewOrchestrator, dashboard projections
-// @tasks: TSK-176
 
 /** @purpose Visible execution state for one contract slot. */
 export type ReviewPlanSlotState = 'PENDING' | 'RUNNING' | 'COMPLETE' | 'FAILED' | 'SUPERSEDED';

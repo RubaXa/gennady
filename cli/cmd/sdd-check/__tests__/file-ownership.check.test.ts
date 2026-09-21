@@ -1,6 +1,6 @@
 // @file: CLI-level FO-4 ownership findings and V1/V2 flow-gating regressions.
+// @spec: CLI-SDD-CHECK
 // @consumers: sdd-check.cmd
-// @tasks: N/A
 
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -200,7 +200,7 @@ describe('sdd-check file ownership', () => {
   });
 
   it('does not apply V2 ownership diagnostics to an untouched mixed-repo V1 source', async () => {
-    const legacyHeader = '// @file: value\n// @tasks: TSK-01';
+    const legacyHeader = '// @file: value\n// @tasks: DP-fields';
     const { root } = fixture({
       sourceHeader: legacyHeader,
       baselineSource: `${legacyHeader}\nexport const value = 0;\n`,
@@ -217,7 +217,7 @@ describe('sdd-check file ownership', () => {
   });
 
   it('keeps --all file accounting and diagnostics unchanged when untouched V1 sources are added', async () => {
-    const legacyHeader = '// @file: value\n// @tasks: TSK-01';
+    const legacyHeader = '// @file: value\n// @tasks: DP-fields';
     const { root } = fixture({
       sourceHeader: legacyHeader,
       legacy: true,
@@ -237,10 +237,10 @@ describe('sdd-check file ownership', () => {
   });
 
   it('keeps expanded changed extensions/tests outside V1 while checking equivalent V2 files', async () => {
-    const legacyHeader = '// @file: legacy\n// @consumers: MissingConsumer\n// @tasks: TSK-01';
+    const legacyHeader = '// @file: legacy\n// @consumers: MissingConsumer\n// @tasks: DP-fields';
     const legacy = fixture({
-      sourceHeader: '// @file: value\n// @tasks: TSK-01',
-      baselineSource: '// @file: value\n// @tasks: TSK-01\nexport const value = 0;\n',
+      sourceHeader: '// @file: value\n// @tasks: DP-fields',
+      baselineSource: '// @file: value\n// @tasks: DP-fields\nexport const value = 0;\n',
       legacy: true,
     });
     try {
@@ -311,7 +311,7 @@ describe('sdd-check file ownership', () => {
     const v2 = fixture({
       sourceHeader: '// @file: value\n// @spec: APP',
       baselineSource:
-        '// @file: value\n// @spec: APP\n// @tasks: TSK-01\nexport const value = 0;\n',
+        '// @file: value\n// @spec: APP\n// @tasks: DP-fields\nexport const value = 0;\n',
     });
     try {
       const result = await mod.run(argv('--changed', v2.root));
@@ -322,7 +322,7 @@ describe('sdd-check file ownership', () => {
 
     const v1 = fixture({
       sourceHeader: '// @file: value',
-      baselineSource: '// @file: value\n// @tasks: TSK-01\nexport const value = 0;\n',
+      baselineSource: '// @file: value\n// @tasks: DP-fields\nexport const value = 0;\n',
       legacy: true,
     });
     try {

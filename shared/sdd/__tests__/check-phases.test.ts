@@ -1,10 +1,11 @@
 // @file: Unit tests for the per-ticket phase-graph + exec-log completeness checks in checkTicket.
+// @spec: SHARED
 // @consumers: check
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { checkTicket } from '../check.ts';
+import { parseMetaInfo } from '../ticket.ts';
 import {
   formatPhaseReceipt,
   phaseReceiptPlanState,
@@ -74,6 +75,19 @@ describe('checkTicket — phase graph + exec-log completeness', () => {
       ticket({ rows: [{ id: 'P1' }, { id: 'P2', deps: 'P9' }], sections: ['P1', 'P2'] })
     );
     assert.ok(c.includes('SDD_PHASE_DEP_UNRESOLVED'));
+  });
+
+  it('keeps inter-ticket dependencies in META while the phase graph uses only local phases', () => {
+    const content = ticket({
+      rows: [{ id: 'P1' }, { id: 'P2', deps: 'P1' }],
+      sections: ['P1', 'P2'],
+    }).replace(
+      '- **Status:** [ ] TODO',
+      '- **Dependencies:** EXT-contract, EXT-runtime\n- **Status:** [ ] TODO'
+    );
+
+    assert.deepStrictEqual(parseMetaInfo(content).dependencies, ['EXT-contract', 'EXT-runtime']);
+    assert.ok(!codes('t.md', content).includes('SDD_PHASE_DEP_UNRESOLVED'));
   });
 
   it('flags a cycle in phase deps', () => {

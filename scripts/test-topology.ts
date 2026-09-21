@@ -4,8 +4,8 @@
 //   `npm run test:experimental` — because those two products are not release-ready for v2. This is
 //   a scoping decision, not a perf one: revert it after the v2 release (2.0.0-draft) by folding
 //   `experimental` back into the regular layers (see D-60).
+// @spec: INFRA-BASE
 // @consumers: package.json test scripts
-// @tasks: N/A
 
 import { readdirSync, readFileSync } from 'node:fs';
 import { basename, join, relative, resolve, sep } from 'node:path';
@@ -28,7 +28,16 @@ type TestPartition = {
 // `discoverTests()` below (and therefore absent from `npm test`, `test:coverage`, and pre-commit)
 // simply because their root wasn't listed here. Adding them makes the runner see and classify every
 // test file those two roots contain; see EXPERIMENTAL_ROOTS and UNIT_ROOTS below for where each lands.
-const TEST_ROOTS = ['ai', 'cli', 'plugins', 'services', 'shared', 'test', 'utils'] as const;
+const TEST_ROOTS = [
+  'ai',
+  'cli',
+  'plugins',
+  'scripts',
+  'services',
+  'shared',
+  'test',
+  'utils',
+] as const;
 const TEST_FILE = /\.test\.ts$/;
 // D-60: agent-inbox, agent-mon are experimental products not shipping in v2 yet. Their whole test
 // surface is carved into its own topology layer — still discovered and classified (so the

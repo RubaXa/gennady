@@ -1,4 +1,5 @@
 // @file: pipe in class method
+// @spec: DBC-DBC-LINTER
 // @consumers: test
 export class Svc {
   /**

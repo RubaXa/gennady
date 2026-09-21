@@ -1,8 +1,8 @@
 // @file: Per-MR event detection (new commits / new replies in my threads) + a persisted
 //   per-MR quiet-period tracker — the auto-observation + debounce layer `RoleScheduler#tick`
 //   gates a resumed instance's `step()` on (SV-19/20/21, agent-inbox spec §4.1.5).
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: RoleScheduler
-// @tasks: TSK-141
 
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';

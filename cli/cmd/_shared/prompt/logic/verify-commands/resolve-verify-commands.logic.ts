@@ -1,6 +1,6 @@
 // @file: Return safe code verification commands for the current project (tests, lint, types).
+// @spec: CLI
 // @consumers: build-ai-verify-placeholders.logic
-// @tasks: N/A
 
 import fs from 'node:fs';
 import path from 'node:path';

@@ -1,6 +1,6 @@
 // @file: Value object for delete note query parameters.
+// @spec: VCS-VCS-CLIENT
 // @consumers: VcsClientMergeDiscussions
-// @tasks: TSK-77
 
 /** @purpose Parameters for deleting an existing MR discussion note. */
 export type VcsDeleteNoteQuery = {

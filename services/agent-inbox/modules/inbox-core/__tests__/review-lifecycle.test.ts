@@ -1,6 +1,6 @@
 // @file: Lifecycle visibility truth-table tests for terminal inactivity, completion and reactivation.
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: node:test runner
-// @tasks: TSK-173
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

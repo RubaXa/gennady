@@ -1,6 +1,6 @@
 // @file: Validated physical binding returned by the runtime profile port.
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: StateStore, bootstrap
-// @tasks: TSK-172
 
 import type { ReviewRuntimeProfile } from '../runtime-profile.ts';
 

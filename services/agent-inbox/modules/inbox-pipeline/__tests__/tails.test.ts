@@ -1,6 +1,6 @@
 // @file: Tests for AuthorTail and ReviewerTail — findings summary, thread dedup, posting candidates, role-specific notifications
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: node:test runner
-// @tasks: TSK-161
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

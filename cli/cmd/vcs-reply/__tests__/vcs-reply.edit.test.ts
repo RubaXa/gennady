@@ -1,6 +1,6 @@
 // @file: Unit tests for vcs-reply edit/delete note operations via stdin JSON.
+// @spec: CLI
 // @consumers: N/A
-// @tasks: TSK-78, TSK-100
 
 import { describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';

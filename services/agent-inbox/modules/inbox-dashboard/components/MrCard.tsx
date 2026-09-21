@@ -1,6 +1,6 @@
 // @file: MrCard — single MR card with project info, time, status; click opens detail.
+// @spec: AGENT-INBOX-INBOX-DASHBOARD
 // @consumers: KanbanLane, UnassignedBlock, AwaitingQueue
-// @tasks: TSK-107, TSK-155
 
 import { useEffect, useState } from 'react';
 import { ExternalLink, Sparkles } from 'lucide-react';

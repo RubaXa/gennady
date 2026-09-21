@@ -1,6 +1,6 @@
 // @file: Pure comparison of a ticket's Test Scenario Coverage canonical case names against real it()/test() names — BDD_COVERAGE (SDD_BDD_SCENARIO_UNTESTED). Test-file reads stay in the adapter.
+// @spec: SHARED
 // @consumers: sdd-check.cmd
-// @tasks: N/A
 
 import type { Finding } from './check.ts';
 import type { FlowVersion } from './flow.ts';

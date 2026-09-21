@@ -1,7 +1,7 @@
 // @file: mrShape statanalysis (D-123 composition triggers) + track-scoped Context-section injection
 //   (AI-40/D-119) for review track scaffolds — orchestrator-side, no LLM involved.
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: cli/cmd/inbox-review-plan (scaffoldReviewReports), inbox-roles NodeContext builder (TSK-113 Round 2)
-// @tasks: TSK-134, TSK-113
 
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';

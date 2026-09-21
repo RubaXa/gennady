@@ -1,6 +1,6 @@
 // @file: Unit tests for inbox-core InboxConfig — structured signal, atomic save, unset, missing config.
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: node:test runner
-// @tasks: TSK-109
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';

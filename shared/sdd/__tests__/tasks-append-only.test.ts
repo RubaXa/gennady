@@ -1,6 +1,6 @@
 // @file: Unit tests for tasks-append-only — TASKS_APPEND_ONLY header regression check.
+// @spec: SHARED
 // @consumers: check
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

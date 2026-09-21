@@ -1,6 +1,6 @@
 // @file: Addressed durable evidence and review artifact storage boundary.
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: inbox-pipeline, inbox-chat, inbox-api
-// @tasks: TSK-173
 
 /**
  * @purpose Persist and retrieve review artifacts by stable MR-scoped address.

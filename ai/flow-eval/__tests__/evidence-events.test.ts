@@ -4,8 +4,8 @@
 //   the same SSE wire format the OpenCode SDK's `.event.subscribe()` parses (`data: <json>\n\n`), and
 //   this exercises the REAL public interface — `SddEvalOpenCodeEvidenceSource.readEvents` — the same
 //   one cli.ts and observer.ts call, not an internal helper.
+// @spec: AI-SKILLS
 // @consumers: N/A (test file)
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

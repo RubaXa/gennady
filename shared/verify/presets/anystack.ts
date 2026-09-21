@@ -1,8 +1,8 @@
 // @file: anystack preset — the phase model's read-only, config-authored gate list (V-08). No
 //   builtin gates: everything comes from `stack.anystack.extraGates` (gennady.yaml), in the exact
 //   declaration order (fixed order, И-2 §3.0).
+// @spec: SHARED
 // @consumers: presets/node.ts (resolvePreset dispatch)
-// @tasks: V-08
 
 import { ANYSTACK_GATE_IDS } from '../../../plugins/anystack/anystack-plugin.ts';
 import { gateInScope, pluginConfigOf } from '../stack-config.ts';

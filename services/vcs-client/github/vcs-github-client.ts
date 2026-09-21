@@ -1,6 +1,6 @@
 // @file: GitHub REST API client — HTTP adapter implementing VcsClient contract (minimal, no MergeDiscussions).
+// @spec: VCS-VCS-CLIENT
 // @consumers: cli/cat
-// @tasks: TSK-30, TSK-84
 
 import { VcsGithubMergeRequests } from './vcs-github-merge-requests.ts';
 import { VcsGithubMergeDiscussions } from './vcs-github-merge-discussions.ts';

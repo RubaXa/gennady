@@ -1,6 +1,6 @@
 // @file: Orient adapter and renderer tests for canonical Spec ID ownership queries.
+// @spec: CLI-ORIENT
 // @consumers: OrientCommand
-// @tasks: N/A
 
 import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -152,7 +152,7 @@ describe('orient file relations', () => {
       mkdirSync(join(root, 'tasks', 'cli'), { recursive: true });
       const result = resolveOrientFileRelations(root, source, {
         file: 'query',
-        tasks: ['TSK-01'],
+        tasks: ['DP-fields'],
         consumers: [],
       });
       assert.strictEqual(result.flow, 'v1');

@@ -1,6 +1,6 @@
 // @file: Both-outcomes proof for the infra `task` golden gates (QUALITY-RULES R2/R6).
+// @spec: AI-SKILLS
 // @consumers: ai/flow-eval/provision (infra-* fixtures)
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

@@ -5,8 +5,8 @@
 //   reach FLOW_VERSION=v2 within the 5-min budget. `plan-verified`/`specs-clean` stay red only from the
 //   SDD_SPEC_SECTION_MISSING backlog (v2-required sections the v1 source never had) — NOT a defect, so
 //   they are diagnostics here, never the win-criterion (see the critic reframe in §H8-diag).
+// @spec: AI-SKILLS
 // @consumers: N/A (test)
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import { readFileSync } from 'node:fs';

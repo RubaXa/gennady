@@ -1,4 +1,5 @@
 // @file: Unit tests for parseEntityInventory — extract declared entity names from a module spec ## 3 table.
+// @spec: SHARED
 // @consumers: inventory
 
 import { describe, it } from 'node:test';

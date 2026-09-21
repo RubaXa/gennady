@@ -1,6 +1,6 @@
 // @file: Normalized launch arguments for review commands.
+// @spec: CLI-REVIEW
 // @consumers: parse-review-command-args.logic, resolve-review-intent.logic, review-command-options.type
-// @tasks: N/A
 
 /**
  * @purpose Normalized launch arguments for review commands.

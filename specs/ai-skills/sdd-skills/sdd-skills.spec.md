@@ -1,5 +1,25 @@
 # Module: sdd-skills
 
+<!--SECTION:SPEC_ID-->
+
+AI-SKILLS-SDD-SKILLS
+
+<!--/SECTION:SPEC_ID-->
+
+<!--SECTION:OVERVIEW-->
+
+## Обзор
+
+```mermaid
+flowchart LR
+  Contract[Контракт] --> Implementation[Реализация]
+  Implementation --> Verification[Проверка]
+```
+
+_Обзор пути от контракта к реализации и проверке._
+
+<!--/SECTION:OVERVIEW-->
+
 → Parent scope: [`../ai-skills.spec.md`](../ai-skills.spec.md)
 
 <!--SECTION:MODULE_VISION-->
@@ -34,7 +54,7 @@ worker-checkpoint JSON и обязательное переиспользова�
 4. sdd-check --task <path> --authoring проверяет каждый ticket; sdd-check --all проверяет DAG.
 5. Один fresh reviewer проверяет реальные tickets против утверждённых specs.
 6. Оператор одним решением утверждает разбиение и Requirement-ID → scenario → test plan.
-7. /sdd-execute TSK-01 восстанавливает фазу из ticket + Execution Log + Git, выполняет real gates,
+7. /sdd-execute DP-fields восстанавливает фазу из ticket + Execution Log + Git, выполняет real gates,
    затем запускает audit и code-review.
 ```
 
@@ -59,6 +79,8 @@ worker-checkpoint JSON и обязательное переиспользова�
 <!--SECTION:ENTITY_SURFACES-->
 
 ## 4. Entity Surfaces
+
+<details><summary>Подробности</summary>
 
 ### `SddSkill`
 
@@ -115,11 +137,14 @@ worker-checkpoint JSON и обязательное переиспользова�
 - `verify` — audit, check, code-review
 - `iterate` — critic on demand, reconcile
 
+</details>
 <!--/SECTION:ENTITY_SURFACES-->
 
 <!--SECTION:MODULE_CONTRACTS-->
 
 ## 5. Module Contracts (DbC)
+
+<details><summary>Подробности</summary>
 
 ### Specification: `ArtifactApprovalBoundary`
 
@@ -159,6 +184,7 @@ worker-checkpoint JSON и обязательное переиспользова�
 - batch parallelism requires disjoint Target Files and no dependency relation;
 - lost worker identity never blocks resume; a fresh worker receives durable bounded context.
 
+</details>
 <!--/SECTION:MODULE_CONTRACTS-->
 
 <!--SECTION:PUBLIC_OPTIONS-->
@@ -198,6 +224,8 @@ ai/skills/
 
 ## 8. Module Decision Log
 
+<details><summary>Подробности</summary>
+
 ### D-M002 — SDD-навыки в одном модуле
 
 - **Status:** active
@@ -230,6 +258,7 @@ ai/skills/
   - только mechanical gates — не оценивают смысл и доказательность теста;
   - только model review — не гарантирует ID/section/traceability presence.
 
+</details>
 <!--/SECTION:MODULE_DECISION_LOG-->
 
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->

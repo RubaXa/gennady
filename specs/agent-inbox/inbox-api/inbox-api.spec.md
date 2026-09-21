@@ -1,5 +1,25 @@
 # Module: inbox-api
 
+<!--SECTION:SPEC_ID-->
+
+AGENT-INBOX-INBOX-API
+
+<!--/SECTION:SPEC_ID-->
+
+<!--SECTION:OVERVIEW-->
+
+## Обзор
+
+```mermaid
+flowchart LR
+  Contract[Контракт] --> Implementation[Реализация]
+  Implementation --> Verification[Проверка]
+```
+
+_Обзор пути от контракта к реализации и проверке._
+
+<!--/SECTION:OVERVIEW-->
+
 <!--SECTION:MODULE_VISION-->
 
 ## 1. Module Vision
@@ -44,6 +64,8 @@ events.subscribe(mr, (frame) => reconcile(frame));
 
 ## 4. Entity Surfaces
 
+<details><summary>Подробности</summary>
+
 ### Projections
 
 - **Public Operations:** board, feed, MR detail, current/stale package and outcomes, artifacts and test report queries.
@@ -71,11 +93,15 @@ events.subscribe(mr, (frame) => reconcile(frame));
 - **Lifecycle:** reconnectable; polling reconciliation remains available.
 - **Errors & Degradation:** disconnect never implies task failure.
 - **Consumers:** dashboard.
+
+</details>
 <!--/SECTION:ENTITY_SURFACES-->
 
 <!--SECTION:MODULE_CONTRACTS-->
 
 ## 5. Module Contracts (DbC)
+
+<details><summary>Подробности</summary>
 
 - A board projection contains an MR exactly once.
 - Commands use version/batch identity to reject stale package application.
@@ -83,6 +109,8 @@ events.subscribe(mr, (frame) => reconcile(frame));
 - Optimistic acceptance is distinct from reconciled GitLab success.
 - The API starts before boot readiness is complete so progress remains observable.
 - Runtime backing: local HTTP and SSE; contract/integration/e2e verification.
+
+</details>
 <!--/SECTION:MODULE_CONTRACTS-->
 
 <!--SECTION:PUBLIC_OPTIONS-->
@@ -112,8 +140,12 @@ inbox-api/
 
 ## 8. Module Decision Log
 
+<details><summary>Подробности</summary>
+
 - `D-API-01`: BoardProvider is migrated from RoleScheduler to journal-backed projections.
 - `D-API-02`: manual RoleRouter is retired.
+
+</details>
 <!--/SECTION:MODULE_DECISION_LOG-->
 
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->

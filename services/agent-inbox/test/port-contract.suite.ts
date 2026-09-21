@@ -1,6 +1,6 @@
 // @file: port-contract.suite — shared fake-vs-real adapter equivalence assertion.
+// @spec: AGENT-INBOX
 // @consumers: agent-inbox VCS and OpenCode adapter contract tests
-// @tasks: TSK-166
 
 import assert from 'node:assert/strict';
 

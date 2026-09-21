@@ -1,6 +1,6 @@
 // @file: Contract surface for pipeline job management operations.
+// @spec: VCS-VCS-CLIENT
 // @consumers: VcsClient
-// @tasks: TSK-84
 
 import type { VcsJob } from '../entities/vcs-job.type.ts';
 import type { VcsJobQuery } from '../entities/vcs-job-query.type.ts';

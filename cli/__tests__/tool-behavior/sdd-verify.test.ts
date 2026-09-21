@@ -1,8 +1,8 @@
 // @file: Live-CLI behavior of sdd-verify's gate ladder — real `tsx cli/gennady.ts sdd-verify` runs
 //   against fixture repos in every state the ladder must handle: bootstrap skips, repair-first
 //   phases, halting failures, coverage freshness, and read-only full.
+// @spec: CLI
 // @consumers: N/A
-// @tasks: N/A
 
 import { describe, it, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,8 +1,8 @@
 // @file: Unit tests for the TSK-127 disk-artifact review pipeline — review findings come from
 //   files the agent writes to disk (validated + correction-looped), never from a forced
 //   structured-JSON response that truncates on large MRs.
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: node:test runner
-// @tasks: TSK-127, TSK-141, TSK-153
 
 import { describe, it, before, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';

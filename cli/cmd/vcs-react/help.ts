@@ -1,6 +1,6 @@
 // @file: vcs-react command help output.
+// @spec: CLI
 // @consumers: help command
-// @tasks: TSK-98
 
 /**
  * @purpose Print CLI help for the vcs-react command.

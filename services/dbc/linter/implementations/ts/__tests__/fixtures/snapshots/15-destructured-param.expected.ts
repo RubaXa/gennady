@@ -1,4 +1,5 @@
 // @file: destructured
+// @spec: DBC-DBC-LINTER
 // @consumers: test
 /**
  * @purpose Destructured params.

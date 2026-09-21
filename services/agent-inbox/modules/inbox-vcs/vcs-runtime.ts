@@ -1,6 +1,6 @@
 // @file: VCS runtime profile selection — bind read and effect ports independently.
+// @spec: AGENT-INBOX-INBOX-VCS
 // @consumers: agent-inbox serve composition root
-// @tasks: TSK-174
 
 import type { VcsEffectPort, VcsReadPort } from './vcs-port.ts';
 import { ReadonlyEffectGuard } from './readonly-effect.guard.ts';

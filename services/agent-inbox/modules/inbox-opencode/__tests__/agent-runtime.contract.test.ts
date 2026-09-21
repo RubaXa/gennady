@@ -1,6 +1,6 @@
 // @file: Shared AgentRuntimePort contract for deterministic and intercepted-network adapters.
+// @spec: AGENT-INBOX-INBOX-OPENCODE
 // @consumers: node:test runner
-// @tasks: TSK-175
 
 import { afterEach, beforeEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,6 +1,6 @@
 // @file: Single source of truth for SDD v2 artifact skeletons (product/library/infrastructure/interface/module/task/portal specs) — backs check.ts's derived required/fold section lists and the `gennady sdd-new` scaffolder.
+// @spec: SHARED
 // @consumers: check.ts, sdd-new.cmd
-// @tasks: N/A
 
 import { BOOTSTRAP_REQUIREMENTS_TABLE_HEADER } from './spec-schema.ts';
 import { DEFERRED_TEST_OWNERSHIP_LITERAL } from './task-authoring-literals.ts';

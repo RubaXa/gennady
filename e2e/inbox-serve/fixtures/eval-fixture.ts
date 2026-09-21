@@ -2,8 +2,8 @@
 //   Mirrors mock-data.ts's pattern (board/detail/artifact fixtures) for a distinct MR, plus an
 //   `eval-report.md` artifact entry rendered through the exact production `serializeEvalReportMarkdown`
 //   (eval-report.ts, TSK-118) so the fixture's gate table never drifts from the real report format.
+// @spec: AGENT-INBOX
 // @consumers: e2e/inbox-serve/reviewer-eval.spec.ts
-// @tasks: TSK-120
 
 import type {
   BoardData,

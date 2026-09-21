@@ -1,6 +1,6 @@
 // @file: testcov command — visual test coverage tree for vitest / jest / node:test projects.
+// @spec: CLI-TESTCOV
 // @consumers: gennady.ts
-// @tasks: TSK-66
 
 /**
  * npx gennady testcov              dirs only (default)

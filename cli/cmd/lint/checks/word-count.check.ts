@@ -1,6 +1,6 @@
 // @file: Semantic prose budgets for file headers and JSDoc contracts.
+// @spec: CLI-LINT
 // @consumers: LintCommand, WordCountCheck tests
-// @tasks: TSK-XX
 
 import type { LintError } from '../lint.types.ts';
 import { ERR_CLI_LINT_TAG_TOO_MANY_WORDS } from '../lint.types.ts';

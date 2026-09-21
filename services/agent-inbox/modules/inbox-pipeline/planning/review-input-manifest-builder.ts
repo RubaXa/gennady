@@ -1,6 +1,6 @@
 // @file: Deterministic capture, classification and sealing of review inputs.
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: ReviewOrchestrator, inbox-eval
-// @tasks: TSK-176
 
 import { createHash } from 'node:crypto';
 import type {

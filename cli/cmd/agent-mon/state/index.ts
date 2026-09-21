@@ -1,6 +1,6 @@
 // @file: Barrel re-export for the state module.
+// @spec: AGENT-MON-CLI-STATE
 // @consumers: cmd/agent-mon, ui
-// @tasks: TSK-45
 
 export { createStateManager } from './create-state-manager.ts';
 export type { StateManager } from './create-state-manager.ts';

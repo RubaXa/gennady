@@ -1,8 +1,8 @@
 // @file: Unit tests for the node preset — gate names, required names, command resolution, and
 //   resolvePreset's stack dispatch (V-04). Byte-for-byte parity with the pre-V-04 hardcoded lists
 //   is proven separately by shared/sdd/__tests__/preset-node-golden.test.ts (V-01 golden).
+// @spec: SHARED
 // @consumers: CI
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

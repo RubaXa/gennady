@@ -2,8 +2,8 @@
 //   (live NodeContext, dry-run effects) and returns a per-MR result. Closes the serve-mode gap for
 //   TSK-121/EV-10: prep branches on real signals, effect nodes call the real EffectExecutor, and an
 //   optional seed restores prior review state before the pass runs.
+// @spec: AGENT-INBOX
 // @consumers: cli/cmd/inbox/serve.cmd.ts (--mrs run-mode entry point), inbox-eval eval-driver.ts
-// @tasks: TSK-121, TSK-122
 
 import { logger } from '#logger';
 import { RoleInstance, type RoleInstanceCheckpoint } from '../modules/inbox-roles/role-instance.ts';

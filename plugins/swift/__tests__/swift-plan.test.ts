@@ -1,6 +1,6 @@
 // @file: Unit tests for Swift gate planning and config-owned Xcode commands.
+// @spec: CLI-VERIFY
 // @consumers: CI
-// @tasks: V-11
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

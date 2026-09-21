@@ -1,6 +1,6 @@
 // @file: Backward-compatible logger entry for shared domain code.
+// @spec: SHARED
 // @consumers: cat-gen, cat-url.fn, commit-gen, exec, git-core
-// @tasks: N/A
 
 /**
  * @purpose Backward-compatible logger entry for shared domain code.

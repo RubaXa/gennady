@@ -1,6 +1,6 @@
 // @file: inbox stats command help output.
+// @spec: AGENT-INBOX
 // @consumers: gennady.ts
-// @tasks: TSK-perf
 
 /** @purpose Print CLI help for the inbox stats command. */
 export function printHelp(): void {

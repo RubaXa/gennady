@@ -1,6 +1,6 @@
 // @file: HttpServer — node:http server on port 4174 with routing, CORS, static files, graceful shutdown.
+// @spec: AGENT-INBOX-INBOX-API
 // @consumers: gennady inbox serve (CLI), e2e tests
-// @tasks: TSK-106, TSK-133, TSK-157, TSK-158, TSK-162, TSK-163, TSK-170
 
 import { createServer, type IncomingMessage, type ServerResponse, type Server } from 'node:http';
 import { logger } from '#logger';
@@ -73,14 +73,14 @@ export type HttpServerConfig = {
   chat?: HttpServerChatConfig;
   /**
    * @purpose When present, wires the inbox-api v2 routers (boot/state/feed/task/decision/stream)
-   *   with live projections — absent means those routes 404 (TSK-162).
+   *   with live projections — absent means those routes 404 (IA-rest-sse).
    */
   inboxApi?: HttpServerInboxApiConfig;
   /** @purpose Shared bootstrap readiness state exposed at GET /api/boot. */
   bootReadiness?: BootReadiness;
 };
 
-/** @purpose Dependencies backing the inbox-api v2 routers (TSK-162). */
+/** @purpose Dependencies backing the inbox-api v2 routers (IA-rest-sse). */
 export type HttpServerInboxApiConfig = {
   /** @purpose Task queue for enqueue and state queries */
   queue: TaskQueuePort;
@@ -278,7 +278,7 @@ export class HttpServer {
     }
     // #endregion END_WIRE_CHAT
 
-    // #region START_WIRE_INBOX_API — wire inbox-api v2 routers (TSK-162): boot/state/feed/task/decision/stream with live projections
+    // #region START_WIRE_INBOX_API — wire inbox-api v2 routers (IA-rest-sse): boot/state/feed/task/decision/stream with live projections
     if (config.inboxApi) {
       const hub = this._sseHub ?? config.inboxApi.sseHub ?? new SseHub();
       this._sseHub = hub;

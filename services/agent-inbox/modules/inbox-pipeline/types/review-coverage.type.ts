@@ -1,6 +1,6 @@
 // @file: Explainable terminal coverage projection for one review contract.
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: ReviewCompletenessVerdict, ReviewPlan, dashboard projections
-// @tasks: TSK-176
 
 /** @purpose Total disjoint accounting of contract slots and trusted source use. */
 export type ReviewCoverage = {

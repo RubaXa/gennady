@@ -1,6 +1,6 @@
 // @file: verify command help output.
+// @spec: CLI-VERIFY
 // @consumers: help command
-// @tasks: N/A
 
 /**
  * @purpose Print CLI help for the verify command.

@@ -1,6 +1,6 @@
 // @file: ContextAssembler — one turn's system context from report artifacts + chips, MR-derived content wrapped in an explicit untrusted-data block (D-98, extends NFC-07 to inbox-chat).
+// @spec: AGENT-INBOX-INBOX-CHAT
 // @consumers: ChatSession
-// @tasks: TSK-126, TSK-132, TSK-131
 
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';

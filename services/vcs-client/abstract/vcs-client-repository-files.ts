@@ -1,6 +1,6 @@
 // @file: Contract surface for repository file operations — reading files from VCS repository.
+// @spec: VCS-VCS-CLIENT
 // @consumers: VcsClient
-// @tasks: TSK-28
 
 import type { VcsFileContent, VcsFileContentQuery } from '../entities/vcs-file-content.type.ts';
 

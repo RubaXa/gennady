@@ -6,8 +6,8 @@
 //   ticket P3 Objective); P7 owns its own independent live drive (BoardProviderReal.executeAction
 //   needs a LIVE RoleInstance, no disk fallback — see ticket P7 Objective) and does not reuse this
 //   state dir.
+// @spec: AGENT-INBOX
 // @consumers: npx playwright test --config=e2e/inbox-serve/playwright.review-flow.config.ts
-// @tasks: TSK-131
 
 import { test, expect, type ConsoleMessage } from '@playwright/test';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';

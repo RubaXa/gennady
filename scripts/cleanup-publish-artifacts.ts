@@ -1,3 +1,6 @@
+// @file: scripts/cleanup-publish-artifacts.ts
+// @spec: INFRA-BASE
+// @consumers: N/A
 import { existsSync, readdirSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';

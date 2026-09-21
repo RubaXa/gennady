@@ -1,6 +1,6 @@
 // @file: Anchor class-body boundary check — forbids #region START / #endregion END at class/namespace body level.
+// @spec: CLI-LINT
 // @consumers: LintCommand
-// @tasks: TSK-XX
 
 import type { LintError } from '../lint.types.ts';
 import { ERR_CLI_LINT_ANCHOR_AT_CLASS_BODY } from '../lint.types.ts';

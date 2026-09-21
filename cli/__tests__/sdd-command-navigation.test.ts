@@ -1,6 +1,6 @@
 // @file: Regression guard keeping dispatchable SDD CLI commands discoverable in every navigation surface.
+// @spec: CLI
 // @consumers: CLI maintainers
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

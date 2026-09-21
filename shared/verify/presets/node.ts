@@ -1,8 +1,8 @@
 // @file: Node stack preset — canonical npm-script gate names/commands, moved verbatim from
 //   shared/sdd/phase-verification-plan.ts (V-04) so `resolvePreset('node', ...)` is the one source
 //   of truth; behavior is byte-identical to the pre-V-04 hardcoded lists (V-01 golden).
+// @spec: SHARED
 // @consumers: phase-verification-plan.ts
-// @tasks: N/A
 
 import {
   isDeclaredArgumentForwardingRepairBrick,

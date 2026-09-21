@@ -1,6 +1,6 @@
 // @file: Unit tests for mr-stats reporter — composeReport, buildRealCodeCategory, empty category factories.
+// @spec: MR-STATS
 // @consumers: node:test runner
-// @tasks: TSK-139
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

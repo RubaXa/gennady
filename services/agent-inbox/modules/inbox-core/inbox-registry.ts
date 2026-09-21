@@ -1,6 +1,6 @@
 // @file: InboxRegistry wrapper — delta computation, promote, atomic save over CLI registry logic.
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: StateStore, CLI inbox commands
-// @tasks: TSK-109, TSK-156
 
 import { join } from 'node:path';
 import { homedir } from 'node:os';

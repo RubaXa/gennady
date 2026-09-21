@@ -1,6 +1,6 @@
 // @file: Profile-scoped durable append-only trusted receipt storage.
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: ReviewRuntimeReceiptRecorder, ReviewStructuralValidator, production composition root
-// @tasks: TSK-176
 
 import { createHash } from 'node:crypto';
 import {

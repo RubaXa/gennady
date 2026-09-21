@@ -1,6 +1,6 @@
 // @file: Unit tests for VcsGithubClient — composition and auth.
+// @spec: VCS-VCS-CLIENT
 // @consumers: node:test runner
-// @tasks: TSK-30
 
 import { describe, it, beforeEach, afterEach, mock } from 'node:test';
 import assert from 'node:assert/strict';

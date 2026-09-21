@@ -5,13 +5,13 @@
 //   path (phase-run.ts), which is what the plan document's own "живым фазовым прогоном" language
 //   asks for at the level that matters (real code path, fake process boundary). See R-01-V-01.md
 //   "ВОПРОСЫ" for the residual open question about true CLI-subprocess e2e coverage.
-// @invariant `run()`/`readProjectScripts()`/`isSelfHosting()` (sdd-verify.cmd.ts) read `package.json`
-//   relative to `process.cwd()`, not a passed root — untouched by this brief (FILES: не трогать
-//   sdd-verify.cmd.ts). Every test below that calls `run()` or `runPhaseVerification()` therefore
-//   chdir's into a throwaway fixture directory it fully controls, and restores cwd in `finally` —
-//   this keeps every golden decoupled from the mutable RC root's own package.json (I-3).
+//   @invariant `run()`/`readProjectScripts()`/`isSelfHosting()` (sdd-verify.cmd.ts) read `package.json`
+//     relative to `process.cwd()`, not a passed root — untouched by this brief (FILES: не трогать
+//     sdd-verify.cmd.ts). Every test below that calls `run()` or `runPhaseVerification()` therefore
+//     chdir's into a throwaway fixture directory it fully controls, and restores cwd in `finally` —
+//     this keeps every golden decoupled from the mutable RC root's own package.json (I-3).
+// @spec: CLI-SDD-VERIFY
 // @consumers: N/A (regression fixture for the SDD v1→v2 transfer plan, track 30-TRACK-VERIFY)
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

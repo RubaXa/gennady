@@ -1,6 +1,6 @@
 // @file: inbox command help output
+// @spec: AGENT-INBOX
 // @consumers: help command
-// @tasks: TSK-75, TSK-174
 /**
  * @purpose Print CLI help for the inbox command.
  */

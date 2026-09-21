@@ -1,7 +1,7 @@
 // @file: MrDetailPage — screen #/mr/:id: artifact browser (left) + permanent ActionPanel/ChatPanel
 //   split (right, wide viewport) or ViewSwitch + single pane (narrow viewport); deep-linkable.
+// @spec: AGENT-INBOX-INBOX-DASHBOARD
 // @consumers: App (via hash route #/mr/:id)
-// @tasks: TSK-107, TSK-130, TSK-132
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, Loader2, AlertTriangle, Clock } from 'lucide-react';

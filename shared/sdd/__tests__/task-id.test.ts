@@ -1,6 +1,6 @@
 // @file: Unit tests for the v2 Task-ID grammar, project-wide collection, and conflict detection.
+// @spec: SHARED
 // @consumers: task-id
-// @tasks: N/A
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -20,7 +20,7 @@ import {
 describe('validateTaskId', () => {
   it('accepts a well-formed <ACR>-<slug>', () => {
     assert.strictEqual(validateTaskId('GAT-login'), null);
-    assert.strictEqual(validateTaskId('TSK-156'), null);
+    assert.strictEqual(validateTaskId('IC-journal'), null);
     assert.strictEqual(validateTaskId('CLI2-a1'), null);
   });
 
@@ -86,15 +86,15 @@ describe('checkIdConflicts', () => {
     assert.strictEqual(conflicts[0]?.kind, 'prefix');
   });
 
-  it('does NOT flag a bare numeric-suffix relationship without a hyphen boundary (TSK-1 vs TSK-10)', () => {
-    assert.deepStrictEqual(checkIdConflicts('TSK-1', ['TSK-10']), []);
-    assert.deepStrictEqual(checkIdConflicts('TSK-10', ['TSK-1']), []);
+  it('does NOT flag a bare numeric-suffix relationship without a hyphen boundary (TSK-1 vs DL-fixtures)', () => {
+    assert.deepStrictEqual(checkIdConflicts('TSK-1', ['DL-fixtures']), []);
+    assert.deepStrictEqual(checkIdConflicts('DL-fixtures', ['TSK-1']), []);
   });
 });
 
 describe('findPrefixClashes', () => {
   it('finds no clashes in a prefix-free set', () => {
-    assert.deepStrictEqual(findPrefixClashes(['GAT-a', 'GAT-b', 'TSK-1', 'TSK-10']), []);
+    assert.deepStrictEqual(findPrefixClashes(['GAT-a', 'GAT-b', 'TSK-1', 'DL-fixtures']), []);
   });
 
   it('finds a clash once, either direction, for gates vs gates-v2', () => {
@@ -165,7 +165,7 @@ describe('collectTaskIds', () => {
     mkdirSync(join(root, 'tasks', 'cli'), { recursive: true });
     writeFileSync(
       join(root, 'tasks', 'cli', 'cli.task-42.md'),
-      ['## Meta', '- **Task-ID:** TSK-42', '', '## Execution Log', '- pending'].join('\n')
+      ['## Meta', '- **Task-ID:** INP-rel-dep', '', '## Execution Log', '- pending'].join('\n')
     );
 
     // an unfilled scaffold placeholder must never be counted as a real id.
@@ -197,7 +197,7 @@ describe('collectTaskIds', () => {
   it('collects the v2 filename id and the legacy Meta-field id, deterministically deduplicated', () => {
     const ids = collectTaskIds(root);
     assert.ok(ids.includes('GAT-login'));
-    assert.ok(ids.includes('TSK-42'));
+    assert.ok(ids.includes('INP-rel-dep'));
     assert.strictEqual(new Set(ids).size, ids.length, 'no duplicate entries');
   });
 

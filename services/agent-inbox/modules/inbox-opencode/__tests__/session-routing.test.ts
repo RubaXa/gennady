@@ -1,6 +1,6 @@
 // @file: Unit contract for independent agent-session context routing.
+// @spec: AGENT-INBOX-INBOX-OPENCODE
 // @consumers: node:test runner
-// @tasks: TSK-175
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

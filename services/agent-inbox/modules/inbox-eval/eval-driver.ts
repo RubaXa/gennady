@@ -3,8 +3,8 @@
 //   produced per MR — never a re-orchestrated CLI pipeline (the prior `eval-harness.ts` form is
 //   superseded, see TSK-119 Round 0). Composes an EvalReport (TSK-118 eval-report.ts) and writes
 //   eval-report.json + .md under the reports dir.
+// @spec: AGENT-INBOX-INBOX-EVAL
 // @consumers: cli/cmd/inbox-eval (TSK-119)
-// @tasks: TSK-119, TSK-122
 
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';

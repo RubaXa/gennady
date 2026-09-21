@@ -1,8 +1,8 @@
 // @file: Fixture-based proof for the GAP-B-1 zero-new-error compare (sdd-check-baseline-compare.ts) —
 //   the three acceptance scenarios from Бриф 0/5: identical findings exit clean, one new error is
 //   named and fails, one new warning never fails.
+// @spec: AI-SKILLS
 // @consumers: N/A (test file)
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

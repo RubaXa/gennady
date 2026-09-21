@@ -1,8 +1,8 @@
 // @file: One home per axiom (T-B6-18) — no id is defined both inline in a .hbs template AND as
 //   a library file under ai/kit/axiom/**, and no id inlined in two or more .hbs templates escapes
 //   being a shared partial.
+// @spec: AI-SKILLS-DIRECTIVE-ASSEMBLY
 // @consumers: node:test runner
-// @tasks: T-B6-18
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

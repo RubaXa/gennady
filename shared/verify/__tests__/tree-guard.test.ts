@@ -1,6 +1,6 @@
 // @file: Unit tests for the clean-tree guard — precondition, lock, crash recovery, reset.
+// @spec: SHARED
 // @consumers: CI
-// @tasks: TSK-96
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

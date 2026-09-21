@@ -1,3 +1,6 @@
+// @file: services/remote-console/__tests__/remote-console-client.test.ts
+// @spec: SHARED
+// @consumers: N/A
 import { beforeEach, describe, it, mock, type TestContext } from 'node:test';
 import { strict as assert } from 'node:assert';
 import type { RemoteConsoleCommandEnvelope } from '../server/remote-console-server.types.ts';

@@ -1,6 +1,6 @@
 // @file: Unit tests for the shared YAGNI source-extension and test-territory policy.
+// @spec: SHARED
 // @consumers: node:test
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

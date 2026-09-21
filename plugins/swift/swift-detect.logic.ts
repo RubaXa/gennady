@@ -1,6 +1,6 @@
 // @file: Deterministic Swift/Xcode/Tuist project and tool detection for the Swift stack plugin.
+// @spec: CLI-VERIFY
 // @consumers: swift-plugin, swift-plan.logic, Swift readiness and receipt fingerprinting
-// @tasks: V-11
 
 import fs from 'node:fs';
 import { execFileSync } from 'node:child_process';

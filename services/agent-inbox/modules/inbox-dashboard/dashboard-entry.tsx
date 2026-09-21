@@ -1,6 +1,6 @@
 // @file: dashboard-entry — React DOM entry point for the inbox-dashboard SPA.
+// @spec: AGENT-INBOX-INBOX-DASHBOARD
 // @consumers: index.html (Vite)
-// @tasks: TSK-107 TSK-169
 
 import '@fontsource/geist';
 import '@fontsource/jetbrains-mono';

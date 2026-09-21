@@ -1,6 +1,6 @@
 // @file: Deterministic in-memory implementation of the canonical and legacy JournalPort surfaces.
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: inbox-core contract tests, inbox-mocks
-// @tasks: TSK-173
 
 import type { JournalEntry, JournalPort, SinceResult } from '../event-journal.ts';
 import { ReviewEvent } from '../types/review-event.type.ts';

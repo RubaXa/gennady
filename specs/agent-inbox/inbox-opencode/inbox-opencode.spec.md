@@ -1,5 +1,25 @@
 # Module: inbox-opencode
 
+<!--SECTION:SPEC_ID-->
+
+AGENT-INBOX-INBOX-OPENCODE
+
+<!--/SECTION:SPEC_ID-->
+
+<!--SECTION:OVERVIEW-->
+
+## Обзор
+
+```mermaid
+flowchart LR
+  Contract[Контракт] --> Implementation[Реализация]
+  Implementation --> Verification[Проверка]
+```
+
+_Обзор пути от контракта к реализации и проверке._
+
+<!--/SECTION:OVERVIEW-->
+
 <!--SECTION:MODULE_VISION-->
 
 ## 1. Module Vision
@@ -45,6 +65,8 @@ schemas.assert(task.type, result.output);
 
 ## 4. Entity Surfaces
 
+<details><summary>Подробности</summary>
+
 ### Runtime and adapter
 
 - **Public Operations:** run, continue, stream, cancel and inspect session outcome.
@@ -65,17 +87,23 @@ schemas.assert(task.type, result.output);
 - **Lifecycle:** producer continuation stays in the same session; fact-check/widen may use a new session; one persistent operator session per MR.
 - **Errors & Degradation:** expired context requires explicit fresh run; coverage cannot be inferred without trace.
 - **Consumers:** queue, pipeline, eval.
+
+</details>
 <!--/SECTION:ENTITY_SURFACES-->
 
 <!--SECTION:MODULE_CONTRACTS-->
 
 ## 5. Module Contracts (DbC)
 
+<details><summary>Подробности</summary>
+
 - Prompts pass stable paths, SHA and artifact addresses instead of copying repository content inline.
 - Every result is attributed to session, task and model.
 - Session choice follows semantic context, not arbitrary reuse.
 - Runtime backing: OpenCode-compatible server; test double for deterministic tests.
 - Verification: contract, integration and real review e2e.
+
+</details>
 <!--/SECTION:MODULE_CONTRACTS-->
 
 <!--SECTION:PUBLIC_OPTIONS-->
@@ -106,7 +134,11 @@ inbox-opencode/
 
 ## 8. Module Decision Log
 
+<details><summary>Подробности</summary>
+
 - `D-AGENT-01`: `AgentRuntimePort` generalizes the existing OpenCode port; no parallel hierarchy.
+
+</details>
 <!--/SECTION:MODULE_DECISION_LOG-->
 
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->

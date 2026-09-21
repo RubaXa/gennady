@@ -1,7 +1,7 @@
 // @file: Unit tests for inbox-eval gates G1..G10 — one green case and one red case (with evidence
 //   assertion) per gate, per ticket TSK-118 §4 BDD.
+// @spec: AGENT-INBOX-INBOX-EVAL
 // @consumers: node:test runner
-// @tasks: TSK-118
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

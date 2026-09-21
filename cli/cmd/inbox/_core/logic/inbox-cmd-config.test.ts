@@ -1,6 +1,6 @@
 // @file: Integration tests for config signal in inbox command.
+// @spec: AGENT-INBOX
 // @consumers: node:test runner
-// @tasks: TSK-91
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';

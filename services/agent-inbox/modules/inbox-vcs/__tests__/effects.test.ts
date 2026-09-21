@@ -1,6 +1,6 @@
 // @file: Unit/integration tests for Effects — resolve rights check, idempotency, network failure, SSRF validation.
+// @spec: AGENT-INBOX-INBOX-VCS
 // @consumers: node:test runner
-// @tasks: TSK-158, TSK-174
 
 import { describe, it, mock, afterEach, before } from 'node:test';
 import assert from 'node:assert/strict';

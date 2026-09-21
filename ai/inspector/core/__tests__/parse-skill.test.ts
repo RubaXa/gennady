@@ -1,4 +1,6 @@
 // @file: ai/inspector — verify the skill parser + recursive resolver.
+// @spec: AI-SKILLS
+// @consumers: N/A
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

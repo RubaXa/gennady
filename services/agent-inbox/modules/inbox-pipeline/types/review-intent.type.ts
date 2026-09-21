@@ -1,6 +1,6 @@
 // @file: Closed review intent variants for deterministic contract compilation.
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: ReviewContractCompiler, ReviewDeltaVerifier, ReviewOrchestrator
-// @tasks: TSK-176
 
 /** @purpose Immutable identity of one observed merge request revision. */
 export type ReviewManifestKey = {

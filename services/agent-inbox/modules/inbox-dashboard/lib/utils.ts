@@ -1,6 +1,6 @@
 // @file: Shared utility helpers for inbox-dashboard — cn(), class merging, formatting.
+// @spec: AGENT-INBOX-INBOX-DASHBOARD
 // @consumers: inbox-dashboard components
-// @tasks: TSK-107
 
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';

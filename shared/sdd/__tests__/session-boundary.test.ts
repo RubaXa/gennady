@@ -1,4 +1,5 @@
 // @file: Invariant tests for the must-remember workspace boundary on agent-facing SDD state.
+// @spec: SHARED
 // @consumers: sdd-state, sdd-task, sdd-new
 
 import assert from 'node:assert/strict';

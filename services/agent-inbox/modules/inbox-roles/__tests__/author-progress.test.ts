@@ -1,5 +1,7 @@
 // @file: author-progress.test.ts — unit proof: deriveReviewProgress for author role
 //   with real data through all stages. No server, no opencode — pure logic.
+// @spec: AGENT-INBOX-INBOX-PIPELINE
+// @consumers: N/A
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { deriveReviewProgress } from '../review-progress.ts';

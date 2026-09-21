@@ -1,5 +1,11 @@
 # agent-mon-cli: Scope Specification
 
+<!--SECTION:SPEC_ID-->
+
+AGENT-MON-CLI
+
+<!--/SECTION:SPEC_ID-->
+
 ## scope-type
 
 product
@@ -26,7 +32,7 @@ $ gennady agent-mon
 │  ║                                  ║ ║                          ║ │
 │  ║ 🔴 Fix IDB adapter bugs          ║ ║ 🔴 agent-mon: мониторинг ║ │
 │  ║    sonnet-4-6  ↑ 33m            ║ ║    deepseek-v4  ↑ 12m    ║ │
-│  ║    [doing] reopen TSK-20         ║ ║    tok: 45k in / 10k out ║ │
+│  ║    [doing] reopen DL-tags         ║ ║    tok: 45k in / 10k out ║ │
 │  ║    tok: 128k/45k                 ║ ║                          ║ │
 │  ║                                  ║ ║                          ║ │
 │  ║ ⏳ Design local storage           ║ ║                          ║ │
@@ -187,14 +193,14 @@ graph TD
 
 ## 8. Bootstrap Requirements
 
-| Requirement                | Kind           | Owner                 | Resolution                                         |
-| -------------------------- | -------------- | --------------------- | -------------------------------------------------- |
-| ink@^7                     | package        | this-scope-task       | `npm install ink`                                  |
-| react@^19                  | package        | this-scope-task       | `npm install react` (peer dep ink)                 |
-| @types/react               | package        | this-scope-task       | `npm install -D @types/react`                      |
-| agent-mon library          | workspace-link | external-prereq-scope | Already at `services/agent-mon/` (TSK-35..41 done) |
-| cli/gennady.ts switch case | file           | this-scope-task       | Add `agent-mon` to switch + help                   |
-| tsx                        | tool           | external-prereq-scope | Already in devDeps                                 |
+| Requirement                | Kind           | Owner                 | Resolution                                            |
+| -------------------------- | -------------- | --------------------- | ----------------------------------------------------- |
+| ink@^7                     | package        | this-scope-task       | `npm install ink`                                     |
+| react@^19                  | package        | this-scope-task       | `npm install react` (peer dep ink)                    |
+| @types/react               | package        | this-scope-task       | `npm install -D @types/react`                         |
+| agent-mon library          | workspace-link | external-prereq-scope | Already at `services/agent-mon/` (MOD-types..41 done) |
+| cli/gennady.ts switch case | file           | this-scope-task       | Add `agent-mon` to switch + help                      |
+| tsx                        | tool           | external-prereq-scope | Already in devDeps                                    |
 
 ## 9. Module Map
 

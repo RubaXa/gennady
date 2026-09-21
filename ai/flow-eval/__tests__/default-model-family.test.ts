@@ -1,6 +1,7 @@
 // @file: Proof that the eval's default runner/judge models belong to the mandated `llm-proxy` family
 //   (D-28/L-14: "only the llm-proxy family"), so an operator who omits `--model`/`--judge-model` still
 //   gets that family instead of silently falling back to a different provider (E-21).
+// @spec: AI-SKILLS
 // @consumers: ai/flow-eval/runner.ts, ai/flow-eval/cli.ts
 
 import { describe, it } from 'node:test';

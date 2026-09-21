@@ -1,6 +1,6 @@
 // @file: Unit tests for the config loader — durations, section discovery, merge, provenance.
+// @spec: SHARED
 // @consumers: CI
-// @tasks: TSK-95
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

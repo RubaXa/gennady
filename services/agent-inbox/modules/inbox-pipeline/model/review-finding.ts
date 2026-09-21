@@ -1,6 +1,6 @@
 // @file: Verified actionable review finding with provenance and resolution history.
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: ReviewCrossReviewer, ReviewSynthesis, inbox-queue
-// @tasks: TSK-176
 
 /** @purpose Actionable semantic problem separate from structural completeness. */
 export type ReviewFinding = Readonly<{

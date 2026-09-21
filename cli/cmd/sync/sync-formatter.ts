@@ -1,6 +1,6 @@
 // @file: Sync formatter — re-exports formatSyncOutput from shared, backward-compat formatEntries alias
+// @spec: CLI-SYNC
 // @consumers: sync.cmd.ts, sync-formatter.test.ts
-// @tasks: TSK-53, TSK-54, TSK-56
 
 import { formatSyncOutput as _formatSyncOutput } from '../../../shared/common/sync/sync-formatter.shared.ts';
 import type { SyncFileEntry } from './sync.types.ts';

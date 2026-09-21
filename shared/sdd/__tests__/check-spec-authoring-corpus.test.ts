@@ -1,6 +1,6 @@
 // @file: Corpus contract for adaptive spec-authoring validation and trivial auto-fix.
+// @spec: SHARED
 // @consumers: check, sdd-check
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

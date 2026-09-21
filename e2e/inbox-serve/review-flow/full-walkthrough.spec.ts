@@ -1,4 +1,6 @@
 // @file: full-walkthrough.spec.ts — сквозной прогон с seedReview + tick для загрузки ревью
+// @spec: AGENT-INBOX
+// @consumers: N/A
 
 import { test, expect, type Page } from '@playwright/test';
 import { resolve, dirname } from 'node:path';

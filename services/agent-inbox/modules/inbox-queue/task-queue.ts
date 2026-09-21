@@ -1,6 +1,6 @@
 // @file: TaskQueuePort + InMemoryTaskQueue — per-MR isolated queues with dedup by dedupKey, supersede (queued only), FIFO ordering, state management
+// @spec: AGENT-INBOX-INBOX-QUEUE
 // @consumers: Executor
-// @tasks: TSK-159, TSK-161
 
 import { logger } from '#logger';
 import { typeRef, type TaskInstance, type TaskStatus, type TaskRegistry } from './task-registry.ts';

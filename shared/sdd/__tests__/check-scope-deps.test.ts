@@ -1,4 +1,5 @@
 // @file: Unit tests for checkScopeDeps (B5) — scope spec deps cross-checked against the portal Scope Graph.
+// @spec: SHARED
 // @consumers: check
 
 import { describe, it } from 'node:test';

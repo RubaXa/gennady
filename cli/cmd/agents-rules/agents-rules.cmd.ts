@@ -1,6 +1,6 @@
 // @file: AgentsRulesCommand — prints orient usage instructions for AI agents.
+// @spec: CLI-AGENTS-RULES
 // @consumers: gennady.ts
-// @tasks: TSK-59
 
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';

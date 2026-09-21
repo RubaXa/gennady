@@ -1,6 +1,7 @@
 // @file: Unit tests for findResearchLinks + findRegisteredResearchLinks + checkResearchOrphans —
 //   the pure core behind SDD_RESEARCH_REF_BROKEN (adapter-side, sdd-check.cmd), SDD_RESEARCH_ORPHAN,
 //   and SDD_RESEARCH_UNREGISTERED.
+// @spec: SHARED
 // @consumers: check
 
 import { describe, it } from 'node:test';

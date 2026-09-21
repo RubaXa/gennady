@@ -1,4 +1,5 @@
 // @file: Objective quality gate for eval runs — mechanical success rules, not the stochastic judge.
+// @spec: AI-SKILLS
 // @consumers: cli; see docs/EVAL-SPEC.md for the rule backlog and the both-outcomes discipline.
 
 import { execFile, execFileSync } from 'node:child_process';

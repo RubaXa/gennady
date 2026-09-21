@@ -1,5 +1,25 @@
 # Module: `sdd-log`
 
+<!--SECTION:SPEC_ID-->
+
+CLI-SDD-LOG
+
+<!--/SECTION:SPEC_ID-->
+
+<!--SECTION:OVERVIEW-->
+
+## Обзор
+
+```mermaid
+flowchart LR
+  Contract[Контракт] --> Implementation[Реализация]
+  Implementation --> Verification[Проверка]
+```
+
+_Обзор пути от контракта к реализации и проверке._
+
+<!--/SECTION:OVERVIEW-->
+
 **Module:** sdd-log · **Parent scope:** [cli](../cli.spec.md) · **Task:** bootstrap — SDD v2 tooling (без тикета; см. ai/sdd-v2-plan.md (удалён))
 
 <!--SECTION:MODULE_VISION-->
@@ -121,6 +141,8 @@ $ npx gennady sdd-log ticket.md line 'ver `<cmd>` → pass'
 
 ## 4. Module Contracts (DbC)
 
+<details><summary>Подробности</summary>
+
 ### 4.1 Append-Only Log Write
 
 - **Runtime Backing:** `real-runtime`
@@ -211,6 +233,7 @@ $ npx gennady sdd-log ticket.md line 'ver `<cmd>` → pass'
 - Invariants:
   - Receipt воспроизводим: тот же verdict/участники/git-ref дают тот же текст блока (upsert заменяет предыдущий receipt того же kind, не дублирует)
 
+</details>
 <!--/SECTION:MODULE_CONTRACTS-->
 
 <!--SECTION:PUBLIC_OPTIONS-->
@@ -261,6 +284,8 @@ cli/cmd/sdd-log/
 
 ## 7. Module Decision Log
 
+<details><summary>Подробности</summary>
+
 ### D-SL001 — Append-only через вставку перед close-маркером
 
 - **Status:** active
@@ -305,6 +330,8 @@ cli/cmd/sdd-log/
 - **Why:** `sdd-verify` корректно и атомарно записывал доказательство, но статус фазы, DONE и Handoff оставались ручными независимыми правками. В живом прогоне receipt P1 существовал, однако P1 оставался `[ ]`, поэтому общий dependency preflight законно блокировал P2. `sdd-log complete` не совмещён с verifier: receipt остаётся отдельным наблюдаемым результатом реальных гейтов. Следующий вызов лишь проверяет этот receipt и одним fail-closed переходом закрывает три CLI-owned точки фазы.
 - **Rejected:** автоматически отмечать фазу внутри `sdd-verify` — это смешивает механическое доказательство с семантическим Handoff, которого verifier не знает.
 - **Risk accepted:** два CLI-вызова остаются, но между ними фаза честно остаётся незавершённой; второй вызов не может частично закрыть её.
+
+</details>
 <!--/SECTION:MODULE_DECISION_LOG-->
 
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->

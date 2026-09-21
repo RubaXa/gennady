@@ -1,6 +1,6 @@
 // @file: Unit tests for the repo code/infra probe heuristics.
+// @spec: SHARED
 // @consumers: probe
-// @tasks: N/A
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';

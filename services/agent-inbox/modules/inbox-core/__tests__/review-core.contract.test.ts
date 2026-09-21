@@ -1,6 +1,6 @@
 // @file: Closed-world contract tests for canonical review events, state values and core ports.
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: node:test runner
-// @tasks: TSK-173
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

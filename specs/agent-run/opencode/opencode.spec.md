@@ -1,5 +1,25 @@
 # Module: opencode
 
+<!--SECTION:SPEC_ID-->
+
+AGENT-RUN-OPENCODE
+
+<!--/SECTION:SPEC_ID-->
+
+<!--SECTION:OVERVIEW-->
+
+## Обзор
+
+```mermaid
+flowchart LR
+  Contract[Контракт] --> Implementation[Реализация]
+  Implementation --> Verification[Проверка]
+```
+
+_Обзор пути от контракта к реализации и проверке._
+
+<!--/SECTION:OVERVIEW-->
+
 <!--SECTION:MODULE_VISION-->
 
 ## 1. Module Vision
@@ -51,6 +71,8 @@ _Это полный список сущностей модуля `opencode`. Л
 
 ## 4. Entity Surfaces
 
+<details><summary>Подробности</summary>
+
 ### `OpencodeEngine`
 
 - **Type:** Adapter (implements `AgentEngine`)
@@ -73,11 +95,15 @@ _Это полный список сущностей модуля `opencode`. Л
 - **Lifecycle:** чистая функция, без состояния.
 - **Errors & Degradation:** нераспознанный паттерн → `LAUNCH_FAILED` + сырой stderr в hint.
 - **Consumers:** Internal — `OpencodeEngine`.
+
+</details>
 <!--/SECTION:ENTITY_SURFACES-->
 
 <!--SECTION:MODULE_CONTRACTS-->
 
 ## 5. Module Contracts (DbC)
+
+<details><summary>Подробности</summary>
 
 ### 5.1 Adapters
 
@@ -128,6 +154,8 @@ _Это полный список сущностей модуля `opencode`. Л
 
 - Invariants: всегда возвращает валидный `ErrorCode`; никогда не кидает сама. Паттерны `VERSION_MISMATCH` намеренно широкие — текст ошибки opencode хрупок к версиям, узкий матч ловит не всё.
 - `TIMEOUT` живёт вне error-map: `OpencodeEngine` по своему таймеру делает SIGTERM→SIGKILL и кидает `AgentRunError('TIMEOUT')` сам.
+
+</details>
 <!--/SECTION:MODULE_CONTRACTS-->
 
 <!--SECTION:PUBLIC_OPTIONS-->
@@ -170,6 +198,8 @@ Namespace: файлы `opencode-*`, тип `OpencodeEngine` — `rg opencode` н
 <!--SECTION:MODULE_DECISION_LOG-->
 
 ## 8. Module Decision Log
+
+<details><summary>Подробности</summary>
 
 ### D-001 — readonly через эфемерный agent-профиль (`--agent`)
 
@@ -238,6 +268,8 @@ Namespace: файлы `opencode-*`, тип `OpencodeEngine` — `rg opencode` н
 - **Решение:** явную `model` валидируем заранее против `listModels()`; нет в списке → `MODEL_UNAVAILABLE` со списком, до запуска. Дефолтную модель не проверяем.
 - **Supersedes:** stderr-паттерн `MODEL_UNAVAILABLE` в error-map убран (не срабатывал).
 - **Примечание:** паттерн `MODEL_UNAVAILABLE` оставлен в error-map как safety net (post-run fallback). Основной механизм — pre-validation через `listModels()` перед запуском.
+
+</details>
 <!--/SECTION:MODULE_DECISION_LOG-->
 
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->

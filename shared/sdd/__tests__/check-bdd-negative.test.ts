@@ -1,6 +1,6 @@
 // @file: Unit tests for checkBddNegativeScenario (SDD_BDD_MISSING_NEGATIVE) and its wiring into checkTicket.
+// @spec: SHARED
 // @consumers: check
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,6 +1,6 @@
 // @file: GitLab-specific implementation of merge request operations.
+// @spec: VCS-VCS-CLIENT
 // @consumers: VcsGitlabClient
-// @tasks: TSK-29, TSK-67, TSK-73, TSK-82, TSK-84, TSK-88, TSK-89
 
 import {
   VcsClientMergeRequests,

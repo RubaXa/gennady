@@ -1,6 +1,6 @@
 // @file: Entry point for the gennady sdd-verify command — runs the gates and exits (kept out of cmd.ts so importing run() never executes gates).
+// @spec: CLI-SDD-VERIFY
 // @consumers: gennady.ts
-// @tasks: N/A
 
 import { spawnSync } from 'node:child_process';
 import { resolve } from 'node:path';

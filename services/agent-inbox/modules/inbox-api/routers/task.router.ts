@@ -1,6 +1,6 @@
 // @file: TaskRouter — POST /api/task handler, enqueues tasks with explicit or computed dedup keys.
+// @spec: AGENT-INBOX-INBOX-API
 // @consumers: HttpServer
-// @tasks: TSK-162
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { logger } from '#logger';

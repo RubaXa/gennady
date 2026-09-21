@@ -1,6 +1,7 @@
 // @file: Durable per-scenario eval results (GAP-E-6, D-62) — always written under
 //   ai/flow-eval/results/<date>-<scenario-id>[-N]/, never gitignored. Complements, does not replace,
 //   the transient whole-batch artifacts sandbox-lifecycle.ts writes under .results/.
+// @spec: AI-SKILLS
 // @consumers: cli.ts (writes one record per scenario after each run); scripts/results-table.ts (reads
 //   every summary.json to regenerate docs/journal/RESULTS.md)
 

@@ -1,6 +1,6 @@
 // @file: Unit tests for checkSpecHierarchy — module↔parent-index verification (AX_HIERARCHICAL_SPECS / AX_SCOPE_STAYS_THIN).
+// @spec: SHARED
 // @consumers: check
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

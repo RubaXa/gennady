@@ -1,6 +1,6 @@
 // @file: Unit tests for shared sync core — resolvePackageDir, compareBytes
+// @spec: SHARED
 // @consumers: sync.cmd.ts, sync-skills.cmd.ts
-// @tasks: TSK-56
 
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';

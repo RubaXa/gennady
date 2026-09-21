@@ -1,6 +1,6 @@
 // @file: File classifier — loads YAML rules and classifies files into 10 categories (first-match wins).
+// @spec: MR-STATS
 // @consumers: mr-stats.cmd
-// @tasks: TSK-139
 
 import { readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';

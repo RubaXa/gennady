@@ -1,6 +1,6 @@
 // @file: Contract matrix tests for ReviewRuntimeProfile composition.
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: node:test runner
-// @tasks: TSK-172
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

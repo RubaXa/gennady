@@ -1,5 +1,11 @@
 # infra-npm-publish: Infrastructure Specification
 
+<!--SECTION:SPEC_ID-->
+
+INFRA-NPM-PUBLISH
+
+<!--/SECTION:SPEC_ID-->
+
 ## scope-type
 
 infrastructure

@@ -1,6 +1,6 @@
 // @file: EvalHarness — orchestrates all 10 eval runs, collects metrics, writes eval-report.json + trend.jsonl
-// @consumers: cli/cmd/inbox/eval.cmd.ts (TSK-165)
-// @tasks: TSK-165
+// @spec: AGENT-INBOX-INBOX-EVAL
+// @consumers: cli/cmd/inbox/eval.cmd.ts (IE-harness)
 
 import { mkdirSync, writeFileSync, appendFileSync } from 'node:fs';
 import { join } from 'node:path';

@@ -1,6 +1,6 @@
 // @file: Unit tests for VcsGitlabMergeRequests.unapprove — success, idempotent 409, 403 error, type contract.
+// @spec: VCS-VCS-CLIENT
 // @consumers: node:test runner
-// @tasks: TSK-73
 
 import { describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';

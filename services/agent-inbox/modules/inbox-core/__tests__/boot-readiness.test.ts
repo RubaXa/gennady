@@ -1,6 +1,6 @@
 // @file: Unit tests for BootReadiness — boot-phase state machine, snapshot contract, failure path, config status, listener lifecycle
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: node:test runner
-// @tasks: TSK-157
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,6 +1,6 @@
 // @file: Unit tests for worktree-ops (gcStaleWorktrees, TTL constant, removeAllWorktrees, prepareMrWorktree).
+// @spec: CLI
 // @consumers: node:test runner
-// @tasks: TSK-93, TSK-169
 
 import { describe, it, beforeEach, afterEach, mock } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,6 +1,6 @@
 // @file: Integration tests for MrRouter — POST assign, POST action, GET report, 404 cases.
+// @spec: AGENT-INBOX-INBOX-API
 // @consumers: node:test runner
-// @tasks: TSK-106
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';

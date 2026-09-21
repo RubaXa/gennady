@@ -1,6 +1,6 @@
 // @file: Exact file scope resolution for Swift verification gates.
+// @spec: CLI-VERIFY
 // @consumers: swift-plugin, swift-plan.logic
-// @tasks: V-11
 
 import fs from 'node:fs';
 import path from 'node:path';

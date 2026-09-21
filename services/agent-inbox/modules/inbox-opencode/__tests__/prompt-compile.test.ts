@@ -1,6 +1,6 @@
 // @file: Unit tests for PromptCompiler — pointers not inlined, schema in task not system, Handlebars partials.
+// @spec: AGENT-INBOX-INBOX-OPENCODE
 // @consumers: node:test runner
-// @tasks: TSK-160, TSK-175
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

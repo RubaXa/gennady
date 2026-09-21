@@ -1,6 +1,6 @@
 // @file: Unit tests for SessionRegistry — sessionId ↔ {taskId, mr, artifacts[], model} in-memory store.
+// @spec: AGENT-INBOX-INBOX-OPENCODE
 // @consumers: node:test runner
-// @tasks: TSK-160
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

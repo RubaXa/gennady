@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+// @file: ai/kit/audit-halt-activation.mjs
+// @spec: AI-SKILLS-DIRECTIVE-ASSEMBLY
+// @consumers: N/A
 /**
  * Halt-activation audit for sdd-v2 templates (AUTHORING.md §10 / operator principle, same family
  * as `audit-axiom-activation.mjs` and `audit-contract-activation.mjs`).

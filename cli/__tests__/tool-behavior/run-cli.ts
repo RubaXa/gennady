@@ -1,7 +1,7 @@
 // @file: Real-CLI runner for tool-behavior tests — spawns `node --import <tsx-loader> cli/gennady.ts
 //   <args>` against a fixture root, exactly like directive-tool-contract.test.ts's own runCli.
+// @spec: CLI
 // @consumers: tool-behavior/*.test.ts
-// @tasks: N/A
 
 import { spawn, spawnSync } from 'node:child_process';
 import { join, resolve } from 'node:path';

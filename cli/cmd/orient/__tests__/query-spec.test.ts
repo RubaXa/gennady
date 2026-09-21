@@ -1,6 +1,6 @@
 // @file: Unit tests for loadSpecOverview and searchSpec — S8/S9 spec queries.
+// @spec: CLI-ORIENT
 // @consumers: OrientCommand
-// @tasks: TSK-55
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -18,12 +18,12 @@ describe('loadSpecOverview', () => {
     const tmpDir = createTmpDir();
     const specsDir = join(tmpDir, 'specs', 'cli');
     mkdirSync(specsDir, { recursive: true });
-    writeFileSync(join(specsDir, 'cli.spec.md'), '# TSK-01 some task\nTSK-02 other task');
+    writeFileSync(join(specsDir, 'cli.spec.md'), '# DP-fields some task\nTSK-02 other task');
 
     const overviews = loadSpecOverview(tmpDir);
     assert.strictEqual(overviews.length, 1);
     assert.ok(overviews[0].specPath.endsWith('cli.spec.md'));
-    assert.deepStrictEqual(overviews[0].taskIds, ['TSK-01', 'TSK-02']);
+    assert.deepStrictEqual(overviews[0].taskIds, ['DP-fields', 'TSK-02']);
     assert.strictEqual(overviews[0].isLibraryLevel, false);
   });
 
@@ -38,7 +38,7 @@ describe('loadSpecOverview', () => {
     const specsDir = join(tmpDir, 'specs', 'dbc');
     mkdirSync(specsDir, { recursive: true });
     writeFileSync(join(specsDir, 'dbc.spec.md'), '# Library spec — no tasks');
-    writeFileSync(join(specsDir, 'dbc-parser.spec.md'), '# TSK-01 parser task');
+    writeFileSync(join(specsDir, 'dbc-parser.spec.md'), '# DP-fields parser task');
 
     const overviews = loadSpecOverview(tmpDir);
     assert.strictEqual(overviews.length, 2);
@@ -53,7 +53,7 @@ describe('searchSpec', () => {
     const tmpDir = createTmpDir();
     const specsDir = join(tmpDir, 'specs');
     mkdirSync(specsDir, { recursive: true });
-    writeFileSync(join(specsDir, 'my-spec.spec.md'), '# TSK-10 task');
+    writeFileSync(join(specsDir, 'my-spec.spec.md'), '# DL-fixtures task');
 
     const result = searchSpec(tmpDir, 'my-spec.spec.md');
     assert.ok(result);

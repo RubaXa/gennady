@@ -1,6 +1,6 @@
 // @file: BackgroundVerifier — periodic (~1/min) poll of active MRs: sha/new-discussion detection → gitlab_event journal entries.
+// @spec: AGENT-INBOX-INBOX-VCS
 // @consumers: inbox-queue (reads gitlab_event entries; BackgroundVerifier does NOT call queue directly)
-// @tasks: TSK-158
 
 import { logger } from '#logger';
 import type { VcsPort } from './vcs-port.ts';

@@ -1,7 +1,7 @@
 // @file: DebugLogButton — shared 🐞 header control: copies the in-memory log buffer to the clipboard
 //   with a toast, and highlights when an unhandled error occurred (spec §3). One instance in Header.
+// @spec: AGENT-INBOX-INBOX-DASHBOARD
 // @consumers: Header
-// @tasks: TSK-debug-log
 
 import { useEffect, useState } from 'react';
 import { Bug } from 'lucide-react';

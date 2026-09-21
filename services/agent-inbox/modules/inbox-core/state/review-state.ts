@@ -1,6 +1,6 @@
 // @file: Deterministic canonical MR state reconstructed exclusively from ordered journal events.
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: StateStore, inbox-pipeline, inbox-api
-// @tasks: TSK-173
 
 import { ReviewConfig } from '../review-config.ts';
 import { ReviewEvent } from '../types/review-event.type.ts';

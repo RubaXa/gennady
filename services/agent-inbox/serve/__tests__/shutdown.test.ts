@@ -1,6 +1,6 @@
 // @file: Integration tests for gracefulShutdown — server stops cleanly, no orphan connections.
+// @spec: AGENT-INBOX
 // @consumers: node:test runner
-// @tasks: TSK-115
 
 import { describe, it, before } from 'node:test';
 import assert from 'node:assert/strict';

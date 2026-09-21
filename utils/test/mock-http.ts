@@ -1,8 +1,10 @@
 // @file: mock-http — network-level HTTP interception harness for node:test black-box e2e.
-// @purpose Swap the backend at the undici/fetch layer so production adapters run unchanged
-//          while fixtures answer their HTTP calls. Implements testing AX_HTTP_MOCK_AGENT_PATTERN.
-// @consumers black-box e2e suites that drive real adapters (VcsInboxReal, OpenCodeReal) without
-//            reaching the network — the SUT keeps calling real URLs; only the transport is faked.
+//   @purpose Swap the backend at the undici/fetch layer so production adapters run unchanged
+//            while fixtures answer their HTTP calls. Implements testing AX_HTTP_MOCK_AGENT_PATTERN.
+//   @consumers black-box e2e suites that drive real adapters (VcsInboxReal, OpenCodeReal) without
+//              reaching the network — the SUT keeps calling real URLs; only the transport is faked.
+// @spec: SHARED
+// @consumers: N/A
 
 import { MockAgent, setGlobalDispatcher, getGlobalDispatcher, type Dispatcher } from 'undici';
 

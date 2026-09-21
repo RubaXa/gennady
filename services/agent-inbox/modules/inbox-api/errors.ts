@@ -1,6 +1,6 @@
 // @file: ApiError — structured error types and helper for inbox-api HTTP responses.
+// @spec: AGENT-INBOX-INBOX-API
 // @consumers: inbox-api routers, http-server
-// @tasks: TSK-106
 
 import type { InboxErrorCode } from '../inbox-core/errors.ts';
 

@@ -1,6 +1,6 @@
 // @file: Coarse code/infra heuristics for a repo — only run behind `sdd-state --probe` (minimal-knowledge default).
+// @spec: SHARED
 // @consumers: sdd-state.cmd
-// @tasks: N/A
 
 import { readdirSync, existsSync, type Dirent } from 'node:fs';
 import { join } from 'node:path';

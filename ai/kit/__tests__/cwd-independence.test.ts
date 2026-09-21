@@ -7,8 +7,8 @@
 //   cwd, because lazy-assembly.ts's resolveAssemblyMode() could not find the real
 //   assembly-manifest.json and silently resolved every directive as 'monolith' (T-B6-09,
 //   40-TRACK-DIRECTIVES-SKILLS.md §0 "Методическая ловушка (cwd)").
+// @spec: AI-SKILLS-DIRECTIVE-ASSEMBLY
 // @consumers: node:test runner
-// @tasks: T-B6-09
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

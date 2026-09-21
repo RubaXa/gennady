@@ -1,6 +1,6 @@
 // @file: Unit tests for mr-stats mr-resolver — parseMrUrl, retrieveMrMetadata, listChangedFiles, diffNumstat, removeWorktree.
+// @spec: MR-STATS
 // @consumers: node:test runner
-// @tasks: TSK-139
 
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';

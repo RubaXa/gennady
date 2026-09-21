@@ -1,6 +1,6 @@
 // @file: SddStateCommand — CLI entry for gennady sdd-state: deterministic project-state preflight for the router.
+// @spec: CLI-SDD-STATE
 // @consumers: gennady.ts
-// @tasks: N/A
 
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';

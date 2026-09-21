@@ -1,8 +1,8 @@
 // @file: EffectExecutor — sole executor of public VCS mutations (NFC-SV-07): react/reply/approve/
 //   resolve/draft-note-delete. Reconciles against live discussion threads before posting (dedup)
 //   and guards re-application via the `effect_applied` audit marker (idempotent across restarts).
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: RoleInstance (effect nodes), reviewer.role.ts / author.role.ts effect nodes
-// @tasks: TSK-113, TSK-121
 
 import { logger } from '#logger';
 import { emitDryRun } from '../inbox-core/dry-run.ts';

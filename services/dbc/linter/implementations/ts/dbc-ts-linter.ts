@@ -1,6 +1,6 @@
 // @file: DbcContractMatchValidator (pure validation) and DbcTsLinter adapter implementing DbcLinter with autofix chain.
+// @spec: DBC-DBC-LINTER
 // @consumers: DbcLinter
-// @tasks: TSK-09, TSK-11, TSK-20, TSK-21, TSK-88
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { logger } from '#logger';

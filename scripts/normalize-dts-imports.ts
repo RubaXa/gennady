@@ -1,3 +1,6 @@
+// @file: scripts/normalize-dts-imports.ts
+// @spec: INFRA-BASE
+// @consumers: N/A
 import { readFileSync, writeFileSync } from 'node:fs';
 import fg from 'fast-glob';
 import { logger } from '../shared/common/logger.ts';

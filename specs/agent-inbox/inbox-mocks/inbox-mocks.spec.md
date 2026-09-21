@@ -1,5 +1,25 @@
 # Module: inbox-mocks
 
+<!--SECTION:SPEC_ID-->
+
+AGENT-INBOX-INBOX-MOCKS
+
+<!--/SECTION:SPEC_ID-->
+
+<!--SECTION:OVERVIEW-->
+
+## Обзор
+
+```mermaid
+flowchart LR
+  Contract[Контракт] --> Implementation[Реализация]
+  Implementation --> Verification[Проверка]
+```
+
+_Обзор пути от контракта к реализации и проверке._
+
+<!--/SECTION:OVERVIEW-->
+
 <!--SECTION:MODULE_VISION-->
 
 ## 1. Module Vision
@@ -43,6 +63,8 @@ await runtime.advanceToQuietDeadline();
 
 ## 4. Entity Surfaces
 
+<details><summary>Подробности</summary>
+
 ### `ReviewScenario`
 
 - **Public Operations:** declare MR facts/events/results; start; advance; inspect observations.
@@ -64,11 +86,15 @@ await runtime.advanceToQuietDeadline();
 - **Lifecycle:** one instance per scenario run-id.
 - **Errors & Degradation:** missing event/version fails the scenario rather than producing partial invented UI state.
 - **Consumers:** API contract and dashboard composition tests.
+
+</details>
 <!--/SECTION:ENTITY_SURFACES-->
 
 <!--SECTION:MODULE_CONTRACTS-->
 
 ## 5. Module Contracts (DbC)
+
+<details><summary>Подробности</summary>
 
 - Same input and controlled time produce the same journal, tasks, packages and projections.
 - Every production port with confirmed variability has a contract-compatible test adapter.
@@ -84,6 +110,8 @@ await runtime.advanceToQuietDeadline();
 - **Invariants:** no production root, network fallback or unspecified adapter call.
 - **Runtime Backing:** deterministic in-memory simulation.
 - **Verification Levels:** contract, unit, integration, UI e2e.
+
+</details>
 <!--/SECTION:MODULE_CONTRACTS-->
 
 <!--SECTION:PUBLIC_OPTIONS-->
@@ -112,7 +140,11 @@ inbox-mocks/
 
 ## 8. Module Decision Log
 
+<details><summary>Подробности</summary>
+
 - `D-MOCK-01`: existing factories are expanded into adapters; they are not replaced by a second fixture system.
+
+</details>
 <!--/SECTION:MODULE_DECISION_LOG-->
 
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->

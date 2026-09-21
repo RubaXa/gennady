@@ -1,6 +1,6 @@
 // @file: Integration tests for SddCheckCommand#run — per-ticket + project-wide checks, exit codes.
+// @spec: CLI-SDD-CHECK
 // @consumers: gennady.ts
-// @tasks: N/A
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -818,7 +818,7 @@ describe('SddCheckCommand', () => {
     const t = join(dir, 'unparsed-row.md');
     writeFileSync(
       t,
-      ticketWithCoverage('cli-foo', '- All scenarios → Deferred Test Ownership: TSK-34'),
+      ticketWithCoverage('cli-foo', '- All scenarios → Deferred Test Ownership: UC-tests'),
       'utf-8'
     );
     const r = await mod.run(argv(`--task=${t}`));
@@ -1629,7 +1629,7 @@ describe('SddCheckCommand', () => {
     assert.doesNotMatch(viaTask.text, /SDD_MISSING_EXECUTION_LOG/);
   });
 
-  it('--all: a legacy tracker embedded in tasks/<scope>/README.md (no *.3-tasks.md file) is still cross-checked — the TSK-58 gap: tracker says DONE, ticket itself is still TODO', async () => {
+  it('--all: a legacy tracker embedded in tasks/<scope>/README.md (no *.3-tasks.md file) is still cross-checked — the SS-skills gap: tracker says DONE, ticket itself is still TODO', async () => {
     const root = join(dir, 'legacy-tracker-proj');
     const scopeDir = join(root, 'tasks', 'cli');
     mkdirSync(scopeDir, { recursive: true });
@@ -1771,7 +1771,7 @@ describe('SddCheckCommand', () => {
     assert.match(r.text, /SDD_TASK_ID_PREFIX_CLASH/);
   });
 
-  it('--all: no PREFIX_CLASH for a bare numeric-suffix relationship (TSK-1 vs TSK-10)', async () => {
+  it('--all: no PREFIX_CLASH for a bare numeric-suffix relationship (TSK-1 vs DL-fixtures)', async () => {
     const root = join(dir, 'no-prefix-clash-proj');
     mkdirSync(join(root, 'specs', 'cli'), { recursive: true });
     writeFileSync(
@@ -1781,7 +1781,7 @@ describe('SddCheckCommand', () => {
     );
     writeFileSync(
       join(root, 'specs', 'cli', 'cli.task-b.md'),
-      CLEAN_TICKET.replace('cli-foo', 'TSK-10').replace('[x] DONE', '[ ] TODO'),
+      CLEAN_TICKET.replace('cli-foo', 'DL-fixtures').replace('[x] DONE', '[ ] TODO'),
       'utf-8'
     );
     const r = await mod.run(argv('--all', root));

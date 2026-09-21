@@ -1,6 +1,6 @@
 // @file: StateStore — unified access point to all file-backed state (config, registry, audit) under ~/.gennady.
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: inbox-api, inbox-roles, inbox-dashboard, inbox-opencode, CLI
-// @tasks: TSK-109, TSK-157, TSK-172, TSK-173
 
 import { join } from 'node:path';
 import { homedir } from 'node:os';

@@ -1,6 +1,6 @@
 // @file: Unit tests for the cross-ticket task-DAG check (collisions, unresolved deps, cycles).
+// @spec: SHARED
 // @consumers: check
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -59,9 +59,11 @@ describe('checkTaskGraph', () => {
     );
   });
 
-  it('does NOT flag a bare numeric-suffix relationship (TSK-1 vs TSK-10)', () => {
+  it('does NOT flag a bare numeric-suffix relationship (TSK-1 vs DL-fixtures)', () => {
     assert.ok(
-      !codes([ref('a.md', 'TSK-1'), ref('b.md', 'TSK-10')]).includes('SDD_TASK_ID_PREFIX_CLASH')
+      !codes([ref('a.md', 'TSK-1'), ref('b.md', 'DL-fixtures')]).includes(
+        'SDD_TASK_ID_PREFIX_CLASH'
+      )
     );
   });
 });

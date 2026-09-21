@@ -1,6 +1,6 @@
 // @file: Query files by keyword — S4 scenario with exact, prefix, and fuzzy scoring.
+// @spec: CLI-ORIENT
 // @consumers: OrientCommand
-// @tasks: TSK-55
 
 import type { ScannedFile, KeywordMatch, FileWordRef } from '../orient.types.ts';
 import { damerauLevenshtein } from './damerau-levenshtein.ts';

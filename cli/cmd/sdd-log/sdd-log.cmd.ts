@@ -1,6 +1,6 @@
 // @file: SddLogCommand — append log events and atomically complete a verified phase.
+// @spec: CLI-SDD-LOG
 // @consumers: gennady.ts
-// @tasks: N/A
 
 import { relative, resolve, sep } from 'node:path';
 import { realpathSync } from 'node:fs';

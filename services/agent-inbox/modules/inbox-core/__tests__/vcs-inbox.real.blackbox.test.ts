@@ -1,10 +1,10 @@
 // @file: Black-box proof for production VcsInboxReal through bounded GitLab GraphQL discovery.
+//   The PRODUCTION VcsInboxReal adapter (through VcsGitlabClient + the real
+//   GraphQL query and normalization) runs unchanged; only the network is faked at the undici
+//   layer. The adapter believes it is calling the real GitLab instance. Proves the network-
+//   interception tier from AX_HTTP_MOCK_AGENT_PATTERN end-to-end for MR discovery.
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: node:test runner
-// @tasks: TSK-110, TSK-174
-// The PRODUCTION VcsInboxReal adapter (through VcsGitlabClient + the real
-// GraphQL query and normalization) runs unchanged; only the network is faked at the undici
-// layer. The adapter believes it is calling the real GitLab instance. Proves the network-
-// interception tier from AX_HTTP_MOCK_AGENT_PATTERN end-to-end for MR discovery.
 
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';

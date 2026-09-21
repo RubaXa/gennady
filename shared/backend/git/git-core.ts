@@ -1,6 +1,6 @@
 // @file: Describe origin remote repository data (host, project, scheme).
+// @spec: SHARED
 // @consumers: build-review-context-git.logic, commit-gen, resolve-conflicts-context-git-build.logic, resolve-conflicts-context-git.type, review-context-git.type, review.cmd, vcs-reply.cmd
-// @tasks: N/A
 
 import { parseGitDiff, type ParsedDiffFile } from './git-diff.ts';
 import { execSyncSafe } from '../../common/exec.ts';

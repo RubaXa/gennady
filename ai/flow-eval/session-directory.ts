@@ -1,4 +1,5 @@
 // @file: Shared OpenCode session directory registry.
+// @spec: AI-SKILLS
 // @consumers: runtime, evidence, CLI; prevents parallel sessions crossing working trees.
 
 import type { SddEvalSessionDirectoryRegistry } from './types.ts';

@@ -1,4 +1,5 @@
 // @file: Istanbul JSON adapter for JavaScript-family coverage projects.
+// @spec: CLI-TESTCOV
 // @consumers: coverage-adapter-registry.ts
 
 import { existsSync, lstatSync, readFileSync, statSync } from 'node:fs';

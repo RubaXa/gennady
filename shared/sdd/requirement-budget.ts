@@ -1,6 +1,6 @@
 // @file: Lazy list and atomic-entry budgets for canonical scope/module Requirements sections.
+// @spec: SHARED
 // @consumers: check, sdd-check
-// @tasks: N/A
 
 import { extractSection } from './section.ts';
 import type { Finding } from './finding.ts';

@@ -2,8 +2,8 @@
 //   injection (AI-40/D-119). Pure computeMrShape scenarios use hand-built changeset/diffText
 //   fixtures; buildTrackContext scenarios need a real git worktree (no injection seam exists for
 //   git itself — worktreePath IS the seam, so tests build real temp repos, per AX_MOCK_AS_LAST_RESORT).
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: node:test runner
-// @tasks: TSK-134
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

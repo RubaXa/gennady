@@ -1,6 +1,6 @@
 // @file: Unit tests for GrepSymbolIndexAdapter — pure regex over text, no native module, runs unconditionally.
+// @spec: SHARED
 // @consumers: node:test runner
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

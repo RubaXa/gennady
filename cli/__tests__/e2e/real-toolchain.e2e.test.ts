@@ -5,8 +5,8 @@
 //   error, a real failing assertion, real unformatted code, or a real coverage shortfall is caught.
 //   This closes that gap. Gated behind GENNADY_E2E=1 (slow: real tsc/c8 cold starts) so it runs only
 //   under `npm run test:e2e`, never the commit gate.
+// @spec: CLI-E2E
 // @consumers: N/A
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

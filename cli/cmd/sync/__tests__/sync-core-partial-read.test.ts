@@ -1,6 +1,6 @@
 // @file: SO-7 — a source scan a readdirSync error cut short must never look like an empty source.
+// @spec: CLI-SYNC
 // @consumers: sync-core.ts
-// @tasks: TSK-56
 
 import { describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';

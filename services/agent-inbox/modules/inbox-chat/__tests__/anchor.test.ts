@@ -1,6 +1,6 @@
-// @file: BDD coverage for TSK-163 artifact anchors.
+// @file: BDD coverage for IC-anchors artifact anchors.
+// @spec: AGENT-INBOX-INBOX-CHAT
 // @consumers: node:test runner
-// @tasks: TSK-163
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,6 +1,6 @@
 // @file: Unit tests for InventorySyncCheck's reverse sweep — deferred-implementation marker parsing and error suppression.
+// @spec: CLI-LINT
 // @consumers: InventorySyncCheck
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -11,7 +11,7 @@ import {
   type DeferralCheck,
 } from '../inventory-sync.check.ts';
 
-/** A valid deferral to `TSK-42`, for the reverse-sweep tests that don't exercise validation. */
+/** A valid deferral to `INP-rel-dep`, for the reverse-sweep tests that don't exercise validation. */
 const validDeferral = (taskId: string): DeferralCheck => ({ taskId, valid: true });
 
 const spec = (rows: string): string =>
@@ -20,19 +20,19 @@ const spec = (rows: string): string =>
 describe('parseDeferredEntities', () => {
   it('extracts the Task-ID from a table row carrying the Deferred Implementation marker', () => {
     const got = parseDeferredEntities(
-      spec('| `LaterEntity` | Service | Deferred Implementation: TSK-42 — ships next batch |')
+      spec('| `LaterEntity` | Service | Deferred Implementation: INP-rel-dep — ships next batch |')
     );
-    assert.deepStrictEqual([...got], [['LaterEntity', 'TSK-42']]);
+    assert.deepStrictEqual([...got], [['LaterEntity', 'INP-rel-dep']]);
   });
 
   it('extracts the Task-ID from a bullet-list row', () => {
     const body = [
       '<!--SECTION:ENTITY_INVENTORY-->',
       '## 3. Entity Inventory',
-      '- `LaterEntity` — Deferred Implementation: TSK-42, ships next batch.',
+      '- `LaterEntity` — Deferred Implementation: INP-rel-dep, ships next batch.',
       '<!--/SECTION:ENTITY_INVENTORY-->',
     ].join('\n');
-    assert.deepStrictEqual([...parseDeferredEntities(body)], [['LaterEntity', 'TSK-42']]);
+    assert.deepStrictEqual([...parseDeferredEntities(body)], [['LaterEntity', 'INP-rel-dep']]);
   });
 
   it('leaves unmarked rows out of the result', () => {
@@ -65,10 +65,10 @@ describe('reverseUnimplemented', () => {
   });
 
   it('reports a VALIDLY deferred-but-unimplemented entity as informational, not an error', () => {
-    const deferredEntities = new Map([['Later', validDeferral('TSK-42')]]);
+    const deferredEntities = new Map([['Later', validDeferral('INP-rel-dep')]]);
     const result = reverseUnimplemented(['Later'], new Set(), 'spec.md', deferredEntities);
     assert.deepStrictEqual(result.errors, []);
-    assert.deepStrictEqual(result.deferred, [{ name: 'Later', taskId: 'TSK-42' }]);
+    assert.deepStrictEqual(result.deferred, [{ name: 'Later', taskId: 'INP-rel-dep' }]);
   });
 
   it('an INVALID deferral is drift, not an exemption — errors with the reason, never reported deferred', () => {
@@ -106,38 +106,38 @@ describe('reverseUnimplemented', () => {
   });
 
   it('mixes a valid deferral and a genuinely missing one correctly', () => {
-    const deferredEntities = new Map([['Later', validDeferral('TSK-42')]]);
+    const deferredEntities = new Map([['Later', validDeferral('INP-rel-dep')]]);
     const result = reverseUnimplemented(['Later', 'Ghost'], new Set(), 'spec.md', deferredEntities);
     assert.strictEqual(result.errors.length, 1);
     assert.ok(result.errors[0]?.message.includes('Ghost'));
-    assert.deepStrictEqual(result.deferred, [{ name: 'Later', taskId: 'TSK-42' }]);
+    assert.deepStrictEqual(result.deferred, [{ name: 'Later', taskId: 'INP-rel-dep' }]);
   });
 });
 
 describe('checkDeferral', () => {
   const tickets = [
-    { taskId: 'TSK-10', status: '[ ] TODO', scope: 'cli' },
-    { taskId: 'TSK-11', status: '[x] DONE', scope: 'cli' },
-    { taskId: 'TSK-12', status: '[ ] TODO', scope: 'other' },
-    { taskId: 'TSK-13', status: '[~] IN_PROGRESS', scope: 'cli' },
-    { taskId: 'TSK-14', status: '[!] BLOCKED', scope: 'cli' },
-    { taskId: 'TSK-15', status: '[-] CANCELLED', scope: 'cli' },
-    { taskId: 'TSK-16', status: '', scope: 'cli' },
-    { taskId: 'TSK-17', status: '[ ] TODO', scope: null },
+    { taskId: 'DL-fixtures', status: '[ ] TODO', scope: 'cli' },
+    { taskId: 'DL-content', status: '[x] DONE', scope: 'cli' },
+    { taskId: 'LIN-types', status: '[ ] TODO', scope: 'other' },
+    { taskId: 'LIN-headers', status: '[~] IN_PROGRESS', scope: 'cli' },
+    { taskId: 'LIN-anchors', status: '[!] BLOCKED', scope: 'cli' },
+    { taskId: 'LIN-dbc', status: '[-] CANCELLED', scope: 'cli' },
+    { taskId: 'LIN-command', status: '', scope: 'cli' },
+    { taskId: 'LIN-unit', status: '[ ] TODO', scope: null },
   ];
   // The status/scope tests don't care about ownership — pass ticketOwns=true so only status/scope gate.
   const owns = (id: string, scope: string) => checkDeferral(id, tickets, scope, 'Foo', true);
 
   it('valid when the ticket is ACTIVE (TODO), in scope, and names the entity', () => {
-    assert.deepStrictEqual(owns('TSK-10', 'cli'), { taskId: 'TSK-10', valid: true });
+    assert.deepStrictEqual(owns('DL-fixtures', 'cli'), { taskId: 'DL-fixtures', valid: true });
   });
 
   it('valid for an IN_PROGRESS owner — an active ticket is building the entity', () => {
-    assert.strictEqual(owns('TSK-13', 'cli').valid, true);
+    assert.strictEqual(owns('LIN-headers', 'cli').valid, true);
   });
 
   it('invalid for a BLOCKED owner — stalled, not actively building (strict: only TODO/IN_PROGRESS)', () => {
-    const r = owns('TSK-14', 'cli');
+    const r = owns('LIN-anchors', 'cli');
     assert.strictEqual(r.valid, false);
     assert.match(r.reason ?? '', /не в активном статусе/);
   });
@@ -149,48 +149,48 @@ describe('checkDeferral', () => {
   });
 
   it('invalid when the ticket is DONE — a completed ticket cannot build a future entity', () => {
-    const r = owns('TSK-11', 'cli');
+    const r = owns('DL-content', 'cli');
     assert.strictEqual(r.valid, false);
     assert.match(r.reason ?? '', /не в активном статусе/);
   });
 
   it('invalid when the ticket is CANCELLED — it will never build the entity', () => {
-    const r = owns('TSK-15', 'cli');
+    const r = owns('LIN-dbc', 'cli');
     assert.strictEqual(r.valid, false);
     assert.match(r.reason ?? '', /не в активном статусе/);
   });
 
   it('invalid when the status is unrecognized/empty — cannot confirm the ticket is active', () => {
-    const r = owns('TSK-16', 'cli');
+    const r = owns('LIN-command', 'cli');
     assert.strictEqual(r.valid, false);
     assert.match(r.reason ?? '', /не распознан статус/);
   });
 
   it('invalid when the ticket belongs to a different scope', () => {
-    const r = owns('TSK-12', 'cli');
+    const r = owns('LIN-types', 'cli');
     assert.strictEqual(r.valid, false);
     assert.match(r.reason ?? '', /скоуп/);
   });
 
   it('invalid when the spec scope is known but the ticket declares none', () => {
-    const r = owns('TSK-17', 'cli');
+    const r = owns('LIN-unit', 'cli');
     assert.strictEqual(r.valid, false);
     assert.match(r.reason ?? '', /не указан скоуп/);
   });
 
   it('scope check is skipped when the spec scope is unknown, but status still gates', () => {
-    assert.strictEqual(owns('TSK-17', '').valid, true);
-    assert.strictEqual(owns('TSK-11', '').valid, false);
+    assert.strictEqual(owns('LIN-unit', '').valid, true);
+    assert.strictEqual(owns('DL-content', '').valid, false);
   });
 
   // #4a — ownership is a structural boolean (computed by ticketOwnsEntity, tested separately).
   it('invalid when the ticket does NOT structurally own the entity (ticketOwns=false)', () => {
-    const r = checkDeferral('TSK-10', tickets, 'cli', 'Foo', false);
+    const r = checkDeferral('DL-fixtures', tickets, 'cli', 'Foo', false);
     assert.strictEqual(r.valid, false);
     assert.match(r.reason ?? '', /структурно не владеет/);
   });
 
   it('valid when active, in-scope, AND structurally owns (ticketOwns=true)', () => {
-    assert.strictEqual(checkDeferral('TSK-10', tickets, 'cli', 'Foo', true).valid, true);
+    assert.strictEqual(checkDeferral('DL-fixtures', tickets, 'cli', 'Foo', true).valid, true);
   });
 });

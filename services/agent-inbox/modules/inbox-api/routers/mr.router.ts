@@ -1,7 +1,7 @@
 // @file: MrRouter — POST /api/mr/:id/assign, POST /api/mr/:id/action, GET /api/mr/:id/report,
 //   POST /api/mr/:id/copy-fix-task handlers.
+// @spec: AGENT-INBOX-INBOX-API
 // @consumers: HttpServer
-// @tasks: TSK-106, TSK-145
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { BoardProviderPort } from '../board-provider.port.ts';

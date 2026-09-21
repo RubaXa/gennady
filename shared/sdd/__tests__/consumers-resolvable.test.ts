@@ -1,6 +1,6 @@
 // @file: Unit tests for consumers-resolvable — CONSUMERS_RESOLVABLE classification + resolution check.
+// @spec: SHARED
 // @consumers: check
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

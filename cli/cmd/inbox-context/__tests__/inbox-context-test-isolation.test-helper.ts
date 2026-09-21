@@ -1,4 +1,5 @@
 // @file: Hermetic child-process boundary for inbox-context CLI tests.
+// @spec: AGENT-INBOX
 // @consumers: inbox-context command tests
 
 const SAFE_CHILD_ENV_KEYS = [

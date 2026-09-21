@@ -1,6 +1,6 @@
 // @file: Unit tests for bdd-coverage — BDD_COVERAGE canonical case-name check.
+// @spec: SHARED
 // @consumers: check
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -85,10 +85,10 @@ describe('parseTestCoverage', () => {
 
   it('Deferred Test Ownership → deferred=Task-ID, не флагуется дальше', () => {
     const body =
-      '- Deferred Test Ownership: TSK-183 `[e2e-required]` → `agent-inbox.task-executor.spec.ts` :: `full e2e coverage`.';
+      '- Deferred Test Ownership: IE-realeval `[e2e-required]` → `agent-inbox.task-executor.spec.ts` :: `full e2e coverage`.';
     const rows = parseTestCoverage(body);
     assert.strictEqual(rows.length, 1);
-    assert.strictEqual(rows[0]?.deferred, 'TSK-183');
+    assert.strictEqual(rows[0]?.deferred, 'IE-realeval');
     assert.strictEqual(rows[0]?.testFile, 'agent-inbox.task-executor.spec.ts');
   });
 
@@ -334,7 +334,7 @@ describe('checkBddCoverage', () => {
 
 describe('findUnparsedCoverageRows / checkUnparsedCoverageRows', () => {
   it('строка-«похожая на ряд» без стрелки/кейса и без Deferred считается unparsed', () => {
-    const body = '- All scenarios → Deferred Test Ownership: TSK-34';
+    const body = '- All scenarios → Deferred Test Ownership: UC-tests';
     const rows = findUnparsedCoverageRows(body);
     assert.strictEqual(rows.length, 1);
     assert.strictEqual(rows[0], body.trim());
@@ -353,7 +353,7 @@ describe('findUnparsedCoverageRows / checkUnparsedCoverageRows', () => {
   });
 
   it('checkUnparsedCoverageRows возвращает warn SDD_BDD_COVERAGE_ROW_UNPARSED на каждую нераспарсенную строку', () => {
-    const body = '- All scenarios → Deferred Test Ownership: TSK-34';
+    const body = '- All scenarios → Deferred Test Ownership: UC-tests';
     const findings = checkUnparsedCoverageRows('t.md', body);
     assert.strictEqual(findings.length, 1);
     assert.strictEqual(findings[0]?.code, 'SDD_BDD_COVERAGE_ROW_UNPARSED');
@@ -375,7 +375,7 @@ describe('findUnparsedCoverageRows / checkUnparsedCoverageRows', () => {
   it('B2-22: flowVersion не передан (дефолт v1) → warn (совместимо с существующим baseline 140 строк)', () => {
     const findings = checkUnparsedCoverageRows(
       't.md',
-      '- All scenarios → Deferred Test Ownership: TSK-34'
+      '- All scenarios → Deferred Test Ownership: UC-tests'
     );
     assert.strictEqual(findings[0]?.severity, 'warn');
   });
@@ -383,7 +383,7 @@ describe('findUnparsedCoverageRows / checkUnparsedCoverageRows', () => {
   it('B2-22: flowVersion=v1 явно → warn (легаси-тикет)', () => {
     const findings = checkUnparsedCoverageRows(
       't.md',
-      '- All scenarios → Deferred Test Ownership: TSK-34',
+      '- All scenarios → Deferred Test Ownership: UC-tests',
       'v1'
     );
     assert.strictEqual(findings[0]?.severity, 'warn');
@@ -392,7 +392,7 @@ describe('findUnparsedCoverageRows / checkUnparsedCoverageRows', () => {
   it('B2-22: flowVersion=v2 → error (fail-closed once the scope has migrated — unknown/unverified is not silently accepted)', () => {
     const findings = checkUnparsedCoverageRows(
       't.md',
-      '- All scenarios → Deferred Test Ownership: TSK-34',
+      '- All scenarios → Deferred Test Ownership: UC-tests',
       'v2'
     );
     assert.strictEqual(findings.length, 1);

@@ -1,4 +1,5 @@
 // @file: Classify a spec's content as module vs scope vs unknown — v2 marker first, legacy heading/title fallback so pre-marker specs classify too.
+// @spec: CLI-SDD-ORIENT
 // @consumers: buildNeighbourhood
 
 import { stripHeadingNumbering } from '../../../../shared/sdd/legacy-headings.ts';

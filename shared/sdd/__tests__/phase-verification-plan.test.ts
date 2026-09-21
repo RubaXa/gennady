@@ -1,6 +1,6 @@
 // @file: Canonical phase-gate resolver regressions based on real commands and ticket structure.
+// @spec: SHARED
 // @consumers: sdd-task, sdd-verify
-// @tasks: N/A
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

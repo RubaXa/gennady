@@ -1,6 +1,6 @@
 // @file: Unit tests for FindingSignature — determinism of the hash and added/resolved/unchanged classification.
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: node:test runner
-// @tasks: TSK-144
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,6 +1,6 @@
 // @file: Black-box contracts for exhaustive v2-gate topology and hermetic runner boundaries.
+// @spec: SHARED
 // @consumers: test:coverage, test-topology runner
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -145,7 +145,7 @@ function legacyGateCorpus(): string[] {
   // GAP-2: 'test' and 'utils' joined this list alongside the runner's own TEST_ROOTS — see that
   // const's comment for the 25 previously-unowned files (test/agent-inbox/ + utils/test/__tests__/)
   // this makes visible.
-  return ['ai', 'cli', 'plugins', 'shared', 'services', 'test', 'utils']
+  return ['ai', 'cli', 'plugins', 'scripts', 'shared', 'services', 'test', 'utils']
     .flatMap((root) => discoverUnder(join(ROOT, root)))
     .filter((file) => {
       if (isExperimental(file)) return true;

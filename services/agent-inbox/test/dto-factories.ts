@@ -1,6 +1,6 @@
 // @file: dto-factories — valid widget and board-card DTO fixtures for dashboard tests.
+// @spec: AGENT-INBOX
 // @consumers: agent-inbox dashboard and API test suites
-// @tasks: TSK-162, TSK-166
 
 import type { FeedWidget, FeedWidgetType } from '../modules/inbox-api/dto/feed-widget.type.ts';
 import type { MrCard } from '../modules/inbox-api/dto/mr-card.type.ts';

@@ -1,6 +1,6 @@
 // @file: Canonical upstream capability providers for phase-scoped black-box CLI fixtures.
+// @spec: CLI
 // @consumers: tool-behavior tests that exercise gates after prerequisite resolution.
-// @tasks: N/A
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';

@@ -1,6 +1,6 @@
 // @file: Load review-verify template from the project or fallback from the library.
+// @spec: CLI-REVIEW
 // @consumers: render-review-verify.xml
-// @tasks: N/A
 
 import { loadAgentTemplate } from '../../../_shared/prompt/io/load-agent-template.io.ts';
 

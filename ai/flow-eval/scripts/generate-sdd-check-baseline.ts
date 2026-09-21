@@ -3,8 +3,8 @@
 //   sorted, deduplicated baseline to disk. NOT wired into any npm script — rebuilding the baseline is
 //   an explicit, separate, operator-approved action (D-38: "самовольная пересборка запрещена"), never
 //   a side effect of routine tooling.
+// @spec: AI-SKILLS
 // @consumers: operator-invoked only (see ai/flow-eval/.baseline/README.md)
-// @tasks: N/A
 
 import { writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';

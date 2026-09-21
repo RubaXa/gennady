@@ -1,5 +1,11 @@
 # Module: diff
 
+<!--SECTION:SPEC_ID-->
+
+AGENT-MON-DIFF
+
+<!--/SECTION:SPEC_ID-->
+
 ## 1. Module Vision
 
 Чистая функция сравнения двух снапшотов сессий. Без зависимостей от провайдеров или монитора.

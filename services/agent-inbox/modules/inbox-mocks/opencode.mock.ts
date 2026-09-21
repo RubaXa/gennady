@@ -1,6 +1,6 @@
 // @file: Mock factory for OpenCode AI-node structured output responses.
+// @spec: AGENT-INBOX-INBOX-MOCKS
 // @consumers: inbox-opencode tests, inbox-roles tests
-// @tasks: TSK-105
 
 /**
  * @purpose A single finding from an AI review pass.

@@ -3,8 +3,8 @@
 //   assignment, and role activation does not help (roles boot inactive, auto-assign is gated on it).
 //   Step-by-step, deterministic, no opencode and no browser: assign → assert it hit the registry →
 //   build a FRESH scheduler on the same stateDir (that IS the restart) → tick → assignment restored.
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: node:test runner
-// @tasks: TSK-156
 
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';

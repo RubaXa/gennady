@@ -1,8 +1,8 @@
 // @file: B7 — opening the detail view for an MR whose review never started must show an "not
 //   started yet" empty state, not a bare "Не удалось загрузить отчёт" error indistinguishable
 //   from a real failure (MrDetailPage.tsx#_isReportNotStarted).
+// @spec: AGENT-INBOX
 // @consumers: npx playwright test --config=e2e/inbox-serve/playwright.review-flow.config.ts
-// @tasks: TSK-107
 
 import { test, expect } from '@playwright/test';
 import type { BootstrapResult } from '../../../services/agent-inbox/serve/bootstrap.ts';

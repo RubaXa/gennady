@@ -1,6 +1,6 @@
 // @file: SddTaskCommand — CLI entry for gennady sdd-task: emit the ticket planning surface (Meta + phases + manifests + gates).
+// @spec: CLI-SDD-TASK
 // @consumers: gennady.ts
-// @tasks: V-05b
 
 import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { resolve, relative, join, dirname } from 'node:path';

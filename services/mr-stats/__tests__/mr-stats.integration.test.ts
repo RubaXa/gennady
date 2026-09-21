@@ -1,6 +1,6 @@
 // @file: Integration tests for mr-stats — full pipeline on real MR !14.
+// @spec: MR-STATS
 // @consumers: node:test runner
-// @tasks: TSK-139, TSK-154
 
 import { describe, it, before } from 'node:test';
 import assert from 'node:assert/strict';

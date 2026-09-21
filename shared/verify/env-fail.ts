@@ -1,6 +1,6 @@
 // @file: ENV_FAIL classification — predicate combinators and the config rule compiler.
+// @spec: SHARED
 // @consumers: gate-runner, stack-config, plugins
-// @tasks: TSK-95
 
 import type { EnvFailPredicate, EnvFailStream } from './verify.types.ts';
 

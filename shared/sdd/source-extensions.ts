@@ -1,6 +1,6 @@
 // @file: One closed cross-language source-extension and evidence policy for SDD consumers.
+// @spec: SHARED
 // @consumers: sdd-check, changed-files, yagni source policy, SymbolIndex selector
-// @tasks: N/A
 
 import { basename, extname } from 'node:path';
 

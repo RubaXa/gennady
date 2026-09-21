@@ -1,6 +1,6 @@
 // @file: ReviewGuardedIntent value object — exact immutable pipeline handoff byte-equivalent and downstream dispatch guard.
+// @spec: AGENT-INBOX-INBOX-QUEUE
 // @consumers: ReviewProposal, ReviewActionPackage, ReviewDecision, ReviewEffect, ReviewEffectCoordinator
-// @tasks: TSK-177
 
 import type {
   ReviewPublicationHandoff,

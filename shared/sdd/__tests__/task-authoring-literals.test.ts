@@ -1,6 +1,6 @@
 // @file: Contract tests for path-aware task authoring literals.
+// @spec: SHARED
 // @consumers: test runner
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,6 +1,6 @@
 // @file: Pure YAGNI usage-check logic — < 2 usages and whether a Usage Waiver gates it. Extraction + IO stay in the yagni command.
+// @spec: SHARED
 // @consumers: yagni.cmd
-// @tasks: N/A
 
 /** @purpose One symbol added or modified by the diff under check. */
 export type ChangedSymbol = {

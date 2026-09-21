@@ -1,6 +1,6 @@
 // @file: Shared YAGNI source-selection policy for changed-file discovery and corpus indexing.
+// @spec: SHARED
 // @consumers: YagniCommand, yagni-index
-// @tasks: N/A
 
 import { basename } from 'node:path';
 import { isTestFile, isUnderTestDirectory } from './files.ts';

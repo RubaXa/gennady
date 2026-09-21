@@ -1,6 +1,6 @@
 // @file: Determine programming language by file extension.
+// @spec: SHARED
 // @consumers: git-diff
-// @tasks: N/A
 
 import { execSync as nodeExecSync } from 'node:child_process';
 

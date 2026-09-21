@@ -1,6 +1,6 @@
 // @file: Structural dependency preflight shared by phase planning and phase verification.
+// @spec: SHARED
 // @consumers: sdd-task, sdd-verify
-// @tasks: N/A
 
 import { extractSection } from './section.ts';
 import { parsePhaseReceipts, type PhaseReceipt } from './phase-receipt.ts';

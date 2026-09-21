@@ -1,6 +1,6 @@
 // @file: Fail-closed structural completeness verdict union.
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: ReviewRepairCoordinator, ReviewFreshnessGate, ReviewSynthesis
-// @tasks: TSK-176
 
 import type { ReviewCoverage } from './review-coverage.type.ts';
 

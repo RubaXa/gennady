@@ -1,6 +1,6 @@
 // @file: Unit tests for execSyncSafe — real subprocess exec (no mocking needed: exit codes are deterministic shell behavior), covering the expectedExitCodes suppression added for gennady yagni / sdd-check.
+// @spec: SHARED
 // @consumers: node:test runner
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,6 +1,6 @@
 // @file: TypeScript tree-sitter adapter implementing DbcAstAdapter for parsing .ts files.
+// @spec: DBC-DBC-LINTER
 // @consumers: DbcTsLinter
-// @tasks: TSK-08, TSK-11, TSK-88
 
 import { readFileSync } from 'node:fs';
 import type { default as Parser } from 'tree-sitter';

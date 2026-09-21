@@ -1,6 +1,6 @@
 // @file: Types, errors, append builders, and the atomic phase-completion transition for sdd-log.
+// @spec: CLI-SDD-LOG
 // @consumers: SddLogCommand
-// @tasks: N/A
 
 import { relative, resolve } from 'node:path';
 import type { TicketRef } from '../../../shared/sdd/check.ts';

@@ -1,6 +1,6 @@
 // @file: Eval run context and EvalRun type shared across all 10 runners
-// @consumers: EvalHarness (TSK-165)
-// @tasks: TSK-165
+// @spec: AGENT-INBOX-INBOX-EVAL
+// @consumers: EvalHarness (IE-harness)
 
 import type { JournalPort } from '../../inbox-core/event-journal.ts';
 

@@ -1,4 +1,5 @@
 // @file: Shared fail-closed directory traversal primitive for scoped and project-wide coverage.
+// @spec: CLI-TESTCOV
 // @consumers: istanbul-coverage-adapter.ts, testcov.cmd.ts
 
 import { readdirSync, type Dirent } from 'node:fs';

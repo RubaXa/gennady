@@ -1,6 +1,6 @@
 // @file: Unit tests for the <ACR>-REQ-<N> / <ACR>-DL-<N> grammar and spec-acronym derivation.
+// @spec: SHARED
 // @consumers: requirement-id
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,6 +1,6 @@
 // @file: GateVerdict — validates review.json completeness per §2.1 criteria: verdict present, findings have file:line, no empty review, max 2 attempts
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: inbox-pipeline
-// @tasks: TSK-161
 
 import { logger } from '#logger';
 

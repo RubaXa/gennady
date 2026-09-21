@@ -1,5 +1,11 @@
 # vcs-reactions: Scope Specification
 
+<!--SECTION:SPEC_ID-->
+
+VCS-VCS-REACTIONS
+
+<!--/SECTION:SPEC_ID-->
+
 ## scope-type
 
 product

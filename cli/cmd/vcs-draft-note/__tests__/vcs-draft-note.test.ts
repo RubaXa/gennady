@@ -1,6 +1,6 @@
 // @file: Unit tests for vcs-draft-note command — CLI draft-note lifecycle via run().
+// @spec: CLI
 // @consumers: N/A
-// @tasks: TSK-87, TSK-97
 
 import { describe, it, mock, afterEach, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';

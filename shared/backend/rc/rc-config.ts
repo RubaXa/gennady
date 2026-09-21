@@ -1,6 +1,6 @@
 // @file: Describe AI model configuration in rc-file (name, URL, optional key).
+// @spec: SHARED
 // @consumers: ai-legacy-core
-// @tasks: N/A
 
 import { readFileSync, existsSync } from 'node:fs';
 import { join as pathJoin } from 'node:path';

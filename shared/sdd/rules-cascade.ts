@@ -1,6 +1,6 @@
 // @file: Pure transitive-closure check for a ticket phase's Rules: list against rule-file <DependsOn> declarations — RULES_CASCADE_CLOSURE (SDD_RULES_CASCADE_UNRESOLVED).
+// @spec: SHARED
 // @consumers: sdd-check.cmd
-// @tasks: N/A
 
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
 import type { Finding } from './check.ts';

@@ -1,8 +1,8 @@
 // @file: Deterministic Task-ID replacement for the v1→v2 migration — an approved map of exact IDs,
 //   applied on word boundaries across the code/spec zones. Replaces the manual sed recipe: never a
 //   blind `TSK-[0-9]+` pattern, never a partial match (`UTF-8` stays intact).
+// @spec: SHARED
 // @consumers: sdd-migrate.cmd
-// @tasks: N/A
 
 import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { join, relative, extname } from 'node:path';
@@ -173,7 +173,7 @@ export type ReplaceReport = {
 
 /**
  * @purpose Apply (or dry-run) the id-map across the zones — exact IDs on word boundaries only.
- * @invariant Word boundary (`\b`) on both sides: partial matches (`UTF-8`, `TSK-310` for `TSK-31`)
+ * @invariant Word boundary (`\b`) on both sides: partial matches (`UTF-8`, `TSK-310` for `CAT-mr-url`)
  *   are never touched; only whole-token occurrences are replaced.
  * @invariant Deterministic: files walked in sorted order; all renames applied per file in map order.
  * @param repoRoot Absolute repo root.

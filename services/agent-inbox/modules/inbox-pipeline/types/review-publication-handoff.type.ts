@@ -1,6 +1,6 @@
 // @file: Exact immutable pipeline-to-queue publication handoff.
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: ReviewFreshnessGate, inbox-queue
-// @tasks: TSK-176
 
 import type { ReviewManifestKey } from './review-intent.type.ts';
 

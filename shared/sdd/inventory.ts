@@ -1,4 +1,5 @@
 // @file: Parse a module spec's Entity Inventory (## 3) table into the set of declared entity names.
+// @spec: SHARED
 // @consumers: InventorySyncCheck, sdd-orient.cmd
 
 import { extractSection } from './section.ts';

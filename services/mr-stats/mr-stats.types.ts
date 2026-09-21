@@ -1,6 +1,6 @@
 // @file: mr-stats domain types — EntityRef, EntityDelta, LineDiff, MrStatsReport, etc.
+// @spec: MR-STATS
 // @consumers: mr-resolver, classifier, line-counter, entity-counter, duplicate-detector, reporter, mr-stats.cmd
-// @tasks: TSK-139
 
 /** @purpose Reference to a named entity in a file with optional line number. */
 export type EntityRef = {

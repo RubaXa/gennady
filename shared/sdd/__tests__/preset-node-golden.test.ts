@@ -4,8 +4,8 @@
 //   rc-baseline-1 (227c03a8) per D-38 — a later HEAD move on codex/sdd-v2-rc52-followup does not
 //   invalidate this golden; only V-04/V-04a/V-12/V-14 (named in the brief) may intentionally update
 //   it, via UPDATE_VERIFY_GOLDEN=1.
+// @spec: SHARED
 // @consumers: N/A (regression fixture for the SDD v1→v2 transfer plan, track 30-TRACK-VERIFY)
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

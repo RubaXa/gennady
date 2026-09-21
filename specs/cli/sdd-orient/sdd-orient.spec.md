@@ -1,5 +1,11 @@
 # Module: sdd-orient
 
+<!--SECTION:SPEC_ID-->
+
+CLI-SDD-ORIENT
+
+<!--/SECTION:SPEC_ID-->
+
 <!--SECTION:MODULE_VISION-->
 
 ## Module Vision

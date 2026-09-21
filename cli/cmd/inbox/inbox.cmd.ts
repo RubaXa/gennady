@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // @file: CLI command: inbox — list merge requests awaiting your reaction.
+// @spec: AGENT-INBOX
 // @consumers: N/A
-// @tasks: TSK-93, TSK-91, TSK-103
 
 import { style } from '../../../shared/common/style.ts';
 import { buildInboxClient } from './_core/logic/build-inbox-context.logic.ts';

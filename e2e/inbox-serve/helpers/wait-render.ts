@@ -3,8 +3,8 @@
 //   mermaid.js's own output mounted as `svg[id^="mmd-"]`; the placeholder branch (ArtifactView.tsx's
 //   MermaidDiagram, `svg === null`) never mounts an `<svg>` element at all, it stays a `<pre>` block —
 //   so presence of the selector is already load-bearing, not merely a style check.
+// @spec: AGENT-INBOX
 // @consumers: e2e/inbox-serve/reviewer-eval.spec.ts
-// @tasks: TSK-120
 
 import type { Locator, Page } from '@playwright/test';
 import { expect } from '@playwright/test';

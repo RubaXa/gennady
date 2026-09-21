@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // @file: CLI command: inbox-context — atomic context gathering for one MR.
+// @spec: AGENT-INBOX
 // @consumers: agent-inbox skill
-// @tasks: TSK-AI-16, TSK-93, TSK-95, TSK-91, TSK-94
 
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, readdirSync, writeFileSync } from 'node:fs';

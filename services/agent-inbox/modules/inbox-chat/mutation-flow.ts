@@ -1,6 +1,6 @@
 // @file: Queue-backed artifact mutation proposal and CAS/LIFO application flow.
+// @spec: AGENT-INBOX-INBOX-CHAT
 // @consumers: MutateRouter, operator chat
-// @tasks: TSK-163
 
 import { mkdir, readFile, readdir, rename, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';

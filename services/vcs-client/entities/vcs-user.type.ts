@@ -1,4 +1,5 @@
 // @file: VCS user identity shape shared across GitLab/GitHub clients.
+// @spec: VCS-VCS-CLIENT
 // @consumers: VcsClient
 
 /** @purpose Authenticated VCS user identity surfaced to API consumers. */

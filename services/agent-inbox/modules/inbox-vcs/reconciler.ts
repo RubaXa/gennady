@@ -1,6 +1,6 @@
 // @file: VcsReconciler — fresh-read effect classification and bounded read-before-retry recovery.
+// @spec: AGENT-INBOX-INBOX-VCS
 // @consumers: Effects
-// @tasks: TSK-174
 
 import { logger } from '#logger';
 import type { VcsEffectOutcome, VcsEffectRequest, VcsPort } from './vcs-port.ts';

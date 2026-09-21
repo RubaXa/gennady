@@ -1,6 +1,6 @@
 // @file: Controlled-time tests for accumulated MR events, quiet timeout, reply debounce and manual verify.
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: node:test runner
-// @tasks: TSK-173
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

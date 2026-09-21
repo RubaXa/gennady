@@ -1,6 +1,6 @@
 // @file: SyncService — two-tier sync orchestrator: poll all MRs, detail for active/visible, derive myRole/attention/stage, produce SyncSnapshot.
+// @spec: AGENT-INBOX-INBOX-VCS
 // @consumers: inbox-queue, inbox-api
-// @tasks: TSK-158, TSK-173, TSK-174
 
 import { logger } from '#logger';
 import { randomUUID } from 'node:crypto';
@@ -37,7 +37,7 @@ export type SyncServiceConfig = {
     config: ReviewConfig;
     clock: ClockPort;
   };
-  /** @purpose TSK-174 unified cursor/event coordinator selected by the production composition root. */
+  /** @purpose IV-vcs-port unified cursor/event coordinator selected by the production composition root. */
   syncCoordinator?: VcsSyncCoordinator;
 };
 

@@ -1,6 +1,6 @@
 // @file: GitLab GraphQL implementation of the actionable inbox port.
+// @spec: VCS-VCS-CLIENT
 // @consumers: VcsGitlabClient
-// @tasks: TSK-75, TSK-158, TSK-174
 
 import { VcsClientInbox } from '../abstract/vcs-client-inbox.ts';
 import type {

@@ -1,6 +1,6 @@
 // @file: Dashboard v2 BDD — canonical card, loading error, and SSE fallback semantics.
+// @spec: AGENT-INBOX-INBOX-DASHBOARD
 // @consumers: node:test runner
-// @tasks: TSK-164
 
 import assert from 'node:assert/strict';
 import test from 'node:test';

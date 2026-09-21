@@ -2,8 +2,8 @@
 //   accepted as input, so PASS is provable only via `composeEvalReport` — status = PASS iff every
 //   gate passed and every stage completed (spec §4: "все гейты пройдены = G1..G10 зелёные И
 //   S0..S11 завершены без обрыва").
+// @spec: AGENT-INBOX-INBOX-EVAL
 // @consumers: EvalHarness (TSK-119)
-// @tasks: TSK-118
 
 import type { GateResult } from './gates.ts';
 

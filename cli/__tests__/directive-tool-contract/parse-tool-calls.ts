@@ -1,7 +1,7 @@
 // @file: Structural parser and static CLI-schema validator for executable and literal gennady calls
 //   inside SDD v2 directive Actions.
+// @spec: CLI
 // @consumers: directive-tool-contract.test.ts
-// @tasks: N/A
 
 export type DocumentedCall = {
   readonly raw: string;

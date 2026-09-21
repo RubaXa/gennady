@@ -1,6 +1,6 @@
 // @file: AuditRouter — GET /api/mr/:id/audit handler that reads audit trail from board provider.
+// @spec: AGENT-INBOX-INBOX-API
 // @consumers: HttpServer
-// @tasks: TSK-106, TSK-117
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { AuditEntry } from '../../inbox-core/audit-log.ts';

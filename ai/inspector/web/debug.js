@@ -1,7 +1,9 @@
 // @file: ai/inspector — pure, DOM-free debugger model for the step-through flow.
-// Deterministic: given a parsed+resolved skill tree and a list of moves, simulate() replays the
-// descent (auto-enter at EMBODY, step-into runs, LOGIC_SWITCH branches) into a log + frame stack.
-// No DOM here — renderDebug() in app.js draws from this. Unit-tested in __tests__/debug.test.ts.
+//   Deterministic: given a parsed+resolved skill tree and a list of moves, simulate() replays the
+//   descent (auto-enter at EMBODY, step-into runs, LOGIC_SWITCH branches) into a log + frame stack.
+//   No DOM here — renderDebug() in app.js draws from this. Unit-tested in __tests__/debug.test.ts.
+// @spec: AI-SKILLS
+// @consumers: N/A
 
 export const base = (p) => (p || '').split('/').pop();
 

@@ -1,6 +1,6 @@
 // @file: Unit tests for inbox config CLI subcommand (gennady inbox config).
+// @spec: AGENT-INBOX
 // @consumers: node:test runner
-// @tasks: TSK-92
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,8 +1,8 @@
 // @file: Contract for the durable per-scenario result archive (GAP-E-6, D-62) — summary.json/judge.md
 //   always written under a real, never-gitignored directory (not the transient .results/), one
 //   directory per (date, scenarioId), disambiguated with a -N suffix on a same-day re-run.
+// @spec: AI-SKILLS
 // @consumers: ai/flow-eval/results-archive.ts
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,6 +1,6 @@
 // @file: Unit tests for classifier-rules.yaml — structure validation and non-overlap verification.
+// @spec: MR-STATS
 // @consumers: N/A (test file)
-// @tasks: TSK-138, TSK-139
 
 import { describe, it, before } from 'node:test';
 import assert from 'node:assert/strict';

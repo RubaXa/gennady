@@ -1,6 +1,6 @@
 // @file: Unit coverage for semantic header and JSDoc contract word budgets.
+// @spec: CLI-LINT
 // @consumers: WordCountCheck
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

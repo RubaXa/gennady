@@ -1,6 +1,6 @@
 // @file: Duplicate detector — jscpd wrapper for finding code clones in realCode files.
+// @spec: MR-STATS
 // @consumers: mr-stats.cmd
-// @tasks: TSK-139
 
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';

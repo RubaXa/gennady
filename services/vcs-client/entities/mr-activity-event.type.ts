@@ -1,8 +1,8 @@
 // @file: Normalized merge-request activity event — provider-agnostic, derived from
 //   GitLab system notes or GitHub timeline events. A single MR push/comment/approve
 //   may produce multiple events.
+// @spec: VCS-VCS-CLIENT
 // @consumers: inbox, review
-// @tasks: N/A
 
 /**
  * @purpose Kinds of activity that can occur on a merge request.

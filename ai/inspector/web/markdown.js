@@ -1,6 +1,8 @@
 // @file: ai/inspector — markdown-lite renderer for prompt text (the only render seam).
-// SWAP POINT: to use a ready library, replace renderMarkdown's body with e.g. `return marked.parse(text)`.
-// Callers depend ONLY on renderMarkdown(text) -> HTML string; everything else here is private.
+//   SWAP POINT: to use a ready library, replace renderMarkdown's body with e.g. `return marked.parse(text)`.
+//   Callers depend ONLY on renderMarkdown(text) -> HTML string; everything else here is private.
+// @spec: AI-SKILLS
+// @consumers: N/A
 
 // Path tokens (group 1) vs word tokens (group 2). Each gets a per-class colour so the eye separates them.
 const TOKEN =

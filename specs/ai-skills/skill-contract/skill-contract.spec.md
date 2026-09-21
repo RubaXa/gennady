@@ -1,5 +1,25 @@
 # Module: skill-contract
 
+<!--SECTION:SPEC_ID-->
+
+AI-SKILLS-SKILL-CONTRACT
+
+<!--/SECTION:SPEC_ID-->
+
+<!--SECTION:OVERVIEW-->
+
+## Обзор
+
+```mermaid
+flowchart LR
+  Contract[Контракт] --> Implementation[Реализация]
+  Implementation --> Verification[Проверка]
+```
+
+_Обзор пути от контракта к реализации и проверке._
+
+<!--/SECTION:OVERVIEW-->
+
 → Parent scope: [`../ai-skills.spec.md`](../ai-skills.spec.md)
 
 <!--SECTION:MODULE_VISION-->
@@ -70,6 +90,8 @@ _Это полный список сущностей модуля. Любое в
 <!--SECTION:ENTITY_SURFACES-->
 
 ## 4. Entity Surfaces
+
+<details><summary>Подробности</summary>
 
 ### `SkillFrontmatter`
 
@@ -163,11 +185,15 @@ _Это полный список сущностей модуля. Любое в
   - Все подкоманды уважают `AX_BASH_NO_SILENT_EMPTY`
   - Единый permission-паттерн: `Bash(scripts/<name>/<name> *)`
 - **Consumers:** sdd-execute (скрипты), sdd-check (использует те же скрипты)
+
+</details>
 <!--/SECTION:ENTITY_SURFACES-->
 
 <!--SECTION:MODULE_CONTRACTS-->
 
 ## 5. Module Contracts (DbC)
+
+<details><summary>Подробности</summary>
 
 ### Pattern: `DirectiveActivation`
 
@@ -231,7 +257,9 @@ _Это полный список сущностей модуля. Любое в
   - Навык делает ровно один bash-вызов
   - Навык не создаёт промежуточные оркестраторы
   - CLI форматирует результат сам — навык не добавляет комментариев
-  <!--/SECTION:MODULE_CONTRACTS-->
+
+</details>
+<!--/SECTION:MODULE_CONTRACTS-->
 
 <!--SECTION:PUBLIC_OPTIONS-->
 
@@ -276,6 +304,8 @@ ai/skills/<name>/
 
 ## 8. Module Decision Log
 
+<details><summary>Подробности</summary>
+
 ### D-M001 — Три execution-паттерна как отдельные сущности
 
 - **Status:** active
@@ -284,7 +314,9 @@ ai/skills/<name>/
 - **Risk accepted:** При добавлении 4-го паттерна потребуется расширение инвентаря.
 - **Rejected alternatives:**
   - Один универсальный `ActivationPattern` — не покрывает специфику OrchestratorDispatching (subagent dispatch) и CliDelegation (CLI invoke)
-  <!--/SECTION:MODULE_DECISION_LOG-->
+
+</details>
+<!--/SECTION:MODULE_DECISION_LOG-->
 
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->
 

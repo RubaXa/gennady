@@ -1,6 +1,6 @@
 // @file: Integration tests for ArtifactRouter — list artifacts, read content, path-traversal guard.
+// @spec: AGENT-INBOX-INBOX-API
 // @consumers: node:test runner
-// @tasks: TSK-106, TSK-162
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';

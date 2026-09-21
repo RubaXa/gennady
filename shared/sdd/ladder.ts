@@ -1,6 +1,6 @@
 // @file: Render the SDD readiness ladder card — the five-rung project-state summary sdd-state shows verbatim.
+// @spec: SHARED
 // @consumers: sdd-state.cmd
-// @tasks: N/A
 
 /** @purpose Exact-name presence of the three gate scripts checked at the Infrastructure rung. */
 export type LadderGates = {

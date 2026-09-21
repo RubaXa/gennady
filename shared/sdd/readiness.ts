@@ -1,7 +1,7 @@
 // @file: Exact-match readiness check for the required v2 npm scripts — pure check, plus the one
-// disk-gathering helper every caller needs to build its input (no name-guessing).
+//   disk-gathering helper every caller needs to build its input (no name-guessing).
+// @spec: SHARED
 // @consumers: sdd-state.cmd, sdd-task.cmd
-// @tasks: N/A
 
 import { readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';

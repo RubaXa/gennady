@@ -1,6 +1,6 @@
 // @file: Release-candidate proof that standalone read boundaries fail closed.
+// @spec: CLI
 // @consumers: N/A
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,7 +1,9 @@
 // @file: ai/inspector — deterministic debugger-flow scenarios over the REAL /sdd skill + directives.
-// The inspector is a deterministic replay machine: same skill + same moves => same log/stack. These
-// tests pin the exact scenarios we walk through by hand (auto-enter at EMBODY, LOGIC_SWITCH branch,
-// step-into descent, DEFAULT proceed) so the flow can't silently regress.
+//   The inspector is a deterministic replay machine: same skill + same moves => same log/stack. These
+//   tests pin the exact scenarios we walk through by hand (auto-enter at EMBODY, LOGIC_SWITCH branch,
+//   step-into descent, DEFAULT proceed) so the flow can't silently regress.
+// @spec: AI-SKILLS
+// @consumers: N/A
 
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';

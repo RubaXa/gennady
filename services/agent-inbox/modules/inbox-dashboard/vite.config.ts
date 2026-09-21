@@ -1,6 +1,6 @@
 // @file: Vite config for inbox-dashboard SPA — React + Tailwind v4.
+// @spec: AGENT-INBOX-INBOX-DASHBOARD
 // @consumers: vite dev, vite build
-// @tasks: TSK-107, TSK-122
 
 import { defineConfig, type Plugin, type ViteDevServer } from 'vite';
 import react from '@vitejs/plugin-react';

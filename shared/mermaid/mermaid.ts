@@ -1,6 +1,6 @@
 // @file: Real mermaid validation — extract ```mermaid blocks, parse via the mermaid grammar (browser lib, lazy jsdom shim). Honest check, not a regexp.
+// @spec: SHARED
 // @consumers: sdd/mermaid-check, agent-inbox/artifact-validator
-// @tasks: N/A
 
 /** @purpose Cached mermaid `parse` fn — mermaid is a browser lib, so it (and its jsdom DOM shim) load once, lazily. */
 let _mermaidParse: ((text: string) => Promise<unknown>) | null = null;

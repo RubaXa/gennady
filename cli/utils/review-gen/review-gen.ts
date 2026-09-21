@@ -1,6 +1,6 @@
 // @file: Generate code review (critical remarks) via LLM considering language specs.
+// @spec: CLI
 // @consumers: review.cmd
-// @tasks: N/A
 
 import { AiLegacyCore } from '../ai-legacy/ai-legacy-core.ts';
 import { prompts } from '../prompts/index.ts';

@@ -3,8 +3,8 @@
 //   the drift issues #13/#15/#23 named: an unknown token, an edit appended after Round close, a
 //   causally dishonest Reopens count, and `nextRoundNumber` misled by a legacy `## Critic Rounds`.
 //   Each group is a PAIR — the trigger case and the honest/clean case that must stay silent.
+// @spec: SHARED
 // @consumers: N/A
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

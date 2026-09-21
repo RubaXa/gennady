@@ -1,8 +1,8 @@
 // @file: t5 — detail render (headless chromium): over a state dir seeded with the operator's REAL
 //   materialized review of MR_REF, the dashboard detail page shows the artifact nav, the README with
 //   a REAL drawn mermaid svg, and a populated `Кандидаты (N>0)` panel fed from review.json.
+// @spec: AGENT-INBOX
 // @consumers: npx playwright test --config=e2e/inbox-serve/playwright.review-flow.config.ts
-// @tasks: TSK-131
 
 import { test, expect } from '@playwright/test';
 import type { BootstrapResult } from '../../../services/agent-inbox/serve/bootstrap.ts';

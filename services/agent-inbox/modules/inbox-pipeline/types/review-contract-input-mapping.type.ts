@@ -1,6 +1,6 @@
 // @file: Total manifest-input to contract-slot mapping forms.
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: ReviewContractCompiler, ReviewStructuralValidator
-// @tasks: TSK-176
 
 /** @purpose Closed compiler-owned reasons for a manifest input to be not applicable. */
 export type ReviewNotApplicableCode =

@@ -1,6 +1,6 @@
 // @file: State manager factory — merges SessionChanges into a ViewModel and notifies subscribers.
+// @spec: AGENT-MON-CLI-STATE
 // @consumers: ui/app (via gennady agent-mon)
-// @tasks: TSK-45
 
 import type { AgentSession } from '../../../../services/agent-mon/model/agent-session.type.ts';
 import type { SessionChanges } from '../../../../services/agent-mon/model/session-changes.type.ts';

@@ -1,6 +1,6 @@
 // @file: E2E setup service — build, pack, git init, fixture copy, npm install → E2eContext.
+// @spec: CLI-E2E
 // @consumers: E2eContext, setupE2e
-// @tasks: TSK-60
 
 import { execSync } from 'node:child_process';
 import { spawn as nodeSpawn } from 'node:child_process';
@@ -143,6 +143,16 @@ async function _setupE2e(deps: SetupE2eDeps): Promise<E2eContext> {
       throw new Error(`fixture copy failed: ${FIXTURE_DIR}`);
     }
     deps.cpSync(FIXTURE_DIR, tmpDir, { recursive: true });
+    // Repository-owned fixture templates keep valid ownership headers for SDD v2. The isolated
+    // E2E copy materializes the two deliberately invalid lint inputs before git initialization.
+    deps.writeFileSync(
+      join(tmpDir, 'src', 'no-header.ts'),
+      '// @consumers: FixtureConsumer\n\n/** @purpose Function without @file: header. */\nexport function noHeader(value: number): number {\n  return value;\n}\n'
+    );
+    deps.writeFileSync(
+      join(tmpDir, 'src', 'no-consumers.ts'),
+      '// @file: Fixture file without @consumers: header.\n\n/** @purpose Value without consumers declared. */\nexport const NO_CONSUMERS_VALUE = 1;\n'
+    );
     // #endregion END_COPY_FIXTURE
 
     // #region START_GIT_INIT — invariant: git must initialize and stage all fixture files

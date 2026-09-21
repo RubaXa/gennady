@@ -1,6 +1,6 @@
 // @file: ChatThread — scrollback of completed ChatTurns + the active streaming turn in an aria-live region (NFC-CH-a11y).
+// @spec: AGENT-INBOX-INBOX-DASHBOARD
 // @consumers: ChatPanel
-// @tasks: TSK-130
 
 import type { ChatTurn, MutationProposal } from '../../inbox-chat/types.ts';
 import { MutationProposalCard, type MutationProposalStatus } from './MutationProposalCard.tsx';

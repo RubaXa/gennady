@@ -1,6 +1,6 @@
 // @file: Per-repo config machinery — three-source discovery, deep-merge, per-key provenance.
+// @spec: SHARED
 // @consumers: stack-config, future config consumers
-// @tasks: TSK-95
 
 import fs from 'node:fs';
 import path from 'node:path';

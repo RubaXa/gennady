@@ -1,6 +1,6 @@
 // @file: SddCheckCommand — CLI entry for gennady sdd-check: mechanical audit of one ticket (--task) or the whole project (--all).
+// @spec: CLI-SDD-CHECK
 // @consumers: gennady.ts
-// @tasks: N/A
 
 import { readFileSync, readdirSync, existsSync, lstatSync, realpathSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';

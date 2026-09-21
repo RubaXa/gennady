@@ -1,6 +1,6 @@
 // @file: Registry of built-in stack plugins and stack detection across the registry.
+// @spec: SHARED
 // @consumers: verify.cmd
-// @tasks: TSK-95
 
 import type { StackConfig, StackDetection, StackId, StackPlugin } from './verify.types.ts';
 import { BUILTIN_PLUGINS } from '../../plugins/index.ts';

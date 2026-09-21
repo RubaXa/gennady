@@ -1,6 +1,6 @@
 // @file: SddSyncCommand — CLI entry for gennady sdd-sync: propagate a ticket's Status into *.3-tasks.md trackers.
+// @spec: CLI-SDD-SYNC
 // @consumers: gennady.ts
-// @tasks: N/A
 
 import { readdirSync, realpathSync } from 'node:fs';
 import { dirname, join, resolve, relative, sep } from 'node:path';

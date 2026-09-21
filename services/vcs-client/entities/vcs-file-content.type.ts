@@ -1,6 +1,6 @@
 // @file: File content from VCS repository.
+// @spec: VCS-VCS-CLIENT
 // @consumers: VcsClientRepositoryFiles.getFileContent
-// @tasks: TSK-27
 
 /**
  * @purpose File content from repository: path, content (decoded), encoding.

@@ -1,6 +1,6 @@
 // @file: Live-CLI behavior of sdd-task's gate-queue and fail-closed phase-dispatch evidence.
+// @spec: CLI
 // @consumers: N/A
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

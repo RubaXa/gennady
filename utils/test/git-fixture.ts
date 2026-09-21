@@ -1,7 +1,7 @@
 // @file: git-fixture — real temp git repo builder for tests that classify HEAD movement
 //   (fast_forward / rewritten) without network access or mocked git.
+// @spec: SHARED
 // @consumers: utils/test/__tests__/git-fixture.test.ts, TSK-148, TSK-149
-// @tasks: TSK-147
 
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from 'node:fs';

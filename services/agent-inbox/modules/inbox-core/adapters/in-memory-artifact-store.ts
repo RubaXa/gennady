@@ -1,6 +1,6 @@
 // @file: Deterministic in-memory implementation of ArtifactStorePort.
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: inbox-core contract tests, inbox-mocks
-// @tasks: TSK-173
 
 import type { ArtifactStorePort } from '../ports/artifact-store.port.ts';
 

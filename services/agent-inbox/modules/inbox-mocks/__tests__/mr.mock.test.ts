@@ -1,6 +1,6 @@
 // @file: Unit tests for mr.mock factories — type validation for mockActionableMr and mockMrContext.
+// @spec: AGENT-INBOX-INBOX-MOCKS
 // @consumers: node:test runner
-// @tasks: TSK-105
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

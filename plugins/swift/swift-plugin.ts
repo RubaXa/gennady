@@ -1,6 +1,6 @@
 // @file: StackPlugin implementation for Swift Package, Xcode, and Tuist repositories.
+// @spec: CLI-VERIFY
 // @consumers: stack-registry
-// @tasks: V-11
 
 import type { StackDetection, StackPlugin } from 'gennady/stack';
 import { detectSwiftProject, type SwiftProject } from './swift-detect.logic.ts';

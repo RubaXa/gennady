@@ -1,6 +1,6 @@
 // @file: Attributed factual tool trace used as the only agent coverage evidence.
+// @spec: AGENT-INBOX-INBOX-OPENCODE
 // @consumers: inbox-pipeline, inbox-eval
-// @tasks: TSK-175
 
 import type { AgentRuntimeAttribution, ToolTraceEntry } from './opencode.port.ts';
 

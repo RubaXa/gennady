@@ -1,6 +1,6 @@
 // @file: inbox-serve Playwright config — vite dev starts both API (via plugin) and dashboard.
+// @spec: AGENT-INBOX
 // @consumers: npx playwright test
-// @tasks: TSK-107, TSK-122
 
 import { defineConfig } from '@playwright/test';
 import { dirname, resolve } from 'node:path';

@@ -1,6 +1,6 @@
 // @file: VcsSyncCoordinator — inclusive discovery, complete polling, ordered journal append, and cursor ownership.
+// @spec: AGENT-INBOX-INBOX-VCS
 // @consumers: inbox boot, queue verification triggers
-// @tasks: TSK-174
 
 import { logger } from '#logger';
 import type { JournalPort } from '../inbox-core/event-journal.ts';
@@ -40,7 +40,7 @@ export type VcsSyncResult = {
 export class VcsSyncCoordinator {
   /** @purpose Existing unified provider read root. */
   protected readonly _vcs: VcsPort;
-  /** @purpose Canonical TSK-173 journal boundary. */
+  /** @purpose Canonical IC-state journal boundary. */
   protected readonly _journal: JournalPort;
   /** @purpose Stateless complete-snapshot delta normalizer. */
   protected readonly _normalizer: VcsEventNormalizer;
@@ -169,7 +169,7 @@ export class VcsSyncCoordinator {
   }
 
   /**
-   * @purpose Detect any inclusive discovery signal while retaining compatibility with pre-TSK-174 DTOs.
+   * @purpose Detect any inclusive discovery signal while retaining compatibility with pre-IV-vcs-port DTOs.
    * @param mr Provider discovery candidate.
    * @returns Whether any inclusive participation signal is present.
    */

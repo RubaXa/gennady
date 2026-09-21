@@ -1,7 +1,7 @@
 // @file: Batch 23A acceptance corpora — frozen V1 zero-new-error proof (E-22), isolated adversarial
 //   V2 both-way cases (E-23), and one deterministic named-outcome injection (V14-3).
+// @spec: AI-SKILLS
 // @consumers: N/A (test file)
-// @tasks: N/A
 
 import { spawnSync } from 'node:child_process';
 import assert from 'node:assert/strict';

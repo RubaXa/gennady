@@ -1,6 +1,6 @@
 // @file: VcsInboxReal — production VCS integration through existing vcs-client (GitLab/GitHub).
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: inbox-api (production), CLI inbox commands
-// @tasks: TSK-110, TSK-174
 
 import {
   VcsInboxPort,
@@ -28,7 +28,7 @@ export type VcsInboxRealOptions = {
   baseUrl?: string;
   /** @purpose VCS provider — auto-detected from host by default */
   provider?: 'gitlab' | 'github';
-  /** @purpose Canonical TSK-174 provider root shared with sync/effects in production */
+  /** @purpose Canonical IV-vcs-port provider root shared with sync/effects in production */
   truth?: VcsPort;
 };
 

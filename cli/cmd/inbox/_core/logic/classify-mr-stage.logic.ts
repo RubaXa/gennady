@@ -1,6 +1,6 @@
 // @file: Pure classifier of an MR's stage from its discussion notes + my identity.
+// @spec: AGENT-INBOX
 // @consumers: inbox.cmd
-// @tasks: N/A
 
 import type { VcsActionableRole } from '../../../../../services/vcs-client/entities/vcs-actionable-mr.type.ts';
 

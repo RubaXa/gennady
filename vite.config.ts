@@ -1,6 +1,6 @@
 // @file: Vite build configuration — lib mode, node22 target, external deps
+// @spec: INFRA-BASE
 // @consumers: npm run build, npm run build:publish
-// @tasks: TSK-33
 import { defineConfig, type Plugin } from 'vite';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';

@@ -1,6 +1,6 @@
 // @file: Fixture
+// @spec: DBC-DBC-LINTER
 // @consumers: DbcTsLinterTest
-// @tasks: test
 
 /** @purpose Function 2-tag pipe. | @param x Input. | @returns Result. */
 export function fn1(x: string): string { return x; }

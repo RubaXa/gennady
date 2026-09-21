@@ -11,8 +11,8 @@
 //   direct child of the directive root or inside an <Action> body), once as STEP_2_ROUTE's real
 //   structural dispatcher. This lock targets the one the parser — and so the actual routing —
 //   recognizes; see the first `it` below for the full note.
+// @spec: AI-SKILLS
 // @consumers: N/A (test file)
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,6 +1,6 @@
 // @file: Integration tests for YagniCommand#run — strict argv/root validation and fail-closed Git scope discovery.
+// @spec: CLI-YAGNI
 // @consumers: gennady.ts
-// @tasks: N/A
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';

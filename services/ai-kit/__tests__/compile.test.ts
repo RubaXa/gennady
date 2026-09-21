@@ -1,6 +1,6 @@
 // @file: Unit tests for ai-kit compile — buildNodePrompt and buildSystemPrompt.
+// @spec: SHARED
 // @consumers: node:test runner
-// @tasks: TSK-116, TSK-136
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

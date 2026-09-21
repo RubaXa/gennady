@@ -4,8 +4,8 @@
 //   `../trajectory.ts` (which keeps only what the cli/harness actually runs). A run is recorded as a
 //   normalized event list (tool calls + checkpoint verdicts); a test loads it here and asserts path
 //   properties (checkpoint order/greenness, tool budgets, allow/deny windows, forbidden actions).
+// @spec: AI-SKILLS
 // @consumers: ai/flow-eval/__tests__/*.trajectory.test.ts
-// @tasks: N/A
 
 import type { ToolEvent, CheckpointEvent, TrajectoryEvent, Trajectory } from '../trajectory.ts';
 

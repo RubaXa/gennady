@@ -1,6 +1,26 @@
 # Module: `testcov`
 
-**Module:** testcov · **Parent scope:** [cli](../cli.spec.md) · **Task:** [TSK-66](../../../tasks/cli/testcov/cli-testcov.task-66.md)
+<!--SECTION:SPEC_ID-->
+
+CLI-TESTCOV
+
+<!--/SECTION:SPEC_ID-->
+
+<!--SECTION:OVERVIEW-->
+
+## Обзор
+
+```mermaid
+flowchart LR
+  Contract[Контракт] --> Implementation[Реализация]
+  Implementation --> Verification[Проверка]
+```
+
+_Обзор пути от контракта к реализации и проверке._
+
+<!--/SECTION:OVERVIEW-->
+
+**Module:** testcov · **Parent scope:** [cli](../cli.spec.md) · **Task:** [TES-tree](./testcov.task.TES-tree.md)
 
 <!--SECTION:MODULE_VISION-->
 
@@ -124,6 +144,8 @@ _Это полный список сущностей модуля `testcov`. Л�
 
 ## 4. Entity Surfaces
 
+<details><summary>Подробности</summary>
+
 ### `run`
 
 - **Type:** Command
@@ -184,11 +206,15 @@ _Это полный список сущностей модуля `testcov`. Л�
   - Полностью покрытые строки: `✓`
 - **Lifecycle:** Вызывается из `run` для файловых целей.
 - **Consumers:** Internal `run`.
+
+</details>
 <!--/SECTION:ENTITY_SURFACES-->
 
 <!--SECTION:MODULE_CONTRACTS-->
 
 ## 5. Module Contracts (DbC)
+
+<details><summary>Подробности</summary>
 
 ### 5.0 Adapter Selection and Platform Boundary
 
@@ -313,7 +339,9 @@ _Это полный список сущностей модуля `testcov`. Л�
   - Вывод всегда в stdout (pipe-safe)
   - Не модифицирует исходный файл
   - Orchestration не читает native report maps; unsupported capability не заменяется Istanbul fallback
-  <!--/SECTION:MODULE_CONTRACTS-->
+
+</details>
+<!--/SECTION:MODULE_CONTRACTS-->
 
 <!--SECTION:PUBLIC_OPTIONS-->
 
@@ -382,6 +410,8 @@ cli/cmd/testcov/
 <!--SECTION:MODULE_DECISION_LOG-->
 
 ## 8. Module Decision Log
+
+<details><summary>Подробности</summary>
 
 ### D-TC001 — Single-file command (no core/ split)
 
@@ -488,6 +518,8 @@ cli/cmd/testcov/
 - **Status:** active · **Supersedes:** D-TC006 · **Extends:** D-TC009, D-TC012, D-TC014
 - **Why:** presentation-корни и depth heuristic пропускали root-level/глубокие файлы, а файл без report entry молча не влиял на порог. Теперь scoped и project-wide gates сначала получают полное множество через `CoverageAdapter.collectProductionFiles`, затем для каждого файла доказывают freshness и ровно одну report identity. Missing/ambiguous/stale member краснит весь gate; агрегация по partial set невозможна.
 - **Portability:** общая orchestration не знает расширений/игноров платформы; будущий adapter определяет множество тем же контрактом.
+
+</details>
 <!--/SECTION:MODULE_DECISION_LOG-->
 
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->

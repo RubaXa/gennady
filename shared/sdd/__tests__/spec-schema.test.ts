@@ -1,6 +1,6 @@
 // @file: Regression fixtures for pre-scaffold structural-schema diagnosis.
+// @spec: SHARED
 // @consumers: spec-schema
-// @tasks: N/A
 
 import { afterEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';

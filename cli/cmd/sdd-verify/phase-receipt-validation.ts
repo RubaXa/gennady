@@ -1,6 +1,6 @@
 // @file: Current-plan and command validation for CLI-owned phase receipts.
+// @spec: CLI-SDD-VERIFY
 // @consumers: sdd-check, sdd-task, phase-run
-// @tasks: N/A
 
 import { relative, resolve } from 'node:path';
 import {

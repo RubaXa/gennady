@@ -1,6 +1,6 @@
 // @file: Build architecture dependency graph from consumer annotations — S7 scenario.
+// @spec: CLI-ORIENT
 // @consumers: OrientCommand
-// @tasks: TSK-55
 
 import type { ScannedFile, GraphNode } from '../orient.types.ts';
 import { basename } from 'node:path';

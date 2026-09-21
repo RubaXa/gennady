@@ -1,3 +1,6 @@
+// @file: ai/kit/delta-assembly.ts
+// @spec: AI-SKILLS-DIRECTIVE-ASSEMBLY
+// @consumers: N/A
 /**
  * Delta-assembly for sdd-v2 directives.
  *

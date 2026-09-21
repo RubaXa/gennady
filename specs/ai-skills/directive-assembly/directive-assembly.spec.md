@@ -1,5 +1,11 @@
 # Module: `directive-assembly`
 
+<!--SECTION:SPEC_ID-->
+
+AI-SKILLS-DIRECTIVE-ASSEMBLY
+
+<!--/SECTION:SPEC_ID-->
+
 <!--SECTION:MODULE_VISION-->
 
 ## Module Vision

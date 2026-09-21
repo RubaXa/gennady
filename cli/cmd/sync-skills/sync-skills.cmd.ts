@@ -1,6 +1,6 @@
 // @file: SyncSkills command — CLI entry point for gennady sync-skills: parseArgs, resolve package, compare + copy skills.
+// @spec: CLI-SYNC-SKILLS
 // @consumers: gennady.ts, sync-skills.cmd.test.ts
-// @tasks: TSK-57
 
 import {
   readFileSync,

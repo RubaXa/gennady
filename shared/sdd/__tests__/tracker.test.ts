@@ -1,6 +1,6 @@
 // @file: Unit tests for the shared tracker parser/updater.
+// @spec: SHARED
 // @consumers: tracker
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -46,10 +46,10 @@ describe('parseMeta', () => {
   });
 
   it('is tolerant of v1 unmarked Meta lines (no bold)', () => {
-    const v1Meta = ['- Task-ID: TSK-31', '- Status: [x] DONE', '- Purpose: делать демо.'].join(
+    const v1Meta = ['- Task-ID: CAT-mr-url', '- Status: [x] DONE', '- Purpose: делать демо.'].join(
       '\n'
     );
-    assert.deepStrictEqual(parseMeta(v1Meta), { taskId: 'TSK-31', status: '[x] DONE' });
+    assert.deepStrictEqual(parseMeta(v1Meta), { taskId: 'CAT-mr-url', status: '[x] DONE' });
   });
 });
 

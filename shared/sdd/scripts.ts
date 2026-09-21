@@ -1,6 +1,6 @@
 // @file: Classify package.json npm scripts into gate classes (typecheck/lint/test/format/gennady) — ported from classify-scripts.ts.
+// @spec: SHARED
 // @consumers: sdd-state.cmd
-// @tasks: N/A
 
 /** @purpose Every class a script can be tagged with; `umbrella`/`unknown` are never selectable gates. */
 export type ScriptClass =

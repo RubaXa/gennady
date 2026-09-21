@@ -1,14 +1,14 @@
 // @file: Shared child-process runner for `sdd-check --all --format json`, used by both the
 //   zero-new-error gate and the baseline generator (GAP-B-1).
-// @invariant Captures the child's stdout via a real temp FILE, never a pipe: `sdd-check`'s ~62KB+
-//   JSON payload is written with `console.log` immediately followed by `process.exit(exitCode)`, and
-//   on this platform a large synchronous write to a PIPE stdout is silently truncated before the
-//   event loop flushes it (a long-standing Node.js quirk — non-blocking pipes vs. `process.exit`).
-//   A regular file descriptor is written to synchronously by the OS, so this is not exposed to it.
-//   Verified empirically while building this gate: piped capture truncated at exactly the same byte
-//   offset on every run; file-redirected capture never did.
+//   @invariant Captures the child's stdout via a real temp FILE, never a pipe: `sdd-check`'s ~62KB+
+//     JSON payload is written with `console.log` immediately followed by `process.exit(exitCode)`, and
+//     on this platform a large synchronous write to a PIPE stdout is silently truncated before the
+//     event loop flushes it (a long-standing Node.js quirk — non-blocking pipes vs. `process.exit`).
+//     A regular file descriptor is written to synchronously by the OS, so this is not exposed to it.
+//     Verified empirically while building this gate: piped capture truncated at exactly the same byte
+//     offset on every run; file-redirected capture never did.
+// @spec: AI-SKILLS
 // @consumers: ai/flow-eval/scripts/sdd-check-zero-new-error.ts, ai/flow-eval/scripts/generate-sdd-check-baseline.ts
-// @tasks: N/A
 
 import { existsSync, mkdtempSync, openSync, closeSync, readFileSync, rmSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';

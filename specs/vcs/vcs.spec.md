@@ -1,5 +1,11 @@
 # vcs: Scope Specification
 
+<!--SECTION:SPEC_ID-->
+
+VCS
+
+<!--/SECTION:SPEC_ID-->
+
 ## scope-type
 
 product
@@ -80,7 +86,7 @@ const parsed = parseVcsUrl('https://gitlab.com/group/project/-/merge_requests/42
 | FR-24                 | `VcsGitlabMergeDiscussions.createDiscussion` — `POST /discussions`; для line-comment `position[*_sha]` берутся из `MR.diff_refs`, `position[new_line]`/`[old_line]` по правилу added→new / removed→old / context→оба; `position_type=text`                          |
 | FR-25                 | `VcsClientMergeDiscussions.listDraftNotes({project, iid})` — порт: неопубликованные draft notes текущего пользователя. `VcsGitlabMergeDiscussions.listDraftNotes` — `GET /projects/:id/merge_requests/:iid/draft_notes`, постранично (`per_page`/`page`)            |
 | **vcs-approve**       |                                                                                                                                                                                                                                                                     |
-| FR-26                 | `VcsClientMergeRequests.approve({repository, iid})` — порт: approve MR/PR. GitHub — deferred                                                                                                                                                                        |
+| FR-26                 | `VcsClientMergeRequests.approve({repository, iid})` — порт approve MR/PR, GitHub deferred                                                                                                                                                                           |
 | FR-27                 | `VcsGitlabMergeRequests.approve` — `POST /projects/:id/merge_requests/:iid/approve`                                                                                                                                                                                 |
 | FR-28                 | `VcsMergeRequestApproveQuery` — value object: `{ repository: string, iid: string \| number }`                                                                                                                                                                       |
 | FR-29                 | При approve, если MR уже approved — GitLab возвращает 409; адаптер пробрасывает ошибку как `VcsApproveError` с кодом `ALREADY_APPROVED`                                                                                                                             |
@@ -88,7 +94,7 @@ const parsed = parseVcsUrl('https://gitlab.com/group/project/-/merge_requests/42
 | FR-30                 | `VcsClientMergeDiscussions.resolveDiscussion({project, iid, discussionId, resolved})` — порт: резолв/реопен дискуссии                                                                                                                                               |
 | FR-31                 | `VcsGitlabMergeDiscussions.resolveDiscussion` — `PUT /projects/:id/merge_requests/:iid/discussions/:discussion_id?resolved=true\|false`                                                                                                                             |
 | FR-32                 | `VcsResolveDiscussionQuery` — value object: `{ project: string, iid: string \| number, discussionId: string, resolved: boolean }`                                                                                                                                   |
-| FR-33                 | Успех (200) → void. Ошибка (403/404) → VcsError                                                                                                                                                                                                                     |
+| FR-33                 | Успех 200 → void, ошибка 403/404 → VcsError                                                                                                                                                                                                                         |
 | FR-34                 | GitHub — deferred (stub выбрасывает «not implemented»)                                                                                                                                                                                                              |
 | **unapprove**         |                                                                                                                                                                                                                                                                     |
 | FR-35                 | `VcsClientMergeRequests.unapprove(query: VcsMergeRequestApproveQuery)` — порт; переиспользует тип запроса от `approve`                                                                                                                                              |

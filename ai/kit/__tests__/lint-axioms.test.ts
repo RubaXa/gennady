@@ -1,6 +1,6 @@
 // @file: Dangling-axiom lint tests — every BeliefState axiom must be anchored outside BeliefState.
+// @spec: AI-SKILLS-DIRECTIVE-ASSEMBLY
 // @consumers: node:test runner
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,6 +1,6 @@
 // @file: ARIA snapshot helpers for visual testing of inbox-dashboard.
+// @spec: AGENT-INBOX
 // @consumers: Playwright e2e tests for inbox-serve
-// @tasks: TSK-114
 
 import type { Page, Locator } from '@playwright/test';
 import { expect } from '@playwright/test';

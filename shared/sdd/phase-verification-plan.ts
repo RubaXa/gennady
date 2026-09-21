@@ -1,6 +1,6 @@
 // @file: Canonical structural phase profile and verify-ladder selection shared by planning and execution.
+// @spec: SHARED
 // @consumers: sdd-verify phase context, sdd-verify ladder, scaffold critic context
-// @tasks: V-08b, V-08c
 
 import { resolve } from 'node:path';
 import { realpathSync } from 'node:fs';

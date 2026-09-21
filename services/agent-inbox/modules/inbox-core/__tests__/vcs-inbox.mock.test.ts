@@ -1,6 +1,6 @@
 // @file: Unit tests for inbox-core VcsInboxMock — seeded data, determinism, default context fallback.
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: node:test runner
-// @tasks: TSK-110
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,6 +1,6 @@
 // @file: Fixture helper for orient command tests.
+// @spec: CLI-E2E
 // @consumers: FixtureConsumer
-// @tasks: TSK-60
 
 /**
  * @purpose Fixture helper function for orient discovery.

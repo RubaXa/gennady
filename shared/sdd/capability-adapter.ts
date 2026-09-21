@@ -1,6 +1,6 @@
 // @file: Platform-neutral capability adapter registry for scaffold feasibility.
+// @spec: SHARED
 // @consumers: scaffold-feasibility, tests
-// @tasks: N/A
 
 /** @purpose One materialized capability artifact: a whole repo path or a structured field inside it. */
 type CapabilityArtifactLocation =

@@ -1,6 +1,6 @@
 // @file: Unit tests for coverage-threshold — the pure aggregation + comparison behind `testcov --min`.
+// @spec: CLI-TESTCOV
 // @consumers: node:test runner
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

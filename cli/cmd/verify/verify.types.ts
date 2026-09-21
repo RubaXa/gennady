@@ -1,6 +1,6 @@
 // @file: Invocation shape and result types for the read-only `gennady verify` facade (V-16a, D-13).
+// @spec: CLI-VERIFY
 // @consumers: VerifyCommand
-// @tasks: N/A
 
 import { parseArgs } from '../../../shared/common/parse-args.ts';
 import type { StackId } from '../../../shared/verify/verify.types.ts';

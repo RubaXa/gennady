@@ -1,8 +1,8 @@
 // @file: Unit + integration tests for inbox-roles mr-watch — detectMrEvents classification,
 //   DebounceTracker quiet-period arm/reset/elapse, and the promoteReviewedHeadSha → update-review
 //   reachability path (SV-19/20/21, agent-inbox spec §4.1.5).
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: node:test runner
-// @tasks: TSK-141
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';

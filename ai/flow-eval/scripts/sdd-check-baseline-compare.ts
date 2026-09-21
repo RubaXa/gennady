@@ -2,9 +2,9 @@
 //   ai/flow-eval/.baseline/sdd-check-<sha>.json) and one fresh `sdd-check --all --format json` run —
 //   no filesystem or process access here, so the zero-new-error verdict is provably deterministic
 //   and unit-testable with plain fixtures.
+// @spec: AI-SKILLS
 // @consumers: ai/flow-eval/scripts/sdd-check-zero-new-error.ts, ai/flow-eval/scripts/generate-sdd-check-baseline.ts,
 //   ai/flow-eval/scripts/__tests__/sdd-check-baseline-compare.test.ts
-// @tasks: N/A
 
 /** @purpose sdd-check's own two severities (its JSON/text output spells the warning one "warn", not "warning"). */
 type SddCheckSeverity = 'error' | 'warn';

@@ -1,6 +1,6 @@
 // @file: DisablesCheck — enforce TypeScript / linter disable comments cite a Decision Log entry AND carry a purpose (policy D-007).
+// @spec: CLI-LINT
 // @consumers: LintCommand
-// @tasks: TSK-51, TSK-52
 
 import type { LintError } from '../lint.types.ts';
 import {

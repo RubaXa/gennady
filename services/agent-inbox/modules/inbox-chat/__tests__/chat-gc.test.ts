@@ -1,7 +1,7 @@
 // @file: Unit tests for ChatGc — TTL sweep for chats/*.jsonl transcripts and
 //   reports/<mr>/snapshots/* undo-snapshots (mirrors gcStaleWorktrees/gcStaleReports).
+// @spec: AGENT-INBOX-INBOX-CHAT
 // @consumers: node:test runner
-// @tasks: TSK-128
 
 import { describe, it, beforeEach, afterEach, mock } from 'node:test';
 import assert from 'node:assert/strict';

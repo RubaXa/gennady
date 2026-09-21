@@ -1,6 +1,6 @@
 // @file: Both-outcomes proof for the brownfield code-delta golden gate (QUALITY-RULES R2/R5).
+// @spec: AI-SKILLS
 // @consumers: ai/flow-eval/provision (brownfield-extend-cli fixture)
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

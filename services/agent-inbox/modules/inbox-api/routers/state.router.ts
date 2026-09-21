@@ -1,6 +1,6 @@
 // @file: StateRouter — GET /api/state?mr=<ref> handler returning batched MR state.
+// @spec: AGENT-INBOX-INBOX-API
 // @consumers: HttpServer
-// @tasks: TSK-162
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { logger } from '#logger';

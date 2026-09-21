@@ -1,6 +1,6 @@
 // @file: testcov command help output
+// @spec: CLI-TESTCOV
 // @consumers: testcov.cmd.ts
-// @tasks: TSK-66
 /**
  * @purpose Print CLI help for the testcov command.
  */

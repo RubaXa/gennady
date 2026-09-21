@@ -1,6 +1,6 @@
 // @file: RoleScheduler — orchestrates tick (poll → delta → assign → step → escalate) and manual assignment.
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: serve timer, inbox-api
-// @tasks: TSK-113, TSK-121, TSK-140, TSK-141, TSK-157, TSK-161, TSK-172
 
 import { logger } from '#logger';
 import type { RoleEngine, RegisteredRole } from './role-engine.ts';

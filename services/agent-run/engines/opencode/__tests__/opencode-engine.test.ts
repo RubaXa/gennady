@@ -1,6 +1,6 @@
 // @file: Tests for OpencodeEngine — unit (profile cache, env hygiene) + integration (detect, timeout, model) + e2e (run).
+// @spec: AGENT-RUN-OPENCODE
 // @consumers: CI test suite
-// @tasks: TSK-63, TSK-64
 
 /**
  * Test Graph:

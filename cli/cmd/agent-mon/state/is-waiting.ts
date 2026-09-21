@@ -1,6 +1,6 @@
 // @file: Heuristic for detecting whether an agent session is waiting for operator input.
+// @spec: AGENT-MON-CLI-STATE
 // @consumers: state/create-state-manager, state/group-by-provider
-// @tasks: TSK-45
 
 import type { AgentSession } from '../../../../services/agent-mon/model/agent-session.type.ts';
 

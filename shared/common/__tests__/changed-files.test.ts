@@ -1,8 +1,8 @@
 // @file: Unit tests for changed-files.ts — real git repos (no mocking: git behavior is deterministic),
 //   covering getChangedFiles's unfiltered diff (added for sdd-task --group-scope, D-item "group-scope
 //   underreports diff") alongside shared production/all-SDD-source extension filters.
+// @spec: SHARED
 // @consumers: node:test runner
-// @tasks: N/A
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,6 +1,6 @@
 // @file: Structural ownership of missing readiness gates shared by state, task, and phase verification.
+// @spec: SHARED
 // @consumers: sdd-state.cmd, sdd-task.cmd, phase-context
-// @tasks: N/A
 
 import { isAbsolute, relative, resolve, sep } from 'node:path';
 import { proveRepoFile, readProvenRepoFile } from '../common/repo-file-identity.ts';

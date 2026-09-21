@@ -1,6 +1,6 @@
 // @file: Unit tests for groupByProvider — session grouping and sort-order contract
+// @spec: AGENT-MON-CLI-STATE
 // @consumers: test
-// @tasks: TSK-45
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

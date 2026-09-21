@@ -1,4 +1,5 @@
 // @file: Unit tests for parseModuleEntities / parseModuleContracts / parseModuleRequirements — both spec formats, plus the legacy-table false-positive guard.
+// @spec: CLI-SDD-ORIENT
 // @consumers: parse-module
 
 import { describe, it } from 'node:test';

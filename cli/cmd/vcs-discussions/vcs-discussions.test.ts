@@ -1,6 +1,6 @@
 // @file: vcs-discussions tests — --my filter, --with-drafts, error cases, AI-22 contract.
+// @spec: CLI
 // @consumers: CI
-// @tasks: TSK-96
 
 import { describe, it, mock, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';

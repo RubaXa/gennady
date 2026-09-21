@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // @file: Entry point for vcs-job command — dispatch to run().
+// @spec: CLI
 // @consumers: gennady CLI
-// @tasks: TSK-85
 
 import { run } from './vcs-job.cmd.ts';
 

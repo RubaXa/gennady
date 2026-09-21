@@ -1,6 +1,6 @@
 // @file: DashboardV2Api — canonical v2 HTTP surface used by the React dashboard.
+// @spec: AGENT-INBOX-INBOX-DASHBOARD
 // @consumers: DashboardV2Store
-// @tasks: TSK-164
 
 import type { BoardV2, BootV2, MrStateV2, FeedWidget } from './v2-types.ts';
 

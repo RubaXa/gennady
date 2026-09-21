@@ -1,6 +1,6 @@
 // @file: Query files by consumer name — S3 scenario with substring and fuzzy matching.
+// @spec: CLI-ORIENT
 // @consumers: OrientCommand
-// @tasks: TSK-55
 
 import type { ScannedFile, ConsumerQueryResult } from '../orient.types.ts';
 import { damerauLevenshtein } from './damerau-levenshtein.ts';

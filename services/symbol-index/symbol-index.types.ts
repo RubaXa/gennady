@@ -1,6 +1,6 @@
 // @file: Port for symbol declaration + reference counting behind `gennady yagni`. Two adapters: tree-sitter (exact) and grep (approximate) — precision travels with ReferenceCount.
+// @spec: SHARED
 // @consumers: TsSymbolIndexAdapter, GrepSymbolIndexAdapter, selectSymbolIndex, gennady yagni (composition root)
-// @tasks: N/A
 
 /** @purpose Language-defined surface visibility attached by the adapter that understands it. */
 export type SymbolVisibility = 'public' | 'private' | 'unknown';

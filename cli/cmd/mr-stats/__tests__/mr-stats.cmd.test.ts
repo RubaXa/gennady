@@ -1,6 +1,6 @@
 // @file: Unit tests for mr-stats command — help, missing URL, stub.
+// @spec: MR-STATS
 // @consumers: MrStatsCommand
-// @tasks: TSK-138, TSK-154
 
 import { describe, it, before, after, mock } from 'node:test';
 import assert from 'node:assert/strict';

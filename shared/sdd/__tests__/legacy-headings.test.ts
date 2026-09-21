@@ -1,4 +1,5 @@
 // @file: Unit tests for legacySpecSectionBody / stripHeadingNumbering / hasAnySectionMarker — the v1 (pre-marker) section fallback.
+// @spec: SHARED
 // @consumers: legacy-headings
 
 import { describe, it } from 'node:test';

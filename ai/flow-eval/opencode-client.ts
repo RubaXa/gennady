@@ -1,4 +1,5 @@
 // @file: Shared OpenCode SDK client construction for authenticated local servers.
+// @spec: AI-SKILLS
 // @consumers: eval runtime and bounded evidence reader
 
 import { createOpencodeClient, type OpencodeClient } from '@opencode-ai/sdk';

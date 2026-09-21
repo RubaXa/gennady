@@ -1,6 +1,6 @@
 // @file: dashboard.spec.ts — behavioral e2e tests for inbox-dashboard via Playwright.
+// @spec: AGENT-INBOX
 // @consumers: npx playwright test --config=e2e/inbox-serve/playwright.config.ts
-// @tasks: TSK-108, TSK-107
 
 import { test, expect, type Page } from '@playwright/test';
 import { mrArtifactRefs510, mrArtifactContents510 } from './fixtures/mock-data.ts';

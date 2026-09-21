@@ -1,6 +1,6 @@
 // @file: Inject canonical <!--SECTION:NAME--> anchors into a v1 ticket (plain `## N.` headers) — pure, for migration.
+// @spec: SHARED
 // @consumers: sdd-migrate.cmd
-// @tasks: N/A
 
 import { extractSection } from './section.ts';
 import { parsePhasesOverview } from './ticket.ts';

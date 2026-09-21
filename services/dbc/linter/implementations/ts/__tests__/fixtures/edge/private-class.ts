@@ -1,3 +1,6 @@
+// @file: services/dbc/linter/implementations/ts/__tests__/fixtures/edge/private-class.ts
+// @spec: DBC-DBC-LINTER
+// @consumers: N/A
 /**
  * @purpose Class with various visibility modifiers.
  */

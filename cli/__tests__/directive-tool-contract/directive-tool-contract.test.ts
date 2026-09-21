@@ -6,8 +6,8 @@
 //   matching that shape. This is the class of bug that costs an executing agent real panic: a tool
 //   reference table that promises a flag, a Task-ID banner, or a status side-effect the CLI does not
 //   actually have.
+// @spec: CLI
 // @consumers: N/A
-// @tasks: N/A
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';

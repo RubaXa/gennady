@@ -1,6 +1,6 @@
 // @file: Role-invariant contract-slot execution and fresh publication orchestration.
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: inbox-queue, inbox-chat, inbox-api
-// @tasks: TSK-176
 
 import { ReviewPlan } from '../model/review-plan.ts';
 import type { ReviewContract } from '../model/review-contract.ts';

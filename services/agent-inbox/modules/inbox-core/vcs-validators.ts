@@ -1,6 +1,6 @@
 // @file: vcs-validators — shared URL validation for SSRF prevention in agent-inbox serve-mode.
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: BoardProviderReal, RoleScheduler, VcsInboxReal
-// @tasks: TSK-113, TSK-117
 
 /**
  * @purpose SSRF-safe MR URL validator. Checks HTTPS, host match, MR path. Skips host when vcsHost empty.

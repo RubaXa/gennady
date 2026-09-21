@@ -1,6 +1,6 @@
 // @file: T-B6-28 contract test — `back-sync` never returns as a promised reconcile mechanism.
+// @spec: AI-SKILLS-DIRECTIVE-ASSEMBLY
 // @consumers: release regression suite
-// @tasks: N/A
 
 // T-B6-28 (ai/drafts/research/sdd-v1-to-v2-transfer/61-TASK-BOARD.md §1, 40-TRACK-DIRECTIVES-SKILLS.md):
 // `sdd-sync` is mechanically tracker-status/rollup only — it never rewrites code from the spec. v1's

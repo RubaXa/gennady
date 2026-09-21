@@ -1,6 +1,6 @@
 // @file: Canonical repository-file identity for fail-closed reads and mutations.
+// @spec: SHARED
 // @consumers: ticket-resolve, sdd-log, sdd-sync, sdd-session
-// @tasks: N/A
 
 import {
   closeSync,

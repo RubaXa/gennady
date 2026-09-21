@@ -1,6 +1,6 @@
 // @file: Atomic deterministic compiler from sealed manifest to total Review Contract.
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: ReviewOrchestrator, inbox-eval
-// @tasks: TSK-176
 
 import { createHash } from 'node:crypto';
 import type { ReviewInputManifest } from '../model/review-input-manifest.ts';

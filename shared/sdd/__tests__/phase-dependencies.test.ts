@@ -1,6 +1,6 @@
 // @file: Unit proofs for transitive, cycle-safe phase dependency receipt preflight.
+// @spec: SHARED
 // @consumers: N/A
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,8 +1,8 @@
 // @file: ReviewerRole — three branches from `prepare` (prep): review_needed (fan-out battery +
 //   security lens + code-review diff → synthesize), reply_needed (thread-triage, no full battery),
 //   update-review (delta-only). Parity with the CLI D57/D70 pipeline (NFC-SV-07/08/09).
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: RoleEngine, role-engine.test.ts, reviewer.role.test.ts
-// @tasks: TSK-113, TSK-121, TSK-122, TSK-127
 
 import { mkdirSync, writeFileSync, existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join, basename } from 'node:path';

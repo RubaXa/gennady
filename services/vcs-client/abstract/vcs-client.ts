@@ -1,6 +1,6 @@
 // @file: Abstract VCS client surface — ports for merge requests, discussions, repository files, reactions.
+// @spec: VCS-VCS-CLIENT
 // @consumers: cli/review-verify, cli/cat
-// @tasks: TSK-28, TSK-84, TSK-98
 
 import type { VcsClientMergeDiscussions } from './vcs-client-merge-discussions.ts';
 import type { VcsClientMergeRequests } from './vcs-client-merge-requests.ts';

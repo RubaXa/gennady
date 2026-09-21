@@ -1,6 +1,6 @@
 // @file: Types, error codes, and diagnostic builders for the sdd-sync command.
+// @spec: CLI-SDD-SYNC
 // @consumers: SddSyncCommand
-// @tasks: N/A
 
 import { relative, resolve } from 'node:path';
 import type { TicketRef } from '../../../shared/sdd/check.ts';

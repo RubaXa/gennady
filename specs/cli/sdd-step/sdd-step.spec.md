@@ -1,5 +1,11 @@
 # Module: `sdd-step`
 
+<!--SECTION:SPEC_ID-->
+
+CLI-SDD-STEP
+
+<!--/SECTION:SPEC_ID-->
+
 > **DEFERRED** (2026-08-22): инструмент отложен решением оператора после фактчека — доставка
 > пакетов реализуется путём+Read (см. [`directive-assembly`](../../ai-skills/directive-assembly/directive-assembly.spec.md),
 > DA-DL-12+). DEFERRED_DECISION: вернуться, если живые прогоны покажут потерю агентов на сырых
@@ -523,34 +529,3 @@ sdd-step/
   пакете, близком к хардлимиту 8000 символов) не выполнен — сделать до того, как `StepBudgetGate`
   станет блокирующим гейтом CI
   <!--/SECTION:HANDOFF-->
-
-## Critic Rounds
-
-### Round 1 — 2026-08-22
-
-- **Verdict:** CRITICAL
-- **Accepted:**
-  1. Источник истины списка шагов не был разведён — введена `listDeclaredSteps(skeletonContent)`,
-     парсящая СКЕЛЕТ директивы; разведены `unknown_step` (id не в объявленном списке скелета,
-     подсказка называет объявленные шаги, не файлы на диске) и `package_missing` (id объявлен, но
-     файла нет) — поправлены Entity Inventory/Surfaces, `SddStepCommand`, SS-REQ-3/SS-REQ-5 и их BDD.
-  2. Порядок проверок не был зафиксирован инвариантом — добавлен в Invariants контракта
-     `SddStepCommand`: `bad_invocation` → `directive_not_found` → `unknown_step` →
-     `package_missing` → `version_mismatch`, первая применимая по порядку побеждает.
-  3. Санитизация аргументов от path traversal не была специфицирована — добавлен SS-REQ-11:
-     `<directive>`/`<step-id>` с `/`, `\` или `..` отклоняются как `bad_invocation` до резолва путей.
-  4. Форма баннера была только в примере — зафиксирована требованием SS-REQ-9 рядом с терминальной
-     строкой (`[sdd-step] <directive> · <step-id> · build <fp>` / `[sdd-step] end <step-id> — build
-<fp>`).
-  5. Сообщение для пустого объявленного списка шагов не имело формулировки — зафиксирована в
-     SS-REQ-3: «шагов не объявлено — скелет пуст либо директива не собрана в lazy».
-  6. Module Usage Example использовал позиционные/несогласованные id (`STEP_2`, `P2_IMPLEMENT`,
-     `audit STEP_4`) — переведён на дословные id реальных шагов (`STEP_2_NARROW_RECON`, `audit
-STEP_3_ROUTE` и т.п.), согласованно с правкой 5 `directive-assembly.spec.md`.
-- **Rejected:** нет
-- **Out of cycle:** наблюдение сенсора про Vision-абзац `cli.spec.md` — вне артефакта этого цикла
-  (не `directive-assembly`/`sdd-step`), передано оператору без правки здесь.
-- **Changes:** правки 1–6 выше, внесены точечно в Entity Inventory/Surfaces (`listDeclaredSteps`),
-  Module Contracts (мермейд, sequence-таблица, Invariants), SS-REQ-3/SS-REQ-5/SS-REQ-9 (расширен)/
-  SS-REQ-11 (новый), Module Usage Example, BDD-сценарии SS-REQ-1/SS-REQ-3/SS-REQ-5, File
-  Structure/File Mapping.

@@ -1,8 +1,8 @@
 // @file: Unit tests for inbox-eval diff-hunk parser — line in-hunk vs out-of-hunk membership, and
 //   the GitLab C6 edge case (a line added past the old file's end via a pure-insertion hunk still
 //   lands in newLines).
+// @spec: AGENT-INBOX-INBOX-EVAL
 // @consumers: node:test runner
-// @tasks: TSK-118
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

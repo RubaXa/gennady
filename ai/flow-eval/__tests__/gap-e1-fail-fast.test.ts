@@ -1,7 +1,7 @@
 // @file: Both-outcomes proof that a typo in `phase` or `mode` drops the run, never measures a
 //   silently different branch (GAP-E-1/H-16).
+// @spec: AI-SKILLS
 // @consumers: ai/flow-eval/cli.ts, ai/flow-eval/prompts.ts
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

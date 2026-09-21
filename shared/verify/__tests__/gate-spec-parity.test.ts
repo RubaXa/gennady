@@ -1,6 +1,6 @@
 // @file: Parity test — every runner-visible Gate field must be authorable in GateSpec (FR-STACK-15).
+// @spec: SHARED
 // @consumers: CI
-// @tasks: TSK-95
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

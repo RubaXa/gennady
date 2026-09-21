@@ -1,5 +1,11 @@
 # Module: state
 
+<!--SECTION:SPEC_ID-->
+
+AGENT-MON-CLI-STATE
+
+<!--/SECTION:SPEC_ID-->
+
 ## 1. Module Vision
 
 State manager — принимает `AsyncIterable<SessionChanges>`, мёрджит изменения, преобразует в `ViewModel` для UI. Не зависит от `agent-mon` напрямую — работает с абстрактным потоком изменений. Содержит эвристику `isWaitingForUser`.

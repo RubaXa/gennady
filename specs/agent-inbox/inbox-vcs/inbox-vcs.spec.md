@@ -1,5 +1,25 @@
 # Module: inbox-vcs
 
+<!--SECTION:SPEC_ID-->
+
+AGENT-INBOX-INBOX-VCS
+
+<!--/SECTION:SPEC_ID-->
+
+<!--SECTION:OVERVIEW-->
+
+## Обзор
+
+```mermaid
+flowchart LR
+  Contract[Контракт] --> Implementation[Реализация]
+  Implementation --> Verification[Проверка]
+```
+
+_Обзор пути от контракта к реализации и проверке._
+
+<!--/SECTION:OVERVIEW-->
+
 <!--SECTION:MODULE_VISION-->
 
 ## 1. Module Vision
@@ -83,6 +103,8 @@ conditional reject возвращается как `not-applied`. Если не 
 <!--SECTION:ENTITY_SURFACES-->
 
 ## 4. Entity Surfaces
+
+<details><summary>Подробности</summary>
 
 ### `VcsReadPort`
 
@@ -304,11 +326,15 @@ conditional reject возвращается как `not-applied`. Если не 
   external I/O против newest observation.
 - **Errors & Degradation:** missing identity or thread ownership denies mutation.
 - **Consumers:** effect adapter and package builder.
+
+</details>
 <!--/SECTION:ENTITY_SURFACES-->
 
 <!--SECTION:MODULE_CONTRACTS-->
 
 ## 5. Module Contracts (DbC)
+
+<details><summary>Подробности</summary>
 
 ### Read contract
 
@@ -460,7 +486,7 @@ manual/automatic caller.
   `not-applied`, indeterminate state is `ambiguous`.
 - **Unsupported host:** capability probe prevents creation of the effect. The package marks the native action unavailable with evidence and may offer an explicit alternative group “blocking comment + unapprove”; the adapter never substitutes it silently and therefore emits no `ReviewOutcome` for an uncreated effect.
 - **Runtime Backing:** capability-selected GitLab native review-state endpoint.
-- **Verification Levels:** contract and allowlisted real-adapter integration in TSK-174; shippable-entry real-effects e2e is owned by TSK-183.
+- **Verification Levels:** contract and allowlisted real-adapter integration in IV-vcs-port; shippable-entry real-effects e2e is owned by IE-realeval.
 
 #### Resolve/reopen permission truth table
 
@@ -473,6 +499,7 @@ manual/automatic caller.
 
 `reopen` follows the same ownership permission; automatic reopen is not enabled in v0.
 
+</details>
 <!--/SECTION:MODULE_CONTRACTS-->
 
 <!--SECTION:PUBLIC_OPTIONS-->
@@ -562,6 +589,8 @@ business logic. Никакой иной `VcsInbox*` hierarchy не создаё�
 
 ## 8. Module Decision Log
 
+<details><summary>Подробности</summary>
+
 - `D-VCS-01`: GitLab is canonical for external state; journal is canonical for local process history.
 - `D-VCS-02`: reads and effects are separate ports because readonly and real-effects profiles vary independently.
 - `D-VCS-03`: `VcsGitlabPort` is the introduced real adapter name; it implements both independent
@@ -578,7 +607,9 @@ business logic. Никакой иной `VcsInbox*` hierarchy не создаё�
 - **Risk accepted:** provider без conditional endpoint может дать `ambiguous`, который
   требует operator/new observation и не повторяется автоматически.
 - **Rejected alternatives:** глобальный capability flag; pre-effect read как
-достаточная гарантия; retry внутри adapter/reconciler; HTTP success как applied.
+  достаточная гарантия; retry внутри adapter/reconciler; HTTP success как applied.
+
+</details>
 <!--/SECTION:MODULE_DECISION_LOG-->
 
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->

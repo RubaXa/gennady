@@ -1,6 +1,6 @@
 // @file: RoleEngine — loads .role.ts modules, registers roles, activates/deactivates.
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: RoleScheduler, inbox-api (BoardProvider)
-// @tasks: TSK-113
 
 import { logger } from '#logger';
 import { RoleError } from './errors.ts';

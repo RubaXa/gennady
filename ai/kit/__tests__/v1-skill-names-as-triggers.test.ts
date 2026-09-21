@@ -1,7 +1,7 @@
 // @file: T-B6-07 contract test — retired v1 skill names live only as triggers in an existing v2
-// skill's `description`, never as a new skill, wrapper, or alias command.
+//   skill's `description`, never as a new skill, wrapper, or alias command.
+// @spec: AI-SKILLS-DIRECTIVE-ASSEMBLY
 // @consumers: release regression suite
-// @tasks: N/A
 
 // T-B6-07 (ai/drafts/research/sdd-v1-to-v2-transfer/61-TASK-BOARD.md §1, 40-TRACK-DIRECTIVES-SKILLS.md,
 // D-27 variant (a)): v1 had `/sdd-setup`, `/sdd-discover`, `/sdd-continue`, `/sdd-infra`,

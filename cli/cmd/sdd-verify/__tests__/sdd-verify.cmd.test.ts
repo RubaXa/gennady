@@ -1,7 +1,7 @@
 // @file: Unit tests for sdd-verify — repair-first phase profiles, read-only full verification,
 //   required-script failures, and brief success/detailed failure output.
+// @spec: CLI-SDD-VERIFY
 // @consumers: gennady.ts
-// @tasks: N/A
 
 import { describe, it, mock, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';

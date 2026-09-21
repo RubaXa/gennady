@@ -5,8 +5,8 @@
 //   idempotent (0 new effect_applied) via a minimal prep→effect graph; real-disk materialization
 //   (PLAN.md/README.md with a deterministic changeset-derived mermaid block) round-tripped through
 //   BoardProviderReal.listArtifacts/readArtifact (TSK-122 P3 real-proof integration test).
+// @spec: AGENT-INBOX-INBOX-API
 // @consumers: node:test runner
-// @tasks: TSK-121, TSK-122, TSK-113, TSK-167, TSK-170
 
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,6 +1,6 @@
 // @file: sdd-orient command help output.
+// @spec: CLI-SDD-ORIENT
 // @consumers: help command
-// @tasks: N/A
 
 /**
  * @purpose Print CLI help for the sdd-orient command.

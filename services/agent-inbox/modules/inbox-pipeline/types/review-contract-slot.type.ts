@@ -1,6 +1,6 @@
 // @file: Closed machine-readable review contract slot definitions.
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: ReviewContract, ReviewContractCompiler, ReviewStructuralValidator
-// @tasks: TSK-176
 
 /** @purpose Closed slot kind catalog for the v0 review contract. */
 export type ReviewContractSlotKind =

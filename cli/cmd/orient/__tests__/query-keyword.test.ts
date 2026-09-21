@@ -1,6 +1,6 @@
 // @file: Unit tests for queryKeyword — keyword search with exact, prefix, and fuzzy scoring (S4 scenario).
+// @spec: CLI-ORIENT
 // @consumers: OrientCommand
-// @tasks: TSK-55
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

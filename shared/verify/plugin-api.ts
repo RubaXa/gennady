@@ -1,6 +1,6 @@
 // @file: The host API a stack plugin may use — the whole surface, re-exported in one place.
+// @spec: SHARED
 // @consumers: plugins/**, package.json#exports["./stack"]
-// @tasks: TSK-96
 
 export type {
   Cmd,

@@ -1,8 +1,8 @@
 // @file: Lazy-assembly core tests — assembly-mode resolution, version fingerprint stamping and
 //         drift detection, axiom/contract activation classification, the skeleton/package split
 //         itself, and lazy-candidacy reassessment.
+// @spec: AI-SKILLS-DIRECTIVE-ASSEMBLY
 // @consumers: node:test runner
-// @tasks: DA-lazy-asm
 
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';

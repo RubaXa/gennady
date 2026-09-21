@@ -1,5 +1,11 @@
 # Module: `yagni`
 
+<!--SECTION:SPEC_ID-->
+
+CLI-YAGNI
+
+<!--/SECTION:SPEC_ID-->
+
 **Module:** yagni · **Parent scope:** [cli](../cli.spec.md)
 
 <!--SECTION:MODULE_VISION-->

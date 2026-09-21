@@ -1,6 +1,6 @@
 // @file: E2E tests for the sdd-extract command — section slice + exit-code contract.
+// @spec: CLI-E2E
 // @consumers: E2eContext
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

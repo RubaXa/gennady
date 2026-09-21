@@ -1,6 +1,6 @@
 // @file: Layout helpers for computing element positions relative to viewport.
+// @spec: AGENT-INBOX
 // @consumers: Playwright e2e tests for inbox-serve
-// @tasks: TSK-114
 
 import type { Locator } from '@playwright/test';
 

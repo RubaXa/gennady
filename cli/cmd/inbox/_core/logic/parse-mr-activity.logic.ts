@@ -1,8 +1,8 @@
 // @file: Parse GitLab system notes into MrActivityEvent[] — provider-agnostic
 //   activity events. GitLab: parse body text of system notes. GitHub (future):
 //   map timeline events. The shared type lives in services/vcs-client/entities/.
+// @spec: AGENT-INBOX
 // @consumers: inbox.cmd
-// @tasks: N/A
 
 import type {
   MrActivityEvent,

@@ -1,6 +1,6 @@
 // @file: Entity counter — tree-sitter-based comparison of top-level exported entities between base and MR.
+// @spec: MR-STATS
 // @consumers: mr-stats.cmd
-// @tasks: TSK-139
 
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';

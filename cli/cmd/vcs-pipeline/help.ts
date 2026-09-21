@@ -1,6 +1,6 @@
 // @file: vcs-pipeline command help output.
+// @spec: CLI
 // @consumers: help command
-// @tasks: TSK-83
 
 /**
  * @purpose Print CLI help for the vcs-pipeline command.

@@ -1,4 +1,5 @@
 // @file: Canonical SDD phase prompts for intellectual evaluation runs.
+// @spec: AI-SKILLS
 // @consumers: runner; prompts intentionally stop at the requested approval boundary.
 
 import type { SddEvalMode, SddEvalPhase, SddEvalScenario } from './types.ts';

@@ -1,6 +1,6 @@
 // @file: Contract tests for exact content and typed diagram slot schemas.
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: TSK-176 audit
-// @tasks: TSK-176
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

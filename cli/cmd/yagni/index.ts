@@ -1,6 +1,6 @@
 // @file: Executable entry point for gennady yagni — keeps process effects out of the importable command module.
+// @spec: CLI-YAGNI
 // @consumers: gennady.ts
-// @tasks: N/A
 
 import { run } from './yagni.cmd.ts';
 

@@ -1,6 +1,6 @@
 // @file: Shared sync command dependencies type — SyncCmdDeps
+// @spec: SHARED
 // @consumers: sync.cmd.ts, sync-skills.cmd.ts
-// @tasks: TSK-56
 
 /**
  * @purpose Injectable dependencies for sync CLI commands.

@@ -1,6 +1,6 @@
 // @file: Unit tests for lazy requirement-list review and atomic entry size budgets.
+// @spec: SHARED
 // @consumers: SddCheckCommand
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

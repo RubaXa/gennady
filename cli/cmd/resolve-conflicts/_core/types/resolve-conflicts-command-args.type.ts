@@ -1,6 +1,6 @@
 // @file: Normalized launch arguments for resolve-conflicts.
+// @spec: CLI
 // @consumers: resolve-conflicts-command-args-parse.logic, resolve-conflicts-command-run.logic, resolve-conflicts-context-git-build.logic
-// @tasks: N/A
 
 /**
  * @purpose Normalized launch arguments for resolve-conflicts.

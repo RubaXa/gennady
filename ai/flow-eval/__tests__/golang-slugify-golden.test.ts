@@ -1,8 +1,8 @@
 // @file: Both-outcomes proof for the golang-slugify `task` golden gate (E-11, D-46 track 50) — the
 //   Go analogue of infra-golden.test.ts. Requires `go` on PATH (the golden script itself shells out
 //   to `go vet`/`go test`); every other flow-eval test stays fake-backed and Go-free.
+// @spec: AI-SKILLS
 // @consumers: ai/flow-eval/provision (golang-slugify fixture)
-// @tasks: N/A
 
 import { describe, it, before } from 'node:test';
 import assert from 'node:assert/strict';

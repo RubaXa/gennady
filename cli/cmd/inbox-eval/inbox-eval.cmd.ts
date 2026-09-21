@@ -2,8 +2,8 @@
 // @file: CLI command: inbox-eval — thin wrapper over `runEval` (TSK-119): drives the real role
 //   graph (run-mode, TSK-121) over a fixed MR list and evaluates gates G1..G10 (TSK-118) against
 //   what it actually produced. Dry-run posting by default (NFC-05): nothing is written to GitLab.
+// @spec: AGENT-INBOX
 // @consumers: gennady.ts
-// @tasks: TSK-119
 
 import { fileURLToPath } from 'node:url';
 import { logger } from '#logger';

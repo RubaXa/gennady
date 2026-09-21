@@ -1,6 +1,6 @@
 // @file: PipelineRuntime — boot-owned materializer and executor lifecycle for review/delta DAGs.
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: agent-inbox serve bootstrap, RoleScheduler
-// @tasks: TSK-157, TSK-161, TSK-173
 
 import { logger } from '#logger';
 import { mkdir, rename, writeFile } from 'node:fs/promises';

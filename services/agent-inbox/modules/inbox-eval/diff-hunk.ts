@@ -2,8 +2,8 @@
 //   actually part of a diff hunk — the ground truth G8 (line-in-diff-hunk) checks proposed line
 //   comments against. Git access happens through an injected runner (no direct spawn), so the
 //   parser and its callers stay unit-testable without a real git repository.
+// @spec: AGENT-INBOX-INBOX-EVAL
 // @consumers: EvalHarness (TSK-119), gates.ts (G8)
-// @tasks: TSK-118
 
 /** @purpose One `@@ -oldStart,oldCount +newStart,newCount @@` hunk boundary, in new-file coordinates. */
 export type HunkRange = {

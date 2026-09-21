@@ -1,6 +1,6 @@
 // @file: Unit tests for AwaitingQueue — renders MR cards in the "Ждут меня" queue.
+// @spec: AGENT-INBOX-INBOX-DASHBOARD
 // @consumers: node:test runner
-// @tasks: TSK-107
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

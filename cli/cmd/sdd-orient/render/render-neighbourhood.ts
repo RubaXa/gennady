@@ -1,4 +1,5 @@
 // @file: Render a Neighbourhood into the fixed sdd-orient text contract — names + IDs only, never bodies, so the printout stays cheap to read.
+// @spec: CLI-SDD-ORIENT
 // @consumers: SddOrientCommand
 
 import type { Neighbourhood, NeighbourEntry } from '../core/build-neighbourhood.ts';

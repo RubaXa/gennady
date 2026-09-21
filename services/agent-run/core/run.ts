@@ -1,6 +1,6 @@
 // @file: Public entry points `run`, `listEngines`, and `listModels` for the agent-run module.
+// @spec: AGENT-RUN-CORE
 // @consumers: index.ts (composition root), CLI commands, agent consumers
-// @tasks: TSK-62, TSK-64
 
 import { logger } from '#logger';
 import { AgentRunError } from './agent-run-error.ts';

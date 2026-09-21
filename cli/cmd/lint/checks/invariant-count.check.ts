@@ -1,6 +1,6 @@
 // @file: Invariant count validation — checks that exported entities don't exceed the invariant threshold.
+// @spec: CLI-LINT
 // @consumers: LintCommand
-// @tasks: TSK-XX
 
 import type { LintError } from '../lint.types.ts';
 import { ERR_CLI_LINT_TOO_MANY_INVARIANTS } from '../lint.types.ts';

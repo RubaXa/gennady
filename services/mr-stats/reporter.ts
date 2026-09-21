@@ -1,6 +1,6 @@
 // @file: Reporter — aggregates module results into the final MrStatsReport JSON.
+// @spec: MR-STATS
 // @consumers: mr-stats.cmd
-// @tasks: TSK-139
 
 import type {
   MrMetadata,

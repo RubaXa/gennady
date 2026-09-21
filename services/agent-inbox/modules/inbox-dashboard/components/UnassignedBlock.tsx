@@ -1,6 +1,6 @@
 // @file: UnassignedBlock — block for MRs without a role, with "Assign v" button per card.
+// @spec: AGENT-INBOX-INBOX-DASHBOARD
 // @consumers: BoardPage
-// @tasks: TSK-107
 
 import { useEffect, useRef, useState } from 'react';
 import { ChevronDown, ChevronRight, UserPlus } from 'lucide-react';

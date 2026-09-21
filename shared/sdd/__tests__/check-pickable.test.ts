@@ -1,4 +1,5 @@
 // @file: Unit tests for pickableTasks — the deterministic execution map (ready = TODO + deps DONE).
+// @spec: SHARED
 // @consumers: check
 
 import { describe, it } from 'node:test';

@@ -1,7 +1,7 @@
 // @file: Integration tests for testcov.cmd.ts diagnostics, threshold argv, and --run producer
 //   ownership — spawned as a subprocess because the command is a top-level script.
+// @spec: CLI-TESTCOV
 // @consumers: gennady.ts
-// @tasks: N/A
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';

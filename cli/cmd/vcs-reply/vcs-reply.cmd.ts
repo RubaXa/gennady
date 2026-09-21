@@ -1,6 +1,6 @@
 // @file: Post replies to GitLab MR discussions: reads JSON array from stdin or opts, posts notes.
+// @spec: CLI
 // @consumers: vcs-reply
-// @tasks: N/A, TSK-70, TSK-72, TSK-78, TSK-79, TSK-87, TSK-100
 
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';

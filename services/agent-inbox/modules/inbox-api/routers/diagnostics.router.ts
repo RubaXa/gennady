@@ -1,8 +1,8 @@
 // @file: DiagnosticsRouter — GET /api/diagnostics: recent server-log tail so the dashboard's 🐞
 //   button can carry the SERVER's own flow diagnostics (lens/synthesis/effect failures live
 //   server-side), not only the browser's ring buffer.
+// @spec: AGENT-INBOX-INBOX-API
 // @consumers: HttpServer, DebugLogButton (via api-client)
-// @tasks: TSK-debug-log
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { snapshotServerLog } from '#logger';

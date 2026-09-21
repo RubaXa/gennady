@@ -1,6 +1,6 @@
 // @file: LOCK-2 contract test — the developer home path to skills never returns in ai/**.
+// @spec: AI-SKILLS-DIRECTIVE-ASSEMBLY
 // @consumers: release regression suite
-// @tasks: N/A
 
 // LOCK-2 (20-ISSUES-VERDICTS.md #11, ai/drafts/research/sdd-v1-to-v2-transfer/61-TASK-BOARD.md §1):
 // v1 called `~/.claude/skills/sdd-execute/scripts/sdd` (the *user's home* directory) from eight

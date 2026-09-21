@@ -1,6 +1,6 @@
 // @file: sdd-extract command help output.
+// @spec: CLI-SDD-EXTRACT
 // @consumers: help command
-// @tasks: N/A
 
 /**
  * @purpose Print CLI help for the sdd-extract command.

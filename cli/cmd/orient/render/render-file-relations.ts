@@ -1,6 +1,6 @@
 // @file: Bounded text and versioned JSON renderers for orient file relations.
+// @spec: CLI-ORIENT
 // @consumers: OrientCommand
-// @tasks: N/A
 
 import type {
   FileRelationsResult,

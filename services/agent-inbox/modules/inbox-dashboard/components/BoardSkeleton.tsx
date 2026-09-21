@@ -1,6 +1,6 @@
 // @file: BoardSkeleton — skeleton placeholder mimicking board layout during cold start.
+// @spec: AGENT-INBOX-INBOX-DASHBOARD
 // @consumers: BoardPage
-// @tasks: TSK-107
 
 /**
  * @purpose Skeleton placeholder shown while the board loads — mimics role blocks, lanes,

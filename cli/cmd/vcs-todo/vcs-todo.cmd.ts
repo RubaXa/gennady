@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // @file: CLI command: vcs-todo — mark todos done via Inbox.markTodoDone
+// @spec: CLI
 // @consumers: N/A
-// @tasks: TSK-76, TSK-94
 
 import { VcsGitlabClient } from '../../../services/vcs-client/gitlab/vcs-gitlab-client.ts';
 import { VcsGithubClient } from '../../../services/vcs-client/github/vcs-github-client.ts';

@@ -1,6 +1,6 @@
 // @file: Sync command types — SyncOptions, SyncFileEntry, SyncResult
+// @spec: CLI-SYNC
 // @consumers: sync-core.ts, sync-formatter.ts, sync.cmd.ts
-// @tasks: TSK-53, TSK-54
 
 /** @purpose Discriminated status of a synced file: new, changed, or identical. */
 export type SyncFileStatus = 'added' | 'updated' | 'deleted' | 'unchanged';

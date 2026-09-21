@@ -1,6 +1,6 @@
 // @file: Complete ownership, revision, identity, body, permission, and capability truth-table tests.
+// @spec: AGENT-INBOX-INBOX-VCS
 // @consumers: node:test runner
-// @tasks: TSK-174
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,6 +1,6 @@
 // @file: Unit tests for VcsGitlabMergeDiscussions.resolveDiscussion — resolve, reopen, 403/404/500 errors, type contract.
+// @spec: VCS-VCS-CLIENT
 // @consumers: node:test runner
-// @tasks: TSK-71
 
 import { describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';

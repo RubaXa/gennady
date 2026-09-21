@@ -1,4 +1,5 @@
 // @file: Unit tests for fail-closed coverage adapter selection and Istanbul parity.
+// @spec: CLI-TESTCOV
 // @consumers: node:test runner
 
 import { afterEach, describe, it } from 'node:test';

@@ -1,6 +1,6 @@
 // @file: Unit tests for MrCard — displays project info, time, status badges, and "Смотреть" button.
+// @spec: AGENT-INBOX-INBOX-DASHBOARD
 // @consumers: node:test runner
-// @tasks: TSK-107
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

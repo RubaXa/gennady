@@ -1,6 +1,6 @@
 // @file: PathNormalizer — replaces dev paths with production paths during sync/sync-skills
+// @spec: SHARED
 // @consumers: sync-core.ts, sync-skills-core.ts
-// @tasks: D-M005, D-M007
 
 /**
  * @purpose One replacement rule: regex pattern → replacement string.

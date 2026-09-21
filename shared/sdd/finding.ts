@@ -1,6 +1,6 @@
 // @file: Shared SDD mechanical finding shape.
+// @spec: SHARED
 // @consumers: check, requirement-budget, focused SDD checks
-// @tasks: N/A
 
 /** @purpose One audit finding; errors fail the gate while warnings remain advisory. */
 export type Finding = {

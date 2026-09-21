@@ -1,6 +1,6 @@
 // @file: ChatComposer — chat input + removable ContextChip row + token-budget gauge + Send/Stop toggle (CH-11, CH-12, D-104).
+// @spec: AGENT-INBOX-INBOX-DASHBOARD
 // @consumers: ChatPanel
-// @tasks: TSK-130, TSK-132
 
 import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 import { Send, Square, X } from 'lucide-react';

@@ -1,6 +1,6 @@
 // @file: vcs-draft-note command help output.
+// @spec: CLI
 // @consumers: help command
-// @tasks: TSK-87, TSK-97
 
 /**
  * @purpose Print CLI help for the vcs-draft-note command.

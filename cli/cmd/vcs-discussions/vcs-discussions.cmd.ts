@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // @file: Show MR discussions — human-readable output of GitLab MR discussion threads.
+// @spec: CLI
 // @consumers: gennady.ts
-// @tasks: TSK-93, TSK-96
 
 import {
   resolveVcsContext,

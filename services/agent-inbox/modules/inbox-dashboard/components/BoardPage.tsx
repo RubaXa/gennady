@@ -1,6 +1,6 @@
 // @file: BoardPage — root dashboard page: AwaitingQueue + RoleBlock list + UnassignedBlock.
+// @spec: AGENT-INBOX-INBOX-DASHBOARD
 // @consumers: App
-// @tasks: TSK-107
 
 import { useBoard } from '../services/board-store.tsx';
 import { AwaitingQueue } from './AwaitingQueue.tsx';

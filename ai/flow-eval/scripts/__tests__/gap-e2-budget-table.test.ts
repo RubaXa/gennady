@@ -4,8 +4,8 @@
 //   the runner's real constraint or the reference scenario set. Parses the table mechanically out of
 //   the committed RUNBOOK.md and cross-checks it against runner.ts's own validation and
 //   scenarios.json's real phase set — a change to either without updating the table fails this test.
+// @spec: AI-SKILLS
 // @consumers: N/A (test file)
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

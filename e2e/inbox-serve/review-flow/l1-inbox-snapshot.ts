@@ -1,8 +1,8 @@
 // @file: L1 — живой read-only снимок инбокса на реальном GitLab-токене (LIVE-FLOW-EVAL.md §5.A).
 //   Не Playwright, не boot сервера/opencode — только прямые вызовы VcsInboxReal, никаких записей.
 //   Динамический: не завязан на конкретный MR, печатает то, что реально сейчас на токене.
+// @spec: AGENT-INBOX
 // @consumers: ручной запуск оператором; будущий L1 Playwright-тест переиспользует эту логику
-// @tasks: agent-inbox live-flow-eval
 
 import { StateStore } from '../../../services/agent-inbox/modules/inbox-core/state-store.ts';
 import { VcsInboxReal } from '../../../services/agent-inbox/modules/inbox-core/vcs-inbox.real.ts';

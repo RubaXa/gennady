@@ -1,6 +1,6 @@
 // @file: Markdown table row lexer shared by strict SDD section parsers.
+// @spec: SHARED
 // @consumers: ticket
-// @tasks: N/A
 
 /** @purpose Count the consecutive backticks that begin at one byte offset. */
 function backtickRun(value: string, start: number): number {

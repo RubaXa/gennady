@@ -5,8 +5,8 @@
 //   caption checker (fixed since) read that as 7 missing captions on already-approved specs. Any future
 //   check that is not blank-line/whitespace tolerant will fail this test the moment the skeleton it
 //   reads is reformatted — before it ever reaches a human's approved spec.
+// @spec: SHARED
 // @consumers: templates, check
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

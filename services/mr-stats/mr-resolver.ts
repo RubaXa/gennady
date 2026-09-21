@@ -1,6 +1,6 @@
 // @file: MR resolver — URL parsing, metadata retrieval, worktree management, git diff operations.
+// @spec: MR-STATS
 // @consumers: mr-stats.cmd
-// @tasks: TSK-139
 
 import { execFileSync } from 'node:child_process';
 import { parseVcsUrl } from '../vcs-client/parse-vcs-url.ts';

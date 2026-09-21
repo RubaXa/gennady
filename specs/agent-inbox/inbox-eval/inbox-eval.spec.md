@@ -1,5 +1,25 @@
 # Module: inbox-eval
 
+<!--SECTION:SPEC_ID-->
+
+AGENT-INBOX-INBOX-EVAL
+
+<!--/SECTION:SPEC_ID-->
+
+<!--SECTION:OVERVIEW-->
+
+## Обзор
+
+```mermaid
+flowchart LR
+  Contract[Контракт] --> Implementation[Реализация]
+  Implementation --> Verification[Проверка]
+```
+
+_Обзор пути от контракта к реализации и проверке._
+
+<!--/SECTION:OVERVIEW-->
+
 <!--SECTION:MODULE_VISION-->
 
 ## 1. Module Vision
@@ -43,6 +63,8 @@ if (report.verdict !== 'PASS') explain(report);
 
 ## 4. Entity Surfaces
 
+<details><summary>Подробности</summary>
+
 ### Run, scenario, outcome and report
 
 - **Public Operations:** select pool; probe; execute; attach evidence; aggregate verdict; explain skips/inconclusive state; reopen a saved run-id for diagnosis.
@@ -63,11 +85,15 @@ if (report.verdict !== 'PASS') explain(report);
 - **Lifecycle:** created per run and physically isolated from work profile.
 - **Errors & Degradation:** missing allowlist disables effects profile before execution.
 - **Consumers:** harness.
+
+</details>
 <!--/SECTION:ENTITY_SURFACES-->
 
 <!--SECTION:MODULE_CONTRACTS-->
 
 ## 5. Module Contracts (DbC)
+
+<details><summary>Подробности</summary>
 
 - All-skipped and no-runnable-scenario reports cannot be green.
 - Every result records observed GitLab/profile preconditions and evidence addresses.
@@ -82,6 +108,8 @@ if (report.verdict !== 'PASS') explain(report);
 - **Invariants:** reopen never resumes effects; real-readonly never writes; real-effects never broadens its allowlist.
 - **Runtime Backing:** deterministic adapters or allowlisted real GitLab according to profile.
 - **Verification Levels:** unit, contract, integration and real-MR e2e.
+
+</details>
 <!--/SECTION:MODULE_CONTRACTS-->
 
 <!--SECTION:PUBLIC_OPTIONS-->
@@ -114,7 +142,11 @@ inbox-eval/
 
 ## 8. Module Decision Log
 
+<details><summary>Подробности</summary>
+
 - `D-EVAL-01`: adaptive means evidence-aware status, never adaptive assertion weakening.
+
+</details>
 <!--/SECTION:MODULE_DECISION_LOG-->
 
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->

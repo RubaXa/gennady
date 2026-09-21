@@ -1,3 +1,6 @@
+// @file: ai/kit/demo/render-demo.ts
+// @spec: AI-SKILLS-DIRECTIVE-ASSEMBLY
+// @consumers: N/A
 /**
  * Demo: render the same template with different params to show dynamic directives.
  * Run: npx tsx ai/kit/demo/render-demo.ts

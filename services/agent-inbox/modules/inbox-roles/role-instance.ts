@@ -1,6 +1,6 @@
 // @file: RoleInstance — executes a role graph on a single MR, tracking state, counters, and recovery.
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: RoleScheduler, RightsEscalator, inbox-api
-// @tasks: TSK-113, TSK-121, TSK-124, TSK-141, TSK-142, TSK-143, TSK-160, TSK-175
 
 import { join, dirname } from 'node:path';
 import { mkdirSync, writeFileSync, readFileSync } from 'node:fs';

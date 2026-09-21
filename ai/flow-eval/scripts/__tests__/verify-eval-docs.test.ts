@@ -4,8 +4,8 @@
 //   each kind of problem must fail with a non-zero exit and name the problem; a clean fixture
 //   (including placeholder-only paths that must NOT be false-flagged) must pass; and the real docs in
 //   this checkout must pass right now, proving the acceptance claim, not just the mechanism.
+// @spec: AI-SKILLS
 // @consumers: N/A (test file)
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

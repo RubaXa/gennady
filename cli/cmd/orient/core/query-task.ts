@@ -1,6 +1,6 @@
 // @file: Query files by task ID — S2 scenario.
+// @spec: CLI-ORIENT
 // @consumers: OrientCommand
-// @tasks: TSK-55
 
 import type { ScannedFile, TaskQueryResult } from '../orient.types.ts';
 

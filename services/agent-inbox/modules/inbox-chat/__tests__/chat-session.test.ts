@@ -1,8 +1,8 @@
 // @file: Unit/integration tests for inbox-chat ChatSession — contract typing, single-flight
 //   serialization per sid (D-104), stop()-truncated replay (D-95/CH-11), tool-registry shape
 //   (D-103), and transcript rehydrate across a simulated restart (D-97/SV-13).
+// @spec: AGENT-INBOX-INBOX-CHAT
 // @consumers: node:test runner
-// @tasks: TSK-126, TSK-167, TSK-175
 
 import { describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';

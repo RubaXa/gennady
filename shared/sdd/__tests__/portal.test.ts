@@ -1,6 +1,6 @@
 // @file: Unit tests for the portal Scopes-table parser.
+// @spec: SHARED
 // @consumers: portal
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,5 +1,25 @@
 # Module: inbox-dashboard
 
+<!--SECTION:SPEC_ID-->
+
+AGENT-INBOX-INBOX-DASHBOARD
+
+<!--/SECTION:SPEC_ID-->
+
+<!--SECTION:OVERVIEW-->
+
+## Обзор
+
+```mermaid
+flowchart LR
+  Contract[Контракт] --> Implementation[Реализация]
+  Implementation --> Verification[Проверка]
+```
+
+_Обзор пути от контракта к реализации и проверке._
+
+<!--/SECTION:OVERVIEW-->
+
 <!--SECTION:MODULE_VISION-->
 
 ## 1. Module Vision
@@ -46,6 +66,8 @@ await clipboard.writeAndAcknowledge(generatedHandoff);
 
 ## 4. Entity Surfaces
 
+<details><summary>Подробности</summary>
+
 ### Queues, card and chips
 
 - **Public Operations:** sort by `decision-required → agent-working → external-wait → no-action`, then urgency/activity; open MR; show roles, title, approvals, reviewers, CI, thread counts, unread, new commits, current work, verification timer and simultaneous attention states.
@@ -81,11 +103,15 @@ await clipboard.writeAndAcknowledge(generatedHandoff);
 - **Lifecycle:** shared by all dashboard screens.
 - **Errors & Degradation:** accessible labels and non-colour status cues are mandatory.
 - **Consumers:** all UI entities.
+
+</details>
 <!--/SECTION:ENTITY_SURFACES-->
 
 <!--SECTION:MODULE_CONTRACTS-->
 
 ## 5. Module Contracts (DbC)
+
+<details><summary>Подробности</summary>
 
 - Columns are `Review` and `Mine / Assigned`; state chips do not duplicate cards.
 - Cards older than the three-month activity horizon are absent even when terminal and not manually completed; their local history is retained outside the active dashboard.
@@ -95,6 +121,8 @@ await clipboard.writeAndAcknowledge(generatedHandoff);
 - Active MR feed is smart-widget chronology, not fixed sections or raw event log.
 - The feed includes Findings, Awaiting Threads, Artifact Post, GitLab Event, Progress Group, Current Plan and one-shot Action Outcome widgets plus a new-since-last-read boundary.
 - Runtime backing: production React/Vite bundle against real local API; visual e2e and real-MR proof.
+
+</details>
 <!--/SECTION:MODULE_CONTRACTS-->
 
 <!--SECTION:PUBLIC_OPTIONS-->
@@ -130,8 +158,12 @@ Retire unused role/Kanban components and the competing monolithic UI after featu
 
 ## 8. Module Decision Log
 
+<details><summary>Подробности</summary>
+
 - `D-UI-01`: behaviour follows product specs; Carbon & Steel references govern visual language.
 - `D-UI-02`: one component tree remains after migration.
+
+</details>
 <!--/SECTION:MODULE_DECISION_LOG-->
 
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->

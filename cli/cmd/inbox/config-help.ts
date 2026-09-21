@@ -1,6 +1,6 @@
 // @file: inbox config command help output.
+// @spec: AGENT-INBOX
 // @consumers: gennady.ts
-// @tasks: TSK-92
 
 /** @purpose Print CLI help for the inbox config command. */
 export function printHelp(): void {

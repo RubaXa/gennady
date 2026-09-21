@@ -1,6 +1,6 @@
 // @file: Describes accepted command envelope variants handled by the single remote-console endpoint.
+// @spec: SHARED
 // @consumers: remote-console, remote-console-client, remote-console-server
-// @tasks: N/A
 
 import type { RemoteConsoleLogEntry } from '../client/remote-console-client.types.ts';
 

@@ -1,5 +1,25 @@
 # Module: `sdd-sync`
 
+<!--SECTION:SPEC_ID-->
+
+CLI-SDD-SYNC
+
+<!--/SECTION:SPEC_ID-->
+
+<!--SECTION:OVERVIEW-->
+
+## Обзор
+
+```mermaid
+flowchart LR
+  Contract[Контракт] --> Implementation[Реализация]
+  Implementation --> Verification[Проверка]
+```
+
+_Обзор пути от контракта к реализации и проверке._
+
+<!--/SECTION:OVERVIEW-->
+
 **Module:** sdd-sync · **Parent scope:** [cli](../cli.spec.md) · **Task:** bootstrap — SDD v2 tooling (без тикета; см. ai/sdd-v2-plan.md (удалён))
 
 <!--SECTION:MODULE_VISION-->
@@ -71,6 +91,8 @@ $ npx gennady sdd-sync specs/app/core/core.task.APP-1.md specs/app/core/core.3-t
 
 ## 4. Module Contracts (DbC)
 
+<details><summary>Подробности</summary>
+
 ### 4.1 Status Propagation
 
 - **Runtime Backing:** `real-runtime`
@@ -90,6 +112,7 @@ $ npx gennady sdd-sync specs/app/core/core.task.APP-1.md specs/app/core/core.3-t
   - Хирургическая правка: только сегмент Status совпавшей строки
   - Progress-пересчёт не может провалить гейт (verify-fail только для Status-записи); нерезолвимая Index-ссылка молча пропускается, не ошибка
 
+</details>
 <!--/SECTION:MODULE_CONTRACTS-->
 
 <!--SECTION:PUBLIC_OPTIONS-->
@@ -126,6 +149,8 @@ shared/sdd/tracker.ts    # parseMeta + updateTrackerStatus + parseTrackerRows + 
 <!--SECTION:MODULE_DECISION_LOG-->
 
 ## 7. Module Decision Log
+
+<details><summary>Подробности</summary>
 
 ### D-SY001 — Колонка Status по заголовку, не по индексу
 
@@ -168,6 +193,8 @@ shared/sdd/tracker.ts    # parseMeta + updateTrackerStatus + parseTrackerRows + 
 ### `findRollupHeader`
 
 - **Usage Waiver:** Единственный вызов внутри `recomputeRollupProgress` — зеркало `findTaskStatusHeader` (та же роль: локализация таблицы по шапке, не по индексу), выделена отдельно для симметрии с уже существующим паттерном модуля.
+
+</details>
 <!--/SECTION:MODULE_DECISION_LOG-->
 
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->

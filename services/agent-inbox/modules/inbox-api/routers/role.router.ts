@@ -1,6 +1,6 @@
 // @file: RoleRouter — POST /api/role/:name/activate handler (SV-07 real-mode activation gap fix).
+// @spec: AGENT-INBOX-INBOX-API
 // @consumers: HttpServer
-// @tasks: TSK-113
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { BoardProviderPort } from '../board-provider.port.ts';

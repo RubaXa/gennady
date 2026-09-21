@@ -1,6 +1,6 @@
 // @file: mr-stats command help output
+// @spec: MR-STATS
 // @consumers: HelpCommand
-// @tasks: TSK-138, TSK-139
 
 /**
  * @purpose Print CLI help for the mr-stats command.

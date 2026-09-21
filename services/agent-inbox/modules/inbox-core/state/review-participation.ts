@@ -1,6 +1,6 @@
 // @file: Inclusive operator participation signals and singular responsibility placement.
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: ReviewState, inbox-vcs, inbox-api
-// @tasks: TSK-173
 
 const PARTICIPATION_SIGNALS = [
   'author',

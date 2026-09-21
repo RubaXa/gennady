@@ -1,6 +1,6 @@
 // @file: MrCard DTO — canonical board-card contract projected from SyncSnapshot + EventJournal.
+// @spec: AGENT-INBOX-INBOX-API
 // @consumers: BoardProjection, StateRouter, inbox-dashboard
-// @tasks: TSK-162
 
 import type { AttentionState } from '../../inbox-vcs/attention.ts';
 

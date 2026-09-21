@@ -1,4 +1,5 @@
 // @file: External bounded-tail observer for SDD worker sessions.
+// @spec: AI-SKILLS
 // @consumers: runner, evaluator, fake-backed tests
 
 import { createHash } from 'node:crypto';

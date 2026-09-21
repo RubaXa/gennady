@@ -1,8 +1,8 @@
 // @file: L1c — почему 26 из 27 материализованных reports/<mr>/ не входят в текущий actionable-набор?
 //   Проверяет live-state (merged/closed/dropped-role) каждого MR с артефактом на диске напрямую
 //   через MergeRequests.getByIid — не полагаясь на getActionable() (тот отдаёт только actionable).
+// @spec: AGENT-INBOX
 // @consumers: ручной запуск оператором
-// @tasks: agent-inbox live-flow-eval
 
 import { readdirSync, existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';

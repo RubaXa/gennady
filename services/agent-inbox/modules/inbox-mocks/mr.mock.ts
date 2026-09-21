@@ -1,6 +1,6 @@
 // @file: Mock factories for ActionableMr and MrContext — typed mock objects for dev/e2e.
+// @spec: AGENT-INBOX-INBOX-MOCKS
 // @consumers: inbox-api tests, inbox-dashboard e2e, inbox-roles tests
-// @tasks: TSK-105
 
 /**
  * @purpose An actionable merge request as surfaced by agent-inbox.

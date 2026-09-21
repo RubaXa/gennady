@@ -1,6 +1,6 @@
 // @file: Resolved reference pair: task file path and its linked spec paths.
+// @spec: CLI-LINT
 // @consumers: lint.cmd
-// @tasks: N/A
 
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { resolve, relative } from 'node:path';
@@ -17,7 +17,7 @@ export type ResolvedReference = {
  * @purpose Scan task .md files in tasks/, build map of taskId -> ResolvedReference. Recursively walks directory, parses each task file for Task-ID and Spec References.
  * @param projectRoot Absolute path to the project root (where tasks/ lives).
  * @param [taskDir] Relative path to the tasks directory (default: 'tasks').
- * @returns Map from task ID string (e.g. 'TSK-21') to its ResolvedReference.
+ * @returns Map from task ID string (e.g. 'DL-jsdoc-fx') to its ResolvedReference.
  */
 export function loadTaskReferences(
   projectRoot: string,
@@ -162,9 +162,9 @@ function walkTaskFiles(dir: string): string[] {
 
 /**
  * @purpose Extract task IDs from a file's @tasks annotation in the header.
- * Parses lines like: `// @tasks: TSK-12, TSK-15`
+ * Parses lines like: `// @tasks: LIN-types, LIN-dbc`
  * @param content File content to parse.
- * @returns Array of task ID strings (e.g. ['TSK-12', 'TSK-15']), empty if no @tasks found.
+ * @returns Array of task ID strings (e.g. ['LIN-types', 'LIN-dbc']), empty if no @tasks found.
  */
 export function extractTaskIdsFromHeader(content: string): string[] {
   const match = content.match(/@tasks:\s*(.+)/m);

@@ -1,6 +1,6 @@
 // @file: Query exported entities by name — S6 scenario with exact and fuzzy matching.
+// @spec: CLI-ORIENT
 // @consumers: OrientCommand
-// @tasks: TSK-55
 
 import type { ScannedFile, EntityMatch } from '../orient.types.ts';
 import { damerauLevenshtein } from './damerau-levenshtein.ts';

@@ -1,6 +1,6 @@
 // @file: Unit tests for the canonical Execution Log token vocabulary (B2-03).
+// @spec: SHARED
 // @consumers: execution-log
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

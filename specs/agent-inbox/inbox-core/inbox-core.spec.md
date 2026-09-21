@@ -1,5 +1,25 @@
 # Module: inbox-core
 
+<!--SECTION:SPEC_ID-->
+
+AGENT-INBOX-INBOX-CORE
+
+<!--/SECTION:SPEC_ID-->
+
+<!--SECTION:OVERVIEW-->
+
+## Обзор
+
+```mermaid
+flowchart LR
+  Contract[Контракт] --> Implementation[Реализация]
+  Implementation --> Verification[Проверка]
+```
+
+_Обзор пути от контракта к реализации и проверке._
+
+<!--/SECTION:OVERVIEW-->
+
 <!--SECTION:MODULE_VISION-->
 
 ## 1. Module Vision
@@ -62,6 +82,8 @@ _Это полный список публичных сущностей `inbox-c
 <!--SECTION:ENTITY_SURFACES-->
 
 ## 4. Entity Surfaces
+
+<details><summary>Подробности</summary>
 
 ### `ReviewEvent`
 
@@ -188,11 +210,15 @@ _Это полный список публичных сущностей `inbox-c
 - **Events Emitted:** boot phase changed.
 - **Errors & Degradation:** read-only UI may open explicitly before ready; effects remain disabled.
 - **Consumers:** API and dashboard.
+
+</details>
 <!--/SECTION:ENTITY_SURFACES-->
 
 <!--SECTION:MODULE_CONTRACTS-->
 
 ## 5. Module Contracts (DbC)
+
+<details><summary>Подробности</summary>
 
 ### Canonical-state invariant
 
@@ -212,6 +238,8 @@ _Это полный список публичных сущностей `inbox-c
 - **Preconditions:** validated event/profile/artifact address.
 - **Postconditions:** acknowledged writes survive adapter recovery guarantees.
 - **Invariants:** an adapter cannot read or reset another runtime profile.
+
+</details>
 <!--/SECTION:MODULE_CONTRACTS-->
 
 <!--SECTION:PUBLIC_OPTIONS-->
@@ -246,9 +274,13 @@ Existing implementations are moved, not duplicated.
 
 ## 8. Module Decision Log
 
+<details><summary>Подробности</summary>
+
 - `D-CORE-01`: journal is canonical; caches are rebuildable.
 - `D-CORE-02`: participation is inclusive, while dashboard placement is singular.
 - `D-CORE-03`: profile isolation is a safety boundary, not a naming convention.
+
+</details>
 <!--/SECTION:MODULE_DECISION_LOG-->
 
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->

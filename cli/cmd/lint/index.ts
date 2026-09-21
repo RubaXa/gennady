@@ -1,5 +1,5 @@
 // @file: Entry point for the gennady lint command — dynamic import trigger.
+// @spec: CLI-LINT
 // @consumers: gennady.ts
-// @tasks: TSK-16
 
 import './lint.cmd.ts';

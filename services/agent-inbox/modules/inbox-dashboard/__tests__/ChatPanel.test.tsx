@@ -2,8 +2,8 @@
 //   (mutate discriminated result + exhaustive SSE frame dispatch), ChatComposer Send↔Stop toggle
 //   + disabled-while-streaming + origin-based chip label (D-115), MutationProposalCard
 //   provenance-before-Apply + Undo-after-applied, ChatThread aria-live streaming region.
+// @spec: AGENT-INBOX-INBOX-DASHBOARD
 // @consumers: node:test runner
-// @tasks: TSK-130, TSK-132
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

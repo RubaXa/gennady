@@ -1,4 +1,5 @@
 // @file: Unit tests for buildNeighbourhood — depth-1 traversal, against an in-memory SpecSectionSource fixture. Covers the mechanism's sharpest edges: cycles, missing portal, deps outside the portal, empty graphs.
+// @spec: CLI-SDD-ORIENT
 // @consumers: build-neighbourhood
 
 import { describe, it } from 'node:test';

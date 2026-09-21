@@ -1,4 +1,5 @@
 // @file: Platform-neutral coverage adapter contract for testcov orchestration.
+// @spec: CLI-TESTCOV
 // @consumers: coverage-adapter-registry.ts, coverage-artifact.ts, istanbul-coverage-adapter.ts, testcov.cmd.ts, sdd-verify
 
 /** @purpose Exact argv-safe coverage producer selected by one platform adapter. */

@@ -1,6 +1,6 @@
 // @file: Tree-sitter TypeScript symbol-index adapter tests; skips when the native grammar is unavailable.
+// @spec: SHARED
 // @consumers: node:test runner
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,5 +1,25 @@
 # Module: `sdd-migrate`
 
+<!--SECTION:SPEC_ID-->
+
+CLI-SDD-MIGRATE
+
+<!--/SECTION:SPEC_ID-->
+
+<!--SECTION:OVERVIEW-->
+
+## Обзор
+
+```mermaid
+flowchart LR
+  Contract[Контракт] --> Implementation[Реализация]
+  Implementation --> Verification[Проверка]
+```
+
+_Обзор пути от контракта к реализации и проверке._
+
+<!--/SECTION:OVERVIEW-->
+
 **Module:** sdd-migrate · **Parent scope:** [cli](../cli.spec.md) · **Task:** bootstrap — SDD v2 tooling (без тикета; см. ai/sdd-v2-plan.md (удалён))
 
 <!--SECTION:MODULE_VISION-->
@@ -63,6 +83,8 @@ $ npx gennady sdd-migrate anchors --all . --write  # применить + зат
 
 ## 4. Module Contracts (DbC)
 
+<details><summary>Подробности</summary>
+
 ### 4.1 Anchors Mode
 
 - **Runtime Backing:** `real-runtime`
@@ -104,6 +126,7 @@ $ npx gennady sdd-migrate anchors --all . --write  # применить + зат
   current successor; semantic-owner выводится из successor, не alias. Shallow/missing Git object
   блокирует восстановление. Второй apply после успешного move — no-op.
 
+</details>
 <!--/SECTION:MODULE_CONTRACTS-->
 
 <!--SECTION:PUBLIC_OPTIONS-->
@@ -139,6 +162,8 @@ shared/sdd/migration-move.ts + migration-file-headers.ts + source-ownership-head
 <!--SECTION:MODULE_DECISION_LOG-->
 
 ## 7. Module Decision Log
+
+<details><summary>Подробности</summary>
 
 ### D-MG001 — Dry-run по умолчанию, `--write` явно
 
@@ -230,6 +255,7 @@ shared/sdd/migration-move.ts + migration-file-headers.ts + source-ownership-head
 successor. Совпавшие старый и текущий Task-ID разрешаются по exact target, а не глобально по строке
 ID. Недоступный/shallow object даёт blocker вместо догадки или ручного registry.
 
+</details>
 <!--/SECTION:MODULE_DECISION_LOG-->
 
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->

@@ -1,6 +1,6 @@
 // @file: Shared source registry, test naming, and language evidence-level tests.
+// @spec: SHARED
 // @consumers: N/A
-// @tasks: N/A
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

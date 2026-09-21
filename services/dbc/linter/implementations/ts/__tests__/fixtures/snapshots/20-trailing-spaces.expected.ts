@@ -1,4 +1,5 @@
 // @file: trailing spaces
+// @spec: DBC-DBC-LINTER
 // @consumers: test
 /**
  *  

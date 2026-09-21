@@ -1,6 +1,6 @@
 // @file: Argv-safe, fail-closed git evidence for changed-file and HEAD-baseline consumers.
+// @spec: SHARED
 // @consumers: sdd-check.cmd, sdd-task.cmd, yagni.cmd
-// @tasks: N/A
 
 import { spawnSync } from 'node:child_process';
 import { isSddSourceFile } from '../sdd/source-extensions.ts';

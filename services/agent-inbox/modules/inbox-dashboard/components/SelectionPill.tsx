@@ -1,6 +1,6 @@
 // @file: SelectionPill — floating "attach selection" pill over any selectable panel; attaches the selection as a ContextChip (D-113, CH-01).
+// @spec: AGENT-INBOX-INBOX-DASHBOARD
 // @consumers: ArtifactView, ArtifactBrowser, ActionPanel (any panel with selectable text)
-// @tasks: TSK-130, TSK-132
 
 import { useEffect, useRef, useState } from 'react';
 import { MessageSquarePlus } from 'lucide-react';

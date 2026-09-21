@@ -1,6 +1,6 @@
 // @file: Unit tests for extractHeader — parsing @file:, @tasks:, @consumers: from source content.
+// @spec: CLI-ORIENT
 // @consumers: OrientCommand
-// @tasks: TSK-55
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -9,16 +9,18 @@ import { extractHeader } from '../core/extract-header.ts';
 describe('extractHeader', () => {
   it('parses Python/Ruby-style # headers after a shebang', () => {
     const result = extractHeader(
-      '#!/usr/bin/env python3\n# @file: worker\n# @spec: CLI-ORIENT\n# @tasks: TSK-01\n# @consumers: Worker\nprint("ok")\n'
+      '#!/usr/bin/env python3\n# @file: worker\n# @spec: CLI-ORIENT\n# @tasks: DP-fields\n# @consumers: Worker\nprint("ok")\n'
     );
     assert.strictEqual(result.file, 'worker');
     assert.strictEqual(result.spec, 'CLI-ORIENT');
-    assert.deepStrictEqual(result.tasks, ['TSK-01']);
+    assert.deepStrictEqual(result.tasks, ['DP-fields']);
     assert.deepStrictEqual(result.consumers, ['Worker']);
   });
 
   it('contract header type: returns FileHeader shape', () => {
-    const result = extractHeader('// @file: test file\n// @tasks: TSK-01\n// @consumers: Consumer');
+    const result = extractHeader(
+      '// @file: test file\n// @tasks: DP-fields\n// @consumers: Consumer'
+    );
     assert.strictEqual(typeof result.file, 'string');
     assert.ok(Array.isArray(result.tasks));
     assert.ok(Array.isArray(result.consumers));
@@ -31,28 +33,28 @@ describe('extractHeader', () => {
   });
 
   it('parses @tasks: with single task ID', () => {
-    const content = '// @tasks: TSK-01\n\nimport { foo } from "bar";';
+    const content = '// @tasks: DP-fields\n\nimport { foo } from "bar";';
     const header = extractHeader(content);
-    assert.deepStrictEqual(header.tasks, ['TSK-01']);
+    assert.deepStrictEqual(header.tasks, ['DP-fields']);
   });
 
   it('parses @tasks: with comma-separated task IDs', () => {
-    const content = '// @tasks: TSK-01, TSK-02, TSK-03\n\nimport { foo } from "bar";';
+    const content = '// @tasks: DP-fields, DP-jsdoc, DP-snaps\n\nimport { foo } from "bar";';
     const header = extractHeader(content);
-    assert.deepStrictEqual(header.tasks, ['TSK-01', 'TSK-02', 'TSK-03']);
+    assert.deepStrictEqual(header.tasks, ['DP-fields', 'DP-jsdoc', 'DP-snaps']);
   });
 
   it('parses @tasks: with semicolon separators', () => {
-    const content = '// @tasks: TSK-01; TSK-02\n\nimport { foo } from "bar";';
+    const content = '// @tasks: DP-fields; DP-jsdoc\n\nimport { foo } from "bar";';
     const header = extractHeader(content);
-    assert.deepStrictEqual(header.tasks, ['TSK-01', 'TSK-02']);
+    assert.deepStrictEqual(header.tasks, ['DP-fields', 'DP-jsdoc']);
   });
 
   it('accepts canonical semantic IDs plus legacy TSK-NN and rejects malformed lookalikes', () => {
     const content =
-      '// @tasks: TSK-01, ORIENT-nav, invalid-id, TSK-02, ORIENT_Nav, other\n\nimport { foo } from "bar";';
+      '// @tasks: DP-fields, ORIENT-nav, invalid-id, DP-jsdoc, ORIENT_Nav, other\n\nimport { foo } from "bar";';
     const header = extractHeader(content);
-    assert.deepStrictEqual(header.tasks, ['TSK-01', 'ORIENT-nav', 'TSK-02']);
+    assert.deepStrictEqual(header.tasks, ['DP-fields', 'ORIENT-nav', 'DP-jsdoc']);
   });
 
   it('parses one canonical @spec ID without accepting a path or malformed literal', () => {

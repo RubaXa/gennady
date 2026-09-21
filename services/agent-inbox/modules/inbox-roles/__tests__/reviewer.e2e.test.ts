@@ -4,8 +4,8 @@
 //   AI-45 (≤10 tool round-trips/lens node) and D-125 (interface action ↔ telemetry entry ↔
 //   artifact change, same mr/sessionId, same run). Honestly `t.skip()`s when live prerequisites
 //   (token, opencode server, network) are not met — never falls back to a canned fixture.
+// @spec: AGENT-INBOX
 // @consumers: node:test runner (opt-in live run; skips by default in CI/sandboxed environments)
-// @tasks: TSK-113
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

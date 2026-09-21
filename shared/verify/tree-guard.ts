@@ -1,6 +1,6 @@
 // @file: Clean-tree guard — lock + clean precondition + drift/reset in the real tree (D-STACK-017).
+// @spec: SHARED
 // @consumers: gate-runner, verify.cmd
-// @tasks: TSK-96
 
 import fs from 'node:fs';
 import path from 'node:path';

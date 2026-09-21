@@ -11,11 +11,12 @@
 //   `docs/journal/RESULTS.md` to a file deleted by the same batch went uncaught because the default
 //   file list used to be just EVAL-SPEC.md/RUNBOOK.md and inline-code checking alone doesn't see a
 //   link target outside backticks — both gaps are closed here.
+// @spec: AI-SKILLS
 // @consumers: package.json "flow-eval:docs-check"; verify-eval-docs.test.ts (both-way: a doc with a
 //   missing path/link/command/marker fails; the real docs in this checkout pass).
-// @usage: node --import tsx ai/flow-eval/scripts/verify-eval-docs.ts [--root DIR] [FILE...]
-//   Default FILE list (when none given): every `.md` under ai/flow-eval/docs/ (recursive) under
-//   --root (default: three levels up from this script, i.e. the repo root).
+//   @usage: node --import tsx ai/flow-eval/scripts/verify-eval-docs.ts [--root DIR] [FILE...]
+//     Default FILE list (when none given): every `.md` under ai/flow-eval/docs/ (recursive) under
+//     --root (default: three levels up from this script, i.e. the repo root).
 
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { dirname, normalize, resolve, sep } from 'node:path';

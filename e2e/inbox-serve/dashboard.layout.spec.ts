@@ -1,6 +1,6 @@
 // @file: dashboard.layout.spec.ts — layout checks for inbox-dashboard element positioning.
+// @spec: AGENT-INBOX
 // @consumers: npx playwright test --config=e2e/inbox-serve/playwright.config.ts
-// @tasks: TSK-108, TSK-107
 
 import { test, expect } from '@playwright/test';
 import { isLeftOf, isBelow } from './helpers/layout.helper.ts';

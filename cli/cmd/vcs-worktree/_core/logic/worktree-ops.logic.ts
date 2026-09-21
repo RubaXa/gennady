@@ -1,6 +1,6 @@
 // @file: Git worktree operations for read-only MR review (hooks disabled).
+// @spec: CLI
 // @consumers: vcs-worktree.cmd
-// @tasks: TSK-93, TSK-168, TSK-169
 
 import { execFile } from 'node:child_process';
 import { readdir, stat, utimes, access } from 'node:fs/promises';

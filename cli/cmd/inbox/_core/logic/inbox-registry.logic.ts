@@ -1,6 +1,6 @@
 // @file: Persistent global registry of inbox MRs we have already classified.
+// @spec: AGENT-INBOX
 // @consumers: inbox.cmd
-// @tasks: N/A, TSK-94, TSK-156
 
 import { readFileSync, writeFileSync, renameSync, mkdirSync, existsSync, rmSync } from 'node:fs';
 import { dirname } from 'node:path';

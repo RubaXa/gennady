@@ -1,6 +1,6 @@
 // @file: SddVerifyCommand — run the profile's verification ladder and summarize (brief on success, details on failure).
+// @spec: CLI-SDD-VERIFY
 // @consumers: gennady.ts
-// @tasks: N/A
 
 import { execFile, spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';

@@ -1,6 +1,6 @@
 // @file: Executable public-boundary matrix for the deterministic review control plane.
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: TSK-176 audit
-// @tasks: TSK-176
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

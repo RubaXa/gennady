@@ -1,6 +1,6 @@
 // @file: Unit tests for checkTaskIdGrammar — the v2-only Task-ID grammar/length gate (SDD_TASK_ID_GRAMMAR).
+// @spec: SHARED
 // @consumers: check
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

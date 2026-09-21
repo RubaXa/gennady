@@ -4,8 +4,8 @@
 //   (draft/module receipt check, then the authoring-complete close) still runs outside that branch —
 //   no gate, axiom, or Approval Check is removed by taking the fast path (#14 proposal 1,
 //   _raw/V14-PROPOSALS-TRIAGE.md:43-46).
+// @spec: AI-SKILLS-DIRECTIVE-ASSEMBLY
 // @consumers: node:test runner
-// @tasks: V14-1
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,6 +1,6 @@
 // @file: Resolve-conflicts execution result.
+// @spec: CLI
 // @consumers: resolve-conflicts-command-run.logic
-// @tasks: N/A
 
 import type { ResolveConflictsArtifact } from './resolve-conflicts-artifact.type.ts';
 

@@ -4,8 +4,8 @@
 //   silence. Snapshot files live in __tests__/snapshots/ next to this test (project convention, see
 //   snapshot-path.setup.ts) and are updated ONLY through the runner's snapshot-update flow under
 //   operator confirmation — never hand-edited.
+// @spec: SHARED
 // @consumers: node:test runner
-// @tasks: TSK-136
 
 import { describe, it } from 'node:test';
 import '#snapshot-path-setup';

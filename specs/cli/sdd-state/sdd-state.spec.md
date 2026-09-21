@@ -1,5 +1,25 @@
 # Module: `sdd-state`
 
+<!--SECTION:SPEC_ID-->
+
+CLI-SDD-STATE
+
+<!--/SECTION:SPEC_ID-->
+
+<!--SECTION:OVERVIEW-->
+
+## Обзор
+
+```mermaid
+flowchart LR
+  Contract[Контракт] --> Implementation[Реализация]
+  Implementation --> Verification[Проверка]
+```
+
+_Обзор пути от контракта к реализации и проверке._
+
+<!--/SECTION:OVERVIEW-->
+
 **Module:** sdd-state · **Parent scope:** [cli](../cli.spec.md) · **Task:** bootstrap — SDD v2 tooling (без тикета; см. ai/sdd-v2-plan.md (удалён))
 
 <!--SECTION:MODULE_VISION-->
@@ -110,6 +130,8 @@ flow=v2 · portal=present · readiness=not-ready · authoring-ready=yes · execu
 
 ## 4. Module Contracts (DbC)
 
+<details><summary>Подробности</summary>
+
 ### 4.1 State Snapshot
 
 - **Runtime Backing:** `real-runtime`
@@ -130,6 +152,7 @@ flow=v2 · portal=present · readiness=not-ready · authoring-ready=yes · execu
   - Никакого fuzzy-классификатора: только точное совпадение имён
   - Детерминирован при фиксированной ФС
 
+</details>
 <!--/SECTION:MODULE_CONTRACTS-->
 
 <!--SECTION:PUBLIC_OPTIONS-->
@@ -165,6 +188,8 @@ shared/sdd/         portal.ts · readiness.ts · gate-queue.ts · probe.ts · sp
 <!--SECTION:MODULE_DECISION_LOG-->
 
 ## 7. Module Decision Log
+
+<details><summary>Подробности</summary>
 
 ### D-ST001 — Портал как источник scope (не обход ФС)
 
@@ -258,6 +283,8 @@ shared/sdd/         portal.ts · readiness.ts · gate-queue.ts · probe.ts · sp
 - **Status:** active · **Supersedes:** D-ST017
 - **Why:** распознавание временного manifest создавало скрытый nested review route и возвращало удалённую state machine. Команда теперь сообщает только flow version, portal/scopes, schema, readiness, gate queue и repository probe. Текущий approval определяют человекочитаемые маркеры в canonical artifacts и семантическая проверка модели.
 - **Risk accepted:** `sdd-state` не пытается механически доказать, устарело ли утверждение после смысловой правки; при сомнении authoring/scaffold сбрасывает marker в pending.
+
+</details>
 <!--/SECTION:MODULE_DECISION_LOG-->
 
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->

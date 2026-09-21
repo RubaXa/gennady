@@ -1,6 +1,6 @@
 // @file: role_pickup eval run — verifies task_created for pipeline-task and zero manual acts
-// @consumers: EvalHarness (TSK-165)
-// @tasks: TSK-165
+// @spec: AGENT-INBOX-INBOX-EVAL
+// @consumers: EvalHarness (IE-harness)
 
 import type { EvalRunContext, EvalRun } from './context.ts';
 import { pass, fail } from './context.ts';

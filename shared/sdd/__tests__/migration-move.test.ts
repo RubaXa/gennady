@@ -1,6 +1,6 @@
 // @file: Unit tests for migration-move — plan blocking, ticket relocation, index scaffolding, tasks/<scope> cleanup.
+// @spec: SHARED
 // @consumers: migration-move
-// @tasks: N/A
 
 import { describe, it, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
@@ -119,6 +119,28 @@ function fillPlanLayer(): void {
     mkdirSync(join(p, '..'), { recursive: true });
     writeFileSync(p, content, 'utf-8');
   }
+}
+
+function writeFileSpecMap(rows: readonly [file: string, specId: string, evidence: string][]): void {
+  mkdirSync(join(root, 'migration'), { recursive: true });
+  writeFileSync(
+    join(root, 'migration', 'FILE-SPEC-MAP.tsv'),
+    ['# file\tSpec ID\tevidence', ...rows.map((row) => row.join('\t')), ''].join('\n'),
+    'utf8'
+  );
+}
+
+function makeMovedTicketsCanonical(): void {
+  writeFileSync(
+    join(root, 'specs', 'demo', 'core', 'core.task.demo-alpha.md'),
+    v2TicketWithTarget('demo-alpha', './core.spec.md', 'shared/demo.ts'),
+    'utf8'
+  );
+  writeFileSync(
+    join(root, 'specs', 'demo', 'core', 'core.task.demo-beta.md'),
+    v2TicketWithTarget('demo-beta', './core.spec.md', 'shared/other.ts'),
+    'utf8'
+  );
 }
 
 function git(...args: string[]): string {
@@ -288,6 +310,8 @@ describe('migration-move', () => {
     );
     assert.strictEqual(readFileSync(untouched, 'utf8'), untouchedBytes);
 
+    makeMovedTicketsCanonical();
+
     const snapshot = new Map(
       [source, untouched, join(root, 'specs', 'demo', 'core', 'core.spec.md')].map((file) => [
         file,
@@ -326,6 +350,107 @@ describe('migration-move', () => {
       readFileSync(join(root, 'specs', 'demo', 'core', 'core.spec.md'), 'utf8'),
       /SPEC_ID/
     );
+  });
+
+  it('FO-6: current-scope @tasks без exact claim блокирует и сохраняет source byte-exact', () => {
+    mkdirSync(join(root, 'shared'), { recursive: true });
+    const source = join(root, 'shared', 'demo.ts');
+    const sourceBytes =
+      '// @file: underclaimed behavior\n// @tasks: demo-alpha\n// @consumers: DemoCommand\n';
+    writeFileSync(source, sourceBytes, 'utf8');
+    fillPlanLayer();
+
+    const result = executeScopeMove(root, 'demo', true);
+    assert.ok(!result.ok, JSON.stringify(result));
+    if (!result.ok) {
+      assert.match(result.errors.join('\n'), /demo-alpha не имеет exact target/);
+      assert.match(result.errors.join('\n'), /FILE-SPEC-MAP\.tsv/);
+    }
+    assert.strictEqual(readFileSync(source, 'utf8'), sourceBytes);
+    assert.ok(existsSync(join(root, 'tasks', 'demo', 'core', 'core.task-1.md')));
+  });
+
+  it('FO-6: approved exact map repairs underclaimed/headerless files and resume-preflights V2', () => {
+    mkdirSync(join(root, 'shared'), { recursive: true });
+    const underclaimed = join(root, 'shared', 'demo.ts');
+    const headerless = join(root, 'shared', 'worker.ts');
+    writeFileSync(
+      underclaimed,
+      '// @file: underclaimed behavior\n// @tasks: demo-alpha\n// @consumers: DemoCommand\n',
+      'utf8'
+    );
+    writeFileSync(headerless, '', 'utf8');
+    writeFileSpecMap([
+      ['shared/demo.ts', 'DEMO-CORE', 'operator-reviewed; legacy @tasks demo-alpha'],
+      ['shared/worker.ts', 'DEMO-CORE', 'operator-reviewed; headerless inventory row'],
+    ]);
+    fillPlanLayer();
+
+    const first = executeScopeMove(root, 'demo', true);
+    assert.ok(first.ok, JSON.stringify(first));
+    assert.match(readFileSync(underclaimed, 'utf8'), /@spec: DEMO-CORE/);
+    assert.doesNotMatch(readFileSync(underclaimed, 'utf8'), /@tasks:/);
+    assert.match(
+      readFileSync(headerless, 'utf8'),
+      /^\/\/ @file: shared\/worker\.ts\n\/\/ @spec: DEMO-CORE\n\/\/ @consumers: N\/A$/
+    );
+
+    makeMovedTicketsCanonical();
+
+    writeFileSync(
+      underclaimed,
+      '// @file: interrupted legacy header\n// @tasks: demo-alpha\n// @consumers: DemoCommand\n',
+      'utf8'
+    );
+    const resumed = executeScopeMove(root, 'demo', true);
+    assert.ok(resumed.ok, JSON.stringify(resumed));
+    if (resumed.ok) {
+      assert.match(resumed.report.join('\n'), /header\s+shared\/demo\.ts/);
+      assert.match(resumed.report.join('\n'), /no-op scope demo/);
+    }
+    assert.match(readFileSync(underclaimed, 'utf8'), /@spec: DEMO-CORE/);
+    assert.doesNotMatch(readFileSync(underclaimed, 'utf8'), /@tasks:/);
+
+    const finalNoOp = executeScopeMove(root, 'demo', true);
+    assert.ok(finalNoOp.ok, JSON.stringify(finalNoOp));
+    if (finalNoOp.ok)
+      assert.deepStrictEqual(finalNoOp.report, ['  no-op scope demo — уже мигрирован в v2']);
+  });
+
+  it('FO-6: migration map дубли/spec ошибки fail closed до writes', () => {
+    mkdirSync(join(root, 'shared'), { recursive: true });
+    const source = join(root, 'shared', 'demo.ts');
+    const sourceBytes = '// @file: demo\n// @consumers: DemoCommand\n';
+    writeFileSync(source, sourceBytes, 'utf8');
+    writeFileSpecMap([
+      ['shared/demo.ts', 'UNKNOWN', 'first review'],
+      ['shared/demo.ts', 'DEMO-CORE', 'duplicate review'],
+    ]);
+    fillPlanLayer();
+
+    const result = executeScopeMove(root, 'demo', true);
+    assert.ok(!result.ok, JSON.stringify(result));
+    if (!result.ok) assert.match(result.errors.join('\n'), /source shared\/demo\.ts дублирован/);
+    assert.strictEqual(readFileSync(source, 'utf8'), sourceBytes);
+    assert.ok(existsSync(join(root, 'tasks', 'demo', 'core', 'core.task-1.md')));
+  });
+
+  it('FO-6: map без exact archived legacy list не разрешает удаление @tasks', () => {
+    mkdirSync(join(root, 'shared'), { recursive: true });
+    const source = join(root, 'shared', 'demo.ts');
+    const sourceBytes =
+      '// @file: demo\n// @tasks: demo-alpha, demo-beta\n// @consumers: DemoCommand\n';
+    writeFileSync(source, sourceBytes, 'utf8');
+    writeFileSpecMap([
+      ['shared/demo.ts', 'DEMO-CORE', 'operator-reviewed; legacy @tasks demo-alpha'],
+    ]);
+    fillPlanLayer();
+
+    const result = executeScopeMove(root, 'demo', true);
+    assert.ok(!result.ok, JSON.stringify(result));
+    if (!result.ok) assert.match(result.errors.join('\n'), /evidence.*exact source relation/);
+    assert.strictEqual(readFileSync(source, 'utf8'), sourceBytes);
+    assert.ok(existsSync(join(root, 'tasks', 'demo', 'core', 'core.task-1.md')));
   });
 
   it('FO-6: repo-wide duplicate explicit Spec ID блокирует весь scope', () => {
@@ -566,6 +691,7 @@ describe('migration-move', () => {
       ticketWithTarget(TICKET_B, 'shared/demo.ts'),
       'utf8'
     );
+    writeFileSpecMap([['shared/demo.ts', 'DEMO-CORE', 'reviewed; legacy @tasks demo-alpha']]);
     fillPlanLayer();
 
     const result = executeScopeMove(root, 'demo', true);
@@ -589,7 +715,7 @@ describe('migration-move', () => {
 
     const result = executeScopeMove(root, 'demo', true);
     assert.ok(!result.ok, JSON.stringify(result));
-    if (!result.ok) assert.match(result.errors.join('\n'), /demo-beta.*exact current target/);
+    if (!result.ok) assert.match(result.errors.join('\n'), /demo-beta.*exact target/);
     assert.strictEqual(readFileSync(source, 'utf8'), sourceBytes);
   });
 
@@ -1182,7 +1308,7 @@ describe('migration-move', () => {
     mkdirSync(join(root, 'tasks', 'other'), { recursive: true });
     writeFileSync(
       join(root, 'tasks', 'other', 'other.task-1.md'),
-      '# Task: TSK-50\n## 1. Meta\n- **Task-ID:** TSK-50 | **Status:** [ ] TODO | **Scope:** other\n- **Purpose:** другое.',
+      '# Task: LIN-dir-test\n## 1. Meta\n- **Task-ID:** LIN-dir-test | **Status:** [ ] TODO | **Scope:** other\n- **Purpose:** другое.',
       'utf-8'
     );
     const r = executeScopeMove(root, 'demo', true);

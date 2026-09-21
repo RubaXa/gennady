@@ -1,6 +1,6 @@
 // @file: Help output for the gennady orient command.
+// @spec: CLI-ORIENT
 // @consumers: help command
-// @tasks: TSK-55
 
 /**
  * @purpose Print help text for the gennady orient command.
@@ -36,7 +36,7 @@ export function printHelp(): void {
   console.info('  npx gennady orient --file=index.ts        Detailed file view (S5)');
   console.info('  npx gennady orient --file=index.ts --history  Expand ownership history');
   console.info('  npx gennady orient --file=index.ts --json     Versioned ownership JSON');
-  console.info('  npx gennady orient --task=TSK-55          Files by task (S2)');
+  console.info('  npx gennady orient --task=ORI-command          Files by task (S2)');
   console.info('  npx gennady orient --graph                Dependency graph (S7)');
   console.info('  npx gennady orient contract               Keyword search (S4)');
   console.info('  npx gennady orient --specs                Specs overview (S8)');

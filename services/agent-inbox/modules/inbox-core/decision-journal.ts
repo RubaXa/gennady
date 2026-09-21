@@ -1,6 +1,6 @@
 // @file: DecisionJournal — proposal/decision recording atop EventJournal, capability accept-rate computation, dry-run suppression logging
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: inbox-queue, inbox-api, inbox-eval
-// @tasks: TSK-157
 
 import type { JournalPort } from './event-journal.ts';
 import { logger } from '#logger';

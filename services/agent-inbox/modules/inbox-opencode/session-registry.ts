@@ -1,6 +1,6 @@
 // @file: SessionRegistry — sessionId ↔ {taskId, mr, artifacts[], model} in-memory store.
+// @spec: AGENT-INBOX-INBOX-OPENCODE
 // @consumers: inbox-opencode (SessionLifecycle, UnifiedPool)
-// @tasks: TSK-160, TSK-175
 
 import { logger } from '#logger';
 import type { ReviewStateNamespace } from '../inbox-core/types/review-runtime-profile-spec.type.ts';

@@ -1,6 +1,6 @@
 // @file: Unit tests for inbox-core InboxRegistryAccess — delta NEW/↑/idle, promoteReviewedHeadSha.
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: node:test runner
-// @tasks: TSK-109, TSK-156
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';

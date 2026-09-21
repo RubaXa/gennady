@@ -1,6 +1,6 @@
 // @file: Contract tests for VcsInboxPort — abstract interface, Mock/Real interchangeability.
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: node:test runner
-// @tasks: TSK-110
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

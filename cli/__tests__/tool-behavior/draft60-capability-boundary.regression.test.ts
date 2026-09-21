@@ -1,6 +1,6 @@
 // @file: Black-box draft.60 regression: a real gate must wait for its declared readiness owner.
+// @spec: CLI
 // @consumers: sdd-task, sdd-verify
-// @tasks: N/A
 
 import assert from 'node:assert/strict';
 import { rmSync } from 'node:fs';

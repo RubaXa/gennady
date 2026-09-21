@@ -1,6 +1,6 @@
 // @file: CLI wrapper for deterministic E-18 Swift config prep in an isolated cloud-ios copy.
+// @spec: AI-SKILLS
 // @consumers: roundtrip-eval.sh
-// @tasks: E-18
 
 import { resolve } from 'node:path';
 import { prepareSwiftRoundtripFixture } from '../swift-fixture-prep.ts';

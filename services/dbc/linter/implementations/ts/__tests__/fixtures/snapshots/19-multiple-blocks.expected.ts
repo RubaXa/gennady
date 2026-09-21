@@ -1,4 +1,5 @@
 // @file: multiple blocks
+// @spec: DBC-DBC-LINTER
 // @consumers: test
 /**
  * @purpose First function.

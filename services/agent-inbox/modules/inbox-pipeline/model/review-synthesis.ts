@@ -1,6 +1,6 @@
 // @file: Immutable semantic synthesis available only after fresh structural PASS.
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: ReviewPublicationHandoff, dashboard, operator
-// @tasks: TSK-176
 
 import { createHash } from 'node:crypto';
 import type { ReviewCompletenessVerdict } from '../types/review-completeness-verdict.type.ts';

@@ -1,6 +1,6 @@
 // @file: Read-only structural-schema diagnosis for SDD scope/module specs before scaffold.
+// @spec: SHARED
 // @consumers: sdd-state, sdd-scaffold
-// @tasks: N/A
 
 import { lstatSync, readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';

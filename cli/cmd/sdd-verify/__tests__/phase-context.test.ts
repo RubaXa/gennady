@@ -1,6 +1,6 @@
 // @file: Structural phase-context resolution for sdd-verify.
+// @spec: CLI-SDD-VERIFY
 // @consumers: N/A
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,6 +1,6 @@
 // @file: Fail-closed lexical path policy for SDD-owned repository files and tombstones.
+// @spec: SHARED
 // @consumers: sdd-new, sdd-task, sdd-check, sdd-verify
-// @tasks: N/A
 
 import { lstatSync, realpathSync } from 'node:fs';
 import { isAbsolute, relative, resolve, sep } from 'node:path';

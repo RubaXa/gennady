@@ -1,6 +1,6 @@
 // @file: Unit tests for inbox-config: loadConfig, saveConfig, validateConfig, configPath.
+// @spec: AGENT-INBOX
 // @consumers: node:test runner
-// @tasks: TSK-90
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';

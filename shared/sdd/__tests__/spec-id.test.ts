@@ -1,6 +1,6 @@
 // @file: Canonical V2 Spec ID parser, derivation, and on-demand index tests.
+// @spec: SHARED
 // @consumers: N/A
-// @tasks: N/A
 
 import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, renameSync, rmSync, writeFileSync } from 'node:fs';

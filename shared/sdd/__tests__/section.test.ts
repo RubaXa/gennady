@@ -1,6 +1,6 @@
 // @file: Unit tests for the shared SDD section extractor.
+// @spec: SHARED
 // @consumers: section
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,6 +1,6 @@
 // @file: Unit tests for VcsGitlabMergeRequests.getPipeline — happy path, absent pipeline, type contract, missing graphql transport.
+// @spec: VCS-VCS-CLIENT
 // @consumers: node:test runner
-// @tasks: TSK-82, TSK-84
 
 import { describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';

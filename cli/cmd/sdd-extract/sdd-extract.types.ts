@@ -1,6 +1,6 @@
 // @file: Types, error codes, and diagnostic builders for the sdd-extract command.
+// @spec: CLI-SDD-EXTRACT
 // @consumers: SddExtractCommand
-// @tasks: N/A
 
 import {
   SECTION_NAME_REGEX,

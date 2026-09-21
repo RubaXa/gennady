@@ -1,6 +1,6 @@
 // @file: MetricsCollector — computes accept-rate, edit-rate, time-to-decision from the decision journal dataset (D-302)
-// @consumers: EvalHarness (TSK-165)
-// @tasks: TSK-165
+// @spec: AGENT-INBOX-INBOX-EVAL
+// @consumers: EvalHarness (IE-harness)
 
 import { logger } from '#logger';
 import type { JournalPort, JournalEntry } from '../inbox-core/event-journal.ts';

@@ -1,6 +1,6 @@
 // @file: Parse a ticket Meta and surgically update a tracker-table Status cell by Task-ID — pure, shared.
+// @spec: SHARED
 // @consumers: sdd-sync.cmd
-// @tasks: N/A
 
 /**
  * @purpose Task-ID and Status read from a ticket Meta section.

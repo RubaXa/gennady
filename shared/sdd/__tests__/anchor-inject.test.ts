@@ -1,6 +1,6 @@
 // @file: Unit tests for v1→v2 anchor injection.
+// @spec: SHARED
 // @consumers: anchor-inject
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -181,9 +181,9 @@ describe('hasPhasesWithoutOverview (B2-10)', () => {
 
   it('real end-to-end: injectAnchors on a ticket with "### Phase P1" but no Phases Overview header flags true', () => {
     const content = [
-      '# Task: TSK-14 — AnchorCheck',
+      '# Task: LIN-anchors — AnchorCheck',
       '## 1. Meta',
-      '- **Task-ID:** TSK-14',
+      '- **Task-ID:** LIN-anchors',
       '## 2. Acceptance Criteria (BDD)',
       '**Scenario:** x [`unit`]',
       '## 3. Phases',

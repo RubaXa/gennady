@@ -2,8 +2,8 @@
 //   `ai/kit` (hbs base template + additive axiom-brick composition) given (sessionType, track,
 //   mrShape). Replaces the static NODE_DIRECTIVE_MAP lookup for exactly the four node-ids named
 //   in TSK-136 (node_track_review / node_security_lens / node_code_review / node_synthesize).
+// @spec: SHARED
 // @consumers: compile.ts (buildNodePrompt), cli/cmd/inbox (debug directive dump, D-124/AI-46)
-// @tasks: TSK-136
 
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';

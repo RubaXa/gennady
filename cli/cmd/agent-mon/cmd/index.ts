@@ -1,6 +1,6 @@
 // @file: CLI entry point — boots the agent-mon command via dynamic import from gennady.ts.
+// @spec: AGENT-MON-CLI-CMD
 // @consumers: gennady.ts
-// @tasks: TSK-47
 
 import { run } from './run.ts';
 

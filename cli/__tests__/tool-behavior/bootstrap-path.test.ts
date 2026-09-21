@@ -3,8 +3,8 @@
 //   that BUILDS the real tooling must be able to run its own impl/test phases (exemption), verify
 //   what it can, and hand the project over to `ready`, after which ordinary product tickets run and
 //   the exemption is gone. Every step is a real `gennady` invocation against a real fixture repo.
+// @spec: CLI
 // @consumers: N/A
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

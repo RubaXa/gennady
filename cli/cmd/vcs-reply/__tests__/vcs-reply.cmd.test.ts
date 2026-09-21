@@ -1,6 +1,6 @@
 // @file: Unit tests for vcs-reply cmd — resolveVcsContext injection into main().
+// @spec: CLI
 // @consumers: N/A
-// @tasks: TSK-70, TSK-100
 
 import { describe, it, mock, afterEach } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,6 +1,6 @@
 // @file: T-B6-29 contract test — assurance wording never overpromises what the mechanism checks.
+// @spec: AI-SKILLS-DIRECTIVE-ASSEMBLY
 // @consumers: release regression suite
-// @tasks: N/A
 
 // T-B6-29 (ai/drafts/research/sdd-v1-to-v2-transfer/61-TASK-BOARD.md §1, 40-TRACK-DIRECTIVES-SKILLS.md,
 // AUTHORING.md §13): `proof`/`proves`/`proven`/`verified`/`100%` (and the Russian `доказан*`/

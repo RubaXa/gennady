@@ -1,6 +1,6 @@
 // @file: Header — app header with title, status indicator, and polling countdown.
+// @spec: AGENT-INBOX-INBOX-DASHBOARD
 // @consumers: App
-// @tasks: TSK-107
 
 import { Activity, WifiOff } from 'lucide-react';
 import { useBoard } from '../services/board-store.tsx';

@@ -1,6 +1,6 @@
 // @file: Structural scope decomposition — canonical scope type, declared Module Map members, and module-spec closure.
+// @spec: SHARED
 // @consumers: sdd-state.cmd, sdd-new.cmd, sdd-check.cmd
-// @tasks: N/A
 
 import {
   existsSync,

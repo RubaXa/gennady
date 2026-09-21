@@ -1,6 +1,6 @@
 // @file: TaskExecutorPort — test seam for per-MR ordering, cross-MR parallelism, recovery and acknowledged task dedup.
+// @spec: AGENT-INBOX-INBOX-QUEUE
 // @consumers: ReviewTaskRegistry, ReviewEffectCoordinator
-// @tasks: TSK-177
 
 import type { ReviewTask, ReviewTaskStatus } from '../model/review-task.ts';
 

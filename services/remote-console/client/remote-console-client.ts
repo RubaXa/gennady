@@ -1,6 +1,6 @@
 // @file: Stores one active connection state machine for a specific patched console target.
+// @spec: SHARED
 // @consumers: remote-console
-// @tasks: N/A
 
 import { serializeRemoteConsoleArg } from './remote-console-client-serializer.ts';
 import type {

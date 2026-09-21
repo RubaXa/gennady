@@ -1,6 +1,6 @@
 // @file: Task-ID v2 grammar, project-wide collection, and conflict detection (AX_TASK_ID_UNIQUENESS) — shared by sdd-new (refuse a bad --id) and sdd-check (SDD_TASK_ID_GRAMMAR / SDD_TASK_ID_PREFIX_CLASH).
+// @spec: SHARED
 // @consumers: sdd-new.cmd, check.ts
-// @tasks: N/A
 
 import { readdirSync, readFileSync, type Dirent } from 'node:fs';
 import { join, sep } from 'node:path';
@@ -140,7 +140,7 @@ function isHyphenPrefix(a: string, b: string): boolean {
 /**
  * @purpose Check one candidate Task-ID against the existing set — duplicate or prefix-conflict.
  * @invariant Needs the hyphen boundary either side (`GAT-gates` vs `GAT-gates-v2` conflicts; `TSK-1`
- * vs `TSK-10` does not).
+ * vs `DL-fixtures` does not).
  * @param newId Candidate Task-ID.
  * @param existing Every currently known Task-ID (e.g. from collectTaskIds).
  * @returns Every conflict found (possibly several), empty when `newId` is free to use.

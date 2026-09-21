@@ -1,6 +1,6 @@
 // @file: Tests for Synthesize — multi-model synthesis: consensus/dispute/unique marking, clustering by file:line:summary, source attribution
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: node:test runner
-// @tasks: TSK-161
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

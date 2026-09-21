@@ -1,5 +1,25 @@
 # Module: core
 
+<!--SECTION:SPEC_ID-->
+
+AGENT-RUN-CORE
+
+<!--/SECTION:SPEC_ID-->
+
+<!--SECTION:OVERVIEW-->
+
+## Обзор
+
+```mermaid
+flowchart LR
+  Contract[Контракт] --> Implementation[Реализация]
+  Implementation --> Verification[Проверка]
+```
+
+_Обзор пути от контракта к реализации и проверке._
+
+<!--/SECTION:OVERVIEW-->
+
 <!--SECTION:MODULE_VISION-->
 
 ## 1. Module Vision
@@ -51,7 +71,7 @@ _Это полный список сущностей модуля `core`. Люб
 | `EngineStatus`  | 🟢      | Value Object   | Статус движка: id, installed, version.                                           |
 | `AgentRunError` | 🟢      | Entity (Error) | Типизированная ошибка: code + hint.                                              |
 | `ErrorCode`     | 🟢      | Value Object   | Перечисление кодов ошибок (8 классов, вкл. `TIMEOUT`, `MODEL_UNAVAILABLE`).      |
-| `AgentEngine`   | ⚪      | Port           | Контракт движка: detect + run + listModels. Точка расширения.                    |
+| `AgentEngine`   | ⚪      | Port           | Контракт расширения движка: detect + run + listModels                            |
 | `registry`      | ⚪      | Service        | Реестр движков: регистрация, detect, выбор дефолта (opencode первым).            |
 | `_resetForTest` | 🔴      | Utility        | Внутренняя функция для сброса состояния реестра между тестами (только в тестах). |
 
@@ -60,6 +80,8 @@ _Это полный список сущностей модуля `core`. Люб
 <!--SECTION:ENTITY_SURFACES-->
 
 ## 4. Entity Surfaces
+
+<details><summary>Подробности</summary>
 
 ### `run`
 
@@ -147,11 +169,15 @@ _Это полный список сущностей модуля `core`. Люб
 - **Lifecycle:** вызывается только в `__tests__/`; в production-коде не используется.
 - **Errors & Degradation:** не кидает.
 - **Consumers:** Internal — тесты (`core/__tests__/registry.test.ts`).
+
+</details>
 <!--/SECTION:ENTITY_SURFACES-->
 
 <!--SECTION:MODULE_CONTRACTS-->
 
 ## 5. Module Contracts (DbC)
+
+<details><summary>Подробности</summary>
 
 ### 5.1 Ports
 
@@ -234,6 +260,8 @@ _Это полный список сущностей модуля `core`. Люб
 **Contract (DbC):**
 
 - Invariants: `code ∈ ErrorCode`; `hint` непустой и адресован человеку (что сделать оператору).
+
+</details>
 <!--/SECTION:MODULE_CONTRACTS-->
 
 <!--SECTION:PUBLIC_OPTIONS-->
@@ -281,6 +309,8 @@ services/agent-run/
 
 ## 8. Module Decision Log
 
+<details><summary>Подробности</summary>
+
 ### D-001 — `AgentEngine` как Port при одной реализации в v1
 
 - **Status:** active
@@ -303,6 +333,8 @@ services/agent-run/
 - **Why:** скорость — главное правило; pre-flight `detect()` на каждый `run()` = лишний подпроцесс. `run` запускает сразу, отсутствие движка ловит по spawn-ошибке; `detect()`/`listEngines()` кэшируются и живут вне горячего пути; `timeout` (дефолт 1800000 мс = 30 мин) защищает от зависания.
 - **Risk accepted:** между «нет detect» и spawn есть TOCTOU-зазор — закрыт маппингом spawn-ошибки (ENOENT/EACCES) в `AGENT_NOT_INSTALLED`.
 - **Rejected alternatives:** detect-then-run (медленнее на горячем пути).
+
+</details>
 <!--/SECTION:MODULE_DECISION_LOG-->
 
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->

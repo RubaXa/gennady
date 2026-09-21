@@ -1,6 +1,6 @@
 // @file: SyncSkills types — SyncSkillsOptions, SyncSkillsFileEntry, SyncSkillsResult
+// @spec: CLI-SYNC-SKILLS
 // @consumers: SyncSkillsCore, SyncSkillsFormatter, SyncSkillsCmd
-// @tasks: TSK-57
 
 /** @purpose Discriminated status of a synced skill file. */
 export type SyncSkillsFileStatus = 'added' | 'updated' | 'deleted' | 'unchanged' | 'deleteFailed';

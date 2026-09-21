@@ -1,6 +1,6 @@
 // @file: Pure policy: filter, group, and sort actionable MRs into an inbox view.
+// @spec: AGENT-INBOX
 // @consumers: inbox.cmd
-// @tasks: N/A
 
 import type {
   VcsActionableMr,

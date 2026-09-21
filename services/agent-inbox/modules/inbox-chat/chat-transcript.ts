@@ -1,6 +1,6 @@
 // @file: ChatTranscript — append-only per-MR jsonl transcript (chats/<ref>.jsonl), rehydrated on reconnect/restart, by the audit.jsonl pattern (D-97).
+// @spec: AGENT-INBOX-INBOX-CHAT
 // @consumers: ChatSession
-// @tasks: TSK-126
 
 import { appendFile, readFile, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';

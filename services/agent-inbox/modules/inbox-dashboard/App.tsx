@@ -1,6 +1,6 @@
 // @file: App — v2 inbox dashboard: boot → attention board → MR feed with permanent chat.
+// @spec: AGENT-INBOX-INBOX-DASHBOARD
 // @consumers: dashboard-entry
-// @tasks: TSK-164 TSK-169
 
 import { useCallback, useEffect, useState } from 'react';
 import { dashboardV2Api } from './dashboard-v2-api.ts';

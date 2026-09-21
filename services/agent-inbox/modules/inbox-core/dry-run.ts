@@ -4,8 +4,8 @@
 //   world. Each suppressed write is logged server-side and, when a broadcaster is registered (the
 //   running HttpServer wires one to its SseHub), fanned out to every connected dashboard so the SPA
 //   surfaces it in the browser console.
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: EffectExecutor, RightsEscalator, HttpServer (broadcaster), bootstrap (enable), serve.cmd
-// @tasks: TSK-131, TSK-157
 
 import { logger } from '#logger';
 

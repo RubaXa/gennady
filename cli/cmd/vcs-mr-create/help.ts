@@ -1,6 +1,6 @@
 // @file: vcs-mr-create command help output.
+// @spec: CLI
 // @consumers: help command
-// @tasks: TSK-91
 
 /**
  * @purpose Print CLI help for the vcs-mr-create command.

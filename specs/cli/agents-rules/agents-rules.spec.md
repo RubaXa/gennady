@@ -1,5 +1,11 @@
 # Module: agents-rules
 
+<!--SECTION:SPEC_ID-->
+
+CLI-AGENTS-RULES
+
+<!--/SECTION:SPEC_ID-->
+
 ## 1. Module Vision
 
 Команда `gennady agents-rules` выводит на stdout markdown-инструкцию по использованию `orient` для AI-агентов. Агент запускает команду, читает вывод, переосмысливает под свою задачу и интегрирует в `AGENTS.md`. Контент — `cli/cmd/orient/README.md` из пакета gennady. Zero runtime dependencies (только Node.js built-in).
@@ -94,7 +100,7 @@ cli/cmd/orient/
 | ------------------------------------------ | -------------------- | --------------------------------------------------------------------------------------------------------- |
 | `cli/cmd/agents-rules/index.ts`            | Entry point          | `import { run } from './agents-rules.cmd.ts'; run(process.argv)`                                          |
 | `cli/cmd/agents-rules/agents-rules.cmd.ts` | `AgentsRulesCommand` | Проверка `fs.existsSync(cwd + '/node_modules/gennady')` → `import.meta.resolve` → `readFileSync` → stdout |
-| `cli/cmd/orient/README.md`                 | Source content       | Markdown: таблица «когда использовать», примеры, инструкция. Разработчик обновляет вручную                |
+| `cli/cmd/orient/README.md`                 | Source content       | Markdown с таблицей применения, примерами и ручной инструкцией обновления                                 |
 
 **Limits:** `agents-rules.cmd.ts` ≤ 40 строк. Портов/адаптеров нет — один implementation.
 
@@ -154,19 +160,3 @@ graph TD
   - `README.md` — статический контент. При изменении orient (новые сценарии/флаги) разработчик должен вручную обновить `README.md`
   - `import.meta.resolve('gennady')` — поведение в разных рантаймах (npx vs глобальная vs локальная установка) требует проверки. Смягчается pre-check'ом (`fs.existsSync`), который гарантирует локальную установку; variance benign — контент статический
   - Интеграционный тест должен мокать `fs.existsSync` и `fs.readFileSync` для изоляции от реальной FS
-
-## Critic Rounds
-
-### Round 1 — 2026-05-31
-
-- **Verdict:** NEEDS_WORK
-- **Accepted:** 1 — "Test files not in §9 Handoff" → added `__tests__/agents-rules.cmd.test.ts` to §9
-- **Rejected:** 4 — "Error paths not in parent FR" (minor, parent can tighten later), "import.meta.resolve ambiguity" (acknowledged risk, pre-check mitigates), "No README.md content spec" (command treats README as opaque; informational), "run(argv) signature" (trivial, §5 makes intent clear)
-- **Changes:** Added test file path to §9 Handoff
-
-### Round 2 — 2026-05-31
-
-- **Verdict:** CLEAN
-- **Accepted:** 1 — "§6 tree omits **tests**/ dir" → added **tests**/ to file structure tree
-- **Rejected:** 0
-- **Changes:** Added `__tests__/` → `agents-rules.cmd.test.ts` to §6 File Structure tree

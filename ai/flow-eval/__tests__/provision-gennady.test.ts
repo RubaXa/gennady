@@ -1,8 +1,8 @@
 // @file: Deterministic lock — a provisioned sandbox runs the FRESH local built dist, never a stale
 //   copy and never a package bin. Guards the flow-eval provisioning fix (materializeLocalCli always
 //   refreshes dist/ai/shim; only the dependency closure stays idempotent).
+// @spec: AI-SKILLS
 // @consumers: ai/flow-eval/provision
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

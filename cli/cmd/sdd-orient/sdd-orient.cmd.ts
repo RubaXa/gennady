@@ -1,4 +1,5 @@
 // @file: SddOrientCommand — CLI entry for gennady sdd-orient: cheap depth-1 design-graph neighbourhood for one spec (module or scope), by path or by scope name.
+// @spec: CLI-SDD-ORIENT
 // @consumers: gennady.ts
 
 import { existsSync } from 'node:fs';

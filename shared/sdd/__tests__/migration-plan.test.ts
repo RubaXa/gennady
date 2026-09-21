@@ -1,6 +1,6 @@
 // @file: Unit tests for the migration plan layer — scan / scaffold / verify on a tmp v1 fixture.
+// @spec: SHARED
 // @consumers: migration-plan
-// @tasks: N/A
 
 import { describe, it, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';

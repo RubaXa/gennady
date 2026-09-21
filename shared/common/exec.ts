@@ -1,6 +1,6 @@
 // @file: Execute system command synchronously with safe error handling.
+// @spec: SHARED
 // @consumers: git-core, resolve-conflicts-context-git-build.logic, sdd-check.cmd, changed-files, yagni.cmd, golang-scope.logic (V-02)
-// @tasks: N/A
 
 import { execSync as nodeExecSync, execFileSync } from 'node:child_process';
 import { logger } from './logger.ts';

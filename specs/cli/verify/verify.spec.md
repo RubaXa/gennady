@@ -1,5 +1,11 @@
 # Module: `verify`
 
+<!--SECTION:SPEC_ID-->
+
+CLI-VERIFY
+
+<!--/SECTION:SPEC_ID-->
+
 **Module:** verify · **Parent scope:** [cli](../cli.spec.md)
 
 <!--SECTION:MODULE_VISION-->

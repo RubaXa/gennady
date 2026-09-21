@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // @file: vcs-job-log CLI command — print raw trace/log of a pipeline job.
+// @spec: CLI
 // @consumers: vcs-job-log
-// @tasks: TSK-85
 
 import { resolveVcsContext, VcsResolveError } from '../_shared/vcs-context-resolver.ts';
 import type { VcsCliArgs, VcsCliContext } from '../_shared/vcs-context-resolver.ts';

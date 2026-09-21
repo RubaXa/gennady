@@ -1,6 +1,6 @@
 // @file: Entry point for the gennady verify command — read-only plan printer, never runs a gate.
+// @spec: CLI-VERIFY
 // @consumers: gennady.ts
-// @tasks: N/A
 
 import { resolve } from 'node:path';
 import { loadStackConfig } from '../../../shared/verify/stack-config.ts';

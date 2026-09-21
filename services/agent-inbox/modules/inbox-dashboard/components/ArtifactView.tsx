@@ -1,6 +1,6 @@
 // @file: ArtifactView — renders one artifact's content (md/mermaid/json/text) selected in ArtifactBrowser.
+// @spec: AGENT-INBOX-INBOX-DASHBOARD
 // @consumers: ArtifactBrowser
-// @tasks: TSK-107
 
 import { useEffect, useId, useState } from 'react';
 import { marked } from 'marked';

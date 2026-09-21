@@ -1,5 +1,11 @@
 # Module: vcs-client
 
+<!--SECTION:SPEC_ID-->
+
+VCS-VCS-CLIENT
+
+<!--/SECTION:SPEC_ID-->
+
 ## 1. Module Vision
 
 VCS-клиент для GitLab и GitHub: абстрактные порты + адаптеры. Merge Requests / Pull Requests, Discussions, Repository Files, URL-парсер. Используется CLI-командами gennady для review-пайплайна и `cat --url`.

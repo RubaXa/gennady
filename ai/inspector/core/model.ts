@@ -1,4 +1,6 @@
 // @file: ai/inspector — trace model: the node tree the parser emits and the UI renders.
+// @spec: AI-SKILLS
+// @consumers: N/A
 
 /** Читатель файла по репо-относительному пути → содержимое или null, если файла нет. Общий тип
  *  для resolve.ts (READ_AND_USE-переходы между директивами) и parse-directive.ts (чтение пакетов

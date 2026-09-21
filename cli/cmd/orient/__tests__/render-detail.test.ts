@@ -1,6 +1,6 @@
 // @file: Unit tests for renderDetail — detailed file view with full DBC contracts (S5 scenario).
+// @spec: CLI-ORIENT
 // @consumers: OrientCommand
-// @tasks: TSK-55
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -10,7 +10,7 @@ import type { ScannedFile } from '../orient.types.ts';
 function makeFile(absPath: string, overrides: Partial<ScannedFile> = {}): ScannedFile {
   return {
     absPath,
-    header: { file: 'test file', tasks: ['TSK-01'], consumers: ['ConsumerA'] },
+    header: { file: 'test file', tasks: ['DP-fields'], consumers: ['ConsumerA'] },
     exports: [],
     ...overrides,
   };
@@ -22,7 +22,7 @@ describe('renderDetail', () => {
     const lines = renderDetail([file], '/project');
     const output = lines.join('\n');
     assert.match(output, /@file: test file/);
-    assert.match(output, /@tasks: TSK-01/);
+    assert.match(output, /@tasks: DP-fields/);
     assert.match(output, /@consumers: ConsumerA/);
     assert.match(output, /@exports: 0/);
   });

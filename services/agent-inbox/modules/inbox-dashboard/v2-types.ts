@@ -1,6 +1,6 @@
 // @file: Dashboard v2 types — browser-side mirror of canonical inbox-api DTOs.
+// @spec: AGENT-INBOX-INBOX-DASHBOARD
 // @consumers: dashboard-v2-api, dashboard-v2-ui
-// @tasks: TSK-164
 
 /** @purpose Attention lane assigned by the server; the browser never derives it locally. */
 export type Attention = '⏳' | '💬' | '🔀' | '✅' | '😴';

@@ -1,6 +1,6 @@
 // @file: CoverageGate — compares must-read checklist against tool-trace.jsonl, predicate for partial reads, exclusions (deleted/binary), max continue=2
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: inbox-pipeline
-// @tasks: TSK-161
 
 import { existsSync, readFileSync } from 'node:fs';
 import { logger } from '#logger';
