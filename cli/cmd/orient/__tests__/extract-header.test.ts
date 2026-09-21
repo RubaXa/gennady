@@ -7,6 +7,16 @@ import assert from 'node:assert/strict';
 import { extractHeader } from '../core/extract-header.ts';
 
 describe('extractHeader', () => {
+  it('parses Python/Ruby-style # headers after a shebang', () => {
+    const result = extractHeader(
+      '#!/usr/bin/env python3\n# @file: worker\n# @spec: CLI-ORIENT\n# @tasks: TSK-01\n# @consumers: Worker\nprint("ok")\n'
+    );
+    assert.strictEqual(result.file, 'worker');
+    assert.strictEqual(result.spec, 'CLI-ORIENT');
+    assert.deepStrictEqual(result.tasks, ['TSK-01']);
+    assert.deepStrictEqual(result.consumers, ['Worker']);
+  });
+
   it('contract header type: returns FileHeader shape', () => {
     const result = extractHeader('// @file: test file\n// @tasks: TSK-01\n// @consumers: Consumer');
     assert.strictEqual(typeof result.file, 'string');

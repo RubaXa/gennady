@@ -510,6 +510,11 @@ describe('migration-move', () => {
       'utf8'
     );
     writeFileSync(
+      join(root, 'specs', 'already', 'already.3-tasks.md'),
+      '# Tasks: already\n',
+      'utf8'
+    );
+    writeFileSync(
       join(root, 'specs', 'already', 'second.spec.md'),
       '# second\n<!--SECTION:SPEC_ID-->\nALREADY-SECOND\n<!--/SECTION:SPEC_ID-->\n',
       'utf8'
@@ -540,8 +545,51 @@ describe('migration-move', () => {
     assert.ok(existsSync(join(root, 'tasks', 'demo', 'core', 'core.task-1.md')));
   });
 
+  it('FO-6: unresolved Spec Reference в V2 evidence блокирует mapping даже при valid owner', () => {
+    mkdirSync(join(root, 'shared'), { recursive: true });
+    mkdirSync(join(root, 'specs', 'already'), { recursive: true });
+    const source = join(root, 'shared', 'demo.ts');
+    const sourceBytes = '// @file: shared migration target\n// @consumers: DemoCommand\n';
+    writeFileSync(source, sourceBytes, 'utf8');
+    writeFileSync(
+      join(root, 'specs', 'demo', 'core', 'core.spec.md'),
+      '# core\n<!--SECTION:SPEC_ID-->\nDEMO-CORE\n<!--/SECTION:SPEC_ID-->\n',
+      'utf8'
+    );
+    writeFileSync(join(root, 'specs', 'already', 'already.3-tasks.md'), '# Tasks: already\n');
+    writeFileSync(
+      join(root, 'specs', 'already', 'already.task.already-alpha.md'),
+      v2TicketWithTarget('already-alpha', '../demo/core/core.spec.md', 'shared/demo.ts').replace(
+        '  - [owner](../demo/core/core.spec.md)',
+        '  - [owner](../demo/core/core.spec.md)\n  - [broken](./missing.spec.md)'
+      ),
+      'utf8'
+    );
+    writeFileSync(
+      join(root, 'tasks', 'demo', 'core', 'core.task-1.md'),
+      ticketWithTarget(TICKET_A, 'shared/demo.ts'),
+      'utf8'
+    );
+    fillPlanLayer();
+
+    const result = executeScopeMove(root, 'demo', true);
+    assert.ok(!result.ok, JSON.stringify(result));
+    if (!result.ok) assert.match(result.errors.join('\n'), /Spec References.*missing\.spec\.md/);
+    assert.strictEqual(readFileSync(source, 'utf8'), sourceBytes);
+    assert.ok(existsSync(join(root, 'tasks', 'demo', 'core', 'core.task-1.md')));
+    assert.strictEqual(
+      readFileSync(join(root, 'specs', 'demo', 'core', 'core.spec.md'), 'utf8'),
+      '# core\n<!--SECTION:SPEC_ID-->\nDEMO-CORE\n<!--/SECTION:SPEC_ID-->\n'
+    );
+  });
+
   it('FO-6: malformed co-located V2 ticket блокирует incomplete corpus до writes', () => {
     mkdirSync(join(root, 'specs', 'already'), { recursive: true });
+    writeFileSync(
+      join(root, 'specs', 'already', 'already.3-tasks.md'),
+      '# Tasks: already\n',
+      'utf8'
+    );
     writeFileSync(
       join(root, 'specs', 'already', 'already.task.broken.md'),
       [
@@ -563,6 +611,210 @@ describe('migration-move', () => {
       assert.match(result.errors.join('\n'), /already\.task\.broken\.md/);
       assert.match(result.errors.join('\n'), /overview-missing/);
     }
+    assert.ok(existsSync(join(root, 'tasks', 'demo', 'core', 'core.task-1.md')));
+    assert.doesNotMatch(
+      readFileSync(join(root, 'specs', 'demo', 'core', 'core.spec.md'), 'utf8'),
+      /SPEC_ID/
+    );
+  });
+
+  it('FO-6: malformed co-located-looking ticket в untouched V1 scope grandfathered byte-exact', () => {
+    mkdirSync(join(root, 'specs', 'legacy'), { recursive: true });
+    mkdirSync(join(root, 'tasks', 'legacy'), { recursive: true });
+    const legacyTicket = join(root, 'specs', 'legacy', 'legacy.task.broken.md');
+    const legacyBytes = '# not a canonical V2 ticket\n<!--SECTION:META-->\n';
+    writeFileSync(legacyTicket, legacyBytes, 'utf8');
+    writeFileSync(
+      join(root, 'tasks', 'legacy', 'legacy.task-1.md'),
+      TICKET_B.replace(/demo-beta/g, 'legacy-alpha').replace(
+        '**Scope:** demo',
+        '**Scope:** legacy'
+      ),
+      'utf8'
+    );
+    fillPlanLayer();
+
+    const result = executeScopeMove(root, 'demo', true);
+    assert.ok(result.ok, JSON.stringify(result));
+    assert.strictEqual(readFileSync(legacyTicket, 'utf8'), legacyBytes);
+    assert.ok(existsSync(join(root, 'tasks', 'legacy', 'legacy.task-1.md')));
+  });
+
+  it('FO-6: unresolved Spec Reference в canonical-looking ticket untouched V1 grandfathered', () => {
+    mkdirSync(join(root, 'specs', 'legacy'), { recursive: true });
+    mkdirSync(join(root, 'tasks', 'legacy'), { recursive: true });
+    writeFileSync(
+      join(root, 'specs', 'legacy', 'legacy.spec.md'),
+      '# legacy\n<!--SECTION:SPEC_ID-->\nLEGACY\n<!--/SECTION:SPEC_ID-->\n',
+      'utf8'
+    );
+    const legacyTicket = join(root, 'specs', 'legacy', 'legacy.task.legacy-alpha.md');
+    const legacyBytes = v2TicketWithTarget(
+      'legacy-alpha',
+      './legacy.spec.md',
+      'shared/legacy.ts'
+    ).replace(
+      '  - [owner](./legacy.spec.md)',
+      '  - [owner](./legacy.spec.md)\n  - [broken](./missing.spec.md)'
+    );
+    writeFileSync(legacyTicket, legacyBytes, 'utf8');
+    writeFileSync(
+      join(root, 'tasks', 'legacy', 'legacy.task-1.md'),
+      TICKET_B.replace(/demo-beta/g, 'legacy-alpha').replace(
+        '**Scope:** demo',
+        '**Scope:** legacy'
+      ),
+      'utf8'
+    );
+    fillPlanLayer();
+
+    const result = executeScopeMove(root, 'demo', true);
+    assert.ok(result.ok, JSON.stringify(result));
+    assert.strictEqual(readFileSync(legacyTicket, 'utf8'), legacyBytes);
+    assert.ok(existsSync(join(root, 'tasks', 'legacy', 'legacy.task-1.md')));
+  });
+
+  it('FO-6: rejected target текущего scope блокирует preflight даже без selected source', () => {
+    const ticket = join(root, 'tasks', 'demo', 'core', 'core.task-1.md');
+    const ticketBytes = ticketWithTarget(TICKET_A, '../escape.ts');
+    const spec = join(root, 'specs', 'demo', 'core', 'core.spec.md');
+    const specBytes = readFileSync(spec, 'utf8');
+    writeFileSync(ticket, ticketBytes, 'utf8');
+    fillPlanLayer();
+
+    const result = executeScopeMove(root, 'demo', true);
+    assert.ok(!result.ok, JSON.stringify(result));
+    if (!result.ok) assert.match(result.errors.join('\n'), /ownership evidence.*escape\.ts/);
+    assert.strictEqual(readFileSync(ticket, 'utf8'), ticketBytes);
+    assert.strictEqual(readFileSync(spec, 'utf8'), specBytes);
+  });
+
+  it('FO-6: Python shebang + # header мигрируется без замены comment prefix', () => {
+    mkdirSync(join(root, 'scripts'), { recursive: true });
+    const source = join(root, 'scripts', 'demo.py');
+    writeFileSync(
+      source,
+      '#!/usr/bin/env python3\n# @file: demo worker\n# @tasks: demo-alpha\n# @consumers: DemoCommand\nprint("ok")\n',
+      'utf8'
+    );
+    writeFileSync(
+      join(root, 'tasks', 'demo', 'core', 'core.task-1.md'),
+      ticketWithTarget(TICKET_A, 'scripts/demo.py'),
+      'utf8'
+    );
+    fillPlanLayer();
+
+    const result = executeScopeMove(root, 'demo', true);
+    assert.ok(result.ok, JSON.stringify(result));
+    assert.match(
+      readFileSync(source, 'utf8'),
+      /^#!\/usr\/bin\/env python3\n# @file: demo worker\n# @spec: DEMO-CORE\n# @consumers: DemoCommand\n/
+    );
+    assert.doesNotMatch(readFileSync(source, 'utf8'), /\/\/ @spec|@tasks:/);
+  });
+
+  it('FO-6: многострочные // @file/@consumers переносятся как byte-exact blocks', () => {
+    mkdirSync(join(root, 'shared'), { recursive: true });
+    const source = join(root, 'shared', 'demo.ts');
+    const before = [
+      '// Copyright Demo',
+      '// @consumers: DemoCommand,',
+      '//   ReviewCommand',
+      '// @tasks: demo-alpha',
+      '// @file: demo behavior',
+      '//   with an exact continuation',
+      'export const demo = true;',
+      '',
+    ].join('\n');
+    writeFileSync(source, before, 'utf8');
+    writeFileSync(
+      join(root, 'tasks', 'demo', 'core', 'core.task-1.md'),
+      ticketWithTarget(TICKET_A, 'shared/demo.ts'),
+      'utf8'
+    );
+    fillPlanLayer();
+
+    const result = executeScopeMove(root, 'demo', true);
+    assert.ok(result.ok, JSON.stringify(result));
+    assert.strictEqual(
+      readFileSync(source, 'utf8'),
+      [
+        '// Copyright Demo',
+        '// @file: demo behavior',
+        '//   with an exact continuation',
+        '// @spec: DEMO-CORE',
+        '// @consumers: DemoCommand,',
+        '//   ReviewCommand',
+        'export const demo = true;',
+        '',
+      ].join('\n')
+    );
+  });
+
+  it('FO-6: многострочные # blocks после shebang сохраняют prefix и continuation bytes', () => {
+    mkdirSync(join(root, 'scripts'), { recursive: true });
+    const source = join(root, 'scripts', 'demo.py');
+    writeFileSync(
+      source,
+      [
+        '#!/usr/bin/env python3',
+        '# @file: demo worker',
+        '#   exact continuation',
+        '# @tasks: demo-alpha',
+        '# @consumers: DemoCommand,',
+        '#\t  BatchCommand',
+        'print("ok")',
+        '',
+      ].join('\n'),
+      'utf8'
+    );
+    writeFileSync(
+      join(root, 'tasks', 'demo', 'core', 'core.task-1.md'),
+      ticketWithTarget(TICKET_A, 'scripts/demo.py'),
+      'utf8'
+    );
+    fillPlanLayer();
+
+    const result = executeScopeMove(root, 'demo', true);
+    assert.ok(result.ok, JSON.stringify(result));
+    assert.strictEqual(
+      readFileSync(source, 'utf8'),
+      [
+        '#!/usr/bin/env python3',
+        '# @file: demo worker',
+        '#   exact continuation',
+        '# @spec: DEMO-CORE',
+        '# @consumers: DemoCommand,',
+        '#\t  BatchCommand',
+        'print("ok")',
+        '',
+      ].join('\n')
+    );
+  });
+
+  it('FO-6: неоднозначный comment между ownership blocks блокирует writes byte-exact', () => {
+    mkdirSync(join(root, 'shared'), { recursive: true });
+    const source = join(root, 'shared', 'demo.ts');
+    const sourceBytes = [
+      '// @file: demo behavior',
+      '// not an attributable continuation',
+      '// @tasks: demo-alpha',
+      '// @consumers: DemoCommand',
+      'export const demo = true;',
+      '',
+    ].join('\n');
+    writeFileSync(source, sourceBytes, 'utf8');
+    writeFileSync(
+      join(root, 'tasks', 'demo', 'core', 'core.task-1.md'),
+      ticketWithTarget(TICKET_A, 'shared/demo.ts'),
+      'utf8'
+    );
+    fillPlanLayer();
+
+    const result = executeScopeMove(root, 'demo', true);
+    assert.ok(!result.ok, JSON.stringify(result));
+    if (!result.ok) assert.match(result.errors.join('\n'), /неоднозначные comment lines.*2/);
+    assert.strictEqual(readFileSync(source, 'utf8'), sourceBytes);
     assert.ok(existsSync(join(root, 'tasks', 'demo', 'core', 'core.task-1.md')));
     assert.doesNotMatch(
       readFileSync(join(root, 'specs', 'demo', 'core', 'core.spec.md'), 'utf8'),

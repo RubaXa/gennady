@@ -6,7 +6,7 @@ import { existsSync, readFileSync, readdirSync, realpathSync } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { inspectRepoPath } from '../common/repo-path.ts';
 import { fileRelationTicketFromContent, resolveFileRelations } from './file-relations.ts';
-import { detectScopeFlowVersion } from './flow.ts';
+import { detectScopeFlowVersion, ticketFlowVersion } from './flow.ts';
 import { isSddSourceFile } from './source-extensions.ts';
 import { extractSection } from './section.ts';
 import { collectSpecIdEntries, deriveInitialSpecId, parseSpecId } from './spec-id.ts';
@@ -217,7 +217,9 @@ function v2OwnedTickets(repoRoot: string, errors: string[]): OwnedTicket[] {
   );
   const namedV2Tickets = collectFiles(join(repoRoot, 'specs'), (file) =>
     /\.task\.[^/\\]+\.md$/.test(file)
-  ).map((file) => relative(repoRoot, file).split(sep).join('/'));
+  )
+    .filter((file) => ticketFlowVersion(file, repoRoot) === 'v2')
+    .map((file) => relative(repoRoot, file).split(sep).join('/'));
   for (const ticketFile of namedV2Tickets) {
     if (!corpusFiles.has(ticketFile)) {
       errors.push(
@@ -227,18 +229,29 @@ function v2OwnedTickets(repoRoot: string, errors: string[]): OwnedTicket[] {
   }
   for (const ref of corpus.refs) {
     const ticketFile = relative(canonicalRoot, ref.file).split(sep).join('/');
-    if (!ticketFile.startsWith('specs/') || !/\.task\.[^/]+\.md$/.test(ticketFile)) continue;
+    if (
+      !ticketFile.startsWith('specs/') ||
+      !/\.task\.[^/]+\.md$/.test(ticketFile) ||
+      ticketFlowVersion(ref.file, repoRoot) !== 'v2'
+    )
+      continue;
+    const unresolvedSpecReferences = new Set<string>();
     const parsed = fileRelationTicketFromContent({
       file: ticketFile,
       flow: 'v2',
       content: ref.content,
       resolveSpecReference: (reference) => {
         const pathPart = reference.split('#', 1)[0] ?? '';
-        if (!pathPart.endsWith('.spec.md')) return null;
+        if (!pathPart.endsWith('.spec.md')) {
+          unresolvedSpecReferences.add(reference);
+          return null;
+        }
         const target = relative(canonicalRoot, resolve(dirname(ref.file), pathPart))
           .split(sep)
           .join('/');
-        return idByPath.get(target) ?? null;
+        const id = idByPath.get(target) ?? null;
+        if (id === null) unresolvedSpecReferences.add(reference);
+        return id;
       },
     });
     if (!parsed.ok) {
@@ -250,7 +263,10 @@ function v2OwnedTickets(repoRoot: string, errors: string[]): OwnedTicket[] {
     for (const phase of parsed.ticket.phases) {
       const rawTargets = [...phase.targetFiles, ...phase.deletedFiles];
       const targets: string[] = [];
-      let targetError: string | null = null;
+      let targetError: string | null =
+        unresolvedSpecReferences.size > 0
+          ? `Spec References не разрешаются: ${[...unresolvedSpecReferences].sort(compareText).join(', ')}`
+          : null;
       for (const raw of rawTargets) {
         const inspected = inspectRepoPath(repoRoot, raw, 'potential');
         if (!inspected.ok) {
@@ -316,6 +332,15 @@ type ParsedSourceHeader = {
   specValue: string;
   consumerValue: string;
   bodyTagIndexes: number[];
+  prefixes: string[];
+  blocks: Array<{
+    tag: 'file' | 'spec' | 'tasks' | 'consumers';
+    prefix: string;
+    start: number;
+    end: number;
+    lines: string[];
+  }>;
+  ambiguousHeaderIndexes: number[];
 };
 
 function parseSourceHeader(content: string): ParsedSourceHeader {
@@ -338,7 +363,7 @@ function parseSourceHeader(content: string): ParsedSourceHeader {
       blockComment = !trimmed.includes('*/');
       continue;
     }
-    if (trimmed === '' || trimmed.startsWith('//')) {
+    if (trimmed === '' || trimmed.startsWith('//') || /^#(?:\s|@|$)/.test(trimmed)) {
       headerEnd = index + 1;
       continue;
     }
@@ -353,16 +378,27 @@ function parseSourceHeader(content: string): ParsedSourceHeader {
     specValue: '',
     consumerValue: '',
     bodyTagIndexes: [],
+    prefixes: [],
+    blocks: [],
+    ambiguousHeaderIndexes: [],
   };
+  const records: Array<{
+    tag: 'file' | 'spec' | 'tasks' | 'consumers';
+    prefix: string;
+    index: number;
+  }> = [];
   lines.forEach((line, index) => {
-    const match = /^\s*\/\/\s*@(file|spec|tasks|consumers):\s*(.*)$/.exec(line);
+    const match = /^\s*(\/\/|#)\s*@(file|spec|tasks|consumers):\s*(.*)$/.exec(line);
     if (!match) return;
     if (index >= headerEnd) {
       result.bodyTagIndexes.push(index);
       return;
     }
-    const tag = match[1];
-    const value = match[2] ?? '';
+    const prefix = match[1] as string;
+    const tag = match[2] as 'file' | 'spec' | 'tasks' | 'consumers';
+    const value = match[3] ?? '';
+    result.prefixes.push(prefix);
+    records.push({ tag, prefix, index });
     if (tag === 'file') {
       result.fileIndexes.push(index);
       result.fileValue = value;
@@ -375,25 +411,49 @@ function parseSourceHeader(content: string): ParsedSourceHeader {
       result.consumerValue = value;
     }
   });
+  const claimed = new Set<number>();
+  for (const record of records) {
+    let end = record.index + 1;
+    const escapedPrefix = record.prefix === '//' ? '\\/\\/' : '#';
+    const continuation = new RegExp(`^\\s*${escapedPrefix}[ \\t]{2,}.*$`);
+    while (end < headerEnd && continuation.test(lines[end] ?? '')) end += 1;
+    for (let index = record.index; index < end; index += 1) claimed.add(index);
+    result.blocks.push({
+      tag: record.tag,
+      prefix: record.prefix,
+      start: record.index,
+      end,
+      lines: lines.slice(record.index, end),
+    });
+  }
+  if (records.length > 0) {
+    const first = records[0]?.index ?? 0;
+    for (let index = first; index < headerEnd; index += 1) {
+      if (!claimed.has(index) && (lines[index] ?? '').trim() !== '') {
+        result.ambiguousHeaderIndexes.push(index);
+      }
+    }
+  }
   return result;
 }
 
 function renderSourceHeader(content: string, header: ParsedSourceHeader, specId: string): string {
   const newline = content.includes('\r\n') ? '\r\n' : '\n';
   const lines = content.split(/\r?\n/);
-  const indexes = [
-    ...header.fileIndexes,
-    ...header.specIndexes,
-    ...header.taskIndexes,
-    ...header.consumerIndexes,
-  ].sort((a, b) => a - b);
-  const insertAt = indexes[0] as number;
-  const removed = new Set(indexes);
-  const canonical = [
-    `// @file: ${header.fileValue}`,
-    `// @spec: ${specId}`,
-    `// @consumers: ${header.consumerValue}`,
-  ];
+  const insertAt = Math.min(...header.blocks.map((block) => block.start));
+  const removed = new Set(
+    header.blocks.flatMap((block) =>
+      Array.from({ length: block.end - block.start }, (_, offset) => block.start + offset)
+    )
+  );
+  const prefix = header.prefixes[0] as string;
+  const fileBlock = header.blocks.find((block) => block.tag === 'file') as {
+    lines: string[];
+  };
+  const consumerBlock = header.blocks.find((block) => block.tag === 'consumers') as {
+    lines: string[];
+  };
+  const canonical = [...fileBlock.lines, `${prefix} @spec: ${specId}`, ...consumerBlock.lines];
   const out: string[] = [];
   lines.forEach((line, index) => {
     if (index === insertAt) out.push(...canonical);
@@ -423,6 +483,13 @@ export function planMigrationFileHeaders(
   const currentTicketFiles = new Set(
     scopeUnits.flatMap((unit) => unit.tickets.map((ticket) => ticket.file))
   );
+  for (const ticket of allTickets) {
+    if (currentTicketFiles.has(ticket.ticketFile) && ticket.targetError !== null) {
+      errors.push(
+        `${ticket.ticketFile}: ownership evidence не разбирается (${ticket.targetError})`
+      );
+    }
+  }
   const ticketsById = new Map<string, OwnedTicket[]>();
   for (const ticket of allTickets) {
     const matches = ticketsById.get(ticket.taskId) ?? [];
@@ -521,6 +588,12 @@ export function planMigrationFileHeaders(
       );
       continue;
     }
+    if (header.ambiguousHeaderIndexes.length > 0) {
+      errors.push(
+        `${file}: ownership header содержит неоднозначные comment lines (строки ${header.ambiguousHeaderIndexes.map((index) => index + 1).join(', ')})`
+      );
+      continue;
+    }
     if (
       header.fileIndexes.length !== 1 ||
       header.consumerIndexes.length !== 1 ||
@@ -532,8 +605,18 @@ export function planMigrationFileHeaders(
       );
       continue;
     }
+    if (new Set(header.prefixes).size !== 1) {
+      errors.push(`${file}: canonical header смешивает comment prefixes // и #`);
+      continue;
+    }
     if (header.taskIndexes.length > 1 || header.specIndexes.length > 1) {
       errors.push(`${file}: дублированный @tasks/@spec header неоднозначен`);
+      continue;
+    }
+    const tasksBlock = header.blocks.find((block) => block.tag === 'tasks');
+    const specBlock = header.blocks.find((block) => block.tag === 'spec');
+    if ((tasksBlock?.lines.length ?? 1) > 1 || (specBlock?.lines.length ?? 1) > 1) {
+      errors.push(`${file}: @tasks/@spec continuation нельзя безопасно перенести`);
       continue;
     }
     if (header.specIndexes.length === 1 && header.specValue !== specId) {

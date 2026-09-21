@@ -7,7 +7,7 @@ import { looksLikeTaskId } from '../../../../shared/sdd/task-id.ts';
 import { isCanonicalSpecId } from '../../../../shared/sdd/spec-id.ts';
 
 /**
- * @purpose Parse // @tag: directives from file content before the first import.
+ * @purpose Parse `//` or `#` @tag directives from file content before the first import.
  * @invariant Scans only lines before the first `import ` statement.
  * @param content Raw file content.
  * @returns Parsed FileHeader with file, canonical spec, legacy tasks, and consumers fields.
@@ -23,23 +23,23 @@ export function extractHeader(content: string): FileHeader {
 
     if (trimmed.startsWith('import ')) break;
 
-    if (trimmed.startsWith('// @file:')) {
-      header.file = trimmed.slice('// @file:'.length).trim();
-    }
-    if (trimmed.startsWith('// @tasks:')) {
-      const raw = trimmed.slice('// @tasks:'.length);
+    const tag = /^(?:\/\/|#)\s*@(file|tasks|spec|consumers):\s*(.*)$/.exec(trimmed);
+    if (!tag) continue;
+    const kind = tag[1];
+    const raw = tag[2] ?? '';
+    if (kind === 'file') header.file = raw.trim();
+    if (kind === 'tasks') {
       header.tasks = raw
         .split(/[,;\s]+/)
         .map((id) => id.trim())
         .filter(looksLikeTaskId);
     }
-    if (trimmed.startsWith('// @spec:')) {
-      const id = trimmed.slice('// @spec:'.length).trim();
+    if (kind === 'spec') {
+      const id = raw.trim();
       header.specCount = (header.specCount ?? 0) + 1;
       header.spec = header.specCount === 1 && isCanonicalSpecId(id) ? id : '';
     }
-    if (trimmed.startsWith('// @consumers:')) {
-      const raw = trimmed.slice('// @consumers:'.length);
+    if (kind === 'consumers') {
       header.consumers = raw
         .split(/[,;]+/)
         .map((n) => n.trim())
