@@ -132,7 +132,7 @@
 
         | Level | Checked by |
         |---|---|
-        | Structural / mechanical (anchors, Meta, Execution Log completeness, fabricated-DONE, phase DAG, tracker coherence, RULES_CASCADE_CLOSURE, BDD_COVERAGE, TASKS_APPEND_ONLY, CONSUMERS_RESOLVABLE) | `sdd-check --task <ticket>` (+ `--all`, `--changed`) |
+        | Structural / mechanical (anchors, Meta, Execution Log completeness, fabricated-DONE, phase DAG, tracker coherence, RULES_CASCADE_CLOSURE, BDD_COVERAGE, V2 FILE_RELATIONS, legacy-only TASKS_APPEND_ONLY, CONSUMERS_RESOLVABLE) | `sdd-check --task <ticket>` (+ `--all`, `--changed`) |
         | Code (types, format, contract lint, yagni usage) | `sdd-verify --profile full` |
         | Closed-world inventory + exact-target contract lint | `gennady lint --include-tests --spec=<module-spec> <AuditContext lint-files>` |
         | Test coverage policy | Per-ticket `coverage-gates:` from AuditContext: execute a `required` command verbatim; skip explicit `not-applicable` with its reason; legacy-unset is grandfathered and invents nothing; INVALID blocks audit |
@@ -166,7 +166,7 @@
         Together they report the deterministic
         findings: structure / anchors / Task-ID + Status, fabricated-DONE, the phase graph,
         Execution-Log completeness, the task DAG, tracker↔ticket coherence, RULES_CASCADE_CLOSURE,
-        BDD_COVERAGE, TASKS_APPEND_ONLY, and CONSUMERS_RESOLVABLE. Take these as given — the tool owns
+        BDD_COVERAGE, V2 FILE_RELATIONS, legacy-only TASKS_APPEND_ONLY, and CONSUMERS_RESOLVABLE. Take these as given — the tool owns
         them. Then INDEPENDENTLY re-run the green gate — verification ToolCall below and
         contractCheck ToolCall below (one argv item per printed AuditContext lint-file; zero files → skip lint and
         report `H_NOTHING_TO_AUDIT`, never broaden scope), and
@@ -208,6 +208,10 @@
         STEP_2 (semantic), not the tool.
         <ToolCall owner="audit-worker" result="auditContext">npx gennady sdd-task --group-scope <id></ToolCall> Inputs <id>: <id>=audit-group id supplied by execute dispatch. Use auditContext.
         <ToolCall owner="audit-worker" result="auditContext">npx gennady sdd-task --task-scope <Task-ID></ToolCall> Inputs <Task-ID>: <Task-ID>=single task id supplied by per-task dispatch. Use auditContext.
+        For every existing `AuditContext.bounded-files` item call ownershipQuery and consume its
+        semantic-owner and task relations from the shared deterministic resolver. The audited ticket set may match `active` or `history`
+        as evidence, but `history` remains read-only context and cannot route a reopen proposal.
+        <ToolCall owner="audit-worker" result="ownershipQuery">npx gennady orient --file &lt;bounded-file&gt; --json</ToolCall> Inputs &lt;bounded-file&gt;: one exact existing AuditContext.bounded-files item. Use ownershipQuery.
         <ToolCall owner="audit-worker" result="ticketCheck">npx gennady sdd-check --task <ticket-path></ToolCall> Inputs <ticket-path>: <ticket-path>=each exact AuditContext.tickets item, one call per item. Use ticketCheck.
         <ToolCall owner="audit-worker" result="integrityCheck">npx gennady sdd-check --all .</ToolCall> Use integrityCheck.
         <ToolCall owner="audit-worker" result="changedCheck">npx gennady sdd-check --changed .</ToolCall> Use changedCheck.

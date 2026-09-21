@@ -1614,7 +1614,7 @@ const PROJECT_INDEX_SKELETON = `# Project Tasks
 - Tickets execute ONLY via the \`/sdd-execute\` flow (one ticket) or its batch form; the orchestrator dispatches phase-workers then audit — the operator does not invoke audit by hand.
 
 ## Project-Wide Conventions (declared once, inherited)
-- **File-header:** owned by the coding rule (\`@file\` / \`@consumers\` / \`@tasks\`), enforced by \`sdd-verify\`.
+- **V2 File-header:** canonical order \`@file\` / \`@spec\` / \`@consumers\`; \`@spec\` is one stable canonical Spec ID, while task relations come from \`gennady orient --file <path> --json\`. New or migrated V2 headers never carry legacy \`@tasks\`.
 - **Baseline Completion Rule:** a Round cannot go \`[x] DONE\` until — every phase \`[x]\` with a current CLI-owned verification receipt; every BDD scenario mapped to a test or \`Deferred Test Ownership\`; every entity beyond the Inventory logged \`intro …\`; a semantic Handoff line closes each phase.
 - **Execution-Log token vocabulary:** ${formatTokenVocabulary()}. A \`[x]\` line with an unreplaced \`<…>\` placeholder is fabricated (BLOCKER); a token outside this vocabulary is \`EXECUTION_LOG_INCOMPLETE\` (MINOR, padding).
 - **Post-task hook:** after a Round closes the orchestrator runs audit; until PASS the round is closed-but-unverified and dependents are blocked.

@@ -20,6 +20,7 @@
     {{> "axiom/process/ax-handoff-typed"}}
     {{> "axiom/process/ax-task-parallel"}}
     {{> "axiom/process/ax-re-dispatch"}}
+    {{> "axiom/process/ax-task-resolution"}}
   </BeliefState>
 
   <Contracts>
@@ -75,6 +76,13 @@
         repository evidence agree. Resume from the first incomplete/invalid phase. Do not infer
         progress from agent memory or hidden scratch state (`AX_STATELESS_FLOW`). The ticket/index
         ownership boundary remains authoritative per `AX_OWNER`.
+        For each existing Target File/Deleted File in `taskMap`, call ownershipQuery and consume the
+        shared relation model per `AX_TASK_RESOLUTION`. The selected ticket must be the applicable
+        `planned` or `active` relation; a `blocked` relation follows its state policy, and `history`
+        alone never authorizes dispatch or automatic reopen. The resolved semantic-owner must match
+        the ticket's referenced spec before a worker receives the target.
+        <ToolCall owner="this-step" result="ownershipQuery">npx gennady orient --file &lt;existing-target&gt; --json</ToolCall>
+        Inputs &lt;existing-target&gt;: one exact existing target from taskMap. Use ownershipQuery.
       </Action>
     </Step>
 

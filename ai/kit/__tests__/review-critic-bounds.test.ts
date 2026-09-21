@@ -20,7 +20,7 @@
 //   — this suite now extracts the anchors straight out of the rendered directive and proves each
 //   one actually resolves, on a synthetic fixture of every format level, to real content rather than
 //   an error or a one-line pointer (V-BATCH-20 N-4 adds the STEP_3_REPORT accounting-line lock).
-//   Also guards T-B6-05: reconcile activates AX_DISPATCH_VIA_BATCH so a task-reopen dispatches
+//   Also guards T-B6-05: reconcile activates AX_DISPATCH_VIA_BATCH so a task-continue dispatches
 //   through execute as one batch, with execute remaining the sole owner of audit/code-review.
 // @consumers: node:test runner
 // @tasks: T-B6-03, ISS-10, T-B6-05
@@ -260,15 +260,16 @@ describe('critic-protocol: reads the owning ticket Conventions/Decision Log by e
   });
 });
 
-describe('reconcile: task-reopen dispatches as one execute batch (T-B6-05)', () => {
+describe('reconcile: task-continue dispatches as one execute batch (T-B6-05)', () => {
   const reconcile = readDirective('reconcile.directive.xml');
 
   it('defines AX_DISPATCH_VIA_BATCH in BeliefState', () => {
     assert.match(reconcile, /<Axiom id="AX_DISPATCH_VIA_BATCH">/);
   });
 
-  it('activates it in the task-reopen branch of STEP_5_APPLY: one BATCH, execute is the sole audit/code-review owner', () => {
+  it('activates it in the task-continue branch of STEP_5_APPLY: one BATCH, execute is the sole audit/code-review owner', () => {
     const apply = step(reconcile, 'STEP_5_APPLY');
+    assert.match(apply, /WHEN \*\*task-continue\*\*/);
     assert.match(apply, /AX_DISPATCH_VIA_BATCH/);
     assert.match(apply, /as one BATCH/);
     assert.match(apply, /sole owner of each affected group's audit\s+and code-review/i);

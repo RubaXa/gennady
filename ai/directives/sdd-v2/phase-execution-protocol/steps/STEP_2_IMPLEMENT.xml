@@ -5,6 +5,9 @@
         Implement the smallest change satisfying the phase and its referenced requirements. Stay
         inside target files. Do not alter task dependencies, phases, approved BDD/test plan, or spec
         meaning. If such a change is necessary, return `APPROVAL_BOUNDARY_CHANGE` with evidence.
+        Create and preserve V2 file headers per `AX_FILE_HEADER_TASK_TRACEABILITY` and
+        `AX_FILE_HEADER_APPEND_ONLY`: semantic ownership is `@spec`; never copy ticket history into
+        the source header.
         The phase protocol defines the permitted command list per `AX_PERMITTED_BASH_COMMANDS`; every
         bash invocation while implementing stays within it.
         Record real progress as it happens — one `PHASE_BLOCK_FORMAT` event line per
@@ -43,6 +46,39 @@
       Append-only discipline: never edit or remove the original `🛑 BLOCKED` line, and never hand-edit
       `## Blocker Trail` — only `npx gennady sdd-log <ticket> resolved` writes it. The blocker
       history is part of the artifact.
+    </Axiom>
+
+<Axiom id="AX_FILE_HEADER_TASK_TRACEABILITY">
+      **V2 files carry one semantic owner; task relations come from the deterministic resolver.**
+
+      Required file-level fields in execution profile:
+      - `@file` — mandatory; what the file holds.
+      - `@spec` — mandatory; exactly one stable canonical Spec ID, never a path.
+      - `@consumers` — mandatory; one or more named consumers from the owning spec.
+
+      `@tasks` is legacy V1 migration evidence and is forbidden in a new or migrated V2 header.
+      `planned`, `active`, `blocked`, and `history` task relations are resolved from exact ticket
+      targets and lifecycle state; none is copied into the header. Only an `active` relation may
+      continue/recover under task state policy. `history` is context, never routing authority.
+
+      Canonical header shape:
+      ```
+      // @file: <what the file holds>
+      // @spec: <CANONICAL-SPEC-ID>
+      // @consumers: <consumer-1, consumer-2, ...>
+      ```
+    </Axiom>
+
+<Axiom id="AX_FILE_HEADER_APPEND_ONLY">
+      Touching a V2 file preserves its semantic-owner header; task history stays in tickets and Git.
+
+      - Required V2 fields, in order: `@file:`, one canonical `@spec:` ID, `@consumers:`.
+      - New V2 file: create all three from the resolved owner spec and its named consumers.
+      - Existing V2 file: preserve `@file:` and `@consumers:`; keep `@spec:` on the resolved semantic
+        owner. A real ownership transfer is a semantic spec change and routes through authoring.
+      - Existing V1 file remains byte-preserved until its migration owns the header rewrite.
+      - Never add a Task-ID to a V2 source header; re-dispatch and later rounds change resolver state,
+        not header history.
     </Axiom>
 
 <Contract id="PHASE_BLOCK_FORMAT">

@@ -14,6 +14,9 @@
     {{> "axiom/process/ax-handoff-typed"}}
     {{> "axiom/process/ax-blocker-escalation"}}
     {{> "axiom/process/ax-blocker-resolution-trail"}}
+    {{> "axiom/process/ax-task-resolution"}}
+    {{> "axiom/coding/ax-file-header-task-traceability"}}
+    {{> "axiom/coding/ax-file-header-append-only"}}
   </BeliefState>
   <Contracts>{{> "contract/process/handoff-format"}}{{> "contract/process/phase-block-format"}}{{> "contract/process/blocker-format"}}{{> "contract/process/return-summary-format"}}</Contracts>
   <HaltConditions>
@@ -35,6 +38,13 @@
         but whose build its own diff broke. When escalation is warranted instead — per
         `AX_BLOCKER_ESCALATION` — halt `H_BLOCKED` with typed evidence for the orchestrator; never
         improvise past it.
+        For every existing Target File or Deleted File call ownershipQuery and consume the shared
+        resolver result per `AX_TASK_RESOLUTION`. The selected ticket must appear as the applicable
+        `planned` or `active` relation and its `semantic-owner` must match the referenced spec; a
+        `blocked` relation stops with `H_BLOCKED`, while `history` alone grants no write authority.
+        A not-yet-created exact target takes its owner Spec ID from the ticket's resolved spec.
+        <ToolCall owner="phase-agent" result="ownershipQuery">npx gennady orient --file &lt;existing-target&gt; --json</ToolCall>
+        Inputs &lt;existing-target&gt;: one exact existing Target File or Deleted File. Use ownershipQuery.
       </Action>
     </Step>
     <Step id="STEP_2_IMPLEMENT">
@@ -42,6 +52,9 @@
         Implement the smallest change satisfying the phase and its referenced requirements. Stay
         inside target files. Do not alter task dependencies, phases, approved BDD/test plan, or spec
         meaning. If such a change is necessary, return `APPROVAL_BOUNDARY_CHANGE` with evidence.
+        Create and preserve V2 file headers per `AX_FILE_HEADER_TASK_TRACEABILITY` and
+        `AX_FILE_HEADER_APPEND_ONLY`: semantic ownership is `@spec`; never copy ticket history into
+        the source header.
         The phase protocol defines the permitted command list per `AX_PERMITTED_BASH_COMMANDS`; every
         bash invocation while implementing stays within it.
         Record real progress as it happens — one `PHASE_BLOCK_FORMAT` event line per

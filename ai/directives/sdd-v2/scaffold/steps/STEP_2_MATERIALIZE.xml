@@ -39,7 +39,8 @@
       - Uniqueness is enforced by the **Slug Registry** in each `<module>.3-tasks.md`: the same slug in two
         branches collides on merge there, surfacing «same feature» instead of hiding it. Append-only.
       - The ID never changes — even if the ticket file moves between scopes.
-      - Code references via file headers (`@tasks:`) point to IDs, not paths.
+      - V2 source headers reference one canonical Spec ID through `@spec`; Task-IDs remain in tickets,
+        indexes, receipts, and resolver output, not source headers.
       - `sdd-check` cross-checks integrity (SDD_TASK_ID_GRAMMAR, SDD_TASK_ID_PREFIX_CLASH,
         SDD_TASK_ID_COLLISION); a genuine collision → abort, operator resolves.
     </Axiom>

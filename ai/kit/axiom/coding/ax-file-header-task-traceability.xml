@@ -1,16 +1,21 @@
 <!-- source: ai/directives/sdd/scaffold.directive.xml -->
 <Axiom id="AX_FILE_HEADER_TASK_TRACEABILITY">
-      **Files carry a unified file-header contract; IDs only, never paths; append-only for `@tasks`.**
+      **V2 files carry one semantic owner; task relations come from the deterministic resolver.**
 
       Required file-level fields in execution profile:
       - `@file` — mandatory; what the file holds.
-      - `@consumers` — mandatory; one or more consumers (see `AX_CONSUMERS_TAG_SEMANTICS`).
-      - `@tasks` — mandatory; associated `TSK-NN` list.
+      - `@spec` — mandatory; exactly one stable canonical Spec ID, never a path.
+      - `@consumers` — mandatory; one or more named consumers from the owning spec.
+
+      `@tasks` is legacy V1 migration evidence and is forbidden in a new or migrated V2 header.
+      `planned`, `active`, `blocked`, and `history` task relations are resolved from exact ticket
+      targets and lifecycle state; none is copied into the header. Only an `active` relation may
+      continue/recover under task state policy. `history` is context, never routing authority.
 
       Canonical header shape:
       ```
       // @file: <what the file holds>
+      // @spec: <CANONICAL-SPEC-ID>
       // @consumers: <consumer-1, consumer-2, ...>
-      // @tasks: TSK-04, TSK-12
       ```
     </Axiom>

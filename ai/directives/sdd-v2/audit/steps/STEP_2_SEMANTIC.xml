@@ -126,7 +126,8 @@
       | `RUNTIME_BACKING_VIOLATION` | declared `real-runtime` actually backed by simulation seam without deferred marker; OR declared `Verification Level` not achievable in test setup |
       | `RULES_COMPLIANCE_VIOLATION` | code violates rules listed in a phase's `Rules:` (any category); OR diff has artefact whose category is unhandled by any active phase |
       | `RULES_CASCADE_MISMATCH` | a phase's `Rules:` list ≠ what scaffolder would derive now from cascade × that phase's `Target Files` + kind |
-      | `TASK_ID_DRIFT` | `@tasks` field references non-existent ticket ID (orphan); OR Task-ID duplicated across ticket files (collision); OR `@tasks` field lost prior IDs (regression of append-only) |
+      | `FILE_RELATION_DRIFT` | V2 `@spec` is unresolved/ambiguous; active writers collide; active ticket spec mismatches the semantic owner; OR a migrated V2 header still carries legacy `@tasks` |
+      | `TASK_ID_DRIFT` | Task-ID duplicated across ticket files or conflicts in the task DAG; untouched V1 `@tasks` compatibility remains tool-owned migration evidence |
       | `BDD_COVERAGE_MISMATCH` | canonical case names in ticket Test Scenario Coverage ≠ real test cases |
       | `EXECUTION_LOG_INCOMPLETE` | mandatory closing lines missing (`ver` / `DONE` per phase, `DONE` at Round close); OR `intro` line absent for an entity that appears in code but not in module Inventory; OR a previous round was edited (round log is append-only); OR `[x]` line with unreplaced `<…>` placeholder (fabricated done) |
       | `INSIGHT_BACKFLOW` | Phase agent discovered something that changes contract / requirement understanding; should flow back into spec |

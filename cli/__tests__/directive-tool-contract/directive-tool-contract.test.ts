@@ -540,7 +540,9 @@ describe('historical SDD agent-confusion regressions', () => {
     assert.doesNotMatch(executionPlan, /sdd-sync/);
     assert.match(executionPlan, /npx gennady sdd-check --all <verification-root>/);
     assert.match(executionPlan, /DIRECT_VERIFICATION_RECEIPT/);
-    assert.match(executionPlan, /one-line fix.+new Round/s);
+    assert.match(executionPlan, /exactly one resolver-confirmed `active` ticket/);
+    assert.match(executionPlan, /history.+never opens a new Round automatically/s);
+    assert.match(executionPlan, /do not infer\s+routing from a historical `@tasks` header/);
     assert.match(
       executionPlan,
       /operator approval #1 with a current marker.+Only AFTER that proof.+scaffold/s

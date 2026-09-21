@@ -1,12 +1,12 @@
 <!-- source: ai/directives/sdd/fix.directive.xml -->
 <Axiom id="AX_TASK_RESOLUTION">
-  Every fix routes through the task that owns the affected file — ownership is resolved from the
-  artifacts, before classification. `@tasks: <ACR>-<slug>[, ...]` in a file header names the owning
-  task(s). Files matching `*.task.<ACR>-<slug>.md` (co-located under `specs/`) are tickets — the
-  Task-ID is in the filename. Files matching `*.1-spec.md` / `*.spec.md` are spec files — linked to a
-  scope, not a single task. Index files (`*.2-tasks.md` / `*.3-tasks.md`, `specs/2-tasks.md` /
-  `specs/3-tasks.md`) are global artifacts, owned by no task. The resulting file → [Task-IDs] map is
-  what routes fixes per `AX_FIX_CLASSIFICATION`. A resolvable code owner is binding: every code
-  finding routes to that ticket's new Round. Missing or ambiguous ownership does not mean
-  "direct-fix"; recover/create a ticket, or route a semantic ownership gap through authoring first.
+  Every workflow consumer resolves each affected file with
+  `npx gennady orient --file <repo-relative-path> --json` before classification. The versioned result
+  separates one `semantic-owner` (`@spec`) from `planned`, `active`, `blocked`, and `history` ticket
+  relations. Continue or recover a ticket only from one unambiguous `active` relation and only when
+  its state policy permits it. `history` explains prior work but never authorizes automatic reopen.
+  When no active relation exists, route through the resolved semantic-owner spec to select, create,
+  or recover maintenance work; `planned`, `blocked`, and `history` may inform that selection but are
+  never direct routing authority. Unresolved/ambiguous ownership fails closed. Legacy `@tasks` is
+  migration evidence only and never routing authority for V2.
 </Axiom>

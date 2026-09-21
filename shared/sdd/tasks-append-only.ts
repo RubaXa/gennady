@@ -1,4 +1,4 @@
-// @file: Pure comparison of a file's `@tasks:` header ids against its HEAD version — TASKS_APPEND_ONLY (SDD_TASKS_APPEND_ONLY_REGRESSION). Git reads stay in the adapter.
+// @file: Legacy-V1-only comparison of a file's `@tasks:` header ids against HEAD; V2 ownership uses one canonical @spec plus file-relations.
 // @consumers: sdd-check.cmd
 // @tasks: N/A
 
@@ -20,12 +20,13 @@ export function parseTasksHeader(content: string): string[] {
 }
 
 /**
- * @purpose Check that a file's current `@tasks:` header did not drop an id present in its HEAD version — the header is append-only.
+ * @purpose Preserve append-only `@tasks` compatibility for untouched V1 production headers only.
  * @invariant Pure — the adapter reads HEAD content (`git show HEAD:<path>`); `headContent === null` (no HEAD version, a new file) is never an error.
  * @param file File path (finding location).
  * @param currentContent Full current file source.
  * @param headContent Full HEAD (last commit) file source, or null when the file is new.
- * @returns One `SDD_TASKS_APPEND_ONLY_REGRESSION` (error) per id present at HEAD but missing now; empty when append-only holds or the file is new.
+ * @returns One `SDD_TASKS_APPEND_ONLY_REGRESSION` per dropped legacy id; V2 adapters must not call
+ *   this helper and instead resolve the canonical `@spec` owner plus ticket relations.
  */
 export function checkTasksAppendOnly(
   file: string,
