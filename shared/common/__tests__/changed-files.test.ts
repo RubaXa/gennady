@@ -1,6 +1,6 @@
 // @file: Unit tests for changed-files.ts — real git repos (no mocking: git behavior is deterministic),
 //   covering getChangedFiles's unfiltered diff (added for sdd-task --group-scope, D-item "group-scope
-//   underreports diff") alongside getChangedSourceFiles's pre-existing extension filter.
+//   underreports diff") alongside shared production/all-SDD-source extension filters.
 // @consumers: node:test runner
 // @tasks: N/A
 
@@ -34,6 +34,8 @@ describe('changed-files', () => {
     writeFileSync(join(dir, 'config.json'), '{}\n', 'utf-8');
     writeFileSync(join(dir, 'extra.ts'), '// extra\n', 'utf-8');
     writeFileSync(join(dir, 'extra.test.ts'), '// test\n', 'utf-8');
+    writeFileSync(join(dir, 'Foo.swift'), '// swift\n', 'utf-8');
+    writeFileSync(join(dir, 'FooTests.swift'), '// swift test\n', 'utf-8');
     mkdirSync(join(dir, 'node_modules', 'pkg'), { recursive: true });
     writeFileSync(join(dir, 'node_modules', 'pkg', 'index.js'), '// vendored\n', 'utf-8');
   });
@@ -59,16 +61,18 @@ describe('changed-files', () => {
     assert.ok(!files.some((f) => f.includes('node_modules/')));
   });
 
-  it('getChangedSourceFiles keeps its pre-existing .ts/.tsx/.js filter (unchanged consumers)', () => {
+  it('getChangedSourceFiles retains production and test files from shared extensions', () => {
     const result = getChangedSourceFiles(dir);
     assert.strictEqual(result.status, 'ok');
     if (result.status === 'error') return;
     const files = result.files;
     assert.ok(files.includes('src.ts'));
     assert.ok(files.includes('extra.ts'));
+    assert.ok(files.includes('Foo.swift'));
     assert.ok(!files.includes('notes.md'));
     assert.ok(!files.includes('config.json'));
-    assert.ok(!files.includes('extra.test.ts'), 'test files are excluded');
+    assert.ok(files.includes('extra.test.ts'));
+    assert.ok(files.includes('FooTests.swift'));
     assert.ok(!files.some((f) => f.includes('node_modules/')));
   });
 

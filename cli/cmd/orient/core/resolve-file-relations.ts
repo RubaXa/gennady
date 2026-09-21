@@ -8,13 +8,14 @@ import {
   fileRelationTicketFromContent,
   resolveFileRelations,
 } from '../../../../shared/sdd/file-relations.ts';
-import { collectSpecIdEntries } from '../../../../shared/sdd/spec-id.ts';
+import { collectSpecIdEntries, type SpecIdEntry } from '../../../../shared/sdd/spec-id.ts';
 import { detectFlowVersion, ticketFlowVersion } from '../../../../shared/sdd/flow.ts';
 import type {
   FileRelationsResult,
   FileRelationTicketInput,
   FileSpecResolution,
 } from '../../../../shared/sdd/file-relations.types.ts';
+import type { FlowVersion } from '../../../../shared/sdd/flow.ts';
 import type { FileHeader } from '../orient.types.ts';
 
 const SKIP_DIRS = new Set([
@@ -54,10 +55,7 @@ function ticketFiles(specsRoot: string): string[] {
   return files.sort(compareText);
 }
 
-function ownerResolution(
-  id: string,
-  entries: ReturnType<typeof collectSpecIdEntries>
-): FileSpecResolution {
+function ownerResolution(id: string, entries: readonly SpecIdEntry[]): FileSpecResolution {
   if (!id) return { status: 'unresolved', id: null };
   const matches = entries.filter((entry) => entry.id === id);
   if (matches.length === 1) return { status: 'resolved', id, path: matches[0]?.path ?? '' };
@@ -65,10 +63,7 @@ function ownerResolution(
   return { status: 'ambiguous', id, candidates: matches.map((entry) => entry.path) };
 }
 
-function ticketCorpus(
-  root: string,
-  entries: ReturnType<typeof collectSpecIdEntries>
-): FileRelationTicketInput[] {
+function ticketCorpus(root: string, entries: readonly SpecIdEntry[]): FileRelationTicketInput[] {
   const byPath = new Map(entries.map((entry) => [entry.path, entry.id]));
   const tickets: FileRelationTicketInput[] = [];
   for (const ticketPath of ticketFiles(resolve(root, 'specs'))) {
@@ -97,28 +92,80 @@ function ticketCorpus(
   return tickets;
 }
 
+/** @purpose Invocation-local, read-only ownership corpus reused by multi-file CLI adapters. */
+export type OrientFileRelationsContext = {
+  /** @purpose Repository-level flow detected once for this invocation. */
+  readonly repositoryFlow: FlowVersion;
+  /** @purpose Canonical Spec-ID index collected once from the V2 spec corpus. */
+  readonly specEntries: readonly SpecIdEntry[];
+  /** @purpose Structured ticket corpus parsed once through canonical ticket helpers. */
+  readonly tickets: readonly FileRelationTicketInput[];
+};
+
+/**
+ * @purpose Build one read-only ownership corpus for all file queries in a CLI invocation.
+ * @param root Absolute project root.
+ * @returns Repository flow, canonical Spec-ID index, and structured ticket corpus.
+ */
+export function prepareOrientFileRelationsContext(root: string): OrientFileRelationsContext {
+  const specEntries = collectSpecIdEntries(resolve(root, 'specs'));
+  return {
+    repositoryFlow: detectFlowVersion(root),
+    specEntries,
+    tickets: ticketCorpus(root, specEntries),
+  };
+}
+
 /**
  * @purpose Resolve one orient file query through the shared FO-2 model and on-demand Spec-ID index.
  * @param root Absolute project root.
  * @param file Absolute source file path.
  * @param header Parsed source header.
- * @returns Deterministic relations; legacy headers stay V1-lenient.
+ * @param [evidence] Optional HEAD-header evidence available only to changed-file adapters.
+ * @param [prepared] Optional invocation-local corpus; avoids repeated filesystem scans for `--all`.
+ * @returns Deterministic relations; untouched mixed-repo V1 headers stay lenient, while an exact
+ *   V2 ticket target or prior @spec keeps the source strict.
  */
 export function resolveOrientFileRelations(
   root: string,
   file: string,
-  header: FileHeader
+  header: FileHeader,
+  evidence: { hadSpecInBaseline?: boolean } = {},
+  prepared: OrientFileRelationsContext = prepareOrientFileRelationsContext(root)
 ): FileRelationsResult {
   const specId = header.spec ?? '';
-  const flow =
-    detectFlowVersion(root) === 'v2' || specId || (header.specCount ?? 0) > 0 ? 'v2' : 'v1';
-  const entries = collectSpecIdEntries(resolve(root, 'specs'));
+  const entries = prepared.specEntries;
+  const corpus = prepared.tickets;
+  let flow: FlowVersion =
+    prepared.repositoryFlow === 'v2' ||
+    specId ||
+    (header.specCount ?? 0) > 0 ||
+    evidence.hadSpecInBaseline
+      ? 'v2'
+      : 'v1';
+  if (flow === 'v1') {
+    const targetProbe = resolveFileRelations({
+      repoRoot: root,
+      file: relative(root, file).split(sep).join('/'),
+      flow: 'v2',
+      spec: { status: 'resolved', id: 'TARGET-PROBE', path: 'specs' },
+      hasLegacyTasks: false,
+      tickets: corpus.filter((ticket) => ticket.flow === 'v2'),
+    });
+    if (
+      [targetProbe.planned, targetProbe.active, targetProbe.blocked, targetProbe.history].some(
+        (relations) => relations.length > 0
+      )
+    ) {
+      flow = 'v2';
+    }
+  }
   return resolveFileRelations({
     repoRoot: root,
     file: relative(root, file).split(sep).join('/'),
     flow,
     spec: ownerResolution(specId, entries),
     hasLegacyTasks: header.tasks.length > 0,
-    tickets: flow === 'v2' ? ticketCorpus(root, entries) : [],
+    tickets: flow === 'v2' ? corpus : [],
   });
 }

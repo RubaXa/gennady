@@ -2,24 +2,12 @@
 // @consumers: YagniCommand, yagni-index
 // @tasks: N/A
 
-import { basename, extname } from 'node:path';
+import { basename } from 'node:path';
 import { isTestFile, isUnderTestDirectory } from './files.ts';
+import { isSddSourceFile, SDD_SOURCE_EXTENSIONS } from '../sdd/source-extensions.ts';
 
 /** @purpose Source extensions understood by the exact or approximate YAGNI symbol adapters. */
-export const YAGNI_SOURCE_EXTENSIONS: ReadonlySet<string> = new Set([
-  '.ts',
-  '.tsx',
-  '.mts',
-  '.cts',
-  '.js',
-  '.jsx',
-  '.mjs',
-  '.cjs',
-  '.py',
-  '.go',
-  '.rb',
-  '.java',
-]);
+export const YAGNI_SOURCE_EXTENSIONS: ReadonlySet<string> = SDD_SOURCE_EXTENSIONS;
 
 /**
  * @purpose Whether a repo-relative path is a source file supported by a YAGNI adapter.
@@ -27,7 +15,7 @@ export const YAGNI_SOURCE_EXTENSIONS: ReadonlySet<string> = new Set([
  * @returns True when its extension belongs to the closed supported set.
  */
 export function isYagniSourceFile(path: string): boolean {
-  return YAGNI_SOURCE_EXTENSIONS.has(extname(path).toLowerCase());
+  return isSddSourceFile(path);
 }
 
 /**
@@ -45,6 +33,8 @@ export function isYagniTestTerritory(path: string): boolean {
     /_test\.go$/i.test(name) ||
     /^(test_.*|.*_test)\.py$/i.test(name) ||
     /_(spec|test)\.rb$/i.test(name) ||
-    /Tests?\.java$/.test(name)
+    /Tests?\.java$/.test(name) ||
+    /Tests?\.swift$/.test(name) ||
+    /Tests?\.kts?$/.test(name)
   );
 }

@@ -1400,16 +1400,7 @@ describe('SddCheckCommand', () => {
     }
   });
 
-  // B2-25 lock (V-BATCH-16, B-3/Q1, Lead decision — variant (a)): a Swift-tested scenario is
-  // unsatisfiable TODAY, even with a real, correctly-covered test on disk. `getTestFileIndex`
-  // (`sdd-check.cmd.ts:532`) only walks `\.(test|spec)\.(ts|tsx|js)$` — a `.swift` file, however
-  // named, is never indexed, so `resolveTestFileMatches` never sees it and the claimed case is
-  // reported as untested regardless of what actually runs. This test locks that behavior honestly
-  // (it is a real reproduction, not a guard against regressing a fix) rather than the misleadingly
-  // named "unsatisfiability guard" TS-only test this batch's verifier found in `bdd-coverage.test.ts`
-  // (renamed there). Extending the index to non-TS source-test extensions is out of this batch's
-  // zone — tracked as board item B2-25. When B2-25 lands, this assertion flips.
-  it('B2-25 lock: a Swift ticket with a correct, real coverage row is unsatisfiable — getTestFileIndex never indexes .swift', async () => {
+  it('B2-12 indexes a Swift test and approximately observes its canonical XCTest method', async () => {
     const cwd = mkdtempSync(join(tmpdir(), 'sdd-check-cwd-'));
     const prevCwd = process.cwd();
     try {
@@ -1431,8 +1422,7 @@ describe('SddCheckCommand', () => {
         'utf-8'
       );
       const r = await mod.run(argv(`--task=${t}`));
-      assert.match(r.text, /SDD_BDD_SCENARIO_UNTESTED/);
-      assert.match(r.text, /testResolvesContext/);
+      assert.doesNotMatch(r.text, /SDD_BDD_SCENARIO_UNTESTED/);
     } finally {
       process.chdir(prevCwd);
       rmSync(cwd, { recursive: true, force: true });
