@@ -195,7 +195,14 @@
         references (`SDD_BROKEN_SPEC_REF` / `SDD_BROKEN_SPEC_ANCHOR`) and spec→spec links under
         `--all`, so a broken reference into a spec surfaces at the gate — but ticket→ticket links and
         arbitrary markdown links have no mechanical check yet: a link syntax the rewriter does not
-        recognize, or a referencing file outside the zones, stays a manual follow-up. It also
+        recognize, or a referencing file outside the zones, stays a manual follow-up. Before the
+        first write it plans the complete ownership migration: existing valid
+        `SPEC_ID` values remain stable, absent IDs get one collision-checked migration proposal,
+        and every source exact-targeted by the scope gets canonical `@file` → `@spec` →
+        `@consumers` order with legacy `@tasks` removed. Legacy relations are evidence candidates,
+        never ownership authority: an unresolved relation, malformed/duplicate Spec ID, or more
+        than one provable owning spec blocks the whole scope before any move/header write. Dry-run
+        shows the same Spec-ID/header actions; a repeated successful apply is a strict no-op. It also
         scaffolds `<module>.3-tasks.md` +
         `<scope>.3-tasks.md` from ticket Meta (`MODULE_TASKS_INDEX_STRUCTURE` /
         `SCOPE_TASKS_INDEX_STRUCTURE`; the Cascade Table slot stays for the agent), and automatically

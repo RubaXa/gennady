@@ -18,6 +18,7 @@ import { join, dirname, basename, sep, relative, posix } from 'node:path';
 import { collectHeadings, extractSection } from './section.ts';
 import { parseMeta } from './tracker.ts';
 import { scanMigrationUnits, unitFilePath, type SpecUnit } from './migration-plan.ts';
+import { planMigrationFileHeaders, validateMigrationRewrite } from './migration-file-headers.ts';
 
 /** @purpose One planned relocation: v1 ticket path → co-located v2 path (both repo-relative). */
 export type MoveAction = {
@@ -419,8 +420,11 @@ function noTicketsLeft(dir: string): boolean {
 
 /**
  * @purpose Execute (or dry-run) the structural move for one scope: relocate tickets per the plan,
- * scaffold the module/scope `*.3-tasks.md` indexes, and remove the emptied `tasks/<scope>/`.
+ * scaffold the module/scope `*.3-tasks.md` indexes, migrate ownership headers + stable Spec IDs,
+ * and remove the emptied `tasks/<scope>/`.
  * @invariant Nothing is written unless `write` — the dry-run report shows every action verbatim.
+ * @invariant The whole ownership-header/Spec-ID plan is validated before the first move or write;
+ *   one ambiguous or unrecoverable mapping blocks the complete scope without partial migration.
  * @invariant `tasks/<scope>/` is removed only when zero `*.task-*.md` remain under it.
  * @param repoRoot Absolute repo root.
  * @param scope Scope name.
@@ -437,6 +441,29 @@ export function executeScopeMove(
 
   const verb = write ? '' : 'would ';
   const report: string[] = [];
+  const scopeTasksDir = join(repoRoot, 'tasks', scope);
+
+  // A successful scope move removes its v1 ticket tree. Repeating the exact operation must not
+  // recreate indexes or re-derive stable IDs from paths: the already-materialized V2 state wins.
+  if (plan.moves.length === 0 && !existsSync(scopeTasksDir)) {
+    return { ok: true, report: [`  no-op scope ${scope} — уже мигрирован в v2`] };
+  }
+
+  const headerPlan = planMigrationFileHeaders(
+    repoRoot,
+    plan.units.map(({ unit }) => unit)
+  );
+  if (!headerPlan.ok) return headerPlan;
+  const allRewrites = [...headerPlan.specRewrites, ...headerPlan.sourceRewrites];
+  const stale = allRewrites
+    .map((rewrite) => validateMigrationRewrite(repoRoot, rewrite))
+    .filter((error): error is string => error !== null);
+  if (stale.length > 0) return { ok: false, errors: stale };
+
+  for (const rewrite of allRewrites) {
+    if (write) writeFileSync(join(repoRoot, rewrite.file), rewrite.after, 'utf8');
+    report.push(`  ${verb}${rewrite.report}`);
+  }
 
   // #region START_LINK_REWRITE — relative markdown links to a moved ticket, fixed before the git mv
   // itself (so the rewritten content travels with the file); every .md file in specs/+tasks/ is a
@@ -497,7 +524,6 @@ export function executeScopeMove(
     writeFileSync(join(repoRoot, scopeIndexPath), renderScopeIndex(scope, plan.units), 'utf-8');
   report.push(`  ${verb}index ${scopeIndexPath} — сводный трекер scope`);
 
-  const scopeTasksDir = join(repoRoot, 'tasks', scope);
   if (existsSync(scopeTasksDir)) {
     if (write) {
       if (noTicketsLeft(scopeTasksDir)) {

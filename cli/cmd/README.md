@@ -198,7 +198,7 @@ npx gennady yagni /path/to/repo
 | `sdd-log`           | События Execution Log + атомарное закрытие фазы            |
 | `sdd-sync`          | Синхронизация статуса тикета с tasks-трекерами             |
 | `sdd-task`          | Карта исполнения и фазовый контекст тикета                 |
-| `sdd-migrate`       | Детерминированная миграция SDD v1 → v2                     |
+| `sdd-migrate`       | SDD v1 → v2: anchors, IDs, move и ownership headers        |
 | `agents-rules`      | Инструкция по orient для AI-агентов                        |
 | `testcov`           | Визуальное дерево покрытия (vitest/jest/node:test)         |
 | `yagni`             | Символы диффа с < 2 использований, гейт по Usage Waiver    |
