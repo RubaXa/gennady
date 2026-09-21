@@ -92,13 +92,15 @@ $ npx gennady sdd-migrate anchors --all . --write  # применить + зат
 - **Contract:** Whole-scope FO-6 preflight читает repo-wide Spec-ID/ticket evidence, но планирует записи
   только для фактически мигрируемого scope. Valid explicit ID сохраняется; absent ID получает только
   collision-checked migration proposal. Canonical source rewrite разрешён лишь при одном owning spec
-  и полном восстановлении legacy relations через exact ticket targets. Любой blocker возвращает
+  и полном восстановлении legacy relations: exact ticket targets нужны для owner authority,
+  а versioned declaration закрытого тикета остаётся только `history`. Любой blocker возвращает
   полный список ошибок и запрещает move/header writes. Legacy `@tasks` читается только из canonical
   leading header: optional shebang/license сохраняются, multiline continuations принадлежат своему
   tag block, а blank + declaration JSDoc/block comment завершает header. Duplicate, empty и реально
-  неоднозначные header blocks остаются fail-closed. Для удалённого DONE-тикета preflight может
-  прочитать exact target из Git history, ограниченной frozen `HEAD`; такая связь является только
-  `history`, не semantic-owner. Для Git-proven rename старый ID является только alias к exact-target
+  неоднозначные header blocks остаются fail-closed. Удалённый DONE-тикет читается из Git history,
+  ограниченной frozen `HEAD`: exact target разрешает collision, а один уникально разрешённый
+  versioned ticket сохраняет malformed legacy target как history-only relation. Такая связь не
+  становится semantic-owner. Для Git-proven rename старый ID является только alias к exact-target
   current successor; semantic-owner выводится из successor, не alias. Shallow/missing Git object
   блокирует восстановление. Второй apply после успешного move — no-op.
 
